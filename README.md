@@ -5,6 +5,8 @@ One React Native codebase, many idle tycoon games. A game is a single
 purchases and analytics are shared, so a new game is a new folder and a new
 store listing.
 
+![Pizza Empire and Space Miner: same code, different game.json](docs/screenshots.png)
+
 Stack: Expo SDK 58 / React Native 0.88 · Skia (2D scene, effects) · three.js on
 expo-gl (optional 3D scene) · Reanimated · zustand · AdMob
 (`react-native-google-mobile-ads`) · RevenueCat · Firebase Analytics,
