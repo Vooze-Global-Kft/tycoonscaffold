@@ -1,0 +1,76 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "base": {
+      "node": "22.23.5",
+      "env": {}
+    },
+    "pizza-empire-dev": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "GAME": "pizza-empire"
+      }
+    },
+    "pizza-empire-preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "env": {
+        "GAME": "pizza-empire"
+      }
+    },
+    "pizza-empire-production": {
+      "extends": "base",
+      "autoIncrement": true,
+      "env": {
+        "GAME": "pizza-empire"
+      }
+    },
+    "space-miner-dev": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "GAME": "space-miner"
+      }
+    },
+    "space-miner-preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "env": {
+        "GAME": "space-miner"
+      }
+    },
+    "space-miner-production": {
+      "extends": "base",
+      "autoIncrement": true,
+      "env": {
+        "GAME": "space-miner"
+      }
+    }
+  },
+  "submit": {
+    "pizza-empire-production": {
+      "ios": {
+        "metadataPath": "./games/pizza-empire/store/store.config.json"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
+    "space-miner-production": {
+      "ios": {
+        "metadataPath": "./games/space-miner/store/store.config.json"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "id": "space-miner",
+  "app": {
+    "displayName": "Space Miner",
+    "slug": "space-miner-idle",
+    "iosBundleId": "com.example.spaceminer",
+    "androidPackage": "com.example.spaceminer",
+    "version": "1.0.0",
+    "buildNumber": 1
+  },
+  "theme": {
+    "colors": {
+      "background": "#0B0F2A",
+      "backgroundAlt": "#141A45",
+      "surface": "#1C2457",
+      "primary": "#7B5CFF",
+      "primaryText": "#FFFFFF",
+      "accent": "#00E5FF",
+      "text": "#EEF1FF",
+      "textMuted": "#8D95C9",
+      "success": "#3DDC97",
+      "danger": "#FF4D6D",
+      "progress": "#00E5FF",
+      "gradient": ["#2B1B7A", "#7B5CFF", "#00E5FF"]
+    },
+    "radius": 12,
+    "scene": "three",
+    "heroIcon": "☄️",
+    "particleIcon": "💠",
+    "darkStatusBar": false
+  },
+  "strings": {
+    "currencyName": "Credits",
+    "currencySymbol": "₵",
+    "gemName": "Dark Matter",
+    "gemIcon": "🔮",
+    "prestigeName": "Warp Cores",
+    "prestigeIcon": "🌀",
+    "prestigeVerb": "Jump Galaxy",
+    "prestigeDescription": "Warp to a new galaxy. Your fleet stays behind, but each Warp Core adds 2% to all output permanently.",
+    "managerTab": "AI Pilots",
+    "upgradeTab": "Tech",
+    "tapHint": "Mine the asteroid!"
+  },
+  "economy": {
+    "startingCash": 5,
+    "prestige": { "threshold": 5e11, "scale": 1, "bonusPerPoint": 0.02 },
+    "offline": { "maxHours": 6, "efficiency": 0.4, "minSecondsToShow": 60 },
+    "boost": { "multiplier": 3, "minutesPerAd": 20, "maxMinutes": 180 },
+    "daily": { "gems": [5, 10, 10, 15, 20, 25, 75] },
+    "timeWarp": { "hours": 2, "gemCost": 40 }
+  },
+  "businesses": [
+    { "id": "drill", "name": "Hand Drill", "icon": "⛏️", "baseCost": 4, "costGrowth": 1.07, "baseRevenue": 1, "cycleSeconds": 0.8, "managerCost": 1000, "managerName": "Unit D-1", "managerIcon": "🤖" },
+    { "id": "rover", "name": "Mining Rover", "icon": "🚙", "baseCost": 70, "costGrowth": 1.15, "baseRevenue": 70, "cycleSeconds": 3, "managerCost": 15000, "managerName": "R0-VR", "managerIcon": "🤖" },
+    { "id": "station", "name": "Orbital Station", "icon": "🛰️", "baseCost": 850, "costGrowth": 1.14, "baseRevenue": 600, "cycleSeconds": 7, "managerCost": 120000, "managerName": "HAL-ish", "managerIcon": "🧠" },
+    { "id": "freighter", "name": "Ore Freighter", "icon": "🚀", "baseCost": 10000, "costGrowth": 1.13, "baseRevenue": 5000, "cycleSeconds": 14, "managerCost": 600000, "managerName": "Captain Byte", "managerIcon": "👩‍✈️" },
+    { "id": "moon_base", "name": "Moon Base", "icon": "🌑", "baseCost": 120000, "costGrowth": 1.12, "baseRevenue": 60000, "cycleSeconds": 28, "managerCost": 1500000, "managerName": "Commander Vega", "managerIcon": "🧑‍🚀" },
+    { "id": "dyson", "name": "Dyson Swarm", "icon": "☀️", "baseCost": 1500000, "costGrowth": 1.11, "baseRevenue": 750000, "cycleSeconds": 110, "managerCost": 12000000, "managerName": "The Swarm Mind", "managerIcon": "🐝" }
+  ],
+  "upgrades": [
+    { "id": "t_drill", "name": "Laser Bits", "icon": "🔦", "cost": 200000, "target": "drill", "revenueMult": 3 },
+    { "id": "t_rover", "name": "Fusion Wheels", "icon": "⚙️", "cost": 600000, "target": "rover", "revenueMult": 3 },
+    { "id": "t_all", "name": "Quantum Logistics", "icon": "🧬", "cost": 2000000000, "target": "all", "revenueMult": 3 },
+    { "id": "t_premium", "name": "Antimatter Core", "icon": "⚛️", "cost": 120, "target": "all", "revenueMult": 2, "premium": true }
+  ],
+  "characters": [
+    { "id": "ai", "name": "ARIA", "portrait": "🛸", "color": "#00E5FF" }
+  ],
+  "story": [
+    { "id": "intro", "characterId": "ai", "title": "Boot Sequence", "trigger": { "type": "start" }, "lines": ["Good morning, Miner. Your corporation owns one drill and a lot of debt.", "Tap the drill to extract ore. I'll handle the paperwork."] },
+    { "id": "first_station", "characterId": "ai", "trigger": { "type": "owned", "businessId": "station", "count": 1 }, "lines": ["Orbit achieved. Assign an AI Pilot and I'll keep it running while you sleep."], "rewardGems": 10 }
+  ],
+  "monetization": {
+    "ads": {
+      "ios": { "appId": "ca-app-pub-3940256099942544~1458002511" },
+      "android": { "appId": "ca-app-pub-3940256099942544~3347511713" },
+      "forceTestAds": true
+    },
+    "iap": {
+      "products": [
+        { "id": "space_no_ads", "title": "No Ads", "kind": "noAds", "fallbackPrice": "$3.99" },
+        { "id": "space_x2", "title": "Overclock ×2", "description": "Permanent 2× output.", "kind": "multiplier", "value": 2, "fallbackPrice": "$4.99", "highlight": true },
+        { "id": "space_gems_100", "title": "Dark Matter Cell", "kind": "gems", "value": 100, "fallbackPrice": "$1.99" }
+      ]
+    }
+  },
+  "store": {
+    "title": "Space Miner: Idle Galaxy",
+    "subtitle": "Mine asteroids, build a fleet",
+    "keywords": ["space", "idle", "mining", "tycoon", "galaxy", "clicker", "miner", "planet", "incremental", "sci-fi"],
+    "shortDescription": "Mine asteroids and build an idle mining empire across the galaxy.",
+    "description": "Start with a single hand drill and grow an interstellar mining corporation.\n\n• Automate your fleet with AI pilots\n• Earn credits even while offline\n• Jump galaxies to earn Warp Cores and grow faster\n\nA chill idle tycoon in space."
+  }
+}

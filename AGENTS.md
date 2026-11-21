@@ -25,9 +25,15 @@ Run lint and typecheck before declaring any task done.
 
 ## Navigation & Routing
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+This app is a single game screen with in-app tabs (`src/ui/App.tsx`), so it does not use Expo Router. Add Expo Router only if real multi-screen navigation is needed.
+
+## Project rules
+
+- One codebase, many games. Never branch on a game id in code: everything game-specific belongs in `games/<id>/game.json` and the schema in `src/config/schema.ts`.
+- `src/engine/` stays pure TypeScript (no React, no native imports) and covered by `npm test`.
+- Native SDKs are only required from `src/services/sdks.ts` (web uses `sdks.web.ts`).
+- zustand selectors that return new objects or arrays must use `useShallow`.
+- Before declaring done: `npm run typecheck`, `npm test`, `npm run validate`.
 
 ## Building with EAS
 

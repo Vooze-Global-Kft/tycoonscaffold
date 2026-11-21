@@ -1,0 +1,31 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "categories": [
+      [
+        "GAMES",
+        "GAMES_SIMULATION",
+        "GAMES_CASUAL"
+      ]
+    ],
+    "info": {
+      "en-US": {
+        "title": "Space Miner: Idle Galaxy",
+        "subtitle": "Mine asteroids, build a fleet",
+        "description": "Start with a single hand drill and grow an interstellar mining corporation.\n\n• Automate your fleet with AI pilots\n• Earn credits even while offline\n• Jump galaxies to earn Warp Cores and grow faster\n\nA chill idle tycoon in space.",
+        "keywords": [
+          "space",
+          "idle",
+          "mining",
+          "tycoon",
+          "galaxy",
+          "clicker",
+          "miner",
+          "planet",
+          "incremental",
+          "sci-fi"
+        ]
+      }
+    }
+  }
+}
