@@ -17,8 +17,16 @@ npm install
 GAME=pizza-empire npx expo start     # or GAME=space-miner
 ```
 
-UI works in Expo Go and on web (`w` in the Expo CLI), where ads, purchases and
-Firebase are mocked. For real ads, IAP and analytics, make a development build:
+To try a game on your phone right away, install **Expo Go** from the App Store
+or Play Store, put the phone on the same Wi-Fi as your computer, and run:
+
+```bash
+GAME=pizza-empire npm run go       # then scan the QR code (iPhone: Camera app)
+```
+
+Stop it with Ctrl+C and run `GAME=space-miner npm run go` for the other game.
+In Expo Go and on web, ads, purchases and Firebase are mocked (purchases
+succeed instantly so you can test the flows). For real ads, IAP and analytics, make a development build:
 
 ```bash
 npx eas-cli@latest build --profile pizza-empire-dev --platform ios

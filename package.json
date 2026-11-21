@@ -57,7 +57,8 @@
     "sync": "tsx scripts/sync.ts",
     "eas-build-post-install": "node scripts/select-game.js",
     "select": "node scripts/select-game.js",
-    "postinstall": "node scripts/select-game.js"
+    "postinstall": "node scripts/select-game.js",
+    "go": "expo start --go -c"
   },
   "private": true
 }
