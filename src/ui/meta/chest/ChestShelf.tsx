@@ -14,7 +14,8 @@ import type { GameConfig } from '../../../config/schema';
 import * as M from '../../../engine/meta';
 import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
-import { formatCountdown, useNow } from '../../kit';
+import { AD_NOT_READY, formatCountdown, useNow, useRewardedReady } from '../../kit';
+import { useTarget } from '../../hints/targets';
 import { Chest } from '../../sim/art/props';
 import { alpha, useTheme } from '../../theme';
 import { OddsLink } from './ChestButton';
@@ -49,6 +50,9 @@ export function ChestShelf() {
   const free = useGame(useShallow((s) => M.freeChestStatus(s.cfg, s.game, now)));
   const ad = useGame(useShallow((s) => M.adChestStatus(s.cfg, s.game, now)));
   const clock = useClock();
+  const adReady = useRewardedReady();
+  // The tutorial hand's openChest target on this tab: the Open button of the first chest that can be opened.
+  const shelfTarget = useTarget('chestShelf');
 
   const tiles: Tile[] = useMemo(() => {
     const out: Tile[] = [];
@@ -59,6 +63,8 @@ export function ChestShelf() {
   }, [cfg, owned, free, ad]);
 
   if (tiles.length === 0) return null;
+  // The first tile whose Open button opens a chest now (a ready free chest or one the player owns).
+  const firstOpen = tiles.findIndex((tile) => tile.kind === 'owned' || (tile.kind === 'free' && (free?.ready ?? 0) > 0));
   const tileW = TILE_W;
   const width = PAD * 2 + tiles.length * TILE_W + (tiles.length - 1) * GAP;
   const height = TILE_H;
@@ -80,7 +86,14 @@ export function ChestShelf() {
             } else if (tile.kind === 'ad' && ad) {
               status = ad.left <= 0 ? `More in ${formatCountdown(ad.nextInMs)}` : ad.nextInMs > 0 ? `Next in ${formatCountdown(ad.nextInMs)}` : `${ad.left} left today`;
               // An ad button says it is an ad and what it gives, before the tap.
-              action = { label: '▶ Watch ad', sublabel: `for 1 ${chest.name}`, onPress: () => void s().watchAdChest(), disabled: ad.left <= 0 || ad.nextInMs > 0, variant: 'accent' };
+              const waiting = ad.left <= 0 || ad.nextInMs > 0;
+              action = {
+                label: '▶ Watch ad',
+                sublabel: !waiting && !adReady ? AD_NOT_READY : `for 1 ${chest.name}`,
+                onPress: () => void s().watchAdChest(),
+                disabled: waiting || !adReady,
+                variant: 'accent',
+              };
             } else {
               status = `×${tile.count} owned`;
               action = { label: 'Open', onPress: () => s().openChest(tile.chestId), variant: 'success' };
@@ -102,7 +115,11 @@ export function ChestShelf() {
                   {status}
                 </Text>
                 <View style={{ flex: 1 }} />
-                {action ? (
+                {action && i === firstOpen ? (
+                  <View {...shelfTarget} style={styles.btnWrap}>
+                    <Button label={action.label} sublabel={action.sublabel} onPress={action.onPress} disabled={action.disabled} variant={action.variant} style={styles.btn} />
+                  </View>
+                ) : action ? (
                   <Button label={action.label} sublabel={action.sublabel} onPress={action.onPress} disabled={action.disabled} variant={action.variant} style={styles.btn} />
                 ) : (
                   <View style={[styles.btn, styles.waiting, { borderColor: alpha(t.c.text, 0.12), borderRadius: t.radius * 0.75 }]}>
@@ -163,7 +180,8 @@ const styles = StyleSheet.create({
   tile: { position: 'absolute', height: TILE_H, borderWidth: 2, paddingHorizontal: 6, paddingBottom: 0, alignItems: 'center' },
   name: { fontSize: 14, textAlign: 'center', alignSelf: 'stretch' },
   status: { fontSize: 12, fontWeight: '700', marginTop: 1, textAlign: 'center' },
-  btn: { alignSelf: 'stretch', minHeight: 40, paddingVertical: 3, paddingHorizontal: 4 },
+  btnWrap: { alignSelf: 'stretch' },
+  btn: { alignSelf: 'stretch', minHeight: 44, paddingVertical: 3, paddingHorizontal: 4 },
   waiting: { borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   waitText: { fontSize: 13, fontWeight: '800' },
   count: { position: 'absolute', top: 6, right: 6, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1 },

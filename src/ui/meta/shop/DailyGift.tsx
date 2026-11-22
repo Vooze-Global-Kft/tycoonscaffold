@@ -3,8 +3,8 @@
  * the player sees tomorrow's gift today. It counts days, it never scolds: there is no "streak
  * lost" anywhere, a missed day simply continues the row from where the engine puts it.
  */
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useShallow } from 'zustand/react/shallow';
 import * as E from '../../../engine/economy';
 import * as M from '../../../engine/meta';
 import { formatNumber } from '../../../engine/format';
@@ -16,26 +16,19 @@ import { Countdown, OfferCard, Shine, ShopSection, useFlyFrom, withGemFlight } f
 
 export function DailyGift() {
   const t = useTheme();
-  const table = useGame((s) => s.cfg.economy.daily.gems);
+  const cfg = useGame((s) => s.cfg);
+  const daily = useGame((s) => s.game.daily);
   const claim = useGame((s) => s.claimDaily);
-  // Which day of the row is "today" and whether it is still to be claimed.
-  const { canClaim, day, gems } = useGame(
-    useShallow((s) => {
-      const now = Date.now();
-      const can = E.canClaimDaily(s.game, now);
-      const r = E.dailyReward(s.cfg, s.game, now);
-      return { canClaim: can, day: can ? r.streak : Math.max(1, s.game.daily.streak), gems: r.gems };
-    }),
-  );
   const { ref, emit } = useFlyFrom();
-  if (table.length === 0) return null;
-
-  const len = table.length;
-  // Show a window of `len` days that contains today; past the end of the table the last gift repeats.
-  const start = day > len ? day - len + 1 : 1;
-  const days = Array.from({ length: len }, (_, i) => start + i);
-  const gemsFor = (d: number) => table[Math.min(d, len) - 1];
-  const todayGems = canClaim ? gems : gemsFor(day);
+  // The row of days comes from the engine: the gift table cycles, and it counts days claimed.
+  const now = Date.now();
+  const canClaim = useGame((s) => E.canClaimDaily(s.game, now));
+  const days = useMemo(() => E.dailyCalendar(cfg, { ...useGame.getState().game, daily }, now), [cfg, daily, canClaim]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (days.length === 0) return null;
+  // Today's day: the one to claim, or the one claimed today.
+  const current = days.find((d) => d.today) ?? days.find((d) => d.claim === Math.max(1, daily.streak)) ?? days[0];
+  const day = current.day;
+  const todayGems = current.gems;
 
   return (
     <ShopSection title="Daily gift" note={canClaim ? null : <Countdown until={Date.now() + M.msUntilNextDay(Date.now())} prefix="Next gift in " style={[styles.note, { color: t.c.textMuted }]} />}>
@@ -59,11 +52,10 @@ export function DailyGift() {
         </View>
         <View style={styles.days}>
           {days.map((d) => {
-            const claimed = d < day || (d === day && !canClaim);
-            const today = d === day && canClaim;
+            const { claimed, today } = d;
             return (
               <View
-                key={d}
+                key={d.claim}
                 style={[
                   styles.day,
                   {
@@ -74,7 +66,7 @@ export function DailyGift() {
                 ]}
               >
                 <Text style={[styles.dayLabel, { color: today ? textOn(t.c.success) : t.c.textMuted }]} numberOfLines={1}>
-                  Day {d}
+                  Day {d.day}
                 </Text>
                 {claimed ? (
                   <Text style={[styles.check, { color: t.c.success }]}>✓</Text>
@@ -82,7 +74,7 @@ export function DailyGift() {
                   <GameIcon icon={t.strings.gemIcon} size={18} />
                 )}
                 <Text style={[styles.dayGems, t.display, { color: today ? textOn(t.c.success) : t.c.text }]} numberOfLines={1} adjustsFontSizeToFit>
-                  {formatNumber(gemsFor(d))}
+                  {formatNumber(d.gems)}
                 </Text>
               </View>
             );
@@ -112,7 +104,7 @@ const styles = StyleSheet.create({
   sub: { fontSize: 12, fontWeight: '600' },
   days: { flexDirection: 'row', gap: 4, marginTop: 12, marginBottom: 12 },
   day: { flex: 1, alignItems: 'center', paddingVertical: 6, borderWidth: 1.5, minHeight: 64, justifyContent: 'space-between' },
-  dayLabel: { fontSize: 9, fontWeight: '900' },
+  dayLabel: { fontSize: 11, fontWeight: '900' },
   check: { fontSize: 16, fontWeight: '900', lineHeight: 18 },
   dayGems: { fontSize: 13 },
 });

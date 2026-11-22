@@ -119,6 +119,13 @@ function onScreen(key: string, rect: TargetRect, content: TargetRect | null, win
 }
 
 /**
+ * The controls that live inside a dialog. The dialog's copy of the hand points only at these: any
+ * other target belongs to the shell behind the dialog (a Hire button on home, say), and the
+ * dialog's copy is drawn above everything.
+ */
+const DIALOG_KEYS = ['claimMission', 'levelUpCard'];
+
+/**
  * `inDialog`: the copy that the kit's Sheet renders inside its own window (a dialog covers the
  * shell's copy on phones). It points only at a control inside that dialog (the Claim button of a
  * mission, the Level up button of a card), and leaves the "psst" and the stage switch to the shell's copy.
@@ -143,7 +150,7 @@ export function HintOverlay({ inDialog = false }: { inDialog?: boolean }) {
   let hidden: Hint | null = null;
   for (const h of hints) {
     // Pointing at the tab or the stage chip the player is already on would say nothing.
-    const route = inDialog ? [h.key] : h.route.filter((k) => k !== `tab:${tab}` && !(tab === 'home' && k === `stage:${stage}`));
+    const route = inDialog ? (DIALOG_KEYS.some((k) => h.key.startsWith(`${k}:`)) ? [h.key] : []) : h.route.filter((k) => k !== `tab:${tab}` && !(tab === 'home' && k === `stage:${stage}`));
     for (const key of route) {
       const rect = targets.get(key);
       // Not measured yet: the refresh below asks every second.

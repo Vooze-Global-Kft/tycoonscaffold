@@ -26,7 +26,7 @@
  *     value changes: `rung.value += 1`. Their lengths are exported (`BELL_RING_MS`,
  *     ...) so sound and haptics can be timed to them.
  */
-import { BlendMode, ClipOp, Group, Picture, Skia, TileMode, select, type SharedValueSelector, type SkCanvas, type SkPath, type SkPicture } from '@shopify/react-native-skia';
+import { BlendMode, ClipOp, Group, Image, Picture, Skia, TileMode, select, type SharedValueSelector, type SkCanvas, type SkPath, type SkPicture } from '@shopify/react-native-skia';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { startMapper, stopMapper, useDerivedValue, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import {
@@ -62,6 +62,7 @@ import {
 } from './draw';
 import { dishArt, drawShadow, drawTray, resolveDish, type ResolvedDish } from './items';
 import { SEAT_HEIGHT, UNIT } from './rig';
+import { PART_SAMPLING, lasting, rasterDensity } from './raster';
 import type { ArtPalette, ChestTier, DishKind, DishLook, Rarity, StationKind, TableState } from './types';
 
 // ---------------------------------------------------------------------------
@@ -1420,6 +1421,8 @@ export function Station({ kind, x, y, scale = 1, palette, working = false, locke
     },
     [clock, x, y, scale, working, locked, step, offset],
   );
+  const scale0 = typeof scale === 'number' ? scale : scale.value;
+  const ppu = useMemo(() => rasterDensity(UNIT, scale0), [scale0]);
   return (
     <Group matrix={m.root} zIndex={zIndex}>
       <Picture picture={art.shadow} />
@@ -1429,7 +1432,16 @@ export function Station({ kind, x, y, scale = 1, palette, working = false, locke
           {padlock ? <Picture picture={padlockArt()} matrix={LOCK_AT} /> : null}
         </>
       ) : (
-        art.layers.map((l, i) => <Picture key={i} picture={l.pic} matrix={l.key ? m[l.key] : undefined} />)
+        art.layers.map((l, i) => {
+          // A layer that never moves (the station's body) draws from an image made once at the shown
+          // size; moving layers (fire, steam, wheels, glows that add light) stay vector pictures.
+          const img = !l.key && ppu !== null ? lasting.get(l.pic, ppu) : null;
+          return img ? (
+            <Image key={i} image={img.image} x={img.x} y={img.y} width={img.width} height={img.height} fit="fill" sampling={PART_SAMPLING} />
+          ) : (
+            <Picture key={i} picture={l.pic} matrix={l.key ? m[l.key] : undefined} />
+          );
+        })
       )}
     </Group>
   );
@@ -1769,9 +1781,18 @@ export function Table({ x, y, scale = 1, palette, state = 'empty', dish, clock, 
     },
     [clock, x, y, scale, state],
   );
+  // The table top never changes shape: draw it from an image made once at the shown size (one quad
+  // instead of replaying its vectors every frame). Falls back to the picture when no image can be made.
+  const scale0 = typeof scale === 'number' ? scale : scale.value;
+  const ppu = useMemo(() => rasterDensity(UNIT, scale0), [scale0]);
+  const body = ppu === null ? null : lasting.get(art.table, ppu);
   return (
     <Group matrix={m.root} zIndex={zIndex}>
-      <Picture picture={art.table} />
+      {body ? (
+        <Image image={body.image} x={body.x} y={body.y} width={body.width} height={body.height} fit="fill" sampling={PART_SAMPLING} />
+      ) : (
+        <Picture picture={art.table} />
+      )}
       <Picture picture={art.done} matrix={m.done} />
       <Picture picture={served} matrix={m.food} />
     </Group>

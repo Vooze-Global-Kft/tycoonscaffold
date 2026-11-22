@@ -16,6 +16,8 @@ import { useOverlay, useOverlaysOpen } from '../kit/overlay';
 import { DIALOG_GAP_MS, Sheet } from '../kit/Sheet';
 import { overlays } from '../../state/overlays';
 import { shortDuration } from '../kit/time';
+import { AD_NOT_READY, useRewardedReady } from '../kit/ads';
+import { ads } from '../../services/ads';
 import { alpha, inkOf, textOn, useTheme } from '../theme';
 import { Button } from './Button';
 import { GameIcon } from './GameIcon';
@@ -35,6 +37,8 @@ function OfflineSheet({ seconds, earnings }: { seconds: number; earnings: number
   const collect = useGame((s) => s.collectOffline);
   const maxHours = useGame((s) => s.cfg.economy.offline.maxHours);
   const [busy, setBusy] = useState(false);
+  const adReady = useRewardedReady();
+  const freeDouble = ads.skipRewarded;
   const amountRef = useRef<ElementRef<typeof View>>(null);
   const float = useSharedValue(0);
   useEffect(() => {
@@ -63,7 +67,13 @@ function OfflineSheet({ seconds, earnings }: { seconds: number; earnings: number
       footer={
         <>
           <Button variant="success" disabled={busy} label="Collect" sublabel={formatMoney(earnings, t.strings.currencySymbol)} onPress={() => run(false)} />
-          <Button variant="accent" disabled={busy} label="▶ Watch ad: ×2" sublabel={`Optional · ${formatMoney(earnings * 2, t.strings.currencySymbol)} in total`} onPress={() => run(true)} />
+          <Button
+            variant={freeDouble ? 'success' : 'accent'}
+            disabled={busy || !adReady}
+            label={freeDouble ? 'Collect ×2' : '▶ Watch ad: ×2'}
+            sublabel={adReady ? `Optional · ${formatMoney(earnings * 2, t.strings.currencySymbol)} in total` : AD_NOT_READY}
+            onPress={() => run(true)}
+          />
         </>
       }
     >

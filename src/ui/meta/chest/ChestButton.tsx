@@ -16,7 +16,7 @@ import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
 import { useTarget } from '../../hints/targets';
-import { Dot, Sheet, formatCountdown, useNow } from '../../kit';
+import { AD_NOT_READY, Dot, Sheet, formatCountdown, useNow, useRewardedReady } from '../../kit';
 import { alpha, useTheme } from '../../theme';
 
 /** First owned chest in config order (the one a tap opens), or null. */
@@ -101,6 +101,7 @@ function ChestInfoSheet({ onClose, onLeave }: { onClose: () => void; onLeave: ()
   const cfg = useGame((s) => s.cfg);
   const free = useGame(useShallow((s) => M.freeChestStatus(s.cfg, s.game, now)));
   const ad = useGame(useShallow((s) => M.adChestStatus(s.cfg, s.game, now)));
+  const adReady = useRewardedReady();
   const freeChest = cfg.meta.chests.find((c) => c.id === cfg.meta.freeChest?.chestId);
   const adChest = cfg.meta.chests.find((c) => c.id === cfg.meta.adChest?.chestId);
   const odds = (chestId: string) => {
@@ -147,7 +148,14 @@ function ChestInfoSheet({ onClose, onLeave }: { onClose: () => void; onLeave: ()
             {/* The drop rates sit beside the watch button, so the odds are seen before the ad. */}
             <View style={styles.adRow}>
               <OddsLink onPress={() => odds(adChest.id)} />
-              <Button label={`Watch ad: 1 ${adChest.name}`} onPress={watch} disabled={ad.left <= 0 || ad.nextInMs > 0} variant="accent" style={{ flex: 1 }} />
+              <Button
+                label={`▶ Watch ad: 1 ${adChest.name}`}
+                sublabel={ad.left > 0 && ad.nextInMs <= 0 && !adReady ? AD_NOT_READY : undefined}
+                onPress={watch}
+                disabled={ad.left <= 0 || ad.nextInMs > 0 || !adReady}
+                variant="accent"
+                style={{ flex: 1 }}
+              />
             </View>
           </View>
         ) : null}

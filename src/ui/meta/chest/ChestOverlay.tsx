@@ -499,7 +499,7 @@ function Opening({ opening, w: liveW, h: liveH }: { opening: ChestOpening; w: nu
             {chest?.name ?? ''}
           </Text>
           <Text style={styles.subtitle} numberOfLines={1}>
-            {stage === 'summary' ? 'Everything you got' : `${rewards.length} ${rewards.length === 1 ? 'item' : 'items'}`}
+            {stage === 'summary' ? 'Everything you got' : itemsLine(chest?.slots ?? rewards.length, rewards.length)}
           </Text>
         </View>
         <View style={styles.headerSide}>
@@ -722,11 +722,21 @@ function Summary({ totalsRef, totals, left, nextLabel, onCollect, onNext }: {
         </Text>
       ) : null}
       <View style={styles.buttons}>
-        {onNext ? <Button label={`Open next (${left} left)`} sublabel={nextLabel} variant="ghost" onPress={onNext} style={styles.btnNext} /> : null}
+        {onNext ? <Button label="Open next" sublabel={nextLabel ? `${left} left · ${nextLabel}` : `${left} left`} variant="success" onPress={onNext} style={styles.btnNext} /> : null}
         <Button label="Collect" onPress={onCollect} variant="success" style={styles.btn} />
       </View>
     </Animated.View>
   );
+}
+
+/**
+ * The opening's subtitle. It counts the chest's items as the drop rates do; when two items picked the
+ * same card they show as one tile, and the line says so, so the count never looks short.
+ */
+function itemsLine(slots: number, tiles: number): string {
+  const n = Math.max(slots, tiles);
+  const base = `${n} ${n === 1 ? 'item' : 'items'}`;
+  return tiles < n ? `${base} · same cards stacked` : base;
 }
 
 const styles = StyleSheet.create({

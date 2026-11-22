@@ -11,7 +11,7 @@ import { fx } from '../../../../services/fx';
 import { useGame } from '../../../../state/store';
 import { Button } from '../../../components/Button';
 import { GameIcon } from '../../../components/GameIcon';
-import { formatCountdown, useNow } from '../../../kit';
+import { AD_NOT_READY, formatCountdown, useNow, useRewardedReady } from '../../../kit';
 import { alpha, useTheme } from '../../../theme';
 import { RUSH_HIT_RADIUS, type SceneLayout } from '../../layout';
 import { sceneBus } from '../bus';
@@ -47,6 +47,7 @@ export function RushButton({ layout, phase, until, readyAt }: { layout: SceneLay
   const t = useTheme();
   const rush = useGame((s) => s.cfg.sim?.rush);
   const skipAds = useGame((s) => s.game.entitlements.skipRewarded);
+  const adReady = useRewardedReady();
   const startRush = useGame((s) => s.startRush);
   const adResetRush = useGame((s) => s.adResetRush);
   const [chip, setChip] = useState(false);
@@ -85,7 +86,8 @@ export function RushButton({ layout, phase, until, readyAt }: { layout: SceneLay
           <Button
             variant={skipAds ? 'success' : 'accent'}
             label={skipAds ? `${rush.name}: ready now` : '▶ Watch ad'}
-            sublabel={skipAds ? undefined : `${rush.name} ready now`}
+            sublabel={skipAds ? undefined : adReady ? `${rush.name} ready now` : AD_NOT_READY}
+            disabled={!skipAds && !adReady}
             onPress={() => {
               setChip(false);
               adResetRush();

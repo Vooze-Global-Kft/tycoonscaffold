@@ -16,7 +16,6 @@ import { putTS, useMatrix } from '../matrix';
 import type { ArtPalette, DishLook, Pose, TableState } from '../../art/types';
 import { guestFrame, tableState } from '../../layout';
 import { guestLook } from './cast';
-import { useGatedClock } from './gatedClock';
 import { isLateMount, type SceneCtx } from './context';
 import { bump, glide } from './ticker';
 
@@ -158,8 +157,8 @@ export function TableSeat({
 }
 
 /**
- * One of a seat's guests. Only the current one (`slot`) is shown; the others are parked off the
- * canvas with a stopped clock, so they cost nothing per frame.
+ * One of a seat's guests. Only the current one (`slot`) is shown; the others are switched off
+ * (`active`), so they cost one check per frame.
  */
 function Guest({
   ctx,
@@ -187,14 +186,12 @@ function Guest({
   seed: number;
 }) {
   const k = ctx.layout.artScale;
-  const on = useDerivedValue<number>(() => (visible.value > 0.5 && slot.value === j ? 1 : 0));
-  const clock = useGatedClock(ctx.clock, on);
-  // Hidden by moving off the canvas: a parent group's opacity does not reach children sorted by zIndex.
-  const shownX = useDerivedValue(() => (on.value > 0.5 ? x.value : -9999));
-  const z = useDerivedValue(() => (on.value > 0.5 ? y.value : -1));
+  const on = useDerivedValue<boolean>(() => visible.value > 0.5 && slot.value === j);
+  const z = useDerivedValue(() => (on.value ? y.value : -1));
+  // While off, the art kit collapses the character once and skips its rig every frame.
   return (
     <Group zIndex={z}>
-      <Character look={look} x={shownX} y={y} facing={facing} pose={pose} clock={clock} scale={k} dish={dish} poses={GUEST_POSES} seed={seed} />
+      <Character look={look} x={x} y={y} facing={facing} pose={pose} clock={ctx.clock} scale={k} dish={dish} poses={GUEST_POSES} seed={seed} active={on} />
     </Group>
   );
 }

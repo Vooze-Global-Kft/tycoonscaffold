@@ -90,7 +90,8 @@ export function GemPrice({ cost, light, size = 15 }: { cost: number; light?: boo
   const t = useTheme();
   const cfg = useGame((s) => s.cfg);
   const money = gemsInMoney(cfg, cost);
-  const fg = light ? t.c.primaryText : t.c.text;
+  // On a filled (primary) button: the label rule of every button, textOn(fill).
+  const fg = light ? textOn(t.c.primary) : t.c.text;
   return (
     <View style={{ alignItems: 'center' }}>
       <View style={styles.row}>
@@ -100,7 +101,7 @@ export function GemPrice({ cost, light, size = 15 }: { cost: number; light?: boo
         </Text>
       </View>
       {money ? (
-        <Text style={[styles.money, { color: light ? alpha(t.c.primaryText, 0.85) : t.c.textMuted }]} numberOfLines={1}>
+        <Text style={[styles.money, { color: light ? alpha(fg, 0.85) : t.c.textMuted }]} numberOfLines={1}>
           {money}
         </Text>
       ) : null}

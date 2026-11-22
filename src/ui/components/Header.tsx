@@ -4,7 +4,7 @@
  * Flying coins and gems land on the two counters, which register themselves as targets.
  */
 import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import * as E from '../../engine/economy';
@@ -13,6 +13,8 @@ import { ads } from '../../services/ads';
 import { useGame } from '../../state/store';
 import { useTarget } from '../hints/targets';
 import { useHomeMetrics } from '../home/layout';
+import { AD_NOT_READY, useRewardedReady } from '../kit/ads';
+import { shopFocus } from '../meta/shop/focus';
 import { formatCountdown, shortDuration } from '../kit/time';
 import { alpha, useTheme } from '../theme';
 import { counterPulse } from './counterPulse';
@@ -99,17 +101,6 @@ function CashCounter({ compact }: { compact: boolean }) {
   );
 }
 
-/** Whether a rewarded ad can play right now; re-renders when the ads service says it changed. */
-function useRewardedReady(): boolean {
-  return useSyncExternalStore(subscribeAds, readyNow, readyNow);
-}
-const subscribeAds = (fn: () => void) => {
-  const off = ads.onChange(fn);
-  return () => {
-    off();
-  };
-};
-const readyNow = () => ads.skipRewarded || ads.rewardedReady;
 
 /**
  * The rewarded-ad boost. It always says, before the tap, that a tap plays an ad and what the ad
@@ -138,7 +129,7 @@ function BoostPill({ compact }: { compact: boolean }) {
   const mult = `×${boost.multiplier}`;
   const length = shortDuration(boost.minutesPerAd * 60);
   const how = free ? 'Free' : '▶ Ad';
-  const sub = !canBoost ? (active ? 'income' : '') : !adReady ? 'Ad not ready' : active ? `${how}: +${length}` : free ? 'Claim free' : '▶ Watch ad';
+  const sub = !canBoost ? (active ? 'income' : '') : !adReady ? AD_NOT_READY : active ? `${how}: +${length}` : free ? 'Claim free' : '▶ Watch ad';
   const label = active
     ? `${mult} income, ${formatCountdown(boostUntil - now)} left.${can ? (free ? ` Tap for ${length} more, free.` : ` Watch an ad for ${length} more.`) : ''}`
     : free
@@ -184,7 +175,10 @@ function GemPill({ compact }: { compact: boolean }) {
   return (
     <Pressable
       {...target}
-      onPress={() => setTab('shop')}
+      onPress={() => {
+        shopFocus.request('packs');
+        setTab('shop');
+      }}
       hitSlop={6}
       accessibilityRole="button"
       accessibilityLabel={`${formatNumber(gems)} ${t.strings.gemName}. Open the shop`}

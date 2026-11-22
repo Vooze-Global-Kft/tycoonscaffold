@@ -35,10 +35,15 @@ This app is a single game screen with in-app tabs (`src/ui/App.tsx`), so it does
 - Sound and haptics only through the fx service (`src/services/fx`, `fx.play('<key>')` with keys from `catalog.ts`); never import expo-audio or expo-haptics elsewhere.
 - Characters are drawn in code: use `"char:<id>"` icons with a look in the game's top-level `cast`, not new image assets, unless the game has its own art.
 - Native SDKs are only required from `src/services/sdks.ts` (web uses `sdks.web.ts`).
-- zustand selectors that return new objects or arrays must use `useShallow`.
+- zustand selectors that return new objects or arrays must use `useShallow`. The store's `game` changes ten times a second: select the few values a component shows, never the whole object in lists or animated components.
+- Animation runs on the UI thread (Reanimated shared values, Skia). Code there ("worklets") may only call other worklets: this crashes on phones but never in the web preview, so run `npm run lint:worklets`. Never free a Skia picture or image a mounted canvas may still draw; nothing invisible may keep animating.
+- Never one Skia canvas per list row: portraits and `art:` icons go through `GameIcon`, which shows cached images.
+- Every dialog is the kit `Sheet` (or registers with `useOverlay`): one dialog at a time, and popups, the tutorial hand and story dialogs wait for it (`src/state/overlays.ts`).
+- Controls a hint can point at register with `useTarget(key)` (`src/ui/hints/targets.ts` lists the keys).
+- Text on a coloured fill uses `textOn(fill)`; a stage or rarity colour used as text goes through `inkOf` (`src/ui/theme.ts`).
 - Shipped games' numbers come from `scripts/content/build-*.py`; change the script and regenerate, never hand-edit those tables. Each game needs its own economy table (`validate` rejects copies).
 - Chests are earned, not sold, unless a game sets `meta.chestsForSale`; deals never contain permanent items; offer timers are real.
-- Before declaring done: `npm run typecheck`, `npm test`, `npm run validate`.
+- Before declaring done: `npm run typecheck`, `npm test`, `npm run validate`, `npm run lint:worklets`, and look at what you changed in the web preview (`src/dev/devtools.ts` lists the switches).
 
 ## Building with EAS
 

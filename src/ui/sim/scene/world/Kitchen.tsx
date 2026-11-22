@@ -18,7 +18,6 @@ import type { DishLook, Pose } from '../../art/types';
 import { kitchenPath, type Point } from '../../layout';
 import { sceneBus } from '../bus';
 import type { SceneCtx } from './context';
-import { useGatedClock } from './gatedClock';
 import { bump } from './ticker';
 
 export interface StationInfo {
@@ -183,8 +182,8 @@ function Cook({
   cheer: SharedValue<number>;
 }) {
   const { layout: L } = ctx;
-  // Nobody at this station yet (no hire): a stopped clock, so the hidden cook costs nothing per frame.
-  const clock = useGatedClock(ctx.clock, managed);
+  // Nobody at this station yet (no hire): the cook is switched off and costs one check per frame.
+  const on = useDerivedValue<boolean>(() => managed.value > 0.5);
   // The walk-in route as plain numbers, so the worklets below can follow it on the UI thread.
   const route = useMemo(() => {
     const pts = kitchenPath(L, spot);
@@ -215,12 +214,10 @@ function Cook({
     if (cheer.value < 1) return 'cheer';
     return working.value > 0.5 ? workPose : 'idle';
   });
-  // Hidden by moving off the canvas: a parent group's opacity does not reach children sorted by zIndex.
-  const shownX = useDerivedValue(() => (managed.value > 0.5 ? x.value : -9999));
   const z = useDerivedValue(() => pos.value[1]);
   return (
     <Group zIndex={z}>
-      <Character look={look} x={shownX} y={y} facing={facing} pose={pose} clock={clock} scale={L.artScale} poses={['idle', 'walk', 'cheer', workPose]} />
+      <Character look={look} x={x} y={y} facing={facing} pose={pose} clock={ctx.clock} scale={L.artScale} poses={['idle', 'walk', 'cheer', workPose]} active={on} />
     </Group>
   );
 }

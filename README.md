@@ -17,6 +17,7 @@ config · vitest.
 npm install
 GAME=pizza-empire npx expo start     # or GAME=space-miner
 GAME=pizza-empire npm run go         # Expo Go on your phone: scan the QR code
+GAME=pizza-empire npm run go:fast    # the same without development mode: use this to judge speed
 ```
 
 In Expo Go and on web, ads, purchases and Firebase are mocked (purchases succeed
@@ -200,7 +201,13 @@ src/engine/              pure TS economy, chain and meta + tests; no React, no n
 src/config/schema*.ts    the GameConfig contract (zod) and lintGameConfig
 src/services/            ads, iap, firebase, fx (sound + haptics); sdks.ts is the only place native SDKs load
 src/state/store.ts       zustand store: every state change is an action here
-src/ui/                  screens, scenes, code-drawn characters (sim/art)
+src/ui/App.tsx           the shell: header, tabs, and every dialog and overlay
+src/ui/home/             the home tab (stage strip, stage lists) for sim and classic games
+src/ui/sim/scene/        the living venue: world/ draws it, play/ is everything the player taps on it
+src/ui/sim/art/          code-drawn characters, props, chests, cards and "art:" icons
+src/ui/meta/             chests, cards, shop, deals, missions, settings, upgrades, empire
+src/ui/hints/, juice/    the tutorial hand and its targets; coins and gems flying to the header
+src/ui/kit/, theme.ts    shared dialog, list and text pieces; colours with readable-text helpers
 src/dev/                 web preview switches and presets
 scripts/                 generate, new-game, validate, simulate, sync, content/, audio/
 ```
@@ -265,6 +272,7 @@ Consent: Google UMP form, then ATT on iOS, then the SDK init.
 |---|---|
 | `npm test` | engine and service tests (also validates every game.json) |
 | `npm run typecheck` | TypeScript |
+| `npm run lint:worklets` | checks that UI-thread animation code only calls UI-thread code (a mistake there crashes on phones, never in the web preview) |
 | `npm run validate -- [<id>] [--no-sim]` | config errors and release warnings |
 | `npm run simulate -- <id>` | pacing report |
 | `npm run content:space`, `content:pizza` | rebuild a shipped game's game.json from its script |

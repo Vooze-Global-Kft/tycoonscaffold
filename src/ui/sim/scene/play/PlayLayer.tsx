@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { View, type HostInstance } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import * as E from '../../../../engine/economy';
 import { useGame } from '../../../../state/store';
 import { targets } from '../../../hints/targets';
@@ -162,7 +162,7 @@ function PopIn({ animate, delay, style, children }: { animate: boolean; delay: n
   const s = useSharedValue(animate ? 0 : 1);
   useEffect(() => {
     if (!animate) return;
-    s.value = withDelay(delay, withSequence(withSpring(1.18, { damping: 8, stiffness: 260 }), withSpring(1, { damping: 10, stiffness: 220 })));
+    s.value = withDelay(delay, withSpring(1, { damping: 9, stiffness: 240 }));
   }, [animate, delay, s]);
   const a = useAnimatedStyle(() => ({ opacity: Math.min(1, s.value * 2), transform: [{ scale: s.value }] }));
   return (

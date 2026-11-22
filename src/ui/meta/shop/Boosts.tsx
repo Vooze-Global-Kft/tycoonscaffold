@@ -10,7 +10,7 @@ import { ads } from '../../../services/ads';
 import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
-import { formatCountdown, shortDuration, useNow } from '../../kit';
+import { AD_NOT_READY, formatCountdown, shortDuration, useNow, useRewardedReady } from '../../kit';
 import { alpha, useTheme } from '../../theme';
 import type { IapProduct } from '../../../config/schema';
 import { iap } from '../../../services/iap';
@@ -38,7 +38,9 @@ function AdBoost() {
   // Same rule as E.canBoost, from the two numbers this card already has.
   const canAdd = boostUntil < now + (boost.maxMinutes - boost.minutesPerAd) * 60_000;
   const reward = `×${boost.multiplier} income for ${shortDuration(boost.minutesPerAd * 60)}`;
-  const action = skip || ads.skipRewarded ? 'Claim' : 'Watch ad';
+  const free = skip || ads.skipRewarded;
+  const adReady = useRewardedReady();
+  const action = free ? 'Claim' : '▶ Watch ad';
   return (
     <OfferCard tint={t.c.stages?.transport ?? t.c.success}>
       <View style={styles.row}>
@@ -57,9 +59,10 @@ function AdBoost() {
         </View>
       </View>
       <Button
-        variant="accent"
+        variant={free ? 'success' : 'accent'}
         label={canAdd ? `${action}: +${shortDuration(boost.minutesPerAd * 60)}` : 'Boost is full'}
-        disabled={!canAdd}
+        sublabel={canAdd && !adReady ? AD_NOT_READY : undefined}
+        disabled={!canAdd || !adReady}
         onPress={watch}
         style={{ marginTop: 10 }}
       />

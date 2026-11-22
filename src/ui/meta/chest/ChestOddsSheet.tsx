@@ -32,7 +32,7 @@ export function ChestOddsSheet() {
   if (modal?.type !== 'chestOdds') return null;
   const chest = cfg.meta.chests.find((c) => c.id === modal.chestId);
   return (
-    <Sheet visible onClose={close} title="Drop rates" icon={chest?.icon} footer={<Button label="Got it" onPress={close} />}>
+    <Sheet visible onClose={close} title="Drop rates" icon={chest?.icon} footer={<Button variant="success" label="Got it" onPress={close} />}>
       {chest ? <OddsBody cfg={cfg} chest={chest} /> : <Text>This chest is not in the game any more.</Text>}
     </Sheet>
   );
