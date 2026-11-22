@@ -19,7 +19,7 @@ export function ChestShop() {
   );
   if (ids.length === 0) return null;
   return (
-    <ShopSection icon="🎁" title="Chests">
+    <ShopSection title="Chests">
       {ids.map((id) => (
         <ChestRow key={id} chestId={id} />
       ))}

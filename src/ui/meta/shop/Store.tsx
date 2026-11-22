@@ -38,7 +38,7 @@ export function Store() {
   return (
     <>
       {gems.length > 0 ? (
-        <ShopSection icon={t.strings.gemIcon} title={t.strings.gemName}>
+        <ShopSection title={t.strings.gemName}>
           <View style={styles.grid}>
             {gems.map((p, i) => (
               <GemPack key={p.id} product={p} rank={i} />
@@ -50,21 +50,21 @@ export function Store() {
         </ShopSection>
       ) : null}
       {boosts.length > 0 ? (
-        <ShopSection icon="🚀" title="Permanent boosts">
+        <ShopSection title="Permanent boosts">
           {boosts.map((p) => (
             <ProductRow key={p.id} product={p} />
           ))}
         </ShopSection>
       ) : null}
       {ads.length > 0 ? (
-        <ShopSection icon="🚫" title="Ad-free">
+        <ShopSection title="Ad-free">
           {ads.map((p) => (
             <ProductRow key={p.id} product={p} />
           ))}
         </ShopSection>
       ) : null}
       {warps.length > 0 ? (
-        <ShopSection icon={t.icons.timeWarp} title="Time warps">
+        <ShopSection title="Time warps">
           {warps.map((p) => (
             <ProductRow key={p.id} product={p} />
           ))}

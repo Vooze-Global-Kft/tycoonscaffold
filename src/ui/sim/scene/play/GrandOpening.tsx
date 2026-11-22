@@ -12,8 +12,6 @@ import type { SceneLayout } from '../../layout';
 import { SLOWMO } from './dev';
 import type { Opening } from './gate';
 
-export const OPENING_MS = 2300;
-
 export function GrandOpening({ layout, opening, onDone }: { layout: SceneLayout; opening: Opening; onDone: () => void }) {
   const t = useTheme();
   const x = useSharedValue(-1);

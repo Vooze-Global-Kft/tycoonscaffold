@@ -11,22 +11,15 @@ import { formatNumber } from '../../../engine/format';
 import { useGame } from '../../../state/store';
 import { GameIcon } from '../../components/GameIcon';
 import { fly } from '../../juice/fly';
-import { describeReward, formatCountdown, useNow } from '../../kit';
+import { SectionTitle, describeReward, formatCountdown, useNow } from '../../kit';
 import { alpha, useTheme } from '../../theme';
 import { gemsInMoney } from './money';
 
-/** A shop section: a big friendly heading with an icon, an optional note on the right (a timer), then its content. */
-export function ShopSection({ icon, title, note, children }: { icon?: string; title: string; note?: ReactNode; children: ReactNode }) {
-  const t = useTheme();
+/** A shop section: the game's standard section heading (the kit's SectionTitle, as on every tab), an optional note on the right (a timer), then its content. */
+export function ShopSection({ title, note, children }: { title: string; note?: ReactNode; children: ReactNode }) {
   return (
     <View style={styles.section}>
-      <View style={styles.sectionHead}>
-        {icon ? <GameIcon icon={icon} size={24} /> : null}
-        <Text style={[styles.sectionTitle, t.display, { color: t.c.text }]} numberOfLines={1}>
-          {title}
-        </Text>
-        {note ? <View style={styles.sectionNote}>{note}</View> : null}
-      </View>
+      <SectionTitle right={note ?? undefined}>{title.toUpperCase()}</SectionTitle>
       {children}
     </View>
   );
@@ -191,10 +184,7 @@ export async function withGemFlight(action: () => unknown, emit: (kind: 'gems', 
 }
 
 const styles = StyleSheet.create({
-  section: { marginTop: 18 },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 8 },
-  sectionTitle: { fontSize: 21, flexShrink: 1 },
-  sectionNote: { marginLeft: 'auto', flexShrink: 0 },
+  section: { marginTop: 8 },
   offer: { marginHorizontal: 12, marginBottom: 10, padding: 12, overflow: 'hidden' },
   band: { position: 'absolute', left: 0, right: 0, top: 0, height: 5 },
   ribbon: { position: 'absolute', top: 0, right: 0, paddingHorizontal: 10, paddingVertical: 4, maxWidth: 160 },

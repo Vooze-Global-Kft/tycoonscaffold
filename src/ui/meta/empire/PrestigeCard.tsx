@@ -74,7 +74,7 @@ export function PrestigeCard() {
             {formatNumber(p.held, 0)} {prestigeName}
           </Text>
           <Text style={[styles.heldSub, { color: t.c.textMuted }]} numberOfLines={2}>
-            {p.held > 0 ? `${pct(p.multNow)} to all income, for good` : `None yet. Each one adds to all income for good.`}
+            {p.held > 0 ? (p.multNow >= 10 ? `All income ×${formatMult(p.multNow)}, for good` : `${pct(p.multNow)} to all income, for good`) : `None yet. Each one adds to all income for good.`}
           </Text>
         </View>
       </View>

@@ -38,7 +38,7 @@ export function DailyGift() {
   const todayGems = canClaim ? gems : gemsFor(day);
 
   return (
-    <ShopSection icon={t.icons.gift} title="Daily gift" note={canClaim ? null : <Countdown until={Date.now() + M.msUntilNextDay(Date.now())} prefix="Next gift in " style={[styles.note, { color: t.c.textMuted }]} />}>
+    <ShopSection title="Daily gift" note={canClaim ? null : <Countdown until={Date.now() + M.msUntilNextDay(Date.now())} prefix="Next gift in " style={[styles.note, { color: t.c.textMuted }]} />}>
       <OfferCard tint={t.c.success} strong={canClaim}>
         <View style={styles.top}>
           <View style={[styles.giftWrap, { backgroundColor: alpha(t.c.success, 0.14) }]}>

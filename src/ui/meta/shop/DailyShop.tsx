@@ -27,7 +27,7 @@ export function DailyShop() {
   if (rows.length === 0) return null;
   const now = Date.now();
   return (
-    <ShopSection icon="🛒" title="Today's shop" note={<Countdown until={now + M.msUntilNextDay(now)} prefix="New items in " style={[styles.note, { color: t.c.textMuted }]} />}>
+    <ShopSection title="Today's shop" note={<Countdown until={now + M.msUntilNextDay(now)} prefix="New items in " style={[styles.note, { color: t.c.textMuted }]} />}>
       <View style={styles.grid}>
         {rows.map((r) => {
           const [id, bought] = r.split(':');

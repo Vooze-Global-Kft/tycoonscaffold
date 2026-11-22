@@ -4,7 +4,7 @@
  * Pure functions on the config and state, so every screen words things the same way.
  */
 import { RARITIES, type Card, type CardStat, type GameConfig, type Rarity } from '../../../config/schema';
-import { cardPercent, copiesForNextLevel } from '../../../engine/cards';
+import { copiesForNextLevel } from '../../../engine/cards';
 import type { GrantedReward } from '../../../engine/meta';
 import type { GameState } from '../../../engine/types';
 import { stageInfo } from '../../theme';
@@ -90,10 +90,6 @@ export function statIcon(cfg: GameConfig, stat: CardStat): string {
 export function formatPercent(p: number): string {
   const v = Math.round(p * 10) / 10;
   return `+${Number.isInteger(v) ? v : v.toFixed(1)} %`;
-}
-
-export function cardEffectLine(cfg: GameConfig, card: Card, level: number): string {
-  return `${formatPercent(cardPercent(cfg, card, Math.max(1, level)))} ${statLabel(cfg, card.stat)}`;
 }
 
 /** A card's level and copies after one reveal of a chest, counting only the copies revealed so far. */

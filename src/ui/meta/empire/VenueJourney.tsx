@@ -191,7 +191,7 @@ function NextVenue({ venue }: { venue: Venue }) {
           {affordable ? 'Ready to open!' : Number.isFinite(eta) && eta < 86400 * 7 ? `About ${shortDuration(eta)} at your current income` : 'Keep growing to afford it'}
         </Text>
         <View {...target}>
-          <PriceButton label="Unlock" price={formatMoney(cost, t.strings.currencySymbol)} variant={affordable ? 'success' : 'ghost'} onPress={() => unlockVenue(venue.id)} />
+          <PriceButton label="Unlock" price={formatMoney(cost, t.strings.currencySymbol)} variant={affordable ? 'primary' : 'ghost'} onPress={() => unlockVenue(venue.id)} />
         </View>
       </View>
       <Text style={[styles.note, { color: t.c.textMuted }]}>

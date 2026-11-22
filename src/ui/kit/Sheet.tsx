@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { overlays } from '../../state/overlays';
 import { GameIcon } from '../components/GameIcon';
+import { HintOverlay } from '../hints/HintOverlay';
 import { alpha, useTheme } from '../theme';
 
 interface Props {
@@ -59,6 +60,8 @@ export function Sheet({ visible, onClose, title, icon, children, footer, scroll 
           </Pressable>
         </Animated.View>
       </Pressable>
+      {/* The tutorial hand, for a control inside this dialog (the shell's hand is under this window). */}
+      <HintOverlay inDialog />
     </Modal>
   );
 }

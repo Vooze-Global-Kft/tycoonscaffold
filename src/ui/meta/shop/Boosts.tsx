@@ -17,7 +17,7 @@ import { GemPrice, OfferCard, ShopSection } from './parts';
 export function Boosts() {
   const t = useTheme();
   return (
-    <ShopSection icon={t.icons.boost} title="Boosts">
+    <ShopSection title="Boosts">
       <AdBoost />
       <TimeWarp />
     </ShopSection>

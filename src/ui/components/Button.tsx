@@ -12,6 +12,13 @@ interface Props {
   children?: ReactNode;
 }
 
+/**
+ * The game's button: chunky, with a darker bottom edge, label in the display font, 44 pt or taller.
+ * One meaning per variant, everywhere: `primary` spends (buy, unlock, pay), `success` takes
+ * something already earned or runs it (claim, collect, open, hire), `accent` is an optional extra
+ * (watch an ad, open the next chest, start over), `ghost` is the quiet second choice ("Not now")
+ * and a price the player cannot pay yet.
+ */
 export function Button({ label, sublabel, onPress, disabled, variant = 'primary', style, children }: Props) {
   const t = useTheme();
   const bg =

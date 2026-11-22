@@ -5,6 +5,7 @@
 import type { GameConfig } from '../../../../config/schema';
 import * as E from '../../../../engine/economy';
 import type { GameState } from '../../../../engine/types';
+import { overlays } from '../../../../state/overlays';
 import { useGame } from '../../../../state/store';
 
 /**
@@ -20,10 +21,10 @@ export function extrasUnlocked(cfg: GameConfig, game: GameState): boolean {
   return Boolean(first && game.venues[first]?.chain?.transportManaged);
 }
 
-/** The flying bonus never interrupts a dialog, a chest, a story beat or a player still learning the loop. */
+/** The flying bonus never interrupts a dialog (any of them, see src/state/overlays.ts), a chest, a story beat or a player still learning the loop. */
 export function canSpawnBonus(): boolean {
   const s = useGame.getState();
-  if (!s.hydrated || s.modal || s.chestOpening || s.offline || s.dealPopup) return false;
+  if (!s.hydrated || s.modal || s.chestOpening || s.offline || s.dealPopup || overlays.anyOpen()) return false;
   if (s.bonus.activeId !== null || Date.now() < s.bonus.nextAt) return false;
   if (E.pendingStoryBeat(s.cfg, s.game)) return false;
   return extrasUnlocked(s.cfg, s.game);

@@ -6,7 +6,7 @@ export function Offers() {
   const ids = useVisibleDealIds();
   if (ids.length === 0) return null;
   return (
-    <ShopSection icon="🏷️" title={ids.length > 1 ? 'Offers' : 'Offer'}>
+    <ShopSection title={ids.length > 1 ? 'Offers' : 'Offer'}>
       {ids.map((id) => (
         <DealCard key={id} dealId={id} />
       ))}

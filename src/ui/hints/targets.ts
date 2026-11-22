@@ -74,9 +74,25 @@ export const targets = {
     entries.set(key, { rect, remeasure: remeasure ?? prev?.remeasure });
     notify();
   },
+  /**
+   * Announces that a control for `key` exists before its rectangle is known (a button that pops in
+   * from nothing measures as zero-sized at first). `refresh` and `first` can then ask it to measure.
+   */
+  register(key: string, remeasure: () => void): void {
+    const prev = entries.get(key);
+    if (prev) prev.remeasure = remeasure;
+    else entries.set(key, { rect: null, remeasure });
+  },
+  /** The control's rectangle is not usable right now (zero-sized, mid-animation): keep the key, forget the rectangle. */
+  unmeasured(key: string): void {
+    const prev = entries.get(key);
+    if (!prev || prev.rect === null) return;
+    prev.rect = null;
+    notify();
+  },
   /** Every key on screen right now (for debugging tools). */
   keys(): string[] {
-    return [...entries.keys()];
+    return [...entries].filter(([, e]) => e.rect !== null).map(([k]) => k);
   },
   get(key: string): TargetRect | null {
     return entries.get(key)?.rect ?? null;
@@ -88,8 +104,10 @@ export const targets = {
   /** The first of `keys` that is on screen right now. */
   first(keys: readonly string[]): { key: string; rect: TargetRect } | null {
     for (const key of keys) {
-      const rect = entries.get(key)?.rect;
-      if (rect) return { key, rect };
+      const entry = entries.get(key);
+      if (entry?.rect) return { key, rect: entry.rect };
+      // Known but not measured yet: ask now, so the next look finds it.
+      entry?.remeasure?.();
     }
     return null;
   },
@@ -111,17 +129,30 @@ export const targets = {
  */
 export function useTarget(key: string | null | undefined) {
   const ref = useRef<HostInstance>(null);
+  const alive = useRef(false);
   const measure = useCallback(() => {
     if (!key) return;
     ref.current?.measureInWindow((x, y, width, height) => {
+      // A measurement that comes back after the control went away must not bring its key back.
+      if (!alive.current) return;
       if (width > 0 && height > 0 && Number.isFinite(x) && Number.isFinite(y)) targets.set(key, { x, y, width, height }, measure);
+      // Zero-sized (scaled to nothing while it pops in, or not laid out yet): stay registered and try again later.
+      else targets.unmeasured(key);
     });
   }, [key]);
   useEffect(() => {
     if (!key) return;
-    // Layout may not have happened yet on the first effect; onLayout covers that case.
+    alive.current = true;
+    targets.register(key, measure);
+    // Layout may not have happened yet on the first effect (onLayout covers that), and a control that
+    // animates in is zero-sized for a moment: measure now and a few more times while it settles.
     measure();
-    return () => targets.set(key, null);
+    const retries = [120, 350, 700, 1200].map((ms) => setTimeout(measure, ms));
+    return () => {
+      alive.current = false;
+      retries.forEach(clearTimeout);
+      targets.set(key, null);
+    };
   }, [key, measure]);
   return { ref, onLayout: measure, collapsable: false } as const;
 }

@@ -88,7 +88,7 @@ export function UpgradeRow({ u, status }: { u: Upgrade; status: UpgradeStatus })
           price={premium ? formatNumber(u.cost) : formatMoney(u.cost, t.strings.currencySymbol)}
           priceIcon={premium ? t.strings.gemIcon : undefined}
           // Not affordable yet: a quiet outlined price that stays readable (a tap plays the "not yet" sound).
-          variant={!affordable ? 'ghost' : premium ? 'accent' : 'success'}
+          variant={affordable ? 'primary' : 'ghost'}
           onPress={onBuy}
         />
       </View>

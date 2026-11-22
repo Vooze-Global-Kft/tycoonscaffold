@@ -24,7 +24,7 @@ interface ChipProps {
   rate: number;
   limiting: boolean;
   selected: boolean;
-  /** Replaces the rate: what the player has to do by hand (transport before its hire). */
+  /** Replaces the rate: what the player has to do by hand (stations and transport before their hires). */
   prompt: string | null;
   height: number;
   compact: boolean;
@@ -95,9 +95,12 @@ export function StageStrip({ height, compact }: { height: number; compact: boole
   const r = useGame(
     useShallow((s) => {
       const venueId = s.game.activeVenue;
-      if (!s.game.venues[venueId]) return { production: 0, transport: 0, sales: 0, limiting: 'production' as Stage, manual: false };
+      const venue = s.game.venues[venueId];
+      if (!venue) return { production: 0, transport: 0, sales: 0, limiting: 'production' as Stage, manual: false, manualProduction: false };
       const x = stageReadout(s.cfg, s.game, venueId, Date.now());
-      return { production: x.production, transport: x.transport, sales: x.sales, limiting: x.limiting, manual: x.manualTransport };
+      // No station has its hire yet: the kitchen makes only what the player taps.
+      const manualProduction = !Object.values(venue.businesses).some((b) => b.managed);
+      return { production: x.production, transport: x.transport, sales: x.sales, limiting: x.limiting, manual: x.manualTransport, manualProduction };
     }),
   );
   return (
@@ -109,7 +112,7 @@ export function StageStrip({ height, compact }: { height: number; compact: boole
           rate={r[stage]}
           limiting={r.limiting === stage}
           selected={selected === stage}
-          prompt={stage === 'transport' && r.manual ? `👆 ${bell ?? 'Bell'}` : null}
+          prompt={stage === 'transport' && r.manual ? `👆 ${bell ?? 'Bell'}` : stage === 'production' && r.manualProduction ? '👆 Tap to start' : null}
           height={height}
           compact={compact}
         />
