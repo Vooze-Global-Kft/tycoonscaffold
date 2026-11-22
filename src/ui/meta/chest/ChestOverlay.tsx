@@ -15,6 +15,7 @@ import { Canvas, Group, useClock } from '@shopify/react-native-skia';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, StyleSheet, Text, View, type HostInstance, type LayoutChangeEvent } from 'react-native';
 import Animated, { Easing, cancelAnimation, makeMutable, useAnimatedStyle, useDerivedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import { displayFontMetrics } from '../../../config/game';
 import type { Rarity } from '../../../config/schema';
 import { formatMoney, formatNumber } from '../../../engine/format';
 import { copiesForNextLevel } from '../../../engine/cards';
@@ -23,6 +24,7 @@ import { fx } from '../../../services/fx';
 import { useGame, type ChestOpening } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
+import { fitFont, widestEm } from '../../components/moneyWidth';
 import { fly } from '../../juice/fly';
 import { useOverlay } from '../../kit/overlay';
 import { CARD_NAMEPLATE, CARD_SIZE, Chest, CHEST_SIZE } from '../../art/props';
@@ -574,6 +576,10 @@ function SlotLabel({ index, slot, L, cardsSnap, rewards }: { index: number; slot
   if (g.type === 'cash') title = `+${formatMoney(g.amount, cfg.strings.currencySymbol)}`;
   else if (g.type === 'gems') title = `+${formatNumber(g.amount)} ${cfg.strings.gemName}`;
   const s = rest.scale;
+  // The amount under a reward card is sized by hand to the card's width (AGENTS.md: the web preview
+  // and the store screenshots do not shrink text to fit, so "+$209.25M" was cut to "+$209.2…" on a
+  // 360 pt wide screen; phones shrank it by a rule nobody could see). Largest size that fits, 22 at most.
+  const titleSize = title ? fitFont(widestEm(title, t.display.fontFamily ? displayFontMetrics : null), width, 12, 22) : 22;
 
   return (
     <>
@@ -587,7 +593,7 @@ function SlotLabel({ index, slot, L, cardsSnap, rewards }: { index: number; slot
       ) : null}
       <Animated.View pointerEvents="none" style={[styles.label, { left, top, width }, fadeStyle]}>
         {title ? (
-          <Text style={[styles.labelTitle, t.display, { fontSize: 22, color: '#FFE9A8' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+          <Text style={[styles.labelTitle, t.display, { fontSize: titleSize, color: '#FFE9A8' }]} numberOfLines={1} allowFontScaling={false}>
             {title}
           </Text>
         ) : null}
