@@ -83,8 +83,10 @@ describe('Decision 64: the pace figures count a rock only while it lives', () =>
     const plain = H.steadyPerLaunch(p, h).perLaunch;
     // Every launch still carries at most one hold.
     for (let k = 0; k < L; k++) expect(Object.values(sch.byLaunch).reduce((a, xs) => a + xs[k], 0)).toBeLessThanOrEqual(p.F + 1e-6);
-    // The ore of the dying route loses what slot 0 cannot bring after 1.5 launches.
-    expect(sch.perLaunch[s0.ore]).toBeLessThan(plain[s0.ore] - 0.5 * ((p.F * x0) / R));
+    // The ore of the dying route carries less once slot 0 stops (slot 1, the same ore, takes part of its share back).
+    expect(sch.perLaunch[s0.ore]).toBeLessThan(plain[s0.ore] - 0.1 * ((p.F * x0) / R));
+    expect(sch.byLaunch[s0.ore][L - 1]).toBeLessThan(sch.byLaunch[s0.ore][0]);
+    expect(sch.byLaunch[s0.ore][0]).toBeCloseTo(plain[s0.ore], 6);
     expect(sch.first[s0.ore]?.slot).toBe(0);
     expect(sch.first[s0.ore]!.seconds).toBeGreaterThan(sch.intervals[0]);
     expect(sch.first[s0.ore]!.seconds).toBeLessThan(sch.intervals[0] + sch.intervals[1]);
@@ -135,8 +137,9 @@ describe('Decision 64: no green and no dominated offers', () => {
       for (let j = 0; j < 40; j++) {
         const board: H.Contract[] = [];
         for (let i = 0; i < C.board; i++) {
-          const c = H.contractAt(cfg, g.haul.seed, 500 + j * 3 + i, b, board.map((x) => x.buyer), [...new Set(board.flatMap((x) => x.wants.map((w) => w.ore)))], H.rivalsOf(cfg, b, board));
-          board.push(c);
+          // As a warp-out draws (offerAt: a place whose every shape would be dominated stays empty).
+          const c = H.offerAt(cfg, g.haul.seed, 500 + j * 3 + i, b, board.map((x) => x.buyer), [...new Set(board.flatMap((x) => x.wants.map((w) => w.ore)))], H.rivalsOf(cfg, b, board));
+          if (c) board.push(c);
         }
         const r = H.rivalsOf(cfg, b, board);
         for (let x = 0; x < r.length; x++)

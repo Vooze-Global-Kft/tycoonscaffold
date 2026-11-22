@@ -515,8 +515,9 @@ export function contractAt(cfg: HaulConfig, seed: number, k: number, basis: Cont
 /**
  * The offer a warp-out draws. Since the lead's finishing note ("a player must never sit in front of
  * an empty board") it is always `contractAt`'s contract: when no ore passes, the rules relax in order
- * (value share, then the drill limit) and the last resort is the quota. The `| null` stays so a
- * later rule may leave a place empty; callers handle it.
+ * (value share, then the drill limit) and the last resort is the quota. It is null only when every
+ * shape it could draw would sit within `raiseGap` of an offer already on the board (Decision 64, no
+ * dominated offers): that place then waits for the next warp-out (the board still holds that offer).
  */
 export function offerAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, avoid: string[] = [], avoidOres: string[] = [], rivals: Rival[] = []): Contract | null {
   return drawAt(cfg, seed, k, basis, avoid, avoidOres, true, rivals);
