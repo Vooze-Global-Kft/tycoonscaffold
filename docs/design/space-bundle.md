@@ -32,16 +32,17 @@ there are three levels:
 
 | Level | What | Who ships it |
 |---|---|---|
-| (a) shared by every game | engine rules, state, services, saving, config, dev switches, the generated files, `src/modes/contract.ts`, and under `src/ui` only the files listed in `SHARED_UI`: mechanics and a neutral kit. No drawn art of any game, no screens of any game, no game words. | every game |
+| (a) shared by every game | the folders and files in `SHARED_SRC` (engine rules, state, services, saving, config, dev switches, the generated files, `src/modes/contract.ts`, `src/boot*.ts`), and under `src/ui` only the files listed in `SHARED_UI`: mechanics and a neutral kit. No drawn art of any game, no screens of any game, no game words. | every game |
 | (b) a family | `FAMILIES.tabs`: what sim and classic have in common (the tab shell, header, tab bar, banner, list homes, meta screens, their dialogs and celebrations, and the first game's drawn kit: pens, chest, cards, coin, gem, sparkle, tutorial glove and the six "art:" icons in that style) | the member modes (sim, classic); never haul |
 | (c) a mode's own folders | `src/modes/<mode>/`, `src/ui/sim/` (sim), `src/ui/scene/` (classic), `src/ui/haul/` (haul) | that mode only |
 | Node only | `NODE_ONLY`: the fx catalogue, the art icon lists, the game-data lint | no game |
 | sound packs, game data | `shared/sfx/<pack>/` for the games that declare it (`warm`: Pizza Empire; `synth`: Space Miner); `games/<id>/` | that game |
 
 The lists live in code in `scripts/lib/modes.js` (`MODE_FOLDERS`, `FAMILIES`, `SHARED_UI`,
-`NODE_ONLY`, `MODE_PACKAGES`: three and expo-gl are classic only; `RESTAURANT_RIG`). A file under
-`src/ui` in none of them is **unclassified** and fails the check (in a bundle, or imported by
-anyone) until it is listed: the strict reading until someone decides.
+`SHARED_SRC`, `NODE_ONLY`, `MODE_PACKAGES`: three and expo-gl are classic only; `RESTAURANT_RIG`).
+A file anywhere in `src/` in none of them (a new folder such as `src/scene/` included) is
+**unclassified** and fails the check (in a bundle, or imported by anyone) until it is listed: the
+strict reading until someone decides.
 
 **The rule** (`importViolations`, every import edge in `src/`):
 - a mode's folders are imported only by that mode (and by the generated entry, the one exception);
@@ -68,11 +69,19 @@ interface ModeEntry {
   with `HomeSim`; `parts` draw the cartoon people, and `HintPointer` is the glove (`HandPointer`,
   `src/ui/art/props.tsx`); `artIcons` are the family's six (`TABS_ART_ICONS`) plus the truffles and
   the shop front (`SIM_ART_ICONS`), turned into sources by `artIconSources`; `hints` is the list
-  homes' script (`src/ui/home/hints.ts`, the engine's guideHint); `devViews` are `art` and `props`.
+  homes' script (`src/ui/home/hints.ts`, the engine's guideHint); `devViews` are `art` and `props`,
+  in the web build only (`src/modes/sim/devViews.web.ts`; on iOS and Android Metro takes
+  `devViews.ts`, which has none, so the galleries are not dormant code in the phone bundles).
+  `src/modes/entries.test.ts` checks every piece the sim and classic entries hand over, and that
+  `App.tsx` installs the entry at module level: every reader falls back quietly, so without the
+  test a dropped key would cost Pizza Empire its glove or portraits with every other check green.
+  Read `modeParts()` and `hintSource()` inside a render, never at module load (a development build
+  warns when one is read before install, or when the hint source changes after it).
 - **classic** (`src/modes/classic/index.tsx`): the tab shell with `HomeClassic` and the managers
   panel over the staff tab (`StaffTop`), the same hint script and glove, the family's six icons. No
   portraits: a `char:` icon shows the unknown-icon fallback, a card window stays empty unless the
-  icon is an `asset:` image.
+  icon is an `asset:` image. `validate` warns about every `char:` icon in a mode outside
+  `PORTRAIT_MODES` (`src/config/artIcons.ts`): classic Space Miner has five until haul replaces it.
 - **haul** (`src/modes/haul/index.tsx`): a placeholder `Shell` (a labelled screen), nothing else.
   The real mode brings its whole screen here, with no tab bar and its own overlays, its own
   `hints`, `parts` (its own pointer) and `artIcons`. It may not use the tabs family: not
@@ -91,7 +100,8 @@ What the shared code asks of the entry, and where:
 
 ## Sound packs and fx events
 
-- game.json `soundPack` (schema default `"warm"`): the folder in `shared/sfx/`. Only that pack's
+- game.json `soundPack` (required, no default: a game that forgets it does not silently get the
+  restaurant's marimba and service bell): the folder in `shared/sfx/`. Only that pack's
   files are bundled; the game's own `assets/sfx/` still overrides by name (Pizza Empire's
   `music_main.m4a`). A pack that does not exist stops the build with a clear error; a missing sound
   is silent. `src/services/fx/discovery.test.ts` checks that Pizza Empire plays exactly the bytes
@@ -99,7 +109,9 @@ What the shared code asks of the entry, and where:
 - The fx catalogue (`src/services/fx/catalog.ts`) is documentation and types. The app imports only
   its types (`FxName` keeps `fx.play('<key>')` typed) and plays `fxTable` from the generated file.
   An entry with `modes: ['sim']` (the restaurant scene's events and the rush) is left out of other
-  modes' tables; briefs are never shipped. `scripts/audio/make_sfx.py` reads the same file
+  modes' tables; briefs are never shipped. The player preload order and the voice counts are
+  catalogue fields too (`preload`, `voices`), so `src/services/fx/mix.ts` holds no event key and a
+  game's bundle names only its own mode's events. `scripts/audio/make_sfx.py` reads the same file
   unchanged; `scripts/lib/fxCatalog.js` is the JS twin of its reader.
 
 ## The check: `npm run check:bundle`
@@ -107,20 +119,27 @@ What the shared code asks of the entry, and where:
 `scripts/check-bundle.ts`, rules in `scripts/lib/bundleRules.ts` (tested in `bundleRules.test.ts`).
 For each game it lists the source files, packages and assets of its app, counted in the three
 groups (shared, family, mode), and fails on another mode's folders or packages, a family the mode
-is not in, an unclassified `src/ui` file, a Node-only file, another game's data, a sound from an
-undeclared pack, or (for a mode other than sim) the restaurant rig. It also fails on any import
-edge that breaks the three levels, and prints the largest modules. `--list` prints every project
-file of each bundle with its level; `--words` lists the string literals of each bundle's shared
-and family files that use another mode's theme words (`THEME_WORDS`; a list, never a failure).
+is not in, an unclassified `src/` file, a Node-only file, another game's data, a sound from an
+undeclared pack, (for a mode other than sim) the restaurant rig, an import it cannot resolve, and a
+string literal in a shared or family file that uses another mode's theme words (`THEME_WORDS`)
+unless it is in the known remainder (`scripts/lib/themeWords.allowed.json`, file by file; shrink
+it, never grow it for text a player reads). It also fails on any import edge that breaks the three
+levels, and prints the largest modules. `--list` prints every project file of each bundle with its
+level; `--words` lists every theme-word literal, allowed (blank) or new (✘).
 
 - Fast (default, about 2 s): walks the TypeScript import graph from `index.ts` with the platform's
   extensions, type-only imports skipped, using the generated files as games.js would write them
-  for each game (nothing is written, the selection does not change). `--game <id>`,
+  for each game (nothing is written, the selection does not change). Bare imports go through
+  `tsconfig.json` `paths` and `baseUrl` first, as Metro's resolver does, so an alias such as
+  `@/ui/sim/...` is walked like a relative import; an import that is neither a project file nor an
+  installed package fails (`unresolved`), so the fast stage fails closed. `--game <id>`,
   `--as-mode <mode>` (a game's data as if its mode were another: checks a mode before a game uses it).
 - Export (`-- --export`, about a minute per game; the release check): runs
   `npx expo export --platform ios --source-maps --dump-assetmap --no-bytecode` per game into a
   temporary folder, reads Metro's source map and asset map, and puts back the game that was
-  selected. `--from <dir>` reads exports made earlier (one folder per game id).
+  selected. It judges each export by the mode that was bundled (`MODE` in `src/generated/mode.ts`
+  inside the source map) and stops when that differs from the game's data (a stale export).
+  `--from <dir>` reads exports made earlier (one folder per game id).
 
 ## Adding a mode
 
@@ -130,14 +149,14 @@ and family files that use another mode's theme words (`THEME_WORDS`; a list, nev
    mode uses under `src/modes/<mode>/` (or another folder you then list).
 3. List its folders (and any npm package only it may use) in `scripts/lib/modes.js`. If it is to
    share a family's screens, add it to that family's `modes`; otherwise it uses level (a) only.
-   A new file under `src/ui` outside a mode's folders goes into `SHARED_UI` (only if it holds no
-   drawing, no screen and no game word) or a family.
+   A new file in `src/` outside a mode's folders goes into `SHARED_UI` / `SHARED_SRC` (only if it
+   holds no drawing, no screen and no game word) or a family.
 4. Never import another mode's folders. If a shared piece needs something from your mode, extend
    the contract (`src/modes/contract.ts`) and hand it over at install, as `parts`, `artIcons` and
    `hints` do. If a shared piece holds something only another mode uses, move that part into that
    mode and hand it back the same way.
 5. Events only your mode fires: add them to the catalogue with `modes: ['<mode>']`. Sounds: a new
-   pack folder in `shared/sfx/` and `"soundPack"` in the game's data.
+   pack folder in `shared/sfx/` and `"soundPack"` (required) in the game's data.
 6. `npm run check:bundle -- --game <id> --as-mode <mode>` while no game uses the mode yet; then
    `npm run check:bundle` and `npm run check:bundle -- --export`.
 
@@ -223,23 +242,25 @@ is unclassified.
 the haul graph's level (a) and family files that names a thing of the restaurant (`THEME_WORDS.sim`:
 kitchen, waiter, chef, guest, oven, pizza, restaurant, franchise, recipe, cook, table, dish, the
 station names, and the rest of the list). Under `src/ui` there are none. What remains is the
-known remainder for the engine contract:
+known remainder for the engine contract, and the check fails on anything new
+(`scripts/lib/themeWords.allowed.json` holds it, with the classic and sim bundles' remainder):
 
 | Where | Literals | Why it stays for now |
 |---|---|---|
 | `src/state/store.ts` | fx keys `cook_done`, `serve`, `bell`, `rush_start`, `rush_end`, `unlock_venue`; `venue`, `sales_seat`, `rush_reset` | event keys the store plays and the chain's events; they go with the engine contract |
-| `src/services/fx/mix.ts` | `bell`, `cook_done`, `serve` (preload order) | fx event keys (a missing key is skipped); they go with the store's |
 | `src/engine/meta.ts`, `economy.ts`, `chain.ts` | `serve`, `served`, `rush`, `rushes`, `rushDuration`, `venue(s)`, `activeVenue`, `bell` | engine rule identifiers (mission kinds, state fields); not refactored here |
-| `src/config/schema.ts`, `schema.sim.ts` | `venue` trigger; the sim block's defaults `Bell`, `Seat`, `Rush` and two venue messages | the schema the shared engine parses; the sim block moves with the engine contract |
+| `src/config/schema.ts`, `schema.sim.ts` | `venue` trigger, field names (`stationValue`, `rushDuration`, mission kinds `serve`, `rush`) | the schema the shared engine parses; the sim block moves with the engine contract |
 
 Moved out of every bundle in this step: the game-data lint's messages (`counts guests served`,
 `triggers on unknown venue`, ...; `lintGameConfig` to `src/config/lint.ts`, Node only), every
 "art:" name (`src/config/artIcons.ts`, Node only; the app's names are what the entry registers),
 the hint route table (`hintRoute`, `src/ui/hints/targets.ts` to `src/ui/home/hintRoute.ts`, family),
 and the scene target keys (`tapStation`, `bell`, `startRush`, ...; from `HintOverlay` into the list
-homes' hint source).
+homes' hint source). In the review fixes: the preload order and voices of `mix.ts` (now catalogue
+fields), the sim block's display defaults (now theme-free `Send`, `Slot`, `Boost`; Pizza Empire
+sets its own) and the two venue messages (to `src/config/lint.ts`).
 
-The reverse direction (`--game pizza-empire --words`, `THEME_WORDS.haul`), as a list only: the
+The reverse direction (`--game pizza-empire --words`, `THEME_WORDS.haul`), allowed the same way: the
 mode id `haul` in the schema's mode enum; `station` (Pizza's own kitchen stations: `tapStation`,
 `stationValue`, "New station!", "A new station"); `warp` (the time-warp boost: `time_warp`,
 `timeWarp`, "Time warp"); `space-between` (a flexbox value, not a word). None is a space or

@@ -194,7 +194,7 @@ why the engine, the haptics mapping and the whole service run in vitest.
   before Android 9), mobile Chrome 40 media elements. Budgets: iOS 64, Android
   28 (10 before Android 9), web 32, music included.
 - **Preload order** (`mix.ts`): one player for every frequent sound first
-  (`PRELOAD_FIRST`: UI taps, the tap ladder, buy, coins, the scene), then
+  (catalogue `preload` ranks, read by `preloadFirst` in mix.ts: UI taps, the tap ladder, buy, coins, the scene), then
   their extra voices, then the rest of the catalogue until the budget minus a
   small reserve is used. Two players are created every 30 ms so startup never
   stalls. Sounds that did not fit get a player the first time they are played
@@ -206,7 +206,7 @@ why the engine, the haptics mapping and the whole service run in vitest.
   that player at once. The next play is then a bare `play()` with nothing to
   seek or buffer, which is what keeps taps tight. (Pause before seek matters:
   a finished ExoPlayer still "wants to play" and would restart on the seek.)
-- **Voices** (`VOICES` in `mix.ts`): `tap` 2 per rung, `buy` 3, `bell` 3,
+- **Voices** (catalogue `voices`, read by `voicesOf` in `mix.ts`): `tap` 2 per rung, `buy` 3, `bell` 3,
   `cash`, `cook_done`, `card_flip`, `reveal_common`, `reveal_rare` 2. A voice
   is added when a sound actually overlaps itself, then they take turns.
   `coin` has three files that already rotate. Every other sound has one voice
@@ -260,7 +260,7 @@ in `haptics.ts`.
 | To change | Edit |
 |---|---|
 | A sound's loudness, its minimum interval, its vibration | `catalog.ts` (the entry's `volume`, `minIntervalMs`, `haptic`) |
-| Which sounds load first, how many may overlap | `PRELOAD_FIRST`, `VOICES` in `mix.ts` |
+| Which sounds load first, how many may overlap | `preload`, `voices` in `catalog.ts` (read by `mix.ts`) |
 | Player budgets, fade times | constants at the top of `audio.ts` |
 | Haptic gap, Android mapping | `HAPTIC_MIN_GAP_MS`, `ANDROID` in `haptics.ts` |
 
