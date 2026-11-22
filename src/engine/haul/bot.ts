@@ -417,7 +417,10 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
       if (!view || view.onPace || !view.shortOre) break;
       const short = view.shortOre;
       const income = H.haulIncome(cfg, g);
-      const rocks = g.haul.slots.map((s, i) => (s.claimed && s.respawnAt === null && s.ore === short && s.life > 0 ? i : -1)).filter((i) => i >= 0);
+      const all = g.haul.slots.map((s, i) => (s.claimed && s.respawnAt === null && s.ore === short && s.life > 0 ? i : -1)).filter((i) => i >= 0);
+      // Not onto a rock about to dry (under 3 minutes of drilling left) while the ore has another.
+      const lasting = all.filter((i) => g.haul.slots[i].life >= ROUTE_MIN_LIFE);
+      const rocks = lasting.length ? lasting : all;
       let best: { next: Run; kind: 'drag' | 'upgrade'; sheet?: string } | null = null;
       let bestScore = 0;
       // The move that raises the pace most; between moves that put it on pace, the one that costs the
@@ -828,6 +831,8 @@ const within = (v: number | undefined, lo: number, hi: number) => v !== undefine
  * The first Jump's windows (Decision 63, overriding Decision 62's): hard on every gate seed 1 h 55 to
  * 3 h 05; the median seed's first Jump aims at 2 h 15 to 2 h 45 (validate checks that across seeds).
  */
+/** Seconds of drilling a rock must have left for the router to send drones to it (when its ore has such a rock). */
+const ROUTE_MIN_LIFE = 180;
 export const JUMP_GATE: readonly [number, number] = [6900, 11100];
 export const JUMP_TARGET: readonly [number, number] = [8100, 9900];
 
