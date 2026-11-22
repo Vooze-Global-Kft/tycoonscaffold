@@ -320,7 +320,8 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   /** Place idle drones on the best slots. */
   const placeIdle = () => {
     for (let k = 0; k < 60 && g.haul.idle > 0; k++) {
-      const best = H.bestSlotForDrone(cfg, g);
+      // While the taken contract's light is not green, a new drone goes to the ore it is short of.
+      const best = (opts.passive || opts.noContracts ? null : shortRock()) ?? H.bestSlotForDrone(cfg, g);
       if (best === null) break;
       const ev: H.HaulEvent[] = [];
       if (!act(H.assignDrone(cfg, g, best, ev), ev)) break;
@@ -329,6 +330,31 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   };
 
   const cheapestSource = (except: number[]): number | null => A.cheapestSource(cfg, g, except);
+
+  /** The taken contract's view, when one is taken. */
+  const activeView = () => (g.haul.contracts.active === null ? undefined : H.contractViews(cfg, params(), g.haul, g.haulStats).find((v) => v.active));
+  /** The rock of `ore` where one more drone adds most (null when none adds anything). */
+  const bestRockOf = (ore: string): number | null => {
+    const p = params();
+    let to: number | null = null;
+    let best = 1e-9;
+    g.haul.slots.forEach((s, k) => {
+      if (!s.claimed || s.respawnAt !== null || s.ore !== ore || !(s.life > 0)) return;
+      const sp = p.slots[k];
+      const e = sp.cBase / sp.trip;
+      const add = Math.min(sp.rb, (s.haulers + 1) * e) - Math.min(sp.rb, s.haulers * e);
+      if (add > best) {
+        best = add;
+        to = k;
+      }
+    });
+    return to;
+  };
+  /** The rock of the ore the taken contract is short of, when its light is not green and a drone adds there. */
+  const shortRock = (): number | null => {
+    const v = activeView();
+    return v && !v.onPace && v.shortOre ? bestRockOf(v.shortOre) : null;
+  };
 
   const moveTo = (to: number, n: number, avoid: number[] = []): number => {
     let moved = 0;
@@ -405,24 +431,12 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     const budget = Math.ceil(cfg.haul.contracts.fleetShare * g.haul.fleet.drones);
     const ores = c.wants.map((w) => w.ore);
     for (let guard = 0; guard < 80 && routedMoves < budget; guard++) {
-      const p = params();
-      const view = H.contractViews(cfg, p, g.haul, g.haulStats).find((v) => v.active);
+      const view = activeView();
       if (!view || view.onPace || !view.shortOre) break;
       const ore = view.shortOre;
-      let to: number | null = null;
-      let best = -1;
-      g.haul.slots.forEach((s, k) => {
-        if (!s.claimed || s.respawnAt !== null || s.ore !== ore || !(s.life > 0)) return;
-        const sp = p.slots[k];
-        const e = sp.cBase / sp.trip;
-        const add = Math.min(sp.rb, (s.haulers + 1) * e) - Math.min(sp.rb, s.haulers * e);
-        if (add > best) {
-          best = add;
-          to = k;
-        }
-      });
+      const to = bestRockOf(ore);
       const avoid = g.haul.slots.map((s, k) => (s.claimed && ores.includes(s.ore) ? k : -1)).filter((k) => k >= 0);
-      if (to !== null && best > 1e-9 && moveTo(to, 1, avoid) >= 1) {
+      if (to !== null && moveTo(to, 1, avoid) >= 1) {
         routedMoves += 1;
         continue;
       }

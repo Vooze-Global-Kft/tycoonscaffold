@@ -283,6 +283,8 @@ export interface ContractBasis {
   ringOf: Record<string, number>;
   /** Longest life left (seconds) among the present rocks of each ore. */
   lifeOf: Record<string, number>;
+  /** Drill rate (units/s, base, no seam) of the present rocks of each ore: with one more rig level each, the most a launch can carry of it is `drill × levelGrowth × interval`. */
+  drillOf: Record<string, number>;
   /** Ores that are the main ore (half the weight or more) of the ring of a claimed slot holding a rock of it: its slots keep bringing it. */
   mainOf: Record<string, boolean>;
   /** Seconds per launch, about: max(climb + away + land, F / R). */
@@ -296,11 +298,13 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
   const ringOf: Record<string, number> = {};
   const lifeOf: Record<string, number> = {};
   const mainOf: Record<string, boolean> = {};
+  const drillOf: Record<string, number> = {};
   h.slots.forEach((s, i) => {
     const sp = params.slots[i];
     if (!s?.claimed || s.respawnAt !== null || s.rockN < 0 || !sp) return;
     ringOf[s.ore] = Math.max(ringOf[s.ore] ?? -1, sp.ring);
     lifeOf[s.ore] = Math.max(lifeOf[s.ore] ?? 0, s.life);
+    if (s.life > 0 && sp.rb > 0) drillOf[s.ore] = (drillOf[s.ore] ?? 0) + sp.rb;
     const w = ringWeights(cfg, sp.ring, h.trait);
     const sum = w.weights.reduce((a, x) => a + x, 0);
     const mine = w.weights[w.ores.indexOf(s.ore)] ?? 0;
@@ -313,7 +317,7 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
   let value = 0;
   for (const [ore, n] of Object.entries(recent)) value += n * (params.prices[ore] ?? 0);
   const income = Number.isFinite(interval) && interval > 0 ? (value * params.fullBonus * params.G) / interval : 0;
-  return { galaxy: h.galaxy, F: params.F, recent, steady: st.perLaunch, prices: params.prices, G: params.G, contractAdd: params.contractAdd, ringOf, lifeOf, mainOf, interval, income };
+  return { galaxy: h.galaxy, F: params.F, recent, steady: st.perLaunch, prices: params.prices, G: params.G, contractAdd: params.contractAdd, ringOf, lifeOf, mainOf, drillOf, interval, income };
 }
 
 /**
@@ -382,14 +386,17 @@ export function contractAt(cfg: HaulConfig, seed: number, k: number, basis: Cont
   };
   if (shipped.length <= 1) return quota();
   const lifeNeed = L * basis.interval;
-  const gMax = (ore: string) => Math.min(C.raise[1], C.maxShare / Math.max(1e-9, share(ore)) - 1);
+  // The most a launch can carry of an ore: under maxShare, and what its rocks drill with one more rig level each.
+  const step = cfg.haul.rig.levelGrowth;
+  const most = (ore: string) => Math.min(C.maxShare * F, (basis.drillOf[ore] ?? 0) * step * basis.interval);
+  const gMax = (ore: string) => Math.min(C.raise[1], most(ore) / Math.max(1e-9, share(ore) * F) - 1);
   // One-ore units at raise g, never below the routes as they are raised by half of it (the never-free floor).
   const unitsAt = (ore: string, g: number) => Math.max(Math.round(L * (recent[ore] ?? 0) * (1 + g)), Math.ceil(L * (basis.steady[ore] ?? 0) * (1 + Math.max(C.raise[0], g) / 2)));
   const minBonus = C.minBonusSeconds * basis.income;
   // Ores that matter (a tenth of a launch's value) and whose rocks last the contract.
   const worth = oreIds.filter((ore) => recent[ore] > 0 && launchValue > 0 && valueOf(ore) >= C.minValueShare * launchValue && (!!basis.mainOf[ore] || (basis.lifeOf[ore] ?? 0) >= lifeNeed));
   const eligible = worth.filter((ore) => {
-    if (share(ore) * (1 + C.raise[0]) >= C.maxShare) return false;
+    if (share(ore) * F * (1 + C.raise[0]) >= most(ore)) return false;
     const g = gMax(ore);
     return bonusOfUnits([{ ore, units: unitsAt(ore, g) }], multBase([ore]) + C.raiseMult * g) >= minBonus;
   });
@@ -442,7 +449,7 @@ function boardOres(h: HaulState): string[] {
 export function drawContract(cfg: HaulConfig, h: HaulState, F: number, params?: HaulParams): { contract: Contract; next: number } {
   const basis: ContractBasis = params
     ? contractBasis(cfg, params, h)
-    : { galaxy: h.galaxy, F, recent: {}, steady: {}, prices: {}, G: 1, contractAdd: 0, ringOf: {}, lifeOf: {}, mainOf: {}, interval: Infinity, income: 0 };
+    : { galaxy: h.galaxy, F, recent: {}, steady: {}, prices: {}, G: 1, contractAdd: 0, ringOf: {}, lifeOf: {}, mainOf: {}, drillOf: {}, interval: Infinity, income: 0 };
   const contract = contractAt(cfg, h.seed, h.contracts.next, basis, (h.contracts.board ?? []).map((c) => c.buyer), boardOres(h));
   return { contract, next: h.contracts.next + 1 };
 }

@@ -166,6 +166,20 @@ describe('chips (errata 44)', () => {
     });
   });
 
+  it.each([
+    ['390', big],
+    ['375', small],
+  ] as const)('%s: a chip keeps 10 pt from every other route\'s drone corridor (play-22)', (_n, L) => {
+    const hub = { x: L.station.x, y: L.station.y - L.station.r * 0.3 };
+    const seg = (p: { x: number; y: number }, b: { x: number; y: number }) => {
+      const dx = b.x - hub.x;
+      const dy = b.y - hub.y;
+      const t = Math.max(0, Math.min(1, ((p.x - hub.x) * dx + (p.y - hub.y) * dy) / (dx * dx + dy * dy)));
+      return Math.hypot(p.x - hub.x - t * dx, p.y - hub.y - t * dy);
+    };
+    for (const c of L.chips) for (const r of L.rocks) if (r.slot !== c.slot) expect(seg(c, r)).toBeGreaterThanOrEqual(10);
+  });
+
   it('is deterministic and does not depend on what is claimed', () => {
     expect(chipPositions(big.station, big.rocks, big.rack)).toEqual(big.chips);
   });

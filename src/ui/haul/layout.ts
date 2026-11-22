@@ -253,11 +253,11 @@ export function chipPositions(station: Pt & { r: number }, rocks: readonly RockS
   const n = rocks.length;
   const apart = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y) >= CHIP_SPACING;
 
-  const solve = (domsIn: Cand[][], score: (x: Cand) => number, minC: number): Cand[] | null => {
+  const solve = (domsIn: Cand[][], score: (x: Cand) => number, minC: number, steps: number): Cand[] | null => {
     const doms = domsIn.map((d) => d.filter((x) => score(x) >= minC).sort((a, b) => score(b) - score(a)));
     if (doms.some((d) => d.length === 0)) return null;
     const pick: (Cand | null)[] = new Array(n).fill(null);
-    let budget = 20000;
+    let budget = steps;
     const rec = (domains: Cand[][], left: number): boolean => {
       if (left === 0) return true;
       if (--budget < 0) return false;
@@ -275,14 +275,14 @@ export function chipPositions(station: Pt & { r: number }, rocks: readonly RockS
     return rec(doms, n) ? (pick as Cand[]) : null;
   };
   // The largest level of `score` that still places every chip, by bisection over the sorted levels.
-  const best = (doms: Cand[][], score: (x: Cand) => number): { at: number; res: Cand[] } | null => {
-    const levels = Array.from(new Set(doms.flat().map((x) => Math.floor(score(x) * 10) / 10))).sort((a, b) => a - b);
+  const best = (doms: Cand[][], score: (x: Cand) => number, step: number, steps: number): { at: number; res: Cand[] } | null => {
+    const levels = Array.from(new Set(doms.flat().map((x) => Math.floor(score(x) / step) * step))).sort((a, b) => a - b);
     let lo = 0;
     let hi = levels.length - 1;
     let found: { at: number; res: Cand[] } | null = null;
     while (lo <= hi) {
       const mid = (lo + hi) >> 1;
-      const s = solve(doms, score, levels[mid]);
+      const s = solve(doms, score, levels[mid], steps);
       if (s) {
         found = { at: levels[mid], res: s };
         lo = mid + 1;
@@ -291,11 +291,12 @@ export function chipPositions(station: Pt & { r: number }, rocks: readonly RockS
     return found;
   };
 
-  const rock = best(all, (x) => x.c);
+  const rock = best(all, (x) => x.c, 0.1, 20000);
   if (!rock) return all.map((d, slot) => ({ slot, x: d[0].x, y: d[0].y }));
   const floor = rock.at >= CHIP_ROCK_CLEAR ? CHIP_ROCK_CLEAR : Math.min(rock.at, Math.max(CHIP_ROCK_MIN, rock.at - CHIP_ROCK_GIVE));
   const kept = all.map((d) => d.filter((x) => x.c >= floor));
-  const lane = best(kept, (x) => x.k);
+  // Whole points and a smaller search budget: this pass refines, it must not cost a short field a second (360 x 640).
+  const lane = best(kept, (x) => x.k, 1, 600);
   const res = lane ? lane.res : rock.res;
   return res.map((p, slot) => ({ slot, x: p.x, y: p.y }));
 }
