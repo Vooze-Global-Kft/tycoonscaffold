@@ -1,14 +1,65 @@
+import type { ChainState } from './chain';
+
 export interface BusinessState {
+  /** Classic mode: units owned. Sim mode: the station's level. */
   owned: number;
   /** 0..1 through the current cycle. */
   progress: number;
   /** An unmanaged business runs one cycle per tap. */
   running: boolean;
+  /** The automation hire for this business has been bought. */
   managed: boolean;
 }
 
+/** Sim mode: a venue's transport and sales stages. Workers and seats live in the ChainState part. */
+export interface VenueChain extends ChainState {
+  transportLevel: number;
+  /** The transport automation hire has been bought; workers no longer wait for the bell. */
+  transportManaged: boolean;
+  salesLevel: number;
+}
+
+/** One location. Classic games have exactly one, with id MAIN_VENUE. */
+export interface VenueState {
+  unlocked: boolean;
+  businesses: Record<string, BusinessState>;
+  /** Null in classic mode. */
+  chain: VenueChain | null;
+}
+
+/** Classic games keep everything in this single venue. */
+export const MAIN_VENUE = 'main';
+
+export interface CardState {
+  /** 0 = not owned yet. */
+  level: number;
+  /** Spare copies towards the next level. */
+  copies: number;
+}
+
+export interface MissionSlot {
+  templateId: string;
+  target: number;
+  /** Value of the mission's counter when it was handed out; progress = counter - start. */
+  start: number;
+}
+
+export interface DealState {
+  /** Epoch ms when the offer appeared. */
+  startedAt: number;
+  /**
+   * Epoch ms when the offer ends, fixed the moment it appeared so that a later config change can
+   * never extend or restart a running offer; null = a permanent shop item. Absent only in saves
+   * written before this field existed (then it is derived from the config).
+   */
+  endsAt?: number | null;
+  purchases: number;
+  /** The player has been shown the offer once (so it is not pushed again). */
+  seen: boolean;
+}
+
 export interface GameState {
-  version: 1;
+  version: 2;
   cash: number;
   gems: number;
   /** Earned in this run (reset on prestige). */
@@ -17,21 +68,97 @@ export interface GameState {
   lifetimeEarnings: number;
   prestigePoints: number;
   prestigeCount: number;
-  businesses: Record<string, BusinessState>;
+  venues: Record<string, VenueState>;
+  /** The venue on screen. Only this one is simulated actor by actor; the others earn at their steady rate. */
+  activeVenue: string;
+  /** Upgrades bought. They apply in every venue. */
   upgrades: string[];
   /** Epoch ms when the ad boost expires. */
   boostUntil: number;
+  /** Sim mode skill: active until `until`, usable again at `readyAt` (epoch ms). */
+  rush: { until: number; readyAt: number };
   storySeen: string[];
   /** Permanent entitlements from IAP. Survive prestige. */
   entitlements: {
+    /** No banners or pop-up ads. */
     noAds: boolean;
+    /** Rewarded boosts are granted without watching an ad. */
+    skipRewarded: boolean;
     /** Ids of non-consumable products owned. */
     products: string[];
     /** Product multipliers multiply together. */
     multipliers: Record<string, number>;
   };
+  /**
+   * The daily gift. `streak` counts the days the gift was CLAIMED (it never resets because a day
+   * was missed); `lastClaimDay` is the local day key of the last claim.
+   */
   daily: { lastClaimDay: string | null; streak: number };
-  stats: { taps: number; adsWatched: number; playSeconds: number; firstOpenAt: number };
+
+  // --- meta systems (all survive prestige) ---
+  cards: Record<string, CardState>;
+  chests: {
+    /** Unopened chests by id. */
+    owned: Record<string, number>;
+    /**
+     * Free chests recharge from this moment (epoch ms): one is ready for each full recharge
+     * period since then, up to the storage limit. 0 = not started yet.
+     */
+    freeAnchor: number;
+    /** Free chests claimed so far (the first few recharge faster). */
+    freeClaimed: number;
+    /** Day key and count for the rewarded-ad chest limit, and when the next one is allowed. */
+    adDay: string | null;
+    adCount: number;
+    adNextAt: number;
+    /** Chests opened in a row without an epic (or better) card, and without a legendary, for bad-luck protection. */
+    sinceEpic: number;
+    sinceLegendary: number;
+    /**
+     * Chest rolls come from their own stream: the Nth chest of an id always opens the same way,
+     * whatever else the player did first (so a chest cannot be re-rolled by reloading a save,
+     * claiming a free daily card first or opening another kind first). Fixed at game creation.
+     */
+    seed: number;
+    /** Chests opened so far, by id (the position in that id's stream). */
+    opened: Record<string, number>;
+  };
+  missions: {
+    slots: MissionSlot[];
+    /** How many times each template has been completed (its target ladder advances with it). */
+    completed: Record<string, number>;
+    /** Missions completed in total (for the every-Nth rewards) and today (for the daily limit). */
+    total: number;
+    day: string | null;
+    doneToday: number;
+  };
+  deals: Record<string, DealState>;
+  dailyShop: { day: string | null; offerIds: string[]; bought: string[] };
+  /** Seed for every random roll (chests, daily shop). Advanced by each roll, saved with the game. */
+  rng: number;
+
+  stats: {
+    taps: number;
+    adsWatched: number;
+    playSeconds: number;
+    firstOpenAt: number;
+    /** Guests served (sim) across all venues; fractional because off-screen venues are estimated. */
+    served: number;
+    levelsBought: number;
+    hires: number;
+    chestsOpened: number;
+    bonusCaught: number;
+    rushes: number;
+    /** Play sessions (a new one starts after 30 minutes away). */
+    sessions: number;
+    /** Most venues ever open at once, across prestiges. */
+    venuesEver: number;
+    /**
+     * The latest device time the game has run at (epoch ms). Offline time only counts after it, so
+     * winding the clock back and forth cannot pay the same hours twice.
+     */
+    clockHigh: number;
+  };
   lastSavedAt: number;
 }
 

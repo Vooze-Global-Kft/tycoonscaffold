@@ -53,13 +53,18 @@
     "typecheck": "tsc --noEmit",
     "validate": "tsx scripts/validate.ts",
     "simulate": "tsx scripts/simulate.ts",
+    "calibrate": "python3 scripts/content/calibrate-venues.py",
     "new-game": "tsx scripts/new-game.ts",
     "generate": "tsx scripts/generate-game.ts",
     "sync": "tsx scripts/sync.ts",
+    "content:pizza": "python3 scripts/content/build-pizza.py",
+    "content:space": "python3 scripts/content/build-space.py",
     "eas-build-post-install": "node scripts/select-game.js",
     "select": "node scripts/select-game.js",
     "postinstall": "node scripts/select-game.js",
-    "go": "expo start --go -c"
+    "go": "expo start --go -c",
+    "go:fast": "expo start --go --no-dev --minify -c",
+    "lint:worklets": "tsx scripts/lint-worklets.ts"
   },
   "private": true
 }

@@ -1,4 +1,4 @@
-import { ACTIVE_GAME_ID, gameAssets, rawGame } from '../generated/activeGame';
+import { ACTIVE_GAME_ID, gameAssets, gameSounds, rawGame } from '../generated/activeGame';
 import { GameConfigSchema, type GameConfig } from './schema';
 
 function parse(): GameConfig {
@@ -12,7 +12,7 @@ function parse(): GameConfig {
 
 /** The config the game was built with. */
 export const baseGame: GameConfig = parse();
-export { ACTIVE_GAME_ID, gameAssets };
+export { ACTIVE_GAME_ID, gameAssets, gameSounds };
 
 /**
  * Keys that Firebase Remote Config may override at runtime, for A/B tests and
@@ -37,7 +37,8 @@ export const REMOTE_KEYS = {
 export type RemoteKey = keyof typeof REMOTE_KEYS;
 
 export function applyRemoteOverrides(base: GameConfig, values: Partial<Record<RemoteKey, number>>): GameConfig {
-  const next: GameConfig = structuredClone(base);
+  // The config is plain JSON data, so a JSON round trip is a full copy (structuredClone is not on every phone engine).
+  const next: GameConfig = JSON.parse(JSON.stringify(base));
   for (const [key, value] of Object.entries(values)) {
     const apply = REMOTE_KEYS[key as RemoteKey];
     if (apply && typeof value === 'number' && Number.isFinite(value) && value > 0) apply(next, value);

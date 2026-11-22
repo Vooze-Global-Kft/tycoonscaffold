@@ -1,0 +1,134 @@
+/**
+ * Mix decisions that are about the engine rather than the sound design, so
+ * they stay out of the catalogue: which sounds get their player first, which
+ * may overlap themselves, and how the catalogue maps onto the sound files a
+ * game actually ships. Pure; no React Native imports.
+ */
+import type { FxDef, FxName } from './catalog';
+import { fileKeys } from './variants';
+
+/** The looping music entry that `fx.music` plays. */
+export const MUSIC: FxName = 'music_main';
+
+/**
+ * Even an event with no `minIntervalMs` is not played twice within this many
+ * ms: two triggers in one frame are one sound, not a louder one.
+ */
+export const DEDUPE_MS = 30;
+
+/**
+ * Players are a limited resource (see audio.ts), so they are created in this
+ * order: first the sounds a finger is waiting for, then the scene, then the
+ * rest of the catalogue in the order it is written.
+ */
+export const PRELOAD_FIRST: readonly FxName[] = [
+  'ui_tap',
+  'tap',
+  'buy',
+  'coin',
+  'ui_tab',
+  'ui_denied',
+  'cash',
+  'bell',
+  'cook_done',
+  'toss',
+  'serve',
+  'pickup',
+  'happy',
+  'door',
+  'ui_open',
+  'ui_close',
+  'card_flip',
+  'blip_mid',
+  'blip_low',
+  'blip_high',
+  'chest_shake',
+  'hint',
+];
+
+/**
+ * How many copies of one file may sound at once. Without an entry a sound
+ * has one voice and restarts when it is triggered again, which is right for
+ * most (a jingle should not pile up on itself). Sounds with a tail that are
+ * fired in quick succession get two or three, so each one rings out.
+ * `coin` needs no entry: its three files already take turns.
+ */
+export const VOICES: Partial<Record<FxName, number>> = {
+  tap: 2,
+  buy: 3,
+  cash: 2,
+  bell: 3,
+  cook_done: 2,
+  card_flip: 2,
+  reveal_common: 2,
+  reveal_rare: 2,
+};
+
+export interface SoundSpec {
+  /** File key, e.g. "tap_3". */
+  key: string;
+  /** The bundled asset (what `require()` returned). */
+  source: number;
+  /** Volume the player is created with; each play may set another. */
+  volume: number;
+  /** Most copies of this file that may sound at once. */
+  maxVoices: number;
+  /** Fired often: the last to lose its player when the platform runs short. */
+  hot: boolean;
+}
+
+export interface SoundPlan {
+  /** Every one-shot sound that has a file. */
+  sounds: SoundSpec[];
+  /** File keys in the order their players should be created. A key listed twice asks for a second voice. */
+  preload: string[];
+  /** The music loop, when its file exists. */
+  music?: { key: string; source: number; volume: number };
+  /** Catalogue files that are not in the bundle (those events are silent). */
+  missing: string[];
+  /** Bundled files that no catalogue entry uses. */
+  unused: string[];
+}
+
+export function planSounds(
+  catalog: Readonly<Record<string, FxDef>>,
+  files: Readonly<Record<string, number>>,
+  first: readonly string[] = PRELOAD_FIRST,
+  voices: Readonly<Record<string, number | undefined>> = VOICES,
+): SoundPlan {
+  const plan: SoundPlan = { sounds: [], preload: [], missing: [], unused: [] };
+  const used = new Set<string>();
+  const names = Object.keys(catalog);
+  const isHot = (name: string) => first.includes(name) || catalog[name].minIntervalMs !== undefined;
+  const present = (name: string) => fileKeys(name, catalog[name]).filter((key) => files[key] !== undefined);
+
+  for (const name of names) {
+    const def = catalog[name];
+    for (const key of fileKeys(name, def)) {
+      used.add(key);
+      const source = files[key];
+      if (source === undefined) {
+        plan.missing.push(key);
+      } else if (def.loop) {
+        if (name === MUSIC) plan.music = { key, source, volume: def.volume };
+      } else {
+        const maxVoices = Math.max(1, Math.floor(voices[name] ?? 1));
+        plan.sounds.push({ key, source, volume: def.volume, maxVoices, hot: isHot(name) });
+      }
+    }
+  }
+  plan.unused = Object.keys(files).filter((key) => !used.has(key));
+
+  const oneShots = names.filter((name) => !catalog[name].loop);
+  const priority = [
+    ...first.filter((name) => oneShots.includes(name)),
+    ...oneShots.filter((name) => !first.includes(name) && isHot(name)),
+  ];
+  // One voice for every frequent sound, then their extra voices, then everything else.
+  for (const name of priority) plan.preload.push(...present(name));
+  for (const name of priority) {
+    for (let extra = 1; extra < Math.floor(voices[name] ?? 1); extra++) plan.preload.push(...present(name));
+  }
+  for (const name of oneShots) if (!priority.includes(name)) plan.preload.push(...present(name));
+  return plan;
+}

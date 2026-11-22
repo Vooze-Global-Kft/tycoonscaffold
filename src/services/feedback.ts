@@ -1,58 +1,46 @@
 /**
- * Haptics and sound effects. Sounds are optional per game: add files to the
- * game's `assets` map under the keys below (sfx_tap, sfx_buy, sfx_cash,
- * music) and they play; leave them out and only haptics fire.
+ * @deprecated The first feedback API, kept so existing callers compile. It is
+ * now a thin wrapper over the fx service, which has a named event for every
+ * moment in the game. New code calls it directly:
+ *
+ *   import { fx } from './fx';
+ *   fx.play('buy');
+ *   fx.play('tap', { step: comboLevel });
+ *
+ * See src/services/fx/catalog.ts for the events and
+ * docs/design/fx-service-notes.md for the rules. Sounds no longer come from the
+ * game's `assets` map (sfx_tap, sfx_buy, sfx_cash, music): they are files in
+ * shared/sfx/ and games/<id>/assets/sfx/, named after the catalogue keys.
  */
-import * as Haptics from 'expo-haptics';
-import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
-import { Platform } from 'react-native';
-import { gameAssets } from '../config/game';
+import { fx } from './fx';
 
-type Sfx = 'sfx_tap' | 'sfx_buy' | 'sfx_cash';
-const players: Partial<Record<Sfx | 'music', AudioPlayer>> = {};
-let muted = false;
-
+/** @deprecated Use `fx.init()` and `fx.music.start()`. */
 export function initAudio() {
-  if (Platform.OS === 'web') return;
-  // Mix with other apps so players can keep their own music or podcast on.
-  setAudioModeAsync({ playsInSilentMode: false, interruptionMode: 'mixWithOthers' }).catch(() => {});
-  for (const key of ['sfx_tap', 'sfx_buy', 'sfx_cash', 'music'] as const) {
-    const src = gameAssets[key];
-    if (src) players[key] = createAudioPlayer(src);
-  }
-  if (players.music) {
-    players.music.loop = true;
-    players.music.volume = 0.35;
-    players.music.play();
-  }
+  void fx.init();
+  fx.music.start();
 }
 
+/** @deprecated Use `fx.settings.set({ sound, music })`. Like the settings screen, this is remembered. */
 export function setMuted(value: boolean) {
-  muted = value;
-  if (players.music) value ? players.music.pause() : players.music.play();
+  fx.settings.set({ sound: !value, music: !value });
 }
 
-function play(key: Sfx) {
-  const p = players[key];
-  if (!p || muted) return;
-  p.seekTo(0);
-  p.play();
-}
-
+/** @deprecated Use `fx.play(name)` with the catalogue key that fits the moment. */
 export const feedback = {
+  /** @deprecated `fx.play('tap', { step })` */
   tap() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    play('sfx_tap');
+    fx.play('tap');
   },
+  /** @deprecated `fx.play('buy')` */
   buy() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    play('sfx_buy');
+    fx.play('buy');
   },
+  /** @deprecated Pick the real event: 'milestone', 'unlock', 'combo_up', 'bonus_collect', 'daily_claim', ... */
   reward() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    play('sfx_cash');
+    fx.play('milestone');
   },
+  /** @deprecated `fx.play('ui_denied')` */
   denied() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    fx.play('ui_denied');
   },
 };

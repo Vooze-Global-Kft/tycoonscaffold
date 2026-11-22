@@ -1,0 +1,514 @@
+{
+  "_note": "Names and text for Pizza Empire in sim mode (the creative layer). scripts/content/build-pizza.py merges it with the numbers it defines (economy, card effects, chests, missions, deals, prices) into games/pizza-empire/game.json; edit numbers there, words here.",
+  "stations": [
+    {
+      "id": "margherita",
+      "name": "Wood-Fired Oven",
+      "dish": "Margherita",
+      "kind": "oven",
+      "icon": "🍕",
+      "role": "Pizzaiolo",
+      "flavor": "Tomato, mozzarella, basil. Nonna's way."
+    },
+    {
+      "id": "bruschetta",
+      "name": "Antipasti Counter",
+      "dish": "Bruschetta",
+      "kind": "prep",
+      "icon": "🥖",
+      "role": "Prep Cook",
+      "flavor": "Crunchy, garlicky, gone in a second."
+    },
+    {
+      "id": "pasta",
+      "name": "Pasta Pot",
+      "dish": "Spaghetti",
+      "kind": "stove",
+      "icon": "🍝",
+      "role": "Pasta Chef",
+      "flavor": "Al dente or nothing."
+    },
+    {
+      "id": "arancini",
+      "name": "Fry Station",
+      "dish": "Arancini",
+      "kind": "fryer",
+      "icon": "🧆",
+      "role": "Fry Cook",
+      "flavor": "Golden rice balls with a molten heart."
+    },
+    {
+      "id": "gelato",
+      "name": "Gelato Cart",
+      "dish": "Gelato",
+      "kind": "dessert",
+      "icon": "🍨",
+      "role": "Gelataio",
+      "flavor": "Two scoops. Always two."
+    },
+    {
+      "id": "espresso",
+      "name": "Espresso Bar",
+      "dish": "Espresso",
+      "kind": "espresso",
+      "icon": "☕",
+      "role": "Barista",
+      "flavor": "Small cup, big finish."
+    }
+  ],
+  "transport": {
+    "name": "Waiters",
+    "worker": "Waiter",
+    "icon": "🤵",
+    "manager": "Maître d'",
+    "managerFlavor": "Keeps the floor moving without the bell.",
+    "bell": "Service bell"
+  },
+  "sales": {
+    "name": "Dining Room",
+    "seat": "Table",
+    "icon": "🍽️"
+  },
+  "buffer": {
+    "name": "The Pass",
+    "icon": "🛎️"
+  },
+  "venues": [
+    {
+      "id": "napoli",
+      "name": "Nonna's Corner",
+      "place": "Napoli",
+      "icon": "🌋",
+      "blurb": "Where it all began."
+    },
+    {
+      "id": "roma",
+      "name": "Trattoria Roma",
+      "place": "Roma",
+      "icon": "🏛️",
+      "blurb": "All roads lead to a second helping."
+    },
+    {
+      "id": "venezia",
+      "name": "Canal Side",
+      "place": "Venezia",
+      "icon": "🛶",
+      "blurb": "Deliveries by gondola."
+    },
+    {
+      "id": "paris",
+      "name": "Bistro Pepe",
+      "place": "Paris",
+      "icon": "🗼",
+      "blurb": "They said pizza wasn't chic. They were wrong."
+    },
+    {
+      "id": "newyork",
+      "name": "Rooftop Slice",
+      "place": "New York",
+      "icon": "🗽",
+      "blurb": "Forty floors up, still wood-fired."
+    },
+    {
+      "id": "tokyo",
+      "name": "Neon Crust",
+      "place": "Tokyo",
+      "icon": "🏯",
+      "blurb": "Open all night."
+    },
+    {
+      "id": "moon",
+      "name": "Lunar Oven",
+      "place": "The Moon",
+      "icon": "🌕",
+      "blurb": "Zero-gravity dough tossing."
+    },
+    {
+      "id": "planet",
+      "name": "Planet Pepperoni",
+      "place": "Deep Space",
+      "icon": "asset:biz_pizza_planet",
+      "blurb": "A whole world with extra toppings."
+    }
+  ],
+  "upgrades": [
+    {
+      "id": "u_basil",
+      "name": "Fresh Basil",
+      "icon": "🌿",
+      "target": "margherita"
+    },
+    {
+      "id": "u_garlic",
+      "name": "Roasted Garlic",
+      "icon": "🧄",
+      "target": "bruschetta"
+    },
+    {
+      "id": "u_bronze",
+      "name": "Bronze-Cut Pasta",
+      "icon": "🍝",
+      "target": "pasta"
+    },
+    {
+      "id": "u_saffron",
+      "name": "Saffron Rice",
+      "icon": "🌾",
+      "target": "arancini"
+    },
+    {
+      "id": "u_pistachio",
+      "name": "Sicilian Pistachio",
+      "icon": "🥜",
+      "target": "gelato"
+    },
+    {
+      "id": "u_beans",
+      "name": "Single-Origin Beans",
+      "icon": "🫘",
+      "target": "espresso"
+    },
+    {
+      "id": "u_sauce",
+      "name": "Secret Sauce",
+      "icon": "🍅",
+      "target": "all"
+    },
+    {
+      "id": "u_scooters",
+      "name": "Delivery Scooters",
+      "icon": "asset:biz_delivery",
+      "target": "all"
+    },
+    {
+      "id": "u_festival",
+      "name": "Pizza Festival",
+      "icon": "🎪",
+      "target": "all"
+    },
+    {
+      "id": "u_truck",
+      "name": "Food Truck Fleet",
+      "icon": "asset:biz_food_truck",
+      "target": "all"
+    },
+    {
+      "id": "u_viral",
+      "name": "Viral Video",
+      "icon": "📱",
+      "target": "all"
+    },
+    {
+      "id": "u_review",
+      "name": "Five-Star Review",
+      "icon": "⭐",
+      "target": "all"
+    },
+    {
+      "id": "u_tv",
+      "name": "Cooking Show",
+      "icon": "📺",
+      "target": "all"
+    },
+    {
+      "id": "u_celebrity",
+      "name": "Celebrity Chef",
+      "icon": "🧑‍🍳",
+      "target": "all"
+    },
+    {
+      "id": "u_cookbook",
+      "name": "Nonna's Cookbook",
+      "icon": "📖",
+      "target": "all"
+    },
+    {
+      "id": "u_award",
+      "name": "Golden Pizza Award",
+      "icon": "🏆",
+      "target": "all"
+    },
+    {
+      "id": "u_airline",
+      "name": "Airline Menu",
+      "icon": "✈️",
+      "target": "all"
+    },
+    {
+      "id": "u_satellite",
+      "name": "Pizza Satellite",
+      "icon": "🛰️",
+      "target": "all"
+    },
+    {
+      "id": "u_rocket",
+      "name": "Rocket Delivery",
+      "icon": "🚀",
+      "target": "all"
+    },
+    {
+      "id": "u_wormhole",
+      "name": "Wormhole Oven",
+      "icon": "🌀",
+      "target": "all"
+    },
+    {
+      "id": "u_galaxy",
+      "name": "Galactic Franchise",
+      "icon": "🌌",
+      "target": "all"
+    },
+    {
+      "id": "u_multiverse",
+      "name": "Multiverse Menu",
+      "icon": "🪐",
+      "target": "all"
+    },
+    {
+      "id": "u_legend",
+      "name": "Living Legend",
+      "icon": "👑",
+      "target": "all"
+    },
+    {
+      "id": "p_cutter",
+      "name": "Golden Pizza Cutter",
+      "icon": "🔪",
+      "target": "all",
+      "premium": true
+    }
+  ],
+  "cards": [
+    {
+      "id": "tony",
+      "name": "Tony Wheels",
+      "rarity": "common",
+      "stat": "stationValue",
+      "title": "Line Cook",
+      "flavor": "Flips, fries and never stops talking.",
+      "icon": "char:tony"
+    },
+    {
+      "id": "sal",
+      "name": "Speedy Sal",
+      "rarity": "common",
+      "stat": "transportCapacity",
+      "title": "Runner",
+      "flavor": "Carries six plates. Claims eight.",
+      "icon": "char:sal"
+    },
+    {
+      "id": "fiona",
+      "name": "Farmer Fiona",
+      "rarity": "common",
+      "stat": "salesSpend",
+      "title": "Supplier",
+      "flavor": "Her tomatoes make people order seconds.",
+      "icon": "char:fiona"
+    },
+    {
+      "id": "freeze",
+      "name": "Dr. Freeze",
+      "rarity": "common",
+      "stat": "offlineEarnings",
+      "title": "Night Shift",
+      "flavor": "Keeps everything fresh while you sleep.",
+      "icon": "char:freeze"
+    },
+    {
+      "id": "marco",
+      "name": "Chef Marco",
+      "rarity": "rare",
+      "stat": "stationValue",
+      "title": "Head Chef",
+      "flavor": "Kisses his fingers after every dish.",
+      "icon": "asset:mgr_marco"
+    },
+    {
+      "id": "gina",
+      "name": "Gina Glam",
+      "rarity": "rare",
+      "stat": "tapValue",
+      "title": "TV Star",
+      "flavor": "One wink and the tips pour in.",
+      "icon": "char:gina"
+    },
+    {
+      "id": "mayor",
+      "name": "Mayor Pepperoni",
+      "rarity": "rare",
+      "stat": "bonusValue",
+      "title": "Guest of Honour",
+      "flavor": "Cuts ribbons. Eats the ribbon cake.",
+      "icon": "char:mayor"
+    },
+    {
+      "id": "al",
+      "name": "Astro Al",
+      "rarity": "epic",
+      "stat": "rushDuration",
+      "title": "Rocket Chef",
+      "flavor": "Treats every rush hour like a launch.",
+      "icon": "char:al"
+    },
+    {
+      "id": "carl",
+      "name": "Big Cheese Carl",
+      "rarity": "epic",
+      "stat": "transportCapacity",
+      "title": "Reformed Rival",
+      "flavor": "If you can't beat them, wait tables for them.",
+      "icon": "char:carl"
+    },
+    {
+      "id": "pepe",
+      "name": "Pepe",
+      "rarity": "epic",
+      "stat": "tapValue",
+      "title": "Mascot",
+      "flavor": "Yes, he's a pizza. No, you can't eat him.",
+      "icon": "asset:hero"
+    },
+    {
+      "id": "nonna",
+      "name": "Nonna Rosa",
+      "rarity": "legendary",
+      "stat": "globalIncome",
+      "title": "The Legend",
+      "flavor": "The sauce. The myth. The grandmother.",
+      "icon": "char:nonna"
+    },
+    {
+      "id": "overlord",
+      "name": "The Overlord",
+      "rarity": "legendary",
+      "stat": "globalIncome",
+      "title": "Galactic Critic",
+      "flavor": "Three eyes, one verdict: delizioso.",
+      "icon": "char:overlord"
+    }
+  ],
+  "chests": [
+    {
+      "id": "box",
+      "name": "Pizza Box",
+      "icon": "📦",
+      "tier": "wood",
+      "blurb": "A few cards and some dough."
+    },
+    {
+      "id": "crate",
+      "name": "Chef's Crate",
+      "icon": "🧰",
+      "tier": "silver",
+      "blurb": "More cards, with a rare one guaranteed."
+    },
+    {
+      "id": "golden",
+      "name": "Golden Oven Chest",
+      "icon": "👑",
+      "tier": "gold",
+      "blurb": "A feast of cards, with an epic guaranteed."
+    }
+  ],
+  "missions": [
+    {
+      "id": "serve",
+      "type": "serve",
+      "text": "Serve {n} guests"
+    },
+    {
+      "id": "earn",
+      "type": "earn",
+      "text": "Earn {n}"
+    },
+    {
+      "id": "levels",
+      "type": "levels",
+      "text": "Buy {n} levels"
+    },
+    {
+      "id": "taps",
+      "type": "taps",
+      "text": "Tap for tips {n} times"
+    },
+    {
+      "id": "slices",
+      "type": "bonus",
+      "text": "Catch {n}× Golden Slice"
+    },
+    {
+      "id": "chests",
+      "type": "chests",
+      "text": "Open {n}× chest"
+    },
+    {
+      "id": "rush",
+      "type": "rush",
+      "text": "Start Rush Hour {n}×"
+    },
+    {
+      "id": "hires",
+      "type": "hires",
+      "text": "Hire {n}× staff"
+    }
+  ],
+  "deals": [
+    {
+      "id": "welcome",
+      "title": "Welcome Feast",
+      "badge": "Can be bought once",
+      "icon": "🎉",
+      "blurb": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony Wheels and 4 h of income."
+    },
+    {
+      "id": "franchise",
+      "title": "Franchise Kit",
+      "badge": "AFTER A RESET",
+      "icon": "🏪",
+      "blurb": "Rebuild faster after earning Chef Stars: Truffles, Astro Al, Big Cheese Carl (now on your side), Speedy Sal and 8 h of income."
+    }
+  ],
+  "rush": {
+    "name": "Rush Hour",
+    "icon": "⏱️"
+  },
+  "strings": {
+    "prestigeName": "Chef Stars",
+    "prestigeVerb": "Franchise",
+    "comboName": "DOUGH FRENZY",
+    "bonusName": "Golden Slice"
+  },
+  "dailyShop": {
+    "title": "Chef's Specials",
+    "blurb": "One free treat and three fresh offers every day. New ones at midnight."
+  },
+  "products": {
+    "noAds": {
+      "title": "No Ads",
+      "description": "Removes banners and pop-up ads for good. Rewarded ads stay optional."
+    },
+    "skipAds": {
+      "title": "Express Pass",
+      "description": "Get every ad reward without watching the ad."
+    },
+    "x2": {
+      "title": "Double Profits",
+      "description": "Permanent ×2 on all income."
+    },
+    "x3": {
+      "title": "Triple Profits",
+      "description": "Permanent ×3 on all income. Stacks with Double."
+    },
+    "gems": [
+      "Pinch of Truffles",
+      "Pile of Truffles",
+      "Truffle Basket",
+      "Truffle Crate"
+    ],
+    "warp": {
+      "title": "24h Time Warp",
+      "description": "Instantly earn a full day of income."
+    }
+  }
+}

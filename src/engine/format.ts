@@ -13,19 +13,28 @@ function letterSuffix(group: number): string {
   return first + second;
 }
 
+function suffixOf(group: number): string | null {
+  return group < SHORT.length ? SHORT[group] : group - SHORT.length < 26 * 26 ? letterSuffix(group) : null;
+}
+
 export function formatNumber(value: number, decimals = 2): string {
   if (!Number.isFinite(value)) return '∞';
   if (value < 0) return '-' + formatNumber(-value, decimals);
   if (value < 1000) {
     return value < 10 && value % 1 !== 0 ? value.toFixed(decimals) : Math.floor(value).toString();
   }
-  const group = Math.floor(Math.log10(value) / 3);
-  const scaled = value / Math.pow(10, group * 3);
-  const suffix = group < SHORT.length ? SHORT[group] : group - SHORT.length < 26 * 26 ? letterSuffix(group) : null;
+  let group = Math.floor(Math.log10(value) / 3);
+  // log10 can land a hair under a power of 1000 (999999.99999 -> group 1); fix the group first.
+  if (value / Math.pow(10, group * 3) >= 1000) group++;
+  let fixed = (value / Math.pow(10, group * 3)).toFixed(decimals);
+  // 999,995 rounds to "1000.00K": roll over to the next suffix, "1.00M".
+  if (Number(fixed) >= 1000) {
+    group++;
+    fixed = (1).toFixed(decimals);
+  }
+  const suffix = suffixOf(group);
   if (suffix === null) return value.toExponential(2);
-  // Guard against 999.995 rounding up to "1000.00K".
-  const fixed = scaled.toFixed(decimals);
-  return (Number(fixed) >= 1000 ? (999.99).toFixed(decimals) : fixed) + suffix;
+  return fixed + suffix;
 }
 
 export function formatMoney(value: number, symbol = '$'): string {

@@ -1,50 +1,69 @@
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { AppState, Text, View } from 'react-native';
+import { AppState, Platform, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { gameAssets } from '../config/game';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { initAudio } from '../services/feedback';
+import { gameAssets } from '../config/game';
+import { applyDevParams, devSpeed } from '../dev/devtools';
+import { fx } from '../services/fx';
 import { useGame } from '../state/store';
 import { Banner } from './components/Banner';
 import { Celebrations } from './components/Celebration';
 import { GameIcon } from './components/GameIcon';
 import { Header } from './components/Header';
 import { OfflineModal, StoryModal } from './components/Modals';
-import { BusinessesPanel, ManagersPanel, PrestigePanel, ShopPanel, UpgradesPanel } from './components/Panels';
+import { ManagersPanel } from './components/Panels';
 import { TabBar } from './components/TabBar';
-import { SkiaScene } from './scene/SkiaScene';
-import { ThreeScene } from './scene/ThreeScene';
+import { CONTENT_KEY, HintOverlay, reportTouch } from './hints/HintOverlay';
+import { useTarget } from './hints/targets';
+import { HomeClassic } from './home/HomeClassic';
+import { HomeSim } from './home/HomeSim';
+import { FlyLayer } from './juice/FlyLayer';
+import { CardSheet } from './meta/cards/CardSheet';
+import { StaffTab } from './meta/cards/StaffTab';
+import { ChestOddsSheet } from './meta/chest/ChestOddsSheet';
+import { ChestOverlay } from './meta/chest/ChestOverlay';
+import { DealPopup } from './meta/deals/DealPopup';
+import { EmpireTab } from './meta/empire/EmpireTab';
+import { MissionsSheet } from './meta/missions/MissionsSheet';
+import { SettingsSheet } from './meta/settings/SettingsSheet';
+import { ShopTab } from './meta/shop/ShopTab';
+import { UpgradesTab } from './meta/upgrades/UpgradesTab';
+import { ArtGallery } from './sim/art/Gallery';
+import { PropsGallery } from './sim/art/GalleryProps';
 import { DISPLAY_FONT, useTheme } from './theme';
 
 const TICK_MS = 100;
 const SAVE_EVERY_MS = 5000;
 
-/** Fixed-rate simulation loop plus autosave, paused in the background. */
+/** Fixed-rate simulation loop plus autosave. The store stops the clock while the app is in the background. */
 function useGameLoop() {
   const hydrated = useGame((s) => s.hydrated);
   const last = useRef(Date.now());
   useEffect(() => {
     if (!hydrated) return;
     const { tick, save } = useGame.getState();
+    // Development only (web address `?speed=10`): run the simulation faster. Always 1 on phones.
+    const speed = devSpeed();
     last.current = Date.now();
     const loop = setInterval(() => {
       const now = Date.now();
       // Clamp dt so a long JS stall doesn't skip past offline-earnings accounting.
       const dt = Math.min(1, (now - last.current) / 1000);
       last.current = now;
-      tick(dt);
+      tick(dt * speed);
     }, TICK_MS);
     const autosave = setInterval(save, SAVE_EVERY_MS);
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        // Returning from background: re-boot computes offline earnings from lastSavedAt.
-        useGame.getState().boot();
+        // Back in the foreground: pay for the time away from the in-memory game (never re-read the save).
+        useGame.getState().resume();
         last.current = Date.now();
-      } else {
-        save();
+      } else if (state === 'background') {
+        void useGame.getState().pause();
       }
+      // 'inactive' (iOS Control Centre, a call banner, a purchase sheet) is not leaving: do nothing.
     });
     return () => {
       clearInterval(loop);
@@ -54,34 +73,59 @@ function useGameLoop() {
   }, [hydrated]);
 }
 
+/**
+ * The whole game: header, the tab on screen, the tab bar, and on top of them every dialog and
+ * overlay. Dialogs and overlays render nothing until the store asks for them, so they are simply
+ * always mounted here.
+ */
 function Game() {
   const t = useTheme();
   const tab = useGame((s) => s.tab);
+  const sim = useGame((s) => s.cfg.mode === 'sim');
+  // The visible content area: the tutorial hand never points at a row scrolled outside it.
+  const content = useTarget(CONTENT_KEY);
   useGameLoop();
-  const Scene = t.scene === 'three' ? ThreeScene : SkiaScene;
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: t.c.gradient[0] }} edges={['top']}>
-      <StatusBar style={t.darkStatusBar ? 'dark' : 'light'} />
-      <Header />
-      <View style={{ flex: 1, backgroundColor: t.c.background }}>
-        {tab === 'businesses' ? <Scene /> : null}
-        <View style={{ flex: 1 }}>
-          {tab === 'businesses' && <BusinessesPanel />}
-          {tab === 'managers' && <ManagersPanel />}
-          {tab === 'upgrades' && <UpgradesPanel />}
-          {tab === 'prestige' && <PrestigePanel />}
-          {tab === 'shop' && <ShopPanel />}
+    // Every touch passes through here first (without being taken) so the tutorial hand can step aside.
+    <View style={{ flex: 1, backgroundColor: t.c.surface }} onStartShouldSetResponderCapture={onAnyTouch}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: t.c.gradient[0] }} edges={['top']}>
+        <StatusBar style={t.darkStatusBar ? 'dark' : 'light'} />
+        <Header />
+        <View {...content} style={{ flex: 1, backgroundColor: t.c.background }}>
+          {tab === 'home' && (sim ? <HomeSim /> : <HomeClassic />)}
+          {tab === 'staff' && <StaffTab top={sim ? undefined : <ManagersPanel />} />}
+          {tab === 'upgrades' && <UpgradesTab />}
+          {tab === 'empire' && <EmpireTab />}
+          {tab === 'shop' && <ShopTab />}
         </View>
-      </View>
-      <SafeAreaView edges={['bottom']} style={{ backgroundColor: t.c.surface }}>
-        <Banner />
-        <TabBar />
+        <SafeAreaView edges={['bottom']} style={{ backgroundColor: t.c.surface }}>
+          {/* No banner ad on the home tab or on the upgrades list: nothing may sit next to the buttons players
+              tap fastest. Where it shows, it keeps a gap and a divider from the tab bar. */}
+          {tab !== 'home' && tab !== 'upgrades' ? <Banner /> : null}
+          <TabBar />
+        </SafeAreaView>
+
+        <OfflineModal />
+        <StoryModal />
+        <MissionsSheet />
+        <SettingsSheet />
+        <ChestOddsSheet />
+        <CardSheet />
+        <DealPopup />
+        <ChestOverlay />
       </SafeAreaView>
-      <OfflineModal />
-      <StoryModal />
+      {/* Overlays in window coordinates (target rectangles are measured in the window). */}
       <Celebrations />
-    </SafeAreaView>
+      <FlyLayer />
+      <HintOverlay />
+    </View>
   );
+}
+
+/** Reports a touch to the tutorial hand and lets the touch go on to whatever was tapped. */
+function onAnyTouch() {
+  reportTouch();
+  return false;
 }
 
 /** Shown while the save, fonts and remote config load: the hero bouncing over the game's name. */
@@ -102,7 +146,16 @@ function Loading() {
   );
 }
 
+/** Dev views for visual review in the web build, e.g. `?view=art`. Never set on phones. */
+const DEV_VIEW = Platform.OS === 'web' && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('view') : null;
+
 export default function App() {
+  if (DEV_VIEW === 'art') return <ArtGallery />;
+  if (DEV_VIEW === 'props') return <PropsGallery />;
+  return <Root />;
+}
+
+function Root() {
   const hydrated = useGame((s) => s.hydrated);
   const fontKey = useGame((s) => s.cfg.theme.displayFont);
   const fontSrc = fontKey ? gameAssets[fontKey] : undefined;
@@ -110,12 +163,14 @@ export default function App() {
   const [fontsLoaded, fontError] = useFonts(fontSrc ? { [DISPLAY_FONT]: fontSrc } : {});
   const ready = hydrated && (fontsLoaded || fontError !== null || !fontSrc);
   useEffect(() => {
-    useGame.getState().boot();
-    initAudio();
+    useGame
+      .getState()
+      .boot()
+      // Development only: `?preset=mid&tab=shop` and friends in the web address (see src/dev/devtools.ts).
+      .then(applyDevParams);
+    // Sound, music and haptics. Both calls are safe to repeat; music waits for the settings and the audio session.
+    fx.init();
+    fx.music.start();
   }, []);
-  return (
-    <SafeAreaProvider>
-      {ready ? <Game /> : <Loading />}
-    </SafeAreaProvider>
-  );
+  return <SafeAreaProvider>{ready ? <Game /> : <Loading />}</SafeAreaProvider>;
 }

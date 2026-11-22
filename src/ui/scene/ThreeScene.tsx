@@ -41,7 +41,7 @@ export function ThreeScene() {
   const cfg = useGame((s) => s.cfg);
   const tapHero = useGame((s) => s.tapHero);
   const taps = useGame((s) => s.tapEvents);
-  const ownedTypes = useGame((s) => cfg.businesses.filter((b) => s.game.businesses[b.id].owned > 0).length);
+  const ownedTypes = useGame((s) => cfg.businesses.filter((b) => s.game.venues[s.game.activeVenue].businesses[b.id].owned > 0).length);
   const [failed, setFailed] = useState(false);
   const spin = useRef(0);
   const satellitesWanted = useRef(ownedTypes);
@@ -90,6 +90,18 @@ export function ThreeScene() {
 
       let last = Date.now();
       const render = () => {
+        // Every frame is guarded, not only the first: expo-gl can fail later (a lost context after
+        // backgrounding on Android). Stop the loop and fall back to the 2D scene instead of crashing.
+        try {
+          frameBody();
+        } catch (e) {
+          if (frame.current !== null) cancelAnimationFrame(frame.current);
+          frame.current = null;
+          crash.record(e, 'three-scene');
+          setFailed(true);
+        }
+      };
+      const frameBody = () => {
         const now = Date.now();
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;

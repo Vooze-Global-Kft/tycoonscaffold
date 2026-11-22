@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   Easing,
+  cancelAnimation,
   runOnJS,
   useAnimatedStyle,
   useDerivedValue,
@@ -24,6 +25,7 @@ import * as E from '../../engine/economy';
 import { formatMoney } from '../../engine/format';
 import { useGame } from '../../state/store';
 import { GameIcon } from '../components/GameIcon';
+import { canSpawnBonus } from '../sim/scene/play/gate';
 import { alpha, useTheme } from '../theme';
 
 const PARTICLES = 10;
@@ -189,20 +191,28 @@ function BonusFlyer({ width }: { width: number }) {
   // Spawn check. Kept here so the bonus only appears while the scene is on screen.
   useEffect(() => {
     const timer = setInterval(() => {
-      const s = useGame.getState();
-      if (s.bonus.activeId === null && Date.now() >= s.bonus.nextAt && s.offline === null) s.spawnBonus();
+      // Same rule as the sim scene: never under a dialog, a chest, an offer or a story beat.
+      if (canSpawnBonus()) useGame.getState().spawnBonus();
     }, 1000);
     return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    if (activeId === null || width === 0) return;
+    if (activeId === null || width === 0) {
+      // Gone (caught or missed): stop the wobble, nothing may animate while it is off screen.
+      cancelAnimation(wobble);
+      cancelAnimation(x);
+      return;
+    }
     x.value = fromLeft ? -80 : width + 10;
     x.value = withTiming(fromLeft ? width + 10 : -80, { duration: 7500, easing: Easing.linear }, (done) => {
       if (done) runOnJS(miss)();
     });
     wobble.value = 0;
     wobble.value = withRepeat(withTiming(1, { duration: 900, easing: Easing.inOut(Easing.sin) }), -1, true);
+    return () => {
+      cancelAnimation(wobble);
+    };
   }, [activeId, fromLeft, miss, width, wobble, x]);
 
   const style = useAnimatedStyle(() => ({
