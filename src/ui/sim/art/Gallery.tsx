@@ -253,7 +253,7 @@ function CastPage({ clock }: { clock: SharedValue<number> }) {
         ))}
       </Canvas>
       {LOOK_NAMES.map((n, i) => (
-        <Label key={n} x={(i % cols) * cw} y={Math.floor(i / cols) * ch + ch - 22} w={cw}>
+        <Label key={n} x={(i % cols) * cw} y={Math.floor(i / cols) * ch + ch - 12} w={cw}>
           {n}
         </Label>
       ))}
@@ -341,12 +341,15 @@ function Stool({ x, y, scale }: { x: number; y: number; scale: number }) {
 function LivePage({ clock }: { clock: SharedValue<number> }) {
   const zoom = num('zoom', 2);
   const s = zoom * SCENE;
-  const floor = 170 + 60 * zoom;
+  // Three lanes, back to front: the chef (room above for the tossed dough), the waiter, the guest's stool.
+  const chefY = 30 + 80 * zoom;
+  const waiterY = chefY + 56 * zoom;
+  const floor = waiterY + 56 * zoom;
   // The waiter: carries a dish across, serves, walks back empty-handed, waves.
   const wx = useDerivedValue(() => {
     const t = (clock.value / 1000) % 9;
     const a = 70;
-    const b = 300;
+    const b = 330;
     if (t < 3) return a + ((b - a) * t) / 3;
     if (t < 5) return b;
     if (t < 8) return b - ((b - a) * (t - 5)) / 3;
@@ -369,10 +372,20 @@ function LivePage({ clock }: { clock: SharedValue<number> }) {
   const gx = useDerivedValue(() => {
     const t = (clock.value / 1000) % 14;
     const door = 410;
-    const seat = 250;
+    const seat = 230;
     if (t < 2.5) return door - ((door - seat) * t) / 2.5;
     if (t < 11.5) return seat;
     return seat + ((door - seat) * (t - 11.5)) / 2.5;
+  });
+  // Walking, the guest keeps to a lane in front of the stool, and steps up onto it to sit.
+  const gy = useDerivedValue(() => {
+    const t = (clock.value / 1000) % 14;
+    const lane = floor + 12 * zoom;
+    if (t < 2.2) return lane;
+    if (t < 2.5) return lane + (floor - lane) * ((t - 2.2) / 0.3);
+    if (t < 11.5) return floor;
+    if (t < 11.8) return floor + (lane - floor) * ((t - 11.5) / 0.3);
+    return lane;
   });
   const gFacing = useDerivedValue(() => {
     const t = (clock.value / 1000) % 14;
@@ -382,15 +395,15 @@ function LivePage({ clock }: { clock: SharedValue<number> }) {
     const t = (clock.value / 1000) % 14;
     return t < 2.5 ? 'walk' : t < 5.5 ? 'sit-wait' : t < 10 ? 'sit-eat' : t < 11.5 ? 'cheer' : 'walk';
   });
-  const h = floor + 60;
+  const h = floor + 20 * zoom + 34;
   return (
     <View style={{ width: W, height: h }}>
-      <Floor y={floor - 16 * zoom} h={30 * zoom + 30} color="#EBD3B0" />
-      <Stool x={250} y={floor} scale={s} />
+      <Floor y={chefY - 14 * zoom} h={floor + 18 * zoom - chefY} color="#EBD3B0" />
+      <Stool x={230} y={floor} scale={s} />
       <Canvas style={{ width: W, height: h }}>
-        <Character look={{ preset: 'marco' }} x={60} y={floor - 90 * zoom} clock={clock} pose={cPose} scale={s} />
-        <Character look={randomLook(22, 'waiter')} x={wx} y={floor - 40 * zoom + 40} clock={clock} pose={wPose} facing={wFacing} scale={s} />
-        <Character look={randomLook(3, 'customer')} x={gx} y={floor} clock={clock} pose={gPose} facing={gFacing} scale={s} />
+        <Character look={{ preset: 'marco' }} x={60} y={chefY} clock={clock} pose={cPose} scale={s} />
+        <Character look={randomLook(22, 'waiter')} x={wx} y={waiterY} clock={clock} pose={wPose} facing={wFacing} scale={s} />
+        <Character look={randomLook(3, 'customer')} x={gx} y={gy} clock={clock} pose={gPose} facing={gFacing} scale={s} />
       </Canvas>
       <Label x={0} y={h - 20} w={W}>
         chef: cook, toss, cheer, idle, sleep · waiter: carry, idle, walk, wave · customer: walk, sit-wait, sit-eat, cheer, walk

@@ -56,6 +56,8 @@ export interface SceneLayout {
   /** The doorway, and a point just outside it where people appear and vanish. */
   door: Point;
   outside: Point;
+  /** Centre of the round skill button [Rush] that floats over the walkway, right of the counter. */
+  rush: Point;
   /** How tall a standing character is drawn. */
   characterHeight: number;
 }
@@ -92,6 +94,7 @@ export function computeLayout(width: number, height: number, stationCount: numbe
   const bell = { x: pass.x + pass.width - 18 * unit, y: pass.y + pass.height * 0.25 };
 
   const door = { x: width * 0.92, y: height * 0.8 };
+  const rush = { x: width * 0.872, y: height * 0.587 };
   const outside = { x: width + 34 * unit, y: height * 0.82 };
 
   // Tables: a fixed 4 x 2 grid, so a table never moves when another one is added.
@@ -127,6 +130,7 @@ export function computeLayout(width: number, height: number, stationCount: numbe
     tableSize: Math.min(46 * unit, height * 0.16),
     door,
     outside,
+    rush,
     characterHeight: clamp(height * 0.19, 40 * unit, 60 * unit),
   };
 }

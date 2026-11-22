@@ -28,7 +28,7 @@
  */
 import { BlendMode, ClipOp, Group, Picture, Skia, TileMode, select, type SharedValueSelector, type SkCanvas, type SkPath, type SkPicture } from '@shopify/react-native-skia';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { startMapper, stopMapper, useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { startMapper, stopMapper, useDerivedValue, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import {
   OUTLINE,
   Pen,
@@ -207,7 +207,11 @@ function approach(mem: number[], i: number, target: number, dt: number, tau: num
   'worklet';
   const v = mem[i];
   if (v !== v) mem[i] = target;
-  else if (dt > 0) mem[i] = v + (target - v) * (1 - Math.exp(-dt / tau));
+  else if (dt > 0) {
+    const n = v + (target - v) * (1 - Math.exp(-dt / tau));
+    // Snap when close, so a settled prop stops changing (and can skip its frames).
+    mem[i] = Math.abs(target - n) < 1e-3 ? target : n;
+  }
   return mem[i];
 }
 
@@ -242,8 +246,10 @@ const freshMem = () => Array.from({ length: MEM_SIZE }, () => NaN);
  * shared values in `deps` changes. `step` is a worklet that fills the matrices
  * in place; `mem` is its scratch memory between frames (NaN until first written).
  * `deps` lists everything `step` closes over, like the dependencies of an effect.
+ * A `step` may return `false` (before writing anything) to say nothing changed since the
+ * previous frame: the matrices on screen are kept and nothing is redrawn for this prop.
  */
-function useRig<K extends string>(keys: readonly K[], step: (o: Mats<K>, mem: number[]) => void, deps: readonly unknown[]): Record<K, SharedValueSelector<Mat>> {
+function useRig<K extends string>(keys: readonly K[], step: (o: Mats<K>, mem: number[]) => void | false, deps: readonly unknown[]): Record<K, SharedValueSelector<Mat>> {
   // The first frame is worked out here so nothing flashes in unplaced.
   const [first] = useState<Mats<K>>(() => {
     const o = makeMats(keys);
@@ -259,8 +265,8 @@ function useRig<K extends string>(keys: readonly K[], step: (o: Mats<K>, mem: nu
         // The state object lives on the UI thread and is updated in place.
         const st = state.value;
         const o = st.flip === 0 ? st.a : st.b;
+        if (step(o, st.mem) === false) return;
         st.flip = 1 - st.flip;
-        step(o, st.mem);
         rig.value = o;
       },
       deps.filter(isShared),
@@ -406,10 +412,17 @@ function drawPadlock(p: Pen, body = '#FFC93C', metal = '#C9D1DB') {
   p.fill(poly([[-1.9, 3.4], [1.9, 3.4], [2.8, 10], [-2.8, 10]]), INK);
 }
 
-/** Maps every colour to a dark, muted tone: the "not bought yet" look. */
-function silhouette(c: string): string {
-  const a = c.length > 7 ? c.slice(7) : '';
-  return mix('#3A2E3A', '#6A5A66', luma(c.slice(0, 7))) + a;
+/**
+ * Maps every colour to a light, desaturated tone pulled towards the wall: the "not bought yet" look.
+ * Quiet on purpose, so the working stations and the actors keep the eye; only the padlock stays in colour.
+ */
+function lockedTint(wall: string): (c: string) => string {
+  const dim = mix('#8F8790', wall, 0.45);
+  const lit = mix('#E4DEDC', wall, 0.45);
+  return (c: string) => {
+    const a = c.length > 7 ? c.slice(7) : '';
+    return mix(dim, lit, luma(c.slice(0, 7))) + a;
+  };
 }
 
 /** A pen that recolours everything drawn through it. */
@@ -1315,7 +1328,7 @@ const STATION_DEFS: Record<StationArtKind, StationDef> = { oven: OVEN, stove: ST
 
 interface StationArt {
   layers: { pic: SkPicture; key?: PartKey }[];
-  /** The whole station at rest, as a dark silhouette. */
+  /** The whole station at rest, light and grey (not bought yet). */
   locked: SkPicture;
 }
 
@@ -1338,8 +1351,8 @@ function buildStation(kind: StationArtKind, c: ArtPalette, dish: ResolvedDish): 
           }
         }
       },
-      silhouette,
-      silhouette(c.outline),
+      lockedTint(c.wall),
+      mix(c.outline, c.wall, 0.45),
     ),
   };
 }
@@ -1357,7 +1370,7 @@ export interface StationProps {
   palette?: Partial<ArtPalette>;
   /** Cooking or not: `true`/`false`, or 0..1. The fire, steam and so on ease in and out by themselves. */
   working?: Anim<number | boolean>;
-  /** Not bought yet: a dark silhouette. */
+  /** Not bought yet: drawn light and grey, with a coloured padlock. */
   locked?: boolean;
   /** Show a padlock on a locked station. Default true. */
   padlock?: boolean;
@@ -1709,10 +1722,18 @@ export function Table({ x, y, scale = 1, palette, state = 'empty', dish, clock, 
       'worklet';
       const dt = tick(mem, clock.value);
       const k = UNIT * num(scale);
-      put(o.root, num(x), num(y), 0, k, k);
       const s = typeof state === 'string' ? state : state.value;
-      pop(o.food, 0, TABLE_Y - 0.5, 0, backOut(approach(mem, 1, s === 'food' ? 1 : 0, dt, 70)));
-      pop(o.done, 0, TABLE_Y - 0.5, 0, backOut(approach(mem, 2, s === 'finished' ? 1 : 0, dt, 70)));
+      const f = approach(mem, 1, s === 'food' ? 1 : 0, dt, 70);
+      const d = approach(mem, 2, s === 'finished' ? 1 : 0, dt, 70);
+      // Nothing popping in or out and not moved: skip the frame.
+      const px = num(x);
+      const py = num(y);
+      const sig = f * 3.7 + d * 5.3 + px * 7.1 + py * 13.3 + k * 101;
+      if (sig === mem[6]) return false;
+      mem[6] = sig;
+      put(o.root, px, py, 0, k, k);
+      pop(o.food, 0, TABLE_Y - 0.5, 0, backOut(f));
+      pop(o.done, 0, TABLE_Y - 0.5, 0, backOut(d));
     },
     [clock, x, y, scale, state],
   );
@@ -1880,7 +1901,6 @@ export function Door({ x, y, scale = 1, palette, swing, open = 0, facing = 1, cl
     (o, mem) => {
       'worklet';
       const k = UNIT * num(scale);
-      put(o.root, num(x), num(y), 0, k * (num(facing) < 0 ? -1 : 1), k);
       const ms = sinceBump(mem, 1, swing ? swing.value : 0, clock.value);
       let a = 0;
       if (ms < DOOR_OPEN_MS) a = backOut(ms / DOOR_OPEN_MS);
@@ -1888,6 +1908,13 @@ export function Door({ x, y, scale = 1, palette, swing, open = 0, facing = 1, cl
       else if (ms < DOOR_OPEN_MS + DOOR_HOLD_MS + DOOR_CLOSE_MS) a = 1 - ease((ms - DOOR_OPEN_MS - DOOR_HOLD_MS) / DOOR_CLOSE_MS);
       const held = num(open);
       if (held > a) a = held;
+      // Idle (closed and not moving): skip the frame.
+      const px = num(x);
+      const py = num(y);
+      const sig = a + px * 7.1 + py * 13.3 + k * 101 + (num(facing) < 0 ? 1 : 0);
+      if (sig === mem[6]) return false;
+      mem[6] = sig;
+      put(o.root, px, py, 0, k * (num(facing) < 0 ? -1 : 1), k);
       // Seen from the front, an opening door gets narrower and its free edge swings towards us.
       const leaf = o.leaf;
       leaf[0] = 1 - 0.8 * a;
@@ -2175,14 +2202,18 @@ export interface ContactShadowProps {
 
 /** A soft round shadow on the floor. */
 export function ContactShadow({ x, y, width = 34, height = 9, scale = 1, strength = 1, zIndex }: ContactShadowProps) {
+  // As whatever casts it rises, the shadow mostly fades (alpha 0.22 -> 0.08) and shrinks only a little (1 -> 0.75).
+  const opacity = useDerivedValue(() => {
+    const k = Math.min(1, Math.max(0, num(strength)));
+    return (0.08 + 0.14 * k) / 0.22;
+  });
   const m = useRig(
     ROOT_KEYS,
     (o) => {
       'worklet';
       const s = num(scale);
       const k = Math.max(0, num(strength));
-      // Fainter shadows also get smaller, which reads as distance.
-      const g = 0.55 + 0.45 * Math.min(1, k);
+      const g = 0.75 + 0.25 * Math.min(1, k);
       pop(o.root, num(x), num(y), 0, k > 0.01 ? 1 : 0);
       if (k > 0.01) {
         o.root[0] = (width / 2) * s * g;
@@ -2192,7 +2223,7 @@ export function ContactShadow({ x, y, width = 34, height = 9, scale = 1, strengt
     [x, y, scale, strength, width, height],
   );
   return (
-    <Group matrix={m.root} zIndex={zIndex}>
+    <Group matrix={m.root} zIndex={zIndex} opacity={opacity}>
       <Picture picture={contactArt()} />
     </Group>
   );

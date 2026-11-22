@@ -11,9 +11,10 @@
  * while hair and hats may poke out over its top edge. It holds still except
  * for a blink every few seconds, so a screen full of them costs next to nothing.
  *
- * On phones each bust is a small Skia canvas. On web every canvas would hold a
- * WebGL context and browsers allow only a handful per page, so there the same
- * drawing is rendered once into an image instead.
+ * Big busts on phones (72 pt and up, or `render="canvas"`) get a small Skia
+ * canvas each. Smaller ones, and every bust on web, are rendered once into a
+ * cached image instead: a list of 30 portraits then costs 30 images, not 30
+ * GPU surfaces (and browsers allow only a handful of WebGL contexts per page).
  */
 import { Canvas, Circle, ClipOp, Group, Picture, Skia, type SkCanvas, type SkPath } from '@shopify/react-native-skia';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -36,6 +37,12 @@ export interface CharacterBustProps {
   mood?: BustMood;
   /** Set false to stop the blinking (very long lists, reduced motion). */
   blink?: boolean;
+  /**
+   * How it is drawn on phones. `canvas`: its own Skia canvas (a GPU surface; for the 1-4 big portraits on screen).
+   * `image`: rendered once into a cached image (for lists of many). `auto` (default): canvas from 72 pt up, image below.
+   * Web always uses the image.
+   */
+  render?: 'auto' | 'canvas' | 'image';
   style?: StyleProp<ViewStyle>;
 }
 
@@ -175,7 +182,7 @@ function NativeBust({ look, size, background, facing = 1, mood = 'calm', blink =
 }
 
 // ---------------------------------------------------------------------------
-// Web: an image
+// Lists on phones, and everything on web: a cached image
 // ---------------------------------------------------------------------------
 
 function paintBust(c: SkCanvas, art: BustArt, size: number, background: string | undefined, facing: number, shut: number) {
@@ -252,7 +259,8 @@ export function BustImage({ art, size, background, facing = 1, shut = 0, style }
   // The closed-eyes frame is drawn the first time it is needed and then stays mounted, so a blink never flashes.
   const [seenShut, setSeenShut] = useState(shut > 0);
   if (shut > 0 && !seenShut) setSeenShut(true);
-  const closed = useMemo(() => (seenShut && art.eyes ? bustImage(art, size, background, facing, shut > 0 ? shut : 1) : null), [seenShut, art, size, background, facing, shut]);
+  // Always the fully closed frame, so a blink reuses one cached image and never re-runs this memo.
+  const closed = useMemo(() => (seenShut && art.eyes ? bustImage(art, size, background, facing, 1) : null), [seenShut, art, size, background, facing]);
   const box = { position: 'absolute', left: 0, top: 0, width: size, height: size } as const;
   return (
     <View style={[{ width: size, height: size, pointerEvents: 'none' }, style]}>
@@ -262,7 +270,7 @@ export function BustImage({ art, size, background, facing = 1, shut = 0, style }
   );
 }
 
-function WebBust({ look, size, background, facing = 1, mood = 'calm', blink = true, style }: CharacterBustProps) {
+function ImageBust({ look, size, background, facing = 1, mood = 'calm', blink = true, style }: CharacterBustProps) {
   const art = useBustArt(look, size, mood);
   const [shut, setShut] = useState(0);
   const reopen = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -274,6 +282,11 @@ function WebBust({ look, size, background, facing = 1, mood = 'calm', blink = tr
   return <BustImage art={art} size={size} background={background} facing={facing} shut={shut} style={style} />;
 }
 
+/** Busts from this size up get their own canvas on phones (`render="auto"`); smaller ones, typical of lists, use the cached image. */
+export const BUST_CANVAS_MIN = 72;
+
 export function CharacterBust(props: CharacterBustProps) {
-  return Platform.OS === 'web' ? <WebBust {...props} /> : <NativeBust {...props} />;
+  const mode = props.render ?? 'auto';
+  const canvas = Platform.OS !== 'web' && (mode === 'canvas' || (mode === 'auto' && props.size >= BUST_CANVAS_MIN));
+  return canvas ? <NativeBust {...props} /> : <ImageBust {...props} />;
 }
