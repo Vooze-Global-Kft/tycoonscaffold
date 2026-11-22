@@ -979,7 +979,7 @@ Bot behaviour: places every idle drone at once on the slot with the highest marg
 
 Bot behaviour with Decision 40 (overrides the contract part above): with none taken, it takes the offer with the highest bonus that it can deliver in `haul.contracts.launches` launches once it routes for it (routed share per launch × launches ≥ units, 5 % to spare), then routes until every wanted ore is on pace with 15 % to spare (one launch's share as routed × launches left ≥ units left), at most `fleetShare` of the fleet per contract, and never drops a taken contract; it swipes by hand when the hold is full or holds everything the contract still needs. The passive player takes the best-paying offer and never routes for it. The watching player (Decision 42) only watches: autopilot on `full`, nothing bought, placed or routed, no contract taken.
 
-Bot behaviour in the finishing round (Decisions 56, 57, 62; overrides the two paragraphs above where they differ): the shop is `src/engine/haul/advice.ts` (the same estimate the limit hints use). Every 20 s it moves one to three drones from the route that loses least to the slot where a drone adds most when that raises the income line by more than 2 % (`routeGain`). With no contract taken it takes the offer with the highest bonus whose wanted ores all have a route; at the take and after every warp-out, while the contract's light is not green, it makes the move that raises the contract's pace most (an idle drone onto a rock of the short ore, a drone from another ore's route onto it, or a rig level on it when affordable; between moves that reach the pace, the one that keeps the most income), at most `fleetShare` of the fleet per contract; new drones go to the short ore; when the contract ends it moves the drones back where they were at the take. It runs the day shift once a minute. The player who never takes a contract (`noContracts`) is the same bot with the autopilot on `full`.
+Bot behaviour in the finishing round (Decisions 56, 57, 62; overrides the two paragraphs above where they differ): the shop is `src/engine/haul/advice.ts` (the same estimate the limit hints use). With no contract taken it takes the offer with the highest bonus whose wanted ores all have a route; at the take and after every warp-out, while the contract's light is not green, it makes the move that raises the contract's pace most (an idle drone onto a rock of the short ore, a drone from another ore's route onto it, or a rig level on it when affordable; between moves that reach the pace, the one that keeps the most income), at most `fleetShare` of the fleet per contract; new drones go to the short ore; when the contract ends it moves the drones back where they were at the take. It runs the day shift once a minute. The player who never takes a contract (`noContracts`) is the same bot with the autopilot on `full`.
 
 Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-miner --hours 12 --prestige [--seed n] [--compare true]` reports them; validate runs seeds 12345, 4, 99, 7 and 2026 in parallel and fails on a hard target missed on any of them, and when pods or Dark Matter per hour miss their window on more than one seed (Decisions 45 and 62). The first Jump's hard window in the gate is 2 h 18 to 2 h 42 (Decision 62).
 
@@ -1385,3 +1385,64 @@ A boot log, left-aligned in the lower third, lines arriving one by one, the stat
 Validate runs the pacing bot on five seeds (12345, 4, 99, 7, 2026) in parallel; every hard target must hold on each. The first Jump's hard window in the gate is 2 h 18 to 2 h 42 (three minutes inside each edge of 2 h 15 to 2 h 45; `JUMP_MARGIN` 180 s). Pods per hour and Dark Matter per hour in hours 1 to 3 must be inside their windows on at least four of the five seeds (validate fails otherwise). The balance bot runs the day shift (`haulShift` once a minute with its simulated wall time and the UTC day), and the property test has it among its actions (rules engineer).
 
 Also in this round (store and checks): the App Store promotional text no longer uses the first game's "verb, verb, and grow X into Y" frame or its idle promise ("Every rock runs dry. Every buyer wants a different ore. Which drone goes where, and when the freighter leaves the pad, is your call."); Tessaly's call no longer leads with its trade ("Tessaly. {units} {ore} wanted. Paying {mult}. Keep the hold sealed."); NAME-SEARCH.md lists "Drone Orbit: An Incremental Space Mining Drift" (keep the title and the subtitle); validate warns, and fails with `--release`, when a game's store screenshots are older than the last change to its game.json or its mode's strings file (git commit time, or the file's time while it has uncommitted changes), and when two games share one privacy policy address.
+
+
+#### Numbers of the finishing round
+
+Every shipped number that changed in this round (scripts/content/build-space.py; game.json regenerated, store files synced):
+
+- **Contracts** (Decision 56): `haul.contracts.launches` 6 (was 4); `raise` 0.25 to 0.6, `holdShare` 0.85 to 0.95, `raiseMult` 1, `maxShare` 0.9 (its new meaning), `minValueShare` 0.1, `minBonusSeconds` 10, `recentLaunches` 6; `reach` and `margin` are gone; `fleetShare` 0.5 is now only the bot's routing budget; multipliers as the specification (contractMultScale 1).
+- **Rocks** (Decision 58): `haul.start.firstLife` 600 s of drilling for the first rock of each ring-1 slot in galaxy 1.
+- **Rig cost growth** 1.6 (was 1.7): with the contract rule of Decision 56 the routes were drill-bound 60 to 72 % of the time on all five seeds (target: no kind above 60 %); at 1.6 that measure passed on four of five seeds in the run before the last threshold change.
+- **Prestige threshold** 3e8 (was 1.2e8): contracts drawn from what the station ships pay more for a router, so income is higher.
+- **Pods**: a Scrap Pod every 8th contract met (was 12): fewer contracts are met under Decision 56.
+- **Claims**: unchanged (claim ring factor 15). With 17 the hint path's first ring-2 claim moved from 3:56 to about 4:30, but the dead stretches of section 8 grew on every seed, so it was put back.
+- **Texts**: promotional text, Tessaly's call, condition lines upside first (Decisions 56 to 62 above).
+- **New section 8 targets**: earnings with contracts against never taking one at 2.5 h (1.3 to 1.7 times, soft); the first Jump's gate window 2 h 18 to 2 h 42 (hard); pods and Dark Matter per hour on at least four of five seeds (validate).
+
+**Measured at the end of the finishing round (shipped game.json, 12 h with Jumps, seeds 12345 / 4 / 99 / 7 / 2026; `npm run simulate -- space-miner --hours 12 --prestige --seed n --compare true`).** The gate does NOT pass. First Jump 2 h 00 / 2 h 55 / 2 h 32 / 2 h 04 / 2 h 54 (only seed 99 inside 2 h 18 to 2 h 42): with Decision 56 the router's outcome varies far more between seeds than it did (its run earnings at 2.5 h range over a factor of about 2 to 4 between seeds at every contract pay tried, 0.6 to 1.0 of the specification's mark-up), so no single threshold puts five seeds in a 24-minute window. Run 2 reaches run 1's Jump earnings at 45 / 30 / 38 / 52 / 30 %. Taken contracts met by the bot that routes: 40 / 33 / 40 / 45 / 49 % (target 60 to 85 %); by the passive player 10 / 17 / 8 / 8 / 18 % (≤ 25 %: met). Earnings with contracts against never taking one at 2.5 h: 3.36 / 1.96 / 1.73 / 3.49 / 2.38 (target 1.3 to 1.7: missed on all five; contracts still dominate). Contract bonus 25 to 47 % of income. Pods per hour in hours 1 to 3 between 2 and 9, Dark Matter 1.4 to 6.3 (inside on four of five seeds). Other hard targets missed in the last gate run: the longest stretch with nothing new before the first Jump (16 to 26 min on every seed, target 12), after the first Jump on three seeds (30 to 57 min, target 25), and the drill-bound share on seed 12345 (66 %). The first hint-path ring-2 claim (Decision 57) comes at 3:56 / 4:09 / 4:24 / 3:56 / 4:24.
+
+Knob table (`python3 scripts/content/build-space.py --table`; * = shipped value differs from the specification's starting value):
+
+| Knob | What | Range | Spec | Shipped |
+|---|---|---|---|---|
+| prestigeThreshold | lifetime credits per core squared (first Jump 2 h 15 to 2 h 45) | 100000.0 to 10000000000.0 | 2000000.0 | 300000000 * |
+| coreScale | cores scale | 1 to 20 | 5 | 5 |
+| offlineHours | offline cap, hours | 4 to 8 | 6 | 6 |
+| offlineEfficiency | offline efficiency (at most 0.45) | 0.3 to 0.45 | 0.45 | 0.45 |
+| oreRatio2 | copper / iron | 4 to 6 | 5 | 5 |
+| oreRatio3 | ice / copper | 4 to 6 | 5 | 5 |
+| oreRatio4 | titanium / ice | 4 to 6 | 4.8 | 4.8 |
+| oreRatio5 | platinum / titanium | 4 to 6 | 5 | 5 |
+| ringOreShare | share of a ring's own ore in its rock stream (rings 2 to 5) | 60 to 90 | 70 | 85 * |
+| startPile | units on slot 0 at the start | 5 to 10 | 8 | 8 |
+| rigLevel | drill per rig level | 1.25 to 1.45 | 1.35 | 1.4 * |
+| rigGrowth | rig cost growth | 1.45 to 1.8 | 1.6 | 1.6 |
+| claimBase | claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed) | 10 to 40 | 13 | 14 * |
+| claimRing | claim cost per ring | 15 to 30 | 20 | 15 * |
+| claimJ | claim cost per slot within a ring | 1.4 to 2.5 | 1.6 | 1.5 * |
+| droneCapacity | units a drone carries at capacity level 1 (Decision 44) | 4 to 6 | 4 | 5 * |
+| capacityGrowth | drone capacity per level (knob: haul binds) | 1.2 to 1.35 | 1.25 | 1.25 |
+| droneGrowth | drone cost growth (knob: fleet taps) | 1.35 to 1.6 | 1.45 | 1.45 |
+| capacityCostGrowth | capacity cost growth (knob: fleet taps) | 1.45 to 1.8 | 1.55 | 1.55 |
+| freighterCap | freighter capacity at level 1 (Decision 44: the tutorial rig step must pay) | 12 to 24 | 12 | 20 * |
+| freighterGrowth | freighter cost growth (knob: freighter binds) | 1.45 to 1.8 | 1.6 | 1.5 * |
+| autopilot | Dock Autopilot price | 80 to 110 | 90 | 90 |
+| bonanza | bonanza chance of a new rock | 0.03 to 0.06 | 0.04 | 0.06 * |
+| bonanzaDrill | bonanza drill (knob: run 2) | 2 to 3 | 2 | 3 * |
+| seamMin | seam interval, low end (knob: drags) | 60 to 90 | 90 | 90 |
+| seamMax | seam interval, high end (knob: drags) | 100 to 150 | 150 | 150 |
+| contractLaunches | warp-outs a taken contract has to deliver everything (Decision 56: 6) | 4 to 8 | 6 | 6 |
+| offerLaunches | warp-outs an offer stays on the board | 8 to 16 | 12 | 12 |
+| raiseLo | contract raise over what the station ships, low end (Decision 56) | 0.1 to 0.5 | 0.25 | 0.25 |
+| raiseHi | contract raise, high end (Decision 56) | 0.3 to 1.0 | 0.6 | 0.6 |
+| raiseMult | contract multiplier added per unit of raise (a harder contract pays more) | 0 to 2 | 1 | 1 |
+| fee | delivery fee on the rest of a met cargo | 0.05 to 0.15 | 0.1 | 0.1 |
+| fleetShare | share of the fleet a player sends to a contract when routing for it | 0.3 to 0.7 | 0.5 | 0.5 |
+| contractMultScale | contract multipliers: share of the specification's mark-up over x1 | 0.6 to 1 | 1 | 1 |
+| podsDepleted | a Scrap Pod every n-th dry rock (pods per hour) | 4 to 16 | 6 | 8 * |
+| podsContracts | a Scrap Pod every n-th contract met (pods per hour) | 4 to 16 | 4 | 8 * |
+| headStartRig | rig level of head-start slots (knob: run 2) | 4 to 10 | 4 | 6 * |
+| efficiencyCap | offline efficiency cap of the haul rules (gate measured with the ad bonus) | 0.25 to 0.45 | 0.45 | 0.45 |
+| partsBase | module parts for level 2 | 2 to 4 | 3 | 3 |
+| partsGrowth | module parts growth per level | 1.25 to 1.45 | 1.35 | 1.35 |

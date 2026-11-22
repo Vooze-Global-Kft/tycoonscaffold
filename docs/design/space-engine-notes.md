@@ -386,7 +386,7 @@ files.
   showings in `hintsShown` over its keys (at most `ADVICE_MAX` 6), stops at `ADVICE_UNTIL` 900 s of run
   clock and outside galaxy 1, and maps a purchase to its target with `adviceTarget`.
 - **The bot** (`bot.ts`): contracts by the pace light (section 8, finishing round), `unpark` after a
-  contract, `rebalance` every 20 s, the day shift once a minute (UTC day of its simulated wall time),
+  contract, the day shift once a minute (UTC day of its simulated wall time),
   `noContracts` for condition 6's comparison, `lifetime` per minute, `earnedBy`, the `JUMP_MARGIN` gate.
   `runTutorialHuman` follows the limit hints too (claims of any slot, station levels) and marks the rows
   they caused (`advice`).

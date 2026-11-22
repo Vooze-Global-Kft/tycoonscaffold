@@ -192,9 +192,6 @@ function rigLook(cfg: H.HaulConfig, level: number): boolean {
   return level > last && (level - last) % cfg.haul.rig.stripeEvery === 0;
 }
 
-/** The 20 s rebalance (off: it drove routes onto their drill limit, against section 8's limits target). */
-const REBALANCE = false;
-
 const sumUnits = (u: Record<string, number>) => Object.values(u).reduce((a, b) => a + b, 0);
 /** The calendar day of a wall time, as economy.dayKey writes it, in UTC (the bot's "local" day). */
 const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -370,27 +367,6 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
       moved++;
     }
     return moved;
-  };
-
-  /**
-   * Every 20 s a good player looks at the field again (section 8, finishing round): rocks dried and
-   * came back, rigs grew, so one drone moves from the route that loses least to the slot where it adds
-   * most, when that raises the income line by more than 2 % (`routeGain`, the drag preview's figure),
-   * at most 3 drones a look. While a contract is taken it never takes a drone off an ore it wants.
-   */
-  const rebalance = () => {
-    const c = opts.passive || opts.noContracts ? null : H.activeContract(g.haul);
-    const keep = c ? g.haul.slots.map((s, k) => (s.claimed && c.wants.some((w) => w.ore === s.ore) ? k : -1)).filter((k) => k >= 0) : [];
-    for (let k = 0; k < 3; k++) {
-      const to = H.bestSlotForDrone(cfg, g);
-      if (to === null) return;
-      const from = cheapestSource([to, ...keep]);
-      if (from === null || g.haul.slots[from].haulers < 2) return;
-      const gain = H.routeGain(cfg, g, from, to).delta;
-      if (!(gain > 0.02 * H.haulIncome(cfg, g))) return;
-      if (!act(H.moveDrone(cfg, g, from, to), [])) return;
-      count('drag');
-    }
   };
 
   /** 2 drones onto every new seam (natural or flare), 1 onto every new bonanza rock. */
@@ -729,7 +705,6 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
 
     if (!opts.watch) {
       placeIdle();
-      if (REBALANCE && t % 20 === 0) rebalance();
       serveSeamsAndBonanzas();
     }
     handleContracts();
