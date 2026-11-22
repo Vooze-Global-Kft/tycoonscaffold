@@ -6,11 +6,15 @@ import type { GameEvent } from '../engine/economy';
  * emitter rather than store state on purpose: events arrive many times a
  * second and must not cause React re-renders.
  *
- * The array passed to listeners is reused: read it during the call, never keep it.
+ * Listeners get a fresh array per tick that nobody writes to afterwards, so
+ * keeping it (for example to spread effects over the next frames) is safe.
+ * A listener that throws is reported and skipped: it can never stop the other
+ * listeners or the game loop.
  */
 type Listener = (events: readonly GameEvent[]) => void;
 
 const listeners = new Set<Listener>();
+let report: (error: unknown, where: string) => void = () => {};
 
 export const simEvents = {
   subscribe(listener: Listener): () => void {
@@ -20,7 +24,17 @@ export const simEvents = {
     };
   },
   emit(events: readonly GameEvent[]): void {
-    if (events.length === 0) return;
-    listeners.forEach((l) => l(events));
+    if (events.length === 0 || listeners.size === 0) return;
+    listeners.forEach((l) => {
+      try {
+        l(events);
+      } catch (e) {
+        report(e, 'simEvents.listener');
+      }
+    });
+  },
+  /** Where listener errors go (the store points this at crash reporting). */
+  onError(fn: (error: unknown, where: string) => void): void {
+    report = fn;
   },
 };

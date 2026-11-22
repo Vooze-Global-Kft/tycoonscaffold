@@ -25,6 +25,8 @@ const Purchases: RC | null = apiKey && !isExpoGo && Platform.OS !== 'web' ? load
 class IapService {
   private products = new Map<string, StoreProduct>();
   private configured = false;
+  /** Products whose payment sheet is open: a second purchase of the same one waits for nothing and fails. */
+  private buying = new Set<string>();
 
   /** True when real purchases are possible. Otherwise purchases are simulated in dev builds. */
   get live() {
@@ -36,12 +38,18 @@ class IapService {
     try {
       Purchases.configure({ apiKey: apiKey! });
       this.configured = true;
-      const ids = baseGame.monetization.iap.products.map((p) => p.id);
-      const found = await Purchases.getProducts(ids, Purchases.PRODUCT_CATEGORY.NON_SUBSCRIPTION);
-      found.forEach((p) => this.products.set(p.identifier, p));
+      await this.loadProducts();
     } catch (e) {
       crash.record(e, 'iap.init');
     }
+  }
+
+  /** Fetches store products. Also retried at purchase time: a failed fetch at startup (offline) used to disable every purchase until a restart. */
+  private async loadProducts(): Promise<void> {
+    if (!Purchases || !this.configured) return;
+    const ids = baseGame.monetization.iap.products.map((p) => p.id);
+    const found = await Purchases.getProducts(ids, Purchases.PRODUCT_CATEGORY.NON_SUBSCRIPTION);
+    found.forEach((p) => this.products.set(p.identifier, p));
   }
 
   price(product: IapProduct): string {
@@ -50,6 +58,18 @@ class IapService {
 
   /** Resolves true when the purchase completed and the product should be granted. */
   async purchase(product: IapProduct): Promise<boolean> {
+    // Double taps: the store would show a second sheet or fail with "operation in progress", and in
+    // the simulated path both would succeed and grant twice.
+    if (this.buying.has(product.id)) return false;
+    this.buying.add(product.id);
+    try {
+      return await this.purchaseOnce(product);
+    } finally {
+      this.buying.delete(product.id);
+    }
+  }
+
+  private async purchaseOnce(product: IapProduct): Promise<boolean> {
     analytics.log('iap_begin', { product_id: product.id });
     if (!Purchases) {
       if (!__DEV__) return false;
@@ -58,6 +78,7 @@ class IapService {
       analytics.log('iap_success_simulated', { product_id: product.id });
       return true;
     }
+    if (!this.products.has(product.id)) await this.loadProducts().catch((e) => crash.record(e, 'iap.products'));
     const sp = this.products.get(product.id);
     if (!sp) return false;
     try {

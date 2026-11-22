@@ -72,7 +72,16 @@ interface Store {
   /** The player's country (ISO alpha-2) when known. Decides whether chests may be sold: see chestSalesAllowed. */
   region: string | null;
 
+  /** Loads the save and starts the game. Call once at startup; later calls behave like resume(). */
   boot(): Promise<void>;
+  /** The app went to the background: stop the clock and save. */
+  pause(): Promise<void>;
+  /**
+   * The app came back to the foreground: pay offline earnings for the time away, measured from
+   * the in-memory state (never re-read from disk), repair timers, count a new session if the
+   * player was away long enough, refresh the time-based meta systems.
+   */
+  resume(): void;
   tick(dt: number): void;
   save(): Promise<void>;
   setBuyAmount(a: BuyAmount): void;
@@ -139,8 +148,54 @@ let rushWasActive = false;
 let leaveCount = 0;
 /** At most one deal popup per session, and none in the very first session. */
 let dealPopupShown = false;
-/** Reused every tick so the 10 Hz loop allocates as little as possible. */
+/** Reused every tick so the 10 Hz loop allocates as little as possible (listeners get a copy). */
 const tickEvents: GameEvent[] = [];
+/** boot() runs once; a second call (the app returning to the foreground in older App.tsx builds) becomes resume(). */
+let booting: Promise<void> | null = null;
+/** True between pause() and resume(): the loop must not earn while the app is in the background. */
+let paused = false;
+/** Wall-clock time the last tick ran. Offline time is measured from here, so time already played is never paid twice. */
+let lastTickAt = 0;
+/** Async actions in progress (an ad or a payment sheet is open); a second tap while one runs is ignored. */
+const inFlight = new Set<string>();
+/** The interstitial after a prestige waits this long, so the reset is seen before the ad covers it. */
+const PRESTIGE_AD_DELAY_MS = 1000;
+/** A tick never simulates more than this many seconds; longer gaps are offline time. */
+const MAX_TICK_SECONDS = 5;
+
+/**
+ * Runs one engine call that may fail (the meta systems are still being written, and a bug in
+ * one must never stop the game loop, boot or a purchase): on error it is reported and the
+ * fallback is used instead.
+ */
+function safe<T>(where: string, fn: () => T, fallback: T): T {
+  try {
+    return fn();
+  } catch (e) {
+    crash.record(e, where);
+    return fallback;
+  }
+}
+
+/** Runs an async action unless the same one is still running (double taps while an ad or a payment sheet opens). */
+async function once(key: string, fn: () => Promise<void>): Promise<void> {
+  if (inFlight.has(key)) return;
+  inFlight.add(key);
+  try {
+    await fn();
+  } finally {
+    inFlight.delete(key);
+  }
+}
+
+/** The time-based meta refreshes, each isolated so one failing does not skip the others. */
+function refreshMeta(cfg: GameConfig, game: GameState, now: number): GameState {
+  game = safe('meta.refreshDeals', () => M.refreshDeals(cfg, game, now), game);
+  game = safe('meta.refreshDailyShop', () => M.refreshDailyShop(cfg, game, now), game);
+  return safe('meta.refreshMissions', () => M.refreshMissions(cfg, game), game);
+}
+
+simEvents.onError((e, where) => crash.record(e, where));
 
 function nextBonusAt(cfg: GameConfig, now: number) {
   const { minSec, maxSec } = cfg.economy.bonus;
@@ -217,16 +272,17 @@ export const useGame = create<Store>((set, get) => {
   /** Deals, the daily shop and missions depend on the clock and on progress; refresh them now and then. */
   const housekeeping = () => {
     const now = Date.now();
-    const game = update((s, cfg) => M.refreshMissions(cfg, M.refreshDailyShop(cfg, M.refreshDeals(cfg, s, now), now)));
+    const game = update((s, cfg) => refreshMeta(cfg, s, now));
     const canPop = !dealPopupShown && game.stats.sessions >= 2 && get().dealPopup === null && get().chestOpening === null && get().offline === null;
     if (canPop && E.pendingStoryBeat(get().cfg, game) === null) {
       const { cfg, region } = get();
-      const deal = M.dealToShow(cfg, game, now);
+      const deal = safe('meta.dealToShow', () => M.dealToShow(cfg, game, now), null);
       // Where chests may not be sold, an offer containing one is never shown.
-      if (deal && (M.chestSalesAllowed(cfg, region) || !M.containsChest(deal.contents))) {
+      if (deal && safe('meta.chestSalesAllowed', () => M.chestSalesAllowed(cfg, region) || !M.containsChest(deal.contents), false)) {
         dealPopupShown = true;
         set({ dealPopup: deal.id });
-        fx.play('deal_popup');
+        // Policy: no haptic on a sales prompt (docs/design/research/policy.md, checklist item 6).
+        fx.play('deal_popup', { haptic: false });
         analytics.log('deal_shown', { deal_id: deal.id });
       }
     }
@@ -234,7 +290,7 @@ export const useGame = create<Store>((set, get) => {
 
   const openChestNow = (chestId: string) => {
     const { cfg, game } = get();
-    const result = M.openChest(cfg, game, chestId, Date.now());
+    const result = safe('meta.openChest', () => M.openChest(cfg, game, chestId, Date.now()), null);
     if (!result) return fx.play('ui_denied');
     syncAds(result.state);
     set({ game: result.state, chestOpening: { id: ++chestSeq, chestId, rewards: result.rewards } });
@@ -258,72 +314,137 @@ export const useGame = create<Store>((set, get) => {
     dealPopup: null,
     region: null,
 
-    async boot() {
-      const now = Date.now();
-      let game = E.createInitialState(baseGame, now);
-      let returning = false;
-      try {
-        const raw = await AsyncStorage.getItem(SAVE_KEY);
-        if (raw) {
-          game = E.reconcileState(baseGame, JSON.parse(raw));
-          returning = true;
+    boot() {
+      // Once only. Re-reading the save on every return to the foreground (what App.tsx used to do)
+      // replaced the in-memory game with an older copy: progress since the last save, purchases made
+      // while boot awaited Remote Config, and open popups were lost, and sessions were counted twice.
+      if (booting) {
+        return booting.then(() => get().resume());
+      }
+      booting = (async () => {
+        const now = Date.now();
+        let game = E.createInitialState(baseGame, now);
+        let returning = false;
+        try {
+          const raw = await AsyncStorage.getItem(SAVE_KEY);
+          if (raw) {
+            game = E.reconcileState(baseGame, JSON.parse(raw), now);
+            returning = true;
+          }
+        } catch (e) {
+          crash.record(e, 'load-save');
         }
-      } catch (e) {
-        crash.record(e, 'load-save');
+
+        // Remote Config, ads and IAP in parallel; none of them may block play.
+        const [overrides] = await Promise.all([
+          Promise.race([fetchRemoteOverrides(remoteDefaults(baseGame)), new Promise<{}>((r) => setTimeout(() => r({}), 2500))]),
+          iap.init(),
+        ]);
+        const cfg = applyRemoteOverrides(baseGame, overrides);
+        ads.firstInterstitialAfterSec = cfg.monetization.ads.firstInterstitialAfterSec;
+        ads.interstitialCooldownSec = cfg.monetization.ads.interstitialCooldownSec;
+        ads.maxAdContentRating = cfg.monetization.ads.maxAdContentRating;
+
+        const at = Date.now();
+        game = E.clampClock(cfg, game, at);
+        // Re-grant non-consumables the store says this account owns (reinstall, new device).
+        for (const id of await iap.owned()) {
+          const p = cfg.monetization.iap.products.find((x) => x.id === id);
+          if (p && M.isNonConsumable(p) && !M.productOwned(game, p)) game = safe('meta.applyProduct', () => M.applyProduct(cfg, game, p, at).state, game);
+        }
+        game = safe('meta.registerSession', () => M.registerSession(game, at), game);
+        game = safe('meta.startFreeChestTimer', () => M.startFreeChestTimer(cfg, game, at), game);
+        game = refreshMeta(cfg, game, at);
+
+        const offline = returning ? E.computeOffline(cfg, game, at) : null;
+        syncAds(game);
+        rushWasActive = E.isRushActive(game, at);
+        lastTickAt = at;
+        paused = false;
+        set({
+          cfg,
+          game: { ...game, lastSavedAt: at },
+          hydrated: true,
+          offline: offline && offline.seconds >= cfg.economy.offline.minSecondsToShow && offline.earnings > 0 ? offline : null,
+        });
+        analytics.log(returning ? 'session_resume' : 'first_open_game', { prestige: game.prestigeCount, mode: cfg.mode, session: game.stats.sessions });
+        ads.init();
+        detectRegion().then((region) => set({ region }));
+      })();
+      return booting;
+    },
+
+    async pause() {
+      if (!get().hydrated || paused) return;
+      paused = true;
+      await get().save();
+    },
+
+    resume() {
+      const { cfg, hydrated } = get();
+      if (!hydrated) return;
+      const now = Date.now();
+      paused = false;
+      let game = get().game;
+      // Time away starts when the game last ran: the later of the last save and the last tick (on
+      // Android the JS loop can keep running for a while in the background, and that time was
+      // already paid by the ticks themselves).
+      const awayFrom = Math.max(game.lastSavedAt, lastTickAt);
+      game = E.clampClock(cfg, { ...game, lastSavedAt: Math.min(awayFrom, now) }, now);
+      const sessionsBefore = game.stats.sessions;
+      game = safe('meta.registerSession', () => M.registerSession(game, now), game);
+      const newSession = game.stats.sessions > sessionsBefore;
+      if (newSession) dealPopupShown = false;
+      game = safe('meta.startFreeChestTimer', () => M.startFreeChestTimer(cfg, game, now), game);
+      game = refreshMeta(cfg, game, now);
+
+      const away = E.computeOffline(cfg, game, now);
+      let offline = get().offline;
+      if (away.earnings > 0) {
+        if (offline || away.seconds >= cfg.economy.offline.minSecondsToShow) {
+          // Merge with a popup that is still open, so nothing earned while away is dropped.
+          offline = offline ? { seconds: offline.seconds + away.seconds, earnings: offline.earnings + away.earnings } : away;
+        } else {
+          // A short trip to the background (a notification, the app switcher) pays quietly.
+          game = E.grantCash(game, away.earnings);
+        }
       }
-
-      // Remote Config, ads and IAP in parallel; none of them may block play.
-      const [overrides] = await Promise.all([
-        Promise.race([fetchRemoteOverrides(remoteDefaults(baseGame)), new Promise<{}>((r) => setTimeout(() => r({}), 2500))]),
-        iap.init(),
-      ]);
-      const cfg = applyRemoteOverrides(baseGame, overrides);
-      ads.firstInterstitialAfterSec = cfg.monetization.ads.firstInterstitialAfterSec;
-      ads.interstitialCooldownSec = cfg.monetization.ads.interstitialCooldownSec;
-
-      // Re-grant non-consumables the store says this account owns (reinstall, new device).
-      for (const id of await iap.owned()) {
-        const p = cfg.monetization.iap.products.find((x) => x.id === id);
-        if (p && M.isNonConsumable(p)) game = M.applyProduct(cfg, game, p, now).state;
-      }
-      game = M.startFreeChestTimer(cfg, M.registerSession(game, now), now);
-      game = M.refreshMissions(cfg, M.refreshDailyShop(cfg, M.refreshDeals(cfg, game, now), now));
-
-      const offline = returning ? E.computeOffline(cfg, game, now) : null;
-      syncAds(game);
       rushWasActive = E.isRushActive(game, now);
-      set({
-        cfg,
-        game: { ...game, lastSavedAt: now },
-        hydrated: true,
-        offline: offline && offline.seconds >= cfg.economy.offline.minSecondsToShow && offline.earnings > 0 ? offline : null,
-      });
-      analytics.log(returning ? 'session_resume' : 'first_open_game', { prestige: game.prestigeCount, mode: cfg.mode, session: game.stats.sessions });
-      ads.init();
-      detectRegion().then((region) => set({ region }));
+      lastTickAt = now;
+      syncAds(game);
+      set({ game: { ...game, lastSavedAt: now }, offline, combo: { taps: 0, lastTapAt: 0 } });
+      if (newSession) analytics.log('session_resume', { prestige: game.prestigeCount, mode: cfg.mode, session: game.stats.sessions });
+      get().save();
     },
 
     tick(dt) {
       const { cfg, game, hydrated } = get();
-      if (!hydrated) return;
+      if (!hydrated || paused || !(dt > 0)) return;
       const now = Date.now();
+      lastTickAt = now;
       tickEvents.length = 0;
-      set({ game: E.tick(cfg, game, dt, now, tickEvents) });
+      const next = E.tick(cfg, game, Math.min(dt, MAX_TICK_SECONDS), now, tickEvents);
+      set({ game: next });
       if (tickEvents.length > 0) {
-        if (E.isSim(cfg)) playSimSounds(tickEvents);
-        simEvents.emit(tickEvents);
+        // Listeners may keep what they get; the reused array is only the engine's scratch space.
+        const events = tickEvents.slice();
+        if (E.isSim(cfg)) safe('fx.sim', () => playSimSounds(events), undefined);
+        simEvents.emit(events);
       }
-      const rushActive = E.isRushActive(game, now);
+      // A rush ends by time, not by an action: compare the state before and after this tick.
+      const rushActive = E.isRushActive(next, now);
       if (rushWasActive && !rushActive) fx.play('rush_end');
       rushWasActive = rushActive;
       houseClock += dt;
       if (houseClock >= 2) {
         houseClock = 0;
-        housekeeping();
+        safe('housekeeping', housekeeping, undefined);
       }
     },
 
     async save() {
+      // Before boot has loaded the save, the in-memory game is a blank one: writing it would wipe the player.
+      if (!get().hydrated) return;
       const game = { ...get().game, lastSavedAt: Date.now() };
       set({ game });
       try {
@@ -340,8 +461,8 @@ export const useGame = create<Store>((set, get) => {
     setTab(tab) {
       if (tab === get().tab) return;
       fx.play('ui_tab');
+      // No interstitial here: changing tabs is the player choosing to do something else (policy.md item 11).
       set({ tab });
-      ads.maybeShowInterstitial('tab_change');
     },
     openModal(modal) {
       fx.play('ui_open');
@@ -522,21 +643,22 @@ export const useGame = create<Store>((set, get) => {
       analytics.log('rush_start', { count: next.stats.rushes });
     },
 
-    async adResetRush() {
-      const { game } = get();
-      const now = Date.now();
-      if (E.isRushActive(game, now) || now >= game.rush.readyAt) return;
-      const ok = await ads.showRewarded('rush_reset');
-      if (!ok) return;
-      update((s) => E.resetRushCooldown(s, Date.now()));
-      fx.play('boost_start');
-    },
+    adResetRush: () =>
+      once('rush_reset', async () => {
+        const { game } = get();
+        const now = Date.now();
+        if (E.isRushActive(game, now) || now >= game.rush.readyAt) return;
+        const ok = await ads.showRewarded('rush_reset');
+        if (!ok) return;
+        update((s) => E.resetRushCooldown(s, Date.now()));
+        fx.play('boost_start');
+      }),
 
     // ------------------------------------------------------------ cards, chests, missions, deals
 
     levelUpCard(cardId) {
       const before = get().game;
-      const next = update((s, cfg) => M.levelUpCard(cfg, s, cardId));
+      const next = update((s, cfg) => safe('meta.levelUpCard', () => M.levelUpCard(cfg, s, cardId), s));
       if (next === before) return fx.play('ui_denied');
       fx.play('card_levelup');
       analytics.log('card_level_up', { card_id: cardId, level: next.cards[cardId].level });
@@ -551,27 +673,32 @@ export const useGame = create<Store>((set, get) => {
     claimFreeChest() {
       const { cfg, game } = get();
       const chestId = cfg.meta.freeChest?.chestId;
-      const next = update((s) => M.claimFreeChest(cfg, s, Date.now()));
+      const next = update((s) => safe('meta.claimFreeChest', () => M.claimFreeChest(cfg, s, Date.now()), s));
       if (!chestId || next === game) return fx.play('ui_denied');
       analytics.log('chest_free_claim');
       openChestNow(chestId);
     },
 
-    async watchAdChest() {
-      const { cfg, game } = get();
-      const chestId = cfg.meta.adChest?.chestId;
-      const status = M.adChestStatus(cfg, game, Date.now());
-      if (!chestId || !status || status.left <= 0 || status.nextInMs > 0) return fx.play('ui_denied');
-      const ok = await ads.showRewarded('ad_chest');
-      if (!ok) return;
-      update((s) => M.grantAdChest(cfg, s, Date.now()));
-      openChestNow(chestId);
-    },
+    watchAdChest: () =>
+      once('ad_chest', async () => {
+        const { cfg, game } = get();
+        const chestId = cfg.meta.adChest?.chestId;
+        const status = safe('meta.adChestStatus', () => M.adChestStatus(cfg, game, Date.now()), null);
+        if (!chestId || !status || status.left <= 0 || status.nextInMs > 0) return fx.play('ui_denied');
+        const ok = await ads.showRewarded('ad_chest');
+        if (!ok) return;
+        // The ad took a while: grant against the latest state, and open only if the grant really happened
+        // (otherwise this would open a chest the player owned from somewhere else).
+        const before = get().game;
+        const next = update((s) => safe('meta.grantAdChest', () => M.grantAdChest(cfg, s, Date.now()), s));
+        if (next === before) return fx.play('ui_denied');
+        openChestNow(chestId);
+      }),
 
     buyChest(chestId) {
-      if (!M.chestSalesAllowed(get().cfg, get().region)) return fx.play('ui_denied');
+      if (!safe('meta.chestSalesAllowed', () => M.chestSalesAllowed(get().cfg, get().region), false)) return fx.play('ui_denied');
       const before = get().game;
-      const next = update((s, cfg) => M.buyChest(cfg, s, chestId));
+      const next = update((s, cfg) => safe('meta.buyChest', () => M.buyChest(cfg, s, chestId), s));
       if (next === before) return fx.play('ui_denied');
       analytics.log('spend_virtual_currency', { virtual_currency_name: 'gems', value: before.gems - next.gems, item_name: `chest_${chestId}` });
       openChestNow(chestId);
@@ -579,7 +706,7 @@ export const useGame = create<Store>((set, get) => {
 
     claimMission(index) {
       const { cfg, game } = get();
-      const result = M.claimMission(cfg, game, index, Date.now());
+      const result = safe('meta.claimMission', () => M.claimMission(cfg, game, index, Date.now()), null);
       if (!result) return fx.play('ui_denied');
       syncAds(result.state);
       set({ game: result.state });
@@ -588,7 +715,8 @@ export const useGame = create<Store>((set, get) => {
       analytics.log('mission_claim', { index });
     },
 
-    async buyDeal(dealId) {
+    buyDeal: (dealId) =>
+      once(`deal:${dealId}`, async () => {
       const { cfg, game } = get();
       const deal = cfg.meta.deals.find((d) => d.id === dealId);
       if (!deal) return;
@@ -596,13 +724,17 @@ export const useGame = create<Store>((set, get) => {
       let result: { state: GameState; granted: GrantedReward[] } | null;
       if (deal.productId) {
         const product = cfg.monetization.iap.products.find((p) => p.id === deal.productId);
-        if (!product || !M.activeDeals(cfg, game, now).some((d) => d.deal.id === dealId)) return fx.play('ui_denied');
+        if (!product || !safe('meta.activeDeals', () => M.activeDeals(cfg, game, now), []).some((d) => d.deal.id === dealId)) return fx.play('ui_denied');
         const ok = await iap.purchase(product);
         if (!ok) return;
         // Use the latest state: the game kept running while the payment sheet was open.
-        result = M.grantDeal(cfg, get().game, dealId, Date.now());
+        result = safe('meta.grantDeal', () => M.grantDeal(cfg, get().game, dealId, Date.now()), null);
+        if (!result) {
+          // Money was taken: never fail silently. (A grant can only fail here if the meta code is broken.)
+          crash.record(new Error(`deal ${dealId} paid but not granted`), 'buyDeal');
+        }
       } else {
-        result = M.buyDealWithGems(cfg, game, dealId, now);
+        result = safe('meta.buyDealWithGems', () => M.buyDealWithGems(cfg, game, dealId, now), null);
       }
       if (!result) return fx.play('ui_denied');
       syncAds(result.state);
@@ -611,19 +743,19 @@ export const useGame = create<Store>((set, get) => {
       celebrateRewards(result.granted);
       analytics.log('deal_buy', { deal_id: dealId, paid: deal.productId ? 'money' : 'gems' });
       get().save();
-    },
+      }),
 
     dismissDealPopup() {
       const id = get().dealPopup;
       if (id === null) return;
-      update((s) => M.markDealSeen(s, id));
+      update((s) => safe('meta.markDealSeen', () => M.markDealSeen(s, id), s));
       set({ dealPopup: null });
       fx.play('ui_close');
     },
 
     buyDailyOffer(offerId) {
       const { cfg, game } = get();
-      const result = M.buyDailyOffer(cfg, game, offerId, Date.now());
+      const result = safe('meta.buyDailyOffer', () => M.buyDailyOffer(cfg, game, offerId, Date.now()), null);
       if (!result) return fx.play('ui_denied');
       syncAds(result.state);
       set({ game: result.state });
@@ -638,37 +770,48 @@ export const useGame = create<Store>((set, get) => {
       const { cfg, game } = get();
       const gained = E.prestigePointsAvailable(cfg, game);
       if (gained <= 0) return fx.play('ui_denied');
-      update((s) => M.refreshDeals(cfg, E.prestige(cfg, s, Date.now()), Date.now()));
+      update((s) => {
+        const now = Date.now();
+        const reset = E.prestige(cfg, s, now);
+        return safe('meta.refreshDeals', () => M.refreshDeals(cfg, reset, now), reset);
+      });
       fx.play('prestige');
       analytics.log('prestige', { points: gained, count: game.prestigeCount + 1 });
       set({ tab: 'home' });
       get().save();
-      ads.maybeShowInterstitial('prestige');
+      // Policy (policy.md item 11): a short pause so the reset is seen before an interstitial covers it.
+      ads.maybeShowInterstitial('prestige', PRESTIGE_AD_DELAY_MS);
     },
 
-    async collectOffline(doubled) {
-      const offline = get().offline;
-      if (!offline) return;
-      let amount = offline.earnings;
-      if (doubled) {
-        const ok = await ads.showRewarded('offline_double');
-        if (ok) amount *= 2;
-      }
-      update((s) => E.grantCash(s, amount));
-      set({ offline: null });
-      fx.play('offline_collect');
-      analytics.log('earn_virtual_currency', { virtual_currency_name: 'cash', value: amount, source: 'offline' });
-      if (!doubled) ads.maybeShowInterstitial('offline_collect');
-    },
+    collectOffline: (doubled) =>
+      once('offline', async () => {
+        const offline = get().offline;
+        if (!offline) return;
+        let amount = offline.earnings;
+        if (doubled) {
+          const ok = await ads.showRewarded('offline_double');
+          if (ok) amount *= 2;
+        }
+        // Clear the popup in the same update that pays it, and only pay what is still pending:
+        // a resume() while the ad was open may have merged more time into it.
+        const pending = get().offline;
+        if (pending && pending !== offline) amount += pending.earnings - offline.earnings;
+        update((s) => E.grantCash(s, amount));
+        set({ offline: null });
+        fx.play('offline_collect');
+        analytics.log('earn_virtual_currency', { virtual_currency_name: 'cash', value: amount, source: 'offline' });
+        // No interstitial after collecting: it would only ever follow a declined rewarded ad (policy.md item 11).
+      }),
 
-    async watchBoostAd() {
-      const { cfg, game } = get();
-      if (!E.canBoost(cfg, game, Date.now())) return;
-      const ok = await ads.showRewarded('boost');
-      if (!ok) return;
-      update((s, c) => E.activateBoost(c, s, Date.now()));
-      fx.play('boost_start');
-    },
+    watchBoostAd: () =>
+      once('boost', async () => {
+        const { cfg, game } = get();
+        if (!E.canBoost(cfg, game, Date.now())) return;
+        const ok = await ads.showRewarded('boost');
+        if (!ok) return;
+        update((s, c) => E.activateBoost(c, s, Date.now()));
+        fx.play('boost_start');
+      }),
 
     claimDaily() {
       const before = get().game.gems;
@@ -697,37 +840,48 @@ export const useGame = create<Store>((set, get) => {
       if (beat.id === cfg.story[0]?.id) analytics.log('tutorial_complete');
     },
 
-    async purchase(product) {
-      if (M.isNonConsumable(product) && M.productOwned(get().game, product)) return;
-      const ok = await iap.purchase(product);
-      if (!ok) return;
-      const result = M.applyProduct(get().cfg, get().game, product, Date.now());
-      syncAds(result.state);
-      set({ game: result.state });
-      fx.play('purchase_success');
-      get().save();
-    },
+    purchase: (product) =>
+      once(`iap:${product.id}`, async () => {
+        if (M.isNonConsumable(product) && M.productOwned(get().game, product)) return;
+        const ok = await iap.purchase(product);
+        if (!ok) return;
+        // The payment sheet was open for a while: apply to the latest state, never to a copy taken before.
+        const result = M.applyProduct(get().cfg, get().game, product, Date.now());
+        syncAds(result.state);
+        set({ game: result.state });
+        fx.play('purchase_success');
+        get().save();
+      }),
 
     async restorePurchases() {
-      const ids = await iap.restore();
-      let count = 0;
-      for (const id of ids) {
-        const p = get().cfg.monetization.iap.products.find((x) => x.id === id);
-        if (p && M.isNonConsumable(p) && !M.productOwned(get().game, p)) {
-          update((s, cfg) => M.applyProduct(cfg, s, p, Date.now()).state);
-          count++;
+      // A second tap while the store dialog is open would apply the same products twice in a race.
+      if (inFlight.has('restore')) return 0;
+      inFlight.add('restore');
+      try {
+        const ids = await iap.restore();
+        let count = 0;
+        for (const id of ids) {
+          const p = get().cfg.monetization.iap.products.find((x) => x.id === id);
+          if (p && M.isNonConsumable(p) && !M.productOwned(get().game, p)) {
+            update((s, cfg) => M.applyProduct(cfg, s, p, Date.now()).state);
+            count++;
+          }
         }
+        get().save();
+        return count;
+      } finally {
+        inFlight.delete('restore');
       }
-      get().save();
-      return count;
     },
 
     async reset() {
       await AsyncStorage.removeItem(SAVE_KEY);
       const now = Date.now();
       const { cfg } = get();
-      let fresh = M.startFreeChestTimer(cfg, M.registerSession(E.createInitialState(cfg, now), now), now);
-      fresh = M.refreshMissions(cfg, M.refreshDailyShop(cfg, M.refreshDeals(cfg, fresh, now), now));
+      let fresh = E.createInitialState(cfg, now);
+      fresh = safe('meta.registerSession', () => M.registerSession(fresh, now), fresh);
+      fresh = safe('meta.startFreeChestTimer', () => M.startFreeChestTimer(cfg, fresh, now), fresh);
+      fresh = refreshMeta(cfg, fresh, now);
       set({ game: fresh, offline: null, chestOpening: null, dealPopup: null, celebrations: [] });
     },
   };
