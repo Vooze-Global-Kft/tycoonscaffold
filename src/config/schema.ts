@@ -5,7 +5,8 @@
  * against this schema. The code never branches on a game id.
  */
 import { z } from 'zod';
-import { MetaSchema, SimSchema } from './schema.sim';
+import { HaulSchema } from './schema.haul';
+import { MetaSchema, RewardSchema, SimSchema } from './schema.sim';
 
 export * from './schema.sim';
 
@@ -88,6 +89,18 @@ export const StoryBeatSchema = z.object({
     z.object({ type: z.literal('hired'), businessId: z.string() }),
     /** Sim mode: the transport automation hire has been bought (in any venue). */
     z.object({ type: z.literal('transportHired') }),
+    /** Haul mode (src/engine/mode.ts storyTrigger): lifetime warp-outs reached `count`. */
+    z.object({ type: z.literal('launches'), count: z.number().int().positive() }),
+    /** Haul mode: a slot on this ring (1-based) has ever been claimed. */
+    z.object({ type: z.literal('ring'), ring: z.number().int().positive() }),
+    /** Haul mode: contracts have unlocked (ever). */
+    z.object({ type: z.literal('contracts') }),
+    /** Haul mode: the dock autopilot has been online (ever). */
+    z.object({ type: z.literal('system') }),
+    /** Haul mode: the run is in this galaxy index (0-based) or later. */
+    z.object({ type: z.literal('galaxy'), index: z.number().int().nonnegative() }),
+    /** Haul mode: a Jump would gain at least `cores` cores ("Jump ready", spec section 8). */
+    z.object({ type: z.literal('jumpReady'), cores: z.number().int().positive().default(20) }),
   ]),
   /** Portrait for this beat only (e.g. an angry or excited expression). Defaults to the character's portrait. */
   portrait: icon.optional(),
@@ -103,10 +116,14 @@ export const IapProductSchema = z.object({
   /**
    * noAds: removes banners and pop-up ads. skipAds: rewarded boosts are granted without watching.
    * multiplier: permanent income multiplier (`value`). gems: `value` gems. timeWarp: `value` hours of income.
-   * starterPack: noAds plus `value` gems. deal: only a price; what it grants is set by the deal in `meta.deals`
-   * that names this product.
+   * starterPack: noAds plus `value` gems (or `contents` when set). deal: only a price; what it grants is set by
+   * the deal in `meta.deals` that names this product. clearance: no banners or pop-up ads, and every rewarded
+   * boost without the ad (one product). unlock: a permanent rule the mode reads from `entitlements.products`
+   * (haul: `haul.hangar.product`).
    */
-  kind: z.enum(['noAds', 'skipAds', 'multiplier', 'gems', 'starterPack', 'timeWarp', 'deal']),
+  kind: z.enum(['noAds', 'skipAds', 'multiplier', 'gems', 'starterPack', 'timeWarp', 'deal', 'clearance', 'unlock']),
+  /** starterPack only: what it grants instead of "no ads plus `value` gems" (a pack without no-ads). */
+  contents: z.array(RewardSchema).optional(),
   /** Multiplier value, gem amount or warp hours, depending on kind. */
   value: z.number().positive().default(1),
   icon: icon.optional(),
@@ -129,18 +146,18 @@ export const GameConfigSchema = z.object({
   /**
    * "classic": a list of businesses that pay straight into cash.
    * "sim": businesses are stations in a production chain with visible workers (needs the `sim` block).
-   * "haul": the orbital hauling game. Only its entry exists so far (a placeholder screen,
-   *   src/modes/haul); its engine and data come next, and until then a haul game still needs
-   *   the classic fields. The mode picks the code bundled with the game (src/generated/mode.ts)
-   *   and is never changed at run time.
+   * "haul": the orbital hauling game (needs the `haul` block; `businesses` stays empty). Its rules
+   *   are src/engine/haul, installed by its mode entry (src/engine/mode.ts).
+   * The mode picks the code bundled with the game (src/generated/mode.ts) and is never changed at run time.
    */
   mode: z.enum(['classic', 'sim', 'haul']).default('classic'),
   /**
-   * The sound pack: a folder in shared/sfx/ ("warm": marimba, plate clinks, the service bell;
-   * "synth"). Only this pack is bundled with the game; files in the game's own assets/sfx/
-   * override it by name. A missing sound is silent.
+   * The sound pack: a folder in shared/sfx/ ("warm": marimba, plate clinks, the service bell).
+   * Only this pack is bundled with the game; files in the game's own assets/sfx/ override it by
+   * name. null: no pack at all, the game plays only its own assets/sfx/ (so no other game's sound
+   * can ever fill a key it lacks). A missing sound is silent.
    */
-  soundPack: z.string().regex(/^[a-z0-9-]+$/).default('warm'),
+  soundPack: z.string().regex(/^[a-z0-9-]+$/).nullable().default('warm'),
 
   app: z.object({
     /** Name under the icon on the home screen (keep it short, about 12 chars). */
@@ -254,8 +271,8 @@ export const GameConfigSchema = z.object({
        * loop: each extra point needs relatively more lifetime earnings.
        */
       exponent: z.number().positive().max(1).default(0.5),
-      /** Revenue bonus per point (0.02 = +2%). */
-      bonusPerPoint: z.number().positive().default(0.02),
+      /** Revenue bonus per point (0.02 = +2%). 0 in a haul game (cores are spent, not passive; lint). */
+      bonusPerPoint: z.number().min(0).default(0.02),
     }),
     offline: z.object({
       maxHours: z.number().positive().default(4),
@@ -300,9 +317,12 @@ export const GameConfigSchema = z.object({
       .default({ tapsPerLevel: 12, maxMultiplier: 5, decayMs: 1400, name: 'COMBO' }),
   }),
 
-  businesses: z.array(BusinessSchema).min(1),
+  /** At least one in sim and classic games (lint); a haul game has none. */
+  businesses: z.array(BusinessSchema).default([]),
   /** Sim mode: transport, sales, venues and the rush skill. */
   sim: SimSchema.optional(),
+  /** Haul mode: the orbital map's content and numbers (src/config/schema.haul.ts). */
+  haul: HaulSchema.optional(),
   /** Cards, chests, missions and deals. Works in both modes; everything is optional. */
   meta: MetaSchema.default({
     cards: [],

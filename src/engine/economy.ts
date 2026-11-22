@@ -23,6 +23,7 @@ import {
   type ChainParams,
   type Stage,
 } from './chain';
+import { engineFor } from './mode';
 import { rngMix, seedFrom } from './rng';
 import { MAIN_VENUE, type BusinessState, type BuyAmount, type GameState, type VenueChain, type VenueState } from './types';
 
@@ -105,7 +106,7 @@ export function createInitialState(cfg: GameConfig, now: number): GameState {
   const ids = venueIds(cfg);
   const venues: Record<string, VenueState> = {};
   ids.forEach((id, i) => (venues[id] = createVenueState(cfg, i === 0)));
-  return {
+  const base: GameState = {
     version: 2,
     cash: cfg.economy.startingCash,
     gems: 0,
@@ -130,6 +131,9 @@ export function createInitialState(cfg: GameConfig, now: number): GameState {
     stats: { taps: 0, adsWatched: 0, playSeconds: 0, firstOpenAt: now, served: 0, levelsBought: 0, hires: 0, chestsOpened: 0, bonusCaught: 0, rushes: 0, sessions: 0, venuesEver: 1, clockHigh: now },
     lastSavedAt: now,
   };
+  // A mode with its own rules (src/engine/mode.ts) adds its fields; sim and classic return `base` as before.
+  const mode = engineFor(cfg);
+  return mode ? mode.create(cfg, base) : base;
 }
 
 // ---------------------------------------------------------------- loading saves
@@ -331,7 +335,7 @@ export function reconcileState(cfg: GameConfig, savedRaw: unknown, now?: number)
   const stats = { ...paid.stats, venuesEver: Math.min(Math.max(1, paid.stats.venuesEver), ids.length) };
 
   const activeVenue = typeof saved.activeVenue === 'string' && venues[saved.activeVenue]?.unlocked ? saved.activeVenue : ids[0];
-  return {
+  const reconciled: GameState = {
     ...fresh,
     ...(rest as Partial<GameState>),
     ...paid,
@@ -356,6 +360,9 @@ export function reconcileState(cfg: GameConfig, savedRaw: unknown, now?: number)
     rng: typeof saved.rng === 'number' && Number.isInteger(saved.rng) ? saved.rng >>> 0 : fresh.rng,
     lastSavedAt: finiteOr(saved.lastSavedAt, fresh.lastSavedAt),
   };
+  // A mode with its own rules repairs its own fields on top (src/engine/mode.ts).
+  const mode = engineFor(cfg);
+  return mode ? mode.reconcile(cfg, reconciled, savedRaw) : reconciled;
 }
 
 /**
@@ -581,7 +588,7 @@ function earn(state: GameState, amount: number): GameState {
 }
 
 function bumpStat(state: GameState, key: keyof GameState['stats'], by = 1): GameState {
-  return { ...state, stats: { ...state.stats, [key]: state.stats[key] + by } };
+  return { ...state, stats: { ...state.stats, [key]: (state.stats[key] ?? 0) + by } };
 }
 
 export function buyBusiness(cfg: GameConfig, state: GameState, venueId: string, id: string, amount: BuyAmount): GameState {
@@ -871,9 +878,21 @@ export function venueIncomePerSecond(cfg: GameConfig, state: GameState, venueId:
 
 /** Steady cash per second across all venues. The rush skill is not included (it is temporary). */
 export function incomePerSecond(cfg: GameConfig, state: GameState, now: number): number {
+  const mode = engineFor(cfg);
+  if (mode) return mode.income(cfg, state, now);
   let total = 0;
   for (const id of venueIds(cfg)) total += venueIncomePerSecond(cfg, state, id, now);
   return total;
+}
+
+/**
+ * Income per second while the game is played: what "seconds of income" rewards, mission targets
+ * and the Time Warp are priced in. The same as incomePerSecond for sim and classic; a mode with
+ * its own rules may earn more while played than on its own (haul: before the dock autopilot).
+ */
+export function activeIncomePerSecond(cfg: GameConfig, state: GameState, now: number): number {
+  const mode = engineFor(cfg);
+  return mode ? mode.activeIncome(cfg, state, now) : incomePerSecond(cfg, state, now);
 }
 
 // ---------------------------------------------------------------- simulation
@@ -926,6 +945,9 @@ function tickBusinesses(
  */
 export function tick(cfg: GameConfig, state: GameState, dt: number, now: number, events?: GameEvent[]): GameState {
   if (!(dt > 0)) return state;
+  // A mode with its own rules runs its own tick (its events are its own, not GameEvent).
+  const mode = engineFor(cfg);
+  if (mode) return mode.tick(cfg, state, dt, now, events as unknown[] | undefined);
   const mult = globalMultiplier(cfg, state, now);
   let earned = 0;
   let served = 0;
@@ -979,7 +1001,13 @@ export function tick(cfg: GameConfig, state: GameState, dt: number, now: number,
 
 // ---------------------------------------------------------------- offline
 
-export function computeOffline(cfg: GameConfig, state: GameState, now: number): { seconds: number; earnings: number } {
+/**
+ * Time away. `earnings` is not added yet (the store grants it, doubled with an ad). A mode with its
+ * own rules also returns the advanced `game` (the store keeps it) and its own `report`.
+ */
+export function computeOffline(cfg: GameConfig, state: GameState, now: number): { seconds: number; earnings: number; game?: GameState; report?: unknown } {
+  const mode = engineFor(cfg);
+  if (mode) return mode.offline(cfg, state, now);
   // Counted from the last save, or from the latest time the game ever ran at if that is later
   // (the clock was moved back: hours already paid are not paid again).
   const elapsed = (now - Math.max(state.lastSavedAt, state.stats.clockHigh ?? 0)) / 1000;
@@ -1019,7 +1047,9 @@ export function prestigePointsAvailable(cfg: GameConfig, state: GameState): numb
  * Keeps lifetime earnings, gems, premium upgrades, entitlements, cards,
  * chests, missions, deals, story and stats.
  */
-export function prestige(cfg: GameConfig, state: GameState, now: number): GameState {
+export function prestige(cfg: GameConfig, state: GameState, now: number, choice?: unknown): GameState {
+  const mode = engineFor(cfg);
+  if (mode) return mode.prestige(cfg, state, now, choice);
   const gained = prestigePointsAvailable(cfg, state);
   if (gained <= 0) return state;
   const fresh = createInitialState(cfg, state.stats.firstOpenAt);
@@ -1053,7 +1083,7 @@ export function canBoost(cfg: GameConfig, state: GameState, now: number): boolea
 
 /** Instantly earns `hours` of steady income. */
 export function timeWarp(cfg: GameConfig, state: GameState, hours: number, now: number): GameState {
-  return earn(state, incomePerSecond(cfg, state, now) * hours * 3600);
+  return earn(state, activeIncomePerSecond(cfg, state, now) * hours * 3600);
 }
 
 export function buyTimeWarpWithGems(cfg: GameConfig, state: GameState, now: number): GameState {
@@ -1129,7 +1159,7 @@ export function claimDaily(cfg: GameConfig, state: GameState, now: number): Game
 
 // ---------------------------------------------------------------- story
 
-function beatTriggered(beat: StoryBeat, state: GameState): boolean {
+function beatTriggered(cfg: GameConfig, beat: StoryBeat, state: GameState): boolean {
   const t = beat.trigger;
   const venues = Object.values(state.venues);
   switch (t.type) {
@@ -1147,11 +1177,14 @@ function beatTriggered(beat: StoryBeat, state: GameState): boolean {
       return venues.some((v) => v.businesses[t.businessId]?.managed === true);
     case 'transportHired':
       return venues.some((v) => v.chain?.transportManaged === true);
+    default:
+      // Triggers of a mode with its own rules (src/engine/mode.ts); false for any other mode.
+      return engineFor(cfg)?.storyTrigger?.(cfg, state, t) ?? false;
   }
 }
 
 export function pendingStoryBeat(cfg: GameConfig, state: GameState): StoryBeat | null {
-  return cfg.story.find((b) => !state.storySeen.includes(b.id) && beatTriggered(b, state)) ?? null;
+  return cfg.story.find((b) => !state.storySeen.includes(b.id) && beatTriggered(cfg, b, state)) ?? null;
 }
 
 export function markStorySeen(state: GameState, beat: StoryBeat): GameState {

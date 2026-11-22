@@ -30,8 +30,8 @@ export interface BundleManifest {
 export interface BundleContents {
   game: string;
   mode: string;
-  /** The game's declared sound pack. */
-  pack: string;
+  /** The game's declared sound pack (null: none, only its own sounds). */
+  pack: string | null;
   /** Project source files in the bundle (node_modules excluded). */
   modules: readonly string[];
   /** Asset files in the bundle (images, sounds, fonts). */
@@ -113,7 +113,7 @@ export function bundleViolations(b: BundleContents, m: BundleManifest): Violatio
   for (const file of b.assets) {
     if (!file.startsWith(packRoot)) continue;
     const pack = file.slice(packRoot.length).split('/')[0];
-    if (pack !== b.pack) out.push({ rule: 'other-pack', file, message: `is in the sound pack "${pack}", but ${b.game} declares "${b.pack}"` });
+    if (pack !== b.pack) out.push({ rule: 'other-pack', file, message: `is in the sound pack "${pack}", but ${b.game} declares ${b.pack === null ? 'no pack' : `"${b.pack}"`}` });
   }
   for (const pkg of b.packages) {
     const allowed = m.modePackages[pkg];

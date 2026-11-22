@@ -182,13 +182,15 @@ export const ChestSchema = z.object({
 });
 export type Chest = z.output<typeof ChestSchema>;
 
-export const MISSION_TYPES = ['serve', 'earn', 'levels', 'taps', 'bonus', 'chests', 'rush', 'hires'] as const;
+export const MISSION_TYPES = ['serve', 'earn', 'levels', 'taps', 'bonus', 'chests', 'rush', 'hires', 'hauled', 'launches', 'contracts', 'depleted', 'claims', 'seamDrags'] as const;
 export const MissionTemplateSchema = z.object({
   id: z.string().regex(/^[a-z0-9_]+$/),
   /**
    * What is counted: serve = guests served, earn = cash earned, levels = levels bought,
    * taps = taps, bonus = flying bonuses caught, chests = chests opened, rush = rush skills started,
-   * hires = automation hires.
+   * hires = automation hires. Haul mode (lifetime GameState.stats): hauled = units delivered, launches =
+   * warp-outs, contracts = contracts met, depleted = rocks worked dry, claims = slots claimed,
+   * seamDrags = drones put on rich seams.
    */
   type: z.enum(MISSION_TYPES),
   /** Text with {n} for the target, e.g. "Serve {n} customers". */

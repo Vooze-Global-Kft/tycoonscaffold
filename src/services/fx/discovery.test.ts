@@ -128,7 +128,14 @@ describe('sound packs', () => {
     expect(games.soundPack('x', { mode: 'sim' })).toBe('warm');
     expect(games.soundPack('x', { soundPack: 'synth' })).toBe('synth');
     expect(() => games.soundPackDir('x', { soundPack: 'nope' })).toThrow(/soundPack "nope"/);
-    expect(games.listSoundPacks()).toEqual(expect.arrayContaining(['synth', 'warm']));
+    expect(games.listSoundPacks()).toEqual(expect.arrayContaining(['warm']));
+  });
+
+  it('a game with "soundPack": null gets no shared pack at all, only its own sounds', () => {
+    expect(games.soundPack('x', { soundPack: null })).toBeNull();
+    expect(games.soundPackDir('x', { soundPack: null })).toBeNull();
+    // Space Miner (Orbit Haulers): every sound comes from its own folder, none from a pack.
+    for (const rel of Object.values(games.listSounds('space-miner') as Record<string, string>)) expect(rel.startsWith('games/space-miner/assets/sfx/')).toBe(true);
   });
 });
 

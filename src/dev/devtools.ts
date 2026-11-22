@@ -47,8 +47,11 @@ export function applyDevParams(): void {
   const { cfg } = useGame.getState();
 
   const preset = q.get('preset') as PresetName | null;
+  console.log('DBG preset', preset);
   if (preset && (PRESETS as readonly string[]).includes(preset)) {
     let game = buildPreset(cfg, preset, now);
+    console.log('DBG built', (game as any).haul?.clock);
+    setTimeout(() => console.log('DBG later', (useGame.getState().game as any).haul?.clock, useGame.getState().hydrated), 1500);
     if (q.get('story') === '1') game = { ...game, storySeen: [] };
     useGame.setState({ game, offline: null, dealPopup: null, chestOpening: null, celebrations: [] });
   }

@@ -4,27 +4,28 @@
     "categories": [
       [
         "GAMES",
-        "GAMES_SIMULATION",
-        "GAMES_CASUAL"
+        "GAMES_STRATEGY",
+        "GAMES_SIMULATION"
       ]
     ],
     "info": {
       "en-US": {
-        "title": "Asteroid Haul: Ore Empire",
-        "subtitle": "Drill rocks, run a star fleet",
-        "description": "Start with a single hand drill on a lonely asteroid and grow a mining company that spans the galaxy.\n\n• Build seven kinds of machines, from rovers to mirrors around a star\n• Give every machine an AI pilot so it runs without you\n• Collect a small crew of specialists and level them up\n• A free supply pod drops every few hours, and daily missions pay in Dark Matter\n• Earn credits while the app is closed\n• Jump to a new galaxy to earn Warp Cores and grow faster every run\n• Keep one step ahead of Director Rook and his rock monopoly\n\nAsteroid Haul is a calm space incremental game for short breaks.",
+        "title": "Orbit Haulers",
+        "subtitle": "Route ore drones, idle mining",
+        "description": "Orbit Haulers is an idle mining game about routes and cargo.\n\nYour station sits in an asteroid field. Drag hauler drones onto rocks to set their routes, and watch them carry ore home to the hold. When the hold is full, swipe the freighter off the pad: it warps out and the whole manifest sells at once.\n\nBuyers post contracts for the ores they want, and each contract lapses after a few launches. Pick one, send drones to the rocks that carry its ore, and its units sell for more.\n\nRocks run dry and new ones drift in, sometimes with a different ore, sometimes as a rich bonanza rock. The far rings hold copper, ice, titanium and platinum, but the trips are longer, so where you send each drone matters.\n\nBring the dock autopilot online and the station ships on its own while you are away. Fit modules into three sockets in the Fitting Bay; some of them change the rules. When a run has paid off, jump to a new galaxy, spend Warp Cores on the Star Map, and choose the conditions you will mine under next.\n\nFeatures\n- Drag-to-route drones on a top-down map of the asteroid field\n- One-swipe freighter launches and buyer contracts that lapse\n- Rocks that run dry and come back as new ore\n- A dock autopilot that keeps shipping offline\n- Fitting Bay modules and a Star Map that changes how each run starts\n- Optional rewarded ads; salvage pods are earned in play, never sold",
         "keywords": [
           "space",
           "mining",
           "asteroid",
-          "clicker",
+          "freighter",
+          "cargo",
+          "logistics",
+          "station",
           "galaxy",
-          "incremental",
+          "rocket",
           "sci-fi",
-          "planet",
-          "robots",
           "fleet",
-          "ore"
+          "manager"
         ]
       }
     }

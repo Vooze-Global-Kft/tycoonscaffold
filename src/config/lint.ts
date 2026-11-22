@@ -3,8 +3,9 @@
  * (scripts/validate.ts, scripts/generate-game.ts, tests): no app file imports this
  * (scripts/lib/modes.js NODE_ONLY), so its messages, which name every mode's things, ship in no game.
  */
-import { artIconsFor } from './artIcons';
+import { MACH_ICONS_BY_MODE, artIconsFor } from './artIcons';
 import type { GameConfig } from './schema';
+import { lintHaul } from './schema.haul';
 
 /**
  * Cross-field checks zod can't express per field. Returns a list of problems. `artIcons`: the
@@ -40,6 +41,31 @@ export function lintGameConfig(cfg: GameConfig, artIcons: readonly string[] = ar
       const [prev, v] = [cfg.sim.venues[i - 1], cfg.sim.venues[i]];
       if (v.scale <= prev.scale) problems.push(`venue "${v.id}" must have a larger scale than "${prev.id}"`);
       if (v.unlockCost <= prev.unlockCost) problems.push(`venue "${v.id}" must cost more to open than "${prev.id}"`);
+    }
+  }
+
+  // --- haul mode (spec section 2 header, errata 8) ---
+  if (cfg.mode === 'haul') {
+    if (!cfg.haul) problems.push('mode is "haul" but there is no "haul" block');
+    else problems.push(...lintHaul(cfg.haul, cfg.meta.cards.map((c) => c.id), cfg.meta.chests.map((c) => c.id)).map((m) => `haul: ${m}`));
+    if (cfg.economy.prestige.bonusPerPoint !== 0) problems.push('economy.prestige.bonusPerPoint must be 0 in a haul game (Warp Cores are spent on the Star Map, never a passive bonus)');
+    if (cfg.businesses.length > 0) problems.push('a haul game has no businesses');
+    if (cfg.upgrades.length > 0) problems.push('a haul game has no upgrades');
+    if (Object.keys(cfg.cast).length > 0) problems.push('a haul game draws no people: remove "cast" (portraits are "mach:" icons)');
+    for (const m of cfg.meta.missions.templates) {
+      if (m.type === 'taps' || m.type === 'bonus' || m.type === 'hires') problems.push(`mission "${m.id}" counts ${m.type}, which a haul game does not have`);
+    }
+  } else {
+    if (cfg.haul) problems.push('there is a "haul" block but mode is not "haul"');
+    if (cfg.businesses.length === 0) problems.push('a sim or classic game needs at least one business');
+    if (!(cfg.economy.prestige.bonusPerPoint > 0)) problems.push('economy.prestige.bonusPerPoint must be positive');
+    for (const m of cfg.meta.missions.templates) {
+      if (['hauled', 'launches', 'contracts', 'depleted', 'claims', 'seamDrags'].includes(m.type)) problems.push(`mission "${m.id}" counts ${m.type}, which only haul games have`);
+    }
+  }
+  for (const s of cfg.story) {
+    if (cfg.mode !== 'haul' && ['launches', 'ring', 'contracts', 'system', 'galaxy', 'jumpReady'].includes(s.trigger.type)) {
+      problems.push(`story beat "${s.id}" triggers on "${s.trigger.type}", which only haul games have`);
     }
   }
 
@@ -160,6 +186,8 @@ export function lintGameConfig(cfg: GameConfig, artIcons: readonly string[] = ar
     if (i.startsWith('asset:') && !assetKeys.has(i.slice(6))) problems.push(`icon "${i}" has no entry in assets`);
     if (i.startsWith('art:') && !artIcons.includes(i.slice(4)))
       problems.push(`icon "${i}" is not a drawn icon of mode "${cfg.mode}" (one of ${artIcons.map((n) => `art:${n}`).join(', ') || 'none'})`);
+    if (i.startsWith('mach:') && !(MACH_ICONS_BY_MODE[cfg.mode] ?? []).includes(i.slice(5))) problems.push(`icon "${i}" is not a machine portrait of mode "${cfg.mode}"`);
+    if (i.startsWith('char:') && cfg.mode === 'haul') problems.push(`icon "${i}": a haul game draws no people ("char:" icons); use a "mach:" portrait`);
   }
   // Each business should be meaningfully more expensive than the last, or the curve feels flat.
   for (let i = 1; i < cfg.businesses.length; i++) {

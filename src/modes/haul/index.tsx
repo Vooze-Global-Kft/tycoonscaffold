@@ -1,44 +1,44 @@
 /**
- * Mode entry "haul" (the coming Space Miner: a top-down orbital map, drones dragged onto rocks, a
- * freighter launched to sell; docs/design/space-design.md).
+ * Mode entry "haul" (Orbit Haulers: a top-down orbital map, drones dragged onto rocks, a freighter
+ * swiped off to sell; docs/design/space-design.md). Reached only through src/generated/mode.ts.
  *
- * PLACEHOLDER. Only the entry exists: it renders a labelled screen so a haul game builds, starts
- * and can be checked for what its bundle holds (npm run check:bundle). The real mode brings its
- * whole screen here (no tab bar) with its own overlays, its tutorial (`hints`) and its portraits
- * (`parts`); it must not import the sim or classic folders (scripts/lib/modes.js).
+ * What it hands over at install (src/modes/contract.ts):
+ * - `engine`: the haul rules as an engine mode (src/engine/haulMode.ts), so the shared engine
+ *   and the store reach them without importing them and no other game's bundle carries them;
+ * - `Shell`: its own whole screen (src/ui/haul/HaulShell.tsx), no tab shell;
+ * - `parts`: the hint pointer is the art kit's reticle, and its "art:" / "mach:" icons are drawn
+ *   by the kit's own cache (HaulIcon) through `parts.Icon`; no portraits of people;
+ * - `hints`: the rules' hints (src/ui/haul/hints.ts);
+ * - `presets`: `?preset=` states from the rules' fixtures (./presets.ts);
+ * - `devViews`: `?view=haul-art`, the art kit's gallery.
+ * It never imports the tabs family or another mode's folders (npm run check:bundle).
  */
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useGame } from '../../state/store';
+import { Text } from 'react-native';
+import { haulEngineMode } from '../../engine/haulMode';
+import Gallery from '../../ui/haul/art/Gallery';
+import { HaulIcon } from '../../ui/haul/art/HaulIcon';
+import { HaulShell } from '../../ui/haul/HaulShell';
+import { haulHints } from '../../ui/haul/hints';
+import { ReticlePointer } from '../../ui/haul/hud/ReticlePointer';
+import type { ModeIconProps } from '../../ui/modeParts';
 import type { ModeEntry } from '../contract';
+import { listenHaulEvents } from './fx';
+import { haulPreset } from './presets';
 
-function HaulPlaceholder() {
-  const name = useGame((s) => s.cfg.app.displayName);
-  const colors = useGame((s) => s.cfg.theme.colors);
-  return (
-    <SafeAreaView style={[styles.fill, { backgroundColor: colors.background }]}>
-      <StatusBar style="light" />
-      <View style={styles.centre}>
-        <Text style={[styles.title, { color: colors.primary }]}>{name}</Text>
-        <Text style={[styles.label, { color: colors.text }]}>Haul mode placeholder</Text>
-        <Text style={[styles.note, { color: colors.textMuted }]}>The orbital map is not built yet (src/modes/haul).</Text>
-      </View>
-    </SafeAreaView>
-  );
+function Icon({ icon, size }: ModeIconProps) {
+  return <HaulIcon name={icon} size={size} fallback={<Text style={{ fontSize: size * 0.7, width: size, textAlign: 'center' }}>❔</Text>} />;
 }
+
+listenHaulEvents();
 
 const entry: ModeEntry = {
   id: 'haul',
-  Shell: HaulPlaceholder,
+  Shell: HaulShell,
+  engine: haulEngineMode,
+  parts: { HintPointer: ReticlePointer, Icon, iconPrefixes: ['art:', 'mach:'] },
+  hints: haulHints,
+  presets: haulPreset,
+  devViews: { 'haul-art': Gallery },
 };
 
 export default entry;
-
-const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 },
-  title: { fontSize: 30, fontWeight: '900' },
-  label: { fontSize: 18, fontWeight: '700' },
-  note: { fontSize: 14, textAlign: 'center' },
-});

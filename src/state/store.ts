@@ -15,6 +15,7 @@ import * as E from '../engine/economy';
 import type { GameEvent } from '../engine/economy';
 import { formatNumber } from '../engine/format';
 import * as M from '../engine/meta';
+import { engineFor, installedEngine } from '../engine/mode';
 import type { GrantedReward } from '../engine/meta';
 import type { BuyAmount, GameState } from '../engine/types';
 import { ads } from '../services/ads';
@@ -23,9 +24,15 @@ import { fx } from '../services/fx';
 import { iap } from '../services/iap';
 import { detectRegion } from '../services/region';
 import { simEvents } from './events';
+import { modeEvents } from './modeEvents';
 import { overlays } from './overlays';
 
-const SAVE_KEY = `save:${ACTIVE_GAME_ID}:v1`;
+/**
+ * Where the save lives. A mode with its own engine names its own tag (src/engine/mode.ts
+ * `saveTag`), so a save of the game's earlier mode is never read; sim and classic keep "v1".
+ * Read when used, not at load: the mode entry installs its engine after this file is loaded.
+ */
+const saveKey = () => `save:${ACTIVE_GAME_ID}:${installedEngine()?.saveTag ?? 'v1'}`;
 
 export type Tab = 'home' | 'staff' | 'upgrades' | 'empire' | 'shop';
 
@@ -58,7 +65,8 @@ interface Store {
   buyAmount: BuyAmount;
   tab: Tab;
   modal: Modal | null;
-  offline: { seconds: number; earnings: number } | null;
+  /** Time away to pay. `report` is a mode engine's own account of it (haul: the Shift Log), when it has one. */
+  offline: { seconds: number; earnings: number; report?: unknown } | null;
   /** Floating "+$123" numbers; the UI drains them. */
   tapEvents: { id: number; amount: number; x: number; y: number; big?: boolean }[];
   /** Quick taps in a row; drives the combo multiplier. */
@@ -132,7 +140,8 @@ interface Store {
   buyDailyOffer(offerId: string): void;
 
   // --- the rest ---
-  prestige(): void;
+  /** The run reset. `choice` is a mode engine's own (haul: `{ traitId, buys }`, src/engine/haulMode.ts); sim and classic take none. */
+  prestige(choice?: unknown): void;
   collectOffline(doubled: boolean): Promise<void>;
   watchBoostAd(): Promise<void>;
   claimDaily(): void;
@@ -215,6 +224,7 @@ function refreshMeta(cfg: GameConfig, game: GameState, now: number): GameState {
 }
 
 simEvents.onError((e, where) => crash.record(e, where));
+modeEvents.onError((e, where) => crash.record(e, where));
 
 function nextBonusAt(cfg: GameConfig, now: number) {
   const { minSec, maxSec } = cfg.economy.bonus;
@@ -367,7 +377,7 @@ export const useGame = create<Store>((set, get) => {
         let game = E.createInitialState(baseGame, now);
         let returning = false;
         try {
-          const raw = await AsyncStorage.getItem(SAVE_KEY);
+          const raw = await AsyncStorage.getItem(saveKey());
           if (raw) {
             game = E.reconcileState(baseGame, JSON.parse(raw), now);
             returning = true;
@@ -398,6 +408,8 @@ export const useGame = create<Store>((set, get) => {
         game = refreshMeta(cfg, game, at);
 
         const offline = returning ? E.computeOffline(cfg, game, at) : null;
+        // A mode engine fast-forwards its own state while away (haul: rocks, piles, the hold); keep it.
+        if (offline?.game) game = offline.game;
         syncAds(game);
         rushWasActive = E.isRushActive(game, at);
         lastTickAt = at;
@@ -407,7 +419,7 @@ export const useGame = create<Store>((set, get) => {
           cfg,
           game: { ...game, lastSavedAt: at },
           hydrated: true,
-          offline: offline && offline.seconds >= cfg.economy.offline.minSecondsToShow && offline.earnings > 0 ? offline : null,
+          offline: offline && offline.seconds >= cfg.economy.offline.minSecondsToShow && offline.earnings > 0 ? { seconds: offline.seconds, earnings: offline.earnings, report: offline.report } : null,
         });
         analytics.log(returning ? 'session_resume' : 'first_open_game', { prestige: game.prestigeCount, mode: cfg.mode, session: game.stats.sessions });
         ads.init();
@@ -444,13 +456,18 @@ export const useGame = create<Store>((set, get) => {
       game = safe('meta.startFreeChestTimer', () => M.startFreeChestTimer(cfg, game, now), game);
       game = refreshMeta(cfg, game, now);
 
-      const away = E.computeOffline(cfg, game, now);
+      const computed = E.computeOffline(cfg, game, now);
+      const away = { seconds: computed.seconds, earnings: computed.earnings, report: computed.report };
       let offline = get().offline;
+      // A mode engine that fast-forwarded its own state (haul) has already moved the run; keep it,
+      // and never also tick the same time again below.
+      const advanced = computed.game !== undefined && away.seconds > 0;
+      if (advanced) game = computed.game!;
       if (away.earnings > 0) {
         if (offline || away.seconds >= cfg.economy.offline.minSecondsToShow) {
           // Merge with a popup that is still open, so nothing earned while away is dropped.
           offline = offline ? { seconds: offline.seconds + away.seconds, earnings: offline.earnings + away.earnings } : away;
-        } else if (away.seconds <= MAX_CATCH_UP_SECONDS) {
+        } else if (away.seconds <= MAX_CATCH_UP_SECONDS && !advanced) {
           // A short trip to the background (a notification, the app switcher, and on Android every
           // full-screen ad) is simply caught up at full speed: the chain runs on, nothing is popped up.
           game = E.tick(cfg, game, away.seconds, now);
@@ -477,8 +494,12 @@ export const useGame = create<Store>((set, get) => {
       if (tickEvents.length > 0) {
         // Listeners may keep what they get; the reused array is only the engine's scratch space.
         const events = tickEvents.slice();
-        if (E.isSim(cfg)) safe('fx.sim', () => playSimSounds(events), undefined);
-        simEvents.emit(events);
+        // A mode with its own engine reports its own events to its own listeners (src/state/modeEvents.ts).
+        if (engineFor(cfg)) modeEvents.emit(events);
+        else {
+          if (E.isSim(cfg)) safe('fx.sim', () => playSimSounds(events), undefined);
+          simEvents.emit(events);
+        }
       }
       // A rush ends by time, not by an action: compare the state before and after this tick.
       const rushActive = E.isRushActive(next, now);
@@ -497,7 +518,7 @@ export const useGame = create<Store>((set, get) => {
       const game = { ...get().game, lastSavedAt: Date.now() };
       set({ game });
       try {
-        await AsyncStorage.setItem(SAVE_KEY, JSON.stringify(game));
+        await AsyncStorage.setItem(saveKey(), JSON.stringify(game));
       } catch (e) {
         crash.record(e, 'save');
       }
@@ -829,13 +850,13 @@ export const useGame = create<Store>((set, get) => {
 
     // ------------------------------------------------------------ the rest
 
-    prestige() {
+    prestige(choice) {
       const { cfg, game } = get();
       const gained = E.prestigePointsAvailable(cfg, game);
       if (gained <= 0) return fx.play('ui_denied');
       update((s) => {
         const now = Date.now();
-        const reset = E.prestige(cfg, s, now);
+        const reset = E.prestige(cfg, s, now, choice);
         const fresh = safe('meta.missionsAfterReset', () => M.missionsAfterReset(cfg, reset, now), reset);
         return safe('meta.refreshDeals', () => M.refreshDeals(cfg, fresh, now), fresh);
       });
@@ -964,7 +985,7 @@ export const useGame = create<Store>((set, get) => {
     },
 
     async reset() {
-      await AsyncStorage.removeItem(SAVE_KEY);
+      await AsyncStorage.removeItem(saveKey());
       const now = Date.now();
       const { cfg } = get();
       let fresh = E.createInitialState(cfg, now);

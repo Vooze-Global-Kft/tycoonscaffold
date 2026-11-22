@@ -31,7 +31,8 @@ export function GameIcon({ icon, size = 32, locked = false, render = 'image' }: 
       return <Image source={src} style={[{ width: size, height: size }, locked && { tintColor: '#00000055' }]} resizeMode="contain" />;
     }
   }
-  const CharIcon = modeParts().CharIcon;
+  const { CharIcon, Icon: ModeIcon, iconPrefixes } = modeParts();
+  if (ModeIcon && !locked && iconPrefixes?.some((p) => icon.startsWith(p))) return <ModeIcon icon={icon} size={size} />;
   if (icon.startsWith('char:') && !locked && CharIcon) {
     const id = icon.slice(5);
     return <CharIcon look={cast[id] ?? id} size={size} blink={size >= 40} render={render} />;

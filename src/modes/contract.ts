@@ -9,6 +9,12 @@
  * it over here, at install. How to add a mode: docs/design/space-bundle.md.
  */
 import type { ComponentType } from 'react';
+import type { GameConfig } from '../config/schema';
+import { setModePresets, type PresetName } from '../dev/presets';
+import { createInitialState } from '../engine/economy';
+import { installEngineMode, type EngineMode } from '../engine/mode';
+import type { GameState } from '../engine/types';
+import { useGame } from '../state/store';
 import { registerArtIcons, type ArtIconSource } from '../ui/art/icons';
 import { setHintSource, type Hint, type HintSource } from '../ui/hints/source';
 import { setModeParts, type ModeParts } from '../ui/modeParts';
@@ -31,6 +37,14 @@ export interface ModeEntry {
   hints?: HintSource<Hint>;
   /** Development review screens by `?view=<name>` in the web preview (never on phones). */
   devViews?: Record<string, ComponentType>;
+  /**
+   * The mode's own rules (src/engine/mode.ts), for a mode that does not run on the built-in sim
+   * and classic rules (haul). Installed before the store boots; the shared engine reaches the
+   * rules only through it, so no other game's bundle holds them.
+   */
+  engine?: EngineMode;
+  /** The web preview's `?preset=fresh|early|mid|late` states for this mode (src/dev/presets.ts). None: the list homes' bot. */
+  presets?: (cfg: GameConfig, name: PresetName, now: number) => GameState;
 }
 
 /** Hands the entry's pieces to the shared code. Called once, by App.tsx, before anything renders. */
@@ -38,4 +52,11 @@ export function installMode(entry: ModeEntry): void {
   setModeParts(entry.parts ?? {});
   if (entry.artIcons) registerArtIcons(entry.artIcons);
   setHintSource(entry.hints ?? null);
+  setModePresets(entry.presets ?? null);
+  if (entry.engine) {
+    installEngineMode(entry.engine);
+    // The store was created before the engine existed: give it a fresh game of this mode until boot loads the save.
+    const { cfg, hydrated } = useGame.getState();
+    if (!hydrated) useGame.setState({ game: createInitialState(cfg, Date.now()) });
+  }
 }

@@ -120,8 +120,13 @@ function gameMode(id, game = readGameJson(id)) {
   return mode;
 }
 
-/** The game's sound pack name (game.json `soundPack`, default "warm"). */
+/**
+ * The game's sound pack name (game.json `soundPack`, default "warm"), or null when the game sets
+ * `"soundPack": null`: no shared pack at all, only its own assets/sfx/ (so no other game's recipe
+ * can ever fill a key it lacks; Orbit Haulers).
+ */
 function soundPack(id, game = readGameJson(id)) {
+  if (game.soundPack === null) return null;
   return game.soundPack || DEFAULT_SOUND_PACK;
 }
 
@@ -134,9 +139,10 @@ function listSoundPacks() {
     .sort();
 }
 
-/** The folder of a game's sound pack. Throws when the game names a pack that does not exist. */
+/** The folder of a game's sound pack (null without one). Throws when the game names a pack that does not exist. */
 function soundPackDir(id, game = readGameJson(id)) {
   const pack = soundPack(id, game);
+  if (pack === null) return null;
   const dir = path.join(SOUND_PACKS_DIR, pack);
   if (!/^[a-z0-9-]+$/.test(pack) || !fs.existsSync(dir)) {
     throw new Error(`games/${id}/game.json: soundPack "${pack}" is not a folder in shared/sfx/ (packs: ${listSoundPacks().join(', ')})`);
@@ -150,7 +156,8 @@ function soundPackDir(id, game = readGameJson(id)) {
  * own assets/sfx/ folder. No other pack's files.
  */
 function listSounds(id) {
-  const merged = mergeSoundDirs([soundPackDir(id), path.join(gameDir(id), GAME_SFX_REL)]);
+  const pack = soundPackDir(id);
+  const merged = mergeSoundDirs([...(pack ? [pack] : []), path.join(gameDir(id), GAME_SFX_REL)]);
   return Object.fromEntries(
     Object.entries(merged).map(([key, file]) => [key, path.relative(ROOT, file).split(path.sep).join('/')]),
   );
@@ -216,7 +223,9 @@ function renderActiveGame(id, game = readGameJson(id)) {
       ([key, rel]) => `  ${JSON.stringify(key)}: require(${JSON.stringify(`../../games/${id}/${rel}`)}),`,
     ),
     '};',
-    `/** Sound files by base name: the "${soundPack(id, game)}" pack (shared/sfx/${soundPack(id, game)}/) overridden by the game\'s assets/sfx/. Played through src/services/fx. */`,
+    soundPack(id, game) === null
+      ? '/** Sound files by base name: the game\'s own assets/sfx/ only (no shared pack). Played through src/services/fx. */'
+      : `/** Sound files by base name: the "${soundPack(id, game)}" pack (shared/sfx/${soundPack(id, game)}/) overridden by the game\'s assets/sfx/. Played through src/services/fx. */`,
     'export const gameSounds: Record<string, number> = {',
     ...Object.entries(sounds).map(([key, rel]) => `  ${JSON.stringify(key)}: require(${JSON.stringify(`../../${rel}`)}),`),
     '};',
