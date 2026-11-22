@@ -10,6 +10,9 @@ const scenes: GameScenes = {
   game: 'pizza-empire',
   port: 8300,
   titleHas: 'Pizza',
+  // The feature graphic: the restaurant scene of the first shot, from the venue's name plate down
+  // to just above the stage pills (no header, no list).
+  feature: { scene: 1, frame: () => ({ y0: { text: /^Nonna['’]s Corner$/, edge: 'top', pad: -10 }, y1: { text: /^Kitchen$/, edge: 'top', pad: -8 } }) },
   scenes: [
     {
       slug: 'bake-serve-grow',
@@ -20,10 +23,17 @@ const scenes: GameScenes = {
     },
     {
       slug: 'fix-the-bottleneck',
-      query: 'preset=late',
+      // The busy mid-game restaurant with its bottleneck stage opened: the Dining Room pill carries
+      // the game's own "limits income" tag, and its row shows the buy that lifts it. The list under
+      // one stage is short, so the card shows the screen down to the stage's text only (no empty
+      // cream). preset=early showed the same with the tutorial hand on (a first-minutes save).
+      query: 'preset=mid',
+      steps: () => [{ tapText: /^Dining Room$/ }, { wait: 1500 }],
+      check: (t) => (/limits income/i.test(t) ? null : 'no "limits income" tag on screen'),
+      frame: () => ({ y0: 0, y1: { text: /^Guests sit in the dining room/, edge: 'bottom', pad: 18 }, anchor: 'top' }),
       caption: 'Find the slow spot\nand fix it',
-      sub: 'More stations, more waiters, more tables',
-      shows: 'A later restaurant (Canal Side) with the Kitchen, Waiters and Dining Room chain; one stage carries the "limits income" tag, the bottleneck the player fixes.',
+      sub: 'Upgrade the stage that limits income',
+      shows: 'The mid-game restaurant at work with the Dining Room stage open: its pill is tagged "limits income" by the game, and its row offers the upgrade (more tables, more per guest). The card shows the screen down to the stage\'s description.',
     },
     {
       slug: 'collect-the-staff',

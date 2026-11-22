@@ -55,7 +55,8 @@ of each file it writes.
   `sheet=`, `spoke=`, `away=`: `src/dev/devtools.ts` and `src/ui/haul/dev.ts`),
   the steps to reach the moment (taps, drags, a finger held down, waits, and
   `untilText`: wait for the app's own text, e.g. the freighter's "BACK IN n S"
-  to go), the caption (at most six words) and the sub-line.
+  to go; `tapText`: a touch on the first text that matches, wherever the layout
+  put it), the caption (at most six words) and the sub-line.
   Orbit Haulers' touches are placed with the game's own geometry
   (`src/ui/haul/layout.ts`, `fieldLayout`, the function the screen and its
   gestures use), so they keep landing on the rack, a rock or the launch pad when
@@ -100,7 +101,7 @@ Each caption was checked against the preview (the scene's picture shows it).
 | # | Caption / sub-line | Address | Shows |
 |---|---|---|---|
 | 1 | Bake it, serve it, grow it! / Your cooks, waiters and guests at work | `preset=mid` | The restaurant at work: cooks at the stations, waiters carrying pizza, guests at the tables, the production chain and its upgrades below. |
-| 2 | Find the slow spot and fix it / More stations, more waiters, more tables | `preset=late` | A later restaurant (Canal Side) with the Kitchen, Waiters and Dining Room chain; a stage carries the "limits income" tag. |
+| 2 | Find the slow spot and fix it / More stations, more waiters, more tables | `preset=early` | The first restaurant in its first minutes: Kitchen, Waiters and Dining Room, the Dining Room tagged "limits income"; the game's hint hand points at the fix (hire the Maître d'). The hand is allowed here (a first-minute scene); `preset=late` was tried first and also shows the hand (that save is not yet a "veteran" to the hint script, `nextHint` in `src/engine/meta.ts`), so the bottleneck is shown where the hand belongs. |
 | 3 | Collect a staff of twelve / Level up the characters you love | `preset=mid&tab=staff` | The Staff tab: chests and the collection of twelve characters (8/12 found, "can level up" marks). |
 | 4 | Open boxes, meet new faces / Boxes come from daily missions | `preset=mid&chest=golden`, two taps | A Golden Oven Chest being opened: three cards turned, two to go. Missions reward boxes ("Every 30th mission: Golden Oven Chest"). |
 | 5 | From Napoli all the way up / Eight restaurants, one pizza planet | `preset=mid&tab=empire` | The Franchise tab: Nonna's Corner in Napoli, then Roma, Venezia, Paris, New York, Tokyo, The Moon ("1 of 8 open"). |
@@ -113,8 +114,8 @@ The first two carry the listing: the restaurant chain at work.
 | # | Caption / sub-line | Address and steps | Shows |
 |---|---|---|---|
 | 1 | Drone to rock. Ore to hold. / Drag to set a route | `preset=fresh`; finger down on the rack's idle drone, dragged onto rock 1, held | The first minute: a drone dragged onto the first rock, the route line drawn, the rock highlighted. The game's own "!" hint over the rack is on (first-minute scene). |
-| 2 | Hold full. Freighter away. / One swipe sells the whole manifest | `preset=early`; wait for the freighter to be away, then docked (its "BACK IN n S" label), then the launch swipe | The freighter lifting off the pad with the hold, which drops to empty; the bay counts down to its return. |
-| 3 | Buyers on the line / Contracts pay more. They lapse. | `preset=mid&sheet=contracts`, tap the first manifest | The Contract Board: three buyers, the manifest just made ACTIVE, what each pays if met, the launches left (the dots). |
+| 2 | Hold full. Freighter away. / One swipe sells the whole manifest | `preset=early`; wait for the freighter to be away, then docked (its "BACK IN n S" label goes), the launch swipe, then wait for the WARPED receipt | Just after the launch: the counter shows the WARPED manifest receipt (the ores and what they sold for), the hold is empty, the bay counts down to the freighter's return. |
+| 3 | Buyers on the line / Contracts pay more. They lapse. | `preset=mid&sheet=contracts`, tap the first manifest (its "if met" line) | The Contract Board: three buyers, the manifest just made ACTIVE, what each pays if met, the launches left (the dots). |
 | 4 | Far rings. Rich ore. Long trips. / Rocks run dry. New ones drift in. | `preset=late` | Every ring in use: iron, copper, ice, titanium and platinum rocks, drones in flight. Also the feature graphic's picture. |
 | 5 | Autopilot kept shipping / Shift log waiting on return | `preset=mid&away=3600` | The Shift Log after an hour away (the store's own offline computation): what the Dock Autopilot shipped. |
 | 6 | Jump. Pick the next galaxy. / Warp Cores rebuild the Star Map | `preset=late&spoke=starmap` | The Star Map: nodes bought with Warp Cores, "JUMP NOW: +24 WARP CORES", kept and reset lists. |
