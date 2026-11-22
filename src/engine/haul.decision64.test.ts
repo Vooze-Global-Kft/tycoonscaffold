@@ -122,6 +122,19 @@ describe('Decision 64: the pace figures count a rock only while it lives', () =>
 });
 
 describe('Decision 64: no green and no dominated offers', () => {
+  it('a two-ore offer whose raised ore fell under the floor is resized too (a held ore 1 % short does not hide it)', () => {
+    const g0 = station();
+    const p = H.haulParams(cfg, g0);
+    const st = H.routeSchedule(cfg, p, g0.haul, L).perLaunch;
+    const [a, b] = Object.keys(st).sort((x, y) => st[y] - st[x]);
+    const offer = contractOf(7, 'kade', [[b, Math.floor(L * st[b] * 0.9)], [a, Math.ceil(L * st[a] * 1.01) + 1]], 1.3, 9);
+    const h: H.HaulState = { ...g0.haul, contracts: { unlocked: true, board: [offer], next: 8, active: null } };
+    expect(H.contractViews(cfg, p, h)[0].onPace).toBe(false);
+    expect(H.refloorOffers(cfg, p, h)).toEqual([0]);
+    const v = H.contractViews(cfg, p, h)[0];
+    expect(v.wants[0].raise).toBeGreaterThan(C.raise[0] / 2);
+  });
+
   it('an untaken offer the routes now meet untouched is resized to the never-free floor at the next warp-out', () => {
     const g0 = station();
     const p = H.haulParams(cfg, g0);
@@ -139,6 +152,9 @@ describe('Decision 64: no green and no dominated offers', () => {
     if (still) {
       const v = H.contractViews(cfg, H.haulParams(cfg, out), out.haul).find((x) => x.contract.k === 7)!;
       expect(v.onPace).toBe(false);
+      // Resized to the never-free floor (about raise[0] over the routes' figure), never over the cap.
+      expect(v.raise).toBeGreaterThan(C.raise[0] / 2);
+      expect(v.raise).toBeLessThanOrEqual(C.raise[1] + 0.05);
     }
   });
 

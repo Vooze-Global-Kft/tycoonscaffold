@@ -1030,23 +1030,32 @@ export function contractViews(cfg: HaulConfig, params: HaulParams, h: HaulState,
 }
 
 /**
- * Decision 64, "no green offers": at a warp-out, an untaken offer whose need has fallen to nothing
- * (the routes improved after it was drawn) is resized to the never-free floor: its first (raised)
- * ore asks `L × figure × (1 + raise[0])`, never over the cap `L × figure × (1 + raise[1])`. Returns
- * the indexes of the offers it resized (no event: an offer's figure simply changes on the board).
+ * Decision 64, "no green offers": at a warp-out, an untaken offer whose need has fallen under the
+ * never-free floor (its largest raise under half the smallest raise, on pace included: the routes
+ * improved after it was drawn) is resized: its first (raised) ore asks `L × figure × (1 + raise[0])`,
+ * never over the cap `L × figure × (1 + raise[1])`. Returns the indexes of the offers it resized (no
+ * event: an offer's figure simply changes on the board).
  */
 export function refloorOffers(cfg: HaulConfig, params: HaulParams, h: HaulState): number[] {
   const C = cfg.haul.contracts;
   const L = C.launches;
   const out: number[] = [];
-  for (const v of contractViews(cfg, params, h)) {
-    if (v.contract.taken || !v.onPace) continue;
+  const keyOf = (c: Contract) => c.wants.map((w) => w.ore).sort().join('+');
+  for (let i = 0; i < h.contracts.board.length; i++) {
+    const views = contractViews(cfg, params, h);
+    const v = views[i];
+    if (!v || v.contract.taken || !(v.raise < C.raise[0] / 2)) continue;
     const c = h.contracts.board[v.index];
-    const w0 = v.wants.find((w) => w.perLaunch > 0);
-    if (!c || !w0) continue;
-    const units = Math.max(1, Math.ceil(L * w0.perLaunch * (1 + C.raise[0])));
-    const want = c.wants.find((w) => w.ore === w0.ore);
-    if (!want || !(units > want.units)) continue;
+    const w0 = v.wants[0];
+    if (!c || !w0 || !(w0.perLaunch > 0) || !(w0.raise < C.raise[0] / 2)) continue;
+    // The floor, moved up by `raiseGap` steps past offers of the same ores (no dominated pair).
+    const near = views.filter((x) => x.index !== i && !x.contract.taken && keyOf(x.contract) === keyOf(c) && Number.isFinite(x.raise)).map((x) => x.raise);
+    let r = C.raise[0];
+    for (let n = 0; n < 8 && near.some((x) => Math.abs(x - r) < C.raiseGap); n++) r = Math.max(...near.filter((x) => Math.abs(x - r) < C.raiseGap)) + C.raiseGap + 0.005;
+    if (r > C.raise[1]) r = C.raise[0];
+    const units = Math.max(1, Math.ceil(L * w0.perLaunch * (1 + r)));
+    const want = c.wants[0];
+    if (!want || want.ore !== w0.ore || !(units > want.units)) continue;
     want.units = Math.min(units, Math.max(want.units, Math.floor(L * w0.perLaunch * (1 + C.raise[1]))));
     out.push(v.index);
   }
