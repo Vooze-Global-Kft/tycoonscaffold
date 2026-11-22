@@ -9,6 +9,16 @@ import type { HaulConfig, HaulGame, HaulParams, HaulState, SlotParams, StarMapSt
 
 /** Tolerance of every "full" comparison (`≥ F − 1e-9`). */
 export const EPS = 1e-9;
+
+/**
+ * True when a hold or a cargo of `total` units fills a freighter of capacity `F`. The tolerance is
+ * relative as well as absolute: the units are a sum of floats, and at capacities in the tens of
+ * millions that sum misses F by more than EPS (seen at F = 18,691,582 with a hold of
+ * 18,691,581.999999996: the autopilot never launched again).
+ */
+export function fillsFreighter(total: number, F: number): boolean {
+  return total >= F * (1 - 1e-9) - EPS;
+}
 /** Cash never goes above this (matches economy.MAX_CASH). */
 export const MAX_CASH = Number.MAX_VALUE;
 

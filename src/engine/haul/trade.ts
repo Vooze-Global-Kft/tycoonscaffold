@@ -3,7 +3,7 @@
  * launches). Pure.
  */
 import { hashString } from '../rng';
-import { EPS, ringWeights, rngMix4, roll, sumUnits } from './params';
+import { EPS, fillsFreighter, ringWeights, rngMix4, roll, sumUnits } from './params';
 import type { Contract, ContractView, HaulConfig, HaulEvent, HaulParams, HaulState, HaulStats } from './types';
 
 /**
@@ -111,7 +111,7 @@ export function payoutFor(
     plain += n * p;
     sum += met ? w * p + (n - w) * p * (1 + params.fee) : n * p;
   }
-  const k = (sumUnits(cargo) >= params.F - EPS ? params.fullBonus : 1) * (1 + Math.max(0, keeper)) * params.G;
+  const k = (fillsFreighter(sumUnits(cargo), params.F) ? params.fullBonus : 1) * (1 + Math.max(0, keeper)) * params.G;
   const clamp = (x: number) => (Number.isFinite(x) ? Math.max(0, x) : Number.MAX_VALUE);
   const bonus = met && contract ? bonusOf(params, contract) : 0;
   return { payout: clamp(sum * k), met, plain: clamp(plain * k), bonus, toward };

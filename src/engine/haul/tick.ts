@@ -10,7 +10,7 @@
  */
 import { hashString } from '../rng';
 import { placeRock } from './create';
-import { EPS, MAX_CASH, haulParams, holdTotal, rngMix4, roll, sumUnits, T, starLevel } from './params';
+import { EPS, MAX_CASH, fillsFreighter, haulParams, holdTotal, rngMix4, roll, sumUnits, T, starLevel } from './params';
 import { activeContract, drawContract, loadCargo, noteShipped, openBoard, payoutFor, resizeOrders, shiftDoubles, steadyPerLaunch, topUpBoard, wantLeft } from './trade';
 import type { HaulConfig, HaulEvent, HaulGame, HaulParams, HaulState, SeamState } from './types';
 
@@ -290,7 +290,7 @@ export function autopilotWants(p: HaulParams, h: HaulState): boolean {
   if (!h.autopilot.online || h.freighter.phase !== 'docked') return false;
   const total = holdTotal(h);
   if (!(total > EPS)) return false;
-  if (total >= p.F - EPS) return true;
+  if (fillsFreighter(total, p.F)) return true;
   if (h.autopilot.policy !== 'contract') return false;
   const c = activeContract(h);
   // Whole units: the autopilot waits for the last half unit rather than rely on the tolerance.
@@ -556,7 +556,7 @@ export function updateMarks(cfg: HaulConfig, d: Draft, p: HaulParams): void {
   const h = d.h;
   const m = h.marks;
   m.idleSince = h.idle > 0 ? (m.idleSince ?? h.clock) : null;
-  const full = holdTotal(h) >= p.F - EPS;
+  const full = fillsFreighter(holdTotal(h), p.F);
   if (full && !h.autopilot.online) {
     if (m.holdFullSince === null) d.events?.push({ type: 'holdFull' });
     m.holdFullSince = m.holdFullSince ?? h.clock;
