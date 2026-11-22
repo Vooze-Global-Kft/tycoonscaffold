@@ -86,7 +86,9 @@ export function PayLabels({ layout, api }: { layout: SceneLayout; api: { current
     <>
       {slots.map((s, i) => {
         const tbl = layout.tables[i];
-        return tbl && s.seq > 0 ? <PayLabel key={i} x={tbl.x} y={tbl.y - 46 * layout.artScale} text={s.text} seq={s.seq} k={layout.artScale} /> : null;
+        // The back row's labels would rise over the pass: they start low enough to stay under it.
+        const minY = layout.pass.y + layout.pass.height + 12 + 18 * layout.artScale;
+        return tbl && s.seq > 0 ? <PayLabel key={i} x={tbl.x} y={Math.max(minY, tbl.y - 46 * layout.artScale)} text={s.text} seq={s.seq} k={layout.artScale} /> : null;
       })}
     </>
   );

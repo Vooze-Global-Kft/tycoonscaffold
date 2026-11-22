@@ -37,8 +37,13 @@
  *
  * <CharacterBust look? size background? facing? mood? blink? render? style? />
  *   A React Native VIEW (not a Skia element): a head-and-shoulders portrait, 28-220 pt, blinking now and then.
- *   mood 'calm' | 'happy'; render 'auto' (canvas from 72 pt up on phones, cached image below and on web),
- *   'canvas' (the 1-4 big portraits on screen) or 'image' (lists of many). blink={false} for long lists.
+ *   mood 'calm' | 'happy'; render 'auto' (canvas from BUST_CANVAS_MIN = 120 pt up on phones, cached image below
+ *   and on web), 'canvas' (the 1-4 big portraits on screen) or 'image' (lists of many). blink={false} for long lists.
+ *
+ * <ArtIcon name size fallback? />   (also a React Native VIEW)
+ *   A still from the kit as a cached image, 16-96 pt: one of ART_ICON_NAMES (chest-wood, chest-silver,
+ *   chest-gold, gem, truffle, truffle-pile, truffle-basket, truffle-crate, coin, card-back, storefront).
+ *   game.json reaches it as the icon "art:<name>" through GameIcon.
  *
  * Looks: resolveLook(entry), randomLook(seed, kind?), LOOKS / LOOK_NAMES (the named pizza cast),
  *   WAITER_VEST (every waiter wears it; customers never do), expandLook, lookFor, lookKey.
@@ -123,6 +128,8 @@
  * The review screens are `?view=art` (characters) and `?view=props` (props, mock restaurant) in the web build.
  */
 export { Character, ROLE_POSES, useCharacterArt, type Anim, type CharacterProps, type Readable } from './Character';
+export { ArtIcon, artIconImage, type ArtIconProps } from './ArtIcon';
+export { ART_ICON_NAMES, artIconArt, isArtIconName, type ArtIconName } from './props';
 export { BUST_CANVAS_MIN, CharacterBust, bustMatrix, type CharacterBustProps } from './CharacterBust';
 export { LOOKS, LOOK_NAMES, WAITER_VEST, expandLook, lookFor, lookKey, randomLook, resolveLook, type LookInput, type LookName, type ResolvedLook } from './looks';
 export { CHARACTER_HEIGHT, SEAT_HEIGHT, UNIT } from './rig';

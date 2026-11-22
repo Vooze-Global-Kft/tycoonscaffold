@@ -255,7 +255,7 @@ g['meta'] = {
     # The first free chest at 5 min, inside the first session (critique-fun.md section 2).
     'freeChest': {'chestId': 'box', 'everyHours': 4, 'stored': 2, 'firstMinutes': [5, 60]},
     'adChest': {'chestId': 'box', 'perDay': 3, 'cooldownMinutes': 120},
-    'pity': {'epic': 10, 'legendary': 40},
+    'pity': {'epic': 10, 'legendary': int(E('PITY_L', 40))},
     'chestGrowthPerVenue': 0.2,
     'chestsForSale': False,
     'missions': {'slots': 3, 'perDay': 10, 'templates': missions, 'milestones': [

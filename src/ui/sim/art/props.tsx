@@ -3392,3 +3392,198 @@ export type CardBackProps = Omit<CardProps, 'flip' | 'rarity' | 'children'>;
 export function CardBack(props: CardBackProps) {
   return <Card {...props} flip={0} />;
 }
+
+// ---------------------------------------------------------------------------
+// Static icons ("art:<name>" in game.json): still drawings of the props above
+// ---------------------------------------------------------------------------
+
+/** Every name `GameIcon` accepts after "art:". */
+export const ART_ICON_NAMES = [
+  'chest-wood',
+  'chest-silver',
+  'chest-gold',
+  'gem',
+  'truffle',
+  'truffle-pile',
+  'truffle-basket',
+  'truffle-crate',
+  'coin',
+  'card-back',
+  'storefront',
+] as const;
+export type ArtIconName = (typeof ART_ICON_NAMES)[number];
+
+export function isArtIconName(name: string): name is ArtIconName {
+  return (ART_ICON_NAMES as readonly string[]).includes(name);
+}
+
+const TRUFFLE = '#6B4A2E';
+const TRUFFLE_INK = '#3D2A1A';
+
+/** One knobbly truffle, about 36 units across, centred on 0,0. `seed` varies the bumps. */
+function drawTruffle(p: Pen, seed = 1, sparkle = true) {
+  const r = rng(seed * 7919);
+  const n = 16;
+  const pts: [number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + r() * 0.12;
+    // Small round knobs all the way round: a lumpy ball, not a rock.
+    const rr = (i % 2 ? 16.4 : 18) + r() * 1.1;
+    pts.push([Math.cos(a) * rr * 1.04, Math.sin(a) * rr * 0.95]);
+  }
+  const body = blob(pts);
+  p.shape(body, TRUFFLE, { ow: 3, outline: TRUFFLE_INK, shade: 4.2, shadeColor: shadeOf(TRUFFLE, 1.1), light: 2.6, lightColor: lightOf(TRUFFLE, 0.32) });
+  // Warty skin: little dark pits and pale knobs.
+  for (let i = 0; i < 9; i++) {
+    const a = r() * Math.PI * 2;
+    const d = r() * 10;
+    const x = Math.cos(a) * d;
+    const y = Math.sin(a) * d;
+    if (i % 2) p.dot(x, y, 1.5 + r(), alpha(TRUFFLE_INK, 0.55));
+    else p.dot(x - 0.6, y - 0.6, 1.3 + r() * 0.8, alpha(lightOf(TRUFFLE, 0.55), 0.8));
+  }
+  p.shine(arc(0, 0, 11, 10, 205, 50), WHITE, 2.4, 0.45);
+  if (sparkle) {
+    p.shape(twinkle(11, -13, 7.5), GOLD, { ow: 1.6, outline: shadeOf(GOLD, 1.6), shade: false });
+    p.fill(twinkle(10.4, -13.6, 2.6), WHITE);
+  }
+}
+
+function drawTrufflePile(p: Pen) {
+  p.at(-14, 6, () => drawTruffle(p, 2, false), 0, 0.85);
+  p.at(15, 7, () => drawTruffle(p, 3, false), 0, 0.82);
+  p.at(0, -6, () => drawTruffle(p, 1, true), 0, 0.92);
+}
+
+function drawTruffleBasket(p: Pen) {
+  const wicker = '#C98A3E';
+  // Handle behind the truffles.
+  p.stroke(curve([[-30, -2], [0, -46], [30, -2]]), shadeOf(wicker, 1.4), 7);
+  p.stroke(curve([[-30, -2], [0, -46], [30, -2]]), wicker, 4);
+  p.at(-14, -6, () => drawTruffle(p, 4, false), 0, 0.72);
+  p.at(14, -7, () => drawTruffle(p, 5, false), 0, 0.7);
+  p.at(0, -12, () => drawTruffle(p, 1, false), 0, 0.78);
+  const bowl = blob([[-36, -6, 0], [36, -6, 0], [30, 22], [0, 27], [-30, 22]]);
+  shapeWith(
+    p,
+    bowl,
+    wicker,
+    () => {
+      for (const y of [2, 10, 18]) p.stroke(line(-36, y, 36, y), shadeOf(wicker, 0.9), 1.8, true);
+      for (let x = -30; x <= 30; x += 10) p.stroke(line(x, -6, x * 0.85, 27), alpha(shadeOf(wicker, 1.2), 0.6), 1.6, true);
+    },
+    { shade: 4, light: 2 },
+  );
+  p.shape(rrect(-38, -10, 76, 8, 4), lightOf(wicker, 0.15), { ow: 2.6, shade: false });
+  p.shape(twinkle(24, -26, 7.5), GOLD, { ow: 1.6, outline: shadeOf(GOLD, 1.6), shade: false });
+  p.fill(twinkle(23.4, -26.6, 2.6), WHITE);
+}
+
+function drawTruffleCrate(p: Pen) {
+  const wood = '#B9773C';
+  for (const [x, y, s, k] of [[-22, -18, 0.7, 6], [0, -22, 0.75, 7], [22, -17, 0.7, 8], [-11, -28, 0.66, 9], [12, -29, 0.68, 10]] as [number, number, number, number][])
+    p.at(x, y, () => drawTruffle(p, k, false), 0, s);
+  const box = rrect(-40, -14, 80, 42, 4);
+  shapeWith(
+    p,
+    box,
+    wood,
+    () => {
+      const joint = shadeOf(wood, 1.4);
+      p.stroke(line(-40, 0, 40, 0), joint, 2, true);
+      p.stroke(line(-40, 14, 40, 14), joint, 2, true);
+    },
+    { shade: 5, light: 2.4 },
+  );
+  for (const x of [-34, 34]) p.shape(rrect(x - 4, -14, 8, 42, 2), shadeOf(wood, 0.5), { ow: 2, shade: false });
+  for (const [x, y] of [[-34, -9], [34, -9], [-34, 23], [34, 23]] as Pt[]) p.dot(x, y, 1.6, '#E9D6B5');
+  p.shape(twinkle(30, -36, 8), GOLD, { ow: 1.6, outline: shadeOf(GOLD, 1.6), shade: false });
+  p.fill(twinkle(29.4, -36.6, 2.8), WHITE);
+}
+
+function drawClosedChest(p: Pen, tier: ChestTier) {
+  const s = CHEST_STYLES[tier];
+  drawChestBody(p, s, tier);
+  p.at(0, RIM_Y + 1, () => drawChestLid(p, s, tier));
+}
+
+/** A little shop front: a wide facade with a striped awning, two windows and the front door. */
+function drawStorefront(p: Pen) {
+  const c = DEFAULT_PALETTE;
+  const W = 70;
+  const H = 112;
+  const brick = brickOf(c);
+  // Facade with a cornice.
+  shapeWith(
+    p,
+    rrect4(-W, -H, W * 2, H, 6, 6, 0, 0),
+    c.stone,
+    () => {
+      p.fill(rrect(-W, -16, W * 2, 16, 0), shadeOf(c.stone, 0.5));
+    },
+    { shade: 5, light: 2 },
+  );
+  p.shape(rrect(-W - 5, -H - 8, W * 2 + 10, 12, 4), brick, { ow: 2.6, shade: 2 });
+  // Windows with a warm light inside.
+  for (const sx of [-1, 1]) {
+    const win = rrect(sx * 46 - 17, -72, 34, 46, 5);
+    p.shape(win, shadeOf(c.wood, 0.9), { ow: 2.8, shade: false });
+    const glass = rrect(sx * 46 - 13, -68, 26, 38, 3);
+    p.gradient(glass, 0, -68, 0, -30, ['#FFE7A8', '#FFC86A'], null);
+    p.stroke(line(sx * 46, -68, sx * 46, -30), shadeOf(c.wood, 0.9), 2.4);
+    p.stroke(line(sx * 46 - 13, -50, sx * 46 + 13, -50), shadeOf(c.wood, 0.9), 2.4);
+    p.shine(line(sx * 46 - 9, -40, sx * 46 - 4, -62), WHITE, 2.4, 0.6);
+    p.shape(rrect(sx * 46 - 20, -28, 40, 7, 2.5), brick, { ow: 2.2, shade: false });
+  }
+  // The door, a little smaller than the one in the room.
+  p.at(0, 0, () => {
+    p.shape(rrect4(-DOOR_W / 2 - 5, -DOOR_H - 5, DOOR_W + 10, DOOR_H + 5, 5, 5, 0, 0), shadeOf(c.wood, 1.25), { shade: 3 });
+    p.at(-DOOR_W / 2, 0, () => drawDoorLeaf(p, c));
+  }, 0, 0.62, 0.78);
+  drawAwning(p, c, W - 4, W + 10, -H + 2, -H + 30, 7, 5.5);
+}
+
+const ICON_DRAW: Record<ArtIconName, { draw: (p: Pen) => void; ow?: number; box?: ArtIconArt['box'] }> = {
+  'chest-wood': { draw: (p) => drawClosedChest(p, 'wood') },
+  'chest-silver': { draw: (p) => drawClosedChest(p, 'silver') },
+  'chest-gold': { draw: (p) => drawClosedChest(p, 'gold') },
+  gem: { draw: (p) => drawGem(p, '#3FB8F5') },
+  truffle: { draw: (p) => drawTruffle(p, 1, true) },
+  'truffle-pile': { draw: drawTrufflePile },
+  'truffle-basket': { draw: drawTruffleBasket },
+  'truffle-crate': { draw: drawTruffleCrate },
+  coin: { draw: (p) => drawCoinFace(p, GOLD) },
+  // The back's glow reaches past its edge but is clipped to it: frame the card itself.
+  'card-back': { draw: (p) => drawCardBack(p, DEFAULT_PALETTE), ow: 4.6, box: { l: -CHW - 3, t: -CHH - 3, r: CHW + 3, b: CHH + 3 } },
+  storefront: { draw: drawStorefront },
+};
+
+export interface ArtIconArt {
+  pic: SkPicture;
+  /** What the drawing covers, in its own units. */
+  box: { l: number; t: number; r: number; b: number };
+}
+
+/** Icon drawings, recorded once and kept for the life of the app (a dozen small pictures; never freed, so no canvas can draw a freed one). */
+const ICON_ART = new Map<ArtIconName, ArtIconArt | null>();
+
+/** The still drawing behind "art:<name>", or null when it cannot be recorded (the caller shows its fallback). */
+export function artIconArt(name: ArtIconName): ArtIconArt | null {
+  if (ICON_ART.has(name)) return ICON_ART.get(name) ?? null;
+  let out: ArtIconArt | null = null;
+  try {
+    const def = ICON_DRAW[name];
+    const box = { l: Infinity, t: Infinity, r: -Infinity, b: -Infinity };
+    const pic = rec((p) => {
+      p.box = box;
+      def.draw(p);
+      p.box = null;
+    }, OUTLINE, def.ow ?? 3.4);
+    const frame = def.box ?? box;
+    out = Number.isFinite(frame.l) && frame.r > frame.l && frame.b > frame.t ? { pic, box: frame } : null;
+  } catch {
+    out = null;
+  }
+  ICON_ART.set(name, out);
+  return out;
+}

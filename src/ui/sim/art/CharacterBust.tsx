@@ -11,7 +11,7 @@
  * while hair and hats may poke out over its top edge. It holds still except
  * for a blink every few seconds, so a screen full of them costs next to nothing.
  *
- * Big busts on phones (72 pt and up, or `render="canvas"`) get a small Skia
+ * Big busts on phones (120 pt and up, or `render="canvas"`) get a small Skia
  * canvas each. Smaller ones, and every bust on web, are rendered once into a
  * cached image instead: a list of 30 portraits then costs 30 images, not 30
  * GPU surfaces (and browsers allow only a handful of WebGL contexts per page).
@@ -39,7 +39,7 @@ export interface CharacterBustProps {
   blink?: boolean;
   /**
    * How it is drawn on phones. `canvas`: its own Skia canvas (a GPU surface; for the 1-4 big portraits on screen).
-   * `image`: rendered once into a cached image (for lists of many). `auto` (default): canvas from 72 pt up, image below.
+   * `image`: rendered once into a cached image (for lists of many). `auto` (default): canvas from `BUST_CANVAS_MIN` (120 pt) up, image below.
    * Web always uses the image.
    */
   render?: 'auto' | 'canvas' | 'image';
@@ -227,16 +227,26 @@ function bustImage(art: BustArt, size: number, background: string | undefined, f
   }
   const px = Math.max(1, Math.ceil(size * density));
   let uri = '';
-  const surface = Skia.Surface.Make(px, px);
-  if (surface) {
-    const c = surface.getCanvas();
-    c.scale(px / size, px / size);
-    paintBust(c, art, size, background, facing, shut);
-    surface.flush();
-    const snapshot = surface.makeImageSnapshot();
-    uri = 'data:image/png;base64,' + snapshot.encodeToBase64();
-    snapshot.dispose();
-    surface.dispose();
+  // Never crash a list over one portrait: if the offscreen surface or the snapshot is not available,
+  // remember the empty result (no retry every render) and show a plain placeholder.
+  try {
+    const surface = Skia.Surface.Make(px, px);
+    if (surface) {
+      try {
+        const c = surface.getCanvas();
+        c.scale(px / size, px / size);
+        paintBust(c, art, size, background, facing, shut);
+        surface.flush();
+        const snapshot = surface.makeImageSnapshot();
+        const data = snapshot.encodeToBase64();
+        snapshot.dispose();
+        if (data) uri = 'data:image/png;base64,' + data;
+      } finally {
+        surface.dispose();
+      }
+    }
+  } catch {
+    uri = '';
   }
   images.set(key, uri);
   if (images.size > IMAGES_MAX) images.delete(images.keys().next().value as string);
@@ -262,6 +272,7 @@ export function BustImage({ art, size, background, facing = 1, shut = 0, style }
   // Always the fully closed frame, so a blink reuses one cached image and never re-runs this memo.
   const closed = useMemo(() => (seenShut && art.eyes ? bustImage(art, size, background, facing, 1) : null), [seenShut, art, size, background, facing]);
   const box = { position: 'absolute', left: 0, top: 0, width: size, height: size } as const;
+  if (!open) return <View style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: background ?? '#00000014', pointerEvents: 'none' }, style]} />;
   return (
     <View style={[{ width: size, height: size, pointerEvents: 'none' }, style]}>
       <Image source={{ uri: open }} style={box} />
@@ -282,8 +293,12 @@ function ImageBust({ look, size, background, facing = 1, mood = 'calm', blink = 
   return <BustImage art={art} size={size} background={background} facing={facing} shut={shut} style={style} />;
 }
 
-/** Busts from this size up get their own canvas on phones (`render="auto"`); smaller ones, typical of lists, use the cached image. */
-export const BUST_CANVAS_MIN = 72;
+/**
+ * Busts from this size up get their own canvas on phones (`render="auto"`); smaller ones, typical of lists
+ * and grids (card tiles draw theirs at 72 pt), use the cached image. Only the story and card-dialog
+ * portraits are this big.
+ */
+export const BUST_CANVAS_MIN = 120;
 
 export function CharacterBust(props: CharacterBustProps) {
   const mode = props.render ?? 'auto';

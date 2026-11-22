@@ -397,15 +397,35 @@ export class Pen {
     this.ps.dispose();
   }
 
-  /** Grows the measuring box by a rectangle given in the current (possibly moved or rotated) coordinates. */
+  /**
+   * Everything drawn so far, in the picture's own units, always measured (unlike `box`, no top cut):
+   * `record` keeps it with the picture so the picture can later be turned into an image that fits it.
+   */
+  readonly extent: Bounds = emptyBounds();
+  /** The current transform (a, b, tx, c, d, ty), tracked here so measuring needs no call into Skia. */
+  private m: number[] = [1, 0, 0, 0, 1, 0];
+
+  /** Grows the boxes by a rectangle given in the current (possibly moved or rotated) coordinates. */
   private grow(x0: number, y0: number, x1: number, y1: number) {
+    const m = this.m;
+    const e = this.extent;
     const box = this.box;
-    if (!box) return;
-    if (this.boxTop !== null) {
-      if (y1 <= this.boxTop) return;
-      if (y0 < this.boxTop) y0 = this.boxTop;
+    const top = this.boxTop;
+    for (let i = 0; i < 4; i++) {
+      const x = i & 1 ? x1 : x0;
+      const y = i & 2 ? y1 : y0;
+      const X = m[0] * x + m[1] * y + m[2];
+      const Y = m[3] * x + m[4] * y + m[5];
+      if (X < e.l) e.l = X;
+      if (X > e.r) e.r = X;
+      if (Y < e.t) e.t = Y;
+      if (Y > e.b) e.b = Y;
     }
-    const m = this.c.getTotalMatrix().get();
+    if (!box) return;
+    if (top !== null) {
+      if (y1 <= top) return;
+      if (y0 < top) y0 = top;
+    }
     for (let i = 0; i < 4; i++) {
       const x = i & 1 ? x1 : x0;
       const y = i & 2 ? y1 : y0;
@@ -419,7 +439,6 @@ export class Pen {
   }
 
   private growPath(path: SkPath, pad: number) {
-    if (!this.box) return;
     const b = path.computeTightBounds();
     this.grow(b.x - pad, b.y - pad, b.x + b.width + pad, b.y + b.height + pad);
   }
@@ -514,8 +533,19 @@ export class Pen {
     this.c.translate(x, y);
     if (rotDeg !== 0) this.c.rotate(rotDeg, 0, 0);
     if (sx !== 1 || sy !== 1) this.c.scale(sx, sy);
-    fn();
-    this.c.restore();
+    const outer = this.m;
+    const [a, b, tx, c, d, ty] = outer;
+    const r = (rotDeg * Math.PI) / 180;
+    const cs = Math.cos(r);
+    const sn = Math.sin(r);
+    // outer * translate(x, y) * rotate(r) * scale(sx, sy)
+    this.m = [(a * cs + b * sn) * sx, (-a * sn + b * cs) * sy, a * x + b * y + tx, (c * cs + d * sn) * sx, (-c * sn + d * cs) * sy, c * x + d * y + ty];
+    try {
+      fn();
+    } finally {
+      this.m = outer;
+      this.c.restore();
+    }
   }
 
   /** Runs `fn` clipped to `path`. Used sparingly: clips are replayed every frame. */
@@ -530,6 +560,16 @@ export class Pen {
 /** Half-size of the square every picture is recorded in, in its own units. */
 const BOUNDS = 640;
 
+const BOUNDS_OF = new WeakMap<SkPicture, Bounds>();
+
+/**
+ * What a recorded picture covers, in its own units, measured while it was drawn (strokes and blurs
+ * included; anything clipped away may still count). Undefined for a picture `record` did not make.
+ */
+export function pictureBounds(picture: SkPicture): Bounds | undefined {
+  return BOUNDS_OF.get(picture);
+}
+
 /** Records a drawing into a picture. Everything built with the path helpers inside `draw` is freed afterwards. */
 export function record(draw: (pen: Pen) => void, outline = OUTLINE, ow = 3.4): SkPicture {
   const rec = Skia.PictureRecorder();
@@ -543,6 +583,8 @@ export function record(draw: (pen: Pen) => void, outline = OUTLINE, ow = 3.4): S
     draw(pen);
   } finally {
     picture = rec.finishRecordingAsPicture();
+    const e = pen.extent;
+    if (Number.isFinite(e.l)) BOUNDS_OF.set(picture, { l: e.l, t: e.t, r: e.r, b: e.b });
     trash = outer;
     for (const t of mine) t.dispose();
     pen.dispose();

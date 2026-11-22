@@ -60,8 +60,6 @@ function useHint(): { key: string; route: string[]; stage: Stage | null } | null
       let h: GuideHint | null = null;
       try {
         h = guideHint(cfg, game, Date.now());
-        // TEMPORARY integration testing hook (web dev only, see src/ui/devHook.ts). REMOVE.
-        if (__DEV__ && (globalThis as { __itfForceHint?: GuideHint }).__itfForceHint) h = (globalThis as { __itfForceHint?: GuideHint }).__itfForceHint ?? h;
       } catch {
         h = null;
       }

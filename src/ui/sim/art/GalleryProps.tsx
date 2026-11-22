@@ -2,11 +2,13 @@ import { Canvas, Group, Picture, Rect, useClock } from '@shopify/react-native-sk
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useDerivedValue, useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { ArtIcon } from './ArtIcon';
 import { Character } from './Character';
 import { bustMatrix } from './CharacterBust';
 import { getBustArt, releaseBustArt, retainBustArt } from './characterArt';
 import { randomLook, resolveLook } from './looks';
 import {
+  ART_ICON_NAMES,
   CARD_WINDOW,
   CHAIR_OFFSET,
   Card,
@@ -480,7 +482,7 @@ function ScenePage({ clock }: { clock: SharedValue<number> }) {
   );
 }
 
-const PAGES = ['stations', 'furniture', 'room', 'small', 'chest', 'cards', 'scene'] as const;
+const PAGES = ['stations', 'furniture', 'room', 'small', 'chest', 'cards', 'scene', 'icons'] as const;
 type Page = (typeof PAGES)[number];
 
 function Tabs({ page }: { page: Page }) {
@@ -501,6 +503,29 @@ function Tabs({ page }: { page: Page }) {
   );
 }
 
+/** "art:<name>" icons as cached images, at the sizes the app uses them (16 to 96 pt), on light and dark. */
+function IconsPage() {
+  const sizes = [16, 20, 26, 36, 56, 96];
+  return (
+    <View style={{ padding: 12, gap: 14 }}>
+      {['#FFF8EE', '#2A1C14'].map((bg) => (
+        <View key={bg} style={{ backgroundColor: bg, padding: 10, borderRadius: 12, gap: 8 }}>
+          {ART_ICON_NAMES.map((name) => (
+            <View key={name} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
+              <Text style={{ width: 92, fontSize: 11, color: bg === '#2A1C14' ? '#FFF' : '#333' }}>{name}</Text>
+              {sizes.map((sz) => (
+                <View key={sz} style={{ borderWidth: 0.5, borderColor: '#88888855' }}>
+                  <ArtIcon name={name} size={sz} />
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function PropsGallery() {
   const raw = param('page');
   const page: Page = (PAGES as readonly string[]).includes(raw ?? '') ? (raw as Page) : PAGES[0];
@@ -515,6 +540,7 @@ export function PropsGallery() {
       {page === 'chest' ? <ChestPage clock={clock} /> : null}
       {page === 'cards' ? <CardsPage clock={clock} /> : null}
       {page === 'scene' ? <ScenePage clock={clock} /> : null}
+      {page === 'icons' ? <IconsPage /> : null}
     </ScrollView>
   );
 }

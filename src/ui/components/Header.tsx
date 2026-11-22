@@ -43,7 +43,8 @@ function CashCounter({ compact }: { compact: boolean }) {
   const sym = t.strings.currencySymbol;
   const iconSize = compact ? 22 : 26;
   const max = compact ? 24 : 28;
-  const fontSize = fitFontSize(formatMoney(cash, sym), width - iconSize - 6, max, 14);
+  // The display font's digits are wide: estimate generously so "¢104.42M" never clips.
+  const fontSize = fitFontSize(formatMoney(cash, sym), width - iconSize - 6, max, 14, 0.72);
   const onLayout = (e: LayoutChangeEvent) => {
     setWidth(e.nativeEvent.layout.width);
     target.onLayout();
