@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { GameConfigSchema, lintGameConfig, type GameConfig } from '../config/schema';
@@ -574,9 +574,11 @@ describe('sim mode', () => {
       for (let i = 0; i < 3000; i++) x = E.tick(simCfg, x, 0.1, now);
       return x.cash - mid;
     };
-    // `now` is held inside the rush window so the whole run is at rush speed.
-    expect(earn(s, T0 + 1) / earn(s0, T0 + 1)).toBeGreaterThan(rush.multiplier * 0.95);
-    expect(earn(s, T0 + 1) / earn(s0, T0 + 1)).toBeLessThan(rush.multiplier * 1.05);
+    // `now` is held inside the rush window so the whole run is at rush speed. (A tick covers the dt
+    // seconds before `now`, so `now` must be at least one tick after the rush started.)
+    const inside = T0 + (rush.seconds * 1000) / 2;
+    expect(earn(s, inside) / earn(s0, inside)).toBeGreaterThan(rush.multiplier * 0.95);
+    expect(earn(s, inside) / earn(s0, inside)).toBeLessThan(rush.multiplier * 1.05);
     // An ad can make it ready again once it has ended.
     const ended = T0 + rush.seconds * 1000 + 5;
     expect(E.canStartRush(simCfg, E.resetRushCooldown(s, ended), ended)).toBe(true);
@@ -659,5 +661,316 @@ describe('format', () => {
   it('durations', () => {
     expect(formatDuration(3725)).toBe('1h 02m');
     expect(formatDuration(65)).toBe('1m 05s');
+  });
+});
+
+// ---------------------------------------------------------------- adversarial review (docs/design/engine-review.md)
+
+describe('review: money at the edges (E1, E2)', () => {
+  const drill = cfg.businesses[0];
+
+  it('cash that overflowed to Infinity cannot buy "max" into Infinity or NaN', () => {
+    const s = { ...E.createInitialState(cfg, T0), cash: Infinity };
+    const after = E.buyBusiness(cfg, s, V, drill.id, 'max');
+    expect(Number.isFinite(biz(after, drill.id).owned)).toBe(true);
+    expect(Number.isNaN(after.cash)).toBe(false);
+  });
+
+  it('NaN cash buys nothing (it used to make every price check pass)', () => {
+    const s = { ...rich(cfg), cash: NaN };
+    expect(E.buyBusiness(cfg, s, V, drill.id, 1)).toBe(s);
+    expect(E.hireManager(cfg, s, V, drill.id)).toBe(s);
+    expect(E.buyUpgrade(cfg, s, cfg.upgrades.find((u) => !u.premium)!.id)).toBe(s);
+    const sim = { ...rich(simCfg), cash: NaN };
+    expect(E.buyTransport(simCfg, sim, 'a', 1)).toBe(sim);
+    expect(E.buySales(simCfg, sim, 'a', 1)).toBe(sim);
+    expect(E.hireTransportManager(simCfg, sim, 'a')).toBe(sim);
+    expect(E.unlockVenue(simCfg, sim, 'b')).toBe(sim);
+  });
+
+  it('earnings saturate at the largest finite number instead of overflowing', () => {
+    let s = { ...E.createInitialState(cfg, T0), cash: 1e308 };
+    s = E.grantCash(E.grantCash(s, 1e308), Infinity);
+    expect(s.cash).toBe(Number.MAX_VALUE);
+    expect(s.lifetimeEarnings).toBe(Number.MAX_VALUE);
+    expect(Number.isFinite(E.totalPrestigePoints(cfg, s.lifetimeEarnings))).toBe(true);
+  });
+
+  it.each([-5, 0, 2.5, NaN, Infinity])('buying %s units is refused or rounded down, never negative', (n) => {
+    const s = rich(cfg);
+    const after = E.buyBusiness(cfg, s, V, drill.id, n);
+    const owned = biz(after, drill.id).owned;
+    expect(Number.isInteger(owned)).toBe(true);
+    expect(owned).toBeGreaterThanOrEqual(biz(s, drill.id).owned);
+    expect(after.cash).toBeLessThanOrEqual(s.cash);
+    if (n === 2.5) expect(owned).toBe(biz(s, drill.id).owned + 2);
+    const sim = rich(simCfg);
+    const t = E.buyTransport(simCfg, sim, 'a', n).venues.a.chain!.transportLevel;
+    expect(Number.isInteger(t) && t >= 1).toBe(true);
+  });
+
+  it('"max" is the most you can afford and never overspends, up to cash 1e300 and venue scale 1e11', () => {
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 3000; i++) {
+      const base = Math.pow(10, rnd() * 6);
+      const growth = 1.01 + rnd() * 0.3;
+      const owned = Math.floor(rnd() * 2000);
+      const scale = Math.pow(10, rnd() * 11);
+      const cash = Math.pow(10, rnd() * 300);
+      const n = E.geometricMaxAffordable(base, growth, owned, cash, scale);
+      expect(Number.isInteger(n) && n >= 0).toBe(true);
+      if (n > 0) expect(E.geometricCost(base, growth, owned, n, scale)).toBeLessThanOrEqual(cash);
+      const next = E.geometricCost(base, growth, owned, n + 1, scale);
+      expect(next > cash || !Number.isFinite(next)).toBe(true);
+    }
+  });
+
+  it('a cost that overflows to Infinity is never affordable, even with Infinity cash', () => {
+    const s = { ...E.createInitialState(cfg, T0), cash: Infinity };
+    const owned = { ...s, venues: { [V]: { ...s.venues[V], businesses: { ...s.venues[V].businesses, [drill.id]: { ...biz(s, drill.id), owned: 50_000 } } } } };
+    expect(E.businessCost(cfg, owned, V, drill.id, 1)).toBe(Infinity);
+    expect(E.buyBusiness(cfg, owned, V, drill.id, 1)).toBe(owned);
+  });
+
+  it('a manager cannot be hired in a venue that is not open', () => {
+    const s = rich(simCfg);
+    const locked = { ...s, venues: { ...s.venues, b: { ...s.venues.b, businesses: { ...s.venues.b.businesses, [simCfg.businesses[0].id]: { owned: 3, progress: 0, running: false, managed: false } } } } };
+    expect(E.hireManager(simCfg, locked, 'b', simCfg.businesses[0].id)).toBe(locked);
+  });
+});
+
+describe('review: hostile saves (E3)', () => {
+  const invariant = (c: GameConfig, s: GameState) => {
+    const finite = (x: unknown) => typeof x === 'number' && Number.isFinite(x) && x >= 0;
+    expect(s.version).toBe(2);
+    for (const k of ['cash', 'gems', 'runEarnings', 'lifetimeEarnings', 'prestigePoints', 'prestigeCount', 'boostUntil', 'lastSavedAt', 'rng'] as const) expect(finite(s[k])).toBe(true);
+    expect(Object.keys(s.venues).sort()).toEqual(E.venueIds(c).slice().sort());
+    expect(s.venues[s.activeVenue]?.unlocked).toBe(true);
+    for (const id of E.venueIds(c)) {
+      const v = s.venues[id];
+      expect(typeof v.unlocked).toBe('boolean');
+      for (const b of c.businesses) {
+        const x = v.businesses[b.id];
+        expect(Number.isInteger(x.owned) && x.owned >= 0).toBe(true);
+        expect(x.progress >= 0 && x.progress < 1).toBe(true);
+        expect(typeof x.managed).toBe('boolean');
+        expect(typeof x.running).toBe('boolean');
+      }
+      if (E.isSim(c)) {
+        const ch = v.chain!;
+        expect(Number.isInteger(ch.transportLevel) && ch.transportLevel >= 1).toBe(true);
+        expect(Number.isInteger(ch.salesLevel) && ch.salesLevel >= 1).toBe(true);
+        expect(ch.workers).toHaveLength(E.countAtLevel(c.sim!.transport.workersAt, ch.transportLevel));
+        expect(ch.seats).toHaveLength(E.countAtLevel(c.sim!.sales.seatsAt, ch.salesLevel));
+        expect(finite(ch.buffer) && finite(ch.served)).toBe(true);
+      } else expect(v.chain).toBeNull();
+    }
+    expect(Array.isArray(s.upgrades) && s.upgrades.every((u) => c.upgrades.some((x) => x.id === u))).toBe(true);
+    expect(Array.isArray(s.storySeen)).toBe(true);
+    for (const [k, v] of Object.entries(s.stats)) expect([k, finite(v)]).toEqual([k, true]);
+    for (const m of Object.values(s.entitlements.multipliers)) expect(finite(m) && m > 0).toBe(true);
+    // And the game can run on it.
+    let x = s;
+    for (let i = 0; i < 20; i++) x = E.tick(c, x, 0.5, T0);
+    expect(Number.isFinite(x.cash)).toBe(true);
+    expect(Number.isFinite(E.computeOffline(c, x, T0 + 3600e3).earnings)).toBe(true);
+  };
+
+  const good = (c: GameConfig) => JSON.parse(JSON.stringify(E.buyTransport(c, rich(c, 1e9), E.venueIds(c)[0], 3)));
+
+  it.each([
+    ['null', () => null],
+    ['a number', () => 42],
+    ['a string', () => 'hello'],
+    ['an array', () => [1, 2, 3]],
+    ['empty object', () => ({})],
+    ['NaN and negative money', (c: GameConfig) => ({ ...good(c), cash: NaN, gems: -50, lifetimeEarnings: 'lots', prestigePoints: -3 })],
+    ['Infinity cash (from JSON it arrives as null)', (c: GameConfig) => ({ ...good(c), cash: null })],
+    ['wrong types everywhere', (c: GameConfig) => ({ ...good(c), upgrades: 'all', storySeen: 5, stats: 'x', entitlements: [], daily: 7, cards: { c_global: null }, rng: 'seed', rush: null, chests: 3, missions: [], deals: 'none', dailyShop: null })],
+    ['unknown venues and ids', (c: GameConfig) => ({ ...good(c), activeVenue: 'mars', venues: { ...good(c).venues, mars: { unlocked: true, businesses: {}, chain: null } }, upgrades: ['nope', 'nope'], cards: { ghost: { level: 9, copies: 9 } } })],
+    ['broken businesses', (c: GameConfig) => {
+      const s = good(c);
+      const v = s.venues[E.venueIds(c)[0]];
+      v.businesses[c.businesses[0].id] = { owned: -4, progress: 7, running: 'yes', managed: 1 };
+      v.businesses[c.businesses[1].id] = { owned: 1e400, progress: NaN };
+      v.businesses[c.businesses[2].id] = null;
+      return s;
+    }],
+    ['first venue locked', (c: GameConfig) => {
+      const s = good(c);
+      s.venues[E.venueIds(c)[0]].unlocked = false;
+      return s;
+    }],
+    ['multipliers that are not positive numbers', (c: GameConfig) => ({ ...good(c), entitlements: { noAds: 'true', products: [1, 'x'], multipliers: { a: 0, b: -2, c: 'x', d: 3 } } })],
+  ])('%s', (_name, make) => {
+    for (const c of [cfg, simCfg]) invariant(c, E.reconcileState(c, (make as (c: GameConfig) => unknown)(c), T0));
+  });
+
+  it('a sim chain with the wrong number of workers and seats is fitted without losing value', () => {
+    const s = good(simCfg);
+    const ch = s.venues.a.chain;
+    ch.workers = Array.from({ length: 30 }, () => ({ phase: 'toSales', t: 0.5, carry: 4 }));
+    ch.seats = 'no';
+    ch.transportLevel = 'x';
+    const r = E.reconcileState(simCfg, s, T0);
+    invariant(simCfg, r);
+    const c = r.venues.a.chain!;
+    expect(c.transportLevel).toBe(1);
+    expect(c.buffer + c.workers.reduce((a, w) => a + w.carry, 0)).toBeCloseTo(ch.buffer + 120, 6);
+  });
+
+  it('fuzz: random garbage in every field never throws and always gives a playable state', () => {
+    let seed = 11;
+    const rnd = () => ((seed = (seed * 48271) % 2147483647) / 2147483647);
+    const junk = (): unknown => {
+      const r = rnd();
+      if (r < 0.1) return null;
+      if (r < 0.2) return NaN;
+      if (r < 0.3) return -1;
+      if (r < 0.4) return 'x';
+      if (r < 0.5) return [];
+      if (r < 0.6) return {};
+      if (r < 0.7) return 1e300;
+      if (r < 0.8) return true;
+      return 3;
+    };
+    const mangle = (x: unknown, depth: number): unknown => {
+      if (rnd() < 0.15) return junk();
+      if (Array.isArray(x)) return x.map((y) => mangle(y, depth + 1));
+      if (x && typeof x === 'object' && depth < 6) return Object.fromEntries(Object.entries(x).map(([k, v]) => [k, mangle(v, depth + 1)]));
+      return x;
+    };
+    for (let i = 0; i < 150; i++) {
+      for (const c of [cfg, simCfg]) invariant(c, E.reconcileState(c, mangle(good(c), 0), T0));
+    }
+  });
+
+  it('a save from a newer version is kept, not treated as version 1 (that would wipe a sim run)', () => {
+    const s = { ...good(simCfg), version: 3 };
+    const r = E.reconcileState(simCfg, s, T0);
+    expect(r.venues.a.chain!.transportLevel).toBe(4);
+  });
+
+  it('never reads the device clock: a missing firstOpenAt comes from `now`', () => {
+    const spy = vi.spyOn(Date, 'now').mockImplementation(() => {
+      throw new Error('Date.now called inside the engine');
+    });
+    try {
+      const r = E.reconcileState(cfg, { version: 2 }, T0);
+      expect(r.stats.firstOpenAt).toBe(T0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe('review: clock (E4)', () => {
+  const rushCfg = simCfg.sim!.rush;
+
+  it('a clock moved backwards cannot stretch the boost, the rush or its cooldown', () => {
+    let s = E.startRush(simCfg, E.activateBoost(simCfg, rich(simCfg), T0), T0);
+    s = { ...s, lastSavedAt: T0 };
+    const back = T0 - 86_400_000; // the player sets the clock a day back
+    const fixed = E.clampClock(simCfg, s, back);
+    expect(fixed.boostUntil - back).toBeLessThanOrEqual(simCfg.economy.boost.maxMinutes * 60_000);
+    expect(fixed.rush.until - back).toBeLessThanOrEqual(rushCfg.seconds * 1000);
+    expect(fixed.rush.readyAt - fixed.rush.until).toBeLessThanOrEqual(rushCfg.cooldownSeconds * 1000);
+    expect(fixed.lastSavedAt).toBe(back);
+    // A normal state is left alone.
+    expect(E.clampClock(simCfg, s, T0 + 1000)).toBe(s);
+  });
+
+  it('offline earnings are zero for a save from the future and never NaN', () => {
+    const s = { ...rich(cfg), lastSavedAt: T0 + 3600e3 };
+    expect(E.computeOffline(cfg, s, T0)).toEqual({ seconds: 0, earnings: 0 });
+    const broken = { ...rich(cfg), lastSavedAt: NaN };
+    expect(E.computeOffline(cfg, broken, T0)).toEqual({ seconds: 0, earnings: 0 });
+  });
+
+  it('a rush that ends inside a tick only speeds up the part of the tick before it ended', () => {
+    const s0 = (() => {
+      let s = rich(simCfg, 1e13);
+      for (const b of simCfg.businesses.slice(0, 2)) s = E.hireManager(simCfg, E.buyBusiness(simCfg, s, 'a', b.id, 10), 'a', b.id);
+      return s;
+    })();
+    const s = E.startRush(simCfg, s0, T0);
+    const end = s.rush.until;
+    // A 1 s tick that ends 0.5 s after the rush ended: half of it ran at rush speed.
+    expect(E.simSeconds(simCfg, s, 1, end + 500)).toBeCloseTo(0.5 * rushCfg.multiplier + 0.5, 9);
+    expect(E.simSeconds(simCfg, s, 1, end - 100)).toBeCloseTo(rushCfg.multiplier, 9);
+    expect(E.simSeconds(simCfg, s, 1, end + 5000)).toBe(1);
+    expect(E.simSeconds(cfg, E.createInitialState(cfg, T0), 1, T0)).toBe(1);
+  });
+});
+
+describe('review: venues on and off screen (E5)', () => {
+  function automated(venueId = 'a', cash = 1e13): GameState {
+    let s = rich(simCfg, cash);
+    if (venueId !== 'a') s = E.unlockVenue(simCfg, s, venueId);
+    for (const b of simCfg.businesses.slice(0, 3)) s = E.hireManager(simCfg, E.buyBusiness(simCfg, s, venueId, b.id, 20), venueId, b.id);
+    s = E.buyTransport(simCfg, s, venueId, 30);
+    s = E.buySales(simCfg, s, venueId, 30);
+    return E.hireTransportManager(simCfg, s, venueId);
+  }
+
+  it('passing an events array does not change the game (stats.served used to differ)', () => {
+    let a = automated();
+    let b = a;
+    const events: GameEvent[] = [];
+    for (let i = 0; i < 2000; i++) {
+      events.length = 0;
+      a = E.tick(simCfg, a, 0.1, T0, events);
+      b = E.tick(simCfg, b, 0.1, T0);
+    }
+    expect(b).toEqual(a);
+  });
+
+  it('switching venues every tick earns no more than staying put', () => {
+    // Both venues automated; b is the bigger one.
+    let s = automated('a', 1e14);
+    s = E.unlockVenue(simCfg, s, 'b');
+    for (const b of simCfg.businesses.slice(0, 3)) s = E.hireManager(simCfg, E.buyBusiness(simCfg, s, 'b', b.id, 20), 'b', b.id);
+    s = E.hireTransportManager(simCfg, E.buySales(simCfg, E.buyTransport(simCfg, s, 'b', 30), 'b', 30), 'b');
+    // Warm both chains up on screen.
+    for (const id of ['a', 'b']) {
+      s = E.setActiveVenue(s, id);
+      for (let i = 0; i < 600; i++) s = E.tick(simCfg, s, 0.1, T0);
+    }
+    let stay = E.setActiveVenue(s, 'a');
+    let flip = stay;
+    const c0 = stay.cash;
+    const served0 = stay.stats.served;
+    // Long enough that the few plates on the tables at the start and the end (the only difference
+    // between running a chain and estimating it) are noise.
+    for (let i = 0; i < 20000; i++) {
+      stay = E.tick(simCfg, stay, 0.1, T0);
+      flip = E.tick(simCfg, E.setActiveVenue(flip, i % 2 ? 'a' : 'b'), 0.1, T0);
+    }
+    expect((flip.cash - c0) / (stay.cash - c0)).toBeLessThan(1.01);
+    expect((flip.stats.served - served0) / (stay.stats.served - served0)).toBeLessThan(1.05);
+  });
+});
+
+describe('review: idle path (P1)', () => {
+  it('off-screen rates are remembered per venue object and recomputed after anything that changes them', () => {
+    let s = rich(simCfg, 1e14);
+    for (const b of simCfg.businesses.slice(0, 2)) s = E.hireManager(simCfg, E.buyBusiness(simCfg, s, 'a', b.id, 10), 'a', b.id);
+    s = E.hireTransportManager(simCfg, s, 'a');
+    s = E.unlockVenue(simCfg, s, 'b'); // a is now off screen
+    const r1 = E.venueRates(simCfg, s, 'a');
+    s = E.tick(simCfg, s, 0.1, T0);
+    expect(E.venueRates(simCfg, s, 'a')).toBe(r1); // the idle tick reuses it
+    const fresh = (x: GameState) => JSON.parse(JSON.stringify(E.venueRates(simCfg, JSON.parse(JSON.stringify(x)), 'a')));
+    const checks: [string, GameState][] = [
+      ['station level', E.buyBusiness(simCfg, s, 'a', simCfg.businesses[0].id, 1)],
+      ['transport level', E.buyTransport(simCfg, s, 'a', 5)],
+      ['sales level', E.buySales(simCfg, s, 'a', 5)],
+      ['upgrade', E.buyUpgrade(simCfg, s, simCfg.upgrades.find((u) => !u.premium && u.target === simCfg.businesses[0].id)!.id)],
+      ['card', M.addCardCopies(simCfg, s, 'c_station', 1)],
+    ];
+    for (const [name, next] of checks) {
+      expect([name, JSON.parse(JSON.stringify(E.venueRates(simCfg, next, 'a')))]).toEqual([name, fresh(next)]);
+    }
   });
 });

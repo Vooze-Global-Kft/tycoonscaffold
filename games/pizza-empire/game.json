@@ -324,13 +324,13 @@
     {
       "id": "nonna",
       "name": "Nonna Rosa",
-      "portrait": "👵",
+      "portrait": "char:nonna",
       "color": "#E63946"
     },
     {
       "id": "rival",
       "name": "Big Cheese Carl",
-      "portrait": "🤵",
+      "portrait": "char:carl",
       "color": "#B8860B"
     },
     {
@@ -527,63 +527,90 @@
       "products": [
         {
           "id": "pizza_no_ads",
-          "title": "No Ads",
-          "description": "Remove banners and pop-up ads forever. Rewarded boosts become free.",
           "kind": "noAds",
-          "fallbackPrice": "$3.99"
+          "fallbackPrice": "$5.99",
+          "title": "No Ads",
+          "description": "Removes banners and pop-up ads for good. Rewarded ads stay optional."
+        },
+        {
+          "id": "pizza_express_pass",
+          "kind": "skipAds",
+          "fallbackPrice": "$7.99",
+          "title": "Express Pass",
+          "description": "Get every ad reward without watching the ad."
         },
         {
           "id": "pizza_x2",
-          "title": "Double Profits",
-          "description": "Permanent 2× on everything.",
           "kind": "multiplier",
           "value": 2,
-          "fallbackPrice": "$4.99",
-          "highlight": true
+          "fallbackPrice": "$6.99",
+          "highlight": true,
+          "title": "Double Profits",
+          "description": "Permanent ×2 on all income."
         },
         {
           "id": "pizza_x3",
-          "title": "Triple Profits",
-          "description": "Permanent 3× on everything. Stacks with Double.",
           "kind": "multiplier",
           "value": 3,
-          "fallbackPrice": "$9.99"
+          "fallbackPrice": "$12.99",
+          "title": "Triple Profits",
+          "description": "Permanent ×3 on all income. Stacks with Double."
         },
         {
           "id": "pizza_gems_100",
-          "title": "Basket of Truffles",
           "kind": "gems",
           "value": 100,
-          "fallbackPrice": "$1.99"
+          "fallbackPrice": "$1.99",
+          "title": "Pinch of Truffles"
+        },
+        {
+          "id": "pizza_gems_280",
+          "kind": "gems",
+          "value": 280,
+          "fallbackPrice": "$4.99",
+          "title": "Basket of Truffles"
         },
         {
           "id": "pizza_gems_600",
-          "title": "Truffle Crate",
           "kind": "gems",
           "value": 600,
-          "fallbackPrice": "$9.99"
+          "fallbackPrice": "$9.99",
+          "title": "Truffle Crate"
+        },
+        {
+          "id": "pizza_gems_1300",
+          "kind": "gems",
+          "value": 1300,
+          "fallbackPrice": "$19.99",
+          "title": "Truffle Cellar"
         },
         {
           "id": "pizza_warp_24",
-          "title": "24h Time Warp",
-          "description": "Instantly earn a full day of income.",
           "kind": "timeWarp",
           "value": 24,
-          "fallbackPrice": "$2.99"
+          "fallbackPrice": "$2.99",
+          "title": "24h Time Warp",
+          "description": "Instantly earn a full day of income."
         },
         {
-          "id": "pizza_starter",
-          "title": "Starter Pack",
-          "description": "No ads + 300 Truffles. One time only!",
-          "kind": "starterPack",
-          "value": 300,
-          "fallbackPrice": "$4.99"
+          "id": "pizza_welcome_feast",
+          "kind": "deal",
+          "fallbackPrice": "$4.99",
+          "title": "Welcome Feast",
+          "description": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony and four hours of takings."
+        },
+        {
+          "id": "pizza_franchise_kit",
+          "kind": "deal",
+          "fallbackPrice": "$4.99",
+          "title": "Franchise Kit",
+          "description": "Rebuild faster after earning Chef Stars: Truffles, Astro Al, Big Cheese Carl, Speedy Sal and eight hours of takings."
         }
       ]
     }
   },
   "store": {
-    "title": "Pizza Empire: Idle Tycoon",
+    "title": "Pizza Empire: Restaurant Sim",
     "subtitle": "Bake, build & get rich",
     "keywords": [
       "pizza",
@@ -597,8 +624,8 @@
       "simulator",
       "incremental"
     ],
-    "shortDescription": "Grow a tiny slice stand into a galaxy-wide pizza empire. Idle tycoon fun!",
-    "description": "Turn Nonna's tiny slice stand into the biggest pizza empire in the universe!\n\n• Tap to bake, then hire chefs to run your kitchens while you're away\n• Unlock 10 businesses, from food trucks to your very own pizza planet\n• Earn money even when the app is closed\n• Franchise your empire to earn Chef Stars and grow faster every run\n• Outsmart your rival, Big Cheese Carl\n\nPizza Empire is a relaxing idle tycoon game you can play in short bursts all day.",
+    "shortDescription": "Bake, serve and grow Nonna's tiny kitchen into a pizza empire across the world.",
+    "description": "Turn Nonna's tiny corner kitchen into the biggest pizza empire in the universe!\n\n• Bake at the oven, ring the bell and watch your waiters serve hungry guests\n• Fix the bottleneck: more stations, more waiters, more tables\n• Open eight restaurants, from Napoli to a pizza planet in deep space\n• Collect a staff of twelve characters and level them up\n• Free boxes, daily missions and Rush Hour keep every visit rewarding\n• Earn money even when the app is closed\n• Franchise your empire to earn Chef Stars and grow faster every run\n• Outsmart your rival, Big Cheese Carl\n\nPizza Empire is a relaxing restaurant sim you can play in short bursts all day.",
     "privacyPolicyUrl": "https://example.com/privacy"
   },
   "assets": {
@@ -738,6 +765,791 @@
       "multiplier": 3,
       "seconds": 30,
       "cooldownSeconds": 300
+    }
+  },
+  "meta": {
+    "cards": [
+      {
+        "id": "tony",
+        "name": "Tony Wheels",
+        "title": "Line Cook",
+        "icon": "char:tony",
+        "rarity": "common",
+        "stat": "stationValue",
+        "flavor": "Flips, fries and never stops talking."
+      },
+      {
+        "id": "sal",
+        "name": "Speedy Sal",
+        "title": "Runner",
+        "icon": "char:sal",
+        "rarity": "common",
+        "stat": "transportCapacity",
+        "flavor": "Carries six plates. Claims eight."
+      },
+      {
+        "id": "fiona",
+        "name": "Farmer Fiona",
+        "title": "Supplier",
+        "icon": "char:fiona",
+        "rarity": "common",
+        "stat": "salesSpend",
+        "flavor": "Her tomatoes make people order seconds."
+      },
+      {
+        "id": "freeze",
+        "name": "Dr. Freeze",
+        "title": "Night Shift",
+        "icon": "char:freeze",
+        "rarity": "common",
+        "stat": "offlineEarnings",
+        "flavor": "Keeps everything fresh while you sleep."
+      },
+      {
+        "id": "marco",
+        "name": "Chef Marco",
+        "title": "Head Chef",
+        "icon": "asset:mgr_marco",
+        "rarity": "rare",
+        "stat": "stationValue",
+        "flavor": "Kisses his fingers after every dish."
+      },
+      {
+        "id": "gina",
+        "name": "Gina Glam",
+        "title": "TV Star",
+        "icon": "char:gina",
+        "rarity": "rare",
+        "stat": "tapValue",
+        "flavor": "One wink and the tips pour in."
+      },
+      {
+        "id": "mayor",
+        "name": "Mayor Pepperoni",
+        "title": "Guest of Honour",
+        "icon": "char:mayor",
+        "rarity": "rare",
+        "stat": "bonusValue",
+        "flavor": "Cuts ribbons. Eats the ribbon cake."
+      },
+      {
+        "id": "al",
+        "name": "Astro Al",
+        "title": "Rocket Chef",
+        "icon": "char:al",
+        "rarity": "epic",
+        "stat": "rushDuration",
+        "flavor": "Treats every rush hour like a launch."
+      },
+      {
+        "id": "carl",
+        "name": "Big Cheese Carl",
+        "title": "Reformed Rival",
+        "icon": "char:carl",
+        "rarity": "epic",
+        "stat": "transportCapacity",
+        "flavor": "If you can't beat them, wait tables for them."
+      },
+      {
+        "id": "pepe",
+        "name": "Pepe",
+        "title": "Mascot",
+        "icon": "asset:hero",
+        "rarity": "epic",
+        "stat": "tapValue",
+        "flavor": "Yes, he's a pizza. No, you can't eat him."
+      },
+      {
+        "id": "nonna",
+        "name": "Nonna Rosa",
+        "title": "The Legend",
+        "icon": "char:nonna",
+        "rarity": "legendary",
+        "stat": "globalIncome",
+        "flavor": "The sauce. The myth. The grandmother."
+      },
+      {
+        "id": "overlord",
+        "name": "The Overlord",
+        "title": "Galactic Critic",
+        "icon": "char:overlord",
+        "rarity": "legendary",
+        "stat": "globalIncome",
+        "flavor": "Three eyes, one verdict: delizioso."
+      }
+    ],
+    "cardEffect": {
+      "common": {
+        "base": 4,
+        "perLevel": 2.5
+      },
+      "rare": {
+        "base": 6,
+        "perLevel": 3.5
+      },
+      "epic": {
+        "base": 12,
+        "perLevel": 5
+      },
+      "legendary": {
+        "base": 8,
+        "perLevel": 4
+      }
+    },
+    "cardCopies": {
+      "base": 2,
+      "growth": 1.5
+    },
+    "chests": [
+      {
+        "id": "box",
+        "name": "Pizza Box",
+        "icon": "📦",
+        "blurb": "A few cards and some dough.",
+        "tier": "wood",
+        "slots": 3,
+        "slotWeights": {
+          "card": 85,
+          "gems": 5,
+          "cash": 10
+        },
+        "rarityWeights": {
+          "common": 74,
+          "rare": 20,
+          "epic": 5,
+          "legendary": 1
+        },
+        "cardCopies": {
+          "common": [
+            1,
+            3
+          ],
+          "rare": [
+            1,
+            2
+          ],
+          "epic": [
+            1,
+            1
+          ],
+          "legendary": [
+            1,
+            1
+          ]
+        },
+        "gems": [
+          1,
+          3
+        ],
+        "cashSeconds": [
+          60,
+          180
+        ]
+      },
+      {
+        "id": "crate",
+        "name": "Chef's Crate",
+        "icon": "🧰",
+        "blurb": "More cards, with a rare one guaranteed.",
+        "tier": "silver",
+        "slots": 4,
+        "slotWeights": {
+          "card": 85,
+          "gems": 5,
+          "cash": 10
+        },
+        "rarityWeights": {
+          "common": 60,
+          "rare": 30,
+          "epic": 8,
+          "legendary": 2
+        },
+        "cardCopies": {
+          "common": [
+            5,
+            8
+          ],
+          "rare": [
+            2,
+            4
+          ],
+          "epic": [
+            1,
+            2
+          ],
+          "legendary": [
+            1,
+            1
+          ]
+        },
+        "gems": [
+          3,
+          6
+        ],
+        "cashSeconds": [
+          300,
+          600
+        ],
+        "guaranteed": "rare"
+      },
+      {
+        "id": "golden",
+        "name": "Golden Oven Chest",
+        "icon": "👑",
+        "blurb": "A feast of cards, with an epic guaranteed.",
+        "tier": "gold",
+        "slots": 6,
+        "slotWeights": {
+          "card": 90,
+          "gems": 5,
+          "cash": 5
+        },
+        "rarityWeights": {
+          "common": 50,
+          "rare": 32,
+          "epic": 13,
+          "legendary": 5
+        },
+        "cardCopies": {
+          "common": [
+            14,
+            20
+          ],
+          "rare": [
+            8,
+            12
+          ],
+          "epic": [
+            3,
+            5
+          ],
+          "legendary": [
+            1,
+            2
+          ]
+        },
+        "gems": [
+          10,
+          20
+        ],
+        "cashSeconds": [
+          1200,
+          2400
+        ],
+        "guaranteed": "epic"
+      }
+    ],
+    "freeChest": {
+      "chestId": "box",
+      "everyHours": 4,
+      "stored": 2,
+      "firstMinutes": [
+        15,
+        60
+      ]
+    },
+    "adChest": {
+      "chestId": "box",
+      "perDay": 3,
+      "cooldownMinutes": 120
+    },
+    "pity": {
+      "epic": 10,
+      "legendary": 40
+    },
+    "chestGrowthPerVenue": 0.2,
+    "chestsForSale": false,
+    "missions": {
+      "slots": 3,
+      "perDay": 10,
+      "templates": [
+        {
+          "id": "serve",
+          "type": "serve",
+          "text": "Serve {n} guests",
+          "targets": [
+            5,
+            25,
+            60,
+            150,
+            300,
+            600,
+            1200
+          ],
+          "reward": {
+            "type": "gems",
+            "amount": 3
+          }
+        },
+        {
+          "id": "earn",
+          "type": "earn",
+          "text": "Earn {n}",
+          "targets": [
+            30,
+            120,
+            300,
+            600,
+            900,
+            1500,
+            2400
+          ],
+          "reward": {
+            "type": "gems",
+            "amount": 3
+          }
+        },
+        {
+          "id": "levels",
+          "type": "levels",
+          "text": "Buy {n} levels",
+          "targets": [
+            3,
+            10,
+            25,
+            40,
+            60,
+            100,
+            150
+          ],
+          "reward": {
+            "type": "gems",
+            "amount": 2
+          }
+        },
+        {
+          "id": "taps",
+          "type": "taps",
+          "text": "Tap for tips {n} times",
+          "targets": [
+            15,
+            40,
+            80,
+            150,
+            250
+          ],
+          "reward": {
+            "type": "gems",
+            "amount": 2
+          }
+        },
+        {
+          "id": "slices",
+          "type": "bonus",
+          "text": "Catch {n}× Golden Slice",
+          "targets": [
+            1,
+            3,
+            5,
+            8,
+            12
+          ],
+          "reward": {
+            "type": "gems",
+            "amount": 3
+          }
+        },
+        {
+          "id": "chests",
+          "type": "chests",
+          "text": "Open {n}× chest",
+          "targets": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "reward": {
+            "type": "gems",
+            "amount": 3
+          }
+        },
+        {
+          "id": "rush",
+          "type": "rush",
+          "text": "Start Rush Hour {n}×",
+          "targets": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "reward": {
+            "type": "gems",
+            "amount": 3
+          }
+        },
+        {
+          "id": "hires",
+          "type": "hires",
+          "text": "Hire {n}× staff",
+          "targets": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "reward": {
+            "type": "gems",
+            "amount": 4
+          }
+        }
+      ],
+      "milestones": [
+        {
+          "every": 5,
+          "reward": {
+            "type": "chest",
+            "chestId": "box",
+            "count": 1
+          }
+        },
+        {
+          "every": 10,
+          "reward": {
+            "type": "chest",
+            "chestId": "crate",
+            "count": 1
+          }
+        },
+        {
+          "every": 30,
+          "reward": {
+            "type": "chest",
+            "chestId": "golden",
+            "count": 1
+          }
+        }
+      ]
+    },
+    "deals": [
+      {
+        "id": "welcome",
+        "title": "Welcome Feast",
+        "badge": "ONE TIME",
+        "blurb": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony and four hours of takings.",
+        "icon": "🎉",
+        "productId": "pizza_welcome_feast",
+        "trigger": {
+          "type": "sessions",
+          "count": 3
+        },
+        "durationHours": 72,
+        "maxPurchases": 1,
+        "contents": [
+          {
+            "type": "gems",
+            "amount": 300
+          },
+          {
+            "type": "card",
+            "cardId": "nonna",
+            "copies": 1
+          },
+          {
+            "type": "card",
+            "cardId": "marco",
+            "copies": 6
+          },
+          {
+            "type": "card",
+            "cardId": "tony",
+            "copies": 20
+          },
+          {
+            "type": "cash",
+            "seconds": 14400
+          }
+        ]
+      },
+      {
+        "id": "franchise",
+        "title": "Franchise Kit",
+        "badge": "AFTER A RESET",
+        "blurb": "Rebuild faster after earning Chef Stars: Truffles, Astro Al, Big Cheese Carl, Speedy Sal and eight hours of takings.",
+        "icon": "🏪",
+        "productId": "pizza_franchise_kit",
+        "trigger": {
+          "type": "prestige",
+          "count": 1
+        },
+        "durationHours": 48,
+        "maxPurchases": 1,
+        "contents": [
+          {
+            "type": "gems",
+            "amount": 200
+          },
+          {
+            "type": "card",
+            "cardId": "al",
+            "copies": 3
+          },
+          {
+            "type": "card",
+            "cardId": "carl",
+            "copies": 3
+          },
+          {
+            "type": "card",
+            "cardId": "sal",
+            "copies": 15
+          },
+          {
+            "type": "cash",
+            "seconds": 28800
+          }
+        ]
+      }
+    ],
+    "dailyShop": {
+      "slots": 4,
+      "offers": [
+        {
+          "id": "free_truffles",
+          "title": "Free Truffles",
+          "icon": "🍄",
+          "reward": {
+            "type": "gems",
+            "amount": 5
+          },
+          "gemCost": 0,
+          "weight": 2
+        },
+        {
+          "id": "free_box",
+          "title": "Free Pizza Box",
+          "icon": "📦",
+          "reward": {
+            "type": "chest",
+            "chestId": "box",
+            "count": 1
+          },
+          "gemCost": 0,
+          "weight": 2
+        },
+        {
+          "id": "free_tips",
+          "title": "Free Tip Jar",
+          "icon": "🫙",
+          "reward": {
+            "type": "cash",
+            "seconds": 900
+          },
+          "gemCost": 0,
+          "weight": 2
+        },
+        {
+          "id": "free_recruit",
+          "title": "Free Recruit",
+          "icon": "🎟️",
+          "reward": {
+            "type": "randomCard",
+            "rarity": "common",
+            "copies": 3
+          },
+          "gemCost": 0,
+          "weight": 1
+        },
+        {
+          "id": "tips_1h",
+          "title": "An Hour of Takings",
+          "icon": "💰",
+          "reward": {
+            "type": "cash",
+            "seconds": 3600
+          },
+          "gemCost": 20,
+          "weight": 2
+        },
+        {
+          "id": "tips_4h",
+          "title": "Four Hours of Takings",
+          "icon": "💰",
+          "reward": {
+            "type": "cash",
+            "seconds": 14400
+          },
+          "gemCost": 70,
+          "weight": 1
+        },
+        {
+          "id": "card_tony",
+          "title": "Tony Wheels ×8",
+          "icon": "char:tony",
+          "reward": {
+            "type": "card",
+            "cardId": "tony",
+            "copies": 8
+          },
+          "gemCost": 30,
+          "weight": 3
+        },
+        {
+          "id": "card_sal",
+          "title": "Speedy Sal ×8",
+          "icon": "char:sal",
+          "reward": {
+            "type": "card",
+            "cardId": "sal",
+            "copies": 8
+          },
+          "gemCost": 30,
+          "weight": 3
+        },
+        {
+          "id": "card_fiona",
+          "title": "Farmer Fiona ×8",
+          "icon": "char:fiona",
+          "reward": {
+            "type": "card",
+            "cardId": "fiona",
+            "copies": 8
+          },
+          "gemCost": 30,
+          "weight": 3
+        },
+        {
+          "id": "card_freeze",
+          "title": "Dr. Freeze ×8",
+          "icon": "char:freeze",
+          "reward": {
+            "type": "card",
+            "cardId": "freeze",
+            "copies": 8
+          },
+          "gemCost": 30,
+          "weight": 3
+        },
+        {
+          "id": "card_marco",
+          "title": "Chef Marco ×3",
+          "icon": "asset:mgr_marco",
+          "reward": {
+            "type": "card",
+            "cardId": "marco",
+            "copies": 3
+          },
+          "gemCost": 40,
+          "weight": 2
+        },
+        {
+          "id": "card_gina",
+          "title": "Gina Glam ×3",
+          "icon": "char:gina",
+          "reward": {
+            "type": "card",
+            "cardId": "gina",
+            "copies": 3
+          },
+          "gemCost": 40,
+          "weight": 2
+        },
+        {
+          "id": "card_mayor",
+          "title": "Mayor Pepperoni ×3",
+          "icon": "char:mayor",
+          "reward": {
+            "type": "card",
+            "cardId": "mayor",
+            "copies": 3
+          },
+          "gemCost": 40,
+          "weight": 2
+        },
+        {
+          "id": "card_al",
+          "title": "Astro Al ×1",
+          "icon": "char:al",
+          "reward": {
+            "type": "card",
+            "cardId": "al",
+            "copies": 1
+          },
+          "gemCost": 60,
+          "weight": 1.5
+        },
+        {
+          "id": "card_carl",
+          "title": "Big Cheese Carl ×1",
+          "icon": "char:carl",
+          "reward": {
+            "type": "card",
+            "cardId": "carl",
+            "copies": 1
+          },
+          "gemCost": 60,
+          "weight": 1.5
+        },
+        {
+          "id": "card_pepe",
+          "title": "Pepe ×1",
+          "icon": "asset:hero",
+          "reward": {
+            "type": "card",
+            "cardId": "pepe",
+            "copies": 1
+          },
+          "gemCost": 60,
+          "weight": 1.5
+        },
+        {
+          "id": "card_nonna",
+          "title": "Nonna Rosa ×1",
+          "icon": "char:nonna",
+          "reward": {
+            "type": "card",
+            "cardId": "nonna",
+            "copies": 1
+          },
+          "gemCost": 250,
+          "weight": 0.5
+        },
+        {
+          "id": "card_overlord",
+          "title": "The Overlord ×1",
+          "icon": "char:overlord",
+          "reward": {
+            "type": "card",
+            "cardId": "overlord",
+            "copies": 1
+          },
+          "gemCost": 250,
+          "weight": 0.5
+        }
+      ]
+    }
+  },
+  "cast": {
+    "al": {
+      "preset": "al"
+    },
+    "carl": {
+      "preset": "carl"
+    },
+    "fiona": {
+      "preset": "fiona"
+    },
+    "freeze": {
+      "preset": "freeze"
+    },
+    "gina": {
+      "preset": "gina"
+    },
+    "mayor": {
+      "preset": "mayor"
+    },
+    "nonna": {
+      "preset": "nonna"
+    },
+    "overlord": {
+      "preset": "overlord"
+    },
+    "sal": {
+      "preset": "sal"
+    },
+    "tony": {
+      "preset": "tony"
     }
   }
 }

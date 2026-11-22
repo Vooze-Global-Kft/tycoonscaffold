@@ -2,8 +2,10 @@
  * Which country the player is in, as an ISO 3166-1 alpha-2 code ("BE", "US").
  * Used for rules that differ by country, such as where randomised chests may
  * be sold. The store account's country is what counts legally; the device's
- * region setting is the fallback. Null when neither is known (then nothing is
- * restricted: we never guess a restriction).
+ * region setting is the fallback, used only when there is no store account at
+ * all. Null when the country is not known. What null means is decided by the
+ * caller: for chest sales the engine treats an unknown country as restricted
+ * (meta.ts chestSalesAllowed), the safe side for a legal rule.
  */
 import { Platform } from 'react-native';
 import { loadPurchases } from './sdks';
@@ -24,8 +26,11 @@ export async function detectRegion(): Promise<string | null> {
     try {
       const purchases = loadPurchases();
       const storefront = await purchases?.getStorefront();
-      const fromStore = normalise(storefront?.countryCode);
-      if (fromStore) return fromStore;
+      if (storefront?.countryCode) {
+        // The store account's country is the one that counts. If its code cannot be read, say "unknown"
+        // rather than fall back to the device language (a Belgian account on an en-US phone is still Belgian).
+        return normalise(storefront.countryCode);
+      }
     } catch {
       // Not configured (no key, Expo Go): fall through to the device setting.
     }

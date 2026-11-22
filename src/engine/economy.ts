@@ -16,6 +16,7 @@ import {
   advanceChain,
   chainThroughput,
   createChain,
+  fitChain,
   resizeChain,
   ringBell,
   type ChainEvent,
@@ -131,11 +132,78 @@ export function createInitialState(cfg: GameConfig, now: number): GameState {
   };
 }
 
-/** Shape of a version-1 save (before venues). Only what migration reads. */
-interface SavedV1 {
-  version?: number;
-  businesses?: Record<string, Partial<BusinessState>>;
-  [key: string]: unknown;
+// ---------------------------------------------------------------- loading saves
+
+/** Cash and earnings never go above this (the largest finite double), so they can never become Infinity or NaN. */
+export const MAX_CASH = Number.MAX_VALUE;
+
+type Plain = Record<string, unknown>;
+const isPlain = (x: unknown): x is Plain => typeof x === 'object' && x !== null && !Array.isArray(x);
+/** A finite number >= min, or the fallback. */
+const finiteOr = (x: unknown, fallback: number, min = 0): number => (typeof x === 'number' && Number.isFinite(x) && x >= min ? x : fallback);
+/** An integer >= min (rounded down), or the fallback. */
+const intOr = (x: unknown, fallback: number, min = 0): number => (typeof x === 'number' && Number.isFinite(x) && x >= min ? Math.floor(x) : fallback);
+const boolOr = (x: unknown, fallback: boolean): boolean => (typeof x === 'boolean' ? x : fallback);
+const strings = (x: unknown): string[] => (Array.isArray(x) ? x.filter((v): v is string => typeof v === 'string') : []);
+
+/**
+ * Takes `saved` where it has the same shape as `fresh`, key by key: numbers must be finite and
+ * not negative, strings, booleans and arrays must be of that type, an empty object in `fresh`
+ * (a record) accepts any object, and nested objects merge the same way. Anything else keeps the
+ * fresh value. Used for the parts of the state this file does not know in detail (meta systems),
+ * so a field added there later is still loaded, and still protected from wrong types.
+ */
+function mergeShape<T>(fresh: T, saved: unknown): T {
+  if (!isPlain(fresh)) return fresh;
+  if (!isPlain(saved)) return fresh;
+  const out: Plain = { ...fresh };
+  for (const [k, f] of Object.entries(fresh)) {
+    const v = saved[k];
+    if (v === undefined) continue;
+    if (typeof f === 'number') out[k] = finiteOr(v, f);
+    else if (typeof f === 'string') out[k] = typeof v === 'string' ? v : f;
+    else if (typeof f === 'boolean') out[k] = boolOr(v, f);
+    else if (f === null) out[k] = v === null || typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v)) ? v : f;
+    else if (Array.isArray(f)) out[k] = Array.isArray(v) ? v : f;
+    else if (isPlain(f)) out[k] = Object.keys(f).length === 0 ? (isPlain(v) ? { ...v } : f) : mergeShape(f, v);
+  }
+  return out as T;
+}
+
+function loadBusiness(fresh: BusinessState, saved: unknown): BusinessState {
+  if (!isPlain(saved)) return fresh;
+  const progress = finiteOr(saved.progress, 0);
+  return {
+    owned: intOr(saved.owned, fresh.owned),
+    progress: progress < 1 ? progress : 0,
+    running: boolOr(saved.running, fresh.running),
+    managed: boolOr(saved.managed, fresh.managed),
+  };
+}
+
+function loadVenue(cfg: GameConfig, fresh: VenueState, saved: unknown): VenueState {
+  const s = isPlain(saved) ? saved : {};
+  const savedBiz = isPlain(s.businesses) ? s.businesses : {};
+  const businesses: Record<string, BusinessState> = {};
+  for (const b of cfg.businesses) businesses[b.id] = loadBusiness(fresh.businesses[b.id], savedBiz[b.id]);
+  let chain = fresh.chain;
+  if (chain && isSim(cfg) && isPlain(s.chain)) {
+    const c = s.chain;
+    const transportLevel = intOr(c.transportLevel, chain.transportLevel, 1);
+    const salesLevel = intOr(c.salesLevel, chain.salesLevel, 1);
+    const fitted = fitChain(c as unknown as VenueChain, countAtLevel(cfg.sim.transport.workersAt, transportLevel), countAtLevel(cfg.sim.sales.seatsAt, salesLevel));
+    chain = {
+      buffer: fitted.buffer,
+      served: fitted.served,
+      workers: fitted.workers,
+      seats: fitted.seats,
+      guests: fitted.guests,
+      transportLevel,
+      salesLevel,
+      transportManaged: boolOr(c.transportManaged, false),
+    };
+  }
+  return { unlocked: boolOr(s.unlocked, fresh.unlocked), businesses, chain };
 }
 
 /**
@@ -143,79 +211,124 @@ interface SavedV1 {
  * new businesses, venues, workers and seats appear; removed ones are dropped;
  * unknown ids are filtered. Purchases (gems, entitlements) are never lost.
  * Lets you ship content and economy updates without wiping saves.
+ *
+ * The save is untrusted (an old build, a corrupted file, a player with a text
+ * editor): every field is type-checked, numbers must be finite and not
+ * negative, and anything unusable falls back to the fresh value, so this never
+ * throws and the result always runs. `now` is only used when the save does not
+ * say when the game was first opened (the engine never reads the clock).
  */
-export function reconcileState(cfg: GameConfig, savedRaw: unknown): GameState {
-  const saved = (savedRaw ?? {}) as Partial<GameState> & SavedV1;
-  const savedStats = (saved.stats ?? {}) as Partial<GameState['stats']>;
-  const fresh = createInitialState(cfg, savedStats.firstOpenAt ?? Date.now());
+export function reconcileState(cfg: GameConfig, savedRaw: unknown, now?: number): GameState {
+  const saved: Plain = isPlain(savedRaw) ? savedRaw : {};
+  const savedStats = isPlain(saved.stats) ? saved.stats : {};
+  const clock = finiteOr(now, finiteOr(saved.lastSavedAt, 0));
+  const fresh = createInitialState(cfg, finiteOr(savedStats.firstOpenAt, clock));
+  const ids = venueIds(cfg);
+
+  const entitlementsRaw = isPlain(saved.entitlements) ? saved.entitlements : {};
+  const multipliers: Record<string, number> = {};
+  if (isPlain(entitlementsRaw.multipliers)) {
+    for (const [k, v] of Object.entries(entitlementsRaw.multipliers)) if (typeof v === 'number' && v > 0 && Number.isFinite(v)) multipliers[k] = v;
+  }
+  const dailyRaw = isPlain(saved.daily) ? saved.daily : {};
+  // What the player paid for or earned for good: kept even when the run itself cannot be migrated.
   const paid = {
-    gems: typeof saved.gems === 'number' ? saved.gems : 0,
-    entitlements: { ...fresh.entitlements, ...(saved.entitlements ?? {}) },
-    daily: { ...fresh.daily, ...(saved.daily ?? {}) },
-    stats: { ...fresh.stats, ...savedStats },
+    gems: intOr(saved.gems, 0),
+    entitlements: {
+      ...fresh.entitlements,
+      noAds: boolOr(entitlementsRaw.noAds, false),
+      skipRewarded: boolOr(entitlementsRaw.skipRewarded, false),
+      products: [...new Set(strings(entitlementsRaw.products))],
+      multipliers,
+    },
+    daily: {
+      lastClaimDay: typeof dailyRaw.lastClaimDay === 'string' ? dailyRaw.lastClaimDay : null,
+      streak: intOr(dailyRaw.streak, 0),
+    },
+    stats: mergeShape(fresh.stats, savedStats),
   };
 
-  if (saved.version !== 2) {
-    // Version 1 had a single flat list of businesses.
-    if (isSim(cfg)) {
-      // A classic save cannot be mapped onto a production chain: start the run again, keep what was paid for.
-      return { ...fresh, ...paid };
-    }
-    const v1 = { ...(saved as Record<string, unknown>) };
-    delete v1.businesses;
-    const businesses: Record<string, BusinessState> = {};
-    for (const b of cfg.businesses) businesses[b.id] = { ...fresh.venues[MAIN_VENUE].businesses[b.id], ...(saved.businesses?.[b.id] ?? {}) };
-    const upgradeIds = new Set(cfg.upgrades.map((u) => u.id));
-    return {
-      ...fresh,
-      ...(v1 as Partial<GameState>),
-      ...paid,
-      version: 2,
-      venues: { [MAIN_VENUE]: { unlocked: true, businesses, chain: null } },
-      activeVenue: MAIN_VENUE,
-      upgrades: ((saved.upgrades as string[] | undefined) ?? []).filter((id) => upgradeIds.has(id)),
-    };
+  // Version 1 had a single flat list of businesses. A save without a version is v1 only if it looks like one;
+  // a save from a NEWER build (version 3+) is read as version 2 rather than thrown away.
+  const v1 = saved.version === 1 || (typeof saved.version !== 'number' && isPlain(saved.businesses) && !isPlain(saved.venues));
+  let venues: Record<string, VenueState>;
+  if (v1) {
+    // A classic save cannot be mapped onto a production chain: start the run again, keep what was paid for.
+    if (isSim(cfg)) return { ...fresh, ...paid };
+    venues = { [MAIN_VENUE]: loadVenue(cfg, fresh.venues[MAIN_VENUE], { unlocked: true, businesses: saved.businesses }) };
+  } else {
+    const savedVenues = isPlain(saved.venues) ? saved.venues : {};
+    venues = {};
+    for (const id of ids) venues[id] = loadVenue(cfg, fresh.venues[id], savedVenues[id]);
   }
+  // The first venue is always open (a save that says otherwise would leave nothing to play).
+  if (!venues[ids[0]].unlocked) venues[ids[0]] = { ...venues[ids[0]], unlocked: true };
 
-  const venues: Record<string, VenueState> = {};
-  for (const id of venueIds(cfg)) {
-    const f = fresh.venues[id];
-    const s = saved.venues?.[id];
-    const businesses: Record<string, BusinessState> = {};
-    for (const b of cfg.businesses) businesses[b.id] = { ...f.businesses[b.id], ...(s?.businesses?.[b.id] ?? {}) };
-    let chain = f.chain;
-    if (chain && isSim(cfg)) {
-      const merged: VenueChain = {
-        ...chain,
-        ...(s?.chain ?? {}),
-        workers: s?.chain?.workers ?? chain.workers,
-        seats: s?.chain?.seats ?? chain.seats,
-      };
-      const sized = resizeChain(merged, countAtLevel(cfg.sim.transport.workersAt, merged.transportLevel), countAtLevel(cfg.sim.sales.seatsAt, merged.salesLevel));
-      chain = { ...merged, ...sized };
-    }
-    venues[id] = { unlocked: s?.unlocked ?? f.unlocked, businesses, chain };
-  }
   const upgradeIds = new Set(cfg.upgrades.map((u) => u.id));
   const cardIds = new Set(cfg.meta.cards.map((c) => c.id));
   const cards: GameState['cards'] = {};
-  for (const [id, c] of Object.entries(saved.cards ?? {})) if (cardIds.has(id)) cards[id] = { level: c.level ?? 0, copies: c.copies ?? 0 };
+  if (isPlain(saved.cards)) {
+    for (const [id, c] of Object.entries(saved.cards)) {
+      if (cardIds.has(id) && isPlain(c)) cards[id] = { level: intOr(c.level, 0), copies: intOr(c.copies, 0) };
+    }
+  }
+  const rushRaw = isPlain(saved.rush) ? saved.rush : {};
+  const chests = mergeShape(fresh.chests, saved.chests);
+  const chestIds = new Set(cfg.meta.chests.map((c) => c.id));
+  const owned: Record<string, number> = {};
+  for (const [id, n] of Object.entries(chests.owned)) if (chestIds.has(id) && intOr(n, 0) > 0) owned[id] = intOr(n, 0);
+  const dealIds = new Set(cfg.meta.deals.map((d) => d.id));
+  const deals: GameState['deals'] = {};
+  if (isPlain(saved.deals)) for (const [id, d] of Object.entries(saved.deals)) if (dealIds.has(id) && isPlain(d)) deals[id] = d as unknown as GameState['deals'][string];
+
+  // Fields this file does not know about (added by the meta systems) still load, shape-checked.
+  const known = new Set(['version', 'cash', 'gems', 'runEarnings', 'lifetimeEarnings', 'prestigePoints', 'prestigeCount', 'venues', 'activeVenue', 'upgrades', 'boostUntil', 'rush', 'storySeen', 'entitlements', 'daily', 'cards', 'chests', 'deals', 'rng', 'stats', 'lastSavedAt']);
+  const rest: Plain = {};
+  for (const [k, f] of Object.entries(fresh)) if (!known.has(k)) rest[k] = mergeShape({ [k]: f }, { [k]: saved[k] })[k];
+
+  const activeVenue = typeof saved.activeVenue === 'string' && venues[saved.activeVenue]?.unlocked ? saved.activeVenue : ids[0];
   return {
     ...fresh,
-    ...saved,
+    ...(rest as Partial<GameState>),
     ...paid,
     version: 2,
+    cash: Math.min(finiteOr(saved.cash, fresh.cash), MAX_CASH),
+    runEarnings: finiteOr(saved.runEarnings, 0),
+    lifetimeEarnings: finiteOr(saved.lifetimeEarnings, 0),
+    prestigePoints: finiteOr(saved.prestigePoints, 0),
+    prestigeCount: intOr(saved.prestigeCount, 0),
     venues,
-    activeVenue: saved.activeVenue && venues[saved.activeVenue]?.unlocked ? saved.activeVenue : fresh.activeVenue,
-    upgrades: (saved.upgrades ?? []).filter((id) => upgradeIds.has(id)),
-    rush: { ...fresh.rush, ...(saved.rush ?? {}) },
+    activeVenue,
+    upgrades: [...new Set(strings(saved.upgrades).filter((id) => upgradeIds.has(id)))],
+    boostUntil: finiteOr(saved.boostUntil, 0),
+    rush: { until: finiteOr(rushRaw.until, 0), readyAt: finiteOr(rushRaw.readyAt, 0) },
+    storySeen: [...new Set(strings(saved.storySeen))],
     cards,
-    chests: { ...fresh.chests, ...(saved.chests ?? {}), owned: { ...(saved.chests?.owned ?? {}) } },
-    missions: { ...fresh.missions, ...(saved.missions ?? {}) },
-    deals: { ...(saved.deals ?? {}) },
-    dailyShop: { ...fresh.dailyShop, ...(saved.dailyShop ?? {}) },
-    rng: typeof saved.rng === 'number' ? saved.rng : fresh.rng,
+    chests: { ...chests, owned },
+    deals,
+    rng: typeof saved.rng === 'number' && Number.isInteger(saved.rng) ? saved.rng >>> 0 : fresh.rng,
+    lastSavedAt: finiteOr(saved.lastSavedAt, fresh.lastSavedAt),
   };
+}
+
+/**
+ * Repairs timers after the device clock moved. A clock set backwards would otherwise leave the
+ * boost, the rush and its cooldown running for as long as the clock moved (a rush lasting a day,
+ * or no rush for a day), and a save "from the future" would stop offline earnings until that
+ * moment. Every timer is capped at the longest it can legally be from `now`. Call on load and
+ * whenever the app returns to the foreground. Returns the same object when nothing was wrong.
+ */
+export function clampClock(cfg: GameConfig, state: GameState, now: number): GameState {
+  if (!Number.isFinite(now)) return state;
+  const boostCap = now + cfg.economy.boost.maxMinutes * 60_000;
+  const boostUntil = Math.min(state.boostUntil, boostCap);
+  const rushCap = now + rushSeconds(cfg, state) * 1000;
+  const until = Math.min(state.rush.until, rushCap);
+  const cooldown = isSim(cfg) ? cfg.sim.rush.cooldownSeconds * 1000 : 0;
+  const readyAt = Math.min(state.rush.readyAt, Math.max(until, now) + cooldown);
+  const lastSavedAt = Math.min(state.lastSavedAt, now);
+  if (boostUntil === state.boostUntil && until === state.rush.until && readyAt === state.rush.readyAt && lastSavedAt === state.lastSavedAt) return state;
+  return { ...state, boostUntil, rush: { until, readyAt }, lastSavedAt };
 }
 
 // ---------------------------------------------------------------- multipliers
@@ -352,16 +465,33 @@ export function productionRate(cfg: GameConfig, state: GameState, venueId: strin
 
 /** Cost of `n` more levels of something with geometric pricing, starting from `owned` (0-based count already bought). */
 export function geometricCost(baseCost: number, growth: number, owned: number, n: number, scale = 1): number {
-  if (n <= 0) return 0;
-  return (baseCost * scale * Math.pow(growth, owned) * (Math.pow(growth, n) - 1)) / (growth - 1);
+  if (!(n > 0)) return 0;
+  const first = baseCost * scale * Math.pow(growth, owned);
+  if (growth === 1) return first * n;
+  // first x (sum of the series): dividing before multiplying keeps it finite as long as the answer is.
+  return first * ((Math.pow(growth, n) - 1) / (growth - 1));
+}
+
+/** True when `cash` covers `cost`. False for a NaN, infinite or negative cost, and for NaN cash. */
+export function canAfford(cash: number, cost: number): boolean {
+  return cost >= 0 && cost < Infinity && cash >= cost;
 }
 
 export function geometricMaxAffordable(baseCost: number, growth: number, owned: number, cash: number, scale = 1): number {
+  const budget = Math.min(cash, MAX_CASH);
   const first = baseCost * scale * Math.pow(growth, owned);
-  if (!(cash >= first)) return 0;
-  const n = Math.floor(Math.log((cash * (growth - 1)) / first + 1) / Math.log(growth));
-  // Floating point can land one over; step back if so.
-  return geometricCost(baseCost, growth, owned, n, scale) > cash ? Math.max(0, n - 1) : n;
+  if (!canAfford(budget, first)) return 0;
+  let n = growth === 1 ? Math.floor(budget / first) : Math.floor(Math.log((budget * (growth - 1)) / first + 1) / Math.log(growth));
+  if (!Number.isFinite(n) || n < 1) n = 1;
+  // Floating point can land one either side; settle on the largest affordable n.
+  while (n > 1 && !canAfford(budget, geometricCost(baseCost, growth, owned, n, scale))) n--;
+  while (canAfford(budget, geometricCost(baseCost, growth, owned, n + 1, scale))) n++;
+  return n;
+}
+
+/** A whole number of units to buy (fractions round down), or 0 for anything that is not at least 1. */
+function wholeAmount(n: number): number {
+  return n >= 1 && n < Infinity ? Math.floor(n) : 0;
 }
 
 /** Cost of buying `n` more units when `owned` are already owned. */
@@ -376,7 +506,7 @@ export function maxAffordable(b: Business, owned: number, cash: number, scale = 
 export function resolveBuyAmount(cfg: GameConfig, state: GameState, venueId: string, id: string, amount: BuyAmount): number {
   const b = bizCfg(cfg, id);
   const owned = venue(state, venueId).businesses[id].owned;
-  return amount === 'max' ? Math.max(1, maxAffordable(b, owned, state.cash, venueScale(cfg, venueId))) : amount;
+  return amount === 'max' ? Math.max(1, maxAffordable(b, owned, state.cash, venueScale(cfg, venueId))) : wholeAmount(amount);
 }
 
 export function businessCost(cfg: GameConfig, state: GameState, venueId: string, id: string, n: number): number {
@@ -389,13 +519,15 @@ export function managerCost(cfg: GameConfig, venueId: string, id: string): numbe
 
 // ---------------------------------------------------------------- actions
 
+/** Adds earnings. Saturates at MAX_CASH: an Infinity here would turn into NaN at the first purchase (Infinity - Infinity). */
 function earn(state: GameState, amount: number): GameState {
   if (!(amount > 0)) return state;
+  const add = Math.min(amount, MAX_CASH);
   return {
     ...state,
-    cash: state.cash + amount,
-    runEarnings: state.runEarnings + amount,
-    lifetimeEarnings: state.lifetimeEarnings + amount,
+    cash: Math.min(state.cash + add, MAX_CASH),
+    runEarnings: Math.min(state.runEarnings + add, MAX_CASH),
+    lifetimeEarnings: Math.min(state.lifetimeEarnings + add, MAX_CASH),
   };
 }
 
@@ -408,15 +540,17 @@ export function buyBusiness(cfg: GameConfig, state: GameState, venueId: string, 
   if (!v.unlocked) return state;
   const owned = v.businesses[id].owned;
   const n = resolveBuyAmount(cfg, state, venueId, id, amount);
+  if (n < 1) return state;
   const cost = businessCost(cfg, state, venueId, id, n);
-  if (cost > state.cash) return state;
+  if (!canAfford(state.cash, cost)) return state;
   return bumpStat(withBusiness({ ...state, cash: state.cash - cost }, venueId, id, { owned: owned + n }), 'levelsBought', n);
 }
 
 export function hireManager(cfg: GameConfig, state: GameState, venueId: string, id: string): GameState {
-  const s = venue(state, venueId).businesses[id];
+  const v = venue(state, venueId);
+  const s = v.businesses[id];
   const cost = managerCost(cfg, venueId, id);
-  if (s.managed || s.owned === 0 || state.cash < cost) return state;
+  if (!v.unlocked || s.managed || s.owned === 0 || !canAfford(state.cash, cost)) return state;
   return bumpStat(withBusiness({ ...state, cash: state.cash - cost }, venueId, id, { managed: true, running: true }), 'hires');
 }
 
@@ -424,10 +558,10 @@ export function buyUpgrade(cfg: GameConfig, state: GameState, upgradeId: string)
   const u = cfg.upgrades.find((x) => x.id === upgradeId);
   if (!u || state.upgrades.includes(upgradeId)) return state;
   if (u.premium) {
-    if (state.gems < u.cost) return state;
+    if (!canAfford(state.gems, u.cost)) return state;
     return { ...state, gems: state.gems - u.cost, upgrades: [...state.upgrades, upgradeId] };
   }
-  if (state.cash < u.cost) return state;
+  if (!canAfford(state.cash, u.cost)) return state;
   return { ...state, cash: state.cash - u.cost, upgrades: [...state.upgrades, upgradeId] };
 }
 
@@ -507,9 +641,27 @@ export interface VenueRates {
   bottleneck: Stage;
 }
 
+/**
+ * Rates depend only on the venue object, the upgrades and the cards (global multipliers are applied
+ * on top), all of which are replaced, never mutated, when they change. Off-screen venues keep the
+ * same object for minutes, so their rates are remembered per object: the idle tick and every
+ * income display stop recomputing six stations x cards x upgrades x milestones per venue per frame.
+ * The cache is invisible (same inputs, same result) and holds no reference that outlives the state.
+ */
+const ratesCache = new WeakMap<VenueState, { cfg: GameConfig; upgrades: string[]; cards: GameState['cards']; rates: VenueRates }>();
+
 /** Steady-state rates of a venue. In classic mode there is only production. */
 export function venueRates(cfg: GameConfig, state: GameState, venueId: string): VenueRates {
   const v = venue(state, venueId);
+  const hit = ratesCache.get(v);
+  if (hit && hit.cfg === cfg && hit.upgrades === state.upgrades && hit.cards === state.cards) return hit.rates;
+  const rates = computeVenueRates(cfg, state, venueId, v);
+  Object.freeze(rates);
+  ratesCache.set(v, { cfg, upgrades: state.upgrades, cards: state.cards, rates });
+  return rates;
+}
+
+function computeVenueRates(cfg: GameConfig, state: GameState, venueId: string, v: VenueState): VenueRates {
   const production = v.unlocked ? productionRate(cfg, state, venueId) : 0;
   const p = chainParams(cfg, state, venueId);
   if (!p || !v.chain) return { production, transport: Infinity, sales: Infinity, rate: production, bottleneck: 'production' };
@@ -532,7 +684,7 @@ export function salesCost(cfg: GameConfig, state: GameState, venueId: string, n:
 }
 
 export function resolveStageAmount(cfg: GameConfig, state: GameState, venueId: string, stage: 'transport' | 'sales', amount: BuyAmount): number {
-  if (amount !== 'max') return amount;
+  if (amount !== 'max') return wholeAmount(amount);
   const chain = venue(state, venueId).chain;
   if (!isSim(cfg) || !chain) return 1;
   const c = stage === 'transport' ? cfg.sim.transport : cfg.sim.sales;
@@ -545,8 +697,9 @@ export function buyTransport(cfg: GameConfig, state: GameState, venueId: string,
   const v = venue(state, venueId);
   if (!isSim(cfg) || !v.chain || !v.unlocked) return state;
   const n = resolveStageAmount(cfg, state, venueId, 'transport', amount);
+  if (n < 1) return state;
   const cost = transportCost(cfg, state, venueId, n);
-  if (cost > state.cash) return state;
+  if (!canAfford(state.cash, cost)) return state;
   const level = v.chain.transportLevel + n;
   const sized = resizeChain(v.chain, countAtLevel(cfg.sim.transport.workersAt, level), v.chain.seats.length);
   return bumpStat(withChain({ ...state, cash: state.cash - cost }, venueId, { ...sized, transportLevel: level }), 'levelsBought', n);
@@ -557,8 +710,9 @@ export function buySales(cfg: GameConfig, state: GameState, venueId: string, amo
   const v = venue(state, venueId);
   if (!isSim(cfg) || !v.chain || !v.unlocked) return state;
   const n = resolveStageAmount(cfg, state, venueId, 'sales', amount);
+  if (n < 1) return state;
   const cost = salesCost(cfg, state, venueId, n);
-  if (cost > state.cash) return state;
+  if (!canAfford(state.cash, cost)) return state;
   const level = v.chain.salesLevel + n;
   const sized = resizeChain(v.chain, v.chain.workers.length, countAtLevel(cfg.sim.sales.seatsAt, level));
   return bumpStat(withChain({ ...state, cash: state.cash - cost }, venueId, { ...sized, salesLevel: level }), 'levelsBought', n);
@@ -572,7 +726,7 @@ export function transportManagerCost(cfg: GameConfig, venueId: string): number {
 export function hireTransportManager(cfg: GameConfig, state: GameState, venueId: string): GameState {
   const v = venue(state, venueId);
   const cost = transportManagerCost(cfg, venueId);
-  if (!v.chain || !v.unlocked || v.chain.transportManaged || state.cash < cost) return state;
+  if (!v.chain || !v.unlocked || v.chain.transportManaged || !canAfford(state.cash, cost)) return state;
   return bumpStat(withChain({ ...state, cash: state.cash - cost }, venueId, { transportManaged: true }), 'hires');
 }
 
@@ -596,7 +750,7 @@ export function nextVenueToUnlock(cfg: GameConfig, state: GameState): string | n
 export function unlockVenue(cfg: GameConfig, state: GameState, venueId: string): GameState {
   if (nextVenueToUnlock(cfg, state) !== venueId) return state;
   const cost = venueUnlockCost(cfg, venueId);
-  if (state.cash < cost) return state;
+  if (!canAfford(state.cash, cost)) return state;
   const venues = { ...state.venues, [venueId]: createVenueState(cfg, true) };
   const open = Object.values(venues).filter((v) => v.unlocked).length;
   return {
@@ -620,6 +774,20 @@ export function isRushActive(state: GameState, now: number): boolean {
 /** How much faster the chain runs right now (1 outside a rush and in classic mode). */
 export function rushMultiplier(cfg: GameConfig, state: GameState, now: number): number {
   return isSim(cfg) && isRushActive(state, now) ? cfg.sim.rush.multiplier : 1;
+}
+
+/**
+ * Seconds of simulation a tick of `dt` real seconds ending at `now` is worth: the part of the tick
+ * inside a rush runs `multiplier` times faster. (Testing the rush at `now` alone gave a tick that
+ * ends just after the rush no rush at all, and a long tick that ends inside one rush all through.)
+ */
+export function simSeconds(cfg: GameConfig, state: GameState, dt: number, now: number): number {
+  if (!isSim(cfg) || !(dt > 0)) return dt;
+  const start = now - dt * 1000;
+  const begin = Math.max(start, state.rush.until - rushSeconds(cfg, state) * 1000);
+  const end = Math.min(now, state.rush.until);
+  const inside = end > begin ? (end - begin) / 1000 : 0;
+  return dt + inside * (cfg.sim.rush.multiplier - 1);
 }
 
 export function rushSeconds(cfg: GameConfig, state: GameState): number {
@@ -712,6 +880,8 @@ export function tick(cfg: GameConfig, state: GameState, dt: number, now: number,
   let earned = 0;
   let served = 0;
   let venues = state.venues;
+  /** Simulated seconds (dt sped up by a rush); computed once, for sim venues only. */
+  let sdt: number | undefined;
 
   for (const venueId of venueIds(cfg)) {
     const v = state.venues[venueId];
@@ -724,31 +894,29 @@ export function tick(cfg: GameConfig, state: GameState, dt: number, now: number,
       continue;
     }
 
-    const rush = rushMultiplier(cfg, state, now);
+    sdt ??= simSeconds(cfg, state, dt, now);
     if (venueId !== state.activeVenue) {
-      // Off screen: steady-state earnings, no per-worker simulation.
+      // Off screen: steady-state earnings, no per-worker simulation. Guests are estimated as portions.
       const rates = venueRates(cfg, state, venueId);
-      earned += rates.rate * dt * rush * mult;
+      earned += rates.rate * sdt * mult;
       const spend = salesSpend(cfg, state, venueId);
-      if (spend > 0) served += (rates.rate * dt * rush) / spend;
+      if (spend > 0) served += (rates.rate * sdt) / spend;
       continue;
     }
 
-    const sdt = dt * rush;
     const r = tickBusinesses(cfg, state, venueId, sdt, (id) => stationValue(cfg, state, venueId, id), events);
     const params = chainParams(cfg, state, venueId)!;
     const chainEvents: ChainEvent[] | undefined = events ? [] : undefined;
     const advanced = advanceChain(v.chain, params, sdt, r.produced, chainEvents);
     earned += advanced.paid * mult;
+    // Counted the same way whether or not the caller collects events (it used to differ, so the app and the
+    // balance bot disagreed about missions).
+    served += advanced.guestsPaid;
     if (chainEvents) {
       for (const e of chainEvents) {
-        if (e.type === 'pay') {
-          served += 1;
-          events!.push({ ...e, venue: venueId, cash: e.amount * mult });
-        } else events!.push({ ...e, venue: venueId });
+        if (e.type === 'pay') events!.push({ ...e, venue: venueId, cash: e.amount * mult });
+        else events!.push({ ...e, venue: venueId });
       }
-    } else if (advanced.paid > 0 && params.spend > 0) {
-      served += advanced.paid / params.spend;
     }
     if (r.businesses !== v.businesses || advanced.chain !== v.chain) {
       venues = { ...venues, [venueId]: { ...v, businesses: r.businesses, chain: { ...v.chain, ...advanced.chain } } };
@@ -762,7 +930,9 @@ export function tick(cfg: GameConfig, state: GameState, dt: number, now: number,
 // ---------------------------------------------------------------- offline
 
 export function computeOffline(cfg: GameConfig, state: GameState, now: number): { seconds: number; earnings: number } {
-  const elapsed = Math.max(0, (now - state.lastSavedAt) / 1000);
+  const elapsed = (now - state.lastSavedAt) / 1000;
+  // A save from the future (clock moved back) or a broken timestamp earns nothing, rather than NaN.
+  if (!(elapsed > 0)) return { seconds: 0, earnings: 0 };
   const seconds = Math.min(elapsed, cfg.economy.offline.maxHours * 3600);
   // Offline income ignores the ad boost so the boost can't be farmed by closing the app.
   const noBoost = { ...state, boostUntil: 0 };
@@ -829,7 +999,7 @@ export function timeWarp(cfg: GameConfig, state: GameState, hours: number, now: 
 
 export function buyTimeWarpWithGems(cfg: GameConfig, state: GameState, now: number): GameState {
   const { gemCost, hours } = cfg.economy.timeWarp;
-  if (state.gems < gemCost) return state;
+  if (!canAfford(state.gems, gemCost)) return state;
   return timeWarp(cfg, { ...state, gems: state.gems - gemCost }, hours, now);
 }
 

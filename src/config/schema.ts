@@ -319,6 +319,11 @@ export const GameConfigSchema = z.object({
       showBanner: z.boolean().default(true),
       /** Use Google test ads even in release builds (turn off for production). */
       forceTestAds: z.boolean().default(false),
+      /**
+       * Highest ad content rating the ad network may serve (AdMob MaxAdContentRating). Must fit the
+       * app's store age rating; set before the SDK initialises. See docs/design/research/policy.md item 9.
+       */
+      maxAdContentRating: z.enum(['G', 'PG', 'T', 'MA']).default('PG'),
     }),
     iap: z.object({
       revenueCatIosKey: z.string().optional(),
