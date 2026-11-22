@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 import { Platform, StyleSheet, TextInput, type StyleProp, type TextStyle } from 'react-native';
 import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import { formatMoney, formatNumber } from '../../engine/format';
-import { glideMs } from '../sim/scene/world/ticker';
+import { glideMs } from '../juice/ticker';
 import { rollMoney, rollNumber } from './rollFormat';
 
 const AnimatedInput = Animated.createAnimatedComponent(TextInput);

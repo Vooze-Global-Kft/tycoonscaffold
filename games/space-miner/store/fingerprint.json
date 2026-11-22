@@ -1,0 +1,17 @@
+{
+  "core_verb": "drag/route",
+  "production_topology": "network-routes",
+  "money_moment": "sale-at-depot",
+  "main_screen_layout": "top-down-map",
+  "progression_structure": "sector-map",
+  "prestige_model": "reset-for-currency",
+  "active_skills_events": ["rich-seam", "seam-flare", "bonanza-rock", "free-timer-chest"],
+  "meta_systems": ["cards", "chests", "missions", "shift-bonus", "prestige", "contracts", "loadout", "prestige-tree"],
+  "art_style": { "style": "flat-vector", "palette": "deep-space-cold" },
+  "character_kind": "robots",
+  "voice": "dry-radio-chatter",
+  "human": {
+    "icon_and_screenshot_template": { "value": "own", "checkedAgainst": "pizza-empire", "by": "", "date": "" },
+    "meta_screen_layouts": { "value": "different", "checkedAgainst": "pizza-empire", "by": "", "date": "" }
+  }
+}

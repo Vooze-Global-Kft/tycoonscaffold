@@ -25,7 +25,7 @@ import * as E from '../../engine/economy';
 import { formatMoney } from '../../engine/format';
 import { useGame } from '../../state/store';
 import { GameIcon } from '../components/GameIcon';
-import { canSpawnBonus } from '../sim/scene/play/gate';
+import { canSpawnBonus } from '../play/gate';
 import { alpha, useTheme } from '../theme';
 
 const PARTICLES = 10;

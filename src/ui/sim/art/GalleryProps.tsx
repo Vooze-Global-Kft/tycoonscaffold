@@ -2,13 +2,13 @@ import { Canvas, Group, Picture, Rect, useClock } from '@shopify/react-native-sk
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useDerivedValue, useSharedValue, type SharedValue } from 'react-native-reanimated';
-import { ArtIcon } from './ArtIcon';
+import { ArtIcon } from '../../art/ArtIcon';
 import { Character } from './Character';
 import { bustMatrix } from './CharacterBust';
 import { getBustArt, releaseBustArt, retainBustArt } from './characterArt';
 import { randomLook, resolveLook } from './looks';
 import {
-  ART_ICON_NAMES,
+  artIconNames,
   CARD_WINDOW,
   CHAIR_OFFSET,
   Card,
@@ -510,7 +510,7 @@ function IconsPage() {
     <View style={{ padding: 12, gap: 14 }}>
       {['#FFF8EE', '#2A1C14'].map((bg) => (
         <View key={bg} style={{ backgroundColor: bg, padding: 10, borderRadius: 12, gap: 8 }}>
-          {ART_ICON_NAMES.map((name) => (
+          {artIconNames().map((name) => (
             <View key={name} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
               <Text style={{ width: 92, fontSize: 11, color: bg === '#2A1C14' ? '#FFF' : '#333' }}>{name}</Text>
               {sizes.map((sz) => (

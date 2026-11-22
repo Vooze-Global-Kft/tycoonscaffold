@@ -15,7 +15,7 @@ import type { DishLook } from '../../art/types';
 import { passPile } from '../../layout';
 import { sceneBus } from '../bus';
 import type { SceneCtx } from './context';
-import { bump } from './ticker';
+import { bump } from '../../../juice/ticker';
 
 /** The pass is laid out as four piles; with three layers that is twelve places, of which at most eight are used. */
 const STACKS = 4;

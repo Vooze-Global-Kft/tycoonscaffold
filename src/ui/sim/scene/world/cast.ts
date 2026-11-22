@@ -5,7 +5,7 @@
  */
 import type { GameConfig } from '../../../../config/schema';
 import { randomLook, type LookInput } from '../../art';
-import { hashString } from '../../art/draw';
+import { hashString } from '../../../art/draw';
 import type { CharacterLook, DishLook } from '../../art/types';
 import type { StationArtKind } from '../../art/props';
 import type { Pose } from '../../art/types';

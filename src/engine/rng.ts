@@ -68,3 +68,11 @@ export function hashString(s: string): number {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return h >>> 0;
 }
+
+/**
+ * rngMix of four numbers (the haul specification's `rngMix4`): every multi-argument roll of the
+ * haul rules. Identical to src/engine/haul/params.ts's copy, which can become a re-export.
+ */
+export function rngMix4(a: number, b: number, c: number, d: number): number {
+  return rngMix(rngMix(rngMix(a >>> 0, b >>> 0), c >>> 0), d >>> 0);
+}

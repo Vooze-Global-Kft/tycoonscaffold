@@ -3,12 +3,23 @@
 const fs = require('fs');
 const path = require('path');
 const { readFontMetrics, moneyCharacters } = require('./fontMetrics.js');
+const { fxTableFor } = require('./fxCatalog.js');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const GAMES_DIR = path.join(ROOT, 'games');
 const GENERATED = path.join(ROOT, 'src', 'generated', 'activeGame.ts');
-/** The default sound pack every game gets. A game overrides a sound with a file of the same base name. */
-const SHARED_SFX_DIR = path.join(ROOT, 'shared', 'sfx');
+/** The generated mode entry: imports only the active game's mode (src/modes/<mode>). */
+const GENERATED_MODE = path.join(ROOT, 'src', 'generated', 'mode.ts');
+/**
+ * Sound packs, one folder each: shared/sfx/<pack>/. A game names its pack in game.json
+ * `soundPack` (required: there is no default pack; null = none, only its own sounds) and gets only that pack; it overrides a sound with a
+ * file of the same base name in its own assets/sfx/ folder.
+ */
+const SOUND_PACKS_DIR = path.join(ROOT, 'shared', 'sfx');
+/** game.json `mode` when it has none (the schema's default). */
+const DEFAULT_MODE = 'classic';
+/** The modes that have an entry in src/modes/<mode>/index.tsx. */
+const MODES = ['sim', 'classic', 'haul'];
 /** Where a game keeps its own sounds, relative to its folder. */
 const GAME_SFX_REL = path.join('assets', 'sfx');
 /** Sound file types (all bundled by Metro as assets). If one folder has `x.wav` and `x.mp3`, the earlier type wins. */
@@ -101,13 +112,52 @@ function mergeSoundDirs(dirs) {
   );
 }
 
+/** The game's mode (game.json `mode`, default "classic"). Throws for a mode without an entry. */
+function gameMode(id, game = readGameJson(id)) {
+  const mode = game.mode || DEFAULT_MODE;
+  if (!MODES.includes(mode)) throw new Error(`games/${id}/game.json: mode "${mode}" has no entry in src/modes/ (known: ${MODES.join(', ')})`);
+  return mode;
+}
+
+/**
+ * The game's sound pack name (game.json `soundPack`, required: a game never falls back to another's
+ * sounds), or null when the game sets `"soundPack": null`: no shared pack at all, only its own
+ * assets/sfx/ (so no other game's recipe can ever fill a key it lacks; Orbit Haulers).
+ */
+function soundPack(id, game = readGameJson(id)) {
+  if (game.soundPack === null) return null;
+  if (!game.soundPack) throw new Error(`games/${id}/game.json: no "soundPack" (a folder in shared/sfx/: ${listSoundPacks().join(', ')}, or null for the game's own assets/sfx/ only); there is no default pack`);
+  return game.soundPack;
+}
+
+/** Every sound pack folder name in shared/sfx/. */
+function listSoundPacks() {
+  return fs
+    .readdirSync(SOUND_PACKS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && !d.name.startsWith('.'))
+    .map((d) => d.name)
+    .sort();
+}
+
+/** The folder of a game's sound pack (null without one). Throws when the game names a pack that does not exist. */
+function soundPackDir(id, game = readGameJson(id)) {
+  const pack = soundPack(id, game);
+  if (pack === null) return null;
+  const dir = path.join(SOUND_PACKS_DIR, pack);
+  if (!/^[a-z0-9-]+$/.test(pack) || !fs.existsSync(dir)) {
+    throw new Error(`games/${id}/game.json: soundPack "${pack}" is not a folder in shared/sfx/ (packs: ${listSoundPacks().join(', ')})`);
+  }
+  return dir;
+}
+
 /**
  * Every sound the game can play, as { key: path relative to the repo root }:
- * the shared pack in shared/sfx/, overridden file by file by the game's own
- * assets/sfx/ folder.
+ * its sound pack in shared/sfx/<pack>/, overridden file by file by the game's
+ * own assets/sfx/ folder. No other pack's files.
  */
 function listSounds(id) {
-  const merged = mergeSoundDirs([SHARED_SFX_DIR, path.join(gameDir(id), GAME_SFX_REL)]);
+  const pack = soundPackDir(id);
+  const merged = mergeSoundDirs([...(pack ? [pack] : []), path.join(gameDir(id), GAME_SFX_REL)]);
   return Object.fromEntries(
     Object.entries(merged).map(([key, file]) => [key, path.relative(ROOT, file).split(path.sep).join('/')]),
   );
@@ -133,16 +183,34 @@ function displayFontMetrics(id, game) {
   }
 }
 
-/**
- * Writes src/generated/activeGame.ts so the JS bundle contains only this
- * game's JSON, images and sounds. Metro needs static require() calls, so this
- * file is generated instead of computed at runtime. Re-run it (`npm run
- * select`, or restart `expo start`) after adding or removing a sound file.
- */
-function writeActiveGame(id) {
-  const game = readGameJson(id);
+/** Writes `text` to `file` only when it changes, so Metro doesn't reload for nothing. */
+function writeIfChanged(file, text) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const prev = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  if (prev !== text) fs.writeFileSync(file, text);
+}
+
+/** The text of src/generated/mode.ts for a game: it imports that game's mode entry and nothing else. */
+function renderModeEntry(id, game = readGameJson(id)) {
+  const mode = gameMode(id, game);
+  return [
+    '// AUTO-GENERATED by scripts/lib/games.js. Do not edit; set GAME=<id> instead.',
+    '/* eslint-disable */',
+    '// The active game\'s mode entry. The app reaches every mode-specific screen through this file only,',
+    '// so a game\'s bundle holds its own mode and no other (docs/design/space-bundle.md).',
+    `import entry from '../modes/${mode}';`,
+    '',
+    'export const MODE = ' + JSON.stringify(mode) + ';',
+    'export const modeEntry = entry;',
+    '',
+  ].join('\n');
+}
+
+/** The text of src/generated/activeGame.ts for a game. */
+function renderActiveGame(id, game = readGameJson(id)) {
   const assets = game.assets || {};
   const sounds = listSounds(id);
+  const fxTable = fxTableFor(gameMode(id, game));
   const lines = [
     '// AUTO-GENERATED by scripts/lib/games.js. Do not edit; set GAME=<id> instead.',
     '/* eslint-disable */',
@@ -155,19 +223,34 @@ function writeActiveGame(id) {
       ([key, rel]) => `  ${JSON.stringify(key)}: require(${JSON.stringify(`../../games/${id}/${rel}`)}),`,
     ),
     '};',
-    '/** Sound files by base name: shared/sfx/ overridden by the game\'s assets/sfx/. Played through src/services/fx. */',
+    soundPack(id, game) === null
+      ? '/** Sound files by base name: the game\'s own assets/sfx/ only (no shared pack). Played through src/services/fx. */'
+      : `/** Sound files by base name: the "${soundPack(id, game)}" pack (shared/sfx/${soundPack(id, game)}/) overridden by the game\'s assets/sfx/. Played through src/services/fx. */`,
     'export const gameSounds: Record<string, number> = {',
     ...Object.entries(sounds).map(([key, rel]) => `  ${JSON.stringify(key)}: require(${JSON.stringify(`../../${rel}`)}),`),
     '};',
     '/** The display font\'s line height and character widths as fractions of the font size (null: no display font). */',
     'export const displayFontMetrics: { line: number; advances: Record<string, number> } | null = ' + JSON.stringify(displayFontMetrics(id, game)) + ';',
+    '/** The fx events of this game\'s mode, from src/services/fx/catalog.ts without the briefs (scripts/lib/fxCatalog.js). */',
+    'export const fxTable: Record<string, import(\'../services/fx/catalog\').FxRuntimeDef> = {',
+    ...Object.entries(fxTable).map(([key, def]) => `  ${key}: ${JSON.stringify(def)},`),
+    '};',
     '',
   ];
-  const next = lines.join('\n');
-  fs.mkdirSync(path.dirname(GENERATED), { recursive: true });
-  const prev = fs.existsSync(GENERATED) ? fs.readFileSync(GENERATED, 'utf8') : '';
-  // Only write when it changes, so Metro doesn't reload for nothing.
-  if (prev !== next) fs.writeFileSync(GENERATED, next);
+  return lines.join('\n');
+}
+
+/**
+ * Writes src/generated/activeGame.ts and src/generated/mode.ts so the JS bundle
+ * contains only this game's JSON, images, sounds, fx events and mode. Metro
+ * needs static require() calls, so these files are generated instead of
+ * computed at runtime. Re-run it (`npm run select`, or restart `expo start`)
+ * after adding or removing a sound file.
+ */
+function writeActiveGame(id) {
+  const game = readGameJson(id);
+  writeIfChanged(GENERATED, renderActiveGame(id, game));
+  writeIfChanged(GENERATED_MODE, renderModeEntry(id, game));
   return game;
 }
 
@@ -181,6 +264,15 @@ module.exports = {
   gameFileOr,
   mergeSoundDirs,
   listSounds,
+  listSoundPacks,
+  soundPack,
+  soundPackDir,
+  gameMode,
+  MODES,
+  DEFAULT_MODE,
+  SOUND_PACKS_DIR,
   displayFontMetrics,
+  renderActiveGame,
+  renderModeEntry,
   writeActiveGame,
 };

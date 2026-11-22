@@ -16,7 +16,7 @@ import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
 import { useTarget } from '../../hints/targets';
 import { ProgressBar, Sheet } from '../../kit';
-import { Card, CARD_NAMEPLATE, CARD_SIZE } from '../../sim/art/props';
+import { Card, CARD_NAMEPLATE, CARD_SIZE } from '../../art/props';
 import { RARITY_COLORS, RARITY_NAMES, alpha, inkOf, textOn, useTheme } from '../../theme';
 import { Burst, Glow, Rays } from '../chest/Fx';
 import { CardPortrait } from '../chest/Portrait';

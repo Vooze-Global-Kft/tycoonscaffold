@@ -14,7 +14,7 @@ import type { DishLook, Pose } from '../../art/types';
 import { MAX_WORKERS_DRAWN, workerFrame } from '../../layout';
 import { putTS, useMatrix } from '../matrix';
 import type { SceneCtx } from './context';
-import { glide } from './ticker';
+import { glide } from '../../../juice/ticker';
 
 const CHEER_MS = 1200;
 const BANG_MS = 1500;

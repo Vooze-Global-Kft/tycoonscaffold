@@ -5,7 +5,7 @@
  * Looks are data. A game can keep its own in game.json; the named ones here
  * are the default pizza cast and double as examples of what a look can say.
  */
-import { hashString, luma, mix, rng } from './draw';
+import { hashString, luma, mix, rng } from '../../art/draw';
 import type { Beard, BodyShape, Brows, CharacterKind, CharacterLook, Glasses, HairStyle, Hat, LookEntry, Moustache, Neckwear, OutfitStyle, Pattern, Species } from './types';
 
 /** A look with every default filled in. This is what the drawing code reads. */

@@ -21,7 +21,7 @@ import { ComboMeter } from './ComboMeter';
 import { Effects } from './Effects';
 import { FloatingNumbers } from './FloatingNumbers';
 import { bellRect, stationRect } from './geometry';
-import { extrasUnlocked, openings, type Opening } from './gate';
+import { extrasUnlocked, openings, type Opening } from '../../../play/gate';
 import { GrandOpening } from './GrandOpening';
 import { Hotspots, useStationKinds } from './Hotspots';
 import { RUSH_HIT, RushButton, useRushPhase } from './RushButton';

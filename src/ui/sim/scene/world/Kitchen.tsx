@@ -18,7 +18,7 @@ import type { DishLook, Pose } from '../../art/types';
 import { kitchenPath, type Point } from '../../layout';
 import { sceneBus } from '../bus';
 import type { SceneCtx } from './context';
-import { bump } from './ticker';
+import { bump } from '../../../juice/ticker';
 
 export interface StationInfo {
   index: number;

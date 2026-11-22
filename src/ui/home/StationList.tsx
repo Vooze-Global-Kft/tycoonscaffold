@@ -7,7 +7,7 @@
  * Rows select only the few numbers they show (one shallow selector each), so the list re-renders
  * when one of those numbers changes, not on every simulation tick.
  */
-import { memo, useMemo } from 'react';
+import { createContext, memo, useContext, type ComponentType } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 import type { Business } from '../../config/schema';
@@ -15,8 +15,6 @@ import * as E from '../../engine/economy';
 import { formatDuration, formatMoney } from '../../engine/format';
 import { useGame } from '../../state/store';
 import { GameIcon } from '../components/GameIcon';
-import { CharacterBust } from '../sim/art';
-import { cookLook } from '../sim/scene/world/cast';
 import { useTarget } from '../hints/targets';
 import { alpha, useTheme } from '../theme';
 import { BuyButton } from './BuyButton';
@@ -39,20 +37,29 @@ export function milestoneGift(cfg: Parameters<typeof E.milestoneMults>[0], owned
 }
 
 /** Hire portrait of a classic game: the business's own cast look when it has one, else its manager icon. */
-function managerPortrait(b: Business, fallback: string): string {
+export function managerPortrait(b: Business, fallback: string): string {
   return b.managerIcon ?? (b.workerLook ? `char:${b.workerLook}` : fallback);
 }
 
+/** Draws the person who runs a station, in a row's hire strip and badge. */
+export type StationPortrait = ComponentType<{ b: Business; venueId: string; size: number }>;
+
 /**
- * The person who runs a station. In a sim game it is the same cook the scene draws at that station
- * (one look function for both, `cookLook`); in a classic game the manager icon.
+ * The mode's drawing of that person (the sim home provides the same cook the scene draws at that
+ * station, src/ui/sim/home/StationPortrait.tsx). Without one, the manager icon.
  */
+export const StationPortraitContext = createContext<StationPortrait | null>(null);
+
+/** The person who runs a station: the mode's portrait, else (a classic game) the manager icon. */
 function ManagerPortrait({ b, venueId, size }: { b: Business; venueId: string; size: number }) {
+  const Portrait = useContext(StationPortraitContext);
+  if (Portrait) return <Portrait b={b} venueId={venueId} size={size} />;
+  return <IconPortrait b={b} size={size} />;
+}
+
+/** The manager icon of a station (a classic game, or a sim station without a cook look). */
+export function IconPortrait({ b, size }: { b: Business; size: number }) {
   const t = useTheme();
-  const cfg = useGame((s) => s.cfg);
-  const color = t.c.stages.production;
-  const look = useMemo(() => (E.isSim(cfg) ? cookLook(cfg, venueId, b.id, color) : null), [cfg, venueId, b.id, color]);
-  if (look) return <CharacterBust look={look} size={size} />;
   return <GameIcon icon={managerPortrait(b, t.icons.manager)} size={size} />;
 }
 

@@ -8,10 +8,11 @@
  * React involvement.
  */
 import type { BodyDims } from './characterArt';
+import { UNIT } from '../../art/kit';
 import { POSES, type Pose } from './types';
 
-/** Screen pixels per drawing unit at `scale = 1`: a round adult stands about 50 px tall. */
-export const UNIT = 0.52;
+/** Screen pixels per drawing unit at `scale = 1` (defined with the shared art kit). */
+export { UNIT };
 /** Hip height of a seated character above the floor point, in drawing units. Chairs are built to match. */
 export const SEAT_HEIGHT = 15.5;
 /** Height in pixels of a standing adult at `scale = 1`, hats not included. */

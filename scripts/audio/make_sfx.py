@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Synthesise every sound in src/services/fx/catalog.ts. Python 3 + numpy only.
 
-  python3 scripts/audio/make_sfx.py --pack warm --out shared/sfx
-        the default pack every game gets (58 effects + the neutral music loop)
+  python3 scripts/audio/make_sfx.py --pack warm --out shared/sfx/warm
+        the warm pack (58 effects + the neutral music loop): Pizza Empire, and any
+        game without `soundPack` in its game.json
 
   python3 scripts/audio/make_sfx.py --pack warm --out games/pizza-empire/assets/sfx \\
         --only music_main --music trattoria
         one game's own music (any `--only` subset works as a per-game override)
 
-  python3 scripts/audio/make_sfx.py --pack synth --out games/space-miner/assets/sfx
-        a whole different pack for a game
+  python3 scripts/audio/make_sfx.py --pack synth --out shared/sfx/synth
+        a whole different pack (a game picks it with "soundPack": "synth"; a game
+        gets only its own pack in its bundle)
 
   python3 scripts/audio/make_sfx.py --check       coverage only (CI friendly)
   python3 scripts/audio/make_sfx.py --list        keys, file counts, recipes

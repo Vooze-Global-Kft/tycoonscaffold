@@ -1,4 +1,5 @@
 import type { ChainState } from './chain';
+import type { HaulState, HaulStats, StarMapState } from './haul/types';
 
 export interface BusinessState {
   /** Classic mode: units owned. Sim mode: the station's level. */
@@ -158,8 +159,29 @@ export interface GameState {
      * winding the clock back and forth cannot pay the same hours twice.
      */
     clockHigh: number;
+    // Haul mode's lifetime counters (missions, story and pod cadences read these; kept across a
+    // Jump). Absent in sim and classic games, so their saves and states are unchanged.
+    hauled?: number;
+    launches?: number;
+    contractsMet?: number;
+    depleted?: number;
+    claims?: number;
+    seamDrags?: number;
+    transmissionsAcked?: number;
   };
   lastSavedAt: number;
+
+  // --- haul mode (src/engine/haul; added by its engine mode, src/engine/mode.ts). Absent in sim and classic. ---
+  /** The current run (null outside haul mode). */
+  haul?: HaulState | null;
+  /** Fixed at game creation; seeds the galaxy offers. Survives a Jump. */
+  metaSeed?: number;
+  /** Fitting Bay sockets (Rig, Fleet, Dock): a module card id or null. Survives a Jump. */
+  loadout?: { sockets: (string | null)[] };
+  /** Star Map node levels and cores spent. Survives a Jump. */
+  starMap?: StarMapState;
+  /** Lifetime haul records (best slots claimed, jumps, galaxies visited). */
+  haulStats?: HaulStats;
 }
 
 /** A fixed count, or as many as the player can afford. The UI offers 1, 10, 100 and max. */

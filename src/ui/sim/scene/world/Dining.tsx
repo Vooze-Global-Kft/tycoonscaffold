@@ -17,7 +17,7 @@ import type { ArtPalette, DishLook, Pose, TableState } from '../../art/types';
 import { guestFrame, tableState } from '../../layout';
 import { guestLook } from './cast';
 import { isLateMount, type SceneCtx } from './context';
-import { bump, glide } from './ticker';
+import { bump, glide } from '../../../juice/ticker';
 
 const GUEST_POSES: readonly Pose[] = ['walk', 'sit-wait', 'sit-eat', 'cheer'];
 const COIN_MS = 820;

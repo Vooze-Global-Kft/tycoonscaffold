@@ -18,6 +18,9 @@ import * as E from '../src/engine/economy';
 import { formatDuration, formatMoney } from '../src/engine/format';
 import type { GameState } from '../src/engine/types';
 import { makeBot, type Kind } from './content/bot';
+import { simulateHaulCli } from './content/haul-bot';
+import { withHaulContent } from '../src/engine/haulMode';
+import type { HaulConfig } from '../src/engine/haul';
 import { args, fail } from './lib/cli';
 
 const games = require('./lib/games.js');
@@ -25,6 +28,11 @@ const { positional, flags } = args();
 const id = positional[0] ?? fail('Usage: npm run simulate -- <game-id> [--hours 12] [--taps 3] [--prestige] [--quiet]');
 // --file <game.json> reads a variant (e.g. one written by build-pizza.py with OUT=...).
 const cfg = GameConfigSchema.parse(flags.file ? JSON.parse(require('node:fs').readFileSync(flags.file, 'utf8')) : games.readGameJson(id));
+// A haul game (Orbit Haulers) has its own bot and its own targets (spec section 8): scripts/content/haul-bot.ts.
+if (cfg.mode === 'haul') {
+  simulateHaulCli(withHaulContent(cfg) as HaulConfig, flags);
+  process.exit(0);
+}
 const hours = Number(flags.hours ?? 12);
 const tapsPerSec = Number(flags.taps ?? 3);
 const autoPrestige = flags.prestige === 'true';

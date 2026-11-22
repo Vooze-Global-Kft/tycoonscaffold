@@ -1,38 +1,20 @@
 import { useFonts } from 'expo-font';
-import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { AppState, Platform, Text, View } from 'react-native';
+import { AppState, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { gameAssets } from '../config/game';
-import { applyDevParams, devSpeed } from '../dev/devtools';
+import { applyDevParams, devSpeed, devView } from '../dev/devtools';
+import { modeEntry } from '../generated/mode';
+import { installMode } from '../modes/contract';
 import { fx } from '../services/fx';
 import { useGame } from '../state/store';
-import { Banner } from './components/Banner';
-import { Celebrations } from './components/Celebration';
 import { GameIcon } from './components/GameIcon';
-import { Header } from './components/Header';
-import { OfflineModal, StoryModal } from './components/Modals';
-import { ManagersPanel } from './components/Panels';
-import { TabBar } from './components/TabBar';
-import { CONTENT_KEY, HintOverlay, reportTouch } from './hints/HintOverlay';
-import { useTarget } from './hints/targets';
-import { HomeClassic } from './home/HomeClassic';
-import { HomeSim } from './home/HomeSim';
-import { FlyLayer } from './juice/FlyLayer';
-import { CardSheet } from './meta/cards/CardSheet';
-import { StaffTab } from './meta/cards/StaffTab';
-import { ChestOddsSheet } from './meta/chest/ChestOddsSheet';
-import { ChestOverlay } from './meta/chest/ChestOverlay';
-import { DealPopup } from './meta/deals/DealPopup';
-import { EmpireTab } from './meta/empire/EmpireTab';
-import { MissionsSheet } from './meta/missions/MissionsSheet';
-import { SettingsSheet } from './meta/settings/SettingsSheet';
-import { ShopTab } from './meta/shop/ShopTab';
-import { UpgradesTab } from './meta/upgrades/UpgradesTab';
-import { ArtGallery } from './sim/art/Gallery';
-import { PropsGallery } from './sim/art/GalleryProps';
-import { DISPLAY_FONT, useTheme } from './theme';
+import { DISPLAY_FONT } from './theme';
+
+// The active game's mode (src/generated/mode.ts imports only that one): its screens, and the pieces
+// shared screens ask it for (portraits, art icons, the tutorial script). Installed before anything renders.
+installMode(modeEntry);
 
 const TICK_MS = 100;
 const SAVE_EVERY_MS = 5000;
@@ -73,62 +55,17 @@ function useGameLoop() {
   }, [hydrated]);
 }
 
-/**
- * The whole game: header, the tab on screen, the tab bar, and on top of them every dialog and
- * overlay. Dialogs and overlays render nothing until the store asks for them, so they are simply
- * always mounted here.
- */
+/** The whole game once loaded: the simulation loop and the mode's screen (the tab shell for sim and classic). */
 function Game() {
-  const t = useTheme();
-  const tab = useGame((s) => s.tab);
-  const sim = useGame((s) => s.cfg.mode === 'sim');
-  // The visible content area: the tutorial hand never points at a row scrolled outside it.
-  const content = useTarget(CONTENT_KEY);
   useGameLoop();
-  return (
-    // Every touch passes through here first (without being taken) so the tutorial hand can step aside.
-    <View style={{ flex: 1, backgroundColor: t.c.surface }} onStartShouldSetResponderCapture={onAnyTouch}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: t.c.gradient[0] }} edges={['top']}>
-        <StatusBar style={t.darkStatusBar ? 'dark' : 'light'} />
-        <Header />
-        <View {...content} style={{ flex: 1, backgroundColor: t.c.background }}>
-          {tab === 'home' && (sim ? <HomeSim /> : <HomeClassic />)}
-          {tab === 'staff' && <StaffTab top={sim ? undefined : <ManagersPanel />} />}
-          {tab === 'upgrades' && <UpgradesTab />}
-          {tab === 'empire' && <EmpireTab />}
-          {tab === 'shop' && <ShopTab />}
-        </View>
-        <SafeAreaView edges={['bottom']} style={{ backgroundColor: t.c.surface }}>
-          {/* No banner ad on the home tab or on the upgrades list: nothing may sit next to the buttons players
-              tap fastest. Where it shows, it keeps a gap and a divider from the tab bar. */}
-          {tab !== 'home' && tab !== 'upgrades' ? <Banner /> : null}
-          <TabBar />
-        </SafeAreaView>
-
-        <OfflineModal />
-        <StoryModal />
-        <MissionsSheet />
-        <SettingsSheet />
-        <ChestOddsSheet />
-        <CardSheet />
-        <DealPopup />
-        <ChestOverlay />
-      </SafeAreaView>
-      {/* Overlays in window coordinates (target rectangles are measured in the window). */}
-      <Celebrations />
-      <FlyLayer />
-      <HintOverlay />
-    </View>
-  );
+  const Shell = modeEntry.Shell;
+  return <Shell />;
 }
 
-/** Reports a touch to the tutorial hand and lets the touch go on to whatever was tapped. */
-function onAnyTouch() {
-  reportTouch();
-  return false;
-}
-
-/** Shown while the save, fonts and remote config load: the hero bouncing over the game's name. */
+/**
+ * Shown while the save, fonts and remote config load: the hero bouncing over the game's name. The
+ * loading screen of every mode entry without its own (`ModeEntry.Loading`: sim and classic).
+ */
 function Loading() {
   const cfg = useGame((s) => s.cfg);
   const bounce = useSharedValue(0);
@@ -146,12 +83,13 @@ function Loading() {
   );
 }
 
-/** Dev views for visual review in the web build, e.g. `?view=art`. Never set on phones. */
-const DEV_VIEW = Platform.OS === 'web' && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('view') : null;
+/** Dev views for visual review in the web build, e.g. `?view=art`. Never set on phones (src/dev/devtools.ts). */
+const DEV_VIEW = devView();
 
 export default function App() {
-  if (DEV_VIEW === 'art') return <ArtGallery />;
-  if (DEV_VIEW === 'props') return <PropsGallery />;
+  // The mode's review screens, e.g. the sim mode's `?view=art` and `?view=props`.
+  const DevView = DEV_VIEW ? modeEntry.devViews?.[DEV_VIEW] : undefined;
+  if (DevView) return <DevView />;
   return <Root />;
 }
 
@@ -172,5 +110,7 @@ function Root() {
     fx.init();
     fx.music.start();
   }, []);
-  return <SafeAreaProvider>{ready ? <Game /> : <Loading />}</SafeAreaProvider>;
+  // The mode's own loading screen when it has one (Decision 55; haul), else the shared one below (sim, classic).
+  const Wait = modeEntry.Loading ?? Loading;
+  return <SafeAreaProvider>{ready ? <Game /> : <Wait />}</SafeAreaProvider>;
 }

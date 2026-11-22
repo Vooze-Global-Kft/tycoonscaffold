@@ -21,7 +21,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Image, PixelRatio, Platform, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Easing, cancelAnimation, useDerivedValue, useSharedValue, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
 import { BUST_BOTTOM, EYE_LINE, getBustArt, releaseBustArt, retainBustArt, type BustArt, type BustMood } from './characterArt';
-import { hashString, rng, skColor, type Bounds } from './draw';
+import { hashString, rng, skColor, type Bounds } from '../../art/draw';
 import { lookKey, resolveLook, type LookInput } from './looks';
 
 export interface CharacterBustProps {

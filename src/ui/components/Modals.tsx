@@ -10,11 +10,10 @@ import * as E from '../../engine/economy';
 import { formatMoney, formatNumber } from '../../engine/format';
 import { fx } from '../../services/fx';
 import { useGame } from '../../state/store';
-import { useHomeUi } from '../home/uiState';
 import { fly } from '../juice/fly';
 import { useOverlay, useOverlaysOpen } from '../kit/overlay';
 import { DIALOG_GAP_MS, Sheet } from '../kit/Sheet';
-import { overlays } from '../../state/overlays';
+import { overlays, useShellFlags } from '../../state/overlays';
 import { shortDuration } from '../kit/time';
 import { AD_NOT_READY, useRewardedReady } from '../kit/ads';
 import { ads } from '../../services/ads';
@@ -112,7 +111,7 @@ export function StoryModal() {
   // taken while no story is showing, so the story's own registration never blocks itself.
   const others = useOverlaysOpen();
   const blocked = storeBlocked || others > 0;
-  const banner = useHomeUi((s) => s.bannerOpen);
+  const banner = useShellFlags((s) => s.bannerOpen);
   const [showing, setShowing] = useState<string | null>(null);
   const [, wake] = useState(0);
   // Story spacing, and iOS's one-dialog-at-a-time rule: never present while another dialog may still be fading out.
@@ -146,7 +145,7 @@ function StoryScene({ beatId }: { beatId: string }) {
   const t = useTheme();
   const cfg = useGame((s) => s.cfg);
   const dismiss = useGame((s) => s.dismissStory);
-  const setStoryOpen = useHomeUi((s) => s.setStoryOpen);
+  const setStoryOpen = useShellFlags((s) => s.setStoryOpen);
   const beat = cfg.story.find((b) => b.id === beatId)!;
   const whoIndex = cfg.characters.findIndex((c) => c.id === beat.characterId);
   const who = whoIndex >= 0 ? cfg.characters[whoIndex] : undefined;

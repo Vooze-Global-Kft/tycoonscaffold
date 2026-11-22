@@ -16,7 +16,7 @@ export const BANNED_STORE_WORDS: { pattern: RegExp; why: string }[] = [
 ];
 
 /** Problems with a game's store texts: banned words anywhere, the "Idle ... Tycoon" pattern in what the listing shows as a name. */
-export function storeTextProblems(store: { title: string; subtitle?: string; shortDescription: string; description: string; keywords: string[] }): string[] {
+export function storeTextProblems(store: { title: string; subtitle?: string; shortDescription: string; description: string; keywords: string[]; promotionalText?: string; releaseNotes?: string }): string[] {
   const out: string[] = [];
   const fields: [string, string][] = [
     ['title', store.title],
@@ -24,7 +24,15 @@ export function storeTextProblems(store: { title: string; subtitle?: string; sho
     ['shortDescription', store.shortDescription],
     ['description', store.description],
     ['keywords', store.keywords.join(', ')],
+    ['promotionalText', store.promotionalText ?? ''],
+    ['releaseNotes', store.releaseNotes ?? ''],
   ];
+  // Apple's limits for the fields the schema does not bound (it bounds title, subtitle, short and long description).
+  const keywordField = store.keywords.join(',');
+  if (keywordField.length > 100) out.push(`store.keywords is ${keywordField.length} characters joined with commas (Apple allows 100)`);
+  if ((store.promotionalText ?? '').length > 170) out.push(`store.promotionalText is ${store.promotionalText!.length} characters (Apple allows 170)`);
+  if ((store.releaseNotes ?? '').length > 4000) out.push(`release notes are ${store.releaseNotes!.length} characters (both stores allow 4000; Google Play 500 per language)`);
+  else if ((store.releaseNotes ?? '').length > 500) out.push(`release notes are ${store.releaseNotes!.length} characters (Google Play allows 500)`);
   for (const [name, text] of fields) {
     for (const b of BANNED_STORE_WORDS) {
       const m = text.match(b.pattern);

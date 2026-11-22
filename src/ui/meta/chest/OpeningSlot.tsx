@@ -18,7 +18,7 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 import type { Rarity } from '../../../config/schema';
-import { Card, CARD_SIZE, Coin } from '../../sim/art/props';
+import { Card, CARD_SIZE, Coin } from '../../art/props';
 import { Burst, Glow, Rays } from './Fx';
 import { CardPortrait } from './Portrait';
 import { RARITY_GLOW } from './shared';

@@ -6,6 +6,10 @@
  * re-render per frame. Any game gets a cast and a room for free: looks come
  * from game.json, colours from `makePalette`.
  *
+ * SIM MODE ONLY (scripts/lib/modes.js): only the sim mode's games bundle this folder. The pieces
+ * every game uses (chest, cards, coin, gem, sparkle burst, tutorial hand, the shared "art:" icons,
+ * the drawing kit) live in src/ui/art/ and are re-exported here for the sim code's convenience.
+ *
  * Conventions for every Skia element below (they go inside your <Canvas>):
  * - `x`, `y` are canvas pixels; for anything that stands, it is the floor point under it.
  * - Inputs typed `Anim<T>` take a plain value OR a Reanimated shared / derived value
@@ -128,13 +132,13 @@
  * The review screens are `?view=art` (characters) and `?view=props` (props, mock restaurant) in the web build.
  */
 export { Character, ROLE_POSES, useCharacterArt, type Anim, type CharacterProps, type Readable } from './Character';
-export { ArtIcon, artIconImage, type ArtIconProps } from './ArtIcon';
-export { ART_ICON_NAMES, artIconArt, isArtIconName, type ArtIconName } from './props';
+export { ArtIcon, artIconImage, type ArtIconProps } from '../../art/ArtIcon';
+export { artIconArt, artIconNames, isArtIconName, registerArtIcons, SIM_ART_ICONS, type ArtIconDef } from './props';
 export { BUST_CANVAS_MIN, CharacterBust, bustMatrix, type CharacterBustProps } from './CharacterBust';
 export { LOOKS, LOOK_NAMES, WAITER_VEST, expandLook, lookFor, lookKey, randomLook, resolveLook, type LookInput, type LookName, type ResolvedLook } from './looks';
 export { CHARACTER_HEIGHT, SEAT_HEIGHT, UNIT } from './rig';
 export { getBustArt, releaseBustArt, retainBustArt, type BustMood } from './characterArt';
-export { useSceneClock } from './clock';
+export { useSceneClock } from '../../art/clock';
 export {
   BELL_RING_MS,
   CARD_NAMEPLATE,

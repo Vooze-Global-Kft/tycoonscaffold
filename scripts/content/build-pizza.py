@@ -335,7 +335,7 @@ store['description'] = (
     "Turn Nonna's tiny corner kitchen into the biggest pizza empire in the universe!\n\n"
     "• Bake at the oven, ring the bell and watch your waiters serve hungry guests\n"
     "• Fix the bottleneck: more stations, more waiters, more tables\n"
-    "• Open eight restaurants, from Napoli to a pizza planet in deep space\n"
+    "• Open eight restaurants, each one bigger and busier than the last\n"
     "• Collect a staff of twelve characters and level them up\n"
     "• Boxes to earn, daily missions and Rush Hour keep every visit rewarding\n"
     "• Your restaurants keep earning Dough while you're away\n"

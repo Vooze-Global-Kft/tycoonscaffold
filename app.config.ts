@@ -8,6 +8,22 @@
  * comes from games/<id>/game.json, so each game is its own store listing.
  */
 import type { ConfigContext, ExpoConfig } from 'expo/config';
+import { withAndroidManifest, type ConfigPlugin } from 'expo/config-plugins';
+
+/**
+ * Every app of the factory is a game: `android:appCategory="game"` on the manifest's <application>
+ * (Decision 47). Besides the store's category, it is what keeps the portrait lock on large screens:
+ * Android 16 and 17 ignore `screenOrientation` and resizability on displays of sw600dp and wider for
+ * apps that target them, except for games "based on the android:appCategory flag"
+ * (developer.android.com/about/versions/17/changes/ff-restrictions-ignored, Exceptions). Expo has no
+ * app.json field for it, hence this inline plugin.
+ */
+const withGameCategory: ConfigPlugin = (cfg) =>
+  withAndroidManifest(cfg, (c) => {
+    const app = c.modResults.manifest.application?.[0];
+    if (app) app.$ = { ...app.$, 'android:appCategory': 'game' } as typeof app.$;
+    return c;
+  });
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const games = require('./scripts/lib/games.js');
@@ -29,8 +45,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const firebaseEnabled = Boolean(iosFirebase && androidFirebase);
 
   const ads = game.monetization?.ads ?? {};
-  const trackingText =
-    'This lets us show you ads that are more relevant to you, which keeps ' + game.app.displayName + ' free to play.';
+  // The game's own sentence (game.json app.trackingText, Decision 55), else the shared one with its name.
+  const trackingText: string =
+    game.app.trackingText ?? 'This lets us show you ads that are more relevant to you, which keeps ' + game.app.displayName + ' free to play.';
 
   const plugins: ExpoConfig['plugins'] = [
     'expo-asset',
@@ -58,7 +75,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins.push('@react-native-firebase/app', '@react-native-firebase/analytics', '@react-native-firebase/crashlytics');
   }
 
-  return {
+  return withGameCategory({
     ...config,
     name: game.app.displayName,
     slug: game.app.slug,
@@ -93,5 +110,5 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     updates: game.app.easProjectId ? { url: `https://u.expo.dev/${game.app.easProjectId}` } : undefined,
     runtimeVersion: { policy: 'appVersion' },
-  };
+  });
 };

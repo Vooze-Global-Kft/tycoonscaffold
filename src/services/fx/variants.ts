@@ -2,9 +2,9 @@
  * Which file plays when a catalogue entry has several: the ladder rung the
  * caller asked for, or a random variant. Pure; no React Native imports.
  */
-import type { FxDef } from './catalog';
+import type { FxRuntimeDef } from './catalog';
 
-type Variants = Pick<FxDef, 'files' | 'pick'>;
+type Variants = Pick<FxRuntimeDef, 'files' | 'pick'>;
 
 /** The sound file keys of one catalogue entry: `["buy"]`, or `["tap_1", ..., "tap_8"]`. */
 export function fileKeys(name: string, def: Variants): string[] {

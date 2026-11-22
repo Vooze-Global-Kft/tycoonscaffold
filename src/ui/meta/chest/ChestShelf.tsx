@@ -16,7 +16,7 @@ import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { AD_NOT_READY, formatCountdown, useNow, useRewardedReady } from '../../kit';
 import { useTarget } from '../../hints/targets';
-import { Chest } from '../../sim/art/props';
+import { Chest } from '../../art/props';
 import { alpha, useTheme } from '../../theme';
 import { OddsLink } from './ChestButton';
 

@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import games from '../../../scripts/lib/games.js';
 
@@ -99,10 +100,42 @@ describe('listSounds', () => {
       const sounds: Record<string, string> = games.listSounds(id);
       for (const [key, rel] of Object.entries(sounds)) {
         expect(key).toMatch(/^[a-z0-9_]+$/);
-        expect(rel.startsWith('shared/sfx/') || rel.startsWith(`games/${id}/assets/sfx/`)).toBe(true);
+        // Only the game's own pack, never another one.
+        expect(rel.startsWith(`shared/sfx/${games.soundPack(id)}/`) || rel.startsWith(`games/${id}/assets/sfx/`)).toBe(true);
         expect(path.basename(rel, path.extname(rel))).toBe(key);
         expect(fs.existsSync(path.join(games.ROOT, rel))).toBe(true);
       }
     }
   });
 });
+
+describe('sound packs', () => {
+  it('Pizza Empire plays exactly the files it played before packs existed (same keys, same bytes)', () => {
+    // pizzaSounds.fixture.json: sha256 (first 16 hex) of every file listSounds('pizza-empire') returned
+    // when shared/sfx/ was one folder, music_main.m4a coming from the game's own assets/sfx/.
+    const before: Record<string, string> = JSON.parse(fs.readFileSync(path.join(__dirname, 'pizzaSounds.fixture.json'), 'utf8'));
+    const now = Object.fromEntries(
+      Object.entries(games.listSounds('pizza-empire') as Record<string, string>).map(([key, rel]) => [
+        key,
+        createHash('sha256').update(fs.readFileSync(path.join(games.ROOT, rel))).digest('hex').slice(0, 16),
+      ]),
+    );
+    expect(now).toEqual(before);
+    expect(games.listSounds('pizza-empire').music_main).toBe('games/pizza-empire/assets/sfx/music_main.m4a');
+  });
+
+  it('a game without soundPack is an error (no default pack); an unknown pack is an error, not silence', () => {
+    expect(() => games.soundPack('x', { mode: 'sim' })).toThrow(/no "soundPack"/);
+    expect(games.soundPack('x', { soundPack: 'synth' })).toBe('synth');
+    expect(() => games.soundPackDir('x', { soundPack: 'nope' })).toThrow(/soundPack "nope"/);
+    expect(games.listSoundPacks()).toEqual(expect.arrayContaining(['warm']));
+  });
+
+  it('a game with "soundPack": null gets no shared pack at all, only its own sounds', () => {
+    expect(games.soundPack('x', { soundPack: null })).toBeNull();
+    expect(games.soundPackDir('x', { soundPack: null })).toBeNull();
+    // Space Miner (Orbit Haulers): every sound comes from its own folder, none from a pack.
+    for (const rel of Object.values(games.listSounds('space-miner') as Record<string, string>)) expect(rel.startsWith('games/space-miner/assets/sfx/')).toBe(true);
+  });
+});
+

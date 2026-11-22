@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "soundPack": "synth",
   "id": "space-miner",
   "app": {
     "displayName": "Space Miner",

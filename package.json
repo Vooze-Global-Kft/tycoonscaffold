@@ -64,7 +64,13 @@
     "postinstall": "node scripts/select-game.js",
     "go": "expo start --go -c",
     "go:fast": "expo start --go --no-dev --minify -c",
-    "lint:worklets": "tsx scripts/lint-worklets.ts"
+    "lint:worklets": "tsx scripts/lint-worklets.ts",
+    "check:bundle": "tsx scripts/check-bundle.ts",
+    "check:bundle:export": "tsx scripts/check-bundle.ts --export",
+    "scan:binary": "tsx scripts/scan-binary.ts",
+    "validate:release": "tsx scripts/validate.ts --release",
+    "art:haul": "tsx scripts/art/haul-sheets.ts",
+    "store:shots": "tsx scripts/store/shots.ts"
   },
   "private": true
 }

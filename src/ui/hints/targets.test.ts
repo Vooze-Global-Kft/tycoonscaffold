@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { hintRoute, targets } from './targets';
+import { hintRoute } from '../home/hintRoute';
+import { targets } from './targets';
 
 describe('targets', () => {
   it('a control that registers before it can be measured is measured when someone asks', () => {

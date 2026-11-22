@@ -1,4 +1,4 @@
-import { ACTIVE_GAME_ID, gameAssets, gameSounds, rawGame } from '../generated/activeGame';
+import { ACTIVE_GAME_ID, fxTable, gameAssets, gameSounds, rawGame } from '../generated/activeGame';
 import * as generated from '../generated/activeGame';
 import { GameConfigSchema, type GameConfig } from './schema';
 
@@ -13,7 +13,7 @@ function parse(): GameConfig {
 
 /** The config the game was built with. */
 export const baseGame: GameConfig = parse();
-export { ACTIVE_GAME_ID, gameAssets, gameSounds };
+export { ACTIVE_GAME_ID, fxTable, gameAssets, gameSounds };
 
 /** Line height and character widths of the display font, as fractions of the font size. */
 export interface FontMetrics {

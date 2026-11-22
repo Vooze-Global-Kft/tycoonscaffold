@@ -9,8 +9,11 @@
  *   fx.play('tap', { step: comboLevel });     // ladder sounds take a step
  *   fx.settings.set({ music: false });        // saved; the engines follow at once
  *
- * Every event is a key of `FX` in ./catalog.ts. Sound files are picked up by
- * name from shared/sfx/ and games/<id>/assets/sfx/ (see scripts/lib/games.js);
+ * Every event is a key of `FX` in ./catalog.ts. The app plays from the game's
+ * generated `fxTable` (that catalogue without its briefs and without other
+ * modes' events), so the catalogue itself never ships. Sound files are picked
+ * up by name from the game's sound pack shared/sfx/<pack>/ and from
+ * games/<id>/assets/sfx/ (see scripts/lib/games.js);
  * an event without a file is silent and still vibrates. Nothing here throws
  * into game code. Details and rules for callers: docs/design/fx-service-notes.md.
  *
@@ -19,16 +22,19 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, Platform } from 'react-native';
-import { gameSounds } from '../../config/game';
+import { fxTable, gameSounds } from '../../config/game';
+import { modeSounds } from '../../state/modeEvents';
 import { AudioEngine, expoAudioDriver } from './audio';
-import { FX, type FxName } from './catalog';
+import type { FxName as CatalogName, FxRuntimeDef } from './catalog';
+import type { HaulFxName } from './catalog.haul';
 import { systemClock } from './clock';
 import { createFx, type Fx } from './core';
 import { createHaptics } from './haptics';
 import { SettingsStore } from './settings';
 
-export { FX } from './catalog';
-export type { FxDef, FxName, HapticStep } from './catalog';
+export type { FxDef, FxRuntimeDef, HapticStep } from './catalog';
+/** Every event a game can play: the shared catalogue's keys and the haul mode's own (./catalog.haul.ts). Each game's table holds its mode's only. */
+export type FxName = CatalogName | HaulFxName;
 export type { Fx, PlayOptions } from './core';
 export type { FxSettings } from './settings';
 
@@ -44,8 +50,14 @@ const scope = globalThis as { __fxAudio?: AudioEngine };
 scope.__fxAudio?.dispose();
 scope.__fxAudio = audio;
 
+/** The key `fx.play(name)` really plays in this game: the mode's own key for a shared one (errata 30, src/state/modeEvents.ts `modeSounds`), or the name itself. */
+export function fxKey(name: FxName): FxName {
+  return modeSounds.key(name) as FxName;
+}
+
 export const fx: Fx<FxName> = createFx({
-  catalog: FX,
+  // Typed by the catalogue's keys: an event of another mode is simply not in this game's table (silent, logged in development).
+  catalog: fxTable as Readonly<Record<FxName, FxRuntimeDef>>,
   sounds: gameSounds,
   audio,
   haptics: createHaptics({ os, androidApi }),
@@ -66,6 +78,11 @@ export const fx: Fx<FxName> = createFx({
         }
       : undefined,
 });
+
+{
+  const play = fx.play;
+  fx.play = (name, opts) => play(modeSounds.key(name) as FxName, opts);
+}
 
 // Development only: `fx` is also on the console, so any event can be auditioned by hand, e.g. fx.play('prestige').
 if (__DEV__) (globalThis as { fx?: Fx<FxName> }).fx = fx;
