@@ -1053,9 +1053,17 @@ export function refloorOffers(cfg: HaulConfig, params: HaulParams, h: HaulState)
     let r = C.raise[0];
     for (let n = 0; n < 8 && near.some((x) => Math.abs(x - r) < C.raiseGap); n++) r = Math.max(...near.filter((x) => Math.abs(x - r) < C.raiseGap)) + C.raiseGap + 0.005;
     if (r > C.raise[1]) r = C.raise[0];
-    const units = Math.max(1, Math.ceil(L * w0.perLaunch * (1 + r)));
     const want = c.wants[0];
-    if (!want || want.ore !== w0.ore || !(units > want.units)) continue;
+    if (!want || want.ore !== w0.ore) continue;
+    // What the freighter can carry bounds every order (the play confirmation's blocker: a one-ore
+    // quota resized to 180 iron with six holds of 24, and late iron orders of 4.4M a launch from a
+    // 3.8M hold): one ore never asks for more than `maxShare` of the contract's holds, and all the
+    // wanted ores together never for more than the holds. An ore with no such room keeps its order
+    // (a quota, or an ore that already fills the launch: there is nothing to raise it to).
+    const others = c.wants.slice(1).reduce((a, w) => a + w.units, 0);
+    const room = Math.min(Math.floor(L * params.F * C.maxShare), Math.floor(L * params.F) - others);
+    const units = Math.min(room, Math.max(1, Math.ceil(L * w0.perLaunch * (1 + r))));
+    if (!(units > want.units)) continue;
     want.units = Math.min(units, Math.max(want.units, Math.floor(L * w0.perLaunch * (1 + C.raise[1]))));
     out.push(v.index);
   }

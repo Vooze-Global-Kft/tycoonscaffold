@@ -243,3 +243,55 @@ describe('Decision 64: the first ring-2 claim can be priced on its own (haul.cla
     expect(H.claimCost(none, g, 2)).toBeCloseTo(H.claimCost(cfg, g, 2), 9);
   });
 });
+
+describe('the freighter bounds every order (the play confirmation after Decision 64)', () => {
+  /** No order may ask for more than its launches can carry: one ore within maxShare of the holds, all ores within the holds. */
+  function fits(g: Run, c: H.Contract): void {
+    const p = H.haulParams(cfg, g);
+    const sum = c.wants.reduce((a, w) => a + w.units, 0);
+    expect(sum).toBeLessThanOrEqual(Math.floor(L * p.F));
+  }
+
+  it('resizing an untaken offer never passes what the holds can carry: a one-ore station keeps its quota', () => {
+    // One iron rock, two drones: the station ships iron only, a launch is a hold of iron.
+    const g0 = shaped(cfg, 7, { slots: [0], haulers: [2], rig: [3], freighter: 1, autopilot: false, idle: 0 });
+    const p = H.haulParams(cfg, g0);
+    const quota = contractOf(3, 'kade', [['iron', Math.round(L * p.F * 0.8)]], 1.3, 9);
+    const h: H.HaulState = { ...g0.haul, contracts: { ...g0.haul.contracts, unlocked: true, board: [quota], next: 4, active: null } };
+    H.refloorOffers(cfg, p, h);
+    const after = h.contracts.board[0];
+    // Before the fix the floor made it L × F × 1.25: six holds could never carry it.
+    expect(after.wants[0].units).toBeLessThanOrEqual(Math.floor(L * p.F * C.maxShare));
+    fits({ ...g0, haul: h }, after);
+  });
+
+  it('an ore that already fills most of the launch is never resized past maxShare of the holds', () => {
+    for (const g0 of stations()) {
+      const p = H.haulParams(cfg, g0);
+      const st = H.routeSchedule(cfg, p, g0.haul, L).perLaunch;
+      const ores = Object.keys(st).filter((o) => st[o] > 0);
+      for (const ore of ores) {
+        // An offer far under what the routes ship (green): the refloor raises it, within the holds.
+        const offer = contractOf(11, 'kade', [[ore, Math.max(1, Math.floor(L * st[ore] * 0.5))]], 1.3, 9);
+        const h: H.HaulState = { ...g0.haul, contracts: { ...g0.haul.contracts, unlocked: true, board: [offer], next: 12, active: null } };
+        H.refloorOffers(cfg, p, h);
+        const after = h.contracts.board[0];
+        expect(after.wants[0].units).toBeLessThanOrEqual(Math.max(offer.wants[0].units, Math.floor(L * p.F * C.maxShare)));
+        fits({ ...g0, haul: h }, after);
+      }
+    }
+  });
+
+  it('through play: after every warp-out of twenty minutes on three stations, every offer on the board fits its holds', () => {
+    for (const g0 of stations()) {
+      run(cfg, { ...g0, haul: { ...g0.haul, contracts: { ...g0.haul.contracts, unlocked: true } } } as Run, 1200, 1, (g, ev) => {
+        if (!ev.some((e) => e.type === 'warp')) return;
+        const p = H.haulParams(cfg, g);
+        for (const c of g.haul.contracts.board) {
+          if (c.taken) continue;
+          expect(c.wants.reduce((a, w) => a + w.units, 0)).toBeLessThanOrEqual(Math.floor(L * p.F) + 1);
+        }
+      });
+    }
+  });
+});
