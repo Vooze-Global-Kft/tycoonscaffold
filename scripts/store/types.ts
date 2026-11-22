@@ -9,6 +9,10 @@ export type P = [number, number];
 /** One input step on the running preview. */
 export type Step =
   | { tap: P }
+  /** Taps the first element whose text matches (e.g. a card's "×2.3"), wherever the layout put it. */
+  | { tapText: RegExp }
+  /** Scrolls the first element whose text matches into view (a scrolling panel on a short phone). */
+  | { scrollTo: RegExp }
   | { down: P }
   | { move: P; steps?: number }
   | { up: true }
@@ -61,6 +65,39 @@ export interface View {
   h: number;
 }
 
+/**
+ * A vertical position in the preview, in points: a number, or the top or bottom edge of the first
+ * element whose text matches (looked up on the page at capture time, so it follows the layout).
+ */
+export type Y = number | { text: RegExp; edge: 'top' | 'bottom'; pad?: number };
+
+/**
+ * The part of the phone screen a store image must show (templates/frame.ts places it). The band
+ * [y0, y1] is fitted to the template's picture box: scaled up to fill it, but never more than
+ * `maxZoom` times the full-width scale (the sides are then cropped around `cx`); a band too tall
+ * for the box at full width is shown whole with the box colour beside it. `anchor` says which end
+ * of the band stays put when the box shows more than the band.
+ */
+export interface BandSpec {
+  y0: Y;
+  y1: Y;
+  cx?: number;
+  maxZoom?: number;
+  anchor?: 'top' | 'bottom' | 'center';
+  /** Never show the screen narrower than the box: a band too tall is cropped (from `anchor`), not shown whole. */
+  crop?: boolean;
+}
+
+/** A band with its text positions resolved (stored next to the raw capture, for --reuse). */
+export interface Band {
+  y0: number;
+  y1: number;
+  cx?: number;
+  maxZoom?: number;
+  anchor?: 'top' | 'bottom' | 'center';
+  crop?: boolean;
+}
+
 export interface Scene {
   /** File name part, e.g. "drag-a-drone". */
   slug: string;
@@ -70,14 +107,22 @@ export interface Scene {
   settle?: number;
   /** Input to reach the moment; the screenshot is taken right after the last step. */
   steps?: (v: View) => Step[];
-  /** At most six words. */
+  /**
+   * A test of the page text at the moment of the picture: returns what is wrong (the capture is
+   * taken again, up to `tries` times in all), or null. For live state the scene does not control,
+   * e.g. the same buyer twice on the Contract Board.
+   */
+  check?: (text: string) => string | null;
+  /** Captures in all when `check` fails (default 3). */
+  tries?: number;
+  /** The part of the screen the image shows (default: all of it). */
+  frame?: (v: View) => BandSpec;
+  /** At most six words. A "\n" is a chosen line break. */
   caption: string;
-  /** One short line under the caption. */
-  sub: string;
+  /** One short line under the caption (the warm template only; the panel template has none). */
+  sub?: string;
   /** What the scene shows and why it is true of the build (README). */
   shows: string;
-  /** Template option: where the caption sits ("top" or "bottom"); each template has its own default. */
-  place?: 'top' | 'bottom';
 }
 
 export interface GameScenes {
@@ -86,5 +131,12 @@ export interface GameScenes {
   port: number;
   /** A word that must appear in the preview page's title, to catch the wrong game on the port. */
   titleHas: string;
+  /**
+   * Pixel ratio of the raw capture as a multiple of the phone's (default 1). Above 1 when the
+   * template zooms into a band, so the zoomed picture is drawn, not enlarged.
+   */
+  captureScale?: number;
+  /** The Play feature graphic: which scene's capture (1-based) and which part of it. */
+  feature: { scene: number; frame: (v: View) => BandSpec };
   scenes: Scene[];
 }
