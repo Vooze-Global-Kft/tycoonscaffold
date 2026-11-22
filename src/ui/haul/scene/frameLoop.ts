@@ -12,8 +12,8 @@
  * animates. Code in here runs on the UI thread: it calls only worklets and Skia host methods.
  */
 import { Skia, notifyChange, type SkColor, type SkHostRect, type SkRSXform } from '@shopify/react-native-skia';
-import { useEffect, useMemo } from 'react';
-import { makeMutable, useFrameCallback, useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { useCallback, useEffect, useMemo } from 'react';
+import { makeMutable, useFrameCallback, useSharedValue, type FrameInfo, type SharedValue } from 'react-native-reanimated';
 import { ATLAS_A, ATLAS_B, MAX_DRAWN_PER_ROUTE, type FrameTable } from './model';
 
 const TAU = Math.PI * 2;
@@ -146,7 +146,8 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
   const { xfA, rcA, colA, xfB, rcB, colB } = bufs;
   const { padX, padY, topY, sx, sy, sr, height, periods } = geo;
 
-  const cb = useFrameCallback((info) => {
+  // One stable worklet (useCallback): a new closure per render would re-register the frame callback.
+  const onFrame = useCallback((info: FrameInfo) => {
     'worklet';
     const ts = info.timestamp;
     if (info.timeSincePreviousFrame !== null && info.timeSincePreviousFrame > 0) meanMs.value = meanMs.value * 0.95 + Math.min(250, info.timeSincePreviousFrame) * 0.05;
@@ -340,12 +341,17 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
       flareOn.value = 1 - fk * fk;
     } else flareOn.value = 0;
     stats.value = { ms: meanMs.value, sprites: a + b };
-  }, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frame, sprites, density, padX, padY, topY, sx, sy, sr, height, periods]);
+  const cb = useFrameCallback(onFrame, false);
 
   useEffect(() => {
     cb.setActive(active);
     return () => cb.setActive(false);
   }, [active, cb]);
 
-  return { ...bufs, starY, starY2, ringTurn, phases, blink, breathe, pulse, bob, ship, shipOn, flame, flash, flashOn, flare, flareOn, stats };
+  return useMemo(
+    () => ({ ...bufs, starY, starY2, ringTurn, phases, blink, breathe, pulse, bob, ship, shipOn, flame, flash, flashOn, flare, flareOn, stats }),
+    [bufs, starY, starY2, ringTurn, phases, blink, breathe, pulse, bob, ship, shipOn, flame, flash, flashOn, flare, flareOn, stats],
+  );
 }

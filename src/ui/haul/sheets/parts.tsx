@@ -23,7 +23,11 @@ import { useTarget } from '../../hints/targets';
 import { say } from './shellText';
 
 /** The radio face: monospaced, for numbers and call signs. */
-export const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'ui-monospace, Menlo, Consolas, monospace' });
+export const MONO = Platform.select({
+  ios: 'Menlo',
+  android: 'monospace',
+  default: 'ui-monospace, Menlo, Consolas, monospace',
+});
 
 /** Share of the window height a haul sheet takes (spec 4.4). */
 export const SHEET_SHARE = 0.46;
@@ -40,7 +44,15 @@ export function useType() {
   const k = Math.max(0.9, Math.min(1.25, fontScale));
   const compact = height < 740;
   const s = (n: number) => Math.round(n * k * (compact ? 0.94 : 1) * 2) / 2;
-  return { k, compact, title: s(15), body: s(13), small: s(11), tiny: s(10), big: s(17) };
+  return {
+    k,
+    compact,
+    title: s(15),
+    body: s(13),
+    small: s(11),
+    tiny: s(10),
+    big: s(17),
+  };
 }
 
 interface SheetProps {
@@ -71,18 +83,26 @@ export function HaulSheet({ visible, onClose, title, left, right, children, scro
     if (visible) {
       setMounted(true);
       fx.play('ui_open');
-      y.value = withTiming(0, { duration: SLIDE_MS, easing: Easing.out(Easing.cubic) });
+      y.value = withTiming(0, {
+        duration: SLIDE_MS,
+        easing: Easing.out(Easing.cubic),
+      });
       dim.value = withTiming(1, { duration: SLIDE_MS });
       return;
     }
-    y.value = withTiming(sheetH, { duration: SLIDE_MS * 0.8, easing: Easing.in(Easing.cubic) });
+    y.value = withTiming(sheetH, {
+      duration: SLIDE_MS * 0.8,
+      easing: Easing.in(Easing.cubic),
+    });
     dim.value = withTiming(0, { duration: SLIDE_MS * 0.8 });
     const t = setTimeout(() => setMounted(false), SLIDE_MS);
     return () => clearTimeout(t);
     // sheetH only matters for the next slide
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
-  const panelStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+  const panelStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: y.value }],
+  }));
   const dimStyle = useAnimatedStyle(() => ({ opacity: dim.value }));
   if (!mounted) return null;
   const Body = scroll ? ScrollView : View;
@@ -91,7 +111,17 @@ export function HaulSheet({ visible, onClose, title, left, right, children, scro
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: alpha('#000000', 0.32) }, dimStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={say('close')} />
       </Animated.View>
-      <Animated.View style={[styles.panel, { height: sheetH, backgroundColor: c.backgroundAlt, borderColor: alpha(c.primary, 0.45) }, panelStyle]}>
+      <Animated.View
+        style={[
+          styles.panel,
+          {
+            height: sheetH,
+            backgroundColor: c.backgroundAlt,
+            borderColor: alpha(c.primary, 0.45),
+          },
+          panelStyle,
+        ]}
+      >
         <View style={[styles.lip, { backgroundColor: alpha(c.primary, 0.5) }]} />
         <View style={styles.header}>
           {left}
@@ -105,7 +135,14 @@ export function HaulSheet({ visible, onClose, title, left, right, children, scro
             </Text>
           </Pressable>
         </View>
-        <Body style={styles.body} {...(scroll ? { contentContainerStyle: StyleSheet.flatten([styles.bodyContent, { paddingBottom: insets.bottom + 14 }]) } : {})}>
+        <Body
+          style={styles.body}
+          {...(scroll
+            ? {
+                contentContainerStyle: StyleSheet.flatten([styles.bodyContent, { paddingBottom: insets.bottom + 14 }]),
+              }
+            : {})}
+        >
           {children}
         </Body>
       </Animated.View>
@@ -119,7 +156,16 @@ export function Plate({ label, children, style, accent }: { label?: string; chil
   const ty = useType();
   const edge = accent ?? c.primary;
   return (
-    <View style={[styles.plate, { borderColor: alpha(edge, 0.35), backgroundColor: alpha(c.surface, 0.85) }, style]}>
+    <View
+      style={[
+        styles.plate,
+        {
+          borderColor: alpha(edge, 0.35),
+          backgroundColor: alpha(c.surface, 0.85),
+        },
+        style,
+      ]}
+    >
       {label ? (
         <Text style={[styles.plateLabel, { color: alpha(edge, 0.9), fontSize: ty.tiny, fontFamily: MONO }]} maxFontSizeMultiplier={1.2}>
           {label.toUpperCase()}
@@ -135,14 +181,47 @@ export function Meter({ value, color, height = 5, style }: { value: number; colo
   const c = useColors();
   const v = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
   return (
-    <View style={[{ height, borderRadius: height / 2, backgroundColor: alpha(c.text, 0.1), overflow: 'hidden' }, style]}>
-      <View style={{ width: `${v * 100}%`, height, borderRadius: height / 2, backgroundColor: color }} />
+    <View
+      style={[
+        {
+          height,
+          borderRadius: height / 2,
+          backgroundColor: alpha(c.text, 0.1),
+          overflow: 'hidden',
+        },
+        style,
+      ]}
+    >
+      <View
+        style={{
+          width: `${v * 100}%`,
+          height,
+          borderRadius: height / 2,
+          backgroundColor: color,
+        }}
+      />
     </View>
   );
 }
 
 /** A button with an optional price line; `enabled` false dims it (a tap still says why, through the action's ui_denied). */
-export function ActionButton({ label, price, enabled = true, onPress, target, style, kind = 'primary' }: { label: string; price?: string; enabled?: boolean; onPress: () => void; target?: string; style?: StyleProp<ViewStyle>; kind?: 'primary' | 'ghost' }) {
+export function ActionButton({
+  label,
+  price,
+  enabled = true,
+  onPress,
+  target,
+  style,
+  kind = 'primary',
+}: {
+  label: string;
+  price?: string;
+  enabled?: boolean;
+  onPress: () => void;
+  target?: string;
+  style?: StyleProp<ViewStyle>;
+  kind?: 'primary' | 'ghost';
+}) {
   const c = useColors();
   const ty = useType();
   const t = useTarget(target ?? null);
@@ -155,7 +234,15 @@ export function ActionButton({ label, price, enabled = true, onPress, target, st
       accessibilityRole="button"
       accessibilityLabel={price ? `${label} ${price}` : label}
       accessibilityState={{ disabled: !enabled }}
-      style={({ pressed }) => [styles.button, { backgroundColor: fill, borderColor: kind === 'ghost' || !enabled ? alpha(c.primary, 0.45) : c.primary, opacity: pressed ? 0.75 : 1 }, style]}
+      style={({ pressed }) => [
+        styles.button,
+        {
+          backgroundColor: fill,
+          borderColor: kind === 'ghost' || !enabled ? alpha(c.primary, 0.45) : c.primary,
+          opacity: pressed ? 0.75 : 1,
+        },
+        style,
+      ]}
     >
       <Text style={[styles.buttonText, { color: ink, fontSize: ty.body }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
         {label}
@@ -179,10 +266,25 @@ export function Chip({ label, on, onPress, color, style, target }: { label: stri
       accessibilityState={{ selected: on }}
       accessibilityLabel={label}
       hitSlop={6}
-      style={[styles.chip, { borderColor: on ? tint : alpha(c.text, 0.25), backgroundColor: on ? alpha(tint, 0.16) : 'transparent' }, style]}
+      style={[
+        styles.chip,
+        {
+          borderColor: on ? tint : alpha(c.text, 0.25),
+          backgroundColor: on ? alpha(tint, 0.16) : 'transparent',
+        },
+        style,
+      ]}
     >
       <View style={[styles.chipDot, { backgroundColor: on ? tint : alpha(c.text, 0.25) }]} />
-      <Text style={{ color: on ? tint : c.textMuted, fontFamily: MONO, fontWeight: '700', fontSize: ty.small }} maxFontSizeMultiplier={1.2}>
+      <Text
+        style={{
+          color: on ? tint : c.textMuted,
+          fontFamily: MONO,
+          fontWeight: '700',
+          fontSize: ty.small,
+        }}
+        maxFontSizeMultiplier={1.2}
+      >
         {label}
       </Text>
     </Pressable>
@@ -194,7 +296,19 @@ export function Line({ children, muted, mono, size, color, style, lines = 2 }: {
   const c = useColors();
   const ty = useType();
   return (
-    <Text style={[{ color: color ?? (muted ? c.textMuted : c.text), fontSize: size ?? ty.body, fontFamily: mono ? MONO : undefined, fontWeight: mono ? '600' : '500' }, style]} numberOfLines={lines} maxFontSizeMultiplier={1.25}>
+    <Text
+      style={[
+        {
+          color: color ?? (muted ? c.textMuted : c.text),
+          fontSize: size ?? ty.body,
+          fontFamily: mono ? MONO : undefined,
+          fontWeight: mono ? '600' : '500',
+        },
+        style,
+      ]}
+      numberOfLines={lines}
+      maxFontSizeMultiplier={1.25}
+    >
       {children}
     </Text>
   );
@@ -222,18 +336,65 @@ export function useLast<T>(value: T | null): T | null {
 }
 
 const styles = StyleSheet.create({
-  panel: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: 22, borderTopRightRadius: 22, borderTopWidth: 1.5, borderLeftWidth: 1, borderRightWidth: 1, overflow: 'hidden' },
-  lip: { alignSelf: 'center', width: 44, height: 4, borderRadius: 2, marginTop: 7 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 8 },
+  panel: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderTopWidth: 1.5,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    overflow: 'hidden',
+  },
+  lip: {
+    alignSelf: 'center',
+    width: 44,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 7,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 8,
+  },
   title: { flex: 1, fontWeight: '800', letterSpacing: 1.2 },
-  close: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  close: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   closeText: { fontSize: 14, fontWeight: '900' },
   body: { flex: 1 },
   bodyContent: { paddingHorizontal: 16, gap: 10 },
   plate: { borderWidth: 1, borderRadius: 12, padding: 10, gap: 6 },
   plateLabel: { fontWeight: '700', letterSpacing: 1.4 },
-  button: { minHeight: 40, borderRadius: 20, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
+  button: {
+    minHeight: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   buttonText: { fontWeight: '800', letterSpacing: 0.3 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.2, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1.2,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   chipDot: { width: 6, height: 6, borderRadius: 3 },
 });

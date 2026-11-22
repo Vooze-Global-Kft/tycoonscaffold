@@ -189,7 +189,17 @@ export function useFieldGestures(layout: FieldLayout): FieldGestures {
     };
     const write = (t: Touch, p: Pt, kind: number) => {
       const snap = typeof t.snap === 'number' ? centreOf(layoutRef.current, t.snap) : t.snap === 'rack' ? rackGrabPoint(p, layoutRef.current) : null;
-      dragLine.value = { kind, x0: t.origin.x, y0: t.origin.y, x: p.x, y: p.y, snap: snap ? 1 : 0, sx: snap?.x ?? 0, sy: snap?.y ?? 0, color: t.color };
+      dragLine.value = {
+        kind,
+        x0: t.origin.x,
+        y0: t.origin.y,
+        x: p.x,
+        y: p.y,
+        snap: snap ? 1 : 0,
+        sx: snap?.x ?? 0,
+        sy: snap?.y ?? 0,
+        color: t.color,
+      };
     };
     return {
       onStartShouldSetResponder: () => true,
@@ -200,7 +210,20 @@ export function useFieldGestures(layout: FieldLayout): FieldGestures {
         const p = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
         const L = layoutRef.current;
         const hit = hitAt(p, L, now);
-        const t: Touch = { start: p, t0: Date.now(), hit, drag: { kind: 'none' }, moved: false, pressed: false, snap: null, armed: false, samples: [{ ...p, t: e.nativeEvent.timestamp || Date.now() }], origin: p, color: '' };
+        console.warn('BAYDBG grant', JSON.stringify(p), JSON.stringify(hit), now.g.haul.idle);
+        const t: Touch = {
+          start: p,
+          t0: Date.now(),
+          hit,
+          drag: { kind: 'none' },
+          moved: false,
+          pressed: false,
+          snap: null,
+          armed: false,
+          samples: [{ ...p, t: e.nativeEvent.timestamp || Date.now() }],
+          origin: p,
+          color: '',
+        };
         touch.current = t;
         pressTimer.current = setTimeout(() => {
           const cur = touch.current;
@@ -269,6 +292,7 @@ export function useFieldGestures(layout: FieldLayout): FieldGestures {
         write(t, p, t.drag.kind === 'flare' ? DRAG_FLARE : DRAG_DRONE);
       },
       onResponderRelease: (e: GestureResponderEvent) => {
+        console.warn('BAYDBG release', JSON.stringify(touch.current?.drag), touch.current?.moved, JSON.stringify(touch.current?.snap));
         const t = touch.current;
         const now = haulNow();
         if (!t || !now) return end();

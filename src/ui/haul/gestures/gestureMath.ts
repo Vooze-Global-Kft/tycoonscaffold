@@ -91,5 +91,8 @@ export function onRack(p: Pt, layout: FieldLayout): boolean {
 /** The centre of the rack cradle a dragged idle drone leaves from: the free cradle nearest the touch. */
 export function rackGrabPoint(p: Pt, layout: FieldLayout): Pt {
   const r = p.x < layout.station.x ? layout.rack.left : layout.rack.right;
-  return { x: Math.min(r.x + r.width, Math.max(r.x, p.x)), y: r.y + r.height * 0.35 };
+  return {
+    x: Math.min(r.x + r.width, Math.max(r.x, p.x)),
+    y: r.y + r.height * 0.35,
+  };
 }

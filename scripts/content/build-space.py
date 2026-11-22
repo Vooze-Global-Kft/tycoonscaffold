@@ -7,18 +7,19 @@ This script is the only source of the game's numbers and words (AGENTS.md: never
 table). Fields it does not own (app ids, ad units, firebase, assets, store URLs) are kept from the
 existing game.json.
 
-PROVISIONAL. Every number below is the specification's starting value (sections 2.1 to 2.10,
-5.1 to 5.4; the same as src/config/schema.haul.ts HAUL_STARTING_CONTENT, with the Decisions at
-the end of the specification applied). The balance package calibrates them against section 8's
-bot targets on the real engine (docs/design/space-build-plan.md, package "balance"); until then
-the game is playable but not tuned. Numbers marked (tune) in the specification may move inside
-their stated ranges; rules may not.
+CALIBRATED. Every number starts from the specification's starting value (sections 2.1 to 2.10,
+5.1 to 5.4, with the Decisions applied); the (tune) numbers are knobs (TUNE below) moved inside
+their stated ranges against section 8's targets by the balance bot (scripts/content/haul-bot.ts,
+`npm run simulate -- space-miner --hours 12 --prestige`). Rules never move.
+
+    python3 scripts/content/build-space.py --table    also prints the knob table and the worked
+                                                      tables of section 2.12 (Decision 16)
 
 Old saves: the game was never published. Its classic content (businesses, upgrades, the cast)
 is gone, and the haul engine keeps its save under a new key (save:space-miner:haul1), so an old
 classic save in a developer's browser is simply not read (specification, Decisions).
 """
-import json, os
+import json, os, re, subprocess, sys
 
 ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
 PATH = os.path.join(ROOT, 'games/space-miner/game.json')
@@ -34,8 +35,9 @@ PATH = os.environ.get('OUT', PATH)
 TUNE = {}
 
 
-def K(name, value, lo, hi, what):
-    v = float(os.environ.get('TUNE_' + name, value))
+def K(name, value, lo, hi, what, ship=None):
+    """A (tune) number: the specification's starting `value`, its range, and the calibrated value shipped."""
+    v = float(os.environ.get('TUNE_' + name, value if ship is None else ship))
     if not (lo - 1e-12 <= v <= hi + 1e-12):
         raise SystemExit(f'TUNE_{name}={v} is outside its range {lo} to {hi} ({what})')
     v = int(v) if v == int(v) else v
@@ -85,7 +87,7 @@ g['economy'] = {
     'tapBase': 0, 'tapPercentOfIncome': 0,
     'milestones': [],
     # Cores = floor(scale x (lifetime / threshold)^0.5) (tune: first Jump at 2 h 15 to 2 h 45 with 20 to 30 cores).
-    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (first Jump 2 h 15 to 2 h 45)'),
+    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (first Jump 2 h 15 to 2 h 45)', 2e7),
                  'scale': K('coreScale', 5, 1, 20, 'cores scale'), 'exponent': 0.5, 'bonusPerPoint': 0},
     # Offline: 6 h at most, efficiency 0.45 at most (2.11).
     # (tune: maxHours 6); the efficiency is capped at 0.45 by the rules. The bot's gate is "offline per hour
@@ -118,6 +120,16 @@ RINGS = [
 ]
 BUYERS = [('halden', 'Halden Yards'), ('corvo', 'Corvo Metals'), ('tessaly', 'Tessaly Ice Co.'),
           ('brightwater', 'Brightwater Foundry'), ('kade', 'Kade Refinery'), ('oriel', 'Oriel Labs')]
+# One line each when a buyer's contract arrives and when it closes (7.3, 7.5). Spoken lines: the screen
+# fills {ore}, and {units} and {mult} spelled out (strings.ts spokenNumber, spokenMultiplier).
+BUYER_LINES = {
+    'halden': ('Halden Yards, buying {ore}. {units} units. We pay {mult}.', 'Halden. Received in full. Same time next run.'),
+    'corvo': ('Corvo Metals. {units} {ore}, {mult} on the unit. Standing by.', 'Corvo Metals. Contract closed. Pleasure.'),
+    'tessaly': ('Tessaly Ice Company. {units} {ore}. Paying {mult}. Keep it sealed.', 'Tessaly. Manifest checks out. Logged.'),
+    'brightwater': ('Brightwater Foundry. The furnace wants {ore}. {units} units at {mult}.', 'Brightwater. Furnace is fed. Out.'),
+    'kade': ('Kade Refinery, line two. {units} {ore}. {mult}, no haggling.', 'Kade. Paid. We will call again.'),
+    'oriel': ('Oriel Labs requesting {ore}. {units} units, any grade. Rate {mult}.', 'Oriel Labs. Samples received. Rate honoured.'),
+}
 GALAXIES = ['Cygnus Drift', 'Halden Reach', 'Morrow Belt', 'Tessaly Gap', 'Corvo Expanse', 'Brightwater Ring', "Kade's Shelf",
             'Oriel Spur', 'Vantor Deep', 'Selk Cluster', 'Ambry Field', 'Nolan Verge']
 
@@ -128,7 +140,7 @@ g['haul'] = {
     'rings': [{'name': n, 'distance': d, 'slots': s, 'drill': r, 'life': l, 'weights': w} for n, d, s, r, l, w in RINGS],
     'start': {'pile': K('startPile', 8, 5, 10, 'units on slot 0 at the start'), 'drones': 1},
     'rig': {
-        'levelGrowth': K('rigLevel', 1.35, 1.25, 1.45, 'drill per rig level'),
+        'levelGrowth': K('rigLevel', 1.35, 1.25, 1.45, 'drill per rig level', 1.4),
         'tiers': [
             {'level': 4, 'name': 'Dual Bit', 'drill': 2},
             {'level': 10, 'name': 'Deep Bore', 'drill': 2, 'life': 1.5},
@@ -136,9 +148,9 @@ g['haul'] = {
             {'level': 35, 'name': 'Twin Rig', 'drill': 2, 'pileCap': 2},
         ],
         'stripeEvery': 15, 'stripeMult': 1.5,
-        'cost': {'base': 3, 'ringFactor': 40, 'growth': K('rigGrowth', 1.6, 1.45, 1.8, 'rig cost growth')},
+        'cost': {'base': 3, 'ringFactor': 40, 'growth': K('rigGrowth', 1.6, 1.45, 1.8, 'rig cost growth', 1.7)},
     },
-    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)'), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring'), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring')},
+    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)'), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 18), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring')},
     'pile': {'min': 10, 'seconds': 25},
     'drone': {
         'speed': 0.5, 'speedPerLevel': 0.08, 'speedMax': 4, 'capacity': 4,
@@ -150,13 +162,13 @@ g['haul'] = {
         'capBase': 24, 'capPerGalaxy': 4,
     },
     'freighter': {
-        'capacity': 12, 'growth': 1.45, 'cost': {'base': 15, 'growth': K('freighterGrowth', 1.6, 1.45, 1.8, 'freighter cost growth (knob: freighter binds)')},
+        'capacity': 12, 'growth': 1.45, 'cost': {'base': 15, 'growth': K('freighterGrowth', 1.6, 1.45, 1.8, 'freighter cost growth (knob: freighter binds)', 1.5)},
         'away': [{'from': 1, 'seconds': 8}, {'from': 10, 'seconds': 12}, {'from': 25, 'seconds': 16}],
         'climb': 2.5, 'land': 2, 'fullBonus': 1.1, 'hulls': [1, 10, 25, 50], 'segmentEvery': 25, 'segmentMax': 8,
     },
     'autopilot': {'cost': K('autopilot', 90, 80, 110, 'Dock Autopilot price')},
     'respawnSeconds': 6,
-    'bonanza': {'chance': K('bonanza', 0.04, 0.03, 0.06, 'bonanza chance of a new rock'), 'drill': 2, 'life': 1.5},
+    'bonanza': {'chance': K('bonanza', 0.04, 0.03, 0.06, 'bonanza chance of a new rock', 0.06), 'drill': K('bonanzaDrill', 2, 2, 3, 'bonanza drill (knob: run 2)', 3), 'life': 1.5},
     'seam': {'first': 360, 'interval': [K('seamMin', 90, 60, 90, 'seam interval, low end (knob: drags)'), K('seamMax', 150, 100, 150, 'seam interval, high end (knob: drags)')], 'duration': 40, 'drill': 3, 'pileCap': 2, 'senseInterval': 10, 'senseDuration': 5, 'minInterval': 30},
     'flare': {'refillSeconds': 1800, 'firstAt': 600, 'maxStored': 1, 'adsPerDay': 3, 'adGapMinutes': 20},
     'contracts': {
@@ -165,7 +177,8 @@ g['haul'] = {
         'units': [K('unitsLo', 0.4, 0.3, 0.5, 'contract units, share of F, low'), K('unitsHi', 0.7, 0.55, 0.8, 'contract units, share of F, high')], 'twoOreChance': 0.4,
         'mult': [1.6, 1.9, 2.2, 2.6, 3.0], 'jitter': 0.1,
         'first': {'buyer': 0, 'ore': 'iron', 'units': 10, 'mult': 1.5},
-        'buyers': [{'id': i, 'name': n} for i, n in BUYERS],
+        # `calls` and `closed` wait for the rules' buyer schema to carry them (balance report, "For other owners").
+        'buyers': [{'id': i, 'name': n, 'calls': BUYER_LINES[i][0], 'closed': BUYER_LINES[i][1]} for i, n in BUYERS],
     },
     'pods': {'scrap': 'scrap', 'derelict': 'derelict', 'depletedEvery': 6, 'contractsEvery': 4, 'transmissionsEvery': 4},
     'conditions': [
@@ -180,14 +193,14 @@ g['haul'] = {
     ],
     'starMap': {
         'nodes': [
-            {'id': 'prospect', 'name': 'Prospect Survey', 'arm': 'survey', 'effect': 'bonanza', 'per': 0.94, 'base': 2, 'growth': 1.25, 'cap': 11, 'part': 'surveyArray'},
-            {'id': 'veinsense', 'name': 'Seam Sense', 'arm': 'survey', 'effect': 'seamSense', 'base': 2, 'growth': 1.4, 'cap': 5, 'part': 'scannerDish'},
-            {'id': 'assay', 'name': 'Assay Rights', 'arm': 'survey', 'effect': 'orePrice', 'per': 0.1, 'base': 1, 'growth': 1.3, 'cap': 5, 'part': 'assayLab'},
-            {'id': 'brokerseat', 'name': 'Broker Seat', 'arm': 'trade', 'effect': 'contractMult', 'per': 0.1, 'base': 2, 'growth': 1.35, 'cap': 5, 'part': 'antennaMast'},
-            {'id': 'seedcredits', 'name': 'Seed Credits', 'arm': 'trade', 'effect': 'seedCredits', 'per': 10, 'base': 1, 'growth': 1.4, 'cap': 6, 'part': 'vaultBlock'},
-            {'id': 'preload', 'name': 'Systems Preload', 'arm': 'fleet', 'effect': 'preload', 'base': 5, 'growth': 1, 'cap': 1, 'part': 'beacon'},
-            {'id': 'sparedrones', 'name': 'Spare Drones', 'arm': 'fleet', 'effect': 'spareDrones', 'per': 1, 'base': 2, 'growth': 1.4, 'cap': 6, 'part': 'hangar'},
-            {'id': 'afterburner', 'name': 'Afterburner', 'arm': 'fleet', 'effect': 'headStart', 'base': 2, 'growth': 1.5, 'cap': 6, 'part': 'boosterRing'},
+            {'id': 'prospect', 'name': 'Prospect Survey', 'arm': 'survey', 'effect': 'bonanza', 'per': 0.94, 'base': 2, 'growth': 1.25, 'cap': 11, 'part': 'surveyArray', 'lines': ['More bonanza rocks in the stream.', 'Half of all rocks at most.']},
+            {'id': 'veinsense', 'name': 'Seam Sense', 'arm': 'survey', 'effect': 'seamSense', 'base': 2, 'growth': 1.4, 'cap': 5, 'part': 'scannerDish', 'lines': ['Rich seams come 10 s sooner.', 'Each one lasts 5 s longer.']},
+            {'id': 'assay', 'name': 'Assay Rights', 'arm': 'survey', 'effect': 'orePrice', 'per': 0.1, 'base': 1, 'growth': 1.3, 'cap': 5, 'part': 'assayLab', 'lines': ['+10 % on every unit sold.']},
+            {'id': 'brokerseat', 'name': 'Broker Seat', 'arm': 'trade', 'effect': 'contractMult', 'per': 0.1, 'base': 2, 'growth': 1.35, 'cap': 5, 'part': 'antennaMast', 'lines': ['+0.1 on every met contract.']},
+            {'id': 'seedcredits', 'name': 'Seed Credits', 'arm': 'trade', 'effect': 'seedCredits', 'per': 10, 'base': 1, 'growth': 1.4, 'cap': 6, 'part': 'vaultBlock', 'lines': ['Each run opens with credits in the vault.']},
+            {'id': 'preload', 'name': 'Systems Preload', 'arm': 'fleet', 'effect': 'preload', 'base': 5, 'growth': 1, 'cap': 1, 'part': 'beacon', 'lines': ['The Dock Autopilot is online from the first second.']},
+            {'id': 'sparedrones', 'name': 'Spare Drones', 'arm': 'fleet', 'effect': 'spareDrones', 'per': 1, 'base': 2, 'growth': 1.4, 'cap': 6, 'part': 'hangar', 'lines': ['+1 idle drone on the rack at every run start.']},
+            {'id': 'afterburner', 'name': 'Afterburner', 'arm': 'fleet', 'effect': 'headStart', 'base': 2, 'growth': 1.5, 'cap': 6, 'part': 'boosterRing', 'lines': ['Runs open with near slots claimed.', 'Head-start rigs come fitted with a Dual Bit.']},
         ],
         'headStart': [[0, 1], [0, 1, 2], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 5], [0, 1, 2, 3, 4, 5, 6, 7], [0, 1, 2, 3, 4, 5, 6, 7, 8]],
         # Section 8's knob for run 2 (raise the Afterburner head start): the head-start rig level.
@@ -223,6 +236,7 @@ g['story'] = [
     {'id': 'autopilot', 'characterId': 'ops2', 'trigger': {'type': 'system'}, 'lines': ['Autopilot has the pad. It ships the way you set it.']},
     {'id': 'ring2', 'characterId': 'dispatch', 'trigger': {'type': 'ring', 'ring': 2}, 'lines': ['Copper buyers on the board. Ring 2 is in range.']},
     {'id': 'ring3', 'characterId': 'tally', 'trigger': {'type': 'ring', 'ring': 3}, 'lines': ['Frost Line. Ice sells. Bring capacity.']},
+    {'id': 'ring4', 'characterId': 'ops2', 'trigger': {'type': 'ring', 'ring': 4}, 'lines': ['Lilac Drift in range. Titanium, long trips. Engines earn their keep out there.']},
     {'id': 'ring5', 'characterId': 'dispatch', 'trigger': {'type': 'ring', 'ring': 5}, 'lines': ['Pale Edge. Platinum. Halden says they will take all of it.']},
     {'id': 'jump_ready', 'characterId': 'tally', 'trigger': {'type': 'jumpReady', 'cores': 20}, 'lines': ['Long-range scan done. Three galaxies in reach. Your call.']},
     {'id': 'galaxy1', 'characterId': 'ops2', 'trigger': {'type': 'galaxy', 'index': 1}, 'lines': ['New sky, same pad. Station is yours.']},
@@ -300,6 +314,47 @@ listing = json.load(open(os.path.join(ROOT, 'scripts/content/space-store.json'))
 store = g.setdefault('store', {})
 store.update({k: v for k, v in listing.items() if not k.startswith('_')})
 
+# ---------------------------------------------------------------- the voice check (7.5)
+# Every text a player reads from this file and from the mode's string table: no exclamation marks,
+# no praise, no puns on the other game's food words, a radio line short enough for two rows.
+BANNED = re.compile(r"!|\b(amazing|awesome|great job|well done|yummy|tasty|delicious|pizza|slice|chef|restaurant|customer|order up)\b", re.I)
+
+
+def texts(x, out):
+    if isinstance(x, str):
+        out.append(x)
+    elif isinstance(x, dict):
+        for k, v in x.items():
+            if k not in ('id', 'icon', 'portrait', 'color', 'part', 'effect', 'socket', 'stat', 'card', 'tier', 'kind', 'ore', 'chestId', 'heroIcon', 'particleIcon',
+                         'currencyIcon', 'gemIcon', 'prestigeIcon', 'type', 'characterId', 'arm', 'product', 'scene', 'rockPrefix'):
+                texts(v, out)
+    elif isinstance(x, list):
+        for v in x:
+            texts(v, out)
+    return out
+
+
+voice = texts({k: g[k] for k in ('strings', 'haul', 'characters', 'story', 'meta')}, [])
+voice += re.findall(r":\s*'([^']+)'", open(os.path.join(ROOT, 'src/ui/haul/strings.ts')).read())
+bad = [t for t in voice if BANNED.search(t)]
+long = [b['lines'] for b in g['story'] if sum(len(l) for l in b['lines']) > 96]
+if bad or long:
+    raise SystemExit('voice check (spec 7.5) failed:\n  ' + '\n  '.join([f'banned word or "!": {t}' for t in bad] + [f'story line over two rows: {t}' for t in long]))
+
 json.dump(g, open(PATH, 'w'), indent=2, ensure_ascii=False)
 open(PATH, 'a').write('\n')
-print('wrote', PATH, '(mode haul, provisional numbers)')
+print('wrote', PATH, '(mode haul)')
+
+# ---------------------------------------------------------------- --table: the worked numbers (2.12, Decision 16)
+if '--table' in sys.argv:
+    print('\n**Tuning knobs (section 8; "spec" is the specification\'s starting value):**\n')
+    print('| Knob | What | Range | Spec | Shipped |')
+    print('|---|---|---|---|---|')
+    for k, v in TUNE.items():
+        print(f"| {k} | {v['what']} | {v['range'][0]} to {v['range'][1]} | {v['spec']} | {v['value']}{'' if v['value'] == v['spec'] else ' *'} |")
+    print()
+    env = dict(os.environ, NODE_OPTIONS='--max-old-space-size=3000')
+    r = subprocess.run(['npx', 'tsx', 'scripts/simulate.ts', 'space-miner', '--file', PATH, '--hours', '4', '--prestige', '--table'], cwd=ROOT, env=env, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise SystemExit(r.stderr[-2000:])
+    print(r.stdout)

@@ -109,7 +109,7 @@ const DEFAULTS = {
   oreChanged: '{rock} is {ore} now.',
   bonanza: '{rock} is a bonanza rock.',
   seam: 'Gold on {rock}. Rich seam. Worth pulling a few drones.',
-  contractNew: '{buyer}, buying {ore}.',
+  contractNew: 'Buying {ore}. {n} units.',
   contractClosed: 'Contract closed. Pick the next one from the board.',
   contractLapsed: '{buyer} contract lapsed. Pick another.',
   podEarned: 'Pod recovered. It waits in the Salvage Bay.',

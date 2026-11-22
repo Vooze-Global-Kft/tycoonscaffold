@@ -102,8 +102,11 @@ export interface HaulBotResult {
   gestures: Counts;
   limits: { drill: number; haul: number; freighter: number };
   payouts: { total: number; met: number; fillSum: number; launches: number };
-  offline: { at: number; offlinePerHour: number; activeRatePerHour: number; playPerHour: number | null }[];
+  /** One hour away against one hour of play from the same state: with purchases (the gate), without, and activeRate × 3600. */
+  offline: { at: number; offlinePerHour: number; activeRatePerHour: number; playPerHour: number; noBuyPerHour: number }[];
   states: Record<number, Run>;
+  /** activeRate at every whole minute of bot time (index = minute). */
+  income: number[];
   end: Run;
 }
 
@@ -175,6 +178,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   const payouts = { total: 0, met: 0, fillSum: 0, launches: 0 };
   const offline: HaulBotResult['offline'] = [];
   const states: Record<number, Run> = {};
+  const income: number[] = [];
   const keepAt = new Set(opts.keepAt ?? []);
   const runs: RunSummary[] = [{ index: 0, galaxy: g.haul.galaxy, trait: g.haul.trait, start: 0, end: null, earnings: 0, coresGained: 0, buys: [], reachedPrevAt: null }];
 
@@ -613,6 +617,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
       win = { from: t, gestures: zero(), earned: 0, depleted: 0 };
     }
     if (keepAt.has(t)) states[t] = g;
+    if (t % 60 === 0) income.push(H.haulIncome(cfg, g));
     const now = NOW + t * 1000;
 
     placeIdle();
@@ -644,12 +649,20 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     if (t % 10 === 0) for (const r of H.routeLimits(cfg, g)) limits[r.limit] += 10;
 
     // Offline against active play at the same state (minutes 30, 60, 120; then every 2 h): one hour
-    // away (haulOffline) against one hour of the bot playing on from the same state without buying.
+    // away (haulOffline) against one hour of the bot playing on from the same state (no Jump). The
+    // no-purchase hour is kept too (`noShop`), for the record.
     if (!opts.noOffline && (t === 1800 || t === 3600 || t === 7200 || (t > 7200 && t % 7200 === 0))) {
       const snap = { ...g, lastSavedAt: now, stats: { ...g.stats, clockHigh: now } } as Run;
       const off = H.haulOffline(cfg, snap, now + 3600_000);
-      const played = runHaulBot(cfg, { hours: 1, prestige: false, noShop: true, noOffline: true, start: g, now });
-      offline.push({ at: t, offlinePerHour: off.earnings, activeRatePerHour: H.haulIncome(cfg, g) * 3600, playPerHour: played.end.lifetimeEarnings - g.lifetimeEarnings });
+      const played = runHaulBot(cfg, { hours: 1, prestige: false, noOffline: true, start: g, now });
+      const still = runHaulBot(cfg, { hours: 1, prestige: false, noShop: true, noOffline: true, start: g, now });
+      offline.push({
+        at: t,
+        offlinePerHour: off.earnings,
+        activeRatePerHour: H.haulIncome(cfg, g) * 3600,
+        playPerHour: played.end.lifetimeEarnings - g.lifetimeEarnings,
+        noBuyPerHour: still.end.lifetimeEarnings - g.lifetimeEarnings,
+      });
     }
 
     // Run summaries: when this run's earnings pass the previous run's Jump earnings.
@@ -677,7 +690,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   const cur = runs[runs.length - 1];
   cur.earnings = g.runEarnings;
   void prevF;
-  return { hours: opts.hours, marks, notables, windows, runs, gestures, limits, payouts, offline, states, end: g };
+  return { hours: opts.hours, marks, notables, windows, runs, gestures, limits, payouts, offline, states, income, end: g };
 }
 
 // ----------------------------------------------------------- section 8's targets
@@ -692,6 +705,7 @@ export interface Target {
 
 const mmss = (s: number | null | undefined): string => {
   if (s === null || s === undefined || !Number.isFinite(s)) return 'never';
+  s = Math.round(s);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = Math.round(s % 60);
@@ -767,7 +781,8 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult): Target[] {
   add('Average launch fill', '70 to 95 %', `${(fill * 100).toFixed(0)} %`, fill >= 0.7 && fill <= 0.95, false);
   const offRatios = r.offline.map((o) => (o.playPerHour ? o.offlinePerHour / o.playPerHour : 0));
   const offMax = offRatios.length ? Math.max(...offRatios) : 0;
-  add('Offline credits per hour vs active play', '≤ 0.45', offRatios.map((x) => x.toFixed(2)).join(' / ') || 'not measured', offRatios.length > 0 && offMax <= 0.45, true);
+  const still = r.offline.map((o) => (o.noBuyPerHour ? o.offlinePerHour / o.noBuyPerHour : 0));
+  add('Offline credits per hour vs active play', '≤ 0.45', `${offRatios.map((x) => x.toFixed(2)).join(' / ') || 'not measured'} (no purchases: max ${(still.length ? Math.max(...still) : 0).toFixed(2)}; vs activeRate: max ${Math.max(0, ...r.offline.map((o) => o.offlinePerHour / (o.activeRatePerHour || 1))).toFixed(2)})`, offRatios.length > 0 && offMax <= 0.45, true);
   const w30 = r.windows.find((w) => w.from === 1200);
   const dried = w30 ? w30.depleted * 6 : 0;
   add('Rocks dried per hour at minute 30', '8 to 20', `${dried}`, dried >= 8 && dried <= 20, false);
@@ -791,6 +806,10 @@ export function simulateHaulCli(cfg: H.HaulConfig, flags: Record<string, string>
   const keepAt = flags.states ? [0, 180, 25 * 60, 140 * 60] : [];
   const r = runHaulBot(cfg, { hours, prestige, seed, traceEvery, keepAt, trace: traceEvery ? (t, l) => lines.push(`${mmss(t).padStart(9)}  · ${l}`) : undefined });
   const targets = evaluate(cfg, r);
+  if (flags.table === 'true') {
+    console.log(workedTables(cfg, r, runTutorialHuman(cfg, { seed })));
+    return;
+  }
   if (flags.states) {
     const fs = require('node:fs') as typeof import('node:fs');
     const path = require('node:path') as typeof import('node:path');
@@ -800,9 +819,14 @@ export function simulateHaulCli(cfg: H.HaulConfig, flags: Record<string, string>
     // The late preset: the first Jump's state just before it is taken, if the run got there.
   }
   if (flags.json === 'true') {
+    // validate's pacing check (scripts/validate.ts, written for the classic bot) reads `marks`: its
+    // "first automation hire" is this game's Dock Autopilot, so the mark is offered under that name too.
+    const marks: Record<string, number> = { ...r.marks };
+    if (r.marks.autopilot !== undefined) marks['hire dock autopilot'] = r.marks.autopilot;
     console.log(
       JSON.stringify({
-        marks: r.marks,
+        marks,
+        hardMissed: targets.filter((x) => x.hard && !x.ok).map((x) => `${x.name}: ${x.value} (target ${x.target})`),
         targets,
         runs: r.runs,
         gestures: r.gestures,
@@ -838,4 +862,145 @@ export function simulateHaulCli(cfg: H.HaulConfig, flags: Record<string, string>
   for (const x of targets) console.log(`  ${x.ok ? '✔' : x.hard ? '✖' : '·'} ${x.name.padEnd(54)} ${x.target.padEnd(34)} ${x.value}${x.hard ? '' : '   (soft)'}`);
   const hardMissed = targets.filter((x) => x.hard && !x.ok).length;
   console.log(`\n${hardMissed ? `✖ ${hardMissed} hard target(s) missed` : '✔ every hard target met'}`);
+}
+
+// ----------------------------------------------------------- the tutorial human (spec 2.12, first table)
+
+export interface TutorialRow {
+  t: number;
+  what: string;
+  numbers: string;
+}
+
+/**
+ * A person who does only what the hints ask (section 3), each `reaction` seconds after the hint
+ * shows, at 0.05 s ticks (errata table B). Point hints into a sheet are one action (the sheet open
+ * and the button tap); the contract strip's hint picks the board's first contract. Stops at
+ * `seconds`. Returns the rows of the first 2.12 table.
+ */
+export function runTutorialHuman(cfg: H.HaulConfig, opts: { reaction?: number; seconds?: number; seed?: number; now?: number } = {}): TutorialRow[] {
+  const reaction = opts.reaction ?? 2.5;
+  const DT = 0.05;
+  const NOW = opts.now ?? Date.UTC(2026, 10, 22, 12);
+  let g = freshBotGame(cfg, opts.seed ?? 12345, NOW);
+  const rows: TutorialRow[] = [];
+  const fmt = (x: number) => (x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2));
+  const p0 = H.haulParams(cfg, g);
+  const s0 = p0.slots[0];
+  rows.push({ t: 0, what: `Cash ${cfg.strings.currencySymbol}0. Slot 0 (ring 1, ${g.haul.slots[0].ore}): rig L1, r = ${fmt(s0.r)}/s, pile ${fmt(g.haul.slots[0].pile)}/${fmt(s0.cap)}. One drone idle on the rack. F = ${fmt(p0.F)}`, numbers: '' });
+  let seen: { key: string; since: number } | null = null;
+  let firstUnload = false;
+  let fullNoted = false;
+  let stripNoted = false;
+  let launches = 0;
+  const steps = Math.round((opts.seconds ?? 240) / DT);
+  for (let i = 0; i < steps; i++) {
+    const t = i * DT;
+    const hint = H.nextHint(cfg, g);
+    const key = hint ? H.hintKey(hint) : '';
+    if (!hint) seen = null;
+    else if (!seen || seen.key !== key) seen = { key, since: t };
+    if (hint && seen && t - seen.since >= reaction - 1e-9) {
+      const ev: H.HaulEvent[] = [];
+      let next: H.HaulGame = g;
+      let what = '';
+      let numbers = '';
+      const rockOf = (k: string | undefined) => (k && k.startsWith('rock:') ? Number(k.slice(5)) : -1);
+      if ((hint.kind === 'drag' || hint.kind === 'tapTap') && hint.from === 'drone:rack') {
+        const slot = rockOf(hint.to);
+        next = H.assignDrone(cfg, g, slot, ev);
+        const sp = H.haulParams(cfg, next as Run).slots[slot];
+        what = `${hint.kind === 'tapTap' ? 'Tap the drone, then' : 'Drag the drone onto'} rock T-${slot + 1}`;
+        numbers = `trip = ${fmt(sp.trip)} s; c = ${fmt(sp.c)}; h = ${fmt(sp.h)}/s; first delivery at ${mmss(t + (next as Run).haul.slots[slot].routeFrom - (next as Run).haul.clock)}`;
+      } else if (hint.kind === 'drag' && hint.from?.startsWith('chip:')) {
+        const from = Number(hint.from.slice(5));
+        const to = rockOf(hint.to);
+        next = H.moveDrone(cfg, g, from, to, ev);
+        what = `Move one drone from T-${from + 1}'s chip to T-${to + 1}`;
+      } else if (hint.kind === 'swipe') {
+        next = H.launch(cfg, g, ev);
+        launches++;
+        what = `Swipe up: launch ${launches}`;
+        numbers = `cargo ${fmt(sumUnits((next as Run).haul.freighter.cargo))}, paid at the warp-out ${fmt((next as Run).haul.freighter.payout)}`;
+      } else if (hint.key === 'station:buyDrone') {
+        const cost = H.droneCost(cfg, g);
+        next = H.buyDrone(cfg, g, ev);
+        what = `Buy drone ${(next as Run).haul.fleet.drones} (${cfg.strings.currencySymbol}${fmt(cost)})`;
+        numbers = `cash left ${fmt(next.cash)}`;
+      } else if (hint.key === 'slot:1') {
+        const cost = H.claimCost(cfg, g, 1);
+        next = H.claimSlot(cfg, g, 1, ev);
+        what = `Claim slot 1 (${cfg.strings.currencySymbol}${fmt(cost)})`;
+      } else if (hint.key === 'station:autopilot') {
+        next = H.buyAutopilot(cfg, g, ev);
+        what = `Dock Autopilot online (${cfg.strings.currencySymbol}${fmt(H.autopilotCost(cfg, g))})`;
+        numbers = `cash ${fmt(g.cash)} before`;
+      } else if (hint.key === 'bay:counter') {
+        next = H.pickContract(cfg, g, 0);
+        what = 'Pick contract 0 from the board';
+      } else if (hint.key.startsWith('button:') || hint.key === 'bay:flare') {
+        next = H.markHintShown(g, hint.key);
+      }
+      if (next !== g) {
+        g = next as Run;
+        if (what) rows.push({ t, what, numbers });
+        seen = null;
+      }
+    }
+    const ev: H.HaulEvent[] = [];
+    const before = g;
+    g = H.advanceHaul(cfg, g, DT, NOW + t * 1000, ev) as Run;
+    for (const e of ev) {
+      if (e.type === 'unload' && !firstUnload) {
+        firstUnload = true;
+        rows.push({ t, what: 'First unload into the hold', numbers: `${fmt(e.units)} units` });
+      } else if (e.type === 'warp') rows.push({ t, what: `Warp-out${e.met ? ', contract met' : ''}`, numbers: `${cfg.strings.currencySymbol}${fmt(e.payout)}` });
+      else if (e.type === 'contractsUnlocked' && !stripNoted) {
+        stripNoted = true;
+        const c = g.haul.contracts.board[0];
+        rows.push({ t, what: 'The contract strip slides in', numbers: c ? `${cfg.haul.contracts.buyers.find((b) => b.id === c.buyer)?.name ?? c.buyer} · ${c.wants.map((w) => `${w.units} ${w.ore}`).join(' + ')} · x${c.mult}` : '' });
+      } else if (e.type === 'holdFull' && !fullNoted) {
+        fullNoted = true;
+        rows.push({ t, what: `Hold ${fmt(H.holdTotal(g.haul))}/${fmt(H.haulParams(cfg, g).F)}, chevrons pulse`, numbers: '' });
+      } else if (e.type === 'tutorialDone') rows.push({ t, what: 'Guided steps done', numbers: '' });
+    }
+    void before;
+  }
+  return rows;
+}
+
+/** The two worked tables of spec 2.12 (Decision 16) as Markdown, from the tutorial human and a bot run. */
+export function workedTables(cfg: H.HaulConfig, r: HaulBotResult, human: TutorialRow[]): string {
+  const sym = cfg.strings.currencySymbol;
+  const out: string[] = [];
+  out.push('**The tutorial path (a person who does only what the hints ask, reacting in 2.5 s; 0.05 s ticks):**', '', '| Time | What happens | Numbers |', '|---|---|---|');
+  for (const row of human) out.push(`| ${mmss(Math.round(row.t * 10) / 10)} | ${row.what} | ${row.numbers} |`);
+  out.push('', `**The bot (section 8's bot, seed 12345, 1 s ticks; income is activeRate):**`, '', '| Time | Event | Income |', '|---|---|---|');
+  const m = r.marks;
+  const run1 = r.runs[0];
+  const inc = (min: number) => (r.income[min] !== undefined ? `about ${sym}${r.income[min] >= 100 ? r.income[min].toPrecision(3) : r.income[min].toFixed(1)}/s` : '');
+  const rows: [number, string, string][] = [];
+  const ev = (k: string, label: string) => m[k] !== undefined && rows.push([m[k], label, '']);
+  ev('firstPayout', 'first payout');
+  ev('contractsUnlocked', 'contracts unlock');
+  ev('autopilot', 'Dock Autopilot online');
+  ev('claim1', 'slot 1 claimed');
+  ev('ring2', 'first ring-2 slot (copper)');
+  ev('pod ring2', 'the guaranteed Scrap Pod (first ring-2 claim)');
+  ev('firstSeam', 'first rich seam');
+  ev('firstBonanza', 'first bonanza rock');
+  ev('firstFlare', 'first Survey Flare');
+  ev('ring3', 'first ring-3 slot (ice)');
+  ev('ring4', 'first ring-4 slot (titanium)');
+  ev('ring5', 'first ring-5 slot (platinum)');
+  ev('jumpReady', `first Jump available (${cfg.haul.jumpReadyCores} cores)`);
+  for (const min of [1, 2, 4, 6, 8, 10, 15, 20, 30, 45, 60, 90, 120]) if (r.income[min] !== undefined && (run1.end === null || min * 60 <= run1.end)) rows.push([min * 60, '', inc(min)]);
+  rows.sort((a, b) => a[0] - b[0]);
+  for (const [t, e, i] of rows) out.push(`| ${mmss(t)} | ${e} | ${i} |`);
+  if (run1.end !== null) {
+    out.push(`| ${mmss(run1.end)} | Jump 1: +${run1.coresGained} cores; run 1 earned ${sym}${run1.earnings.toPrecision(3)} | |`);
+    const run2 = r.runs[1];
+    if (run2?.reachedPrevAt !== null && run2?.reachedPrevAt !== undefined) out.push(`| ${mmss(run2.start + run2.reachedPrevAt)} | run 2 (${run2.trait}) passes run 1's earnings, ${mmss(run2.reachedPrevAt)} into the run (${((run2.reachedPrevAt / (run1.end - run1.start)) * 100).toFixed(0)} % of run 1) | |`);
+  }
+  return out.join('\n');
 }

@@ -24,34 +24,9 @@ import { fx } from '../../../services/fx';
 import { useGame } from '../../../state/store';
 import { useOverlay, useRewardedReady } from '../../kit';
 import { alpha } from '../../theme';
-import { awayText, money, oreName, units } from '../sheets/format';
 import { ActionButton, MONO, useType } from '../sheets/parts';
 import { say } from '../sheets/shellText';
-
-interface Row {
-  label: string;
-  value: string;
-  strong?: boolean;
-}
-
-/** The printed rows of a report (pure; exported for tests). */
-export function shiftLogRows(cfg: H.HaulConfig, offline: { seconds: number; earnings: number; report?: unknown }): { rows: Row[]; note: string | null } {
-  const r = (offline.report ?? null) as Partial<H.OfflineReport> | null;
-  const rows: Row[] = [{ label: say('away'), value: awayText(r?.seconds ?? offline.seconds) }];
-  if (r?.unitsByOre) {
-    for (const ore of cfg.haul.ores) {
-      const n = r.unitsByOre[ore.id] ?? 0;
-      if (n >= 1) rows.push({ label: oreName(cfg, ore.id).toUpperCase(), value: say('units', { n: units(n) }) });
-    }
-  }
-  if (r) {
-    rows.push({ label: say('rocksDry'), value: units(r.rocksDry ?? 0) });
-    rows.push({ label: say('pods'), value: units(r.pods ?? 0) });
-    if ((r.inFlight ?? 0) > 0) rows.push({ label: say('inFlight'), value: money(cfg, r.inFlight ?? 0) });
-  }
-  rows.push({ label: say('credits'), value: money(cfg, offline.earnings), strong: true });
-  return { rows, note: r?.noAutopilot ? say('noAutopilot') : null };
-}
+import { shiftLogRows } from '../sheets/shellLogic';
 
 export function ShiftLog() {
   const offline = useGame((s) => s.offline);
@@ -71,31 +46,66 @@ function Printout({ cfg, offline }: { cfg: H.HaulConfig; offline: { seconds: num
   const drop = useSharedValue(0);
   useEffect(() => {
     fx.play('shift_log');
-    drop.value = withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) });
+    drop.value = withTiming(1, {
+      duration: 320,
+      easing: Easing.out(Easing.cubic),
+    });
   }, [drop]);
-  const strip = useAnimatedStyle(() => ({ transform: [{ translateY: (drop.value - 1) * 420 }] }));
+  const strip = useAnimatedStyle(() => ({
+    transform: [{ translateY: (drop.value - 1) * 420 }],
+  }));
   const dim = useAnimatedStyle(() => ({ opacity: drop.value }));
   const font = ty.body;
   return (
     <View style={StyleSheet.absoluteFill}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: alpha('#000000', 0.55) }, dim]} />
-      <Animated.View style={[styles.strip, { top: insets.top + 8, backgroundColor: c.backgroundAlt, borderColor: alpha(c.primary, 0.5) }, strip]}>
+      <Animated.View
+        style={[
+          styles.strip,
+          {
+            top: insets.top + 8,
+            backgroundColor: c.backgroundAlt,
+            borderColor: alpha(c.primary, 0.5),
+          },
+          strip,
+        ]}
+      >
         <Text style={[styles.head, { color: c.primary, fontFamily: MONO, fontSize: ty.small }]} maxFontSizeMultiplier={1.2}>
           {say('shiftLog', { station: cfg.haul.names.station.toUpperCase() })}
         </Text>
         <View style={[styles.rule, { borderColor: alpha(c.primary, 0.35) }]} />
         {rows.map((row) => (
           <View key={row.label} style={styles.row}>
-            <Text style={{ color: row.strong ? c.text : c.textMuted, fontFamily: MONO, fontSize: font, fontWeight: row.strong ? '800' : '600' }} maxFontSizeMultiplier={1.25}>
+            <Text
+              style={{
+                color: row.strong ? c.text : c.textMuted,
+                fontFamily: MONO,
+                fontSize: font,
+                fontWeight: row.strong ? '800' : '600',
+              }}
+              maxFontSizeMultiplier={1.25}
+            >
               {row.label}
             </Text>
             <View style={[styles.leader, { borderColor: alpha(c.text, 0.15) }]} />
-            <Text style={{ color: row.strong ? c.success : c.text, fontFamily: MONO, fontSize: row.strong ? ty.big : font, fontWeight: row.strong ? '800' : '600' }} maxFontSizeMultiplier={1.25}>
+            <Text
+              style={{
+                color: row.strong ? c.success : c.text,
+                fontFamily: MONO,
+                fontSize: row.strong ? ty.big : font,
+                fontWeight: row.strong ? '800' : '600',
+              }}
+              maxFontSizeMultiplier={1.25}
+            >
               {row.value}
             </Text>
           </View>
         ))}
-        {note ? <Text style={{ color: c.textMuted, fontSize: ty.small, marginTop: 6 }} maxFontSizeMultiplier={1.25}>{note}</Text> : null}
+        {note ? (
+          <Text style={{ color: c.textMuted, fontSize: ty.small, marginTop: 6 }} maxFontSizeMultiplier={1.25}>
+            {note}
+          </Text>
+        ) : null}
         <View style={[styles.rule, { borderColor: alpha(c.primary, 0.35) }]} />
         <View style={styles.buttons}>
           <ActionButton label={say('collect')} onPress={() => void haulActions.collectShiftLog(false)} style={styles.flex} />
@@ -108,10 +118,29 @@ function Printout({ cfg, offline }: { cfg: H.HaulConfig; offline: { seconds: num
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  strip: { position: 'absolute', left: 16, right: 16, borderWidth: 1.5, borderTopWidth: 0, borderBottomLeftRadius: 14, borderBottomRightRadius: 14, borderTopLeftRadius: 4, borderTopRightRadius: 4, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14, gap: 6 },
+  strip: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    borderWidth: 1.5,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
+    gap: 6,
+  },
   head: { fontWeight: '800', letterSpacing: 1.5 },
   rule: { borderTopWidth: 1, borderStyle: 'dashed', marginVertical: 4 },
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
-  leader: { flex: 1, borderBottomWidth: 1, borderStyle: 'dotted', marginBottom: 5 },
+  leader: {
+    flex: 1,
+    borderBottomWidth: 1,
+    borderStyle: 'dotted',
+    marginBottom: 5,
+  },
   buttons: { flexDirection: 'row', gap: 10, marginTop: 4 },
 });

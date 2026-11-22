@@ -51,7 +51,7 @@
     "tapPercentOfIncome": 0,
     "milestones": [],
     "prestige": {
-      "threshold": 2000000,
+      "threshold": 20000000,
       "scale": 5,
       "exponent": 0.5,
       "bonusPerPoint": 0
@@ -195,6 +195,17 @@
       ]
     },
     {
+      "id": "ring4",
+      "characterId": "ops2",
+      "trigger": {
+        "type": "ring",
+        "ring": 4
+      },
+      "lines": [
+        "Lilac Drift in range. Titanium, long trips. Engines earn their keep out there."
+      ]
+    },
+    {
       "id": "ring5",
       "characterId": "dispatch",
       "trigger": {
@@ -319,7 +330,8 @@
     "subcategories": [
       "GAMES_STRATEGY",
       "GAMES_SIMULATION"
-    ]
+    ],
+    "promotionalText": "Drag drones onto asteroids, pick which buyer contracts to fill, and grow one mining station into a fleet that keeps shipping while you are away."
   },
   "mode": "haul",
   "soundPack": null,
@@ -819,7 +831,7 @@
       "drones": 1
     },
     "rig": {
-      "levelGrowth": 1.35,
+      "levelGrowth": 1.4,
       "tiers": [
         {
           "level": 4,
@@ -850,12 +862,12 @@
       "cost": {
         "base": 3,
         "ringFactor": 40,
-        "growth": 1.6
+        "growth": 1.7
       }
     },
     "claim": {
       "base": 13,
-      "ringFactor": 20,
+      "ringFactor": 18,
       "jFactor": 1.6
     },
     "pile": {
@@ -890,7 +902,7 @@
       "growth": 1.45,
       "cost": {
         "base": 15,
-        "growth": 1.6
+        "growth": 1.5
       },
       "away": [
         {
@@ -923,8 +935,8 @@
     },
     "respawnSeconds": 6,
     "bonanza": {
-      "chance": 0.04,
-      "drill": 2,
+      "chance": 0.06,
+      "drill": 3,
       "life": 1.5
     },
     "seam": {
@@ -975,27 +987,39 @@
       "buyers": [
         {
           "id": "halden",
-          "name": "Halden Yards"
+          "name": "Halden Yards",
+          "calls": "Halden Yards, buying {ore}. {units} units. We pay {mult}.",
+          "closed": "Halden. Received in full. Same time next run."
         },
         {
           "id": "corvo",
-          "name": "Corvo Metals"
+          "name": "Corvo Metals",
+          "calls": "Corvo Metals. {units} {ore}, {mult} on the unit. Standing by.",
+          "closed": "Corvo Metals. Contract closed. Pleasure."
         },
         {
           "id": "tessaly",
-          "name": "Tessaly Ice Co."
+          "name": "Tessaly Ice Co.",
+          "calls": "Tessaly Ice Company. {units} {ore}. Paying {mult}. Keep it sealed.",
+          "closed": "Tessaly. Manifest checks out. Logged."
         },
         {
           "id": "brightwater",
-          "name": "Brightwater Foundry"
+          "name": "Brightwater Foundry",
+          "calls": "Brightwater Foundry. The furnace wants {ore}. {units} units at {mult}.",
+          "closed": "Brightwater. Furnace is fed. Out."
         },
         {
           "id": "kade",
-          "name": "Kade Refinery"
+          "name": "Kade Refinery",
+          "calls": "Kade Refinery, line two. {units} {ore}. {mult}, no haggling.",
+          "closed": "Kade. Paid. We will call again."
         },
         {
           "id": "oriel",
-          "name": "Oriel Labs"
+          "name": "Oriel Labs",
+          "calls": "Oriel Labs requesting {ore}. {units} units, any grade. Rate {mult}.",
+          "closed": "Oriel Labs. Samples received. Rate honoured."
         }
       ]
     },
@@ -1090,7 +1114,11 @@
           "base": 2,
           "growth": 1.25,
           "cap": 11,
-          "part": "surveyArray"
+          "part": "surveyArray",
+          "lines": [
+            "More bonanza rocks in the stream.",
+            "Half of all rocks at most."
+          ]
         },
         {
           "id": "veinsense",
@@ -1100,7 +1128,11 @@
           "base": 2,
           "growth": 1.4,
           "cap": 5,
-          "part": "scannerDish"
+          "part": "scannerDish",
+          "lines": [
+            "Rich seams come 10 s sooner.",
+            "Each one lasts 5 s longer."
+          ]
         },
         {
           "id": "assay",
@@ -1111,7 +1143,10 @@
           "base": 1,
           "growth": 1.3,
           "cap": 5,
-          "part": "assayLab"
+          "part": "assayLab",
+          "lines": [
+            "+10 % on every unit sold."
+          ]
         },
         {
           "id": "brokerseat",
@@ -1122,7 +1157,10 @@
           "base": 2,
           "growth": 1.35,
           "cap": 5,
-          "part": "antennaMast"
+          "part": "antennaMast",
+          "lines": [
+            "+0.1 on every met contract."
+          ]
         },
         {
           "id": "seedcredits",
@@ -1133,7 +1171,10 @@
           "base": 1,
           "growth": 1.4,
           "cap": 6,
-          "part": "vaultBlock"
+          "part": "vaultBlock",
+          "lines": [
+            "Each run opens with credits in the vault."
+          ]
         },
         {
           "id": "preload",
@@ -1143,7 +1184,10 @@
           "base": 5,
           "growth": 1,
           "cap": 1,
-          "part": "beacon"
+          "part": "beacon",
+          "lines": [
+            "The Dock Autopilot is online from the first second."
+          ]
         },
         {
           "id": "sparedrones",
@@ -1154,7 +1198,10 @@
           "base": 2,
           "growth": 1.4,
           "cap": 6,
-          "part": "hangar"
+          "part": "hangar",
+          "lines": [
+            "+1 idle drone on the rack at every run start."
+          ]
         },
         {
           "id": "afterburner",
@@ -1164,7 +1211,11 @@
           "base": 2,
           "growth": 1.5,
           "cap": 6,
-          "part": "boosterRing"
+          "part": "boosterRing",
+          "lines": [
+            "Runs open with near slots claimed.",
+            "Head-start rigs come fitted with a Dual Bit."
+          ]
         }
       ],
       "headStart": [

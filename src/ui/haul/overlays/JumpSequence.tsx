@@ -61,7 +61,11 @@ function Sequence() {
     if (!H.isHaul(cfg)) return '';
     const galaxy = g.haul?.galaxy ?? g.haulStats?.pendingJump?.galaxy ?? 0;
     const cond = H.condition(cfg, g.haul?.trait ?? null)?.name ?? '';
-    return JSON.stringify({ name: H.galaxyName(cfg, galaxy), line: `${cfg.haul.names.galaxy.toUpperCase()} ${galaxy + 1}${cond ? ` · ${cond.toUpperCase()}` : ''}`, galaxy });
+    return JSON.stringify({
+      name: H.galaxyName(cfg, galaxy),
+      line: `${cfg.haul.names.galaxy.toUpperCase()} ${galaxy + 1}${cond ? ` · ${cond.toUpperCase()}` : ''}`,
+      galaxy,
+    });
   });
   const { name, line, galaxy } = (info ? JSON.parse(info) : { name: '', line: '', galaxy: 0 }) as { name: string; line: string; galaxy: number };
   const hue = galaxyHue(galaxy);
@@ -78,7 +82,10 @@ function Sequence() {
 
   useEffect(() => {
     fade.value = withTiming(1, { duration: 220 });
-    t.value = withTiming(1, { duration: STREAK_MS, easing: Easing.in(Easing.cubic) });
+    t.value = withTiming(1, {
+      duration: STREAK_MS,
+      easing: Easing.in(Easing.cubic),
+    });
     shake.value = withDelay(STREAK_MS - 150, withSequence(...[6, -5, 4, -3, 2, 0].map((v) => withTiming(v, { duration: SHUDDER_MS / 6 }))));
     const timers: ReturnType<typeof setTimeout>[] = [];
     const startType = STREAK_MS + SHUDDER_MS * 0.5;
@@ -111,7 +118,10 @@ function Sequence() {
     return p.build();
   });
   const glowR = useDerivedValue(() => 40 + t.value * half * 0.5);
-  const layer = useAnimatedStyle(() => ({ opacity: fade.value, transform: [{ translateX: shake.value }, { translateY: shake.value * 0.4 }] }));
+  const layer = useAnimatedStyle(() => ({
+    opacity: fade.value,
+    transform: [{ translateX: shake.value }, { translateY: shake.value * 0.4 }],
+  }));
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, layer]}>
@@ -126,14 +136,43 @@ function Sequence() {
           </Group>
         </Canvas>
         <View style={[styles.title, { top: cy - 40 }]} pointerEvents="none">
-          <Text style={{ color: c.primary, fontFamily: MONO, fontSize: ty.small, letterSpacing: 3, fontWeight: '700' }} maxFontSizeMultiplier={1.2}>
+          <Text
+            style={{
+              color: c.primary,
+              fontFamily: MONO,
+              fontSize: ty.small,
+              letterSpacing: 3,
+              fontWeight: '700',
+            }}
+            maxFontSizeMultiplier={1.2}
+          >
             {say('jumping')}
           </Text>
-          <Text style={{ color: c.text, fontFamily: MONO, fontSize: Math.round(ty.big * 1.6), fontWeight: '800', letterSpacing: 1.5, textAlign: 'center' }} numberOfLines={2} maxFontSizeMultiplier={1.15}>
+          <Text
+            style={{
+              color: c.text,
+              fontFamily: MONO,
+              fontSize: Math.round(ty.big * 1.6),
+              fontWeight: '800',
+              letterSpacing: 1.5,
+              textAlign: 'center',
+            }}
+            numberOfLines={2}
+            maxFontSizeMultiplier={1.15}
+          >
             {name.slice(0, typed).toUpperCase()}
             <Text style={{ color: typed < name.length ? c.primary : 'transparent' }}>▌</Text>
           </Text>
-          <Text style={{ color: c.textMuted, fontFamily: MONO, fontSize: ty.small, letterSpacing: 1.5, opacity: done ? 1 : 0 }} maxFontSizeMultiplier={1.2}>
+          <Text
+            style={{
+              color: c.textMuted,
+              fontFamily: MONO,
+              fontSize: ty.small,
+              letterSpacing: 1.5,
+              opacity: done ? 1 : 0,
+            }}
+            maxFontSizeMultiplier={1.2}
+          >
             {line}
           </Text>
         </View>
@@ -143,5 +182,11 @@ function Sequence() {
 }
 
 const styles = StyleSheet.create({
-  title: { position: 'absolute', left: 16, right: 16, alignItems: 'center', gap: 8 },
+  title: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    alignItems: 'center',
+    gap: 8,
+  },
 });

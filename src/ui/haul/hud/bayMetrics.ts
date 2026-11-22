@@ -42,3 +42,18 @@ export function bayCounterRows(m: BayCounterMetrics, lineEm = COUNTER_LINE_EM): 
   const counterBox = Math.min(m.counterRow, Math.ceil(m.counterFont * lineEm));
   return { counterTop: 0, counterBox, counterBoxTop: Math.floor((m.counterRow - counterBox) / 2), tickerTop: m.counterRow + BAY_ROW_GAP };
 }
+
+/** The smallest the ticker's text gets before a shorter form is used. */
+export const TICKER_MIN_FONT = 9;
+
+/** The longest of `texts` that fits `width` at `maxFont` or at least TICKER_MIN_FONT, and its font (0.62 em a glyph). */
+export function fitTicker(texts: readonly string[], width: number, maxFont: number): { text: string; font: number } {
+  for (const t of texts) {
+    const font = Math.min(maxFont, width / (Math.max(1, t.length) * 0.62));
+    if (font >= TICKER_MIN_FONT) return { text: t, font: Math.floor(font * 10) / 10 };
+  }
+  const t = texts[texts.length - 1] ?? '';
+  // Nothing fits at the readable size: the shortest form, as large as fits (one line ellipsizes past it).
+  return { text: t, font: Math.floor(Math.min(maxFont, width / (Math.max(1, t.length) * 0.62)) * 10) / 10 };
+}
+

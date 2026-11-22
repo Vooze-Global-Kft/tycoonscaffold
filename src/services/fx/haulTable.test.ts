@@ -85,7 +85,12 @@ function fxLiterals(text: string): { key: string; line: number; lineText: string
       } else if (ch === ',' && depth === 0) break;
     }
     const line = text.slice(0, m.index).split('\n').length;
-    for (const lit of text.slice(start, i).matchAll(/['"`]([a-z0-9_]+)['"`]/g)) out.push({ key: lit[1], line, lineText: lines[line - 1] });
+    // The keys it may play: every literal of the argument except the ones it is compared with (`x === 'epic' ? ...`).
+    const arg = text.slice(start, i);
+    for (const lit of arg.matchAll(/['"`]([a-z0-9_]+)['"`]/g)) {
+      if (/[=!]==?\s*$/.test(arg.slice(0, lit.index))) continue;
+      out.push({ key: lit[1], line, lineText: lines[line - 1] });
+    }
   }
   return out;
 }

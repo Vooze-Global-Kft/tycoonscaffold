@@ -22,7 +22,7 @@ import { alpha, SPACE } from '../art/palette';
 import type { Rect } from '../layout';
 import { useRun } from '../useRun';
 import { useHaulUi } from '../uiState';
-import { bayCounterMetrics, bayCounterRows } from './bayMetrics';
+import { bayCounterMetrics, bayCounterRows, fitTicker } from './bayMetrics';
 import { DIGITAL, bayWord } from './bayText';
 import { GLYPH_FALL_MS, GLYPH_LEAD_MS } from './feedbackTiming';
 
@@ -57,14 +57,21 @@ function followCash(set: (v: number) => void): () => void {
   };
 }
 
-/** The receipt line for a warp-out: the manifest by ore (most units first) and the payout. */
-export function receiptText(cfg: H.HaulConfig, cargo: Record<string, number>, payout: number): string {
+/**
+ * The receipt line for a warp-out, in three lengths (longest first): the manifest by ore (most
+ * units first) and the payout. The ticker shows the longest that fits its row at a readable size.
+ */
+export function receiptTexts(cfg: H.HaulConfig, cargo: Record<string, number>, payout: number): string[] {
   const names = new Map(cfg.haul.ores.map((o) => [o.id, o.name.toUpperCase()]));
-  const parts = Object.entries(cargo)
+  const lots = Object.entries(cargo)
     .filter(([, u]) => u >= 0.5)
-    .sort((a, b) => b[1] - a[1])
-    .map(([ore, u]) => `${Math.round(u)} ${names.get(ore) ?? ore.toUpperCase()}`);
-  return [bayWord('receiptWarped', 'WARPED'), `${bayWord('receiptManifest', 'MANIFEST')} ${parts.join(' · ')}`, formatMoney(payout, cfg.strings.currencySymbol)].join(' · ');
+    .sort((a, b) => b[1] - a[1]);
+  const full = lots.map(([ore, u]) => `${Math.round(u)} ${names.get(ore) ?? ore.toUpperCase()}`);
+  const short = lots.map(([ore, u]) => `${Math.round(u)} ${(names.get(ore) ?? ore.toUpperCase()).slice(0, 3)}`);
+  const money = formatMoney(payout, cfg.strings.currencySymbol);
+  const warped = bayWord('receiptWarped', 'WARPED');
+  const manifest = bayWord('receiptManifest', 'MANIFEST');
+  return [[warped, `${manifest} ${full.join(' · ')}`, money].join(' · '), [warped, full.join(' · '), money].join(' · '), [warped, short.join(' · '), money].join(' · ')];
 }
 
 export function DockCounter({ rect }: { rect: Rect }) {
@@ -75,7 +82,7 @@ export function DockCounter({ rect }: { rect: Rect }) {
     return v > 0 ? `${formatMoney(v, cfg.strings.currencySymbol)}${bayWord('perSecond', '/s')}` : '';
   }, '');
   const [startCash] = useState(() => useGame.getState().game.cash);
-  const [receipt, setReceipt] = useState<{ text: string; met: boolean } | null>(null);
+  const [receipt, setReceipt] = useState<{ texts: string[]; met: boolean } | null>(null);
   const target = useTarget('bay:counter');
   const { fontScale, height } = useWindowDimensions();
   const compact = height < 740;
@@ -83,7 +90,9 @@ export function DockCounter({ rect }: { rect: Rect }) {
   const m = bayCounterMetrics(compact, rect.height - 2, fontScale, rect.width - 2 * PAD, WIDEST_GLYPHS);
   const rows = bayCounterRows(m);
   const pop = useSharedValue(1);
-  const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
+  const popStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pop.value }],
+  }));
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -93,7 +102,7 @@ export function DockCounter({ rect }: { rect: Rect }) {
       if (!w) return;
       const cfg = useGame.getState().cfg as H.HaulConfig;
       if (!H.isHaul(cfg)) return;
-      setReceipt({ text: receiptText(cfg, w.cargo, w.payout), met: w.met });
+      setReceipt({ texts: receiptTexts(cfg, w.cargo, w.payout), met: w.met });
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => setReceipt(null), RECEIPT_MS);
       // The counter pops as the first glyphs land.
@@ -109,27 +118,84 @@ export function DockCounter({ rect }: { rect: Rect }) {
     };
   }, [pop]);
 
-  const ticker = receipt ? receipt.text : income;
+  const ticker = fitTicker(receipt ? receipt.texts : [income], rect.width - 2 * PAD + 4, m.tickerFont);
   const tickerColor = receipt ? (receipt.met ? SPACE.green : SPACE.white) : SPACE.steel;
   const frame = useMemo(
-    () => ({ position: 'absolute' as const, left: rect.x, top: rect.y, width: rect.width, height: rect.height, borderRadius: 8, backgroundColor: SPACE.hull0, borderWidth: 1, borderColor: alpha(SPACE.line, receipt ? 0.75 : 0.4) }),
+    () => ({
+      position: 'absolute' as const,
+      left: rect.x,
+      top: rect.y,
+      width: rect.width,
+      height: rect.height,
+      borderRadius: 8,
+      backgroundColor: SPACE.hull0,
+      borderWidth: 1,
+      borderColor: alpha(SPACE.line, receipt ? 0.75 : 0.4),
+    }),
     [rect.x, rect.y, rect.width, rect.height, receipt],
   );
   const open = unlocked ? () => useHaulUi.getState().openSheet({ type: 'contracts' }) : undefined;
   return (
     <Pressable onPress={open} disabled={!unlocked} accessibilityRole={unlocked ? 'button' : 'text'} style={frame} ref={target.ref} onLayout={target.onLayout} collapsable={false}>
-      <Animated.View style={[{ position: 'absolute', left: PAD, right: PAD, top: rows.counterTop, height: m.counterRow, alignItems: 'center', justifyContent: 'center' }, popStyle]}>
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            left: PAD,
+            right: PAD,
+            top: rows.counterTop,
+            height: m.counterRow,
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+          popStyle,
+        ]}
+      >
         <RollingNumber
           value={startCash}
           follow={followCash}
           symbol={sym}
           allowFontScaling={false}
-          style={[DIGITAL, { color: SPACE.gold, fontSize: m.counterFont, height: rows.counterBox, padding: 0, textAlign: 'center', alignSelf: 'stretch', textShadowColor: alpha(SPACE.gold, 0.45), textShadowRadius: 8 }]}
+          style={[
+            DIGITAL,
+            {
+              color: SPACE.gold,
+              fontSize: m.counterFont,
+              height: rows.counterBox,
+              padding: 0,
+              textAlign: 'center',
+              alignSelf: 'stretch',
+              textShadowColor: alpha(SPACE.gold, 0.45),
+              textShadowRadius: 8,
+            },
+          ]}
         />
       </Animated.View>
-      <View style={{ position: 'absolute', left: PAD - 2, right: PAD - 2, top: rows.tickerTop, height: m.tickerRow, justifyContent: 'center' }}>
-        <Text allowFontScaling={false} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[DIGITAL, { color: tickerColor, fontSize: m.tickerFont, lineHeight: m.tickerRow, textAlign: 'center', fontWeight: '600' }]}>
-          {ticker}
+      <View
+        style={{
+          position: 'absolute',
+          left: PAD - 2,
+          right: PAD - 2,
+          top: rows.tickerTop,
+          height: m.tickerRow,
+          justifyContent: 'center',
+        }}
+      >
+        <Text
+          allowFontScaling={false}
+          numberOfLines={1}
+          style={[
+            DIGITAL,
+            {
+              color: tickerColor,
+              fontSize: ticker.font,
+              lineHeight: m.tickerRow,
+              textAlign: 'center',
+              fontWeight: '600',
+            },
+          ]}
+        >
+          {ticker.text}
         </Text>
       </View>
     </Pressable>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bayCounterMetrics, bayCounterRows, COUNTER_LINE_EM } from './bayMetrics';
+import { bayCounterMetrics, bayCounterRows, COUNTER_LINE_EM, fitTicker, TICKER_MIN_FONT } from './bayMetrics';
 
 // Spec 10.2: "₵999.99Qd" at fontScale 0.85, 1, 1.2 and 2 at both sizes: the rows add up to the block
 // and the counter's line fits its row (so the counter can never run into the receipt ticker).
@@ -55,5 +55,21 @@ describe('bayCounterMetrics', () => {
       const m = bayCounterMetrics(true, 50, fs, 175, 9);
       expect(Number.isFinite(m.counterFont) && Number.isFinite(m.tickerFont)).toBe(true);
     }
+  });
+});
+
+describe('fitTicker', () => {
+  const texts = ['WARPED · MANIFEST 48 COPPER · 12 IRON · ₵612', 'WARPED · 48 COPPER · 12 IRON · ₵612', 'WARPED · 48 COP · 12 IRO · ₵612'];
+  it('keeps the longest form that fits at a readable size, never wider than the row', () => {
+    for (const width of [120, 166, 175, 260]) {
+      const f = fitTicker(texts, width, 14.4);
+      expect(f.text.length * 0.62 * f.font).toBeLessThanOrEqual(width + 1e-9);
+      expect(f.font).toBeLessThanOrEqual(14.4);
+    }
+    expect(fitTicker(texts, 260, 12).text).toBe(texts[0]);
+    expect(fitTicker(texts, 175, 12).font).toBeGreaterThanOrEqual(TICKER_MIN_FONT);
+  });
+  it('the income line keeps the ticker font', () => {
+    expect(fitTicker(['₵36/s'], 166, 12)).toEqual({ text: '₵36/s', font: 12 });
   });
 });

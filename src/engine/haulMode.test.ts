@@ -20,7 +20,11 @@ const cfg = haulTestConfig();
 const pizzaCfg = GameConfigSchema.parse(pizza);
 
 describe('engine-mode seam with the haul engine installed', () => {
-  beforeAll(() => installEngineMode(haulEngineMode));
+  // The fixtures play 2 h 20 of the scripted player once (seconds; longer while the whole suite runs in parallel).
+  beforeAll(() => {
+    installEngineMode(haulEngineMode);
+    haulFixtures(cfg);
+  }, 120_000);
   afterAll(() => installEngineMode(null));
 
   it('dispatches only configs of its own mode', () => {
@@ -145,7 +149,10 @@ describe('without an installed engine', () => {
 const spaceCfg = () => withHaulContent(GameConfigSchema.parse(space)) as H.HaulConfig;
 
 describe('the integration seam: purchases, the scene frame, the Shift Log', () => {
-  beforeAll(() => installEngineMode(haulEngineMode));
+  beforeAll(() => {
+    installEngineMode(haulEngineMode);
+    haulFixtures(cfg);
+  }, 120_000);
   afterAll(() => installEngineMode(null));
 
   const product = (c: H.HaulConfig, kind: string) => c.monetization.iap.products.find((p) => p.kind === kind)!;
@@ -171,12 +178,14 @@ describe('the integration seam: purchases, the scene frame, the Shift Log', () =
     expect(grantHangar(c, g0 as unknown as GameState, p.id)).toBe(g0);
     expect(grantHangar(c, bought, 'space_dm_150')).toBe(bought);
     // The next run starts with them (createHaul reads entitlements.products), and the cap holds in galaxy 1.
-    const { late } = haulFixtures(c);
-    const owned = { ...late, entitlements: { ...late.entitlements, products: [...late.entitlements.products, p.id] } } as unknown as GameState;
-    const plain = E.prestige(c, late as unknown as GameState, FIXTURE_NOW) as unknown as H.HaulGame & { haul: H.HaulState };
-    const next = E.prestige(c, owned, FIXTURE_NOW) as unknown as H.HaulGame & { haul: H.HaulState };
-    expect(next.haul.fleet.drones).toBe(plain.haul.fleet.drones + hangar.startDrones);
-    expect(H.haulParams(c, next).droneCap).toBe(H.haulParams(c, plain).droneCap + hangar.droneCap);
+    // (On the fixtures' config: haulFixtures keeps the states of the first config it was given.)
+    const { late } = haulFixtures(cfg);
+    const th = cfg.haul.hangar!;
+    const owned = { ...late, entitlements: { ...late.entitlements, products: [...late.entitlements.products, th.product] } } as unknown as GameState;
+    const plain = E.prestige(cfg, late as unknown as GameState, FIXTURE_NOW) as unknown as H.HaulGame & { haul: H.HaulState };
+    const next = E.prestige(cfg, owned, FIXTURE_NOW) as unknown as H.HaulGame & { haul: H.HaulState };
+    expect(next.haul.fleet.drones).toBe(plain.haul.fleet.drones + th.startDrones);
+    expect(H.haulParams(cfg, next).droneCap).toBe(H.haulParams(cfg, plain).droneCap + th.droneCap);
     // A save keeps it (the product list is shared state).
     const back = E.reconcileState(c, JSON.parse(JSON.stringify(g1)), FIXTURE_NOW) as unknown as H.HaulGame & { haul: H.HaulState };
     expect(H.haulParams(c, back).droneCap).toBe(cap0 + hangar.droneCap);
@@ -228,9 +237,9 @@ describe('the integration seam: purchases, the scene frame, the Shift Log', () =
     expect(f2.seq).toBeGreaterThan(f.seq);
     // Structured-clone safe (it crosses to the UI thread as a shared value).
     expect(JSON.parse(JSON.stringify(f))).toEqual(f);
-    const { late } = haulFixtures(c);
-    const confirmed = E.prestige(c, late as unknown as GameState, FIXTURE_NOW, { step: 'confirm' });
-    expect(haulFrame(c, confirmed, FIXTURE_NOW)).toBeNull();
+    const { late } = haulFixtures(cfg);
+    const confirmed = E.prestige(cfg, late as unknown as GameState, FIXTURE_NOW, { step: 'confirm' });
+    expect(haulFrame(cfg, confirmed, FIXTURE_NOW)).toBeNull();
     expect(haulFrame(pizzaCfg, E.createInitialState(pizzaCfg, FIXTURE_NOW), FIXTURE_NOW)).toBeNull();
   });
 

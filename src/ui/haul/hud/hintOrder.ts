@@ -23,4 +23,3 @@ export function orderHints(hints: readonly H.HaulHint[], seamSlots: readonly num
     .sort((a, b) => a.r - b.r || a.i - b.i)
     .map((x) => x.h);
 }
-

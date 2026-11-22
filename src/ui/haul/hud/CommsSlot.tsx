@@ -32,10 +32,10 @@ import { HaulIcon } from '../art/HaulIcon';
 import { allHaulHints } from '../hints';
 import { buyerName, oreName, rockName } from '../sheets/format';
 import { MONO } from '../sheets/parts';
-import { say, type ShellTextKey } from '../sheets/shellText';
+import { hintLine, speaker } from '../sheets/shellLogic';
+import { say } from '../sheets/shellText';
 import { useHaulUi } from '../uiState';
 import type { Rect } from '../layout';
-
 /** How long a line stays up (spec 4.1). */
 export const LINE_MS = 5000;
 /** Least time between two story lines (spec 4.1, errata 56). */
@@ -45,7 +45,6 @@ export const ORE_CALL_GAP_MS = 45_000;
 /** Chatter older than this is dropped instead of shown late. */
 const STALE_MS = 12_000;
 const TICK_MS = 400;
-
 type Kind = 'hint' | 'story' | 'chatter';
 interface Radio {
   id: string;
@@ -54,26 +53,6 @@ interface Radio {
   who: string;
   text: string;
   at: number;
-}
-
-type Role = 'ai' | 'dock' | 'dispatch';
-
-/** The character id that speaks for a role, from the story's own speakers. */
-function speaker(cfg: H.HaulConfig, role: Role): string {
-  const type = role === 'ai' ? 'start' : role === 'dock' ? 'launches' : 'contracts';
-  return cfg.story.find((b) => b.trigger.type === type)?.characterId ?? cfg.characters[0]?.id ?? '';
-}
-
-/** The voice line of the hint shown now (section 3), with its once-key, or null. */
-function hintLine(cfg: H.HaulConfig, g: H.HaulGame, hint: H.HaulHint | undefined): { key: ShellTextKey; role: Role } | null {
-  if (!hint || !g.haul) return null;
-  if (hint.step >= 2 && hint.step <= 6) {
-    const key = `hintStep${hint.step}` as ShellTextKey;
-    return { key, role: hint.step <= 3 ? 'dock' : 'ai' };
-  }
-  if (hint.key === 'station:autopilot') return { key: 'hintAutopilot', role: 'dock' };
-  if (hint.kind === 'swipe' && hint.step === 0 && !g.haul.autopilot.online) return { key: 'holdCapacity', role: 'dock' };
-  return null;
 }
 
 export function CommsSlot({ rect }: { rect: Rect }) {
@@ -86,7 +65,6 @@ export function CommsSlot({ rect }: { rect: Rect }) {
   const lastOreCall = useRef(-Infinity);
   /** Hint lines already voiced, per run seed (a restart may voice the current one again, once). */
   const voiced = useRef(new Set<string>());
-
   useEffect(() => {
     const show = (radio: Radio, now: number) => {
       cur.current = { radio, until: now + LINE_MS };
@@ -98,7 +76,6 @@ export function CommsSlot({ rect }: { rect: Rect }) {
       cur.current = null;
       setLine(null);
     };
-
     const tick = () => {
       const now = Date.now();
       const { cfg, game, offline } = useGame.getState();
@@ -108,38 +85,52 @@ export function CommsSlot({ rect }: { rect: Rect }) {
       if (cur.current && now >= cur.current.until) clear();
       // Covered: keep everything for later (the line on screen expires as usual).
       if (ui.spoke !== null || ui.overlay !== null || offline !== null || !g.haul) return;
-
       // 1. Hint lines: at once, no gap.
       const hint = allHaulHints()[0];
-      const hl = hintLine(cfg, g, hint);
+      const hl = hintLine(g, hint);
       if (hl) {
         const id = `${g.haul.seed}:${g.haul.galaxy}:${hl.key}`;
         if (!voiced.current.has(id)) {
           voiced.current.add(id);
-          show({ id, kind: 'hint', who: speaker(cfg, hl.role), text: say(hl.key), at: now }, now);
+          show(
+            {
+              id,
+              kind: 'hint',
+              who: speaker(cfg, hl.role),
+              text: say(hl.key),
+              at: now,
+            },
+            now,
+          );
           return;
         }
       }
       if (cur.current && cur.current.radio.kind !== 'chatter') return;
-
       // 2. Story lines: 45 s apart, behind hint lines; chatter makes way.
       if (now - lastStory.current >= STORY_GAP_MS) {
         const beat = E.pendingStoryBeat(cfg, game);
         if (beat) {
           lastStory.current = now;
           useGame.getState().dismissStory();
-          show({ id: `story:${beat.id}`, kind: 'story', who: beat.characterId ?? '', text: beat.lines.join(' '), at: now }, now);
+          show(
+            {
+              id: `story:${beat.id}`,
+              kind: 'story',
+              who: beat.characterId ?? '',
+              text: beat.lines.join(' '),
+              at: now,
+            },
+            now,
+          );
           return;
         }
       }
       if (cur.current) return;
-
       // 3. Chatter, freshest first among what is not stale.
       queue.current = queue.current.filter((r) => now - r.at < STALE_MS);
       const next = queue.current.shift();
       if (next) show(next, now);
     };
-
     const onEvents = (events: readonly unknown[]) => {
       const { cfg, game } = useGame.getState();
       if (!H.isHaul(cfg)) return;
@@ -157,7 +148,14 @@ export function CommsSlot({ rect }: { rect: Rect }) {
             if (ev.bonanza) add(`bonanza:${ev.slot}`, ai, say('bonanza', { rock: rockName(cfg, ev.slot) }));
             else if (ev.oreChanged && now - lastOreCall.current >= ORE_CALL_GAP_MS) {
               lastOreCall.current = now;
-              add(`ore:${ev.slot}`, ai, say('oreChanged', { rock: rockName(cfg, ev.slot), ore: oreName(cfg, ev.ore).toLowerCase() }));
+              add(
+                `ore:${ev.slot}`,
+                ai,
+                say('oreChanged', {
+                  rock: rockName(cfg, ev.slot),
+                  ore: oreName(cfg, ev.ore).toLowerCase(),
+                }),
+              );
             }
             break;
           case 'vein':
@@ -167,17 +165,31 @@ export function CommsSlot({ rect }: { rect: Rect }) {
             add('contractMet', dispatch, say('contractClosed'));
             break;
           case 'contractLapsed':
-            if (ev.wasActive) add('lapsed', dispatch, say('contractLapsed', { buyer: buyerName(cfg, ev.contract.buyer) }));
+            if (ev.wasActive)
+              add(
+                'lapsed',
+                dispatch,
+                say('contractLapsed', {
+                  buyer: buyerName(cfg, ev.contract.buyer),
+                }),
+              );
             break;
           case 'contractNew':
-            if (g.haul?.contracts.unlocked && ev.contract.wants[0]) add(`new:${ev.contract.k}`, ev.contract.buyer, say('contractNew', { buyer: buyerName(cfg, ev.contract.buyer), ore: oreName(cfg, ev.contract.wants[0].ore).toLowerCase() }));
+            if (g.haul?.contracts.unlocked && ev.contract.wants[0])
+              add(
+                `new:${ev.contract.k}`,
+                ev.contract.buyer,
+                say('contractNew', {
+                  ore: oreName(cfg, ev.contract.wants[0].ore).toLowerCase(),
+                  n: ev.contract.wants.reduce((a, w) => a + w.units, 0),
+                }),
+              );
             break;
           default:
             break;
         }
       }
     };
-
     const timer = setInterval(tick, TICK_MS);
     const off = modeEvents.subscribe(onEvents);
     tick();
@@ -186,15 +198,23 @@ export function CommsSlot({ rect }: { rect: Rect }) {
       off();
     };
   }, []);
-
   if (!line) return null;
   const who = characters.find((c) => c.id === line.who);
-  return <RadioLine rect={rect} fontScale={fontScale} radio={line} name={who?.name ?? ''} portrait={who?.portrait ?? ''} color={who?.color ?? ''} onClose={() => {
-    cur.current = null;
-    setLine(null);
-  }} />;
+  return (
+    <RadioLine
+      rect={rect}
+      fontScale={fontScale}
+      radio={line}
+      name={who?.name ?? ''}
+      portrait={who?.portrait ?? ''}
+      color={who?.color ?? ''}
+      onClose={() => {
+        cur.current = null;
+        setLine(null);
+      }}
+    />
+  );
 }
-
 function RadioLine({ rect, fontScale, radio, name, portrait, color, onClose }: { rect: Rect; fontScale: number; radio: Radio; name: string; portrait: string; color: string; onClose: () => void }) {
   const c = useGame((s) => s.cfg.theme.colors);
   const tint = color || c.primary;
@@ -212,16 +232,45 @@ function RadioLine({ rect, fontScale, radio, name, portrait, color, onClose }: {
   const slide = useSharedValue(0);
   useEffect(() => {
     slide.value = 0;
-    slide.value = withTiming(1, { duration: 180, easing: Easing.out(Easing.quad) });
+    slide.value = withTiming(1, {
+      duration: 180,
+      easing: Easing.out(Easing.quad),
+    });
   }, [radio.id, slide]);
-  const style = useAnimatedStyle(() => ({ opacity: slide.value, transform: [{ translateY: (1 - slide.value) * -6 }] }));
+  const style = useAnimatedStyle(() => ({
+    opacity: slide.value,
+    transform: [{ translateY: (1 - slide.value) * -6 }],
+  }));
   return (
-    <Animated.View style={[styles.slot, { left: rect.x, top: rect.y, width: rect.width, height, borderRadius: Math.min(12, rect.height / 2), backgroundColor: alpha(c.backgroundAlt, 0.9), borderColor: alpha(tint, 0.35) }, style]}>
+    <Animated.View
+      style={[
+        styles.slot,
+        {
+          left: rect.x,
+          top: rect.y,
+          width: rect.width,
+          height,
+          borderRadius: Math.min(12, rect.height / 2),
+          backgroundColor: alpha(c.backgroundAlt, 0.9),
+          borderColor: alpha(tint, 0.35),
+        },
+        style,
+      ]}
+    >
       <Pressable style={styles.press} onPress={onClose} accessibilityRole="button" accessibilityLabel={full} accessibilityHint={say('close')}>
         {portrait ? <HaulIcon name={portrait} size={icon} /> : null}
         <Wave color={tint} height={Math.min(14, rect.height - 10)} id={radio.id} />
         <View style={{ flex: 1, height: rows * row, justifyContent: 'center' }}>
-          <Text allowFontScaling={false} numberOfLines={rows} style={{ fontFamily: MONO, fontSize: font, color: c.text, fontWeight: '600' }}>
+          <Text
+            allowFontScaling={false}
+            numberOfLines={rows}
+            style={{
+              fontFamily: MONO,
+              fontSize: font,
+              color: c.text,
+              fontWeight: '600',
+            }}
+          >
             {label ? <Text style={{ color: tint, fontWeight: '800' }}>{label}</Text> : null}
             {radio.text.toUpperCase()}
           </Text>
@@ -230,7 +279,6 @@ function RadioLine({ rect, fontScale, radio, name, portrait, color, onClose }: {
     </Animated.View>
   );
 }
-
 /** Three bars that move while a line shows (the waveform of the call-sign plates); stops on unmount. */
 function Wave({ color, height, id }: { color: string; height: number; id: string }) {
   return (
@@ -241,7 +289,6 @@ function Wave({ color, height, id }: { color: string; height: number; id: string
     </View>
   );
 }
-
 function Bar({ color, height, delay }: { color: string; height: number; delay: number }) {
   const k = useSharedValue(0.3);
   useEffect(() => {
@@ -252,10 +299,20 @@ function Bar({ color, height, delay }: { color: string; height: number; delay: n
   const style = useAnimatedStyle(() => ({ transform: [{ scaleY: k.value }] }));
   return <Animated.View style={[styles.bar, { height, backgroundColor: color }, style]} />;
 }
-
 const styles = StyleSheet.create({
   slot: { position: 'absolute', borderWidth: 1, overflow: 'hidden' },
-  press: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, gap: 6 },
-  wave: { width: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  press: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  wave: {
+    width: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   bar: { width: 3, borderRadius: 1.5 },
 });

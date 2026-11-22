@@ -34,7 +34,11 @@ function readFill(): Fill | null {
   if (!H.isHaul(cfg) || !g.haul) return null;
   const F = H.haulParams(cfg, g).F;
   const cap = F > 0 ? F : 1;
-  return { fractions: cfg.haul.ores.map((o) => Math.max(0, (g.haul.hold[o.id] ?? 0) / cap)), units: H.holdTotal(g.haul), cap: F };
+  return {
+    fractions: cfg.haul.ores.map((o) => Math.max(0, (g.haul.hold[o.id] ?? 0) / cap)),
+    units: H.holdTotal(g.haul),
+    cap: F,
+  };
 }
 
 const pics = new Map<string, SkPicture>();
@@ -76,7 +80,9 @@ function Band({ i, from, to, k, color, ore, w, h }: { i: number; from: SharedVal
 }
 
 export function HoldTank({ rect }: { rect: Box }) {
-  const ores = useGame((s) => (H.isHaul(s.cfg) ? s.cfg.haul.ores.map((o) => o.id).join(',') : '')).split(',').filter(Boolean);
+  const ores = useGame((s) => (H.isHaul(s.cfg) ? s.cfg.haul.ores.map((o) => o.id).join(',') : ''))
+    .split(',')
+    .filter(Boolean);
   const { fontScale, height: winH } = useWindowDimensions();
   const compact = winH < 740;
   const label = labelMetrics(compact ? 11 : 12, fontScale);
@@ -84,7 +90,11 @@ export function HoldTank({ rect }: { rect: Box }) {
   const h = Math.max(40, Math.min(compact ? 69 : 88, rect.height - label.row - 8));
   const [shown, setShown] = useState(() => {
     const f = readFill();
-    return { units: f ? Math.floor(f.units + 1e-9) : 0, cap: f ? Math.round(f.cap) : 0, full: !!f && f.units >= f.cap - H.EPS };
+    return {
+      units: f ? Math.floor(f.units + 1e-9) : 0,
+      cap: f ? Math.round(f.cap) : 0,
+      full: !!f && f.units >= f.cap - H.EPS,
+    };
   });
   const start = useMemo(() => readFill()?.fractions ?? [], []);
   const from = useSharedValue<number[]>(start);
@@ -101,20 +111,30 @@ export function HoldTank({ rect }: { rect: Box }) {
         from.value = now;
         to.value = f.fractions;
         k.value = 0;
-        k.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) });
+        k.value = withTiming(1, {
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+        });
       } else {
         from.value = f.fractions;
         to.value = f.fractions;
         k.value = 1;
       }
-      const next = { units: Math.floor(f.units + 1e-9), cap: Math.round(f.cap), full: f.units >= f.cap - H.EPS };
+      const next = {
+        units: Math.floor(f.units + 1e-9),
+        cap: Math.round(f.cap),
+        full: f.units >= f.cap - H.EPS,
+      };
       setShown((p) => (p.units === next.units && p.cap === next.cap && p.full === next.full ? p : next));
     };
     const off = modeEvents.subscribe((events) => {
-      if (events.some((e) => {
-        const t = (e as H.HaulEvent).type;
-        return t === 'unload' || t === 'launch' || t === 'holdFull';
-      })) sync(true);
+      if (
+        events.some((e) => {
+          const t = (e as H.HaulEvent).type;
+          return t === 'unload' || t === 'launch' || t === 'holdFull';
+        })
+      )
+        sync(true);
     });
     // Anything else that changes the hold or the limit (a load, a Jump, a freighter upgrade): resync quietly.
     const offStore = useGame.subscribe((s, prev) => {
@@ -140,7 +160,16 @@ export function HoldTank({ rect }: { rect: Box }) {
   const cx = rect.width / 2;
   const cy = 4 + h / 2;
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', left: rect.x, top: rect.y, width: rect.width, height: rect.height }}>
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: rect.x,
+        top: rect.y,
+        width: rect.width,
+        height: rect.height,
+      }}
+    >
       <Canvas style={{ width: rect.width, height: h + 10 }}>
         <Group transform={[{ translateX: cx }, { translateY: cy }]}>
           <Picture picture={shell} />
@@ -152,8 +181,29 @@ export function HoldTank({ rect }: { rect: Box }) {
           <Picture picture={glass} />
         </Group>
       </Canvas>
-      <View style={{ position: 'absolute', left: 0, right: 0, top: h + 10, height: label.row, justifyContent: 'center' }}>
-        <Text allowFontScaling={false} numberOfLines={1} style={[DIGITAL, { color: shown.full ? SPACE.green : SPACE.steel, fontSize: label.font, lineHeight: label.row, textAlign: 'center' }]}>
+      <View
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: h + 10,
+          height: label.row,
+          justifyContent: 'center',
+        }}
+      >
+        <Text
+          allowFontScaling={false}
+          numberOfLines={1}
+          style={[
+            DIGITAL,
+            {
+              color: shown.full ? SPACE.green : SPACE.steel,
+              fontSize: label.font,
+              lineHeight: label.row,
+              textAlign: 'center',
+            },
+          ]}
+        >
           {`${shown.units}/${shown.cap}`}
         </Text>
       </View>

@@ -60,7 +60,7 @@ export function ManifestOdds({ cfg }: { cfg: H.HaulConfig }) {
           ))}
         </View>
         <View style={styles.sep} />
-        {row(S.oddsSlots.replace(' {n}', '').replace('{n} ', ''), facts.map((f) => String(f.slots)))}
+        {row(S.oddsSlotsLabel, facts.map((f) => String(f.slots)))}
         {kinds.map((k) => row(words(cfg, S.oddsKinds[k]), facts.map((f) => M.formatOddsPercent(f.slotOdds[k]))))}
         <View style={styles.sep} />
         <Mono size={9} color={INK.lineDim} weight="700" style={styles.sub}>

@@ -253,7 +253,6 @@ export interface SlotVM {
   /** The rock is there and has finished drifting in (rigs, piles and labels show). */
   settled: boolean;
   pileStep: -1 | 0 | 1 | 2 | 3;
-  label: string;
   full: boolean;
   haulers: number;
   ore: string;
@@ -281,12 +280,22 @@ export function slotVMs(cfg: H.HaulConfig, g: Run, fx: FieldFx): SlotVM[] {
       lamp: !present ? 'off' : s.life <= 0 ? 'dry' : s.full ? 'full' : 'run',
       settled,
       pileStep,
-      label: s.claimed && (present || s.pile >= 0.5) ? `${formatShort(Math.floor(s.pile))}/${formatShort(Math.floor(cap))}` : '',
       full: s.full,
       haulers: s.haulers,
       ore: oreKey(s.ore),
       seam: present && H.seamOn(h, i),
     };
+  });
+}
+
+/** Pile label texts ("62/80"), '' where none shows: their own selector, so a changing count re-renders only the labels. */
+export function pileLabels(cfg: H.HaulConfig, g: Run, fx: FieldFx): string[] {
+  const h = g.haul;
+  const p = H.haulParams(cfg, g);
+  return h.slots.map((s, i) => {
+    const present = s.claimed && s.respawnAt === null && s.rockN >= 0;
+    if (!present || h.clock < (fx.arrive[i] ?? -1e9) + 1.5) return '';
+    return `${formatShort(Math.floor(s.pile))}/${formatShort(Math.floor(p.slots[i]?.cap ?? 0))}${s.full ? '!' : ''}`;
   });
 }
 

@@ -9,7 +9,7 @@
  * takes the touch and registers its hint target `button:<id>`.
  */
 import { Canvas, Circle, Group, Picture, type SkPicture } from '@shopify/react-native-skia';
-import { Pressable } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { formatShort } from '../../../engine/format';
 import * as H from '../../../engine/haul';
 import * as M from '../../../engine/meta';
@@ -67,7 +67,14 @@ function RailButton({ rect, id, label, shown, onPress }: { rect: Rect; id: RailG
       accessibilityLabel={label}
       onPress={onPress}
       hitSlop={6}
-      style={{ position: 'absolute', left: rect.x, top: rect.y, width: rect.width, height: rect.height, borderRadius: rect.width / 2 }}
+      style={{
+        position: 'absolute',
+        left: rect.x,
+        top: rect.y,
+        width: rect.width,
+        height: rect.height,
+        borderRadius: rect.width / 2,
+      }}
     />
   );
 }
@@ -104,11 +111,18 @@ export function StationRail({ rects }: { rects: Rect[] }) {
   const y0 = Math.min(...rects.map((q) => q.y)) - 12;
   const x1 = Math.max(...rects.map((q) => q.x + q.width)) + 12;
   const y1 = Math.max(...rects.map((q) => q.y + q.height)) + 4;
-  const shown: Record<RailGlyph, boolean> = { comms: true, salvage: true, fitting: r.fitting, starmap: r.starmap, trade: true, menu: true };
+  const shown: Record<RailGlyph, boolean> = {
+    comms: true,
+    salvage: true,
+    fitting: r.fitting,
+    starmap: r.starmap,
+    trade: true,
+    menu: true,
+  };
   const badge: Partial<Record<RailGlyph, [string, 'count' | 'dm']>> = {};
   if (r.comms > 0) badge.comms = [String(r.comms), 'count'];
   if (r.pods > 0) badge.salvage = [String(Math.min(99, r.pods)), 'count'];
-  badge.trade = [r.dm, 'dm'];
+  if (r.dm !== '0') badge.trade = [r.dm, 'dm'];
   const open = (spoke: HaulSpoke | null) => () => {
     fx.play('ui_tab');
     if (spoke) useHaulUi.getState().openSpoke(spoke);
@@ -116,20 +130,31 @@ export function StationRail({ rects }: { rects: Rect[] }) {
   };
   return (
     <>
-      <Canvas pointerEvents="none" style={{ position: 'absolute', left: x0, top: y0, width: x1 - x0, height: y1 - y0 }}>
-        {BUTTONS.map((b, i) => {
-          const q = rects[i];
-          const cx = q.x + q.width / 2 - x0;
-          const cy = q.y + q.height / 2 - y0;
-          if (!shown[b.id]) return <Circle key={b.id} cx={cx} cy={cy} r={q.width / 2 - 8} color={alpha(SPACE.steelDim, 0.16)} />;
-          const bd = badge[b.id];
-          return (
-            <Group key={b.id} transform={[{ translateX: cx }, { translateY: cy }]}>
-              <Picture picture={buttonPicture(q.width, b.id, bd?.[0], bd?.[1] ?? 'count')} />
-            </Group>
-          );
-        })}
-      </Canvas>
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: x0,
+          top: y0,
+          width: x1 - x0,
+          height: y1 - y0,
+        }}
+      >
+        <Canvas style={{ width: x1 - x0, height: y1 - y0 }}>
+          {BUTTONS.map((b, i) => {
+            const q = rects[i];
+            const cx = q.x + q.width / 2 - x0;
+            const cy = q.y + q.height / 2 - y0;
+            if (!shown[b.id]) return <Circle key={b.id} cx={cx} cy={cy} r={q.width / 2 - 8} color={alpha(SPACE.steelDim, 0.16)} />;
+            const bd = badge[b.id];
+            return (
+              <Group key={b.id} transform={[{ translateX: cx }, { translateY: cy }]}>
+                <Picture picture={buttonPicture(q.width, b.id, bd?.[0], bd?.[1] ?? 'count')} />
+              </Group>
+            );
+          })}
+        </Canvas>
+      </View>
       {BUTTONS.map((b, i) => (
         <RailButton key={b.id} rect={rects[i]} id={b.id} label={bayWord(`rail_${b.id}`, b.label)} shown={shown[b.id]} onPress={open(b.spoke)} />
       ))}

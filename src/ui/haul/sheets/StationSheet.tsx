@@ -95,7 +95,13 @@ export function StationSheet() {
   const ty = useType();
   const open = useHaulUi((s) => s.sheet?.type === 'station');
   const station = useRunShallow((cfg, g) => (open ? stationView(cfg, g) : null), null);
-  const names = useRunShallow((cfg) => ({ station: cfg.haul.names.station, freighter: cfg.haul.names.freighter }), { station: '', freighter: '' });
+  const names = useRunShallow(
+    (cfg) => ({
+      station: cfg.haul.names.station,
+      freighter: cfg.haul.names.freighter,
+    }),
+    { station: '', freighter: '' },
+  );
   const v = useLast(station);
   const close = () => useHaulUi.getState().closeSheet();
   const wire = alpha(c.primary, 0.35);
@@ -121,7 +127,10 @@ export function StationSheet() {
               </View>
               <View style={styles.cell}>
                 <Line mono size={ty.small} lines={2}>
-                  {say(v.engMax ? 'enginesMax' : 'engines', { n: v.engLevel, m: v.engMult })}
+                  {say(v.engMax ? 'enginesMax' : 'engines', {
+                    n: v.engLevel,
+                    m: v.engMult,
+                  })}
                 </Line>
                 {v.engMax ? null : <ActionButton label={v.engCost} enabled={v.canEng} onPress={haulActions.buyEngine} style={styles.cellButton} />}
               </View>
@@ -175,7 +184,14 @@ export function StationSheet() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  spine: { position: 'absolute', left: '50%', width: 2, top: 20, bottom: 20, transform: [{ translateX: -1 }] },
+  spine: {
+    position: 'absolute',
+    left: '50%',
+    width: 2,
+    top: 20,
+    bottom: 20,
+    transform: [{ translateX: -1 }],
+  },
   block: { marginBottom: 10 },
   grid: { flexDirection: 'row', gap: 8 },
   cell: { flex: 1, justifyContent: 'space-between', gap: 6 },

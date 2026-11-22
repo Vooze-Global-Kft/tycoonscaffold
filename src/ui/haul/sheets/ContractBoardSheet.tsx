@@ -54,7 +54,13 @@ function boardView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): Bo
     const wants = k.wants.map((w, j): Want => {
       const have = Math.min(w.units, h.hold[w.ore] ?? 0);
       const m = missing[j]?.units ?? 0;
-      return { ore: w.ore, name: oreName(cfg, w.ore), color: oreColorOf(cfg, w.ore), fill: w.units > 0 ? have / w.units : 0, text: m > 0 ? say('toGo', { n: m, ore: oreName(cfg, w.ore) }) : say('inHold') };
+      return {
+        ore: w.ore,
+        name: oreName(cfg, w.ore),
+        color: oreColorOf(cfg, w.ore),
+        fill: w.units > 0 ? have / w.units : 0,
+        text: m > 0 ? say('toGo', { n: m, ore: oreName(cfg, w.ore) }) : say('inHold'),
+      };
     });
     return {
       buyer: buyerName(cfg, k.buyer),
@@ -72,7 +78,11 @@ function boardView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): Bo
     unlocked: h.contracts.unlocked,
     unlockAt: C.unlockLaunches,
     cards,
-    footer: say('boardFooter', { pod: podName, n: every, k: every > 0 ? (g.stats.contractsMet ?? 0) % every : 0 }),
+    footer: say('boardFooter', {
+      pod: podName,
+      n: every,
+      k: every > 0 ? (g.stats.contractsMet ?? 0) % every : 0,
+    }),
   };
 }
 
@@ -80,7 +90,13 @@ export function ContractBoardSheet() {
   const ty = useType();
   const open = useHaulUi((s) => s.sheet?.type === 'contracts');
   const board = useRunShallow((cfg, g) => (open ? boardView(cfg, g) : null), null);
-  const title = useRunShallow((cfg) => ({ t: say('boardTitle'), icon: portraitOf(cfg, cfg.haul.contracts.buyers[0]?.id ?? '') }), { t: '', icon: '' });
+  const title = useRunShallow(
+    (cfg) => ({
+      t: say('boardTitle'),
+      icon: portraitOf(cfg, cfg.haul.contracts.buyers[0]?.id ?? ''),
+    }),
+    { t: '', icon: '' },
+  );
   const v = useLast(board);
   const close = () => useHaulUi.getState().closeSheet();
   const anyActive = v?.cards.some((x) => x.active) ?? false;
@@ -128,7 +144,15 @@ function Manifest({ index, card }: { index: number; card: CardView }) {
       accessibilityRole="button"
       accessibilityState={{ selected: card.active }}
       accessibilityLabel={`${card.buyer} ${card.wants.map((x) => x.text).join(', ')} ${card.mult} ${card.gain} ${say('ifMet')}`}
-      style={StyleSheet.flatten([styles.card, { width: w, minHeight: compact ? 148 : 156, borderColor: edge, backgroundColor: card.active ? alpha(c.success, 0.08) : alpha(c.surface, 0.9) }])}
+      style={StyleSheet.flatten([
+        styles.card,
+        {
+          width: w,
+          minHeight: compact ? 148 : 156,
+          borderColor: edge,
+          backgroundColor: card.active ? alpha(c.success, 0.08) : alpha(c.surface, 0.9),
+        },
+      ])}
     >
       <View style={styles.cardTop}>
         {card.emblem ? <HaulIcon name={card.emblem} size={26} /> : null}
@@ -153,10 +177,27 @@ function Manifest({ index, card }: { index: number; card: CardView }) {
       <View style={styles.flex} />
       <View style={styles.pips}>
         {Array.from({ length: card.lifetime }, (_, j) => (
-          <View key={j} style={[styles.pip, { backgroundColor: j < card.left ? c.primary : alpha(c.text, 0.15) }]} />
+          <View
+            key={j}
+            style={[
+              styles.pip,
+              {
+                backgroundColor: j < card.left ? c.primary : alpha(c.text, 0.15),
+              },
+            ]}
+          />
         ))}
       </View>
-      <Text style={{ color: c.success, fontSize: ty.body, fontFamily: MONO, fontWeight: '800' }} numberOfLines={1} maxFontSizeMultiplier={1.15}>
+      <Text
+        style={{
+          color: c.success,
+          fontSize: ty.body,
+          fontFamily: MONO,
+          fontWeight: '800',
+        }}
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.15}
+      >
         {card.gain}
       </Text>
       <Text style={{ color: c.textMuted, fontSize: ty.tiny }} numberOfLines={1} maxFontSizeMultiplier={1.15}>
@@ -164,7 +205,15 @@ function Manifest({ index, card }: { index: number; card: CardView }) {
       </Text>
       {card.active ? (
         <View style={[styles.badge, { backgroundColor: c.success }]}>
-          <Text style={{ color: c.background, fontSize: ty.tiny, fontWeight: '900', letterSpacing: 1 }} maxFontSizeMultiplier={1.1}>
+          <Text
+            style={{
+              color: c.background,
+              fontSize: ty.tiny,
+              fontWeight: '900',
+              letterSpacing: 1,
+            }}
+            maxFontSizeMultiplier={1.1}
+          >
             {say('active')}
           </Text>
         </View>
@@ -175,15 +224,34 @@ function Manifest({ index, card }: { index: number; card: CardView }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  row: { flexDirection: 'row', justifyContent: 'center', gap: 12, paddingTop: 10 },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    paddingTop: 10,
+  },
   card: { borderWidth: 1.5, borderRadius: 12, padding: 8, gap: 5 },
-  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   mult: { fontWeight: '800' },
   buyer: { fontWeight: '800', letterSpacing: 0.6 },
   want: { gap: 2 },
   wantRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pips: { flexDirection: 'row', gap: 3 },
   pip: { width: 8, height: 4, borderRadius: 2 },
-  badge: { position: 'absolute', top: -9, alignSelf: 'center', left: 0, right: 0, marginHorizontal: 22, borderRadius: 6, alignItems: 'center', paddingVertical: 1 },
+  badge: {
+    position: 'absolute',
+    top: -9,
+    alignSelf: 'center',
+    left: 0,
+    right: 0,
+    marginHorizontal: 22,
+    borderRadius: 6,
+    alignItems: 'center',
+    paddingVertical: 1,
+  },
   footer: { textAlign: 'center', marginTop: 4 },
 });

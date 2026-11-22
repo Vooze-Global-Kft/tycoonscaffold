@@ -36,7 +36,10 @@ function panelPicture(w: number, h: number): SkPicture {
       b.lineTo(0, h);
       b.close();
       c.drawPath(b.build(), linearPaint(0, 0, 0, h, [SPACE.panel, '#080D1C']));
-      const edge = builder().moveTo(0, CURVE).quadTo(w / 2, -CURVE, w, CURVE).build();
+      const edge = builder()
+        .moveTo(0, CURVE)
+        .quadTo(w / 2, -CURVE, w, CURVE)
+        .build();
       litStroke(c, edge, SPACE.panelEdge, 1.5, 0.8);
     });
     panels.set(key, p);
@@ -48,7 +51,16 @@ export function FreighterBay({ layout }: { layout: FieldLayout }) {
   const z = layout.zones;
   return (
     <>
-      <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: z.bay.y, width: z.bay.width, height: z.bay.height }}>
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: z.bay.y,
+          width: z.bay.width,
+          height: z.bay.height,
+        }}
+      >
         <Canvas style={{ width: z.bay.width, height: z.bay.height }}>
           <Picture picture={panelPicture(z.bay.width, z.bay.height)} />
         </Canvas>

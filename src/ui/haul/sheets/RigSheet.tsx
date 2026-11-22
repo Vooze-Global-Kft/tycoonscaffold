@@ -66,14 +66,24 @@ function rigView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }, slot:
   const drifting = s.rockN < 0;
   let dryText: string;
   if (drifting) dryText = say('drifting');
-  else if (respawning) dryText = say('dryNow', { s: Math.max(0, Math.ceil((s.respawnAt ?? 0) - g.haul.clock)) });
+  else if (respawning)
+    dryText = say('dryNow', {
+      s: Math.max(0, Math.ceil((s.respawnAt ?? 0) - g.haul.clock)),
+    });
   else if (s.haulers === 0 || r.drill <= 0) dryText = say('dryUnknown');
-  else dryText = say('dryIn', { t: clock((s.life * r.drill) / Math.min(r.drill, r.haul)) });
+  else
+    dryText = say('dryIn', {
+      t: clock((s.life * r.drill) / Math.min(r.drill, r.haul)),
+    });
   const n = s.haulers;
   const seam = (g.haul.vein.slot === slot && g.haul.vein.until > g.haul.clock) || (g.haul.flare.slot === slot && g.haul.flare.until > g.haul.clock);
   return {
     slot,
-    title: say('rigTitle', { rock: rockName(cfg, slot), ring: r.ring + 1, ore: oreName(cfg, s.ore) }),
+    title: say('rigTitle', {
+      rock: rockName(cfg, slot),
+      ring: r.ring + 1,
+      ore: oreName(cfg, s.ore),
+    }),
     ore: s.ore,
     oreColor: oreColorOf(cfg, s.ore),
     look: rigLookFor(s.rigLevel),
@@ -81,7 +91,12 @@ function rigView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }, slot:
     shape: rockShapeIndex(slot, Math.max(0, s.rockN)),
     level: s.rigLevel,
     drill: rate(r.drill),
-    nextBit: next ? say('nextBit', { name: next.name, n: next.level }) : say('allBits', { m: cfg.haul.rig.stripeMult, n: cfg.haul.rig.stripeEvery }),
+    nextBit: next
+      ? say('nextBit', { name: next.name, n: next.level })
+      : say('allBits', {
+          m: cfg.haul.rig.stripeMult,
+          n: cfg.haul.rig.stripeEvery,
+        }),
     nextLook: next ? rigLookFor(next.level) : null,
     cost: money(cfg, cost),
     canBuy: Number.isFinite(cost) && H.affordable(g.cash, cost),
@@ -89,7 +104,14 @@ function rigView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }, slot:
     seam,
     life: respawning || drifting ? 0 : s.life / maxLife,
     dryText,
-    route: n === 0 ? say('routeNone') : say(n === 1 ? 'routeLineOne' : 'routeLine', { n, h: rate(r.haul), r: rate(r.drill) }),
+    route:
+      n === 0
+        ? say('routeNone')
+        : say(n === 1 ? 'routeLineOne' : 'routeLine', {
+            n,
+            h: rate(r.haul),
+            r: rate(r.drill),
+          }),
     verdict: n === 0 ? 'none' : r.verdict,
     pile: say('pileLine', { p: Math.floor(r.pile), c: Math.floor(r.cap) }),
     pileFull: s.full,
@@ -197,7 +219,15 @@ function Tag({ text, color }: { text: string; color: string }) {
   const ty = useType();
   return (
     <View style={[styles.tag, { borderColor: color, backgroundColor: alpha(color, 0.14) }]}>
-      <Text style={{ color, fontSize: ty.tiny, fontWeight: '800', letterSpacing: 1 }} maxFontSizeMultiplier={1.2}>
+      <Text
+        style={{
+          color,
+          fontSize: ty.tiny,
+          fontWeight: '800',
+          letterSpacing: 1,
+        }}
+        maxFontSizeMultiplier={1.2}
+      >
         {text}
       </Text>
     </View>
@@ -207,7 +237,14 @@ function Tag({ text, color }: { text: string; color: string }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   arrows: { flexDirection: 'row', gap: 6 },
-  arrow: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  arrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   arrowText: { fontSize: 20, fontWeight: '800' },
   lifeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rigRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -215,5 +252,10 @@ const styles = StyleSheet.create({
   nextRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   upgrade: { marginTop: 8 },
   verdict: { fontWeight: '700' },
-  tag: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  tag: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
 });

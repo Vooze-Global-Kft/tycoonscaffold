@@ -65,7 +65,16 @@ export function FlareLauncher({ rect }: { rect: Rect }) {
   const plate = memo(`plate:${f.charges}`, () => picture(around(14), (c) => drawChargePlate(c, f.charges)));
   const k = s / 72;
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', left: rect.x, top: rect.y, width: s, height: s }}>
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: rect.x,
+        top: rect.y,
+        width: s,
+        height: s,
+      }}
+    >
       <Canvas style={{ width: s, height: s }}>
         <Picture picture={frame} />
         <Group transform={[{ translateX: s / 2 }, { translateY: s / 2 - 4 * k }, { scale: 1.6 * k }]} opacity={on ? 1 : 0.45} layer>
@@ -76,8 +85,27 @@ export function FlareLauncher({ rect }: { rect: Rect }) {
         </Group>
       </Canvas>
       {refill ? (
-        <View style={{ position: 'absolute', left: 6, top: s - label.row - 4, height: label.row, justifyContent: 'center' }}>
-          <Text allowFontScaling={false} numberOfLines={1} style={[DIGITAL, { color: SPACE.steel, fontSize: label.font, lineHeight: label.row }]}>
+        <View
+          style={{
+            position: 'absolute',
+            left: 6,
+            top: s - label.row - 4,
+            height: label.row,
+            justifyContent: 'center',
+          }}
+        >
+          <Text
+            allowFontScaling={false}
+            numberOfLines={1}
+            style={[
+              DIGITAL,
+              {
+                color: SPACE.steel,
+                fontSize: label.font,
+                lineHeight: label.row,
+              },
+            ]}
+          >
             {refill}
           </Text>
         </View>

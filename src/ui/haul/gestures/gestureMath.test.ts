@@ -9,7 +9,10 @@ const layout: FieldLayout = {
   height: 844,
   compact: false,
   station: { x: 195, y: 590, r: 40 },
-  rack: { left: { x: 90, y: 584, width: 70, height: 44 }, right: { x: 230, y: 584, width: 70, height: 44 } },
+  rack: {
+    left: { x: 90, y: 584, width: 70, height: 44 },
+    right: { x: 230, y: 584, width: 70, height: 44 },
+  },
   radii: [110, 190],
   rocks: [
     { slot: 0, ring: 0, x: 107, y: 524, r: 26 },
@@ -18,12 +21,26 @@ const layout: FieldLayout = {
     { slot: 3, ring: 1, x: 195, y: 400, r: 26 },
   ],
   chips: [],
-  zones: { strip: rect, comms: rect, field: rect, bay: rect, counter: rect, hold: rect, flare: rect, launch: rect, rail: [] },
+  zones: {
+    strip: rect,
+    comms: rect,
+    field: rect,
+    bay: rect,
+    counter: rect,
+    hold: rect,
+    flare: rect,
+    launch: rect,
+    rail: [],
+  },
 };
 const all = () => true;
 
 const stroke = (x0: number, y0: number, x1: number, y1: number, ms: number, n = 6): Sample[] =>
-  Array.from({ length: n + 1 }, (_, i) => ({ x: x0 + ((x1 - x0) * i) / n, y: y0 + ((y1 - y0) * i) / n, t: (ms * i) / n }));
+  Array.from({ length: n + 1 }, (_, i) => ({
+    x: x0 + ((x1 - x0) * i) / n,
+    y: y0 + ((y1 - y0) * i) / n,
+    t: (ms * i) / n,
+  }));
 
 describe('drop target', () => {
   it('locks onto the nearest accepted rock within 40 pt', () => {

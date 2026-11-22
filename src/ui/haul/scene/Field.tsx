@@ -24,7 +24,7 @@ import { circleRect, rackRect, type FieldLayout } from '../layout';
 import { useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { useFieldAnim, type FieldAnim, type FieldGeometry } from './frameLoop';
-import { EMPTY_TABLE, buildFrame, emptyFx, hubPoint, slotGeometry, slotVMs, spriteTable, stationVM, type FieldFx, type FrameTable, type SlotGeo, type SlotVM, type StationVM } from './model';
+import { EMPTY_TABLE, buildFrame, emptyFx, hubPoint, pileLabels, slotGeometry, slotVMs, spriteTable, stationVM, type FieldFx, type FrameTable, type SlotGeo, type SlotVM, type StationVM } from './model';
 import { bayPanelPicture, freighterFlamePicture, pileLabelPicture, ringGuidesPicture, routePath, seamGuidePicture, warpFlashPicture } from './pics';
 
 const atlases = new Map<number, HaulAtlas | null>();
@@ -131,7 +131,7 @@ export function Field({ layout }: { layout: FieldLayout }) {
       {atlas ? <Atlas image={atlas.image} sprites={anim.rcB} transforms={anim.xfB} colors={anim.colB} colorBlendMode="modulate" /> : null}
       <Chips layout={layout} slots={slots} />
       <RackBadges layout={layout} idle={station.idle} anim={anim} />
-      <PileLabels geo={geo} slots={slots} />
+      <PileLabels geo={geo} fx={fxRef} />
       <Group opacity={anim.flareOn} transform={anim.flare}>
         <Picture picture={pictures.flare()} />
       </Group>
@@ -313,16 +313,18 @@ const RackBadges = memo(function RackBadges({ layout, idle, anim }: { layout: Fi
   );
 });
 
-/** Pile labels on their plates, above drones and chips; redrawn only when the integer changes. */
-const PileLabels = memo(function PileLabels({ geo, slots }: { geo: SlotGeo[]; slots: SlotVM[] }) {
+/** Pile labels on their plates, above drones and chips; redrawn only when an integer changes. */
+const NO_LABELS: string[] = [];
+const PileLabels = memo(function PileLabels({ geo, fx }: { geo: SlotGeo[]; fx: { current: FieldFx } }) {
+  const labels = useRunShallow((c, g) => pileLabels(c, g, fx.current), NO_LABELS);
   return (
     <Group>
-      {slots.map((s) => {
-        if (!s.claimed || !s.settled || s.label === '' || !geo[s.slot]) return null;
-        const g = geo[s.slot];
+      {labels.map((text, i) => {
+        if (text === '' || !geo[i]) return null;
+        const full = text.endsWith('!');
         return (
-          <Group key={s.slot} transform={T(g.label.x, g.label.y)}>
-            <Picture picture={pileLabelPicture(s.label, s.full)} />
+          <Group key={i} transform={T(geo[i].label.x, geo[i].label.y)}>
+            <Picture picture={pileLabelPicture(full ? text.slice(0, -1) : text, full)} />
           </Group>
         );
       })}

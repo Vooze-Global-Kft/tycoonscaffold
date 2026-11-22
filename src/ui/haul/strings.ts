@@ -1,28 +1,243 @@
 /**
- * Every interface string of the haul screens that is not game data (labels, buttons, empty
- * states), in this game's voice (spec 7.5: dry-radio-chatter; no exclamation marks). Game words
- * (names of things, story, contracts) come from game.json `haul.names`, `characters`, `story`.
- * The fingerprint check measures string overlap with the other game from this table plus game.json
- * (spec 10.3, dimension 17); plain interface labels in INTERFACE_LABELS are allowed to match.
- * Owned by the "content" package after the skeleton (docs/design/space-build-plan.md).
+ * Every interface string of the haul screens that is not game data (labels, buttons, readouts,
+ * radio lines), in this game's voice (spec 7.5, "dry-radio-chatter"):
+ * - present tense, short clauses, call signs; no exclamation marks, no puns, no food words, no praise;
+ * - numbers as numerals on the interface; spoken radio lines spell them out (`spokenNumber`,
+ *   `spokenMultiplier` below) when the screen fills a number into one;
+ * - interface labels stay plain ("Upgrade", "Back", "Close");
+ * - never more than two lines on screen at once: a radio line fits in two rows.
+ *
+ * Names of things (station, AI, rocks, ores, buyers, pods, galaxies, call signs, modules, nodes,
+ * conditions) are not here: they come from game.json (`haul.names`, `characters`, `story`, the
+ * `haul` lists), so a later game on this mode renames them in data. `{name}` holes are filled by the
+ * screens (`say(key, vars)` in sheets/shellText.ts, `fillIn` in hud/bayText.ts); a key's holes are
+ * part of its contract with the screen that shows it, so a change of wording keeps them.
+ *
+ * The fingerprint check measures the overlap with the other game's strings from this table plus
+ * game.json (spec 10.3, dimension 17; it reads every `key: '…'` entry), minus the plain interface
+ * labels it allows (INTERFACE_LABELS). Keep the single-quoted form for every entry.
+ *
+ * Owned by the balance-and-content package (docs/design/space-build-plan.md, package 6).
  */
 export const HAUL_STRINGS = {
+  // ---------------------------------------------------------------- shared labels
   back: 'Back',
   close: 'Close',
   upgrade: 'Upgrade',
+  buy: 'Buy',
+  max: 'Max',
   claim: 'Claim',
+  on: 'ON',
+  off: 'OFF',
+  perSecond: '/s',
+
+  // ---------------------------------------------------------------- the map and the bay (4.1, 4.2)
   pickContract: 'PICK A CONTRACT',
   launch: 'Swipe up to launch',
   backIn: 'Back in {s} s',
-  autopilotOnline: 'Bring online',
-  fleetAtCap: 'Fleet at cap ({n}). Next galaxy: {m}.',
   holdFull: 'Hold full. Clear the pad.',
   holdCapacity: 'Hold at capacity. Drones are stacking in a holding pattern.',
+  tagDry: 'DRY',
+  tagFull: 'FULL',
+  receiptWarped: 'WARPED',
+  receiptManifest: 'MANIFEST',
+  receiptMet: 'CONTRACT MET',
+  autoFull: 'AUTO · FULL',
+  autoContract: 'AUTO · CONTRACT',
+  flareReady: 'FLARE',
+  flareEmpty: 'Next flare in {t}',
+
+  // ---------------------------------------------------------------- Rig sheet (4.5, errata 61, 63)
+  rigTitle: '{rock} · R{ring} · {ore}',
+  rigLevel: 'Level {n}',
+  drillRate: 'Drill {r}/s',
+  nextBit: 'Next bit: {name} at L{n}',
+  allBits: 'Every bit fitted. +x{m} drill every {n} levels.',
+  dryIn: 'Dry in about {t}',
+  dryUnknown: 'Dry in about —',
+  dryNow: 'Dry. Next rock in {s} s.',
+  drifting: 'Rock drifting in.',
+  bonanzaTag: 'BONANZA',
+  seamTag: 'RICH SEAM',
+  routeLine: '{n} drones · carries {h}/s · drill {r}/s',
+  routeLineOne: '1 drone · carries {h}/s · drill {r}/s',
+  routeNone: 'No drones on this route. Drag one here from the rack.',
+  verdictDrill: 'Drones are waiting on the drill.',
+  verdictHaul: 'Ore is piling up.',
+  verdictBalanced: 'Balanced.',
+  pileLine: 'Pile {p}/{c}',
+  movedOnMap: 'Drones move on the map, not here.',
+  prevRig: 'Previous rig',
+  nextRig: 'Next rig',
+
+  // ---------------------------------------------------------------- Station sheet (4.5, errata 58, 59)
+  fleet: 'Fleet',
+  drones: 'Drones {n}/{cap}',
+  capacity: 'Capacity L{n} · {u} units',
+  engines: 'Engines L{n} · x{m} speed',
+  enginesMax: 'Engines L{n} · x{m} speed · top speed',
+  freighterLevel: 'L{n}',
+  freighterHolds: 'holds {F}',
+  freighterAway: 'away {s} s',
+  systems: 'Systems',
+  autopilot: 'Dock Autopilot',
+  autopilotDark: 'Dark. Launches wait for your swipe.',
+  autopilotOnline: 'Bring online',
+  bringOnline: 'Bring online',
+  policyFull: 'FULL',
+  policyContract: 'CONTRACT',
+  policyFullNote: 'Ships when the hold is full.',
+  policyContractNote: 'Ships when the contract is met, or the hold is full.',
+  fleetAtCap: 'Fleet at cap ({n}). Next galaxy: {m}.',
+
+  // ---------------------------------------------------------------- Contract Board (4.5, errata 26, 62)
+  boardTitle: 'Contract Board',
+  toGo: '{n} {ore} to go',
+  inHold: 'In the hold',
+  gain: '+{v}',
+  ifMet: 'if met',
+  active: 'ACTIVE',
+  launchesLeft: '{n} launches left',
+  launchLeft: '1 launch left',
+  boardFooter: '{pod} every {n} contracts met ({k}/{n})',
+  boardHint: 'Tap a manifest to make it active.',
+  boardLocked: 'Buyers call after launch {n}.',
+  boardEmpty: 'No buyers on the line.',
+
+  // ---------------------------------------------------------------- Station menu (4.1, 4.4)
+  menuTitle: 'Station menu',
+  sound: 'Sound',
+  music: 'Music',
+  haptics: 'Haptics',
+  restore: 'Restore purchases',
+  restoring: 'Checking the ledger…',
+  restored: 'Restored {n}.',
+  restoredNone: 'Ledger checked. Nothing to restore.',
+  privacyPolicy: 'Privacy policy',
+  privacyChoices: 'Privacy choices',
+  simulated: 'Development build. Purchases are simulated.',
+
+  // ---------------------------------------------------------------- Shift Log (2.11, 4.6)
+  shiftLog: 'SHIFT LOG · {station}',
+  away: 'AWAY',
+  rocksDry: 'ROCKS DRY',
+  pods: 'PODS',
+  inFlight: 'IN FLIGHT',
+  credits: 'CREDITS',
+  units: '{n} u',
+  noAutopilot: 'Hold full. Nothing shipped. Bring the Dock Autopilot online.',
   collect: 'Collect',
   doubleIt: 'Double it · ad',
-  acknowledge: 'Acknowledge',
-  receive: 'Receive',
+
+  // ---------------------------------------------------------------- Jump sequence and Star Map (2.10, 4.6)
+  jumpLine: '{galaxy} {n}',
+  jumping: 'JUMP',
   jumpNow: 'Jump now',
   chooseGalaxy: 'Choose next galaxy',
+  jumpGain: '+{n} Warp Cores on Jump',
+  jumpNotYet: 'Not enough for a core yet.',
+  jumpKeeps: 'Kept: cores, Star Map, modules, pods, Dark Matter.',
+  jumpResets: 'Reset: credits, slots, rigs, drones, freighter.',
+  jumpConfirm: 'This run ends. The field resets.',
+  conditionPick: 'Pick the conditions for {galaxy}.',
+  conditionFixed: 'Three in reach. No re-scan.',
+  nodeLevel: 'L{n}/{cap}',
+  nodeOpen: 'L{n}',
+  nodeCost: '{n} cores',
+  nodeMaxed: 'Fully built.',
+  coresInHand: '{n} cores in hand',
+
+  // ---------------------------------------------------------------- Fitting Bay, Salvage Bay, Comms, Trade Post (4.6, 5)
+  fittingHint: 'Tap a module, then a lit socket.',
+  socketEmpty: 'Empty socket',
+  socketWrong: 'Wrong socket for this module.',
+  moduleStowed: 'In the tray. Not working.',
+  moduleFitted: 'Fitted. Working.',
+  salvageHint: 'Tap a {pod} to cut it open.',
+  salvageEmpty: 'Rack empty. Pods come from contracts, dry rocks and supply drops.',
   manifestOdds: 'Manifest odds',
+  supplyDrop: 'Supply drop',
+  supplyNext: 'Next drop in {t}',
+  acknowledge: 'Acknowledge',
+  receive: 'Receive',
+  relayDay: 'Relay {n} of {m}',
+  relayDone: 'Relay received. Next one in {t}.',
+  channelClear: 'Channel clear. Next transmission in {t}.',
+  tradeTitle: 'Trade Post',
+  timeWarp: 'Time Warp {h} h',
+  watchAd: 'Watch ad',
+  flareAd: 'Flare charge · ad',
+  flareAdLeft: '{n} left today',
+  flareAdWait: 'Next in {t}',
+
+  // ---------------------------------------------------------------- radio: tutorial lines (section 3, errata 56, 57)
+  hintStep2: 'Hold full. Clear the pad.',
+  hintStep3: 'One more drone would help.',
+  hintStep4: 'Tap the drone, then the rock. Or drag.',
+  hintStep5: 'Second rock in range. Claim it.',
+  hintStep6: 'Split the fleet. Move one drone.',
+  hintAutopilot: 'Autopilot can take the pad.',
+
+  // ---------------------------------------------------------------- radio: chatter from the run (2.4, 2.9, 7.5)
+  oreChanged: '{rock} is {ore} now.',
+  bonanza: '{rock} is a bonanza rock.',
+  seam: 'Gold on {rock}. Rich seam. Worth pulling a few drones.',
+  seamEnd: 'Seam on {rock} is spent. Guests are heading home.',
+  rockDry: '{rock} is dry. Next rock in {s}. Your drones will wait.',
+  contractNew: 'Buying {ore}. {n} units.',
+  contractClosed: 'Contract closed. Pick the next one from the board.',
+  contractLapsed: '{buyer} contract lapsed. Pick another.',
+  podEarned: 'Pod recovered. It waits in the Salvage Bay.',
+  flareCharged: 'Flare charged. Pick a rock.',
+  policyCopy: 'Autopilot policy: ship when the contract is met. Copy.',
+  idleDrone: 'Drone idle on the rack.',
 } as const;
+
+export type HaulStringKey = keyof typeof HAUL_STRINGS;
+
+const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+function under1000(n: number): string {
+  const h = Math.floor(n / 100);
+  const r = n % 100;
+  const rest = r < 20 ? ONES[r] : `${TENS[Math.floor(r / 10)]}${r % 10 ? `-${ONES[r % 10]}` : ''}`;
+  if (!h) return rest;
+  return r ? `${ONES[h]} hundred ${rest}` : `${ONES[h]} hundred`;
+}
+
+/**
+ * A whole number as a radio operator says it (spec 7.5: spoken lines spell numbers out): 40 →
+ * "forty", 1,250 → "one thousand two hundred fifty". Past a million it rounds to the nearest
+ * spoken unit ("about three million"), the way a dispatcher reads a long figure.
+ */
+export function spokenNumber(value: number): string {
+  if (!Number.isFinite(value)) return 'a lot';
+  const n = Math.round(Math.abs(value));
+  const sign = value < 0 ? 'minus ' : '';
+  if (n < 1000) return sign + under1000(n);
+  if (n < 1_000_000) {
+    const k = Math.floor(n / 1000);
+    const r = n % 1000;
+    return `${sign}${under1000(k)} thousand${r ? ` ${under1000(r)}` : ''}`;
+  }
+  const units: [number, string][] = [
+    [1e15, 'quadrillion'],
+    [1e12, 'trillion'],
+    [1e9, 'billion'],
+    [1e6, 'million'],
+  ];
+  for (const [u, name] of units) if (n >= u) {
+    const lead = Math.round(n / u);
+    return `${sign}about ${lead < 1000 ? under1000(lead) : String(lead)} ${name}`;
+  }
+  return sign + String(n);
+}
+
+/** A contract multiplier as spoken: 1.4 → "one-point-four", 2 → "two". */
+export function spokenMultiplier(m: number): string {
+  const r = Math.round(m * 10) / 10;
+  const whole = Math.floor(r);
+  const tenth = Math.round((r - whole) * 10);
+  return tenth ? `${spokenNumber(whole)}-point-${ONES[tenth]}` : spokenNumber(whole);
+}

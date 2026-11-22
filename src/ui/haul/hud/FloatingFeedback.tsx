@@ -51,7 +51,12 @@ function memo(key: string, make: () => SkPicture): SkPicture {
 // ---------------------------------------------------------------------------------------------
 
 /** The drag line's glow, made once (colour maths is not UI-thread code). */
-const GLOW = { gold: alpha(SPACE.gold, 0.12), goldSnap: alpha(SPACE.gold, 0.28), line: alpha(SPACE.line, 0.12), lineSnap: alpha(SPACE.line, 0.28) };
+const GLOW = {
+  gold: alpha(SPACE.gold, 0.12),
+  goldSnap: alpha(SPACE.gold, 0.28),
+  line: alpha(SPACE.line, 0.12),
+  lineSnap: alpha(SPACE.line, 0.28),
+};
 
 function DragLayer() {
   const path = useDerivedValue(() => {
@@ -119,10 +124,7 @@ function DragLayer() {
 
 function SelectionLayer({ layout }: { layout: FieldLayout }) {
   const sel = useHaulUi((s) => s.selection);
-  const ok = useRunShallow(
-    (_c, g) => g.haul.slots.map((s, i) => (sel?.kind === 'flare' ? H.canFlare(g, i) : s.claimed && !(sel?.kind === 'drone' && sel.from === i))),
-    [] as boolean[],
-  );
+  const ok = useRunShallow((_c, g) => g.haul.slots.map((s, i) => (sel?.kind === 'flare' ? H.canFlare(g, i) : s.claimed && !(sel?.kind === 'drone' && sel.from === i))), [] as boolean[]);
   const pic = useMemo(() => {
     if (!sel) return null;
     const gold = sel.kind === 'flare';
@@ -130,7 +132,20 @@ function SelectionLayer({ layout }: { layout: FieldLayout }) {
     return picture({ x: 0, y: 0, w: layout.width, h: layout.height }, (c) => {
       // The origin: the rack's arms, the route's chip or the launcher, ringed.
       if (sel.kind === 'drone' && sel.from === 'rack') {
-        for (const r of [layout.rack.left, layout.rack.right]) c.drawRRect({ rect: { x: r.x - 3, y: r.y - 3, width: r.width + 6, height: r.height + 6 }, rx: 12, ry: 12 }, stroke(alpha(col, 0.85), 1.6));
+        for (const r of [layout.rack.left, layout.rack.right])
+          c.drawRRect(
+            {
+              rect: {
+                x: r.x - 3,
+                y: r.y - 3,
+                width: r.width + 6,
+                height: r.height + 6,
+              },
+              rx: 12,
+              ry: 12,
+            },
+            stroke(alpha(col, 0.85), 1.6),
+          );
       } else if (sel.kind === 'drone') {
         const chip = layout.chips.find((q) => q.slot === sel.from);
         if (chip) c.drawPath(circle(chip.x, chip.y, 20), stroke(col, 2));
@@ -210,17 +225,50 @@ function FloatText({ f, onDone }: { f: Floater; onDone: (id: number) => void }) 
   const { fontScale } = useWindowDimensions();
   const m = labelMetrics(13, fontScale);
   useEffect(() => {
-    k.value = withTiming(1, { duration: 1300, easing: Easing.out(Easing.cubic) });
+    k.value = withTiming(1, {
+      duration: 1300,
+      easing: Easing.out(Easing.cubic),
+    });
     const t = setTimeout(() => onDone(f.id), 1350);
     return () => {
       clearTimeout(t);
       cancelAnimation(k);
     };
   }, [f.id, k, onDone]);
-  const style = useAnimatedStyle(() => ({ opacity: k.value < 0.15 ? k.value / 0.15 : 1 - Math.max(0, (k.value - 0.6) / 0.4), transform: [{ translateY: -26 * k.value }] }));
+  const style = useAnimatedStyle(() => ({
+    opacity: k.value < 0.15 ? k.value / 0.15 : 1 - Math.max(0, (k.value - 0.6) / 0.4),
+    transform: [{ translateY: -26 * k.value }],
+  }));
   return (
-    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: f.x - 80, top: f.y - m.row / 2, width: 160, height: m.row, justifyContent: 'center' }, style]}>
-      <Text allowFontScaling={false} numberOfLines={1} style={[DIGITAL, { color: f.color, fontSize: m.font, lineHeight: m.row, textAlign: 'center', textShadowColor: alpha(f.color, 0.5), textShadowRadius: 6 }]}>
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: 'absolute',
+          left: f.x - 80,
+          top: f.y - m.row / 2,
+          width: 160,
+          height: m.row,
+          justifyContent: 'center',
+        },
+        style,
+      ]}
+    >
+      <Text
+        allowFontScaling={false}
+        numberOfLines={1}
+        style={[
+          DIGITAL,
+          {
+            color: f.color,
+            fontSize: m.font,
+            lineHeight: m.row,
+            textAlign: 'center',
+            textShadowColor: alpha(f.color, 0.5),
+            textShadowRadius: 6,
+          },
+        ]}
+      >
         {f.text}
       </Text>
     </Animated.View>
@@ -233,7 +281,10 @@ function ClaimChip({ layout }: { layout: FieldLayout }) {
     (cfg, g) => {
       if (!armed) return { cost: '', can: false };
       const cost = H.claimCost(cfg, g, armed.slot);
-      return { cost: Number.isFinite(cost) ? formatMoney(cost, cfg.strings.currencySymbol) : '', can: H.affordable(g.cash, cost) };
+      return {
+        cost: Number.isFinite(cost) ? formatMoney(cost, cfg.strings.currencySymbol) : '',
+        can: H.affordable(g.cash, cost),
+      };
     },
     { cost: '', can: false },
   );
@@ -261,9 +312,30 @@ function ClaimChip({ layout }: { layout: FieldLayout }) {
         haulActions.claimSlot(armed.slot);
       }}
       hitSlop={8}
-      style={[styles.chip, { left: x, top: y, width: w, height: h, borderColor: info.can ? SPACE.line : SPACE.steelDim, backgroundColor: info.can ? alpha(SPACE.line, 0.16) : SPACE.hull1 }]}
+      style={[
+        styles.chip,
+        {
+          left: x,
+          top: y,
+          width: w,
+          height: h,
+          borderColor: info.can ? SPACE.line : SPACE.steelDim,
+          backgroundColor: info.can ? alpha(SPACE.line, 0.16) : SPACE.hull1,
+        },
+      ]}
     >
-      <Text allowFontScaling={false} numberOfLines={1} style={[DIGITAL, { color: info.can ? '#E6FBFF' : SPACE.steel, fontSize: m.font, lineHeight: m.row }]}>
+      <Text
+        allowFontScaling={false}
+        numberOfLines={1}
+        style={[
+          DIGITAL,
+          {
+            color: info.can ? '#E6FBFF' : SPACE.steel,
+            fontSize: m.font,
+            lineHeight: m.row,
+          },
+        ]}
+      >
         {`${HAUL_STRINGS.claim} ${info.cost}`}
       </Text>
     </Pressable>
@@ -299,16 +371,34 @@ export function FloatingFeedback() {
           const n = glyphCount(e.payout);
           const L = layoutRef.current;
           const to = counterCentre();
-          const from = { x: L.station.x, y: L.zones.comms.y + L.zones.comms.height + 36 };
+          const from = {
+            x: L.station.x,
+            y: L.zones.comms.y + L.zones.comms.height + 36,
+          };
           setFlight({ from, to, n });
           cancelAnimation(clock);
           clock.value = 0;
           const total = (n - 1) * GLYPH_GAP_MS + GLYPH_FALL_MS;
-          clock.value = withDelay(GLYPH_LEAD_MS, withTiming(total + 20, { duration: total + 20, easing: Easing.linear }));
+          clock.value = withDelay(
+            GLYPH_LEAD_MS,
+            withTiming(total + 20, {
+              duration: total + 20,
+              easing: Easing.linear,
+            }),
+          );
           for (let i = 0; i < n; i++) later(GLYPH_LEAD_MS + i * GLYPH_GAP_MS + GLYPH_FALL_MS, () => fx.play('credit_tick'));
           later(GLYPH_LEAD_MS + total + 40, () => setFlight(null));
           later(GLYPH_LEAD_MS + GLYPH_FALL_MS, () =>
-            setFloaters((fl) => [...fl.slice(-3), { id: nextId.current++, text: `+${formatMoney(e.payout, sym)}`, x: to.x, y: to.y - 34, color: e.met ? SPACE.green : SPACE.gold }]),
+            setFloaters((fl) => [
+              ...fl.slice(-3),
+              {
+                id: nextId.current++,
+                text: `+${formatMoney(e.payout, sym)}`,
+                x: to.x,
+                y: to.y - 34,
+                color: e.met ? SPACE.green : SPACE.gold,
+              },
+            ]),
           );
         } else if (e.type === 'contractMet') {
           // The stamp lands on the receipt as the money does.
@@ -322,7 +412,17 @@ export function FloatingFeedback() {
           later(GLYPH_LEAD_MS + GLYPH_FALL_MS + 2100, () => setStampOn(false));
         } else if (e.type === 'dry') {
           const r = layoutRef.current.rocks[e.slot];
-          if (r) setFloaters((fl) => [...fl.slice(-3), { id: nextId.current++, text: bayWord('tagDry', 'DRY'), x: r.x, y: r.y - r.r - 10, color: SPACE.red }]);
+          if (r)
+            setFloaters((fl) => [
+              ...fl.slice(-3),
+              {
+                id: nextId.current++,
+                text: bayWord('tagDry', 'DRY'),
+                x: r.x,
+                y: r.y - r.r - 10,
+                color: SPACE.red,
+              },
+            ]);
         }
       }
     });
@@ -339,16 +439,19 @@ export function FloatingFeedback() {
   const stampXf = useDerivedValue(() => [{ translateX: sc.x + sc.width / 2 }, { translateY: sc.y + sc.height / 2 }, { scale: 1.4 - 0.4 * stampK.value }]);
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <Canvas pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width, height }}>
-        <SelectionLayer layout={layout} />
-        <DragLayer />
-        {flight ? Array.from({ length: flight.n }, (_, i) => <Glyph key={i} i={i} clock={clock} flight={flight} />) : null}
-        {stampOn ? (
-          <Group transform={stampXf} opacity={stampOp} layer>
-            <Picture picture={stamp} />
-          </Group>
-        ) : null}
-      </Canvas>
+      {/* The canvas sits in a view that takes no touches (a canvas alone may catch them on the web). */}
+      <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width, height }}>
+        <Canvas style={{ width, height }}>
+          <SelectionLayer layout={layout} />
+          <DragLayer />
+          {flight ? Array.from({ length: flight.n }, (_, i) => <Glyph key={i} i={i} clock={clock} flight={flight} />) : null}
+          {stampOn ? (
+            <Group transform={stampXf} opacity={stampOp} layer>
+              <Picture picture={stamp} />
+            </Group>
+          ) : null}
+        </Canvas>
+      </View>
       {floaters.map((f) => (
         <FloatText key={f.id} f={f} onDone={done} />
       ))}
@@ -358,5 +461,11 @@ export function FloatingFeedback() {
 }
 
 const styles = StyleSheet.create({
-  chip: { position: 'absolute', borderRadius: 12, borderWidth: 1.2, alignItems: 'center', justifyContent: 'center' },
+  chip: {
+    position: 'absolute',
+    borderRadius: 12,
+    borderWidth: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

@@ -93,7 +93,7 @@ export const SPOKE_STRINGS = {
   newModule: 'New module',
   // Manifest odds
   oddsTitle: 'Manifest odds',
-  oddsSlots: '{n} slots, each rolled on its own',
+  oddsSlotsLabel: 'Slots, rolled alone',
   oddsKinds: { card: 'Module parts', gems: '{dm}', cash: 'Credits' } as Record<string, string>,
   oddsPerPart: 'Each part',
   oddsPerPod: 'Per {pod}, at least one',

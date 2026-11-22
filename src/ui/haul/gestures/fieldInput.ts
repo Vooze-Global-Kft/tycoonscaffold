@@ -33,7 +33,17 @@ export interface DragLine {
   color: string;
 }
 
-export const NO_DRAG: DragLine = { kind: DRAG_NONE, x0: 0, y0: 0, x: 0, y: 0, snap: 0, sx: 0, sy: 0, color: '' };
+export const NO_DRAG: DragLine = {
+  kind: DRAG_NONE,
+  x0: 0,
+  y0: 0,
+  x: 0,
+  y: 0,
+  snap: 0,
+  sx: 0,
+  sy: 0,
+  color: '',
+};
 
 /** The live drag, read on the UI thread. One per app (one finger drives the map). */
 export const dragLine = makeMutable<DragLine>(NO_DRAG);

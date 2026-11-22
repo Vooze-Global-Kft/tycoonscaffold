@@ -4,10 +4,9 @@
  * `station:autopilot`, and for the board hint (`bay:counter`) the second stage points at the
  * manifest worth the most once the Contract Board is open.
  *
- * Split with the map's hint layer (hud/HintLayer.tsx, bay package): a hint with a `route` (a sheet
- * hint, src/engine/haul hintsFor) is drawn here in both stages; the map layer draws the rest, and
- * hides while any sheet is open, which is when this layer draws stage two. Stage one draws only
- * while nothing is open and the control itself is not on screen.
+ * Split with the map's hint layer (hud/HintLayer.tsx, bay package): the map layer draws stage one
+ * (it points at the hint's `route`, what opens the sheet) and hides while any sheet is open; this
+ * layer draws only stage two, inside the open sheet, and only while nothing else is open over it.
  * Draws the art kit's reticle (ReticleLayer, touches pass through); asks once a second.
  */
 import { useEffect, useState } from 'react';
@@ -18,15 +17,8 @@ import { useOverlaysOpen } from '../../kit';
 import { targets } from '../../hints/targets';
 import { ReticleLayer } from '../art/Reticle';
 import { allHaulHints } from '../hints';
-import { useHaulUi, type HaulSheet } from '../uiState';
-
-/** Which sheet holds a control key (null: not in a sheet). */
-export function sheetOf(key: string): HaulSheet['type'] | null {
-  if (key.startsWith('station:')) return 'station';
-  if (key.startsWith('contract:card')) return 'contracts';
-  if (key === 'rig:upgrade') return 'rig';
-  return null;
-}
+import { sheetHintTarget } from '../sheets/shellLogic';
+import { useHaulUi } from '../uiState';
 
 /** The manifest index worth the most if met now (the board hint's second stage). */
 function bestCard(): number {
@@ -46,17 +38,6 @@ function bestCard(): number {
   return best;
 }
 
-/** The key to point at now, or null (pure over the UI state; exported for tests). */
-export function sheetHintTarget(hint: H.HaulHint | undefined, sheet: HaulSheet | null, othersOpen: boolean, onScreen: (key: string) => boolean, best: () => number): string | null {
-  if (!hint) return null;
-  if (hint.key === 'bay:counter') return sheet?.type === 'contracts' && !othersOpen ? `contract:card${best()}` : null;
-  if (!hint.route?.length) return null;
-  const home = sheetOf(hint.key);
-  if (sheet) return sheet.type === home && !othersOpen ? hint.key : null;
-  if (othersOpen || onScreen(hint.key)) return null;
-  return hint.route[0] ?? null;
-}
-
 export function SheetHints() {
   const { width, height } = useWindowDimensions();
   const open = useOverlaysOpen();
@@ -70,7 +51,7 @@ export function SheetHints() {
       const hint = allHaulHints()[0];
       // A sheet counts as one overlay itself; anything more (a spoke, the Shift Log, a dialog) waits.
       const others = blocked || offline || open > (sheet ? 1 : 0);
-      const key = sheetHintTarget(hint, sheet, others, (k) => targets.get(k) !== null, bestCard);
+      const key = sheetHintTarget(hint, sheet, others, (k) => targets.get(k) !== null || (targets.refresh(k), false), bestCard);
       if (!key) return setAt(null);
       // The sheet slides in without a layout event: measure again each look.
       targets.refresh(key);

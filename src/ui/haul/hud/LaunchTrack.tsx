@@ -64,13 +64,21 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
         landMs: Math.round(cfg.haul.freighter.land * 1000),
       };
     },
-    { phase: 'docked', level: 1, cargo: false, backIn: 0, arc: 0, policy: null as string | null, landMs: 2000 },
+    {
+      phase: 'docked',
+      level: 1,
+      cargo: false,
+      backIn: 0,
+      arc: 0,
+      policy: null as string | null,
+      landMs: 2000,
+    },
   );
   const spoke = useHaulUi((s) => s.spoke !== null);
   const armed = useFieldInput((s) => s.launchArmed);
   const { fontScale, height: winH } = useWindowDimensions();
   const compact = winH < 740;
-  const label = labelMetrics(compact ? 10 : 11, fontScale);
+  const label0 = labelMetrics(compact ? 10 : 11, fontScale);
   const W = rect.width;
   const Hh = rect.height;
 
@@ -91,11 +99,17 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
       for (const e of events as H.HaulEvent[]) {
         if (e.type === 'launch') {
           cancelAnimation(lift);
-          lift.value = withTiming(1, { duration: 450, easing: Easing.in(Easing.cubic) });
+          lift.value = withTiming(1, {
+            duration: 450,
+            easing: Easing.in(Easing.cubic),
+          });
         } else if (e.type === 'land') {
           cancelAnimation(lift);
           lift.value = 1;
-          lift.value = withTiming(0, { duration: Math.max(300, (useGame.getState().cfg as H.HaulConfig).haul?.freighter.land * 1000 || 2000), easing: Easing.out(Easing.cubic) });
+          lift.value = withTiming(0, {
+            duration: Math.max(300, (useGame.getState().cfg as H.HaulConfig).haul?.freighter.land * 1000 || 2000),
+            easing: Easing.out(Easing.cubic),
+          });
         }
       }
     });
@@ -123,7 +137,8 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
   const shipXform = useDerivedValue(() => {
     const d = dragLine.value;
     const pull = d.kind === DRAG_SWIPE ? Math.max(0, Math.min(60, d.y0 - d.y)) * 0.12 : 0;
-    return [{ translateX: cx }, { translateY: cy - lift.value * rise - pull }, { scale: shipScale }];
+    // Gone (away): scaled to nothing as well, since a picture may ignore its group's opacity.
+    return [{ translateX: cx }, { translateY: cy - lift.value * rise - pull }, { scale: lift.value > 0.995 ? 0 : shipScale }];
   });
   const shipOpacity = useDerivedValue(() => 1 - lift.value);
   const chevOn = (i: number, l: number) => {
@@ -148,37 +163,82 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
   const chipY = 10;
 
   useEffect(() => {
-    targets.set('bay:launch', { x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+    targets.set('bay:launch', {
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
+    });
     return () => targets.set('bay:launch', null);
   }, [rect.x, rect.y, rect.width, rect.height]);
 
   const backIn = useMemo(() => fillIn(HAUL_STRINGS.backIn, { s: f.backIn }).toUpperCase(), [f.backIn]);
+  // "BACK IN 12 S" left of the pad: the font shrinks by hand to the room there (0.62 em a glyph).
+  const labelRoom = cx - 26 * padScale - 6;
+  const labelFont = Math.max(7, Math.min(label0.font, labelRoom / (Math.max(1, backIn.length) * 0.62)));
+  const label = {
+    font: Math.round(labelFont * 10) / 10,
+    row: Math.ceil(labelFont * 1.25),
+  };
   return (
-    <View pointerEvents="box-none" style={{ position: 'absolute', left: rect.x, top: rect.y, width: W, height: Hh }}>
-      <Canvas style={{ width: W, height: Hh }} pointerEvents="none">
-        <Group transform={[{ translateX: cx }, { translateY: cy }, { scale: padScale }]}>
-          <Picture picture={pad} />
-          {away ? <Picture picture={arc} /> : null}
-        </Group>
-        <Group transform={shipXform} opacity={shipOpacity} layer>
-          <Picture picture={ship} />
-        </Group>
-        {f.phase === 'docked'
-          ? [0, 1, 2].map((i) => (
-              <Group key={i} transform={[{ translateX: cx }, { translateY: chevTop - i * 5 }, { scale: 0.6 }]} opacity={chevA[i]} layer>
-                <Picture picture={chevron} />
-              </Group>
-            ))
-          : null}
-        {f.policy ? (
-          <Group transform={[{ translateX: chipX }, { translateY: chipY }]}>
-            <Picture picture={chip} />
+    <View
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        left: rect.x,
+        top: rect.y,
+        width: W,
+        height: Hh,
+      }}
+    >
+      <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: W, height: Hh }}>
+        <Canvas style={{ width: W, height: Hh }}>
+          <Group transform={[{ translateX: cx }, { translateY: cy }, { scale: padScale }]}>
+            <Picture picture={pad} />
+            {away ? <Picture picture={arc} /> : null}
           </Group>
-        ) : null}
-      </Canvas>
+          <Group transform={shipXform} opacity={shipOpacity} layer>
+            <Picture picture={ship} />
+          </Group>
+          {f.phase === 'docked'
+            ? [0, 1, 2].map((i) => (
+                <Group key={i} transform={[{ translateX: cx }, { translateY: chevTop - i * 5 }, { scale: 0.6 }]} opacity={chevA[i]} layer>
+                  <Picture picture={chevron} />
+                </Group>
+              ))
+            : null}
+          {f.policy ? (
+            <Group transform={[{ translateX: chipX }, { translateY: chipY }]}>
+              <Picture picture={chip} />
+            </Group>
+          ) : null}
+        </Canvas>
+      </View>
       {away ? (
-        <View pointerEvents="none" style={{ position: 'absolute', left: 0, width: cx - 26 * padScale - 4, top: cy - label.row / 2, height: label.row, justifyContent: 'center' }}>
-          <Text allowFontScaling={false} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[DIGITAL, { color: SPACE.steel, fontSize: label.font, lineHeight: label.row, textAlign: 'right' }]}>
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            width: labelRoom,
+            top: cy - label.row / 2,
+            height: label.row,
+            justifyContent: 'center',
+          }}
+        >
+          <Text
+            allowFontScaling={false}
+            numberOfLines={1}
+            style={[
+              DIGITAL,
+              {
+                color: SPACE.steel,
+                fontSize: label.font,
+                lineHeight: label.row,
+                textAlign: 'right',
+              },
+            ]}
+          >
             {backIn}
           </Text>
         </View>
@@ -191,7 +251,13 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
           delayLongPress={350}
           onLongPress={() => haulActions.setPolicy(f.policy === 'full' ? 'contract' : 'full')}
           onPress={() => useHaulUi.getState().openSheet({ type: 'station' })}
-          style={{ position: 'absolute', left: chipX - chipW / 2, top: chipY - 8, width: chipW, height: 16 }}
+          style={{
+            position: 'absolute',
+            left: chipX - chipW / 2,
+            top: chipY - 8,
+            width: chipW,
+            height: 16,
+          }}
         />
       ) : null}
     </View>

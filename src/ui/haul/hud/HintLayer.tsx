@@ -46,13 +46,27 @@ export function targetRect(key: string, layout: FieldLayout): TargetRect | null 
   if (key === 'drone:rack') {
     // The first cradles sit on the left arm, near the station.
     const a = layout.rack.left;
-    return { x: a.x + a.width * 0.45, y: a.y, width: a.width * 0.5, height: a.height * 0.5 };
+    return {
+      x: a.x + a.width * 0.45,
+      y: a.y,
+      width: a.width * 0.5,
+      height: a.height * 0.5,
+    };
   }
-  if (key === 'station') return { x: layout.station.x - layout.station.r, y: layout.station.y - layout.station.r, width: 2 * layout.station.r, height: 2 * layout.station.r };
+  if (key === 'station')
+    return {
+      x: layout.station.x - layout.station.r,
+      y: layout.station.y - layout.station.r,
+      width: 2 * layout.station.r,
+      height: 2 * layout.station.r,
+    };
   return null;
 }
 
-const centre = (r: TargetRect): Point => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
+const centre = (r: TargetRect): Point => ({
+  x: r.x + r.width / 2,
+  y: r.y + r.height / 2,
+});
 
 /** What the reticle shows for `h` now, or null when its targets are not on screen. */
 export function reticleFor(h: HaulHint, layout: FieldLayout, selection: HaulSelection): ReticleHint | null {
