@@ -22,7 +22,7 @@ function slotOk(h: HaulState, slot: number): boolean {
 function finish(cfg: HaulConfig, d: Draft): HaulGame {
   const p = draftParams(cfg, d);
   // Decision 56: a bigger (or smaller) freighter resizes what the board's contracts still need.
-  resizeOrders(d.h, p.F, d.events);
+  resizeOrders(d.h, p.F, d.events, cfg);
   notePeak(p, d.h);
   updateMarks(cfg, d, p);
   return commit(d);

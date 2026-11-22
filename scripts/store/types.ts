@@ -119,6 +119,8 @@ export interface Scene {
    * "BACK IN n S" after the launch swipe.
    */
   checkAfter?: number;
+  /** Frames drawn at the store's pixel ratio before the picture (default 3; 1 for a fast moment). */
+  shotFrames?: number;
   /** Captures in all when `check` fails (default 3). */
   tries?: number;
   /** The part of the screen the image shows (default: all of it). */

@@ -163,6 +163,8 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
     let two3 = 0;
     for (let k = 1; k <= 300; k++) if (draw(three, k).wants.length > 1) two3++;
     expect(two3, `bot stations that qualified: ${stations}`).toBeGreaterThanOrEqual(45);
+    // Fourth rules check (NEW[5]): at least one of the bot's own stations qualified.
+    expect(stations, 'bot stations that ship three ores, two of them worth a tenth').toBeGreaterThanOrEqual(1);
   }, 120_000);
 });
 

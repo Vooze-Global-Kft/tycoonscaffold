@@ -63,6 +63,7 @@ function boardRows(text: string): string | null {
   const taken = lines.indexOf('TAKEN');
   if (taken < 0) return 'no contract taken';
   if (lines.findIndex((l, k) => k > 0 && /^[x×]\d/.test(l) && k > taken) < 0) return 'the TAKEN row is not first';
+  // (On the Play size the third row and the pod counter are below the sheet's fold: the image shows the TAKEN row and the next.)
   if (!/SCRAP POD ·/i.test(text.slice(i))) return 'no pod counter under the rows';
   return tutorialLine(text);
 }
@@ -71,7 +72,8 @@ function boardRows(text: string): string | null {
 const tutorialLine = (text: string): string | null => (/DRONE IDLE ON THE RACK|SEND IT TO THE ROCK/i.test(text) ? 'the tutorial line is on the radio' : null);
 
 /** Any radio line ("SPEAKER: TEXT") at the top of the field: on the Play size it lies over the outer ring's rocks. */
-const radioLine = (text: string): string | null => (/^[A-Z][A-Z .'&-]+: [A-Z0-9]/m.test(text) ? 'a radio line covers the top of the field' : null);
+const RADIO = /^[A-Z][A-Z .'&-]+: [A-Z0-9]/m;
+const radioLine = (text: string): string | null => (RADIO.test(text) ? 'a radio line covers the top of the field' : null);
 
 const scenes: GameScenes = {
   game: 'space-miner',
@@ -113,6 +115,9 @@ const scenes: GameScenes = {
     {
       slug: 'freighter-away',
       query: 'preset=mid',
+      // The freighter's climb lasts 2.5 s: the picture waits one frame at the store's pixel ratio,
+      // not three (three take seconds on a busy machine, and the freighter is gone by then).
+      shotFrames: 1,
       settle: 9000,
       // A running station: the freighter cycles (away about 11 s, then docked while the hold fills).
       // Wait until it is docked (no "BACK IN n S"), make the launch swipe, and take the picture
@@ -134,7 +139,6 @@ const scenes: GameScenes = {
           // autopilot's policy instead).
           { move: [from[0], from[1] - 130], steps: 1 },
           { up: true },
-          { wait: 100 },
         ];
       },
       checkAfter: 1500,
@@ -160,8 +164,6 @@ const scenes: GameScenes = {
         { untilText: /CONTRACT BOARD/i, timeout: 8000 },
         { tapText: /^x\d+(\.\d+)?$/, nth: 1 },
         { wait: 1500 },
-        // On a short phone the rows scroll inside the sheet: bring the pod counter up (no-op on a tall one).
-        { scrollTo: /^scrap pod ·/i },
       ],
       check: boardRows,
       tries: 4,
@@ -173,8 +175,11 @@ const scenes: GameScenes = {
       slug: 'far-rings',
       query: 'preset=late',
       settle: 10000,
+      // A late save opens with radio lines (the tutorial's first, then a buyer's call; 5 s each):
+      // wait for the slot to fall quiet.
+      steps: () => [{ untilText: RADIO, absent: true, timeout: 40000 }, { wait: 300 }],
       check: radioLine,
-      tries: 5,
+      tries: 4,
       frame: fieldBand,
       caption: 'Far rings. Rich ore.\nLong trips.',
       shows: 'A late station: every ring claimed, routes to copper, ice, titanium and platinum rocks out to the far rings, drones in flight, the hold and the counter. Cropped from the outer ring\'s rocks to just above the nav row.',

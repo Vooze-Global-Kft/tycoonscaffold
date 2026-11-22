@@ -128,10 +128,10 @@ async function runSteps(page: any, steps: Step[]): Promise<void> {
 }
 
 /** The page at `dsf` pixels per point: switch the ratio, let three frames draw, capture, switch back. */
-async function sharpShot(page: any, size: Size, dsf: number): Promise<Buffer> {
+async function sharpShot(page: any, size: Size, dsf: number, frames = 3): Promise<Buffer> {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: size.vw, height: size.vh, deviceScaleFactor: dsf, mobile: false });
-  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
+  await page.evaluate((n: number) => new Promise<void>((r) => { const go = (k: number) => (k <= 0 ? r() : requestAnimationFrame(() => go(k - 1))); go(n); }), frames);
   const shot = await cdp.send('Page.captureScreenshot', { format: 'png' });
   await cdp.send('Emulation.clearDeviceMetricsOverride');
   await cdp.detach();
@@ -239,7 +239,7 @@ async function capture(browser: any, def: GameScenes, port: number, sizes: Size[
         if (guard.hidden.length) notes.push('hid non-app overlay: ' + guard.hidden.join(', '));
         if (guard.leaks.length) errors.push('overlay not from the app on screen: ' + guard.leaks.join(', '));
         const text: string = await page.evaluate(() => document.body.innerText || '');
-        const shot = await sharpShot(page, size, dsfOf(size));
+        const shot = await sharpShot(page, size, dsfOf(size), scene.shotFrames ?? 3);
         await page.mouse.up().catch(() => undefined);
         let checkText = text;
         if (scene.checkAfter) {
