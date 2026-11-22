@@ -46,3 +46,6 @@ android/
 
 # Generated from GAME=<id> by app.config.ts / scripts/select-game.js
 src/generated/
+
+# Art sheets rendered by scripts/art (look at them, do not commit them)
+scripts/art/out/
