@@ -102,19 +102,6 @@ function useTimers() {
   return { at, clear };
 }
 
-// TEMP (remove before handover): ?forceRewards=card:nonna:1:new,gems:5 to see every rarity.
-function forcedRewards(): M.GrantedReward[] | null {
-  if (typeof location === 'undefined') return null;
-  const q = new URLSearchParams(location.search).get('forceRewards');
-  if (!q) return null;
-  return q.split(',').map((p) => {
-    const [type, a, b, c] = p.split(':');
-    if (type === 'card') return { type: 'card', cardId: a, copies: Number(b ?? 1), isNew: c === 'new' } as M.GrantedReward;
-    if (type === 'gems') return { type: 'gems', amount: Number(a) } as M.GrantedReward;
-    return { type: 'cash', amount: Number(a) } as M.GrantedReward;
-  });
-}
-
 const PULSES_FULL: Record<Rarity, number> = { common: 1, rare: 1, epic: 2, legendary: 4 };
 const REVEAL_SOUND = { common: 'reveal_common', rare: 'reveal_rare', epic: 'reveal_epic', legendary: 'reveal_legendary' } as const;
 
@@ -131,7 +118,7 @@ function Opening({ opening, w, h }: { opening: ChestOpening; w: number; h: numbe
   const left = useGame((s) => M.chestCount(s.game));
   const chest = cfg.meta.chests.find((c) => c.id === opening.chestId);
   const tier = chest?.tier ?? 'wood';
-  const rewards = useMemo(() => forcedRewards() ?? opening.rewards, [opening.rewards]);
+  const rewards = opening.rewards;
   const L = useMemo(() => computeLayout(w, h, rewards.length), [w, h, rewards.length]);
   // Card states after the whole chest (the store applied it before this overlay started).
   const cardsSnap = useMemo(() => useGame.getState().game.cards, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -156,6 +143,7 @@ function Opening({ opening, w, h }: { opening: ChestOpening; w: number; h: numbe
   const [revealing, setRevealing] = useState(-1);
   const [done, setDone] = useState(0);
   const [skipped, setSkipped] = useState(false);
+  const [chestGone, setChestGone] = useState(false);
   const stageRef = useRef<Stage>('intro');
   const busy = useRef(false);
   const nextIndex = useRef(0);
@@ -281,6 +269,8 @@ function Opening({ opening, w, h }: { opening: ChestOpening; w: number; h: numbe
         sv.chestS.value = L.rest.scale;
       }
       sv.chestO.value = withTiming(0, { duration: 260 });
+      // Also take the chest out of the canvas once faded: the summary panel sits where it was.
+      timers.at(280, () => setChestGone(true));
       setRevealing(-1);
       setDone(rewards.length);
       go('summary');
@@ -408,10 +398,12 @@ function Opening({ opening, w, h }: { opening: ChestOpening; w: number; h: numbe
           <Group>
             {/* The chest, its lid light in the best rarity colour, and the landing dust. */}
             <Group opacity={sv.chestO}>
+              {chestGone ? null : (
               <Group transform={chestTransform}>
                 <Glow cx={0} cy={lidGlowY} r={150} color={glowColor} opacity={lidGlowO} scale={glowScale} />
                 <Chest x={0} y={0} scale={sv.chestS} tier={tier} lid={sv.lid} shake={sv.shake} clock={clock} />
               </Group>
+              )}
               <Dust cx={L.intro.x} cy={L.intro.y} progress={sv.dust} spread={110 * L.intro.scale} />
               <Burst cx={sv.chestX} cy={L.rest.y - 60} progress={sv.openBurst} colors={burstColors} radius={220} count={30} seed={11} />
             </Group>
@@ -512,10 +504,10 @@ function SlotLabel({ index, slot, L, cardsSnap, rewards }: { index: number; slot
   const cfg = useGame((s) => s.cfg);
   const g = rewards[index];
   const fade = useMemo(() => makeMutable(0), []);
-  const stamp = useMemo(() => makeMutable(2.2), []);
+  const stamp = useMemo(() => makeMutable(1.7), []);
   useEffect(() => {
     fade.value = withTiming(1, { duration: 220 });
-    stamp.value = withDelay(120, withSpring(1, { damping: 8, stiffness: 300 }));
+    stamp.value = withDelay(120, withSpring(1, { damping: 14, stiffness: 380, overshootClamping: false }));
   }, [fade, stamp]);
   const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.value, transform: [{ translateY: (1 - fade.value) * 6 }] }));
   const stampStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, fade.value * 2), transform: [{ rotate: '-14deg' }, { scale: stamp.value }] }));

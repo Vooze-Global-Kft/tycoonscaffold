@@ -24,11 +24,11 @@ interface Tile {
   count: number;
 }
 
-const TILE_H = 204;
+const TILE_H = 212;
 const GAP = 8;
 const PAD = 12;
-const ART_CY = 58;
-const RING_R = 42;
+const ART_CY = 50;
+const RING_R = 39;
 
 /** Length of the recharge the free chest is in now (mirrors the engine's rule so the ring matches its countdown). */
 function freePeriodMs(cfg: GameConfig, claimed: number, ready: number): number {
@@ -79,7 +79,7 @@ export function ChestShelf() {
               action = free.ready > 0 ? { label: 'Open', onPress: () => s().claimFreeChest(), variant: 'success' } : null;
             } else if (tile.kind === 'ad' && ad) {
               status = ad.left <= 0 ? `More in ${formatCountdown(ad.nextInMs)}` : ad.nextInMs > 0 ? `Next in ${formatCountdown(ad.nextInMs)}` : `${ad.left} left today`;
-              action = { label: '▶ Watch ad', onPress: () => void s().watchAdChest(), disabled: ad.left <= 0 || ad.nextInMs > 0, variant: 'accent' };
+              action = { label: '▶ Watch', onPress: () => void s().watchAdChest(), disabled: ad.left <= 0 || ad.nextInMs > 0, variant: 'accent' };
             } else {
               status = `×${tile.count} owned`;
               action = { label: 'Open', onPress: () => s().openChest(tile.chestId), variant: 'success' };
@@ -93,7 +93,7 @@ export function ChestShelf() {
                   { left: p.x, top: p.y, width: tileW, backgroundColor: t.c.surface, borderRadius: t.radius, borderColor: ready ? t.c.success : alpha(t.c.text, 0.08) },
                 ]}
               >
-                <View style={{ height: ART_CY + 40 }} />
+                <View style={{ height: ART_CY + 42 }} />
                 <Text style={[styles.name, t.display, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                   {tile.kind === 'free' ? 'Free chest' : tile.kind === 'ad' ? 'Ad chest' : chest.name}
                 </Text>
@@ -136,7 +136,7 @@ export function ChestShelf() {
               return (
                 <Group key={tile.key}>
                   {frac !== null ? <Ring cx={cx} cy={cy} r={RING_R} frac={frac} track={alpha(t.c.text, 0.1)} color={free && free.ready > 0 ? t.c.success : t.c.progress} /> : null}
-                  <Chest x={cx} y={cy + 30} scale={0.36} tier={chest.tier} lid={open} rays={false} clock={clock} />
+                  <Chest x={cx} y={cy + 29} scale={0.34} tier={chest.tier} lid={open} rays={false} clock={clock} />
                 </Group>
               );
             })}

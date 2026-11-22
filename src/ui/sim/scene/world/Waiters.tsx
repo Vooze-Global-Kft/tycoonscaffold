@@ -16,7 +16,7 @@ import type { SceneCtx } from './context';
 import { glide } from './ticker';
 
 const CHEER_MS = 1200;
-const BANG_MS = 1100;
+const BANG_MS = 1500;
 const WAITER_POSES: readonly Pose[] = ['idle', 'walk', 'carry', 'sleep', 'cheer'];
 
 export function Waiter({ ctx, index, look, dish }: { ctx: SceneCtx; index: number; look: LookInput; dish: DishLook }) {

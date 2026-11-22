@@ -141,9 +141,9 @@ function Banner({ item, top, onDone }: { item: Shown; top: number; onDone: () =>
   const accent = item.kind === 'venue' ? t.c.primary : t.c.accent;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, styles.layer]} pointerEvents="none">
       {big ? (
-        <Canvas style={[StyleSheet.absoluteFill, { top: top + 30 }]} pointerEvents="none">
+        <Canvas style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: top + 30 }} pointerEvents="none">
           {Array.from({ length: CONFETTI }, (_, i) => (
             <ConfettiPiece key={i} p={confetti} width={width} color={colors[i % colors.length]} seed={item.id * 31 + i} />
           ))}
@@ -251,6 +251,8 @@ export function Celebrations() {
 }
 
 const styles = StyleSheet.create({
+  // Above everything the screens draw (the scene uses z-indexes of its own).
+  layer: { zIndex: 1000, elevation: 30 },
   card: {
     position: 'absolute',
     left: 20,

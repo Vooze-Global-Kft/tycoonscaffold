@@ -71,16 +71,17 @@ function RushAtmosphere({ layout, vis }: { layout: SceneLayout; vis: SharedValue
   return (
     <Group opacity={vis}>
       <Rect x={0} y={0} width={w} height={h}>
-        <RadialGradient c={vec(w / 2, h * 0.55)} r={Math.max(w, h) * 0.72} colors={[alpha(warm, 0), alpha(warm, 0), alpha(warm, 0.28), alpha(warm, 0.62)]} positions={[0, 0.45, 0.8, 1]} />
+        <RadialGradient c={vec(w / 2, h * 0.55)} r={Math.hypot(w, h) * 0.52} colors={[alpha(warm, 0), alpha(warm, 0), alpha(warm, 0.38), alpha(warm, 0.8)]} positions={[0, 0.5, 0.82, 1]} />
       </Rect>
+      <Rect x={2} y={2} width={w - 4} height={h - 4} color={alpha(warm, 0.85)} style="stroke" strokeWidth={4} />
       {lines.map((l, i) => (
-        <SpeedLine key={i} {...l} w={w} clock={clock} unit={layout.unit} />
+        <SpeedLine key={i} {...l} w={w} clock={clock} unit={layout.unit} warm={warm} />
       ))}
     </Group>
   );
 }
 
-function SpeedLine({ y, len, speed, offset, w, clock, unit }: { y: number; len: number; speed: number; offset: number; w: number; clock: SharedValue<number>; unit: number }) {
+function SpeedLine({ y, len, speed, offset, w, clock, unit, warm }: { y: number; len: number; speed: number; offset: number; w: number; clock: SharedValue<number>; unit: number; warm: string }) {
   // Streaks run right to left, as if the room were rushing forward; they fade towards the middle.
   const x = useDerivedValue(() => {
     const span = w + len * 2;
@@ -90,9 +91,14 @@ function SpeedLine({ y, len, speed, offset, w, clock, unit }: { y: number; len: 
   const p2 = useDerivedValue(() => vec(x.value + len, y));
   const op = useDerivedValue(() => {
     const mid = Math.abs(x.value + len / 2 - w / 2) / (w / 2);
-    return Math.min(1, mid * mid * 1.4) * 0.75;
+    return Math.min(1, mid * mid * 1.6) * 0.95;
   });
-  return <Line p1={p1} p2={p2} color="#FFFFFF" strokeWidth={2.2 * unit} strokeCap="round" opacity={op} />;
+  return (
+    <Group opacity={op}>
+      <Line p1={p1} p2={p2} color={alpha(warm, 0.55)} strokeWidth={5 * unit} strokeCap="round" />
+      <Line p1={p1} p2={p2} color="#FFFFFF" strokeWidth={2.4 * unit} strokeCap="round" />
+    </Group>
+  );
 }
 
 /** The ring around the skill button: recharge while cooling, time left while active, a soft pulse when ready. */

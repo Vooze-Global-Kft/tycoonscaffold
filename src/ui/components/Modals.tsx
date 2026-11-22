@@ -73,8 +73,7 @@ function OfflineSheet({ seconds, earnings }: { seconds: number; earnings: number
           <RollingNumber value={earnings} symbol={t.strings.currencySymbol} fromZero duration={1100} style={[t.display, styles.amount, { color: t.c.primary }]} />
         </View>
         <Text style={[styles.small, { color: t.c.textMuted }]}>
-          Away {formatDuration(seconds)}
-          {capped ? ` · counted up to ${maxHours} h` : ''}
+          {capped ? `Away ${maxHours} h or more: the most that counts` : `Away ${formatDuration(seconds)}`}
         </Text>
         <Text style={[styles.small, { color: t.c.textMuted }]}>Venues keep earning while you are away (up to {maxHours} h).</Text>
       </View>

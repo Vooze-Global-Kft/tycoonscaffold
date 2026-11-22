@@ -16,7 +16,7 @@ import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
 import { useTarget } from '../../hints/targets';
 import { ProgressBar, Sheet } from '../../kit';
-import { Card, CARD_SIZE } from '../../sim/art/props';
+import { Card, CARD_NAMEPLATE, CARD_SIZE } from '../../sim/art/props';
 import { RARITY_COLORS, RARITY_NAMES, alpha, useTheme } from '../../theme';
 import { Burst, Glow, Rays } from '../chest/Fx';
 import { CardPortrait } from '../chest/Portrait';
@@ -89,7 +89,25 @@ function CardDialog({ card, cfg, onClose }: { card: CardCfg; cfg: GameConfig; on
       }
     >
       <View style={styles.artWrap}>
-        <ArtCanvas card={card} owned={owned} width={canvasW} height={canvasH} fxv={fxv} />
+        <View style={{ width: canvasW, height: canvasH }}>
+          <ArtCanvas card={card} owned={owned} width={canvasW} height={canvasH} fxv={fxv} />
+          <View
+            pointerEvents="none"
+            style={[
+              styles.plate,
+              {
+                left: canvasW / 2 + CARD_NAMEPLATE.x * ART_SCALE,
+                top: canvasH / 2 + CARD_NAMEPLATE.y * ART_SCALE,
+                width: CARD_NAMEPLATE.width * ART_SCALE,
+                height: CARD_NAMEPLATE.height * ART_SCALE,
+              },
+            ]}
+          >
+            <Text style={[styles.plateText, t.display]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {owned ? card.name : '???'}
+            </Text>
+          </View>
+        </View>
         <Animated.View pointerEvents="none" style={[styles.levelBadge, { backgroundColor: t.c.success }, badgeStyle]}>
           <Text style={[styles.levelBadgeText, t.display]}>{`Level ${level}!`}</Text>
         </Animated.View>
@@ -160,8 +178,9 @@ function ArtCanvas({ card, owned, width, height, fxv }: {
       <Glow cx={cx} cy={cy} r={140} color={glowColor} opacity={owned ? restGlow : 0} />
       <Rays cx={cx} cy={cy} radius={170} color={card.rarity === 'common' ? '#FFD95A' : glowColor} opacity={fxv.rays} clock={clock} count={16} />
       <Glow cx={cx} cy={cy} r={150} color="#FFFFFF" opacity={fxv.glow} />
-      <Card x={cx} y={cy} scale={scale} rarity={card.rarity} flip={owned ? 1 : 0} clock={clock}>
-        <CardPortrait icon={card.icon} fallbackId={card.id} />
+      {/* A card not found yet shows its rarity frame with only a faint shadow of the person. */}
+      <Card x={cx} y={cy} scale={scale} rarity={card.rarity} flip={1} clock={clock}>
+        <CardPortrait icon={card.icon} fallbackId={card.id} silhouette={!owned} />
       </Card>
       <Burst cx={cx} cy={cy} progress={fxv.burst} colors={['#FFC93C', '#FFFFFF', glowColor]} radius={160} count={28} seed={5} />
     </Canvas>
@@ -170,7 +189,9 @@ function ArtCanvas({ card, owned, width, height, fxv }: {
 
 const styles = StyleSheet.create({
   artWrap: { alignItems: 'center', marginTop: -4 },
-  levelBadge: { position: 'absolute', bottom: 8, paddingHorizontal: 14, paddingVertical: 4, borderRadius: 14, borderWidth: 2, borderColor: '#FFFFFF' },
+  plate: { position: 'absolute', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  plateText: { color: '#3A2416', fontSize: 14, textAlign: 'center' },
+  levelBadge: { position: 'absolute', top: 2, paddingHorizontal: 14, paddingVertical: 4, borderRadius: 14, borderWidth: 2, borderColor: '#FFFFFF' },
   levelBadgeText: { color: '#FFFFFF', fontSize: 18 },
   meta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' },
   rarityPill: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },

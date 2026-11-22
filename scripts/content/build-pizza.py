@@ -78,7 +78,7 @@ VENUE_STEP = float(os.environ.get('VENUE_STEP', 40))      # each venue's costs a
 UNLOCK_STEP = float(os.environ.get('UNLOCK_STEP', 80))   # ...but opening it costs this many times more, so venues arrive further and further apart
 # Opening cost of venue 2, 3, ... (calibrated: about 35 min, 1h15, 2h15, 4h, 7h, 12h and 20h of
 # continuous play). Any further venues multiply by UNLOCK_STEP.
-VENUE_UNLOCKS = [5e7, 2.8e11, 1.7e14, 4.6e16, 3.7e18, 5.8e20, 3.7e22]
+VENUE_UNLOCKS = [1.2e8, 4.4e11, 4.1e14, 1.1e17, 3.5e19, 2.2e21, 1.6e23]
 # Transport and sales. Station spending follows cost ~ throughput^1.43 while new tiers are being
 # unlocked (COST_STEP vs RATE_STEP above). These two stages get the same exponent
 # (ln STAGE_COST_GROWTH / ln STAGE_GROWTH = 1.56, against ln COST_STEP / ln RATE_STEP = 1.59), so their share of spending stays steady

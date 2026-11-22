@@ -119,7 +119,7 @@ export function FlyLayer() {
     [],
   );
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, styles.layer]} pointerEvents="none">
       {Array.from({ length: POOL }, (_, i) => (
         <Piece
           key={i}
@@ -135,6 +135,8 @@ export function FlyLayer() {
 }
 
 const styles = StyleSheet.create({
+  // Above every screen and the celebration banners.
+  layer: { zIndex: 1100, elevation: 31 },
   piece: { position: 'absolute', left: 0, top: 0, width: SIZE, height: SIZE },
   center: { alignItems: 'center', justifyContent: 'center' },
 });

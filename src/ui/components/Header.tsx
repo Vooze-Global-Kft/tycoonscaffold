@@ -58,10 +58,17 @@ function CashCounter({ compact }: { compact: boolean }) {
           style={[t.display, styles.cash, { color: t.c.primaryText, fontSize, height: max + 6, lineHeight: max + 6 }]}
         />
       </Animated.View>
-      <Text style={[styles.ips, { color: alpha(t.c.primaryText, 0.9), fontSize: compact ? 11 : 12 }]} numberOfLines={1} adjustsFontSizeToFit>
-        {ips > 0 ? `+${formatMoney(ips, sym)}/s` : t.strings.tapHint}
-        {points > 0 ? `  ·  ${t.strings.prestigeIcon} ${formatNumber(points)}` : ''}
-      </Text>
+      <View style={styles.ipsRow}>
+        <Text style={[styles.ips, { color: alpha(t.c.primaryText, 0.92), fontSize: compact ? 11 : 12, flexShrink: 1 }]} numberOfLines={1}>
+          {ips > 0 ? `+${formatMoney(ips, sym)}/s` : t.strings.tapHint}
+        </Text>
+        {points > 0 ? (
+          <Text style={[styles.ips, { color: alpha(t.c.primaryText, 0.92), fontSize: compact ? 11 : 12, flexShrink: 0 }]} numberOfLines={1}>
+            {t.strings.prestigeIcon}
+            {formatNumber(points)}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -196,7 +203,8 @@ const styles = StyleSheet.create({
   cashBlock: { flex: 1, minWidth: 0, justifyContent: 'center' },
   cashRow: { flexDirection: 'row', alignItems: 'center', gap: 5, transformOrigin: 'left center' },
   cash: { flex: 1, minWidth: 0 },
-  ips: { fontWeight: '800', marginTop: -2 },
+  ipsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -2 },
+  ips: { fontWeight: '800' },
   pill: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, borderWidth: 1.5, paddingHorizontal: 8 },
   pillMain: { fontSize: 12 },
   pillSub: { fontSize: 10, fontWeight: '800', marginTop: -1 },

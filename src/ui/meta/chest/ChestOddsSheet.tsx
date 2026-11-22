@@ -2,9 +2,10 @@
  * The drop-rate dialog (store modal { type: 'chestOdds', chestId }). Store rules require the odds of
  * every kind of item before a chest is earned by ad or bought, and players deserve them anyway, so
  * this is written to be read by a 13-year-old and checked by a regulator: every number comes from
- * the engine functions the roll itself uses (chestSlotOdds, chestCardOdds, chestRules), and the
+ * the engine's exact facts (M.chestOddsFacts, tested against the roll itself), and the
  * rules that can raise a result (guarantee, bad-luck protection) are stated in plain sentences.
  */
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { RARITIES, type Chest, type GameConfig, type Rarity } from '../../../config/schema';
 import { formatDuration } from '../../../engine/format';
@@ -16,12 +17,9 @@ import { GameIcon } from '../../components/GameIcon';
 import { Sheet } from '../../kit';
 import { RARITY_COLORS, RARITY_NAMES, alpha, useTheme } from '../../theme';
 
-/** A percentage people can read: one decimal from 10 %, two below, and never a bare 0 for a real chance. */
+/** Percentages as the engine words them: one decimal, never a real chance shown as 0. */
 export function formatOdds(p: number): string {
-  if (!(p > 0)) return '0 %';
-  if (p < 0.01) return '< 0.01 %';
-  const d = p >= 10 ? 1 : 2;
-  return `${Number(p.toFixed(d))} %`;
+  return M.formatOddsPercent(p);
 }
 
 function range([a, b]: [number, number] | readonly number[], unit = ''): string {
@@ -49,18 +47,20 @@ function usePity() {
 function OddsBody({ cfg, chest }: { cfg: GameConfig; chest: Chest }) {
   const t = useTheme();
   const pityKey = usePity();
+  // The exact facts (guarantee and protection included) are the source of every number here.
+  const facts = useMemo(() => M.chestOddsFacts(cfg, chest.id, useGame.getState().game), [cfg, chest.id, pityKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!facts) return null;
   const game = useGame.getState().game;
-  void pityKey;
-  const slot = M.chestSlotOdds(cfg, chest.id);
-  const cardOdds = M.chestCardOdds(cfg, chest.id);
-  const rules = M.chestRules(cfg, game, chest.id);
+  const slot = facts.slotOdds;
   const cardsPossible = slot.card > 0;
-  const mult = rules?.copiesMultiplier ?? 1;
+  const mult = facts.copiesMultiplier;
   const muted = { color: t.c.textMuted };
   const text = { color: t.c.text };
+  const rules: M.ChestRules = { guaranteed: facts.guaranteed, epicWithin: facts.epicWithin, legendaryWithin: facts.legendaryWithin, copiesMultiplier: mult };
+  const has = (r: Rarity) => cfg.meta.cards.some((c) => c.rarity === r);
 
   const kinds: { icon: string; label: string; p: number; detail: string }[] = [];
-  if (slot.card > 0) kinds.push({ icon: '🃏', label: 'Staff card', p: slot.card, detail: 'Rarity chances below' });
+  if (slot.card > 0) kinds.push({ icon: '🃏', label: 'Staff card', p: slot.card, detail: `About ${Number(facts.cardsPerChest.toFixed(1))} cards per chest` });
   if (slot.gems > 0) kinds.push({ icon: cfg.strings.gemIcon, label: cfg.strings.gemName, p: slot.gems, detail: `${range(chest.gems)} ${cfg.strings.gemName}` });
   if (slot.cash > 0)
     kinds.push({
@@ -70,6 +70,9 @@ function OddsBody({ cfg, chest }: { cfg: GameConfig; chest: Chest }) {
       detail: `${formatDuration(chest.cashSeconds[0])} to ${formatDuration(chest.cashSeconds[1])} of your income`,
     });
 
+  const chestLine = (f: M.ChestRarityFact) =>
+    f.rarity === 'common' ? 'Any card' : f.rarity === 'legendary' || !RARITIES.slice(RARITIES.indexOf(f.rarity) + 1).some(has) ? RARITY_NAMES[f.rarity] : `${RARITY_NAMES[f.rarity]} or better`;
+
   return (
     <View style={styles.body}>
       <View style={[styles.intro, { backgroundColor: alpha(t.c.primary, 0.08), borderRadius: t.radius * 0.7 }]}>
@@ -77,7 +80,7 @@ function OddsBody({ cfg, chest }: { cfg: GameConfig; chest: Chest }) {
           {chest.name}
         </Text>
         <Text style={[styles.p, text]}>
-          {`Holds ${chest.slots} ${chest.slots === 1 ? 'item' : 'items'}. Each item is picked on its own with these chances:`}
+          {`Holds ${facts.slots} ${facts.slots === 1 ? 'item' : 'items'}. Each item is picked on its own with these chances:`}
         </Text>
       </View>
 
@@ -88,9 +91,10 @@ function OddsBody({ cfg, chest }: { cfg: GameConfig; chest: Chest }) {
       </Section>
 
       {cardsPossible ? (
-        <Section title="IF THE ITEM IS A CARD">
+        <Section title="EACH CARD IS">
+          {facts.guaranteed ? <Text style={[styles.small, muted]}>These shares include the guaranteed card.</Text> : null}
           {RARITIES.map((r) => {
-            const odds = cardOdds.find((o) => o.rarity === r)?.percent ?? 0;
+            const odds = facts.perCard.find((o) => o.rarity === r)?.percent ?? 0;
             const cards = cfg.meta.cards.filter((c) => c.rarity === r);
             if (cards.length === 0) return null;
             const copies = chest.cardCopies[r];
@@ -99,14 +103,14 @@ function OddsBody({ cfg, chest }: { cfg: GameConfig; chest: Chest }) {
             return (
               <View key={r} style={[styles.rarity, { borderLeftColor: RARITY_COLORS[r] }]}>
                 <View style={styles.rarityHead}>
-                  <Text style={[styles.rarityName, t.display, { color: RARITY_COLORS[r] }]}>{RARITY_NAMES[r]}</Text>
+                  <Text style={[styles.rarityName, t.display, { color: r === 'common' ? t.c.textMuted : RARITY_COLORS[r] }]}>{RARITY_NAMES[r]}</Text>
                   <Text style={[styles.value, t.display, text]}>{formatOdds(odds)}</Text>
                 </View>
                 <Text style={[styles.small, muted]}>
                   {`${range([lo, hi])} ${hi === 1 ? 'copy' : 'copies'} of one of: ${cards.map((c) => c.name).join(', ')}`}
                 </Text>
                 {cards.length > 1 && odds > 0 ? (
-                  <Text style={[styles.small, muted]}>{`Each of these ${cards.length} is equally likely: ${formatOdds(odds / cards.length)} each.`}</Text>
+                  <Text style={[styles.small, muted]}>{`Each of these ${cards.length} is equally likely: ${formatOdds(odds / cards.length)} of cards each.`}</Text>
                 ) : null}
               </View>
             );
@@ -114,8 +118,32 @@ function OddsBody({ cfg, chest }: { cfg: GameConfig; chest: Chest }) {
         </Section>
       ) : null}
 
+      {cardsPossible ? (
+        <Section title="IN ONE CHEST">
+          {facts.perChest.filter((f) => has(f.rarity)).map((f) => (
+            <Row key={f.rarity} icon="🎁" label={chestLine(f)} sub="chance a chest holds at least one" value={formatOdds(f.atLeastPercent)} />
+          ))}
+          {facts.longRun ? (
+            <Text style={[styles.small, muted]}>
+              {`With bad-luck protection, over many chests: ${facts.longRun
+                .filter((f) => (f.rarity === 'epic' && facts.epicWithin !== null) || (f.rarity === 'legendary' && facts.legendaryWithin !== null))
+                .map((f) => `${chestLine(f)} in ${formatOdds(f.atLeastPercent)} of chests`)
+                .join(', ')}.`}
+            </Text>
+          ) : null}
+          {facts.nextChest ? (
+            <Text style={[styles.small, text]}>
+              {`Your next ${chest.name}: ${facts.nextChest
+                .filter((f) => (f.rarity === 'epic' && facts.epicWithin !== null) || (f.rarity === 'legendary' && facts.legendaryWithin !== null))
+                .map((f) => `${chestLine(f)} ${formatOdds(f.atLeastPercent)}`)
+                .join(', ')}.`}
+            </Text>
+          ) : null}
+        </Section>
+      ) : null}
+
       <Section title="RULES">
-        {rules ? <RuleLines cfg={cfg} chest={chest} rules={rules} game={game} /> : null}
+        <RuleLines cfg={cfg} chest={chest} rules={rules} game={game} />
         <Bullet>Everyone gets the same chances. They never change based on how much you play or pay.</Bullet>
         <Bullet>Percentages are rounded. The guarantee and the protection can only make a result better, never worse.</Bullet>
         {!cfg.meta.chestsForSale ? <Bullet strong>Chests in this game are earned by playing and cannot be bought.</Bullet> : null}

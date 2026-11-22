@@ -146,7 +146,7 @@ export function HintOverlay() {
   const fromAbove = !!found && found.key.startsWith('tab:');
   if (!hint) return null;
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, styles.layer]} pointerEvents="none">
       <Animated.View style={[styles.box, boxStyle]} pointerEvents="none">
         <Canvas style={styles.canvas} pointerEvents="none">
           <Group>
@@ -162,6 +162,8 @@ export function HintOverlay() {
 }
 
 const styles = StyleSheet.create({
+  // The top of everything in the shell (dialogs are separate windows and hide the hand anyway).
+  layer: { zIndex: 1200, elevation: 32 },
   box: { position: 'absolute', left: 0, top: 0, width: BOX, height: BOX },
   canvas: { width: BOX, height: BOX },
 });

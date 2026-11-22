@@ -88,7 +88,7 @@ function Totals({ cfg, cards }: { cfg: GameConfig; cards: GameState['cards'] }) 
         <View style={styles.chips}>
           {lines.map((l) => (
             <View key={l.stat} style={[styles.chip, { backgroundColor: alpha(t.c.primary, 0.08), borderRadius: t.radius * 0.6 }]}>
-              <GameIcon icon={statIcon(cfg, l.stat)} size={18} />
+              <GameIcon icon={statIcon(cfg, l.stat)} size={16} />
               <Text style={[styles.chipText, { color: t.c.text }]} numberOfLines={1}>
                 <Text style={[t.display, { color: t.c.success }]}>{formatPercent(l.pct)}</Text>
                 {` ${statLabel(cfg, l.stat)}`}
@@ -109,6 +109,6 @@ const styles = StyleSheet.create({
   totalsTitle: { fontSize: 16 },
   empty: { fontSize: 13, fontWeight: '600' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 5, maxWidth: '100%' },
-  chipText: { fontSize: 13, fontWeight: '700', flexShrink: 1 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 4, maxWidth: '100%' },
+  chipText: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
 });

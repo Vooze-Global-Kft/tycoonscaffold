@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { overlays } from '../../state/overlays';
 import { GameIcon } from '../components/GameIcon';
 import { alpha, useTheme } from '../theme';
 
@@ -32,6 +33,8 @@ export function Sheet({ visible, onClose, title, icon, children, footer, scroll 
       pop.value = withSpring(1, { damping: 12, stiffness: 220 });
     }
   }, [visible, pop]);
+  // Every dialog built on Sheet counts as an open overlay while it shows (see src/state/overlays.ts).
+  useEffect(() => (visible ? overlays.enter() : undefined), [visible]);
   const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
   const Body = scroll ? ScrollView : View;
   return (
@@ -67,7 +70,8 @@ const styles = StyleSheet.create({
   title: { flex: 1, fontSize: 22 },
   close: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   closeText: { fontSize: 16, fontWeight: '900' },
-  body: { flexGrow: 0 },
+  // Shrinks before the footer does: on small phones tall content scrolls and the buttons under it stay visible.
+  body: { flexGrow: 0, flexShrink: 1 },
   bodyContent: { paddingHorizontal: 16, paddingBottom: 12 },
   footer: { paddingHorizontal: 16, paddingBottom: 16, paddingTop: 4, gap: 8 },
 });
