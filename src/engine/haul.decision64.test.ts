@@ -97,8 +97,8 @@ describe('Decision 64: the pace figures count a rock only while it lives', () =>
     const same = H.routeSchedule(cfg, p, h, L);
     expect(same.byLaunch[s0.ore][L - 1]).toBeCloseTo(same.byLaunch[s0.ore][0], 6);
     expect(same.first[s0.ore]?.slot).toBe(0);
-    // A rock that is not its ring's main ore (here copper on a ring-1 slot) comes back as another ore:
-    // its route stops counting once it dries and the other ores fill the hold after it.
+    // A rock that is not its ring's main ore (here copper on a ring-1 slot) comes back as the ring's
+    // main ore (iron): copper stops counting once it dries, and the slot feeds iron after it.
     h.slots[0].ore = 'copper';
     const ore0 = 'copper';
     const sch = H.routeSchedule(cfg, p, h, L);
