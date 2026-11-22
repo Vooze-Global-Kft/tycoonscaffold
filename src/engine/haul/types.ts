@@ -1,0 +1,303 @@
+/**
+ * Haul mode (Orbit Haulers): state, config and event types. Section 2.2 of
+ * docs/design/space-design.md. Plain serialisable data only.
+ *
+ * The shared types do not know haul mode yet, so this file defines narrow types on top of them:
+ * `HaulConfig` is the shared GameConfig plus the `haul` block, and `HaulGame` is the shared
+ * GameState plus the top-level haul fields and the lifetime counters. Once the tech lead adds the
+ * fields to src/engine/types.ts and src/config/schema.ts, both are plain aliases of the shared ones.
+ */
+import type { GameConfig } from '../../config/schema';
+import type { HaulContent } from '../../config/schema.haul';
+import type { GameState } from '../types';
+
+/** The shared config with the haul block (section 2.1). */
+export type HaulConfig = GameConfig & { haul: HaulContent };
+
+export type FreighterPhase = 'docked' | 'climb' | 'away' | 'land';
+export type AutopilotPolicy = 'full' | 'contract';
+
+export interface Contract {
+  /** Position in the run's contract stream (contract 0 is the fixed first one). */
+  k: number;
+  /** Buyer id from `haul.contracts.buyers`. */
+  buyer: string;
+  wants: { ore: string; units: number }[];
+  /** Multiplier on the contract's own units when met (before Broker Seat and the condition). */
+  mult: number;
+  /** Warp-outs left before it lapses; every warp-out counts, met or not. */
+  launchesLeft: number;
+}
+
+export interface SlotState {
+  claimed: boolean;
+  rigLevel: number;
+  /** Drones on this slot's route. */
+  haulers: number;
+  /** Index of the current rock in this slot's stream (-1 while the first rock drifts in after a claim). */
+  rockN: number;
+  /** Ore of the current rock. */
+  ore: string;
+  /** The current rock is a bonanza rock. */
+  bonanza: boolean;
+  /** Seconds of full-rate drilling left on the current rock. */
+  life: number;
+  /** Units waiting at the rock. */
+  pile: number;
+  /** FULL flag (edge-triggered `pileFull` event). */
+  full: boolean;
+  /** Clock time the next rock arrives (null while a rock is present). */
+  respawnAt: number | null;
+  /** Clock time drones on this route first deliver (warm-up). */
+  routeFrom: number;
+  /** Units delivered on this route since the current rock arrived (drives `unload` events). */
+  delivered: number;
+}
+
+export interface FreighterState {
+  level: number;
+  phase: FreighterPhase;
+  /** Seconds left in the current phase (0 while docked). */
+  t: number;
+  /** Units on board by ore (loaded at launch, sold at the warp-out). */
+  cargo: Record<string, number>;
+  /** Credits the warp-out will pay (computed at launch, section 2.6). */
+  payout: number;
+  /** The cargo meets the contract it was loaded for. */
+  met: boolean;
+  /** Away time of this flight in seconds. */
+  away: number;
+  /** `k` of the contract the cargo was loaded for (null: none active at launch). */
+  contract: number | null;
+}
+
+/** A rich seam in progress (natural or from a flare). */
+export interface SeamState {
+  /** Slot with the seam, or null when none. */
+  slot: number | null;
+  /** Clock time the seam ends. */
+  until: number;
+  /** Origin slot of each drone moved onto the seam (-1 = the rack). They go back when it ends. */
+  guests: number[];
+}
+
+export interface HaulState {
+  /** Seconds of play in this run (advances only while the game runs, never offline). */
+  clock: number;
+  /** Run seed (rock stream, contracts, seams). */
+  seed: number;
+  /** 0-based galaxy index. */
+  galaxy: number;
+  /** Chosen galaxy condition id (null in galaxy 0). */
+  trait: string | null;
+  slots: SlotState[];
+  fleet: { drones: number; capLevel: number; engineLevel: number };
+  /** Drones on the station rack (not on a route). */
+  idle: number;
+  /** Units waiting in the hold, by ore. */
+  hold: Record<string, number>;
+  freighter: FreighterState;
+  autopilot: { online: boolean; policy: AutopilotPolicy };
+  contracts: { unlocked: boolean; board: Contract[]; next: number; active: number | null };
+  /** The natural rich seam and its schedule. `count` = seams started so far (drives the rolls). */
+  vein: SeamState & { nextAt: number; count: number };
+  /** Survey Flare charges, their refill and ad limits, and the flare's own seam. */
+  flare: SeamState & { charges: number; nextFreeAt: number; adsToday: number; adDay: string; adNextAt: number };
+  /** Contract Keeper bonus waiting for the next launch (0 when none). */
+  keeper: number;
+  /** Once-per-run flags (tutorialDone, holdFullLine, offlineNoAutopilot, ...). */
+  flags: Record<string, boolean>;
+  /** Times each limited hint has been shown this run (markHintShown). */
+  hintsShown: Record<string, number>;
+  /** Clock times for the hint rules (null = condition not true now). */
+  marks: { idleSince: number | null; holdFullSince: number | null; noContractSince: number | null; flareReadySince: number | null };
+  /** This run, for display and the conservation check. Lifetime counters live in GameState.stats. */
+  counters: { launches: number; contractsMet: number; depleted: number; hauled: number; claims: number; drilled: number; shipped: number };
+}
+
+/** Lifetime counters added to GameState.stats (survive a Jump; missions and pods read them). */
+export interface HaulLifetimeStats {
+  hauled: number;
+  launches: number;
+  contractsMet: number;
+  depleted: number;
+  claims: number;
+  seamDrags: number;
+  transmissionsAcked: number;
+}
+
+export interface StarMapState {
+  levels: Record<string, number>;
+  /** Cores spent so far (cores in hand = prestigePoints - spent). */
+  spent: number;
+}
+
+export interface HaulStats {
+  /** Most slots ever claimed at once (caps the Afterburner head start). */
+  bestClaimed: number;
+  /** Jumps made (also the index of the next Jump's offer). */
+  jumps: number;
+  /** Galaxy indexes arrived at (a Derelict Cache on each first arrival). */
+  galaxiesVisited: number[];
+  /** The once-per-game Scrap Pod of the first ring-2 claim has been given. */
+  ring2Pod: boolean;
+}
+
+/** Top-level fields of a haul game (survive a Jump). */
+export interface HaulTopLevel {
+  haul: HaulState | null;
+  /** Fixed at game creation; seeds the galaxy offers. */
+  metaSeed: number;
+  /** Three sockets in order Rig, Fleet, Dock: card id or null. */
+  loadout: { sockets: (string | null)[] };
+  starMap: StarMapState;
+  haulStats: HaulStats;
+}
+
+/** The shared game state as a haul game sees it. */
+export type HaulGame = Omit<GameState, 'stats'> & HaulTopLevel & { stats: GameState['stats'] & HaulLifetimeStats };
+
+/** A haul game whose run exists (every haul function needs one). */
+export type HaulGameWithRun = HaulGame & { haul: HaulState };
+
+/** What happened during a tick or an action, for sounds, effects, voice lines and the bot. */
+export type HaulEvent =
+  | { type: 'arrive'; slot: number; ore: string; bonanza: boolean; oreChanged: boolean }
+  | { type: 'unload'; slot: number; units: number }
+  | { type: 'pileFull'; slot: number }
+  | { type: 'depleted'; slot: number }
+  | { type: 'holdFull' }
+  | { type: 'launch'; cargo: Record<string, number>; auto: boolean }
+  | { type: 'warp'; payout: number; met: boolean; cargo: Record<string, number> }
+  | { type: 'contractMet'; contract: Contract }
+  | { type: 'contractLapsed'; contract: Contract; wasActive: boolean }
+  | { type: 'contractNew'; contract: Contract; index: number }
+  | { type: 'contractsUnlocked' }
+  | { type: 'land' }
+  | { type: 'docked' }
+  | { type: 'vein'; slot: number; flare: boolean }
+  | { type: 'veinEnd'; slot: number; flare: boolean }
+  | { type: 'flareCharge'; charges: number }
+  | { type: 'claim'; slot: number }
+  | { type: 'podEarned'; pod: string; reason: 'ring2' | 'contracts' | 'depleted' | 'transmissions' | 'galaxy' }
+  | { type: 'tutorialDone' };
+
+/** Per-slot derived values (section 2.3). Unclaimed slots have zero rates. */
+export interface SlotParams {
+  /** 0-based ring index. */
+  ring: number;
+  /** Index of the slot within its ring. */
+  j: number;
+  /** Distance after the condition, in DU. */
+  distance: number;
+  /** Base drill rate (no seam), units/s; 0 without a rock. */
+  rb: number;
+  /** Base drill rate of a non-bonanza rock on this rig (also without a rock; for the steady rate). */
+  rb0: number;
+  /** Drill rate (rb x seam), units/s. */
+  r: number;
+  /** Pile cap in units. */
+  cap: number;
+  /** Drone capacity on this route (with the Ore Sorter when the active contract wants this ore). */
+  c: number;
+  /** Drone capacity without contract effects (for the steady rate). */
+  cBase: number;
+  /** Round trip in seconds. */
+  trip: number;
+  /** Haul rate n x c / trip, units/s. */
+  h: number;
+  /** Haul rate without contract effects. */
+  hBase: number;
+  /** The rock has a rich seam now. */
+  seam: boolean;
+  /** Rig tier multipliers reached: life on arrival, seam pick weight, pile cap. */
+  tierLife: number;
+  tierSeamWeight: number;
+  /** Price of the current rock's ore. */
+  price: number;
+}
+
+/** Everything derived from config and state once per step (section 2.3), so ticks and rates agree. */
+export interface HaulParams {
+  slots: SlotParams[];
+  /** Drone speed, DU/s. */
+  v: number;
+  /** Freighter capacity = hold size. */
+  F: number;
+  /** Away time of a launch that does not meet its contract / that meets it. */
+  away: number;
+  awayMet: number;
+  climb: number;
+  land: number;
+  droneCap: number;
+  /** Ore price by id (condition, modules, Assay Rights). */
+  prices: Record<string, number>;
+  /** Added to a met contract's multiplier: Broker Seat and the condition. */
+  contractAdd: number;
+  fee: number;
+  fullBonus: number;
+  /** Global multiplier (shared upgrades, purchases; prestige is 1 with bonusPerPoint 0). */
+  G: number;
+  /** Module values (fractions). */
+  spill: number;
+  keeperValue: number;
+  /** Bonanza chance of a new rock. */
+  bonanzaChance: number;
+}
+
+/** What `fastForward` reports for the Shift Log (section 4.6). */
+export interface OfflineReport {
+  /** Real seconds away, after the cap. */
+  seconds: number;
+  /** Effective seconds simulated (seconds x efficiency). */
+  effective: number;
+  unitsByOre: Record<string, number>;
+  rocksDry: number;
+  pods: number;
+  /** Payout of a freighter that was climbing or away when the app closed (already added to cash). */
+  inFlight: number;
+  /** Credits earned offline (NOT yet added to cash: the store grants them, doubled with an ad). */
+  credits: number;
+  /** The autopilot was off: nothing shipped. */
+  noAutopilot: boolean;
+}
+
+/** One hint for the haul hint source (section 3). Shaped like the shared Hint (key, route, row). */
+export interface HaulHint {
+  kind: 'drag' | 'swipe' | 'point' | 'tapTap';
+  /** Stable id; also the target key the hint is about (the `to` target for a drag). */
+  key: string;
+  /** Opener targets for a control inside a sheet (e.g. ['station'] for 'station:buyDrone'). */
+  route: string[];
+  row: null;
+  /** Drag and tap-tap: start target; swipe: the zone. */
+  from?: string;
+  to?: string;
+  zone?: string;
+  /** Tutorial step 1 to 6, or 0 for the rules after the tutorial. */
+  step: number;
+  /** Limited hints count against `hintsShown` with this key. */
+  limit?: number;
+}
+
+/** A Star Map node as the spoke shows it. */
+export interface StarNodeView {
+  id: string;
+  level: number;
+  cap: number | null;
+  /** Cost of the next level, null at the cap. */
+  cost: number | null;
+  canBuy: boolean;
+}
+
+/** What the Star Map's bottom panel shows (section 4.6). */
+export interface JumpPreview {
+  /** Cores gained by jumping now. */
+  gain: number;
+  coresInHand: number;
+  canJump: boolean;
+  /** The three condition ids offered for the next galaxy (fixed for this jump index). */
+  offers: string[];
+  nextGalaxy: number;
+  nextGalaxyName: string;
+}
