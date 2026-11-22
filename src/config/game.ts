@@ -1,4 +1,4 @@
-import { ACTIVE_GAME_ID, gameAssets, rawGame } from '../generated/activeGame';
+import { ACTIVE_GAME_ID, gameAssets, gameSounds, rawGame } from '../generated/activeGame';
 import { GameConfigSchema, type GameConfig } from './schema';
 
 function parse(): GameConfig {
@@ -12,7 +12,7 @@ function parse(): GameConfig {
 
 /** The config the game was built with. */
 export const baseGame: GameConfig = parse();
-export { ACTIVE_GAME_ID, gameAssets };
+export { ACTIVE_GAME_ID, gameAssets, gameSounds };
 
 /**
  * Keys that Firebase Remote Config may override at runtime, for A/B tests and

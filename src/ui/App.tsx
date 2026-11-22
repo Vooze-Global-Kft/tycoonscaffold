@@ -1,11 +1,11 @@
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { AppState, Text, View } from 'react-native';
+import { AppState, Platform, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { gameAssets } from '../config/game';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { initAudio } from '../services/feedback';
+import { fx } from '../services/fx';
 import { useGame } from '../state/store';
 import { Banner } from './components/Banner';
 import { Celebrations } from './components/Celebration';
@@ -15,6 +15,8 @@ import { OfflineModal, StoryModal } from './components/Modals';
 import { BusinessesPanel, ManagersPanel, PrestigePanel, ShopPanel, UpgradesPanel } from './components/Panels';
 import { TabBar } from './components/TabBar';
 import { SkiaScene } from './scene/SkiaScene';
+import { ArtGallery } from './sim/art/Gallery';
+import { PropsGallery } from './sim/art/GalleryProps';
 import { ThreeScene } from './scene/ThreeScene';
 import { DISPLAY_FONT, useTheme } from './theme';
 
@@ -102,7 +104,16 @@ function Loading() {
   );
 }
 
+/** Dev views for visual review in the web build, e.g. `?view=art`. Never set on phones. */
+const DEV_VIEW = Platform.OS === 'web' && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('view') : null;
+
 export default function App() {
+  if (DEV_VIEW === 'art') return <ArtGallery />;
+  if (DEV_VIEW === 'props') return <PropsGallery />;
+  return <Root />;
+}
+
+function Root() {
   const hydrated = useGame((s) => s.hydrated);
   const fontKey = useGame((s) => s.cfg.theme.displayFont);
   const fontSrc = fontKey ? gameAssets[fontKey] : undefined;
@@ -111,7 +122,9 @@ export default function App() {
   const ready = hydrated && (fontsLoaded || fontError !== null || !fontSrc);
   useEffect(() => {
     useGame.getState().boot();
-    initAudio();
+    // Sound, music and haptics. Both calls are safe to repeat; music waits for the settings and the audio session.
+    fx.init();
+    fx.music.start();
   }, []);
   return (
     <SafeAreaProvider>
