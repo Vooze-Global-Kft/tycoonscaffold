@@ -316,7 +316,7 @@ export function routeSchedule(cfg: HaulConfig, params: HaulParams, h: HaulState,
           const at = t + dt * (share > 0 ? take / share : 1);
           if (!first[r.ore] || at < first[r.ore].seconds) first[r.ore] = { slot: r.slot, seconds: at };
           // The slot's next rock: the route feeds its ore from the next launch.
-          if (r.next) {
+          if (r.next && !((globalThis as any).OFF ?? '').includes('A')) {
             r.ore = r.next;
             r.u = Infinity;
           }
@@ -435,8 +435,6 @@ export interface ContractBasis {
    * more than the ore's pile capacity.
    */
   pileOf: Record<string, number>;
-  /** What lies in the piles of each ore now (optional): drones recalled while the rock drills leave a stock the next launches carry. */
-  stockOf?: Record<string, number>;
   /** Ores that are the main ore (half the weight or more) of the ring of a claimed slot holding a rock of it: its slots keep bringing it. */
   mainOf: Record<string, boolean>;
   /** Seconds per launch, about: max(climb + away + land, F / R). */
@@ -474,10 +472,6 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
     if (sum > 0 && mine >= 0.5 * sum) mainOf[s.ore] = true;
   });
   const L = cfg.haul.contracts.launches;
-  const stockOf: Record<string, number> = {};
-  h.slots.forEach((s) => {
-    if (s?.claimed && s.respawnAt === null && s.rockN >= 0 && s.pile > 0 && Number.isFinite(s.pile)) stockOf[s.ore] = (stockOf[s.ore] ?? 0) + s.pile;
-  });
   for (const ore of Object.keys(pileOf)) {
     const byHaul = haulAll > 0 ? (params.F * (haulOf[ore] ?? 0)) / haulAll : 0;
     pileOf[ore] = Math.min(pileOf[ore], L * Math.max(0, byHaul - (st.perLaunch[ore] ?? 0)));
@@ -521,7 +515,7 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
       if (x > 0 && Number.isFinite(x)) potential[s.ore] = (potential[s.ore] ?? 0) + x;
     });
   }
-  return { galaxy: h.galaxy, F: params.F, recent, steady: st.perLaunch, lasting, potential, future, prices: params.prices, G: params.G, contractAdd: params.contractAdd, ringOf, lifeOf, mainOf, drillOf, pileOf, stockOf, interval, income };
+  return { galaxy: h.galaxy, F: params.F, recent, steady: st.perLaunch, lasting, potential, future, prices: params.prices, G: params.G, contractAdd: params.contractAdd, ringOf, lifeOf, mainOf, drillOf, pileOf, interval, income };
 }
 
 /**
@@ -618,7 +612,7 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   // Fourth rules check (NEW[3]): the cap reads the figure the view shows (the routes counted while
   // their rocks live), so no fresh offer needs more than raise.hi; an ore no route ships is sized from
   // what it shipped and capped against what its present rocks could give (the view says so).
-  const capFig = (ore: string) => (fig(ore) > 0 ? fig(ore) : basis.potential ? Math.min(recent[ore] ?? 0, basis.potential[ore] ?? 0) : 0);
+  const capFig = (ore: string) => ((globalThis as any).OFF ?? '').includes('B') ? reach(ore) : (fig(ore) > 0 ? fig(ore) : basis.potential ? Math.min(recent[ore] ?? 0, basis.potential[ore] ?? 0) : 0);
   const capUnits = (ore: string) => (capFig(ore) > 0 ? Math.max(1, Math.floor(L * capFig(ore) * (1 + C.raise[1]))) : Infinity);
   // Fourth rules check (NEW[2], rules:new:1): the never-free floor reads the larger of the routes as
   // they are, the life-aware figure, what the station shipped lately (raised at each warp-out to the
@@ -629,7 +623,7 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   // drawn at the cap under its floor (NEW[0]).
   const routesFloor = (ore: string) => Math.ceil(L * Math.max(basis.steady[ore] ?? 0, basis.future?.[ore] ?? 0, fig(ore)) * (1 + C.raise[0] / 2) + (basis.pileOf[ore] ?? 0));
   const neverFree = (ore: string) =>
-    Math.min(capUnits(ore), Math.max(routesFloor(ore), Math.ceil(L * (recent[ore] ?? 0) * (1 + C.raise[0] / 2) + Math.max(basis.pileOf[ore] ?? 0, basis.stockOf?.[ore] ?? 0))));
+    ((globalThis as any).OFF ?? '').includes('C') ? routesFloor(ore) : Math.min(capUnits(ore), Math.max(routesFloor(ore), Math.ceil(L * (recent[ore] ?? 0) * (1 + C.raise[0] / 2) + (basis.pileOf[ore] ?? 0))));
   const fits = (ore: string) => routesFloor(ore) <= Math.min(capUnits(ore), Math.floor(L * F * C.maxShare));
   // Decision 64, no dominated offers: two offers never want the same ores with raises closer than
   // `raiseGap`, and a larger order of the same ores never pays less.
@@ -993,7 +987,7 @@ export function resizeOrders(h: HaulState, F: number, events?: HaulEvent[], cfg?
   // one-time stock the factor does not count; what of it the larger launches can take is added to
   // what an order still needs (at most `maxShare` of those launches' holds, never less than the factor gives).
   const piles: Record<string, number> = {};
-  if (factor > 1)
+  if (factor > 1 && !((globalThis as any).OFF ?? '').includes('E'))
     for (const s of h.slots) if (s?.claimed && s.respawnAt === null && s.ore && s.pile > 0 && Number.isFinite(s.pile)) piles[s.ore] = (piles[s.ore] ?? 0) + s.pile;
   const L = cfg?.haul.contracts.launches;
   const share = cfg?.haul.contracts.maxShare ?? 0.9;
@@ -1143,7 +1137,7 @@ export function refloorOffers(cfg: HaulConfig, params: HaulParams, h: HaulState)
   // once a second ore ships, an ore with no room left in the holds) and the later of two offers of
   // the same ores whose raises are closer than `raiseGap` (checked with the final units) go; their
   // places wait for the next warp-out. A one-ore station keeps its single quota (Decision 64).
-  if (!shipsOneOre(cfg, contractBasis(cfg, params, h))) {
+  if (!((globalThis as any).OFF ?? '').includes('D') && !shipsOneOre(cfg, contractBasis(cfg, params, h))) {
     const V = contractViews(cfg, params, h);
     const raiseOf = (x: ContractView) => Math.max(...x.wants.map((w) => (w.perLaunch > 0 ? w.left / (L * w.perLaunch) - 1 : Infinity)));
     const drop = new Set<number>();
