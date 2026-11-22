@@ -10,7 +10,11 @@ ad units, firebase, assets) are kept from the existing game.json.
 Pacing targets (checked with the simulator's bot, an attentive player who never stops):
   first automation hire within 2 min, last business unlocked at 60 to 90 min,
   first prestige available at 2 to 5 h, no gap over 25 min between notable purchases in the first 3 h.
-Measured result is written down in README.md ("Balancing a new game").
+Measured (npx tsx scripts/simulate.ts space-miner --hours 12): first hire 0:49, last business
+(Sun Collector Array) 1:07, first Warp Core 2:13, longest gap 23:40 (ending 2:28), last purchase
+2:28; from there the next move is the reset (with --prestige the bot jumps at 2:49).
+Knobs are environment variables, e.g. `PB=2.6 python3 scripts/content/build-space.py`; a random
+search over them is how the defaults below were found.
 """
 import json, os
 from math import floor, log10
@@ -18,6 +22,8 @@ from math import floor, log10
 ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
 PATH = os.path.join(ROOT, 'games/space-miner/game.json')
 g = json.load(open(PATH)) if os.path.exists(PATH) else {}
+# OUT writes somewhere else (used by tuning runs, e.g. OUT=games/_tune/game.json).
+PATH = os.environ.get('OUT', PATH)
 E = lambda k, d: float(os.environ.get(k, d))
 
 
@@ -32,19 +38,20 @@ def tidy(x):
 
 
 # ---------------------------------------------------------------- businesses
-# Tier i (0-based):
-#   first unit cost   C0 * prod_{k<i} (K0 + DK*k)    the step between tiers widens: 9x, 12.5x, 16x ...
-#   output per second R0 * prod_{k<i} (K0 + DK*k) / PB    per unit, before milestones: each tier's
-#                     output grows by its cost step divided by PB, so every tier pays back PB times more
-#                     slowly than the one before (quick early wins, long goals later) without a wall
+# Tier i (0-based), all derived from the constants below:
+#   first unit cost   C_i = C0 * prod_{k<i} (K0 + DK*k)     the step between tiers widens with i
+#   payback seconds   P_i = P0 * PB^i                       first unit's cost / its output per second,
+#                     before milestones: each tier pays back PB times more slowly than the one before,
+#                     so early tiers give quick wins and later ones are long goals, without a wall
+#   output per cycle  C_i / P_i * cycle_i
 #   cycle seconds     T0 * TS^i, rounded to 0.1 s
-#   cost growth       G0 + DG*i per unit bought (later tiers get steeper, the reverse of the usual table)
-#   automation hire   the first unit's cost times H0 * HS^i
-C0, K0, DK = E('C0', 6), E('K0', 9), E('DK', 3.5)
-R0, PB = E('R0', 1.6), E('PB', 2)
-T0, TS = E('T0', 1.1), E('TS', 2.05)
-G0, DG = E('G0', 1.085), E('DG', 0.006)
-H0, HS = E('H0', 30), E('HS', 1.25)
+#   cost growth       G0 + DG*i per unit bought (later tiers get steeper)
+#   automation hire   C_i * H0 * HS^i
+C0, K0, DK = E('C0', 6), E('K0', 19), E('DK', 7)
+P0, PB = E('P0', 5.4), E('PB', 2.5)
+T0, TS = E('T0', 1.1), E('TS', 2.09)
+G0, DG = E('G0', 1.105), E('DG', 0.0075)
+H0, HS = E('H0', 32), E('HS', 1.25)
 
 BUSINESSES = [
     # id, name, icon, flavor, manager name, manager icon
@@ -58,17 +65,16 @@ BUSINESSES = [
 ]
 
 businesses = []
-cost, rate = C0, R0
+cost = C0
 for i, (bid, name, icon, flavor, mname, micon) in enumerate(BUSINESSES):
     if i > 0:
-        step = K0 + DK * (i - 1)
-        cost *= step
-        rate *= step / PB
+        cost *= K0 + DK * (i - 1)
     cycle = round(T0 * TS ** i, 1)
+    payback = P0 * PB ** i
     businesses.append({
         'id': bid, 'name': name, 'icon': icon, 'flavor': flavor,
         'baseCost': tidy(cost), 'costGrowth': round(G0 + DG * i, 3),
-        'baseRevenue': tidy(rate * cycle), 'cycleSeconds': cycle,
+        'baseRevenue': tidy(cost / payback * cycle), 'cycleSeconds': cycle,
         'managerCost': tidy(cost * H0 * HS ** i), 'managerName': mname, 'managerIcon': micon,
     })
 g['businesses'] = businesses
@@ -83,13 +89,19 @@ eco['tapPercentOfIncome'] = 0.03
 # Our own milestone ladder: speed x2 at 15 and 40, value x2 at 25, 60 and 100, then value x REP_MULT
 # every REP_EVERY units. REP_MULT^(1/REP_EVERY) sits just under the cost growth, so a business's
 # payback time drifts up slowly instead of hitting a wall: the run stays alive until prestige.
-REP_EVERY, REP_MULT = int(E('REP_EVERY', 25)), E('REP_MULT', 2)
+REP_EVERY, REP_MULT = int(E('REP_EVERY', 25)), E('REP_MULT', 1.75)
 eco['milestones'] = [
     {'owned': 15, 'speedMult': 2}, {'owned': 25, 'revenueMult': 2}, {'owned': 40, 'speedMult': 2},
     {'owned': 60, 'revenueMult': 2}, {'owned': 100, 'revenueMult': 2},
 ]
 eco['milestoneRepeat'] = {'every': REP_EVERY, 'revenueMult': REP_MULT}
-eco['prestige'] = {'threshold': E('PRESTIGE', 3e9), 'scale': 1, 'bonusPerPoint': 0.02}
+# First Warp Core when lifetime earnings reach the threshold: the bot gets there at 2 h 13 m
+# (lifetime 6.6e14 at 2 h 15 m), shortly before the run slows to a crawl (about 2 h 30 m: nothing
+# then pays back within 25 minutes). Cores grow with the square root of lifetime earnings, so the
+# first jump the bot takes (3 cores at 2 h 49 m) is worth x1.75 at 25 % each, and later runs keep
+# going: with --prestige, 5 resets and 48 cores in 24 h, each run longer than the last.
+BONUS = E('BONUS', 0.25)
+eco['prestige'] = {'threshold': E('PRESTIGE', 6e14), 'scale': 1, 'bonusPerPoint': BONUS}
 eco['offline'] = {'maxHours': 6, 'efficiency': 0.4, 'minSecondsToShow': 60}
 eco['boost'] = {'multiplier': 2, 'minutesPerAd': 20, 'maxMinutes': 180}
 eco['daily'] = {'gems': [5, 10, 10, 15, 20, 25, 60]}
@@ -98,15 +110,18 @@ eco['bonus'] = {'name': 'Comet Shard', 'minSec': 50, 'maxSec': 120, 'incomeSecon
 eco['combo'] = {'tapsPerLevel': 14, 'maxMultiplier': 4, 'decayMs': 1500, 'name': 'OVERDRIVE'}
 
 # ---------------------------------------------------------------- upgrades
-# Each business has one x3 upgrade at UF first-unit costs; four fleet-wide x2 upgrades sit on a
-# geometric ladder (ALL0, x ALLSTEP each) to fill the hours after the last business opens.
-UF, ALL0, ALLSTEP = E('UF', 900), E('ALL0', 2e6), E('ALLSTEP', 14)
+# Each business has one x3 upgrade at UF times its first unit's cost. The fleet-wide x2 upgrades
+# (they multiply all income) sit on a geometric ladder that starts at ALLF times the last tier's
+# first-unit cost and grows ALLSTEP per step, to fill the hours after the last business opens.
+UF, ALLF, ALLSTEP = E('UF', 2750), E('ALLF', 0.078), E('ALLSTEP', 10.5)
+ALL0 = businesses[-1]['baseCost'] * ALLF
 UPGRADES = {
     'drill': ('Laser Bits', '🔦'), 'rover': ('Fusion Wheels', '⚙️'), 'refinery': ('Plasma Crucible', '🔥'),
     'freighter': ('Cargo Folding', '📦'), 'moon_base': ('Low-G Conveyors', '🛤️'), 'ring_yard': ('Autowelders', '🔧'),
     'sun_array': ('Mirror Polish', '🪞'),
 }
-SHARED = [('Fleet Telemetry', '📡'), ('Quantum Logistics', '🧬'), ('Gravity Slingshots', '🌌'), ('Hyperlane Charter', '🛸')]
+SHARED = [('Fleet Telemetry', '📡'), ('Quantum Logistics', '🧬'), ('Gravity Slingshots', '🌌'), ('Hyperlane Charter', '🛸'),
+          ('Dyson Lattice', '🕸️'), ('Pocket Wormholes', '🕳️'), ('Star Forge', '🌟')][:int(E('NALL', 7))]
 ups = []
 for b in businesses:
     name, icon = UPGRADES[b['id']]
@@ -122,13 +137,15 @@ g['strings'] = {
     'currencyName': 'Credits', 'currencySymbol': '₵', 'currencyIcon': '🪙',
     'gemName': 'Dark Matter', 'gemIcon': '🔮',
     'prestigeName': 'Warp Cores', 'prestigeIcon': '🌀', 'prestigeVerb': 'Jump Galaxy',
-    'prestigeDescription': 'Warp to a new galaxy. Your fleet stays behind, but each Warp Core adds 2% to all output for good.',
+    'prestigeDescription': f'Warp to a new galaxy. Your fleet stays behind, but each Warp Core adds {BONUS * 100:g}% to all output for good.',
     'managerTab': 'AI Pilots', 'upgradeTab': 'Tech', 'tapHint': 'Tap the asteroid!',
 }
 g['cast'] = {
     'aria': {'kind': 'manager', 'species': 'robot', 'skin': '#9FB4D9', 'eyes': '#00E5FF', 'outfit': '#2B3A78', 'accent': '#00E5FF', 'outfitStyle': 'spacesuit'},
     'vega': {'kind': 'manager', 'skin': '#C68B59', 'hair': '#1E1A2E', 'hairStyle': 'ponytail', 'outfit': '#E8ECF8', 'accent': '#7B5CFF', 'outfitStyle': 'spacesuit', 'hat': 'helmet'},
     'grub': {'kind': 'customer', 'species': 'alien', 'body': 'small', 'outfit': '#3DDC97', 'accent': '#FFD166', 'outfitStyle': 'overalls', 'glasses': 'goggles'},
+    # A built-in preset as the base, recoloured so it is this game's own person.
+    'kelvin': {'preset': 'freeze', 'hair': '#F2F2F2', 'outfit': '#7FD1AE', 'accent': '#2B3A78', 'glasses': 'goggles'},
     'rook': {'kind': 'manager', 'skin': '#F1C7A5', 'hair': '#B0B6C8', 'hairStyle': 'slick', 'outfit': '#3A2F5C', 'accent': '#FF4D6D', 'outfitStyle': 'suit', 'neck': 'tie', 'brows': 'smug'},
 }
 g['characters'] = [
@@ -141,7 +158,7 @@ g['story'] = [
     {'id': 'first_pilot', 'characterId': 'ai', 'trigger': {'type': 'hired', 'businessId': 'drill'},
      'lines': ['Unit D-1 is online. The drill now runs without you.', 'Every machine can have a pilot. Pilots never take a lunch break.'], 'rewardGems': 5},
     {'id': 'refinery', 'characterId': 'ai', 'trigger': {'type': 'owned', 'businessId': 'refinery', 'count': 1},
-     'lines': ['A refinery! Raw rock is cheap. Shiny metal is not.', 'Every machine speeds up at 15 and 60 units. Keep building.'], 'rewardGems': 5},
+     'lines': ['A refinery! Raw rock is cheap. Shiny metal is not.', 'Every machine runs twice as fast at 15 and 40 units. Keep building.'], 'rewardGems': 5},
     {'id': 'rival', 'characterId': 'rival', 'title': 'A Visitor', 'trigger': {'type': 'lifetimeEarnings', 'amount': 2e6},
      'lines': ['Director Rook, Consolidated Rocks. We own this sector. Mostly.', 'Sell me your little operation now, while it is still little.'], 'rewardGems': 10},
     {'id': 'moon', 'characterId': 'ai', 'title': 'Base Camp', 'trigger': {'type': 'owned', 'businessId': 'moon_base', 'count': 1},
@@ -149,16 +166,16 @@ g['story'] = [
     {'id': 'array', 'characterId': 'rival', 'title': 'Show-off', 'trigger': {'type': 'owned', 'businessId': 'sun_array', 'count': 1},
      'lines': ['Mirrors around a star? That is... actually rather clever.', 'This is not over, Miner.'], 'rewardGems': 15},
     {'id': 'first_jump', 'characterId': 'ai', 'title': 'New Galaxy', 'trigger': {'type': 'prestige', 'count': 1},
-     'lines': ['Jump complete. New galaxy, same debt-free you.', 'Your Warp Cores make every machine faster here.'], 'rewardGems': 20},
+     'lines': ['Jump complete. New galaxy, same debt-free you.', f'Every Warp Core adds {BONUS * 100:g}% to everything we make.'], 'rewardGems': 20},
 ]
 
 # ---------------------------------------------------------------- meta: a little, so classic mode exercises it
 # Cards: classic games have no transport, sales or rush, so only station, tap, offline, bonus and
-# global stats are used. One earn-only chest on a free timer (never sold), three mission templates.
+# global stats are used. Every card is a code-drawn person: icon "char:<id>" with a look in g['cast']. One earn-only chest on a free timer (never sold), three mission templates.
 g['meta'] = {
     'cards': [
         {'id': 'grub', 'name': 'Grub', 'title': 'Rock Sniffer', 'icon': 'char:grub', 'rarity': 'common', 'stat': 'stationValue', 'flavor': 'Can smell iron through a kilometre of rock.'},
-        {'id': 'tapper', 'name': 'Pocket Driller', 'title': 'Hand Tool', 'icon': '🪛', 'rarity': 'common', 'stat': 'tapValue', 'flavor': 'Small, loud and very satisfying.'},
+        {'id': 'kelvin', 'name': 'Professor Kelvin', 'title': 'Drill Scientist', 'icon': 'char:kelvin', 'rarity': 'common', 'stat': 'tapValue', 'flavor': 'Swears the asteroid hums back if you tap it right.'},
         {'id': 'vega', 'name': 'Commander Vega', 'title': 'Base Commander', 'icon': 'char:vega', 'rarity': 'rare', 'stat': 'offlineEarnings', 'flavor': 'Keeps the night shift honest.'},
         {'id': 'aria', 'name': 'ARIA Prime', 'title': 'Fleet Mind', 'icon': 'char:aria', 'rarity': 'epic', 'stat': 'globalIncome', 'flavor': 'Runs a thousand ships and still says please.'},
     ],
