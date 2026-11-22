@@ -193,7 +193,8 @@ the person who signs `fingerprint.human`.
 
 (a) **Owns**: `scripts/content/build-space.py`, `scripts/content/haul-bot.ts` (new),
 `scripts/simulate.ts` (the haul branch; it is otherwise unchanged), `games/space-miner/game.json`
-(generated, never by hand), `src/ui/haul/strings.ts`, section 2.12 of the specification.
+(generated, never by hand), `src/ui/haul/strings.ts`. (The specification stays the lead's file: hand
+the 2.12 tables to the lead.)
 
 (b) **Delivers**: section 8: the bot (gestures counted), `npm run simulate -- space-miner --hours 12
 --prestige` reporting every target, the calibration of the provisional numbers inside their (tune)
