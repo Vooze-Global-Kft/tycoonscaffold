@@ -161,6 +161,15 @@ def seam_report(x):
         lv, sp = pair(mono[s - n:s], mono[s:s + n])
         inner_level.append(abs(lv))
         inner_spec.append(sp)
+    # level steps on a fine grid (5 ms hop), so the downbeats inside the piece,
+    # where a loud attack follows a decaying bar, are measured the same way the
+    # seam is: the start of a loop is a downbeat too.
+    c = np.concatenate(([0.0], np.cumsum(mono * mono)))
+    hop = int(0.005 * SR)
+    starts = np.arange(n, len(mono) - n, hop)
+    e_a = (c[starts] - c[starts - n]) / n
+    e_b = (c[starts + n] - c[starts]) / n
+    fine = np.abs(10.0 * np.log10((e_b + 1e-12) / (e_a + 1e-12)))
     d = np.abs(np.diff(mono))
     jump = abs(float(mono[0] - mono[-1]))
     return {
@@ -168,6 +177,8 @@ def seam_report(x):
         'spec_median': float(np.median(inner_spec)), 'spec_p95': float(np.percentile(inner_spec, 95)),
         'spec_pct': float(np.mean(np.array(inner_spec) <= spec) * 100.0),
         'level_p95': float(np.percentile(inner_level, 95)),
+        'level_max': float(fine.max()), 'level_p99': float(np.percentile(fine, 99)),
+        'level_pct': float(np.mean(fine <= abs(level)) * 100.0),
         'jump': jump, 'jump_p999': float(np.percentile(d, 99.9)), 'jump_max': float(d.max()),
     }
 
@@ -225,10 +236,14 @@ def check_music(a, seam, meta, size):
         err.append('DC %.4f' % a['dc'])
     if meta.get('channels') != '2':
         warn.append('%s channel(s)' % meta.get('channels'))
-    if abs(seam['level_db']) > SEAM_LEVEL_FAIL_DB:
-        err.append('seam level jump %+.1f dB' % seam['level_db'])
-    elif abs(seam['level_db']) > max(SEAM_LEVEL_WARN_DB, seam['level_p95']):
-        warn.append('seam level jump %+.1f dB' % seam['level_db'])
+    # A loop starts on a downbeat, so a level step at the seam is fine as long
+    # as the piece has steps like it inside (its own downbeats); it fails only
+    # when it is bigger than every step inside and bigger than the absolute limit.
+    lv = abs(seam['level_db'])
+    if lv > SEAM_LEVEL_FAIL_DB and lv > seam['level_max'] + 1.0:
+        err.append('seam level jump %+.1f dB (largest inside %.1f)' % (seam['level_db'], seam['level_max']))
+    elif lv > SEAM_LEVEL_WARN_DB and lv > seam['level_p99']:
+        warn.append('seam level jump %+.1f dB (p%.1f of steps inside)' % (seam['level_db'], seam['level_pct']))
     if seam['spec_pct'] > 99.5:
         err.append('seam spectral jump %.1f dB (worse than any bar line inside)' % seam['spec_db'])
     elif seam['spec_pct'] > 97.0:
@@ -341,7 +356,16 @@ def draw_cell(img, draw, fonts, x0, y0, w, h, item):
     note = '; '.join(item['err'] + item['warn'])
     if note:
         tw = draw.textlength(note, font=f_s)
-        draw.text((x0 + w - 6 - min(tw, w - 12), y0 + 5 if tw < w - 160 else y0 + 20), note[:70], font=f_s, fill=state)
+        name_end = x0 + 20 + draw.textlength(item['name'], font=f_b) + 10
+        if x0 + w - 6 - tw >= name_end:            # fits on the title line, right-aligned
+            draw.text((x0 + w - 6 - tw, y0 + 5), note, font=f_s, fill=state)
+        else:                                       # second line, after the numbers, cut to fit
+            nx = x0 + 6 + draw.textlength(info, font=f_s) + 12
+            if nx + draw.textlength(note, font=f_s) > x0 + w - 6:
+                while note and nx + draw.textlength(note + '...', font=f_s) > x0 + w - 6:
+                    note = note[:-1]
+                note += '...'
+            draw.text((nx, y0 + 20), note, font=f_s, fill=state)
     pad, top = 6, 36
     pw = w - 2 * pad
     wave_h = 46
@@ -562,9 +586,9 @@ def main(argv=None):
                      a['hf_db'], dsp.note_name(a['pitch']), a['onset_ms'], notes))
             if item['music']:
                 s = item['seam']
-                print('%-24s loop seam: level %+.1f dB, spectrum %.1f dB (inside the loop: median %.1f, p95 %.1f; '
+                print('%-24s loop seam: level %+.1f dB (downbeat-sized steps inside: p99 %.1f, max %.1f), spectrum %.1f dB (inside the loop: median %.1f, p95 %.1f; '
                       'the seam is at p%.0f), step %.4f (inside: p99.9 %.4f, max %.4f); %s Hz, %s ch, %.0f kb/s, %.0f KB'
-                      % ('', s['level_db'], s['spec_db'], s['spec_median'], s['spec_p95'], s['spec_pct'], s['jump'],
+                      % ('', s['level_db'], s['level_p99'], s['level_max'], s['spec_db'], s['spec_median'], s['spec_p95'], s['spec_pct'], s['jump'],
                          s['jump_p999'], s['jump_max'], item['meta'].get('sample_rate'), item['meta'].get('channels'),
                          size * 8 / 1000.0 / a['duration'], size / 1000.0))
         line = '%s: %d effect(s), %.1f s, %.2f MB of WAV; folder %.2f MB' % (rel, len(wavs), wav_seconds, wav_bytes / 1e6, folder_bytes / 1e6)

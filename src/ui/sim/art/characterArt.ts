@@ -259,6 +259,7 @@ function hairClipY(l: ResolvedLook): number | null {
     case 'cap':
     case 'tophat':
     case 'straw':
+    case 'beanie':
       return -15;
     case 'helmet':
       return 9;
@@ -350,6 +351,18 @@ function hatLayers(l: ResolvedLook): Layers {
           p.stroke(curve([[1, -30], [4, -20], [3, -10.8]]), s, 1.4);
           p.shape(circle(0.5, -30.2, 2.3), c, { ow: 1.8, shade: false });
           p.shine(arc(-10, -15, 14, 12, 210, 50), lightOf(c), 2.2, 0.8);
+        },
+      };
+    case 'beanie':
+      return {
+        front: (p) => {
+          p.shape(circle(2, -36.5, 5.6), lightOf(l.accent === c ? WHITE : l.accent, 0.3), { ow: 2.6, shade: 1.4 });
+          p.shape(blob([[-29, -9, 0], [-30, -17], [-25.5, -26.5], [-14.5, -33], [0, -35], [14.5, -33], [25.5, -26.5], [30, -17], [29, -9, 0], [0, -12]]), c, { shade: 2.8 });
+          for (const x of [-12, 0, 12]) p.stroke(curve([[x * 1.15, -14], [x * 1.08, -24], [x * 0.7, -32]]), s, 1.3);
+          const cuff = blob([[-30.5, -4.5, 0], [-31.5, -15.5, 0], [0, -19], [31.5, -15.5, 0], [30.5, -5.5, 0], [0, -8.5]]);
+          p.shape(cuff, mix(c, s, 0.35), { shade: 1.6 });
+          for (const x of [-24, -16, -8, 0, 8, 16, 24]) p.stroke(line(x, -16.4 + Math.abs(x) * 0.1, x, -9.2 + Math.abs(x) * 0.08), s, 1.3);
+          p.shine(arc(-10, -18, 14, 12, 210, 50), lightOf(c), 2.2, 0.8);
         },
       };
     case 'tophat':
@@ -750,11 +763,16 @@ function paintHead(p: Pen, l: ResolvedLook) {
 }
 
 /** Everything above the neck. `ow` is the outline width (thinner for big portraits). */
-export function drawHeadPictures(l: ResolvedLook, ow = 3.4): HeadPictures {
+export function drawHeadPictures(l: ResolvedLook, ow = 3.4, bounds?: Bounds): HeadPictures {
   const rec = (fn: (p: Pen) => void) => record(fn, OUTLINE, ow);
+  const measured = (fn: (p: Pen) => void) => (p: Pen) => {
+    p.box = bounds ?? null;
+    fn(p);
+    p.box = null;
+  };
   return {
-    headBack: rec((p) => paintHeadBack(p, l)),
-    head: rec((p) => paintHead(p, l)),
+    headBack: rec(measured((p) => paintHeadBack(p, l))),
+    head: rec(measured((p) => paintHead(p, l))),
     eyes: rec((p) => drawEyes(p, l)),
     eyesShut: rec((p) => drawEyesShut(p, l)),
     mouthSmile: rec((p) => drawMouth(p, l, 'smile')),
@@ -1065,15 +1083,20 @@ export interface CharacterArt extends HeadPictures {
   hand: SkPicture;
   legF: SkPicture;
   legB: SkPicture;
+  /** The top of the head, hair and hat, in head units above the middle of the head (a negative number). */
+  top: number;
 }
 
 function buildCharacterArt(l: ResolvedLook, key: string): CharacterArt {
   const d = dimsFor(l);
+  const bounds = emptyBounds();
+  const head = drawHeadPictures(l, 3.4, bounds);
   return {
     key,
     look: l,
     dims: d,
-    ...drawHeadPictures(l),
+    top: Number.isFinite(bounds.t) ? bounds.t : -30,
+    ...head,
     torso: record((p) => drawTorso(p, l, d)),
     arm: record((p) => drawArm(p, l, d)),
     hand: record((p) => drawHand(p, l)),

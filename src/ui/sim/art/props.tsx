@@ -1427,7 +1427,7 @@ const DISH_KEYS = Array.from({ length: MAX_PASS_DISHES }, (_, i) => `d${i}`);
 const PASS_KEYS = ['root', 'bell', 'ringL', 'ringR', ...DISH_KEYS] as readonly string[];
 
 /** How much higher the next dish sits when stacked on one of this kind, in units. */
-const DISH_RISE: Record<DishKind, number> = { pizza: 3.4, plate: 6.5, bites: 7, bowl: 9.5, cup: 9, dessert: 15 };
+const DISH_RISE: Record<DishKind, number> = { pizza: 5.2, plate: 6.5, bites: 7, bowl: 9.5, cup: 9, dessert: 15 };
 
 function drawCounter(p: Pen, c: ArtPalette, len: number) {
   const h = len / 2;

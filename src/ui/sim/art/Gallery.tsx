@@ -169,22 +169,32 @@ function PosesPage({ clock }: { clock: SharedValue<number> }) {
   const look = pickLook({ preset: 'marco' });
   const dish = (param('dish') as DishKind) ?? 'pizza';
   const big = num('zoom', 2.5);
-  const ch = 168;
-  const h = Math.ceil(POSES.length / 2) * ch + 20;
+  const ch = num('ch', 236);
+  const h = Math.ceil(POSES.length / 2) * ch + 10;
+  const cell = (i: number) => ({ cx: (i % 2) * (W / 2), floor: Math.floor(i / 2) * ch + ch - 22 });
+  const seated = (p: Pose) => p === 'sit-wait' || p === 'sit-eat';
   return (
     <View style={{ width: W, height: h }}>
+      {POSES.map((p, i) => {
+        const { cx, floor } = cell(i);
+        return seated(p) ? (
+          <View key={p}>
+            <Stool x={cx + 34} y={floor} scale={SCENE} />
+            <Stool x={cx + 118} y={floor} scale={big * SCENE} />
+          </View>
+        ) : null;
+      })}
       <Canvas style={{ width: W, height: h }}>
         {POSES.map((p, i) => {
-          const cx = (i % 2) * (W / 2);
-          const cy = Math.floor(i / 2) * ch;
+          const { cx, floor } = cell(i);
           return [
-            <Character key={p + 's'} look={look} x={cx + 36} y={cy + ch - 26} clock={clock} pose={p} dish={dish} scale={SCENE} />,
-            <Character key={p + 'b'} look={look} x={cx + 122} y={cy + ch - 26} clock={clock} pose={p} dish={dish} scale={big * SCENE} />,
+            <Character key={p + 's'} look={look} x={cx + 34} y={floor} clock={clock} pose={p} dish={dish} scale={SCENE} />,
+            <Character key={p + 'b'} look={look} x={cx + 118} y={floor} clock={clock} pose={p} dish={dish} scale={big * SCENE} />,
           ];
         })}
       </Canvas>
       {POSES.map((p, i) => (
-        <Label key={p} x={(i % 2) * (W / 2)} y={Math.floor(i / 2) * ch + ch - 20} w={W / 2}>
+        <Label key={p} x={cell(i).cx} y={cell(i).floor + 5} w={W / 2}>
           {p}
         </Label>
       ))}

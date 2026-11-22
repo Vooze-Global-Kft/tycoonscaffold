@@ -92,6 +92,8 @@ export interface RigConfig {
   faceX: number;
   /** Seconds added to the clock so a crowd does not blink and breathe in step. */
   offset: number;
+  /** Top of the head, hair and hat in head units (negative): a tossed pizza clears it. */
+  top: number;
 }
 
 /** out = parent * translate(tx, ty) * rotate(rot) * scale(sx, sy) */
@@ -281,47 +283,42 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   }
   p = w[4]; // toss
   if (p > 0) {
-    const u = (t / 1.2) % 1;
-    let a = 2.3;
-    let s = 0.35;
-    let h = 0;
+    // One-handed pizzaiolo toss, 1.3 s: the dough lands on the raised fist (u = 0), the hand gives
+    // with the weight and winds up, flicks it high over the hat (u = 0.22), and waits for it.
+    const u = (t / 1.3) % 1;
+    let a = 2.75; // front arm: raised, a little forward
+    let s = 0.12;
     let b = 0;
     let sq = 0;
     let look = 0;
-    if (u < 0.16) {
-      const k = ease(u / 0.16);
-      a = 1.75 + 0.75 * k;
-      s = 0.15 + 0.5 * k;
-      b = -1.6 * (1 - k) + 1.8 * k;
-      sq = -0.05 * (1 - k) + 0.05 * k;
-    } else if (u < 0.84) {
-      const k = (u - 0.16) / 0.68;
-      h = 34 * 4 * k * (1 - k);
-      const settle = ease(k * 3);
-      a = 2.5 - 0.2 * settle;
-      s = 0.65 - 0.3 * settle + 0.3 * ease((k - 0.8) * 5);
-      b = 1.8 * (1 - settle);
-      sq = 0.05 * (1 - settle);
+    if (u < 0.17) {
+      const k = Math.sin((Math.PI * u) / 0.17);
+      a -= 0.62 * k;
+      s -= 0.3 * k;
+      b = -1.6 * k;
+      sq = -0.045 * k;
+    } else if (u < 0.27) {
+      const k = Math.sin((Math.PI * (u - 0.17)) / 0.1);
+      a += 0.22 * k;
+      s += 0.22 * k;
+      b = 1.4 * k;
+      sq = 0.04 * k;
+    }
+    if (u > 0.22) {
+      const k = (u - 0.22) / 0.78;
+      doughH += p * 4 * k * (1 - k);
       look = Math.sin(Math.PI * k);
-    } else {
-      const k = (u - 0.84) / 0.16;
-      const e = ease(k);
-      a = 2.3 - 0.55 * e;
-      s = 0.65 - 0.5 * e;
-      b = -1.6 * Math.sin(Math.PI * k * 0.5);
-      sq = -0.05 * Math.sin(Math.PI * k * 0.5);
     }
     aF += p * a;
-    aB -= p * a;
     sF += p * s;
-    sB += p * s;
+    aB += p * (-0.75 - 0.08 * Math.sin(t * 2.4));
+    sB += p * -0.12;
     by += p * b;
     bs += p * sq;
-    ht -= p * 0.12 * look;
+    ht -= p * 0.1 * look;
     hy += p * 0.5 * look;
     wDough += p;
-    doughH += p * h;
-    doughSpin = u * TAU * 2;
+    doughSpin = u * TAU * 3;
   }
   const seat = SEAT_HEIGHT - d.leg;
   p = w[5]; // sit-wait
@@ -521,17 +518,26 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   pop(o.tray, R, hFx + 5, hFy - 4.6, bt * 0.5, wTray);
   if (wDough < 0.02) pop(o.dough, R, 0, 0, 0, 0);
   else {
+    // `doughH` is 0..1 of the flight; the peak clears the top of the hat by a dough's thickness.
+    const rest = hFy - 5.5;
+    const peak = hcy + c.top * hs - 14;
+    const rise = rest - peak > 28 ? rest - peak : 28;
     const wob = Math.sin(doughSpin);
-    const rest = (hFy + hBy) * 0.5 - 7.5;
-    put(o.dough, R, (hFx + hBx) * 0.5 + 1.5 * wob, rest - doughH, 0.14 * wob, wDough * (1 + 0.06 * Math.cos(doughSpin)), wDough * (1 + 0.5 * Math.sin(doughSpin * 0.5) ** 2));
+    const fly = doughH / (wDough > 0.02 ? wDough : 1);
+    put(o.dough, R, hFx + 4 + 1.2 * wob * fly, rest - rise * doughH, 0.16 * wob * fly, wDough * (1 - 0.12 * fly * Math.cos(doughSpin) ** 2), wDough * (1 + 0.7 * fly * Math.sin(doughSpin) ** 2));
   }
   pop(o.bowl, R, hBx + 1.5, hBy + 1, bt, wBowl);
-  pop(o.spoon, R, hFx, hFy, 0.2 * stir, wBowl);
+  // The spoon leans from the stirring hand down into the bowl.
+  pop(o.spoon, R, hFx, hFy, 0.75 + 0.22 * stir, wBowl);
   pop(o.bite, R, hFx + 1, hFy - 1.5, 0, wBite);
 
   // Little effects around the head.
   if (wBub < 0.02) pop(o.bubble, R, 0, 0, 0, 0);
-  else pop(o.bubble, R, hcx + 25 * hs, hcy - 33 * hs + 1.3 * Math.sin(t * 1.9), 0.04 * Math.sin(t * 1.3), wBub * (1 + 0.035 * Math.sin(t * 3.1)));
+  else {
+    // Up and to the face side of the head; a tall hat pushes it higher and further out.
+    const tall = c.top < -30 ? -30 - c.top : 0;
+    pop(o.bubble, R, hcx + (27 + 0.45 * tall) * hs, hcy - (34 + 0.55 * tall) * hs + 1.3 * Math.sin(t * 1.9), 0.04 * Math.sin(t * 1.3), wBub * (1 + 0.035 * Math.sin(t * 3.1)));
+  }
   if (wZ < 0.02) {
     pop(o.z1, R, 0, 0, 0, 0);
     pop(o.z2, R, 0, 0, 0, 0);

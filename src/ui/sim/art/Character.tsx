@@ -85,6 +85,7 @@ export function Character({ look, x, y, facing = 1, pose = 'idle', clock, scale 
       mouthY: mouthYFor(art.look),
       faceX: FACE_SHIFT,
       offset: (((seed ?? hashString(art.key)) % 9973) / 9973) * 40,
+      top: art.top,
     }),
     [art, seed],
   );

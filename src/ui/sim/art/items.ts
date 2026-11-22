@@ -243,7 +243,7 @@ export function commonArt(): CommonArt {
       p.shine(line(-7, 0, -5.4, 2.8), '#FFFFFF', 1.5, 0.85);
     }),
     spoon: record((p) => {
-      const h = line(0, -2, 2.2, 9.5);
+      const h = line(0, -3.5, 1.2, 12.5);
       p.stroke(h, OUTLINE, 4.4);
       p.stroke(h, '#C98B4A', 2);
     }),

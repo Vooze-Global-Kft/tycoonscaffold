@@ -376,6 +376,8 @@ export function randomLook(seed: number, kind: CharacterKind = 'customer'): Char
 
   if (kind === 'chef') {
     look.hat = weighted(r, [['toque', 6], ['bandana', 2], ['cap', 1]] as const);
+    // Big, wild or long hair pokes out of a toque in odd shapes: tidy it away.
+    if (hairStyle === 'big' || hairStyle === 'wild' || hairStyle === 'long' || hairStyle === 'spiky') look.hairStyle = a ? 'short' : 'bun';
     look.accent = pick(r, ['#E63946', '#2A9D8F', '#F28C38', '#4C8FE0', '#57B26A']);
     if (look.hat === 'bandana' || look.hat === 'cap') look.hatColor = look.accent;
     if (r() < 0.45) look.apron = true;
@@ -385,7 +387,8 @@ export function randomLook(seed: number, kind: CharacterKind = 'customer'): Char
     look.outfit = pick(r, VESTS);
     look.accent = pick(r, ['#E63946', '#F4A261', '#2A9D8F', '#FFD166', '#EF7FA8']);
     look.neck = r() < 0.75 ? 'bowtie' : 'tie';
-    if (r() < 0.3) look.apron = true;
+    // Most waiters wear the long white bistro apron: with the dark vest it says "waiter" at a glance.
+    if (r() < 0.6) look.apron = true;
     look.pants = pick(r, ['#343A55', '#3A3340', '#3D3A45']);
   } else if (kind === 'manager') {
     look.outfit = pick(r, ['#55608F', '#6B4A6E', '#3F6B63', '#7A4A3A', '#4A4458', '#8A5A8F']);
@@ -403,9 +406,10 @@ export function randomLook(seed: number, kind: CharacterKind = 'customer'): Char
     if (look.outfitStyle === 'suit') look.neck = r() < 0.5 ? 'tie' : 'bowtie';
     else if (r() < 0.12) look.neck = 'scarf';
     const hat: Hat = a
-      ? weighted(r, [['none', 8], ['cap', 1.6], ['tophat', 0.3], ['straw', 0.4]] as const)
-      : weighted(r, [['none', 8], ['bow', 1.6], ['straw', 0.6], ['cap', 0.5]] as const);
+      ? weighted(r, [['none', 8], ['cap', 1.6], ['beanie', 1], ['tophat', 0.3], ['straw', 0.4]] as const)
+      : weighted(r, [['none', 8], ['bow', 1.6], ['beanie', 0.8], ['straw', 0.6], ['cap', 0.5]] as const);
     if (hat !== 'none') look.hat = hat;
+    if (hat === 'beanie') look.hatColor = pick(r, OUTFITS);
   }
   return look;
 }

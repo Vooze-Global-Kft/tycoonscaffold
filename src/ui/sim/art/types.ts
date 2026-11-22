@@ -20,7 +20,7 @@ export type BodyShape = (typeof BODY_SHAPES)[number];
 export const HAIR_STYLES = ['short', 'slick', 'curly', 'long', 'bob', 'bun', 'braids', 'ponytail', 'spiky', 'big', 'wild', 'bald'] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
 
-export const HATS = ['none', 'toque', 'bandana', 'cap', 'tophat', 'bow', 'headscarf', 'helmet', 'straw', 'crown', 'minitoque'] as const;
+export const HATS = ['none', 'toque', 'bandana', 'cap', 'tophat', 'bow', 'headscarf', 'helmet', 'straw', 'crown', 'minitoque', 'beanie'] as const;
 export type Hat = (typeof HATS)[number];
 
 export const OUTFIT_STYLES = ['tee', 'chef', 'vest', 'suit', 'dress', 'coat', 'overalls', 'spacesuit', 'robe'] as const;
