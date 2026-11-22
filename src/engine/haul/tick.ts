@@ -281,6 +281,14 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
     for (const i of topUpBoard(cfg, h, p, basis)) later.push({ type: 'contractNew', contract: C.board[i], index: i });
     // Decision 64: no green offers (an offer the routes now meet untouched asks the never-free floor).
     refloorOffers(cfg, p, h);
+    // (An offer the refloor took off the board was never offered: its event goes, the others follow the board.)
+    for (let i = later.length - 1; i >= 0; i--) {
+      const e = later[i];
+      if (e.type !== 'contractNew') continue;
+      const at = C.board.indexOf(e.contract);
+      if (at < 0) later.splice(i, 1);
+      else e.index = at;
+    }
   } else if (h.galaxy > 0 ? (C.measured ?? 0) >= 3 : d.stats.launches >= cfg.haul.contracts.unlockLaunches && h.clock >= cfg.haul.contracts.unlockClock - EPS) {
     // From galaxy 2 on the board opens with ordinary offers once three launches are measured (Decision 56).
     h.contracts = openBoard(cfg, h, p.F, p);
@@ -598,7 +606,7 @@ export function advanceHaul(cfg: HaulConfig, g: HaulGame, dt: number, now: numbe
   const flareMax = cfg.haul.flare.maxStored;
   let rest = Math.min(dt, MAX_TICK);
   let p = draftParams(cfg, d);
-  resizeOrders(d.h, p.F, d.events);
+  resizeOrders(d.h, p.F, d.events, cfg);
   for (let guard = 0; rest > 1e-12 && guard < 200_000; guard++) {
     const s = Math.min(rest, Math.max(1e-6, stepBound(p, d.h, flareMax)));
     flow(cfg, d, p, s);

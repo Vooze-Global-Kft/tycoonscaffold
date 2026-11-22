@@ -92,20 +92,29 @@ describe('Decision 64: the pace figures count a rock only while it lives', () =>
     const units0 = 1.5 * ((p.F * x0) / R);
     h.slots[0].pile = 0;
     h.slots[0].life = units0 / p.slots[0].r;
+    // Fourth rules check (the lead's ruling on NEW[0], finish-decisions after 64): a slot whose next
+    // rock is most likely the same ore keeps feeding it after its rock dries (ring 1 is all iron).
+    const same = H.routeSchedule(cfg, p, h, L);
+    expect(same.byLaunch[s0.ore][L - 1]).toBeCloseTo(same.byLaunch[s0.ore][0], 6);
+    expect(same.first[s0.ore]?.slot).toBe(0);
+    // A rock that is not its ring's main ore (here copper on a ring-1 slot) comes back as the ring's
+    // main ore (iron): copper stops counting once it dries, and the slot feeds iron after it.
+    h.slots[0].ore = 'copper';
+    const ore0 = 'copper';
     const sch = H.routeSchedule(cfg, p, h, L);
     const plain = H.steadyPerLaunch(p, h).perLaunch;
     // Every launch still carries at most one hold.
     for (let k = 0; k < L; k++) expect(Object.values(sch.byLaunch).reduce((a, xs) => a + xs[k], 0)).toBeLessThanOrEqual(p.F + 1e-6);
-    // The ore of the dying route carries less once slot 0 stops (slot 1, the same ore, takes part of its share back).
-    expect(sch.perLaunch[s0.ore]).toBeLessThan(plain[s0.ore] - 0.1 * ((p.F * x0) / R));
-    expect(sch.byLaunch[s0.ore][L - 1]).toBeLessThan(sch.byLaunch[s0.ore][0]);
-    expect(sch.byLaunch[s0.ore][0]).toBeCloseTo(plain[s0.ore], 6);
-    expect(sch.first[s0.ore]?.slot).toBe(0);
-    expect(sch.first[s0.ore]!.seconds).toBeGreaterThan(sch.intervals[0]);
-    expect(sch.first[s0.ore]!.seconds).toBeLessThan(sch.intervals[0] + sch.intervals[1]);
-    // The view of an iron offer says so, and a rock-blind ON PACE is gone.
-    const units = Math.ceil(L * plain[s0.ore]);
-    const v = H.contractViews(cfg, p, { ...h, contracts: { unlocked: true, board: [contractOf(5, 'kade', [[s0.ore, units]], 1.3, 6)], next: 6, active: null } })[0];
+    // The ore of the dying route carries less once slot 0 stops.
+    expect(sch.perLaunch[ore0]).toBeLessThan(plain[ore0] - 0.1 * ((p.F * x0) / R));
+    expect(sch.byLaunch[ore0][L - 1]).toBeLessThan(sch.byLaunch[ore0][0]);
+    expect(sch.byLaunch[ore0][0]).toBeCloseTo(plain[ore0], 6);
+    expect(sch.first[ore0]?.slot).toBe(0);
+    expect(sch.first[ore0]!.seconds).toBeGreaterThan(sch.intervals[0]);
+    expect(sch.first[ore0]!.seconds).toBeLessThan(sch.intervals[0] + sch.intervals[1]);
+    // The view of an offer of that ore says so, and a rock-blind ON PACE is gone.
+    const units = Math.ceil(L * plain[ore0]);
+    const v = H.contractViews(cfg, p, { ...h, contracts: { unlocked: true, board: [contractOf(5, 'kade', [[ore0, units]], 1.3, 6)], next: 6, active: null } })[0];
     expect(v.onPace).toBe(false);
     expect(v.wants[0].dries?.slot).toBe(0);
     // Rocks that outlive the launches: no `dries`.
@@ -276,6 +285,12 @@ describe('the freighter bounds every order (the play confirmation after Decision
         const h: H.HaulState = { ...g0.haul, contracts: { ...g0.haul.contracts, unlocked: true, board: [offer], next: 12, active: null } };
         H.refloorOffers(cfg, p, h);
         const after = h.contracts.board[0];
+        // Fourth rules check (the lead's ruling on NEW[1]): an offer the resize cannot lift out of
+        // green within the holds leaves the board (its place waits for the next warp-out).
+        if (!after) {
+          expect(st[ore] * (1 + C.raise[0] / 2)).toBeGreaterThan(p.F * C.maxShare * 0.9);
+          continue;
+        }
         expect(after.wants[0].units).toBeLessThanOrEqual(Math.max(offer.wants[0].units, Math.floor(L * p.F * C.maxShare)));
         fits({ ...g0, haul: h }, after);
       }

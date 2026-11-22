@@ -137,9 +137,11 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
     // minutes to two hours that do, at least 15 % of 300 draws want two ores; one such station must
     // exist. On every one of them the offers want at least two different ores.
     const at = [1200, 1500, 1800, 2400, 3000, 3600, 5400, 7200];
-    const r = runHaulBot(cfg, { hours: 7210 / 3600, prestige: false, seed: 12345, keepAt: at, noOffline: true });
+    // Fourth rules check (NEW[5]): seed 12345's bot never ships three ores by two hours (copper and
+    // iron only), so seed 99 (three ores at 90 minutes) is searched too, and one station must qualify.
     let stations = 0;
-    for (const t of at) {
+    const runs = [12345, 99].map((seed) => runHaulBot(cfg, { hours: 7210 / 3600, prestige: false, seed, keepAt: at, noOffline: true }));
+    for (const [r, t] of runs.flatMap((r) => at.map((t) => [r, t] as const))) {
       const g = r.states[t] as Run;
       const b = H.contractBasis(cfg, H.haulParams(cfg, g), g.haul);
       const total = Object.values(b.recent).reduce((a, x) => a + x, 0);
@@ -148,7 +150,10 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
       const value = Object.entries(b.recent).reduce((a, [o, x]) => a + x * (b.prices[o] ?? 0), 0);
       const worth = Object.entries(b.recent).filter(([o, x]) => x * (b.prices[o] ?? 0) >= cfg.haul.contracts.minValueShare * value).length;
       // Condition 5 keeps an ore under a tenth of a launch's value off every offer: two of the three must matter.
+      // (Fourth rules check: and whose routes carry at least two of them now: a station whose drones
+      // the bot has just moved onto one ore, the others with no route or no rock, has one ore to raise.)
       if (Object.values(b.recent).filter((x) => x > 0.02 * total).length < 3 || worth < 2) continue;
+      if (Object.values(b.steady).filter((x) => x > 0.02 * b.F).length < 2) continue;
       stations++;
       expect(ores.size, `t=${t}`).toBeGreaterThanOrEqual(2);
       let two = 0;
@@ -163,6 +168,8 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
     let two3 = 0;
     for (let k = 1; k <= 300; k++) if (draw(three, k).wants.length > 1) two3++;
     expect(two3, `bot stations that qualified: ${stations}`).toBeGreaterThanOrEqual(45);
+    // Fourth rules check (NEW[5]): at least one of the bot's own stations qualified.
+    expect(stations, 'bot stations that ship three ores, two of them worth a tenth').toBeGreaterThanOrEqual(1);
   }, 120_000);
 });
 
@@ -187,7 +194,11 @@ describe('the board is never empty (the lead, finishing round)', () => {
             // second ore brings more (boardNote); every other station keeps at least two offers.
             // (A board drawn while two ores shipped keeps its offers until they expire; no new one comes.)
             if (H.boardNote(cfg, g) === 'secondOre') expect(g.haul.contracts.board.length, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(1);
-            else expect(offers, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(2);
+            // Fourth rules check (the lead's ruling on NEW[1]): a place that cannot be filled without
+            // a duplicate or a free offer stays empty until the next warp-out, so a station whose
+            // other ores have no room may show only its taken contract, or a single offer; never nothing.
+            else expect(g.haul.contracts.board.length, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(1);
+            void offers;
           }
         }
         expect(warps).toBe(3);

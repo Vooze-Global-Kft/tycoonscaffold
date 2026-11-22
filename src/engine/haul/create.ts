@@ -358,7 +358,10 @@ function reconcileRun(cfg: HaulConfig, raw: unknown, g: HaulGame): HaulState | n
   if (h.freighter.phase === 'docked') h.freighter = { ...h.freighter, t: 0, cargo: {}, payout: 0, toward: {}, bonus: 0, plain: 0 };
   // A board longer than haul.contracts.board (a board size that shrank, a damaged save) is cut back
   // to it, the taken contract kept (rules-8). A shorter one is a place left empty by a drop (Decision
-  // 56) and fills at the next warp-out; an unlocked board with nothing on it is opened now.
+  // 56) and fills at the next warp-out. Fourth rules check (NEW[4]): an unlocked board with nothing on
+  // it is opened now only when no contract was ever drawn on it (`next` 0: the contracts were newly
+  // unlocked); an empty board after drops stays empty until the next warp-out (a drop costs the
+  // place; closing and reopening the app does not refill it).
   if (h.contracts.unlocked && h.contracts.board.length > cfg.haul.contracts.board) {
     const C = { ...h.contracts, board: [...h.contracts.board] };
     const keep = C.active !== null ? C.board[C.active] : null;
@@ -369,7 +372,9 @@ function reconcileRun(cfg: HaulConfig, raw: unknown, g: HaulGame): HaulState | n
     }
     h.contracts = C;
   }
-  if (h.contracts.unlocked && h.contracts.board.length === 0) {
+  // (A board whose saved contracts were all damaged is opened too: nothing was dropped there.)
+  const damaged = Array.isArray(ct.board) && ct.board.length > 0 && board.length === 0;
+  if (h.contracts.unlocked && h.contracts.board.length === 0 && (!(h.contracts.next > 0) || damaged)) {
     const C = { ...h.contracts, board: [] as Contract[], active: null };
     const p = haulParams(cfg, { ...g, haul: { ...h, contracts: C } } as HaulGame & { haul: HaulState });
     topUpBoard(cfg, { ...h, contracts: C }, p);
