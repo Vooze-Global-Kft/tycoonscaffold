@@ -770,7 +770,9 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     // Offline against active play at the same state (minutes 30, 60, 120; then every 2 h): one hour
     // away (haulOffline) against one hour of the bot playing on from the same state (no Jump). The
     // no-purchase hour is kept too (`noShop`), for the record.
-    if (!opts.noOffline && (t === 1800 || t === 3600 || t === 7200 || (t > 7200 && t % 7200 === 0))) {
+    // Not in a run's first 10 minutes: after a Jump nothing is placed yet, so the hour of only watching
+    // (nothing placed, by definition) would earn next to nothing and the ratio would mean nothing.
+    if (!opts.noOffline && (t === 1800 || t === 3600 || t === 7200 || (t > 7200 && t % 7200 === 0)) && t - runs[runs.length - 1].start >= 600) {
       const snap = { ...g, lastSavedAt: now, stats: { ...g.stats, clockHigh: now } } as Run;
       const off = H.haulOffline(cfg, snap, now + 3600_000);
       const played = runHaulBot(cfg, { hours: 1, prestige: false, noOffline: true, start: g, now });

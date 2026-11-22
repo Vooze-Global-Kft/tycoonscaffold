@@ -161,3 +161,29 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
     expect(two3, `bot stations that qualified: ${stations}`).toBeGreaterThanOrEqual(45);
   }, 120_000);
 });
+
+describe('the board is never empty (the lead, finishing round)', () => {
+  it('on the bot\'s stations at 10, 25, 60 and 120 minutes (two seeds), every warp-out leaves at least two offers', () => {
+    // When no ore passes Decision 56's eligibility, the rules relax in order (value share, then the
+    // drill limit) and the last resort is the quota: a board never sits empty for a launch.
+    const at = [600, 1500, 3600, 7200];
+    for (const seed of [12345, 4]) {
+      const r = runHaulBot(cfg, { hours: 7210 / 3600, prestige: false, seed, keepAt: at, noOffline: true });
+      for (const t of at) {
+        let g = r.states[t] as Run;
+        g = { ...g, haul: { ...g.haul, autopilot: { online: true, policy: 'full' } } };
+        let warps = 0;
+        for (let i = 0; i < 4000 && warps < 3; i++) {
+          const ev: H.HaulEvent[] = [];
+          g = H.advanceHaul(cfg, g, 0.5, 0, ev) as Run;
+          if (ev.some((e) => e.type === 'warp')) {
+            warps++;
+            const offers = g.haul.contracts.board.filter((c) => !c.taken).length;
+            expect(offers, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(2);
+          }
+        }
+        expect(warps).toBe(3);
+      }
+    }
+  }, 120_000);
+});

@@ -392,9 +392,9 @@ The return screen (Shift Log, section 4.6) lists: time away (capped), units move
 
 ### 2.12 Worked numbers, first 10 minutes
 
-Pasted from `python3 scripts/content/build-space.py --table` with the shipped game.json (Decision 16; fix round, after Decisions 40, 42, 44 and 45 and the re-tune). The knob table that command also prints is in section 11, "Numbers of the fix round"; the shipped values that differ from the starting values: prestige threshold 1.2e8, a ring's own ore 85 % of its rock stream, rig drill per level 1.4, rig cost growth 1.7, claim base ₵14, claim ring factor 15, claim factor per slot 1.5, drone capacity 5, freighter capacity 20, freighter cost growth 1.5, bonanza chance 0.06, bonanza drill x3, contract launches 4, contract margin 0.2, contract reach 0.5 to 0.9, a Scrap Pod every 8th dry rock and every 12th contract met, head-start rig level 6. Section 2.1 to 2.10 give the starting values and the formulas; game.json carries the shipped ones. The tutorial path is checked by `src/engine/haul/hints.test.ts` (each guided purchase at the first warp-out after the step before it, and +15 % income or more); section 8 is the gate.
+Pasted from `python3 scripts/content/build-space.py --table` with the shipped game.json (Decision 16; finishing round, after Decisions 56 to 58 and the re-tune of section 11, "Numbers of the finishing round"). The knob table that command also prints is in that section. The tutorial path now runs seven minutes: after the six guided steps it follows the limit hints of Decision 57 (marked).
 
-**The tutorial path (a person who does only what the hints ask, reacting in 2.5 s; 0.05 s ticks):**
+**The tutorial path (a person who does only what the hints ask, reacting in 2.5 s; 0.05 s ticks; after the guided steps the limit hints of Decision 57):**
 
 | Time | What happens | Numbers |
 |---|---|---|
@@ -409,28 +409,52 @@ Pasted from `python3 scripts/content/build-space.py --table` with the shipped ga
 | 0:58 | Warp-out | ₵22.0 |
 | 1:01 | Buy drone 2 (₵10.0) | cash left 13.0 |
 | 1:03 | Tap the drone, then rock T-2 | trip = 5.20 s; c = 5.00; h = 0.96/s; first delivery at 1:06 |
-| 1:06 | Upgrade rig T-1 to L2 (₵3.00) | r = 0.84/s |
-| 1:20 | Swipe up: launch 3 | cargo 20.0, paid at the warp-out 22.0 |
-| 1:22 | Warp-out | ₵22.0 |
-| 1:36 | Swipe up: launch 4 | cargo 20.0, paid at the warp-out 22.0 |
-| 1:39 | Warp-out | ₵22.0 |
-| 1:39 | The contract strip slides in | Halden Yards · 10 iron · x1.5 |
-| 1:53 | Swipe up: launch 5 | cargo 20.0, paid at the warp-out 23.1 |
-| 1:56 | Warp-out, contract met | ₵28.1 |
-| 2:10 | Swipe up: launch 6 | cargo 20.0, paid at the warp-out 22.0 |
-| 2:13 | Warp-out | ₵22.0 |
-| 2:15 | Dock Autopilot online (₵90.0) | cash 104 before |
-| 2:25 | Warp-out | ₵22.0 |
-| 2:28 | Pick contract 0 from the board |  |
+| 1:06 | Upgrade rig T-2 to L2 (₵3.00) | r = 0.84/s |
+| 1:21 | Swipe up: launch 3 | cargo 20.0, paid at the warp-out 22.0 |
+| 1:23 | Warp-out | ₵22.0 |
+| 1:38 | Swipe up: launch 4 | cargo 20.0, paid at the warp-out 22.0 |
+| 1:40 | Warp-out | ₵22.0 |
+| 1:40 | The contract strip slides in | Halden Yards · 10 iron · x1.5 |
+| 1:54 | Swipe up: launch 5 | cargo 20.0, paid at the warp-out 23.1 |
+| 1:57 | Warp-out, contract met | ₵28.1 |
+| 2:11 | Swipe up: launch 6 | cargo 20.0, paid at the warp-out 22.0 |
+| 2:14 | Warp-out | ₵22.0 |
+| 2:16 | Dock Autopilot online (₵90.0) | cash 104 before |
+| 2:26 | Warp-out | ₵22.0 |
+| 2:29 | Pick contract 0 from the board |  |
 | 2:33 | Move one drone from T-1's chip to T-2 |  |
-| 2:38 | Warp-out | ₵22.0 |
-| 2:50 | Warp-out | ₵22.0 |
-| 3:03 | Warp-out | ₵22.0 |
-| 3:15 | Warp-out, contract met | ₵55.4 |
-| 3:28 | Warp-out | ₵22.0 |
-| 3:40 | Warp-out | ₵22.0 |
-| 3:48 | Pick contract 0 from the board |  |
-| 3:53 | Warp-out | ₵22.0 |
+| 2:39 | Warp-out | ₵22.0 |
+| 2:51 | Warp-out | ₵22.0 |
+| 2:59 | Upgrade rig T-2 to L3 (₵4.80) (limit hint, Decision 57) | r = 3.53/s |
+| 3:04 | Warp-out | ₵22.0 |
+| 3:16 | Warp-out | ₵22.0 |
+| 3:29 | Warp-out, contract met | ₵70.0 |
+| 3:41 | Warp-out | ₵22.0 |
+| 3:54 | Warp-out | ₵22.0 |
+| 3:56 | Claim slot 2 (ring 2) (₵210) (limit hint, Decision 57) |  |
+| 4:01 | Pick contract 0 from the board |  |
+| 4:06 | Warp-out | ₵22.0 |
+| 4:19 | Warp-out | ₵22.0 |
+| 4:31 | Warp-out | ₵22.0 |
+| 4:39 | Buy drone 3 (₵14.5) (limit hint, Decision 57) | cash left 74.8 |
+| 4:44 | Warp-out | ₵22.0 |
+| 4:51 | Drag the drone onto rock T-3 | trip = 8.12 s; c = 5.00; h = 0.62/s; first delivery at 4:55 |
+| 4:57 | Warp-out, contract met | ₵60.0 |
+| 5:09 | Warp-out | ₵44.3 |
+| 5:21 | Upgrade the freighter (₵15.0) (limit hint, Decision 57) |  |
+| 5:22 | Warp-out | ₵44.7 |
+| 5:29 | Pick contract 0 from the board |  |
+| 5:34 | Warp-out | ₵64.9 |
+| 5:38 | Move one drone from T-2's chip to T-1 |  |
+| 5:47 | Warp-out | ₵64.3 |
+| 5:59 | Warp-out | ₵62.8 |
+| 6:04 | Buy drone 4 (₵21.0) (limit hint, Decision 57) | cash left 402 |
+| 6:12 | Warp-out | ₵62.8 |
+| 6:16 | Drag the drone onto rock T-2 | trip = 5.20 s; c = 5.00; h = 1.92/s; first delivery at 6:18 |
+| 6:24 | Warp-out | ₵63.2 |
+| 6:37 | Warp-out | ₵55.6 |
+| 6:46 | Upgrade the freighter (₵22.5) (limit hint, Decision 57) |  |
+| 6:53 | Warp-out | ₵79.4 |
 
 **The bot (section 8's bot, seed 12345, 1 s ticks; income is activeRate):**
 
@@ -442,28 +466,28 @@ Pasted from `python3 scripts/content/build-space.py --table` with the shipped ga
 | 1:36 | slot 1 claimed |  |
 | 2:00 |  | about ₵5.1/s |
 | 2:03 | Dock Autopilot online |  |
-| 2:28 | first ring-2 slot (copper) |  |
-| 2:28 | the guaranteed Scrap Pod (first ring-2 claim) |  |
 | 2:29 | first rich seam |  |
-| 4:00 |  | about ₵21.4/s |
-| 6:00 |  | about ₵71.3/s |
-| 8:00 |  | about ₵197/s |
-| 8:36 | first bonanza rock |  |
+| 3:07 | first ring-2 slot (copper) |  |
+| 3:07 | the guaranteed Scrap Pod (first ring-2 claim) |  |
+| 4:00 |  | about ₵20.5/s |
+| 6:00 |  | about ₵50.5/s |
+| 8:00 |  | about ₵110/s |
 | 10:00 | first Survey Flare |  |
-| 10:00 |  | about ₵397/s |
-| 15:00 |  | about ₵2.04e+3/s |
-| 20:00 |  | about ₵5.32e+3/s |
-| 21:03 | first ring-3 slot (ice) |  |
-| 30:00 |  | about ₵2.39e+4/s |
-| 32:50 | first ring-4 slot (titanium) |  |
-| 45:00 |  | about ₵5.22e+4/s |
-| 1 h 00 |  | about ₵8.04e+4/s |
-| 1 h 09 | first ring-5 slot (platinum) |  |
-| 1 h 30 |  | about ₵1.50e+5/s |
-| 2 h 00 |  | about ₵2.57e+5/s |
-| 2 h 31 | first Jump available (20 cores) |  |
-| 2 h 31 | Jump 1: +20 cores; run 1 earned ₵1.92e+9 | |
-| 3 h 29 | run 2 (heavy) passes run 1's earnings, 58:22 into the run (39 % of run 1) | |
+| 10:00 |  | about ₵479/s |
+| 13:25 | first bonanza rock |  |
+| 15:00 |  | about ₵3.49e+3/s |
+| 18:43 | first ring-3 slot (ice) |  |
+| 20:00 |  | about ₵2.17e+4/s |
+| 20:41 | first ring-4 slot (titanium) |  |
+| 30:00 |  | about ₵7.82e+4/s |
+| 45:00 |  | about ₵3.29e+5/s |
+| 1 h 00 |  | about ₵4.46e+5/s |
+| 1 h 12 | first ring-5 slot (platinum) |  |
+| 1 h 30 |  | about ₵7.64e+5/s |
+| 2 h 00 |  | about ₵1.39e+6/s |
+| 2 h 00 | first Jump available (20 cores) |  |
+| 2 h 00 | Jump 1: +20 cores; run 1 earned ₵4.81e+9 | |
+| 2 h 55 | run 2 (heavy) passes run 1's earnings, 54:43 into the run (45 % of run 1) | |
 
 ---
 

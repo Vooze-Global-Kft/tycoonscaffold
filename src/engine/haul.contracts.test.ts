@@ -298,18 +298,19 @@ describe('Decision 56: what the station remembers, resizing, empty places', () =
     expect(ev2.some((e) => e.type === 'contractResized')).toBe(false);
   });
 
-  it('a station whose launches are one ore, past the first two rings, leaves the place empty (offerAt null); contractAt gives the quota', () => {
+  it('a station whose launches are one ore gets the quota as the last resort (the board is never empty)', () => {
+    // Rewritten for the lead's note (never an empty board): the last resort is the quota.
     const b = handBasis(cfg, { copper: 100, iron: 0.5 }, { ringOf: { copper: 2, iron: 0 } });
-    expect(H.offerAt(cfg, 3, 7, b)).toBeNull();
+    expect(H.offerAt(cfg, 3, 7, b)?.wants[0].ore).toBe('copper');
     expect(H.contractAt(cfg, 3, 7, b).wants[0].ore).toBe('copper');
     // In the first minutes (rings 1 and 2) a one-ore station gets the quota of Decision 40.
     expect(H.offerAt(cfg, 3, 7, handBasis(cfg, { iron: 100 }))?.wants[0].ore).toBe('iron');
-    // One ore at 93 % with another under a tenth of the value: never free, it asks more than 93 % of L holds.
+    // One ore at 93 % with another under a tenth of the value: the value share is relaxed first, so
+    // the small ore is raised (never free) rather than the full one asked for full holds.
     const dom = handBasis(cfg, { copper: 93, iron: 7 }, { ringOf: { copper: 2, iron: 0 }, prices: { copper: 5, iron: 0.1 } });
     const c = H.offerAt(cfg, 3, 7, dom);
-    expect(c?.wants[0].ore).toBe('copper');
-    expect(c!.wants[0].units).toBeGreaterThan(cfg.haul.contracts.launches * 93);
-    expect(c!.wants[0].units).toBeLessThanOrEqual(cfg.haul.contracts.launches * 100);
+    expect(c?.wants[0].ore).toBe('iron');
+    expect(c!.wants[0].units).toBeGreaterThan(cfg.haul.contracts.launches * 7);
   });
 
   it('a save with a board longer than haul.contracts.board keeps the taken contract and the first offers', () => {
