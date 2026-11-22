@@ -392,7 +392,7 @@ The return screen (Shift Log, section 4.6) lists: time away (capped), units move
 
 ### 2.12 Worked numbers, first 10 minutes
 
-Pasted from `python3 scripts/content/build-space.py --table` with the shipped game.json (Decision 16; finishing round, after Decisions 56 to 58 and the re-tune of section 11, "Numbers of the finishing round"). The knob table that command also prints is in that section. The tutorial path now runs seven minutes: after the six guided steps it follows the limit hints of Decision 57 (marked).
+Pasted from `python3 scripts/content/build-space.py --table` with the shipped game.json (Decision 16; last balance round, Decision 63, and section 11, "Numbers of the last balance round"). The knob table that command also prints is in that section. The tutorial path now runs seven minutes: after the six guided steps it follows the limit hints of Decision 57 (marked).
 
 **The tutorial path (a person who does only what the hints ask, reacting in 2.5 s; 0.05 s ticks; after the guided steps the limit hints of Decision 57):**
 
@@ -428,33 +428,31 @@ Pasted from `python3 scripts/content/build-space.py --table` with the shipped ga
 | 2:59 | Upgrade rig T-2 to L3 (₵4.80) (limit hint, Decision 57) | r = 3.53/s |
 | 3:04 | Warp-out | ₵22.0 |
 | 3:16 | Warp-out | ₵22.0 |
-| 3:29 | Warp-out, contract met | ₵70.0 |
+| 3:29 | Warp-out, contract met | ₵51.1 |
 | 3:41 | Warp-out | ₵22.0 |
 | 3:54 | Warp-out | ₵22.0 |
-| 3:56 | Claim slot 2 (ring 2) (₵210) (limit hint, Decision 57) |  |
 | 4:01 | Pick contract 0 from the board |  |
 | 4:06 | Warp-out | ₵22.0 |
+| 4:09 | Claim slot 2 (ring 2) (₵210) (limit hint, Decision 57) |  |
 | 4:19 | Warp-out | ₵22.0 |
 | 4:31 | Warp-out | ₵22.0 |
-| 4:39 | Buy drone 3 (₵14.5) (limit hint, Decision 57) | cash left 74.8 |
 | 4:44 | Warp-out | ₵22.0 |
-| 4:51 | Drag the drone onto rock T-3 | trip = 8.12 s; c = 5.00; h = 0.62/s; first delivery at 4:55 |
-| 4:57 | Warp-out, contract met | ₵60.0 |
-| 5:09 | Warp-out | ₵44.3 |
-| 5:21 | Upgrade the freighter (₵15.0) (limit hint, Decision 57) |  |
-| 5:22 | Warp-out | ₵44.7 |
+| 4:51 | Buy drone 3 (₵14.5) (limit hint, Decision 57) | cash left 77.8 |
+| 4:57 | Warp-out, contract met | ₵50.7 |
+| 5:04 | Drag the drone onto rock T-3 | trip = 8.12 s; c = 5.00; h = 0.62/s; first delivery at 5:08 |
+| 5:09 | Warp-out | ₵22.0 |
+| 5:22 | Warp-out | ₵44.9 |
 | 5:29 | Pick contract 0 from the board |  |
-| 5:34 | Warp-out | ₵64.9 |
+| 5:34 | Upgrade the freighter (₵15.0) (limit hint, Decision 57) |  |
+| 5:34 | Warp-out | ₵44.6 |
 | 5:38 | Move one drone from T-2's chip to T-1 |  |
-| 5:47 | Warp-out | ₵64.3 |
+| 5:47 | Warp-out | ₵62.8 |
 | 5:59 | Warp-out | ₵62.8 |
-| 6:04 | Buy drone 4 (₵21.0) (limit hint, Decision 57) | cash left 402 |
 | 6:12 | Warp-out | ₵62.8 |
-| 6:16 | Drag the drone onto rock T-2 | trip = 5.20 s; c = 5.00; h = 1.92/s; first delivery at 6:18 |
-| 6:24 | Warp-out | ₵63.2 |
-| 6:37 | Warp-out | ₵55.6 |
-| 6:46 | Upgrade the freighter (₵22.5) (limit hint, Decision 57) |  |
-| 6:53 | Warp-out | ₵79.4 |
+| 6:18 | Claim slot 3 (ring 2) (₵315) (limit hint, Decision 57) |  |
+| 6:24 | Warp-out | ₵65.5 |
+| 6:37 | Warp-out | ₵64.6 |
+| 6:50 | Warp-out | ₵67.7 |
 
 **The bot (section 8's bot, seed 12345, 1 s ticks; income is activeRate):**
 
@@ -467,27 +465,27 @@ Pasted from `python3 scripts/content/build-space.py --table` with the shipped ga
 | 2:00 |  | about ₵5.1/s |
 | 2:03 | Dock Autopilot online |  |
 | 2:29 | first rich seam |  |
-| 3:07 | first ring-2 slot (copper) |  |
-| 3:07 | the guaranteed Scrap Pod (first ring-2 claim) |  |
-| 4:00 |  | about ₵20.5/s |
-| 6:00 |  | about ₵50.5/s |
-| 8:00 |  | about ₵110/s |
+| 2:40 | first ring-2 slot (copper) |  |
+| 2:40 | the guaranteed Scrap Pod (first ring-2 claim) |  |
+| 4:00 |  | about ₵18.9/s |
+| 6:00 |  | about ₵57.5/s |
+| 8:00 |  | about ₵80.9/s |
 | 10:00 | first Survey Flare |  |
-| 10:00 |  | about ₵479/s |
-| 13:25 | first bonanza rock |  |
-| 15:00 |  | about ₵3.49e+3/s |
-| 18:43 | first ring-3 slot (ice) |  |
-| 20:00 |  | about ₵2.17e+4/s |
-| 20:41 | first ring-4 slot (titanium) |  |
-| 30:00 |  | about ₵7.82e+4/s |
-| 45:00 |  | about ₵3.29e+5/s |
-| 1 h 00 |  | about ₵4.46e+5/s |
-| 1 h 12 | first ring-5 slot (platinum) |  |
-| 1 h 30 |  | about ₵7.64e+5/s |
-| 2 h 00 |  | about ₵1.39e+6/s |
-| 2 h 00 | first Jump available (20 cores) |  |
-| 2 h 00 | Jump 1: +20 cores; run 1 earned ₵4.81e+9 | |
-| 2 h 55 | run 2 (heavy) passes run 1's earnings, 54:43 into the run (45 % of run 1) | |
+| 10:00 |  | about ₵415/s |
+| 13:17 | first bonanza rock |  |
+| 15:00 |  | about ₵1.91e+3/s |
+| 20:00 |  | about ₵5.48e+3/s |
+| 20:38 | first ring-3 slot (ice) |  |
+| 21:44 | first ring-4 slot (titanium) |  |
+| 30:00 |  | about ₵4.09e+4/s |
+| 45:00 |  | about ₵1.26e+5/s |
+| 1 h 00 |  | about ₵2.81e+5/s |
+| 1 h 02 | first ring-5 slot (platinum) |  |
+| 1 h 30 |  | about ₵4.33e+5/s |
+| 2 h 00 |  | about ₵3.53e+5/s |
+| 2 h 47 | first Jump available (20 cores) |  |
+| 2 h 47 | Jump 1: +20 cores; run 1 earned ₵3.56e+9 | |
+| 3 h 43 | run 2 (heavy) passes run 1's earnings, 55:29 into the run (33 % of run 1) | |
 
 ---
 
@@ -1023,6 +1021,8 @@ Knobs, in order: if the drill binds more than 60 %, build-haul.py lowers rig cos
 
 **Measured in the fix round (shipped game.json, Decisions 40 to 45, 12 h with Jumps, seeds 12345 / 4 / 99, the seeds validate gates on).** Every hard target is met on all three seeds: first payout 0:26, autopilot 2:03, first Jump 2 h 31 / 2 h 18 / 2 h 39, run 2 at 39 / 42 / 42 % of run 1, drags at minutes 30, 60, 120 at least 9, Upgrade share at most 52 %, longest dead stretch to the Jump 9:37 / 9:16 / 9:34 (4:51 / 5:41 / 4:58 in the first 30 min), after the Jump at most 15:26, drawn-new gap at most 12:49, limits drill 52 to 55 % / haul 43 to 47 % / freighter 1 to 2 %, offline with the +50 % bonus at most 0.40 of an hour of play and at most 0.83 of an hour of watching (0.6 and 0.9 are the gates; without the bonus at most 0.27). The bot now counts the supply drop (5.2's free timer: 15 min, then 45 min later, then every 3 h) as the pod it is. Soft results: taken contracts met 99 / 98 / 96 % by the bot that routes (target 60 to 85 %: missed, because Decision 40 makes every contract reachable and the bot routes perfectly; a person routes less well), 29 / 19 / 24 % by the passive player (≤ 25 %: met on two seeds), contract bonus 22 / 22 / 19 % of income (aim 10 to 25 %), pods in hours 1 to 3: 9 to 11 an hour (3 to 10: just over on two hours), Dark Matter from them 6.3 to 7.7 an hour, longest wait between purchases in the first 5 minutes 0:26 / 0:27 / 0:38, rocks dried at minute 30: 18 / 36 / 54 an hour (8 to 20), first ring-2 slot 2:28 to 3:39 (5:00 to 8:00: early on purpose, play-18 asked for a cheaper first ring-2 claim), ring 3 at 10:00 to 21:03, ring 4 at 33 to 36 min, ring 5 at 1 h 09 to 1 h 13 (all early), run 3 at 96 to 125 % of run 2 (70 %). Why the ore share moved: at the threshold before the last (5.5e7), nine seeds (12345, 4, 99, 1, 2, 3, 5, 6, 7) with a ring's own ore at 70 % of its stream put the first Jump between 1 h 47 and 2 h 36 (49 minutes; the ore lottery on rings 4 and 5 decided it), and five seeds (4, 99, 12345, 5, 3) at 85 % between 1 h 45 and 2 h 10 (25 minutes), which is what lets one threshold put the three gated seeds in the 30-minute window. Seeds other than 12345, 4 and 99 are not checked at the shipped threshold.
 
+**Measured in the last balance round (Decision 63, the shipped numbers):** section 11, "Numbers of the last balance round": first Jump 2 h 22 to 2 h 47 on the five gate seeds (median 2 h 33), the router meeting 66 to 78 % of its contracts and earning 1.57 times the never-taker at the median seed; the gate still fails on the nothing-new stretches, the drawn-new gap and one offline measurement.
+
 ---
 
 ## 9. First version and later
@@ -1394,22 +1394,47 @@ Also in this round (store and checks): the App Store promotional text no longer 
 
 Every shipped number that changed in this round (scripts/content/build-space.py; game.json regenerated, store files synced):
 
-- **Contracts** (Decision 56): `haul.contracts.launches` 6 (was 4); `raise` 0.25 to 0.6, `holdShare` 0.85 to 0.95, `raiseMult` 1, `maxShare` 0.9 (its new meaning), `minValueShare` 0.1, `minBonusSeconds` 10, `recentLaunches` 6; `reach` and `margin` are gone; `fleetShare` 0.5 is now only the bot's routing budget; multipliers as the specification (contractMultScale 1).
+- **Contracts** (Decision 56): `haul.contracts.launches` 6 (was 4); `raise` 0.25 to 0.6, `holdShare` 0.85 to 0.95, `raiseMult` 1, `maxShare` 0.9 (its new meaning), `minValueShare` 0.1, `minBonusSeconds` 10, `recentLaunches` 6; `reach` and `margin` are gone; `fleetShare` 0.5 is now only the bot's routing budget; multipliers as the specification (contractMultScale 1). Changed again by Decision 63 (below).
 - **Rocks** (Decision 58): `haul.start.firstLife` 600 s of drilling for the first rock of each ring-1 slot in galaxy 1.
 - **Rig cost growth** 1.6 (was 1.7): with the contract rule of Decision 56 the routes were drill-bound 60 to 72 % of the time on all five seeds (target: no kind above 60 %); at 1.6 that measure passed on four of five seeds in the run before the last threshold change.
-- **Prestige threshold** 3e8 (was 1.2e8): contracts drawn from what the station ships pay more for a router, so income is higher.
+- **Prestige threshold** 3e8 (was 1.2e8): contracts drawn from what the station ships pay more for a router, so income is higher. Back to 2.2e8 with Decision 63 (below).
 - **Pods**: a Scrap Pod every 8th contract met (was 12): fewer contracts are met under Decision 56.
 - **Claims**: unchanged (claim ring factor 15). With 17 the hint path's first ring-2 claim moved from 3:56 to about 4:30, but the dead stretches of section 8 grew on every seed, so it was put back.
 - **Texts**: promotional text, Tessaly's call, condition lines upside first (Decisions 56 to 62 above).
-- **New section 8 targets**: earnings with contracts against never taking one at 2.5 h (1.3 to 1.7 times, soft); the first Jump's gate window 2 h 18 to 2 h 42 (hard); pods and Dark Matter per hour on at least four of five seeds (validate).
+- **New section 8 targets**: earnings with contracts against never taking one at 2.5 h (1.3 to 1.7 times, soft); the first Jump's gate window 2 h 18 to 2 h 42 (hard); pods and Dark Matter per hour on at least four of five seeds (validate). The windows were changed by Decision 63 (below).
 
-**Measured at the end of the finishing round (shipped game.json, 12 h with Jumps, seeds 12345 / 4 / 99 / 7 / 2026; `npm run simulate -- space-miner --hours 12 --prestige --seed n --compare true`).** The gate does NOT pass. First Jump 2 h 00 / 2 h 55 / 2 h 32 / 2 h 04 / 2 h 54 (only seed 99 inside 2 h 18 to 2 h 42): with Decision 56 the router's outcome varies far more between seeds than it did (its run earnings at 2.5 h range over a factor of about 2 to 4 between seeds at every contract pay tried, 0.6 to 1.0 of the specification's mark-up), so no single threshold puts five seeds in a 24-minute window. Run 2 reaches run 1's Jump earnings at 45 / 30 / 38 / 52 / 30 %. Taken contracts met by the bot that routes: 40 / 33 / 40 / 45 / 49 % (target 60 to 85 %); by the passive player 10 / 17 / 8 / 8 / 18 % (≤ 25 %: met). Earnings with contracts against never taking one at 2.5 h: 3.36 / 1.96 / 1.73 / 3.49 / 2.38 (target 1.3 to 1.7: missed on all five; contracts still dominate). Contract bonus 25 to 47 % of income. Pods per hour in hours 1 to 3 between 2 and 9, Dark Matter 1.4 to 6.3 (inside on four of five seeds). Other hard targets missed in the last gate run: the longest stretch with nothing new before the first Jump (16 to 26 min on every seed, target 12), after the first Jump on three seeds (30 to 57 min, target 25), and the drill-bound share on seed 12345 (66 %). The first hint-path ring-2 claim (Decision 57) comes at 3:56 / 4:09 / 4:24 / 3:56 / 4:24.
+**Measured at the end of the finishing round:** replaced by the measurement of the last balance round below (Decision 63); the gate did not pass then (first Jump 2 h 00 to 2 h 55, the router meeting 33 to 49 % of its contracts and earning 1.7 to 3.5 times a player who never takes one).
+
+### Last balance round (lead, 22 November 2026)
+
+#### 63. Contracts pay less, and the gate asks for what matters (the last balance round; overrides Decision 62's Jump window and condition 6 of Decision 56)
+After Decision 56 a router earned 1.7 to 3.5 times a player who never takes a contract, the first Jump moved between 2 h 00 and 2 h 55 with the seed, the threshold had to rise to 3e8 to hold it near 2 h 30, and the run then had 16 to 26 minutes with nothing new before the Jump.
+- Pay. The buyers' mark-ups come down until, on the five gate seeds, the routing bot's earnings at 2.5 hours are 1.25 to 1.6 times the never-taking bot's at the median seed and under 1.9 on every seed; the contract bonus is then about 10 to 25 % of income.
+- The bot routes well: it adopts the rules engineer's scripted router (at the take, after every warp-out and every 20 s while the light is not green, the move that raises the pace most, with no fleet budget; seams and claims never take drones from the routes of an ore the contract still wants), so it meets 60 to 85 % of what it takes and the spread between seeds narrows.
+- The threshold comes back down to where the median seed's first Jump is about 2 h 30.
+- The gate, hard, on each of the five seeds: the first Jump between 1 h 55 and 3 h 05 (`JUMP_GATE`; no extra margin); the nothing-new stretches as before (12 minutes before the first Jump, 6 in the first 30, 25 after it); run 2 reaches run 1's earnings within 70 % of run 1's time; both offline gates; the drill-bound share as before. Soft: the median seed's first Jump inside 2 h 15 to 2 h 45 (`JUMP_TARGET`, validate warns); run 2 within 60 %; router against never-taker 1.25 to 1.6 at the median seed and under 1.9 on every seed (validate warns, from `--compare true`); pods and Dark Matter per hour; the hint path's first ring-2 claim between 3:45 and 6:00.
+- Two sweeps. If a hard target still misses after them, the best set ships, with which seed misses what and by how much, and the gate stays as written: the lead decides then.
+
+#### Numbers of the last balance round
+
+What changed (scripts/content/build-space.py; game.json regenerated, `npm run sync` run, store files unchanged):
+
+- **Contract pay**: `contractMultScale` 0.2 (was 1): multipliers 1.12 / 1.18 / 1.24 / 1.32 / 1.4 for rings 1 to 5 (were 1.6 / 1.9 / 2.2 / 2.6 / 3.0); `raiseMult` 0.1 (was 1); `jitter` 0.05 (was 0.1, the new knob `contractJitter`: at these mark-ups a jitter of 0.1 would draw "x1.0" in ring 1). The lead's starting point (about 0.6 of the mark-ups, the raise bonus halved) was far too rich once the bot routes well; see the sweeps below.
+- **Prestige threshold** 2.2e8 (was 3e8), read off the five seeds' lifetime curves (cores ≥ 20 at lifetime ≥ 16 × threshold) so the median seed crosses near 2 h 30.
+- **Bot** (src/engine/haul/bot.ts): the router of Decision 63; the evaluate rows of Decision 63 (`JUMP_GATE`, `JUMP_TARGET`, run 2 at 70 % hard and 60 % soft, the router ratio 1.25 to 1.6); `fleetShare` is no longer read by the bot (only the legacy `contractStation` helper reads it). Validate passes `--compare true` and warns on the two cross-seed soft targets.
+- **Found on the way** (rules, fixed by the lead as `fillsFreighter`): the autopilot stopped launching for good once a full hold's float sum missed F by more than 1e-9 (seen at F = 18,691,582 on seed 2026 at 10 h: the station then earned 12 % of its income in the hour). The bot's manual launch and the hint engine's "hold full" use the same helper now.
+
+Sweeps (2.5 h, earnings of the routing bot against the never-taker on the same seed; seeds 12345 / 4 / 99 / 7 / 2026). Sweep 1: mark-up scale 0.6 with raiseMult 0.5: 2.44 on seed 12345 (contract bonus 37 % of income); 0.5 / 0.25: 1.25 / 2.70 / 2.27 / 3.27 / 2.70; 0.4 / 0.3: 1.46 / 1.40 / 2.58 / 1.05 / 2.38. Sweep 2: 0.3 / 0.15: 1.67 / 3.01 / 1.60 / 1.61 / 1.35; 0.2 / 0.1: 1.58 / 1.32 / 1.80 / 1.60 / 2.11 (shipped, with the jitter at 0.05). With no mark-up at all (scale 0, raiseMult 0) the router earns 0.64 to 0.96 times the never-taker: routing for a contract costs income, so the bonus has to pay for that before it adds. The never-taker's own earnings at 2.5 h range from 1.47e9 (seed 2026) to 2.87e9 (seed 12345) while the router's range from 2.9e9 to 3.8e9: the per-seed ratio is mostly the never-taker's luck, and no single pay puts every seed under 1.9.
+
+**Measured at the end of the last balance round (shipped game.json, 12 h with Jumps, seeds 12345 / 4 / 99 / 7 / 2026; `npm run simulate -- space-miner --hours 12 --prestige --seed n --passive false --compare true`).** First Jump 2 h 47 / 2 h 42 / 2 h 33 / 2 h 22 / 2 h 29 (all inside the hard 1 h 55 to 3 h 05; median 2 h 33, inside 2 h 15 to 2 h 45). Run 2 reaches run 1's Jump earnings at 33 / 66 / 44 / 61 / 34 % of run 1's time (hard 70 %: met; aim 60 %: missed on seeds 4 and 7). Taken contracts met by the router 71 / 78 / 68 / 66 / 73 % (60 to 85 %: met on all five; it was 33 to 49 %). Earnings with contracts against never taking one at 2.5 h: 0.88 / 1.57 / 1.74 / 1.43 / 2.40 (median 1.57, inside 1.25 to 1.6; seed 2026 over 1.9). Contract bonus 15.6 / 14.2 / 22.3 / 15.3 / 21.9 % of income (aim 10 to 25 %: met). Pods per hour in hours 1 and 2 of the run: 6 and 4 / 5 and 4 / 6 and 4 / 6 and 6 / 5 and 4; Dark Matter from them 4.2 and 2.8 / 3.5 and 2.8 / 4.2 and 2.8 / 4.2 and 4.2 / 3.5 and 2.8 (inside on all five). Offline with the ad bonus against an hour of play at most 0.35 / 0.39 / 0.38 / 0.43 / 0.52 (≤ 0.60: met); against an hour of watching at most 0.84 / 1.01 / 0.68 / 0.76 / 0.77 (≤ 0.90: missed on seed 4 at minute 30 only, where the router had 13 of 24 drones on a copper rock with 72 s of drilling left; that hour of watching earns half the income line once it dries). The hint path's first ring-2 claim at 4:09 / 4:09 / 4:24 / 4:09 / 4:24 (3:45 to 6:00: met).
+
+Hard targets the gate still misses (validate fails): the longest stretch with nothing new before the first Jump, 18:19 / 24:26 / 22:18 / 25:14 / 24:18 (target 12 min; it ends 2 to 44 minutes before the Jump), and 6:13 / 7:04 / 5:59 / 8:40 / 9:45 in the first 30 minutes (target 6, met only on seed 99); after the first Jump 31:24 / 33:06 / 37:40 / 47:05 / 27:05 (target 25); something new drawn on the map 39:29 / 59:15 / 32:05 / 26:07 (met) / 46:35 (target 30 min); offline against watching on seed 4 (1.01 at minute 30). The dead stretches were missed before this round too (16 to 26 minutes on every seed): every slot is claimed by 1 h 02 to 1 h 57 (1 h 50 to 2 h 20 is the soft target) and between rig tier 20 and tier 35 nothing new is drawn, so the last hour of a run has only rig levels and freighter levels to buy. The knob the specification names first (the claim ring factor) is at its floor, and 17 made the stretches longer (finishing round); closing them needs content (a rig tier or hull between levels 20 and 35, or later claims), which is the lead's call.
 
 Knob table (`python3 scripts/content/build-space.py --table`; * = shipped value differs from the specification's starting value):
 
 | Knob | What | Range | Spec | Shipped |
 |---|---|---|---|---|
-| prestigeThreshold | lifetime credits per core squared (first Jump 2 h 15 to 2 h 45) | 100000.0 to 10000000000.0 | 2000000.0 | 300000000 * |
+| prestigeThreshold | lifetime credits per core squared (Decision 63: median seed's first Jump about 2 h 30) | 100000.0 to 10000000000.0 | 2000000.0 | 220000000 * |
 | coreScale | cores scale | 1 to 20 | 5 | 5 |
 | offlineHours | offline cap, hours | 4 to 8 | 6 | 6 |
 | offlineEfficiency | offline efficiency (at most 0.45) | 0.3 to 0.45 | 0.45 | 0.45 |
@@ -1439,10 +1464,11 @@ Knob table (`python3 scripts/content/build-space.py --table`; * = shipped value 
 | offerLaunches | warp-outs an offer stays on the board | 8 to 16 | 12 | 12 |
 | raiseLo | contract raise over what the station ships, low end (Decision 56) | 0.1 to 0.5 | 0.25 | 0.25 |
 | raiseHi | contract raise, high end (Decision 56) | 0.3 to 1.0 | 0.6 | 0.6 |
-| raiseMult | contract multiplier added per unit of raise (a harder contract pays more) | 0 to 2 | 1 | 1 |
+| raiseMult | contract multiplier added per unit of raise (a harder contract pays more) | 0 to 2 | 1 | 0.1 * |
 | fee | delivery fee on the rest of a met cargo | 0.05 to 0.15 | 0.1 | 0.1 |
-| fleetShare | share of the fleet a player sends to a contract when routing for it | 0.3 to 0.7 | 0.5 | 0.5 |
-| contractMultScale | contract multipliers: share of the specification's mark-up over x1 | 0.6 to 1 | 1 | 1 |
+| fleetShare | legacy: share of the fleet contractStation sends (the bot no longer reads it) | 0.3 to 0.7 | 0.5 | 0.5 |
+| contractMultScale | contract multipliers: share of the specification's mark-up over x1 (Decision 63) | 0.1 to 1 | 1 | 0.2 * |
+| contractJitter | contract multiplier jitter (each side) | 0 to 0.2 | 0.1 | 0.05 * |
 | podsDepleted | a Scrap Pod every n-th dry rock (pods per hour) | 4 to 16 | 6 | 8 * |
 | podsContracts | a Scrap Pod every n-th contract met (pods per hour) | 4 to 16 | 4 | 8 * |
 | headStartRig | rig level of head-start slots (knob: run 2) | 4 to 10 | 4 | 6 * |

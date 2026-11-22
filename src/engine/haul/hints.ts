@@ -4,7 +4,7 @@
  * Target keys are those of section 3 (`rock:<slot>`, `drone:rack`, `bay:launch`, ...).
  */
 import { advisedPurchase, bestSlotForDrone } from './advice';
-import { affordable, autopilotCost, claimCost, droneCost, EPS, haulParams, holdTotal, rigCost } from './params';
+import { affordable, autopilotCost, claimCost, droneCost, fillsFreighter, haulParams, holdTotal, rigCost } from './params';
 import type { HaulConfig, HaulGame, HaulHint, HaulState } from './types';
 
 type Run = HaulGame & { haul: HaulState };
@@ -106,8 +106,7 @@ export function hintsFor(cfg: HaulConfig, g: HaulGame): HaulHint[] {
   if (!h) return [];
   const p = haulParams(cfg, g as Run);
   const out: HaulHint[] = [];
-  // A relative tolerance too: at a hold of 1.9e7 units the float sum misses F by more than EPS.
-  const full = holdTotal(h) >= p.F * (1 - 1e-9) - EPS;
+  const full = fillsFreighter(holdTotal(h), p.F);
   const docked = h.freighter.phase === 'docked';
   const tutorial = !h.flags.tutorialDone && h.galaxy === 0;
   const s0 = h.slots[0];
