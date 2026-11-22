@@ -357,10 +357,17 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     return v && !v.onPace && v.shortOre ? bestRockOf(v.shortOre) : null;
   };
 
+  /** The routes of the ores the taken contract still wants (a seam or a claim does not take drones from them). */
+  const contractRoutes = (): number[] => {
+    const c = opts.passive || opts.noContracts ? null : H.activeContract(g.haul);
+    if (!c) return [];
+    const wanted = c.wants.filter((w) => w.got < w.units).map((w) => w.ore);
+    return g.haul.slots.map((s, i) => (s.claimed && wanted.includes(s.ore) ? i : -1)).filter((i) => i >= 0);
+  };
   const moveTo = (to: number, n: number, avoid: number[] = []): number => {
     let moved = 0;
     for (let k = 0; k < n; k++) {
-      const from = cheapestSource([to, ...avoid]);
+      const from = cheapestSource([to, ...avoid, ...contractRoutes()]);
       if (from === null || g.haul.slots[from].haulers < 2) break;
       if (!act(H.moveDrone(cfg, g, from, to), [])) break;
       count('drag');
@@ -502,10 +509,13 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
       routedMoves = 0;
       parked = g.haul.slots.map((s) => (s.claimed ? s.haulers : 0));
     }
-    if (!fresh && !warpedSince) return;
+    // The rules engineer's router (Decision 63; scratchpad space-finish-rules/s/follow.ts): at the take,
+    // after every warp-out and, between warp-outs, every 20 s while the light is not green (a rock that
+    // dried, a seam that pulled a drone), the best pace move until the light is green. No fleet budget:
+    // a person who took the contract moves what it takes.
+    if (!fresh && !warpedSince && t % 20 !== 0) return;
     warpedSince = false;
-    const budget = Math.ceil(cfg.haul.contracts.fleetShare * g.haul.fleet.drones);
-    routedMoves += routeStep(budget - routedMoves);
+    routedMoves += routeStep(30);
   };
 
 
@@ -813,8 +823,12 @@ const mmss = (s: number | null | undefined): string => {
 export const formatClock = mmss;
 
 const within = (v: number | undefined, lo: number, hi: number) => v !== undefined && v >= lo && v <= hi;
-/** Seconds a first Jump must keep from each edge of its window in the gate (Decision 62). */
-export const JUMP_MARGIN = 180;
+/**
+ * The first Jump's windows (Decision 63, overriding Decision 62's): hard on every gate seed 1 h 55 to
+ * 3 h 05; the median seed's first Jump aims at 2 h 15 to 2 h 45 (validate checks that across seeds).
+ */
+export const JUMP_GATE: readonly [number, number] = [6900, 11100];
+export const JUMP_TARGET: readonly [number, number] = [8100, 9900];
 
 /**
  * Lifetime earnings of a run of the bot at `hours`, from a result that covers them without a Jump
@@ -856,14 +870,16 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotR
   const slots = H.slotCount(cfg);
   const allAt = claims.length >= slots - 1 ? Math.max(...claims) : undefined;
   add('All slots claimed', '1 h 50 to 2 h 20', mmss(allAt), within(allAt, 6600, 8400), false);
-  // Decision 62: the gate keeps three minutes from each edge of the window, so a seed outside the gate's
-  // five does not fall out of it.
-  add('First Jump available (cores ≥ 20)', '2 h 15 to 2 h 45 (gate: 2 h 18 to 2 h 42, Decision 62)', mmss(m.jumpReady), within(m.jumpReady, 8100 + JUMP_MARGIN, 9900 - JUMP_MARGIN), true);
+  // Decision 63: hard on every seed 1 h 55 to 3 h 05; 2 h 15 to 2 h 45 is the median seed's target
+  // (validate, across the five seeds).
+  add('First Jump available (cores ≥ 20)', '1 h 55 to 3 h 05 (median seed 2 h 15 to 2 h 45)', mmss(m.jumpReady), within(m.jumpReady, JUMP_GATE[0], JUMP_GATE[1]), true);
   const run2 = r.runs[1];
   const run1Time = run1.end ? run1.end - run1.start : null;
   const r2 = run2?.reachedPrevAt ?? null;
-  // Decision 1 (lead, integration step): the hard gate is 65 %; 60 % stays the target.
-  add('Run 2 reaches run 1’s Jump earnings', '≤ 60 % of run 1 (gate 65 %)', run1Time && r2 !== null ? `${((r2 / run1Time) * 100).toFixed(0)} % (${mmss(r2)} of ${mmss(run1Time)})` : 'not reached', !!run1Time && r2 !== null && r2 <= 0.65 * run1Time, true);
+  // Decision 63: the hard gate is 70 %; 60 % stays the target (a soft row below).
+  const r2Value = run1Time && r2 !== null ? `${((r2 / run1Time) * 100).toFixed(0)} % (${mmss(r2)} of ${mmss(run1Time)})` : 'not reached';
+  add('Run 2 reaches run 1’s Jump earnings', '≤ 70 % of run 1', r2Value, !!run1Time && r2 !== null && r2 <= 0.7 * run1Time, true);
+  add('Run 2 reaches run 1’s Jump earnings (aim)', '≤ 60 % of run 1', r2Value, !!run1Time && r2 !== null && r2 <= 0.6 * run1Time, false);
   const run3 = r.runs[2];
   const run2Time = run2?.end ? run2.end - run2.start : null;
   const r3 = run3?.reachedPrevAt ?? null;
@@ -906,7 +922,8 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotR
   // (run earnings over the first hours against a player who never takes one), not as a share.
   if (compare) {
     const x = compare.never > 0 ? compare.router / compare.never : Infinity;
-    add(`Earnings with contracts against never taking one, first ${compare.hours} h`, '1.3 to 1.7 times', `${x.toFixed(2)} (${compare.router.toPrecision(3)} against ${compare.never.toPrecision(3)})`, x >= 1.3 && x <= 1.7, false);
+    // Decision 63: 1.25 to 1.6 (the median seed), under 1.9 on every seed (validate, across seeds).
+    add(`Earnings with contracts against never taking one, first ${compare.hours} h`, '1.25 to 1.6 times', `${x.toFixed(2)} (${compare.router.toPrecision(3)} against ${compare.never.toPrecision(3)})`, x >= 1.25 && x <= 1.6, false);
   }
   const bonusShare = r.contracts.earned ? r.contracts.bonus / r.contracts.earned : 0;
   add('Contract bonus as a share of income', '10 to 25 % (aim)', `${(bonusShare * 100).toFixed(1)} %`, bonusShare >= 0.1 && bonusShare <= 0.25, false);

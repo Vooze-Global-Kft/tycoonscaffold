@@ -211,7 +211,7 @@ g['haul'] = {
         # with Decision 56 (the schema still parses them from old data).
         'fleetShare': K('fleetShare', 0.5, 0.3, 0.7, 'share of the fleet a player sends to a contract when routing for it'),
         'minUnits': 3, 'twoOreChance': 0.4,
-        'mult': [round(1 + (m - 1) * K('contractMultScale', 1, 0.6, 1, 'contract multipliers: share of the specification\'s mark-up over x1'), 2) for m in (1.6, 1.9, 2.2, 2.6, 3.0)], 'jitter': 0.1,
+        'mult': [round(1 + (m - 1) * K('contractMultScale', 1, 0.0, 1, 'contract multipliers: share of the specification\'s mark-up over x1'), 2) for m in (1.6, 1.9, 2.2, 2.6, 3.0)], 'jitter': 0.1,
         'first': {'buyer': 0, 'ore': 'iron', 'units': 10, 'mult': 1.5},
         # `calls` and `closed` wait for the rules' buyer schema to carry them (balance report, "For other owners").
         'buyers': [{'id': i, 'name': n, 'calls': BUYER_LINES[i][0], 'closed': BUYER_LINES[i][1]} for i, n in BUYERS],
