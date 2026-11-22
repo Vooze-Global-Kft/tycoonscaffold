@@ -25,7 +25,7 @@ import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
 import { fly } from '../../juice/fly';
 import { useOverlay } from '../../kit/overlay';
-import { CARD_NAMEPLATE, CARD_SIZE, Chest, CHEST_SIZE } from '../../sim/art/props';
+import { CARD_NAMEPLATE, CARD_SIZE, Chest, CHEST_SIZE } from '../../art/props';
 import { RARITY_COLORS, RARITY_NAMES, alpha, inkOf, useTheme } from '../../theme';
 import { Burst, Confetti, Dust, Glow, Wash } from './Fx';
 import { DEAL_GAP_MS, DEAL_MS, OpeningSlot, makeSlotMotion, revealPlan, type SlotKind, type SlotMotion, type SlotPhase, type Spot } from './OpeningSlot';

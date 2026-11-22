@@ -10,7 +10,7 @@ import { GameIcon } from '../../../components/GameIcon';
 import { alpha, useTheme } from '../../../theme';
 import type { SceneLayout } from '../../layout';
 import { SLOWMO } from './dev';
-import type { Opening } from './gate';
+import type { Opening } from '../../../play/gate';
 
 export function GrandOpening({ layout, opening, onDone }: { layout: SceneLayout; opening: Opening; onDone: () => void }) {
   const t = useTheme();

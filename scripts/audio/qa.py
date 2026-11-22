@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Measure a folder of sounds, fail on anything out of spec, draw a contact sheet.
 
-  python3 scripts/audio/qa.py shared/sfx
-  python3 scripts/audio/qa.py shared/sfx games/pizza-empire/assets/sfx     (several folders, one sheet)
+  python3 scripts/audio/qa.py shared/sfx/warm
+  python3 scripts/audio/qa.py shared/sfx/warm games/pizza-empire/assets/sfx     (several folders, one sheet)
   python3 scripts/audio/qa.py games/space-miner/assets/sfx --sheet /tmp/space.png
-  python3 scripts/audio/qa.py shared/sfx --only 'tap_*,coin_*' --sheet /tmp/taps.png --cols 4
+  python3 scripts/audio/qa.py shared/sfx/warm --only 'tap_*,coin_*' --sheet /tmp/taps.png --cols 4
 
 For every .wav it prints: duration, peak dBFS, RMS dBFS, loudness (the
 K-weighted RMS of the loudest 200 ms, which is what the pack is normalised

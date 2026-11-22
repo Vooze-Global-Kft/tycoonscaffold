@@ -1,22 +1,25 @@
 /**
- * The names an "art:<name>" icon may use: code-drawn stills from the art kit (src/ui/sim/art,
- * ART_ICON_NAMES in props.tsx). The schema lint lives outside the UI and cannot import Skia code,
- * so this is a copy; src/config/artIcons.test.ts fails when the two lists differ.
+ * The "art:<name>" icons each mode's entry registers, for the Node-side lint (./lint.ts, run by
+ * scripts/validate.ts, scripts/generate-game.ts and tests). Node only: no
+ * app file imports this (scripts/lib/modes.js NODE_ONLY; the bundle check fails if one does), so
+ * no game's bundle names another mode's icons. In the app the names are what the entry registered
+ * (src/ui/art/icons.ts). The art files import Skia, which does not load under node, so this is a
+ * copy; src/config/artIcons.test.ts fails when it differs from the entries.
  */
-export const ART_ICON_NAMES = [
-  'chest-wood',
-  'chest-silver',
-  'chest-gold',
-  'gem',
-  'truffle',
-  'truffle-pile',
-  'truffle-basket',
-  'truffle-crate',
-  'coin',
-  'card-back',
-  'storefront',
-] as const;
+/** The tab-shell family's icons (src/ui/art/props.tsx TABS_ART_ICONS), registered by sim and classic. */
+export const TABS_ART_ICON_NAMES = ['chest-wood', 'chest-silver', 'chest-gold', 'gem', 'coin', 'card-back'] as const;
 
-export function isArtIcon(name: string): boolean {
-  return (ART_ICON_NAMES as readonly string[]).includes(name);
+/** The sim mode's own (src/ui/sim/art/props.tsx SIM_ART_ICONS). */
+export const SIM_ART_ICON_NAMES = ['truffle', 'truffle-pile', 'truffle-basket', 'truffle-crate', 'storefront'] as const;
+
+/** Every mode's "art:" names, as its entry registers them. */
+export const ART_ICONS_BY_MODE: Record<string, readonly string[]> = {
+  sim: [...TABS_ART_ICON_NAMES, ...SIM_ART_ICON_NAMES],
+  classic: [...TABS_ART_ICON_NAMES],
+  haul: [],
+};
+
+/** The "art:" names a game of `mode` can draw. */
+export function artIconsFor(mode: string): readonly string[] {
+  return ART_ICONS_BY_MODE[mode] ?? [];
 }

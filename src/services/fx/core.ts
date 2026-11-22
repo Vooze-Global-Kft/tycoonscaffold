@@ -6,7 +6,7 @@
  * whole service runs in the unit tests. `index.ts` builds the real one.
  */
 import type { AudioEngine } from './audio';
-import type { FxDef } from './catalog';
+import type { FxRuntimeDef } from './catalog';
 import type { HapticsEngine } from './haptics';
 import { RateLimiter } from './limiter';
 import { DEDUPE_MS, MUSIC, planSounds } from './mix';
@@ -64,7 +64,7 @@ export interface Fx<Name extends string = string> {
 /** What the service needs from the sound engine (the real one is `AudioEngine`). */
 export type AudioPort = Pick<AudioEngine, 'register' | 'init' | 'preload' | 'has' | 'play' | 'stopAll' | 'refreshSession' | 'music'>;
 
-export interface FxDeps<Catalog extends Readonly<Record<string, FxDef>>> {
+export interface FxDeps<Catalog extends Readonly<Record<string, FxRuntimeDef>>> {
   catalog: Catalog;
   /** Bundled sound files by key (`gameSounds`). */
   sounds: Readonly<Record<string, number>>;
@@ -86,9 +86,9 @@ function clamp01(value: number): number {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1;
 }
 
-export function createFx<Catalog extends Readonly<Record<string, FxDef>>>(deps: FxDeps<Catalog>): Fx<keyof Catalog & string> {
+export function createFx<Catalog extends Readonly<Record<string, FxRuntimeDef>>>(deps: FxDeps<Catalog>): Fx<keyof Catalog & string> {
   const { audio, haptics, settings, now } = deps;
-  const catalog: Readonly<Record<string, FxDef>> = deps.catalog;
+  const catalog: Readonly<Record<string, FxRuntimeDef>> = deps.catalog;
   const log = deps.log ?? (() => {});
   const limiter = new RateLimiter();
   const picker = new VariantPicker(deps.random);

@@ -6,14 +6,14 @@
  */
 import type { ComponentType } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { ChestButton } from '../meta/chest/ChestButton';
-import { MissionsButton } from '../meta/missions/MissionsButton';
-import { SkiaScene } from '../scene/SkiaScene';
-import { useTheme } from '../theme';
-import { BuyAmountRow } from './BuyAmountRow';
-import { useHomeMetrics } from './layout';
-import { RowRegistry, useRowScroller } from './rows';
-import { StationList } from './StationList';
+import { ChestButton } from '../../ui/meta/chest/ChestButton';
+import { MissionsButton } from '../../ui/meta/missions/MissionsButton';
+import { SkiaScene } from '../../ui/scene/SkiaScene';
+import { useTheme } from '../../ui/theme';
+import { BuyAmountRow } from '../../ui/home/BuyAmountRow';
+import { useHomeMetrics } from '../../ui/home/layout';
+import { RowRegistry, useRowScroller } from '../../ui/home/rows';
+import { StationList } from '../../ui/home/StationList';
 
 /**
  * The three.js scene is loaded only by a game that asks for it, so every other game skips
@@ -22,7 +22,7 @@ import { StationList } from './StationList';
 let threeScene: ComponentType | null = null;
 function loadThreeScene(): ComponentType {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  threeScene ??= (require('../scene/ThreeScene') as typeof import('../scene/ThreeScene')).ThreeScene;
+  threeScene ??= (require('../../ui/scene/ThreeScene') as typeof import('../../ui/scene/ThreeScene')).ThreeScene;
   return threeScene;
 }
 

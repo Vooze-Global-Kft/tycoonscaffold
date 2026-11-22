@@ -152,36 +152,4 @@ export interface DishLook extends DishColors {
 export const TABLE_STATES = ['empty', 'food', 'finished'] as const;
 export type TableState = (typeof TABLE_STATES)[number];
 
-export const CHEST_TIERS = ['wood', 'silver', 'gold'] as const;
-export type ChestTier = (typeof CHEST_TIERS)[number];
-
-export const RARITIES = ['common', 'rare', 'epic', 'legendary'] as const;
-export type Rarity = (typeof RARITIES)[number];
-
-/**
- * The small palette every prop is drawn from, so a re-themed game recolours
- * its whole scene by changing a few values (see `makePalette`).
- */
-export interface ArtPalette {
-  /** Outline colour of everything. */
-  outline: string;
-  /** Brand colour: awning stripes, tablecloth checks, oven tiles, card backs. */
-  primary: string;
-  /** Second brand colour: trims, signs, cushions. */
-  accent: string;
-  /** Furniture and counters. */
-  wood: string;
-  /** Appliances and pans. */
-  metal: string;
-  /** Oven dome, bricks. */
-  stone: string;
-  /** Fire and warm light. */
-  glow: string;
-  /** Linen: tablecloth base, plates, napkins. */
-  cloth: string;
-  /** Wall colour. */
-  wall: string;
-  /** The two floor tile colours. */
-  floorA: string;
-  floorB: string;
-}
+export { CHEST_TIERS, RARITIES, type ArtPalette, type ChestTier, type Rarity } from '../../art/types';

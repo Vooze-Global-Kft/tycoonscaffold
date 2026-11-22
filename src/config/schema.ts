@@ -5,7 +5,6 @@
  * against this schema. The code never branches on a game id.
  */
 import { z } from 'zod';
-import { ART_ICON_NAMES, isArtIcon } from './artIcons';
 import { MetaSchema, SimSchema } from './schema.sim';
 
 export * from './schema.sim';
@@ -15,7 +14,7 @@ const hex = z.string().regex(/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, 'hex colour l
 /**
  * An icon is an emoji (zero-asset reskin), `asset:<key>` (an image from the game's assets map)
  * `char:<castId>` (a code-drawn character from the game's cast) or `art:<name>` (a code-drawn still
- * from the art kit, one of ART_ICON_NAMES in ./artIcons).
+ * the active mode draws; the Node-side lint, ./lint.ts, checks the names).
  */
 const icon = z.string().min(1);
 
@@ -130,8 +129,18 @@ export const GameConfigSchema = z.object({
   /**
    * "classic": a list of businesses that pay straight into cash.
    * "sim": businesses are stations in a production chain with visible workers (needs the `sim` block).
+   * "haul": the orbital hauling game. Only its entry exists so far (a placeholder screen,
+   *   src/modes/haul); its engine and data come next, and until then a haul game still needs
+   *   the classic fields. The mode picks the code bundled with the game (src/generated/mode.ts)
+   *   and is never changed at run time.
    */
-  mode: z.enum(['classic', 'sim']).default('classic'),
+  mode: z.enum(['classic', 'sim', 'haul']).default('classic'),
+  /**
+   * The sound pack: a folder in shared/sfx/ ("warm": marimba, plate clinks, the service bell;
+   * "synth"). Only this pack is bundled with the game; files in the game's own assets/sfx/
+   * override it by name. A missing sound is silent.
+   */
+  soundPack: z.string().regex(/^[a-z0-9-]+$/).default('warm'),
 
   app: z.object({
     /** Name under the icon on the home screen (keep it short, about 12 chars). */
@@ -379,162 +388,4 @@ export type StoryBeat = z.output<typeof StoryBeatSchema>;
 export type IapProduct = z.output<typeof IapProductSchema>;
 export type Character = z.output<typeof CharacterSchema>;
 
-/** Cross-field checks zod can't express per field. Returns a list of problems. */
-export function lintGameConfig(cfg: GameConfig): string[] {
-  const problems: string[] = [];
-  const ids = new Set<string>();
-  for (const b of cfg.businesses) {
-    if (ids.has(b.id)) problems.push(`duplicate business id "${b.id}"`);
-    ids.add(b.id);
-  }
-  for (const u of cfg.upgrades) {
-    if (u.target !== 'all' && !ids.has(u.target)) problems.push(`upgrade "${u.id}" targets unknown business "${u.target}"`);
-  }
-  const chars = new Set(cfg.characters.map((c) => c.id));
-  for (const s of cfg.story) {
-    if (!chars.has(s.characterId)) problems.push(`story beat "${s.id}" uses unknown character "${s.characterId}"`);
-    if ((s.trigger.type === 'owned' || s.trigger.type === 'hired') && !ids.has(s.trigger.businessId)) {
-      problems.push(`story beat "${s.id}" triggers on unknown business "${s.trigger.businessId}"`);
-    }
-    if (s.trigger.type === 'venue') {
-      const venueId = s.trigger.venueId;
-      if (!cfg.sim?.venues.some((v) => v.id === venueId)) problems.push(`story beat "${s.id}" triggers on unknown venue "${venueId}"`);
-    }
-  }
-
-  // --- sim mode ---
-  if (cfg.mode === 'sim' && !cfg.sim) problems.push('mode is "sim" but there is no "sim" block');
-  if (cfg.mode !== 'sim' && cfg.sim) problems.push('there is a "sim" block but mode is not "sim"');
-  if (cfg.sim) {
-    for (let i = 1; i < cfg.sim.venues.length; i++) {
-      const [prev, v] = [cfg.sim.venues[i - 1], cfg.sim.venues[i]];
-      if (v.scale <= prev.scale) problems.push(`venue "${v.id}" must have a larger scale than "${prev.id}"`);
-      if (v.unlockCost <= prev.unlockCost) problems.push(`venue "${v.id}" must cost more to open than "${prev.id}"`);
-    }
-  }
-
-  // --- meta: cards, chests, missions, deals ---
-  const meta = cfg.meta;
-  const unique = (what: string, list: { id: string }[]) => {
-    const seen = new Set<string>();
-    for (const x of list) {
-      if (seen.has(x.id)) problems.push(`duplicate ${what} id "${x.id}"`);
-      seen.add(x.id);
-    }
-    return seen;
-  };
-  const cardIds = unique('card', meta.cards);
-  const chestIds = unique('chest', meta.chests);
-  unique('mission', meta.missions.templates);
-  unique('deal', meta.deals);
-  unique('daily offer', meta.dailyShop.offers);
-  const checkReward = (where: string, r: (typeof meta.deals)[number]['contents'][number]) => {
-    if (r.type === 'chest' && !chestIds.has(r.chestId)) problems.push(`${where} grants unknown chest "${r.chestId}"`);
-    if (r.type === 'card' && !cardIds.has(r.cardId)) problems.push(`${where} grants unknown card "${r.cardId}"`);
-    if (r.type === 'randomCard' && !meta.cards.some((c) => c.rarity === r.rarity)) problems.push(`${where} grants a ${r.rarity} card but there are none`);
-  };
-  for (const c of meta.chests) {
-    const { card, gems, cash } = c.slotWeights;
-    if (card + gems + cash <= 0) problems.push(`chest "${c.id}" has no slot weights`);
-    const w = c.rarityWeights;
-    if (card > 0 && w.common + w.rare + w.epic + w.legendary <= 0) problems.push(`chest "${c.id}" has card slots but no rarity weights`);
-    if (card > 0 && meta.cards.length === 0) problems.push(`chest "${c.id}" has card slots but the game has no cards`);
-    for (const rarity of ['common', 'rare', 'epic', 'legendary'] as const) {
-      if (card > 0 && w[rarity] > 0 && !meta.cards.some((x) => x.rarity === rarity)) problems.push(`chest "${c.id}" can roll a ${rarity} card but there are none`);
-      if (c.cardCopies[rarity][0] < 1) problems.push(`chest "${c.id}" cardCopies.${rarity} must be at least 1`);
-    }
-  }
-  if (!meta.chestsForSale) {
-    const sold = (where: string, rewards: { type: string }[]) => {
-      if (rewards.some((r) => r.type === 'chest')) problems.push(`${where} contains a chest, but meta.chestsForSale is off (chests are earned, not sold)`);
-    };
-    for (const c of meta.chests) if (c.gemCost !== undefined) problems.push(`chest "${c.id}" has a gem price, but meta.chestsForSale is off`);
-    for (const d of meta.deals) sold(`deal "${d.id}"`, d.contents);
-    for (const o of meta.dailyShop.offers) if (o.gemCost > 0) sold(`daily offer "${o.id}"`, [o.reward]);
-  }
-  if (meta.freeChest && !chestIds.has(meta.freeChest.chestId)) problems.push(`freeChest uses unknown chest "${meta.freeChest.chestId}"`);
-  if (meta.adChest && !chestIds.has(meta.adChest.chestId)) problems.push(`adChest uses unknown chest "${meta.adChest.chestId}"`);
-  for (const m of meta.missions.templates) {
-    if (!m.text.includes('{n}')) problems.push(`mission "${m.id}" text must contain {n}`);
-    if (m.type === 'rush' && !cfg.sim) problems.push(`mission "${m.id}" counts rush skills, which only sim games have`);
-    if (m.type === 'serve' && !cfg.sim) problems.push(`mission "${m.id}" counts guests served, which only sim games have`);
-    if (m.type === 'chests' && meta.chests.length === 0) problems.push(`mission "${m.id}" counts chests but the game has none`);
-    checkReward(`mission "${m.id}"`, m.reward);
-  }
-  meta.missions.milestones.forEach((m) => checkReward(`mission milestone every ${m.every}`, m.reward));
-  for (const d of meta.deals) {
-    if (d.trigger.type === 'venue') {
-      const venueId = d.trigger.venueId;
-      if (!cfg.sim?.venues.some((v) => v.id === venueId)) problems.push(`deal "${d.id}" triggers on unknown venue "${venueId}"`);
-    }
-  }
-  if (meta.missions.templates.length > 0 && meta.missions.templates.length < meta.missions.slots) {
-    problems.push(`missions: ${meta.missions.slots} slots but only ${meta.missions.templates.length} templates`);
-  }
-  for (const d of meta.deals) {
-    if (Boolean(d.productId) === Boolean(d.gemCost)) problems.push(`deal "${d.id}" needs exactly one of productId or gemCost`);
-    if (d.productId) {
-      const product = cfg.monetization.iap.products.find((p) => p.id === d.productId);
-      if (!product) problems.push(`deal "${d.id}" uses unknown IAP product "${d.productId}"`);
-      else if (product.kind !== 'deal') problems.push(`deal "${d.id}" must use an IAP product of kind "deal", not "${product.kind}"`);
-    }
-    d.contents.forEach((r) => {
-      checkReward(`deal "${d.id}"`, r);
-      // Deals are consumable purchases; permanent items are sold as their own products so they can be restored.
-      if (r.type === 'noAds' || r.type === 'multiplier') problems.push(`deal "${d.id}" may not contain "${r.type}"; sell it as its own product`);
-    });
-  }
-  for (const p of cfg.monetization.iap.products) {
-    if (p.kind === 'deal' && meta.deals.filter((d) => d.productId === p.id).length !== 1) {
-      problems.push(`IAP product "${p.id}" has kind "deal" and must be used by exactly one deal`);
-    }
-  }
-  for (const o of meta.dailyShop.offers) checkReward(`daily offer "${o.id}"`, o.reward);
-
-  const kw = cfg.store.keywords.join(',');
-  if (kw.length > 100) problems.push(`store.keywords is ${kw.length} chars; iOS allows 100`);
-  const assetKeys = new Set(Object.keys(cfg.assets));
-  const iconFields = [
-    cfg.theme.heroIcon,
-    cfg.theme.particleIcon,
-    cfg.strings.currencyIcon,
-    cfg.strings.gemIcon,
-    cfg.strings.prestigeIcon,
-    ...Object.values(cfg.theme.icons).map((i) => i ?? ''),
-    ...cfg.businesses.flatMap((b) => [b.icon, b.managerIcon ?? '']),
-    ...cfg.upgrades.map((u) => u.icon ?? ''),
-    ...cfg.characters.map((c) => c.portrait),
-    ...cfg.story.map((b) => b.portrait ?? ''),
-    ...cfg.monetization.iap.products.map((p) => p.icon ?? ''),
-    ...cfg.businesses.map((b) => b.productIcon ?? ''),
-    ...(cfg.sim ? [cfg.sim.buffer.icon, cfg.sim.transport.icon, cfg.sim.transport.managerIcon ?? '', cfg.sim.sales.icon, cfg.sim.rush.icon] : []),
-    ...(cfg.sim?.venues.map((v) => v.icon) ?? []),
-    ...meta.cards.map((c) => c.icon),
-    ...meta.chests.map((c) => c.icon),
-    ...meta.deals.map((d) => d.icon ?? ''),
-    ...meta.dailyShop.offers.map((o) => o.icon ?? ''),
-  ].filter(Boolean);
-  const castIds = new Set(Object.keys(cfg.cast));
-  const lookRefs = [
-    ...cfg.businesses.map((b) => b.workerLook ?? ''),
-    ...(cfg.sim ? [...cfg.sim.transport.looks, ...cfg.sim.sales.looks] : []),
-    ...iconFields.filter((i) => i.startsWith('char:')).map((i) => i.slice(5)),
-  ].filter(Boolean);
-  for (const id of lookRefs) {
-    if (!castIds.has(id)) problems.push(`character "${id}" is used but missing from cast`);
-  }
-  for (const key of [cfg.theme.displayFont, cfg.theme.sceneBackground]) {
-    if (key && !assetKeys.has(key)) problems.push(`theme asset "${key}" has no entry in assets`);
-  }
-  for (const i of iconFields) {
-    if (i.startsWith('asset:') && !assetKeys.has(i.slice(6))) problems.push(`icon "${i}" has no entry in assets`);
-    if (i.startsWith('art:') && !isArtIcon(i.slice(4))) problems.push(`icon "${i}" is not a drawn icon (one of ${ART_ICON_NAMES.map((n) => `art:${n}`).join(', ')})`);
-  }
-  // Each business should be meaningfully more expensive than the last, or the curve feels flat.
-  for (let i = 1; i < cfg.businesses.length; i++) {
-    if (cfg.businesses[i].baseCost <= cfg.businesses[i - 1].baseCost) {
-      problems.push(`business "${cfg.businesses[i].id}" is not more expensive than the one before it`);
-    }
-  }
-  return problems;
-}
+// The cross-field checks (lintGameConfig) live in ./lint.ts: Node tools only, so their messages ship in no game.

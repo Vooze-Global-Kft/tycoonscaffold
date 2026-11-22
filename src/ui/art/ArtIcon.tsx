@@ -1,6 +1,5 @@
 /**
- * "art:<name>" icons: still drawings from the art kit (chests, gem, truffle, coin, card back,
- * storefront), shown as a cached image like the small portraits, so a list of them costs
+ * "art:<name>" icons: still drawings the active mode registered (./icons.ts), shown as a cached image like the small portraits, so a list of them costs
  * images and no GPU surfaces. Any size from 16 to 96 pt, drawn at the device's pixel density.
  *
  *   <ArtIcon name="chest-gold" size={28} />
@@ -11,7 +10,7 @@
 import { Skia } from '@shopify/react-native-skia';
 import { useMemo, type ReactNode } from 'react';
 import { Image, PixelRatio, View, type StyleProp, type ViewStyle } from 'react-native';
-import { artIconArt, isArtIconName } from './props';
+import { artIconArt, isArtIconName } from './icons';
 
 const images = new Map<string, string>();
 const IMAGES_MAX = 200;

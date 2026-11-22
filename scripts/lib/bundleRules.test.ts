@@ -1,0 +1,167 @@
+import { describe, expect, it } from 'vitest';
+import { bundleViolations, importViolations, levelOf, modeOf, packageOf, themeWordsIn, type BundleContents, type BundleManifest } from './bundleRules';
+import { runtimeImports } from '../check-bundle';
+
+const M: BundleManifest = {
+  modeFolders: { sim: ['src/modes/sim', 'src/ui/sim'], classic: ['src/modes/classic', 'src/ui/scene'], haul: ['src/modes/haul'] },
+  families: { tabs: { modes: ['sim', 'classic'], paths: ['src/ui/shell', 'src/ui/home', 'src/ui/art/props.tsx'] } },
+  sharedUi: ['src/ui/App.tsx', 'src/ui/simulation.ts', 'src/ui/components/GameIcon.tsx', 'src/ui/art/icons.ts', 'src/ui/kit'],
+  uiRoot: 'src/ui',
+  nodeOnly: ['src/services/fx/catalog.ts'],
+  modePackages: { three: ['classic'], 'expo-gl': ['classic'] },
+  rig: ['src/ui/sim/art/Character.tsx', 'src/ui/sim/art/rig.ts'],
+  generatedEntry: 'src/generated/mode.ts',
+  soundPacks: 'shared/sfx',
+  games: ['pizza-empire', 'space-miner'],
+};
+
+const clean = (over: Partial<BundleContents> = {}): BundleContents => ({
+  game: 'space-miner',
+  mode: 'classic',
+  pack: 'synth',
+  modules: ['src/ui/App.tsx', 'src/modes/classic/index.tsx', 'src/ui/scene/ThreeScene.tsx', 'games/space-miner/game.json'],
+  assets: ['shared/sfx/synth/buy.wav', 'games/space-miner/assets/sfx/music_main.m4a'],
+  packages: ['react', 'three'],
+  ...over,
+});
+
+const rules = (b: BundleContents) => bundleViolations(b, M).map((v) => `${v.rule} ${v.file}`);
+
+describe('bundle rules', () => {
+  it('a bundle of its own mode, data, pack and packages passes', () => {
+    expect(rules(clean())).toEqual([]);
+  });
+
+  it('another mode\'s folders fail, the shared ones and its own do not', () => {
+    expect(rules(clean({ modules: ['src/ui/sim/scene/world/World.tsx', 'src/modes/haul/index.tsx', 'src/ui/simulation.ts', 'src/ui/scene/SkiaScene.tsx'] }))).toEqual([
+      'other-mode src/ui/sim/scene/world/World.tsx',
+      'other-mode src/modes/haul/index.tsx',
+    ]);
+  });
+
+  it('another game\'s data fails, as a module or as an asset', () => {
+    expect(rules(clean({ modules: ['games/pizza-empire/game.json'], assets: ['games/pizza-empire/assets/hero.png'] }))).toEqual([
+      'other-game games/pizza-empire/game.json',
+      'other-game games/pizza-empire/assets/hero.png',
+    ]);
+  });
+
+  it('a sound from a pack the game does not declare fails', () => {
+    expect(rules(clean({ assets: ['shared/sfx/warm/bell.wav', 'shared/sfx/synth/bell.wav'] }))).toEqual(['other-pack shared/sfx/warm/bell.wav']);
+    expect(rules(clean({ game: 'pizza-empire', mode: 'sim', pack: 'warm', modules: [], packages: [], assets: ['shared/sfx/warm/bell.wav'] }))).toEqual([]);
+  });
+
+  it('the restaurant rig fails for every mode but sim, and is named as the rig', () => {
+    expect(rules(clean({ mode: 'haul', modules: ['src/ui/sim/art/rig.ts'], packages: [] }))).toEqual(['other-mode src/ui/sim/art/rig.ts', 'restaurant-rig src/ui/sim/art/rig.ts']);
+    expect(rules(clean({ game: 'pizza-empire', mode: 'sim', pack: 'warm', modules: ['src/ui/sim/art/rig.ts'], assets: [], packages: [] }))).toEqual([]);
+  });
+
+  it('three.js and the GL view are for the classic mode only', () => {
+    expect(rules(clean({ game: 'pizza-empire', mode: 'sim', pack: 'warm', modules: [], assets: [], packages: ['three', 'expo-gl', 'react'] }))).toEqual([
+      'mode-package node_modules/three',
+      'mode-package node_modules/expo-gl',
+    ]);
+  });
+
+  it('a mode is told by its folders, not by a name that starts the same', () => {
+    expect(modeOf('src/ui/sim/x.ts', M)).toBe('sim');
+    expect(modeOf('src/ui/simple.ts', M)).toBeNull();
+    expect(modeOf('src/ui/scene', M)).toBe('classic');
+  });
+});
+
+describe('three levels', () => {
+  it('tells a mode\'s folders, a family, a shared file and an unclassified file under src/ui apart', () => {
+    expect(levelOf('src/ui/sim/x.ts', M)).toEqual({ level: 'mode', mode: 'sim' });
+    expect(levelOf('src/ui/home/rows.tsx', M)).toEqual({ level: 'family', family: 'tabs' });
+    expect(levelOf('src/ui/art/props.tsx', M)).toEqual({ level: 'family', family: 'tabs' });
+    expect(levelOf('src/ui/art/icons.ts', M)).toEqual({ level: 'shared' });
+    expect(levelOf('src/ui/kit/Sheet.tsx', M)).toEqual({ level: 'shared' });
+    expect(levelOf('src/engine/economy.ts', M)).toEqual({ level: 'shared' });
+    expect(levelOf('src/ui/art/new.tsx', M)).toEqual({ level: 'unclassified' });
+  });
+
+  it('a family file ships with its member modes only; an unclassified or Node-only file with none', () => {
+    const files = ['src/ui/shell/TabShell.tsx', 'src/ui/art/props.tsx', 'src/ui/art/new.tsx', 'src/services/fx/catalog.ts', 'src/ui/kit/Sheet.tsx'];
+    expect(rules(clean({ mode: 'haul', modules: files, packages: [] }))).toEqual([
+      'other-family src/ui/shell/TabShell.tsx',
+      'other-family src/ui/art/props.tsx',
+      'unclassified src/ui/art/new.tsx',
+      'node-only src/services/fx/catalog.ts',
+    ]);
+    expect(rules(clean({ modules: files }))).toEqual(['unclassified src/ui/art/new.tsx', 'node-only src/services/fx/catalog.ts']);
+  });
+
+  it('a family file may be imported by the family and its member modes only; shared code imports shared code only', () => {
+    const edges = [
+      ['src/ui/kit/Sheet.tsx', 'src/ui/art/props.tsx'],
+      ['src/ui/components/GameIcon.tsx', 'src/ui/art/icons.ts'],
+      ['src/ui/shell/TabShell.tsx', 'src/ui/home/rows.tsx'],
+      ['src/ui/shell/TabShell.tsx', 'src/ui/kit/Sheet.tsx'],
+      ['src/modes/classic/index.tsx', 'src/ui/shell/TabShell.tsx'],
+      ['src/modes/haul/index.tsx', 'src/ui/shell/TabShell.tsx'],
+      ['src/ui/home/rows.tsx', 'src/ui/sim/art/index.ts'],
+      ['src/ui/kit/Sheet.tsx', 'src/ui/art/new.tsx'],
+      ['src/ui/art/new.tsx', 'src/ui/home/rows.tsx'],
+      ['src/ui/sim/home/HomeSim.tsx', 'src/ui/art/new.tsx'],
+    ] as const;
+    expect(importViolations(edges, M).map((v) => `${v.rule} ${v.file}`)).toEqual([
+      'shared-imports-family src/ui/kit/Sheet.tsx',
+      'imports-other-family src/modes/haul/index.tsx',
+      'family-imports-mode src/ui/home/rows.tsx',
+      'imports-unclassified src/ui/kit/Sheet.tsx',
+      'shared-imports-family src/ui/art/new.tsx',
+      'imports-unclassified src/ui/sim/home/HomeSim.tsx',
+    ]);
+  });
+});
+
+describe('theme words', () => {
+  it('finds whole words in identifiers and sentences, with plurals and verb forms, not inside other words', () => {
+    const w = ['cook', 'guest', 'table', 'serve', 'ore'];
+    expect(themeWordsIn('cook_done', w)).toEqual(['cook']);
+    expect(themeWordsIn('guestsPaid', w)).toEqual(['guest']);
+    expect(themeWordsIn('Serving 3 tables', w).sort()).toEqual(['serve', 'table']);
+    expect(themeWordsIn('cookie score before', w)).toEqual([]);
+    expect(themeWordsIn('Ore', w)).toEqual(['ore']);
+  });
+});
+
+describe('layering rule', () => {
+  it('shared code may not import a mode\'s folders; the generated entry and the mode itself may', () => {
+    const edges = [
+      ['src/ui/components/GameIcon.tsx', 'src/ui/sim/art/index.ts'],
+      ['src/generated/mode.ts', 'src/modes/sim/index.tsx'],
+      ['src/modes/sim/index.tsx', 'src/ui/sim/home/HomeSim.tsx'],
+      ['src/ui/sim/home/HomeSim.tsx', 'src/ui/home/rows.tsx'],
+      ['src/modes/classic/HomeClassic.tsx', 'src/ui/sim/art/props.tsx'],
+    ] as const;
+    expect(importViolations(edges, M).map((v) => `${v.file} -> ${/imports (\S+)/.exec(v.message)![1]}`)).toEqual([
+      'src/ui/components/GameIcon.tsx -> src/ui/sim/art/index.ts',
+      'src/modes/classic/HomeClassic.tsx -> src/ui/sim/art/props.tsx',
+    ]);
+  });
+});
+
+describe('import reading', () => {
+  it('keeps value imports, re-exports, require and import(); drops type-only ones', () => {
+    const src = [
+      "import a from './a';",
+      "import { b, type B } from './b';",
+      "import type { C } from './c';",
+      "import { type D } from './d';",
+      "export { e } from './e';",
+      "export type { F } from './f';",
+      "const g = require('./g.png');",
+      "const h = () => import('./h');",
+      "import './side-effect';",
+    ].join('\n');
+    expect(runtimeImports('x.ts', src).sort()).toEqual(['./a', './b', './e', './g.png', './h', './side-effect']);
+  });
+
+  it('names the package of a bare import or a node_modules path', () => {
+    expect(packageOf('three/examples/jsm/x')).toBe('three');
+    expect(packageOf('@shopify/react-native-skia')).toBe('@shopify/react-native-skia');
+    expect(packageOf('node_modules/expo/node_modules/@expo/cli/build/x.js')).toBe('@expo/cli');
+  });
+});

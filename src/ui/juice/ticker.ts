@@ -4,7 +4,7 @@
  * speed switch, a slow phone or a rush can change the rhythm: never assume 100 ms.
  */
 import { Easing, withTiming, type SharedValue } from 'react-native-reanimated';
-import { useGame } from '../../../../state/store';
+import { useGame } from '../../state/store';
 
 let lastAt = 0;
 let interval = 100;

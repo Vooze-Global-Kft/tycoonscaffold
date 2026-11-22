@@ -10,13 +10,13 @@ import { memo, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useShallow } from 'zustand/react/shallow';
-import type { Stage } from '../../engine/chain';
-import { formatMoney } from '../../engine/format';
-import { stageReadout } from '../../engine/view';
-import { useGame } from '../../state/store';
-import { GameIcon } from '../components/GameIcon';
-import { useTarget } from '../hints/targets';
-import { STAGES, alpha, inkOf, textOn, useStages, useTheme, type StageInfo } from '../theme';
+import type { Stage } from '../../../engine/chain';
+import { formatMoney } from '../../../engine/format';
+import { stageReadout } from '../../../engine/view';
+import { useGame } from '../../../state/store';
+import { GameIcon } from '../../components/GameIcon';
+import { useTarget } from '../../hints/targets';
+import { STAGES, alpha, inkOf, textOn, useStages, useTheme, type StageInfo } from '../../theme';
 
 /** `b` laid over `a` at `amount` (an opaque colour, for contrast checks against a tinted chip). */
 function mix(a: string, b: string, amount: number): string {
@@ -24,7 +24,7 @@ function mix(a: string, b: string, amount: number): string {
   const c = [0, 1, 2].map((i) => Math.round(p(a, i) + (p(b, i) - p(a, i)) * amount).toString(16).padStart(2, '0'));
   return `#${c.join('')}`;
 }
-import { useHomeUi } from './uiState';
+import { useHomeUi } from '../../home/uiState';
 
 interface ChipProps {
   info: StageInfo;

@@ -12,7 +12,7 @@ import { fly } from '../../../juice/fly';
 import { useTheme } from '../../../theme';
 import type { SceneLayout } from '../../layout';
 import { SLOWMO } from './dev';
-import { canSpawnBonus } from './gate';
+import { canSpawnBonus } from '../../../play/gate';
 import { noop } from './Hotspots';
 import { bonusPoint, type BonusShared } from './shared';
 

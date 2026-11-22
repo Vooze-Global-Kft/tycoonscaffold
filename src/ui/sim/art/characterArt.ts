@@ -34,9 +34,9 @@ import {
   record,
   rrect,
   shadeOf,
-} from './draw';
+} from '../../art/draw';
 import { lookKey, type ResolvedLook } from './looks';
-import { RasterSet } from './raster';
+import { RasterSet } from '../../art/raster';
 
 /** How far the face sits towards the side the character is facing. */
 export const FACE_SHIFT = 3;

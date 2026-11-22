@@ -29,10 +29,11 @@ This app is a single game screen with in-app tabs (`src/ui/App.tsx`), so it does
 
 ## Project rules
 
-- One codebase, many games. Never branch on a game id in code: everything game-specific belongs in `games/<id>/game.json` and the schema in `src/config/schema.ts` / `schema.sim.ts` (with cross-field checks in `lintGameConfig`).
+- One codebase, many games. Never branch on a game id in code: everything game-specific belongs in `games/<id>/game.json` and the schema in `src/config/schema.ts` / `schema.sim.ts` (with cross-field checks in `lintGameConfig`, `src/config/lint.ts`).
+- One game per bundle, three levels of code (`scripts/lib/modes.js`, table in `docs/design/space-bundle.md`): (a) shared by every game (`SHARED_UI` under `src/ui`, and the rest of `src/` outside the mode folders): no drawn art of any game, no screens of any game, no game words; (b) a family (`FAMILIES.tabs`: the tab shell, header, list homes, meta screens and the first game's drawn kit, for sim and classic only); (c) a mode's folders (`src/modes/<mode>/`, `src/ui/sim/`, `src/ui/scene/`, `src/ui/haul/`), reached only through the generated entry `src/generated/mode.ts`. A shared file imports only shared files; a family file only its family and shared files; a mode only itself, its families and shared files. What a shared piece needs from a mode (portraits, the tutorial pointer, "art:" icons, the hint script) the entry hands over at install (`src/modes/contract.ts`). A new file under `src/ui` must be listed in `modes.js` or the check fails. Node-only files (`NODE_ONLY`: the fx catalogue, `src/config/artIcons.ts`, `src/config/lint.ts`) are never imported by the app. A game gets only its own sound pack (`shared/sfx/<pack>/`). Run `npm run check:bundle` (`-- --words` lists other themes' words in shared code; `-- --export` before a release).
 - `src/engine/` stays pure TypeScript: no React, no native imports, deterministic. Never call `Math.random` or `Date.now` there; time comes in as `now`, randomness from the seed in state (`rng.ts`). Every engine change comes with tests (`npm test`).
 - All game state changes go through actions in `src/state/store.ts`; UI components never mutate state or call engine functions that change it on their own.
-- Sound and haptics only through the fx service (`src/services/fx`, `fx.play('<key>')` with keys from `catalog.ts`); never import expo-audio or expo-haptics elsewhere.
+- Sound and haptics only through the fx service (`src/services/fx`, `fx.play('<key>')` with keys from `catalog.ts`); never import expo-audio or expo-haptics elsewhere. The app never imports `catalog.ts` at run time (only its types): it plays the generated per-mode table.
 - Characters are drawn in code: use `"char:<id>"` icons with a look in the game's top-level `cast`, not new image assets, unless the game has its own art.
 - Native SDKs are only required from `src/services/sdks.ts` (web uses `sdks.web.ts`).
 - zustand selectors that return new objects or arrays must use `useShallow`. The store's `game` changes ten times a second: select the few values a component shows, never the whole object in lists or animated components.
@@ -44,7 +45,7 @@ This app is a single game screen with in-app tabs (`src/ui/App.tsx`), so it does
 - Text in a bar of fixed height (the header) is sized by hand from `useWindowDimensions().fontScale` with `allowFontScaling={false}`, in rows whose heights add up (`src/ui/components/headerMetrics.ts`), never with negative margins. Never give a `TextInput` (so `RollingNumber`) a `lineHeight`: an iPhone draws the text at the bottom of the line, on top of whatever is under it, and the web preview does not show it.
 - Shipped games' numbers come from `scripts/content/build-*.py`; change the script and regenerate, never hand-edit those tables. Each game needs its own economy table (`validate` rejects copies).
 - Chests are earned, not sold, unless a game sets `meta.chestsForSale`; deals never contain permanent items; offer timers are real.
-- Before declaring done: `npm run typecheck`, `npm test`, `npm run validate`, `npm run lint:worklets`, and look at what you changed in the web preview (`src/dev/devtools.ts` lists the switches).
+- Before declaring done: `npm run typecheck`, `npm test`, `npm run validate`, `npm run lint:worklets`, `npm run check:bundle`, and look at what you changed in the web preview (`src/dev/devtools.ts` lists the switches).
 
 ## Building with EAS
 

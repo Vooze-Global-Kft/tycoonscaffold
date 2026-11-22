@@ -15,7 +15,8 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { GameConfigSchema, lintGameConfig, type GameConfig } from '../src/config/schema';
+import { lintGameConfig } from '../src/config/lint';
+import { GameConfigSchema, type GameConfig } from '../src/config/schema';
 import { args } from './lib/cli';
 import { economyTableClash, storeTextProblems, textSimilarity } from './lib/checks';
 import { storeFiles } from './sync';

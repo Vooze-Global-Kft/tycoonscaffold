@@ -745,6 +745,7 @@
     "mgr_marco": "assets/mgr_marco.png"
   },
   "mode": "sim",
+  "soundPack": "warm",
   "sim": {
     "production": {
       "name": "Kitchen",

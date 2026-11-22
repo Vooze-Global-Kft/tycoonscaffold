@@ -8,14 +8,14 @@
  */
 import { StyleSheet, Text, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
-import * as E from '../../engine/economy';
-import { formatMoney } from '../../engine/format';
-import { useGame } from '../../state/store';
-import { GameIcon } from '../components/GameIcon';
-import { useTarget } from '../hints/targets';
-import { alpha, inkOf, useTheme } from '../theme';
-import { BuyButton } from './BuyButton';
-import { LevelBadge, RowCard } from './rows';
+import * as E from '../../../engine/economy';
+import { formatMoney } from '../../../engine/format';
+import { useGame } from '../../../state/store';
+import { GameIcon } from '../../components/GameIcon';
+import { useTarget } from '../../hints/targets';
+import { alpha, inkOf, useTheme } from '../../theme';
+import { BuyButton } from '../../home/BuyButton';
+import { LevelBadge, RowCard } from '../../home/rows';
 
 /** One plain sentence under a stage list about what the stage does, in the config's words. */
 function StageNote({ text }: { text: string }) {

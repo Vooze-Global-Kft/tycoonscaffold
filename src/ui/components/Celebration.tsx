@@ -28,7 +28,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGame, type Celebration } from '../../state/store';
 import { useHomeMetrics } from '../home/layout';
-import { useHomeUi } from '../home/uiState';
+import { useShellFlags } from '../../state/overlays';
 import { useTheme } from '../theme';
 import { GameIcon } from './GameIcon';
 
@@ -177,7 +177,7 @@ export function Celebrations() {
   const m = useHomeMetrics();
   const insets = useSafeAreaInsets();
   const dismiss = useGame((s) => s.dismissCelebration);
-  const setBanner = useHomeUi((s) => s.setBannerOpen);
+  const setBanner = useShellFlags((s) => s.setBannerOpen);
   const [current, setCurrent] = useState<Shown | null>(null);
   const queue = useRef<Celebration[]>([]);
   const lastSeen = useRef(0);

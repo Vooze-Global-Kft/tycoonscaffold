@@ -9,8 +9,11 @@
  *   fx.play('tap', { step: comboLevel });     // ladder sounds take a step
  *   fx.settings.set({ music: false });        // saved; the engines follow at once
  *
- * Every event is a key of `FX` in ./catalog.ts. Sound files are picked up by
- * name from shared/sfx/ and games/<id>/assets/sfx/ (see scripts/lib/games.js);
+ * Every event is a key of `FX` in ./catalog.ts. The app plays from the game's
+ * generated `fxTable` (that catalogue without its briefs and without other
+ * modes' events), so the catalogue itself never ships. Sound files are picked
+ * up by name from the game's sound pack shared/sfx/<pack>/ and from
+ * games/<id>/assets/sfx/ (see scripts/lib/games.js);
  * an event without a file is silent and still vibrates. Nothing here throws
  * into game code. Details and rules for callers: docs/design/fx-service-notes.md.
  *
@@ -19,16 +22,15 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, Platform } from 'react-native';
-import { gameSounds } from '../../config/game';
+import { fxTable, gameSounds } from '../../config/game';
 import { AudioEngine, expoAudioDriver } from './audio';
-import { FX, type FxName } from './catalog';
+import type { FxName, FxRuntimeDef } from './catalog';
 import { systemClock } from './clock';
 import { createFx, type Fx } from './core';
 import { createHaptics } from './haptics';
 import { SettingsStore } from './settings';
 
-export { FX } from './catalog';
-export type { FxDef, FxName, HapticStep } from './catalog';
+export type { FxDef, FxName, FxRuntimeDef, HapticStep } from './catalog';
 export type { Fx, PlayOptions } from './core';
 export type { FxSettings } from './settings';
 
@@ -45,7 +47,8 @@ scope.__fxAudio?.dispose();
 scope.__fxAudio = audio;
 
 export const fx: Fx<FxName> = createFx({
-  catalog: FX,
+  // Typed by the catalogue's keys: an event of another mode is simply not in this game's table (silent, logged in development).
+  catalog: fxTable as Readonly<Record<FxName, FxRuntimeDef>>,
   sounds: gameSounds,
   audio,
   haptics: createHaptics({ os, androidApi }),

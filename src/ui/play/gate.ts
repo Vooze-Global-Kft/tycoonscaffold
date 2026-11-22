@@ -2,11 +2,11 @@
  * Small rules the play layer shares: when the extra scene buttons (skill, chest, missions) may
  * show, when the flying bonus may appear, and the "a new venue just opened" signal.
  */
-import type { GameConfig } from '../../../../config/schema';
-import * as E from '../../../../engine/economy';
-import type { GameState } from '../../../../engine/types';
-import { overlays } from '../../../../state/overlays';
-import { useGame } from '../../../../state/store';
+import type { GameConfig } from '../../config/schema';
+import * as E from '../../engine/economy';
+import type { GameState } from '../../engine/types';
+import { overlays } from '../../state/overlays';
+import { useGame } from '../../state/store';
 
 /**
  * In a sim game, new players learn the loop (tap, ring, buy, hire) before anything else appears,

@@ -13,7 +13,8 @@
  *   targets.set('bell', { x: canvasLeft + 282, y: canvasTop + 155, width: 40, height: 40 });
  *   targets.set('bell', null);                // when it goes away
  *
- * KEYS (a contract between the screens; `hintKey()` in src/engine/view.ts produces the hint ones)
+ * KEYS of the tab-shell modes (a contract between their screens; `hintKey()` in src/engine/view.ts
+ * produces the hint ones, src/ui/home/hintRoute.ts routes them)
  *   tapStation:<businessId>   the station in the scene          bell             the service bell in the scene
  *   buyBusiness:<businessId>  the Buy button on a station row   buyTransport / buySales   the Buy button on that stage's row
  *   hireBusiness:<businessId> the Hire button on a station row  hireTransport    the Hire button on the transport manager card
@@ -29,8 +30,6 @@
  */
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { HostInstance } from 'react-native';
-import type { GuideHint } from '../../engine/view';
-import { hintKey } from '../../engine/view';
 
 export interface TargetRect {
   x: number;
@@ -180,37 +179,4 @@ export function useTarget(key: string | null | undefined) {
 export function useFirstTarget(keys: readonly string[]): { key: string; rect: TargetRect } | null {
   useSyncExternalStore(targets.subscribe, targets.version, targets.version);
   return targets.first(keys);
-}
-
-/**
- * Where to point for a hint, most specific first: the control itself when it is on screen,
- * otherwise the control that leads to it (a stage chip, a button that opens a dialog, a tab).
- */
-export function hintRoute(h: GuideHint): string[] {
-  const key = hintKey(h);
-  switch (h.kind) {
-    case 'tapStation':
-    case 'bell':
-    case 'startRush':
-      return [key, 'tab:home'];
-    case 'buyBusiness':
-    case 'hireBusiness':
-      return [key, 'stage:production', 'tab:home'];
-    case 'buyTransport':
-    case 'hireTransport':
-      return [key, 'stage:transport', 'tab:home'];
-    case 'buySales':
-      return [key, 'stage:sales', 'tab:home'];
-    case 'openChest':
-      // The chest button on home; on the Staff tab the chest shelf's Open button (key 'chestShelf').
-      return [key, 'chestShelf', 'tab:home'];
-    case 'claimMission':
-      return [key, 'missionsButton', 'tab:home'];
-    case 'buyUpgrade':
-      return [key, 'tab:upgrades'];
-    case 'unlockVenue':
-      return [key, 'tab:empire'];
-    case 'levelUpCard':
-      return [key, `card:${h.cardId}`, 'tab:staff'];
-  }
 }

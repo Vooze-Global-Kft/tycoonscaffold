@@ -4,7 +4,7 @@
  * may overlap themselves, and how the catalogue maps onto the sound files a
  * game actually ships. Pure; no React Native imports.
  */
-import type { FxDef, FxName } from './catalog';
+import type { FxName, FxRuntimeDef } from './catalog';
 import { fileKeys } from './variants';
 
 /** The looping music entry that `fx.music` plays. */
@@ -91,7 +91,7 @@ export interface SoundPlan {
 }
 
 export function planSounds(
-  catalog: Readonly<Record<string, FxDef>>,
+  catalog: Readonly<Record<string, FxRuntimeDef>>,
   files: Readonly<Record<string, number>>,
   first: readonly string[] = PRELOAD_FIRST,
   voices: Readonly<Record<string, number | undefined>> = VOICES,

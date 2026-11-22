@@ -64,7 +64,8 @@
     "postinstall": "node scripts/select-game.js",
     "go": "expo start --go -c",
     "go:fast": "expo start --go --no-dev --minify -c",
-    "lint:worklets": "tsx scripts/lint-worklets.ts"
+    "lint:worklets": "tsx scripts/lint-worklets.ts",
+    "check:bundle": "tsx scripts/check-bundle.ts"
   },
   "private": true
 }

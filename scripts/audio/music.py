@@ -2,7 +2,7 @@
 """Compose and render the music loops. Python 3 + numpy; ffmpeg for the AAC export.
 
   python3 scripts/audio/music.py --tune trattoria --out games/pizza-empire/assets/sfx/music_main.m4a
-  python3 scripts/audio/music.py --tune neutral --out shared/sfx/music_main.m4a
+  python3 scripts/audio/music.py --tune neutral --out shared/sfx/warm/music_main.m4a
   python3 scripts/audio/music.py --tune trattoria --wav /tmp/t.wav --stems /tmp/stems   (no ffmpeg needed)
   python3 scripts/audio/music.py --list
 

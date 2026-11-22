@@ -5,6 +5,8 @@
  *
  * A plain counter outside React and outside the saved game: it is about the screen, not the game.
  */
+import { create } from 'zustand';
+
 type Listener = () => void;
 
 let open = 0;
@@ -44,3 +46,28 @@ export const overlays = {
     };
   },
 };
+
+interface ShellFlags {
+  /** A story dialog is on screen (the tutorial hand hides; banners wait). */
+  storyOpen: boolean;
+  setStoryOpen(open: boolean): void;
+  /** A celebration banner is on screen (story dialogs wait). */
+  bannerOpen: boolean;
+  setBannerOpen(open: boolean): void;
+}
+
+/**
+ * Two flags the shell's overlays use to keep out of each other's way: a story dialog or a
+ * celebration banner on screen. UI only; nothing here is saved. (Moved from src/ui/home/uiState so
+ * the shared dialogs do not reach into the home tab.)
+ */
+export const useShellFlags = create<ShellFlags>((set, get) => ({
+  storyOpen: false,
+  setStoryOpen: (storyOpen) => {
+    if (get().storyOpen !== storyOpen) set({ storyOpen });
+  },
+  bannerOpen: false,
+  setBannerOpen: (bannerOpen) => {
+    if (get().bannerOpen !== bannerOpen) set({ bannerOpen });
+  },
+}));

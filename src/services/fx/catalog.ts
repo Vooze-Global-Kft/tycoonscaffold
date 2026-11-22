@@ -2,9 +2,14 @@
  * The feedback catalogue: every game event that makes a sound and/or a
  * vibration. One name per event; the UI only ever calls `fx.play(name)`.
  *
- * - Sound files live in `shared/sfx/` (the default pack every game gets) and
- *   can be overridden per game by a file of the same name in
- *   `games/<id>/assets/sfx/`. They are synthesised by `scripts/audio/`.
+ * - Sound files live in a sound pack, `shared/sfx/<pack>/` (a game names its
+ *   pack in game.json `soundPack`, default "warm"), and can be overridden per
+ *   game by a file of the same name in `games/<id>/assets/sfx/`. They are
+ *   synthesised by `scripts/audio/`.
+ * - This file is documentation and types: the app never imports it at run
+ *   time. scripts/lib/fxCatalog.js reads it when a game is selected and writes
+ *   the game's runtime table (`fxTable` in src/generated/activeGame.ts) without
+ *   the briefs and without the events of other modes (`modes`).
  * - File naming: `<name>.wav`, or `<name>_1.wav` ... `<name>_<files>.wav`
  *   when `files` is greater than 1.
  * - Haptics are short patterns: a step is an impact/notification type, or a
@@ -21,9 +26,11 @@
  */
 export type HapticStep = 'light' | 'medium' | 'heavy' | 'soft' | 'rigid' | 'select' | 'success' | 'warning' | 'error' | number;
 
-export interface FxDef {
-  /** What the sound should feel like. The synth script implements this. */
-  brief: string;
+/** The game modes (game.json `mode`) an event can be limited to. */
+export type FxMode = 'sim' | 'classic' | 'haul';
+
+/** What the app needs of an event at run time (the generated `fxTable` holds these). */
+export interface FxRuntimeDef {
   /** Number of sound files. 1 (default) = `<name>.wav`; n = `<name>_1.wav` ... `<name>_n.wav`. */
   files?: number;
   /** With several files: 'ladder' = the caller picks the step (e.g. combo level); 'random' = a random variant. */
@@ -36,6 +43,14 @@ export interface FxDef {
   haptic?: HapticStep[];
   /** True for looping music rather than a one-shot effect. */
   loop?: boolean;
+}
+
+/** A catalogue entry: the runtime fields plus documentation for the synth scripts. */
+export interface FxDef extends FxRuntimeDef {
+  /** What the sound should feel like. The synth script implements this. Never shipped in a bundle. */
+  brief: string;
+  /** Only games of these modes get the event (default: every mode). Literal list, read by scripts/lib/fxCatalog.js. */
+  modes?: readonly FxMode[];
 }
 
 /** Musical home for the default pack: C major / A minor pentatonic, warm and woody (marimba, kalimba, small bells). */
@@ -66,20 +81,20 @@ export const FX = {
   offline_collect: { brief: 'A one-second shower of coins.', volume: 0.7, haptic: ['medium', 50, 'light', 50, 'light'] },
   boost_start: { brief: 'Energetic power-up when a boost starts.', volume: 0.75, haptic: ['medium', 210, 'success'] },
 
-  // --- the living scene (quiet, heavily rate-limited) ---------------------
-  cook_done: { brief: 'Small oven bell "ding" when a station finishes a cycle.', volume: 0.3, minIntervalMs: 350 },
-  toss: { brief: 'Soft airy whoosh as a dish flies to the counter.', volume: 0.25, minIntervalMs: 250 },
-  bell: { brief: 'Bright service bell "ding!" with about 0.6 s of ring. The player rings it by hand, so it must feel great.', volume: 0.75, minIntervalMs: 120, haptic: ['rigid'] },
-  pickup: { brief: 'Plate-and-tray clink as a worker loads up.', volume: 0.25, minIntervalMs: 300 },
-  serve: { brief: 'Soft plate set-down: a thud with a tiny clink.', volume: 0.25, minIntervalMs: 300 },
-  door: { brief: 'Tiny two-note shop door chime when a customer arrives.', volume: 0.2, minIntervalMs: 1200 },
-  happy: { brief: 'Cute two-note upward chirp from a satisfied customer.', volume: 0.25, minIntervalMs: 500 },
+  // --- the living scene (quiet, heavily rate-limited; sim mode only) -------
+  cook_done: { brief: 'Small oven bell "ding" when a station finishes a cycle.', volume: 0.3, minIntervalMs: 350, modes: ['sim'] },
+  toss: { brief: 'Soft airy whoosh as a dish flies to the counter.', volume: 0.25, minIntervalMs: 250, modes: ['sim'] },
+  bell: { brief: 'Bright service bell "ding!" with about 0.6 s of ring. The player rings it by hand, so it must feel great.', volume: 0.75, minIntervalMs: 120, haptic: ['rigid'], modes: ['sim'] },
+  pickup: { brief: 'Plate-and-tray clink as a worker loads up.', volume: 0.25, minIntervalMs: 300, modes: ['sim'] },
+  serve: { brief: 'Soft plate set-down: a thud with a tiny clink.', volume: 0.25, minIntervalMs: 300, modes: ['sim'] },
+  door: { brief: 'Tiny two-note shop door chime when a customer arrives.', volume: 0.2, minIntervalMs: 1200, modes: ['sim'] },
+  happy: { brief: 'Cute two-note upward chirp from a satisfied customer.', volume: 0.25, minIntervalMs: 500, modes: ['sim'] },
 
-  // --- bonus, rush -----------------------------------------------------
+  // --- bonus, rush (the rush skill is sim mode only) --------------------
   bonus_appear: { brief: 'Magical twinkling shimmer as the flying bonus appears, about 0.8 s.', volume: 0.6 },
   bonus_collect: { brief: 'Glittery burst followed by a coin cascade, about 0.9 s.', volume: 0.85, haptic: ['heavy', 130, 'success'] },
-  rush_start: { brief: 'Fast bell ringing into a rising whoosh: everything speeds up.', volume: 0.8, haptic: ['heavy', 75, 'medium', 65, 'medium'] },
-  rush_end: { brief: 'Descending whoosh as things calm down.', volume: 0.5 },
+  rush_start: { brief: 'Fast bell ringing into a rising whoosh: everything speeds up.', volume: 0.8, haptic: ['heavy', 75, 'medium', 65, 'medium'], modes: ['sim'] },
+  rush_end: { brief: 'Descending whoosh as things calm down.', volume: 0.5, modes: ['sim'] },
   // --- chests and cards --------------------------------------------------
   chest_appear: { brief: 'Heavy wooden thud with a small sparkle as a chest lands.', volume: 0.8, haptic: ['heavy'] },
   chest_shake: { brief: 'Rattling wood and coins, about 0.5 s, building anticipation.', volume: 0.7, minIntervalMs: 200 },

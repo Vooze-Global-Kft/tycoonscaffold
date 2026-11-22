@@ -6,10 +6,10 @@ import { ScrollView, StyleSheet, Text } from 'react-native';
 import * as E from '../../engine/economy';
 import { formatMoney } from '../../engine/format';
 import { useGame } from '../../state/store';
-import { Card, CardText } from '../kit';
-import { useTheme } from '../theme';
-import { Button } from './Button';
-import { GameIcon } from './GameIcon';
+import { Card, CardText } from '../../ui/kit';
+import { useTheme } from '../../ui/theme';
+import { Button } from '../../ui/components/Button';
+import { GameIcon } from '../../ui/components/GameIcon';
 
 export function ManagersPanel() {
   const t = useTheme();

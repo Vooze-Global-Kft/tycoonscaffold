@@ -15,10 +15,10 @@ import { Group, Image, Picture, select, type SharedValueSelector, type SkPicture
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { startMapper, stopMapper, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { FACE_SHIFT, getCharacterArt, mouthYFor, releaseCharacterArt, retainCharacterArt, type CharacterArt } from './characterArt';
-import { hashString } from './draw';
+import { hashString } from '../../art/draw';
 import { commonArt, dishArt } from './items';
 import { lookKey, resolveLook, type LookInput } from './looks';
-import { PART_SAMPLING, lasting, rasterDensity, type RasterSet } from './raster';
+import { PART_SAMPLING, lasting, rasterDensity, type RasterSet } from '../../art/raster';
 import { POSE_INDEX, UNIT, makeRig, makeRigState, stepRig, type Rig, type RigConfig, type RigState } from './rig';
 import type { CharacterKind, DishKind, DishLook, Pose } from './types';
 

@@ -2,7 +2,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { GameConfigSchema, lintGameConfig, type GameConfig } from '../config/schema';
+import { artIconsFor } from '../config/artIcons';
+import { lintGameConfig } from '../config/lint';
+import { GameConfigSchema, type GameConfig } from '../config/schema';
 import * as E from './economy';
 import { MAIN_VENUE as V } from './economy';
 import { formatNumber, formatDuration } from './format';
@@ -80,6 +82,10 @@ describe('every game in games/', () => {
   const ids = fs.readdirSync(gamesDir).filter((d) => !d.startsWith('_') && fs.existsSync(path.join(gamesDir, d, 'game.json')));
   it.each(ids)('%s parses and lints clean', (id) => {
     expect(lintGameConfig(load(id))).toEqual([]);
+  });
+  it('an "art:" icon the mode does not draw fails the lint', () => {
+    const game = load('pizza-empire');
+    expect(lintGameConfig({ ...game, mode: 'classic' }, artIconsFor('classic')).some((p: string) => p.includes('"art:truffle"'))).toBe(true);
   });
   it('the test fixtures lint clean too', () => {
     expect(lintGameConfig(cfg)).toEqual([]);

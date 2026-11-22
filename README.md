@@ -70,9 +70,11 @@ warns about it. Details: `docs/design/research/policy.md`.
 
 ## Characters
 
-Characters are drawn in code (`src/ui/sim/art`). Any `icon` field takes an emoji,
-`"asset:<key>"` (an image listed in `assets`) or `"char:<id>"`, a person from the
-game's top-level `cast`:
+Characters are drawn in code (`src/ui/sim/art`, the sim mode's art: a game of
+another mode does not bundle it and shows a placeholder for `char:` icons). Any
+`icon` field takes an emoji, `"asset:<key>"` (an image listed in `assets`),
+`"art:<name>"` (a drawn still, `src/config/artIcons.ts`) or `"char:<id>"`, a
+person from the game's top-level `cast`:
 
 ```json
 "cast": {
@@ -95,14 +97,15 @@ Game code never plays a sound or vibrates directly: it calls the fx service
 (`src/services/fx`, `fx.play('buy')`), whose catalogue (`catalog.ts`) pairs each
 event with a sound and a haptic pattern, and respects the player's settings.
 
-- The shared pack is `shared/sfx/`; a game overrides any sound with a file of the same name in `games/<id>/assets/sfx/` (`<key>.wav`, `<key>_1.wav` ..., music as `.m4a`). `scripts/lib/games.js` merges the two into the bundle; run `npm run select` (or restart Expo) after adding a file.
+- Sounds come in packs, one folder each in `shared/sfx/<pack>/`. A game names its pack in game.json (`"soundPack": "warm"`, the default; Space Miner's is `"synth"`) and only that pack goes into its bundle. A game overrides any sound with a file of the same name in `games/<id>/assets/sfx/` (`<key>.wav`, `<key>_1.wav` ..., music as `.m4a`). A missing sound is silent. `scripts/lib/games.js` merges the two into the bundle; run `npm run select` (or restart Expo) after adding a file.
+- The catalogue is documentation and types only: the app plays from a table that `scripts/lib/games.js` writes into `src/generated/activeGame.ts` without the briefs and without the events of other modes (an entry with `modes: ['sim']` is for sim games only).
 - Every sound is synthesised by `scripts/audio/` (Python 3 + numpy, ffmpeg for music):
 
 ```bash
 python3 scripts/audio/make_sfx.py --check                                    # every catalogue key has a recipe
-python3 scripts/audio/make_sfx.py --pack warm --out shared/sfx               # the shared pack
-python3 scripts/audio/make_sfx.py --pack synth --out games/<id>/assets/sfx   # a different pack for one game
-python3 scripts/audio/qa.py shared/sfx                                       # loudness and format checks
+python3 scripts/audio/make_sfx.py --pack warm --out shared/sfx/warm          # the warm pack
+python3 scripts/audio/make_sfx.py --pack synth --out shared/sfx/synth        # the synth pack
+python3 scripts/audio/qa.py shared/sfx/warm                                  # loudness and format checks
 ```
 
 More in `docs/design/audio-notes.md` and `docs/design/fx-service-notes.md`.
@@ -195,16 +198,20 @@ Example: `http://localhost:8081/?preset=mid&speed=10&tab=shop`.
 
 ```
 games/<id>/game.json     one folder per game (folders starting with _ are ignored)
-games/<id>/assets/sfx/   the game's own sounds (override shared/sfx/ by name)
-shared/sfx/              the default sound pack
+games/<id>/assets/sfx/   the game's own sounds (override its pack by name)
+shared/sfx/<pack>/       sound packs (warm: Pizza Empire; synth: Space Miner); a game bundles only its own
 src/engine/              pure TS economy, chain and meta + tests; no React, no native code, deterministic
-src/config/schema*.ts    the GameConfig contract (zod) and lintGameConfig
+src/config/schema*.ts    the GameConfig contract (zod); lint.ts: lintGameConfig (Node only)
 src/services/            ads, iap, firebase, fx (sound + haptics); sdks.ts is the only place native SDKs load
 src/state/store.ts       zustand store: every state change is an action here
-src/ui/App.tsx           the shell: header, tabs, and every dialog and overlay
-src/ui/home/             the home tab (stage strip, stage lists) for sim and classic games
-src/ui/sim/scene/        the living venue: world/ draws it, play/ is everything the player taps on it
-src/ui/sim/art/          code-drawn characters, props, chests, cards and "art:" icons
+src/ui/App.tsx           loading, the game loop, and the active mode's screen (src/generated/mode.ts)
+src/modes/               mode entries (contract.ts; sim/, classic/, haul/): the only way in to mode code
+src/ui/shell/TabShell    header, tabs, and every dialog and overlay of the sim and classic modes
+src/ui/home/             the list homes' shared pieces (rows, station list, tutorial script)
+src/ui/sim/              SIM MODE ONLY: home/ (stage strip and lists), scene/ (the living venue:
+                         world/ draws it, play/ is what the player taps), art/ (characters, restaurant props)
+src/ui/scene/            CLASSIC MODE ONLY: the hero scene (Skia, or three.js for a 3D game)
+src/ui/art/              shared code-drawn pieces: chests, cards, coin, gem, tutorial hand, shared "art:" icons
 src/ui/meta/             chests, cards, shop, deals, missions, settings, upgrades, empire
 src/ui/hints/, juice/    the tutorial hand and its targets; coins and gems flying to the header
 src/ui/kit/, theme.ts    shared dialog, list and text pieces; colours with readable-text helpers
@@ -212,8 +219,10 @@ src/dev/                 web preview switches and presets
 scripts/                 generate, new-game, validate, simulate, sync, content/, audio/
 ```
 
-`app.config.ts` writes `src/generated/activeGame.ts` so the bundle only contains
-the selected game (its JSON, images and sounds). On EAS, the
+`app.config.ts` writes `src/generated/activeGame.ts` and `src/generated/mode.ts`
+so the bundle only contains the selected game (its JSON, images, sound pack and
+fx events) and its own mode's code. `npm run check:bundle` proves it (fast; add
+`--export` for the real bundler); how a mode is added: `docs/design/space-bundle.md`. On EAS, the
 `eas-build-post-install` hook does the same from the `GAME` env of each profile.
 
 ## Before you publish

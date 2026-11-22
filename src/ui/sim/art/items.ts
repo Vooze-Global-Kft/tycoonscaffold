@@ -4,8 +4,11 @@
  * about 26 units wide), in the 3/4 top view the tables use.
  */
 import type { SkPicture } from '@shopify/react-native-skia';
-import { OUTLINE, type Pen, alpha, arc, blob, circle, curve, ellipse, heart, lightOf, line, merged, mix, poly, record, rrect, shadeOf, twinkle } from './draw';
+import { OUTLINE, type Pen, alpha, arc, blob, circle, curve, ellipse, heart, lightOf, line, merged, mix, poly, record, rrect, shadeOf, twinkle } from '../../art/draw';
 import type { DishColors, DishKind, DishLook } from './types';
+import { drawShadow } from '../../art/kit';
+
+export { drawShadow };
 
 export const DISH_DEFAULTS: Record<DishKind, Required<DishColors>> = {
   pizza: { food: '#FAD46B', topping: '#D8432F', garnish: '#4FA64F', plate: '#E8B36B' },
@@ -206,10 +209,6 @@ export interface CommonArt {
   spark: SkPicture;
 }
 
-export function drawShadow(p: Pen, rx = 16, ry = 4.6, strength = 1) {
-  p.fill(ellipse(0, 0, rx, ry), alpha('#3A2416', 0.13 * strength));
-  p.fill(ellipse(0, 0, rx * 0.72, ry * 0.7), alpha('#3A2416', 0.13 * strength));
-}
 
 export function drawZ(p: Pen, s = 1) {
   const z = poly([[-4.4 * s, -4.6 * s], [4.4 * s, -4.6 * s], [4.4 * s, -2.4 * s], [-0.6 * s, 2.3 * s], [4.4 * s, 2.3 * s], [4.4 * s, 4.6 * s], [-4.4 * s, 4.6 * s], [-4.4 * s, 2.4 * s], [0.6 * s, -2.3 * s], [-4.4 * s, -2.3 * s]]);

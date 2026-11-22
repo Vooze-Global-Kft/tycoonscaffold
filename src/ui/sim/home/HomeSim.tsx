@@ -7,15 +7,16 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { VenueScene } from '../sim/VenueScene';
-import { useTheme } from '../theme';
-import { BuyAmountRow } from './BuyAmountRow';
-import { ROW_GAP, useHomeMetrics, type HomeMetrics } from './layout';
-import { RowRegistry, useRowScroller } from './rows';
+import { VenueScene } from '../VenueScene';
+import { useTheme } from '../../theme';
+import { BuyAmountRow } from '../../home/BuyAmountRow';
+import { ROW_GAP, useHomeMetrics, type HomeMetrics } from '../../home/layout';
+import { RowRegistry, useRowScroller } from '../../home/rows';
 import { StageStrip } from './StageStrip';
 import { SalesList, TransportList } from './StageLists';
-import { StationList } from './StationList';
-import { useHomeUi } from './uiState';
+import { StationList, StationPortraitContext } from '../../home/StationList';
+import { useHomeUi } from '../../home/uiState';
+import { SimStationPortrait } from './StationPortrait';
 
 /** Scene height for the space the home tab has, keeping at least three list rows visible. */
 export function sceneHeightFor(m: HomeMetrics, available: number): number {
@@ -43,15 +44,17 @@ export function HomeSim() {
         <StageStrip height={m.strip} compact={m.compact} />
         <BuyAmountRow height={m.buyRow} />
       </View>
-      <RowRegistry.Provider value={registry}>
-        <ScrollView ref={scroll} key={stage} style={{ flex: 1 }} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-          <Animated.View entering={FadeIn.duration(160)}>
-            {stage === 'production' ? <StationList rowHeight={m.row} compact={m.compact} /> : null}
-            {stage === 'transport' ? <TransportList rowHeight={m.row} compact={m.compact} /> : null}
-            {stage === 'sales' ? <SalesList rowHeight={m.row} compact={m.compact} /> : null}
-          </Animated.View>
-        </ScrollView>
-      </RowRegistry.Provider>
+      <StationPortraitContext.Provider value={SimStationPortrait}>
+        <RowRegistry.Provider value={registry}>
+          <ScrollView ref={scroll} key={stage} style={{ flex: 1 }} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+            <Animated.View entering={FadeIn.duration(160)}>
+              {stage === 'production' ? <StationList rowHeight={m.row} compact={m.compact} /> : null}
+              {stage === 'transport' ? <TransportList rowHeight={m.row} compact={m.compact} /> : null}
+              {stage === 'sales' ? <SalesList rowHeight={m.row} compact={m.compact} /> : null}
+            </Animated.View>
+          </ScrollView>
+        </RowRegistry.Provider>
+      </StationPortraitContext.Provider>
     </View>
   );
 }
