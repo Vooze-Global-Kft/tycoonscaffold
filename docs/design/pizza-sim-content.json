@@ -181,6 +181,12 @@
       "target": "all"
     },
     {
+      "id": "u_festival",
+      "name": "Pizza Festival",
+      "icon": "🎪",
+      "target": "all"
+    },
+    {
       "id": "u_truck",
       "name": "Food Truck Fleet",
       "icon": "asset:biz_food_truck",
@@ -379,7 +385,7 @@
     {
       "id": "welcome",
       "title": "Welcome Feast",
-      "badge": "ONE TIME",
+      "badge": "Can be bought once",
       "icon": "🎉",
       "blurb": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony and four hours of takings."
     },

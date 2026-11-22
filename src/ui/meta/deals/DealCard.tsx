@@ -56,6 +56,10 @@ export function DealCard({ dealId, inPopup = false }: { dealId: string; inPopup?
 
   const product = deal.productId ? cfg.monetization.iap.products.find((p) => p.id === deal.productId) : undefined;
   const short = deal.gemCost !== undefined && gems < deal.gemCost;
+  const limitText = purchaseLimitText(deal.maxPurchases, view.purchasesLeft);
+  // A badge that only repeats the purchase limit line below would say the same thing twice.
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const badge = deal.badge && norm(deal.badge) !== norm(limitText) ? deal.badge : null;
   const onBuy = () => withGemFlight(() => buy(deal.id), emit);
 
   const body = (
@@ -65,7 +69,7 @@ export function DealCard({ dealId, inPopup = false }: { dealId: string; inPopup?
           <GameIcon icon={deal.icon ?? t.icons.gift} size={inPopup ? 56 : 46} />
         </View>
         <View style={{ flex: 1, gap: 3 }}>
-          {deal.badge ? <Pill>{deal.badge}</Pill> : null}
+          {badge ? <Pill>{badge}</Pill> : null}
           {!inPopup ? (
             <Text style={[styles.title, t.display, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit>
               {deal.title}
@@ -93,7 +97,7 @@ export function DealCard({ dealId, inPopup = false }: { dealId: string; inPopup?
         ) : (
           <Text style={[styles.fact, { color: t.c.text }]}>Always available in the shop.</Text>
         )}
-        <Text style={[styles.fact, { color: t.c.text }]}>{purchaseLimitText(deal.maxPurchases, view.purchasesLeft)}</Text>
+        <Text style={[styles.fact, { color: t.c.text }]}>{limitText}</Text>
       </View>
 
       <View ref={ref} collapsable={false} style={{ marginTop: 10 }}>

@@ -85,14 +85,55 @@ export type GuideHint =
   | { kind: 'unlockVenue'; venueId: string }
   | { kind: 'levelUpCard'; cardId: string };
 
-/** The one thing to point at right now, or null. Poll about once a second. */
+/**
+ * The one thing to point at right now, or null. Poll about once a second. It follows the first-session
+ * script (critique-fun.md section 2): tap the station, ring the bell, buy, hire the station's cook,
+ * save for and hire the transport automation, then the lessons in order (the rush, the next station,
+ * its hire, the first upgrade, the first mission, the first chest), then the first-time hints below.
+ * Every hint is something the player can do right now.
+ */
 export function guideHint(cfg: GameConfig, state: GameState, now: number): GuideHint | null {
-  return M.nextHint(cfg, state, now) ?? firstTimeHint(cfg, state, now);
+  const base = M.nextHint(cfg, state, now);
+  if (base && (base.kind === 'claimMission' || base.kind === 'openChest' || base.kind === 'hireBusiness' || base.kind === 'hireTransport')) return base;
+  if (base) return earlyLesson(cfg, state, now) ?? base;
+  return firstTimeHint(cfg, state, now);
+}
+
+/** First-session lessons once the first venue is automated, ahead of the plain buy and manual-loop hints. */
+function earlyLesson(cfg: GameConfig, state: GameState, now: number): GuideHint | null {
+  if (state.prestigeCount > 0) return null;
+  const venue = state.venues[state.activeVenue];
+  if (!venue?.unlocked) return null;
+  const automated = E.isSim(cfg) ? venue.chain?.transportManaged === true : venue.businesses[cfg.businesses[0].id]?.managed === true;
+  if (!automated) return null;
+  if (E.isSim(cfg) && state.stats.rushes === 0 && E.canStartRush(cfg, state, now)) return { kind: 'startRush' };
+  const next = cfg.businesses.find((b) => (venue.businesses[b.id]?.owned ?? 0) === 0);
+  if (next && E.canAfford(state.cash, E.businessCost(cfg, state, state.activeVenue, next.id, 1))) return { kind: 'buyBusiness', businessId: next.id };
+  const upgrade = firstUpgradeHint(cfg, state);
+  if (upgrade) return upgrade;
+  return null;
+}
+
+/** The cheapest useful cash upgrade the player can afford, while they have never bought one. */
+function firstUpgradeHint(cfg: GameConfig, state: GameState): GuideHint | null {
+  if (cfg.upgrades.some((u) => !u.premium && state.upgrades.includes(u.id))) return null;
+  let best: { id: string; cost: number } | null = null;
+  for (const u of cfg.upgrades) {
+    if (u.premium || state.upgrades.includes(u.id) || !E.canAfford(state.cash, u.cost)) continue;
+    // Only upgrades that do something yet: "all", or a business the player owns somewhere.
+    const useful = u.target === 'all' || Object.values(state.venues).some((v) => (v.businesses[u.target]?.owned ?? 0) > 0);
+    if (useful && (!best || u.cost < best.cost)) best = { id: u.id, cost: u.cost };
+  }
+  return best ? { kind: 'buyUpgrade', upgradeId: best.id } : null;
 }
 
 function firstTimeHint(cfg: GameConfig, state: GameState, now: number): GuideHint | null {
   // Claiming and opening are taught by nextHint while the player is new; these cover the player who
   // automated quickly and reached "veteran" before the first mission or chest was ready.
+  // Not before the first venue is automated: the loop comes first (nextHint's rule too).
+  const firstVenue = state.venues[E.venueIds(cfg)[0]];
+  const automated = E.isSim(cfg) ? firstVenue?.chain?.transportManaged === true : firstVenue?.businesses[cfg.businesses[0].id]?.managed === true;
+  if (!automated && state.prestigeCount === 0) return null;
   if (state.missions.total === 0) {
     const done = M.missionViews(cfg, state).find((m) => m.done);
     if (done) return { kind: 'claimMission', index: done.index };
@@ -106,17 +147,8 @@ function firstTimeHint(cfg: GameConfig, state: GameState, now: number): GuideHin
   if (E.isSim(cfg) && state.stats.rushes === 0 && venue?.chain?.transportManaged && E.canStartRush(cfg, state, now)) {
     return { kind: 'startRush' };
   }
-  const ownsCashUpgrade = cfg.upgrades.some((u) => !u.premium && state.upgrades.includes(u.id));
-  if (!ownsCashUpgrade) {
-    let best: { id: string; cost: number } | null = null;
-    for (const u of cfg.upgrades) {
-      if (u.premium || state.upgrades.includes(u.id) || !E.canAfford(state.cash, u.cost)) continue;
-      // Only upgrades that do something yet: "all", or a business the player owns somewhere.
-      const useful = u.target === 'all' || Object.values(state.venues).some((v) => (v.businesses[u.target]?.owned ?? 0) > 0);
-      if (useful && (!best || u.cost < best.cost)) best = { id: u.id, cost: u.cost };
-    }
-    if (best) return { kind: 'buyUpgrade', upgradeId: best.id };
-  }
+  const upgrade = firstUpgradeHint(cfg, state);
+  if (upgrade) return upgrade;
   if (!Object.values(state.cards).some((c) => c.level > 1)) {
     const card = cfg.meta.cards.find((c) => M.canLevelUpCard(cfg, state, c.id));
     if (card) return { kind: 'levelUpCard', cardId: card.id };

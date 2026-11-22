@@ -75,7 +75,7 @@ export interface RigState {
   /** 0 standing still, 1 moving (used by `carry`). */
   mv: number;
   flip: number;
-  /** Seconds spent in `sit-wait` so far (a guest grows impatient after about 4 s). */
+  /** Clock (ms) when the current `sit-wait` began, -1 when not waiting (a guest grows impatient after about 4 s). */
   wait: number;
   root: number[];
   a: Rig;
@@ -83,7 +83,7 @@ export interface RigState {
 }
 
 export function makeRigState(): RigState {
-  return { ready: false, t: 0, w: POSES.map(() => 0), f: 1, x: 0, y: 0, mv: 0, flip: 0, wait: 0, root: [1, 0, 0, 0, 1, 0, 0, 0, 1], a: makeRig(), b: makeRig() };
+  return { ready: false, t: 0, w: POSES.map(() => 0), f: 1, x: 0, y: 0, mv: 0, flip: 0, wait: -1, root: [1, 0, 0, 0, 1, 0, 0, 0, 1], a: makeRig(), b: makeRig() };
 }
 
 /** What the rig needs to know about one character. */
@@ -198,9 +198,11 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
     const dy = y - st.y;
     const speed = Math.sqrt(dx * dx + dy * dy) / dt;
     st.mv += ((speed > 0.006 ? 1 : 0) - st.mv) * (1 - Math.exp(-dt / 110));
-    st.wait = pose === 5 ? st.wait + dt / 1000 : 0;
   }
-  const imp = ease((st.wait - 4) / 0.6);
+  // When this sit-wait began (clock ms), so impatience follows the scene clock even at a low frame rate.
+  if (pose !== 5) st.wait = -1;
+  else if (st.wait < 0) st.wait = clock;
+  const imp = st.wait < 0 ? 0 : ease((clock - st.wait - 4000) / 600);
   st.x = x;
   st.y = y;
   const t = clock / 1000 + c.offset;
@@ -505,7 +507,7 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   }
 
   // Mouth: whichever expression is strongest shows; the others shrink away.
-  if (mo < mImp * 0.5) mo = mImp * 0.5;
+  if (mo < mImp * 0.85) mo = mImp * 0.85;
   if (mo > 1) mo = 1;
   if (mc > 1) mc = 1;
   const my = c.mouthY;
@@ -517,7 +519,7 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   if (openM < 0.04) pop(o.mouthOpen, H, 0, 0, 0, 0);
   else {
     // The impatient "o": the open mouth, narrower and rounder.
-    const ow = openM * (1 - 0.35 * mImp);
+    const ow = openM * (1 - 0.45 * mImp);
     put(o.mouthOpen, H, fx * (1 - ow), my * (1 - openM), 0, ow, openM);
   }
   if (mc < 0.04) pop(o.mouthChew, H, 0, 0, 0, 0);
@@ -564,7 +566,7 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   else {
     // A puff of steam rises from the bowl about once a second.
     const u = (t * 0.95) % 1;
-    pop(o.steam, R, hBx - 2 + 2.5 * Math.sin(u * 5) - 4 * u, hBy - 8 - 12 * u, 0.3 * Math.sin(u * 4), wBowl * (0.5 + 0.5 * u) * life(u, 0.2, 0.45));
+    pop(o.steam, R, hBx - 9 + 2 * Math.sin(u * 5) - 6 * u, hBy - 5 - 10 * u, 0.3 * Math.sin(u * 4), wBowl * (0.5 + 0.5 * u) * life(u, 0.2, 0.45));
   }
   pop(o.bite, R, hFx + 1, hFy - 1.5, 0, wBite);
 

@@ -33,6 +33,11 @@ RATE0, RATE_STEP = E('RATE0', 1.25), E('RATE_STEP', 7)
 CYCLES = [2, 2.5, 3.5, 4.5, 6, 8]
 GROWTH = E('GROWTH', 1.12)
 HIRE_FACTOR = E('HIRE_FACTOR', 28)          # an automation hire costs this many first levels of its station
+# The fifth station's hire at the default factor (33M) left no unlock or hire from 12:51 to 25:37
+# (critique-fun.md section 1): about 12M closes that gap.
+# The first hire dearer (250 instead of 140) so the tutorial keeps about a minute of
+# manual play (oven, bell, buy) before the first automation: the bot hired at 44 s at 140, 51 s at 250.
+HIRE_ADJUST = {'gelato': 12e6 / (COST0 * COST_STEP ** 4 * HIRE_FACTOR), 'margherita': 250 / (COST0 * HIRE_FACTOR)}
 stations = []
 for i, st in enumerate(content['stations']):
     cost = COST0 * COST_STEP ** i
@@ -41,7 +46,7 @@ for i, st in enumerate(content['stations']):
         'id': st['id'], 'name': st['name'], 'icon': st['icon'], 'flavor': st['flavor'],
         'baseCost': tidy(cost), 'costGrowth': GROWTH,
         'baseRevenue': tidy(rate * CYCLES[i]), 'cycleSeconds': CYCLES[i],
-        'managerCost': tidy(cost * HIRE_FACTOR), 'managerName': st['role'],
+        'managerCost': tidy(cost * HIRE_FACTOR * HIRE_ADJUST.get(st['id'], 1)), 'managerName': st['role'],
         'stationKind': st['kind'], 'productName': st['dish'], 'productIcon': st['icon'],
     })
 g['businesses'] = stations
@@ -49,14 +54,19 @@ g['mode'] = 'sim'
 
 eco = g['economy']
 eco['startingCash'] = 0
-eco['tapBase'] = 1
+# Floor tips must not beat the first oven ($2.50 per 2 s): critique-fun.md section 1.
+eco['tapBase'] = E('TAP_BASE', 0.25)
 eco['tapPercentOfIncome'] = 0.04
 eco['milestones'] = [
     {'owned': 10, 'speedMult': 2}, {'owned': 25, 'revenueMult': 2}, {'owned': 50, 'speedMult': 2},
     {'owned': 100, 'revenueMult': 3}, {'owned': 150, 'revenueMult': 2}, {'owned': 200, 'revenueMult': 3},
 ]
 eco['milestoneRepeat'] = {'every': 100, 'revenueMult': 2}
-eco['prestige'] = {'threshold': float(os.environ.get('PRESTIGE', 3e15)), 'scale': 1, 'bonusPerPoint': 0.02}
+eco['prestige'] = {'threshold': E('PRESTIGE', 3e15), 'scale': E('PRESTIGE_SCALE', 20), 'bonusPerPoint': E('PRESTIGE_BONUS', 0.02)}
+P = eco['prestige']
+FIRST_STAR = tidy(P['threshold'] / P['scale'] ** 2 * 1.0000001)   # lifetime earnings at which the first point exists
+while int(P['scale'] * (FIRST_STAR / P['threshold']) ** 0.5) < 1: FIRST_STAR = tidy(FIRST_STAR * 1.1)
+BONUS_PCT = ('%g' % (P['bonusPerPoint'] * 100))
 eco['offline'] = {'maxHours': 4, 'efficiency': 0.5, 'minSecondsToShow': 60}
 eco['boost'] = {'multiplier': 2, 'minutesPerAd': 30, 'maxMinutes': 240}
 eco['bonus'] = {'name': content['strings']['bonusName'], 'minSec': 40, 'maxSec': 95, 'incomeSeconds': 120, 'minTaps': 40}
@@ -85,6 +95,7 @@ for i, v in enumerate(content['venues']):
     venues.append({'id': v['id'], 'name': v['name'], 'place': v['place'], 'icon': v['icon'], 'blurb': v['blurb'],
                    'unlockCost': tidy(cost), 'scale': tidy(VENUE_STEP ** i)})
 g['sim'] = {
+    'production': {'name': 'Kitchen', 'icon': '🍕'},
     'buffer': {'name': content['buffer']['name'], 'icon': content['buffer']['icon']},
     'transport': {
         'name': t['name'], 'workerName': t['worker'], 'icon': t['icon'],
@@ -105,7 +116,8 @@ g['sim'] = {
 # A station's own upgrade costs UPGRADE_FACTOR first levels; shared ones come later and cost more.
 UPGRADE_FACTOR = 1200
 ups = []
-shared_costs = [5e8, 5e11, 5e14, 5e17]
+# The 5e13 one fills the gap of nearly 3 hours between 5e11 and 5e14 (critique-fun.md section 1, day 2).
+shared_costs = [5e8, 6e10, 5e13, 5e14, 5e17]
 si = 0
 for u in content['upgrades']:
     if u.get('premium'):
@@ -121,17 +133,18 @@ g['upgrades'] = ups
 st = g['strings']
 st['prestigeName'] = content['strings']['prestigeName']; st['prestigeVerb'] = content['strings']['prestigeVerb']
 st['managerTab'] = 'Staff'; st['upgradeTab'] = 'Recipes'; st['tapHint'] = 'Tap for tips!'
-st['prestigeDescription'] = 'Sell the whole empire to a franchise group and start again from Nonna\'s Corner. Every Chef Star boosts all profits by 2% forever.'
+st['prestigeDescription'] = 'Sell the whole empire to a franchise group and start again from Nonna\'s Corner. Every Chef Star boosts all profits by %s%% forever.' % BONUS_PCT
 g['story'] = [
  {'id':'intro','characterId':'nonna','title':'A Family Recipe','trigger':{'type':'start'},'lines':["Bambino! This little kitchen is all we have left.","But my sauce? Mamma mia. It could feed the world.","Tap the oven to bake. Then ring the bell so the waiter serves it!"]},
- {'id':'first_chef','characterId':'nonna','title':'Many Hands','trigger':{'type':'hired','businessId':'margherita'},'lines':["A real pizzaiolo! Look at them go.","Now the oven never sleeps. And neither does the money."],'rewardGems':5},
- {'id':'meet_pepe','characterId':'pepe','title':'Pepe!','trigger':{'type':'transportHired'},'lines':["Ciao! I'm Pepe. Yes, I'm a pizza. No, you can't eat me.","Your maître d' runs the floor now. Watch the counter: if dishes pile up, hire more waiters!","And if a Golden Slice flies by, grab it. Fortune favours the fast."],'rewardGems':5},
- {'id':'second_station','characterId':'pepe','trigger':{'type':'owned','businessId':'bruschetta','count':1},'lines':["Two dishes on the menu! Fancy.","Every station gets faster at level 10, 25 and 50. Keep feeding them."],'rewardGems':5},
+ {'id':'meet_pepe','characterId':'pepe','title':'Pepe!','trigger':{'type':'transportHired'},'lines':["Ciao! I'm Pepe. Yes, I'm a pizza. No, you can't eat me.","Your maître d' runs the floor now. Watch the counter: if dishes pile up, hire more waiters!","And if a Golden Slice flies by, grab it. Fortune favours the fast."],'rewardGems':10},
+ {'id':'second_station','characterId':'pepe','trigger':{'type':'owned','businessId':'bruschetta','count':10},'lines':["Two dishes on the menu! Fancy.","Every station gets faster at level 10, 25 and 50. Keep feeding them."],'rewardGems':5},
  {'id':'rival_appears','characterId':'rival','title':'Competition','trigger':{'type':'lifetimeEarnings','amount':250000},'lines':["So you're the little kitchen everyone's talking about.","Cute. I sell ten thousand frozen discs a day. FROZEN.","Enjoy it while it lasts. Big Cheese Carl owns this town."],'rewardGems':10},
  {'id':'gelato','characterId':'nonna','title':'Dolce!','trigger':{'type':'owned','businessId':'gelato','count':1},'lines':["Gelato! Now they stay for dessert.","Two scoops. Always two. This is the law."],'rewardGems':10},
  {'id':'roma','characterId':'nonna','title':'Roma!','trigger':{'type':'venue','venueId':'roma'},'lines':["A second restaurant. In ROMA!","Nonna's Corner keeps earning while you build here. An empire, bambino!"],'rewardGems':15},
  {'id':'frozen_war','characterId':'rival','title':'Cold War','trigger':{'type':'venue','venueId':'venezia'},'lines':["Venezia too? You're everywhere I look!","This means war. Cheese war."],'rewardGems':15},
- {'id':'billionaire','characterId':'nonna','trigger':{'type':'lifetimeEarnings','amount':1000000000},'lines':["A billion?! Your nonno would be so proud.","When you're ready, franchise the empire and earn Chef Stars."],'rewardGems':20},
+ # Fires the moment the first Chef Star can be earned (points = floor(scale * sqrt(lifetime / threshold))),
+ # and says only what is true then: one star now, more the longer the empire grows.
+ {'id':'billionaire','characterId':'nonna','title':'A Franchise Offer','trigger':{'type':'lifetimeEarnings','amount':FIRST_STAR},'lines':["Bambino, a franchise group wants to buy the empire!","Today they would pay one Chef Star. Each star adds %s%% to all profits, forever." % BONUS_PCT,"No hurry: the bigger the empire grows, the more stars they offer."],'rewardGems':20},
  {'id':'first_franchise','characterId':'rival','title':'Round Two','trigger':{'type':'prestige','count':1},'lines':["You sold it all... and came back STRONGER?","Fine. Round two, pizza kid."],'rewardGems':25},
  {'id':'moon','characterId':'pepe','title':'One Small Slice','trigger':{'type':'venue','venueId':'moon'},'lines':["We put an oven. On the MOON.","The crust is out of this world. I'll see myself out."],'rewardGems':30},
  {'id':'planet','characterId':'rival','title':'Checkmate','trigger':{'type':'venue','venueId':'planet'},'lines':["A planet. You bought a PLANET.","...Is it hiring?"],'rewardGems':50},
@@ -234,7 +247,8 @@ deals = [
 g['meta'] = {
     'cards': cards, 'cardEffect': CARD_EFFECT, 'cardCopies': CARD_COPIES,
     'chests': CHESTS,
-    'freeChest': {'chestId': 'box', 'everyHours': 4, 'stored': 2, 'firstMinutes': [15, 60]},
+    # The first free chest at 5 min, inside the first session (critique-fun.md section 2).
+    'freeChest': {'chestId': 'box', 'everyHours': 4, 'stored': 2, 'firstMinutes': [5, 60]},
     'adChest': {'chestId': 'box', 'perDay': 3, 'cooldownMinutes': 120},
     'pity': {'epic': 10, 'legendary': 40},
     'chestGrowthPerVenue': 0.2,
@@ -247,6 +261,9 @@ g['meta'] = {
     'deals': deals,
     'dailyShop': {'slots': 4, 'offers': daily},
 }
+
+# Stage colours, set explicitly (the schema defaults) so a reskin sees where they live.
+g['theme']['colors']['stages'] = {'production': '#EF7D22', 'transport': '#2A9D8F', 'sales': '#7B5EA7'}
 
 # ---------------------------------------------------------------- characters, cast, products, store
 portraits = {'nonna': 'char:nonna', 'rival': 'char:carl', 'pepe': 'asset:hero'}

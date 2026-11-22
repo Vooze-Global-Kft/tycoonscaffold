@@ -4,7 +4,7 @@
  * shine on free things, and the helper that lets bought gems fly to the header.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type HostInstance, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import type { Reward } from '../../../config/schema';
 import { formatNumber } from '../../../engine/format';
@@ -170,15 +170,25 @@ export function Shine({ radius = 0 }: { radius?: number }) {
  * View); call `emit` after the store action has really granted something.
  */
 export function useFlyFrom() {
-  const ref = useRef<View>(null);
+  const ref = useRef<HostInstance>(null);
   const emit = useCallback((kind: 'gems' | 'cash', count: number) => {
     if (count <= 0) return;
-    ref.current?.measureInWindow((x, y, w, h) => {
+    ref.current?.measureInWindow((x: number, y: number, w: number, h: number) => {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
       fly.emit({ kind, from: { x: x + w / 2, y: y + h / 2 }, to: kind === 'gems' ? 'header:gems' : 'header:cash', count: Math.min(10, Math.max(3, Math.round(count / 10))) });
     });
   }, []);
   return { ref, emit };
+}
+
+/** A short, readable length of time for offers and boosts: "30 min", "4 h", "1 h 30 min", "2 days". */
+export function shortDuration(seconds: number): string {
+  const m = Math.round(seconds / 60);
+  if (m < 60) return `${Math.max(1, m)} min`;
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  if (h >= 48 && rest === 0 && h % 24 === 0) return `${h / 24} days`;
+  return rest === 0 ? `${h} h` : `${h} h ${rest} min`;
 }
 
 /** Runs a store action and lets gems fly to the header when the player's gems really went up. */

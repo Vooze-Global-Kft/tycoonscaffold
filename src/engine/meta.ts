@@ -932,14 +932,19 @@ function missionCounter(state: GameState, type: MissionType): number {
   }
 }
 
-/** False for types that cannot progress in this game (or, for hires, in this run any more). */
+/**
+ * False for types that cannot progress in this game, or not yet for this player: "rush" needs a
+ * transport automation hire somewhere (the rush skill is taught after it), "chests" a chest owned
+ * now or opened before (a new player has none to open), "hires" something left to hire.
+ */
 function missionTypeUsable(cfg: GameConfig, state: GameState, type: MissionType): boolean {
   switch (type) {
     case 'serve':
-    case 'rush':
       return isSim(cfg);
+    case 'rush':
+      return isSim(cfg) && Object.values(state.venues).some((v) => v.chain?.transportManaged === true);
     case 'chests':
-      return cfg.meta.chests.length > 0;
+      return cfg.meta.chests.length > 0 && (state.stats.chestsOpened > 0 || chestCount(state) > 0);
     case 'hires':
       // Something is still left to hire: a venue not opened yet, or an open venue with a hire to buy.
       return venueIds(cfg).some((id) => {
@@ -979,7 +984,8 @@ function missionTarget(cfg: GameConfig, state: GameState, t: MissionTemplate, no
  * - Daily limit: when `missions.doneToday` has reached `perDay` for the current local day, no
  *   new missions are handed out until the day changes (slots stay empty). A new day resets it.
  * - Types that cannot progress in this game are skipped ("rush" and "serve" outside sim mode,
- *   "chests" without chests).
+ *   "chests" without chests), and so are types the player cannot progress YET: "rush" before any
+ *   transport automation hire, "chests" before the player has ever owned a chest.
  * Call on boot, after every claim, and now and then (the day can change while playing).
  *
  * Choices:
@@ -1305,6 +1311,9 @@ export type Hint =
   | { kind: 'openChest' }
   | { kind: 'claimMission'; index: number };
 
+/** A hire within this many seconds of income is worth saving for: buys are not hinted meanwhile. */
+export const HINT_SAVE_SECONDS = 60;
+
 /** Play time after which a player who has automated the first venue is left alone. */
 export const HINT_VETERAN_SECONDS = 180;
 
@@ -1318,7 +1327,8 @@ export const HINT_VETERAN_SECONDS = 180;
  * Choices, in priority order:
  * - null for a veteran: prestigeCount > 0, or playSeconds >= HINT_VETERAN_SECONDS and the first
  *   venue is automated (its transport hire in sim mode, its first business's hire in classic).
- * - claimMission (first finished one), then openChest (an unopened chest, or a free one ready).
+ * - claimMission (first finished one), then openChest (an unopened chest, or a free one ready),
+ *   both only once the first venue is automated (before that the screens teach the manual loop).
  * - An affordable automation hire beats everything below it: a station's (in config order), then
  *   the transport's. Levels are always cheaper, so "hire" would otherwise never show.
  * - Buy at the bottleneck, if affordable: the stage with the lowest capacity (stations counted
@@ -1327,6 +1337,10 @@ export const HINT_VETERAN_SECONDS = 180;
  *   It comes before the manual loop because the manual loop is always available, so "buy"
  *   would otherwise never show; a new game starts with no cash, so the first hints are still
  *   tap and bell.
+ * - Saving: no buy while a hire is the next goal (a station without its hire that is at its first
+ *   milestone or whose hire costs at most HINT_SAVE_SECONDS of income, or a station automated
+ *   while transport is not); before the transport hire, buys are
+ *   production only (the stage lessons come after it).
  * - bell: transport not automated, goods on the pass and an idle worker.
  * - tapStation: an owned, idle station without its hire (first in config order).
  * - Otherwise null (nothing useful to point at; the player is waiting for cash).
@@ -1337,9 +1351,13 @@ export function nextHint(cfg: GameConfig, state: GameState, now: number): Hint |
   const automated = sim ? firstVenue?.chain?.transportManaged === true : firstVenue?.businesses[cfg.businesses[0].id]?.managed === true;
   if (state.prestigeCount > 0 || (state.stats.playSeconds >= HINT_VETERAN_SECONDS && automated)) return null;
 
-  const mission = missionViews(cfg, state).find((m) => m.done);
-  if (mission) return { kind: 'claimMission', index: mission.index };
-  if (chestCount(state) > 0 || (freeChestStatus(cfg, state, now)?.ready ?? 0) > 0) return { kind: 'openChest' };
+  // Missions and chests are taught once the first venue runs by itself (the screens show those
+  // buttons from then on; before it, the lesson is the manual loop).
+  if (automated) {
+    const mission = missionViews(cfg, state).find((m) => m.done);
+    if (mission) return { kind: 'claimMission', index: mission.index };
+    if (chestCount(state) > 0 || (freeChestStatus(cfg, state, now)?.ready ?? 0) > 0) return { kind: 'openChest' };
+  }
 
   const venueId = state.activeVenue;
   const v = state.venues[venueId];
@@ -1366,7 +1384,20 @@ export function nextHint(cfg: GameConfig, state: GameState, now: number): Hint |
     if (transport < production && transport <= sales) stage = 'transport';
     else if (sales < production && sales < transport) stage = 'sales';
   }
-  const buy = bottleneckBuy();
+  // Saving for the next automation hire: once a station without its hire has reached the first
+  // milestone, or once a station is automated while transport still waits for the bell, no "buy"
+  // is suggested until that hire is bought (it shows above as soon as it is affordable).
+  const firstMilestone = cfg.economy.milestones[0]?.owned ?? 10;
+  const income = incomePerSecond(cfg, state, now);
+  const saving =
+    cfg.businesses.some((b) => {
+      const bs = v.businesses[b.id];
+      return !!bs && bs.owned > 0 && !bs.managed && (bs.owned >= firstMilestone || managerCost(cfg, venueId, b.id) <= income * HINT_SAVE_SECONDS);
+    }) ||
+    (sim && !!chain && !chain.transportManaged && cfg.businesses.some((b) => v.businesses[b.id]?.managed));
+  // Before transport is automated the lesson is oven, bell, buy: transport and sales are taught after.
+  if (sim && chain && !chain.transportManaged) stage = 'production';
+  const buy = saving ? null : bottleneckBuy();
   if (buy) return buy;
 
   if (sim && chain && !chain.transportManaged && chain.buffer > 1e-9 && idleWorkers(chain) > 0) return { kind: 'bell' };

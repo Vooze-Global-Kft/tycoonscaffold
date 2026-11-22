@@ -1079,6 +1079,37 @@ export function dailyReward(cfg: GameConfig, state: GameState, now: number): { g
   return { gems: table[i], streak, day: i + 1 };
 }
 
+/** One day of the daily-gift row. */
+export interface DailyDay {
+  /** The claim number (1 = the first gift ever). */
+  claim: number;
+  /** Its position in the table, 1-based ("Day 3"). */
+  day: number;
+  gems: number;
+  /** Already claimed. */
+  claimed: boolean;
+  /** The one to claim today (only when it can be claimed now). */
+  today: boolean;
+}
+
+/**
+ * The row of gifts to draw: the current cycle of `economy.daily.gems` (one entry per table entry),
+ * with what is claimed, what is today's, and what comes next. Exactly what claimDaily pays, so the
+ * row never shows a different number from the one granted.
+ */
+export function dailyCalendar(cfg: GameConfig, state: GameState, now: number): DailyDay[] {
+  const table = cfg.economy.daily.gems;
+  const len = table.length;
+  const can = canClaimDaily(state, now);
+  // The cycle that holds the next claim; once today's gift is claimed, the one that holds it.
+  const ref = can ? state.daily.streak + 1 : Math.max(1, state.daily.streak);
+  const start = Math.floor((ref - 1) / len) * len + 1;
+  return table.map((gems, i) => {
+    const claim = start + i;
+    return { claim, day: i + 1, gems, claimed: claim <= state.daily.streak, today: can && claim === state.daily.streak + 1 };
+  });
+}
+
 export function claimDaily(cfg: GameConfig, state: GameState, now: number): GameState {
   if (!canClaimDaily(state, now)) return state;
   const { gems, streak } = dailyReward(cfg, state, now);

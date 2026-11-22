@@ -10,7 +10,7 @@ import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
 import { describeReward } from '../../kit';
-import { alpha, useTheme } from '../../theme';
+import { alpha, RARITY_NAMES, useTheme } from '../../theme';
 import { Countdown, GemPrice, Shine, ShopSection, useFlyFrom, withGemFlight } from './parts';
 
 export function DailyShop() {
@@ -48,6 +48,9 @@ function DailyItem({ offerId, bought }: { offerId: string; bought: boolean }) {
   if (!offer) return null;
   const free = offer.gemCost === 0;
   const info = describeReward(cfg, offer.reward);
+  // The second line adds something only when the title does not already say it.
+  const card = offer.reward.type === 'card' ? cfg.meta.cards.find((c) => c.id === (offer.reward as { cardId: string }).cardId) : undefined;
+  const sub = info.label !== offer.title ? info.label : card ? `${RARITY_NAMES[card.rarity]} card` : '';
   return (
     <View
       style={[
@@ -74,7 +77,7 @@ function DailyItem({ offerId, bought }: { offerId: string; bought: boolean }) {
         {offer.title}
       </Text>
       <Text style={[styles.itemSub, { color: t.c.textMuted }]} numberOfLines={2}>
-        {info.label}
+        {sub}
       </Text>
       <View ref={ref} collapsable={false} style={{ alignSelf: 'stretch' }}>
         {bought ? (

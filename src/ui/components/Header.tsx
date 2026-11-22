@@ -59,7 +59,7 @@ function CashCounter({ compact }: { compact: boolean }) {
         />
       </Animated.View>
       <Text style={[styles.ips, { color: alpha(t.c.primaryText, 0.9), fontSize: compact ? 11 : 12 }]} numberOfLines={1} adjustsFontSizeToFit>
-        +{formatMoney(ips, sym)}/s
+        {ips > 0 ? `+${formatMoney(ips, sym)}/s` : t.strings.tapHint}
         {points > 0 ? `  ·  ${t.strings.prestigeIcon} ${formatNumber(points)}` : ''}
       </Text>
     </View>

@@ -412,7 +412,7 @@ const WALL_H = 112;
 const SCENE_H = 420;
 const PASS_Y = WALL_H + 64;
 const WALK_Y = PASS_Y + 50;
-const ROWS = [WALK_Y + 52, WALK_Y + 140];
+const ROWS = [WALK_Y + 62, WALK_Y + 146];
 const COLS = [70, 195, 320];
 
 /** One table with its two chairs, in the right drawing order. `left`/`right` are the seated guests, if any. */

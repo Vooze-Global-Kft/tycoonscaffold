@@ -26,7 +26,12 @@
         "#E63946",
         "#F4A261",
         "#FFD166"
-      ]
+      ],
+      "stages": {
+        "production": "#EF7D22",
+        "transport": "#2A9D8F",
+        "sales": "#7B5EA7"
+      }
     },
     "radius": 18,
     "scene": "skia",
@@ -63,7 +68,7 @@
     "startingCash": 0,
     "prestige": {
       "threshold": 3000000000000000.0,
-      "scale": 1,
+      "scale": 20.0,
       "bonusPerPoint": 0.02
     },
     "offline": {
@@ -104,7 +109,7 @@
       "decayMs": 1400,
       "name": "DOUGH FRENZY"
     },
-    "tapBase": 1,
+    "tapBase": 0.25,
     "tapPercentOfIncome": 0.04,
     "milestones": [
       {
@@ -147,7 +152,7 @@
       "costGrowth": 1.12,
       "baseRevenue": 2.5,
       "cycleSeconds": 2,
-      "managerCost": 140,
+      "managerCost": 250,
       "managerName": "Pizzaiolo",
       "stationKind": "oven",
       "productName": "Margherita",
@@ -207,7 +212,7 @@
       "costGrowth": 1.12,
       "baseRevenue": 18000,
       "cycleSeconds": 6,
-      "managerCost": 33000000,
+      "managerCost": 12000000,
       "managerName": "Gelataio",
       "stationKind": "dessert",
       "productName": "Gelato",
@@ -290,7 +295,15 @@
       "id": "u_scooters",
       "name": "Delivery Scooters",
       "icon": "asset:biz_delivery",
-      "cost": 500000000000.0,
+      "cost": 60000000000.0,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_festival",
+      "name": "Pizza Festival",
+      "icon": "🎪",
+      "cost": 50000000000000.0,
       "target": "all",
       "revenueMult": 2
     },
@@ -355,20 +368,6 @@
       ]
     },
     {
-      "id": "first_chef",
-      "characterId": "nonna",
-      "title": "Many Hands",
-      "trigger": {
-        "type": "hired",
-        "businessId": "margherita"
-      },
-      "lines": [
-        "A real pizzaiolo! Look at them go.",
-        "Now the oven never sleeps. And neither does the money."
-      ],
-      "rewardGems": 5
-    },
-    {
       "id": "meet_pepe",
       "characterId": "pepe",
       "title": "Pepe!",
@@ -380,7 +379,7 @@
         "Your maître d' runs the floor now. Watch the counter: if dishes pile up, hire more waiters!",
         "And if a Golden Slice flies by, grab it. Fortune favours the fast."
       ],
-      "rewardGems": 5
+      "rewardGems": 10
     },
     {
       "id": "second_station",
@@ -388,7 +387,7 @@
       "trigger": {
         "type": "owned",
         "businessId": "bruschetta",
-        "count": 1
+        "count": 10
       },
       "lines": [
         "Two dishes on the menu! Fancy.",
@@ -457,13 +456,15 @@
     {
       "id": "billionaire",
       "characterId": "nonna",
+      "title": "A Franchise Offer",
       "trigger": {
         "type": "lifetimeEarnings",
-        "amount": 1000000000
+        "amount": 7500000000000
       },
       "lines": [
-        "A billion?! Your nonno would be so proud.",
-        "When you're ready, franchise the empire and earn Chef Stars."
+        "Bambino, a franchise group wants to buy the empire!",
+        "Today they would pay one Chef Star. Each star adds 2% to all profits, forever.",
+        "No hurry: the bigger the empire grows, the more stars they offer."
       ],
       "rewardGems": 20
     },
@@ -638,6 +639,10 @@
   },
   "mode": "sim",
   "sim": {
+    "production": {
+      "name": "Kitchen",
+      "icon": "🍕"
+    },
     "buffer": {
       "name": "The Pass",
       "icon": "🛎️"
@@ -701,7 +706,7 @@
         "place": "Roma",
         "icon": "🏛️",
         "blurb": "All roads lead to a second helping.",
-        "unlockCost": 50000000,
+        "unlockCost": 120000000,
         "scale": 40
       },
       {
@@ -710,7 +715,7 @@
         "place": "Venezia",
         "icon": "🛶",
         "blurb": "Deliveries by gondola.",
-        "unlockCost": 280000000000,
+        "unlockCost": 440000000000,
         "scale": 1600
       },
       {
@@ -719,7 +724,7 @@
         "place": "Paris",
         "icon": "🗼",
         "blurb": "They said pizza wasn't chic. They were wrong.",
-        "unlockCost": 170000000000000,
+        "unlockCost": 410000000000000,
         "scale": 64000
       },
       {
@@ -728,7 +733,7 @@
         "place": "New York",
         "icon": "🗽",
         "blurb": "Forty floors up, still wood-fired.",
-        "unlockCost": 46000000000000000,
+        "unlockCost": 110000000000000000,
         "scale": 2600000
       },
       {
@@ -737,7 +742,7 @@
         "place": "Tokyo",
         "icon": "🏯",
         "blurb": "Open all night.",
-        "unlockCost": 3700000000000000000,
+        "unlockCost": 11000000000000000000,
         "scale": 100000000
       },
       {
@@ -746,7 +751,7 @@
         "place": "The Moon",
         "icon": "🌕",
         "blurb": "Zero-gravity dough tossing.",
-        "unlockCost": 580000000000000000000,
+        "unlockCost": 910000000000000000000,
         "scale": 4100000000
       },
       {
@@ -755,7 +760,7 @@
         "place": "Deep Space",
         "icon": "asset:biz_pizza_planet",
         "blurb": "A whole world with extra toppings.",
-        "unlockCost": 37000000000000000000000,
+        "unlockCost": 73000000000000000000000,
         "scale": 160000000000
       }
     ],
@@ -1044,7 +1049,7 @@
       "everyHours": 4,
       "stored": 2,
       "firstMinutes": [
-        15,
+        5,
         60
       ]
     },
@@ -1226,7 +1231,7 @@
       {
         "id": "welcome",
         "title": "Welcome Feast",
-        "badge": "ONE TIME",
+        "badge": "Can be bought once",
         "blurb": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony and four hours of takings.",
         "icon": "🎉",
         "productId": "pizza_welcome_feast",

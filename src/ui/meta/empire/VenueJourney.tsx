@@ -39,7 +39,7 @@ export function VenueJourney() {
       <SectionTitle right={<OpenCount open={open} total={venues.length} />}>YOUR VENUES</SectionTitle>
       <View style={styles.journey}>
         {venues.map((v, i) => (
-          <JourneyStep key={v.id} venue={v} status={statuses[i]} first={i === 0} last={i === venues.length - 1} prevName={i > 0 ? venues[i - 1].name : ''} />
+          <JourneyStep key={v.id} venue={v} status={statuses[i]} first={i === 0} last={i === venues.length - 1} prevName={i > 0 ? (venues[i - 1].place ?? '') : ''} />
         ))}
       </View>
     </View>
@@ -134,7 +134,7 @@ function OpenVenue({ venue }: { venue: Venue }) {
           </Pill>
         </View>
       ) : (
-        <PriceButton label="Go" onPress={() => setVenue(venue.id)} variant="primary" style={{ minWidth: 72 }} />
+        <PriceButton label="Go" onPress={() => setVenue(venue.id)} variant="ghost" style={{ minWidth: 72 }} />
       )}
     </View>
   );
@@ -187,20 +187,17 @@ function NextVenue({ venue }: { venue: Venue }) {
         </Text>
       </View>
       <View style={styles.nextBottom}>
-        <Text style={[styles.note, { color: t.c.textMuted }]} numberOfLines={3}>
-          {affordable
-            ? 'Ready to open!'
-            : Number.isFinite(eta) && eta < 86400 * 7
-              ? `About ${formatDuration(eta)} at your current income.`
-              : 'Keep growing to afford it.'}
-          {'\n'}
-          Prices and earnings ×{formatNumber(venue.scale)}
-          {firstName && venue.scale !== 1 ? ` vs. ${firstName}` : ''}. Open venues keep earning while you are elsewhere.
+        <Text style={[styles.eta, { color: affordable ? t.c.success : t.c.text }]} numberOfLines={2}>
+          {affordable ? 'Ready to open!' : Number.isFinite(eta) && eta < 86400 * 7 ? `About ${formatDuration(eta)} at your current income` : 'Keep growing to afford it'}
         </Text>
         <View {...target}>
-          <PriceButton label="Unlock" price={formatMoney(cost, t.strings.currencySymbol)} disabled={!affordable} variant={affordable ? 'success' : 'ghost'} onPress={() => unlockVenue(venue.id)} />
+          <PriceButton label="Unlock" price={formatMoney(cost, t.strings.currencySymbol)} variant={affordable ? 'success' : 'ghost'} onPress={() => unlockVenue(venue.id)} />
         </View>
       </View>
+      <Text style={[styles.note, { color: t.c.textMuted }]}>
+        Prices and earnings here are ×{formatNumber(venue.scale)}
+        {firstName && venue.scale !== 1 ? ` those of ${firstName}` : ''}. Every open venue keeps earning while you play in another.
+      </Text>
     </View>
   );
 }
@@ -246,5 +243,6 @@ const styles = StyleSheet.create({
   track: { height: 22, borderRadius: 11, overflow: 'hidden', justifyContent: 'center', marginTop: 10 },
   fill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 11 },
   trackLabel: { textAlign: 'center', fontSize: 12, paddingHorizontal: 8 },
-  note: { flex: 1, fontSize: 11, fontWeight: '600', lineHeight: 15 },
+  eta: { flex: 1, fontSize: 13, fontWeight: '700', lineHeight: 17 },
+  note: { fontSize: 11, fontWeight: '600', lineHeight: 15, marginTop: 8 },
 });

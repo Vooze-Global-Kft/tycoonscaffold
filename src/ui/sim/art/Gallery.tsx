@@ -242,18 +242,18 @@ function VarietyPage({ clock }: { clock: SharedValue<number> }) {
 function CastPage({ clock }: { clock: SharedValue<number> }) {
   const cols = 3;
   const cw = W / cols;
-  const ch = 200;
+  const ch = 232;
   const rows = Math.ceil(LOOK_NAMES.length / cols);
   const pose = (param('pose') as Pose) ?? 'idle';
   return (
     <View style={{ width: W, height: rows * ch }}>
       <Canvas style={{ width: W, height: rows * ch }}>
         {LOOK_NAMES.map((n, i) => (
-          <Character key={n} look={{ preset: n }} x={(i % cols) * cw + cw / 2} y={Math.floor(i / cols) * ch + ch - 30} clock={clock} poses={POSES} scale={3} pose={pose} />
+          <Character key={n} look={{ preset: n }} x={(i % cols) * cw + cw / 2} y={Math.floor(i / cols) * ch + ch - 34} clock={clock} poses={POSES} scale={3} pose={pose} />
         ))}
       </Canvas>
       {LOOK_NAMES.map((n, i) => (
-        <Label key={n} x={(i % cols) * cw} y={Math.floor(i / cols) * ch + ch - 12} w={cw}>
+        <Label key={n} x={(i % cols) * cw} y={Math.floor(i / cols) * ch + ch - 20} w={cw}>
           {n}
         </Label>
       ))}

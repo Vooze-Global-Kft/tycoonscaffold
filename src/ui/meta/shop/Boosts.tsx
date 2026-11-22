@@ -5,14 +5,14 @@
  */
 import { StyleSheet, Text, View } from 'react-native';
 import * as E from '../../../engine/economy';
-import { formatDuration, formatMoney } from '../../../engine/format';
+import { formatMoney } from '../../../engine/format';
 import { ads } from '../../../services/ads';
 import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
-import { useNow } from '../../kit';
+import { formatCountdown, useNow } from '../../kit';
 import { alpha, useTheme } from '../../theme';
-import { GemPrice, OfferCard, ShopSection } from './parts';
+import { GemPrice, OfferCard, ShopSection, shortDuration } from './parts';
 
 export function Boosts() {
   const t = useTheme();
@@ -34,7 +34,7 @@ function AdBoost() {
   const left = Math.max(0, boostUntil - now);
   // Same rule as E.canBoost, from the two numbers this card already has.
   const canAdd = boostUntil < now + (boost.maxMinutes - boost.minutesPerAd) * 60_000;
-  const reward = `×${boost.multiplier} income for ${formatDuration(boost.minutesPerAd * 60)}`;
+  const reward = `×${boost.multiplier} income for ${shortDuration(boost.minutesPerAd * 60)}`;
   const action = skip || ads.skipRewarded ? 'Claim' : 'Watch ad';
   return (
     <OfferCard tint={t.c.stages?.transport ?? t.c.success}>
@@ -48,14 +48,14 @@ function AdBoost() {
           </Text>
           <Text style={[styles.sub, { color: t.c.textMuted }]} numberOfLines={2}>
             {left > 0
-              ? `Active: ${formatDuration(left / 1000)} left. Adds up to ${formatDuration(boost.maxMinutes * 60)}.`
-              : `Optional. Each ad adds ${formatDuration(boost.minutesPerAd * 60)}, up to ${formatDuration(boost.maxMinutes * 60)}.`}
+              ? `Active: ${formatCountdown(left)} left. Adds up to ${shortDuration(boost.maxMinutes * 60)}.`
+              : `Optional. Each ad adds ${shortDuration(boost.minutesPerAd * 60)}, up to ${shortDuration(boost.maxMinutes * 60)}.`}
           </Text>
         </View>
       </View>
       <Button
         variant="accent"
-        label={canAdd ? `${action}: +${formatDuration(boost.minutesPerAd * 60)}` : 'Boost is full'}
+        label={canAdd ? `${action}: +${shortDuration(boost.minutesPerAd * 60)}` : 'Boost is full'}
         disabled={!canAdd}
         onPress={watch}
         style={{ marginTop: 10 }}
@@ -89,7 +89,7 @@ function TimeWarp() {
             Time warp
           </Text>
           <Text style={[styles.sub, { color: t.c.textMuted }]} numberOfLines={2}>
-            {value > 0 ? `Get ${formatMoney(value, symbol)} now: ${formatDuration(warp.hours * 3600)} of your current income.` : `Get ${formatDuration(warp.hours * 3600)} of income at once. Start earning first.`}
+            {value > 0 ? `Get ${formatMoney(value, symbol)} now: ${shortDuration(warp.hours * 3600)} of your current income.` : `Get ${shortDuration(warp.hours * 3600)} of income at once. Start earning first.`}
           </Text>
         </View>
         <Button variant="primary" disabled={short || value <= 0} onPress={buy} style={{ minWidth: 92 }}>
