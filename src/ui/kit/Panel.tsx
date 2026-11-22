@@ -24,7 +24,7 @@ export function CardText({ title, sub, lines = 2 }: { title: ReactNode; sub?: Re
   const t = useTheme();
   return (
     <View style={styles.text}>
-      <Text style={[styles.title, t.display, { color: t.c.text }]} numberOfLines={1}>
+      <Text style={[styles.title, t.display, { color: t.c.text }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
         {title}
       </Text>
       {sub ? (
@@ -53,7 +53,7 @@ export function Pill({ children, color, textColor }: { children: ReactNode; colo
   const bg = color ?? t.c.accent;
   return (
     <View style={[styles.pill, { backgroundColor: bg }]}>
-      <Text style={[styles.pillText, t.display, { color: textColor ?? textOn(bg) }]} numberOfLines={1}>
+      <Text style={[styles.pillText, t.display, { color: textColor ?? textOn(bg) }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
         {children}
       </Text>
     </View>
@@ -68,7 +68,7 @@ export function ProgressBar({ value, color, height = 18, label }: { value: numbe
     <View style={[styles.track, { height, borderRadius: height / 2, backgroundColor: alpha(t.c.text, 0.1) }]}>
       <View style={{ width: `${pct * 100}%`, height: '100%', borderRadius: height / 2, backgroundColor: color ?? t.c.progress }} />
       {label ? (
-        <Text style={[styles.trackLabel, t.display, { color: t.c.text, lineHeight: height, fontSize: Math.max(10, height * 0.62) }]} numberOfLines={1}>
+        <Text style={[styles.trackLabel, t.display, { color: t.c.text, lineHeight: height, fontSize: Math.max(10, height * 0.62) }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
           {label}
         </Text>
       ) : null}
@@ -101,6 +101,6 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 11, letterSpacing: 0.5 },
   track: { overflow: 'hidden', justifyContent: 'center' },
   trackLabel: { position: 'absolute', left: 0, right: 0, textAlign: 'center' },
-  dot: { minWidth: 16, height: 16, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
-  dotText: { fontSize: 9, fontWeight: '900' },
+  dot: { minWidth: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
+  dotText: { fontSize: 11, lineHeight: 13, fontWeight: '900' },
 });

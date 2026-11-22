@@ -14,7 +14,7 @@ export function BuyAmountRow({ height }: { height: number }) {
   const slop = Math.max(0, Math.ceil((44 - (height - 4)) / 2));
   return (
     <View style={[styles.row, { height }]}>
-      <Text style={[styles.caption, { color: t.c.textMuted }]}>BUY</Text>
+      <Text style={[styles.caption, { color: t.c.textMuted }]} maxFontSizeMultiplier={1.25}>BUY</Text>
       <View style={[styles.group, { height: height - 4, borderRadius: (height - 4) / 2, backgroundColor: alpha(t.c.text, 0.07) }]}>
         {AMOUNTS.map((a) => {
           const on = a === amount;
@@ -28,7 +28,7 @@ export function BuyAmountRow({ height }: { height: number }) {
               accessibilityLabel={a === 'max' ? 'Buy as many as you can afford' : `Buy ${a} at a time`}
               style={[styles.seg, { borderRadius: (height - 8) / 2 }, on && { backgroundColor: t.c.primary }]}
             >
-              <Text style={[t.display, styles.segText, { color: on ? t.c.primaryText : t.c.textMuted, fontSize: height < 30 ? 12 : 13 }]} numberOfLines={1}>
+              <Text style={[t.display, styles.segText, { color: on ? t.c.primaryText : t.c.textMuted, fontSize: height < 30 ? 12 : 13 }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
                 {a === 'max' ? 'MAX' : `×${a}`}
               </Text>
             </Pressable>
@@ -41,7 +41,7 @@ export function BuyAmountRow({ height }: { height: number }) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 },
-  caption: { fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+  caption: { fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
   group: { flex: 1, flexDirection: 'row', padding: 2, gap: 2 },
   seg: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   segText: {},

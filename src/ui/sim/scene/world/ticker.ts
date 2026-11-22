@@ -39,3 +39,17 @@ export function glide(sv: SharedValue<number>, to: number, jump = false): void {
   }
   sv.value = withTiming(to, { duration: glideMs(), ...LINEAR });
 }
+
+const triggerCounts = new WeakMap<object, number>();
+
+/**
+ * Fires a one-shot trigger (door swing, bell, sparkle burst): the art notices that the number
+ * changed. The count is kept on the JS side: on phones, `sv.value += 1` reads the value back from
+ * the UI thread (a blocking round trip), and two bumps in one JS tick would read a stale value and
+ * lose one of them.
+ */
+export function bump(sv: SharedValue<number>): void {
+  const n = (triggerCounts.get(sv) ?? 0) + 1;
+  triggerCounts.set(sv, n);
+  sv.value = n;
+}

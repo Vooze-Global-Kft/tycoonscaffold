@@ -5,7 +5,7 @@
  * staff card always shows someone. Only for the few big cards of the overlay and the card dialog:
  * lists use GameIcon, which never makes a canvas per row.
  */
-import { Group, Image as SkImage, Picture, useImage } from '@shopify/react-native-skia';
+import { BlendColor, Group, Image as SkImage, Paint, Picture, useImage } from '@shopify/react-native-skia';
 import { useEffect, useMemo } from 'react';
 import { gameAssets } from '../../../config/game';
 import { useGame } from '../../../state/store';
@@ -38,18 +38,30 @@ function BustPortrait({ id, silhouette }: { id: string; silhouette: boolean }) {
     return b;
   }, [art, size]);
   return (
-    <Group opacity={silhouette ? 0.18 : 1}>
+    <Group layer={silhouette ? SILHOUETTE : undefined}>
       <Picture picture={art.base} matrix={m} />
-      {art.eyes ? <Picture picture={art.eyes} matrix={m} /> : null}
+      {art.eyes && !silhouette ? <Picture picture={art.eyes} matrix={m} /> : null}
     </Group>
   );
 }
+
+/**
+ * A card not found yet: the person drawn as one flat dark shape (every drawn pixel takes this
+ * colour), so the outline teases who it is without showing them. Drawn as a layer with a colour
+ * filter, not with a low opacity (that would still show the colours, as a ghost).
+ */
+const SILHOUETTE = (
+  <Paint opacity={0.85}>
+    <BlendColor color="#3A2416" mode="srcIn" />
+  </Paint>
+);
 
 function AssetPortrait({ source, silhouette }: { source: number | string | object; silhouette: boolean }) {
   const image = useImage(source as Parameters<typeof useImage>[0]);
   if (!image) return null;
   const pad = 6;
   return (
+    <Group layer={silhouette ? SILHOUETTE : undefined}>
     <SkImage
       image={image}
       x={pad}
@@ -57,7 +69,7 @@ function AssetPortrait({ source, silhouette }: { source: number | string | objec
       width={CARD_WINDOW.width - pad * 2}
       height={CARD_WINDOW.height - pad}
       fit="contain"
-      opacity={silhouette ? 0.18 : 1}
     />
+    </Group>
   );
 }

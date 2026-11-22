@@ -5,6 +5,7 @@
  * against this schema. The code never branches on a game id.
  */
 import { z } from 'zod';
+import { ART_ICON_NAMES, isArtIcon } from './artIcons';
 import { MetaSchema, SimSchema } from './schema.sim';
 
 export * from './schema.sim';
@@ -13,7 +14,8 @@ const hex = z.string().regex(/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, 'hex colour l
 
 /**
  * An icon is an emoji (zero-asset reskin), `asset:<key>` (an image from the game's assets map)
- * or `char:<castId>` (a code-drawn character from the game's cast).
+ * `char:<castId>` (a code-drawn character from the game's cast) or `art:<name>` (a code-drawn still
+ * from the art kit, one of ART_ICON_NAMES in ./artIcons).
  */
 const icon = z.string().min(1);
 
@@ -521,6 +523,7 @@ export function lintGameConfig(cfg: GameConfig): string[] {
   }
   for (const i of iconFields) {
     if (i.startsWith('asset:') && !assetKeys.has(i.slice(6))) problems.push(`icon "${i}" has no entry in assets`);
+    if (i.startsWith('art:') && !isArtIcon(i.slice(4))) problems.push(`icon "${i}" is not a drawn icon (one of ${ART_ICON_NAMES.map((n) => `art:${n}`).join(', ')})`);
   }
   // Each business should be meaningfully more expensive than the last, or the curve feels flat.
   for (let i = 1; i < cfg.businesses.length; i++) {

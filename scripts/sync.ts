@@ -145,20 +145,14 @@ function ratingNotes(g: GameConfig): string {
   return L.join('\n') + '\n';
 }
 
-for (const id of games.listGames() as string[]) {
-  const g = GameConfigSchema.parse(games.readGameJson(id));
-  build[`${id}-dev`] = { extends: 'base', developmentClient: true, distribution: 'internal', env: { GAME: id } };
-  build[`${id}-preview`] = { extends: 'base', distribution: 'internal', env: { GAME: id } };
-  build[`${id}-production`] = { extends: 'base', autoIncrement: true, env: { GAME: id } };
-  submit[`${id}-production`] = {
-    ios: { metadataPath: `./games/${id}/store/store.config.json` },
-    android: { track: 'internal', releaseStatus: 'draft' },
-  };
-
+/**
+ * Every file sync writes for one game, as { path relative to the repo root: content }.
+ * validate.ts compares these with what is on disk, so a stale listing cannot be uploaded.
+ */
+export function storeFiles(g: GameConfig, id: string = g.id): Record<string, string> {
   const s = g.store;
   const desc = description(g);
-  const storeDir = path.join(games.gameDir(id), 'store');
-  fs.mkdirSync(path.join(storeDir, 'play', s.locale), { recursive: true });
+  const storeDir = path.join('games', id, 'store');
   const appleInfo: Record<string, unknown> = {
     title: s.title,
     subtitle: s.subtitle,
@@ -175,15 +169,37 @@ for (const id of games.listGames() as string[]) {
       info: { [s.locale]: Object.fromEntries(Object.entries(appleInfo).filter(([, v]) => v !== undefined)) },
     },
   };
-  fs.writeFileSync(path.join(storeDir, 'store.config.json'), JSON.stringify(storeConfig, null, 2) + '\n');
   const play = path.join(storeDir, 'play', s.locale);
-  fs.writeFileSync(path.join(play, 'title.txt'), s.title + '\n');
-  fs.writeFileSync(path.join(play, 'short_description.txt'), s.shortDescription + '\n');
-  fs.writeFileSync(path.join(play, 'full_description.txt'), desc + '\n');
-  fs.writeFileSync(path.join(storeDir, 'RATING-NOTES.md'), ratingNotes(g));
-  console.log(`✔ ${id}${g.meta.chestsForSale ? '  (sells random items: disclosure line added)' : ''}`);
+  return {
+    [path.join(storeDir, 'store.config.json')]: JSON.stringify(storeConfig, null, 2) + '\n',
+    [path.join(play, 'title.txt')]: s.title + '\n',
+    [path.join(play, 'short_description.txt')]: s.shortDescription + '\n',
+    [path.join(play, 'full_description.txt')]: desc + '\n',
+    [path.join(storeDir, 'RATING-NOTES.md')]: ratingNotes(g),
+  };
 }
 
-const eas = { cli: { version: '>= 16.0.0', appVersionSource: 'remote' }, build, submit };
-fs.writeFileSync(path.join(games.ROOT, 'eas.json'), JSON.stringify(eas, null, 2) + '\n');
-console.log('✔ eas.json');
+function main() {
+  for (const id of games.listGames() as string[]) {
+    const g = GameConfigSchema.parse(games.readGameJson(id));
+    build[`${id}-dev`] = { extends: 'base', developmentClient: true, distribution: 'internal', env: { GAME: id } };
+    build[`${id}-preview`] = { extends: 'base', distribution: 'internal', env: { GAME: id } };
+    build[`${id}-production`] = { extends: 'base', autoIncrement: true, env: { GAME: id } };
+    submit[`${id}-production`] = {
+      ios: { metadataPath: `./games/${id}/store/store.config.json` },
+      android: { track: 'internal', releaseStatus: 'draft' },
+    };
+    for (const [rel, content] of Object.entries(storeFiles(g, id))) {
+      const abs = path.join(games.ROOT, rel);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, content);
+    }
+    console.log(`✔ ${id}${g.meta.chestsForSale ? '  (sells random items: disclosure line added)' : ''}`);
+  }
+
+  const eas = { cli: { version: '>= 16.0.0', appVersionSource: 'remote' }, build, submit };
+  fs.writeFileSync(path.join(games.ROOT, 'eas.json'), JSON.stringify(eas, null, 2) + '\n');
+  console.log('✔ eas.json');
+}
+
+if (require.main === module) main();

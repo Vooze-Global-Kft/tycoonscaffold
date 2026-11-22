@@ -90,6 +90,18 @@ export function ThreeScene() {
 
       let last = Date.now();
       const render = () => {
+        // Every frame is guarded, not only the first: expo-gl can fail later (a lost context after
+        // backgrounding on Android). Stop the loop and fall back to the 2D scene instead of crashing.
+        try {
+          frameBody();
+        } catch (e) {
+          if (frame.current !== null) cancelAnimationFrame(frame.current);
+          frame.current = null;
+          crash.record(e, 'three-scene');
+          setFailed(true);
+        }
+      };
+      const frameBody = () => {
         const now = Date.now();
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;

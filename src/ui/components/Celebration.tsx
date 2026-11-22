@@ -275,6 +275,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   iconBox: { width: 60, height: 60, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 6 },
-  sub: { fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
+  sub: { fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
   title: { fontSize: 21, marginTop: 1 },
 });

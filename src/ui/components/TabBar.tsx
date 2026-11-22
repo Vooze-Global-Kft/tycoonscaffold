@@ -82,7 +82,7 @@ function TabItem({ tab, icon, label, active, badge, onPress }: { tab: Tab; icon:
         <GameIcon icon={icon} size={26} />
         <Animated.View style={[styles.dot, { backgroundColor: t.c.danger, borderColor: t.c.surface }, dotStyle]} />
       </Animated.View>
-      <Text style={[styles.label, t.display, { color: active ? t.c.primary : t.c.textMuted }]} numberOfLines={1} adjustsFontSizeToFit>
+      <Text style={[styles.label, t.display, { color: active ? t.c.primary : t.c.textMuted }]} numberOfLines={1} maxFontSizeMultiplier={1.25} adjustsFontSizeToFit>
         {label}
       </Text>
     </Pressable>

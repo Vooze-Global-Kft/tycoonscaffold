@@ -94,13 +94,13 @@ function StageRow({
           <LevelBadge level={level} color={color} />
         </View>
         <View style={styles.mid}>
-          <Text style={[t.display, { color: t.c.text, fontSize: compact ? 14 : 15.5 }]} numberOfLines={1}>
+          <Text style={[t.display, { color: t.c.text, fontSize: compact ? 14 : 15.5 }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
             {title}
           </Text>
-          <Text style={[styles.line, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+          <Text style={[styles.line, { color: t.c.text }]} numberOfLines={1} maxFontSizeMultiplier={1.25} adjustsFontSizeToFit minimumFontScale={0.8}>
             {line1}
           </Text>
-          <Text style={[styles.meta, { color: inkOf(color, t.c.surface) }]} numberOfLines={1}>
+          <Text style={[styles.meta, { color: inkOf(color, t.c.surface) }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
             {line2}
           </Text>
         </View>
@@ -143,10 +143,10 @@ function TransportHireCard({ compact }: { compact: boolean }) {
           <GameIcon icon={icon} size={compact ? 38 : 44} />
         </View>
         <View style={styles.mid}>
-          <Text style={[styles.kicker, { color: inkOf(v.hired ? color : t.c.success, t.c.surface) }]} numberOfLines={1}>
+          <Text style={[styles.kicker, { color: inkOf(v.hired ? color : t.c.success, t.c.surface) }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
             {v.hired ? 'ON DUTY' : 'AUTOMATION'}
           </Text>
-          <Text style={[t.display, { color: t.c.text, fontSize: compact ? 14 : 15.5 }]} numberOfLines={1}>
+          <Text style={[t.display, { color: t.c.text, fontSize: compact ? 14 : 15.5 }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
             {tr.managerName}
           </Text>
           <Text style={[styles.meta, { color: t.c.textMuted }]} numberOfLines={2}>
@@ -157,7 +157,7 @@ function TransportHireCard({ compact }: { compact: boolean }) {
         </View>
         {v.hired ? (
           <View style={[styles.done, { backgroundColor: alpha(t.c.success, 0.14) }]}>
-            <Text style={[t.display, { color: inkOf(t.c.success, t.c.surface), fontSize: 13 }]}>✓ Hired</Text>
+            <Text style={[t.display, { color: inkOf(t.c.success, t.c.surface), fontSize: 13 }]} maxFontSizeMultiplier={1.25}>✓ Hired</Text>
           </View>
         ) : (
           <BuyButton
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   halo: { position: 'absolute' },
   mid: { flex: 1, minWidth: 0, gap: 1 },
   line: { fontSize: 12, fontWeight: '800' },
-  meta: { fontSize: 10.5, fontWeight: '800' },
+  meta: { fontSize: 11, fontWeight: '800' },
   kicker: { fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   hireIcon: {
     width: 56,

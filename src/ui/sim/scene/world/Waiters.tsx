@@ -13,6 +13,7 @@ import { Character, type LookInput } from '../../art';
 import type { DishLook, Pose } from '../../art/types';
 import { MAX_WORKERS_DRAWN, workerFrame } from '../../layout';
 import { putTS, useMatrix } from '../matrix';
+import { useGatedClock } from './gatedClock';
 import type { SceneCtx } from './context';
 import { glide } from './ticker';
 
@@ -73,9 +74,11 @@ export function Waiter({ ctx, index, look, dish }: { ctx: SceneCtx; index: numbe
   // Hidden by moving off the canvas: a parent group's opacity does not reach children sorted by zIndex.
   const shownX = useDerivedValue(() => (visible.value > 0.5 ? x.value : -9999));
   const z = useDerivedValue(() => y.value);
+  // Hidden: a stopped clock, so the parked waiter costs nothing per frame.
+  const ownClock = useGatedClock(clock, visible);
   return (
     <Group zIndex={z}>
-      <Character look={look} x={shownX} y={y} facing={facing} pose={pose} clock={clock} scale={L.artScale} dish={dish} poses={WAITER_POSES} seed={index * 977 + 3} />
+      <Character look={look} x={shownX} y={y} facing={facing} pose={pose} clock={ownClock} scale={L.artScale} dish={dish} poses={WAITER_POSES} seed={index * 977 + 3} />
       <Bang ctx={ctx} x={x} y={y} progress={bang} />
     </Group>
   );

@@ -75,7 +75,7 @@ export function Sheet({ visible: wanted, onClose, title, icon, children, footer,
           <Pressable onPress={() => {}} style={styles.column}>
             <View style={styles.header}>
               {icon ? <GameIcon icon={icon} size={34} /> : null}
-              <Text style={[styles.title, t.display, { color: t.c.text }]} numberOfLines={1}>
+              <Text style={[styles.title, t.display, { color: t.c.text }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
                 {title ?? ''}
               </Text>
               <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close" style={[styles.close, { backgroundColor: alpha(t.c.text, 0.08) }]}>

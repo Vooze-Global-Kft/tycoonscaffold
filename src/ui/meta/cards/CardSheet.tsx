@@ -33,6 +33,7 @@ export function CardSheet() {
 }
 
 const ART_SCALE = 1.25;
+const ART_TOP = 20;
 
 function CardDialog({ card, cfg, onClose }: { card: CardCfg; cfg: GameConfig; onClose: () => void }) {
   const t = useTheme();
@@ -67,7 +68,8 @@ function CardDialog({ card, cfg, onClose }: { card: CardCfg; cfg: GameConfig; on
 
   const badgeStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, fxv.badge.value), transform: [{ scale: 0.6 + 0.4 * fxv.badge.value }, { translateY: (1 - fxv.badge.value) * 10 }] }));
   const canvasW = 300;
-  const canvasH = CARD_SIZE.height * ART_SCALE + 24;
+  // Room above the frame for the epic and legendary ornaments (crown, wings): the card sits ART_TOP lower.
+  const canvasH = CARD_SIZE.height * ART_SCALE + 24 + ART_TOP * 2;
 
   return (
     <Sheet
@@ -97,14 +99,14 @@ function CardDialog({ card, cfg, onClose }: { card: CardCfg; cfg: GameConfig; on
               styles.plate,
               {
                 left: canvasW / 2 + CARD_NAMEPLATE.x * ART_SCALE,
-                top: canvasH / 2 + CARD_NAMEPLATE.y * ART_SCALE,
+                top: canvasH / 2 + ART_TOP + CARD_NAMEPLATE.y * ART_SCALE,
                 width: CARD_NAMEPLATE.width * ART_SCALE,
                 height: CARD_NAMEPLATE.height * ART_SCALE,
               },
             ]}
           >
             <Text style={[styles.plateText, t.display]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {owned ? card.name : '???'}
+              {card.name}
             </Text>
           </View>
         </View>
@@ -169,7 +171,7 @@ function ArtCanvas({ card, owned, width, height, fxv }: {
 }) {
   const clock = useClock();
   const cx = width / 2;
-  const cy = height / 2;
+  const cy = height / 2 + ART_TOP;
   const scale = useDerivedValue(() => ART_SCALE * fxv.pop.value);
   const restGlow = useMemo(() => makeMutable(card.rarity === 'legendary' || card.rarity === 'epic' ? 0.55 : 0.3), [card.rarity]);
   const glowColor = RARITY_GLOW[card.rarity];
@@ -178,7 +180,7 @@ function ArtCanvas({ card, owned, width, height, fxv }: {
       <Glow cx={cx} cy={cy} r={140} color={glowColor} opacity={owned ? restGlow : 0} />
       <Rays cx={cx} cy={cy} radius={170} color={card.rarity === 'common' ? '#FFD95A' : glowColor} opacity={fxv.rays} clock={clock} count={16} />
       <Glow cx={cx} cy={cy} r={150} color="#FFFFFF" opacity={fxv.glow} />
-      {/* A card not found yet shows its rarity frame with only a faint shadow of the person. */}
+      {/* A card not found yet shows its rarity frame with the person as a dark silhouette. */}
       <Card x={cx} y={cy} scale={scale} rarity={card.rarity} flip={1} clock={clock}>
         <CardPortrait icon={card.icon} fallbackId={card.id} silhouette={!owned} />
       </Card>

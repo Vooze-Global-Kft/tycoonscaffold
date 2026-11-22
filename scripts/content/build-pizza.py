@@ -297,6 +297,8 @@ g['monetization']['iap']['products'] = [
 
 store = g['store']
 store['title'] = 'Pizza Empire: Restaurant Sim'   # meta.md 1: avoid "Idle ... Tycoon" titles
+store['subtitle'] = 'Bake, serve & grow an empire'   # policy P16: nothing that reads as earning real money
+store['keywords'] = ['pizza', 'idle', 'tycoon', 'clicker', 'restaurant', 'cooking', 'chef', 'business', 'simulator', 'incremental']
 store['shortDescription'] = "Bake, serve and grow Nonna's tiny kitchen into a pizza empire across the world."
 store['description'] = (
     "Turn Nonna's tiny corner kitchen into the biggest pizza empire in the universe!\n\n"
@@ -304,8 +306,8 @@ store['description'] = (
     "• Fix the bottleneck: more stations, more waiters, more tables\n"
     "• Open eight restaurants, from Napoli to a pizza planet in deep space\n"
     "• Collect a staff of twelve characters and level them up\n"
-    "• Free boxes, daily missions and Rush Hour keep every visit rewarding\n"
-    "• Earn money even when the app is closed\n"
+    "• Boxes to earn, daily missions and Rush Hour keep every visit rewarding\n"
+    "• Your restaurants keep earning Dough while you're away\n"
     "• Franchise your empire to earn Chef Stars and grow faster every run\n"
     "• Outsmart your rival, Big Cheese Carl\n\n"
     "Pizza Empire is a relaxing restaurant sim you can play in short bursts all day."

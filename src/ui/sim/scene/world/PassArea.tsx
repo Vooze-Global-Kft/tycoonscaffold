@@ -15,6 +15,7 @@ import type { DishLook } from '../../art/types';
 import { passPile } from '../../layout';
 import { sceneBus } from '../bus';
 import type { SceneCtx } from './context';
+import { bump } from './ticker';
 
 /** The pass is laid out as four piles; with three layers that is twelve places, of which at most eight are used. */
 const STACKS = 4;
@@ -79,7 +80,7 @@ export function PassArea({ ctx, dishes, onCount }: { ctx: SceneCtx; dishes: Dish
       if (s.game !== prev.game) update(false);
     });
     const offBus = sceneBus.subscribe((m) => {
-      if (m.type === 'bell') ctx.bellRung.value += 1;
+      if (m.type === 'bell') bump(ctx.bellRung);
     });
     return () => {
       off();

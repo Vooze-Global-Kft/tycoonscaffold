@@ -8,6 +8,7 @@
  */
 import { Platform } from 'react-native';
 import { baseGame } from '../config/game';
+import { overlays } from '../state/overlays';
 import { analytics, crash } from './firebase';
 import { fx } from './fx';
 import { isExpoGo } from './native';
@@ -21,7 +22,33 @@ type Rating = 'G' | 'PG' | 'T' | 'MA';
 /** No interstitial this soon after any full-screen ad closed (a rewarded ad chest, then the chest closes...). */
 const QUIET_AFTER_FULLSCREEN_MS = 30_000;
 
+/**
+ * iOS presents one view controller at a time: a full-screen ad presented while a dialog is still
+ * fading out is silently dropped (phone review N1). Every full-screen ad waits this long after the
+ * last overlay closed (src/state/overlays.ts), the same gap the kit Sheet and the story dialog use.
+ */
+const AFTER_OVERLAY_MS = 400;
+/** Never hold an ad longer than this waiting for the screen to settle. */
+const SETTLE_MAX_MS = 2_000;
+
 const gma: GMA | null = isExpoGo ? null : loadAds();
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Resolves once no dialog closed in the last AFTER_OVERLAY_MS. Yields one tick first, because a
+ * screen typically closes its dialog and asks for the ad in the same handler, and the dialog only
+ * reports closing when React unmounts it.
+ */
+async function settle() {
+  const start = Date.now();
+  await sleep(32);
+  while (Date.now() - start < SETTLE_MAX_MS) {
+    const since = overlays.msSinceClose();
+    if (since >= AFTER_OVERLAY_MS) return;
+    await sleep(AFTER_OVERLAY_MS - since + 16);
+  }
+}
 
 function unitIds() {
   const units = Platform.OS === 'ios' ? baseGame.monetization.ads.ios : baseGame.monetization.ads.android;
@@ -37,6 +64,8 @@ function unitIds() {
 class AdsService {
   private ready = false;
   private personalized = false;
+  /** The consent form said no consent is needed here (outside the EEA, UK and the US states). */
+  private consentNotRequired = false;
   private rewarded: Rewarded | null = null;
   private rewardedLoaded = false;
   private interstitial: Interstitial | null = null;
@@ -61,6 +90,19 @@ class AdsService {
     return gma !== null;
   }
 
+  /**
+   * A banner may be requested: the SDK finished starting and the consent form allows ads. False on
+   * the web and in Expo Go (no SDK). Banner.tsx reads it with onChange.
+   */
+  get canShowBanner() {
+    return gma !== null && this.ready;
+  }
+
+  /** Request options for the banner: non-personalised unless the player allowed personalised ads. */
+  bannerRequestOptions() {
+    return this.request();
+  }
+
   get rewardedReady() {
     return gma === null || this.rewardedLoaded;
   }
@@ -83,9 +125,8 @@ class AdsService {
         const att = loadTracking();
         await att?.requestTrackingPermissionsAsync().catch(() => null);
       }
-      const choices = await gma.AdsConsent.getUserChoices().catch(() => null);
-      this.personalized = Boolean(choices?.selectPersonalisedAds ?? true);
-      analytics.setConsent(this.personalized);
+      this.consentNotRequired = consent?.status === gma.AdsConsentStatus.NOT_REQUIRED;
+      await this.readChoices();
       if (consent && !consent.canRequestAds) return;
 
       // The content rating must be in place before the SDK initialises and loads its first ads
@@ -93,10 +134,24 @@ class AdsService {
       await gma.default().setRequestConfiguration({ maxAdContentRating: gma.MaxAdContentRating[this.maxAdContentRating] });
       await gma.default().initialize();
       this.ready = true;
+      this.emit();
       this.loadRewarded();
       this.loadInterstitial();
     } catch (e) {
       crash.record(e, 'ads.init');
+    }
+  }
+
+  /** Reads the consent choices; tells listeners (the banner) when personalisation changed. */
+  private async readChoices() {
+    if (!gma) return;
+    const choices = await gma.AdsConsent.getUserChoices().catch(() => null);
+    // Where no consent is required there is no TCF string, and its "choices" read all false.
+    const personalized = this.consentNotRequired || Boolean(choices?.selectPersonalisedAds);
+    analytics.setConsent(personalized);
+    if (personalized !== this.personalized) {
+      this.personalized = personalized;
+      this.emit();
     }
   }
 
@@ -147,9 +202,14 @@ class AdsService {
       await new Promise((r) => setTimeout(r, 600));
       return true;
     }
-    const ad = this.rewarded;
-    if (!ad || !this.rewardedLoaded || this.fullScreen) return false;
+    if (!this.rewarded || !this.rewardedLoaded || this.fullScreen) return false;
     this.beginFullScreen();
+    await settle();
+    const ad = this.rewarded;
+    if (!ad || !this.rewardedLoaded) {
+      this.endFullScreen();
+      return false;
+    }
     // The loaded ad is used up either way; nobody else may try to show it.
     this.rewardedLoaded = false;
     return new Promise<boolean>((resolve) => {
@@ -204,6 +264,12 @@ class AdsService {
     if (now - this.sessionStart < this.firstInterstitialAfterSec * 1000) return;
     if (now - this.lastInterstitial < this.interstitialCooldownSec * 1000) return;
     if (now - this.lastFullScreenClosed < QUIET_AFTER_FULLSCREEN_MS) return;
+    // Wait for any dialog that is still closing (iOS cannot present over it), then check again.
+    if (overlays.msSinceClose() < AFTER_OVERLAY_MS || overlays.anyOpen()) {
+      if (overlays.anyOpen()) return;
+      setTimeout(() => this.maybeShowInterstitial(placement), AFTER_OVERLAY_MS - overlays.msSinceClose() + 16);
+      return;
+    }
     this.lastInterstitial = now;
     this.interstitialLoaded = false;
     analytics.log('ad_interstitial_show', { placement });
@@ -223,6 +289,7 @@ class AdsService {
   /** For a "Privacy settings" button (required by UMP when consent applies). */
   async showPrivacyOptions() {
     await gma?.AdsConsent.showPrivacyOptionsForm().catch(() => null);
+    await this.readChoices();
   }
 
   bannerUnitId() {

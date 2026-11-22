@@ -6,7 +6,7 @@
  * visit, so the room keeps changing faces.
  */
 import { Circle, Group, Oval, Path, Skia } from '@shopify/react-native-skia';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Easing, useDerivedValue, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { simEvents } from '../../../../state/events';
 import { useGame } from '../../../../state/store';
@@ -18,7 +18,7 @@ import { guestFrame, tableState } from '../../layout';
 import { guestLook } from './cast';
 import { useGatedClock } from './gatedClock';
 import { isLateMount, type SceneCtx } from './context';
-import { glide } from './ticker';
+import { bump, glide } from './ticker';
 
 const GUEST_POSES: readonly Pose[] = ['walk', 'sit-wait', 'sit-eat', 'cheer'];
 const COIN_MS = 820;
@@ -86,7 +86,6 @@ export function TableSeat({
     let current = 0;
     let lastPhase = '';
     let lastT = 0;
-    let swings = ctx.doorSwing.value;
     let table0: TableState = 'empty';
     const apply = (jump: boolean) => {
       const seat = seatNow();
@@ -116,7 +115,7 @@ export function TableSeat({
       table0 = ts;
       // The door swings as the guest passes it, coming in and going out.
       const crossed = (phase: string, at: number) => seat.phase === phase && seat.t >= at && (lastPhase !== phase || lastT < at);
-      if (!jump && (crossed('arriving', 0.2) || crossed('leaving', 0.82))) ctx.doorSwing.value = swings = nextSwing(swings);
+      if (!jump && (crossed('arriving', 0.2) || crossed('leaving', 0.82))) bump(ctx.doorSwing);
       lastPhase = seat.phase;
       lastT = seat.t;
     };
@@ -198,11 +197,6 @@ function Guest({
       <Character look={look} x={shownX} y={y} facing={facing} pose={pose} clock={clock} scale={k} dish={dish} poses={GUEST_POSES} seed={seed} />
     </Group>
   );
-}
-
-/** The next value of a one-shot trigger counter, kept on the JS side (see nextSwing callers). */
-export function nextSwing(n: number): number {
-  return n + 1;
 }
 
 /** Three wisps rising off a freshly served plate. */

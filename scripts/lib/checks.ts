@@ -4,6 +4,40 @@ import type { Business } from '../../src/config/schema';
 /** "Idle Miner Tycoon", "Idle Pizza Shop Tycoon" ... (research/meta.md: registered as trademarks by another studio). */
 export const IDLE_TYCOON_TITLE = /\bidle\b.{1,40}\btycoon\b/i;
 
+/**
+ * Words no store text may contain (policy P2): real trademarks a reviewer or a rights holder would
+ * flag. Each entry is checked against every store field; add to the list, never special-case a game.
+ */
+export const BANNED_STORE_WORDS: { pattern: RegExp; why: string }[] = [
+  { pattern: /\bmichelin\b/i, why: 'a registered trademark (the guide\'s stars)' },
+  { pattern: /\bzagat\b/i, why: 'a registered trademark' },
+  { pattern: /\b(?:domino'?s|pizza hut|papa john'?s|little caesars)\b/i, why: 'a real restaurant brand' },
+  { pattern: /\b(?:supercell|kolibri|clash of|candy crush)\b/i, why: 'another studio\'s name or game' },
+];
+
+/** Problems with a game's store texts: banned words anywhere, the "Idle ... Tycoon" pattern in what the listing shows as a name. */
+export function storeTextProblems(store: { title: string; subtitle?: string; shortDescription: string; description: string; keywords: string[] }): string[] {
+  const out: string[] = [];
+  const fields: [string, string][] = [
+    ['title', store.title],
+    ['subtitle', store.subtitle ?? ''],
+    ['shortDescription', store.shortDescription],
+    ['description', store.description],
+    ['keywords', store.keywords.join(', ')],
+  ];
+  for (const [name, text] of fields) {
+    for (const b of BANNED_STORE_WORDS) {
+      const m = text.match(b.pattern);
+      if (m) out.push(`store.${name} contains "${m[0]}": ${b.why}`);
+    }
+  }
+  for (const [name, text] of fields.slice(0, 3)) {
+    const m = text.match(IDLE_TYCOON_TITLE);
+    if (m) out.push(`store.${name} "${m[0]}" follows the "Idle <something> Tycoon" pattern, which another studio registers as trademarks (research/meta.md)`);
+  }
+  return out;
+}
+
 /** Relative spread of a list of ratios: max / min - 1. */
 const spread = (xs: number[]) => Math.max(...xs) / Math.min(...xs) - 1;
 

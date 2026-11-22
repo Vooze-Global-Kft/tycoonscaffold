@@ -110,7 +110,7 @@ export const StationRow = memo(function StationRow({ b, index, rowHeight, compac
             <GameIcon icon={b.icon} size={iconSize} locked={mystery} />
           </View>
           <View style={styles.mid}>
-            <Text style={[t.display, styles.name, { color: mystery ? t.c.textMuted : t.c.text, fontSize: compact ? 14 : 16 }]} numberOfLines={1}>
+            <Text style={[t.display, styles.name, { color: mystery ? t.c.textMuted : t.c.text, fontSize: compact ? 14 : 16 }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
               {mystery ? '???' : b.name}
             </Text>
             <Text style={[styles.meta, { color: t.c.textMuted }]} numberOfLines={compact ? 1 : 2}>
@@ -153,18 +153,18 @@ export const StationRow = memo(function StationRow({ b, index, rowHeight, compac
           ) : null}
         </Pressable>
         <View style={styles.mid}>
-          <Text style={[t.display, styles.name, { color: t.c.text, fontSize: compact ? 14 : 15.5 }]} numberOfLines={1}>
+          <Text style={[t.display, styles.name, { color: t.c.text, fontSize: compact ? 14 : 15.5 }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
             {b.name}
           </Text>
           <CycleBar venueId={v.venueId} businessId={b.id} solid={solid} color={t.c.progress} height={barH}>
-            <Text style={[t.display, styles.barText, { color: t.c.text, fontSize: compact ? 11.5 : 13 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+            <Text style={[t.display, styles.barText, { color: t.c.text, fontSize: compact ? 11.5 : 13 }]} numberOfLines={1} maxFontSizeMultiplier={1.25} adjustsFontSizeToFit minimumFontScale={0.75}>
               {formatMoney(v.revenue, sym)}
               <Text style={[styles.barSub, { color: alpha(t.c.text, 0.6) }]}>{rate}</Text>
             </Text>
           </CycleBar>
           <View style={styles.msRow}>
             {next ? <Pips value={toNext} color={color} /> : null}
-            <Text style={[styles.meta, { color: t.c.textMuted, flex: 1 }]} numberOfLines={1}>
+            <Text style={[styles.meta, { color: t.c.textMuted, flex: 1 }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
               {next ? `${milestoneGift(cfg, v.owned, next)} at ${next}` : 'All milestones reached'}
             </Text>
           </View>
@@ -185,10 +185,10 @@ export const StationRow = memo(function StationRow({ b, index, rowHeight, compac
             <ManagerPortrait b={b} venueId={v.venueId} size={30} />
           </View>
           <View style={styles.mid}>
-            <Text style={[t.display, styles.hireName, { color: t.c.text }]} numberOfLines={1}>
+            <Text style={[t.display, styles.hireName, { color: t.c.text }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
               {b.managerName ?? `${b.name} manager`}
             </Text>
-            <Text style={[styles.meta, { color: t.c.textMuted }]} numberOfLines={1}>
+            <Text style={[styles.meta, { color: t.c.textMuted }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
               Runs it on its own, even offline
             </Text>
           </View>
@@ -219,9 +219,9 @@ const styles = StyleSheet.create({
   mid: { flex: 1, minWidth: 0, gap: 3 },
   name: {},
   barText: { textAlign: 'center', paddingHorizontal: 6 },
-  barSub: { fontSize: 10.5, fontWeight: '700' },
+  barSub: { fontSize: 11, fontWeight: '700' },
   msRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  meta: { fontSize: 10.5, fontWeight: '700' },
+  meta: { fontSize: 11, fontWeight: '700' },
   hire: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4, borderTopWidth: 1 },
   hirePortrait: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   hireName: { fontSize: 13.5 },

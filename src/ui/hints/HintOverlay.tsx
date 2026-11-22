@@ -139,6 +139,8 @@ export function HintOverlay({ inDialog = false }: { inDialog?: boolean }) {
   const content = inDialog ? null : targets.get(CONTENT_KEY);
   let hint: Hint | null = null;
   let found: { key: string; rect: TargetRect } | null = null;
+  // The first hint before the one shown whose own row exists but is scrolled out of view.
+  let hidden: Hint | null = null;
   for (const h of hints) {
     // Pointing at the tab or the stage chip the player is already on would say nothing.
     const route = inDialog ? [h.key] : h.route.filter((k) => k !== `tab:${tab}` && !(tab === 'home' && k === `stage:${stage}`));
@@ -151,6 +153,13 @@ export function HintOverlay({ inDialog = false }: { inDialog?: boolean }) {
         break;
       }
     }
+    if (found && found.key === h.key) {
+      hint = h;
+      break;
+    }
+    // Only a stand-in (the chip or tab leading to it) is on screen: the control may be a row scrolled out of view.
+    const own = inDialog ? null : targets.get(h.key);
+    if (!hidden && h.row && own && !onScreen(h.key, own, content, winW)) hidden = h;
     if (found) {
       hint = h;
       break;
@@ -181,18 +190,17 @@ export function HintOverlay({ inDialog = false }: { inDialog?: boolean }) {
     fx.play('hint');
   }, [primary, inDialog]);
 
-  // The hint's row exists but is scrolled out of view (or under the tab bar): scroll it in, once per hint.
-  const ownRect = primary ? targets.get(primary.key) : null;
-  const ownHidden = !!primary && !!ownRect && !onScreen(primary.key, ownRect, content, winW);
+  // A hint's row exists but is scrolled out of view (or under the tab bar): scroll it in, once per hint.
   useEffect(() => {
-    if (inDialog || !primary?.row || !primary.stage || !ownHidden || scrolledFor.current === primary.key) return;
-    if (useGame.getState().tab !== 'home' || useHomeUi.getState().stage !== primary.stage) return;
-    scrolledFor.current = primary.key;
-    useHomeUi.getState().showRow(primary.stage, primary.row);
+    if (inDialog || !hidden?.row || !hidden.stage || scrolledFor.current === hidden.key) return;
+    if (useGame.getState().tab !== 'home' || useHomeUi.getState().stage !== hidden.stage) return;
+    scrolledFor.current = hidden.key;
+    const key = hidden.key;
+    useHomeUi.getState().showRow(hidden.stage, hidden.row);
     // The list scrolls without a layout event: measure again once it has arrived.
-    const timer = setTimeout(() => targets.refresh(primary.key), 450);
+    const timer = setTimeout(() => targets.refresh(key), 450);
     return () => clearTimeout(timer);
-  }, [inDialog, primary, ownHidden]);
+  }, [inDialog, hidden]);
 
   const visible = inDialog ? !!found && !story : !!found && !dialog && !story && !overlaysOpen;
   if (!hint || !found) return null;

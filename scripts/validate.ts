@@ -9,14 +9,16 @@
  * story, icons), missing asset files, bundle or product ids shared with another game, and an
  * economy table that is the same as another game's (or a constant multiple of it).
  * Warnings are release chores and risks: test ads on, no privacy policy URL, chests for sale,
- * near-identical store text, "Idle ... Tycoon" titles, pacing the bot finds off.
+ * near-identical store text, pacing the bot finds off. Store files that differ from what sync would
+ * write, banned words (scripts/lib/checks.ts) and "Idle ... Tycoon" titles are errors.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { GameConfigSchema, lintGameConfig, type GameConfig } from '../src/config/schema';
 import { args } from './lib/cli';
-import { economyTableClash, IDLE_TYCOON_TITLE, textSimilarity } from './lib/checks';
+import { economyTableClash, storeTextProblems, textSimilarity } from './lib/checks';
+import { storeFiles } from './sync';
 
 const games = require('./lib/games.js');
 const { positional, flags } = args();
@@ -95,7 +97,13 @@ for (const id of ids) {
   if (!g.monetization.iap.revenueCatIosKey) warnings.push('no RevenueCat keys (purchases are simulated)');
   if (!g.firebase.iosGoogleServicesFile) warnings.push('no Firebase files (analytics logs to console)');
   if (!g.store.privacyPolicyUrl) warnings.push('no store.privacyPolicyUrl: both stores require one, and the data-safety forms link to it');
-  if (IDLE_TYCOON_TITLE.test(g.store.title)) warnings.push(`store title "${g.store.title}" follows the "Idle <something> Tycoon" pattern, which another studio registers as trademarks (research/meta.md); pick a title of your own`);
+  problems.push(...storeTextProblems(g.store));
+  // The listing files eas metadata and fastlane upload must be what sync writes from this game.json.
+  const stale = Object.entries(storeFiles(g, id)).filter(([rel, content]) => {
+    const abs = path.join(games.ROOT, rel);
+    return !fs.existsSync(abs) || fs.readFileSync(abs, 'utf8') !== content;
+  });
+  if (stale.length) problems.push(`store files out of date with game.json (run npm run sync): ${stale.map(([rel]) => path.relative(path.join('games', id), rel)).join(', ')}`);
   if (g.meta.chestsForSale) {
     warnings.push(
       'meta.chestsForSale is on: random items are SOLD. Consequences (research/policy.md 0, 1): PEGI 16 on Google Play in Europe; ' +

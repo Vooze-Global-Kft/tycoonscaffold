@@ -143,12 +143,22 @@ function OddsBody({ cfg, chest }: { cfg: GameConfig; chest: Chest }) {
 
       <Section title="RULES">
         <RuleLines cfg={cfg} chest={chest} rules={rules} game={game} />
-        <Bullet>Everyone gets the same chances. They never change based on how much you play or pay.</Bullet>
+        <Bullet>{fairnessLine(cfg, rules)}</Bullet>
         <Bullet>Percentages are rounded. The guarantee and the protection can only make a result better, never worse.</Bullet>
         {!cfg.meta.chestsForSale ? <Bullet strong>Chests in this game are earned by playing and cannot be bought.</Bullet> : null}
       </Section>
     </View>
   );
+}
+
+/** The fairness promise, true to the rules this chest really has (they are listed just above). */
+function fairnessLine(cfg: GameConfig, rules: M.ChestRules): string {
+  const personal: string[] = [];
+  if (cfg.meta.chestGrowthPerVenue > 0) personal.push('copies grow as you open places');
+  if (rules.epicWithin !== null || rules.legendaryWithin !== null) personal.push('bad-luck protection');
+  const base = 'The drop rates are the same for everyone and never depend on spending.';
+  if (personal.length === 0) return base;
+  return `${base} Only the ${personal.length === 1 ? 'rule' : 'two rules'} above change your results: ${personal.join(', and ')}.`;
 }
 
 function RuleLines({ cfg, chest, rules, game }: { cfg: GameConfig; chest: Chest; rules: M.ChestRules; game: GameState }) {
