@@ -163,10 +163,13 @@ describe('contract units follow what the station really ships (Decision 56)', ()
     expect(opened, 'unlocked').toBeTruthy();
     const o = opened as unknown as Run;
     expect(o.haul.contracts.measured).toBe(3);
-    expect(o.haul.contracts.board).toHaveLength(C.board);
+    // Decision 64: the galaxy opens on one ore, so the board holds one buyer and says a second ore brings more.
+    const places = H.boardPlaces(cfg, H.contractBasis(cfg, H.haulParams(cfg, o), o.haul));
+    expect(o.haul.contracts.board).toHaveLength(places);
+    if (places < C.board) expect(H.boardNote(cfg, o)).toBe('secondOre');
     expect(o.haul.contracts.board.some((c) => c.taken)).toBe(false);
     expect(o.haul.contracts.active).toBeNull();
-    expect(new Set(o.haul.contracts.board.map((c) => c.buyer)).size).toBe(C.board);
+    expect(new Set(o.haul.contracts.board.map((c) => c.buyer)).size).toBe(places);
     expect(warps).toBeGreaterThanOrEqual(3);
   }, 60_000);
 
@@ -344,12 +347,14 @@ describe('Decisions 57 and 58: the purchase marks and the first rock', () => {
     expect((H.reconcileHaul(cfg, bad, bad) as Run).haul.marks).toMatchObject({ boughtAt: null, lastBuy: null });
   });
 
-  it('firstLife: rock 0 of a ring-1 slot in galaxy 1 lives at least start.firstLife (before the rig tier); later rocks and galaxies do not', () => {
+  // Decision 64 extends firstLife to every galaxy (it was galaxy 1 only in Decision 58).
+  it('firstLife: rock 0 of a ring-1 slot lives at least start.firstLife in every galaxy (before the rig tier); later rocks and other rings do not', () => {
     const c600 = haulTestConfig({ start: { ...cfg.haul.start, firstLife: 6000 } });
     const s = H.placeRock(c600, { seed: 1, trait: null, galaxy: 0 }, 1, { ...station().haul.slots[1], rigLevel: 1 }, 0, undefined);
     expect(s.life).toBeGreaterThanOrEqual(6000);
     expect(H.placeRock(c600, { seed: 1, trait: null, galaxy: 0 }, 1, { ...station().haul.slots[1], rigLevel: 1 }, 1, undefined).life).toBeLessThan(6000);
-    expect(H.placeRock(c600, { seed: 1, trait: null, galaxy: 1 }, 1, { ...station().haul.slots[1], rigLevel: 1 }, 0, undefined).life).toBeLessThan(6000);
+    expect(H.placeRock(c600, { seed: 1, trait: null, galaxy: 1 }, 1, { ...station().haul.slots[1], rigLevel: 1 }, 0, undefined).life).toBeGreaterThanOrEqual(6000);
+    expect(H.placeRock(c600, { seed: 1, trait: null, galaxy: 4 }, 0, { ...station().haul.slots[0], rigLevel: 1 }, 0, undefined).life).toBeGreaterThanOrEqual(6000);
     expect(H.placeRock(c600, { seed: 1, trait: null, galaxy: 0 }, 2, { ...station().haul.slots[2], rigLevel: 1 }, 0, undefined).life).toBeLessThan(6000);
   });
 });

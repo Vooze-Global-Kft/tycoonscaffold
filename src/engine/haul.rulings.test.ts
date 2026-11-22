@@ -27,7 +27,9 @@ function edit(g: Run, f: (h: H.HaulState, g: Run) => void): Run {
 /** A board with contracts on it (unlocked) for slot 0 iron. */
 function withBoard(g: Run, board: H.Contract[], active: number | null): Run {
   return edit(g, (h) => {
-    h.contracts = { unlocked: true, board, next: 50, active };
+    // Decision 64: a station that ships one ore has one buyer; a remembered second ore keeps the
+    // board's places, so these rulings stay about the order of the warp-out.
+    h.contracts = { unlocked: true, board, next: 50, active, recent: { iron: 10, copper: 10 }, measured: 6 };
   });
 }
 
@@ -328,7 +330,8 @@ describe('36: offline freighter, short and long gaps', () => {
 
   it('a climbing freighter is paid once, as IN FLIGHT, when its climb ends in the gap; its contract is the warp-out’s', () => {
     let g = withBoard(
-      edit(shaped(quiet, 3, { slots: [0], haulers: [1], autopilot: true }), (h) => {
+      // Decision 64: a copper route too (slot 2), so the station ships two ores and keeps its places.
+      edit(shaped(quiet, 3, { slots: [0, 2], haulers: [1, 1], autopilot: true }), (h) => {
         h.hold = { iron: 5 };
         h.counters.drilled += 5;
       }),

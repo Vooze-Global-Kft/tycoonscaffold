@@ -80,22 +80,6 @@ function launchWord(n: number, taken: boolean): string {
   return n <= 1 ? say('cardLast') : say('launchesLeft', { n });
 }
 
-/**
- * Decision 64: a station that ships one ore has one buyer, and the board's other places say a second
- * ore brings more. The rules answer with `boardNote(cfg, g)` ('secondOre' | null, finish3 requests);
- * read loosely so the sheet also builds before that export lands, and then it reads the case as the
- * draw does (trade.ts drawAt: one ore above 2 % of what the last launches shipped, one contract).
- */
-type BoardNote = (cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }) => string | null;
-function secondOreNote(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }, p: ReturnType<typeof runParams>, contracts: number): boolean {
-  const note = (H as unknown as { boardNote?: BoardNote }).boardNote;
-  if (typeof note === 'function') return note(cfg, g) === 'secondOre';
-  if (contracts !== 1) return false;
-  const recent = H.contractBasis(cfg, p, g.haul).recent;
-  const total = Object.values(recent).reduce((a, x) => a + x, 0);
-  return Object.values(recent).filter((x) => total > 0 && x > 0.02 * total).length <= 1;
-}
-
 function boardView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): BoardView {
   const h = g.haul;
   const p = runParams(cfg, g);
@@ -150,7 +134,8 @@ function boardView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): Bo
     unlockAt: C.unlockLaunches,
     rows,
     open: h.contracts.unlocked ? Math.max(0, C.board - views.length) : 0,
-    openWord: (secondOreNote(cfg, g, p, views.length) ? say('boardOneOre') : say('boardOpenSlot')).toUpperCase(),
+    // Decision 64: a station that ships one ore has one buyer; its other places say a second ore brings more.
+    openWord: (H.boardNote(cfg, g) === 'secondOre' ? say('boardOneOre') : say('boardOpenSlot')).toUpperCase(),
     pods: { of: every, filled: every > 0 ? (g.stats.contractsMet ?? 0) % every : 0 },
     footer: (() => {
       const left = every > 0 ? every - ((g.stats.contractsMet ?? 0) % every) : 1;

@@ -8,13 +8,15 @@
  * preset cannot overwrite them. Nothing here runs on a phone.
  */
 import { Platform } from 'react-native';
-import { devParamsApplied } from '../../dev/devtools';
+import { devOncePerPageLoad, devParamsApplied } from '../../dev/devtools';
 import * as E from '../../engine/economy';
 import { useGame } from '../../state/store';
 import { useHaulUi, type HaulSpoke } from './uiState';
 
 export function applyHaulDevParams(): void {
   if (Platform.OS !== 'web' || typeof location === 'undefined') return;
+  // check3 NEW[7]: once per page load, not again on every hot reload (away= would re-run the offline computation).
+  if (!devOncePerPageLoad('haul')) return;
   void devParamsApplied().then(applyNow);
 }
 

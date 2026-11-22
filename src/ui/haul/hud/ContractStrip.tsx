@@ -53,13 +53,13 @@ interface StripView {
   done: boolean;
   onPace: boolean;
   short: string;
+  /** The short ore's id ('' when on pace). */
+  shortOre: string;
   /** The raise the short ore still needs, as a whole percent (the board's figure); 0 when none. */
   raise: number;
   shift: boolean;
   /** The first-drying rock under each wanted ore (slot), only when it dries inside the contract's remaining launches. */
-  dryWatch: { ore: string; slot: number; k: number }[];
-  /** Seconds the contract's remaining launches take (launches left x the launch interval). */
-  horizon: number;
+  dryWatch: DryWatch[];
   /** "T-5 DRIES IN 0:20" while such a rock is drilling (live from the slot's life, Decision 64), else ''. */
   dry: string;
 }
@@ -76,10 +76,10 @@ const NONE: StripView = {
   done: false,
   onPace: true,
   short: '',
+  shortOre: '',
   raise: 0,
   shift: false,
   dryWatch: [],
-  horizon: 0,
   dry: '',
 };
 
@@ -105,50 +105,34 @@ let memo: { cfg: object; contracts: object; phase: string; toward: unknown; rout
 function stripView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): StripView {
   const v = stripBase(cfg, g);
   if (!v.active || v.done || !v.dryWatch.length) return v;
-  const dry = dryLine(cfg, g.haul, v.dryWatch, v.horizon);
+  // On pace: any wanted ore's drying rock (the pace rests on it). Short: only the short ore's, so the
+  // strip never trades "NEEDS +216 % COPPER" for an iron rock that does not matter to it.
+  const dry = dryLine(cfg, g.haul, v.onPace ? v.dryWatch : v.dryWatch.filter((w) => w.ore === v.shortOre));
   return dry === v.dry ? v : { ...v, dry };
 }
 
-/**
- * Decision 64, "T-5 DRIES IN 0:20": the wanted ore's rock that dries first, read live from its slot
- * (the seconds change every tick, the view of the contract does not), while it is the same rock and
- * dries inside the contract's remaining launches. Whole seconds, so the strip renders once a second.
- */
-function dryLine(cfg: H.HaulConfig, h: H.HaulState, watch: { ore: string; slot: number; k: number }[], horizon: number): string {
-  let best: { slot: number; life: number } | null = null;
-  for (const w of watch) {
-    const s = h.slots[w.slot];
-    // The rules' seconds (when given) scaled by how much of the rock's drilling life is left since.
-    const life = s ? s.life * w.k : 0;
-    if (!s?.claimed || s.respawnAt !== null || s.rockN < 0 || s.ore !== w.ore || !(life > 0) || !(life < horizon)) continue;
-    if (!best || life < best.life) best = { slot: w.slot, life };
-  }
-  return best ? fillIn(HAUL_STRINGS.stripDries, { rock: rockName(cfg, best.slot), t: clock(Math.ceil(best.life)) }) : '';
+/** A wanted ore's first-drying rock as the rules named it: its slot, the rock (`rockN`) and the run clock when it stops feeding. */
+interface DryWatch {
+  ore: string;
+  slot: number;
+  rockN: number;
+  at: number;
 }
 
-/** The want's `dries` field when the rules provide it (Decision 64), undefined while they do not. */
-type Dries = { slot: number; seconds: number } | null;
-
 /**
- * The first-drying rock of `ore` among the routes feeding it: the rules' `dries` when the view has
- * one, else the claimed rock of that ore with drones on it and the least life.
+ * Decision 64, "T-5 DRIES IN 0:20": the rules name a wanted ore's first rock to stop feeding only when
+ * that is inside the contract's remaining launches (`want.dries`). The strip counts it down on the run
+ * clock (the seconds change every tick, the view of the contract does not) for as long as it is the
+ * same rock. Whole seconds, so the strip renders once a second.
  */
-function dryingSlot(h: H.HaulState, ore: string, dries: Dries | undefined): { slot: number; k: number } | null {
-  if (dries !== undefined) {
-    if (!dries) return null;
-    const life = h.slots[dries.slot]?.life ?? 0;
-    return { slot: dries.slot, k: life > 0 && dries.seconds > 0 ? dries.seconds / life : 1 };
+function dryLine(cfg: H.HaulConfig, h: H.HaulState, watch: DryWatch[]): string {
+  let best: { slot: number; t: number } | null = null;
+  for (const w of watch) {
+    const t = w.at - h.clock;
+    if (h.slots[w.slot]?.rockN !== w.rockN || !(t > 0)) continue;
+    if (!best || t < best.t) best = { slot: w.slot, t };
   }
-  let slot: number | null = null;
-  let life = Infinity;
-  h.slots.forEach((s, i) => {
-    if (!s?.claimed || s.respawnAt !== null || s.rockN < 0 || s.ore !== ore || !(s.haulers > 0) || !(s.life > 0)) return;
-    if (s.life < life) {
-      life = s.life;
-      slot = i;
-    }
-  });
-  return slot === null ? null : { slot, k: 1 };
+  return best ? fillIn(HAUL_STRINGS.stripDries, { rock: rockName(cfg, best.slot), t: clock(Math.ceil(best.t)) }) : '';
 }
 
 function stripBase(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): StripView {
@@ -195,15 +179,13 @@ function stripBase(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): St
       done: cv.wants.every((w) => !(w.left > 0)),
       onPace: cv.onPace,
       short: cv.shortOre ? oreNameOf(cfg, cv.shortOre) : '',
+      shortOre: cv.shortOre ?? '',
       // The board's figure (ContractBoardSheet: Math.max(1, round(raise x 100)) of the short ore).
       raise: raisePercent((cv.wants.find((w) => w.ore === cv.shortOre) as { raise?: number } | undefined)?.raise),
       shift: cv.shift,
-      dryWatch: cv.wants.flatMap((w) => {
-        if (!(w.left > 0)) return [];
-        const d = dryingSlot(h, w.ore, (w as { dries?: Dries }).dries);
-        return d === null ? [] : [{ ore: w.ore, ...d }];
-      }),
-      horizon: cv.launchesLeft * launchInterval(cfg, params, h),
+      dryWatch: cv.wants.flatMap((w) =>
+        w.left > 0 && w.dries && w.dries.seconds > 0 ? [{ ore: w.ore, slot: w.dries.slot, rockN: h.slots[w.dries.slot]?.rockN ?? -1, at: h.clock + w.dries.seconds }] : [],
+      ),
       dry: '',
     };
   } catch {
@@ -211,16 +193,6 @@ function stripBase(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): St
   }
   memo = { cfg, contracts: h.contracts, phase: h.freighter.phase, toward: h.freighter.contract, routes, shift, view };
   return view;
-}
-
-/** Seconds between two launches as the rules count them for the contracts (the basis's interval), Infinity when unknown. */
-function launchInterval(cfg: H.HaulConfig, params: H.HaulParams, h: H.HaulState): number {
-  try {
-    const t = H.contractBasis(cfg, params, h).interval;
-    return t > 0 ? t : Infinity;
-  } catch {
-    return Infinity;
-  }
 }
 
 /** A want's raise as the board writes it (whole percent, at least 1), or 0 when there is no figure. */

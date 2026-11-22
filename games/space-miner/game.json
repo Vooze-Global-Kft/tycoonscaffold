@@ -890,7 +890,7 @@
       "capPerGalaxy": 4
     },
     "freighter": {
-      "capacity": 20,
+      "capacity": 24,
       "growth": 1.45,
       "cost": {
         "base": 15,
@@ -899,7 +899,7 @@
       "away": [
         {
           "from": 1,
-          "seconds": 8
+          "seconds": 7
         },
         {
           "from": 10,

@@ -118,7 +118,9 @@ describe('audit 2: saves', () => {
     const g = freshHaulGame(cfg, 7);
     const raw = JSON.parse(JSON.stringify({ ...g, haul: { ...g.haul, contracts: { unlocked: true, board: [{ k: 3, buyer: 'x', wants: 'broken', mult: 2, launchesLeft: 3 }], next: 4, active: 0 } } }));
     const loaded = H.reconcileHaul(cfg, raw, raw) as Run;
-    expect(loaded.haul.contracts.board.length).toBe(cfg.haul.contracts.board);
+    // Decision 64: a station that ships one ore (a fresh game) has one buyer.
+    expect(loaded.haul.contracts.board.length).toBe(H.boardPlaces(cfg, H.contractBasis(cfg, H.haulParams(cfg, loaded), loaded.haul)));
+    expect(loaded.haul.contracts.board.length).toBeGreaterThanOrEqual(1);
   });
 });
 

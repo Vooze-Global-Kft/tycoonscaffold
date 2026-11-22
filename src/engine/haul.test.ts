@@ -401,10 +401,12 @@ describe('5. contracts', () => {
     for (const c of lapsed) expect(c.launchesLeft).toBe(0);
   }, 60_000);
 
+  // Decision 64: a station that ships one ore has one buyer; these stations remember two ores
+  // (`recent`) so the board keeps its three places and the test stays about lapsing and replacing.
   it('a taken contract gathers over its launches; on its last one it lapses; a met one is replaced (Decision 40)', () => {
     const g = shaped(cfg, 9, { slots: [0], haulers: [0] });
     const board: H.Contract[] = [contractOf(1, 'corvo', [['iron', 8]], 1.9, 2, true), contractOf(2, 'kade', [['iron', 3]], 1.6, 4), contractOf(3, 'oriel', [['iron', 3]], 1.6, 1)];
-    const base = { ...g, haul: { ...g.haul, hold: { iron: 5 }, contracts: { unlocked: true, board, next: 4, active: 0 as number | null } } };
+    const base = { ...g, haul: { ...g.haul, hold: { iron: 5 }, contracts: { recent: { iron: 10, copper: 10 }, measured: 6, unlocked: true, board, next: 4, active: 0 as number | null } } };
     const ev: H.HaulEvent[] = [];
     let s = H.launch(cfg, base, ev) as Run;
     s = run(cfg, s, 3, 0.5, (_, e) => ev.push(...e));
@@ -444,10 +446,11 @@ describe('5. contracts', () => {
   }, 60_000);
 
   it('taking another offer drops the taken one (event dropped), picking none drops it too (Decision 40)', () => {
-    const g = shaped(cfg, 9, { slots: [0], haulers: [1] });
+    // Decision 64: a copper route too (slot 2), so the station ships two ores and keeps three places.
+    const g = shaped(cfg, 9, { slots: [0, 2], haulers: [1, 1] });
     const board: H.Contract[] = [contractOf(1, 'corvo', [['iron', 8]], 1.9, 3, true), contractOf(2, 'kade', [['iron', 3]], 1.6, 4), contractOf(3, 'oriel', [['iron', 3]], 1.6, 7)];
     board[0].wants[0].got = 4;
-    const s0 = { ...g, haul: { ...g.haul, contracts: { unlocked: true, board, next: 4, active: 0 as number | null } } };
+    const s0 = { ...g, haul: { ...g.haul, contracts: { recent: { iron: 10, copper: 10 }, measured: 6, unlocked: true, board, next: 4, active: 0 as number | null } } };
     expect(H.pickContract(cfg, s0, 0)).toBe(s0);
     const ev: H.HaulEvent[] = [];
     const s1 = H.pickContract(cfg, s0, 2, ev) as Run;

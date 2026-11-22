@@ -605,7 +605,7 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   // busy rock from meeting it alone, and the ore's full piles are added: the loading takes them first),
   // never over the cap of Decision 64.
   const unitsAt = (ore: string, g: number) =>
-    Math.min(capUnits(ore), Math.max(Math.round(L * (recent[ore] ?? 0) * (1 + g)), Math.ceil(L * Math.max(basis.steady[ore] ?? 0, basis.future?.[ore] ?? 0) * (1 + Math.max(C.raise[0], g)) + (basis.pileOf[ore] ?? 0))));
+    Math.min(capUnits(ore), Math.max(Math.round(L * (recent[ore] ?? 0) * (1 + g)), Math.ceil(L * Math.max(basis.steady[ore] ?? 0, basis.future?.[ore] ?? 0, fig(ore)) * (1 + Math.max(C.raise[0], g)) + (basis.pileOf[ore] ?? 0))));
   const minBonus = C.minBonusSeconds * basis.income;
   // Ores that matter (a tenth of a launch's value), whose routes still ship them and whose rocks last the contract.
   const worth = oreIds.filter((ore) => recent[ore] > 0 && launchValue > 0 && valueOf(ore) >= C.minValueShare * launchValue && alive(ore) && (!!basis.mainOf[ore] || (basis.lifeOf[ore] ?? 0) >= lifeNeed));
@@ -656,7 +656,7 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   const pool = firmPool.length ? firmPool : pool0;
   const drawn = pool[Math.min(pool.length - 1, Math.floor(draw(1) * pool.length))];
 
-  const build = (ore1: string) => {
+  const build = (ore1: string, two = false) => {
     // What ore 1 can gain with `o2` held at h2 of its share: the ores not wanted, and what o2 gives up.
     const roomWith = (o2: string, h2: number) => (shipped.filter((o) => o !== ore1 && o !== o2).reduce((a, o) => a + share(o), 0) + share(o2) * (1 - h2)) / Math.max(1e-9, share(ore1));
     // A second ore that holds (Decision 56, "raise one, hold the other"): another ore that matters, and
@@ -665,7 +665,7 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
     let ore2: string | null = null;
     let hold = 0;
     const others = worth.filter((o) => o !== ore1);
-    if (others.length && (draw(3) < C.twoOreChance || !fresh.length)) {
+    if (others.length && (draw(3) < C.twoOreChance || !fresh.length || two)) {
       const o2 = others[Math.min(others.length - 1, Math.floor(draw(4) * others.length))];
       const h2 = C.holdShare[0] + (C.holdShare[1] - C.holdShare[0]) * draw(5);
       if (roomWith(o2, h2) * 0.8 >= C.raise[0]) {
@@ -715,18 +715,20 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   const gap = C.raiseGap;
   const sameOres = (ws: { ore: string }[]) => rivals.filter((r) => keyOf(r.ores) === keyOf(ws.map((w) => w.ore)));
   const clashes = (ws: { ore: string; units: number }[]) => sameOres(ws).some((r) => Math.abs(r.raise - raiseOf(ws)) < gap - 1e-9);
-  // Moves the raised ore's units to a raise `gap` away from the rivals it clashes with (up first,
-  // within the cap; down only to the never-green half of the smallest raise).
+  // Moves the raised ore's units to the nearest raise at least `gap` away from the rivals it clashes
+  // with, within the cap and not under the never-green half of the smallest raise (Decision 56).
   const moved = (ws: { ore: string; units: number }[]) => {
     const f = fig(ws[0].ore);
     if (!(f > 0)) return null;
-    const near = sameOres(ws).map((r) => r.raise);
-    const tries = [...near.map((r) => r + gap + 0.005), ...near.map((r) => r - gap - 0.005)].sort((a, b) => Math.abs(a - raiseOf(ws)) - Math.abs(b - raiseOf(ws)));
+    const now = raiseOf(ws);
+    const tries: number[] = [];
+    for (let r = C.raise[0] / 2; r <= C.raise[1] + 1e-9; r += 0.01) tries.push(r);
+    tries.sort((x, y) => Math.abs(x - now) - Math.abs(y - now));
     for (const r of tries) {
-      if (r < C.raise[0] / 2 || r > C.raise[1] + 1e-9) continue;
-      const units = Math.min(capUnits(ws[0].ore), Math.ceil(L * f * (1 + r)));
+      const raw = L * f * (1 + r);
+      const units = Math.min(capUnits(ws[0].ore), r >= now ? Math.ceil(raw) : Math.max(1, Math.floor(raw)));
       const next = ws.map((w, i) => (i === 0 ? { ...w, units } : { ...w }));
-      if (!clashes(next)) return { wants: next, g: r };
+      if (raiseOf(next) >= C.raise[0] / 2 - 1e-9 && !clashes(next)) return { wants: next, g: Math.max(0, raiseOf(next)) };
     }
     return null;
   };
@@ -744,8 +746,27 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
       break;
     }
   }
-  // Every candidate clashes (a board of near-identical stations): the drawn one as built.
+  // Every one-ore shape clashes (no room left between the raises): the same ore with a second one held.
+  if (!pick)
+    for (const ore1 of order) {
+      const b = build(ore1, true);
+      if (b.wants.length > 1 && !clashes(b.wants)) {
+        pick = b;
+        break;
+      }
+    }
+  // Every candidate clashes (one ore can be asked for and the raises between the offers are taken):
+  // a warp-out's draw leaves the place empty (the next warp-out draws again, with a new raise);
+  // `contractAt` keeps the drawn one as built.
+  if (!pick && none) return null;
   pick ??= build(drawn);
+  // A moved raise keeps the room of the launches: the held ore gives way, else it goes.
+  if (pick.wants.length > 1) {
+    const fit = Math.floor(L * F) - 2 * L - pick.wants[0].units;
+    if (pick.wants[1].units > fit) pick.wants = fit >= 1 ? [pick.wants[0], { ...pick.wants[1], units: fit }] : [pick.wants[0]];
+  }
+  const roomAll = Math.floor(L * F * C.maxShare);
+  if (pick.wants[0].units > roomAll) pick.wants[0] = { ...pick.wants[0], units: Math.max(1, roomAll) };
   let mult = round1(pick.mb + C.raiseMult * pick.g);
   const mine = raiseOf(pick.wants);
   for (const r of sameOres(pick.wants)) {
@@ -806,8 +827,8 @@ export function drawContract(cfg: HaulConfig, h: HaulState, F: number, params?: 
     ? contractBasis(cfg, params, h)
     : { galaxy: h.galaxy, F, recent: {}, steady: {}, prices: {}, G: 1, contractAdd: 0, ringOf: {}, lifeOf: {}, mainOf: {}, drillOf: {}, pileOf: {}, interval: Infinity, income: 0 };
   const contract = offerAt(cfg, h.seed, h.contracts.next, basis, (h.contracts.board ?? []).map((c) => c.buyer), boardOres(h), rivalsOf(cfg, basis, h.contracts.board ?? []));
-  // A place left empty does not use up a contract of the stream.
-  return { contract, next: contract ? h.contracts.next + 1 : h.contracts.next };
+  // A place left empty uses up its contract of the stream too, so the next warp-out draws anew.
+  return { contract, next: h.contracts.next + 1 };
 }
 
 /**
@@ -824,9 +845,9 @@ export function openBoard(cfg: HaulConfig, h: HaulState, F: number, params?: Hau
     hh.contracts.next = next;
     hh.contracts.board = board;
     const d = drawContract(cfg, hh, F, params);
+    next = d.next;
     if (!d.contract) break;
     board.push(d.contract);
-    next = d.next;
   }
   const taken = board.findIndex((c) => c.taken);
   return { ...h.contracts, unlocked: true, board, next, active: taken >= 0 ? taken : null, sizedF: F };
@@ -841,6 +862,7 @@ export function topUpBoard(cfg: HaulConfig, h: HaulState, params: HaulParams): n
   const places = boardPlaces(cfg, contractBasis(cfg, params, h));
   while (C.board.length < places) {
     const d = drawContract(cfg, h, params.F, params);
+    C.next = d.next;
     if (!d.contract) break;
     // Contract 0 is the fixed first one; a topped-up board never takes it again.
     const c = d.contract.taken ? { ...d.contract, taken: false, launchesLeft: cfg.haul.contracts.offerLaunches } : d.contract;

@@ -163,7 +163,7 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
 });
 
 describe('the board is never empty (the lead, finishing round)', () => {
-  it('on the bot\'s stations at 10, 25, 60 and 120 minutes (two seeds), every warp-out leaves at least two offers', () => {
+  it('on the bot\'s stations at 10, 25, 60 and 120 minutes (two seeds), every warp-out leaves at least two offers (one contract and the note on a one-ore station)', () => {
     // When no ore passes Decision 56's eligibility, the rules relax in order (value share, then the
     // drill limit) and the last resort is the quota: a board never sits empty for a launch.
     const at = [600, 1500, 3600, 7200];
@@ -179,7 +179,10 @@ describe('the board is never empty (the lead, finishing round)', () => {
           if (ev.some((e) => e.type === 'warp')) {
             warps++;
             const offers = g.haul.contracts.board.filter((c) => !c.taken).length;
-            expect(offers, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(2);
+            // Decision 64: a station that ships one ore has one buyer, and its other places say a
+            // second ore brings more (boardNote); every other station keeps at least two offers.
+            if (H.boardNote(cfg, g) === 'secondOre') expect(g.haul.contracts.board.length, `seed ${seed} t=${t} warp ${warps}`).toBe(1);
+            else expect(offers, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(2);
           }
         }
         expect(warps).toBe(3);

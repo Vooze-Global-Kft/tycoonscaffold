@@ -214,6 +214,7 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
         return;
       }
       const next = drawContract(cfg, h, p.F, p);
+      C.next = next.next;
       if (!next.contract) {
         gone.add(i);
         return;

@@ -188,8 +188,11 @@ g['haul'] = {
     'freighter': {
         # Decision 44: two worked ring-1 rocks must not fill the first freighter (12 units every 12.5 s left
         # step 6's rig upgrade worth nothing), so level 1 carries more than the specification's 12.
-        'capacity': K('freighterCap', 12, 12, 24, 'freighter capacity at level 1 (Decision 44: the tutorial rig step must pay)', 20), 'growth': 1.45, 'cost': {'base': 15, 'growth': K('freighterGrowth', 1.6, 1.45, 1.8, 'freighter cost growth (knob: freighter binds)', 1.5)},
-        'away': [{'from': 1, 'seconds': 8}, {'from': 10, 'seconds': 12}, {'from': 25, 'seconds': 16}],
+        # Decision 64: the manual line counts 3 s of the hand a cycle (manualAllowance); with 20 units and 8 s away
+        # the freighter then bound at step 5, and step 6's rig level read +0 % on the income line. 24 units and
+        # 7 s away (levels 1 to 9) give the manual cycle 1.66 units/s, so step 6 reads 1.51 to 1.78 again.
+        'capacity': K('freighterCap', 12, 12, 24, 'freighter capacity at level 1 (Decision 44: the tutorial rig step must pay)', 24), 'growth': 1.45, 'cost': {'base': 15, 'growth': K('freighterGrowth', 1.6, 1.45, 1.8, 'freighter cost growth (knob: freighter binds)', 1.5)},
+        'away': [{'from': 1, 'seconds': 7}, {'from': 10, 'seconds': 12}, {'from': 25, 'seconds': 16}],
         'climb': 2.5, 'land': 2, 'fullBonus': 1.1, 'hulls': [1, 10, 25, 50], 'segmentEvery': 25, 'segmentMax': 8,
         # Decision 64: without the autopilot the income line counts the hand (arming and reacting, seconds a
         # launch cycle), so it is what a person earns, not a ceiling (play check: 25 to 35 % under the line).
