@@ -8,7 +8,8 @@
  * - When the box shows more than the band, `anchor` keeps the band's top, bottom or centre in place;
  *   the view never goes past the screen's edges while the screen is larger than the box.
  * - When the band is too tall for the box at full width, the band is shown whole and the screen
- *   is narrower than the box: the box's own background shows beside it.
+ *   is narrower than the box: the box's own background shows beside it; with `crop`, the band is
+ *   cut instead (at full width, held at its `anchor`).
  */
 import { pathToFileURL } from 'node:url';
 import type { Band } from '../types';
@@ -33,6 +34,7 @@ export function framed(raw: Raw, band: Band | undefined, bw: number, bh: number,
   const sW = bw / raw.vw;
   let s = bh / Math.max(1, b.y1 - b.y0);
   s = Math.min(s, sW * (b.maxZoom ?? 1));
+  if (b.crop) s = Math.max(s, sW);
   const visW = bw / s;
   const visH = bh / s;
   let x0 = (b.cx ?? raw.vw / 2) - visW / 2;

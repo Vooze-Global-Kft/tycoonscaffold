@@ -95,8 +95,11 @@ const scenes: GameScenes = {
         const L = field(v);
         const from = chip(L, 1);
         const to = rock(L, 6);
-        return [{ down: from }, { move: lerp(from, to, 0.4), steps: 6 }, { move: lerp(from, to, 0.95), steps: 8 }, { wait: 350 }];
+        // The first move goes well past the 10 pt slop in one event: a slow stream of small moves
+        // on a busy machine lets the 350 ms long-press fire first (a long press opens the rig sheet).
+        return [{ down: from }, { move: lerp(from, to, 0.3), steps: 1 }, { move: lerp(from, to, 0.95), steps: 6 }, { wait: 350 }];
       },
+      check: (t) => (/Drones move on the map|Dry in about/.test(t) ? 'the rig sheet opened (a long press, not a drag)' : null),
       frame: fieldBand,
       caption: 'Drone to rock.\nOre to hold.',
       shows: 'A mid-game station with routes to iron, copper and ice: a drone dragged off one route\'s chip onto a rock further out, the drag line showing the new route being set; the hold and the credit counter running.',
@@ -128,7 +131,9 @@ const scenes: GameScenes = {
         const from: P = [z.x + z.width / 2, z.y + z.height * 0.6];
         return [
           { untilText: /BACK IN \d+ S/i, absent: true, timeout: 25000 },
-          { wait: 300 },
+          // The game only lets the freighter go with something in the hold: give the drones a
+          // moment to unload into a hold that may have just been emptied.
+          { wait: 1500 },
           { down: from },
           // One move event for the whole rise: on a busy machine a slow stream of small moves can
           // let the 350 ms long-press timer fire first (a long press on the pad toggles the
@@ -138,7 +143,8 @@ const scenes: GameScenes = {
           { wait: 100 },
         ];
       },
-      check: (t) => (/WARPED|BACK IN \d+ S/i.test(t) ? null : 'the swipe did not launch the freighter'),
+      check: (t) =>
+        !/WARPED|BACK IN \d+ S/i.test(t) ? 'the swipe did not launch the freighter' : /CONTRACT MET/i.test(t) ? 'a "contract met" banner covers the counter' : null,
       frame: fieldBand,
       caption: 'Swipe up.\nFreighter away.',
       shows: 'A mid-game station at the launch: the swipe just made, the freighter leaving the pad with the hold\'s manifest, the receipt coming up on the counter.',
@@ -146,6 +152,10 @@ const scenes: GameScenes = {
     {
       slug: 'star-map',
       query: 'preset=late&spoke=starmap',
+      // On a short phone the Jump panel is below the fold of the spoke: scroll it into view. The
+      // band is the screen from its top bar to the Jump button, shown whole (on the Play size the
+      // screen is then a little narrower than the image, deep blue beside it).
+      steps: () => [{ scrollTo: /^jump now$/i }],
       frame: () => ({ y0: 0, y1: { text: /^jump now$/i, edge: 'bottom', pad: 22 }, anchor: 'top' }),
       caption: 'Jump.\nPick the next galaxy.',
       shows: 'The Star Map with its own header (back button, "STAR MAP · NAV", the Warp Cores in hand, the galaxy plate): the nodes Warp Cores build, and the Jump panel (what is kept, what resets).',

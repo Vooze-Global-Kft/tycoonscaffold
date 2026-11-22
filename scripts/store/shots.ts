@@ -106,7 +106,12 @@ async function runSteps(page: any, steps: Step[]): Promise<void> {
       if (!b) throw new Error(`tapText: ${s.tapText} has no box`);
       await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
     }
-    else if ('tap' in s) await page.mouse.click(s.tap[0], s.tap[1]);
+    else if ('scrollTo' in s) {
+      const loc = page.getByText(s.scrollTo).first();
+      await loc.waitFor({ state: 'attached', timeout: 15000 });
+      await loc.scrollIntoViewIfNeeded({ timeout: 15000 });
+      await page.waitForTimeout(400);
+    } else if ('tap' in s) await page.mouse.click(s.tap[0], s.tap[1]);
     else if ('down' in s) {
       await page.mouse.move(s.down[0], s.down[1]);
       await page.mouse.down();
@@ -191,7 +196,9 @@ async function resolveBand(page: any, spec: BandSpec | undefined): Promise<Band 
     if (!b) throw new Error(`band: no text ${v.text} on screen`);
     return (v.edge === 'top' ? b.y : b.y + b.height) + (v.pad ?? 0);
   };
-  return { y0: await y(spec.y0), y1: await y(spec.y1), cx: spec.cx, maxZoom: spec.maxZoom, anchor: spec.anchor };
+  const vh: number = await page.evaluate(() => innerHeight);
+  const clampY = (n: number) => Math.max(0, Math.min(vh, n));
+  return { y0: clampY(await y(spec.y0)), y1: clampY(await y(spec.y1)), cx: spec.cx, maxZoom: spec.maxZoom, anchor: spec.anchor, crop: spec.crop };
 }
 
 /** Takes every capture of one game: one per scene and size, at the phone's viewport. */

@@ -11,6 +11,8 @@ export type Step =
   | { tap: P }
   /** Taps the first element whose text matches (e.g. a card's "×2.3"), wherever the layout put it. */
   | { tapText: RegExp }
+  /** Scrolls the first element whose text matches into view (a scrolling panel on a short phone). */
+  | { scrollTo: RegExp }
   | { down: P }
   | { move: P; steps?: number }
   | { up: true }
@@ -82,6 +84,8 @@ export interface BandSpec {
   cx?: number;
   maxZoom?: number;
   anchor?: 'top' | 'bottom' | 'center';
+  /** Never show the screen narrower than the box: a band too tall is cropped (from `anchor`), not shown whole. */
+  crop?: boolean;
 }
 
 /** A band with its text positions resolved (stored next to the raw capture, for --reuse). */
@@ -91,6 +95,7 @@ export interface Band {
   cx?: number;
   maxZoom?: number;
   anchor?: 'top' | 'bottom' | 'center';
+  crop?: boolean;
 }
 
 export interface Scene {
