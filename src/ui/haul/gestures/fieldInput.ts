@@ -10,7 +10,6 @@
  */
 import { makeMutable } from 'react-native-reanimated';
 import { create } from 'zustand';
-import type { FieldLayout, Rect } from '../layout';
 
 /** What the finger drags: nothing, a drone (from the rack or a chip), the flare, or the launch swipe. */
 export const DRAG_NONE = 0;
@@ -87,46 +86,4 @@ export const useFieldInput = create<FieldInput>((set) => ({
 /** How long a confirm chip waits for its second tap. */
 export const CLAIM_CONFIRM_MS = 4000;
 
-/** The confirm chip's size: as wide as its longest price needs, one label row plus padding. */
-export const CLAIM_CHIP_W = 128;
-export const claimChipH = (row: number) => row + 14;
-
-function overlap(a: Rect, b: Rect): number {
-  const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
-  const h = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
-  return w > 0 && h > 0 ? w * h : 0;
-}
-
-/**
- * Where the "Claim ₵21" chip of ghost slot `slot` sits (play-0, play-21): on the slot itself when
- * that covers nothing else, else under or over it, whichever covers the least of the other rocks
- * and their labels (a rock's circle and the label row under it), the top bars and the bay. The
- * gesture layer hit-tests the same rectangle, so a tap on the chip claims whichever view takes it.
- */
-export function claimChipRect(layout: FieldLayout, slot: number, row: number): Rect | null {
-  const rock = layout.rocks[slot];
-  if (!rock) return null;
-  const w = CLAIM_CHIP_W;
-  const h = claimChipH(row);
-  const x = Math.max(12, Math.min(layout.width - w - 12, rock.x - w / 2));
-  const z = layout.zones;
-  const top = z.comms.y + z.comms.height + 4;
-  const bottom = z.bay.y - 4;
-  const others: Rect[] = layout.rocks
-    .filter((r) => r.slot !== slot)
-    .map((r) => ({ x: r.x - Math.max(r.r, 30), y: r.y - r.r, width: 2 * Math.max(r.r, 30), height: 2 * r.r + 18 }));
-  const candidates = [rock.y - h / 2, rock.y + rock.r + 4, rock.y - rock.r - h - 8];
-  let best: Rect | null = null;
-  let bestScore = Infinity;
-  candidates.forEach((y0, i) => {
-    const y = Math.max(top, Math.min(bottom - h, y0));
-    const r = { x, y, width: w, height: h };
-    // Pushed off its place by a bar counts against it; the first place wins ties.
-    const score = others.reduce((a, o) => a + overlap(r, o), 0) + Math.abs(y - y0) * w + i;
-    if (score < bestScore) {
-      bestScore = score;
-      best = r;
-    }
-  });
-  return best;
-}
+export { CLAIM_CHIP_W, claimChipH, claimChipRect } from './gestureMath';

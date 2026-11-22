@@ -120,12 +120,17 @@ for _r in _R:
     _V[-1] = int(_V[-1]) if _V[-1] == int(_V[-1]) else _V[-1]
 ORES = [('iron', 'Iron', '#E07A3F', _V[0]), ('copper', 'Copper', '#3FC7A0', _V[1]), ('ice', 'Ice', '#7FD4FF', _V[2]),
         ('titanium', 'Titanium', '#C7A6FF', _V[3]), ('platinum', 'Platinum', '#F2E6B8', _V[4])]
+# The share of a ring's own ore in its rock stream (the rest is the ring before's ore). Spec 70; a
+# higher share narrows the ore lottery that makes one seed's first Jump an hour earlier than another's
+# (Decision 45: the first Jump must land in its window on every seed).
+_W = K('ringOreShare', 70, 60, 90, "share of a ring's own ore in its rock stream (rings 2 to 5)")
+_w = lambda own, prev: {own: _W, prev: 100 - _W}
 RINGS = [
     ('Near Belt', 1.00, [-53, 53], 0.60, [150, 240], {'iron': 100}),
-    ('Verdigris Reach', 1.73, [-36, 0, 36], 0.50, [240, 400], {'copper': 70, 'iron': 30}),
-    ('Frost Line', 2.45, [-26, -10, 26], 0.45, [360, 600], {'ice': 70, 'copper': 30}),
-    ('Lilac Drift', 3.18, [-18, 18], 0.40, [480, 800], {'titanium': 70, 'ice': 30}),
-    ('Pale Edge', 3.91, [-14, 14], 0.35, [600, 1100], {'platinum': 70, 'titanium': 30}),
+    ('Verdigris Reach', 1.73, [-36, 0, 36], 0.50, [240, 400], _w('copper', 'iron')),
+    ('Frost Line', 2.45, [-26, -10, 26], 0.45, [360, 600], _w('ice', 'copper')),
+    ('Lilac Drift', 3.18, [-18, 18], 0.40, [480, 800], _w('titanium', 'ice')),
+    ('Pale Edge', 3.91, [-14, 14], 0.35, [600, 1100], _w('platinum', 'titanium')),
 ]
 BUYERS = [('halden', 'Halden Yards'), ('corvo', 'Corvo Metals'), ('tessaly', 'Tessaly Ice Co.'),
           ('brightwater', 'Brightwater Foundry'), ('kade', 'Kade Refinery'), ('oriel', 'Oriel Labs')]
@@ -195,7 +200,7 @@ g['haul'] = {
         'reach': [K('reachLo', 0.35, 0.2, 0.5, 'contract units: low end, from the hold share as routed (0) to the share routed for it (1)'), K('reachHi', 0.75, 0.6, 0.9, 'contract units: high end of the same range')],
         'fleetShare': K('fleetShare', 0.5, 0.3, 0.7, 'share of the fleet a player sends to a contract when routing for it'),
         'minUnits': 3, 'twoOreChance': 0.4,
-        'mult': [1.6, 1.9, 2.2, 2.6, 3.0], 'jitter': 0.1,
+        'mult': [round(1 + (m - 1) * K('contractMultScale', 1, 0.6, 1, 'contract multipliers: share of the specification\'s mark-up over x1'), 2) for m in (1.6, 1.9, 2.2, 2.6, 3.0)], 'jitter': 0.1,
         'first': {'buyer': 0, 'ore': 'iron', 'units': 10, 'mult': 1.5},
         # `calls` and `closed` wait for the rules' buyer schema to carry them (balance report, "For other owners").
         'buyers': [{'id': i, 'name': n, 'calls': BUYER_LINES[i][0], 'closed': BUYER_LINES[i][1]} for i, n in BUYERS],

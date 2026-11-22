@@ -27,6 +27,7 @@ import { useRun } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { bayCounterMetrics, bayCounterRows, fitTicker } from './bayMetrics';
 import { DIGITAL, bayWord, countText, fillIn } from './bayText';
+import { moneyShort } from '../sheets/format';
 import { HAUL_STRINGS } from '../strings';
 import { GLYPH_FALL_MS, GLYPH_LEAD_MS } from './feedbackTiming';
 
@@ -82,7 +83,8 @@ export function receiptTexts(cfg: H.HaulConfig, cargo: Record<string, number>, p
 /** The receipt row of a warp-out that met the contract (longest first): the bonus, the day shift, the payout. */
 export function metTexts(cfg: H.HaulConfig, bonus: number, payout: number, shift: boolean): string[] {
   const sym = cfg.strings.currencySymbol;
-  const met = `${bayWord('receiptMet')}${bonus > 0 ? ` +${formatMoney(bonus, sym)}` : ''}`;
+  // The bonus in the board's and the strip's figure (one figure for one contract).
+  const met = `${bayWord('receiptMet')}${bonus > 0 ? ` +${moneyShort(cfg, bonus)}` : ''}`;
   const money = formatMoney(payout, sym);
   return shift ? [`${met} · ${bayWord('receiptShift')}`, met, bayWord('receiptMet')] : [`${met} · ${money}`, met, bayWord('receiptMet')];
 }

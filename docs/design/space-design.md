@@ -958,7 +958,9 @@ Ten example lines:
 
 Bot behaviour: places every idle drone at once on the slot with the highest marginal value `[min(r_i, (n_i + 1) c_i / trip_i) − min(r_i, n_i c_i / trip_i)] × p_ore` (a good player); drags 2 drones onto each rich seam and 1 onto each bonanza rock; picks the contract with the highest `contractGain` whose units the hold carries once it routes for it (the routed share of section 2.6), then, while it is active, drags drones from the routes that lose least onto rocks of its ores until the share as routed covers the units with 5 % to spare, at most `fleetShare` of the fleet per contract (Decision 32; the old "up to 2 drones" could not move a 40-drone station's share); launches by hand when the hold is full or the contract is met until the autopilot is online, then uses `contract`; uses the free flare charge on the best rock; buys the option with the best payback (Δ `activeRate` / cost), and from 2:00 saves for the autopilot; at a Jump spends cores by a fixed priority (Preload, Assay to 5, Afterburner, Seed Credits, then Prospect Survey and the cheapest capped node) and picks the condition with the highest `activeRate` at the new run's start. It counts every gesture: drags and flicks, tap-taps, swipes, Upgrade taps (rig, fleet, freighter, claims), contract picks, sheet opens.
 
-Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-miner --hours 12 --prestige` reports them; validate fails on a missed hard target.
+Bot behaviour with Decision 40 (overrides the contract part above): with none taken, it takes the offer with the highest bonus that it can deliver in `haul.contracts.launches` launches once it routes for it (routed share per launch × launches ≥ units, 5 % to spare), then routes until every wanted ore is on pace with 15 % to spare (one launch's share as routed × launches left ≥ units left), at most `fleetShare` of the fleet per contract, and never drops a taken contract; it swipes by hand when the hold is full or holds everything the contract still needs. The passive player takes the best-paying offer and never routes for it. The watching player (Decision 42) only watches: autopilot on `full`, nothing bought, placed or routed, no contract taken.
+
+Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-miner --hours 12 --prestige [--seed n]` reports them; validate runs seeds 12345, 4 and 99 in parallel and fails on a hard target missed on any of them (Decision 45).
 
 | Measure | Target | Hard? |
 |---|---|---|
@@ -979,10 +981,15 @@ Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-min
 | Something new drawn on the map (a new ore on a rock, a bonanza rock, a claimed slot, a rig look, a freighter hull or segment, a station part, a drone-cap rise) | at least once per 30 min of play, through galaxy index 2 | yes |
 | Longest stretch with nothing new after the first Jump (12 h run) | ≤ 25 min | yes |
 | Share of route-minutes bound by one limit (drill, haul or freighter) | no kind above 60 % | yes |
-| Share of payouts with a met contract (with the units-only multiplier and the player's own pick) | 40 to 70 % | no |
-| Share of payouts with a met contract for a player who picks contracts but never moves a drone for one (the same bot with `passive`, first 2.5 h) | ≤ 20 % | no |
+| Share of taken contracts that are met, for the bot that routes for them (Decision 40; replaces "payouts with a met contract") | 60 to 85 % | no |
+| Share of taken contracts that are met for a player who takes contracts but never moves a drone for one (`passive`, first 2.5 h) | ≤ 25 % | no |
+| Contract bonus as a share of run income | report; aim 10 to 25 % | no |
 | Average launch fill | 70 to 95 % | no |
-| Offline credits per hour vs active play per hour at the same state | ≤ 0.45 | yes |
+| An hour away WITH the Shift Log ad bonus (`haul.offline.adBonus`) vs an hour of active play (the bot that buys and routes) from the same state, at every measurement (minutes 30, 60, 120, then every 2 h) | ≤ 0.60 (Decision 42) | yes |
+| The same vs an hour of only watching (autopilot on `full`, nothing bought, routed or taken) | ≤ 0.90 (Decision 42) | yes |
+| Pods per hour in hours 1 to 3 (each hour) | 3 to 10 (rules-3, Decision 45; the pod economy of 5.2 was set for about 4 to 6 an hour) | no |
+| Dark Matter per hour from those pods (expected value of their gem slots) | 2 to 8 | no |
+| Longest wait between two purchases in the first 5 minutes (from the first payout) | about 30 s (play-18) | no |
 | Rocks dried per hour of play at minute 30 | 8 to 20 | no |
 
 Knobs, in order: if the drill binds more than 60 %, build-haul.py lowers rig cost growth; if haul binds, it raises capacity growth; if the freighter binds, it lowers freighter cost growth. The claim-cost ring factor is the first knob for dead stretches. If drags fall below 4 per 10 min, it shortens contract lifetimes (to 4) and seam intervals before anything else. If Upgrade taps pass 60 %, it raises rig and fleet cost growth together with their per-level effect (fewer, bigger levels). If run 2 misses 60 %, it raises the Afterburner head start and the bonanza effect, never a flat node's cap.

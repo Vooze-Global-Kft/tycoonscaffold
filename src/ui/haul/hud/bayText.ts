@@ -8,6 +8,7 @@
 import { Platform, type TextStyle } from 'react-native';
 import { formatShort } from '../../../engine/format';
 import { HAUL_STRINGS, type HaulStringKey } from '../strings';
+import { unitsShort } from '../sheets/format';
 import { textEms } from './bayMetrics';
 
 /** The digital face of the counters (monospaced, so a rolling number never jitters sideways). */
@@ -38,10 +39,9 @@ export function countText(n: number): string {
   return v < 10000 ? String(v) : formatShort(v);
 }
 
-/** A unit figure in the short format (8.4K, never 8372): whole units under 1,000 (Decision 46, play-8). */
+/** A unit figure in the short format (8.4K, never 8372), the same as the board's (Decision 40, 46, play-8). */
 export function unitShort(n: number): string {
-  const v = Math.max(0, Math.floor(n + 1e-6));
-  return v < 1000 ? String(v) : formatShort(v);
+  return unitsShort(n);
 }
 
 /** A one-line label's font and row sized to `width` for `text` (0.62 em a glyph, a sign one em: ./bayMetrics.ts textEms), never above the base. */

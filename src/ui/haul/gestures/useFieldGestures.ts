@@ -23,7 +23,7 @@ import { labelMetrics } from '../hud/bayText';
 import { hitTest, type FieldLayout, type Hit, type Pt } from '../layout';
 import { useHaulUi } from '../uiState';
 import { CLAIM_CONFIRM_MS, DRAG_DRONE, DRAG_FLARE, DRAG_SWIPE, NO_DRAG, claimChipRect, dragLine, useFieldInput, type DragLine } from './fieldInput';
-import { LAUNCH_ARM, LAUNCH_RISE, PRESS_MS, SLOP, TAP_MS, dropTarget, flickTarget, onRack, rackGrabPoint, type Sample } from './gestureMath';
+import { LAUNCH_ARM, LAUNCH_RISE, PRESS_MS, SLOP, TAP_MS, dropTarget, fingerOf, flickTarget, onRack, rackGrabPoint, type Sample } from './gestureMath';
 
 export interface FieldGestures {
   /** Spread on the full-screen gesture View. */
@@ -53,23 +53,6 @@ interface Touch {
 }
 
 const MAX_SAMPLES = 8;
-
-type NativeTouch = GestureResponderEvent['nativeEvent'];
-
-/**
- * Where the tracked finger is in this event, or null when the event is about other fingers only
- * (phone-2). A responder event's own pageX/pageY is its first changed touch, which can be another
- * finger; with no identifiers (a mouse on the web) the event's own point is the finger.
- */
-function fingerOf(ne: NativeTouch, id: string | number | undefined): { p: Pt; t: number } | null {
-  const own = { p: { x: ne.pageX, y: ne.pageY }, t: ne.timestamp || Date.now() };
-  if (id === undefined || id === null) return own;
-  const changed = ne.changedTouches ?? [];
-  if (!changed.length) return own;
-  const hit = changed.find((x) => x.identifier === id);
-  if (!hit) return null;
-  return { p: { x: hit.pageX, y: hit.pageY }, t: hit.timestamp || ne.timestamp || Date.now() };
-}
 
 /** The ghost slot whose confirm chip is under `p` (the chip may sit off its slot, play-21), or null. */
 function chipUnder(p: Pt, layout: FieldLayout): number | null {

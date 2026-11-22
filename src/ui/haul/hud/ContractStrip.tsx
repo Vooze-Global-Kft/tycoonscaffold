@@ -5,7 +5,8 @@
  * lighter segment), the fixed bonus "+₵19.4K", and a status row: "4 LAUNCHES LEFT" in words (the
  * last one pulses) and a pace light ("ON PACE", or "SHORT ON COPPER" in amber). "x2 SHIFT" when the
  * day shift would pay the bonus twice (Decision 53). Nothing on it falls back after a launch: the
- * figures are delivered plus aboard, and aboard becomes delivered at the warp-out.
+ * figure is what is delivered (the same as the board's), the bar adds what is aboard as a lighter
+ * segment, and aboard becomes delivered at the warp-out.
  * "PICK A CONTRACT" when none is taken (it glows once each time that happens). Hidden until
  * contracts unlock. Tap: the Contract Board. Target key `contract:strip`.
  *
@@ -15,12 +16,12 @@
 import { useEffect, useRef } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
-import { formatMoney } from '../../../engine/format';
 import * as H from '../../../engine/haul';
 import { GameIcon } from '../../components/GameIcon';
 import { useTarget } from '../../hints/targets';
 import { alpha, oreColor, SPACE } from '../art/palette';
 import type { Rect } from '../layout';
+import { moneyShort } from '../sheets/format';
 import { HAUL_STRINGS } from '../strings';
 import { runParams, useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
@@ -100,13 +101,18 @@ function stripView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): St
     // Only the taken contract: the strip never needs the offers' views.
     const one = { ...h, contracts: { ...h.contracts, board: [c], active: 0 } } as H.HaulState;
     const cv = H.contractViews(cfg, params, one, (g as { haulStats?: H.HaulStats }).haulStats)[0];
-    const wants = cv.wants.map((w) => ({
-      ore: w.ore,
-      name: oreNameOf(cfg, w.ore),
-      got: Math.min(w.units, w.got),
-      aboard: Math.max(0, Math.min(w.units - w.got, w.aboard)),
-      units: w.units,
-    }));
+    const wants = cv.wants.map((w) => {
+      // A want the rules count as delivered (within UNIT_TOL, rules-10) reads full: never "69/70" for 69.7.
+      const done = !(w.left > 0);
+      const got = done && w.aboard <= 0 ? w.units : Math.min(w.units, w.got);
+      return {
+        ore: w.ore,
+        name: oreNameOf(cfg, w.ore),
+        got,
+        aboard: done ? Math.max(0, w.units - got) : Math.max(0, Math.min(w.units - got, w.aboard)),
+        units: w.units,
+      };
+    });
     view = {
       unlocked: true,
       active: true,
@@ -115,7 +121,8 @@ function stripView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): St
       wants,
       mult: `×${c.mult.toFixed(1)}`,
       left: cv.launchesLeft,
-      bonus: cv.bonus > 0 ? `+${formatMoney(cv.bonus, cfg.strings.currencySymbol)}` : '',
+      // One figure with the board and the receipt: the board's short money format.
+      bonus: cv.bonus > 0 ? `+${moneyShort(cfg, cv.bonus)}` : '',
       done: cv.wants.every((w) => !(w.left > 0)),
       onPace: cv.onPace,
       short: cv.shortOre ? oreNameOf(cfg, cv.shortOre) : '',
@@ -176,14 +183,16 @@ export function ContractStrip({ rect }: { rect: Rect }) {
   const rightW = 96;
   const midW = rect.width - leftX - rightW - pad;
   const launches = v.left === 1 ? HAUL_STRINGS.stripLaunch : fillIn(HAUL_STRINGS.stripLaunches, { n: v.left });
-  const pace = v.done ? HAUL_STRINGS.stripMet : v.onPace ? HAUL_STRINGS.stripOnPace : fillIn(HAUL_STRINGS.stripShort, { ore: v.short });
-  const paceColor = v.done || v.onPace ? SPACE.green : SPACE.amber;
+  // While the freighter climbs, what it carries for the contract (play-4: the launch is never lost from view).
+  const aboard = v.wants.reduce((a, w) => a + w.aboard, 0);
+  const pace = v.done ? HAUL_STRINGS.stripMet : aboard >= 1 ? fillIn(HAUL_STRINGS.stripAboard, { n: unitShort(aboard) }) : v.onPace ? HAUL_STRINGS.stripOnPace : fillIn(HAUL_STRINGS.stripShort, { ore: v.short });
+  const paceColor = v.done || aboard >= 1 || v.onPace ? SPACE.green : SPACE.amber;
   const status = `${launches} · ${pace}`;
   const statusFit = fitLabel(status, midW + rightW - (v.shift ? 64 : 0) - 10, compact ? 9.5 : 10.5, fontScale);
   const label = v.active
     ? fillIn(HAUL_STRINGS.stripLabel, {
         buyer: v.name,
-        wants: v.wants.map((w) => `${unitShort(w.got + w.aboard)}/${unitShort(w.units)} ${w.name}`).join(', '),
+        wants: v.wants.map((w) => `${unitShort(w.got)}/${unitShort(w.units)} ${w.name}`).join(', '),
         left: `${launches}, ${pace}`,
         bonus: v.bonus,
       })
@@ -267,9 +276,9 @@ export function ContractStrip({ rect }: { rect: Rect }) {
   );
 }
 
-/** One wanted ore: [icon] bar (delivered solid, aboard lighter) "3.7K/8.4K COPPER". */
+/** One wanted ore: [icon] bar (delivered solid, aboard lighter) "3.7K/8.4K COPPER" (delivered / wanted). */
 function WantChip({ w, many, share, row, compact }: { w: WantView; many: boolean; share: number; row: { font: number; row: number }; compact: boolean }) {
-  const text = `${unitShort(w.got + w.aboard)}/${unitShort(w.units)}${many ? '' : ` ${w.name}`}`;
+  const text = `${unitShort(w.got)}/${unitShort(w.units)}${many ? '' : ` ${w.name}`}`;
   const barW = many ? (compact ? 20 : 26) : compact ? 34 : 44;
   const room = share - barW - 4 - (many ? row.row + 4 : 0) - 2;
   const fit = fitLabel(text, room, row.font, 1);

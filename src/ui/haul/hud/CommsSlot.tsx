@@ -49,6 +49,7 @@ import { useHaulUi } from '../uiState';
 import type { Rect } from '../layout';
 import { HAUL_STRINGS } from '../strings';
 import { setCallout } from './callout';
+import { textEms } from './bayMetrics';
 import { DIGITAL, fillIn, fitLabel, labelMetrics, unitShort } from './bayText';
 /** How long a line stays up (spec 4.1). */
 export const LINE_MS = 5000;
@@ -121,7 +122,8 @@ function multText(m: number): string {
 
 /** The width the condition chip takes at the row's right end (0 without a condition). */
 function chipWidth(name: string, font: number): number {
-  return name ? Math.ceil(name.length * font * 0.62) + 18 : 0;
+  // Text, plus the padding (2 × 6), the dot (5), the gap (5) and the border (2), and 2 to spare.
+  return name ? Math.ceil(textEms(name) * font) + 32 : 0;
 }
 
 export function CommsSlot({ rect }: { rect: Rect }) {
@@ -369,7 +371,7 @@ export function CommsSlot({ rect }: { rect: Rect }) {
 /** The galaxy's condition at the comms row's right end (Decision 52); a tap reads its effects. */
 function ConditionChip({ rect, width, font, name, text: effects, onPress }: { rect: Rect; width: number; font: number; name: string; text: string; onPress: () => void }) {
   const text = name.toUpperCase();
-  const fit = fitLabel(text, width - 18, font, 1);
+  const fit = fitLabel(text, width - 30, font, 1);
   const h = Math.min(rect.height, Math.ceil(font * 1.3) + 8);
   return (
     <Pressable
