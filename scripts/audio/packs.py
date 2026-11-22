@@ -221,11 +221,12 @@ class WarmPack(Pack):
         y += puff * lowpass(white(n, rng), 1800.0, 2) * perc(n, 1.5, 0.004)
         return vel * y
 
-    def bloop(self, f0, f1, dur=0.2, rise=0.06, tau=0.05, vel=1.0, rng=None):
-        """Rounded rising 'bloop'."""
+    def bloop(self, f0, f1, dur=0.2, rise=0.06, tau=0.05, vel=1.0, h2=0.22, h3=0.06, rng=None):
+        """Rounded rising 'bloop'. `h2`/`h3` are the 2nd and 3rd harmonic
+        levels: more of them keeps a low bloop audible on a phone speaker."""
         n = ns(dur)
         ph = phase(glide_exp(f0, f1, n, rise / 3.0), n)
-        y = (np.sin(ph) + 0.22 * np.sin(2 * ph) + 0.06 * np.sin(3 * ph)) * perc(n, 4.0, tau)
+        y = (np.sin(ph) + h2 * np.sin(2 * ph) + h3 * np.sin(3 * ph)) * perc(n, 4.0, tau)
         return vel * y
 
     # ---- air -----------------------------------------------------------------
@@ -255,7 +256,8 @@ class WarmPack(Pack):
         fc = glide(1500.0, 5200.0, n, 0.7)
         y = svf(white(n, rng), fc, 0.9, 'bp')
         flutter = 1.0 + 0.5 * lowpass(white(n, rng), 320.0, 2) * 6.0
-        env = points([(0, 0), (dur * 0.55, 0.55), (dur * 0.8, 1.0), (dur, 0)], n) ** 1.6
+        # speaks within 4 ms (the card's haptic fires at t = 0), dips, then the whip
+        env = points([(0, 0), (0.004, 0.5), (dur * 0.4, 0.4), (dur * 0.8, 1.0), (dur, 0)], n) ** 1.6
         return vel * 2.2 * lowpass(y * np.clip(flutter, 0.2, 2.0), 5800.0, 4) * env
 
     def creak(self, dur=0.2, vel=1.0, rng=None):
@@ -478,10 +480,11 @@ class SynthPack(WarmPack):
         env = rcos_in(n, 2.0) * np.exp(-np.maximum(t - hold, 0.0) / tau)
         return vel * (np.sin(ph) + 0.18 * np.sin(3 * ph)) * env
 
-    def bloop(self, f0, f1, dur=0.2, rise=0.06, tau=0.05, vel=1.0, rng=None):
+    def bloop(self, f0, f1, dur=0.2, rise=0.06, tau=0.05, vel=1.0, h2=0.22, h3=0.06, rng=None):
+        """Triangle plus an octave square; `h2` scales the octave (0.22 = the original 0.25)."""
         n = ns(dur)
         fr = glide_exp(f0, f1, n, rise / 3.0)
-        y = blosc(fr, n, 'tri', fmax=5000.0) + 0.25 * blosc(fr * 2.0, n, 'square', fmax=4000.0)
+        y = blosc(fr, n, 'tri', fmax=5000.0) + (0.25 * h2 / 0.22) * blosc(fr * 2.0, n, 'square', fmax=4000.0)
         return vel * 0.9 * y * perc(n, 3.0, tau)
 
     def whoosh(self, dur, path, q=1.1, env=None, air=0.3, rng=None, vel=1.0):
@@ -499,7 +502,7 @@ class SynthPack(WarmPack):
         n = ns(dur)
         fc = glide(900.0, 5600.0, n, 0.6)
         y = svf(white(n, rng), fc, 5.0, 'bp') * 2.0 + 0.2 * np.sin(phase(fc, n))
-        env = points([(0, 0), (dur * 0.7, 1.0), (dur, 0)], n) ** 1.5
+        env = points([(0, 0), (0.004, 0.5), (dur * 0.4, 0.4), (dur * 0.8, 1.0), (dur, 0)], n) ** 1.5
         return vel * 1.8 * lowpass(y, 6500.0, 4) * env
 
     def creak(self, dur=0.2, vel=1.0, rng=None):

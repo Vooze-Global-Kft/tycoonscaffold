@@ -618,8 +618,9 @@ function drawEyeball(p: Pen, x: number, y: number, rx: number, ry: number, alien
   p.fill(ellipse(x, y, rx, ry), INK);
   // A warm glint low in the eye, then the two highlights.
   p.fill(ellipse(x, y + ry * 0.42, rx * 0.66, ry * 0.4), alien ? '#2F6B4A' : '#6B4226');
-  p.dot(x - 1.4, y - 2.3, 1.9, '#FFFFFF');
-  p.dot(x + 1.5, y + 2.7, 0.9, alpha('#FFFFFF', 0.9));
+  // Highlights sized so the main one stays at least 1 px across at scene scale (52 px characters).
+  p.dot(x - rx * 0.34, y - ry * 0.4, Math.max(2.3, rx * 0.46), '#FFFFFF');
+  p.dot(x + rx * 0.36, y + ry * 0.45, 1.1, alpha('#FFFFFF', 0.9));
 }
 
 function drawEyes(p: Pen, l: ResolvedLook) {
@@ -633,8 +634,9 @@ function drawEyes(p: Pen, l: ResolvedLook) {
     return;
   }
   const alien = l.species === 'alien';
-  const rx = alien ? 4 : 4.4;
-  const ry = alien ? 5.4 : 6;
+  // About 15% bigger than the first pass so faces still read at 52 px.
+  const rx = alien ? 4.6 : 5.05;
+  const ry = alien ? 6.2 : 6.9;
   eyeCentres(l).forEach(([x, y], i) => {
     drawEyeball(p, x, y, rx, ry, alien);
     if (l.lashes && !alien && !l.glasses) {
@@ -826,10 +828,15 @@ function drawNeck(p: Pen, l: ResolvedLook, T: number) {
       p.stroke(line(x - 3, -T + 5.2, x + 3, -T + 5.2), shadeOf(c), 1.4);
       break;
     case 'bowtie': {
-      const y = -T + 6.5;
-      p.shape(poly([[x, y], [x - 6.5, y - 3.8], [x - 6.5, y + 3.8]]), c, { ow: 2, shade: false });
-      p.shape(poly([[x, y], [x + 6.5, y - 3.8], [x + 6.5, y + 3.8]]), c, { ow: 2, shade: false });
-      p.shape(circle(x, y, 2), c, { ow: 1.6, shade: false });
+      // Waiters get a big bow tie (part of the uniform that reads at 52 px); suits a smaller one.
+      const k = l.outfitStyle === 'vest' ? 1.6 : 1.15;
+      const y = -T + 6.5 * (k > 1.3 ? 1.12 : 1);
+      const wx = 6.5 * k;
+      const wy = 3.8 * k;
+      p.shape(blob([[x, y - 0.6 * k, 0], [x - wx * 0.55, y - wy * 1.05], [x - wx, y - wy * 0.9], [x - wx * 0.92, y + wy * 0.95], [x - wx * 0.5, y + wy * 1.05], [x, y + 0.6 * k, 0]]), c, { ow: 2.4, shade: false });
+      p.shape(blob([[x, y - 0.6 * k, 0], [x + wx * 0.55, y - wy * 1.05], [x + wx, y - wy * 0.9], [x + wx * 0.92, y + wy * 0.95], [x + wx * 0.5, y + wy * 1.05], [x, y + 0.6 * k, 0]]), c, { ow: 2.4, shade: false });
+      p.shine(line(x - wx * 0.75, y - wy * 0.45, x - wx * 0.35, y - wy * 0.62), lightOf(c, 1.4), 1.2, 0.8);
+      p.shape(circle(x, y, 2 * k), c, { ow: 2, shade: false });
       break;
     }
     case 'tie':

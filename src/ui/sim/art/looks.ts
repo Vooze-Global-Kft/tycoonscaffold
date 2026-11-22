@@ -38,10 +38,14 @@ export interface ResolvedLook {
 
 const WHITE = '#FFFBF2';
 const GOLD = '#FFC93C';
+/** Every waiter wears this vest (a uniform reads as "staff" at 52 px); customers never get it. */
+export const WAITER_VEST = '#8E2A3B';
+/** The waiters' bow tie. */
+export const WAITER_TIE = '#2B2130';
 
 const KIND_DEFAULTS: Record<CharacterKind, { outfit: string; accent: string; outfitStyle: OutfitStyle; hat: Hat; neck: Neckwear; pants: string }> = {
   chef: { outfit: WHITE, accent: '#E63946', outfitStyle: 'chef', hat: 'toque', neck: 'kerchief', pants: '#47506B' },
-  waiter: { outfit: '#3B4263', accent: '#E63946', outfitStyle: 'vest', hat: 'none', neck: 'bowtie', pants: '#343A55' },
+  waiter: { outfit: WAITER_VEST, accent: WAITER_TIE, outfitStyle: 'vest', hat: 'none', neck: 'bowtie', pants: '#343A55' },
   customer: { outfit: '#4C8FE0', accent: '#FFD166', outfitStyle: 'tee', hat: 'none', neck: 'none', pants: '#4A5578' },
   manager: { outfit: '#55608F', accent: '#E63946', outfitStyle: 'suit', hat: 'none', neck: 'tie', pants: '#3D4568' },
 };
@@ -109,7 +113,14 @@ export function resolveLook(entry: LookInput): ResolvedLook {
   const skin = l.skin ?? (species === 'alien' ? '#8ED36B' : species === 'robot' ? '#C8D4E0' : '#F6C9A0');
   const hairStyle = l.hairStyle ?? (species === 'human' ? 'short' : 'bald');
   const lightOutfit = luma(outfit) > 0.78;
-  const apron = l.apron === true ? (lightOutfit ? accent : WHITE) : typeof l.apron === 'string' ? l.apron : null;
+  const apron =
+    l.apron === true
+      ? lightOutfit ? accent : WHITE
+      : typeof l.apron === 'string'
+        ? l.apron
+        : l.apron === undefined && kind === 'waiter' && outfitStyle === 'vest'
+          ? WHITE // part of the waiter uniform unless a look says otherwise
+          : null;
   const pants = l.pants ?? (outfitStyle === 'overalls' || outfitStyle === 'spacesuit' || outfitStyle === 'robe' ? outfit : outfitStyle === 'suit' ? mix(outfit, '#000000', 0.12) : k.pants);
   return {
     kind,
@@ -332,7 +343,6 @@ const HAIRS = ['#2E2428', '#3F2A20', '#5A3A22', '#7A4A2A', '#A0522D', '#C0622B',
 const FUN_HAIRS = ['#E8789A', '#4FB8B0', '#6C8FE8', '#9B6DD6'];
 const OUTFITS = ['#E5484D', '#F28C38', '#F5C542', '#57B26A', '#2A9D8F', '#4C8FE0', '#5B67D1', '#9B6DD6', '#EF7FA8', '#7FD1B9', '#F3E3C3', '#C45C8A', '#3FA7D6', '#8BC34A'];
 const ACCENTS = ['#FFD166', '#FFFBF2', '#E63946', '#2A9D8F', '#F4A261', '#5B67D1', '#EF7FA8'];
-const VESTS = ['#3B4263', '#5B2B3A', '#2F5D50', '#4A4458', '#3A3F47'];
 const PANTS = ['#4A5578', '#3D4568', '#6B5A4A', '#5A6B8C', '#4F5B4A', '#7A5A6A', '#33384F'];
 const SHOES = ['#5B3A29', '#3B2620', '#E63946', '#F5F0E6', '#3D4568', '#8A5A3A'];
 
@@ -384,11 +394,13 @@ export function randomLook(seed: number, kind: CharacterKind = 'customer'): Char
     if (r() < 0.15) look.outfit = pick(r, ['#3F4A63', '#4A4458']);
     look.pants = pick(r, ['#47506B', '#3F4A63', '#5A5560']);
   } else if (kind === 'waiter') {
-    look.outfit = pick(r, VESTS);
-    look.accent = pick(r, ['#E63946', '#F4A261', '#2A9D8F', '#FFD166', '#EF7FA8']);
-    look.neck = r() < 0.75 ? 'bowtie' : 'tie';
-    // Most waiters wear the long white bistro apron: with the dark vest it says "waiter" at a glance.
-    if (r() < 0.6) look.apron = true;
+    // A uniform: the same burgundy vest, white shirt, white waist apron and a big dark bow tie on every waiter,
+    // so staff read apart from guests at a glance (toque = chef, burgundy vest = waiter, anything else = guest).
+    look.outfit = WAITER_VEST;
+    look.accent = WAITER_TIE;
+    look.outfitStyle = 'vest';
+    look.neck = 'bowtie';
+    look.apron = WHITE;
     look.pants = pick(r, ['#343A55', '#3A3340', '#3D3A45']);
   } else if (kind === 'manager') {
     look.outfit = pick(r, ['#55608F', '#6B4A6E', '#3F6B63', '#7A4A3A', '#4A4458', '#8A5A8F']);

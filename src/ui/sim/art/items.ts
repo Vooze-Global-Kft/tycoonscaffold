@@ -27,7 +27,8 @@ export function resolveDish(dish?: DishLook | DishKind | null): ResolvedDish {
   return { kind, food: d.food ?? base.food, topping: d.topping ?? base.topping, garnish: d.garnish ?? base.garnish, plate: d.plate ?? base.plate };
 }
 
-const OW = 2.3;
+/** Dish outline: at least 2.6 units so dishes weigh the same as the characters at scene scale. */
+const OW = 2.7;
 
 function drawPlate(p: Pen, c: string) {
   p.shape(ellipse(0, 1.2, 13, 5.2), shadeOf(c), { ow: OW, shade: false });
@@ -145,9 +146,9 @@ export interface DishArt {
 }
 
 export function drawTray(p: Pen, metal = '#D5DCE5') {
-  p.shape(ellipse(0, -0.2, 16, 4.5), shadeOf(metal, 1.2), { ow: OW, shade: false });
-  p.shape(ellipse(0, -1.6, 16, 4.5), metal, { ow: OW, shade: false });
-  p.stroke(arc(0, -1.6, 13.4, 3.2, 185, 80), '#FFFFFF', 1.3);
+  p.shape(ellipse(0, -0.2, 18, 5), shadeOf(metal, 1.2), { ow: 2.8, shade: false });
+  p.shape(ellipse(0, -1.6, 18, 5), metal, { ow: 2.8, shade: false });
+  p.stroke(arc(0, -1.6, 15, 3.6, 185, 80), '#FFFFFF', 1.4);
 }
 
 function buildDishArt(d: ResolvedDish): DishArt {
@@ -155,7 +156,8 @@ function buildDishArt(d: ResolvedDish): DishArt {
     dish: record((p) => drawDish(p, d)),
     tray: record((p) => {
       drawTray(p);
-      p.at(0, d.kind === 'cup' ? -6 : d.kind === 'dessert' ? -7.6 : d.kind === 'bowl' ? -7 : -3.6, () => drawDish(p, d), 0, 0.92);
+      // The dish at 1.25x so it reads above the waiter's head at 52 px.
+      p.at(0, d.kind === 'cup' ? -7.6 : d.kind === 'dessert' ? -9.4 : d.kind === 'bowl' ? -8.8 : -4.4, () => drawDish(p, d), 0, 1.25);
     }),
     bite: record((p) => drawBite(p, d)),
     bubble: record((p) => {
@@ -196,6 +198,8 @@ export interface CommonArt {
   dough: SkPicture;
   bowl: SkPicture;
   spoon: SkPicture;
+  /** A small steam puff (cooking). */
+  steam: SkPicture;
   z: SkPicture;
   heart: SkPicture;
   crumb: SkPicture;
@@ -235,17 +239,28 @@ export function commonArt(): CommonArt {
       p.fill(ellipse(2.5, 1.2, 9.5, 2.4), shadeOf(c, 0.6));
       p.shine(arc(0, 0, 13, 3.6, 195, 60), '#FFFFFF', 1.6, 0.95);
     }),
+    // A copper mixing bowl full of tomato sauce: saturated so it reads against a white chef jacket at 52 px.
     bowl: record((p) => {
-      const c = '#DCE4EC';
-      p.shape(blob([[-10.5, -3.4, 0], [10.5, -3.4, 0], [8.4, 3.6], [0, 6.6], [-8.4, 3.6]]), c, { ow: 2.4, shade: 2 });
-      p.shape(ellipse(0, -3.4, 10.5, 3), lightOf(c, 0.6), { ow: 2.4, shade: false });
-      p.fill(ellipse(0, -3.2, 8.4, 2), '#F7E4BE');
-      p.shine(line(-7, 0, -5.4, 2.8), '#FFFFFF', 1.5, 0.85);
+      const c = '#D9813F';
+      const body = blob([[-12, -3.6, 0], [12, -3.6, 0], [9.8, 4], [0, 7.6], [-9.8, 4]]);
+      p.shape(body, c, { ow: 3, shade: 2.4, shadeColor: '#A4552A' });
+      p.stroke(arc(0, -0.6, 11, 4.2, 20, 140), '#A4552A', 1.8);
+      p.shape(ellipse(0, -3.6, 12, 3.6), '#F0A866', { ow: 3, shade: false });
+      p.fill(ellipse(0, -3.3, 9.6, 2.5), '#D8432F');
+      // The stirred swirl.
+      p.stroke(curve([[-6, -3.4], [-2.5, -4.9], [2.8, -4.4], [3.2, -2.8], [-0.8, -2.4], [-1.2, -3.6], [1, -3.8]]), '#FF8A5C', 1.4);
+      p.shine(line(-8, 0.2, -6.2, 3.6), '#FFFFFF', 1.8, 0.8);
     }),
+    // A long wooden spoon: its tip pokes above the rim.
     spoon: record((p) => {
-      const h = line(0, -3.5, 1.2, 12.5);
-      p.stroke(h, OUTLINE, 4.4);
-      p.stroke(h, '#C98B4A', 2);
+      const h = line(0, -6, 1.6, 15.5);
+      p.stroke(h, OUTLINE, 4.6);
+      p.stroke(h, '#C98B4A', 2.2);
+      p.shape(ellipse(1.7, 15.6, 2.4, 3.3, -5), '#C98B4A', { ow: 2.2, shade: false });
+    }),
+    steam: record((p) => {
+      const puff = merged(circle(-2.4, 1, 3.1), circle(2.2, 0.6, 3.4), circle(0, -2.2, 3.4));
+      p.shape(puff, '#FFFFFF', { ow: 2, shade: 1.2, shadeColor: '#E4ECF2' });
     }),
     z: record((p) => drawZ(p)),
     heart: record((p) => drawHeart(p)),

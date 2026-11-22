@@ -157,6 +157,13 @@ export const GameConfigSchema = z.object({
       danger: hex,
       progress: hex,
       gradient: z.array(hex).min(2),
+      /**
+       * Sim mode: one colour per stage of the chain. A stage always shows in its colour (scene
+       * accents, the stage strip, list rows), together with its icon, never by colour alone.
+       */
+      stages: z
+        .object({ production: hex, transport: hex, sales: hex })
+        .default({ production: '#EF7D22', transport: '#2A9D8F', sales: '#7B5EA7' }),
     }),
     radius: z.number().default(16),
     /** "skia" (2D, default) or "three" (3D diorama via expo-gl). */

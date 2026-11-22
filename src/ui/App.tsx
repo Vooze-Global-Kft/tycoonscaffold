@@ -3,8 +3,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import { AppState, Platform, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { gameAssets } from '../config/game';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { gameAssets } from '../config/game';
+import { applyDevParams, devSpeed } from '../dev/devtools';
 import { fx } from '../services/fx';
 import { useGame } from '../state/store';
 import { Banner } from './components/Banner';
@@ -12,40 +13,54 @@ import { Celebrations } from './components/Celebration';
 import { GameIcon } from './components/GameIcon';
 import { Header } from './components/Header';
 import { OfflineModal, StoryModal } from './components/Modals';
-import { BusinessesPanel, ManagersPanel, PrestigePanel, ShopPanel, UpgradesPanel } from './components/Panels';
+import { ManagersPanel } from './components/Panels';
 import { TabBar } from './components/TabBar';
-import { SkiaScene } from './scene/SkiaScene';
+import { HintOverlay } from './hints/HintOverlay';
+import { HomeClassic } from './home/HomeClassic';
+import { HomeSim } from './home/HomeSim';
+import { FlyLayer } from './juice/FlyLayer';
+import { CardSheet } from './meta/cards/CardSheet';
+import { StaffTab } from './meta/cards/StaffTab';
+import { ChestOddsSheet } from './meta/chest/ChestOddsSheet';
+import { ChestOverlay } from './meta/chest/ChestOverlay';
+import { DealPopup } from './meta/deals/DealPopup';
+import { EmpireTab } from './meta/empire/EmpireTab';
+import { MissionsSheet } from './meta/missions/MissionsSheet';
+import { SettingsSheet } from './meta/settings/SettingsSheet';
+import { ShopTab } from './meta/shop/ShopTab';
+import { UpgradesTab } from './meta/upgrades/UpgradesTab';
 import { ArtGallery } from './sim/art/Gallery';
 import { PropsGallery } from './sim/art/GalleryProps';
-import { ThreeScene } from './scene/ThreeScene';
 import { DISPLAY_FONT, useTheme } from './theme';
 
 const TICK_MS = 100;
 const SAVE_EVERY_MS = 5000;
 
-/** Fixed-rate simulation loop plus autosave, paused in the background. */
+/** Fixed-rate simulation loop plus autosave. The store stops the clock while the app is in the background. */
 function useGameLoop() {
   const hydrated = useGame((s) => s.hydrated);
   const last = useRef(Date.now());
   useEffect(() => {
     if (!hydrated) return;
     const { tick, save } = useGame.getState();
+    // Development only (web address `?speed=10`): run the simulation faster. Always 1 on phones.
+    const speed = devSpeed();
     last.current = Date.now();
     const loop = setInterval(() => {
       const now = Date.now();
       // Clamp dt so a long JS stall doesn't skip past offline-earnings accounting.
       const dt = Math.min(1, (now - last.current) / 1000);
       last.current = now;
-      tick(dt);
+      tick(dt * speed);
     }, TICK_MS);
     const autosave = setInterval(save, SAVE_EVERY_MS);
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        // Returning from background: re-boot computes offline earnings from lastSavedAt.
-        useGame.getState().boot();
+        // Back in the foreground: pay for the time away from the in-memory game (never re-read the save).
+        useGame.getState().resume();
         last.current = Date.now();
       } else {
-        save();
+        useGame.getState().pause();
       }
     });
     return () => {
@@ -56,32 +71,44 @@ function useGameLoop() {
   }, [hydrated]);
 }
 
+/**
+ * The whole game: header, the tab on screen, the tab bar, and on top of them every dialog and
+ * overlay. Dialogs and overlays render nothing until the store asks for them, so they are simply
+ * always mounted here.
+ */
 function Game() {
   const t = useTheme();
   const tab = useGame((s) => s.tab);
+  const sim = useGame((s) => s.cfg.mode === 'sim');
   useGameLoop();
-  const Scene = t.scene === 'three' ? ThreeScene : SkiaScene;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.c.gradient[0] }} edges={['top']}>
       <StatusBar style={t.darkStatusBar ? 'dark' : 'light'} />
       <Header />
       <View style={{ flex: 1, backgroundColor: t.c.background }}>
-        {tab === 'home' ? <Scene /> : null}
-        <View style={{ flex: 1 }}>
-          {tab === 'home' && <BusinessesPanel />}
-          {tab === 'staff' && <ManagersPanel />}
-          {tab === 'upgrades' && <UpgradesPanel />}
-          {tab === 'empire' && <PrestigePanel />}
-          {tab === 'shop' && <ShopPanel />}
-        </View>
+        {tab === 'home' && (sim ? <HomeSim /> : <HomeClassic />)}
+        {tab === 'staff' && <StaffTab top={sim ? undefined : <ManagersPanel />} />}
+        {tab === 'upgrades' && <UpgradesTab />}
+        {tab === 'empire' && <EmpireTab />}
+        {tab === 'shop' && <ShopTab />}
       </View>
       <SafeAreaView edges={['bottom']} style={{ backgroundColor: t.c.surface }}>
-        <Banner />
+        {/* No banner ad on the home tab: nothing may sit next to the buttons players tap fastest. */}
+        {tab !== 'home' ? <Banner /> : null}
         <TabBar />
       </SafeAreaView>
+
       <OfflineModal />
       <StoryModal />
+      <MissionsSheet />
+      <SettingsSheet />
+      <ChestOddsSheet />
+      <CardSheet />
+      <DealPopup />
+      <ChestOverlay />
       <Celebrations />
+      <FlyLayer />
+      <HintOverlay />
     </SafeAreaView>
   );
 }
@@ -121,14 +148,14 @@ function Root() {
   const [fontsLoaded, fontError] = useFonts(fontSrc ? { [DISPLAY_FONT]: fontSrc } : {});
   const ready = hydrated && (fontsLoaded || fontError !== null || !fontSrc);
   useEffect(() => {
-    useGame.getState().boot();
+    useGame
+      .getState()
+      .boot()
+      // Development only: `?preset=mid&tab=shop` and friends in the web address (see src/dev/devtools.ts).
+      .then(applyDevParams);
     // Sound, music and haptics. Both calls are safe to repeat; music waits for the settings and the audio session.
     fx.init();
     fx.music.start();
   }, []);
-  return (
-    <SafeAreaProvider>
-      {ready ? <Game /> : <Loading />}
-    </SafeAreaProvider>
-  );
+  return <SafeAreaProvider>{ready ? <Game /> : <Loading />}</SafeAreaProvider>;
 }

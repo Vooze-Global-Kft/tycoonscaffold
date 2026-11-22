@@ -186,13 +186,19 @@ def coverage(entries):
 # rendering
 # ---------------------------------------------------------------------------
 
+def target_db(key):
+    """Mastering loudness for one key: the pack target plus the recipe's tier (recipes.BIG / FREQUENT)."""
+    return dsp.LOUDNESS_TARGET_DB + getattr(RECIPES.get(key), 'loud_db', 0.0)
+
+
 def render_effect(pack, entry, i):
     """One mastered effect -> (samples, info, accents)."""
     fn = RECIPES[entry['key']]
     ctx = Ctx(pack, entry['key'], i, entry['files'])
     ctx.length = getattr(fn, 'length', None)
     raw = fn(ctx)
-    y, info = dsp.master(raw, floor_db=ctx.floor_db, length=ctx.length, stream_ms=getattr(fn, 'stream_ms', None))
+    y, info = dsp.master(raw, floor_db=ctx.floor_db, length=ctx.length, stream_ms=getattr(fn, 'stream_ms', None),
+                         target_db=target_db(entry['key']))
     return y, info, sorted(ctx.accents)
 
 
@@ -286,8 +292,9 @@ def main(argv=None):
             written.append(base + '.wav')
             flag = ''
             if info['peak_limited']:
-                flag = '  peak-limited: %.1f dB under the loudness target' % (dsp.LOUDNESS_TARGET_DB - info['loudness_db'])
-                notes.append('%s.wav is peak-limited (%.1f dB under target)' % (base, dsp.LOUDNESS_TARGET_DB - info['loudness_db']))
+                short = target_db(e['key']) - info['loudness_db']
+                flag = '  peak-limited: %.1f dB under the loudness target' % short
+                notes.append('%s.wav is peak-limited (%.1f dB under target)' % (base, short))
             say('%-22s %7.0f %7.1f %7.1f %6.1f%s' % (base + '.wav', info['duration'] * 1000, info['peak_db'],
                                                     info['loudness_db'], info['limit_db'], flag))
 

@@ -19,7 +19,7 @@ import { hashString } from './draw';
 import { commonArt, dishArt } from './items';
 import { lookKey, resolveLook, type LookInput } from './looks';
 import { POSE_INDEX, makeRig, makeRigState, stepRig, type Rig, type RigConfig, type RigState } from './rig';
-import { POSES, type DishKind, type DishLook, type Pose } from './types';
+import type { CharacterKind, DishKind, DishLook, Pose } from './types';
 
 /** Anything from Reanimated with a `.value` to read: `useSharedValue`, `useDerivedValue`, Skia's `useClock`. */
 export interface Readable<T> {
@@ -45,13 +45,24 @@ export interface CharacterProps {
   dish?: DishLook | DishKind;
   /** Shifts this character's idle timing so a crowd does not move in step. Defaults to a value derived from the look. */
   seed?: number;
-  /** The poses this character will ever take. Listing them skips drawing parts the others need (trays, dough, z's). */
+  /**
+   * The poses this character will ever take. Listing them skips drawing parts the others need (trays, dough, z's).
+   * Defaults to `ROLE_POSES[look.kind]`; any pose still plays without the list, only its held prop is missing.
+   */
   poses?: readonly Pose[];
   /** Drawing order among siblings; pass the y position to sort a crowd by depth. */
   zIndex?: Anim<number>;
   /** Draw the soft shadow under the feet. Default true. */
   shadow?: boolean;
 }
+
+/** The poses each kind of character normally takes; the default `poses` of a Character. */
+export const ROLE_POSES: Record<CharacterKind, readonly Pose[]> = {
+  chef: ['idle', 'walk', 'cook', 'toss', 'cheer', 'sleep'],
+  waiter: ['idle', 'walk', 'carry', 'wave', 'cheer'],
+  customer: ['idle', 'walk', 'sit-wait', 'sit-eat', 'cheer', 'wave'],
+  manager: ['idle', 'walk', 'wave', 'cheer', 'sleep'],
+};
 
 function isShared<T>(v: Anim<T>): v is Readable<T> {
   return typeof v === 'object' && v !== null && (v as { _isReanimatedSharedValue?: boolean })._isReanimatedSharedValue === true;
@@ -72,8 +83,9 @@ export function useCharacterArt(look: LookInput): CharacterArt {
   return art;
 }
 
-export function Character({ look, x, y, facing = 1, pose = 'idle', clock, scale = 1, dish, seed, poses = POSES, zIndex, shadow = true }: CharacterProps) {
+export function Character({ look, x, y, facing = 1, pose = 'idle', clock, scale = 1, dish, seed, poses: posesProp, zIndex, shadow = true }: CharacterProps) {
   const art = useCharacterArt(look);
+  const poses = posesProp ?? ROLE_POSES[art.look.kind] ?? ROLE_POSES.customer;
   const dishKey = typeof dish === 'string' ? dish : JSON.stringify(dish ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const food = useMemo(() => dishArt(dish), [dishKey]);
@@ -147,6 +159,7 @@ export function Character({ look, x, y, facing = 1, pose = 'idle', clock, scale 
       {eats ? <Picture picture={art.mouthChew} matrix={m.mouthChew} /> : null}
       {cooks ? <Picture picture={common.spoon} matrix={m.spoon} /> : null}
       {cooks ? <Picture picture={common.bowl} matrix={m.bowl} /> : null}
+      {cooks ? <Picture picture={common.steam} matrix={m.steam} /> : null}
       <Picture picture={art.arm} matrix={m.armF} />
       <Picture picture={art.hand} matrix={m.handF} />
       {can('carry') ? <Picture picture={food.tray} matrix={m.tray} /> : null}

@@ -89,6 +89,8 @@ export const RushSchema = z.object({
 });
 
 export const SimSchema = z.object({
+  /** How the first stage (the stations) is called on screen, e.g. "Kitchen". */
+  production: z.object({ name: z.string().default('Production'), icon: icon.default('🏭') }).default({ name: 'Production', icon: '🏭' }),
   /** Where finished goods wait to be carried, e.g. "The Pass". */
   buffer: z.object({ name: z.string().default('Counter'), icon: icon.default('📦') }).default({ name: 'Counter', icon: '📦' }),
   transport: TransportSchema,

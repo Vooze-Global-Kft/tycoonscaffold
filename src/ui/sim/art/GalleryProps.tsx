@@ -1,15 +1,46 @@
-import { Canvas, useClock } from '@shopify/react-native-skia';
-import { useEffect, type ReactNode } from 'react';
+import { Canvas, Group, Picture, Rect, useClock } from '@shopify/react-native-skia';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useDerivedValue, useSharedValue, type SharedValue } from 'react-native-reanimated';
-import { Chair, Door, Pass, STATION_ART_KINDS, Station, Table } from './props';
+import { Character } from './Character';
+import { bustMatrix } from './CharacterBust';
+import { getBustArt, releaseBustArt, retainBustArt } from './characterArt';
+import { randomLook, resolveLook } from './looks';
+import {
+  CARD_WINDOW,
+  Card,
+  CardBack,
+  CardFrame,
+  Chair,
+  Chest,
+  Coin,
+  ContactShadow,
+  Dish,
+  Door,
+  Floor,
+  FlyingDish,
+  Gem,
+  HandPointer,
+  MenuBoard,
+  Pass,
+  STATION_ART_KINDS,
+  Shelf,
+  SparkleBurst,
+  Station,
+  Table,
+  Tray,
+  Wall,
+  makePalette,
+} from './props';
+import { CHEST_TIERS, RARITIES, type ArtPalette, type Rarity } from './types';
 
 /**
  * Dev-only gallery of every code-drawn prop (stations, counter, tables, door,
- * chest, cards, ...), for visual review. Open the web build with `?view=props`.
+ * room, small things, chest, cards, and a mock restaurant), for visual review.
+ * Open the web build with `?view=props`.
  *
  * Query parameters: `page` (see `PAGES`), `t` (freeze the clock at this many
- * ms; `window.__setArtTime(ms)` moves it).
+ * ms; `window.__setArtTime(ms)` moves it), `bare` (hide the tab bar).
  */
 const param = (name: string) => (typeof location !== 'undefined' ? new URLSearchParams(location.search).get(name) : null);
 
@@ -35,6 +66,7 @@ interface LabelSpec {
   y: number;
   text: string;
   w?: number;
+  color?: string;
 }
 
 /** One canvas with captions laid over it. */
@@ -45,41 +77,12 @@ function Sheet({ title, height, labels = [], children }: { title?: string; heigh
       <View style={{ width: W, height }}>
         <Canvas style={{ width: W, height }}>{children}</Canvas>
         {labels.map((l, i) => (
-          <Text key={i} style={{ position: 'absolute', left: l.x - (l.w ?? 80) / 2, top: l.y, width: l.w ?? 80, textAlign: 'center', fontSize: 9, color: '#8A7560' }}>
+          <Text key={i} style={{ position: 'absolute', left: l.x - (l.w ?? 80) / 2, top: l.y, width: l.w ?? 80, textAlign: 'center', fontSize: 9, color: l.color ?? '#8A7560' }}>
             {l.text}
           </Text>
         ))}
       </View>
     </View>
-  );
-}
-
-function StationsPage({ clock }: { clock: SharedValue<number> }) {
-  return (
-    <>
-      {STATION_ART_KINDS.map((kind) => (
-        <Sheet
-          key={kind}
-          title={kind}
-          height={352}
-          labels={[
-            { x: 40, y: 152, text: 'idle' },
-            { x: 108, y: 152, text: 'working' },
-            { x: 176, y: 152, text: 'locked' },
-            { x: 300, y: 172, text: 'working x2.5' },
-            { x: 96, y: 338, text: 'idle x2.5' },
-            { x: 292, y: 338, text: 'locked x2.5' },
-          ]}
-        >
-          <Station kind={kind} x={40} y={148} clock={clock} />
-          <Station kind={kind} x={108} y={148} working clock={clock} />
-          <Station kind={kind} x={176} y={148} locked clock={clock} />
-          <Station kind={kind} x={300} y={168} scale={BIG} working clock={clock} />
-          <Station kind={kind} x={96} y={334} scale={BIG} clock={clock} />
-          <Station kind={kind} x={292} y={334} scale={BIG} locked clock={clock} />
-        </Sheet>
-      ))}
-    </>
   );
 }
 
@@ -95,13 +98,49 @@ function useBump(ms: number): SharedValue<number> {
   return v;
 }
 
-/** 0..1 that sweeps up and back every `ms` (saw wave with a hold at each end). */
-function useSweep(clock: SharedValue<number>, ms: number): SharedValue<number> {
+/** 0..1 that sweeps up and back every `ms`, holding a moment at each end. */
+function useSweep(clock: SharedValue<number>, ms: number, phase = 0): SharedValue<number> {
   return useDerivedValue(() => {
-    const u = (clock.value % ms) / ms;
+    const u = ((clock.value + phase) % ms) / ms;
     const t = u < 0.5 ? u * 2 : 2 - u * 2;
     return Math.max(0, Math.min(1, t * 1.3 - 0.15));
   });
+}
+
+/** 0..1 that runs up once every `ms` and jumps back. */
+function useLoop(clock: SharedValue<number>, ms: number, phase = 0): SharedValue<number> {
+  return useDerivedValue(() => ((clock.value + phase) % ms) / ms);
+}
+
+// ---------------------------------------------------------------------------
+
+function StationsPage({ clock }: { clock: SharedValue<number> }) {
+  return (
+    <>
+      {STATION_ART_KINDS.map((kind) => (
+        <Sheet
+          key={kind}
+          title={kind}
+          height={372}
+          labels={[
+            { x: 40, y: 152, text: 'idle' },
+            { x: 108, y: 152, text: 'working' },
+            { x: 176, y: 152, text: 'locked' },
+            { x: 300, y: 172, text: 'working x2.5' },
+            { x: 96, y: 356, text: 'idle x2.5' },
+            { x: 292, y: 356, text: 'locked x2.5' },
+          ]}
+        >
+          <Station kind={kind} x={40} y={148} clock={clock} />
+          <Station kind={kind} x={108} y={148} working clock={clock} />
+          <Station kind={kind} x={176} y={148} locked clock={clock} />
+          <Station kind={kind} x={300} y={168} scale={BIG} working clock={clock} />
+          <Station kind={kind} x={96} y={352} scale={BIG} clock={clock} />
+          <Station kind={kind} x={292} y={352} scale={BIG} locked clock={clock} />
+        </Sheet>
+      ))}
+    </>
+  );
 }
 
 function FurniturePage({ clock }: { clock: SharedValue<number> }) {
@@ -110,14 +149,33 @@ function FurniturePage({ clock }: { clock: SharedValue<number> }) {
   const fill = useSweep(clock, 6000);
   return (
     <>
-      <Sheet title="pass: dishes 0 / 0.5 / 1 / animated, bell rings every 1.6 s" height={300}>
+      <Sheet
+        title="pass: dishes 0 / 0.5 (mixed) / 1 / animated; bell rings every 1.6 s"
+        height={310}
+        labels={[
+          { x: 100, y: 54, text: '0' },
+          { x: 290, y: 54, text: '0.5, mixed dishes' },
+          { x: 100, y: 124, text: '1' },
+          { x: 290, y: 124, text: 'sweeping 0..1' },
+          { x: 195, y: 294, text: 'x2.5, 0.6' },
+        ]}
+      >
         <Pass x={100} y={50} width={180} dishes={0} rung={rung} clock={clock} />
         <Pass x={290} y={50} width={180} dishes={0.5} rung={rung} clock={clock} dish={['pizza', 'plate', 'bowl']} />
         <Pass x={100} y={120} width={180} dishes={1} clock={clock} />
         <Pass x={290} y={120} width={180} dishes={fill} rung={rung} clock={clock} dish="plate" />
         <Pass x={195} y={290} width={150} scale={BIG} dishes={0.6} rung={rung} clock={clock} />
       </Sheet>
-      <Sheet title="table empty / food / finished, chairs, door" height={430}>
+      <Sheet
+        title="table empty / food / finished, chairs, door (swings every 2.2 s)"
+        height={440}
+        labels={[
+          { x: 60, y: 92, text: 'empty' },
+          { x: 160, y: 92, text: 'food' },
+          { x: 250, y: 92, text: 'finished' },
+          { x: 340, y: 94, text: 'door' },
+        ]}
+      >
         <Chair x={36} y={80} />
         <Table x={60} y={84} state="empty" clock={clock} />
         <Chair x={84} y={80} facing={-1} />
@@ -129,13 +187,279 @@ function FurniturePage({ clock }: { clock: SharedValue<number> }) {
         <Chair x={45} y={250} scale={BIG} />
         <Table x={130} y={260} scale={BIG} state="food" clock={clock} />
         <Door x={300} y={300} scale={BIG} swing={swing} clock={clock} />
-        <Table x={130} y={410} scale={BIG} state="finished" clock={clock} />
+        <Table x={130} y={420} scale={BIG} state="finished" clock={clock} />
+        <Table x={300} y={420} scale={BIG} state="empty" clock={clock} />
       </Sheet>
     </>
   );
 }
 
-const PAGES = ['stations', 'furniture'] as const;
+const THEMED: Partial<ArtPalette> = { primary: '#2E6FB7', accent: '#F2B53A', wood: '#8A5A3C', wall: '#F2E2C4', floorA: '#E9EEF2', floorB: '#C9D3DC', cloth: '#FFFFFF', stone: '#DCD6CC', glow: '#FF7A3D' };
+
+function RoomPage() {
+  return (
+    <>
+      <Sheet title="wall + floor (default palette), contact shadows" height={250}>
+        <Wall x={0} y={0} width={W} height={100} shelf={0.06} menu={0.94} />
+        <Floor x={0} y={100} width={W} height={150} />
+        <ContactShadow x={80} y={170} />
+        <ContactShadow x={170} y={170} width={60} height={14} />
+        <ContactShadow x={260} y={170} strength={0.5} />
+      </Sheet>
+      <Sheet title="the same room re-coloured with makePalette (another theme)" height={210}>
+        <Wall x={0} y={0} width={W} height={100} shelf={0.5} menu={0.05} palette={THEMED} />
+        <Floor x={0} y={100} width={W} height={110} palette={THEMED} tile={30} />
+      </Sheet>
+      <Sheet title="shelf and menu board, x1 and x2.5" height={300}>
+        <Rect x={0} y={0} width={W} height={300} color={makePalette().wall} />
+        <Shelf x={60} y={60} />
+        <MenuBoard x={160} y={44} />
+        <Shelf x={110} y={200} scale={BIG} width={80} />
+        <MenuBoard x={290} y={180} scale={BIG} width={52} height={36} />
+      </Sheet>
+    </>
+  );
+}
+
+function SmallPage({ clock }: { clock: SharedValue<number> }) {
+  const fly = useLoop(clock, 1800);
+  const fly2 = useLoop(clock, 1800, 900);
+  const burst = useBump(1400);
+  return (
+    <>
+      <Sheet
+        title="x1: dish (pizza, plate), flying dish, coin, spinning coin, gem, tray, burst, hand"
+        height={200}
+        labels={[
+          { x: 30, y: 60, text: 'pizza' },
+          { x: 70, y: 60, text: 'plate' },
+          { x: 175, y: 60, text: 'flying (arc + spin)' },
+          { x: 290, y: 60, text: 'coin / spin / gem' },
+          { x: 40, y: 160, text: 'tray' },
+          { x: 100, y: 160, text: 'tray + dish' },
+          { x: 190, y: 160, text: 'sparkle burst' },
+          { x: 310, y: 160, text: 'hand pointer' },
+        ]}
+      >
+        <Dish x={30} y={44} />
+        <Dish x={70} y={44} dish="plate" />
+        <FlyingDish from={{ x: 120, y: 48 }} to={{ x: 230, y: 48 }} progress={fly} />
+        <FlyingDish from={{ x: 230, y: 30 }} to={{ x: 120, y: 30 }} progress={fly2} dish="plate" height={20} spins={-0.5} />
+        <Coin x={260} y={40} />
+        <Coin x={290} y={40} spin={0.8} clock={clock} />
+        <Gem x={320} y={40} clock={clock} />
+        <Tray x={40} y={140} />
+        <Tray x={100} y={140} dish="pizza" />
+        <SparkleBurst x={190} y={130} trigger={burst} clock={clock} />
+        <Station kind="generic" x={310} y={148} locked padlock={false} clock={clock} scale={0.7} />
+        <HandPointer x={310} y={128} clock={clock} />
+      </Sheet>
+      <Sheet title="x2.5" height={560}>
+        <Dish x={60} y={60} scale={BIG} />
+        <Dish x={150} y={60} scale={BIG} dish="plate" />
+        <Coin x={250} y={60} scale={BIG} />
+        <Coin x={330} y={60} scale={BIG} spin={0.6} clock={clock} />
+        <Gem x={70} y={170} scale={BIG} clock={clock} />
+        <Gem x={150} y={170} scale={BIG} color="#FF5A7A" clock={clock} />
+        <Tray x={260} y={175} scale={BIG} dish="plate" />
+        <FlyingDish from={{ x: 40, y: 300 }} to={{ x: 350, y: 300 }} progress={fly} scale={BIG} height={70} />
+        <SparkleBurst x={110} y={450} scale={BIG} trigger={burst} clock={clock} />
+        <HandPointer x={290} y={420} scale={BIG} clock={clock} />
+      </Sheet>
+    </>
+  );
+}
+
+const DARK = '#2B1B3D';
+
+function ChestCycle({ clock, tier }: { clock: SharedValue<number>; tier: (typeof CHEST_TIERS)[number] }) {
+  // 0-1.4 s rattles harder and harder, bursts open, stays open, closes at 5.2 s.
+  const lid = useDerivedValue(() => {
+    const t = (clock.value % 6000) / 1000;
+    if (t < 1.4) return 0;
+    if (t < 1.9) {
+      const u = (t - 1.4) / 0.5;
+      return 1 - (1 - u) * (1 - u) * (1 - u);
+    }
+    if (t < 5.2) return 1;
+    return Math.max(0, 1 - (t - 5.2) / 0.6);
+  });
+  const shake = useDerivedValue(() => {
+    const t = (clock.value % 6000) / 1000;
+    return t < 1.4 ? (t / 1.4) * (t / 1.4) : 0;
+  });
+  return (
+    <Sheet title={`${tier} chest: rattle, open, rays (animated)`} height={290}>
+      <Rect x={0} y={0} width={W} height={290} color={DARK} />
+      <Chest x={W / 2} y={250} tier={tier} lid={lid} shake={shake} clock={clock} />
+    </Sheet>
+  );
+}
+
+function ChestPage({ clock }: { clock: SharedValue<number> }) {
+  const lids = [0, 0.3, 0.7, 1];
+  return (
+    <>
+      <Sheet
+        title="lid 0 / 0.3 / 0.7 / 1, all three tiers (scale 0.42)"
+        height={420}
+        labels={CHEST_TIERS.flatMap((tier, r) => lids.map((l, i) => ({ x: 50 + i * 97, y: 120 + r * 136, text: `${tier} ${l}`, color: '#D9C9E8' })))}
+      >
+        <Rect x={0} y={0} width={W} height={420} color={DARK} />
+        {CHEST_TIERS.map((tier, r) => lids.map((l, i) => <Chest key={`${tier}${i}`} x={50 + i * 97} y={116 + r * 136} scale={0.42} tier={tier} lid={l} clock={clock} />))}
+      </Sheet>
+      {CHEST_TIERS.map((tier) => (
+        <ChestCycle key={tier} tier={tier} clock={clock} />
+      ))}
+      <Sheet title="closed, on the light background (scale 0.8)" height={170}>
+        {CHEST_TIERS.map((tier, i) => (
+          <Chest key={tier} x={70 + i * 125} y={150} scale={0.62} tier={tier} lid={0} clock={clock} />
+        ))}
+      </Sheet>
+    </>
+  );
+}
+
+const CARD_CAST: Record<Rarity, string> = { common: 'fiona', rare: 'sal', epic: 'marco', legendary: 'nonna' };
+
+/** A character portrait drawn straight into the card window. */
+function Portrait({ name }: { name: string }) {
+  const art = useMemo(() => getBustArt(resolveLook(name), 3.4), [name]);
+  useEffect(() => {
+    retainBustArt(art);
+    return () => releaseBustArt(art);
+  }, [art]);
+  const size = CARD_WINDOW.height + 4;
+  const m = useMemo(() => {
+    const b = bustMatrix(art.bounds, size, 1);
+    b[2] += (CARD_WINDOW.width - size) / 2;
+    b[5] += CARD_WINDOW.height - size + 2;
+    return b;
+  }, [art, size]);
+  return (
+    <Group>
+      <Picture picture={art.base} matrix={m} />
+      {art.eyes ? <Picture picture={art.eyes} matrix={m} /> : null}
+    </Group>
+  );
+}
+
+function CardsPage({ clock }: { clock: SharedValue<number> }) {
+  const flip = useSweep(clock, 4000);
+  return (
+    <>
+      <Sheet title="x0.68: back, common, rare, epic, legendary; and a card turning over" height={280} labels={[{ x: 42, y: 122, text: 'back' }, ...RARITIES.map((r, i) => ({ x: 120 + i * 76, y: 122, text: r }))]}>
+        <CardBack x={42} y={68} scale={0.68} clock={clock} />
+        {RARITIES.map((r, i) => (
+          <CardFrame key={r} x={120 + i * 76} y={68} scale={0.68} rarity={r} clock={clock}>
+            <Portrait name={CARD_CAST[r]} />
+          </CardFrame>
+        ))}
+        <Card x={140} y={210} scale={0.7} rarity="legendary" flip={flip} clock={clock}>
+          <Portrait name="nonna" />
+        </Card>
+        <Card x={260} y={210} scale={0.7} rarity="rare" flip={flip} clock={clock} palette={{ primary: '#2E6FB7', accent: '#F2B53A' }}>
+          <Portrait name="sal" />
+        </Card>
+      </Sheet>
+      <Sheet title="x1 (110 x 150): every rarity, with a portrait and without" height={370}>
+        {RARITIES.map((r, i) => (
+          <CardFrame key={r} x={60 + (i % 2) * 135 + (i > 1 ? 0 : 0)} y={100 + Math.floor(i / 2) * 170} rarity={r} clock={clock}>
+            <Portrait name={CARD_CAST[r]} />
+          </CardFrame>
+        ))}
+        <CardFrame x={330} y={100} rarity="epic" clock={clock} />
+        <CardBack x={330} y={270} clock={clock} />
+      </Sheet>
+      <Sheet title="x2.5: legendary and epic" height={840}>
+        <CardFrame x={W / 2} y={230} scale={BIG} rarity="legendary" clock={clock}>
+          <Portrait name="nonna" />
+        </CardFrame>
+        <CardFrame x={W / 2} y={630} scale={BIG} rarity="epic" clock={clock}>
+          <Portrait name="marco" />
+        </CardFrame>
+      </Sheet>
+      <Sheet title="x2.5: rare, common and the back" height={1200}>
+        <CardFrame x={W / 2} y={200} scale={BIG} rarity="rare" clock={clock}>
+          <Portrait name="sal" />
+        </CardFrame>
+        <CardFrame x={W / 2} y={600} scale={BIG} rarity="common" clock={clock}>
+          <Portrait name="fiona" />
+        </CardFrame>
+        <CardBack x={W / 2} y={1000} scale={BIG} clock={clock} />
+      </Sheet>
+    </>
+  );
+}
+
+// --- one mock restaurant at phone width ------------------------------------------
+
+const GUEST = randomLook(11, 'customer');
+const WALL_H = 112;
+const ROW1 = 312;
+const ROW2 = 430;
+const T_LEFT = 104;
+const T_RIGHT = 280;
+
+function ScenePage({ clock }: { clock: SharedValue<number> }) {
+  const rung = useBump(2600);
+  const swing = useBump(3400);
+  const coin = useBump(2000);
+  const dishes = useSweep(clock, 9000);
+  // The waiter walks the walkway and back.
+  const walk = useDerivedValue(() => (clock.value % 9000) / 9000);
+  const waiterX = useDerivedValue(() => {
+    const u = walk.value;
+    const tri = u < 0.5 ? u * 2 : 2 - u * 2;
+    const e = tri * tri * (3 - 2 * tri);
+    return 40 + 270 * e;
+  });
+  const waiterFacing = useDerivedValue(() => (walk.value < 0.5 ? 1 : -1));
+  const fly = useLoop(clock, 2600, 1300);
+  return (
+    <Sheet title="mock restaurant (390 px wide)" height={520}>
+      <Wall x={0} y={0} width={W} height={WALL_H} shelf={null} menu={null} />
+      <Floor x={0} y={WALL_H} width={W} height={520 - WALL_H} />
+      <MenuBoard x={268} y={48} width={58} height={36} />
+      {/* Kitchen line against the wall. */}
+      <Station kind="oven" x={52} y={WALL_H + 16} working clock={clock} />
+      <Station kind="stove" x={124} y={WALL_H + 16} clock={clock} />
+      <Station kind="fryer" x={196} y={WALL_H + 16} locked clock={clock} />
+      <HandPointer x={204} y={WALL_H - 18} clock={clock} scale={0.8} />
+      <Character look="marco" x={92} y={WALL_H + 42} pose="cook" facing={-1} clock={clock} poses={['cook']} />
+      <Pass x={136} y={WALL_H + 64} width={250} dishes={dishes} rung={rung} clock={clock} bell={0.95} />
+      <Door x={348} y={WALL_H + 18} swing={swing} clock={clock} />
+      {/* Walkway: the waiter with a tray. */}
+      <Character look="sal" x={waiterX} y={WALL_H + 112} facing={waiterFacing} pose="carry" dish="pizza" clock={clock} poses={['carry']} />
+      <FlyingDish from={{ x: 230, y: WALL_H + 34 }} to={{ x: T_RIGHT, y: ROW2 - 18 }} progress={fly} height={50} spins={1} />
+      {/* Four tables. */}
+      <ContactShadow x={T_LEFT} y={ROW1} width={44} height={11} />
+      <Chair x={T_LEFT - 24} y={ROW1 - 4} />
+      <Character look="fiona" x={T_LEFT - 24} y={ROW1 - 4} pose="sit-eat" facing={1} dish="pizza" clock={clock} poses={['sit-eat']} />
+      <Table x={T_LEFT} y={ROW1} state="food" clock={clock} />
+      <Chair x={T_LEFT + 24} y={ROW1 - 4} facing={-1} />
+
+      <ContactShadow x={T_RIGHT} y={ROW1} width={44} height={11} />
+      <Chair x={T_RIGHT - 24} y={ROW1 - 4} />
+      <Table x={T_RIGHT} y={ROW1} state="empty" clock={clock} />
+      <Chair x={T_RIGHT + 24} y={ROW1 - 4} facing={-1} />
+
+      <ContactShadow x={T_LEFT} y={ROW2} width={44} height={11} />
+      <Chair x={T_LEFT - 24} y={ROW2 - 4} />
+      <Table x={T_LEFT} y={ROW2} state="finished" clock={clock} />
+      <Chair x={T_LEFT + 24} y={ROW2 - 4} facing={-1} />
+      <SparkleBurst x={T_LEFT} y={ROW2 - 30} trigger={coin} clock={clock} scale={0.8} />
+
+      <ContactShadow x={T_RIGHT} y={ROW2} width={44} height={11} />
+      <Chair x={T_RIGHT - 24} y={ROW2 - 4} />
+      <Table x={T_RIGHT} y={ROW2} state="food" dish="plate" clock={clock} />
+      <Chair x={T_RIGHT + 24} y={ROW2 - 4} facing={-1} />
+      <Character look={GUEST} x={T_RIGHT + 24} y={ROW2 - 4} pose="sit-wait" facing={-1} dish="plate" clock={clock} poses={['sit-wait']} />
+    </Sheet>
+  );
+}
+
+const PAGES = ['stations', 'furniture', 'room', 'small', 'chest', 'cards', 'scene'] as const;
 type Page = (typeof PAGES)[number];
 
 function Tabs({ page }: { page: Page }) {
@@ -165,6 +489,11 @@ export function PropsGallery() {
       {param('bare') === null ? <Tabs page={page} /> : null}
       {page === 'stations' ? <StationsPage clock={clock} /> : null}
       {page === 'furniture' ? <FurniturePage clock={clock} /> : null}
+      {page === 'room' ? <RoomPage /> : null}
+      {page === 'small' ? <SmallPage clock={clock} /> : null}
+      {page === 'chest' ? <ChestPage clock={clock} /> : null}
+      {page === 'cards' ? <CardsPage clock={clock} /> : null}
+      {page === 'scene' ? <ScenePage clock={clock} /> : null}
     </ScrollView>
   );
 }

@@ -33,6 +33,7 @@ export const RIG_KEYS = [
   'mouthChew',
   'spoon',
   'bowl',
+  'steam',
   'armF',
   'handF',
   'tray',
@@ -74,13 +75,15 @@ export interface RigState {
   /** 0 standing still, 1 moving (used by `carry`). */
   mv: number;
   flip: number;
+  /** Seconds spent in `sit-wait` so far (a guest grows impatient after about 4 s). */
+  wait: number;
   root: number[];
   a: Rig;
   b: Rig;
 }
 
 export function makeRigState(): RigState {
-  return { ready: false, t: 0, w: POSES.map(() => 0), f: 1, x: 0, y: 0, mv: 0, flip: 0, root: [1, 0, 0, 0, 1, 0, 0, 0, 1], a: makeRig(), b: makeRig() };
+  return { ready: false, t: 0, w: POSES.map(() => 0), f: 1, x: 0, y: 0, mv: 0, flip: 0, wait: 0, root: [1, 0, 0, 0, 1, 0, 0, 0, 1], a: makeRig(), b: makeRig() };
 }
 
 /** What the rig needs to know about one character. */
@@ -126,6 +129,15 @@ function pop(o: number[], p: number[], tx: number, ty: number, rot: number, s: n
   put(o, p, tx, ty, rot, s, s);
 }
 
+/**
+ * Leg swing for a walk cycle that never crosses the legs: each leg swings far to its own side
+ * (front leg forwards, back leg backwards) and only a little past the centre line.
+ */
+function stride(s: number, own: number, other: number) {
+  'worklet';
+  return s > 0 ? own * s : other * s;
+}
+
 function ease(x: number) {
   'worklet';
   const t = x < 0 ? 0 : x > 1 ? 1 : x;
@@ -145,6 +157,8 @@ function life(u: number, fadeIn: number, fadeOut: number) {
 const TAU = Math.PI * 2;
 const N = POSES.length;
 const EYE_Y = 3.5;
+/** How far a walking leg may swing past the centre line (rad): small, so the legs never cross. */
+const LEG_BACK = 0.2;
 
 /**
  * Advances one character by one frame and returns its matrices.
@@ -184,7 +198,9 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
     const dy = y - st.y;
     const speed = Math.sqrt(dx * dx + dy * dy) / dt;
     st.mv += ((speed > 0.006 ? 1 : 0) - st.mv) * (1 - Math.exp(-dt / 110));
+    st.wait = pose === 5 ? st.wait + dt / 1000 : 0;
   }
+  const imp = ease((st.wait - 4) / 0.6);
   st.x = x;
   st.y = y;
   const t = clock / 1000 + c.offset;
@@ -223,6 +239,7 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   let wEat = 0;
   let eatU = 0;
   let wSpark = 0;
+  let mImp = 0; // impatient "o" mouth
 
   const walkPh = t * TAU * 1.55;
   const ws = Math.sin(walkPh);
@@ -240,13 +257,14 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   }
   p = w[1]; // walk
   if (p > 0) {
-    lF += p * 0.52 * ws;
-    lB -= p * 0.52 * ws;
-    fF += p * 3.4 * (wc > 0 ? wc : 0);
-    fB += p * 3.4 * (wc < 0 ? -wc : 0);
+    lF += p * stride(ws, 0.55, LEG_BACK);
+    lB -= p * stride(ws, 0.55, LEG_BACK);
+    fF += p * 3.6 * (wc > 0 ? wc : 0);
+    fB += p * 3.6 * (wc < 0 ? -wc : 0);
     aF += p * (0.1 - 0.6 * ws);
     aB += p * (-0.1 + 0.6 * ws);
-    by += p * 1.3 * Math.cos(2 * walkPh);
+    // A springy bob at twice the step rate (feet planted at the low point).
+    by += p * (1.1 + 1.9 * Math.cos(2 * walkPh));
     bt += p * (0.075 + 0.02 * ws);
     ht += p * (-0.035 - 0.02 * ws);
     hy += p * 0.6 * Math.cos(2 * walkPh - 0.7);
@@ -254,15 +272,16 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   p = w[2]; // carry
   if (p > 0) {
     const m = st.mv;
-    lF += p * m * 0.46 * ws;
-    lB -= p * m * 0.46 * ws;
-    fF += p * m * 3 * (wc > 0 ? wc : 0);
-    fB += p * m * 3 * (wc < 0 ? -wc : 0);
-    by += p * (m * 1.1 * Math.cos(2 * walkPh) + (1 - m) * 0.5 * breath);
+    lF += p * m * stride(ws, 0.5, LEG_BACK);
+    lB -= p * m * stride(ws, 0.5, LEG_BACK);
+    fF += p * m * 3.2 * (wc > 0 ? wc : 0);
+    fB += p * m * 3.2 * (wc < 0 ? -wc : 0);
+    by += p * (m * (0.9 + 1.5 * Math.cos(2 * walkPh)) + (1 - m) * 0.5 * breath);
     bt += p * m * 0.04;
     hy += p * (m * 0.5 * Math.cos(2 * walkPh - 0.7) + (1 - m) * 0.6 * breath);
-    aF += p * (1.78 + 0.03 * Math.sin(2 * walkPh) * m);
-    sF += p * 0.02;
+    // The classic waiter hold: upper arm out, elbow bent, the tray up at shoulder height on the palm.
+    aF += p * (2.25 + 0.03 * Math.sin(2 * walkPh) * m);
+    sF += p * -0.36;
     aB += p * (-0.12 + m * 0.45 * ws);
     wTray += p;
   }
@@ -324,16 +343,21 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   p = w[5]; // sit-wait
   if (p > 0) {
     const sw = Math.sin(t * 3.3);
+    const swF = imp > 0 ? Math.sin(t * (3.3 + 5 * imp)) : sw;
     by += p * (seat + 0.3 * breath);
     air += p;
-    lF += p * (1.02 + 0.2 * sw);
-    lB += p * (0.86 - 0.2 * sw);
+    // Knees bent so the feet hang down by the chair's front legs; an impatient guest taps faster.
+    lF += p * (0.74 + (0.16 + 0.06 * imp) * swF);
+    lB += p * (0.6 - 0.16 * swF);
     aF += p * 0.75;
     aB += p * 0.5;
     sF += p * -0.12;
     sB += p * -0.2;
-    ht += p * 0.06 * Math.sin(t * 1.3);
+    ht += p * (0.06 * Math.sin(t * 1.3) * (1 - imp) - 0.09 * imp);
     hy += p * 0.5 * breath;
+    // Impatient after about 4 s: a small "o" mouth, a huff now and then, the head tipped back.
+    mImp += p * imp;
+    by += p * imp * 0.6 * Math.max(0, Math.sin(t * 2.1)) ** 8;
     wBub += p;
   }
   p = w[6]; // sit-eat
@@ -344,8 +368,8 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
     const ch = ease((u - 0.3) / 0.08) * (1 - ease((u - 0.94) / 0.06));
     by += p * (seat + 0.5 * ch * Math.abs(Math.sin(t * TAU * 3)));
     air += p;
-    lF += p * (1.0 + 0.12 * Math.sin(t * 5));
-    lB += p * (0.84 - 0.12 * Math.sin(t * 5));
+    lF += p * (0.74 + 0.1 * Math.sin(t * 5));
+    lB += p * (0.6 - 0.1 * Math.sin(t * 5));
     aF += p * (0.85 + 1.2 * r);
     sF += p * (-0.1 + 0.1 * r);
     aB += p * 0.5;
@@ -420,9 +444,11 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   st.flip = 1 - st.flip;
   const k = UNIT * scale;
   const R = st.root;
-  R[0] = k * st.f;
+  // Turning: the facing sign flips at once and the width only dips to 55% (a quick pivot, never a paper-thin frame).
+  const turn = st.f < 0 ? -st.f : st.f;
+  R[0] = k * (facing < 0 ? -1 : 1) * (0.55 + 0.45 * turn);
   R[2] = x;
-  R[4] = k;
+  R[4] = k * (1 + 0.05 * (1 - turn));
   R[5] = y;
 
   if (air > 1) air = 1;
@@ -479,6 +505,7 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   }
 
   // Mouth: whichever expression is strongest shows; the others shrink away.
+  if (mo < mImp * 0.5) mo = mImp * 0.5;
   if (mo > 1) mo = 1;
   if (mc > 1) mc = 1;
   const my = c.mouthY;
@@ -488,7 +515,11 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   else put(o.mouthSmile, H, fx * (1 - calm), my * (1 - calm), 0, calm, calm);
   const openM = mo * (1 - mc);
   if (openM < 0.04) pop(o.mouthOpen, H, 0, 0, 0, 0);
-  else put(o.mouthOpen, H, fx * (1 - openM), my * (1 - openM), 0, openM, openM);
+  else {
+    // The impatient "o": the open mouth, narrower and rounder.
+    const ow = openM * (1 - 0.35 * mImp);
+    put(o.mouthOpen, H, fx * (1 - ow), my * (1 - openM), 0, ow, openM);
+  }
   if (mc < 0.04) pop(o.mouthChew, H, 0, 0, 0, 0);
   else {
     const qx = mc * (1 + 0.1 * chew);
@@ -529,6 +560,12 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   pop(o.bowl, R, hBx + 1.5, hBy + 1, bt, wBowl);
   // The spoon leans from the stirring hand down into the bowl.
   pop(o.spoon, R, hFx, hFy, 0.75 + 0.22 * stir, wBowl);
+  if (wBowl < 0.02) pop(o.steam, R, 0, 0, 0, 0);
+  else {
+    // A puff of steam rises from the bowl about once a second.
+    const u = (t * 0.95) % 1;
+    pop(o.steam, R, hBx + 2 + 3 * Math.sin(u * 5), hBy - 9 - 16 * u, 0.3 * Math.sin(u * 4), wBowl * (0.55 + 0.6 * u) * life(u, 0.2, 0.45));
+  }
   pop(o.bite, R, hFx + 1, hFy - 1.5, 0, wBite);
 
   // Little effects around the head.

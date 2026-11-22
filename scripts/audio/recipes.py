@@ -21,8 +21,11 @@ from dsp import SR, TAU, Mix, cents, glide, lowpass, ns, points, rcos_in, rcos_o
 
 RECIPES = {}
 
+BIG = 2.0          # loudness tiers (dB on the mastering target), see recipe()
+FREQUENT = -2.0
 
-def recipe(name, length=None, stream_ms=None):
+
+def recipe(name, length=None, stream_ms=None, loud_db=0.0):
     """Register a recipe.
 
     length     seconds; the mastering stage ends the file there with a long
@@ -30,10 +33,14 @@ def recipe(name, length=None, stream_ms=None):
     stream_ms  for sounds that are only ever heard as a rapid stream
                (typewriter blips): loudness is measured on the sound repeated
                at this interval instead of on a single shot.
+    loud_db    loudness tier, added to the mastering target: BIG (+2 dB) for
+               the rare peaks, FREQUENT (-2 dB) for what plays many times a
+               minute. The catalogue volumes then scale on top of the tiers.
     """
     def deco(fn):
         fn.length = length
         fn.stream_ms = stream_ms
+        fn.loud_db = float(loud_db)
         RECIPES[name] = fn
         return fn
     return deco
@@ -85,7 +92,7 @@ def tremolo(x, rate=7.0, depth=0.25, start=0.0):
 # interface
 # ===========================================================================
 
-@recipe('ui_tap')
+@recipe('ui_tap', loud_db=FREQUENT)
 def ui_tap(c):
     """Tiny soft pop, about 40 ms: a sine bubble falling a fourth onto the key note."""
     c.accent(0.0)
@@ -128,12 +135,15 @@ def ui_close(c):
 
 @recipe('ui_denied', length=0.28)
 def ui_denied(c):
-    """Dull low double bonk, a minor third down ("uh-uh"), low-passed so it never bites."""
+    """Dull double bonk, a minor third down ("uh-uh"), low-passed so it never
+    bites. G4/E4 with a soft octave knock on each, so a phone speaker (which
+    has nothing under ~500 Hz) still plays it; G3/E3 vanished there."""
     p, m = c.p, Mix()
-    m.add(p.knock(p.hz('G3'), 1.0, tau=0.038, tone=0.45, rng=c.rng), 0.0)
-    m.add(p.knock(p.hz('E3'), 0.85, tau=0.042, tone=0.45, rng=c.rng), 0.115)
+    for t0, nt, v in ((0.0, 'G4', 1.0), (0.115, 'E4', 0.85)):
+        m.add(p.knock(p.hz(nt), v, tau=0.038, tone=0.6, rng=c.rng), t0)
+        m.add(p.knock(p.hz(nt) * 2.0, 0.9 * v, tau=0.03, tone=0.3, rng=c.rng), t0)
     c.accent(0.0, 0.115)
-    return lowpass(m.out(), 1500.0, 2)
+    return lowpass(m.out(), 2800.0, 2)
 
 
 @recipe('hint', length=0.26)
@@ -151,7 +161,7 @@ def hint(c):
 # tapping and combo
 # ===========================================================================
 
-@recipe('tap')
+@recipe('tap', loud_db=FREQUENT)
 def tap(c):
     """The combo ladder: one plucked note per file, climbing the pentatonic
     scale from C5 (eight steps reach E6, a tenth higher). Higher steps are a
@@ -200,7 +210,7 @@ _COIN_SHIFT_MS = (0.0, 2.5, 4.5)
 _COIN_RING = (1.0, 0.93, 1.08)
 
 
-@recipe('coin', length=0.19)
+@recipe('coin', length=0.19, loud_db=FREQUENT)
 def coin(c):
     """Coin tink. The variants are the same coin landing slightly differently:
     a few cents apart, the upper modes a few ms late, a slightly different ring."""
@@ -224,12 +234,15 @@ def cash(c):
     return m.out()
 
 
-@recipe('buy', length=0.21)
+@recipe('buy', length=0.16, loud_db=FREQUENT)
 def buy(c):
-    """Soft click, then a rounded bloop rising an octave onto the key note, with a faint tine on top."""
+    """Soft click, then a rounded bloop rising a minor sixth onto the key note,
+    with a faint tine on top. Starts on E4 with strong 2nd/3rd harmonics so it
+    keeps its body on a phone, and is short enough (160 ms) that the three
+    voices the service allows never pile up at the 50 ms floor."""
     p, m = c.p, Mix()
     m.add(p.click(0.45, f=p.hz('E6'), rng=c.rng), 0.0)
-    m.add(p.bloop(p.hz('C4'), p.hz('C5'), dur=0.2, rise=0.07, tau=0.048, rng=c.rng), 0.003)
+    m.add(p.bloop(p.hz('E4'), p.hz('C5'), dur=0.16, rise=0.06, tau=0.038, h2=0.5, h3=0.25, rng=c.rng), 0.003)
     m.add(p.tine(p.hz('C6'), 0.2, ring=0.18, rng=c.rng), 0.055)
     c.accent(0.0)
     return m.out()
@@ -267,7 +280,7 @@ def upgrade(c):
     return p.verb(m.out(), 0.12, tail=0.2)
 
 
-@recipe('unlock', length=0.92)
+@recipe('unlock', length=0.92, loud_db=BIG)
 def unlock(c):
     """Sol-do-mi-SOL: three quick horn notes and a held chord, about 0.9 s."""
     p, m = c.p, Mix()
@@ -286,7 +299,7 @@ def unlock(c):
     return p.verb(m.out(), 0.14, tail=0.25)
 
 
-@recipe('unlock_venue', length=1.6)
+@recipe('unlock_venue', length=1.6, loud_db=BIG)
 def unlock_venue(c):
     """The bigger fanfare: da-da-DAA, an answer, and a wide final chord with
     thump, choir and a sparkle wash. About 1.6 s."""
@@ -334,7 +347,7 @@ def hire(c):
     return p.verb(m.out(), 0.13, tail=0.22)
 
 
-@recipe('prestige', length=2.5)
+@recipe('prestige', length=2.5, loud_db=BIG)
 def prestige(c):
     """The biggest moment: three rising heart-beats under a swelling riser
     (0.44 s), then everything at once: sub thump, a six-note C major from C4
@@ -388,19 +401,20 @@ def offline_collect(c):
 
 @recipe('boost_start', length=0.65)
 def boost_start(c):
-    """Energy: a six-note run in a quarter of a second over a rising sweep, into a bright hit."""
+    """Energy: a six-note scale run in a fifth of a second over a loud rising sweep, into a bright open-fifth hit."""
     p, m = c.p, Mix()
-    step = 0.04
-    notes = ('C5', 'E5', 'G5', 'C6', 'E6', 'G6')
+    step = 0.035
+    notes = ('G4', 'A4', 'C5', 'D5', 'E5', 'G5')     # a scale run, not combo_max's arpeggio
     run(c, m, notes, 0.0, step, 'pluck', 0.7, cresc=0.4, ring=0.2, bright=1.2)
     hit = len(notes) * step
     m.add(p.thump(0.5, f0=140.0, f1=64.0, tau=0.06, rng=c.rng), 0.0)
     m.add(p.riser(hit, p.hz('C4'), p.hz('C6'), rng=c.rng), 0.0, 0.7)
     env = (np.arange(ns(hit)) / ns(hit)) ** 1.5 * rcos_out(ns(hit), 18.0)
-    m.add(p.whoosh(hit, [(0, 500.0), (hit, 4200.0)], q=1.2, env=env, rng=c.rng), 0.0, 0.45)
+    m.add(p.whoosh(hit, [(0, 500.0), (hit, 4200.0)], q=1.2, env=env, rng=c.rng), 0.0, 0.8)
     m.add(p.thump(0.8, f0=170.0, f1=60.0, tau=0.09, rng=c.rng), hit)
-    strum(c, m, ('C6', 'E6', 'G6', 'C7'), hit, 0.005, 'bell', 0.55, ring=0.55, kind='hand', hard=0.8)
-    strum(c, m, ('G5', 'C6', 'E6'), hit, 0.005, 'pluck', 0.8, ring=0.5, bright=1.2)
+    # lands on open fifths (G D G): power, where combo_max lands on a major chord
+    strum(c, m, ('D6', 'G6', 'D7'), hit, 0.005, 'bell', 0.55, ring=0.55, kind='hand', hard=0.8)
+    strum(c, m, ('G5', 'D6', 'G6'), hit, 0.005, 'pluck', 0.8, ring=0.5, bright=1.2)
     m.add(p.sparkle(0.42, c.sub('sparkle'), density=38.0), hit + 0.04, 0.55)
     c.accent(0.0, 2 * step, hit)
     return p.verb(m.out(), 0.13, tail=0.22)
@@ -445,9 +459,9 @@ def pickup(c):
 def serve(c):
     """Plate set down: a soft table thud with one tiny clink."""
     p, m = c.p, Mix()
-    m.add(lowpass(p.knock(p.hz('C4'), 1.0, tau=0.024, tone=0.7, rng=c.rng), 1800.0, 2), 0.0)
+    m.add(lowpass(p.knock(p.hz('G4'), 1.0, tau=0.024, tone=0.7, rng=c.rng), 2600.0, 2), 0.0)
     m.add(p.thump(0.3, f0=150.0, f1=90.0, tau=0.03, body=0.5, rng=c.rng), 0.0)
-    m.add(p.clink(p.hz('E7'), 0.2, tau=0.012, rng=c.rng), 0.014)
+    m.add(p.clink(p.hz('E7'), 0.45, tau=0.012, rng=c.rng), 0.014)
     return m.out()
 
 
@@ -542,8 +556,9 @@ def rush_end(c):
 def chest_appear(c):
     """A heavy wooden chest lands: deep thump, plank knocks, the lid rattling once, a few sparkles."""
     p, m = c.p, Mix()
-    m.add(p.thump(1.0, f0=165.0, f1=52.0, tau=0.11, body=0.7, rng=c.rng), 0.0)
+    m.add(p.thump(0.7, f0=165.0, f1=52.0, tau=0.11, body=0.7, rng=c.rng), 0.0)
     m.add(p.knock(p.hz('G2'), 0.8, tau=0.05, tone=0.6, rng=c.rng), 0.0)
+    m.add(p.knock(p.hz('C5'), 0.35, tau=0.022, tone=0.8, rng=c.rng), 0.002)   # the lid's edge: what a phone plays
     m.add(p.knock(p.hz('G3'), 0.5, tau=0.035, tone=0.7, rng=c.rng), 0.004)
     m.add(p.knock(p.hz('E4'), 0.22, tau=0.02, tone=0.6, rng=c.rng), 0.09)
     m.add(p.sparkle(0.3, c.sub('sparkle'), density=30.0), 0.12, 0.45)
@@ -557,7 +572,7 @@ def chest_shake(c):
     p, m = c.p, Mix()
     rng = c.rng
     times = (0.0, 0.055, 0.105, 0.15, 0.20, 0.245, 0.29, 0.33, 0.365, 0.40, 0.43, 0.455)
-    woods = ('G3', 'C4', 'A3', 'E4')
+    woods = ('G4', 'C5', 'A4', 'E5')      # an octave up from the first draft: phone speakers
     coins = p.scale('A6', 'G7')
     for j, t0 in enumerate(times):
         v = 0.45 + 0.55 * j / (len(times) - 1)
@@ -569,7 +584,7 @@ def chest_shake(c):
     return m.out()
 
 
-@recipe('chest_open', length=1.2)
+@recipe('chest_open', length=1.2, loud_db=BIG)
 def chest_open(c):
     """Latch, creak, and the lid flies open: a puff of air, a thump, a
     shimmering Cadd9 with a choir behind it and sparkle pouring out. About 1.2 s."""
@@ -592,7 +607,7 @@ def chest_open(c):
     return p.verb(m.out(), 0.17, tail=0.3, space='hall')
 
 
-@recipe('card_flip', length=0.11)
+@recipe('card_flip', length=0.11, loud_db=FREQUENT)
 def card_flip(c):
     """Papery whip: a bright flick that is cut short by the card landing."""
     p, m = c.p, Mix()
@@ -627,26 +642,27 @@ def reveal_rare(c):
 @recipe('reveal_epic', length=0.9)
 def reveal_epic(c):
     """Drama: a low A and a thump, an A minor triad climbing on horns, and
-    the octave arriving with bells, a pad and sparkle."""
+    the octave arriving with bells, a pad and sparkle. Kept lighter in the
+    low end than it sounds on paper, so the rarities brighten in order."""
     p, m = c.p, Mix()
-    m.add(p.thump(0.9, f0=160.0, f1=55.0, tau=0.1, rng=c.rng), 0.0)
-    m.add(p.pluck(p.hz('A3'), 0.7, ring=0.9, rng=c.rng), 0.0)
-    m.add(p.pad([p.hz('A3'), p.hz('E4')], 0.95, attack=0.02, release=0.5, rng=c.rng), 0.0, 0.45)
+    m.add(p.thump(0.7, f0=160.0, f1=55.0, tau=0.1, rng=c.rng), 0.0)
+    m.add(p.pluck(p.hz('A3'), 0.35, ring=0.9, rng=c.rng), 0.0)
+    m.add(p.pad([p.hz('A4'), p.hz('E5')], 0.95, attack=0.02, release=0.5, rng=c.rng), 0.0, 0.30)
     step = 0.09
     for j, nt in enumerate(('A4', 'C5', 'E5')):
         m.add(p.brass(p.hz(nt), 0.085, 0.65 + 0.1 * j, rng=c.rng), j * step)
         m.add(p.pluck(p.hz(nt), 0.6 + 0.1 * j, ring=0.35, bright=1.1, rng=c.rng), j * step)
     hit = 3 * step
-    m.add(p.thump(0.7, f0=150.0, f1=58.0, tau=0.08, rng=c.rng), hit)
+    m.add(p.thump(0.55, f0=150.0, f1=58.0, tau=0.08, rng=c.rng), hit)
     for nt, v in (('A5', 0.85), ('E5', 0.5), ('C5', 0.45)):
         m.add(p.brass(p.hz(nt), 0.6, v, rng=c.rng, release=0.3, fall=0.5), hit)
-    strum(c, m, ('A5', 'C6', 'E6', 'A6'), hit, 0.008, 'bell', 0.45, ring=0.6, kind='hand')
-    m.add(p.sparkle(0.6, c.sub('sparkle'), density=34.0), hit + 0.05, 0.55)
+    strum(c, m, ('A5', 'C6', 'E6', 'A6'), hit, 0.008, 'bell', 0.70, ring=0.6, kind='hand')
+    m.add(p.sparkle(0.6, c.sub('sparkle'), density=48.0), hit + 0.05, 0.85)
     c.accent(0.0, step, hit)
     return p.verb(m.out(), 0.17, tail=0.3, space='hall')
 
 
-@recipe('reveal_legendary', length=2)
+@recipe('reveal_legendary', length=2, loud_db=BIG)
 def reveal_legendary(c):
     """Golden fanfare: three pick-up notes with thumps, then C major on horns
     over a choir, the top line climbing do-mi-sol, bells on every arrival and a
@@ -715,7 +731,7 @@ def deal_popup(c):
     return p.verb(m.out(), 0.13, tail=0.2)
 
 
-@recipe('purchase_success', length=1.05)
+@recipe('purchase_success', length=1.05, loud_db=BIG)
 def purchase_success(c):
     """Cash register (drawer knock, ching, loose change), then a short
     fanfare: do-mi-sol and a held C major with a thump and sparkle."""
@@ -769,12 +785,17 @@ def daily_claim(c):
 # story
 # ===========================================================================
 
-@recipe('story_open', length=0.27)
+@recipe('story_open', length=0.34)
 def story_open(c):
-    """Soft low whoosh: in, and settle."""
-    env = points([(0, 0), (0.012, 0.3), (0.13, 1.0), (0.28, 0)], ns(0.28))
+    """Soft whoosh, in and settle, with a small tine as the character arrives.
+    Slower and more resonant than `toss` (which it used to resemble), and the
+    tine gives it a pitch `toss` does not have."""
+    p, m = c.p, Mix()
+    env = points([(0, 0), (0.012, 0.3), (0.13, 1.0), (0.34, 0)], ns(0.34))
+    m.add(p.whoosh(0.34, [(0, 300.0), (0.18, 1100.0), (0.34, 800.0)], q=1.3, env=env, air=0.2, rng=c.rng), 0.0)
+    m.add(p.tine(p.hz('E5'), 0.35, ring=0.3, rng=c.rng), 0.11)
     c.accent(0.0)
-    return c.p.whoosh(0.28, [(0, 380.0), (0.16, 1500.0), (0.28, 1000.0)], q=0.8, env=env, air=0.2, rng=c.rng)
+    return m.out()
 
 
 BLIP_EVERY_MS = 55.0     # how fast the typewriter fires them (the catalogue's floor is 45 ms)
@@ -800,5 +821,5 @@ def blip_mid(c):
 
 @recipe('blip_high', stream_ms=BLIP_EVERY_MS)
 def blip_high(c):
-    """Small and excitable: 'ee' on A4, bouncing up a tone."""
-    return _blip(c, 'A4', 1.12, 'i')
+    """Small and excitable: 'ee' on D5, bouncing up a tone."""
+    return _blip(c, 'D5', 1.12, 'i')

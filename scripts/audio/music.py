@@ -330,9 +330,10 @@ def bass_note(f, dur, rng):
     little pure fundamental under it, stopped by the hand after `dur`."""
     n = ns(dur)
     y = dsp.karplus(f, n, rng, t60=1.8, damp=0.5, pick=0.30, hardness=0.25, noise=0.10)
-    y = lowpass(y, 1200.0, 2)
+    y = lowpass(y, 2000.0, 2)
     t = np.arange(n) / SR
     y += 0.4 * np.sin(TAU * f * t) * perc(n, 6.0, 0.16)
+    y += 0.25 * np.sin(TAU * 2.0 * f * t) * perc(n, 6.0, 0.16)    # the octave: what a phone speaker plays of the bass
     return y * rcos_in(n, 2.0) * rcos_out(n, 70.0)
 
 
@@ -530,9 +531,9 @@ def trattoria(pack):
     strips = {
         'mandolin':   dict(gain=1.00, pan=-0.14, send=0.20, eq=MANDOLIN_BODY),
         'mandolin 2': dict(gain=0.62, pan=0.32, send=0.20, eq=MANDOLIN_BODY),
-        'accordion':  dict(gain=0.70, pan=0.20, send=0.16),
-        'bass':       dict(gain=0.85, pan=0.0, send=0.03),
-        'percussion': dict(gain=0.22, pan=-0.30, send=0.10),
+        'accordion':  dict(gain=1.25, pan=0.20, send=0.16),
+        'bass':       dict(gain=0.50, pan=0.0, send=0.03),
+        'percussion': dict(gain=0.35, pan=-0.30, send=0.10),
     }
     irs = [dsp.reverb_ir(t60=0.85, size=1.05, damp=0.30, predelay_ms=12.0, lp=4800.0, hp=320.0, spread=s) for s in (1.0, 1.031)]
     meta = {'bars': bars, 'bpm': TRATTORIA_BPM, 'meter': '6/8', 'key': 'C major' if not pack.transpose else 'C major %+d semitones' % pack.transpose}
@@ -594,8 +595,8 @@ def neutral(pack):
         bassn, cell, padn = NEUTRAL_VOICINGS[c1]
         # bass: 3 + 3 + 2, the little push that makes it walk
         for pos, nt, lv in ((0, bassn[0], 1.0), (3, bassn[0], 0.8), (6, bassn[1], 0.85)):
-            y = pack.pluck(pack.hz(nt), lv, ring=0.5, bright=0.7, rng=rng, dur=0.62)
-            loop.add('bass', lowpass(y, 900.0, 2) * rcos_out(len(y), 150.0), t_bar + pos * unit + rng.normal(0.0, 0.002))
+            y = pack.pluck(pack.hz(nt), lv, ring=0.5, bright=1.0, rng=rng, dur=0.62)
+            loop.add('bass', lowpass(y, 1600.0, 2) * rcos_out(len(y), 150.0), t_bar + pos * unit + rng.normal(0.0, 0.002))
         # pad: one soft chord per bar, tied when the chord stays
         if b == 0 or chords[b - 1][0] != c1:
             held = 1
@@ -626,11 +627,11 @@ def neutral(pack):
     strips = {
         'lead':    dict(gain=1.00, pan=-0.10, send=0.16),
         'kalimba': dict(gain=0.34, pan=0.35, send=0.20),
-        'pad':     dict(gain=0.42, pan=0.10, send=0.12),
-        'bass':    dict(gain=0.80, pan=0.0, send=0.02),
-        'shaker':  dict(gain=0.11, pan=0.30, send=0.06),
-        'wood':    dict(gain=0.16, pan=-0.30, send=0.12),
-        'thump':   dict(gain=0.50, pan=0.0, send=0.0),
+        'pad':     dict(gain=0.32, pan=0.10, send=0.12),
+        'bass':    dict(gain=0.45, pan=0.0, send=0.02),
+        'shaker':  dict(gain=0.45, pan=0.30, send=0.06),
+        'wood':    dict(gain=0.50, pan=-0.30, send=0.12),
+        'thump':   dict(gain=0.30, pan=0.0, send=0.0),
     }
     kw = dict(pack.REVERBS['hall'])
     irs = [dsp.reverb_ir(spread=s, **kw) for s in (1.0, 1.031)]
@@ -669,6 +670,31 @@ def render(tune, pack, stems_dir=None):
             dsp.write_wav(os.path.join(stems_dir, '%s.wav' % name.replace(' ', '_')), np.clip(dry * g, -1.0, 1.0).reshape(-1), channels=2)
         dsp.write_wav(os.path.join(stems_dir, 'mix.wav'), y.reshape(-1), channels=2)
     return y, info
+
+
+PHONE_HP_HZ = 550.0     # a rough phone speaker: nothing much below this
+
+
+def phone_loss_db(x):
+    """How much quieter (K-RMS, dB, negative) `x` gets through a 550 Hz high-pass."""
+    hp = dsp.butter('hp', PHONE_HP_HZ, 2)
+    return dsp.krms_db(dsp.filt(x, hp, 0.01)) - dsp.krms_db(x)
+
+
+def stem_levels(tune, pack):
+    """-> (loop seconds, [(stem, K-RMS dB at mix level, phone loss dB)]) for the mix review.
+    Levels are of the dry stem through its strip, with the mastering gain applied."""
+    loop, strips, irs, meta = TUNES[tune](pack)
+    x = mixdown(loop, strips, irs)
+    _, m = master_loop(x)
+    g = dsp.undb(m['gain_db'])
+    rows = []
+    for name, buf in loop.stems.items():
+        one = Loop(loop.seconds)
+        one.stems[name] = buf
+        dry = mixdown(one, {name: dict(strips[name], send=0.0)}, [np.zeros(1), np.zeros(1)]) * g
+        rows.append((name, dsp.krms_db(dry), phone_loss_db(dry.mean(axis=1))))
+    return loop.seconds, rows
 
 
 def _ffmpeg(cmd, data=None):

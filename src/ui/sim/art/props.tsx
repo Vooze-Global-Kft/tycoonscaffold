@@ -1907,3 +1907,1371 @@ export function Door({ x, y, scale = 1, palette, swing, open = 0, facing = 1, cl
     </Group>
   );
 }
+
+// ---------------------------------------------------------------------------
+// The room: floor, wall, shelf, menu board, contact shadow
+// ---------------------------------------------------------------------------
+
+/** Default floor tile size in pixels. */
+export const FLOOR_TILE = 26;
+/** Default height of the wall strip in pixels. */
+export const WALL_HEIGHT = 96;
+
+function drawFloor(p: Pen, c: ArtPalette, w: number, h: number, tile: number) {
+  p.fill(rrect(0, 0, w, h, 0), c.floorB);
+  const cols = Math.ceil(w / tile);
+  const rows = Math.ceil(h / tile);
+  const lite = lightOf(c.floorA, 0.5);
+  for (let r = 0; r < rows; r++) {
+    for (let q = 0; q < cols; q++) {
+      const x = q * tile;
+      const y = r * tile;
+      if ((r + q) % 2 === 0) {
+        p.fill(rrect(x, y, tile, tile, 0), c.floorA);
+        // A soft gleam on the top left corner of the light tiles.
+        p.fill(poly([[x + 2, y + 2], [x + tile * 0.42, y + 2], [x + 2, y + tile * 0.42]]), alpha(lite, 0.55));
+      } else {
+        p.fill(rrect(x, y + tile - 2.4, tile, 2.4, 0), alpha(shadeOf(c.floorB, 0.8), 0.6));
+      }
+    }
+  }
+  const grout = alpha(c.outline, 0.12);
+  for (let q = 1; q < cols; q++) p.stroke(line(q * tile, 0, q * tile, h), grout, 1, true);
+  for (let r = 1; r < rows; r++) p.stroke(line(0, r * tile, w, r * tile), grout, 1, true);
+  // Where the floor meets the wall.
+  p.gradient(rrect(0, 0, w, 16, 0), 0, 0, 0, 16, [alpha(INK, 0.22), alpha(INK, 0)]);
+}
+
+export interface FloorProps {
+  /** Top left corner, in canvas pixels. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  palette?: Partial<ArtPalette>;
+  /** Tile size in pixels. Default `FLOOR_TILE`. */
+  tile?: number;
+  zIndex?: Anim<number>;
+}
+
+/** Checkerboard floor tiles for any size. */
+export function Floor({ x, y, width, height, palette, tile = FLOOR_TILE, zIndex }: FloorProps) {
+  const [pal, palKey] = usePalette(palette);
+  const w = Math.max(1, Math.round(width));
+  const h = Math.max(1, Math.round(height));
+  const art = useArt(`floor:${palKey}:${w}:${h}:${tile}`, () => ({ pic: rec((p) => drawFloor(p, pal, w, h, tile), pal.outline) }));
+  const m = useMemo(() => [1, 0, x, 0, 1, y, 0, 0, 1], [x, y]);
+  return <Picture picture={art.pic} matrix={m} zIndex={zIndex} />;
+}
+
+/** A wooden shelf with jars, bottles and a plant; `len` units long, origin at the middle of the plank's top. */
+function drawShelf(p: Pen, c: ArtPalette, len: number) {
+  const h = len / 2;
+  // Brackets.
+  for (const bx of [-h + 12, h - 12]) p.shape(poly([[bx - 4, 0], [bx + 4, 0], [bx + 4, 16], [bx - 4, 6]]), shadeOf(c.wood, 1.2), { ow: 2.2, shade: false });
+  // What stands on it, left to right, spread over the length.
+  const slots = Math.max(3, Math.floor(len / 26));
+  const step = (len - 20) / slots;
+  for (let i = 0; i < slots; i++) {
+    const x = -h + 10 + step * (i + 0.5);
+    switch (i % 5) {
+      case 0: {
+        // Tomato tin.
+        p.shape(rrect(x - 7, -19, 14, 19, 3), c.primary, { ow: 2.2, shade: 2 });
+        p.fill(rrect(x - 7, -14, 14, 8, 0), c.cloth);
+        p.dot(x, -10, 2.4, c.primary);
+        p.stroke(rrect(x - 7, -19, 14, 19, 3), c.outline, 2.2);
+        p.shine(line(x - 4, -16, x - 4, -4), WHITE, 1.6, 0.7);
+        break;
+      }
+      case 1: {
+        // Olive oil bottle.
+        p.shape(merged(rrect(x - 6, -24, 12, 24, 4), rrect(x - 2.4, -34, 4.8, 12, 1.5)), mix(GREEN, c.accent, 0.25), { ow: 2.2, shade: 2 });
+        p.fill(rrect(x - 6, -15, 12, 8, 0), alpha(c.cloth, 0.9));
+        p.stroke(merged(rrect(x - 6, -24, 12, 24, 4), rrect(x - 2.4, -34, 4.8, 12, 1.5)), c.outline, 2.2);
+        p.shape(rrect(x - 3, -37, 6, 4, 1), c.primary, { ow: 1.8, shade: false });
+        break;
+      }
+      case 2: {
+        // Stack of plates.
+        for (let k = 0; k < 3; k++) p.shape(ellipse(x, -3 - k * 4, 10, 3), c.cloth, { ow: 2, shade: false });
+        break;
+      }
+      case 3: {
+        // Little plant in a pot.
+        for (const [lx, ly, r] of [[-5, -22, -30], [4, -24, 25], [0, -28, 0]] as [number, number, number][]) p.at(x + lx, ly, () => p.shape(ellipse(0, 0, 4, 8), GREEN, { ow: 1.8, shade: 1.2 }), r);
+        p.shape(poly([[x - 8, -15], [x + 8, -15], [x + 6, 0], [x - 6, 0]]), mix(c.stone, '#C0603A', 0.6), { ow: 2.2, shade: 1.8 });
+        break;
+      }
+      default: {
+        // Jar of pasta.
+        p.shape(rrect(x - 7, -20, 14, 20, 4), alpha('#E7F4F8', 0.95), { ow: 2.2, shade: false });
+        for (let k = 0; k < 4; k++) p.stroke(line(x - 4 + k * 2.6, -15, x - 2 + k * 2.6, -3), c.accent, 1.6);
+        p.shape(rrect(x - 8, -24, 16, 5, 2), c.wood, { ow: 2, shade: false });
+        p.shine(line(x - 4, -17, x - 4, -6), WHITE, 1.4, 0.8);
+      }
+    }
+  }
+  // Plank.
+  p.shape(rrect(-h, 0, len, 7, 2.5), c.wood, { ow: 2.6, shade: 2, light: 1 });
+}
+
+/** A blank chalk menu board in a wooden frame; `w` x `h` units, origin at its middle. */
+function drawMenuBoard(p: Pen, c: ArtPalette, w: number, h: number) {
+  // String and nail.
+  p.stroke(poly([[-w * 0.3, -h / 2 + 3], [0, -h / 2 - 12], [w * 0.3, -h / 2 + 3]], false), c.outline, 1.6);
+  p.shape(circle(0, -h / 2 - 12, 2.4), c.metal, { ow: 1.6, shade: false });
+  p.shape(rrect(-w / 2, -h / 2, w, h, 6), c.wood, { ow: 2.8, shade: 2.4, light: 1.2 });
+  const board = rrect(-w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 3);
+  const slate = mix('#2F4A40', c.wall, 0.12);
+  shapeWith(
+    p,
+    board,
+    slate,
+    () => {
+      // Old chalk, rubbed out: blank, but clearly a chalkboard.
+      const chalk = alpha(WHITE, 0.13);
+      p.stroke(curve([[-w * 0.3, -h * 0.18], [-w * 0.05, -h * 0.24], [w * 0.22, -h * 0.16]]), chalk, 5);
+      p.stroke(curve([[-w * 0.26, h * 0.08], [0, h * 0.02], [w * 0.28, h * 0.1]]), chalk, 4);
+      p.stroke(line(-w * 0.2, h * 0.26, w * 0.12, h * 0.24), alpha(WHITE, 0.09), 4);
+    },
+    { ow: 2.2, shade: 2.2 },
+  );
+  p.shine(line(-w / 2 + 10, -h / 2 + 10, -w / 2 + 10 + w * 0.25, -h / 2 + 10), alpha(WHITE, 0.6), 1.6, 0.6);
+  // Chalk tray.
+  p.shape(rrect(-w * 0.32, h / 2 - 4, w * 0.64, 5, 2), shadeOf(c.wood, 0.8), { ow: 2, shade: false });
+  p.shape(rrect(w * 0.08, h / 2 - 6.5, 9, 3, 1.5), WHITE, { ow: 1.4, shade: false });
+}
+
+function drawWall(p: Pen, c: ArtPalette, w: number, h: number, shelfAt: number | null, menuAt: number | null) {
+  const wain = Math.round(h * 0.3);
+  // Plaster with soft vertical stripes.
+  p.fill(rrect(0, 0, w, h, 0), c.wall);
+  const stripe = alpha(lightOf(c.wall, 0.5), 0.45);
+  for (let x = 10; x < w; x += 36) p.fill(rrect(x, 0, 14, h - wain, 0), stripe);
+  // Crown moulding.
+  p.fill(rrect(0, 0, w, 9, 0), shadeOf(c.wall, 1.1));
+  p.stroke(line(0, 9, w, 9), c.outline, 2.2, true);
+  // Wainscot panels.
+  const panel = mix(c.wood, c.primary, 0.12);
+  p.fill(rrect(0, h - wain, w, wain, 0), panel);
+  const n = Math.max(1, Math.round(w / 64));
+  const pw = w / n;
+  for (let i = 0; i < n; i++) {
+    const r = rrect(i * pw + 8, h - wain + 12, pw - 16, wain - 26, 4);
+    p.fill(r, tint(panel, 0.1));
+    p.stroke(r, shadeOf(panel, 1.1), 1.8);
+    p.shine(line(i * pw + 13, h - wain + 16, i * pw + pw * 0.4, h - wain + 16), WHITE, 1.4, 0.35);
+  }
+  p.shape(rrect(-4, h - wain - 4, w + 8, 8, 2), lightOf(c.wood, 0.25), { ow: 2.4, shade: 1.6 });
+  // Skirting board.
+  p.shape(rrect(-4, h - 10, w + 8, 10, 0), shadeOf(c.wood, 1.4), { ow: 2.4, shade: false });
+  if (shelfAt !== null) {
+    const len = Math.min(150, w * 0.36);
+    const sx = len / 2 + 6 + (w - len - 12) * shelfAt;
+    p.at(sx, h * 0.42, () => drawShelf(p, c, len));
+  }
+  if (menuAt !== null) {
+    const bw = Math.min(110, w * 0.3);
+    const bh = Math.min(h * 0.46, 64);
+    const mx = bw / 2 + 8 + (w - bw - 16) * menuAt;
+    p.at(mx, h * 0.33, () => drawMenuBoard(p, c, bw, bh));
+  }
+}
+
+export interface WallProps {
+  /** Top left corner, in canvas pixels. The floor starts at `y + height`. */
+  x: number;
+  y: number;
+  width: number;
+  /** Default `WALL_HEIGHT`. */
+  height?: number;
+  palette?: Partial<ArtPalette>;
+  /** Where a shelf hangs along the wall, 0 (left) .. 1 (right); `null` for none. Default 0.08. */
+  shelf?: number | null;
+  /** Where a blank menu board hangs, 0 .. 1; `null` for none. Default 0.92. */
+  menu?: number | null;
+  zIndex?: Anim<number>;
+}
+
+/** The back wall: striped plaster over wooden panels, with an optional shelf and menu board. Stations stand in front of it. */
+export function Wall({ x, y, width, height = WALL_HEIGHT, palette, shelf = 0.08, menu = 0.92, zIndex }: WallProps) {
+  const [pal, palKey] = usePalette(palette);
+  const w = Math.max(10, Math.round(width / UNIT));
+  const h = Math.max(10, Math.round(height / UNIT));
+  const art = useArt(`wall:${palKey}:${w}:${h}:${shelf}:${menu}`, () => ({ pic: rec((p) => p.clipped(rrect(0, 0, w, h, 0), () => drawWall(p, pal, w, h, shelf, menu)), pal.outline) }));
+  const m = useMemo(() => [UNIT, 0, x, 0, UNIT, y, 0, 0, 1], [x, y]);
+  return <Picture picture={art.pic} matrix={m} zIndex={zIndex} />;
+}
+
+export interface ShelfProps {
+  /** Middle of the plank's top edge, in canvas pixels. */
+  x: Anim<number>;
+  y: Anim<number>;
+  /** Length in pixels at `scale` 1. Default 70. */
+  width?: number;
+  scale?: Anim<number>;
+  palette?: Partial<ArtPalette>;
+  zIndex?: Anim<number>;
+}
+
+/** A wall shelf with jars, bottles, plates and a plant. */
+export function Shelf({ x, y, width = 70, scale = 1, palette, zIndex }: ShelfProps) {
+  const [pal, palKey] = usePalette(palette);
+  const len = Math.max(40, Math.round(width / UNIT));
+  const art = useArt(`shelf:${palKey}:${len}`, () => ({ pic: rec((p) => drawShelf(p, pal, len), pal.outline) }));
+  const root = useRoot(x, y, scale, UNIT);
+  return (
+    <Group matrix={root} zIndex={zIndex}>
+      <Picture picture={art.pic} />
+    </Group>
+  );
+}
+
+export interface MenuBoardProps {
+  /** Centre of the board, in canvas pixels. */
+  x: Anim<number>;
+  y: Anim<number>;
+  /** Size in pixels at `scale` 1. Default 56 x 34. */
+  width?: number;
+  height?: number;
+  scale?: Anim<number>;
+  palette?: Partial<ArtPalette>;
+  zIndex?: Anim<number>;
+}
+
+/** A blank chalk menu board; lay real text over it outside the canvas if needed. */
+export function MenuBoard({ x, y, width = 56, height = 34, scale = 1, palette, zIndex }: MenuBoardProps) {
+  const [pal, palKey] = usePalette(palette);
+  const w = Math.round(width / UNIT);
+  const h = Math.round(height / UNIT);
+  const art = useArt(`menu:${palKey}:${w}:${h}`, () => ({ pic: rec((p) => drawMenuBoard(p, pal, w, h), pal.outline) }));
+  const root = useRoot(x, y, scale, UNIT);
+  return (
+    <Group matrix={root} zIndex={zIndex}>
+      <Picture picture={art.pic} />
+    </Group>
+  );
+}
+
+let contactPic: SkPicture | null = null;
+const contactArt = () =>
+  (contactPic ??= rec((p) => {
+    p.radial(circle(0, 0, 1), 0, 0, 1, [alpha(INK, 0.3), alpha(INK, 0.2), alpha(INK, 0)], [0, 0.55, 1]);
+  }));
+
+export interface ContactShadowProps {
+  /** Centre of the shadow (the floor point under the thing), in canvas pixels. */
+  x: Anim<number>;
+  y: Anim<number>;
+  /** Size in pixels at `scale` 1. Default 34 x 9. */
+  width?: number;
+  height?: number;
+  scale?: Anim<number>;
+  /** 0..1 (or more); e.g. smaller while something is up in the air. */
+  strength?: Anim<number>;
+  zIndex?: Anim<number>;
+}
+
+/** A soft round shadow on the floor. */
+export function ContactShadow({ x, y, width = 34, height = 9, scale = 1, strength = 1, zIndex }: ContactShadowProps) {
+  const m = useRig(
+    ROOT_KEYS,
+    (o) => {
+      'worklet';
+      const s = num(scale);
+      const k = Math.max(0, num(strength));
+      // Fainter shadows also get smaller, which reads as distance.
+      const g = 0.55 + 0.45 * Math.min(1, k);
+      pop(o.root, num(x), num(y), 0, k > 0.01 ? 1 : 0);
+      if (k > 0.01) {
+        o.root[0] = (width / 2) * s * g;
+        o.root[4] = (height / 2) * s * g;
+      }
+    },
+    [x, y, scale, strength, width, height],
+  );
+  return (
+    <Group matrix={m.root} zIndex={zIndex}>
+      <Picture picture={contactArt()} />
+    </Group>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Small things: dishes in flight, coin, gem, tray, sparkle burst, hand pointer
+// ---------------------------------------------------------------------------
+
+export interface DishProps {
+  /** Centre of the dish's base, in canvas pixels. */
+  x: Anim<number>;
+  y: Anim<number>;
+  /** 1 is the size a dish has on a table (about 14 px wide). */
+  scale?: Anim<number>;
+  /** Default pizza; `'plate'` is a generic plated dish. */
+  dish?: DishLook | DishKind;
+  /** Radians. */
+  rotation?: Anim<number>;
+  zIndex?: Anim<number>;
+}
+
+/** One dish, on its own. */
+export function Dish({ x, y, scale = 1, dish, rotation = 0, zIndex }: DishProps) {
+  const key = JSON.stringify(resolveDish(dish));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pic = useMemo(() => dishArt(dish).dish, [key]);
+  const m = useRig(
+    ROOT_KEYS,
+    (o) => {
+      'worklet';
+      const k = UNIT * num(scale);
+      put(o.root, num(x), num(y), num(rotation), k, k);
+    },
+    [x, y, scale, rotation],
+  );
+  return (
+    <Group matrix={m.root} zIndex={zIndex}>
+      <Picture picture={pic} />
+    </Group>
+  );
+}
+
+export interface FlyingDishProps {
+  /** Start and end points (centre of the dish), in canvas pixels. */
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  /** 0 at `from` .. 1 at `to`; drive it with `withTiming`. */
+  progress: Anim<number>;
+  /** How far the arc rises above the straight line, in pixels. Default 36. */
+  height?: number;
+  /** Turns over the whole flight. Default 1. */
+  spins?: number;
+  dish?: DishLook | DishKind;
+  scale?: Anim<number>;
+  /** Hide the dish when progress is 0 or 1 (so it can wait at rest unseen). Default true. */
+  hideAtRest?: boolean;
+  /** Draw a soft shadow under the flight path. Default true. */
+  shadow?: boolean;
+  zIndex?: Anim<number>;
+}
+
+const FLY_KEYS = ['dish', 'shadow'] as const;
+
+/** A dish flying along an arc and spinning: from the pass to a tray, from a table to the sink. */
+export function FlyingDish({ from, to, progress, height = 36, spins = 1, dish, scale = 1, hideAtRest = true, shadow = true, zIndex }: FlyingDishProps) {
+  const key = JSON.stringify(resolveDish(dish));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pic = useMemo(() => dishArt(dish).dish, [key]);
+  const fx = from.x;
+  const fy = from.y;
+  const tx = to.x;
+  const ty = to.y;
+  const m = useRig(
+    FLY_KEYS,
+    (o) => {
+      'worklet';
+      const u = num(progress);
+      if (hideAtRest && (u <= 0 || u >= 1)) {
+        pop(o.dish, 0, 0, 0, 0);
+        pop(o.shadow, 0, 0, 0, 0);
+        return;
+      }
+      const v = clamp01(u);
+      const lift = 4 * v * (1 - v);
+      const bx = fx + (tx - fx) * v;
+      const by = fy + (ty - fy) * v;
+      const k = UNIT * num(scale);
+      // A little bigger at the top of the arc: it comes towards us.
+      const grow = 1 + 0.25 * lift;
+      put(o.dish, bx, by - height * lift, spins * Math.PI * 2 * v, k * grow, k * grow);
+      if (shadow) {
+        const s = k * (1 - 0.45 * lift);
+        put(o.shadow, bx, by + 6 * k, 0, s, s);
+      } else pop(o.shadow, 0, 0, 0, 0);
+    },
+    [progress, fx, fy, tx, ty, height, spins, scale, hideAtRest, shadow],
+  );
+  const shadowPic = useMemo(() => record((p) => drawShadow(p, 12, 3.4, 0.9)), []);
+  useEffect(() => () => shadowPic.dispose(), [shadowPic]);
+  return (
+    <Group zIndex={zIndex}>
+      <Picture picture={shadowPic} matrix={m.shadow} />
+      <Picture picture={pic} matrix={m.dish} />
+    </Group>
+  );
+}
+
+const GOLD = '#FFC93C';
+
+function drawCoinFace(p: Pen, gold: string) {
+  p.shape(circle(0, 0, 20), gold, { ow: 3, shade: 3.6, light: 2.4 });
+  p.stroke(circle(0, 0, 14), shadeOf(gold, 0.9), 2.2);
+  // An embossed star.
+  p.shape(star(0.6, 1.2, 9, 5, 0.48), shadeOf(gold, 0.7), { ow: 0, shade: false });
+  p.shape(star(0, 0, 9, 5, 0.48), lightOf(gold, 0.45), { ow: 1.8, outline: shadeOf(gold, 1.6), shade: false });
+  p.shine(arc(0, 0, 16.5, 16.5, 200, 55), WHITE, 2.6, 0.9);
+}
+
+function drawCoinEdge(p: Pen, gold: string) {
+  p.shape(circle(0, 0, 20), shadeOf(gold, 1.5), { ow: 3, shade: false });
+}
+
+export interface CoinProps {
+  /** Centre, in canvas pixels. */
+  x: Anim<number>;
+  y: Anim<number>;
+  /** 1 is about 22 px across. */
+  scale?: Anim<number>;
+  /** Turns per second; 0 holds it still, facing us. */
+  spin?: number;
+  clock?: SharedValue<number>;
+  /** Coin colour. Default gold. */
+  color?: string;
+  zIndex?: Anim<number>;
+}
+
+const COIN_KEYS = ['edge', 'face'] as const;
+
+/** A gold coin with a star on it; spins on its axis if asked. */
+export function Coin({ x, y, scale = 1, spin = 0, clock, color = GOLD, zIndex }: CoinProps) {
+  const art = useArt(`coin:${color}`, () => ({ face: rec((p) => drawCoinFace(p, color)), edge: rec((p) => drawCoinEdge(p, color)) }));
+  const m = useRig(
+    COIN_KEYS,
+    (o) => {
+      'worklet';
+      const k = UNIT * num(scale);
+      const a = clock && spin ? (clock.value / 1000) * spin * Math.PI * 2 : 0;
+      const cs = Math.cos(a);
+      const sn = Math.sin(a);
+      const w = Math.max(0.1, Math.abs(cs));
+      put(o.face, num(x) - sn * 2.4 * k, num(y), 0, w * k, k);
+      if (Math.abs(cs) > 0.985) pop(o.edge, 0, 0, 0, 0);
+      else put(o.edge, num(x) + sn * 2.4 * k, num(y), 0, Math.max(0.16, w) * k, k);
+    },
+    [x, y, scale, spin, clock],
+  );
+  return (
+    <Group zIndex={zIndex}>
+      <Picture picture={art.edge} matrix={m.edge} />
+      <Picture picture={art.face} matrix={m.face} />
+    </Group>
+  );
+}
+
+function drawGem(p: Pen, color: string) {
+  const outline = [[-17, -6], [-9, -15], [9, -15], [17, -6], [0, 17]] as Pt[];
+  p.shape(poly(outline), color, { ow: 3, shade: false });
+  const lite = lightOf(color, 0.7);
+  const mid = lightOf(color, 0.3);
+  const deep = shadeOf(color, 1.2);
+  // Crown facets.
+  p.fill(poly([[-9, -15], [9, -15], [5, -6], [-5, -6]]), lite);
+  p.fill(poly([[-17, -6], [-9, -15], [-5, -6]]), mid);
+  p.fill(poly([[17, -6], [9, -15], [5, -6]]), color);
+  // Pavilion facets.
+  p.fill(poly([[-17, -6], [-5, -6], [0, 17]]), mid);
+  p.fill(poly([[-5, -6], [5, -6], [0, 17]]), color);
+  p.fill(poly([[5, -6], [17, -6], [0, 17]]), deep);
+  const facet = alpha(outlineFor(color, OUTLINE), 0.5);
+  p.stroke(poly([[-17, -6], [17, -6]], false), facet, 1.4);
+  p.stroke(poly([[-5, -6], [0, 17], [5, -6]], false), facet, 1.2);
+  p.stroke(poly([[-9, -15], [-5, -6]], false), facet, 1.2);
+  p.stroke(poly([[9, -15], [5, -6]], false), facet, 1.2);
+  p.stroke(poly(outline), OUTLINE, 3);
+  p.shine(line(-6, -12, 2, -12), WHITE, 2.4, 0.9);
+}
+
+export interface GemProps {
+  /** Centre, in canvas pixels. */
+  x: Anim<number>;
+  y: Anim<number>;
+  /** 1 is about 20 px across. */
+  scale?: Anim<number>;
+  /** Default a bright blue. */
+  color?: string;
+  /** With a clock it twinkles and floats a little. */
+  clock?: SharedValue<number>;
+  zIndex?: Anim<number>;
+}
+
+const GEM_KEYS = ['gem', 'twinkle'] as const;
+
+/** A cut gem (the premium currency). */
+export function Gem({ x, y, scale = 1, color = '#3FB8F5', clock, zIndex }: GemProps) {
+  const art = useArt(`gem:${color}`, () => ({ gem: rec((p) => drawGem(p, color)), twinkle: rec((p) => p.shape(twinkle(0, 0, 7), WHITE, { ow: 1.6, shade: false })) }));
+  const seed = useMemo(() => (hashString(color) % 100) / 10, [color]);
+  const m = useRig(
+    GEM_KEYS,
+    (o) => {
+      'worklet';
+      const k = UNIT * num(scale);
+      const t = clock ? clock.value / 1000 + seed : 0;
+      const bob = clock ? Math.sin(t * 2.2) * 1.6 : 0;
+      put(o.gem, num(x), num(y) + bob * k, 0, k, k);
+      if (!clock) {
+        pop(o.twinkle, 0, 0, 0, 0);
+        return;
+      }
+      const u = frac(t / 1.7);
+      const s = life(u, 0.15, 0.25) * (u < 0.4 ? 1 : 0);
+      pop(o.twinkle, num(x) - 13 * k, num(y) + (bob - 15) * k, u * 2, s * k * 0.85);
+    },
+    [x, y, scale, clock, seed],
+  );
+  return (
+    <Group zIndex={zIndex}>
+      <Picture picture={art.gem} matrix={m.gem} />
+      <Picture picture={art.twinkle} matrix={m.twinkle} />
+    </Group>
+  );
+}
+
+export interface TrayProps {
+  /** Middle of the tray, in canvas pixels. */
+  x: Anim<number>;
+  y: Anim<number>;
+  scale?: Anim<number>;
+  /** A dish on the tray; `null` (default) for an empty tray. */
+  dish?: DishLook | DishKind | null;
+  palette?: Partial<ArtPalette>;
+  zIndex?: Anim<number>;
+}
+
+/** A round serving tray, empty or with a dish on it. */
+export function Tray({ x, y, scale = 1, dish = null, palette, zIndex }: TrayProps) {
+  const [pal, palKey] = usePalette(palette);
+  const dishKey = dish === null ? '' : JSON.stringify(resolveDish(dish));
+  const art = useArt(`tray:${palKey}`, () => ({ pic: rec((p) => drawTray(p, pal.metal), pal.outline) }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const full = useMemo(() => (dish === null ? null : dishArt(dish).tray), [dishKey]);
+  const root = useRoot(x, y, scale, UNIT);
+  return (
+    <Group matrix={root} zIndex={zIndex}>
+      <Picture picture={full ?? art.pic} />
+    </Group>
+  );
+}
+
+/** How long a sparkle burst lasts after `trigger` changes, in ms. */
+export const SPARKLE_MS = 900;
+
+const BURST_N = 8;
+const BURST_KEYS = ['ring', 'plus', ...Array.from({ length: BURST_N }, (_, i) => `s${i}`)] as readonly string[];
+
+function drawPlusOne(p: Pen, color: string) {
+  const plus = merged(rrect(-20, -4.5, 17, 9, 3.5), rrect(-16, -12.5, 9, 25, 3.5));
+  p.shape(plus, color, { ow: 3, shade: 2.2, light: 1.4 });
+  // The "1": a flag, a stem and a foot.
+  const one = poly([[4, -10], [11, -16], [17, -16], [17, 10], [21, 10], [21, 17], [5, 17], [5, 10], [9.5, 10], [9.5, -6], [4, -2.5]]);
+  p.shape(one, color, { ow: 3, shade: 2.2, light: 1.4 });
+}
+
+export interface SparkleBurstProps {
+  /** Centre of the burst, in canvas pixels. */
+  x: Anim<number>;
+  y: Anim<number>;
+  scale?: Anim<number>;
+  /** Fires a burst whenever it changes: `trigger.value += 1`. Lasts `SPARKLE_MS`. */
+  trigger: SharedValue<number>;
+  clock: SharedValue<number>;
+  /** Sparkle colour. Default gold. */
+  color?: string;
+  /** Show the rising "+1". Default true. */
+  plusOne?: boolean;
+  zIndex?: Anim<number>;
+}
+
+/** A burst of sparkles with a "+1" that pops up and floats away. Shapes only. */
+export function SparkleBurst({ x, y, scale = 1, trigger, clock, color = GOLD, plusOne = true, zIndex }: SparkleBurstProps) {
+  const art = useArt(`burst:${color}`, () => ({
+    spark: rec((p) => {
+      p.shape(twinkle(0, 0, 8), color, { ow: 1.8, shade: false });
+      p.fill(twinkle(-1, -1, 3.4), WHITE);
+    }),
+    ring: rec((p) => {
+      p.stroke(circle(0, 0, 20), alpha(OUTLINE, 0.6), 5);
+      p.stroke(circle(0, 0, 20), lightOf(color, 0.4), 3);
+    }),
+    plus: rec((p) => drawPlusOne(p, color)),
+  }));
+  const m = useRig(
+    BURST_KEYS,
+    (o, mem) => {
+      'worklet';
+      const u = sinceBump(mem, 1, trigger.value, clock.value) / SPARKLE_MS;
+      const X = num(x);
+      const Y = num(y);
+      const k = UNIT * num(scale);
+      if (u >= 1 || u < 0) {
+        for (const key of BURST_KEYS) pop(o[key], 0, 0, 0, 0);
+        return;
+      }
+      const out = 1 - (1 - u) * (1 - u) * (1 - u);
+      const rs = life(u, 0.05, 0.6) * (0.4 + 1.3 * out);
+      pop(o.ring, X, Y, 0, rs * k);
+      for (let i = 0; i < BURST_N; i++) {
+        const a = (i / BURST_N) * Math.PI * 2 + 0.3;
+        const r = (i % 2 === 0 ? 34 : 24) * out;
+        const s = life(u, 0.08, 0.55) * (i % 2 === 0 ? 1 : 0.7);
+        pop(o[`s${i}`], X + Math.cos(a) * r * k, Y + Math.sin(a) * r * k, u * 3, s * k);
+      }
+      if (!plusOne) {
+        pop(o.plus, 0, 0, 0, 0);
+        return;
+      }
+      const ps = backOut(u / 0.25) * (u > 0.8 ? 1 - (u - 0.8) / 0.2 : 1);
+      pop(o.plus, X, Y - (10 + 30 * ease(u)) * k, -0.08 + 0.08 * u, ps * k);
+    },
+    [x, y, scale, trigger, clock, plusOne],
+  );
+  return (
+    <Group zIndex={zIndex}>
+      <Picture picture={art.ring} matrix={m.ring} />
+      {BURST_KEYS.slice(2).map((key) => (
+        <Picture key={key} picture={art.spark} matrix={m[key]} />
+      ))}
+      <Picture picture={art.plus} matrix={m.plus} />
+    </Group>
+  );
+}
+
+/** A cartoon glove pointing up, fingertip at the origin. */
+function drawHand(p: Pen, glove: string, cuff: string) {
+  const sh = shadeOf(glove, 0.9);
+  // Cuff.
+  p.shape(rrect4(-15, 50, 31, 15, 4, 4, 6, 6), cuff, { ow: 2.8, shade: 2.2, light: 1.2 });
+  p.stroke(line(-11, 56, 12, 56), shadeOf(cuff, 1.3), 1.6);
+  // Fist with the three curled fingers.
+  const fist = blob([[-18, 26], [-8, 18], [10, 19], [20, 28], [21, 42], [14, 52], [-12, 52], [-20, 42]]);
+  p.shape(fist, glove, { ow: 3, shade: 3, light: 1.8 });
+  for (const y of [30, 37.5, 45]) p.stroke(curve([[3, y], [12, y - 1], [19, y + 1]]), sh, 1.8);
+  // Index finger.
+  p.shape(capsule(0, 6.5, 0, 30, 7), glove, { ow: 3, shade: 2.2, light: 1.6 });
+  p.stroke(line(-2.4, 22, 2.4, 22), sh, 1.5);
+  // Thumb across the front.
+  p.shape(capsule(-17, 34, -4, 29, 5.6), glove, { ow: 2.8, shade: 1.8 });
+  p.shine(line(-3, 11, -3, 18), WHITE, 2, 0.9);
+}
+
+export interface HandPointerProps {
+  /** The spot it taps, in canvas pixels. */
+  x: Anim<number>;
+  y: Anim<number>;
+  scale?: Anim<number>;
+  clock: SharedValue<number>;
+  /** Degrees: 0 points straight up from below, positive tilts the hand to come from the lower right. Default 25. */
+  angle?: number;
+  palette?: Partial<ArtPalette>;
+  zIndex?: Anim<number>;
+}
+
+/** How long one tap of the tutorial hand takes, in ms. */
+export const HAND_TAP_MS = 1100;
+const HAND_KEYS = ['hand', 'ring'] as const;
+
+/** A bouncing hand that taps a spot, with a ripple on each tap: for tutorials. */
+export function HandPointer({ x, y, scale = 1, clock, angle = 25, palette, zIndex }: HandPointerProps) {
+  const [pal, palKey] = usePalette(palette);
+  const art = useArt(`hand:${palKey}`, () => ({
+    hand: rec((p) => drawHand(p, WHITE, pal.primary), pal.outline),
+    ring: rec((p) => {
+      p.stroke(ellipse(0, 0, 16, 9), alpha(pal.outline, 0.5), 4.6);
+      p.stroke(ellipse(0, 0, 16, 9), WHITE, 2.6);
+    }, pal.outline),
+  }));
+  const rad = (angle * Math.PI) / 180;
+  const m = useRig(
+    HAND_KEYS,
+    (o) => {
+      'worklet';
+      const k = UNIT * num(scale);
+      const u = frac(clock.value / HAND_TAP_MS);
+      // Hovers back, swoops in, presses (a squash), and lifts off again.
+      let d: number;
+      let squash = 0;
+      if (u < 0.45) d = 18 - 18 * ease(u / 0.45);
+      else if (u < 0.6) {
+        d = 0;
+        squash = Math.sin(((u - 0.45) / 0.15) * Math.PI);
+      } else d = 18 * ease((u - 0.6) / 0.4);
+      const dx = Math.sin(rad) * d * k;
+      const dy = Math.cos(rad) * d * k;
+      put(o.hand, num(x) + dx, num(y) + dy, rad, k * (1 + 0.06 * squash), k * (1 - 0.08 * squash));
+      const r = u >= 0.5 && u < 0.95 ? (u - 0.5) / 0.45 : -1;
+      if (r < 0) pop(o.ring, 0, 0, 0, 0);
+      else pop(o.ring, num(x), num(y), 0, k * (0.4 + 1.1 * r) * life(r, 0.1, 0.5));
+    },
+    [x, y, scale, clock, rad],
+  );
+  return (
+    <Group zIndex={zIndex}>
+      <Picture picture={art.ring} matrix={m.ring} />
+      <Picture picture={art.hand} matrix={m.hand} />
+    </Group>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Treasure chest
+// ---------------------------------------------------------------------------
+
+interface ChestStyle {
+  body: string;
+  band: string;
+  lock: string;
+  rivet: string;
+  /** Studs on the bands and the lid; null for none. */
+  gem: string | null;
+  glow: string;
+  rays: string;
+}
+
+const CHEST_STYLES: Record<ChestTier, ChestStyle> = {
+  wood: { body: '#C27C3F', band: '#7F889A', lock: '#E9B04E', rivet: '#C7CEDA', gem: null, glow: '#FFC24D', rays: '#FFE7A3' },
+  silver: { body: '#4E72C2', band: '#E4EAF2', lock: '#F6F8FC', rivet: '#FFFFFF', gem: '#5CD3F7', glow: '#9DE6FF', rays: '#E8FAFF' },
+  gold: { body: '#C7303F', band: '#FFC93C', lock: '#FFD95A', rivet: '#FFF2B0', gem: '#2FCB8C', glow: '#FFD047', rays: '#FFF4B8' },
+};
+
+/** Size of the closed chest at `scale` 1, in pixels: made to be the star of a reward screen. */
+export const CHEST_SIZE = { width: 180, height: 170 } as const;
+/** Ms of one lid rattle cycle while `shake` is up (sound and haptics can follow it). */
+export const CHEST_RATTLE_MS = 200;
+
+const CHEST_UNIT = 1.17;
+const CW = 72;
+const RIM_Y = -86;
+const BACK_Y = -102;
+
+function chestGemAt(p: Pen, x: number, y: number, r: number, color: string) {
+  p.shape(poly([[x, y - r], [x + r * 0.8, y], [x, y + r], [x - r * 0.8, y]]), color, { ow: 2.2, shade: false });
+  p.fill(poly([[x, y - r], [x + r * 0.8, y], [x, y]]), lightOf(color, 0.55));
+  p.fill(poly([[x, y + r], [x - r * 0.8, y], [x, y]]), shadeOf(color, 0.9));
+  p.stroke(poly([[x, y - r], [x + r * 0.8, y], [x, y + r], [x - r * 0.8, y]]), OUTLINE, 2.2);
+}
+
+function drawChestBody(p: Pen, s: ChestStyle, tier: ChestTier) {
+  const box = rrect4(-CW, -84, CW * 2, 84, 4, 4, 12, 12);
+  shapeWith(
+    p,
+    box,
+    s.body,
+    () => {
+      const joint = shadeOf(s.body, 1.6);
+      for (const y of [-58, -31]) p.stroke(line(-CW, y, CW, y), joint, 2.4, true);
+      // Grain.
+      for (const [x, y, w] of [[-30, -70, 16], [8, -45, 20], [-22, -18, 14], [24, -66, 10], [26, -20, 14]] as [number, number, number][])
+        p.stroke(curve([[x - w / 2, y], [x, y - 1.6], [x + w / 2, y]]), alpha(joint, 0.55), 1.6);
+      // The lid's shadow on the front, right under the rim.
+      p.fill(rrect(-CW, -84, CW * 2, 9, 0), alpha(INK, 0.2));
+    },
+    { shade: 7, light: 3 },
+  );
+  // Iron (or silver, or gold) straps.
+  for (const bx of [-47, 47]) {
+    p.shape(rrect(bx - 8.5, -84, 17, 84, 2), s.band, { ow: 2.8, shade: 3, light: 1.6 });
+    for (const y of [-70, -13]) p.shape(circle(bx, y, 2.8), s.rivet, { ow: 1.6, shade: false });
+    if (s.gem) chestGemAt(p, bx, -42, 6.5, s.gem);
+  }
+  // Corner caps.
+  for (const sg of [-1, 1]) {
+    const x0 = sg * (CW + 2);
+    p.shape(poly([[x0, -26], [x0, 0], [x0 - sg * 24, 0]]), shadeOf(s.band, 0.4), { ow: 2.6, shade: false });
+    p.shape(circle(x0 - sg * 6, -7, 2.4), s.rivet, { ow: 1.4, shade: false });
+  }
+  p.shape(rrect(-CW - 3, -11, CW * 2 + 6, 11, 4), s.band, { ow: 2.8, shade: 2.6 });
+  // The front rim the lid closes on.
+  p.shape(rrect(-CW - 3, RIM_Y - 3, CW * 2 + 6, 11, 4), s.band, { ow: 2.8, shade: 2.4, light: 1.4 });
+  // Lock plate and keyhole.
+  const plate = rrect4(-16, -80, 32, 36, 3, 3, 14, 14);
+  p.shape(plate, s.lock, { ow: 2.8, shade: 3.2, light: 2 });
+  p.dot(0, -63, 4.4, INK);
+  p.fill(poly([[-2.4, -61], [2.4, -61], [3.8, -51], [-3.8, -51]]), INK);
+  if (tier === 'gold') {
+    p.shape(circle(-10, -48, 2.2), s.rivet, { ow: 1.3, shade: false });
+    p.shape(circle(10, -48, 2.2), s.rivet, { ow: 1.3, shade: false });
+  }
+}
+
+const LID_H = 56;
+
+function lidPath(inset = 0): SkPath {
+  const w = CW + 2 - inset;
+  const h = LID_H - inset * 1.1;
+  return blob([[-w, 0, 0], [-w, -h * 0.44], [-w * 0.78, -h * 0.84], [0, -h], [w * 0.78, -h * 0.84], [w, -h * 0.44], [w, 0, 0]]);
+}
+
+/** The lid's front, origin at the middle of its bottom edge. */
+function drawChestLid(p: Pen, s: ChestStyle, tier: ChestTier) {
+  const dome = lidPath();
+  shapeWith(
+    p,
+    dome,
+    s.body,
+    () => {
+      const joint = shadeOf(s.body, 1.6);
+      p.stroke(curve([[-CW - 2, -26], [-40, -36], [0, -39], [40, -36], [CW + 2, -26]]), joint, 2.4);
+      for (const bx of [-47, 47]) {
+        p.shape(rrect(bx - 8.5, -LID_H - 4, 17, LID_H + 4, 0), s.band, { ow: 2.8, shade: 3, light: 1.6 });
+        p.shape(circle(bx, -22, 2.8), s.rivet, { ow: 1.6, shade: false });
+      }
+    },
+    { shade: 7, light: 4 },
+  );
+  p.shine(curve([[-62, -24], [-52, -40], [-30, -50]]), WHITE, 4.2, 0.7);
+  // The lid's bottom edge.
+  p.shape(rrect(-CW - 3, -11, CW * 2 + 6, 12, 4), s.band, { ow: 2.8, shade: 2.4, light: 1.4 });
+  if (tier === 'gold' && s.gem) {
+    // A crest on top.
+    p.shape(rrect(-14, -LID_H - 4, 28, 18, 6), s.band, { ow: 2.6, shade: 2.4, light: 1.4 });
+    chestGemAt(p, 0, -LID_H + 5, 7.5, s.gem);
+  } else if (tier === 'silver') {
+    for (const x of [-20, 20]) p.shape(circle(x, -5, 2.4), s.rivet, { ow: 1.4, shade: false });
+  }
+  // The hasp, hanging over the lock.
+  p.shape(rrect4(-10.5, -15, 21, 27, 3, 3, 9, 9), s.lock, { ow: 2.6, shade: 2.4, light: 1.5 });
+  p.dot(0, 5, 3, shadeOf(s.lock, 1.5));
+}
+
+/** The underside of the open lid, standing up behind the opening; origin at the hinge. */
+function drawChestLidInside(p: Pen, s: ChestStyle) {
+  shapeWith(
+    p,
+    lidPath(),
+    s.band,
+    () => {
+      const inner = lidPath(9);
+      p.fill(inner, mix(s.body, '#1A0C06', 0.42));
+      for (const bx of [-47, 47]) p.fill(rrect(bx - 7, -LID_H, 14, LID_H, 0), alpha(shadeOf(s.band, 1.6), 0.55));
+      p.stroke(curve([[-CW + 7, -24], [-30, -32], [30, -32], [CW - 7, -24]]), alpha(INK, 0.4), 2);
+      p.radial(inner, 0, 4, 64, [alpha(lightOf(s.glow, 0.4), 0.85), alpha(s.glow, 0.35), alpha(s.glow, 0)], [0, 0.5, 1]);
+    },
+    { shade: false },
+  );
+  p.stroke(lidPath(9), alpha(OUTLINE, 0.7), 2);
+}
+
+/** The opening seen from above: dark, full of light. Chest coordinates. */
+function drawChestMouth(p: Pen, s: ChestStyle) {
+  p.shape(rrect(-CW - 3, BACK_Y - 6, CW * 2 + 6, 10, 4), shadeOf(s.band, 1.1), { ow: 2.6, shade: false });
+  const m = rrect(-CW + 3, BACK_Y - 2, CW * 2 - 6, RIM_Y - BACK_Y + 6, 6);
+  p.fill(m, '#2A1609');
+  p.radial(m, 0, RIM_Y, 76, [alpha(WHITE, 0.95), alpha(s.glow, 0.9), alpha(s.glow, 0.2)], [0, 0.45, 1]);
+  p.stroke(m, OUTLINE, 2.4);
+}
+
+/** What is inside, origin at the middle of the front rim; it pops up out of the chest. */
+function drawLoot(p: Pen, s: ChestStyle, tier: ChestTier) {
+  const mound = blob([[-62, 6, 0], [-54, -5], [-30, -15], [0, -20], [30, -15], [54, -5], [62, 6, 0]]);
+  p.shape(mound, GOLD, { ow: 2.8, shade: 4, light: 2.4 });
+  const coin = (x: number, y: number, r = 7) => {
+    p.shape(ellipse(x, y, r, r * 0.46), lightOf(GOLD, 0.3), { ow: 1.9, shade: false });
+    p.stroke(ellipse(x, y, r * 0.55, r * 0.24), shadeOf(GOLD, 0.8), 1.2);
+  };
+  for (const [x, y] of [[-40, -6], [-22, -12], [-4, -16], [16, -13], [36, -7], [-30, -1], [6, -6], [26, 0], [48, 0], [-50, 2]] as Pt[]) coin(x, y);
+  // A coin standing up.
+  p.at(-14, -20, () => drawCoinFace(p, GOLD), -14, 0.42);
+  const gems = tier === 'wood' ? [] : tier === 'silver' ? [[22, -22, s.gem ?? '#5CD3F7'], [-38, -14, '#B48CFF']] : [[24, -24, '#2FCB8C'], [-38, -16, '#3FB8F5'], [44, -12, '#FF5A7A']];
+  for (const [x, y, c] of gems as [number, number, string][]) p.at(x, y, () => drawGem(p, c), 10, 0.5);
+  if (tier === 'gold') {
+    // A little crown on top of the pile.
+    p.at(4, -24, () => {
+      p.shape(poly([[-13, 6], [-15, -10], [-7, -2], [0, -14], [7, -2], [15, -10], [13, 6]]), GOLD, { ow: 2.4, shade: 2.2, light: 1.4 });
+      p.dot(0, -1, 2.6, '#FF5A7A');
+      p.shape(rrect(-13, 3, 26, 5, 2), shadeOf(GOLD, 0.6), { ow: 2, shade: false });
+    }, 8, 0.9);
+  }
+}
+
+function drawRays(p: Pen, s: ChestStyle) {
+  const n = 16;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const long = i % 2 === 0;
+    const hw = long ? 0.13 : 0.08;
+    const L = long ? 200 : 150;
+    const wedge = poly([[0, 0], [Math.cos(a - hw) * L, Math.sin(a - hw) * L], [Math.cos(a + hw) * L, Math.sin(a + hw) * L]]);
+    p.radial(wedge, 0, 0, L, [alpha(s.rays, 0.95), alpha(s.rays, 0.55), alpha(s.rays, 0)], [0, 0.4, 1]);
+  }
+}
+
+function drawHalo(p: Pen, s: ChestStyle) {
+  p.radial(circle(0, 0, 120), 0, 0, 120, [alpha(WHITE, 0.95), alpha(lightOf(s.glow, 0.5), 0.7), alpha(s.glow, 0)], [0, 0.35, 1]);
+}
+
+function drawLeak(p: Pen, s: ChestStyle) {
+  p.at(0, 0, () => addLight(p, circle(0, 0, 90), 0, 0, 90, [alpha(WHITE, 0.9), alpha(s.glow, 0.5), alpha(s.glow, 0)], [0, 0.35, 1]), 0, 1, 0.42);
+}
+
+function drawGleam(p: Pen) {
+  p.fill(poly([[-16, -170], [6, -170], [-44, 20], [-66, 20]]), alpha(WHITE, 0.42));
+  p.fill(poly([[14, -170], [22, -170], [-28, 20], [-36, 20]]), alpha(WHITE, 0.3));
+}
+
+const CHEST_SPARKS = 6;
+const CHEST_KEYS = ['root', 'halo', 'rays', 'lidIn', 'mouth', 'loot', 'lidOut', 'gleam', 'leak', ...Array.from({ length: CHEST_SPARKS }, (_, i) => `k${i}`)] as readonly string[];
+
+interface ChestArt {
+  shadow: SkPicture;
+  halo: SkPicture;
+  rays: SkPicture;
+  lidIn: SkPicture;
+  mouth: SkPicture;
+  loot: SkPicture;
+  body: SkPicture;
+  lidOut: SkPicture;
+  gleam: SkPicture;
+  leak: SkPicture;
+  spark: SkPicture;
+}
+
+export interface ChestProps {
+  /** The floor point under the middle of the chest, in canvas pixels. */
+  x: Anim<number>;
+  y: Anim<number>;
+  /** 1 is `CHEST_SIZE` (180 px wide). */
+  scale?: Anim<number>;
+  tier: ChestTier;
+  /** 0 closed .. 1 wide open. Drive it with `withTiming`/`withSpring`; light, rays and loot follow. */
+  lid: Anim<number>;
+  /** 0..1: how hard it rattles (the "tap to open" build-up). */
+  shake?: Anim<number>;
+  /** Glow rays behind the open chest. Default true. */
+  rays?: boolean;
+  clock: SharedValue<number>;
+  zIndex?: Anim<number>;
+}
+
+/** A treasure chest in three tiers. It rattles, bursts open, and its light fans out as rays. */
+export function Chest({ x, y, scale = 1, tier, lid, shake = 0, rays = true, clock, zIndex }: ChestProps) {
+  const s = CHEST_STYLES[tier];
+  const art = useArt<ChestArt>(`chest:${tier}`, () => ({
+    shadow: rec((p) => drawShadow(p, 84, 12, 1.4)),
+    halo: rec((p) => drawHalo(p, s)),
+    rays: rec((p) => drawRays(p, s)),
+    lidIn: rec((p) => drawChestLidInside(p, s)),
+    mouth: rec((p) => drawChestMouth(p, s)),
+    loot: rec((p) => drawLoot(p, s, tier)),
+    body: rec((p) => drawChestBody(p, s, tier)),
+    lidOut: rec((p) => drawChestLid(p, s, tier)),
+    gleam: rec((p) => drawGleam(p)),
+    leak: rec((p) => drawLeak(p, s)),
+    spark: rec((p) => {
+      p.shape(twinkle(0, 0, 10), lightOf(s.glow, 0.5), { ow: 2, shade: false });
+      p.fill(twinkle(-1.2, -1.2, 4.2), WHITE);
+    }),
+  }));
+  // The closed silhouette, for the gleam that runs across it.
+  const clip = useMemo(() => {
+    const b = Skia.PathBuilder.Make();
+    b.addRRect({ rect: rc(-CW - 3, -86, CW * 2 + 6, 86), rx: 10, ry: 10 });
+    b.addPath(translatedLid());
+    const path = b.build();
+    b.dispose();
+    return path;
+  }, []);
+  const m = useRig(
+    CHEST_KEYS,
+    (o, mem) => {
+      'worklet';
+      const now = clock.value;
+      tick(mem, now);
+      const t = now / 1000;
+      const u = clamp01(num(lid));
+      const sh = clamp01(num(shake));
+      const k = CHEST_UNIT * num(scale);
+      const wob = sh * Math.sin((now / CHEST_RATTLE_MS) * Math.PI * 2);
+      const rot = 0.07 * wob;
+      const c = Math.cos(rot);
+      const sn = Math.sin(rot);
+      // Rotate about the floor point, with a little hop on each rattle.
+      const r = o.root;
+      r[0] = c * k;
+      r[1] = -sn * k;
+      r[2] = num(x) + sh * 2.5 * k * Math.sin(t * 53);
+      r[3] = sn * k;
+      r[4] = c * k * (1 + 0.03 * Math.abs(wob));
+      r[5] = num(y);
+      // The lid: rattles while shut, lifts and tips back over the first 40%, then stands open.
+      const u1 = clamp01(u / 0.4);
+      const u2 = clamp01((u - 0.4) / 0.6);
+      const rattle = u < 0.02 ? 5 * sh * Math.abs(Math.sin((now / CHEST_RATTLE_MS) * Math.PI)) : 0;
+      if (u1 < 1) {
+        const sy = Math.cos((u1 * Math.PI) / 2);
+        const lift = 30 * Math.sin(u1 * Math.PI) + 14 * u1 + rattle;
+        put(o.lidOut, 0, RIM_Y + 1 - lift, 0, 1, sy);
+      } else pop(o.lidOut, 0, 0, 0, 0);
+      if (u2 > 0) put(o.lidIn, 0, BACK_Y + 1, 0, 1, 1.05 * backOut(u2));
+      else pop(o.lidIn, 0, 0, 0, 0);
+      put(o.mouth, 0, 0, 0, 1, 1);
+      pop(o.loot, 0, RIM_Y + 2, 0, 1.22 * backOut((u - 0.25) / 0.45));
+      const leak = Math.max(clamp01(u * 3), (rattle / 5) * 0.8);
+      pop(o.leak, 0, RIM_Y - 6, 0, leak * (1 + 0.05 * Math.sin(t * 7)));
+      const ray = rays ? ease((u - 0.3) / 0.6) : 0;
+      pop(o.rays, 0, RIM_Y - 14, t * 0.35, ray * (1 + 0.04 * Math.sin(t * 2.6)));
+      pop(o.halo, 0, RIM_Y - 14, 0, ease((u - 0.15) / 0.6) * (1 + 0.06 * Math.sin(t * 3.1)));
+      // A gleam runs over the closed chest every few seconds.
+      const g = frac(t / 3.2);
+      if (u < 0.02 && g < 0.25) put(o.gleam, -110 + 240 * (g / 0.25), 0, 0, 1, 1);
+      else pop(o.gleam, 0, 0, 0, 0);
+      // Sparkles pop around the open chest.
+      for (let i = 0; i < CHEST_SPARKS; i++) {
+        const q = frac(t / 1.6 + i / CHEST_SPARKS);
+        const a = -Math.PI / 2 + (i - (CHEST_SPARKS - 1) / 2) * 0.55;
+        const rr = 70 + 40 * q + (i % 2) * 18;
+        pop(o[`k${i}`], Math.cos(a) * rr * 1.25, RIM_Y - 10 + Math.sin(a) * rr, q * 2, ease((u - 0.5) / 0.4) * life(q, 0.2, 0.4) * (i % 2 ? 0.7 : 1));
+      }
+    },
+    [clock, x, y, scale, lid, shake, rays],
+  );
+  return (
+    <Group matrix={m.root} zIndex={zIndex}>
+      <Picture picture={art.shadow} />
+      <Picture picture={art.halo} matrix={m.halo} />
+      <Picture picture={art.rays} matrix={m.rays} />
+      <Picture picture={art.lidIn} matrix={m.lidIn} />
+      <Picture picture={art.mouth} matrix={m.mouth} />
+      <Picture picture={art.loot} matrix={m.loot} />
+      <Picture picture={art.body} />
+      <Picture picture={art.lidOut} matrix={m.lidOut} />
+      <Group clip={clip}>
+        <Picture picture={art.gleam} matrix={m.gleam} />
+      </Group>
+      <Picture picture={art.leak} matrix={m.leak} />
+      {CHEST_KEYS.slice(9).map((key) => (
+        <Picture key={key} picture={art.spark} matrix={m[key]} />
+      ))}
+    </Group>
+  );
+}
+
+/** The closed lid's outline in chest coordinates (not tracked: it outlives any recording). */
+function translatedLid(): SkPath {
+  const w = CW + 2;
+  const h = LID_H;
+  const b = Skia.PathBuilder.Make();
+  b.moveTo(-w, RIM_Y);
+  b.lineTo(-w, RIM_Y - h * 0.44);
+  b.quadTo(-w, RIM_Y - h, 0, RIM_Y - h);
+  b.quadTo(w, RIM_Y - h, w, RIM_Y - h * 0.44);
+  b.lineTo(w, RIM_Y);
+  b.close();
+  const path = b.build();
+  b.dispose();
+  return path;
+}
+
+// ---------------------------------------------------------------------------
+// Staff cards: a back, and a front frame per rarity
+// ---------------------------------------------------------------------------
+
+/** Size of a card at `scale` 1, in pixels. Cards are placed by their centre. */
+export const CARD_SIZE = { width: 110, height: 150 } as const;
+/** The window for the portrait, in pixels from the card's centre at `scale` 1. `CardFrame` children are drawn in it. */
+export const CARD_WINDOW = { x: -43, y: -60, width: 86, height: 84 } as const;
+/** The blank name plate under the window, in pixels from the card's centre at `scale` 1 (put the name over it). */
+export const CARD_NAMEPLATE = { x: -46, y: 30, width: 92, height: 17 } as const;
+/** How long the shine takes to cross an epic or legendary card, and how often it comes back (ms). */
+export const CARD_SHINE_MS = 650;
+export const CARD_SHINE_EVERY_MS = 2600;
+
+const CARD_UNIT = 0.5;
+const CHW = 110;
+const CHH = 150;
+const WIN = { x: CARD_WINDOW.x * 2, y: CARD_WINDOW.y * 2, w: CARD_WINDOW.width * 2, h: CARD_WINDOW.height * 2 };
+
+interface CardStyle {
+  frame: string;
+  trim: string;
+  panel: string;
+  bg: [string, string];
+  gem: string;
+  pips: number;
+  plate: string;
+}
+
+const CARD_STYLES: Record<Rarity, CardStyle> = {
+  common: { frame: '#B7AC9C', trim: '#F3EDE3', panel: '#D9D0C2', bg: ['#FFFFFF', '#E3DBCD'], gem: '#A8A094', pips: 1, plate: '#F3EDE3' },
+  rare: { frame: '#3C8AE0', trim: '#E7EEF7', panel: '#7DB7EE', bg: ['#F0FAFF', '#86C6F2'], gem: '#5FC6FF', pips: 2, plate: '#E7EEF7' },
+  epic: { frame: '#9A4BDD', trim: '#FFC93C', panel: '#BE8AF0', bg: ['#FCF2FF', '#B47CEE'], gem: '#E177FF', pips: 3, plate: '#FFF4D6' },
+  legendary: { frame: '#FFAE22', trim: '#FFF2AE', panel: '#FFD066', bg: ['#FFFBE0', '#FFB13F'], gem: '#FF4D5E', pips: 4, plate: '#D8343F' },
+};
+
+const cardPath = () => rrect(-CHW, -CHH, CHW * 2, CHH * 2, 18);
+const winPath = () => rrect(WIN.x, WIN.y, WIN.w, WIN.h, 14);
+
+function pipGem(p: Pen, x: number, y: number, r: number, color: string) {
+  chestGemAt(p, x, y, r, color);
+}
+
+/** Frame and window backdrop: everything under the portrait. Card units (2 per pixel), origin at the centre. */
+function drawCardBase(p: Pen, r: Rarity) {
+  const s = CARD_STYLES[r];
+  const fancy = r === 'epic' || r === 'legendary';
+  shapeWith(
+    p,
+    cardPath(),
+    s.frame,
+    () => {
+      // Inner panel inside the trim.
+      p.fill(rrect(-CHW + 13, -CHH + 13, CHW * 2 - 26, CHH * 2 - 26, 10), s.panel);
+      if (r === 'rare' || fancy) {
+        // A pattern on the panel: diagonal lattice.
+        const lat = alpha(WHITE, r === 'rare' ? 0.16 : 0.2);
+        for (let d = -CHH * 2; d < CHH * 2; d += 22) {
+          p.stroke(line(d, -CHH, d + CHH * 2, CHH), lat, 2, true);
+          p.stroke(line(d, CHH, d + CHH * 2, -CHH), lat, 2, true);
+        }
+      }
+      if (r === 'legendary') {
+        // Sun rays behind everything.
+        for (let i = 0; i < 18; i++) {
+          const a = (i / 18) * Math.PI * 2;
+          p.fill(poly([[0, -30], [Math.cos(a - 0.07) * 260, -30 + Math.sin(a - 0.07) * 260], [Math.cos(a + 0.07) * 260, -30 + Math.sin(a + 0.07) * 260]]), alpha(WHITE, 0.18));
+        }
+      }
+    },
+    { ow: 4.6, shade: 7, light: 4 },
+  );
+  // Trim line between frame and panel.
+  p.stroke(rrect(-CHW + 13, -CHH + 13, CHW * 2 - 26, CHH * 2 - 26, 10), s.trim, fancy ? 5 : 3.6);
+  p.stroke(rrect(-CHW + 13, -CHH + 13, CHW * 2 - 26, CHH * 2 - 26, 10), alpha(OUTLINE, 0.55), 1.4);
+  if (fancy) p.stroke(rrect(-CHW + 6, -CHH + 6, CHW * 2 - 12, CHH * 2 - 12, 14), alpha(s.trim, 0.8), 2);
+  // Window backdrop.
+  const win = winPath();
+  p.radial(win, 0, WIN.y + WIN.h * 0.45, WIN.w * 0.75, s.bg, [0.1, 1]);
+  p.clipped(win, () => {
+    if (r === 'rare') p.fill(ellipse(0, WIN.y + WIN.h + 6, WIN.w * 0.55, 30), alpha(WHITE, 0.35));
+    if (r === 'epic') for (const [x, y, k] of [[-62, -100, 5], [54, -88, 4], [-48, -30, 3], [66, -40, 5], [20, -110, 3]] as [number, number, number][]) p.fill(twinkle(x, y, k * 1.6), alpha(WHITE, 0.85));
+    if (r === 'legendary')
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        const cy = WIN.y + WIN.h * 0.42;
+        p.fill(poly([[0, cy], [Math.cos(a - 0.13) * 160, cy + Math.sin(a - 0.13) * 160], [Math.cos(a + 0.13) * 160, cy + Math.sin(a + 0.13) * 160]]), alpha(WHITE, 0.32));
+      }
+  });
+}
+
+/** Window rim, name plate, crest, corners and rarity pips: drawn over the portrait. */
+function drawCardTop(p: Pen, r: Rarity) {
+  const s = CARD_STYLES[r];
+  const win = winPath();
+  // A little shade along the window's top edge so the portrait sits inside.
+  p.clipped(win, () => p.gradient(rrect(WIN.x, WIN.y, WIN.w, 12, 0), 0, WIN.y, 0, WIN.y + 12, [alpha(INK, 0.22), alpha(INK, 0)]));
+  p.stroke(win, s.trim, r === 'common' ? 5 : 7);
+  p.stroke(rrect(WIN.x - 4.5, WIN.y - 4.5, WIN.w + 9, WIN.h + 9, 17), OUTLINE, 2.6);
+  p.stroke(win, OUTLINE, 2.6);
+  // Name plate: a tab for common and rare, a ribbon for epic and legendary.
+  const NP = { x: CARD_NAMEPLATE.x * 2, y: CARD_NAMEPLATE.y * 2, w: CARD_NAMEPLATE.width * 2, h: CARD_NAMEPLATE.height * 2 };
+  if (r === 'epic' || r === 'legendary') {
+    const ribbon = r === 'legendary' ? s.plate : s.frame;
+    for (const sg of [-1, 1]) {
+      const x0 = sg * (NP.w / 2 - 6);
+      const x1 = sg * (NP.w / 2 + 16);
+      p.shape(poly([[x0, NP.y + 8], [x1, NP.y + 8], [x1 - sg * 9, NP.y + NP.h / 2 + 8], [x1, NP.y + NP.h + 8], [x0, NP.y + NP.h + 8]]), shadeOf(ribbon, 1.1), { ow: 2.6, shade: false });
+    }
+    p.shape(rrect(NP.x, NP.y, NP.w, NP.h, 6), ribbon, { ow: 3, shade: 3, light: 2 });
+    p.stroke(rrect(NP.x + 5, NP.y + 5, NP.w - 10, NP.h - 10, 3), alpha(s.trim, 0.9), 1.8);
+  } else {
+    p.shape(rrect(NP.x, NP.y, NP.w, NP.h, 9), s.plate, { ow: 3, shade: 3, light: 1.6 });
+  }
+  // Rarity pips.
+  const n = s.pips;
+  for (let i = 0; i < n; i++) pipGem(p, (i - (n - 1) / 2) * 24, 122, 8, s.gem);
+  // Corners.
+  const corners: Pt[] = [[-CHW + 14, -CHH + 14], [CHW - 14, -CHH + 14], [-CHW + 14, CHH - 14], [CHW - 14, CHH - 14]];
+  if (r === 'rare') for (const [x, y] of corners) p.shape(circle(x, y, 5), s.trim, { ow: 2, shade: 1.2 });
+  if (r === 'epic' || r === 'legendary') {
+    for (const [x, y] of corners) {
+      const sx = Math.sign(x);
+      const sy = Math.sign(y);
+      p.shape(poly([[x + sx * 6, y + sy * 6], [x - sx * 22, y + sy * 6], [x + sx * 6, y - sy * 22]]), r === 'epic' ? s.trim : '#FFE070', { ow: 2.6, shade: false });
+      if (r === 'legendary') pipGem(p, x - sx * 1, y - sy * 1, 6, s.gem);
+      else p.shape(circle(x - sx * 1, y - sy * 1, 3.4), s.frame, { ow: 1.6, shade: false });
+    }
+  }
+  // Crest over the top edge.
+  if (r === 'rare') pipGem(p, 0, -CHH + 2, 10, s.gem);
+  if (r === 'epic') {
+    const shield = blob([[-18, -CHH - 10, 0], [18, -CHH - 10, 0], [17, -CHH + 6], [0, -CHH + 20, 0], [-17, -CHH + 6]]);
+    p.shape(shield, s.trim, { ow: 3, shade: 3, light: 2 });
+    pipGem(p, 0, -CHH + 2, 9, s.gem);
+  }
+  if (r === 'legendary') {
+    // Wings and a crown.
+    for (const sg of [-1, 1]) {
+      const wing = blob([[sg * 14, -CHH + 6], [sg * 30, -CHH - 12], [sg * 54, -CHH - 16], [sg * 46, -CHH - 4], [sg * 58, -CHH + 2], [sg * 40, -CHH + 10], [sg * 20, -CHH + 14]]);
+      p.shape(wing, WHITE, { ow: 3, shade: 3, shadeColor: '#E9DFC9' });
+      p.stroke(curve([[sg * 24, -CHH + 4], [sg * 38, -CHH - 4], [sg * 50, -CHH - 8]]), alpha(OUTLINE, 0.45), 1.6);
+    }
+    const crown = poly([[-24, -CHH + 12], [-28, -CHH - 20], [-12, -CHH - 6], [0, -CHH - 28], [12, -CHH - 6], [28, -CHH - 20], [24, -CHH + 12]]);
+    p.shape(crown, '#FFD43B', { ow: 3, shade: 3, light: 2 });
+    p.shape(rrect(-25, -CHH + 4, 50, 10, 3), '#F6B71E', { ow: 2.6, shade: false });
+    for (const [x, y] of [[-28, -CHH - 20], [0, -CHH - 28], [28, -CHH - 20]] as Pt[]) p.shape(circle(x, y, 3.6), WHITE, { ow: 1.8, shade: false });
+    pipGem(p, 0, -CHH - 4, 7, s.gem);
+  }
+}
+
+function drawCardBack(p: Pen, c: ArtPalette) {
+  const base = c.primary;
+  const trim = c.accent;
+  shapeWith(
+    p,
+    cardPath(),
+    base,
+    () => {
+      p.fill(rrect(-CHW + 13, -CHH + 13, CHW * 2 - 26, CHH * 2 - 26, 10), shadeOf(base, 0.7));
+      // Diamond lattice.
+      const lat = alpha(lightOf(base, 0.6), 0.35);
+      for (let d = -CHH * 2; d < CHH * 2; d += 28) {
+        p.stroke(line(d, -CHH, d + CHH * 2, CHH), lat, 2.4, true);
+        p.stroke(line(d, CHH, d + CHH * 2, -CHH), lat, 2.4, true);
+      }
+      p.radial(circle(0, 0, 140), 0, 0, 140, [alpha(lightOf(base, 0.7), 0.55), alpha(base, 0)], [0, 1]);
+    },
+    { ow: 4.6, shade: 7, light: 4 },
+  );
+  p.stroke(rrect(-CHW + 13, -CHH + 13, CHW * 2 - 26, CHH * 2 - 26, 10), trim, 4.6);
+  p.stroke(rrect(-CHW + 13, -CHH + 13, CHW * 2 - 26, CHH * 2 - 26, 10), alpha(OUTLINE, 0.55), 1.4);
+  // Medallion with a star.
+  p.shape(circle(0, 0, 48), trim, { ow: 4, shade: 4, light: 2.6 });
+  p.shape(circle(0, 0, 37), shadeOf(base, 0.4), { ow: 3, shade: 3 });
+  p.shape(star(0, 2, 26, 5, 0.47), trim, { ow: 3, shade: 2.6, light: 1.8 });
+  p.shine(arc(0, 0, 42, 42, 200, 60), WHITE, 3.4, 0.8);
+  for (const [x, y] of [[-CHW + 26, -CHH + 26], [CHW - 26, -CHH + 26], [-CHW + 26, CHH - 26], [CHW - 26, CHH - 26]] as Pt[]) p.shape(twinkle(x, y, 9), trim, { ow: 2.2, shade: false });
+}
+
+function drawCardShine(p: Pen, gold: boolean) {
+  const c = gold ? '#FFF6C8' : WHITE;
+  p.fill(poly([[-22, -170], [14, -170], [-48, 170], [-84, 170]]), alpha(c, 0.55));
+  p.fill(poly([[26, -170], [38, -170], [-24, 170], [-36, 170]]), alpha(c, 0.4));
+}
+
+const CARD_SPARKS = 4;
+const CARD_KEYS = ['root', 'back', 'front', 'shine', 'aura', ...Array.from({ length: CARD_SPARKS }, (_, i) => `k${i}`)] as readonly string[];
+
+interface CardArt {
+  base: SkPicture;
+  top: SkPicture;
+  back: SkPicture;
+  shine: SkPicture;
+  aura: SkPicture | null;
+  spark: SkPicture;
+}
+
+export interface CardProps {
+  /** Centre of the card, in canvas pixels. */
+  x: Anim<number>;
+  y: Anim<number>;
+  /** 1 is `CARD_SIZE` (110 x 150 px). */
+  scale?: Anim<number>;
+  rarity?: Rarity;
+  /** 0 shows the back, 1 the front; in between it turns over (drive it with `withTiming`). */
+  flip?: Anim<number>;
+  /** Colours of the card back (primary and accent). */
+  palette?: Partial<ArtPalette>;
+  clock: SharedValue<number>;
+  /** The portrait, in pixels with the origin at the window's top left (`CARD_WINDOW` is the size); clipped to the window. */
+  children?: ReactNode;
+  zIndex?: Anim<number>;
+}
+
+/** A staff card that can turn over: the back, then the front frame of its rarity with a portrait in the window. */
+export function Card({ x, y, scale = 1, rarity = 'common', flip = 1, palette, clock, children, zIndex }: CardProps) {
+  const [pal, palKey] = usePalette(palette);
+  const fancy = rarity === 'epic' || rarity === 'legendary';
+  const art = useArt<CardArt>(`card:${rarity}:${palKey}`, () => ({
+    base: rec((p) => drawCardBase(p, rarity), OUTLINE, 4.6),
+    top: rec((p) => drawCardTop(p, rarity), OUTLINE, 4.6),
+    back: rec((p) => drawCardBack(p, pal), OUTLINE, 4.6),
+    shine: rec((p) => drawCardShine(p, rarity === 'legendary')),
+    aura: fancy ? rec((p) => p.glow(rrect(-CHW - 4, -CHH - 4, CHW * 2 + 8, CHH * 2 + 8, 22), alpha(rarity === 'legendary' ? '#FFC93C' : '#C77DFF', 0.9), 14)) : null,
+    spark: rec((p) => {
+      p.shape(twinkle(0, 0, 11), rarity === 'legendary' ? '#FFF2AE' : WHITE, { ow: 2.2, shade: false });
+      p.fill(twinkle(-1.2, -1.2, 4.4), WHITE);
+    }),
+  }));
+  const shapes = useMemo(() => {
+    const card = Skia.PathBuilder.Make().addRRect({ rect: rc(-CHW, -CHH, CHW * 2, CHH * 2), rx: 18, ry: 18 });
+    const win = Skia.PathBuilder.Make().addRRect({ rect: rc(WIN.x, WIN.y, WIN.w, WIN.h), rx: 14, ry: 14 });
+    const out = { card: card.build(), win: win.build() };
+    card.dispose();
+    win.dispose();
+    return out;
+  }, []);
+  const m = useRig(
+    CARD_KEYS,
+    (o) => {
+      'worklet';
+      const now = clock.value;
+      const t = now / 1000;
+      const k = CARD_UNIT * num(scale);
+      const f = clamp01(num(flip));
+      const cs = Math.cos(f * Math.PI);
+      // Lifts a little while it turns.
+      const lift = 1 + 0.08 * Math.sin(f * Math.PI);
+      put(o.root, num(x), num(y), 0, k * lift, k * lift);
+      if (cs > 0) {
+        put(o.back, 0, 0, 0, Math.max(0.02, cs), 1);
+        pop(o.front, 0, 0, 0, 0);
+      } else {
+        put(o.front, 0, 0, 0, Math.max(0.02, -cs), 1);
+        pop(o.back, 0, 0, 0, 0);
+      }
+      const g = (now % CARD_SHINE_EVERY_MS) / CARD_SHINE_MS;
+      if (g < 1) put(o.shine, -200 + 400 * ease(g), 0, 0, 1, 1);
+      else pop(o.shine, 0, 0, 0, 0);
+      const a = 1 + 0.04 * Math.sin(t * 3);
+      put(o.aura, 0, 0, 0, a, 1 + 0.03 * Math.sin(t * 3));
+      for (let i = 0; i < CARD_SPARKS; i++) {
+        const q = frac(t / 1.9 + i * 0.27);
+        const sx = i % 2 === 0 ? -1 : 1;
+        const sy = i < 2 ? -1 : 1;
+        pop(o[`k${i}`], sx * (CHW - 8 - 14 * (i % 3)), sy * (CHH - 30 - 20 * ((i + 1) % 2)), q * 2.4, life(q, 0.2, 0.35) * (q < 0.45 ? 1 : 0));
+      }
+    },
+    [clock, x, y, scale, flip],
+  );
+  const showShine = fancy;
+  return (
+    <Group matrix={m.root} zIndex={zIndex}>
+      <Group matrix={m.back}>
+        <Picture picture={art.back} />
+        <Group clip={shapes.card}>
+          <Picture picture={art.shine} matrix={m.shine} />
+        </Group>
+      </Group>
+      <Group matrix={m.front}>
+        {art.aura ? <Picture picture={art.aura} matrix={m.aura} /> : null}
+        <Picture picture={art.base} />
+        {children ? (
+          <Group clip={shapes.win}>
+            <Group matrix={[2, 0, WIN.x, 0, 2, WIN.y, 0, 0, 1]}>{children}</Group>
+          </Group>
+        ) : null}
+        <Picture picture={art.top} />
+        {showShine ? (
+          <Group clip={shapes.card}>
+            <Picture picture={art.shine} matrix={m.shine} />
+          </Group>
+        ) : null}
+        {rarity === 'legendary' || rarity === 'epic'
+          ? CARD_KEYS.slice(5, rarity === 'legendary' ? 5 + CARD_SPARKS : 7).map((key) => <Picture key={key} picture={art.spark} matrix={m[key]} />)
+          : null}
+      </Group>
+    </Group>
+  );
+}
+
+export type CardFrameProps = Omit<CardProps, 'flip'> & { rarity: Rarity };
+
+/** The front of a staff card: a frame for its rarity, with `children` (the portrait) in the window. */
+export function CardFrame(props: CardFrameProps) {
+  return <Card {...props} flip={1} />;
+}
+
+export type CardBackProps = Omit<CardProps, 'flip' | 'rarity' | 'children'>;
+
+/** The back of a staff card, in the palette's primary and accent colours, with a passing shine. */
+export function CardBack(props: CardBackProps) {
+  return <Card {...props} flip={0} />;
+}

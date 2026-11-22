@@ -59,6 +59,9 @@ MUSIC_BUDGET_BYTES = 700_000
 MUSIC_MIN_S, MUSIC_MAX_S = 30.0, 45.0
 SEAM_S = 0.050
 SEAM_LEVEL_WARN_DB, SEAM_LEVEL_FAIL_DB = 3.0, 6.0
+PHONE_HP_HZ = 550.0           # "phone": loudness lost through a 550 Hz high-pass, a rough phone speaker
+PHONE_WARN_DB, PHONE_FAIL_DB = -3.0, -6.0
+MUSIC_PHONE_WARN_DB = -6.0    # music is only warned about: a loop may keep some real bass
 
 
 # ---------------------------------------------------------------------------
@@ -102,7 +105,18 @@ def analyse(x):
         'head': abs(float(x[0])) if len(x) else 0.0,
         'tail': abs(float(x[-1])) if len(x) else 0.0,
         'dead_tail_ms': 1000.0 * (len(x) - 1 - quiet[-1]) / SR if len(quiet) else 0.0,
+        'phone_db': phone_loss_db(x),
     }
+
+
+_PHONE = dsp.butter('hp', PHONE_HP_HZ, 2)
+
+
+def phone_loss_db(x):
+    """Loudest-200-ms loudness through a 550 Hz high-pass minus the same without it (dB, <= 0)."""
+    if len(x) < 64:
+        return 0.0
+    return dsp.loudness_db(dsp.filt(x, _PHONE, 0.01)) - dsp.loudness_db(x)
 
 
 def _flat_tops(ints, run_len: int = 8) -> int:
@@ -187,8 +201,8 @@ def seam_report(x):
 # checks
 # ---------------------------------------------------------------------------
 
-def check_effect(a, fmt, has_haptic):
-    """-> (errors, warnings) for one .wav."""
+def check_effect(a, fmt, has_haptic, target_db=dsp.LOUDNESS_TARGET_DB):
+    """-> (errors, warnings) for one .wav. `target_db` is the pack target plus the recipe's loudness tier."""
     err, warn = [], []
     sr, ch, bits = fmt
     if (sr, ch, bits) != (SR, 1, 16):
@@ -205,7 +219,7 @@ def check_effect(a, fmt, has_haptic):
         err.append('%.0f dB above 8 kHz' % a['hf_db'])
     elif a['hf_db'] > HF_WARN_DB:
         warn.append('%.0f dB above 8 kHz' % a['hf_db'])
-    off = a['loud_db'] - dsp.LOUDNESS_TARGET_DB
+    off = a['loud_db'] - target_db
     at_ceiling = a['peak_db'] > dsp.PEAK_CEILING_DB - 0.6
     if off > LOUD_TOL_DB or off < -LOUD_LIMITED_TOL_DB or (off < -LOUD_TOL_DB and not at_ceiling):
         err.append('loudness %+.1f dB off target' % off)
@@ -221,6 +235,10 @@ def check_effect(a, fmt, has_haptic):
         warn.append('bright (centroid %.0f Hz)' % a['centroid'])
     if has_haptic and a['onset_ms'] > ONSET_WARN_MS:
         warn.append('speaks %.0f ms after its haptic' % a['onset_ms'])
+    if a['phone_db'] < PHONE_FAIL_DB:
+        err.append('phone speaker loses %.1f dB' % -a['phone_db'])
+    elif a['phone_db'] < PHONE_WARN_DB:
+        warn.append('phone speaker loses %.1f dB' % -a['phone_db'])
     return err, warn
 
 
@@ -250,6 +268,8 @@ def check_music(a, seam, meta, size):
         warn.append('seam spectral jump %.1f dB (p%.0f)' % (seam['spec_db'], seam['spec_pct']))
     if seam['jump'] > 3.0 * seam['jump_p999'] and seam['jump'] > 0.02:
         err.append('click at the seam (step %.3f)' % seam['jump'])
+    if a['phone_db'] < MUSIC_PHONE_WARN_DB:
+        warn.append('phone speaker loses %.1f dB' % -a['phone_db'])
     return err, warn
 
 
@@ -351,7 +371,7 @@ def draw_cell(img, draw, fonts, x0, y0, w, h, item):
     draw.rectangle([x0, y0, x0 + w - 1, y0 + h - 1], fill=PANEL, outline=state if item['err'] else (52, 52, 70))
     draw.ellipse([x0 + 6, y0 + 7, x0 + 14, y0 + 15], fill=state)
     draw.text((x0 + 20, y0 + 3), item['name'], font=f_b, fill=INK)
-    info = '%d ms   pk %.1f   loud %.1f   %s' % (round(a['duration'] * 1000), a['peak_db'], a['loud_db'], dsp.note_name(a['pitch']))
+    info = '%d ms   pk %.1f   loud %.1f   ph %+.1f   %s' % (round(a['duration'] * 1000), a['peak_db'], a['loud_db'], a['phone_db'], dsp.note_name(a['pitch']))
     draw.text((x0 + 6, y0 + 20), info, font=f_s, fill=DIM)
     note = '; '.join(item['err'] + item['warn'])
     if note:
@@ -500,13 +520,48 @@ def load_catalog():
         return None, None
 
 
-def stream_interval(key):
-    """Repeat interval for sounds that are normalised as a stream (see recipes.py), else None."""
+def _recipes():
     try:
         from recipes import RECIPES
-        return getattr(RECIPES.get(key), 'stream_ms', None)
+        return RECIPES
     except Exception:
-        return None
+        return {}
+
+
+def recipe_key(base):
+    """File base name -> recipe key ('tap_3' -> 'tap'), without needing the catalogue."""
+    R = _recipes()
+    if base in R:
+        return base
+    head, _, tail = base.rpartition('_')
+    return head if tail.isdigit() and head in R else base
+
+
+def stream_interval(key):
+    """Repeat interval for sounds that are normalised as a stream (read from
+    recipes.RECIPES, so it works even when the catalogue cannot be parsed), else None."""
+    return getattr(_recipes().get(recipe_key(key)), 'stream_ms', None)
+
+
+def target_for(key):
+    """Loudness target of one file: the pack target plus its recipe's tier (recipes.BIG / FREQUENT)."""
+    return dsp.LOUDNESS_TARGET_DB + getattr(_recipes().get(recipe_key(key)), 'loud_db', 0.0)
+
+
+def print_stems(duration):
+    """Per-stem K-RMS and phone loss of the tune whose loop length matches `duration` (warm pack)."""
+    import music
+    from packs import PACKS
+    pack = PACKS['warm']()
+    for tune in music.TUNES:
+        loop, _, _, _ = music.TUNES[tune](pack)
+        if abs(loop.seconds - duration) < 0.1:
+            _, rows = music.stem_levels(tune, pack)
+            print('%-24s stems of %r (warm pack, dry, at mix level):' % ('', tune))
+            for name, lv, ph in sorted(rows, key=lambda r: -r[1]):
+                print('%-24s   %-12s K-RMS %6.1f dB   phone %+5.1f dB' % ('', name, lv, ph))
+            return
+    print('%-24s stems: no tune is %.2f s long' % ('', duration))
 
 
 def main(argv=None):
@@ -516,16 +571,16 @@ def main(argv=None):
     ap.add_argument('--only', help='comma-separated file globs (without extension), e.g. "tap_*,coin_*"')
     ap.add_argument('--cols', type=int, default=6)
     ap.add_argument('--partial', action='store_true', help='treat every folder as overrides: missing files are fine')
+    ap.add_argument('--stems', action='store_true', help='also print per-stem levels of each music loop (re-renders the tune)')
     args = ap.parse_args(argv)
 
     entries, file_names = load_catalog()
-    order, haptic, music_names, known, stream = {}, {}, set(), set(), {}
+    order, haptic, music_names, known = {}, {}, set(), set()
     if entries:
         for e in entries:
             for b in file_names(e):
                 order[b] = len(order)
                 haptic[b] = bool(e['haptic'])
-                stream[b] = stream_interval(e['key'])
                 known.add(b + ('.m4a' if e['loop'] else '.wav'))
                 if e['loop']:
                     music_names.add(b)
@@ -544,8 +599,8 @@ def main(argv=None):
         wavs = [f for f in names if f.endswith('.wav')]
         complete = bool(entries) and not args.partial and not pats and len(wavs) >= 0.5 * sum(1 for k in known if k.endswith('.wav'))
         print('\n%s  (%s)' % (rel, 'complete pack' if complete else 'overrides'))
-        print('%-24s %6s %6s %6s %6s %6s %8s %5s %6s %8s %6s  %s'
-              % ('file', 'ms', 'peak', 'RMS', 'loud', 'cent', 'DC', 'clip', '>8k', 'pitch', 'onset', 'notes'))
+        print('%-24s %6s %6s %6s %6s %5s %6s %6s %8s %5s %6s %8s %6s  %s'
+              % ('file', 'ms', 'peak', 'RMS', 'loud', 'tier', 'phone', 'cent', 'DC', 'clip', '>8k', 'pitch', 'onset', 'notes'))
         folder_bytes, wav_bytes, wav_seconds = 0, 0, 0.0
         for f in names:
             path = os.path.join(folder, f)
@@ -556,11 +611,10 @@ def main(argv=None):
                 x, sr, ch, bits = dsp.read_wav(path)
                 mono = x if x.ndim == 1 else x.mean(axis=1)
                 a = analyse(mono)
-                if stream.get(base):
-                    a['loud_db'] = dsp.stream_loudness_db(mono, stream[base])
-                err, warn = check_effect(a, (sr, ch, bits), haptic.get(base, False))
-                if stream.get(base):
-                    warn.append('loudness as a stream, one every %g ms' % stream[base])
+                every = stream_interval(base)
+                if every:
+                    a['loud_db'] = dsp.stream_loudness_db(mono, every)
+                err, warn = check_effect(a, (sr, ch, bits), haptic.get(base, False), target_for(base))
                 item = {'music': False, 'mono': mono}
                 wav_bytes += size
                 wav_seconds += a['duration']
@@ -581,8 +635,9 @@ def main(argv=None):
             failures += bool(err)
             warnings += bool(warn)
             notes = '; '.join(['FAIL ' + e for e in err] + warn)
-            print('%-24s %6.0f %6.1f %6.1f %6.1f %6.0f %+8.4f %5d %6.1f %8s %6.1f  %s'
-                  % (f, a['duration'] * 1000, a['peak_db'], a['rms_db'], a['loud_db'], a['centroid'], a['dc'], a['clipped'],
+            tier = target_for(base) - dsp.LOUDNESS_TARGET_DB if not item['music'] else 0.0
+            print('%-24s %6.0f %6.1f %6.1f %6.1f %+5.0f %+6.1f %6.0f %+8.4f %5d %6.1f %8s %6.1f  %s'
+                  % (f, a['duration'] * 1000, a['peak_db'], a['rms_db'], a['loud_db'], tier, a['phone_db'], a['centroid'], a['dc'], a['clipped'],
                      a['hf_db'], dsp.note_name(a['pitch']), a['onset_ms'], notes))
             if item['music']:
                 s = item['seam']
@@ -591,6 +646,8 @@ def main(argv=None):
                       % ('', s['level_db'], s['level_p99'], s['level_max'], s['spec_db'], s['spec_median'], s['spec_p95'], s['spec_pct'], s['jump'],
                          s['jump_p999'], s['jump_max'], item['meta'].get('sample_rate'), item['meta'].get('channels'),
                          size * 8 / 1000.0 / a['duration'], size / 1000.0))
+                if args.stems:
+                    print_stems(a['duration'])
         line = '%s: %d effect(s), %.1f s, %.2f MB of WAV; folder %.2f MB' % (rel, len(wavs), wav_seconds, wav_bytes / 1e6, folder_bytes / 1e6)
         if complete:
             have = set(names)
