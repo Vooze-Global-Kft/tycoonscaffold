@@ -421,8 +421,8 @@ export function contractAt(cfg: HaulConfig, seed: number, k: number, basis: Cont
 
 /**
  * The offer `contractAt` would draw, or null when the station has nothing a buyer can ask for
- * (Decision 56): past the first two rings, one ore fills every launch and no other ore is worth a
- * tenth of a launch, so any contract would be met by full holds alone or not at all. The board's
+ * (Decision 56): past the first two rings, one ore fills (nearly) every launch and no other ore is
+ * worth a tenth of a launch, so any contract would be met by full holds alone or not at all. The board's
  * place then stays empty until a warp-out finds something (`contractAt` gives the quota instead).
  */
 export function offerAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, avoid: string[] = [], avoidOres: string[] = []): Contract | null {
@@ -557,13 +557,18 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   const mb = multBase(ores);
   // Condition 5: a bonus under `minBonusSeconds` of income is raised (within the cap) until it passes.
   for (let i = 0; i < 8 && g < hi && bonusOfUnits(wantsAt(g), mb + C.raiseMult * g) < minBonus; i++) g = Math.min(hi, g + (hi - lo) / 8 + 0.01);
-  // Never more than maxShare of its launches in all: a second ore that does not fit is dropped, a
-  // raised ore that does not fit gives way.
   let wants = wantsAt(g);
-  // Two ores leave at least a unit a launch for the rest; one ore stays under maxShare.
-  if (wants.length > 1 && wants.reduce((a, w) => a + w.units, 0) > Math.floor(L * F) - L) {
-    ore2 = null;
-    wants = wantsAt(g);
+  // Two ores leave at least a unit a launch for the rest (the held ore gives way, down to half its
+  // smallest hold, else it is dropped); one ore stays under maxShare.
+  if (wants.length > 1) {
+    const fit = Math.floor(L * F) - 2 * L - wants[0].units;
+    if (wants[1].units > fit) {
+      if (fit >= L * (recent[wants[1].ore] ?? 0) * C.holdShare[0] * 0.5) wants[1].units = Math.max(1, fit);
+      else {
+        ore2 = null;
+        wants = wantsAt(g);
+      }
+    }
   }
   const room = Math.floor(L * F * C.maxShare);
   if (wants[0].units > room) wants[0].units = Math.max(1, room);

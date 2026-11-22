@@ -52,7 +52,7 @@
     "tapPercentOfIncome": 0,
     "milestones": [],
     "prestige": {
-      "threshold": 100000000,
+      "threshold": 300000000,
       "scale": 5,
       "exponent": 0.5,
       "bonusPerPoint": 0
@@ -1033,7 +1033,7 @@
       "scrap": "scrap",
       "derelict": "derelict",
       "depletedEvery": 8,
-      "contractsEvery": 12,
+      "contractsEvery": 8,
       "transmissionsEvery": 4
     },
     "conditions": [

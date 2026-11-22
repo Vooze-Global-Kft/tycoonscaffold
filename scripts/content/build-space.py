@@ -95,7 +95,7 @@ g['economy'] = {
     'tapBase': 0, 'tapPercentOfIncome': 0,
     'milestones': [],
     # Cores = floor(scale x (lifetime / threshold)^0.5) (tune: first Jump at 2 h 15 to 2 h 45 with 20 to 30 cores).
-    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (first Jump 2 h 15 to 2 h 45)', 1.0e8),
+    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (first Jump 2 h 15 to 2 h 45)', 3e8),
                  'scale': K('coreScale', 5, 1, 20, 'cores scale'), 'exponent': 0.5, 'bonusPerPoint': 0},
     # Offline: 6 h at most, efficiency 0.45 at most (2.11).
     # (tune: maxHours 6); the efficiency is capped at 0.45 by the rules. The bot's gate is "offline per hour
@@ -166,7 +166,7 @@ g['haul'] = {
             {'level': 35, 'name': 'Twin Rig', 'drill': 2, 'pileCap': 2},
         ],
         'stripeEvery': 15, 'stripeMult': 1.5,
-        'cost': {'base': 3, 'ringFactor': 40, 'growth': K('rigGrowth', 1.6, 1.45, 1.8, 'rig cost growth', 1.7)},
+        'cost': {'base': 3, 'ringFactor': 40, 'growth': K('rigGrowth', 1.6, 1.45, 1.8, 'rig cost growth', 1.6)},
     },
     'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)', 14), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 15), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring', 1.5)},
     'pile': {'min': 10, 'seconds': 25},
@@ -220,7 +220,7 @@ g['haul'] = {
     'shift': {'contracts': 3, 'minHours': 16, 'mult': 2},
     # rules-3: re-tuned against section 8's pods-per-hour target after Decision 40 (a contract met is no longer rare).
     'pods': {'scrap': 'scrap', 'derelict': 'derelict', 'depletedEvery': int(K('podsDepleted', 6, 4, 16, 'a Scrap Pod every n-th dry rock (pods per hour)', 8)),
-             'contractsEvery': int(K('podsContracts', 4, 4, 16, 'a Scrap Pod every n-th contract met (pods per hour)', 12)), 'transmissionsEvery': 4},
+             'contractsEvery': int(K('podsContracts', 4, 4, 16, 'a Scrap Pod every n-th contract met (pods per hour)', 8)), 'transmissionsEvery': 4},
     # Decision 59: every condition's lines put the upside first (cards and the arrival line read them in order).
     'conditions': [
         # Frost Surplus: rings 3 and 4 (ring 2 has no ice; Decisions).
