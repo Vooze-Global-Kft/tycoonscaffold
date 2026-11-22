@@ -5,14 +5,21 @@ import * as H from '../../src/engine/haul';
 import { runHaulBot } from './haul-bot';
 const raw = JSON.parse(require('node:fs').readFileSync(process.argv[2], 'utf8'));
 const cfg = withHaulContent(GameConfigSchema.parse(raw)) as H.HaulConfig;
-const T = Number(process.argv[4]);
-const r = runHaulBot(cfg, { hours: T / 3600 + 0.01, prestige: true, seed: Number(process.argv[3]), keepAt: [T], noOffline: true });
-const g = r.states[T] as any;
-const p = H.haulParams(cfg, g);
-console.log('cash', g.cash.toPrecision(3), 'income', H.haulIncome(cfg, g).toPrecision(3), 'F', p.F.toPrecision(3), 'trait', g.haul.trait, 'drones', g.haul.fleet, 'cap', p.droneCap);
-const lim = H.routeLimits(cfg, g); console.log(JSON.stringify(lim));
-const before = H.haulIncome(cfg, g);
-const opts: [string, number, any][] = [['drone', H.droneCost(cfg, g), (x: any) => H.buyDrone(cfg, x)], ['cap', H.capacityCost(cfg, g), (x: any) => H.buyCapacity(cfg, x)], ['eng', H.engineCost(cfg, g), (x: any) => H.buyEngine(cfg, x)], ['frt', H.freighterCost(cfg, g), (x: any) => H.buyFreighter(cfg, x)]];
-g.haul.slots.forEach((s: any, i: number) => { if (s.claimed) opts.push([`rig${i} L${s.rigLevel} ${s.ore} n${s.haulers}`, H.rigCost(cfg, g, i), (x: any) => H.upgradeRig(cfg, x, i)]); else opts.push([`claim${i}`, H.claimCost(cfg, g, i), (x: any) => H.claimSlot(cfg, x, i)]); });
-for (const [k, c, f] of opts) { if (!(c < Infinity)) continue; let n = f({ ...g, cash: c + 1 }); while (n.haul.idle > 0) { const b = H.bestSlotForDrone(cfg, n); if (b === null) break; n = H.assignDrone(cfg, n, b); } const gain = H.haulIncome(cfg, n) - before; console.log(k.padEnd(28), 'cost', c.toPrecision(3), 'gain', gain.toPrecision(3), 'payback s', (c / gain).toFixed(0)); }
-g.haul.slots.forEach((s: any, i: number) => s.claimed && console.log('slot', i, s.ore, 'n', s.haulers, 'r', p.slots[i].r.toPrecision(3), 'h', p.slots[i].h.toPrecision(3), 'price', p.slots[i].price));
+const seed = Number(process.argv[3]);
+const r1 = runHaulBot(cfg, { hours: 4, prestige: true, seed, noOffline: true });
+const end1 = r1.runs[0].end!;
+const r = runHaulBot(cfg, { hours: end1 / 3600, prestige: false, seed, noOffline: true });
+const g = r.end;
+const NOW = Date.UTC(2026, 10, 22, 12) + end1 * 1000;
+let c = H.confirmJump(cfg, g, NOW);
+for (const id of ['preload', 'assay', 'assay', 'assay', 'assay', 'assay', 'afterburner', 'seedcredits']) c = H.buyStarNode(cfg, c, id);
+const offers = c.haulStats.pendingJump!.offers;
+console.log('run1', end1, 'earn', g.runEarnings.toPrecision(3), 'offers', offers);
+for (const tr of offers) {
+  const s = H.startGalaxy(cfg, c, NOW, tr) as any;
+  const p = runHaulBot(cfg, { hours: 2, prestige: false, start: s, now: NOW, noOffline: true });
+  const reach = Object.values(p.states).length;
+  let at = -1; // find time reaching run1 earnings via windows
+  let acc = 0; for (const w of p.windows) { acc += w.earned; if (acc >= g.runEarnings) { at = w.from + 600; break; } }
+  console.log(tr, 'start rate', H.haulIncome(cfg, s).toPrecision(3), 'earn 2h', p.end.runEarnings.toPrecision(3), 'reach ~', at, 'ratio', (at / end1).toFixed(2));
+}
