@@ -1127,7 +1127,8 @@ export function refloorOffers(cfg: HaulConfig, params: HaulParams, h: HaulState)
       for (let j = 0; j < i; j++) {
         const u = V[j];
         if (drop.has(j) || u.contract.taken || keyOf(u.contract) !== keyOf(v.contract)) continue;
-        if (Math.abs(raiseOf(u) - raiseOf(v)) < C.raiseGap - 1e-6 || raiseOf(u) === raiseOf(v)) drop.add(i);
+        // (An ore with no route has no raise figure: such offers are never compared.)
+        if (Number.isFinite(raiseOf(u)) && Number.isFinite(raiseOf(v)) && Math.abs(raiseOf(u) - raiseOf(v)) < C.raiseGap - 1e-6) drop.add(i);
       }
     });
     if (drop.size) {

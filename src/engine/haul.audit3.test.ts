@@ -137,9 +137,11 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
     // minutes to two hours that do, at least 15 % of 300 draws want two ores; one such station must
     // exist. On every one of them the offers want at least two different ores.
     const at = [1200, 1500, 1800, 2400, 3000, 3600, 5400, 7200];
-    const r = runHaulBot(cfg, { hours: 7210 / 3600, prestige: false, seed: 12345, keepAt: at, noOffline: true });
+    // Fourth rules check (NEW[5]): seed 12345's bot never ships three ores by two hours (copper and
+    // iron only), so seed 99 (three ores at 90 minutes) is searched too, and one station must qualify.
     let stations = 0;
-    for (const t of at) {
+    const runs = [12345, 99].map((seed) => runHaulBot(cfg, { hours: 7210 / 3600, prestige: false, seed, keepAt: at, noOffline: true }));
+    for (const [r, t] of runs.flatMap((r) => at.map((t) => [r, t] as const))) {
       const g = r.states[t] as Run;
       const b = H.contractBasis(cfg, H.haulParams(cfg, g), g.haul);
       const total = Object.values(b.recent).reduce((a, x) => a + x, 0);
@@ -189,7 +191,10 @@ describe('the board is never empty (the lead, finishing round)', () => {
             // second ore brings more (boardNote); every other station keeps at least two offers.
             // (A board drawn while two ores shipped keeps its offers until they expire; no new one comes.)
             if (H.boardNote(cfg, g) === 'secondOre') expect(g.haul.contracts.board.length, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(1);
-            else expect(offers, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(2);
+            // Fourth rules check (the lead's ruling on NEW[1]): a place that cannot be filled without
+            // a duplicate or a free offer stays empty until the next warp-out, so a station whose
+            // other ores have no room may show one offer (next to its taken contract); never none.
+            else expect(offers, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(1);
           }
         }
         expect(warps).toBe(3);

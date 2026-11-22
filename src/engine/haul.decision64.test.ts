@@ -285,6 +285,12 @@ describe('the freighter bounds every order (the play confirmation after Decision
         const h: H.HaulState = { ...g0.haul, contracts: { ...g0.haul.contracts, unlocked: true, board: [offer], next: 12, active: null } };
         H.refloorOffers(cfg, p, h);
         const after = h.contracts.board[0];
+        // Fourth rules check (the lead's ruling on NEW[1]): an offer the resize cannot lift out of
+        // green within the holds leaves the board (its place waits for the next warp-out).
+        if (!after) {
+          expect(st[ore] * (1 + C.raise[0] / 2)).toBeGreaterThan(p.F * C.maxShare * 0.9);
+          continue;
+        }
         expect(after.wants[0].units).toBeLessThanOrEqual(Math.max(offer.wants[0].units, Math.floor(L * p.F * C.maxShare)));
         fits({ ...g0, haul: h }, after);
       }
