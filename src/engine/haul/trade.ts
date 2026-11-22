@@ -621,9 +621,11 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   // what it shipped lately is far above its routes, the offer reads up to NEEDS +raise.hi). An ore
   // whose routes' floor does not fit under its cap (or the holds) is not asked for: an offer is never
   // drawn at the cap under its floor (NEW[0]).
+  const recentSum = Object.values(recent).reduce((a, x) => a + (Number.isFinite(x) && x > 0 ? x : 0), 0);
+  const recentHeld = (ore: string) => (((globalThis as any).OFF ?? '').includes('N') && recentSum > F ? ((recent[ore] ?? 0) * F) / recentSum : (recent[ore] ?? 0));
   const routesFloor = (ore: string) => Math.ceil(L * Math.max(basis.steady[ore] ?? 0, basis.future?.[ore] ?? 0, fig(ore)) * (1 + C.raise[0] / 2) + (basis.pileOf[ore] ?? 0));
   const neverFree = (ore: string) =>
-    ((globalThis as any).OFF ?? '').includes('C') ? routesFloor(ore) : Math.min(capUnits(ore), Math.max(routesFloor(ore), Math.ceil(L * (recent[ore] ?? 0) * (1 + C.raise[0] / 2) + (basis.pileOf[ore] ?? 0))));
+    ((globalThis as any).OFF ?? '').includes('C') ? routesFloor(ore) : Math.min(capUnits(ore), Math.max(routesFloor(ore), Math.ceil(L * recentHeld(ore) * (1 + C.raise[0] / 2) + (basis.pileOf[ore] ?? 0))));
   const fits = (ore: string) => routesFloor(ore) <= Math.min(capUnits(ore), Math.floor(L * F * C.maxShare));
   // Decision 64, no dominated offers: two offers never want the same ores with raises closer than
   // `raiseGap`, and a larger order of the same ores never pays less.
@@ -850,7 +852,7 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   // Fourth rules check (NEW[1], NEW[0]): the final units are checked again: a draw never adds an offer
   // within `raiseGap` of one of the same ores, nor a raised ore under its never-free floor; such a
   // place stays empty until the next warp-out.
-  if (none && (clashes(pick.wants) || pick.wants[0].units < neverFree(pick.wants[0].ore))) return null;
+  if (none && (clashes(pick.wants) || pick.wants[0].units < (((globalThis as any).OFF ?? '').includes('Q') ? routesFloor(pick.wants[0].ore) : neverFree(pick.wants[0].ore)))) return null;
   let mult = round1(pick.mb + C.raiseMult * pick.g);
   const mine = raiseOf(pick.wants);
   for (const r of sameOres(pick.wants)) {
