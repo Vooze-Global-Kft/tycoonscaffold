@@ -2332,6 +2332,16 @@ export function Dish({ x, y, scale = 1, dish, rotation = 0, zIndex }: DishProps)
   );
 }
 
+let flyingShadow: SkPicture | null = null;
+/**
+ * One ground shadow shared by every flying dish and never freed. (A picture per dish, freed when the
+ * dish unmounted, could be freed while the canvas still drew its last frame: a crash on phones.)
+ */
+function flyingShadowPicture(): SkPicture {
+  if (!flyingShadow) flyingShadow = record((p) => drawShadow(p, 12, 3.4, 0.9));
+  return flyingShadow;
+}
+
 export interface FlyingDishProps {
   /** Start and end points (centre of the dish), in canvas pixels. */
   from: { x: number; y: number };
@@ -2387,8 +2397,7 @@ export function FlyingDish({ from, to, progress, height = 36, spins = 1, dish, s
     },
     [progress, fx, fy, tx, ty, height, spins, scale, hideAtRest, shadow],
   );
-  const shadowPic = useMemo(() => record((p) => drawShadow(p, 12, 3.4, 0.9)), []);
-  useEffect(() => () => shadowPic.dispose(), [shadowPic]);
+  const shadowPic = flyingShadowPicture();
   return (
     <Group zIndex={zIndex}>
       <Picture picture={shadowPic} matrix={m.shadow} />

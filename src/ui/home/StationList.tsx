@@ -77,6 +77,9 @@ export const StationRow = memo(function StationRow({ b, index, rowHeight, compac
   const cfg = useGame((s) => s.cfg);
   const buyTarget = useTarget(v.kind === 'owned' || v.kind === 'next' ? `buyBusiness:${b.id}` : null);
   const hireTarget = useTarget(v.kind === 'owned' && !v.managed ? `hireBusiness:${b.id}` : null);
+  // In a sim game the station in the scene is the tap target; a classic game has no such scene, so the row icon is.
+  const sim = useGame((s) => E.isSim(s.cfg));
+  const tapTarget = useTarget(!sim && v.kind === 'owned' && !v.managed ? `tapStation:${b.id}` : null);
   const sym = t.strings.currencySymbol;
   if (v.kind === 'hidden') return null;
 
@@ -119,6 +122,7 @@ export const StationRow = memo(function StationRow({ b, index, rowHeight, compac
     <RowCard focusKey={b.id} accent={color}>
       <View style={[styles.main, { height: rowHeight, paddingHorizontal: pad + 2 }]}>
         <Pressable
+          {...tapTarget}
           onPress={() => start(b.id)}
           style={[styles.iconBox, { width: iconSize + 8 }]}
           accessibilityRole="button"

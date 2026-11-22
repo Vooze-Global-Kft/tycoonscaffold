@@ -9,7 +9,7 @@
  * switched away is not fought.
  */
 import { Canvas, Circle, Group, useClock } from '@shopify/react-native-skia';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import type { Stage } from '../../engine/chain';
@@ -75,7 +75,10 @@ export function HintOverlay() {
   const hint = useHint();
   const dialog = useGame((s) => s.modal !== null || s.chestOpening !== null || s.offline !== null || s.dealPopup !== null);
   const story = useHomeUi((s) => s.storyOpen);
-  const found = useFirstTarget(hint?.route ?? []);
+  const tab = useGame((s) => s.tab);
+  // Pointing at the tab the player is already on would say nothing.
+  const route = useMemo(() => (hint ? hint.route.filter((k) => k !== `tab:${tab}`) : []), [hint, tab]);
+  const found = useFirstTarget(route);
   const lastKey = useRef<string | null>(null);
 
   // Rows inside scrolling lists move without a layout event: measure the route again each second.

@@ -67,10 +67,10 @@ const Chip = memo(function Chip({ info, rate, limiting, selected, prompt, height
       >
         <GameIcon icon={info.icon} size={compact ? 17 : 19} />
         <View style={styles.chipText}>
-          <Text style={[styles.chipName, { color: fg, fontSize: compact ? 9.5 : 10.5 }]} numberOfLines={1}>
+          <Text style={[styles.chipName, { color: fg, fontSize: compact ? 9.5 : 10.5, lineHeight: compact ? 11 : 12 }]} numberOfLines={1}>
             {info.name}
           </Text>
-          <Text style={[t.display, styles.chipRate, { color: prompt && !limiting ? info.color : sub, fontSize: prompt ? (compact ? 9.5 : 10.5) : compact ? 11.5 : 13 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+          <Text style={[t.display, styles.chipRate, { color: prompt && !limiting ? info.color : sub, fontSize: prompt ? (compact ? 9.5 : 10.5) : compact ? 11.5 : 13, lineHeight: compact ? 13 : 15 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
             {label}
           </Text>
         </View>
@@ -123,8 +123,8 @@ const styles = StyleSheet.create({
   chipWrap: { flex: 1, minWidth: 0, justifyContent: 'center' },
   chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 7, gap: 4 },
   chipText: { flex: 1, minWidth: 0 },
-  chipName: { fontWeight: '800', lineHeight: 12 },
-  chipRate: { lineHeight: 15 },
+  chipName: { fontWeight: '800' },
+  chipRate: {},
   tag: { position: 'absolute', alignSelf: 'center', borderRadius: 8, borderWidth: 1, paddingHorizontal: 5, paddingVertical: 0 },
   tagText: { fontSize: 8.5, fontWeight: '900', letterSpacing: 0.2 },
   caret: {

@@ -12,7 +12,7 @@ import { useGame } from '../../../../state/store';
 import { UNIT } from '../../art';
 import { PASS_HEIGHT, Pass } from '../../art/props';
 import type { DishLook } from '../../art/types';
-import { MAX_PASS_DISHES_DRAWN, passPile } from '../../layout';
+import { passPile } from '../../layout';
 import { sceneBus } from '../bus';
 import type { SceneCtx } from './context';
 
@@ -98,4 +98,3 @@ export function PassArea({ ctx, dishes, onCount }: { ctx: SceneCtx; dishes: Dish
   );
 }
 
-export { MAX_PASS_DISHES_DRAWN };
