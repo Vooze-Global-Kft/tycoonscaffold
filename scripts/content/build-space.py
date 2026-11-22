@@ -139,7 +139,9 @@ BUYERS = [('halden', 'Halden Yards'), ('corvo', 'Corvo Metals'), ('tessaly', 'Te
 BUYER_LINES = {
     'halden': ('Halden Yards, buying {ore}. {units} units. We pay {mult}.', 'Halden. Received in full. Call us again.'),
     'corvo': ('Corvo Metals. {units} {ore}, {mult} on the unit. Standing by.', 'Corvo Metals. Contract closed. Pleasure.'),
-    'tessaly': ('Tessaly Ice Company. {units} {ore}. Paying {mult}. Keep it sealed.', 'Tessaly. Manifest checks out. Logged.'),
+    # play:new:11: the slot names the speaker and drops a leading name, so the line must not lead with
+    # the buyer's trade ('ICE COMPANY. 72 IRON.' read as a mistake when the order is iron).
+    'tessaly': ('Tessaly. {units} {ore} wanted. Paying {mult}. Keep the hold sealed.', 'Tessaly. Manifest checks out. Logged.'),
     'brightwater': ('Brightwater Foundry. The furnace wants {ore}. {units} units at {mult}.', 'Brightwater. Furnace is fed. Out.'),
     'kade': ('Kade Refinery, line two. {units} {ore}. {mult}, no haggling.', 'Kade. Paid. We will call again.'),
     'oriel': ('Oriel Labs requesting {ore}. {units} units, any grade. Rate {mult}.', 'Oriel Labs. Samples received. Rate honoured.'),
@@ -210,14 +212,15 @@ g['haul'] = {
     # rules-3: re-tuned against section 8's pods-per-hour target after Decision 40 (a contract met is no longer rare).
     'pods': {'scrap': 'scrap', 'derelict': 'derelict', 'depletedEvery': int(K('podsDepleted', 6, 4, 16, 'a Scrap Pod every n-th dry rock (pods per hour)', 8)),
              'contractsEvery': int(K('podsContracts', 4, 4, 16, 'a Scrap Pod every n-th contract met (pods per hour)', 12)), 'transmissionsEvery': 4},
+    # Decision 59: every condition's lines put the upside first (cards and the arrival line read them in order).
     'conditions': [
         # Frost Surplus: rings 3 and 4 (ring 2 has no ice; Decisions).
-        {'id': 'frost', 'name': 'Frost Surplus', 'lines': ['Ice weight x3 on rings 3 and 4', 'Ice value x2'], 'oreValue': {'ice': 2},
+        {'id': 'frost', 'name': 'Frost Surplus', 'lines': ['Ice value x2', 'Ice weight x3 on rings 3 and 4'], 'oreValue': {'ice': 2},
          'oreWeight': [{'ore': 'ice', 'rings': [3, 4], 'mult': 3}]},
         {'id': 'solar', 'name': 'Solar Wind', 'lines': ['Drone speed x1.4', 'Rock life x0.5'], 'speed': 1.4, 'life': 0.5},
         {'id': 'storms', 'name': 'Seam Storms', 'lines': ['Rich seams twice as often'], 'interval': 0.5},
-        {'id': 'longhaul', 'name': 'Long Haul', 'lines': ['Distances x1.3', 'Contract multipliers +0.3'], 'distance': 1.3, 'contractAdd': 0.3},
-        {'id': 'heavy', 'name': 'Heavy Ore', 'lines': ['Drone capacity x0.75', 'All ore values x2'], 'capacity': 0.75, 'oreValue': {'*': 2}},
+        {'id': 'longhaul', 'name': 'Long Haul', 'lines': ['Contract multipliers +0.3', 'Distances x1.3'], 'distance': 1.3, 'contractAdd': 0.3},
+        {'id': 'heavy', 'name': 'Heavy Ore', 'lines': ['All ore values x2', 'Drone capacity x0.75'], 'capacity': 0.75, 'oreValue': {'*': 2}},
         {'id': 'hotcore', 'name': 'Hot Cores', 'lines': ['Drill x1.5', 'Pile cap x0.6'], 'drill': 1.5, 'pileCap': 0.6},
     ],
     'starMap': {

@@ -124,3 +124,20 @@ describe('rules-6 and rules-7: rewards priced while the run earns nothing', () =
     for (const sl of after.missions.slots) if (sl && earn.has(sl.templateId)) expect(sl.target).toBeGreaterThan(1);
   });
 });
+
+describe('play-1: the web presets open past the tutorial', () => {
+  it('early, mid and late have the tutorial done and launches counted, so no first tutorial line shows', async () => {
+    const { installEngineMode } = await import('../../engine/mode');
+    installEngineMode(haulEngineMode);
+    const { haulPreset } = await import('./presets.web');
+    const { hintsFor } = await import('../../engine/haul/hints');
+    const now = Date.UTC(2026, 10, 22, 12);
+    for (const name of ['early', 'mid', 'late'] as const) {
+      const g = haulPreset(cfg as never, name, now) as unknown as H.HaulGame;
+      expect(g.haul?.flags.tutorialDone, name).toBe(true);
+      expect(g.stats.launches, name).toBeGreaterThan(0);
+      expect(g.haul?.counters.launches, name).toBeGreaterThan(0);
+      expect(hintsFor(cfg, g).some((h) => h.step > 0), name).toBe(false);
+    }
+  }, 60_000);
+});

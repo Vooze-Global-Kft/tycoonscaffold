@@ -131,16 +131,18 @@ interface WebOnlyString {
   text: string;
   quoted?: boolean;
   modes?: string[];
+  /** Matched only in the shipped JavaScript (export stage): a source may hold it in code a release build strips (`__DEV__ &&`). */
+  exportOnly?: boolean;
 }
 const WEB_ONLY_STRINGS: WebOnlyString[] = modes.WEB_ONLY_STRINGS;
 const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const webOnlyRe = (w: WebOnlyString) => new RegExp(w.quoted ? `(["'\`])${escapeRe(w.text)}\\1` : `\\b${escapeRe(w.text)}\\b`, 'g');
 
 /** Where a phone bundle's project files hold a web-only tool's string: `texts` maps a file to its text (source or shipped). */
-export function webOnlyHitsIn(texts: Iterable<[file: string, text: string]>, mode: string, platform: string): { file: string; text: string }[] {
+export function webOnlyHitsIn(texts: Iterable<[file: string, text: string]>, mode: string, platform: string, stage: 'fast' | 'export' = 'export'): { file: string; text: string }[] {
   if (platform === 'web') return [];
   const out: { file: string; text: string }[] = [];
-  const checks = WEB_ONLY_STRINGS.filter((w) => !w.modes || w.modes.includes(mode));
+  const checks = WEB_ONLY_STRINGS.filter((w) => (!w.modes || w.modes.includes(mode)) && (stage === 'export' || !w.exportOnly));
   for (const [file, text] of texts) {
     if (file.includes('node_modules/')) continue;
     for (const w of checks) if (webOnlyRe(w).test(text)) out.push({ file, text: w.text });
@@ -427,7 +429,7 @@ export function fastReport(id: string): Report {
       yield [m.path, ts.transpileModule(text, { fileName: m.path, compilerOptions: { removeComments: true, jsx: ts.JsxEmit.Preserve, target: ts.ScriptTarget.ES2022 } }).outputText];
     }
   };
-  const webOnlyHits = webOnlyHitsIn(sources(), mode, PLATFORM);
+  const webOnlyHits = webOnlyHitsIn(sources(), mode, PLATFORM, 'fast');
   return finish({ game: id, mode, pack: games.soundPack(id, game), stage: 'fast', modules, assets, packages: [...g.packages].sort(), unresolved: g.unresolved, denied, webOnlyHits });
 }
 
@@ -598,7 +600,7 @@ function exportReport(id: string, dir: string, root: string): Report {
   const slices = function* (): Generator<[string, string]> {
     for (let i = 0; i < starts.length; i++) yield [starts[i].path, bundle.slice(starts[i].start, i + 1 < starts.length ? starts[i + 1].start : bundle.length)];
   };
-  const webOnlyHits = webOnlyHitsIn(slices(), bundledMode, PLATFORM);
+  const webOnlyHits = webOnlyHitsIn(slices(), bundledMode, PLATFORM, 'export');
   return finish({ game: id, mode: bundledMode, pack: games.soundPack(id, game), stage: 'export', modules, assets, packages, bytes: bundle.length, denied, root, webOnlyHits });
 }
 

@@ -66,6 +66,14 @@ export {
   claimedRings,
   contractAt,
   openBoard,
+  drawContract,
+  topUpBoard,
+  contractBasis,
+  steadyPerLaunch,
+  noteShipped,
+  resizeOrders,
+  type ContractBasis,
+  // Not the contract rule since Decision 56; the balance bot's routing estimate only.
   contractStation,
   type ContractStation,
 } from './haul/trade';

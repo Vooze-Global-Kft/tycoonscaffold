@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FieldLayout } from '../layout';
-import { claimChipRect, dropTarget, fingerOf, flickTarget, onRack, releaseVelocity, type Sample } from './gestureMath';
+import { FLOATER_RISE, claimChipRect, dropTarget, floaterSpot, fingerOf, flickTarget, onRack, releaseVelocity, type Sample } from './gestureMath';
 
 // A hand-made layout (independent of fieldLayout's numbers): station at the bottom, four rocks.
 const rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -115,6 +115,28 @@ describe('the claim chip (play-0, play-21)', () => {
       expect(r.x).toBeGreaterThanOrEqual(12);
       expect(r.x + r.width).toBeLessThanOrEqual(L.width - 12);
     }
+  });
+});
+
+describe('the drop floater (play:new:8)', () => {
+  // The first drop of a fresh game (s/f01.png): the dropped rock at (108, 555), a ghost at (83, 470)
+  // whose price label sits under its circle, another ghost at (283, 557).
+  const rocks = [
+    { ...layout.rocks[0], slot: 0, x: 108, y: 555, r: 25 },
+    { ...layout.rocks[0], slot: 1, x: 83, y: 470, r: 26 },
+    { ...layout.rocks[0], slot: 2, x: 283, y: 557, r: 26 },
+  ];
+  const L: FieldLayout = { ...layout, rocks, zones: { ...layout.zones, comms: { x: 16, y: 111, width: 358, height: 24 }, bay: { x: 0, y: 670, width: 390, height: 174 } } };
+  const pathOf = (p: { x: number; y: number }, w: number, row: number) => ({ x: p.x - w / 2, y: p.y - row / 2 - FLOATER_RISE, width: w, height: row + FLOATER_RISE });
+  const hits = (a: { x: number; y: number; width: number; height: number }, b: { x: number; y: number; width: number; height: number }) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  it('never rises over another slot or its price label when a free place exists', () => {
+    const p = floaterSpot(L, 0, 80, 17)!;
+    for (const o of rocks.slice(1)) expect(hits(pathOf(p, 80, 17), { x: o.x - 30, y: o.y - o.r, width: 60, height: 2 * o.r + 18 })).toBe(false);
+  });
+  it('rises over its rock when that is clear', () => {
+    const p = floaterSpot(L, 2, 80, 17)!;
+    expect(p).toEqual({ x: 283, y: 557 - 26 - 14 });
   });
 });
 

@@ -12,7 +12,7 @@
  * - `hints`: the rules' hints (src/ui/haul/hints.ts);
  * - `presets`: `?preset=` states (web only: ./presets.web.ts; on phones ./presets.ts has none);
  * - `soundKeys`: the haul key for each shared key the store plays (errata 30, HAUL_SHARED_SOUNDS);
- * - `devViews`: `?view=haul-art`, the art kit's gallery (web preview only: ./devViews.web.ts; on phones ./devViews.ts has none).
+ * - `devViews`: `?view=haul-art`, the art kit's gallery, and `?view=boot`, the loading screen (web preview only: ./devViews.web.ts; on phones ./devViews.ts has none).
  * It never imports the tabs family or another mode's folders (npm run check:bundle).
  */
 import { Text } from 'react-native';

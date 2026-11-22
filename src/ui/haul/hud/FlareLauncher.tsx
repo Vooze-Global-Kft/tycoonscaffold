@@ -18,7 +18,7 @@ import { drawChargePlate, drawFlare } from '../art/fx.draw';
 import { alpha, SPACE } from '../art/palette';
 import { around, glow, picture } from '../art/pen';
 import type { Rect } from '../layout';
-import { useRun, useRunShallow } from '../useRun';
+import { useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { DIGITAL, fillIn, labelMetrics } from './bayText';
 
@@ -38,14 +38,18 @@ const clockText = (s: number) => {
 };
 
 export function FlareLauncher({ rect }: { rect: Rect }) {
+  // Under a full-screen spoke or overlay the card is hidden: its selectors hold their last value,
+  // so the refill countdown does not redraw the canvas once a second unseen (device:new:2).
+  const covered = useHaulUi((s) => s.spoke !== null || s.overlay !== null);
   const f = useRunShallow(
     (cfg, g) => ({
       charges: g.haul.flare.charges,
       shown: g.haul.flare.charges > 0 || g.haul.clock >= cfg.haul.flare.firstAt,
     }),
     { charges: 0, shown: false },
+    covered,
   );
-  const refill = useRun((_c, g) => (g.haul.flare.charges > 0 ? '' : clockText(g.haul.flare.nextFreeAt - g.haul.clock)), '');
+  const { refill } = useRunShallow((_c, g) => ({ refill: g.haul.flare.charges > 0 ? '' : clockText(g.haul.flare.nextFreeAt - g.haul.clock) }), { refill: '' }, covered);
   const selected = useHaulUi((s) => s.selection?.kind === 'flare');
   const { fontScale } = useWindowDimensions();
   const label = labelMetrics(10, fontScale);

@@ -140,10 +140,10 @@ describe('the haul entry (Orbit Haulers)', () => {
     expect(read('haul/presets.ts')).not.toMatch(/from '[^']*(bot|fixtures)[^']*'/);
   });
 
-  it('ships the art kit\'s gallery on the web only', async () => {
+  it('ships the art kit\'s gallery and the loading screen view (?view=boot, Decision 61) on the web only', async () => {
     expect((await import('./haul/devViews')).devViews).toBeUndefined();
     const web = (await import('./haul/devViews.web')).devViews!;
-    expect(Object.fromEntries(Object.entries(web).map(([k, v]) => [k, nameOf(v)]))).toEqual({ 'haul-art': 'HaulGallery' });
+    expect(Object.fromEntries(Object.entries(web).map(([k, v]) => [k, nameOf(v)]))).toEqual({ 'haul-art': 'HaulGallery', boot: 'HaulBoot' });
     expect(read('haul/index.tsx')).toMatch(/import \{ devViews \} from '\.\/devViews';/);
   });
 

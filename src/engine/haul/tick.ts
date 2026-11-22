@@ -11,7 +11,7 @@
 import { hashString } from '../rng';
 import { placeRock } from './create';
 import { EPS, MAX_CASH, haulParams, holdTotal, rngMix4, roll, sumUnits, T, starLevel } from './params';
-import { activeContract, drawContract, loadCargo, openBoard, payoutFor, shiftDoubles, wantLeft } from './trade';
+import { activeContract, drawContract, loadCargo, noteShipped, openBoard, payoutFor, resizeOrders, shiftDoubles, topUpBoard, wantLeft } from './trade';
 import type { HaulConfig, HaulEvent, HaulGame, HaulParams, HaulState, SeamState } from './types';
 
 /** Longest step of the rate model. */
@@ -184,7 +184,9 @@ export function doLaunch(cfg: HaulConfig, d: Draft, p: HaulParams, auto: boolean
  * replaced. A cargo loaded for a contract dropped in flight is paid without the delivery fee. A
  * warp-out whose cargo was loaded before the contract was taken does not count for or against it.
  * 3. Every offer loses one launch of its offer life and at 0 is replaced silently (`contractNew`).
- * Then the contract unlock check. The `warp` event carries the whole payout, the bonus included.
+ * 4. A place left empty by a drop gets a new offer (`contractNew`, Decision 56). Before all of that the
+ * cargo is counted into the station's `recent` average (Decision 56). Then the contract unlock check
+ * (galaxy 1: launches and clock; later galaxies: three launches measured, no fixed first contract). The `warp` event carries the whole payout, the bonus included.
  */
 export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
   const h = d.h;
@@ -192,6 +194,8 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
   h.counters.shipped += sumUnits(f.cargo);
   h.counters.launches += 1;
   d.stats.launches += 1;
+  // Decision 56: the station remembers what it ships (before any draw of this warp-out).
+  noteShipped(cfg, h, f.cargo);
   const C = h.contracts;
   let pay = f.payout;
   let bonus = 0;
@@ -250,7 +254,10 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
       if (o.launchesLeft > 0) continue;
       replace(i);
     }
-  } else if (d.stats.launches >= cfg.haul.contracts.unlockLaunches && h.clock >= cfg.haul.contracts.unlockClock - EPS) {
+    // A place left empty by a drop (Decision 56) gets its offer now.
+    for (const i of topUpBoard(cfg, h, p)) later.push({ type: 'contractNew', contract: C.board[i], index: i });
+  } else if (h.galaxy > 0 ? (C.measured ?? 0) >= 3 : d.stats.launches >= cfg.haul.contracts.unlockLaunches && h.clock >= cfg.haul.contracts.unlockClock - EPS) {
+    // From galaxy 2 on the board opens with ordinary offers once three launches are measured (Decision 56).
     h.contracts = openBoard(cfg, h, p.F, p);
     d.haulStats.contractsSeen = true;
     later.push({ type: 'contractsUnlocked' });
@@ -566,6 +573,7 @@ export function advanceHaul(cfg: HaulConfig, g: HaulGame, dt: number, now: numbe
   const flareMax = cfg.haul.flare.maxStored;
   let rest = Math.min(dt, MAX_TICK);
   let p = draftParams(cfg, d);
+  resizeOrders(d.h, p.F, d.events);
   for (let guard = 0; rest > 1e-12 && guard < 200_000; guard++) {
     const s = Math.min(rest, Math.max(1e-6, stepBound(p, d.h, flareMax)));
     flow(cfg, d, p, s);

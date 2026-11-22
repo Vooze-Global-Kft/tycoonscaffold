@@ -3,7 +3,7 @@
  * pure and lives in the rules: src/engine/haul/bot.ts (re-exported here for the scripts).
  */
 import * as H from '../../src/engine/haul';
-import { evaluate, formatClock as mmss, GESTURE_KINDS, runHaulBot, runTutorialHuman, workedTables } from '../../src/engine/haul/bot';
+import { earnedBy, evaluate, formatClock as mmss, GESTURE_KINDS, runHaulBot, runTutorialHuman, workedTables } from '../../src/engine/haul/bot';
 
 export * from '../../src/engine/haul/bot';
 
@@ -25,7 +25,17 @@ export function simulateHaulCli(cfg: H.HaulConfig, flags: Record<string, string>
   const r = runHaulBot(cfg, { hours, prestige, seed, traceEvery, keepAt, trace: traceEvery ? (t, l) => lines.push(`${mmss(t).padStart(9)}  · ${l}`) : undefined });
   // The "does nothing" player over the first run's hours (no Jump): contracts met without routing.
   const passive = flags.passive === 'false' ? undefined : runHaulBot(cfg, { hours: Math.min(hours, 2.5), prestige: false, seed, passive: true, noOffline: true });
-  const targets = evaluate(cfg, r, passive);
+  // Decision 56, condition 6: the router's earnings over 2.5 h against a player who never takes a contract.
+  const CMP = 2.5;
+  const compare = flags.passive === 'false' && flags.compare !== 'true'
+    ? undefined
+    : (() => {
+        const hrs = Math.min(hours, CMP);
+        const router = earnedBy(r, hrs) ?? runHaulBot(cfg, { hours: hrs + 1 / 60, prestige: false, seed, noOffline: true }).lifetime[Math.round(hrs * 60)];
+        const never = runHaulBot(cfg, { hours: hrs + 1 / 60, prestige: false, seed, noContracts: true, noOffline: true }).lifetime[Math.round(hrs * 60)];
+        return { router, never, hours: hrs };
+      })();
+  const targets = evaluate(cfg, r, passive, compare);
   if (flags.table === 'true') {
     console.log(workedTables(cfg, r, runTutorialHuman(cfg, { seed })));
     return;

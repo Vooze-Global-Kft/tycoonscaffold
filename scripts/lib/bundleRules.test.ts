@@ -308,4 +308,15 @@ describe('web-only development tools (store-13, phone-12, perf-8)', () => {
     expect(webOnlyHitsIn([['src/c.js', 'runHaulBot(cfg)']], 'haul', 'web')).toEqual([]);
     expect(webOnlyHitsIn([['src/c.js', 'runHaulBot(cfg)']], 'haul', 'android')).toEqual([{ file: 'src/c.js', text: 'runHaulBot' }]);
   });
+  it('the page address (location.search) fails a haul phone bundle in shipped code only, never a library or sim', () => {
+    const q: [string, string][] = [['src/ui/haul/dev.js', 'new URLSearchParams(location.search)']];
+    expect(webOnlyHitsIn(q, 'haul', 'ios', 'export')).toEqual([{ file: 'src/ui/haul/dev.js', text: 'location.search' }]);
+    expect(webOnlyHitsIn(q, 'haul', 'ios', 'fast')).toEqual([]);
+    expect(webOnlyHitsIn(q, 'sim', 'ios', 'export')).toEqual([]);
+    expect(webOnlyHitsIn([['node_modules/x/utm.js', 'location.search']], 'haul', 'android', 'export')).toEqual([]);
+  });
+  it('the haul address switches (src/ui/haul/dev.web.ts) are a web-only file', async () => {
+    const modes = (await import('./modes.js')) as unknown as { WEB_ONLY: string[] };
+    expect(modes.WEB_ONLY).toContain('src/ui/haul/dev.web.ts');
+  });
 });

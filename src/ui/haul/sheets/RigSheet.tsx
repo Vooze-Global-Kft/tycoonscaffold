@@ -43,7 +43,10 @@ interface RigView {
   life: number;
   dryText: string;
   route: string;
-  verdict: 'drill' | 'haul' | 'balanced' | 'none';
+  /** From the actual limit (Decision 59): a full pile or hold, the freighter, else the drill against the drones. */
+  verdict: 'drill' | 'haul' | 'balanced' | 'none' | 'pileFull' | 'holdFull' | 'freighter';
+  /** "Dry in" is showing: the line under it says the rig stays for the next rock (Decision 58). */
+  stays: boolean;
   pile: string;
   pileFull: boolean;
   prev: number | null;
@@ -78,6 +81,12 @@ function rigView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }, slot:
       t: clock((s.life * r.drill) / Math.min(r.drill, r.haul)),
     });
   const n = s.haulers;
+  // Decision 59: the verdict names the real limit. A full pile or a full hold stops the drones,
+  // whatever the drill and haul rates say; a freighter that binds the station comes next.
+  const pileFull = s.full || r.pile >= r.cap - 0.5;
+  const holdFull = g.haul.marks.holdFullSince !== null;
+  const freighterBound = H.routeLimits(cfg, g).some((x) => x.slot === slot && x.limit === 'freighter');
+  const verdict: RigView['verdict'] = n === 0 ? 'none' : pileFull ? 'pileFull' : holdFull ? 'holdFull' : freighterBound && r.verdict === 'drill' ? 'freighter' : r.verdict;
   const seam = (g.haul.vein.slot === slot && g.haul.vein.until > g.haul.clock) || (g.haul.flare.slot === slot && g.haul.flare.until > g.haul.clock);
   return {
     slot,
@@ -114,9 +123,11 @@ function rigView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }, slot:
             h: rate(r.haul),
             r: rate(r.drill),
           }),
-    verdict: n === 0 ? 'none' : r.verdict,
-    pile: say('pileLine', { p: unitsShort(r.pile), c: unitsShort(r.cap) }),
-    pileFull: s.full,
+    verdict,
+    stays: !drifting && !respawning,
+    // A pile label never shows more than its capacity (Decision 59).
+    pile: say('pileLine', { p: unitsShort(Math.min(r.pile, r.cap)), c: unitsShort(r.cap) }),
+    pileFull,
     prev: claimed.length > 1 ? claimed[(at - 1 + claimed.length) % claimed.length] : null,
     next: claimed.length > 1 ? claimed[(at + 1) % claimed.length] : null,
   };
@@ -136,6 +147,16 @@ function rockThumb(shape: number, ore: string, bonanza: boolean, look: number, s
   }
   return p;
 }
+
+const VERDICT: Record<RigView['verdict'], string> = {
+  drill: say('verdictDrill'),
+  haul: say('verdictHaul'),
+  balanced: say('verdictBalanced'),
+  none: '',
+  pileFull: say('verdictPileFull'),
+  holdFull: say('verdictHoldFull'),
+  freighter: say('verdictFreighter'),
+};
 
 /** hintsShown key of the one-time pile explanation. */
 const PILE_HINT = 'rig:pile';
@@ -163,8 +184,8 @@ export function RigSheet() {
   }, [isOpen]);
   const close = () => useHaulUi.getState().closeSheet();
   const go = (to: number | null) => to !== null && useHaulUi.getState().openSheet({ type: 'rig', slot: to });
-  const verdictText = v ? (v.verdict === 'drill' ? say('verdictDrill') : v.verdict === 'haul' ? say('verdictHaul') : v.verdict === 'balanced' ? say('verdictBalanced') : '') : '';
-  const verdictColor = v?.verdict === 'balanced' ? c.success : v?.verdict === 'haul' ? SPACE.amber : c.primary;
+  const verdictText = v ? VERDICT[v.verdict] : '';
+  const verdictColor = v?.verdict === 'balanced' ? c.success : v?.verdict === 'drill' ? c.primary : SPACE.amber;
   return (
     <HaulSheet
       visible={slot >= 0 && live !== null}
@@ -190,6 +211,11 @@ export function RigSheet() {
             </Line>
           </View>
           <Meter value={v.life} color={v.oreColor} />
+          {v.stays ? (
+            <Line muted size={ty.tiny} lines={1}>
+              {say('rigStays')}
+            </Line>
+          ) : null}
           <Plate label={`${say('rigLevel', { n: v.level })} · ${say('drillRate', { r: v.drill })}`}>
             <View style={styles.rigRow}>
               <ArtView picture={rockThumb(v.shape, v.ore, v.bonanza, v.look, v.stripes)} size={{ w: 64, h: 64 }} scale={1.05} style={[styles.rigArt, { borderColor: alpha(c.primary, 0.25) }]} />

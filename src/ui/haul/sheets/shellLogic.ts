@@ -26,6 +26,15 @@ export function speaker(cfg: H.HaulConfig, role: Role): string {
   return cfg.story.find((b) => b.trigger.type === type)?.characterId ?? cfg.characters[0]?.id ?? '';
 }
 
+/** Decision 57's limit hints: the line for each purchase key the hint engine's adviceHint can name. */
+const LIMIT_LINES: Record<string, ShellTextKey> = {
+  'station:buyDrone': 'hintLimitDrone',
+  'station:capacity': 'hintLimitCapacity',
+  'station:engine': 'hintLimitEngine',
+  'station:freighter': 'hintLimitFreighter',
+  'rig:upgrade': 'hintLimitRig',
+};
+
 /**
  * The voice line of the hint shown now (section 3's lines are hint lines, errata 56), or null.
  * Step 1 is the AI's own line (the `start` story beat is gone: it repeated it). After the tutorial,
@@ -39,6 +48,11 @@ export function hintLine(g: H.HaulGame, hint: H.HaulHint | undefined): { key: Sh
       role: hint.step === 2 || hint.step === 3 ? 'dock' : 'ai',
     };
   if (hint.key === 'station:autopilot') return { key: 'hintAutopilot', role: 'dock' };
+  // Decision 57: after the guided steps, a step-0 point hint names the purchase that is the limit.
+  if (hint.kind === 'point' && hint.step === 0) {
+    const limit = LIMIT_LINES[hint.key] ?? (hint.key.startsWith('slot:') ? 'hintLimitClaim' : null);
+    if (limit) return { key: limit, role: 'ai' };
+  }
   if (hint.kind === 'swipe' && hint.step === 0 && !g.haul.autopilot.online) return { key: 'holdCapacity', role: 'dock' };
   return null;
 }
@@ -66,7 +80,12 @@ export function sheetHintTarget(hint: H.HaulHint | undefined, sheet: HaulSheet |
     return sheet.type === 'contracts' && onScreen(key) ? key : null;
   }
   if (!hint.route?.length) return null;
-  return sheet.type === sheetOf(hint.key) && onScreen(hint.key) ? hint.key : null;
+  if (sheet.type !== sheetOf(hint.key)) return null;
+  // The rig upgrade is marked only in the Rig sheet of the rock the hint names (Decision 58: step 6
+  // may name any claimed rig), not in whichever Rig sheet is open.
+  const rock = hint.route.find((r) => r.startsWith('rock:'));
+  if (sheet.type === 'rig' && rock !== undefined && sheet.slot !== Number(rock.slice(5))) return null;
+  return onScreen(hint.key) ? hint.key : null;
 }
 
 // ---------------------------------------------------------------- Shift Log

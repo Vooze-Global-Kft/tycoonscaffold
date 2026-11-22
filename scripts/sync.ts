@@ -137,7 +137,7 @@ function ratingNotes(g: GameConfig): string {
     '- Data encrypted in transit: Yes (all SDKs use HTTPS).',
     '- Players can ask for deletion: say how in the privacy policy (an email address is enough).',
     '- No account, name, email, contacts, photos or precise location are collected.',
-    `- Privacy policy URL: ${g.store.privacyPolicyUrl ?? '**missing**: both stores require one (store.privacyPolicyUrl)'}.`,
+    `- Privacy policy URL: ${privacyLine(g.store.privacyPolicyUrl)}.`,
     `- Ad consent: Google UMP form (EEA, UK, US states), then the iOS tracking prompt.`,
   );
 
@@ -211,6 +211,18 @@ export function storeFiles(g: GameConfig, id: string = g.id): Record<string, str
     [path.join(play, 'full_description.txt')]: desc + '\n',
     [path.join(storeDir, 'RATING-NOTES.md')]: ratingNotes(g),
   };
+}
+
+/** The placeholder addresses (example.com, .org, .net) that `validate --release` refuses (store-0). */
+export function isPlaceholderUrl(url: string): boolean {
+  return /^https?:\/\/([^/]*\.)?example\.(com|org|net)(\/|:|$)/i.test(url);
+}
+
+/** The privacy policy line of RATING-NOTES.md: a placeholder is never printed as if it were the real address. */
+export function privacyLine(url: string | undefined): string {
+  if (!url) return '**missing**: both stores require one (store.privacyPolicyUrl)';
+  if (isPlaceholderUrl(url)) return `${url} (**placeholder: replace before release** with this app's own policy page, set in store.privacyPolicyUrl)`;
+  return url;
 }
 
 function main() {

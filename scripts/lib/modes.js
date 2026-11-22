@@ -165,6 +165,7 @@ const WEB_ONLY = [
   'src/modes/haul/presets.web.ts',
   'src/modes/haul/devViews.web.ts',
   'src/modes/sim/devViews.web.ts',
+  'src/ui/haul/dev.web.ts',
   'src/engine/haul/bot.ts',
   'src/engine/fixtures/haul.ts',
 ];
@@ -173,13 +174,19 @@ const WEB_ONLY = [
  * Strings of those tools a phone bundle must not hold either: `text` is matched in the shipped
  * JavaScript (and in the source of the bundled files in the fast stage); `quoted` matches only as a
  * whole string literal ('staff' or "staff"); `modes` limits it to those modes' bundles (the tab
- * shell's tab names are real in sim and classic, and dead dev code of another game's screens in haul).
+ * shell's tab names are real in sim and classic, and dead dev code of another game's screens in haul);
+ * `exportOnly` matches only in the shipped JavaScript, not in the sources of the fast stage.
  */
 // ('upgrades', the third of the tab shell's own tab names, is also a field of every save: not listed.)
 const WEB_ONLY_STRINGS = [
   { text: 'runHaulBot' },
   { text: 'freshBotGame' },
   { text: 'haulFixtures' },
+  // The page address's switches are read only by the .web.ts tools (src/dev/devtools.web.ts,
+  // src/ui/haul/dev.web.ts); a library's own use (node_modules) is not counted. Haul only: the
+  // first game's files keep their own web-guarded readers (they do not change). Shipped code only
+  // (exportOnly): src/ui/haul/scene/Field.tsx reads it behind `__DEV__ &&`, which a release strips.
+  { text: 'location.search', modes: ['haul'], exportOnly: true },
   { text: 'staff', quoted: true, modes: ['haul'] },
   { text: 'empire', quoted: true, modes: ['haul'] },
 ];

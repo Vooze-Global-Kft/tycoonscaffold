@@ -256,17 +256,29 @@ export const HaulSchema = z.object({
     board: z.number().int().positive().default(3),
     /** Unused since Decision 40 (an offer's life is `offerLaunches`, a taken contract's is `launches`); kept so older data parses. */
     lifetime: z.number().int().positive().default(6),
-    /** Decision 40: warp-outs a taken contract has to deliver everything (tune 4 to 8). */
+    /** Decisions 40 and 56: warp-outs a taken contract has to deliver everything (6; difficulty is tuned with `raise`). */
     launches: z.number().int().min(2).default(6),
     /** Decision 40: warp-outs an offer stays on the board before it is replaced (tune 8 to 16). */
     offerLaunches: z.number().int().positive().default(12),
-    /**
-     * Decision 40, "never free": every wanted ore asks at least `ceil(L × now × (1 + margin))`, i.e.
-     * more than the routes as they are deliver in the contract's launches (tune 0.08 to 0.2).
-     */
+    /** Unused since Decision 56 (the never-free floor is `L × steady × (1 + raise[0] / 2)`); kept so older data parses. */
     margin: z.number().min(0).max(1).default(0.12),
-    /** Decision 40, widening: the largest share of the fleet a contract's ores may be routed with. */
-    maxShare: z.number().gt(0).max(1).default(0.8),
+    /**
+     * Decision 56: the largest share of a launch (units of the ore / F) a contract may ask an ore to
+     * reach; an ore whose share, raised by `raise[0]`, would pass it is not asked for.
+     */
+    maxShare: z.number().gt(0).max(1).default(0.9),
+    /** Decision 56, "raise it": a one-ore contract asks `L × recent × (1 + g)`, g uniform in this range (capped by `maxShare`). */
+    raise: range.default([0.25, 0.6]),
+    /** Decision 56, "hold it": the second ore of a two-ore contract asks `L × recent × U(holdShare)`. */
+    holdShare: range.default([0.85, 0.95]),
+    /** Decision 56: an ore is asked for only when it is at least this share of the value of a recent launch. */
+    minValueShare: z.number().min(0).max(1).default(0.1),
+    /** Decision 56 condition 5: no offer's bonus is under this many seconds of the station's income at the draw. */
+    minBonusSeconds: z.number().nonnegative().default(10),
+    /** Decision 56: added to a contract's multiplier per unit of raise (a harder contract pays more). */
+    raiseMult: z.number().nonnegative().default(1),
+    /** Decision 56: the window (warp-outs) of the average of what the station ships; it is used from the third warp-out of a run. */
+    recentLaunches: z.number().int().positive().default(6),
     /** Decision 40, a one-ore station's quota contract: a share of L × F drawn from this range. */
     quota: range.default([0.75, 0.9]),
     /** Decision 40: a quota contract's multiplier is lowered by this, never below `quotaMinMult`. */
@@ -274,11 +286,7 @@ export const HaulSchema = z.object({
     quotaMinMult: z.number().positive().default(1.3),
     /** Delivery fee on the rest of a met cargo (tune 0.05 to 0.15). */
     fee: z.number().nonnegative().default(0.1),
-    /**
-     * How far a contract's units sit between what the hold carries of its ores per launch with the
-     * routes as they are (0) and what it carries when the player routes for it (1): uniformly from
-     * this range (section 2.6). Below 0 would be met without doing anything; above 1 not at all.
-     */
+    /** Unused by the draw since Decision 56 (kept so older data parses; `contractStation` still reads it). */
     reach: range.default([0.35, 0.75]),
     /** The share of the fleet a player sends to a contract's ores when routing for it (section 2.6). */
     fleetShare: z.number().gt(0).max(1).default(0.5),

@@ -3,7 +3,7 @@
  * the drag line, ghost slots, the rich-seam rim, the Survey Flare and its trail, credit glyphs
  * and the hold tank.
  */
-import { ClipOp, Skia, type SkCanvas, type SkImage, type SkPaint, type SkPicture } from '@shopify/react-native-skia';
+import { ClipOp, PaintStyle, PointMode, Skia, StrokeCap, type SkCanvas, type SkImage, type SkPaint, type SkPicture } from '@shopify/react-native-skia';
 import { drawOreShape, routeDash } from './ore.draw';
 import { drawText, textWidth } from './glyphs';
 import { SPACE, alpha, galaxyPalette, mix, oreColor } from './palette';
@@ -21,17 +21,24 @@ export function starfieldPicture(w: number, h: number, galaxy = 0, seed = 1): Sk
   return picture({ x: 0, y: 0, w, h }, (c) => drawStarfield(c, w, h, galaxy, seed));
 }
 
+/** One star of the starfield plan: centre, radius, colour and alpha of its core (r > 1: it has a glow). */
+export interface StarDot {
+  x: number;
+  y: number;
+  r: number;
+  col: string;
+  a: number;
+}
+
 /**
- * Draws the starfield. `wrap` (default true): a star cut by the top or bottom edge is drawn again
- * one height away, so two copies stacked tile without a seam; only stars within reach of an edge
- * are copied. The baked field image is mirrored instead (`wrap` false).
+ * The starfield's plan for `w` x `h` points and galaxy `galaxy`: the nebula's blobs and the stars,
+ * drawn from one seeded sequence, so the baked nebula image and the crisp star pass on top of it
+ * (device:new:4) place every star's glow and core at the same point.
  */
-export function drawStarfield(c: SkCanvas, w: number, h: number, galaxy = 0, seed = 1, wrap = true): void {
+export function starfieldPlan(w: number, h: number, galaxy = 0, seed = 1): { blobs: { x: number; y: number; r: number; col: string; a: number }[]; stars: StarDot[] } {
   const rnd = seeded(seed * 131 + galaxy);
   const pal = galaxyPalette(galaxy);
-  c.save();
-  c.clipRect({ x: 0, y: 0, width: w, height: h }, ClipOp.Intersect, true);
-  c.drawRect({ x: 0, y: 0, width: w, height: h }, fill(pal.bg));
+  const blobs: { x: number; y: number; r: number; col: string; a: number }[] = [];
   // Nebula band: a few large soft blobs along a diagonal, in the galaxy's two hues.
   const tilt = -0.35 + rnd() * 0.2;
   for (let i = 0; i < 7; i++) {
@@ -39,11 +46,10 @@ export function drawStarfield(c: SkCanvas, w: number, h: number, galaxy = 0, see
     const x = w * (-0.1 + 1.2 * t);
     const y = h * (0.42 + tilt * (t - 0.5)) + (rnd() - 0.5) * h * 0.08;
     const r = w * (0.28 + rnd() * 0.22);
-    glow(c, x, y, r, i % 2 ? pal.nebula : mix(pal.nebula, pal.veil, 0.6), 0.1 + rnd() * 0.05);
+    blobs.push({ x, y, r, col: i % 2 ? pal.nebula : mix(pal.nebula, pal.veil, 0.6), a: 0.1 + rnd() * 0.05 });
   }
-  // Dust lane through the band.
-  glow(c, w * 0.6, h * 0.4, w * 0.3, '#000000', 0.25);
   // Stars, three depths.
+  const stars: StarDot[] = [];
   const n = Math.round((w * h) / 900);
   for (let i = 0; i < n; i++) {
     const x = rnd() * w;
@@ -52,14 +58,67 @@ export function drawStarfield(c: SkCanvas, w: number, h: number, galaxy = 0, see
     const r = d < 0.75 ? 0.45 : d < 0.95 ? 0.75 : 1.1;
     const col = rnd() < 0.15 ? '#FFE7C2' : rnd() < 0.3 ? '#C4DCFF' : '#FFFFFF';
     const a = d < 0.75 ? 0.35 + rnd() * 0.25 : 0.7 + rnd() * 0.3;
-    const reach = r > 1 ? 4 : r + 1;
-    const copies = !wrap ? [y] : y < reach ? [y, y + h] : y > h - reach ? [y, y - h] : [y];
+    stars.push({ x, y, r, col, a });
+  }
+  return { blobs, stars };
+}
+
+/**
+ * Draws the starfield. `wrap` (default true): a star cut by the top or bottom edge is drawn again
+ * one height away, so two copies stacked tile without a seam; only stars within reach of an edge
+ * are copied. The baked field image is mirrored instead (`wrap` false). `cores` (default true):
+ * false leaves out the stars' crisp cores (the field draws them on top: `starCoresPicture`).
+ */
+export function drawStarfield(c: SkCanvas, w: number, h: number, galaxy = 0, seed = 1, wrap = true, cores = true): void {
+  const pal = galaxyPalette(galaxy);
+  const plan = starfieldPlan(w, h, galaxy, seed);
+  c.save();
+  c.clipRect({ x: 0, y: 0, width: w, height: h }, ClipOp.Intersect, true);
+  c.drawRect({ x: 0, y: 0, width: w, height: h }, fill(pal.bg));
+  for (const b of plan.blobs) glow(c, b.x, b.y, b.r, b.col, b.a);
+  // Dust lane through the band.
+  glow(c, w * 0.6, h * 0.4, w * 0.3, '#000000', 0.25);
+  for (const st of plan.stars) {
+    const reach = st.r > 1 ? 4 : st.r + 1;
+    const copies = !wrap ? [st.y] : st.y < reach ? [st.y, st.y + h] : st.y > h - reach ? [st.y, st.y - h] : [st.y];
     for (const yy of copies) {
-      if (r > 1) glow(c, x, yy, 4, col, 0.35);
-      c.drawCircle(x, yy, r, fill(alpha(col, a)));
+      if (st.r > 1) glow(c, st.x, yy, 4, st.col, 0.35);
+      if (cores) c.drawCircle(st.x, yy, st.r, fill(alpha(st.col, st.a)));
     }
   }
   c.restore();
+}
+
+/**
+ * The stars' cores as one crisp vector pass (device:new:4): the baked nebula is at most 2 pixels
+ * a point, so on a 3x screen its stars would be scaled up and soft; the cores are drawn on top at
+ * the screen's own resolution, grouped by size, colour and alpha (a tenth) into a few
+ * `drawPoints` calls with round caps. Recorded once per size and galaxy (pictures.starCores).
+ */
+export function starCoresPicture(w: number, h: number, galaxy = 0, seed = 1): SkPicture {
+  const plan = starfieldPlan(w, h, galaxy, seed);
+  const groups = new Map<string, { r: number; col: string; a: number; pts: { x: number; y: number }[] }>();
+  for (const st of plan.stars) {
+    const a = Math.round(st.a * 10) / 10;
+    const key = `${st.r}|${st.col}|${a}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = { r: st.r, col: st.col, a, pts: [] };
+      groups.set(key, g);
+    }
+    g.pts.push(Skia.Point(st.x, st.y));
+  }
+  return picture({ x: 0, y: 0, w, h }, (c) => {
+    groups.forEach((g) => {
+      const p = Skia.Paint();
+      p.setAntiAlias(true);
+      p.setStyle(PaintStyle.Stroke);
+      p.setStrokeCap(StrokeCap.Round);
+      p.setStrokeWidth(g.r * 2);
+      p.setColor(Skia.Color(alpha(g.col, g.a)));
+      c.drawPoints(PointMode.Points, g.pts, p);
+    });
+  });
 }
 
 /** The baked starfield: an image of `pw` x `ph` pixels for a field of `w` x `h` points. */
@@ -73,10 +132,12 @@ export interface StarfieldImage {
 }
 
 /**
- * Bakes the starfield once into an image (lead's decision 50): the field draws it as ONE textured
- * rectangle, mirrored vertically as it drifts, instead of replaying a thousand circles each frame.
+ * Bakes the starfield's nebula and star glows once into an image (lead's decision 50): the field
+ * draws it as ONE textured rectangle, mirrored vertically as it drifts, instead of replaying a
+ * thousand circles each frame; the stars' cores go on top as one crisp pass (`starCoresPicture`).
  * At most 2 pixels a point and at most 2048 pixels a side (every phone GPU takes that texture).
- * Null if no surface could be made.
+ * It takes tens of milliseconds of the JavaScript thread, so it is never called in a render: the
+ * field bakes ahead (pictures.queueStarfield). Null if no surface could be made.
  */
 export function bakeStarfield(w: number, h: number, galaxy: number, density: number): StarfieldImage | null {
   const d = Math.max(1, Math.min(2, density, 2048 / Math.max(1, w), 2048 / Math.max(1, h)));
@@ -87,7 +148,7 @@ export function bakeStarfield(w: number, h: number, galaxy: number, density: num
   const c = surface.getCanvas();
   c.save();
   c.scale(pw / w, ph / h);
-  drawStarfield(c, w, h, galaxy, 1, false);
+  drawStarfield(c, w, h, galaxy, 1, false, false);
   c.restore();
   surface.flush();
   return { image: surface.makeImageSnapshot(), w, h, pw, ph, galaxy };

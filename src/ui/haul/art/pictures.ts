@@ -7,7 +7,7 @@
  */
 import type { SkPicture } from '@shopify/react-native-skia';
 import { drawChevron, drawFreighter, drawPad, drawPolicyChip, type HullId } from './freighter.draw';
-import { bakeStarfield, drawCalloutRing, drawChargePlate, drawFlare, drawGhostSlot, drawRockTag, drawRouteChip, drawSeamRim, type StarfieldImage } from './fx.draw';
+import { bakeStarfield, starCoresPicture, drawCalloutRing, drawChargePlate, drawFlare, drawGhostSlot, drawRockTag, drawRouteChip, drawSeamRim, type StarfieldImage } from './fx.draw';
 import { around, picture } from './pen';
 import { drawPile } from './rock.draw';
 import { drawDrillHead, drawRigBase, drawRigLamp, type LampState, type RigLook } from './rig.draw';
@@ -47,7 +47,25 @@ const ghosts = bounded(96);
 /** Steps of a ghost slot's affordability arc (one picture per step). */
 export const GHOST_STEPS = 24;
 
-let stars: StarfieldImage | null = null;
+/**
+ * Baked starfields (device:new:0): at most three kept (the one on screen, the one a canvas may still
+ * draw while it changes, and the next galaxy's baked ahead during the Jump), keyed by size and
+ * galaxy. An image is never disposed: the collector frees it once no canvas draws it.
+ */
+const starImages = new Map<string, StarfieldImage | null>();
+const starCores = new Map<string, SkPicture>();
+const starKey = (w: number, h: number, galaxy: number) => `${Math.round(w)}x${Math.round(h)}:${galaxy}`;
+const starWaiters = new Map<string, Set<() => void>>();
+function keep<T>(m: Map<string, T>, key: string, v: T, max = 3): T {
+  m.delete(key);
+  m.set(key, v);
+  while (m.size > max) {
+    const oldest = m.keys().next().value;
+    if (oldest === undefined) break;
+    m.delete(oldest);
+  }
+  return v;
+}
 
 export const pictures = {
   /** Station layers, origin at the station centre, for radius 40 (scale by r / 40). */
@@ -101,13 +119,39 @@ export const pictures = {
   /** The docked freighter as a still (the atlas carries it while it flies). */
   freighter: (hull: HullId, segments: number) => memo(`freighter:${hull}:${segments}`, () => picture(around(60), (c) => drawFreighter(c, { hull, segments }))),
   /**
-   * The baked starfield image for a screen size and galaxy (fx.draw bakeStarfield). Only the
-   * current one is kept: a new size or galaxy bakes a new image and lets the old one go (never
-   * disposed: the collector frees it once no canvas draws it).
+   * The baked starfield (nebula and glows) for a screen size and galaxy if it is ready, else
+   * undefined (null: no surface could be made). Never bakes: see `queueStarfield`.
    */
-  starfieldImage: (w: number, h: number, galaxy: number, density: number): StarfieldImage | null => {
-    if (stars && stars.w === w && stars.h === h && stars.galaxy === galaxy) return stars;
-    stars = bakeStarfield(w, h, galaxy, density);
-    return stars;
+  starfieldReady: (w: number, h: number, galaxy: number): StarfieldImage | null | undefined => starImages.get(starKey(w, h, galaxy)),
+  /**
+   * Bakes a starfield off the current call stack (a timer `delay` ms from now) unless it is ready
+   * or queued, then calls `done`. The field queues the current one at start-up and the next
+   * galaxy's while the Jump sequence plays, so the bake never lands in a render or on the frame
+   * the player first sees a new galaxy (device:new:0).
+   */
+  queueStarfield: (w: number, h: number, galaxy: number, density: number, delay = 0, done?: () => void): void => {
+    const key = starKey(w, h, galaxy);
+    if (starImages.has(key)) {
+      done?.();
+      return;
+    }
+    let waiting = starWaiters.get(key);
+    if (waiting) {
+      if (done) waiting.add(done);
+      return;
+    }
+    waiting = new Set(done ? [done] : []);
+    starWaiters.set(key, waiting);
+    setTimeout(() => {
+      const list = starWaiters.get(key);
+      starWaiters.delete(key);
+      if (!starImages.has(key)) keep(starImages, key, bakeStarfield(w, h, galaxy, density));
+      list?.forEach((f) => f());
+    }, delay);
+  },
+  /** The stars' crisp cores for a size and galaxy (fx.draw starCoresPicture; about a millisecond to record). */
+  starCores: (w: number, h: number, galaxy: number): SkPicture => {
+    const key = starKey(w, h, galaxy);
+    return starCores.get(key) ?? keep(starCores, key, starCoresPicture(w, h, galaxy));
   },
 };

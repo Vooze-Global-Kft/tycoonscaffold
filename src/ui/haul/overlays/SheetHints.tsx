@@ -41,22 +41,31 @@ export function SheetHints() {
   const sheet = useHaulUi((s) => s.sheet);
   const blocked = useHaulUi((s) => s.spoke !== null || s.overlay !== null || s.menuOpen);
   const offline = useGame((s) => s.offline !== null);
-  // A contract row gets a frame round it (Decision 48: no reticle on a number); a button a point.
+  // A control inside a sheet gets a frame round it (Decision 48: no reticle on a number; play:new:4).
   const [at, setAt] = useState<{ x: number; y: number; w: number; h: number; frame: boolean } | null>(null);
 
   useEffect(() => {
     const look = () => {
-      const hint = allHaulHints()[0];
       // A sheet counts as one overlay itself; anything more (a spoke, the Shift Log, a dialog) waits.
       const others = blocked || offline || open > (sheet ? 1 : 0);
-      const key = sheetHintTarget(hint, sheet, others, (k) => targets.get(k) !== null || (targets.refresh(k), false), bestCard);
+      // The first live hint whose control is in the open sheet (play:new:4): the player opened the
+      // Station sheet for step 4 while a map hint (a full hold's swipe) ranks first; the sheet's
+      // own control is still marked.
+      let key: string | null = null;
+      for (const hint of allHaulHints()) {
+        key = sheetHintTarget(hint, sheet, others, (k) => targets.get(k) !== null || (targets.refresh(k), false), bestCard);
+        if (key) break;
+      }
       if (!key) return setAt(null);
       // The sheet slides in without a layout event: measure again each look.
       targets.refresh(key);
       const r = targets.get(key);
       setAt((prev) => {
         if (!r) return null;
-        const next = { x: r.x, y: r.y, w: r.width, h: r.height, frame: key.startsWith('contract:card') };
+        // Every control inside a sheet gets the sheet's frame (the board's best row, station:buyDrone,
+        // rig:upgrade; play:new:4), drawn 4 pt in on each side so its brackets sit on the control's
+        // edge rather than past the card (play-2: the art inflates a frame by 5).
+        const next = { x: r.x + 4, y: r.y + 2, w: Math.max(8, r.width - 8), h: Math.max(8, r.height - 4), frame: true };
         return prev && prev.frame === next.frame && Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5 && Math.abs(prev.w - next.w) < 0.5 && Math.abs(prev.h - next.h) < 0.5 ? prev : next;
       });
     };

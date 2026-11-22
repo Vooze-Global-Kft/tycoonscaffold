@@ -52,13 +52,27 @@ export interface ContractView {
     aboard: number;
     /** max(0, units − got − aboard), rounded up to whole units with a small epsilon (never a unit that cannot arrive). */
     left: number;
-    /** What one launch carries of this ore with the routes as they are (contractStation.reach().now). */
+    /**
+     * The steady figure (Decision 56): what one launch carries of this ore with the routes as they are
+     * (`F × r_o / R`, each route `min(drill, drones × capacity / trip)`, no seam, no pile buffer).
+     */
     perLaunch: number;
+    /** What the next launch is expected to carry of it: for the taken contract from what is really in the hold; for an offer the steady figure. */
+    nextLaunch: number;
+    /** Units of it delivered by the contract's last launch at this pace: `nextLaunch + (launches after it − 1) × perLaunch` (an offer: `L × perLaunch`). */
+    expected: number;
+    /**
+     * The fraction still to gain over that pace (Decision 56, "NEEDS +32 % COPPER"): `left / expected − 1`,
+     * 0 when on pace, Infinity when nothing of it is expected (no route).
+     */
+    raise: number;
   }[];
-  /** min over wants of perLaunch × launchesLeft / left (Infinity when nothing is left). For an offer: as if taken now. */
+  /** min over wants of expected / left (Infinity when nothing is left). For an offer: as if taken now. */
   paceRatio: number;
-  /** paceRatio ≥ 1. */
+  /** paceRatio ≥ 1 (every want's expected covers what is left). */
   onPace: boolean;
+  /** The largest raise of the wants (0 when on pace). */
+  raise: number;
   /** The ore that is furthest behind when not on pace, else null. */
   shortOre: string | null;
 }
@@ -158,7 +172,14 @@ export interface HaulState {
   hold: Record<string, number>;
   freighter: FreighterState;
   autopilot: { online: boolean; policy: AutopilotPolicy };
-  contracts: { unlocked: boolean; board: Contract[]; next: number; active: number | null };
+  /**
+   * The board may hold fewer than `haul.contracts.board` contracts between a drop and the next
+   * warp-out (Decision 56: a dropped place stays empty until then). `recent`: average units of each
+   * ore per launch over about the last `recentLaunches` warp-outs of this run, `measured` the
+   * warp-outs counted into it, `sizedF` the freighter capacity the board's units are sized for
+   * (Decision 56; optional in old saves and in hand-built test states, reconcile fills them).
+   */
+  contracts: { unlocked: boolean; board: Contract[]; next: number; active: number | null; recent?: Record<string, number>; measured?: number; sizedF?: number };
   /** The natural rich seam and its schedule. `count` = seams started so far (drives the rolls). */
   vein: SeamState & { nextAt: number; count: number };
   /** Survey Flare charges, their refill and ad limits, and the flare's own seam. */
@@ -263,6 +284,11 @@ export type HaulEvent =
   | { type: 'contractMet'; contract: Contract; bonus: number; shift: boolean }
   | { type: 'contractLapsed'; contract: Contract; wasActive: boolean; dropped?: boolean }
   | { type: 'contractNew'; contract: Contract; index: number }
+  /**
+   * The freighter's capacity changed (Decision 56): what this contract still needs was resized by
+   * `factor` = F new / F old. `before` and `left` are the units still needed (all ores) before and after.
+   */
+  | { type: 'contractResized'; contract: Contract; index: number; factor: number; before: number; left: number }
   | { type: 'contractsUnlocked' }
   | { type: 'land' }
   | { type: 'docked' }

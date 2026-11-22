@@ -15,7 +15,7 @@
  * - Chips: one per slot, claimed or not, so chips never move (errata 44): every slot's chip is
  *   placed at once by a backtracking search over t ∈ {0.25, 0.26, ..., 0.85} along the line from
  *   the station centre, keeping chips ≥ 40 pt apart and maximising the smallest clearance from the
- *   chip's centre to any rock's edge.
+ *   chip's centre to any rock's edge and (play-22) to the other routes' drone corridors.
  * - `hitTest` priority (errata 45): idle drone on the rack > flare launcher > route chip > rock (a
  *   claimed slot) > ghost slot > station disc > launch track > background.
  */
@@ -199,36 +199,62 @@ function clearanceOf(p: Pt, rocks: readonly RockSpot[]): number {
   return m;
 }
 
+/** Distance from a point to the segment a → b. */
+function segmentDistance(p: Pt, a: Pt, b: Pt): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const l2 = dx * dx + dy * dy;
+  const t = l2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2)) : 0;
+  return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+}
+
+/**
+ * play-22: a chip also keeps clear of the OTHER routes' drone corridors (the line from the station
+ * hub, where routes meet, to each other rock), so drones do not fly over it near the station where
+ * the routes converge.
+ */
+function corridorClearance(p: Pt, slot: number, station: Pt & { r: number }, rocks: readonly RockSpot[]): number {
+  const hub = { x: station.x, y: station.y - station.r * 0.3 };
+  let m = Infinity;
+  for (const r of rocks) if (r.slot !== slot) m = Math.min(m, segmentDistance(p, hub, r));
+  return m;
+}
+
+/** The rock clearance every chip keeps on a roomy field (errata 44); a short field may give up to CHIP_ROCK_GIVE of it to the corridors, never going under CHIP_ROCK_MIN. */
+export const CHIP_ROCK_CLEAR = 20;
+export const CHIP_ROCK_GIVE = 4;
+export const CHIP_ROCK_MIN = 8;
+
 /**
  * Chip centres for every slot (errata 44). Candidates t ∈ {0.25 ... 0.85} along station → rock,
  * minus those over the station disc or the rack (those taps belong to the station and the rack).
- * Finds the largest clearance c for which a backtracking search (fewest admissible candidates
- * first, forward checking) places all chips ≥ 40 pt apart with every clearance ≥ c; among the
- * candidates it tries the clearest first.
+ * Two searches, each the largest clearance c for which a backtracking search (fewest admissible
+ * candidates first, forward checking) places all chips ≥ 40 pt apart with every clearance ≥ c:
+ * first the clearance from the rocks' edges (c*); then, among candidates that keep
+ * min(c*, CHIP_ROCK_CLEAR) from the rocks (c* − CHIP_ROCK_GIVE, at least CHIP_ROCK_MIN, on a short
+ * field), the clearance from the other routes' drone corridors (play-22).
  */
 export function chipPositions(station: Pt & { r: number }, rocks: readonly RockSpot[], rack?: { left: Rect; right: Rect }): (Pt & { slot: number })[] {
-  type Cand = Pt & { c: number };
+  type Cand = Pt & { c: number; k: number };
   const all: Cand[][] = rocks.map((rk) => {
     const out: Cand[] = [];
+    const add = (p: Pt) => out.push({ ...p, c: clearanceOf(p, rocks), k: corridorClearance(p, rk.slot, station, rocks) });
     for (let i = 25; i <= 85; i++) {
       const t = i / 100;
       const p = { x: station.x + (rk.x - station.x) * t, y: station.y + (rk.y - station.y) * t };
       if (Math.hypot(p.x - station.x, p.y - station.y) < station.r + 10) continue;
       if (rack && (rectDistance(p, rack.left) < 8 || rectDistance(p, rack.right) < 8)) continue;
-      out.push({ ...p, c: clearanceOf(p, rocks) });
+      add(p);
     }
     // Fallback: a slot with no candidate keeps its mid-route point.
-    if (out.length === 0) {
-      const p = { x: (station.x + rk.x) / 2, y: (station.y + rk.y) / 2 };
-      out.push({ ...p, c: clearanceOf(p, rocks) });
-    }
-    return out.sort((a, b) => b.c - a.c);
+    if (out.length === 0) add({ x: (station.x + rk.x) / 2, y: (station.y + rk.y) / 2 });
+    return out;
   });
   const n = rocks.length;
   const apart = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y) >= CHIP_SPACING;
 
-  const solve = (minC: number): Cand[] | null => {
-    const doms = all.map((d) => d.filter((x) => x.c >= minC));
+  const solve = (domsIn: Cand[][], score: (x: Cand) => number, minC: number): Cand[] | null => {
+    const doms = domsIn.map((d) => d.filter((x) => score(x) >= minC).sort((a, b) => score(b) - score(a)));
     if (doms.some((d) => d.length === 0)) return null;
     const pick: (Cand | null)[] = new Array(n).fill(null);
     let budget = 20000;
@@ -248,21 +274,29 @@ export function chipPositions(station: Pt & { r: number }, rocks: readonly RockS
     };
     return rec(doms, n) ? (pick as Cand[]) : null;
   };
+  // The largest level of `score` that still places every chip, by bisection over the sorted levels.
+  const best = (doms: Cand[][], score: (x: Cand) => number): { at: number; res: Cand[] } | null => {
+    const levels = Array.from(new Set(doms.flat().map((x) => Math.floor(score(x) * 10) / 10))).sort((a, b) => a - b);
+    let lo = 0;
+    let hi = levels.length - 1;
+    let found: { at: number; res: Cand[] } | null = null;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const s = solve(doms, score, levels[mid]);
+      if (s) {
+        found = { at: levels[mid], res: s };
+        lo = mid + 1;
+      } else hi = mid - 1;
+    }
+    return found;
+  };
 
-  // The candidate clearances, searched from the best down by bisection over their sorted list.
-  const levels = Array.from(new Set(all.flat().map((x) => Math.floor(x.c * 10) / 10))).sort((a, b) => a - b);
-  let lo = 0;
-  let hi = levels.length - 1;
-  let found: Cand[] | null = null;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    const s = solve(levels[mid]);
-    if (s) {
-      found = s;
-      lo = mid + 1;
-    } else hi = mid - 1;
-  }
-  const res = found ?? all.map((d) => d[0]);
+  const rock = best(all, (x) => x.c);
+  if (!rock) return all.map((d, slot) => ({ slot, x: d[0].x, y: d[0].y }));
+  const floor = rock.at >= CHIP_ROCK_CLEAR ? CHIP_ROCK_CLEAR : Math.min(rock.at, Math.max(CHIP_ROCK_MIN, rock.at - CHIP_ROCK_GIVE));
+  const kept = all.map((d) => d.filter((x) => x.c >= floor));
+  const lane = best(kept, (x) => x.k);
+  const res = lane ? lane.res : rock.res;
   return res.map((p, slot) => ({ slot, x: p.x, y: p.y }));
 }
 

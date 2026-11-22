@@ -307,7 +307,12 @@ export function pileLabels(cfg: H.HaulConfig, g: Run, fx: FieldFx): string[] {
     const sp = p.slots[i];
     const waiting = s.haulers > 0 && s.life > 0 && !!sp && sp.h > sp.r * 1.05;
     if (!s.full && s.pile < 1 && !waiting) return '';
-    return `${oreKey(s.ore)} ${formatShort(Math.floor(s.pile))}/${formatShort(Math.floor(sp?.cap ?? 0))}${s.full ? '!' : ''}`;
+    // Decision 59 (play:new:9): the label never shows more than the pile holds; a pile over its
+    // capacity (a capacity that fell under it) reads as full.
+    const cap = Math.floor(sp?.cap ?? 0);
+    const shown = cap > 0 ? Math.min(Math.floor(s.pile), cap) : Math.floor(s.pile);
+    const full = s.full || (cap > 0 && s.pile >= cap);
+    return `${oreKey(s.ore)} ${formatShort(shown)}/${formatShort(cap)}${full ? '!' : ''}`;
   });
 }
 

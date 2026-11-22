@@ -9,9 +9,9 @@
  *   station ring's turn, the route dash phases, blinks and pulses, the freighter's flight, the warp
  *   flash and the flare's trail.
  * The callback stops while a full-screen spoke covers the field (`active`), so nothing invisible
- * animates. It redraws at 60 frames a second only while a finger drags on the map, the freighter
- * climbs or lands, or the warp flash or the flare plays, and at 30 otherwise (lead's decision 50):
- * a skipped frame writes nothing, so no canvas replays.
+ * animates. It redraws on every vsync only while a finger drags on the map, the freighter climbs or
+ * lands, or the warp flash or the flare plays, and at 30 a second otherwise (lead's decision 50 and
+ * the finishing round's device:new:1): a skipped frame writes nothing, so no canvas replays.
  * It is also the one clock of the freighter's flight (lead's decision 51): it writes
  * `flightMode` / `flightP` (../hud/flight.ts), which both this canvas and the bay's launch track
  * draw from. The progress follows the run clock without jumps: at each new frame table it aims to
@@ -32,8 +32,7 @@ const TAU = Math.PI * 2;
 const FLASH = 0.5;
 /** Where a hidden picture goes: a Group's opacity does not hide a Picture on the web unless the group is a layer. */
 const OFF = [{ translateX: -9999 }, { translateY: -9999 }];
-/** Least time between two drawn frames: 60 a second while something moves fast, 30 otherwise (a 120 Hz screen included). */
-const FAST_MS = 15;
+/** Least time between two drawn frames when nothing moves fast (30 a second); fast frames are not paced. */
 const SLOW_MS = 30;
 /** A gap longer than this (a pause, a spoke) resynchronises the freighter's flight with the rules. */
 const RESYNC_MS = 250;
@@ -189,6 +188,10 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
   const fPhase = useSharedValue(-1);
   const fVel = useSharedValue(0);
   const fTs = useSharedValue(0);
+  // The flight's private mode and progress, advanced every vsync; copied to flightMode / flightP only
+  // on drawn frames, so the bay's half and this canvas's half always show the same progress (device:new:1).
+  const fMode = useSharedValue(0);
+  const fProg = useSharedValue(0);
 
   const { xfA, rcA, colA, xfB, rcB, colB } = bufs;
   const { padX, padY, topY, loaded: shipLoaded, empty: shipEmpty, climb: CLIMB, land: LAND, dishRest, sx, sy, sr, height, periods } = geo;
@@ -223,27 +226,31 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
       const ruled = Math.min(1, Math.max(0, (dur - f.phaseT + el * rate.value) / dur));
       if (fPhase.value !== f.phase || gap > RESYNC_MS) {
         fPhase.value = f.phase;
-        flightMode.value = f.phase;
-        flightP.value = ruled;
-      } else flightP.value = Math.min(1, flightP.value + fVel.value * gap);
+        fMode.value = f.phase;
+        fProg.value = ruled;
+      } else fProg.value = Math.min(1, fProg.value + fVel.value * gap);
       if (fresh || fVel.value === 0) {
         // Aim to reach the end of the phase when the rules do (wall time left = run time left / rate): no jump, no drift.
         const leftMs = (Math.max(0, f.phaseT) / Math.max(0.05, rate.value)) * 1000;
-        fVel.value = leftMs > 1 ? (1 - flightP.value) / leftMs : 0;
+        fVel.value = leftMs > 1 ? (1 - fProg.value) / leftMs : 0;
       }
     } else if (fPhase.value !== f.phase) {
       fPhase.value = f.phase;
       fVel.value = 0;
-      flightMode.value = f.phase === 2 ? 1 : 0;
-      flightP.value = f.phase === 2 ? 1 : 0;
+      fMode.value = f.phase === 2 ? 1 : 0;
+      fProg.value = f.phase === 2 ? 1 : 0;
     }
     fTs.value = ts;
 
-    // Frame pacing (decision 50): skip this frame unless enough time has passed.
+    // Frame pacing (decision 50): while the freighter flies, a finger drags or an effect plays, every
+    // vsync is drawn (60, 90 or 120 Hz: device:new:1); otherwise at most 30 frames a second.
     const fx = clock - f.warpAt < FLASH || clock - f.flareAt < 0.6;
     const fast = flying || fx || dragLine.value.kind !== DRAG_NONE;
-    if (ts - lastDraw.value < (fast ? FAST_MS : SLOW_MS)) return;
+    if (!fast && ts - lastDraw.value < SLOW_MS) return;
     lastDraw.value = ts;
+    // The one clock goes out only on drawn frames (both halves of the freighter from the same values).
+    if (flightMode.value !== fMode.value) flightMode.value = fMode.value;
+    if (flightP.value !== fProg.value) flightP.value = fProg.value;
     const t = ts / 1000;
 
     // Starfield drift (3 pt/s), station ring (one turn per 40 s), route dashes (14 pt/s toward the station).
@@ -401,12 +408,12 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
     // progress; Field.tsx clips it to the field above the bay's crest, the bay draws the part below
     // from the same two values. Docked or away: hidden.
     let on = 0;
-    if (flying && flightMode.value === 1) {
-      const y = climbY(flightP.value, padY, topY);
+    if (flying && fMode.value === 1) {
+      const y = climbY(fProg.value, padY, topY);
       ship.value = [{ translateX: padX }, { translateY: y }, { scale: shipLoaded }];
       on = 1;
-    } else if (flying && flightMode.value === 3) {
-      const l = landAt(flightP.value, padY, topY, shipLoaded, f.cargo ? shipLoaded : shipEmpty);
+    } else if (flying && fMode.value === 3) {
+      const l = landAt(fProg.value, padY, topY, shipLoaded, f.cargo ? shipLoaded : shipEmpty);
       ship.value = [{ translateX: padX }, { translateY: l.y }, { scale: l.scale }];
       on = 1;
     } else if (shipOn.value !== 0) ship.value = [{ translateX: -9999 }, { translateY: -9999 }];

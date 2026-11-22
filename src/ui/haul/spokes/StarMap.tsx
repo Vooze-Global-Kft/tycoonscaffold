@@ -185,12 +185,15 @@ export function StarMap() {
       }
     >
       <GalaxyStrip cfg={cfg} data={data} />
+      {/* Between galaxies the pick comes first (play:new:6): the condition cards sit right under the
+          strip, in view at 390x844 and 375x667 without scrolling; the map follows. */}
+      {data.pending ? <PendingPanel cfg={cfg} data={data} pick={pick} setPick={setPick} /> : null}
       <NodeMap w={w} h={h} pitch={pitch} size={size} nodes={data.nodes} selected={selected?.id ?? null} onSelect={(id) => {
         fx.play('ui_tap');
         setSel(id);
       }} />
       <NodeReadout cfg={cfg} node={selected} />
-      {data.pending ? <PendingPanel cfg={cfg} data={data} pick={pick} setPick={setPick} /> : <JumpPanel cfg={cfg} data={data} preview={preview} />}
+      {data.pending ? null : <JumpPanel cfg={cfg} data={data} preview={preview} />}
     </SpokeFrame>
   );
 }
@@ -381,8 +384,9 @@ function ConditionCard({ cfg, id, width, picked, onPress }: { cfg: H.HaulConfig;
       <Mono size={10} weight="700" color={picked ? INK.gold : INK.text} lines={2} style={{ marginTop: 6 }}>
         {c.name}
       </Mono>
-      {(c.lines ?? []).map((l) => (
-        <Mono key={l} size={9} color={INK.dim} caps={false} lines={2} style={{ marginTop: 2 }}>
+      {/* Both lines, whole (Decision 59; the data lists the upside first): the card grows to fit. */}
+      {(c.lines ?? []).map((l, i) => (
+        <Mono key={l} size={9} color={i === 0 ? INK.green : INK.dim} caps={false} style={{ marginTop: 2 }}>
           {l}
         </Mono>
       ))}
@@ -498,18 +502,21 @@ function JumpKeys({ cfg, data, armed, setArmed, preview, setPreview }: { cfg: H.
           fx.play('ui_tap');
           setPreview(!preview);
         }}
-        style={{ flex: 1 }}
+        style={data.ready || !data.canJump ? { flex: 1 } : { minWidth: 96 }}
       />
       <Key
         tone="gold"
         solid={data.ready}
         disabled={!data.canJump}
-        label={data.ready || !data.canJump ? words(cfg, S.jumpArm) : words(cfg, S.jumpAnyway, { n, cores })}
+        // One line at 375 wide (the lead's finishing note): the short core word, and the key takes
+        // all the width the preview key leaves (that one keeps its natural width).
+        label={data.ready || !data.canJump ? words(cfg, S.jumpArm) : data.gain === 1 ? words(cfg, S.jumpAnyway1) : words(cfg, S.jumpAnyway, { n })}
+        accessibilityLabel={data.ready || !data.canJump ? undefined : `${words(cfg, S.jumpArm)}. ${words(cfg, S.jumpGain, { n, cores })}`}
         onPress={() => {
           fx.play('ui_open');
           setArmed(true);
         }}
-        style={{ flex: data.ready || !data.canJump ? 1 : 1.5 }}
+        style={{ flex: 1 }}
       />
     </View>
   );

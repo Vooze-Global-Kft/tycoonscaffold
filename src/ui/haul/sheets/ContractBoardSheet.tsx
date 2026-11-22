@@ -2,15 +2,17 @@
  * The Contract Board sheet (spec 4.5, Decision 40): one row per buyer on the board, read like a
  * dispatch sheet. A contract is delivered over several launches: "Deliver 8.4K copper within 6
  * launches". Each row says, from the rules' `contractViews` (never computed here):
- *   emblem, buyer, the multiplier ("x1.8"), "x2 SHIFT" when the day shift would double it;
+ *   emblem, buyer, the multiplier ("x1.8");
  *   each wanted ore: "8.4K COPPER" and what one launch carries of it now ("1.2K PER LAUNCH"), or
  *   for the taken one "3.7K / 8.4K COPPER" with a bar (delivered solid, aboard lighter);
  *   "IN 6 LAUNCHES" (an offer) or "4 LAUNCHES LEFT" ("LAST LAUNCH" in amber), the pace word
- *   ("ON PACE" / "NEEDS MORE COPPER") and the fixed bonus "+₵19.4K WHEN MET".
+ *   ("ON PACE" / "NEEDS +32 % COPPER") and the fixed bonus "+₵19.4K WHEN MET", or "+₵19.4K X2 SHIFT"
+ *   when the day shift would double it.
  * A tap takes an offer. Taking another while the taken one has progress asks once more ("Drops Kade
  * Refinery: 3.7K delivered. Tap again."); nothing else ever picks a contract for the player. The
  * figures use one short format (unitsShort, moneyShort) everywhere: the strip shows the same.
- * Footer: "Scrap Pod every 4 contracts met (2/4)". Row targets `contract:card<i>` (the second stage
+ * Footer: the Scrap Pod ladder as a stamp strip, "SCRAP POD · 6 MORE CONTRACTS" (Decision 60). A dropped
+ * contract's place stays empty until the next warp-out: "NEW OFFER AFTER THE NEXT LAUNCH" (Decision 56). Row targets `contract:card<i>` (the second stage
  * of the board hint, errata 53).
  */
 import { useEffect, useState } from 'react';
@@ -25,6 +27,7 @@ import { runParams, useRunShallow } from '../useRun';
 import { useBackLayer, useHaulUi } from '../uiState';
 import { buyerName, moneyShort, oreColorOf, oreName, portraitOf, unitsShort } from './format';
 import { HaulSheet, Line, MONO, useColors, useLast, useType } from './parts';
+import { PodStamps } from './PodStamps';
 import { say } from './shellText';
 
 /** How long a "tap again to drop" question waits for the second tap. */
@@ -46,7 +49,6 @@ interface RowView {
   buyer: string;
   emblem: string;
   mult: string;
-  shift: string | null;
   wants: WantRow[];
   taken: boolean;
   /** "IN 6 LAUNCHES", "4 LAUNCHES LEFT", "LAST LAUNCH". */
@@ -64,6 +66,10 @@ interface BoardView {
   unlocked: boolean;
   unlockAt: number;
   rows: RowView[];
+  /** Empty places on the board: a dropped contract's place stays empty until the next warp-out (Decision 56). */
+  open: number;
+  /** The Scrap Pod ladder, drawn as a stamp strip (Decision 60). */
+  pods: { of: number; filled: number };
   footer: string;
 }
 
@@ -95,20 +101,26 @@ function boardView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): Bo
     const got = v.wants.reduce((s, w) => s + w.got, 0);
     const aboard = v.wants.reduce((s, w) => s + w.aboard, 0);
     const short = v.shortOre ? oreName(cfg, v.shortOre).toUpperCase() : '';
+    // Decision 56: the raise the short ore needs, as a figure ("NEEDS +32 % COPPER"), from the view's
+    // `raise` (the fraction still to gain over the routes' steady figure). Read loosely so the sheet
+    // also builds against a rules version without the field (then "NEEDS MORE COPPER").
+    const raise = (v.wants.find((w) => w.ore === v.shortOre) as { raise?: number } | undefined)?.raise;
+    const paceWord = v.onPace ? say('paceOn') : typeof raise === 'number' && raise > 0 && Number.isFinite(raise) ? say('paceRaise', { p: Math.max(1, Math.round(raise * 100)), ore: short }) : say('paceShort', { ore: short });
     return {
       index: v.index,
       buyer: buyerName(cfg, v.contract.buyer),
       emblem: portraitOf(cfg, v.contract.buyer),
       mult: say('mult', { m: (Math.round((v.contract.mult + p.contractAdd) * 10) / 10).toFixed(1) }),
-      shift: v.shift ? say('shiftTag', { m: cfg.haul.shift.mult }).toUpperCase() : null,
       wants,
       taken,
       // An offer reads as the deal it would be once taken ("IN 6 LAUNCHES"), not as its time left on the board.
       launches: launchWord(taken ? v.launchesLeft : v.launches, taken).toUpperCase(),
       last: taken && v.launchesLeft <= 1,
       onPace: v.onPace,
-      paceWord: (v.onPace ? say('paceOn') : say('paceShort', { ore: short })).toUpperCase(),
-      bonus: say('cardBonus', { v: moneyShort(cfg, v.bonus) }).toUpperCase(),
+      paceWord: paceWord.toUpperCase(),
+      // The day shift's double is part of the bonus figure ("+₵35 X2 SHIFT", Decision 59, the receipt's
+      // "+₵35 x2"), not a tag beside the buyer: a long buyer name keeps its row (the lead's note).
+      bonus: (v.shift ? say('cardBonusShift', { v: moneyShort(cfg, v.bonus), m: cfg.haul.shift.mult }) : say('cardBonus', { v: moneyShort(cfg, v.bonus) })).toUpperCase(),
       progress: taken && got + aboard >= 1 ? unitsShort(got + aboard) : '',
       progressAboard: aboard >= 1,
     };
@@ -119,16 +131,18 @@ function boardView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): Bo
     unlocked: h.contracts.unlocked,
     unlockAt: C.unlockLaunches,
     rows,
-    footer: say(every === 1 ? 'boardFooter1' : 'boardFooter', {
-      pod: podName,
-      n: every,
-      k: every > 0 ? (g.stats.contractsMet ?? 0) % every : 0,
-    }),
+    open: h.contracts.unlocked ? Math.max(0, C.board - views.length) : 0,
+    pods: { of: every, filled: every > 0 ? (g.stats.contractsMet ?? 0) % every : 0 },
+    footer: (() => {
+      const left = every > 0 ? every - ((g.stats.contractsMet ?? 0) % every) : 1;
+      return left === 1 ? say('boardPodMore1', { pod: podName }) : say('boardPodMore', { pod: podName, n: left });
+    })(),
   };
 }
 
 export function ContractBoardSheet() {
   const ty = useType();
+  const c = useColors();
   const open = useHaulUi((s) => s.sheet?.type === 'contracts');
   const board = useRunShallow((cfg, g) => (open ? boardView(cfg, g) : null), null);
   const title = useRunShallow(
@@ -167,7 +181,7 @@ export function ContractBoardSheet() {
       {v ? (
         !v.unlocked ? (
           <Line muted>{say('boardLocked', { n: v.unlockAt })}</Line>
-        ) : v.rows.length === 0 ? (
+        ) : v.rows.length === 0 && v.open === 0 ? (
           <Line muted>{say('boardEmpty')}</Line>
         ) : (
           <>
@@ -179,9 +193,12 @@ export function ContractBoardSheet() {
             {v.rows.map((row) => (
               <ContractRow key={row.index} row={row} onPress={() => pick(row)} ask={ask?.index === row.index && taken ? say(taken.progressAboard ? 'dropAskAboard' : 'dropAsk', { buyer: taken.buyer, n: taken.progress }) : null} />
             ))}
-            <Line mono muted size={ty.small} style={styles.footer}>
-              {v.footer}
-            </Line>
+            {Array.from({ length: v.open }, (_, i) => (
+              <OpenSlot key={`open${i}`} />
+            ))}
+            <View style={styles.footer}>
+              <PodStamps filled={v.pods.filled} of={v.pods.of} label={v.footer} color={c.textMuted} dim={alpha(c.textMuted, 0.35)} size={ty.tiny} />
+            </View>
           </>
         )
       ) : null}
@@ -216,13 +233,6 @@ function ContractRow({ row, onPress, ask }: { row: RowView; onPress: () => void;
         <T size={ty.small} color={c.text} bold flex mono={false}>
           {row.buyer.toUpperCase()}
         </T>
-        {row.shift ? (
-          <View style={[styles.tag, { borderColor: c.success }]}>
-            <T size={ty.tiny} color={c.success} bold>
-              {row.shift}
-            </T>
-          </View>
-        ) : null}
         <T size={ty.big} color={c.text} bold>
           {row.mult}
         </T>
@@ -273,6 +283,19 @@ function ContractRow({ row, onPress, ask }: { row: RowView; onPress: () => void;
   );
 }
 
+/** The empty place a dropped contract leaves until the next warp-out (Decision 56): a dashed frame, no buyer. */
+function OpenSlot() {
+  const c = useColors();
+  const ty = useType();
+  return (
+    <View style={[styles.card, styles.open, { borderColor: alpha(c.textMuted, 0.4) }]} accessible accessibilityLabel={say('boardOpenSlot')}>
+      <T size={ty.tiny} color={c.textMuted} bold>
+        {say('boardOpenSlot').toUpperCase()}
+      </T>
+    </View>
+  );
+}
+
 /** One line of a row, sized by hand (allowFontScaling false, phone-4): every text of a row is single-line. */
 function T(p: { children: string; size: number; color: string; bold?: boolean; mono?: boolean; flex?: boolean }) {
   return (
@@ -291,5 +314,6 @@ const styles = StyleSheet.create({
   bar: { height: 4, borderRadius: 2, overflow: 'hidden', flexDirection: 'row' },
   bottom: { flexDirection: 'row', alignItems: 'center' },
   takenTag: { marginRight: 6 },
-  footer: { textAlign: 'center', marginTop: 2 },
+  footer: { alignItems: 'center', marginTop: 2 },
+  open: { borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
 });

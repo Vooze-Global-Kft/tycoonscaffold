@@ -8,7 +8,8 @@
  * Below: a radio log with two open channels. Each mission is a transmission: the call-sign plate of
  * whoever sent it (from the line's "CALLSIGN:" prefix and the config's characters), the line in the
  * terminal face, a thin gauge, the reward; a done one shows "Acknowledge" (the shared claim plus
- * ackTransmission: every 4th adds a Derelict Cache). The archive holds the story lines received.
+ * ackTransmission: every 4th adds a Derelict Cache; drawn as a stamp strip,
+ * "DERELICT CACHE · 3 MORE ACKS", Decision 60). The archive holds the story lines received.
  *
  * Data: meta.missionViews, H.shiftView and haulStats.shift. Action: haulActions.acknowledge.
  */
@@ -21,6 +22,7 @@ import type { GameState } from '../../../engine/types';
 import { haulActions } from '../../../modes/haul/actions';
 import { formatCountdown, useNow } from '../../kit';
 import { HaulIcon } from '../art/HaulIcon';
+import { PodStamps } from '../sheets/PodStamps';
 import { useHaul, useHaulCfg } from './spokeData';
 import { Bracket, Gauge, INK, Key, Mono, Rule } from './spokeKit';
 import { SPOKE_STRINGS as S, words } from './spokeStrings';
@@ -80,9 +82,16 @@ export function Comms() {
       {channels.map((t, i) => (
         <Channel key={t ? `tx${t.index}:${t.line}` : `quiet${i}`} cfg={cfg} n={i + 1} t={t} quiet={log.quietToday} />
       ))}
-      <Mono size={10} color={INK.dim} caps={false} style={{ marginTop: 2 }}>
-        {words(cfg, S.derelictEvery, { n: log.every, a: log.acked })}
-      </Mono>
+      <View style={{ marginTop: 2 }}>
+        <PodStamps
+          filled={log.acked}
+          of={log.every}
+          color={INK.line}
+          dim={INK.edge}
+          size={10}
+          label={log.every - log.acked === 1 ? words(cfg, S.derelictMore1) : words(cfg, S.derelictMore, { n: log.every - log.acked })}
+        />
+      </View>
       <Rule label={S.archive} />
       {log.archive.length === 0 ? (
         <Mono size={10} color={INK.faint} caps={false}>

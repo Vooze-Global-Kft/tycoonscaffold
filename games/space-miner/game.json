@@ -317,7 +317,7 @@
       "GAMES_STRATEGY",
       "GAMES_SIMULATION"
     ],
-    "promotionalText": "Drag drones onto asteroids, pick which buyer contracts to fill, and grow one mining station into a fleet that keeps shipping while you are away.",
+    "promotionalText": "Every rock runs dry. Every buyer wants a different ore. Which drone goes where, and when the freighter leaves the pad, is your call.",
     "privacyPolicyUrl": "https://example.com/privacy"
   },
   "mode": "haul",
@@ -992,7 +992,7 @@
         {
           "id": "tessaly",
           "name": "Tessaly Ice Co.",
-          "calls": "Tessaly Ice Company. {units} {ore}. Paying {mult}. Keep it sealed.",
+          "calls": "Tessaly. {units} {ore} wanted. Paying {mult}. Keep the hold sealed.",
           "closed": "Tessaly. Manifest checks out. Logged."
         },
         {
@@ -1032,8 +1032,8 @@
         "id": "frost",
         "name": "Frost Surplus",
         "lines": [
-          "Ice weight x3 on rings 3 and 4",
-          "Ice value x2"
+          "Ice value x2",
+          "Ice weight x3 on rings 3 and 4"
         ],
         "oreValue": {
           "ice": 2
@@ -1071,8 +1071,8 @@
         "id": "longhaul",
         "name": "Long Haul",
         "lines": [
-          "Distances x1.3",
-          "Contract multipliers +0.3"
+          "Contract multipliers +0.3",
+          "Distances x1.3"
         ],
         "distance": 1.3,
         "contractAdd": 0.3
@@ -1081,8 +1081,8 @@
         "id": "heavy",
         "name": "Heavy Ore",
         "lines": [
-          "Drone capacity x0.75",
-          "All ore values x2"
+          "All ore values x2",
+          "Drone capacity x0.75"
         ],
         "capacity": 0.75,
         "oreValue": {

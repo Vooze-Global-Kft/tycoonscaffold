@@ -141,6 +141,47 @@ export function claimChipRect(layout: FieldLayout, slot: number, row: number): R
   return best;
 }
 
+/** How far a floater rises over its life (./hud/FloatingFeedback.tsx FloatText). */
+export const FLOATER_RISE = 26;
+
+/**
+ * Where a drop's floater ("+₵0.75/s") starts, as the centre of its text (play:new:8): over its rock
+ * when the whole rise is clear, else beside it or under it, whichever covers the least of the other
+ * rocks and their label rows (a ghost's price sits under its circle) and stays in the field.
+ * `textW` and `row` are the text's width and row height.
+ */
+export function floaterSpot(layout: FieldLayout, slot: number, textW: number, row: number): Pt | null {
+  const rock = layout.rocks[slot];
+  if (!rock) return null;
+  const z = layout.zones;
+  const top = z.comms.y + z.comms.height + 2;
+  const bottom = z.bay.y - 2;
+  const others: Rect[] = layout.rocks
+    .filter((r) => r.slot !== slot)
+    .map((r) => ({ x: r.x - Math.max(r.r, 30), y: r.y - r.r, width: 2 * Math.max(r.r, 30), height: 2 * r.r + 18 }));
+  const half = textW / 2;
+  const candidates: Pt[] = [
+    { x: rock.x, y: rock.y - rock.r - 14 },
+    { x: rock.x + rock.r + 8 + half, y: rock.y },
+    { x: rock.x - rock.r - 8 - half, y: rock.y },
+    { x: rock.x, y: rock.y + rock.r + 18 + FLOATER_RISE },
+  ];
+  let best: Pt | null = null;
+  let bestScore = Infinity;
+  candidates.forEach((c, i) => {
+    const x = Math.max(4 + half, Math.min(layout.width - 4 - half, c.x));
+    const y = Math.max(top + row / 2 + FLOATER_RISE, Math.min(bottom - row / 2, c.y));
+    // The whole path of the text: from where it starts to where it fades, FLOATER_RISE higher.
+    const path = { x: x - half, y: y - row / 2 - FLOATER_RISE, width: textW, height: row + FLOATER_RISE };
+    const score = others.reduce((a, o) => a + overlapArea(path, o), 0) + (Math.abs(x - c.x) + Math.abs(y - c.y)) * row + i;
+    if (score < bestScore) {
+      bestScore = score;
+      best = { x, y };
+    }
+  });
+  return best;
+}
+
 /** A touch of a responder event: its finger's id and where it is. */
 export interface TouchPoint {
   identifier?: string | number;

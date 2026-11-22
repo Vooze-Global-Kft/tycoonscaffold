@@ -26,8 +26,8 @@ import type { Rect } from '../layout';
 import { useRun } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { bayCounterMetrics, bayCounterRows, fitTicker } from './bayMetrics';
-import { DIGITAL, bayWord, countText, fillIn } from './bayText';
-import { moneyShort } from '../sheets/format';
+import { DIGITAL, bayWord, fillIn } from './bayText';
+import { metTexts, receiptTexts } from './receipt';
 import { HAUL_STRINGS } from '../strings';
 import { GLYPH_FALL_MS, GLYPH_LEAD_MS } from './feedbackTiming';
 
@@ -60,33 +60,6 @@ function followCash(set: (v: number) => void): () => void {
     offCash();
     if (timer) clearTimeout(timer);
   };
-}
-
-/**
- * The receipt line for a warp-out, in four lengths (longest first): the manifest by ore (most
- * units first) and the payout. The ticker shows the longest that fits its row at a readable size.
- */
-export function receiptTexts(cfg: H.HaulConfig, cargo: Record<string, number>, payout: number): string[] {
-  const names = new Map(cfg.haul.ores.map((o) => [o.id, o.name.toUpperCase()]));
-  const lots = Object.entries(cargo)
-    .filter(([, u]) => u >= 0.5)
-    .sort((a, b) => b[1] - a[1]);
-  const full = lots.map(([ore, u]) => `${countText(u)} ${names.get(ore) ?? ore.toUpperCase()}`);
-  // Shorter: the biggest lot and how many other ores came with it (never names cut to three letters).
-  const lead = full.length > 1 ? `${full[0]} +${full.length - 1}` : (full[0] ?? '');
-  const money = formatMoney(payout, cfg.strings.currencySymbol);
-  const warped = bayWord('receiptWarped');
-  const manifest = bayWord('receiptManifest');
-  return [[warped, `${manifest} ${full.join(' · ')}`, money].join(' · '), [warped, full.join(' · '), money].join(' · '), [warped, lead, money].filter(Boolean).join(' · '), [warped, money].join(' · ')];
-}
-
-/** The receipt row of a warp-out that met the contract (longest first): the bonus, the day shift, the payout. */
-export function metTexts(cfg: H.HaulConfig, bonus: number, payout: number, shift: boolean): string[] {
-  const sym = cfg.strings.currencySymbol;
-  // The bonus in the board's and the strip's figure (one figure for one contract).
-  const met = `${bayWord('receiptMet')}${bonus > 0 ? ` +${moneyShort(cfg, bonus)}` : ''}`;
-  const money = formatMoney(payout, sym);
-  return shift ? [`${met} · ${bayWord('receiptShift')}`, met, bayWord('receiptMet')] : [`${met} · ${money}`, met, bayWord('receiptMet')];
 }
 
 export function DockCounter({ rect }: { rect: Rect }) {
@@ -122,9 +95,16 @@ export function DockCounter({ rect }: { rect: Rect }) {
       if (!w) return;
       const cfg = useGame.getState().cfg as H.HaulConfig;
       if (!H.isHaul(cfg)) return;
-      const metEv = events.find((e) => (e as H.HaulEvent).type === 'contractMet') as { shift?: boolean } | undefined;
+      const metEv = events.find((e) => (e as H.HaulEvent).type === 'contractMet') as Extract<H.HaulEvent, { type: 'contractMet' }> | undefined;
+      const progEv = events.find((e) => (e as H.HaulEvent).type === 'contractProgress') as Extract<H.HaulEvent, { type: 'contractProgress' }> | undefined;
+      // The contract's ores lead the manifest: the one this launch met or fed, else the taken one.
+      const C = (useGame.getState().game as { haul?: H.HaulState }).haul?.contracts;
+      const taken = C && C.active !== null ? C.board[C.active] : undefined;
+      const first = (metEv?.contract ?? progEv?.contract ?? (taken?.taken ? taken : undefined))?.wants.map((x) => x.ore) ?? [];
       const bonus = (w as { bonus?: number }).bonus ?? 0;
-      setReceipt({ texts: w.met ? metTexts(cfg, bonus, w.payout, !!metEv?.shift) : receiptTexts(cfg, w.cargo, w.payout), met: w.met });
+      const mult = metEv?.shift ? cfg.haul.shift.mult : 0;
+      const base = mult > 0 ? bonus / mult : bonus;
+      setReceipt({ texts: w.met ? metTexts(cfg, w.cargo, base, mult > 0 ? mult : null, first) : receiptTexts(cfg, w.cargo, w.payout, first), met: w.met });
       // The stamp lands on the receipt row as the money does.
       stamp.value = 0;
       if (w.met) stamp.value = withDelay(GLYPH_LEAD_MS + GLYPH_FALL_MS, withTiming(1, { duration: 220, easing: Easing.in(Easing.cubic) }));

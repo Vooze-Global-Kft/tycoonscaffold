@@ -4,9 +4,9 @@
  *   npm run validate                    every game
  *   npm run validate -- space-miner     one game (cross-game checks still compare it with all the others)
  *   npm run validate -- --no-sim        skip the bot playthrough (faster; a haul game's bot plays
- *                                       12 h with Jumps on seeds 12345, 4 and 99 in parallel, about
- *                                       2 to 4 minutes, and fails on every hard section 8 target any
- *                                       seed misses: Decision 45)
+ *                                       12 h with Jumps on seeds 12345, 4, 99, 7 and 2026 in parallel,
+ *                                       about 3 to 6 minutes, and fails on every hard section 8 target
+ *                                       any seed misses: Decisions 45 and 62)
  *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
  *
  * For every pair of games that both have sounds it also runs the sound similarity check
@@ -61,8 +61,8 @@ for (const id of new Set([...all, ...ids])) {
   else schemaErrors.set(id, r.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`));
 }
 
-/** The seeds every hard section 8 target must hold on (Decision 45; the slowest seed decides). */
-const PACING_SEEDS = [12345, 4, 99];
+/** The seeds every hard section 8 target must hold on (Decisions 45 and 62; the slowest seed decides). */
+const PACING_SEEDS = [12345, 4, 99, 7, 2026];
 
 /**
  * Runs the haul pacing bot for several seeds at once, one child process per seed (Decision 45), and
@@ -128,6 +128,54 @@ function audioScore(a: string, b: string): AudioScore {
 
 const mmss = (s: number) => `${Math.floor(s / 60)}m ${String(Math.round(s % 60)).padStart(2, '0')}s`;
 
+/**
+ * When a file last changed, in seconds since the epoch: the file's modification time while it has
+ * changes git has not committed (or outside git), else the time of the last commit that touched it.
+ * A checkout or a regeneration that writes the same bytes therefore does not count as a change.
+ */
+function lastChange(abs: string): number {
+  const mtime = fs.statSync(abs).mtimeMs / 1000;
+  const rel = path.relative(games.ROOT, abs);
+  const git = (...a: string[]) => spawnSync('git', a, { cwd: games.ROOT, encoding: 'utf8', timeout: 20_000 });
+  const st = git('status', '--porcelain', '--', rel);
+  if (st.status !== 0 || st.stdout.trim() !== '') return mtime;
+  const log = git('log', '-1', '--format=%ct', '--', rel);
+  const t = Number(log.stdout.trim());
+  return log.status === 0 && t > 0 ? t : mtime;
+}
+
+/**
+ * guard:new:0 (finishing round): store screenshots taken before the last change to the game's words
+ * or data may show a screen the build no longer has (Apple 2.3.3 and 2.3.7, Google's misleading-
+ * metadata policy). Returns one line per stale image set, naming the newest change it predates.
+ */
+function staleScreenshots(id: string, mode: string): string[] {
+  const shots = path.join(games.gameDir(id), 'store', 'screenshots');
+  if (!fs.existsSync(shots)) return [];
+  const pngs: string[] = [];
+  const walk = (d: string) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.png$/i.test(e.name)) pngs.push(p);
+    }
+  };
+  walk(shots);
+  if (!pngs.length) return [];
+  // The game's data, and the interface words of its mode when the mode keeps them in one file.
+  const sources = [path.join(games.gameDir(id), 'game.json'), path.join(games.ROOT, 'src', 'ui', mode, 'strings.ts')].filter((f) => fs.existsSync(f));
+  const changed = sources.map((f) => ({ f, t: lastChange(f) })).sort((a, b) => b.t - a.t)[0];
+  if (!changed) return [];
+  const old = pngs.filter((p) => lastChange(p) < changed.t - 1);
+  if (!old.length) return [];
+  const sets = [...new Set(old.map((p) => path.relative(shots, path.dirname(p)) || '.'))];
+  const when = new Date(changed.t * 1000).toISOString().slice(0, 16).replace('T', ' ');
+  return [
+    `${old.length} of ${pngs.length} store screenshot(s) (${sets.join(', ')}) are older than the last change to ${path.relative(games.ROOT, changed.f)} (${when} UTC): ` +
+      `retake them on the current build (npx tsx scripts/store/shots.ts --game ${id} --write, scripts/store/README.md) so no image shows a screen or a word the game no longer has`,
+  ];
+}
+
 for (const id of ids) {
   const g = parsed.get(id);
   if (!g) {
@@ -157,6 +205,9 @@ for (const id of ids) {
     const sim = textSimilarity(g.store.description, o.store.description);
     if (sim >= 0.5) warnings.push(`store description is ${Math.round(sim * 100)}% the same as ${otherId}'s: near-identical listings invite a spam rejection; rewrite it`);
     if (g.store.title.trim().toLowerCase() === o.store.title.trim().toLowerCase()) problems.push(`store title is the same as ${otherId}'s`);
+    // Each app needs its own privacy policy page (store-0): one shared address, a placeholder included, is a release error.
+    const url = g.store.privacyPolicyUrl?.trim();
+    if (url && url === o.store.privacyPolicyUrl?.trim()) (release ? problems : warnings).push(`store.privacyPolicyUrl ${url} is also ${otherId}'s: each app needs its own policy page`);
   }
 
   // --- release chores and policy risks ---
@@ -215,6 +266,7 @@ for (const id of ids) {
       /* the fingerprint check reports an unreadable file */
     }
   }
+  (release ? problems : warnings).push(...staleScreenshots(id, g.mode));
   if (stale.length) problems.push(`store files out of date with game.json (run npm run sync): ${stale.map(([rel]) => path.relative(path.join('games', id), rel)).join(', ')}`);
   if (g.meta.chestsForSale) {
     warnings.push(

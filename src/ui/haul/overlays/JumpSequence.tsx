@@ -1,7 +1,8 @@
 /**
  * The Jump sequence (spec 4.6, Decision 41), in two parts:
- * - Leaving (uiState overlay 'leave'), played at the confirm: stars streak into lines (1.5 s), the
- *   station shudders, "LEAVING <galaxy>" holds, and the Star Map's between-galaxies panel shows.
+ * - Leaving (uiState overlay 'leave'), played at the confirm: stars streak into lines (1 s), the
+ *   station shudders, "LEAVING <galaxy>" holds briefly, and the Star Map's between-galaxies panel
+ *   shows, its condition cards tappable within 2.5 s of the confirm.
  * - Arriving (overlay 'jump'), played when the next galaxy's run starts (the shell sees its galaxy
  *   index rise, after the condition is picked): the streaks fall back into stars, the arrival line
  *   "GALAXY 2 · HALDEN REACH" types out (Decision 52) with the condition under it, it holds, and the
@@ -26,11 +27,14 @@ import { MONO, useType } from '../sheets/parts';
 import { say } from '../sheets/shellText';
 import { useHaulUi } from '../uiState';
 
-export const STREAK_MS = 1500;
-export const SHUDDER_MS = 450;
-export const TYPE_MS = 1000;
-export const HOLD_MS = 1300;
-export const ARRIVE_MS = 900;
+/**
+ * Timings. Leaving is short (the lead's finishing note: the condition cards must be tappable within
+ * 2.5 s of the confirm): streak 1.0 s, shudder 0.3 s, the name typed in 0.5 s, held 0.5 s, faded in
+ * 0.22 s, about 2.37 s in all (LEAVE_TOTAL_MS). Arriving keeps its longer hold: it is the reward.
+ */
+export const LEAVE = { streak: 1000, shudder: 300, type: 500, hold: 500, fade: 220 } as const;
+export const ARRIVE = { arrive: 900, type: 1000, hold: 1300, fade: 300 } as const;
+export const LEAVE_TOTAL_MS = LEAVE.streak + LEAVE.shudder * 0.5 + LEAVE.type + LEAVE.hold + LEAVE.fade + 20;
 const STARS = 90;
 
 /** Fixed star field for the streaks: angle and starting distance (0..1 of the half diagonal). */
@@ -92,19 +96,22 @@ function Sequence({ leaving }: { leaving: boolean }) {
     fade.value = withTiming(1, { duration: 220 });
     const timers: ReturnType<typeof setTimeout>[] = [];
     if (leaving) {
-      t.value = withTiming(1, { duration: STREAK_MS, easing: Easing.in(Easing.cubic) });
-      shake.value = withDelay(STREAK_MS - 150, withSequence(...[6, -5, 4, -3, 2, 0].map((v) => withTiming(v, { duration: SHUDDER_MS / 6 }))));
+      t.value = withTiming(1, { duration: LEAVE.streak, easing: Easing.in(Easing.cubic) });
+      shake.value = withDelay(LEAVE.streak - 150, withSequence(...[6, -5, 4, -3, 2, 0].map((v) => withTiming(v, { duration: LEAVE.shudder / 6 }))));
     } else {
       // Arriving: the lines fall back into points of light.
       t.value = 1;
-      t.value = withTiming(0, { duration: ARRIVE_MS, easing: Easing.out(Easing.cubic) });
+      t.value = withTiming(0, { duration: ARRIVE.arrive, easing: Easing.out(Easing.cubic) });
     }
-    const startType = leaving ? STREAK_MS + SHUDDER_MS * 0.5 : ARRIVE_MS * 0.6;
+    const startType = leaving ? LEAVE.streak + LEAVE.shudder * 0.5 : ARRIVE.arrive * 0.6;
+    const typeMs = leaving ? LEAVE.type : ARRIVE.type;
+    const holdMs = leaving ? LEAVE.hold : ARRIVE.hold;
+    const fadeMs = leaving ? LEAVE.fade : ARRIVE.fade;
     const letters = Math.max(1, name.length);
-    for (let i = 1; i <= letters; i++) timers.push(setTimeout(() => setTyped(i), startType + (TYPE_MS * i) / letters));
-    timers.push(setTimeout(() => setDone(true), startType + TYPE_MS));
-    timers.push(setTimeout(() => (fade.value = withTiming(0, { duration: 300 })), startType + TYPE_MS + HOLD_MS));
-    timers.push(setTimeout(() => useHaulUi.getState().closeOverlay(), startType + TYPE_MS + HOLD_MS + 320));
+    for (let i = 1; i <= letters; i++) timers.push(setTimeout(() => setTyped(i), startType + (typeMs * i) / letters));
+    timers.push(setTimeout(() => setDone(true), startType + typeMs));
+    timers.push(setTimeout(() => (fade.value = withTiming(0, { duration: fadeMs })), startType + typeMs + holdMs));
+    timers.push(setTimeout(() => useHaulUi.getState().closeOverlay(), startType + typeMs + holdMs + fadeMs + 20));
     return () => {
       timers.forEach(clearTimeout);
       cancelAnimation(t);

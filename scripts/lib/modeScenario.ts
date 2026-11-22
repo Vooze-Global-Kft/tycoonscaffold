@@ -28,7 +28,7 @@ export interface ScenarioEngine {
     applyProduct(cfg: never, s: never, product: never, now: number): unknown;
     missionsAfterReset(cfg: never, s: never, now: number): { missions: unknown };
   };
-  buildPreset(cfg: never, name: 'early', now: number): unknown;
+  buildPreset(cfg: never, name: 'early' | 'mid', now: number): unknown;
 }
 
 export const SCENARIO_NOW = Date.UTC(2026, 10, 1, 9, 0, 0);
@@ -74,10 +74,11 @@ export function modeScenario(x: ScenarioEngine, cfgIn: unknown): Record<string, 
   out.missions = M.refreshMissions(cfg, s as never, NOW).missions;
   out.cashForSeconds = M.cashForSeconds(cfg, s as never, 120, NOW);
   // The shared functions this round touched (guard:new:2): a gem Time Warp with zero income (the
-  // early preset earns nothing yet) and with income (the ticked state), ...
+  // early preset: Pizza Empire earns nothing yet) and with income (the mid preset), ...
   const gemmed = (x0: unknown) => ({ ...(x0 as object), gems: 1000 });
   out.buyWarpZero = { income: out.income, state: E.buyTimeWarpWithGems(cfg, gemmed(early) as never, NOW) };
-  out.buyWarp = E.buyTimeWarpWithGems(cfg, gemmed(s) as never, NOW);
+  const mid = x.buildPreset(cfg, 'mid', NOW);
+  out.buyWarp = { income: E.incomePerSecond(cfg, mid as never, NOW), state: E.buyTimeWarpWithGems(cfg, gemmed(mid) as never, NOW) };
   out.buyWarpPoor = E.buyTimeWarpWithGems(cfg, { ...(s as object), gems: 0 } as never, NOW);
   // ... the daily gift over several days (a second claim on the same day, a skipped day, a clock
   // set back), at noon UTC so the local day is the same in every time zone from -11 to +11 ...
@@ -107,14 +108,30 @@ export function modeScenario(x: ScenarioEngine, cfgIn: unknown): Record<string, 
 /**
  * The parts of the first game's parsed config the guard pins: everything but what is not gameplay
  * and what the owner edits before a release (the lead's note on pizza-1): the `store` block
- * (listing texts, privacy URL) and the `app` identifiers (bundle ids, version, tracking text). The
- * `soundPack` key came with the bundle separation (the main branch has none; the test pins it to
- * "warm" separately).
+ * (listing texts, privacy URL) and, of the `app` block, only the release identifiers (bundle ids,
+ * version, build number, EAS project and owner) and the tracking text. `app.displayName` (the name
+ * under the home-screen icon) and `app.slug` stay pinned (guard:new:2). The `soundPack` key came
+ * with the bundle separation (the main branch has none; the test pins it to "warm" separately).
+ * A dotted entry removes one key of a block.
  */
-export const CONFIG_UNPINNED = ['store', 'app', 'soundPack'] as const;
+export const CONFIG_UNPINNED = [
+  'store',
+  'soundPack',
+  'app.iosBundleId',
+  'app.androidPackage',
+  'app.version',
+  'app.buildNumber',
+  'app.easProjectId',
+  'app.owner',
+  'app.trackingText',
+] as const;
 
 export function pinnedConfig(parsed: unknown): Record<string, unknown> {
-  const c = { ...(JSON.parse(JSON.stringify(parsed)) as Record<string, unknown>) };
-  for (const k of CONFIG_UNPINNED) delete c[k];
+  const c = JSON.parse(JSON.stringify(parsed)) as Record<string, unknown>;
+  for (const k of CONFIG_UNPINNED) {
+    const [block, key] = k.split('.');
+    if (key === undefined) delete c[block];
+    else if (c[block] && typeof c[block] === 'object') delete (c[block] as Record<string, unknown>)[key];
+  }
   return c;
 }

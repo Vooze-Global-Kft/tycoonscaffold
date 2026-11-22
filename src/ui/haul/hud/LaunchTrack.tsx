@@ -253,7 +253,7 @@ export function LaunchTrack({ rect, crest, topY }: { rect: Rect; crest: number; 
         pointerEvents="none"
         accessible
         accessibilityRole="adjustable"
-        accessibilityLabel={away ? HAUL_STRINGS.launchWaiting : HAUL_STRINGS.launchLabel}
+        accessibilityLabel={f.phase === 'docked' ? HAUL_STRINGS.launchLabel : HAUL_STRINGS.launchWaiting}
         accessibilityValue={away ? { text: backIn } : undefined}
         accessibilityActions={ready ? [{ name: 'increment' }] : []}
         onAccessibilityAction={(e) => {

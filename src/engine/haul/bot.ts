@@ -34,6 +34,7 @@
  * Deterministic: the seed comes from the options, time from the loop.
  */
 import * as H from '../haul';
+import * as A from './advice';
 
 type Run = H.HaulGame & { haul: H.HaulState };
 export type GestureKind = 'drag' | 'swipe' | 'upgrade' | 'contract' | 'sheet' | 'flare' | 'tap';
@@ -78,6 +79,11 @@ export interface HaulBotOptions {
    * or placed, no contract taken (one already taken stays), no flare fired. The second offline gate.
    */
   watch?: boolean;
+  /**
+   * Never take a contract (Decision 56, condition 6: the router's earnings are measured against this
+   * player's): everything else as the bot, the autopilot on `full`.
+   */
+  noContracts?: boolean;
   /** Skip the offline comparison (nested runs). */
   noOffline?: boolean;
   /** Shared base state factory (the caller's createInitialState); the fixtures' shape is used when absent. */
@@ -131,6 +137,8 @@ export interface HaulBotResult {
   states: Record<number, Run>;
   /** activeRate at every whole minute of bot time (index = minute). */
   income: number[];
+  /** lifetimeEarnings at every whole minute of bot time (index = minute). */
+  lifetime: number[];
   end: Run;
 }
 
@@ -185,6 +193,8 @@ function rigLook(cfg: H.HaulConfig, level: number): boolean {
 }
 
 const sumUnits = (u: Record<string, number>) => Object.values(u).reduce((a, b) => a + b, 0);
+/** The calendar day of a wall time, as economy.dayKey writes it, in UTC (the bot's "local" day). */
+const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResult {
   const NOW = opts.now ?? Date.UTC(2026, 10, 22, 12);
@@ -205,6 +215,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   const offline: HaulBotResult['offline'] = [];
   const states: Record<number, Run> = {};
   const income: number[] = [];
+  const lifetime: number[] = [];
   const keepAt = new Set(opts.keepAt ?? []);
   const runs: RunSummary[] = [{ index: 0, galaxy: g.haul.galaxy, trait: g.haul.trait, start: 0, end: null, earnings: 0, coresGained: 0, buys: [], reachedPrevAt: null }];
 
@@ -317,26 +328,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     }
   };
 
-  /** The route whose drone is worth least where it is (a drone loses the least there), never `except`. */
-  const cheapestSource = (except: number[]): number | null => {
-    const p = params();
-    let best: number | null = null;
-    let bestLoss = Infinity;
-    g.haul.slots.forEach((s, i) => {
-      if (!s.claimed || s.haulers < 1 || except.includes(i)) return;
-      const sp = p.slots[i];
-      const r = sp.r > 0 ? sp.r : sp.rb0;
-      const c = sp.c / sp.trip;
-      const loss = (Math.min(r, s.haulers * c) - Math.min(r, (s.haulers - 1) * c)) * (sp.price || 0);
-      // Keep at least one drone on a route unless it carries nothing.
-      const penalty = s.haulers === 1 ? 1e6 : 0;
-      if (loss + penalty < bestLoss) {
-        bestLoss = loss + penalty;
-        best = i;
-      }
-    });
-    return best;
-  };
+  const cheapestSource = (except: number[]): number | null => A.cheapestSource(cfg, g, except);
 
   const moveTo = (to: number, n: number, avoid: number[] = []): number => {
     let moved = 0;
@@ -386,7 +378,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   let routedMoves = 0;
   const handleContracts = () => {
     const h = g.haul;
-    if (!h.contracts.unlocked || opts.watch) return;
+    if (!h.contracts.unlocked || opts.watch || opts.noContracts) return;
     const L = cfg.haul.contracts.launches;
     if (h.contracts.active === null) {
       const p = params();
@@ -487,87 +479,14 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     if (act(H.launch(cfg, g, ev), ev)) count('swipe');
   };
 
-  type Option = { key: string; sheet: string; cost: number; apply: (x: Run) => Run; extraDrone?: boolean };
-  const withDrones = (x: Run): Run => {
-    let s = x;
-    for (let j = 0; j < 8 && s.haul.idle > 0; j++) {
-      const b = H.bestSlotForDrone(cfg, s);
-      if (b === null) break;
-      s = H.assignDrone(cfg, s, b) as Run;
-    }
-    return s;
-  };
+  const withDrones = (x: Run): Run => A.withDrones(cfg, x);
 
-  /** Best-payback shopping; true when something was bought. */
+  /** Best-payback shopping (advice.ts, the estimate the hints share: Decision 57); true when something was bought. */
   const shop = (): boolean => {
     let bought = false;
     for (let k = 0; k < 24; k++) {
-      const before = H.haulIncome(cfg, g);
-      const h = g.haul;
-      const options: Option[] = [
-        { key: 'drone', sheet: 'station', cost: H.droneCost(cfg, g), apply: (x) => H.buyDrone(cfg, x) as Run },
-        { key: 'capacity', sheet: 'station', cost: H.capacityCost(cfg, g), apply: (x) => H.buyCapacity(cfg, x) as Run },
-        { key: 'engine', sheet: 'station', cost: H.engineCost(cfg, g), apply: (x) => H.buyEngine(cfg, x) as Run },
-        { key: 'freighter', sheet: 'station', cost: H.freighterCost(cfg, g), apply: (x) => H.buyFreighter(cfg, x) as Run },
-      ];
-      h.slots.forEach((sl, i) => {
-        if (sl.claimed) options.push({ key: `rig ${i}`, sheet: `rig ${i}`, cost: H.rigCost(cfg, g, i), apply: (x) => H.upgradeRig(cfg, x, i) as Run });
-        else {
-          const cc = H.claimCost(cfg, g, i);
-          if (!(cc < Infinity)) return;
-          // A claim is valued with one new drone on it (and priced with that drone when one can be bought).
-          const dc = H.droneCost(cfg, g);
-          const withDrone = dc < Infinity && h.idle === 0;
-          // At the drone cap the new route gets a drone moved from the route that loses least.
-          const src = !withDrone && h.idle === 0 ? cheapestSource([i]) : null;
-          options.push({
-            key: `claim ${i}`,
-            sheet: `ghost ${i}`,
-            cost: cc,
-            extraDrone: withDrone,
-            apply: (x) => {
-              let s = H.claimSlot(cfg, x, i) as Run;
-              if (s === x) return x;
-              if (withDrone) s = H.buyDrone(cfg, { ...s, cash: s.cash + dc } as Run) as Run;
-              if (s.haul.idle > 0) s = H.assignDrone(cfg, s, i) as Run;
-              else if (src !== null && s.haul.slots[src].haulers >= 2) s = H.moveDrone(cfg, s, src, i) as Run;
-              return s;
-            },
-          });
-        }
-      });
-      // Pairs: a drill, a route and the freighter only pay together when the other limit binds (a rig
-      // level on a freighter-bound station adds nothing alone), so each option is also priced with one
-      // level of the freighter, a drone or drone capacity. A winning pair buys its first part now
-      // (when the pair is affordable); the partner then pays alone on the next pass.
-      const partners = options.filter((o) => o.key === 'freighter' || o.key === 'drone' || o.key === 'capacity');
-      const candidates: (Option & { total: number; bundle?: Option })[] = options.map((o) => ({ ...o, total: o.cost + (o.extraDrone ? H.droneCost(cfg, g) : 0) }));
-      for (const o of options) {
-        if (!(o.cost < Infinity)) continue;
-        for (const q of partners) {
-          if (q.key === o.key || !(q.cost < Infinity)) continue;
-          candidates.push({ ...o, total: o.cost + q.cost + (o.extraDrone ? H.droneCost(cfg, g) : 0), bundle: q, apply: (x) => o.apply(q.apply({ ...x, cash: x.cash + q.cost } as Run)) });
-        }
-      }
-      let pick: Option | null = null;
-      let pickTotal = 0;
-      let bestScore = -1;
-      for (const o of candidates) {
-        if (!(o.cost < Infinity)) continue;
-        const price = o.total;
-        const next = withDrones(o.apply({ ...g, cash: o.cost + 1e-6 } as Run));
-        if (next.haul === g.haul) continue;
-        const gain = H.haulIncome(cfg, next) - before;
-        // Best payback counted from now: the wait to afford it plus the time it takes to pay back
-        // (a good player does not sit on cash for an option minutes away when a cheaper one pays now).
-        const wait = Math.max(0, price - g.cash) / Math.max(before, 1e-9);
-        const score = gain > 0 ? 1 / (wait + price / gain) : 1e-12 / price;
-        if (score > bestScore) {
-          bestScore = score;
-          pick = o;
-          pickTotal = price;
-        }
-      }
+      const pick = A.bestPurchase(cfg, g);
+      const pickTotal = pick?.total ?? 0;
       if (!pick || !H.affordable(g.cash, pick.cost) || !H.affordable(g.cash, pickTotal - (pick.extraDrone ? H.droneCost(cfg, g) : 0))) break;
       const ev: H.HaulEvent[] = [];
       const lvlBefore = pick.key.startsWith('rig ') ? g.haul.slots[Number(pick.key.slice(4))].rigLevel : 0;
@@ -606,7 +525,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   const ensurePolicy = () => {
     if (!g.haul.autopilot.online || policySet) return;
     policySet = true;
-    const want = opts.watch ? 'full' : 'contract';
+    const want = opts.watch || opts.noContracts ? 'full' : 'contract';
     if (g.haul.autopilot.policy !== want) {
       sheet('station');
       if (act(H.setPolicy(cfg, g, want), [])) count('tap');
@@ -716,7 +635,10 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
       win = { from: t, gestures: zero(), earned: 0, depleted: 0 };
     }
     if (keepAt.has(t)) states[t] = g;
-    if (t % 60 === 0) income.push(H.haulIncome(cfg, g));
+    if (t % 60 === 0) {
+      income.push(H.haulIncome(cfg, g));
+      lifetime.push(g.lifetimeEarnings);
+    }
     const now = NOW + t * 1000;
 
     if (!opts.watch) {
@@ -743,6 +665,11 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
       note('dock autopilot online', true, false);
     }
     ensurePolicy();
+
+    // The day shift (Decision 53, rules:new:5): the app starts one on every tick (haulMode) with the
+    // wall time and the local day; the bot does the same once a minute with its simulated wall time
+    // (its local day is the UTC day of that time, so a run is the same on every machine).
+    if (t % 60 === 0) g = H.haulShift(cfg, g, now, utcDay(now)) as Run;
 
     const ev: H.HaulEvent[] = [];
     g = H.advanceHaul(cfg, g, 1, now, ev) as Run;
@@ -798,7 +725,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   const cur = runs[runs.length - 1];
   cur.earnings = g.runEarnings;
   void prevF;
-  return { hours: opts.hours, marks, notables, windows, runs, gestures, limits, payouts, contracts, buys, podsByHour, offline, states, income, end: g };
+  return { hours: opts.hours, marks, notables, windows, runs, gestures, limits, payouts, contracts, buys, podsByHour, offline, states, income, lifetime, end: g };
 }
 
 // ----------------------------------------------------------- section 8's targets
@@ -822,6 +749,18 @@ const mmss = (s: number | null | undefined): string => {
 export const formatClock = mmss;
 
 const within = (v: number | undefined, lo: number, hi: number) => v !== undefined && v >= lo && v <= hi;
+/** Seconds a first Jump must keep from each edge of its window in the gate (Decision 62). */
+export const JUMP_MARGIN = 180;
+
+/**
+ * Lifetime earnings of a run of the bot at `hours`, from a result that covers them without a Jump
+ * before then; null when it does not (then the caller runs one without Jumps).
+ */
+export function earnedBy(r: HaulBotResult, hours: number): number | null {
+  const min = Math.round(hours * 60);
+  const jumped = r.runs[0].end !== null && r.runs[0].end < min * 60;
+  return !jumped && r.lifetime[min] !== undefined ? r.lifetime[min] : null;
+}
 
 /** Longest stretch between notables in [from, to) (both ends count as boundaries). */
 function longestGap(times: number[], from: number, to: number): { len: number; end: number } {
@@ -836,7 +775,7 @@ function longestGap(times: number[], from: number, to: number): { len: number; e
  * contracts but never moves a drone for one); with it, the met share of that player is a target too
  * (a contract met without routing is no choice).
  */
-export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotResult): Target[] {
+export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotResult, compare?: { router: number; never: number; hours: number }): Target[] {
   const m = r.marks;
   const out: Target[] = [];
   const add = (name: string, target: string, value: string, ok: boolean, hard: boolean) => out.push({ name, target, value, ok, hard });
@@ -853,7 +792,9 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotR
   const slots = H.slotCount(cfg);
   const allAt = claims.length >= slots - 1 ? Math.max(...claims) : undefined;
   add('All slots claimed', '1 h 50 to 2 h 20', mmss(allAt), within(allAt, 6600, 8400), false);
-  add('First Jump available (cores ≥ 20)', '2 h 15 to 2 h 45', mmss(m.jumpReady), within(m.jumpReady, 8100, 9900), true);
+  // Decision 62: the gate keeps three minutes from each edge of the window, so a seed outside the gate's
+  // five does not fall out of it.
+  add('First Jump available (cores ≥ 20)', '2 h 15 to 2 h 45 (gate: 2 h 18 to 2 h 42, Decision 62)', mmss(m.jumpReady), within(m.jumpReady, 8100 + JUMP_MARGIN, 9900 - JUMP_MARGIN), true);
   const run2 = r.runs[1];
   const run1Time = run1.end ? run1.end - run1.start : null;
   const r2 = run2?.reachedPrevAt ?? null;
@@ -896,6 +837,12 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotR
   if (passive) {
     const ps = metOf(passive);
     add('Taken contracts met without routing for them', '≤ 25 %', `${(ps * 100).toFixed(0)} % (${passive.contracts.met} met, ${passive.contracts.lapsed} lapsed, first ${passive.hours} h)`, ps <= 0.25, false);
+  }
+  // Decision 56, condition 6: what contracts are worth to a player who routes for them, as an outcome
+  // (run earnings over the first hours against a player who never takes one), not as a share.
+  if (compare) {
+    const x = compare.never > 0 ? compare.router / compare.never : Infinity;
+    add(`Earnings with contracts against never taking one, first ${compare.hours} h`, '1.3 to 1.7 times', `${x.toFixed(2)} (${compare.router.toPrecision(3)} against ${compare.never.toPrecision(3)})`, x >= 1.3 && x <= 1.7, false);
   }
   const bonusShare = r.contracts.earned ? r.contracts.bonus / r.contracts.earned : 0;
   add('Contract bonus as a share of income', '10 to 25 % (aim)', `${(bonusShare * 100).toFixed(1)} %`, bonusShare >= 0.1 && bonusShare <= 0.25, false);
@@ -941,6 +888,8 @@ export interface TutorialRow {
   income?: number;
   /** Warp-outs so far, at the row. */
   warps?: number;
+  /** A purchase named by Decision 57's hint. */
+  advice?: boolean;
 }
 
 /**
@@ -954,6 +903,7 @@ export function runTutorialHuman(cfg: H.HaulConfig, opts: { reaction?: number; s
   const DT = 0.05;
   const NOW = opts.now ?? Date.UTC(2026, 10, 22, 12);
   let g = freshBotGame(cfg, opts.seed ?? 12345, NOW);
+  if ((g.haul.marks as { boughtAt?: number | null }).boughtAt === undefined) g = { ...g, haul: { ...g.haul, marks: { ...g.haul.marks, boughtAt: null, lastBuy: null } } } as Run;
   const rows: TutorialRow[] = [];
   const fmt = (x: number) => (x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2));
   const p0 = H.haulParams(cfg, g);
@@ -977,6 +927,7 @@ export function runTutorialHuman(cfg: H.HaulConfig, opts: { reaction?: number; s
       let next: H.HaulGame = g;
       let what = '';
       let numbers = '';
+      let bought: string | null = null;
       const rockOf = (k: string | undefined) => (k && k.startsWith('rock:') ? Number(k.slice(5)) : -1);
       if ((hint.kind === 'drag' || hint.kind === 'tapTap') && hint.from === 'drone:rack') {
         const slot = rockOf(hint.to);
@@ -997,20 +948,31 @@ export function runTutorialHuman(cfg: H.HaulConfig, opts: { reaction?: number; s
       } else if (hint.key === 'station:buyDrone') {
         const cost = H.droneCost(cfg, g);
         next = H.buyDrone(cfg, g, ev);
+        bought = 'drone';
         what = `Buy drone ${(next as Run).haul.fleet.drones} (${cfg.strings.currencySymbol}${fmt(cost)})`;
         numbers = `cash left ${fmt(next.cash)}`;
-      } else if (hint.key === 'slot:1') {
-        const cost = H.claimCost(cfg, g, 1);
-        next = H.claimSlot(cfg, g, 1, ev);
-        what = `Claim slot 1 (${cfg.strings.currencySymbol}${fmt(cost)})`;
+      } else if (hint.key.startsWith('slot:')) {
+        const slot = Number(hint.key.slice(5));
+        const cost = H.claimCost(cfg, g, slot);
+        next = H.claimSlot(cfg, g, slot, ev);
+        bought = `claim ${slot}`;
+        what = `Claim slot ${slot}${H.ringOf(cfg, slot) > 0 ? ` (ring ${H.ringOf(cfg, slot) + 1})` : ''} (${cfg.strings.currencySymbol}${fmt(cost)})`;
+      } else if (hint.key === 'station:capacity' || hint.key === 'station:engine' || hint.key === 'station:freighter') {
+        const kind = hint.key.slice(8) as 'capacity' | 'engine' | 'freighter';
+        const cost = kind === 'capacity' ? H.capacityCost(cfg, g) : kind === 'engine' ? H.engineCost(cfg, g) : H.freighterCost(cfg, g);
+        next = kind === 'capacity' ? H.buyCapacity(cfg, g, ev) : kind === 'engine' ? H.buyEngine(cfg, g, ev) : H.buyFreighter(cfg, g, ev);
+        bought = kind;
+        what = `Upgrade ${kind === 'capacity' ? 'drone capacity' : kind === 'engine' ? 'the engines' : 'the freighter'} (${cfg.strings.currencySymbol}${fmt(cost)})`;
       } else if (hint.key === 'rig:upgrade') {
         const slot = rockOf(hint.route[0]) >= 0 ? rockOf(hint.route[0]) : 0;
         const cost = H.rigCost(cfg, g, slot);
         next = H.upgradeRig(cfg, g, slot, ev);
+        bought = `rig ${slot}`;
         what = `Upgrade rig T-${slot + 1} to L${(next as Run).haul?.slots[slot].rigLevel ?? '?'} (${cfg.strings.currencySymbol}${fmt(cost)})`;
         numbers = `r = ${fmt(H.haulParams(cfg, next as Run).slots[slot].r)}/s`;
       } else if (hint.key === 'station:autopilot') {
         next = H.buyAutopilot(cfg, g, ev);
+        bought = 'autopilot';
         what = `Dock Autopilot online (${cfg.strings.currencySymbol}${fmt(H.autopilotCost(cfg, g))})`;
         numbers = `cash ${fmt(g.cash)} before`;
       } else if (hint.key === 'bay:counter') {
@@ -1021,7 +983,12 @@ export function runTutorialHuman(cfg: H.HaulConfig, opts: { reaction?: number; s
       }
       if (next !== g) {
         g = next as Run;
-        if (what) rows.push({ t, what, numbers, step: hint.step > 0 ? hint.step : undefined, income: H.haulIncome(cfg, g), warps });
+        // The marks of the last purchase (Decision 57), kept here as the rules keep them, so the path is
+        // the same whether or not this build's rules write them.
+        if (bought) g = { ...g, haul: { ...g.haul, marks: { ...g.haul.marks, boughtAt: g.haul.clock, lastBuy: bought } } } as Run;
+        // A limited hint counts once each time it shows (the hint layer marks it).
+        if (hint.limit) g = H.markHintShown(g, hint.key) as Run;
+        if (what) rows.push({ t, what, numbers, step: hint.step > 0 ? hint.step : undefined, advice: hint.step === 0 && !!hint.limit && hint.key !== 'bay:counter' && hint.key !== 'bay:flare' ? true : undefined, income: H.haulIncome(cfg, g), warps });
         seen = null;
       }
     }

@@ -11,7 +11,8 @@ import { freshHaulGame, haulTestConfig, run } from '../fixtures/haul';
 import * as H from '../haul';
 import { withHaulContent } from '../haulMode';
 import { runTutorialHuman } from './bot';
-import { GUIDED_PRIORITY_SECONDS } from './hints';
+import { advisedPurchase, bestPurchase, rankPurchases } from './advice';
+import { ADVICE_GAIN, ADVICE_IDLE_SECONDS, ADVICE_MAX, ADVICE_UNTIL, adviceHint, adviceTarget, GUIDED_PRIORITY_SECONDS, longestLifeSlot } from './hints';
 
 type Run = H.HaulGame & { haul: H.HaulState };
 const cfg = haulTestConfig({ seam: { ...haulTestConfig().haul.seam, first: 1e12 } });
@@ -35,7 +36,7 @@ describe('guided steps (Decision 44)', () => {
     g = H.assignDrone(cfg, g, 1) as Run;
     // Step 6 shows while no rig is above level 1 (the rules end the steps with the first rig level).
     const before = { ...g, haul: { ...g.haul, flags: { ...g.haul.flags, tutorialDone: false } } } as Run;
-    expect(guidedOf(cfg, before)[0]).toMatchObject({ kind: 'point', key: 'rig:upgrade', route: ['rock:0'], step: 6 });
+    expect(guidedOf(cfg, before)[0]).toMatchObject({ kind: 'point', key: 'rig:upgrade', route: [`rock:${longestLifeSlot(before.haul)}`], step: 6 });
     const after = H.upgradeRig(cfg, before, 0) as Run;
     expect(guidedOf(cfg, { ...after, haul: { ...after.haul, flags: { ...after.haul.flags, tutorialDone: false } } } as Run).some((h) => h.step === 6)).toBe(false);
   });
@@ -108,5 +109,64 @@ describe('the tutorial path on the shipped game (Decision 44)', () => {
     const i5 = H.haulIncome(shipped, g);
     const i6 = H.haulIncome(shipped, H.upgradeRig(shipped, g, 0) as Run);
     expect(i6 / i5).toBeGreaterThanOrEqual(1.15);
+  });
+});
+
+describe('step 6 picks the rig with the longest life (Decision 58)', () => {
+  const at = (life0: number, life1: number) => {
+    let g = freshHaulGame(cfg, 33);
+    g = { ...g, cash: 1000, stats: { ...g.stats, launches: 2 } } as Run;
+    g = H.assignDrone(cfg, g, 0) as Run;
+    g = run(cfg, H.claimSlot(cfg, g, 1) as Run, 8, 0.5);
+    g = H.assignDrone(cfg, H.buyDrone(cfg, g) as Run, 1) as Run;
+    expect(g.haul.slots[1].respawnAt).toBeNull();
+    const slots = g.haul.slots.map((x, i) => (i === 0 ? { ...x, life: life0 } : i === 1 ? { ...x, life: life1 } : x));
+    return { ...g, haul: { ...g.haul, slots, flags: { ...g.haul.flags, tutorialDone: false } } } as Run;
+  };
+  it('points at rock 1 when rock 0 is about to dry, and at rock 0 when it has more left', () => {
+    expect(guidedOf(cfg, at(20, 200)).find((h) => h.step === 6)).toMatchObject({ key: 'rig:upgrade', route: ['rock:1'] });
+    expect(guidedOf(cfg, at(300, 200)).find((h) => h.step === 6)).toMatchObject({ key: 'rig:upgrade', route: ['rock:0'] });
+  });
+});
+
+describe('the limit hint (Decision 57)', () => {
+  type Marks = H.HaulState['marks'] & { boughtAt?: number | null; lastBuy?: string | null };
+  /** A run after the guided steps, `idle` seconds after its last purchase, with plenty of credits. */
+  const after = (idle: number, extra: Partial<Marks> = {}, clock = 300): Run => {
+    let g = freshHaulGame(shipped, 34);
+    g = H.assignDrone(shipped, g, 0) as Run;
+    g = run(shipped, g, 30, 0.5);
+    const marks: Marks = { ...g.haul.marks, boughtAt: clock - idle, lastBuy: null, ...extra };
+    return { ...g, cash: 500, haul: { ...g.haul, clock, marks, flags: { ...g.haul.flags, tutorialDone: true } } } as Run;
+  };
+  it('names the best affordable purchase that adds at least 15 %, by the bot\'s own estimate', () => {
+    const g = after(ADVICE_IDLE_SECONDS + 1);
+    const pick = advisedPurchase(shipped, g, ADVICE_GAIN);
+    expect(pick).not.toBeNull();
+    expect(pick!.gain).toBeGreaterThanOrEqual(ADVICE_GAIN * H.haulIncome(shipped, g));
+    // The same ranking the bot buys by: no affordable single option it ranks higher adds 15 %.
+    const singles = rankPurchases(shipped, g, true);
+    for (const o of singles.slice(0, singles.indexOf(singles.find((x) => x.key === pick!.key)!))) expect(o.total > g.cash || o.gain < ADVICE_GAIN * H.haulIncome(shipped, g)).toBe(true);
+    expect(bestPurchase(shipped, g)).not.toBeNull();
+    const t = adviceTarget(pick!.key)!;
+    expect(adviceHint(shipped, g)).toMatchObject({ kind: 'point', key: t.key, route: t.route, step: 0, limit: ADVICE_MAX });
+    expect(H.hintsFor(shipped, g).some((h) => h.key === t.key && h.step === 0)).toBe(true);
+  });
+  it('waits 40 s after a purchase, skips the purchase made last, stops after six showings, at 15 min and after galaxy 1', () => {
+    expect(adviceHint(shipped, after(ADVICE_IDLE_SECONDS - 5))).toBeNull();
+    const g = after(ADVICE_IDLE_SECONDS + 1);
+    const first = advisedPurchase(shipped, g, ADVICE_GAIN)!;
+    const next = adviceHint(shipped, after(ADVICE_IDLE_SECONDS + 1, { lastBuy: first.key }));
+    expect(next === null || next.key !== adviceTarget(first.key)!.key || next.route.join() !== adviceTarget(first.key)!.route.join()).toBe(true);
+    let shown = g;
+    for (let i = 0; i < ADVICE_MAX; i++) shown = H.markHintShown(shown, adviceHint(shipped, shown)!.key) as Run;
+    expect(adviceHint(shipped, shown)).toBeNull();
+    expect(adviceHint(shipped, after(ADVICE_IDLE_SECONDS + 1, {}, ADVICE_UNTIL))).toBeNull();
+    expect(adviceHint(shipped, { ...g, haul: { ...g.haul, galaxy: 1 } } as Run)).toBeNull();
+    // Without the rules' purchase marks the hint never shows (it cannot tell how long ago the last buy was).
+    const { boughtAt: _b, lastBuy: _l, ...bare } = g.haul.marks as Marks;
+    void _b;
+    void _l;
+    expect(adviceHint(shipped, { ...g, haul: { ...g.haul, marks: bare } } as Run)).toBeNull();
   });
 });

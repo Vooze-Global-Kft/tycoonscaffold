@@ -1,7 +1,7 @@
 /**
  * Development switches of the haul screens in the web preview (web only: Metro takes ./dev.ts, which does nothing, for iOS and Android) (on top of src/dev/devtools.ts's
  * `?preset=` and `&speed=`): `&sheet=rig|station|contracts` (`&slot=<n>` for the rig),
- * `&spoke=fitting|starmap|salvage|comms|trade`, `&overlay=jump`, `&menu=1` (the station menu), and
+ * `&spoke=fitting|starmap|salvage|comms|trade`, `&overlay=jump`, `&view=boot` (the loading screen on top, Decision 61), `&menu=1` (the station menu), and
  * `&away=<seconds>`: the app opens on a save that old, with the store's own offline computation
  * (spec 10.1 #7: `preset=mid&away=600` shows the Shift Log). They are applied once the shared
  * switches (the preset) are in the store (`devParamsApplied`, play-10), never on a timer, so a
@@ -29,6 +29,7 @@ function applyNow(): void {
   const overlay = q.get('overlay');
   if (overlay === 'jump' || overlay === 'leave') ui.openOverlay(overlay);
   if (q.get('menu') === '1') ui.setMenu(true);
+  if (q.get('view') === 'boot') useHaulUi.setState({ devView: 'boot' });
   const away = Number(q.get('away'));
   if (Number.isFinite(away) && away > 0) {
     // The same offline computation the store runs when the app opens on a save `away` seconds old

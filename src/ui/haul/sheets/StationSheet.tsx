@@ -121,7 +121,7 @@ export function StationSheet() {
                 <Line mono size={ty.small} lines={2}>
                   {say('capacity', { n: v.capLevel, u: v.capUnits })}
                 </Line>
-                <ActionButton label={v.capCost} enabled={v.canCap} onPress={haulActions.buyCapacity} style={styles.cellButton} />
+                <ActionButton label={v.capCost} enabled={v.canCap} onPress={haulActions.buyCapacity} target="station:capacity" style={styles.cellButton} />
               </View>
               <View style={styles.cell}>
                 <Line mono size={ty.small} lines={2}>
@@ -130,7 +130,7 @@ export function StationSheet() {
                     m: v.engMult,
                   })}
                 </Line>
-                {v.engMax ? null : <ActionButton label={v.engCost} enabled={v.canEng} onPress={haulActions.buyEngine} style={styles.cellButton} />}
+                {v.engMax ? null : <ActionButton label={v.engCost} enabled={v.canEng} onPress={haulActions.buyEngine} target="station:engine" style={styles.cellButton} />}
               </View>
             </View>
             {v.atCap ? (
@@ -159,7 +159,7 @@ export function StationSheet() {
                   </Line>
                 </View>
               </View>
-              <ActionButton label={v.fCost} enabled={v.canF} onPress={haulActions.buyFreighter} />
+              <ActionButton label={v.fCost} enabled={v.canF} onPress={haulActions.buyFreighter} target="station:freighter" />
             </Plate>
             <View style={styles.gutter}>
               <View style={[styles.stub, { backgroundColor: wire }]} />

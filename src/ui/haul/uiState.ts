@@ -21,6 +21,8 @@ interface HaulUi {
   selection: HaulSelection;
   /** The settings sheet from the rail's Menu button. */
   menuOpen: boolean;
+  /** Web preview only (dev.web.ts `?view=boot`): the loading screen drawn on top, so it can be reviewed. Never set on a phone. */
+  devView: 'boot' | null;
   openSheet(sheet: HaulSheet): void;
   closeSheet(): void;
   openSpoke(spoke: HaulSpoke): void;
@@ -37,6 +39,7 @@ export const useHaulUi = create<HaulUi>((set) => ({
   overlay: null,
   selection: null,
   menuOpen: false,
+  devView: null,
   // One sheet, spoke or menu at a time (spec 4.4): opening one closes the others.
   openSheet: (sheet) => set({ sheet, menuOpen: false, selection: null }),
   closeSheet: () => set({ sheet: null }),

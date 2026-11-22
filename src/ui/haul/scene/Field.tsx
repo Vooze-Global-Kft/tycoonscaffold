@@ -14,13 +14,13 @@
  */
 import { Atlas, Canvas, DashPathEffect, Fill, FilterMode, Group, ImageShader, MipmapMode, Path, Picture, Rect } from '@shopify/react-native-skia';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { PixelRatio, StyleSheet } from 'react-native';
+import { Dimensions, PixelRatio, StyleSheet } from 'react-native';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import * as H from '../../../engine/haul';
 import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
-import { partRestAngle, stationPartPos, BEACON_POS, LOADED_FREIGHTER_SCALE, ORE_IDS, freighterSize, hullFor, segmentsFor, RACK_CRADLES, RACK_OVERFLOW, ROUTE_WIDTH, SPACE, alpha, bakeAtlas, oreColor, pictures, rigLamp, routeDash, routeDashPeriod, type HaulAtlas, type HullId } from '../art';
+import { galaxyPalette, partRestAngle, stationPartPos, BEACON_POS, LOADED_FREIGHTER_SCALE, ORE_IDS, freighterSize, hullFor, segmentsFor, RACK_CRADLES, RACK_OVERFLOW, ROUTE_WIDTH, SPACE, alpha, bakeAtlas, oreColor, pictures, rigLamp, routeDash, routeDashPeriod, type HaulAtlas, type HullId } from '../art';
 import { useCallout } from '../hud/callout';
 import { bayCrest, flightTop, padSpot } from '../hud/flight';
 import { rockName } from '../sheets/format';
@@ -57,6 +57,20 @@ function queueAtlas(): void {
   }, 0);
 }
 queueAtlas();
+/**
+ * device:new:0: the starfield's nebula is baked ahead too, never in a render: here for the window's
+ * size and the saved galaxy (behind the loading screen, after the atlas), in the field when its
+ * size or galaxy has no image yet, and for the next galaxy as soon as a Jump is confirmed (while
+ * the Jump sequence and the Star Map cover the field: `usePrebakeNextGalaxy`).
+ */
+const galaxyNow = (): number | null => {
+  const g = useGame.getState().game as H.HaulGame;
+  return g?.haul ? g.haul.galaxy : (g?.haulStats?.pendingJump?.galaxy ?? null);
+};
+setTimeout(() => {
+  const win = Dimensions.get('window');
+  if (win.width > 0 && win.height > 0) pictures.queueStarfield(win.width, win.height, galaxyNow() ?? 0, PixelRatio.get());
+}, 0);
 /** The route ores' dash periods (a module constant: the frame callback's dependencies stay stable; phone-9). */
 const PERIODS: readonly number[] = ORE_IDS.map((o) => routeDashPeriod(o));
 
@@ -160,10 +174,27 @@ export function Field({ layout }: { layout: FieldLayout }) {
 
   // The starfield (decision 50): baked once per size and galaxy into one image, drawn as ONE
   // textured rectangle mirrored vertically as it drifts. Each galaxy has its own palette (decision 52).
-  const stars = useMemo(() => pictures.starfieldImage(layout.width, layout.height, station.galaxy, PixelRatio.get()), [layout.width, layout.height, station.galaxy]);
+  // The stars' cores go on top as one crisp vector pass (device:new:4), mirrored with the image.
+  const [, setStarsBaked] = useState(0);
+  const ready = pictures.starfieldReady(layout.width, layout.height, station.galaxy);
+  const shown = useRef<NonNullable<typeof ready> | null>(null);
+  if (ready) shown.current = ready;
+  // Until the new galaxy's image is baked the last one stays (it is normally baked during the Jump).
+  const stars = ready ?? (shown.current && shown.current.w === layout.width && shown.current.h === layout.height ? shown.current : null);
+  useEffect(() => {
+    if (pictures.starfieldReady(layout.width, layout.height, station.galaxy) !== undefined) return;
+    pictures.queueStarfield(layout.width, layout.height, station.galaxy, PixelRatio.get(), 0, () => setStarsBaked((n) => n + 1));
+  }, [layout.width, layout.height, station.galaxy]);
+  usePrebakeNextGalaxy(layout.width, layout.height);
+  const coreGalaxy = stars ? stars.galaxy : station.galaxy;
+  const cores = useMemo(() => pictures.starCores(layout.width, layout.height, coreGalaxy), [layout.width, layout.height, coreGalaxy]);
   const sw = stars ? layout.width / stars.pw : 1;
   const sh = stars ? layout.height / stars.ph : 1;
+  const fieldH = layout.height;
   const starXf = useDerivedValue(() => [{ translateY: anim.starY.value }, { scaleX: sw }, { scaleY: sh }]);
+  // The image shader mirrors every other screen-height: one plain copy of the cores and one mirrored.
+  const coresXf = useDerivedValue(() => [{ translateY: anim.starY.value > fieldH ? anim.starY.value - 2 * fieldH : anim.starY.value }]);
+  const coresMirrorXf = useDerivedValue(() => [{ translateY: anim.starY.value }, { scaleY: -1 }]);
   const rings = useMemo(() => ringGuidesPicture(layout, geo.map((g) => g.label)), [layout, geo]);
   return (
     <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -172,8 +203,14 @@ export function Field({ layout }: { layout: FieldLayout }) {
           <ImageShader image={stars.image} tx="clamp" ty="mirror" transform={starXf} sampling={{ filter: FilterMode.Linear, mipmap: MipmapMode.None }} />
         </Rect>
       ) : (
-        <Fill color={SPACE.bg} />
+        <Fill color={galaxyPalette(station.galaxy).bg} />
       )}
+      <Group transform={coresXf}>
+        <Picture picture={cores} />
+      </Group>
+      <Group transform={coresMirrorXf}>
+        <Picture picture={cores} />
+      </Group>
       <Picture picture={rings} />
       <Routes layout={layout} geo={geo} slots={slots} anim={anim} />
       <SeamLayer layout={layout} slots={slots} station={station} anim={anim} />
@@ -459,6 +496,26 @@ const Freighter = memo(function Freighter({ hull, segments, anim }: { hull: Hull
     </Group>
   );
 });
+
+/**
+ * device:new:0: as soon as a Jump is confirmed the next galaxy is known (`pendingJump.galaxy`) and
+ * the field is covered (the Jump sequence, then the Star Map): its starfield is baked then, a little
+ * after the overlay's first frames, so the new galaxy appears without a stall.
+ */
+function usePrebakeNextGalaxy(w: number, h: number) {
+  useEffect(() => {
+    let last: number | null = null;
+    const check = () => {
+      const g = useGame.getState().game as H.HaulGame;
+      const next = g?.haulStats?.pendingJump?.galaxy ?? null;
+      if (next === last) return;
+      last = next;
+      if (next !== null) pictures.queueStarfield(w, h, next, PixelRatio.get(), 700);
+    };
+    check();
+    return useGame.subscribe(check);
+  }, [w, h]);
+}
 
 /** Map hint targets drawn in this canvas (errata 47): rocks, ghost slots, chips, the rack, the station. */
 function useMapTargets(layout: FieldLayout, slots: SlotVM[], idle: number) {

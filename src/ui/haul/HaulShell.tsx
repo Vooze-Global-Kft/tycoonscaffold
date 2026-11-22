@@ -29,6 +29,7 @@ import { FloatingFeedback } from './hud/FloatingFeedback';
 import { FreighterBay } from './hud/FreighterBay';
 import { HintLayer } from './hud/HintLayer';
 import { fieldLayout } from './layout';
+import { HaulBoot } from './overlays/Boot';
 import { JumpSequence } from './overlays/JumpSequence';
 import { SheetHints } from './overlays/SheetHints';
 import { ShiftLog } from './overlays/ShiftLog';
@@ -151,6 +152,7 @@ export function HaulShell() {
   const { responder } = useFieldGestures(layout);
   const open = useHaulUi((s) => s.spoke);
   const spoke = usePendingJump() ? 'starmap' : open;
+  const devView = useHaulUi((s) => s.devView);
   useJumpCue();
   useOpeningShowsSalvage();
   useAndroidBack();
@@ -194,6 +196,11 @@ export function HaulShell() {
       {spoke === 'fitting' ? <FittingBay /> : spoke === 'starmap' ? <StarMap /> : spoke === 'salvage' ? <SalvageBay /> : spoke === 'comms' ? <Comms /> : spoke === 'trade' ? <TradePost /> : null}
       <JumpSequence />
       <ShiftLog />
+      {devView === 'boot' ? (
+        <View style={StyleSheet.absoluteFill}>
+          <HaulBoot />
+        </View>
+      ) : null}
     </View>
   );
 }

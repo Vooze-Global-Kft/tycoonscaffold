@@ -2,9 +2,9 @@
  * Loading, payout and contracts (section 2.6 with Decision 40: a contract is delivered over several
  * launches). Pure.
  */
-import { hashString, rngWeighted } from '../rng';
-import { EPS, ringWeights, rngMix4, roll, sumUnits } from './params';
-import type { Contract, ContractView, HaulConfig, HaulParams, HaulState, HaulStats } from './types';
+import { hashString } from '../rng';
+import { EPS, rngMix4, roll, sumUnits } from './params';
+import type { Contract, ContractView, HaulConfig, HaulEvent, HaulParams, HaulState, HaulStats } from './types';
 
 /**
  * A want counts as delivered when less than half a unit is missing (units are fractional, contracts
@@ -131,8 +131,9 @@ export function claimedRings(cfg: HaulConfig, h: HaulState): number[] {
 }
 
 /**
- * What the station can put into one launch of each of a set of ores (section 2.6, the contract
- * rule): the hold fills in proportion to what the routes bring, so one launch carries about
+ * NOT THE CONTRACT RULE since Decision 56 (contracts are drawn from what the station really ships,
+ * `contractBasis`); kept only for the balance bot's routing estimate until it moves to the views.
+ * What the station can put into one launch of each of a set of ores (the rule of Decision 40): the hold fills in proportion to what the routes bring, so one launch carries about
  * `F × r_o / R` of ore o, with r_o the rate of the routes on rocks of that ore and R that of every
  * route (each route `min(drill, drones × capacity / trip)`, no seam, no module). `now` is that with
  * the routes as they are; `routed` after a player sends `share` of the fleet (default
@@ -229,152 +230,224 @@ export function contractStation(cfg: HaulConfig, params: HaulParams, h: HaulStat
 }
 
 /**
- * Contract `k` of a run's stream (section 2.6, errata 27, Decision 40). Contract 0 is fixed: the
- * first buyer, min(units, F) of the first ore, its multiplier, taken. Later ones are offers: the
- * buyer from `rngMix4(seed, hashString('buyer'), k, 0)`, the rest from
- * `rngMix4(seed, hashString('contract'), k, n)` with n = 1 ring of ore 1, 2 ore 1, 3 one or two,
- * 4 ring of ore 2, 5 ore 2, 6 λ, 7 multiplier, 8 the order of other ores, 9 a quota's share.
- * Ores come from rings with a rock (weighted by ring number) and their weights after the condition
- * (with a `station`, among the ores of the ring's present rocks), as before.
- *
- * Units over the contract's L = `launches` launches (Decision 40), with `now_o` and `routed_o` per
- * launch from `station.reach`: `u_o = round(L now_o + λ (L − 1)(routed_o − now_o))`, λ = U(reach),
- * held between two bounds: never free, `u_o ≥ ceil(L now_o (1 + margin))` (at least 1), and always
- * reachable, `u_o ≤ floor(now_o + (L − 1) routed_o)` (the first launch as the routes are, then
- * routed). When they cannot both hold, `routed` widens first (a route's last drone counts as
- * movable, then the share rises by 0.1 up to `maxShare`), then a two-ore contract falls back to
- * either ore alone, then another present ore is drawn; a station with a single ore gets a quota
- * contract (`round(L F U(quota))` units, multiplier lowered by `quotaMultCut`, at least
- * `quotaMinMult`). A multi-ore station where no ore can be routed for (every rock that could take a
- * drone is drill-bound) gets the one-ore contract that misses the reachable bound by the smallest
- * share, at the never-free bound: it is met by upgrading that ore's rig, never by doing nothing. Without a station (a ring list only, as in tests) `now` is 0 and `routed` F / ores.
- * The multiplier is `mult[farthest ring] ± jitter`, rounded to 0.1.
+ * The steady figure of the contract rule (Decision 56): what one launch carries of each ore with the
+ * routes as they are, `F × r_o / R`, with each route `min(drill, drones × capacity / trip)` (base
+ * drill, no seam, no module, no pile buffer; a warming route counts with its drones). `rate` is R in
+ * units per second. A rock that is respawning or dry is no route.
  */
-export function contractAt(cfg: HaulConfig, seed: number, k: number, rings: number[], F: number, trait: string | null, station?: ContractStation, avoid: string[] = []): Contract {
+export function steadyPerLaunch(params: HaulParams, h: HaulState): { perLaunch: Record<string, number>; rate: number } {
+  const by: Record<string, number> = {};
+  let R = 0;
+  h.slots.forEach((s, i) => {
+    const sp = params.slots[i];
+    if (!s?.claimed || s.respawnAt !== null || s.rockN < 0 || !sp || !(s.haulers > 0) || !(s.life > 0 || s.pile > 0)) return;
+    const e = sp.trip > 0 ? sp.cBase / sp.trip : 0;
+    const x = Math.min(sp.rb, s.haulers * e);
+    if (!(x > 0) || !Number.isFinite(x)) return;
+    by[s.ore] = (by[s.ore] ?? 0) + x;
+    R += x;
+  });
+  const perLaunch: Record<string, number> = {};
+  for (const ore of Object.keys(by)) perLaunch[ore] = R > 0 ? (params.F * by[ore]) / R : 0;
+  return { perLaunch, rate: R };
+}
+
+/** Exponential average of what the station ships (Decision 56), updated at each warp-out with its cargo. */
+export function noteShipped(cfg: HaulConfig, h: HaulState, cargo: Record<string, number>): void {
+  const C = h.contracts;
+  const n = C.measured ?? 0;
+  const a = n <= 0 ? 1 : Math.max(2 / (cfg.haul.contracts.recentLaunches + 1), 1 / (n + 1));
+  const prev = C.recent ?? {};
+  const next: Record<string, number> = {};
+  for (const ore of new Set([...Object.keys(prev), ...Object.keys(cargo)])) {
+    const x = (1 - a) * (prev[ore] ?? 0) + a * Math.max(0, cargo[ore] ?? 0);
+    if (x > 1e-9 && Number.isFinite(x)) next[ore] = x;
+  }
+  C.recent = next;
+  C.measured = n + 1;
+}
+
+/** What a draw reads of the station (Decision 56). Built by `contractBasis`; tests may build one by hand. */
+export interface ContractBasis {
+  galaxy: number;
+  F: number;
+  /** Units of each ore per launch the station really shipped lately (the steady figure until three launches are measured). */
+  recent: Record<string, number>;
+  /** The steady figure of the routes as they are (`steadyPerLaunch`). */
+  steady: Record<string, number>;
+  prices: Record<string, number>;
+  /** Global multiplier and the met contract's added multiplier (Broker Seat, the condition), for the bonus test. */
+  G: number;
+  contractAdd: number;
+  /** Farthest ring (0-based) with a present rock of each ore on a claimed slot. */
+  ringOf: Record<string, number>;
+  /** Longest life left (seconds) among the present rocks of each ore. */
+  lifeOf: Record<string, number>;
+  /** Seconds per launch, about: max(climb + away + land, F / R). */
+  interval: number;
+  /** Credits per second of the station, about: the recent launch's value / interval. */
+  income: number;
+}
+
+export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState): ContractBasis {
+  const st = steadyPerLaunch(params, h);
+  const ringOf: Record<string, number> = {};
+  const lifeOf: Record<string, number> = {};
+  h.slots.forEach((s, i) => {
+    const sp = params.slots[i];
+    if (!s?.claimed || s.respawnAt !== null || s.rockN < 0 || !sp) return;
+    ringOf[s.ore] = Math.max(ringOf[s.ore] ?? -1, sp.ring);
+    lifeOf[s.ore] = Math.max(lifeOf[s.ore] ?? 0, s.life);
+  });
+  const measured = (h.contracts.measured ?? 0) >= 3 && h.contracts.recent;
+  const recent = measured ? { ...h.contracts.recent } : { ...st.perLaunch };
+  const cycle = params.climb + params.away + params.land;
+  const interval = st.rate > 0 ? Math.max(cycle, params.F / st.rate) : Infinity;
+  let value = 0;
+  for (const [ore, n] of Object.entries(recent)) value += n * (params.prices[ore] ?? 0);
+  const income = Number.isFinite(interval) && interval > 0 ? (value * params.fullBonus * params.G) / interval : 0;
+  return { galaxy: h.galaxy, F: params.F, recent, steady: st.perLaunch, prices: params.prices, G: params.G, contractAdd: params.contractAdd, ringOf, lifeOf, interval, income };
+}
+
+/**
+ * Contract `k` of a run's stream (section 2.6, errata 27, Decisions 40 and 56). In galaxy 1,
+ * contract 0 is fixed: the first buyer, min(units, F) of the first ore, its multiplier, taken; from
+ * galaxy 2 on there is none. Later ones are offers drawn from `rngMix4(seed, hashString('contract'),
+ * k, n)` (n = 1 the ore, 2 the raise, 3 one or two ores, 4 the second ore, 5 its hold, 6 jitter, 9 a
+ * quota's share) and the buyer from `rngMix4(seed, hashString('buyer'), k, 0)`, skipping buyers in
+ * `avoid` (those already on the board).
+ *
+ * From what the station really ships (`basis.recent`, Decision 56). An ore is eligible when it is at
+ * least `minValueShare` of a recent launch's value, its share of a launch raised by `raise[0]` stays
+ * under `maxShare`, one of its present rocks lasts the contract's launches, and its contract at the
+ * largest raise pays at least `minBonusSeconds` of income. The ore is drawn among the eligible ones
+ * not in `avoidOres` (the ores other offers want) when any is left. "Raise it": `units = round(L ×
+ * recent × (1 + g))`, g in `raise` capped by `maxShare` (and raised until the bonus passes the
+ * income test), never below `L × steady × (1 + raise[0] / 2)`. A two-ore contract (chance
+ * `twoOreChance`, three ores shipped, a second eligible ore): the second ore "holds",
+ * `round(L × recent × U(holdShare))`, and g is capped so both fit in the launches with the third ore's
+ * share. A station that ships a single ore (or offers nothing eligible) gets the quota contract of
+ * Decision 40 (`round(L × F × U(quota))` units of its main ore, the multiplier lowered). The
+ * multiplier is `mult[farthest ring] ± jitter + raiseMult × g`, rounded to 0.1.
+ */
+export function contractAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, avoid: string[] = [], avoidOres: string[] = []): Contract {
   const C = cfg.haul.contracts;
   const L = C.launches;
-  if (k === 0) {
+  const F = Math.max(1, basis.F);
+  if (k === 0 && basis.galaxy === 0) {
     const buyer = C.buyers[Math.min(C.first.buyer, C.buyers.length - 1)];
     return { k, buyer: buyer.id, wants: [{ ore: C.first.ore, units: Math.max(1, Math.min(C.first.units, Math.floor(F))), got: 0 }], mult: C.first.mult, launchesLeft: L, taken: true };
   }
   const buyerRoll = roll(rngMix4(seed, hashString('buyer'), k, 0));
   const hc = hashString('contract');
-  const draw = (n: number) => rngMix4(seed, hc, k, n);
-  // A buyer already on the board is skipped for the next one in the list (one call per buyer on the board).
+  const draw = (n: number) => roll(rngMix4(seed, hc, k, n));
   const b0 = Math.min(C.buyers.length - 1, Math.floor(buyerRoll * C.buyers.length));
   let bi = b0;
   for (let i = 0; i < C.buyers.length && avoid.includes(C.buyers[bi].id); i++) bi = (b0 + i + 1) % C.buyers.length;
   const buyer = avoid.includes(C.buyers[bi].id) ? C.buyers[b0] : C.buyers[bi];
-  const pool = rings.length ? rings : [0];
-  const pickRing = (from: number[], n: number) => from[rngWeighted(draw(n), from.map((r) => r + 1)).value];
-  const weightsWithout = (ring: number, skip: string | null) => {
-    const w = ringWeights(cfg, ring, trait);
-    return { ores: w.ores, weights: w.weights.map((x, i) => (w.ores[i] === skip ? 0 : x)) };
-  };
-  const weightsOf = (ring: number, skip: string | null) => {
-    const w = weightsWithout(ring, skip);
-    const here = station?.present[ring];
-    if (!here) return w;
-    const live = w.weights.map((x, i) => (here[w.ores[i]] ? x : 0));
-    return live.some((x) => x > 0) ? { ores: w.ores, weights: live } : w;
-  };
-  const pickOre = (ring: number, n: number, skip: string | null) => {
-    const w = weightsOf(ring, skip);
-    return w.ores[rngWeighted(draw(n), w.weights).value] ?? w.ores[0];
-  };
-  const offersOther = (ring: number, skip: string) => weightsOf(ring, skip).weights.some((x) => x > 0);
-  const ring1 = pickRing(pool, 1);
-  const ore1 = pickOre(ring1, 2, null);
-  const picks: { ore: string; ring: number }[] = [{ ore: ore1, ring: ring1 }];
-  if (roll(draw(3)) < C.twoOreChance) {
-    const others = pool.filter((r) => r !== ring1 && offersOther(r, ore1));
-    const from = others.length ? others : offersOther(ring1, ore1) ? [ring1] : [];
-    if (from.length) {
-      const ring2 = pickRing(from, 4);
-      const ore2 = pickOre(ring2, 5, ore1);
-      if (ore2 !== ore1) picks.push({ ore: ore2, ring: ring2 });
-    }
-  }
-  const lambda = C.reach[0] + (C.reach[1] - C.reach[0]) * roll(draw(6));
-  const multFor = (ps: { ring: number }[]) => {
-    const far = Math.max(...ps.map((p) => p.ring));
+  const oreIds = cfg.haul.ores.map((o) => o.id);
+  const recent = basis.recent;
+  const total = Object.values(recent).reduce((a, x) => a + x, 0);
+  const valueOf = (ore: string) => (recent[ore] ?? 0) * (basis.prices[ore] ?? 0);
+  const launchValue = oreIds.reduce((a, o) => a + valueOf(o), 0);
+  const shipped = oreIds.filter((o) => (recent[o] ?? 0) > 0.02 * total && total > 0);
+  const share = (ore: string) => (recent[ore] ?? 0) / F;
+  const multBase = (ores: string[]) => {
+    const far = Math.max(0, ...ores.map((o) => basis.ringOf[o] ?? 0));
     const base = C.mult[Math.min(far, C.mult.length - 1)];
-    const jitter = (roll(draw(7)) * 2 - 1) * C.jitter;
-    return Math.max(1, Math.round((base + jitter) * 10) / 10);
+    return base + (draw(6) * 2 - 1) * C.jitter;
   };
-  const make = (ps: { ore: string; ring: number }[], units: number[], mult = multFor(ps)): Contract => ({
+  const round1 = (x: number) => Math.max(1, Math.round(x * 10) / 10);
+  const bonusOfUnits = (wants: { ore: string; units: number }[], mult: number) => wants.reduce((a, w) => a + w.units * (basis.prices[w.ore] ?? 0), 0) * Math.max(0, mult + basis.contractAdd - 1) * basis.G;
+  const make = (wants: { ore: string; units: number }[], mult: number): Contract => ({
     k,
     buyer: buyer.id,
-    wants: ps.map((p, i) => ({ ore: p.ore, units: units[i], got: 0 })),
+    wants: wants.map((w) => ({ ore: w.ore, units: Math.max(1, w.units), got: 0 })),
     mult,
     launchesLeft: C.offerLaunches,
     taken: false,
   });
-  if (!station) {
-    const units = picks.map(() => Math.max(1, Math.round((lambda * (L - 1) * F) / picks.length)));
-    return make(picks, units);
-  }
-  // Present ores (any ring), for the single-ore test and the fallback draw.
-  const ringOfOre: Record<string, number> = {};
-  for (const [ring, row] of Object.entries(station.present)) for (const ore of Object.keys(row)) if (row[ore] > 0) ringOfOre[ore] = Math.max(ringOfOre[ore] ?? -1, Number(ring));
-  const presentOres = cfg.haul.ores.map((o) => o.id).filter((o) => ringOfOre[o] !== undefined);
-  if (presentOres.length <= 1) {
-    const ore = presentOres[0] ?? ore1;
-    const q = C.quota[0] + (C.quota[1] - C.quota[0]) * roll(draw(9));
-    const units = Math.max(1, Math.round(L * F * q));
-    const ps = [{ ore, ring: ringOfOre[ore] ?? ring1 }];
-    return make(ps, [units], Math.max(C.quotaMinMult, Math.round((multFor(ps) - C.quotaMultCut) * 10) / 10));
-  }
-  const widen: { share?: number; last?: boolean }[] = [{}, { last: true }];
-  for (let sh = Math.round((C.fleetShare + 0.1) * 10) / 10; sh <= C.maxShare + 1e-9; sh = Math.round((sh + 0.1) * 10) / 10) widen.push({ share: sh, last: true });
-  // The fallback: among one-ore attempts, the one that misses the reachable bound by the smallest
-  // share, never asking for nearly whole holds (that would need a bigger freighter).
-  let best: { ps: { ore: string; ring: number }[]; units: number[]; gap: number } | null = null;
-  const attempt = (ps: { ore: string; ring: number }[]): number[] | null => {
-    const ores = ps.map((p) => p.ore);
-    for (const opts of widen) {
-      const r = station.reach(ores, opts);
-      const lo = r.now.map((n) => Math.max(1, Math.ceil(L * n * (1 + C.margin) - 1e-9)));
-      const hi = r.now.map((n, i) => Math.floor(n + (L - 1) * r.routed[i] + 1e-9));
-      if (lo.every((x, i) => x <= hi[i])) return r.now.map((n, i) => Math.min(hi[i], Math.max(lo[i], Math.round(L * n + lambda * (L - 1) * (r.routed[i] - n)))));
-      if (ps.length === 1 && lo[0] <= 0.9 * L * F) {
-        const gap = (lo[0] - hi[0]) / lo[0];
-        if (!best || gap < best.gap) best = { ps, units: [lo[0]], gap };
+  const quota = (): Contract => {
+    const ore = shipped.slice().sort((a, b) => valueOf(b) - valueOf(a))[0] ?? C.first.ore;
+    const q = C.quota[0] + (C.quota[1] - C.quota[0]) * draw(9);
+    return make([{ ore, units: Math.round(L * F * q) }], Math.max(C.quotaMinMult, round1(multBase([ore]) - C.quotaMultCut)));
+  };
+  if (shipped.length <= 1) return quota();
+  const lifeNeed = L * basis.interval;
+  const gMax = (ore: string) => Math.min(C.raise[1], (C.maxShare * F) / Math.max(1e-9, recent[ore] ?? 0) - 1);
+  // One-ore units at raise g (with the never-free floor).
+  const unitsAt = (ore: string, g: number) => Math.max(Math.round(L * (recent[ore] ?? 0) * (1 + g)), Math.ceil(L * (basis.steady[ore] ?? 0) * (1 + C.raise[0] / 2)));
+  const minBonus = C.minBonusSeconds * basis.income;
+  const eligible = oreIds.filter((ore) => {
+    if (!(recent[ore] > 0) || !(launchValue > 0)) return false;
+    if (valueOf(ore) < C.minValueShare * launchValue) return false;
+    if (share(ore) * (1 + C.raise[0]) >= C.maxShare) return false;
+    if (!((basis.lifeOf[ore] ?? 0) >= lifeNeed)) return false;
+    const g = gMax(ore);
+    return bonusOfUnits([{ ore, units: unitsAt(ore, g) }], multBase([ore]) + C.raiseMult * g) >= minBonus;
+  });
+  if (!eligible.length) return quota();
+  const fresh = eligible.filter((o) => !avoidOres.includes(o));
+  const pool = fresh.length ? fresh : eligible;
+  const ore1 = pool[Math.min(pool.length - 1, Math.floor(draw(1) * pool.length))];
+  // A second ore that holds: three ores shipped, another eligible ore.
+  let ore2: string | null = null;
+  let hold = 0;
+  if (shipped.length >= 3 && draw(3) < C.twoOreChance) {
+    const others = eligible.filter((o) => o !== ore1);
+    if (others.length) {
+      const o2 = others[Math.min(others.length - 1, Math.floor(draw(4) * others.length))];
+      const h2 = C.holdShare[0] + (C.holdShare[1] - C.holdShare[0]) * draw(5);
+      // What ore 1 can gain: the share of the ores not wanted, and what ore 2 gives up.
+      const rest = shipped.filter((o) => o !== ore1 && o !== o2).reduce((a, o) => a + share(o), 0);
+      const room = (rest + share(o2) * (1 - h2)) / Math.max(1e-9, share(ore1));
+      if (room * 0.8 >= C.raise[0]) {
+        ore2 = o2;
+        hold = h2;
       }
     }
-    return null;
+  }
+  let hi = gMax(ore1);
+  if (ore2) {
+    const rest = shipped.filter((o) => o !== ore1 && o !== ore2).reduce((a, o) => a + share(o), 0);
+    hi = Math.min(hi, ((rest + share(ore2) * (1 - hold)) / Math.max(1e-9, share(ore1))) * 0.8);
+  }
+  const lo = Math.min(C.raise[0], hi);
+  let g = lo + (hi - lo) * draw(2);
+  const wantsAt = (x: number) => {
+    const w = [{ ore: ore1, units: unitsAt(ore1, x) }];
+    if (ore2) w.push({ ore: ore2, units: Math.max(1, Math.round(L * (recent[ore2] ?? 0) * hold)) });
+    return w;
   };
-  const tries: { ore: string; ring: number }[][] = [picks];
-  if (picks.length > 1) tries.push([picks[0]], [picks[1]]);
-  const tried = new Set(picks.map((p) => p.ore));
-  const rest = presentOres.filter((o) => !tried.has(o));
-  // Other present ores in an order drawn from the contract's own roll.
-  const off = Math.floor(roll(draw(8)) * Math.max(1, rest.length));
-  for (let i = 0; i < rest.length; i++) {
-    const ore = rest[(i + off) % rest.length];
-    tries.push([{ ore, ring: ringOfOre[ore] }]);
-  }
-  for (const ps of tries) {
-    const units = attempt(ps);
-    if (units) return make(ps, units);
-  }
-  const b = best as { ps: { ore: string; ring: number }[]; units: number[] } | null;
-  if (b) return make(b.ps, b.units);
-  return make([picks[0]], [Math.max(1, Math.round(lambda * (L - 1) * F))]);
+  const ores = ore2 ? [ore1, ore2] : [ore1];
+  const mb = multBase(ores);
+  // Condition 5: a bonus under `minBonusSeconds` of income is raised (within the cap) until it passes.
+  for (let i = 0; i < 8 && g < hi && bonusOfUnits(wantsAt(g), mb + C.raiseMult * g) < minBonus; i++) g = Math.min(hi, g + (hi - lo) / 8 + 0.01);
+  return make(wantsAt(g), round1(mb + C.raiseMult * g));
+}
+
+/** Ores the contracts on the board (offers and the taken one) want. */
+function boardOres(h: HaulState): string[] {
+  return [...new Set((h.contracts.board ?? []).flatMap((c) => c.wants.map((w) => w.ore)))];
 }
 
 /**
- * Takes the next contract from the run's stream (and advances `next`). With the run's params the
- * units follow what the station can deliver (`contractStation`); without them (a run being built)
- * they are a share of F.
+ * Takes the next contract from the run's stream (and advances `next`), drawn on the station's basis
+ * (`contractBasis`, with the run's params; without them, a run being built, the steady figure is
+ * unknown and the draw is a quota of F).
  */
 export function drawContract(cfg: HaulConfig, h: HaulState, F: number, params?: HaulParams): { contract: Contract; next: number } {
-  const station = params ? contractStation(cfg, params, h) : undefined;
-  const contract = contractAt(cfg, h.seed, h.contracts.next, claimedRings(cfg, h), F, h.trait, station, (h.contracts.board ?? []).map((c) => c.buyer));
+  const basis: ContractBasis = params
+    ? contractBasis(cfg, params, h)
+    : { galaxy: h.galaxy, F, recent: {}, steady: {}, prices: {}, G: 1, contractAdd: 0, ringOf: {}, lifeOf: {}, interval: Infinity, income: 0 };
+  const contract = contractAt(cfg, h.seed, h.contracts.next, basis, (h.contracts.board ?? []).map((c) => c.buyer), boardOres(h));
   return { contract, next: h.contracts.next + 1 };
 }
 
-/** A fresh board (contract 0 taken and active, then offers from the stream), as at the unlock or the start of a later galaxy. */
+/**
+ * A fresh board, as at the unlock: in galaxy 1 contract 0 taken and active, then offers; from galaxy
+ * 2 on offers only (Decision 56). `sizedF` is set to F.
+ */
 export function openBoard(cfg: HaulConfig, h: HaulState, F: number, params?: HaulParams): HaulState['contracts'] {
   const board: Contract[] = [];
   let next = 0;
@@ -386,7 +459,57 @@ export function openBoard(cfg: HaulConfig, h: HaulState, F: number, params?: Hau
     board.push(d.contract);
     next = d.next;
   }
-  return { unlocked: true, board, next, active: board[0]?.taken ? 0 : null };
+  const taken = board.findIndex((c) => c.taken);
+  return { ...h.contracts, unlocked: true, board, next, active: taken >= 0 ? taken : null, sizedF: F };
+}
+
+/** Fills the board's empty places (after a drop, Decision 56) with new offers; returns their indexes. */
+export function topUpBoard(cfg: HaulConfig, h: HaulState, params: HaulParams): number[] {
+  const C = h.contracts;
+  const out: number[] = [];
+  C.next = Math.max(C.next, ...C.board.map((c) => c.k + 1));
+  while (C.board.length < cfg.haul.contracts.board) {
+    const d = drawContract(cfg, h, params.F, params);
+    // Contract 0 is the fixed first one; a topped-up board never takes it again.
+    const c = d.contract.taken ? { ...d.contract, taken: false, launchesLeft: cfg.haul.contracts.offerLaunches } : d.contract;
+    C.board.push(c);
+    C.next = d.next;
+    out.push(C.board.length - 1);
+  }
+  return out;
+}
+
+/**
+ * Decision 56, "a freighter level does not meet a contract": when the freighter's capacity is not
+ * the one the board was sized for, what every contract still needs is resized by F new / F old
+ * (`got + round(left × factor)`), and so is `recent`; a `contractResized` event per contract.
+ */
+export function resizeOrders(h: HaulState, F: number, events?: HaulEvent[]): void {
+  const C = h.contracts;
+  const old = C.sizedF;
+  if (!C.unlocked || !(F > 0) || !Number.isFinite(F)) return;
+  if (!(old !== undefined && old > 0 && Number.isFinite(old))) {
+    C.sizedF = F;
+    return;
+  }
+  if (Math.abs(F - old) <= 1e-9 * Math.max(1, F)) return;
+  const factor = F / old;
+  C.sizedF = F;
+  if (C.recent) C.recent = Object.fromEntries(Object.entries(C.recent).map(([o, x]) => [o, x * factor]));
+  C.board.forEach((c, index) => {
+    let before = 0;
+    let left = 0;
+    c.wants = c.wants.map((w) => {
+      const got = c.taken ? (w.got ?? 0) : 0;
+      const rest = Math.max(0, w.units - got);
+      if (!(rest > 0)) return w;
+      const now = Math.max(1, Math.round(rest * factor));
+      before += rest;
+      left += now;
+      return { ...w, units: Math.max(1, Math.round(got + now)) };
+    });
+    if (before > 0) events?.push({ type: 'contractResized', contract: { ...c, wants: c.wants.map((w) => ({ ...w })) }, index, factor, before, left });
+  });
 }
 
 /** True when the day shift would double the bonus of a contract met now (Decision 53). */
@@ -396,41 +519,61 @@ export function shiftDoubles(cfg: HaulConfig, hs: Pick<HaulStats, 'shift'> | und
 }
 
 /**
- * What the board, the strip and the hints show for each contract on the board (Decision 40). An
- * offer is shown as if it were taken now (got 0, `launches` launches). `aboard` is the cargo of a
- * freighter loaded for the taken contract and not yet warped out; the launch it is on counts as one
- * of the launches left, so the pace uses the launches after it.
+ * What the board, the strip and the hints show for each contract on the board (Decisions 40 and
+ * 56); only the contracts (an empty place after a drop has no view). One pace for offers and the
+ * taken contract: `perLaunch` is the steady figure of the routes as they are; an offer is shown as
+ * if taken now (got 0, `launches` launches, every launch at the steady figure); for the taken one the
+ * next launch is counted from what is really in the hold (`hold_o + (F − hold) × perLaunch_o / F`,
+ * loaded first and at most what is left), the launches after it at the steady figure. `aboard` is the
+ * cargo of a freighter loaded for the taken contract and not yet warped out; that launch counts as one
+ * of the launches left. `expected = nextLaunch + (launches after it − 1) × perLaunch`; on pace when
+ * expected covers what is left for every ore; `raise = left / expected − 1` otherwise.
  */
 export function contractViews(cfg: HaulConfig, params: HaulParams, h: HaulState, haulStats?: Pick<HaulStats, 'shift'>): ContractView[] {
   const L = cfg.haul.contracts.launches;
-  const station = contractStation(cfg, params, h);
+  const st = steadyPerLaunch(params, h).perLaunch;
+  const F = params.F;
   const f = h.freighter;
   const inFlight = f.phase === 'climb' && f.contract !== null;
   const shift = shiftDoubles(cfg, haulStats);
+  let holdT = 0;
+  for (const x of Object.values(h.hold)) holdT += x > 0 ? x : 0;
   return h.contracts.board.map((c, index) => {
     const active = h.contracts.active === index && c.taken;
-    const r = station.reach(c.wants.map((w) => w.ore));
     const carrying = active && inFlight && f.contract === c.k;
     const toward = carrying ? (f.toward ?? towardContract(f.cargo, { ...c })) : {};
     const launchesLeft = c.launchesLeft;
     const after = c.taken ? Math.max(0, c.launchesLeft - (carrying ? 1 : 0)) : L;
-    const wants = c.wants.map((w, i) => {
+    let room = F;
+    const wants = c.wants.map((w) => {
       const got = c.taken ? (w.got ?? 0) : 0;
       const aboard = Math.min(toward[w.ore] ?? 0, Math.max(0, w.units - got));
       const rest = wantLeft({ units: w.units, got }, aboard);
-      return { ore: w.ore, units: w.units, got, aboard, left: rest > 0 ? Math.ceil(rest - EPS) : 0, perLaunch: r.now[i] ?? 0 };
+      const left = rest > 0 ? Math.ceil(rest - EPS) : 0;
+      const perLaunch = st[w.ore] ?? 0;
+      let nextLaunch = perLaunch;
+      if (c.taken) {
+        const est = Math.max(0, h.hold[w.ore] ?? 0) + Math.max(0, F - holdT) * (F > 0 ? perLaunch / F : 0);
+        nextLaunch = Math.max(0, Math.min(rest, est, room));
+        room -= nextLaunch;
+      }
+      const expected = after > 0 ? nextLaunch + (after - 1) * perLaunch : 0;
+      const raise = !(left > 0) || expected >= rest - EPS ? 0 : expected > 0 ? rest / expected - 1 : Infinity;
+      return { ore: w.ore, units: w.units, got, aboard, left, perLaunch, nextLaunch, expected, raise };
     });
     let paceRatio = Infinity;
     let shortOre: string | null = null;
+    let raise = 0;
     for (const w of wants) {
       if (!(w.left > 0)) continue;
-      const x = (w.perLaunch * after) / w.left;
+      const x = w.expected / Math.max(EPS, w.units - w.got - w.aboard);
       if (x < paceRatio) {
         paceRatio = x;
         shortOre = w.ore;
       }
+      if (w.raise > raise) raise = w.raise;
     }
-    const onPace = paceRatio >= 1;
-    return { index, contract: c, active, bonus: bonusOf(params, c), shift, launches: L, launchesLeft, wants, paceRatio, onPace, shortOre: onPace ? null : shortOre };
+    const onPace = raise === 0;
+    return { index, contract: c, active, bonus: bonusOf(params, c), shift, launches: L, launchesLeft, wants, paceRatio, onPace, shortOre: onPace ? null : shortOre, raise };
   });
 }

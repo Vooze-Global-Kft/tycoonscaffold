@@ -26,6 +26,13 @@ describe('comms slot lines (section 3, errata 56, 57)', () => {
     const pilot = { ...run, haul: { ...run.haul, autopilot: { ...run.haul.autopilot, online: true } } };
     expect(hintLine(pilot, { kind: 'swipe', key: 'bay:launch', route: [], row: null, step: 0 })).toBeNull();
   });
+  it('a limit hint names its purchase (Decision 57)', () => {
+    expect(hintLine(run, point('station:freighter', 0, ['station']))?.key).toBe('hintLimitFreighter');
+    expect(hintLine(run, point('station:capacity', 0, ['station']))?.key).toBe('hintLimitCapacity');
+    expect(hintLine(run, point('rig:upgrade', 0, ['rock:2']))?.key).toBe('hintLimitRig');
+    expect(hintLine(run, point('slot:4', 0))?.key).toBe('hintLimitClaim');
+    expect(hintLine(run, point('bay:flare', 0))).toBeNull();
+  });
   it('speakers come from the story data, with a fallback', () => {
     const story = [
       { id: 'a', characterId: 'ai1', trigger: { type: 'start' }, lines: ['x'], rewardGems: 0 },
@@ -54,6 +61,11 @@ describe('sheet hints, second stage (errata 53)', () => {
     expect(sheetHintTarget(buy, { type: 'station' }, true, all, () => 0)).toBeNull();
     expect(sheetHintTarget(buy, { type: 'contracts' }, false, all, () => 0)).toBeNull();
     expect(sheetHintTarget(buy, { type: 'station' }, false, () => false, () => 0)).toBeNull();
+  });
+  it('the rig upgrade is marked only in the Rig sheet of the hinted rock (Decision 58)', () => {
+    const up = { ...point('rig:upgrade', 6), route: ['rock:2'] };
+    expect(sheetHintTarget(up, { type: 'rig', slot: 2 }, false, all, () => 0)).toBe('rig:upgrade');
+    expect(sheetHintTarget(up, { type: 'rig', slot: 0 }, false, all, () => 0)).toBeNull();
   });
   it('the board hint points at the best manifest once the board is open', () => {
     const board = point('bay:counter');

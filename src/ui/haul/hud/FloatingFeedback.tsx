@@ -17,7 +17,7 @@
  */
 import { Canvas, DashPathEffect, Group, Path, Picture, Skia, type SkPicture } from '@shopify/react-native-skia';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { PixelRatio, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withTiming, type SharedValue } from 'react-native-reanimated';
 import { formatMoney } from '../../../engine/format';
 import * as H from '../../../engine/haul';
@@ -30,6 +30,7 @@ import { drawCreditGlyph, drawFlare } from '../art/fx.draw';
 import { alpha, SPACE } from '../art/palette';
 import { around, circle, dashed, picture, stroke } from '../art/pen';
 import { CLAIM_CONFIRM_MS, DRAG_DRONE, DRAG_FLARE, claimChipRect, dragLine, useFieldInput, type RoutePreview } from '../gestures/fieldInput';
+import { FLOATER_RISE, floaterSpot } from '../gestures/gestureMath';
 import { confirmClaim } from '../gestures/useFieldGestures';
 import type { FieldLayout, Pt } from '../layout';
 import { HAUL_STRINGS } from '../strings';
@@ -233,7 +234,7 @@ function FloatText({ f, onDone }: { f: Floater; onDone: (id: number) => void }) 
   }, [f.id, k, onDone]);
   const style = useAnimatedStyle(() => ({
     opacity: k.value < 0.15 ? k.value / 0.15 : 1 - Math.max(0, (k.value - 0.6) / 0.4),
-    transform: [{ translateY: -26 * k.value }],
+    transform: [{ translateY: -FLOATER_RISE * k.value }],
   }));
   return (
     <Animated.View
@@ -389,6 +390,10 @@ export function FloatingFeedback() {
       return { x: r.x + r.width / 2, y: r.y + r.height * 0.36 };
     };
     const off = modeEvents.subscribe((events) => {
+      // Under a full-screen spoke or overlay nothing here can be seen: no glyph flight, no floater,
+      // no credit ticks (device:new:2: the late game's autopilot warps redrew this canvas unseen).
+      const ui = useHaulUi.getState();
+      if (ui.spoke !== null || ui.overlay !== null) return;
       const cfg = useGame.getState().cfg as H.HaulConfig;
       const sym = cfg.strings?.currencySymbol ?? '';
       for (const e of events as H.HaulEvent[]) {
@@ -447,7 +452,13 @@ export function FloatingFeedback() {
       if (!p || !p.dropped || p === prev.preview) return;
       const r = layoutRef.current.rocks[p.slot];
       const cfg = useGame.getState().cfg as H.HaulConfig;
-      if (r) setFloaters((fl) => [...fl.slice(-3), { id: nextId.current++, text: gainText(p, cfg.strings?.currencySymbol ?? ''), x: r.x, y: r.y - r.r - 14, color: gainColor(p) }]);
+      if (r) {
+        const text = gainText(p, cfg.strings?.currencySymbol ?? '');
+        // Off the other slots' labels (play:new:8): over the rock when its rise is clear, else beside it.
+        const m = labelMetrics(13, PixelRatio.getFontScale());
+        const at = floaterSpot(layoutRef.current, p.slot, Math.ceil(textEms(text) * m.font) + 6, m.row) ?? { x: r.x, y: r.y - r.r - 14 };
+        setFloaters((fl) => [...fl.slice(-3), { id: nextId.current++, text, x: at.x, y: at.y, color: gainColor(p) }]);
+      }
       useFieldInput.getState().setPreview(null);
     });
     return () => {

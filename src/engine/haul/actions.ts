@@ -5,7 +5,7 @@
  */
 import { equip } from '../loadout';
 import { affordable, autopilotCost, droneCapFor, capacityCost, claimCost, droneCost, EPS, engineCost, freighterCost, holdTotal, rigCost, ringOf, slotTable } from './params';
-import { drawContract } from './trade';
+import { resizeOrders } from './trade';
 import { commit, doLaunch, draftOf, draftParams, dropGuest, grantPod, landOnSeam, seamAt, seamDuration, updateMarks, warmUp, type Draft } from './tick';
 import type { AutopilotPolicy, HaulConfig, HaulEvent, HaulGame, HaulState } from './types';
 
@@ -20,7 +20,10 @@ function slotOk(h: HaulState, slot: number): boolean {
 }
 
 function finish(cfg: HaulConfig, d: Draft): HaulGame {
-  updateMarks(cfg, d, draftParams(cfg, d));
+  const p = draftParams(cfg, d);
+  // Decision 56: a bigger (or smaller) freighter resizes what the board's contracts still need.
+  resizeOrders(d.h, p.F, d.events);
+  updateMarks(cfg, d, p);
   return commit(d);
 }
 
@@ -190,8 +193,9 @@ export function setPolicy(cfg: HaulConfig, g: HaulGame, policy: AutopilotPolicy)
 
 /**
  * Take the contract at board `index` (Decision 40), or none (`null`). At most one contract is taken:
- * picking another offer, or none, while one is taken DROPS the taken one (it leaves the board, the
- * next from the stream takes its place, `contractLapsed {wasActive: true, dropped: true}`); the
+ * picking another offer, or none, while one is taken DROPS the taken one (it leaves the board and
+ * its place stays empty until the next warp-out, Decision 56; `contractLapsed {wasActive: true,
+ * dropped: true}`; the indexes after it move down by one, `index` is the index before the drop); the
  * screens ask for a second tap before a drop that loses progress. The picked offer gets
  * `launches` launches. Picking the taken one again changes nothing. Nothing else ever picks,
  * except contract 0 at the unlock.
@@ -205,21 +209,21 @@ export function pickContract(cfg: HaulConfig, g: HaulGame, index: number | null,
   if (index === null && !curTaken && cur === null) return g;
   const d = draftOf(g, events);
   const C = d.h.contracts;
+  let pick = index;
   if (cur !== null && C.board[cur]?.taken && cur !== index) {
     const dropped = C.board[cur];
     d.events?.push({ type: 'contractLapsed', contract: dropped, wasActive: true, dropped: true });
-    const next = drawContract(cfg, d.h, draftParams(cfg, d).F, draftParams(cfg, d));
-    C.board[cur] = next.contract;
-    C.next = next.next;
-    d.events?.push({ type: 'contractNew', contract: next.contract, index: cur });
+    // Decision 56: the dropped contract's place stays empty until the next warp-out (no re-roll).
+    C.board.splice(cur, 1);
+    if (pick !== null && pick > cur) pick -= 1;
   }
   C.active = null;
-  if (index !== null) {
-    const c = C.board[index];
+  if (pick !== null) {
+    const c = C.board[pick];
     c.taken = true;
     c.launchesLeft = cfg.haul.contracts.launches;
     c.wants = c.wants.map((w) => ({ ...w, got: 0 }));
-    C.active = index;
+    C.active = pick;
   }
   return finish(cfg, d);
 }
