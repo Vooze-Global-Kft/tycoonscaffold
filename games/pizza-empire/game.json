@@ -45,7 +45,7 @@
       "offline": "🌙",
       "bonus": "🍕",
       "manager": "👨‍🍳",
-      "tabBuild": "🏪",
+      "tabBuild": "art:storefront",
       "tabManagers": "👨‍🍳",
       "tabUpgrades": "📖",
       "tabShop": "🧺"
@@ -55,7 +55,7 @@
     "currencyName": "Dough",
     "currencySymbol": "$",
     "gemName": "Truffles",
-    "gemIcon": "🍄",
+    "gemIcon": "art:truffle",
     "prestigeName": "Chef Stars",
     "prestigeIcon": "⭐",
     "prestigeVerb": "Franchise",
@@ -69,6 +69,7 @@
     "prestige": {
       "threshold": 3000000000000000.0,
       "scale": 20.0,
+      "exponent": 0.5,
       "bonusPerPoint": 0.02
     },
     "offline": {
@@ -156,7 +157,8 @@
       "managerName": "Pizzaiolo",
       "stationKind": "oven",
       "productName": "Margherita",
-      "productIcon": "🍕"
+      "productIcon": "🍕",
+      "workerLook": "pizzaiolo"
     },
     {
       "id": "bruschetta",
@@ -171,7 +173,8 @@
       "managerName": "Prep Cook",
       "stationKind": "prep",
       "productName": "Bruschetta",
-      "productIcon": "🥖"
+      "productIcon": "🥖",
+      "workerLook": "prepcook"
     },
     {
       "id": "pasta",
@@ -186,7 +189,8 @@
       "managerName": "Pasta Chef",
       "stationKind": "stove",
       "productName": "Spaghetti",
-      "productIcon": "🍝"
+      "productIcon": "🍝",
+      "workerLook": "pastachef"
     },
     {
       "id": "arancini",
@@ -201,7 +205,8 @@
       "managerName": "Fry Cook",
       "stationKind": "fryer",
       "productName": "Arancini",
-      "productIcon": "🧆"
+      "productIcon": "🧆",
+      "workerLook": "frycook"
     },
     {
       "id": "gelato",
@@ -216,7 +221,8 @@
       "managerName": "Gelataio",
       "stationKind": "dessert",
       "productName": "Gelato",
-      "productIcon": "🍨"
+      "productIcon": "🍨",
+      "workerLook": "gelataio"
     },
     {
       "id": "espresso",
@@ -231,7 +237,8 @@
       "managerName": "Barista",
       "stationKind": "espresso",
       "productName": "Espresso",
-      "productIcon": "☕"
+      "productIcon": "☕",
+      "workerLook": "barista"
     }
   ],
   "upgrades": [
@@ -658,28 +665,32 @@
           "kind": "gems",
           "value": 100,
           "fallbackPrice": "$1.99",
-          "title": "Pinch of Truffles"
+          "title": "Pinch of Truffles",
+          "icon": "art:truffle"
         },
         {
           "id": "pizza_gems_280",
           "kind": "gems",
           "value": 280,
           "fallbackPrice": "$4.99",
-          "title": "Basket of Truffles"
+          "title": "Pile of Truffles",
+          "icon": "art:truffle-pile"
         },
         {
           "id": "pizza_gems_600",
           "kind": "gems",
           "value": 600,
           "fallbackPrice": "$9.99",
-          "title": "Truffle Crate"
+          "title": "Truffle Basket",
+          "icon": "art:truffle-basket"
         },
         {
           "id": "pizza_gems_1300",
           "kind": "gems",
           "value": 1300,
           "fallbackPrice": "$19.99",
-          "title": "Truffle Cellar"
+          "title": "Truffle Crate",
+          "icon": "art:truffle-crate"
         },
         {
           "id": "pizza_warp_24",
@@ -694,14 +705,14 @@
           "kind": "deal",
           "fallbackPrice": "$4.99",
           "title": "Welcome Feast",
-          "description": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony and four hours of takings."
+          "description": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony Wheels and 4 h of income."
         },
         {
           "id": "pizza_franchise_kit",
           "kind": "deal",
           "fallbackPrice": "$4.99",
           "title": "Franchise Kit",
-          "description": "Rebuild faster after earning Chef Stars: Truffles, Astro Al, Big Cheese Carl, Speedy Sal and eight hours of takings."
+          "description": "Rebuild faster after earning Chef Stars: Truffles, Astro Al, Big Cheese Carl (now on your side), Speedy Sal and 8 h of income."
         }
       ]
     }
@@ -746,7 +757,7 @@
     "transport": {
       "name": "Waiters",
       "workerName": "Waiter",
-      "icon": "🤵",
+      "icon": "char:waiter",
       "baseCost": 5.0,
       "costGrowth": 1.16,
       "baseCapacity": 130.0,
@@ -762,7 +773,7 @@
       ],
       "managerCost": 400,
       "managerName": "Maître d'",
-      "managerIcon": "🤵",
+      "managerIcon": "char:maitre",
       "managerFlavor": "Keeps the floor moving without the bell.",
       "bellName": "Service bell"
     },
@@ -862,7 +873,7 @@
     ],
     "rush": {
       "name": "Rush Hour",
-      "icon": "🔔",
+      "icon": "⏱️",
       "multiplier": 3,
       "seconds": 30,
       "cooldownSeconds": 300
@@ -1005,7 +1016,7 @@
       {
         "id": "box",
         "name": "Pizza Box",
-        "icon": "📦",
+        "icon": "art:chest-wood",
         "blurb": "A few cards and some dough.",
         "tier": "wood",
         "slots": 3,
@@ -1050,7 +1061,7 @@
       {
         "id": "crate",
         "name": "Chef's Crate",
-        "icon": "🧰",
+        "icon": "art:chest-silver",
         "blurb": "More cards, with a rare one guaranteed.",
         "tier": "silver",
         "slots": 4,
@@ -1096,7 +1107,7 @@
       {
         "id": "golden",
         "name": "Golden Oven Chest",
-        "icon": "👑",
+        "icon": "art:chest-gold",
         "blurb": "A feast of cards, with an epic guaranteed.",
         "tier": "gold",
         "slots": 6,
@@ -1328,8 +1339,8 @@
         "id": "welcome",
         "title": "Welcome Feast",
         "badge": "Can be bought once",
-        "blurb": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony and four hours of takings.",
-        "icon": "🎉",
+        "blurb": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony Wheels and 4 h of income.",
+        "icon": "char:nonna",
         "productId": "pizza_welcome_feast",
         "trigger": {
           "type": "sessions",
@@ -1367,8 +1378,8 @@
         "id": "franchise",
         "title": "Franchise Kit",
         "badge": "AFTER A RESET",
-        "blurb": "Rebuild faster after earning Chef Stars: Truffles, Astro Al, Big Cheese Carl, Speedy Sal and eight hours of takings.",
-        "icon": "🏪",
+        "blurb": "Rebuild faster after earning Chef Stars: Truffles, Astro Al, Big Cheese Carl (now on your side), Speedy Sal and 8 h of income.",
+        "icon": "char:al",
         "productId": "pizza_franchise_kit",
         "trigger": {
           "type": "prestige",
@@ -1409,7 +1420,7 @@
         {
           "id": "free_truffles",
           "title": "Free Truffles",
-          "icon": "🍄",
+          "icon": "art:truffle",
           "reward": {
             "type": "gems",
             "amount": 5
@@ -1420,7 +1431,7 @@
         {
           "id": "free_box",
           "title": "Free Pizza Box",
-          "icon": "📦",
+          "icon": "art:chest-wood",
           "reward": {
             "type": "chest",
             "chestId": "box",
@@ -1454,7 +1465,7 @@
         },
         {
           "id": "tips_1h",
-          "title": "An Hour of Takings",
+          "title": "1 h of Income",
           "icon": "💰",
           "reward": {
             "type": "cash",
@@ -1465,7 +1476,7 @@
         },
         {
           "id": "tips_4h",
-          "title": "Four Hours of Takings",
+          "title": "4 h of Income",
           "icon": "💰",
           "reward": {
             "type": "cash",
@@ -1625,6 +1636,17 @@
     "al": {
       "preset": "al"
     },
+    "barista": {
+      "kind": "chef",
+      "hat": "none",
+      "outfitStyle": "tee",
+      "apron": "#6B3E26",
+      "hair": "#3B2A22",
+      "hairStyle": "bun",
+      "glasses": "round",
+      "skin": "#D9A77C",
+      "accent": "#EF7D22"
+    },
     "carl": {
       "preset": "carl"
     },
@@ -1634,8 +1656,38 @@
     "freeze": {
       "preset": "freeze"
     },
+    "frycook": {
+      "kind": "chef",
+      "hat": "cap",
+      "hatColor": "#EF7D22",
+      "hair": "#1F1A17",
+      "hairStyle": "spiky",
+      "skin": "#8D5A3B",
+      "accent": "#EF7D22"
+    },
+    "gelataio": {
+      "kind": "chef",
+      "hat": "minitoque",
+      "hair": "#E8C36A",
+      "hairStyle": "bob",
+      "skin": "#F5D3B5",
+      "lashes": true,
+      "accent": "#EF7D22"
+    },
     "gina": {
       "preset": "gina"
+    },
+    "maitre": {
+      "kind": "manager",
+      "outfitStyle": "suit",
+      "outfit": "#23262F",
+      "accent": "#E5484D",
+      "neck": "bowtie",
+      "hair": "#9AA0A6",
+      "hairStyle": "slick",
+      "moustache": "curled",
+      "skin": "#F2C9A0",
+      "brows": "smug"
     },
     "mayor": {
       "preset": "mayor"
@@ -1646,11 +1698,45 @@
     "overlord": {
       "preset": "overlord"
     },
+    "pastachef": {
+      "kind": "chef",
+      "hair": "#6B4A2E",
+      "hairStyle": "curly",
+      "beard": "goatee",
+      "skin": "#C98A5E",
+      "accent": "#EF7D22"
+    },
+    "pizzaiolo": {
+      "kind": "chef",
+      "hair": "#2E2428",
+      "hairStyle": "short",
+      "moustache": "curled",
+      "skin": "#E8B48A",
+      "accent": "#EF7D22"
+    },
+    "prepcook": {
+      "kind": "chef",
+      "body": "slim",
+      "hair": "#B5562B",
+      "hairStyle": "ponytail",
+      "hat": "bandana",
+      "hatColor": "#EF7D22",
+      "skin": "#F2C9A0",
+      "lashes": true,
+      "accent": "#EF7D22"
+    },
     "sal": {
       "preset": "sal"
     },
     "tony": {
       "preset": "tony"
+    },
+    "waiter": {
+      "kind": "waiter",
+      "hair": "#2E2428",
+      "hairStyle": "slick",
+      "skin": "#E8B48A",
+      "apron": "#2A9D8F"
     }
   }
 }

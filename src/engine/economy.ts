@@ -1000,7 +1000,14 @@ export function grantCash(state: GameState, amount: number): GameState {
 
 export function totalPrestigePoints(cfg: GameConfig, lifetime: number): number {
   const p = cfg.economy.prestige;
-  return Math.floor(p.scale * Math.sqrt(lifetime / p.threshold));
+  // A hair of tolerance so that lifetimeForPrestigePoints(k) really gives k points despite rounding.
+  return Math.floor(p.scale * Math.pow(lifetime / p.threshold, p.exponent) + 1e-9);
+}
+
+/** Lifetime earnings at which `points` points in total exist (the inverse of totalPrestigePoints). */
+export function lifetimeForPrestigePoints(cfg: GameConfig, points: number): number {
+  const p = cfg.economy.prestige;
+  return p.threshold * Math.pow(points / p.scale, 1 / p.exponent);
 }
 
 export function prestigePointsAvailable(cfg: GameConfig, state: GameState): number {

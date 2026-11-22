@@ -62,10 +62,10 @@ eco['milestones'] = [
     {'owned': 100, 'revenueMult': 3}, {'owned': 150, 'revenueMult': 2}, {'owned': 200, 'revenueMult': 3},
 ]
 eco['milestoneRepeat'] = {'every': 100, 'revenueMult': 2}
-eco['prestige'] = {'threshold': E('PRESTIGE', 3e15), 'scale': E('PRESTIGE_SCALE', 20), 'bonusPerPoint': E('PRESTIGE_BONUS', 0.02)}
+eco['prestige'] = {'threshold': E('PRESTIGE', 3e15), 'scale': E('PRESTIGE_SCALE', 20), 'exponent': E('PRESTIGE_EXP', 0.5), 'bonusPerPoint': E('PRESTIGE_BONUS', 0.02)}
 P = eco['prestige']
-FIRST_STAR = tidy(P['threshold'] / P['scale'] ** 2 * 1.0000001)   # lifetime earnings at which the first point exists
-while int(P['scale'] * (FIRST_STAR / P['threshold']) ** 0.5) < 1: FIRST_STAR = tidy(FIRST_STAR * 1.1)
+FIRST_STAR = tidy(P['threshold'] * (1 / P['scale']) ** (1 / P['exponent']) * 1.0000001)   # lifetime earnings at which the first point exists
+while int(P['scale'] * (FIRST_STAR / P['threshold']) ** P['exponent'] + 1e-9) < 1: FIRST_STAR = tidy(FIRST_STAR * 1.1)
 BONUS_PCT = ('%g' % (P['bonusPerPoint'] * 100))
 eco['offline'] = {'maxHours': 4, 'efficiency': 0.5, 'minSecondsToShow': 60}
 eco['boost'] = {'multiplier': 2, 'minutesPerAd': 30, 'maxMinutes': 240}
@@ -98,10 +98,10 @@ g['sim'] = {
     'production': {'name': 'Kitchen', 'icon': '🍕'},
     'buffer': {'name': content['buffer']['name'], 'icon': content['buffer']['icon']},
     'transport': {
-        'name': t['name'], 'workerName': t['worker'], 'icon': t['icon'],
+        'name': t['name'], 'workerName': t['worker'], 'icon': 'char:waiter',
         'baseCost': T_COST, 'costGrowth': STAGE_COST_GROWTH, 'baseCapacity': T_CAPACITY, 'capacityGrowth': STAGE_GROWTH, 'tripSeconds': 6,
         'workersAt': [1, 5, 12, 25, 45, 70],
-        'managerCost': 400, 'managerName': t['manager'], 'managerIcon': '🤵', 'managerFlavor': t['managerFlavor'], 'bellName': t['bell'],
+        'managerCost': 400, 'managerName': t['manager'], 'managerIcon': 'char:maitre', 'managerFlavor': t['managerFlavor'], 'bellName': t['bell'],
     },
     'sales': {
         'name': s['name'], 'seatName': s['seat'], 'icon': s['icon'],
@@ -226,8 +226,8 @@ daily = [
     {'id': 'free_box',      'title': 'Free Pizza Box',  'icon': '📦', 'reward': {'type': 'chest', 'chestId': 'box', 'count': 1}, 'gemCost': 0, 'weight': 2},
     {'id': 'free_tips',     'title': 'Free Tip Jar',    'icon': '🫙', 'reward': {'type': 'cash', 'seconds': 900},          'gemCost': 0, 'weight': 2},
     {'id': 'free_recruit',  'title': 'Free Recruit',    'icon': '🎟️', 'reward': {'type': 'randomCard', 'rarity': 'common', 'copies': 3}, 'gemCost': 0, 'weight': 1},
-    {'id': 'tips_1h',       'title': 'An Hour of Takings', 'icon': '💰', 'reward': {'type': 'cash', 'seconds': 3600},    'gemCost': 20, 'weight': 2},
-    {'id': 'tips_4h',       'title': 'Four Hours of Takings', 'icon': '💰', 'reward': {'type': 'cash', 'seconds': 14400}, 'gemCost': 70, 'weight': 1},
+    {'id': 'tips_1h',       'title': '1 h of Income', 'icon': '💰', 'reward': {'type': 'cash', 'seconds': 3600},    'gemCost': 20, 'weight': 2},
+    {'id': 'tips_4h',       'title': '4 h of Income', 'icon': '💰', 'reward': {'type': 'cash', 'seconds': 14400}, 'gemCost': 70, 'weight': 1},
 ]
 for card in cards:
     n, gems, w = CARD_OFFER[card['rarity']]
@@ -275,7 +275,38 @@ portraits = {'nonna': 'char:nonna', 'rival': 'char:carl', 'pepe': 'asset:hero'}
 for ch in g['characters']:
     ch['portrait'] = portraits.get(ch['id'], ch['portrait'])
     if ch['portrait'].startswith('char:'): cast[ch['portrait'][5:]] = {'preset': ch['portrait'][5:]}
+# Drawn portraits for the staff the lists show (look-A1): the transport stage is a waiter in the
+# scene's uniform (stage colour on the apron), its hire a maître d' in a suit, and each station's
+# hire the cook the scene draws there (workerLook), so the row, the banner and the room agree.
+ORANGE, TEAL = g['theme']['colors']['stages']['production'], g['theme']['colors']['stages']['transport']
+cast['waiter'] = {'kind': 'waiter', 'hair': '#2E2428', 'hairStyle': 'slick', 'skin': '#E8B48A', 'apron': TEAL}
+cast['maitre'] = {'kind': 'manager', 'outfitStyle': 'suit', 'outfit': '#23262F', 'accent': '#E5484D', 'neck': 'bowtie',
+                  'hair': '#9AA0A6', 'hairStyle': 'slick', 'moustache': 'curled', 'skin': '#F2C9A0', 'brows': 'smug'}
+COOKS = {
+    'margherita': ('pizzaiolo', {'kind': 'chef', 'hair': '#2E2428', 'hairStyle': 'short', 'moustache': 'curled', 'skin': '#E8B48A'}),
+    'bruschetta': ('prepcook',  {'kind': 'chef', 'body': 'slim', 'hair': '#B5562B', 'hairStyle': 'ponytail', 'hat': 'bandana', 'hatColor': ORANGE, 'skin': '#F2C9A0', 'lashes': True}),
+    'pasta':      ('pastachef', {'kind': 'chef', 'hair': '#6B4A2E', 'hairStyle': 'curly', 'beard': 'goatee', 'skin': '#C98A5E'}),
+    'arancini':   ('frycook',   {'kind': 'chef', 'hat': 'cap', 'hatColor': ORANGE, 'hair': '#1F1A17', 'hairStyle': 'spiky', 'skin': '#8D5A3B'}),
+    'gelato':     ('gelataio',  {'kind': 'chef', 'hat': 'minitoque', 'hair': '#E8C36A', 'hairStyle': 'bob', 'skin': '#F5D3B5', 'lashes': True}),
+    'espresso':   ('barista',   {'kind': 'chef', 'hat': 'none', 'outfitStyle': 'tee', 'apron': '#6B3E26', 'hair': '#3B2A22', 'hairStyle': 'bun', 'glasses': 'round', 'skin': '#D9A77C'}),
+}
+for b in g['businesses']:
+    cid, look = COOKS[b['id']]
+    cast[cid] = {**look, 'accent': ORANGE}
+    b['workerLook'] = cid
 g['cast'] = dict(sorted(cast.items()))
+
+# Drawn icons from the art kit ("art:<name>", src/config/artIcons.ts) where the emoji looked like
+# placeholders (look-A1 to A3): chests by tier, the premium currency, the home tab, gem packs by size.
+CHEST_ART = {'wood': 'art:chest-wood', 'silver': 'art:chest-silver', 'gold': 'art:chest-gold'}
+for c in CHESTS: c['icon'] = CHEST_ART[c['tier']]
+for o in daily:
+    if o['reward']['type'] == 'chest': o['icon'] = next(c['icon'] for c in CHESTS if c['id'] == o['reward']['chestId'])
+    if o['reward']['type'] == 'gems': o['icon'] = 'art:truffle'
+g['strings']['gemIcon'] = 'art:truffle'
+g['theme']['icons']['tabBuild'] = 'art:storefront'
+# The deals show the character they feature.
+for d in deals: d['icon'] = {'welcome': 'char:nonna', 'franchise': 'char:al'}[d['id']]
 
 # Prices (US, fallback only; the store shows the real one). genre.md section 5: No Ads at $3.99
 # that also skips rewarded ads undersold it, so the two are split. Gem packs give exact amounts
@@ -286,10 +317,10 @@ g['monetization']['iap']['products'] = [
     {'id': 'pizza_express_pass', 'kind': 'skipAds', 'fallbackPrice': '$7.99', **pr['skipAds']},
     {'id': 'pizza_x2', 'kind': 'multiplier', 'value': 2, 'fallbackPrice': '$6.99', 'highlight': True, **pr['x2']},
     {'id': 'pizza_x3', 'kind': 'multiplier', 'value': 3, 'fallbackPrice': '$12.99', **pr['x3']},
-    {'id': 'pizza_gems_100', 'kind': 'gems', 'value': 100, 'fallbackPrice': '$1.99', 'title': pr['gems'][0]},
-    {'id': 'pizza_gems_280', 'kind': 'gems', 'value': 280, 'fallbackPrice': '$4.99', 'title': pr['gems'][1]},
-    {'id': 'pizza_gems_600', 'kind': 'gems', 'value': 600, 'fallbackPrice': '$9.99', 'title': pr['gems'][2]},
-    {'id': 'pizza_gems_1300', 'kind': 'gems', 'value': 1300, 'fallbackPrice': '$19.99', 'title': pr['gems'][3]},
+    {'id': 'pizza_gems_100', 'kind': 'gems', 'value': 100, 'fallbackPrice': '$1.99', 'title': pr['gems'][0], 'icon': 'art:truffle'},
+    {'id': 'pizza_gems_280', 'kind': 'gems', 'value': 280, 'fallbackPrice': '$4.99', 'title': pr['gems'][1], 'icon': 'art:truffle-pile'},
+    {'id': 'pizza_gems_600', 'kind': 'gems', 'value': 600, 'fallbackPrice': '$9.99', 'title': pr['gems'][2], 'icon': 'art:truffle-basket'},
+    {'id': 'pizza_gems_1300', 'kind': 'gems', 'value': 1300, 'fallbackPrice': '$19.99', 'title': pr['gems'][3], 'icon': 'art:truffle-crate'},
     {'id': 'pizza_warp_24', 'kind': 'timeWarp', 'value': 24, 'fallbackPrice': '$2.99', **pr['warp']},
     {'id': 'pizza_welcome_feast', 'kind': 'deal', 'fallbackPrice': '$4.99', 'title': dmap['welcome']['title'], 'description': dmap['welcome']['blurb']},
     {'id': 'pizza_franchise_kit', 'kind': 'deal', 'fallbackPrice': '$4.99', 'title': dmap['franchise']['title'], 'description': dmap['franchise']['blurb']},

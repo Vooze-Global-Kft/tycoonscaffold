@@ -197,9 +197,8 @@ export function HintOverlay({ inDialog = false }: { inDialog?: boolean }) {
     scrolledFor.current = hidden.key;
     const key = hidden.key;
     useHomeUi.getState().showRow(hidden.stage, hidden.row);
-    // The list scrolls without a layout event: measure again once it has arrived.
-    const timer = setTimeout(() => targets.refresh(key), 450);
-    return () => clearTimeout(timer);
+    // The list scrolls without a layout event: measure again once it has arrived (harmless if it went away).
+    setTimeout(() => targets.refresh(key), 450);
   }, [inDialog, hidden]);
 
   const visible = inDialog ? !!found && !story : !!found && !dialog && !story && !overlaysOpen;

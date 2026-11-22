@@ -117,7 +117,11 @@ interface Store {
 
   // --- cards, chests, missions, deals ---
   levelUpCard(cardId: string): void;
-  openChest(chestId: string): void;
+  /**
+   * Opens one owned chest. While a chest is being revealed it is refused, unless `replaces` is the id
+   * of that opening (the overlay's "Open next"); a repeat within a moment is always refused.
+   */
+  openChest(chestId: string, replaces?: number): void;
   closeChest(): void;
   claimFreeChest(): void;
   watchAdChest(): Promise<void>;
@@ -144,6 +148,10 @@ interface Store {
 let tapSeq = 0;
 let celebrationSeq = 0;
 let chestSeq = 0;
+/** Date.now() when the last chest opening started (see openChestNow). */
+let chestOpenedAt = 0;
+/** No reveal is shorter than this: a second open request inside it is a repeated tap. */
+const CHEST_REOPEN_GUARD_MS = 700;
 /** Seconds since the last housekeeping pass (deals, daily shop, missions). */
 let houseClock = 0;
 let rushWasActive = false;
@@ -262,6 +270,17 @@ export const useGame = create<Store>((set, get) => {
   const celebrate = (c: Omit<Celebration, 'id'>) =>
     set({ celebrations: [...get().celebrations.slice(-3), { ...c, id: ++celebrationSeq }] });
 
+  /** A purchase that did not go through says why (review P7), unless the player cancelled it. Nothing was charged. */
+  const purchaseFailed = () => {
+    if (!iap.lastFailure) return;
+    fx.play('ui_denied');
+    celebrate(
+      iap.lastFailure === 'unavailable'
+        ? { kind: 'reward', title: 'Not available right now', subtitle: 'The store has not loaded this item yet. Nothing was charged.', icon: get().cfg.theme.icons.tabShop }
+        : { kind: 'reward', title: 'Purchase did not go through', subtitle: 'Nothing was charged. Please try again later.', icon: get().cfg.theme.icons.tabShop },
+    );
+  };
+
   /** One banner per granted reward (chests are not announced here: opening them is the announcement). */
   const celebrateRewards = (granted: GrantedReward[]) => {
     const { cfg } = get();
@@ -300,11 +319,21 @@ export const useGame = create<Store>((set, get) => {
     }
   };
 
-  const openChestNow = (chestId: string) => {
+  /**
+   * Opens a chest and starts its reveal. Refused while another opening is on screen (logic C4: a
+   * double tap on "Open next" opened two chests and the first one's rewards were never shown), except
+   * for the overlay's own "Open next", which names the opening it replaces. A second request within
+   * CHEST_REOPEN_GUARD_MS of the last opening is always refused: no reveal is that short, so it can
+   * only be a repeated tap. A refused chest stays in the inventory.
+   */
+  const openChestNow = (chestId: string, replaces?: number) => {
+    const current = get().chestOpening;
+    if (current && ((replaces !== undefined && replaces !== current.id) || Date.now() - chestOpenedAt < CHEST_REOPEN_GUARD_MS)) return;
     const { cfg, game } = get();
     const result = safe('meta.openChest', () => M.openChest(cfg, game, chestId, Date.now()), null);
     if (!result) return fx.play('ui_denied');
     syncAds(result.state);
+    chestOpenedAt = Date.now();
     set({ game: result.state, chestOpening: { id: ++chestSeq, chestId, rewards: result.rewards } });
     analytics.log('chest_open', { chest_id: chestId });
     get().save();
@@ -580,7 +609,7 @@ export const useGame = create<Store>((set, get) => {
       analytics.log('hire_manager', { business_id: id, venue: venueId });
       const cfg = get().cfg;
       const b = cfg.businesses.find((x) => x.id === id)!;
-      celebrate({ kind: 'hire', title: b.managerName ?? 'Manager hired', subtitle: `now runs ${b.name}`, icon: b.managerIcon ?? cfg.theme.icons.manager });
+      celebrate({ kind: 'hire', title: b.managerName ?? 'Manager hired', subtitle: `now runs ${b.name}`, icon: b.managerIcon ?? (b.workerLook ? `char:${b.workerLook}` : cfg.theme.icons.manager) });
     },
 
     buyUpgrade(id) {
@@ -689,7 +718,7 @@ export const useGame = create<Store>((set, get) => {
       get().save();
     },
 
-    openChest: (chestId) => openChestNow(chestId),
+    openChest: (chestId, replaces) => openChestNow(chestId, replaces),
     closeChest() {
       // No interstitial after a chest: the reveal is the reward moment (critique-fun.md sections 6 and 7).
       if (get().chestOpening === null) return;
@@ -756,7 +785,7 @@ export const useGame = create<Store>((set, get) => {
         const product = cfg.monetization.iap.products.find((p) => p.id === deal.productId);
         if (!product || !safe('meta.activeDeals', () => M.activeDeals(cfg, game, now), []).some((d) => d.deal.id === dealId)) return fx.play('ui_denied');
         const ok = await iap.purchase(product);
-        if (!ok) return;
+        if (!ok) return purchaseFailed();
         // Use the latest state: the game kept running while the payment sheet was open.
         result = safe('meta.grantDeal', () => M.grantDeal(cfg, get().game, dealId, Date.now()), null);
         if (!result) {
@@ -807,7 +836,8 @@ export const useGame = create<Store>((set, get) => {
       update((s) => {
         const now = Date.now();
         const reset = E.prestige(cfg, s, now);
-        return safe('meta.refreshDeals', () => M.refreshDeals(cfg, reset, now), reset);
+        const fresh = safe('meta.missionsAfterReset', () => M.missionsAfterReset(cfg, reset, now), reset);
+        return safe('meta.refreshDeals', () => M.refreshDeals(cfg, fresh, now), fresh);
       });
       fx.play('prestige');
       analytics.log('prestige', { points: gained, count: game.prestigeCount + 1 });
@@ -895,7 +925,7 @@ export const useGame = create<Store>((set, get) => {
       return once(`iap:${product.id}`, async () => {
         if (M.isNonConsumable(product) && M.productOwned(get().game, product)) return;
         const ok = await iap.purchase(product);
-        if (!ok) return;
+        if (!ok) return purchaseFailed();
         // The payment sheet was open for a while: apply to the latest state, never to a copy taken before.
         const result = safe('meta.applyProduct', () => M.applyProduct(get().cfg, get().game, product, Date.now()), null);
         if (!result) {

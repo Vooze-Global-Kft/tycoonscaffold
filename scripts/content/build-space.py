@@ -185,7 +185,7 @@ g['meta'] = {
     },
     'cardCopies': {'base': 2, 'growth': 1.5},
     'chests': [{
-        'id': 'ore_crate', 'name': 'Supply Pod', 'icon': '📦', 'blurb': 'Dropped from orbit every few hours. Free.',
+        'id': 'ore_crate', 'name': 'Supply Pod', 'icon': 'art:chest-silver', 'blurb': 'Dropped from orbit every few hours. Free.',
         'tier': 'silver', 'slots': 3,
         'slotWeights': {'card': 80, 'gems': 10, 'cash': 10},
         'rarityWeights': {'common': 78, 'rare': 18, 'epic': 4, 'legendary': 0},

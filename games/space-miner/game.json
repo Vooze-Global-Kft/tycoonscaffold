@@ -628,7 +628,7 @@
       {
         "id": "ore_crate",
         "name": "Supply Pod",
-        "icon": "📦",
+        "icon": "art:chest-silver",
         "blurb": "Dropped from orbit every few hours. Free.",
         "tier": "silver",
         "slots": 3,

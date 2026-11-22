@@ -209,7 +209,8 @@ describe('review: tick length and fast phases', () => {
     const { paid } = run(p, 50, seconds, { workers: 1, seats: 50, dt });
     expect(paid / seconds / transportRate(p, 1)).toBeGreaterThan(0.97);
     expect(paid / seconds / transportRate(p, 1)).toBeLessThan(1.01);
-  });
+    // CPU-bound (600 000 ticks at 1 ms): give it room on a loaded machine (review C7).
+  }, 30_000);
 
   it.each([0.016, 0.1, 1])('very short trips still reach the advertised transport rate (tick %s s) (C1)', (dt) => {
     const p = transportBound({ ...base, tripSeconds: 0.01 });

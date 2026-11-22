@@ -238,8 +238,13 @@ export const GameConfigSchema = z.object({
     prestige: z.object({
       /** Lifetime earnings needed for the first prestige point. */
       threshold: z.number().positive(),
-      /** points = floor(scale * sqrt(lifetime / threshold)) */
+      /** points = floor(scale * (lifetime / threshold) ^ exponent) */
       scale: z.number().positive().default(1),
+      /**
+       * How fast points grow with lifetime earnings (0.5 = square root). Lower values damp the reset
+       * loop: each extra point needs relatively more lifetime earnings.
+       */
+      exponent: z.number().positive().max(1).default(0.5),
       /** Revenue bonus per point (0.02 = +2%). */
       bonusPerPoint: z.number().positive().default(0.02),
     }),

@@ -225,6 +225,19 @@ does these; sources in `docs/design/research/policy.md`):
 7. **Data safety / App Privacy**: from RATING-NOTES.md; check each SDK's current disclosure.
 8. Build and submit: `npx eas-cli@latest build --profile <id>-production`, then `submit --profile <id>-production`; push the iOS listing with `eas metadata:push` (the Play listing in `store/play/` uses the fastlane `supply` layout).
 
+`npm run validate` fails when `games/<id>/store/*` is not what `npm run sync` would
+write from game.json (a stale listing must never be uploaded), and when a store
+text contains a banned word (real trademarks such as "Michelin", other studios'
+names) or an "Idle ... Tycoon" title; the list is `BANNED_STORE_WORDS` in
+`scripts/lib/checks.ts`.
+
+**Web-only files in native exports.** `expo export` always copies `public/`
+(including the 7.9 MB `canvaskit.wasm` the web preview needs) into its output
+folder, for iOS and Android too. Nothing native reads it: EAS Build does not use
+that folder, and `eas update` uploads only the files `metadata.json` lists. If you
+ever upload an export by hand, upload only `metadata.json`, the bundles and the
+assets it names.
+
 **The spam rule, plainly.** Apple (4.3) and Google (Spam) both reject "multiple
 apps with highly similar functionality, content, and user experience", and
 Google can close every related account with the one it bans. Many games from one

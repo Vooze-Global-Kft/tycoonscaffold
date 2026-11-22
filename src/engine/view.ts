@@ -64,10 +64,9 @@ export function prestigePreview(cfg: GameConfig, state: GameState): PrestigePrev
   const points = E.prestigePointsAvailable(cfg, state);
   const multNow = E.prestigeMultiplier(cfg, state);
   const multAfter = E.prestigeMultiplier(cfg, { ...state, prestigePoints: state.prestigePoints + points });
-  // points = floor(scale * sqrt(lifetime / threshold))  =>  lifetime for k points = threshold * (k / scale)^2
-  const { threshold, scale } = cfg.economy.prestige;
+  // points = floor(scale * (lifetime / threshold)^exponent)  =>  lifetime for k points = threshold * (k / scale)^(1 / exponent)
   const nextTotal = E.totalPrestigePoints(cfg, state.lifetimeEarnings) + 1;
-  const needed = threshold * Math.pow(nextTotal / scale, 2);
+  const needed = E.lifetimeForPrestigePoints(cfg, nextTotal);
   return { points, multNow, multAfter, toNextPoint: Math.max(0, needed - state.lifetimeEarnings) };
 }
 
@@ -95,8 +94,35 @@ export type GuideHint =
 export function guideHint(cfg: GameConfig, state: GameState, now: number): GuideHint | null {
   const base = M.nextHint(cfg, state, now);
   if (base && (base.kind === 'claimMission' || base.kind === 'openChest' || base.kind === 'hireBusiness' || base.kind === 'hireTransport')) return base;
+  const limit = bottleneckHint(cfg, state, now);
+  if (limit) return limit;
   if (base) return earlyLesson(cfg, state, now) ?? base;
   return firstTimeHint(cfg, state, now);
+}
+
+/**
+ * Income must be below this share of what the kitchen makes before the hand points at the stage
+ * that limits it: a small mismatch is normal and not worth a nudge.
+ */
+export const BOTTLENECK_SHARE = 0.8;
+
+/**
+ * "Buy waiters" (or tables) when that stage clearly limits income and a level of it is affordable
+ * (play-test D1: dishes piled up on the pass at flat income for minutes and no hint said so). Only
+ * once the venue's transport runs by itself: before that the bell is the lesson. Applies to veterans
+ * too, because it is the one hint that says where income is lost; it stops as soon as the stage
+ * keeps up again.
+ */
+function bottleneckHint(cfg: GameConfig, state: GameState, now: number): GuideHint | null {
+  if (!E.isSim(cfg)) return null;
+  const venueId = state.activeVenue;
+  const venue = state.venues[venueId];
+  if (!venue?.unlocked || !venue.chain?.transportManaged) return null;
+  const r = stageReadout(cfg, state, venueId, now);
+  // What the kitchen makes and the room does not turn into income.
+  if (r.limiting === 'production' || r.rate >= r.production * BOTTLENECK_SHARE) return null;
+  if (r.limiting === 'transport') return E.canAfford(state.cash, E.transportCost(cfg, state, venueId, 1)) ? { kind: 'buyTransport' } : null;
+  return E.canAfford(state.cash, E.salesCost(cfg, state, venueId, 1)) ? { kind: 'buySales' } : null;
 }
 
 /** First-session lessons once the first venue is automated, ahead of the plain buy and manual-loop hints. */

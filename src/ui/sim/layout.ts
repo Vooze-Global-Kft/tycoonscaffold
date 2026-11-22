@@ -24,6 +24,13 @@ export const MAX_SEATS_DRAWN = 8;
 export const MAX_WORKERS_DRAWN = 6;
 export const MAX_STATIONS_DRAWN = 6;
 
+/** Height of the door drawing in art units (props DOOR_SIZE.height; this file stays free of Skia). */
+export const DOOR_ART_HEIGHT = 72;
+/** Radius of the skill button's tap area, in pt (RushButton RUSH_HIT / 2). */
+export const RUSH_HIT_RADIUS = 30;
+/** How far the skill button reaches below its centre with the label that hangs under it, in pt. */
+export const RUSH_REACH_BELOW = RUSH_HIT_RADIUS - 6 + 20;
+
 /** Seats fill a 4 x 2 grid from the middle outwards, so two tables look centred rather than stuck in a corner. */
 const SEAT_ORDER = [1, 2, 0, 3, 5, 6, 4, 7];
 
@@ -56,6 +63,8 @@ export interface SceneLayout {
   /** The doorway, and a point just outside it where people appear and vanish. */
   door: Point;
   outside: Point;
+  /** Top of the short stretch of wall the front door is set in (the door art is 72 + 6 units tall). */
+  entranceTop: number;
   /** Centre of the round skill button [Rush] that floats over the walkway, right of the counter. */
   rush: Point;
   /** How tall a standing character is drawn. */
@@ -106,16 +115,19 @@ export function computeLayout(width: number, height: number, stationCount: numbe
   const passStack = { x: pass.x + pass.width * 0.42, y: pass.y + pass.height * 0.2 };
   const bell = { x: pass.x + pass.width - 18 * unit, y: pass.y + pass.height * 0.25 };
 
-  const door = { x: width * 0.92, y: height * 0.8 };
+  // The front door sits low in the right corner, so the skill button above it never covers the
+  // door or the guests coming in.
+  const door = { x: width * 0.92, y: height * 0.9 };
+  const entranceTop = door.y - (DOOR_ART_HEIGHT + 6) * artScale;
   const kitchenGate = { x: pass.x + pass.width + 14 * unit, y: pass.y + pass.height * 0.9 };
-  // Beside the right end of the pass, clear of the door below it (the button's label hangs under it).
-  const rush = { x: width * 0.872, y: height * 0.525 };
-  const outside = { x: width + 34 * unit, y: height * 0.82 };
+  // Beside the right end of the pass, with its label (which hangs under it) clear of the door.
+  const rush = { x: width * 0.9, y: Math.min(height * 0.5, entranceTop - RUSH_REACH_BELOW - 3) };
+  const outside = { x: width + 34 * unit, y: height * 0.92 };
 
-  // Tables: a fixed 4 x 2 grid, so a table never moves when another one is added.
+  // Tables: a fixed 4 x 2 grid from the start, so a table never moves when another one is added
+  // (the first four fill the back row).
   const seats = clamp(seatCount, 0, MAX_SEATS_DRAWN);
-  const twoRows = seats > 4;
-  const rowY = twoRows ? [height * 0.735, height * 0.915] : [height * 0.82, height * 0.82];
+  const rowY = [height * 0.735, height * 0.915];
   const colX = [0.14, 0.33, 0.52, 0.71].map((f) => width * f);
   const tables: Point[] = [];
   const guests: Point[] = [];
@@ -145,6 +157,7 @@ export function computeLayout(width: number, height: number, stationCount: numbe
     serve,
     tableSize: Math.min(46 * unit, height * 0.16),
     door,
+    entranceTop,
     outside,
     rush,
     characterHeight: 50 * artScale,

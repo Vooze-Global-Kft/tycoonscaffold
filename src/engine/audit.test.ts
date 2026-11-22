@@ -268,7 +268,7 @@ describe('audit: the drop-rate facts are exact', () => {
     for (let i = 0; i < n; i++) {
       const r = M.openChest(c, s, chestId, T0)!;
       let best = -1;
-      for (const g of r.rewards) {
+      for (const g of r.slots) {
         if (g.type !== 'card') continue;
         const k = RARITIES.indexOf(rarityOf(c, g.cardId));
         perCard[RARITIES[k]]++;

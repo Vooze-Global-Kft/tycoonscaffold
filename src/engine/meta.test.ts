@@ -166,7 +166,7 @@ describe('chests: rolls', () => {
     const r = M.openChest(cfg, s, 'plain', T0)!;
     expect(r.state.chests.owned.plain).toBe(1);
     expect(r.state.stats.chestsOpened).toBe(1);
-    expect(r.rewards).toHaveLength(3);
+    expect(r.slots).toHaveLength(3);
     const r2 = M.openChest(cfg, r.state, 'plain', T0)!;
     expect(r2.state.chests.owned.plain).toBeUndefined();
     expect(M.chestCount(r2.state)).toBe(0);
@@ -177,18 +177,18 @@ describe('chests: rolls', () => {
   it('applies what it reveals: cards, gems and cash reach the state', () => {
     const s = withChests({ ...fresh(), rng: 7 }, 'plain', 1);
     const r = M.openChest(cfg, s, 'plain', T0)!;
-    const gems = r.rewards.reduce((a, g) => a + (g.type === 'gems' ? g.amount : 0), 0);
-    const cash = r.rewards.reduce((a, g) => a + (g.type === 'cash' ? g.amount : 0), 0);
+    const gems = r.slots.reduce((a, g) => a + (g.type === 'gems' ? g.amount : 0), 0);
+    const cash = r.slots.reduce((a, g) => a + (g.type === 'cash' ? g.amount : 0), 0);
     expect(r.state.gems).toBe(s.gems + gems);
     expect(r.state.cash).toBeCloseTo(s.cash + cash, 6);
-    for (const c of cardRewards(r.rewards)) expect(r.state.cards[c.cardId].level).toBeGreaterThan(0);
+    for (const c of cardRewards(r.slots)) expect(r.state.cards[c.cardId].level).toBeGreaterThan(0);
   });
 
   it('reveals cash and gems first and the best card last', () => {
     let s = withChests({ ...fresh(), rng: 99 }, 'plain', 200);
     for (let i = 0; i < 200; i++) {
       const r = M.openChest(cfg, s, 'plain', T0)!;
-      const order = r.rewards.map((g) => (g.type === 'cash' ? -2 : g.type === 'gems' ? -1 : RARITIES.indexOf(rarityOf(cfg, (g as { cardId: string }).cardId))));
+      const order = r.slots.map((g) => (g.type === 'cash' ? -2 : g.type === 'gems' ? -1 : RARITIES.indexOf(rarityOf(cfg, (g as { cardId: string }).cardId))));
       expect([...order].sort((a, b) => a - b)).toEqual(order);
       s = r.state;
     }
@@ -204,7 +204,7 @@ describe('chests: rolls', () => {
     const bySlot = { card: 0, gems: 0, cash: 0 };
     for (let i = 0; i < N; i++) {
       const r = M.openChest(cfg, s, 'plain', T0)!;
-      for (const g of r.rewards) {
+      for (const g of r.slots) {
         if (g.type === 'card') {
           bySlot.card++;
           byRarity[rarityOf(cfg, g.cardId)]++;
@@ -229,7 +229,7 @@ describe('chests: rolls', () => {
     let s = M.grantChest(noEpic, { ...fresh(noEpic), rng: 5 }, 'plain', 3000);
     for (let i = 0; i < 3000; i++) {
       const r = M.openChest(noEpic, s, 'plain', T0)!;
-      for (const c of cardRewards(r.rewards)) expect(rarityOf(noEpic, c.cardId)).not.toBe('epic');
+      for (const c of cardRewards(r.slots)) expect(rarityOf(noEpic, c.cardId)).not.toBe('epic');
       s = r.state;
     }
     // No cards at all: card slots cannot roll, so the odds are all zero and slots are gems or cash.
@@ -237,14 +237,14 @@ describe('chests: rolls', () => {
     expect(M.chestCardOdds(none, 'plain').every((o) => o.percent === 0)).toBe(true);
     expect(M.chestSlotOdds(none, 'plain').card).toBe(0);
     const r = M.openChest(none, M.grantChest(none, fresh(none), 'plain'), 'plain', T0)!;
-    expect(cardRewards(r.rewards)).toHaveLength(0);
+    expect(cardRewards(r.slots)).toHaveLength(0);
   });
 
   it('the guarantee upgrades the last card slot to exactly that rarity', () => {
     let s = M.grantChest(cfg, { ...fresh(), rng: 3 }, 'guarded', 50);
     for (let i = 0; i < 50; i++) {
       const r = M.openChest(cfg, s, 'guarded', T0)!;
-      const rs = cardRewards(r.rewards).map((c) => rarityOf(cfg, c.cardId));
+      const rs = cardRewards(r.slots).map((c) => rarityOf(cfg, c.cardId));
       expect(rs).toEqual(['common', 'common', 'rare']);
       s = r.state;
     }
@@ -252,8 +252,8 @@ describe('chests: rolls', () => {
 
   it('a guarantee turns the last slot into a card when no card slot was rolled', () => {
     const r = M.openChest(cfg, M.grantChest(cfg, fresh(), 'gemsguard'), 'gemsguard', T0)!;
-    expect(r.rewards.map((g) => g.type)).toEqual(['gems', 'gems', 'card']);
-    expect(rarityOf(cfg, cardRewards(r.rewards)[0].cardId)).toBe('epic');
+    expect(r.slots.map((g) => g.type)).toEqual(['gems', 'gems', 'card']);
+    expect(rarityOf(cfg, cardRewards(r.slots)[0].cardId)).toBe('epic');
   });
 
   it('epic protection: an epic at the latest in the Nth chest, then the counter resets', () => {
@@ -306,8 +306,11 @@ describe('chests: rolls', () => {
   it('isNew is true only on the first reveal of a card', () => {
     const c = parse({}, { cards: [cards[0]] });
     const r = M.openChest(c, M.grantChest(c, fresh(c), 'commons'), 'commons', T0)!;
-    expect(cardRewards(r.rewards).map((x) => x.isNew)).toEqual([true, false, false]);
+    expect(cardRewards(r.slots).map((x) => x.isNew)).toEqual([true, false, false]);
     expect(r.state.cards.c1).toEqual({ level: 1, copies: 2 });
+    // The screen gets one reward for the three slots that picked the same card, copies added.
+    const total = cardRewards(r.slots).reduce((a, x) => a + x.copies, 0);
+    expect(r.rewards).toEqual([{ type: 'card', cardId: 'c1', copies: total, isNew: true }]);
   });
 
   it('haptic pulses stay within budget and keep the best card', () => {
@@ -804,7 +807,9 @@ describe('hints', () => {
     for (const b of plain.businesses) if (vet.venues.a.businesses[b.id].owned > 0) vet = E.hireManager(plain, vet, 'a', b.id);
     vet = { ...vet, stats: { ...vet.stats, playSeconds: M.HINT_VETERAN_SECONDS } };
     expect(M.nextHint(plain, vet, T0)).toBeNull();
-    expect(M.nextHint(plain, { ...fresh(plain), prestigeCount: 1 }, T0)).toBeNull();
+    // After a reset the unstaffed venue gets the basics again (play-test N5); once it runs, nothing.
+    expect(M.nextHint(plain, { ...fresh(plain), prestigeCount: 1 }, T0)).toEqual({ kind: 'tapStation', businessId: 'drill' });
+    expect(M.nextHint(plain, { ...vet, prestigeCount: 1, stats: { ...vet.stats, playSeconds: 10 } }, T0)).toBeNull();
     // Early on, automation alone is not enough to stop helping.
     expect(M.nextHint(plain, { ...vet, stats: { ...vet.stats, playSeconds: 10 } }, T0)).not.toBeNull();
   });

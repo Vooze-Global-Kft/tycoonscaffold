@@ -10,7 +10,7 @@ import type { SceneCtx } from './context';
 export function Entrance({ ctx }: { ctx: SceneCtx }) {
   const { layout: L, palette, clock } = ctx;
   const k = L.artScale;
-  const wallTop = L.door.y - (DOOR_SIZE.height + 6) * k;
+  const wallTop = L.entranceTop;
   const wallLeft = L.door.x - (DOOR_SIZE.width / 2 + 10) * k;
   return (
     <Group zIndex={L.door.y - 2}>

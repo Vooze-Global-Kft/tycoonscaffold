@@ -663,8 +663,33 @@ describe('format', () => {
     [2.5e6, '2.50M'],
     [1e33, '1.00Dc'],
     [1e36, '1.00aa'],
-    [999_999, '999.99K'],
+    [999_994, '999.99K'],
+    [999_995, '1.00M'],
+    [999_999, '1.00M'],
+    [999.4, '999'],
+    [9.999, '10.00'],
   ])('%d -> %s', (n, s) => expect(formatNumber(n)).toBe(s));
+  // Every suffix boundary: just below 1000 of one suffix rolls over to "1.00" of the next.
+  // [group, its suffix, the suffix below it]
+  const BOUNDARIES: [number, string, string][] = [
+    [2, 'M', 'K'], [3, 'B', 'M'], [4, 'T', 'B'], [5, 'Qa', 'T'], [6, 'Qi', 'Qa'], [7, 'Sx', 'Qi'], [8, 'Sp', 'Sx'],
+    [9, 'Oc', 'Sp'], [10, 'No', 'Oc'], [11, 'Dc', 'No'], [12, 'aa', 'Dc'], [13, 'ab', 'aa'], [37, 'az', 'ay'], [38, 'ba', 'az'],
+    [102, 'dm', 'dl'], // the last group a double reaches (1e306)
+  ];
+  it.each(BOUNDARIES)('rolls over into group %d (%s)', (g, suffix, below) => {
+    const unit = Math.pow(10, 3 * g);
+    expect(formatNumber(unit)).toBe(`1.00${suffix}`);
+    expect(formatNumber(unit * 0.999996)).toBe(`1.00${suffix}`);
+    expect(formatNumber(unit * 0.99998)).toBe(`999.98${below}`);
+    expect(formatNumber(unit * 1.5)).toBe(`1.50${suffix}`);
+  });
+  it('1000 is "1.00K"; below it whole numbers', () => {
+    expect(formatNumber(1000)).toBe('1.00K');
+    expect(formatNumber(999.996)).toBe('999');
+  });
+  it('formats the largest doubles with a letter suffix', () => {
+    expect(formatNumber(1.7e308)).toBe('170.00dm');
+  });
   it('durations', () => {
     expect(formatDuration(3725)).toBe('1h 02m');
     expect(formatDuration(65)).toBe('1m 05s');

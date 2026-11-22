@@ -39,15 +39,17 @@ function act(s: GameState, h: GuideHint, now: number): GameState {
   }
 }
 
-/** Plays `seconds` of a new game, following every hint. */
-function play(seconds: number) {
+/** Plays `seconds` of a new game, following every hint, one action every `every` seconds (a multiple of 0.5). */
+function play(seconds: number, every = 1) {
   let s = M.registerSession(M.startFreeChestTimer(cfg, E.createInitialState(cfg, T0), T0), T0);
   const log: { t: number; key: string }[] = [];
   const useless: string[] = [];
-  for (let t = 0; t < seconds; t++) {
-    const now = T0 + t * 1000;
-    for (let k = 0; k < 10; k++) s = E.tick(cfg, s, 0.1, now + k * 100);
-    s = { ...s, stats: { ...s.stats, playSeconds: t } };
+  const step = every * 1000;
+  for (let ms = 0; ms < seconds * 1000; ms += step) {
+    const t = ms / 1000;
+    const now = T0 + ms;
+    for (let k = 0; k < every * 10; k++) s = E.tick(cfg, s, 0.1, now + k * 100);
+    s = { ...s, stats: { ...s.stats, playSeconds: Math.floor(t) } };
     s = M.refreshMissions(cfg, M.refreshDailyShop(cfg, M.refreshDeals(cfg, s, now), now), now);
     const h = guideHint(cfg, s, now);
     if (!h) continue;
@@ -93,5 +95,21 @@ describe('first session, following the hand', () => {
     const transport = first('hireTransport');
     expect(transport).toBeLessThan(180);
     for (const k of ['claimMission', 'openChest', 'buyTransport', 'buySales', 'startRush']) expect(first(k), k).toBeGreaterThan(transport);
+  });
+});
+
+describe('first session at a human pace (one action every 1.5 s)', () => {
+  const { log, useless } = play(8 * 60, 1.5);
+  const first = (prefix: string) => log.find((e) => e.key.startsWith(prefix))?.t ?? Infinity;
+
+  // Measured: first hire at 99 s, transport hire at 123 s (game.json margherita hire $250).
+  it('reaches the first hire after 60 to 100 s and the transport hire about half a minute later (play-test P1)', () => {
+    expect(useless).toEqual([]);
+    const hire = first(`hireBusiness:${cfg.businesses[0].id}`);
+    const transport = first('hireTransport');
+    expect(hire).toBeGreaterThanOrEqual(60);
+    expect(hire).toBeLessThanOrEqual(100);
+    expect(transport - hire).toBeGreaterThanOrEqual(15);
+    expect(transport - hire).toBeLessThanOrEqual(60);
   });
 });

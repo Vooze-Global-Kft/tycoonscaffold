@@ -9,16 +9,17 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } fr
 import * as E from '../../../../engine/economy';
 import { fx } from '../../../../services/fx';
 import { useGame } from '../../../../state/store';
+import { Button } from '../../../components/Button';
 import { GameIcon } from '../../../components/GameIcon';
 import { formatCountdown, useNow } from '../../../kit';
 import { alpha, useTheme } from '../../../theme';
-import type { SceneLayout } from '../../layout';
+import { RUSH_HIT_RADIUS, type SceneLayout } from '../../layout';
 import { sceneBus } from '../bus';
 import { RUSH_FACE } from './Effects';
 import type { RushPhase } from './shared';
 
 /** Hit area of the button: larger than the drawn face, as the sheet asks (56 pt or more). */
-export const RUSH_HIT = 60;
+export const RUSH_HIT = RUSH_HIT_RADIUS * 2;
 /** How long the ad offer stays open if the player does nothing. */
 const CHIP_MS = 5000;
 
@@ -79,20 +80,18 @@ export function RushButton({ layout, phase, until, readyAt }: { layout: SceneLay
   return (
     <>
       {chip ? (
-        <View style={[styles.chipWrap, { right: layout.width - x + RUSH_HIT / 2 + 2, top: y - 22 }]}>
-          <Pressable
+        <View style={[styles.chipWrap, { right: layout.width - x + RUSH_HIT / 2 + 2, top: y - 27 }]}>
+          {/* An optional offer, labelled as an ad with its reward before the tap (free with the no-ads pass). */}
+          <Button
+            variant={skipAds ? 'success' : 'accent'}
+            label={skipAds ? `${rush.name}: ready now` : '▶ Watch ad'}
+            sublabel={skipAds ? undefined : `${rush.name} ready now`}
             onPress={() => {
               setChip(false);
               adResetRush();
             }}
-            style={({ pressed }) => [styles.chip, { backgroundColor: t.c.surface, borderColor: t.c.primary, transform: [{ scale: pressed ? 0.95 : 1 }] }]}
-            accessibilityRole="button"
-            accessibilityLabel={`${skipAds ? '' : 'Watch an ad: '}${rush.name} ready now`}
-          >
-            <Text style={[t.display, styles.chipText, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-              {skipAds ? `${rush.name}: ready now` : `▶ Ad: ready now`}
-            </Text>
-          </Pressable>
+            style={styles.chip}
+          />
         </View>
       ) : null}
       <Pressable
@@ -162,6 +161,5 @@ const styles = StyleSheet.create({
   labelWrap: { position: 'absolute', width: 100, alignItems: 'center' },
   label: { fontSize: 11, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, overflow: 'hidden', maxWidth: 100 },
   chipWrap: { position: 'absolute' },
-  chip: { height: 44, paddingHorizontal: 14, borderRadius: 22, borderWidth: 2, justifyContent: 'center', maxWidth: 170 },
-  chipText: { fontSize: 13 },
+  chip: { maxWidth: 220 },
 });

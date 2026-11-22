@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createChain, type Seat, type TransportWorker } from '../../engine/chain';
 import {
   MAX_SEATS_DRAWN,
+  RUSH_HIT_RADIUS,
+  RUSH_REACH_BELOW,
   computeLayout,
   cookFrame,
   decorTiers,
@@ -61,6 +63,28 @@ describe('room layout', () => {
         const d = Math.hypot(L.tables[a].x - L.tables[b].x, L.tables[a].y - L.tables[b].y);
         expect(d).toBeGreaterThan(L.tableSize);
       }
+    }
+  });
+
+  it('keeps the skill button and its label off the door and the guests coming in', () => {
+    for (const [w, h] of [[390, 300], [375, 220], [375, 230], [430, 340]]) {
+      const l = computeLayout(w, h, 6, 8);
+      const k = l.artScale;
+      // The button's tap circle plus the label under it (about 72 pt wide), as one box.
+      const btn = { x0: l.rush.x - 36, x1: l.rush.x + 36, y0: l.rush.y - RUSH_HIT_RADIUS, y1: l.rush.y + RUSH_REACH_BELOW };
+      const inBox = (p: { x: number; y: number }) => p.x > btn.x0 && p.x < btn.x1 && p.y > btn.y0 && p.y < btn.y1;
+      // The door and the stretch of wall it is set in.
+      expect(btn.y1).toBeLessThan(l.entranceTop);
+      // Arriving guests, feet and head, all the way from outside to their seats.
+      for (let s = 0; s < l.guests.length; s++) {
+        for (let t = 0; t <= 1; t += 0.05) {
+          const f = guestFrame(l, { phase: 'arriving', t, guest: 1 } as Seat, s);
+          expect(inBox(f)).toBe(false);
+          expect(inBox({ x: f.x, y: f.y - 40 * k })).toBe(false);
+        }
+      }
+      // And it stays clear of the counter, where the bell is tapped.
+      expect(l.rush.x - RUSH_HIT_RADIUS).toBeGreaterThan(l.pass.x + l.pass.width);
     }
   });
 

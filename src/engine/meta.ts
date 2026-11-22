@@ -512,6 +512,7 @@ export function chestOddsFacts(cfg: GameConfig, chestId: string, state: GameStat
   const lines: string[] = [];
   const kinds = [`a card ${pct(slotOdds.card)}`, `gems ${pct(slotOdds.gems)}`, `cash ${pct(slotOdds.cash)}`].filter((_, i) => [slotOdds.card, slotOdds.gems, slotOdds.cash][i] > 0);
   lines.push(`${chest.slots} slots. Each slot is rolled on its own: ${kinds.join(', ')}.`);
+  if (slotOdds.card > 0 && chest.slots > 1) lines.push('Slots that pick the same card arrive as one reward with their copies added.');
   if (cardsPerChest > 0) {
     lines.push(`About ${(Math.round(cardsPerChest * 100) / 100).toString()} cards per chest on average.`);
     if (rules.guaranteed) lines.push(`Every chest holds at least one ${RARITY_LABEL[rules.guaranteed]} card or better.`);
@@ -608,9 +609,11 @@ function rollableAtLeast(cfg: GameConfig, min: number): number {
  * - Reveal order: cash slots, then gems, then cards from the lowest rarity to the highest (ties
  *   keep slot order). Rewards are applied in that order, so `isNew` is true only on the first
  *   reveal of a card the player did not own.
+ * - `rewards` is what the screen shows: slots that picked the same card merged into one
+ *   (mergeSameCards). `slots` is one entry per slot, for checking the odds.
  * - The unopened count for that chest drops by one (the key is removed at 0).
  */
-export function openChest(cfg: GameConfig, state: GameState, chestId: string, now: number): { state: GameState; rewards: GrantedReward[] } | null {
+export function openChest(cfg: GameConfig, state: GameState, chestId: string, now: number): { state: GameState; rewards: GrantedReward[]; slots: GrantedReward[] } | null {
   const chest = chestCfg(cfg, chestId);
   if (!chest || (state.chests.owned[chestId] ?? 0) < 1) return null;
   const mult = copiesMultiplier(cfg, state);
@@ -697,7 +700,23 @@ export function openChest(cfg: GameConfig, state: GameState, chestId: string, no
     s = res.state;
     rewards.push(res.granted);
   }
-  return { state: s, rewards };
+  return { state: s, rewards: mergeSameCards(rewards), slots: rewards };
+}
+
+/**
+ * Slots are rolled independently, so two can pick the same card (that keeps the odds exact). For the
+ * screen they become one reward with the copies added (never "Fiona ×2" next to "Fiona ×3"), at the
+ * place of the first one; `isNew` stays true if the card was new.
+ */
+export function mergeSameCards(rewards: GrantedReward[]): GrantedReward[] {
+  const out: GrantedReward[] = [];
+  for (const g of rewards) {
+    const i = g.type === 'card' ? out.findIndex((o) => o.type === 'card' && o.cardId === g.cardId) : -1;
+    const prev = i >= 0 ? out[i] : null;
+    if (prev && prev.type === 'card' && g.type === 'card') out[i] = { ...prev, copies: prev.copies + g.copies, isNew: prev.isNew || g.isNew };
+    else out.push(g);
+  }
+  return out;
 }
 
 /**
@@ -1026,6 +1045,19 @@ export function refreshMissions(cfg: GameConfig, state: GameState, now?: number)
   return { ...state, missions: { ...state.missions, slots: sameSlots ? state.missions.slots : slots, day, doneToday } };
 }
 
+/**
+ * After a prestige reset: missions whose target was scaled to the old income ("earn") are dropped
+ * and the slots refilled, so their new targets come from the post-reset income (play-test M1: an
+ * "Earn $60T" mission right after a reset sat dead for hours). Dropping is not a claim: it does not
+ * count towards the daily limit or a template's ladder. Count missions keep their progress.
+ */
+export function missionsAfterReset(cfg: GameConfig, state: GameState, now: number): GameState {
+  const byId = new Map(cfg.meta.missions.templates.map((t) => [t.id, t]));
+  const slots = state.missions.slots.filter((sl) => sl && byId.get(sl.templateId)?.type !== 'earn');
+  if (slots.length === state.missions.slots.length) return state;
+  return refreshMissions(cfg, { ...state, missions: { ...state.missions, slots } }, now);
+}
+
 function missionText(cfg: GameConfig, t: MissionTemplate, target: number): string {
   const n = t.type === 'earn' ? cfg.strings.currencySymbol + formatNumber(target) : formatNumber(target);
   return t.text.replace('{n}', n);
@@ -1320,9 +1352,10 @@ export const HINT_VETERAN_SECONDS = 180;
  * few minutes AND the first venue's transport is automated), so veterans are never nagged.
  *
  * Choices, in priority order:
- * - null for a veteran: prestigeCount > 0, or playSeconds >= HINT_VETERAN_SECONDS and the first
- *   venue is automated (its transport hire in sim mode, its first business's hire in classic) and
- *   every station it owns has its hire.
+ * - null for a veteran: the first venue is automated (its transport hire in sim mode, its first
+ *   business's hire in classic), every station it owns has its hire, and either playSeconds >=
+ *   HINT_VETERAN_SECONDS or the player has reset before. Right after a reset the venue is unstaffed,
+ *   so the basics are hinted again until it is automated.
  * - claimMission (first finished one), then openChest (an unopened chest, or a free one ready),
  *   both only once the first venue is automated (before that the screens teach the manual loop).
  * - An affordable automation hire beats everything below it: a station's (in config order), then
@@ -1346,7 +1379,9 @@ export function nextHint(cfg: GameConfig, state: GameState, now: number): Hint |
   const firstVenue = state.venues[venueIds(cfg)[0]];
   const automated = sim ? firstVenue?.chain?.transportManaged === true : firstVenue?.businesses[cfg.businesses[0].id]?.managed === true;
   const allHired = !!firstVenue && cfg.businesses.every((b) => (firstVenue.businesses[b.id]?.owned ?? 0) === 0 || firstVenue.businesses[b.id].managed);
-  if (state.prestigeCount > 0 || (state.stats.playSeconds >= HINT_VETERAN_SECONDS && automated && allHired)) return null;
+  // After a reset the first venue starts unstaffed again: the hints restart with the basics (tap,
+  // hire) until it runs by itself (play-test N5); the play-time rule only applies to a first run.
+  if (automated && allHired && (state.prestigeCount > 0 || state.stats.playSeconds >= HINT_VETERAN_SECONDS)) return null;
 
   // Missions and chests are taught once the first venue runs by itself (the screens show those
   // buttons from then on; before it, the lesson is the manual loop).

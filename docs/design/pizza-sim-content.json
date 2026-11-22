@@ -459,19 +459,19 @@
       "title": "Welcome Feast",
       "badge": "Can be bought once",
       "icon": "🎉",
-      "blurb": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony and four hours of takings."
+      "blurb": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony Wheels and 4 h of income."
     },
     {
       "id": "franchise",
       "title": "Franchise Kit",
       "badge": "AFTER A RESET",
       "icon": "🏪",
-      "blurb": "Rebuild faster after earning Chef Stars: Truffles, Astro Al, Big Cheese Carl, Speedy Sal and eight hours of takings."
+      "blurb": "Rebuild faster after earning Chef Stars: Truffles, Astro Al, Big Cheese Carl (now on your side), Speedy Sal and 8 h of income."
     }
   ],
   "rush": {
     "name": "Rush Hour",
-    "icon": "🔔"
+    "icon": "⏱️"
   },
   "strings": {
     "prestigeName": "Chef Stars",
@@ -502,9 +502,9 @@
     },
     "gems": [
       "Pinch of Truffles",
-      "Basket of Truffles",
-      "Truffle Crate",
-      "Truffle Cellar"
+      "Pile of Truffles",
+      "Truffle Basket",
+      "Truffle Crate"
     ],
     "warp": {
       "title": "24h Time Warp",

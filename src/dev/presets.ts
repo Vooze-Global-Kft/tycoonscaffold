@@ -94,6 +94,10 @@ export function buildPreset(cfg: GameConfig, name: PresetName, now: number): Gam
     const lifetime = Math.max(s.lifetimeEarnings, cfg.economy.prestige.threshold * 900);
     s = E.prestige(cfg, { ...s, lifetimeEarnings: lifetime }, now);
     for (let t = 0; t < 45 * 60; t++) s = botStep(cfg, s, now);
+    // ...and close to the next reset: about a quarter more points are waiting (play-test T1: with
+    // none available, the reset and the minute after it could not be reviewed from this preset).
+    const waiting = Math.max(1, Math.round(s.prestigePoints / 4));
+    s = { ...s, lifetimeEarnings: Math.max(s.lifetimeEarnings, E.lifetimeForPrestigePoints(cfg, s.prestigePoints + waiting) * 1.000001) };
   }
   if (name !== 'fresh') {
     s = addMeta(cfg, s, name, now);

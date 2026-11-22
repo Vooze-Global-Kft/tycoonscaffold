@@ -26,7 +26,6 @@ export function useBakedImage(make: () => ReactElement, width: number, height: n
       const w = Math.ceil(width * dpr);
       const h = Math.ceil(height * dpr);
       if (!(w > 0 && h > 0)) return;
-      if (Platform.OS === 'web' && typeof location !== 'undefined' && location.search.includes('nobake')) return; // TEMP A/B
       try {
         const picture = await drawAsPicture(<Group transform={[{ scale: dpr }]}>{makeRef.current()}</Group>, Skia.XYWHRect(0, 0, w, h));
         if (cancelled) return;
