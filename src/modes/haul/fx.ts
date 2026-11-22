@@ -144,10 +144,18 @@ export function playHaulEvents(events: readonly unknown[]): void {
   }
 }
 
-let subscribed = false;
-/** Called once by the mode entry. */
+/**
+ * The listener's unsubscribe, kept on the global object rather than in this module: a hot reload
+ * of the web preview re-evaluates this module (and the entry calls this again), and a flag here
+ * would start out false and add a second listener next to the old one, so every event played
+ * twice (check3 NEW[7]: doubled warp_out, payout and hold_tick). The newest module's listener
+ * replaces the earlier one instead. On a phone this runs once.
+ */
+const KEY = '__itfHaulFxUnsubscribe';
+const holder = globalThis as { [KEY]?: () => void };
+
+/** Called once by the mode entry; a second call replaces the listener, never adds one. */
 export function listenHaulEvents(): void {
-  if (subscribed) return;
-  subscribed = true;
-  modeEvents.subscribe(playHaulEvents);
+  holder[KEY]?.();
+  holder[KEY] = modeEvents.subscribe(playHaulEvents);
 }

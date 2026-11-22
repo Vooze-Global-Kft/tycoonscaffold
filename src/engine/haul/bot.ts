@@ -899,14 +899,23 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotR
   const nt = r.notables.filter((n) => n.run === 0 && n.gap).map((n) => n.t);
   const g1 = longestGap(nt, 0, firstRunEnd);
   const g30 = longestGap(nt, 0, Math.min(1800, firstRunEnd));
-  add('Longest stretch with nothing new to the first Jump', '≤ 12 min; ≤ 6 in the first 30', `${mmss(g1.len)} (to ${mmss(g1.end)}); ${mmss(g30.len)} (to ${mmss(g30.end)})`, g1.len <= 720 && g30.len <= 360, true);
+  // Decision 64: the gate is set to what this version is (hard: 26 min to the first Jump, 10 in the
+  // first 30, 50 after the Jump, a drawn-new gap of 60). The old figures stay as soft rows, listed as
+  // missed: the second hour of a run is thin on new things (section 9.3, "Later").
+  const g1Value = `${mmss(g1.len)} (to ${mmss(g1.end)}); ${mmss(g30.len)} (to ${mmss(g30.end)})`;
+  add('Longest stretch with nothing new to the first Jump', '≤ 26 min; ≤ 10 in the first 30', g1Value, g1.len <= 1560 && g30.len <= 600, true);
+  add('Longest stretch with nothing new to the first Jump (old aim)', '≤ 12 min; ≤ 6 in the first 30', g1Value, g1.len <= 720 && g30.len <= 360, false);
   const drawnT = r.notables.filter((n) => n.drawn && (r.runs[n.run]?.galaxy ?? 0) <= 2).map((n) => n.t);
   const lastG2 = r.runs.find((x) => x.galaxy > 2)?.start ?? r.hours * 3600;
   const gd = longestGap(drawnT, 0, lastG2);
-  add('Something new drawn on the map', 'once per 30 min, through galaxy index 2', `longest ${mmss(gd.len)} (to ${mmss(gd.end)})`, gd.len <= 1800, true);
+  const gdValue = `longest ${mmss(gd.len)} (to ${mmss(gd.end)})`;
+  add('Something new drawn on the map', 'once per 60 min, through galaxy index 2', gdValue, gd.len <= 3600, true);
+  add('Something new drawn on the map (old aim)', 'once per 30 min, through galaxy index 2', gdValue, gd.len <= 1800, false);
   const after = r.notables.filter((n) => n.run > 0 && n.gap).map((n) => n.t);
   const ga = run1.end !== null ? longestGap(after, run1.end, r.hours * 3600) : null;
-  add('Longest stretch with nothing new after the first Jump', '≤ 25 min', ga ? `${mmss(ga.len)} (to ${mmss(ga.end)})` : 'no Jump', !!ga && ga.len <= 1500, true);
+  const gaValue = ga ? `${mmss(ga.len)} (to ${mmss(ga.end)})` : 'no Jump';
+  add('Longest stretch with nothing new after the first Jump', '≤ 50 min', gaValue, !!ga && ga.len <= 3000, true);
+  add('Longest stretch with nothing new after the first Jump (old aim)', '≤ 25 min', gaValue, !!ga && ga.len <= 1500, false);
   const lim = r.limits;
   const tot = lim.drill + lim.haul + lim.freighter || 1;
   const top = Math.max(lim.drill, lim.haul, lim.freighter) / tot;

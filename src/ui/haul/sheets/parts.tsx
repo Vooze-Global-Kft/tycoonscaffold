@@ -22,6 +22,9 @@ import { alpha, textOn } from '../../theme';
 import { useTarget } from '../../hints/targets';
 import { say } from './shellText';
 
+/** check3 NEW[9]: on the web a drag that starts over sheet text must not select it (phones never select). */
+export const NO_SELECT = (Platform.OS === 'web' ? { userSelect: 'none' } : {}) as ViewStyle;
+
 /** The radio face: monospaced, for numbers and call signs. */
 export const MONO = Platform.select({
   ios: 'Menlo',
@@ -110,7 +113,7 @@ export function HaulSheet({ visible, onClose, title, left, right, children, scro
   if (!mounted) return null;
   const Body = scroll ? ScrollView : View;
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'box-none' : 'none'}>
+    <View style={[StyleSheet.absoluteFill, NO_SELECT]} pointerEvents={visible ? 'box-none' : 'none'}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: alpha('#000000', 0.32) }, dimStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={say('close')} />
       </Animated.View>

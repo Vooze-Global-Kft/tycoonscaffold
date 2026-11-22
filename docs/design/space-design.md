@@ -979,7 +979,7 @@ Bot behaviour with Decision 40 (overrides the contract part above): with none ta
 
 Bot behaviour in the finishing round (Decisions 56, 57, 62; overrides the two paragraphs above where they differ): the shop is `src/engine/haul/advice.ts` (the same estimate the limit hints use). With no contract taken it takes the offer with the highest bonus whose wanted ores all have a route; at the take and after every warp-out, while the contract's light is not green, it makes the move that raises the contract's pace most (an idle drone onto a rock of the short ore, a drone from another ore's route onto it, or a rig level on it when affordable; between moves that reach the pace, the one that keeps the most income), with no fleet budget (Decision 63: this is the rules engineer's router; it also routes every 20 s between warp-outs while the light is not green, and seams and claims never take drones from the routes of an ore the contract still wants); new drones go to the short ore; when the contract ends it moves the drones back where they were at the take. It runs the day shift once a minute. The player who never takes a contract (`noContracts`) is the same bot with the autopilot on `full`.
 
-Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-miner --hours 12 --prestige [--seed n] [--compare true]` reports them; validate runs seeds 12345, 4, 99, 7 and 2026 in parallel and fails on a hard target missed on any of them, and when pods or Dark Matter per hour miss their window on more than one seed (Decisions 45 and 62). The first Jump's hard window is 1 h 55 to 3 h 05 on every seed; 2 h 15 to 2 h 45 is the target for the median seed, and validate warns when the median seed misses it or when the router's earnings against the never-taker's miss 1.25 to 1.6 at the median seed or reach 1.9 on any seed (Decision 63, overriding Decision 62's window).
+Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-miner --hours 12 --prestige [--seed n] [--compare true]` reports them; validate runs seeds 12345, 4, 99, 7 and 2026 in parallel and fails on a hard target missed on any of them, and when pods or Dark Matter per hour miss their window on more than one seed (Decisions 45 and 62). The first Jump's hard window is 1 h 55 to 3 h 05 on every seed; 2 h 15 to 2 h 45 is the target for the median seed, and validate warns when the median seed misses it or when the router's earnings against the never-taker's miss 1.25 to 1.6 at the median seed or reach 1.9 on any seed (Decision 63, overriding Decision 62's window). Decision 64 sets the nothing-new gate to what this version is (hard: 26 minutes before the first Jump, 10 in the first 30, 50 after it, 60 between two things drawn new); the old figures stay as soft rows and validate lists each seed that misses them.
 
 | Measure | Target | Hard? |
 |---|---|---|
@@ -998,9 +998,12 @@ Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-min
 | Run 3 reaches run 2's Jump earnings | ≤ 70 % of run 2's time | no |
 | Drags (drag, flick or tap-tap that assigns or moves a drone) per 10 min of active play, measured at minutes 30, 60 and 120 | ≥ 4 at each | yes |
 | Upgrade taps as a share of all gestures, every 10 min window after minute 10 | ≤ 60 % | yes |
-| Longest stretch with nothing new (an unlock, claim, new ore, system, socket, pod, rig tier, freighter hull or segment), up to the first Jump | ≤ 12 min, and ≤ 6 min in the first 30 min | yes |
-| Something new drawn on the map (a new ore on a rock, a bonanza rock, a claimed slot, a rig look, a freighter hull or segment, a station part, a drone-cap rise) | at least once per 30 min of play, through galaxy index 2 | yes |
-| Longest stretch with nothing new after the first Jump (12 h run) | ≤ 25 min | yes |
+| Longest stretch with nothing new (an unlock, claim, new ore, system, socket, pod, rig tier, freighter hull or segment), up to the first Jump | ≤ 26 min, and ≤ 10 min in the first 30 min (Decision 64) | yes |
+| The same, the old figures (listed as missed: the thin second hour, section 9.3) | ≤ 12 min, and ≤ 6 min in the first 30 min | no |
+| Something new drawn on the map (a new ore on a rock, a bonanza rock, a claimed slot, a rig look, a freighter hull or segment, a station part, a drone-cap rise) | at least once per 60 min of play, through galaxy index 2 (Decision 64) | yes |
+| The same, the old figure | at least once per 30 min | no |
+| Longest stretch with nothing new after the first Jump (12 h run) | ≤ 50 min (Decision 64) | yes |
+| The same, the old figure | ≤ 25 min | no |
 | Share of route-minutes bound by one limit (drill, haul or freighter) | no kind above 60 % | yes |
 | Share of taken contracts that are met, for the bot that routes for them (Decision 40; replaces "payouts with a met contract") | 60 to 85 % | no |
 | Share of taken contracts that are met for a player who takes contracts but never moves a drone for one (`passive`, first 2.5 h) | ≤ 25 % | no |
@@ -1009,7 +1012,7 @@ Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-min
 | The hint path's first ring-2 claim (`runTutorialHuman`, Decision 57) | 3:45 to 6:00 | no |
 | Average launch fill | 70 to 95 % | no |
 | An hour away WITH the Shift Log ad bonus (`haul.offline.adBonus`) vs an hour of active play (the bot that buys and routes) from the same state, at every measurement (minutes 30, 60, 120, then every 2 h) | ≤ 0.60 (Decision 42) | yes |
-| The same vs an hour of only watching (autopilot on `full`, nothing bought, routed or taken) | ≤ 0.90 (Decision 42) | yes |
+| The same vs an hour of only watching (autopilot on `full`, nothing bought, routed or taken) | ≤ 0.90 on every seed at every sample (Decisions 42 and 64; `efficiencyCap` lowered to hold it) | yes |
 | Pods per hour in hours 1 to 3 (each hour) | 3 to 10 (rules-3, Decision 45; the pod economy of 5.2 was set for about 4 to 6 an hour) | no |
 | Dark Matter per hour from those pods (expected value of their gem slots) | 2 to 8 | no |
 | Longest wait between two purchases in the first 5 minutes (from the first payout) | about 30 s (play-18) | no |
@@ -1060,6 +1063,8 @@ Rock tapping and its limiter, the comet bonus, the tap combo, hold-to-repeat and
 ### 9.3 Later
 
 First to slip if time runs out: the flare's ad charges (keep the free charge), the station parts beyond the first four, the freighter segments past the 4 hulls.
+
+First, before anything else below (Decision 64): **the thin second hour.** In this version every slot is claimed by about 1 h to 2 h of a run and nothing new is drawn between rig tier 20 and tier 35, so the last hour before the first Jump (and the hours after it) offers only rig and freighter levels: the gate allows 26 minutes with nothing new before the first Jump, 50 after it and 60 between two new things on the map, where the design asked for 12, 25 and 30. More late milestones close it: a rig tier or a freighter hull between levels 20 and 35, station parts that arrive with the late rings, later and dearer claims (far slots that open with ring 5's ore), so that something new comes at least every 12 minutes again.
 
 Then: the Tractor Sweep (a one-tap sweep of the fullest ring) and its Charge Coils node; ring 6 (crystal) and more rings with `galaxyMin`; conditions that change the map's shape (a denser near belt, a far ring with 3 slots, a drifting comet slot), appended as slots 12 and up; offers with real timers, the incoming-transmission banner and the daily shop; a published Field Odds sheet for rocks, seams and contracts; sockets 4 to 6, a legendary module and 4 more modules; a third pod tier (Ancient Vault); a galaxy log band in the Star Map; a rival combine on the radio; drone looks by capacity tier; a second freighter pad (Extra Pad) and +1 slot nodes (Deep Survey) for the Star Map; scrapping a contract; moving ore prices; route curves; random sound sets and a longer music track; scan-binary for release builds (required before the first store submission, not for the first playable build); pinch zoom; leaderboards.
 

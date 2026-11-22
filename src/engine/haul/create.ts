@@ -17,16 +17,16 @@ function emptySlot(): SlotState {
 
 /**
  * Puts rock `n` of the slot's stream on a slot (life x the rig tier's life multiplier, applied at
- * arrival: errata 31; rock 0 of a ring-1 slot in galaxy 1 lives at least `start.firstLife`, Decision 58). `noBonanza` forces a plain rock (slot 0's starting rock, errata 28): same ore
+ * arrival: errata 31; rock 0 of a ring-1 slot lives at least `start.firstLife` in every galaxy, Decisions 58 and 64). `noBonanza` forces a plain rock (slot 0's starting rock, errata 28): same ore
  * and draw, without the bonanza flag and its life factor.
  */
 export function placeRock(cfg: HaulConfig, h: Pick<HaulState, 'seed' | 'trait'> & { galaxy?: number }, slot: number, s: SlotState, n: number, starMap: StarMapState | undefined, noBonanza = false): SlotState {
   const rock = rockAt(cfg, h.seed, slot, n, h.trait, starMap);
   const bonanza = rock.bonanza && !noBonanza;
   let life = rock.bonanza && !bonanza ? rock.life / cfg.haul.bonanza.life : rock.life;
-  // Decision 58: in galaxy 1 the first rock of each ring-1 slot lasts at least `start.firstLife`.
+  // Decisions 58 and 64: in every galaxy the first rock of each ring-1 slot lasts at least `start.firstLife`.
   const first = cfg.haul.start.firstLife ?? 0;
-  if (n === 0 && first > 0 && (h.galaxy ?? 0) === 0 && ringOf(cfg, slot) === 0) life = Math.max(life, first);
+  if (n === 0 && first > 0 && ringOf(cfg, slot) === 0) life = Math.max(life, first);
   return { ...s, rockN: n, ore: rock.ore, bonanza, life: life * rigTier(cfg, s.rigLevel).life, pile: 0, full: false, respawnAt: null, delivered: 0 };
 }
 

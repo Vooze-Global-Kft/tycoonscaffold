@@ -204,6 +204,12 @@ export const HaulSchema = z.object({
     land: z.number().positive().default(2),
     /** Payout multiplier for a full launch. */
     fullBonus: z.number().gte(1).default(1.1),
+    /**
+     * Decision 64: seconds a person needs per launch for arming the swipe and reacting to a full
+     * hold. Added to the freighter cycle of a station without the autopilot (the income line and the
+     * contracts' launch interval), so the line is what a person earns, not a ceiling.
+     */
+    manualAllowance: z.number().nonnegative().default(3),
     /** Freighter levels that change the drawing (hulls), then a segment every `segmentEvery` levels. */
     hulls: z.array(z.number().int().positive()).default([1, 10, 25, 50]),
     segmentEvery: z.number().int().positive().default(25),
@@ -277,6 +283,8 @@ export const HaulSchema = z.object({
     minValueShare: z.number().min(0).max(1).default(0.1),
     /** Decision 56 condition 5: no offer's bonus is under this many seconds of the station's income at the draw. */
     minBonusSeconds: z.number().nonnegative().default(10),
+    /** Decision 64: two offers that want the same ores never ask raises closer than this. */
+    raiseGap: z.number().nonnegative().default(0.15),
     /** Decision 56: added to a contract's multiplier per unit of raise (a harder contract pays more). */
     raiseMult: z.number().nonnegative().default(1),
     /** Decision 56: the window (warp-outs) of the average of what the station ships; it is used from the third warp-out of a run. */

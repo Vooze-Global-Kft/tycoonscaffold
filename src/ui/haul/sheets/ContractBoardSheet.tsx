@@ -68,6 +68,8 @@ interface BoardView {
   rows: RowView[];
   /** Empty places on the board: a dropped contract's place stays empty until the next warp-out (Decision 56). */
   open: number;
+  /** What an empty place says: the next offer, or (Decision 64) that a second ore brings more buyers. */
+  openWord: string;
   /** The Scrap Pod ladder, drawn as a stamp strip (Decision 60). */
   pods: { of: number; filled: number };
   footer: string;
@@ -76,6 +78,22 @@ interface BoardView {
 function launchWord(n: number, taken: boolean): string {
   if (!taken) return n === 1 ? say('cardIn1') : say('cardIn', { n });
   return n <= 1 ? say('cardLast') : say('launchesLeft', { n });
+}
+
+/**
+ * Decision 64: a station that ships one ore has one buyer, and the board's other places say a second
+ * ore brings more. The rules answer with `boardNote(cfg, g)` ('secondOre' | null, finish3 requests);
+ * read loosely so the sheet also builds before that export lands, and then it reads the case as the
+ * draw does (trade.ts drawAt: one ore above 2 % of what the last launches shipped, one contract).
+ */
+type BoardNote = (cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }) => string | null;
+function secondOreNote(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }, p: ReturnType<typeof runParams>, contracts: number): boolean {
+  const note = (H as unknown as { boardNote?: BoardNote }).boardNote;
+  if (typeof note === 'function') return note(cfg, g) === 'secondOre';
+  if (contracts !== 1) return false;
+  const recent = H.contractBasis(cfg, p, g.haul).recent;
+  const total = Object.values(recent).reduce((a, x) => a + x, 0);
+  return Object.values(recent).filter((x) => total > 0 && x > 0.02 * total).length <= 1;
 }
 
 function boardView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): BoardView {
@@ -132,6 +150,7 @@ function boardView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): Bo
     unlockAt: C.unlockLaunches,
     rows,
     open: h.contracts.unlocked ? Math.max(0, C.board - views.length) : 0,
+    openWord: (secondOreNote(cfg, g, p, views.length) ? say('boardOneOre') : say('boardOpenSlot')).toUpperCase(),
     pods: { of: every, filled: every > 0 ? (g.stats.contractsMet ?? 0) % every : 0 },
     footer: (() => {
       const left = every > 0 ? every - ((g.stats.contractsMet ?? 0) % every) : 1;
@@ -194,7 +213,7 @@ export function ContractBoardSheet() {
               <ContractRow key={row.index} row={row} onPress={() => pick(row)} ask={ask?.index === row.index && taken ? say(taken.progressAboard ? 'dropAskAboard' : 'dropAsk', { buyer: taken.buyer, n: taken.progress }) : null} />
             ))}
             {Array.from({ length: v.open }, (_, i) => (
-              <OpenSlot key={`open${i}`} />
+              <OpenSlot key={`open${i}`} text={v.openWord} />
             ))}
             <View style={styles.footer}>
               <PodStamps filled={v.pods.filled} of={v.pods.of} label={v.footer} color={c.textMuted} dim={alpha(c.textMuted, 0.35)} size={ty.tiny} />
@@ -287,13 +306,13 @@ function ContractRow({ row, onPress, ask }: { row: RowView; onPress: () => void;
 }
 
 /** The empty place a dropped contract leaves until the next warp-out (Decision 56): a dashed frame, no buyer. */
-function OpenSlot() {
+function OpenSlot({ text }: { text: string }) {
   const c = useColors();
   const ty = useType();
   return (
-    <View style={[styles.card, styles.open, { borderColor: alpha(c.textMuted, 0.4) }]} accessible accessibilityLabel={say('boardOpenSlot')}>
+    <View style={[styles.card, styles.open, { borderColor: alpha(c.textMuted, 0.4) }]} accessible accessibilityLabel={text}>
       <T size={ty.tiny} color={c.textMuted} bold>
-        {say('boardOpenSlot').toUpperCase()}
+        {text}
       </T>
     </View>
   );

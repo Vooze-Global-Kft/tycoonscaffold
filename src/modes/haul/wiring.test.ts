@@ -141,3 +141,18 @@ describe('play-1: the web presets open past the tutorial', () => {
     }
   }, 60_000);
 });
+
+describe('check3 NEW[7]: a hot reload of the web preview never doubles the haul sounds', () => {
+  it('the listenHaulEvents of a re-evaluated module replaces the listener: one depleted event plays once', async () => {
+    const { modeEvents } = await import('../../state/modeEvents');
+    const { listenHaulEvents } = await import('./fx');
+    listenHaulEvents();
+    // A second instance of the module, as Fast Refresh makes on an edit (same modeEvents, fresh module state).
+    const reloaded = './fx?hot-reload';
+    const again = (await import(/* @vite-ignore */ reloaded)) as typeof import('./fx');
+    again.listenHaulEvents();
+    played.length = 0;
+    modeEvents.emit([{ type: 'depleted' }]);
+    expect(played.filter((k) => k === 'rock_crumble')).toHaveLength(1);
+  });
+});

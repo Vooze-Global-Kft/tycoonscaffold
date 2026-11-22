@@ -12,7 +12,7 @@ import * as H from '../haul';
 import { withHaulContent } from '../haulMode';
 import { runTutorialHuman } from './bot';
 import { advisedPurchase, bestPurchase, rankPurchases } from './advice';
-import { ADVICE_GAIN, ADVICE_IDLE_SECONDS, ADVICE_MAX, ADVICE_UNTIL, adviceHint, adviceTarget, GUIDED_PRIORITY_SECONDS, longestLifeSlot } from './hints';
+import { ADVICE_GAIN, ADVICE_IDLE_SECONDS, ADVICE_MAX, ADVICE_UNTIL, adviceHint, adviceTarget, GUIDED_PRIORITY_SECONDS, limitPurchase, longestLifeSlot } from './hints';
 
 type Run = H.HaulGame & { haul: H.HaulState };
 const cfg = haulTestConfig({ seam: { ...haulTestConfig().haul.seam, first: 1e12 } });
@@ -151,6 +151,26 @@ describe('the limit hint (Decision 57)', () => {
     const t = adviceTarget(pick!.key)!;
     expect(adviceHint(shipped, g)).toMatchObject({ kind: 'point', key: t.key, route: t.route, step: 0, limit: ADVICE_MAX });
     expect(H.hintsFor(shipped, g).some((h) => h.key === t.key && h.step === 0)).toBe(true);
+  });
+  it('names the freighter when it is the limit, valued with the level it opens (Decision 64, play check NEW[2])', () => {
+    // The play check's 4:01 station: two worked ring-1 rocks, one rig level, the freighter just binding.
+    // Alone the freighter adds about 1 % and every rig level nothing, so a single-purchase rule names nothing.
+    let g = after(ADVICE_IDLE_SECONDS + 1);
+    g = { ...g, cash: 1000 } as Run;
+    g = H.assignDrone(shipped, H.buyDrone(shipped, H.claimSlot(shipped, g, 1) as Run) as Run, 1) as Run;
+    g = H.upgradeRig(shipped, g, 0) as Run;
+    g = { ...g, cash: 175, haul: { ...g.haul, marks: { ...g.haul.marks, boughtAt: g.haul.clock - ADVICE_IDLE_SECONDS - 1, lastBuy: 'rig 0' } as Marks } } as Run;
+    const before = H.haulIncome(shipped, g);
+    expect(advisedPurchase(shipped, g, ADVICE_GAIN)).toBeNull();
+    const pick = limitPurchase(shipped, g, ADVICE_GAIN);
+    expect(pick?.key).toBe('freighter');
+    expect(pick!.gain).toBeGreaterThanOrEqual(ADVICE_GAIN * before);
+    expect(adviceHint(shipped, g)).toMatchObject({ kind: 'point', key: 'station:freighter', route: ['station'], step: 0 });
+    // Bought: the rig level it opened now pays alone and is named next.
+    const next = H.buyFreighter(shipped, g) as Run;
+    expect(limitPurchase(shipped, next, ADVICE_GAIN, 'freighter')?.key).toMatch(/^rig /);
+    // Never the purchase made last.
+    expect(limitPurchase(shipped, g, ADVICE_GAIN, 'freighter')?.key ?? null).not.toBe('freighter');
   });
   it('waits 40 s after a purchase, skips the purchase made last, stops after six showings, at 15 min and after galaxy 1', () => {
     expect(adviceHint(shipped, after(ADVICE_IDLE_SECONDS - 5))).toBeNull();

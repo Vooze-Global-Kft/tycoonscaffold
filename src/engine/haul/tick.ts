@@ -11,7 +11,7 @@
 import { hashString } from '../rng';
 import { placeRock } from './create';
 import { EPS, MAX_CASH, fillsFreighter, haulParams, holdTotal, rngMix4, roll, sumUnits, T, starLevel } from './params';
-import { activeContract, drawContract, loadCargo, noteShipped, openBoard, payoutFor, resizeOrders, shiftDoubles, steadyPerLaunch, topUpBoard, wantLeft } from './trade';
+import { activeContract, boardPlaces, contractBasis, drawContract, loadCargo, noteShipped, openBoard, payoutFor, refloorOffers, resizeOrders, shiftDoubles, steadyPerLaunch, topUpBoard, wantLeft } from './trade';
 import type { HaulConfig, HaulEvent, HaulGame, HaulParams, HaulState, SeamState } from './types';
 
 /** Longest step of the rate model. */
@@ -205,9 +205,15 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
     const fresh = new Set<number>();
     // A place whose replacement finds nothing to ask (Decision 56, `offerAt`) is removed after the loop.
     const gone = new Set<number>();
+    // Decision 64: a station that ships one ore has one buyer; a place that comes free beyond it stays empty.
+    const places = boardPlaces(cfg, contractBasis(cfg, p, h));
     const replace = (i: number) => {
-      const next = drawContract(cfg, h, p.F, p);
       fresh.add(i);
+      if (C.board.length - gone.size > places) {
+        gone.add(i);
+        return;
+      }
+      const next = drawContract(cfg, h, p.F, p);
       if (!next.contract) {
         gone.add(i);
         return;
@@ -270,6 +276,8 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
     }
     // A place left empty by a drop (Decision 56) gets its offer now.
     for (const i of topUpBoard(cfg, h, p)) later.push({ type: 'contractNew', contract: C.board[i], index: i });
+    // Decision 64: no green offers (an offer the routes now meet untouched asks the never-free floor).
+    refloorOffers(cfg, p, h);
   } else if (h.galaxy > 0 ? (C.measured ?? 0) >= 3 : d.stats.launches >= cfg.haul.contracts.unlockLaunches && h.clock >= cfg.haul.contracts.unlockClock - EPS) {
     // From galaxy 2 on the board opens with ordinary offers once three launches are measured (Decision 56).
     h.contracts = openBoard(cfg, h, p.F, p);

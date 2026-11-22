@@ -427,3 +427,14 @@ export function autopilotCost(cfg: HaulConfig, g: HaulGame & { haul: HaulState }
 export function affordable(cash: number, cost: number): boolean {
   return cost >= 0 && cost < Infinity && cash >= cost;
 }
+
+
+/**
+ * Decision 64: seconds added to each launch cycle of a station without the autopilot (arming the
+ * swipe, reacting to a full hold): `haul.freighter.manualAllowance`, 0 with the autopilot online.
+ */
+export function manualCycleExtra(cfg: HaulConfig, h: Pick<HaulState, 'autopilot'>): number {
+  if (h.autopilot?.online) return 0;
+  const x = cfg.haul.freighter.manualAllowance ?? 0;
+  return Number.isFinite(x) && x > 0 ? x : 0;
+}

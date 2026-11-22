@@ -3,7 +3,8 @@
  * or slower player still gets the right one. Six guided steps, then the rules after the tutorial.
  * Target keys are those of section 3 (`rock:<slot>`, `drone:rack`, `bay:launch`, ...).
  */
-import { advisedPurchase, bestSlotForDrone } from './advice';
+import { advisedPurchase, bestSlotForDrone, rankPurchases, type RankedPurchase } from './advice';
+import { haulIncome } from './rates';
 import { affordable, autopilotCost, claimCost, droneCost, fillsFreighter, haulParams, holdTotal, rigCost } from './params';
 import type { HaulConfig, HaulGame, HaulHint, HaulState } from './types';
 
@@ -59,6 +60,27 @@ function lastPurchase(h: HaulState): { at: number; key: string | null } | null {
   return { at: m.boughtAt ?? 0, key: m.lastBuy ?? null };
 }
 
+/**
+ * Decision 57's purchase to name (Decision 64: the limit is named by what it really gives). The best
+ * single purchase that raises the income line by `minGain` (advice.ts), else the limit that binds:
+ * when a station is freighter-bound (or drone- or capacity-bound) no single purchase pays alone, and a
+ * rig level or a drone only pays with one level of that partner. Then the partner is named, valued
+ * with the purchase it opens (in play the first freighter level raised the line 3.21 to 4.57 while it
+ * read +2 % alone), when both are affordable together and the pair gains `minGain`. Never `skip`.
+ */
+export function limitPurchase(cfg: HaulConfig, g: Run, minGain = ADVICE_GAIN, skip: string | null = null): RankedPurchase | null {
+  const single = advisedPurchase(cfg, g, minGain, skip);
+  if (single) return single;
+  const before = haulIncome(cfg, g);
+  if (!(before > 0)) return null;
+  for (const o of rankPurchases(cfg, g)) {
+    const q = o.bundle;
+    if (!q || q.key === skip || !affordable(g.cash, o.total) || !(o.gain >= minGain * before)) continue;
+    return { ...q, total: q.cost, gain: o.gain, score: o.score };
+  }
+  return null;
+}
+
 /** Decision 57's hint now, or null. */
 export function adviceHint(cfg: HaulConfig, g: HaulGame): HaulHint | null {
   const h = g.haul;
@@ -67,7 +89,7 @@ export function adviceHint(cfg: HaulConfig, g: HaulGame): HaulHint | null {
   if (!last || h.clock - last.at < ADVICE_IDLE_SECONDS) return null;
   const shown = Object.entries(h.hintsShown).reduce((a, [k, n]) => a + (isAdviceKey(k) ? n : 0), 0);
   if (shown >= ADVICE_MAX) return null;
-  const pick = advisedPurchase(cfg, g as Run, ADVICE_GAIN, last.key);
+  const pick = limitPurchase(cfg, g as Run, ADVICE_GAIN, last.key);
   const target = pick ? adviceTarget(pick.key) : null;
   return target ? { kind: 'point', key: target.key, route: target.route, row: null, step: 0, limit: ADVICE_MAX } : null;
 }

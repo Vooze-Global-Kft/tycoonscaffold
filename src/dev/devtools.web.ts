@@ -69,10 +69,33 @@ export function hasDevPreset(): boolean {
   return params()?.has('preset') ?? false;
 }
 
-/** Applies the switches. Call once, right after the store has booted. Safe to call anywhere: it does nothing on phones. */
+/**
+ * Kept on the page's global object, not in this module: a hot reload of the web preview
+ * re-evaluates this module and re-runs App's boot effect, and a preset must not then replace the
+ * run in progress while parts of the screen keep their old values (check3 NEW[7]). Only a real
+ * page load (a new address, or the browser's reload) clears it.
+ */
+const pageGlobal = globalThis as { __itfDevOnce?: Record<string, true> };
+
+/**
+ * True the first time it is asked for `key` in this page load, false afterwards: dev switches of a
+ * screen use it to apply themselves once per page load and not again on a hot reload
+ * (e.g. src/ui/haul/dev.web.ts: `if (!devOncePerPageLoad('haul')) return;`).
+ */
+export function devOncePerPageLoad(key: string): boolean {
+  const done = (pageGlobal.__itfDevOnce ??= {});
+  if (done[key]) return false;
+  done[key] = true;
+  return true;
+}
+
+/**
+ * Applies the switches once per page load, right after the store has booted; later calls (a hot
+ * reload) change nothing. Safe to call anywhere: it does nothing on phones.
+ */
 export function applyDevParams(): void {
   try {
-    applyNow();
+    if (devOncePerPageLoad('shared')) applyNow();
   } finally {
     markApplied();
   }

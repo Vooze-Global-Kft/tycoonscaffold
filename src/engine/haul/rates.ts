@@ -3,7 +3,7 @@
  * simulation: `fastForward` walks each slot's real rock stream with a bounded loop.
  */
 import { placeRock } from './create';
-import { EPS, haulParams, holdTotal, ringWeights, starLevel, sumUnits, T } from './params';
+import { EPS, haulParams, holdTotal, manualCycleExtra, ringWeights, starLevel, sumUnits, T } from './params';
 import { commit, draftOf, draftParams, grantPod, warpOut, type Draft } from './tick';
 import type { HaulConfig, HaulGame, HaulParams, HaulState, OfflineReport, RouteGain, SlotState } from './types';
 
@@ -58,9 +58,12 @@ export function slotRates(cfg: HaulConfig, params: HaulParams, h: HaulState): Sl
   return out;
 }
 
-/** Freighter limit Q = F / (climb + away + land), units per second. */
-export function freighterRate(params: HaulParams): number {
-  return params.F / (params.climb + params.away + params.land);
+/**
+ * Freighter limit Q = F / (climb + away + land + extra), units per second. `extra` is the hand's
+ * allowance of a station without the autopilot (Decision 64, `manualCycleExtra`).
+ */
+export function freighterRate(params: HaulParams, extra = 0): number {
+  return params.F / (params.climb + params.away + params.land + Math.max(0, extra));
 }
 
 /**
@@ -106,7 +109,7 @@ export function shareFreighter(rates: SlotRate[], Q: number): { x: number[]; lam
  */
 export function activeRate(cfg: HaulConfig, params: HaulParams, h: HaulState): number {
   const rates = slotRates(cfg, params, h);
-  const { x } = shareFreighter(rates, freighterRate(params));
+  const { x } = shareFreighter(rates, freighterRate(params, manualCycleExtra(cfg, h)));
   const v = rates.reduce((a, r, i) => a + x[i] * r.price, 0) * params.fullBonus * params.G;
   return Number.isFinite(v) ? Math.max(0, v) : Number.MAX_VALUE;
 }
@@ -147,7 +150,7 @@ export function routeGain(cfg: HaulConfig, g: HaulGame, from: number | null, to:
   let limit: RouteGain['limit'] = null;
   if (to !== null) {
     const r = slotRates(cfg, p1, h).find((x) => x.slot === to);
-    const Q = freighterRate(p2);
+    const Q = freighterRate(p2, manualCycleExtra(cfg, moved));
     const sumQ = slotRates(cfg, p2, moved).reduce((a, x) => a + x.q, 0);
     if (r && r.h >= r.rbar - EPS) limit = 'rig';
     else if (sumQ > Q + EPS) limit = 'haul';

@@ -27,5 +27,10 @@ export function hasDevPreset(): boolean {
   return false;
 }
 
+/** Phones have no dev switches to apply, once or otherwise. */
+export function devOncePerPageLoad(_key: string): boolean {
+  return false;
+}
+
 /** Nothing to apply on phones. */
 export function applyDevParams(): void {}

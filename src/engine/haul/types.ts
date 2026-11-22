@@ -53,8 +53,9 @@ export interface ContractView {
     /** max(0, units − got − aboard), rounded up to whole units with a small epsilon (never a unit that cannot arrive). */
     left: number;
     /**
-     * The steady figure (Decision 56): what one launch carries of this ore with the routes as they are
-     * (`F × r_o / R`, each route `min(drill, drones × capacity / trip)`, no seam, no pile buffer).
+     * The routes' figure (Decisions 56 and 64): what one launch carries of this ore with the routes as
+     * they are (`F × r_o / R`, each route `min(drill, drones × capacity / trip)`, no seam, no pile
+     * buffer), averaged over the contract's launches with each rock counted only while it lives.
      */
     perLaunch: number;
     /** What the next launch is expected to carry of it: for the taken contract from what is really in the hold; for an offer the steady figure. */
@@ -66,6 +67,12 @@ export interface ContractView {
      * 0 when on pace, Infinity when nothing of it is expected (no route).
      */
     raise: number;
+    /**
+     * Decision 64: the first rock of this ore with drones on it to stop feeding (its life and pile
+     * used up) inside the contract's remaining launches, and the seconds until then; null when every
+     * routed rock of it lasts those launches. The strip writes it "T-5 DRIES IN 0:20".
+     */
+    dries: { slot: number; seconds: number } | null;
   }[];
   /** min over wants of expected / left (Infinity when nothing is left). For an offer: as if taken now. */
   paceRatio: number;

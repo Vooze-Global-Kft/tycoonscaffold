@@ -856,7 +856,11 @@
     "claim": {
       "base": 14,
       "ringFactor": 15,
-      "jFactor": 1.5
+      "jFactor": 1.5,
+      "ringMult": [
+        1,
+        0.6
+      ]
     },
     "pile": {
       "min": 10,
@@ -916,7 +920,8 @@
         50
       ],
       "segmentEvery": 25,
-      "segmentMax": 8
+      "segmentMax": 8,
+      "manualAllowance": 3
     },
     "autopilot": {
       "cost": 90
@@ -995,13 +1000,13 @@
         {
           "id": "corvo",
           "name": "Corvo Metals",
-          "calls": "Corvo Metals. {units} {ore}, {mult} on the unit. Standing by.",
+          "calls": "Corvo Metals. Standing by for {units} {ore}, {mult} on the unit.",
           "closed": "Corvo Metals. Contract closed. Pleasure."
         },
         {
           "id": "tessaly",
           "name": "Tessaly Ice Co.",
-          "calls": "Tessaly. {units} {ore} wanted. Paying {mult}. Keep the hold sealed.",
+          "calls": "Tessaly. Keep the hold sealed. {units} {ore} wanted, paying {mult}.",
           "closed": "Tessaly. Manifest checks out. Logged."
         },
         {
@@ -1013,7 +1018,7 @@
         {
           "id": "kade",
           "name": "Kade Refinery",
-          "calls": "Kade Refinery, line two. {units} {ore}. {mult}, no haggling.",
+          "calls": "Kade Refinery, line two. No haggling: {units} {ore} at {mult}.",
           "closed": "Kade. Paid. We will call again."
         },
         {
@@ -1338,7 +1343,7 @@
       "startDrones": 2
     },
     "offline": {
-      "efficiencyCap": 0.45,
+      "efficiencyCap": 0.38,
       "rockLoopMax": 2000,
       "adBonus": 0.5
     }

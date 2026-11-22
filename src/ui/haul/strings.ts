@@ -56,6 +56,8 @@ export const HAUL_STRINGS = {
   stripMet: 'ALL ABOARD',
   stripAboard: '{n} ABOARD',
   stripResized: 'ORDER RESIZED · {n}',
+  // A wanted ore's rock dries inside the contract's remaining launches (Decision 64).
+  stripDries: '{rock} DRIES IN {t}',
   stripShift: 'x2 SHIFT',
   stripLabel: '{buyer} contract. {wants}. {left}. Bonus {bonus}. Opens the Contract Board.',
   // What a drone is worth where it is held (Decision 49).
@@ -99,6 +101,7 @@ export const HAUL_STRINGS = {
   dryIn: 'Dry in about {t}',
   dryUnknown: 'Dry in about —',
   dryNow: 'Dry. Next rock in {s} s.',
+  drilledOut: 'Drilled out · {p} left on the pile',
   rigStays: 'The rig stays for the next rock.',
   drifting: 'Rock drifting in.',
   bonanzaTag: 'BONANZA',
@@ -112,6 +115,7 @@ export const HAUL_STRINGS = {
   verdictPileFull: 'Pile full: the drones are waiting on the freighter.',
   verdictHoldFull: 'Hold full: the drones are waiting on the freighter.',
   verdictFreighter: 'The freighter is the limit. Upgrade it at the station.',
+  verdictClearing: 'Rock drilled out. The drones are clearing the pile.',
   pileLine: 'Pile {p}/{c} units',
   pileHelp: 'The pile is ore the rig has drilled, waiting for drones: units on it now / what it holds. A full pile stops the drill.',
   movedOnMap: 'Drones move on the map, not here.',
@@ -161,6 +165,7 @@ export const HAUL_STRINGS = {
   boardPodMore: '{pod} · {n} more contracts',
   boardPodMore1: '{pod} · 1 more contract',
   boardOpenSlot: 'New offer after the next launch',
+  boardOneOre: 'More buyers when a second ore ships',
   paceRaise: 'Needs +{p} % {ore}',
   boardHint: 'Tap a contract to take it. Deliver it within its launches.',
   boardLocked: 'Buyers call after launch {n}.',
@@ -260,6 +265,8 @@ export const HAUL_STRINGS = {
   seamEnd: 'Seam on {rock} is spent. Drones can go back to the line.',
   rockDry: '{rock} is dry. Next rock in {s}. Your drones will wait.',
   contractNew: 'Buying {ore}. {n} units.',
+  // A two-ore contract's call names the raised ore with its own units, then the held one (check3 NEW[4]).
+  contractAlso: 'Plus {units} {ore}.',
   contractClosed: 'Contract closed. Pick the next one from the board.',
   contractLapsed: '{buyer} contract lapsed. Pick another.',
   podEarned: 'Pod recovered. It waits in the Salvage Bay.',

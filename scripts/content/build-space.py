@@ -135,15 +135,17 @@ RINGS = [
 BUYERS = [('halden', 'Halden Yards'), ('corvo', 'Corvo Metals'), ('tessaly', 'Tessaly Ice Co.'),
           ('brightwater', 'Brightwater Foundry'), ('kade', 'Kade Refinery'), ('oriel', 'Oriel Labs')]
 # One line each when a buyer's contract arrives and when it closes (7.3, 7.5). The screen fills {ore},
-# {units} in the short format ("8.4K") and {mult} as "x1.8" (Decision 46: figures as figures).
+# {units} in the short format ("8.4K") and {mult} as "x1.8" (Decision 46: figures as figures). {units} are
+# the first ore's own units; a two-ore order's second ore follows the line as its own sentence ('Plus 349K
+# copper.', check3 NEW[4]), so every line ends on the order, never on a sign-off.
 BUYER_LINES = {
     'halden': ('Halden Yards, buying {ore}. {units} units. We pay {mult}.', 'Halden. Received in full. Call us again.'),
-    'corvo': ('Corvo Metals. {units} {ore}, {mult} on the unit. Standing by.', 'Corvo Metals. Contract closed. Pleasure.'),
+    'corvo': ('Corvo Metals. Standing by for {units} {ore}, {mult} on the unit.', 'Corvo Metals. Contract closed. Pleasure.'),
     # play:new:11: the slot names the speaker and drops a leading name, so the line must not lead with
     # the buyer's trade ('ICE COMPANY. 72 IRON.' read as a mistake when the order is iron).
-    'tessaly': ('Tessaly. {units} {ore} wanted. Paying {mult}. Keep the hold sealed.', 'Tessaly. Manifest checks out. Logged.'),
+    'tessaly': ('Tessaly. Keep the hold sealed. {units} {ore} wanted, paying {mult}.', 'Tessaly. Manifest checks out. Logged.'),
     'brightwater': ('Brightwater Foundry. The furnace wants {ore}. {units} units at {mult}.', 'Brightwater. Furnace is fed. Out.'),
-    'kade': ('Kade Refinery, line two. {units} {ore}. {mult}, no haggling.', 'Kade. Paid. We will call again.'),
+    'kade': ('Kade Refinery, line two. No haggling: {units} {ore} at {mult}.', 'Kade. Paid. We will call again.'),
     'oriel': ('Oriel Labs requesting {ore}. {units} units, any grade. Rate {mult}.', 'Oriel Labs. Samples received. Rate honoured.'),
 }
 GALAXIES = ['Cygnus Drift', 'Halden Reach', 'Morrow Belt', 'Tessaly Gap', 'Corvo Expanse', 'Brightwater Ring', "Kade's Shelf",
@@ -168,7 +170,10 @@ g['haul'] = {
         'stripeEvery': 15, 'stripeMult': 1.5,
         'cost': {'base': 3, 'ringFactor': 40, 'growth': K('rigGrowth', 1.6, 1.45, 1.8, 'rig cost growth', 1.6)},
     },
-    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)', 14), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 15), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring', 1.5)},
+    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)', 14), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 15), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring', 1.5),
+              # Decision 64: the first ring-2 claim costs about 140 with its drone (it was 224.5, and nothing else
+              # was worth buying between 1:30 and 5:20). A factor per ring (index = ring, 0-based), ring 2 only.
+              'ringMult': [1, K('claimRing2', 1, 0.4, 1, 'claim cost factor of ring 2 (Decision 64: the first ring-2 claim about 140 with its drone)', 0.6)]},
     'pile': {'min': 10, 'seconds': 25},
     'drone': {
         # Decision 44: a drone must carry more than a level-2 ring-1 rig drills, or the tutorial's rig step pays nothing.
@@ -186,6 +191,9 @@ g['haul'] = {
         'capacity': K('freighterCap', 12, 12, 24, 'freighter capacity at level 1 (Decision 44: the tutorial rig step must pay)', 20), 'growth': 1.45, 'cost': {'base': 15, 'growth': K('freighterGrowth', 1.6, 1.45, 1.8, 'freighter cost growth (knob: freighter binds)', 1.5)},
         'away': [{'from': 1, 'seconds': 8}, {'from': 10, 'seconds': 12}, {'from': 25, 'seconds': 16}],
         'climb': 2.5, 'land': 2, 'fullBonus': 1.1, 'hulls': [1, 10, 25, 50], 'segmentEvery': 25, 'segmentMax': 8,
+        # Decision 64: without the autopilot the income line counts the hand (arming and reacting, seconds a
+        # launch cycle), so it is what a person earns, not a ceiling (play check: 25 to 35 % under the line).
+        'manualAllowance': K('manualAllowance', 3, 0, 5, 'seconds a manual launch cycle adds for arming and reacting (Decision 64)'),
     },
     'autopilot': {'cost': K('autopilot', 90, 80, 110, 'Dock Autopilot price')},
     'respawnSeconds': 6,
@@ -261,9 +269,10 @@ g['haul'] = {
         {'card': 'quickclamp', 'socket': 'dock', 'stat': 'metReturn', 'cap': 0.5},
     ],
     'hangar': {'product': 'space_hangar', 'droneCap': 6, 'startDrones': 2},
-    # Decision 42: the Shift Log's ad adds `adBonus` (not a double), and the gate counts it; the cap sits
-    # under 0.45 so the gate holds with margin on every seed (Decision 45).
-    'offline': {'efficiencyCap': K('efficiencyCap', 0.45, 0.25, 0.45, 'offline efficiency cap of the haul rules (gate measured with the ad bonus)'),
+    # Decision 42: the Shift Log's ad adds `adBonus` (not a double), and the gate counts it. Decision 64: the
+    # cap comes down from 0.45 until an hour away with the boost is at most 0.9 of an hour of watching on
+    # every seed at every sample (seed 4 read 1.01 at minute 30 with 0.45; 0.38 puts it near 0.85).
+    'offline': {'efficiencyCap': K('efficiencyCap', 0.45, 0.25, 0.45, 'offline efficiency cap of the haul rules (gate measured with the ad bonus)', 0.38),
                 'rockLoopMax': 2000, 'adBonus': 0.5},
 }
 

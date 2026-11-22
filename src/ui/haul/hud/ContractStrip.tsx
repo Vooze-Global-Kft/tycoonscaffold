@@ -22,7 +22,7 @@ import { GameIcon } from '../../components/GameIcon';
 import { useTarget } from '../../hints/targets';
 import { alpha, oreColor, SPACE } from '../art/palette';
 import type { Rect } from '../layout';
-import { moneyShort } from '../sheets/format';
+import { clock, moneyShort, rockName } from '../sheets/format';
 import { HAUL_STRINGS } from '../strings';
 import { runParams, useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
@@ -56,6 +56,12 @@ interface StripView {
   /** The raise the short ore still needs, as a whole percent (the board's figure); 0 when none. */
   raise: number;
   shift: boolean;
+  /** The first-drying rock under each wanted ore (slot), only when it dries inside the contract's remaining launches. */
+  dryWatch: { ore: string; slot: number; k: number }[];
+  /** Seconds the contract's remaining launches take (launches left x the launch interval). */
+  horizon: number;
+  /** "T-5 DRIES IN 0:20" while such a rock is drilling (live from the slot's life, Decision 64), else ''. */
+  dry: string;
 }
 
 const NONE: StripView = {
@@ -72,6 +78,9 @@ const NONE: StripView = {
   short: '',
   raise: 0,
   shift: false,
+  dryWatch: [],
+  horizon: 0,
+  dry: '',
 };
 
 
@@ -94,6 +103,55 @@ function oreNameOf(cfg: H.HaulConfig, ore: string): string {
 let memo: { cfg: object; contracts: object; phase: string; toward: unknown; routes: string; shift: unknown; view: StripView } | null = null;
 
 function stripView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): StripView {
+  const v = stripBase(cfg, g);
+  if (!v.active || v.done || !v.dryWatch.length) return v;
+  const dry = dryLine(cfg, g.haul, v.dryWatch, v.horizon);
+  return dry === v.dry ? v : { ...v, dry };
+}
+
+/**
+ * Decision 64, "T-5 DRIES IN 0:20": the wanted ore's rock that dries first, read live from its slot
+ * (the seconds change every tick, the view of the contract does not), while it is the same rock and
+ * dries inside the contract's remaining launches. Whole seconds, so the strip renders once a second.
+ */
+function dryLine(cfg: H.HaulConfig, h: H.HaulState, watch: { ore: string; slot: number; k: number }[], horizon: number): string {
+  let best: { slot: number; life: number } | null = null;
+  for (const w of watch) {
+    const s = h.slots[w.slot];
+    // The rules' seconds (when given) scaled by how much of the rock's drilling life is left since.
+    const life = s ? s.life * w.k : 0;
+    if (!s?.claimed || s.respawnAt !== null || s.rockN < 0 || s.ore !== w.ore || !(life > 0) || !(life < horizon)) continue;
+    if (!best || life < best.life) best = { slot: w.slot, life };
+  }
+  return best ? fillIn(HAUL_STRINGS.stripDries, { rock: rockName(cfg, best.slot), t: clock(Math.ceil(best.life)) }) : '';
+}
+
+/** The want's `dries` field when the rules provide it (Decision 64), undefined while they do not. */
+type Dries = { slot: number; seconds: number } | null;
+
+/**
+ * The first-drying rock of `ore` among the routes feeding it: the rules' `dries` when the view has
+ * one, else the claimed rock of that ore with drones on it and the least life.
+ */
+function dryingSlot(h: H.HaulState, ore: string, dries: Dries | undefined): { slot: number; k: number } | null {
+  if (dries !== undefined) {
+    if (!dries) return null;
+    const life = h.slots[dries.slot]?.life ?? 0;
+    return { slot: dries.slot, k: life > 0 && dries.seconds > 0 ? dries.seconds / life : 1 };
+  }
+  let slot: number | null = null;
+  let life = Infinity;
+  h.slots.forEach((s, i) => {
+    if (!s?.claimed || s.respawnAt !== null || s.rockN < 0 || s.ore !== ore || !(s.haulers > 0) || !(s.life > 0)) return;
+    if (s.life < life) {
+      life = s.life;
+      slot = i;
+    }
+  });
+  return slot === null ? null : { slot, k: 1 };
+}
+
+function stripBase(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): StripView {
   const h = g.haul;
   if (!h.contracts.unlocked) return NONE;
   const k = h.contracts.active;
@@ -140,12 +198,29 @@ function stripView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): St
       // The board's figure (ContractBoardSheet: Math.max(1, round(raise x 100)) of the short ore).
       raise: raisePercent((cv.wants.find((w) => w.ore === cv.shortOre) as { raise?: number } | undefined)?.raise),
       shift: cv.shift,
+      dryWatch: cv.wants.flatMap((w) => {
+        if (!(w.left > 0)) return [];
+        const d = dryingSlot(h, w.ore, (w as { dries?: Dries }).dries);
+        return d === null ? [] : [{ ore: w.ore, ...d }];
+      }),
+      horizon: cv.launchesLeft * launchInterval(cfg, params, h),
+      dry: '',
     };
   } catch {
     view = { ...NONE, unlocked: true };
   }
   memo = { cfg, contracts: h.contracts, phase: h.freighter.phase, toward: h.freighter.contract, routes, shift, view };
   return view;
+}
+
+/** Seconds between two launches as the rules count them for the contracts (the basis's interval), Infinity when unknown. */
+function launchInterval(cfg: H.HaulConfig, params: H.HaulParams, h: H.HaulState): number {
+  try {
+    const t = H.contractBasis(cfg, params, h).interval;
+    return t > 0 ? t : Infinity;
+  } catch {
+    return Infinity;
+  }
 }
 
 /** A want's raise as the board writes it (whole percent, at least 1), or 0 when there is no figure. */
@@ -191,14 +266,15 @@ export function ContractStrip({ rect }: { rect: Rect }) {
     return () => cancelAnimation(pulse);
   }, [last, pulse]);
   // Decision 56: a freighter level resizes the taken order; the strip says so for a moment instead
-  // of letting the figure jump silently ("ORDER RESIZED · 107K", what is still needed).
+  // of letting the figure jump silently ("ORDER RESIZED · 133", the new order, as the bar shows it).
   const [resized, setResized] = useState<string | null>(null);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const off = modeEvents.subscribe((events) => {
       const e = (events as H.HaulEvent[]).find((x) => x.type === 'contractResized' && x.contract.taken) as Extract<H.HaulEvent, { type: 'contractResized' }> | undefined;
       if (!e || !(e.factor > 0) || Math.abs(e.factor - 1) < 1e-9) return;
-      setResized(fillIn(HAUL_STRINGS.stripResized, { n: unitShort(e.left) }));
+      // The new order size, the figure the bar beside it shows (check3 NEW[5]: not what is left).
+      setResized(fillIn(HAUL_STRINGS.stripResized, { n: e.contract.wants.map((w) => unitShort(w.units)).join(' + ') }));
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => setResized(null), RESIZED_MS);
     });
@@ -230,8 +306,16 @@ export function ContractStrip({ rect }: { rect: Rect }) {
     const fits = fitLabel(`${launches} · ${full}`, statusW, statusBase, fontScale).font >= labelMetrics(statusBase, fontScale).font * 0.85;
     return fits ? full : fillIn(HAUL_STRINGS.stripRaiseShort, { p: v.raise, ore: v.short });
   };
-  const pace = resized && !v.done && aboard < 1 ? resized : v.done ? HAUL_STRINGS.stripMet : aboard >= 1 ? fillIn(HAUL_STRINGS.stripAboard, { n: unitShort(aboard) }) : v.onPace ? HAUL_STRINGS.stripOnPace : shortWords();
-  const paceColor = resized && pace === resized ? SPACE.white : v.done || aboard >= 1 || v.onPace ? SPACE.green : SPACE.amber;
+  // A wanted ore's rock dries before the contract ends (Decision 64): said instead of ON PACE, and in
+  // front of the shortfall when both fit at a readable size ("T-5 DRIES IN 0:20 · +61 % IRON").
+  const dryWords = () => {
+    if (v.onPace || !v.raise) return v.dry;
+    const both = `${v.dry} · ${fillIn(HAUL_STRINGS.stripRaiseShort, { p: v.raise, ore: v.short })}`;
+    return fitLabel(`${launches} · ${both}`, statusW, statusBase, fontScale).font >= labelMetrics(statusBase, fontScale).font * 0.85 ? both : v.dry;
+  };
+  const drying = !!v.dry && !v.done && aboard < 1 && !resized;
+  const pace = resized && !v.done && aboard < 1 ? resized : v.done ? HAUL_STRINGS.stripMet : aboard >= 1 ? fillIn(HAUL_STRINGS.stripAboard, { n: unitShort(aboard) }) : drying ? dryWords() : v.onPace ? HAUL_STRINGS.stripOnPace : shortWords();
+  const paceColor = resized && pace === resized ? SPACE.white : drying ? SPACE.amber : v.done || aboard >= 1 || v.onPace ? SPACE.green : SPACE.amber;
   const status = `${launches} · ${pace}`;
   const statusFit = fitLabel(status, statusW, statusBase, fontScale);
   const label = v.active

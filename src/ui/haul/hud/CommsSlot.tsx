@@ -289,17 +289,25 @@ export function CommsSlot({ rect }: { rect: Rect }) {
               );
             break;
           case 'contractNew':
-            if (g.haul?.contracts.unlocked && ev.contract.wants[0])
+            if (g.haul?.contracts.unlocked && ev.contract.wants[0]) {
+              // The buyer's line names the raised ore (the first want, Decision 56) with its OWN units,
+              // never the order's total; a held second ore follows as its own sentence (check3 NEW[4]).
+              const [first, ...rest] = ev.contract.wants;
+              const also = rest.map((w) => fillIn(HAUL_STRINGS.contractAlso, { units: unitShort(w.units), ore: oreName(cfg, w.ore).toLowerCase() }));
               add(
                 `new:${ev.contract.k}`,
                 ev.contract.buyer,
-                fillLine(buyerLine(cfg, ev.contract.buyer, 'calls') ?? say('contractNew'), {
-                  ore: oreName(cfg, ev.contract.wants[0].ore).toLowerCase(),
-                  n: unitShort(ev.contract.wants.reduce((a, w) => a + w.units, 0)),
-                  units: unitShort(ev.contract.wants.reduce((a, w) => a + w.units, 0)),
-                  mult: multText(ev.contract.mult),
-                }),
+                [
+                  fillLine(buyerLine(cfg, ev.contract.buyer, 'calls') ?? say('contractNew'), {
+                    ore: oreName(cfg, first.ore).toLowerCase(),
+                    n: unitShort(first.units),
+                    units: unitShort(first.units),
+                    mult: multText(ev.contract.mult),
+                  }),
+                  ...also,
+                ].join(' '),
               );
+            }
             break;
           default:
             break;

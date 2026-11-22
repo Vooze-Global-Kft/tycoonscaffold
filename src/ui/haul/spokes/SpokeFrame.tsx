@@ -12,7 +12,7 @@
  */
 import { Canvas, Picture, Skia, type SkPicture } from '@shopify/react-native-skia';
 import { useMemo, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fx } from '../../../services/fx';
 import { useOverlay } from '../../kit';
@@ -20,6 +20,9 @@ import { SPACE, alpha } from '../art/palette';
 import { HAUL_STRINGS } from '../strings';
 import { useHaulUi } from '../uiState';
 import { INK, Mono } from './spokeKit';
+
+/** check3 NEW[9]: on the web a drag that starts over spoke text must not select it (phones never select). */
+const NO_SELECT = (Platform.OS === 'web' ? { userSelect: 'none' } : {}) as ViewStyle;
 
 export const GUTTER = 16;
 
@@ -87,7 +90,7 @@ export function SpokeFrame({
     useHaulUi.getState().closeSpoke();
   } : onBack;
   return (
-    <View style={[StyleSheet.absoluteFill, styles.fill]}>
+    <View style={[StyleSheet.absoluteFill, styles.fill, NO_SELECT]}>
       <Canvas style={StyleSheet.absoluteFill}>
         <Picture picture={pic} />
       </Canvas>

@@ -44,7 +44,7 @@ interface RigView {
   dryText: string;
   route: string;
   /** From the actual limit (Decision 59): a full pile or hold, the freighter, else the drill against the drones. */
-  verdict: 'drill' | 'haul' | 'balanced' | 'none' | 'pileFull' | 'holdFull' | 'freighter';
+  verdict: 'drill' | 'haul' | 'balanced' | 'none' | 'pileFull' | 'holdFull' | 'freighter' | 'clearing';
   /** "Dry in" is showing: the line under it says the rig stays for the next rock (Decision 58). */
   stays: boolean;
   pile: string;
@@ -69,8 +69,12 @@ function rigView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }, slot:
   const at = claimed.indexOf(slot);
   const respawning = s.respawnAt !== null;
   const drifting = s.rockN < 0;
+  // check3 NEW[8]: a rock drilled to nothing whose pile still holds ore is not "Dry in about 0:00":
+  // the drones are still clearing what the rig brought up.
+  const drilledOut = !drifting && !respawning && !(s.life > 1e-6) && r.pile >= 0.5;
   let dryText: string;
   if (drifting) dryText = say('drifting');
+  else if (drilledOut) dryText = say('drilledOut', { p: unitsShort(Math.min(r.pile, r.cap)) });
   else if (respawning)
     dryText = say('dryNow', {
       s: Math.max(0, Math.ceil((s.respawnAt ?? 0) - g.haul.clock)),
@@ -86,7 +90,7 @@ function rigView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }, slot:
   const pileFull = s.full || r.pile >= r.cap - 0.5;
   const holdFull = g.haul.marks.holdFullSince !== null;
   const freighterBound = H.routeLimits(cfg, g).some((x) => x.slot === slot && x.limit === 'freighter');
-  const verdict: RigView['verdict'] = n === 0 ? 'none' : pileFull ? 'pileFull' : holdFull ? 'holdFull' : freighterBound && r.verdict === 'drill' ? 'freighter' : r.verdict;
+  const verdict: RigView['verdict'] = n === 0 ? 'none' : drilledOut ? (holdFull ? 'holdFull' : 'clearing') : pileFull ? 'pileFull' : holdFull ? 'holdFull' : freighterBound && r.verdict === 'drill' ? 'freighter' : r.verdict;
   const seam = (g.haul.vein.slot === slot && g.haul.vein.until > g.haul.clock) || (g.haul.flare.slot === slot && g.haul.flare.until > g.haul.clock);
   return {
     slot,
@@ -156,6 +160,7 @@ const VERDICT: Record<RigView['verdict'], string> = {
   pileFull: say('verdictPileFull'),
   holdFull: say('verdictHoldFull'),
   freighter: say('verdictFreighter'),
+  clearing: say('verdictClearing'),
 };
 
 /** hintsShown key of the one-time pile explanation. */
