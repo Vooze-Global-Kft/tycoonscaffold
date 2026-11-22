@@ -117,6 +117,9 @@ export function playHaulEvents(events: readonly unknown[]): void {
       case 'docked':
       case 'flareCharge':
       case 'tutorialDone':
+      case 'contractResized':
+        // (contractResized, Decision 56: a freighter purchase resizes the orders; the purchase's own
+        // sound is heard and the strip says "ORDER RESIZED".)
         // Silent on purpose: the rig lamp, the pad and the charge plate show these (spec 4.3).
         break;
       case 'claim':

@@ -25,6 +25,7 @@ import { fx } from '../../../services/fx';
 import { useOverlaysOpen } from '../../kit';
 import { targets, type TargetRect } from '../../hints/targets';
 import { ReticleLayer, type Point, type ReticleHint } from '../art/Reticle';
+import { GUIDE_COLOR } from '../art/reticle.draw';
 import { DRAG_NONE, dragLine } from '../gestures/fieldInput';
 import { allHaulHints } from '../hints';
 import type { FieldLayout } from '../layout';
@@ -107,6 +108,9 @@ export function reticleFor(h: HaulHint, layout: FieldLayout, selection: HaulSele
   const pointAt = (key: string): ReticleHint | null => {
     const r = targetRect(key, layout);
     if (!r) return null;
+    // The station is as large as the reticle and drawn in its colour: a reticle on its hub could not
+    // be seen (play:new:4, step 4). It is framed round its ring instead, in the guide's white.
+    if (key === 'station') return { kind: 'frame', rect: r };
     return FRAMED.includes(key) ? { kind: 'frame', rect: r } : { kind: 'point', from: centre(r) };
   };
   const own = pointAt(h.key);
@@ -116,6 +120,13 @@ export function reticleFor(h: HaulHint, layout: FieldLayout, selection: HaulSele
     if (p) return p;
   }
   return own;
+}
+
+/** True for the frame round the station (drawn white: the station itself is the reticle's cyan). */
+function onStation(h: ReticleHint, layout: FieldLayout): boolean {
+  if (h.kind !== 'frame') return false;
+  const st = layout.station;
+  return Math.abs(h.rect.x + h.rect.width / 2 - st.x) < 2 && Math.abs(h.rect.y + h.rect.height / 2 - st.y) < 2 && h.rect.width > 40;
 }
 
 const same = (a: ReticleHint | null, b: ReticleHint | null) => JSON.stringify(a) === JSON.stringify(b);
@@ -179,7 +190,7 @@ export function HintLayer({ layout }: { layout: FieldLayout }) {
   if (!shown || blocked || dragging) return null;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <ReticleLayer hint={shown} width={layout.width} height={layout.height} />
+      <ReticleLayer hint={shown} width={layout.width} height={layout.height} color={onStation(shown, layout) ? GUIDE_COLOR : undefined} />
     </View>
   );
 }

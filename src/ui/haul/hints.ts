@@ -7,7 +7,7 @@
  * - the map's own hint layer (./hud/HintLayer.tsx) draws drag, swipe, tap-tap and point hints on
  *   the map with `ReticleLayer`, from `allHaulHints()`.
  * Target keys: rock:<slot>, slot:<slot>, chip:<slot>, drone:rack, station, station:buyDrone,
- * station:autopilot, rig:upgrade, bay:launch, bay:counter, bay:flare, contract:strip,
+ * station:autopilot, station:capacity, station:engine, station:freighter (Decision 57), rig:upgrade, bay:launch, bay:counter, bay:flare, contract:strip,
  * button:comms|salvage|fitting|starmap|trade|menu, salvage:pod0, fitting:socket0, fitting:module0.
  * Map keys are set with `targets.set(key, rect)` from the layout (errata 47); controls use useTarget.
  */

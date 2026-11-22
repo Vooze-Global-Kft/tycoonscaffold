@@ -13,10 +13,11 @@
  * Fixed-height card: three rows at tops that add up to the card, fonts sized by hand from
  * fontScale (shrunk together when the text size setting would overflow the card).
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import * as H from '../../../engine/haul';
+import { modeEvents } from '../../../state/modeEvents';
 import { GameIcon } from '../../components/GameIcon';
 import { useTarget } from '../../hints/targets';
 import { alpha, oreColor, SPACE } from '../art/palette';
@@ -26,6 +27,9 @@ import { HAUL_STRINGS } from '../strings';
 import { runParams, useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { DIGITAL, fillIn, fitLabel, labelMetrics, unitShort } from './bayText';
+
+/** How long the strip says an order was resized. */
+const RESIZED_MS = 4000;
 
 interface WantView {
   ore: string;
@@ -172,6 +176,23 @@ export function ContractStrip({ rect }: { rect: Rect }) {
     pulse.value = last ? withRepeat(withSequence(withTiming(0.35, { duration: 380 }), withTiming(1, { duration: 380 })), 4, false) : 1;
     return () => cancelAnimation(pulse);
   }, [last, pulse]);
+  // Decision 56: a freighter level resizes the taken order; the strip says so for a moment instead
+  // of letting the figure jump silently ("ORDER RESIZED · 107K", what is still needed).
+  const [resized, setResized] = useState<string | null>(null);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const off = modeEvents.subscribe((events) => {
+      const e = (events as H.HaulEvent[]).find((x) => x.type === 'contractResized' && x.contract.taken) as Extract<H.HaulEvent, { type: 'contractResized' }> | undefined;
+      if (!e || !(e.factor > 0) || Math.abs(e.factor - 1) < 1e-9) return;
+      setResized(fillIn(HAUL_STRINGS.stripResized, { n: unitShort(e.left) }));
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setResized(null), RESIZED_MS);
+    });
+    return () => {
+      off();
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
   const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value }));
   const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
   if (!v.unlocked) return null;
@@ -185,8 +206,8 @@ export function ContractStrip({ rect }: { rect: Rect }) {
   const launches = v.left === 1 ? HAUL_STRINGS.stripLaunch : fillIn(HAUL_STRINGS.stripLaunches, { n: v.left });
   // While the freighter climbs, what it carries for the contract (play-4: the launch is never lost from view).
   const aboard = v.wants.reduce((a, w) => a + w.aboard, 0);
-  const pace = v.done ? HAUL_STRINGS.stripMet : aboard >= 1 ? fillIn(HAUL_STRINGS.stripAboard, { n: unitShort(aboard) }) : v.onPace ? HAUL_STRINGS.stripOnPace : fillIn(HAUL_STRINGS.stripShort, { ore: v.short });
-  const paceColor = v.done || aboard >= 1 || v.onPace ? SPACE.green : SPACE.amber;
+  const pace = resized && !v.done && aboard < 1 ? resized : v.done ? HAUL_STRINGS.stripMet : aboard >= 1 ? fillIn(HAUL_STRINGS.stripAboard, { n: unitShort(aboard) }) : v.onPace ? HAUL_STRINGS.stripOnPace : fillIn(HAUL_STRINGS.stripShort, { ore: v.short });
+  const paceColor = resized && pace === resized ? SPACE.white : v.done || aboard >= 1 || v.onPace ? SPACE.green : SPACE.amber;
   const status = `${launches} · ${pace}`;
   const statusFit = fitLabel(status, midW + rightW - (v.shift ? 64 : 0) - 10, compact ? 9.5 : 10.5, fontScale);
   const label = v.active

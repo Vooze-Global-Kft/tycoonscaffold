@@ -1,10 +1,10 @@
 {
  "game": "space-miner",
- "date": "2026-11-22T15:38:40.236Z",
+ "date": "2026-11-22T17:16:35.853Z",
  "platform": "ios",
  "stage": "export",
  "result": "pass",
- "sourceHash": "d0e3b11ccadf01b44ffe990561844dd5f46a1384c0a6a652e669b78132d99b77",
+ "sourceHash": "29350ecbe2159cf18aeb3d91cb12cbc016d385f54fd861b38eb16fae54c4d8a5",
  "sources": [
   "app.config.ts",
   "games/space-miner/assets/sfx/bonanza.wav",
@@ -81,6 +81,7 @@
   "src/engine/format.ts",
   "src/engine/haul.ts",
   "src/engine/haul/actions.ts",
+  "src/engine/haul/advice.ts",
   "src/engine/haul/create.ts",
   "src/engine/haul/hints.ts",
   "src/engine/haul/jump.ts",
@@ -173,9 +174,11 @@
   "src/ui/haul/hud/StationRail.tsx",
   "src/ui/haul/hud/bayMetrics.ts",
   "src/ui/haul/hud/bayText.ts",
+  "src/ui/haul/hud/callout.ts",
   "src/ui/haul/hud/feedbackTiming.ts",
   "src/ui/haul/hud/flight.ts",
   "src/ui/haul/hud/hintOrder.ts",
+  "src/ui/haul/hud/receipt.ts",
   "src/ui/haul/hud/useMapLayout.ts",
   "src/ui/haul/layout.ts",
   "src/ui/haul/overlays/Boot.tsx",
@@ -189,7 +192,9 @@
   "src/ui/haul/scene/frameLoop.ts",
   "src/ui/haul/scene/model.ts",
   "src/ui/haul/scene/pics.ts",
+  "src/ui/haul/scene/sameValue.ts",
   "src/ui/haul/sheets/ContractBoardSheet.tsx",
+  "src/ui/haul/sheets/PodStamps.tsx",
   "src/ui/haul/sheets/RigSheet.tsx",
   "src/ui/haul/sheets/StationMenuSheet.tsx",
   "src/ui/haul/sheets/StationSheet.tsx",
@@ -223,7 +228,7 @@
   "src/ui/theme.ts"
  ],
  "violations": [],
- "modules": 1816,
+ "modules": 1821,
  "assets": 56,
- "bytes": 4875644
+ "bytes": 4905385
 }

@@ -43,7 +43,7 @@ import { SPACE } from '../art/palette';
 import { allHaulHints } from '../hints';
 import { buyerName, oreName, rockName } from '../sheets/format';
 import { MONO } from '../sheets/parts';
-import { hintLine, speaker } from '../sheets/shellLogic';
+import { hintLine, sheetOf, speaker } from '../sheets/shellLogic';
 import { say } from '../sheets/shellText';
 import { useHaulUi } from '../uiState';
 import type { Rect } from '../layout';
@@ -184,10 +184,13 @@ export function CommsSlot({ rect }: { rect: Rect }) {
       }
       if (cur.current && now >= cur.current.until) clear();
       if (covered || !g.haul) return;
-      // 1. Hint lines: at once, no gap (also behind a sheet: they are about what the player does now).
+      // 1. Hint lines: at once, no gap. Behind a sheet only a line about that sheet's own controls
+      // starts ("One more drone" in the Station sheet); a line about the map ("Drone idle on the rack")
+      // or anything behind the station menu waits for the map (the lead's finishing note).
       const hint = allHaulHints()[0];
       const hl = hintLine(g, hint);
-      if (hl) {
+      const forSheet = !!hint && ui.sheet !== null && !ui.menuOpen && sheetOf(hint.key) === ui.sheet.type;
+      if (hl && (!reading || forSheet)) {
         const id = `${g.haul.seed}:${g.haul.galaxy}:${hl.key}`;
         if (!voiced.current.has(id)) {
           voiced.current.add(id);

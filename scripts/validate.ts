@@ -68,7 +68,8 @@ const PACING_SEEDS = [12345, 4, 99, 7, 2026];
  * Runs the haul pacing bot for several seeds at once, one child process per seed (Decision 45), and
  * returns each seed's parsed `--json` line (null when that run failed or timed out).
  */
-function pacingSeeds(id: string, hours: number, seeds: number[], extra: string[], timeout: number): Map<number, { hardMissed?: string[] } | null> {
+type SeedResult = { hardMissed?: string[]; targets?: { name: string; ok: boolean; value: string }[] };
+function pacingSeeds(id: string, hours: number, seeds: number[], extra: string[], timeout: number): Map<number, SeedResult | null> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `validate-pacing-${id}-`));
   const q = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`;
   const cmd = seeds
@@ -80,7 +81,7 @@ function pacingSeeds(id: string, hours: number, seeds: number[], extra: string[]
     timeout,
     env: { ...process.env, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=2000'].filter(Boolean).join(' ') },
   });
-  const out = new Map<number, { hardMissed?: string[] } | null>();
+  const out = new Map<number, SeedResult | null>();
   for (const seed of seeds) {
     try {
       const line = fs.readFileSync(path.join(dir, `${seed}.out`), 'utf8').trim().split('\n').pop();
@@ -284,6 +285,11 @@ for (const id of ids) {
     for (const [seed, r] of results) {
       if (!r || !Array.isArray(r.hardMissed)) problems.push(`pacing, seed ${seed}: the section 8 bot did not finish within 15 min (npm run simulate -- ${id} --hours 12 --prestige --seed ${seed} to see why)`);
       else r.hardMissed.forEach((m) => problems.push(`pacing (section 8, hard), seed ${seed}: ${m}`));
+    }
+    // Decision 62: pods and Dark Matter per hour inside their windows on all seeds but one at most.
+    for (const name of ['Pods per hour, hours 1 to 3', 'Dark Matter per hour from pods, hours 1 to 3']) {
+      const missed = [...results].filter(([, r]) => r?.targets?.some((x) => x.name === name && !x.ok));
+      if (missed.length > 1) problems.push(`pacing (section 8, Decision 62): "${name}" is outside its window on ${missed.length} of ${results.size} seeds (${missed.map(([seed, r]) => `${seed}: ${r?.targets?.find((x) => x.name === name)?.value}`).join('; ')}); at most one may miss`);
     }
   }
   // --- pacing: the same bot as `npm run simulate`, two simulated hours ---

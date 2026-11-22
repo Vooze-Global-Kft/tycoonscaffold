@@ -365,32 +365,27 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   };
 
   /**
-   * Contracts (section 8, Decision 40): with none taken, it takes the offer with the highest bonus
-   * whose units it can deliver in `contracts.launches` launches once it routes for it
-   * (`contractStation`'s routed share per launch × launches ≥ units, 5 % to spare); then, while that
-   * contract is taken, it drags drones from the routes that lose least onto rocks of the wanted ores
-   * until every ore is on pace with 15 % to spare (one launch's share as routed × launches left ≥
-   * units left), at most `fleetShare` of the fleet per contract. It never drops a taken contract.
+   * Contracts (section 8, Decision 56): with none taken, it takes the offer with the highest bonus
+   * that has a route for every ore it wants (a finite raise on the board's pace line); then, while
+   * that contract is taken and its pace light is not green, it drags one drone at a time onto the
+   * rock of the ore furthest behind (the one where a drone adds most), from the routes of ores the
+   * contract does not want that lose least, at most `contracts.fleetShare` of the fleet per
+   * contract. It reads only what the board shows (`contractViews`: the steady figure and the hold),
+   * so it plays like a person who follows the light. It never drops a taken contract.
    * With `passive` it takes the best-paying offer and never moves a drone for it (the "does nothing"
-   * player: it should meet few); with `watch` it takes nothing.
+   * player: it should meet few); with `watch` or `noContracts` it takes nothing.
    */
   let routedFor = -1;
   let routedMoves = 0;
   const handleContracts = () => {
     const h = g.haul;
     if (!h.contracts.unlocked || opts.watch || opts.noContracts) return;
-    const L = cfg.haul.contracts.launches;
     if (h.contracts.active === null) {
-      const p = params();
-      const station = H.contractStation(cfg, p, h);
       let pick = -1;
       let pickBonus = 0;
-      for (const v of H.contractViews(cfg, p, h, g.haulStats)) {
+      for (const v of H.contractViews(cfg, params(), h, g.haulStats)) {
         if (v.contract.taken || !(v.bonus > pickBonus)) continue;
-        if (!opts.passive) {
-          const r = station.reach(v.contract.wants.map((w) => w.ore));
-          if (!v.contract.wants.every((w, k) => r.routed[k] * L >= w.units * 1.05)) continue;
-        }
+        if (!opts.passive && !Number.isFinite(v.raise)) continue;
         pick = v.index;
         pickBonus = v.bonus;
       }
@@ -411,28 +406,13 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     const ores = c.wants.map((w) => w.ore);
     for (let guard = 0; guard < 80 && routedMoves < budget; guard++) {
       const p = params();
-      const cur = H.activeContract(g.haul);
-      if (!cur) break;
-      const r = H.contractStation(cfg, p, g.haul).reach(ores);
-      const launches = Math.max(1, cur.launchesLeft);
-      // The ore furthest behind its pace.
-      let worst = -1;
-      let behind = Infinity;
-      cur.wants.forEach((w, k) => {
-        const left = H.wantLeft(w);
-        if (!(left > 0)) return;
-        const pace = (r.now[k] * launches) / (left * 1.15);
-        if (pace < 1 && pace < behind) {
-          behind = pace;
-          worst = k;
-        }
-      });
-      if (worst < 0) break;
-      const ore = ores[worst];
+      const view = H.contractViews(cfg, p, g.haul, g.haulStats).find((v) => v.active);
+      if (!view || view.onPace || !view.shortOre) break;
+      const ore = view.shortOre;
       let to: number | null = null;
       let best = -1;
       g.haul.slots.forEach((s, k) => {
-        if (!s.claimed || s.respawnAt !== null || s.ore !== ore) return;
+        if (!s.claimed || s.respawnAt !== null || s.ore !== ore || !(s.life > 0)) return;
         const sp = p.slots[k];
         const e = sp.cBase / sp.trip;
         const add = Math.min(sp.rb, (s.haulers + 1) * e) - Math.min(sp.rb, s.haulers * e);
@@ -441,9 +421,23 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
           to = k;
         }
       });
-      if (to === null || !(best > 1e-9)) break;
       const avoid = g.haul.slots.map((s, k) => (s.claimed && ores.includes(s.ore) ? k : -1)).filter((k) => k >= 0);
-      if (moveTo(to, 1, avoid) < 1) break;
+      if (to !== null && best > 1e-9 && moveTo(to, 1, avoid) >= 1) {
+        routedMoves += 1;
+        continue;
+      }
+      // No drone adds more there (the drill is the limit) or none can come: a level of that ore's
+      // busiest rig, when it can be paid now (the Rig sheet's own advice).
+      let rig: number | null = null;
+      g.haul.slots.forEach((s, k) => {
+        if (!s.claimed || s.respawnAt !== null || s.ore !== ore || !(s.life > 0) || s.haulers < 1) return;
+        if (rig === null || s.haulers > g.haul.slots[rig].haulers) rig = k;
+      });
+      if (rig === null || !H.affordable(g.cash, H.rigCost(cfg, g, rig))) break;
+      const ev: H.HaulEvent[] = [];
+      sheet(`rig ${rig}`);
+      if (!act(H.upgradeRig(cfg, g, rig, ev), ev)) break;
+      count('upgrade');
       routedMoves += 1;
     }
   };

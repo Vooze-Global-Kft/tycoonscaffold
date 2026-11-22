@@ -52,6 +52,7 @@ export const HAUL_STRINGS = {
   stripShort: 'SHORT ON {ore}',
   stripMet: 'ALL ABOARD',
   stripAboard: '{n} ABOARD',
+  stripResized: 'ORDER RESIZED · {n}',
   stripShift: 'x2 SHIFT',
   stripLabel: '{buyer} contract. {wants}. {left}. Bonus {bonus}. Opens the Contract Board.',
   // What a drone is worth where it is held (Decision 49).

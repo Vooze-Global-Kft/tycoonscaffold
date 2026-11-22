@@ -270,6 +270,9 @@ function ContractRow({ row, onPress, ask }: { row: RowView; onPress: () => void;
         <T size={ty.tiny} color={row.onPace ? c.success : amber} bold flex>
           {`\u00a0·\u00a0${row.paceWord}`}
         </T>
+      </View>
+      {/* The bonus has a line of its own: next to "NEEDS +27 % COPPER" and the TAKEN tag it cut the pace word at 390 wide. */}
+      <View style={styles.bonus}>
         <T size={ty.body} color={c.success} bold>
           {row.bonus}
         </T>
@@ -313,6 +316,7 @@ const styles = StyleSheet.create({
   wantLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   bar: { height: 4, borderRadius: 2, overflow: 'hidden', flexDirection: 'row' },
   bottom: { flexDirection: 'row', alignItems: 'center' },
+  bonus: { flexDirection: 'row', justifyContent: 'flex-end' },
   takenTag: { marginRight: 6 },
   footer: { alignItems: 'center', marginTop: 2 },
   open: { borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },

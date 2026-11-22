@@ -48,9 +48,9 @@ const ghosts = bounded(96);
 export const GHOST_STEPS = 24;
 
 /**
- * Baked starfields (device:new:0): at most three kept (the one on screen, the one a canvas may still
- * draw while it changes, and the next galaxy's baked ahead during the Jump), keyed by size and
- * galaxy. An image is never disposed: the collector frees it once no canvas draws it.
+ * Baked starfields (device:new:0): at most two kept (the one on screen and the next galaxy's,
+ * baked ahead during the Jump; about 6 MB each at 2 px a point), keyed by size and galaxy; the
+ * field keeps a reference to the one it shows until the next is ready. An image is never disposed: the collector frees it once no canvas draws it.
  */
 const starImages = new Map<string, StarfieldImage | null>();
 const starCores = new Map<string, SkPicture>();
@@ -145,7 +145,7 @@ export const pictures = {
     setTimeout(() => {
       const list = starWaiters.get(key);
       starWaiters.delete(key);
-      if (!starImages.has(key)) keep(starImages, key, bakeStarfield(w, h, galaxy, density));
+      if (!starImages.has(key)) keep(starImages, key, bakeStarfield(w, h, galaxy, density), 2);
       list?.forEach((f) => f());
     }, delay);
   },

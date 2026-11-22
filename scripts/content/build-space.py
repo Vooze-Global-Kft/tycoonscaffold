@@ -193,13 +193,20 @@ g['haul'] = {
     'flare': {'refillSeconds': 1800, 'firstAt': 600, 'maxStored': 1, 'adsPerDay': 3, 'adGapMinutes': 20},
     'contracts': {
         'unlockLaunches': 4, 'unlockClock': 90, 'board': 3,
-        # Decision 40: a taken contract is delivered over `launches` warp-outs; an offer ages one launch of
-        # `offerLaunches` per warp-out; `margin` keeps a contract from being met by the routes as they are.
-        'launches': int(K('contractLaunches', 6, 4, 8, 'warp-outs a taken contract has to deliver everything', 4)),
+        # Decisions 40 and 56: a taken contract is delivered over `launches` warp-outs (6: the play-test used
+        # three of four just reading the board); an offer ages one launch of `offerLaunches` per warp-out.
+        # Offers are drawn from what the station has really shipped (`recent`, over `recentLaunches`):
+        # "raise it" asks L x recent x (1 + g), g in `raise`; the second ore of a two-ore contract "holds it"
+        # at L x recent x U(holdShare). Difficulty is tuned with the raise, never with the count.
+        'launches': int(K('contractLaunches', 6, 4, 8, 'warp-outs a taken contract has to deliver everything (Decision 56: 6)', 6)),
         'offerLaunches': int(K('offerLaunches', 12, 8, 16, 'warp-outs an offer stays on the board')),
-        'margin': K('contractMargin', 0.12, 0.08, 0.2, 'never free: units at least L x now x (1 + margin)', 0.2),
+        'raise': [K('raiseLo', 0.25, 0.1, 0.5, 'contract raise over what the station ships, low end (Decision 56)'), K('raiseHi', 0.6, 0.3, 1.0, 'contract raise, high end (Decision 56)')],
+        'holdShare': [0.85, 0.95],
+        'raiseMult': K('raiseMult', 1, 0, 2, 'contract multiplier added per unit of raise (a harder contract pays more)'),
+        'maxShare': 0.9, 'minValueShare': 0.1, 'minBonusSeconds': 10, 'recentLaunches': 6,
         'fee': K('fee', 0.1, 0.05, 0.15, 'delivery fee on the rest of a met cargo'),
-        'reach': [K('reachLo', 0.35, 0.2, 0.5, 'contract units: low end, from the hold share as routed (0) to the share routed for it (1)', 0.5), K('reachHi', 0.75, 0.6, 0.9, 'contract units: high end of the same range', 0.9)],
+        # The bot's routing budget (section 8); the draw no longer reads it. `margin` and `reach` are gone
+        # with Decision 56 (the schema still parses them from old data).
         'fleetShare': K('fleetShare', 0.5, 0.3, 0.7, 'share of the fleet a player sends to a contract when routing for it'),
         'minUnits': 3, 'twoOreChance': 0.4,
         'mult': [round(1 + (m - 1) * K('contractMultScale', 1, 0.6, 1, 'contract multipliers: share of the specification\'s mark-up over x1'), 2) for m in (1.6, 1.9, 2.2, 2.6, 3.0)], 'jitter': 0.1,
