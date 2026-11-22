@@ -18,9 +18,9 @@
  * rest after a few cycles until something changes.
  */
 import { Canvas, Group, Picture, type SkPicture } from '@shopify/react-native-skia';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
-import { useDerivedValue, useFrameCallback, useSharedValue, type FrameInfo } from 'react-native-reanimated';
+import { runOnJS, useDerivedValue, useFrameCallback, useSharedValue, type FrameInfo } from 'react-native-reanimated';
 import * as H from '../../../engine/haul';
 import { haulActions } from '../../../modes/haul/actions';
 import { targets } from '../../hints/targets';
@@ -118,17 +118,24 @@ export function LaunchTrack({ rect, crest, topY }: { rect: Rect; crest: number; 
   const chevStep = useSharedValue(CHEV_DIM);
   const chevT0 = useSharedValue(-1);
   const breathing = ready && !spoke && !armed;
+  // device:new:3: once the chevrons rest lit, the callback stops itself (no idle callback per vsync).
+  const stopRef = useRef<() => void>(() => {});
+  const stopChev = useCallback(() => stopRef.current(), []);
   const onChevFrame = useCallback(
     (info: FrameInfo) => {
       'worklet';
       if (chevT0.value < 0) chevT0.value = info.timestamp;
       const el = info.timestamp - chevT0.value;
       const next = el >= CHEVRON_MS * CHEVRON_CYCLES ? CHEV_LIT : Math.floor((el % CHEVRON_MS) / (CHEVRON_MS / CHEVRON_STEPS));
-      if (next !== chevStep.value) chevStep.value = next;
+      if (next !== chevStep.value) {
+        chevStep.value = next;
+        if (next === CHEV_LIT) runOnJS(stopChev)();
+      }
     },
-    [chevT0, chevStep],
+    [chevT0, chevStep, stopChev],
   );
   const chevTick = useFrameCallback(onChevFrame, false);
+  stopRef.current = () => chevTick.setActive(false);
   useEffect(() => {
     if (breathing) {
       chevT0.value = -1;
@@ -242,7 +249,19 @@ export function LaunchTrack({ rect, crest, topY }: { rect: Rect; crest: number; 
         height: Hh,
       }}
     >
-      <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: W, height: Hh, overflow: 'visible' }}>
+      <View
+        pointerEvents="none"
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel={away ? HAUL_STRINGS.launchWaiting : HAUL_STRINGS.launchLabel}
+        accessibilityValue={away ? { text: backIn } : undefined}
+        accessibilityActions={ready ? [{ name: 'increment' }] : []}
+        onAccessibilityAction={(e) => {
+          // A screen reader's swipe up on the adjustable track is the launch swipe.
+          if (e.nativeEvent.actionName === 'increment' && ready) haulActions.launch();
+        }}
+        style={{ position: 'absolute', left: 0, top: 0, width: W, height: Hh, overflow: 'visible' }}
+      >
         <Canvas style={{ position: 'absolute', left: 0, top: -up, width: W, height: Hh + up }}>
           <Group transform={[{ translateX: cx }, { translateY: cy + up }, { scale: padScale }]}>
             <Picture picture={pad} />

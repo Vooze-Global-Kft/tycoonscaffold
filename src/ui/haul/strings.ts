@@ -43,6 +43,8 @@ export const HAUL_STRINGS = {
   receiptManifest: 'MANIFEST',
   receiptMet: 'CONTRACT MET',
   receiptShift: 'DAY SHIFT x2',
+  receiptMetShort: 'MET',
+  receiptTimes: 'x{n}',
   // The contract strip (Decision 40, 53): delivered over several launches.
   stripLaunches: '{n} LAUNCHES LEFT',
   stripLaunch: '1 LAUNCH LEFT',
@@ -155,6 +157,8 @@ export const HAUL_STRINGS = {
 
   // ---------------------------------------------------------------- Station menu (4.1, 4.4)
   bootLine: '{station} · LINKING',
+  bootLog: 'POWER BUS|HULL TELEMETRY|DRONE BAY|ORE MANIFEST|FREIGHTER DOCK',
+  bootOk: 'OK',
   menuTitle: 'Station menu',
   sound: 'Sound',
   music: 'Music',

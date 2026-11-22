@@ -18,16 +18,31 @@ export interface ScenarioEngine {
     lifetimeForPrestigePoints(cfg: never, points: number): number;
     prestige(cfg: never, s: never, now: number): unknown;
     timeWarp(cfg: never, s: never, hours: number, now: number): { cash: number };
+    buyTimeWarpWithGems(cfg: never, s: never, now: number): unknown;
+    claimDaily(cfg: never, s: never, now: number): unknown;
     pendingStoryBeat(cfg: never, s: never): { id: string } | null;
   };
   M: {
     refreshMissions(cfg: never, s: never, now: number): { missions: unknown };
     cashForSeconds(cfg: never, s: never, seconds: number, now: number): number;
+    applyProduct(cfg: never, s: never, product: never, now: number): unknown;
+    missionsAfterReset(cfg: never, s: never, now: number): { missions: unknown };
   };
   buildPreset(cfg: never, name: 'early', now: number): unknown;
 }
 
 export const SCENARIO_NOW = Date.UTC(2026, 10, 1, 9, 0, 0);
+
+/**
+ * Outputs of this tree that differ from the main branch ON PURPOSE (the lead's decisions), each
+ * with what the main branch gave and why it changed. The guard checks that the recorded output is
+ * still what the note says, and that this tree gives exactly the stated replacement.
+ *
+ * buyWarpZero (guard:new:3, rules-7): a gem Time Warp bought with zero income. The main branch
+ * charged the gems for a warp worth 0; this tree refuses it and charges nothing (the state comes
+ * back unchanged). A player cannot reach it: the Boosts button is disabled at zero income.
+ */
+export const INTENDED_DIFFERENCES = ['buyWarpZero'] as const;
 
 /** Every output of the scenario for one parsed config, as plain JSON (what the fixture stores). */
 export function modeScenario(x: ScenarioEngine, cfgIn: unknown): Record<string, unknown> {
@@ -58,6 +73,33 @@ export function modeScenario(x: ScenarioEngine, cfgIn: unknown): Record<string, 
   out.timeWarp = E.timeWarp(cfg, s as never, 2, NOW).cash;
   out.missions = M.refreshMissions(cfg, s as never, NOW).missions;
   out.cashForSeconds = M.cashForSeconds(cfg, s as never, 120, NOW);
+  // The shared functions this round touched (guard:new:2): a gem Time Warp with zero income (the
+  // early preset earns nothing yet) and with income (the ticked state), ...
+  const gemmed = (x0: unknown) => ({ ...(x0 as object), gems: 1000 });
+  out.buyWarpZero = { income: out.income, state: E.buyTimeWarpWithGems(cfg, gemmed(early) as never, NOW) };
+  out.buyWarp = E.buyTimeWarpWithGems(cfg, gemmed(s) as never, NOW);
+  out.buyWarpPoor = E.buyTimeWarpWithGems(cfg, { ...(s as object), gems: 0 } as never, NOW);
+  // ... the daily gift over several days (a second claim on the same day, a skipped day, a clock
+  // set back), at noon UTC so the local day is the same in every time zone from -11 to +11 ...
+  const DAY = 86_400_000;
+  const noon = Date.UTC(2026, 10, 1, 12, 0, 0);
+  let d = { ...(s as object), daily: { lastClaimDay: null, streak: 0 } } as unknown;
+  const daily: unknown[] = [];
+  for (const day of [0, 0, 1, 2, 4, 3, 5, 6, 7, 8]) {
+    d = E.claimDaily(cfg, d as never, noon + day * DAY);
+    const g = d as { gems: number; daily: unknown };
+    daily.push({ day, gems: g.gems, daily: g.daily });
+  }
+  out.daily = daily;
+  // ... every product of the game's store, bought once and then again ...
+  const products = ((cfg as { monetization?: { iap?: { products?: { id: string }[] } } }).monetization?.iap?.products ?? []) as never[];
+  out.products = products.map((p) => {
+    const once = M.applyProduct(cfg, s as never, p, NOW) as { state: unknown; granted: unknown };
+    const twice = M.applyProduct(cfg, once.state as never, p, NOW) as { state: unknown; granted: unknown };
+    return { id: (p as { id: string }).id, once, twice };
+  });
+  // ... and the missions handed out after a prestige.
+  out.missionsAfterReset = M.missionsAfterReset(cfg, out.prestige as never, NOW).missions;
   out.story = E.pendingStoryBeat(cfg, { ...(s as object), storySeen: [] } as never)?.id ?? null;
   return JSON.parse(JSON.stringify(out));
 }
