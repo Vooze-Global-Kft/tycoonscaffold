@@ -72,7 +72,7 @@ const scenes: GameScenes = {
     scene: 1,
     frame: (v) => {
       const L = field(v);
-      return { y0: L.station.y - L.radii[2] - 30, y1: L.station.y + 110, cx: L.station.x, anchor: 'center' };
+      return { y0: L.station.y - L.radii[2] - 30, y1: L.station.y + 60, cx: L.station.x, anchor: 'center' };
     },
   },
   scenes: [

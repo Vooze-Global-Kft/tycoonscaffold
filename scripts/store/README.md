@@ -7,32 +7,67 @@ side-by-side sheet of both games for signing off the "same template" check
 
 ## Run it
 
-Start the previews (each is the game itself, in a browser):
+Start the previews (each is the game itself, in a browser). Prefer a production web
+export served as static files: it has no development overlays at all.
 
 ```bash
-GAME=pizza-empire npx expo start --web --port 8300
-GAME=space-miner  npx expo start --web --port 8301
+GAME=pizza-empire npx expo export -p web --output-dir /tmp/web-pizza-empire
+GAME=space-miner  npx expo export -p web --output-dir /tmp/web-space-miner
+npx serve /tmp/web-pizza-empire -l 8300 -s   # any static server; -s: single-page fallback
+npx serve /tmp/web-space-miner  -l 8301 -s
 ```
 
-Then, one command per game, or both:
+(The preview switches the scenes use, `?preset=` and the rest, are read on any web
+build, not only in development: `src/dev/devtools.ts`, `src/ui/haul/dev.ts`. The
+export path above was not run on this machine, where builds are not allowed; the
+images were made from development servers, `GAME=<id> npx expo start --web --port
+<port>`, which work too thanks to the overlay guard below.)
+
+Then ONE command makes every image of both games, into the repository:
 
 ```bash
-npx tsx scripts/store/shots.ts --game pizza-empire     # its 6 scenes x 3 sizes + feature graphic
-npx tsx scripts/store/shots.ts --game space-miner
-npx tsx scripts/store/shots.ts --game all              # both, then SIDE-BY-SIDE.png
+npx tsx scripts/store/shots.ts --game all --write
 ```
 
-Options: `--port N` (another preview port), `--only 1,3` (scenes, 1-based),
-`--sizes ios-6.9,play-phone`, `--reuse` (compose again from the last captures,
-no preview needed: for template work), `--sheet` (only the side-by-side sheet).
-A game takes about 2 to 5 minutes; on a busy machine longer.
+Without `--write` nothing in the repository changes: the images go to
+`scripts/store/.cache/out/<game>/` (git-ignored), so a trial run cannot replace the
+approved set. Options: `--out <dir>` (write to `<dir>/<game>/` instead),
+`--game pizza-empire|space-miner`, `--port N` (another preview port), `--only 1,3`
+(scenes, 1-based), `--sizes ios-6.9,play-phone`, `--reuse` (compose again from the
+last captures, no preview needed: for template work), `--sheet` (only the
+side-by-side sheet). The log first says how many scenes and images the run makes.
+A full run of both games takes about 10 to 15 minutes on a busy machine.
+
+A full run of a game (no `--only`) with `--write` also removes images of scenes
+that are no longer in its list (renamed, reordered or dropped).
 
 Suggested `package.json` script: `"store:shots": "tsx scripts/store/shots.ts"`
-(then `npm run store:shots -- --game all`).
+(then `npm run store:shots -- --game all --write`).
 
 Playwright is not a dependency of this project (no new dependencies): the tool
 loads the copy installed on the machine (`NODE_PATH`, `/opt/node-tools/node_modules`
 or `npm root -g`). Elsewhere: `npm i -g playwright && npx playwright install chromium`.
+
+### Development overlays
+
+Before every picture the tool hides everything on the page that the app did not
+draw (a dev-server tools button, LogBox, an error toast: anything outside the app
+that lacks react-native-web's generated classes), names it in the log ("hid
+non-app overlay: ..."), then hit-tests a 20 x 40 grid of points over the screen and
+fails the scene if any point still lands on such an element. Errors thrown by the
+page and red screens fail the scene too. A failed scene is listed at the end and the
+run exits with status 1: look at those images before committing.
+
+### Live state and retakes
+
+The pictures come from a game that is running: live numbers (cash, rates, timers,
+buyers, drone positions) differ a little on every run, and the tool cannot make a
+run bit-for-bit repeatable (freezing the game's clock needs a switch in the game;
+Playwright's fake clock was tried and made each scene take minutes while still
+varying). What must be true of a picture is checked instead: a scene can carry a
+`check` on the page text (Orbit Haulers' Contract Board must show three different
+buyers and an active manifest; the launch shot must have launched; Pizza Empire's
+bottleneck shot must show "limits income"), and is taken again up to `tries` times.
 
 ## What it writes
 
@@ -42,8 +77,11 @@ games/<id>/store/screenshots/ios-6.5/NN-<slug>.png      1284 x 2778  App Store, 
 games/<id>/store/screenshots/play-phone/NN-<slug>.png   1080 x 1920  Google Play phone, 9:16
 games/<id>/store/screenshots/play-feature-graphic.png   1024 x 500   Google Play feature graphic
 games/space-miner/store/screenshots/SIDE-BY-SIDE.png    both icons, both 6.9" sets, both feature graphics
-scripts/store/.cache/                                   raw captures (git-ignored)
+scripts/store/.cache/<game>/<size>/NN-<slug>.png/.json  raw captures and the band each shows (git-ignored)
+scripts/store/.cache/out/                               trial runs (git-ignored)
 ```
+
+Pizza Empire has six shots, Orbit Haulers five.
 
 Every image is an 8-bit RGB PNG without an alpha channel (App Store Connect
 refuses alpha; Play asks for 24-bit PNG). The tool checks size and colour type
@@ -52,22 +90,36 @@ of each file it writes.
 ## How it works
 
 - `scenes/<game>.ts`: the data. Per scene: the preview address (`preset=`, `tab=`,
-  `sheet=`, `spoke=`, `away=`: `src/dev/devtools.ts` and `src/ui/haul/dev.ts`),
+  `sheet=`, `spoke=`, `speed=`: `src/dev/devtools.ts` and `src/ui/haul/dev.ts`),
   the steps to reach the moment (taps, drags, a finger held down, waits, and
   `untilText`: wait for the app's own text, e.g. the freighter's "BACK IN n S"
   to go; `tapText`: a touch on the first text that matches, wherever the layout
-  put it), the caption (at most six words) and the sub-line.
-  Orbit Haulers' touches are placed with the game's own geometry
+  put it), an optional `check` of the page text, the `frame` (the band of the
+  screen the image shows, below), the caption (at most six words) and, for Pizza
+  Empire, the sub-line. Each game also names its feature graphic's scene and band.
+  Orbit Haulers' touches and bands are placed with the game's own geometry
   (`src/ui/haul/layout.ts`, `fieldLayout`, the function the screen and its
-  gestures use), so they keep landing on the rack, a rock or the launch pad when
+  gestures use), so they keep landing on a chip, a rock or the launch pad when
   the layout changes or the phone size differs.
+- Bands (`templates/frame.ts`): a scene says which part of the phone screen
+  matters, from `y0` to `y1` in points, either numbers or the top or bottom edge
+  of a text found on the page at capture time. The template fits the band into
+  its picture box with one scale (never stretched): up to `maxZoom` times the
+  full-width scale, cropping the sides around `cx`; a band too tall for the box
+  is shown whole. Orbit Haulers' field shots crop the empty starfield above the
+  rings and the round nav row (zoom just enough to keep the hold gauge and the
+  flare box whole); its Contract Board and Star Map shots start at the top of the
+  screen, so the game's own top bar stays in the picture. The resolved band is
+  stored next to the raw capture, so `--reuse` composes the same picture.
 - `shots.ts`: opens the preview at the phone's viewport in points (the store
-  image's aspect, so nothing is stretched), lets it settle, plays the steps, and
-  takes the picture. The game runs at pixel ratio 1 and the ratio goes to 3 only
-  for the picture (Chrome DevTools Protocol, `Emulation.setDeviceMetricsOverride`,
-  then `Page.captureScreenshot`): Skia on a software GL draws a 3x canvas at about
-  one frame a second on a busy machine, which slows the game's clock and its
-  animations to a crawl; the canvas is redrawn sharp at 3x before the capture.
+  image's aspect), lets it settle, plays the steps, hides and checks for
+  development overlays, and takes the picture. The game runs at pixel ratio 1 and
+  the ratio goes up only for the picture (Chrome DevTools Protocol,
+  `Emulation.setDeviceMetricsOverride`, then `Page.captureScreenshot`): Skia on a
+  software GL draws a 3x canvas at about one frame a second on a busy machine,
+  which slows the game's clock and its animations to a crawl; the canvas is
+  redrawn sharp before the capture. Orbit Haulers is captured at 4x (its field
+  shots are zoomed in a little and its feature graphic more), Pizza Empire at 3x.
   Then it composes the store image: an HTML page from the game's template,
   rendered by the same browser at the exact pixel size.
 - `templates/warm.ts` (Pizza Empire) and `templates/panel.ts` (Orbit Haulers): the
@@ -76,51 +128,55 @@ of each file it writes.
 
 ## The two templates (dimension 7)
 
-They differ in composition, not only in colour:
+They differ in composition, not only in colour, and so do the two sets:
 
 | | Pizza Empire, "warm" | Orbit Haulers, "panel" |
 |---|---|---|
-| Game picture | framed: the whole phone screen, scaled to 76 % width, on a white-edged rounded card with a soft shadow | full-bleed: edge to edge, square corners, 1:1 with the phone |
-| Caption position | below the picture, on a tomato-red sauce wave | over the picture, on a hard-edged deep-blue readout panel at the top (the Shift Log scene: bottom, so the log stays readable) |
-| Type | Lilita One (the game's rounded display face), centred, sentence case; sub-line Inter Bold | JetBrains Mono ExtraBold, left-aligned, capitals; sub-line JetBrains Mono, `>` prompt |
-| Colour | cream gingham, saffron sun, tomato red | deep blue #060A16, cyan #3FD8FF, amber #E07A3F |
-| Ornament | none but the card; page dots at the bottom right | channel counter "CH 01/06", tick-marked cyan rule, viewfinder corners |
+| Set | six shots: restaurant, bottleneck, staff, chests, franchise, recipes | five shots: the full field, a drag, the Contract Board, the launch, the Star Map |
+| Game picture | framed: the phone screen on a white-edged rounded card with a soft shadow, leaning left and right in turn; a scene that shows a band of its screen gets a wider, shorter card | edge to edge under the readout, square corners, cropped to the band that matters (no empty starfield, no nav row) |
+| Caption position | below the picture, on a deep tomato sauce wave (the wave's highest bump at about 81 % of the height: the caption block stays under 20 %) | above the picture, on a hard-edged deep-blue readout panel (15 % of the 6.9" image, 18 % of the Play one); the panel never covers the game |
+| Type | Lilita One (the game's rounded display face), centred, sentence case, two lines; a cream sub-line in Inter Bold (5.4:1 on the band) | JetBrains Mono ExtraBold, left-aligned, capitals; headline only, no sub-line |
+| Colour | cream gingham, saffron sun, deep tomato #C4262F | deep blue #060A16, cyan #3FD8FF, amber #E07A3F |
+| Ornament and counter | none but the card; no set counter | channel counter "CH 01/05" (the only set counter of the two), tick-marked cyan rule |
 | Rhythm across the set | the card leans left, right, left...; the sun and the wave's bumps swap sides | rigid: every image on the same grid, like a log, the channel number counting up |
-| Feature graphic | icon and name on cream at the left, the restaurant on a leaning card at the right | the asteroid field full-bleed at the right, a dark readout with icon, name and prompt line at the left |
+| Feature graphic | centred and symmetric: the name in Lilita One over a big saffron sun, a wide crop of the restaurant scene under it (no phone, no tilt), on gingham; no icon, no tagline | the asteroid field around the station, its edges fading into a deep-blue nebula (#0B1A3A, the game's black space lifted by a screen blend), a thin letter-spaced cyan wordmark in the lower third; no icon, no tagline |
 
 Nothing in either: no device frame, no store badge, no award, rank, price,
-"free", "No.1", "best", no call to action. Captions take far less than 20 % of the
-image (Play's limit for taglines).
+"free", "No.1", "best", no call to action, no app icon in the feature graphic
+(Play: "do not use prominent branding that is similar to your app icon"). Caption
+blocks stay under 20 % of the image height (Play's limit for taglines), measured
+from the top of the red wave or to the bottom of the readout panel.
 
 ## Scenes
 
-Each caption was checked against the preview (the scene's picture shows it).
+Each caption was checked against the picture the tool made.
 
 ### Pizza Empire (warm, cream and tomato)
 
 | # | Caption / sub-line | Address | Shows |
 |---|---|---|---|
 | 1 | Bake it, serve it, grow it! / Your cooks, waiters and guests at work | `preset=mid` | The restaurant at work: cooks at the stations, waiters carrying pizza, guests at the tables, the production chain and its upgrades below. |
-| 2 | Find the slow spot and fix it / More stations, more waiters, more tables | `preset=early` | The first restaurant in its first minutes: Kitchen, Waiters and Dining Room, the Dining Room tagged "limits income"; the game's hint hand points at the fix (hire the Maître d'). The hand is allowed here (a first-minute scene); `preset=late` was tried first and also shows the hand (that save is not yet a "veteran" to the hint script, `nextHint` in `src/engine/meta.ts`), so the bottleneck is shown where the hand belongs. |
+| 2 | Find the slow spot and fix it / Upgrade the stage that limits income | `preset=mid`, tap the "Dining Room" pill; band: top of the screen to the stage's description; check: "limits income" on screen | The busy restaurant with its bottleneck stage open: the Dining Room pill carries the game's "limits income" tag, its row offers the upgrade. The list under one stage is short, so the card shows the screen down to the stage's text (no empty cream; the earlier `preset=early` version had the tutorial hand on). |
 | 3 | Collect a staff of twelve / Level up the characters you love | `preset=mid&tab=staff` | The Staff tab: chests and the collection of twelve characters (8/12 found, "can level up" marks). |
-| 4 | Open boxes, meet new faces / Boxes come from daily missions | `preset=mid&chest=golden`, two taps | A Golden Oven Chest being opened: three cards turned, two to go. Missions reward boxes ("Every 30th mission: Golden Oven Chest"). |
+| 4 | Open boxes, meet new faces / Boxes come from daily missions | `preset=mid&chest=golden`, two taps | A Golden Oven Chest being opened. Missions reward boxes ("Every 30th mission: Golden Oven Chest"). |
 | 5 | From Napoli all the way up / Eight restaurants, one pizza planet | `preset=mid&tab=empire` | The Franchise tab: Nonna's Corner in Napoli, then Roma, Venezia, Paris, New York, Tokyo, The Moon ("1 of 8 open"). |
 | 6 | Cook up two dozen recipes / Each one multiplies what you earn | `preset=mid&tab=upgrades` | The Recipes tab: "2 of 24", each recipe a multiplier. |
 
-The first two carry the listing: the restaurant chain at work.
+Feature graphic: scene 1's restaurant, from the "Nonna's Corner" plate to just
+above the stage pills.
 
 ### Orbit Haulers (panel, cold instrument)
 
-| # | Caption / sub-line | Address and steps | Shows |
+| # | Caption | Address and steps | Shows |
 |---|---|---|---|
-| 1 | Drone to rock. Ore to hold. / Drag to set a route | `preset=fresh`; finger down on the rack's idle drone, dragged onto rock 1, held | The first minute: a drone dragged onto the first rock, the route line drawn, the rock highlighted. The game's own "!" hint over the rack is on (first-minute scene). |
-| 2 | Hold full. Freighter away. / One swipe sells the whole manifest | `preset=early`; wait for the freighter to be away, then docked (its "BACK IN n S" label goes), the launch swipe, then wait for the WARPED receipt | Just after the launch: the counter shows the WARPED manifest receipt (the ores and what they sold for), the hold is empty, the bay counts down to the freighter's return. |
-| 3 | Buyers on the line / Contracts pay more. They lapse. | `preset=mid&sheet=contracts`, tap the first manifest (its "if met" line) | The Contract Board: three buyers, the manifest just made ACTIVE, what each pays if met, the launches left (the dots). |
-| 4 | Far rings. Rich ore. Long trips. / Rocks run dry. New ones drift in. | `preset=late` | Every ring in use: iron, copper, ice, titanium and platinum rocks, drones in flight. Also the feature graphic's picture. |
-| 5 | Autopilot kept shipping / Shift log waiting on return | `preset=mid&away=3600` | The Shift Log after an hour away (the store's own offline computation): what the Dock Autopilot shipped. |
-| 6 | Jump. Pick the next galaxy. / Warp Cores rebuild the Star Map | `preset=late&spoke=starmap` | The Star Map: nodes bought with Warp Cores, "JUMP NOW: +24 WARP CORES", kept and reset lists. |
+| 1 | Far rings. Rich ore. Long trips. | `preset=late`; field band | Every ring in use: iron, copper, ice, titanium and platinum rocks, drones in flight, the hold and the counter. Also the feature graphic's picture. |
+| 2 | Drone to rock. Ore to hold. | `preset=mid`; finger down on the route chip of slot 1, dragged onto the rock of slot 6, held; field band | A running station: a drone pulled off a busy route onto a rock further out, the drag line and the target ring drawn. (The mid save's rack is empty, every drone is out, so the drone comes off a chip, which the game allows.) |
+| 3 | Buyers on the line. They lapse. | `preset=late&sheet=contracts&speed=6`, tap the first manifest ("if met"); band: top of the screen to the board's last line; check: three different buyers and an active manifest | The Contract Board over a late field: three buyers, the manifest just made ACTIVE, what each pays if met, the launches left; the contract strip and the buyer's radio line at the top. (At normal speed the late save's board shows the same buyer twice; `speed=6` lets the board turn over before the picture.) |
+| 4 | Swipe up. Freighter away. | `preset=mid`; wait until docked (no "BACK IN n S"), the launch swipe as one move, picture about 100 ms later; check: launched; field band | The freighter climbing off the pad, the hold emptied, "BACK IN 15 S" on the bay. |
+| 5 | Jump. Pick the next galaxy. | `preset=late&spoke=starmap`; band: top of the screen to the "JUMP NOW" button | The Star Map with its own header (back, "STAR MAP · NAV · GALAXY 1", Warp Cores in hand, the galaxy plate), the nodes, "JUMP NOW: +24 WARP CORES", kept and reset lists. |
 
-No sentence is shared between the two games' captions.
+The Shift Log shot of the earlier set was dropped (five shots, a different story
+from Pizza Empire's six). No sentence is shared between the two games' captions.
 
 ## Sizes and where they come from
 
@@ -201,6 +257,7 @@ What would differ on a phone:
 - Live numbers (cash, rates, timers, the station's name in Orbit Haulers) come
   from the presets and differ a little on every run; that is expected.
 
-To retake on a device: put the device screenshot (at the size above) in
-`scripts/store/.cache/<game>/<size>/NN-<slug>.png` and run with `--reuse`; the
-templates compose it the same way.
+To retake on a device: put the device screenshot in
+`scripts/store/.cache/<game>/<size>/NN-<slug>.png`, next to the `.json` the tool
+wrote for it (set its `vw` to the phone's width in points; the band is in points),
+and run with `--reuse --write`; the templates compose it the same way.

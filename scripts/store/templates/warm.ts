@@ -60,7 +60,7 @@ export function shotHtml(o: ShotOpts): string {
   let cardW = (room - 2 * pad) * (o.raw.w / o.raw.h) + 2 * pad;
   let inner = bandHeightAt(o.raw, o.band, cardW - 2 * pad);
   if (o.band) {
-    cardW = W * 0.86;
+    cardW = W * 0.9;
     inner = Math.min(room - 2 * pad, bandHeightAt(o.raw, o.band, cardW - 2 * pad));
   }
   const cardH = inner + 2 * pad;
@@ -110,8 +110,11 @@ export interface FeatureOpts {
  */
 export function featureHtml(o: FeatureOpts): string {
   const { W, H } = o;
+  // The box takes the band's own aspect, so the scene fills it edge to edge (no bars beside it).
+  const k = o.raw.w / o.raw.vw;
+  const b = o.band ?? { y0: 0, y1: o.raw.h / k };
   const boxH = H * 0.68;
-  const boxW = boxH * 1.62;
+  const boxW = Math.min(W * 0.8, (boxH - 12) * (o.raw.vw / (b.y1 - b.y0)) + 12);
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 ${FONT_CSS}
 *{margin:0;padding:0;box-sizing:border-box}

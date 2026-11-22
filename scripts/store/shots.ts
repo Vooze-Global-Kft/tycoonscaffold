@@ -315,6 +315,17 @@ async function compose(browser: any, def: GameScenes, sizes: Size[], scenes: num
       await render(browser, html, size.w, size.h, out);
       console.log(`  wrote ${path.relative(ROOT, out)}`);
     }
+    // A full run leaves no image of a scene that is no longer in the set (renamed, reordered, dropped).
+    if (scenes.length === def.scenes.length) {
+      const keep = new Set(def.scenes.map((sc, i) => path.basename(outPath(def.game, size, i, sc.slug))));
+      const dir = path.join(outDir(def.game), size.id);
+      for (const f of fs.readdirSync(dir)) {
+        if (/^\d\d-.*\.png$/.test(f) && !keep.has(f)) {
+          fs.unlinkSync(path.join(dir, f));
+          console.log(`  removed ${path.relative(ROOT, path.join(dir, f))} (not a scene any more)`);
+        }
+      }
+    }
   }
   // The Play feature graphic, from the largest capture of the scene the game names, when that
   // scene was part of this run.

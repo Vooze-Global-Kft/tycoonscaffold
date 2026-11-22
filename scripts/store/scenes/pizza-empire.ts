@@ -11,8 +11,8 @@ const scenes: GameScenes = {
   port: 8300,
   titleHas: 'Pizza',
   // The feature graphic: the restaurant scene of the first shot, from the venue's name plate down
-  // to just above the stage pills (no header, no list).
-  feature: { scene: 1, frame: () => ({ y0: { text: /^Nonna['’]s Corner$/, edge: 'top', pad: -10 }, y1: { text: /^Kitchen$/, edge: 'top', pad: -8 } }) },
+  // to just above the stage pills and their "limits income" tag (no header, no list).
+  feature: { scene: 1, frame: () => ({ y0: { text: /^Nonna['’]s Corner$/, edge: 'top', pad: -10 }, y1: { text: /limits income/, edge: 'top', pad: -6 } }) },
   scenes: [
     {
       slug: 'bake-serve-grow',

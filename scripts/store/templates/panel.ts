@@ -59,13 +59,13 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:${DEEP}}
  */
 export function featureHtml(o: FeatureOpts): string {
   const { W, H } = o;
+  // The field's own edges fade into the nebula (the crop is narrower than the banner).
+  const FADE = 'linear-gradient(90deg, transparent 0, #000 20%, #000 80%, transparent 100%)';
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 ${FONT_CSS}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:${W}px;height:${H}px;overflow:hidden;background:${NAVY}}
-.pic{position:absolute;inset:0;overflow:hidden;
-  -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 22%, #000 78%, transparent 100%);
-  mask-image:linear-gradient(90deg, transparent 0, #000 22%, #000 78%, transparent 100%)}
+.pic{position:absolute;inset:0;overflow:hidden}
 .neb{position:absolute;inset:0;mix-blend-mode:screen;background:
   radial-gradient(ellipse 60% 70% at 22% 30%, rgba(92,60,170,.55), transparent 70%),
   radial-gradient(ellipse 55% 65% at 80% 40%, rgba(30,90,170,.55), transparent 70%),
@@ -76,7 +76,7 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:${NAVY}}
 .rule{position:absolute;left:${W * 0.3}px;right:${W * 0.3}px;top:${H * 0.8 + H * 0.125}px;height:2px;
   background:repeating-linear-gradient(90deg, ${CYAN} 0 2px, transparent 2px 14px);opacity:.8}
 </style></head><body>
-<div class="pic">${framed(o.raw, o.band, W, H)}</div>
+<div class="pic">${framed(o.raw, o.band, W, H, `-webkit-mask-image:${FADE};mask-image:${FADE}`)}</div>
 <div class="neb"></div>
 <div class="low"></div>
 <div class="wm">${esc(o.title)}</div><div class="rule"></div>
