@@ -29,10 +29,15 @@ This app is a single game screen with in-app tabs (`src/ui/App.tsx`), so it does
 
 ## Project rules
 
-- One codebase, many games. Never branch on a game id in code: everything game-specific belongs in `games/<id>/game.json` and the schema in `src/config/schema.ts`.
-- `src/engine/` stays pure TypeScript (no React, no native imports) and covered by `npm test`.
+- One codebase, many games. Never branch on a game id in code: everything game-specific belongs in `games/<id>/game.json` and the schema in `src/config/schema.ts` / `schema.sim.ts` (with cross-field checks in `lintGameConfig`).
+- `src/engine/` stays pure TypeScript: no React, no native imports, deterministic. Never call `Math.random` or `Date.now` there; time comes in as `now`, randomness from the seed in state (`rng.ts`). Every engine change comes with tests (`npm test`).
+- All game state changes go through actions in `src/state/store.ts`; UI components never mutate state or call engine functions that change it on their own.
+- Sound and haptics only through the fx service (`src/services/fx`, `fx.play('<key>')` with keys from `catalog.ts`); never import expo-audio or expo-haptics elsewhere.
+- Characters are drawn in code: use `"char:<id>"` icons with a look in the game's top-level `cast`, not new image assets, unless the game has its own art.
 - Native SDKs are only required from `src/services/sdks.ts` (web uses `sdks.web.ts`).
 - zustand selectors that return new objects or arrays must use `useShallow`.
+- Shipped games' numbers come from `scripts/content/build-*.py`; change the script and regenerate, never hand-edit those tables. Each game needs its own economy table (`validate` rejects copies).
+- Chests are earned, not sold, unless a game sets `meta.chestsForSale`; deals never contain permanent items; offer timers are real.
 - Before declaring done: `npm run typecheck`, `npm test`, `npm run validate`.
 
 ## Building with EAS

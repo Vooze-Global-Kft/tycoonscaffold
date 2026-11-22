@@ -10,20 +10,21 @@
     ],
     "info": {
       "en-US": {
-        "title": "Space Miner: Idle Galaxy",
-        "subtitle": "Mine asteroids, build a fleet",
-        "description": "Start with a single hand drill and grow an interstellar mining corporation.\n\n• Automate your fleet with AI pilots\n• Earn credits even while offline\n• Jump galaxies to earn Warp Cores and grow faster\n\nA chill idle tycoon in space.",
+        "title": "Asteroid Haul: Ore Empire",
+        "subtitle": "Drill rocks, run a star fleet",
+        "description": "Start with a single hand drill on a lonely asteroid and grow a mining company that spans the galaxy.\n\n• Build seven kinds of machines, from rovers to mirrors around a star\n• Give every machine an AI pilot so it runs without you\n• Collect a small crew of specialists and level them up\n• A free supply pod drops every few hours, and daily missions pay in Dark Matter\n• Earn credits while the app is closed\n• Jump to a new galaxy to earn Warp Cores and grow faster every run\n• Keep one step ahead of Director Rook and his rock monopoly\n\nAsteroid Haul is a calm space incremental game for short breaks.",
         "keywords": [
           "space",
-          "idle",
           "mining",
-          "tycoon",
-          "galaxy",
+          "asteroid",
           "clicker",
-          "miner",
-          "planet",
+          "galaxy",
           "incremental",
-          "sci-fi"
+          "sci-fi",
+          "planet",
+          "robots",
+          "fleet",
+          "ore"
         ]
       }
     }

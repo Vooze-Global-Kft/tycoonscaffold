@@ -43,7 +43,7 @@
     "prestigeName": "Warp Cores",
     "prestigeIcon": "🌀",
     "prestigeVerb": "Jump Galaxy",
-    "prestigeDescription": "Warp to a new galaxy. Your fleet stays behind, but each Warp Core adds 2% to all output for good.",
+    "prestigeDescription": "Warp to a new galaxy. Your fleet stays behind, but each Warp Core adds 25% to all output for good.",
     "managerTab": "AI Pilots",
     "upgradeTab": "Tech",
     "tapHint": "Tap the asteroid!"
@@ -51,9 +51,9 @@
   "economy": {
     "startingCash": 6,
     "prestige": {
-      "threshold": 3000000000.0,
+      "threshold": 600000000000000.0,
       "scale": 1,
-      "bonusPerPoint": 0.02
+      "bonusPerPoint": 0.25
     },
     "offline": {
       "maxHours": 6,
@@ -105,8 +105,8 @@
       }
     ],
     "milestoneRepeat": {
-      "every": 10,
-      "revenueMult": 1.5
+      "every": 25,
+      "revenueMult": 1.75
     },
     "bonus": {
       "name": "Comet Shard",
@@ -129,10 +129,10 @@
       "icon": "⛏️",
       "flavor": "Point at rock. Pull trigger.",
       "baseCost": 6.0,
-      "costGrowth": 1.07,
-      "baseRevenue": 1.8,
+      "costGrowth": 1.105,
+      "baseRevenue": 1.2,
       "cycleSeconds": 1.1,
-      "managerCost": 180,
+      "managerCost": 190,
       "managerName": "Unit D-1",
       "managerIcon": "🤖"
     },
@@ -141,11 +141,11 @@
       "name": "Mining Rover",
       "icon": "🚙",
       "flavor": "Six wheels, one scoop, no brakes.",
-      "baseCost": 72,
-      "costGrowth": 1.073,
-      "baseRevenue": 11,
+      "baseCost": 110,
+      "costGrowth": 1.113,
+      "baseRevenue": 19,
       "cycleSeconds": 2.3,
-      "managerCost": 2700,
+      "managerCost": 4600,
       "managerName": "Rover Pilot Ixa",
       "managerIcon": "🤖"
     },
@@ -154,11 +154,11 @@
       "name": "Ore Refinery",
       "icon": "🏭",
       "flavor": "Rock goes in. Shiny comes out.",
-      "baseCost": 1200,
-      "costGrowth": 1.076,
-      "baseRevenue": 88,
-      "cycleSeconds": 4.6,
-      "managerCost": 54000,
+      "baseCost": 3000,
+      "costGrowth": 1.12,
+      "baseRevenue": 420,
+      "cycleSeconds": 4.8,
+      "managerCost": 150000,
       "managerName": "Smelt-O-Tron",
       "managerIcon": "🧠"
     },
@@ -167,11 +167,11 @@
       "name": "Ore Freighter",
       "icon": "🚀",
       "flavor": "Hauls a mountain to market every trip.",
-      "baseCost": 23000,
-      "costGrowth": 1.079,
-      "baseRevenue": 910,
-      "cycleSeconds": 9.5,
-      "managerCost": 1400000,
+      "baseCost": 98000,
+      "costGrowth": 1.127,
+      "baseRevenue": 12000,
+      "cycleSeconds": 10.0,
+      "managerCost": 6100000,
       "managerName": "Captain Byte",
       "managerIcon": "👩‍✈️"
     },
@@ -180,11 +180,11 @@
       "name": "Moon Base",
       "icon": "🌑",
       "flavor": "A quarry with a view.",
-      "baseCost": 550000,
-      "costGrowth": 1.082,
-      "baseRevenue": 11000,
-      "cycleSeconds": 19.4,
-      "managerCost": 40000000,
+      "baseCost": 3900000,
+      "costGrowth": 1.135,
+      "baseRevenue": 390000,
+      "cycleSeconds": 21.0,
+      "managerCost": 310000000,
       "managerName": "Commander Vega",
       "managerIcon": "🧑‍🚀"
     },
@@ -193,11 +193,11 @@
       "name": "Ring Shipyard",
       "icon": "🪐",
       "flavor": "Builds the haulers that build the haulers.",
-      "baseCost": 15000000,
-      "costGrowth": 1.085,
-      "baseRevenue": 160000,
-      "cycleSeconds": 39.8,
-      "managerCost": 1400000000,
+      "baseCost": 180000000,
+      "costGrowth": 1.143,
+      "baseRevenue": 15000000,
+      "cycleSeconds": 43.9,
+      "managerCost": 18000000000,
       "managerName": "Yardmaster Oku",
       "managerIcon": "👷"
     },
@@ -206,11 +206,11 @@
       "name": "Sun Collector Array",
       "icon": "☀️",
       "flavor": "A billion mirrors turning starlight into credits.",
-      "baseCost": 500000000,
-      "costGrowth": 1.088,
-      "baseRevenue": 2600000,
-      "cycleSeconds": 81.6,
-      "managerCost": 57000000000,
+      "baseCost": 9900000000,
+      "costGrowth": 1.15,
+      "baseRevenue": 690000000,
+      "cycleSeconds": 91.7,
+      "managerCost": 1200000000000,
       "managerName": "The Array Mind",
       "managerIcon": "🛰️"
     }
@@ -220,7 +220,7 @@
       "id": "t_drill",
       "name": "Laser Bits",
       "icon": "🔦",
-      "cost": 5400,
+      "cost": 16000,
       "target": "drill",
       "revenueMult": 3
     },
@@ -228,7 +228,7 @@
       "id": "t_rover",
       "name": "Fusion Wheels",
       "icon": "⚙️",
-      "cost": 65000,
+      "cost": 300000,
       "target": "rover",
       "revenueMult": 3
     },
@@ -236,39 +236,31 @@
       "id": "t_refinery",
       "name": "Plasma Crucible",
       "icon": "🔥",
-      "cost": 1100000,
+      "cost": 8200000,
       "target": "refinery",
+      "revenueMult": 3
+    },
+    {
+      "id": "t_freighter",
+      "name": "Cargo Folding",
+      "icon": "📦",
+      "cost": 270000000,
+      "target": "freighter",
       "revenueMult": 3
     },
     {
       "id": "t_all_1",
       "name": "Fleet Telemetry",
       "icon": "📡",
-      "cost": 2000000,
+      "cost": 770000000,
       "target": "all",
       "revenueMult": 2
-    },
-    {
-      "id": "t_freighter",
-      "name": "Cargo Folding",
-      "icon": "📦",
-      "cost": 21000000,
-      "target": "freighter",
-      "revenueMult": 3
     },
     {
       "id": "t_all_2",
       "name": "Quantum Logistics",
       "icon": "🧬",
-      "cost": 28000000,
-      "target": "all",
-      "revenueMult": 2
-    },
-    {
-      "id": "t_all_3",
-      "name": "Gravity Slingshots",
-      "icon": "🌌",
-      "cost": 390000000,
+      "cost": 8100000000,
       "target": "all",
       "revenueMult": 2
     },
@@ -276,15 +268,15 @@
       "id": "t_moon_base",
       "name": "Low-G Conveyors",
       "icon": "🛤️",
-      "cost": 500000000,
+      "cost": 11000000000,
       "target": "moon_base",
       "revenueMult": 3
     },
     {
-      "id": "t_all_4",
-      "name": "Hyperlane Charter",
-      "icon": "🛸",
-      "cost": 5500000000,
+      "id": "t_all_3",
+      "name": "Gravity Slingshots",
+      "icon": "🌌",
+      "cost": 85000000000,
       "target": "all",
       "revenueMult": 2
     },
@@ -292,17 +284,49 @@
       "id": "t_ring_yard",
       "name": "Autowelders",
       "icon": "🔧",
-      "cost": 14000000000,
+      "cost": 500000000000,
       "target": "ring_yard",
       "revenueMult": 3
+    },
+    {
+      "id": "t_all_4",
+      "name": "Hyperlane Charter",
+      "icon": "🛸",
+      "cost": 890000000000,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "t_all_5",
+      "name": "Dyson Lattice",
+      "icon": "🕸️",
+      "cost": 9400000000000,
+      "target": "all",
+      "revenueMult": 2
     },
     {
       "id": "t_sun_array",
       "name": "Mirror Polish",
       "icon": "🪞",
-      "cost": 450000000000,
+      "cost": 27000000000000,
       "target": "sun_array",
       "revenueMult": 3
+    },
+    {
+      "id": "t_all_6",
+      "name": "Pocket Wormholes",
+      "icon": "🕳️",
+      "cost": 99000000000000,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "t_all_7",
+      "name": "Star Forge",
+      "icon": "🌟",
+      "cost": 1000000000000000,
+      "target": "all",
+      "revenueMult": 2
     },
     {
       "id": "t_premium",
@@ -364,7 +388,7 @@
       },
       "lines": [
         "A refinery! Raw rock is cheap. Shiny metal is not.",
-        "Every machine speeds up at 15 and 60 units. Keep building."
+        "Every machine runs twice as fast at 15 and 40 units. Keep building."
       ],
       "rewardGems": 5
     },
@@ -422,7 +446,7 @@
       },
       "lines": [
         "Jump complete. New galaxy, same debt-free you.",
-        "Your Warp Cores make every machine faster here."
+        "Every Warp Core adds 25% to everything we make."
       ],
       "rewardGems": 20
     }
@@ -520,6 +544,13 @@
       "outfitStyle": "overalls",
       "glasses": "goggles"
     },
+    "kelvin": {
+      "preset": "freeze",
+      "hair": "#F2F2F2",
+      "outfit": "#7FD1AE",
+      "accent": "#2B3A78",
+      "glasses": "goggles"
+    },
     "rook": {
       "kind": "manager",
       "skin": "#F1C7A5",
@@ -544,13 +575,13 @@
         "flavor": "Can smell iron through a kilometre of rock."
       },
       {
-        "id": "tapper",
-        "name": "Pocket Driller",
-        "title": "Hand Tool",
-        "icon": "🪛",
+        "id": "kelvin",
+        "name": "Professor Kelvin",
+        "title": "Drill Scientist",
+        "icon": "char:kelvin",
         "rarity": "common",
         "stat": "tapValue",
-        "flavor": "Small, loud and very satisfying."
+        "flavor": "Swears the asteroid hums back if you tap it right."
       },
       {
         "id": "vega",
