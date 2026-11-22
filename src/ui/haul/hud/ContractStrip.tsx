@@ -62,6 +62,8 @@ interface StripView {
   dryWatch: DryWatch[];
   /** "T-5 DRIES IN 0:20" while such a rock is drilling (live from the slot's life, Decision 64), else ''. */
   dry: string;
+  /** The whole seconds left in that warning (0 when there is none): the strip alternates on it. */
+  drySeconds: number;
 }
 
 const NONE: StripView = {
@@ -81,6 +83,7 @@ const NONE: StripView = {
   shift: false,
   dryWatch: [],
   dry: '',
+  drySeconds: 0,
 };
 
 
@@ -108,7 +111,7 @@ function stripView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): St
   // On pace: any wanted ore's drying rock (the pace rests on it). Short: only the short ore's, so the
   // strip never trades "NEEDS +216 % COPPER" for an iron rock that does not matter to it.
   const dry = dryLine(cfg, g.haul, v.onPace ? v.dryWatch : v.dryWatch.filter((w) => w.ore === v.shortOre));
-  return dry === v.dry ? v : { ...v, dry };
+  return dry.text === v.dry ? v : { ...v, dry: dry.text, drySeconds: dry.seconds };
 }
 
 /** A wanted ore's first-drying rock as the rules named it: its slot, the rock (`rockN`) and the run clock when it stops feeding. */
@@ -125,14 +128,16 @@ interface DryWatch {
  * clock (the seconds change every tick, the view of the contract does not) for as long as it is the
  * same rock. Whole seconds, so the strip renders once a second.
  */
-function dryLine(cfg: H.HaulConfig, h: H.HaulState, watch: DryWatch[]): string {
+function dryLine(cfg: H.HaulConfig, h: H.HaulState, watch: DryWatch[]): { text: string; seconds: number } {
   let best: { slot: number; t: number } | null = null;
   for (const w of watch) {
     const t = w.at - h.clock;
     if (h.slots[w.slot]?.rockN !== w.rockN || !(t > 0)) continue;
     if (!best || t < best.t) best = { slot: w.slot, t };
   }
-  return best ? fillIn(HAUL_STRINGS.stripDries, { rock: rockName(cfg, best.slot), t: clock(Math.ceil(best.t)) }) : '';
+  if (!best) return { text: '', seconds: 0 };
+  const seconds = Math.ceil(best.t);
+  return { text: fillIn(HAUL_STRINGS.stripDries, { rock: rockName(cfg, best.slot), t: clock(seconds) }), seconds };
 }
 
 function stripBase(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): StripView {
@@ -187,6 +192,7 @@ function stripBase(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): St
         w.left > 0 && w.dries && w.dries.seconds > 0 ? [{ ore: w.ore, slot: w.dries.slot, rockN: h.slots[w.dries.slot]?.rockN ?? -1, at: h.clock + w.dries.seconds }] : [],
       ),
       dry: '',
+      drySeconds: 0,
     };
   } catch {
     view = { ...NONE, unlocked: true };
@@ -280,10 +286,13 @@ export function ContractStrip({ rect }: { rect: Rect }) {
   };
   // A wanted ore's rock dries before the contract ends (Decision 64): said instead of ON PACE, and in
   // front of the shortfall when both fit at a readable size ("T-5 DRIES IN 0:20 · +61 % IRON").
+  // When the two do not fit, they take turns, two seconds each: the figure that says what to do is
+  // never off the strip for a whole contract (the play confirmation: "DRIES" hid "NEEDS +113 %").
   const dryWords = () => {
     if (v.onPace || !v.raise) return v.dry;
     const both = `${v.dry} · ${fillIn(HAUL_STRINGS.stripRaiseShort, { p: v.raise, ore: v.short })}`;
-    return fitLabel(`${launches} · ${both}`, statusW, statusBase, fontScale).font >= labelMetrics(statusBase, fontScale).font * 0.85 ? both : v.dry;
+    if (fitLabel(`${launches} · ${both}`, statusW, statusBase, fontScale).font >= labelMetrics(statusBase, fontScale).font * 0.85) return both;
+    return Math.floor(v.drySeconds / 2) % 2 === 1 ? shortWords() : v.dry;
   };
   const drying = !!v.dry && !v.done && aboard < 1 && !resized;
   const pace = resized && !v.done && aboard < 1 ? resized : v.done ? HAUL_STRINGS.stripMet : aboard >= 1 ? fillIn(HAUL_STRINGS.stripAboard, { n: unitShort(aboard) }) : drying ? dryWords() : v.onPace ? HAUL_STRINGS.stripOnPace : shortWords();
