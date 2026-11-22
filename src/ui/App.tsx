@@ -59,9 +59,10 @@ function useGameLoop() {
         // Back in the foreground: pay for the time away from the in-memory game (never re-read the save).
         useGame.getState().resume();
         last.current = Date.now();
-      } else {
-        useGame.getState().pause();
+      } else if (state === 'background') {
+        void useGame.getState().pause();
       }
+      // 'inactive' (iOS Control Centre, a call banner, a purchase sheet) is not leaving: do nothing.
     });
     return () => {
       clearInterval(loop);

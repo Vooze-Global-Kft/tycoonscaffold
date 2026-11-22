@@ -50,6 +50,7 @@ import {
   outlineFor,
   poly,
   record,
+  rng,
   rrect,
   rrect4,
   shadeOf,
@@ -396,6 +397,15 @@ function softGlow(p: Pen, cx: number, cy: number, rx: number, ry: number, color:
 function drawPuff(p: Pen, r: number, color: string, outline: string) {
   const cloud = merged(circle(-r * 0.45, r * 0.12, r * 0.62), circle(r * 0.42, r * 0.16, r * 0.58), circle(0, -r * 0.3, r * 0.68));
   p.shape(cloud, color, { ow: 1.7, outline, shade: r * 0.2, shadeColor: mix(color, outline, 0.14) });
+}
+
+/**
+ * The soft shadow a box-shaped prop casts on the floor around its base (stations, the pass, the door),
+ * the same warm ink at about the strength of a character's shadow. `hw` is half the base width.
+ */
+function baseShadow(p: Pen, hw: number, depth = 8) {
+  p.fill(rrect(-hw - 4, -depth * 0.45, hw * 2 + 8, depth, depth / 2), alpha(INK, 0.09));
+  p.fill(rrect(-hw, -depth * 0.3, hw * 2, depth * 0.7, depth * 0.35), alpha(INK, 0.11));
 }
 
 /** A padlock, centred on its body. About 26 x 32 units. */
@@ -1327,6 +1337,8 @@ const GENERIC: StationDef = {
 const STATION_DEFS: Record<StationArtKind, StationDef> = { oven: OVEN, stove: STOVE, prep: PREP, fryer: FRYER, dessert: DESSERT, espresso: ESPRESSO, generic: GENERIC };
 
 interface StationArt {
+  /** Its shadow on the floor (drawn under both the working and the locked station). */
+  shadow: SkPicture;
   layers: { pic: SkPicture; key?: PartKey }[];
   /** The whole station at rest, light and grey (not bought yet). */
   locked: SkPicture;
@@ -1338,6 +1350,7 @@ function buildStation(kind: StationArtKind, c: ArtPalette, dish: ResolvedDish): 
   const rest = makeMats(STATION_KEYS);
   def.step(rest, 0, 0, 0);
   return {
+    shadow: rec((p) => baseShadow(p, 52, 10), c.outline),
     layers: specs.map((s) => ({ pic: rec(s.draw, c.outline), key: s.key })),
     locked: recordTinted(
       (p) => {
@@ -1409,6 +1422,7 @@ export function Station({ kind, x, y, scale = 1, palette, working = false, locke
   );
   return (
     <Group matrix={m.root} zIndex={zIndex}>
+      <Picture picture={art.shadow} />
       {locked ? (
         <>
           <Picture picture={art.locked} />
@@ -1445,6 +1459,7 @@ const DISH_RISE: Record<DishKind, number> = { pizza: 5.2, plate: 6.5, bites: 7, 
 function drawCounter(p: Pen, c: ArtPalette, len: number) {
   const h = len / 2;
   const marble = marbleOf(c);
+  baseShadow(p, h + 2, 10);
   // Front: wooden panels on a dark kick board.
   shapeWith(
     p,
@@ -1452,7 +1467,8 @@ function drawCounter(p: Pen, c: ArtPalette, len: number) {
     c.wood,
     () => {
       p.fill(rrect(-h, -5.5, len, 6, 0), dark(c.wood, 0.42));
-      p.fill(rrect(-h, -31, len, 3.2, 0), alpha(INK, 0.16));
+      // The marble top overhangs: a soft shadow falls from it onto the wood.
+      p.gradient(rrect(-h, -31, len, 9, 0), 0, -31, 0, -22, [alpha(INK, 0.34), alpha(INK, 0)], null);
     },
     { shade: 3.4 },
   );
@@ -1460,27 +1476,36 @@ function drawCounter(p: Pen, c: ArtPalette, len: number) {
   const pw = (len - 14) / n;
   for (let i = 0; i < n; i++) p.stroke(rrect(-h + 7 + i * pw + 3.5, -26.5, pw - 7, 17.5, 3.5), shadeOf(c.wood, 1.5), 1.9);
   // Top: a pale slab seen from a little above, with its front edge in shade.
-  shapeWith(p, rrect(-h, PASS_TOP, len, 17.5, 5), marble, () => p.fill(rrect(-h, PASS_LIP, len, 6, 0), shadeOf(marble, 1.1)), { ow: 3, shade: false });
-  p.stroke(line(-h + 4, PASS_LIP, h - 4, PASS_LIP), mix(marble, c.outline, 0.35), 1.2, true);
+  shapeWith(p, rrect(-h, PASS_TOP, len, 17.5, 5), marble, () => p.fill(rrect(-h, PASS_LIP, len, 6, 0), shadeOf(marble, 1.25)), { ow: 3.2, shade: false });
+  p.stroke(line(-h + 4, PASS_LIP, h - 4, PASS_LIP), mix(marble, c.outline, 0.5), 1.6, true);
+  // A dark line right under the lip gives the slab its thickness.
+  p.stroke(line(-h + 5, PASS_TOP + 19.2, h - 5, PASS_TOP + 19.2), alpha(INK, 0.45), 1.8, true);
   p.shine(line(-h + 9, PASS_TOP + 4, -h + 9 + Math.min(60, len * 0.3), PASS_TOP + 4), WHITE, 1.8, 0.9);
 }
 
+/** Drawn 1.35x the first pass: the bell is the key "order up" cue. */
+const BELL_SCALE = 1.35;
+
 function drawBell(p: Pen, c: ArtPalette) {
-  p.shape(rrect(-1.9, -17.4, 3.8, 5.4, 1.5), c.metal, { ow: 1.7, shade: false });
-  p.shape(circle(0, -18, 2.5), c.metal, { ow: 1.7, shade: false });
-  p.shape(blob([[-10, -1.2, 0], [-9.4, -7.4], [-5.4, -12], [0, -13.4], [5.4, -12], [9.4, -7.4], [10, -1.2, 0]]), c.accent, { ow: 2.3, shade: 2.4 });
-  p.shine(curve([[-6.4, -6], [-4.6, -9.4], [-1.4, -11.2]]), WHITE, 1.9, 0.9);
-  p.shape(ellipse(0, -0.6, 12, 3.6), '#4A3328', { ow: 2.2, shade: false });
+  p.at(0, 0, () => {
+    p.shape(rrect(-1.9, -17.4, 3.8, 5.4, 1.5), c.metal, { ow: 2, shade: false });
+    p.shape(circle(0, -18, 2.5), c.metal, { ow: 2, shade: false });
+    p.shape(blob([[-10, -1.2, 0], [-9.4, -7.4], [-5.4, -12], [0, -13.4], [5.4, -12], [9.4, -7.4], [10, -1.2, 0]]), c.accent, { ow: 2.3, shade: 2.4 });
+    p.shine(curve([[-6.4, -6], [-4.6, -9.4], [-1.4, -11.2]]), WHITE, 1.9, 0.9);
+    p.shape(ellipse(0, -0.6, 12, 3.6), '#4A3328', { ow: 2.2, shade: false });
+  }, 0, BELL_SCALE);
 }
 
 function drawRingMarks(p: Pen, c: ArtPalette) {
-  p.stroke(arc(-2, -10, 15, 15, -38, 60), c.outline, 2.4);
-  p.stroke(arc(-2, -10, 21, 21, -30, 44), c.outline, 2.4);
+  p.stroke(arc(-2, -13, 19, 19, -38, 60), c.outline, 2.8);
+  p.stroke(arc(-2, -13, 26, 26, -30, 44), c.outline, 2.8);
 }
 
 interface PassLayout {
   xs: number[];
   ys: number[];
+  /** A small turn per dish (rad), so the piles look set down by hand rather than a pattern fill. */
+  rs: number[];
   kinds: number[];
   count: number;
 }
@@ -1490,8 +1515,8 @@ function layoutPass(len: number, bellX: number | null, kinds: DishKind[], stacks
   let to = len / 2 - 20;
   // Keep the dishes clear of the bell: use the longer free side.
   if (bellX !== null) {
-    if (bellX - 22 - from >= to - (bellX + 22)) to = Math.min(to, bellX - 24);
-    else from = Math.max(from, bellX + 24);
+    if (bellX - 28 - from >= to - (bellX + 28)) to = Math.min(to, bellX - 30);
+    else from = Math.max(from, bellX + 30);
   }
   const span = Math.max(0, to - from);
   const slots = Math.max(1, Math.min(7, stacks ?? Math.floor(span / 34) + 1));
@@ -1499,17 +1524,22 @@ function layoutPass(len: number, bellX: number | null, kinds: DishKind[], stacks
   const count = slots * layers;
   const xs: number[] = [];
   const ys: number[] = [];
+  const rs: number[] = [];
   const ks: number[] = [];
   const top = Array.from({ length: slots }, () => PASS_DISH_Y);
+  const r = rng(len * 31 + slots);
+  // Each pile is a few units off the even spacing; each dish in it a little off the pile and turned up to 10 degrees.
+  const pileX = Array.from({ length: slots }, (_, s) => (slots === 1 ? (from + to) / 2 : from + (span * s) / (slots - 1)) + (r() * 2 - 1) * 4);
   for (let i = 0; i < count; i++) {
     const s = i % slots;
     const k = i % kinds.length;
-    xs.push(slots === 1 ? (from + to) / 2 : from + (span * s) / (slots - 1));
+    xs.push(pileX[s] + (r() * 2 - 1) * 1.6);
     ys.push(top[s]);
+    rs.push((r() * 2 - 1) * 0.17);
     ks.push(k);
     top[s] -= DISH_RISE[kinds[k]];
   }
-  return { xs, ys, kinds: ks, count };
+  return { xs, ys, rs, kinds: ks, count };
 }
 
 export interface PassProps {
@@ -1570,7 +1600,7 @@ export function Pass({ x, y, width, scale = 1, palette, dishes = 0, dish, stacks
       for (let i = 0; i < MAX_PASS_DISHES; i++) {
         const mat = o[DISH_KEYS[i]];
         if (i >= lay.count) pop(mat, 0, 0, 0, 0);
-        else pop(mat, lay.xs[i], lay.ys[i], 0, backOut(fill - i));
+        else pop(mat, lay.xs[i], lay.ys[i], lay.rs[i], backOut(fill - i));
       }
       if (bellX === null) return;
       // A ring: the bell dips as it is hit, then wobbles while the marks fly out.
@@ -1611,19 +1641,21 @@ export function Pass({ x, y, width, scale = 1, palette, dishes = 0, dish, stacks
 // Table, chair, door
 // ---------------------------------------------------------------------------
 
-/** Size of a table at `scale` 1, in pixels. A chair stands about 24 px from its middle on either side. */
-export const TABLE_SIZE = { width: 33, height: 23 } as const;
+/** Size of a table at `scale` 1, in pixels (sized for 50 px people: a seated guest's knees go under the cloth). */
+export const TABLE_SIZE = { width: 41, height: 28 } as const;
+/** Where the chairs go: this many pixels left and right of the table's middle at `scale` 1 (half the table + 4). */
+export const CHAIR_OFFSET = Math.round(TABLE_SIZE.width / 2 + 4);
 /** Where the plate sits: this far above the table's floor point at `scale` 1, in pixels. */
 export const TABLE_TOP = 16;
 
 const TABLE_Y = -31;
-const TABLE_RX = 31;
-const TABLE_RY = 12;
+const TABLE_RX = 39;
+const TABLE_RY = 15;
 
 function drawTable(p: Pen, c: ArtPalette) {
   // Foot and column.
-  p.shape(ellipse(0, -2.6, 15.5, 4.6), shadeOf(c.wood, 0.9), { ow: 2.6, shade: false });
-  p.shape(rrect(-4.6, -24, 9.2, 22, 2.5), c.wood, { ow: 2.6, shade: 1.8 });
+  p.shape(ellipse(0, -2.6, 18, 5.2), shadeOf(c.wood, 0.9), { ow: 3, shade: false });
+  p.shape(rrect(-5.4, -24, 10.8, 22, 2.5), c.wood, { ow: 3, shade: 1.8 });
   // The cloth hanging over the edge, with a scalloped hem.
   const drop = 8.5;
   const b = builder();
@@ -1652,9 +1684,9 @@ function drawTable(p: Pen, c: ArtPalette) {
     c.cloth,
     () => {
       for (let x = -TABLE_RX - 3.1; x < TABLE_RX; x += 12.4) p.fill(rrect(x, TABLE_Y, 6.2, 40, 0), check);
-      p.fill(rrect(-40, TABLE_Y, 80, 40, 0), alpha(INK, 0.1));
+      p.fill(rrect(-50, TABLE_Y, 100, 40, 0), alpha(INK, 0.1));
     },
-    { ow: 2.6, shade: false },
+    { ow: 3, shade: false },
   );
   // The top: gingham.
   const top = ellipse(0, TABLE_Y, TABLE_RX, TABLE_RY);
@@ -1663,10 +1695,10 @@ function drawTable(p: Pen, c: ArtPalette) {
     top,
     c.cloth,
     () => {
-      for (let x = -TABLE_RX - 3.1; x < TABLE_RX; x += 12.4) p.fill(rrect(x, TABLE_Y - 14, 6.2, 28, 0), check);
-      for (let y = TABLE_Y - TABLE_RY - 1.2; y < TABLE_Y + TABLE_RY; y += 4.8) p.fill(rrect(-40, y, 80, 2.4, 0), check);
+      for (let x = -TABLE_RX - 3.1; x < TABLE_RX; x += 12.4) p.fill(rrect(x, TABLE_Y - 17, 6.2, 34, 0), check);
+      for (let y = TABLE_Y - TABLE_RY - 1.2; y < TABLE_Y + TABLE_RY; y += 4.8) p.fill(rrect(-50, y, 100, 2.4, 0), check);
     },
-    { ow: 2.8, shade: false },
+    { ow: 3.2, shade: false },
   );
   p.shine(arc(0, TABLE_Y, TABLE_RX - 3.4, TABLE_RY - 2.6, 196, 50), WHITE, 1.6, 0.85);
 }
@@ -1674,8 +1706,8 @@ function drawTable(p: Pen, c: ArtPalette) {
 /** An empty plate with crumbs and a fork: someone enjoyed that. Centred like a dish. */
 function drawFinishedPlate(p: Pen, c: ArtPalette, d: ResolvedDish) {
   const plate = d.kind === 'pizza' ? c.cloth : d.plate;
-  p.shape(ellipse(0, 1.2, 13, 5.2), shadeOf(plate), { ow: 2.3, shade: false });
-  p.shape(ellipse(0, 0, 13, 5.2), plate, { ow: 2.3, shade: false });
+  p.shape(ellipse(0, 1.2, 13, 5.2), shadeOf(plate), { ow: 2.7, shade: false });
+  p.shape(ellipse(0, 0, 13, 5.2), plate, { ow: 2.7, shade: false });
   p.fill(ellipse(0, 0.3, 9.2, 3.3), shadeOf(plate, 0.7));
   const crumb = d.kind === 'pizza' ? d.plate : d.food;
   for (const [x, y, r] of [[-4.6, -0.6, 1.2], [2.2, 1.4, 1], [5.4, -0.8, 0.9], [-1, 1.2, 0.8]] as [number, number, number][]) p.dot(x, y, r, shadeOf(crumb, 0.6));
@@ -1749,14 +1781,15 @@ export function Table({ x, y, scale = 1, palette, state = 'empty', dish, clock, 
 function drawChair(p: Pen, c: ArtPalette) {
   const far = shadeOf(c.wood, 1.3);
   // Far legs, then the back post and the near legs.
-  p.shape(rrect(-5.5, -13, 4, 11.5, 1.5), far, { ow: 2, shade: false });
-  p.shape(rrect(10, -13, 4, 11.5, 1.5), far, { ow: 2, shade: false });
-  p.shape(rrect4(-13.5, -42, 7.5, 42, 3.5, 3.5, 1.5, 1.5), c.wood, { ow: 2.4, shade: 1.6 });
-  p.stroke(line(-9.8, -37, -9.8, -21), shadeOf(c.wood, 1.2), 1.4);
-  p.shape(rrect(5.5, -13, 4.6, 13, 1.6), c.wood, { ow: 2.2, shade: false });
+  // Outer edges at least 2.6 units, so the chair weighs the same as the people on it.
+  p.shape(rrect(-5.5, -13, 4.4, 11.5, 1.5), far, { ow: 2.6, shade: false });
+  p.shape(rrect(10, -13, 4.4, 11.5, 1.5), far, { ow: 2.6, shade: false });
+  p.shape(rrect4(-13.5, -42, 8, 42, 3.5, 3.5, 1.5, 1.5), c.wood, { ow: 3, shade: 1.6 });
+  p.stroke(line(-9.6, -37, -9.6, -21), shadeOf(c.wood, 1.2), 1.4);
+  p.shape(rrect(5.5, -13, 5, 13, 1.6), c.wood, { ow: 2.8, shade: false });
   // Seat and cushion.
-  p.shape(rrect(-13.5, -15.6, 25.5, 5.6, 2.4), c.wood, { ow: 2.4, shade: 1.4 });
-  p.shape(rrect(-10.5, -18.6, 21.5, 4.6, 2.3), c.accent, { ow: 2, shade: 1.2 });
+  p.shape(rrect(-13.5, -15.6, 25.5, 5.6, 2.4), c.wood, { ow: 3, shade: 1.4 });
+  p.shape(rrect(-10.5, -18.6, 21.5, 4.6, 2.3), c.accent, { ow: 2.6, shade: 1.2 });
 }
 
 export interface ChairProps {
@@ -1827,6 +1860,7 @@ function drawAwning(p: Pen, c: ArtPalette, hwTop: number, hwBottom: number, top:
 
 function drawDoorBack(p: Pen, c: ArtPalette) {
   const frame = shadeOf(c.wood, 1.25);
+  baseShadow(p, DOOR_W / 2 + 8, 9);
   p.shape(rrect4(-DOOR_W / 2 - 6, -DOOR_H - 7, DOOR_W + 12, DOOR_H + 7, 5, 5, 0, 0), frame, { shade: 3 });
   // Outside: daylight and a strip of pavement.
   const hole = rrect4(-DOOR_W / 2, -DOOR_H, DOOR_W, DOOR_H, 3, 3, 0, 0);
@@ -1947,26 +1981,36 @@ export const WALL_HEIGHT = 96;
 function drawFloor(p: Pen, c: ArtPalette, w: number, h: number, tile: number) {
   p.fill(rrect(0, 0, w, h, 0), c.floorB);
   const cols = Math.ceil(w / tile);
-  const rows = Math.ceil(h / tile);
+  // A hint of depth: rows are shallower at the back (about 0.78 of a tile) and deeper at the front.
+  const rowY = [0];
+  while (rowY[rowY.length - 1] < h) {
+    const y = rowY[rowY.length - 1];
+    rowY.push(y + tile * (0.78 + 0.32 * Math.min(1, y / Math.max(1, h))));
+  }
+  const rows = rowY.length - 1;
   const lite = lightOf(c.floorA, 0.5);
   for (let r = 0; r < rows; r++) {
+    const y = rowY[r];
+    const th = rowY[r + 1] - y;
     for (let q = 0; q < cols; q++) {
       const x = q * tile;
-      const y = r * tile;
       if ((r + q) % 2 === 0) {
-        p.fill(rrect(x, y, tile, tile, 0), c.floorA);
+        p.fill(rrect(x, y, tile, th, 0), c.floorA);
         // A soft gleam on the top left corner of the light tiles.
-        p.fill(poly([[x + 2, y + 2], [x + tile * 0.42, y + 2], [x + 2, y + tile * 0.42]]), alpha(lite, 0.55));
+        p.fill(poly([[x + 2, y + 2], [x + tile * 0.42, y + 2], [x + 2, y + th * 0.42]]), alpha(lite, 0.55));
       } else {
-        p.fill(rrect(x, y + tile - 2.4, tile, 2.4, 0), alpha(shadeOf(c.floorB, 0.8), 0.6));
+        p.fill(rrect(x, y + th - 2.4, tile, 2.4, 0), alpha(shadeOf(c.floorB, 0.8), 0.6));
       }
     }
   }
   const grout = alpha(c.outline, 0.12);
   for (let q = 1; q < cols; q++) p.stroke(line(q * tile, 0, q * tile, h), grout, 1, true);
-  for (let r = 1; r < rows; r++) p.stroke(line(0, r * tile, w, r * tile), grout, 1, true);
-  // Where the floor meets the wall.
-  p.gradient(rrect(0, 0, w, 16, 0), 0, 0, 0, 16, [alpha(INK, 0.22), alpha(INK, 0)]);
+  for (let r = 1; r < rows; r++) p.stroke(line(0, rowY[r], w, rowY[r]), grout, 1, true);
+  // The back of the room is a touch darker than the front.
+  p.gradient(rrect(0, 0, w, h, 0), 0, 0, 0, h * 0.7, [alpha(INK, 0.09), alpha(INK, 0)]);
+  // Where the floor meets the wall: a dark contact band, then a soft falloff.
+  p.fill(rrect(0, 0, w, 3, 0), alpha(INK, 0.24));
+  p.gradient(rrect(0, 0, w, 20, 0), 0, 0, 0, 20, [alpha(INK, 0.3), alpha(INK, 0.1), alpha(INK, 0)], [0, 0.35, 1]);
 }
 
 export interface FloorProps {
@@ -2043,7 +2087,7 @@ function drawShelf(p: Pen, c: ArtPalette, len: number) {
   p.shape(rrect(-h, 0, len, 7, 2.5), c.wood, { ow: 2.6, shade: 2, light: 1 });
 }
 
-/** A blank chalk menu board in a wooden frame; `w` x `h` units, origin at its middle. */
+/** A chalk menu board in a wooden frame (a pizza doodle and handwriting squiggles, no text); `w` x `h` units, origin at its middle. */
 function drawMenuBoard(p: Pen, c: ArtPalette, w: number, h: number) {
   // String and nail.
   p.stroke(poly([[-w * 0.3, -h / 2 + 3], [0, -h / 2 - 12], [w * 0.3, -h / 2 + 3]], false), c.outline, 1.6);
@@ -2056,11 +2100,30 @@ function drawMenuBoard(p: Pen, c: ArtPalette, w: number, h: number) {
     board,
     slate,
     () => {
-      // Old chalk, rubbed out: blank, but clearly a chalkboard.
-      const chalk = alpha(WHITE, 0.13);
-      p.stroke(curve([[-w * 0.3, -h * 0.18], [-w * 0.05, -h * 0.24], [w * 0.22, -h * 0.16]]), chalk, 5);
-      p.stroke(curve([[-w * 0.26, h * 0.08], [0, h * 0.02], [w * 0.28, h * 0.1]]), chalk, 4);
-      p.stroke(line(-w * 0.2, h * 0.26, w * 0.12, h * 0.24), alpha(WHITE, 0.09), 4);
+      // Old rubbed-out chalk behind today's menu.
+      p.stroke(curve([[-w * 0.3, h * 0.3], [0, h * 0.24], [w * 0.3, h * 0.3]]), alpha(WHITE, 0.08), 5);
+      // Today's menu, in shapes: a pizza doodle on the left and handwriting squiggles on the right.
+      const chalk = alpha(WHITE, 0.85);
+      const pr = Math.min(h * 0.27, w * 0.15);
+      const px = -w / 2 + 8 + pr * 1.25;
+      const py = h * 0.02;
+      p.stroke(circle(px, py, pr), chalk, 2);
+      p.stroke(circle(px, py, pr * 0.72), alpha(WHITE, 0.45), 1.2);
+      for (const a of [0.3, 1.35, 2.4, 3.45, 4.5, 5.55]) p.stroke(line(px, py, px + Math.cos(a) * pr, py + Math.sin(a) * pr), alpha(WHITE, 0.6), 1.1);
+      for (const [dx, dy] of [[-0.35, -0.3], [0.32, -0.12], [-0.08, 0.38], [0.4, 0.38], [-0.45, 0.15]] as Pt[]) p.dot(px + dx * pr, py + dy * pr, 1.5, alpha('#FF8A80', 0.9));
+      const lx = px + pr * 1.5;
+      const rx = w / 2 - 10;
+      const wave = (y: number, x1: number, amp: number, n: number) => {
+        const pts: [number, number][] = [];
+        for (let i = 0; i <= n; i++) pts.push([lx + ((x1 - lx) * i) / n, y + (i % 2 === 0 ? -amp : amp)]);
+        return curve(pts);
+      };
+      p.stroke(wave(-h * 0.24, rx, 1.6, 7), chalk, 1.8);
+      p.stroke(wave(-h * 0.04, rx - w * 0.08, 1.3, 6), alpha(WHITE, 0.7), 1.5);
+      p.stroke(wave(h * 0.15, rx - w * 0.02, 1.3, 6), alpha(WHITE, 0.7), 1.5);
+      p.stroke(wave(h * 0.32, lx + (rx - lx) * 0.6, 1.2, 4), alpha(WHITE, 0.6), 1.4);
+      // Price dots in yellow chalk.
+      for (const y of [-h * 0.04, h * 0.15]) p.dot(rx + 1, y, 1.6, alpha('#FFE58A', 0.9));
     },
     { ow: 2.2, shade: 2.2 },
   );
@@ -2094,9 +2157,11 @@ function drawWall(p: Pen, c: ArtPalette, w: number, h: number, shelfAt: number |
   // Skirting board.
   p.shape(rrect(-4, h - 10, w + 8, 10, 0), shadeOf(c.wood, 1.4), { ow: 2.4, shade: false });
   if (shelfAt !== null) {
+    // Drawn at 1.3x so the bottles and tins read at scene scale.
+    const big = 1.3;
     const len = Math.min(150, w * 0.36);
     const sx = len / 2 + 6 + (w - len - 12) * shelfAt;
-    p.at(sx, h * 0.42, () => drawShelf(p, c, len));
+    p.at(sx, h * 0.56, () => drawShelf(p, c, len / big), 0, big);
   }
   if (menuAt !== null) {
     const bw = Math.min(110, w * 0.3);
@@ -2491,9 +2556,12 @@ const BURST_KEYS = ['ring', 'plus', ...Array.from({ length: BURST_N }, (_, i) =>
 
 function drawPlusOne(p: Pen, color: string) {
   const plus = merged(rrect(-20, -4.5, 17, 9, 3.5), rrect(-16, -12.5, 9, 25, 3.5));
-  p.shape(plus, color, { ow: 3, shade: 2.2, light: 1.4 });
   // The "1": a flag, a stem and a foot.
   const one = poly([[4, -10], [11, -16], [17, -16], [17, 10], [21, 10], [21, 17], [5, 17], [5, 10], [9.5, 10], [9.5, -6], [4, -2.5]]);
+  // A heavy dark rim first, so the gold reads on a cream floor.
+  p.stroke(plus, OUTLINE, 8);
+  p.stroke(one, OUTLINE, 8);
+  p.shape(plus, color, { ow: 3, shade: 2.2, light: 1.4 });
   p.shape(one, color, { ow: 3, shade: 2.2, light: 1.4 });
 }
 
@@ -2516,12 +2584,12 @@ export interface SparkleBurstProps {
 export function SparkleBurst({ x, y, scale = 1, trigger, clock, color = GOLD, plusOne = true, zIndex }: SparkleBurstProps) {
   const art = useArt(`burst:${color}`, () => ({
     spark: rec((p) => {
-      p.shape(twinkle(0, 0, 8), color, { ow: 1.8, shade: false });
+      p.shape(twinkle(0, 0, 8), color, { ow: 2.6, shade: false });
       p.fill(twinkle(-1, -1, 3.4), WHITE);
     }),
     ring: rec((p) => {
-      p.stroke(circle(0, 0, 20), alpha(OUTLINE, 0.6), 5);
-      p.stroke(circle(0, 0, 20), lightOf(color, 0.4), 3);
+      p.stroke(circle(0, 0, 20), alpha(OUTLINE, 0.75), 6.5);
+      p.stroke(circle(0, 0, 20), lightOf(color, 0.4), 3.6);
     }),
     plus: rec((p) => drawPlusOne(p, color)),
   }));
@@ -2550,8 +2618,10 @@ export function SparkleBurst({ x, y, scale = 1, trigger, clock, color = GOLD, pl
         pop(o.plus, 0, 0, 0, 0);
         return;
       }
-      const ps = backOut(u / 0.25) * (u > 0.8 ? 1 - (u - 0.8) / 0.2 : 1);
-      pop(o.plus, X, Y - (10 + 30 * ease(u)) * k, -0.08 + 0.08 * u, ps * k);
+      // The "+1" pops in with an overshoot (about 1.2x), settles, floats up and shrinks away.
+      const pin = u < 0.12 ? ease(u / 0.12) * 1.22 : u < 0.24 ? 1.22 - 0.22 * ease((u - 0.12) / 0.12) : 1;
+      const ps = 1.25 * pin * (u > 0.8 ? 1 - (u - 0.8) / 0.2 : 1);
+      pop(o.plus, X, Y - (12 + 30 * ease(u)) * k, -0.08 + 0.08 * u, ps * k);
     },
     [x, y, scale, trigger, clock, plusOne],
   );
@@ -2900,6 +2970,9 @@ export function Chest({ x, y, scale = 1, tier, lid, shake = 0, rays = true, cloc
     b.dispose();
     return path;
   }, []);
+  // The light spilling over the front dims as the chest opens, so the loot (and the gold tier's crown and gems) stay crisp.
+  const dimTo = tier === 'gold' ? 0.45 : 0.6;
+  const leakOpacity = useDerivedValue(() => 1 - (1 - dimTo) * ease((clamp01(num(lid)) - 0.3) / 0.4));
   const m = useRig(
     CHEST_KEYS,
     (o, mem) => {
@@ -2922,16 +2995,18 @@ export function Chest({ x, y, scale = 1, tier, lid, shake = 0, rays = true, cloc
       r[3] = sn * k;
       r[4] = c * k * (1 + 0.03 * Math.abs(wob));
       r[5] = num(y);
-      // The lid: rattles while shut, lifts and tips back over the first 40%, then stands open.
-      const u1 = clamp01(u / 0.4);
-      const u2 = clamp01((u - 0.4) / 0.6);
+      // The lid swings about its hinge on the back rim: 0 shut, 0.7 about 77 degrees, 1 tipped back to 110 degrees.
+      // Its front lip travels on a circle round the hinge; the outside face foreshortens (cos) as it tips,
+      // and the dark, lit inside fills the gap between the lip and the hinge, so the lid never floats.
       const rattle = u < 0.02 ? 5 * sh * Math.abs(Math.sin((now / CHEST_RATTLE_MS) * Math.PI)) : 0;
-      if (u1 < 1) {
-        const sy = Math.cos((u1 * Math.PI) / 2);
-        const lift = 30 * Math.sin(u1 * Math.PI) + 14 * u1 + rattle;
-        put(o.lidOut, 0, RIM_Y + 1 - lift, 0, 1, sy);
-      } else pop(o.lidOut, 0, 0, 0, 0);
-      if (u2 > 0) put(o.lidIn, 0, BACK_Y + 1, 0, 1, 1.05 * backOut(u2));
+      const th = 1.92 * (0.15 * ease(u) + 0.85 * u);
+      const hy = BACK_Y + 1;
+      const lipY = hy + (RIM_Y - BACK_Y) * Math.cos(th) - LID_H * Math.sin(th) - rattle;
+      const face = Math.cos(th);
+      if (face > 0.06) put(o.lidOut, 0, lipY, 0, 1, face);
+      else pop(o.lidOut, 0, 0, 0, 0);
+      const inside = (hy - lipY) / LID_H;
+      if (inside > 0.02) put(o.lidIn, 0, hy, 0, 1, inside);
       else pop(o.lidIn, 0, 0, 0, 0);
       put(o.mouth, 0, 0, 0, 1, 1);
       pop(o.loot, 0, RIM_Y + 2, 0, 1.22 * backOut((u - 0.25) / 0.45));
@@ -2967,7 +3042,9 @@ export function Chest({ x, y, scale = 1, tier, lid, shake = 0, rays = true, cloc
       <Group clip={clip}>
         <Picture picture={art.gleam} matrix={m.gleam} />
       </Group>
-      <Picture picture={art.leak} matrix={m.leak} />
+      <Group opacity={leakOpacity}>
+        <Picture picture={art.leak} matrix={m.leak} />
+      </Group>
       {CHEST_KEYS.slice(9).map((key) => (
         <Picture key={key} picture={art.spark} matrix={m[key]} />
       ))}

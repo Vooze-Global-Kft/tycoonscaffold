@@ -8,6 +8,7 @@ import { getBustArt, releaseBustArt, retainBustArt } from './characterArt';
 import { randomLook, resolveLook } from './looks';
 import {
   CARD_WINDOW,
+  CHAIR_OFFSET,
   Card,
   CardBack,
   CardFrame,
@@ -393,13 +394,40 @@ function CardsPage({ clock }: { clock: SharedValue<number> }) {
 }
 
 // --- one mock restaurant at phone width ------------------------------------------
+//
+// Staging rules the real restaurant screen should copy:
+// - Depth: draw back to front by floor y (or pass `zIndex={y}`). At a table: the chairs, then whoever sits
+//   on them, then the table (zIndex y + 0.5), so the cloth hides the guests' laps. Standing actors in
+//   front of a table have a larger y and come after it.
+// - A table's state matches its guest: `sit-wait` -> `empty`, `sit-eat` -> `food`, left -> `finished`.
+// - A flying dish always goes from somewhere to someone (oven -> pass, pass -> tray) and is hidden at rest.
 
 const GUEST = randomLook(11, 'customer');
+const GUEST2 = randomLook(4, 'customer');
+const GUEST3 = randomLook(27, 'customer');
+const GUEST4 = randomLook(8, 'customer');
+const WAITER = randomLook(5, 'waiter');
+const WAITER2 = randomLook(12, 'waiter');
 const WALL_H = 112;
-const ROW1 = 312;
-const ROW2 = 430;
-const T_LEFT = 104;
-const T_RIGHT = 280;
+const SCENE_H = 420;
+const PASS_Y = WALL_H + 64;
+const WALK_Y = PASS_Y + 50;
+const ROWS = [WALK_Y + 52, WALK_Y + 140];
+const COLS = [70, 195, 320];
+
+/** One table with its two chairs, in the right drawing order. `left`/`right` are the seated guests, if any. */
+function TableSet({ x, y, clock, state, dish, left, right }: { x: number; y: number; clock: SharedValue<number>; state: 'empty' | 'food' | 'finished'; dish?: 'pizza' | 'plate' | 'bowl'; left?: ReactNode; right?: ReactNode }) {
+  return (
+    <>
+      <ContactShadow x={x} y={y} width={58} height={13} />
+      <Chair x={x - CHAIR_OFFSET} y={y - 4} />
+      <Chair x={x + CHAIR_OFFSET} y={y - 4} facing={-1} />
+      {left}
+      {right}
+      <Table x={x} y={y} state={state} dish={dish} clock={clock} />
+    </>
+  );
+}
 
 function ScenePage({ clock }: { clock: SharedValue<number> }) {
   const rung = useBump(2600);
@@ -412,49 +440,42 @@ function ScenePage({ clock }: { clock: SharedValue<number> }) {
     const u = walk.value;
     const tri = u < 0.5 ? u * 2 : 2 - u * 2;
     const e = tri * tri * (3 - 2 * tri);
-    return 40 + 270 * e;
+    return 40 + 250 * e;
   });
   const waiterFacing = useDerivedValue(() => (walk.value < 0.5 ? 1 : -1));
-  const fly = useLoop(clock, 2600, 1300);
+  // A pizza hops from the oven onto the pass, then waits hidden for the next one.
+  const fly = useDerivedValue(() => {
+    const u = (clock.value % 2600) / 2600;
+    return u < 0.22 ? u / 0.22 : 0;
+  });
+  const sit = (look: ReturnType<typeof randomLook> | string, x: number, y: number, facing: 1 | -1, pose: 'sit-wait' | 'sit-eat', dish?: 'pizza' | 'plate' | 'bowl') => (
+    <Character look={look} x={x} y={y - 4} pose={pose} facing={facing} dish={dish ?? 'pizza'} clock={clock} poses={[pose]} />
+  );
   return (
-    <Sheet title="mock restaurant (390 px wide)" height={520}>
+    <Sheet title="mock restaurant (390 px wide)" height={SCENE_H}>
       <Wall x={0} y={0} width={W} height={WALL_H} shelf={null} menu={null} />
-      <Floor x={0} y={WALL_H} width={W} height={520 - WALL_H} />
-      <MenuBoard x={268} y={48} width={58} height={36} />
+      <Floor x={0} y={WALL_H} width={W} height={SCENE_H - WALL_H} />
+      <MenuBoard x={268} y={46} width={62} height={40} />
       {/* Kitchen line against the wall. */}
       <Station kind="oven" x={52} y={WALL_H + 16} working clock={clock} />
-      <Station kind="stove" x={124} y={WALL_H + 16} clock={clock} />
+      <Station kind="stove" x={124} y={WALL_H + 16} working clock={clock} />
       <Station kind="fryer" x={196} y={WALL_H + 16} locked clock={clock} />
       <HandPointer x={204} y={WALL_H - 18} clock={clock} scale={0.8} />
-      <Character look="marco" x={92} y={WALL_H + 42} pose="cook" facing={-1} clock={clock} poses={['cook']} />
-      <Pass x={136} y={WALL_H + 64} width={250} dishes={dishes} rung={rung} clock={clock} bell={0.95} />
+      <Character look="marco" x={92} y={WALL_H + 42} pose="cook" facing={-1} clock={clock} />
+      <FlyingDish from={{ x: 52, y: WALL_H - 4 }} to={{ x: 40, y: PASS_Y - 22 }} progress={fly} height={26} spins={0} />
+      <Pass x={136} y={PASS_Y} width={250} dishes={dishes} dish={['pizza', 'pizza', 'plate', 'pizza', 'bowl']} rung={rung} clock={clock} bell={0.95} />
       <Door x={348} y={WALL_H + 18} swing={swing} clock={clock} />
+      <Character look={WAITER2} x={350} y={WALL_H + 50} pose="wave" facing={-1} clock={clock} />
       {/* Walkway: the waiter with a tray. */}
-      <Character look="sal" x={waiterX} y={WALL_H + 112} facing={waiterFacing} pose="carry" dish="pizza" clock={clock} poses={['carry']} />
-      <FlyingDish from={{ x: 230, y: WALL_H + 34 }} to={{ x: T_RIGHT, y: ROW2 - 18 }} progress={fly} height={50} spins={1} />
-      {/* Four tables. */}
-      <ContactShadow x={T_LEFT} y={ROW1} width={44} height={11} />
-      <Chair x={T_LEFT - 24} y={ROW1 - 4} />
-      <Character look="fiona" x={T_LEFT - 24} y={ROW1 - 4} pose="sit-eat" facing={1} dish="pizza" clock={clock} poses={['sit-eat']} />
-      <Table x={T_LEFT} y={ROW1} state="food" clock={clock} />
-      <Chair x={T_LEFT + 24} y={ROW1 - 4} facing={-1} />
-
-      <ContactShadow x={T_RIGHT} y={ROW1} width={44} height={11} />
-      <Chair x={T_RIGHT - 24} y={ROW1 - 4} />
-      <Table x={T_RIGHT} y={ROW1} state="empty" clock={clock} />
-      <Chair x={T_RIGHT + 24} y={ROW1 - 4} facing={-1} />
-
-      <ContactShadow x={T_LEFT} y={ROW2} width={44} height={11} />
-      <Chair x={T_LEFT - 24} y={ROW2 - 4} />
-      <Table x={T_LEFT} y={ROW2} state="finished" clock={clock} />
-      <Chair x={T_LEFT + 24} y={ROW2 - 4} facing={-1} />
-      <SparkleBurst x={T_LEFT} y={ROW2 - 30} trigger={coin} clock={clock} scale={0.8} />
-
-      <ContactShadow x={T_RIGHT} y={ROW2} width={44} height={11} />
-      <Chair x={T_RIGHT - 24} y={ROW2 - 4} />
-      <Table x={T_RIGHT} y={ROW2} state="food" dish="plate" clock={clock} />
-      <Chair x={T_RIGHT + 24} y={ROW2 - 4} facing={-1} />
-      <Character look={GUEST} x={T_RIGHT + 24} y={ROW2 - 4} pose="sit-wait" facing={-1} dish="plate" clock={clock} poses={['sit-wait']} />
+      <Character look={WAITER} x={waiterX} y={WALK_Y} facing={waiterFacing} pose="carry" dish="pizza" clock={clock} />
+      {/* Six tables, back row first. */}
+      <TableSet x={COLS[0]} y={ROWS[0]} clock={clock} state="food" left={sit('fiona', COLS[0] - CHAIR_OFFSET, ROWS[0], 1, 'sit-eat')} right={sit(GUEST2, COLS[0] + CHAIR_OFFSET, ROWS[0], -1, 'sit-eat')} />
+      <TableSet x={COLS[1]} y={ROWS[0]} clock={clock} state="finished" />
+      <SparkleBurst x={COLS[1]} y={ROWS[0] - 34} trigger={coin} clock={clock} scale={1.2} />
+      <TableSet x={COLS[2]} y={ROWS[0]} clock={clock} state="empty" right={sit(GUEST, COLS[2] + CHAIR_OFFSET, ROWS[0], -1, 'sit-wait', 'plate')} />
+      <TableSet x={COLS[0]} y={ROWS[1]} clock={clock} state="empty" left={sit(GUEST3, COLS[0] - CHAIR_OFFSET, ROWS[1], 1, 'sit-wait')} />
+      <TableSet x={COLS[1]} y={ROWS[1]} clock={clock} state="food" dish="plate" right={sit(GUEST4, COLS[1] + CHAIR_OFFSET, ROWS[1], -1, 'sit-eat', 'plate')} />
+      <TableSet x={COLS[2]} y={ROWS[1]} clock={clock} state="empty" />
     </Sheet>
   );
 }
