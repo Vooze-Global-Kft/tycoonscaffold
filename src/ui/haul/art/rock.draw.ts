@@ -7,7 +7,9 @@
  */
 import type { SkCanvas, SkPath, SkPicture } from '@shopify/react-native-skia';
 import { ORE, SPACE, alpha, mix, oreColor, shade } from './palette';
-import { LINE, TAU, around, blob, builder, clip, fill, glow, litStroke, picture, poly, seeded, stroke } from './pen';
+import { LINE, TAU, around, blob, clip, fill, glow, litStroke, picture, poly, rrect, seeded, stroke } from './pen';
+import { drawOreShape } from './ore.draw';
+import { drawText, textWidth } from './glyphs';
 
 /** Number of distinct rock silhouettes. A rock picks one with `rockShapeIndex`. */
 export const ROCK_SHAPES = 8;
@@ -222,44 +224,48 @@ export function rockPicture(o: RockOptions & { crack?: 0 | 1 | 2; dry?: boolean 
 // Chunks, piles, shards
 // ---------------------------------------------------------------------------
 
-/** One ore chunk, radius about `s` (default 3.4 pt): a bright faceted lump, no machine outline. */
+/**
+ * One ore chunk, radius about `s` (default 3.4 pt): the ore's own silhouette (ore.draw.ts: iron
+ * block, copper nugget, ice spike, titanium prism, platinum diamond), turned a little by `seed`.
+ */
 export function drawChunk(c: SkCanvas, ore: string, s = 3.4, seed = 0): void {
-  const tint = oreColor(ore);
   const rnd = seeded(900 + seed);
-  const n = 5 + Math.floor(rnd() * 2);
-  const pts: number[] = [];
-  for (let i = 0; i < n; i++) {
-    const a = (TAU * i) / n + rnd() * 0.4;
-    const k = s * (0.75 + rnd() * 0.35);
-    pts.push(Math.cos(a) * k, Math.sin(a) * k);
-  }
-  const p = poly(pts);
-  glow(c, 0, 0, s * 2.2, tint, 0.3);
-  c.drawPath(p, fill(mix(tint, '#000000', 0.35)));
-  // Lit top facet.
-  c.drawPath(poly([pts[pts.length - 2], pts[pts.length - 1], pts[0], pts[1], pts[2], pts[3], 0, 0]), fill(tint));
-  c.drawPath(p, stroke(mix(tint, '#FFFFFF', 0.4), 0.7));
+  c.save();
+  c.rotate((rnd() - 0.5) * 40, 0, 0);
+  drawOreShape(c, ore, s, { glow: 0.22 });
+  c.restore();
 }
 
 /** Pile sizes: 0 small, 1, 2, 3 full (chunks drawn). */
-export const PILE_CHUNKS = [3, 6, 10, 15];
+export const PILE_CHUNKS = [3, 6, 9, 14];
 
-/** A pile of chunks of `ore` in size step 0..3, centred on the origin, about 10 to 20 pt wide. */
+/**
+ * A pile of chunks of `ore` in size step 0..3, centred on the origin, about 22 x 18 pt (step 3:
+ * about 28 pt wide, two heaps and a spill). Each chunk is the ore's silhouette.
+ */
 export function drawPile(c: SkCanvas, ore: string, step: 0 | 1 | 2 | 3): void {
   const tint = oreColor(ore);
   const n = PILE_CHUNKS[step];
   const rnd = seeded(40 + step);
+  const padW = step === 3 ? 28 : 22;
   // A faint landing pad ring under the pile, so an empty spot still reads as "pile here".
-  c.drawOval({ x: -11, y: -5, width: 22, height: 10 }, fill(alpha(tint, 0.1)));
-  c.drawOval({ x: -11, y: -5, width: 22, height: 10 }, stroke(alpha(tint, 0.35), 0.8));
+  c.drawOval({ x: -padW / 2, y: -5, width: padW, height: 10 }, fill(alpha(tint, 0.08)));
+  c.drawOval({ x: -padW / 2, y: -5, width: padW, height: 10 }, stroke(alpha(tint, 0.3), 0.8));
   const placed: [number, number, number][] = [];
-  for (let i = 0; i < n; i++) {
-    const row = Math.floor(Math.sqrt(i));
-    const x = (rnd() - 0.5) * (8 + step * 3);
-    const y = 2 - row * 2.6 + (rnd() - 0.5) * 1.5;
-    placed.push([x, y, 2.3 + rnd() * 1.2]);
+  // Heaps: one centred heap, or for the full pile two heaps and a few chunks spilled off the pad.
+  const heaps: [number, number, number][] = step === 3 ? [[-5.5, 0, 8], [6, 0, 5]] : [[0, 0, n]];
+  for (const [hx, , count] of heaps) {
+    for (let i = 0; i < count; i++) {
+      const row = Math.floor(Math.sqrt(i));
+      const x = hx + (rnd() - 0.5) * (6 + Math.min(step, 2) * 2.5) * (1 - row * 0.18);
+      const y = 2.5 - row * 3 + (rnd() - 0.5) * 1.2;
+      placed.push([x, y, 2.3 + rnd() * 0.9]);
+    }
   }
-  placed.sort((a, b) => b[1] - a[1]);
+  if (step === 3) placed.push([13.5, 4, 2], [11, 5.5, 1.7]);
+  placed.sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+  // Draw back to front: highest first (smaller y = further back).
+  placed.reverse();
   for (const [x, y, s] of placed) {
     c.save();
     c.translate(x, y);
@@ -282,6 +288,59 @@ export function drawShard(c: SkCanvas, ore: string, i: number): void {
 /** The pile label box behind "62/80", if the scene wants a backing plate. */
 export function pileLabelPlate(c: SkCanvas, w: number, h: number): void {
   c.drawRRect({ rect: { x: -w / 2, y: -h / 2, width: w, height: h }, rx: h / 2, ry: h / 2 }, fill(alpha(SPACE.bg, 0.75)));
+}
+
+/**
+ * Where a rock's pile and its label go: on the rock's outward bearing (away from the station,
+ * where no route arrives), pile first, label beyond it (critique M3). Rock centre (rx, ry),
+ * station centre (sx, sy), drawn rock radius r. `avoid`: other circles [x, y, radius] on the map
+ * (other rocks, ghost slots with their price tags); when the outward spot would touch one, the
+ * bearing turns 35°, then 70°, toward whichever side is clear. Points on the screen.
+ */
+export function pileSpot(rx: number, ry: number, sx: number, sy: number, r: number, avoid: [number, number, number][] = []): { pile: { x: number; y: number }; label: { x: number; y: number } } {
+  const base = Math.atan2(ry - sy, rx - sx);
+  const at = (a: number) => ({
+    pile: { x: rx + Math.cos(a) * (r + 7), y: ry + Math.sin(a) * (r + 7) },
+    label: { x: rx + Math.cos(a) * (r + 19), y: ry + Math.sin(a) * (r + 19) },
+  });
+  const clear = (a: number) => {
+    const s = at(a);
+    return avoid.every(([x, y, rr]) => Math.hypot(s.label.x - x, s.label.y - y) > rr + 9 && Math.hypot(s.pile.x - x, s.pile.y - y) > rr + 7);
+  };
+  for (const d of [0, 35, -35, 70, -70]) {
+    // Try the outward bearing, then 35° and 70° to either side.
+    const a = base + (d * Math.PI) / 180 * (rx < sx ? 1 : -1);
+    if (clear(a)) return at(a);
+  }
+  return at(base);
+}
+
+/** Text size of pile labels (points, stroke font). */
+export const PILE_LABEL_SIZE = 5;
+
+/**
+ * A pile label ("62/80") on its plate, centred on the origin; draw it on a layer above drones.
+ * `full`: the pile is at its cap (the rig stalls): an amber plate with an up-arrow, readable
+ * without colour. Returns the plate size.
+ */
+export function drawPileLabel(c: SkCanvas, text: string, full = false): { w: number; h: number } {
+  const size = PILE_LABEL_SIZE;
+  const tw = textWidth(text, size);
+  const arrow = full ? size + 2 : 0;
+  const w = tw + 6 + arrow;
+  const h = size + 5;
+  const plate = rrect(-w / 2, -h / 2, w, h, h / 2);
+  c.drawPath(plate, fill(full ? mix(SPACE.bg, SPACE.amber, 0.85) : alpha(SPACE.bg, 0.8)));
+  if (!full) c.drawPath(plate, stroke(alpha('#FFFFFF', 0.14), 0.6));
+  const ink = full ? SPACE.bg : alpha('#FFFFFF', 0.92);
+  const x0 = -w / 2 + 3;
+  if (full) {
+    const ax = x0 + size / 2;
+    c.drawPath(poly([ax - size * 0.45, 0.6, ax, -size * 0.55, ax + size * 0.45, 0.6]), fill(ink));
+    c.drawPath(poly([ax, 0, ax, size * 0.5], false), stroke(ink, 1.1));
+  }
+  drawText(c, text, x0 + arrow, -size / 2, { size, color: ink, glow: 0, weight: 0.95 });
+  return { w, h };
 }
 
 export { ORE };

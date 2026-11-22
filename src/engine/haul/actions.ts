@@ -4,8 +4,8 @@
  * to collect what happened.
  */
 import { equip } from '../loadout';
-import { affordable, autopilotCost, capacityCost, claimCost, droneCost, EPS, engineCost, freighterCost, holdTotal, rigCost, slotTable } from './params';
-import { commit, doLaunch, draftOf, draftParams, dropGuest, grantPod, seamAt, seamDuration, updateMarks, warmUp, type Draft } from './tick';
+import { affordable, autopilotCost, capacityCost, claimCost, droneCost, EPS, engineCost, freighterCost, holdTotal, rigCost, ringOf, slotTable } from './params';
+import { commit, doLaunch, draftOf, draftParams, dropGuest, grantPod, landOnSeam, seamAt, seamDuration, updateMarks, warmUp, type Draft } from './tick';
 import type { AutopilotPolicy, HaulConfig, HaulEvent, HaulGame, HaulState } from './types';
 
 type Run = HaulGame & { haul: HaulState };
@@ -27,16 +27,15 @@ function pay(d: Draft, cost: number): void {
   d.g = { ...d.g, cash: Math.max(0, d.g.cash - cost) };
 }
 
-/** A drone arrives on `slot`: warm-up if the route was empty; a guest of the seam if the slot has one. */
+/**
+ * A drone arrives on `slot`: warm-up (and `delivered` restarts) if the route was empty; on an active
+ * seam it pushes its origin and may count a seam drag (errata 16, see `landOnSeam`).
+ */
 function arrive(cfg: HaulConfig, d: Draft, slot: number, origin: number): void {
   const h = d.h;
   warmUp(cfg, draftParams(cfg, d), h, slot);
   h.slots[slot].haulers += 1;
-  const seam = seamAt(h, slot);
-  if (seam) {
-    seam.guests.push(origin);
-    d.stats.seamDrags += 1;
-  }
+  landOnSeam(d, slot, origin);
 }
 
 /** Assign an idle drone from the rack to a claimed slot (drag, flick or tap-tap). Free. */
@@ -106,6 +105,7 @@ export function claimSlot(cfg: HaulConfig, g: HaulGame, slot: number, events?: H
   const d = draftOf(g, events);
   pay(d, cost);
   const h = d.h;
+  d.haulStats.bestRing = Math.max(d.haulStats.bestRing ?? 1, ringOf(cfg, slot) + 1);
   h.slots[slot] = { ...h.slots[slot], claimed: true, rigLevel: 1, haulers: 0, rockN: -1, ore: '', bonanza: false, life: 0, pile: 0, full: false, respawnAt: h.clock + CLAIM_DRIFT, routeFrom: h.clock, delivered: 0 };
   h.counters.claims += 1;
   d.stats.claims += 1;
@@ -175,6 +175,7 @@ export function buyAutopilot(cfg: HaulConfig, g: HaulGame, events?: HaulEvent[])
   const d = draftOf(g, events);
   pay(d, cost);
   d.h.autopilot = { online: true, policy: d.h.autopilot.policy };
+  d.haulStats.autopilotSeen = true;
   return finish(cfg, d);
 }
 
@@ -196,12 +197,12 @@ export function pickContract(cfg: HaulConfig, g: HaulGame, index: number | null)
   return finish(cfg, d);
 }
 
-/** True when a flare can go onto `slot` now: a charge, a claimed rock without a seam, no flare seam running. */
+/** True when a flare can go onto `slot` now: a charge, a claimed rock with life left (errata 34) and no seam, no flare seam running. */
 export function canFlare(g: HaulGame, slot: number): boolean {
   const h = g.haul;
   if (!h || h.flare.charges < 1 || !slotOk(h, slot)) return false;
   const s = h.slots[slot];
-  if (s.respawnAt !== null || s.rockN < 0) return false;
+  if (s.respawnAt !== null || s.rockN < 0 || !(s.life > 0)) return false;
   if (h.flare.slot !== null && h.flare.until > h.clock) return false;
   return seamAt(h, slot) === null;
 }
@@ -211,7 +212,7 @@ export function useFlare(cfg: HaulConfig, g: HaulGame, slot: number, events?: Ha
   if (!run(g) || !canFlare(g, slot)) return g;
   const d = draftOf(g, events);
   const h = d.h;
-  h.flare = { ...h.flare, charges: h.flare.charges - 1, slot, until: h.clock + seamDuration(cfg, g), guests: [] };
+  h.flare = { ...h.flare, charges: h.flare.charges - 1, slot, until: h.clock + seamDuration(cfg, g), guests: [], peak: 0 };
   d.events?.push({ type: 'vein', slot, flare: true });
   return finish(cfg, d);
 }
@@ -221,10 +222,10 @@ export function canAdFlare(cfg: HaulConfig, g: HaulGame, day: string, now: numbe
   const f = g.haul?.flare;
   if (!f) return false;
   const today = f.adDay === day ? f.adsToday : 0;
-  return today < cfg.haul.flare.adsPerDay && now >= f.adNextAt;
+  return f.charges < cfg.haul.flare.maxCharges && today < cfg.haul.flare.adsPerDay && now >= f.adNextAt;
 }
 
-/** Grants a flare charge after a rewarded ad (3 a day, 20 min apart). The store passes `day` = economy.dayKey(now). */
+/** Grants a flare charge after a rewarded ad (3 a day, 20 min apart, never above `flare.maxCharges`: errata 33). The store passes `day` = economy.dayKey(now). */
 export function grantAdFlare(cfg: HaulConfig, g: HaulGame, day: string, now: number, events?: HaulEvent[]): HaulGame {
   if (!run(g) || !canAdFlare(cfg, g, day, now)) return g;
   const d = draftOf(g, events);
@@ -232,7 +233,7 @@ export function grantAdFlare(cfg: HaulConfig, g: HaulGame, day: string, now: num
   f.adsToday = (f.adDay === day ? f.adsToday : 0) + 1;
   f.adDay = day;
   f.adNextAt = now + cfg.haul.flare.adGapMinutes * 60_000;
-  f.charges += 1;
+  f.charges = Math.min(cfg.haul.flare.maxCharges, f.charges + 1);
   d.events?.push({ type: 'flareCharge', charges: f.charges });
   return finish(cfg, d);
 }
@@ -248,8 +249,13 @@ export function fitModule(cfg: HaulConfig, g: HaulGame, i: number, cardId: strin
  */
 export function ackTransmission(cfg: HaulConfig, g: HaulGame, events?: HaulEvent[]): HaulGame {
   if (!run(g)) {
+    // Between galaxies (a pending Jump) there is no run, but the count and the cache still apply.
     const n = g.stats.transmissionsAcked + 1;
-    return { ...g, stats: { ...g.stats, transmissionsAcked: n } };
+    const pod = cfg.haul.pods.derelict;
+    const give = n % cfg.haul.pods.transmissionsEvery === 0 && cfg.meta.chests.some((c) => c.id === pod);
+    const chests = give ? { ...g.chests, owned: { ...g.chests.owned, [pod]: (g.chests.owned[pod] ?? 0) + 1 } } : g.chests;
+    events?.push(...(give ? [{ type: 'podEarned' as const, pod, reason: 'transmissions' as const }] : []));
+    return { ...g, chests, stats: { ...g.stats, transmissionsAcked: n } };
   }
   const d = draftOf(g, events);
   d.stats.transmissionsAcked += 1;

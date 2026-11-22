@@ -18,51 +18,27 @@ export const DEDUPE_MS = 30;
 
 /**
  * Players are a limited resource (see audio.ts), so they are created in this
- * order: first the sounds a finger is waiting for, then the scene, then the
- * rest of the catalogue in the order it is written.
+ * order: first the events with a `preload` rank in the catalogue, lowest first
+ * (the sounds a finger is waiting for, then the scene), then the rest of the
+ * game's table in the order it is written. The ranks live in the catalogue, so
+ * a game's bundle names only its own mode's events.
  */
-export const PRELOAD_FIRST: readonly FxName[] = [
-  'ui_tap',
-  'tap',
-  'buy',
-  'coin',
-  'ui_tab',
-  'ui_denied',
-  'cash',
-  'bell',
-  'cook_done',
-  'toss',
-  'serve',
-  'pickup',
-  'happy',
-  'door',
-  'ui_open',
-  'ui_close',
-  'card_flip',
-  'blip_mid',
-  'blip_low',
-  'blip_high',
-  'chest_shake',
-  'hint',
-];
+export function preloadFirst(catalog: Readonly<Record<string, FxRuntimeDef>>): string[] {
+  return Object.keys(catalog)
+    .filter((name) => catalog[name].preload !== undefined)
+    .sort((a, b) => catalog[a].preload! - catalog[b].preload!);
+}
 
 /**
- * How many copies of one file may sound at once. Without an entry a sound
- * has one voice and restarts when it is triggered again, which is right for
- * most (a jingle should not pile up on itself). Sounds with a tail that are
- * fired in quick succession get two or three, so each one rings out.
- * `coin` needs no entry: its three files already take turns.
+ * How many copies of one file may sound at once, by event (catalogue `voices`).
+ * Without an entry a sound has one voice and restarts when it is triggered
+ * again. `coin` needs no entry: its three files already take turns.
  */
-export const VOICES: Partial<Record<FxName, number>> = {
-  tap: 2,
-  buy: 3,
-  cash: 2,
-  bell: 3,
-  cook_done: 2,
-  card_flip: 2,
-  reveal_common: 2,
-  reveal_rare: 2,
-};
+export function voicesOf(catalog: Readonly<Record<string, FxRuntimeDef>>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const name of Object.keys(catalog)) if (catalog[name].voices !== undefined) out[name] = catalog[name].voices!;
+  return out;
+}
 
 export interface SoundSpec {
   /** File key, e.g. "tap_3". */
@@ -93,8 +69,8 @@ export interface SoundPlan {
 export function planSounds(
   catalog: Readonly<Record<string, FxRuntimeDef>>,
   files: Readonly<Record<string, number>>,
-  first: readonly string[] = PRELOAD_FIRST,
-  voices: Readonly<Record<string, number | undefined>> = VOICES,
+  first: readonly string[] = preloadFirst(catalog),
+  voices: Readonly<Record<string, number | undefined>> = voicesOf(catalog),
 ): SoundPlan {
   const plan: SoundPlan = { sounds: [], preload: [], missing: [], unused: [] };
   const used = new Set<string>();

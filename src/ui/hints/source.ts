@@ -34,8 +34,16 @@ export interface HintSource<H extends Hint = Hint> {
 
 let source: HintSource | null = null;
 
-/** Called once by the mode entry's install (src/modes/contract.ts). */
+let installed = false;
+
+/**
+ * Called once by the mode entry's install (src/modes/contract.ts). The source must never change
+ * afterwards: HintOverlay calls its `useIsHere` hook only when it has one, so another source would
+ * change the overlay's hook order. A phone installs once; a hot reload in development may not.
+ */
 export function setHintSource(next: HintSource | null): void {
+  if (typeof __DEV__ !== 'undefined' && __DEV__ && installed && next !== source) console.warn('setHintSource: the hint source changed after install; reload the app (HintOverlay assumes it never changes).');
+  installed = true;
   source = next;
 }
 

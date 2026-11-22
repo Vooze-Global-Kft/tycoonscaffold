@@ -212,8 +212,10 @@ export const HaulSchema = z.object({
       chance: z.number().min(0).max(1).default(0.04),
       drill: z.number().positive().default(2),
       life: z.number().positive().default(1.5),
+      /** The chance never passes this, whatever the Star Map (errata 71). */
+      maxChance: z.number().min(0).max(1).default(0.5),
     })
-    .default({ chance: 0.04, drill: 2, life: 1.5 }),
+    .default({ chance: 0.04, drill: 2, life: 1.5, maxChance: 0.5 }),
   seam: z
     .object({
       first: z.number().nonnegative().default(360),
@@ -224,10 +226,12 @@ export const HaulSchema = z.object({
       /** Per Seam Sense level: seconds off the interval and seconds added to the duration. */
       senseInterval: z.number().nonnegative().default(10),
       senseDuration: z.number().nonnegative().default(5),
-      /** No interval is ever shorter than this. */
-      minInterval: z.number().positive().default(10),
+      /** No interval is ever shorter than this (errata 20). */
+      minInterval: z.number().positive().default(30),
+      /** When the natural roll finds no rock with life left, it tries again this many seconds later (errata 34). */
+      retrySeconds: z.number().positive().default(30),
     })
-    .default({ first: 360, interval: [90, 150], duration: 40, drill: 3, pileCap: 2, senseInterval: 10, senseDuration: 5, minInterval: 10 }),
+    .default({ first: 360, interval: [90, 150], duration: 40, drill: 3, pileCap: 2, senseInterval: 10, senseDuration: 5, minInterval: 30, retrySeconds: 30 }),
   flare: z
     .object({
       refillSeconds: z.number().positive().default(1800),
@@ -235,8 +239,10 @@ export const HaulSchema = z.object({
       maxStored: z.number().int().positive().default(1),
       adsPerDay: z.number().int().nonnegative().default(3),
       adGapMinutes: z.number().nonnegative().default(20),
+      /** Charges never exceed this, ads included (errata 33). */
+      maxCharges: z.number().int().positive().default(4),
     })
-    .default({ refillSeconds: 1800, firstAt: 600, maxStored: 1, adsPerDay: 3, adGapMinutes: 20 }),
+    .default({ refillSeconds: 1800, firstAt: 600, maxStored: 1, adsPerDay: 3, adGapMinutes: 20, maxCharges: 4 }),
   contracts: z.object({
     unlockLaunches: z.number().int().nonnegative().default(4),
     unlockClock: z.number().nonnegative().default(90),
@@ -273,6 +279,8 @@ export const HaulSchema = z.object({
     headStartRig: z.number().int().positive().default(4),
   }),
   galaxies: z.object({ names: z.array(z.string()).min(1) }),
+  /** "Jump ready" (beat 8, the Star Map rail button, section 8): the Jump would gain at least this many cores (errata 22). */
+  jumpReadyCores: z.number().int().positive().default(20),
   modules: z.array(HaulModuleSchema).default([]),
   /** Drone cap and start drones from an `unlock` entitlement (Hangar Expansion); product id. */
   hangar: z.object({ product: z.string(), droneCap: z.number().int().nonnegative(), startDrones: z.number().int().nonnegative() }).optional(),
@@ -400,9 +408,9 @@ export const HAUL_STARTING_CONTENT: HaulContentInput = {
   },
   autopilot: { cost: 90 },
   respawnSeconds: 6,
-  bonanza: { chance: 0.04, drill: 2, life: 1.5 },
-  seam: { first: 360, interval: [90, 150], duration: 40, drill: 3, pileCap: 2, senseInterval: 10, senseDuration: 5, minInterval: 10 },
-  flare: { refillSeconds: 1800, firstAt: 600, maxStored: 1, adsPerDay: 3, adGapMinutes: 20 },
+  bonanza: { chance: 0.04, drill: 2, life: 1.5, maxChance: 0.5 },
+  seam: { first: 360, interval: [90, 150], duration: 40, drill: 3, pileCap: 2, senseInterval: 10, senseDuration: 5, minInterval: 30, retrySeconds: 30 },
+  flare: { refillSeconds: 1800, firstAt: 600, maxStored: 1, adsPerDay: 3, adGapMinutes: 20, maxCharges: 4 },
   contracts: {
     unlockLaunches: 4,
     unlockClock: 90,
@@ -425,7 +433,7 @@ export const HAUL_STARTING_CONTENT: HaulContentInput = {
   },
   pods: { scrap: 'scrap', derelict: 'derelict', depletedEvery: 6, contractsEvery: 4, transmissionsEvery: 4 },
   conditions: [
-    { id: 'frost', name: 'Frost Surplus', lines: ['Ice weight x3 on rings 2 to 4', 'Ice value x2'], oreValue: { ice: 2 }, oreWeight: [{ ore: 'ice', rings: [2, 3, 4], mult: 3 }] },
+    { id: 'frost', name: 'Frost Surplus', lines: ['Ice weight x3 on rings 3 and 4', 'Ice value x2'], oreValue: { ice: 2 }, oreWeight: [{ ore: 'ice', rings: [3, 4], mult: 3 }] },
     { id: 'solar', name: 'Solar Wind', lines: ['Drone speed x1.4', 'Rock life x0.5'], speed: 1.4, life: 0.5 },
     { id: 'storms', name: 'Seam Storms', lines: ['Rich seams twice as often'], interval: 0.5 },
     { id: 'longhaul', name: 'Long Haul', lines: ['Distances x1.3', 'Contract multipliers +0.3'], distance: 1.3, contractAdd: 0.3 },
@@ -434,7 +442,7 @@ export const HAUL_STARTING_CONTENT: HaulContentInput = {
   ],
   starMap: {
     nodes: [
-      { id: 'prospect', name: 'Prospect Survey', arm: 'survey', effect: 'bonanza', per: 0.94, base: 2, growth: 1.25, cap: null, part: 'surveyArray' },
+      { id: 'prospect', name: 'Prospect Survey', arm: 'survey', effect: 'bonanza', per: 0.94, base: 2, growth: 1.25, cap: 11, part: 'surveyArray' },
       { id: 'veinsense', name: 'Seam Sense', arm: 'survey', effect: 'seamSense', base: 2, growth: 1.4, cap: 5, part: 'scannerDish' },
       { id: 'assay', name: 'Assay Rights', arm: 'survey', effect: 'orePrice', per: 0.1, base: 1, growth: 1.3, cap: 5, part: 'assayLab' },
       { id: 'brokerseat', name: 'Broker Seat', arm: 'trade', effect: 'contractMult', per: 0.1, base: 2, growth: 1.35, cap: 5, part: 'antennaMast' },
@@ -468,5 +476,6 @@ export const HAUL_STARTING_CONTENT: HaulContentInput = {
     { card: 'quickclamp', socket: 'dock', stat: 'metReturn', cap: 0.5 },
   ],
   hangar: { product: 'space_hangar', droneCap: 6, startDrones: 2 },
+  jumpReadyCores: 20,
   offline: { efficiencyCap: 0.45, rockLoopMax: 2000 },
 };

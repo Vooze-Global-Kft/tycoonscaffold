@@ -43,11 +43,19 @@ export interface ModeParts {
 }
 
 let parts: ModeParts = {};
+let installed = false;
+let warned = false;
 
 export function setModeParts(next: ModeParts): void {
+  installed = true;
   parts = next;
 }
 
+/** Read at render time only: a read at module load runs before App.tsx installs the mode, and gets nothing. */
 export function modeParts(): ModeParts {
+  if (!installed && !warned && typeof __DEV__ !== 'undefined' && __DEV__) {
+    warned = true;
+    console.warn('modeParts() was read before the mode was installed (App.tsx installMode): read it inside a render, not at module load.');
+  }
   return parts;
 }

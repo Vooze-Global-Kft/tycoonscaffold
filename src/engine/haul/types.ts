@@ -77,8 +77,17 @@ export interface SeamState {
   slot: number | null;
   /** Clock time the seam ends. */
   until: number;
-  /** Origin slot of each drone moved onto the seam (-1 = the rack). They go back when it ends. */
+  /**
+   * Stack of origin slots of the drones that landed on the seam (-1 = the rack), newest last. A
+   * drone leaving the seam slot pops the last entry; at the end they go back newest first (errata 16).
+   */
   guests: number[];
+  /**
+   * Largest size `guests` reached during this seam (second pass). A landing counts toward
+   * `stats.seamDrags` only when it pushes the stack past this, so moving one drone off and back
+   * cannot farm the mission counter. Optional in old saves (reconcile fills it).
+   */
+  peak?: number;
 }
 
 export interface HaulState {
@@ -141,6 +150,30 @@ export interface HaulStats {
   galaxiesVisited: number[];
   /** The once-per-game Scrap Pod of the first ring-2 claim has been given. */
   ring2Pod: boolean;
+  /** Highest ring ever claimed, 1-based (story trigger `ring`, errata 21). */
+  bestRing: number;
+  /** Contracts have unlocked at least once (story trigger `contracts`, errata 21). */
+  contractsSeen: boolean;
+  /** The Dock Autopilot has been online at least once (story trigger `system`, errata 21). */
+  autopilotSeen: boolean;
+  /**
+   * A confirmed Jump whose condition is not picked yet (errata 17, steps 3 and 4): the old run has
+   * ended (`haul` is null), the cores are credited, and the Star Map is open for spending. Null at
+   * every other time. Kept in the save so a restart returns to the condition picker.
+   */
+  pendingJump: PendingJump | null;
+}
+
+/** What `startGalaxy` needs to build the run after a confirmed Jump. */
+export interface PendingJump {
+  /** The Jump's index (= haulStats.jumps before it); fixes the offers. */
+  index: number;
+  /** Galaxy the new run is in. */
+  galaxy: number;
+  /** Seed of the new run. */
+  seed: number;
+  /** The three condition ids offered (fixed at the confirm). */
+  offers: string[];
 }
 
 /** Top-level fields of a haul game (survive a Jump). */
@@ -165,6 +198,7 @@ export type HaulEvent =
   | { type: 'arrive'; slot: number; ore: string; bonanza: boolean; oreChanged: boolean }
   | { type: 'unload'; slot: number; units: number }
   | { type: 'pileFull'; slot: number }
+  | { type: 'dry'; slot: number }
   | { type: 'depleted'; slot: number }
   | { type: 'holdFull' }
   | { type: 'launch'; cargo: Record<string, number>; auto: boolean }
@@ -260,6 +294,10 @@ export interface OfflineReport {
   credits: number;
   /** The autopilot was off: nothing shipped. */
   noAutopilot: boolean;
+  /** Units shipped by the offline freighter (`credits` pays for these; the in-flight cargo is not included). */
+  shipped: number;
+  /** Freighter loads counted for the missions: floor(shipped / F) (errata 36). */
+  launches: number;
 }
 
 /** One hint for the haul hint source (section 3). Shaped like the shared Hint (key, route, row). */
@@ -300,4 +338,6 @@ export interface JumpPreview {
   offers: string[];
   nextGalaxy: number;
   nextGalaxyName: string;
+  /** "Jump ready": the gain is at least `haul.jumpReadyCores` (errata 22). */
+  ready: boolean;
 }

@@ -3,7 +3,7 @@
  * lookups, and the price of every purchase (2.5). Pure.
  */
 import type { HaulCondition, HaulRing, StarEffect } from '../../config/schema.haul';
-import { fittedBonus } from '../loadout';
+import { fittedBonus, fittedBonuses } from '../loadout';
 import { hashString, rngFloat, rngMix, rngWeighted } from '../rng';
 import type { HaulConfig, HaulGame, HaulParams, HaulState, SlotParams, StarMapState } from './types';
 
@@ -112,10 +112,11 @@ export function starPer(cfg: HaulConfig, effect: StarEffect): number {
   return cfg.haul.starMap.nodes.find((n) => n.effect === effect)?.per ?? 0;
 }
 
-/** Bonanza chance of a new rock: 1 − (1 − base) × per^S(prospect) (section 2.4 step 2). */
+/** Bonanza chance of a new rock: min(maxChance, 1 − (1 − base) × per^S(prospect)) (section 2.4 step 2, errata 71). */
 export function bonanzaChance(cfg: HaulConfig, starMap: StarMapState | undefined): number {
   const per = starPer(cfg, 'bonanza') || 1;
-  return 1 - (1 - cfg.haul.bonanza.chance) * Math.pow(per, starLevel(cfg, starMap, 'bonanza'));
+  const c = 1 - (1 - cfg.haul.bonanza.chance) * Math.pow(per, starLevel(cfg, starMap, 'bonanza'));
+  return Math.max(0, Math.min(cfg.haul.bonanza.maxChance, c));
 }
 
 // ---------------------------------------------------------------- rock stream
@@ -230,10 +231,20 @@ export function seamOn(h: HaulState, slot: number): boolean {
 }
 
 /** Ore price p_o (section 2.3): value × T(oreValue_o) × (1 + B(orePrice)) × (1 + per × S(assay)). */
-export function orePrice(cfg: HaulConfig, g: HaulGame, ore: string, trait: string | null): number {
+export function orePrice(cfg: HaulConfig, g: HaulGame, ore: string, trait: string | null, bonus = fittedBonus(cfg, g, 'orePrice')): number {
   const o = cfg.haul.ores.find((x) => x.id === ore);
   if (!o) return 0;
-  return o.value * Tore(cfg, trait, ore) * (1 + fittedBonus(cfg, g, 'orePrice')) * (1 + starPer(cfg, 'orePrice') * starLevel(cfg, g.starMap, 'orePrice'));
+  return o.value * Tore(cfg, trait, ore) * (1 + bonus) * (1 + starPer(cfg, 'orePrice') * starLevel(cfg, g.starMap, 'orePrice'));
+}
+
+const tableCache = new WeakMap<HaulConfig['haul'], { ring: number; j: number; angle: number }[]>();
+function cachedTable(cfg: HaulConfig): { ring: number; j: number; angle: number }[] {
+  let t = tableCache.get(cfg.haul);
+  if (!t) {
+    t = slotTable(cfg);
+    tableCache.set(cfg.haul, t);
+  }
+  return t;
 }
 
 /**
@@ -244,18 +255,19 @@ export function haulParams(cfg: HaulConfig, g: HaulGame & { haul: HaulState }): 
   const h = g.haul;
   const trait = h.trait;
   const H = cfg.haul;
-  const bDrill = fittedBonus(cfg, g, 'drillRate');
-  const bCap = fittedBonus(cfg, g, 'haulerCapacity');
-  const bSpeed = fittedBonus(cfg, g, 'haulerSpeed');
-  const bFreighter = fittedBonus(cfg, g, 'freighterCapacity');
-  const bSorter = fittedBonus(cfg, g, 'contractOreCapacity');
-  const bReturn = Math.min(0.5, fittedBonus(cfg, g, 'metReturn'));
+  const B = fittedBonuses(cfg, g);
+  const bDrill = B.drillRate;
+  const bCap = B.haulerCapacity;
+  const bSpeed = B.haulerSpeed;
+  const bFreighter = B.freighterCapacity;
+  const bSorter = B.contractOreCapacity;
+  const bReturn = Math.min(0.5, B.metReturn);
   const v = H.drone.speed * engineMult(cfg, h.fleet.engineLevel) * (1 + bSpeed) * T(cfg, trait, 'speed');
   const cBase = H.drone.capacity * Math.pow(H.drone.capacityGrowth, Math.max(1, h.fleet.capLevel) - 1) * (1 + bCap) * T(cfg, trait, 'capacity');
   const wanted = wantedOres(h);
   const prices: Record<string, number> = {};
-  for (const o of H.ores) prices[o.id] = orePrice(cfg, g, o.id, trait);
-  const table = slotTable(cfg);
+  for (const o of H.ores) prices[o.id] = orePrice(cfg, g, o.id, trait, B.orePrice);
+  const table = cachedTable(cfg);
   const slots: SlotParams[] = table.map((t, i) => {
     const s = h.slots[i];
     const ring = H.rings[t.ring];
@@ -304,8 +316,8 @@ export function haulParams(cfg: HaulConfig, g: HaulGame & { haul: HaulState }): 
     fee: H.contracts.fee,
     fullBonus: H.freighter.fullBonus,
     G: haulGlobalMultiplier(cfg, g),
-    spill: fittedBonus(cfg, g, 'overflowSpill'),
-    keeperValue: fittedBonus(cfg, g, 'metCarryover'),
+    spill: B.overflowSpill,
+    keeperValue: B.metCarryover,
     bonanzaChance: bonanzaChance(cfg, g.starMap),
   };
 }
@@ -334,11 +346,36 @@ export function rigCost(cfg: HaulConfig, g: HaulGame & { haul: HaulState }, slot
   return c.base * Math.pow(c.ringFactor, ringOf(cfg, slot)) * Math.pow(c.growth, s.rigLevel - 1);
 }
 
-/** Claim price of a slot: base × ringFactor^(ring) × jFactor^j (Infinity once claimed). */
+/** Highest claimed ring of the run (0-based; -1 when none). */
+export function highestClaimedRing(cfg: HaulConfig, h: HaulState): number {
+  let best = -1;
+  h.slots.forEach((s, i) => {
+    if (s.claimed) best = Math.max(best, ringOf(cfg, i));
+  });
+  return best;
+}
+
+/**
+ * Ghost slots (errata 29): every unclaimed slot on rings up to the highest claimed ring of this run
+ * + 1, in slot order. These are the slots the scene draws as dashed ghosts and the only ones
+ * `claimSlot` accepts.
+ */
+export function ghostSlots(cfg: HaulConfig, g: HaulGame & { haul: HaulState }): number[] {
+  const top = highestClaimedRing(cfg, g.haul) + 1;
+  const out: number[] = [];
+  g.haul.slots.forEach((s, i) => {
+    if (!s.claimed && ringOf(cfg, i) <= top) out.push(i);
+  });
+  return out;
+}
+
+/** Claim price of a slot: base × ringFactor^(ring) × jFactor^j (Infinity once claimed, or beyond the next ring: errata 29). */
 export function claimCost(cfg: HaulConfig, g: HaulGame & { haul: HaulState }, slot: number): number {
+  if (!Number.isInteger(slot)) return Infinity;
   const s = g.haul.slots[slot];
   if (!s || s.claimed) return Infinity;
   const t = slotTable(cfg)[slot];
+  if (!t || t.ring > highestClaimedRing(cfg, g.haul) + 1) return Infinity;
   const c = cfg.haul.claim;
   return c.base * Math.pow(c.ringFactor, t.ring) * Math.pow(c.jFactor, t.j);
 }

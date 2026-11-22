@@ -5,7 +5,7 @@
 // each `key: { ... }` entry of `export const FX = { ... }` is read field by field.
 //
 // Only what the app needs at run time is kept: files, pick, volume, minIntervalMs,
-// haptic, loop. The `brief` texts are documentation for the synth scripts and
+// haptic, loop, preload, voices. The `brief` texts are documentation for the synth scripts and
 // never reach a bundle. An entry with `modes: ['sim', ...]` is kept only for
 // games of those modes; an entry without `modes` is for every mode.
 const fs = require('fs');
@@ -71,7 +71,7 @@ function listField(name, bodyMasked, body) {
 }
 
 /**
- * The catalogue's entries in order: { key, files, pick, volume, minIntervalMs, haptic, loop, modes }
+ * The catalogue's entries in order: { key, files, pick, volume, minIntervalMs, haptic, loop, preload, voices, modes }
  * (fields the entry does not set are left out).
  * @param {string} [file]
  */
@@ -115,6 +115,10 @@ function parseCatalog(file = CATALOG) {
     const haptic = listField('haptic', bodyMasked, body);
     if (haptic !== undefined) entry.haptic = haptic;
     if (/\bloop\s*:\s*true\b/.test(bodyMasked)) entry.loop = true;
+    const preload = num('preload');
+    if (preload !== undefined) entry.preload = preload;
+    const voices = num('voices');
+    if (voices !== undefined) entry.voices = voices;
     const modes = listField('modes', bodyMasked, body);
     if (modes !== undefined) entry.modes = modes;
     entries.push(entry);

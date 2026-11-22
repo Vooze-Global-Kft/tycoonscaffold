@@ -12,6 +12,9 @@
 import type { SkCanvas } from '@shopify/react-native-skia';
 import { RAIL_GLYPHS, drawCreditsIcon, drawDarkMatterIcon, drawDroneIcon, drawFlareIcon, drawFreighterIcon, drawOreIcon, drawPodIcon, drawRailGlyph, drawRigIcon, drawWarpCoreIcon } from './icons.draw';
 import { ORE_IDS } from './palette';
+import { drawCharterIcon, drawClearanceIcon, drawConditionIcon, drawFuelCellIcon, drawFuelTankIcon, drawHangarIcon, drawNodeIcon, drawTimeWarpIcon } from './meta.icons.draw';
+import { CONDITIONS } from './spokes.draw';
+import { STAR_NODES } from './station.draw';
 import { BUYERS, drawBuyer, drawDispatch, drawOps, drawTally } from './portraits.draw';
 
 export type IconDraw = (c: SkCanvas, size: number) => void;
@@ -29,6 +32,18 @@ function build(): Record<string, IconDraw> {
   icons['art:rig'] = drawRigIcon;
   icons['art:flare'] = drawFlareIcon;
   for (const g of RAIL_GLYPHS) icons[`art:rail-${g}`] = (c, s) => drawRailGlyph(c, s, g);
+  // Second pass (errata 42): conditions, Star Map nodes, Trade Post products.
+  for (const cond of CONDITIONS) icons[`art:cond-${cond.id}`] = (c, s) => drawConditionIcon(c, s, cond.id);
+  for (const node of STAR_NODES) icons[`art:node-${node}`] = (c, s) => drawNodeIcon(c, s, node);
+  icons['art:time-warp'] = drawTimeWarpIcon;
+  icons['art:fuel-cell'] = drawFuelCellIcon;
+  icons['art:fuel-tank'] = drawFuelTankIcon;
+  icons['art:clearance'] = drawClearanceIcon;
+  icons['art:hangar-expansion'] = drawHangarIcon;
+  icons['art:prospector-charter'] = drawCharterIcon;
+  // The engine's chest tiers (wood = Scrap Pod, silver = Derelict Cache), for content that names them so.
+  icons['art:chest-wood'] = (c, s) => drawPodIcon(c, s, 'scrap');
+  icons['art:chest-silver'] = (c, s) => drawPodIcon(c, s, 'derelict');
   icons['mach:tally'] = (c, s) => drawTally(c, s, 0);
   icons['mach:ops2'] = (c, s) => drawOps(c, s, 0.6);
   icons['mach:dispatch'] = (c, s) => drawDispatch(c, s, 1.4);

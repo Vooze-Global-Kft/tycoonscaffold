@@ -7,16 +7,16 @@
 import { BlendMode, Skia, type SkCanvas } from '@shopify/react-native-skia';
 import { ATLAS_HEAD_R, ATLAS_ROCK_R, bakeAtlas, spriteXform, type HaulAtlas } from './atlas';
 import { drawIdleBadge } from './drone.draw';
-import { drawChevron, drawFreighter, drawPad } from './freighter.draw';
-import { drawFlare, drawGhostSlot, drawHoldTank, drawRingGuides, drawRoute, drawRouteChip, drawSeamGuide, drawSeamRim, drawStarfield } from './fx.draw';
+import { LOADED_FREIGHTER_SCALE, drawChevronStack, drawFreighter, drawPad, drawPolicyChip } from './freighter.draw';
+import { drawChargePlate, drawFlare, drawGhostSlot, drawHoldTank, drawRingGuides, drawRoute, drawRouteChip, drawSeamGuide, drawSeamRim, drawStarfield } from './fx.draw';
 import { drawText } from './glyphs';
 import { drawRailButton, RAIL_GLYPHS } from './icons.draw';
 import { SPACE, alpha, oreColor } from './palette';
 import { builder, fill, linearPaint, litStroke, rrect, stroke } from './pen';
 import { drawBuyer, drawTally } from './portraits.draw';
-import { drawPile } from './rock.draw';
+import { drawPile, drawPileLabel, pileSpot } from './rock.draw';
 import { drawRigBase, drawRigLamp, rigHeads, rigLamp, type LampState, type RigLook } from './rig.draw';
-import { RACK_CRADLES, drawStation, drawStationPart } from './station.draw';
+import { FIRST_FOUR_PARTS, RACK_CRADLES, drawNodePart, drawStation } from './station.draw';
 
 interface Layout {
   station: { x: number; y: number; r: number };
@@ -141,7 +141,7 @@ export function drawFieldMock(c: SkCanvas, w: number, h: number): void {
   if (!atlas) return;
 
   drawStarfield(c, w, h, 2);
-  drawRingGuides(c, st.x, st.y, L.radii, 62);
+  drawRingGuides(c, st.x, st.y, L.radii, 62, { rocks: L.rocks, rockR: L.rock });
 
   // Routes and chips, under the rocks.
   L.rocks.forEach(([x, y], i) => {
@@ -181,15 +181,12 @@ export function drawFieldMock(c: SkCanvas, w: number, h: number): void {
       if (s.bonanza) sprite(c, atlas, `bonanza-${shape}`, x, y, spin, size);
       if (s.crack) sprite(c, atlas, `crack${s.crack}-${shape}`, x, y, spin, size);
     }
-    // Pile on the station side of the rock.
-    const [ux, uy] = unit([x, y], [st.x, st.y]);
-    const px = x + ux * (r + 9) + (ux > 0 ? 6 : -6) * 0;
-    const py = y + uy * (r + 9);
+    // Pile on the rock's outward side (its label is drawn later, above the drones).
+    const spot = pileSpot(x, y, st.x, st.y, r, avoidFor(L, i));
     c.save();
-    c.translate(px + (x < st.x ? -12 : 12), py - 4);
+    c.translate(spot.pile.x, spot.pile.y);
     drawPile(c, s.ore, s.pile);
     c.restore();
-    drawText(c, s.count, px + (x < st.x ? -12 : 12), py + 5, { size: 5, color: alpha('#FFFFFF', 0.85), align: 'center', glow: 0, weight: 0.9 });
     // Rig.
     c.save();
     c.translate(x, y);
@@ -208,10 +205,10 @@ export function drawFieldMock(c: SkCanvas, w: number, h: number): void {
   c.save();
   c.translate(st.x, st.y);
   c.scale(k, k);
+  drawNodePart(c, 'afterburner', 2);
   drawStation(c, 12);
-  drawStationPart(c, 'veinsense');
-  drawStationPart(c, 'assay');
-  drawStationPart(c, 'brokerseat');
+  // The first four parts in the bot's buying order (errata 39).
+  for (const n of FIRST_FOUR_PARTS) if (n !== 'afterburner') drawNodePart(c, n, 2);
   c.restore();
 
   // Drones along their routes (atlas): out empty, home loaded.
@@ -236,6 +233,16 @@ export function drawFieldMock(c: SkCanvas, w: number, h: number): void {
     c.save();
     c.translate(p[0] + 10, p[1]);
     drawRouteChip(c, s.drones, s.ore);
+    c.restore();
+  });
+  // Pile labels on their plates, above drones and chips.
+  L.rocks.forEach(([x, y], i) => {
+    const s = SLOTS[i];
+    if (s.ghost) return;
+    const spot = pileSpot(x, y, st.x, st.y, L.rock, avoidFor(L, i));
+    c.save();
+    c.translate(spot.label.x, spot.label.y);
+    drawPileLabel(c, s.count, s.lamp === 'full');
     c.restore();
   });
   // Two idle drones on the rack.
@@ -306,7 +313,8 @@ function drawBay(c: SkCanvas, L: Layout, w: number, h: number): void {
   c.translate(tk.x + 4 + tk.w / 2 - 4, tk.y + tk.h / 2);
   drawHoldTank(c, tk.w, tk.h, [
     ['iron', 0.35],
-    ['copper', 0.3],
+    ['copper', 0.25],
+    ['ice', 0.1],
   ]);
   c.restore();
   drawText(c, '34/50', tk.x + tk.w / 2 + 2, tk.y + tk.h + 6, { size: 6, color: SPACE.steel, align: 'center', glow: 0, weight: 1 });
@@ -319,33 +327,38 @@ function drawBay(c: SkCanvas, L: Layout, w: number, h: number): void {
   c.scale(1.6, 1.6);
   drawFlare(c);
   c.restore();
-  drawText(c, 'x2', fl.x + fl.s - 8, fl.y + fl.s - 14, { size: 6, color: SPACE.gold, align: 'right', glow: 0, weight: 1.1 });
-  // Launch track: pad, freighter, chevrons.
+  c.save();
+  c.translate(fl.x + fl.s - 16, fl.y + fl.s - 12);
+  drawChargePlate(c, 2);
+  c.restore();
+  // Launch track: lit pad, the loaded freighter at 1.3x, one chevron stack above it, the policy chip.
   const tr = L.track;
   const cx = tr.x + tr.w / 2;
-  const cy = tr.y + tr.h / 2 + 4;
+  const cy = tr.y + tr.h - 17;
   c.save();
   c.translate(cx, cy);
-  drawPad(c);
-  drawFreighter(c, { hull: 1 });
+  c.scale(0.8, 0.8);
+  drawPad(c, true);
+  c.scale(LOADED_FREIGHTER_SCALE, LOADED_FREIGHTER_SCALE);
+  drawFreighter(c, { hull: 1, cargo: ['iron', 'copper'] });
   c.restore();
-  [0, 1, 2].forEach((i) => {
-    c.save();
-    c.translate(cx + 52, cy + 10 - i * 7);
-    c.scale(0.7, 0.7);
-    drawChevron(c, 1 - i * 0.25);
-    c.restore();
-    c.save();
-    c.translate(cx - 52, cy + 10 - i * 7);
-    c.scale(0.7, 0.7);
-    drawChevron(c, 1 - i * 0.25);
-    c.restore();
-  });
+  // One stack of chevrons straight above the freighter: "swipe up".
+  c.save();
+  c.translate(cx, cy - 20);
+  c.scale(0.6, 0.6);
+  drawChevronStack(c, 0.7);
+  c.restore();
+  c.save();
+  c.translate(tr.x + tr.w - 30, tr.y + 10);
+  c.scale(0.85, 0.85);
+  drawPolicyChip(c, 'FULL');
+  c.restore();
   // Rail.
   L.rail.xs.forEach((x, i) => {
     c.save();
     c.translate(x + L.rail.s / 2, L.rail.y + L.rail.s / 2);
-    drawRailButton(c, L.rail.s, RAIL_GLYPHS[i]);
+    const badge: Record<number, [string, 'count' | 'dm']> = { 0: ['2', 'count'], 1: ['', 'count'], 4: ['240', 'dm'] };
+    drawRailButton(c, L.rail.s, RAIL_GLYPHS[i], badge[i]?.[0], badge[i]?.[1]);
     c.restore();
   });
 }
@@ -359,4 +372,9 @@ function unit(a: [number, number], b: [number, number]): [number, number] {
   const dy = b[1] - a[1];
   const d = Math.hypot(dx, dy) || 1;
   return [dx / d, dy / d];
+}
+
+/** The other slots as circles to keep pile labels off (ghost slots include their price tag). */
+function avoidFor(L: Layout, i: number): [number, number, number][] {
+  return L.rocks.flatMap(([x, y], j) => (j === i ? [] : SLOTS[j].ghost ? [[x, y, L.rock + 8] as [number, number, number]] : [[x, y, L.rock] as [number, number, number]]));
 }

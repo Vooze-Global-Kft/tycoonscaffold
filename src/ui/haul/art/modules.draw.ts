@@ -7,6 +7,7 @@ import type { SkCanvas } from '@shopify/react-native-skia';
 import { drawText } from './glyphs';
 import { ORE, RARITY, SPACE, alpha, mix, type Rarity } from './palette';
 import { LINE, TAU, arc, circle, clip, fill, glow, lamp, light, line, litStroke, ngon, part, poly, rrect, stroke } from './pen';
+import { drawOreShape } from './ore.draw';
 
 export const CARTRIDGE_W = 96;
 export const CARTRIDGE_H = 120;
@@ -42,58 +43,80 @@ export interface CartridgeOptions {
   locked?: boolean;
 }
 
-/** Draws a cartridge, 96 x 120, centred on the origin. */
+/** The padlock glyph of a locked cartridge, centred, about 2r wide. */
+export function drawPadlock(c: SkCanvas, r: number, color: string): void {
+  c.drawPath(arc(0, -r * 0.35, r * 0.62, 180, 180), stroke(color, r * 0.22));
+  c.drawPath(line(-r * 0.62, -r * 0.35, -r * 0.62, 0), stroke(color, r * 0.22));
+  c.drawPath(line(r * 0.62, -r * 0.35, r * 0.62, 0), stroke(color, r * 0.22));
+  const body = rrect(-r, -r * 0.05, r * 2, r * 1.45, r * 0.25);
+  c.drawPath(body, fill(color));
+  c.drawCircle(0, r * 0.55, r * 0.22, fill(SPACE.bg));
+  c.drawPath(line(0, r * 0.6, 0, r * 0.95), stroke(SPACE.bg, r * 0.16));
+}
+
+/**
+ * Draws a cartridge, 96 x 120, centred on the origin. Rarity reads by shape as well as colour
+ * (second pass, critique S4): common plain rails; rare corner gems; epic notched corners, a
+ * bright double frame and a filled top tab. Locked: a padlock over diagonal hatching, no face.
+ */
 export function drawCartridge(c: SkCanvas, o: CartridgeOptions): void {
-  const col = RARITY[o.rarity];
+  const col = o.locked ? SPACE.steelDim : RARITY[o.rarity];
   const W = CARTRIDGE_W;
   const H = CARTRIDGE_H;
-  if (o.rarity !== 'common') glow(c, 0, 0, 80, col, o.rarity === 'epic' ? 0.22 : 0.14);
-  // Slab with a chamfered top and the socket key tab.
-  const slab = poly([-W / 2 + 8, -H / 2 + 8, -12, -H / 2 + 8, -8, -H / 2, 8, -H / 2, 12, -H / 2 + 8, W / 2 - 8, -H / 2 + 8, W / 2, -H / 2 + 16, W / 2, H / 2 - 6, W / 2 - 6, H / 2, -W / 2 + 6, H / 2, -W / 2, H / 2 - 6, -W / 2, -H / 2 + 16]);
-  part(c, slab, SPACE.hull1, col, LINE, 0.8);
+  const epic = o.rarity === 'epic' && !o.locked;
+  if (o.rarity !== 'common' && !o.locked) glow(c, 0, 0, 80, col, epic ? 0.22 : 0.14);
+  const tab = [-12, -H / 2 + 8, -8, -H / 2, 8, -H / 2, 12, -H / 2 + 8];
+  // Slab: chamfered (common, rare) or notched at all four corners (epic).
+  const slab = epic
+    ? poly([-W / 2 + 10, -H / 2 + 8, ...tab, W / 2 - 10, -H / 2 + 8, W / 2 - 10, -H / 2 + 14, W / 2, -H / 2 + 14, W / 2, H / 2 - 10, W / 2 - 8, H / 2 - 10, W / 2 - 8, H / 2, -W / 2 + 8, H / 2, -W / 2 + 8, H / 2 - 10, -W / 2, H / 2 - 10, -W / 2, -H / 2 + 14, -W / 2 + 10, -H / 2 + 14])
+    : poly([-W / 2 + 8, -H / 2 + 8, ...tab, W / 2 - 8, -H / 2 + 8, W / 2, -H / 2 + 16, W / 2, H / 2 - 6, W / 2 - 6, H / 2, -W / 2 + 6, H / 2, -W / 2, H / 2 - 6, -W / 2, -H / 2 + 16]);
+  part(c, slab, o.locked ? SPACE.hull0 : SPACE.hull1, col, LINE, o.locked ? 0 : 0.8);
+  if (epic) {
+    // Filled top tab and a bright second frame.
+    c.drawPath(poly(tab.concat([12, -H / 2 + 8, -12, -H / 2 + 8])), fill(col));
+    const inner = poly([-W / 2 + 13, -H / 2 + 17, W / 2 - 13, -H / 2 + 17, W / 2 - 4, -H / 2 + 26, W / 2 - 4, H / 2 - 14, W / 2 - 12, H / 2 - 4, -W / 2 + 12, H / 2 - 4, -W / 2 + 4, H / 2 - 14, -W / 2 + 4, -H / 2 + 26]);
+    litStroke(c, inner, mix(col, '#FFFFFF', 0.25), 1.2, 0.7);
+  }
   // Rarity rails.
   for (const s of [-1, 1]) {
-    const x = s * (W / 2 - 5);
-    c.drawPath(line(x, -H / 2 + 20, x, H / 2 - 12), stroke(alpha(col, 0.3), 4));
-    c.drawPath(line(x, -H / 2 + 20, x, H / 2 - 12), stroke(col, 1.2));
+    const x = s * (W / 2 - (epic ? 8 : 5));
+    c.drawPath(line(x, -H / 2 + 22, x, H / 2 - 14), stroke(alpha(col, 0.3), 4));
+    c.drawPath(line(x, -H / 2 + 22, x, H / 2 - 14), stroke(col, 1.2));
   }
-  // Epic: a second inner rail; rare and epic: corner gems.
-  if (o.rarity === 'epic') {
-    const inner = rrect(-W / 2 + 10, -H / 2 + 14, W - 20, H - 24, 4);
-    c.drawPath(inner, stroke(alpha(col, 0.45), 0.8));
-  }
-  if (o.rarity !== 'common') {
-    for (const s of [-1, 1]) {
-      const g = ngon(s * (W / 2 - 8), H / 2 - 9, 3, 4, 0);
-      c.drawPath(g, fill(col));
-    }
+  if (o.rarity === 'rare' && !o.locked) {
+    for (const s of [-1, 1]) c.drawPath(ngon(s * (W / 2 - 8), H / 2 - 9, 3, 4, 0), fill(col));
   }
   // Socket key on the tab.
   c.save();
   c.translate(0, -H / 2 + 6);
-  drawSocketGlyph(c, o.socket, 4, col);
+  drawSocketGlyph(c, o.socket, 4, epic ? SPACE.bg : col);
   c.restore();
   // Face window.
-  const win = rrect(-W / 2 + 12, -H / 2 + 16, W - 24, 70, 6);
+  const win = rrect(-W / 2 + 14, -H / 2 + 18, W - 28, 68, 6);
   c.drawPath(win, fill(SPACE.bg));
   c.save();
   clip(c, win);
-  c.translate(0, -H / 2 + 51);
-  glow(c, 0, 0, 40, col, 0.16);
-  drawModuleFace(c, o.module);
+  if (o.locked) {
+    for (let x = -W; x < W; x += 7) c.drawPath(line(x, H / 2, x + H, -H / 2), stroke(alpha(SPACE.steel, 0.16), 1.4));
+    c.translate(0, -H / 2 + 52);
+    drawPadlock(c, 11, alpha(SPACE.steel, 0.85));
+  } else {
+    c.translate(0, -H / 2 + 52);
+    glow(c, 0, 0, 40, col, 0.16);
+    drawModuleFace(c, o.module);
+  }
   c.restore();
   c.drawPath(win, stroke(alpha(col, 0.6), 1));
   // Mark pips on the base.
-  const mark = Math.max(0, Math.min(5, o.mark ?? 1));
+  const mark = o.locked ? 0 : Math.max(0, Math.min(5, o.mark ?? 1));
   for (let i = 0; i < 5; i++) {
     const x = -16 + i * 8;
-    const pip = rrect(x - 2.5, H / 2 - 22, 5, 7, 1.2);
+    const pip = rrect(x - 2.5, H / 2 - 24, 5, 7, 1.2);
     c.drawPath(pip, fill(i < mark ? col : SPACE.hull0));
     c.drawPath(pip, stroke(alpha(col, 0.5), 0.6));
   }
   // Grip ridges.
-  for (let i = 0; i < 3; i++) c.drawPath(line(-14, H / 2 - 11 + i * 2.5, 14, H / 2 - 11 + i * 2.5), stroke(alpha(SPACE.steel, 0.35), 0.8));
-  if (o.locked) c.drawPath(slab, fill(alpha(SPACE.bg, 0.65)));
+  for (let i = 0; i < 3; i++) c.drawPath(line(-14, H / 2 - 13 + i * 2.5, 14, H / 2 - 13 + i * 2.5), stroke(alpha(SPACE.steel, 0.35), 0.8));
 }
 
 /** The face of a module, centred, fitting in about 70 x 66 pt. Unknown ids draw a blank chip. */
@@ -112,15 +135,19 @@ export function drawModuleFace(c: SkCanvas, id: string): void {
       break;
     }
     case 'bayracks': {
-      // A drone's cargo frame with extra bins.
-      for (let r = 0; r < 3; r++)
-        for (let k = 0; k < 3; k++) {
-          const x = -22 + k * 15;
-          const y = -22 + r * 15;
-          const extra = r === 2;
-          part(c, rrect(x, y, 13, 13, 2), extra ? mix(SPACE.hull2, ORE.copper, 0.35) : SPACE.hull2, extra ? ORE.copper : SPACE.line, 1.1, extra ? 0.8 : 0.3);
-        }
-      drawText(c, '+2', 18, -26, { size: 7, color: ORE.copper, weight: 1.3 });
+      // A rack of stacked cargo crates, the two new ones lit in copper.
+      c.drawPath(poly([-24, -26, -24, 26, 24, 26, 24, -26], false), stroke(SPACE.steel, 1.6));
+      for (const y of [-8, 10]) c.drawPath(line(-24, y, 24, y), stroke(SPACE.steel, 1.4));
+      const crate = (x: number, y: number, lit: boolean) => {
+        part(c, rrect(x, y, 14, 14, 1.5), lit ? mix(SPACE.hull2, ORE.copper, 0.35) : SPACE.hull2, lit ? ORE.copper : SPACE.lineDim, 1.1, lit ? 0.8 : 0.2);
+        c.drawPath(line(x + 2, y + 2, x + 12, y + 12), stroke(alpha(lit ? ORE.copper : SPACE.steel, 0.5), 0.8));
+      };
+      crate(-21, -23, false);
+      crate(-5, -23, false);
+      crate(-21, -5, false);
+      crate(-5, -5, true);
+      crate(9, -5, true);
+      crate(-13, 12, false);
       break;
     }
     case 'thrusters': {
@@ -160,25 +187,34 @@ export function drawModuleFace(c: SkCanvas, id: string): void {
       break;
     }
     case 'keeper': {
-      // A contract manifest with a "met" check stamp.
-      const doc = poly([-16, -26, 10, -26, 18, -18, 18, 24, -16, 24]);
-      part(c, doc, SPACE.hull2, SPACE.steel, 1.2, 0.3);
-      for (let i = 0; i < 4; i++) c.drawPath(line(-11, -16 + i * 7, 10 - (i % 2) * 8, -16 + i * 7), stroke(alpha(SPACE.steel, 0.6), 1.2));
-      glow(c, 6, 12, 14, SPACE.green, 0.4);
-      c.drawPath(circle(6, 12, 10), stroke(SPACE.green, 1.5));
-      c.drawPath(poly([1, 12, 5, 16, 12, 7], false), stroke(SPACE.green, 2.2));
+      // A contract plate held in a clamp: the contract is kept one launch longer.
+      part(c, rrect(-15, -20, 30, 36, 3), SPACE.hull2, SPACE.steel, 1.2, 0.3);
+      for (let i = 0; i < 3; i++) c.drawPath(line(-10, -12 + i * 7, 10 - (i % 2) * 7, -12 + i * 7), stroke(alpha(SPACE.steel, 0.6), 1.2));
+      for (let i = 0; i < 4; i++) c.drawCircle(-7.5 + i * 5, 10, 1.5, fill(i < 3 ? SPACE.line : SPACE.hull3));
+      // The clamp: a jaw over the plate's top edge.
+      part(c, poly([-20, -28, 20, -28, 20, -18, 12, -18, 12, -22, -12, -22, -12, -18, -20, -18]), SPACE.hull3, SPACE.amber, 1.3, 0.6);
+      c.drawPath(line(0, -28, 0, -32), stroke(SPACE.steel, 2));
       break;
     }
     case 'sorter': {
-      // Three chunks enter, the wanted one is routed into a lit bin.
-      const ores = [ORE.iron, ORE.ice, ORE.copper];
-      ores.forEach((o, i) => c.drawPath(ngon(-22, -18 + i * 12, 3.4, 5, i), fill(o)));
-      c.drawPath(poly([-14, -6, 0, -6], false), stroke(SPACE.steel, 1.2));
-      part(c, ngon(4, -6, 7, 6, 0), SPACE.hull2, SPACE.line, 1.2, 0.6);
-      c.drawPath(poly([10, -6, 18, -6, 18, 10], false), stroke(ORE.ice, 1.6));
-      c.drawPath(poly([15, 7, 18, 11, 21, 7], false), stroke(ORE.ice, 1.6));
-      part(c, rrect(8, 14, 20, 12, 2), mix(SPACE.hull1, ORE.ice, 0.4), ORE.ice, 1.2, 0.8);
-      c.drawPath(poly([4, 0, 4, 20, -10, 20], false), stroke(alpha(SPACE.steel, 0.5), 1));
+      // Three chutes merging into one: chunks of three ores, only the wanted one goes on.
+      const ores = ['iron', 'ice', 'copper'];
+      ores.forEach((o, i) => {
+        const x = -18 + i * 18;
+        part(c, poly([x - 6, -26, x + 6, -26, x + 3, -12, x - 3, -12]), SPACE.hull2, SPACE.line, 1.1, 0.4);
+        c.save();
+        c.translate(x, -20);
+        drawOreShape(c, o, 3, { glow: 0, line: 0.8 });
+        c.restore();
+      });
+      c.drawPath(poly([-18, -12, -4, 2], false), stroke(SPACE.steel, 2));
+      c.drawPath(poly([18, -12, 4, 2], false), stroke(SPACE.steel, 2));
+      c.drawPath(poly([0, -12, 0, 2], false), stroke(ORE.ice, 2.2));
+      part(c, poly([-6, 2, 6, 2, 4, 16, -4, 16]), mix(SPACE.hull1, ORE.ice, 0.35), ORE.ice, 1.3, 0.8);
+      c.save();
+      c.translate(0, 23);
+      drawOreShape(c, 'ice', 4, { glow: 0.3, line: 1 });
+      c.restore();
       break;
     }
     case 'quickclamp': {

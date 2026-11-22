@@ -124,8 +124,8 @@ describe('sound packs', () => {
     expect(games.listSounds('pizza-empire').music_main).toBe('games/pizza-empire/assets/sfx/music_main.m4a');
   });
 
-  it('a game without soundPack gets the warm pack; an unknown pack is an error, not silence', () => {
-    expect(games.soundPack('x', { mode: 'sim' })).toBe('warm');
+  it('a game without soundPack is an error (no default pack); an unknown pack is an error, not silence', () => {
+    expect(() => games.soundPack('x', { mode: 'sim' })).toThrow(/no "soundPack"/);
     expect(games.soundPack('x', { soundPack: 'synth' })).toBe('synth');
     expect(() => games.soundPackDir('x', { soundPack: 'nope' })).toThrow(/soundPack "nope"/);
     expect(games.listSoundPacks()).toEqual(expect.arrayContaining(['synth', 'warm']));

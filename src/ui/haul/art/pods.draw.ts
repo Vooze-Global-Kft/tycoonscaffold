@@ -5,7 +5,7 @@
  */
 import type { SkCanvas, SkPath } from '@shopify/react-native-skia';
 import { SPACE, alpha, mix } from './palette';
-import { LINE, circle, fill, glow, lamp, line, part, poly, rrect, stroke } from './pen';
+import { LINE, arc, circle, fill, glow, lamp, light, line, part, poly, rrect, stroke } from './pen';
 
 export type PodTier = 'scrap' | 'derelict';
 export const POD_TIERS: PodTier[] = ['scrap', 'derelict'];
@@ -56,13 +56,17 @@ function derelictHalf(c: SkCanvas, top: boolean): void {
   part(c, b, DER_HULL, DER_LINE, LINE, 0.8);
   const inner = poly([-21, s * 3, -13, s * 19, 13, s * 19, 21, s * 3]);
   c.drawPath(inner, stroke(alpha(DER_LINE, 0.4), 0.8));
-  // Glyph strips: old, unknown markings.
-  for (let i = 0; i < 4; i++) {
-    const x = -9 + i * 6;
-    c.drawPath(line(x, s * 8, x, s * (11 + (i % 2) * 4)), stroke(alpha(SPACE.core, 0.8), 1.2));
+  // Old, unknown markings: dot-and-bar clusters and a broken circle (no letter shapes).
+  const ink = alpha(SPACE.core, 0.8);
+  for (let i = 0; i < 3; i++) {
+    const x = -9 + i * 9;
+    const y = s * (9 + (i % 2) * 3);
+    c.drawCircle(x - 2, y, 0.9, fill(ink));
+    c.drawPath(line(x, y - 1.6, x, y + 1.6), stroke(ink, 1.1));
+    if (i !== 1) c.drawCircle(x + 2, y, 0.9, fill(ink));
   }
   if (!top) lamp(c, 0, 21, 1.3, SPACE.dm, 5);
-  else c.drawPath(circle(0, -14, 3), stroke(alpha(SPACE.core, 0.7), 1));
+  else c.drawPath(arc(0, -15, 3, 40, 280), stroke(alpha(SPACE.core, 0.7), 1));
 }
 
 function seamPath(tier: PodTier): SkPath {
@@ -100,5 +104,27 @@ export function drawPod(c: SkCanvas, tier: PodTier, o: PodOptions = {}): void {
       glow(c, x, 0, 7, SPACE.red, 0.9);
       c.drawCircle(x, 0, 1.4, fill('#FFFFFF'));
     }
+  }
+}
+
+/**
+ * The rarity light of the Salvage Bay reveal (spec 4.6 "the contents rise with their rarity
+ * light"): a column of light rising out of an opened pod, origin at the pod centre. `k` 0..1 is
+ * the rise (about 0.6 s); `color` the best item's rarity colour (RARITY in palette.ts). Additive:
+ * draw it over the split pod.
+ */
+export function drawRarityLight(c: SkCanvas, color: string, k: number): void {
+  const t = Math.max(0, Math.min(1, k));
+  const h = 20 + 70 * t;
+  const w = 18 + 10 * t;
+  glow(c, 0, -4, 30 + 20 * t, color, 0.35 * (0.4 + 0.6 * t));
+  c.drawPath(poly([-w / 2, 0, w / 2, 0, w * 0.3, -h, -w * 0.3, -h]), light(alpha(color, 0.18)));
+  c.drawPath(poly([-w / 4, 0, w / 4, 0, w * 0.12, -h * 0.9, -w * 0.12, -h * 0.9]), light(alpha(color, 0.3)));
+  c.drawPath(line(0, -2, 0, -h * 0.8), stroke(alpha('#FFFFFF', 0.5 * t), 1));
+  // Motes rising in the column.
+  for (let i = 0; i < 5; i++) {
+    const y = -((i * 17 + t * 60) % h);
+    const x = Math.sin(i * 2.3) * w * 0.25;
+    c.drawCircle(x, y, 0.9, fill(alpha('#FFFFFF', 0.7 * t)));
   }
 }

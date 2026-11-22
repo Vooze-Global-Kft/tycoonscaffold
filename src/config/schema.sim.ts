@@ -39,8 +39,8 @@ export const TransportSchema = z.object({
   managerName: z.string(),
   managerIcon: icon.optional(),
   managerFlavor: z.string().optional(),
-  /** What the player taps to send workers by hand, e.g. "Service bell". */
-  bellName: z.string().default('Bell'),
+  /** What the player taps to send workers by hand, e.g. "Service bell". The default is deliberately theme-free (shared code ships in every game). */
+  bellName: z.string().default('Send'),
   /** Cast ids for the workers' looks, used in order. Empty = generated looks. */
   looks: z.array(z.string()).default([]),
 });
@@ -49,7 +49,7 @@ export const SalesSchema = z.object({
   /** Name of the stage, e.g. "Dining Room". */
   name: z.string(),
   /** Singular seat name, e.g. "Table". */
-  seatName: z.string().default('Seat'),
+  seatName: z.string().default('Slot'),
   icon,
   baseCost: z.number().positive(),
   costGrowth: z.number().gt(1),
@@ -80,7 +80,7 @@ export const VenueSchema = z.object({
 });
 
 export const RushSchema = z.object({
-  name: z.string().default('Rush'),
+  name: z.string().default('Boost'),
   icon: icon.default('🔔'),
   /** The whole chain runs this many times faster while the skill is active. */
   multiplier: z.number().gt(1).default(3),
@@ -95,12 +95,9 @@ export const SimSchema = z.object({
   buffer: z.object({ name: z.string().default('Counter'), icon: icon.default('📦') }).default({ name: 'Counter', icon: '📦' }),
   transport: TransportSchema,
   sales: SalesSchema,
-  venues: z
-    .array(VenueSchema)
-    .min(1)
-    .refine((v) => v[0].unlockCost === 0, 'the first venue must have unlockCost 0')
-    .refine((v) => new Set(v.map((x) => x.id)).size === v.length, 'venue ids must be unique'),
-  rush: RushSchema.default({ name: 'Rush', icon: '🔔', multiplier: 3, seconds: 30, cooldownSeconds: 300 }),
+  /** The first must cost 0 to open and ids are unique (checked in ./lint.ts, so the messages ship in no bundle). */
+  venues: z.array(VenueSchema).min(1),
+  rush: RushSchema.default({ name: 'Boost', icon: '🔔', multiplier: 3, seconds: 30, cooldownSeconds: 300 }),
 });
 
 export type SimConfig = z.output<typeof SimSchema>;

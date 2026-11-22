@@ -127,7 +127,9 @@ describe('11. Star Map', () => {
     expect(H.starNodeCost(cfg, 'assay', 5)).toBeNull();
     expect(H.starNodeCost(cfg, 'brokerseat', 5)).toBeNull();
     expect(H.starNodeCost(cfg, 'preload', 1)).toBeNull();
-    expect(H.starNodeCost(cfg, 'prospect', 40)).toBeGreaterThan(0);
+    // Errata 71: Prospect Survey caps at 11 (the first level whose chance reaches 0.5).
+    expect(H.starNodeCost(cfg, 'prospect', 10)).toBeGreaterThan(0);
+    expect(H.starNodeCost(cfg, 'prospect', 11)).toBeNull();
     let g = { ...freshHaulGame(cfg, 1), prestigePoints: 1000 } as Run;
     for (let i = 0; i < 10; i++) g = H.buyStarNode(cfg, g, 'assay') as Run;
     expect(g.starMap.levels.assay).toBe(5);
@@ -204,14 +206,14 @@ describe('saves', () => {
     broken.starMap.levels.assay = 99;
     delete broken.haul.vein;
     const fixed = H.reconcileHaul(cfg, midGame as never, broken);
-    expect(fixed.haul.slots[0].pile).toBe(0);
-    expect(fixed.haul.slots[2].life).toBe(0);
-    expect(fixed.haul.hold).toEqual({ copper: 3 });
+    expect(fixed.haul!.slots[0].pile).toBe(0);
+    expect(fixed.haul!.slots[2].life).toBe(0);
+    expect(fixed.haul!.hold).toEqual({ copper: 3 });
     expect(fixed.starMap.levels.assay).toBe(5);
-    expect(fixed.haul.fleet.drones).toBeGreaterThanOrEqual(fixed.haul.slots.reduce((a, s) => a + s.haulers, 0));
+    expect(fixed.haul!.fleet.drones).toBeGreaterThanOrEqual(fixed.haul!.slots.reduce((a, s) => a + s.haulers, 0));
     // A save without any haul fields becomes a fresh game; ticking it works.
     const empty = H.reconcileHaul(cfg, midGame as never, {});
-    expect(empty.haul.clock).toBe(0);
+    expect(empty.haul!.clock).toBe(0);
     expect(H.advanceHaul(cfg, empty, 1, NOW)).not.toBe(empty);
   }, 120_000);
 

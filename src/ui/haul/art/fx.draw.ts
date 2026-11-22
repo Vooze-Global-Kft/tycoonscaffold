@@ -3,7 +3,8 @@
  * the drag line, ghost slots, the rich-seam rim, the Survey Flare and its trail, credit glyphs
  * and the hold tank.
  */
-import { ClipOp, type SkCanvas, type SkPicture } from '@shopify/react-native-skia';
+import { ClipOp, Skia, type SkCanvas, type SkPaint, type SkPicture } from '@shopify/react-native-skia';
+import { drawOreShape, routeDash } from './ore.draw';
 import { drawText, textWidth } from './glyphs';
 import { SPACE, alpha, galaxyHue, mix, oreColor } from './palette';
 import { DEG, TAU, arc, circle, clip, dashed, fill, glow, glowPaint, lamp, line, linearPaint, litStroke, part, picture, poly, rrect, seeded, stroke } from './pen';
@@ -58,33 +59,82 @@ export function drawStarfield(c: SkCanvas, w: number, h: number, galaxy = 0, see
 // Ring guides, routes, drag line
 // ---------------------------------------------------------------------------
 
-/**
- * Dashed ring arcs round the station at (cx, cy), 1 pt, 18 % white, label "R1".. at the left
- * end. `sweep` is the visible half-angle from straight up in degrees (default 75).
- */
-export function drawRingGuides(c: SkCanvas, cx: number, cy: number, radii: number[], sweep = 75): void {
-  radii.forEach((r, i) => {
-    c.drawPath(arc(cx, cy, r, -90 - sweep, sweep * 2), dashed(alpha('#FFFFFF', 0.18), 1, 4, 5));
-    const a = (-90 - sweep) * DEG;
-    const x = cx + Math.cos(a) * r;
-    const y = cy + Math.sin(a) * r;
-    drawText(c, `R${i + 1}`, x - 2, y - 9, { size: 5, color: alpha('#FFFFFF', 0.4), glow: 0, weight: 0.9 });
-  });
+export interface RingLabelOptions {
+  /** Left gutter of the screen (points from x = 0): labels never go left of it. Default 16. */
+  gutter?: number;
+  /** Rock centres on the screen: a label within `clear` of a rock's edge is skipped. */
+  rocks?: [number, number][];
+  /** Drawn rock radius (default 26) and the clearance (default 20). */
+  rockR?: number;
+  clear?: number;
 }
 
+/**
+ * Dashed ring arcs round the station at (cx, cy), 1 pt, 18 % white. `sweep` is the visible
+ * half-angle from straight up in degrees (default 75). Labels "R1".. sit on each arc at the point
+ * nearest x = 24 (in screen points: pass the station's screen position), clamped inside the
+ * gutter, and are skipped where a rock is within 20 pt (second pass, critique S9).
+ */
+export function drawRingGuides(c: SkCanvas, cx: number, cy: number, radii: number[], sweep = 75, o: RingLabelOptions = {}): void {
+  const gutter = o.gutter ?? 16;
+  const rockR = o.rockR ?? 26;
+  const clear = o.clear ?? 20;
+  radii.forEach((r, i) => {
+    c.drawPath(arc(cx, cy, r, -90 - sweep, sweep * 2), dashed(alpha('#FFFFFF', 0.18), 1, 4, 5));
+    // The arc's point nearest x = gutter + 8, within the sweep.
+    const want = gutter + 8;
+    const dx = want - cx;
+    let a: number;
+    if (Math.abs(dx) <= r) a = Math.atan2(-Math.sqrt(r * r - dx * dx), dx);
+    else a = Math.PI;
+    a = Math.max((-90 - sweep) * DEG, Math.min((-90 + sweep) * DEG, a));
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (x < gutter) return;
+    if (o.rocks?.some(([rx, ry]) => Math.hypot(rx - x, ry - y) < rockR + clear)) return;
+    drawText(c, `R${i + 1}`, x + 3, y - 9, { size: 5, color: alpha('#FFFFFF', 0.45), glow: 0, weight: 0.9 });
+  });
+}
 
 /** The width of a route line (points). */
 export const ROUTE_WIDTH = 2;
 
+const routePaintCache = new Map<string, { glow: SkPaint; dash: SkPaint }>();
+
 /**
- * A route: a dashed line in the ore colour from the rock to the station. `phase` (points) makes
- * the dashes flow toward the station: pass `-(clock * 14) % 12` while delivering.
+ * The two shared paints of an ore's route (glow and dashed line at phase 0), made once per ore
+ * (critique S12). In the app, draw each route as a `<Path>` built once per layout and animate the
+ * flow with one `<DashPathEffect intervals={routeDash(ore)} phase={sharedPhase} />` per ore.
+ */
+export function routePaints(ore: string): { glow: SkPaint; dash: SkPaint } {
+  let p = routePaintCache.get(ore);
+  if (!p) {
+    const tint = oreColor(ore);
+    const dash = stroke(alpha(tint, 0.8), ROUTE_WIDTH);
+    dash.setPathEffect(Skia.PathEffect.MakeDash(routeDash(ore), 0));
+    p = { glow: stroke(alpha(tint, 0.1), 6), dash };
+    routePaintCache.set(ore, p);
+  }
+  return p;
+}
+
+/**
+ * A route: a line in the ore colour from the rock to the station, with the ore's own dash rhythm
+ * (ore.draw.ts ROUTE_DASH: iron long dashes, copper dots, ice dash-dot, titanium double dash,
+ * platinum dash-dot-dot). `phase` (points) makes the dashes flow toward the station: pass
+ * `-(clock * 14) % routeDashPeriod(ore)` while delivering. For sheets and mocks; the frame loop
+ * should use `routePaints` and a declarative DashPathEffect instead.
  */
 export function drawRoute(c: SkCanvas, x0: number, y0: number, x1: number, y1: number, ore: string, phase = 0): void {
-  const tint = oreColor(ore);
   const p = line(x0, y0, x1, y1);
-  c.drawPath(p, stroke(alpha(tint, 0.1), 6));
-  c.drawPath(p, dashed(alpha(tint, 0.75), ROUTE_WIDTH, 6, 6, phase));
+  const paints = routePaints(ore);
+  c.drawPath(p, paints.glow);
+  if (phase === 0) c.drawPath(p, paints.dash);
+  else {
+    const d = stroke(alpha(oreColor(ore), 0.8), ROUTE_WIDTH);
+    d.setPathEffect(Skia.PathEffect.MakeDash(routeDash(ore), phase));
+    c.drawPath(p, d);
+  }
 }
 
 /** The route's "x3" chip (40 pt tap area, about 22 x 14 pt drawn). */
@@ -152,15 +202,41 @@ export function drawSeamGuide(c: SkCanvas, x0: number, y0: number, x1: number, y
 // Flare
 // ---------------------------------------------------------------------------
 
-/** The Survey Flare: a small canister with a beacon cap, about 10 x 18 pt, nose up. */
+/**
+ * The Survey Flare: a stubby tube tilted 30°, three small fins at its base, a striped cap and a
+ * four-point spark at the tip (second pass, critique S2), about 14 x 20 pt. `beaconOn` lights the
+ * spark (a spent or charging flare draws it dark).
+ */
 export function drawFlare(c: SkCanvas, beaconOn = true): void {
-  const body = rrect(-4, -4, 8, 12, 2);
+  c.save();
+  c.rotate(30, 0, 0);
+  // Fins: left, right and the one facing us.
+  for (const s of [-1, 1]) part(c, poly([s * 3.2, 3.5, s * 7, 9.5, s * 3.2, 8]), SPACE.hull3, SPACE.gold, 0.9, 0.3);
+  part(c, poly([-1, 5, 1, 5, 1.2, 10.5, -1.2, 10.5]), SPACE.hull3, SPACE.gold, 0.8, 0.2);
+  // Tube.
+  const body = rrect(-3.4, -4, 6.8, 12.5, 1.8);
   part(c, body, SPACE.hull2, SPACE.gold, 1.2, 0.6);
-  c.drawPath(line(-4, 1, 4, 1), stroke(alpha(SPACE.gold, 0.8), 1));
-  c.drawPath(line(-4, 4, 4, 4), stroke(alpha(SPACE.gold, 0.8), 1));
-  part(c, poly([-4, 8, 4, 8, 5.5, 10.5, -5.5, 10.5]), SPACE.hull3, SPACE.steel, 0.9, 0);
-  part(c, poly([-3, -4, 3, -4, 0, -8]), SPACE.hull1, SPACE.gold, 1, 0.4);
-  if (beaconOn) lamp(c, 0, -8.5, 1.4, SPACE.gold, 6);
+  // Striped cap: a dome with two amber bands.
+  const cap = poly([-3.4, -4, 3.4, -4, 2.6, -7.5, 0, -9, -2.6, -7.5]);
+  part(c, cap, SPACE.hull1, SPACE.gold, 1, 0.4);
+  c.drawPath(line(-3, -5.6, 3, -5.6), stroke(SPACE.amber, 1));
+  c.drawPath(line(-2.2, -7.2, 2.2, -7.2), stroke(SPACE.amber, 0.9));
+  c.restore();
+  // The spark at the tip (upright, not tilted): four points.
+  const tx = Math.sin(30 * DEG) * 9.6;
+  const ty = -Math.cos(30 * DEG) * 9.6;
+  if (beaconOn) drawSparkle(c, tx, ty, 3.4, SPACE.gold);
+  else c.drawCircle(tx, ty, 1, fill(SPACE.goldDeep));
+}
+
+/** The flare launcher's charge count on a small plate ("2"), centred on the origin. */
+export function drawChargePlate(c: SkCanvas, n: number): void {
+  const text = `×${n}`;
+  const w = textWidth(text, 6) + 8;
+  const plate = rrect(-w / 2, -5.5, w, 11, 3);
+  c.drawPath(plate, fill(mix(SPACE.panel, SPACE.gold, 0.15)));
+  c.drawPath(plate, stroke(alpha(SPACE.gold, 0.8), 0.9));
+  drawText(c, text, 0, -3, { size: 6, color: SPACE.gold, align: 'center', glow: 0, weight: 1.1 });
 }
 
 /** The flare's trail from (x0, y0) to (x1, y1) at progress k (0.6 s). */
@@ -210,7 +286,18 @@ export function drawHoldTank(c: SkCanvas, w: number, h: number, bands: [string, 
     const tint = oreColor(ore);
     c.drawRect({ x: -w / 2, y: y - bh, width: w, height: bh }, linearPaint(-w / 2, 0, w / 2, 0, [mix(tint, '#000000', 0.35), tint, mix(tint, '#000000', 0.25)], [0, 0.4, 1]));
     c.drawPath(line(-w / 2, y - bh, w / 2, y - bh), stroke(alpha('#FFFFFF', 0.5), 0.8));
+    // The band's ore silhouette as its marker, so bands read without colour.
+    if (bh >= 7) {
+      c.save();
+      c.translate(-w / 2 + 11, y - bh / 2);
+      drawOreShape(c, ore, Math.min(3.4, bh * 0.32), { glow: 0, line: 0.8 });
+      c.restore();
+    }
     y -= bh;
+  }
+  if (full) {
+    // Frost along the top of the full hold.
+    c.drawPath(line(-w / 2, y + 1, w / 2, y + 1), dashed(alpha('#FFFFFF', 0.85), 1.2, 1.5, 1.5));
   }
   // Glass sheen.
   c.drawRect({ x: -w / 2 + 7, y: -h / 2, width: 3, height: h }, fill(alpha('#FFFFFF', 0.12)));

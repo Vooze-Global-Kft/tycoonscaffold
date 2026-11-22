@@ -2,9 +2,9 @@
  * The reset (section 2.10): Warp Cores, the Star Map, galaxy conditions and the Jump. Pure.
  */
 import { hashString } from '../rng';
-import { createHaul, runStartCash } from './create';
+import { claimedRingMax, createHaul, runStartCash } from './create';
 import { rngMix4, roll } from './params';
-import type { HaulConfig, HaulGame, HaulState, JumpPreview, StarMapState, StarNodeView } from './types';
+import type { HaulConfig, HaulGame, HaulState, JumpPreview, PendingJump, StarMapState, StarNodeView } from './types';
 
 /** Total cores the lifetime earnings are worth: floor(scale × (lifetime / threshold)^exponent) (the shared formula). */
 export function totalCores(cfg: HaulConfig, lifetime: number): number {
@@ -102,19 +102,85 @@ export function coresAfterJump(cfg: HaulConfig, g: HaulGame): number {
   return coresInHand(g) + coresAvailable(cfg, g);
 }
 
-/** The Star Map's bottom panel (section 4.6). */
+/**
+ * The Star Map's bottom panel (section 4.6), step 1 of the Jump flow. `ready` is "Jump ready"
+ * (errata 22): the gain is at least `haul.jumpReadyCores`. While a Jump waits for its condition
+ * (`haulStats.pendingJump`), the preview shows that Jump's offers and `canJump` is false.
+ */
 export function jumpPreview(cfg: HaulConfig, g: HaulGame): JumpPreview {
   const h = g.haul;
-  const next = (h?.galaxy ?? 0) + 1;
-  const gain = coresAvailable(cfg, g);
+  const pending = g.haulStats.pendingJump ?? null;
+  const next = pending ? pending.galaxy : (h?.galaxy ?? 0) + 1;
+  const gain = pending ? 0 : coresAvailable(cfg, g);
   return {
     gain,
     coresInHand: coresInHand(g),
-    canJump: gain >= 1 && !!h,
-    offers: offersFor(cfg, g.metaSeed, g.haulStats.jumps, h?.trait ?? null),
+    canJump: gain >= 1 && !!h && !pending,
+    offers: pending ? [...pending.offers] : offersFor(cfg, g.metaSeed, g.haulStats.jumps, h?.trait ?? null),
     nextGalaxy: next,
     nextGalaxyName: galaxyName(cfg, next),
+    ready: !pending && !!h && gain >= cfg.haul.jumpReadyCores,
   };
+}
+
+/**
+ * Jump flow step 2 (errata 17), confirm: needs at least 1 new core. The cores are credited, the old
+ * run ends (`haul = null`, cash and run earnings reset, cash upgrades dropped) and the Jump waits in
+ * `haulStats.pendingJump` with its three offers. Steps 3 and 4 are `buyStarNode` (any number of times)
+ * and `startGalaxy` with the chosen condition. Refused (same object) without a run, without a new
+ * core, or while a Jump is already pending.
+ */
+export function confirmJump(cfg: HaulConfig, g: HaulGame, now: number): HaulGame {
+  const h: HaulState | null = g.haul;
+  if (!h || g.haulStats.pendingJump) return g;
+  const gained = coresAvailable(cfg, g);
+  if (gained < 1) return g;
+  const index = g.haulStats.jumps;
+  const pending: PendingJump = {
+    index,
+    galaxy: h.galaxy + 1,
+    seed: rngMix4(h.seed, hashString('jump'), index + 1, 0),
+    offers: offersFor(cfg, g.metaSeed, index, h.trait),
+  };
+  return {
+    ...g,
+    cash: 0,
+    runEarnings: 0,
+    prestigePoints: g.prestigePoints + gained,
+    prestigeCount: g.prestigeCount + 1,
+    upgrades: g.upgrades.filter((id) => cfg.upgrades.find((u) => u.id === id)?.premium),
+    haul: null,
+    haulStats: { ...g.haulStats, pendingJump: pending },
+    lastSavedAt: now,
+  };
+}
+
+/**
+ * Jump flow step 5 (errata 17): builds the new run with every Star Map level bought so far and the
+ * chosen condition (one of the pending offers). The run seed is
+ * `rngMix4(seed, hashString('jump'), jumpIndex + 1, 0)` of the old run; cash is the run's starting
+ * cash with Seed Credits; a Derelict Cache on the first arrival at each galaxy index. Refused (same
+ * object) without a pending Jump or with a condition that was not offered.
+ */
+export function startGalaxy(cfg: HaulConfig, g: HaulGame, now: number, traitId: string): HaulGame {
+  const pending = g.haulStats.pendingJump ?? null;
+  if (!pending || !pending.offers.includes(traitId)) return g;
+  const first = !g.haulStats.galaxiesVisited.includes(pending.galaxy);
+  const haulStats = {
+    ...g.haulStats,
+    jumps: pending.index + 1,
+    galaxiesVisited: first ? [...g.haulStats.galaxiesVisited, pending.galaxy] : g.haulStats.galaxiesVisited,
+    pendingJump: null,
+  };
+  const haul = createHaul(cfg, pending.seed, pending.galaxy, traitId, g.starMap, haulStats, g.entitlements);
+  haulStats.bestRing = Math.max(haulStats.bestRing ?? 1, claimedRingMax(cfg, haul));
+  haulStats.bestClaimed = Math.max(haulStats.bestClaimed, haul.slots.filter((s) => s.claimed).length);
+  if (haul.autopilot.online) haulStats.autopilotSeen = true;
+  if (haul.contracts.unlocked) haulStats.contractsSeen = true;
+  let chests = g.chests;
+  const pod = cfg.haul.pods.derelict;
+  if (first && cfg.meta.chests.some((c) => c.id === pod)) chests = { ...chests, owned: { ...chests.owned, [pod]: (chests.owned[pod] ?? 0) + 1 } };
+  return { ...g, cash: runStartCash(cfg, g.starMap), runEarnings: 0, haul, haulStats, chests, lastSavedAt: now };
 }
 
 /**
@@ -128,39 +194,14 @@ export function jumpPreview(cfg: HaulConfig, g: HaulGame): JumpPreview {
  * `buys` are Star Map node ids bought, in order, with the cores in hand after this Jump's gain and
  * before the new run is built, so a node bought in the Jump flow already shapes the run it starts
  * (Systems Preload, Afterburner, Seed Credits, Spare Drones). A buy that is not affordable is skipped.
+ * This is the whole flow in one call: `confirmJump`, `buyStarNode` for each of `buys`, `startGalaxy`
+ * (errata 17). The screens can run the steps one by one instead.
  */
 export function prestigeHaul(cfg: HaulConfig, g: HaulGame, now: number, traitId: string, buys: string[] = []): HaulGame {
   const h: HaulState | null = g.haul;
-  const gained = coresAvailable(cfg, g);
-  if (!h || gained < 1) return g;
-  const jumpIndex = g.haulStats.jumps;
-  if (!offersFor(cfg, g.metaSeed, jumpIndex, h.trait).includes(traitId)) return g;
-  const galaxy = h.galaxy + 1;
-  const seed = rngMix4(h.seed, hashString('jump'), jumpIndex + 1, 0);
-  const first = !g.haulStats.galaxiesVisited.includes(galaxy);
-  const haulStats = {
-    ...g.haulStats,
-    jumps: jumpIndex + 1,
-    galaxiesVisited: first ? [...g.haulStats.galaxiesVisited, galaxy] : g.haulStats.galaxiesVisited,
-  };
-  let planned: HaulGame = { ...g, prestigePoints: g.prestigePoints + gained };
-  for (const id of buys) planned = buyStarNode(cfg, planned, id);
-  const starMap = planned.starMap;
-  const haul = createHaul(cfg, seed, galaxy, traitId, starMap, haulStats, g.entitlements);
-  let chests = g.chests;
-  const pod = cfg.haul.pods.derelict;
-  if (first && cfg.meta.chests.some((c) => c.id === pod)) chests = { ...chests, owned: { ...chests.owned, [pod]: (chests.owned[pod] ?? 0) + 1 } };
-  return {
-    ...g,
-    cash: runStartCash(cfg, starMap),
-    starMap,
-    runEarnings: 0,
-    prestigePoints: g.prestigePoints + gained,
-    prestigeCount: g.prestigeCount + 1,
-    upgrades: g.upgrades.filter((id) => cfg.upgrades.find((u) => u.id === id)?.premium),
-    haul,
-    haulStats,
-    chests,
-    lastSavedAt: now,
-  };
+  if (!h || coresAvailable(cfg, g) < 1) return g;
+  if (!offersFor(cfg, g.metaSeed, g.haulStats.jumps, h.trait).includes(traitId)) return g;
+  let s = confirmJump(cfg, g, now);
+  for (const id of buys) s = buyStarNode(cfg, s, id);
+  return startGalaxy(cfg, s, now, traitId);
 }

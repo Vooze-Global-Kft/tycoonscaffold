@@ -78,6 +78,8 @@ export function atlasDefs(o: Pick<AtlasOptions, 'freighter'> = {}): Def[] {
   defs.push({ name: 'drill', hw: 7, hh: 7, draw: (c) => drawDrillHead(c, ATLAS_HEAD_R) });
   for (const ore of ORE_IDS) {
     defs.push({ name: `chunk-${ore}`, hw: 8, hh: 8, draw: (c) => drawChunk(c, ore) });
+    // Four variants (turn and size) of the ore's silhouette for flying chunks (errata 37).
+    for (let v = 0; v < 4; v++) defs.push({ name: `chunk-${ore}-${v}`, hw: 8, hh: 8, draw: (c) => drawChunk(c, ore, 2.9 + v * 0.3, 11 + v * 7) });
     for (let i = 0; i < 8; i++) defs.push({ name: `shard-${ore}-${i}`, hw: 5, hh: 5, draw: (c) => drawShard(c, ore, i) });
   }
   defs.push({ name: 'credit', hw: 10, hh: 10, draw: (c) => drawCreditGlyph(c) });
@@ -153,4 +155,53 @@ export function spriteXform(s: Sprite, density: number, x: number, y: number, an
   const sc = k * Math.cos(angle);
   const ss = k * Math.sin(angle);
   return [sc, ss, x - (sc * s.ax - ss * s.ay), y - (ss * s.ax + sc * s.ay)];
+}
+
+// ---------------------------------------------------------------------------
+// The sheet of errata 37
+// ---------------------------------------------------------------------------
+
+/** A sprite rectangle in pixels and its anchor in pixels from the rectangle's top left. */
+export interface SheetRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface HaulSheet {
+  image: SkImage;
+  /** Pixels per point the sheet was baked at. */
+  pixelRatio: number;
+  rect: Record<string, SheetRect>;
+  anchor: Record<string, { x: number; y: number }>;
+}
+
+/**
+ * The scene's sprite sheet (errata 37): every moving sprite in ONE image baked once at
+ * `pixelRatio` (call it once at start-up with PixelRatio.get(); rebake only if that changes),
+ * with a rectangle and an anchor per sprite id. Ids are the kit's names (README "Sprite ids",
+ * with the errata's names beside them): `drone-<ore>`, `drone-<ore>-empty`, `drone-idle`,
+ * `flame-0..2`, `rock-<shape>-<ore>`, `bonanza-<shape>` (overlay = the errata's
+ * `rock_<shape>_<ore>_bonanza`), `crack1-<shape>`, `crack2-<shape>`, `dry-<shape>`,
+ * `dryglow-<shape>`, `drill` (one head for every look, scaled by rigHeads r / ATLAS_HEAD_R = the
+ * errata's `drill_<look>`), `chunk-<ore>` and `chunk-<ore>-<0..3>`, `shard-<ore>-<0..7>` (= the
+ * errata's `debris_<0..7>`, per ore), `credit` (= `glyph_credit`). No freighter: the scene draws
+ * the freighter, rigs, piles and the station as pictures (pictures.ts). Null if no surface.
+ */
+export function haulSheet(pixelRatio: number): HaulSheet | null {
+  const a = bakeAtlas({ density: pixelRatio });
+  if (!a) return null;
+  const rect: Record<string, SheetRect> = {};
+  const anchor: Record<string, { x: number; y: number }> = {};
+  for (const [id, s] of Object.entries(a.sprites)) {
+    rect[id] = { x: s.rect.x, y: s.rect.y, w: s.rect.width, h: s.rect.height };
+    anchor[id] = { x: s.ax, y: s.ay };
+  }
+  return { image: a.image, pixelRatio: a.density, rect, anchor };
+}
+
+/** The sprite ids `haulSheet` bakes, in a stable order (for tests and the guide). */
+export function sheetIds(): string[] {
+  return atlasDefs().map((d) => d.name);
 }

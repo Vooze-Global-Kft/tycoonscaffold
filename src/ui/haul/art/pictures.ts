@@ -6,12 +6,12 @@
  * can draw a freed one). Pure Skia; no React.
  */
 import type { SkPicture } from '@shopify/react-native-skia';
-import { drawChevron, drawFreighter, drawPad, type HullId } from './freighter.draw';
-import { drawFlare, drawGhostSlot, drawSeamRim, starfieldPicture } from './fx.draw';
+import { drawChevron, drawFreighter, drawPad, drawPolicyChip, type HullId } from './freighter.draw';
+import { drawChargePlate, drawFlare, drawGhostSlot, drawRouteChip, drawSeamRim, starfieldPicture } from './fx.draw';
 import { around, picture } from './pen';
-import { drawPile } from './rock.draw';
+import { drawPile, drawPileLabel } from './rock.draw';
 import { drawDrillHead, drawRigBase, drawRigLamp, type LampState, type RigLook } from './rig.draw';
-import { drawBeacon, drawDockArm, drawRackArm, drawScannerDish, drawStationHub, drawStationPart, drawStationRing, type StationPart } from './station.draw';
+import { drawBeacon, drawDockArm, drawRackArm, drawRackOverflow, drawScannerDish, drawStationHub, drawStationPart, drawStationRing, type StarNode, type StationPart } from './station.draw';
 import { drawIdleBadge } from './drone.draw';
 
 const cache = new Map<string, SkPicture>();
@@ -31,7 +31,7 @@ export const pictures = {
   stationRing: () => memo('ring', () => picture(around(54), drawStationRing)),
   stationArms: () =>
     memo('arms', () =>
-      picture({ x: -112, y: -4, w: 224, h: 66 }, (c) => {
+      picture({ x: -120, y: -10, w: 240, h: 74 }, (c) => {
         drawDockArm(c);
         drawRackArm(c, -1);
         drawRackArm(c, 1);
@@ -44,18 +44,30 @@ export const pictures = {
   },
   /** The scanner dish alone (rotate it ±30° over 6 s at stationPartPos('veinsense')). */
   scannerDish: () => memo('dish', () => picture(around(20), drawScannerDish)),
+  /** A Star Map node's part in place (Systems Preload: the beacon at BEACON_POS, lit). */
+  nodePart: (node: StarNode, level: number) => (node === 'preload' ? pictures.beacon(true) : pictures.stationPart(node, level)),
+  /** The rack's "+n" plate (draw at RACK_OVERFLOW). */
+  rackOverflow: (n: number) => memo(`overflow:${n}`, () => picture(around(14), (c) => drawRackOverflow(c, n))),
   beacon: (on: boolean) => memo(`beacon:${on}`, () => picture(around(9), (c) => drawBeacon(c, on))),
   /** Rig base, origin at the rock centre. */
   rigBase: (look: RigLook, stripes: number) => memo(`rig:${look}:${stripes}`, () => picture(around(26), (c) => drawRigBase(c, { look, stripes }))),
   rigLamp: (state: LampState) => memo(`lamp:${state}`, () => picture(around(7), (c) => drawRigLamp(c, state))),
   drillHead: (r: number) => memo(`head:${r}`, () => picture(around(r + 1), (c) => drawDrillHead(c, r))),
+  /** A pile label on its plate ("62/80"; full = amber with an up-arrow); redraw when the integer changes. */
+  pileLabel: (text: string, full: boolean) => memo(`plabel:${text}:${full}`, () => picture(around(24), (c) => drawPileLabel(c, text, full))),
   pile: (ore: string, step: 0 | 1 | 2 | 3) => memo(`pile:${ore}:${step}`, () => picture(around(14), (c) => drawPile(c, ore, step))),
   ghostSlot: (r: number, price: string) => memo(`ghost:${r}:${price}`, () => picture({ x: -r - 2, y: -r - 2, w: r * 2 + 4, h: r * 2 + 14 }, (c) => drawGhostSlot(c, r, price))),
   seamRim: (r: number) => memo(`seam:${r}`, () => picture(around(r * 1.7), (c) => drawSeamRim(c, r))),
-  flare: () => memo('flare', () => picture(around(12), (c) => drawFlare(c))),
+  flare: () => memo('flare', () => picture(around(16), (c) => drawFlare(c))),
   idleBadge: () => memo('badge', () => picture(around(9), drawIdleBadge)),
-  pad: () => memo('pad', () => picture(around(34), drawPad)),
+  pad: (lit = false) => memo(`pad:${lit}`, () => picture(around(34), (c) => drawPad(c, lit))),
   chevron: () => memo('chevron', () => picture(around(12), (c) => drawChevron(c, 1))),
+  /** The route chip "x3" for (count, ore). */
+  routeChip: (count: number, ore: string) => memo(`chip:${count}:${ore}`, () => picture(around(20), (c) => drawRouteChip(c, count, ore))),
+  /** The autopilot policy chip ("FULL" / "CONTRACT"), beacon lit or dark (blink by alternating). */
+  policyChip: (policy: string, on: boolean) => memo(`policy:${policy}:${on}`, () => picture(around(50), (c) => drawPolicyChip(c, policy, on))),
+  /** The flare launcher's charge plate. */
+  chargePlate: (n: number) => memo(`charge:${n}`, () => picture(around(14), (c) => drawChargePlate(c, n))),
   /** The docked freighter as a still (the atlas carries it while it flies). */
   freighter: (hull: HullId, segments: number) => memo(`freighter:${hull}:${segments}`, () => picture(around(60), (c) => drawFreighter(c, { hull, segments }))),
   /** The starfield for a screen size and galaxy (keep at most the current one alive). */

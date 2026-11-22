@@ -4,7 +4,8 @@
  * scripted player, so every fixture is a state the rules can actually reach:
  * - `fresh`: a new game at 0:00 (slot 0, one idle drone).
  * - `minute3`: about 3:00 in, tutorial done, autopilot online, contracts unlocked.
- * - `midGame`: about 25 min in, rings 1 to 3 claimed, a module fitted, a seam running when possible.
+ * - `midGame`: about 25 min in, rings 1 to 3 claimed (a ring-3 slot claimed with added credits if the
+ *   scripted player has not reached it), three modules fitted.
  * - `late`: about 2 h 20 in, all 12 slots claimed, a Jump available.
  * - `afterJump`: just after the first Jump (galaxy 1, a condition, Star Map nodes bought).
  *
@@ -54,6 +55,8 @@ export function haulTestConfig(overrides: Partial<HaulContentInput> = {}): H.Hau
   const raw = {
     ...(baseGame as Record<string, unknown>),
     mode: 'haul',
+    // The shared schema now requires a sound pack (bundle separation); the haul game's is "synth".
+    soundPack: (baseGame as Record<string, unknown>).soundPack ?? 'synth',
     meta: {
       cards: MODULE_CARDS.map((c) => ({ ...c, icon: `art:mod_${c.id}`, stat: 'stationValue' })),
       cardEffect: { common: { base: 5, perLevel: 3 }, rare: { base: 10, perLevel: 5 }, epic: { base: 15, perLevel: 6 }, legendary: { base: 20, perLevel: 8 } },
@@ -204,6 +207,19 @@ function fitAll(cfg: H.HaulConfig, g: Run, cards: string[]): Run {
   return s;
 }
 
+/** Claims, ring by ring, the first claimable slot until a slot on ring `ring` (0-based) is claimed; the cost is added as earnings. */
+function claimUpTo(cfg: H.HaulConfig, g: Run, ring: number): Run {
+  let s = g;
+  for (let guard = 0; guard < 12 && H.highestClaimedRing(cfg, s.haul) < ring; guard++) {
+    const slot = H.ghostSlots(cfg, s).find((i) => H.ringOf(cfg, i) === H.highestClaimedRing(cfg, s.haul) + 1);
+    if (slot === undefined) break;
+    const cost = H.claimCost(cfg, s, slot);
+    s = H.claimSlot(cfg, { ...s, cash: s.cash + cost }, slot) as Run;
+    s = { ...s, lifetimeEarnings: s.lifetimeEarnings + cost, runEarnings: s.runEarnings + cost };
+  }
+  return playFor(cfg, s, 5);
+}
+
 let cache: Record<'fresh' | 'minute3' | 'midGame' | 'late' | 'afterJump', Run> | null = null;
 
 /** The five fixture states (built once, lazily: `late` plays about 2 h 20 of game time). */
@@ -212,6 +228,9 @@ export function haulFixtures(cfg: H.HaulConfig = haulTestConfig()): Record<'fres
   const fresh = freshHaulGame(cfg);
   const minute3 = playFor(cfg, fresh, 180);
   let midGame = playFor(cfg, minute3, 25 * 60 - 180);
+  // Mid game reaches ring 3: if the scripted player has not claimed a ring-3 slot yet, it claims the
+  // first one it may (errata 29: one ring past the highest claimed), with the credits added as earnings.
+  midGame = claimUpTo(cfg, midGame, 2);
   midGame = fitAll(cfg, midGame, ['diamondbit', 'bayracks', 'clamps']);
   let late = playFor(cfg, midGame, 140 * 60 - 25 * 60);
   // Late game: every slot claimed (the scripted player is simpler than the balance bot).

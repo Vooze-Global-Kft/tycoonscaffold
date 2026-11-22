@@ -4,11 +4,13 @@
  * paired along the spine. Origin at the freighter's centre of length; also the warp flash, the
  * launch pad and its chevrons.
  *
- * Its colour code is warm white with amber stripes, so it never reads as a (cyan) drone.
+ * Pale-cyan outlines like the station, with its own amber hazard bands and cyan cockpit; it is
+ * much larger than a drone and has no pods, so the two never mix.
  */
 import type { SkCanvas } from '@shopify/react-native-skia';
 import { SPACE, alpha, mix } from './palette';
-import { LINE, TAU, circle, fill, glow, lamp, light, line, part, poly, rrect, stroke } from './pen';
+import { LINE, TAU, arc, circle, fill, glow, lamp, light, line, part, poly, rrect, stroke } from './pen';
+import { drawText, textWidth } from './glyphs';
 
 export type HullId = 0 | 1 | 2 | 3;
 export const HULL_NAMES = ['Skiff', 'Barge', 'Hauler', 'Bulk Carrier'] as const;
@@ -26,7 +28,8 @@ export function segmentsFor(level: number): number {
   return Math.max(0, Math.min(8, Math.floor((level - 50) / 25)));
 }
 
-const HULL_LINE = '#E3ECF7';
+/** Hull outline: pale cyan at 1.5 pt with the station's lit glow (second pass, critique S3). */
+const HULL_LINE = '#A8EEFF';
 const STRIPE = SPACE.amber;
 
 interface HullGeo {
@@ -74,7 +77,7 @@ export function drawFreighter(c: SkCanvas, o: FreighterOptions): void {
   const top = -h / 2;
   const bottom = h / 2;
   const w = g.wid;
-  glow(c, 0, 0, Math.max(h, w * 2) * 0.75, '#FFE2B0', 0.08);
+  glow(c, 0, 0, Math.max(h, w * 2) * 0.75, SPACE.line, 0.07);
 
   // Spine through the cargo rows.
   if (rows > 0) {
@@ -96,7 +99,10 @@ export function drawFreighter(c: SkCanvas, o: FreighterOptions): void {
   // Stern block with the engines.
   const sternTop = bottom - g.len * 0.9;
   const stern = poly([-w, sternTop, w, sternTop, w * 0.85, bottom - 2, -w * 0.85, bottom - 2]);
-  part(c, stern, SPACE.hull1, HULL_LINE, LINE, 0.4);
+  part(c, stern, SPACE.hull1, HULL_LINE, LINE, 0.65);
+  // One panel a shade darker, one scorch streak toward the engines: a ship that has flown.
+  c.drawPath(rrect(w * 0.15, sternTop + 3.5, w * 0.5, g.len * 0.35, 0.8), fill(alpha('#000000', 0.25)));
+  c.drawPath(line(-w * 0.45, sternTop + 4, -w * 0.3, bottom - 4), stroke(alpha('#05070D', 0.55), 1.6));
   const { xs } = freighterEngines(o.hull, segs);
   for (const x of xs) {
     part(c, rrect(x - 2.1, bottom - 4, 4.2, 4.5, 1.2), SPACE.hull3, HULL_LINE, 0.9, 0);
@@ -113,25 +119,25 @@ export function drawFreighter(c: SkCanvas, o: FreighterOptions): void {
   switch (o.hull) {
     case 0: {
       const bow = poly([0, top, w * 0.9, top + 9, w, bowBottom, -w, bowBottom, -w * 0.9, top + 9]);
-      part(c, bow, SPACE.hull1, HULL_LINE, LINE, 0.5);
+      part(c, bow, SPACE.hull1, HULL_LINE, LINE, 0.65);
       break;
     }
     case 1: {
       const bow = poly([-3, top, 3, top, w, top + 8, w, bowBottom, -w, bowBottom, -w, top + 8]);
-      part(c, bow, SPACE.hull1, HULL_LINE, LINE, 0.5);
+      part(c, bow, SPACE.hull1, HULL_LINE, LINE, 0.65);
       // Side fins.
       for (const s of [-1, 1]) part(c, poly([s * w, bowBottom - 8, s * (w + 4), bowBottom - 1, s * w, bowBottom]), SPACE.hull2, HULL_LINE, 1, 0);
       break;
     }
     case 2: {
       const bow = poly([0, top, w * 0.8, top + 5, w, bowBottom, -w, bowBottom, -w * 0.8, top + 5]);
-      part(c, bow, SPACE.hull1, HULL_LINE, LINE, 0.5);
+      part(c, bow, SPACE.hull1, HULL_LINE, LINE, 0.65);
       c.drawPath(poly([-w * 0.6, top + 12, 0, top + 5, w * 0.6, top + 12], false), stroke(alpha(HULL_LINE, 0.5), 0.8));
       break;
     }
     case 3: {
       const bow = poly([-4, top, 4, top, w * 0.7, top + 6, w, bowBottom, -w, bowBottom, -w * 0.7, top + 6]);
-      part(c, bow, SPACE.hull1, HULL_LINE, LINE, 0.5);
+      part(c, bow, SPACE.hull1, HULL_LINE, LINE, 0.65);
       // Wings with running lights.
       for (const s of [-1, 1]) {
         part(c, poly([s * w, bowBottom - 10, s * (w + 6), bowBottom - 2, s * (w + 6), bowBottom + 2, s * w, bowBottom]), SPACE.hull2, HULL_LINE, 1, 0);
@@ -179,12 +185,13 @@ export function drawWarpFlash(c: SkCanvas, k: number): void {
   }
 }
 
-/** The launch pad in the bay (about 64 x 40 pt), with its landing ring. */
-export function drawPad(c: SkCanvas): void {
+/** The launch pad in the bay (about 64 x 40 pt), with its landing ring (`lit`: brighter, when loaded). */
+export function drawPad(c: SkCanvas, lit = false): void {
   const pad = rrect(-32, -20, 64, 40, 8);
   c.drawPath(pad, fill(SPACE.hull0));
   c.drawPath(pad, stroke(alpha(SPACE.steel, 0.35), 1));
-  c.drawPath(circle(0, 0, 17), stroke(alpha(SPACE.amber, 0.35), 1));
+  if (lit) glow(c, 0, 0, 24, SPACE.amber, 0.18);
+  c.drawPath(circle(0, 0, 17), stroke(alpha(SPACE.amber, lit ? 0.9 : 0.35), lit ? 1.5 : 1));
   for (let i = 0; i < 8; i++) {
     const a = (TAU * i) / 8;
     c.drawCircle(Math.cos(a) * 17, Math.sin(a) * 17, 0.9, fill(SPACE.amber));
@@ -200,3 +207,57 @@ export function drawChevron(c: SkCanvas, a = 1): void {
   c.drawPath(p, stroke(alpha(SPACE.amber, a), 2));
 }
 
+
+/** Freighter scale on the pad while the hold has cargo (critique S1: the money moment reads big). */
+export const LOADED_FREIGHTER_SCALE = 1.3;
+
+/** The levels at which the freighter changes (hull or segment) and `freighter_tier` plays (errata 40). */
+export const FREIGHTER_TIER_LEVELS: readonly number[] = [1, 10, 25, 50, 75, 100, 125, 150, 175, 200, 225, 250];
+
+/**
+ * One stack of three chevrons over the pad ("swipe up"), origin at the lowest chevron's centre,
+ * stepping up 7 pt. `k` 0..1 fills them bottom-up in sequence (loop it, about 1.2 s, while the
+ * hold has cargo); `ready` false draws them dim and still.
+ */
+export function drawChevronStack(c: SkCanvas, k: number, ready = true): void {
+  for (let i = 0; i < 3; i++) {
+    const on = ready ? Math.max(0, Math.min(1, k * 3.6 - i * 1.1)) : 0;
+    c.save();
+    c.translate(0, -i * 7);
+    drawChevron(c, ready ? 0.3 + 0.7 * on : 0.22);
+    c.restore();
+  }
+}
+
+/**
+ * While the freighter is away: a progress arc round the empty pad (`k` 0..1 of the trip) and the
+ * label beneath it ("BACK IN 9 S"). Origin at the pad centre.
+ */
+export function drawAwayArc(c: SkCanvas, k: number, label: string): void {
+  const t = Math.max(0, Math.min(1, k));
+  c.drawPath(circle(0, 0, 17), stroke(alpha(SPACE.steel, 0.25), 2.4));
+  if (t > 0) {
+    const a = arc(0, 0, 17, -90, 360 * t);
+    c.drawPath(a, stroke(alpha(SPACE.line, 0.25), 5));
+    c.drawPath(a, stroke(SPACE.line, 2.4));
+  }
+  drawText(c, label, 0, 22, { size: 5, color: SPACE.steel, align: 'center', glow: 0, weight: 1 });
+}
+
+/**
+ * The autopilot policy chip "AUTO · FULL" (or "AUTO · CONTRACT") at the launch track's right end,
+ * centred on the origin; the beacon dot blinks with the autopilot. Returns its size.
+ */
+export function drawPolicyChip(c: SkCanvas, policy: string, beaconOn = true): { w: number; h: number } {
+  const text = `AUTO · ${policy.toUpperCase()}`;
+  const size = 5;
+  const w = textWidth(text, size) + 16;
+  const h = 13;
+  const chip = rrect(-w / 2, -h / 2, w, h, h / 2);
+  c.drawPath(chip, fill(mix(SPACE.panel, SPACE.green, 0.12)));
+  c.drawPath(chip, stroke(alpha(SPACE.green, 0.75), 1));
+  if (beaconOn) lamp(c, -w / 2 + 6.5, 0, 1.5, SPACE.green, 4);
+  else c.drawCircle(-w / 2 + 6.5, 0, 1.4, fill('#25402F'));
+  drawText(c, text, -w / 2 + 11, -size / 2, { size, color: '#E6FFF0', glow: 0, weight: 1 });
+  return { w, h };
+}

@@ -305,12 +305,13 @@ describe('5. contracts', () => {
     expect(hold).toEqual({ iron: 3 });
   }, 60_000);
 
-  it('contractGain equals the difference of two payouts', () => {
+  it('contractGain equals the difference of two payouts (errata 26: hold plus the missing units)', () => {
     const g = shaped(cfg, 2, { slots: [0, 2] });
     const h: H.HaulState = { ...g.haul, hold: { iron: 7, copper: 3 }, contracts: { unlocked: true, active: null, next: 3, board: [{ k: 1, buyer: 'corvo', wants: [{ ore: 'copper', units: 5 }], mult: 1.9, launchesLeft: 6 }] } };
     const p = H.haulParams(cfg, { ...g, haul: h });
     const c = h.contracts.board[0];
-    const { cargo } = H.loadCargo(cfg, p, h.hold, c);
+    // cargo' = the loading rule on the hold plus the 2 missing copper (the total stays under F = 12).
+    const { cargo } = H.loadCargo(cfg, p, { iron: 7, copper: 5 }, c);
     const gain = H.contractGain(cfg, p, h, 0);
     expect(gain).toBeCloseTo(H.payoutFor(p, cargo, c, 0, true).payout - H.payoutFor(p, cargo, null, 0).payout, 12);
     expect(gain).toBeGreaterThan(0);
@@ -516,7 +517,12 @@ describe('9. rich seams and the flare', () => {
     a = H.grantAdFlare(c, a, day, NOW + 40 * 60_000) as Run;
     expect(a.haul.flare.charges).toBe(4);
     expect(H.canAdFlare(c, a, day, NOW + 80 * 60_000)).toBe(false);
-    expect(H.canAdFlare(c, a, '2026-11-23', NOW + 80 * 60_000)).toBe(true);
+    // Errata 33: charges never exceed 4, so even a new day's ad waits until a charge is used.
+    expect(H.canAdFlare(c, a, '2026-11-23', NOW + 80 * 60_000)).toBe(false);
+    expect(H.grantAdFlare(c, a, '2026-11-23', NOW + 80 * 60_000)).toBe(a);
+    const used = H.useFlare(c, a, 0) as Run;
+    expect(used.haul.flare.charges).toBe(3);
+    expect(H.canAdFlare(c, used, '2026-11-23', NOW + 80 * 60_000)).toBe(true);
   }, 60_000);
 });
 

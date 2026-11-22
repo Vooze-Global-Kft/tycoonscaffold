@@ -9,7 +9,9 @@ import { drawFreighter } from './freighter.draw';
 import { drawFlare, drawCreditGlyph } from './fx.draw';
 import { SPACE, alpha, mix, oreColor } from './palette';
 import { drawPod, type PodTier } from './pods.draw';
-import { TAU, arc, circle, fill, glow, line, litStroke, ngon, poly, rrect, stroke } from './pen';
+import { arc, circle, fill, glow, line, litStroke, ngon, poly, rrect, stroke } from './pen';
+import { drawText, textWidth } from './glyphs';
+import { drawOreShape } from './ore.draw';
 import { drawRig } from './rig.draw';
 
 function scaled(c: SkCanvas, size: number, draw: () => void, design = 40): void {
@@ -19,26 +21,30 @@ function scaled(c: SkCanvas, size: number, draw: () => void, design = 40): void 
   c.restore();
 }
 
-/** An ore icon: a cluster of three faceted crystals in the ore colour. */
+/**
+ * An ore icon: the ore's own silhouette (ore.draw.ts), one large piece and two small ones, so
+ * the five ores differ by shape as well as colour (critique M1).
+ */
 export function drawOreIcon(c: SkCanvas, size: number, ore: string): void {
   const tint = oreColor(ore);
   scaled(c, size, () => {
-    glow(c, 0, 2, 20, tint, 0.35);
-    const crystal = (x: number, y: number, h: number, w: number, tilt: number) => {
+    glow(c, 0, 2, 20, tint, 0.3);
+    // One big piece, two small ones scattered unevenly beside it (never a symmetric base).
+    c.save();
+    c.translate(-2.5, -2);
+    drawOreShape(c, ore, 10.5, { glow: 0, line: 1.6 });
+    c.restore();
+    for (const [x, y, s, r] of [
+      [11.5, 9, 4.4, 18],
+      [-12.5, 11.5, 3.2, -24],
+    ] as const) {
       c.save();
       c.translate(x, y);
-      c.rotate(tilt, 0, 0);
-      const body = poly([0, -h, w, -h * 0.6, w, h * 0.3, 0, h * 0.5, -w, h * 0.3, -w, -h * 0.6]);
-      c.drawPath(body, fill(mix(tint, '#000000', 0.3)));
-      c.drawPath(poly([0, -h, w, -h * 0.6, w, h * 0.3, 0, h * 0.5]), fill(tint));
-      c.drawPath(poly([0, -h, -w * 0.4, -h * 0.55, 0, -h * 0.2, w * 0.5, -h * 0.55]), fill(alpha('#FFFFFF', 0.55)));
-      c.drawPath(body, stroke(mix(tint, '#FFFFFF', 0.45), 1.2));
+      c.rotate(r, 0, 0);
+      drawOreShape(c, ore, s, { glow: 0, line: 1.1 });
       c.restore();
-    };
-    crystal(-8, 6, 11, 5, -18);
-    crystal(8, 7, 9, 4.5, 20);
-    crystal(0, 1, 15, 6, 0);
-    c.drawPath(poly([-15, 12, 15, 12], false), stroke(alpha(tint, 0.5), 1.2));
+    }
+    c.drawPath(poly([-16, 15.5, 16, 15.5], false), stroke(alpha(tint, 0.45), 1.2));
   });
 }
 
@@ -65,21 +71,30 @@ export function drawDarkMatterIcon(c: SkCanvas, size: number): void {
   });
 }
 
-/** Warp Core: a cyan crystal core held in a hex ring. */
+/**
+ * Warp Core: a glowing torus seen at a tilt, with four inward star streaks, in a white-gold core
+ * and a deep-violet rim (colours no ore uses; it is not a gem, unlike the ore icons).
+ */
 export function drawWarpCoreIcon(c: SkCanvas, size: number): void {
+  const GOLD = '#FFE9A8';
+  const RIM = '#5B2BB8';
   scaled(c, size, () => {
-    glow(c, 0, 0, 20, SPACE.core, 0.55);
-    const ring = ngon(0, 0, 16, 6, -Math.PI / 2);
-    c.drawPath(ring, stroke(SPACE.hull2, 5));
-    litStroke(c, ring, SPACE.line, 1.4, 0.8);
-    const gem = poly([0, -11, 6, -3, 6, 4, 0, 11, -6, 4, -6, -3]);
-    c.drawPath(gem, fill(mix(SPACE.core, '#0A3040', 0.4)));
-    c.drawPath(poly([0, -11, 6, -3, 0, 0, -6, -3]), fill(mix(SPACE.core, '#FFFFFF', 0.5)));
-    c.drawPath(gem, stroke('#E9FEFF', 1.2));
-    for (let i = 0; i < 6; i++) {
-      const a = (TAU * i) / 6 - Math.PI / 2;
-      c.drawCircle(Math.cos(a) * 16, Math.sin(a) * 16, 1.4, fill(SPACE.core));
+    glow(c, 0, 0, 20, GOLD, 0.45);
+    // Four streaks falling inward.
+    for (const a of [45, 135, 225, 315]) {
+      const r = (a * Math.PI) / 180;
+      const p = line(Math.cos(r) * 19, Math.sin(r) * 19, Math.cos(r) * 11, Math.sin(r) * 11);
+      c.drawPath(p, stroke(alpha(GOLD, 0.3), 3));
+      c.drawPath(p, stroke('#FFFFFF', 1));
     }
+    // The torus: a thick violet ring with a gold inner light.
+    c.drawOval({ x: -15, y: -9, width: 30, height: 18 }, stroke(RIM, 7));
+    c.drawOval({ x: -15, y: -9, width: 30, height: 18 }, stroke(alpha('#B48CFF', 0.9), 1.2));
+    c.drawOval({ x: -9.5, y: -4.5, width: 19, height: 9 }, stroke(alpha(GOLD, 0.9), 2.2));
+    c.drawOval({ x: -18.5, y: -12.5, width: 37, height: 25 }, stroke(alpha('#B48CFF', 0.7), 1));
+    // The hot core in the hole.
+    glow(c, 0, 0, 8, '#FFFFFF', 0.8);
+    c.drawOval({ x: -4.5, y: -2.4, width: 9, height: 4.8 }, fill('#FFF8E0'));
   });
 }
 
@@ -122,7 +137,7 @@ export function drawRigIcon(c: SkCanvas, size: number): void {
 export function drawFlareIcon(c: SkCanvas, size: number): void {
   scaled(c, size, () => {
     c.save();
-    c.rotate(20, 0, 0);
+    c.translate(-1, 1);
     drawFlare(c);
     c.restore();
   }, 26);
@@ -153,40 +168,46 @@ export function drawRailGlyph(c: SkCanvas, size: number, id: RailGlyph, color: s
         break;
       }
       case 'salvage': {
-        // A pod with a laser cut across it.
-        c.drawPath(rrect(-13, -9, 26, 18, 6), ink);
-        c.drawPath(line(-17, 0, 17, 0), stroke(SPACE.red, 1.8));
-        c.drawCircle(9, 0, 2, fill('#FFFFFF'));
-        c.drawPath(line(-6, -9, -6, -4), thin);
-        c.drawPath(line(6, 9, 6, 4), thin);
+        // The scrap pod's silhouette with its hazard bar, and a short bright laser along its seam.
+        c.drawPath(poly([-14, -4, -10, -10, 10, -10, 14, -4, 14, 8, 10, 11, -10, 11, -14, 8]), ink);
+        for (const x of [-7, -2, 3, 8]) c.drawPath(line(x - 1.5, -6, x + 1.5, -9), stroke(SPACE.amber, 1.4));
+        c.drawPath(line(-14, 1.5, -1, 1.5), stroke(alpha('#FFFFFF', 0.95), 1.6));
+        c.drawPath(line(-1, 1.5, 14, 1.5), stroke(alpha(color, 0.45), 1.1));
+        glow(c, -1, 1.5, 5, '#FFFFFF', 0.7);
+        c.drawCircle(-1, 1.5, 1.6, fill('#FFFFFF'));
         break;
       }
       case 'fitting': {
-        // A hex socket with a cartridge sliding in.
-        c.drawPath(ngon(0, 3, 12, 6, 0), ink);
-        c.drawPath(rrect(-5, -14, 10, 15, 2), ink);
-        c.drawPath(line(-2, -10, 2, -10), thin);
-        c.drawPath(poly([-3, 5, 0, 8, 3, 5], false), thin);
+        // The three sockets of the Fitting Bay: three small hexagons in a triangle, one filled.
+        const hx = (x: number, y: number, on: boolean) => {
+          const p = ngon(x, y, 6.2, 6, 0);
+          if (on) c.drawPath(p, fill(alpha(color, 0.85)));
+          c.drawPath(p, ink);
+        };
+        hx(-7.5, -5, true);
+        hx(7.5, -5, false);
+        hx(0, 8, false);
         break;
       }
       case 'starmap': {
-        // A core with three arms of nodes.
-        c.drawCircle(0, 2, 3, fill(color));
+        // A four-point star at the centre of three dotted arms.
         for (const a of [-90, 30, 150]) {
           const r = (a * Math.PI) / 180;
-          c.drawPath(line(Math.cos(r) * 4, 2 + Math.sin(r) * 4, Math.cos(r) * 13, 2 + Math.sin(r) * 13), thin);
-          c.drawPath(circle(Math.cos(r) * 8.5, 2 + Math.sin(r) * 8.5, 2), ink);
-          c.drawPath(circle(Math.cos(r) * 14.5, 2 + Math.sin(r) * 14.5, 2), ink);
+          for (const d of [8.5, 12.5]) c.drawCircle(Math.cos(r) * d, 1 + Math.sin(r) * d, 1.3, fill(color));
+          c.drawPath(circle(Math.cos(r) * 16, 1 + Math.sin(r) * 16, 2.2), thin);
         }
+        c.drawPath(poly([0, -6, 1.6, -0.6, 7, 1, 1.6, 2.6, 0, 8, -1.6, 2.6, -7, 1, -1.6, -0.6]), fill(color));
         break;
       }
       case 'trade': {
-        // A docking terminal: a crate under a hook, with a fuel cell mark.
-        c.drawPath(line(0, -15, 0, -8), thin);
-        c.drawPath(poly([-4, -11, 0, -8, 4, -11], false), thin);
-        c.drawPath(rrect(-12, -6, 24, 18, 2), ink);
-        c.drawPath(line(-12, 0, 12, 0), thin);
-        c.drawPath(ngon(0, 6.5, 3.6, 6, 0), stroke(SPACE.dm, 1.6));
+        // A Dark Matter fuel cell (capsule with the swirl) beside a small credit mark.
+        const cell = rrect(-13, -12, 13, 24, 6.5);
+        c.drawPath(cell, ink);
+        c.drawPath(line(-10, -7, -3, -7), thin);
+        c.drawPath(arc(-6.5, 2, 4, 200, 230), stroke(SPACE.dm, 1.6));
+        c.drawPath(arc(-6.5, 2, 1.8, 20, 230), stroke(SPACE.dm, 1.4));
+        c.drawPath(poly([9, -4, 14, 1, 9, 6, 4, 1]), ink);
+        drawText(c, '₵', 9, -1.8, { size: 3.6, color, align: 'center', glow: 0, weight: 1 });
         break;
       }
       case 'menu': {
@@ -206,14 +227,39 @@ export function drawRailGlyph(c: SkCanvas, size: number, id: RailGlyph, color: s
   });
 }
 
+/**
+ * A rail badge: a count dot (Comms, Salvage) at a button's upper right, or a small value plate
+ * (the Trade Post's Dark Matter balance). Centred on the origin; `text` empty draws a plain dot.
+ * Ink and plate keep 4.5:1 contrast. Returns the badge width.
+ */
+export function drawRailBadge(c: SkCanvas, text: string, kind: 'count' | 'dm' = 'count'): number {
+  const col = kind === 'dm' ? SPACE.dm : SPACE.red;
+  const size = 5;
+  if (!text) {
+    c.drawPath(circle(0, 0, 3.6), fill(col));
+    c.drawPath(circle(0, 0, 3.6), stroke(SPACE.bg, 1.2));
+    return 7.2;
+  }
+  const tw = textWidth(text, size);
+  const w = Math.max(10, tw + 6);
+  const plate = rrect(-w / 2, -5, w, 10, 5);
+  c.drawPath(plate, fill(kind === 'dm' ? SPACE.dmDeep : col));
+  c.drawPath(plate, stroke(SPACE.bg, 1.2));
+  if (kind === 'dm') c.drawPath(plate, stroke(alpha(SPACE.dm, 0.9), 0.7));
+  drawText(c, text, 0, -size / 2, { size, color: '#FFFFFF', align: 'center', glow: 0, weight: 1 });
+  return w;
+}
+
 /** The round rail button behind a glyph (44 pt on the large layout), for mocks and the HUD. */
-export function drawRailButton(c: SkCanvas, size: number, id: RailGlyph, badge?: string): void {
+export function drawRailButton(c: SkCanvas, size: number, id: RailGlyph, badge?: string, badgeKind: 'count' | 'dm' = 'count'): void {
   const r = size / 2;
   c.drawPath(circle(0, 0, r), fill(SPACE.hull1));
   litStroke(c, circle(0, 0, r - 0.75), alpha(SPACE.line, 0.65), 1.2, 0.4);
   drawRailGlyph(c, size * 0.62, id);
-  if (badge) {
-    c.drawPath(circle(r * 0.72, -r * 0.72, 5), fill(SPACE.dm));
+  if (badge !== undefined) {
+    c.save();
+    c.translate(r * 0.7, -r * 0.7);
+    drawRailBadge(c, badge, badgeKind);
+    c.restore();
   }
 }
-

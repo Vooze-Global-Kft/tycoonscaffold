@@ -138,9 +138,10 @@ export const GameConfigSchema = z.object({
   /**
    * The sound pack: a folder in shared/sfx/ ("warm": marimba, plate clinks, the service bell;
    * "synth"). Only this pack is bundled with the game; files in the game's own assets/sfx/
-   * override it by name. A missing sound is silent.
+   * override it by name. A missing sound is silent. Required: no game gets another game's
+   * sounds by forgetting the field.
    */
-  soundPack: z.string().regex(/^[a-z0-9-]+$/).default('warm'),
+  soundPack: z.string().regex(/^[a-z0-9-]+$/),
 
   app: z.object({
     /** Name under the icon on the home screen (keep it short, about 12 chars). */

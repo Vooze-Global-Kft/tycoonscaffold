@@ -12,11 +12,10 @@ const GENERATED = path.join(ROOT, 'src', 'generated', 'activeGame.ts');
 const GENERATED_MODE = path.join(ROOT, 'src', 'generated', 'mode.ts');
 /**
  * Sound packs, one folder each: shared/sfx/<pack>/. A game names its pack in game.json
- * `soundPack` (default DEFAULT_SOUND_PACK) and gets only that pack; it overrides a sound with a
+ * `soundPack` (required: there is no default pack) and gets only that pack; it overrides a sound with a
  * file of the same base name in its own assets/sfx/ folder.
  */
 const SOUND_PACKS_DIR = path.join(ROOT, 'shared', 'sfx');
-const DEFAULT_SOUND_PACK = 'warm';
 /** game.json `mode` when it has none (the schema's default). */
 const DEFAULT_MODE = 'classic';
 /** The modes that have an entry in src/modes/<mode>/index.tsx. */
@@ -120,9 +119,10 @@ function gameMode(id, game = readGameJson(id)) {
   return mode;
 }
 
-/** The game's sound pack name (game.json `soundPack`, default "warm"). */
+/** The game's sound pack name (game.json `soundPack`, required: a game never falls back to another's sounds). */
 function soundPack(id, game = readGameJson(id)) {
-  return game.soundPack || DEFAULT_SOUND_PACK;
+  if (!game.soundPack) throw new Error(`games/${id}/game.json: no "soundPack" (a folder in shared/sfx/: ${listSoundPacks().join(', ')}); there is no default pack`);
+  return game.soundPack;
 }
 
 /** Every sound pack folder name in shared/sfx/. */
@@ -261,7 +261,6 @@ module.exports = {
   gameMode,
   MODES,
   DEFAULT_MODE,
-  DEFAULT_SOUND_PACK,
   SOUND_PACKS_DIR,
   displayFontMetrics,
   renderActiveGame,

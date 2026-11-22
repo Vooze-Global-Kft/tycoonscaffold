@@ -2,14 +2,14 @@
 // bundle check) and its rules (scripts/lib/bundleRules.ts). Plain CommonJS, like games.js.
 //
 // Three levels of code (docs/design/space-bundle.md has the file-by-file table):
-//   (a) shared by every game (SHARED_UI under src/ui, and everything in src/ outside src/ui and the
-//       mode folders): no drawn art of any game, no screens of any game, no game words;
+//   (a) shared by every game (SHARED_UI under src/ui and SHARED_SRC in the rest of src/): no drawn
+//       art of any game, no screens of any game, no game words;
 //   (b) a family (FAMILIES): code some modes have in common and the others must never bundle;
 //   (c) a mode's own folders (MODE_FOLDERS).
 // A mode file may import its own folders, its families and shared files; a family file only its
 // family and shared files; a shared file only shared files. Modes are reached only through the
 // generated entry (src/generated/mode.ts), which imports the active game's mode entry
-// (src/modes/<mode>/index.tsx). A file under src/ui in none of the lists is unclassified: it
+// (src/modes/<mode>/index.tsx). A file anywhere in src/ in none of the lists is unclassified: it
 // fails the check until it is listed.
 
 /** Repo-relative folders owned by each mode. */
@@ -54,8 +54,7 @@ const FAMILIES = {
 
 /**
  * Files under src/ui that every game ships (level a): mechanics and a neutral kit, no drawings,
- * no screens, no game words. Outside src/ui, everything in src/ that is not in a mode's folders
- * is level a too (engine, state, services, config, dev, generated, src/modes/contract.ts).
+ * no screens, no game words.
  */
 const SHARED_UI = [
   'src/ui/App.tsx',
@@ -72,8 +71,25 @@ const SHARED_UI = [
   'src/ui/kit',
 ];
 
-/** The folder whose files must be classified (in SHARED_UI, a family or a mode). */
-const UI_ROOT = 'src/ui';
+/**
+ * Files and folders in src/ outside src/ui that every game ships (level a): the engine rules,
+ * state, services, config, dev switches, the generated files and the mode contract. A new folder
+ * or file in src/ goes here only if it holds nothing of one game (no drawings, no screens, no words).
+ */
+const SHARED_SRC = [
+  'src/boot.ts',
+  'src/boot.web.ts',
+  'src/config',
+  'src/dev',
+  'src/engine',
+  'src/generated',
+  'src/modes/contract.ts',
+  'src/services',
+  'src/state',
+];
+
+/** The folder whose files must be classified (in SHARED_UI, SHARED_SRC, a family or a mode). */
+const CLASSIFIED_ROOT = 'src';
 
 /**
  * Files read by the Node tools only (validate, make_sfx, tests): never in any game's bundle. The
@@ -83,8 +99,10 @@ const UI_ROOT = 'src/ui';
 const NODE_ONLY = ['src/services/fx/catalog.ts', 'src/config/artIcons.ts', 'src/config/lint.ts'];
 
 /**
- * Words that name a thing of a mode's theme, for `npm run check:bundle -- --words`: it lists the
- * string literals of every other mode's bundle (in its shared and family files) that use them.
+ * Words that name a thing of a mode's theme. The bundle check fails on a string literal in a
+ * game's shared or family files that uses another mode's words, unless that literal is in
+ * THEME_WORDS_ALLOWED (the remainder known when the check started failing: shared identifiers
+ * and event keys, listed file by file). `npm run check:bundle -- --words` lists every hit.
  * Matched as whole words in any case, plural and -ing/-ed forms included ("cook_done", "guestsPaid").
  */
 const THEME_WORDS = {
@@ -123,4 +141,11 @@ const GENERATED_ENTRY = 'src/generated/mode.ts';
 /** Folder of the sound packs: shared/sfx/<pack>/. */
 const SOUND_PACKS = 'shared/sfx';
 
-module.exports = { MODE_FOLDERS, FAMILIES, SHARED_UI, UI_ROOT, NODE_ONLY, THEME_WORDS, MODE_PACKAGES, RESTAURANT_RIG, GENERATED_ENTRY, SOUND_PACKS };
+/**
+ * The known remainder of other themes' words in shared and family code: { file: [literal, ...] }.
+ * Only these exact literals pass; any new one fails the check. Shrink it, never grow it for text
+ * a player reads (move that text into the game's data or into the mode's folders instead).
+ */
+const THEME_WORDS_ALLOWED = require('./themeWords.allowed.json');
+
+module.exports = { MODE_FOLDERS, FAMILIES, SHARED_UI, SHARED_SRC, CLASSIFIED_ROOT, NODE_ONLY, THEME_WORDS_ALLOWED, THEME_WORDS, MODE_PACKAGES, RESTAURANT_RIG, GENERATED_ENTRY, SOUND_PACKS };

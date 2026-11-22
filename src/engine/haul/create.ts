@@ -5,7 +5,7 @@
 import type { GameState } from '../types';
 import { emptyLoadout, normaliseSockets } from '../loadout';
 import { hashString, rngMix } from '../rng';
-import { droneCapFor, freighterCapacity, rigTier, rockAt, slotCount, starLevel, starPer, T } from './params';
+import { droneCapFor, freighterCapacity, rigTier, ringOf, rockAt, slotCount, starLevel, starPer, T } from './params';
 import { openBoard } from './trade';
 import type { HaulConfig, HaulGame, HaulLifetimeStats, HaulState, HaulStats, SlotState, StarMapState } from './types';
 
@@ -15,10 +15,30 @@ function emptySlot(): SlotState {
   return { claimed: false, rigLevel: 1, haulers: 0, rockN: 0, ore: '', bonanza: false, life: 0, pile: 0, full: false, respawnAt: null, routeFrom: 0, delivered: 0 };
 }
 
-/** Puts rock `n` of the slot's stream on a slot (life x the rig tier's life multiplier). */
-export function placeRock(cfg: HaulConfig, h: Pick<HaulState, 'seed' | 'trait'>, slot: number, s: SlotState, n: number, starMap: StarMapState | undefined): SlotState {
+/**
+ * Puts rock `n` of the slot's stream on a slot (life x the rig tier's life multiplier, applied at
+ * arrival: errata 31). `noBonanza` forces a plain rock (slot 0's starting rock, errata 28): same ore
+ * and draw, without the bonanza flag and its life factor.
+ */
+export function placeRock(cfg: HaulConfig, h: Pick<HaulState, 'seed' | 'trait'>, slot: number, s: SlotState, n: number, starMap: StarMapState | undefined, noBonanza = false): SlotState {
   const rock = rockAt(cfg, h.seed, slot, n, h.trait, starMap);
-  return { ...s, rockN: n, ore: rock.ore, bonanza: rock.bonanza, life: rock.life * rigTier(cfg, s.rigLevel).life, pile: 0, full: false, respawnAt: null, delivered: 0 };
+  const bonanza = rock.bonanza && !noBonanza;
+  const life = rock.bonanza && !bonanza ? rock.life / cfg.haul.bonanza.life : rock.life;
+  return { ...s, rockN: n, ore: rock.ore, bonanza, life: life * rigTier(cfg, s.rigLevel).life, pile: 0, full: false, respawnAt: null, delivered: 0 };
+}
+
+/** Highest ring (1-based) among a run's claimed slots. */
+export function claimedRingMax(cfg: HaulConfig, h: HaulState): number {
+  let best = 0;
+  h.slots.forEach((s, i) => {
+    if (s.claimed) best = Math.max(best, ringOf(cfg, i) + 1);
+  });
+  return best;
+}
+
+/** A fresh HaulStats (a new game). */
+export function emptyHaulStats(): HaulStats {
+  return { bestClaimed: 1, jumps: 0, galaxiesVisited: [0], ring2Pod: false, bestRing: 1, contractsSeen: false, autopilotSeen: false, pendingJump: null };
 }
 
 /** Starting credits of a run: economy.startingCash plus Seed Credits (per^(1+L) at level L ≥ 1). */
@@ -59,7 +79,7 @@ export function createHaul(
     let s = emptySlot();
     if (i === 0 || head.has(i)) {
       s = { ...s, claimed: true, rigLevel: head.has(i) ? H.starMap.headStartRig : 1 };
-      s = placeRock(cfg, base, i, s, 0, starMap);
+      s = placeRock(cfg, base, i, s, 0, starMap, i === 0);
     }
     slots.push(s);
   }
@@ -80,8 +100,8 @@ export function createHaul(
     freighter: { level: 1, phase: 'docked', t: 0, cargo: {}, payout: 0, met: false, away: 0, contract: null },
     autopilot: { online: starLevel(cfg, starMap, 'preload') > 0, policy: 'full' },
     contracts: { unlocked: false, board: [], next: 0, active: null },
-    vein: { slot: null, until: 0, guests: [], nextAt: H.seam.first * T(cfg, trait, 'interval'), count: 0 },
-    flare: { slot: null, until: 0, guests: [], charges: 0, nextFreeAt: H.flare.firstAt, adsToday: 0, adDay: '', adNextAt: 0 },
+    vein: { slot: null, until: 0, guests: [], peak: 0, nextAt: H.seam.first * T(cfg, trait, 'interval'), count: 0 },
+    flare: { slot: null, until: 0, guests: [], peak: 0, charges: 0, nextFreeAt: H.flare.firstAt, adsToday: 0, adDay: '', adNextAt: 0 },
     keeper: 0,
     flags: {},
     hintsShown: {},
@@ -102,8 +122,11 @@ export function createHaul(
 export function withHaulFields(cfg: HaulConfig, base: GameState): HaulGame & { haul: HaulState } {
   const metaSeed = rngMix(base.rng >>> 0, hashString('meta'));
   const starMap: StarMapState = { levels: {}, spent: 0 };
-  const haulStats: HaulStats = { bestClaimed: 1, jumps: 0, galaxiesVisited: [0], ring2Pod: false };
+  const haulStats: HaulStats = emptyHaulStats();
   const haul = createHaul(cfg, rngMix(base.rng >>> 0, hashString('run')), 0, null, starMap, haulStats, base.entitlements);
+  haulStats.bestRing = Math.max(haulStats.bestRing, claimedRingMax(cfg, haul));
+  haulStats.autopilotSeen = haul.autopilot.online;
+  haulStats.contractsSeen = haul.contracts.unlocked;
   return {
     ...base,
     cash: runStartCash(cfg, starMap),
@@ -128,9 +151,10 @@ const units = (x: unknown): Record<string, number> => {
  * Repairs the haul fields of a loaded save on top of a shared state the shared reconcile already
  * fixed (`base`): missing or broken values get defaults, numbers are made finite and non-negative,
  * slots added to the config later are appended unclaimed, a broken run is replaced by a fresh one.
- * Never throws.
+ * Never throws. The run is null only while a confirmed Jump waits for its condition
+ * (`haulStats.pendingJump`, errata 17); any other save gets a run.
  */
-export function reconcileHaul(cfg: HaulConfig, base: GameState, raw: unknown): HaulGame & { haul: HaulState } {
+export function reconcileHaul(cfg: HaulConfig, base: GameState, raw: unknown): HaulGame {
   const fresh = withHaulFields(cfg, base);
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const sm = (r.starMap ?? {}) as Record<string, unknown>;
@@ -141,7 +165,21 @@ export function reconcileHaul(cfg: HaulConfig, base: GameState, raw: unknown): H
   }
   const hs = (r.haulStats ?? {}) as Record<string, unknown>;
   const visited = Array.isArray(hs.galaxiesVisited) ? (hs.galaxiesVisited as unknown[]).filter((x): x is number => typeof x === 'number' && Number.isInteger(x) && x >= 0) : [0];
-  const haulStats: HaulStats = { bestClaimed: int(hs.bestClaimed, 1, 1), jumps: int(hs.jumps, 0), galaxiesVisited: visited.length ? [...new Set(visited)] : [0], ring2Pod: hs.ring2Pod === true };
+  const pj = (hs.pendingJump ?? null) as Record<string, unknown> | null;
+  const condIds = new Set(cfg.haul.conditions.map((c) => c.id));
+  const pjOffers = pj && Array.isArray(pj.offers) ? (pj.offers as unknown[]).filter((x): x is string => typeof x === 'string' && condIds.has(x)) : [];
+  const pendingJump =
+    pj && typeof pj === 'object' && pjOffers.length > 0 ? { index: int(pj.index, 0), galaxy: int(pj.galaxy, 1, 1), seed: int(pj.seed, 1) >>> 0, offers: pjOffers } : null;
+  const haulStats: HaulStats = {
+    bestClaimed: int(hs.bestClaimed, 1, 1),
+    jumps: int(hs.jumps, 0),
+    galaxiesVisited: visited.length ? [...new Set(visited)] : [0],
+    ring2Pod: hs.ring2Pod === true,
+    bestRing: Math.min(cfg.haul.rings.length, int(hs.bestRing, 1, 1)),
+    contractsSeen: hs.contractsSeen === true,
+    autopilotSeen: hs.autopilotSeen === true,
+    pendingJump,
+  };
   const st = (r.stats ?? {}) as Record<string, unknown>;
   const lifetime = Object.fromEntries(Object.keys(EMPTY_LIFETIME).map((k) => [k, num(st[k], 0)])) as unknown as HaulLifetimeStats;
   const out = {
@@ -153,8 +191,16 @@ export function reconcileHaul(cfg: HaulConfig, base: GameState, raw: unknown): H
     starMap,
     haulStats,
   };
-  const h = reconcileRun(cfg, r.haul, out);
-  return { ...out, haul: h ?? createHaul(cfg, fresh.haul.seed, 0, null, starMap, haulStats, base.entitlements) };
+  // Between a confirmed Jump and the condition pick the run is null on purpose (errata 17).
+  if (pendingJump && (r.haul === null || r.haul === undefined)) return { ...out, haul: null };
+  if (!pendingJump && r.haul === null) haulStats.pendingJump = null;
+  const h = reconcileRun(cfg, r.haul, out) ?? createHaul(cfg, fresh.haul.seed, 0, null, starMap, haulStats, base.entitlements);
+  if (pendingJump) haulStats.pendingJump = null; // a run exists: the Jump was finished
+  haulStats.bestRing = Math.max(haulStats.bestRing, claimedRingMax(cfg, h));
+  haulStats.bestClaimed = Math.max(haulStats.bestClaimed, h.slots.filter((s) => s.claimed).length);
+  if (h.autopilot.online) haulStats.autopilotSeen = true;
+  if (h.contracts.unlocked) haulStats.contractsSeen = true;
+  return { ...out, haul: h };
 }
 
 function reconcileRun(cfg: HaulConfig, raw: unknown, g: HaulGame): HaulState | null {
@@ -208,8 +254,12 @@ function reconcileRun(cfg: HaulConfig, raw: unknown, g: HaulGame): HaulState | n
   const seam = (x: unknown) => {
     const v = (x ?? {}) as Record<string, unknown>;
     const slot = typeof v.slot === 'number' && Number.isInteger(v.slot) && v.slot >= 0 && v.slot < slots.length ? v.slot : null;
-    const guests = Array.isArray(v.guests) ? (v.guests as unknown[]).filter((x): x is number => typeof x === 'number' && Number.isInteger(x) && x >= -1 && x < slots.length) : [];
-    return { slot, until: num(v.until, 0), guests: slot === null ? [] : guests, v };
+    let guests = Array.isArray(v.guests) ? (v.guests as unknown[]).filter((x): x is number => typeof x === 'number' && Number.isInteger(x) && x >= -1 && x < slots.length) : [];
+    // Never more guests than drones on the seam slot, and the slot must be claimed.
+    const ok = slot !== null && slots[slot].claimed;
+    if (!ok) guests = [];
+    else if (guests.length > slots[slot].haulers) guests = guests.slice(guests.length - slots[slot].haulers);
+    return { slot: ok ? slot : null, until: num(v.until, 0), guests, peak: Math.max(guests.length, ok ? int(v.peak, 0) : 0), v };
   };
   const vein = seam(r.vein);
   const flare = seam(r.flare);
@@ -237,12 +287,13 @@ function reconcileRun(cfg: HaulConfig, raw: unknown, g: HaulGame): HaulState | n
     },
     autopilot: { online: ap.online === true || fresh.autopilot.online, policy: ap.policy === 'contract' ? 'contract' : 'full' },
     contracts: { unlocked: ct.unlocked === true || fresh.contracts.unlocked, board: ct.unlocked === true ? board : fresh.contracts.board, next: int(ct.next, fresh.contracts.next), active: ct.unlocked === true ? activeRaw : fresh.contracts.active },
-    vein: { slot: vein.slot, until: vein.until, guests: vein.guests, nextAt: num(vein.v.nextAt, fresh.vein.nextAt), count: int(vein.v.count, 0) },
+    vein: { slot: vein.slot, until: vein.until, guests: vein.guests, peak: vein.peak, nextAt: num(vein.v.nextAt, fresh.vein.nextAt), count: int(vein.v.count, 0) },
     flare: {
       slot: flare.slot,
       until: flare.until,
       guests: flare.guests,
-      charges: int(flare.v.charges, 0),
+      peak: flare.peak,
+      charges: Math.min(cfg.haul.flare.maxCharges, int(flare.v.charges, 0)),
       nextFreeAt: num(flare.v.nextFreeAt, fresh.flare.nextFreeAt),
       adsToday: int(flare.v.adsToday, 0),
       adDay: typeof flare.v.adDay === 'string' ? flare.v.adDay : '',
@@ -263,5 +314,10 @@ function reconcileRun(cfg: HaulConfig, raw: unknown, g: HaulGame): HaulState | n
     },
   };
   if (h.freighter.phase === 'docked') h.freighter = { ...h.freighter, t: 0, cargo: {}, payout: 0 };
+  if (h.vein.slot !== null && h.vein.slot === h.flare.slot) h.flare = { ...h.flare, slot: null, guests: [], peak: 0 };
+  // A claimed slot waiting for its first rock with no time set (an interrupted claim) gets it now.
+  h.slots.forEach((s, i) => {
+    if (s.claimed && s.respawnAt === null && s.rockN < 0) h.slots[i] = { ...s, respawnAt: h.clock, life: 0, pile: 0 };
+  });
   return h;
 }

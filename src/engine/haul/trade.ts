@@ -66,14 +66,24 @@ export function payoutFor(params: HaulParams, cargo: Record<string, number>, con
 }
 
 /**
- * What a board contract adds to the next launch if met ("+₵420 if met"): the payout of the cargo the
- * loading rule would load from the current hold with this contract active and met, minus the same
- * cargo unmet. 0 for an index that is not on the board.
+ * What a board contract adds to the next launch if met ("+₵420 if met", errata 26):
+ * payout(cargo′, met) − payout(cargo′, unmet), where cargo′ is the loading rule applied to the
+ * current hold plus the contract's missing units (the total held at F). The full bonus and `keeper`
+ * are the same in both terms. 0 for an index that is not on the board.
  */
 export function contractGain(cfg: HaulConfig, params: HaulParams, h: HaulState, index: number): number {
   const c = h.contracts.board[index];
   if (!c) return 0;
-  const { cargo } = loadCargo(cfg, params, h.hold, c);
+  const hold: Record<string, number> = { ...h.hold };
+  let room = Math.max(0, params.F - sumUnits(hold));
+  for (const w of c.wants) {
+    const add = Math.min(room, Math.max(0, w.units - (hold[w.ore] ?? 0)));
+    if (add > 0) {
+      hold[w.ore] = (hold[w.ore] ?? 0) + add;
+      room -= add;
+    }
+  }
+  const { cargo } = loadCargo(cfg, params, hold, c);
   return payoutFor(params, cargo, c, h.keeper, true).payout - payoutFor(params, cargo, null, h.keeper).payout;
 }
 
@@ -84,23 +94,30 @@ export function contractMissing(h: HaulState, index: number): { ore: string; uni
   return c.wants.map((w) => ({ ore: w.ore, units: Math.max(0, Math.ceil(w.units - (h.hold[w.ore] ?? 0) - EPS)) }));
 }
 
-/** Rings (0-based) with at least one claimed slot. */
+/** Rings (0-based) with a claimed slot whose rock is present (errata 27: a ring "with a rock"). */
 export function claimedRings(cfg: HaulConfig, h: HaulState): number[] {
   const out = new Set<number>();
   let i = 0;
   cfg.haul.rings.forEach((r, ring) => {
-    for (let j = 0; j < r.slots.length; j++, i++) if (h.slots[i]?.claimed) out.add(ring);
+    for (let j = 0; j < r.slots.length; j++, i++) {
+      const s = h.slots[i];
+      if (s?.claimed && s.respawnAt === null && s.rockN >= 0) out.add(ring);
+    }
   });
   return [...out].sort((a, b) => a - b);
 }
 
 /**
- * Contract `k` of a run's stream (section 2.6). Contract 0 is fixed: the first buyer, min(units, F)
- * of the first ore, its multiplier. Later ones roll from `rngMix4(seed, hashString('buyer'), k, j)`:
- * j = 0 buyer, 1 ring, 2 ore, 3 one or two ores, 4 second ring, 5 second ore, 6 units, 7 jitter.
- * Ores come from claimed rings (weighted by ring number) and their weights after the condition, so
- * every contract can be met by routing. Units total `round(F × U(units))`, split evenly (at least 1
- * each); the multiplier is `mult[farthest ring] ± jitter`, rounded to 0.1.
+ * Contract `k` of a run's stream (section 2.6, errata 27). Contract 0 is fixed: the first buyer,
+ * min(units, F) of the first ore, its multiplier. Later ones: the buyer from
+ * `rngMix4(seed, hashString('buyer'), k, 0)`, the rest from `rngMix4(seed, hashString('contract'), k, n)`
+ * with n = 1 ring of ore 1, 2 ore 1, 3 one or two, 4 ring of ore 2, 5 ore 2, 6 units, 7 multiplier.
+ * Ores come from rings with a rock (weighted by ring number) and their weights after the condition,
+ * so every contract can be met by routing. A two-ore contract has two different ores: the second
+ * comes from another ring with a rock that offers an ore other than the first (else from the first
+ * ring), and it is a one-ore contract only when no such ring offers one. Units total
+ * `round(F × U(units))`, split evenly (at least 1 each); the multiplier is `mult[farthest ring] ±
+ * jitter`, rounded to 0.1.
  */
 export function contractAt(cfg: HaulConfig, seed: number, k: number, rings: number[], F: number, trait: string | null): Contract {
   const C = cfg.haul.contracts;
@@ -108,23 +125,32 @@ export function contractAt(cfg: HaulConfig, seed: number, k: number, rings: numb
     const buyer = C.buyers[Math.min(C.first.buyer, C.buyers.length - 1)];
     return { k, buyer: buyer.id, wants: [{ ore: C.first.ore, units: Math.max(1, Math.min(C.first.units, Math.floor(F))) }], mult: C.first.mult, launchesLeft: C.lifetime };
   }
-  const hb = hashString('buyer');
-  const draw = (j: number) => rngMix4(seed, hb, k, j);
-  const buyer = C.buyers[Math.min(C.buyers.length - 1, Math.floor(roll(draw(0)) * C.buyers.length))];
+  const buyerRoll = roll(rngMix4(seed, hashString('buyer'), k, 0));
+  const hc = hashString('contract');
+  const draw = (n: number) => rngMix4(seed, hc, k, n);
+  const buyer = C.buyers[Math.min(C.buyers.length - 1, Math.floor(buyerRoll * C.buyers.length))];
   const pool = rings.length ? rings : [0];
-  const pickRing = (from: number[], j: number) => from[rngWeighted(draw(j), from.map((r) => r + 1)).value];
-  const pickOre = (ring: number, j: number) => {
+  const pickRing = (from: number[], n: number) => from[rngWeighted(draw(n), from.map((r) => r + 1)).value];
+  const weightsWithout = (ring: number, skip: string | null) => {
     const w = ringWeights(cfg, ring, trait);
-    return w.ores[rngWeighted(draw(j), w.weights).value] ?? w.ores[0];
+    return { ores: w.ores, weights: w.weights.map((x, i) => (w.ores[i] === skip ? 0 : x)) };
   };
+  const pickOre = (ring: number, n: number, skip: string | null) => {
+    const w = weightsWithout(ring, skip);
+    return w.ores[rngWeighted(draw(n), w.weights).value] ?? w.ores[0];
+  };
+  const offersOther = (ring: number, skip: string) => weightsWithout(ring, skip).weights.some((x) => x > 0);
   const ring1 = pickRing(pool, 1);
-  const ore1 = pickOre(ring1, 2);
+  const ore1 = pickOre(ring1, 2, null);
   const picks: { ore: string; ring: number }[] = [{ ore: ore1, ring: ring1 }];
   if (roll(draw(3)) < C.twoOreChance) {
-    const others = pool.filter((r) => r !== ring1);
-    const ring2 = others.length ? pickRing(others, 4) : ring1;
-    const ore2 = pickOre(ring2, 5);
-    if (ore2 !== ore1) picks.push({ ore: ore2, ring: ring2 });
+    const others = pool.filter((r) => r !== ring1 && offersOther(r, ore1));
+    const from = others.length ? others : offersOther(ring1, ore1) ? [ring1] : [];
+    if (from.length) {
+      const ring2 = pickRing(from, 4);
+      const ore2 = pickOre(ring2, 5, ore1);
+      if (ore2 !== ore1) picks.push({ ore: ore2, ring: ring2 });
+    }
   }
   const total = Math.max(picks.length, Math.round(F * (C.units[0] + (C.units[1] - C.units[0]) * roll(draw(6)))));
   const first = Math.max(1, Math.ceil(total / picks.length));

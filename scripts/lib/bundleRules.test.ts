@@ -1,12 +1,16 @@
+/// <reference types="node" />
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { bundleViolations, importViolations, levelOf, modeOf, packageOf, themeWordsIn, type BundleContents, type BundleManifest } from './bundleRules';
-import { runtimeImports } from '../check-bundle';
+import { readAliases, resolveImport, runtimeImports } from '../check-bundle';
 
 const M: BundleManifest = {
   modeFolders: { sim: ['src/modes/sim', 'src/ui/sim'], classic: ['src/modes/classic', 'src/ui/scene'], haul: ['src/modes/haul'] },
   families: { tabs: { modes: ['sim', 'classic'], paths: ['src/ui/shell', 'src/ui/home', 'src/ui/art/props.tsx'] } },
-  sharedUi: ['src/ui/App.tsx', 'src/ui/simulation.ts', 'src/ui/components/GameIcon.tsx', 'src/ui/art/icons.ts', 'src/ui/kit'],
-  uiRoot: 'src/ui',
+  shared: ['src/ui/App.tsx', 'src/ui/simulation.ts', 'src/ui/components/GameIcon.tsx', 'src/ui/art/icons.ts', 'src/ui/kit', 'src/engine', 'src/state', 'src/services', 'src/generated', 'src/modes/contract.ts'],
+  classifiedRoot: 'src',
   nodeOnly: ['src/services/fx/catalog.ts'],
   modePackages: { three: ['classic'], 'expo-gl': ['classic'] },
   rig: ['src/ui/sim/art/Character.tsx', 'src/ui/sim/art/rig.ts'],
@@ -81,6 +85,15 @@ describe('three levels', () => {
     expect(levelOf('src/ui/art/new.tsx', M)).toEqual({ level: 'unclassified' });
   });
 
+  it('a new folder or file anywhere in src/ is unclassified until listed, not "shared" by default', () => {
+    expect(levelOf('src/art2/chef.ts', M)).toEqual({ level: 'unclassified' });
+    expect(levelOf('src/modes/other/index.tsx', M)).toEqual({ level: 'unclassified' });
+    expect(levelOf('src/modes/contract.ts', M)).toEqual({ level: 'shared' });
+    expect(levelOf('index.ts', M)).toEqual({ level: 'shared' });
+    expect(rules(clean({ mode: 'haul', modules: ['src/ui/components/GameIcon.tsx', 'src/art2/chef.ts'], packages: [] }))).toEqual(['unclassified src/art2/chef.ts']);
+    expect(importViolations([['src/ui/components/GameIcon.tsx', 'src/art2/chef.ts']], M).map((v) => v.rule)).toEqual(['imports-unclassified']);
+  });
+
   it('a family file ships with its member modes only; an unclassified or Node-only file with none', () => {
     const files = ['src/ui/shell/TabShell.tsx', 'src/ui/art/props.tsx', 'src/ui/art/new.tsx', 'src/services/fx/catalog.ts', 'src/ui/kit/Sheet.tsx'];
     expect(rules(clean({ mode: 'haul', modules: files, packages: [] }))).toEqual([
@@ -113,6 +126,65 @@ describe('three levels', () => {
       'shared-imports-family src/ui/art/new.tsx',
       'imports-unclassified src/ui/sim/home/HomeSim.tsx',
     ]);
+  });
+});
+
+describe('fails closed', () => {
+  it('an import the check cannot resolve is a violation, not a warning', () => {
+    expect(rules(clean({ unresolved: [{ file: 'src/ui/components/GameIcon.tsx', spec: './chef.mjs' }] }))).toEqual(['unresolved src/ui/components/GameIcon.tsx']);
+  });
+
+  it('a literal with another mode\'s theme word fails unless it is in the known remainder', () => {
+    const themeWords = [
+      { file: 'src/state/store.ts', text: 'cook_done', words: ['cook'] },
+      { file: 'src/state/store.ts', text: 'Your chef is ready', words: ['chef'] },
+      { file: 'src/engine/meta.ts', text: 'cook_done', words: ['cook'] },
+    ];
+    expect(rules(clean({ mode: 'haul', packages: [], modules: [], themeWords, themeWordsAllowed: { 'src/state/store.ts': ['cook_done'] } }))).toEqual([
+      'theme-word src/state/store.ts',
+      'theme-word src/engine/meta.ts',
+    ]);
+  });
+});
+
+describe('bare imports through tsconfig paths and baseUrl', () => {
+  const exts = ['.tsx', '.ts', '.js', '.json'];
+  const tree = (tsconfig: object) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bundle-alias-'));
+    const put = (rel: string, text: string) => {
+      fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+      fs.writeFileSync(path.join(root, rel), text);
+    };
+    put('tsconfig.json', JSON.stringify(tsconfig));
+    put('src/ui/sim/art/looks.ts', 'export const LOOKS = {};');
+    put('src/ui/components/GameIcon.tsx', "import { LOOKS } from '@/ui/sim/art/looks';");
+    put('node_modules/react/package.json', '{"name":"react"}');
+    return root;
+  };
+
+  it('an alias that lands on a project file is followed like a relative import (the hole the review found)', () => {
+    const root = tree({ compilerOptions: { paths: { '@/*': ['./src/*'] } } });
+    const from = path.join(root, 'src/ui/components/GameIcon.tsx');
+    const aliases = readAliases(root);
+    expect(resolveImport(from, '@/ui/sim/art/looks', exts, new Map(), aliases)).toEqual({ file: path.join(root, 'src/ui/sim/art/looks.ts') });
+    expect(resolveImport(from, 'react', exts, new Map(), aliases)).toEqual({ package: 'react' });
+    expect(resolveImport(from, '@/ui/nothing', exts, new Map(), aliases)).toEqual({ unresolved: true });
+    expect(resolveImport(from, 'not-installed', exts, new Map(), aliases)).toEqual({ unresolved: true });
+  });
+
+  it('baseUrl makes "src/..." a project file; an installed package still is a package', () => {
+    const root = tree({ compilerOptions: { baseUrl: '.' } });
+    const from = path.join(root, 'src/ui/components/GameIcon.tsx');
+    const aliases = readAliases(root);
+    expect(resolveImport(from, 'src/ui/sim/art/looks', exts, new Map(), aliases)).toEqual({ file: path.join(root, 'src/ui/sim/art/looks.ts') });
+    expect(resolveImport(from, 'react', exts, new Map(), aliases)).toEqual({ package: 'react' });
+  });
+
+  it('an import with an extension the check does not try is unresolved, not skipped', () => {
+    const root = tree({});
+    fs.writeFileSync(path.join(root, 'src/ui/chef.mjs'), 'export default 1;');
+    const from = path.join(root, 'src/ui/components/GameIcon.tsx');
+    expect(resolveImport(from, '../chef', exts, new Map(), readAliases(root))).toEqual({ unresolved: true });
   });
 });
 

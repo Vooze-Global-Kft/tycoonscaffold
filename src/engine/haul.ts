@@ -41,6 +41,8 @@ export {
   sumUnits,
   rigCost,
   claimCost,
+  highestClaimedRing,
+  ghostSlots,
   droneCost,
   capacityCost,
   engineCost,
@@ -49,7 +51,7 @@ export {
   affordable,
   type Rock,
 } from './haul/params';
-export { EMPTY_LIFETIME, placeRock, runStartCash, headStartSlots, createHaul, withHaulFields, reconcileHaul } from './haul/create';
+export { EMPTY_LIFETIME, emptyHaulStats, claimedRingMax, placeRock, runStartCash, headStartSlots, createHaul, withHaulFields, reconcileHaul } from './haul/create';
 export { contractMet, activeContract, loadCargo, payoutFor, contractGain, contractMissing, claimedRings, contractAt, openBoard } from './haul/trade';
 export { STEP, MAX_TICK, advanceHaul, autopilotWants } from './haul/tick';
 export {
@@ -77,7 +79,7 @@ export {
   markHintShown,
 } from './haul/actions';
 export { slotRates, freighterRate, shareFreighter, activeRate, steadyRate, haulIncome, fastForward, haulOffline, type SlotRate } from './haul/rates';
-export { totalCores, coresAvailable, coresInHand, coresAfterJump, starNodeLevel, starNodeCost, starMapView, buyStarNode, offersFor, galaxyName, jumpPreview, prestigeHaul } from './haul/jump';
+export { totalCores, coresAvailable, coresInHand, coresAfterJump, starNodeLevel, starNodeCost, starMapView, buyStarNode, offersFor, galaxyName, jumpPreview, confirmJump, startGalaxy, prestigeHaul } from './haul/jump';
 export { IDLE_HINT_SECONDS, HOLD_HINT_SECONDS, CONTRACT_HINT_SECONDS, FLARE_HINT_SECONDS, LIMITED_HINTS, bestSlotForDrone, busiestRoute, hintsFor, nextHint, hintKey } from './haul/hints';
 
 /** True for a config with mode "haul" and a haul block. */

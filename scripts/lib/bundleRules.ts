@@ -9,10 +9,10 @@ export interface BundleManifest {
   modeFolders: Record<string, readonly string[]>;
   /** Families (level b): files some modes share and the others never bundle. */
   families: Record<string, { modes: readonly string[]; paths: readonly string[] }>;
-  /** Files and folders under `uiRoot` that every game ships (level a). */
-  sharedUi: readonly string[];
-  /** The folder whose files must be classified; outside it, non-mode files in src/ are level a. */
-  uiRoot: string;
+  /** Files and folders under `classifiedRoot` that every game ships (level a). */
+  shared: readonly string[];
+  /** The folder whose files must be classified (src/): a file in it in none of the lists is unclassified. */
+  classifiedRoot: string;
   /** Files the Node tools read and no bundle may hold. */
   nodeOnly: readonly string[];
   /** npm package -> the modes that may bundle it. */
@@ -34,6 +34,12 @@ export interface BundleContents {
   pack: string;
   /** Project source files in the bundle (node_modules excluded). */
   modules: readonly string[];
+  /** Imports the check could not resolve (fast stage): each one fails, since Metro may bundle anything there. */
+  unresolved?: readonly { file: string; spec: string }[];
+  /** Literals in shared and family files that use another mode's theme words (fast and export stages). */
+  themeWords?: readonly { file: string; text: string; words: readonly string[] }[];
+  /** Literals allowed to do so: { file: [literal, ...] } (scripts/lib/themeWords.allowed.json). */
+  themeWordsAllowed?: Readonly<Record<string, readonly string[]>>;
   /** Asset files in the bundle (images, sounds, fonts). */
   assets: readonly string[];
   /** npm packages with at least one module in the bundle. */
@@ -54,7 +60,9 @@ export interface Violation {
     | 'shared-imports-family'
     | 'family-imports-mode'
     | 'imports-other-family'
-    | 'imports-unclassified';
+    | 'imports-unclassified'
+    | 'unresolved'
+    | 'theme-word';
   file: string;
   message: string;
 }
@@ -77,7 +85,7 @@ export type Level = { level: 'mode'; mode: string } | { level: 'family'; family:
 
 /**
  * A file's level: a mode's folders (c), a family (b), shared by every game (a), or unclassified
- * (a file under `uiRoot` in none of the lists; read the strict way: it may import only shared
+ * (a file under `classifiedRoot` in none of the lists; read the strict way: it may import only shared
  * files, and nothing may import it or bundle it until it is listed). Tests are never bundled.
  */
 export function levelOf(file: string, m: BundleManifest): Level {
@@ -85,7 +93,7 @@ export function levelOf(file: string, m: BundleManifest): Level {
   if (mode) return { level: 'mode', mode };
   const family = familyOf(file, m);
   if (family) return { level: 'family', family };
-  if (inFolder(file, m.uiRoot) && !m.sharedUi.some((p) => inFolder(file, p))) return { level: 'unclassified' };
+  if (inFolder(file, m.classifiedRoot) && !m.shared.some((p) => inFolder(file, p))) return { level: 'unclassified' };
   return { level: 'shared' };
 }
 
@@ -103,7 +111,7 @@ export function bundleViolations(b: BundleContents, m: BundleManifest): Violatio
     if (level.level === 'mode' && level.mode !== b.mode) out.push({ rule: 'other-mode', file, message: `belongs to mode "${level.mode}", but ${b.game} is a "${b.mode}" game` });
     if (level.level === 'family' && !m.families[level.family].modes.includes(b.mode))
       out.push({ rule: 'other-family', file, message: `belongs to the family "${level.family}" (modes ${m.families[level.family].modes.join(', ')}), but ${b.game} is a "${b.mode}" game` });
-    if (level.level === 'unclassified') out.push({ rule: 'unclassified', file, message: 'is under ' + m.uiRoot + ' but not classified: list it in scripts/lib/modes.js (SHARED_UI, a family or a mode)' });
+    if (level.level === 'unclassified') out.push({ rule: 'unclassified', file, message: 'is under ' + m.classifiedRoot + ' but not classified: list it in scripts/lib/modes.js (SHARED_UI, SHARED_SRC, a family or a mode)' });
     if (m.nodeOnly.includes(file)) out.push({ rule: 'node-only', file, message: 'is read by the Node tools only and must not be bundled (import its types only)' });
     const g = /^games\/([^/]+)\//.exec(file);
     if (g && g[1] !== b.game) out.push({ rule: 'other-game', file, message: `is data of the game "${g[1]}"` });
@@ -114,6 +122,11 @@ export function bundleViolations(b: BundleContents, m: BundleManifest): Violatio
     if (!file.startsWith(packRoot)) continue;
     const pack = file.slice(packRoot.length).split('/')[0];
     if (pack !== b.pack) out.push({ rule: 'other-pack', file, message: `is in the sound pack "${pack}", but ${b.game} declares "${b.pack}"` });
+  }
+  for (const u of b.unresolved ?? []) out.push({ rule: 'unresolved', file: u.file, message: `imports "${u.spec}", which the check cannot resolve (Metro might, and bundle anything): use a relative path to a project file or a package in node_modules` });
+  for (const h of b.themeWords ?? []) {
+    if (b.themeWordsAllowed?.[h.file]?.includes(h.text)) continue;
+    out.push({ rule: 'theme-word', file: h.file, message: `has ${JSON.stringify(h.text.length > 70 ? h.text.slice(0, 67) + '...' : h.text)} with another mode's theme word(s) [${h.words.join(', ')}]: move the text into the game's data or the mode's folders (scripts/lib/modes.js THEME_WORDS_ALLOWED lists the known remainder)` });
   }
   for (const pkg of b.packages) {
     const allowed = m.modePackages[pkg];

@@ -36,6 +36,8 @@ export function lintGameConfig(cfg: GameConfig, artIcons: readonly string[] = ar
   if (cfg.mode === 'sim' && !cfg.sim) problems.push('mode is "sim" but there is no "sim" block');
   if (cfg.mode !== 'sim' && cfg.sim) problems.push('there is a "sim" block but mode is not "sim"');
   if (cfg.sim) {
+    if (cfg.sim.venues[0].unlockCost !== 0) problems.push('the first venue must have unlockCost 0');
+    if (new Set(cfg.sim.venues.map((x) => x.id)).size !== cfg.sim.venues.length) problems.push('venue ids must be unique');
     for (let i = 1; i < cfg.sim.venues.length; i++) {
       const [prev, v] = [cfg.sim.venues[i - 1], cfg.sim.venues[i]];
       if (v.scale <= prev.scale) problems.push(`venue "${v.id}" must have a larger scale than "${prev.id}"`);

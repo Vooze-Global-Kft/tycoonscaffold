@@ -1,11 +1,12 @@
 /**
  * Orbit Haulers art kit: every machine and space object of the haul mode, drawn in code with
  * Skia. The *.draw.ts files, atlas.ts, pictures.ts and icons.ts are pure Skia (no React) and run
- * in Node too; Reticle.tsx and Gallery.tsx are React components. README.md lists every export.
+ * in Node too; Reticle.tsx, Gallery.tsx, HaulIcon.tsx and Spokes.tsx are React components. README.md lists every export.
  */
 export * from './palette';
 export { LINE, picture, around, type Box } from './pen';
 export { drawText, textWidth, type TextStyle } from './glyphs';
+export * from './ore.draw';
 export * from './rock.draw';
 export * from './rig.draw';
 export * from './drone.draw';
@@ -17,6 +18,8 @@ export * from './modules.draw';
 export * from './portraits.draw';
 export * from './icons.draw';
 export * from './reticle.draw';
+export * from './spokes.draw';
+export * from './meta.icons.draw';
 export * from './atlas';
 export { pictures } from './pictures';
 export { HAUL_ICONS, HAUL_ICON_NAMES, haulArtIconDefs, type HaulArtIconDef, type IconDraw } from './icons';

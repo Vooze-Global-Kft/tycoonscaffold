@@ -1,6 +1,6 @@
 /**
- * The hint pointer of Orbit Haulers (sections 1.3 R2 and 3): a cyan targeting reticle with ticks,
- * a dashed guide line for drag and swipe hints, and a pulse ring for point hints. Animated with
+ * The hint pointer of Orbit Haulers (sections 1.3 R2 and 3): a survey frame of four corner
+ * brackets round a dot, a white dotted guide with an arrowhead for drag and swipe hints, and a pulse ring for point hints. Animated with
  * plain Reanimated shared values (withRepeat / withTiming); no rig.
  *
  * Two ways to use it:
@@ -18,7 +18,7 @@ import { StyleSheet, View } from 'react-native';
 import { Easing, cancelAnimation, useDerivedValue, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { SPACE } from './palette';
 import { around, picture } from './pen';
-import { RETICLE_R, drawReticle } from './reticle.draw';
+import { GUIDE_COLOR, GUIDE_DOTS, RETICLE_R, drawReticle, guideArrowPath } from './reticle.draw';
 
 export interface Point {
   x: number;
@@ -54,11 +54,15 @@ export function Reticle({ hint, color = SPACE.line }: { hint: ReticleHint; color
 
   const pic = reticlePicture();
   const guide = useMemo(() => {
+    // The dotted line stops short of the target, where the arrowhead sits.
+    const d = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    const k = Math.max(0, (d - RETICLE_R - 6) / d);
     const p = Skia.PathBuilder.Make();
     p.moveTo(from.x, from.y);
-    p.lineTo(to.x, to.y);
+    p.lineTo(from.x + (to.x - from.x) * k, from.y + (to.y - from.y) * k);
     return p.build();
   }, [from.x, from.y, to.x, to.y]);
+  const arrow = useMemo(() => guideArrowPath(from.x, from.y, to.x, to.y), [from.x, from.y, to.x, to.y]);
 
   const travel = RETICLE_TRAVEL_MS / cycle;
   const fx = from.x;
@@ -81,7 +85,7 @@ export function Reticle({ hint, color = SPACE.line }: { hint: ReticleHint; color
     } else {
       s = 1 - 0.08 * Math.sin(u * Math.PI * 2);
     }
-    const rot = u * Math.PI * 0.5;
+    const rot = 0; // The survey frame stays square to the screen; only scale and position move.
     return [{ translateX: x }, { translateY: y }, { rotate: rot }, { scale: s }];
   });
   const reticleOpacity = useDerivedValue(() => {
@@ -94,16 +98,16 @@ export function Reticle({ hint, color = SPACE.line }: { hint: ReticleHint; color
   });
   const pulseR = useDerivedValue(() => 14 + 24 * t.value);
   const pulseOpacity = useDerivedValue(() => (moving ? 0 : 0.8 * (1 - t.value)));
-  const dashPhase = useDerivedValue(() => -t.value * 40);
+  const dashPhase = useDerivedValue(() => -t.value * 42);
 
   return (
     <Group>
       {moving ? (
         <Group>
-          <Path path={guide} style="stroke" strokeWidth={6} color={color} opacity={0.12} strokeCap="round" />
-          <Path path={guide} style="stroke" strokeWidth={2} color={color} opacity={0.85}>
-            <DashPathEffect intervals={[7, 6]} phase={dashPhase} />
+          <Path path={guide} style="stroke" strokeWidth={2.4} color={GUIDE_COLOR} opacity={0.9} strokeCap="round">
+            <DashPathEffect intervals={GUIDE_DOTS} phase={dashPhase} />
           </Path>
+          <Path path={arrow} color={GUIDE_COLOR} opacity={0.95} />
           <Circle cx={tx} cy={ty} r={RETICLE_R * 0.75} style="stroke" strokeWidth={1.5} color={color} opacity={0.5} />
         </Group>
       ) : (

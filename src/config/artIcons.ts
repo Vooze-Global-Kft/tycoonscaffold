@@ -23,3 +23,6 @@ export const ART_ICONS_BY_MODE: Record<string, readonly string[]> = {
 export function artIconsFor(mode: string): readonly string[] {
   return ART_ICONS_BY_MODE[mode] ?? [];
 }
+
+/** The modes whose entry draws "char:<id>" portraits (ModeParts.CharIcon); in the others they show the unknown-icon fallback. */
+export const PORTRAIT_MODES: readonly string[] = ['sim'];

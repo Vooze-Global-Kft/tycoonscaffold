@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { FX, type FxDef } from './catalog';
-import { MUSIC, PRELOAD_FIRST, VOICES, planSounds } from './mix';
+import { MUSIC, planSounds, preloadFirst, voicesOf } from './mix';
 import { fileKeys } from './variants';
 
 const catalog: Record<string, FxDef> = FX;
 const names = Object.keys(catalog);
+const PRELOAD_FIRST = preloadFirst(catalog);
+const VOICES = voicesOf(catalog);
 const PULSES = ['light', 'medium', 'heavy', 'soft', 'rigid', 'select', 'success', 'warning', 'error'];
 
 /** A bundle with a file for every catalogue entry: key -> a made-up asset id. */
@@ -46,6 +48,14 @@ describe('the catalogue', () => {
     expect(catalog.tap).toMatchObject({ files: 8, pick: 'ladder' });
     expect(catalog.coin).toMatchObject({ files: 3, pick: 'random' });
     expect(catalog[MUSIC].loop).toBe(true);
+  });
+
+  it('the preload order and voices read from the catalogue are the ones the mix always had', () => {
+    expect(PRELOAD_FIRST).toEqual([
+      'ui_tap', 'tap', 'buy', 'coin', 'ui_tab', 'ui_denied', 'cash', 'bell', 'cook_done', 'toss', 'serve',
+      'pickup', 'happy', 'door', 'ui_open', 'ui_close', 'card_flip', 'blip_mid', 'blip_low', 'blip_high', 'chest_shake', 'hint',
+    ]);
+    expect(VOICES).toEqual({ tap: 2, buy: 3, cash: 2, bell: 3, cook_done: 2, card_flip: 2, reveal_common: 2, reveal_rare: 2 });
   });
 
   it('the engine tables only name real one-shot events', () => {

@@ -8,7 +8,10 @@
  *   - another mode's folders (scripts/lib/modes.js), or a package only another mode may use (three.js);
  *   - a family's files (scripts/lib/modes.js FAMILIES: "tabs" is the sim and classic modes' tab
  *     shell, list homes, meta screens and drawn kit) in a game whose mode is not a member;
- *   - a file under src/ui that modes.js does not classify, or a Node-only file (the fx catalogue);
+ *   - a file in src/ that modes.js does not classify, or a Node-only file (the fx catalogue);
+ *   - an import the fast stage cannot resolve (it fails closed: Metro might bundle anything there);
+ *   - a string literal in a shared or family file that uses another mode's theme words
+ *     (scripts/lib/modes.js THEME_WORDS), unless it is in the known remainder (THEME_WORDS_ALLOWED);
  *   - another game's data folder (games/<other>/);
  *   - a sound file from a pack the game does not declare (shared/sfx/<pack>/, game.json soundPack);
  *   - for a game whose mode is not sim, the restaurant's cartoon-people rig.
@@ -26,15 +29,18 @@
  *                                           its mode were another (to check a mode before a game uses it)
  *   options: --platform ios|android|web (default ios), --top <n> (largest modules, default 12), --json,
  *            --list (every project file of each bundle with its level),
- *            --words (fast stage: the string literals of each bundle's shared and family files that use
- *            another mode's theme words, scripts/lib/modes.js THEME_WORDS; a list, it never fails)
+ *            --words (every string literal of each bundle's shared and family files that uses another
+ *            mode's theme words, allowed or not; the new ones also fail the check)
  *
  * The fast stage reads `import`, `export ... from`, `require()` and `import()` with the platform's
  * file extensions (.ios.ts, .native.ts, .ts, ...), skips type-only imports, and uses the game's
- * generated files as scripts/lib/games.js would write them (nothing is written). It does not walk
- * into node_modules; it lists the packages imported directly. The export stage reads Metro's
- * source map, so it is exactly what ships. --export rewrites src/generated/ for each game and puts
- * back the game that was selected before.
+ * generated files as scripts/lib/games.js would write them (nothing is written). A bare import
+ * ("x/y") is first matched against tsconfig.json `paths` and `baseUrl`, as Metro does: one that
+ * lands on a project file is walked like a relative one. It does not walk into node_modules; it
+ * lists the packages imported directly, and an import that is neither a project file nor an
+ * installed package fails. The export stage reads Metro's source map, so it is exactly what ships,
+ * and judges it by the mode that was bundled (src/generated/mode.ts in the map). --export rewrites
+ * src/generated/ for each game and puts back the game that was selected before.
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -63,8 +69,8 @@ const rel = (abs: string) => path.relative(ROOT, abs).split(path.sep).join('/');
 export const MANIFEST: BundleManifest = {
   modeFolders: modes.MODE_FOLDERS,
   families: modes.FAMILIES,
-  sharedUi: modes.SHARED_UI,
-  uiRoot: modes.UI_ROOT,
+  shared: [...modes.SHARED_UI, ...modes.SHARED_SRC],
+  classifiedRoot: modes.CLASSIFIED_ROOT,
   nodeOnly: modes.NODE_ONLY,
   modePackages: modes.MODE_PACKAGES,
   rig: modes.RESTAURANT_RIG,
@@ -90,6 +96,8 @@ interface Report {
   bytes: number;
   /** Bytes of the project's own modules (node_modules excluded). */
   ownBytes: number;
+  /** Imports the fast stage could not resolve. */
+  unresolved?: { file: string; spec: string }[];
   assetBytes: number;
   violations: Violation[];
 }
@@ -115,6 +123,77 @@ function resolveFile(fromDir: string, spec: string, exts: string[], virtual: Map
   for (const e of exts) if (exists(path.join(base, 'index' + e))) return path.join(base, 'index' + e);
   if (exists(base)) return base;
   return null;
+}
+
+/** tsconfig.json `paths` and `baseUrl`: Metro resolves bare imports through them (Expo's tsconfigPaths). */
+export interface Aliases {
+  /** Folder `paths` targets are relative to. */
+  pathsBase: string;
+  paths: [pattern: string, targets: string[]][];
+  /** `baseUrl`, when set: a bare import may name a file under it. */
+  baseUrl?: string;
+}
+
+export function readAliases(root: string): Aliases {
+  const file = path.join(root, 'tsconfig.json');
+  if (!fs.existsSync(file)) return { pathsBase: root, paths: [] };
+  const read = ts.readConfigFile(file, ts.sys.readFile);
+  if (read.error) throw new Error(`tsconfig.json: ${ts.flattenDiagnosticMessageText(read.error.messageText, '\n')}`);
+  const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, root);
+  const o = parsed.options as ts.CompilerOptions & { pathsBasePath?: string };
+  return { pathsBase: o.baseUrl ?? o.pathsBasePath ?? root, paths: Object.entries(o.paths ?? {}), baseUrl: o.baseUrl };
+}
+
+/** A bare import resolved through the aliases to a file, or null when no alias matches a file. */
+export function resolveAlias(spec: string, aliases: Aliases, exts: string[], virtual: Map<string, string> = new Map()): string | null {
+  for (const [pattern, targets] of aliases.paths) {
+    const star = pattern.indexOf('*');
+    let middle: string | null = null;
+    if (star < 0) middle = spec === pattern ? '' : null;
+    else {
+      const pre = pattern.slice(0, star);
+      const post = pattern.slice(star + 1);
+      if (spec.length >= pre.length + post.length && spec.startsWith(pre) && spec.endsWith(post)) middle = spec.slice(pre.length, spec.length - post.length);
+    }
+    if (middle === null) continue;
+    for (const t of targets) {
+      const hit = resolveFile(aliases.pathsBase, t.replace('*', middle), exts, virtual);
+      if (hit) return hit;
+    }
+  }
+  if (aliases.baseUrl) {
+    const hit = resolveFile(aliases.baseUrl, spec, exts, virtual);
+    if (hit && !hit.split(path.sep).includes('node_modules')) return hit;
+  }
+  return null;
+}
+
+/** Whether the package of a bare import is installed (node_modules/<name>, from `fromDir` up). */
+function packageInstalled(spec: string, fromDir: string): boolean {
+  if (spec.startsWith('node:')) return false;
+  const name = packageOf(spec);
+  for (let dir = fromDir; ; dir = path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, 'node_modules', name))) return true;
+    if (path.dirname(dir) === dir) return false;
+  }
+}
+
+/** Where an import leads: a project file, a package, or nowhere the check can follow. */
+export function resolveImport(
+  fromFile: string,
+  spec: string,
+  exts: string[],
+  virtual: Map<string, string>,
+  aliases: Aliases,
+): { file: string } | { package: string } | { unresolved: true } {
+  if (spec.startsWith('.') || spec.startsWith('/')) {
+    const f = resolveFile(path.dirname(fromFile), spec, exts, virtual);
+    return f ? { file: f } : { unresolved: true };
+  }
+  const f = resolveAlias(spec, aliases, exts, virtual);
+  if (f && !f.split(path.sep).includes('node_modules')) return { file: f };
+  if (f || packageInstalled(spec, path.dirname(fromFile))) return { package: packageOf(spec) };
+  return { unresolved: true };
 }
 
 /** The module specifiers a file really imports at run time (type-only imports left out). */
@@ -168,12 +247,13 @@ interface WordHit {
 }
 
 /** Literals in a bundle's shared and family files that use the theme words of the other modes. */
-function wordHits(r: Report): WordHit[] {
+export function wordHits(r: { mode: string; modules: readonly Module[] }): WordHit[] {
   const words = Object.entries(modes.THEME_WORDS as Record<string, string[]>)
     .filter(([mode]) => mode !== r.mode)
     .flatMap(([, w]) => w);
   const out: WordHit[] = [];
   for (const m of r.modules) {
+    if (m.path.includes('node_modules/') || !fs.existsSync(path.join(ROOT, m.path))) continue;
     const level = levelOf(m.path, MANIFEST);
     if (level.level === 'mode' || !/^src\/.*\.(tsx?|jsx?)$/.test(m.path) || m.path.startsWith('src/generated/')) continue;
     for (const lit of stringLiterals(m.path, fs.readFileSync(path.join(ROOT, m.path), 'utf8'))) {
@@ -187,8 +267,9 @@ function wordHits(r: Report): WordHit[] {
 
 function printWords(r: Report) {
   const hits = wordHits(r);
-  console.log(`\n  words of other modes' themes in ${r.game}'s shared and family files (mode ${r.mode}): ${hits.length} literal(s)`);
-  for (const h of hits) console.log(`    ${h.group.padEnd(12)} ${`${h.file}:${h.line}`.padEnd(44)} [${h.words.join(', ')}] ${JSON.stringify(h.text.length > 90 ? h.text.slice(0, 87) + '...' : h.text)}`);
+  const allowed = (h: WordHit) => (modes.THEME_WORDS_ALLOWED as Record<string, string[]>)[h.file]?.includes(h.text);
+  console.log(`\n  words of other modes' themes in ${r.game}'s shared and family files (mode ${r.mode}): ${hits.length} literal(s), ${hits.filter((h) => !allowed(h)).length} not in the known remainder (✘)`);
+  for (const h of hits) console.log(`    ${allowed(h) ? ' ' : '✘'} ${h.group.padEnd(12)} ${`${h.file}:${h.line}`.padEnd(44)} [${h.words.join(', ')}] ${JSON.stringify(h.text.length > 90 ? h.text.slice(0, 87) + '...' : h.text)}`);
 }
 
 interface Graph {
@@ -196,12 +277,15 @@ interface Graph {
   assets: Set<string>;
   packages: Set<string>;
   edges: [string, string][];
+  unresolved: { file: string; spec: string }[];
 }
+
+const ALIASES = readAliases(ROOT);
 
 /** Walks from `entries`; `virtual` holds generated files by absolute path (text instead of disk). */
 function walk(entries: string[], platform: string, virtual: Map<string, string>): Graph {
   const exts = platformExts(platform);
-  const g: Graph = { files: new Set(), assets: new Set(), packages: new Set(), edges: [] };
+  const g: Graph = { files: new Set(), assets: new Set(), packages: new Set(), edges: [], unresolved: [] };
   const queue = [...entries];
   while (queue.length) {
     const file = queue.pop()!;
@@ -210,15 +294,16 @@ function walk(entries: string[], platform: string, virtual: Map<string, string>)
     if (file.endsWith('.json')) continue;
     const text = virtual.get(file) ?? fs.readFileSync(file, 'utf8');
     for (const spec of runtimeImports(file, text)) {
-      if (!spec.startsWith('.') && !spec.startsWith('/')) {
-        g.packages.add(packageOf(spec));
+      const r = resolveImport(file, spec, exts, virtual, ALIASES);
+      if ('package' in r) {
+        g.packages.add(r.package);
         continue;
       }
-      const target = resolveFile(path.dirname(file), spec, exts, virtual);
-      if (!target) {
-        console.warn(`  (cannot resolve ${spec} from ${rel(file)})`);
+      if ('unresolved' in r) {
+        g.unresolved.push({ file: rel(file), spec });
         continue;
       }
+      const target = r.file;
       g.edges.push([rel(file), rel(target)]);
       if (ASSET_EXT.test(target)) g.assets.add(target);
       else queue.push(target);
@@ -256,13 +341,13 @@ function fileSize(abs: string): number {
   }
 }
 
-function fastReport(id: string): Report {
+export function fastReport(id: string): Report {
   const game = gameData(id);
   const virtual = virtualFor(id);
   const g = walk([appEntry()], PLATFORM, virtual);
   const modules = [...g.files].map((f) => ({ path: rel(f), bytes: virtual.get(f)?.length ?? fileSize(f) }));
   const assets = [...g.assets].map(rel);
-  return finish({ game: id, mode: games.gameMode(id, game), pack: games.soundPack(id, game), stage: 'fast', modules, assets, packages: [...g.packages].sort() });
+  return finish({ game: id, mode: games.gameMode(id, game), pack: games.soundPack(id, game), stage: 'fast', modules, assets, packages: [...g.packages].sort(), unresolved: g.unresolved });
 }
 
 /** Every import edge in src/ (all files, reachable or not, generated ones as written now). */
@@ -275,9 +360,8 @@ function allSourceEdges(): [string, string][] {
       if (e.isDirectory()) visit(abs);
       else if (/\.(tsx?|jsx?)$/.test(e.name) && !/\.test\.tsx?$/.test(e.name)) {
         for (const spec of runtimeImports(abs, fs.readFileSync(abs, 'utf8'))) {
-          if (!spec.startsWith('.')) continue;
-          const target = resolveFile(path.dirname(abs), spec, exts, new Map());
-          if (target) edges.push([rel(abs), rel(target)]);
+          const r = resolveImport(abs, spec, exts, new Map(), ALIASES);
+          if ('file' in r) edges.push([rel(abs), rel(r.file)]);
         }
       }
     }
@@ -326,28 +410,44 @@ function exportReport(id: string, dir: string): Report {
   const lineStart = [0];
   for (let i = 0; i < bundle.length; i++) if (bundle.charCodeAt(i) === 10) lineStart.push(i + 1);
   const at = (o: { line: number; column: number }) => (lineStart[o.line] ?? bundle.length) + o.column;
-  const sections: { offset: { line: number; column: number }; map: { sources: string[] } }[] = map.sections ?? [{ offset: { line: 0, column: 0 }, map }];
+  const sections: { offset: { line: number; column: number }; map: { sources: string[]; sourcesContent?: (string | null)[] } }[] = map.sections ?? [{ offset: { line: 0, column: 0 }, map }];
   const sizes = new Map<string, number>();
+  // The mode that was bundled, from the generated entry in the map (not today's game.json).
+  let bundledMode: string | null = null;
   sections.forEach((s, i) => {
     const start = at(s.offset);
     const end = i + 1 < sections.length ? at(sections[i + 1].offset) : bundle.length;
     const src = s.map.sources?.[0];
     if (!src) return;
     const p = normaliseSource(src, pkgName);
+    if (p === modes.GENERATED_ENTRY) bundledMode = /export const MODE = "([^"]+)"/.exec(s.map.sourcesContent?.[0] ?? '')?.[1] ?? null;
     sizes.set(p, (sizes.get(p) ?? 0) + Math.max(0, end - start));
   });
   const modules = [...sizes].map(([p, bytes]) => ({ path: p, bytes }));
   const assetMap = JSON.parse(fs.readFileSync(path.join(dir, 'assetmap.json'), 'utf8')) as Record<string, { files: string[] }>;
   const assets = [...new Set(Object.values(assetMap).flatMap((a) => a.files.map((f) => (f.startsWith(ROOT) ? rel(f) : f))))].sort();
   const packages = [...new Set(modules.filter((m) => m.path.includes('node_modules/')).map((m) => packageOf(m.path)))].sort();
-  return finish({ game: id, mode: games.gameMode(id, game), pack: games.soundPack(id, game), stage: 'export', modules, assets, packages, bytes: bundle.length });
+  const declared = games.gameMode(id, game);
+  if (!bundledMode) throw new Error(`${dir}: the source map has no ${modes.GENERATED_ENTRY} with its MODE, so the bundled mode is unknown`);
+  if (bundledMode !== declared) throw new Error(`${dir}: this export was built as mode "${bundledMode}", but games/${id}/game.json says "${declared}" (stale export?): export again`);
+  return finish({ game: id, mode: bundledMode, pack: games.soundPack(id, game), stage: 'export', modules, assets, packages, bytes: bundle.length });
 }
 
 // ---------------------------------------------------------------------------
 
 function finish(r: Omit<Report, 'violations' | 'bytes' | 'ownBytes' | 'assetBytes'> & { bytes?: number }): Report {
   const own = r.modules.filter((m) => !m.path.includes('node_modules/'));
-  const contents: BundleContents = { game: r.game, mode: r.mode, pack: r.pack, modules: own.map((m) => m.path), assets: r.assets, packages: r.packages };
+  const contents: BundleContents = {
+    game: r.game,
+    mode: r.mode,
+    pack: r.pack,
+    modules: own.map((m) => m.path),
+    assets: r.assets,
+    packages: r.packages,
+    unresolved: r.unresolved,
+    themeWords: wordHits(r),
+    themeWordsAllowed: modes.THEME_WORDS_ALLOWED,
+  };
   return {
     ...r,
     bytes: r.bytes ?? r.modules.reduce((n, m) => n + m.bytes, 0),

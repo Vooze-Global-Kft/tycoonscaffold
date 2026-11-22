@@ -8,7 +8,7 @@
  * is its card's percent from `cards.ts` (`meta.cardEffect` by rarity and level) / 100.
  */
 import type { Card } from '../config/schema';
-import { HAUL_SOCKETS, type HaulModule, type HaulModuleStat, type HaulSocket } from '../config/schema.haul';
+import { HAUL_MODULE_STATS, HAUL_SOCKETS, type HaulModule, type HaulModuleStat, type HaulSocket } from '../config/schema.haul';
 import { cardPercent } from './cards';
 import type { HaulConfig } from './haul/types';
 
@@ -93,6 +93,13 @@ export function fittedModules(cfg: HaulConfig, state: LoadoutState): { socket: n
     if (!cardId || !canFit(cfg, state, i, cardId)) return;
     out.push({ socket: i, card: cardId, module: moduleOf(cfg, cardId)!, value: moduleValue(cfg, state, cardId) });
   });
+  return out;
+}
+
+/** B(stat) for every module stat at once (one pass over the sockets; what haulParams reads). */
+export function fittedBonuses(cfg: HaulConfig, state: LoadoutState): Record<HaulModuleStat, number> {
+  const out = Object.fromEntries(HAUL_MODULE_STATS.map((k) => [k, 0])) as Record<HaulModuleStat, number>;
+  for (const f of fittedModules(cfg, state)) out[f.module.stat] += f.value;
   return out;
 }
 
