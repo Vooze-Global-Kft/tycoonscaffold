@@ -5,7 +5,7 @@
  */
 import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import * as E from '../../engine/economy';
 import { formatMoney, formatNumber } from '../../engine/format';
@@ -18,6 +18,7 @@ import { shopFocus } from '../meta/shop/focus';
 import { formatCountdown, shortDuration } from '../kit/time';
 import { alpha, useTheme } from '../theme';
 import { counterPulse } from './counterPulse';
+import { cashBlockMetrics, cashBoxHeight } from './headerMetrics';
 import { GameIcon } from './GameIcon';
 import { RollingNumber, fitFontSize } from './RollingNumber';
 
@@ -47,7 +48,7 @@ function followCash(set: (v: number) => void): () => void {
  * The cash counter. It re-renders only when the width of the amount changes (the font size) or the
  * income line's text changes; the digits themselves roll on the UI thread.
  */
-function CashCounter({ compact }: { compact: boolean }) {
+function CashCounter({ compact, header }: { compact: boolean; header: number }) {
   const t = useTheme();
   const sym = t.strings.currencySymbol;
   const cashLen = useGame((s) => formatMoney(s.game.cash, sym).length);
@@ -61,37 +62,38 @@ function CashCounter({ compact }: { compact: boolean }) {
   const [width, setWidth] = useState(0);
   const target = useTarget('header:cash');
   const pulse = usePulse('header:cash');
-  const iconSize = compact ? 22 : 26;
-  const max = compact ? 24 : 28;
+  const { fontScale } = useWindowDimensions();
+  const m = cashBlockMetrics(compact, header, fontScale);
+  const iconSize = Math.min(compact ? 22 : 26, m.cashRow - 4);
   // The display font's digits, "$" and suffix letters are wide: estimate generously so "$43.09T" never clips.
-  const fontSize = Math.floor(fitFontSize('0'.repeat(cashLen), width - iconSize - 6, max, 14, 0.74));
+  const fontSize = Math.floor(fitFontSize('0'.repeat(cashLen), width - iconSize - 6, m.cashMax, 14, 0.74));
+  // The amount's box is only as tall as its own line and the row centres the box. A taller box with a
+  // line height would leave it to the platform where the digits sit in it, and iPhones put them at
+  // the bottom: a long amount (a small font in a tall box) then sat on top of the income line.
+  const cashBox = cashBoxHeight(fontSize, m.cashRow);
+  const ipsStyle = { color: alpha(t.c.primaryText, 0.92), fontSize: m.ipsFont, lineHeight: m.ipsLine };
   const onLayout = (e: LayoutChangeEvent) => {
     setWidth(e.nativeEvent.layout.width);
     target.onLayout();
   };
   return (
     <View style={[styles.cashBlock, compact && { flex: 1.4 }]} ref={target.ref} collapsable={false} onLayout={onLayout}>
-      <Animated.View style={[styles.cashRow, pulse]}>
+      <Animated.View style={[styles.cashRow, { height: m.cashRow }, pulse]}>
         <GameIcon icon={t.strings.currencyIcon} size={iconSize} />
         <RollingNumber
           value={startCash}
           follow={followCash}
           symbol={sym}
-          style={[t.display, styles.cash, { color: t.c.primaryText, fontSize, height: max + 6, lineHeight: max + 6 }]}
+          allowFontScaling={false}
+          style={[t.display, styles.cash, { color: t.c.primaryText, fontSize, height: cashBox }]}
         />
       </Animated.View>
-      <View style={styles.ipsRow}>
-        <Text
-          style={[styles.ips, { color: alpha(t.c.primaryText, 0.92), fontSize: compact ? 11 : 12, flexShrink: 1 }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.8}
-          maxFontSizeMultiplier={1.2}
-        >
+      <View style={[styles.ipsRow, { height: m.ipsLine }]}>
+        <Text style={[styles.ips, ipsStyle, { flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} allowFontScaling={false}>
           {ipsText ?? t.strings.tapHint}
         </Text>
         {points > 0 ? (
-          <Text style={[styles.ips, { color: alpha(t.c.primaryText, 0.92), fontSize: compact ? 11 : 12, flexShrink: 0 }]} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+          <Text style={[styles.ips, ipsStyle, { flexShrink: 0 }]} numberOfLines={1} allowFontScaling={false}>
             {t.strings.prestigeIcon}
             {formatNumber(points)}
           </Text>
@@ -166,7 +168,7 @@ function BoostPill({ compact }: { compact: boolean }) {
   );
 }
 
-function GemPill({ compact }: { compact: boolean }) {
+function GemPill({ compact, plus }: { compact: boolean; plus: boolean }) {
   const t = useTheme();
   const gems = useGame((s) => s.game.gems);
   const setTab = useGame((s) => s.setTab);
@@ -190,9 +192,11 @@ function GemPill({ compact }: { compact: boolean }) {
           {formatNumber(gems)}
         </Text>
       </Animated.View>
-      <View style={[styles.plus, { backgroundColor: t.c.surface }]}>
-        <Text style={[styles.plusText, { color: t.c.primary }]}>+</Text>
-      </View>
+      {plus ? (
+        <View style={[styles.plus, { backgroundColor: t.c.surface }]}>
+          <Text style={[styles.plusText, { color: t.c.primary }]}>+</Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -215,21 +219,29 @@ function Gear({ compact }: { compact: boolean }) {
   );
 }
 
+/** Phones narrower than this get the small pills and paddings whatever their height (most Android phones are 360 wide). */
+const NARROW_BELOW = 380;
+/** Below this the gem pill also drops its "+" badge, so the amount keeps its room (the whole pill opens the shop anyway). */
+const TINY_BELOW = 340;
+
 export function Header() {
   const t = useTheme();
   const m = useHomeMetrics();
+  const { width: screen } = useWindowDimensions();
   const [w, setW] = useState(0);
+  // The cash block gets whatever the pills leave: on a narrow screen they must be the small ones.
+  const compact = m.compact || screen < NARROW_BELOW;
   return (
-    <View style={[styles.wrap, { height: m.header }, m.compact && styles.wrapCompact]} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
+    <View style={[styles.wrap, { height: m.header }, compact && styles.wrapCompact]} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
       <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
         <Rect x={0} y={0} width={w} height={m.header}>
           <LinearGradient start={vec(0, 0)} end={vec(w, m.header)} colors={t.c.gradient} />
         </Rect>
       </Canvas>
-      <CashCounter compact={m.compact} />
-      <BoostPill compact={m.compact} />
-      <GemPill compact={m.compact} />
-      <Gear compact={m.compact} />
+      <CashCounter compact={compact} header={m.header} />
+      <BoostPill compact={compact} />
+      <GemPill compact={compact} plus={screen >= TINY_BELOW} />
+      <Gear compact={compact} />
     </View>
   );
 }
@@ -240,7 +252,7 @@ const styles = StyleSheet.create({
   cashBlock: { flex: 1, minWidth: 0, justifyContent: 'center' },
   cashRow: { flexDirection: 'row', alignItems: 'center', gap: 5, transformOrigin: 'left center' },
   cash: { flex: 1, minWidth: 0 },
-  ipsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -2 },
+  ipsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, overflow: 'hidden' },
   ips: { fontWeight: '800' },
   pill: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, borderWidth: 1.5, paddingHorizontal: 8 },
   pillCompact: { paddingHorizontal: 6 },

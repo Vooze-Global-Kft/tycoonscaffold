@@ -41,6 +41,7 @@ This app is a single game screen with in-app tabs (`src/ui/App.tsx`), so it does
 - Every dialog is the kit `Sheet` (or registers with `useOverlay`): one dialog at a time, and popups, the tutorial hand and story dialogs wait for it (`src/state/overlays.ts`).
 - Controls a hint can point at register with `useTarget(key)` (`src/ui/hints/targets.ts` lists the keys).
 - Text on a coloured fill uses `textOn(fill)`; a stage or rarity colour used as text goes through `inkOf` (`src/ui/theme.ts`).
+- Text in a bar of fixed height (the header) is sized by hand from `useWindowDimensions().fontScale` with `allowFontScaling={false}`, in rows whose heights add up (`src/ui/components/headerMetrics.ts`), never with negative margins. Never give a `TextInput` (so `RollingNumber`) a `lineHeight`: an iPhone draws the text at the bottom of the line, on top of whatever is under it, and the web preview does not show it.
 - Shipped games' numbers come from `scripts/content/build-*.py`; change the script and regenerate, never hand-edit those tables. Each game needs its own economy table (`validate` rejects copies).
 - Chests are earned, not sold, unless a game sets `meta.chestsForSale`; deals never contain permanent items; offer timers are real.
 - Before declaring done: `npm run typecheck`, `npm test`, `npm run validate`, `npm run lint:worklets`, and look at what you changed in the web preview (`src/dev/devtools.ts` lists the switches).

@@ -27,10 +27,19 @@ interface Props {
    * counter never restarts a long animation ten times a second. `value` is then only the start.
    */
   follow?: (set: (v: number) => void) => () => void;
+  /**
+   * False when the caller has already sized the text for the phone's text-size setting (a counter
+   * in a bar of fixed height). Default: the system scales it, up to 1.2 times.
+   */
+  allowFontScaling?: boolean;
+  /**
+   * Give the box a `height` close to the text's own line and let the parent centre the box. Do not
+   * set `lineHeight`: an iPhone text field puts the text at the bottom of a taller line.
+   */
   style?: StyleProp<TextStyle>;
 }
 
-export function RollingNumber({ value, symbol, duration = 450, fromZero = false, follow, style }: Props) {
+export function RollingNumber({ value, symbol, duration = 450, fromZero = false, follow, allowFontScaling = true, style }: Props) {
   const shown = useSharedValue(fromZero ? 0 : value);
   useEffect(() => {
     if (follow) return;
@@ -58,6 +67,7 @@ export function RollingNumber({ value, symbol, duration = 450, fromZero = false,
       defaultValue={initial}
       animatedProps={animatedProps}
       style={[styles.input, style]}
+      allowFontScaling={allowFontScaling}
       maxFontSizeMultiplier={1.2}
       accessibilityRole="text"
     />
