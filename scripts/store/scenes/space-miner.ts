@@ -62,7 +62,7 @@ function buyersDistinct(text: string): string | null {
 
 const scenes: GameScenes = {
   game: 'space-miner',
-  port: 8301,
+  port: 8302,
   titleHas: 'Orbit',
   // Captured at 4/3 of the phone's pixel ratio: the field scenes are shown zoomed in up to 1.08 x,
   // and the feature graphic needs the station larger than a 1:1 crop.

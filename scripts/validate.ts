@@ -316,7 +316,7 @@ for (const id of ids) {
     // Decision 64: the old nothing-new figures are soft rows now, and they are listed as missed, not
     // hidden (the thin second hour is section 9.3's first "Later" item).
     const oldAims = new Set<string>();
-    for (const r of results.values()) r?.targets?.forEach((x) => x.name.endsWith('(old aim)') && oldAims.add(x.name));
+    for (const r of results.values()) r?.targets?.forEach((x) => (x.name.endsWith('(old aim)') || x.name.endsWith('(Decision 64 aim)')) && oldAims.add(x.name));
     for (const name of oldAims) {
       const missed = [...results].filter(([, r]) => r?.targets?.some((x) => x.name === name && !x.ok));
       if (missed.length) warnings.push(`pacing (section 8, soft, Decision 64): "${name}" missed on ${missed.length} of ${results.size} seeds (${missed.map(([seed, r]) => `${seed}: ${r?.targets?.find((x) => x.name === name)?.value}`).join('; ')}); section 9.3 "Later"`);

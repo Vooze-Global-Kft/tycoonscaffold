@@ -113,6 +113,12 @@ export interface Scene {
    * e.g. the same buyer twice on the Contract Board.
    */
   check?: (text: string) => string | null;
+  /**
+   * Milliseconds after the picture to read the page text again for `check` (default 0: the text
+   * at the picture). For a moment whose result shows only a little later, e.g. the freighter's
+   * "BACK IN n S" after the launch swipe.
+   */
+  checkAfter?: number;
   /** Captures in all when `check` fails (default 3). */
   tries?: number;
   /** The part of the screen the image shows (default: all of it). */

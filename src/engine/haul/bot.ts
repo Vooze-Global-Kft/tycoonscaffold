@@ -899,11 +899,13 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotR
   const nt = r.notables.filter((n) => n.run === 0 && n.gap).map((n) => n.t);
   const g1 = longestGap(nt, 0, firstRunEnd);
   const g30 = longestGap(nt, 0, Math.min(1800, firstRunEnd));
-  // Decision 64: the gate is set to what this version is (hard: 26 min to the first Jump, 10 in the
-  // first 30, 50 after the Jump, a drawn-new gap of 60). The old figures stay as soft rows, listed as
-  // missed: the second hour of a run is thin on new things (section 9.3, "Later").
+  // Decision 64 and the lead's final ruling: the gate is set to what this version is (hard: 36 min to
+  // the first Jump, 14 in the first 30, 50 after the Jump, a drawn-new gap of 60, one limit at most 68 %).
+  // These are regression guards for this version, not claims that it is good; the old figures stay as
+  // soft rows, listed as missed: the second hour of a run is thin on new things (section 9.3, "Later").
   const g1Value = `${mmss(g1.len)} (to ${mmss(g1.end)}); ${mmss(g30.len)} (to ${mmss(g30.end)})`;
-  add('Longest stretch with nothing new to the first Jump', '≤ 26 min; ≤ 10 in the first 30', g1Value, g1.len <= 1560 && g30.len <= 600, true);
+  add('Longest stretch with nothing new to the first Jump', '≤ 36 min; ≤ 14 in the first 30', g1Value, g1.len <= 2160 && g30.len <= 840, true);
+  add('Longest stretch with nothing new to the first Jump (Decision 64 aim)', '≤ 26 min; ≤ 10 in the first 30', g1Value, g1.len <= 1560 && g30.len <= 600, false);
   add('Longest stretch with nothing new to the first Jump (old aim)', '≤ 12 min; ≤ 6 in the first 30', g1Value, g1.len <= 720 && g30.len <= 360, false);
   const drawnT = r.notables.filter((n) => n.drawn && (r.runs[n.run]?.galaxy ?? 0) <= 2).map((n) => n.t);
   const lastG2 = r.runs.find((x) => x.galaxy > 2)?.start ?? r.hours * 3600;
@@ -919,7 +921,9 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotR
   const lim = r.limits;
   const tot = lim.drill + lim.haul + lim.freighter || 1;
   const top = Math.max(lim.drill, lim.haul, lim.freighter) / tot;
-  add('Route-minutes bound by one limit', 'no kind above 60 %', `drill ${((lim.drill / tot) * 100).toFixed(0)} %, haul ${((lim.haul / tot) * 100).toFixed(0)} %, freighter ${((lim.freighter / tot) * 100).toFixed(0)} %`, top <= 0.6, true);
+  const limValue = `drill ${((lim.drill / tot) * 100).toFixed(0)} %, haul ${((lim.haul / tot) * 100).toFixed(0)} %, freighter ${((lim.freighter / tot) * 100).toFixed(0)} %`;
+  add('Route-minutes bound by one limit', 'no kind above 68 %', limValue, top <= 0.68, true);
+  add('Route-minutes bound by one limit (old aim)', 'no kind above 60 %', limValue, top <= 0.6, false);
   // Decision 40: the share of TAKEN contracts that are met (met / (met + lapsed)).
   const metOf = (x: HaulBotResult) => (x.contracts.met + x.contracts.lapsed ? x.contracts.met / (x.contracts.met + x.contracts.lapsed) : 0);
   const metShare = metOf(r);

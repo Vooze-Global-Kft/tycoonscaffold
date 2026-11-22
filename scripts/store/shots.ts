@@ -241,6 +241,11 @@ async function capture(browser: any, def: GameScenes, port: number, sizes: Size[
         const text: string = await page.evaluate(() => document.body.innerText || '');
         const shot = await sharpShot(page, size, dsfOf(size));
         await page.mouse.up().catch(() => undefined);
+        let checkText = text;
+        if (scene.checkAfter) {
+          await page.waitForTimeout(scene.checkAfter);
+          checkText = await page.evaluate(() => document.body.innerText || '');
+        }
         let band: Band | undefined;
         let featureBand: Band | undefined;
         try {
@@ -251,7 +256,7 @@ async function capture(browser: any, def: GameScenes, port: number, sizes: Size[
         }
         if (/Uncaught Error|Unable to resolve|SyntaxError|Render Error/.test(text)) errors.push('red screen: ' + text.slice(0, 300));
         await page.close();
-        const bad = scene.check?.(text) ?? null;
+        const bad = scene.check?.(checkText) ?? null;
         fs.writeFileSync(out, shot);
         fs.writeFileSync(out.replace(/\.png$/, '.json'), JSON.stringify({ vw: size.vw, vh: size.vh, dsf: dsfOf(size), band, featureBand }, null, 1));
         if (!bad) break;
