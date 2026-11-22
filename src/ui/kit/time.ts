@@ -26,6 +26,16 @@ export function formatCountdown(ms: number): string {
   return `${sec}s`;
 }
 
+/** A short, readable length of time that is not a live countdown (offers, boosts, rewards, estimates): "30 min", "4 h", "1 h 30 min", "2 days". */
+export function shortDuration(seconds: number): string {
+  const m = Math.round(seconds / 60);
+  if (m < 60) return `${Math.max(1, m)} min`;
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  if (h >= 48 && rest === 0 && h % 24 === 0) return `${h / 24} days`;
+  return rest === 0 ? `${h} h` : `${h} h ${rest} min`;
+}
+
 /** When something ends, as a short local date and time ("Tue 14:30"), for offers that must show their end. */
 export function formatEnd(epochMs: number): string {
   const d = new Date(epochMs);

@@ -10,9 +10,9 @@ import { ads } from '../../../services/ads';
 import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
-import { formatCountdown, useNow } from '../../kit';
+import { formatCountdown, shortDuration, useNow } from '../../kit';
 import { alpha, useTheme } from '../../theme';
-import { GemPrice, OfferCard, ShopSection, shortDuration } from './parts';
+import { GemPrice, OfferCard, ShopSection } from './parts';
 
 export function Boosts() {
   const t = useTheme();

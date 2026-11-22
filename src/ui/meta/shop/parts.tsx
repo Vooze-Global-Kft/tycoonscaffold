@@ -182,16 +182,6 @@ export function useFlyFrom() {
   return { ref, emit };
 }
 
-/** A short, readable length of time for offers and boosts: "30 min", "4 h", "1 h 30 min", "2 days". */
-export function shortDuration(seconds: number): string {
-  const m = Math.round(seconds / 60);
-  if (m < 60) return `${Math.max(1, m)} min`;
-  const h = Math.floor(m / 60);
-  const rest = m % 60;
-  if (h >= 48 && rest === 0 && h % 24 === 0) return `${h / 24} days`;
-  return rest === 0 ? `${h} h` : `${h} h ${rest} min`;
-}
-
 /** Runs a store action and lets gems fly to the header when the player's gems really went up. */
 export async function withGemFlight(action: () => unknown, emit: (kind: 'gems', count: number) => void): Promise<void> {
   const before = useGame.getState().game.gems;

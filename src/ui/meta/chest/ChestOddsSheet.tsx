@@ -8,13 +8,12 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { RARITIES, type Chest, type GameConfig, type Rarity } from '../../../config/schema';
-import { formatDuration } from '../../../engine/format';
 import * as M from '../../../engine/meta';
 import type { GameState } from '../../../engine/types';
 import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
-import { Sheet } from '../../kit';
+import { Sheet, shortDuration } from '../../kit';
 import { RARITY_COLORS, RARITY_NAMES, alpha, useTheme } from '../../theme';
 
 /** Percentages as the engine words them: one decimal, never a real chance shown as 0. */
@@ -67,7 +66,7 @@ function OddsBody({ cfg, chest }: { cfg: GameConfig; chest: Chest }) {
       icon: cfg.strings.currencyIcon,
       label: cfg.strings.currencyName,
       p: slot.cash,
-      detail: `${formatDuration(chest.cashSeconds[0])} to ${formatDuration(chest.cashSeconds[1])} of your income`,
+      detail: `${shortDuration(chest.cashSeconds[0])} to ${shortDuration(chest.cashSeconds[1])} of your income`,
     });
 
   const chestLine = (f: M.ChestRarityFact) =>

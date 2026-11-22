@@ -5,6 +5,8 @@ import type { GameConfig } from '../config/schema';
 import type { Stage } from '../engine/chain';
 import { useGame } from '../state/store';
 
+export { contrast, inkOf, textOn } from './colors';
+
 /** Name the game's display font is registered under (see App.tsx). */
 export const DISPLAY_FONT = 'GameDisplay';
 

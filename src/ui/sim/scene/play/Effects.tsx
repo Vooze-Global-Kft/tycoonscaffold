@@ -124,7 +124,7 @@ function RushRing({ layout, phase, p }: { layout: SceneLayout; phase: RushPhase;
   );
 }
 
-/** A warm glow and a short sparkle trail behind the flying bonus. */
+/** A warm glow, slowly turning rays and a short sparkle trail behind the flying bonus. */
 function BonusGlow({ bonus, unit }: { bonus: BonusShared; unit: number }) {
   const t = useTheme();
   const clock = useClock();
@@ -132,11 +132,24 @@ function BonusGlow({ bonus, unit }: { bonus: BonusShared; unit: number }) {
     const pt = bonusPoint(bonus.path.value, bonus.p.value);
     return vec(pt.x, pt.y);
   });
-  const r = useDerivedValue(() => (44 + Math.sin(clock.value / 180) * 5) * unit);
+  const r = useDerivedValue(() => (46 + Math.sin(clock.value / 180) * 5) * unit);
+  const rays = useMemo(() => {
+    const b = Skia.PathBuilder.Make();
+    const n = 10;
+    const R = 58 * unit;
+    for (let i = 0; i < n; i++) {
+      const a0 = (i / n) * Math.PI * 2;
+      const a1 = a0 + (Math.PI / n) * 0.7;
+      b.moveTo(0, 0).lineTo(Math.cos(a0) * R, Math.sin(a0) * R).lineTo(Math.cos(a1) * R, Math.sin(a1) * R).close();
+    }
+    return b.build();
+  }, [unit]);
+  const rayTransform = useDerivedValue(() => [{ translateX: c.value.x }, { translateY: c.value.y }, { rotate: clock.value / 900 }]);
   return (
     <Group opacity={bonus.on}>
+      <Path path={rays} transform={rayTransform} color={alpha(t.c.accent, 0.42)} />
       <Circle c={c} r={r}>
-        <RadialGradient c={c} r={r} colors={[alpha('#FFF6C8', 0.95), alpha(t.c.accent, 0.55), alpha(t.c.accent, 0)]} positions={[0, 0.45, 1]} />
+        <RadialGradient c={c} r={r} colors={[alpha('#FFFFFF', 0.9), alpha(t.c.accent, 0.7), alpha(t.c.accent, 0)]} positions={[0, 0.4, 1]} />
       </Circle>
       {[0.025, 0.05, 0.075, 0.1].map((lag, i) => (
         <TrailSpark key={i} bonus={bonus} lag={lag} size={(5 - i) * unit} clock={clock} />
@@ -151,7 +164,7 @@ function TrailSpark({ bonus, lag, size, clock }: { bonus: BonusShared; lag: numb
     const pt = bonusPoint(path, Math.max(0, bonus.p.value - lag));
     return vec(pt.x, pt.y + Math.sin(clock.value / 90 + lag * 100) * 4);
   });
-  return <Circle c={c} r={size} color="#FFF3B0" opacity={0.85} />;
+  return <Circle c={c} r={size} color="#FFE36B" opacity={0.95} />;
 }
 
 const BURST_COINS = 12;

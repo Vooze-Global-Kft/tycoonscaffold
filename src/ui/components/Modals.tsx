@@ -7,12 +7,14 @@ import { useEffect, useRef, useState, type ElementRef } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import * as E from '../../engine/economy';
-import { formatDuration, formatMoney, formatNumber } from '../../engine/format';
+import { formatMoney, formatNumber } from '../../engine/format';
 import { fx } from '../../services/fx';
 import { useGame } from '../../state/store';
 import { useHomeUi } from '../home/uiState';
 import { fly } from '../juice/fly';
+import { useOverlay, useOverlaysOpen } from '../kit/overlay';
 import { Sheet } from '../kit/Sheet';
+import { shortDuration } from '../kit/time';
 import { alpha, useTheme } from '../theme';
 import { Button } from './Button';
 import { GameIcon } from './GameIcon';
@@ -73,7 +75,7 @@ function OfflineSheet({ seconds, earnings }: { seconds: number; earnings: number
           <RollingNumber value={earnings} symbol={t.strings.currencySymbol} fromZero duration={1100} style={[t.display, styles.amount, { color: t.c.primary }]} />
         </View>
         <Text style={[styles.small, { color: t.c.textMuted }]}>
-          {capped ? `Away ${maxHours} h or more: the most that counts` : `Away ${formatDuration(seconds)}`}
+          {capped ? `Away ${maxHours} h or more: the most that counts` : `Away ${shortDuration(seconds)}`}
         </Text>
         <Text style={[styles.small, { color: t.c.textMuted }]}>Venues keep earning while you are away (up to {maxHours} h).</Text>
       </View>
@@ -94,7 +96,11 @@ let lastStoryClosedAt = -Infinity;
  */
 export function StoryModal() {
   const beat = useGame((s) => E.pendingStoryBeat(s.cfg, s.game));
-  const blocked = useGame((s) => s.offline !== null || s.chestOpening !== null || s.modal !== null || s.dealPopup !== null);
+  const storeBlocked = useGame((s) => s.offline !== null || s.chestOpening !== null || s.modal !== null || s.dealPopup !== null);
+  // Any other dialog or overlay (a screen's own sheet, the chest opening). The decision below is only
+  // taken while no story is showing, so the story's own registration never blocks itself.
+  const others = useOverlaysOpen();
+  const blocked = storeBlocked || others > 0;
   const banner = useHomeUi((s) => s.bannerOpen);
   const [showing, setShowing] = useState<string | null>(null);
   const [, wake] = useState(0);
@@ -140,6 +146,8 @@ function StoryScene({ beatId }: { beatId: string }) {
   const typing = chars < text.length;
   const last = line >= beat.lines.length - 1;
 
+  // Not a Sheet: count as an open overlay so offers and the tutorial hand wait.
+  useOverlay(true);
   const enter = useSharedValue(0);
   const talk = useSharedValue(0);
   const nudge = useSharedValue(0);

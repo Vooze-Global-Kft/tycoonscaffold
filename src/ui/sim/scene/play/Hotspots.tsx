@@ -76,7 +76,8 @@ export const Hotspots = memo(function Hotspots({ layout, sim, kinds }: { layout:
       ) : null}
       {businesses.slice(0, layout.stations.length).map((b, i) => {
         const kind = kinds[i];
-        if (!kind || kind === '-') return null;
+        // Stations further down the unlock path are only a silhouette: tapping there is floor (tips).
+        if (!kind || kind === '-' || kind === 'l') return null;
         const run = kind === 'i';
         return (
           <Area

@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { GameConfig, Reward } from '../../config/schema';
-import { formatDuration, formatMoney, formatNumber } from '../../engine/format';
+import { formatMoney, formatNumber } from '../../engine/format';
+import { shortDuration } from './time';
 import type { GrantedReward } from '../../engine/meta';
 import { GameIcon } from '../components/GameIcon';
 import { useGame } from '../../state/store';
@@ -21,7 +22,7 @@ export function describeReward(cfg: GameConfig, r: Reward): RewardInfo {
     case 'gems':
       return { icon: cfg.strings.gemIcon, label: `${formatNumber(r.amount)} ${cfg.strings.gemName}` };
     case 'cash':
-      return { icon: cfg.strings.currencyIcon, label: `${formatDuration(r.seconds)} of income` };
+      return { icon: cfg.strings.currencyIcon, label: `${shortDuration(r.seconds)} of income` };
     case 'chest': {
       const chest = cfg.meta.chests.find((c) => c.id === r.chestId);
       return { icon: chest?.icon ?? '🎁', label: `${chest?.name ?? 'Chest'}${r.count > 1 ? ` ×${r.count}` : ''}` };

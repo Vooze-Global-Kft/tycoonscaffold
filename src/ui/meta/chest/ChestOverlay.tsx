@@ -23,6 +23,7 @@ import { useGame, type ChestOpening } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
 import { fly } from '../../juice/fly';
+import { useOverlay } from '../../kit/overlay';
 import { CARD_NAMEPLATE, CARD_SIZE, Chest, CHEST_SIZE } from '../../sim/art/props';
 import { RARITY_COLORS, RARITY_NAMES, alpha, useTheme } from '../../theme';
 import { Burst, Confetti, Dust, Glow, Wash } from './Fx';
@@ -32,6 +33,8 @@ import { RARITY_GLOW, bestRarity, cardOf, progressAfterReveal, rewardRarity } fr
 export function ChestOverlay() {
   const opening = useGame((s) => s.chestOpening);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  // Not a Sheet: say "an overlay is up" so offers, story beats, banners and the hand wait.
+  useOverlay(opening !== null);
   if (!opening) return null;
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;

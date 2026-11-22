@@ -5,7 +5,7 @@
  */
 import { useEffect, useReducer, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import * as E from '../../../../engine/economy';
 import { fx } from '../../../../services/fx';
 import { useGame } from '../../../../state/store';
@@ -32,14 +32,14 @@ export function useRushPhase(visible: boolean): { phase: RushPhase; until: numbe
   const sim = useGame((s) => E.isSim(s.cfg));
   const [, bump] = useReducer((x: number) => x + 1, 0);
   const now = Date.now();
-  const phase: RushPhase = !visible || !sim ? 'hidden' : 'cooling'; const TMP=1;
+  const phase: RushPhase = !visible || !sim ? 'hidden' : now < until ? 'active' : now < readyAt ? 'cooling' : 'ready';
   useEffect(() => {
     const next = phase === 'active' ? until : phase === 'cooling' ? readyAt : 0;
     if (!next) return;
     const id = setTimeout(bump, Math.max(0, next - Date.now()) + 30);
     return () => clearTimeout(id);
   }, [phase, until, readyAt]);
-  return { phase, until, readyAt: Date.now() + 200000 + (TMP*0) };
+  return { phase, until, readyAt };
 }
 
 export function RushButton({ layout, phase, until, readyAt }: { layout: SceneLayout; phase: RushPhase; until: number; readyAt: number }) {
@@ -79,7 +79,7 @@ export function RushButton({ layout, phase, until, readyAt }: { layout: SceneLay
   return (
     <>
       {chip ? (
-        <Animated.View entering={FadeIn.duration(140)} exiting={FadeOut.duration(120)} style={[styles.chipWrap, { right: layout.width - x + RUSH_HIT / 2 + 2, top: y - 22 }]}>
+        <View style={[styles.chipWrap, { right: layout.width - x + RUSH_HIT / 2 + 2, top: y - 22 }]}>
           <Pressable
             onPress={() => {
               setChip(false);
@@ -93,7 +93,7 @@ export function RushButton({ layout, phase, until, readyAt }: { layout: SceneLay
               {skipAds ? `${rush.name}: ready now` : `▶ Ad: ready now`}
             </Text>
           </Pressable>
-        </Animated.View>
+        </View>
       ) : null}
       <Pressable
         onPressIn={() => (press.value = withTiming(0.88, { duration: 70 }))}

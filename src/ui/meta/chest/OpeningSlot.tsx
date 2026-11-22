@@ -5,7 +5,7 @@
  * Timings live in REVEAL so the parent can schedule sounds and the next reveal on the same clock.
  */
 import { BlurMask, Group, Oval, Path, RoundedRect, Skia } from '@shopify/react-native-skia';
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import {
   Easing,
   cancelAnimation,
@@ -122,6 +122,10 @@ export function OpeningSlot({ m, index, kind, rarity, icon, cardId, phase, rest,
     return b.build();
   }, []);
 
+  // Whether this slot was dealt onto the table. A quick tap can move a slot from 'hidden' straight to
+  // 'reveal' (both state changes in one render); it is then put in place first, or it would stay
+  // invisible while its labels show.
+  const dealt = useRef(false);
   useEffect(() => {
     const all = [x, y, s, rot, shown, flip, pop, glow, rays, burst, shimmer];
     const settle = () => {
@@ -140,11 +144,18 @@ export function OpeningSlot({ m, index, kind, rarity, icon, cardId, phase, rest,
       z.value = index;
     };
     if (phase === 'hidden') {
+      dealt.current = false;
       shown.value = 0;
       return;
     }
     if (phase === 'shown') return settle();
+    if (phase !== 'dealt' && !dealt.current) {
+      dealt.current = true;
+      settle();
+      if (phase === 'reveal' && kind === 'card') flip.value = 0;
+    }
     if (phase === 'dealt') {
+      dealt.current = true;
       const d = index * DEAL_GAP_MS;
       // withDelay(0, ...) is avoided on purpose: the first slot starts its animations directly.
       const later = <T,>(ms: number, a: T): T => (ms > 0 ? (withDelay(ms, a as never) as T) : a);

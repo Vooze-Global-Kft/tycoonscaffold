@@ -17,12 +17,15 @@ import { guideHint, hintKey, type GuideHint } from '../../engine/view';
 import { fx } from '../../services/fx';
 import { useGame } from '../../state/store';
 import { useHomeUi } from '../home/uiState';
+import { useOverlaysOpen } from '../kit/overlay';
 import { HandPointer } from '../sim/art';
 import { useTheme } from '../theme';
 import { hintRoute, targets, useFirstTarget } from './targets';
 
 /** The canvas around the fingertip. */
 const BOX = 120;
+/** Targets that are drawings in the scene (no label to keep clear of). */
+const SCENE_KEYS = ['tapStation', 'bell', 'startRush', 'openChest', 'missionsButton', 'card'];
 /** After a touch the hand stays hidden this long. */
 const QUIET_AFTER_TOUCH_MS = 600;
 
@@ -75,9 +78,12 @@ export function HintOverlay() {
   const hint = useHint();
   const dialog = useGame((s) => s.modal !== null || s.chestOpening !== null || s.offline !== null || s.dealPopup !== null);
   const story = useHomeUi((s) => s.storyOpen);
+  // Any dialog or full-screen overlay, including the ones screens open themselves.
+  const overlaysOpen = useOverlaysOpen() > 0;
   const tab = useGame((s) => s.tab);
-  // Pointing at the tab the player is already on would say nothing.
-  const route = useMemo(() => (hint ? hint.route.filter((k) => k !== `tab:${tab}`) : []), [hint, tab]);
+  const stage = useHomeUi((s) => s.stage);
+  // Pointing at the tab or the stage chip the player is already on would say nothing.
+  const route = useMemo(() => (hint ? hint.route.filter((k) => k !== `tab:${tab}` && !(tab === 'home' && k === `stage:${stage}`)) : []), [hint, tab, stage]);
   const found = useFirstTarget(route);
   const lastKey = useRef<string | null>(null);
 
@@ -103,7 +109,7 @@ export function HintOverlay() {
 
   // Fade out on any touch, come back after a quiet moment.
   const shown = useSharedValue(0);
-  const visible = !!hint && !!found && !dialog && !story;
+  const visible = !!hint && !!found && !dialog && !story && !overlaysOpen;
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
   useEffect(() => {
@@ -125,9 +131,12 @@ export function HintOverlay() {
   const y = useSharedValue(0);
   const placed = useRef(false);
   const rect = found?.rect;
-  // Point a little inside the control (its lower middle), so the hand never hides the label.
-  const tx = rect ? rect.x + rect.width * 0.5 : 0;
-  const ty = rect ? rect.y + rect.height * 0.62 : 0;
+  // Things drawn in the scene and tabs: their middle. Buttons and chips carry a label (often a
+  // price): point at the lower right corner, so the hand, which hangs down and to the right of
+  // its fingertip, never hides the words.
+  const centred = !found || SCENE_KEYS.some((k) => found.key === k || found.key.startsWith(`${k}:`)) || found.key.startsWith('tab:');
+  const tx = rect ? rect.x + rect.width * (centred ? 0.5 : 0.86) : 0;
+  const ty = rect ? rect.y + rect.height * (centred ? 0.55 : 0.84) : 0;
   useEffect(() => {
     if (!rect) return;
     if (!placed.current) {

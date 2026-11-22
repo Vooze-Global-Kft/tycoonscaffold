@@ -8,6 +8,8 @@
 type Listener = () => void;
 
 let open = 0;
+/** Date.now() when the last overlay went away (0 = none yet). */
+let lastClosedAt = 0;
 const listeners = new Set<Listener>();
 
 export const overlays = {
@@ -20,6 +22,7 @@ export const overlays = {
       if (left) return;
       left = true;
       open = Math.max(0, open - 1);
+      lastClosedAt = Date.now();
       listeners.forEach((l) => l());
     };
   },
@@ -29,6 +32,10 @@ export const overlays = {
   },
   anyOpen(): boolean {
     return open > 0;
+  },
+  /** Milliseconds since the last overlay went away (Infinity if none has yet). */
+  msSinceClose(): number {
+    return lastClosedAt === 0 ? Infinity : Date.now() - lastClosedAt;
   },
   subscribe(listener: Listener): () => void {
     listeners.add(listener);

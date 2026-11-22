@@ -324,6 +324,102 @@
       "revenueMult": 2
     },
     {
+      "id": "u_review",
+      "name": "Five-Star Review",
+      "icon": "⭐",
+      "cost": 5e+25,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_tv",
+      "name": "Cooking Show",
+      "icon": "📺",
+      "cost": 5e+29,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_celebrity",
+      "name": "Celebrity Chef",
+      "icon": "🧑‍🍳",
+      "cost": 5e+33,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_cookbook",
+      "name": "Nonna's Cookbook",
+      "icon": "📖",
+      "cost": 5e+37,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_award",
+      "name": "Golden Pizza Award",
+      "icon": "🏆",
+      "cost": 5e+41,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_airline",
+      "name": "Airline Menu",
+      "icon": "✈️",
+      "cost": 5e+45,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_satellite",
+      "name": "Pizza Satellite",
+      "icon": "🛰️",
+      "cost": 5e+49,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_rocket",
+      "name": "Rocket Delivery",
+      "icon": "🚀",
+      "cost": 5e+53,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_wormhole",
+      "name": "Wormhole Oven",
+      "icon": "🌀",
+      "cost": 5e+57,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_galaxy",
+      "name": "Galactic Franchise",
+      "icon": "🌌",
+      "cost": 5e+61,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_multiverse",
+      "name": "Multiverse Menu",
+      "icon": "🪐",
+      "cost": 5e+65,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "u_legend",
+      "name": "Living Legend",
+      "icon": "👑",
+      "cost": 5e+69,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
       "id": "p_cutter",
       "name": "Golden Pizza Cutter",
       "icon": "🔪",
@@ -1508,7 +1604,7 @@
             "copies": 1
           },
           "gemCost": 250,
-          "weight": 0.5
+          "weight": 0.2
         },
         {
           "id": "card_overlord",
@@ -1520,7 +1616,7 @@
             "copies": 1
           },
           "gemCost": 250,
-          "weight": 0.5
+          "weight": 0.2
         }
       ]
     }

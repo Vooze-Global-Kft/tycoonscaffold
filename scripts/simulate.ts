@@ -23,7 +23,8 @@ import { args, fail } from './lib/cli';
 const games = require('./lib/games.js');
 const { positional, flags } = args();
 const id = positional[0] ?? fail('Usage: npm run simulate -- <game-id> [--hours 12] [--taps 3] [--prestige] [--quiet]');
-const cfg = GameConfigSchema.parse(games.readGameJson(id));
+// --file <game.json> reads a variant (e.g. one written by build-pizza.py with OUT=...).
+const cfg = GameConfigSchema.parse(flags.file ? JSON.parse(require('node:fs').readFileSync(flags.file, 'utf8')) : games.readGameJson(id));
 const hours = Number(flags.hours ?? 12);
 const tapsPerSec = Number(flags.taps ?? 3);
 const autoPrestige = flags.prestige === 'true';

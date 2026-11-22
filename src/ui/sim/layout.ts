@@ -108,7 +108,8 @@ export function computeLayout(width: number, height: number, stationCount: numbe
 
   const door = { x: width * 0.92, y: height * 0.8 };
   const kitchenGate = { x: pass.x + pass.width + 14 * unit, y: pass.y + pass.height * 0.9 };
-  const rush = { x: width * 0.872, y: height * 0.587 };
+  // Beside the right end of the pass, clear of the door below it (the button's label hangs under it).
+  const rush = { x: width * 0.872, y: height * 0.525 };
   const outside = { x: width + 34 * unit, y: height * 0.82 };
 
   // Tables: a fixed 4 x 2 grid, so a table never moves when another one is added.

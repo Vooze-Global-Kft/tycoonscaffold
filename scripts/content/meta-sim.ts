@@ -24,7 +24,8 @@ import { makeBot } from './bot';
 const games = require('../lib/games.js');
 const { positional, flags } = args();
 const id = positional[0] ?? fail('Usage: npx tsx scripts/content/meta-sim.ts <game-id> [--days 90] [--seeds 3]');
-const cfg = GameConfigSchema.parse(games.readGameJson(id));
+// --file <game.json> reads a variant (e.g. one written by build-pizza.py with OUT=...).
+const cfg = GameConfigSchema.parse(flags.file ? JSON.parse(require('node:fs').readFileSync(flags.file, 'utf8')) : games.readGameJson(id));
 const DAYS = Number(flags.days ?? 90);
 const SEEDS = Number(flags.seeds ?? 3);
 const SESSION_MIN = Number(flags.session ?? 7);

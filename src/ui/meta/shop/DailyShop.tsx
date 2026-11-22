@@ -48,9 +48,11 @@ function DailyItem({ offerId, bought }: { offerId: string; bought: boolean }) {
   if (!offer) return null;
   const free = offer.gemCost === 0;
   const info = describeReward(cfg, offer.reward);
-  // The second line adds something only when the title does not already say it.
-  const card = offer.reward.type === 'card' ? cfg.meta.cards.find((c) => c.id === (offer.reward as { cardId: string }).cardId) : undefined;
-  const sub = info.label !== offer.title ? info.label : card ? `${RARITY_NAMES[card.rarity]} card` : '';
+  // The second line says what the item is, never the title again ("Epic card · 3 copies").
+  const reward = offer.reward;
+  const card = reward.type === 'card' ? cfg.meta.cards.find((c) => c.id === reward.cardId) : undefined;
+  const sub =
+    reward.type === 'card' && card ? `${RARITY_NAMES[card.rarity]} card · ${reward.copies} ${reward.copies === 1 ? 'copy' : 'copies'}` : info.label !== offer.title ? info.label : '';
   return (
     <View
       style={[

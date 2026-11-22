@@ -199,6 +199,78 @@
       "target": "all"
     },
     {
+      "id": "u_review",
+      "name": "Five-Star Review",
+      "icon": "⭐",
+      "target": "all"
+    },
+    {
+      "id": "u_tv",
+      "name": "Cooking Show",
+      "icon": "📺",
+      "target": "all"
+    },
+    {
+      "id": "u_celebrity",
+      "name": "Celebrity Chef",
+      "icon": "🧑‍🍳",
+      "target": "all"
+    },
+    {
+      "id": "u_cookbook",
+      "name": "Nonna's Cookbook",
+      "icon": "📖",
+      "target": "all"
+    },
+    {
+      "id": "u_award",
+      "name": "Golden Pizza Award",
+      "icon": "🏆",
+      "target": "all"
+    },
+    {
+      "id": "u_airline",
+      "name": "Airline Menu",
+      "icon": "✈️",
+      "target": "all"
+    },
+    {
+      "id": "u_satellite",
+      "name": "Pizza Satellite",
+      "icon": "🛰️",
+      "target": "all"
+    },
+    {
+      "id": "u_rocket",
+      "name": "Rocket Delivery",
+      "icon": "🚀",
+      "target": "all"
+    },
+    {
+      "id": "u_wormhole",
+      "name": "Wormhole Oven",
+      "icon": "🌀",
+      "target": "all"
+    },
+    {
+      "id": "u_galaxy",
+      "name": "Galactic Franchise",
+      "icon": "🌌",
+      "target": "all"
+    },
+    {
+      "id": "u_multiverse",
+      "name": "Multiverse Menu",
+      "icon": "🪐",
+      "target": "all"
+    },
+    {
+      "id": "u_legend",
+      "name": "Living Legend",
+      "icon": "👑",
+      "target": "all"
+    },
+    {
       "id": "p_cutter",
       "name": "Golden Pizza Cutter",
       "icon": "🔪",

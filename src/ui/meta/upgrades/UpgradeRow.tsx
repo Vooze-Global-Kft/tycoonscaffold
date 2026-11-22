@@ -7,11 +7,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import type { GameConfig, Upgrade } from '../../../config/schema';
 import * as E from '../../../engine/economy';
-import { formatDuration, formatMoney, formatNumber } from '../../../engine/format';
+import { formatMoney, formatNumber } from '../../../engine/format';
 import { useGame } from '../../../state/store';
 import { GameIcon } from '../../components/GameIcon';
 import { useTarget } from '../../hints/targets';
-import { formatCountdown } from '../../kit';
+import { formatCountdown, shortDuration } from '../../kit';
 import { alpha, useTheme } from '../../theme';
 import { closeEnough, usePaced } from '../empire/paced';
 import { PriceButton } from './PriceButton';
@@ -110,7 +110,7 @@ function SavingHint({ cost }: { cost: number }) {
         <View style={{ width: `${frac * 100}%`, height: '100%', borderRadius: 3, backgroundColor: t.c.progress }} />
       </View>
       <Text style={[styles.hintText, { color: t.c.textMuted }]} numberOfLines={1}>
-        {Number.isFinite(eta) && eta < 86400 * 3 ? `~${eta < 60 ? formatCountdown(eta * 1000) : formatDuration(eta)}` : `${Math.floor(frac * 100)}%`}
+        {Number.isFinite(eta) && eta < 86400 * 3 ? `~${eta < 60 ? formatCountdown(eta * 1000) : shortDuration(eta)} at current income` : `${Math.floor(frac * 100)}%`}
       </Text>
     </View>
   );

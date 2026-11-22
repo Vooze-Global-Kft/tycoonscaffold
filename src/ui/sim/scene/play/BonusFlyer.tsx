@@ -11,6 +11,7 @@ import { GameIcon } from '../../../components/GameIcon';
 import { fly } from '../../../juice/fly';
 import { useTheme } from '../../../theme';
 import type { SceneLayout } from '../../layout';
+import { SLOWMO } from './dev';
 import { canSpawnBonus } from './gate';
 import { noop } from './Hotspots';
 import { bonusPoint, type BonusShared } from './shared';
@@ -77,7 +78,7 @@ export function BonusFlyer({
     };
     bonus.p.value = 0;
     bonus.on.value = withTiming(1, { duration: 200 });
-    bonus.p.value = withTiming(1, { duration: CROSS_MS, easing: Easing.linear }, (done) => {
+    bonus.p.value = withTiming(1, { duration: CROSS_MS * SLOWMO, easing: Easing.linear }, (done) => {
       if (done) runOnJS(missIf)(activeId);
     });
     spin.value = 0;

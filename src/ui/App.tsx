@@ -32,6 +32,7 @@ import { UpgradesTab } from './meta/upgrades/UpgradesTab';
 import { ArtGallery } from './sim/art/Gallery';
 import { PropsGallery } from './sim/art/GalleryProps';
 import { DISPLAY_FONT, useTheme } from './theme';
+import './devHook';
 
 const TICK_MS = 100;
 const SAVE_EVERY_MS = 5000;

@@ -118,6 +118,9 @@ UPGRADE_FACTOR = 1200
 ups = []
 # The 5e13 one fills the gap of nearly 3 hours between 5e11 and 5e14 (critique-fun.md section 1, day 2).
 shared_costs = [5e8, 6e10, 5e13, 5e14, 5e17]
+# Past the last venue (it opens near 1.6e23) a ladder of "all" upgrades, x10,000 apart, keeps a next
+# goal in every run once resets have made the venues quick (audit.md, "How long the content lasts").
+shared_costs += [float('%.3g' % (5e25 * 1e4 ** k)) for k in range(12)]
 si = 0
 for u in content['upgrades']:
     if u.get('premium'):
@@ -215,7 +218,9 @@ missions = [{'id': m['id'], 'type': m['type'], 'text': m['text'], 'targets': LAD
 # Daily shop: one free item first, then three priced ones. Paid offers are NAMED card copies (the
 # non-random route to every card, legendaries included) and hours of income; never a chest.
 # Price per copy is a little above what the same copies cost inside a random chest.
-CARD_OFFER = {'common': (8, 30, 3), 'rare': (3, 40, 2), 'epic': (1, 60, 1.5), 'legendary': (1, 250, 0.5)}  # copies, gems, weight
+# Legendary offers rarer (weight 0.5 -> 0.2): with 0.5 the free player owned all 12 cards on day 6
+# to 10; the research wants about two weeks (audit.md, meta-economy table).
+CARD_OFFER = {'common': (8, 30, 3), 'rare': (3, 40, 2), 'epic': (1, 60, 1.5), 'legendary': (1, 250, 0.2)}  # copies, gems, weight
 daily = [
     {'id': 'free_truffles', 'title': 'Free Truffles',   'icon': '🍄', 'reward': {'type': 'gems', 'amount': 5},              'gemCost': 0, 'weight': 2},
     {'id': 'free_box',      'title': 'Free Pizza Box',  'icon': '📦', 'reward': {'type': 'chest', 'chestId': 'box', 'count': 1}, 'gemCost': 0, 'weight': 2},
@@ -306,6 +311,8 @@ store['description'] = (
     "Pizza Empire is a relaxing restaurant sim you can play in short bursts all day."
 )
 
+# OUT=<file> writes a variant elsewhere (for experiments) instead of the game.
+path = os.environ.get('OUT', path)
 json.dump(g, open(path, 'w'), indent=2, ensure_ascii=False)
 open(path, 'a').write('\n')
 print('wrote', path)

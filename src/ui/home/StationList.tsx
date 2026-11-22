@@ -7,7 +7,7 @@
  * Rows select only the few numbers they show (one shallow selector each), so the list re-renders
  * when one of those numbers changes, not on every simulation tick.
  */
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 import type { Business } from '../../config/schema';
@@ -15,6 +15,8 @@ import * as E from '../../engine/economy';
 import { formatDuration, formatMoney } from '../../engine/format';
 import { useGame } from '../../state/store';
 import { GameIcon } from '../components/GameIcon';
+import { CharacterBust } from '../sim/art';
+import { cookLook } from '../sim/scene/world/cast';
 import { useTarget } from '../hints/targets';
 import { alpha, useTheme } from '../theme';
 import { BuyButton } from './BuyButton';
@@ -36,9 +38,22 @@ export function milestoneGift(cfg: Parameters<typeof E.milestoneMults>[0], owned
   return parts.join(' ') || 'bonus';
 }
 
-/** Hire portrait: the station's own cast look when the game has one, else its manager icon. */
-export function managerPortrait(b: Business, fallback: string): string {
+/** Hire portrait of a classic game: the business's own cast look when it has one, else its manager icon. */
+function managerPortrait(b: Business, fallback: string): string {
   return b.managerIcon ?? (b.workerLook ? `char:${b.workerLook}` : fallback);
+}
+
+/**
+ * The person who runs a station. In a sim game it is the same cook the scene draws at that station
+ * (one look function for both, `cookLook`); in a classic game the manager icon.
+ */
+function ManagerPortrait({ b, venueId, size }: { b: Business; venueId: string; size: number }) {
+  const t = useTheme();
+  const cfg = useGame((s) => s.cfg);
+  const color = t.c.stages.production;
+  const look = useMemo(() => (E.isSim(cfg) ? cookLook(cfg, venueId, b.id, color) : null), [cfg, venueId, b.id, color]);
+  if (look) return <CharacterBust look={look} size={size} />;
+  return <GameIcon icon={managerPortrait(b, t.icons.manager)} size={size} />;
 }
 
 type RowKind = 'owned' | 'next' | 'mystery' | 'hidden';
@@ -116,7 +131,6 @@ export const StationRow = memo(function StationRow({ b, index, rowHeight, compac
   const solid = v.managed && v.cycle < 0.3;
   const barH = compact ? 18 : 22;
   const rate = v.managed && v.cycle < 1 ? ` · ${fmtMult(Math.round((1 / v.cycle) * 10) / 10)}/s` : ` · ${v.cycle < 60 ? `${v.cycle.toFixed(v.cycle < 10 ? 1 : 0)}s` : formatDuration(v.cycle)}`;
-  const portrait = managerPortrait(b, t.icons.manager);
 
   return (
     <RowCard focusKey={b.id} accent={color}>
@@ -134,7 +148,7 @@ export const StationRow = memo(function StationRow({ b, index, rowHeight, compac
           <LevelBadge level={v.owned} color={color} />
           {v.managed ? (
             <View style={[styles.portrait, { borderColor: t.c.success, backgroundColor: t.c.surface }]}>
-              <GameIcon icon={portrait} size={22} />
+              <ManagerPortrait b={b} venueId={v.venueId} size={22} />
             </View>
           ) : null}
         </Pressable>
@@ -168,7 +182,7 @@ export const StationRow = memo(function StationRow({ b, index, rowHeight, compac
       {!v.managed ? (
         <View style={[styles.hire, { borderTopColor: alpha(t.c.text, 0.07), backgroundColor: alpha(t.c.success, 0.07), paddingHorizontal: pad + 2 }]}>
           <View style={[styles.hirePortrait, { backgroundColor: alpha(t.c.success, 0.15) }]}>
-            <GameIcon icon={portrait} size={30} />
+            <ManagerPortrait b={b} venueId={v.venueId} size={30} />
           </View>
           <View style={styles.mid}>
             <Text style={[t.display, styles.hireName, { color: t.c.text }]} numberOfLines={1}>

@@ -10,11 +10,11 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSeq
 import { useShallow } from 'zustand/react/shallow';
 import type { Venue } from '../../../config/schema.sim';
 import * as E from '../../../engine/economy';
-import { formatDuration, formatMoney, formatNumber } from '../../../engine/format';
+import { formatMoney, formatNumber } from '../../../engine/format';
 import { useGame } from '../../../state/store';
 import { GameIcon } from '../../components/GameIcon';
 import { useTarget } from '../../hints/targets';
-import { Pill, SectionTitle } from '../../kit';
+import { Pill, SectionTitle, shortDuration } from '../../kit';
 import { alpha, useTheme } from '../../theme';
 import { PriceButton } from '../upgrades/PriceButton';
 import { closeEnough, usePaced } from './paced';
@@ -188,7 +188,7 @@ function NextVenue({ venue }: { venue: Venue }) {
       </View>
       <View style={styles.nextBottom}>
         <Text style={[styles.eta, { color: affordable ? t.c.success : t.c.text }]} numberOfLines={2}>
-          {affordable ? 'Ready to open!' : Number.isFinite(eta) && eta < 86400 * 7 ? `About ${formatDuration(eta)} at your current income` : 'Keep growing to afford it'}
+          {affordable ? 'Ready to open!' : Number.isFinite(eta) && eta < 86400 * 7 ? `About ${shortDuration(eta)} at your current income` : 'Keep growing to afford it'}
         </Text>
         <View {...target}>
           <PriceButton label="Unlock" price={formatMoney(cost, t.strings.currencySymbol)} variant={affordable ? 'success' : 'ghost'} onPress={() => unlockVenue(venue.id)} />

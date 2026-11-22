@@ -197,6 +197,8 @@ export function Celebrations() {
     };
     const next = () => {
       if (busy.current || queue.current.length === 0 || timer.current) return;
+      // Banners wait while a chest is opening (the reveal is its own celebration).
+      if (useGame.getState().chestOpening !== null) return;
       const wait = lastStart.current + MIN_GAP_MS - Date.now();
       if (wait > 0) {
         timer.current = setTimeout(() => {
@@ -217,7 +219,11 @@ export function Celebrations() {
     take(useGame.getState().celebrations);
     next();
     const unsub = useGame.subscribe((s, prev) => {
-      if (s.celebrations === prev.celebrations) return;
+      if (s.celebrations === prev.celebrations) {
+        // A chest opening just ended: show what waited behind it.
+        if (s.chestOpening === null && prev.chestOpening !== null) next();
+        return;
+      }
       if (s.celebrations.length === 0) {
         // A reset or a dev preset cleared the queue.
         queue.current = [];

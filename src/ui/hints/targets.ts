@@ -74,6 +74,10 @@ export const targets = {
     entries.set(key, { rect, remeasure: remeasure ?? prev?.remeasure });
     notify();
   },
+  /** Every key on screen right now (for debugging tools). */
+  keys(): string[] {
+    return [...entries.keys()];
+  },
   get(key: string): TargetRect | null {
     return entries.get(key)?.rect ?? null;
   },

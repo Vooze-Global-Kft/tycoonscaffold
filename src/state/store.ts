@@ -23,6 +23,7 @@ import { fx } from '../services/fx';
 import { iap } from '../services/iap';
 import { detectRegion } from '../services/region';
 import { simEvents } from './events';
+import { overlays } from './overlays';
 
 const SAVE_KEY = `save:${ACTIVE_GAME_ID}:v1`;
 
@@ -133,7 +134,8 @@ interface Store {
   claimDaily(): void;
   gemTimeWarp(): void;
   dismissStory(): void;
-  purchase(product: IapProduct): Promise<void>;
+  /** Resolves true when the product was paid for and granted. */
+  purchase(product: IapProduct): Promise<boolean>;
   restorePurchases(): Promise<number>;
   /** Dev only: wipe the save. */
   reset(): Promise<void>;
@@ -148,6 +150,13 @@ let rushWasActive = false;
 let leaveCount = 0;
 /** At most one deal popup per session, and none in the very first session. */
 let dealPopupShown = false;
+/** Date.now() when this session started: no offer popup in its first minute. */
+let sessionStartedAt = 0;
+/** No offer popup in the first minute of a session, nor within a few seconds of any dialog closing. */
+const POPUP_SESSION_QUIET_MS = 60_000;
+const POPUP_AFTER_CLOSE_MS = 5_000;
+/** Counts successful grants, so purchase() can tell whether the product it routed was granted. */
+let grantSeq = 0;
 /** Reused every tick so the 10 Hz loop allocates as little as possible (listeners get a copy). */
 const tickEvents: GameEvent[] = [];
 /** boot() runs once; a second call (the app returning to the foreground in older App.tsx builds) becomes resume(). */
@@ -275,7 +284,8 @@ export const useGame = create<Store>((set, get) => {
   const housekeeping = () => {
     const now = Date.now();
     const game = update((s, cfg) => refreshMeta(cfg, s, now));
-    const canPop = !dealPopupShown && game.stats.sessions >= 2 && get().dealPopup === null && get().chestOpening === null && get().offline === null;
+    const quiet = !overlays.anyOpen() && overlays.msSinceClose() >= POPUP_AFTER_CLOSE_MS && now - sessionStartedAt >= POPUP_SESSION_QUIET_MS;
+    const canPop = !dealPopupShown && quiet && game.stats.sessions >= 2 && get().dealPopup === null && get().modal === null && get().chestOpening === null && get().offline === null;
     if (canPop && E.pendingStoryBeat(get().cfg, game) === null) {
       const { cfg, region } = get();
       const deal = safe('meta.dealToShow', () => M.dealToShow(cfg, game, now), null);
@@ -362,6 +372,7 @@ export const useGame = create<Store>((set, get) => {
         syncAds(game);
         rushWasActive = E.isRushActive(game, at);
         lastTickAt = at;
+        sessionStartedAt = at;
         paused = false;
         set({
           cfg,
@@ -397,7 +408,10 @@ export const useGame = create<Store>((set, get) => {
       const sessionsBefore = game.stats.sessions;
       game = safe('meta.registerSession', () => M.registerSession(game, now), game);
       const newSession = game.stats.sessions > sessionsBefore;
-      if (newSession) dealPopupShown = false;
+      if (newSession) {
+        dealPopupShown = false;
+        sessionStartedAt = now;
+      }
       game = safe('meta.startFreeChestTimer', () => M.startFreeChestTimer(cfg, game, now), game);
       game = refreshMeta(cfg, game, now);
 
@@ -754,6 +768,7 @@ export const useGame = create<Store>((set, get) => {
       }
       if (!result) return fx.play('ui_denied');
       syncAds(result.state);
+      grantSeq++;
       set({ game: result.state, dealPopup: null });
       fx.play('purchase_success');
       celebrateRewards(result.granted);
@@ -869,8 +884,14 @@ export const useGame = create<Store>((set, get) => {
       // buyDeal, which checks the timer and the purchase limit, so money is never taken for nothing.
       if (product.kind === 'deal') {
         const deal = get().cfg.meta.deals.find((d) => d.productId === product.id);
-        return deal ? get().buyDeal(deal.id) : Promise.resolve(fx.play('ui_denied'));
+        if (!deal) {
+          fx.play('ui_denied');
+          return Promise.resolve(false);
+        }
+        const seq = grantSeq;
+        return get().buyDeal(deal.id).then(() => grantSeq > seq);
       }
+      const seq = grantSeq;
       return once(`iap:${product.id}`, async () => {
         if (M.isNonConsumable(product) && M.productOwned(get().game, product)) return;
         const ok = await iap.purchase(product);
@@ -882,11 +903,13 @@ export const useGame = create<Store>((set, get) => {
           crash.record(new Error(`product ${product.id} paid but not granted`), 'purchase');
           return;
         }
+        grantSeq++;
         syncAds(result.state);
         set({ game: result.state });
         fx.play('purchase_success');
+        celebrateRewards(result.granted);
         get().save();
-      });
+      }).then(() => grantSeq > seq);
     },
 
     async restorePurchases() {
