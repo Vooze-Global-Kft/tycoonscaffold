@@ -69,10 +69,20 @@ function lastPurchase(h: HaulState): { at: number; key: string | null } | null {
  * read +2 % alone), when both are affordable together and the pair gains `minGain`. Never `skip`.
  */
 export function limitPurchase(cfg: HaulConfig, g: Run, minGain = ADVICE_GAIN, skip: string | null = null): RankedPurchase | null {
-  const single = advisedPurchase(cfg, g, minGain, skip);
-  if (single) return single;
+  // The bot's own pick comes first: when it is worth waiting for (a claim the cash nearly covers ranks
+  // above every cheap level), nothing is named, or a hint every 40 s for a small level would spend the
+  // savings and the claim would never come (the hint path never reached ring 2 that way).
+  const top = rankPurchases(cfg, g)[0];
+  if (top && top.key !== skip && !affordable(g.cash, top.total)) return null;
   const before = haulIncome(cfg, g);
   if (!(before > 0)) return null;
+  // A claim that pays is named before cheaper levels: a person buys one thing a hint, so a hint every
+  // 40 s for a small rig level would spend the savings each time and the new ore (the next goal) would
+  // never come (the hint path reached ring 2 on 2 of 5 seeds in 8 minutes that way).
+  const claim = rankPurchases(cfg, g, true).find((o) => o.key.startsWith('claim ') && o.key !== skip && affordable(g.cash, o.total) && o.gain >= minGain * before);
+  if (claim) return claim;
+  const single = advisedPurchase(cfg, g, minGain, skip);
+  if (single) return single;
   for (const o of rankPurchases(cfg, g)) {
     const q = o.bundle;
     if (!q || q.key === skip || !affordable(g.cash, o.total) || !(o.gain >= minGain * before)) continue;

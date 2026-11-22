@@ -556,7 +556,10 @@ export interface Rival {
   mult: number;
 }
 
-/** True when a basis's station ships a single ore (Decision 64: one buyer on such a station). */
+/**
+ * True when a basis's station ships a single ore (Decision 64: one buyer on such a station): one ore
+ * above 2 % of what it shipped lately (the draw's own reading: such a station gets the quota).
+ */
 export function shipsOneOre(cfg: HaulConfig, basis: ContractBasis): boolean {
   const recent = basis.recent;
   const total = Object.values(recent).reduce((a, x) => a + x, 0);
@@ -593,8 +596,16 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   const reach = (ore: string) => Math.max(fig(ore), basis.potential ? Math.min(recent[ore] ?? 0, basis.potential[ore] ?? 0) : 0);
   const alive = (ore: string) => reach(ore) > 0 && reach(ore) >= 0.5 * (recent[ore] ?? 0);
   const capUnits = (ore: string) => (reach(ore) > 0 ? Math.max(1, Math.floor(L * reach(ore) * (1 + C.raise[1]))) : Infinity);
+  // Decision 64, no dominated offers: two offers never want the same ores with raises closer than
+  // `raiseGap`, and a larger order of the same ores never pays less.
+  const keyOf = (ores: string[]) => [...ores].sort().join('+');
+  // (An ore with no route has no raise figure: such offers are never compared.)
+  const raiseOf = (ws: { ore: string; units: number }[]) => (ws.every((w) => fig(w.ore) > 0) ? Math.max(0, ...ws.map((w) => w.units / (L * fig(w.ore)) - 1)) : NaN);
+  const gap = C.raiseGap;
+  const sameOres = (ws: { ore: string }[]) => rivals.filter((r) => keyOf(r.ores) === keyOf(ws.map((w) => w.ore)));
+  const clashes = (ws: { ore: string; units: number }[]) => sameOres(ws).some((r) => Number.isFinite(r.raise) && Number.isFinite(raiseOf(ws)) && Math.abs(r.raise - raiseOf(ws)) < gap - 1e-9);
   // Rocks that last the contract: drying inside its launches costs the ore under a tenth of its figure.
-  const firm = (ore: string) => fig(ore) >= 0.9 * (basis.steady[ore] ?? 0);
+  const firm = (ore: string) => fig(ore) > 0 && fig(ore) >= 0.9 * (basis.steady[ore] ?? 0);
   // The share of a launch an ore has now: what it shipped, or the routes as they are when those carry
   // more (the last pass of the draw reads what it shipped only).
   let shipShareOnly = false;
@@ -622,7 +633,9 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   };
   // A station that ships a single ore gets the quota of Decision 40 (the last resort: never an empty board).
   void none;
-  if (shipped.length <= 1) return quota();
+  // (A second quota of the same ore at a raise within `raiseGap` of one on the board would be dominated: the place waits.)
+  const guard = (c: Contract) => (none && clashes(c.wants) ? null : c);
+  if (shipped.length <= 1) return guard(quota());
   const lifeNeed = L * basis.interval;
   // The most a launch can carry of an ore: under maxShare, and what its rocks drill with one more rig level each.
   const step = cfg.haul.rig.levelGrowth;
@@ -667,9 +680,9 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
     const main = worth[0] ?? (live.length ? live : shipped).slice().sort((a, b) => valueOf(b) - valueOf(a))[0];
     shipShareOnly = false;
     const sh = main ? Math.min(1, share(main)) : 1;
-    if (!main || sh >= 0.95) return quota();
+    if (!main || sh >= 0.95) return guard(quota());
     const q = sh + (1 - sh) * (0.5 + 0.4 * draw(9));
-    return make([{ ore: main, units: Math.min(capUnits(main), Math.round(L * F * q)) }], Math.max(C.quotaMinMult, round1(multBase([main]) - C.quotaMultCut)));
+    return guard(make([{ ore: main, units: Math.min(capUnits(main), Math.round(L * F * q)) }], Math.max(C.quotaMinMult, round1(multBase([main]) - C.quotaMultCut))));
   }
   // Several ores matter but none has room by what it shipped either (a station bent for the draw):
   // the one with the most room, raised over what it shipped, whatever the cap.
@@ -679,9 +692,12 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   }
   const fresh = eligible.filter((o) => !avoidOres.includes(o));
   const pool0 = fresh.length ? fresh : eligible;
-  // Decision 64: ores whose rocks last the contract first.
+  // Decision 64: ores whose routed rocks last the contract first, then ores with a route at all (an
+  // ore whose drones sit on the rack is asked for only when nothing else can be: its recent figure
+  // may have been run down on purpose).
   const firmPool = pool0.filter(firm);
-  const pool = firmPool.length ? firmPool : pool0;
+  const routedPool = pool0.filter((o) => fig(o) > 0);
+  const pool = firmPool.length ? firmPool : routedPool.length ? routedPool : pool0;
   const drawn = pool[Math.min(pool.length - 1, Math.floor(draw(1) * pool.length))];
 
   const build = (ore1: string, two = false) => {
@@ -736,13 +752,6 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
     return { wants, mb, g };
   };
 
-  // Decision 64, no dominated offers: two offers never want the same ores with raises closer than
-  // `raiseGap`, and a larger order of the same ores never pays less.
-  const keyOf = (ores: string[]) => [...ores].sort().join('+');
-  const raiseOf = (ws: { ore: string; units: number }[]) => Math.max(0, ...ws.map((w) => (fig(w.ore) > 0 ? w.units / (L * fig(w.ore)) - 1 : C.raise[1])));
-  const gap = C.raiseGap;
-  const sameOres = (ws: { ore: string }[]) => rivals.filter((r) => keyOf(r.ores) === keyOf(ws.map((w) => w.ore)));
-  const clashes = (ws: { ore: string; units: number }[]) => sameOres(ws).some((r) => Math.abs(r.raise - raiseOf(ws)) < gap - 1e-9);
   // Moves the raised ore's units to the nearest raise at least `gap` away from the rivals it clashes
   // with, within the cap and not under the never-green half of the smallest raise (Decision 56).
   const moved = (ws: { ore: string; units: number }[]) => {
@@ -820,7 +829,8 @@ export function rivalsOf(cfg: HaulConfig, basis: ContractBasis, board: Contract[
     .filter((c) => !c.taken)
     .map((c) => ({
       ores: c.wants.map((w) => w.ore),
-      raise: Math.max(0, ...c.wants.map((w) => (fig(w.ore) > 0 ? w.units / (L * fig(w.ore)) - 1 : cfg.haul.contracts.raise[1]))),
+      // NaN when a wanted ore has no route (no raise figure: never compared).
+      raise: c.wants.every((w) => fig(w.ore) > 0) ? Math.max(0, ...c.wants.map((w) => w.units / (L * fig(w.ore)) - 1)) : NaN,
       mult: c.mult,
       bonus: c.wants.reduce((a, w) => a + w.units * (basis.prices[w.ore] ?? 0), 0) * Math.max(0, c.mult + basis.contractAdd - 1) * basis.G,
     }));

@@ -77,7 +77,11 @@ describe('audit 3: a contract is not met by doing nothing (Decision 40, "never f
     for (const ore of ['iron', 'copper']) {
       let g = tenMinutes();
       const p = H.haulParams(cfg, g);
-      g = { ...g, haul: { ...g.haul, contracts: H.openBoard(cfg, g.haul, p.F, p) } };
+      // A board exists only after launches were measured (unlock): the station remembers what its
+      // routes ship (Decision 64's one-buyer rule reads it; with nothing measured a fresh station
+      // reads as the routes as they are, and recalling one ore would make it a one-ore station).
+      const measured = { ...g.haul, contracts: { ...g.haul.contracts, recent: H.steadyPerLaunch(p, g.haul).perLaunch, measured: 3 } };
+      g = { ...g, haul: { ...measured, contracts: { ...H.openBoard(cfg, measured, p.F, p), recent: measured.contracts.recent, measured: 3 } } };
       const where: number[] = [];
       g.haul.slots.forEach((s, i) => {
         if (s.claimed && s.ore === ore) for (let n = 0; n < s.haulers; n++) where.push(i);

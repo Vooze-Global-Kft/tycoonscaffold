@@ -148,7 +148,10 @@ describe('the limit hint (Decision 57)', () => {
     const singles = rankPurchases(shipped, g, true);
     for (const o of singles.slice(0, singles.indexOf(singles.find((x) => x.key === pick!.key)!))) expect(o.total > g.cash || o.gain < ADVICE_GAIN * H.haulIncome(shipped, g)).toBe(true);
     expect(bestPurchase(shipped, g)).not.toBeNull();
-    const t = adviceTarget(pick!.key)!;
+    // The hint names limitPurchase's pick: a claim that pays first, else this single, else the limit.
+    const named = limitPurchase(shipped, g, ADVICE_GAIN)!;
+    expect(named.key.startsWith('claim ') || named.key === pick!.key).toBe(true);
+    const t = adviceTarget(named.key)!;
     expect(adviceHint(shipped, g)).toMatchObject({ kind: 'point', key: t.key, route: t.route, step: 0, limit: ADVICE_MAX });
     expect(H.hintsFor(shipped, g).some((h) => h.key === t.key && h.step === 0)).toBe(true);
   });
@@ -159,7 +162,7 @@ describe('the limit hint (Decision 57)', () => {
     g = { ...g, cash: 1000 } as Run;
     g = H.assignDrone(shipped, H.buyDrone(shipped, H.claimSlot(shipped, g, 1) as Run) as Run, 1) as Run;
     g = H.upgradeRig(shipped, g, 0) as Run;
-    g = { ...g, cash: 175, haul: { ...g.haul, marks: { ...g.haul.marks, boughtAt: g.haul.clock - ADVICE_IDLE_SECONDS - 1, lastBuy: 'rig 0' } as Marks } } as Run;
+    g = { ...g, cash: 60, haul: { ...g.haul, marks: { ...g.haul.marks, boughtAt: g.haul.clock - ADVICE_IDLE_SECONDS - 1, lastBuy: 'rig 0' } as Marks } } as Run;
     const before = H.haulIncome(shipped, g);
     expect(advisedPurchase(shipped, g, ADVICE_GAIN)).toBeNull();
     const pick = limitPurchase(shipped, g, ADVICE_GAIN);
@@ -171,6 +174,19 @@ describe('the limit hint (Decision 57)', () => {
     expect(limitPurchase(shipped, next, ADVICE_GAIN, 'freighter')?.key).toMatch(/^rig /);
     // Never the purchase made last.
     expect(limitPurchase(shipped, g, ADVICE_GAIN, 'freighter')?.key ?? null).not.toBe('freighter');
+  });
+  it('names a claim that pays before cheaper levels, and nothing while the bot would save for its pick', () => {
+    let g = after(ADVICE_IDLE_SECONDS + 1);
+    g = { ...g, cash: 1000 } as Run;
+    g = H.assignDrone(shipped, H.buyDrone(shipped, H.claimSlot(shipped, g, 1) as Run) as Run, 1) as Run;
+    g = H.upgradeRig(shipped, g, 0) as Run;
+    const marks = { ...g.haul.marks, boughtAt: g.haul.clock - ADVICE_IDLE_SECONDS - 1, lastBuy: 'rig 0' } as Marks;
+    const rich = { ...g, cash: 200, haul: { ...g.haul, marks } } as Run;
+    expect(limitPurchase(shipped, rich, ADVICE_GAIN)?.key).toMatch(/^claim /);
+    // Short of the bot's own pick (when it is a purchase it waits for), nothing is named.
+    const top = rankPurchases(shipped, rich)[0];
+    const short = { ...rich, cash: top.total * 0.5 } as Run;
+    if (rankPurchases(shipped, short)[0].total > short.cash) expect(limitPurchase(shipped, short, ADVICE_GAIN)).toBeNull();
   });
   it('waits 40 s after a purchase, skips the purchase made last, stops after six showings, at 15 min and after galaxy 1', () => {
     expect(adviceHint(shipped, after(ADVICE_IDLE_SECONDS - 5))).toBeNull();
