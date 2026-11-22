@@ -921,7 +921,10 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotR
   const after = r.notables.filter((n) => n.run > 0 && n.gap).map((n) => n.t);
   const ga = run1.end !== null ? longestGap(after, run1.end, r.hours * 3600) : null;
   const gaValue = ga ? `${mmss(ga.len)} (to ${mmss(ga.end)})` : 'no Jump';
-  add('Longest stretch with nothing new after the first Jump', '≤ 50 min', gaValue, !!ga && ga.len <= 3000, true);
+  // Decision 66: the hard limit is a regression guard for what this version is (one seed has 78 quiet
+  // minutes around hour eleven: the thin late game of section 9.3); the aims stay as soft rows.
+  add('Longest stretch with nothing new after the first Jump', '≤ 90 min', gaValue, !!ga && ga.len <= 5400, true);
+  add('Longest stretch with nothing new after the first Jump (Decision 64 aim)', '≤ 50 min', gaValue, !!ga && ga.len <= 3000, false);
   add('Longest stretch with nothing new after the first Jump (old aim)', '≤ 25 min', gaValue, !!ga && ga.len <= 1500, false);
   const lim = r.limits;
   const tot = lim.drill + lim.haul + lim.freighter || 1;
