@@ -1,12 +1,15 @@
 /**
  * App icons for both games, drawn in code.
  *
- *   npx tsx scripts/art/icons/build.ts candidates <outDir>   every candidate at 1024 + comparison sheets
+ *   npx tsx scripts/art/icons/build.ts candidates <outDir>   round-1 candidates at 1024 + comparison sheets
+ *   npx tsx scripts/art/icons/build.ts r2 <outDir>           round-2 candidates (after the store review)
+ *   npx tsx scripts/art/icons/build.ts chosen <outDir>       the chosen set + sheet-chosen.png, no repo writes
  *   npx tsx scripts/art/icons/build.ts final [outDir]        the chosen icons; without outDir, writes
  *                                                           games/<id>/icon.png, adaptive-icon.png, splash.png
  *
  * icon.png is full-bleed and opaque (re-encoded without alpha by ffmpeg afterwards: see `final`).
- * adaptive-icon.png and splash.png are transparent with the subject inside the central 66 %.
+ * adaptive-icon.png keeps the subject inside the central 66 % (Pizza Empire's is full-bleed sunburst, since
+ * the launcher's background is the cream theme colour; Orbit Haulers' is transparent). splash.png is transparent.
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -45,49 +48,95 @@ headless(async (H) => {
   };
 
   // ---------------------------------------------------------------- candidates
-  const marcoSlice = { x: 790, y: 830, turn: -24, unit: 10.5 };
+  const marcoSlice = { x: 800, y: 800, turn: -22, unit: 12.5 };
   const C: Candidate[] = [
     {
       id: 'pizza-A',
       game: 'pizza-empire',
       note: 'Chef Marco bust, calm (eyes open), sunburst, slice lower right',
       icon: (c) => pizza.drawPizzaIcon(c, { mood: 'calm', backdrop: 'sun', x: 480, y: 520, unit: 10.5, slice: marcoSlice }),
-      layer: shrunk((c) => pizza.drawPizzaIcon(c, { background: false, mood: 'calm', x: 480, y: 520, unit: 10.5, slice: marcoSlice }), 0.66),
+      layer: shrunk((c) => pizza.drawPizzaIcon(c, { background: false, mood: 'calm', x: 480, y: 520, unit: 10.5, slice: marcoSlice }), 0.6),
     },
     {
       id: 'pizza-B',
       game: 'pizza-empire',
       note: 'Chef Marco laughing (eyes shut), closer crop, slice raised beside the cheek',
       icon: (c) => pizza.drawPizzaIcon(c, { mood: 'happy', backdrop: 'sun', x: 450, y: 560, unit: 12.5, slice: { x: 820, y: 640, turn: 18, unit: 11 } }),
-      layer: shrunk((c) => pizza.drawPizzaIcon(c, { background: false, mood: 'happy', x: 450, y: 560, unit: 12.5, slice: { x: 820, y: 640, turn: 18, unit: 11 } }), 0.66),
+      layer: shrunk((c) => pizza.drawPizzaIcon(c, { background: false, mood: 'happy', x: 450, y: 560, unit: 12.5, slice: { x: 820, y: 640, turn: 18, unit: 11 } }), 0.6),
     },
     {
       id: 'pizza-C',
       game: 'pizza-empire',
       note: 'Pizzaiolo (cast "pizzaiolo": dark hair, curled moustache) centred, no slice, plain gradient',
       icon: (c) => pizza.drawPizzaIcon(c, { look: JSON.parse(fs.readFileSync('games/pizza-empire/game.json', 'utf8')).cast.pizzaiolo, mood: 'calm', backdrop: 'plain', x: 512, y: 540, unit: 11 }),
-      layer: shrunk((c) => pizza.drawPizzaIcon(c, { background: false, look: JSON.parse(fs.readFileSync('games/pizza-empire/game.json', 'utf8')).cast.pizzaiolo, mood: 'calm', x: 512, y: 540, unit: 11 }), 0.66),
+      layer: shrunk((c) => pizza.drawPizzaIcon(c, { background: false, look: JSON.parse(fs.readFileSync('games/pizza-empire/game.json', 'utf8')).cast.pizzaiolo, mood: 'calm', x: 512, y: 540, unit: 11 }), 0.6),
     },
     {
       id: 'haul-A',
       game: 'space-miner',
       note: 'Drone diagonal (nose up-right) heading home to the station ring arc in the top-right corner',
-      icon: (c) => haul.drawHaulIcon(c, { backdrop: 'ring', x: 470, y: 570, heading: -38, unit: 34 }),
-      layer: shrunk((c) => haul.drawHaulIcon(c, { backdrop: 'ring', space: false, x: 512, y: 512, heading: -38, unit: 34 }), 0.66),
+      icon: (c) => haul.drawHaulIcon(c, { backdrop: 'ring', x: 470, y: 590, heading: -38, unit: 25, line: 1.05 }),
+      layer: shrunk((c) => haul.drawHaulIcon(c, { backdrop: 'ring', space: false, x: 512, y: 512, heading: -38, unit: 31 }), 0.6),
     },
     {
       id: 'haul-B',
       game: 'space-miner',
       note: 'Drone diagonal over a big asteroid whose edge is lit warm, lower right',
-      icon: (c) => haul.drawHaulIcon(c, { backdrop: 'rock', x: 450, y: 470, heading: -38, unit: 33 }),
-      layer: shrunk((c) => haul.drawHaulIcon(c, { backdrop: 'rock', space: false, x: 512, y: 512, heading: -38, unit: 33 }), 0.66),
+      icon: (c) => haul.drawHaulIcon(c, { backdrop: 'rock', x: 440, y: 480, heading: -38, unit: 25, line: 1.05 }),
+      layer: shrunk((c) => haul.drawHaulIcon(c, { backdrop: 'rock', space: false, x: 512, y: 512, heading: -38, unit: 31 }), 0.6),
     },
     {
       id: 'haul-C',
       game: 'space-miner',
       note: 'Drone diagonal inside a cyan halo ring (no station or rock)',
-      icon: (c) => haul.drawHaulIcon(c, { backdrop: 'halo', x: 512, y: 520, heading: -38, unit: 30 }),
-      layer: shrunk((c) => haul.drawHaulIcon(c, { backdrop: 'halo', space: false, x: 512, y: 512, heading: -38, unit: 30 }), 0.66),
+      icon: (c) => haul.drawHaulIcon(c, { backdrop: 'halo', x: 530, y: 510, heading: -38, unit: 24, line: 1.05 }),
+      layer: shrunk((c) => haul.drawHaulIcon(c, { backdrop: 'halo', space: false, x: 512, y: 512, heading: -38, unit: 31 }), 0.6),
+    },
+  ];
+
+  // ---------------------------------------------------------------- round 2 candidates (after the store review)
+  const R2: Candidate[] = [
+    {
+      id: 'r2-pizza-A',
+      game: 'pizza-empire',
+      note: 'Marco smaller and left, slice upright in the lower-right corner, clear gap',
+      icon: (c) => pizza.drawPizzaIcon(c, { mood: 'calm', backdrop: 'sun', x: 430, y: 600, unit: 9.6, slice: { x: 835, y: 790, turn: 10, unit: 8.6 } }),
+      layer: (c) => pizza.drawPizzaIcon(c, { mood: 'calm', backdrop: 'sun', x: 430, y: 600, unit: 9.6, slice: { x: 835, y: 790, turn: 10, unit: 8.6 } }),
+    },
+    {
+      id: 'r2-pizza-B',
+      game: 'pizza-empire',
+      note: 'Marco centred, slice held low in front of the chest, below the chin',
+      icon: (c) => pizza.drawPizzaIcon(c, { mood: 'calm', backdrop: 'sun', x: 512, y: 560, unit: 9.8, slice: { x: 690, y: 905, turn: -62, unit: 8 } }),
+      layer: (c) => pizza.drawPizzaIcon(c, { mood: 'calm', backdrop: 'sun', x: 512, y: 560, unit: 9.8, slice: { x: 690, y: 905, turn: -62, unit: 8 } }),
+    },
+    {
+      id: 'r2-pizza-C',
+      game: 'pizza-empire',
+      note: 'Marco right of centre, slice raised in the upper-left beside the toque',
+      icon: (c) => pizza.drawPizzaIcon(c, { mood: 'calm', backdrop: 'sun', x: 590, y: 610, unit: 9.6, slice: { x: 190, y: 800, turn: -18, unit: 8.4 } }),
+      layer: (c) => pizza.drawPizzaIcon(c, { mood: 'calm', backdrop: 'sun', x: 590, y: 610, unit: 9.6, slice: { x: 190, y: 800, turn: -18, unit: 8.4 } }),
+    },
+    {
+      id: 'r2-haul-A',
+      game: 'space-miner',
+      note: 'Iron asteroid lower left with a hot seam, drone leaving it up-right with ore, dotted route',
+      icon: (c) => haul.drawHaulIcon(c, { backdrop: 'ore-rock', route: true, x: 690, y: 340, heading: -38, unit: 17, line: 1.25, flame: 0.7, rock: { x: 250, y: 790, r: 340, turn: 0 } }),
+      layer: (c) => haul.drawHaulIcon(c, { backdrop: 'ore-rock', route: true, x: 690, y: 340, heading: -38, unit: 17, line: 1.25, flame: 0.7, rock: { x: 250, y: 790, r: 340, turn: 0 } }),
+    },
+    {
+      id: 'r2-haul-B',
+      game: 'space-miner',
+      note: 'Same, no route, bigger drone, rock larger',
+      icon: (c) => haul.drawHaulIcon(c, { backdrop: 'ore-rock', rock: { x: 260, y: 780, r: 360, turn: 8 }, x: 680, y: 350, heading: -38, unit: 19, line: 1.25, flame: 0.6 }),
+      layer: (c) => haul.drawHaulIcon(c, { backdrop: 'ore-rock', rock: { x: 260, y: 780, r: 360, turn: 8 }, x: 680, y: 350, heading: -38, unit: 19, line: 1.25, flame: 0.6 }),
+    },
+    {
+      id: 'r2-haul-C',
+      game: 'space-miner',
+      note: 'Rock lower right, drone upper left heading up-right away from it',
+      icon: (c) => haul.drawHaulIcon(c, { backdrop: 'ore-rock', rock: { x: 780, y: 800, r: 340, turn: 20 }, x: 360, y: 400, heading: -38, unit: 17, line: 1.25, flame: 0.7 }),
+      layer: (c) => haul.drawHaulIcon(c, { backdrop: 'ore-rock', rock: { x: 780, y: 800, r: 340, turn: 20 }, x: 360, y: 400, heading: -38, unit: 17, line: 1.25, flame: 0.7 }),
     },
   ];
 
@@ -133,7 +182,7 @@ headless(async (H) => {
   const comparison = async (out: string, pairs: { label: string; icon: SkImage; layer: SkImage; bg: string }[]) => {
     const sizes = [180, 120, 60, 40];
     const rowW = sizes.reduce((a, b) => a + b + 24, 0) + 24;
-    const W = rowW * 2;
+    const W = rowW + 600;
     const rowH = 180 + 48;
     const H2 = pairs.length * rowH * 2 + pairs.length * 140;
     await H.sheet(out, { width: W, height: H2, scale: 1, background: '#888888' }, (c) => {
@@ -172,11 +221,12 @@ headless(async (H) => {
   const mode = process.argv[2] ?? 'candidates';
   const outDir = process.argv[3];
 
-  if (mode === 'candidates') {
+  if (mode === 'candidates' || mode === 'r2') {
     if (!outDir) throw new Error('outDir needed');
     fs.mkdirSync(outDir, { recursive: true });
     const made: Record<string, { icon: SkImage; layer: SkImage; c: Candidate }> = {};
-    for (const c of C) {
+    const list = mode === 'r2' ? R2 : C;
+    for (const c of list) {
       const icon = img(c.icon);
       const layer = img(c.layer);
       made[c.id] = { icon, layer, c };
@@ -184,13 +234,36 @@ headless(async (H) => {
       fs.writeFileSync(path.join(outDir, `${c.id}-layer.png`), Buffer.from(layer.encodeToBytes()));
       console.log(c.id, '-', c.note);
     }
-    const pz = C.filter((c) => c.game === 'pizza-empire');
-    const hl = C.filter((c) => c.game === 'space-miner');
+    const pz = list.filter((c) => c.game === 'pizza-empire');
+    const hl = list.filter((c) => c.game === 'space-miner');
     for (let i = 0; i < Math.max(pz.length, hl.length); i++) {
       const pairs = [pz[i], hl[i]].filter(Boolean).map((c) => ({ label: c.id, icon: made[c.id].icon, layer: made[c.id].layer, bg: games[c.game] }));
       await comparison(path.join(outDir, `sheet-${i}.png`), pairs);
     }
     return;
   }
-  void execFileSync;
+  if (mode === 'chosen' || mode === 'final') {
+    const pick = {
+      'pizza-empire': { icon: img(pizza.drawChosenIcon), adaptive: img(pizza.drawChosenAdaptive), splash: img(pizza.drawChosenSplash) },
+      'space-miner': { icon: img(haul.drawChosenIcon), adaptive: img(haul.drawChosenLayer), splash: img(haul.drawChosenLayer) },
+    };
+    const dirFor = (g: string) => (mode === 'final' && !outDir ? path.join('games', g) : path.join(outDir ?? '.', g));
+    for (const [g, set] of Object.entries(pick)) {
+      const dir = dirFor(g);
+      fs.mkdirSync(dir, { recursive: true });
+      for (const [name, im] of Object.entries(set)) {
+        const file = path.join(dir, `${name === 'adaptive' ? 'adaptive-icon' : name}.png`);
+        if (name === 'icon') {
+          // Apple rejects an alpha channel: re-encode as 24-bit RGB.
+          const tmp = `${file}.rgba.png`;
+          fs.writeFileSync(tmp, Buffer.from(im.encodeToBytes()));
+          execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', tmp, '-pix_fmt', 'rgb24', file]);
+          fs.unlinkSync(tmp);
+        } else fs.writeFileSync(file, Buffer.from(im.encodeToBytes()));
+        console.log('wrote', file);
+      }
+    }
+    if (outDir)
+      await comparison(path.join(outDir, 'sheet-chosen.png'), (['pizza-empire', 'space-miner'] as const).map((g) => ({ label: g, icon: pick[g].icon, layer: pick[g].adaptive, bg: games[g] })));
+  }
 });

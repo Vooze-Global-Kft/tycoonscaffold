@@ -6,7 +6,7 @@
  *
  * Everything draws into a 1024 x 1024 square (points = pixels at scale 1).
  */
-import type { SkCanvas } from '@shopify/react-native-skia';
+import { ClipOp, type SkCanvas } from '@shopify/react-native-skia';
 import { OUTLINE, Pen, arc, blob, circle, ellipse, lightOf, line, poly, record } from '../../../src/ui/art/draw';
 import { getBustArt, type BustMood } from '../../../src/ui/sim/art/characterArt';
 import { resolveLook, type LookInput } from '../../../src/ui/sim/art/looks';
@@ -33,6 +33,8 @@ export interface PizzaIconOptions {
   ow?: number;
   /** Slice: where (pixels), turn (degrees) and size (pixels per unit); null for none. */
   slice?: { x: number; y: number; turn: number; unit: number } | null;
+  /** Round off the flat-cut curl tops beside the toque band (default true). */
+  cleanHair?: boolean;
 }
 
 /** A slice of pizza in the kit's style (outline, crust band, cheese, pepperoni, basil), tip down, about 30 x 34 units. */
@@ -69,6 +71,18 @@ export function drawChef(c: SkCanvas, o: PizzaIconOptions): void {
   const u = o.unit ?? 9;
   c.scale(u, u);
   c.drawPicture(art.base);
+  if (o.cleanHair ?? true) {
+    // The game cuts the hair under a hat with a flat clip at y -15 that is wider than the toque band,
+    // so the curls show a hard horizontal top on both sides (fine at 30 pt in game, glaring at 1024).
+    // One curl in the kit's style over each cut rounds it off; each stops at the band's outer edge,
+    // so its outline only overlaps the band's own outline. A third curl covers a beige sliver
+    // between the curls by the left ear.
+    c.drawPicture(record((p) => {
+      p.shape(circle(-29.5, -14.6, 5.2), look.hair, { shade: 2.2 });
+      p.shape(circle(29.4, -15.2, 5.0), look.hair, { shade: 2.2 });
+      p.shape(circle(-29.2, 5.6, 4.2), look.hair, { shade: 1.4 });
+    }, OUTLINE, o.ow ?? 3.4));
+  }
   if (art.eyes) c.drawPicture(art.eyes);
   c.restore();
 }
@@ -90,10 +104,10 @@ export function drawPizzaIcon(c: SkCanvas, o: PizzaIconOptions): void {
 }
 
 /** The warm background: yellow-orange glow behind the head, theme red at the edges. */
-export function drawBackground(c: SkCanvas, kind: PizzaBackdrop, cy = 420): void {
+export function drawBackground(c: SkCanvas, kind: PizzaBackdrop, cy = 420, radius = 780): void {
   const p = new Pen(c, OUTLINE, 0);
   const sq = poly([[0, 0], [S, 0], [S, S], [0, S]]);
-  p.radial(sq, 512, cy, 780, [YELLOW, ORANGE, RED, '#B01E2C'], [0, 0.3, 0.76, 1]);
+  p.radial(sq, 512, cy, radius, [YELLOW, ORANGE, RED, '#B01E2C'], [0, 0.3, 0.76, 1]);
   if (kind === 'sun') {
     const n = 16;
     for (let i = 0; i < n; i += 2) {
@@ -106,5 +120,52 @@ export function drawBackground(c: SkCanvas, kind: PizzaBackdrop, cy = 420): void
     for (let x = 0; x < S; x += 128)
       for (let y = 768; y < S; y += 128) if (((x + y) / 128) % 2 === 0) p.fill(poly([[x, y], [x + 128, y], [x + 128, y + 128], [x, y + 128]]), '#FFFFFF38');
   }
+  p.dispose();
+}
+
+/**
+ * The chosen design (round 2, candidate r2-pizza-A): Chef Marco, eyes open, left of centre; the
+ * slice stands upright in the lower-right with clear background between it and his face.
+ */
+export const CHOSEN = {
+  chef: { mood: 'calm' as BustMood, x: 412, y: 600, unit: 9.6 },
+  slice: { x: 848, y: 878, turn: 4, unit: 9.1 },
+};
+
+export function drawChosenIcon(c: SkCanvas): void {
+  drawBackground(c, 'sun');
+  drawChef(c, CHOSEN.chef);
+  drawSliceAt(c, CHOSEN.slice);
+}
+
+/**
+ * Adaptive icon (Android): the launcher puts it on the theme's page colour (cream #FFF6E9), which
+ * lost the red sunburst. So this layer is full-bleed: the same sunburst over the whole 108 dp, the
+ * chef and slice shrunk to 64 % inside the 66 dp safe circle (toque top about 264 px from the centre,
+ * slice corner about 291), the bust's flat bottom below the visible 72 dp window (y > 853).
+ */
+export const ADAPTIVE_K = 0.64;
+export function drawChosenAdaptive(c: SkCanvas): void {
+  // Gradient radius shrunk with the content so the visible window shows the iOS icon's red edge.
+  drawBackground(c, 'sun', 500, 560);
+  c.save();
+  c.translate(512 - 560 * ADAPTIVE_K, 560 - 560 * ADAPTIVE_K);
+  c.scale(ADAPTIVE_K, ADAPTIVE_K);
+  drawChef(c, CHOSEN.chef);
+  // Slice a little further in, so its crust corner stays inside the safe circle.
+  drawSliceAt(c, { ...CHOSEN.slice, x: CHOSEN.slice.x - 18, y: CHOSEN.slice.y - 16 });
+  c.restore();
+}
+
+/** Splash mark (transparent): the icon as a round badge with the kit's brown outline. */
+export function drawChosenSplash(c: SkCanvas): void {
+  const r = 470;
+  const disc = circle(512, 512, r);
+  c.save();
+  c.clipPath(disc, ClipOp.Intersect, true);
+  drawChosenIcon(c);
+  c.restore();
+  const p = new Pen(c, OUTLINE, 0);
+  p.stroke(circle(512, 512, r - 12), OUTLINE, 24);
   p.dispose();
 }
