@@ -100,7 +100,7 @@ async function runSteps(page: any, steps: Step[]): Promise<void> {
     }
     if ('tapText' in s) {
       // A real touch at the text's centre (the press handler is on a parent, as on a phone).
-      const loc = page.getByText(s.tapText).first();
+      const loc = page.getByText(s.tapText).nth(s.nth ?? 0);
       await loc.waitFor({ state: 'visible', timeout: 15000 });
       const b = await loc.boundingBox();
       if (!b) throw new Error(`tapText: ${s.tapText} has no box`);

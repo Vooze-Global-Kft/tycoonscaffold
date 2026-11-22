@@ -1,6 +1,7 @@
 /**
- * Orbit Haulers. The five store screenshots, in listing order (Pizza Empire has six, in another
- * order: the two sets differ in length and story as well as template). Captions in the game's voice
+ * Orbit Haulers. The six store screenshots, in listing order: the first minute (a drone to a rock,
+ * the freighter away), then contracts, the far rings, the autopilot's Shift Log and the Star Map
+ * (Pizza Empire's six tell another story in another template). Captions in the game's voice
  * (dry, short, radio-like; src/ui/haul/strings.ts and games/space-miner/game.json), at most six
  * words, headline only. Preview switches: src/dev/devtools.ts and src/ui/haul/dev.ts.
  *
@@ -48,17 +49,26 @@ function fieldBand(v: View): BandSpec {
   return { y0: top, y1: bottom, cx: (left + right) / 2, maxZoom: L.width / (right - left), anchor: 'bottom' };
 }
 
-/** Distinct buyers on the Contract Board (the line after each "×n.n" rate, below the board's title). */
-function buyersDistinct(text: string): string | null {
+/**
+ * The Contract Board as rows (strings.ts, "Contract Board"): three different buyers (the line
+ * before each "x1.n" rate), the taken one first with its TAKEN tag, and the pod counter's line.
+ */
+function boardRows(text: string): string | null {
   const i = text.indexOf('CONTRACT BOARD');
   if (i < 0) return 'no Contract Board on screen';
   const lines = text.slice(i).split('\n').map((l) => l.trim());
-  const buyers = lines.filter((_, k) => k > 0 && /^×\d/.test(lines[k - 1]));
+  const buyers = lines.filter((_, k) => /^[x×]\d/.test(lines[k + 1] ?? ''));
   if (buyers.length < 3) return `only ${buyers.length} buyers read`;
   if (new Set(buyers).size !== buyers.length) return `the same buyer twice (${buyers.join(', ')})`;
-  if (!/ACTIVE/.test(text.slice(i))) return 'no manifest active';
-  return null;
+  const taken = lines.indexOf('TAKEN');
+  if (taken < 0) return 'no contract taken';
+  if (lines.findIndex((l, k) => k > 0 && /^[x×]\d/.test(l) && k > taken) < 0) return 'the TAKEN row is not first';
+  if (!/SCRAP POD ·/i.test(text.slice(i))) return 'no pod counter under the rows';
+  return tutorialLine(text);
 }
+
+/** The radio's first tutorial line ("Drone idle on the rack..."): allowed only in the first-minute scene. */
+const tutorialLine = (text: string): string | null => (/DRONE IDLE ON THE RACK|SEND IT TO THE ROCK/i.test(text) ? 'the tutorial line is on the radio' : null);
 
 const scenes: GameScenes = {
   game: 'space-miner',
@@ -67,9 +77,9 @@ const scenes: GameScenes = {
   // Captured at 4/3 of the phone's pixel ratio: the field scenes are shown zoomed in up to 1.08 x,
   // and the feature graphic needs the station larger than a 1:1 crop.
   captureScale: 4 / 3,
-  // The feature graphic: the late field around the station, the rings above it, the bay below.
+  // The feature graphic: the late field (scene 4) around the station, the rings above it, the bay below.
   feature: {
-    scene: 1,
+    scene: 4,
     frame: (v) => {
       const L = field(v);
       return { y0: L.station.y - L.radii[2] - 30, y1: L.station.y + 60, cx: L.station.x, anchor: 'center' };
@@ -77,44 +87,25 @@ const scenes: GameScenes = {
   },
   scenes: [
     {
-      slug: 'far-rings',
-      query: 'preset=late',
-      settle: 10000,
-      frame: fieldBand,
-      caption: 'Far rings. Rich ore.\nLong trips.',
-      shows: 'A late station: every ring claimed, routes to copper, ice, titanium and platinum rocks, drones in flight, the hold and the counter. Cropped from the outer ring\'s rocks to just above the nav row (the empty starfield above the rings and the contract strip are outside the band).',
-    },
-    {
       slug: 'drag-a-drone',
-      query: 'preset=mid',
+      query: 'preset=early',
       settle: 9000,
-      // A running station (its rack is empty: every drone is out on a route). A drone is picked up
-      // off a busy route's chip (slot 1, the right-hand iron rock on ring 2) and dragged out to a rock
-      // on ring 3; the picture is taken with the finger still down, the drag line drawn to it.
+      // The first minutes: an early station (three rocks claimed, the inner rings, credits in the
+      // hundreds). A drone is picked up off the right-hand rock's route chip (slot 1) and dragged
+      // to the rock on the left of ring 2 (slot 2); the picture is taken with the finger still
+      // down, the drag line drawn to it.
       steps: (v) => {
         const L = field(v);
         const from = chip(L, 1);
-        const to = rock(L, 6);
+        const to = rock(L, 2);
         // The first move goes well past the 10 pt slop in one event: a slow stream of small moves
         // on a busy machine lets the 350 ms long-press fire first (a long press opens the rig sheet).
         return [{ down: from }, { move: lerp(from, to, 0.3), steps: 1 }, { move: lerp(from, to, 0.95), steps: 6 }, { wait: 350 }];
       },
-      check: (t) => (/Drones move on the map|Dry in about/.test(t) ? 'the rig sheet opened (a long press, not a drag)' : null),
+      check: (t) => (/Drones move on the map|Dry in about/i.test(t) ? 'the rig sheet opened (a long press, not a drag)' : null),
       frame: fieldBand,
       caption: 'Drone to rock.\nOre to hold.',
-      shows: 'A mid-game station with routes to iron, copper and ice: a drone dragged off one route\'s chip onto a rock further out, the drag line showing the new route being set; the hold and the credit counter running.',
-    },
-    {
-      slug: 'contracts',
-      query: 'preset=late&sheet=contracts&speed=6',
-      // Tap the first manifest (its "if met" line): it becomes ACTIVE. The board is drawn from live
-      // state; a board with the same buyer twice is taken again.
-      steps: () => [{ tapText: /^if met$/ }, { wait: 900 }],
-      check: buyersDistinct,
-      tries: 4,
-      frame: () => ({ y0: 0, y1: { text: /^Scrap Pod every/, edge: 'bottom', pad: 16 }, anchor: 'bottom' }),
-      caption: 'Buyers on the line.\nThey lapse.',
-      shows: 'A late station (every ring worked) with the Contract Board open, first manifest just tapped active: three different buyers, what each pays if met and the launches left before it lapses; the contract strip at the top of the screen is in the picture.',
+      shows: 'An early station (three rocks on the inner rings, credits in the hundreds): a drone dragged off one route\'s chip onto another rock, the drag line showing the new route; the hold filling and the credit counter. The field band, so the radio line at the top (a tutorial line here) is outside the picture.',
     },
     {
       slug: 'freighter-away',
@@ -122,9 +113,9 @@ const scenes: GameScenes = {
       settle: 9000,
       // A running station: the freighter cycles (away about 11 s, then docked while the hold fills).
       // Wait until it is docked (no "BACK IN n S"), make the launch swipe, and take the picture
-      // right after the finger lifts: the freighter leaving the pad, the WARPED receipt coming up.
-      // A swipe that did not launch (no "WARPED" / "BACK IN" yet) is taken again. (A full hold
-      // cannot be waited for: the Dock Autopilot launches the moment it fills.)
+      // right after the finger lifts: the freighter leaving the pad. Whether it launched shows a
+      // moment later ("BACK IN n S" / "WARPED"), so the check reads the page 1.5 s after the
+      // picture. (A full hold cannot be waited for: the Dock Autopilot launches the moment it fills.)
       steps: (v) => {
         const L = field(v);
         const z = L.zones.launch;
@@ -143,22 +134,69 @@ const scenes: GameScenes = {
           { wait: 100 },
         ];
       },
+      checkAfter: 1500,
       check: (t) =>
         !/WARPED|BACK IN \d+ S/i.test(t) ? 'the swipe did not launch the freighter' : /CONTRACT MET/i.test(t) ? 'a "contract met" banner covers the counter' : null,
       frame: fieldBand,
       caption: 'Swipe up.\nFreighter away.',
-      shows: 'A mid-game station at the launch: the swipe just made, the freighter leaving the pad with the hold\'s manifest, the receipt coming up on the counter.',
+      shows: 'A mid-game station at the launch: the swipe just made, the freighter leaving the pad with the hold\'s load (the check reads "BACK IN n S" or the WARPED receipt 1.5 s later).',
+    },
+    {
+      slug: 'contracts',
+      query: 'preset=late',
+      settle: 9000,
+      // The radio's first tutorial line ("Drone idle on the rack", which the late preset still
+      // plays) closes by itself after 5 s on the map, but holds its time behind a sheet: wait for it
+      // to go, then open the Contract Board from the strip ("PICK A CONTRACT") and take the second
+      // buyer's row. The board then lists the TAKEN row first, and the strip at the top of the
+      // screen shows the taken contract (delivered, launches left, the pace light).
+      steps: () => [
+        { untilText: /DRONE IDLE ON THE RACK/i, absent: true, timeout: 20000 },
+        { tapText: /^pick a contract$/i },
+        { wait: 1500 },
+        { untilText: /CONTRACT BOARD/i, timeout: 8000 },
+        { tapText: /^x\d+(\.\d+)?$/, nth: 1 },
+        { wait: 1500 },
+      ],
+      check: boardRows,
+      tries: 4,
+      frame: () => ({ y0: 0, y1: { text: /^scrap pod ·/i, edge: 'bottom', pad: 16 }, anchor: 'bottom' }),
+      caption: 'Take a contract.\nShip it in time.',
+      shows: 'A late station with the Contract Board open, a contract just taken: the TAKEN row first (wanted ore, delivered so far, launches left and the pace), two more buyers as rows ("IN 6 LAUNCHES · NEEDS +n % ORE", the bonus), the pod counter\'s stamp boxes; the contract strip at the top of the screen shows the same contract.',
+    },
+    {
+      slug: 'far-rings',
+      query: 'preset=late',
+      settle: 10000,
+      check: tutorialLine,
+      frame: fieldBand,
+      caption: 'Far rings. Rich ore.\nLong trips.',
+      shows: 'A late station: every ring claimed, routes to copper, ice, titanium and platinum rocks out to the far rings, drones in flight, the hold and the counter. Cropped from the outer ring\'s rocks to just above the nav row.',
+    },
+    {
+      slug: 'shift-log',
+      // The app opened on a save 10 minutes old (the store's own offline computation): the Shift
+      // Log over the dimmed field. The band is the screen from the top to just above the hold and
+      // the counter (a counter cut in half at the bottom edge reads as a mistake).
+      query: 'preset=mid&away=600',
+      settle: 10000,
+      check: (t) => (/SHIFT LOG/i.test(t) && /Boost \+50 % · ad/i.test(t) ? null : 'no Shift Log with its Boost key'),
+      frame: (v) => {
+        const z = field(v).zones;
+        return { y0: 0, y1: Math.min(z.hold.y, z.counter.y) - 8, anchor: 'top', crop: true };
+      },
+      caption: 'Off shift.\nStill shipping.',
+      shows: 'The Shift Log after ten minutes away (AWAY 10 m): the ore hauled by kind, rocks gone dry, pods, the credits earned, "Collect" and "Boost +50 % · ad"; the Dock Autopilot shipped while the player was away (without it the log says "Nothing shipped").',
     },
     {
       slug: 'star-map',
       query: 'preset=late&spoke=starmap',
-      // On a short phone the Jump panel is below the fold of the spoke: scroll it into view. The
-      // band is the screen from its top bar to the Jump button, shown whole (on the Play size the
-      // screen is then a little narrower than the image, deep blue beside it).
-      steps: () => [{ scrollTo: /^jump now$/i }],
-      frame: () => ({ y0: 0, y1: { text: /^jump now$/i, edge: 'bottom', pad: 22 }, anchor: 'top' }),
-      caption: 'Jump.\nPick the next galaxy.',
-      shows: 'The Star Map with its own header (back button, "STAR MAP · NAV", the Warp Cores in hand, the galaxy plate): the nodes Warp Cores build, and the Jump panel (what is kept, what resets).',
+      settle: 9000,
+      // The Star Map pins its Jump keys in a footer: the whole screen, top bar to footer.
+      check: (t) => (/STAR MAP/.test(t) && /JUMP/.test(t) ? null : 'no Star Map'),
+      frame: () => ({ y0: 0, y1: { text: /^(jump now|jump anyway.*)$/i, edge: 'bottom', pad: 16 }, anchor: 'top' }),
+      caption: 'Jump galaxies.\nKeep your Warp Cores.',
+      shows: 'The Star Map with its header (back button, "STAR MAP · NAV", the Warp Cores in hand, the galaxy plate), the node tree, a node\'s card, and the Jump panel: what a Jump gives, whether it is ready ("NOT READY · 14 OF 20 WARP CORES"), what is kept (Warp Cores and Star Map first) and what resets; the Jump keys in the footer.',
     },
   ],
 };

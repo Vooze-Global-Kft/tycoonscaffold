@@ -9,8 +9,8 @@ export type P = [number, number];
 /** One input step on the running preview. */
 export type Step =
   | { tap: P }
-  /** Taps the first element whose text matches (e.g. a card's "×2.3"), wherever the layout put it. */
-  | { tapText: RegExp }
+  /** Taps the first element whose text matches (or the `nth`, from 0; e.g. a row's "x1.3"), wherever the layout put it. */
+  | { tapText: RegExp; nth?: number }
   /** Scrolls the first element whose text matches into view (a scrolling panel on a short phone). */
   | { scrollTo: RegExp }
   | { down: P }
