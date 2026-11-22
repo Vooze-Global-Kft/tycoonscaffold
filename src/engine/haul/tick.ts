@@ -206,14 +206,16 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
     // A place whose replacement finds nothing to ask (Decision 56, `offerAt`) is removed after the loop.
     const gone = new Set<number>();
     // Decision 64: a station that ships one ore has one buyer; a place that comes free beyond it stays empty.
-    const places = boardPlaces(cfg, contractBasis(cfg, p, h));
+    // One basis for every draw of this warp-out (it reads the routes and `recent`, not the board).
+    const basis = contractBasis(cfg, p, h);
+    const places = boardPlaces(cfg, basis);
     const replace = (i: number) => {
       fresh.add(i);
       if (C.board.length - gone.size > places) {
         gone.add(i);
         return;
       }
-      const next = drawContract(cfg, h, p.F, p);
+      const next = drawContract(cfg, h, p.F, p, basis);
       C.next = next.next;
       if (!next.contract) {
         gone.add(i);
@@ -276,7 +278,7 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
       for (const e of later) if (e.type === 'contractNew') e.index = C.board.indexOf(e.contract);
     }
     // A place left empty by a drop (Decision 56) gets its offer now.
-    for (const i of topUpBoard(cfg, h, p)) later.push({ type: 'contractNew', contract: C.board[i], index: i });
+    for (const i of topUpBoard(cfg, h, p, basis)) later.push({ type: 'contractNew', contract: C.board[i], index: i });
     // Decision 64: no green offers (an offer the routes now meet untouched asks the never-free floor).
     refloorOffers(cfg, p, h);
   } else if (h.galaxy > 0 ? (C.measured ?? 0) >= 3 : d.stats.launches >= cfg.haul.contracts.unlockLaunches && h.clock >= cfg.haul.contracts.unlockClock - EPS) {

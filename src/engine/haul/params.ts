@@ -388,7 +388,7 @@ export function claimCost(cfg: HaulConfig, g: HaulGame & { haul: HaulState }, sl
   const t = slotTable(cfg)[slot];
   if (!t || t.ring > highestClaimedRing(cfg, g.haul) + 1) return Infinity;
   const c = cfg.haul.claim;
-  return c.base * Math.pow(c.ringFactor, t.ring) * Math.pow(c.jFactor, t.j);
+  return c.base * Math.pow(c.ringFactor, t.ring) * Math.pow(c.jFactor, t.j) * (c.ringMult?.[t.ring] ?? 1);
 }
 
 /** Next drone: base × growth^(n−1), n = drones owned; Infinity at the drone cap. */

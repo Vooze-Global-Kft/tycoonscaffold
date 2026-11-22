@@ -181,7 +181,8 @@ describe('the board is never empty (the lead, finishing round)', () => {
             const offers = g.haul.contracts.board.filter((c) => !c.taken).length;
             // Decision 64: a station that ships one ore has one buyer, and its other places say a
             // second ore brings more (boardNote); every other station keeps at least two offers.
-            if (H.boardNote(cfg, g) === 'secondOre') expect(g.haul.contracts.board.length, `seed ${seed} t=${t} warp ${warps}`).toBe(1);
+            // (A board drawn while two ores shipped keeps its offers until they expire; no new one comes.)
+            if (H.boardNote(cfg, g) === 'secondOre') expect(g.haul.contracts.board.length, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(1);
             else expect(offers, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(2);
           }
         }

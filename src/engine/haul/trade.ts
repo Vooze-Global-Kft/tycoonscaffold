@@ -397,6 +397,12 @@ export interface ContractBasis {
    * `steady`): the cap of an offer's units and the eligibility of an ore whose rocks dried use it.
    */
   lasting?: Record<string, number>;
+  /**
+   * Decision 64: what the present rocks of each ore could put into a launch over the contract's
+   * launches with drones on them (each rock `min(drill × interval, what it has left / L)`), so an
+   * ore whose drones were moved off still counts and one whose rocks dried does not. Optional.
+   */
+  potential?: Record<string, number>;
   /** The same once rocks of a ring's minor ore that dry within the contract come back as the ring's main ore (optional). */
   future?: Record<string, number>;
   prices: Record<string, number>;
@@ -484,7 +490,18 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
   });
   for (const ore of Object.keys(future)) future[ore] = R > 0 ? (params.F * future[ore]) / R : 0;
   const lasting = routeSchedule(cfg, params, h, L).perLaunch;
-  return { galaxy: h.galaxy, F: params.F, recent, steady: st.perLaunch, lasting, future, prices: params.prices, G: params.G, contractAdd: params.contractAdd, ringOf, lifeOf, mainOf, drillOf, pileOf, interval, income };
+  const potential: Record<string, number> = {};
+  if (Number.isFinite(interval) || Number.isFinite(cycle)) {
+    const t = Number.isFinite(interval) ? interval : cycle;
+    h.slots.forEach((s, i) => {
+      const sp = params.slots[i];
+      if (!s?.claimed || s.respawnAt !== null || s.rockN < 0 || !sp || !(sp.rb > 0)) return;
+      const u = Math.max(0, s.life) * (sp.r > 0 ? sp.r : sp.rb) + Math.max(0, s.pile);
+      const x = Math.min(sp.rb * t, u / Math.max(1, L));
+      if (x > 0 && Number.isFinite(x)) potential[s.ore] = (potential[s.ore] ?? 0) + x;
+    });
+  }
+  return { galaxy: h.galaxy, F: params.F, recent, steady: st.perLaunch, lasting, potential, future, prices: params.prices, G: params.G, contractAdd: params.contractAdd, ringOf, lifeOf, mainOf, drillOf, pileOf, interval, income };
 }
 
 /**
@@ -507,6 +524,13 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
  * share. A station that ships a single ore (or offers nothing eligible) gets the quota contract of
  * Decision 40 (`round(L × F × U(quota))` units of its main ore, the multiplier lowered). The
  * multiplier is `mult[farthest ring] ± jitter + raiseMult × g`, rounded to 0.1.
+ *
+ * Decision 64: an ore is eligible only when what it can reach (its routes counted while their rocks
+ * live, `lasting`, or what its present rocks could give with drones back, at most what it shipped)
+ * is at least half its recent figure; no want asks more than `L × reach × (1 + raise[1])`; ores whose
+ * routed rocks last the contract are drawn first; the floor counts `lasting` too, so a fresh offer is
+ * never on pace; and against `rivals` (the offers on the board) a draw never wants the same ores at a
+ * raise within `raiseGap`, nor the same order for a smaller bonus.
  */
 export function contractAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, avoid: string[] = [], avoidOres: string[] = [], rivals: Rival[] = []): Contract {
   return drawAt(cfg, seed, k, basis, avoid, avoidOres, false, rivals) as Contract;
@@ -564,8 +588,11 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   // lives (the views' figure). An ore whose routes now ship less than half what it shipped lately
   // (its rocks dried) is not asked for, and no offer asks more than L × that figure × (1 + raise.hi).
   const fig = (ore: string) => Math.max(0, (basis.lasting ? basis.lasting[ore] : basis.steady[ore]) ?? 0);
-  const alive = (ore: string) => fig(ore) > 0 && fig(ore) >= 0.5 * (recent[ore] ?? 0);
-  const capUnits = (ore: string) => (fig(ore) > 0 ? Math.max(1, Math.floor(L * fig(ore) * (1 + C.raise[1]))) : Infinity);
+  // What the ore can reach: its routes, or what its present rocks could give once drones go back
+  // (at most what it shipped): drones moved off an ore are the player's routing, dried rocks are not.
+  const reach = (ore: string) => Math.max(fig(ore), basis.potential ? Math.min(recent[ore] ?? 0, basis.potential[ore] ?? 0) : 0);
+  const alive = (ore: string) => reach(ore) > 0 && reach(ore) >= 0.5 * (recent[ore] ?? 0);
+  const capUnits = (ore: string) => (reach(ore) > 0 ? Math.max(1, Math.floor(L * reach(ore) * (1 + C.raise[1]))) : Infinity);
   // Rocks that last the contract: drying inside its launches costs the ore under a tenth of its figure.
   const firm = (ore: string) => fig(ore) >= 0.9 * (basis.steady[ore] ?? 0);
   // The share of a launch an ore has now: what it shipped, or the routes as they are when those carry
@@ -823,8 +850,10 @@ export function boardNoteOf(cfg: HaulConfig, params: HaulParams, h: HaulState): 
  * (`contractBasis`, with the run's params; without them, a run being built, the steady figure is
  * unknown and the draw is a quota of F).
  */
-export function drawContract(cfg: HaulConfig, h: HaulState, F: number, params?: HaulParams): { contract: Contract | null; next: number } {
-  const basis: ContractBasis = params
+export function drawContract(cfg: HaulConfig, h: HaulState, F: number, params?: HaulParams, known?: ContractBasis): { contract: Contract | null; next: number } {
+  const basis: ContractBasis = known
+    ? known
+    : params
     ? contractBasis(cfg, params, h)
     : { galaxy: h.galaxy, F, recent: {}, steady: {}, prices: {}, G: 1, contractAdd: 0, ringOf: {}, lifeOf: {}, mainOf: {}, drillOf: {}, pileOf: {}, interval: Infinity, income: 0 };
   const contract = offerAt(cfg, h.seed, h.contracts.next, basis, (h.contracts.board ?? []).map((c) => c.buyer), boardOres(h), rivalsOf(cfg, basis, h.contracts.board ?? []));
@@ -855,14 +884,16 @@ export function openBoard(cfg: HaulConfig, h: HaulState, F: number, params?: Hau
 }
 
 /** Fills the board's empty places (after a drop, Decision 56) with new offers; returns their indexes. */
-export function topUpBoard(cfg: HaulConfig, h: HaulState, params: HaulParams): number[] {
+export function topUpBoard(cfg: HaulConfig, h: HaulState, params: HaulParams, known?: ContractBasis): number[] {
   const C = h.contracts;
   const out: number[] = [];
   C.next = Math.max(C.next, ...C.board.map((c) => c.k + 1));
   // Decision 64: a station that ships one ore has one buyer (the other places say a second ore brings more).
-  const places = boardPlaces(cfg, contractBasis(cfg, params, h));
+  // (The basis does not depend on the board: one per call, or the caller's.)
+  const basis = known ?? contractBasis(cfg, params, h);
+  const places = boardPlaces(cfg, basis);
   while (C.board.length < places) {
-    const d = drawContract(cfg, h, params.F, params);
+    const d = drawContract(cfg, h, params.F, params, basis);
     C.next = d.next;
     if (!d.contract) break;
     // Contract 0 is the fixed first one; a topped-up board never takes it again.

@@ -178,7 +178,13 @@ export const HaulSchema = z.object({
     cost: z.object({ base: z.number().positive(), ringFactor: z.number().gte(1), growth: z.number().gt(1) }),
   }),
   /** Claim cost: base x ringFactor^(ring-1) x jFactor^j (j = index within the ring). */
-  claim: z.object({ base: z.number().positive(), ringFactor: z.number().gte(1), jFactor: z.number().gte(1) }),
+  claim: z.object({
+    base: z.number().positive(),
+    ringFactor: z.number().gte(1),
+    jFactor: z.number().gte(1),
+    /** Decision 64: a factor on the claim price per ring (0-based; missing entries 1), e.g. a cheaper first ring-2 claim. */
+    ringMult: z.array(z.number().positive()).optional(),
+  }),
   pile: z.object({ min: z.number().positive().default(10), seconds: z.number().positive().default(25) }).default({ min: 10, seconds: 25 }),
   drone: z.object({
     speed: z.number().positive().default(0.5),

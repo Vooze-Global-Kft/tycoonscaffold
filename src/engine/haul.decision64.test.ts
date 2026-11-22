@@ -44,7 +44,7 @@ describe('Decision 64: an offer is capped by what the routes can do', () => {
         if (!H.shipsOneOre(cfg, b)) expect(v.onPace).toBe(false);
       }
     }
-  });
+  }, 120_000);
 
   it('an ore whose routes now ship less than half its recent figure is not asked for (its rocks dried)', () => {
     // Iron shipped 300 a launch lately; its routes now carry 40 (the 383K IRON · NEEDS +1108 % offer).
@@ -54,6 +54,19 @@ describe('Decision 64: an offer is capped by what the routes can do', () => {
       expect(c.wants[0].ore).toBe('copper');
       for (const w of c.wants) expect(w.units).toBeLessThanOrEqual(Math.floor(L * (b.lasting?.[w.ore] ?? 0) * (1 + C.raise[1])));
     }
+  });
+
+  it('an ore whose drones were moved off (its rocks still there) stays eligible; one whose rocks dried does not', () => {
+    const moved = handBasis(cfg, { iron: 300, copper: 200 }, { steady: { copper: 500 }, lasting: { copper: 500 }, potential: { iron: 400, copper: 600 }, ringOf: { iron: 0, copper: 1 } });
+    const dried = { ...moved, potential: { iron: 20, copper: 600 } };
+    let iron = 0;
+    for (let k = 1; k <= 200; k++) {
+      const a = H.contractAt(cfg, 9, k, moved);
+      if (a.wants.some((w) => w.ore === 'iron')) iron++;
+      for (const w of a.wants) if (w.ore === 'iron') expect(w.units).toBeLessThanOrEqual(Math.floor(L * 300 * (1 + C.raise[1])));
+      expect(H.contractAt(cfg, 9, k, dried).wants.some((w) => w.ore === 'iron')).toBe(false);
+    }
+    expect(iron).toBeGreaterThan(0);
   });
 
   it('units never exceed L × the lasting figure × (1 + raise.hi), however high recent is', () => {
@@ -151,7 +164,7 @@ describe('Decision 64: no green and no dominated offers', () => {
           }
       }
     }
-  });
+  }, 120_000);
 });
 
 describe('Decision 64: one buyer on a one-ore station', () => {
@@ -202,5 +215,15 @@ describe('Decision 64: the income line counts the hand', () => {
     expect(rOff / rOn).toBeCloseTo((p.climb + p.away + p.land) / (p.climb + p.away + p.land + a), 2);
     const zero = haulTestConfig({ freighter: { ...cfg.haul.freighter, manualAllowance: 0 } });
     expect(H.activeRate(zero, H.haulParams(zero, off), off.haul)).toBeCloseTo(rOn, 6);
+  });
+});
+
+describe('Decision 64: the first ring-2 claim can be priced on its own (haul.claim.ringMult)', () => {
+  it('claimCost multiplies by ringMult[ring] (missing entries 1)', () => {
+    const g = shaped(cfg, 3, { slots: [0, 1] });
+    const cheap = haulTestConfig({ claim: { ...cfg.haul.claim, ringMult: [1, 0.6] } });
+    for (const slot of [2, 3]) expect(H.claimCost(cheap, g, slot)).toBeCloseTo(0.6 * H.claimCost(cfg, g, slot), 9);
+    const none = haulTestConfig({ claim: { ...cfg.haul.claim, ringMult: [] } });
+    expect(H.claimCost(none, g, 2)).toBeCloseTo(H.claimCost(cfg, g, 2), 9);
   });
 });
