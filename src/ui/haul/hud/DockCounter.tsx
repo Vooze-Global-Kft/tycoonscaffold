@@ -23,7 +23,7 @@ import type { Rect } from '../layout';
 import { useRun } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { bayCounterMetrics, bayCounterRows, fitTicker } from './bayMetrics';
-import { DIGITAL, bayWord } from './bayText';
+import { DIGITAL, bayWord, countText } from './bayText';
 import { GLYPH_FALL_MS, GLYPH_LEAD_MS } from './feedbackTiming';
 
 /** How long the receipt stays on the ticker after a warp-out. */
@@ -66,8 +66,8 @@ export function receiptTexts(cfg: H.HaulConfig, cargo: Record<string, number>, p
   const lots = Object.entries(cargo)
     .filter(([, u]) => u >= 0.5)
     .sort((a, b) => b[1] - a[1]);
-  const full = lots.map(([ore, u]) => `${Math.round(u)} ${names.get(ore) ?? ore.toUpperCase()}`);
-  const short = lots.map(([ore, u]) => `${Math.round(u)} ${(names.get(ore) ?? ore.toUpperCase()).slice(0, 3)}`);
+  const full = lots.map(([ore, u]) => `${countText(u)} ${names.get(ore) ?? ore.toUpperCase()}`);
+  const short = lots.map(([ore, u]) => `${countText(u)} ${(names.get(ore) ?? ore.toUpperCase()).slice(0, 3)}`);
   const money = formatMoney(payout, cfg.strings.currencySymbol);
   const warped = bayWord('receiptWarped', 'WARPED');
   const manifest = bayWord('receiptManifest', 'MANIFEST');

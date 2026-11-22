@@ -34,6 +34,7 @@ import { useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { DIGITAL, bayWord, labelMetrics } from './bayText';
 import { GLYPH_FALL_MS, GLYPH_GAP_MS, GLYPH_LEAD_MS, MAX_GLYPHS } from './feedbackTiming';
+import { targetRect } from './HintLayer';
 import { useMapLayout } from './useMapLayout';
 
 const pics = new Map<string, SkPicture>();
@@ -132,20 +133,14 @@ function SelectionLayer({ layout }: { layout: FieldLayout }) {
     return picture({ x: 0, y: 0, w: layout.width, h: layout.height }, (c) => {
       // The origin: the rack's arms, the route's chip or the launcher, ringed.
       if (sel.kind === 'drone' && sel.from === 'rack') {
-        for (const r of [layout.rack.left, layout.rack.right])
-          c.drawRRect(
-            {
-              rect: {
-                x: r.x - 3,
-                y: r.y - 3,
-                width: r.width + 6,
-                height: r.height + 6,
-              },
-              rx: 12,
-              ry: 12,
-            },
-            stroke(alpha(col, 0.85), 1.6),
-          );
+        // The idle drone that goes: its cradle (the scene's drone:rack target, else the first cradle).
+        const r = targetRect('drone:rack', layout);
+        if (r) {
+          const cx = r.x + r.width / 2;
+          const cy = r.y + r.height / 2;
+          c.drawPath(circle(cx, cy, 18), stroke(alpha(col, 0.25), 6));
+          c.drawPath(circle(cx, cy, 18), stroke(col, 1.8));
+        }
       } else if (sel.kind === 'drone') {
         const chip = layout.chips.find((q) => q.slot === sel.from);
         if (chip) c.drawPath(circle(chip.x, chip.y, 20), stroke(col, 2));

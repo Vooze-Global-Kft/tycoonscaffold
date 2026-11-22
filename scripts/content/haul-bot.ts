@@ -13,8 +13,9 @@
  * - it swipes the freighter off the pad when the hold is full or the contract is met until the Dock
  *   Autopilot is online, then sets the `contract` policy;
  * - it fires the free flare charge at the best rock;
- * - it buys the option with the best payback (Δ activeRate / cost; a claim is valued with one new
- *   drone on it), and from 2:00 saves for the autopilot;
+ * - it buys the option with the best payback (Δ activeRate / cost, counted from now: the wait to
+ *   afford it plus its payback time; a claim is valued with one new drone on it), and from 2:00
+ *   saves for the autopilot;
  * - at a Jump it spends cores by a fixed priority (Preload, Assay Rights to its cap, Afterburner and
  *   Seed Credits in turn, then Prospect Survey and the cheapest capped node) and picks the offered
  *   condition with the highest activeRate at the new run's start.
@@ -478,21 +479,39 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
           });
         }
       });
-      let pick: Option | null = null;
-      let bestScore = -1;
+      // Pairs: a drill, a route and the freighter only pay together when the other limit binds (a rig
+      // level on a freighter-bound station adds nothing alone), so each option is also priced with one
+      // level of the freighter, a drone or drone capacity. A winning pair buys its first part now
+      // (when the pair is affordable); the partner then pays alone on the next pass.
+      const partners = options.filter((o) => o.key === 'freighter' || o.key === 'drone' || o.key === 'capacity');
+      const candidates: (Option & { total: number; bundle?: Option })[] = options.map((o) => ({ ...o, total: o.cost + (o.extraDrone ? H.droneCost(cfg, g) : 0) }));
       for (const o of options) {
         if (!(o.cost < Infinity)) continue;
-        const price = o.cost + (o.extraDrone ? H.droneCost(cfg, g) : 0);
+        for (const q of partners) {
+          if (q.key === o.key || !(q.cost < Infinity)) continue;
+          candidates.push({ ...o, total: o.cost + q.cost + (o.extraDrone ? H.droneCost(cfg, g) : 0), bundle: q, apply: (x) => o.apply(q.apply({ ...x, cash: x.cash + q.cost } as Run)) });
+        }
+      }
+      let pick: Option | null = null;
+      let pickTotal = 0;
+      let bestScore = -1;
+      for (const o of candidates) {
+        if (!(o.cost < Infinity)) continue;
+        const price = o.total;
         const next = withDrones(o.apply({ ...g, cash: o.cost + 1e-6 } as Run));
         if (next.haul === g.haul) continue;
         const gain = H.haulIncome(cfg, next) - before;
-        const score = (gain > 0 ? gain : 1e-12) / price;
+        // Best payback counted from now: the wait to afford it plus the time it takes to pay back
+        // (a good player does not sit on cash for an option minutes away when a cheaper one pays now).
+        const wait = Math.max(0, price - g.cash) / Math.max(before, 1e-9);
+        const score = gain > 0 ? 1 / (wait + price / gain) : 1e-12 / price;
         if (score > bestScore) {
           bestScore = score;
           pick = o;
+          pickTotal = price;
         }
       }
-      if (!pick || !H.affordable(g.cash, pick.cost)) break;
+      if (!pick || !H.affordable(g.cash, pick.cost) || !H.affordable(g.cash, pickTotal - (pick.extraDrone ? H.droneCost(cfg, g) : 0))) break;
       const ev: H.HaulEvent[] = [];
       const lvlBefore = pick.key.startsWith('rig ') ? g.haul.slots[Number(pick.key.slice(4))].rigLevel : 0;
       let next: H.HaulGame = g;

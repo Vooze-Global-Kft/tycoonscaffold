@@ -17,7 +17,7 @@ import { alpha, oreColor, SPACE } from '../art/palette';
 import { around, circle, fill, litStroke, picture, rrect, stroke } from '../art/pen';
 import { drawHoldTank } from '../art/fx.draw';
 import type { Rect as Box } from '../layout';
-import { DIGITAL, labelMetrics } from './bayText';
+import { DIGITAL, countText, fitLabel, labelMetrics } from './bayText';
 
 type Run = H.HaulGame & { haul: H.HaulState };
 
@@ -156,6 +156,8 @@ export function HoldTank({ rect }: { rect: Box }) {
       if (shown.full) c.drawPath(circle(w / 2 - 6, -h / 2 + 10, 2), stroke(SPACE.green, 1));
     }),
   );
+  const holdText = `${countText(shown.units)}/${countText(shown.cap)}`;
+  const holdFont = fitLabel(holdText, rect.width, compact ? 11 : 12, fontScale);
   const clip = useMemo(() => skRRect(skRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8), w / 2 - 4, w / 2 - 4), [w, h]);
   const cx = rect.width / 2;
   const cy = 4 + h / 2;
@@ -198,13 +200,13 @@ export function HoldTank({ rect }: { rect: Box }) {
             DIGITAL,
             {
               color: shown.full ? SPACE.green : SPACE.steel,
-              fontSize: label.font,
+              fontSize: holdFont.font,
               lineHeight: label.row,
               textAlign: 'center',
             },
           ]}
         >
-          {`${shown.units}/${shown.cap}`}
+          {holdText}
         </Text>
       </View>
     </View>

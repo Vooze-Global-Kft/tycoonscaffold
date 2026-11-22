@@ -19,7 +19,7 @@ import type { Rect } from '../layout';
 import { HAUL_STRINGS } from '../strings';
 import { useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
-import { DIGITAL, labelMetrics } from './bayText';
+import { DIGITAL, countText, labelMetrics } from './bayText';
 
 interface StripView {
   unlocked: boolean;
@@ -179,13 +179,14 @@ export function ContractStrip({ rect }: { rect: Rect }) {
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 5,
+                  gap: 4,
                   flexShrink: 1,
                 }}
               >
+                {v.wants.length > 1 ? <GameIcon icon={`art:ore-${w.ore}`} size={small.row} /> : null}
                 <View
                   style={{
-                    width: compact ? 34 : 44,
+                    width: v.wants.length > 1 ? (compact ? 22 : 28) : compact ? 34 : 44,
                     height: 7,
                     borderRadius: 3.5,
                     backgroundColor: SPACE.hull2,
@@ -213,7 +214,7 @@ export function ContractStrip({ rect }: { rect: Rect }) {
                     },
                   ]}
                 >
-                  {`${w.have}/${w.want} ${w.name}`}
+                  {`${countText(w.have)}/${countText(w.want)}${v.wants.length > 1 ? '' : ` ${w.name}`}`}
                 </Text>
               </View>
             ))}

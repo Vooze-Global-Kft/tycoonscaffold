@@ -32,7 +32,8 @@ const ASK_MS = 500;
 /** A target's rectangle: registered, or for the map's drawn keys, from the layout. */
 export function targetRect(key: string, layout: FieldLayout): TargetRect | null {
   const r = targets.get(key);
-  if (r) return r;
+  // drone:rack means the drone that goes next; a rectangle round the whole rack would point at the station.
+  if (r && !(key === 'drone:rack' && r.width > 48)) return r;
   const [kind, arg] = key.split(':');
   const n = arg === undefined ? NaN : Number(arg);
   if ((kind === 'rock' || kind === 'slot') && Number.isInteger(n)) {
@@ -44,14 +45,10 @@ export function targetRect(key: string, layout: FieldLayout): TargetRect | null 
     return c ? { x: c.x - 12, y: c.y - 12, width: 24, height: 24 } : null;
   }
   if (key === 'drone:rack') {
-    // The first cradles sit on the left arm, near the station.
+    // The first idle drone stands on the left arm's cradle nearest the station, nose up above it.
     const a = layout.rack.left;
-    return {
-      x: a.x + a.width * 0.45,
-      y: a.y,
-      width: a.width * 0.5,
-      height: a.height * 0.5,
-    };
+    const k = layout.station.r / 40;
+    return { x: a.x + a.width * 0.78 - 10 * k, y: a.y + 2 * k, width: 20 * k, height: 20 * k };
   }
   if (key === 'station')
     return {
