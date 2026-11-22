@@ -106,7 +106,8 @@ export function hintsFor(cfg: HaulConfig, g: HaulGame): HaulHint[] {
   if (!h) return [];
   const p = haulParams(cfg, g as Run);
   const out: HaulHint[] = [];
-  const full = holdTotal(h) >= p.F - EPS;
+  // A relative tolerance too: at a hold of 1.9e7 units the float sum misses F by more than EPS.
+  const full = holdTotal(h) >= p.F * (1 - 1e-9) - EPS;
   const docked = h.freighter.phase === 'docked';
   const tutorial = !h.flags.tutorialDone && h.galaxy === 0;
   const s0 = h.slots[0];

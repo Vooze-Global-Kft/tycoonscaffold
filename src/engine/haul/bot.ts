@@ -544,7 +544,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     const h = g.haul;
     if (h.autopilot.online || !H.canLaunch(g)) return;
     const p = params();
-    const full = H.holdTotal(h) >= p.F - H.EPS;
+    const full = H.holdTotal(h) >= p.F * (1 - 1e-9) - H.EPS;
     // Decision 40: the hold holds everything the taken contract still needs.
     const met = H.contractMet(h.hold, H.activeContract(h));
     if (!full && !met) return;
