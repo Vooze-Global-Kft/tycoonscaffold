@@ -123,6 +123,8 @@ function Relay({ cfg }: { cfg: H.HaulConfig }) {
   const pic = spokePictures.dishRelay(w, lit, st.can);
   const dishes = relayDishes(w);
   const ph = Math.round(w * 0.3);
+  // Under the picture's day numbers (spokes.draw.ts: number at 13 s, s = w / 300 × 1.6).
+  const amtTop = Math.round(ph / 2 + (w / 300) * 1.6 * 19);
 
   // Today's dish breathes while the allotment waits (stops when received or the spoke closes).
   const glow = useSharedValue(0);
@@ -140,7 +142,7 @@ function Relay({ cfg }: { cfg: H.HaulConfig }) {
 
   return (
     <Bracket label={S.allotment} color={st.can ? INK.line : INK.lineDim} right={<Mono size={10} color={INK.dim}>{`${lit}/${st.days.length}`}</Mono>}>
-      <View style={{ width: w, height: ph + 18 }}>
+      <View style={{ width: w, height: amtTop + 16 }}>
         <Canvas style={{ width: w, height: ph }}>
           <Group transform={[{ translateX: w / 2 }, { translateY: ph / 2 }]}>
             <Picture picture={pic} />
@@ -149,8 +151,8 @@ function Relay({ cfg }: { cfg: H.HaulConfig }) {
         {todayIdx >= 0 && dishes[todayIdx] ? <Animated.View pointerEvents="none" style={[styles.todayRing, { left: w / 2 + dishes[todayIdx].x - 22, top: ph / 2 + dishes[todayIdx].y - 26 }, ring]} /> : null}
         {st.days.map((d, i) =>
           dishes[i] ? (
-            <Mono key={i} size={9} weight="700" color={d.claimed ? INK.line : d.today ? INK.text : INK.faint} center style={[styles.dayAmt, { left: w / 2 + dishes[i].x - 24 }]}>
-              {`${d.gems}`}
+            <Mono key={i} size={9} weight="700" color={d.claimed ? INK.line : d.today ? INK.text : INK.faint} center style={[styles.dayAmt, { left: w / 2 + dishes[i].x - 24, top: amtTop }]}>
+              {`${d.gems} ${S.dmShort}`}
             </Mono>
           ) : null,
         )}
@@ -236,5 +238,5 @@ const styles = StyleSheet.create({
   archRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
   static: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, marginTop: 8, height: 8 },
   todayRing: { position: 'absolute', width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: INK.line },
-  dayAmt: { position: 'absolute', bottom: 0, width: 48 },
+  dayAmt: { position: 'absolute', width: 48 },
 });

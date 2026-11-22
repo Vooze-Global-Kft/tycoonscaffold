@@ -210,7 +210,6 @@ export function useFieldGestures(layout: FieldLayout): FieldGestures {
         const p = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
         const L = layoutRef.current;
         const hit = hitAt(p, L, now);
-        console.warn('BAYDBG grant', JSON.stringify(p), JSON.stringify(hit), now.g.haul.idle);
         const t: Touch = {
           start: p,
           t0: Date.now(),
@@ -292,7 +291,6 @@ export function useFieldGestures(layout: FieldLayout): FieldGestures {
         write(t, p, t.drag.kind === 'flare' ? DRAG_FLARE : DRAG_DRONE);
       },
       onResponderRelease: (e: GestureResponderEvent) => {
-        console.warn('BAYDBG release', JSON.stringify(touch.current?.drag), touch.current?.moved, JSON.stringify(touch.current?.snap));
         const t = touch.current;
         const now = haulNow();
         if (!t || !now) return end();
