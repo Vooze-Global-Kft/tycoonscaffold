@@ -39,8 +39,10 @@ class AdsService {
   private sessionStart = Date.now();
   private lastInterstitial = 0;
   private listeners = new Set<() => void>();
-  /** Set by the store from IAP entitlements. */
+  /** Set by the store from IAP entitlements: no banners or pop-up ads. */
   noAds = false;
+  /** Set by the store from IAP entitlements: rewarded boosts are granted without watching. */
+  skipRewarded = false;
   /** Live tuning values; replaced after Remote Config loads. */
   firstInterstitialAfterSec = baseGame.monetization.ads.firstInterstitialAfterSec;
   interstitialCooldownSec = baseGame.monetization.ads.interstitialCooldownSec;
@@ -122,12 +124,12 @@ class AdsService {
 
   /**
    * Shows a rewarded ad. Resolves true if the player earned the reward.
-   * Players with No Ads get rewards without watching (a strong IAP selling point).
+   * Players who bought the skip-ads product get rewards without watching.
    * Without the native SDK (Expo Go) it resolves true after a short fake delay.
    */
   async showRewarded(placement: string): Promise<boolean> {
     analytics.log('ad_reward_offer_accepted', { placement });
-    if (this.noAds) return true;
+    if (this.skipRewarded) return true;
     if (!gma) {
       await new Promise((r) => setTimeout(r, 600));
       return true;

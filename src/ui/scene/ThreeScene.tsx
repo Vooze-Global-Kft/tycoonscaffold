@@ -41,7 +41,7 @@ export function ThreeScene() {
   const cfg = useGame((s) => s.cfg);
   const tapHero = useGame((s) => s.tapHero);
   const taps = useGame((s) => s.tapEvents);
-  const ownedTypes = useGame((s) => cfg.businesses.filter((b) => s.game.businesses[b.id].owned > 0).length);
+  const ownedTypes = useGame((s) => cfg.businesses.filter((b) => s.game.venues[s.game.activeVenue].businesses[b.id].owned > 0).length);
   const [failed, setFailed] = useState(false);
   const spin = useRef(0);
   const satellitesWanted = useRef(ownedTypes);

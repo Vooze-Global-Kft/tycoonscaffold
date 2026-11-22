@@ -23,11 +23,13 @@ export const BusinessRow = memo(function BusinessRow({ b, index }: { b: Business
   const buyAmount = useGame((s) => s.buyAmount);
   const buy = useGame((s) => s.buy);
   const start = useGame((s) => s.startBusiness);
-  const s = game.businesses[b.id];
+  const venueId = game.activeVenue;
+  const owned = game.venues[venueId].businesses;
+  const s = owned[b.id];
   const now = Date.now();
   const sym = t.strings.currencySymbol;
 
-  const cycle = E.cycleSeconds(cfg, game, b.id);
+  const cycle = E.cycleSeconds(cfg, game, venueId, b.id);
   // Very fast cycles look like a solid bar, which reads better than flicker.
   const solid = s.managed && cycle < 0.3;
   const progress = solid ? 1 : s.progress;
@@ -66,18 +68,18 @@ export const BusinessRow = memo(function BusinessRow({ b, index }: { b: Business
   const flashStyle = useAnimatedStyle(() => ({ opacity: flash.value * 0.7 }));
 
   // Hide businesses two or more steps ahead of what the player owns, to keep a sense of discovery.
-  const prevOwned = index === 0 || game.businesses[cfg.businesses[index - 1].id].owned > 0;
+  const prevOwned = index === 0 || owned[cfg.businesses[index - 1].id].owned > 0;
   if (!prevOwned && s.owned === 0) {
-    const prev2 = index >= 2 && game.businesses[cfg.businesses[index - 2].id].owned > 0;
+    const prev2 = index >= 2 && owned[cfg.businesses[index - 2].id].owned > 0;
     if (!prev2) return null;
   }
 
-  const n = E.resolveBuyAmount(cfg, game, b.id, buyAmount);
-  const cost = E.costFor(b, s.owned, n);
+  const n = E.resolveBuyAmount(cfg, game, venueId, b.id, buyAmount);
+  const cost = E.businessCost(cfg, game, venueId, b.id, n);
   const affordable = game.cash >= cost;
-  const revenue = E.revenuePerCycle(cfg, game, b.id, now);
+  const revenue = E.revenuePerCycle(cfg, game, venueId, b.id, now);
   const next = E.nextMilestone(cfg, s.owned);
-  const prevMilestone = [0, ...cfg.economy.milestones.map((m) => m.owned)].filter((o) => o <= s.owned).pop() ?? 0;
+  const prevMilestone = E.previousMilestone(cfg, s.owned);
   const milestonePct = next ? (s.owned - prevMilestone) / (next - prevMilestone) : 1;
 
   if (s.owned === 0) {

@@ -66,12 +66,12 @@ function Game() {
       <StatusBar style={t.darkStatusBar ? 'dark' : 'light'} />
       <Header />
       <View style={{ flex: 1, backgroundColor: t.c.background }}>
-        {tab === 'businesses' ? <Scene /> : null}
+        {tab === 'home' ? <Scene /> : null}
         <View style={{ flex: 1 }}>
-          {tab === 'businesses' && <BusinessesPanel />}
-          {tab === 'managers' && <ManagersPanel />}
+          {tab === 'home' && <BusinessesPanel />}
+          {tab === 'staff' && <ManagersPanel />}
           {tab === 'upgrades' && <UpgradesPanel />}
-          {tab === 'prestige' && <PrestigePanel />}
+          {tab === 'empire' && <PrestigePanel />}
           {tab === 'shop' && <ShopPanel />}
         </View>
       </View>

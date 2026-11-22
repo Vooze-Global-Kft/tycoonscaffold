@@ -5,10 +5,16 @@
  * against this schema. The code never branches on a game id.
  */
 import { z } from 'zod';
+import { MetaSchema, SimSchema } from './schema.sim';
+
+export * from './schema.sim';
 
 const hex = z.string().regex(/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, 'hex colour like #FFAA00');
 
-/** An icon is an emoji (zero-asset reskin) or a key into the game's assets map. */
+/**
+ * An icon is an emoji (zero-asset reskin), `asset:<key>` (an image from the game's assets map)
+ * or `char:<castId>` (a code-drawn character from the game's cast).
+ */
 const icon = z.string().min(1);
 
 export const BusinessSchema = z.object({
@@ -29,6 +35,13 @@ export const BusinessSchema = z.object({
   managerIcon: icon.optional(),
   /** Short line shown under the name, flavour text for the theme. */
   flavor: z.string().optional(),
+  /** Sim mode: which code-drawn station to show (oven, stove, prep, fryer, dessert, espresso, generic). */
+  stationKind: z.string().optional(),
+  /** Sim mode: what this station makes, e.g. "Margherita", and the icon that flies to the buffer. */
+  productName: z.string().optional(),
+  productIcon: icon.optional(),
+  /** Sim mode: cast id for the worker's look. Omit for a generated look that varies per venue. */
+  workerLook: z.string().optional(),
 });
 
 export const MilestoneSchema = z.object({
@@ -68,6 +81,12 @@ export const StoryBeatSchema = z.object({
     z.object({ type: z.literal('lifetimeEarnings'), amount: z.number() }),
     z.object({ type: z.literal('owned'), businessId: z.string(), count: z.number().int() }),
     z.object({ type: z.literal('prestige'), count: z.number().int() }),
+    /** Sim mode: a venue has been opened. */
+    z.object({ type: z.literal('venue'), venueId: z.string() }),
+    /** The automation hire for a business has been bought (in any venue). */
+    z.object({ type: z.literal('hired'), businessId: z.string() }),
+    /** Sim mode: the transport automation hire has been bought (in any venue). */
+    z.object({ type: z.literal('transportHired') }),
   ]),
   /** Portrait for this beat only (e.g. an angry or excited expression). Defaults to the character's portrait. */
   portrait: icon.optional(),
@@ -80,7 +99,13 @@ export const IapProductSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().optional(),
-  kind: z.enum(['noAds', 'multiplier', 'gems', 'starterPack', 'timeWarp']),
+  /**
+   * noAds: removes banners and pop-up ads. skipAds: rewarded boosts are granted without watching.
+   * multiplier: permanent income multiplier (`value`). gems: `value` gems. timeWarp: `value` hours of income.
+   * starterPack: noAds plus `value` gems. deal: only a price; what it grants is set by the deal in `meta.deals`
+   * that names this product.
+   */
+  kind: z.enum(['noAds', 'skipAds', 'multiplier', 'gems', 'starterPack', 'timeWarp', 'deal']),
   /** Multiplier value, gem amount or warp hours, depending on kind. */
   value: z.number().positive().default(1),
   icon: icon.optional(),
@@ -100,6 +125,11 @@ const PlatformAdUnits = z.object({
 export const GameConfigSchema = z.object({
   schemaVersion: z.literal(1),
   id: z.string().regex(/^[a-z0-9-]+$/),
+  /**
+   * "classic": a list of businesses that pay straight into cash.
+   * "sim": businesses are stations in a production chain with visible workers (needs the `sim` block).
+   */
+  mode: z.enum(['classic', 'sim']).default('classic'),
 
   app: z.object({
     /** Name under the icon on the home screen (keep it short, about 12 chars). */
@@ -189,6 +219,13 @@ export const GameConfigSchema = z.object({
       { owned: 300, speedMult: 1, revenueMult: 3 },
       { owned: 400, speedMult: 1, revenueMult: 5 },
     ]),
+    /**
+     * Past the last listed milestone, a milestone repeats every `every` levels, so levels never
+     * stop mattering. Omit to stop at the list.
+     */
+    milestoneRepeat: z
+      .object({ every: z.number().int().positive(), speedMult: z.number().positive().default(1), revenueMult: z.number().positive().default(2) })
+      .optional(),
     prestige: z.object({
       /** Lifetime earnings needed for the first prestige point. */
       threshold: z.number().positive(),
@@ -241,6 +278,32 @@ export const GameConfigSchema = z.object({
   }),
 
   businesses: z.array(BusinessSchema).min(1),
+  /** Sim mode: transport, sales, venues and the rush skill. */
+  sim: SimSchema.optional(),
+  /** Cards, chests, missions and deals. Works in both modes; everything is optional. */
+  meta: MetaSchema.default({
+    cards: [],
+    cardEffect: {
+      common: { base: 10, perLevel: 5 },
+      rare: { base: 20, perLevel: 10 },
+      epic: { base: 40, perLevel: 20 },
+      legendary: { base: 100, perLevel: 50 },
+    },
+    cardCopies: { base: 2, growth: 1.5 },
+    chests: [],
+    missions: { slots: 3, perDay: 10, templates: [], milestones: [] },
+    pity: {},
+    chestGrowthPerVenue: 0.2,
+    chestsForSale: false,
+    chestSalesBlockedIn: ['BE', 'BR', 'NL'],
+    deals: [],
+    dailyShop: { slots: 3, offers: [] },
+  }),
+  /**
+   * Looks for code-drawn characters, by id. Referenced by `char:<id>` icons and by sim workers.
+   * Fields are those of CharacterLook in src/ui/sim/art/types.ts (skin, hair, hat, outfit, ...).
+   */
+  cast: z.record(z.string(), z.record(z.string(), z.unknown())).default({}),
   upgrades: z.array(UpgradeSchema).default([]),
   characters: z.array(CharacterSchema).default([]),
   story: z.array(StoryBeatSchema).default([]),
@@ -311,10 +374,104 @@ export function lintGameConfig(cfg: GameConfig): string[] {
   const chars = new Set(cfg.characters.map((c) => c.id));
   for (const s of cfg.story) {
     if (!chars.has(s.characterId)) problems.push(`story beat "${s.id}" uses unknown character "${s.characterId}"`);
-    if (s.trigger.type === 'owned' && !ids.has(s.trigger.businessId)) {
+    if ((s.trigger.type === 'owned' || s.trigger.type === 'hired') && !ids.has(s.trigger.businessId)) {
       problems.push(`story beat "${s.id}" triggers on unknown business "${s.trigger.businessId}"`);
     }
+    if (s.trigger.type === 'venue') {
+      const venueId = s.trigger.venueId;
+      if (!cfg.sim?.venues.some((v) => v.id === venueId)) problems.push(`story beat "${s.id}" triggers on unknown venue "${venueId}"`);
+    }
   }
+
+  // --- sim mode ---
+  if (cfg.mode === 'sim' && !cfg.sim) problems.push('mode is "sim" but there is no "sim" block');
+  if (cfg.mode !== 'sim' && cfg.sim) problems.push('there is a "sim" block but mode is not "sim"');
+  if (cfg.sim) {
+    for (let i = 1; i < cfg.sim.venues.length; i++) {
+      const [prev, v] = [cfg.sim.venues[i - 1], cfg.sim.venues[i]];
+      if (v.scale <= prev.scale) problems.push(`venue "${v.id}" must have a larger scale than "${prev.id}"`);
+      if (v.unlockCost <= prev.unlockCost) problems.push(`venue "${v.id}" must cost more to open than "${prev.id}"`);
+    }
+  }
+
+  // --- meta: cards, chests, missions, deals ---
+  const meta = cfg.meta;
+  const unique = (what: string, list: { id: string }[]) => {
+    const seen = new Set<string>();
+    for (const x of list) {
+      if (seen.has(x.id)) problems.push(`duplicate ${what} id "${x.id}"`);
+      seen.add(x.id);
+    }
+    return seen;
+  };
+  const cardIds = unique('card', meta.cards);
+  const chestIds = unique('chest', meta.chests);
+  unique('mission', meta.missions.templates);
+  unique('deal', meta.deals);
+  unique('daily offer', meta.dailyShop.offers);
+  const checkReward = (where: string, r: (typeof meta.deals)[number]['contents'][number]) => {
+    if (r.type === 'chest' && !chestIds.has(r.chestId)) problems.push(`${where} grants unknown chest "${r.chestId}"`);
+    if (r.type === 'card' && !cardIds.has(r.cardId)) problems.push(`${where} grants unknown card "${r.cardId}"`);
+    if (r.type === 'randomCard' && !meta.cards.some((c) => c.rarity === r.rarity)) problems.push(`${where} grants a ${r.rarity} card but there are none`);
+  };
+  for (const c of meta.chests) {
+    const { card, gems, cash } = c.slotWeights;
+    if (card + gems + cash <= 0) problems.push(`chest "${c.id}" has no slot weights`);
+    const w = c.rarityWeights;
+    if (card > 0 && w.common + w.rare + w.epic + w.legendary <= 0) problems.push(`chest "${c.id}" has card slots but no rarity weights`);
+    if (card > 0 && meta.cards.length === 0) problems.push(`chest "${c.id}" has card slots but the game has no cards`);
+    for (const rarity of ['common', 'rare', 'epic', 'legendary'] as const) {
+      if (card > 0 && w[rarity] > 0 && !meta.cards.some((x) => x.rarity === rarity)) problems.push(`chest "${c.id}" can roll a ${rarity} card but there are none`);
+      if (c.cardCopies[rarity][0] < 1) problems.push(`chest "${c.id}" cardCopies.${rarity} must be at least 1`);
+    }
+  }
+  if (!meta.chestsForSale) {
+    const sold = (where: string, rewards: { type: string }[]) => {
+      if (rewards.some((r) => r.type === 'chest')) problems.push(`${where} contains a chest, but meta.chestsForSale is off (chests are earned, not sold)`);
+    };
+    for (const c of meta.chests) if (c.gemCost !== undefined) problems.push(`chest "${c.id}" has a gem price, but meta.chestsForSale is off`);
+    for (const d of meta.deals) sold(`deal "${d.id}"`, d.contents);
+    for (const o of meta.dailyShop.offers) if (o.gemCost > 0) sold(`daily offer "${o.id}"`, [o.reward]);
+  }
+  if (meta.freeChest && !chestIds.has(meta.freeChest.chestId)) problems.push(`freeChest uses unknown chest "${meta.freeChest.chestId}"`);
+  if (meta.adChest && !chestIds.has(meta.adChest.chestId)) problems.push(`adChest uses unknown chest "${meta.adChest.chestId}"`);
+  for (const m of meta.missions.templates) {
+    if (!m.text.includes('{n}')) problems.push(`mission "${m.id}" text must contain {n}`);
+    if (m.type === 'rush' && !cfg.sim) problems.push(`mission "${m.id}" counts rush skills, which only sim games have`);
+    if (m.type === 'serve' && !cfg.sim) problems.push(`mission "${m.id}" counts guests served, which only sim games have`);
+    if (m.type === 'chests' && meta.chests.length === 0) problems.push(`mission "${m.id}" counts chests but the game has none`);
+    checkReward(`mission "${m.id}"`, m.reward);
+  }
+  meta.missions.milestones.forEach((m) => checkReward(`mission milestone every ${m.every}`, m.reward));
+  for (const d of meta.deals) {
+    if (d.trigger.type === 'venue') {
+      const venueId = d.trigger.venueId;
+      if (!cfg.sim?.venues.some((v) => v.id === venueId)) problems.push(`deal "${d.id}" triggers on unknown venue "${venueId}"`);
+    }
+  }
+  if (meta.missions.templates.length > 0 && meta.missions.templates.length < meta.missions.slots) {
+    problems.push(`missions: ${meta.missions.slots} slots but only ${meta.missions.templates.length} templates`);
+  }
+  for (const d of meta.deals) {
+    if (Boolean(d.productId) === Boolean(d.gemCost)) problems.push(`deal "${d.id}" needs exactly one of productId or gemCost`);
+    if (d.productId) {
+      const product = cfg.monetization.iap.products.find((p) => p.id === d.productId);
+      if (!product) problems.push(`deal "${d.id}" uses unknown IAP product "${d.productId}"`);
+      else if (product.kind !== 'deal') problems.push(`deal "${d.id}" must use an IAP product of kind "deal", not "${product.kind}"`);
+    }
+    d.contents.forEach((r) => {
+      checkReward(`deal "${d.id}"`, r);
+      // Deals are consumable purchases; permanent items are sold as their own products so they can be restored.
+      if (r.type === 'noAds' || r.type === 'multiplier') problems.push(`deal "${d.id}" may not contain "${r.type}"; sell it as its own product`);
+    });
+  }
+  for (const p of cfg.monetization.iap.products) {
+    if (p.kind === 'deal' && meta.deals.filter((d) => d.productId === p.id).length !== 1) {
+      problems.push(`IAP product "${p.id}" has kind "deal" and must be used by exactly one deal`);
+    }
+  }
+  for (const o of meta.dailyShop.offers) checkReward(`daily offer "${o.id}"`, o.reward);
+
   const kw = cfg.store.keywords.join(',');
   if (kw.length > 100) problems.push(`store.keywords is ${kw.length} chars; iOS allows 100`);
   const assetKeys = new Set(Object.keys(cfg.assets));
@@ -330,7 +487,23 @@ export function lintGameConfig(cfg: GameConfig): string[] {
     ...cfg.characters.map((c) => c.portrait),
     ...cfg.story.map((b) => b.portrait ?? ''),
     ...cfg.monetization.iap.products.map((p) => p.icon ?? ''),
+    ...cfg.businesses.map((b) => b.productIcon ?? ''),
+    ...(cfg.sim ? [cfg.sim.buffer.icon, cfg.sim.transport.icon, cfg.sim.transport.managerIcon ?? '', cfg.sim.sales.icon, cfg.sim.rush.icon] : []),
+    ...(cfg.sim?.venues.map((v) => v.icon) ?? []),
+    ...meta.cards.map((c) => c.icon),
+    ...meta.chests.map((c) => c.icon),
+    ...meta.deals.map((d) => d.icon ?? ''),
+    ...meta.dailyShop.offers.map((o) => o.icon ?? ''),
   ].filter(Boolean);
+  const castIds = new Set(Object.keys(cfg.cast));
+  const lookRefs = [
+    ...cfg.businesses.map((b) => b.workerLook ?? ''),
+    ...(cfg.sim ? [...cfg.sim.transport.looks, ...cfg.sim.sales.looks] : []),
+    ...iconFields.filter((i) => i.startsWith('char:')).map((i) => i.slice(5)),
+  ].filter(Boolean);
+  for (const id of lookRefs) {
+    if (!castIds.has(id)) problems.push(`character "${id}" is used but missing from cast`);
+  }
   for (const key of [cfg.theme.displayFont, cfg.theme.sceneBackground]) {
     if (key && !assetKeys.has(key)) problems.push(`theme asset "${key}" has no entry in assets`);
   }
