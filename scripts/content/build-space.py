@@ -216,7 +216,9 @@ g['haul'] = {
         'raise': [K('raiseLo', 0.25, 0.1, 0.5, 'contract raise over what the station ships, low end (Decision 56)'), K('raiseHi', 0.6, 0.3, 1.0, 'contract raise, high end (Decision 56)')],
         'holdShare': [0.85, 0.95],
         'raiseMult': K('raiseMult', 1, 0, 2, 'contract multiplier added per unit of raise (a harder contract pays more)', 0.1),
-        'maxShare': 0.9, 'minValueShare': 0.1, 'minBonusSeconds': 10, 'recentLaunches': 6,
+        # The lead's ruling on Decision 56 condition 5 (Decision 64 round): with Decision 63's mark-ups the floor
+        # is five seconds of income. raiseGap: two offers for the same ores differ in raise by at least this.
+        'maxShare': 0.9, 'minValueShare': 0.1, 'minBonusSeconds': 5, 'recentLaunches': 6, 'raiseGap': 0.15,
         'fee': K('fee', 0.1, 0.05, 0.15, 'delivery fee on the rest of a met cargo'),
         # Read only by the legacy contractStation helper (Decision 63: the bot routes without a budget). `margin` and `reach` are gone
         # with Decision 56 (the schema still parses them from old data).
