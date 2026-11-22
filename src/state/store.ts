@@ -21,7 +21,13 @@ interface Store {
   tab: Tab;
   offline: { seconds: number; earnings: number } | null;
   /** Floating "+$123" numbers; the UI drains them. */
-  tapEvents: { id: number; amount: number; x: number; y: number }[];
+  tapEvents: { id: number; amount: number; x: number; y: number; big?: boolean }[];
+  /** Quick taps in a row; drives the combo multiplier. */
+  combo: { taps: number; lastTapAt: number };
+  /** The flying bonus: when the next one appears, and the one on screen now (if any). */
+  bonus: { nextAt: number; activeId: number | null };
+  /** Queue of celebration banners (unlocks, milestones, hires). */
+  celebrations: Celebration[];
 
   boot(): Promise<void>;
   tick(dt: number): void;
@@ -30,6 +36,10 @@ interface Store {
   setTab(t: Tab): void;
 
   tapHero(x: number, y: number): void;
+  spawnBonus(): void;
+  missBonus(): void;
+  collectBonus(x: number, y: number): void;
+  dismissCelebration(): void;
   consumeTapEvent(id: number): void;
   startBusiness(id: string): void;
   buy(id: string): void;
@@ -47,7 +57,21 @@ interface Store {
   reset(): Promise<void>;
 }
 
+export interface Celebration {
+  id: number;
+  kind: 'unlock' | 'milestone' | 'hire' | 'bonus';
+  title: string;
+  subtitle: string;
+  icon: string;
+}
+
 let tapSeq = 0;
+let celebrationSeq = 0;
+
+function nextBonusAt(cfg: GameConfig, now: number) {
+  const { minSec, maxSec } = cfg.economy.bonus;
+  return now + (minSec + Math.random() * Math.max(0, maxSec - minSec)) * 1000;
+}
 
 export const useGame = create<Store>((set, get) => {
   /** Apply an engine transition and keep ads in sync with entitlements. */
@@ -61,6 +85,9 @@ export const useGame = create<Store>((set, get) => {
     return next;
   };
 
+  const celebrate = (c: Omit<Celebration, 'id'>) =>
+    set({ celebrations: [...get().celebrations.slice(-3), { ...c, id: ++celebrationSeq }] });
+
   return {
     cfg: baseGame,
     game: E.createInitialState(baseGame, Date.now()),
@@ -69,6 +96,9 @@ export const useGame = create<Store>((set, get) => {
     tab: 'businesses',
     offline: null,
     tapEvents: [],
+    combo: { taps: 0, lastTapAt: 0 },
+    bonus: { nextAt: nextBonusAt(baseGame, Date.now()), activeId: null },
+    celebrations: [],
 
     async boot() {
       const now = Date.now();
@@ -134,12 +164,39 @@ export const useGame = create<Store>((set, get) => {
     },
 
     tapHero(x, y) {
-      const { cfg, game } = get();
-      const r = E.tapHero(cfg, game, Date.now());
-      feedback.tap();
-      const evt = { id: ++tapSeq, amount: r.earned, x, y };
-      set({ game: r.state, tapEvents: [...get().tapEvents.slice(-15), evt] });
+      const { cfg, game, combo } = get();
+      const now = Date.now();
+      const taps = now - combo.lastTapAt > cfg.economy.combo.decayMs ? 1 : combo.taps + 1;
+      const mult = E.comboMultiplier(cfg, taps);
+      const leveledUp = mult > E.comboMultiplier(cfg, taps - 1);
+      const r = E.tapHero(cfg, game, now, mult);
+      if (leveledUp) feedback.reward();
+      else feedback.tap();
+      const evt = { id: ++tapSeq, amount: r.earned, x, y, big: mult > 1 };
+      set({ game: r.state, combo: { taps, lastTapAt: now }, tapEvents: [...get().tapEvents.slice(-15), evt] });
     },
+
+    spawnBonus() {
+      if (get().bonus.activeId === null) set({ bonus: { ...get().bonus, activeId: ++tapSeq } });
+    },
+    missBonus() {
+      set({ bonus: { nextAt: nextBonusAt(get().cfg, Date.now()), activeId: null } });
+    },
+    collectBonus(x, y) {
+      const { cfg, game, bonus } = get();
+      if (bonus.activeId === null) return;
+      const now = Date.now();
+      const r = E.collectBonus(cfg, game, now);
+      feedback.reward();
+      set({
+        game: r.state,
+        bonus: { nextAt: nextBonusAt(cfg, now), activeId: null },
+        tapEvents: [...get().tapEvents.slice(-15), { id: ++tapSeq, amount: r.earned, x, y, big: true }],
+      });
+      celebrate({ kind: 'bonus', title: cfg.economy.bonus.name + '!', subtitle: 'Bonus collected', icon: cfg.theme.icons.bonus });
+      analytics.log('bonus_collect', { value: r.earned });
+    },
+    dismissCelebration: () => set({ celebrations: get().celebrations.slice(1) }),
     consumeTapEvent: (id) => set({ tapEvents: get().tapEvents.filter((e) => e.id !== id) }),
 
     startBusiness(id) {
@@ -152,9 +209,20 @@ export const useGame = create<Store>((set, get) => {
       const after = next.businesses[id].owned;
       if (after === before) return feedback.denied();
       feedback.buy();
-      const crossed = get().cfg.economy.milestones.find((m) => before < m.owned && after >= m.owned);
-      if (crossed) analytics.log('level_up', { character: id, level: crossed.owned });
-      if (before === 0) analytics.log('unlock_business', { business_id: id });
+      const cfg = get().cfg;
+      const b = cfg.businesses.find((x) => x.id === id)!;
+      const crossed = cfg.economy.milestones.find((m) => before < m.owned && after >= m.owned);
+      if (crossed) {
+        analytics.log('level_up', { character: id, level: crossed.owned });
+        const perk = crossed.speedMult > 1 ? `${crossed.speedMult}× faster` : `${crossed.revenueMult}× profits`;
+        celebrate({ kind: 'milestone', title: `${b.name} ×${crossed.owned}`, subtitle: perk, icon: b.icon });
+        feedback.reward();
+      }
+      if (before === 0) {
+        analytics.log('unlock_business', { business_id: id });
+        celebrate({ kind: 'unlock', title: b.name, subtitle: 'New business unlocked!', icon: b.icon });
+        feedback.reward();
+      }
     },
 
     hire(id) {
@@ -162,6 +230,13 @@ export const useGame = create<Store>((set, get) => {
       if (next.businesses[id].managed) {
         feedback.reward();
         analytics.log('hire_manager', { business_id: id });
+        const b = get().cfg.businesses.find((x) => x.id === id)!;
+        celebrate({
+          kind: 'hire',
+          title: b.managerName ?? 'Manager hired',
+          subtitle: `now runs ${b.name}`,
+          icon: b.managerIcon ?? get().cfg.theme.icons.manager,
+        });
       } else feedback.denied();
     },
 

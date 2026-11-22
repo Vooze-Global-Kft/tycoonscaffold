@@ -32,9 +32,12 @@ export function Header() {
       </Canvas>
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.cash, { color: t.c.primaryText }]} numberOfLines={1} adjustsFontSizeToFit>
-            {formatMoney(cash, t.strings.currencySymbol)}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <GameIcon icon={t.strings.currencyIcon} size={30} />
+            <Text style={[styles.cash, t.display, { color: t.c.primaryText, flex: 1 }]} numberOfLines={1} adjustsFontSizeToFit>
+              {formatMoney(cash, t.strings.currencySymbol)}
+            </Text>
+          </View>
           <Text style={[styles.ips, { color: alpha(t.c.primaryText, 0.85) }]}>
             {formatMoney(ips, t.strings.currencySymbol)}/sec
             {game.prestigePoints > 0 ? `  ·  ${t.strings.prestigeIcon} ${formatNumber(game.prestigePoints)}` : ''}
@@ -42,7 +45,7 @@ export function Header() {
         </View>
         <View style={[styles.gems, { backgroundColor: alpha('#000000', 0.2), borderRadius: t.radius }]}>
           <GameIcon icon={t.strings.gemIcon} size={20} />
-          <Text style={[styles.gemText, { color: t.c.primaryText }]}>{formatNumber(gems)}</Text>
+          <Text style={[styles.gemText, t.display, { color: t.c.primaryText }]}>{formatNumber(gems)}</Text>
         </View>
       </View>
       <Button
@@ -63,8 +66,8 @@ export function Header() {
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center' },
-  cash: { fontSize: 32, fontWeight: '900' },
+  cash: { fontSize: 34 },
   ips: { fontSize: 14, fontWeight: '700' },
   gems: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, gap: 4 },
-  gemText: { fontWeight: '800', fontSize: 16 },
+  gemText: { fontSize: 17 },
 });

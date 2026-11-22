@@ -167,6 +167,28 @@ describe('daily, story, IAP', () => {
   });
 });
 
+describe('combo and bonus', () => {
+  it('combo multiplier steps up and caps', () => {
+    const { tapsPerLevel, maxMultiplier } = cfg.economy.combo;
+    expect(E.comboMultiplier(cfg, 0)).toBe(1);
+    expect(E.comboMultiplier(cfg, tapsPerLevel)).toBe(2);
+    expect(E.comboMultiplier(cfg, tapsPerLevel * 100)).toBe(maxMultiplier);
+  });
+  it('combo multiplies tap earnings', () => {
+    const s = E.createInitialState(cfg, T0);
+    expect(E.tapHero(cfg, s, T0, 3).earned).toBeCloseTo(E.tapHero(cfg, s, T0).earned * 3);
+  });
+  it('bonus pays at least minTaps taps, and income-based once automated', () => {
+    let s = E.createInitialState(cfg, T0);
+    expect(E.bonusValue(cfg, s, T0)).toBeCloseTo(E.tapValue(cfg, s, T0) * cfg.economy.bonus.minTaps);
+    s = { ...s, cash: 1e12 };
+    for (const b of cfg.businesses.slice(0, 5)) s = E.hireManager(cfg, E.buyBusiness(cfg, s, b.id, 50), b.id);
+    expect(E.bonusValue(cfg, s, T0)).toBeCloseTo(E.incomePerSecond(cfg, s, T0) * cfg.economy.bonus.incomeSeconds);
+    const before = s.cash;
+    expect(E.collectBonus(cfg, s, T0).state.cash - before).toBeCloseTo(E.bonusValue(cfg, s, T0));
+  });
+});
+
 describe('format', () => {
   it.each([
     [0, '0'],

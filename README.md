@@ -67,6 +67,20 @@ Every `icon` field takes an emoji (`"🍕"`, zero art needed) or `"asset:<key>"`
 pointing at an image in `assets`. Sounds: add `sfx_tap`, `sfx_buy`, `sfx_cash`
 or `music` to `assets`.
 
+## Custom art, fonts and juice
+
+Each game can replace any emoji with its own artwork:
+
+1. Put 1024px transparent PNGs in a folder, named by asset key (`biz_food_truck.png`, `mgr_marco.png`, `hero.png`, `char_nonna_happy.png`).
+2. `python3 scripts/import-art.py <folder> <game-id>` trims and shrinks them into `games/<id>/assets/`.
+3. List each one under `assets` in game.json and reference it as `"asset:<key>"` in any icon field (`npm run validate` catches missing ones).
+
+The prompts used for Pizza Empire's art are in `art/pizza-empire/prompts.py`, so the rest of the set can be generated in the same style.
+
+Other per-game presentation settings in game.json: `theme.displayFont` (a .ttf in `assets`), `theme.sceneBackground`, `theme.icons` (boost, gift, tabs...), a `portrait` per story beat for expressions, `economy.combo` (tap frenzy) and `economy.bonus` (the flying bonus).
+
+![Pizza Empire with custom art, story scenes and celebrations](docs/screenshots-pizza-v2.png)
+
 ## Layout
 
 ```

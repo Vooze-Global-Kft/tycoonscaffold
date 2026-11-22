@@ -1,17 +1,22 @@
+import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, AppState, View } from 'react-native';
+import { AppState, Text, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { gameAssets } from '../config/game';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { initAudio } from '../services/feedback';
 import { useGame } from '../state/store';
 import { Banner } from './components/Banner';
+import { Celebrations } from './components/Celebration';
+import { GameIcon } from './components/GameIcon';
 import { Header } from './components/Header';
 import { OfflineModal, StoryModal } from './components/Modals';
 import { BusinessesPanel, ManagersPanel, PrestigePanel, ShopPanel, UpgradesPanel } from './components/Panels';
 import { TabBar } from './components/TabBar';
 import { SkiaScene } from './scene/SkiaScene';
 import { ThreeScene } from './scene/ThreeScene';
-import { useTheme } from './theme';
+import { DISPLAY_FONT, useTheme } from './theme';
 
 const TICK_MS = 100;
 const SAVE_EVERY_MS = 5000;
@@ -74,26 +79,43 @@ function Game() {
       </SafeAreaView>
       <OfflineModal />
       <StoryModal />
+      <Celebrations />
     </SafeAreaView>
+  );
+}
+
+/** Shown while the save, fonts and remote config load: the hero bouncing over the game's name. */
+function Loading() {
+  const cfg = useGame((s) => s.cfg);
+  const bounce = useSharedValue(0);
+  useEffect(() => {
+    bounce.value = withRepeat(withTiming(1, { duration: 420, easing: Easing.out(Easing.quad) }), -1, true);
+  }, [bounce]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: -bounce.value * 26 }, { scaleY: 1 - (1 - bounce.value) * 0.08 }] }));
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: cfg.theme.colors.background }}>
+      <Animated.View style={style}>
+        <GameIcon icon={cfg.theme.heroIcon} size={140} />
+      </Animated.View>
+      <Text style={{ marginTop: 18, fontSize: 30, fontWeight: '900', color: cfg.theme.colors.primary }}>{cfg.app.displayName}</Text>
+    </View>
   );
 }
 
 export default function App() {
   const hydrated = useGame((s) => s.hydrated);
-  const bg = useGame((s) => s.cfg.theme.colors.background);
+  const fontKey = useGame((s) => s.cfg.theme.displayFont);
+  const fontSrc = fontKey ? gameAssets[fontKey] : undefined;
+  // If the font fails to load we still start; text falls back to the system font.
+  const [fontsLoaded, fontError] = useFonts(fontSrc ? { [DISPLAY_FONT]: fontSrc } : {});
+  const ready = hydrated && (fontsLoaded || fontError !== null || !fontSrc);
   useEffect(() => {
     useGame.getState().boot();
     initAudio();
   }, []);
   return (
     <SafeAreaProvider>
-      {hydrated ? (
-        <Game />
-      ) : (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
-          <ActivityIndicator />
-        </View>
-      )}
+      {ready ? <Game /> : <Loading />}
     </SafeAreaProvider>
   );
 }

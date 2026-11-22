@@ -6,11 +6,15 @@ import { gameAssets } from '../../config/game';
  * into the game's assets map. Emoji let you ship a new theme with zero art;
  * swap in images later for a more polished look.
  */
-export function GameIcon({ icon, size = 32 }: { icon: string; size?: number }) {
+export function GameIcon({ icon, size = 32, locked = false }: { icon: string; size?: number; locked?: boolean }) {
   if (icon.startsWith('asset:')) {
     const src = gameAssets[icon.slice(6)];
-    if (src) return <Image source={src} style={{ width: size, height: size }} resizeMode="contain" />;
+    // Locked art shows as a dark silhouette, a teaser for what's coming.
+    if (src) {
+      return <Image source={src} style={[{ width: size, height: size }, locked && { tintColor: '#00000055' }]} resizeMode="contain" />;
+    }
   }
+  if (locked) icon = '❔';
   return (
     <Text style={{ fontSize: size * 0.8, lineHeight: size, width: size, textAlign: 'center' }} allowFontScaling={false}>
       {icon}

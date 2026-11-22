@@ -24,13 +24,15 @@ export function Button({ label, sublabel, onPress, disabled, variant = 'primary'
       style={({ pressed }) => [
         styles.base,
         { backgroundColor: bg, borderRadius: t.radius * 0.75, opacity: disabled ? 0.45 : 1 },
+        // A darker bottom edge gives buttons a chunky, pressable look.
+        variant !== 'ghost' && { borderBottomWidth: 4, borderBottomColor: 'rgba(0,0,0,0.22)' },
         variant === 'ghost' && { borderWidth: 1, borderColor: alpha(t.c.text, 0.2) },
-        pressed && { transform: [{ scale: 0.96 }] },
+        pressed && { transform: [{ scale: 0.95 }, { translateY: 2 }] },
         style,
       ]}
     >
       {children}
-      {label ? <Text style={[styles.label, { color: fg }]} numberOfLines={1}>{label}</Text> : null}
+      {label ? <Text style={[styles.label, t.display, { color: fg }]} numberOfLines={1}>{label}</Text> : null}
       {sublabel ? <Text style={[styles.sub, { color: fg }]} numberOfLines={1}>{sublabel}</Text> : null}
     </Pressable>
   );
@@ -38,6 +40,6 @@ export function Button({ label, sublabel, onPress, disabled, variant = 'primary'
 
 const styles = StyleSheet.create({
   base: { paddingVertical: 8, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
-  label: { fontWeight: '800', fontSize: 14 },
+  label: { fontSize: 15 },
   sub: { fontWeight: '600', fontSize: 11, opacity: 0.9, marginTop: 1 },
 });

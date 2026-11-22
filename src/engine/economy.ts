@@ -214,10 +214,27 @@ export function tapValue(cfg: GameConfig, state: GameState, now: number): number
   );
 }
 
-export function tapHero(cfg: GameConfig, state: GameState, now: number): { state: GameState; earned: number } {
-  const earned = tapValue(cfg, state, now);
+export function tapHero(cfg: GameConfig, state: GameState, now: number, comboMult = 1): { state: GameState; earned: number } {
+  const earned = tapValue(cfg, state, now) * comboMult;
   const next = earn(state, earned);
   return { state: { ...next, stats: { ...next.stats, taps: next.stats.taps + 1 } }, earned };
+}
+
+/** Combo multiplier after `taps` quick taps in a row: 1, then +1 per level, capped. */
+export function comboMultiplier(cfg: GameConfig, taps: number): number {
+  const { tapsPerLevel, maxMultiplier } = cfg.economy.combo;
+  return Math.min(maxMultiplier, 1 + Math.floor(taps / tapsPerLevel));
+}
+
+/** What the flying bonus pays right now. */
+export function bonusValue(cfg: GameConfig, state: GameState, now: number): number {
+  const { incomeSeconds, minTaps } = cfg.economy.bonus;
+  return Math.max(incomePerSecond(cfg, state, now) * incomeSeconds, tapValue(cfg, state, now) * minTaps);
+}
+
+export function collectBonus(cfg: GameConfig, state: GameState, now: number): { state: GameState; earned: number } {
+  const earned = bonusValue(cfg, state, now);
+  return { state: earn(state, earned), earned };
 }
 
 // ---------------------------------------------------------------- simulation

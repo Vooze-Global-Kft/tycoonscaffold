@@ -69,6 +69,8 @@ export const StoryBeatSchema = z.object({
     z.object({ type: z.literal('owned'), businessId: z.string(), count: z.number().int() }),
     z.object({ type: z.literal('prestige'), count: z.number().int() }),
   ]),
+  /** Portrait for this beat only (e.g. an angry or excited expression). Defaults to the character's portrait. */
+  portrait: icon.optional(),
   /** Optional reward granted when the beat is dismissed. */
   rewardGems: z.number().int().nonnegative().default(0),
 });
@@ -81,6 +83,7 @@ export const IapProductSchema = z.object({
   kind: z.enum(['noAds', 'multiplier', 'gems', 'starterPack', 'timeWarp']),
   /** Multiplier value, gem amount or warp hours, depending on kind. */
   value: z.number().positive().default(1),
+  icon: icon.optional(),
   /** Shown before store prices load (and in mock mode). */
   fallbackPrice: z.string().default('$0.99'),
   highlight: z.boolean().default(false),
@@ -131,6 +134,25 @@ export const GameConfigSchema = z.object({
     /** Emoji or asset key tapped to earn cash in the hero scene. */
     heroIcon: icon,
     particleIcon: icon.default('🪙'),
+    /** Asset key of a .ttf used for headings, numbers and buttons. Omit for the system font. */
+    displayFont: z.string().optional(),
+    /** Asset key of a wide image drawn behind the hero. Omit for the generated backdrop. */
+    sceneBackground: z.string().optional(),
+    /** UI icons. Each is an emoji or "asset:<key>". */
+    icons: z
+      .object({
+        boost: icon.default('🚀'),
+        gift: icon.default('🎁'),
+        timeWarp: icon.default('⏩'),
+        offline: icon.default('🌙'),
+        bonus: icon.default('✨'),
+        manager: icon.default('🧑‍💼'),
+        tabBuild: icon.optional(),
+        tabManagers: icon.default('🧑‍💼'),
+        tabUpgrades: icon.default('⬆️'),
+        tabShop: icon.default('🛒'),
+      })
+      .default({ boost: '🚀', gift: '🎁', timeWarp: '⏩', offline: '🌙', bonus: '✨', manager: '🧑‍💼', tabManagers: '🧑‍💼', tabUpgrades: '⬆️', tabShop: '🛒' }),
     darkStatusBar: z.boolean().default(false),
   }),
 
@@ -140,6 +162,7 @@ export const GameConfigSchema = z.object({
   strings: z.object({
     currencyName: z.string(),
     currencySymbol: z.string().default('$'),
+    currencyIcon: icon.default('🪙'),
     gemName: z.string().default('Gems'),
     gemIcon: icon.default('💎'),
     prestigeName: z.string(),
@@ -193,6 +216,28 @@ export const GameConfigSchema = z.object({
       hours: z.number().positive().default(1),
       gemCost: z.number().int().positive().default(25),
     }),
+    /** A bonus item flies across the hero scene now and then; tapping it pays out. */
+    bonus: z
+      .object({
+        name: z.string().default('Lucky Bonus'),
+        minSec: z.number().positive().default(45),
+        maxSec: z.number().positive().default(110),
+        /** Pays this many seconds of income... */
+        incomeSeconds: z.number().positive().default(120),
+        /** ...but never less than this many taps' worth, so it matters before managers. */
+        minTaps: z.number().positive().default(40),
+      })
+      .default({ name: 'Lucky Bonus', minSec: 45, maxSec: 110, incomeSeconds: 120, minTaps: 40 }),
+    /** Tapping quickly builds a combo that multiplies tap earnings. */
+    combo: z
+      .object({
+        tapsPerLevel: z.number().int().positive().default(12),
+        maxMultiplier: z.number().int().min(1).default(5),
+        /** The combo resets after this long without a tap. */
+        decayMs: z.number().positive().default(1400),
+        name: z.string().default('COMBO'),
+      })
+      .default({ tapsPerLevel: 12, maxMultiplier: 5, decayMs: 1400, name: 'COMBO' }),
   }),
 
   businesses: z.array(BusinessSchema).min(1),
@@ -275,9 +320,20 @@ export function lintGameConfig(cfg: GameConfig): string[] {
   const assetKeys = new Set(Object.keys(cfg.assets));
   const iconFields = [
     cfg.theme.heroIcon,
+    cfg.theme.particleIcon,
+    cfg.strings.currencyIcon,
+    cfg.strings.gemIcon,
+    cfg.strings.prestigeIcon,
+    ...Object.values(cfg.theme.icons).map((i) => i ?? ''),
     ...cfg.businesses.flatMap((b) => [b.icon, b.managerIcon ?? '']),
+    ...cfg.upgrades.map((u) => u.icon ?? ''),
     ...cfg.characters.map((c) => c.portrait),
+    ...cfg.story.map((b) => b.portrait ?? ''),
+    ...cfg.monetization.iap.products.map((p) => p.icon ?? ''),
   ].filter(Boolean);
+  for (const key of [cfg.theme.displayFont, cfg.theme.sceneBackground]) {
+    if (key && !assetKeys.has(key)) problems.push(`theme asset "${key}" has no entry in assets`);
+  }
   for (const i of iconFields) {
     if (i.startsWith('asset:') && !assetKeys.has(i.slice(6))) problems.push(`icon "${i}" has no entry in assets`);
   }

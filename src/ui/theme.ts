@@ -1,9 +1,17 @@
+import type { TextStyle } from 'react-native';
+import { gameAssets } from '../config/game';
 import { useGame } from '../state/store';
 
-/** Colours, radius and strings for the active game. */
+/** Name the game's display font is registered under (see App.tsx). */
+export const DISPLAY_FONT = 'GameDisplay';
+
+/** Colours, radius, strings and fonts for the active game. */
 export function useTheme() {
   const cfg = useGame((s) => s.cfg);
-  return { ...cfg.theme, strings: cfg.strings, c: cfg.theme.colors };
+  const hasFont = Boolean(cfg.theme.displayFont && gameAssets[cfg.theme.displayFont]);
+  // Custom fonts carry their own weight; asking for bold on top makes Android fall back to the system font.
+  const display: TextStyle = hasFont ? { fontFamily: DISPLAY_FONT, fontWeight: 'normal' } : { fontWeight: '900' };
+  return { ...cfg.theme, strings: cfg.strings, c: cfg.theme.colors, display };
 }
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 };

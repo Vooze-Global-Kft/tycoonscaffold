@@ -29,7 +29,7 @@ function Title({ children, sub }: { children: React.ReactNode; sub?: string }) {
   const t = useTheme();
   return (
     <View style={{ flex: 1, marginHorizontal: 10 }}>
-      <Text style={[styles.title, { color: t.c.text }]} numberOfLines={1}>{children}</Text>
+      <Text style={[styles.title, t.display, { color: t.c.text }]} numberOfLines={1}>{children}</Text>
       {sub ? <Text style={[styles.sub, { color: t.c.textMuted }]} numberOfLines={2}>{sub}</Text> : null}
     </View>
   );
@@ -80,7 +80,7 @@ export function ManagersPanel() {
         if (s.owned === 0 && !s.managed) return null;
         return (
           <Card key={b.id}>
-            <GameIcon icon={b.managerIcon ?? '🧑‍💼'} size={44} />
+            <GameIcon icon={b.managerIcon ?? t.icons.manager} size={52} />
             <Title sub={`Runs ${b.name} automatically, even while you're away.`}>{b.managerName ?? `${b.name} Manager`}</Title>
             {s.managed ? (
               <Text style={{ color: t.c.success, fontWeight: '800' }}>Hired ✓</Text>
@@ -108,7 +108,7 @@ export function UpgradesPanel() {
         const affordable = u.premium ? game.gems >= u.cost : game.cash >= u.cost;
         return (
           <Card key={u.id} highlight={u.premium}>
-            <GameIcon icon={u.icon ?? '⬆️'} size={40} />
+            <GameIcon icon={u.icon ?? '⬆️'} size={46} />
             <Title sub={`${target} profits ×${u.revenueMult}${u.premium ? ' · kept forever' : ''}`}>{u.name}</Title>
             <Button
               variant={u.premium ? 'accent' : 'primary'}
@@ -140,7 +140,7 @@ export function PrestigePanel() {
   return (
     <ScrollView contentContainerStyle={[styles.list, { alignItems: 'center', paddingHorizontal: 24 }]}>
       <GameIcon icon={t.strings.prestigeIcon} size={72} />
-      <Text style={[styles.big, { color: t.c.text }]}>{formatNumber(game.prestigePoints)} {t.strings.prestigeName}</Text>
+      <Text style={[styles.big, t.display, { color: t.c.text }]}>{formatNumber(game.prestigePoints)} {t.strings.prestigeName}</Text>
       <Text style={[styles.sub, { color: t.c.textMuted, textAlign: 'center' }]}>Currently +{bonusNow.toFixed(0)}% to all profits</Text>
       <Text style={[styles.body, { color: t.c.text }]}>{t.strings.prestigeDescription}</Text>
       <Button
@@ -174,12 +174,12 @@ export function ShopPanel() {
   return (
     <ScrollView contentContainerStyle={styles.list}>
       <Card highlight={canDaily}>
-        <GameIcon icon="🎁" size={40} />
+        <GameIcon icon={t.icons.gift} size={46} />
         <Title sub={canDaily ? `Day ${daily.streak} streak: ${daily.gems} ${t.strings.gemName}` : `Come back tomorrow · ${game.daily.streak}-day streak`}>Daily Gift</Title>
         <Button variant="success" label={canDaily ? 'Claim' : 'Claimed'} disabled={!canDaily} onPress={claimDaily} />
       </Card>
       <Card>
-        <GameIcon icon="⏩" size={40} />
+        <GameIcon icon={t.icons.timeWarp} size={46} />
         <Title sub={`Instantly earn ${formatMoney(warpValue, t.strings.currencySymbol)} (${formatDuration(cfg.economy.timeWarp.hours * 3600)} of income)`}>Time Warp</Title>
         <Button
           variant="accent"
@@ -195,7 +195,7 @@ export function ShopPanel() {
         const owned = productOwned(game, p);
         return (
           <Card key={p.id} highlight={p.highlight}>
-            <GameIcon icon={p.kind === 'noAds' ? '🚫' : p.kind === 'multiplier' ? '🚀' : p.kind === 'timeWarp' ? '⏩' : p.kind === 'starterPack' ? '🎉' : t.strings.gemIcon} size={40} />
+            <GameIcon icon={p.icon ?? (p.kind === 'noAds' ? '🚫' : p.kind === 'multiplier' ? '🚀' : p.kind === 'timeWarp' ? t.icons.timeWarp : p.kind === 'starterPack' ? '🎉' : t.strings.gemIcon)} size={46} />
             <Title sub={p.description ?? (p.kind === 'gems' ? `${p.value} ${t.strings.gemName}` : undefined)}>{p.title}</Title>
             <Button variant={p.highlight ? 'accent' : 'primary'} label={owned ? 'Owned' : iap.price(p)} disabled={owned} onPress={() => purchase(p)} />
           </Card>
@@ -226,9 +226,9 @@ export function ShopPanel() {
 const styles = StyleSheet.create({
   list: { paddingTop: 10, paddingBottom: 24 },
   card: { flexDirection: 'row', alignItems: 'center', padding: 12, marginHorizontal: 12, marginBottom: 8 },
-  title: { fontWeight: '800', fontSize: 15 },
+  title: { fontSize: 17 },
   sub: { fontSize: 12, marginTop: 2, fontWeight: '600' },
-  big: { fontSize: 26, fontWeight: '900', marginTop: 8 },
+  big: { fontSize: 28, marginTop: 8 },
   body: { fontSize: 14, textAlign: 'center', marginTop: 14, lineHeight: 20 },
   empty: { textAlign: 'center', marginTop: 40, fontWeight: '700' },
   section: { fontWeight: '900', fontSize: 12, letterSpacing: 1.5, marginHorizontal: 16, marginTop: 12, marginBottom: 6 },
