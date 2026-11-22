@@ -12,6 +12,7 @@ import { fly } from '../../../juice/fly';
 import { useTheme } from '../../../theme';
 import type { SceneLayout } from '../../layout';
 import { canSpawnBonus } from './gate';
+import { noop } from './Hotspots';
 import { bonusPoint, type BonusShared } from './shared';
 
 const CROSS_MS = 7000;
@@ -109,7 +110,7 @@ export function BonusFlyer({
 
   return (
     <Animated.View style={[styles.flyer, style]}>
-      <Pressable onPressIn={onPress} style={styles.hit} accessibilityRole="button" accessibilityLabel={`Catch the ${bonusName}`}>
+      <Pressable onPressIn={onPress} onPress={noop} unstable_pressDelay={0} style={styles.hit} accessibilityRole="button" accessibilityLabel={`Catch the ${bonusName}`}>
         <GameIcon icon={t.icons.bonus} size={ICON} />
       </Pressable>
     </Animated.View>

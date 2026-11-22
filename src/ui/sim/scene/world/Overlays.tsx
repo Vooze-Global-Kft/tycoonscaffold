@@ -5,7 +5,7 @@
  * number changes, never per frame.
  */
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
 import { formatMoney, formatNumber } from '../../../../engine/format';
 import { useGame } from '../../../../state/store';
@@ -124,4 +124,3 @@ const styles = StyleSheet.create({
   },
 });
 
-export { View };

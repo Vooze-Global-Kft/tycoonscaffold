@@ -325,3 +325,127 @@ describe('audit: the drop-rate facts are exact', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------- engine gaps (critique-fun.md)
+
+describe('audit: missions only ask for what the player can already do', () => {
+  const pizza = GameConfigSchema.parse(pizzaRaw);
+  const types = (c: GameConfig, s: GameState) => M.missionViews(c, s).map((v) => c.meta.missions.templates.find((t) => t.id === v.templateId)!.type);
+
+  it('no rush mission before a transport hire, no chest mission before a chest', () => {
+    let s = fresh(pizza);
+    for (let k = 0; k < 40; k++) {
+      // Complete whatever is offered, many times over, and look at every refill.
+      s = M.refreshMissions(pizza, s, T0 + k);
+      expect(types(pizza, s)).not.toContain('rush');
+      expect(types(pizza, s)).not.toContain('chests');
+      s = { ...s, missions: { ...s.missions, slots: [], doneToday: 0 } };
+    }
+    const v = s.activeVenue;
+    const hired = { ...s, venues: { ...s.venues, [v]: { ...s.venues[v], chain: { ...s.venues[v].chain!, transportManaged: true } } } };
+    const withChest = M.grantChest(pizza, hired, pizza.meta.chests[0].id, 1);
+    const seen = new Set<string>();
+    let t = withChest;
+    for (let k = 0; k < 40; k++) {
+      t = M.refreshMissions(pizza, t, T0 + k);
+      for (const x of types(pizza, t)) seen.add(x);
+      t = { ...t, missions: { ...t.missions, slots: [], doneToday: 0, completed: { ...t.missions.completed, ...Object.fromEntries(t.missions.slots.map((sl) => [sl.templateId, (t.missions.completed[sl.templateId] ?? 0) + 1])) } } };
+    }
+    expect(seen.has('rush')).toBe(true);
+    expect(seen.has('chests')).toBe(true);
+  });
+});
+
+describe('audit: the 2-second refreshes do nothing when nothing changed', () => {
+  it('return the same object', () => {
+    const pizza = GameConfigSchema.parse(pizzaRaw);
+    for (const c of [cfg, pizza]) {
+      const now = T0 + 5 * MIN;
+      const s = M.refreshMissions(c, M.refreshDailyShop(c, M.refreshDeals(c, fresh(c), now), now), now);
+      expect(M.refreshDeals(c, s, now + 2000)).toBe(s);
+      expect(M.refreshDailyShop(c, s, now + 2000)).toBe(s);
+      expect(M.refreshMissions(c, s, now + 2000)).toBe(s);
+      expect(M.refreshMissions(c, s)).toBe(s);
+    }
+  });
+});
+
+describe('audit: the daily gift row is what a claim pays', () => {
+  it('cycles the table and never resets on a missed day', () => {
+    let s = fresh();
+    const table = cfg.economy.daily.gems;
+    let t = T0;
+    for (let n = 1; n <= table.length * 2 + 1; n++) {
+      const row = E.dailyCalendar(cfg, s, t);
+      const today = row.find((d) => d.today)!;
+      const before = s.gems;
+      s = E.claimDaily(cfg, s, t);
+      expect(s.gems - before).toBe(today.gems);
+      expect(today.claim).toBe(n);
+      t += n % 3 === 0 ? 3 * DAY : DAY; // skip days now and then
+    }
+    expect(s.daily.streak).toBe(table.length * 2 + 1);
+  });
+});
+
+describe('audit: offline earnings cannot be farmed by moving the clock back and forth', () => {
+  it('pays the time ahead once, not again after winding back', () => {
+    const c = GameConfigSchema.parse(pizzaRaw);
+    let s = { ...fresh(c), cash: 1e6 };
+    s = E.buyBusiness(c, s, s.activeVenue, c.businesses[0].id, 20);
+    s = E.hireManager(c, s, s.activeVenue, c.businesses[0].id);
+    s = E.hireTransportManager(c, s, s.activeVenue);
+    // Played until T0 and saved.
+    s = { ...s, lastSavedAt: T0 };
+    // Clock forward 4 hours: the offline popup pays 4 hours (fine: it may really have been 4 hours).
+    const ahead = T0 + 4 * HOUR;
+    s = E.clampClock(c, s, ahead);
+    expect(E.computeOffline(c, s, ahead).seconds).toBe(4 * 3600);
+    s = { ...s, lastSavedAt: ahead }; // collected and saved
+    // Back to the real time, then forward again: nothing more.
+    s = E.clampClock(c, s, T0 + MIN);
+    expect(E.computeOffline(c, s, T0 + MIN).seconds).toBe(0);
+    s = { ...s, lastSavedAt: T0 + MIN };
+    s = E.clampClock(c, s, ahead + MIN);
+    expect(E.computeOffline(c, s, ahead + MIN).seconds).toBeCloseTo(60, 6);
+  });
+});
+
+describe('audit: more clock and spending tricks', () => {
+  it('the ad chest, the daily shop and the mission limit do not reset by moving the clock back and forth', () => {
+    let s = fresh();
+    for (let i = 0; i < 3; i++) s = M.grantAdChest(cfg, s, T0 + i * 3 * HOUR);
+    expect(M.chestCount(s)).toBe(3);
+    // Tomorrow early, then back to today: tomorrow's three are used up, today stays used up.
+    let t = s;
+    for (let i = 0; i < 3; i++) t = M.grantAdChest(cfg, t, T0 + DAY + i * 3 * HOUR);
+    expect(M.chestCount(t)).toBe(6);
+    expect(M.grantAdChest(cfg, t, T0 + 10 * HOUR)).toBe(t);
+    expect(M.grantAdChest(cfg, t, T0 + DAY + 10 * HOUR)).toBe(t);
+
+    const shop = M.buyDailyOffer(cfg, M.refreshDailyShop(cfg, fresh(), T0 + DAY), 'free_card', T0 + DAY)!.state;
+    expect(M.refreshDailyShop(cfg, shop, T0)).toBe(shop);
+    expect(M.buyDailyOffer(cfg, shop, 'free_card', T0)).toBeNull();
+    expect(M.buyDailyOffer(cfg, shop, 'free_card', T0 + DAY + HOUR)).toBeNull();
+  });
+
+  it('no purchase spends gems the player does not have, and nothing opens a chest that is not owned', () => {
+    const poor = { ...fresh(), gems: 3 };
+    expect(E.buyTimeWarpWithGems(cfg, poor, T0)).toBe(poor);
+    expect(M.buyChest(parse({ chestsForSale: true }), poor, 'plain')).toBe(poor);
+    expect(M.openChest(cfg, poor, 'plain', T0)).toBeNull();
+    expect(M.openChest(cfg, poor, 'nope', T0)).toBeNull();
+    expect(M.openChest(cfg, { ...poor, chests: { ...poor.chests, owned: { plain: 0.5 } } }, 'plain', T0)).toBeNull();
+    // A hostile save with a fractional or negative chest count loads as whole chests.
+    const r = E.reconcileState(cfg, { ...poor, chests: { ...poor.chests, owned: { plain: 2.7, other: -4 } } }, T0);
+    expect(r.chests.owned).toEqual({ plain: 2 });
+  });
+
+  it('huge counters stay finite', () => {
+    const r = E.reconcileState(cfg, { ...fresh(), gems: 1e308, cash: 1e308, stats: { ...fresh().stats, taps: 1e308 } }, T0);
+    const s = E.claimDaily(cfg, r, T0);
+    expect(Number.isFinite(s.gems)).toBe(true);
+    const m = M.refreshMissions(cfg, s, T0);
+    expect(M.missionViews(cfg, m).every((v) => Number.isFinite(v.progress) && Number.isFinite(v.target))).toBe(true);
+  });
+});

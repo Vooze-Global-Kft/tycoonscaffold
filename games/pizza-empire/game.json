@@ -742,7 +742,7 @@
         "place": "Tokyo",
         "icon": "🏯",
         "blurb": "Open all night.",
-        "unlockCost": 11000000000000000000,
+        "unlockCost": 35000000000000000000,
         "scale": 100000000
       },
       {
@@ -751,7 +751,7 @@
         "place": "The Moon",
         "icon": "🌕",
         "blurb": "Zero-gravity dough tossing.",
-        "unlockCost": 910000000000000000000,
+        "unlockCost": 2200000000000000000000,
         "scale": 4100000000
       },
       {
@@ -760,7 +760,7 @@
         "place": "Deep Space",
         "icon": "asset:biz_pizza_planet",
         "blurb": "A whole world with extra toppings.",
-        "unlockCost": 73000000000000000000000,
+        "unlockCost": 160000000000000000000000,
         "scale": 160000000000
       }
     ],

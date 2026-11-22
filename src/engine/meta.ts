@@ -425,65 +425,60 @@ function factsFrom(d: ChestDistribution): ChestRarityFact[] {
 }
 
 /**
- * Long-run odds with bad-luck protection: the stationary distribution of the two protection
- * counters (capped at their limit minus one, where protection is due) when only this chest is
- * opened, then the chest's odds averaged over it.
+ * Long-run odds with bad-luck protection, exactly, when only this chest is opened. The two
+ * protection counters form a Markov chain that starts again from (0, 0) at every card that resets
+ * them all (a legendary, or an epic when only epics are protected), and protection makes that
+ * certain within the limit, so each cycle is at most `limit` chests with cards. Renewal-reward:
+ * long-run share = expected count per cycle / expected chests per cycle, both summed over the
+ * states a cycle visits (a handful of steps, no iteration to convergence).
  */
-function longRunDistribution(cfg: GameConfig, chest: Chest): ChestDistribution {
-  const E = cfg.meta.pity.epic ?? 1;
-  const L = cfg.meta.pity.legendary ?? 1;
-  const hasE = cfg.meta.pity.epic !== undefined;
-  const hasL = cfg.meta.pity.legendary !== undefined;
-  const nE = hasE ? Math.max(1, E) : 1;
-  const nL = hasL ? Math.max(1, L) : 1;
+function longRunDistribution(cfg: GameConfig, chest: Chest, epicWithin: number | null, legendaryWithin: number | null): ChestDistribution {
+  const hasE = epicWithin !== null;
+  const hasL = legendaryWithin !== null;
+  const nE = hasE ? Math.max(1, epicWithin) : 1;
+  const nL = hasL ? Math.max(1, legendaryWithin) : 1;
   const cache = new Map<string, ChestDistribution>();
   const dist = (a: number, b: number) => {
-    const de = hasE && a >= E - 1;
-    const dl = hasL && b >= L - 1;
-    const key = `${de}${dl}`;
+    const key = `${hasE && a >= nE - 1}${hasL && b >= nL - 1}`;
     let d = cache.get(key);
-    if (!d) cache.set(key, (d = chestDistribution(cfg, chest, de, dl)));
+    if (!d) cache.set(key, (d = chestDistribution(cfg, chest, hasE && a >= nE - 1, hasL && b >= nL - 1)));
     return d;
   };
-  const idx = (a: number, b: number) => a * nL + b;
-  let pi = new Float64Array(nE * nL);
-  pi[0] = 1;
-  for (let it = 0; it < 200_000; it++) {
-    const next = new Float64Array(nE * nL);
-    for (let a = 0; a < nE; a++) {
-      for (let b = 0; b < nL; b++) {
-        const m = pi[idx(a, b)];
-        if (m === 0) continue;
-        const d = dist(a, b);
-        // Lazy chain (half stays) so the iteration converges even for periodic chains.
-        next[idx(a, b)] += m * (0.5 + 0.5 * (1 - d.pCards));
-        for (let r = 0; r < 4; r++) {
-          const p = d.best[r];
-          if (!(p > 0)) continue;
-          const a2 = !hasE || r >= rank('epic') ? 0 : Math.min(a + 1, nE - 1);
-          const b2 = !hasL || r >= rank('legendary') ? 0 : Math.min(b + 1, nL - 1);
-          next[idx(a2, b2)] += 0.5 * m * p;
-        }
-      }
-    }
-    let diff = 0;
-    for (let i = 0; i < next.length; i++) diff += Math.abs(next[i] - pi[i]);
-    pi = next;
-    if (diff < 1e-14) break;
-  }
   const out: ChestDistribution = { atLeast: [0, 0, 0, 0], count: [0, 0, 0, 0], pCards: 0, best: [0, 0, 0, 0] };
-  for (let a = 0; a < nE; a++) {
-    for (let b = 0; b < nL; b++) {
-      const m = pi[idx(a, b)];
-      if (m === 0) continue;
+  let chests = 0;
+  // Probability of being in each state at the k-th chest with cards of the cycle (state = a * nL + b).
+  let layer = new Map<number, number>([[0, 1]]);
+  for (let step = 0; step <= nE * nL + 1 && layer.size > 0; step++) {
+    const next = new Map<number, number>();
+    for (const [idx, m] of layer) {
+      const a = Math.floor(idx / nL);
+      const b = idx % nL;
       const d = dist(a, b);
-      out.pCards += m * d.pCards;
+      if (!(d.pCards > 0)) continue;
+      // Chests opened in this state until one holds cards: 1 / pCards on average.
+      const w = m / d.pCards;
+      chests += w;
       for (let r = 0; r < 4; r++) {
-        out.atLeast[r] += m * d.atLeast[r];
-        out.count[r] += m * d.count[r];
-        out.best[r] += m * d.best[r];
+        out.atLeast[r] += w * d.atLeast[r];
+        out.count[r] += w * d.count[r];
+        out.best[r] += w * d.best[r];
+        const p = d.best[r] / d.pCards;
+        if (!(p > 0)) continue;
+        const a2 = !hasE || r >= rank('epic') ? 0 : Math.min(a + 1, nE - 1);
+        const b2 = !hasL || r >= rank('legendary') ? 0 : Math.min(b + 1, nL - 1);
+        const j = a2 * nL + b2;
+        if (j !== 0) next.set(j, (next.get(j) ?? 0) + m * p); // back at (0, 0): the cycle ends
       }
     }
+    layer = next;
+  }
+  if (chests > 0) {
+    for (let r = 0; r < 4; r++) {
+      out.atLeast[r] /= chests;
+      out.count[r] /= chests;
+      out.best[r] /= chests;
+    }
+    out.pCards = out.best.reduce((x, y) => x + y, 0);
   }
   return out;
 }
@@ -504,7 +499,7 @@ export function chestOddsFacts(cfg: GameConfig, chestId: string, state: GameStat
   const perCard: RarityOdds[] = perChest.map((f) => ({ rarity: f.rarity, percent: f.cardPercent }));
   const rules = chestRules(cfg, state ?? ({ stats: { venuesEver: 1 } } as GameState), chestId)!;
   const protectedGame = cardsPerChest > 0 && (rules.epicWithin !== null || rules.legendaryWithin !== null);
-  const longRun = protectedGame ? factsFrom(longRunDistribution(cfg, chest)) : null;
+  const longRun = protectedGame ? factsFrom(longRunDistribution(cfg, chest, rules.epicWithin, rules.legendaryWithin)) : null;
   let nextChest: ChestRarityFact[] | null = null;
   if (protectedGame && state) {
     const dueE = cfg.meta.pity.epic !== undefined && state.chests.sinceEpic >= cfg.meta.pity.epic - 1;
@@ -1326,7 +1321,8 @@ export const HINT_VETERAN_SECONDS = 180;
  *
  * Choices, in priority order:
  * - null for a veteran: prestigeCount > 0, or playSeconds >= HINT_VETERAN_SECONDS and the first
- *   venue is automated (its transport hire in sim mode, its first business's hire in classic).
+ *   venue is automated (its transport hire in sim mode, its first business's hire in classic) and
+ *   every station it owns has its hire.
  * - claimMission (first finished one), then openChest (an unopened chest, or a free one ready),
  *   both only once the first venue is automated (before that the screens teach the manual loop).
  * - An affordable automation hire beats everything below it: a station's (in config order), then
@@ -1349,7 +1345,8 @@ export function nextHint(cfg: GameConfig, state: GameState, now: number): Hint |
   const sim = isSim(cfg);
   const firstVenue = state.venues[venueIds(cfg)[0]];
   const automated = sim ? firstVenue?.chain?.transportManaged === true : firstVenue?.businesses[cfg.businesses[0].id]?.managed === true;
-  if (state.prestigeCount > 0 || (state.stats.playSeconds >= HINT_VETERAN_SECONDS && automated)) return null;
+  const allHired = !!firstVenue && cfg.businesses.every((b) => (firstVenue.businesses[b.id]?.owned ?? 0) === 0 || firstVenue.businesses[b.id].managed);
+  if (state.prestigeCount > 0 || (state.stats.playSeconds >= HINT_VETERAN_SECONDS && automated && allHired)) return null;
 
   // Missions and chests are taught once the first venue runs by itself (the screens show those
   // buttons from then on; before it, the lesson is the manual loop).

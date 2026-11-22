@@ -81,13 +81,23 @@ export function waiterLook(cfg: GameConfig, venueId: string, index: number, unif
   return { ...randomLook(hashString(`${venueId}:waiter:${index}`), 'waiter'), ...uniform, apron };
 }
 
+/** How many different generated guests a room has; small enough that their drawings stay cached. */
+export const GUEST_POOL = 14;
+
+/** Every look a guest can have in this game: the generated pool, then the cast ids for guests. */
+export function guestPool(cfg: GameConfig): LookInput[] {
+  const pool: LookInput[] = Array.from({ length: GUEST_POOL }, (_, i) => randomLook(i * 131 + 17, 'customer'));
+  for (const id of cfg.sim?.sales.looks ?? []) pool.push(castLook(cfg, id));
+  return pool;
+}
+
 /**
- * A guest at seat `seat` on visit `guest`. Seeded by both and by a small cycle of visits, so the room
- * has variety without building an endless number of drawings.
+ * A guest at seat `seat` on visit `guest`, from the pool. Seat and visit both move the pick, so the
+ * next guest at a table is never the one who just left and neighbours rarely match.
  */
-export function guestLook(cfg: GameConfig, seat: number, guest: number): LookInput {
-  const looks = cfg.sim?.sales.looks ?? [];
+export function guestLook(pool: readonly LookInput[], cfg: GameConfig, seat: number, guest: number): LookInput {
+  const castCount = cfg.sim?.sales.looks.length ?? 0;
   // About one guest in five is a familiar face from the cast, when the game has one for guests.
-  if (looks.length > 0 && guest % 5 === 0) return castLook(cfg, looks[Math.floor(guest / 5) % looks.length]);
-  return randomLook(seat * 977 + (guest % 7) * 131 + 17, 'customer');
+  if (castCount > 0 && guest % 5 === 0) return pool[GUEST_POOL + (Math.floor(guest / 5) % castCount)];
+  return pool[(seat * 5 + guest) % GUEST_POOL];
 }

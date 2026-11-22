@@ -15,7 +15,7 @@ import { Header } from './components/Header';
 import { OfflineModal, StoryModal } from './components/Modals';
 import { ManagersPanel } from './components/Panels';
 import { TabBar } from './components/TabBar';
-import { HintOverlay } from './hints/HintOverlay';
+import { HintOverlay, reportTouch } from './hints/HintOverlay';
 import { HomeClassic } from './home/HomeClassic';
 import { HomeSim } from './home/HomeSim';
 import { FlyLayer } from './juice/FlyLayer';
@@ -83,35 +83,45 @@ function Game() {
   const sim = useGame((s) => s.cfg.mode === 'sim');
   useGameLoop();
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: t.c.gradient[0] }} edges={['top']}>
-      <StatusBar style={t.darkStatusBar ? 'dark' : 'light'} />
-      <Header />
-      <View style={{ flex: 1, backgroundColor: t.c.background }}>
-        {tab === 'home' && (sim ? <HomeSim /> : <HomeClassic />)}
-        {tab === 'staff' && <StaffTab top={sim ? undefined : <ManagersPanel />} />}
-        {tab === 'upgrades' && <UpgradesTab />}
-        {tab === 'empire' && <EmpireTab />}
-        {tab === 'shop' && <ShopTab />}
-      </View>
-      <SafeAreaView edges={['bottom']} style={{ backgroundColor: t.c.surface }}>
-        {/* No banner ad on the home tab: nothing may sit next to the buttons players tap fastest. */}
-        {tab !== 'home' ? <Banner /> : null}
-        <TabBar />
-      </SafeAreaView>
+    // Every touch passes through here first (without being taken) so the tutorial hand can step aside.
+    <View style={{ flex: 1, backgroundColor: t.c.surface }} onStartShouldSetResponderCapture={onAnyTouch}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: t.c.gradient[0] }} edges={['top']}>
+        <StatusBar style={t.darkStatusBar ? 'dark' : 'light'} />
+        <Header />
+        <View style={{ flex: 1, backgroundColor: t.c.background }}>
+          {tab === 'home' && (sim ? <HomeSim /> : <HomeClassic />)}
+          {tab === 'staff' && <StaffTab top={sim ? undefined : <ManagersPanel />} />}
+          {tab === 'upgrades' && <UpgradesTab />}
+          {tab === 'empire' && <EmpireTab />}
+          {tab === 'shop' && <ShopTab />}
+        </View>
+        <SafeAreaView edges={['bottom']} style={{ backgroundColor: t.c.surface }}>
+          {/* No banner ad on the home tab: nothing may sit next to the buttons players tap fastest. */}
+          {tab !== 'home' ? <Banner /> : null}
+          <TabBar />
+        </SafeAreaView>
 
-      <OfflineModal />
-      <StoryModal />
-      <MissionsSheet />
-      <SettingsSheet />
-      <ChestOddsSheet />
-      <CardSheet />
-      <DealPopup />
-      <ChestOverlay />
+        <OfflineModal />
+        <StoryModal />
+        <MissionsSheet />
+        <SettingsSheet />
+        <ChestOddsSheet />
+        <CardSheet />
+        <DealPopup />
+        <ChestOverlay />
+      </SafeAreaView>
+      {/* Overlays in window coordinates (target rectangles are measured in the window). */}
       <Celebrations />
       <FlyLayer />
       <HintOverlay />
-    </SafeAreaView>
+    </View>
   );
+}
+
+/** Reports a touch to the tutorial hand and lets the touch go on to whatever was tapped. */
+function onAnyTouch() {
+  reportTouch();
+  return false;
 }
 
 /** Shown while the save, fonts and remote config load: the hero bouncing over the game's name. */

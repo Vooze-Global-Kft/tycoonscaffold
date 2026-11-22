@@ -9,6 +9,7 @@ import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay,
 import { GameIcon } from '../../../components/GameIcon';
 import { alpha, useTheme } from '../../../theme';
 import type { SceneLayout } from '../../layout';
+import { SLOWMO } from './dev';
 import type { Opening } from './gate';
 
 export const OPENING_MS = 2300;
@@ -21,7 +22,7 @@ export function GrandOpening({ layout, opening, onDone }: { layout: SceneLayout;
     x.value = -1;
     x.value = withSequence(
       withTiming(0, { duration: 420, easing: Easing.out(Easing.back(1.4)) }),
-      withDelay(1450, withTiming(1, { duration: 380, easing: Easing.in(Easing.cubic) }, (done) => {
+      withDelay(1450 * SLOWMO, withTiming(1, { duration: 380, easing: Easing.in(Easing.cubic) }, (done) => {
         if (done) runOnJS(onDone)();
       })),
     );

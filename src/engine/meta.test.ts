@@ -453,7 +453,9 @@ describe('missions', () => {
   });
 
   it('never puts a template in two slots and keeps the types varied over many claims', () => {
-    let s = M.refreshMissions(cfg, fresh(), T0);
+    // A player who has a transport hire and a chest, so "rush" and "chests" missions are usable too.
+    const hired = E.hireTransportManager(cfg, { ...fresh(), cash: 1e9 }, fresh().activeVenue);
+    let s = M.refreshMissions(cfg, M.grantChest(cfg, { ...hired, cash: 0 }, cfg.meta.chests[0].id, 1), T0);
     for (let day = 0; day < 6; day++) {
       const now = T0 + day * DAY;
       s = M.refreshMissions(cfg, s, now);
@@ -788,12 +790,18 @@ describe('hints', () => {
   });
 
   it('claims and chests come first; a veteran gets nothing', () => {
+    // Claims and chests are taught once the first venue is automated (before, the hand teaches the loop).
+    const auto = (c: GameConfig, x: GameState) => ({ ...E.hireTransportManager(c, { ...x, cash: 1e9 }, x.activeVenue), cash: 0 });
     const s = M.refreshMissions(cfg, fresh(), T0);
     const done = finishEverything(s);
-    expect(M.nextHint(cfg, done, T0)).toEqual({ kind: 'claimMission', index: 0 });
-    expect(M.nextHint(plain, M.grantChest(plain, fresh(plain), 'plain'), T0)).toEqual({ kind: 'openChest' });
+    expect(M.nextHint(cfg, done, T0)?.kind).not.toBe('claimMission');
+    expect(M.nextHint(cfg, auto(cfg, done), T0)).toEqual({ kind: 'claimMission', index: 0 });
+    expect(M.nextHint(plain, M.grantChest(plain, fresh(plain), 'plain'), T0)?.kind).not.toBe('openChest');
+    expect(M.nextHint(plain, M.grantChest(plain, auto(plain, fresh(plain)), 'plain'), T0)).toEqual({ kind: 'openChest' });
     let vet = { ...fresh(plain), cash: 1e6 };
     vet = E.hireTransportManager(plain, vet, 'a');
+    // A veteran has also hired every station it owns (otherwise the hire is still the lesson).
+    for (const b of plain.businesses) if (vet.venues.a.businesses[b.id].owned > 0) vet = E.hireManager(plain, vet, 'a', b.id);
     vet = { ...vet, stats: { ...vet.stats, playSeconds: M.HINT_VETERAN_SECONDS } };
     expect(M.nextHint(plain, vet, T0)).toBeNull();
     expect(M.nextHint(plain, { ...fresh(plain), prestigeCount: 1 }, T0)).toBeNull();

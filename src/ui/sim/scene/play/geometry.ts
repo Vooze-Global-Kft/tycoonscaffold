@@ -41,7 +41,8 @@ export function tableRect(layout: SceneLayout, i: number): TargetRect | null {
   const tb = layout.tables[i];
   const guest = layout.guests[i];
   if (!tb || !guest) return null;
-  const size = layout.tableSize * 1.25;
+  // Kept narrow so the floor between tables still takes tip taps.
+  const size = layout.tableSize * 1.1;
   const top = Math.min(tb.y - size / 2, guest.y - layout.characterHeight * 0.55);
-  return grow({ x: tb.x - size / 2 - layout.width * 0.02, y: top, width: size + layout.width * 0.04, height: tb.y + size / 2 - top });
+  return grow({ x: tb.x - size / 2, y: top, width: size, height: tb.y + size / 2 - top });
 }

@@ -124,7 +124,7 @@ function OpenVenue({ venue }: { venue: Venue }) {
           </Text>
         ) : null}
         <Text style={[t.display, styles.income, { color: t.c.success }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-          +{formatMoney(income, t.strings.currencySymbol)}/s
+          {income > 0 ? `+${formatMoney(income, t.strings.currencySymbol)}/s` : 'Earning by hand for now'}
         </Text>
       </View>
       {active ? (

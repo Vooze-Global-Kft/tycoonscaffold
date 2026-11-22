@@ -7,10 +7,10 @@
  */
 import { Circle, Group, Oval, Path, Skia } from '@shopify/react-native-skia';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Easing, useDerivedValue, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { useDerivedValue, useSharedValue, withSpring } from 'react-native-reanimated';
 import { simEvents } from '../../../../state/events';
 import { useGame } from '../../../../state/store';
-import { Character } from '../../art';
+import { Character, type LookInput } from '../../art';
 import { Chair, Coin, ContactShadow, Table } from '../../art/props';
 import type { ArtPalette, DishLook, Pose, TableState } from '../../art/types';
 import { guestFrame, tableState } from '../../layout';
@@ -33,12 +33,14 @@ export function TableSeat({
   dishes,
   dining,
   handles,
+  pool,
 }: {
   ctx: SceneCtx;
   index: number;
   dishes: DishLook[];
   dining: number;
   handles: Map<number, SeatHandle>;
+  pool: readonly LookInput[];
 }) {
   const { layout: L, clock, venueId, cfg } = ctx;
   const t = L.tables[index];
@@ -47,7 +49,7 @@ export function TableSeat({
 
   const seatNow = () => useGame.getState().game.venues[venueId]?.chain?.seats[index];
   const [guest, setGuest] = useState(() => seatNow()?.guest ?? 0);
-  const look = useMemo(() => guestLook(cfg, index, guest), [cfg, index, guest]);
+  const look = useMemo(() => guestLook(pool, cfg, index, guest), [pool, cfg, index, guest]);
   const dish = dishes.length > 0 ? dishes[guest % dishes.length] : undefined;
 
   const x = useSharedValue(spot.x);
@@ -61,7 +63,7 @@ export function TableSeat({
   const pop = useSharedValue(isLateMount(ctx) ? 0 : 1);
 
   useEffect(() => {
-    if (pop.value < 1) pop.value = withSpring(1, { damping: 9, stiffness: 160 });
+    if (pop.value < 1) pop.value = withSpring(1, { damping: 13, stiffness: 170 });
     handles.set(index, { pay: () => (coinAt.value = clock.value) });
     let shown = false;
     let lastSeat: unknown = null;
@@ -105,7 +107,8 @@ export function TableSeat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venueId, index, L, ctx]);
 
-  const opacity = useDerivedValue(() => visible.value);
+  // Hidden by moving off the canvas: a parent group's opacity does not reach children sorted by zIndex.
+  const shownX = useDerivedValue(() => (visible.value > 0.5 ? x.value : -9999));
   const z = useDerivedValue(() => y.value);
   const scale = useDerivedValue(() => k * pop.value);
   const tablePalette = useMemo<Partial<ArtPalette>>(
@@ -119,8 +122,8 @@ export function TableSeat({
         <ContactShadow x={t.x + 6 * k} y={t.y} width={70} height={13} scale={scale} />
         <Chair x={spot.x} y={spot.y} scale={scale} palette={ctx.palette} facing={-1} />
       </Group>
-      <Group opacity={opacity} zIndex={z}>
-        <Character look={look} x={x} y={y} facing={facing} pose={pose} clock={clock} scale={k} dish={dish} poses={GUEST_POSES} seed={index * 313 + guest} />
+      <Group zIndex={z}>
+        <Character look={look} x={shownX} y={y} facing={facing} pose={pose} clock={clock} scale={k} dish={dish} poses={GUEST_POSES} seed={index * 313 + guest} />
       </Group>
       <Group zIndex={t.y}>
         <Table x={t.x} y={t.y} scale={scale} palette={tablePalette} state={table} dish={dish} clock={clock} />
@@ -244,4 +247,3 @@ export function usePayments(ctx: SceneCtx, handles: Map<number, SeatHandle>, onL
   }, [ctx, handles, onLabel, onFly]);
 }
 
-export { Easing, withTiming };

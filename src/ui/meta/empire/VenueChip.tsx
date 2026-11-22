@@ -98,7 +98,7 @@ function VenueLine({ venue, onPick }: { venue: Venue; onPick: () => void }) {
         </Text>
         <Text style={{ color: t.c.textMuted, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
           {venue.place ? `${venue.place} · ` : ''}
-          <Text style={{ color: t.c.success }}>+{formatMoney(income, t.strings.currencySymbol)}/s</Text>
+          <Text style={{ color: t.c.success }}>{income > 0 ? `+${formatMoney(income, t.strings.currencySymbol)}/s` : 'by hand'}</Text>
         </Text>
       </View>
       {active ? (

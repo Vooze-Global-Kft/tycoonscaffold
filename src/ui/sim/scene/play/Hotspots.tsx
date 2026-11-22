@@ -39,6 +39,12 @@ export function useStationKinds(): string {
 /** Web preview only: "&hotspots=1" outlines every tap area, to check them against the drawing. */
 const DEBUG_OUTLINE = Platform.OS === 'web' && typeof location !== 'undefined' && /[?&]hotspots=1/.test(location.search);
 
+/**
+ * Taps that must feel instant act on press-in. React Native Web delays press-in and drops it for a
+ * quick click unless an onPress is present too, hence the empty onPress and zero delay.
+ */
+export const noop = () => {};
+
 function showRow(stage: 'production' | 'transport' | 'sales', key: string) {
   fx.play('ui_tap');
   useHomeUi.getState().showRow(stage, key);
@@ -53,14 +59,13 @@ export const Hotspots = memo(function Hotspots({ layout, sim, kinds }: { layout:
 
   const onFloor = (e: GestureResponderEvent) => {
     const { locationX: x, locationY: y } = e.nativeEvent;
-    console.error('DBG floor', x, y);
     tapHero(x, y);
     sceneBus.emit({ type: 'tapFloor', x, y });
   };
 
   return (
     <>
-      <Pressable onPressIn={onFloor} style={StyleSheet.absoluteFill} accessibilityLabel="Floor: tap for tips" />
+      <Pressable onPressIn={onFloor} onPress={noop} unstable_pressDelay={0} style={StyleSheet.absoluteFill} accessibilityLabel="Floor: tap for tips" />
       {sim ? (
         <>
           {Array.from({ length: tableCount }, (_, i) => (
@@ -77,10 +82,11 @@ export const Hotspots = memo(function Hotspots({ layout, sim, kinds }: { layout:
           <Area
             key={b.id}
             rect={stationRect(layout, i)}
-            instant={run}
+            // Always on press-in: the kind changes the moment a station starts, and a handler
+            // swapped mid-press would fire a second action on release.
+            instant
             label={run ? `Run ${b.name}` : b.name}
             onPress={() => {
-              console.error('DBG station', b.id, kind, JSON.stringify(useGame.getState().game.venues[useGame.getState().game.activeVenue]?.businesses[b.id]));
               if (run && useGame.getState().game.venues[useGame.getState().game.activeVenue]?.businesses[b.id]?.running === false) {
                 startBusiness(b.id);
                 sceneBus.emit({ type: 'tapStation', businessId: b.id });
@@ -111,7 +117,8 @@ function Area({ rect, onPress, instant, round, label }: { rect: TargetRect | nul
   return (
     <Pressable
       onPressIn={instant ? onPress : undefined}
-      onPress={instant ? undefined : onPress}
+      onPress={instant ? noop : onPress}
+      unstable_pressDelay={0}
       accessibilityRole="button"
       accessibilityLabel={label}
       style={({ pressed }) => [

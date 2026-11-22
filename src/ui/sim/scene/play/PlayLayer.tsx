@@ -113,6 +113,7 @@ export function PlayLayer({ layout }: { layout: SceneLayout }) {
   const endOpening = useCallback(() => setOpening(null), []);
 
   const rightChest = EDGE + ROUND + GAP;
+  const [chipRight, setChipRight] = useState(EDGE);
   return (
     <View
       ref={rootRef}
@@ -128,7 +129,7 @@ export function PlayLayer({ layout }: { layout: SceneLayout }) {
           <RushButton layout={layout} phase={phase} until={until} readyAt={readyAt} />
         </PopIn>
       ) : null}
-      <View pointerEvents="box-none" style={{ position: 'absolute', left: EDGE, top: EDGE }}>
+      <View pointerEvents="box-none" onLayout={(e) => setChipRight(EDGE + e.nativeEvent.layout.width)} style={{ position: 'absolute', left: EDGE, top: EDGE }}>
         <VenueChip />
       </View>
       {unlocked ? (
@@ -141,7 +142,7 @@ export function PlayLayer({ layout }: { layout: SceneLayout }) {
           </PopIn>
         </>
       ) : null}
-      <ComboMeter layout={layout} top={EDGE + (ROUND - 36) / 2} />
+      <ComboMeter layout={layout} top={EDGE + (ROUND - 36) / 2} below={EDGE + ROUND + 6} left={chipRight + GAP} right={layout.width - (unlocked ? rightChest + ROUND : 0) - GAP} />
       <BonusFlyer layout={layout} bonus={bonusRef.current} toWindow={toWindow} onCaught={onCaught} />
       <FloatingNumbers layout={layout} />
       {opening ? <GrandOpening layout={layout} opening={opening} onDone={endOpening} /> : null}

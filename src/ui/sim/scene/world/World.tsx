@@ -10,7 +10,7 @@
  */
 import { Canvas, Group, useClock } from '@shopify/react-native-skia';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { View, type LayoutChangeEvent } from 'react-native';
+import { View, type HostInstance } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import * as E from '../../../../engine/economy';
 import type { GameState } from '../../../../engine/types';
@@ -20,10 +20,11 @@ import { useStages } from '../../../theme';
 import { makePalette } from '../../art/props';
 import { MAX_SEATS_DRAWN, MAX_STATIONS_DRAWN, MAX_WORKERS_DRAWN, decorTiers, type SceneLayout } from '../../layout';
 import { Backdrop } from './Backdrop';
-import { cookLook, dishOf, stationKindOf, waiterLook, workPoseOf } from './cast';
+import { cookLook, dishOf, guestPool, stationKindOf, waiterLook, workPoseOf } from './cast';
 import type { SceneCtx } from './context';
 import { TableSeat, usePayments, type SeatHandle } from './Dining';
 import { Entrance, Plant } from './Entrance';
+import { useKeepLooks } from './keep';
 import { StationSlot, type StationInfo } from './Kitchen';
 import { PileCount, PayLabels } from './Overlays';
 import { venuePalette } from './palette';
@@ -114,6 +115,10 @@ function Room({ layout: L, venueId }: { layout: SceneLayout; venueId: string }) 
     [workerCount, cfg, venueId, uniform, stages.transport],
   );
 
+  const pool = useMemo(() => guestPool(cfg), [cfg]);
+  const allLooks = useMemo(() => [...stations.map((s) => s.look), ...waiterLooks, ...pool], [stations, waiterLooks, pool]);
+  useKeepLooks(allLooks);
+
   // Payments: the seat's coin, the "+cash" label and coins flying to the header.
   const handles = useRef(new Map<number, SeatHandle>()).current;
   const labelApi = useRef<((seat: number, cash: number) => void) | null>(null);
@@ -132,9 +137,9 @@ function Room({ layout: L, venueId }: { layout: SceneLayout; venueId: string }) 
   usePayments(ctx, handles, onLabel, onFly);
 
   // Where the canvas is in the window, measured once per layout (the scene never scrolls).
-  const root = useRef<View>(null);
+  const root = useRef<HostInstance>(null);
   const measure = useCallback(() => {
-    root.current?.measureInWindow((x, y, w, h) => {
+    root.current?.measureInWindow((x: number, y: number, w: number, h: number) => {
       if (w > 0 && h > 0 && Number.isFinite(x) && Number.isFinite(y)) origin.current = { x, y };
     });
   }, []);
@@ -155,7 +160,7 @@ function Room({ layout: L, venueId }: { layout: SceneLayout; venueId: string }) 
     <View
       ref={root}
       collapsable={false}
-      onLayout={(_e: LayoutChangeEvent) => measure()}
+      onLayout={measure}
       pointerEvents="none"
       style={{ position: 'absolute', left: 0, top: 0, width: L.width, height: L.height, backgroundColor: palette.floorA }}
     >
@@ -172,7 +177,7 @@ function Room({ layout: L, venueId }: { layout: SceneLayout; venueId: string }) 
               <Waiter key={i} ctx={ctx} index={i} look={look} dish={dishes[i % dishes.length]} />
             ))}
             {Array.from({ length: seatCount }, (_, i) => (
-              <TableSeat key={i} ctx={ctx} index={i} dishes={dishes} dining={dining} handles={handles} />
+              <TableSeat key={i} ctx={ctx} index={i} dishes={dishes} dining={dining} handles={handles} pool={pool} />
             ))}
             {dining >= 3 ? (
               <>

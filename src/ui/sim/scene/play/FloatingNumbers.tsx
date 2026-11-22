@@ -9,6 +9,7 @@ import { formatMoney } from '../../../../engine/format';
 import { useGame } from '../../../../state/store';
 import { useTheme } from '../../../theme';
 import type { SceneLayout } from '../../layout';
+import { SLOWMO } from './dev';
 
 /** More than this many at once only clutters the room; older ones are dropped. */
 const MAX_SHOWN = 10;
@@ -40,7 +41,7 @@ const FloatNumber = memo(function FloatNumber({ id, text, x, y, big, layout, onD
   const drift = ((id * 37) % 41) - 20;
   useEffect(() => {
     pop.value = withSequence(withTiming(big ? 1.25 : 1.1, { duration: 110, easing: Easing.out(Easing.back(3)) }), withTiming(1, { duration: 140 }));
-    p.value = withTiming(1, { duration: big ? 1250 : 900, easing: Easing.out(Easing.quad) }, (done) => {
+    p.value = withTiming(1, { duration: (big ? 1250 : 900) * SLOWMO, easing: Easing.out(Easing.quad) }, (done) => {
       if (done) runOnJS(onDone)(id);
     });
   }, [big, id, onDone, p, pop]);

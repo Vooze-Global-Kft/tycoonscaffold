@@ -17,7 +17,7 @@ import { FlyingDish, PASS_HEIGHT, SparkleBurst, Station, type StationArtKind } f
 import type { DishLook, Pose } from '../../art/types';
 import { kitchenPath, type Point } from '../../layout';
 import { sceneBus } from '../bus';
-import { isLateMount, type SceneCtx } from './context';
+import type { SceneCtx } from './context';
 
 export interface StationInfo {
   index: number;
@@ -135,7 +135,7 @@ export function StationSlot({ ctx, info }: { ctx: SceneCtx; info: StationInfo })
         y={y}
         scale={scale}
         palette={ctx.palette}
-        working={working}
+        working={working as SharedValue<number | boolean>}
         locked={!owned}
         clock={clock}
         dish={info.dish}
@@ -143,7 +143,7 @@ export function StationSlot({ ctx, info }: { ctx: SceneCtx; info: StationInfo })
         zIndex={st.y}
       />
       {owned ? (
-        <Cook ctx={ctx} spot={spot} look={info.look} workPose={info.workPose} working={working} managed={managed} walk={walk} arrivedAt={arrivedAt} late={isLateMount(ctx)} />
+        <Cook ctx={ctx} spot={spot} look={info.look} workPose={info.workPose} working={working} managed={managed} walk={walk} arrivedAt={arrivedAt} />
       ) : null}
       <SparkleBurst x={st.x} y={st.y - 34 * s} scale={s} trigger={burst} clock={clock} plusOne={false} zIndex={5000} />
       {owned
@@ -171,7 +171,6 @@ function Cook({
   managed: SharedValue<number>;
   walk: SharedValue<number>;
   arrivedAt: SharedValue<number>;
-  late: boolean;
 }) {
   const { layout: L, clock } = ctx;
   // The walk-in route as plain numbers, so the worklets below can follow it on the UI thread.
@@ -204,11 +203,12 @@ function Cook({
     if (clock.value - arrivedAt.value < 1100) return 'cheer';
     return working.value > 0.5 ? workPose : 'idle';
   });
-  const opacity = useDerivedValue(() => (managed.value > 0.5 ? 1 : 0));
+  // Hidden by moving off the canvas: a parent group's opacity does not reach children sorted by zIndex.
+  const shownX = useDerivedValue(() => (managed.value > 0.5 ? x.value : -9999));
   const z = useDerivedValue(() => pos.value[1]);
   return (
-    <Group opacity={opacity} zIndex={z}>
-      <Character look={look} x={x} y={y} facing={facing} pose={pose} clock={clock} scale={L.artScale} poses={['idle', 'walk', 'cheer', workPose]} />
+    <Group zIndex={z}>
+      <Character look={look} x={shownX} y={y} facing={facing} pose={pose} clock={clock} scale={L.artScale} poses={['idle', 'walk', 'cheer', workPose]} />
     </Group>
   );
 }

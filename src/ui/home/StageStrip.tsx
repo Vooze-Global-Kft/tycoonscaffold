@@ -76,7 +76,7 @@ const Chip = memo(function Chip({ info, rate, limiting, selected, prompt, height
         </View>
       </Animated.View>
       {limiting ? (
-        <View style={[styles.tag, { backgroundColor: t.c.surface, borderColor: info.color }]} pointerEvents="none">
+        <View style={[styles.tag, { top: compact ? -12 : -10, backgroundColor: t.c.surface, borderColor: info.color }]} pointerEvents="none">
           <Text style={[styles.tagText, { color: info.color }]} numberOfLines={1}>
             ▼ limits income
           </Text>
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   chipText: { flex: 1, minWidth: 0 },
   chipName: { fontWeight: '800', lineHeight: 12 },
   chipRate: { lineHeight: 15 },
-  tag: { position: 'absolute', top: -9, alignSelf: 'center', borderRadius: 8, borderWidth: 1, paddingHorizontal: 5, paddingVertical: 0 },
+  tag: { position: 'absolute', alignSelf: 'center', borderRadius: 8, borderWidth: 1, paddingHorizontal: 5, paddingVertical: 0 },
   tagText: { fontSize: 8.5, fontWeight: '900', letterSpacing: 0.2 },
   caret: {
     position: 'absolute',

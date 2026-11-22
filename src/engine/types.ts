@@ -153,6 +153,11 @@ export interface GameState {
     sessions: number;
     /** Most venues ever open at once, across prestiges. */
     venuesEver: number;
+    /**
+     * The latest device time the game has run at (epoch ms). Offline time only counts after it, so
+     * winding the clock back and forth cannot pay the same hours twice.
+     */
+    clockHigh: number;
   };
   lastSavedAt: number;
 }

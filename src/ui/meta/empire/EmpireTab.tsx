@@ -66,6 +66,11 @@ function Summary({ onReset }: { onReset: () => void }) {
           <Text style={[t.display, styles.income, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
             {formatMoney(income, t.strings.currencySymbol)}/s
           </Text>
+          {income <= 0 ? (
+            <Text style={{ color: t.c.textMuted, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+              Earns on its own once automated
+            </Text>
+          ) : null}
         </View>
         <View style={[styles.stars, { backgroundColor: alpha(t.c.accent, 0.16), borderRadius: t.radius * 0.7 }]}>
           <GameIcon icon={t.strings.prestigeIcon} size={26} />

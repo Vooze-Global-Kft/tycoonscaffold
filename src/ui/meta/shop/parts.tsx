@@ -33,7 +33,7 @@ export function ShopSection({ icon, title, note, children }: { icon?: string; ti
 }
 
 /**
- * The card every offer sits on: white, rounded, with a soft coloured top band and an optional
+ * The card every offer sits on: white, rounded, with a thin coloured top edge and an optional
  * ribbon. `tint` colours the band and the border (the accent by default).
  */
 export function OfferCard({
@@ -65,10 +65,11 @@ export function OfferCard({
           borderWidth: strong ? 2.5 : 1.5,
           opacity: dim ? 0.62 : 1,
         },
+        ribbon ? { paddingTop: 22 } : null,
         style,
       ]}
     >
-      <View pointerEvents="none" style={[styles.band, { backgroundColor: alpha(color, 0.13), borderTopLeftRadius: t.radius, borderTopRightRadius: t.radius }]} />
+      <View pointerEvents="none" style={[styles.band, { backgroundColor: alpha(color, strong ? 0.9 : 0.5) }]} />
       {children}
       {ribbon ? <Ribbon text={ribbon} color={color} /> : null}
     </View>
@@ -205,7 +206,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 21, flexShrink: 1 },
   sectionNote: { marginLeft: 'auto', flexShrink: 0 },
   offer: { marginHorizontal: 12, marginBottom: 10, padding: 12, overflow: 'hidden' },
-  band: { position: 'absolute', left: 0, right: 0, top: 0, height: 56 },
+  band: { position: 'absolute', left: 0, right: 0, top: 0, height: 5 },
   ribbon: { position: 'absolute', top: 0, right: 0, paddingHorizontal: 10, paddingVertical: 4, maxWidth: 160 },
   ribbonText: { fontSize: 11, letterSpacing: 0.6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 3 },

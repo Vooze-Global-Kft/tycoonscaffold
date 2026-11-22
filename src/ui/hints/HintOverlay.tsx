@@ -150,10 +150,11 @@ export function HintOverlay() {
       <Animated.View style={[styles.box, boxStyle]} pointerEvents="none">
         <Canvas style={styles.canvas} pointerEvents="none">
           <Group>
-            <Circle cx={BOX / 2} cy={BOX / 2} r={ring} color={t.c.surface} opacity={ringOpacity} style="stroke" strokeWidth={4} />
-            <Circle cx={BOX / 2} cy={BOX / 2} r={14} color={t.c.accent} opacity={0.22} />
+            <Circle cx={BOX / 2} cy={BOX / 2} r={ring} color={t.c.accent} opacity={ringOpacity} style="stroke" strokeWidth={6} />
+            <Circle cx={BOX / 2} cy={BOX / 2} r={ring} color="#FFFFFF" opacity={ringOpacity} style="stroke" strokeWidth={2.5} />
+            <Circle cx={BOX / 2} cy={BOX / 2} r={16} color={t.c.accent} opacity={0.25} />
           </Group>
-          <HandPointer x={BOX / 2} y={BOX / 2} clock={clock} scale={0.9} angle={fromAbove ? 160 : 25} />
+          <HandPointer x={BOX / 2} y={BOX / 2} clock={clock} scale={1.15} angle={fromAbove ? 160 : 25} />
         </Canvas>
       </Animated.View>
     </View>

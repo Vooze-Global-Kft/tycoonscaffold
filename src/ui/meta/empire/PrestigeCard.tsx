@@ -5,7 +5,7 @@
  * confirmation that repeats the numbers; the player decides, nothing here pushes.
  */
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import * as E from '../../../engine/economy';
 import { formatMoney, formatNumber } from '../../../engine/format';
@@ -44,6 +44,13 @@ function samePreview(a: Preview, b: Preview): boolean {
   return a.held === b.held && a.points === b.points && closeEnough(a.toNextPoint, b.toNextPoint) && Math.abs(a.nextFrac - b.nextFrac) < 0.002;
 }
 
+/** A multiplier with enough digits to see a change: "1.24", "13.7", "137", then "1.37K". */
+function formatMult(m: number): string {
+  if (m < 10) return m.toFixed(2);
+  if (m < 100) return m.toFixed(1);
+  return formatNumber(m);
+}
+
 /** "+24%" for a multiplier of 1.24. */
 function pct(mult: number): string {
   return `+${formatNumber((mult - 1) * 100, 0)}%`;
@@ -53,9 +60,9 @@ export function PrestigeCard() {
   const t = useTheme();
   const sim = useGame((s) => s.cfg.mode === 'sim');
   const p = usePaced(readPreview, 1000, samePreview);
-  const [confirm, setConfirm] = useState(true);
+  const [confirm, setConfirm] = useState(false);
   const { prestigeName, prestigeVerb, prestigeIcon, prestigeDescription, currencySymbol } = t.strings;
-  const ready = true; p.points = p.points || 37; p.multAfter = 1 + (p.held + p.points) * 0.02;
+  const ready = p.points > 0;
 
   return (
     <View style={[styles.card, { backgroundColor: t.c.surface, borderRadius: t.radius * 1.2, borderColor: ready ? t.c.accent : 'transparent' }]}>
@@ -134,11 +141,11 @@ function MultLine({ before, after }: { before: number; after: number }) {
     <View style={[styles.multRow, { backgroundColor: alpha(t.c.success, 0.1), borderRadius: t.radius * 0.6 }]}>
       <Text style={[styles.multLabel, { color: t.c.textMuted }]}>Income</Text>
       <Text style={[t.display, styles.mult, { color: t.c.textMuted }]} numberOfLines={1}>
-        ×{formatNumber(before)}
+        ×{formatMult(before)}
       </Text>
       <Text style={[t.display, { color: t.c.textMuted, fontSize: 16, marginHorizontal: 6 }]}>→</Text>
       <Text style={[t.display, styles.mult, { color: t.c.success, fontSize: 22 }]} numberOfLines={1} adjustsFontSizeToFit>
-        ×{formatNumber(after)}
+        ×{formatMult(after)}
       </Text>
     </View>
   );
@@ -204,19 +211,27 @@ function KeptLists({ sim, compact }: { sim: boolean; compact?: boolean }) {
     <View style={[styles.lists, compact && { marginTop: 10 }]}>
       <View style={[styles.list, { backgroundColor: alpha(t.c.success, 0.08), borderRadius: t.radius * 0.7 }]}>
         <Text style={[styles.listTitle, { color: t.c.success }]}>KEPT</Text>
-        {kept.map((k) => (
-          <Text key={k} style={[styles.listItem, { color: t.c.text }]} numberOfLines={1}>
-            ✓ {k}
-          </Text>
-        ))}
+        {compact ? (
+          <Text style={[styles.listItem, { color: t.c.text }]}>{kept.join(', ')}</Text>
+        ) : (
+          kept.map((k) => (
+            <Text key={k} style={[styles.listItem, { color: t.c.text }]} numberOfLines={1}>
+              ✓ {k}
+            </Text>
+          ))
+        )}
       </View>
       <View style={[styles.list, { backgroundColor: alpha(t.c.text, 0.05), borderRadius: t.radius * 0.7 }]}>
         <Text style={[styles.listTitle, { color: t.c.textMuted }]}>STARTS OVER</Text>
-        {reset.map((k) => (
-          <Text key={k} style={[styles.listItem, { color: t.c.text }]} numberOfLines={1}>
-            ↺ {k}
-          </Text>
-        ))}
+        {compact ? (
+          <Text style={[styles.listItem, { color: t.c.text }]}>{reset.join(', ')}</Text>
+        ) : (
+          reset.map((k) => (
+            <Text key={k} style={[styles.listItem, { color: t.c.text }]} numberOfLines={1}>
+              ↺ {k}
+            </Text>
+          ))
+        )}
       </View>
     </View>
   );
@@ -228,6 +243,8 @@ function PrestigeConfirm({ visible, preview, onClose, onConfirm }: { visible: bo
   const sim = useGame((s) => s.cfg.mode === 'sim');
   const prestige = useGame((s) => s.prestige);
   const { prestigeName, prestigeVerb, prestigeIcon } = t.strings;
+  // Short phones (375 x 667): a smaller badge and one-line lists so both buttons fit without scrolling.
+  const short = useWindowDimensions().height < 760;
   return (
     <Sheet
       visible={visible}
@@ -251,8 +268,8 @@ function PrestigeConfirm({ visible, preview, onClose, onConfirm }: { visible: bo
       }
     >
       <View style={{ alignItems: 'center', marginTop: 4 }}>
-        <StarBadge icon={prestigeIcon} glow size={64} />
-        <Text style={[t.display, { color: t.c.text, fontSize: 30, marginTop: 4 }]} numberOfLines={1} adjustsFontSizeToFit>
+        <StarBadge icon={prestigeIcon} glow size={short ? 40 : 64} />
+        <Text style={[t.display, { color: t.c.text, fontSize: short ? 26 : 30, marginTop: 4 }]} numberOfLines={1} adjustsFontSizeToFit>
           +{formatNumber(preview.points, 0)} {prestigeName}
         </Text>
         <Text style={{ color: t.c.textMuted, fontWeight: '700', marginTop: 2 }}>
@@ -261,7 +278,7 @@ function PrestigeConfirm({ visible, preview, onClose, onConfirm }: { visible: bo
       </View>
       <MultLine before={preview.multNow} after={preview.multAfter} />
       <KeptLists sim={sim} compact />
-      <Text style={{ color: t.c.textMuted, fontSize: 12, fontWeight: '600', marginTop: 10, textAlign: 'center' }}>You start again from the beginning, faster than before.</Text>
+      {short ? null : <Text style={{ color: t.c.textMuted, fontSize: 12, fontWeight: '600', marginTop: 10, textAlign: 'center' }}>You start again from the beginning, faster than before.</Text>}
     </Sheet>
   );
 }

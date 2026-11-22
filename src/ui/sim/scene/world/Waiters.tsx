@@ -66,11 +66,12 @@ export function Waiter({ ctx, index, look, dish }: { ctx: SceneCtx; index: numbe
     });
   }, [venueId, index, L, x, y, facing, pose, visible, bangAt, clock]);
 
-  const opacity = useDerivedValue(() => visible.value);
+  // Hidden by moving off the canvas: a parent group's opacity does not reach children sorted by zIndex.
+  const shownX = useDerivedValue(() => (visible.value > 0.5 ? x.value : -9999));
   const z = useDerivedValue(() => y.value);
   return (
-    <Group opacity={opacity} zIndex={z}>
-      <Character look={look} x={x} y={y} facing={facing} pose={pose} clock={clock} scale={L.artScale} dish={dish} poses={WAITER_POSES} seed={index * 977 + 3} />
+    <Group zIndex={z}>
+      <Character look={look} x={shownX} y={y} facing={facing} pose={pose} clock={clock} scale={L.artScale} dish={dish} poses={WAITER_POSES} seed={index * 977 + 3} />
       <Bang ctx={ctx} x={x} y={y} at={bangAt} />
     </Group>
   );

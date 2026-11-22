@@ -321,16 +321,18 @@ function Opening({ opening, w, h }: { opening: ChestOpening; w: number; h: numbe
     let cash = 0;
     let gems = 0;
     let cards = 0;
+    let copies = 0;
     let fresh = 0;
     for (const g of rewards) {
       if (g.type === 'cash') cash += g.amount;
       else if (g.type === 'gems') gems += g.amount;
       else if (g.type === 'card') {
-        cards += g.copies;
+        cards++;
+        copies += g.copies;
         if (g.isNew) fresh++;
       }
     }
-    return { cash, gems, cards, fresh };
+    return { cash, gems, cards, copies, fresh };
   }, [rewards]);
 
   const announce = (after: () => void) => {
@@ -567,12 +569,12 @@ function SlotLabel({ index, slot, L, cardsSnap, rewards }: { index: number; slot
             <Text style={[styles.copiesText, t.display]} numberOfLines={1}>{`×${g.copies}`}</Text>
           </Animated.View>
           {g.isNew ? (
-            <Animated.View pointerEvents="none" style={[styles.stamp, { left: rest.x - L.cardW / 2 - 8, top: rest.y - L.cardH / 2 - 6 }, stampStyle]}>
+            <Animated.View pointerEvents="none" style={[styles.stamp, { left: rest.x - L.cardW / 2 - 10, top: rest.y - L.cardH * 0.12 }, stampStyle]}>
               <Text style={[styles.stampText, t.display]}>NEW</Text>
             </Animated.View>
           ) : null}
           {card && (card.rarity === 'epic' || card.rarity === 'legendary') ? (
-            <Animated.View pointerEvents="none" style={[styles.rarityTag, { left: rest.x - 40, top: rest.y - L.cardH / 2 - 10, borderColor: color }, fadeStyle]}>
+            <Animated.View pointerEvents="none" style={[styles.rarityTag, { left: rest.x - 40, top: rest.y - L.cardH / 2 - 12, borderColor: color }, fadeStyle]}>
               <Text style={[styles.rarityText, { color }]} numberOfLines={1}>{RARITY_NAMES[card.rarity].toUpperCase()}</Text>
             </Animated.View>
           ) : null}
@@ -606,7 +608,7 @@ function LegendBanner({ slot, L }: { slot: SlotInfo; L: ReturnType<typeof comput
 
 function Summary({ totalsRef, totals, left, nextLabel, onCollect, onNext }: {
   totalsRef: React.RefObject<HostInstance | null>;
-  totals: { cash: number; gems: number; cards: number; fresh: number };
+  totals: { cash: number; gems: number; cards: number; copies: number; fresh: number };
   left: number;
   nextLabel: string;
   onCollect: () => void;
@@ -622,7 +624,7 @@ function Summary({ totalsRef, totals, left, nextLabel, onCollect, onNext }: {
   const parts: { icon: string; text: string }[] = [];
   if (totals.cash > 0) parts.push({ icon: cfg.strings.currencyIcon, text: `+${formatMoney(totals.cash, cfg.strings.currencySymbol)}` });
   if (totals.gems > 0) parts.push({ icon: cfg.strings.gemIcon, text: `+${formatNumber(totals.gems)}` });
-  if (totals.cards > 0) parts.push({ icon: '🃏', text: `${totals.cards} ${totals.cards === 1 ? 'card' : 'cards'}${totals.fresh > 0 ? ` · ${totals.fresh} new` : ''}` });
+  if (totals.cards > 0) parts.push({ icon: '🃏', text: `${totals.cards} ${totals.cards === 1 ? 'card' : 'cards'}${totals.copies > totals.cards ? ` (${totals.copies} copies)` : ''}${totals.fresh > 0 ? ` · ${totals.fresh} new` : ''}` });
   return (
     <Animated.View style={[styles.summary, { backgroundColor: t.c.surface, borderRadius: t.radius * 1.3 }, style]}>
       <View ref={totalsRef} style={styles.totals}>

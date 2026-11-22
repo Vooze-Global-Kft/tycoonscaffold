@@ -127,7 +127,7 @@ export function createInitialState(cfg: GameConfig, now: number): GameState {
     deals: {},
     dailyShop: { day: null, offerIds: [], bought: [] },
     rng: seedFrom(now),
-    stats: { taps: 0, adsWatched: 0, playSeconds: 0, firstOpenAt: now, served: 0, levelsBought: 0, hires: 0, chestsOpened: 0, bonusCaught: 0, rushes: 0, sessions: 0, venuesEver: 1 },
+    stats: { taps: 0, adsWatched: 0, playSeconds: 0, firstOpenAt: now, served: 0, levelsBought: 0, hires: 0, chestsOpened: 0, bonusCaught: 0, rushes: 0, sessions: 0, venuesEver: 1, clockHigh: now },
     lastSavedAt: now,
   };
 }
@@ -374,8 +374,10 @@ export function clampClock(cfg: GameConfig, state: GameState, now: number): Game
   const cooldown = isSim(cfg) ? cfg.sim.rush.cooldownSeconds * 1000 : 0;
   const readyAt = Math.min(state.rush.readyAt, Math.max(until, now) + cooldown);
   const lastSavedAt = Math.min(state.lastSavedAt, now);
-  if (boostUntil === state.boostUntil && until === state.rush.until && readyAt === state.rush.readyAt && lastSavedAt === state.lastSavedAt) return state;
-  return { ...state, boostUntil, rush: { until, readyAt }, lastSavedAt };
+  // Remember the latest time seen, so offline time already paid is not paid again (computeOffline).
+  const clockHigh = Math.max(state.stats.clockHigh ?? 0, state.lastSavedAt);
+  if (boostUntil === state.boostUntil && until === state.rush.until && readyAt === state.rush.readyAt && lastSavedAt === state.lastSavedAt && clockHigh === state.stats.clockHigh) return state;
+  return { ...state, boostUntil, rush: { until, readyAt }, lastSavedAt, stats: clockHigh === state.stats.clockHigh ? state.stats : { ...state.stats, clockHigh } };
 }
 
 // ---------------------------------------------------------------- multipliers
@@ -978,7 +980,9 @@ export function tick(cfg: GameConfig, state: GameState, dt: number, now: number,
 // ---------------------------------------------------------------- offline
 
 export function computeOffline(cfg: GameConfig, state: GameState, now: number): { seconds: number; earnings: number } {
-  const elapsed = (now - state.lastSavedAt) / 1000;
+  // Counted from the last save, or from the latest time the game ever ran at if that is later
+  // (the clock was moved back: hours already paid are not paid again).
+  const elapsed = (now - Math.max(state.lastSavedAt, state.stats.clockHigh ?? 0)) / 1000;
   // A save from the future (clock moved back) or a broken timestamp earns nothing, rather than NaN.
   if (!(elapsed > 0)) return { seconds: 0, earnings: 0 };
   const seconds = Math.min(elapsed, cfg.economy.offline.maxHours * 3600);

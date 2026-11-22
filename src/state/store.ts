@@ -392,7 +392,8 @@ export const useGame = create<Store>((set, get) => {
       // Android the JS loop can keep running for a while in the background, and that time was
       // already paid by the ticks themselves).
       const awayFrom = Math.max(game.lastSavedAt, lastTickAt);
-      game = E.clampClock(cfg, { ...game, lastSavedAt: Math.min(awayFrom, now) }, now);
+      // clampClock caps it at now, and remembers a later time (clock moved back) so it is not paid twice.
+      game = E.clampClock(cfg, { ...game, lastSavedAt: awayFrom }, now);
       const sessionsBefore = game.stats.sessions;
       game = safe('meta.registerSession', () => M.registerSession(game, now), game);
       const newSession = game.stats.sessions > sessionsBefore;

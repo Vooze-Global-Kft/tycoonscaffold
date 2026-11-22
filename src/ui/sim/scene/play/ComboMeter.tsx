@@ -10,11 +10,16 @@ import * as E from '../../../../engine/economy';
 import { useGame } from '../../../../state/store';
 import { alpha, useTheme } from '../../../theme';
 import type { SceneLayout } from '../../layout';
+import { SLOWMO } from './dev';
 
 /** A single stray tap is not a combo; the meter shows from this many taps in a row. */
 const SHOW_FROM = 2;
 
-export function ComboMeter({ layout, top }: { layout: SceneLayout; top: number }) {
+/**
+ * `left` / `right` bound the free stretch of wall between the venue chip and the round buttons;
+ * when it is too narrow the meter drops just below that row instead.
+ */
+export function ComboMeter({ layout, top, left, right, below }: { layout: SceneLayout; top: number; left: number; right: number; below: number }) {
   const t = useTheme();
   const taps = useGame((s) => s.combo.taps);
   const lastTapAt = useGame((s) => s.combo.lastTapAt);
@@ -27,7 +32,7 @@ export function ComboMeter({ layout, top }: { layout: SceneLayout; top: number }
 
   useEffect(() => {
     if (taps < SHOW_FROM || lastTapAt === 0) return;
-    const left = comboCfg.decayMs - (Date.now() - lastTapAt);
+    const left = (comboCfg.decayMs - (Date.now() - lastTapAt)) * SLOWMO;
     if (left <= 0) return;
     setAlive(true);
     shown.value = withTiming(1, { duration: 120 });
@@ -52,10 +57,12 @@ export function ComboMeter({ layout, top }: { layout: SceneLayout; top: number }
   const maxed = mult >= comboCfg.maxMultiplier;
   const levelProgress = maxed ? 1 : (taps % comboCfg.tapsPerLevel) / comboCfg.tapsPerLevel;
   const fill = maxed ? t.c.success : t.c.accent;
-  // Fits between the venue chip (left) and the two round buttons (right) on the wall.
-  const width = Math.min(160, layout.width - 2 * 118);
+  const room = right - left;
+  const fits = room >= 120;
+  const width = fits ? Math.min(170, room) : Math.min(170, layout.width - 16);
+  const x = fits ? left + (room - width) / 2 : (layout.width - width) / 2;
   return (
-    <Animated.View pointerEvents="none" style={[styles.wrap, { top, left: (layout.width - width) / 2, width, backgroundColor: alpha('#1E1208', 0.72), borderColor: alpha(fill, 0.9) }, box]}>
+    <Animated.View pointerEvents="none" style={[styles.wrap, { top: fits ? top : below, left: x, width, backgroundColor: alpha('#1E1208', 0.72), borderColor: alpha(fill, 0.9) }, box]}>
       <Animated.View style={[styles.badge, { backgroundColor: fill }, badge]}>
         <Text style={[t.display, styles.badgeText]} numberOfLines={1} adjustsFontSizeToFit allowFontScaling={false}>
           ×{mult}

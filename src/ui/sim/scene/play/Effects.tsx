@@ -9,6 +9,7 @@ import { View } from 'react-native';
 import { Easing, runOnJS, useDerivedValue, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { alpha, useTheme } from '../../../theme';
 import type { SceneLayout } from '../../layout';
+import { SLOWMO } from './dev';
 import { bonusPoint, type BonusShared, type BurstSpec, type RushPhase } from './shared';
 
 /** Geometry of the skill button, shared with RushButton so ring and face line up. */
@@ -153,7 +154,7 @@ const BURST_COINS = 12;
 function CoinBurst({ spec, unit, onDone }: { spec: BurstSpec; unit: number; onDone: (id: number) => void }) {
   const p = useSharedValue(0);
   useEffect(() => {
-    p.value = withTiming(1, { duration: 750, easing: Easing.out(Easing.cubic) }, (done) => {
+    p.value = withTiming(1, { duration: 750 * SLOWMO, easing: Easing.out(Easing.cubic) }, (done) => {
       if (done) runOnJS(onDone)(spec.id);
     });
   }, [onDone, p, spec.id]);
@@ -190,7 +191,7 @@ const CONFETTI_COLORS = ['#FFD34D', '#FF6B6B', '#4ECDC4', '#7B5EA7', '#FFFFFF', 
 function Confetti({ layout }: { layout: SceneLayout }) {
   const p = useSharedValue(0);
   useEffect(() => {
-    p.value = withTiming(1, { duration: 2300, easing: Easing.linear });
+    p.value = withTiming(1, { duration: 2300 * SLOWMO, easing: Easing.linear });
   }, [p]);
   const pieces = useMemo(
     () =>

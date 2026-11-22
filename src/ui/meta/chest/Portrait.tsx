@@ -23,7 +23,9 @@ export function CardPortrait({ icon, fallbackId, silhouette = false }: { icon: s
 function BustPortrait({ id, silhouette }: { id: string; silhouette: boolean }) {
   const cast = useGame((s) => s.cfg.cast);
   const look = (cast[id] as LookInput) ?? id;
-  const art = useMemo(() => getBustArt(resolveLook(look), 3.4), [look]);
+  // An outline weight no list icon uses, so these drawings are never shared with (and freed by)
+  // the small portraits elsewhere on screen while a card still draws them.
+  const art = useMemo(() => getBustArt(resolveLook(look), 3.35), [look]);
   useEffect(() => {
     retainBustArt(art);
     return () => releaseBustArt(art);

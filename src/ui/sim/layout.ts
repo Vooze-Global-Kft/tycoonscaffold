@@ -124,8 +124,8 @@ export function computeLayout(width: number, height: number, stationCount: numbe
     const t = { x: colX[cell % 4], y: rowY[Math.floor(cell / 4)] };
     tables.push(t);
     // One guest per table, on a chair at its right side facing left; the waiter serves from the left.
-    guests.push({ x: t.x + 24.5 * artScale, y: t.y - 3 * artScale });
-    serve.push({ x: t.x - 27 * artScale, y: t.y + 2 * artScale });
+    guests.push({ x: t.x + 28 * artScale, y: t.y - 3 * artScale });
+    serve.push({ x: t.x - 30 * artScale, y: t.y + 2 * artScale });
   }
 
   return {

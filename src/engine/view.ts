@@ -107,8 +107,10 @@ function earlyLesson(cfg: GameConfig, state: GameState, now: number): GuideHint 
   const automated = E.isSim(cfg) ? venue.chain?.transportManaged === true : venue.businesses[cfg.businesses[0].id]?.managed === true;
   if (!automated) return null;
   if (E.isSim(cfg) && state.stats.rushes === 0 && E.canStartRush(cfg, state, now)) return { kind: 'startRush' };
+  // The next station once every station so far has its hire (the hire is the lesson before it).
+  const allHired = cfg.businesses.every((b) => (venue.businesses[b.id]?.owned ?? 0) === 0 || venue.businesses[b.id].managed);
   const next = cfg.businesses.find((b) => (venue.businesses[b.id]?.owned ?? 0) === 0);
-  if (next && E.canAfford(state.cash, E.businessCost(cfg, state, state.activeVenue, next.id, 1))) return { kind: 'buyBusiness', businessId: next.id };
+  if (allHired && next && E.canAfford(state.cash, E.businessCost(cfg, state, state.activeVenue, next.id, 1))) return { kind: 'buyBusiness', businessId: next.id };
   const upgrade = firstUpgradeHint(cfg, state);
   if (upgrade) return upgrade;
   return null;
