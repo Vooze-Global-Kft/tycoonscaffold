@@ -12,7 +12,7 @@
  * a height and no lineHeight. The counter follows the cash outside React (no render per tick) and
  * holds a warp-out's credits back until the glyphs land (money arrives with them, not before).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
 import { formatMoney } from '../../../engine/format';
@@ -25,14 +25,16 @@ import { alpha, SPACE } from '../art/palette';
 import type { Rect } from '../layout';
 import { useRun } from '../useRun';
 import { useHaulUi } from '../uiState';
-import { bayCounterMetrics, bayCounterRows, fitTicker } from './bayMetrics';
+import { TICKER_MIN_FONT, bayCounterMetrics, bayCounterRows, fitTicker } from './bayMetrics';
 import { DIGITAL, bayWord, fillIn } from './bayText';
-import { metTexts, receiptTexts } from './receipt';
+import { metParts, receiptPages, receiptParts } from './receipt';
 import { HAUL_STRINGS } from '../strings';
 import { GLYPH_FALL_MS, GLYPH_LEAD_MS } from './feedbackTiming';
 
 /** How long the receipt stays on the ticker after a warp-out. */
 const RECEIPT_MS = 4000;
+/** How long each page of a receipt too long for one row stays (Decision 59: every ore is named). */
+const PAGE_MS = 2200;
 /** The widest amount the counter is sized for ("₵999.99Qd"), so its font never jumps as the money grows. */
 const WIDEST_GLYPHS = 9;
 /** Inner padding of the counter's frame, each side. */
@@ -70,7 +72,7 @@ export function DockCounter({ rect }: { rect: Rect }) {
     return v > 0 ? `${formatMoney(v, cfg.strings.currencySymbol)}${bayWord('perSecond')}` : '';
   }, '');
   const [startCash] = useState(() => useGame.getState().game.cash);
-  const [receipt, setReceipt] = useState<{ texts: string[]; met: boolean } | null>(null);
+  const [receipt, setReceipt] = useState<{ pages: string[]; page: number; met: boolean } | null>(null);
   const stamp = useSharedValue(0);
   const stampStyle = useAnimatedStyle(() => ({
     opacity: Math.min(1, stamp.value * 3),
@@ -82,6 +84,9 @@ export function DockCounter({ rect }: { rect: Rect }) {
   // The frame's 1 pt border is outside the rows: they add up to the inner height.
   const m = bayCounterMetrics(compact, rect.height - 2, fontScale, rect.width - 2 * PAD, WIDEST_GLYPHS);
   const rows = bayCounterRows(m);
+  // The ticker's row, for fitting a receipt into pages when it arrives (outside render).
+  const row = useRef({ width: rect.width - 2 * PAD + 4, font: m.tickerFont });
+  row.current = { width: rect.width - 2 * PAD + 4, font: m.tickerFont };
   const pop = useSharedValue(1);
   const popStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pop.value }],
@@ -90,6 +95,7 @@ export function DockCounter({ rect }: { rect: Rect }) {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     let popTimer: ReturnType<typeof setTimeout> | null = null;
+    let pageTimers: ReturnType<typeof setTimeout>[] = [];
     const off = modeEvents.subscribe((events) => {
       const w = events.find((e) => (e as H.HaulEvent).type === 'warp') as Extract<H.HaulEvent, { type: 'warp' }> | undefined;
       if (!w) return;
@@ -104,12 +110,17 @@ export function DockCounter({ rect }: { rect: Rect }) {
       const bonus = (w as { bonus?: number }).bonus ?? 0;
       const mult = metEv?.shift ? cfg.haul.shift.mult : 0;
       const base = mult > 0 ? bonus / mult : bonus;
-      setReceipt({ texts: w.met ? metTexts(cfg, w.cargo, base, mult > 0 ? mult : null, first) : receiptTexts(cfg, w.cargo, w.payout, first), met: w.met });
+      const parts = w.met ? metParts(cfg, w.cargo, base, mult > 0 ? mult : null, first) : receiptParts(cfg, w.cargo, w.payout, first);
+      const { width, font } = row.current;
+      const pages = receiptPages(parts, (line) => fitTicker([line], width, font).font >= TICKER_MIN_FONT);
+      setReceipt({ pages, page: 0, met: w.met });
       // The stamp lands on the receipt row as the money does.
       stamp.value = 0;
       if (w.met) stamp.value = withDelay(GLYPH_LEAD_MS + GLYPH_FALL_MS, withTiming(1, { duration: 220, easing: Easing.in(Easing.cubic) }));
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => setReceipt(null), RECEIPT_MS);
+      for (const t of pageTimers) clearTimeout(t);
+      pageTimers = pages.slice(1).map((_, i) => setTimeout(() => setReceipt((r) => (r ? { ...r, page: i + 1 } : r)), (i + 1) * PAGE_MS));
+      timer = setTimeout(() => setReceipt(null), Math.max(RECEIPT_MS, pages.length * PAGE_MS));
       // The counter pops as the first glyphs land.
       if (popTimer) clearTimeout(popTimer);
       popTimer = setTimeout(() => {
@@ -120,10 +131,11 @@ export function DockCounter({ rect }: { rect: Rect }) {
       off();
       if (timer) clearTimeout(timer);
       if (popTimer) clearTimeout(popTimer);
+      for (const t of pageTimers) clearTimeout(t);
     };
   }, [pop, stamp]);
 
-  const ticker = fitTicker(receipt ? receipt.texts : [income], rect.width - 2 * PAD + 4, m.tickerFont);
+  const ticker = fitTicker(receipt ? [receipt.pages[Math.min(receipt.page, receipt.pages.length - 1)]] : [income], rect.width - 2 * PAD + 4, m.tickerFont);
   const tickerColor = receipt ? (receipt.met ? SPACE.green : SPACE.white) : SPACE.steel;
   const frame = useMemo(
     () => ({

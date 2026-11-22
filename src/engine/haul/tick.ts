@@ -11,7 +11,7 @@
 import { hashString } from '../rng';
 import { placeRock } from './create';
 import { EPS, MAX_CASH, haulParams, holdTotal, rngMix4, roll, sumUnits, T, starLevel } from './params';
-import { activeContract, drawContract, loadCargo, noteShipped, openBoard, payoutFor, resizeOrders, shiftDoubles, topUpBoard, wantLeft } from './trade';
+import { activeContract, drawContract, loadCargo, noteShipped, openBoard, payoutFor, resizeOrders, shiftDoubles, steadyPerLaunch, topUpBoard, wantLeft } from './trade';
 import type { HaulConfig, HaulEvent, HaulGame, HaulParams, HaulState, SeamState } from './types';
 
 /** Longest step of the rate model. */
@@ -195,7 +195,7 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
   h.counters.launches += 1;
   d.stats.launches += 1;
   // Decision 56: the station remembers what it ships (before any draw of this warp-out).
-  noteShipped(cfg, h, f.cargo);
+  noteShipped(cfg, h, f.cargo, steadyPerLaunch(p, h).perLaunch);
   const C = h.contracts;
   let pay = f.payout;
   let bonus = 0;

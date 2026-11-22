@@ -20,7 +20,7 @@ import * as H from '../../../engine/haul';
 import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
-import { galaxyPalette, partRestAngle, stationPartPos, BEACON_POS, LOADED_FREIGHTER_SCALE, ORE_IDS, freighterSize, hullFor, segmentsFor, RACK_CRADLES, RACK_OVERFLOW, ROUTE_WIDTH, SPACE, alpha, bakeAtlas, oreColor, pictures, rigLamp, routeDash, routeDashPeriod, type HaulAtlas, type HullId } from '../art';
+import { galaxyPalette, partRestAngle, stationPartPos, BEACON_POS, LOADED_FREIGHTER_SCALE, ORE_IDS, freighterSize, hullFor, segmentsFor, RACK_CRADLES, RACK_OVERFLOW, ROUTE_WIDTH, alpha, bakeAtlas, oreColor, pictures, rigLamp, routeDash, routeDashPeriod, type HaulAtlas, type HullId } from '../art';
 import { useCallout } from '../hud/callout';
 import { bayCrest, flightTop, padSpot } from '../hud/flight';
 import { rockName } from '../sheets/format';

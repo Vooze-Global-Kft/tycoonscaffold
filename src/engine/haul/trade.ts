@@ -252,8 +252,14 @@ export function steadyPerLaunch(params: HaulParams, h: HaulState): { perLaunch: 
   return { perLaunch, rate: R };
 }
 
-/** Exponential average of what the station ships (Decision 56), updated at each warp-out with its cargo. */
-export function noteShipped(cfg: HaulConfig, h: HaulState, cargo: Record<string, number>): void {
+/**
+ * Exponential average of what the station ships (Decision 56), updated at each warp-out with its
+ * cargo. With `steady` (the routes' steady figure at that warp-out) an ore's average is at least
+ * that: drones added to an ore count at once, and drones taken off just before a warp-out do not
+ * lower what the routes delivered until then (an average lagging behind a recent routing would let a
+ * contract drawn while those drones sit on the rack be met once they go back).
+ */
+export function noteShipped(cfg: HaulConfig, h: HaulState, cargo: Record<string, number>, steady?: Record<string, number>): void {
   const C = h.contracts;
   const n = C.measured ?? 0;
   const a = n <= 0 ? 1 : Math.max(2 / (cfg.haul.contracts.recentLaunches + 1), 1 / (n + 1));
@@ -263,6 +269,7 @@ export function noteShipped(cfg: HaulConfig, h: HaulState, cargo: Record<string,
     const x = (1 - a) * (prev[ore] ?? 0) + a * Math.max(0, cargo[ore] ?? 0);
     if (x > 1e-9 && Number.isFinite(x)) next[ore] = x;
   }
+  if (steady) for (const [ore, x] of Object.entries(steady)) if (x > (next[ore] ?? 0) && Number.isFinite(x)) next[ore] = x;
   C.recent = next;
   C.measured = n + 1;
 }
@@ -362,8 +369,10 @@ export function contractAt(cfg: HaulConfig, seed: number, k: number, basis: Cont
   const valueOf = (ore: string) => (recent[ore] ?? 0) * (basis.prices[ore] ?? 0);
   const launchValue = oreIds.reduce((a, o) => a + valueOf(o), 0);
   const shipped = oreIds.filter((o) => (recent[o] ?? 0) > 0.02 * total && total > 0);
-  // The share of a launch an ore has now: what it shipped, or the routes as they are when those carry more.
-  const share = (ore: string) => Math.max(recent[ore] ?? 0, basis.steady[ore] ?? 0) / F;
+  // The share of a launch an ore has now: what it shipped, or the routes as they are when those carry
+  // more (the last pass of the draw reads what it shipped only).
+  let shipShareOnly = false;
+  const share = (ore: string) => (shipShareOnly ? (recent[ore] ?? 0) : Math.max(recent[ore] ?? 0, basis.steady[ore] ?? 0)) / F;
   const multBase = (ores: string[]) => {
     const far = Math.max(0, ...ores.map((o) => basis.ringOf[o] ?? 0));
     const base = C.mult[Math.min(far, C.mult.length - 1)];
@@ -395,12 +404,24 @@ export function contractAt(cfg: HaulConfig, seed: number, k: number, basis: Cont
   const minBonus = C.minBonusSeconds * basis.income;
   // Ores that matter (a tenth of a launch's value) and whose rocks last the contract.
   const worth = oreIds.filter((ore) => recent[ore] > 0 && launchValue > 0 && valueOf(ore) >= C.minValueShare * launchValue && (!!basis.mainOf[ore] || (basis.lifeOf[ore] ?? 0) >= lifeNeed));
-  const eligible = worth.filter((ore) => {
-    if (share(ore) * F * (1 + C.raise[0]) >= most(ore)) return false;
-    const g = gMax(ore);
-    return bonusOfUnits([{ ore, units: unitsAt(ore, g) }], multBase([ore]) + C.raiseMult * g) >= minBonus;
-  });
-  if (!eligible.length) return quota();
+  const paysAt = (ore: string, g: number) => bonusOfUnits([{ ore, units: unitsAt(ore, g) }], multBase([ore]) + C.raiseMult * g) >= minBonus;
+  let eligible = worth.filter((ore) => share(ore) * F * (1 + C.raise[0]) < most(ore) && paysAt(ore, gMax(ore)));
+  // Nothing can rise with the routes and one rig level: the rig contract. The ores that still have
+  // room in a launch are asked for anyway; the player meets it with more rig levels on that ore.
+  let cap = gMax;
+  if (!eligible.length) {
+    cap = (ore: string) => Math.min(C.raise[1], C.maxShare / Math.max(1e-9, share(ore)) - 1);
+    eligible = worth.filter((ore) => share(ore) * (1 + C.raise[0]) < C.maxShare && paysAt(ore, cap(ore)));
+  }
+  // Still nothing (the routes as they are fill a launch with one ore, e.g. another ore's drones are
+  // on the rack): what it shipped decides. Never a quota on a station that ships several ores: a
+  // quota is met by full holds alone.
+  if (!eligible.length) {
+    shipShareOnly = true;
+    eligible = worth.filter((ore) => share(ore) * (1 + C.raise[0]) < C.maxShare);
+  }
+  if (!eligible.length && worth.length <= 1) return quota();
+  if (!eligible.length) eligible = shipped.slice().sort((a, b) => valueOf(b) - valueOf(a)).slice(0, 1);
   const fresh = eligible.filter((o) => !avoidOres.includes(o));
   const pool = fresh.length ? fresh : eligible;
   const ore1 = pool[Math.min(pool.length - 1, Math.floor(draw(1) * pool.length))];
@@ -420,7 +441,7 @@ export function contractAt(cfg: HaulConfig, seed: number, k: number, basis: Cont
       hold = h2;
     }
   }
-  let hi = gMax(ore1);
+  let hi = cap(ore1);
   if (ore2) hi = Math.min(hi, roomWith(ore2, hold) * 0.8);
   const lo = Math.min(C.raise[0], hi);
   let g = lo + (hi - lo) * draw(2);

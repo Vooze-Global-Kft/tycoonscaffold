@@ -2,6 +2,10 @@
  * The receipt row's words after a warp-out (Decision 59), pure so they are tested
  * (./receipt.test.ts): every ore shipped in short figures, the contract's first, and a met
  * contract's bonus in the board's own figure ("+₵35 x2" under the day shift).
+ *
+ * The row is one line of fixed height. When every ore does not fit it at a readable size, the
+ * receipt turns into pages that the ticker shows one after the other ("58.4K IRON · 12.5K COPPER",
+ * then "17 ICE · ₵123K"), so no ore is ever hidden behind a "+1".
  */
 import type * as H from '../../../engine/haul';
 import { moneyShort, unitsShort } from '../sheets/format';
@@ -9,7 +13,18 @@ import { HAUL_STRINGS } from '../strings';
 
 const bayWord = (k: keyof typeof HAUL_STRINGS): string => HAUL_STRINGS[k];
 const fillIn = (text: string, values: Record<string, string | number>): string => text.replace(/\{(\w+)\}/g, (m, k: string) => (k in values ? String(values[k]) : m));
-const unitShort = unitsShort;
+const SEP = ' · ';
+const join = (parts: readonly string[]) => parts.filter(Boolean).join(SEP);
+
+/** A receipt before it is fitted to the row: its heads (longest first), the ores, the payout. */
+export interface ReceiptParts {
+  met: boolean;
+  /** Words before the ores, longest first; '' allows none. A met receipt always keeps one. */
+  heads: string[];
+  lots: string[];
+  /** The payout, shown when it fits ('' for none). */
+  tail: string;
+}
 
 /**
  * The manifest of a warp-out (Decision 59): every ore it shipped in short figures, the contract's
@@ -24,40 +39,50 @@ export function manifestLots(cfg: H.HaulConfig, cargo: Record<string, number>, f
   return Object.entries(cargo)
     .filter(([, u]) => u >= 0.5)
     .sort((a, b) => rank(a[0]) - rank(b[0]) || b[1] - a[1])
-    .map(([ore, u]) => `${unitShort(u)} ${names.get(ore) ?? ore.toUpperCase()}`);
+    .map(([ore, u]) => `${unitsShort(u)} ${names.get(ore) ?? ore.toUpperCase()}`);
+}
+
+/** A plain warp-out: "WARPED · 5 COPPER · 15 IRON · ₵43". */
+export function receiptParts(cfg: H.HaulConfig, cargo: Record<string, number>, payout: number, first: readonly string[] = []): ReceiptParts {
+  return { met: false, heads: [bayWord('receiptWarped'), ''], lots: manifestLots(cfg, cargo, first), tail: moneyShort(cfg, payout) };
 }
 
 /**
- * The receipt line for a warp-out, longest first: the manifest (every ore, the contract's first)
- * and the payout. The ticker shows the longest that fits its row at a readable size; the words go
- * before any ore does, and only a row too narrow for every ore ends on "+N".
+ * A warp-out that met the contract: the bonus in the board's figure ("+₵35", and "+₵35 x2" when the
+ * day shift doubles it: `base` is the bonus before the shift, so the figure is the board's, never a
+ * second rounding), then every ore shipped.
  */
-export function receiptTexts(cfg: H.HaulConfig, cargo: Record<string, number>, payout: number, first: readonly string[] = []): string[] {
-  const lots = manifestLots(cfg, cargo, first);
-  const money = moneyShort(cfg, payout);
-  const warped = bayWord('receiptWarped');
-  const all = lots.join(' · ');
-  if (!lots.length) return [[warped, money].join(' · ')];
-  const out = [[warped, `${bayWord('receiptManifest')} ${all}`, money].join(' · '), [warped, all, money].join(' · '), [all, money].join(' · '), all];
-  if (lots.length > 2) out.push(`${lots.slice(0, 2).join(' · ')} +${lots.length - 2}`);
-  if (lots.length > 1) out.push(`${lots[0]} +${lots.length - 1}`);
-  return out;
-}
-
-/**
- * The receipt row of a warp-out that met the contract, longest first (Decision 59): the bonus in
- * the board's figure ("+₵35", and "+₵35 x2" when the day shift doubles it: `base` is the bonus
- * before the shift, so the figure is the board's, never a second rounding), then every ore shipped.
- */
-export function metTexts(cfg: H.HaulConfig, cargo: Record<string, number>, base: number, shiftMult: number | null, first: readonly string[] = []): string[] {
+export function metParts(cfg: H.HaulConfig, cargo: Record<string, number>, base: number, shiftMult: number | null, first: readonly string[] = []): ReceiptParts {
   const bonus = base > 0 ? `+${moneyShort(cfg, base)}${shiftMult ? ` ${fillIn(bayWord('receiptTimes'), { n: shiftMult })}` : ''}` : '';
-  const lots = manifestLots(cfg, cargo, first);
-  const all = lots.join(' · ');
-  const met = [bayWord('receiptMet'), bonus].filter(Boolean).join(' ');
-  const short = [bayWord('receiptMetShort'), bonus].filter(Boolean).join(' ');
-  const out: string[] = [];
-  if (all) out.push(`${met} · ${all}`, `${short} · ${all}`, ...(bonus ? [`${bonus} · ${all}`] : []));
-  if (lots.length > 1) out.push(`${short} · ${lots[0]} +${lots.length - 1}`);
-  out.push(met, short);
-  return out;
+  const heads = [[bayWord('receiptMet'), bonus].filter(Boolean).join(' '), [bayWord('receiptMetShort'), bonus].filter(Boolean).join(' ')];
+  if (bonus) heads.push(bonus);
+  return { met: true, heads, lots: manifestLots(cfg, cargo, first), tail: '' };
+}
+
+/**
+ * The pages the ticker shows, given whether a line `fits` the row at a readable size. One page when
+ * the whole receipt fits: the longest form (head, ores, payout; then without the head; then without
+ * the payout). Otherwise the ores in as few pages as fit, the shortest head on the first page and
+ * the payout on the last when they fit. Never an empty page; a lot too wide on its own still gets one.
+ */
+export function receiptPages(p: ReceiptParts, fits: (line: string) => boolean): string[] {
+  const all = p.lots.join(SEP);
+  if (!p.lots.length) return [join([p.heads[0] ?? '', p.tail])];
+  const heads = p.met ? p.heads : p.heads;
+  const singles: string[] = [];
+  for (const h of heads) singles.push(join([h, all, p.tail]));
+  if (!p.met) singles.push(all);
+  for (const line of singles) if (fits(line)) return [line];
+  // Pages: the shortest head that is not empty leads a met receipt; a plain one leads with ores.
+  const head = p.met ? (heads[heads.length - 1] ?? '') : '';
+  const pages: string[][] = [head ? [head] : []];
+  for (const lot of p.lots) {
+    const page = pages[pages.length - 1];
+    const lotsOnPage = page.filter((x) => x !== head).length;
+    if (lotsOnPage === 0 || fits(join([...page, lot]))) page.push(lot);
+    else pages.push([lot]);
+  }
+  const last = pages[pages.length - 1];
+  if (p.tail && fits(join([...last, p.tail]))) last.push(p.tail);
+  return pages.map(join);
 }
