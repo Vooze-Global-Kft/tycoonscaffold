@@ -70,7 +70,7 @@ function Printout({ cfg, offline }: { cfg: H.HaulConfig; offline: { seconds: num
           strip,
         ]}
       >
-        <Text style={[styles.head, { color: c.primary, fontFamily: MONO, fontSize: ty.small }]} maxFontSizeMultiplier={1.2}>
+        <Text style={[styles.head, { color: c.primary, fontFamily: MONO, fontSize: ty.small }]} allowFontScaling={false}>
           {say('shiftLog', { station: cfg.haul.names.station.toUpperCase() })}
         </Text>
         <View style={[styles.rule, { borderColor: alpha(c.primary, 0.35) }]} />
@@ -83,7 +83,7 @@ function Printout({ cfg, offline }: { cfg: H.HaulConfig; offline: { seconds: num
                 fontSize: font,
                 fontWeight: row.strong ? '800' : '600',
               }}
-              maxFontSizeMultiplier={1.25}
+              allowFontScaling={false}
             >
               {row.label}
             </Text>
@@ -95,14 +95,14 @@ function Printout({ cfg, offline }: { cfg: H.HaulConfig; offline: { seconds: num
                 fontSize: row.strong ? ty.big : font,
                 fontWeight: row.strong ? '800' : '600',
               }}
-              maxFontSizeMultiplier={1.25}
+              allowFontScaling={false}
             >
               {row.value}
             </Text>
           </View>
         ))}
         {note ? (
-          <Text style={{ color: c.textMuted, fontSize: ty.small, marginTop: 6 }} maxFontSizeMultiplier={1.25}>
+          <Text style={{ color: c.textMuted, fontSize: ty.small, marginTop: 6 }} allowFontScaling={false}>
             {note}
           </Text>
         ) : null}

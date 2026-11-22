@@ -53,6 +53,11 @@ export const HAUL_STRINGS = {
   rail_starmap: 'Star Map',
   rail_trade: 'Trade Post',
   rail_menu: 'Station menu',
+  // The map's gesture view for a screen reader (VoiceOver, TalkBack): one label, two actions.
+  fieldLabel: 'Asteroid field',
+  fieldHint: 'Swipe up or down for actions.',
+  fieldLaunch: 'Launch {freighter_l}',
+  fieldAssign: 'Send an idle {drone_l} to the best rock',
 
   // ---------------------------------------------------------------- Rig sheet (4.5, errata 61, 63)
   rigTitle: '{rock} · R{ring} · {ore}',
@@ -138,7 +143,9 @@ export const HAUL_STRINGS = {
 
   // ---------------------------------------------------------------- Jump sequence and Star Map (2.10, 4.6)
   jumpLine: '{galaxy} {n}',
-  jumping: 'JUMP',
+  jumping: 'ARRIVING',
+  leavingGalaxy: 'LEAVING',
+  arrivalLine: '{galaxy} {n} · {name}',
   jumpNow: 'Jump now',
   chooseGalaxy: 'Choose next galaxy',
   jumpGain: '+{n} Warp Cores on Jump',

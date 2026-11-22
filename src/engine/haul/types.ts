@@ -22,11 +22,53 @@ export interface Contract {
   k: number;
   /** Buyer id from `haul.contracts.buyers`. */
   buyer: string;
-  wants: { ore: string; units: number }[];
+  /** Wanted units per ore for the whole contract, and `got`: units delivered so far (Decision 40). */
+  wants: { ore: string; units: number; got: number }[];
   /** Multiplier on the contract's own units when met (before Broker Seat and the condition). */
   mult: number;
-  /** Warp-outs left before it lapses; every warp-out counts, met or not. */
+  /** An offer: warp-outs left on the board. Taken: warp-outs left to deliver everything (Decision 40). */
   launchesLeft: number;
+  /** Picked by the player (at most one contract of a run is taken; the taken one is the active one). */
+  taken: boolean;
+}
+
+/** What the board, the strip and the hints read for one contract (Decision 40). */
+export interface ContractView {
+  index: number;
+  contract: Contract;
+  active: boolean;
+  /** Paid at the warp-out that completes it. Fixed for the contract at current prices (before the day-shift double). */
+  bonus: number;
+  /** The day shift would pay this contract's bonus twice if it were met now (Decision 53, "x2 SHIFT"). */
+  shift: boolean;
+  /** Launches it has once taken (haul.contracts.launches), and how many are left now (an offer: the offer's life). */
+  launches: number;
+  launchesLeft: number;
+  wants: {
+    ore: string;
+    units: number;
+    got: number;
+    /** Units of this ore the freighter in flight is carrying toward this contract (0 unless active and between launch and warp-out). */
+    aboard: number;
+    /** max(0, units − got − aboard), rounded up to whole units with a small epsilon (never a unit that cannot arrive). */
+    left: number;
+    /** What one launch carries of this ore with the routes as they are (contractStation.reach().now). */
+    perLaunch: number;
+  }[];
+  /** min over wants of perLaunch × launchesLeft / left (Infinity when nothing is left). For an offer: as if taken now. */
+  paceRatio: number;
+  /** paceRatio ≥ 1. */
+  onPace: boolean;
+  /** The ore that is furthest behind when not on pace, else null. */
+  shortOre: string | null;
+}
+
+/** What `routeGain` says about moving one drone (Decision 49). */
+export interface RouteGain {
+  /** Change of the income line (credits per second) if the drone is moved. */
+  delta: number;
+  /** Why the target cannot use another drone ('rig': the drill feeds no more; 'haul': the freighter is the limit), else null. */
+  limit: 'rig' | 'haul' | null;
 }
 
 export interface SlotState {
@@ -69,6 +111,15 @@ export interface FreighterState {
   away: number;
   /** `k` of the contract the cargo was loaded for (null: none active at launch). */
   contract: number | null;
+  /**
+   * Units of each ore of the cargo that count toward that contract (Decision 40; empty when none).
+   * Optional in old saves.
+   */
+  toward?: Record<string, number>;
+  /** Contract bonus the warp-out adds when `met` and the contract is still taken (Decision 40; optional in old saves). */
+  bonus?: number;
+  /** Payout of the cargo without the contract's delivery fee (paid instead when the contract was dropped in flight). */
+  plain?: number;
 }
 
 /** A rich seam in progress (natural or from a flare). */
@@ -150,6 +201,11 @@ export interface HaulStats {
   galaxiesVisited: number[];
   /** The once-per-game Scrap Pod of the first ring-2 claim has been given. */
   ring2Pod: boolean;
+  /**
+   * The day shift (Decision 53): when the current shift started (wall ms), its calendar day, and the
+   * contracts met in it. Optional in old saves (reconcile fills it).
+   */
+  shift?: { day: string; startedAt: number; met: number };
   /** Highest ring ever claimed, 1-based (story trigger `ring`, errata 21). */
   bestRing: number;
   /** Contracts have unlocked at least once (story trigger `contracts`, errata 21). */
@@ -202,9 +258,10 @@ export type HaulEvent =
   | { type: 'depleted'; slot: number }
   | { type: 'holdFull' }
   | { type: 'launch'; cargo: Record<string, number>; auto: boolean }
-  | { type: 'warp'; payout: number; met: boolean; cargo: Record<string, number> }
-  | { type: 'contractMet'; contract: Contract }
-  | { type: 'contractLapsed'; contract: Contract; wasActive: boolean }
+  | { type: 'warp'; payout: number; met: boolean; cargo: Record<string, number>; bonus: number }
+  | { type: 'contractProgress'; contract: Contract; added: { ore: string; units: number }[] }
+  | { type: 'contractMet'; contract: Contract; bonus: number; shift: boolean }
+  | { type: 'contractLapsed'; contract: Contract; wasActive: boolean; dropped?: boolean }
   | { type: 'contractNew'; contract: Contract; index: number }
   | { type: 'contractsUnlocked' }
   | { type: 'land' }

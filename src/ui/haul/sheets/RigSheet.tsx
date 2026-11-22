@@ -226,7 +226,7 @@ function Tag({ text, color }: { text: string; color: string }) {
           fontWeight: '800',
           letterSpacing: 1,
         }}
-        maxFontSizeMultiplier={1.2}
+        allowFontScaling={false}
       >
         {text}
       </Text>

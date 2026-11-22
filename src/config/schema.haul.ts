@@ -222,7 +222,10 @@ export const HaulSchema = z.object({
     .default({ chance: 0.04, drill: 2, life: 1.5, maxChance: 0.5 }),
   seam: z
     .object({
+      /** Clock seconds of the first natural rich seam of the first galaxy's run (Decision 44: 150). */
       first: z.number().nonnegative().default(360),
+      /** The same in every later galaxy's run (Decision 44: "later ones as before"); defaults to `first`. */
+      firstLater: z.number().nonnegative().optional(),
       interval: range.default([90, 150]),
       duration: z.number().positive().default(40),
       drill: z.number().gte(1).default(3),
@@ -251,7 +254,24 @@ export const HaulSchema = z.object({
     unlockLaunches: z.number().int().nonnegative().default(4),
     unlockClock: z.number().nonnegative().default(90),
     board: z.number().int().positive().default(3),
+    /** Unused since Decision 40 (an offer's life is `offerLaunches`, a taken contract's is `launches`); kept so older data parses. */
     lifetime: z.number().int().positive().default(6),
+    /** Decision 40: warp-outs a taken contract has to deliver everything (tune 4 to 8). */
+    launches: z.number().int().min(2).default(6),
+    /** Decision 40: warp-outs an offer stays on the board before it is replaced (tune 8 to 16). */
+    offerLaunches: z.number().int().positive().default(12),
+    /**
+     * Decision 40, "never free": every wanted ore asks at least `ceil(L × now × (1 + margin))`, i.e.
+     * more than the routes as they are deliver in the contract's launches (tune 0.08 to 0.2).
+     */
+    margin: z.number().min(0).max(1).default(0.12),
+    /** Decision 40, widening: the largest share of the fleet a contract's ores may be routed with. */
+    maxShare: z.number().gt(0).max(1).default(0.8),
+    /** Decision 40, a one-ore station's quota contract: a share of L × F drawn from this range. */
+    quota: range.default([0.75, 0.9]),
+    /** Decision 40: a quota contract's multiplier is lowered by this, never below `quotaMinMult`. */
+    quotaMultCut: z.number().nonnegative().default(0.2),
+    quotaMinMult: z.number().positive().default(1.3),
     /** Delivery fee on the rest of a met cargo (tune 0.05 to 0.15). */
     fee: z.number().nonnegative().default(0.1),
     /**
@@ -272,6 +292,14 @@ export const HaulSchema = z.object({
     first: z.object({ buyer: z.number().int().nonnegative().default(0), ore: z.string(), units: z.number().int().positive(), mult: z.number().positive() }),
     buyers: z.array(HaulBuyerSchema).min(1),
   }),
+  /**
+   * Decision 53, the day shift: the first `contracts` contracts met in each shift pay their bonus
+   * twice. A new shift starts when the calendar day changed and at least `minHours` passed since the
+   * previous one started.
+   */
+  shift: z
+    .object({ contracts: z.number().int().nonnegative().default(3), minHours: z.number().nonnegative().default(16), mult: z.number().gte(1).default(2) })
+    .default({ contracts: 3, minHours: 16, mult: 2 }),
   pods: z
     .object({
       /** Chest ids of meta.chests. */
@@ -302,8 +330,13 @@ export const HaulSchema = z.object({
       efficiencyCap: z.number().min(0).max(1).default(0.45),
       /** Bounded per-slot rock loop in fastForward. */
       rockLoopMax: z.number().int().positive().default(2000),
+      /**
+       * Decision 42: the Shift Log's ad (or Clearance) adds this share of the offline credits
+       * ("BOOST +50 %"), not a double; the offline gate is measured with it.
+       */
+      adBonus: z.number().min(0).max(1).default(0.5),
     })
-    .default({ efficiencyCap: 0.45, rockLoopMax: 2000 }),
+    .default({ efficiencyCap: 0.45, rockLoopMax: 2000, adBonus: 0.5 }),
 });
 
 export type HaulContent = z.output<typeof HaulSchema>;

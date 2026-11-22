@@ -156,11 +156,11 @@ function Manifest({ index, card }: { index: number; card: CardView }) {
     >
       <View style={styles.cardTop}>
         {card.emblem ? <HaulIcon name={card.emblem} size={26} /> : null}
-        <Text style={[styles.mult, { color: c.text, fontSize: ty.big, fontFamily: MONO }]} maxFontSizeMultiplier={1.15}>
+        <Text style={[styles.mult, { color: c.text, fontSize: ty.big, fontFamily: MONO }]} allowFontScaling={false}>
           {card.mult}
         </Text>
       </View>
-      <Text style={[styles.buyer, { color: c.text, fontSize: ty.tiny }]} numberOfLines={2} maxFontSizeMultiplier={1.15}>
+      <Text style={[styles.buyer, { color: c.text, fontSize: ty.tiny }]} numberOfLines={2} allowFontScaling={false}>
         {card.buyer.toUpperCase()}
       </Text>
       {card.wants.map((want) => (
@@ -169,7 +169,7 @@ function Manifest({ index, card }: { index: number; card: CardView }) {
             <HaulIcon name={`art:ore-${want.ore}`} size={12} />
             <Meter value={want.fill} color={want.color} height={4} style={styles.flex} />
           </View>
-          <Text style={{ color: c.textMuted, fontSize: ty.tiny, fontFamily: MONO }} numberOfLines={2} maxFontSizeMultiplier={1.15}>
+          <Text style={{ color: c.textMuted, fontSize: ty.tiny, fontFamily: MONO }} numberOfLines={2} allowFontScaling={false}>
             {want.text}
           </Text>
         </View>
@@ -196,11 +196,11 @@ function Manifest({ index, card }: { index: number; card: CardView }) {
           fontWeight: '800',
         }}
         numberOfLines={1}
-        maxFontSizeMultiplier={1.15}
+        allowFontScaling={false}
       >
         {card.gain}
       </Text>
-      <Text style={{ color: c.textMuted, fontSize: ty.tiny }} numberOfLines={1} maxFontSizeMultiplier={1.15}>
+      <Text style={{ color: c.textMuted, fontSize: ty.tiny }} numberOfLines={1} allowFontScaling={false}>
         {say('ifMet')}
       </Text>
       {card.active ? (
@@ -212,7 +212,7 @@ function Manifest({ index, card }: { index: number; card: CardView }) {
               fontWeight: '900',
               letterSpacing: 1,
             }}
-            maxFontSizeMultiplier={1.1}
+            allowFontScaling={false}
           >
             {say('active')}
           </Text>

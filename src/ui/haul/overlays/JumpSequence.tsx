@@ -1,10 +1,14 @@
 /**
- * The Jump sequence (spec 4.6): stars streak into lines (1.5 s), the station shudders, the new
- * galaxy's name types out (1 s), it holds, and the map comes back. The shell opens it (uiState
- * overlay 'jump') when a new galaxy starts (its run's galaxy index rises); `&overlay=jump` shows it
- * in the preview. jump_warp is played by the action that starts the galaxy. Registers with the
- * overlay manager; one full-screen canvas while it runs, nothing animates once it closes. A tap
- * after the name has typed out closes it early.
+ * The Jump sequence (spec 4.6, Decision 41), in two parts:
+ * - Leaving (uiState overlay 'leave'), played at the confirm: stars streak into lines (1.5 s), the
+ *   station shudders, "LEAVING <galaxy>" holds, and the Star Map's between-galaxies panel shows.
+ * - Arriving (overlay 'jump'), played when the next galaxy's run starts (the shell sees its galaxy
+ *   index rise, after the condition is picked): the streaks fall back into stars, the arrival line
+ *   "GALAXY 2 · HALDEN REACH" types out (Decision 52) with the condition under it, it holds, and the
+ *   map comes back.
+ * `&overlay=jump` / `&overlay=leave` show them in the preview. jump_warp is played by the action
+ * that starts the galaxy. Registers with the overlay manager; one full-screen canvas while it runs,
+ * nothing animates once it closes. A tap after the line has typed out closes it early.
  *
  * Streaks: one path rebuilt per frame on the UI thread from fixed star positions (a worklet), so
  * React renders only for the typed letters.
@@ -26,6 +30,7 @@ export const STREAK_MS = 1500;
 export const SHUDDER_MS = 450;
 export const TYPE_MS = 1000;
 export const HOLD_MS = 1300;
+export const ARRIVE_MS = 900;
 const STARS = 90;
 
 /** Fixed star field for the streaks: angle and starting distance (0..1 of the half diagonal). */
@@ -45,13 +50,13 @@ function starTable(seed: number): number[] {
 }
 
 export function JumpSequence() {
-  const open = useHaulUi((s) => s.overlay === 'jump');
-  useOverlay(open);
-  if (!open) return null;
-  return <Sequence />;
+  const mode = useHaulUi((s) => (s.overlay === 'jump' ? 'arrive' : s.overlay === 'leave' ? 'leave' : null));
+  useOverlay(mode !== null);
+  if (!mode) return null;
+  return <Sequence key={mode} leaving={mode === 'leave'} />;
 }
 
-function Sequence() {
+function Sequence({ leaving }: { leaving: boolean }) {
   const { width, height } = useWindowDimensions();
   const ty = useType();
   const c = useGame((s) => s.cfg.theme.colors);
@@ -59,11 +64,14 @@ function Sequence() {
     const cfg = s.cfg;
     const g = s.game as unknown as H.HaulGame;
     if (!H.isHaul(cfg)) return '';
-    const galaxy = g.haul?.galaxy ?? g.haulStats?.pendingJump?.galaxy ?? 0;
-    const cond = H.condition(cfg, g.haul?.trait ?? null)?.name ?? '';
+    const pending = g.haulStats?.pendingJump?.galaxy;
+    // Leaving: the galaxy left behind (the run is gone, the pending Jump names the next one).
+    const galaxy = leaving ? (pending !== undefined ? pending - 1 : (g.haul?.galaxy ?? 0)) : (g.haul?.galaxy ?? pending ?? 0);
+    const cond = leaving ? null : H.condition(cfg, g.haul?.trait ?? null);
+    const named = say('arrivalLine', { galaxy: cfg.haul.names.galaxy.toUpperCase(), n: galaxy + 1, name: H.galaxyName(cfg, galaxy).toUpperCase() });
     return JSON.stringify({
-      name: H.galaxyName(cfg, galaxy),
-      line: `${cfg.haul.names.galaxy.toUpperCase()} ${galaxy + 1}${cond ? ` · ${cond.toUpperCase()}` : ''}`,
+      name: leaving ? H.galaxyName(cfg, galaxy).toUpperCase() : named,
+      line: cond ? `${cond.name.toUpperCase()}${cond.lines?.length ? ` · ${cond.lines[0]}` : ''}` : '',
       galaxy,
     });
   });
@@ -82,13 +90,16 @@ function Sequence() {
 
   useEffect(() => {
     fade.value = withTiming(1, { duration: 220 });
-    t.value = withTiming(1, {
-      duration: STREAK_MS,
-      easing: Easing.in(Easing.cubic),
-    });
-    shake.value = withDelay(STREAK_MS - 150, withSequence(...[6, -5, 4, -3, 2, 0].map((v) => withTiming(v, { duration: SHUDDER_MS / 6 }))));
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const startType = STREAK_MS + SHUDDER_MS * 0.5;
+    if (leaving) {
+      t.value = withTiming(1, { duration: STREAK_MS, easing: Easing.in(Easing.cubic) });
+      shake.value = withDelay(STREAK_MS - 150, withSequence(...[6, -5, 4, -3, 2, 0].map((v) => withTiming(v, { duration: SHUDDER_MS / 6 }))));
+    } else {
+      // Arriving: the lines fall back into points of light.
+      t.value = 1;
+      t.value = withTiming(0, { duration: ARRIVE_MS, easing: Easing.out(Easing.cubic) });
+    }
+    const startType = leaving ? STREAK_MS + SHUDDER_MS * 0.5 : ARRIVE_MS * 0.6;
     const letters = Math.max(1, name.length);
     for (let i = 1; i <= letters; i++) timers.push(setTimeout(() => setTyped(i), startType + (TYPE_MS * i) / letters));
     timers.push(setTimeout(() => setDone(true), startType + TYPE_MS));
@@ -100,7 +111,7 @@ function Sequence() {
       cancelAnimation(fade);
       cancelAnimation(shake);
     };
-  }, [t, fade, shake, name.length]);
+  }, [t, fade, shake, name.length, leaving]);
 
   const streaks = useDerivedValue(() => {
     const p = Skia.PathBuilder.Make();
@@ -144,9 +155,9 @@ function Sequence() {
               letterSpacing: 3,
               fontWeight: '700',
             }}
-            maxFontSizeMultiplier={1.2}
+            allowFontScaling={false}
           >
-            {say('jumping')}
+            {say(leaving ? 'leavingGalaxy' : 'jumping')}
           </Text>
           <Text
             style={{
@@ -158,7 +169,7 @@ function Sequence() {
               textAlign: 'center',
             }}
             numberOfLines={2}
-            maxFontSizeMultiplier={1.15}
+            allowFontScaling={false}
           >
             {name.slice(0, typed).toUpperCase()}
             <Text style={{ color: typed < name.length ? c.primary : 'transparent' }}>▌</Text>
@@ -171,7 +182,7 @@ function Sequence() {
               letterSpacing: 1.5,
               opacity: done ? 1 : 0,
             }}
-            maxFontSizeMultiplier={1.2}
+            allowFontScaling={false}
           >
             {line}
           </Text>

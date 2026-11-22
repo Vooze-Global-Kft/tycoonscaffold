@@ -19,7 +19,8 @@ export function applyHaulDevParams(): void {
   if (sheet === 'station' || sheet === 'contracts') ui.openSheet({ type: sheet });
   const spoke = q.get('spoke');
   if (spoke && ['fitting', 'starmap', 'salvage', 'comms', 'trade'].includes(spoke)) ui.openSpoke(spoke as HaulSpoke);
-  if (q.get('overlay') === 'jump') ui.openOverlay('jump');
+  const overlay = q.get('overlay');
+  if (overlay === 'jump' || overlay === 'leave') ui.openOverlay(overlay);
   if (q.get('menu') === '1') ui.setMenu(true);
   const away = Number(q.get('away'));
   if (Number.isFinite(away) && away > 0) {

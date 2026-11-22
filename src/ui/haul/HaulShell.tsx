@@ -13,11 +13,15 @@
  */
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { BackHandler, StyleSheet, View, useWindowDimensions, type AccessibilityActionEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as H from '../../engine/haul';
 import type { HaulConfig, HaulGame } from '../../engine/haul';
+import { haulActions } from '../../modes/haul/actions';
+import { fx } from '../../services/fx';
 import { useGame } from '../../state/store';
 import { applyHaulDevParams } from './dev';
+import { useFieldInput } from './gestures/fieldInput';
 import { useFieldGestures } from './gestures/useFieldGestures';
 import { CommsSlot } from './hud/CommsSlot';
 import { ContractStrip } from './hud/ContractStrip';
@@ -38,7 +42,8 @@ import { Comms } from './spokes/Comms';
 import { FittingBay } from './spokes/FittingBay';
 import { StarMap, usePendingJump } from './spokes/StarMap';
 import { TradePost } from './trade/TradePost';
-import { useHaulUi } from './uiState';
+import { say } from './sheets/shellText';
+import { closeBackLayer, useHaulUi } from './uiState';
 
 /** Plays the Jump sequence when a new galaxy's run starts (the run's galaxy index rises). */
 function useJumpCue(): void {
@@ -71,6 +76,70 @@ function useOpeningShowsSalvage(): void {
   );
 }
 
+/**
+ * The Android back key (Decision 47): closes the top layer, in order the Shift Log (collected
+ * without the ad), a spoke's inner layer (an armed confirm, a picked module), the sheet, the
+ * station menu, the spoke, the selected drone or the armed claim chip. The Jump sequence, an
+ * opening pod and the Star Map while a confirmed Jump waits swallow it. Only on the bare map does
+ * the key leave the app (false: the system default).
+ */
+function useAndroidBack(): void {
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      const s = useGame.getState();
+      const ui = useHaulUi.getState();
+      if (ui.overlay || s.chestOpening) return true;
+      if (s.offline) {
+        void haulActions.collectShiftLog(false);
+        return true;
+      }
+      if (closeBackLayer()) return true;
+      if (ui.sheet) {
+        fx.play('ui_close');
+        ui.closeSheet();
+        return true;
+      }
+      if (ui.menuOpen) {
+        fx.play('ui_close');
+        ui.setMenu(false);
+        return true;
+      }
+      if ((s.game as unknown as HaulGame).haulStats?.pendingJump) return true;
+      if (ui.spoke) {
+        fx.play('ui_close');
+        ui.closeSpoke();
+        return true;
+      }
+      if (ui.selection) {
+        ui.select(null);
+        return true;
+      }
+      const input = useFieldInput.getState();
+      if (input.claimArmed) {
+        input.arm(null);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, []);
+}
+
+/** The map for a screen reader (phone-13): the two things a player must be able to do there. */
+function onFieldAction(e: AccessibilityActionEvent): void {
+  const { cfg, game } = useGame.getState();
+  if (!H.isHaul(cfg)) return;
+  const g = game as unknown as HaulGame;
+  if (e.nativeEvent.actionName === 'launch') {
+    if (!haulActions.launch()) fx.play('ui_denied');
+    return;
+  }
+  if (e.nativeEvent.actionName === 'assign') {
+    const slot = g.haul && g.haul.idle > 0 ? H.bestSlotForDrone(cfg, g) : null;
+    if (slot === null || !haulActions.assignDrone(slot)) fx.play('ui_denied');
+  }
+}
+
 export function HaulShell() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -82,11 +151,32 @@ export function HaulShell() {
   const spoke = usePendingJump() ? 'starmap' : open;
   useJumpCue();
   useOpeningShowsSalvage();
+  useAndroidBack();
   useEffect(applyHaulDevParams, []);
+  const n = cfg.haul.names;
+  const a11y = useMemo(
+    () => ({
+      label: say('fieldLabel'),
+      hint: say('fieldHint'),
+      actions: [
+        { name: 'launch', label: say('fieldLaunch', { freighter_l: n.freighter.toLowerCase() }) },
+        { name: 'assign', label: say('fieldAssign', { drone_l: n.drone.toLowerCase() }) },
+      ],
+    }),
+    [n.freighter, n.drone],
+  );
   return (
     <View style={[styles.fill, { backgroundColor: cfg.theme.colors.background }]}>
       <StatusBar style="light" />
-      <View style={StyleSheet.absoluteFill} {...responder}>
+      <View
+        style={StyleSheet.absoluteFill}
+        {...responder}
+        accessible
+        accessibilityLabel={a11y.label}
+        accessibilityHint={a11y.hint}
+        accessibilityActions={a11y.actions}
+        onAccessibilityAction={onFieldAction}
+      >
         <Field layout={layout} />
       </View>
       <ContractStrip rect={layout.zones.strip} />

@@ -76,6 +76,24 @@ export interface EngineMode {
    * absence that earned nothing shows nothing.
    */
   reportAlone?(report: unknown): boolean;
+  /**
+   * What the Shift Log's (or offline popup's) rewarded ad multiplies the offline earnings by
+   * (haul, Decision 42: 1 + haul.offline.adBonus). Without it: 2, the sim and classic double.
+   */
+  offlineAdMultiplier?(cfg: GameConfig): number;
+  /**
+   * Income per second to price "seconds of income" rewards with (an "earn" mission's target, a
+   * pod's cash slot) when `activeIncome` is 0: at the start of a run before any drone is on a route,
+   * or while a confirmed Jump waits for its condition (haul). Without it, or when it returns 0, the
+   * shared pricing is used as it is.
+   */
+  pricingFloor?(cfg: GameConfig, state: GameState, now: number): number;
+  /**
+   * True when a reset left the game without a run yet (haul: a confirmed Jump waiting for its
+   * condition). The store then leaves the missions that depend on the run ("earn") to the moment
+   * the run starts (the mode's own action calls meta.missionsAfterReset there).
+   */
+  awaitsRunStart?(state: GameState): boolean;
 }
 
 let installed: EngineMode | null = null;

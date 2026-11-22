@@ -128,7 +128,7 @@ export function HaulSheet({ visible, onClose, title, left, right, children, scro
         <View style={[styles.lip, { backgroundColor: alpha(c.primary, 0.5) }]} />
         <View style={styles.header}>
           {left}
-          <Text style={[styles.title, { color: c.text, fontSize: ty.title }]} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+          <Text style={[styles.title, { color: c.text, fontSize: ty.title }]} numberOfLines={1} allowFontScaling={false}>
             {title.toUpperCase()}
           </Text>
           {right}
@@ -170,7 +170,7 @@ export function Plate({ label, children, style, accent }: { label?: string; chil
       ]}
     >
       {label ? (
-        <Text style={[styles.plateLabel, { color: alpha(edge, 0.9), fontSize: ty.tiny, fontFamily: MONO }]} maxFontSizeMultiplier={1.2}>
+        <Text style={[styles.plateLabel, { color: alpha(edge, 0.9), fontSize: ty.tiny, fontFamily: MONO }]} allowFontScaling={false}>
           {label.toUpperCase()}
         </Text>
       ) : null}
@@ -247,7 +247,7 @@ export function ActionButton({
         style,
       ]}
     >
-      <Text style={[styles.buttonText, { color: ink, fontSize: ty.body }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
+      <Text style={[styles.buttonText, { color: ink, fontSize: ty.body }]} numberOfLines={1} allowFontScaling={false}>
         {label}
         {price ? <Text style={{ fontFamily: MONO, fontWeight: '700' }}>{`  ${price}`}</Text> : null}
       </Text>
@@ -286,7 +286,7 @@ export function Chip({ label, on, onPress, color, style, target }: { label: stri
           fontWeight: '700',
           fontSize: ty.small,
         }}
-        maxFontSizeMultiplier={1.2}
+        allowFontScaling={false}
       >
         {label}
       </Text>
@@ -310,7 +310,7 @@ export function Line({ children, muted, mono, size, color, style, lines = 2 }: {
         style,
       ]}
       numberOfLines={lines}
-      maxFontSizeMultiplier={1.25}
+      allowFontScaling={false}
     >
       {children}
     </Text>
