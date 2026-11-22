@@ -47,6 +47,12 @@ export interface MissionSlot {
 export interface DealState {
   /** Epoch ms when the offer appeared. */
   startedAt: number;
+  /**
+   * Epoch ms when the offer ends, fixed the moment it appeared so that a later config change can
+   * never extend or restart a running offer; null = a permanent shop item. Absent only in saves
+   * written before this field existed (then it is derived from the config).
+   */
+  endsAt?: number | null;
   purchases: number;
   /** The player has been shown the offer once (so it is not pushed again). */
   seen: boolean;
