@@ -7,6 +7,7 @@
 import type { GameConfig } from '../config/schema';
 import type { HaulContent } from '../config/schema.haul';
 import { haulParams } from './haul/params';
+import { boardNoteOf } from './haul/trade';
 import { slotRates } from './haul/rates';
 import type { HaulConfig, HaulGame, HaulState } from './haul/types';
 
@@ -16,6 +17,7 @@ export {
   EPS,
   MAX_CASH,
   rngMix4,
+  manualCycleExtra,
   geometricCost,
   slotTable,
   slotCount,
@@ -72,8 +74,16 @@ export {
   topUpBoard,
   contractBasis,
   steadyPerLaunch,
+  routeSchedule,
+  type RouteSchedule,
   noteShipped,
   resizeOrders,
+  refloorOffers,
+  rivalsOf,
+  type Rival,
+  shipsOneOre,
+  boardPlaces,
+  boardNoteOf,
   type ContractBasis,
   // Not the contract rule since Decision 56; the balance bot's routing estimate only.
   contractStation,
@@ -110,6 +120,15 @@ export {
 export { slotRates, freighterRate, shareFreighter, activeRate, steadyRate, haulIncome, routeGain, fastForward, haulOffline, type SlotRate } from './haul/rates';
 export { totalCores, coresAvailable, coresInHand, coresAfterJump, starNodeLevel, starNodeCost, starMapView, buyStarNode, offersFor, galaxyName, jumpPreview, confirmJump, startGalaxy, prestigeHaul } from './haul/jump';
 export { IDLE_HINT_SECONDS, HOLD_HINT_SECONDS, CONTRACT_HINT_SECONDS, FLARE_HINT_SECONDS, LIMITED_HINTS, bestSlotForDrone, busiestRoute, hintsFor, nextHint, hintKey } from './haul/hints';
+
+/**
+ * What the contract board's empty places say (Decision 64): `'secondOre'` when the station ships a
+ * single ore, so the board holds one contract and the other places read "MORE BUYERS WHEN A SECOND
+ * ORE SHIPS"; null otherwise (an empty place after a drop waits for the next warp-out).
+ */
+export function boardNote(cfg: HaulConfig, g: HaulGame & { haul: HaulState }): 'secondOre' | null {
+  return boardNoteOf(cfg, haulParams(cfg, g), g.haul);
+}
 
 /** True for a config with mode "haul" and a haul block. */
 export function isHaul(cfg: GameConfig): cfg is HaulConfig {
