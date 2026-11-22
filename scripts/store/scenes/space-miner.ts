@@ -25,21 +25,27 @@ function field(v: View): FieldLayout {
   return fieldLayout({ width: v.w, height: v.h, insets: { top: 0, bottom: 0 } }, cfg as any, null);
 }
 
-const rackDrone = (L: FieldLayout): P => [L.rack.left.x + L.rack.left.width * 0.72, L.rack.left.y + L.rack.left.height * 0.3];
+const chip = (L: FieldLayout, slot: number): P => {
+  const c = L.chips.find((x) => x.slot === slot);
+  if (!c) throw new Error(`no route chip for slot ${slot}`);
+  return [c.x, c.y];
+};
 const rock = (L: FieldLayout, slot: number): P => [L.rocks[slot].x, L.rocks[slot].y];
 const lerp = (a: P, b: P, t: number): P => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 
 /**
- * The working field: from the outer ring's rocks down to the hold and the counter, above the row
- * of round nav buttons (dim empty slots there read as unfinished). Zoomed in a little (at most
- * 1.08 x, so the hold gauge at the left edge stays whole); the empty starfield above the rings is
- * what gets cropped.
+ * The working field: from the outer ring's rocks down to the hold, the counter and the freighter,
+ * above the row of round nav buttons (dim empty slots there read as unfinished). Zoomed in only as
+ * far as keeps the hold gauge with its label (left) and the flare box (right) whole; the empty
+ * starfield above the rings is what gets cropped.
  */
 function fieldBand(v: View): BandSpec {
   const L = field(v);
   const top = Math.min(...L.rocks.map((k) => k.y - k.r)) - 30;
-  const bottom = Math.min(...L.zones.rail.map((r) => r.y)) - 8;
-  return { y0: top, y1: bottom, cx: L.station.x, maxZoom: 1.08, anchor: 'bottom' };
+  const bottom = Math.min(...L.zones.rail.map((r) => r.y)) - 2;
+  const left = Math.max(0, L.zones.hold.x - 14);
+  const right = Math.min(L.width, L.zones.flare.x + L.zones.flare.width + 4);
+  return { y0: top, y1: bottom, cx: (left + right) / 2, maxZoom: L.width / (right - left), anchor: 'bottom' };
 }
 
 /** Distinct buyers on the Contract Board (the line after each "×n.n" rate, below the board's title). */
@@ -66,7 +72,7 @@ const scenes: GameScenes = {
     scene: 1,
     frame: (v) => {
       const L = field(v);
-      return { y0: L.station.y - L.radii[2] - 40, y1: L.station.y + 40, cx: L.station.x, anchor: 'center' };
+      return { y0: L.station.y - L.radii[2] - 30, y1: L.station.y + 110, cx: L.station.x, anchor: 'center' };
     },
   },
   scenes: [
@@ -82,21 +88,22 @@ const scenes: GameScenes = {
       slug: 'drag-a-drone',
       query: 'preset=mid',
       settle: 9000,
-      // A running station: an idle drone picked up off the rack and dragged onto a rock; the
-      // picture is taken with the finger still down, the route line drawn to the rock.
+      // A running station (its rack is empty: every drone is out on a route). A drone is picked up
+      // off a busy route's chip (slot 1, the right-hand iron rock on ring 2) and dragged out to a rock
+      // on ring 3; the picture is taken with the finger still down, the drag line drawn to it.
       steps: (v) => {
         const L = field(v);
-        const from = rackDrone(L);
-        const to = rock(L, 0);
-        return [{ down: from }, { move: lerp(from, to, 0.5), steps: 6 }, { move: lerp(from, to, 0.92), steps: 8 }, { wait: 350 }];
+        const from = chip(L, 1);
+        const to = rock(L, 6);
+        return [{ down: from }, { move: lerp(from, to, 0.4), steps: 6 }, { move: lerp(from, to, 0.95), steps: 8 }, { wait: 350 }];
       },
       frame: fieldBand,
       caption: 'Drone to rock.\nOre to hold.',
-      shows: 'A mid-game station with routes to iron, copper and ice: a drone dragged from the rack onto a rock, the drag line showing the route being set; the hold and the credit counter running.',
+      shows: 'A mid-game station with routes to iron, copper and ice: a drone dragged off one route\'s chip onto a rock further out, the drag line showing the new route being set; the hold and the credit counter running.',
     },
     {
       slug: 'contracts',
-      query: 'preset=mid&sheet=contracts',
+      query: 'preset=late&sheet=contracts&speed=6',
       // Tap the first manifest (its "if met" line): it becomes ACTIVE. The board is drawn from live
       // state; a board with the same buyer twice is taken again.
       steps: () => [{ tapText: /^if met$/ }, { wait: 900 }],
@@ -104,37 +111,42 @@ const scenes: GameScenes = {
       tries: 4,
       frame: () => ({ y0: 0, y1: { text: /^Scrap Pod every/, edge: 'bottom', pad: 16 }, anchor: 'bottom' }),
       caption: 'Buyers on the line.\nThey lapse.',
-      shows: 'The Contract Board, first manifest just tapped active: three different buyers, what each pays if met and the launches left before it lapses; the contract strip at the top of the screen is in the picture.',
+      shows: 'A late station (every ring worked) with the Contract Board open, first manifest just tapped active: three different buyers, what each pays if met and the launches left before it lapses; the contract strip at the top of the screen is in the picture.',
     },
     {
-      slug: 'hold-full',
-      query: 'preset=early',
+      slug: 'freighter-away',
+      query: 'preset=mid',
       settle: 9000,
-      // An early station whose Dock Autopilot waits for a full hold: wait until the hold gauge
-      // reads full ("76/76", its own line; the contract strip's "71/76 IRON" does not match), then
-      // the launch swipe, and the picture about 150 ms after the finger lifts: the freighter is
-      // climbing off the pad with the full manifest.
+      // A running station: the freighter cycles (away about 11 s, then docked while the hold fills).
+      // Wait until it is docked (no "BACK IN n S"), make the launch swipe, and take the picture
+      // right after the finger lifts: the freighter leaving the pad, the WARPED receipt coming up.
+      // A swipe that did not launch (no "WARPED" / "BACK IN" yet) is taken again. (A full hold
+      // cannot be waited for: the Dock Autopilot launches the moment it fills.)
       steps: (v) => {
         const L = field(v);
         const z = L.zones.launch;
         const from: P = [z.x + z.width / 2, z.y + z.height * 0.6];
         return [
-          { untilText: /(^|\n)76\/76(\n|$)/, timeout: 45000 },
+          { untilText: /BACK IN \d+ S/i, absent: true, timeout: 25000 },
+          { wait: 300 },
           { down: from },
-          { move: [from[0], from[1] - 50], steps: 2 },
-          { move: [from[0], from[1] - 120], steps: 2 },
+          // One move event for the whole rise: on a busy machine a slow stream of small moves can
+          // let the 350 ms long-press timer fire first (a long press on the pad toggles the
+          // autopilot's policy instead).
+          { move: [from[0], from[1] - 130], steps: 1 },
           { up: true },
-          { wait: 120 },
+          { wait: 100 },
         ];
       },
+      check: (t) => (/WARPED|BACK IN \d+ S/i.test(t) ? null : 'the swipe did not launch the freighter'),
       frame: fieldBand,
-      caption: 'Hold full.\nSwipe. Freighter away.',
-      shows: 'An early station at the launch: the hold gauge full (76/76), the launch swipe just made, the freighter leaving the pad with the whole manifest.',
+      caption: 'Swipe up.\nFreighter away.',
+      shows: 'A mid-game station at the launch: the swipe just made, the freighter leaving the pad with the hold\'s manifest, the receipt coming up on the counter.',
     },
     {
       slug: 'star-map',
       query: 'preset=late&spoke=starmap',
-      frame: () => ({ y0: 0, y1: { text: /^JUMP NOW$/, edge: 'bottom', pad: 22 }, anchor: 'top' }),
+      frame: () => ({ y0: 0, y1: { text: /^jump now$/i, edge: 'bottom', pad: 22 }, anchor: 'top' }),
       caption: 'Jump.\nPick the next galaxy.',
       shows: 'The Star Map with its own header (back button, "STAR MAP · NAV", the Warp Cores in hand, the galaxy plate): the nodes Warp Cores build, and the Jump panel (what is kept, what resets).',
     },

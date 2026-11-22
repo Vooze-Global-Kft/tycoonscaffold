@@ -70,10 +70,10 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:${NAVY}}
   radial-gradient(ellipse 60% 70% at 22% 30%, rgba(92,60,170,.55), transparent 70%),
   radial-gradient(ellipse 55% 65% at 80% 40%, rgba(30,90,170,.55), transparent 70%),
   linear-gradient(180deg, #0B1A3A, #10234D)}
-.low{position:absolute;left:0;right:0;bottom:0;height:${H * 0.42}px;background:linear-gradient(180deg, rgba(11,26,58,0), rgba(11,26,58,.88) 55%)}
-.wm{position:absolute;left:0;right:0;top:${H * 0.7}px;text-align:center;font-family:'Mono';font-weight:400;font-size:${H * 0.1}px;
+.low{position:absolute;left:0;right:0;bottom:0;height:${H * 0.3}px;background:linear-gradient(180deg, rgba(11,26,58,0), rgba(11,26,58,.85) 50%)}
+.wm{position:absolute;left:0;right:0;top:${H * 0.8}px;text-align:center;font-family:'Mono';font-weight:500;font-size:${H * 0.09}px;
   letter-spacing:${H * 0.045}px;color:${CYAN};text-transform:uppercase;padding-left:${H * 0.045}px}
-.rule{position:absolute;left:${W * 0.3}px;right:${W * 0.3}px;top:${H * 0.7 + H * 0.15}px;height:2px;
+.rule{position:absolute;left:${W * 0.3}px;right:${W * 0.3}px;top:${H * 0.8 + H * 0.125}px;height:2px;
   background:repeating-linear-gradient(90deg, ${CYAN} 0 2px, transparent 2px 14px);opacity:.8}
 </style></head><body>
 <div class="pic">${framed(o.raw, o.band, W, H)}</div>

@@ -162,11 +162,10 @@ async function guardOverlays(page: any): Promise<{ hidden: string[]; leaks: stri
       if (el.querySelector('[class^="css-"], [class*=" css-"], [class^="r-"], [class*=" r-"]') || isApp(el)) continue;
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
-      const draws = (r.width > 0 && r.height > 0) || el.shadowRoot !== null || cs.position === 'fixed';
-      if (draws && cs.display !== 'none') {
-        (el as HTMLElement).style.setProperty('display', 'none', 'important');
-        hidden.push(describe(el));
-      }
+      if (cs.display === 'none') continue;
+      const draws = (r.width > 0 && r.height > 0) || el.shadowRoot !== null || Array.from(el.querySelectorAll('*')).some((d) => d.getBoundingClientRect().width > 0);
+      (el as HTMLElement).style.setProperty('display', 'none', 'important');
+      if (draws) hidden.push(describe(el));
     }
     const leaks = new Set<string>();
     const W = innerWidth;
