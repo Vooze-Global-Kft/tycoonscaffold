@@ -224,7 +224,7 @@ export function buildFrame(cfg: H.HaulConfig, g: Run, geo: SlotGeo[], layout: Fi
     version,
     clock: h.clock,
     slots,
-    holdFull: H.holdTotal(h) >= p.F - 1e-9 ? 1 : 0,
+    holdFull: H.fillsFreighter(H.holdTotal(h), p.F) ? 1 : 0,
     cargo: H.holdTotal(h) > 0 ? 1 : 0,
     rack,
     phase: PHASES[h.freighter.phase] ?? 0,

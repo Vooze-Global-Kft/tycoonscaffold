@@ -38,6 +38,7 @@ export {
   orePrice,
   haulParams,
   holdTotal,
+  fillsFreighter,
   sumUnits,
   rigCost,
   claimCost,
