@@ -150,7 +150,7 @@ g['haul'] = {
         'stripeEvery': 15, 'stripeMult': 1.5,
         'cost': {'base': 3, 'ringFactor': 40, 'growth': K('rigGrowth', 1.6, 1.45, 1.8, 'rig cost growth', 1.7)},
     },
-    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)'), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 18), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring')},
+    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)'), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 15), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring', 1.4)},
     'pile': {'min': 10, 'seconds': 25},
     'drone': {
         'speed': 0.5, 'speedPerLevel': 0.08, 'speedMax': 4, 'capacity': 4,
