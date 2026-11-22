@@ -54,7 +54,7 @@ const scenes: GameScenes = {
       settle: 9000,
       // An early station: the freighter cycles (away about 11 s, then docked while the hold fills).
       // Wait until it is docked ("BACK IN n S" gone), then the launch swipe; the picture is taken
-      // with the finger still on its way up, the freighter lifting off the pad with the hold.
+      // once the freighter is on its way (the label is back) and has climbed clear of the station.
       steps: (v) => {
         const L = field(v);
         const z = L.zones.launch;
@@ -66,7 +66,9 @@ const scenes: GameScenes = {
           { down: from },
           { move: [from[0], from[1] - 50], steps: 3 },
           { move: [from[0], from[1] - 120], steps: 3 },
-          { wait: 150 },
+          { up: true },
+          { untilText: /BACK IN \d+ S/i, timeout: 8000 },
+          { wait: 700 },
         ];
       },
       caption: 'Hold full.\nFreighter away.',
@@ -76,8 +78,9 @@ const scenes: GameScenes = {
     {
       slug: 'contracts',
       query: 'preset=mid&sheet=contracts',
-      // Tap the first manifest: it becomes ACTIVE (and the board's "tap a manifest" marker goes).
-      steps: (v) => [{ tap: [v.w * 0.23, v.h - 256] }, { wait: 900 }],
+      // Tap the first manifest (its "×2.3" multiplier): it becomes ACTIVE (and the board's "tap a
+      // manifest" marker goes).
+      steps: () => [{ tapText: /^[×x]\d+(\.\d+)?$/ }, { wait: 900 }],
       caption: 'Buyers on the line',
       sub: 'Contracts pay more. They lapse.',
       shows: 'The Contract Board, first manifest just tapped active: three buyers, the active manifest, what each pays if met and how many launches are left before it lapses.',

@@ -95,7 +95,8 @@ async function runSteps(page: any, steps: Step[]): Promise<void> {
       if (!ok) throw new Error(`untilText: ${s.absent ? 'still' : 'never'} ${s.untilText} after ${s.timeout ?? 30000} ms`);
       continue;
     }
-    if ('tap' in s) await page.mouse.click(s.tap[0], s.tap[1]);
+    if ('tapText' in s) await page.getByText(s.tapText).first().click({ timeout: 15000 });
+    else if ('tap' in s) await page.mouse.click(s.tap[0], s.tap[1]);
     else if ('down' in s) {
       await page.mouse.move(s.down[0], s.down[1]);
       await page.mouse.down();

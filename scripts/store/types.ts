@@ -9,6 +9,8 @@ export type P = [number, number];
 /** One input step on the running preview. */
 export type Step =
   | { tap: P }
+  /** Taps the first element whose text matches (e.g. a card's "×2.3"), wherever the layout put it. */
+  | { tapText: RegExp }
   | { down: P }
   | { move: P; steps?: number }
   | { up: true }
