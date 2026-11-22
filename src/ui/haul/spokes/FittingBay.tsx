@@ -27,6 +27,7 @@ import { drawCartridge, CARTRIDGE_H, CARTRIDGE_W, type SocketType } from '../art
 import { RARITY, type Rarity } from '../art/palette';
 import { schematicSockets, type SocketState } from '../art/spokes.draw';
 import { spokePictures } from '../art/Spokes';
+import { useBackLayer } from '../uiState';
 import { useHaul, useHaulCfg } from './spokeData';
 import { ArtImage, Bracket, INK, Key, Mono, pct } from './spokeKit';
 import { MODULE_EFFECT, SPOKE_STRINGS as S, words } from './spokeStrings';
@@ -95,6 +96,8 @@ export function FittingBay() {
   const { width, height } = useWindowDimensions();
   const data = useHaul((c, g) => rowsOf(c, g), { rows: [], sockets: [null, null, null] });
   const [pick, setPick] = useState<Pick>(null);
+  // The Android back key drops the pick before it closes the bay (Decision 47).
+  useBackLayer(pick !== null, () => setPick(null));
   const size = width >= 390 && height >= 740 ? 340 : Math.min(320, width - 2 * GUTTER);
   const anchors = useMemo(() => schematicSockets(size), [size]);
   const byId = useMemo(() => new Map(data.rows.map((r) => [r.id, r])), [data.rows]);
@@ -299,7 +302,7 @@ function Readout({ cfg, row, socket, sockets, fittedRows, empty, onFit, onPickSo
         <>
           <View style={styles.readRow}>
             <Mono size={10} color={INK.dim} style={{ marginTop: 6, flex: 1 }} lines={1}>
-              {`${words(cfg, S.parts, { have: row.copies, need: row.need })} · ${words(cfg, S.nextMark, { v: pct(row.next) })}`}
+              {words(cfg, S.nextMark, { v: effectLine(cfg, row, row.next) })}
             </Mono>
           </View>
           <View style={styles.keys}>
@@ -311,7 +314,8 @@ function Readout({ cfg, row, socket, sockets, fittedRows, empty, onFit, onPickSo
             ) : (
               <Key small solid label={sockets[home] ? `${S.fit} · ${S.socketName[row.socket]}` : S.fit} onPress={() => onFit(home, row.id)} />
             )}
-            <Key small tone="dm" solid={canRefit} disabled={!canRefit} label={S.refit} sub={`${row.copies}/${row.need}`} onPress={() => haulActions.refitModule(row.id)} />
+            {/* Decision 43: an upgrade costs parts only, never Dark Matter (so not the Dark Matter key colour). */}
+            <Key small tone="cyan" solid={canRefit} disabled={!canRefit} label={words(cfg, S.upgradeParts, { have: row.copies, need: row.need })} onPress={() => haulActions.refitModule(row.id)} />
           </View>
           <Mono size={10} color={INK.faint} caps={false} style={{ marginTop: 6 }} lines={1}>
             {fittedHere ? `"${row.flavor}"` : S.notFitted}

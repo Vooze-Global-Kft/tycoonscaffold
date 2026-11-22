@@ -140,7 +140,26 @@ export function hueShift(hex: string, deg: number): string {
   return toHex([f(hh + 1 / 3) * 255, f(hh) * 255, f(hh - 1 / 3) * 255]);
 }
 
-/** The nebula hue of galaxy `index` (0-based): +47 degrees per galaxy (section 4.3). */
+/**
+ * The galaxy backdrops (lead's decision 52): five cold palettes that cycle with the galaxy number,
+ * so a new galaxy looks like one. `nebula` and `veil` are the two hues of the nebula band, `bg` the
+ * deep space under it (always within a hair of SPACE.bg, so every panel and text keeps its contrast).
+ */
+export const GALAXY_PALETTES: readonly { name: string; nebula: string; veil: string; bg: string }[] = [
+  { name: 'cobalt', nebula: '#3A4FD9', veil: '#6A56E0', bg: '#060A17' },
+  { name: 'glacier', nebula: '#1E8FA6', veil: '#2F6FD8', bg: '#05101A' },
+  { name: 'violet', nebula: '#6A3FD0', veil: '#3A5BE0', bg: '#0A0819' },
+  { name: 'aurora', nebula: '#1F9C82', veil: '#2C8FC8', bg: '#051214' },
+  { name: 'steel', nebula: '#4A64A8', veil: '#2DA7C9', bg: '#070C15' },
+];
+
+/** The backdrop palette of galaxy `index` (0-based). */
+export function galaxyPalette(index: number): (typeof GALAXY_PALETTES)[number] {
+  const n = GALAXY_PALETTES.length;
+  return GALAXY_PALETTES[((Math.floor(index) % n) + n) % n];
+}
+
+/** The nebula hue of galaxy `index` (0-based): its backdrop palette's (decision 52, overrides 4.3's +47 degrees). */
 export function galaxyHue(index: number): string {
-  return hueShift('#3A4FD9', 47 * index);
+  return galaxyPalette(index).nebula;
 }

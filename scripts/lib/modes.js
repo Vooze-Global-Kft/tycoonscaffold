@@ -153,4 +153,35 @@ const SOUND_PACKS = 'shared/sfx';
  */
 const THEME_WORDS_ALLOWED = require('./themeWords.allowed.json');
 
-module.exports = { MODE_FOLDERS, FAMILIES, SHARED_UI, SHARED_SRC, CLASSIFIED_ROOT, NODE_ONLY, THEME_WORDS_ALLOWED, THEME_WORDS, MODE_PACKAGES, RESTAURANT_RIG, GENERATED_ENTRY, SOUND_PACKS };
+/**
+ * Development tools of the web preview that a phone bundle (ios, android) must never hold (store-13,
+ * phone-12, perf-8): Metro takes these `.web.ts` files for the web build only, and their phone twins
+ * (`devtools.ts`, `presets.ts`, `devViews.ts`) hold nothing; the balance bot and the rules'
+ * fixtures are reached only from the web presets.
+ */
+const WEB_ONLY = [
+  'src/dev/devtools.web.ts',
+  'src/dev/presets.web.ts',
+  'src/modes/haul/presets.web.ts',
+  'src/modes/haul/devViews.web.ts',
+  'src/modes/sim/devViews.web.ts',
+  'src/engine/haul/bot.ts',
+  'src/engine/fixtures/haul.ts',
+];
+
+/**
+ * Strings of those tools a phone bundle must not hold either: `text` is matched in the shipped
+ * JavaScript (and in the source of the bundled files in the fast stage); `quoted` matches only as a
+ * whole string literal ('staff' or "staff"); `modes` limits it to those modes' bundles (the tab
+ * shell's tab names are real in sim and classic, and dead dev code of another game's screens in haul).
+ */
+// ('upgrades', the third of the tab shell's own tab names, is also a field of every save: not listed.)
+const WEB_ONLY_STRINGS = [
+  { text: 'runHaulBot' },
+  { text: 'freshBotGame' },
+  { text: 'haulFixtures' },
+  { text: 'staff', quoted: true, modes: ['haul'] },
+  { text: 'empire', quoted: true, modes: ['haul'] },
+];
+
+module.exports = { MODE_FOLDERS, FAMILIES, SHARED_UI, SHARED_SRC, CLASSIFIED_ROOT, NODE_ONLY, THEME_WORDS_ALLOWED, THEME_WORDS, MODE_PACKAGES, RESTAURANT_RIG, GENERATED_ENTRY, SOUND_PACKS, WEB_ONLY, WEB_ONLY_STRINGS };

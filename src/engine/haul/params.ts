@@ -219,10 +219,11 @@ export function droneCapFor(cfg: HaulConfig, galaxy: number, products: string[])
   return d.capBase + d.capPerGalaxy * Math.max(0, galaxy) + hangar;
 }
 
-/** The ores the active contract wants (empty when none is active). */
+/** The ores the active contract still wants (empty when none is active). */
 export function wantedOres(h: HaulState): Set<string> {
   const c = h.contracts.active === null ? null : h.contracts.board[h.contracts.active];
-  return new Set(c ? c.wants.map((w) => w.ore) : []);
+  // Decision 40: only wants still to deliver (a want within half a unit is delivered).
+  return new Set(c ? c.wants.filter((w) => w.units - (w.got ?? 0) >= 0.5 + EPS).map((w) => w.ore) : []);
 }
 
 /** The slot carrying a seam now (natural or flare). */

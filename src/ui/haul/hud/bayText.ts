@@ -8,6 +8,7 @@
 import { Platform, type TextStyle } from 'react-native';
 import { formatShort } from '../../../engine/format';
 import { HAUL_STRINGS, type HaulStringKey } from '../strings';
+import { textEms } from './bayMetrics';
 
 /** The digital face of the counters (monospaced, so a rolling number never jitters sideways). */
 export const DIGITAL: TextStyle = {
@@ -37,10 +38,16 @@ export function countText(n: number): string {
   return v < 10000 ? String(v) : formatShort(v);
 }
 
-/** A one-line label's font and row sized to `width` for `text` (0.62 em a glyph), never above the base. */
+/** A unit figure in the short format (8.4K, never 8372): whole units under 1,000 (Decision 46, play-8). */
+export function unitShort(n: number): string {
+  const v = Math.max(0, Math.floor(n + 1e-6));
+  return v < 1000 ? String(v) : formatShort(v);
+}
+
+/** A one-line label's font and row sized to `width` for `text` (0.62 em a glyph, a sign one em: ./bayMetrics.ts textEms), never above the base. */
 export function fitLabel(text: string, width: number, base: number, fontScale: number): { font: number; row: number } {
   const m = labelMetrics(base, fontScale);
-  const font = Math.floor(Math.min(m.font, width / (Math.max(1, text.length) * 0.62)) * 10) / 10;
+  const font = Math.floor(Math.min(m.font, width / textEms(text)) * 10) / 10;
   return { font, row: m.row };
 }
 

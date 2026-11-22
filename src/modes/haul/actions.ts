@@ -50,7 +50,7 @@ function act(
 }
 
 /** `act` for the steps that also run without a run (the Star Map and the start of a galaxy while a Jump waits). */
-function actAny(where: string, fn: (cfg: H.HaulConfig, g: H.HaulGame) => H.HaulGame, key: HaulFxName | null): boolean {
+function actAny(where: string, fn: (cfg: H.HaulConfig, g: H.HaulGame, events: H.HaulEvent[]) => H.HaulGame, key: HaulFxName | null): boolean {
   return actOn(where, haulGameNow, fn, key, true);
 }
 
@@ -132,7 +132,10 @@ export const haulActions = {
     try {
       if (!(await ads.showRewarded('flare'))) return false;
       // The ad took a while: granted against the latest state (the rules check the day and the spacing again).
-      const ok = act('grantAdFlare', (c, g) => H.grantAdFlare(c, g, E.dayKey(Date.now()), Date.now()), 'ui_open');
+      // The reward is heard and felt when it is granted (play-14): the received chime with its success
+      // haptic (`daily_relay`, free since Decision 53 dropped the daily relay), and a `flareCharge` event
+      // for the screens that show "+1".
+      const ok = act('grantAdFlare', (c, g, ev) => H.grantAdFlare(c, g, E.dayKey(Date.now()), Date.now(), ev), 'daily_relay');
       if (ok) useGame.getState().save();
       return ok;
     } finally {
@@ -159,7 +162,16 @@ export const haulActions = {
   },
   /** Steps 4 and 5: the chosen condition (one of `pendingJump.offers`) starts the next galaxy with every node bought so far. */
   startGalaxy: (traitId: string): boolean => {
-    const ok = actAny('startGalaxy', (c, g) => H.startGalaxy(c, g, Date.now(), traitId), 'jump_warp');
+    const ok = actAny(
+      'startGalaxy',
+      (c, g) => {
+        const now = Date.now();
+        const next = H.startGalaxy(c, g, now, traitId);
+        // The run exists now: the "earn" transmissions are priced on it (rules-6; the store's confirm step left them).
+        return next === g ? g : (M.missionsAfterReset(c, next as unknown as GameState, now) as unknown as H.HaulGame);
+      },
+      'jump_warp',
+    );
     if (ok) useGame.getState().save();
     return ok;
   },
@@ -173,13 +185,19 @@ export const haulActions = {
       return false;
     }
     useGame.setState({ game: result.state });
-    act('ackTransmission', (c, g, ev) => H.ackTransmission(c, g, ev), 'comms_ack');
+    // With or without a run (rules-5): while a confirmed Jump waits there is none, and the count and the
+    // every-4th Derelict Cache still apply (the rules' no-run branch).
+    actAny('ackTransmission', (c, g, ev) => H.ackTransmission(c, g, ev), 'comms_ack');
     useGame.getState().save();
     return true;
   },
-  /** The Daily Allotment (the shared daily gift with this game's 5-day relay). */
+  /**
+   * The Daily Allotment (the shared daily gift). Decision 53: this game has no daily ladder, so with
+   * its data (economy.daily.gems empty) this is always refused; kept for a haul game that has one.
+   */
   receiveAllotment: (): boolean => {
     const { cfg, game } = useGame.getState();
+    if (!E.dailyOffered(cfg)) return false;
     const next = E.claimDaily(cfg, game, Date.now());
     if (next.gems <= game.gems) return false;
     useGame.setState({ game: next });

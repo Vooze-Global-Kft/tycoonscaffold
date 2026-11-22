@@ -14,7 +14,7 @@ import { haulActions } from '../../../modes/haul/actions';
 import { alpha } from '../../theme';
 import { hullFor, segmentsFor } from '../art/freighter.draw';
 import { pictures } from '../art/pictures';
-import { useRunShallow } from '../useRun';
+import { runParams, useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { money, rate, units } from './format';
 import { ActionButton, ArtView, Chip, HaulSheet, Line, Plate, useColors, useLast, useType } from './parts';
@@ -49,7 +49,7 @@ interface StationView {
 
 function stationView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): StationView {
   const h = g.haul;
-  const p = H.haulParams(cfg, g);
+  const p = runParams(cfg, g);
   const d = cfg.haul.drone;
   const products = g.entitlements?.products ?? [];
   const cost = {
@@ -109,9 +109,7 @@ export function StationSheet() {
     <HaulSheet visible={open && station !== null} onClose={close} title={names.station} compactShare={0.64} left={<ArtView picture={pictures.stationHub()} size={{ w: 34, h: 34 }} scale={0.7} />}>
       {v ? (
         <View>
-          {/* The conduit that joins the three blocks: the schematic's spine. */}
-          <View style={[styles.spine, { backgroundColor: wire }]} />
-          <Plate label={say('fleet')} style={styles.block}>
+          <Plate label={say('fleet')}>
             <View style={styles.grid}>
               <View style={styles.cell}>
                 <Line mono size={ty.small} lines={1}>
@@ -141,6 +139,10 @@ export function StationSheet() {
               </Line>
             ) : null}
           </Plate>
+          {/* The conduit that joins the three blocks: the schematic's spine, drawn only in the gaps between them (never over a card). */}
+          <View style={styles.joint}>
+            <View style={[styles.stub, { backgroundColor: wire }]} />
+          </View>
           <View style={styles.pair}>
             <Plate label={names.freighter} style={[styles.block, styles.half]}>
               <View style={styles.freighterRow}>
@@ -159,6 +161,9 @@ export function StationSheet() {
               </View>
               <ActionButton label={v.fCost} enabled={v.canF} onPress={haulActions.buyFreighter} />
             </Plate>
+            <View style={styles.gutter}>
+              <View style={[styles.stub, { backgroundColor: wire }]} />
+            </View>
             <Plate label={say('systems')} style={[styles.block, styles.half]} accent={v.auto ? c.success : undefined}>
               <View style={styles.freighterRow}>
                 <ArtView picture={pictures.beacon(v.auto)} size={{ w: 40, h: 40 }} scale={3.4} />
@@ -184,19 +189,14 @@ export function StationSheet() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  spine: {
-    position: 'absolute',
-    left: '50%',
-    width: 2,
-    top: 20,
-    bottom: 20,
-    transform: [{ translateX: -1 }],
-  },
+  joint: { height: 10, alignItems: 'center' },
+  gutter: { width: 10, alignItems: 'center', marginBottom: 10 },
+  stub: { width: 2, flex: 1 },
   block: { marginBottom: 10 },
   grid: { flexDirection: 'row', gap: 8 },
   cell: { flex: 1, justifyContent: 'space-between', gap: 6 },
   cellButton: { paddingHorizontal: 6, minHeight: 36 },
-  pair: { flexDirection: 'row', gap: 10 },
+  pair: { flexDirection: 'row' },
   half: { flex: 1, justifyContent: 'space-between' },
   freighterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },

@@ -3,12 +3,15 @@
  * of `allHaulHints()` (the rules' hints in errata 55's order) that has something on screen to point
  * at, and draws the art kit's ReticleLayer over the whole screen (touches pass through):
  * - drag: from target A to target B along the dotted guide (1.2 s travel, 0.6 s pause);
- * - swipe: an 80 pt upward stroke in the launch track;
+ * - swipe: an upward stroke from the freighter pad that rises beside the dock counter, on its
+ *   left frame edge, never across the credits (Decision 48, play-3);
  * - tap-tap: two points in a row, drawn as data: the drone first, the rock once a drone is selected;
  * - point: a pulse; a hint whose control is inside a sheet (station:buyDrone, station:autopilot)
  *   points at what opens it on the map (`route`, errata 53's first stage). The second stage, inside
- *   the open sheet, is the sheet's.
- * It waits while any sheet, spoke or dialog is open (their own hints are theirs), hides while a
+ *   the open sheet, is the sheet's. A control that shows a number (the dock counter, the contract
+ *   strip, the flare launcher, the hold) is ringed at its frame instead (Decision 48).
+ * It waits while any sheet, spoke, overlay, the station menu or a dialog is open (Decision 48: a
+ * hint never covers what the player is reading; their own hints are theirs), hides while a
  * finger drags, plays `hint` once per new hint, and marks a limited hint shown once per appearance.
  * Map targets come from src/ui/hints/targets.ts (the scene sets rock:, slot:, chip:, drone:rack and
  * station; the bay its own); until the scene has set one, the layout stands in for it.
@@ -50,6 +53,12 @@ export function targetRect(key: string, layout: FieldLayout): TargetRect | null 
     const k = layout.station.r / 40;
     return { x: a.x + a.width * 0.78 - 10 * k, y: a.y + 2 * k, width: 20 * k, height: 20 * k };
   }
+  // The bay's controls, until they have measured themselves.
+  if (kind === 'bay') {
+    const z = layout.zones;
+    const zone = arg === 'counter' ? z.counter : arg === 'launch' ? z.launch : arg === 'flare' ? z.flare : arg === 'hold' ? z.hold : null;
+    if (zone) return zone;
+  }
   if (key === 'station')
     return {
       x: layout.station.x - layout.station.r,
@@ -59,6 +68,9 @@ export function targetRect(key: string, layout: FieldLayout): TargetRect | null 
     };
   return null;
 }
+
+/** Controls that show a number: a hint rings their frame, never sits on them (Decision 48). */
+const FRAMED = ['bay:counter', 'bay:flare', 'bay:hold', 'contract:strip'];
 
 const centre = (r: TargetRect): Point => ({
   x: r.x + r.width / 2,
@@ -85,24 +97,32 @@ export function reticleFor(h: HaulHint, layout: FieldLayout, selection: HaulSele
   if (h.kind === 'swipe') {
     const z = targetRect(h.zone ?? h.key, layout);
     if (!z) return null;
-    const from = { x: z.x + z.width / 2, y: z.y + z.height - 8 };
-    return { kind: 'swipe', from, to: { x: from.x, y: from.y - 80 } };
+    // From the pad, up beside the dock counter on its left frame edge (Decision 48: never over the credits).
+    const counter = targetRect('bay:counter', layout) ?? layout.zones.counter;
+    const from = { x: z.x + 12, y: z.y + z.height - 10 };
+    const to = { x: counter.x - 2, y: Math.min(from.y - 60, counter.y + 8) };
+    return { kind: 'swipe', from, to };
   }
   // A point hint at a control on the map, or at what opens its sheet.
-  const own = at(h.key);
-  if (own && !h.route.length) return { kind: 'point', from: own };
+  const pointAt = (key: string): ReticleHint | null => {
+    const r = targetRect(key, layout);
+    if (!r) return null;
+    return FRAMED.includes(key) ? { kind: 'frame', rect: r } : { kind: 'point', from: centre(r) };
+  };
+  const own = pointAt(h.key);
+  if (own && !h.route.length) return own;
   for (const k of h.route) {
-    const p = at(k);
-    if (p) return { kind: 'point', from: p };
+    const p = pointAt(k);
+    if (p) return p;
   }
-  return own ? { kind: 'point', from: own } : null;
+  return own;
 }
 
 const same = (a: ReticleHint | null, b: ReticleHint | null) => JSON.stringify(a) === JSON.stringify(b);
 
 export function HintLayer({ layout }: { layout: FieldLayout }) {
   const open = useOverlaysOpen();
-  const spoke = useHaulUi((s) => s.spoke !== null || s.sheet !== null || s.menuOpen);
+  const spoke = useHaulUi((s) => s.spoke !== null || s.sheet !== null || s.overlay !== null || s.menuOpen);
   const [shown, setShown] = useState<ReticleHint | null>(null);
   const [dragging, setDragging] = useState(false);
   const layoutRef = useRef(layout);

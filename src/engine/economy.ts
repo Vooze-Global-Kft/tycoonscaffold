@@ -895,6 +895,19 @@ export function activeIncomePerSecond(cfg: GameConfig, state: GameState, now: nu
   return mode ? mode.activeIncome(cfg, state, now) : incomePerSecond(cfg, state, now);
 }
 
+/**
+ * Income per second "seconds of income" rewards are priced with (mission targets, cash rewards):
+ * activeIncomePerSecond, or, when that is 0 in a mode with its own rules, the mode's floor
+ * (src/engine/mode.ts `pricingFloor`; haul: the run's rate once its idle drones are placed). Sim and
+ * classic install no engine: exactly activeIncomePerSecond.
+ */
+export function pricingIncomePerSecond(cfg: GameConfig, state: GameState, now: number): number {
+  const active = activeIncomePerSecond(cfg, state, now);
+  if (active > 0) return active;
+  const floor = engineFor(cfg)?.pricingFloor?.(cfg, state, now) ?? 0;
+  return Number.isFinite(floor) && floor > 0 ? floor : active;
+}
+
 // ---------------------------------------------------------------- simulation
 
 /** Advances every business timer in a venue. Returns the new map (or the same one) and the value finished. */
@@ -1089,6 +1102,9 @@ export function timeWarp(cfg: GameConfig, state: GameState, hours: number, now: 
 export function buyTimeWarpWithGems(cfg: GameConfig, state: GameState, now: number): GameState {
   const { gemCost, hours } = cfg.economy.timeWarp;
   if (!canAfford(state.gems, gemCost)) return state;
+  // A warp worth nothing is refused, not charged (rules-7: a haul run before any drone is on a route,
+  // or a Jump waiting for its condition). Sim and classic always earn once they have a station.
+  if (!(activeIncomePerSecond(cfg, state, now) * hours * 3600 > 0)) return state;
   return timeWarp(cfg, { ...state, gems: state.gems - gemCost }, hours, now);
 }
 
@@ -1116,6 +1132,7 @@ export function dailyReward(cfg: GameConfig, state: GameState, now: number): { g
   void now;
   const streak = state.daily.streak + 1;
   const table = cfg.economy.daily.gems;
+  if (table.length === 0) return { gems: 0, streak, day: 1 };
   const i = (streak - 1) % table.length;
   return { gems: table[i], streak, day: i + 1 };
 }
@@ -1151,8 +1168,13 @@ export function dailyCalendar(cfg: GameConfig, state: GameState, now: number): D
   });
 }
 
+/** Whether the game has a daily gift at all (Decision 53: a game whose `economy.daily.gems` is empty has none). */
+export function dailyOffered(cfg: GameConfig): boolean {
+  return cfg.economy.daily.gems.length > 0;
+}
+
 export function claimDaily(cfg: GameConfig, state: GameState, now: number): GameState {
-  if (!canClaimDaily(state, now)) return state;
+  if (!dailyOffered(cfg) || !canClaimDaily(state, now)) return state;
   const { gems, streak } = dailyReward(cfg, state, now);
   return { ...state, gems: state.gems + gems, daily: { lastClaimDay: dayKey(now), streak } };
 }

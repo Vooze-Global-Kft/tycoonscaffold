@@ -3,7 +3,7 @@
  * or slower player still gets the right one. Six guided steps, then the rules after the tutorial.
  * Target keys are those of section 3 (`rock:<slot>`, `drone:rack`, `bay:launch`, ...).
  */
-import { affordable, autopilotCost, claimCost, droneCost, EPS, haulParams, holdTotal } from './params';
+import { affordable, autopilotCost, claimCost, droneCost, EPS, haulParams, holdTotal, rigCost } from './params';
 import type { HaulConfig, HaulGame, HaulHint, HaulState } from './types';
 
 type Run = HaulGame & { haul: HaulState };
@@ -16,6 +16,11 @@ export const HOLD_HINT_SECONDS = 4;
 export const CONTRACT_HINT_SECONDS = 30;
 /** Seconds a free flare charge waits before the flare hint. */
 export const FLARE_HINT_SECONDS = 600;
+/**
+ * Seconds a guided step keeps the pointer after the hold fills before the swipe hint goes first
+ * (Decision 44: a guided step keeps the pointer for its first 10 s even if the hold fills).
+ */
+export const GUIDED_PRIORITY_SECONDS = 10;
 /** Limited hints show at most this many times per run. */
 export const LIMITED_HINTS = 3;
 
@@ -69,18 +74,27 @@ export function hintsFor(cfg: HaulConfig, g: HaulGame): HaulHint[] {
   const s0 = h.slots[0];
   const s1 = h.slots[1];
   if (tutorial) {
+    // Decision 44: each guided purchase raises income, in this order.
+    const guided: HaulHint[] = [];
     // 1: send the first drone.
-    if (g.stats.launches === 0 && s0.haulers === 0 && h.idle > 0) out.push(drag('drone:rack', 'rock:0', 1));
-    // 2: clear the pad.
-    if (full && docked && !h.autopilot.online) out.push({ kind: 'swipe', key: 'bay:launch', route: [], row: null, zone: 'bay:launch', step: 2 });
-    // 3: one more drone.
-    if (g.stats.launches >= 1 && h.fleet.drones === 1 && affordable(g.cash, droneCost(cfg, g as Run))) out.push(point('station:buyDrone', 3, ['station']));
-    // 4: tap the drone, then the rock.
-    if (h.fleet.drones >= 2 && h.idle > 0 && !s1?.claimed) out.push({ kind: 'tapTap', key: 'rock:0', route: [], row: null, from: 'drone:rack', to: 'rock:0', step: 4 });
-    // 5: claim the second rock.
-    if (h.fleet.drones >= 2 && h.idle === 0 && s1 && !s1.claimed && affordable(g.cash, claimCost(cfg, g as Run, 1))) out.push(point('slot:1', 5));
-    // 6: split the fleet.
-    if (s1?.claimed && s1.respawnAt === null && s1.haulers === 0 && s0.haulers >= 2) out.push(drag('chip:0', 'rock:1', 6));
+    if (g.stats.launches === 0 && s0.haulers === 0 && h.idle > 0) guided.push(drag('drone:rack', 'rock:0', 1));
+    // 3: claim the second rock (the ghost slot, then its confirm chip).
+    if (g.stats.launches >= 1 && s1 && !s1.claimed && affordable(g.cash, claimCost(cfg, g as Run, 1))) guided.push(point('slot:1', 3));
+    // 4: buy a drone for it (when no drone is free for the new rock).
+    const needs = !!s1?.claimed && s1.respawnAt === null && s1.haulers === 0;
+    if (needs && h.idle === 0 && s0.haulers <= 1 && affordable(g.cash, droneCost(cfg, g as Run))) guided.push(point('station:buyDrone', 4, ['station']));
+    // 5: tap the drone, then the new rock (or, with no drone on the rack, move one from the first rock).
+    if (needs && h.idle > 0) guided.push({ kind: 'tapTap', key: 'rock:1', route: [], row: null, from: 'drone:rack', to: 'rock:1', step: 5 });
+    else if (needs && s0.haulers >= 2) guided.push(drag('chip:0', 'rock:1', 5));
+    // 6: upgrade a rig, once both rocks are worked (the first rig level ends the guided steps).
+    const rigUp = h.slots.some((x) => x.claimed && x.rigLevel > 1);
+    if (s1?.claimed && s1.haulers > 0 && !rigUp && affordable(g.cash, rigCost(cfg, g as Run, 0))) guided.push(point('rig:upgrade', 6, ['rock:0']));
+    // 2: clear the pad. A guided step keeps the pointer for the first GUIDED_PRIORITY_SECONDS after the
+    // hold fills; after that the swipe goes first (the station earns nothing while the pad is full).
+    const swipe: HaulHint | null = full && docked && !h.autopilot.online ? { kind: 'swipe', key: 'bay:launch', route: [], row: null, zone: 'bay:launch', step: 2 } : null;
+    const fullFor = h.marks.holdFullSince === null ? 0 : h.clock - h.marks.holdFullSince;
+    if (swipe && guided.length > 0 && fullFor < GUIDED_PRIORITY_SECONDS) out.push(...guided, swipe);
+    else out.push(...(swipe ? [swipe] : []), ...guided);
   }
   // Every rich seam: drag from the busiest route to it (until a drone is on it).
   for (const seam of [h.vein, h.flare]) {

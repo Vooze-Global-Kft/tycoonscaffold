@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { bundleViolations, denylistOf, denyMatcher, importViolations, levelOf, modeOf, packageOf, textOfData, themeWordsIn, type BundleContents, type BundleManifest } from './bundleRules';
-import { readAliases, resolveImport, runtimeImports } from '../check-bundle';
+import { readAliases, resolveImport, runtimeImports, webOnlyHitsIn } from '../check-bundle';
 
 const M: BundleManifest = {
   modeFolders: { sim: ['src/modes/sim', 'src/ui/sim'], classic: ['src/modes/classic', 'src/ui/scene'], haul: ['src/modes/haul'] },
@@ -288,3 +288,24 @@ describe('the string denylist (errata 6)', () => {
   });
 });
 
+
+describe('web-only development tools (store-13, phone-12, perf-8)', () => {
+  const W: BundleManifest = { ...M, webOnly: ['src/dev/presets.web.ts', 'src/engine/haul/bot.ts'] };
+  const withDev = (platform: string, hits: { file: string; text: string }[] = []) =>
+    bundleViolations(clean({ modules: [...clean().modules, 'src/engine/haul/bot.ts'], platform, webOnlyHits: hits }), W).filter((v) => v.rule === 'web-only').map((v) => v.file);
+  it('a phone bundle holding one fails, the web bundle does not', () => {
+    expect(withDev('ios')).toEqual(['src/engine/haul/bot.ts']);
+    expect(withDev('android')).toEqual(['src/engine/haul/bot.ts']);
+    expect(withDev('web')).toEqual([]);
+  });
+  it('a string of those tools found in a phone bundle fails', () => {
+    expect(withDev('ios', [{ file: 'src/state/store.ts', text: 'empire' }])).toContain('src/state/store.ts');
+  });
+  it('the tab shell\'s tab names count in a haul phone bundle as quoted strings only, never in sim', () => {
+    const files: [string, string][] = [['src/a.js', 'const t = ["home","staff"];'], ['src/b.js', 'staffing(); // staff']];
+    expect(webOnlyHitsIn(files, 'haul', 'ios')).toEqual([{ file: 'src/a.js', text: 'staff' }]);
+    expect(webOnlyHitsIn(files, 'sim', 'ios')).toEqual([]);
+    expect(webOnlyHitsIn([['src/c.js', 'runHaulBot(cfg)']], 'haul', 'web')).toEqual([]);
+    expect(webOnlyHitsIn([['src/c.js', 'runHaulBot(cfg)']], 'haul', 'android')).toEqual([{ file: 'src/c.js', text: 'runHaulBot' }]);
+  });
+});

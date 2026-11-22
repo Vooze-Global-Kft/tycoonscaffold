@@ -28,6 +28,8 @@ import { INK, Key, Mono } from '../spokes/spokeKit';
 import { SPOKE_STRINGS as S, words } from '../spokes/spokeStrings';
 import { SpokeFrame } from '../spokes/SpokeFrame';
 
+/** How long the Trade Post says "+1 flare charge" after the ad paid it. */
+const GRANTED_MS = 4000;
 const LICENCE_KINDS = new Set(['clearance', 'unlock', 'starterPack', 'noAds', 'pass']);
 
 /** Product art: the errata 42 icons by kind, else the product's own icon. */
@@ -117,14 +119,16 @@ function Bay({ code, title, children }: { code: string; title: string; children:
         </View>
       </View>
       <View style={{ flex: 1 }}>
-        <Mono size={10} weight="700" color={INK.lineDim} style={styles.bayTitle}>{`Bay ${code} · ${title}`}</Mono>
+        <Mono size={10} weight="700" color={INK.lineDim} style={styles.bayTitle}>
+          {S.bayTitle.replace('{code}', code).replace('{title}', title)}
+        </Mono>
         {children}
       </View>
     </View>
   );
 }
 
-function Slot({ icon, title, line, children, dim }: { icon: string; title: string; line: string; children: ReactNode; dim?: boolean }) {
+function Slot({ icon, title, line, children, dim, lineColor }: { icon: string; title: string; line: string; children: ReactNode; dim?: boolean; lineColor?: string }) {
   return (
     <View style={[styles.slot, dim && { opacity: 0.75 }]}>
       <View style={styles.slotIcon}>
@@ -134,7 +138,7 @@ function Slot({ icon, title, line, children, dim }: { icon: string; title: strin
         <Mono size={12} weight="700" color={INK.text} lines={1}>
           {title}
         </Mono>
-        <Mono size={10} color={INK.dim} caps={false} lines={3} style={{ marginTop: 2 }}>
+        <Mono size={10} color={lineColor ?? INK.dim} caps={false} lines={3} style={{ marginTop: 2 }}>
           {line}
         </Mono>
       </View>
@@ -148,10 +152,13 @@ function TimeWarp({ cfg }: { cfg: H.HaulConfig }) {
   const st = useHaul((c, g) => {
     const game = g as unknown as GameState;
     const rate = E.activeIncomePerSecond(c, game, Date.now());
-    return { value: Math.round(rate * tw.hours * 3600), can: game.gems >= tw.gemCost && !!g.haul };
+    const value = Math.round(rate * tw.hours * 3600);
+    // rules-7: a Time Warp worth nothing (no drone on a route: a run's start, right after a Jump) is never offered.
+    return { value, can: game.gems >= tw.gemCost && !!g.haul && value > 0 };
   }, { value: 0, can: false });
+  const line = st.value > 0 ? words(cfg, S.timeWarpLine, { h: tw.hours, v: formatShort(st.value) }) : words(cfg, S.timeWarpNone);
   return (
-    <Slot icon="art:time-warp" title={words(cfg, S.timeWarp, { h: tw.hours })} line={words(cfg, S.timeWarpLine, { h: tw.hours, v: formatShort(st.value) })}>
+    <Slot icon="art:time-warp" title={words(cfg, S.timeWarp, { h: tw.hours })} line={line} lineColor={st.value > 0 ? undefined : INK.amber}>
       <Key small tone="dm" solid={st.can} disabled={!st.can} label={`${tw.gemCost} ${S.dmShort}`} onPress={haulActions.timeWarp} />
     </Slot>
   );
@@ -161,6 +168,8 @@ function FlareAd({ cfg }: { cfg: H.HaulConfig }) {
   const now = useNow(1000);
   const ready = useRewardedReady();
   const [busy, setBusy] = useState(false);
+  // play-14: the reward is said on the row for a few seconds once it has arrived.
+  const [granted, setGranted] = useState(0);
   const st = useHaul((c, g) => {
     const t = Date.now();
     const h = g.haul;
@@ -177,14 +186,15 @@ function FlareAd({ cfg }: { cfg: H.HaulConfig }) {
   }, { run: false, can: false, left: 0, wait: 0, full: false });
   void now;
   const max = cfg.haul.flare.adsPerDay;
-  const line = !st.run ? S.flareNoRun : st.full ? S.flareFull : st.wait > 0 && st.left > 0 ? words(cfg, S.flareWait, { t: formatCountdown(st.wait * 1000) }) : words(cfg, S.flareLine, { left: st.left, max });
+  const showGranted = granted > 0 && now - granted < GRANTED_MS;
+  const line = showGranted ? words(cfg, S.flareGranted) : !st.run ? S.flareNoRun : st.full ? S.flareFull : st.wait > 0 && st.left > 0 ? words(cfg, S.flareWait, { t: formatCountdown(st.wait * 1000) }) : words(cfg, S.flareLine, { left: st.left, max });
   const enabled = st.can && ready && !busy;
   return (
-    <Slot icon="art:flare" title={S.flareCharge} line={line}>
-      <Key small tone="cyan" solid={enabled} disabled={!enabled} label={S.watchAd} sub={st.can && !ready ? S.adNotReady : undefined} onPress={async () => {
+    <Slot icon="art:flare" title={S.flareCharge} line={line} lineColor={showGranted ? INK.green : undefined}>
+      <Key small tone="cyan" solid={enabled} disabled={!enabled} label={S.watchAd} sub={st.can && !ready ? S.adNotReady : words(cfg, S.flareAdGives)} onPress={async () => {
         setBusy(true);
         try {
-          await haulActions.watchFlareAd();
+          if (await haulActions.watchFlareAd()) setGranted(Date.now());
         } finally {
           setBusy(false);
         }

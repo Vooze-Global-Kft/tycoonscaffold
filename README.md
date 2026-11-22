@@ -186,7 +186,7 @@ Orbit Haulers (haul): the targets are section 8 of `docs/design/space-design.md`
 ## Web preview switches
 
 `GAME=pizza-empire npx expo start --web`, then add switches to the address
-(`src/dev/devtools.ts`; they do nothing on phones):
+(`src/dev/devtools.web.ts`; the phone build takes `src/dev/devtools.ts`, which has none):
 
 | | |
 |---|---|

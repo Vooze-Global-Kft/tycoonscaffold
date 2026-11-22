@@ -76,7 +76,7 @@ describe('rule modules change their rule by their value', () => {
 
   it('Contract Keeper: after a met contract, the next warp-out pays +X % on its whole cargo', () => {
     const g = shaped(cfg, 3, { slots: [0] });
-    const board: H.Contract[] = [{ k: 1, buyer: 'kade', wants: [{ ore: 'iron', units: 2 }], mult: 1.6, launchesLeft: 9 }];
+    const board: H.Contract[] = [{ k: 1, buyer: 'kade', wants: [{ ore: 'iron', units: 2, got: 0 }], mult: 1.6, launchesLeft: 9, taken: true }];
     let s = withModules({ ...g, haul: { ...g.haul, hold: { iron: 3 }, contracts: { unlocked: true, board, next: 2, active: 0 } } }, [[2, 'keeper']], 1);
     s = H.launch(cfg, s) as Run;
     expect(s.haul.keeper).toBeCloseTo(0.1, 12);
@@ -90,7 +90,7 @@ describe('rule modules change their rule by their value', () => {
   it('Ore Sorter: drones on routes whose ore the active contract wants carry +X %', () => {
     const g = shaped(cfg, 4, { slots: [0, 2], haulers: [1, 1] });
     const copper = g.haul.slots[2].ore;
-    const board: H.Contract[] = [{ k: 1, buyer: 'corvo', wants: [{ ore: copper, units: 5 }], mult: 1.9, launchesLeft: 9 }];
+    const board: H.Contract[] = [{ k: 1, buyer: 'corvo', wants: [{ ore: copper, units: 5, got: 0 }], mult: 1.9, launchesLeft: 9, taken: true }];
     const s = withModules({ ...g, haul: { ...g.haul, contracts: { unlocked: true, board, next: 2, active: 0 } } }, [[1, 'sorter']], 1);
     const p = H.haulParams(cfg, s);
     expect(p.slots[2].c).toBeCloseTo(p.slots[2].cBase * 1.15, 12);
@@ -101,7 +101,7 @@ describe('rule modules change their rule by their value', () => {
 
   it('Quick Clamp: a launch that meets its contract comes back X % sooner (at most 50 %)', () => {
     const g = shaped(cfg, 5, { slots: [0] });
-    const board: H.Contract[] = [{ k: 1, buyer: 'kade', wants: [{ ore: 'iron', units: 2 }], mult: 1.6, launchesLeft: 9 }];
+    const board: H.Contract[] = [{ k: 1, buyer: 'kade', wants: [{ ore: 'iron', units: 2, got: 0 }], mult: 1.6, launchesLeft: 9, taken: true }];
     const base = { ...g, haul: { ...g.haul, hold: { iron: 3 }, contracts: { unlocked: true, board, next: 2, active: 0 } } };
     const s = H.launch(cfg, withModules(base, [[2, 'quickclamp']], 1)) as Run;
     expect(s.haul.freighter.away).toBeCloseTo(8 * 0.85, 12);

@@ -5,7 +5,7 @@
 import { placeRock } from './create';
 import { EPS, haulParams, holdTotal, ringWeights, starLevel, sumUnits, T } from './params';
 import { commit, draftOf, draftParams, grantPod, warpOut, type Draft } from './tick';
-import type { HaulConfig, HaulGame, HaulParams, HaulState, OfflineReport, SlotState } from './types';
+import type { HaulConfig, HaulGame, HaulParams, HaulState, OfflineReport, RouteGain, SlotState } from './types';
 
 type Run = HaulGame & { haul: HaulState };
 
@@ -119,6 +119,40 @@ export function steadyRate(cfg: HaulConfig, params: HaulParams, h: HaulState): n
 /** activeRate of a game (convenience for the store and the screens). */
 export function haulIncome(cfg: HaulConfig, g: HaulGame): number {
   return g.haul ? activeRate(cfg, haulParams(cfg, g as Run), g.haul) : 0;
+}
+
+/**
+ * Decision 49: what moving one drone from slot `from` (null: the rack) to slot `to` (null: the rack)
+ * does to the income line (`haulIncome`, the rules' own estimate): `delta` in credits per second.
+ * `limit` says why the target gains nothing more: 'rig' when its drill already feeds fewer units
+ * than its drones carry (upgrade the rig instead), 'haul' when the freighter is the limit of the
+ * whole station; null otherwise, and for a move to the rack. A move that cannot happen (no drone
+ * there, an unclaimed slot, the same place) gives `{ delta: 0, limit: null }`.
+ */
+export function routeGain(cfg: HaulConfig, g: HaulGame, from: number | null, to: number | null): RouteGain {
+  const h = g.haul;
+  const none: RouteGain = { delta: 0, limit: null };
+  if (!h || from === to) return none;
+  const ok = (i: number | null) => i === null || (Number.isInteger(i) && i >= 0 && i < h.slots.length && h.slots[i].claimed);
+  if (!ok(from) || !ok(to)) return none;
+  if (from === null ? !(h.idle >= 1) : !(h.slots[from].haulers >= 1)) return none;
+  const slots = h.slots.map((s, i) => (i === from ? { ...s, haulers: s.haulers - 1 } : i === to ? { ...s, haulers: s.haulers + 1 } : s));
+  const moved: HaulState = { ...h, slots, idle: h.idle + (from === null ? -1 : 0) + (to === null ? 1 : 0) };
+  const g2 = { ...g, haul: moved } as Run;
+  const p1 = haulParams(cfg, g as Run);
+  const p2 = haulParams(cfg, g2);
+  const before = activeRate(cfg, p1, h);
+  const after = activeRate(cfg, p2, moved);
+  const delta = Number.isFinite(after - before) ? after - before : 0;
+  let limit: RouteGain['limit'] = null;
+  if (to !== null) {
+    const r = slotRates(cfg, p1, h).find((x) => x.slot === to);
+    const Q = freighterRate(p2);
+    const sumQ = slotRates(cfg, p2, moved).reduce((a, x) => a + x.q, 0);
+    if (r && r.h >= r.rbar - EPS) limit = 'rig';
+    else if (sumQ > Q + EPS) limit = 'haul';
+  }
+  return { delta, limit };
 }
 
 /** An empty Shift Log. */

@@ -53,6 +53,8 @@ export function simulateHaulCli(cfg: H.HaulConfig, flags: Record<string, string>
         windows: r.windows.map((w) => ({ from: w.from, ...w.gestures, earned: w.earned, depleted: w.depleted })),
         limits: r.limits,
         payouts: r.payouts,
+        contracts: r.contracts,
+        podsByHour: r.podsByHour,
         offline: r.offline,
         notables: r.notables.filter((n) => n.gap || n.drawn).map((n) => [n.t, n.run, n.what, n.gap ? 1 : 0, n.drawn ? 1 : 0]),
       }),

@@ -12,16 +12,18 @@
  * (a rig level, a pile step or label, a chip count, a claim). Nothing animates under a spoke.
  * Sets the map hint targets (rock:, slot:, chip:, drone:rack, station) with `targets.set`.
  */
-import { Atlas, Canvas, DashPathEffect, Fill, Group, Path, Picture } from '@shopify/react-native-skia';
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { Atlas, Canvas, DashPathEffect, Fill, FilterMode, Group, ImageShader, MipmapMode, Path, Picture, Rect } from '@shopify/react-native-skia';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { PixelRatio, StyleSheet } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
+import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import * as H from '../../../engine/haul';
 import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
 import { partRestAngle, stationPartPos, BEACON_POS, LOADED_FREIGHTER_SCALE, ORE_IDS, freighterSize, hullFor, segmentsFor, RACK_CRADLES, RACK_OVERFLOW, ROUTE_WIDTH, SPACE, alpha, bakeAtlas, oreColor, pictures, rigLamp, routeDash, routeDashPeriod, type HaulAtlas, type HullId } from '../art';
+import { useCallout } from '../hud/callout';
 import { bayCrest, flightTop, padSpot } from '../hud/flight';
+import { rockName } from '../sheets/format';
 import { circleRect, type FieldLayout } from '../layout';
 import { useRun, useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
@@ -29,22 +31,57 @@ import { useFieldAnim, type FieldAnim, type FieldGeometry } from './frameLoop';
 import { EMPTY_TABLE, buildFrame, emptyFx, hubPoint, pileLabels, slotGeometry, slotVMs, spriteTable, stationVM, type FieldFx, type FrameTable, type SlotGeo, type SlotVM, type StationVM } from './model';
 import { freighterFlamePicture, pileLabelPicture, ringGuidesPicture, routePath, seamGuidePicture, warpFlashPicture } from './pics';
 
+/** The screen's pixel density, as the atlas is baked for it (1 to 3). */
+const DENSITY = Math.max(1, Math.min(3, Math.round(PixelRatio.get())));
 const atlases = new Map<number, HaulAtlas | null>();
 /** The sprite atlas for a pixel density, baked once and kept for the life of the app (never freed). */
 function atlasFor(density: number): HaulAtlas | null {
   if (!atlases.has(density)) atlases.set(density, bakeAtlas({ density }));
   return atlases.get(density) ?? null;
 }
+/**
+ * perf-7: the atlas is the largest start-up item, so it is baked as soon as this module loads (off
+ * the current call stack, while the save loads behind the loading screen), not in the field's
+ * first render. A field that mounts before it is ready draws the starfield, station and rigs and
+ * adds the sprites when the bake ends.
+ */
+const atlasWaiters = new Set<() => void>();
+let bakeQueued = false;
+function queueAtlas(): void {
+  if (bakeQueued || atlases.has(DENSITY)) return;
+  bakeQueued = true;
+  setTimeout(() => {
+    atlasFor(DENSITY);
+    atlasWaiters.forEach((f) => f());
+    atlasWaiters.clear();
+  }, 0);
+}
+queueAtlas();
+/** The route ores' dash periods (a module constant: the frame callback's dependencies stay stable; phone-9). */
+const PERIODS: readonly number[] = ORE_IDS.map((o) => routeDashPeriod(o));
 
 const NO_SLOTS: SlotVM[] = [];
 /** Development switch `?fieldStress=1`: draw the worst-case sprite budget (frame-time check). */
 const STRESS = typeof __DEV__ !== 'undefined' && __DEV__ && typeof globalThis.location?.search === 'string' && globalThis.location.search.includes('fieldStress=1');
+const NO_LABELS: string[] = [];
 const NO_STATION: StationVM = { parts: [], beacon: false, idle: 0, galaxy: 0, hull: 0, segments: 0, docked: true, cargo: false, seamSlot: -1, busiest: -1 };
 
 export function Field({ layout }: { layout: FieldLayout }) {
   const cfg = useGame((s) => s.cfg) as H.HaulConfig;
-  const density = Math.max(1, Math.min(3, Math.round(PixelRatio.get())));
-  const atlas = useMemo(() => atlasFor(density), [density]);
+  const [atlas, setAtlas] = useState<HaulAtlas | null>(() => atlases.get(DENSITY) ?? null);
+  useEffect(() => {
+    if (atlas) return;
+    const done = () => setAtlas(atlases.get(DENSITY) ?? null);
+    if (atlases.has(DENSITY)) {
+      done();
+      return;
+    }
+    atlasWaiters.add(done);
+    queueAtlas();
+    return () => {
+      atlasWaiters.delete(done);
+    };
+  }, [atlas]);
   const sprites = useMemo(() => (atlas ? spriteTable(atlas) : {}), [atlas]);
   const geo = useMemo(() => slotGeometry(layout), [layout]);
   const fxRef = useRef<FieldFx>(emptyFx(layout.rocks.length));
@@ -88,11 +125,13 @@ export function Field({ layout }: { layout: FieldLayout }) {
     };
   }, [geo, layout, frame]);
 
-  const slots = useRunShallow((c, g) => slotVMs(c, g, fxRef.current), NO_SLOTS);
-  const station = useRunShallow((c, g) => stationVM(c, g), NO_STATION);
   const spoke = useHaulUi((s) => s.spoke);
   const overlay = useHaulUi((s) => s.overlay);
   const active = spoke === null && overlay === null;
+  // Under a full-screen spoke or overlay the field's React layers keep what they show (perf-3).
+  const slots = useRunShallow((c, g) => slotVMs(c, g, fxRef.current), NO_SLOTS, !active);
+  const station = useRunShallow((c, g) => stationVM(c, g), NO_STATION, !active);
+  const labels = useRunShallow((c, g) => pileLabels(c, g, fxRef.current), NO_LABELS, !active);
 
   // The freighter's flight, on the bay's curve (../hud/flight.ts): the same pad, scales and times.
   const level = useRun((_c, g) => g.haul.freighter.level, 1);
@@ -104,7 +143,7 @@ export function Field({ layout }: { layout: FieldLayout }) {
       padY: spot.y,
       topY: flightTop(layout),
       loaded: spot.loaded,
-      rest: station.cargo ? spot.loaded : spot.empty,
+      empty: spot.empty,
       climb: Math.max(0.3, cfg.haul?.freighter.climb ?? 2.5),
       land: Math.max(0.3, cfg.haul?.freighter.land ?? 2),
       dishRest: partRestAngle('veinsense'),
@@ -112,27 +151,30 @@ export function Field({ layout }: { layout: FieldLayout }) {
       sy: layout.station.y,
       sr: layout.station.r,
       height: layout.height,
-      periods: ORE_IDS.map((o) => routeDashPeriod(o)),
+      periods: PERIODS,
     }),
-    [spot, station.cargo, cfg, layout],
+    [spot, cfg, layout],
   );
-  const anim = useFieldAnim(frame, sprites, density, animGeo, active);
+  const anim = useFieldAnim(frame, sprites, atlas?.density ?? DENSITY, animGeo, active);
   useMapTargets(layout, slots, station.idle);
 
-  const stars = pictures.starfield(layout.width, layout.height, station.galaxy);
+  // The starfield (decision 50): baked once per size and galaxy into one image, drawn as ONE
+  // textured rectangle mirrored vertically as it drifts. Each galaxy has its own palette (decision 52).
+  const stars = useMemo(() => pictures.starfieldImage(layout.width, layout.height, station.galaxy, PixelRatio.get()), [layout.width, layout.height, station.galaxy]);
+  const sw = stars ? layout.width / stars.pw : 1;
+  const sh = stars ? layout.height / stars.ph : 1;
+  const starXf = useDerivedValue(() => [{ translateY: anim.starY.value }, { scaleX: sw }, { scaleY: sh }]);
+  const rings = useMemo(() => ringGuidesPicture(layout, geo.map((g) => g.label)), [layout, geo]);
   return (
     <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Fill color={SPACE.bg} />
-      <Group transform={anim.starY}>
-        <Picture picture={stars} />
-      </Group>
-      <Group transform={anim.starY2}>
-        <Picture picture={stars} />
-      </Group>
-      <Group transform={anim.starY3}>
-        <Picture picture={stars} />
-      </Group>
-      <Picture picture={ringGuidesPicture(layout)} />
+      {stars ? (
+        <Rect x={0} y={0} width={layout.width} height={layout.height}>
+          <ImageShader image={stars.image} tx="clamp" ty="mirror" transform={starXf} sampling={{ filter: FilterMode.Linear, mipmap: MipmapMode.None }} />
+        </Rect>
+      ) : (
+        <Fill color={SPACE.bg} />
+      )}
+      <Picture picture={rings} />
       <Routes layout={layout} geo={geo} slots={slots} anim={anim} />
       <SeamLayer layout={layout} slots={slots} station={station} anim={anim} />
       <Ghosts layout={layout} slots={slots} anim={anim} />
@@ -142,7 +184,8 @@ export function Field({ layout }: { layout: FieldLayout }) {
       {atlas ? <Atlas image={atlas.image} sprites={anim.rcB} transforms={anim.xfB} colors={anim.colB} colorBlendMode="modulate" /> : null}
       <Chips layout={layout} slots={slots} />
       <RackBadges layout={layout} idle={station.idle} anim={anim} />
-      <PileLabels geo={geo} fx={fxRef} />
+      <PileLabels geo={geo} labels={labels} />
+      <Callout layout={layout} anim={anim} names={cfg} active={active} />
       <Group opacity={anim.flareOn} transform={anim.flare}>
         <Picture picture={pictures.flare()} />
       </Group>
@@ -198,7 +241,7 @@ const SeamLayer = memo(function SeamLayer({ layout, slots, station, anim }: { la
   );
 });
 
-/** Ghost slots: dashed circles with their claim price, breathing over 2 s. */
+/** Ghost slots: dashed circles with their claim price, breathing over 2 s; the arc shows how close the credits are (play-18). */
 const Ghosts = memo(function Ghosts({ layout, slots, anim }: { layout: FieldLayout; slots: SlotVM[]; anim: FieldAnim }) {
   const list = slots.filter((s) => s.ghost !== null);
   if (list.length === 0) return null;
@@ -208,7 +251,7 @@ const Ghosts = memo(function Ghosts({ layout, slots, anim }: { layout: FieldLayo
         const r = layout.rocks[s.slot];
         return (
           <Group key={s.slot} transform={T(r.x, r.y)}>
-            <Picture picture={pictures.ghostSlot(Math.round(r.r), s.ghost ?? '')} />
+            <Picture picture={pictures.ghostSlot(Math.round(r.r), s.ghost ?? '', s.ghostStep)} />
           </Group>
         );
       })}
@@ -335,18 +378,67 @@ const RackBadges = memo(function RackBadges({ layout, idle, anim }: { layout: Fi
   );
 });
 
-/** Pile labels on their plates, above drones and chips; redrawn only when an integer changes. */
-const NO_LABELS: string[] = [];
-const PileLabels = memo(function PileLabels({ geo, fx }: { geo: SlotGeo[]; fx: { current: FieldFx } }) {
-  const labels = useRunShallow((c, g) => pileLabels(c, g, fx.current), NO_LABELS);
+/** How long the ring round a called rock shows (play-9); its name stays while the line is up. */
+const CALLOUT_RING_MS = 2200;
+
+/**
+ * The rock a comms line names (play-9, ../hud/callout.ts): a pulsing ring for about 2 s and its
+ * short name ("T-2") over it for as long as the line is up, so "Rich seam on T-2" can be found.
+ */
+const Callout = memo(function Callout({ layout, anim, names, active }: { layout: FieldLayout; anim: FieldAnim; names: H.HaulConfig; active: boolean }) {
+  const slot = useCallout((s) => s.slot);
+  const until = useCallout((s) => s.until);
+  const [ring, setRing] = useState(false);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (slot === null || !active) {
+      setRing(false);
+      setShown(false);
+      return;
+    }
+    const left = until - Date.now();
+    if (left <= 0) {
+      setShown(false);
+      return;
+    }
+    setShown(true);
+    setRing(true);
+    const a = setTimeout(() => setRing(false), Math.min(CALLOUT_RING_MS, left));
+    const b = setTimeout(() => setShown(false), left);
+    return () => {
+      clearTimeout(a);
+      clearTimeout(b);
+    };
+  }, [slot, until, active]);
+  const rock = slot !== null ? layout.rocks[slot] : undefined;
+  if (!shown || !rock || !names.haul) return null;
   return (
     <Group>
-      {labels.map((text, i) => {
-        if (text === '' || !geo[i]) return null;
+      {ring ? (
+        <Group opacity={anim.pulse} transform={T(rock.x, rock.y)}>
+          <Picture picture={pictures.calloutRing(Math.round(rock.r))} />
+        </Group>
+      ) : null}
+      <Group transform={T(rock.x, rock.y - rock.r - 14)}>
+        <Picture picture={pictures.rockTag(rockName(names, rock.slot))} />
+      </Group>
+    </Group>
+  );
+});
+
+/** Pile labels on their plates (the ore's pip, then the figure), above drones and chips; redrawn only when an integer changes. */
+const PileLabels = memo(function PileLabels({ geo, labels }: { geo: SlotGeo[]; labels: string[] }) {
+  return (
+    <Group>
+      {labels.map((label, i) => {
+        if (label === '' || !geo[i]) return null;
+        const sp = label.indexOf(' ');
+        const ore = label.slice(0, sp);
+        const text = label.slice(sp + 1);
         const full = text.endsWith('!');
         return (
           <Group key={i} transform={T(geo[i].label.x, geo[i].label.y)}>
-            <Picture picture={pileLabelPicture(full ? text.slice(0, -1) : text, full)} />
+            <Picture picture={pileLabelPicture(full ? text.slice(0, -1) : text, full, ore)} />
           </Group>
         );
       })}

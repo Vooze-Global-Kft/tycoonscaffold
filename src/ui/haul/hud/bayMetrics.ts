@@ -15,6 +15,23 @@ export interface BayCounterMetrics {
 
 const clamp = (lo: number, hi: number, x: number) => Math.min(hi, Math.max(lo, x));
 
+/** A glyph of the digital face, in em (monospaced). */
+export const GLYPH_EM = 0.62;
+/**
+ * The currency sign and the other symbols outside ASCII (₵, ·, ×, −), in em (phone-11). Nobody has
+ * checked that Menlo (iOS) or the Android monospace face draws U+20B5; a phone that falls back to
+ * a proportional face draws it wider than a monospaced glyph. Every width fit counts it as one em,
+ * so the text fits either way.
+ */
+export const SIGN_EM = 1;
+
+/** The width of `text` in em: GLYPH_EM per ASCII character, SIGN_EM for anything else. */
+export function textEms(text: string): number {
+  let em = 0;
+  for (const ch of text) em += ch.charCodeAt(0) < 128 ? GLYPH_EM : SIGN_EM;
+  return Math.max(GLYPH_EM, em);
+}
+
 /** The digital face's line, in em, when the font's own figure is not known (monospace faces run 1.15 to 1.2). */
 export const COUNTER_LINE_EM = 1.2;
 /** Points between the counter's row and the ticker's row. */
@@ -27,7 +44,8 @@ export function bayCounterMetrics(compact: boolean, block: number, fontScale: nu
   const tickerRow = Math.ceil(tickerFont * 1.25);
   const counterRow = block - BAY_ROW_GAP - tickerRow;
   const counterMax = Math.floor(Math.min((compact ? 24 : 28) * scale, counterRow / lineEm));
-  const fit = innerWidth / (Math.max(1, glyphCount) * 0.62);
+  // One of the glyphs is the currency sign, counted as a full em (phone-11).
+  const fit = innerWidth / (Math.max(0, glyphCount - 1) * GLYPH_EM + SIGN_EM);
   const short = fit < 16;
   const counterFont = Math.max(16, Math.min(counterMax, fit));
   return { tickerFont, tickerRow, counterRow, counterFont, short };
@@ -46,14 +64,14 @@ export function bayCounterRows(m: BayCounterMetrics, lineEm = COUNTER_LINE_EM): 
 /** The smallest the ticker's text gets before a shorter form is used. */
 export const TICKER_MIN_FONT = 9;
 
-/** The longest of `texts` that fits `width` at `maxFont` or at least TICKER_MIN_FONT, and its font (0.62 em a glyph). */
+/** The longest of `texts` that fits `width` at `maxFont` or at least TICKER_MIN_FONT, and its font (textEms: 0.62 em a glyph, a sign one em). */
 export function fitTicker(texts: readonly string[], width: number, maxFont: number): { text: string; font: number } {
   for (const t of texts) {
-    const font = Math.min(maxFont, width / (Math.max(1, t.length) * 0.62));
+    const font = Math.min(maxFont, width / textEms(t));
     if (font >= TICKER_MIN_FONT) return { text: t, font: Math.floor(font * 10) / 10 };
   }
   const t = texts[texts.length - 1] ?? '';
   // Nothing fits at the readable size: the shortest form, as large as fits (one line ellipsizes past it).
-  return { text: t, font: Math.floor(Math.min(maxFont, width / (Math.max(1, t.length) * 0.62)) * 10) / 10 };
+  return { text: t, font: Math.floor(Math.min(maxFont, width / textEms(t)) * 10) / 10 };
 }
 

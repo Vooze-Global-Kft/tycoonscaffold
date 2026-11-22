@@ -7,16 +7,56 @@
  *
  * Owned by the "bay" package after the skeleton (docs/design/space-build-plan.md).
  */
+import * as H from '../../engine/haul';
 import type { HaulEvent } from '../../engine/haul';
 import { fx } from '../../services/fx';
 import { modeEvents } from '../../state/modeEvents';
+import { useGame } from '../../state/store';
 
 const quiet = { haptic: false } as const;
+
+/**
+ * hold_tick is thinned (play-24: a mid-game fleet unloads 2 to 3 times a second, a constant ticking):
+ * one tick each time the hold passes into a new tenth of its size, and never more than one every
+ * HOLD_TICK_GAP_MS. A hold that empties (a launch) starts the bands again.
+ */
+const HOLD_TICK_GAP_MS = 2000;
+let holdBand = -1;
+let holdTickAt = -Infinity;
+
+/** The hold's fill (0 to 1) from the game in the store, or null outside a run. */
+function holdFill(): number | null {
+  const { cfg, game } = useGame.getState();
+  const g = game as unknown as H.HaulGame;
+  if (!H.isHaul(cfg) || !g.haul) return null;
+  const F = H.haulParams(cfg, g as H.HaulGame & { haul: H.HaulState }).F;
+  let units = 0;
+  for (const v of Object.values(g.haul.hold)) units += v;
+  return F > 0 ? Math.min(1, units / F) : null;
+}
+
+/** Whether this batch's unloads play a hold tick (at most one per batch). Exported for tests. */
+export function holdTickDue(fill: number | null, nowMs: number): boolean {
+  if (fill === null) return false;
+  const band = Math.floor(fill * 10 + 1e-9);
+  if (band < holdBand) holdBand = band - 1;
+  if (band <= holdBand || nowMs - holdTickAt < HOLD_TICK_GAP_MS) return false;
+  holdBand = band;
+  holdTickAt = nowMs;
+  return true;
+}
+
+/** Tests: forget the bands and the last tick. */
+export function resetHoldTicks(): void {
+  holdBand = -1;
+  holdTickAt = -Infinity;
+}
 /** Whether the freighter now climbing was launched by the player's swipe (it then vibrates at the warp-out). */
 let playerLaunch = false;
 
 /** Plays one batch of haul events. Exported for tests. */
 export function playHaulEvents(events: readonly unknown[]): void {
+  let unloaded = false;
   for (const raw of events) {
     const e = raw as HaulEvent;
     switch (e.type) {
@@ -25,7 +65,7 @@ export function playHaulEvents(events: readonly unknown[]): void {
         if (e.bonanza) fx.play('bonanza', quiet);
         break;
       case 'unload':
-        fx.play('hold_tick', quiet);
+        unloaded = true;
         break;
       case 'depleted':
         fx.play('rock_crumble', quiet);
@@ -70,6 +110,9 @@ export function playHaulEvents(events: readonly unknown[]): void {
         // The rock's life is spent, its pile is still there (errata 19): the dry rock's creak.
         fx.play('rock_dry', quiet);
         break;
+      case 'contractProgress':
+        // Heard as the warp-out's payout it comes with; the strip's bar shows the delivery (Decision 40).
+        break;
       case 'pileFull':
       case 'docked':
       case 'flareCharge':
@@ -86,6 +129,15 @@ export function playHaulEvents(events: readonly unknown[]): void {
         break;
       }
     }
+  }
+  if (unloaded) {
+    let fill: number | null = null;
+    try {
+      fill = holdFill();
+    } catch {
+      fill = null;
+    }
+    if (holdTickDue(fill, Date.now())) fx.play('hold_tick', quiet);
   }
 }
 

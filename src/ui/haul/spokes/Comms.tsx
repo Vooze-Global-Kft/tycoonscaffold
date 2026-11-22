@@ -1,35 +1,30 @@
 /**
- * Comms (spec 4.6, 5.3, 5.4; the shared missions and daily gift in this game's container).
+ * Comms (spec 4.6, 5.3; the shared missions in this game's container).
  *
- * Pinned at the top: the Daily Allotment as a 5-dish relay (art kit DishRelay, errata 38): a dish
- * lights for each day of the current cycle received, today's dish pulses when ready, the amount
- * of each day under its dish, "Receive · 12 DM" or the real time to the next allotment.
+ * Pinned at the top: the day shift (Decision 53, in place of a daily gift ladder): the first 3
+ * contracts met in each shift pay their bonus twice. Three shift lamps (lit while a double is left),
+ * "DAY SHIFT · 2 OF 3 LEFT", and when all are used the real time until the next shift can start
+ * (the calendar day has changed and 16 h have passed since this one began).
  * Below: a radio log with two open channels. Each mission is a transmission: the call-sign plate of
  * whoever sent it (from the line's "CALLSIGN:" prefix and the config's characters), the line in the
  * terminal face, a thin gauge, the reward; a done one shows "Acknowledge" (the shared claim plus
  * ackTransmission: every 4th adds a Derelict Cache). The archive holds the story lines received.
  *
- * Data: meta.missionViews, economy.dailyCalendar / canClaimDaily / dailyReward. Actions:
- * haulActions.acknowledge, receiveAllotment.
+ * Data: meta.missionViews, H.shiftView and haulStats.shift. Action: haulActions.acknowledge.
  */
-import { Canvas, Group, Picture } from '@shopify/react-native-skia';
-import { useEffect } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { cancelAnimation, Easing, FadeIn, FadeOutUp, LinearTransition, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import * as E from '../../../engine/economy';
+import { StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeOutUp, LinearTransition } from 'react-native-reanimated';
 import { formatNumber } from '../../../engine/format';
-import type * as H from '../../../engine/haul';
+import * as H from '../../../engine/haul';
 import * as M from '../../../engine/meta';
 import type { GameState } from '../../../engine/types';
 import { haulActions } from '../../../modes/haul/actions';
 import { formatCountdown, useNow } from '../../kit';
 import { HaulIcon } from '../art/HaulIcon';
-import { relayDishes } from '../art/spokes.draw';
-import { spokePictures } from '../art/Spokes';
 import { useHaul, useHaulCfg } from './spokeData';
 import { Bracket, Gauge, INK, Key, Mono, Rule } from './spokeKit';
 import { SPOKE_STRINGS as S, words } from './spokeStrings';
-import { GUTTER, SpokeFrame } from './SpokeFrame';
+import { SpokeFrame } from './SpokeFrame';
 
 interface Transmission {
   index: number;
@@ -80,7 +75,7 @@ export function Comms() {
   const channels = Array.from({ length: log.slots }, (_, i) => log.tx[i] ?? null);
   return (
     <SpokeFrame title={S.commsTitle} code={S.commsCode}>
-      <Relay cfg={cfg} />
+      <DayShift cfg={cfg} />
       <Rule label={`${S.channel.replace('{n}', '1')} / ${S.channel.replace('{n}', String(log.slots))}`} color={INK.lineDim} />
       {channels.map((t, i) => (
         <Channel key={t ? `tx${t.index}:${t.line}` : `quiet${i}`} cfg={cfg} n={i + 1} t={t} quiet={log.quietToday} />
@@ -109,61 +104,35 @@ export function Comms() {
   );
 }
 
-function Relay({ cfg }: { cfg: H.HaulConfig }) {
-  const { width } = useWindowDimensions();
+function DayShift({ cfg }: { cfg: H.HaulConfig }) {
   const now = useNow(1000);
   const st = useHaul((c, g) => {
-    const game = g as unknown as GameState;
-    const t = Date.now();
-    const cal = E.dailyCalendar(c, game, t);
-    return { days: cal.map((d) => ({ gems: d.gems, claimed: d.claimed, today: d.today })), can: E.canClaimDaily(game, t), next: E.dailyReward(c, game, t).gems, minute: Math.floor(t / 60000) };
-  }, { days: [], can: false, next: 0, minute: 0 });
-  const w = width - 2 * GUTTER - 24;
-  const lit = st.days.filter((d) => d.claimed).length;
-  const pic = spokePictures.dishRelay(w, lit, st.can);
-  const dishes = relayDishes(w);
-  const ph = Math.round(w * 0.3);
-  // Under the picture's day numbers (spokes.draw.ts: number at 13 s, s = w / 300 × 1.6).
-  const amtTop = Math.round(ph / 2 + (w / 300) * 1.6 * 19);
-
-  // Today's dish breathes while the allotment waits (stops when received or the spoke closes).
-  const glow = useSharedValue(0);
-  useEffect(() => {
-    if (st.can) glow.value = withRepeat(withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.sin) }), -1, true);
-    else {
-      cancelAnimation(glow);
-      glow.value = 0;
-    }
-    return () => cancelAnimation(glow);
-  }, [st.can, glow]);
-  const todayIdx = st.days.findIndex((d) => d.today);
-  const ring = useAnimatedStyle(() => ({ opacity: 0.25 + glow.value * 0.75, transform: [{ scale: 0.9 + glow.value * 0.2 }] }));
-  const msLeft = M.msUntilNextDay(now);
-
+    const v = H.shiftView(c, g);
+    return { ...v, startedAt: g.haulStats.shift?.startedAt ?? 0, started: !!g.haulStats.shift };
+  }, { left: 0, of: 0, mult: 2, startedAt: 0, started: false });
+  // The next shift needs a new calendar day and minHours since this one started (haulShift).
+  const nextAt = Math.max(now + M.msUntilNextDay(now), st.startedAt + cfg.haul.shift.minHours * 3600 * 1000);
+  const line = st.left > 0 ? words(cfg, S.shiftLeft, { n: st.left, of: st.of }) : words(cfg, S.shiftDone);
   return (
-    <Bracket label={S.allotment} color={st.can ? INK.line : INK.lineDim} right={<Mono size={10} color={INK.dim}>{`${lit}/${st.days.length}`}</Mono>}>
-      <View style={{ width: w, height: amtTop + 16 }}>
-        <Canvas style={{ width: w, height: ph }}>
-          <Group transform={[{ translateX: w / 2 }, { translateY: ph / 2 }]}>
-            <Picture picture={pic} />
-          </Group>
-        </Canvas>
-        {todayIdx >= 0 && dishes[todayIdx] ? <Animated.View pointerEvents="none" style={[styles.todayRing, { left: w / 2 + dishes[todayIdx].x - 22, top: ph / 2 + dishes[todayIdx].y - 26 }, ring]} /> : null}
-        {st.days.map((d, i) =>
-          dishes[i] ? (
-            <Mono key={i} size={9} weight="700" color={d.claimed ? INK.line : d.today ? INK.text : INK.faint} center style={[styles.dayAmt, { left: w / 2 + dishes[i].x - 24, top: amtTop }]}>
-              {`${d.gems} ${S.dmShort}`}
-            </Mono>
-          ) : null,
-        )}
+    <Bracket label={S.shiftTitle} color={st.left > 0 ? INK.green : INK.lineDim}>
+      <View style={styles.lamps}>
+        {Array.from({ length: st.of }, (_, i) => {
+          const on = i < st.left;
+          return (
+            <View key={i} style={[styles.lamp, { borderColor: on ? INK.green : INK.edge, backgroundColor: on ? 'rgba(61,220,151,0.14)' : 'transparent' }]}>
+              <Mono size={13} weight="700" color={on ? INK.green : INK.faint}>
+                {words(cfg, S.shiftMult, { m: st.mult })}
+              </Mono>
+            </View>
+          );
+        })}
       </View>
-      {st.can ? (
-        <Key solid label={words(cfg, S.receive, { n: formatNumber(st.next) })} onPress={haulActions.receiveAllotment} style={{ marginTop: 6 }} />
-      ) : (
-        <Mono size={11} color={INK.dim} center style={{ marginTop: 6 }}>
-          {words(cfg, S.nextAllotment, { t: formatCountdown(msLeft) })}
-        </Mono>
-      )}
+      <Mono size={13} weight="700" color={st.left > 0 ? INK.text : INK.dim} style={{ marginTop: 8 }}>
+        {line}
+      </Mono>
+      <Mono size={10} color={INK.dim} caps={false} style={{ marginTop: 3 }}>
+        {st.left > 0 || !st.started ? words(cfg, S.shiftRule, { n: st.of, m: st.mult }) : words(cfg, S.shiftNext, { t: formatCountdown(Math.max(0, nextAt - now)) })}
+      </Mono>
     </Bracket>
   );
 }
@@ -237,6 +206,6 @@ const styles = StyleSheet.create({
   reward: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   archRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
   static: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, marginTop: 8, height: 8 },
-  todayRing: { position: 'absolute', width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: INK.line },
-  dayAmt: { position: 'absolute', width: 48 },
+  lamps: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  lamp: { flex: 1, height: 40, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
 });

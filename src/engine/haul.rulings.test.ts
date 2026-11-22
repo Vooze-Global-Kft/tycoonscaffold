@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as H from './haul';
-import { conservationError, freshHaulGame, haulFixtures, haulTestConfig, run, shaped } from './fixtures/haul';
+import { conservationError, contractOf, freshHaulGame, haulFixtures, haulTestConfig, run, shaped } from './fixtures/haul';
 
 type Run = H.HaulGame & { haul: H.HaulState };
 const cfg = haulTestConfig();
@@ -34,24 +34,24 @@ function withBoard(g: Run, board: H.Contract[], active: number | null): Run {
 describe('12, 13, 14: contract multiplier, payout fixed at launch, order at the warp-out', () => {
   it('12: the condition term A(contractAdd) is 0 without a condition and +0.3 with Long Haul', () => {
     const g = shaped(cfg, 3, { slots: [0] });
-    const c: H.Contract = { k: 1, buyer: 'kade', wants: [{ ore: 'iron', units: 4 }], mult: 1.6, launchesLeft: 6 };
+    const c = contractOf(1, 'kade', [['iron', 4]], 1.6, 6, true);
     const p = H.haulParams(cfg, g);
     expect(p.contractAdd).toBe(0);
-    // 4 iron at x1.6, not full: 4 × 1 × 1.6 = 6.4 (a literal T(x) = 1 default would give 10.4).
-    expect(H.payoutFor(p, { iron: 4 }, c, 0).payout).toBeCloseTo(6.4, 12);
+    // 4 iron completing at x1.6, not full: 4 × 1 at the warp-out plus the bonus 4 × 1 × 0.6 = 6.4 in all
+    // (Decision 40: the contract's own units are paid at M' over its life; a literal T(x) = 1 would give 10.4).
+    const r = H.payoutFor(p, { iron: 4 }, c, 0);
+    expect(r.payout + r.bonus).toBeCloseTo(6.4, 12);
     const lh = edit(g, (h) => {
       h.trait = 'longhaul';
     });
     const pl = H.haulParams(cfg, lh);
     expect(pl.contractAdd).toBeCloseTo(0.3, 12);
-    expect(H.payoutFor(pl, { iron: 4 }, c, 0).payout).toBeCloseTo(4 * 1.9, 12);
+    const rl = H.payoutFor(pl, { iron: 4 }, c, 0);
+    expect(rl.payout + rl.bonus).toBeCloseTo(4 * 1.9, 12);
   });
 
-  it('13: picking another contract during the climb changes nothing for this flight', () => {
-    const board: H.Contract[] = [
-      { k: 1, buyer: 'kade', wants: [{ ore: 'iron', units: 4 }], mult: 1.6, launchesLeft: 6 },
-      { k: 2, buyer: 'corvo', wants: [{ ore: 'iron', units: 2 }], mult: 3, launchesLeft: 6 },
-    ];
+  it('13: dropping the taken contract during the climb: the flight is paid at plain prices, no bonus; the new pick stays taken (Decision 40)', () => {
+    const board: H.Contract[] = [contractOf(1, 'kade', [['iron', 4]], 1.6, 6, true), contractOf(2, 'corvo', [['iron', 2]], 3, 12)];
     let g = withBoard(
       edit(shaped(quiet, 3, { slots: [0] }), (h) => {
         h.hold = { iron: 5 };
@@ -61,28 +61,26 @@ describe('12, 13, 14: contract multiplier, payout fixed at launch, order at the 
       0,
     );
     g = H.launch(quiet, g) as Run;
-    const stored = g.haul.freighter.payout;
     expect(g.haul.freighter.contract).toBe(1);
     expect(g.haul.freighter.met).toBe(true);
-    expect(stored).toBeCloseTo(4 * 1.6 + 1 * 1.1, 12);
+    expect(g.haul.freighter.payout).toBeCloseTo(4 + 1 * 1.1, 12);
+    expect(g.haul.freighter.bonus).toBeCloseTo(4 * 0.6, 12);
+    expect(g.haul.freighter.plain).toBeCloseTo(5, 12);
     g = H.pickContract(quiet, g, 1) as Run;
     const cash = g.cash;
     const ev: H.HaulEvent[] = [];
     g = H.advanceHaul(quiet, g, 3, NOW, ev) as Run;
-    expect(g.cash - cash).toBeCloseTo(stored, 12);
-    const met = ev.find((e) => e.type === 'contractMet');
-    expect(met && met.type === 'contractMet' && met.contract.k).toBe(1);
-    // The contract picked during the climb stays active for the next launch.
+    expect(g.cash - cash).toBeCloseTo(5, 12);
+    expect(ev.some((e) => e.type === 'contractMet')).toBe(false);
+    expect(ev.find((e) => e.type === 'warp')).toMatchObject({ met: false, bonus: 0 });
+    // The flight was not loaded for the new pick: it neither counts toward it nor uses one of its launches.
     expect(g.haul.contracts.active).toBe(1);
-    expect(g.haul.contracts.board[1].k).toBe(2);
+    expect(g.haul.contracts.board[1]).toMatchObject({ k: 2, taken: true, launchesLeft: quiet.haul.contracts.launches });
+    expect(g.haul.contracts.board[1].wants[0].got).toBe(0);
   });
 
-  it('14: met on its last launch it is met and replaced, not lapsed; the others lose one; replacements start full', () => {
-    const board: H.Contract[] = [
-      { k: 1, buyer: 'kade', wants: [{ ore: 'iron', units: 3 }], mult: 1.6, launchesLeft: 1 },
-      { k: 2, buyer: 'corvo', wants: [{ ore: 'copper', units: 3 }], mult: 1.9, launchesLeft: 1 },
-      { k: 3, buyer: 'oriel', wants: [{ ore: 'copper', units: 3 }], mult: 1.9, launchesLeft: 4 },
-    ];
+  it('14: met on its last launch it is met and replaced, not lapsed; offers lose one and at 0 are replaced silently', () => {
+    const board: H.Contract[] = [contractOf(1, 'kade', [['iron', 3]], 1.6, 1, true), contractOf(2, 'corvo', [['copper', 3]], 1.9, 1), contractOf(3, 'oriel', [['copper', 3]], 1.9, 4)];
     let g = withBoard(
       edit(shaped(quiet, 3, { slots: [0] }), (h) => {
         h.hold = { iron: 4 };
@@ -95,12 +93,10 @@ describe('12, 13, 14: contract multiplier, payout fixed at launch, order at the 
     const ev: H.HaulEvent[] = [];
     g = H.advanceHaul(quiet, g, 3, NOW, ev) as Run;
     const types = ev.map((e) => e.type).filter((t) => t.startsWith('contract') || t === 'warp');
-    expect(types).toEqual(['warp', 'contractMet', 'contractNew', 'contractLapsed', 'contractNew']);
-    const lapsed = ev.filter((e) => e.type === 'contractLapsed');
-    expect(lapsed.map((e) => (e.type === 'contractLapsed' ? e.contract.k : -1))).toEqual([2]);
+    expect(types).toEqual(['warp', 'contractProgress', 'contractMet', 'contractNew', 'contractNew']);
     const b = g.haul.contracts.board;
-    expect(b[0].launchesLeft).toBe(quiet.haul.contracts.lifetime);
-    expect(b[1].launchesLeft).toBe(quiet.haul.contracts.lifetime);
+    expect(b[0]).toMatchObject({ k: 50, taken: false, launchesLeft: quiet.haul.contracts.offerLaunches });
+    expect(b[1]).toMatchObject({ k: 51, taken: false, launchesLeft: quiet.haul.contracts.offerLaunches });
     expect(b[2].launchesLeft).toBe(3);
     expect(g.haul.contracts.active).toBeNull();
     expect(g.stats.contractsMet).toBe(1);
@@ -335,17 +331,19 @@ describe('36: offline freighter, short and long gaps', () => {
         h.hold = { iron: 5 };
         h.counters.drilled += 5;
       }),
-      [{ k: 1, buyer: 'kade', wants: [{ ore: 'iron', units: 4 }], mult: 1.6, launchesLeft: 6 }, { k: 2, buyer: 'corvo', wants: [{ ore: 'iron', units: 9 }], mult: 1.6, launchesLeft: 6 }],
+      [contractOf(1, 'kade', [['iron', 4]], 1.6, 6, true), contractOf(2, 'corvo', [['iron', 9]], 1.6, 6)],
       0,
     );
     g = H.launch(quiet, g) as Run;
-    const stored = g.haul.freighter.payout;
+    const stored = g.haul.freighter.payout + (g.haul.freighter.bonus ?? 0);
+    expect(g.haul.freighter.bonus).toBeGreaterThan(0);
     const r = H.fastForward(quiet, g, 3600, 0.45);
     const out = r.game as Run;
     expect(r.report.inFlight).toBeCloseTo(stored, 12);
     expect(out.cash - g.cash).toBeCloseTo(stored, 12);
     expect(out.stats.launches - g.stats.launches).toBe(1 + r.report.launches);
-    // The warp-out met contract 1 and replaced it; the offline shipping counted no contract down.
+    // The warp-out met contract 1 and replaced it; the offline shipping counted no contract down
+    // (the offer lost one launch at the in-flight warp-out only).
     expect(out.haul.contracts.board[0].k).not.toBe(1);
     expect(out.haul.contracts.board[1].launchesLeft).toBe(5);
     expect(docked(out)).toBe(true);

@@ -11,7 +11,7 @@
 import { hashString } from '../rng';
 import { placeRock } from './create';
 import { EPS, MAX_CASH, haulParams, holdTotal, rngMix4, roll, sumUnits, T, starLevel } from './params';
-import { activeContract, contractMet, drawContract, loadCargo, openBoard, payoutFor } from './trade';
+import { activeContract, drawContract, loadCargo, openBoard, payoutFor, shiftDoubles, wantLeft } from './trade';
 import type { HaulConfig, HaulEvent, HaulGame, HaulParams, HaulState, SeamState } from './types';
 
 /** Longest step of the rate model. */
@@ -157,36 +157,46 @@ export function seamDuration(cfg: HaulConfig, g: HaulGame): number {
 
 /**
  * Launch: loads the cargo (section 2.6), prices it, moves Contract Keeper's bonus, starts the climb.
- * The freighter stores the contract the cargo was loaded for, `met`, the away time and the payout
- * (with that contract, the current keeper and the full bonus); the warp-out pays exactly that
- * (errata 13). Launches are counted at the warp-out (errata 23).
+ * The freighter stores the taken contract the cargo was loaded for, what of the cargo counts toward
+ * it (`toward`), whether this launch completes it (`met`, Decision 40), the away time, the payout
+ * (with the current keeper and the full bonus), the payout without the delivery fee (`plain`) and
+ * the contract bonus; the warp-out pays exactly that (errata 13). Launches are counted at the
+ * warp-out (errata 23).
  */
 export function doLaunch(cfg: HaulConfig, d: Draft, p: HaulParams, auto: boolean): void {
   const h = d.h;
   const contract = activeContract(h);
-  const { cargo, hold } = loadCargo(cfg, p, h.hold, contract);
-  const { payout, met } = payoutFor(p, cargo, contract, h.keeper);
+  const taken = contract && contract.taken ? contract : null;
+  const { cargo, hold } = loadCargo(cfg, p, h.hold, taken);
+  const { payout, met, plain, bonus, toward } = payoutFor(p, cargo, taken, h.keeper);
   h.hold = hold;
   h.keeper = met && p.keeperValue > 0 ? p.keeperValue : 0;
-  h.freighter = { ...h.freighter, phase: 'climb', t: p.climb, cargo, payout, met, away: met ? p.awayMet : p.away, contract: contract ? contract.k : null };
+  h.freighter = { ...h.freighter, phase: 'climb', t: p.climb, cargo, payout, met, away: met ? p.awayMet : p.away, contract: taken ? taken.k : null, toward, bonus, plain };
   d.events?.push({ type: 'launch', cargo: { ...cargo }, auto });
 }
 
 /**
- * The warp-out (errata 14), in order: 1. add the stored payout (and count the launch: errata 23);
- * 2. if met, the contract the cargo was loaded for is met and replaced in place (`active = null` if
- * it was the active one); 3. every other contract loses one launch, and any at 0 lapses and is
- * replaced in place; 4. replacements start at the full lifetime. Then the contract unlock check.
+ * The warp-out (errata 14, Decision 40), in order: 1. count the launch; 2. if the cargo was loaded
+ * for the contract that is still taken, its `toward` units are added to the wants' `got`
+ * (`contractProgress`); when that completes it, the contract bonus is paid (twice in the day shift,
+ * Decision 53), `contractMet`, it is replaced in place by the next from the stream and `active =
+ * null`; otherwise it loses a launch and at 0 lapses (`contractLapsed`, nothing taken back) and is
+ * replaced. A cargo loaded for a contract dropped in flight is paid without the delivery fee. A
+ * warp-out whose cargo was loaded before the contract was taken does not count for or against it.
+ * 3. Every offer loses one launch of its offer life and at 0 is replaced silently (`contractNew`).
+ * Then the contract unlock check. The `warp` event carries the whole payout, the bonus included.
  */
 export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
   const h = d.h;
   const f = h.freighter;
-  d.earned += f.payout;
   h.counters.shipped += sumUnits(f.cargo);
   h.counters.launches += 1;
   d.stats.launches += 1;
-  d.events?.push({ type: 'warp', payout: f.payout, met: f.met, cargo: { ...f.cargo } });
   const C = h.contracts;
+  let pay = f.payout;
+  let bonus = 0;
+  let met = false;
+  const later: HaulEvent[] = [];
   if (C.unlocked) {
     const fresh = new Set<number>();
     const replace = (i: number) => {
@@ -194,39 +204,67 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
       C.board[i] = next.contract;
       C.next = next.next;
       fresh.add(i);
-      d.events?.push({ type: 'contractNew', contract: next.contract, index: i });
+      later.push({ type: 'contractNew', contract: next.contract, index: i });
     };
-    if (f.met && f.contract !== null) {
-      const i = C.board.findIndex((c) => c.k === f.contract);
-      if (i >= 0) {
-        const done = C.board[i];
+    const ti = C.active !== null && C.board[C.active]?.taken ? C.active : -1;
+    const c = ti >= 0 ? C.board[ti] : null;
+    if (f.contract !== null && (!c || c.k !== f.contract)) pay = f.plain ?? f.payout;
+    if (c && f.contract === c.k) {
+      const toward = f.toward ?? {};
+      const added: { ore: string; units: number }[] = [];
+      for (const w of c.wants) {
+        const n = Math.min(toward[w.ore] ?? 0, Math.max(0, w.units - (w.got ?? 0)));
+        if (n > 0) {
+          w.got = (w.got ?? 0) + n;
+          added.push({ ore: w.ore, units: n });
+        }
+      }
+      if (added.length) later.push({ type: 'contractProgress', contract: { ...c, wants: c.wants.map((w) => ({ ...w })) }, added });
+      if (c.wants.every((w) => wantLeft(w) === 0)) {
+        const shift = shiftDoubles(cfg, d.haulStats);
+        bonus = (f.bonus ?? 0) * (shift ? cfg.haul.shift.mult : 1);
+        if (shift && d.haulStats.shift) d.haulStats.shift = { ...d.haulStats.shift, met: d.haulStats.shift.met + 1 };
+        met = true;
         h.counters.contractsMet += 1;
         d.stats.contractsMet += 1;
-        d.events?.push({ type: 'contractMet', contract: done });
-        if (C.active === i) C.active = null;
+        later.push({ type: 'contractMet', contract: c, bonus, shift });
+        C.active = null;
         if (d.stats.contractsMet % cfg.haul.pods.contractsEvery === 0) grantPod(cfg, d, cfg.haul.pods.scrap, 'contracts');
-        replace(i);
+        replace(ti);
+      } else {
+        // A cargo priced as completing that did not (rounding at the edge): paid without the fee.
+        if (f.met) pay = f.plain ?? f.payout;
+        c.launchesLeft -= 1;
+        if (c.launchesLeft <= 0) {
+          C.active = null;
+          later.push({ type: 'contractLapsed', contract: c, wasActive: true });
+          replace(ti);
+        }
       }
     }
     for (let i = 0; i < C.board.length; i++) {
       if (fresh.has(i)) continue;
-      const c = C.board[i];
-      c.launchesLeft -= 1;
-      if (c.launchesLeft > 0) continue;
-      const wasActive = C.active === i;
-      if (wasActive) C.active = null;
-      d.events?.push({ type: 'contractLapsed', contract: c, wasActive });
+      const o = C.board[i];
+      if (o.taken) continue;
+      o.launchesLeft -= 1;
+      if (o.launchesLeft > 0) continue;
       replace(i);
     }
   } else if (d.stats.launches >= cfg.haul.contracts.unlockLaunches && h.clock >= cfg.haul.contracts.unlockClock - EPS) {
     h.contracts = openBoard(cfg, h, p.F, p);
     d.haulStats.contractsSeen = true;
-    d.events?.push({ type: 'contractsUnlocked' });
+    later.push({ type: 'contractsUnlocked' });
   }
-  h.freighter = { ...f, phase: 'away', t: f.away, cargo: {}, payout: 0 };
+  d.earned += pay + bonus;
+  d.events?.push({ type: 'warp', payout: pay + bonus, met, cargo: { ...f.cargo }, bonus });
+  for (const e of later) d.events?.push(e);
+  h.freighter = { ...f, phase: 'away', t: f.away, cargo: {}, payout: 0, toward: {}, bonus: 0, plain: 0 };
 }
 
-/** The autopilot's launch rule (section 2.4 step 5). */
+/**
+ * The autopilot's launch rule (section 2.4 step 5, Decision 40): `full` launches at a full hold;
+ * `contract` also launches when the hold already holds everything the taken contract still needs.
+ */
 export function autopilotWants(p: HaulParams, h: HaulState): boolean {
   if (!h.autopilot.online || h.freighter.phase !== 'docked') return false;
   const total = holdTotal(h);
@@ -234,7 +272,8 @@ export function autopilotWants(p: HaulParams, h: HaulState): boolean {
   if (total >= p.F - EPS) return true;
   if (h.autopilot.policy !== 'contract') return false;
   const c = activeContract(h);
-  return !!c && contractMet(h.hold, c);
+  // Whole units: the autopilot waits for the last half unit rather than rely on the tolerance.
+  return !!c && c.taken && c.wants.every((w) => (h.hold[w.ore] ?? 0) >= w.units - (w.got ?? 0) - EPS);
 }
 
 function stepBound(p: HaulParams, h: HaulState, flareMax: number): number {
@@ -503,7 +542,9 @@ export function updateMarks(cfg: HaulConfig, d: Draft, p: HaulParams): void {
   } else m.holdFullSince = null;
   m.noContractSince = h.contracts.unlocked && h.contracts.active === null ? (m.noContractSince ?? h.clock) : null;
   m.flareReadySince = h.flare.charges > 0 ? (m.flareReadySince ?? h.clock) : null;
-  if (!h.flags.tutorialDone && (h.galaxy > 0 || h.autopilot.online || ((h.slots[1]?.claimed ?? false) && h.slots[1].haulers > 0))) {
+  // Decision 44: the guided steps end with the sixth (a rig upgraded once both rocks are worked).
+  const bothWorked = (h.slots[1]?.claimed ?? false) && h.slots[1].haulers > 0;
+  if (!h.flags.tutorialDone && (h.galaxy > 0 || h.autopilot.online || (bothWorked && h.slots.some((x) => x.claimed && x.rigLevel > 1)))) {
     h.flags.tutorialDone = true;
     d.events?.push({ type: 'tutorialDone' });
   }

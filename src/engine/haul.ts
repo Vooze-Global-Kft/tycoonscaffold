@@ -52,7 +52,23 @@ export {
   type Rock,
 } from './haul/params';
 export { EMPTY_LIFETIME, emptyHaulStats, claimedRingMax, placeRock, runStartCash, headStartSlots, createHaul, withHaulFields, reconcileHaul } from './haul/create';
-export { contractMet, activeContract, loadCargo, payoutFor, contractGain, contractMissing, claimedRings, contractAt, openBoard, contractStation, type ContractStation } from './haul/trade';
+export {
+  UNIT_TOL,
+  wantLeft,
+  towardContract,
+  contractMet,
+  activeContract,
+  loadCargo,
+  payoutFor,
+  contractBonus,
+  contractViews,
+  shiftDoubles,
+  claimedRings,
+  contractAt,
+  openBoard,
+  contractStation,
+  type ContractStation,
+} from './haul/trade';
 export { STEP, MAX_TICK, advanceHaul, autopilotWants } from './haul/tick';
 export {
   assignDrone,
@@ -70,6 +86,8 @@ export {
   buyAutopilot,
   setPolicy,
   pickContract,
+  haulShift,
+  shiftView,
   canFlare,
   useFlare,
   canAdFlare,
@@ -79,7 +97,7 @@ export {
   markHintShown,
   grantHangarDrones,
 } from './haul/actions';
-export { slotRates, freighterRate, shareFreighter, activeRate, steadyRate, haulIncome, fastForward, haulOffline, type SlotRate } from './haul/rates';
+export { slotRates, freighterRate, shareFreighter, activeRate, steadyRate, haulIncome, routeGain, fastForward, haulOffline, type SlotRate } from './haul/rates';
 export { totalCores, coresAvailable, coresInHand, coresAfterJump, starNodeLevel, starNodeCost, starMapView, buyStarNode, offersFor, galaxyName, jumpPreview, confirmJump, startGalaxy, prestigeHaul } from './haul/jump';
 export { IDLE_HINT_SECONDS, HOLD_HINT_SECONDS, CONTRACT_HINT_SECONDS, FLARE_HINT_SECONDS, LIMITED_HINTS, bestSlotForDrone, busiestRoute, hintsFor, nextHint, hintKey } from './haul/hints';
 

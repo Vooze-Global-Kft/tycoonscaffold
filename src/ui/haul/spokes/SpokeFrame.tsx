@@ -7,6 +7,8 @@
  * under a spoke (the world package reads useHaulUi's `spoke`).
  *
  * `onBack` null hides the back key (the Star Map while a confirmed Jump waits for its condition).
+ * `footer` stays pinned under the scrolling body, above the bottom safe area (the Star Map's Jump
+ * key, Decision 41: in view without scrolling at every size).
  */
 import { Canvas, Picture, Skia, type SkPicture } from '@shopify/react-native-skia';
 import { useMemo, type ReactNode } from 'react';
@@ -65,6 +67,7 @@ export function SpokeFrame({
   children,
   scroll = true,
   onBack,
+  footer,
 }: {
   title: string;
   code?: string;
@@ -72,6 +75,7 @@ export function SpokeFrame({
   children?: ReactNode;
   scroll?: boolean;
   onBack?: (() => void) | null;
+  footer?: ReactNode;
 }) {
   useOverlay(true);
   const insets = useSafeAreaInsets();
@@ -108,12 +112,13 @@ export function SpokeFrame({
         {right}
       </View>
       {scroll ? (
-        <ScrollView style={styles.body} contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: 12, paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.body} contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: 12, paddingBottom: footer ? 16 : insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
           {children}
         </ScrollView>
       ) : (
-        <View style={[styles.body, { paddingHorizontal: GUTTER, paddingTop: 10, paddingBottom: insets.bottom + 10 }]}>{children}</View>
+        <View style={[styles.body, { paddingHorizontal: GUTTER, paddingTop: 10, paddingBottom: footer ? 10 : insets.bottom + 10 }]}>{children}</View>
       )}
+      {footer ? <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>{footer}</View> : null}
     </View>
   );
 }
@@ -126,4 +131,5 @@ const styles = StyleSheet.create({
   chevron: { width: 11, height: 11, borderLeftWidth: 2, borderBottomWidth: 2, borderColor: INK.line, transform: [{ translateX: 2 }, { rotate: '45deg' }] },
   titles: { flex: 1 },
   body: { flex: 1 },
+  footer: { paddingHorizontal: GUTTER, paddingTop: 10, borderTopWidth: 1, borderTopColor: INK.edge, backgroundColor: 'rgba(6,10,23,0.94)' },
 });

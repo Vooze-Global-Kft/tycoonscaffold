@@ -5,6 +5,7 @@
  */
 import { equip } from '../loadout';
 import { affordable, autopilotCost, droneCapFor, capacityCost, claimCost, droneCost, EPS, engineCost, freighterCost, holdTotal, rigCost, ringOf, slotTable } from './params';
+import { drawContract } from './trade';
 import { commit, doLaunch, draftOf, draftParams, dropGuest, grantPod, landOnSeam, seamAt, seamDuration, updateMarks, warmUp, type Draft } from './tick';
 import type { AutopilotPolicy, HaulConfig, HaulEvent, HaulGame, HaulState } from './types';
 
@@ -187,14 +188,60 @@ export function setPolicy(cfg: HaulConfig, g: HaulGame, policy: AutopilotPolicy)
   return finish(cfg, d);
 }
 
-/** Pick the active contract by board index (null clears the pick). Nothing else ever picks, except contract 0 at the unlock. */
-export function pickContract(cfg: HaulConfig, g: HaulGame, index: number | null): HaulGame {
+/**
+ * Take the contract at board `index` (Decision 40), or none (`null`). At most one contract is taken:
+ * picking another offer, or none, while one is taken DROPS the taken one (it leaves the board, the
+ * next from the stream takes its place, `contractLapsed {wasActive: true, dropped: true}`); the
+ * screens ask for a second tap before a drop that loses progress. The picked offer gets
+ * `launches` launches. Picking the taken one again changes nothing. Nothing else ever picks,
+ * except contract 0 at the unlock.
+ */
+export function pickContract(cfg: HaulConfig, g: HaulGame, index: number | null, events?: HaulEvent[]): HaulGame {
   if (!run(g) || !g.haul.contracts.unlocked) return g;
   if (index !== null && !(Number.isInteger(index) && index >= 0 && index < g.haul.contracts.board.length)) return g;
-  if (g.haul.contracts.active === index) return g;
-  const d = draftOf(g);
-  d.h.contracts.active = index;
+  const cur = g.haul.contracts.active;
+  const curTaken = cur !== null && !!g.haul.contracts.board[cur]?.taken;
+  if (cur === index && (index === null || curTaken)) return g;
+  if (index === null && !curTaken && cur === null) return g;
+  const d = draftOf(g, events);
+  const C = d.h.contracts;
+  if (cur !== null && C.board[cur]?.taken && cur !== index) {
+    const dropped = C.board[cur];
+    d.events?.push({ type: 'contractLapsed', contract: dropped, wasActive: true, dropped: true });
+    const next = drawContract(cfg, d.h, draftParams(cfg, d).F, draftParams(cfg, d));
+    C.board[cur] = next.contract;
+    C.next = next.next;
+    d.events?.push({ type: 'contractNew', contract: next.contract, index: cur });
+  }
+  C.active = null;
+  if (index !== null) {
+    const c = C.board[index];
+    c.taken = true;
+    c.launchesLeft = cfg.haul.contracts.launches;
+    c.wants = c.wants.map((w) => ({ ...w, got: 0 }));
+    C.active = index;
+  }
   return finish(cfg, d);
+}
+
+/**
+ * Starts a new day shift when one is due (Decision 53): the calendar day `day` (the player's local
+ * date, e.g. "2026-11-22") differs from the shift's and at least `haul.shift.minHours` hours passed
+ * since it started at wall time `now` (ms). The first call starts the first shift. The store calls
+ * this when the game opens, resumes and at each new day; returns the same game when nothing changes.
+ */
+export function haulShift(cfg: HaulConfig, g: HaulGame, now: number, day: string): HaulGame {
+  if (!Number.isFinite(now) || typeof day !== 'string' || !day) return g;
+  const s = g.haulStats.shift;
+  if (s && (s.day === day || now - s.startedAt < cfg.haul.shift.minHours * 3600 * 1000)) return g;
+  return { ...g, haulStats: { ...g.haulStats, shift: { day, startedAt: now, met: 0 } } };
+}
+
+/** What the Comms panel shows for the day shift: contracts left that pay twice, of how many (Decision 53). */
+export function shiftView(cfg: HaulConfig, g: HaulGame): { left: number; of: number; mult: number } {
+  const of = cfg.haul.shift.contracts;
+  const met = g.haulStats.shift?.met ?? of;
+  return { left: Math.max(0, of - met), of, mult: cfg.haul.shift.mult };
 }
 
 /** True when a flare can go onto `slot` now: a charge, a claimed rock with life left (errata 34) and no seam, no flare seam running. */

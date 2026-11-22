@@ -9,12 +9,22 @@
  *   station ring's turn, the route dash phases, blinks and pulses, the freighter's flight, the warp
  *   flash and the flare's trail.
  * The callback stops while a full-screen spoke covers the field (`active`), so nothing invisible
- * animates. Code in here runs on the UI thread: it calls only worklets and Skia host methods.
+ * animates. It redraws at 60 frames a second only while a finger drags on the map, the freighter
+ * climbs or lands, or the warp flash or the flare plays, and at 30 otherwise (lead's decision 50):
+ * a skipped frame writes nothing, so no canvas replays.
+ * It is also the one clock of the freighter's flight (lead's decision 51): it writes
+ * `flightMode` / `flightP` (../hud/flight.ts), which both this canvas and the bay's launch track
+ * draw from. The progress follows the run clock without jumps: at each new frame table it aims to
+ * reach the end of the phase when the rules do, and it keeps moving through a stall of the
+ * JavaScript thread (both halves together), resynchronising after a pause.
+ * Code in here runs on the UI thread: it calls only worklets and Skia host methods.
  */
 import { Skia, notifyChange, type SkColor, type SkHostRect, type SkRSXform } from '@shopify/react-native-skia';
 import { useCallback, useEffect, useMemo } from 'react';
 import { makeMutable, useFrameCallback, useSharedValue, type FrameInfo, type SharedValue } from 'react-native-reanimated';
-import { climbY, landAt } from '../hud/flight';
+import { ORE_IDS } from '../art/palette';
+import { DRAG_NONE, dragLine } from '../gestures/fieldInput';
+import { climbY, flightMode, flightP, landAt } from '../hud/flight';
 import { ATLAS_A, ATLAS_B, MAX_DRAWN_PER_ROUTE, type FrameTable } from './model';
 
 const TAU = Math.PI * 2;
@@ -22,14 +32,27 @@ const TAU = Math.PI * 2;
 const FLASH = 0.5;
 /** Where a hidden picture goes: a Group's opacity does not hide a Picture on the web unless the group is a layer. */
 const OFF = [{ translateX: -9999 }, { translateY: -9999 }];
+/** Least time between two drawn frames: 60 a second while something moves fast, 30 otherwise (a 120 Hz screen included). */
+const FAST_MS = 15;
+const SLOW_MS = 30;
+/** A gap longer than this (a pause, a spoke) resynchronises the freighter's flight with the rules. */
+const RESYNC_MS = 250;
+
+/** Sprites one ore needs per frame, resolved once per atlas (no string work on the UI thread). */
+export interface OreSprites {
+  loaded: number[] | undefined;
+  empty: number[] | undefined;
+  chunk: (number[] | undefined)[];
+  shard: (number[] | undefined)[];
+}
 
 export interface FieldGeometry {
-  /** Freighter pad centre (in the bay), the height it climbs to (off the top of the field), its scales (../hud/flight.ts). */
+  /** Freighter pad centre (in the bay), the height it climbs to (off the top of the field), its scales (../hud/flight.ts): loaded, and empty at rest (the table's `cargo` picks the landing's end scale). */
   padX: number;
   padY: number;
   topY: number;
   loaded: number;
-  rest: number;
+  empty: number;
   /** Climb and landing times (spec 2.3). */
   climb: number;
   land: number;
@@ -39,10 +62,10 @@ export interface FieldGeometry {
   sr: number;
   /** The scanner dish's rest angle in degrees (art partRestAngle('veinsense')). */
   dishRest: number;
-  /** Screen height (the starfield tiles vertically). */
+  /** Screen height (the starfield is mirrored vertically: its period is two screens). */
   height: number;
-  /** Dash periods of the route ores, in ORE_IDS order. */
-  periods: number[];
+  /** Dash periods of the route ores, in ORE_IDS order (a module constant: a stable identity). */
+  periods: readonly number[];
 }
 
 export interface FieldAnim {
@@ -52,10 +75,8 @@ export interface FieldAnim {
   xfB: SharedValue<SkRSXform[]>;
   rcB: SharedValue<SkHostRect[]>;
   colB: SharedValue<SkColor[]>;
-  starY: SharedValue<{ translateY: number }[]>;
-  /** The starfield's mirrored copy above the first (the kit's starfield does not tile; a mirror meets it without a seam). */
-  starY2: SharedValue<({ translateY: number } | { scaleY: number })[]>;
-  starY3: SharedValue<{ translateY: number }[]>;
+  /** The starfield's drift in points (0 to two screens): the image shader mirrors it vertically. */
+  starY: SharedValue<number>;
   ringTurn: SharedValue<{ rotate: number }[]>;
   /** The scanner dish's sweep: ±30° round its rest angle over 6 s. */
   dishTurn: SharedValue<{ rotate: number }[]>;
@@ -72,8 +93,6 @@ export interface FieldAnim {
   flashOn: SharedValue<number>;
   flare: SharedValue<any[]>;
   flareOn: SharedValue<number>;
-  /** Mean frame interval and sprite count, for the frame-time check. */
-  stats: SharedValue<{ ms: number; sprites: number }>;
 }
 
 function hide(xf: SkRSXform) {
@@ -112,6 +131,18 @@ const smooth = (t: number) => {
 };
 
 export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<string, number[]>, density: number, geo: FieldGeometry, active: boolean): FieldAnim {
+  // Per-ore sprite lists and the flame frames, resolved on the JavaScript thread once per atlas.
+  const ores = useMemo<OreSprites[]>(
+    () =>
+      ORE_IDS.map((o) => ({
+        loaded: sprites[`drone-${o}`],
+        empty: sprites[`drone-${o}-empty`],
+        chunk: [0, 1, 2, 3].map((j) => sprites[`chunk-${o}-${j}`]),
+        shard: [0, 1, 2, 3, 4, 5, 6, 7].map((j) => sprites[`shard-${o}-${j}`]),
+      })),
+    [sprites],
+  );
+  const flames = useMemo(() => [sprites['flame-0'], sprites['flame-1'], sprites['flame-2']], [sprites]);
   const bufs = useMemo(
     () => ({
       xfA: makeMutable(Array.from({ length: ATLAS_A }, () => Skia.RSXform(0, 0, -9999, -9999))),
@@ -123,9 +154,7 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
     }),
     [],
   );
-  const starY = useSharedValue([{ translateY: 0 }]);
-  const starY2 = useSharedValue<({ translateY: number } | { scaleY: number })[]>([{ translateY: 0 }, { scaleY: -1 }]);
-  const starY3 = useSharedValue([{ translateY: -2 * geo.height }]);
+  const starY = useSharedValue(0);
   const ringTurn = useSharedValue([{ rotate: 0 }]);
   const dishTurn = useSharedValue([{ rotate: (geo.dishRest * Math.PI) / 180 }]);
   const p0 = useSharedValue(0);
@@ -148,7 +177,6 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
   const flashOn = useSharedValue(0);
   const flare = useSharedValue<any[]>(OFF);
   const flareOn = useSharedValue(0);
-  const stats = useSharedValue({ ms: 16.7, sprites: 0 });
   // Clock interpolation state.
   const seen = useSharedValue(-1);
   const baseTs = useSharedValue(0);
@@ -156,18 +184,22 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
   const offset = useSharedValue(0);
   const lastClock = useSharedValue(0);
   const lastShown = useSharedValue(0);
-  const meanMs = useSharedValue(16.7);
+  // Frame pacing and the freighter's one clock: the phase it follows, its speed (progress per ms), the last frame's time.
+  const lastDraw = useSharedValue(-1e9);
+  const fPhase = useSharedValue(-1);
+  const fVel = useSharedValue(0);
+  const fTs = useSharedValue(0);
 
   const { xfA, rcA, colA, xfB, rcB, colB } = bufs;
-  const { padX, padY, topY, loaded: shipLoaded, rest: shipRest, climb: CLIMB, land: LAND, dishRest, sx, sy, sr, height, periods } = geo;
+  const { padX, padY, topY, loaded: shipLoaded, empty: shipEmpty, climb: CLIMB, land: LAND, dishRest, sx, sy, sr, height, periods } = geo;
 
   // One stable worklet (useCallback): a new closure per render would re-register the frame callback.
   const onFrame = useCallback((info: FrameInfo) => {
     'worklet';
     const ts = info.timestamp;
-    if (info.timeSincePreviousFrame !== null && info.timeSincePreviousFrame > 0) meanMs.value = meanMs.value * 0.95 + Math.min(250, info.timeSincePreviousFrame) * 0.05;
     const f = frame.value;
     // Run clock between ticks: base + elapsed x measured rate, any jump at a new tick eased out.
+    let fresh = false;
     if (f.version !== seen.value) {
       const dts = (ts - baseTs.value) / 1000;
       const dc = f.clock - lastClock.value;
@@ -176,18 +208,47 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
       seen.value = f.version;
       baseTs.value = ts;
       lastClock.value = f.clock;
+      fresh = true;
     }
     const el = Math.min(0.5, (ts - baseTs.value) / 1000);
     const clock = f.clock + el * rate.value + offset.value * Math.exp(-el / 0.12);
     lastShown.value = clock;
+
+    // The freighter's one clock (decision 51), advanced every frame, drawn or not.
+    const flying = f.phase === 1 || f.phase === 3;
+    if (flying) {
+      const dur = f.phase === 1 ? CLIMB : LAND;
+      const gap = ts - fTs.value;
+      // The rules' progress now: the table's, plus the run time since it came.
+      const ruled = Math.min(1, Math.max(0, (dur - f.phaseT + el * rate.value) / dur));
+      if (fPhase.value !== f.phase || gap > RESYNC_MS) {
+        fPhase.value = f.phase;
+        flightMode.value = f.phase;
+        flightP.value = ruled;
+      } else flightP.value = Math.min(1, flightP.value + fVel.value * gap);
+      if (fresh || fVel.value === 0) {
+        // Aim to reach the end of the phase when the rules do (wall time left = run time left / rate): no jump, no drift.
+        const leftMs = (Math.max(0, f.phaseT) / Math.max(0.05, rate.value)) * 1000;
+        fVel.value = leftMs > 1 ? (1 - flightP.value) / leftMs : 0;
+      }
+    } else if (fPhase.value !== f.phase) {
+      fPhase.value = f.phase;
+      fVel.value = 0;
+      flightMode.value = f.phase === 2 ? 1 : 0;
+      flightP.value = f.phase === 2 ? 1 : 0;
+    }
+    fTs.value = ts;
+
+    // Frame pacing (decision 50): skip this frame unless enough time has passed.
+    const fx = clock - f.warpAt < FLASH || clock - f.flareAt < 0.6;
+    const fast = flying || fx || dragLine.value.kind !== DRAG_NONE;
+    if (ts - lastDraw.value < (fast ? FAST_MS : SLOW_MS)) return;
+    lastDraw.value = ts;
     const t = ts / 1000;
 
     // Starfield drift (3 pt/s), station ring (one turn per 40 s), route dashes (14 pt/s toward the station).
-    // Period of two screens: the field, its mirror above, the field again above that.
-    const sy0 = (t * 3) % (2 * height);
-    starY.value = [{ translateY: sy0 }];
-    starY2.value = [{ translateY: sy0 }, { scaleY: -1 }];
-    starY3.value = [{ translateY: sy0 - 2 * height }];
+    // Period of two screens: the image shader mirrors the starfield vertically.
+    starY.value = (t * 3) % (2 * height);
     ringTurn.value = [{ rotate: ((t % 40) / 40) * TAU }];
     dishTurn.value = [{ rotate: ((dishRest + 30 * Math.sin((t * TAU) / 6)) * Math.PI) / 180 }];
     for (let i = 0; i < phases.length; i++) {
@@ -231,7 +292,7 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
             const cx = s.x + (s.px - s.x) * u;
             const cy = s.y + (s.py - s.y) * u - Math.sin(u * Math.PI) * 9;
             const alpha = u < 0.85 ? 1 : (1 - u) / 0.15;
-            if (b < B.length && put(B[b], RB[b], CB[b], sprites[s.chunk + ((j + s.slot) % 4)], density, cx, cy, u * 5, 0.9, alpha)) b++;
+            if (b < B.length && put(B[b], RB[b], CB[b], ores[s.oi].chunk[(j + s.slot) % 4], density, cx, cy, u * 5, 0.9, alpha)) b++;
           }
         }
       }
@@ -247,7 +308,7 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
       for (let j = 0; j < 8; j++) {
         const an = (j / 8) * TAU + s.slot;
         const dist = 6 + e * (22 + (j % 3) * 7);
-        if (b < B.length && put(B[b], RB[b], CB[b], sprites[s.shard + j], density, s.x + Math.cos(an) * dist, s.y + Math.sin(an) * dist, an + k * 4, s.size * 1.1, 1 - k)) b++;
+        if (b < B.length && put(B[b], RB[b], CB[b], ores[s.oi].shard[j], density, s.x + Math.cos(an) * dist, s.y + Math.sin(an) * dist, an + k * 4, s.size * 1.1, 1 - k)) b++;
       }
     }
     // Drones: at most 4 per route (lead's decision 7). Drone d keeps its own place in the round trip
@@ -319,8 +380,8 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
           }
         }
         if (!visible) continue;
-        if (moving && b < B.length && put(B[b], RB[b], CB[b], sprites['flame-' + ((flick + d + i) % 3)], density, x, y, ang, 1, 1)) b++;
-        if (b < B.length && put(B[b], RB[b], CB[b], sprites[loaded && s.rock !== '' ? s.loaded : s.empty], density, x, y, ang, 1, 1)) b++;
+        if (moving && b < B.length && put(B[b], RB[b], CB[b], flames[(flick + d + i) % 3], density, x, y, ang, 1, 1)) b++;
+        if (b < B.length && put(B[b], RB[b], CB[b], loaded && s.rock !== '' ? ores[s.oi].loaded : ores[s.oi].empty, density, x, y, ang, 1, 1)) b++;
       }
     }
     // Idle drones on the rack cradles, nose up.
@@ -336,19 +397,20 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
     notifyChange(rcB);
     notifyChange(colB);
 
-    // Freighter (../hud/flight.ts): the climb and the landing on the bay's curve; Field.tsx clips
-    // it to the field above the bay's crest, the bay draws the part below. Docked or away: hidden.
+    // Freighter (../hud/flight.ts): the climb and the landing on the bay's curve, at the one clock's
+    // progress; Field.tsx clips it to the field above the bay's crest, the bay draws the part below
+    // from the same two values. Docked or away: hidden.
     let on = 0;
-    if (f.phase === 1) {
-      const y = climbY(1 - Math.max(0, f.phaseT - el * rate.value) / CLIMB, padY, topY);
+    if (flying && flightMode.value === 1) {
+      const y = climbY(flightP.value, padY, topY);
       ship.value = [{ translateX: padX }, { translateY: y }, { scale: shipLoaded }];
       on = 1;
-    } else if (f.phase === 3) {
-      const l = landAt(1 - Math.max(0, f.phaseT - el * rate.value) / LAND, padY, topY, shipLoaded, shipRest);
+    } else if (flying && flightMode.value === 3) {
+      const l = landAt(flightP.value, padY, topY, shipLoaded, f.cargo ? shipLoaded : shipEmpty);
       ship.value = [{ translateX: padX }, { translateY: l.y }, { scale: l.scale }];
       on = 1;
-    } else ship.value = [{ translateX: -9999 }, { translateY: -9999 }];
-    shipOn.value = on;
+    } else if (shipOn.value !== 0) ship.value = [{ translateX: -9999 }, { translateY: -9999 }];
+    if (shipOn.value !== on) shipOn.value = on;
     const fl = flick % 3;
     flame[0].value = [{ scale: on === 1 && fl === 0 ? 1 : 0 }];
     flame[1].value = [{ scale: on === 1 && fl === 1 ? 1 : 0 }];
@@ -372,9 +434,8 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
       flare.value = [{ translateX: -9999 }, { translateY: -9999 }];
       flareOn.value = 0;
     }
-    stats.value = { ms: meanMs.value, sprites: a + b };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frame, sprites, density, padX, padY, topY, shipLoaded, shipRest, CLIMB, LAND, dishRest, sx, sy, sr, height, periods]);
+  }, [frame, ores, flames, density, padX, padY, topY, shipLoaded, shipEmpty, CLIMB, LAND, dishRest, sx, sy, sr, height, periods]);
   const cb = useFrameCallback(onFrame, false);
 
   useEffect(() => {
@@ -383,7 +444,7 @@ export function useFieldAnim(frame: SharedValue<FrameTable>, sprites: Record<str
   }, [active, cb]);
 
   return useMemo(
-    () => ({ ...bufs, starY, starY2, starY3, ringTurn, dishTurn, phases, blink, breathe, pulse, bob, ship, shipOn, flame, flash, flashOn, flare, flareOn, stats }),
-    [bufs, starY, starY2, starY3, ringTurn, dishTurn, phases, blink, breathe, pulse, bob, ship, shipOn, flame, flash, flashOn, flare, flareOn, stats],
+    () => ({ ...bufs, starY, ringTurn, dishTurn, phases, blink, breathe, pulse, bob, ship, shipOn, flame, flash, flashOn, flare, flareOn }),
+    [bufs, starY, ringTurn, dishTurn, phases, blink, breathe, pulse, bob, ship, shipOn, flame, flash, flashOn, flare, flareOn],
   );
 }

@@ -342,3 +342,33 @@ files.
   ore pool (present rocks) and the units differ.
 - **Fixtures** are cached per config object (a WeakMap), not once for good.
 - **Hangar** (Decision 37): `createHaul` sets `flags.hangarDrones` when the product is owned at run start.
+
+## Fix round (Decisions 40 to 55, 22 November 2026)
+
+- **Contracts as built** (Decision 40, rules engineer's note): a contract is an offer until picked; the pick
+  takes it (`taken`, `launchesLeft = haul.contracts.launches`), picking another or none drops it (event
+  `contractLapsed {dropped: true}`, then `contractNew`). Units: `units_o = round(L now + λ (L−1)(routed − now))`
+  clamped to `[ceil(L now (1 + margin)), floor(now + (L−1) routed)]`; `reach()` stops routing into an ore
+  whose every rock is drill-bound; widening order: a route's last drone movable, then the share +0.1 up to
+  `maxShare` (0.8), then a two-ore pick falls back to either ore alone, then other present ores; a one-ore
+  station gets a quota contract (`round(L × F × U(quota))`, multiplier − `quotaMultCut`, at least
+  `quotaMinMult`); a multi-ore station where nothing can be routed for gets the one-ore contract nearest to
+  reachable at the never-free bound (met by upgrading that rig). `minUnits` and `lifetime` are no longer
+  read. Interface: `contractViews(cfg, params, h, haulStats?)`, `contractBonus`, `wantLeft`, `UNIT_TOL`
+  (0.5), `routeGain(cfg, g, from, to)`; `contractGain` and `contractMissing` are gone.
+- **Day shift** (Decision 53): `haulShift(cfg, g, now, day)`, `shiftView`, `shiftDoubles`; the count lives in
+  `haulStats.shift {day, startedAt, met}`; `haul.shift {contracts 3, minHours 16, mult 2}`.
+- **Offline** (Decision 42): `haul.offline.adBonus` (0.5) is what the Shift Log's ad adds; the bot measures
+  `haulOffline × (1 + adBonus)` against an hour of play and an hour of watching.
+- **Hints** (Decision 44, `src/engine/haul/hints.ts`): the six guided steps in the new order (1 drag the drone
+  to `rock:0`; 2 swipe; 3 `point slot:1`; 4 `point station:buyDrone` via `station`; 5 `tapTap` from
+  `drone:rack` to `rock:1`, or `drag chip:0 → rock:1` when no drone is free; 6 `point rig:upgrade` via
+  `rock:0`). While a guided step applies and the hold has been full for less than
+  `GUIDED_PRIORITY_SECONDS` (10), the guided steps come before the swipe hint; after that the swipe goes
+  first. The rules end the steps when slot 1 is claimed and worked and a claimed rig is above level 1 (or
+  the autopilot is online, or a later galaxy). Tests: `src/engine/haul/hints.test.ts`.
+- **The bot** (`src/engine/haul/bot.ts`): takes the offer with the highest bonus it can deliver in
+  `launches` launches once it routes for it, routes until every ore is on pace with 15 % to spare, never
+  drops a taken contract; `passive` takes the best-paying offer and never routes; `watch` (Decision 42)
+  only watches (autopilot on `full`, nothing bought, placed, routed or taken). It reports the taken
+  contracts met and lapsed, the contract bonus paid, pods per hour by reason and every purchase time.

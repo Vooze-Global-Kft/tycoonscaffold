@@ -32,6 +32,13 @@ import { useHaul, useHaulCfg } from './spokeData';
 import { ArtImage, Bracket, INK, Key, Mono, pct, Rule } from './spokeKit';
 import { NODE_EFFECT, RUN_START_EFFECTS, SPOKE_STRINGS as S, words } from './spokeStrings';
 import { GUTTER, SpokeFrame } from './SpokeFrame';
+import { useBackLayer, useHaulUi } from '../uiState';
+
+/** The prestige currency's name for a count (singular for 1: "+1 Warp Core", Decision 41). */
+function coresWord(cfg: H.HaulConfig, n: number): string {
+  const name = cfg.strings.prestigeName;
+  return n === 1 ? name.replace(/s$/, '') : name;
+}
 
 /** The Jump waiting for its condition (step 3 of errata 17), or null while a run is on. Selected by value. */
 export function usePendingJump(): { galaxyName: string; offers: string[] } | null {
@@ -69,7 +76,7 @@ function nodeValue(cfg: H.HaulConfig, g: H.HaulGame, id: string, effect: string,
     case 'bonanza':
       return pct(H.bonanzaChance(cfg, sm));
     case 'seamSense':
-      return L > 0 ? `${cfg.haul.seam.senseInterval * L} s sooner, ${cfg.haul.seam.senseDuration * L} s longer` : 'on base timing';
+      return L > 0 ? words(cfg, S.seamSenseOn, { a: cfg.haul.seam.senseInterval * L, b: cfg.haul.seam.senseDuration * L }) : S.seamSenseBase;
     case 'orePrice':
       return pct(per * L);
     case 'contractMult':
@@ -77,7 +84,7 @@ function nodeValue(cfg: H.HaulConfig, g: H.HaulGame, id: string, effect: string,
     case 'seedCredits':
       return formatShort(H.runStartCash(cfg, sm));
     case 'preload':
-      return L > 0 ? 'online' : 'offline';
+      return L > 0 ? S.preloadOn : S.preloadOff;
     case 'spareDrones':
       return String(Math.round(L * (per || 1)));
     case 'headStart':
@@ -116,6 +123,7 @@ function mapView(cfg: H.HaulConfig, g: H.HaulGame) {
     gain: p.gain,
     canJump: p.canJump,
     ready: p.ready,
+    readyCores: cfg.haul.jumpReadyCores,
     offers: p.offers,
     nextName: p.nextGalaxyName,
     pending: !!pending,
@@ -132,6 +140,13 @@ export function StarMap() {
   const { width, height } = useWindowDimensions();
   const data = useHaul<MapData | null>((c, g) => mapView(c, g), null);
   const [sel, setSel] = useState<string | null>(null);
+  const [armed, setArmed] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const [pick, setPick] = useState<string | null>(null);
+  useBackLayer(armed, () => {
+    fx.play('ui_close');
+    setArmed(false);
+  });
   if (!data) return null;
   const small = height < 740 || width < 380;
   const w = width - 2 * GUTTER;
@@ -148,6 +163,13 @@ export function StarMap() {
       title={S.starTitle}
       code={words(cfg, S.starCode, { n: data.galaxy + 1 })}
       onBack={data.pending ? null : undefined}
+      footer={
+        data.pending ? (
+          <PendingKey cfg={cfg} data={data} pick={pick} />
+        ) : (
+          <JumpKeys cfg={cfg} data={data} armed={armed} setArmed={setArmed} preview={preview} setPreview={setPreview} />
+        )
+      }
       right={
         <View style={styles.cores} accessibilityLabel={words(cfg, S.coresInHand)}>
           <HaulIcon name="art:warp-core" size={20} />
@@ -168,7 +190,7 @@ export function StarMap() {
         setSel(id);
       }} />
       <NodeReadout cfg={cfg} node={selected} />
-      {data.pending ? <PendingPanel cfg={cfg} data={data} /> : <JumpPanel cfg={cfg} data={data} />}
+      {data.pending ? <PendingPanel cfg={cfg} data={data} pick={pick} setPick={setPick} /> : <JumpPanel cfg={cfg} data={data} preview={preview} />}
     </SpokeFrame>
   );
 }
@@ -374,19 +396,32 @@ function ConditionCard({ cfg, id, width, picked, onPress }: { cfg: H.HaulConfig;
   );
 }
 
-function JumpPanel({ cfg, data }: { cfg: H.HaulConfig; data: MapData }) {
+function JumpPanel({ cfg, data, preview }: { cfg: H.HaulConfig; data: MapData; preview: boolean }) {
   const { width } = useWindowDimensions();
-  const [armed, setArmed] = useState(false);
-  const [preview, setPreview] = useState(false);
   const cardW = Math.floor((width - 2 * GUTTER - 24 - 16) / 3);
+  const cores = coresWord(cfg, data.gain);
+  // Decision 41: below "ready" the panel says so where READY stands, with how far along it is.
+  const status = data.ready ? (
+    <Mono size={10} weight="700" color={INK.gold}>
+      {S.jumpReady}
+    </Mono>
+  ) : data.canJump ? (
+    <Mono size={10} weight="700" color={INK.amber}>
+      {words(cfg, S.jumpNotReady, { n: formatNumber(data.gain), m: data.readyCores })}
+    </Mono>
+  ) : undefined;
   return (
-    <Bracket style={styles.jump} color={data.ready ? INK.gold : INK.lineDim} label={cfg.strings.prestigeVerb} right={data.ready ? <Mono size={10} weight="700" color={INK.gold}>{S.jumpReady}</Mono> : undefined}>
-      <Mono size={18} weight="700" color={data.canJump ? INK.gold : INK.dim}>
-        {words(cfg, S.jumpGain, { n: formatNumber(data.gain) })}
+    <Bracket style={styles.jump} color={data.ready ? INK.gold : INK.lineDim} label={cfg.strings.prestigeVerb} right={status}>
+      <Mono size={18} weight="700" color={data.ready ? INK.gold : data.canJump ? INK.text : INK.dim}>
+        {words(cfg, S.jumpGain, { n: formatNumber(data.gain), cores })}
       </Mono>
       {!data.canJump ? (
         <Mono size={10} color={INK.faint} caps={false} style={{ marginTop: 2 }}>
           {words(cfg, S.jumpNotYet)}
+        </Mono>
+      ) : !data.ready ? (
+        <Mono size={10} color={INK.dim} caps={false} style={{ marginTop: 2 }}>
+          {words(cfg, S.jumpEarly, { m: data.readyCores })}
         </Mono>
       ) : null}
       <View style={styles.lists}>
@@ -416,48 +451,74 @@ function JumpPanel({ cfg, data }: { cfg: H.HaulConfig; data: MapData }) {
           </Mono>
         </Animated.View>
       ) : null}
-      {armed ? (
-        <Animated.View entering={FadeIn.duration(160)} style={{ marginTop: 10 }}>
-          <Mono size={11} color={INK.amber} caps={false}>
-            {S.jumpWarn}
-          </Mono>
-          <View style={styles.keys}>
-            <Key tone="ghost" label={S.jumpCancel} onPress={() => {
-              fx.play('ui_close');
-              setArmed(false);
-            }} style={{ flex: 1 }} />
-            <Key tone="gold" solid label={words(cfg, S.jumpConfirm)} onPress={() => {
-              setArmed(false);
-              haulActions.confirmJump();
-            }} style={{ flex: 1.4 }} />
-          </View>
-        </Animated.View>
-      ) : (
-        <View style={styles.keys}>
-          <Key tone="cyan" label={preview ? S.hideOffers : words(cfg, S.previewOffers)} onPress={() => {
-            fx.play('ui_tap');
-            setPreview(!preview);
-          }} style={{ flex: 1 }} />
-          <Key tone="gold" solid={data.canJump} disabled={!data.canJump} label={words(cfg, S.jumpArm)} onPress={() => {
-            fx.play('ui_open');
-            setArmed(true);
-          }} style={{ flex: 1 }} />
-        </View>
-      )}
     </Bracket>
   );
 }
 
-function PendingPanel({ cfg, data }: { cfg: H.HaulConfig; data: MapData }) {
+/** The Jump keys, pinned under the map (Decision 41: always in view). Below "ready" the key is secondary and the confirm names the loss. */
+function JumpKeys({ cfg, data, armed, setArmed, preview, setPreview }: { cfg: H.HaulConfig; data: MapData; armed: boolean; setArmed: (v: boolean) => void; preview: boolean; setPreview: (v: boolean) => void }) {
+  const cores = coresWord(cfg, data.gain);
+  const n = formatNumber(data.gain);
+  if (armed)
+    return (
+      <Animated.View entering={FadeIn.duration(160)}>
+        <Mono size={11} color={INK.amber} caps={false}>
+          {data.ready ? S.jumpWarn : words(cfg, S.jumpLoss, { n, cores: cores.toLowerCase(), m: data.readyCores })}
+        </Mono>
+        <View style={styles.keys}>
+          <Key
+            tone="ghost"
+            label={S.jumpCancel}
+            onPress={() => {
+              fx.play('ui_close');
+              setArmed(false);
+            }}
+            style={{ flex: 1 }}
+          />
+          <Key
+            tone="gold"
+            solid
+            label={words(cfg, S.jumpConfirm)}
+            onPress={() => {
+              setArmed(false);
+              // The streak and the shudder play now; the arrival plays once the condition is picked (Decision 41).
+              if (haulActions.confirmJump()) useHaulUi.getState().openOverlay('leave');
+            }}
+            style={{ flex: 1.4 }}
+          />
+        </View>
+      </Animated.View>
+    );
+  return (
+    <View style={[styles.keys, { marginTop: 0 }]}>
+      <Key
+        tone="cyan"
+        label={preview ? S.hideOffers : words(cfg, S.previewKey)}
+        onPress={() => {
+          fx.play('ui_tap');
+          setPreview(!preview);
+        }}
+        style={{ flex: 1 }}
+      />
+      <Key
+        tone="gold"
+        solid={data.ready}
+        disabled={!data.canJump}
+        label={data.ready || !data.canJump ? words(cfg, S.jumpArm) : words(cfg, S.jumpAnyway, { n, cores })}
+        onPress={() => {
+          fx.play('ui_open');
+          setArmed(true);
+        }}
+        style={{ flex: data.ready || !data.canJump ? 1 : 1.5 }}
+      />
+    </View>
+  );
+}
+
+function PendingPanel({ cfg, data, pick, setPick }: { cfg: H.HaulConfig; data: MapData; pick: string | null; setPick: (id: string) => void }) {
   const { width } = useWindowDimensions();
-  const [pick, setPick] = useState<string | null>(null);
   const cardW = Math.floor((width - 2 * GUTTER - 24 - 16) / 3);
   const chosen = pick && data.offers.includes(pick) ? pick : null;
-  const start = () => {
-    if (!chosen) return;
-    // The shell closes this spoke and plays the Jump sequence once the new run exists (HaulShell useJumpCue).
-    haulActions.startGalaxy(chosen);
-  };
   return (
     <Bracket style={styles.jump} color={INK.gold} label={S.pendingTitle}>
       <Mono size={11} color={INK.text} caps={false}>
@@ -475,9 +536,14 @@ function PendingPanel({ cfg, data }: { cfg: H.HaulConfig; data: MapData }) {
       <Mono size={9} color={INK.faint} caps={false} style={{ marginTop: 6 }}>
         {chosen ? words(cfg, S.offersFixed) : S.pickCondition}
       </Mono>
-      <Key tone="gold" solid={!!chosen} disabled={!chosen} label={words(cfg, S.startGalaxy, { name: data.nextName })} onPress={start} style={{ marginTop: 10 }} />
     </Bracket>
   );
+}
+
+/** "Jump to <name>", pinned: the shell closes this spoke and plays the arrival once the new run exists (HaulShell useJumpCue). */
+function PendingKey({ cfg, data, pick }: { cfg: H.HaulConfig; data: MapData; pick: string | null }) {
+  const chosen = pick && data.offers.includes(pick) ? pick : null;
+  return <Key tone="gold" solid={!!chosen} disabled={!chosen} label={words(cfg, S.startGalaxy, { name: data.nextName })} onPress={() => chosen && haulActions.startGalaxy(chosen)} />;
 }
 
 const styles = StyleSheet.create({

@@ -7,6 +7,10 @@
  *
  * One canvas draws the six buttons (pictures, recorded per look and kept); a Pressable over each
  * takes the touch and registers its hint target `button:<id>`.
+ *
+ * The selector runs at every store change (10 Hz): the finished-transmission count and the Jump's
+ * readiness (event-level work: the mission views, the Jump preview) are recomputed at most once a
+ * second, and nothing is computed under a full-screen spoke (perf-4).
  */
 import { Canvas, Circle, Group, Picture, type SkPicture } from '@shopify/react-native-skia';
 import { Pressable, View } from 'react-native';
@@ -79,23 +83,37 @@ function RailButton({ rect, id, label, shown, onPress }: { rect: Rect; id: RailG
   );
 }
 
+/** The slow part of the rail's view, kept for a second (perf-4). */
+let slow: { at: number; cfg: object; jumps: number; galaxy: number | undefined; done: number; jumpReady: boolean } | null = null;
+const SLOW_MS = 1000;
+
+function slowPart(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): { done: number; jumpReady: boolean } {
+  const now = Date.now();
+  // A Jump or a new galaxy changes both at once: no wait then.
+  if (slow && slow.cfg === cfg && now - slow.at < SLOW_MS && slow.jumps === g.haulStats.jumps && slow.galaxy === g.haul.galaxy) return slow;
+  let jumpReady = false;
+  try {
+    jumpReady = H.jumpPreview(cfg, g).ready;
+  } catch {
+    jumpReady = false;
+  }
+  let done = 0;
+  try {
+    done = M.missionViews(cfg, g as unknown as GameState).filter((v) => v.done).length;
+  } catch {
+    done = 0;
+  }
+  slow = { at: now, cfg, jumps: g.haulStats.jumps, galaxy: g.haul.galaxy, done, jumpReady };
+  return slow;
+}
+
 export function StationRail({ rects }: { rects: Rect[] }) {
+  const covered = useHaulUi((s) => s.spoke !== null);
   const r = useRunShallow<RailState>(
     (cfg, g) => {
       const cards = Object.values(g.cards ?? {});
       const owned = Object.values(g.chests?.owned ?? {}).reduce((a, b) => a + (b > 0 ? b : 0), 0);
-      let jumpReady = false;
-      try {
-        jumpReady = H.jumpPreview(cfg, g).ready;
-      } catch {
-        jumpReady = false;
-      }
-      let done = 0;
-      try {
-        done = M.missionViews(cfg, g as unknown as GameState).filter((v) => v.done).length;
-      } catch {
-        done = 0;
-      }
+      const { done, jumpReady } = slowPart(cfg, g);
       return {
         comms: done,
         pods: owned,
@@ -105,6 +123,7 @@ export function StationRail({ rects }: { rects: Rect[] }) {
       };
     },
     { comms: 0, pods: 0, fitting: false, starmap: false, dm: '0' },
+    covered,
   );
   if (rects.length < BUTTONS.length) return null;
   const x0 = Math.min(...rects.map((q) => q.x)) - 12;

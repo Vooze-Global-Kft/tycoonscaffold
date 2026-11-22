@@ -6,18 +6,21 @@
  *   the dragged drone or flare rides under the finger;
  * - the selection of tap-tap (a drone or the flare): its origin ringed, the rocks it may go to marked;
  * - credit glyphs falling from the warp flash into the dock counter (at most 12, one credit_tick
- *   each as it lands), then "+₵612" over the counter; the "CONTRACT MET" stamp on the receipt;
+ *   each as it lands), then "+₵612" over the counter (the "CONTRACT MET" stamp is the receipt
+ *   row's own, ./DockCounter.tsx: never over the credits number, Decision 40);
  * - a "DRY" tag rising from a rock whose life ran out;
- * - "Claim ₵21": the confirm chip over a tapped ghost slot (tap it, or the slot again, to claim).
+ * - what the held drone is worth over the rock under it ("+₵12/s", "+₵0/s · RIG LIMIT"), and the
+ *   same rising from the rock for a moment after the drop (Decision 49);
+ * - "Claim ₵21": the confirm chip on a tapped ghost slot (tap it, or the slot again, to claim);
+ *   placed where it hides no other slot's label, and hit-tested by the field too (play-0, play-21).
  * Listens to src/state/modeEvents.ts; React renders only when one of these starts or ends.
  */
 import { Canvas, DashPathEffect, Group, Path, Picture, Skia, type SkPicture } from '@shopify/react-native-skia';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, cancelAnimation, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withTiming, type SharedValue } from 'react-native-reanimated';
 import { formatMoney } from '../../../engine/format';
 import * as H from '../../../engine/haul';
-import { haulActions } from '../../../modes/haul/actions';
 import { fx } from '../../../services/fx';
 import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
@@ -26,13 +29,14 @@ import { drawDrone } from '../art/drone.draw';
 import { drawCreditGlyph, drawFlare } from '../art/fx.draw';
 import { alpha, SPACE } from '../art/palette';
 import { around, circle, dashed, picture, stroke } from '../art/pen';
-import { spokePictures } from '../art/Spokes';
-import { CLAIM_CONFIRM_MS, DRAG_DRONE, DRAG_FLARE, dragLine, useFieldInput } from '../gestures/fieldInput';
+import { CLAIM_CONFIRM_MS, DRAG_DRONE, DRAG_FLARE, claimChipRect, dragLine, useFieldInput, type RoutePreview } from '../gestures/fieldInput';
+import { confirmClaim } from '../gestures/useFieldGestures';
 import type { FieldLayout, Pt } from '../layout';
 import { HAUL_STRINGS } from '../strings';
 import { useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
-import { DIGITAL, bayWord, labelMetrics } from './bayText';
+import { textEms } from './bayMetrics';
+import { DIGITAL, bayWord, fillIn, labelMetrics } from './bayText';
 import { GLYPH_FALL_MS, GLYPH_GAP_MS, GLYPH_LEAD_MS, MAX_GLYPHS } from './feedbackTiming';
 import { targetRect } from './HintLayer';
 import { useMapLayout } from './useMapLayout';
@@ -183,15 +187,11 @@ function Glyph({ i, clock, flight }: { i: number; clock: SharedValue<number>; fl
     const x = fx0 + (tx - fx0) * e + Math.sin(k * Math.PI) * side * 6;
     const y = fy0 + (ty - fy0) * Math.pow(k, 1.5);
     const live = i < n && k > 0 && k < 1;
-    return [{ translateX: x }, { translateY: y }, { scale: live ? 1 - 0.25 * k : 0 }];
+    return [{ translateX: x }, { translateY: y }, { scale: live ? (k < 0.1 ? k / 0.1 : 1) * (1 - 0.25 * k) : 0 }];
   });
-  const op = useDerivedValue(() => {
-    if (i >= n) return 0;
-    const k = (clock.value - i * GLYPH_GAP_MS) / GLYPH_FALL_MS;
-    return k <= 0 || k >= 1 ? 0 : k < 0.1 ? k / 0.1 : 1;
-  });
+  // No opacity layer per glyph (an offscreen pass each): a glyph grows in over its first tenth instead.
   return (
-    <Group transform={xf} opacity={op} layer>
+    <Group transform={xf}>
       <Picture picture={pic} />
     </Group>
   );
@@ -217,8 +217,9 @@ interface Floater {
 
 function FloatText({ f, onDone }: { f: Floater; onDone: (id: number) => void }) {
   const k = useSharedValue(0);
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width: winW } = useWindowDimensions();
   const m = labelMetrics(13, fontScale);
+  const w = Math.min(winW - 8, Math.max(160, Math.ceil(textEms(f.text) * m.font) + 16));
   useEffect(() => {
     k.value = withTiming(1, {
       duration: 1300,
@@ -240,9 +241,9 @@ function FloatText({ f, onDone }: { f: Floater; onDone: (id: number) => void }) 
       style={[
         {
           position: 'absolute',
-          left: f.x - 80,
+          left: Math.max(4, Math.min(winW - w - 4, f.x - w / 2)),
           top: f.y - m.row / 2,
-          width: 160,
+          width: w,
           height: m.row,
           justifyContent: 'center',
         },
@@ -270,6 +271,43 @@ function FloatText({ f, onDone }: { f: Floater; onDone: (id: number) => void }) 
   );
 }
 
+/** "+₵12/s", "−₵3/s", "+₵0/s · RIG LIMIT" (Decision 49). */
+export function gainText(p: Pick<RoutePreview, 'delta' | 'limit'>, sym: string): string {
+  const d = Math.abs(p.delta) < 0.005 ? 0 : p.delta;
+  const v = fillIn(HAUL_STRINGS.dragGain, { v: formatMoney(Math.abs(d), sym) });
+  const limit = p.limit === 'rig' ? HAUL_STRINGS.dragRigLimit : p.limit === 'haul' ? HAUL_STRINGS.dragHaulLimit : '';
+  return `${d < 0 ? '−' : '+'}${v}${limit ? ` · ${limit}` : ''}`;
+}
+
+function gainColor(p: Pick<RoutePreview, 'delta'>): string {
+  return p.delta >= 0.005 ? SPACE.green : p.delta <= -0.005 ? SPACE.red : SPACE.steel;
+}
+
+/** While a drone is held over a rock: what putting it there does to the income line (Decision 49). */
+function RoutePreviewTag({ layout }: { layout: FieldLayout }) {
+  const p = useFieldInput((s) => (s.preview && !s.preview.dropped ? s.preview : null));
+  const sym = useGame((s) => s.cfg.strings.currencySymbol);
+  const { fontScale } = useWindowDimensions();
+  if (!p) return null;
+  const r = layout.rocks[p.slot];
+  if (!r) return null;
+  const m = labelMetrics(12, fontScale);
+  const text = gainText(p, sym);
+  const w = Math.max(84, Math.ceil(textEms(text) * m.font) + 16);
+  const h = m.row + 8;
+  const x = Math.max(8, Math.min(layout.width - w - 8, r.x - w / 2));
+  // Above the rock: the thumb comes from below.
+  const y = Math.max(layout.zones.comms.y + layout.zones.comms.height + 2, r.y - r.r - h - 8);
+  const color = gainColor(p);
+  return (
+    <View pointerEvents="none" style={[styles.tag, { left: x, top: y, width: w, height: h, borderColor: alpha(color, 0.7) }]}>
+      <Text allowFontScaling={false} numberOfLines={1} style={[DIGITAL, { color, fontSize: m.font }]}>
+        {text}
+      </Text>
+    </View>
+  );
+}
+
 function ClaimChip({ layout }: { layout: FieldLayout }) {
   const armed = useFieldInput((s) => s.claimArmed);
   const info = useRunShallow(
@@ -293,27 +331,22 @@ function ClaimChip({ layout }: { layout: FieldLayout }) {
     return () => clearTimeout(t);
   }, [armed]);
   if (!armed || !info.cost) return null;
-  const rock = layout.rocks[armed.slot];
-  if (!rock) return null;
-  const w = 128;
-  const h = m.row + 14;
-  const x = Math.max(12, Math.min(layout.width - w - 12, rock.x - w / 2));
-  const y = rock.y - rock.r - h - 10 < layout.zones.comms.y + layout.zones.comms.height + 4 ? rock.y + rock.r + 18 : rock.y - rock.r - h - 10;
+  const r = claimChipRect(layout, armed.slot, m.row);
+  if (!r) return null;
+  const slot = armed.slot;
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={() => {
-        useFieldInput.getState().arm(null);
-        haulActions.claimSlot(armed.slot);
-      }}
-      hitSlop={8}
+      accessibilityLabel={`${HAUL_STRINGS.claim} ${info.cost}`}
+      onPress={() => confirmClaim(slot)}
+      hitSlop={4}
       style={[
         styles.chip,
         {
-          left: x,
-          top: y,
-          width: w,
-          height: h,
+          left: r.x,
+          top: r.y,
+          width: r.width,
+          height: r.height,
           borderColor: info.can ? SPACE.line : SPACE.steelDim,
           backgroundColor: info.can ? alpha(SPACE.line, 0.16) : SPACE.hull1,
         },
@@ -343,9 +376,6 @@ export function FloatingFeedback() {
   const clock = useSharedValue(1e6);
   const [flight, setFlight] = useState<Flight | null>(null);
   const [floaters, setFloaters] = useState<Floater[]>([]);
-  const stampK = useSharedValue(0);
-  const stampOp = useSharedValue(0);
-  const [stampOn, setStampOn] = useState(false);
   const nextId = useRef(1);
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
@@ -395,16 +425,6 @@ export function FloatingFeedback() {
               },
             ]),
           );
-        } else if (e.type === 'contractMet') {
-          // The stamp lands on the receipt as the money does.
-          cancelAnimation(stampK);
-          cancelAnimation(stampOp);
-          stampK.value = 0;
-          stampOp.value = 0;
-          stampK.value = withDelay(GLYPH_LEAD_MS + GLYPH_FALL_MS, withTiming(1, { duration: 220, easing: Easing.in(Easing.cubic) }));
-          stampOp.value = withDelay(GLYPH_LEAD_MS + GLYPH_FALL_MS, withSequence(withTiming(1, { duration: 120 }), withDelay(1500, withTiming(0, { duration: 400 }))));
-          setStampOn(true);
-          later(GLYPH_LEAD_MS + GLYPH_FALL_MS + 2100, () => setStampOn(false));
         } else if (e.type === 'dry') {
           const r = layoutRef.current.rocks[e.slot];
           if (r)
@@ -421,17 +441,23 @@ export function FloatingFeedback() {
         }
       }
     });
+    // Decision 49: after a drop, what the move did rises from the rock for a moment.
+    const offDrop = useFieldInput.subscribe((st, prev) => {
+      const p = st.preview;
+      if (!p || !p.dropped || p === prev.preview) return;
+      const r = layoutRef.current.rocks[p.slot];
+      const cfg = useGame.getState().cfg as H.HaulConfig;
+      if (r) setFloaters((fl) => [...fl.slice(-3), { id: nextId.current++, text: gainText(p, cfg.strings?.currencySymbol ?? ''), x: r.x, y: r.y - r.r - 14, color: gainColor(p) }]);
+      useFieldInput.getState().setPreview(null);
+    });
     return () => {
       off();
+      offDrop();
       timers.forEach(clearTimeout);
     };
-  }, [clock, stampK, stampOp]);
+  }, [clock]);
 
   const done = useMemo(() => (id: number) => setFloaters((fl) => fl.filter((f) => f.id !== id)), []);
-  const stampW = Math.min(150, layout.zones.counter.width - 20);
-  const stamp = spokePictures.receiptStamp(stampW);
-  const sc = layout.zones.counter;
-  const stampXf = useDerivedValue(() => [{ translateX: sc.x + sc.width / 2 }, { translateY: sc.y + sc.height / 2 }, { scale: 1.4 - 0.4 * stampK.value }]);
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       {/* The canvas sits in a view that takes no touches (a canvas alone may catch them on the web). */}
@@ -440,13 +466,9 @@ export function FloatingFeedback() {
           <SelectionLayer layout={layout} />
           <DragLayer />
           {flight ? Array.from({ length: flight.n }, (_, i) => <Glyph key={i} i={i} clock={clock} flight={flight} />) : null}
-          {stampOn ? (
-            <Group transform={stampXf} opacity={stampOp} layer>
-              <Picture picture={stamp} />
-            </Group>
-          ) : null}
         </Canvas>
       </View>
+      <RoutePreviewTag layout={layout} />
       {floaters.map((f) => (
         <FloatText key={f.id} f={f} onDone={done} />
       ))}
@@ -456,6 +478,14 @@ export function FloatingFeedback() {
 }
 
 const styles = StyleSheet.create({
+  tag: {
+    position: 'absolute',
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: alpha(SPACE.hull0, 0.88),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   chip: {
     position: 'absolute',
     borderRadius: 12,

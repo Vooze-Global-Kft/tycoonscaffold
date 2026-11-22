@@ -8,20 +8,23 @@
  *
  * The bay owns everything below its top edge (lead's decision 6): the pad, the docked freighter,
  * its lift-off and its landing are drawn here, in a canvas that reaches up to the panel's crest;
- * the scene draws the same flight path (./flight.ts) above the crest, so the freighter crosses the
- * edge without a jump. Animations run on the UI thread and only while something moves (the
- * chevrons breathe only while the hold has cargo to ship and no spoke covers the map).
+ * the scene draws the same flight path (./flight.ts) above the crest. Both read ONE clock, the
+ * field frame loop's `flightMode` / `flightP` (decision 51), so the two halves of a freighter
+ * crossing the crest are always at the same height. Between the crest and the launch track the
+ * freighter passes behind the dock counter (clipped away from the counter's box: store-10), so it
+ * never covers the credits.
+ * Animations run on the UI thread and only on events (decision 50): the chevrons step at 8 Hz
+ * (no offscreen layer), only while the hold has cargo to ship and no spoke covers the map, and
+ * rest after a few cycles until something changes.
  */
 import { Canvas, Group, Picture, type SkPicture } from '@shopify/react-native-skia';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
-import { Easing, cancelAnimation, useDerivedValue, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { useDerivedValue, useFrameCallback, useSharedValue, type FrameInfo } from 'react-native-reanimated';
 import * as H from '../../../engine/haul';
 import { haulActions } from '../../../modes/haul/actions';
-import { modeEvents } from '../../../state/modeEvents';
-import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
-import { drawAwayArc, drawChevron, drawPad, drawPolicyChip, freighterSize, policyLabel, hullFor, LOADED_FREIGHTER_SCALE, segmentsFor } from '../art/freighter.draw';
+import { drawAwayArc, drawChevronStack, drawPad, drawPolicyChip, freighterSize, policyLabel, hullFor, LOADED_FREIGHTER_SCALE, segmentsFor } from '../art/freighter.draw';
 import { freighterFlamePicture } from '../scene/pics';
 import { SPACE } from '../art/palette';
 import { around, picture } from '../art/pen';
@@ -33,7 +36,7 @@ import { HAUL_STRINGS } from '../strings';
 import { useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { DIGITAL, fillIn, labelMetrics } from './bayText';
-import { climbY, landAt, padScaleFor, padSpot } from './flight';
+import { climbY, flightMode, flightP, landAt, padScaleFor, padSpot } from './flight';
 
 const pics = new Map<string, SkPicture>();
 function memo(key: string, make: () => SkPicture): SkPicture {
@@ -47,11 +50,21 @@ function memo(key: string, make: () => SkPicture): SkPicture {
 
 /** Steps of the away arc (one picture per step, kept). */
 const ARC_STEPS = 48;
-/** The chevrons' loop while there is cargo to ship. */
+/** The chevrons' loop while there is cargo to ship: CHEVRON_STEPS steps of 1200 ms / 10 (8 a second, rounded). */
 const CHEVRON_MS = 1200;
+const CHEVRON_STEPS = 10;
+/** Cycles the chevrons play before they rest lit (until the cargo, the arming or a spoke changes). */
+const CHEVRON_CYCLES = 6;
+/** Chevron stack pictures: index 0..CHEVRON_STEPS-1 the loop's steps, CHEVRON_STEPS fully lit, CHEVRON_STEPS + 1 not ready. */
+const CHEV_LIT = CHEVRON_STEPS;
+const CHEV_DIM = CHEVRON_STEPS + 1;
+/** Height of the policy chip's press area (phone-8: with its hitSlop 8 above and below it is 44 pt). */
+const CHIP_PRESS_H = 28;
 
 /** `crest`: the bay panel's top edge and `topY` the top of the climb, in screen points (./flight.ts). */
 export function LaunchTrack({ rect, crest, topY }: { rect: Rect; crest: number; topY: number }) {
+  // Under a full-screen spoke the track keeps what it shows: no re-render, no redraw (decision 50).
+  const spoke = useHaulUi((s) => s.spoke !== null);
   const f = useRunShallow(
     (cfg, g) => {
       const fr = g.haul.freighter;
@@ -77,8 +90,8 @@ export function LaunchTrack({ rect, crest, topY }: { rect: Rect; crest: number; 
       policy: null as string | null,
       landMs: 2000,
     },
+    spoke,
   );
-  const spoke = useHaulUi((s) => s.spoke !== null);
   const armed = useFieldInput((s) => s.launchArmed);
   const { fontScale, height: winH } = useWindowDimensions();
   const compact = winH < 740;
@@ -98,65 +111,47 @@ export function LaunchTrack({ rect, crest, topY }: { rect: Rect; crest: number; 
   // The canvas reaches from the panel's crest down to the track's bottom: `up` points above the track.
   const up = Math.max(0, rect.y - crest);
 
-  // The flight on the UI thread: mode 0 resting, 1 climbing, 3 landing; p is the progress (0..1).
-  const mode = useSharedValue(f.phase === 'climb' || f.phase === 'away' ? 1 : 0);
-  const p = useSharedValue(f.phase === 'climb' || f.phase === 'away' ? 1 : 0);
-  useEffect(() => {
-    const off = modeEvents.subscribe((events) => {
-      const fr = (useGame.getState().cfg as H.HaulConfig).haul?.freighter;
-      for (const e of events as H.HaulEvent[]) {
-        if (e.type === 'launch') {
-          cancelAnimation(p);
-          mode.value = 1;
-          p.value = 0;
-          p.value = withTiming(1, { duration: Math.max(300, (fr?.climb ?? 2.5) * 1000), easing: Easing.linear });
-        } else if (e.type === 'land') {
-          cancelAnimation(p);
-          mode.value = 3;
-          p.value = 0;
-          p.value = withTiming(1, { duration: Math.max(300, (fr?.land ?? 2) * 1000), easing: Easing.linear });
-        }
-      }
-    });
-    return off;
-  }, [mode, p]);
-  // A restart or a preset mid-flight: put the ship where the rules say it is.
-  useEffect(() => {
-    if (f.phase === 'away') {
-      cancelAnimation(p);
-      mode.value = 1;
-      p.value = 1;
-    } else if (f.phase === 'docked') {
-      cancelAnimation(p);
-      mode.value = 0;
-      p.value = 0;
-    }
-  }, [f.phase, mode, p]);
-
+  // The flight: the field frame loop's one clock (./flight.ts flightMode / flightP; decision 51).
   const ready = f.phase === 'docked' && f.cargo;
-  const loop = useSharedValue(0);
+  // The chevrons: a step index written at most 8 times a second by a frame callback that runs only
+  // while they breathe; the canvas redraws only when the step changes (decision 50, perf-2).
+  const chevStep = useSharedValue(CHEV_DIM);
+  const chevT0 = useSharedValue(-1);
+  const breathing = ready && !spoke && !armed;
+  const onChevFrame = useCallback(
+    (info: FrameInfo) => {
+      'worklet';
+      if (chevT0.value < 0) chevT0.value = info.timestamp;
+      const el = info.timestamp - chevT0.value;
+      const next = el >= CHEVRON_MS * CHEVRON_CYCLES ? CHEV_LIT : Math.floor((el % CHEVRON_MS) / (CHEVRON_MS / CHEVRON_STEPS));
+      if (next !== chevStep.value) chevStep.value = next;
+    },
+    [chevT0, chevStep],
+  );
+  const chevTick = useFrameCallback(onChevFrame, false);
   useEffect(() => {
-    if (ready && !spoke && !armed) {
-      loop.value = 0;
-      loop.value = withRepeat(withTiming(1, { duration: CHEVRON_MS, easing: Easing.linear }), -1, false);
+    if (breathing) {
+      chevT0.value = -1;
+      chevTick.setActive(true);
     } else {
-      cancelAnimation(loop);
-      loop.value = armed ? 1 : 0;
+      chevTick.setActive(false);
+      chevStep.value = armed ? CHEV_LIT : ready ? CHEV_LIT : CHEV_DIM;
     }
-    return () => cancelAnimation(loop);
-  }, [ready, spoke, armed, loop]);
+    return () => chevTick.setActive(false);
+  }, [breathing, armed, ready, chevTick, chevT0, chevStep]);
 
   /** Flame frames over one flight (about 18 a second). */
   const FLICKS = 45;
   const shipXform = useDerivedValue(() => {
-    const m = mode.value;
+    const m = flightMode.value;
+    const p = flightP.value;
     let y = spot.y;
     let sc = shipScale;
     if (m === 1) {
-      y = climbY(p.value, spot.y, topY);
+      y = climbY(p, spot.y, topY);
       sc = spot.loaded;
     } else if (m === 3) {
-      const l = landAt(p.value, spot.y, topY, spot.loaded, shipScale);
+      const l = landAt(p, spot.y, topY, spot.loaded, shipScale);
       y = l.y;
       sc = l.scale;
     } else {
@@ -169,25 +164,43 @@ export function LaunchTrack({ rect, crest, topY }: { rect: Rect; crest: number; 
   // The flame flickers (three frames) while the freighter flies.
   const flameXf = (i: number) => {
     'worklet';
-    const flying = (mode.value === 1 || mode.value === 3) && p.value < 1;
-    return [{ scale: flying && Math.floor(p.value * FLICKS) % 3 === i ? 1 : 0 }];
+    const p = flightP.value;
+    const flying = (flightMode.value === 1 || flightMode.value === 3) && p < 1;
+    return [{ scale: flying && Math.floor(p * FLICKS) % 3 === i ? 1 : 0 }];
   };
   const fl0 = useDerivedValue(() => flameXf(0));
   const fl1 = useDerivedValue(() => flameXf(1));
   const fl2 = useDerivedValue(() => flameXf(2));
   const flames = [fl0, fl1, fl2];
-  const chevOn = (i: number, l: number) => {
+  // One transform per chevron-stack picture: scale 1 for the step shown, 0 for the others (no layer, no alpha pass).
+  const chevXf = (i: number) => {
     'worklet';
-    return ready ? 0.3 + 0.7 * Math.max(0, Math.min(1, l * 3.6 - i * 1.1)) : 0.22;
+    return [{ scale: chevStep.value === i ? 1 : 0 }];
   };
-  const c0 = useDerivedValue(() => chevOn(0, loop.value));
-  const c1 = useDerivedValue(() => chevOn(1, loop.value));
-  const c2 = useDerivedValue(() => chevOn(2, loop.value));
-  const chevA = [c0, c1, c2];
+  const ch = [
+    useDerivedValue(() => chevXf(0)),
+    useDerivedValue(() => chevXf(1)),
+    useDerivedValue(() => chevXf(2)),
+    useDerivedValue(() => chevXf(3)),
+    useDerivedValue(() => chevXf(4)),
+    useDerivedValue(() => chevXf(5)),
+    useDerivedValue(() => chevXf(6)),
+    useDerivedValue(() => chevXf(7)),
+    useDerivedValue(() => chevXf(8)),
+    useDerivedValue(() => chevXf(9)),
+    useDerivedValue(() => chevXf(CHEV_LIT)),
+    useDerivedValue(() => chevXf(CHEV_DIM)),
+  ];
+  const chevPics = useMemo(
+    () =>
+      Array.from({ length: CHEVRON_STEPS + 2 }, (_, i) =>
+        memo(`chevs:${i}`, () => picture({ x: -16, y: -22, w: 32, h: 30 }, (c) => drawChevronStack(c, i === CHEV_LIT ? 1 : (i + 0.5) / CHEVRON_STEPS, i !== CHEV_DIM))),
+      ),
+    [],
+  );
 
   const chevTop = cy + up - (size.h / 2) * shipScale - 6;
   const pad = memo(`pad:${ready}`, () => picture(around(34), (c) => drawPad(c, ready)));
-  const chevron = memo('chev', () => picture(around(12), (c) => drawChevron(c, 1)));
   const ship = pictures.freighter(hull, seg);
   const arc = memo(`arc:${f.arc}`, () => picture(around(26), (c) => drawAwayArc(c, f.arc / ARC_STEPS, '')));
   const away = f.phase === 'climb' || f.phase === 'away';
@@ -196,6 +209,9 @@ export function LaunchTrack({ rect, crest, topY }: { rect: Rect; crest: number; 
   const chipW = f.policy ? textWidth(policyLabel(policyName), 5) + 16 : 0;
   const chipX = W - chipW / 2 - 4;
   const chipY = 10;
+  // The dock counter's box in this canvas (it spans the track's width from 8 pt under the crest to
+  // 4 pt above the track: ../layout.ts zones.counter): the freighter is clipped away from it.
+  const counterClip = useMemo(() => ({ x: -4, y: 6, width: W + 8, height: Math.max(0, up - 6) }), [W, up]);
 
   useEffect(() => {
     targets.set('bay:launch', {
@@ -232,21 +248,25 @@ export function LaunchTrack({ rect, crest, topY }: { rect: Rect; crest: number; 
             <Picture picture={pad} />
             {away ? <Picture picture={arc} /> : null}
           </Group>
-          <Group transform={shipXform}>
-            {flames.map((t, i) => (
-              <Group key={i} transform={t}>
-                <Picture picture={freighterFlamePicture(hull, seg, i)} />
-              </Group>
-            ))}
-            <Picture picture={ship} />
-          </Group>
-          {f.phase === 'docked'
-            ? [0, 1, 2].map((i) => (
-                <Group key={i} transform={[{ translateX: cx }, { translateY: chevTop - i * 5 }, { scale: 0.6 }]} opacity={chevA[i]} layer>
-                  <Picture picture={chevron} />
+          <Group clip={counterClip} invertClip>
+            <Group transform={shipXform}>
+              {flames.map((t, i) => (
+                <Group key={i} transform={t}>
+                  <Picture picture={freighterFlamePicture(hull, seg, i)} />
                 </Group>
-              ))
-            : null}
+              ))}
+              <Picture picture={ship} />
+            </Group>
+          </Group>
+          {f.phase === 'docked' ? (
+            <Group transform={[{ translateX: cx }, { translateY: chevTop }, { scale: 0.6 }]}>
+              {chevPics.map((pic, i) => (
+                <Group key={i} transform={ch[i]}>
+                  <Picture picture={pic} />
+                </Group>
+              ))}
+            </Group>
+          ) : null}
           {f.policy ? (
             <Group transform={[{ translateX: chipX }, { translateY: chipY + up }]}>
               <Picture picture={chip} />
@@ -287,16 +307,16 @@ export function LaunchTrack({ rect, crest, topY }: { rect: Rect; crest: number; 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={policyLabel(policyName)}
-          hitSlop={10}
+          hitSlop={8}
           delayLongPress={350}
           onLongPress={() => haulActions.setPolicy(f.policy === 'full' ? 'contract' : 'full')}
           onPress={() => useHaulUi.getState().openSheet({ type: 'station' })}
           style={{
             position: 'absolute',
             left: chipX - chipW / 2,
-            top: chipY - 8,
+            top: chipY - CHIP_PRESS_H / 2,
             width: chipW,
-            height: 16,
+            height: CHIP_PRESS_H,
           }}
         />
       ) : null}

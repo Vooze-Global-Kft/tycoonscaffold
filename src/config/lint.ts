@@ -37,6 +37,17 @@ export function lintGameConfig(cfg: GameConfig, artIcons: readonly string[] = ar
   if (cfg.mode === 'sim' && !cfg.sim) problems.push('mode is "sim" but there is no "sim" block');
   if (cfg.mode !== 'sim' && cfg.sim) problems.push('there is a "sim" block but mode is not "sim"');
   if (cfg.sim) {
+    // pizza-2: the three names a player reads in the stage strip and the rush button. Their schema
+    // defaults are theme-free on purpose (shared code ships in every game), so a sim game must name
+    // them itself; the defaults ('Send', 'Slot', 'Boost') parsed in mean the data left them out.
+    const named: [string, string, string][] = [
+      ['sim.transport.bellName', cfg.sim.transport.bellName, 'Send'],
+      ['sim.sales.seatName', cfg.sim.sales.seatName, 'Slot'],
+      ['sim.rush.name', cfg.sim.rush.name, 'Boost'],
+    ];
+    for (const [where, value, fallback] of named) {
+      if (value === fallback) problems.push(`${where} is required for a sim game (the theme-free default "${fallback}" would show): name it in the game's own words`);
+    }
     if (cfg.sim.venues[0].unlockCost !== 0) problems.push('the first venue must have unlockCost 0');
     if (new Set(cfg.sim.venues.map((x) => x.id)).size !== cfg.sim.venues.length) problems.push('venue ids must be unique');
     for (let i = 1; i < cfg.sim.venues.length; i++) {

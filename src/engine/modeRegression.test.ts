@@ -1,82 +1,67 @@
 /**
- * Regression gate for the engine-mode seam (src/engine/mode.ts): the sim and classic engines
- * must give exactly the outputs they gave before the haul mode was wired in. The outputs below
- * were recorded on the tree before the seam existed (RECORD=1 npx vitest run
- * src/engine/modeRegression.test.ts writes them); this test replays the same scenario and
- * compares every output, bit for bit (as JSON).
+ * Regression gate for the first game (and the classic mode): the sim and classic engines on this
+ * tree must give exactly the outputs the MAIN branch's engine gives. The recordings were made by
+ * scripts/lib/recordModes.ts on a git archive of the main branch's commit (cc11615, before the
+ * engine-mode seam), with that commit's own game files; the commit's full hash is stored in each
+ * fixture. This test replays the same scenario (scripts/lib/modeScenario.ts) on this tree and
+ * compares every output strictly. It never writes a fixture: a missing one fails (pizza-1).
  *
- * Configs: Pizza Empire's shipped game.json (sim) and a frozen copy of Space Miner's last classic
- * game.json (fixtures/classic-space.json), so classic stays covered after Space Miner moved to haul.
+ * Configs here: Pizza Empire's shipped game.json (sim) and a frozen copy of Space Miner's last
+ * classic game.json (fixtures/classic-space.json, the commit's games/space-miner/game.json plus the
+ * soundPack key), so classic stays covered after Space Miner moved to haul.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import pizza from '../../games/pizza-empire/game.json';
-import { GameConfigSchema, type GameConfig } from '../config/schema';
-import { buildPreset } from '../dev/presets';
+import { modeScenario, pinnedConfig, CONFIG_UNPINNED, type ScenarioEngine } from '../../scripts/lib/modeScenario';
+import { GameConfigSchema } from '../config/schema';
+// The web build's presets (the bot): the phone file ./presets.ts has none.
+import { buildPreset } from '../dev/presets.web';
 import * as E from './economy';
 import * as M from './meta';
 import classicSpace from './fixtures/classic-space.json';
-import type { GameState } from './types';
 
-const FILE = path.join(__dirname, 'fixtures', 'recorded-modes.json');
-const NOW = Date.UTC(2026, 10, 1, 9, 0, 0);
+const FIXTURES = path.join(__dirname, 'fixtures');
+const MAIN_COMMIT = /^cc11615[0-9a-f]{33}$/;
 
-function scenario(cfg: GameConfig): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  const fresh = E.createInitialState(cfg, NOW);
-  out.fresh = fresh;
-  // A few minutes of the preset bot (ticks, buys, hires), then the meta systems.
-  const early = buildPreset(cfg, 'early', NOW);
-  out.early = early;
-  out.income = E.incomePerSecond(cfg, early, NOW);
-  // Offline: two hours away.
-  out.offline = E.computeOffline(cfg, { ...early, lastSavedAt: NOW - 2 * 3600_000 }, NOW);
-  // A tick with events.
-  const events: E.GameEvent[] = [];
-  let s: GameState = early;
-  for (let i = 0; i < 30; i++) s = E.tick(cfg, s, 0.1, NOW + i * 100, events);
-  out.ticked = s;
-  out.events = events;
-  // Saves: the state itself, a v1-looking save, garbage.
-  out.reconciled = E.reconcileState(cfg, JSON.parse(JSON.stringify(s)), NOW);
-  out.reconciledV1 = E.reconcileState(cfg, { version: 1, cash: 12, businesses: { x: { owned: 3 } } }, NOW);
-  out.reconciledJunk = E.reconcileState(cfg, { cash: 'lots', venues: 7, stats: null }, NOW);
-  // Prestige with enough lifetime earnings for a few points.
-  const rich = { ...s, lifetimeEarnings: E.lifetimeForPrestigePoints(cfg, 5) * 1.01 };
-  out.prestige = E.prestige(cfg, rich, NOW);
-  out.timeWarp = E.timeWarp(cfg, s, 2, NOW).cash;
-  out.missions = M.refreshMissions(cfg, s, NOW).missions;
-  out.cashForSeconds = M.cashForSeconds(cfg, s, 120, NOW);
-  out.story = E.pendingStoryBeat(cfg, { ...s, storySeen: [] })?.id ?? null;
-  return out;
+function fixture(name: string): Record<string, unknown> {
+  const file = path.join(FIXTURES, name);
+  if (!fs.existsSync(file)) throw new Error(`${name} is missing: record it from the main branch with "npx tsx scripts/lib/recordModes.ts" (never from this tree)`);
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
 const CONFIGS: Record<string, unknown> = { 'pizza-empire': pizza, 'classic-space': classicSpace };
+const engine = { E, M, buildPreset } as unknown as ScenarioEngine;
 
-describe('sim and classic engines are unchanged by the engine-mode seam', () => {
-  const results: Record<string, unknown> = {};
+describe('sim and classic engines give what the main branch gives', () => {
+  const recorded = fixture('recorded-modes.json') as { commit: string; recordedBy: string; results: Record<string, Record<string, unknown>> };
+
+  it('the recordings come from the main branch commit, by the recorder', () => {
+    expect(recorded.commit).toMatch(MAIN_COMMIT);
+    expect(recorded.recordedBy).toBe('scripts/lib/recordModes.ts');
+    expect(Object.keys(recorded.results).sort()).toStrictEqual(Object.keys(CONFIGS).sort());
+  });
+
   for (const [name, raw] of Object.entries(CONFIGS)) {
-    const cfg = GameConfigSchema.parse(raw);
-    results[name] = JSON.parse(JSON.stringify(scenario(cfg)));
-  }
-  if (process.env.RECORD === '1') {
-    fs.writeFileSync(FILE, JSON.stringify(results));
-    it('recorded', () => expect(true).toBe(true));
-    return;
-  }
-  const recorded = JSON.parse(fs.readFileSync(FILE, 'utf8')) as Record<string, Record<string, unknown>>;
-  for (const name of Object.keys(CONFIGS)) {
-    for (const key of Object.keys(recorded[name])) {
+    const results = modeScenario(engine, GameConfigSchema.parse(raw));
+    const keys = Object.keys(recorded.results[name] ?? {});
+    it(`${name}: the scenario has the recorded outputs, no more and no fewer`, () => {
+      expect(Object.keys(results).sort()).toStrictEqual(keys.sort());
+    });
+    for (const key of keys) {
       it(`${name}: ${key}`, () => {
-        expect((results[name] as Record<string, unknown>)[key]).toEqual(recorded[name][key]);
+        expect(results[key]).toStrictEqual(recorded.results[name][key]);
       });
     }
   }
-  it('the parsed Pizza Empire config is the recorded one', () => {
-    const parsedFile = path.join(__dirname, 'fixtures', 'recorded-pizza-config.json');
-    const cfg = JSON.parse(JSON.stringify(GameConfigSchema.parse(pizza)));
-    if (!fs.existsSync(parsedFile)) fs.writeFileSync(parsedFile, JSON.stringify(cfg));
-    expect(cfg).toEqual(JSON.parse(fs.readFileSync(parsedFile, 'utf8')));
+
+  it('the parsed Pizza Empire config is the main branch one (store, app ids and soundPack aside)', () => {
+    const pinned = fixture('recorded-pizza-config.json') as { commit: string; unpinned: string[]; config: unknown };
+    expect(pinned.commit).toMatch(MAIN_COMMIT);
+    expect(pinned.unpinned).toStrictEqual([...CONFIG_UNPINNED]);
+    const parsed = GameConfigSchema.parse(pizza);
+    expect(pinnedConfig(parsed)).toStrictEqual(pinned.config);
+    expect(parsed.soundPack).toBe('warm');
   });
 });

@@ -6,9 +6,19 @@
  *
  * Climb (spec 2.3, 2.5 s): y = padY + (topY − padY) × p², p = time / climb.
  * Land (2 s): y = topY + (padY − topY) × easeOut(p), the scale easing from loaded to resting.
- * Pure functions; the two `*Worklet` ones also run on the UI thread.
+ * Pure functions; `climbY` and `landAt` also run on the UI thread.
+ *
+ * One clock (lead's decision 51): the field's frame loop (../scene/frameLoop.ts) is the only
+ * writer of `flightMode` and `flightP`; the bay's launch track reads the same two values, so the
+ * two halves of a freighter crossing the crest are always drawn at the same progress.
  */
+import { makeMutable } from 'react-native-reanimated';
 import type { FieldLayout, Rect } from '../layout';
+
+/** 0 resting on the pad, 1 climbing (p = 1: away), 3 landing. Written by the field's frame loop only. */
+export const flightMode = makeMutable(0);
+/** Progress 0..1 of the climb or the landing in `flightMode`. Written by the field's frame loop only. */
+export const flightP = makeMutable(0);
 
 /** Where the freighter rests on its pad, in screen points, and its scales. */
 export interface PadSpot {

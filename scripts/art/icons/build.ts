@@ -9,7 +9,9 @@
  *
  * icon.png is full-bleed and opaque (re-encoded without alpha by ffmpeg afterwards: see `final`).
  * adaptive-icon.png keeps the subject inside the central 66 % (Pizza Empire's is full-bleed sunburst, since
- * the launcher's background is the cream theme colour; Orbit Haulers' is transparent). splash.png is transparent.
+ * the launcher's background is the cream theme colour, and only the chef's bust runs on below the visible
+ * window; Orbit Haulers' is transparent). splash.png is transparent. Check the adaptive icons under the
+ * circle, squircle and rounded-square masks with `npx tsx scripts/art/icons/measure.ts <outDir>`.
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -245,7 +247,7 @@ headless(async (H) => {
   if (mode === 'chosen' || mode === 'final') {
     const pick = {
       'pizza-empire': { icon: img(pizza.drawChosenIcon), adaptive: img(pizza.drawChosenAdaptive), splash: img(pizza.drawChosenSplash) },
-      'space-miner': { icon: img(haul.drawChosenIcon), adaptive: img(haul.drawChosenLayer), splash: img(haul.drawChosenLayer) },
+      'space-miner': { icon: img(haul.drawChosenIcon), adaptive: img(haul.drawChosenAdaptive), splash: img(haul.drawChosenLayer) },
     };
     const dirFor = (g: string) => (mode === 'final' && !outDir ? path.join('games', g) : path.join(outDir ?? '.', g));
     for (const [g, set] of Object.entries(pick)) {

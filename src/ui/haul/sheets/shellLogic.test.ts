@@ -11,11 +11,12 @@ const run = haulFixtures(cfg).midGame;
 const point = (key: string, step = 0, route: string[] = []): H.HaulHint => ({ kind: 'point', key, route, row: null, step });
 
 describe('comms slot lines (section 3, errata 56, 57)', () => {
-  it('tutorial steps 2 to 6 have their line; step 1 is the start story beat', () => {
-    expect(hintLine(run, point('rock:0', 1))).toBeNull();
+  it('tutorial steps 1 to 6 have their line (step 1: the AI, no story beat repeats it)', () => {
+    expect(hintLine(run, point('rock:0', 1))).toEqual({ key: 'hintStep1', role: 'ai' });
     expect(hintLine(run, { kind: 'swipe', key: 'bay:launch', route: [], row: null, zone: 'bay:launch', step: 2 })).toEqual({ key: 'hintStep2', role: 'dock' });
     expect(hintLine(run, point('station:buyDrone', 3, ['station']))?.key).toBe('hintStep3');
-    expect(hintLine(run, point('slot:1', 5))).toEqual({ key: 'hintStep5', role: 'ai' });
+    expect(hintLine(run, point('slot:1', 3))).toEqual({ key: 'hintStep3', role: 'dock' });
+    expect(hintLine(run, point('rock:1', 5))).toEqual({ key: 'hintStep5', role: 'ai' });
     expect(say('hintStep2')).toBe('Hold full. Clear the pad.');
   });
   it('the autopilot hint and the long hold line after the tutorial (errata 57)', () => {
@@ -30,8 +31,11 @@ describe('comms slot lines (section 3, errata 56, 57)', () => {
       { id: 'a', characterId: 'ai1', trigger: { type: 'start' }, lines: ['x'], rewardGems: 0 },
       { id: 'b', characterId: 'dock1', trigger: { type: 'launches', count: 1 }, lines: ['y'], rewardGems: 0 },
     ];
-    const c = { ...cfg, story } as unknown as H.HaulConfig;
+    const c = { ...cfg, story, characters: cfg.characters.filter((x) => x.name !== cfg.haul.names.ai) } as unknown as H.HaulConfig;
     expect(speaker(c, 'ai')).toBe('ai1');
+    // The AI is found by the name the data gives it, when a character carries that name.
+    const named = { ...cfg, story, characters: [...cfg.characters, { ...cfg.characters[0], id: 'brain', name: cfg.haul.names.ai }] } as unknown as H.HaulConfig;
+    expect(speaker(named, 'ai')).toBe(named.characters.find((x) => x.name === cfg.haul.names.ai)?.id);
     expect(speaker(c, 'dock')).toBe('dock1');
     expect(typeof speaker(c, 'dispatch')).toBe('string');
   });
@@ -70,7 +74,7 @@ describe('Shift Log rows (2.11, 4.6)', () => {
     const { rows, note } = shiftLogRows(cfg, { seconds: report.seconds, earnings: 18400, report });
     expect(rows.map((r) => r.label)).toEqual(['AWAY', cfg.haul.ores[0].name.toUpperCase(), cfg.haul.ores[1].name.toUpperCase(), 'ROCKS DRY', 'PODS', 'IN FLIGHT', 'CREDITS']);
     expect(rows[0].value).toBe('5 h 12 m');
-    expect(rows[1].value).toBe('3,420 u');
+    expect(rows[1].value).toBe('3.4K u');
     expect(rows.at(-1)).toMatchObject({ value: money(cfg, 18400), strong: true });
     expect(note).toBeNull();
   });

@@ -97,12 +97,11 @@ export function atlasDefs(o: Pick<AtlasOptions, 'freighter'> = {}): Def[] {
 
 const PAD = 2;
 const MAX_W = 2048;
+/** Every phone GPU takes a 2048 x 2048 texture; some old ones take no more (phone-5). */
+const MAX_H = 2048;
 
-/** Bakes the atlas. Returns null if no surface could be made. */
-export function bakeAtlas(o: AtlasOptions): HaulAtlas | null {
-  const density = Math.max(1, Math.min(3, o.density));
-  const defs = atlasDefs(o);
-  // Shelf packing, tallest first.
+/** Shelf packing, tallest first, at `density` pixels a point. */
+function pack(defs: Def[], density: number) {
   const items = defs
     .map((d) => ({ d, w: Math.ceil(d.hw * 2 * density) + PAD * 2, h: Math.ceil(d.hh * 2 * density) + PAD * 2 }))
     .sort((a, b) => b.h - a.h || b.w - a.w);
@@ -122,7 +121,33 @@ export function bakeAtlas(o: AtlasOptions): HaulAtlas | null {
     width = Math.max(width, x);
     shelf = Math.max(shelf, it.h);
   }
-  const height = y + shelf;
+  return { placed, width, height: y + shelf };
+}
+
+/**
+ * The atlas's size at a density, without baking (tests and the size check). The density actually
+ * used is the asked one lowered in steps of 0.25 until the sheet fits MAX_W x MAX_H.
+ */
+export function atlasSize(o: AtlasOptions): { density: number; width: number; height: number } {
+  const defs = atlasDefs(o);
+  let density = Math.max(1, Math.min(3, o.density));
+  let p = pack(defs, density);
+  while (p.height > MAX_H && density > 1) {
+    density = Math.max(1, density - 0.25);
+    p = pack(defs, density);
+  }
+  return { density, width: p.width, height: p.height };
+}
+
+/**
+ * Bakes the atlas. Returns null if no surface could be made. On a 3x screen the full sheet would be
+ * 2040 x 2102 pixels, past what some GPUs upload: the density drops in steps of 0.25 until it fits
+ * 2048 x 2048 (2.75 on a 3x screen: a sprite loses a twelfth of its pixels, not visible at its size).
+ */
+export function bakeAtlas(o: AtlasOptions): HaulAtlas | null {
+  const defs = atlasDefs(o);
+  const { density } = atlasSize(o);
+  const { placed, width, height } = pack(defs, density);
   const surface = Skia.Surface.Make(width, height) ?? Skia.Surface.MakeOffscreen(width, height);
   if (!surface) return null;
   const c = surface.getCanvas();

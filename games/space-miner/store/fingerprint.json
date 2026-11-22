@@ -6,7 +6,7 @@
   "progression_structure": "sector-map",
   "prestige_model": "reset-for-currency",
   "active_skills_events": ["rich-seam", "seam-flare", "bonanza-rock", "free-timer-chest"],
-  "meta_systems": ["cards", "chests", "missions", "daily-gift", "prestige", "contracts", "loadout", "prestige-tree"],
+  "meta_systems": ["cards", "chests", "missions", "shift-bonus", "prestige", "contracts", "loadout", "prestige-tree"],
   "art_style": { "style": "flat-vector", "palette": "deep-space-cold" },
   "character_kind": "robots",
   "voice": "dry-radio-chatter",

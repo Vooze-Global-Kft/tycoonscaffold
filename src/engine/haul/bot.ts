@@ -10,12 +10,13 @@
  * How it plays (section 8, "Bot behaviour"):
  * - every idle drone goes at once to the slot with the highest marginal value (`bestSlotForDrone`);
  * - 2 drones are dragged onto each rich seam (natural or flare) and 1 onto each bonanza rock;
- * - with contracts open and none active, it picks the board contract with the highest
- *   `contractGain` it can meet once it routes for it, then drags drones onto rocks of its ores
- *   (from the routes that lose least) until the hold's share covers the units, at most
- *   `contracts.fleetShare` of the fleet per contract;
- * - it swipes the freighter off the pad when the hold is full or the contract is met until the Dock
- *   Autopilot is online, then sets the `contract` policy;
+ * - with contracts open and none taken, it takes the offer with the highest bonus that it can
+ *   deliver in `contracts.launches` launches once it routes for it (Decision 40), then drags drones
+ *   onto rocks of its ores (from the routes that lose least) until every ore is on pace with 15 % to
+ *   spare (what one launch carries × launches left ≥ units left), at most `contracts.fleetShare` of
+ *   the fleet per contract; it never drops a taken contract;
+ * - it swipes the freighter off the pad when the hold is full or holds everything the contract
+ *   still needs until the Dock Autopilot is online, then sets the `contract` policy;
  * - it fires the free flare charge at the best rock;
  * - it buys the option with the best payback (Δ activeRate / cost, counted from now: the wait to
  *   afford it plus its payback time; a claim is valued with one new drone on it), and from 2:00
@@ -72,6 +73,11 @@ export interface HaulBotOptions {
   noShop?: boolean;
   /** Pick contracts but never move a drone for one (section 8's "does nothing" check: few should be met). */
   passive?: boolean;
+  /**
+   * Only watching (Decision 42): the app open, the autopilot on `full`, nothing bought, no drone moved
+   * or placed, no contract taken (one already taken stays), no flare fired. The second offline gate.
+   */
+  watch?: boolean;
   /** Skip the offline comparison (nested runs). */
   noOffline?: boolean;
   /** Shared base state factory (the caller's createInitialState); the fixtures' shape is used when absent. */
@@ -109,8 +115,19 @@ export interface HaulBotResult {
   gestures: Counts;
   limits: { drill: number; haul: number; freighter: number };
   payouts: { total: number; met: number; fillSum: number; launches: number };
-  /** One hour away against one hour of play from the same state: with purchases (the gate), without, and activeRate × 3600. */
-  offline: { at: number; offlinePerHour: number; activeRatePerHour: number; playPerHour: number; noBuyPerHour: number }[];
+  /** Decision 40: taken contracts met and lapsed, and the contract bonus paid (credits). */
+  contracts: { taken: number; met: number; lapsed: number; bonus: number; earned: number };
+  /** Bot seconds of every purchase (Upgrade taps: levels, claims, the autopilot). */
+  buys: number[];
+  /** Pods earned, by reason, per whole hour of bot time (index = hour). */
+  podsByHour: Record<string, number>[];
+  /**
+   * One hour away against one hour of play from the same state: `offlinePerHour` without and
+   * `offlineBoosted` with the Shift Log ad bonus (Decision 42), the bot playing on (`playPerHour`, the
+   * first gate), only watching (`watchPerHour`, the second gate), without purchases (`noBuyPerHour`,
+   * for the record) and activeRate × 3600.
+   */
+  offline: { at: number; offlinePerHour: number; offlineBoosted: number; activeRatePerHour: number; playPerHour: number; watchPerHour: number; noBuyPerHour: number }[];
   states: Record<number, Run>;
   /** activeRate at every whole minute of bot time (index = minute). */
   income: number[];
@@ -183,6 +200,8 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   const gestures = zero();
   const limits = { drill: 0, haul: 0, freighter: 0 };
   const payouts = { total: 0, met: 0, fillSum: 0, launches: 0 };
+  const contracts = { taken: 0, met: 0, lapsed: 0, bonus: 0, earned: 0 };
+  const podsByHour: Record<string, number>[] = [];
   const offline: HaulBotResult['offline'] = [];
   const states: Record<number, Run> = {};
   const income: number[] = [];
@@ -191,9 +210,11 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
 
   let t = 0;
   let win: Window10 = { from: 0, gestures: zero(), earned: 0, depleted: 0 };
+  const buys: number[] = [];
   const count = (k: GestureKind, n = 1) => {
     gestures[k] += n;
     win.gestures[k] += n;
+    if (k === 'upgrade') buys.push(t);
   };
   // Sheets stay open while the bot keeps buying from them (3 s).
   let openSheet: { key: string; until: number } | null = null;
@@ -240,8 +261,16 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
           payouts.total += 1;
           if (e.met) payouts.met += 1;
           win.earned += e.payout;
+          contracts.earned += e.payout;
+          contracts.bonus += e.bonus ?? 0;
           break;
         }
+        case 'contractMet':
+          contracts.met += 1;
+          break;
+        case 'contractLapsed':
+          if (e.wasActive && !e.dropped) contracts.lapsed += 1;
+          break;
         case 'launch': {
           payouts.launches += 1;
           payouts.fillSum += sumUnits(e.cargo) / Math.max(1, params().F);
@@ -251,10 +280,13 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
           mark('contractsUnlocked', t);
           note('contracts unlocked', true, false);
           break;
-        case 'podEarned':
+        case 'podEarned': {
           mark(`pod ${e.reason}`, t);
           note(`pod (${e.reason})`, true, false);
+          const hr = (podsByHour[Math.floor(t / 3600)] ??= {});
+          hr[e.reason] = (hr[e.reason] ?? 0) + 1;
           break;
+        }
         case 'depleted':
           win.depleted += 1;
           break;
@@ -341,37 +373,40 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   };
 
   /**
-   * Contracts (section 8): with none active, it picks the board contract with the highest
-   * `contractGain` whose units the hold can carry once it routes for it (`contractStation`'s routed
-   * share); then, while that contract is active, it drags drones from the routes that lose least
-   * onto rocks of the wanted ores until the hold's share as routed covers the units (5 % margin),
-   * at most `fleetShare` of the fleet per contract. With `passive` it picks the best-paying contract
-   * and never moves a drone for it (the "does nothing" player: it should meet few).
+   * Contracts (section 8, Decision 40): with none taken, it takes the offer with the highest bonus
+   * whose units it can deliver in `contracts.launches` launches once it routes for it
+   * (`contractStation`'s routed share per launch × launches ≥ units, 5 % to spare); then, while that
+   * contract is taken, it drags drones from the routes that lose least onto rocks of the wanted ores
+   * until every ore is on pace with 15 % to spare (one launch's share as routed × launches left ≥
+   * units left), at most `fleetShare` of the fleet per contract. It never drops a taken contract.
+   * With `passive` it takes the best-paying offer and never moves a drone for it (the "does nothing"
+   * player: it should meet few); with `watch` it takes nothing.
    */
   let routedFor = -1;
   let routedMoves = 0;
   const handleContracts = () => {
     const h = g.haul;
-    if (!h.contracts.unlocked) return;
+    if (!h.contracts.unlocked || opts.watch) return;
+    const L = cfg.haul.contracts.launches;
     if (h.contracts.active === null) {
       const p = params();
       const station = H.contractStation(cfg, p, h);
       let pick = -1;
-      let pickGain = 0;
-      h.contracts.board.forEach((c, i) => {
-        const gain = H.contractGain(cfg, p, h, i);
-        if (!(gain > pickGain)) return;
+      let pickBonus = 0;
+      for (const v of H.contractViews(cfg, p, h, g.haulStats)) {
+        if (v.contract.taken || !(v.bonus > pickBonus)) continue;
         if (!opts.passive) {
-          const r = station.reach(c.wants.map((w) => w.ore));
-          if (!c.wants.every((w, k) => r.routed[k] >= w.units - 1e-9)) return;
+          const r = station.reach(v.contract.wants.map((w) => w.ore));
+          if (!v.contract.wants.every((w, k) => r.routed[k] * L >= w.units * 1.05)) continue;
         }
-        pick = i;
-        pickGain = gain;
-      });
+        pick = v.index;
+        pickBonus = v.bonus;
+      }
       if (pick < 0) return;
       sheet('contracts');
       if (!act(H.pickContract(cfg, g, pick), [])) return;
       count('contract');
+      contracts.taken += 1;
     }
     if (opts.passive) return;
     const c = H.activeContract(g.haul);
@@ -384,14 +419,19 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     const ores = c.wants.map((w) => w.ore);
     for (let guard = 0; guard < 80 && routedMoves < budget; guard++) {
       const p = params();
+      const cur = H.activeContract(g.haul);
+      if (!cur) break;
       const r = H.contractStation(cfg, p, g.haul).reach(ores);
-      // The ore whose share falls shortest of its units.
+      const launches = Math.max(1, cur.launchesLeft);
+      // The ore furthest behind its pace.
       let worst = -1;
-      let short = 0;
-      c.wants.forEach((w, k) => {
-        const gap = w.units * 1.05 - r.now[k];
-        if (gap > short) {
-          short = gap;
+      let behind = Infinity;
+      cur.wants.forEach((w, k) => {
+        const left = H.wantLeft(w);
+        if (!(left > 0)) return;
+        const pace = (r.now[k] * launches) / (left * 1.15);
+        if (pace < 1 && pace < behind) {
+          behind = pace;
           worst = k;
         }
       });
@@ -409,7 +449,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
           to = k;
         }
       });
-      if (to === null) break;
+      if (to === null || !(best > 1e-9)) break;
       const avoid = g.haul.slots.map((s, k) => (s.claimed && ores.includes(s.ore) ? k : -1)).filter((k) => k >= 0);
       if (moveTo(to, 1, avoid) < 1) break;
       routedMoves += 1;
@@ -440,8 +480,8 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     if (h.autopilot.online || !H.canLaunch(g)) return;
     const p = params();
     const full = H.holdTotal(h) >= p.F - H.EPS;
-    const c = H.activeContract(h);
-    const met = c ? c.wants.every((w) => (h.hold[w.ore] ?? 0) >= w.units - H.EPS) : false;
+    // Decision 40: the hold holds everything the taken contract still needs.
+    const met = H.contractMet(h.hold, H.activeContract(h));
     if (!full && !met) return;
     const ev: H.HaulEvent[] = [];
     if (act(H.launch(cfg, g, ev), ev)) count('swipe');
@@ -566,9 +606,10 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   const ensurePolicy = () => {
     if (!g.haul.autopilot.online || policySet) return;
     policySet = true;
-    if (g.haul.autopilot.policy !== 'contract') {
+    const want = opts.watch ? 'full' : 'contract';
+    if (g.haul.autopilot.policy !== want) {
       sheet('station');
-      if (act(H.setPolicy(cfg, g, 'contract'), [])) count('tap');
+      if (act(H.setPolicy(cfg, g, want), [])) count('tap');
     }
   };
 
@@ -656,13 +697,19 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     if (t % 60 === 0) income.push(H.haulIncome(cfg, g));
     const now = NOW + t * 1000;
 
-    placeIdle();
-    serveSeamsAndBonanzas();
+    if (!opts.watch) {
+      placeIdle();
+      serveSeamsAndBonanzas();
+    }
     handleContracts();
-    useFreeFlare();
-    manualLaunch();
+    if (!opts.watch) {
+      useFreeFlare();
+      manualLaunch();
+    }
     const wasOnline = g.haul.autopilot.online;
-    if (!g.haul.autopilot.online && g.haul.clock >= 120) {
+    if (opts.watch) {
+      /* nothing bought */
+    } else if (!g.haul.autopilot.online && g.haul.clock >= 120) {
       if (H.affordable(g.cash, H.autopilotCost(cfg, g))) {
         sheet('station');
         const ev: H.HaulEvent[] = [];
@@ -691,12 +738,15 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
       const snap = { ...g, lastSavedAt: now, stats: { ...g.stats, clockHigh: now } } as Run;
       const off = H.haulOffline(cfg, snap, now + 3600_000);
       const played = runHaulBot(cfg, { hours: 1, prestige: false, noOffline: true, start: g, now });
+      const watched = runHaulBot(cfg, { hours: 1, prestige: false, watch: true, noOffline: true, start: g, now });
       const still = runHaulBot(cfg, { hours: 1, prestige: false, noShop: true, noOffline: true, start: g, now });
       offline.push({
         at: t,
         offlinePerHour: off.earnings,
+        offlineBoosted: off.earnings * (1 + (cfg.haul.offline.adBonus ?? 0)),
         activeRatePerHour: H.haulIncome(cfg, g) * 3600,
         playPerHour: played.end.lifetimeEarnings - g.lifetimeEarnings,
+        watchPerHour: watched.end.lifetimeEarnings - g.lifetimeEarnings,
         noBuyPerHour: still.end.lifetimeEarnings - g.lifetimeEarnings,
       });
     }
@@ -726,7 +776,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   const cur = runs[runs.length - 1];
   cur.earnings = g.runEarnings;
   void prevF;
-  return { hours: opts.hours, marks, notables, windows, runs, gestures, limits, payouts, offline, states, income, end: g };
+  return { hours: opts.hours, marks, notables, windows, runs, gestures, limits, payouts, contracts, buys, podsByHour, offline, states, income, end: g };
 }
 
 // ----------------------------------------------------------- section 8's targets
@@ -817,18 +867,42 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotR
   const tot = lim.drill + lim.haul + lim.freighter || 1;
   const top = Math.max(lim.drill, lim.haul, lim.freighter) / tot;
   add('Route-minutes bound by one limit', 'no kind above 60 %', `drill ${((lim.drill / tot) * 100).toFixed(0)} %, haul ${((lim.haul / tot) * 100).toFixed(0)} %, freighter ${((lim.freighter / tot) * 100).toFixed(0)} %`, top <= 0.6, true);
-  const metShare = r.payouts.total ? r.payouts.met / r.payouts.total : 0;
-  add('Payouts with a met contract', '40 to 70 %', `${(metShare * 100).toFixed(0)} %`, metShare >= 0.4 && metShare <= 0.7, false);
+  // Decision 40: the share of TAKEN contracts that are met (met / (met + lapsed)).
+  const metOf = (x: HaulBotResult) => (x.contracts.met + x.contracts.lapsed ? x.contracts.met / (x.contracts.met + x.contracts.lapsed) : 0);
+  const metShare = metOf(r);
+  add('Taken contracts met (the bot that routes for them)', '60 to 85 %', `${(metShare * 100).toFixed(0)} % (${r.contracts.met} met, ${r.contracts.lapsed} lapsed)`, metShare >= 0.6 && metShare <= 0.85, false);
   if (passive) {
-    const ps = passive.payouts.total ? passive.payouts.met / passive.payouts.total : 0;
-    add('Met contracts without routing for them', '≤ 20 %', `${(ps * 100).toFixed(0)} % (${passive.payouts.met} of ${passive.payouts.total}, first ${passive.hours} h)`, ps <= 0.2, false);
+    const ps = metOf(passive);
+    add('Taken contracts met without routing for them', '≤ 25 %', `${(ps * 100).toFixed(0)} % (${passive.contracts.met} met, ${passive.contracts.lapsed} lapsed, first ${passive.hours} h)`, ps <= 0.25, false);
   }
+  const bonusShare = r.contracts.earned ? r.contracts.bonus / r.contracts.earned : 0;
+  add('Contract bonus as a share of income', '10 to 25 % (aim)', `${(bonusShare * 100).toFixed(1)} %`, bonusShare >= 0.1 && bonusShare <= 0.25, false);
   const fill = r.payouts.launches ? r.payouts.fillSum / r.payouts.launches : 0;
   add('Average launch fill', '70 to 95 %', `${(fill * 100).toFixed(0)} %`, fill >= 0.7 && fill <= 0.95, false);
-  const offRatios = r.offline.map((o) => (o.playPerHour ? o.offlinePerHour / o.playPerHour : 0));
-  const offMax = offRatios.length ? Math.max(...offRatios) : 0;
-  const still = r.offline.map((o) => (o.noBuyPerHour ? o.offlinePerHour / o.noBuyPerHour : 0));
-  add('Offline credits per hour vs active play', '≤ 0.45', `${offRatios.map((x) => x.toFixed(2)).join(' / ') || 'not measured'} (no purchases: max ${(still.length ? Math.max(...still) : 0).toFixed(2)}; vs activeRate: max ${Math.max(0, ...r.offline.map((o) => o.offlinePerHour / (o.activeRatePerHour || 1))).toFixed(2)})`, offRatios.length > 0 && offMax <= 0.45, true);
+  // Decision 42: an hour away WITH the Shift Log bonus against an hour of play (the bot that buys and
+  // routes: at most 0.6) and against an hour of only watching (autopilot on full, nothing bought or
+  // routed: at most 0.9), at every measurement.
+  const playR = r.offline.map((o) => (o.playPerHour ? o.offlineBoosted / o.playPerHour : Infinity));
+  const watchR = r.offline.map((o) => (o.watchPerHour ? o.offlineBoosted / o.watchPerHour : Infinity));
+  const fx2 = (xs: number[]) => xs.map((x) => x.toFixed(2)).join(' / ') || 'not measured';
+  add('Offline with the ad bonus vs an hour of play', '≤ 0.60', `${fx2(playR)} (no bonus: max ${Math.max(0, ...r.offline.map((o) => o.offlinePerHour / (o.playPerHour || 1))).toFixed(2)})`, playR.length > 0 && Math.max(...playR) <= 0.6, true);
+  add('Offline with the ad bonus vs an hour of watching', '≤ 0.90', fx2(watchR), watchR.length > 0 && Math.max(...watchR) <= 0.9, true);
+  // rules-3, Decision 45: pods and Dark Matter per hour in hours 1 to 3 (from 1:00 to 3:00 of bot time).
+  const podsIn = (h: number) => Object.values(r.podsByHour[h] ?? {}).reduce((a, b) => a + b, 0);
+  const pods = [1, 2].map(podsIn);
+  const dmPer = (chestId: string) => {
+    const c = cfg.meta.chests.find((x) => x.id === chestId);
+    if (!c) return 0;
+    const w = c.slotWeights.card + c.slotWeights.gems + c.slotWeights.cash;
+    return w > 0 ? c.slots * (c.slotWeights.gems / w) * ((c.gems[0] + c.gems[1]) / 2) : 0;
+  };
+  const dm = [1, 2].map((h) => Object.entries(r.podsByHour[h] ?? {}).reduce((a, [why, n]) => a + n * dmPer(why === 'transmissions' || why === 'galaxy' ? cfg.haul.pods.derelict : cfg.haul.pods.scrap), 0));
+  add('Pods per hour, hours 1 to 3', '3 to 10 each hour', `${pods.join(' / ')} (${[1, 2].map((h) => Object.entries(r.podsByHour[h] ?? {}).map(([k, n]) => `${k} ${n}`).join(', ')).join('; ')})`, pods.every((x) => x >= 3 && x <= 10), false);
+  add('Dark Matter per hour from pods, hours 1 to 3', '2 to 8 each hour (expected)', dm.map((x) => x.toFixed(1)).join(' / '), dm.every((x) => x >= 2 && x <= 8), false);
+  // play-18: the longest wait between two purchases in the first 5 minutes (from the first payout).
+  const early = r.buys.filter((x) => x <= 300);
+  const gap5 = longestGap(early, Math.min(r.marks.firstPayout ?? 0, 300), 300);
+  add('Longest wait between purchases, first 5 min', '≤ 30 s (about)', `${mmss(gap5.len)} (to ${mmss(gap5.end)})`, gap5.len <= 35, false);
   const w30 = r.windows.find((w) => w.from === 1200);
   const dried = w30 ? w30.depleted * 6 : 0;
   add('Rocks dried per hour at minute 30', '8 to 20', `${dried}`, dried >= 8 && dried <= 20, false);
@@ -839,6 +913,12 @@ export interface TutorialRow {
   t: number;
   what: string;
   numbers: string;
+  /** The guided step this row carries out (1 to 6), when it is one. */
+  step?: number;
+  /** activeRate after the row (credits a second), for the rows that change it. */
+  income?: number;
+  /** Warp-outs so far, at the row. */
+  warps?: number;
 }
 
 /**
@@ -862,6 +942,7 @@ export function runTutorialHuman(cfg: H.HaulConfig, opts: { reaction?: number; s
   let fullNoted = false;
   let stripNoted = false;
   let launches = 0;
+  let warps = 0;
   const steps = Math.round((opts.seconds ?? 240) / DT);
   for (let i = 0; i < steps; i++) {
     const t = i * DT;
@@ -900,6 +981,12 @@ export function runTutorialHuman(cfg: H.HaulConfig, opts: { reaction?: number; s
         const cost = H.claimCost(cfg, g, 1);
         next = H.claimSlot(cfg, g, 1, ev);
         what = `Claim slot 1 (${cfg.strings.currencySymbol}${fmt(cost)})`;
+      } else if (hint.key === 'rig:upgrade') {
+        const slot = rockOf(hint.route[0]) >= 0 ? rockOf(hint.route[0]) : 0;
+        const cost = H.rigCost(cfg, g, slot);
+        next = H.upgradeRig(cfg, g, slot, ev);
+        what = `Upgrade rig T-${slot + 1} to L${(next as Run).haul?.slots[slot].rigLevel ?? '?'} (${cfg.strings.currencySymbol}${fmt(cost)})`;
+        numbers = `r = ${fmt(H.haulParams(cfg, next as Run).slots[slot].r)}/s`;
       } else if (hint.key === 'station:autopilot') {
         next = H.buyAutopilot(cfg, g, ev);
         what = `Dock Autopilot online (${cfg.strings.currencySymbol}${fmt(H.autopilotCost(cfg, g))})`;
@@ -912,7 +999,7 @@ export function runTutorialHuman(cfg: H.HaulConfig, opts: { reaction?: number; s
       }
       if (next !== g) {
         g = next as Run;
-        if (what) rows.push({ t, what, numbers });
+        if (what) rows.push({ t, what, numbers, step: hint.step > 0 ? hint.step : undefined, income: H.haulIncome(cfg, g), warps });
         seen = null;
       }
     }
@@ -923,7 +1010,10 @@ export function runTutorialHuman(cfg: H.HaulConfig, opts: { reaction?: number; s
       if (e.type === 'unload' && !firstUnload) {
         firstUnload = true;
         rows.push({ t, what: 'First unload into the hold', numbers: `${fmt(e.units)} units` });
-      } else if (e.type === 'warp') rows.push({ t, what: `Warp-out${e.met ? ', contract met' : ''}`, numbers: `${cfg.strings.currencySymbol}${fmt(e.payout)}` });
+      } else if (e.type === 'warp') {
+        warps++;
+        rows.push({ t, what: `Warp-out${e.met ? ', contract met' : ''}`, numbers: `${cfg.strings.currencySymbol}${fmt(e.payout)}`, warps });
+      }
       else if (e.type === 'contractsUnlocked' && !stripNoted) {
         stripNoted = true;
         const c = g.haul.contracts.board[0];

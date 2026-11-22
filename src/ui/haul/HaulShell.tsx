@@ -88,12 +88,14 @@ function useAndroidBack(): void {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       const s = useGame.getState();
       const ui = useHaulUi.getState();
-      if (ui.overlay || s.chestOpening) return true;
+      if (ui.overlay) return true;
       if (s.offline) {
         void haulActions.collectShiftLog(false);
         return true;
       }
+      // A spoke's inner layer first (a revealed pod is stowed); a pod still being cut swallows the key.
       if (closeBackLayer()) return true;
+      if (s.chestOpening) return true;
       if (ui.sheet) {
         fx.play('ui_close');
         ui.closeSheet();

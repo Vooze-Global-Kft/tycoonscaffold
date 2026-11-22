@@ -10,6 +10,8 @@
  *   rock's drawn circle meets the strip, the comms slot, the rack or the bay, or rises above the
  *   comms slot's bottom (errata 49). Under Long Haul the drawn layout is therefore the base layout.
  * - Rock drawn radius `clamp(22, 26, 26 × k × T / 110)` (errata 43); tap circle 1.2 × that (errata 51).
+ *   On a field so short that neighbours come closer than 12 pt rim to rim, the radius gives way down
+ *   to 18 pt to keep that gap (phone-7: 360 x 640 with three-button navigation).
  * - Chips: one per slot, claimed or not, so chips never move (errata 44): every slot's chip is
  *   placed at once by a backtracking search over t ∈ {0.25, 0.26, ..., 0.85} along the line from
  *   the station centre, keeping chips ≥ 40 pt apart and maximising the smallest clearance from the
@@ -76,6 +78,9 @@ export const RACK_REACH = 16;
 export const DROP_R = 40;
 /** Flick cone, half angle in degrees (spec 4.2). */
 export const FLICK_DEG = 15;
+/** Smallest drawn rock radius on a short field, and the gap kept between neighbouring rocks' rims (phone-7). */
+export const MIN_ROCK_R = 18;
+export const ROCK_GAP = 12;
 
 const clamp = (lo: number, hi: number, v: number) => Math.max(lo, Math.min(hi, v));
 const inRect = (p: Pt, r: Rect) => p.x >= r.x && p.x <= r.x + r.width && p.y >= r.y && p.y <= r.y + r.height;
@@ -144,7 +149,16 @@ export function fieldLayout(screen: Screen, cfg: HaulConfig, trait: string | nul
     k *= 0.96;
     placed = place(k);
   }
-  const { radii, rocks } = placed;
+  const { radii } = placed;
+  // phone-7: on a short field (a small Android phone with three-button navigation) the shrink loop
+  // pulls rocks together while their radius stays at 22; then the drawn radius gives way, down to
+  // MIN_ROCK_R, so neighbours keep ROCK_GAP between their rims (their tap circles do not meet).
+  let dmin = Infinity;
+  for (let i = 0; i < placed.rocks.length; i++)
+    for (let j = i + 1; j < placed.rocks.length; j++) dmin = Math.min(dmin, Math.hypot(placed.rocks[i].x - placed.rocks[j].x, placed.rocks[i].y - placed.rocks[j].y));
+  const r0 = placed.rocks[0]?.r ?? 22;
+  const rFit = Number.isFinite(dmin) && dmin - 2 * r0 < ROCK_GAP ? Math.max(MIN_ROCK_R, (dmin - ROCK_GAP) / 2) : r0;
+  const rocks = rFit < r0 ? placed.rocks.map((r) => ({ ...r, r: rFit })) : placed.rocks;
   const chips = chipPositions(station, rocks, rack);
 
   const btn = compact ? 40 : 44;

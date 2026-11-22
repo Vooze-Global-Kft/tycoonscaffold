@@ -140,20 +140,28 @@ export function drawChosenIcon(c: SkCanvas): void {
 
 /**
  * Adaptive icon (Android): the launcher puts it on the theme's page colour (cream #FFF6E9), which
- * lost the red sunburst. So this layer is full-bleed: the same sunburst over the whole 108 dp, the
- * chef and slice shrunk to 64 % inside the 66 dp safe circle (toque top about 264 px from the centre,
- * slice corner about 291), the bust's flat bottom below the visible 72 dp window (y > 853).
+ * lost the red sunburst. So this layer is full-bleed: the same sunburst over the whole 108 dp. The
+ * chef's head, toque and hair and the slice (raised beside his cheek) stay inside the 66 dp safe
+ * circle, so no launcher mask (circle, squircle, rounded square) cuts them (pizza-0); only the bust
+ * runs on below the visible 72 dp window, cropped by the mask like a portrait.
+ * Checked by scripts/art/icons/measure.ts.
  */
-export const ADAPTIVE_K = 0.64;
-export function drawChosenAdaptive(c: SkCanvas): void {
+export const ADAPTIVE_K = 0.55;
+/** Where the scaled chef's source point (560, 560) lands, and the slice in the chef's coordinates. */
+export const ADAPTIVE_AT = { x: 520, y: 560 };
+export const ADAPTIVE_SLICE = { x: 842, y: 650, turn: 16, unit: 8.6 };
+/** The adaptive layer's sunburst alone (what the subject sits on; scripts/art/icons/measure.ts). */
+export function drawAdaptiveBackdrop(c: SkCanvas): void {
   // Gradient radius shrunk with the content so the visible window shows the iOS icon's red edge.
   drawBackground(c, 'sun', 500, 560);
+}
+export function drawChosenAdaptive(c: SkCanvas): void {
+  drawAdaptiveBackdrop(c);
   c.save();
-  c.translate(512 - 560 * ADAPTIVE_K, 560 - 560 * ADAPTIVE_K);
+  c.translate(ADAPTIVE_AT.x - 560 * ADAPTIVE_K, ADAPTIVE_AT.y - 560 * ADAPTIVE_K);
   c.scale(ADAPTIVE_K, ADAPTIVE_K);
   drawChef(c, CHOSEN.chef);
-  // Slice a little further in, so its crust corner stays inside the safe circle.
-  drawSliceAt(c, { ...CHOSEN.slice, x: CHOSEN.slice.x - 18, y: CHOSEN.slice.y - 16 });
+  drawSliceAt(c, ADAPTIVE_SLICE);
   c.restore();
 }
 

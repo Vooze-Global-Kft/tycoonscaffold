@@ -19,23 +19,20 @@ import { ReticleLayer } from '../art/Reticle';
 import { allHaulHints } from '../hints';
 import { sheetHintTarget } from '../sheets/shellLogic';
 import { useHaulUi } from '../uiState';
+import { runParams } from '../useRun';
 
-/** The manifest index worth the most if met now (the board hint's second stage). */
+/** The contract the board hint points at (Decision 40): the taken one, else the best offer the routes keep pace with, else the biggest bonus. */
 function bestCard(): number {
   const { cfg, game } = useGame.getState();
   const g = game as unknown as H.HaulGame;
   if (!H.isHaul(cfg) || !g.haul) return 0;
-  const p = H.haulParams(cfg, g as H.HaulGame & { haul: H.HaulState });
-  let best = 0;
-  let v = -Infinity;
-  g.haul.contracts.board.forEach((_, i) => {
-    const gain = H.contractGain(cfg, p, g.haul as H.HaulState, i);
-    if (gain > v) {
-      v = gain;
-      best = i;
-    }
-  });
-  return best;
+  const run = g as H.HaulGame & { haul: H.HaulState };
+  const views = H.contractViews(cfg, runParams(cfg, run), run.haul, run.haulStats);
+  const taken = views.find((v) => v.contract.taken);
+  if (taken) return taken.index;
+  let best: H.ContractView | null = null;
+  for (const v of views) if (!best || (v.onPace && !best.onPace) || (v.onPace === best.onPace && v.bonus > best.bonus)) best = v;
+  return best?.index ?? 0;
 }
 
 export function SheetHints() {
@@ -44,7 +41,8 @@ export function SheetHints() {
   const sheet = useHaulUi((s) => s.sheet);
   const blocked = useHaulUi((s) => s.spoke !== null || s.overlay !== null || s.menuOpen);
   const offline = useGame((s) => s.offline !== null);
-  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  // A contract row gets a frame round it (Decision 48: no reticle on a number); a button a point.
+  const [at, setAt] = useState<{ x: number; y: number; w: number; h: number; frame: boolean } | null>(null);
 
   useEffect(() => {
     const look = () => {
@@ -58,8 +56,8 @@ export function SheetHints() {
       const r = targets.get(key);
       setAt((prev) => {
         if (!r) return null;
-        const next = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-        return prev && Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5 ? prev : next;
+        const next = { x: r.x, y: r.y, w: r.width, h: r.height, frame: key.startsWith('contract:card') };
+        return prev && prev.frame === next.frame && Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5 && Math.abs(prev.w - next.w) < 0.5 && Math.abs(prev.h - next.h) < 0.5 ? prev : next;
       });
     };
     look();
@@ -75,7 +73,7 @@ export function SheetHints() {
   if (!at) return null;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <ReticleLayer hint={{ kind: 'point', from: at }} width={width} height={height} />
+      <ReticleLayer hint={at.frame ? { kind: 'frame', rect: { x: at.x, y: at.y, width: at.w, height: at.h } } : { kind: 'point', from: { x: at.x + at.w / 2, y: at.y + at.h / 2 } }} width={width} height={height} />
     </View>
   );
 }

@@ -3,10 +3,10 @@
  * the drag line, ghost slots, the rich-seam rim, the Survey Flare and its trail, credit glyphs
  * and the hold tank.
  */
-import { ClipOp, Skia, type SkCanvas, type SkPaint, type SkPicture } from '@shopify/react-native-skia';
+import { ClipOp, Skia, type SkCanvas, type SkImage, type SkPaint, type SkPicture } from '@shopify/react-native-skia';
 import { drawOreShape, routeDash } from './ore.draw';
 import { drawText, textWidth } from './glyphs';
-import { SPACE, alpha, galaxyHue, mix, oreColor } from './palette';
+import { SPACE, alpha, galaxyPalette, mix, oreColor } from './palette';
 import { DEG, TAU, arc, circle, clip, dashed, fill, glow, glowPaint, lamp, line, linearPaint, litStroke, part, picture, poly, rrect, seeded, stroke } from './pen';
 
 // ---------------------------------------------------------------------------
@@ -14,31 +14,36 @@ import { DEG, TAU, arc, circle, clip, dashed, fill, glow, glowPaint, lamp, line,
 // ---------------------------------------------------------------------------
 
 /**
- * The starfield, `w` x `h` points, for galaxy `galaxy` (nebula hue +47° per galaxy). Baked once;
- * the scene drifts it 3 pt/s and wraps (it tiles vertically: draw it twice).
+ * The starfield, `w` x `h` points, for galaxy `galaxy` (its backdrop palette, decision 52). As a
+ * picture (the gallery and mocks); the field draws `bakeStarfield`'s image instead.
  */
 export function starfieldPicture(w: number, h: number, galaxy = 0, seed = 1): SkPicture {
   return picture({ x: 0, y: 0, w, h }, (c) => drawStarfield(c, w, h, galaxy, seed));
 }
 
-export function drawStarfield(c: SkCanvas, w: number, h: number, galaxy = 0, seed = 1): void {
+/**
+ * Draws the starfield. `wrap` (default true): a star cut by the top or bottom edge is drawn again
+ * one height away, so two copies stacked tile without a seam; only stars within reach of an edge
+ * are copied. The baked field image is mirrored instead (`wrap` false).
+ */
+export function drawStarfield(c: SkCanvas, w: number, h: number, galaxy = 0, seed = 1, wrap = true): void {
   const rnd = seeded(seed * 131 + galaxy);
-  const hue = galaxyHue(galaxy);
+  const pal = galaxyPalette(galaxy);
   c.save();
   c.clipRect({ x: 0, y: 0, width: w, height: h }, ClipOp.Intersect, true);
-  c.drawRect({ x: 0, y: 0, width: w, height: h }, fill(SPACE.bg));
-  // Nebula band: a few large soft blobs along a diagonal, in the galaxy hue.
+  c.drawRect({ x: 0, y: 0, width: w, height: h }, fill(pal.bg));
+  // Nebula band: a few large soft blobs along a diagonal, in the galaxy's two hues.
   const tilt = -0.35 + rnd() * 0.2;
   for (let i = 0; i < 7; i++) {
     const t = i / 6;
     const x = w * (-0.1 + 1.2 * t);
     const y = h * (0.42 + tilt * (t - 0.5)) + (rnd() - 0.5) * h * 0.08;
     const r = w * (0.28 + rnd() * 0.22);
-    glow(c, x, y, r, i % 2 ? hue : mix(hue, '#FF5FA8', 0.25), 0.1 + rnd() * 0.05);
+    glow(c, x, y, r, i % 2 ? pal.nebula : mix(pal.nebula, pal.veil, 0.6), 0.1 + rnd() * 0.05);
   }
   // Dust lane through the band.
   glow(c, w * 0.6, h * 0.4, w * 0.3, '#000000', 0.25);
-  // Stars, three depths; wrapped vertically so the layer tiles.
+  // Stars, three depths.
   const n = Math.round((w * h) / 900);
   for (let i = 0; i < n; i++) {
     const x = rnd() * w;
@@ -47,12 +52,45 @@ export function drawStarfield(c: SkCanvas, w: number, h: number, galaxy = 0, see
     const r = d < 0.75 ? 0.45 : d < 0.95 ? 0.75 : 1.1;
     const col = rnd() < 0.15 ? '#FFE7C2' : rnd() < 0.3 ? '#C4DCFF' : '#FFFFFF';
     const a = d < 0.75 ? 0.35 + rnd() * 0.25 : 0.7 + rnd() * 0.3;
-    for (const yy of [y, y - h, y + h]) {
+    const reach = r > 1 ? 4 : r + 1;
+    const copies = !wrap ? [y] : y < reach ? [y, y + h] : y > h - reach ? [y, y - h] : [y];
+    for (const yy of copies) {
       if (r > 1) glow(c, x, yy, 4, col, 0.35);
       c.drawCircle(x, yy, r, fill(alpha(col, a)));
     }
   }
   c.restore();
+}
+
+/** The baked starfield: an image of `pw` x `ph` pixels for a field of `w` x `h` points. */
+export interface StarfieldImage {
+  image: SkImage;
+  w: number;
+  h: number;
+  pw: number;
+  ph: number;
+  galaxy: number;
+}
+
+/**
+ * Bakes the starfield once into an image (lead's decision 50): the field draws it as ONE textured
+ * rectangle, mirrored vertically as it drifts, instead of replaying a thousand circles each frame.
+ * At most 2 pixels a point and at most 2048 pixels a side (every phone GPU takes that texture).
+ * Null if no surface could be made.
+ */
+export function bakeStarfield(w: number, h: number, galaxy: number, density: number): StarfieldImage | null {
+  const d = Math.max(1, Math.min(2, density, 2048 / Math.max(1, w), 2048 / Math.max(1, h)));
+  const pw = Math.max(1, Math.round(w * d));
+  const ph = Math.max(1, Math.round(h * d));
+  const surface = Skia.Surface.Make(pw, ph) ?? Skia.Surface.MakeOffscreen(pw, ph);
+  if (!surface) return null;
+  const c = surface.getCanvas();
+  c.save();
+  c.scale(pw / w, ph / h);
+  drawStarfield(c, w, h, galaxy, 1, false);
+  c.restore();
+  surface.flush();
+  return { image: surface.makeImageSnapshot(), w, h, pw, ph, galaxy };
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +105,8 @@ export interface RingLabelOptions {
   /** Drawn rock radius (default 26) and the clearance (default 20). */
   rockR?: number;
   clear?: number;
+  /** Other things a label must not touch: the centre x, y and the half-width of a pile label's plate. */
+  avoid?: [number, number, number][];
 }
 
 /**
@@ -92,6 +132,8 @@ export function drawRingGuides(c: SkCanvas, cx: number, cy: number, radii: numbe
     const y = cy + Math.sin(a) * r;
     if (x < gutter) return;
     if (o.rocks?.some(([rx, ry]) => Math.hypot(rx - x, ry - y) < rockR + clear)) return;
+    // The label's box is about 14 x 10 pt from (x + 3, y - 9); `avoid` boxes are half-width ar, half-height 9.
+    if (o.avoid?.some(([ax, ay, ar]) => Math.abs(ax - (x + 10)) < ar + 7 && Math.abs(ay - (y - 4)) < 9 + 5)) return;
     drawText(c, `R${i + 1}`, x + 3, y - 9, { size: 5, color: alpha('#FFFFFF', 0.45), glow: 0, weight: 0.9 });
   });
 }
@@ -160,17 +202,52 @@ export function drawDragLine(c: SkCanvas, x0: number, y0: number, x1: number, y1
 // Ghost slots, seams
 // ---------------------------------------------------------------------------
 
-/** A ghost slot (unclaimed): a dashed circle with a price tag. Breathe its scale over 2 s. */
-export function drawGhostSlot(c: SkCanvas, r: number, price: string): void {
-  c.drawPath(circle(0, 0, r), fill(alpha(SPACE.line, 0.04)));
-  c.drawPath(circle(0, 0, r), dashed(alpha(SPACE.line, 0.55), 1.2, 4, 4));
-  c.drawPath(line(-4, 0, 4, 0), stroke(alpha(SPACE.line, 0.5), 1.2));
-  c.drawPath(line(0, -4, 0, 4), stroke(alpha(SPACE.line, 0.5), 1.2));
+/**
+ * A ghost slot (unclaimed): a dashed circle with a price tag. Breathe its scale over 2 s.
+ * `progress` (0..1, play-18): how close the credits are to its price, drawn as a solid arc filling
+ * the circle clockwise from the top; at 1 (affordable) the whole ring and the tag light up.
+ */
+export function drawGhostSlot(c: SkCanvas, r: number, price: string, progress = 0): void {
+  const k = Math.max(0, Math.min(1, progress));
+  const ready = k >= 1;
+  c.drawPath(circle(0, 0, r), fill(alpha(SPACE.line, ready ? 0.1 : 0.04)));
+  if (ready) glow(c, 0, 0, r * 1.25, SPACE.line, 0.18);
+  c.drawPath(circle(0, 0, r), dashed(alpha(SPACE.line, ready ? 0.9 : 0.55), 1.2, 4, 4));
+  if (k > 0.005) {
+    if (ready) c.drawPath(circle(0, 0, r), stroke(SPACE.line, 1.6));
+    else c.drawPath(arc(0, 0, r, -90, k * 360), stroke(alpha(SPACE.line, 0.95), 2));
+  }
+  c.drawPath(line(-4, 0, 4, 0), stroke(alpha(SPACE.line, ready ? 0.9 : 0.5), 1.2));
+  c.drawPath(line(0, -4, 0, 4), stroke(alpha(SPACE.line, ready ? 0.9 : 0.5), 1.2));
   const tw = textWidth(price, 6) + 8;
   const tag = rrect(-tw / 2, r - 5, tw, 12, 3);
-  c.drawPath(tag, fill(SPACE.panel));
-  c.drawPath(tag, stroke(alpha(SPACE.line, 0.7), 1));
-  drawText(c, price, 0, r - 2, { size: 6, color: SPACE.line, align: 'center', glow: 0.4, weight: 1.1 });
+  c.drawPath(tag, fill(ready ? mix(SPACE.panel, SPACE.line, 0.22) : SPACE.panel));
+  c.drawPath(tag, stroke(alpha(SPACE.line, ready ? 1 : 0.7), 1));
+  drawText(c, price, 0, r - 2, { size: 6, color: ready ? SPACE.white : SPACE.line, align: 'center', glow: ready ? 0.7 : 0.4, weight: 1.1 });
+}
+
+/** The ring the field draws round a rock a comms line names (play-9), radius r; pulse its alpha. */
+export function drawCalloutRing(c: SkCanvas, r: number): void {
+  glow(c, 0, 0, r * 1.5, SPACE.line, 0.18);
+  c.drawPath(circle(0, 0, r + 6), stroke(alpha(SPACE.line, 0.3), 5));
+  c.drawPath(circle(0, 0, r + 6), stroke(SPACE.line, 1.6));
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * TAU - TAU / 8;
+    const x = Math.cos(a);
+    const y = Math.sin(a);
+    c.drawPath(line(x * (r + 10), y * (r + 10), x * (r + 16), y * (r + 16)), stroke(SPACE.line, 1.6));
+  }
+}
+
+/** A rock's short name ("T-2") on a small plate centred on the origin (play-9: shown while a comms line names it). */
+export function drawRockTag(c: SkCanvas, name: string): void {
+  const size = 6;
+  const w = textWidth(name, size) + 8;
+  const h = size + 6;
+  const plate = rrect(-w / 2, -h / 2, w, h, 3);
+  c.drawPath(plate, fill(mix(SPACE.panel, SPACE.line, 0.2)));
+  c.drawPath(plate, stroke(SPACE.line, 1));
+  drawText(c, name, 0, -size / 2, { size, color: SPACE.white, align: 'center', glow: 0.5, weight: 1.1 });
 }
 
 /** The rich-seam rim round a rock of radius r (pulse its alpha at 1 Hz for 40 s). */

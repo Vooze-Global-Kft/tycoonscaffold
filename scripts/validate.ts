@@ -4,8 +4,9 @@
  *   npm run validate                    every game
  *   npm run validate -- space-miner     one game (cross-game checks still compare it with all the others)
  *   npm run validate -- --no-sim        skip the bot playthrough (faster; a haul game's bot plays
- *                                       12 h with Jumps, about 1 to 2 minutes, and fails on every
- *                                       hard section 8 target it misses)
+ *                                       12 h with Jumps on seeds 12345, 4 and 99 in parallel, about
+ *                                       2 to 4 minutes, and fails on every hard section 8 target any
+ *                                       seed misses: Decision 45)
  *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
  *
  * For every pair of games that both have sounds it also runs the sound similarity check
@@ -15,7 +16,9 @@
  * Errors block a release: schema problems, cross-field problems from lintGameConfig (sim, meta,
  * story, icons), missing asset files, bundle or product ids shared with another game, and an
  * economy table that is the same as another game's (or a constant multiple of it).
- * Warnings are release chores and risks: test ads on, no privacy policy URL, chests for sale,
+ * Warnings are release chores and risks (some become errors with --release: a missing or
+ * placeholder privacy policy URL for a game with ads or purchases, no payment keys for a game that
+ * sells products, placeholder app ids): test ads on, no privacy policy URL, chests for sale,
  * near-identical store text, pacing the bot finds off. Store files that differ from what sync would
  * write, banned words (scripts/lib/checks.ts) and "Idle ... Tycoon" titles are errors.
  */
@@ -56,6 +59,38 @@ for (const id of new Set([...all, ...ids])) {
   const r = GameConfigSchema.safeParse(raw);
   if (r.success) parsed.set(id, r.data);
   else schemaErrors.set(id, r.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`));
+}
+
+/** The seeds every hard section 8 target must hold on (Decision 45; the slowest seed decides). */
+const PACING_SEEDS = [12345, 4, 99];
+
+/**
+ * Runs the haul pacing bot for several seeds at once, one child process per seed (Decision 45), and
+ * returns each seed's parsed `--json` line (null when that run failed or timed out).
+ */
+function pacingSeeds(id: string, hours: number, seeds: number[], extra: string[], timeout: number): Map<number, { hardMissed?: string[] } | null> {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `validate-pacing-${id}-`));
+  const q = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`;
+  const cmd = seeds
+    .map((seed) => [process.execPath, require.resolve('tsx/cli'), path.join(__dirname, 'simulate.ts'), id, '--hours', String(hours), '--json', '--seed', String(seed), ...extra].map(q).join(' ') + ` > ${q(path.join(dir, `${seed}.out`))} 2>&1 &`)
+    .join('\n');
+  spawnSync('bash', ['-c', `${cmd}\nwait`], {
+    cwd: games.ROOT,
+    encoding: 'utf8',
+    timeout,
+    env: { ...process.env, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=2000'].filter(Boolean).join(' ') },
+  });
+  const out = new Map<number, { hardMissed?: string[] } | null>();
+  for (const seed of seeds) {
+    try {
+      const line = fs.readFileSync(path.join(dir, `${seed}.out`), 'utf8').trim().split('\n').pop();
+      out.set(seed, line ? JSON.parse(line) : null);
+    } catch {
+      out.set(seed, null);
+    }
+  }
+  fs.rmSync(dir, { recursive: true, force: true });
+  return out;
 }
 
 /** Runs the pacing bot in a child process (it is a script with its own process state). */
@@ -136,9 +171,21 @@ for (const id of ids) {
   if (silent.length) problems.push(`${silent.length} fx event(s) of mode "${g.mode}" have no sound file for this game: ${silent.join(', ')} (games/${id}/assets/sfx/${g.soundPack ? ` or shared/sfx/${g.soundPack}/` : ''})`);
     if (!fs.existsSync(path.join(games.gameDir(id), 'icon.png'))) warnings.push('no icon.png (using the shared placeholder)');
   if (g.monetization.ads.forceTestAds) warnings.push('forceTestAds is on: test ads in release builds earn nothing. Paste the AdMob units and turn it off before release');
-  if (!g.monetization.iap.revenueCatIosKey) warnings.push('no RevenueCat keys (purchases are simulated)');
+  if (!release && !g.monetization.iap.revenueCatIosKey) warnings.push('no RevenueCat keys (purchases are simulated)');
   if (!g.firebase.iosGoogleServicesFile) warnings.push('no Firebase files (analytics logs to console)');
-  if (!g.store.privacyPolicyUrl) warnings.push('no store.privacyPolicyUrl: both stores require one, and the data-safety forms link to it');
+  // A game with ads or purchases needs a real privacy policy link on the listing and in the app (Apple
+  // 5.1.1, Google's Data safety form): a release fails without one or on a placeholder (play-13, store-0).
+  const hasAds = Boolean(g.monetization.ads.ios || g.monetization.ads.android);
+  const sells = g.monetization.iap.products.length > 0;
+  if (hasAds || sells) {
+    const url = g.store.privacyPolicyUrl;
+    const why = !url ? 'no store.privacyPolicyUrl' : /^https?:\/\/([^/]*\.)?example\.(com|org|net)(\/|$)/i.test(url) ? `store.privacyPolicyUrl ${url} is a placeholder` : null;
+    if (why) (release ? problems : warnings).push(`${why}: both stores require a working privacy policy link for a game with ads or purchases (listing, Data safety form, and the in-app link)`);
+  }
+  // A release that sells products needs the payment keys, or the build simulates purchases and shows
+  // the development note (store-8).
+  if (release && sells && !(g.monetization.iap.revenueCatIosKey && g.monetization.iap.revenueCatAndroidKey))
+    problems.push('the game sells products but monetization.iap has no RevenueCat keys for both platforms: a release build would simulate purchases');
   const rawStore = ((games.readGameJson(id) as { store?: { promotionalText?: string } }).store ?? {}) as { promotionalText?: string };
   const releases = (() => {
     const f = path.join(games.gameDir(id), 'store', 'releases.json');
@@ -157,6 +204,17 @@ for (const id of ids) {
     const abs = path.join(games.ROOT, rel);
     return !fs.existsSync(abs) || fs.readFileSync(abs, 'utf8') !== content;
   });
+  // The fingerprint declares the meta systems; the daily gift is one the data can confirm (Decision 53).
+  const fpFile = path.join(games.gameDir(id), 'store', 'fingerprint.json');
+  if (fs.existsSync(fpFile)) {
+    try {
+      const declared = (JSON.parse(fs.readFileSync(fpFile, 'utf8')) as { meta_systems?: string[] }).meta_systems ?? [];
+      const hasGift = g.economy.daily.gems.length > 0;
+      if (declared.includes('daily-gift') !== hasGift) problems.push(`store/fingerprint.json meta_systems ${hasGift ? 'leaves out' : 'lists'} "daily-gift" but economy.daily.gems is ${hasGift ? 'not ' : ''}empty`);
+    } catch {
+      /* the fingerprint check reports an unreadable file */
+    }
+  }
   if (stale.length) problems.push(`store files out of date with game.json (run npm run sync): ${stale.map(([rel]) => path.relative(path.join('games', id), rel)).join(', ')}`);
   if (g.meta.chestsForSale) {
     warnings.push(
@@ -167,11 +225,14 @@ for (const id of ids) {
     );
   }
 
-  // --- pacing of a haul game: its own bot (spec section 8), 12 h with Jumps; every hard target missed is an error ---
+  // --- pacing of a haul game: its own bot (spec section 8), 12 h with Jumps, on every seed of
+  // PACING_SEEDS in parallel (Decision 45); every hard target missed on any seed is an error ---
   if (runSim && problems.length === 0 && g.mode === 'haul') {
-    const r = pacing(id, 12, ['--prestige', '--passive', 'false'], 420_000);
-    if (!r || !Array.isArray(r.hardMissed)) problems.push(`pacing: the section 8 bot did not finish within 7 min (npm run simulate -- ${id} --hours 12 --prestige to see why)`);
-    else r.hardMissed.forEach((m) => problems.push(`pacing (section 8, hard): ${m}`));
+    const results = pacingSeeds(id, 12, PACING_SEEDS, ['--prestige', '--passive', 'false'], 900_000);
+    for (const [seed, r] of results) {
+      if (!r || !Array.isArray(r.hardMissed)) problems.push(`pacing, seed ${seed}: the section 8 bot did not finish within 15 min (npm run simulate -- ${id} --hours 12 --prestige --seed ${seed} to see why)`);
+      else r.hardMissed.forEach((m) => problems.push(`pacing (section 8, hard), seed ${seed}: ${m}`));
+    }
   }
   // --- pacing: the same bot as `npm run simulate`, two simulated hours ---
   else if (runSim && problems.length === 0) {

@@ -879,7 +879,10 @@ export const useGame = create<Store>((set, get) => {
       update((s) => {
         const now = Date.now();
         const reset = E.prestige(cfg, s, now, choice);
-        const fresh = safe('meta.missionsAfterReset', () => M.missionsAfterReset(cfg, reset, now), reset);
+        // A mode whose reset waits for a later step to start the run (haul: the Jump's condition) refills
+        // the run's missions when it starts (rules-6: an "earn" target priced on a run that earns nothing).
+        const waits = safe('engine.awaitsRunStart', () => engineFor(cfg)?.awaitsRunStart?.(reset) ?? false, false);
+        const fresh = waits ? reset : safe('meta.missionsAfterReset', () => M.missionsAfterReset(cfg, reset, now), reset);
         return safe('meta.refreshDeals', () => M.refreshDeals(cfg, fresh, now), fresh);
       });
       fx.play('prestige');
@@ -898,7 +901,9 @@ export const useGame = create<Store>((set, get) => {
         let amount = offline.earnings;
         if (doubled) {
           const ok = await ads.showRewarded('offline_double');
-          if (ok) amount *= 2;
+          // Sim and classic double it; a mode with its own rules says what the ad adds (haul, Decision 42: +50 %).
+          const mult = engineFor(get().cfg)?.offlineAdMultiplier;
+          if (ok) amount *= mult ? safe('engine.offlineAdMultiplier', () => mult(get().cfg), 1) : 2;
         }
         // Clear the popup in the same update that pays it, and only pay what is still pending:
         // a resume() while the ad was open may have merged more time into it.
@@ -924,6 +929,8 @@ export const useGame = create<Store>((set, get) => {
       }),
 
     claimDaily() {
+      // Decision 53: a game without a daily gift (economy.daily.gems empty) offers no claim.
+      if (!E.dailyOffered(get().cfg)) return;
       const before = get().game.gems;
       const next = update((s, cfg) => E.claimDaily(cfg, s, Date.now()));
       if (next.gems <= before) return;

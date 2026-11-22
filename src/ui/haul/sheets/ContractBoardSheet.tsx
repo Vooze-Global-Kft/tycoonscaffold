@@ -1,84 +1,125 @@
 /**
- * The Contract Board sheet (spec 4.5, errata 26, 60, 62): three buyer manifests side by side
- * (110 x 156 at 390 width, 104 x 148 at 375, gaps 12): emblem, buyer, each wanted ore with its fill
- * bar (hold units / wanted) and "12 Ice to go", the multiplier, launch pips, "+₵420 if met"
- * (src/engine/haul `contractGain`), ACTIVE on the selected one. Tap selects (nothing else ever
- * picks a contract for the player). Footer: "Scrap Pod every 4 contracts met (2/4)".
- * Card targets `contract:card<i>` (the second stage of the board hint, errata 53).
+ * The Contract Board sheet (spec 4.5, Decision 40): one row per buyer on the board, read like a
+ * dispatch sheet. A contract is delivered over several launches: "Deliver 8.4K copper within 6
+ * launches". Each row says, from the rules' `contractViews` (never computed here):
+ *   emblem, buyer, the multiplier ("x1.8"), "x2 SHIFT" when the day shift would double it;
+ *   each wanted ore: "8.4K COPPER" and what one launch carries of it now ("1.2K PER LAUNCH"), or
+ *   for the taken one "3.7K / 8.4K COPPER" with a bar (delivered solid, aboard lighter);
+ *   "IN 6 LAUNCHES" (an offer) or "4 LAUNCHES LEFT" ("LAST LAUNCH" in amber), the pace word
+ *   ("ON PACE" / "NEEDS MORE COPPER") and the fixed bonus "+₵19.4K WHEN MET".
+ * A tap takes an offer. Taking another while the taken one has progress asks once more ("Drops Kade
+ * Refinery: 3.7K delivered. Tap again."); nothing else ever picks a contract for the player. The
+ * figures use one short format (unitsShort, moneyShort) everywhere: the strip shows the same.
+ * Footer: "Scrap Pod every 4 contracts met (2/4)". Row targets `contract:card<i>` (the second stage
+ * of the board hint, errata 53).
  */
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as H from '../../../engine/haul';
 import { haulActions } from '../../../modes/haul/actions';
+import { fx } from '../../../services/fx';
 import { useTarget } from '../../hints/targets';
 import { alpha } from '../../theme';
 import { HaulIcon } from '../art/HaulIcon';
-import { useRunShallow } from '../useRun';
-import { useHaulUi } from '../uiState';
-import { buyerName, money, oreColorOf, oreName, portraitOf } from './format';
-import { HaulSheet, Line, MONO, Meter, useColors, useLast, useType } from './parts';
+import { runParams, useRunShallow } from '../useRun';
+import { useBackLayer, useHaulUi } from '../uiState';
+import { buyerName, moneyShort, oreColorOf, oreName, portraitOf, unitsShort } from './format';
+import { HaulSheet, Line, MONO, useColors, useLast, useType } from './parts';
 import { say } from './shellText';
 
-interface Want {
+/** How long a "tap again to drop" question waits for the second tap. */
+const CONFIRM_MS = 4000;
+
+interface WantRow {
   ore: string;
-  name: string;
   color: string;
-  fill: number;
+  /** "8.4K COPPER" or, taken, "3.7K / 8.4K COPPER". */
   text: string;
+  /** "1.2K PER LAUNCH" (what the routes carry now), or "NO COPPER ON A ROUTE". */
+  pace: string;
+  /** Delivered and aboard, as shares of the units (the taken one only). */
+  got: number;
+  aboard: number;
 }
-interface CardView {
+interface RowView {
+  index: number;
   buyer: string;
   emblem: string;
-  wants: Want[];
   mult: string;
-  left: number;
-  lifetime: number;
-  gain: string;
-  active: boolean;
-  ready: boolean;
+  shift: string | null;
+  wants: WantRow[];
+  taken: boolean;
+  /** "IN 6 LAUNCHES", "4 LAUNCHES LEFT", "LAST LAUNCH". */
+  launches: string;
+  last: boolean;
+  onPace: boolean;
+  paceWord: string;
+  bonus: string;
+  /** Units already delivered or aboard (a drop loses them), as text; '' when none. */
+  progress: string;
+  /** Some of it is aboard the freighter in flight (the question says so). */
+  progressAboard: boolean;
 }
 interface BoardView {
   unlocked: boolean;
   unlockAt: number;
-  cards: CardView[];
+  rows: RowView[];
   footer: string;
+}
+
+function launchWord(n: number, taken: boolean): string {
+  if (!taken) return n === 1 ? say('cardIn1') : say('cardIn', { n });
+  return n <= 1 ? say('cardLast') : say('launchesLeft', { n });
 }
 
 function boardView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): BoardView {
   const h = g.haul;
-  const p = H.haulParams(cfg, g);
+  const p = runParams(cfg, g);
   const C = cfg.haul.contracts;
   const every = cfg.haul.pods.contractsEvery;
   const podName = cfg.meta.chests.find((x) => x.id === cfg.haul.pods.scrap)?.name ?? cfg.haul.names.pod;
-  const cards = h.contracts.board.map((k, i): CardView => {
-    const missing = H.contractMissing(h, i);
-    const wants = k.wants.map((w, j): Want => {
-      const have = Math.min(w.units, h.hold[w.ore] ?? 0);
-      const m = missing[j]?.units ?? 0;
+  const views = H.contractViews(cfg, p, h, g.haulStats);
+  const rows = views.map((v): RowView => {
+    const taken = v.contract.taken;
+    const wants = v.wants.map((w): WantRow => {
+      const ore = oreName(cfg, w.ore).toUpperCase();
       return {
         ore: w.ore,
-        name: oreName(cfg, w.ore),
         color: oreColorOf(cfg, w.ore),
-        fill: w.units > 0 ? have / w.units : 0,
-        text: m > 0 ? say('toGo', { n: m, ore: oreName(cfg, w.ore) }) : say('inHold'),
+        text: taken ? say('cardProgress', { got: unitsShort(w.got), n: unitsShort(w.units), ore }) : say('cardWant', { n: unitsShort(w.units), ore }),
+        pace: (w.perLaunch >= 1 ? say('cardPerLaunch', { n: unitsShort(w.perLaunch) }) : say('cardNoRoute', { ore })).toUpperCase(),
+        got: w.units > 0 ? Math.min(1, w.got / w.units) : 0,
+        aboard: w.units > 0 ? Math.min(1, w.aboard / w.units) : 0,
       };
     });
+    const got = v.wants.reduce((s, w) => s + w.got, 0);
+    const aboard = v.wants.reduce((s, w) => s + w.aboard, 0);
+    const short = v.shortOre ? oreName(cfg, v.shortOre).toUpperCase() : '';
     return {
-      buyer: buyerName(cfg, k.buyer),
-      emblem: portraitOf(cfg, k.buyer),
+      index: v.index,
+      buyer: buyerName(cfg, v.contract.buyer),
+      emblem: portraitOf(cfg, v.contract.buyer),
+      mult: say('mult', { m: (Math.round((v.contract.mult + p.contractAdd) * 10) / 10).toFixed(1) }),
+      shift: v.shift ? say('shiftTag', { m: cfg.haul.shift.mult }).toUpperCase() : null,
       wants,
-      mult: `×${(Math.round((k.mult + p.contractAdd) * 10) / 10).toFixed(1)}`,
-      left: k.launchesLeft,
-      lifetime: C.lifetime,
-      gain: say('gain', { v: money(cfg, H.contractGain(cfg, p, h, i)) }),
-      active: h.contracts.active === i,
-      ready: missing.every((x) => x.units <= 0),
+      taken,
+      // An offer reads as the deal it would be once taken ("IN 6 LAUNCHES"), not as its time left on the board.
+      launches: launchWord(taken ? v.launchesLeft : v.launches, taken).toUpperCase(),
+      last: taken && v.launchesLeft <= 1,
+      onPace: v.onPace,
+      paceWord: (v.onPace ? say('paceOn') : say('paceShort', { ore: short })).toUpperCase(),
+      bonus: say('cardBonus', { v: moneyShort(cfg, v.bonus) }).toUpperCase(),
+      progress: taken && got + aboard >= 1 ? unitsShort(got + aboard) : '',
+      progressAboard: aboard >= 1,
     };
   });
+  // The taken contract leads the sheet; the offers follow in board order.
+  rows.sort((a, b) => Number(b.taken) - Number(a.taken) || a.index - b.index);
   return {
     unlocked: h.contracts.unlocked,
     unlockAt: C.unlockLaunches,
-    cards,
-    footer: say('boardFooter', {
+    rows,
+    footer: say(every === 1 ? 'boardFooter1' : 'boardFooter', {
       pod: podName,
       n: every,
       k: every > 0 ? (g.stats.contractsMet ?? 0) % every : 0,
@@ -98,27 +139,46 @@ export function ContractBoardSheet() {
     { t: '', icon: '' },
   );
   const v = useLast(board);
+  // The row waiting for its second tap (a drop that loses progress), and when it was asked.
+  const [ask, setAsk] = useState<{ index: number; at: number } | null>(null);
+  useEffect(() => {
+    if (!ask) return;
+    const t = setTimeout(() => setAsk(null), CONFIRM_MS);
+    return () => clearTimeout(t);
+  }, [ask]);
+  useEffect(() => {
+    if (!open) setAsk(null);
+  }, [open]);
+  useBackLayer(open && ask !== null, () => setAsk(null));
   const close = () => useHaulUi.getState().closeSheet();
-  const anyActive = v?.cards.some((x) => x.active) ?? false;
+  const taken = v?.rows.find((r) => r.taken) ?? null;
+  const pick = (row: RowView) => {
+    if (row.taken) return;
+    if (taken && taken.progress && ask?.index !== row.index) {
+      fx.play('ui_denied');
+      setAsk({ index: row.index, at: Date.now() });
+      return;
+    }
+    setAsk(null);
+    haulActions.pickContract(row.index);
+  };
   return (
     <HaulSheet visible={open && board !== null} onClose={close} title={title.t} left={title.icon ? <HaulIcon name={title.icon} size={26} /> : null}>
       {v ? (
         !v.unlocked ? (
           <Line muted>{say('boardLocked', { n: v.unlockAt })}</Line>
-        ) : v.cards.length === 0 ? (
+        ) : v.rows.length === 0 ? (
           <Line muted>{say('boardEmpty')}</Line>
         ) : (
           <>
-            {!anyActive ? (
+            {!taken ? (
               <Line size={ty.small} muted>
                 {say('boardHint')}
               </Line>
             ) : null}
-            <View style={styles.row}>
-              {v.cards.map((card, i) => (
-                <Manifest key={i} index={i} card={card} />
-              ))}
-            </View>
+            {v.rows.map((row) => (
+              <ContractRow key={row.index} row={row} onPress={() => pick(row)} ask={ask?.index === row.index && taken ? say(taken.progressAboard ? 'dropAskAboard' : 'dropAsk', { buyer: taken.buyer, n: taken.progress }) : null} />
+            ))}
             <Line mono muted size={ty.small} style={styles.footer}>
               {v.footer}
             </Line>
@@ -129,129 +189,107 @@ export function ContractBoardSheet() {
   );
 }
 
-function Manifest({ index, card }: { index: number; card: CardView }) {
+function ContractRow({ row, onPress, ask }: { row: RowView; onPress: () => void; ask: string | null }) {
   const c = useColors();
   const ty = useType();
-  const { width } = useWindowDimensions();
-  const target = useTarget(`contract:card${index}`);
-  const compact = width < 385;
-  const w = compact ? 104 : 110;
-  const edge = card.active ? c.success : card.ready ? alpha(c.success, 0.6) : alpha(c.primary, 0.35);
+  const target = useTarget(`contract:card${row.index}`);
+  const amber = c.accent;
+  const edge = row.taken ? c.success : ask ? amber : alpha(c.primary, 0.35);
   return (
     <Pressable
       {...target}
-      onPress={() => haulActions.pickContract(index)}
+      onPress={onPress}
       accessibilityRole="button"
-      accessibilityState={{ selected: card.active }}
-      accessibilityLabel={`${card.buyer} ${card.wants.map((x) => x.text).join(', ')} ${card.mult} ${card.gain} ${say('ifMet')}`}
-      style={StyleSheet.flatten([
+      accessibilityState={{ selected: row.taken }}
+      accessibilityLabel={[row.buyer, row.mult, ...row.wants.map((w) => w.text), row.launches, row.paceWord, row.bonus, ask ?? ''].join('. ')}
+      style={({ pressed }) => [
         styles.card,
         {
-          width: w,
-          minHeight: compact ? 148 : 156,
           borderColor: edge,
-          backgroundColor: card.active ? alpha(c.success, 0.08) : alpha(c.surface, 0.9),
+          backgroundColor: row.taken ? alpha(c.success, 0.08) : alpha(c.surface, 0.9),
+          opacity: pressed && !row.taken ? 0.8 : 1,
         },
-      ])}
+      ]}
     >
-      <View style={styles.cardTop}>
-        {card.emblem ? <HaulIcon name={card.emblem} size={26} /> : null}
-        <Text style={[styles.mult, { color: c.text, fontSize: ty.big, fontFamily: MONO }]} allowFontScaling={false}>
-          {card.mult}
-        </Text>
-      </View>
-      <Text style={[styles.buyer, { color: c.text, fontSize: ty.tiny }]} numberOfLines={2} allowFontScaling={false}>
-        {card.buyer.toUpperCase()}
-      </Text>
-      {card.wants.map((want) => (
-        <View key={want.ore} style={styles.want}>
-          <View style={styles.wantRow}>
-            <HaulIcon name={`art:ore-${want.ore}`} size={12} />
-            <Meter value={want.fill} color={want.color} height={4} style={styles.flex} />
+      <View style={styles.top}>
+        {row.emblem ? <HaulIcon name={row.emblem} size={24} /> : null}
+        <T size={ty.small} color={c.text} bold flex mono={false}>
+          {row.buyer.toUpperCase()}
+        </T>
+        {row.shift ? (
+          <View style={[styles.tag, { borderColor: c.success }]}>
+            <T size={ty.tiny} color={c.success} bold>
+              {row.shift}
+            </T>
           </View>
-          <Text style={{ color: c.textMuted, fontSize: ty.tiny, fontFamily: MONO }} numberOfLines={2} allowFontScaling={false}>
-            {want.text}
-          </Text>
+        ) : null}
+        <T size={ty.big} color={c.text} bold>
+          {row.mult}
+        </T>
+      </View>
+      {row.wants.map((w) => (
+        <View key={w.ore} style={styles.want}>
+          <View style={styles.wantLine}>
+            <HaulIcon name={`art:ore-${w.ore}`} size={12} />
+            <T size={ty.small} color={c.text} bold flex>
+              {w.text}
+            </T>
+            <T size={ty.tiny} color={c.textMuted}>
+              {w.pace}
+            </T>
+          </View>
+          {row.taken ? (
+            <View style={[styles.bar, { backgroundColor: alpha(c.text, 0.1) }]}>
+              <View style={{ width: `${w.got * 100}%`, backgroundColor: w.color }} />
+              <View style={{ width: `${Math.min(w.aboard, 1 - w.got) * 100}%`, backgroundColor: alpha(w.color, 0.4) }} />
+            </View>
+          ) : null}
         </View>
       ))}
-      <View style={styles.flex} />
-      <View style={styles.pips}>
-        {Array.from({ length: card.lifetime }, (_, j) => (
-          <View
-            key={j}
-            style={[
-              styles.pip,
-              {
-                backgroundColor: j < card.left ? c.primary : alpha(c.text, 0.15),
-              },
-            ]}
-          />
-        ))}
+      <View style={styles.bottom}>
+        {row.taken ? (
+          <View style={[styles.tag, styles.takenTag, { backgroundColor: c.success, borderColor: c.success }]}>
+            <T size={ty.tiny} color={c.background} bold>
+              {say('taken')}
+            </T>
+          </View>
+        ) : null}
+        <T size={ty.tiny} color={row.last ? amber : c.textMuted} bold={row.last}>
+          {row.launches}
+        </T>
+        <T size={ty.tiny} color={row.onPace ? c.success : amber} bold flex>
+          {`\u00a0·\u00a0${row.paceWord}`}
+        </T>
+        <T size={ty.body} color={c.success} bold>
+          {row.bonus}
+        </T>
       </View>
-      <Text
-        style={{
-          color: c.success,
-          fontSize: ty.body,
-          fontFamily: MONO,
-          fontWeight: '800',
-        }}
-        numberOfLines={1}
-        allowFontScaling={false}
-      >
-        {card.gain}
-      </Text>
-      <Text style={{ color: c.textMuted, fontSize: ty.tiny }} numberOfLines={1} allowFontScaling={false}>
-        {say('ifMet')}
-      </Text>
-      {card.active ? (
-        <View style={[styles.badge, { backgroundColor: c.success }]}>
-          <Text
-            style={{
-              color: c.background,
-              fontSize: ty.tiny,
-              fontWeight: '900',
-              letterSpacing: 1,
-            }}
-            allowFontScaling={false}
-          >
-            {say('active')}
-          </Text>
-        </View>
+      {ask ? (
+        <T size={ty.tiny} color={amber} bold mono={false}>
+          {ask}
+        </T>
       ) : null}
     </Pressable>
   );
 }
 
+/** One line of a row, sized by hand (allowFontScaling false, phone-4): every text of a row is single-line. */
+function T(p: { children: string; size: number; color: string; bold?: boolean; mono?: boolean; flex?: boolean }) {
+  return (
+    <Text style={{ color: p.color, fontSize: p.size, fontFamily: p.mono === false ? undefined : MONO, fontWeight: p.bold ? '800' : '600', flex: p.flex ? 1 : undefined }} numberOfLines={1} allowFontScaling={false}>
+      {p.children}
+    </Text>
+  );
+}
+
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    paddingTop: 10,
-  },
-  card: { borderWidth: 1.5, borderRadius: 12, padding: 8, gap: 5 },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  mult: { fontWeight: '800' },
-  buyer: { fontWeight: '800', letterSpacing: 0.6 },
-  want: { gap: 2 },
-  wantRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  pips: { flexDirection: 'row', gap: 3 },
-  pip: { width: 8, height: 4, borderRadius: 2 },
-  badge: {
-    position: 'absolute',
-    top: -9,
-    alignSelf: 'center',
-    left: 0,
-    right: 0,
-    marginHorizontal: 22,
-    borderRadius: 6,
-    alignItems: 'center',
-    paddingVertical: 1,
-  },
-  footer: { textAlign: 'center', marginTop: 4 },
+  card: { borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8, gap: 6 },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tag: { borderWidth: 1, borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1 },
+  want: { gap: 3 },
+  wantLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bar: { height: 4, borderRadius: 2, overflow: 'hidden', flexDirection: 'row' },
+  bottom: { flexDirection: 'row', alignItems: 'center' },
+  takenTag: { marginRight: 6 },
+  footer: { textAlign: 'center', marginTop: 2 },
 });

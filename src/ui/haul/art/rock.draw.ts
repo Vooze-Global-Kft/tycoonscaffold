@@ -7,7 +7,7 @@
  */
 import type { SkCanvas, SkPath, SkPicture } from '@shopify/react-native-skia';
 import { ORE, SPACE, alpha, mix, oreColor, shade } from './palette';
-import { LINE, TAU, around, blob, clip, fill, glow, litStroke, picture, poly, rrect, seeded, stroke } from './pen';
+import { LINE, TAU, around, blob, circle, clip, fill, glow, litStroke, picture, poly, rrect, seeded, stroke } from './pen';
 import { drawOreShape } from './ore.draw';
 import { drawText, textWidth } from './glyphs';
 
@@ -320,20 +320,30 @@ export const PILE_LABEL_SIZE = 5;
 
 /**
  * A pile label ("62/80") on its plate, centred on the origin; draw it on a layer above drones.
- * `full`: the pile is at its cap (the rig stalls): an amber plate with an up-arrow, readable
- * without colour. Returns the plate size.
+ * `ore`: a small pip of the ore's shape and colour leads the figure, so it reads as ore waiting at
+ * the rig (play-16). `full`: the pile is at its cap (the rig stalls): an amber plate with an
+ * up-arrow, readable without colour. Returns the plate size.
  */
-export function drawPileLabel(c: SkCanvas, text: string, full = false): { w: number; h: number } {
+export function drawPileLabel(c: SkCanvas, text: string, full = false, ore?: string): { w: number; h: number } {
   const size = PILE_LABEL_SIZE;
   const tw = textWidth(text, size);
   const arrow = full ? size + 2 : 0;
-  const w = tw + 6 + arrow;
+  const pip = ore ? size + 3 : 0;
+  const w = tw + 6 + arrow + pip;
   const h = size + 5;
   const plate = rrect(-w / 2, -h / 2, w, h, h / 2);
   c.drawPath(plate, fill(full ? mix(SPACE.bg, SPACE.amber, 0.85) : alpha(SPACE.bg, 0.8)));
   if (!full) c.drawPath(plate, stroke(alpha('#FFFFFF', 0.14), 0.6));
   const ink = full ? SPACE.bg : alpha('#FFFFFF', 0.92);
-  const x0 = -w / 2 + 3;
+  let x0 = -w / 2 + 3;
+  if (ore) {
+    c.save();
+    c.translate(x0 + size / 2, 0);
+    if (full) c.drawPath(circle(0, 0, size * 0.62), fill(SPACE.bg));
+    drawOreShape(c, ore, size * 0.42, { glow: 0 });
+    c.restore();
+    x0 += pip;
+  }
   if (full) {
     const ax = x0 + size / 2;
     c.drawPath(poly([ax - size * 0.45, 0.6, ax, -size * 0.55, ax + size * 0.45, 0.6]), fill(ink));

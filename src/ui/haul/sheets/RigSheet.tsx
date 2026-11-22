@@ -7,9 +7,11 @@
  * the map, not here. Data: src/engine/haul `slotReadout`, `rigCost`; action haulActions.upgradeRig.
  */
 import type { SkPicture } from '@shopify/react-native-skia';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as H from '../../../engine/haul';
 import { haulActions } from '../../../modes/haul/actions';
+import { useGame } from '../../../state/store';
 import { alpha } from '../../theme';
 import { SPACE } from '../art/palette';
 import { pictures } from '../art/pictures';
@@ -18,7 +20,7 @@ import { drawRig, rigLookFor, rigStripesFor, type RigLook } from '../art/rig.dra
 import { drawRockBody, rockShapeIndex } from '../art/rock.draw';
 import { useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
-import { clock, money, oreColorOf, oreName, rate, rockName } from './format';
+import { clock, money, oreColorOf, oreName, rate, rockName, unitsShort } from './format';
 import { ActionButton, ArtView, HaulSheet, Line, Meter, Plate, useColors, useLast, useType } from './parts';
 import { say } from './shellText';
 
@@ -113,7 +115,7 @@ function rigView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }, slot:
             r: rate(r.drill),
           }),
     verdict: n === 0 ? 'none' : r.verdict,
-    pile: say('pileLine', { p: Math.floor(r.pile), c: Math.floor(r.cap) }),
+    pile: say('pileLine', { p: unitsShort(r.pile), c: unitsShort(r.cap) }),
     pileFull: s.full,
     prev: claimed.length > 1 ? claimed[(at - 1 + claimed.length) % claimed.length] : null,
     next: claimed.length > 1 ? claimed[(at + 1) % claimed.length] : null,
@@ -135,6 +137,9 @@ function rockThumb(shape: number, ore: string, bonanza: boolean, look: number, s
   return p;
 }
 
+/** hintsShown key of the one-time pile explanation. */
+const PILE_HINT = 'rig:pile';
+
 export function RigSheet() {
   const c = useColors();
   const ty = useType();
@@ -142,6 +147,20 @@ export function RigSheet() {
   const slot = sheet?.type === 'rig' ? sheet.slot : -1;
   const live = useRunShallow((cfg, g) => (slot >= 0 ? rigView(cfg, g, slot) : EMPTY), EMPTY);
   const v = useLast(live);
+  // play-16: the pile is explained once (per run), the first time a Rig sheet opens; the line stays while that sheet is open.
+  const [pileHelp, setPileHelp] = useState(false);
+  const isOpen = slot >= 0;
+  useEffect(() => {
+    if (!isOpen) {
+      setPileHelp(false);
+      return;
+    }
+    const g = useGame.getState().game as unknown as { haul?: { hintsShown?: Record<string, number> } };
+    if ((g.haul?.hintsShown?.[PILE_HINT] ?? 0) < 1) {
+      setPileHelp(true);
+      haulActions.markHintShown(PILE_HINT);
+    }
+  }, [isOpen]);
   const close = () => useHaulUi.getState().closeSheet();
   const go = (to: number | null) => to !== null && useHaulUi.getState().openSheet({ type: 'rig', slot: to });
   const verdictText = v ? (v.verdict === 'drill' ? say('verdictDrill') : v.verdict === 'haul' ? say('verdictHaul') : v.verdict === 'balanced' ? say('verdictBalanced') : '') : '';
@@ -192,6 +211,11 @@ export function RigSheet() {
             {verdictText ? (
               <Line size={ty.body} color={verdictColor} style={styles.verdict}>
                 {verdictText}
+              </Line>
+            ) : null}
+            {pileHelp ? (
+              <Line size={ty.small} color={c.primary} lines={3}>
+                {say('pileHelp')}
               </Line>
             ) : null}
             <Line muted size={ty.tiny}>

@@ -8,8 +8,10 @@
  */
 import * as H from '../../../engine/haul';
 import { formatShort } from '../../../engine/format';
+import { GHOST_STEPS } from '../art/pictures';
 import { ATLAS_HEAD_R, ATLAS_ROCK_R, ORE_IDS, RACK_CRADLES, STAR_NODES, hullFor, pileSpot, rigHeads, rigLookFor, rigStripesFor, rockShapeIndex, segmentsFor, type HaulAtlas, type LampState, type RigLook, type StarNode } from '../art';
 import type { FieldLayout, Pt } from '../layout';
+import { runParams } from '../useRun';
 
 export type Run = H.HaulGame & { haul: H.HaulState };
 
@@ -113,10 +115,8 @@ export interface FrameSlot {
   n: number;
   trip: number;
   routeFrom: number;
-  loaded: string;
-  empty: string;
-  chunk: string;
-  shard: string;
+  /** The ore's index in ORE_IDS (the frame loop's per-ore sprite lists: drones, chunks, shards). */
+  oi: number;
   arrive: number;
   crumble: number;
 }
@@ -126,6 +126,8 @@ export interface FrameTable {
   clock: number;
   slots: FrameSlot[];
   holdFull: number;
+  /** 1 when the hold has cargo (the landing freighter ends at its loaded scale). */
+  cargo: number;
   /** Idle drones drawn on the rack, at most 6: x, y, ... */
   rack: number[];
   /** Freighter: 0 docked, 1 climb, 2 away, 3 land; seconds left in the phase. */
@@ -139,7 +141,7 @@ export interface FrameTable {
   fy1: number;
 }
 
-export const EMPTY_TABLE: FrameTable = { version: 0, clock: 0, slots: [], holdFull: 0, rack: [], phase: 0, phaseT: 0, flareAt: -1e9, warpAt: -1e9, fx0: 0, fy0: 0, fx1: 0, fy1: 0 };
+export const EMPTY_TABLE: FrameTable = { version: 0, clock: 0, slots: [], holdFull: 0, cargo: 0, rack: [], phase: 0, phaseT: 0, flareAt: -1e9, warpAt: -1e9, fx0: 0, fy0: 0, fx1: 0, fy1: 0 };
 
 const PHASES: Record<string, number> = { docked: 0, climb: 1, away: 2, land: 3 };
 
@@ -163,7 +165,7 @@ export function spinSeconds(slot: number, rockN: number): number {
  */
 export function buildFrame(cfg: H.HaulConfig, g: Run, geo: SlotGeo[], layout: FieldLayout, fx: FieldFx, version: number, stress = false): FrameTable {
   const h = g.haul;
-  const p = H.haulParams(cfg, g);
+  const p = runParams(cfg, g);
   const slots: FrameSlot[] = [];
   h.slots.forEach((s0, i) => {
     const gg = geo[i];
@@ -203,10 +205,7 @@ export function buildFrame(cfg: H.HaulConfig, g: Run, geo: SlotGeo[], layout: Fi
       n: s.haulers,
       trip: sp && Number.isFinite(sp.trip) && sp.trip > 0 && !stress ? sp.trip : 6 + i,
       routeFrom: s.routeFrom,
-      loaded: `drone-${ore}`,
-      empty: `drone-${ore}-empty`,
-      chunk: `chunk-${ore}-`,
-      shard: `shard-${ore}-`,
+      oi: Math.max(0, (ORE_IDS as readonly string[]).indexOf(ore)),
       arrive: fx.arrive[i] ?? -1e9,
       crumble: fx.crumble[i] ?? -1e9,
     });
@@ -226,6 +225,7 @@ export function buildFrame(cfg: H.HaulConfig, g: Run, geo: SlotGeo[], layout: Fi
     clock: h.clock,
     slots,
     holdFull: H.holdTotal(h) >= p.F - 1e-9 ? 1 : 0,
+    cargo: H.holdTotal(h) > 0 ? 1 : 0,
     rack,
     phase: PHASES[h.freighter.phase] ?? 0,
     phaseT: h.freighter.t,
@@ -247,6 +247,8 @@ export interface SlotVM {
   claimed: boolean;
   /** Claim price label of a ghost slot (null: not a ghost). */
   ghost: string | null;
+  /** How close the credits are to the ghost's price, in steps 0..GHOST_STEPS (GHOST_STEPS: affordable; play-18). */
+  ghostStep: number;
   look: RigLook;
   stripes: number;
   lamp: LampState;
@@ -261,7 +263,7 @@ export interface SlotVM {
 
 export function slotVMs(cfg: H.HaulConfig, g: Run, fx: FieldFx): SlotVM[] {
   const h = g.haul;
-  const p = H.haulParams(cfg, g);
+  const p = runParams(cfg, g);
   const ghosts = new Set(H.ghostSlots(cfg, g));
   const sym = cfg.strings.currencySymbol;
   return h.slots.map((s, i) => {
@@ -275,6 +277,7 @@ export function slotVMs(cfg: H.HaulConfig, g: Run, fx: FieldFx): SlotVM[] {
       slot: i,
       claimed: s.claimed,
       ghost: Number.isFinite(cost) ? sym + formatShort(cost) : null,
+      ghostStep: Number.isFinite(cost) && cost > 0 ? (g.cash >= cost ? GHOST_STEPS : Math.min(GHOST_STEPS - 1, Math.floor((Math.max(0, g.cash) / cost) * GHOST_STEPS))) : 0,
       look: rigLookFor(s.rigLevel),
       stripes: rigStripesFor(s.rigLevel),
       lamp: !present ? 'off' : s.life <= 0 ? 'dry' : s.full ? 'full' : 'run',
@@ -288,14 +291,23 @@ export function slotVMs(cfg: H.HaulConfig, g: Run, fx: FieldFx): SlotVM[] {
   });
 }
 
-/** Pile label texts ("62/80"), '' where none shows: their own selector, so a changing count re-renders only the labels. */
+/**
+ * Pile labels ("iron 62/80": the ore, then the figure; a trailing '!' when full), '' where none
+ * shows: their own selector, so a changing count re-renders only the labels. A label shows only
+ * when it matters (play-16): ore is waiting at the rig, the pile is full, or drones wait at an
+ * empty pile because the rig cannot feed them (haul rate above the drill rate). An empty pile on a
+ * rig running normally shows nothing.
+ */
 export function pileLabels(cfg: H.HaulConfig, g: Run, fx: FieldFx): string[] {
   const h = g.haul;
-  const p = H.haulParams(cfg, g);
+  const p = runParams(cfg, g);
   return h.slots.map((s, i) => {
     const present = s.claimed && s.respawnAt === null && s.rockN >= 0;
     if (!present || h.clock < (fx.arrive[i] ?? -1e9) + 1.5) return '';
-    return `${formatShort(Math.floor(s.pile))}/${formatShort(Math.floor(p.slots[i]?.cap ?? 0))}${s.full ? '!' : ''}`;
+    const sp = p.slots[i];
+    const waiting = s.haulers > 0 && s.life > 0 && !!sp && sp.h > sp.r * 1.05;
+    if (!s.full && s.pile < 1 && !waiting) return '';
+    return `${oreKey(s.ore)} ${formatShort(Math.floor(s.pile))}/${formatShort(Math.floor(sp?.cap ?? 0))}${s.full ? '!' : ''}`;
   });
 }
 

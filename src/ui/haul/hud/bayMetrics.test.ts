@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bayCounterMetrics, bayCounterRows, COUNTER_LINE_EM, fitTicker, TICKER_MIN_FONT } from './bayMetrics';
+import { bayCounterMetrics, bayCounterRows, COUNTER_LINE_EM, fitTicker, SIGN_EM, textEms, TICKER_MIN_FONT } from './bayMetrics';
 
 // Spec 10.2: "₵999.99Qd" at fontScale 0.85, 1, 1.2 and 2 at both sizes: the rows add up to the block
 // and the counter's line fits its row (so the counter can never run into the receipt ticker).
@@ -59,7 +59,8 @@ describe('bayCounterMetrics', () => {
 });
 
 describe('fitTicker', () => {
-  const texts = ['WARPED · MANIFEST 48 COPPER · 12 IRON · ₵612', 'WARPED · 48 COPPER · 12 IRON · ₵612', 'WARPED · 48 COP · 12 IRO · ₵612'];
+  // receiptTexts' four forms (./DockCounter.tsx).
+  const texts = ['WARPED · MANIFEST 48 COPPER · 12 IRON · ₵612', 'WARPED · 48 COPPER · 12 IRON · ₵612', 'WARPED · 48 COPPER +1 · ₵612', 'WARPED · ₵612'];
   it('keeps the longest form that fits at a readable size, never wider than the row', () => {
     for (const width of [120, 166, 175, 260]) {
       const f = fitTicker(texts, width, 14.4);
@@ -71,5 +72,26 @@ describe('fitTicker', () => {
   });
   it('the income line keeps the ticker font', () => {
     expect(fitTicker(['₵36/s'], 166, 12)).toEqual({ text: '₵36/s', font: 12 });
+  });
+});
+
+describe('the currency sign counts as one full em (phone-11)', () => {
+  it('textEms', () => {
+    expect(textEms('₵612')).toBeCloseTo(SIGN_EM + 3 * 0.62);
+    expect(textEms('WARPED')).toBeCloseTo(6 * 0.62);
+  });
+  it('the widest counter fits even if the sign falls back to a face where it is one em wide', () => {
+    for (const s of SIZES)
+      for (const fs of SCALES) {
+        const m = bayCounterMetrics(s.compact, s.block, fs, s.width - 16, WIDEST.length);
+        expect(textEms(WIDEST) * m.counterFont).toBeLessThanOrEqual(s.width - 16 + 1e-9);
+      }
+  });
+  it('every ticker form fits with the sign at one em', () => {
+    const texts = ['CONTRACT MET +₵19.4K · ₵612', 'CONTRACT MET +₵19.4K', '₵12.67M/s'];
+    for (const width of [120, 166, 175]) {
+      const f = fitTicker(texts, width, 12);
+      expect(textEms(f.text) * f.font).toBeLessThanOrEqual(width + 1e-9);
+    }
   });
 });

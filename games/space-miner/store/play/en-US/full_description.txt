@@ -2,7 +2,7 @@ Orbit Haulers is an idle mining game about routes and cargo.
 
 Your station sits in an asteroid field. Drag hauler drones onto rocks to set their routes, and watch them carry ore home to the hold. When the hold is full, swipe the freighter off the pad: it warps out and the whole manifest sells at once.
 
-Buyers post contracts for the ores they want, and each contract lapses after a few launches. Pick one, send drones to the rocks that carry its ore, and its units sell for more.
+Buyers post contracts for the ores they want: so many units within a few launches. Take one, send drones to the rocks that carry its ore, and when the last units arrive the buyer pays its rate on all of them.
 
 Rocks run dry and new ones drift in, sometimes with a different ore, sometimes as a rich bonanza rock. The far rings hold copper, ice, titanium and platinum, but the trips are longer, so where you send each drone matters.
 
@@ -10,7 +10,7 @@ Bring the dock autopilot online and the station ships on its own while you are a
 
 Features
 - Drag-to-route drones on a top-down map of the asteroid field
-- One-swipe freighter launches and buyer contracts that lapse
+- One-swipe freighter launches and buyer contracts delivered over several launches
 - Rocks that run dry and come back as new ore
 - A dock autopilot that keeps shipping offline
 - Fitting Bay modules and a Star Map that changes how each run starts

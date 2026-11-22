@@ -48,7 +48,7 @@ This app is a single game screen with in-app tabs (`src/ui/App.tsx`), so it does
 - Shipped games' numbers come from `scripts/content/build-*.py`; change the script and regenerate, never hand-edit those tables. Each game needs its own economy table (`validate` rejects copies).
 - Chests are earned, not sold, unless a game sets `meta.chestsForSale`; deals never contain permanent items; offer timers are real.
 - Store texts: Orbit Haulers' listing is `scripts/content/space-store.json` (copied into game.json by `build-space.py`); release notes and the release log are `games/<id>/store/releases.json`; App Review notes `games/<id>/store/REVIEW-NOTES.md`. Run `npm run sync` after changing any of them (validate fails on stale store files). Before a submission: `npm run validate:release` (every fingerprint dimension known, real app ids, release notes for the version).
-- Before declaring done: `npm run typecheck`, `npm test`, `npm run validate`, `npm run lint:worklets`, `npm run check:bundle`, and look at what you changed in the web preview (`src/dev/devtools.ts` lists the switches).
+- Before declaring done: `npm run typecheck`, `npm test`, `npm run validate`, `npm run lint:worklets`, `npm run check:bundle`, and look at what you changed in the web preview (`src/dev/devtools.web.ts` lists the switches). Development tools of the web preview live in `.web.ts` files whose phone twins hold nothing (`devtools`, `presets`, `devViews`); `scripts/lib/modes.js` `WEB_ONLY` lists what no phone bundle may hold.
 
 ## Building with EAS
 

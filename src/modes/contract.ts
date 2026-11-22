@@ -32,6 +32,13 @@ export interface ModeEntry {
    * without tabs (haul) brings its own screen, with its own overlays.
    */
   Shell: ComponentType;
+  /**
+   * The screen shown while the save, fonts and remote config load, right after the splash (Decision
+   * 55: nothing a player sees before the game is the same in two apps). It reads what it needs from
+   * the store (`cfg`); the display font may not be loaded yet. None: the shared one in App.tsx (the
+   * hero icon bouncing over the game's name; sim and classic).
+   */
+  Loading?: ComponentType;
   /** Drawings shared screens ask for: "char:" icons (GameIcon), the cast member in a card, the tutorial pointer. */
   parts?: ModeParts;
   /** The "art:" icons this mode draws (src/ui/art/icons.ts). None: every "art:" icon shows the fallback. */
@@ -46,7 +53,7 @@ export interface ModeEntry {
    * rules only through it, so no other game's bundle holds them.
    */
   engine?: EngineMode;
-  /** The web preview's `?preset=fresh|early|mid|late` states for this mode (src/dev/presets.ts). None: the list homes' bot. */
+  /** The web preview's `?preset=fresh|early|mid|late` states for this mode (src/dev/presets.web.ts; web only, the phone build installs none). None: the list homes' bot. */
   presets?: (cfg: GameConfig, name: PresetName, now: number) => GameState;
   /**
    * The mode's own fx key for each shared key the shared store and screens play (errata 30:

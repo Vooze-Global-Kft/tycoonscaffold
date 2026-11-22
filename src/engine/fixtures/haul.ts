@@ -132,7 +132,7 @@ export function playerStep(cfg: H.HaulConfig, g: Run): Run {
     let best = 0;
     let bestGain = -1;
     h().contracts.board.forEach((_, i) => {
-      const gain = H.contractGain(cfg, p, h(), i);
+      const gain = H.contractBonus(cfg, p, h().contracts.board[i]);
       if (gain > bestGain) {
         bestGain = gain;
         best = i;
@@ -296,3 +296,11 @@ export function conservationError(g: Run): number {
   return Math.abs(h.counters.drilled - total) / Math.max(1, h.counters.drilled);
 }
 
+
+/**
+ * A contract literal for tests (Decision 40): `wants` as [ore, units] pairs, nothing delivered yet.
+ * `taken` marks the taken (active) contract; an offer otherwise.
+ */
+export function contractOf(k: number, buyer: string, wants: [string, number][], mult: number, launchesLeft: number, taken = false): H.Contract {
+  return { k, buyer, wants: wants.map(([ore, units]) => ({ ore, units, got: 0 })), mult, launchesLeft, taken };
+}

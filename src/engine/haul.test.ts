@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as H from './haul';
-import { conservationError, freshHaulGame, haulTestConfig, playFor, playerStep, run, shaped } from './fixtures/haul';
+import { conservationError, contractOf, freshHaulGame, haulTestConfig, playFor, playerStep, run, shaped } from './fixtures/haul';
 
 type Run = H.HaulGame & { haul: H.HaulState };
 const cfg = haulTestConfig();
@@ -60,14 +60,16 @@ describe('2.12 worked numbers (tutorial path)', () => {
     expect(H.autopilotCost(cfg, s)).toBe(90);
   }, 60_000);
 
-  it('contract 0 met: (10 x 1.5 + 2 x 1.1) x 1.1 = ₵18.92', () => {
+  it('contract 0 met (Decision 40): cargo (10 x 1 + 2 x 1 x 1.1) x 1.1 = ₵13.42, bonus 10 x 1 x 0.5 = ₵5', () => {
     const g = shaped(cfg, 1, { slots: [0, 1], haulers: [1, 1] });
     const p = H.haulParams(cfg, g);
     const c0 = H.contractAt(cfg, g.haul.seed, 0, [0], p.F, null);
-    expect(c0).toMatchObject({ k: 0, buyer: 'halden', wants: [{ ore: 'iron', units: 10 }], mult: 1.5, launchesLeft: 6 });
-    const { payout, met } = H.payoutFor(p, { iron: 12 }, c0, 0);
+    expect(c0).toMatchObject({ k: 0, buyer: 'halden', wants: [{ ore: 'iron', units: 10, got: 0 }], mult: 1.5, launchesLeft: cfg.haul.contracts.launches, taken: true });
+    const { payout, met, bonus } = H.payoutFor(p, { iron: 12 }, c0, 0);
     expect(met).toBe(true);
-    expect(payout).toBeCloseTo(18.92, 9);
+    expect(payout).toBeCloseTo(13.42, 9);
+    expect(bonus).toBeCloseTo(5, 9);
+    expect(H.contractBonus(cfg, p, c0)).toBeCloseTo(5, 9);
   }, 60_000);
 
   it('prices of section 2.5', () => {
@@ -258,41 +260,55 @@ describe('4. rock stream', () => {
 
 describe('5. contracts', () => {
   it('always meetable from claimed rings; units and multipliers in range', () => {
+    const L = cfg.haul.contracts.launches;
     for (let k = 1; k < 3000; k++) {
       const rings = [[0], [0, 1], [0, 1, 2], [0, 2, 4], [0, 1, 2, 3, 4]][k % 5];
       const F = 12 + (k % 200);
       const c = H.contractAt(cfg, 1234, k, rings, F, k % 3 === 0 ? 'frost' : null);
       for (const w of c.wants) expect(rings.some((r) => (H.ringWeights(cfg, r, k % 3 === 0 ? 'frost' : null).weights[H.ringWeights(cfg, r, null).ores.indexOf(w.ore)] ?? 0) > 0)).toBe(true);
       const total = c.wants.reduce((a, w) => a + w.units, 0);
-      // No station given: λ × F in all, λ in the reach range (section 2.6).
-      expect(total).toBeGreaterThanOrEqual(Math.max(c.wants.length, Math.round(F * cfg.haul.contracts.reach[0]) - 1));
-      expect(total).toBeLessThanOrEqual(Math.round(F * cfg.haul.contracts.reach[1]) + 1);
+      // No station given (Decision 40): λ (L − 1) F in all, λ in the reach range.
+      expect(total).toBeGreaterThanOrEqual(Math.max(c.wants.length, Math.round((L - 1) * F * cfg.haul.contracts.reach[0]) - 2));
+      expect(total).toBeLessThanOrEqual(Math.round((L - 1) * F * cfg.haul.contracts.reach[1]) + 2);
       expect(c.wants.length === 1 || c.wants[0].ore !== c.wants[1].ore).toBe(true);
       expect(c.mult).toBeGreaterThanOrEqual(1.5 - 1e-9);
       expect(c.mult).toBeLessThanOrEqual(3.1 + 1e-9);
       expect(Math.round(c.mult * 10) / 10).toBeCloseTo(c.mult, 12);
-      expect(c.launchesLeft).toBe(6);
+      // An offer: its life on the board, not taken, nothing delivered.
+      expect(c.launchesLeft).toBe(cfg.haul.contracts.offerLaunches);
+      expect(c.taken).toBe(false);
+      for (const w of c.wants) expect(w.got).toBe(0);
     }
     expect(H.contractAt(cfg, 1, 0, [0], 7, null).wants[0].units).toBe(7); // min(10, F)
     expect(H.contractAt(cfg, 1, 0, [0], 400, null).wants[0].units).toBe(10);
   }, 60_000);
 
-  it('the met rule, M′ on contract units only, the fee on the rest, the full bonus only at F', () => {
+  it('the met rule (Decision 40): every unit at its price, the fee on the rest of a completing cargo, the bonus apart, the full bonus only at F', () => {
     const g = shaped(cfg, 2, { slots: [0, 2], freighter: 3 });
-    const g24 = { ...g, entitlements: g.entitlements };
-    const p = { ...H.haulParams(cfg, g24), F: 24 }; // a hold of 24 for round numbers
-    const c: H.Contract = { k: 9, buyer: 'corvo', wants: [{ ore: 'copper', units: 5 }, { ore: 'iron', units: 4 }], mult: 2.2, launchesLeft: 3 };
+    const p = { ...H.haulParams(cfg, g), F: 24 }; // a hold of 24 for round numbers
+    const c = contractOf(9, 'corvo', [['copper', 5], ['iron', 4]], 2.2, 3, true);
     expect(H.contractMet({ copper: 5, iron: 3 }, c)).toBe(false);
     expect(H.contractMet({ copper: 5, iron: 4 }, c)).toBe(true);
-    // Met, not full: copper 6 (5 counted), iron 4.
+    // Half a unit short is delivered (UNIT_TOL): the screens show it as 4 / 4.
+    expect(H.contractMet({ copper: 5, iron: 3.6 }, c)).toBe(true);
+    // What it already got counts.
+    const part = { ...c, wants: [{ ore: 'copper', units: 5, got: 5 }, { ore: 'iron', units: 4, got: 1 }] };
+    expect(H.contractMet({ iron: 3 }, part)).toBe(true);
+    expect(H.towardContract({ copper: 2, iron: 7 }, part)).toEqual({ iron: 3 });
+    // Completing, not full: copper 6 (5 toward it, 1 with the fee), iron 4; bonus (5 x 5 + 4 x 1) x 1.2.
     const met = H.payoutFor(p, { copper: 6, iron: 4 }, c, 0);
     expect(met.met).toBe(true);
-    expect(met.payout).toBeCloseTo(5 * 5 * 2.2 + 4 * 1 * 2.2 + 1 * 5 * 1.1, 9);
-    // Unmet: plain prices.
-    expect(H.payoutFor(p, { copper: 4, iron: 4 }, c, 0).payout).toBeCloseTo(4 * 5 + 4, 9);
+    expect(met.payout).toBeCloseTo(5 * 5 + 4 * 1 + 1 * 5 * 1.1, 9);
+    expect(met.plain).toBeCloseTo(6 * 5 + 4, 9);
+    expect(met.bonus).toBeCloseTo((5 * 5 + 4 * 1) * 1.2, 9);
+    expect(met.bonus).toBeCloseTo(H.contractBonus(cfg, p, c), 12);
+    // Not completing: plain prices, no bonus.
+    const un = H.payoutFor(p, { copper: 4, iron: 4 }, c, 0);
+    expect(un.payout).toBeCloseTo(4 * 5 + 4, 9);
+    expect(un.bonus).toBe(0);
     // Full (24 units): x1.1.
     expect(H.payoutFor(p, { iron: 24 }, null, 0).payout).toBeCloseTo(24 * 1.1, 9);
-    expect(H.payoutFor(p, { iron: 24 - 1e-6 }, null, 0).payout).toBeCloseTo((24 - 1e-6), 9);
+    expect(H.payoutFor(p, { iron: 24 - 1e-6 }, null, 0).payout).toBeCloseTo(24 - 1e-6, 9);
     // Keeper: +X % on the whole cargo.
     expect(H.payoutFor(p, { iron: 10 }, null, 0.2).payout).toBeCloseTo(12, 9);
   }, 60_000);
@@ -300,23 +316,41 @@ describe('5. contracts', () => {
   it('loading takes the wanted ores first, then the rest by price', () => {
     const g = shaped(cfg, 2, { slots: [0] });
     const p = H.haulParams(cfg, g); // F = 12
-    const c: H.Contract = { k: 3, buyer: 'kade', wants: [{ ore: 'iron', units: 5 }], mult: 1.6, launchesLeft: 6 };
+    const c = contractOf(3, 'kade', [['iron', 5]], 1.6, 6, true);
     const { cargo, hold } = H.loadCargo(cfg, p, { iron: 9, copper: 4, ice: 2 }, c);
     expect(cargo).toEqual({ iron: 6, ice: 2, copper: 4 });
     expect(hold).toEqual({ iron: 3 });
+    // Only what the contract still needs comes first (units − got).
+    const part = { ...c, wants: [{ ore: 'iron', units: 5, got: 4 }] };
+    expect(H.loadCargo(cfg, { ...p, F: 3 }, { iron: 9, copper: 4 }, part).cargo).toEqual({ iron: 1, copper: 2 });
   }, 60_000);
 
-  it('contractGain equals the difference of two payouts (errata 26: hold plus the missing units)', () => {
-    const g = shaped(cfg, 2, { slots: [0, 2] });
-    const h: H.HaulState = { ...g.haul, hold: { iron: 7, copper: 3 }, contracts: { unlocked: true, active: null, next: 3, board: [{ k: 1, buyer: 'corvo', wants: [{ ore: 'copper', units: 5 }], mult: 1.9, launchesLeft: 6 }] } };
+  it('contractViews: the fixed bonus, the units left, aboard while in flight, the pace (Decision 40)', () => {
+    const g = shaped(cfg, 2, { slots: [0, 2], haulers: [2, 1] });
+    const board = [contractOf(1, 'corvo', [['copper', 50]], 1.9, 6, true), contractOf(2, 'kade', [['iron', 40]], 1.6, 12)];
+    board[0].wants[0].got = 20;
+    const h: H.HaulState = { ...g.haul, hold: { iron: 7, copper: 3 }, contracts: { unlocked: true, active: 0, next: 3, board } };
     const p = H.haulParams(cfg, { ...g, haul: h });
-    const c = h.contracts.board[0];
-    // cargo' = the loading rule on the hold plus the 2 missing copper (the total stays under F = 12).
-    const { cargo } = H.loadCargo(cfg, p, { iron: 7, copper: 5 }, c);
-    const gain = H.contractGain(cfg, p, h, 0);
-    expect(gain).toBeCloseTo(H.payoutFor(p, cargo, c, 0, true).payout - H.payoutFor(p, cargo, null, 0).payout, 12);
-    expect(gain).toBeGreaterThan(0);
-    expect(H.contractMissing(h, 0)).toEqual([{ ore: 'copper', units: 2 }]);
+    const v = H.contractViews(cfg, p, h);
+    expect(v).toHaveLength(2);
+    expect(v[0]).toMatchObject({ index: 0, active: true, launches: cfg.haul.contracts.launches, launchesLeft: 6 });
+    expect(v[0].bonus).toBeCloseTo(H.contractBonus(cfg, p, board[0]), 12);
+    // The bonus is one figure: it does not move with the hold.
+    expect(H.contractViews(cfg, p, { ...h, hold: {} })[0].bonus).toBe(v[0].bonus);
+    expect(v[0].wants[0]).toMatchObject({ ore: 'copper', units: 50, got: 20, aboard: 0, left: 30 });
+    const per = H.contractStation(cfg, p, h).reach(['copper']).now[0];
+    expect(v[0].wants[0].perLaunch).toBeCloseTo(per, 12);
+    expect(v[0].paceRatio).toBeCloseTo((per * 6) / 30, 9);
+    expect(v[0].onPace).toBe(v[0].paceRatio >= 1);
+    expect(v[0].shortOre).toBe(v[0].onPace ? null : 'copper');
+    // An offer is shown as if taken now.
+    expect(v[1]).toMatchObject({ active: false, launchesLeft: 12 });
+    expect(v[1].wants[0]).toMatchObject({ got: 0, aboard: 0, left: 40 });
+    // In flight toward it: aboard is the cargo that counts, and the launch it is on is used up.
+    const fl: H.HaulState = { ...h, freighter: { ...h.freighter, phase: 'climb', t: 1, cargo: { copper: 12 }, contract: 1, toward: { copper: 12 } } };
+    const w = H.contractViews(cfg, p, fl)[0];
+    expect(w.wants[0]).toMatchObject({ aboard: 12, left: 18 });
+    expect(w.paceRatio).toBeCloseTo((per * 5) / 18, 9);
   }, 60_000);
 
   it('unlock at the first warp-out with 4 launches and 90 s; lifetimes count every warp-out; lapses; pods every 4th met', () => {
@@ -346,37 +380,73 @@ describe('5. contracts', () => {
     for (const c of lapsed) expect(c.launchesLeft).toBe(0);
   }, 60_000);
 
-  it('a lapsed active contract leaves active = null; a met one is replaced and the player picks again', () => {
+  it('a taken contract gathers over its launches; on its last one it lapses; a met one is replaced (Decision 40)', () => {
     const g = shaped(cfg, 9, { slots: [0], haulers: [0] });
-    const board: H.Contract[] = [
-      { k: 1, buyer: 'corvo', wants: [{ ore: 'copper', units: 5 }], mult: 1.9, launchesLeft: 1 },
-      { k: 2, buyer: 'kade', wants: [{ ore: 'iron', units: 3 }], mult: 1.6, launchesLeft: 4 },
-      { k: 3, buyer: 'oriel', wants: [{ ore: 'iron', units: 3 }], mult: 1.6, launchesLeft: 4 },
-    ];
+    const board: H.Contract[] = [contractOf(1, 'corvo', [['iron', 8]], 1.9, 2, true), contractOf(2, 'kade', [['iron', 3]], 1.6, 4), contractOf(3, 'oriel', [['iron', 3]], 1.6, 1)];
     const base = { ...g, haul: { ...g.haul, hold: { iron: 5 }, contracts: { unlocked: true, board, next: 4, active: 0 as number | null } } };
     const ev: H.HaulEvent[] = [];
     let s = H.launch(cfg, base, ev) as Run;
     s = run(cfg, s, 3, 0.5, (_, e) => ev.push(...e));
-    expect(ev.some((e) => e.type === 'contractLapsed' && e.wasActive)).toBe(true);
-    expect(s.haul.contracts.active).toBeNull();
-    expect(s.haul.contracts.board[0].k).toBe(4);
+    // 5 of 8 delivered, one launch left; offers age; the offer at 0 is replaced silently.
+    expect(ev.find((e) => e.type === 'contractProgress')).toMatchObject({ added: [{ ore: 'iron', units: 5 }] });
+    expect(s.haul.contracts.board[0]).toMatchObject({ k: 1, taken: true, launchesLeft: 1 });
+    expect(s.haul.contracts.board[0].wants[0].got).toBeCloseTo(5, 9);
     expect(s.haul.contracts.board[1].launchesLeft).toBe(3);
-    // Now meet contract index 1.
+    expect(s.haul.contracts.board[2].k).toBe(4);
+    expect(ev.some((e) => e.type === 'contractLapsed')).toBe(false);
+    // The second launch carries 2 of the 3 missing: it lapses, nothing taken back.
+    s = run(cfg, s, 11, 0.5);
+    s = { ...s, haul: { ...s.haul, hold: { iron: 2 } } };
+    const ev1: H.HaulEvent[] = [];
+    s = H.launch(cfg, s, ev1) as Run;
+    s = run(cfg, s, 3, 0.5, (_, e) => ev1.push(...e));
+    expect(ev1.some((e) => e.type === 'contractLapsed' && e.wasActive && !e.dropped)).toBe(true);
+    expect(s.haul.contracts.active).toBeNull();
+    expect(s.haul.contracts.board[0].k).toBe(5);
+    // Take index 1 and meet it.
     s = run(cfg, H.pickContract(cfg, s, 1) as Run, 11, 0.5);
+    expect(s.haul.contracts.board[1]).toMatchObject({ taken: true, launchesLeft: cfg.haul.contracts.launches });
     s = { ...s, haul: { ...s.haul, hold: { iron: 4 } } };
     const ev2: H.HaulEvent[] = [];
+    const cash = s.cash;
     s = H.launch(cfg, s, ev2) as Run;
     s = run(cfg, s, 3, 0.5, (_, e) => ev2.push(...e));
-    expect(ev2.some((e) => e.type === 'contractMet')).toBe(true);
+    const met = ev2.find((e) => e.type === 'contractMet');
+    const warp = ev2.find((e) => e.type === 'warp');
+    expect(met).toBeTruthy();
+    expect(warp && warp.type === 'warp' && warp.met).toBe(true);
+    expect(warp && warp.type === 'warp' && warp.bonus).toBeCloseTo(3 * 1 * 0.6, 9);
+    expect(s.cash - cash).toBeCloseTo(warp && warp.type === 'warp' ? warp.payout : NaN, 6);
     expect(s.haul.contracts.active).toBeNull();
-    expect(s.haul.contracts.board[1].k).toBe(5);
+    expect(s.haul.contracts.board[1].k).toBe(6);
     expect(s.stats.contractsMet).toBe(1);
+  }, 60_000);
+
+  it('taking another offer drops the taken one (event dropped), picking none drops it too (Decision 40)', () => {
+    const g = shaped(cfg, 9, { slots: [0], haulers: [1] });
+    const board: H.Contract[] = [contractOf(1, 'corvo', [['iron', 8]], 1.9, 3, true), contractOf(2, 'kade', [['iron', 3]], 1.6, 4), contractOf(3, 'oriel', [['iron', 3]], 1.6, 7)];
+    board[0].wants[0].got = 4;
+    const s0 = { ...g, haul: { ...g.haul, contracts: { unlocked: true, board, next: 4, active: 0 as number | null } } };
+    expect(H.pickContract(cfg, s0, 0)).toBe(s0);
+    const ev: H.HaulEvent[] = [];
+    const s1 = H.pickContract(cfg, s0, 2, ev) as Run;
+    expect(ev[0]).toMatchObject({ type: 'contractLapsed', wasActive: true, dropped: true });
+    expect(ev[1]).toMatchObject({ type: 'contractNew', index: 0 });
+    expect(s1.haul.contracts.board[0]).toMatchObject({ k: 4, taken: false });
+    expect(s1.haul.contracts.board[2]).toMatchObject({ k: 3, taken: true, launchesLeft: cfg.haul.contracts.launches });
+    expect(s1.haul.contracts.active).toBe(2);
+    expect(s1.haul.contracts.board.filter((c) => c.taken)).toHaveLength(1);
+    const s2 = H.pickContract(cfg, s1, null) as Run;
+    expect(s2.haul.contracts.active).toBeNull();
+    expect(s2.haul.contracts.board.some((c) => c.taken)).toBe(false);
+    expect(s2.haul.contracts.board[2].k).toBe(5);
+    expect(H.pickContract(cfg, s2, null)).toBe(s2);
   }, 60_000);
 
   it('a Scrap Pod at every 4th lifetime contract met', () => {
     const g = shaped(cfg, 9, { slots: [0] });
     let s: Run = { ...g, stats: { ...g.stats, contractsMet: 3 } };
-    const board: H.Contract[] = [{ k: 1, buyer: 'corvo', wants: [{ ore: 'iron', units: 2 }], mult: 1.6, launchesLeft: 6 }];
+    const board: H.Contract[] = [contractOf(1, 'corvo', [['iron', 2]], 1.6, 6, true)];
     s = { ...s, haul: { ...s.haul, hold: { iron: 3 }, contracts: { unlocked: true, board, next: 2, active: 0 } } };
     s = run(cfg, H.launch(cfg, s) as Run, 3, 0.5);
     expect(s.stats.contractsMet).toBe(4);
@@ -392,14 +462,14 @@ describe('autopilot policies', () => {
     expect(fills.length).toBeGreaterThan(5);
     for (const f of fills) expect(f).toBeCloseTo(12, 6);
     // contract: met at 3 iron, launches long before full.
-    const board: H.Contract[] = [{ k: 1, buyer: 'kade', wants: [{ ore: 'iron', units: 3 }], mult: 1.6, launchesLeft: 99 }];
+    const board: H.Contract[] = [contractOf(1, 'kade', [['iron', 3]], 1.6, 99, true)];
     const c = { ...g, haul: { ...g.haul, autopilot: { online: true, policy: 'contract' as const }, contracts: { unlocked: true, board, next: 2, active: 0 } } };
     const fills2: number[] = [];
     run(noContracts, c, 30, 0.1, (_, ev) => ev.forEach((e) => e.type === 'launch' && fills2.push(H.sumUnits(e.cargo))));
     expect(fills2[0]).toBeGreaterThanOrEqual(3 - 1e-9);
     expect(fills2[0]).toBeLessThan(4);
     // With no active contract, `contract` acts like `full`.
-    const none = { ...c, haul: { ...c.haul, contracts: { ...c.haul.contracts, active: null } } };
+    const none = { ...c, haul: { ...c.haul, contracts: { ...c.haul.contracts, board: [{ ...board[0], taken: false }], active: null } } };
     const fills3: number[] = [];
     run(noContracts, none, 60, 0.5, (_, ev) => ev.forEach((e) => e.type === 'launch' && fills3.push(H.sumUnits(e.cargo))));
     for (const f of fills3) expect(f).toBeCloseTo(12, 6);
@@ -600,23 +670,30 @@ describe('13. first session', () => {
 });
 
 describe('hints (section 3)', () => {
-  it('the six guided steps follow the state', () => {
+  it('the six guided steps follow the state, in the order of Decision 44', () => {
     let g = freshHaulGame(cfg, 30);
     expect(H.nextHint(cfg, g)).toMatchObject({ kind: 'drag', from: 'drone:rack', to: 'rock:0', step: 1 });
     g = H.assignDrone(cfg, g, 0) as Run;
     g = run(cfg, g, 20, 0.5);
     expect(H.nextHint(cfg, g)).toMatchObject({ kind: 'swipe', zone: 'bay:launch', step: 2 });
     g = run(cfg, H.launch(cfg, g) as Run, 3, 0.5);
-    expect(H.nextHint(cfg, g)).toMatchObject({ kind: 'point', key: 'station:buyDrone', route: ['station'], step: 3 });
+    // 3: claim the second rock.
+    g = { ...g, cash: Math.max(g.cash, H.claimCost(cfg, g, 1)) };
+    expect(H.nextHint(cfg, g)).toMatchObject({ kind: 'point', key: 'slot:1', step: 3 });
+    g = run(cfg, { ...(H.claimSlot(cfg, g, 1) as Run), cash: 0 }, 2, 0.5);
+    // 4: buy a drone for it.
+    g = { ...g, cash: H.droneCost(cfg, g) };
+    expect(H.hintsFor(cfg, g).find((h) => h.step === 4)).toMatchObject({ kind: 'point', key: 'station:buyDrone', route: ['station'] });
     g = H.buyDrone(cfg, g) as Run;
-    expect(H.nextHint(cfg, g)).toMatchObject({ kind: 'tapTap', from: 'drone:rack', to: 'rock:0', step: 4 });
-    g = H.assignDrone(cfg, g, 0) as Run;
-    g = { ...g, cash: 25 };
-    expect(H.nextHint(cfg, g)).toMatchObject({ kind: 'point', key: 'slot:1', step: 5 });
-    g = run(cfg, H.claimSlot(cfg, g, 1) as Run, 2, 0.5);
-    expect(H.hintsFor(cfg, g).find((h) => h.step === 6)).toMatchObject({ kind: 'drag', from: 'chip:0', to: 'rock:1' });
+    // 5: tap the drone, then the new rock.
+    expect(H.hintsFor(cfg, g).find((h) => h.step === 5)).toMatchObject({ kind: 'tapTap', from: 'drone:rack', to: 'rock:1' });
+    g = H.assignDrone(cfg, g, 1) as Run;
+    expect(g.haul.flags.tutorialDone).toBeFalsy();
+    // 6: upgrade a rig; that ends the guided steps.
+    g = { ...g, cash: H.rigCost(cfg, g, 0) };
+    expect(H.hintsFor(cfg, g).find((h) => h.step === 6)).toMatchObject({ kind: 'point', key: 'rig:upgrade', route: ['rock:0'] });
     const ev: H.HaulEvent[] = [];
-    g = H.moveDrone(cfg, g, 0, 1, ev) as Run;
+    g = H.upgradeRig(cfg, g, 0, ev) as Run;
     expect(ev).toContainEqual({ type: 'tutorialDone' });
     expect(H.hintsFor(cfg, g).some((h) => h.step > 0)).toBe(false);
   }, 60_000);
@@ -636,4 +713,36 @@ describe('hints (section 3)', () => {
     for (let i = 0; i < 3; i++) shown = H.markHintShown(shown, 'bay:counter') as Run;
     expect(H.hintsFor(cfg, shown).some((h) => h.key === 'bay:counter')).toBe(false);
   }, 60_000);
+});
+
+describe('Decision 49: routeGain', () => {
+  it('is the change of the income line for moving one drone, with the reason it gains nothing', () => {
+    const g = shaped(cfg, 4, { slots: [0, 1, 2], haulers: [1, 1, 0], idle: 2 });
+    for (const [from, to] of [[null, 0], [null, 2], [0, 1], [1, null], [0, 2]] as [number | null, number | null][]) {
+      const moved =
+        from === null ? (H.assignDrone(cfg, g, to!) as Run) : to === null ? (H.recallDrone(cfg, g, from) as Run) : ({ ...g, haul: { ...g.haul, slots: g.haul.slots.map((s, i) => (i === from ? { ...s, haulers: s.haulers - 1 } : i === to ? { ...s, haulers: s.haulers + 1 } : s)) } } as Run);
+      const r = H.routeGain(cfg, g, from, to);
+      expect(r.delta).toBeCloseTo(H.haulIncome(cfg, moved) - H.haulIncome(cfg, g), 9);
+    }
+    // A move that cannot happen.
+    expect(H.routeGain(cfg, g, 2, 0)).toEqual({ delta: 0, limit: null });
+    expect(H.routeGain(cfg, g, 0, 0)).toEqual({ delta: 0, limit: null });
+    expect(H.routeGain(cfg, g, 0, 7)).toEqual({ delta: 0, limit: null });
+    expect(H.routeGain(cfg, { ...g, haul: { ...g.haul, idle: 0 } }, null, 0)).toEqual({ delta: 0, limit: null });
+  });
+
+  it("says 'rig' when the rock's drill already feeds fewer units than its drones carry", () => {
+    const g = shaped(cfg, 4, { slots: [0], haulers: [12], idle: 1 });
+    const r = H.routeGain(cfg, g, null, 0);
+    expect(r.limit).toBe('rig');
+    expect(r.delta).toBeCloseTo(0, 9);
+    // A small freighter: the second drone's units cannot leave the station.
+    const one = shaped(cfg, 4, { slots: [0], haulers: [1], idle: 1, rig: [10] });
+    expect(H.routeGain(cfg, one, null, 0)).toMatchObject({ limit: 'haul' });
+    // A big one: the second drone adds to the income line.
+    const big = shaped(cfg, 4, { slots: [0], haulers: [1], idle: 1, rig: [10], freighter: 8 });
+    const q = H.routeGain(cfg, big, null, 0);
+    expect(q.limit).toBeNull();
+    expect(q.delta).toBeGreaterThan(0);
+  });
 });

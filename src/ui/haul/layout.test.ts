@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { haulTestConfig } from '../../engine/fixtures/haul';
-import { CHIP_SPACING, chipPositions, circleRect, dropTarget, fieldLayout, flickTarget, hitTest, RACK_REACH, rectDistance, ROCK_TAP, type FieldLayout } from './layout';
+import { CHIP_SPACING, chipPositions, circleRect, dropTarget, fieldLayout, flickTarget, hitTest, MIN_ROCK_R, RACK_REACH, rectDistance, ROCK_TAP, type FieldLayout } from './layout';
 
 const cfg = haulTestConfig();
 const BIG = { width: 390, height: 844, insets: { top: 47, bottom: 34 } };
@@ -245,5 +245,27 @@ describe('reach rule (spec 4.1)', () => {
   });
   it('circleRect', () => {
     expect(circleRect({ x: 10, y: 20 }, 5)).toEqual({ x: 5, y: 15, width: 10, height: 10 });
+  });
+});
+
+describe('short fields (phone-7)', () => {
+  const gapOf = (L: FieldLayout) => {
+    let m = Infinity;
+    for (let i = 0; i < L.rocks.length; i++)
+      for (let j = i + 1; j < L.rocks.length; j++) m = Math.min(m, Math.hypot(L.rocks[i].x - L.rocks[j].x, L.rocks[i].y - L.rocks[j].y) - L.rocks[i].r - L.rocks[j].r);
+    return m;
+  };
+  it('a 360 x 640 Android with three-button navigation keeps rocks apart and their tap circles separate', () => {
+    for (const width of [360, 320]) {
+      const L = fieldLayout({ width, height: 640, insets: { top: 24, bottom: 48 } }, cfg, null);
+      expect(L.rocks[0].r).toBeGreaterThanOrEqual(MIN_ROCK_R);
+      expect(gapOf(L)).toBeGreaterThanOrEqual(10);
+      for (let i = 0; i < L.rocks.length; i++)
+        for (let j = i + 1; j < L.rocks.length; j++) expect(Math.hypot(L.rocks[i].x - L.rocks[j].x, L.rocks[i].y - L.rocks[j].y)).toBeGreaterThan(2 * ROCK_TAP * L.rocks[i].r);
+    }
+  });
+  it('the radius gives way only on a short field: 375 x 667 and 390 x 844 keep theirs', () => {
+    expect(small.rocks[0].r).toBe(22);
+    expect(big.rocks[0].r).toBeGreaterThan(25);
   });
 });

@@ -4,10 +4,11 @@
   "app": {
     "displayName": "Orbit Haulers",
     "slug": "orbit-haulers",
-    "iosBundleId": "com.example.spaceminer",
-    "androidPackage": "com.example.spaceminer",
+    "iosBundleId": "com.example.orbithaulers",
+    "androidPackage": "com.example.orbithaulers",
     "version": "1.0.0",
-    "buildNumber": 1
+    "buildNumber": 1,
+    "trackingText": "Orbit Haulers uses this to match the optional ads you can watch for a flare charge or a Shift Log boost to your interests. Say no and the ads still play, only less matched."
   },
   "theme": {
     "colors": {
@@ -67,13 +68,7 @@
       "maxMinutes": 240
     },
     "daily": {
-      "gems": [
-        6,
-        9,
-        12,
-        16,
-        24
-      ]
+      "gems": []
     },
     "timeWarp": {
       "hours": 2,
@@ -131,16 +126,6 @@
     }
   ],
   "story": [
-    {
-      "id": "start",
-      "characterId": "tally",
-      "trigger": {
-        "type": "start"
-      },
-      "lines": [
-        "Drone T-1 idle. Send it to the rock."
-      ]
-    },
     {
       "id": "first_launch",
       "characterId": "ops2",
@@ -259,7 +244,7 @@
           "description": "Every ad reward without watching the ad.",
           "kind": "clearance",
           "icon": "art:rail-trade",
-          "fallbackPrice": "$7.99"
+          "fallbackPrice": "$6.49"
         },
         {
           "id": "space_hangar",
@@ -267,7 +252,7 @@
           "description": "+6 drone cap and 2 idle drones at every run start.",
           "kind": "unlock",
           "icon": "art:drone",
-          "fallbackPrice": "$5.99"
+          "fallbackPrice": "$4.49"
         },
         {
           "id": "space_charter",
@@ -287,7 +272,7 @@
               "copies": 5
             }
           ],
-          "fallbackPrice": "$2.99"
+          "fallbackPrice": "$3.49"
         },
         {
           "id": "space_dm_150",
@@ -295,7 +280,7 @@
           "kind": "gems",
           "value": 150,
           "icon": "art:dark-matter",
-          "fallbackPrice": "$2.99"
+          "fallbackPrice": "$2.49"
         },
         {
           "id": "space_dm_700",
@@ -303,17 +288,17 @@
           "kind": "gems",
           "value": 700,
           "icon": "art:dark-matter",
-          "fallbackPrice": "$9.99"
+          "fallbackPrice": "$8.49"
         }
       ]
     }
   },
   "store": {
     "title": "Orbit Haulers",
-    "subtitle": "Route ore drones, idle mining",
+    "subtitle": "Space mining by drone routes",
     "keywords": [
-      "space",
-      "mining",
+      "idle",
+      "tycoon",
       "asteroid",
       "freighter",
       "cargo",
@@ -325,14 +310,15 @@
       "fleet",
       "manager"
     ],
-    "shortDescription": "Route drones, ship cargo by freighter and grow a station in an asteroid field.",
-    "description": "Orbit Haulers is an idle mining game about routes and cargo.\n\nYour station sits in an asteroid field. Drag hauler drones onto rocks to set their routes, and watch them carry ore home to the hold. When the hold is full, swipe the freighter off the pad: it warps out and the whole manifest sells at once.\n\nBuyers post contracts for the ores they want, and each contract lapses after a few launches. Pick one, send drones to the rocks that carry its ore, and its units sell for more.\n\nRocks run dry and new ones drift in, sometimes with a different ore, sometimes as a rich bonanza rock. The far rings hold copper, ice, titanium and platinum, but the trips are longer, so where you send each drone matters.\n\nBring the dock autopilot online and the station ships on its own while you are away. Fit modules into three sockets in the Fitting Bay; some of them change the rules. When a run has paid off, jump to a new galaxy, spend Warp Cores on the Star Map, and choose the conditions you will mine under next.\n\nFeatures\n- Drag-to-route drones on a top-down map of the asteroid field\n- One-swipe freighter launches and buyer contracts that lapse\n- Rocks that run dry and come back as new ore\n- A dock autopilot that keeps shipping offline\n- Fitting Bay modules and a Star Map that changes how each run starts\n- Optional rewarded ads; salvage pods are earned in play, never sold",
+    "shortDescription": "An asteroid field, a hold of ore, and a freighter waiting for your swipe.",
+    "description": "Orbit Haulers is an idle mining game about routes and cargo.\n\nYour station sits in an asteroid field. Drag hauler drones onto rocks to set their routes, and watch them carry ore home to the hold. When the hold is full, swipe the freighter off the pad: it warps out and the whole manifest sells at once.\n\nBuyers post contracts for the ores they want: so many units within a few launches. Take one, send drones to the rocks that carry its ore, and when the last units arrive the buyer pays its rate on all of them.\n\nRocks run dry and new ones drift in, sometimes with a different ore, sometimes as a rich bonanza rock. The far rings hold copper, ice, titanium and platinum, but the trips are longer, so where you send each drone matters.\n\nBring the dock autopilot online and the station ships on its own while you are away. Fit modules into three sockets in the Fitting Bay; some of them change the rules. When a run has paid off, jump to a new galaxy, spend Warp Cores on the Star Map, and choose the conditions you will mine under next.\n\nFeatures\n- Drag-to-route drones on a top-down map of the asteroid field\n- One-swipe freighter launches and buyer contracts delivered over several launches\n- Rocks that run dry and come back as new ore\n- A dock autopilot that keeps shipping offline\n- Fitting Bay modules and a Star Map that changes how each run starts\n- Optional rewarded ads; salvage pods are earned in play, never sold",
     "primaryCategory": "GAMES",
     "subcategories": [
       "GAMES_STRATEGY",
       "GAMES_SIMULATION"
     ],
-    "promotionalText": "Drag drones onto asteroids, pick which buyer contracts to fill, and grow one mining station into a fleet that keeps shipping while you are away."
+    "promotionalText": "Drag drones onto asteroids, pick which buyer contracts to fill, and grow one mining station into a fleet that keeps shipping while you are away.",
+    "privacyPolicyUrl": "https://example.com/privacy"
   },
   "mode": "haul",
   "soundPack": null,
@@ -430,8 +416,8 @@
       }
     },
     "cardCopies": {
-      "base": 2,
-      "growth": 1.5
+      "base": 3,
+      "growth": 1.35
     },
     "chests": [
       {
@@ -577,7 +563,7 @@
         {
           "id": "close",
           "type": "contracts",
-          "text": "DISPATCH: Close {n} contracts.",
+          "text": "DISPATCH: Contracts to close: {n}.",
           "targets": [
             1,
             3,
@@ -624,7 +610,7 @@
         {
           "id": "claim",
           "type": "claims",
-          "text": "DISPATCH: Claim {n} new slots.",
+          "text": "DISPATCH: New slots to claim: {n}.",
           "targets": [
             1,
             2,
@@ -671,7 +657,7 @@
         {
           "id": "salvage",
           "type": "chests",
-          "text": "OPS-2: Open {n} pods.",
+          "text": "OPS-2: Pods to open: {n}.",
           "targets": [
             1,
             2,
@@ -867,7 +853,7 @@
       }
     },
     "claim": {
-      "base": 16,
+      "base": 14,
       "ringFactor": 15,
       "jFactor": 1.4
     },
@@ -879,7 +865,7 @@
       "speed": 0.5,
       "speedPerLevel": 0.08,
       "speedMax": 4,
-      "capacity": 4,
+      "capacity": 5,
       "capacityGrowth": 1.25,
       "loadSeconds": 0.6,
       "unloadSeconds": 0.6,
@@ -899,7 +885,7 @@
       "capPerGalaxy": 4
     },
     "freighter": {
-      "capacity": 12,
+      "capacity": 20,
       "growth": 1.45,
       "cost": {
         "base": 15,
@@ -941,7 +927,8 @@
       "life": 1.5
     },
     "seam": {
-      "first": 360,
+      "first": 150,
+      "firstLater": 360,
       "interval": [
         90,
         150
@@ -964,7 +951,9 @@
       "unlockLaunches": 4,
       "unlockClock": 90,
       "board": 3,
-      "lifetime": 6,
+      "launches": 6,
+      "offerLaunches": 12,
+      "margin": 0.12,
       "fee": 0.1,
       "reach": [
         0.35,
@@ -992,7 +981,7 @@
           "id": "halden",
           "name": "Halden Yards",
           "calls": "Halden Yards, buying {ore}. {units} units. We pay {mult}.",
-          "closed": "Halden. Received in full. Same time next run."
+          "closed": "Halden. Received in full. Call us again."
         },
         {
           "id": "corvo",
@@ -1025,6 +1014,11 @@
           "closed": "Oriel Labs. Samples received. Rate honoured."
         }
       ]
+    },
+    "shift": {
+      "contracts": 3,
+      "minHours": 16,
+      "mult": 2
     },
     "pods": {
       "scrap": "scrap",
@@ -1336,7 +1330,8 @@
     },
     "offline": {
       "efficiencyCap": 0.45,
-      "rockLoopMax": 2000
+      "rockLoopMax": 2000,
+      "adBonus": 0.5
     }
   }
 }

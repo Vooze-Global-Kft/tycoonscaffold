@@ -11,11 +11,11 @@ import {
   businessCost,
   chainParams,
   cycleSeconds,
-  activeIncomePerSecond,
   dayKey,
   grantCash,
   incomePerSecond,
   isSim,
+  pricingIncomePerSecond,
   managerCost,
   salesCost,
   stationValue,
@@ -55,7 +55,7 @@ export function levelUpCard(cfg: GameConfig, state: GameState, cardId: string): 
 
 /** Cash a "seconds of income" reward is worth right now. Never less than a handful of taps, so it matters early on. */
 export function cashForSeconds(cfg: GameConfig, state: GameState, seconds: number, now: number): number {
-  return Math.max(activeIncomePerSecond(cfg, state, now) * seconds, tapValue(cfg, state, now) * Math.min(seconds, 60));
+  return Math.max(pricingIncomePerSecond(cfg, state, now) * seconds, tapValue(cfg, state, now) * Math.min(seconds, 60));
 }
 
 /** What a reward turned into once granted (random cards are resolved), for the UI to show. */
@@ -1010,7 +1010,7 @@ function missionTarget(cfg: GameConfig, state: GameState, t: MissionTemplate, no
   const done = state.missions.completed[t.id] ?? 0;
   const n = t.targets[Math.min(done, t.targets.length - 1)];
   if (t.type !== 'earn') return Math.max(1, Math.round(n));
-  const cash = Math.max(activeIncomePerSecond(cfg, state, now) * n, tapValue(cfg, state, now) * n);
+  const cash = Math.max(pricingIncomePerSecond(cfg, state, now) * n, tapValue(cfg, state, now) * n);
   return Math.max(1, twoDigits(cash));
 }
 

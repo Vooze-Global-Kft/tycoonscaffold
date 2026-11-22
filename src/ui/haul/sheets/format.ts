@@ -12,9 +12,13 @@ export function money(cfg: HaulConfig, v: number): string {
   return cfg.strings.currencySymbol + formatNumber(v < 1000 ? Math.ceil(v - 1e-9) : v);
 }
 
-/** Credits for readouts with little room ("₵18.4K"). */
+/**
+ * Credits for readouts with little room ("₵18.4K", "₵10"): whole credits below a thousand. The
+ * contract bonus uses it on the board, the strip and the receipt alike (play-7: one rounding).
+ */
 export function moneyShort(cfg: HaulConfig, v: number): string {
-  return cfg.strings.currencySymbol + formatShort(Math.max(0, v));
+  const x = Math.max(0, Number.isFinite(v) ? v : 0);
+  return cfg.strings.currencySymbol + (x < 1000 ? String(Math.round(x)) : formatShort(x));
 }
 
 /** Units per second: "0.6", "1.1", "36". */
@@ -27,6 +31,23 @@ export function rate(v: number): string {
 export function units(v: number): string {
   const n = Math.max(0, Math.floor(v + 1e-9));
   return n < 1e6 ? n.toLocaleString('en-US') : formatShort(n);
+}
+
+/**
+ * Unit counts where room is short, one rule everywhere a contract figure shows (Decision 40): whole
+ * units below a thousand ("29"), then one decimal under 100 of a unit ("8.4K", "14.6K"), whole
+ * above ("123K"); past the trillions the shared short format.
+ */
+export function unitsShort(v: number): string {
+  const n = Math.max(0, Math.floor(v + 1e-9));
+  if (n < 1000) return String(n);
+  const marks = ['K', 'M', 'B', 'T'];
+  let x = n;
+  for (const m of marks) {
+    x /= 1000;
+    if (x < 999.95) return `${x < 99.95 ? (Math.round(x * 10) / 10).toFixed(1) : Math.round(x)}${m}`;
+  }
+  return formatShort(n);
 }
 
 /** "2:40", "1:02:05". */

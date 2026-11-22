@@ -298,10 +298,11 @@ with `fee = 0.10` (tune 0.05 to 0.15, the delivery fee). The multiplier applies 
 - Ores: pick a claimed ring with a rock, weighted by ring number (far rings more likely), then an ore among the ores of that ring's present rocks, by the ring's weights (Decision 32); one ore (60 %) or two (40 %, the second from another claimed ring when there is one). Every contract can therefore be met by routing, but usually not by the routes as they are.
 - Units (Decision 32, replaces "`round(F × U(0.4, 0.7))`"): the hold fills in proportion to what the routes bring, so one launch carries about `F × r_o / R` of ore o, with `r_o` the rate of the routes on rocks of that ore and `R` that of all routes (each route `min(rb_i, n_i × c_i / trip_i)`: current rock, no seam, no module). `now_o` is that with the routes as they are when the contract is drawn; `routed_o` after a player sends `fleetShare` = 0.5 (tune 0.3 to 0.7) of the fleet to rocks of the contract's ores (split evenly for two ores): idle drones first, then the drone that loses least from another route (never a route's last drone), each to the rock of its ore where it adds most. Then `units_o = round(now_o + λ × (routed_o − now_o))`, λ = `U(0.35, 0.75)` (tune: low end 0.2 to 0.5, high end 0.6 to 0.9; one draw for both ores), at least `minUnits` = 3 in total and at most F (`contractStation`, `contractAt`). A contract above the current share is not met by doing nothing; one below the routed share is met by routing for it. A run being built (no params yet) uses `F × λ / ores`; a later galaxy's opening board is drawn again from the new run's station (`startGalaxy`).
 - Multiplier by the farthest ring among its ores: 1.6 / 1.9 / 2.2 / 2.6 / 3.0 for rings 1 to 5 (tune), plus `U(−0.1, +0.1)`, rounded to 0.1.
+- **Superseded by Decision 40** (a contract is taken, then delivered over `haul.contracts.launches` = 6 warp-outs; offers age over `offerLaunches` = 12; units per the "never free, always reachable" bounds; the bullets below on lifetime, contract 0 and the board are kept for the record and read with it).
 - Lifetime: `launchesLeft = 6` (tune 4 to 8) launches, counted at every warp-out whether met or not. A lapsed contract is replaced by the next from the stream (`next += 1`) in the same board position. If the active one lapses, `active = null` and TALLY says "Halden contract lapsed. Pick another." The autopilot's `contract` policy then ships at full.
 - Contract 0 is fixed: "Halden Yards, min(10, F) Iron, x1.5", fixed when created, 6 launches, and it is made active automatically (the only automatic pick).
 - Board of 3. When the active contract is met it is replaced by the next from the stream and `active` becomes null: the player picks the next one.
-- Pods: every 4th contract met (lifetime, `stats.contractsMet`) gives a Scrap Pod.
+- Pods: every `pods.contractsEvery`-th contract met (lifetime, `stats.contractsMet`) gives a Scrap Pod (4 before Decision 40; re-tuned with it, section 8).
 - Contracts cannot be scrapped (later).
 
 ### 2.7 Automation (a station system, not a hire)
@@ -473,6 +474,8 @@ Pasted from `python3 scripts/content/build-space.py --table` with the shipped ga
 
 ## 3. The first three minutes (timed script)
 
+**Steps 3 to 6 are replaced by Decision 44** (claim the second rock, buy a drone, tap the drone then the new rock, upgrade a rig; a guided step keeps the pointer 10 s after the hold fills; the first rich seam at 2:30). The table below is the old order, kept for the record; the tutorial path of 2.12 is the current one.
+
 Human time, from the tutorial path in section 2.12. The hint engine (`haul.nextHint`, registered as the haul `hintSource`) decides the next hint from state, so a faster or slower player still gets the right one. Hints wait for any open sheet (`overlays.ts`). **Six guided steps**; everything else in the first three minutes is a voice line without a pointer.
 
 | Time | Screen and voice | Guided step (hint kind, target) | fx and haptic |
@@ -628,7 +631,7 @@ Each is new; the shared code underneath is named.
 **Fitting Bay** (unique system; `src/ui/haul/spokes/FittingBay.tsx`).
 - Top 60 %: a top-down schematic of the station (340 x 340 at 390 width, 320 x 320 at 375) with three hexagonal sockets: Rig (upper left), Fleet (upper right), Dock (bottom).
 - Bottom 40 %: a horizontal tray of module cartridges (96 x 120), fitted first, then by socket type and rarity.
-- Fit: tap a cartridge, its socket glows, tap it (only a module of the socket's type fits). Or tap a socket and the tray filters to its type. Swap and remove are free and instant. Tap a fitted cartridge for its detail: effect line with its current number, "Mk II · Parts 3/5 · Refit 40 DM".
+- Fit: tap a cartridge, its socket glows, tap it (only a module of the socket's type fits). Or tap a socket and the tray filters to its type. Swap and remove are free and instant. Tap a fitted cartridge for its detail: effect line with its current number, "Mk II · UPGRADE · PARTS 3/5" (Decision 43: upgrades cost parts only, no Dark Matter price).
 - Opens when the first pod is opened; all three sockets are open from then on.
 - Reused underneath: the card engine (`cards.ts`: rarity, copies, levels, `cardEffect`) and store actions; new `src/engine/loadout.ts`. Not reused: `StaffTab`, `CardTile`, `CardSheet`.
 
@@ -639,7 +642,7 @@ Each is new; the shared code underneath is named.
 - Reused underneath: `openChest`, `closeChest`, pity, `chestOddsFacts`, the free-chest timer, the overlay manager. Not reused: `ChestOverlay`, `OpeningSlot`, `ChestShelf`, `Portrait`, `ChestOddsSheet`.
 
 **Comms** (missions and daily gift; `src/ui/haul/spokes/Comms.tsx`).
-- Pinned at the top: the Daily Allotment as a 5-dish relay (a dish lights for each day of the streak), "Receive" when ready.
+- Pinned at the top: the day shift (Decision 53), "DAY SHIFT · 2 OF 3 LEFT": the first 3 contracts met in a shift pay their bonus twice. There is no daily ladder.
 - Below: a radio log with two open channels. Each mission is a transmission: call-sign plate, time stamp ("T+02:14"), the line in a monospaced face, a thin progress bar, reward "3 DM". Done ones show "Acknowledge" (claims; every 4th acknowledgement adds a Derelict Cache). Acknowledged lines fold into the archive below with the story lines.
 - Reused underneath: the mission engine in `meta.ts` (new types), `dailyReward`, `claimDaily`. Not reused: `MissionsSheet`, `MissionsButton`, `DailyGift`.
 
@@ -663,7 +666,7 @@ IN FLIGHT    ₵220
 CREDITS    ₵18.4K
 ```
 
-Buttons "Collect" and "Double it · ad". Reused: `computeOffline`, `fastForward`, the rewarded-ad flow. Not reused: `OfflineModal`.
+Buttons "Collect" and "BOOST +50 % · ad" (Decision 42: the ad adds half, not a double). Reused: `computeOffline`, `fastForward`, the rewarded-ad flow. Not reused: `OfflineModal`.
 
 **Star Map** (`src/ui/haul/spokes/StarMap.tsx`; one name for the spoke and the node map inside it).
 - Top: the current galaxy's name and condition, "Galaxy 3 · Seam Storms".
@@ -680,7 +683,7 @@ Buttons "Collect" and "Double it · ad". Reused: `computeOffline`, `fastForward`
 | Collectable cards | yes, as modules | 8 modules, 4 of them rule-changing (5.1) | cartridges fitted into three typed sockets; only fitted ones work |
 | Earned reward boxes | yes, as salvage pods | 2 pod tiers (5.2) | Salvage Bay rack and laser-cut opening |
 | Missions | yes | radio-log tasks, 2 channels (5.3) | Comms |
-| Daily gift | yes | 5-day relay | dish relay pinned in Comms |
+| Daily gift | no (Decision 53) | a day-shift bonus on contracts instead: the first 3 contracts met in a shift pay their bonus twice | "DAY SHIFT" line pinned in Comms, "x2 SHIFT" on the strip |
 | Offline report | yes | per-ore units, rocks, pods | printed Shift Log |
 | Offers and daily shop | no (later) | | |
 | Contracts | new | buyer stream with lapsing contracts | strip on the map and Contract Board sheet |
@@ -735,7 +738,7 @@ New `MISSION_TYPES`: `hauled`, `launches`, `contracts`, `depleted`, `claims`, `s
 
 ### 5.4 Daily gift, purchases and ads
 
-- Daily gift (Daily Allotment): a 5-day relay, DM 6, 9, 12, 16, 24, then it repeats (`economy.daily.gems`, written by build-haul.py; the engine already cycles any table length).
+- Daily gift: none (Decision 53; `economy.daily.gems` is empty, so the shared daily claim is not offered). The day shift takes its place: the first `haul.shift.contracts` = 3 contracts met in each shift pay their bonus x2; a new shift starts when the calendar day has changed and at least 16 hours have passed since the last one started.
 - Offers (deals) and the daily shop: not in the first version (later).
 - Purchases (`space_` product ids; the kind sequence differs from Pizza's, and validate checks it, section 10.3):
 
@@ -748,7 +751,7 @@ New `MISSION_TYPES`: `hauled`, `launches`, `contracts`, `depleted`, `claims`, `s
 | `space_dm_700` | Fuel Tank | `gems` | $9.99 | 700 DM |
 
 No permanent income multiplier is sold.
-- Rewarded ads, all optional: a flare charge (3 a day, 20 min apart), the doubled Shift Log. No banner on the map (banners only at the bottom edge of spokes, above their last row, removed by Clearance). No interstitials in the first version.
+- Rewarded ads, all optional: a flare charge (3 a day, 20 min apart), the Shift Log boost (+50 %, `haul.offline.adBonus`; Decision 42). No banner on the map (banners only at the bottom edge of spokes, above their last row, removed by Clearance). No interstitials in the first version.
 
 ### 5.5 The systems only this game has
 
@@ -908,9 +911,9 @@ Ten example lines:
 ### 7.6 Store page (written from scratch)
 
 - Title (both stores): **Orbit Haulers**
-- Apple subtitle (30 max): **Route ore drones, idle mining** (29). It names the verb and keeps "idle" honest; "tycoon" moves to the description (Decision 25: validate rejects "idle ... tycoon" in a name field).
-- Google short description (80 max): "Route drones, ship cargo by freighter and grow a station in an asteroid field." (78)
-- Keywords (Apple field, 100 max, comma-separated, no words that are already in the title or subtitle, no "miner"; also `store.keywords`): space, mining, asteroid, freighter, cargo, logistics, station, galaxy, rocket, sci-fi, fleet, manager (90 characters). Shared with Pizza's keywords: none. Jaccard 0.0.
+- Apple subtitle (30 max): **Space mining by drone routes** (28; Decision 54: the genre words without the order of another developer's "Idle Miner" title).
+- Google short description (80 max): "An asteroid field, a hold of ore, and a freighter waiting for your swipe." (73; Decision 54: not the first game's "verb, verb and grow X").
+- Keywords (Apple field, 100 max, comma-separated, no words that are already in the title or subtitle, no "miner"; also `store.keywords`): idle, tycoon, asteroid, freighter, cargo, logistics, station, galaxy, rocket, sci-fi, fleet, manager (89 characters). Shared with Pizza's keywords: idle, tycoon. Jaccard 0.10 (target < 0.3).
 - Categories: Apple Games > Strategy (primary), Simulation (secondary). Google: Strategy.
 - Promotional text (170 max): "Drag drones onto asteroids, pick which buyer contracts to fill, and grow one mining station into a fleet that keeps shipping while you are away." (144)
 - Description:
@@ -919,7 +922,7 @@ Ten example lines:
   >
   > Your station sits in an asteroid field. Drag hauler drones onto rocks to set their routes, and watch them carry ore home to the hold. When the hold is full, swipe the freighter off the pad: it warps out and the whole manifest sells at once.
   >
-  > Buyers post contracts for the ores they want, and each contract lapses after a few launches. Pick one, send drones to the rocks that carry its ore, and its units sell for more.
+  > Buyers post contracts for the ores they want: so many units within a few launches. Take one, send drones to the rocks that carry its ore, and when the last units arrive the buyer pays its rate on all of them.
   >
   > Rocks run dry and new ones drift in, sometimes with a different ore, sometimes as a rich bonanza rock. The far rings hold copper, ice, titanium and platinum, but the trips are longer, so where you send each drone matters.
   >
@@ -927,7 +930,7 @@ Ten example lines:
   >
   > Features
   > - Drag-to-route drones on a top-down map of the asteroid field
-  > - One-swipe freighter launches and buyer contracts that lapse
+  > - One-swipe freighter launches and buyer contracts delivered over several launches
   > - Rocks that run dry and come back as new ore
   > - A dock autopilot that keeps shipping offline
   > - Fitting Bay modules and a Star Map that changes how each run starts
@@ -942,8 +945,10 @@ Ten example lines:
   5. Fitting Bay: "Fit modules. Some change the rules."
   6. Star Map with the condition pick: "Jump galaxies. Choose the conditions."
 - Preview video: optional, 20 s, recorded from the game (map, drag, launch, contract, Fitting Bay).
-- App Review notes (`games/space-miner/store/REVIEW-NOTES.md`): "Built by our studio on our own engine. Our other game, Pizza Empire, is a restaurant sim where you tap stations and guests pay. Orbit Haulers is a different game: 1. You drag drones onto asteroids to set routes; rocks run dry and are replaced, and you re-route for contracts, rich seams and bonanza rocks all game. 2. Money arrives only when the freighter launches, and the buyer contract you picked multiplies the units it asked for. 3. Modules work only when fitted into three typed sockets in the Fitting Bay, and the reset is spent on a Star Map of rule-changing nodes. Tap path: open the app, follow the reticle: drag the drone onto the rock, then swipe up in the bay (about 30 s). Fitting Bay: the third button on the bottom rail (hexagon glyph), open once the pod from the first ring-2 claim is opened (about 6 to 8 min)."
-- Bundle ids: replace `com.example.spaceminer` with the studio's domain (open question). `app.slug` becomes `orbit-haulers`.
+- App Review notes (`games/space-miner/store/REVIEW-NOTES.md`): "Built by our studio on our own engine. Our other game, Pizza Empire, is a restaurant sim where you tap stations and guests pay. Orbit Haulers is a different game: 1. You drag drones onto asteroids to set routes; rocks run dry and are replaced, and you re-route for contracts, rich seams and bonanza rocks all game. 2. Money arrives only when the freighter launches, and the buyer contract you picked multiplies the units it asked for. 3. Modules work only when fitted into three typed sockets in the Fitting Bay, and the reset is spent on a Star Map of rule-changing nodes. Tap path: open the app, follow the reticle: drag the drone onto the rock, then swipe up in the bay (about 30 s). Fitting Bay: the third button on the bottom rail (three hexagons), open once the pod from the first ring-2 claim is opened (about 6 to 8 min)."
+- Bundle ids: `com.example.orbithaulers` until the owner gives the studio's domain (store-1); only the prefix changes then, and `validate --release` refuses `example`. `app.slug` is `orbit-haulers`.
+- Privacy policy: `store.privacyPolicyUrl` holds the placeholder `https://example.com/privacy` until the owner gives the real page; `validate` warns, `validate --release` fails (play-13, store-0).
+- Tracking permission (iOS): `app.trackingText`, this game's own sentence (Decision 55).
 
 ---
 
@@ -1154,3 +1159,116 @@ These settle the open questions of revision 2, the choices the two reviews and t
 37. **Hangar Expansion bought mid-run** is a rule: `grantHangarDrones` (src/engine/haul/actions.ts) gives its start drones at once, idle, never above the cap, once per run; a run that starts with the product owned is marked as having had them (`flags.hangarDrones`), so a boot re-grant never adds them twice.
 38. **Buyer lines**: `haul.contracts.buyers[].calls` and `closed` are part of the schema (optional; the comms slot reads them).
 39. **The bot is part of the rules**: its pure part is `src/engine/haul/bot.ts` (no Node import), so the app's presets can be built from its states; `scripts/content/haul-bot.ts` is only the command line. `scripts/validate.ts` runs it for a haul game (12 h with Jumps) and fails on every hard section 8 target it misses.
+
+### Fix round (lead, 22 November 2026, after the six reviews)
+
+Decisions 40 to 55 settle the findings of the play-tester, the economy auditor, the phone, performance and store reviewers and the regression hunter. They override the sections they name (those sections carry a pointer here). The numbers each one moved are stated in "Numbers of the fix round" at the end of this section.
+
+#### 40. A contract is delivered over several launches (overrides 2.4 step 5, 2.6, Decision 32's unit rule)
+
+Why: the play-tester called the contract loop "a chore that punishes, not a decision" (a contract lapsed 49 s after it was picked; the strip counts down, then resets at every launch; the autopilot burns the tries), and the auditor showed the unit rule is broken both ways (met by doing nothing on a station whose ore already has half the fleet, never met on a two-ore station where both ores are wanted).
+
+The rule, as the player would say it: "Deliver 8,400 copper within 6 launches."
+- Taking a contract. A contract on the board is an offer until the player picks it. The pick takes it: `taken = true`, `launchesLeft = haul.contracts.launches` (6, tune 4 to 8). At most one contract of a run is taken, and the taken one is the active one. Picking another offer, or picking none, while one is taken DROPS the taken one: it leaves the board and the next from the stream takes its place (event `contractLapsed {wasActive: true, dropped: true}`). The screens ask for a second tap before a drop that loses progress.
+- Offers age slowly: an offer loses one launch of `haul.contracts.offerLaunches` (12, tune 8 to 16) at each warp-out and is replaced silently when it reaches 0 (event `contractNew`). The board therefore keeps changing for a player who never picks.
+- Progress. Each want carries `got` (units delivered so far). At a warp-out with a taken contract, each wanted ore adds `min(cargo_o, units_o − got_o)`. When every want is complete the contract is MET at that warp-out: the bonus is paid, event `contractMet`, the next from the stream takes its place, `active = null`. Otherwise `launchesLeft −= 1`, and at 0 it lapses (event `contractLapsed {wasActive: true}`), nothing is taken back.
+- Loading is unchanged in spirit: wanted ores first, up to what the contract still needs, then by value.
+- Money. Every launch pays its cargo at the normal price (with the full-hold bonus, `keeper` and G as before). The warp-out that completes the contract also pays the contract bonus `Σ_o units_o × p_o × (M' − 1) × G`, and that launch's other cargo keeps the delivery fee. Over its life the contract's own units are therefore paid at `M'`, exactly what "x1.8" promises. `contractBonus` is a fixed number for a contract (at current prices): the board, the strip and the receipt show the same figure, and it does not move with the hold.
+- Units at the draw. With `L = haul.contracts.launches`, `now_o` and `routed_o` per launch as in Decision 32 (`contractStation`): `units_o = round(L × now_o + λ × (L − 1) × (routed_o − now_o))`, λ = U(reach.lo, reach.hi). Never free: `units_o ≥ ceil(L × now_o × (1 + margin))`, margin 0.12 (tune 0.08 to 0.2). Always reachable: `units_o ≤ floor(now_o + (L − 1) × routed_o)`. When the two cannot both hold (the ore has no room to route for: its routes already hold the fleet share, or its only routes are single drones), widen `routed` first (count a route's last drone as movable, raise the share for this ore up to 0.8), then draw another present ore; only a station with a single ore gets a quota contract (`units = round(L × F × U(0.75, 0.9))`, multiplier lowered by 0.2, at least 1.3): it needs full holds and nothing else, which is right for the first minutes. A two-ore contract routes for both ores at once (the fleet share split between them, drones taken from the unwanted ores first); each ore obeys the same two bounds.
+- Contract 0 stays "Halden Yards, min(10, F) Iron, x1.5", taken automatically, so the first contract is met by the first launch after the strip appears, as in section 3.
+- The autopilot's `contract` policy: launch when the hold already holds everything the taken contract still needs, or when the hold is full. `full` is unchanged.
+- Offline progress does not touch contracts: no progress, no launches counted, no offers aged.
+- Pods: still one Scrap Pod every `contractsEvery` contracts met; a contract now takes several launches, so the numbers engineer re-tunes `contractsEvery` and the dried-rock pods against a new section 8 target for pods per hour.
+- Section 8 measures: share of TAKEN contracts that are met, for the bot that routes for them (target 60 to 85 %) and for the passive bot that never moves a drone for one (at most 25 %); the contract bonus as a share of run income (report it; aim 10 to 25 %).
+
+The interface the screens build against (src/engine/haul/trade.ts, exported through src/engine/haul.ts; the rules engineer adds these FIRST, before finishing the rule, and says so in the shared requests file):
+
+```ts
+export interface Contract {
+  k: number; buyer: string; mult: number;
+  wants: { ore: string; units: number; got: number }[];
+  /** An offer: warp-outs left on the board. Taken: warp-outs left to deliver everything. */
+  launchesLeft: number;
+  taken: boolean;
+}
+export interface ContractView {
+  index: number; contract: Contract; active: boolean;
+  /** Paid at the warp-out that completes it. Fixed for the contract at current prices. */
+  bonus: number;
+  /** Launches it has once taken (haul.contracts.launches), and how many are left now (an offer: the offer's life). */
+  launches: number; launchesLeft: number;
+  wants: {
+    ore: string; units: number; got: number;
+    /** Units of this ore the freighter in flight is carrying toward this contract (0 unless active and between launch and warp-out). */
+    aboard: number;
+    /** max(0, units − got − aboard). */
+    left: number;
+    /** What one launch carries of this ore with the routes as they are (contractStation.reach().now). */
+    perLaunch: number;
+  }[];
+  /** min over wants of perLaunch × launchesLeft / left (Infinity when nothing is left). For an offer: as if taken now. */
+  paceRatio: number;
+  /** paceRatio ≥ 1. */
+  onPace: boolean;
+  /** The ore that is furthest behind when not on pace, else null. */
+  shortOre: string | null;
+}
+export function contractViews(cfg: HaulConfig, params: HaulParams, h: HaulState): ContractView[];
+export function contractBonus(cfg: HaulConfig, params: HaulParams, c: Contract): number;
+```
+Events: `warp {payout, met, cargo, bonus}` (bonus 0 unless this warp-out met the contract), `contractProgress {contract, added: {ore, units}[]}`, `contractMet {contract, bonus}`, `contractLapsed {contract, wasActive, dropped?}`, `contractNew {contract, index}`. `pickContract(cfg, g, index | null)` keeps its signature. `contractGain` and `contractMissing` go away once nothing calls them.
+
+What the screens show:
+- Strip (bay engineer): buyer, each ore as "COPPER 3.7K / 8.4K" with a bar (delivered solid, aboard as a lighter segment while the freighter is in flight), "4 LAUNCHES LEFT" in words (the last one pulses), the bonus "+₵19.4K", and a pace light: "ON PACE" or "SHORT ON COPPER" (amber; tapping the strip opens the board as now). Never a figure that falls back after a launch.
+- Board cards (panels engineer): buyer, multiplier, each ore "8.4K COPPER", "IN 6 LAUNCHES", "YOU SHIP 1.2K PER LAUNCH" with the pace as a bar or a word (ON PACE / NEEDS MORE COPPER), "+₵19.4K WHEN MET". The taken one shows its progress and launches left. Picking another while one has progress asks once more ("Drops Kade Refinery: 3.7K delivered"). Units are formatted with the short format everywhere (8.4K, never 8372).
+- Receipt and stamp: "CONTRACT MET +₵19.4K" on the receipt row, never over the credits number.
+
+#### 41. A Jump that is not ready says so
+The rule stays (a Jump is possible from 1 core; "ready" is 20). Below ready, the Star Map shows "NOT READY · 7 OF 20 WARP CORES" where READY stands, the Jump key is drawn as a secondary key (no bright fill) reading "JUMP ANYWAY: +7 WARP CORES", and its confirm names the loss ("You leave with 7 cores. 20 is a full run."). Singular for 1 ("+1 WARP CORE"). The Jump key stays in view without scrolling at both sizes. The streak-and-shudder sequence plays at the confirm; the arrival plays after the condition is picked.
+
+#### 42. The Shift Log's ad adds half, and the offline gate counts it (overrides 5.4 where it says "double")
+With Clearance the ad reward is free and unlimited, so a doubled Shift Log made an hour away worth up to 1.84 hours of play without buying. For this game the reward is +50 % (`haul.offline.adBonus = 0.5`, a new config field; the first game keeps its own x2 untouched). Section 8's hard offline gate is measured on the credits WITH the bonus, two ways, on every seed and with a margin so it is not met by rounding: an hour away with the bonus pays at most 0.6 of an hour of active play (the bot that buys and routes), and at most 0.9 of an hour of only watching (the app open, autopilot on `full`, nothing bought, nothing routed, no contract taken). The second is what makes "an hour away never beats an hour in the game" true for every player; the numbers engineer adds a watching mode to the bot for it and lowers the efficiency cap as needed. Label: "BOOST +50 %" (and its ad label says what it gives).
+
+#### 43. Module upgrades cost parts only
+The shared card rule charges copies ("parts"), not Dark Matter, and the first game's rules are pinned. The Fitting Bay says "UPGRADE · PARTS 3/5" (not "Refit", which read as "fit again"), and shows no Dark Matter price. The specification's "Refit 40 DM" example goes.
+
+#### 44. The tutorial's purchases each raise income, in this order (overrides section 3 steps 3 to 6 and the tutorial path of 2.12)
+The second drone was advised while the first rock's rig was the limit: the income line did not move, so the first purchase the game recommends looked useless. New order of the six guided steps: 1 drag the drone to the rock; 2 swipe the freighter off; 3 claim the second rock (point at `slot:1`, then the confirm chip); 4 buy a drone (point at `station`, then `station:buyDrone`); 5 tap the drone, then the NEW rock (tap-tap onto `rock:1`); 6 upgrade a rig (point at `rock:0`, then `rig:upgrade`). Moving a drone between routes is taught by the first rich seam, as before. Prices are set so that each step is affordable within 5 s of a warp-out on the tutorial path and each guided purchase raises the income line by at least 15 % once it is done (a test on the tutorial path). A guided step keeps the pointer for its first 10 s even if the hold fills (the swipe hint waits). The first rich seam of galaxy 1 comes at 150 s, not 360 (later ones as before).
+
+#### 45. The pacing gate runs on several seeds
+`scripts/validate.ts` runs the 12 hour simulation for seeds 12345, 4 and 99 (in parallel processes) and every hard section 8 target must hold on each. The slowest seed's first Jump must be inside the window, with the numbers re-tuned for that, and the offline gate holds with margin. New section 8 targets: pods per hour and Dark Matter per hour in hours 1 to 3 (the numbers engineer proposes the windows from the module economy of 5.1 and 5.2 and states them).
+
+#### 46. Figures are written as figures
+Comms lines, buyer calls and mission texts write quantities and multipliers as digits with the short format ("12 IRON AT x1.7", "ABOUT 13K ICE, PAYING x2.3"), not as spoken words. Plurals are right for 1 ("Close 1 contract"). A rich seam is called a rich seam, never "gold" (there is no gold ore).
+
+#### 47. Android
+The back button or gesture closes the top layer (sheet, station menu, spoke, armed chip) and only leaves the app from the bare map. Both apps declare themselves games in the Android manifest (`android:appCategory="game"`), which is also what keeps the portrait lock on large screens under Android 16 (the wiring engineer verifies this against the platform's public documentation before relying on it; if it does not hold, the field lays out in a centred column of at most 430 pt instead).
+
+#### 48. Hints never cover what the player is reading
+No hint is drawn while a sheet, spoke, overlay or the station menu is open. No reticle sits on a number: the swipe hint runs beside the dock counter, and "open the board" rings the counter's frame.
+
+#### 49. Dragging a drone shows what it is worth
+While a drone is held over a rock (and for a moment after the drop) the field shows the change in income of putting it there, from the rules' own estimate: "+₵12/s", or "+₵0/s · RIG LIMIT" when the rig cannot feed another drone (which tells the player to upgrade the rig instead). `routeGain(cfg, g, from, to)` in the rules returns `{ delta: number; limit: 'rig' | 'haul' | null }` for moving one drone from slot `from` (null: the rack) to slot `to` (null: the rack).
+
+#### 50. The field redraws only as fast as it must
+60 frames a second while a finger is down or the freighter is climbing or landing; 30 otherwise. The starfield is one textured draw, not three replays of a thousand circles. Nothing animates under a full-screen spoke. Bay canvases animate on events, not continuously.
+
+#### 51. One clock for the freighter
+The freighter crossing from the bay into the field is drawn from one source of time by both canvases.
+
+#### 52. A new galaxy looks like one
+Each galaxy has its own backdrop tint (a small set of palettes that cycle), its name is shown on arrival, and the galaxy's condition stays visible on the main screen for the whole run.
+
+#### 53. No daily ladder; a day-shift bonus on contracts instead (overrides 5.4 "daily relay")
+The store reviewer: after ten minutes the two games show the same free-to-play skeleton under other names, and at least one of the copied systems should become different in kind. The first game has a five-step daily gift ladder; so did this one. Orbit Haulers drops the ladder. In its place, tied to this game's own loop: the first `haul.shift.contracts` (3) contracts MET in each shift pay their bonus twice ("DAY SHIFT x2"). A new shift starts when the calendar day has changed and at least 16 hours have passed since the previous shift started (the same guard against a moved clock that the flare ads use; the gain from cheating it is three contract bonuses). The count lives in the lifetime stats, so a Jump does not reset it. The strip tags a contract that would get it ("x2 SHIFT"); Comms shows "DAY SHIFT · 2 OF 3 LEFT" where the relay was; the receipt says "DAY SHIFT x2" when it pays. Priority: after every major finding. Owners: the rule (rules engineer), the data, the specification and the fingerprint's list of meta systems (numbers engineer), the strip tag (bay engineer), Comms (panels engineer), the store no longer offering the daily claim for this game (wiring engineer).
+
+#### 54. The shared skeleton carries this game's own numbers and names
+Module part costs do not follow the first game's 2 × 1.5^n (the numbers engineer picks another curve and re-checks the module economy against 5.1). The five products' prices are not the first game's set of price points. Identifiers in this game's data that are free strings do not carry the first game's words. The subtitle keeps the genre words the owner wants to be found by (idle, mining, space, tycoon, across subtitle and keywords) but never in the order of another developer's well-known title; the short description does not follow the first game's sentence pattern (no "verb, verb and grow X").
+
+#### 55. Nothing a player sees before the game is the same in both apps
+The loading screen is a part of the mode entry: this game draws its own with its own art and type (the first game's stays pixel for pixel what it is). The tracking-permission sentence comes from each game's data, in its own voice (the first game keeps the sentence it has). The "development build" note in a menu shows only in a development build.
+
+#### Numbers of the fix round
+
+(Written by the numbers engineer with the re-tune; see below.)
+

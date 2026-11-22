@@ -4,20 +4,22 @@
  *
  *   SHIFT LOG · TAMSIN STATION
  *   AWAY        5 h 12 m
- *   IRON        3,420 u
+ *   IRON         3.4K u
  *   ROCKS DRY        4
  *   PODS             1
  *   IN FLIGHT    ₵220
  *   CREDITS    ₵18.4K
  *
- * Data: the store's `offline` (`report` is the rules' OfflineReport). "Collect" and "Double it · ad"
- * (the rewarded ad, dimmed while none is loaded) go through haulActions.collectShiftLog. Registers
+ * Data: the store's `offline` (`report` is the rules' OfflineReport). "Collect" and "Boost +50 % · ad"
+ * (Decision 42: the rewarded ad adds haul.offline.adBonus of the credits, and its key says how much;
+ * dimmed while none is loaded) go through haulActions.collectShiftLog. Registers
  * with the overlay manager; plays shift_log when it prints. Not the first game's OfflineModal.
  */
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { formatShort } from '../../../engine/format';
 import * as H from '../../../engine/haul';
 import { haulActions } from '../../../modes/haul/actions';
 import { fx } from '../../../services/fx';
@@ -56,6 +58,7 @@ function Printout({ cfg, offline }: { cfg: H.HaulConfig; offline: { seconds: num
   }));
   const dim = useAnimatedStyle(() => ({ opacity: drop.value }));
   const font = ty.body;
+  const bonus = cfg.haul.offline?.adBonus ?? 0.5;
   return (
     <View style={StyleSheet.absoluteFill}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: alpha('#000000', 0.55) }, dim]} />
@@ -108,8 +111,16 @@ function Printout({ cfg, offline }: { cfg: H.HaulConfig; offline: { seconds: num
         ) : null}
         <View style={[styles.rule, { borderColor: alpha(c.primary, 0.35) }]} />
         <View style={styles.buttons}>
-          <ActionButton label={say('collect')} onPress={() => void haulActions.collectShiftLog(false)} style={styles.flex} />
-          {offline.earnings > 0 ? <ActionButton kind="ghost" label={say('doubleIt')} enabled={adReady} onPress={() => adReady && void haulActions.collectShiftLog(true)} style={styles.flex} /> : null}
+          <ActionButton label={say('collect')} onPress={() => void haulActions.collectShiftLog(false)} />
+          {offline.earnings > 0 ? (
+            <ActionButton
+              kind="ghost"
+              label={say('boostIt', { p: Math.round(bonus * 100) })}
+              price={`+${cfg.strings.currencySymbol}${formatShort(offline.earnings * bonus)}`}
+              enabled={adReady}
+              onPress={() => adReady && void haulActions.collectShiftLog(true)}
+            />
+          ) : null}
         </View>
       </Animated.View>
     </View>
@@ -142,5 +153,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dotted',
     marginBottom: 5,
   },
-  buttons: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  // One key under the other: the boost key names its gain and needs the full width.
+  buttons: { gap: 8, marginTop: 4 },
 });

@@ -5,7 +5,7 @@
  */
 import type * as H from '../../../engine/haul';
 import type { HaulSheet } from '../uiState';
-import { awayText, money, oreName, units } from './format';
+import { awayText, money, oreName, units, unitsShort } from './format';
 import { say, type ShellTextKey } from './shellText';
 
 // ---------------------------------------------------------------- comms slot
@@ -13,26 +13,30 @@ import { say, type ShellTextKey } from './shellText';
 export type Role = 'ai' | 'dock' | 'dispatch';
 
 /**
- * The character id that speaks for a role, found from the story's own speakers (never by id): the
- * AI speaks the `start` beat, the dock controller the first `launches` beat, dispatch the
- * `contracts` beat.
+ * The character id that speaks for a role, found from the data (never by id): the AI is the
+ * character named `haul.names.ai`, the dock controller speaks the first `launches` beat, dispatch
+ * the `contracts` beat.
  */
 export function speaker(cfg: H.HaulConfig, role: Role): string {
+  if (role === 'ai') {
+    const ai = cfg.characters.find((c) => c.name === cfg.haul.names.ai);
+    if (ai) return ai.id;
+  }
   const type = role === 'ai' ? 'start' : role === 'dock' ? 'launches' : 'contracts';
   return cfg.story.find((b) => b.trigger.type === type)?.characterId ?? cfg.characters[0]?.id ?? '';
 }
 
 /**
  * The voice line of the hint shown now (section 3's lines are hint lines, errata 56), or null.
- * Step 1's line is the `start` story beat itself. After the tutorial, a full hold without the
- * autopilot says the longer line once per run (errata 57).
+ * Step 1 is the AI's own line (the `start` story beat is gone: it repeated it). After the tutorial,
+ * a full hold without the autopilot says the longer line once per run (errata 57).
  */
 export function hintLine(g: H.HaulGame, hint: H.HaulHint | undefined): { key: ShellTextKey; role: Role } | null {
   if (!hint || !g.haul) return null;
-  if (hint.step >= 2 && hint.step <= 6)
+  if (hint.step >= 1 && hint.step <= 6)
     return {
       key: `hintStep${hint.step}` as ShellTextKey,
-      role: hint.step <= 3 ? 'dock' : 'ai',
+      role: hint.step === 2 || hint.step === 3 ? 'dock' : 'ai',
     };
   if (hint.key === 'station:autopilot') return { key: 'hintAutopilot', role: 'dock' };
   if (hint.kind === 'swipe' && hint.step === 0 && !g.haul.autopilot.online) return { key: 'holdCapacity', role: 'dock' };
@@ -83,7 +87,7 @@ export function shiftLogRows(cfg: H.HaulConfig, offline: { seconds: number; earn
       if (n >= 1)
         rows.push({
           label: oreName(cfg, ore.id).toUpperCase(),
-          value: say('units', { n: units(n) }),
+          value: say('units', { n: unitsShort(n) }),
         });
     }
   }

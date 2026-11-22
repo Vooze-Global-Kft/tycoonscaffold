@@ -54,9 +54,17 @@ for gone in ('businesses', 'upgrades', 'cast', 'sim'):
 app = g.setdefault('app', {})
 app['displayName'] = 'Orbit Haulers'
 app['slug'] = 'orbit-haulers'
-# Bundle ids stay placeholders until the studio domain is known (specification open question 1).
-app.setdefault('iosBundleId', 'com.example.spaceminer')
-app.setdefault('androidPackage', 'com.example.spaceminer')
+# Bundle ids stay placeholders until the studio domain is known (specification open question 1,
+# Decision 27): `com.example.orbithaulers`, named after the title, so only the prefix changes when the
+# owner gives the studio's domain. validate --release refuses `example` (store-1). An id that is not a
+# placeholder any more is kept.
+for _k in ('iosBundleId', 'androidPackage'):
+    if not app.get(_k) or app[_k].startswith('com.example.'):
+        app[_k] = 'com.example.orbithaulers'
+# The tracking-permission sentence (iOS NSUserTrackingUsageDescription; Decision 55): this game's own
+# words, and honest about what the permission is for. app.config.ts reads app.trackingText.
+app['trackingText'] = ('Orbit Haulers uses this to match the optional ads you can watch for a flare charge or a '
+                       'Shift Log boost to your interests. Say no and the ads still play, only less matched.')
 
 # ---------------------------------------------------------------- theme: deep-space-cold
 theme = g.setdefault('theme', {})
@@ -95,8 +103,9 @@ g['economy'] = {
     # around activeRate (rock lives, seams), so the shipped efficiency sits under the cap.
     'offline': {'maxHours': K('offlineHours', 6, 4, 8, 'offline cap, hours'), 'efficiency': K('offlineEfficiency', 0.45, 0.3, 0.45, 'offline efficiency (at most 0.45)'), 'minSecondsToShow': 60},
     'boost': {'multiplier': 2, 'minutesPerAd': 30, 'maxMinutes': 240},
-    # Daily Allotment: a 5-day relay (5.4).
-    'daily': {'gems': [6, 9, 12, 16, 24]},
+    # No daily ladder (Decision 53): an empty table means no daily gift (economy.dailyOffered); the day
+    # shift on contracts (haul.shift) takes its place.
+    'daily': {'gems': []},
     # Time Warp 2 h for 40 DM, priced with activeRate (4.6 Trade Post).
     'timeWarp': {'hours': 2, 'gemCost': 40},
 }
@@ -120,10 +129,10 @@ RINGS = [
 ]
 BUYERS = [('halden', 'Halden Yards'), ('corvo', 'Corvo Metals'), ('tessaly', 'Tessaly Ice Co.'),
           ('brightwater', 'Brightwater Foundry'), ('kade', 'Kade Refinery'), ('oriel', 'Oriel Labs')]
-# One line each when a buyer's contract arrives and when it closes (7.3, 7.5). Spoken lines: the screen
-# fills {ore}, and {units} and {mult} spelled out (strings.ts spokenNumber, spokenMultiplier).
+# One line each when a buyer's contract arrives and when it closes (7.3, 7.5). The screen fills {ore},
+# {units} in the short format ("8.4K") and {mult} as "x1.8" (Decision 46: figures as figures).
 BUYER_LINES = {
-    'halden': ('Halden Yards, buying {ore}. {units} units. We pay {mult}.', 'Halden. Received in full. Same time next run.'),
+    'halden': ('Halden Yards, buying {ore}. {units} units. We pay {mult}.', 'Halden. Received in full. Call us again.'),
     'corvo': ('Corvo Metals. {units} {ore}, {mult} on the unit. Standing by.', 'Corvo Metals. Contract closed. Pleasure.'),
     'tessaly': ('Tessaly Ice Company. {units} {ore}. Paying {mult}. Keep it sealed.', 'Tessaly. Manifest checks out. Logged.'),
     'brightwater': ('Brightwater Foundry. The furnace wants {ore}. {units} units at {mult}.', 'Brightwater. Furnace is fed. Out.'),
@@ -150,10 +159,11 @@ g['haul'] = {
         'stripeEvery': 15, 'stripeMult': 1.5,
         'cost': {'base': 3, 'ringFactor': 40, 'growth': K('rigGrowth', 1.6, 1.45, 1.8, 'rig cost growth', 1.7)},
     },
-    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)', 16), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 15), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring', 1.4)},
+    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)', 14), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 15), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring', 1.4)},
     'pile': {'min': 10, 'seconds': 25},
     'drone': {
-        'speed': 0.5, 'speedPerLevel': 0.08, 'speedMax': 4, 'capacity': 4,
+        # Decision 44: a drone must carry more than a level-2 ring-1 rig drills, or the tutorial's rig step pays nothing.
+        'speed': 0.5, 'speedPerLevel': 0.08, 'speedMax': 4, 'capacity': K('droneCapacity', 4, 4, 6, 'units a drone carries at capacity level 1 (Decision 44)', 5),
         # Section 8's knob for haul-bound routes (raise capacity growth); not marked (tune) in 2.3, kept near it.
         'capacityGrowth': K('capacityGrowth', 1.25, 1.2, 1.35, 'drone capacity per level (knob: haul binds)'), 'loadSeconds': 0.6, 'unloadSeconds': 0.6,
         'cost': {'base': 10, 'growth': K('droneGrowth', 1.45, 1.35, 1.6, 'drone cost growth (knob: fleet taps)')},
@@ -162,17 +172,25 @@ g['haul'] = {
         'capBase': 24, 'capPerGalaxy': 4,
     },
     'freighter': {
-        'capacity': 12, 'growth': 1.45, 'cost': {'base': 15, 'growth': K('freighterGrowth', 1.6, 1.45, 1.8, 'freighter cost growth (knob: freighter binds)', 1.5)},
+        # Decision 44: two worked ring-1 rocks must not fill the first freighter (12 units every 12.5 s left
+        # step 6's rig upgrade worth nothing), so level 1 carries more than the specification's 12.
+        'capacity': K('freighterCap', 12, 12, 24, 'freighter capacity at level 1 (Decision 44: the tutorial rig step must pay)', 20), 'growth': 1.45, 'cost': {'base': 15, 'growth': K('freighterGrowth', 1.6, 1.45, 1.8, 'freighter cost growth (knob: freighter binds)', 1.5)},
         'away': [{'from': 1, 'seconds': 8}, {'from': 10, 'seconds': 12}, {'from': 25, 'seconds': 16}],
         'climb': 2.5, 'land': 2, 'fullBonus': 1.1, 'hulls': [1, 10, 25, 50], 'segmentEvery': 25, 'segmentMax': 8,
     },
     'autopilot': {'cost': K('autopilot', 90, 80, 110, 'Dock Autopilot price')},
     'respawnSeconds': 6,
     'bonanza': {'chance': K('bonanza', 0.04, 0.03, 0.06, 'bonanza chance of a new rock', 0.06), 'drill': K('bonanzaDrill', 2, 2, 3, 'bonanza drill (knob: run 2)', 3), 'life': 1.5},
-    'seam': {'first': 360, 'interval': [K('seamMin', 90, 60, 90, 'seam interval, low end (knob: drags)'), K('seamMax', 150, 100, 150, 'seam interval, high end (knob: drags)')], 'duration': 40, 'drill': 3, 'pileCap': 2, 'senseInterval': 10, 'senseDuration': 5, 'minInterval': 30},
+    # The first rich seam of the first galaxy comes at 150 s (Decision 44); every later galaxy's run as before.
+    'seam': {'first': 150, 'firstLater': 360, 'interval': [K('seamMin', 90, 60, 90, 'seam interval, low end (knob: drags)'), K('seamMax', 150, 100, 150, 'seam interval, high end (knob: drags)')], 'duration': 40, 'drill': 3, 'pileCap': 2, 'senseInterval': 10, 'senseDuration': 5, 'minInterval': 30},
     'flare': {'refillSeconds': 1800, 'firstAt': 600, 'maxStored': 1, 'adsPerDay': 3, 'adGapMinutes': 20},
     'contracts': {
-        'unlockLaunches': 4, 'unlockClock': 90, 'board': 3, 'lifetime': int(K('contractLife', 6, 4, 8, 'launches a contract lasts')),
+        'unlockLaunches': 4, 'unlockClock': 90, 'board': 3,
+        # Decision 40: a taken contract is delivered over `launches` warp-outs; an offer ages one launch of
+        # `offerLaunches` per warp-out; `margin` keeps a contract from being met by the routes as they are.
+        'launches': int(K('contractLaunches', 6, 4, 8, 'warp-outs a taken contract has to deliver everything')),
+        'offerLaunches': int(K('offerLaunches', 12, 8, 16, 'warp-outs an offer stays on the board')),
+        'margin': K('contractMargin', 0.12, 0.08, 0.2, 'never free: units at least L x now x (1 + margin)'),
         'fee': K('fee', 0.1, 0.05, 0.15, 'delivery fee on the rest of a met cargo'),
         'reach': [K('reachLo', 0.35, 0.2, 0.5, 'contract units: low end, from the hold share as routed (0) to the share routed for it (1)'), K('reachHi', 0.75, 0.6, 0.9, 'contract units: high end of the same range')],
         'fleetShare': K('fleetShare', 0.5, 0.3, 0.7, 'share of the fleet a player sends to a contract when routing for it'),
@@ -182,7 +200,11 @@ g['haul'] = {
         # `calls` and `closed` wait for the rules' buyer schema to carry them (balance report, "For other owners").
         'buyers': [{'id': i, 'name': n, 'calls': BUYER_LINES[i][0], 'closed': BUYER_LINES[i][1]} for i, n in BUYERS],
     },
-    'pods': {'scrap': 'scrap', 'derelict': 'derelict', 'depletedEvery': 6, 'contractsEvery': 4, 'transmissionsEvery': 4},
+    # Decision 53: the first `contracts` contracts met in each shift pay their bonus `mult` times.
+    'shift': {'contracts': 3, 'minHours': 16, 'mult': 2},
+    # rules-3: re-tuned against section 8's pods-per-hour target after Decision 40 (a contract met is no longer rare).
+    'pods': {'scrap': 'scrap', 'derelict': 'derelict', 'depletedEvery': int(K('podsDepleted', 6, 4, 16, 'a Scrap Pod every n-th dry rock (pods per hour)')),
+             'contractsEvery': int(K('podsContracts', 4, 4, 16, 'a Scrap Pod every n-th contract met (pods per hour)')), 'transmissionsEvery': 4},
     'conditions': [
         # Frost Surplus: rings 3 and 4 (ring 2 has no ice; Decisions).
         {'id': 'frost', 'name': 'Frost Surplus', 'lines': ['Ice weight x3 on rings 3 and 4', 'Ice value x2'], 'oreValue': {'ice': 2},
@@ -220,7 +242,10 @@ g['haul'] = {
         {'card': 'quickclamp', 'socket': 'dock', 'stat': 'metReturn', 'cap': 0.5},
     ],
     'hangar': {'product': 'space_hangar', 'droneCap': 6, 'startDrones': 2},
-    'offline': {'efficiencyCap': 0.45, 'rockLoopMax': 2000},
+    # Decision 42: the Shift Log's ad adds `adBonus` (not a double), and the gate counts it; the cap sits
+    # under 0.45 so the gate holds with margin on every seed (Decision 45).
+    'offline': {'efficiencyCap': K('efficiencyCap', 0.45, 0.25, 0.45, 'offline efficiency cap of the haul rules (gate measured with the ad bonus)'),
+                'rockLoopMax': 2000, 'adBonus': 0.5},
 }
 
 # ---------------------------------------------------------------- cast: call signs, no people drawn (7.3)
@@ -232,7 +257,7 @@ g['characters'] = [
 
 # Story beats (7.4): comms-slot lines, each once ever.
 g['story'] = [
-    {'id': 'start', 'characterId': 'tally', 'trigger': {'type': 'start'}, 'lines': ['Drone T-1 idle. Send it to the rock.']},
+    # No `start` beat: guided step 1 voices that line itself (play-1, store-9: it played a second time).
     {'id': 'first_launch', 'characterId': 'ops2', 'trigger': {'type': 'launches', 'count': 1}, 'lines': ['Freighter away. Credits in. That is the job.']},
     {'id': 'contracts', 'characterId': 'dispatch', 'trigger': {'type': 'contracts'}, 'lines': ['Buyers are calling. Their contracts go on the strip.']},
     {'id': 'autopilot', 'characterId': 'ops2', 'trigger': {'type': 'system'}, 'lines': ['Autopilot has the pad. It ships the way you set it.']},
@@ -269,23 +294,25 @@ def pod(pid, name, tier, slots, weights, rarity):
 MISSIONS = [
     ('move', 'hauled', 'DISPATCH: Move {n} units. Any ore.', [40, 150, 400, 1000, 2500, 6000], 2),
     ('ship', 'launches', 'OPS-2: Clear the pad {n} times.', [3, 8, 15, 25, 40], 2),
-    ('close', 'contracts', 'DISPATCH: Close {n} contracts.', [1, 3, 6, 10, 16], 3),
+    # Plural-free where a target can be 1 (play-16): the shared mission code only fills {n}.
+    ('close', 'contracts', 'DISPATCH: Contracts to close: {n}.', [1, 3, 6, 10, 16], 3),
     ('dry', 'depleted', 'TALLY: Work {n} rocks dry.', [2, 5, 10, 18, 30], 3),
     ('seam', 'seamDrags', 'TALLY: Put {n} drones on rich seams.', [2, 4, 8, 12], 4),
-    ('claim', 'claims', 'DISPATCH: Claim {n} new slots.', [1, 2, 3, 5], 3),
+    ('claim', 'claims', 'DISPATCH: New slots to claim: {n}.', [1, 2, 3, 5], 3),
     ('earn', 'earn', 'OPS-2: Bank {n} seconds of income.', [30, 120, 300, 600, 1200], 2),
     ('rigs', 'levels', 'TALLY: Add {n} rig levels.', [2, 5, 10, 20, 35], 2),
-    ('salvage', 'chests', 'OPS-2: Open {n} pods.', [1, 2, 4, 6], 3),
+    ('salvage', 'chests', 'OPS-2: Pods to open: {n}.', [1, 2, 4, 6], 3),
 ]
 
 g['meta'] = {
     'cards': [{'id': i, 'name': n, 'title': t, 'icon': SOCKET_ICON[s], 'rarity': r, 'stat': 'stationValue', 'flavor': f} for i, n, t, r, s, f in MODULES],
     'cardEffect': {'common': {'base': 5, 'perLevel': 3}, 'rare': {'base': 10, 'perLevel': 5}, 'epic': {'base': 15, 'perLevel': 6}, 'legendary': {'base': 20, 'perLevel': 8}},
-    'cardCopies': {'base': 2, 'growth': 1.5},
+    # Parts per module level: this game's own curve (Decision 54), not the first game's 2 x 1.5^n.
+    'cardCopies': {'base': K('partsBase', 3, 2, 4, 'module parts for level 2'), 'growth': K('partsGrowth', 1.35, 1.25, 1.45, 'module parts growth per level')},
     'chests': [pod('scrap', 'Scrap Pod', 'wood', 2, (80, 10, 10), (80, 18, 2)), pod('derelict', 'Derelict Cache', 'silver', 3, (85, 15, 0), (62, 30, 8))],
     'freeChest': {'chestId': 'scrap', 'everyHours': 3, 'stored': 3, 'firstMinutes': [15, 45]},
     'pity': {'epic': 8},
-    'chestGrowthPerVenue': 0,
+    'chestGrowthPerVenue': 0,  # a shared schema key (no venues in this game); 0 keeps pod contents flat
     'chestsForSale': False,
     'missions': {
         'slots': 2, 'perDay': 6,
@@ -297,18 +324,20 @@ g['meta'] = {
 }
 
 # ---------------------------------------------------------------- purchases (5.4): a different kind sequence from Pizza's
+# Fallback prices (what the screens show before the store answers; the real prices are set in the two
+# consoles) use none of the first game's price points (Decision 54): $6.49, $4.49, $3.49, $2.49, $8.49.
 mon = g.setdefault('monetization', {})
 mon.setdefault('ads', {'forceTestAds': True})
 mon['ads']['showBanner'] = False
 # No interstitial ads in the first version (5.4; lead's integration decision 4): no path may show one.
 mon['ads']['interstitials'] = False
 mon['iap'] = {**mon.get('iap', {}), 'products': [
-    {'id': 'space_clearance', 'title': 'Clearance', 'description': 'Every ad reward without watching the ad.', 'kind': 'clearance', 'icon': 'art:rail-trade', 'fallbackPrice': '$7.99'},
-    {'id': 'space_hangar', 'title': 'Hangar Expansion', 'description': '+6 drone cap and 2 idle drones at every run start.', 'kind': 'unlock', 'icon': 'art:drone', 'fallbackPrice': '$5.99'},
+    {'id': 'space_clearance', 'title': 'Clearance', 'description': 'Every ad reward without watching the ad.', 'kind': 'clearance', 'icon': 'art:rail-trade', 'fallbackPrice': '$6.49'},
+    {'id': 'space_hangar', 'title': 'Hangar Expansion', 'description': '+6 drone cap and 2 idle drones at every run start.', 'kind': 'unlock', 'icon': 'art:drone', 'fallbackPrice': '$4.49'},
     {'id': 'space_charter', 'title': 'Prospector Charter', 'description': '150 Dark Matter and 5 Ore Sorter parts. Once.', 'kind': 'starterPack', 'value': 150, 'icon': 'art:warp-core',
-     'contents': [{'type': 'gems', 'amount': 150}, {'type': 'card', 'cardId': 'sorter', 'copies': 5}], 'fallbackPrice': '$2.99'},
-    {'id': 'space_dm_150', 'title': 'Fuel Cell', 'kind': 'gems', 'value': 150, 'icon': 'art:dark-matter', 'fallbackPrice': '$2.99'},
-    {'id': 'space_dm_700', 'title': 'Fuel Tank', 'kind': 'gems', 'value': 700, 'icon': 'art:dark-matter', 'fallbackPrice': '$9.99'},
+     'contents': [{'type': 'gems', 'amount': 150}, {'type': 'card', 'cardId': 'sorter', 'copies': 5}], 'fallbackPrice': '$3.49'},
+    {'id': 'space_dm_150', 'title': 'Fuel Cell', 'kind': 'gems', 'value': 150, 'icon': 'art:dark-matter', 'fallbackPrice': '$2.49'},
+    {'id': 'space_dm_700', 'title': 'Fuel Tank', 'kind': 'gems', 'value': 700, 'icon': 'art:dark-matter', 'fallbackPrice': '$8.49'},
 ]}
 
 # ---------------------------------------------------------------- store page (7.6)
@@ -317,6 +346,11 @@ mon['iap'] = {**mon.get('iap', {}), 'products': [
 listing = json.load(open(os.path.join(ROOT, 'scripts/content/space-store.json')))
 store = g.setdefault('store', {})
 store.update({k: v for k, v in listing.items() if not k.startswith('_')})
+# Both stores need a privacy policy link on the listing and in the app (Apple 5.1.1, Google's Data
+# safety form). A placeholder until the owner gives the real page (play-13, store-0): validate warns
+# about example.com, and --release fails on it.
+if not store.get('privacyPolicyUrl'):
+    store['privacyPolicyUrl'] = 'https://example.com/privacy'
 
 # ---------------------------------------------------------------- the voice check (7.5)
 # Every text a player reads from this file and from the mode's string table: no exclamation marks,

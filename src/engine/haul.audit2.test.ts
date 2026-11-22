@@ -51,39 +51,56 @@ function draws(g: Run, n = 300) {
   return out;
 }
 
-describe('audit 2: the contract rule (section 2.6, Decision 32)', () => {
-  it('no contract asks for at most what the routes as they are already put into one launch (met by doing nothing)', () => {
-    // Spec 2.6: "A contract above the current share is not met by doing nothing." When an ore already
-    // has fleetShare of the fleet, `reach` moves no drone (routed = now) and the units are round(now):
-    // half of them round down and are met by an untouched station, at x1.5 to x1.9 on ~90 % of the cargo.
-    const free = draws(tenMinutes()).filter((d) => d.c.wants.every((w, i) => w.units <= d.now[i] + 1e-9));
+describe('audit 2: the contract rule (section 2.6, Decision 32, rewritten for Decision 40)', () => {
+  const L = cfg.haul.contracts.launches;
+
+  it('no contract asks for at most what the routes as they are already deliver in its launches (met by doing nothing)', () => {
+    // Spec 2.6: "A contract above the current share is not met by doing nothing." Rewritten for
+    // Decision 40 (a contract spans L launches): the test was "at most one launch's share"; it is now
+    // "at most L launches' share", with the margin of the never-free bound.
+    const free = draws(tenMinutes()).filter((d) => d.c.wants.every((w, i) => w.units < L * d.now[i] * (1 + cfg.haul.contracts.margin) - 1e-6));
     expect(free.map((d) => `${JSON.stringify(d.c.wants)} now ${d.now.map((x) => x.toFixed(1))}`).slice(0, 3)).toEqual([]);
   });
 
-  it('such a contract really is met by an untouched station (autopilot, policy contract, no drone moved)', () => {
+  it('the contract closest to the routes as they are is not met by an untouched station (autopilot, policy contract, no drone moved)', () => {
+    // Rewritten for Decision 40: the contract is taken and runs its L launches; the original picked a
+    // contract at or below one launch's share, which the rule no longer draws, so this takes the
+    // one-ore contract nearest to L × now instead.
     const g0 = tenMinutes();
-    const d = draws(g0).find((x) => x.c.wants.length === 1 && x.c.wants[0].units <= x.now[0])!;
-    expect(d, 'a one-ore contract below the current share').toBeTruthy();
-    let g: Run = { ...g0, haul: { ...g0.haul, contracts: { unlocked: true, board: [d.c], next: d.c.k + 1, active: 0 } } };
+    const ones = draws(g0).filter((x) => x.c.wants.length === 1);
+    const d = ones.reduce((b, x) => (x.c.wants[0].units / x.now[0] < b.c.wants[0].units / b.now[0] ? x : b), ones[0]);
+    expect(d, 'a one-ore contract').toBeTruthy();
+    const c = { ...d.c, taken: true, launchesLeft: L };
+    let g: Run = { ...g0, haul: { ...g0.haul, contracts: { unlocked: true, board: [c], next: c.k + 1, active: 0 } } };
     let met: boolean | null = null;
-    for (let i = 0; i < 2400 && met === null; i++) {
+    for (let i = 0; i < 20000 && met === null; i++) {
       const ev: H.HaulEvent[] = [];
       g = H.advanceHaul(cfg, g, 0.5, 0, ev) as Run;
-      for (const e of ev) if (e.type === 'warp') met = e.met;
+      for (const e of ev) {
+        if (e.type === 'contractMet') met = true;
+        if (e.type === 'contractLapsed') met = false;
+      }
     }
-    // Should be false: a contract nobody routed for is not met.
+    // A contract nobody routed for is not met.
     expect(met).toBe(false);
   });
 
-  it('a two-ore contract over the only two ores of the station leaves room in the hold (not the whole hold in exact proportion)', () => {
-    // With two ores present and both on the contract, nothing can be moved (each is a wanted ore), so
-    // routed = now for both and the units are round(now_a) + round(now_b) = floor(F): the hold must
-    // arrive in exactly that proportion, which a full hold of F almost never does. 40 % of the
-    // contracts of the first 25 minutes are of this kind (bot states at 4 and 10 minutes).
-    const two = draws(tenMinutes()).filter((d) => d.c.wants.length === 2);
-    expect(two.length).toBeGreaterThan(50);
-    const wholeHold = two.filter((d) => d.c.wants.reduce((a, w) => a + w.units, 0) >= Math.floor(d.F) - 1);
-    expect(wholeHold.length, `e.g. ${JSON.stringify(wholeHold[0]?.c.wants)} with F = ${Math.floor(two[0].F)}`).toBe(0);
+  it('a contract over the only two ores of the station never asks for whole holds in exact proportion', () => {
+    // Before Decision 40, 40 % of the contracts of the first 25 minutes wanted round(now_a) +
+    // round(now_b) = floor(F). Rewritten for Decision 40: on a two-ore station both ores cannot rise
+    // above their share at once (the shares fill the hold), so the rule falls back to one ore; any
+    // two-ore contract left must leave room in its L holds, and each ore obeys the reachable bound.
+    const all = draws(tenMinutes());
+    const ores = new Set(tenMinutes().haul.slots.filter((x) => x.claimed && x.respawnAt === null).map((x) => x.ore));
+    expect(ores.size).toBe(2);
+    const p = H.haulParams(cfg, tenMinutes());
+    const st = H.contractStation(cfg, p, tenMinutes().haul);
+    const wholeHold = all.filter((d) => d.c.wants.length === 2 && d.c.wants.reduce((a, w) => a + w.units, 0) >= L * Math.floor(d.F) - L);
+    expect(wholeHold.length, `e.g. ${JSON.stringify(wholeHold[0]?.c.wants)} with F = ${Math.floor(all[0].F)}`).toBe(0);
+    for (const d of all) {
+      const wide = st.reach(d.c.wants.map((w) => w.ore), { share: cfg.haul.contracts.maxShare, last: true });
+      d.c.wants.forEach((w, i) => expect(w.units).toBeLessThanOrEqual(Math.floor(d.now[i] + (L - 1) * wide.routed[i] + 1e-9)));
+    }
   });
 });
 

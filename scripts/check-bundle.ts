@@ -86,6 +86,7 @@ export const MANIFEST: BundleManifest = {
   rig: modes.RESTAURANT_RIG,
   generatedEntry: modes.GENERATED_ENTRY,
   soundPacks: modes.SOUND_PACKS,
+  webOnly: modes.WEB_ONLY,
   games: games.listGames(),
 };
 
@@ -122,6 +123,31 @@ function deniedInFiles(modules: readonly Module[], terms: readonly DenyTerm[], v
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// the web preview's development tools in a phone bundle (store-13, phone-12, perf-8)
+// ---------------------------------------------------------------------------
+
+interface WebOnlyString {
+  text: string;
+  quoted?: boolean;
+  modes?: string[];
+}
+const WEB_ONLY_STRINGS: WebOnlyString[] = modes.WEB_ONLY_STRINGS;
+const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const webOnlyRe = (w: WebOnlyString) => new RegExp(w.quoted ? `(["'\`])${escapeRe(w.text)}\\1` : `\\b${escapeRe(w.text)}\\b`, 'g');
+
+/** Where a phone bundle's project files hold a web-only tool's string: `texts` maps a file to its text (source or shipped). */
+export function webOnlyHitsIn(texts: Iterable<[file: string, text: string]>, mode: string, platform: string): { file: string; text: string }[] {
+  if (platform === 'web') return [];
+  const out: { file: string; text: string }[] = [];
+  const checks = WEB_ONLY_STRINGS.filter((w) => !w.modes || w.modes.includes(mode));
+  for (const [file, text] of texts) {
+    if (file.includes('node_modules/')) continue;
+    for (const w of checks) if (webOnlyRe(w).test(text)) out.push({ file, text: w.text });
+  }
+  return out;
+}
+
 interface Report {
   game: string;
   mode: string;
@@ -139,6 +165,8 @@ interface Report {
   assetBytes: number;
   /** Another game's names and lines found in the bundle (before bundle-allow.json). */
   denied?: DeniedHit[];
+  /** Strings of the web preview's tools found in a phone bundle (scripts/lib/modes.js WEB_ONLY_STRINGS). */
+  webOnlyHits?: { file: string; text: string }[];
   violations: Violation[];
 }
 
@@ -388,7 +416,19 @@ export function fastReport(id: string): Report {
   const modules = [...g.files].map((f) => ({ path: rel(f), bytes: virtual.get(f)?.length ?? fileSize(f) }));
   const assets = [...g.assets].map(rel);
   const denied = deniedInFiles(modules, deniedTermsFor(id), virtual);
-  return finish({ game: id, mode: games.gameMode(id, game), pack: games.soundPack(id, game), stage: 'fast', modules, assets, packages: [...g.packages].sort(), unresolved: g.unresolved, denied });
+  const mode = games.gameMode(id, game);
+  // Each file as JavaScript without comments or types: what ships (a phone twin may say in a comment
+  // what its web file has, and a type may name the tab shell's tabs).
+  const sources = function* (): Generator<[string, string]> {
+    for (const m of modules) {
+      if (m.path.includes('node_modules/') || ASSET_EXT.test(m.path) || m.path.endsWith('.json')) continue;
+      const abs = path.join(ROOT, m.path);
+      const text = virtual.get(abs) ?? (fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : '');
+      yield [m.path, ts.transpileModule(text, { fileName: m.path, compilerOptions: { removeComments: true, jsx: ts.JsxEmit.Preserve, target: ts.ScriptTarget.ES2022 } }).outputText];
+    }
+  };
+  const webOnlyHits = webOnlyHitsIn(sources(), mode, PLATFORM);
+  return finish({ game: id, mode, pack: games.soundPack(id, game), stage: 'fast', modules, assets, packages: [...g.packages].sort(), unresolved: g.unresolved, denied, webOnlyHits });
 }
 
 /** Every import edge in src/ (all files, reachable or not, generated ones as written now). */
@@ -554,7 +594,12 @@ function exportReport(id: string, dir: string, root: string): Report {
   if (!bundledMode) throw new Error(`${dir}: the source map has no ${modes.GENERATED_ENTRY} with its MODE, so the bundled mode is unknown`);
   if (bundledMode !== declared) throw new Error(`${dir}: this export was built as mode "${bundledMode}", but games/${id}/game.json says "${declared}" (stale export?): export again`);
   const denied = deniedInBundle(bundle, starts, deniedTermsFor(id));
-  return finish({ game: id, mode: bundledMode, pack: games.soundPack(id, game), stage: 'export', modules, assets, packages, bytes: bundle.length, denied, root });
+  // Each project module's own slice of the shipped JavaScript.
+  const slices = function* (): Generator<[string, string]> {
+    for (let i = 0; i < starts.length; i++) yield [starts[i].path, bundle.slice(starts[i].start, i + 1 < starts.length ? starts[i + 1].start : bundle.length)];
+  };
+  const webOnlyHits = webOnlyHitsIn(slices(), bundledMode, PLATFORM);
+  return finish({ game: id, mode: bundledMode, pack: games.soundPack(id, game), stage: 'export', modules, assets, packages, bytes: bundle.length, denied, root, webOnlyHits });
 }
 
 // ---------------------------------------------------------------------------
@@ -574,6 +619,8 @@ function finish(input: Omit<Report, 'violations' | 'bytes' | 'ownBytes' | 'asset
     themeWordsAllowed: modes.THEME_WORDS_ALLOWED,
     denied: r.denied,
     deniedAllowed: allowedFor(r.game),
+    platform: PLATFORM,
+    webOnlyHits: r.webOnlyHits,
   };
   return {
     ...r,

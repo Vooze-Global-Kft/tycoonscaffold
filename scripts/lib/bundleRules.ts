@@ -21,6 +21,8 @@ export interface BundleManifest {
   rig: readonly string[];
   /** The one shared file allowed to import a mode entry. */
   generatedEntry: string;
+  /** Development tools of the web preview that no phone bundle may hold (scripts/lib/modes.js WEB_ONLY). */
+  webOnly?: readonly string[];
   /** Folder of the sound packs (shared/sfx). */
   soundPacks: string;
   /** Every game id (folders in games/). */
@@ -47,6 +49,10 @@ export interface BundleContents {
   assets: readonly string[];
   /** npm packages with at least one module in the bundle. */
   packages: readonly string[];
+  /** The platform bundled (ios, android, web). A phone platform may hold no `webOnly` file. */
+  platform?: string;
+  /** Where a `webOnlyStrings` text was found (computed by the caller for phone platforms). */
+  webOnlyHits?: readonly { file: string; text: string }[];
 }
 
 export interface Violation {
@@ -66,7 +72,8 @@ export interface Violation {
     | 'imports-unclassified'
     | 'unresolved'
     | 'theme-word'
-    | 'denied-string';
+    | 'denied-string'
+    | 'web-only';
   file: string;
   message: string;
 }
@@ -135,6 +142,12 @@ export function bundleViolations(b: BundleContents, m: BundleManifest): Violatio
   for (const h of b.denied ?? []) {
     if (b.deniedAllowed && h.term.term in b.deniedAllowed) continue;
     out.push({ rule: 'denied-string', file: h.file, message: `${h.line ? `line ${h.line}: ` : ''}holds ${JSON.stringify(h.term.term)}, ${h.term.from} of the game "${h.term.game}" (errata 6): no game's bundle may name another game's things; move it out, or list it with a reason in scripts/bundle-allow.json if it is an engine identifier no player reads` });
+  }
+  if (b.platform && b.platform !== 'web') {
+    for (const file of b.modules) {
+      if (m.webOnly?.includes(file)) out.push({ rule: 'web-only', file, message: `is a development tool of the web preview, but this is the ${b.platform} bundle: import it only from a .web.ts file (its phone twin holds nothing)` });
+    }
+    for (const h of b.webOnlyHits ?? []) out.push({ rule: 'web-only', file: h.file, message: `holds ${JSON.stringify(h.text)}, a development tool's name of the web preview, in the ${b.platform} bundle (scripts/lib/modes.js WEB_ONLY_STRINGS): move it behind a .web.ts split` });
   }
   for (const pkg of b.packages) {
     const allowed = m.modePackages[pkg];

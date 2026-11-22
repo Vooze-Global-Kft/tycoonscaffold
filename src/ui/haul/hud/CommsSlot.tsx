@@ -10,7 +10,16 @@
  *   apart; showing one marks the beat seen (store action `dismissStory`);
  * - radio chatter from the run's events (ore changes at most every 45 s, bonanza rocks, rich seams,
  *   contracts closed, lapsed and new): dropped when stale, at most two waiting.
- * Waits while a spoke, an overlay or the Shift Log covers the map. Plays comms_in per line.
+ * Waits while a spoke, an overlay, the Shift Log, a sheet or the station menu is open: the line on
+ * screen keeps its time left (it does not run out behind a sheet, play-9), and nothing new comes
+ * except the tutorial's own line. Under a full-screen spoke or overlay its timer stops altogether
+ * (perf-6). Plays comms_in per line. A line that names a rock publishes it (./callout.ts) for as
+ * long as it is up, so the map can ring that rock.
+ *
+ * The galaxy's condition stays on the row's right end for the whole run (Decision 52): a small chip
+ * with its name; tapping it reads the condition's effects on the radio.
+ *
+ * Figures in buyer calls are figures (Decision 46): "8.4K units", "x1.8".
  *
  * Speakers are found from the data, never by id: the AI is the speaker of the `start` beat, the
  * dock controller of the first `launches` beat, dispatch of the `contracts` beat; buyers speak for
@@ -30,6 +39,7 @@ import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
 import { alpha } from '../../theme';
 import { HaulIcon } from '../art/HaulIcon';
+import { SPACE } from '../art/palette';
 import { allHaulHints } from '../hints';
 import { buyerName, oreName, rockName } from '../sheets/format';
 import { MONO } from '../sheets/parts';
@@ -37,7 +47,9 @@ import { hintLine, speaker } from '../sheets/shellLogic';
 import { say } from '../sheets/shellText';
 import { useHaulUi } from '../uiState';
 import type { Rect } from '../layout';
-import { spokenMultiplier, spokenNumber } from '../strings';
+import { HAUL_STRINGS } from '../strings';
+import { setCallout } from './callout';
+import { DIGITAL, fillIn, fitLabel, labelMetrics, unitShort } from './bayText';
 /** How long a line stays up (spec 4.1). */
 export const LINE_MS = 5000;
 /** Least time between two story lines (spec 4.1, errata 56). */
@@ -55,6 +67,8 @@ interface Radio {
   who: string;
   text: string;
   at: number;
+  /** The slot of a rock the line names (the map rings it while the line is up). */
+  slot?: number;
 }
 
 /** Rows `text` takes when word-wrapped at `perRow` characters. */
@@ -100,17 +114,33 @@ function fillLine(text: string, vars: Record<string, string>): string {
   return filled.replace(/(^|[.?] )([a-z])/g, (_m, pre: string, ch: string) => pre + ch.toUpperCase());
 }
 
-/** A unit count as the radio says it (spec 7.5: spoken numbers in words), rounded like a person would: "about forty thousand". */
-function spokenUnits(n: number): string {
-  if (n < 1000) return spokenNumber(n);
-  const step = Math.pow(10, Math.floor(Math.log10(n)) - 1);
-  const r = Math.round(n / step) * step;
-  return `${r === n ? '' : 'about '}${spokenNumber(r)}`;
+/** A multiplier as a figure (Decision 46): 1.8 → "x1.8". */
+function multText(m: number): string {
+  return `x${m.toFixed(1)}`;
+}
+
+/** The width the condition chip takes at the row's right end (0 without a condition). */
+function chipWidth(name: string, font: number): number {
+  return name ? Math.ceil(name.length * font * 0.62) + 18 : 0;
 }
 
 export function CommsSlot({ rect }: { rect: Rect }) {
   const { fontScale } = useWindowDimensions();
   const characters = useGame((s) => s.cfg.characters);
+  const condition = useGame((s) => {
+    const cfg = s.cfg as H.HaulConfig;
+    const id = (s.game as unknown as H.HaulGame).haul?.trait ?? null;
+    if (!id || !H.isHaul(cfg)) return '';
+    return cfg.haul.conditions.find((c) => c.id === id)?.name ?? '';
+  });
+  const conditionText = useGame((s) => {
+    const cfg = s.cfg as H.HaulConfig;
+    const id = (s.game as unknown as H.HaulGame).haul?.trait ?? null;
+    return id && H.isHaul(cfg) ? (cfg.haul.conditions.find((c) => c.id === id)?.lines.join('. ') ?? '') : '';
+  });
+  const chipFont = labelMetrics(9, fontScale).font;
+  const chipW = Math.min(rect.width * 0.36, chipWidth(condition.toUpperCase(), chipFont));
+  const lineRect = chipW > 0 ? { ...rect, width: rect.width - chipW - 6 } : rect;
   const [line, setLine] = useState<Radio | null>(null);
   const cur = useRef<{ radio: Radio; until: number } | null>(null);
   const queue = useRef<Radio[]>([]);
@@ -120,27 +150,39 @@ export function CommsSlot({ rect }: { rect: Rect }) {
   const lastDrop = useRef<number | null>(null);
   /** Hint lines already voiced, per run seed (a restart may voice the current one again, once). */
   const voiced = useRef(new Set<string>());
+  const readCondition = useRef<() => void>(() => undefined);
   useEffect(() => {
     const show = (radio: Radio, now: number) => {
       cur.current = { radio, until: now + LINE_MS };
       setLine(radio);
+      setCallout(radio.slot ?? null, now + LINE_MS);
       fx.play('comms_in');
     };
     const clear = () => {
       if (!cur.current) return;
       cur.current = null;
       setLine(null);
+      setCallout(null, 0);
     };
+    let lastTick = Date.now();
     const tick = () => {
       const now = Date.now();
+      const step = now - lastTick;
+      lastTick = now;
       const { cfg, game, offline } = useGame.getState();
       if (!H.isHaul(cfg)) return;
       const g = game as unknown as H.HaulGame;
       const ui = useHaulUi.getState();
+      const covered = ui.spoke !== null || ui.overlay !== null || offline !== null;
+      const reading = ui.sheet !== null || ui.menuOpen;
+      // Covered or behind a sheet: the line on screen keeps its time left (play-9).
+      if (cur.current && (covered || reading)) {
+        cur.current.until += Math.min(step, TICK_MS * 3);
+        if (cur.current.radio.slot !== undefined) setCallout(cur.current.radio.slot, cur.current.until);
+      }
       if (cur.current && now >= cur.current.until) clear();
-      // Covered: keep everything for later (the line on screen expires as usual).
-      if (ui.spoke !== null || ui.overlay !== null || offline !== null || !g.haul) return;
-      // 1. Hint lines: at once, no gap.
+      if (covered || !g.haul) return;
+      // 1. Hint lines: at once, no gap (also behind a sheet: they are about what the player does now).
       const hint = allHaulHints()[0];
       const hl = hintLine(g, hint);
       if (hl) {
@@ -160,6 +202,8 @@ export function CommsSlot({ rect }: { rect: Rect }) {
           return;
         }
       }
+      // Behind a sheet nothing else starts: the queue waits for the map.
+      if (reading) return;
       if (cur.current && cur.current.radio.kind !== 'chatter') return;
       // 2. Story lines: 45 s apart, behind hint lines; chatter makes way.
       if (now - lastStory.current >= STORY_GAP_MS) {
@@ -196,8 +240,8 @@ export function CommsSlot({ rect }: { rect: Rect }) {
       if (!H.isHaul(cfg)) return;
       const g = game as unknown as H.HaulGame;
       const now = Date.now();
-      const add = (id: string, who: string, text: string) => {
-        queue.current = [...queue.current.filter((r) => r.id !== id), { id, kind: 'chatter' as const, who, text, at: now }].slice(-2);
+      const add = (id: string, who: string, text: string, slot?: number) => {
+        queue.current = [...queue.current.filter((r) => r.id !== id), { id, kind: 'chatter' as const, who, text, at: now, slot }].slice(-2);
       };
       const ai = speaker(cfg, 'ai');
       const dispatch = speaker(cfg, 'dispatch');
@@ -205,7 +249,7 @@ export function CommsSlot({ rect }: { rect: Rect }) {
         const ev = raw as H.HaulEvent;
         switch (ev.type) {
           case 'arrive':
-            if (ev.bonanza) add(`bonanza:${ev.slot}`, ai, say('bonanza', { rock: rockName(cfg, ev.slot) }));
+            if (ev.bonanza) add(`bonanza:${ev.slot}`, ai, say('bonanza', { rock: rockName(cfg, ev.slot) }), ev.slot);
             else if (ev.oreChanged && now - lastOreCall.current >= ORE_CALL_GAP_MS) {
               lastOreCall.current = now;
               add(
@@ -215,11 +259,12 @@ export function CommsSlot({ rect }: { rect: Rect }) {
                   rock: rockName(cfg, ev.slot),
                   ore: oreName(cfg, ev.ore).toLowerCase(),
                 }),
+                ev.slot,
               );
             }
             break;
           case 'vein':
-            if (!ev.flare) add(`seam:${ev.slot}`, ai, say('seam', { rock: rockName(cfg, ev.slot) }));
+            if (!ev.flare) add(`seam:${ev.slot}`, ai, say('seam', { rock: rockName(cfg, ev.slot) }), ev.slot);
             break;
           case 'contractMet': {
             // The buyer's own sign-off when game.json has one, else DISPATCH's plain line.
@@ -245,9 +290,9 @@ export function CommsSlot({ rect }: { rect: Rect }) {
                 ev.contract.buyer,
                 fillLine(buyerLine(cfg, ev.contract.buyer, 'calls') ?? say('contractNew'), {
                   ore: oreName(cfg, ev.contract.wants[0].ore).toLowerCase(),
-                  n: spokenUnits(ev.contract.wants.reduce((a, w) => a + w.units, 0)),
-                  units: spokenUnits(ev.contract.wants.reduce((a, w) => a + w.units, 0)),
-                  mult: spokenMultiplier(ev.contract.mult),
+                  n: unitShort(ev.contract.wants.reduce((a, w) => a + w.units, 0)),
+                  units: unitShort(ev.contract.wants.reduce((a, w) => a + w.units, 0)),
+                  mult: multText(ev.contract.mult),
                 }),
               );
             break;
@@ -256,19 +301,56 @@ export function CommsSlot({ rect }: { rect: Rect }) {
         }
       }
     };
-    const timer = setInterval(tick, TICK_MS);
-    const off = modeEvents.subscribe(onEvents);
-    tick();
-    return () => {
+    // Under a full-screen spoke or overlay the timer stops (perf-6); the line keeps its time left.
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const coveredNow = () => {
+      const ui = useHaulUi.getState();
+      return ui.spoke !== null || ui.overlay !== null;
+    };
+    const resume = () => {
+      if (timer) return;
+      lastTick = Date.now();
+      timer = setInterval(tick, TICK_MS);
+      tick();
+    };
+    const pause = () => {
+      if (!timer) return;
       clearInterval(timer);
+      timer = null;
+    };
+    const offUi = useHaulUi.subscribe((st, prev) => {
+      const was = prev.spoke !== null || prev.overlay !== null;
+      const is = st.spoke !== null || st.overlay !== null;
+      if (is === was) return;
+      if (is) pause();
+      else resume();
+    });
+    // The condition chip reads its effects on the radio.
+    readCondition.current = () => {
+      const { cfg, game } = useGame.getState();
+      if (!H.isHaul(cfg)) return;
+      const id = (game as unknown as H.HaulGame).haul?.trait;
+      const c = id ? cfg.haul.conditions.find((x) => x.id === id) : undefined;
+      if (!c) return;
+      show({ id: `condition:${c.id}:${Date.now()}`, kind: 'chatter', who: speaker(cfg, 'ai'), text: `${c.name}. ${c.lines.join('. ')}.`, at: Date.now() }, Date.now());
+    };
+    const off = modeEvents.subscribe(onEvents);
+    if (!coveredNow()) resume();
+    return () => {
+      pause();
+      offUi();
       off();
+      setCallout(null, 0);
     };
   }, []);
-  if (!line) return null;
+  const chip = condition ? <ConditionChip rect={rect} width={chipW} font={chipFont} name={condition} text={conditionText} onPress={() => readCondition.current()} /> : null;
+  if (!line) return chip;
   const who = characters.find((c) => c.id === line.who);
   return (
-    <RadioLine
-      rect={rect}
+    <>
+      {chip}
+      <RadioLine
+      rect={lineRect}
       fontScale={fontScale}
       radio={line}
       name={who?.name ?? ''}
@@ -277,8 +359,31 @@ export function CommsSlot({ rect }: { rect: Rect }) {
       onClose={() => {
         cur.current = null;
         setLine(null);
+        setCallout(null, 0);
       }}
     />
+    </>
+  );
+}
+
+/** The galaxy's condition at the comms row's right end (Decision 52); a tap reads its effects. */
+function ConditionChip({ rect, width, font, name, text: effects, onPress }: { rect: Rect; width: number; font: number; name: string; text: string; onPress: () => void }) {
+  const text = name.toUpperCase();
+  const fit = fitLabel(text, width - 18, font, 1);
+  const h = Math.min(rect.height, Math.ceil(font * 1.3) + 8);
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={{ top: 6, bottom: 12, left: 4, right: 4 }}
+      accessibilityRole="button"
+      accessibilityLabel={fillIn(HAUL_STRINGS.conditionLabel, { name, text: effects })}
+      style={[styles.chip, { left: rect.x + rect.width - width, top: rect.y + (rect.height - h) / 2, width, height: h, borderRadius: h / 2 }]}
+    >
+      <View style={styles.chipDot} />
+      <Text allowFontScaling={false} numberOfLines={1} style={[DIGITAL, { color: SPACE.gold, fontSize: fit.font }]}>
+        {text}
+      </Text>
+    </Pressable>
   );
 }
 function RadioLine({ rect, fontScale, radio, name, portrait, color, onClose }: { rect: Rect; fontScale: number; radio: Radio; name: string; portrait: string; color: string; onClose: () => void }) {
@@ -329,7 +434,7 @@ function RadioLine({ rect, fontScale, radio, name, portrait, color, onClose }: {
         style,
       ]}
     >
-      <Pressable style={styles.press} onPress={onClose} accessibilityRole="button" accessibilityLabel={full} accessibilityHint={say('close')}>
+      <Pressable style={styles.press} onPress={onClose} hitSlop={{ top: 6, bottom: 12 }} accessibilityRole="button" accessibilityLabel={full} accessibilityHint={say('close')}>
         {portrait ? <HaulIcon name={portrait} size={icon} /> : null}
         <Wave color={tint} height={Math.min(14, rect.height - 10)} id={radio.id} />
         <View style={{ flex: 1, height: rows * row, justifyContent: 'center' }}>
@@ -387,4 +492,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   bar: { width: 3, borderRadius: 1.5 },
+  chip: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingHorizontal: 6,
+    borderWidth: 1,
+    borderColor: alpha(SPACE.gold, 0.55),
+    backgroundColor: alpha(SPACE.panel, 0.92),
+  },
+  chipDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: SPACE.gold },
 });

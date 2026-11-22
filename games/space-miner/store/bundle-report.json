@@ -1,10 +1,10 @@
 {
  "game": "space-miner",
- "date": "2026-11-22T14:03:09.174Z",
+ "date": "2026-11-22T15:38:40.236Z",
  "platform": "ios",
  "stage": "export",
  "result": "pass",
- "sourceHash": "f27ffcac651e37e7c84da6bc039a55cc97d6103358b12763c55a85ab240528be",
+ "sourceHash": "d0e3b11ccadf01b44ffe990561844dd5f46a1384c0a6a652e669b78132d99b77",
  "sources": [
   "app.config.ts",
   "games/space-miner/assets/sfx/bonanza.wav",
@@ -78,12 +78,9 @@
   "src/engine/cards.ts",
   "src/engine/chain.ts",
   "src/engine/economy.ts",
-  "src/engine/fixtures/base-game.json",
-  "src/engine/fixtures/haul.ts",
   "src/engine/format.ts",
   "src/engine/haul.ts",
   "src/engine/haul/actions.ts",
-  "src/engine/haul/bot.ts",
   "src/engine/haul/create.ts",
   "src/engine/haul/hints.ts",
   "src/engine/haul/jump.ts",
@@ -181,6 +178,7 @@
   "src/ui/haul/hud/hintOrder.ts",
   "src/ui/haul/hud/useMapLayout.ts",
   "src/ui/haul/layout.ts",
+  "src/ui/haul/overlays/Boot.tsx",
   "src/ui/haul/overlays/JumpSequence.tsx",
   "src/ui/haul/overlays/SheetHints.tsx",
   "src/ui/haul/overlays/ShiftLog.tsx",
@@ -225,7 +223,7 @@
   "src/ui/theme.ts"
  ],
  "violations": [],
- "modules": 1818,
+ "modules": 1816,
  "assets": 56,
- "bytes": 4874979
+ "bytes": 4875644
 }

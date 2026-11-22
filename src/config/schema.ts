@@ -169,6 +169,12 @@ export const GameConfigSchema = z.object({
     buildNumber: z.number().int().positive().default(1),
     easProjectId: z.string().optional(),
     owner: z.string().optional(),
+    /**
+     * The tracking-permission sentence (iOS NSUserTrackingUsageDescription, the first system prompt),
+     * in the game's own voice (Decision 55). Optional: without it app.config.ts uses the shared
+     * sentence with the game's name (the first game's text stays what it is).
+     */
+    trackingText: z.string().min(20).max(200).optional(),
   }),
 
   theme: z.object({
@@ -287,7 +293,8 @@ export const GameConfigSchema = z.object({
       maxMinutes: z.number().positive().default(240),
     }),
     daily: z.object({
-      gems: z.array(z.number().int().nonnegative()).min(1).default([5, 5, 10, 10, 15, 20, 50]),
+      /** The gift ladder, one entry per claim, cycling. Empty: the game has no daily gift (Decision 53, economy.dailyOffered). */
+      gems: z.array(z.number().int().nonnegative()).default([5, 5, 10, 10, 15, 20, 50]),
     }),
     timeWarp: z.object({
       hours: z.number().positive().default(1),

@@ -61,7 +61,7 @@ const simCfg: GameConfig = GameConfigSchema.parse({
     transport: {
       name: 'Haulers', workerName: 'Hauler', icon: '🚚',
       baseCost: 20, costGrowth: 1.15, baseCapacity: 20, capacityGrowth: 1.12, tripSeconds: 6,
-      workersAt: [1, 5, 15], managerCost: 500, managerName: 'Dispatcher',
+      workersAt: [1, 5, 15], managerCost: 500, managerName: 'Dispatcher', bellName: 'Horn',
     },
     sales: {
       name: 'Docks', seatName: 'Dock', icon: '⚓',
@@ -72,6 +72,8 @@ const simCfg: GameConfig = GameConfigSchema.parse({
       { id: 'a', name: 'Alpha', icon: '🅰️', unlockCost: 0, scale: 1 },
       { id: 'b', name: 'Beta', icon: '🅱️', unlockCost: 1e6, scale: 50 },
     ],
+    // A sim game names its rush (lint, pizza-2); the other fields are the schema's defaults.
+    rush: { name: 'Overtime' },
   },
 });
 
@@ -1013,5 +1015,16 @@ describe('review: idle path (P1)', () => {
     for (const [name, next] of checks) {
       expect([name, JSON.parse(JSON.stringify(E.venueRates(simCfg, next, 'a')))]).toEqual([name, fresh(next)]);
     }
+  });
+});
+
+describe('pizza-2: a sim game names its bell, its seat and its rush', () => {
+  it('the lint asks for each name the data leaves to the theme-free default', () => {
+    const raw = JSON.parse(JSON.stringify(simCfg)) as { sim: { transport: Record<string, unknown>; sales: Record<string, unknown>; rush: Record<string, unknown> } };
+    delete raw.sim.transport.bellName;
+    delete raw.sim.sales.seatName;
+    delete raw.sim.rush.name;
+    const problems = lintGameConfig(GameConfigSchema.parse(raw));
+    for (const key of ['sim.transport.bellName', 'sim.sales.seatName', 'sim.rush.name']) expect(problems.some((p) => p.startsWith(key))).toBe(true);
   });
 });

@@ -2,7 +2,10 @@
  * The dock counter (spec 4.1): the Credits as a rolling digital counter, then 2 pt, then the
  * receipt ticker ("WARPED · MANIFEST 48 COPPER · 12 IRON · ₵612" for 4 s after a warp-out,
  * otherwise the income "₵36/s"). Tap: the Contract Board, once contracts unlock (errata 60).
- * Target key `bay:counter` (credit glyphs fly to it, the board hint points at it).
+ * Target key `bay:counter` (credit glyphs fly to it, the board hint rings it).
+ * A warp-out that meets the contract stamps the receipt row itself ("CONTRACT MET +₵19.4K", and
+ * "DAY SHIFT x2" when the shift doubles it): a green frame that lands on the row, never over the
+ * credits number (Decision 40, play-11).
  *
  * Fixed-height rule (AGENTS.md, ./bayMetrics.ts): both rows absolutely placed at tops that add up
  * to the block, fonts sized by hand from fontScale with allowFontScaling off, the RollingNumber with
@@ -11,7 +14,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
 import { formatMoney } from '../../../engine/format';
 import * as H from '../../../engine/haul';
 import { modeEvents } from '../../../state/modeEvents';
@@ -23,7 +26,8 @@ import type { Rect } from '../layout';
 import { useRun } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { bayCounterMetrics, bayCounterRows, fitTicker } from './bayMetrics';
-import { DIGITAL, bayWord, countText } from './bayText';
+import { DIGITAL, bayWord, countText, fillIn } from './bayText';
+import { HAUL_STRINGS } from '../strings';
 import { GLYPH_FALL_MS, GLYPH_LEAD_MS } from './feedbackTiming';
 
 /** How long the receipt stays on the ticker after a warp-out. */
@@ -75,6 +79,14 @@ export function receiptTexts(cfg: H.HaulConfig, cargo: Record<string, number>, p
   return [[warped, `${manifest} ${full.join(' · ')}`, money].join(' · '), [warped, full.join(' · '), money].join(' · '), [warped, lead, money].filter(Boolean).join(' · '), [warped, money].join(' · ')];
 }
 
+/** The receipt row of a warp-out that met the contract (longest first): the bonus, the day shift, the payout. */
+export function metTexts(cfg: H.HaulConfig, bonus: number, payout: number, shift: boolean): string[] {
+  const sym = cfg.strings.currencySymbol;
+  const met = `${bayWord('receiptMet')}${bonus > 0 ? ` +${formatMoney(bonus, sym)}` : ''}`;
+  const money = formatMoney(payout, sym);
+  return shift ? [`${met} · ${bayWord('receiptShift')}`, met, bayWord('receiptMet')] : [`${met} · ${money}`, met, bayWord('receiptMet')];
+}
+
 export function DockCounter({ rect }: { rect: Rect }) {
   const sym = useGame((s) => s.cfg.strings.currencySymbol);
   const unlocked = useRun((_c, g) => g.haul.contracts.unlocked, false);
@@ -84,6 +96,11 @@ export function DockCounter({ rect }: { rect: Rect }) {
   }, '');
   const [startCash] = useState(() => useGame.getState().game.cash);
   const [receipt, setReceipt] = useState<{ texts: string[]; met: boolean } | null>(null);
+  const stamp = useSharedValue(0);
+  const stampStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, stamp.value * 3),
+    transform: [{ scale: 1 + 0.35 * (1 - stamp.value) }],
+  }));
   const target = useTarget('bay:counter');
   const { fontScale, height } = useWindowDimensions();
   const compact = height < 740;
@@ -103,7 +120,12 @@ export function DockCounter({ rect }: { rect: Rect }) {
       if (!w) return;
       const cfg = useGame.getState().cfg as H.HaulConfig;
       if (!H.isHaul(cfg)) return;
-      setReceipt({ texts: receiptTexts(cfg, w.cargo, w.payout), met: w.met });
+      const metEv = events.find((e) => (e as H.HaulEvent).type === 'contractMet') as { shift?: boolean } | undefined;
+      const bonus = (w as { bonus?: number }).bonus ?? 0;
+      setReceipt({ texts: w.met ? metTexts(cfg, bonus, w.payout, !!metEv?.shift) : receiptTexts(cfg, w.cargo, w.payout), met: w.met });
+      // The stamp lands on the receipt row as the money does.
+      stamp.value = 0;
+      if (w.met) stamp.value = withDelay(GLYPH_LEAD_MS + GLYPH_FALL_MS, withTiming(1, { duration: 220, easing: Easing.in(Easing.cubic) }));
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => setReceipt(null), RECEIPT_MS);
       // The counter pops as the first glyphs land.
@@ -117,7 +139,7 @@ export function DockCounter({ rect }: { rect: Rect }) {
       if (timer) clearTimeout(timer);
       if (popTimer) clearTimeout(popTimer);
     };
-  }, [pop]);
+  }, [pop, stamp]);
 
   const ticker = fitTicker(receipt ? receipt.texts : [income], rect.width - 2 * PAD + 4, m.tickerFont);
   const tickerColor = receipt ? (receipt.met ? SPACE.green : SPACE.white) : SPACE.steel;
@@ -136,8 +158,18 @@ export function DockCounter({ rect }: { rect: Rect }) {
     [rect.x, rect.y, rect.width, rect.height, receipt],
   );
   const open = unlocked ? () => useHaulUi.getState().openSheet({ type: 'contracts' }) : undefined;
+  const label = fillIn(HAUL_STRINGS.counterLabel, { cash: formatMoney(useGame.getState().game.cash, sym), income: income || formatMoney(0, sym) });
   return (
-    <Pressable onPress={open} disabled={!unlocked} accessibilityRole={unlocked ? 'button' : 'text'} style={frame} ref={target.ref} onLayout={target.onLayout} collapsable={false}>
+    <Pressable
+      onPress={open}
+      disabled={!unlocked}
+      accessibilityRole={unlocked ? 'button' : 'text'}
+      accessibilityLabel={unlocked ? `${label} ${HAUL_STRINGS.counterBoard}` : label}
+      style={frame}
+      ref={target.ref}
+      onLayout={target.onLayout}
+      collapsable={false}
+    >
       <Animated.View
         style={[
           {
@@ -172,6 +204,25 @@ export function DockCounter({ rect }: { rect: Rect }) {
           ]}
         />
       </Animated.View>
+      {receipt?.met ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            {
+              position: 'absolute',
+              left: PAD - 5,
+              right: PAD - 5,
+              top: rows.tickerTop,
+              height: m.tickerRow,
+              borderRadius: 4,
+              borderWidth: 1.2,
+              borderColor: SPACE.green,
+              backgroundColor: alpha(SPACE.green, 0.14),
+            },
+            stampStyle,
+          ]}
+        />
+      ) : null}
       <View
         style={{
           position: 'absolute',

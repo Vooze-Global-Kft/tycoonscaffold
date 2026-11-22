@@ -7,7 +7,7 @@
  */
 import type { SkPicture } from '@shopify/react-native-skia';
 import { drawChevron, drawFreighter, drawPad, drawPolicyChip, type HullId } from './freighter.draw';
-import { drawChargePlate, drawFlare, drawGhostSlot, drawRouteChip, drawSeamRim, starfieldPicture } from './fx.draw';
+import { bakeStarfield, drawCalloutRing, drawChargePlate, drawFlare, drawGhostSlot, drawRockTag, drawRouteChip, drawSeamRim, type StarfieldImage } from './fx.draw';
 import { around, picture } from './pen';
 import { drawPile } from './rock.draw';
 import { drawDrillHead, drawRigBase, drawRigLamp, type LampState, type RigLook } from './rig.draw';
@@ -24,6 +24,30 @@ function memo(key: string, make: () => SkPicture): SkPicture {
   }
   return p;
 }
+
+/**
+ * A cache for keys that keep coming all game (ghost-slot prices): at most `max` kept; the oldest
+ * leaves the map but is never disposed (a mounted canvas may still draw it; the collector frees it).
+ */
+function bounded(max: number) {
+  const m = new Map<string, SkPicture>();
+  return (key: string, make: () => SkPicture): SkPicture => {
+    let p = m.get(key);
+    if (p) return p;
+    p = make();
+    m.set(key, p);
+    if (m.size > max) {
+      const oldest = m.keys().next().value;
+      if (oldest !== undefined) m.delete(oldest);
+    }
+    return p;
+  };
+}
+const ghosts = bounded(96);
+/** Steps of a ghost slot's affordability arc (one picture per step). */
+export const GHOST_STEPS = 24;
+
+let stars: StarfieldImage | null = null;
 
 export const pictures = {
   /** Station layers, origin at the station centre, for radius 40 (scale by r / 40). */
@@ -56,7 +80,13 @@ export const pictures = {
   rigLamp: (state: LampState) => memo(`lamp:${state}`, () => picture(around(7), (c) => drawRigLamp(c, state))),
   drillHead: (r: number) => memo(`head:${r}`, () => picture(around(r + 1), (c) => drawDrillHead(c, r))),
   pile: (ore: string, step: 0 | 1 | 2 | 3) => memo(`pile:${ore}:${step}`, () => picture(around(14), (c) => drawPile(c, ore, step))),
-  ghostSlot: (r: number, price: string) => memo(`ghost:${r}:${price}`, () => picture({ x: -r - 2, y: -r - 2, w: r * 2 + 4, h: r * 2 + 14 }, (c) => drawGhostSlot(c, r, price))),
+  /** A ghost slot with its price and affordability step 0..GHOST_STEPS (GHOST_STEPS: affordable). */
+  ghostSlot: (r: number, price: string, step = 0) =>
+    ghosts(`ghost:${r}:${price}:${step}`, () => picture({ x: -r * 1.3, y: -r * 1.3, w: r * 2.6, h: r * 2.6 + 8 }, (c) => drawGhostSlot(c, r, price, step / GHOST_STEPS))),
+  /** The comms callout ring round a rock of radius r (play-9). */
+  calloutRing: (r: number) => memo(`callout:${r}`, () => picture(around(r * 1.6), (c) => drawCalloutRing(c, r))),
+  /** A rock's short name plate ("T-2"); bounded like the ghost slots (names come from the data). */
+  rockTag: (name: string) => ghosts(`tag:${name}`, () => picture(around(30), (c) => drawRockTag(c, name))),
   seamRim: (r: number) => memo(`seam:${r}`, () => picture(around(r * 1.7), (c) => drawSeamRim(c, r))),
   flare: () => memo('flare', () => picture(around(16), (c) => drawFlare(c))),
   idleBadge: () => memo('badge', () => picture(around(9), drawIdleBadge)),
@@ -70,6 +100,14 @@ export const pictures = {
   chargePlate: (n: number) => memo(`charge:${n}`, () => picture(around(14), (c) => drawChargePlate(c, n))),
   /** The docked freighter as a still (the atlas carries it while it flies). */
   freighter: (hull: HullId, segments: number) => memo(`freighter:${hull}:${segments}`, () => picture(around(60), (c) => drawFreighter(c, { hull, segments }))),
-  /** The starfield for a screen size and galaxy (keep at most the current one alive). */
-  starfield: (w: number, h: number, galaxy: number) => memo(`stars:${w}:${h}:${galaxy}`, () => starfieldPicture(w, h, galaxy)),
+  /**
+   * The baked starfield image for a screen size and galaxy (fx.draw bakeStarfield). Only the
+   * current one is kept: a new size or galaxy bakes a new image and lets the old one go (never
+   * disposed: the collector frees it once no canvas draws it).
+   */
+  starfieldImage: (w: number, h: number, galaxy: number, density: number): StarfieldImage | null => {
+    if (stars && stars.w === w && stars.h === h && stars.galaxy === galaxy) return stars;
+    stars = bakeStarfield(w, h, galaxy, density);
+    return stars;
+  },
 };

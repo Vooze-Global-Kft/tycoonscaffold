@@ -220,6 +220,20 @@ export function drawChosenLayer(c: SkCanvas): void {
   });
 }
 
+/**
+ * The adaptive foreground (Android): the layer above shrunk about the centre so that the rock's
+ * glow, not only its rim, stays inside the 66 dp safe circle under every launcher mask (pizza-0;
+ * checked by scripts/art/icons/measure.ts). The splash keeps the full-size mark.
+ */
+export const ADAPTIVE_K = 0.86;
+export function drawChosenAdaptive(c: SkCanvas): void {
+  c.save();
+  c.translate(512 * (1 - ADAPTIVE_K), 512 * (1 - ADAPTIVE_K));
+  c.scale(ADAPTIVE_K, ADAPTIVE_K);
+  drawChosenLayer(c);
+  c.restore();
+}
+
 /** A big asteroid for the icon, in pixels: centre, radius, turn of its outline (degrees). */
 export interface OreRock { x: number; y: number; r: number; turn: number; seed?: number }
 export const ROCK_A: OreRock = { x: 250, y: 800, r: 330, turn: 0 };

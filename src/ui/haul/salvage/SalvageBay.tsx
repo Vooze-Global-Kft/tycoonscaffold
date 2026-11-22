@@ -29,6 +29,7 @@ import { drawCartridge } from '../art/modules.draw';
 import { RARITY, type Rarity } from '../art/palette';
 import { drawPod, POD_FOR_CHEST_TIER, type PodTier } from '../art/pods.draw';
 import { useHaul, useHaulCfg } from '../spokes/spokeData';
+import { useBackLayer } from '../uiState';
 import { ArtImage, Bracket, Gauge, INK, Key, Mono, Rule } from '../spokes/spokeKit';
 import { SPOKE_STRINGS as S, words } from '../spokes/spokeStrings';
 import { GUTTER, SpokeFrame } from '../spokes/SpokeFrame';
@@ -65,6 +66,7 @@ export function SalvageBay() {
   const bay = useHaul((c, g) => bayOf(c, g), { rack: [] as string[], rocks: { a: 0, b: 1 }, contracts: { a: 0, b: 1 }, tx: { a: 0, b: 1 } });
   const opening = useGame((s) => s.chestOpening);
   const [odds, setOdds] = useState(false);
+  useBackLayer(odds, () => setOdds(false));
   const podOpen = opening && cfg.meta.chests.some((c) => c.id === opening.chestId) ? opening : null;
   return (
     <SpokeFrame title={S.salvageTitle} code={S.salvageCode}>
@@ -96,7 +98,7 @@ function Rack({ cfg, rack, busy }: { cfg: H.HaulConfig; rack: string[]; busy: bo
   return (
     <View>
       <View style={styles.rackHead}>
-        <Mono size={10} color={INK.dim} weight="700" style={{ letterSpacing: 1.6 }}>{`${cfg.haul.names.pod} rack`}</Mono>
+        <Mono size={10} color={INK.dim} weight="700" style={{ letterSpacing: 1.6 }}>{words(cfg, S.podRack)}</Mono>
         <Mono size={10} color={rack.length ? INK.amber : INK.faint} weight="700">{`${rack.length}${more > 0 ? ` (+${more})` : ''}`}</Mono>
       </View>
       {shown.length === 0 ? (
@@ -202,6 +204,11 @@ function Opening({ cfg, id, chestId, rewards, next }: { cfg: H.HaulConfig; id: n
   const light = RARITY[kitRarity(best)];
   const tier = tierOf(cfg, chestId);
   const played = useRef(false);
+  // The Android back key stows the pod once its contents show (before that the cut plays on).
+  useBackLayer(revealed, () => {
+    fx.play('ui_close');
+    useGame.getState().closeChest();
+  });
   useEffect(() => () => {
     played.current = false;
   }, []);

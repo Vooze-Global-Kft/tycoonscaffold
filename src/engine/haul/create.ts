@@ -5,9 +5,9 @@
 import type { GameState } from '../types';
 import { emptyLoadout, normaliseSockets } from '../loadout';
 import { hashString, rngMix } from '../rng';
-import { droneCapFor, freighterCapacity, rigTier, ringOf, rockAt, slotCount, starLevel, starPer, T } from './params';
-import { openBoard } from './trade';
-import type { HaulConfig, HaulGame, HaulLifetimeStats, HaulState, HaulStats, SlotState, StarMapState } from './types';
+import { droneCapFor, freighterCapacity, haulParams, rigTier, ringOf, rockAt, slotCount, starLevel, starPer, T } from './params';
+import { drawContract, openBoard } from './trade';
+import type { Contract, HaulConfig, HaulGame, HaulLifetimeStats, HaulState, HaulStats, SlotState, StarMapState } from './types';
 
 export const EMPTY_LIFETIME: HaulLifetimeStats = { hauled: 0, launches: 0, contractsMet: 0, depleted: 0, claims: 0, seamDrags: 0, transmissionsAcked: 0 };
 
@@ -100,7 +100,7 @@ export function createHaul(
     freighter: { level: 1, phase: 'docked', t: 0, cargo: {}, payout: 0, met: false, away: 0, contract: null },
     autopilot: { online: starLevel(cfg, starMap, 'preload') > 0, policy: 'full' },
     contracts: { unlocked: false, board: [], next: 0, active: null },
-    vein: { slot: null, until: 0, guests: [], peak: 0, nextAt: H.seam.first * T(cfg, trait, 'interval'), count: 0 },
+    vein: { slot: null, until: 0, guests: [], peak: 0, nextAt: (galaxy > 0 ? (H.seam.firstLater ?? H.seam.first) : H.seam.first) * T(cfg, trait, 'interval'), count: 0 },
     flare: { slot: null, until: 0, guests: [], peak: 0, charges: 0, nextFreeAt: H.flare.firstAt, adsToday: 0, adDay: '', adNextAt: 0 },
     keeper: 0,
     // A run that starts with Hangar Expansion's drones has had them (no second mid-run grant).
@@ -181,6 +181,8 @@ export function reconcileHaul(cfg: HaulConfig, base: GameState, raw: unknown): H
     autopilotSeen: hs.autopilotSeen === true,
     pendingJump,
   };
+  const sh = (hs.shift ?? null) as Record<string, unknown> | null;
+  if (sh && typeof sh === 'object' && typeof sh.day === 'string') haulStats.shift = { day: sh.day, startedAt: num(sh.startedAt, 0), met: int(sh.met, 0) };
   const st = (r.stats ?? {}) as Record<string, unknown>;
   const lifetime = Object.fromEntries(Object.keys(EMPTY_LIFETIME).map((k) => [k, num(st[k], 0)])) as unknown as HaulLifetimeStats;
   const out = {
@@ -240,18 +242,33 @@ function reconcileRun(cfg: HaulConfig, raw: unknown, g: HaulGame): HaulState | n
   const phases = ['docked', 'climb', 'away', 'land'];
   const ap = (r.autopilot ?? {}) as Record<string, unknown>;
   const ct = (r.contracts ?? {}) as Record<string, unknown>;
-  const board = Array.isArray(ct.board)
-    ? (ct.board as Record<string, unknown>[])
-        .filter((c) => c && Array.isArray(c.wants))
-        .map((c) => ({
-          k: int(c.k, 0),
-          buyer: typeof c.buyer === 'string' ? c.buyer : cfg.haul.contracts.buyers[0].id,
-          wants: (c.wants as Record<string, unknown>[]).filter((w) => w && typeof w.ore === 'string').map((w) => ({ ore: w.ore as string, units: int(w.units, 1, 1) })),
-          mult: num(c.mult, 1, 1),
-          launchesLeft: int(c.launchesLeft, 1, 0),
-        }))
-    : [];
-  const activeRaw = typeof ct.active === 'number' && Number.isInteger(ct.active) && ct.active >= 0 && ct.active < board.length ? ct.active : null;
+  const L = cfg.haul.contracts.launches;
+  const activeIn = typeof ct.active === 'number' && Number.isInteger(ct.active) && ct.active >= 0 ? ct.active : null;
+  const board: Contract[] = [];
+  let activeRaw: number | null = null;
+  if (Array.isArray(ct.board))
+    (ct.board as Record<string, unknown>[]).forEach((c, i) => {
+      if (!c || typeof c !== 'object' || !Array.isArray(c.wants)) return;
+      const wants = (c.wants as Record<string, unknown>[])
+        .filter((w) => w && typeof w.ore === 'string')
+        .map((w) => {
+          const u = int(w.units, 1, 1);
+          return { ore: w.ore as string, units: u, got: Math.min(u, num(w.got, 0)) };
+        });
+      if (!wants.length) return;
+      // Before Decision 40 a save had no `taken`: its active contract is the taken one.
+      const taken = c.taken === true || (c.taken === undefined && i === activeIn);
+      if (taken && activeRaw !== null) return; // at most one taken contract
+      if (taken) activeRaw = board.length;
+      board.push({
+        k: int(c.k, 0),
+        buyer: typeof c.buyer === 'string' && cfg.haul.contracts.buyers.some((b) => b.id === c.buyer) ? c.buyer : cfg.haul.contracts.buyers[0].id,
+        wants: taken ? wants : wants.map((w) => ({ ...w, got: 0 })),
+        mult: num(c.mult, 1, 1),
+        launchesLeft: Math.max(1, Math.min(taken ? L : cfg.haul.contracts.offerLaunches, int(c.launchesLeft, 1, 1))),
+        taken,
+      });
+    });
   const seam = (x: unknown) => {
     const v = (x ?? {}) as Record<string, unknown>;
     const slot = typeof v.slot === 'number' && Number.isInteger(v.slot) && v.slot >= 0 && v.slot < slots.length ? v.slot : null;
@@ -285,6 +302,9 @@ function reconcileRun(cfg: HaulConfig, raw: unknown, g: HaulGame): HaulState | n
       met: fr.met === true,
       away: num(fr.away, 0),
       contract: typeof fr.contract === 'number' ? fr.contract : null,
+      toward: units(fr.toward),
+      bonus: num(fr.bonus, 0),
+      plain: num(fr.plain, num(fr.payout, 0)),
     },
     autopilot: { online: ap.online === true || fresh.autopilot.online, policy: ap.policy === 'contract' ? 'contract' : 'full' },
     contracts: { unlocked: ct.unlocked === true || fresh.contracts.unlocked, board: ct.unlocked === true ? board : fresh.contracts.board, next: int(ct.next, fresh.contracts.next), active: ct.unlocked === true ? activeRaw : fresh.contracts.active },
@@ -314,7 +334,24 @@ function reconcileRun(cfg: HaulConfig, raw: unknown, g: HaulGame): HaulState | n
       shipped: num(counters.shipped, 0),
     },
   };
-  if (h.freighter.phase === 'docked') h.freighter = { ...h.freighter, t: 0, cargo: {}, payout: 0 };
+  if (h.freighter.phase === 'docked') h.freighter = { ...h.freighter, t: 0, cargo: {}, payout: 0, toward: {}, bonus: 0, plain: 0 };
+  // An unlocked board shorter than haul.contracts.board (an old or damaged save, or a board size
+  // that changed) is topped up from the stream, `next` kept past every contract on it (rules-8).
+  if (h.contracts.unlocked && h.contracts.board.length < cfg.haul.contracts.board) {
+    const C = { ...h.contracts, board: [...h.contracts.board] };
+    C.next = Math.max(C.next, ...C.board.map((c) => c.k + 1));
+    const p = haulParams(cfg, { ...g, haul: { ...h, contracts: C } } as HaulGame & { haul: HaulState });
+    while (C.board.length < cfg.haul.contracts.board) {
+      const d = drawContract(cfg, { ...h, contracts: C }, p.F, p);
+      // Contract 0 is the fixed first one; a topped-up board never takes it again.
+      const c = d.contract.taken && C.active !== null ? { ...d.contract, taken: false, launchesLeft: cfg.haul.contracts.offerLaunches } : d.contract;
+      C.board.push(c);
+      C.next = d.next;
+      if (c.taken) C.active = C.board.length - 1;
+    }
+    h.contracts = C;
+  }
+  if (h.contracts.active !== null && !h.contracts.board[h.contracts.active]?.taken) h.contracts = { ...h.contracts, active: null };
   if (h.vein.slot !== null && h.vein.slot === h.flare.slot) h.flare = { ...h.flare, slot: null, guests: [], peak: 0 };
   // A claimed slot waiting for its first rock with no time set (an interrupted claim) gets it now.
   h.slots.forEach((s, i) => {

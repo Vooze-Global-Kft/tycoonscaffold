@@ -3,18 +3,24 @@
  * track. Hidden until the run's first charge; with no charge left it shows the flare dark and the
  * real time to the next free one. Drawn here, touched through the field gesture layer (errata 48):
  * drag the flare onto a rock, or tap it (selected: a gold rim) and then the rock. Target `bay:flare`.
+ *
+ * The card itself is a plain view (its fill and rim), so the refill timer always sits inside a
+ * card even before the canvas has drawn its first frame (play-23). A charge that arrives (a free
+ * one, or the Trade Post's ad) pops the card and rises "+1" over it (play-14).
  */
 import { Canvas, Group, Picture, type SkPicture } from '@shopify/react-native-skia';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View, useWindowDimensions } from 'react-native';
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { HAUL_STRINGS } from '../strings';
 import { targets } from '../../hints/targets';
 import { drawChargePlate, drawFlare } from '../art/fx.draw';
 import { alpha, SPACE } from '../art/palette';
-import { around, glow, litStroke, picture, rrect, fill } from '../art/pen';
+import { around, glow, picture } from '../art/pen';
 import type { Rect } from '../layout';
 import { useRun, useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
-import { DIGITAL, labelMetrics } from './bayText';
+import { DIGITAL, fillIn, labelMetrics } from './bayText';
 
 const pics = new Map<string, SkPicture>();
 function memo(key: string, make: () => SkPicture): SkPicture {
@@ -51,32 +57,61 @@ export function FlareLauncher({ rect }: { rect: Rect }) {
     return () => targets.set('bay:flare', null);
   }, [f.shown, rect.x, rect.y, s]);
 
+  // A new charge: the card pops and "+1" rises over it (play-14).
+  const pop = useSharedValue(1);
+  const rise = useSharedValue(0);
+  const last = useRef(f.charges);
+  const [gain, setGain] = useState(0);
+  useEffect(() => {
+    const before = last.current;
+    last.current = f.charges;
+    if (!(f.charges > before)) return;
+    setGain((n) => n + 1);
+    pop.value = withSequence(withTiming(1.12, { duration: 120 }), withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) }));
+    rise.value = 0;
+    rise.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.cubic) });
+    const t = setTimeout(() => setGain(0), 1250);
+    return () => clearTimeout(t);
+  }, [f.charges, pop, rise]);
+  useEffect(
+    () => () => {
+      cancelAnimation(pop);
+      cancelAnimation(rise);
+    },
+    [pop, rise],
+  );
+  const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
+  const riseStyle = useAnimatedStyle(() => ({ opacity: rise.value < 0.15 ? rise.value / 0.15 : 1 - Math.max(0, (rise.value - 0.6) / 0.4), transform: [{ translateY: -22 * rise.value }] }));
+
   if (!f.shown) return null;
   const on = f.charges > 0;
-  const frame = memo(`frame:${s}:${on}:${selected}`, () =>
-    picture({ x: -4, y: -4, w: s + 8, h: s + 8 }, (c) => {
-      const box = rrect(0.5, 0.5, s - 1, s - 1, 14);
-      c.drawPath(box, fill(SPACE.hull0));
-      if (selected) glow(c, s / 2, s / 2, s * 0.6, SPACE.gold, 0.35);
-      litStroke(c, box, alpha(SPACE.gold, selected ? 1 : on ? 0.5 : 0.22), selected ? 1.6 : 1, selected ? 1 : 0.3);
-    }),
-  );
+  const halo = selected ? memo(`halo:${s}`, () => picture({ x: -4, y: -4, w: s + 8, h: s + 8 }, (c) => glow(c, s / 2, s / 2, s * 0.6, SPACE.gold, 0.35))) : null;
   const flare = memo(`flare:${on}`, () => picture(around(16), (c) => drawFlare(c, on)));
   const plate = memo(`plate:${f.charges}`, () => picture(around(14), (c) => drawChargePlate(c, f.charges)));
   const k = s / 72;
   return (
-    <View
+    <Animated.View
       pointerEvents="none"
-      style={{
-        position: 'absolute',
-        left: rect.x,
-        top: rect.y,
-        width: s,
-        height: s,
-      }}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={fillIn(HAUL_STRINGS.flareLabel, { n: f.charges })}
+      style={[
+        {
+          position: 'absolute',
+          left: rect.x,
+          top: rect.y,
+          width: s,
+          height: s,
+          borderRadius: 14,
+          backgroundColor: SPACE.hull0,
+          borderWidth: selected ? 1.6 : 1,
+          borderColor: alpha(SPACE.gold, selected ? 1 : on ? 0.5 : 0.22),
+        },
+        popStyle,
+      ]}
     >
-      <Canvas style={{ width: s, height: s }}>
-        <Picture picture={frame} />
+      <Canvas style={{ position: 'absolute', left: -1, top: -1, width: s, height: s }}>
+        {halo ? <Picture picture={halo} /> : null}
         <Group transform={[{ translateX: s / 2 }, { translateY: s / 2 - 4 * k }, { scale: 1.6 * k }]} opacity={on ? 1 : 0.45} layer>
           <Picture picture={flare} />
         </Group>
@@ -110,6 +145,13 @@ export function FlareLauncher({ rect }: { rect: Rect }) {
           </Text>
         </View>
       ) : null}
-    </View>
+      {gain > 0 ? (
+        <Animated.View style={[{ position: 'absolute', left: 0, right: 0, top: -label.row - 2, height: label.row + 4, alignItems: 'center', justifyContent: 'center' }, riseStyle]}>
+          <Text allowFontScaling={false} numberOfLines={1} style={[DIGITAL, { color: SPACE.gold, fontSize: label.font + 3, textShadowColor: alpha(SPACE.gold, 0.6), textShadowRadius: 6 }]}>
+            {HAUL_STRINGS.flareCharged}
+          </Text>
+        </Animated.View>
+      ) : null}
+    </Animated.View>
   );
 }

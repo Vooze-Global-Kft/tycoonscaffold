@@ -9,6 +9,7 @@
  */
 import type { GameConfig, StoryBeat } from '../config/schema';
 import { HaulSchema } from '../config/schema.haul';
+import { dayKey } from './economy';
 import * as H from './haul';
 import type { EngineMode } from './mode';
 import type { GameState } from './types';
@@ -38,6 +39,18 @@ export function withHaulContent(cfg: GameConfig): GameConfig {
   return { ...cfg, haul: r.data as unknown as Record<string, unknown> };
 }
 const asGame = (g: GameState) => g as unknown as H.HaulGame;
+
+/** The local calendar day of `now` (economy.dayKey), recomputed once a minute (the tick runs ten times a second). */
+let dayAt = -1;
+let dayText = '';
+function localDay(now: number): string {
+  const minute = Math.floor(now / 60_000);
+  if (minute !== dayAt) {
+    dayText = dayKey(now);
+    dayAt = minute;
+  }
+  return dayText;
+}
 const asState = (g: H.HaulGame) => g as unknown as GameState;
 
 /** The default Jump choice: the first offered condition, no node bought (the bot and the screens pass their own). */
@@ -147,6 +160,31 @@ export function grantHangar(cfg: GameConfig, state: GameState, productId: string
   return H.isHaul(cfg) ? asState(H.grantHangarDrones(cfg, asGame(state), productId)) : state;
 }
 
+/**
+ * The income an "earn" transmission's target and a pod's cash slot are priced with when the run
+ * earns nothing yet (rules-6, rules-7): every drone on the rack is placed where the rules' hint would
+ * put it (`bestSlotForDrone`), and the rate of those routes is the price. While a confirmed Jump
+ * waits for its condition there is no run: the next galaxy is started with its first offered
+ * condition (nothing is kept; the state is only read). 0 when there is still nothing to earn with.
+ */
+export function haulPricingFloor(cfg: GameConfig, state: GameState, now: number): number {
+  if (!H.isHaul(cfg)) return 0;
+  let g = asGame(state);
+  const pending = g.haulStats?.pendingJump;
+  if (!g.haul && pending?.offers.length) g = H.startGalaxy(cfg, g, now, pending.offers[0]);
+  if (!g.haul) return 0;
+  const rate = H.haulIncome(cfg, g);
+  if (rate > 0) return rate;
+  for (let guard = 0; guard < 256 && g.haul && g.haul.idle > 0; guard++) {
+    const slot = H.bestSlotForDrone(cfg, g);
+    if (slot === null) break;
+    const next = H.assignDrone(cfg, g, slot);
+    if (next === g) break;
+    g = next;
+  }
+  return H.haulIncome(cfg, g);
+}
+
 export const haulEngineMode: EngineMode = {
   id: 'haul',
   // Space Miner's old classic saves (key "v1") are not read: the game was never published (spec Decisions).
@@ -154,7 +192,13 @@ export const haulEngineMode: EngineMode = {
   config: withHaulContent,
   create: (cfg, base) => (H.isHaul(cfg) ? asState(H.withHaulFields(cfg, base)) : base),
   reconcile: (cfg, base, raw) => (H.isHaul(cfg) ? asState(H.reconcileHaul(cfg, base, raw)) : base),
-  tick: (cfg, state, dt, now, events) => (H.isHaul(cfg) ? asState(H.advanceHaul(cfg, asGame(state), dt, now, events as H.HaulEvent[] | undefined)) : state),
+  tick: (cfg, state, dt, now, events) => {
+    if (!H.isHaul(cfg)) return state;
+    // Decision 53: a new day shift starts when the calendar day changed (and the rules' 16 h guard
+    // holds). Checked on every tick, so the first tick after opening or resuming starts it too.
+    const g = H.haulShift(cfg, asGame(state), now, localDay(now));
+    return asState(H.advanceHaul(cfg, g, dt, now, events as H.HaulEvent[] | undefined));
+  },
   income: (cfg, state) => {
     const g = asGame(state);
     if (!H.isHaul(cfg) || !g.haul) return 0;
@@ -179,4 +223,9 @@ export const haulEngineMode: EngineMode = {
   mergeReport: mergeShiftLogs,
   entitle: grantHangar,
   reportAlone: (report) => !!(report as H.OfflineReport | undefined)?.noAutopilot,
+  // Decision 42: the Shift Log's ad (or Clearance) adds haul.offline.adBonus (+50 %), not a double.
+  offlineAdMultiplier: (cfg) => 1 + (H.isHaul(cfg) ? (cfg.haul.offline?.adBonus ?? 0.5) : 1),
+  pricingFloor: haulPricingFloor,
+  // A confirmed Jump waits for its condition with no run: "earn" missions are refilled when the galaxy starts.
+  awaitsRunStart: (state) => { const g = asGame(state); return !g.haul && !!g.haulStats?.pendingJump; },
 };

@@ -1,10 +1,10 @@
 import { useFonts } from 'expo-font';
 import { useEffect, useRef } from 'react';
-import { AppState, Platform, Text, View } from 'react-native';
+import { AppState, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { gameAssets } from '../config/game';
-import { applyDevParams, devSpeed } from '../dev/devtools';
+import { applyDevParams, devSpeed, devView } from '../dev/devtools';
 import { modeEntry } from '../generated/mode';
 import { installMode } from '../modes/contract';
 import { fx } from '../services/fx';
@@ -62,7 +62,10 @@ function Game() {
   return <Shell />;
 }
 
-/** Shown while the save, fonts and remote config load: the hero bouncing over the game's name. */
+/**
+ * Shown while the save, fonts and remote config load: the hero bouncing over the game's name. The
+ * loading screen of every mode entry without its own (`ModeEntry.Loading`: sim and classic).
+ */
 function Loading() {
   const cfg = useGame((s) => s.cfg);
   const bounce = useSharedValue(0);
@@ -80,8 +83,8 @@ function Loading() {
   );
 }
 
-/** Dev views for visual review in the web build, e.g. `?view=art`. Never set on phones. */
-const DEV_VIEW = Platform.OS === 'web' && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('view') : null;
+/** Dev views for visual review in the web build, e.g. `?view=art`. Never set on phones (src/dev/devtools.ts). */
+const DEV_VIEW = devView();
 
 export default function App() {
   // The mode's review screens, e.g. the sim mode's `?view=art` and `?view=props`.
@@ -107,5 +110,7 @@ function Root() {
     fx.init();
     fx.music.start();
   }, []);
-  return <SafeAreaProvider>{ready ? <Game /> : <Loading />}</SafeAreaProvider>;
+  // The mode's own loading screen when it has one (Decision 55; haul), else the shared one below (sim, classic).
+  const Wait = modeEntry.Loading ?? Loading;
+  return <SafeAreaProvider>{ready ? <Game /> : <Wait />}</SafeAreaProvider>;
 }

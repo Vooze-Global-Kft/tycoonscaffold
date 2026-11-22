@@ -46,6 +46,7 @@ vi.mock('../config/game', async () => {
 vi.mock('../state/store', () => ({ useGame: { getState: () => ({ cfg: {}, hydrated: true }), setState: vi.fn(), subscribe: () => () => {} } }));
 // The haul entry's drawn pieces (Skia, react-native).
 vi.mock('../ui/haul/HaulShell', () => ({ HaulShell: s.named('HaulShell') }));
+vi.mock('../ui/haul/overlays/Boot', () => ({ HaulBoot: s.named('HaulBoot') }));
 vi.mock('../ui/haul/hud/ReticlePointer', () => ({ ReticlePointer: s.named('ReticlePointer') }));
 vi.mock('../ui/haul/art/HaulIcon', () => ({ HaulIcon: s.named('HaulIcon') }));
 vi.mock('../ui/haul/art/Gallery', () => ({ default: s.named('HaulGallery') }));
@@ -62,6 +63,8 @@ describe('the sim entry (Pizza Empire)', () => {
     const { listHints } = await import('../ui/home/hints');
     expect(sim.id).toBe('sim');
     expect(typeof sim.Shell).toBe('function');
+    // No loading screen of its own: App.tsx's shared one, unchanged (Decision 55).
+    expect(sim.Loading).toBeUndefined();
     expect(typeof sim.parts?.CharIcon).toBe('function');
     expect(nameOf(sim.parts?.CardBust)).toBe('CardBust');
     expect(nameOf(sim.parts?.HintPointer)).toBe('HandPointer');
@@ -108,11 +111,12 @@ describe('the haul entry (Orbit Haulers)', () => {
   it('hands over its own shell, rules, reticle pointer, icon drawing, hints and presets, and no people', async () => {
     const { default: haul } = await import('./haul');
     const { haulEngineMode } = await import('../engine/haulMode');
-    const { haulPreset } = await import('./haul/presets');
     const { haulHints } = await import('../ui/haul/hints');
     const { listenHaulEvents } = await import('./haul/fx');
     expect(haul.id).toBe('haul');
     expect(nameOf(haul.Shell)).toBe('HaulShell');
+    // Its own loading screen (Decision 55); sim and classic have none and keep the shared one (App.tsx).
+    expect(nameOf(haul.Loading)).toBe('HaulBoot');
     expect(haul.engine).toBe(haulEngineMode);
     expect(haul.engine?.id).toBe('haul');
     expect(haul.engine?.saveTag, 'a new save key: the old classic Space Miner save is never read').toBe('haul1');
@@ -124,8 +128,16 @@ describe('the haul entry (Orbit Haulers)', () => {
     // Its icons go through parts.Icon (the kit's own cache), never the shared "art:" registry.
     expect(haul.artIcons).toBeUndefined();
     expect(haul.hints).toBe(haulHints);
-    expect(haul.presets).toBe(haulPreset);
+    // Phones (this file's resolution of ./presets): no presets; the web build's are pinned below.
+    expect(haul.presets).toBeUndefined();
     expect(listenHaulEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it('ships its presets and the balance bot on the web only (phone-12, perf-8)', async () => {
+    expect((await import('./haul/presets')).haulPreset).toBeUndefined();
+    expect(typeof (await import('./haul/presets.web')).haulPreset).toBe('function');
+    expect(read('haul/index.tsx')).toMatch(/import \{ haulPreset \} from '\.\/presets';/);
+    expect(read('haul/presets.ts')).not.toMatch(/from '[^']*(bot|fixtures)[^']*'/);
   });
 
   it('ships the art kit\'s gallery on the web only', async () => {
