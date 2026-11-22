@@ -58,6 +58,7 @@ export function simulateHaulCli(cfg: H.HaulConfig, flags: Record<string, string>
         marks,
         hardMissed: targets.filter((x) => x.hard && !x.ok).map((x) => `${x.name}: ${x.value} (target ${x.target})`),
         targets,
+        compare: compare ?? null,
         runs: r.runs,
         gestures: r.gestures,
         windows: r.windows.map((w) => ({ from: w.from, ...w.gestures, earned: w.earned, depleted: w.depleted })),

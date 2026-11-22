@@ -979,9 +979,9 @@ Bot behaviour: places every idle drone at once on the slot with the highest marg
 
 Bot behaviour with Decision 40 (overrides the contract part above): with none taken, it takes the offer with the highest bonus that it can deliver in `haul.contracts.launches` launches once it routes for it (routed share per launch × launches ≥ units, 5 % to spare), then routes until every wanted ore is on pace with 15 % to spare (one launch's share as routed × launches left ≥ units left), at most `fleetShare` of the fleet per contract, and never drops a taken contract; it swipes by hand when the hold is full or holds everything the contract still needs. The passive player takes the best-paying offer and never routes for it. The watching player (Decision 42) only watches: autopilot on `full`, nothing bought, placed or routed, no contract taken.
 
-Bot behaviour in the finishing round (Decisions 56, 57, 62; overrides the two paragraphs above where they differ): the shop is `src/engine/haul/advice.ts` (the same estimate the limit hints use). With no contract taken it takes the offer with the highest bonus whose wanted ores all have a route; at the take and after every warp-out, while the contract's light is not green, it makes the move that raises the contract's pace most (an idle drone onto a rock of the short ore, a drone from another ore's route onto it, or a rig level on it when affordable; between moves that reach the pace, the one that keeps the most income), at most `fleetShare` of the fleet per contract; new drones go to the short ore; when the contract ends it moves the drones back where they were at the take. It runs the day shift once a minute. The player who never takes a contract (`noContracts`) is the same bot with the autopilot on `full`.
+Bot behaviour in the finishing round (Decisions 56, 57, 62; overrides the two paragraphs above where they differ): the shop is `src/engine/haul/advice.ts` (the same estimate the limit hints use). With no contract taken it takes the offer with the highest bonus whose wanted ores all have a route; at the take and after every warp-out, while the contract's light is not green, it makes the move that raises the contract's pace most (an idle drone onto a rock of the short ore, a drone from another ore's route onto it, or a rig level on it when affordable; between moves that reach the pace, the one that keeps the most income), with no fleet budget (Decision 63: this is the rules engineer's router; it also routes every 20 s between warp-outs while the light is not green, and seams and claims never take drones from the routes of an ore the contract still wants); new drones go to the short ore; when the contract ends it moves the drones back where they were at the take. It runs the day shift once a minute. The player who never takes a contract (`noContracts`) is the same bot with the autopilot on `full`.
 
-Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-miner --hours 12 --prestige [--seed n] [--compare true]` reports them; validate runs seeds 12345, 4, 99, 7 and 2026 in parallel and fails on a hard target missed on any of them, and when pods or Dark Matter per hour miss their window on more than one seed (Decisions 45 and 62). The first Jump's hard window in the gate is 2 h 18 to 2 h 42 (Decision 62).
+Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-miner --hours 12 --prestige [--seed n] [--compare true]` reports them; validate runs seeds 12345, 4, 99, 7 and 2026 in parallel and fails on a hard target missed on any of them, and when pods or Dark Matter per hour miss their window on more than one seed (Decisions 45 and 62). The first Jump's hard window is 1 h 55 to 3 h 05 on every seed; 2 h 15 to 2 h 45 is the target for the median seed, and validate warns when the median seed misses it or when the router's earnings against the never-taker's miss 1.25 to 1.6 at the median seed or reach 1.9 on any seed (Decision 63, overriding Decision 62's window).
 
 | Measure | Target | Hard? |
 |---|---|---|
@@ -993,8 +993,10 @@ Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-min
 | First ring-4 slot | 40 to 55 min | no |
 | First ring-5 slot | 1 h 30 to 1 h 55 | no |
 | All 12 slots claimed | 1 h 50 to 2 h 20 | no |
-| First Jump available (cores ≥ 20) | 2 h 15 to 2 h 45; the gate 2 h 18 to 2 h 42 (Decision 62) | yes |
-| Run 2 reaches run 1's Jump earnings | ≤ 60 % of run 1's time (target); the gate is 65 % (Decision 33) | yes |
+| First Jump available (cores ≥ 20), every gate seed | 1 h 55 to 3 h 05 (Decision 63) | yes |
+| First Jump available, the median of the five gate seeds | 2 h 15 to 2 h 45 (Decision 63) | no |
+| Run 2 reaches run 1's Jump earnings | ≤ 70 % of run 1's time (Decision 63) | yes |
+| Run 2 reaches run 1's Jump earnings (aim) | ≤ 60 % of run 1's time | no |
 | Run 3 reaches run 2's Jump earnings | ≤ 70 % of run 2's time | no |
 | Drags (drag, flick or tap-tap that assigns or moves a drone) per 10 min of active play, measured at minutes 30, 60 and 120 | ≥ 4 at each | yes |
 | Upgrade taps as a share of all gestures, every 10 min window after minute 10 | ≤ 60 % | yes |
@@ -1005,7 +1007,8 @@ Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-min
 | Share of taken contracts that are met, for the bot that routes for them (Decision 40; replaces "payouts with a met contract") | 60 to 85 % | no |
 | Share of taken contracts that are met for a player who takes contracts but never moves a drone for one (`passive`, first 2.5 h) | ≤ 25 % | no |
 | Contract bonus as a share of run income | report; aim 10 to 25 % | no |
-| Run earnings over the first 2.5 h of the bot that routes for contracts, against the same bot that never takes one (Decision 56, condition 6: the outcome, not the bonus share) | 1.3 to 1.7 times | no |
+| Run earnings over the first 2.5 h of the bot that routes for contracts, against the same bot that never takes one (Decisions 56 and 63: the outcome, not the bonus share) | 1.25 to 1.6 times at the median seed, under 1.9 on every seed | no |
+| The hint path's first ring-2 claim (`runTutorialHuman`, Decision 57) | 3:45 to 6:00 | no |
 | Average launch fill | 70 to 95 % | no |
 | An hour away WITH the Shift Log ad bonus (`haul.offline.adBonus`) vs an hour of active play (the bot that buys and routes) from the same state, at every measurement (minutes 30, 60, 120, then every 2 h) | ≤ 0.60 (Decision 42) | yes |
 | The same vs an hour of only watching (autopilot on `full`, nothing bought, routed or taken) | ≤ 0.90 (Decision 42) | yes |

@@ -61,14 +61,19 @@ for (const id of new Set([...all, ...ids])) {
   else schemaErrors.set(id, r.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`));
 }
 
-/** The seeds every hard section 8 target must hold on (Decisions 45 and 62; the slowest seed decides). */
+/** The seeds every hard section 8 target must hold on (Decisions 45, 62 and 63; the slowest seed decides). */
 const PACING_SEEDS = [12345, 4, 99, 7, 2026];
 
 /**
  * Runs the haul pacing bot for several seeds at once, one child process per seed (Decision 45), and
  * returns each seed's parsed `--json` line (null when that run failed or timed out).
  */
-type SeedResult = { hardMissed?: string[]; targets?: { name: string; ok: boolean; value: string }[] };
+type SeedResult = {
+  hardMissed?: string[];
+  targets?: { name: string; ok: boolean; value: string }[];
+  marks?: Record<string, number>;
+  compare?: { router: number; never: number; hours: number } | null;
+};
 function pacingSeeds(id: string, hours: number, seeds: number[], extra: string[], timeout: number): Map<number, SeedResult | null> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `validate-pacing-${id}-`));
   const q = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`;
@@ -281,7 +286,7 @@ for (const id of ids) {
   // --- pacing of a haul game: its own bot (spec section 8), 12 h with Jumps, on every seed of
   // PACING_SEEDS in parallel (Decision 45); every hard target missed on any seed is an error ---
   if (runSim && problems.length === 0 && g.mode === 'haul') {
-    const results = pacingSeeds(id, 12, PACING_SEEDS, ['--prestige', '--passive', 'false'], 900_000);
+    const results = pacingSeeds(id, 12, PACING_SEEDS, ['--prestige', '--passive', 'false', '--compare', 'true'], 900_000);
     for (const [seed, r] of results) {
       if (!r || !Array.isArray(r.hardMissed)) problems.push(`pacing, seed ${seed}: the section 8 bot did not finish within 15 min (npm run simulate -- ${id} --hours 12 --prestige --seed ${seed} to see why)`);
       else r.hardMissed.forEach((m) => problems.push(`pacing (section 8, hard), seed ${seed}: ${m}`));
@@ -290,6 +295,23 @@ for (const id of ids) {
     for (const name of ['Pods per hour, hours 1 to 3', 'Dark Matter per hour from pods, hours 1 to 3']) {
       const missed = [...results].filter(([, r]) => r?.targets?.some((x) => x.name === name && !x.ok));
       if (missed.length > 1) problems.push(`pacing (section 8, Decision 62): "${name}" is outside its window on ${missed.length} of ${results.size} seeds (${missed.map(([seed, r]) => `${seed}: ${r?.targets?.find((x) => x.name === name)?.value}`).join('; ')}); at most one may miss`);
+    }
+    // Decision 63, soft and across the seeds: the median seed's first Jump inside 2 h 15 to 2 h 45; the
+    // router's earnings at 2.5 h against the never-taker's 1.25 to 1.6 times at the median seed and
+    // under 1.9 on every seed.
+    const median = (xs: number[]) => {
+      const s = xs.slice().sort((a, b) => a - b);
+      return s.length ? s[Math.floor(s.length / 2)] : NaN;
+    };
+    const hm = (x: number) => (Number.isFinite(x) ? `${Math.floor(x / 3600)} h ${String(Math.floor((x % 3600) / 60)).padStart(2, '0')}` : 'never');
+    const jumps = [...results.values()].map((r) => r?.marks?.jumpReady ?? Infinity);
+    const mj = median(jumps);
+    if (!(mj >= 8100 && mj <= 9900)) warnings.push(`pacing (section 8, Decision 63): the median seed's first Jump is at ${hm(mj)} (target 2 h 15 to 2 h 45; seeds ${jumps.map((x) => hm(x)).join(' / ')})`);
+    const ratios = [...results].map(([seed, r]) => [seed, r?.compare && r.compare.never > 0 ? r.compare.router / r.compare.never : NaN] as const);
+    const mr = median(ratios.map(([, x]) => x));
+    const over = ratios.filter(([, x]) => !(x < 1.9));
+    if (!(mr >= 1.25 && mr <= 1.6) || over.length) {
+      warnings.push(`pacing (section 8, Decision 63): earnings with contracts against never taking one at 2.5 h: median ${mr.toFixed(2)} (target 1.25 to 1.6), ${ratios.map(([seed, x]) => `${seed} ${x.toFixed(2)}`).join(', ')}${over.length ? ` (under 1.9 on every seed: ${over.map(([seed]) => seed).join(', ')} miss)` : ''}`);
     }
   }
   // --- pacing: the same bot as `npm run simulate`, two simulated hours ---

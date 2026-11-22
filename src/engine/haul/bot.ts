@@ -10,11 +10,12 @@
  * How it plays (section 8, "Bot behaviour"):
  * - every idle drone goes at once to the slot with the highest marginal value (`bestSlotForDrone`);
  * - 2 drones are dragged onto each rich seam (natural or flare) and 1 onto each bonanza rock;
- * - with contracts open and none taken, it takes the offer with the highest bonus that it can
- *   deliver in `contracts.launches` launches once it routes for it (Decision 40), then drags drones
- *   onto rocks of its ores (from the routes that lose least) until every ore is on pace with 15 % to
- *   spare (what one launch carries × launches left ≥ units left), at most `contracts.fleetShare` of
- *   the fleet per contract; it never drops a taken contract;
+ * - with contracts open and none taken, it takes the offer with the highest bonus that has a route
+ *   for every ore it wants, then routes by the pace light (Decisions 56 and 63: the rules engineer's
+ *   router): at the take, after every warp-out and every 20 s while the light is not green, the move
+ *   that raises the contract's pace most (an idle drone, a drone from another ore's route, one rig
+ *   level of the short ore), until it is green; seams and claims never take drones from the routes
+ *   of an ore the contract still wants; when the contract ends the drones go back; it never drops one;
  * - it swipes the freighter off the pad when the hold is full or holds everything the contract
  *   still needs until the Dock Autopilot is online, then sets the `contract` policy;
  * - it fires the free flare charge at the best rock;
@@ -453,8 +454,8 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   /**
    * Contracts (section 8, Decision 56): with none taken, it takes the offer with the highest bonus
    * that has a route for every ore it wants (a finite raise); then it routes for it (`routeStep`) at
-   * the take and after every warp-out while its light is not green, at most `contracts.fleetShare` of
-   * the fleet per contract, and new drones go to the ore it is short of. It reads only what the board
+   * the take, after every warp-out and every 20 s while its light is not green (Decision 63: no fleet
+   * budget), and new drones go to the ore it is short of. It reads only what the board
    * shows (`contractViews`: the steady figure and the hold), so later surprises (a rock that dries, a
    * freighter level, drones bought for other ores) can still make it lapse. It never drops one.
    * With `passive` it takes the best-paying offer and never moves a drone for it (the "does nothing"

@@ -95,7 +95,7 @@ g['economy'] = {
     'tapBase': 0, 'tapPercentOfIncome': 0,
     'milestones': [],
     # Cores = floor(scale x (lifetime / threshold)^0.5) (tune: first Jump at 2 h 15 to 2 h 45 with 20 to 30 cores).
-    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (first Jump 2 h 15 to 2 h 45)', 3e8),
+    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (Decision 63: median seed\'s first Jump about 2 h 30)', 2.2e8),
                  'scale': K('coreScale', 5, 1, 20, 'cores scale'), 'exponent': 0.5, 'bonusPerPoint': 0},
     # Offline: 6 h at most, efficiency 0.45 at most (2.11).
     # (tune: maxHours 6); the efficiency is capped at 0.45 by the rules. The bot's gate is "offline per hour
@@ -204,14 +204,16 @@ g['haul'] = {
         'offerLaunches': int(K('offerLaunches', 12, 8, 16, 'warp-outs an offer stays on the board')),
         'raise': [K('raiseLo', 0.25, 0.1, 0.5, 'contract raise over what the station ships, low end (Decision 56)'), K('raiseHi', 0.6, 0.3, 1.0, 'contract raise, high end (Decision 56)')],
         'holdShare': [0.85, 0.95],
-        'raiseMult': K('raiseMult', 1, 0, 2, 'contract multiplier added per unit of raise (a harder contract pays more)'),
+        'raiseMult': K('raiseMult', 1, 0, 2, 'contract multiplier added per unit of raise (a harder contract pays more)', 0.1),
         'maxShare': 0.9, 'minValueShare': 0.1, 'minBonusSeconds': 10, 'recentLaunches': 6,
         'fee': K('fee', 0.1, 0.05, 0.15, 'delivery fee on the rest of a met cargo'),
-        # The bot's routing budget (section 8); the draw no longer reads it. `margin` and `reach` are gone
+        # Read only by the legacy contractStation helper (Decision 63: the bot routes without a budget). `margin` and `reach` are gone
         # with Decision 56 (the schema still parses them from old data).
-        'fleetShare': K('fleetShare', 0.5, 0.3, 0.7, 'share of the fleet a player sends to a contract when routing for it'),
+        'fleetShare': K('fleetShare', 0.5, 0.3, 0.7, 'legacy: share of the fleet contractStation sends (the bot no longer reads it)'),
         'minUnits': 3, 'twoOreChance': 0.4,
-        'mult': [round(1 + (m - 1) * K('contractMultScale', 1, 0.0, 1, 'contract multipliers: share of the specification\'s mark-up over x1'), 2) for m in (1.6, 1.9, 2.2, 2.6, 3.0)], 'jitter': 0.1,
+        'mult': [round(1 + (m - 1) * K('contractMultScale', 1, 0.1, 1, 'contract multipliers: share of the specification\'s mark-up over x1 (Decision 63)', 0.2), 2) for m in (1.6, 1.9, 2.2, 2.6, 3.0)],
+        # Decision 63: with the mark-ups this low, a jitter of 0.1 would draw "x1.0" in ring 1.
+        'jitter': K('contractJitter', 0.1, 0, 0.2, 'contract multiplier jitter (each side)', 0.05),
         'first': {'buyer': 0, 'ore': 'iron', 'units': 10, 'mult': 1.5},
         # `calls` and `closed` wait for the rules' buyer schema to carry them (balance report, "For other owners").
         'buyers': [{'id': i, 'name': n, 'calls': BUYER_LINES[i][0], 'closed': BUYER_LINES[i][1]} for i, n in BUYERS],
