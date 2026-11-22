@@ -687,8 +687,30 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     return true;
   };
 
+  // The supply drop (5.2: the shared free-chest timer with this game's numbers): a pod the player sees
+  // land, the Nth after `firstMinutes[N − 1]` minutes and then every `everyHours`, collected at once.
+  // Counted from t = 0 of a fresh game only (a run started from a state does not know its timer).
+  const supply: number[] = [];
+  const fc = cfg.meta.freeChest;
+  if (fc && !opts.start) {
+    for (let at = 0, n = 1; n < 200; n++) {
+      const first = fc.firstMinutes[n - 1];
+      at += first !== undefined ? first * 60 : fc.everyHours * 3600;
+      if (at >= horizon) break;
+      supply.push(Math.round(at));
+    }
+  }
+  let nextSupply = 0;
+
   // ----------------------------------------------------------- the loop
   for (t = 0; t < horizon; t++) {
+    if (nextSupply < supply.length && t >= supply[nextSupply]) {
+      nextSupply++;
+      mark('pod supply', t);
+      note('pod (supply)', true, false);
+      const hr = (podsByHour[Math.floor(t / 3600)] ??= {});
+      hr.supply = (hr.supply ?? 0) + 1;
+    }
     if (t > 0 && t % 600 === 0) {
       windows.push(win);
       win = { from: t, gestures: zero(), earned: 0, depleted: 0 };

@@ -52,7 +52,7 @@
     "tapPercentOfIncome": 0,
     "milestones": [],
     "prestige": {
-      "threshold": 16000000,
+      "threshold": 120000000,
       "scale": 5,
       "exponent": 0.5,
       "bonusPerPoint": 0
@@ -756,8 +756,8 @@
           400
         ],
         "weights": {
-          "copper": 70,
-          "iron": 30
+          "copper": 85,
+          "iron": 15
         }
       },
       {
@@ -774,8 +774,8 @@
           600
         ],
         "weights": {
-          "ice": 70,
-          "copper": 30
+          "ice": 85,
+          "copper": 15
         }
       },
       {
@@ -791,8 +791,8 @@
           800
         ],
         "weights": {
-          "titanium": 70,
-          "ice": 30
+          "titanium": 85,
+          "ice": 15
         }
       },
       {
@@ -808,8 +808,8 @@
           1100
         ],
         "weights": {
-          "platinum": 70,
-          "titanium": 30
+          "platinum": 85,
+          "titanium": 15
         }
       }
     ],
@@ -855,7 +855,7 @@
     "claim": {
       "base": 14,
       "ringFactor": 15,
-      "jFactor": 1.4
+      "jFactor": 1.5
     },
     "pile": {
       "min": 10,
@@ -951,13 +951,13 @@
       "unlockLaunches": 4,
       "unlockClock": 90,
       "board": 3,
-      "launches": 6,
+      "launches": 4,
       "offerLaunches": 12,
-      "margin": 0.12,
+      "margin": 0.2,
       "fee": 0.1,
       "reach": [
-        0.35,
-        0.75
+        0.5,
+        0.9
       ],
       "fleetShare": 0.5,
       "minUnits": 3,
@@ -1023,8 +1023,8 @@
     "pods": {
       "scrap": "scrap",
       "derelict": "derelict",
-      "depletedEvery": 6,
-      "contractsEvery": 4,
+      "depletedEvery": 8,
+      "contractsEvery": 12,
       "transmissionsEvery": 4
     },
     "conditions": [

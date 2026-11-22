@@ -95,7 +95,7 @@ g['economy'] = {
     'tapBase': 0, 'tapPercentOfIncome': 0,
     'milestones': [],
     # Cores = floor(scale x (lifetime / threshold)^0.5) (tune: first Jump at 2 h 15 to 2 h 45 with 20 to 30 cores).
-    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (first Jump 2 h 15 to 2 h 45)', 1.6e7),
+    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (first Jump 2 h 15 to 2 h 45)', 1.2e8),
                  'scale': K('coreScale', 5, 1, 20, 'cores scale'), 'exponent': 0.5, 'bonusPerPoint': 0},
     # Offline: 6 h at most, efficiency 0.45 at most (2.11).
     # (tune: maxHours 6); the efficiency is capped at 0.45 by the rules. The bot's gate is "offline per hour
@@ -123,7 +123,7 @@ ORES = [('iron', 'Iron', '#E07A3F', _V[0]), ('copper', 'Copper', '#3FC7A0', _V[1
 # The share of a ring's own ore in its rock stream (the rest is the ring before's ore). Spec 70; a
 # higher share narrows the ore lottery that makes one seed's first Jump an hour earlier than another's
 # (Decision 45: the first Jump must land in its window on every seed).
-_W = K('ringOreShare', 70, 60, 90, "share of a ring's own ore in its rock stream (rings 2 to 5)")
+_W = K('ringOreShare', 70, 60, 90, "share of a ring's own ore in its rock stream (rings 2 to 5)", 85)
 _w = lambda own, prev: {own: _W, prev: 100 - _W}
 RINGS = [
     ('Near Belt', 1.00, [-53, 53], 0.60, [150, 240], {'iron': 100}),
@@ -164,7 +164,7 @@ g['haul'] = {
         'stripeEvery': 15, 'stripeMult': 1.5,
         'cost': {'base': 3, 'ringFactor': 40, 'growth': K('rigGrowth', 1.6, 1.45, 1.8, 'rig cost growth', 1.7)},
     },
-    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)', 14), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 15), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring', 1.4)},
+    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)', 14), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 15), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring', 1.5)},
     'pile': {'min': 10, 'seconds': 25},
     'drone': {
         # Decision 44: a drone must carry more than a level-2 ring-1 rig drills, or the tutorial's rig step pays nothing.
@@ -193,11 +193,11 @@ g['haul'] = {
         'unlockLaunches': 4, 'unlockClock': 90, 'board': 3,
         # Decision 40: a taken contract is delivered over `launches` warp-outs; an offer ages one launch of
         # `offerLaunches` per warp-out; `margin` keeps a contract from being met by the routes as they are.
-        'launches': int(K('contractLaunches', 6, 4, 8, 'warp-outs a taken contract has to deliver everything')),
+        'launches': int(K('contractLaunches', 6, 4, 8, 'warp-outs a taken contract has to deliver everything', 4)),
         'offerLaunches': int(K('offerLaunches', 12, 8, 16, 'warp-outs an offer stays on the board')),
-        'margin': K('contractMargin', 0.12, 0.08, 0.2, 'never free: units at least L x now x (1 + margin)'),
+        'margin': K('contractMargin', 0.12, 0.08, 0.2, 'never free: units at least L x now x (1 + margin)', 0.2),
         'fee': K('fee', 0.1, 0.05, 0.15, 'delivery fee on the rest of a met cargo'),
-        'reach': [K('reachLo', 0.35, 0.2, 0.5, 'contract units: low end, from the hold share as routed (0) to the share routed for it (1)'), K('reachHi', 0.75, 0.6, 0.9, 'contract units: high end of the same range')],
+        'reach': [K('reachLo', 0.35, 0.2, 0.5, 'contract units: low end, from the hold share as routed (0) to the share routed for it (1)', 0.5), K('reachHi', 0.75, 0.6, 0.9, 'contract units: high end of the same range', 0.9)],
         'fleetShare': K('fleetShare', 0.5, 0.3, 0.7, 'share of the fleet a player sends to a contract when routing for it'),
         'minUnits': 3, 'twoOreChance': 0.4,
         'mult': [round(1 + (m - 1) * K('contractMultScale', 1, 0.6, 1, 'contract multipliers: share of the specification\'s mark-up over x1'), 2) for m in (1.6, 1.9, 2.2, 2.6, 3.0)], 'jitter': 0.1,
@@ -208,8 +208,8 @@ g['haul'] = {
     # Decision 53: the first `contracts` contracts met in each shift pay their bonus `mult` times.
     'shift': {'contracts': 3, 'minHours': 16, 'mult': 2},
     # rules-3: re-tuned against section 8's pods-per-hour target after Decision 40 (a contract met is no longer rare).
-    'pods': {'scrap': 'scrap', 'derelict': 'derelict', 'depletedEvery': int(K('podsDepleted', 6, 4, 16, 'a Scrap Pod every n-th dry rock (pods per hour)')),
-             'contractsEvery': int(K('podsContracts', 4, 4, 16, 'a Scrap Pod every n-th contract met (pods per hour)')), 'transmissionsEvery': 4},
+    'pods': {'scrap': 'scrap', 'derelict': 'derelict', 'depletedEvery': int(K('podsDepleted', 6, 4, 16, 'a Scrap Pod every n-th dry rock (pods per hour)', 8)),
+             'contractsEvery': int(K('podsContracts', 4, 4, 16, 'a Scrap Pod every n-th contract met (pods per hour)', 12)), 'transmissionsEvery': 4},
     'conditions': [
         # Frost Surplus: rings 3 and 4 (ring 2 has no ice; Decisions).
         {'id': 'frost', 'name': 'Frost Surplus', 'lines': ['Ice weight x3 on rings 3 and 4', 'Ice value x2'], 'oreValue': {'ice': 2},

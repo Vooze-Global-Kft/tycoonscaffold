@@ -14,7 +14,7 @@ Built by our studio on our own engine. Our other game, Pizza Empire, is a restau
 3. Modules work only when fitted into three typed sockets in the Fitting Bay, and the reset is spent on a Star Map of rule-changing nodes.
 
 Tap path: open the app, follow the reticle: drag the drone onto the rock, then swipe up in the bay (about 30 s).
-Fitting Bay: the third button on the bottom rail (three hexagons, between the pod crate and the three-armed star), open once the pod from the first ring-2 claim is opened (about 6 to 8 min).
+Fitting Bay: the third button on the bottom rail (three hexagons, between the pod crate and the three-armed star), open once the pod from the first ring-2 claim is opened (about 3 to 5 min).
 
 No account or sign-in. Ads are rewarded only and always optional (a Survey Flare charge, a +50 % boost on the Shift Log after time away); salvage pods are earned in play and never sold, and their odds are shown before opening. Purchases: Clearance (every ad reward without watching the ad; the game has no banner or pop-up ads), Hangar Expansion, Prospector Charter (once) and two Dark Matter packs.
 

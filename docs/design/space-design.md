@@ -392,83 +392,78 @@ The return screen (Shift Log, section 4.6) lists: time away (capped), units move
 
 ### 2.12 Worked numbers, first 10 minutes
 
-Pasted from `python3 scripts/content/build-space.py --table` with the shipped game.json (Decision 16; integration step, after the contract rule of Decision 32 and the re-tune). The knob table that command also prints is in section 8's notes below the targets; the shipped values that differ from the starting values: prestige threshold 1.6e7, rig drill per level 1.4, rig cost growth 1.7, claim base ₵16, claim ring factor 15, claim factor per slot 1.4, freighter cost growth 1.5, bonanza chance 0.06, bonanza drill x3, head-start rig level 6. Section 2.1 to 2.10 give the starting values and the formulas; game.json carries the shipped ones. No test reads these tables; section 8 is the gate.
+Pasted from `python3 scripts/content/build-space.py --table` with the shipped game.json (Decision 16; fix round, after Decisions 40, 42, 44 and 45 and the re-tune). The knob table that command also prints is in section 11, "Numbers of the fix round"; the shipped values that differ from the starting values: prestige threshold 1.2e8, a ring's own ore 85 % of its rock stream, rig drill per level 1.4, rig cost growth 1.7, claim base ₵14, claim ring factor 15, claim factor per slot 1.5, drone capacity 5, freighter capacity 20, freighter cost growth 1.5, bonanza chance 0.06, bonanza drill x3, contract launches 4, contract margin 0.2, contract reach 0.5 to 0.9, a Scrap Pod every 8th dry rock and every 12th contract met, head-start rig level 6. Section 2.1 to 2.10 give the starting values and the formulas; game.json carries the shipped ones. The tutorial path is checked by `src/engine/haul/hints.test.ts` (each guided purchase at the first warp-out after the step before it, and +15 % income or more); section 8 is the gate.
 
 **The tutorial path (a person who does only what the hints ask, reacting in 2.5 s; 0.05 s ticks):**
 
 | Time | What happens | Numbers |
 |---|---|---|
-| 0:00 | Cash ₵0. Slot 0 (ring 1, iron): rig L1, r = 0.60/s, pile 8.00/15.0. One drone idle on the rack. F = 12.0 |  |
-| 0:03 | Drag the drone onto rock T-1 | trip = 5.20 s; c = 4.00; h = 0.77/s; first delivery at 0:05 |
-| 0:10 | First unload into the hold | 4.00 units |
-| 0:21 | Hold 12.0/12.0, chevrons pulse |  |
-| 0:23 | Swipe up: launch 1 | cargo 12.0, paid at the warp-out 13.2 |
-| 0:26 | Warp-out | ₵13.2 |
-| 0:28 | Buy drone 2 (₵10.0) | cash left 3.20 |
-| 0:31 | Tap the drone, then rock T-1 | trip = 5.20 s; c = 4.00; h = 1.54/s; first delivery at 0:05 |
-| 0:38 | Swipe up: launch 2 | cargo 12.0, paid at the warp-out 13.2 |
-| 0:41 | Warp-out | ₵13.2 |
-| 0:53 | Swipe up: launch 3 | cargo 12.0, paid at the warp-out 13.2 |
-| 0:56 | Warp-out | ₵13.2 |
-| 0:58 | Claim slot 1 (₵22.4) |  |
-| 1:02 | Move one drone from T-1's chip to T-2 |  |
-| 1:12 | Swipe up: launch 4 | cargo 12.0, paid at the warp-out 13.2 |
-| 1:15 | Warp-out | ₵13.2 |
-| 1:27 | Swipe up: launch 5 | cargo 12.0, paid at the warp-out 13.2 |
-| 1:30 | Warp-out | ₵13.2 |
-| 1:42 | Swipe up: launch 6 | cargo 12.0, paid at the warp-out 13.2 |
-| 1:45 | Warp-out | ₵13.2 |
-| 1:45 | The contract strip slides in | Halden Yards · 10 iron · x1.5 |
-| 1:57 | Swipe up: launch 7 | cargo 12.0, paid at the warp-out 18.9 |
-| 2:00 | Warp-out, contract met | ₵18.9 |
-| 2:12 | Swipe up: launch 8 | cargo 12.0, paid at the warp-out 13.2 |
-| 2:15 | Warp-out | ₵13.2 |
-| 2:27 | Swipe up: launch 9 | cargo 12.0, paid at the warp-out 13.2 |
-| 2:30 | Warp-out | ₵13.2 |
-| 2:32 | Dock Autopilot online (₵90.0) | cash 92.1 before |
-| 2:35 | Pick contract 0 from the board |  |
-| 2:42 | Warp-out, contract met | ₵22.4 |
-| 2:55 | Warp-out | ₵13.2 |
-| 3:07 | Warp-out | ₵13.2 |
-| 3:15 | Pick contract 0 from the board |  |
-| 3:20 | Warp-out, contract met | ₵22.4 |
-| 3:32 | Warp-out | ₵13.2 |
-| 3:45 | Warp-out | ₵13.2 |
-| 3:52 | Pick contract 0 from the board |  |
-| 3:57 | Warp-out, contract met | ₵19.8 |
+| 0:00 | Cash ₵0. Slot 0 (ring 1, iron): rig L1, r = 0.60/s, pile 8.00/15.0. One drone idle on the rack. F = 20.0 |  |
+| 0:03 | Drag the drone onto rock T-1 | trip = 5.20 s; c = 5.00; h = 0.96/s; first delivery at 0:05 |
+| 0:10 | First unload into the hold | 5.00 units |
+| 0:26 | Hold 20.0/20.0, chevrons pulse |  |
+| 0:28 | Swipe up: launch 1 | cargo 20.0, paid at the warp-out 22.0 |
+| 0:31 | Warp-out | ₵22.0 |
+| 0:33 | Claim slot 1 (₵21.0) |  |
+| 0:56 | Swipe up: launch 2 | cargo 20.0, paid at the warp-out 22.0 |
+| 0:58 | Warp-out | ₵22.0 |
+| 1:01 | Buy drone 2 (₵10.0) | cash left 13.0 |
+| 1:03 | Tap the drone, then rock T-2 | trip = 5.20 s; c = 5.00; h = 0.96/s; first delivery at 1:06 |
+| 1:06 | Upgrade rig T-1 to L2 (₵3.00) | r = 0.84/s |
+| 1:20 | Swipe up: launch 3 | cargo 20.0, paid at the warp-out 22.0 |
+| 1:22 | Warp-out | ₵22.0 |
+| 1:36 | Swipe up: launch 4 | cargo 20.0, paid at the warp-out 22.0 |
+| 1:39 | Warp-out | ₵22.0 |
+| 1:39 | The contract strip slides in | Halden Yards · 10 iron · x1.5 |
+| 1:53 | Swipe up: launch 5 | cargo 20.0, paid at the warp-out 23.1 |
+| 1:56 | Warp-out, contract met | ₵28.1 |
+| 2:10 | Swipe up: launch 6 | cargo 20.0, paid at the warp-out 22.0 |
+| 2:13 | Warp-out | ₵22.0 |
+| 2:15 | Dock Autopilot online (₵90.0) | cash 104 before |
+| 2:25 | Warp-out | ₵22.0 |
+| 2:28 | Pick contract 0 from the board |  |
+| 2:33 | Move one drone from T-1's chip to T-2 |  |
+| 2:38 | Warp-out | ₵22.0 |
+| 2:50 | Warp-out | ₵22.0 |
+| 3:03 | Warp-out | ₵22.0 |
+| 3:15 | Warp-out, contract met | ₵55.4 |
+| 3:28 | Warp-out | ₵22.0 |
+| 3:40 | Warp-out | ₵22.0 |
+| 3:48 | Pick contract 0 from the board |  |
+| 3:53 | Warp-out | ₵22.0 |
 
 **The bot (section 8's bot, seed 12345, 1 s ticks; income is activeRate):**
 
 | Time | Event | Income |
 |---|---|---|
-| 0:21 | first payout |  |
-| 1:00 |  | about ₵1.5/s |
-| 1:29 | slot 1 claimed |  |
-| 1:44 | contracts unlock |  |
-| 2:00 |  | about ₵2.2/s |
-| 2:11 | Dock Autopilot online |  |
-| 3:40 | first ring-2 slot (copper) |  |
-| 3:40 | the guaranteed Scrap Pod (first ring-2 claim) |  |
-| 4:00 |  | about ₵8.5/s |
-| 5:59 | first rich seam |  |
-| 6:00 |  | about ₵14.4/s |
-| 8:00 |  | about ₵50.9/s |
-| 8:21 | first bonanza rock |  |
+| 0:26 | first payout |  |
+| 1:00 |  | about ₵2.6/s |
+| 1:35 | contracts unlock |  |
+| 1:36 | slot 1 claimed |  |
+| 2:00 |  | about ₵5.1/s |
+| 2:03 | Dock Autopilot online |  |
+| 2:28 | first ring-2 slot (copper) |  |
+| 2:28 | the guaranteed Scrap Pod (first ring-2 claim) |  |
+| 2:29 | first rich seam |  |
+| 4:00 |  | about ₵21.4/s |
+| 6:00 |  | about ₵71.3/s |
+| 8:00 |  | about ₵197/s |
+| 8:36 | first bonanza rock |  |
 | 10:00 | first Survey Flare |  |
-| 10:00 |  | about ₵113/s |
-| 15:00 |  | about ₵388/s |
-| 20:00 |  | about ₵1.08e+3/s |
-| 23:08 | first ring-3 slot (ice) |  |
-| 30:00 |  | about ₵4.26e+3/s |
-| 31:06 | first ring-4 slot (titanium) |  |
-| 45:00 |  | about ₵3.46e+3/s |
-| 1 h 00 |  | about ₵2.29e+4/s |
-| 1 h 30 |  | about ₵2.19e+4/s |
-| 1 h 44 | first ring-5 slot (platinum) |  |
-| 2 h 00 |  | about ₵6.85e+4/s |
-| 2 h 27 | first Jump available (20 cores) |  |
-| 2 h 27 | Jump 1: +20 cores; run 1 earned ₵2.58e+8 | |
-| 3 h 30 | run 2 (heavy) passes run 1's earnings, 1 h 03 into the run (43 % of run 1) | |
+| 10:00 |  | about ₵397/s |
+| 15:00 |  | about ₵2.04e+3/s |
+| 20:00 |  | about ₵5.32e+3/s |
+| 21:03 | first ring-3 slot (ice) |  |
+| 30:00 |  | about ₵2.39e+4/s |
+| 32:50 | first ring-4 slot (titanium) |  |
+| 45:00 |  | about ₵5.22e+4/s |
+| 1 h 00 |  | about ₵8.04e+4/s |
+| 1 h 09 | first ring-5 slot (platinum) |  |
+| 1 h 30 |  | about ₵1.50e+5/s |
+| 2 h 00 |  | about ₵2.57e+5/s |
+| 2 h 31 | first Jump available (20 cores) |  |
+| 2 h 31 | Jump 1: +20 cores; run 1 earned ₵1.92e+9 | |
+| 3 h 29 | run 2 (heavy) passes run 1's earnings, 58:22 into the run (39 % of run 1) | |
 
 ---
 
@@ -945,7 +940,7 @@ Ten example lines:
   5. Fitting Bay: "Fit modules. Some change the rules."
   6. Star Map with the condition pick: "Jump galaxies. Choose the conditions."
 - Preview video: optional, 20 s, recorded from the game (map, drag, launch, contract, Fitting Bay).
-- App Review notes (`games/space-miner/store/REVIEW-NOTES.md`): "Built by our studio on our own engine. Our other game, Pizza Empire, is a restaurant sim where you tap stations and guests pay. Orbit Haulers is a different game: 1. You drag drones onto asteroids to set routes; rocks run dry and are replaced, and you re-route for contracts, rich seams and bonanza rocks all game. 2. Money arrives only when the freighter launches, and the buyer contract you picked multiplies the units it asked for. 3. Modules work only when fitted into three typed sockets in the Fitting Bay, and the reset is spent on a Star Map of rule-changing nodes. Tap path: open the app, follow the reticle: drag the drone onto the rock, then swipe up in the bay (about 30 s). Fitting Bay: the third button on the bottom rail (three hexagons), open once the pod from the first ring-2 claim is opened (about 6 to 8 min)."
+- App Review notes (`games/space-miner/store/REVIEW-NOTES.md`): "Built by our studio on our own engine. Our other game, Pizza Empire, is a restaurant sim where you tap stations and guests pay. Orbit Haulers is a different game: 1. You drag drones onto asteroids to set routes; rocks run dry and are replaced, and you re-route for contracts, rich seams and bonanza rocks all game. 2. Money arrives only when the freighter launches, and the buyer contract you picked multiplies the units it asked for. 3. Modules work only when fitted into three typed sockets in the Fitting Bay, and the reset is spent on a Star Map of rule-changing nodes. Tap path: open the app, follow the reticle: drag the drone onto the rock, then swipe up in the bay (about 30 s). Fitting Bay: the third button on the bottom rail (three hexagons), open once the pod from the first ring-2 claim is opened (about 3 to 5 min)."
 - Bundle ids: `com.example.orbithaulers` until the owner gives the studio's domain (store-1); only the prefix changes then, and `validate --release` refuses `example`. `app.slug` is `orbit-haulers`.
 - Privacy policy: `store.privacyPolicyUrl` holds the placeholder `https://example.com/privacy` until the owner gives the real page; `validate` warns, `validate --release` fails (play-13, store-0).
 - Tracking permission (iOS): `app.trackingText`, this game's own sentence (Decision 55).
@@ -995,6 +990,8 @@ Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-min
 Knobs, in order: if the drill binds more than 60 %, build-haul.py lowers rig cost growth; if haul binds, it raises capacity growth; if the freighter binds, it lowers freighter cost growth. The claim-cost ring factor is the first knob for dead stretches. If drags fall below 4 per 10 min, it shortens contract lifetimes (to 4) and seam intervals before anything else. If Upgrade taps pass 60 %, it raises rig and fleet cost growth together with their per-level effect (fewer, bigger levels). If run 2 misses 60 %, it raises the Afterburner head start and the bonanza effect, never a flat node's cap.
 
 **Measured at integration (shipped game.json, Decision 32's contracts, 12 h with Jumps).** Seed 12345: every hard target met: first payout 0:21, autopilot 2:11, first Jump 2 h 27, run 2 at 43 % of run 1, drags 51 / 101 / 26, Upgrade share at most 41 %, longest dead stretch 10:16 (2:40 in the first 30 min), 8:59 after the Jump, drawn-new gap 9:10, limits drill 51 % / haul 48 % / freighter 1 %, offline at most 0.41 of an hour of play. Contracts met on 55 % of payouts; the passive player meets 12 %. Seeds 1 to 7 (same knobs): every hard target met on 6 of 7; seed 4 misses only the offline gate, at 0.45 (rounded; just over) at hour 10. Over the 8 seeds: Jump 2 h 18 to 2 h 38, run 2 at 23 to 63 % (the heaviest seeds 61 and 63 %, so the 60 % target is missed on two seeds and the 65 % gate holds), met contracts 55 to 62 % (passive player 10 to 14 % on the 8 seeds of the first knob set; 12 % with the shipped one on seed 12345). Soft targets missed: first ring-2 slot 3:39 to 3:58 (target 5:00 to 8:00), first ring-3 slot 13 to 30 min (15 to 22; met on 2 seeds), first ring-4 slot 27 to 48 min (40 to 55; met on 2 seeds), run 3 at 32 to 131 % of run 2 (70 %; met on 3 seeds), rocks dried 18 to 42 per hour at minute 30 (8 to 20; met on 1 seed). Offline against an hour of play without buying (not a gate, printed by the bot) reaches 0.92 on seed 12345: the bot that does not buy still routes for contracts and launches part-filled holds under the `contract` policy, so that hour is a poor player's hour; fastForward itself matches an untouched hour of play within 10 % (haul.offline.test.ts). With the claim ring factor at its floor (15) the ring-2 and ring-3 timings pull against each other: a higher claim base moves ring 2 later and ring 3 further out of its window. Knob table: `python3 scripts/content/build-space.py --table`.
+
+**Measured in the fix round (shipped game.json, Decisions 40 to 45, 12 h with Jumps, seeds 12345 / 4 / 99, the seeds validate gates on).** Every hard target is met on all three seeds: first payout 0:26, autopilot 2:03, first Jump 2 h 31 / 2 h 18 / 2 h 39, run 2 at 39 / 42 / 42 % of run 1, drags at minutes 30, 60, 120 at least 9, Upgrade share at most 52 %, longest dead stretch to the Jump 9:37 / 9:16 / 9:34 (4:51 / 5:41 / 4:58 in the first 30 min), after the Jump at most 15:26, drawn-new gap at most 12:49, limits drill 52 to 55 % / haul 43 to 47 % / freighter 1 to 2 %, offline with the +50 % bonus at most 0.40 of an hour of play and at most 0.83 of an hour of watching (0.6 and 0.9 are the gates; without the bonus at most 0.27). The bot now counts the supply drop (5.2's free timer: 15 min, then 45 min later, then every 3 h) as the pod it is. Soft results: taken contracts met 99 / 98 / 96 % by the bot that routes (target 60 to 85 %: missed, because Decision 40 makes every contract reachable and the bot routes perfectly; a person routes less well), 29 / 19 / 24 % by the passive player (≤ 25 %: met on two seeds), contract bonus 22 / 22 / 19 % of income (aim 10 to 25 %), pods in hours 1 to 3: 9 to 11 an hour (3 to 10: just over on two hours), Dark Matter from them 6.3 to 7.7 an hour, longest wait between purchases in the first 5 minutes 0:26 / 0:27 / 0:38, rocks dried at minute 30: 18 / 36 / 54 an hour (8 to 20), first ring-2 slot 2:28 to 3:39 (5:00 to 8:00: early on purpose, play-18 asked for a cheaper first ring-2 claim), ring 3 at 10:00 to 21:03, ring 4 at 33 to 36 min, ring 5 at 1 h 09 to 1 h 13 (all early), run 3 at 96 to 125 % of run 2 (70 %). Why the ore share moved: at the threshold before the last (5.5e7), nine seeds (12345, 4, 99, 1, 2, 3, 5, 6, 7) with a ring's own ore at 70 % of its stream put the first Jump between 1 h 47 and 2 h 36 (49 minutes; the ore lottery on rings 4 and 5 decided it), and five seeds (4, 99, 12345, 5, 3) at 85 % between 1 h 45 and 2 h 10 (25 minutes), which is what lets one threshold put the three gated seeds in the 30-minute window. Seeds other than 12345, 4 and 99 are not checked at the shipped threshold.
 
 ---
 
@@ -1277,5 +1274,60 @@ The loading screen is a part of the mode entry: this game draws its own with its
 
 #### Numbers of the fix round
 
-(Written by the numbers engineer with the re-tune; see below.)
+Every shipped number that changed in this round (scripts/content/build-space.py; game.json regenerated, store files synced):
+
+- **Contracts** (Decision 40): `haul.contracts.launches` 4 (a taken contract is delivered over 4 warp-outs; tune 4 to 8, 6 at first: the passive player met 35 % at 6), `offerLaunches` 12, `margin` 0.2 (was the new rule's 0.12), `reach` 0.5 to 0.9 (was 0.35 to 0.75); `lifetime` and `minUnits` are no longer read.
+- **Pods** (rules-3): a Scrap Pod every 12th contract met (was 4) and every 8th dry rock (was 6).
+- **The first Jump on every seed** (Decision 45, rules-2): prestige threshold 1.2e8 (was 1.6e7; the freighter and the contracts below raised income); a ring's own ore is 85 % of its rock stream on rings 2 to 5 (was 70 %).
+- **The tutorial** (Decision 44, play-17, play-18): freighter capacity at level 1 is 20 (was 12: two worked ring-1 rocks filled a 12-unit freighter, so the rig step paid nothing), drone capacity at level 1 is 5 (was 4: a drone must carry more than a level-2 ring-1 rig drills), claim base ₵14 (was ₵16) and claim factor per slot 1.5 (was 1.4): slot 1 costs ₵21 and comes at the first warp-out (₵22), the drone (₵10) at the next, the rig level (₵3) at once. Income: ₵0.75/s with one rock, ₵1.51/s after the second rock and its drone (+100 %), ₵1.76/s after the rig level (+17 %). The first rich seam of the first galaxy at 150 s (`haul.seam.first`; later galaxies `firstLater` 360).
+- **Offline** (Decision 42): `haul.offline.adBonus` 0.5; the efficiency cap stays 0.45 (measured margin: 0.40 of play and 0.83 of watching with the bonus).
+- **Day shift** (Decision 53): `economy.daily.gems` is empty (no daily ladder); `haul.shift` {contracts 3, minHours 16, mult 2}; the fingerprint's meta systems list "shift-bonus" instead of "daily-gift", and validate fails when the list and the data disagree.
+- **Modules and products** (Decision 54): module parts per level `3 × 1.35^(level − 1)` (3, 4, 5, 7, 10, 13, 18, 24; the first game uses 2 × 1.5^n); fallback prices Clearance $6.49, Hangar Expansion $4.49, Prospector Charter $3.49, Fuel Cell $2.49, Fuel Tank $8.49 (none of the first game's price points; the real prices are set in the consoles). At about 7 to 10 pods an hour a common module gets about 4 parts an hour (level 5 after about 5 hours of play), and the 5 Ore Sorter parts of the Prospector Charter are about 20 hours of an epic's drops.
+- **Texts** (Decisions 46, 54, 55; play-1, play-16, store-1, store-5, store-7, store-12, play-13): the story beat `start` is gone (guided step 1 voices the line); mission texts without a wrong plural ("Contracts to close: {n}.", "New slots to claim: {n}.", "Pods to open: {n}."); buyer calls are filled with figures ({units} short format, {mult} "x1.8"), Halden's closing line "Received in full. Call us again."; app ids `com.example.orbithaulers`; `app.trackingText` in this game's words; `store.privacyPolicyUrl` placeholder; subtitle "Space mining by drone routes"; short description "An asteroid field, a hold of ore, and a freighter waiting for your swipe."; keywords idle, tycoon, asteroid, freighter, cargo, logistics, station, galaxy, rocket, sci-fi, fleet, manager.
+- **New section 8 targets** (Decisions 40, 42, 45, play-18): taken contracts met (60 to 85 %, passive ≤ 25 %), contract bonus share (aim 10 to 25 %), the two offline gates with the bonus (≤ 0.6 of play, ≤ 0.9 of watching), pods per hour in hours 1 to 3 (3 to 10) and their Dark Matter (2 to 8), the longest wait between purchases in the first 5 minutes (about 30 s). Validate runs seeds 12345, 4 and 99 in parallel.
+
+Knob table (`python3 scripts/content/build-space.py --table`; * = shipped value differs from the specification's starting value):
+
+| Knob | What | Range | Spec | Shipped |
+|---|---|---|---|---|
+| prestigeThreshold | lifetime credits per core squared (first Jump 2 h 15 to 2 h 45) | 100000.0 to 10000000000.0 | 2000000.0 | 120000000 * |
+| coreScale | cores scale | 1 to 20 | 5 | 5 |
+| offlineHours | offline cap, hours | 4 to 8 | 6 | 6 |
+| offlineEfficiency | offline efficiency (at most 0.45) | 0.3 to 0.45 | 0.45 | 0.45 |
+| oreRatio2 | copper / iron | 4 to 6 | 5 | 5 |
+| oreRatio3 | ice / copper | 4 to 6 | 5 | 5 |
+| oreRatio4 | titanium / ice | 4 to 6 | 4.8 | 4.8 |
+| oreRatio5 | platinum / titanium | 4 to 6 | 5 | 5 |
+| ringOreShare | share of a ring's own ore in its rock stream (rings 2 to 5) | 60 to 90 | 70 | 85 * |
+| startPile | units on slot 0 at the start | 5 to 10 | 8 | 8 |
+| rigLevel | drill per rig level | 1.25 to 1.45 | 1.35 | 1.4 * |
+| rigGrowth | rig cost growth | 1.45 to 1.8 | 1.6 | 1.7 * |
+| claimBase | claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed) | 10 to 40 | 13 | 14 * |
+| claimRing | claim cost per ring | 15 to 30 | 20 | 15 * |
+| claimJ | claim cost per slot within a ring | 1.4 to 2.5 | 1.6 | 1.5 * |
+| droneCapacity | units a drone carries at capacity level 1 (Decision 44) | 4 to 6 | 4 | 5 * |
+| capacityGrowth | drone capacity per level (knob: haul binds) | 1.2 to 1.35 | 1.25 | 1.25 |
+| droneGrowth | drone cost growth (knob: fleet taps) | 1.35 to 1.6 | 1.45 | 1.45 |
+| capacityCostGrowth | capacity cost growth (knob: fleet taps) | 1.45 to 1.8 | 1.55 | 1.55 |
+| freighterCap | freighter capacity at level 1 (Decision 44: the tutorial rig step must pay) | 12 to 24 | 12 | 20 * |
+| freighterGrowth | freighter cost growth (knob: freighter binds) | 1.45 to 1.8 | 1.6 | 1.5 * |
+| autopilot | Dock Autopilot price | 80 to 110 | 90 | 90 |
+| bonanza | bonanza chance of a new rock | 0.03 to 0.06 | 0.04 | 0.06 * |
+| bonanzaDrill | bonanza drill (knob: run 2) | 2 to 3 | 2 | 3 * |
+| seamMin | seam interval, low end (knob: drags) | 60 to 90 | 90 | 90 |
+| seamMax | seam interval, high end (knob: drags) | 100 to 150 | 150 | 150 |
+| contractLaunches | warp-outs a taken contract has to deliver everything | 4 to 8 | 6 | 4 * |
+| offerLaunches | warp-outs an offer stays on the board | 8 to 16 | 12 | 12 |
+| contractMargin | never free: units at least L x now x (1 + margin) | 0.08 to 0.2 | 0.12 | 0.2 * |
+| fee | delivery fee on the rest of a met cargo | 0.05 to 0.15 | 0.1 | 0.1 |
+| reachLo | contract units: low end, from the hold share as routed (0) to the share routed for it (1) | 0.2 to 0.5 | 0.35 | 0.5 * |
+| reachHi | contract units: high end of the same range | 0.6 to 0.9 | 0.75 | 0.9 * |
+| fleetShare | share of the fleet a player sends to a contract when routing for it | 0.3 to 0.7 | 0.5 | 0.5 |
+| contractMultScale | contract multipliers: share of the specification's mark-up over x1 | 0.6 to 1 | 1 | 1 |
+| podsDepleted | a Scrap Pod every n-th dry rock (pods per hour) | 4 to 16 | 6 | 8 * |
+| podsContracts | a Scrap Pod every n-th contract met (pods per hour) | 4 to 16 | 4 | 12 * |
+| headStartRig | rig level of head-start slots (knob: run 2) | 4 to 10 | 4 | 6 * |
+| efficiencyCap | offline efficiency cap of the haul rules (gate measured with the ad bonus) | 0.25 to 0.45 | 0.45 | 0.45 |
+| partsBase | module parts for level 2 | 2 to 4 | 3 | 3 |
+| partsGrowth | module parts growth per level | 1.25 to 1.45 | 1.35 | 1.35 |
 
