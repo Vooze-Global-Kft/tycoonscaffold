@@ -35,12 +35,13 @@ export const useHaulUi = create<HaulUi>((set) => ({
   overlay: null,
   selection: null,
   menuOpen: false,
-  openSheet: (sheet) => set({ sheet, selection: null }),
+  // One sheet, spoke or menu at a time (spec 4.4): opening one closes the others.
+  openSheet: (sheet) => set({ sheet, menuOpen: false, selection: null }),
   closeSheet: () => set({ sheet: null }),
-  openSpoke: (spoke) => set({ spoke, sheet: null, selection: null }),
+  openSpoke: (spoke) => set({ spoke, sheet: null, menuOpen: false, selection: null }),
   closeSpoke: () => set({ spoke: null }),
-  openOverlay: (overlay) => set({ overlay }),
+  openOverlay: (overlay) => set({ overlay, sheet: null, menuOpen: false, selection: null }),
   closeOverlay: () => set({ overlay: null }),
   select: (selection) => set({ selection }),
-  setMenu: (menuOpen) => set({ menuOpen }),
+  setMenu: (menuOpen) => set(menuOpen ? { menuOpen, sheet: null, selection: null } : { menuOpen }),
 }));

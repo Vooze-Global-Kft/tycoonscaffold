@@ -3,9 +3,11 @@
  * game as a separate app, with one dashboard for revenue per game.
  *
  * Product ids come from game.json. Create the same ids in App Store Connect,
- * Play Console and RevenueCat. Non-consumables (noAds, multiplier,
- * starterPack) are restored from the store; consumables (gems, timeWarp) are
- * granted once per purchase.
+ * Play Console and RevenueCat. Non-consumables (noAds, skipAds, multiplier,
+ * starterPack, clearance, unlock: engine/meta isNonConsumable) are restored from
+ * the store and re-granted at boot, and a mode with its own engine applies them to
+ * the run in progress (store.ts applyProductNow: Hangar Expansion's drones);
+ * consumables (gems, timeWarp) are granted once per purchase.
  */
 import { Platform } from 'react-native';
 import { baseGame } from '../config/game';

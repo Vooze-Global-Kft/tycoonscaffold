@@ -51,8 +51,8 @@
     "tapPercentOfIncome": 0,
     "milestones": [],
     "prestige": {
-      "threshold": 2000000.0,
-      "scale": 5.0,
+      "threshold": 2000000,
+      "scale": 5,
       "exponent": 0.5,
       "bonusPerPoint": 0
     },
@@ -855,7 +855,7 @@
     },
     "claim": {
       "base": 13,
-      "ringFactor": 20.0,
+      "ringFactor": 20,
       "jFactor": 1.6
     },
     "pile": {

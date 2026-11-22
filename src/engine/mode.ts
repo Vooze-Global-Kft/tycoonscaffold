@@ -58,6 +58,23 @@ export interface EngineMode {
   missionCounter?(state: GameState, type: string): number | undefined;
   /** Whether a mission type can be handed out now, or undefined when the type is not the mode's. */
   missionUsable?(cfg: GameConfig, state: GameState, type: string): boolean | undefined;
+  /**
+   * Two offline reports of one absence (a resume while the first report is still on screen) as
+   * one. Without it the newer report replaces the older one.
+   */
+  mergeReport?(older: unknown, newer: unknown): unknown;
+  /**
+   * A non-consumable product was just recorded in `entitlements.products` (bought, restored or
+   * re-granted at boot): the mode applies what it means for the run in progress (haul: Hangar
+   * Expansion's start drones now, not only from the next run on). Returns the same object when
+   * the product changes nothing now.
+   */
+  entitle?(cfg: GameConfig, state: GameState, productId: string): GameState;
+  /**
+   * What the mode's scene interpolates between ticks (haul: the route table, the run clock),
+   * read after every change of the game; `now` is the wall time of that change. Null outside a run.
+   */
+  frame?(cfg: GameConfig, state: GameState, now: number): unknown;
 }
 
 let installed: EngineMode | null = null;

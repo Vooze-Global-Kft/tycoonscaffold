@@ -365,6 +365,11 @@ export const GameConfigSchema = z.object({
       /** Minimum gap between interstitials. */
       interstitialCooldownSec: z.number().default(180),
       showBanner: z.boolean().default(true),
+      /**
+       * false: the game shows no interstitial at all (Orbit Haulers' first version, spec 5.4). Absent:
+       * interstitials at the natural breaks, as before (no default, so existing games parse unchanged).
+       */
+      interstitials: z.boolean().optional(),
       /** Use Google test ads even in release builds (turn off for production). */
       forceTestAds: z.boolean().default(false),
       /**

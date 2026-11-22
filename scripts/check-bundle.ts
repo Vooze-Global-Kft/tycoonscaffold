@@ -12,6 +12,11 @@
  *   - an import the fast stage cannot resolve (it fails closed: Metro might bundle anything there);
  *   - a string literal in a shared or family file that uses another mode's theme words
  *     (scripts/lib/modes.js THEME_WORDS), unless it is in the known remainder (THEME_WORDS_ALLOWED);
+ *   - another game's names and lines anywhere in the bundle (the string denylist, errata 6: its card,
+ *     module, character, venue, galaxy and buyer names, story lines, store title, subtitle and
+ *     description sentences; never keywords or plain words), unless scripts/bundle-allow.json lists
+ *     the term with a reason. The fast stage reads every bundled file's literals, the export stage
+ *     the shipped JavaScript itself;
  *   - another game's data folder (games/<other>/);
  *   - a sound file from a pack the game does not declare (shared/sfx/<pack>/, game.json soundPack);
  *   - for a game whose mode is not sim, the restaurant's cartoon-people rig.
@@ -23,7 +28,10 @@
  *   npm run check:bundle                    fast: every game, through the TypeScript import graph (seconds)
  *   npm run check:bundle -- --game <id>     one game
  *   npm run check:bundle -- --export        the real thing: `expo export` per game with source maps
- *                                           (about a minute per game; the release check)
+ *                                           (about a minute per game; the release check). Each export
+ *                                           runs in a temporary copy of the project, so this checkout's
+ *                                           selected game never changes; it writes
+ *                                           games/<id>/store/bundle-report.json (fingerprint dimension 8)
  *   npm run check:bundle -- --export --from <dir>   read an export made earlier (dir holds one folder per game id)
  *   npm run check:bundle -- --game space-miner --as-mode haul   fast stage only: that game's data as if
  *                                           its mode were another (to check a mode before a game uses it)
@@ -39,15 +47,17 @@
  * lands on a project file is walked like a relative one. It does not walk into node_modules; it
  * lists the packages imported directly, and an import that is neither a project file nor an
  * installed package fails. The export stage reads Metro's source map, so it is exactly what ships,
- * and judges it by the mode that was bundled (src/generated/mode.ts in the map). --export rewrites
- * src/generated/ for each game and puts back the game that was selected before.
+ * and judges it by the mode that was bundled (src/generated/mode.ts in the map). --export copies the
+ * project (node_modules linked) to a temporary folder per game and exports there, so a dev server
+ * running from this checkout keeps its game; --from <dir> reads earlier exports and writes no report.
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
-import { bundleViolations, groupOf, importViolations, levelOf, packageOf, themeWordsIn, type BundleContents, type BundleManifest, type Violation } from './lib/bundleRules';
+import { bundleViolations, denylistOf, denyMatcher, denyPattern, groupOf, importViolations, levelOf, packageOf, textOfData, themeWordsIn, type BundleContents, type BundleManifest, type DeniedHit, type DenyTerm, type Violation } from './lib/bundleRules';
+import { INTERFACE_LABELS, sourceHashOf, type BundleReportFile } from './lib/fingerprint';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const games = require('./lib/games.js');
@@ -84,6 +94,34 @@ interface Module {
   bytes: number;
 }
 
+// ---------------------------------------------------------------------------
+// the string denylist (errata 6)
+// ---------------------------------------------------------------------------
+
+/** scripts/bundle-allow.json: { "<game id>": { "<term>": "why it may stay in that game's bundle" } }. */
+const BUNDLE_ALLOW: Record<string, Record<string, string>> = JSON.parse(fs.readFileSync(path.join(__dirname, 'bundle-allow.json'), 'utf8'));
+const allowedFor = (id: string): Record<string, string> => Object.fromEntries(Object.entries(BUNDLE_ALLOW[id] ?? {}).filter(([k]) => !k.startsWith('_')));
+
+/** Every other game's names and lines that `id`'s bundle may not hold. */
+export function deniedTermsFor(id: string): DenyTerm[] {
+  const ownText = textOfData(games.readGameJson(id));
+  return (games.listGames() as string[]).filter((o) => o !== id).flatMap((o) => denylistOf(o, games.readGameJson(o), { labels: INTERFACE_LABELS, ownText }));
+}
+
+/** Fast stage: the literals of every bundled source file (JSON files by their text). */
+function deniedInFiles(modules: readonly Module[], terms: readonly DenyTerm[], virtual: Map<string, string>): DeniedHit[] {
+  const match = denyMatcher(terms);
+  const out: DeniedHit[] = [];
+  for (const m of modules) {
+    if (m.path.includes('node_modules/') || ASSET_EXT.test(m.path)) continue;
+    const abs = path.join(ROOT, m.path);
+    const text = virtual.get(abs) ?? (fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : '');
+    const lits = m.path.endsWith('.json') ? [{ line: 0, text }] : stringLiterals(m.path, text);
+    for (const lit of lits) for (const term of match(lit.text)) out.push({ file: m.path, line: lit.line || undefined, term });
+  }
+  return out;
+}
+
 interface Report {
   game: string;
   mode: string;
@@ -99,6 +137,8 @@ interface Report {
   /** Imports the fast stage could not resolve. */
   unresolved?: { file: string; spec: string }[];
   assetBytes: number;
+  /** Another game's names and lines found in the bundle (before bundle-allow.json). */
+  denied?: DeniedHit[];
   violations: Violation[];
 }
 
@@ -347,7 +387,8 @@ export function fastReport(id: string): Report {
   const g = walk([appEntry()], PLATFORM, virtual);
   const modules = [...g.files].map((f) => ({ path: rel(f), bytes: virtual.get(f)?.length ?? fileSize(f) }));
   const assets = [...g.assets].map(rel);
-  return finish({ game: id, mode: games.gameMode(id, game), pack: games.soundPack(id, game), stage: 'fast', modules, assets, packages: [...g.packages].sort(), unresolved: g.unresolved });
+  const denied = deniedInFiles(modules, deniedTermsFor(id), virtual);
+  return finish({ game: id, mode: games.gameMode(id, game), pack: games.soundPack(id, game), stage: 'fast', modules, assets, packages: [...g.packages].sort(), unresolved: g.unresolved, denied });
 }
 
 /** Every import edge in src/ (all files, reachable or not, generated ones as written now). */
@@ -380,27 +421,102 @@ function selectedGame(): string | null {
   return m ? m[1] : null;
 }
 
-function runExport(id: string, out: string) {
+/** Top-level entries of the project an export does not need (or that are rebuilt): never copied. */
+const COPY_SKIP = new Set(['node_modules', '.git', '.expo', 'dist', 'ios', 'android', 'web-build']);
+
+/**
+ * A private copy of the project for one export: every file but COPY_SKIP, with node_modules linked to
+ * this checkout's (real) one. app.config.ts writes src/generated/ for GAME there, not here, so a dev
+ * server running from this checkout keeps the game it shows (only GAME=space-miner may be selected in a
+ * shared checkout while a preview runs from it).
+ */
+function projectCopy(id: string): string {
+  const copy = fs.mkdtempSync(path.join(os.tmpdir(), `check-bundle-${id}-`));
+  for (const e of fs.readdirSync(ROOT)) {
+    if (COPY_SKIP.has(e)) continue;
+    fs.cpSync(path.join(ROOT, e), path.join(copy, e), { recursive: true, dereference: false, verbatimSymlinks: true });
+  }
+  fs.symlinkSync(fs.realpathSync(path.join(ROOT, 'node_modules')), path.join(copy, 'node_modules'), 'dir');
+  return copy;
+}
+
+function runExport(id: string, root: string, out: string) {
   fs.rmSync(out, { recursive: true, force: true });
-  console.log(`  expo export --platform ${PLATFORM} for ${id} (about a minute) ...`);
+  console.log(`  expo export --platform ${PLATFORM} for ${id} in a copy of the project (about a minute) ...`);
   execFileSync('npx', ['expo', 'export', '--platform', PLATFORM, '--source-maps', '--dump-assetmap', '--no-bytecode', '--output-dir', out], {
-    cwd: ROOT,
+    cwd: root,
     env: { ...process.env, GAME: id, CI: '1' },
     stdio: ['ignore', 'ignore', 'inherit'],
   });
 }
 
-/** A source map path as Metro writes it ("/../<package name>/src/x.ts", or absolute) -> repo-relative. */
-function normaliseSource(src: string, pkgName: string): string {
-  if (src.startsWith(ROOT + '/')) return rel(src);
-  const prefix = `/../${pkgName}/`;
-  if (src.startsWith(prefix)) return src.slice(prefix.length);
+/** A source map path as Metro writes it (absolute, or "/../<folder>/x" relative to the server root) -> repo-relative. */
+function normaliseSource(src: string, root: string): string {
+  const nm = src.lastIndexOf('/node_modules/');
+  if (nm >= 0) return src.slice(nm + 1);
+  for (const r of [root, ROOT]) if (src.startsWith(r + '/')) return path.relative(r, src).split(path.sep).join('/');
+  const up = /^\/\.\.\/[^/]+\/(.*)$/.exec(src);
+  if (up) return up[1];
   return src.replace(/^\/+/, '');
 }
 
-function exportReport(id: string, dir: string): Report {
+/** The files an export was made from, for bundle-report.json: its project modules and assets (generated files by their inputs), the lockfile. */
+function reportSources(r: Report): string[] {
+  const own = r.modules.map((m) => m.path).filter((p) => !p.includes('node_modules/') && !p.startsWith('src/generated/'));
+  const inputs = ['package-lock.json', 'app.config.ts', 'scripts/lib/games.js', 'scripts/lib/fxCatalog.js', 'src/services/fx/catalog.ts', 'src/services/fx/catalog.haul.ts', `games/${r.game}/game.json`];
+  return [...new Set([...own, ...r.assets, ...inputs])].filter((f) => fs.existsSync(path.join(ROOT, f))).sort();
+}
+
+/** Writes games/<id>/store/bundle-report.json from an export (fingerprint dimension 8, spec 10.4 step 4). */
+function writeBundleReport(r: Report) {
+  const sources = reportSources(r);
+  const report: BundleReportFile = {
+    game: r.game,
+    date: new Date().toISOString(),
+    platform: PLATFORM,
+    stage: 'export',
+    result: r.violations.length ? 'fail' : 'pass',
+    sourceHash: sourceHashOf(ROOT, sources),
+    sources,
+    violations: r.violations.map(({ rule, file, message }) => ({ rule, file, message })),
+    modules: r.modules.length,
+    assets: r.assets.length,
+    bytes: r.bytes,
+  };
+  const file = path.join(games.gameDir(r.game), 'store', 'bundle-report.json');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(report, null, 1) + '\n');
+  console.log(`  wrote ${rel(file)} (${report.result})`);
+}
+
+/** Export stage: the denylist over the shipped JavaScript itself, each hit traced to its module through the map's sections. */
+function deniedInBundle(bundle: string, sectionStarts: { start: number; path: string }[], terms: readonly DenyTerm[]): DeniedHit[] {
+  const out: DeniedHit[] = [];
+  const seen = new Set<string>();
+  const moduleAt = (i: number) => {
+    let lo = 0;
+    let hi = sectionStarts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (sectionStarts[mid].start <= i) lo = mid;
+      else hi = mid - 1;
+    }
+    return sectionStarts[lo]?.path ?? 'bundle';
+  };
+  for (const term of terms) {
+    const re = new RegExp(denyPattern(term), term.caseSensitive ? 'gu' : 'giu');
+    for (const m of bundle.matchAll(re)) {
+      const file = moduleAt(m.index ?? 0);
+      if (seen.has(file + '\0' + term.term)) continue;
+      seen.add(file + '\0' + term.term);
+      out.push({ file, term });
+    }
+  }
+  return out;
+}
+
+function exportReport(id: string, dir: string, root: string): Report {
   const game = games.readGameJson(id);
-  const pkgName = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).name;
   const jsDir = path.join(dir, '_expo', 'static', 'js', PLATFORM);
   const bundleFile = fs.readdirSync(jsDir).find((f) => /\.(js|hbc)$/.test(f));
   if (!bundleFile) throw new Error(`no bundle in ${jsDir}`);
@@ -412,6 +528,7 @@ function exportReport(id: string, dir: string): Report {
   const at = (o: { line: number; column: number }) => (lineStart[o.line] ?? bundle.length) + o.column;
   const sections: { offset: { line: number; column: number }; map: { sources: string[]; sourcesContent?: (string | null)[] } }[] = map.sections ?? [{ offset: { line: 0, column: 0 }, map }];
   const sizes = new Map<string, number>();
+  const starts: { start: number; path: string }[] = [];
   // The mode that was bundled, from the generated entry in the map (not today's game.json).
   let bundledMode: string | null = null;
   sections.forEach((s, i) => {
@@ -419,23 +536,31 @@ function exportReport(id: string, dir: string): Report {
     const end = i + 1 < sections.length ? at(sections[i + 1].offset) : bundle.length;
     const src = s.map.sources?.[0];
     if (!src) return;
-    const p = normaliseSource(src, pkgName);
+    const p = normaliseSource(src, root);
+    starts.push({ start, path: p });
     if (p === modes.GENERATED_ENTRY) bundledMode = /export const MODE = "([^"]+)"/.exec(s.map.sourcesContent?.[0] ?? '')?.[1] ?? null;
     sizes.set(p, (sizes.get(p) ?? 0) + Math.max(0, end - start));
   });
+  starts.sort((a, b) => a.start - b.start);
   const modules = [...sizes].map(([p, bytes]) => ({ path: p, bytes }));
   const assetMap = JSON.parse(fs.readFileSync(path.join(dir, 'assetmap.json'), 'utf8')) as Record<string, { files: string[] }>;
-  const assets = [...new Set(Object.values(assetMap).flatMap((a) => a.files.map((f) => (f.startsWith(ROOT) ? rel(f) : f))))].sort();
+  const relTo = (f: string) => {
+    for (const r of [root, ROOT]) if (f.startsWith(r + '/')) return path.relative(r, f).split(path.sep).join('/');
+    return f;
+  };
+  const assets = [...new Set(Object.values(assetMap).flatMap((a) => a.files.map(relTo)))].sort();
   const packages = [...new Set(modules.filter((m) => m.path.includes('node_modules/')).map((m) => packageOf(m.path)))].sort();
   const declared = games.gameMode(id, game);
   if (!bundledMode) throw new Error(`${dir}: the source map has no ${modes.GENERATED_ENTRY} with its MODE, so the bundled mode is unknown`);
   if (bundledMode !== declared) throw new Error(`${dir}: this export was built as mode "${bundledMode}", but games/${id}/game.json says "${declared}" (stale export?): export again`);
-  return finish({ game: id, mode: bundledMode, pack: games.soundPack(id, game), stage: 'export', modules, assets, packages, bytes: bundle.length });
+  const denied = deniedInBundle(bundle, starts, deniedTermsFor(id));
+  return finish({ game: id, mode: bundledMode, pack: games.soundPack(id, game), stage: 'export', modules, assets, packages, bytes: bundle.length, denied, root });
 }
 
 // ---------------------------------------------------------------------------
 
-function finish(r: Omit<Report, 'violations' | 'bytes' | 'ownBytes' | 'assetBytes'> & { bytes?: number }): Report {
+function finish(input: Omit<Report, 'violations' | 'bytes' | 'ownBytes' | 'assetBytes'> & { bytes?: number; root?: string }): Report {
+  const { root, ...r } = input;
   const own = r.modules.filter((m) => !m.path.includes('node_modules/'));
   const contents: BundleContents = {
     game: r.game,
@@ -447,12 +572,14 @@ function finish(r: Omit<Report, 'violations' | 'bytes' | 'ownBytes' | 'assetByte
     unresolved: r.unresolved,
     themeWords: wordHits(r),
     themeWordsAllowed: modes.THEME_WORDS_ALLOWED,
+    denied: r.denied,
+    deniedAllowed: allowedFor(r.game),
   };
   return {
     ...r,
     bytes: r.bytes ?? r.modules.reduce((n, m) => n + m.bytes, 0),
     ownBytes: own.reduce((n, m) => n + m.bytes, 0),
-    assetBytes: r.assets.reduce((n, a) => n + fileSize(path.join(ROOT, a)), 0),
+    assetBytes: r.assets.reduce((n, a) => n + fileSize(path.join(root ?? ROOT, a)), 0),
     violations: bundleViolations(contents, MANIFEST),
   };
 }
@@ -489,18 +616,24 @@ function main() {
   if (flag('--export')) {
     const from = option('--from');
     const before = selectedGame();
-    const tmp = from ?? fs.mkdtempSync(path.join(os.tmpdir(), 'check-bundle-'));
-    try {
-      for (const id of ids) {
-        const dir = path.join(tmp, id);
-        if (!from) runExport(id, dir);
-        reports.push(exportReport(id, dir));
+    for (const id of ids) {
+      if (from) {
+        reports.push(exportReport(id, path.join(from, id), ROOT));
+        continue;
       }
-    } finally {
-      // The export selected each game in turn: put back the one that was selected.
-      if (!from && before) games.writeActiveGame(before);
-      if (!from) fs.rmSync(tmp, { recursive: true, force: true });
+      // One private copy per game: this checkout's generated files are never touched.
+      const copy = projectCopy(id);
+      try {
+        const out = path.join(copy, '.bundle-export');
+        runExport(id, copy, out);
+        const r = exportReport(id, out, copy);
+        reports.push(r);
+        writeBundleReport(r);
+      } finally {
+        fs.rmSync(copy, { recursive: true, force: true });
+      }
     }
+    if (before && selectedGame() !== before) throw new Error(`the selected game changed during the export (${before} -> ${selectedGame()}): run GAME=${before} node scripts/select-game.js`);
   } else {
     for (const id of ids) reports.push(fastReport(id));
   }

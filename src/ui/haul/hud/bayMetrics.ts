@@ -15,15 +15,30 @@ export interface BayCounterMetrics {
 
 const clamp = (lo: number, hi: number, x: number) => Math.min(hi, Math.max(lo, x));
 
+/** The digital face's line, in em, when the font's own figure is not known (monospace faces run 1.15 to 1.2). */
+export const COUNTER_LINE_EM = 1.2;
+/** Points between the counter's row and the ticker's row. */
+export const BAY_ROW_GAP = 2;
+
 /** `compact`: the 375 x 667 layout. `block`: the counter's height (56 / 50). `lineEm`: the display font's line height in em. */
-export function bayCounterMetrics(compact: boolean, block: number, fontScale: number, innerWidth: number, glyphCount: number, lineEm = 1.2): BayCounterMetrics {
-  const scale = clamp(0.85, 1.2, fontScale);
+export function bayCounterMetrics(compact: boolean, block: number, fontScale: number, innerWidth: number, glyphCount: number, lineEm = COUNTER_LINE_EM): BayCounterMetrics {
+  const scale = clamp(0.85, 1.2, Number.isFinite(fontScale) && fontScale > 0 ? fontScale : 1);
   const tickerFont = Math.round((compact ? 11 : 12) * scale * 10) / 10;
   const tickerRow = Math.ceil(tickerFont * 1.25);
-  const counterRow = block - 2 - tickerRow;
+  const counterRow = block - BAY_ROW_GAP - tickerRow;
   const counterMax = Math.floor(Math.min((compact ? 24 : 28) * scale, counterRow / lineEm));
   const fit = innerWidth / (Math.max(1, glyphCount) * 0.62);
   const short = fit < 16;
   const counterFont = Math.max(16, Math.min(counterMax, fit));
   return { tickerFont, tickerRow, counterRow, counterFont, short };
+}
+
+/**
+ * Where the two rows go inside the block (absolute tops that add up, no negative margins): the
+ * counter's box is only as tall as its own line and is centred in its row; the ticker sits under the
+ * 2 pt gap. `counterBox` is the RollingNumber's `height` (it never gets a lineHeight).
+ */
+export function bayCounterRows(m: BayCounterMetrics, lineEm = COUNTER_LINE_EM): { counterTop: number; counterBox: number; counterBoxTop: number; tickerTop: number } {
+  const counterBox = Math.min(m.counterRow, Math.ceil(m.counterFont * lineEm));
+  return { counterTop: 0, counterBox, counterBoxTop: Math.floor((m.counterRow - counterBox) / 2), tickerTop: m.counterRow + BAY_ROW_GAP };
 }

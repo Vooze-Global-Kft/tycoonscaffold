@@ -24,8 +24,8 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 - Target age: **13 and over**. Google Play target audience: tick 13-15, 16-17 and 18+ only.
 - **Never** the Apple Kids Category or Google Play's Families / "Designed for Families" programme: the
   game uses third-party ads and analytics, which those programmes exclude (policy.md 3).
-- Store art and text: show adult characters, no "kids" or "for children" wording. Google rejects a
-  13+ listing with "youthful animation or young characters" (policy.md 3), so check the screenshots.
+- The game draws no people (no cast): machines and call-sign plates only. Keep "kids" and "for
+  children" wording out of the store text, and check the screenshots show no young characters.
 - "Could the app unintentionally appeal to children?" (Play): answer honestly; cartoon art can count.
 
 ## App Store Connect: age rating questionnaire
@@ -74,6 +74,8 @@ disclosure page before you submit; they change.
 4. Create every product id in App Store Connect, Play Console and RevenueCat, and attach the
    in-app purchases to the first version you submit.
 5. Privacy policy page live at the URL above, listing AdMob, Firebase and RevenueCat.
+   App Review: paste games/space-miner/store/REVIEW-NOTES.md into "Notes" in App Store Connect (and the Play
+   console's "App access" instructions), with a contact name, email and phone.
 6. Release one game at a time from one account, each with its own art, sounds, numbers and
    listing text: both stores remove families of near-identical apps, and take related accounts with
    them (policy.md 4). `npm run validate` catches shared tables and near-identical descriptions,

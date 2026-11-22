@@ -15,6 +15,8 @@ import { setModePresets, type PresetName } from '../dev/presets';
 import { createInitialState } from '../engine/economy';
 import { installEngineMode, type EngineMode } from '../engine/mode';
 import type { GameState } from '../engine/types';
+import type { FxName } from '../services/fx';
+import { modeSounds } from '../state/modeEvents';
 import { useGame } from '../state/store';
 import { registerArtIcons, type ArtIconSource } from '../ui/art/icons';
 import { setHintSource, type Hint, type HintSource } from '../ui/hints/source';
@@ -46,6 +48,12 @@ export interface ModeEntry {
   engine?: EngineMode;
   /** The web preview's `?preset=fresh|early|mid|late` states for this mode (src/dev/presets.ts). None: the list homes' bot. */
   presets?: (cfg: GameConfig, name: PresetName, now: number) => GameState;
+  /**
+   * The mode's own fx key for each shared key the shared store and screens play (errata 30:
+   * `card_levelup`, `mission_complete`, `offline_collect`, ...), for a mode whose fx table has
+   * none of them (haul). None: the shared keys play as written (sim, classic).
+   */
+  soundKeys?: Readonly<Partial<Record<FxName, FxName>>>;
 }
 
 /** Hands the entry's pieces to the shared code. Called once, by App.tsx, before anything renders. */
@@ -54,6 +62,7 @@ export function installMode(entry: ModeEntry): void {
   if (entry.artIcons) registerArtIcons(entry.artIcons);
   setHintSource(entry.hints ?? null);
   setModePresets(entry.presets ?? null);
+  modeSounds.set(entry.soundKeys ?? null);
   installEngineMode(entry.engine ?? null);
   if (entry.engine) {
     // The mode's own block of game.json (opaque in the shared schema) parsed with its defaults, in

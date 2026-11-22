@@ -82,8 +82,9 @@ function missionUsable(cfg: GameConfig, state: GameState, type: string): boolean
     case 'taps':
     case 'bonus':
       return false;
+    // Errata 74: once contracts have ever unlocked (the lifetime flag of errata 21).
     case 'contracts':
-      return !!h?.contracts.unlocked || (g.stats.contractsMet ?? 0) > 0;
+      return !!g.haulStats?.contractsSeen || !!h?.contracts.unlocked || (g.stats.contractsMet ?? 0) > 0;
     case 'seamDrags':
       return (g.stats.seamDrags ?? 0) > 0 || (h?.vein.count ?? 0) > 0;
     case 'claims':
@@ -91,6 +92,110 @@ function missionUsable(cfg: GameConfig, state: GameState, type: string): boolean
     default:
       return undefined;
   }
+}
+
+/**
+ * What the scene interpolates between two ticks (spec 4.3): the route table, the run clock at
+ * this state and the wall time it was read at. The frame worklet draws `clock + (now − at) / 1000`.
+ * `seq` grows with every frame, so a reader can tell two equal-looking frames apart.
+ */
+export interface HaulFrame {
+  /** Wall time (ms) the frame was read at: the tick or the action that produced this state. */
+  at: number;
+  /** The run clock (s) of this state. */
+  clock: number;
+  seq: number;
+  routes: ReturnType<typeof H.routeTable>;
+  /** Drones on the rack. */
+  idle: number;
+  freighter: { phase: H.FreighterPhase; t: number };
+  /** The slots of the natural seam and the flare's seam (null when none runs). */
+  seams: { vein: number | null; flare: number | null };
+}
+
+/**
+ * The haul mode's own fx key for each shared key the shared store plays (errata 30), handed to the
+ * fx service by the mode entry (src/modes/haul/index.tsx `soundKeys`). Every value is a key of the
+ * haul table (src/services/fx/catalog.haul.ts; src/services/fx/haulTable.test.ts checks it, and
+ * that every fx.play literal reachable from the haul screens resolves).
+ * Two differ from the errata's list, on purpose: `offline_collect` is the payout chime (the Shift
+ * Log plays its own `shift_log` teleprinter when it prints, so the collect would print twice), and
+ * `prestige` ("Jump now", step 2 of errata 17) is the condition choice opening (`ui_open`): the
+ * long `jump_warp` plays once, with the Jump sequence, when the chosen galaxy starts.
+ */
+export const HAUL_SHARED_SOUNDS = {
+  card_levelup: 'module_levelup',
+  mission_complete: 'comms_ack',
+  daily_claim: 'daily_relay',
+  offline_collect: 'payout',
+  prestige: 'ui_open',
+  unlock: 'system_online',
+} as const;
+
+let frameSeq = 0;
+
+/** The frame of a haul game, or null while no run exists (a confirmed Jump waiting for its condition). */
+export function haulFrame(cfg: GameConfig, state: GameState, now: number): HaulFrame | null {
+  if (!H.isHaul(cfg)) return null;
+  const g = asGame(state);
+  const h = g.haul;
+  if (!h) return null;
+  return {
+    at: now,
+    clock: h.clock,
+    seq: ++frameSeq,
+    routes: H.routeTable(cfg, g as H.HaulGame & { haul: H.HaulState }),
+    idle: h.idle,
+    freighter: { phase: h.freighter.phase, t: h.freighter.t },
+    seams: { vein: h.vein.slot, flare: h.flare.slot },
+  };
+}
+
+/** Two Shift Logs of one absence (a resume while the first one is still on screen) as one. */
+export function mergeShiftLogs(older: unknown, newer: unknown): unknown {
+  const a = older as H.OfflineReport | undefined;
+  const b = newer as H.OfflineReport | undefined;
+  if (!a || !b) return b ?? a;
+  const units: Record<string, number> = { ...a.unitsByOre };
+  for (const [ore, n] of Object.entries(b.unitsByOre)) units[ore] = (units[ore] ?? 0) + n;
+  return {
+    seconds: a.seconds + b.seconds,
+    effective: a.effective + b.effective,
+    unitsByOre: units,
+    rocksDry: a.rocksDry + b.rocksDry,
+    pods: a.pods + b.pods,
+    inFlight: a.inFlight + b.inFlight,
+    credits: a.credits + b.credits,
+    noAutopilot: a.noAutopilot && b.noAutopilot,
+    shipped: a.shipped + b.shipped,
+    launches: a.launches + b.launches,
+  } satisfies H.OfflineReport;
+}
+
+/**
+ * Hangar Expansion bought (or restored) during a run (spec 5.4: "+6 drone cap and 2 idle drones at
+ * every run start, for good"): the cap rises at once through `droneCapFor`, and the run in
+ * progress gets its start drones now, idle on the rack, so the purchase shows on the map the
+ * moment it is made. Later runs get them from `createHaul`. Never above the new cap; once per
+ * run (`flags.hangarDrones`), so a restore or a boot re-grant pays nothing twice.
+ */
+export function grantHangar(cfg: GameConfig, state: GameState, productId: string): GameState {
+  if (!H.isHaul(cfg)) return state;
+  const hangar = cfg.haul.hangar;
+  const g = asGame(state);
+  const h = g.haul;
+  if (!hangar || hangar.product !== productId || !h || h.flags.hangarDrones) return state;
+  if (!(g.entitlements?.products ?? []).includes(productId)) return state;
+  const cap = H.droneCapFor(cfg, h.galaxy, g.entitlements.products);
+  const add = Math.max(0, Math.min(hangar.startDrones, cap - h.fleet.drones));
+  const haul: H.HaulState = {
+    ...h,
+    flags: { ...h.flags, hangarDrones: true },
+    fleet: { ...h.fleet, drones: h.fleet.drones + add },
+    idle: h.idle + add,
+    marks: add > 0 && h.marks.idleSince === null ? { ...h.marks, idleSince: h.clock } : h.marks,
+  };
+  return asState({ ...g, haul });
 }
 
 export const haulEngineMode: EngineMode = {
@@ -122,4 +227,7 @@ export const haulEngineMode: EngineMode = {
   },
   storyTrigger,
   missionUsable,
+  mergeReport: mergeShiftLogs,
+  entitle: grantHangar,
+  frame: haulFrame,
 };

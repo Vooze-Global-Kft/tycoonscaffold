@@ -15,12 +15,17 @@
  *   &cash=4.3e13 &gems=1250 &stars=600 &boost=20
  *                                  set the header's numbers on top of the preset: cash, gems, prestige points,
  *                                  and an ad boost with that many minutes left (to look at the header with any values)
+ *   &own=<productId>[,<productId>] grant these products as if bought (no payment): a non-consumable is
+ *                                  recorded and applied to the run in progress (e.g. own=space_hangar: the
+ *                                  drone cap and the start drones; own=space_clearance: no ads)
+ *   The haul mode's own switches (sheet=, spoke=, overlay=, view=haul-art) are in src/ui/haul/dev.ts.
  *
  * Nothing here runs on a phone: every entry point checks for a browser address first.
  */
 import { Platform } from 'react-native';
 import * as M from '../engine/meta';
-import { useGame, type Tab } from '../state/store';
+import { applyProductNow, useGame, type Tab } from '../state/store';
+import { ads } from '../services/ads';
 import { PRESETS, buildPreset, type PresetName } from './presets';
 
 function params(): URLSearchParams | null {
@@ -74,6 +79,15 @@ export function applyDevParams(): void {
         boostUntil: boost !== null ? now + boost * 60_000 : g.boostUntil,
       },
     });
+  }
+
+  for (const id of (q.get('own') ?? '').split(',').filter(Boolean)) {
+    const product = cfg.monetization.iap.products.find((p) => p.id === id);
+    if (!product) continue;
+    const game = applyProductNow(cfg, useGame.getState().game, product, now).state;
+    ads.noAds = game.entitlements.noAds;
+    ads.skipRewarded = game.entitlements.skipRewarded;
+    useGame.setState({ game });
   }
 
   const tab = q.get('tab') as Tab | null;

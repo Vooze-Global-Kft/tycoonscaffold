@@ -23,6 +23,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, Platform } from 'react-native';
 import { fxTable, gameSounds } from '../../config/game';
+import { modeSounds } from '../../state/modeEvents';
 import { AudioEngine, expoAudioDriver } from './audio';
 import type { FxName as CatalogName, FxRuntimeDef } from './catalog';
 import type { HaulFxName } from './catalog.haul';
@@ -49,6 +50,11 @@ const scope = globalThis as { __fxAudio?: AudioEngine };
 scope.__fxAudio?.dispose();
 scope.__fxAudio = audio;
 
+/** The key `fx.play(name)` really plays in this game: the mode's own key for a shared one (errata 30, src/state/modeEvents.ts `modeSounds`), or the name itself. */
+export function fxKey(name: FxName): FxName {
+  return modeSounds.key(name) as FxName;
+}
+
 export const fx: Fx<FxName> = createFx({
   // Typed by the catalogue's keys: an event of another mode is simply not in this game's table (silent, logged in development).
   catalog: fxTable as Readonly<Record<FxName, FxRuntimeDef>>,
@@ -72,6 +78,11 @@ export const fx: Fx<FxName> = createFx({
         }
       : undefined,
 });
+
+{
+  const play = fx.play;
+  fx.play = (name, opts) => play(modeSounds.key(name) as FxName, opts);
+}
 
 // Development only: `fx` is also on the console, so any event can be auditioned by hand, e.g. fx.play('prestige').
 if (__DEV__) (globalThis as { fx?: Fx<FxName> }).fx = fx;

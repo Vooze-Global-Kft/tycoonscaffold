@@ -25,7 +25,22 @@ PATH = os.path.join(ROOT, 'games/space-miner/game.json')
 g = json.load(open(PATH)) if os.path.exists(PATH) else {}
 # OUT writes somewhere else (used by tuning runs, e.g. OUT=games/_tune/game.json).
 PATH = os.environ.get('OUT', PATH)
-E = lambda k, d: float(os.environ.get(k, d))
+
+# ---------------------------------------------------------------- the tuning knobs (section 8)
+# Every number the specification marks (tune), with its stated range, and the value this script
+# ships. A calibration run overrides one with the environment, TUNE_<name>=<value> (refused outside
+# the range), writes to OUT=..., and plays it with `npm run simulate -- space-miner --file ...`.
+# `--table` prints this table and the bot's worked tables (section 2.12, Decision 16).
+TUNE = {}
+
+
+def K(name, value, lo, hi, what):
+    v = float(os.environ.get('TUNE_' + name, value))
+    if not (lo - 1e-12 <= v <= hi + 1e-12):
+        raise SystemExit(f'TUNE_{name}={v} is outside its range {lo} to {hi} ({what})')
+    v = int(v) if v == int(v) else v
+    TUNE[name] = {'spec': value, 'value': v, 'range': [lo, hi], 'what': what}
+    return v
 
 # ---------------------------------------------------------------- mode and what goes away
 g['mode'] = 'haul'
@@ -70,9 +85,13 @@ g['economy'] = {
     'tapBase': 0, 'tapPercentOfIncome': 0,
     'milestones': [],
     # Cores = floor(scale x (lifetime / threshold)^0.5) (tune: first Jump at 2 h 15 to 2 h 45 with 20 to 30 cores).
-    'prestige': {'threshold': E('PRESTIGE', 2e6), 'scale': E('CORE_SCALE', 5), 'exponent': 0.5, 'bonusPerPoint': 0},
+    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (first Jump 2 h 15 to 2 h 45)'),
+                 'scale': K('coreScale', 5, 1, 20, 'cores scale'), 'exponent': 0.5, 'bonusPerPoint': 0},
     # Offline: 6 h at most, efficiency 0.45 at most (2.11).
-    'offline': {'maxHours': 6, 'efficiency': 0.45, 'minSecondsToShow': 60},
+    # (tune: maxHours 6); the efficiency is capped at 0.45 by the rules. The bot's gate is "offline per hour
+    # at most 0.45 of active play from the same state", and active play from a state swings about 10 %
+    # around activeRate (rock lives, seams), so the shipped efficiency sits under the cap.
+    'offline': {'maxHours': K('offlineHours', 6, 4, 8, 'offline cap, hours'), 'efficiency': K('offlineEfficiency', 0.45, 0.3, 0.45, 'offline efficiency (at most 0.45)'), 'minSecondsToShow': 60},
     'boost': {'multiplier': 2, 'minutesPerAd': 30, 'maxMinutes': 240},
     # Daily Allotment: a 5-day relay (5.4).
     'daily': {'gems': [6, 9, 12, 16, 24]},
@@ -81,8 +100,15 @@ g['economy'] = {
 }
 
 # ---------------------------------------------------------------- the haul block (2.1 to 2.10)
-ORES = [('iron', 'Iron', '#E07A3F', 1), ('copper', 'Copper', '#3FC7A0', 5), ('ice', 'Ice', '#7FD4FF', 25),
-        ('titanium', 'Titanium', '#C7A6FF', 120), ('platinum', 'Platinum', '#F2E6B8', 600)]
+# Ore values: iron 1, then each ring's ore worth `oreRatio<n>` times the last (tune: ratio per ring 4 to 6).
+_R = [K('oreRatio2', 5, 4, 6, 'copper / iron'), K('oreRatio3', 5, 4, 6, 'ice / copper'), K('oreRatio4', 4.8, 4, 6, 'titanium / ice'),
+      K('oreRatio5', 5, 4, 6, 'platinum / titanium')]
+_V = [1]
+for _r in _R:
+    _V.append(round(_V[-1] * _r, 3))
+    _V[-1] = int(_V[-1]) if _V[-1] == int(_V[-1]) else _V[-1]
+ORES = [('iron', 'Iron', '#E07A3F', _V[0]), ('copper', 'Copper', '#3FC7A0', _V[1]), ('ice', 'Ice', '#7FD4FF', _V[2]),
+        ('titanium', 'Titanium', '#C7A6FF', _V[3]), ('platinum', 'Platinum', '#F2E6B8', _V[4])]
 RINGS = [
     ('Near Belt', 1.00, [-53, 53], 0.60, [150, 240], {'iron': 100}),
     ('Verdigris Reach', 1.73, [-36, 0, 36], 0.50, [240, 400], {'copper': 70, 'iron': 30}),
@@ -100,9 +126,9 @@ g['haul'] = {
               'hold': 'Hold', 'flare': 'Survey Flare', 'contract': 'Contract', 'buyer': 'Buyer', 'galaxy': 'Galaxy', 'rockPrefix': 'T-'},
     'ores': [{'id': i, 'name': n, 'color': c, 'value': v} for i, n, c, v in ORES],
     'rings': [{'name': n, 'distance': d, 'slots': s, 'drill': r, 'life': l, 'weights': w} for n, d, s, r, l, w in RINGS],
-    'start': {'pile': 8, 'drones': 1},
+    'start': {'pile': K('startPile', 8, 5, 10, 'units on slot 0 at the start'), 'drones': 1},
     'rig': {
-        'levelGrowth': E('RIG_LEVEL', 1.35),
+        'levelGrowth': K('rigLevel', 1.35, 1.25, 1.45, 'drill per rig level'),
         'tiers': [
             {'level': 4, 'name': 'Dual Bit', 'drill': 2},
             {'level': 10, 'name': 'Deep Bore', 'drill': 2, 'life': 1.5},
@@ -110,27 +136,33 @@ g['haul'] = {
             {'level': 35, 'name': 'Twin Rig', 'drill': 2, 'pileCap': 2},
         ],
         'stripeEvery': 15, 'stripeMult': 1.5,
-        'cost': {'base': 3, 'ringFactor': 40, 'growth': E('RIG_GROWTH', 1.6)},
+        'cost': {'base': 3, 'ringFactor': 40, 'growth': K('rigGrowth', 1.6, 1.45, 1.8, 'rig cost growth')},
     },
-    'claim': {'base': 13, 'ringFactor': E('CLAIM_RING', 20), 'jFactor': 1.6},
+    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)'), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring'), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring')},
     'pile': {'min': 10, 'seconds': 25},
     'drone': {
-        'speed': 0.5, 'speedPerLevel': 0.08, 'speedMax': 4, 'capacity': 4, 'capacityGrowth': 1.25, 'loadSeconds': 0.6, 'unloadSeconds': 0.6,
-        'cost': {'base': 10, 'growth': 1.45}, 'capacityCost': {'base': 30, 'growth': 1.55}, 'engineCost': {'base': 60, 'growth': 2.0},
+        'speed': 0.5, 'speedPerLevel': 0.08, 'speedMax': 4, 'capacity': 4,
+        # Section 8's knob for haul-bound routes (raise capacity growth); not marked (tune) in 2.3, kept near it.
+        'capacityGrowth': K('capacityGrowth', 1.25, 1.2, 1.35, 'drone capacity per level (knob: haul binds)'), 'loadSeconds': 0.6, 'unloadSeconds': 0.6,
+        'cost': {'base': 10, 'growth': K('droneGrowth', 1.45, 1.35, 1.6, 'drone cost growth (knob: fleet taps)')},
+        'capacityCost': {'base': 30, 'growth': K('capacityCostGrowth', 1.55, 1.45, 1.8, 'capacity cost growth (knob: fleet taps)')},
+        'engineCost': {'base': 60, 'growth': 2.0},
         'capBase': 24, 'capPerGalaxy': 4,
     },
     'freighter': {
-        'capacity': 12, 'growth': 1.45, 'cost': {'base': 15, 'growth': E('FREIGHTER_GROWTH', 1.6)},
+        'capacity': 12, 'growth': 1.45, 'cost': {'base': 15, 'growth': K('freighterGrowth', 1.6, 1.45, 1.8, 'freighter cost growth (knob: freighter binds)')},
         'away': [{'from': 1, 'seconds': 8}, {'from': 10, 'seconds': 12}, {'from': 25, 'seconds': 16}],
         'climb': 2.5, 'land': 2, 'fullBonus': 1.1, 'hulls': [1, 10, 25, 50], 'segmentEvery': 25, 'segmentMax': 8,
     },
-    'autopilot': {'cost': 90},
+    'autopilot': {'cost': K('autopilot', 90, 80, 110, 'Dock Autopilot price')},
     'respawnSeconds': 6,
-    'bonanza': {'chance': 0.04, 'drill': 2, 'life': 1.5},
-    'seam': {'first': 360, 'interval': [90, 150], 'duration': 40, 'drill': 3, 'pileCap': 2, 'senseInterval': 10, 'senseDuration': 5, 'minInterval': 30},
+    'bonanza': {'chance': K('bonanza', 0.04, 0.03, 0.06, 'bonanza chance of a new rock'), 'drill': 2, 'life': 1.5},
+    'seam': {'first': 360, 'interval': [K('seamMin', 90, 60, 90, 'seam interval, low end (knob: drags)'), K('seamMax', 150, 100, 150, 'seam interval, high end (knob: drags)')], 'duration': 40, 'drill': 3, 'pileCap': 2, 'senseInterval': 10, 'senseDuration': 5, 'minInterval': 30},
     'flare': {'refillSeconds': 1800, 'firstAt': 600, 'maxStored': 1, 'adsPerDay': 3, 'adGapMinutes': 20},
     'contracts': {
-        'unlockLaunches': 4, 'unlockClock': 90, 'board': 3, 'lifetime': 6, 'fee': 0.1, 'units': [0.4, 0.7], 'twoOreChance': 0.4,
+        'unlockLaunches': 4, 'unlockClock': 90, 'board': 3, 'lifetime': int(K('contractLife', 6, 4, 8, 'launches a contract lasts')),
+        'fee': K('fee', 0.1, 0.05, 0.15, 'delivery fee on the rest of a met cargo'),
+        'units': [K('unitsLo', 0.4, 0.3, 0.5, 'contract units, share of F, low'), K('unitsHi', 0.7, 0.55, 0.8, 'contract units, share of F, high')], 'twoOreChance': 0.4,
         'mult': [1.6, 1.9, 2.2, 2.6, 3.0], 'jitter': 0.1,
         'first': {'buyer': 0, 'ore': 'iron', 'units': 10, 'mult': 1.5},
         'buyers': [{'id': i, 'name': n} for i, n in BUYERS],
@@ -158,7 +190,8 @@ g['haul'] = {
             {'id': 'afterburner', 'name': 'Afterburner', 'arm': 'fleet', 'effect': 'headStart', 'base': 2, 'growth': 1.5, 'cap': 6, 'part': 'boosterRing'},
         ],
         'headStart': [[0, 1], [0, 1, 2], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 5], [0, 1, 2, 3, 4, 5, 6, 7], [0, 1, 2, 3, 4, 5, 6, 7, 8]],
-        'headStartRig': 4,
+        # Section 8's knob for run 2 (raise the Afterburner head start): the head-start rig level.
+        'headStartRig': int(K('headStartRig', 4, 4, 10, 'rig level of head-start slots (knob: run 2)')),
     },
     'galaxies': {'names': GALAXIES},
     'modules': [

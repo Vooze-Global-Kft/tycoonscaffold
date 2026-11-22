@@ -11,8 +11,10 @@
  *   the mode (two games of one mode share their screens and rules: 1 to 4 count as the same),
  *   the art kit (two modes of one drawn family share their art: 5) and the sound pack (16);
  * - pending until a person, the release build or the release log fills it: 7 and 13
- *   (`human.<dim>.by` empty), 8 (games/<id>/store/bundle-report.json missing or failed),
- *   19 (games/<id>/store/releases.json without a submission).
+ *   (`human.<dim>.by` empty), 8 (games/<id>/store/bundle-report.json missing, or older than the
+ *   sources it was made from: `sourceHash` no longer matches them), 19 (games/<id>/store/releases.json
+ *   without a submission), and 16 while compare.py (the sound similarity check) cannot run for two
+ *   games that both have sounds.
  *
  * Two modes. Everyday (validate): pending dimensions count neither way, and it fails only when the
  * known values already make the result impossible (a known must that does not differ, or verified +
@@ -105,7 +107,8 @@ export interface GameFacts {
   artKits: string[];
   soundPack: string | null;
   declared: DeclaredFingerprint | null;
-  store: { title: string; subtitle: string; shortDescription: string; description: string; keywords: string[] };
+  /** The listing texts (promotional text and release notes too, when the game has them: dimension 6 reads them all). */
+  store: { title: string; subtitle: string; shortDescription: string; description: string; keywords: string[]; promotionalText?: string; releaseNotes?: string[] };
   /** sha256 of every image file the game ships (assets, icon, screenshots). */
   imageHashes: string[];
   /** sha256 of every sound file; music separately. */
@@ -115,8 +118,10 @@ export interface GameFacts {
   strings: string[];
   productKinds: string[];
   productIds: string[];
-  /** bundle-report.json: true passed, false failed, null missing. */
+  /** bundle-report.json: true passed, false failed, null missing or stale (made from sources that have changed since). */
   bundleClean: boolean | null;
+  /** Why dimension 8 reads as it does (the report's date, or why it does not count). */
+  bundleNote?: string;
   /** releases.json: epoch ms of the latest store submission, null when never submitted. */
   lastSubmission: number | null;
 }
@@ -172,8 +177,14 @@ export function declaredProblems(d: DeclaredFingerprint | null): string[] {
   return out;
 }
 
-/** Compares two games along the 19 dimensions. Pure. */
-export function comparePair(A: GameFacts, B: GameFacts): PairReport {
+/**
+ * compare.py's verdict for a pair (scripts/audio/compare.py, spec 6.1 and Decision 24): `keys` both
+ * games have, `failed` of them above the threshold, the highest joint score; or why it could not run.
+ */
+export type AudioScore = { keys: number; failed: number; maxJoint: number; threshold: number } | { error: string };
+
+/** Compares two games along the 19 dimensions. Pure. `audio`: compare.py's result for the pair, when it was run. */
+export function comparePair(A: GameFacts, B: GameFacts, audio?: AudioScore | null): PairReport {
   const rows: Row[] = [];
   const problems: string[] = [];
   const da = A.declared;
@@ -197,7 +208,7 @@ export function comparePair(A: GameFacts, B: GameFacts): PairReport {
   const sharedKits = A.artKits.filter((k) => B.artKits.includes(k));
   push(5, sharedImages === 0 && sharedKits.length === 0 ? 'differs' : 'same', `${A.imageHashes.length} images`, `${B.imageHashes.length} images`, sharedKits.length ? `shared art kit ${sharedKits.join(', ')}` : `${pct(sharedImages)} shared`);
 
-  const storeText = (s: GameFacts['store']) => [s.title, s.subtitle, s.shortDescription, s.description].join('\n');
+  const storeText = (s: GameFacts['store']) => [s.title, s.subtitle, s.shortDescription, s.description, s.promotionalText ?? '', ...(s.releaseNotes ?? [])].join('\n');
   const overlap = textSimilarity(storeText(A.store), storeText(B.store));
   push(6, overlap < 0.1 ? 'differs' : 'same', A.store.title, B.store.title, `${pct(overlap)} trigram overlap`);
 
@@ -211,8 +222,10 @@ export function comparePair(A: GameFacts, B: GameFacts): PairReport {
   };
   human(7, 'icon_and_screenshot_template', 'own');
 
-  if (A.bundleClean === null || B.bundleClean === null) push(8, 'pending', String(A.bundleClean ?? 'no report'), String(B.bundleClean ?? 'no report'), 'npm run check:bundle -- --export writes store/bundle-report.json');
-  else push(8, A.bundleClean && B.bundleClean ? 'differs' : 'same', String(A.bundleClean), String(B.bundleClean));
+  const bundleState = (g: GameFacts) => (g.bundleClean === null ? 'no report' : g.bundleClean ? 'pass' : 'fail');
+  const bundleNotes = [A, B].filter((g) => g.bundleNote).map((g) => `${g.id}: ${g.bundleNote}`).join('; ');
+  if (A.bundleClean === null || B.bundleClean === null) push(8, 'pending', bundleState(A), bundleState(B), `npm run check:bundle -- --export writes store/bundle-report.json${bundleNotes ? ` (${bundleNotes})` : ''}`);
+  else push(8, A.bundleClean && B.bundleClean ? 'differs' : 'same', bundleState(A), bundleState(B), bundleNotes || undefined);
 
   declaredEq(9, 'progression_structure');
   declaredEq(10, 'prestige_model');
@@ -232,7 +245,15 @@ export function comparePair(A: GameFacts, B: GameFacts): PairReport {
   const soundShare = sharedShare(A.soundHashes, B.soundHashes);
   const musicShared = A.musicHashes.some((h) => B.musicHashes.includes(h));
   const samePack = A.soundPack !== null && A.soundPack === B.soundPack;
-  push(16, soundShare < 0.2 && !musicShared && !samePack ? 'differs' : 'same', `${A.soundHashes.length} sounds, pack ${A.soundPack ?? 'none'}`, `${B.soundHashes.length} sounds, pack ${B.soundPack ?? 'none'}`, `${pct(soundShare)} shared${musicShared ? ', music shared' : ''}${samePack ? ', same pack' : ''}`);
+  const hashesDiffer = soundShare < 0.2 && !musicShared && !samePack;
+  const sounds16 = [`${A.soundHashes.length} sounds, pack ${A.soundPack ?? 'none'}`, `${B.soundHashes.length} sounds, pack ${B.soundPack ?? 'none'}`] as const;
+  const hashNote = `${pct(soundShare)} shared${musicShared ? ', music shared' : ''}${samePack ? ', same pack' : ''}`;
+  const bothSound = A.soundHashes.length + A.musicHashes.length > 0 && B.soundHashes.length + B.musicHashes.length > 0;
+  if (!hashesDiffer || !bothSound) push(16, hashesDiffer ? 'differs' : 'same', ...sounds16, hashNote);
+  // Both have sounds: the files differ by hash, and compare.py must not hear the same tunes (Decision 24).
+  else if (!audio) push(16, 'pending', ...sounds16, `${hashNote}; compare.py not run`);
+  else if ('error' in audio) push(16, 'pending', ...sounds16, `${hashNote}; compare.py could not run: ${audio.error}`);
+  else push(16, audio.failed === 0 ? 'differs' : 'same', ...sounds16, `${hashNote}; compare.py: ${audio.failed} of ${audio.keys} shared keys above ${audio.threshold.toFixed(2)} (highest joint ${audio.maxJoint.toFixed(2)})`);
 
   const labels = new Set(INTERFACE_LABELS.map((l) => l.toLowerCase()));
   const strA = A.strings.filter((s) => !labels.has(s));
@@ -309,6 +330,64 @@ const readJson = <T>(file: string): T | null => {
 };
 const IMAGE = /\.(png|jpe?g|webp|gif)$/i;
 
+/**
+ * The hash of the sources an export was made from: every repo-relative file, sorted, with its sha256.
+ * A file that no longer exists hashes as "missing". check-bundle.ts writes it into bundle-report.json
+ * with the list; gameFacts recomputes it, so any change to a bundled file (an importer included, which
+ * is how a new file enters the graph) makes the report stale.
+ */
+export function sourceHashOf(root: string, files: readonly string[]): string {
+  const h = createHash('sha256');
+  for (const f of [...files].sort()) {
+    const abs = path.join(root, f);
+    h.update(`${f}\0${fs.existsSync(abs) && fs.statSync(abs).isFile() ? sha(abs) : 'missing'}\n`);
+  }
+  return h.digest('hex');
+}
+
+/** games/<id>/store/bundle-report.json, as `npm run check:bundle -- --export` writes it. */
+export interface BundleReportFile {
+  game: string;
+  date: string;
+  platform: string;
+  stage: 'export';
+  result: 'pass' | 'fail';
+  /** sourceHashOf(root, sources). */
+  sourceHash: string;
+  /** Repo-relative project files and assets the export bundled, plus the lockfile and the game's data. */
+  sources: string[];
+  violations: { rule: string; file: string; message: string }[];
+  /** Counts of the bundle, for the release log. */
+  modules: number;
+  assets: number;
+  bytes: number;
+}
+
+/** games/<id>/store/releases.json: the release log (dimension 19) and each version's release notes. */
+export interface ReleasesFile {
+  releaseNotes?: Record<string, string>;
+  submissions?: { version: string; store: 'apple' | 'google'; date: string; build?: string; scan?: string }[];
+}
+
+/** Dimension 8 for one game: the report's verdict, or null with why it does not count. */
+export function readBundleReport(root: string, id: string): { clean: boolean | null; note: string } {
+  const report = readJson<BundleReportFile>(path.join(root, 'games', id, 'store', 'bundle-report.json'));
+  if (!report) return { clean: null, note: 'no report' };
+  if (!report.sourceHash || !Array.isArray(report.sources)) return { clean: null, note: 'report without sourceHash: export again' };
+  if (sourceHashOf(root, report.sources) !== report.sourceHash) return { clean: null, note: `report of ${report.date.slice(0, 10)} is stale (sources changed): export again` };
+  return { clean: report.result === 'pass', note: `export of ${report.date.slice(0, 10)}: ${report.result}` };
+}
+
+/**
+ * Apple's promotional text: `store.promotionalText` in game.json. The shared schema does not list the
+ * field yet, so it is read from the raw data until it does (it is optional either way).
+ */
+export function promotionalTextOf(cfg: GameConfig, rawStore: { promotionalText?: unknown }): string | undefined {
+  const parsed = (cfg.store as { promotionalText?: unknown }).promotionalText;
+  const v = typeof parsed === 'string' ? parsed : rawStore.promotionalText;
+  return typeof v === 'string' && v.trim() ? v : undefined;
+}
+
 /** Every string of a JSON value worth comparing: texts of three letters or more, not ids, colours, icons or numbers. */
 export function textsOf(value: unknown, out: string[] = []): string[] {
   if (typeof value === 'string') {
@@ -340,23 +419,33 @@ export function gameFacts(root: string, id: string, cfg: GameConfig, games: { li
   const strings = textsOf(gameTexts);
   const table = path.join(root, 'src', 'ui', cfg.mode, 'strings.ts');
   if (fs.existsSync(table)) for (const m of fs.readFileSync(table, 'utf8').matchAll(/:\s*'([^']+)'/g)) textsOf(m[1], strings);
-  const report = readJson<{ result?: string }>(path.join(dir, 'store', 'bundle-report.json'));
-  const releases = readJson<{ submissions?: { date: string }[] }>(path.join(dir, 'store', 'releases.json'));
+  const bundle = readBundleReport(root, id);
+  const releases = readJson<ReleasesFile>(path.join(dir, 'store', 'releases.json'));
   const last = releases?.submissions?.map((s) => Date.parse(s.date)).filter(Number.isFinite).sort((x, y) => y - x)[0];
+  const rawStore = (raw.store ?? {}) as { promotionalText?: string };
   return {
     id,
     mode: cfg.mode,
     artKits,
     soundPack: games.soundPack(id),
     declared: readJson<DeclaredFingerprint>(path.join(dir, 'store', 'fingerprint.json')),
-    store: { title: cfg.store.title, subtitle: cfg.store.subtitle, shortDescription: cfg.store.shortDescription, description: cfg.store.description, keywords: cfg.store.keywords },
+    store: {
+      title: cfg.store.title,
+      subtitle: cfg.store.subtitle,
+      shortDescription: cfg.store.shortDescription,
+      description: cfg.store.description,
+      keywords: cfg.store.keywords,
+      promotionalText: promotionalTextOf(cfg, rawStore),
+      releaseNotes: Object.values(releases?.releaseNotes ?? {}),
+    },
     imageHashes: [...images].map(sha),
     soundHashes,
     musicHashes,
     strings: [...new Set(strings)],
     productKinds: cfg.monetization.iap.products.map((p) => p.kind),
     productIds: cfg.monetization.iap.products.map((p) => p.id),
-    bundleClean: report ? report.result === 'pass' : null,
+    bundleClean: bundle.clean,
+    bundleNote: bundle.note,
     lastSubmission: last ?? null,
   };
 }

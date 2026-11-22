@@ -6,9 +6,13 @@
  * sound or the same mode each fail.
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { comparePair, pairFailures, type DeclaredFingerprint, type GameFacts } from './fingerprint';
+import { comparePair, pairFailures, readBundleReport, sourceHashOf, type AudioScore, type DeclaredFingerprint, type GameFacts } from './fingerprint';
+
+/** compare.py's verdict when no shared key is close (what the two packs score today). */
+const quiet: AudioScore = { keys: 10, failed: 0, maxJoint: 0.5, threshold: 0.6 };
 
 const ROOT = path.join(__dirname, '..', '..');
 const declared = (id: string) => JSON.parse(fs.readFileSync(path.join(ROOT, 'games', id, 'store', 'fingerprint.json'), 'utf8')) as DeclaredFingerprint;
@@ -52,7 +56,7 @@ const filled = (id: string, other: string): Partial<GameFacts> => {
 
 describe('fingerprint check', () => {
   it('the declared dimensions: 10 differ and 1 (prestige_model) is the same', () => {
-    const r = comparePair(facts('pizza-empire'), facts('space-miner'));
+    const r = comparePair(facts('pizza-empire'), facts('space-miner'), quiet);
     const declaredDims = [1, 2, 3, 4, 9, 10, 11, 12, 14, 15];
     const rows = r.rows.filter((x) => declaredDims.includes(x.dim.n));
     expect(rows.filter((x) => x.status === 'differs')).toHaveLength(9);
@@ -62,7 +66,7 @@ describe('fingerprint check', () => {
   });
 
   it('everyday mode: pending dimensions count neither way and the pair passes', () => {
-    const r = comparePair(facts('pizza-empire'), facts('space-miner'));
+    const r = comparePair(facts('pizza-empire'), facts('space-miner'), quiet);
     expect(r.pending).toBe(4);
     expect(r.verified).toBe(14);
     expect(pairFailures(r, 'everyday')).toEqual([]);
@@ -75,7 +79,7 @@ describe('fingerprint check', () => {
 
   it('with the human, bundle and release-log entries filled, release mode passes with 8 must and 18 of 19', () => {
     const day = 86_400_000;
-    const r = comparePair(facts('pizza-empire', { ...filled('pizza-empire', 'space-miner'), lastSubmission: Date.UTC(2026, 11, 1) }), facts('space-miner', { bundleClean: true, lastSubmission: Date.UTC(2026, 11, 1) + 20 * day }));
+    const r = comparePair(facts('pizza-empire', { ...filled('pizza-empire', 'space-miner'), lastSubmission: Date.UTC(2026, 11, 1) }), facts('space-miner', { bundleClean: true, lastSubmission: Date.UTC(2026, 11, 1) + 20 * day }), quiet);
     expect(r.mustVerified).toBe(8);
     expect(r.verified).toBe(18);
     expect(pairFailures(r, 'release')).toEqual([]);
@@ -112,5 +116,47 @@ describe('fingerprint check', () => {
     const d = declared('space-miner');
     const r = comparePair(facts('pizza-empire'), facts('space-miner', { declared: { ...d, core_verb: 'swipe-and-pray' } }));
     expect(r.problems.join('\n')).toMatch(/core_verb/);
+  });
+
+  it('dimension 16 waits for compare.py when both games have sounds, and fails when it hears the same tunes', () => {
+    const notRun = comparePair(facts('pizza-empire'), facts('space-miner'));
+    expect(notRun.rows[15].status).toBe('pending');
+    expect(comparePair(facts('pizza-empire'), facts('space-miner'), { error: 'No module named numpy' }).rows[15].note).toMatch(/numpy/);
+    expect(comparePair(facts('pizza-empire'), facts('space-miner'), quiet).rows[15].status).toBe('differs');
+    expect(comparePair(facts('pizza-empire'), facts('space-miner'), { keys: 10, failed: 1, maxJoint: 0.71, threshold: 0.6 }).rows[15].status).toBe('same');
+    // A game without sounds: nothing to compare, the hashes decide.
+    expect(comparePair(facts('pizza-empire'), facts('space-miner', { soundHashes: [], musicHashes: [] })).rows[15].status).toBe('differs');
+  });
+
+  it('dimension 6 reads the promotional text and the release notes too', () => {
+    const pizza = facts('pizza-empire');
+    const copied = 'Tap the oven, ring the bell and grow a chain of pizzerias across the city, one street at a time, all day long.';
+    const r = comparePair(pizza, facts('space-miner', { store: { ...facts('space-miner').store, promotionalText: copied, releaseNotes: [pizza.store.description] } }), quiet);
+    expect(r.rows[5].status).toBe('same');
+  });
+
+  it('a bundle report counts only while the sources it was made from are unchanged', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fp-report-'));
+    try {
+      const store = path.join(root, 'games', 'g1', 'store');
+      fs.mkdirSync(store, { recursive: true });
+      fs.mkdirSync(path.join(root, 'src'));
+      fs.writeFileSync(path.join(root, 'src', 'a.ts'), 'export const a = 1;\n');
+      expect(readBundleReport(root, 'g1').clean).toBeNull();
+      const sources = ['src/a.ts'];
+      const write = (result: 'pass' | 'fail') =>
+        fs.writeFileSync(path.join(store, 'bundle-report.json'), JSON.stringify({ game: 'g1', date: '2026-11-22T12:00:00Z', platform: 'ios', stage: 'export', result, sourceHash: sourceHashOf(root, sources), sources, violations: [], modules: 1, assets: 0, bytes: 1 }));
+      write('pass');
+      expect(readBundleReport(root, 'g1').clean).toBe(true);
+      write('fail');
+      expect(readBundleReport(root, 'g1').clean).toBe(false);
+      write('pass');
+      fs.writeFileSync(path.join(root, 'src', 'a.ts'), 'export const a = 2;\n');
+      const stale = readBundleReport(root, 'g1');
+      expect(stale.clean).toBeNull();
+      expect(stale.note).toMatch(/stale/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });

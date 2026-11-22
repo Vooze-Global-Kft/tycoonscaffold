@@ -15,7 +15,8 @@ import * as M from '../../engine/meta';
 import type { GameState } from '../../engine/types';
 import { ads } from '../../services/ads';
 import { crash } from '../../services/firebase';
-import { fx, type FxName } from '../../services/fx';
+import { fx } from '../../services/fx';
+import type { HaulFxName } from '../../services/fx/catalog.haul';
 import { modeEvents } from '../../state/modeEvents';
 import { useGame } from '../../state/store';
 
@@ -42,14 +43,14 @@ export function haulGameNow(): { cfg: H.HaulConfig; g: H.HaulGame } | null {
 function act(
   where: string,
   fn: (cfg: H.HaulConfig, g: Run, events: H.HaulEvent[]) => H.HaulGame,
-  key: FxName | ((before: Run, after: Run) => FxName | null) | null,
+  key: HaulFxName | ((before: Run, after: Run) => HaulFxName | null) | null,
   haptic = true,
 ): boolean {
-  return actOn(where, haulNow, fn as (cfg: H.HaulConfig, g: H.HaulGame, events: H.HaulEvent[]) => H.HaulGame, key as FxName | ((before: H.HaulGame, after: H.HaulGame) => FxName | null) | null, haptic);
+  return actOn(where, haulNow, fn as (cfg: H.HaulConfig, g: H.HaulGame, events: H.HaulEvent[]) => H.HaulGame, key as HaulFxName | ((before: H.HaulGame, after: H.HaulGame) => HaulFxName | null) | null, haptic);
 }
 
 /** `act` for the steps that also run without a run (the Star Map and the start of a galaxy while a Jump waits). */
-function actAny(where: string, fn: (cfg: H.HaulConfig, g: H.HaulGame) => H.HaulGame, key: FxName | null): boolean {
+function actAny(where: string, fn: (cfg: H.HaulConfig, g: H.HaulGame) => H.HaulGame, key: HaulFxName | null): boolean {
   return actOn(where, haulGameNow, fn, key, true);
 }
 
@@ -57,7 +58,7 @@ function actOn(
   where: string,
   get: () => { cfg: H.HaulConfig; g: H.HaulGame } | null,
   fn: (cfg: H.HaulConfig, g: H.HaulGame, events: H.HaulEvent[]) => H.HaulGame,
-  key: FxName | ((before: H.HaulGame, after: H.HaulGame) => FxName | null) | null,
+  key: HaulFxName | ((before: H.HaulGame, after: H.HaulGame) => HaulFxName | null) | null,
   haptic: boolean,
 ): boolean {
   const now = get();
@@ -83,6 +84,9 @@ function actOn(
   if (events.length) modeEvents.emit(events);
   return true;
 }
+
+/** A rewarded flare ad is open (double taps). */
+let flareAdOpen = false;
 
 const tierOf = (cfg: H.HaulConfig, level: number) => H.rigTier(cfg, level).reached;
 
@@ -116,14 +120,24 @@ export const haulActions = {
   useFlare: (slot: number) => act('useFlare', (c, g, ev) => H.useFlare(c, g, slot, ev), 'flare_launch'),
   /** A flare charge for a rewarded ad (3 a day, 20 min apart). */
   watchFlareAd: async (): Promise<boolean> => {
+    // A second tap while the ad opens is ignored. With Clearance (skipRewarded) the reward comes without the ad.
+    if (flareAdOpen) return false;
     const now = haulNow();
     const day = E.dayKey(Date.now());
     if (!now || !H.canAdFlare(now.cfg, now.g, day, Date.now())) {
       fx.play('ui_denied');
       return false;
     }
-    if (!(await ads.showRewarded('flare'))) return false;
-    return act('grantAdFlare', (c, g) => H.grantAdFlare(c, g, E.dayKey(Date.now()), Date.now()), 'ui_open');
+    flareAdOpen = true;
+    try {
+      if (!(await ads.showRewarded('flare'))) return false;
+      // The ad took a while: granted against the latest state (the rules check the day and the spacing again).
+      const ok = act('grantAdFlare', (c, g) => H.grantAdFlare(c, g, E.dayKey(Date.now()), Date.now()), 'ui_open');
+      if (ok) useGame.getState().save();
+      return ok;
+    } finally {
+      flareAdOpen = false;
+    }
   },
   /** Fit `cardId` into socket `socket` (0 Rig, 1 Fleet, 2 Dock), or empty it with null. */
   fitModule: (socket: number, cardId: string | null) => act('fitModule', (c, g) => H.fitModule(c, g, socket, cardId), cardId ? 'module_fit' : 'module_remove'),
@@ -175,8 +189,9 @@ export const haulActions = {
   },
   /** Collect the Shift Log (doubled with a rewarded ad): the shared offline collect, with this game's sound. */
   collectShiftLog: async (doubled: boolean): Promise<void> => {
+    // The shared collect plays `offline_collect`, which this game hears as its payout chime
+    // (HAUL_SHARED_SOUNDS); the Shift Log's own teleprinter burst plays when it prints.
     await useGame.getState().collectOffline(doubled);
-    fx.play('payout');
   },
   /** Cut a pod open in the Salvage Bay (the shared chest opening). */
   openPod: (chestId: string): void => {
@@ -186,9 +201,8 @@ export const haulActions = {
   },
   /** Time Warp for Dark Matter (priced with activeRate through the shared engine). */
   timeWarp: (): void => {
-    const before = useGame.getState().game.gems;
+    // The shared Time Warp plays `offline_collect` (heard as the payout chime) or `ui_denied` itself.
     useGame.getState().gemTimeWarp();
-    if (useGame.getState().game.gems < before) fx.play('payout');
   },
   /** A limited hint has appeared once (hintsShown). */
   markHintShown: (key: string) => act('markHintShown', (_c, g) => H.markHintShown(g, key), null),

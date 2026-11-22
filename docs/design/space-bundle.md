@@ -11,12 +11,15 @@ checked, and how a mode is added.
 1. `GAME=<id>` selects the game. `app.config.ts` (every start and build) and `npm run select` call
    `scripts/lib/games.js`, which writes two files (gitignored):
    - `src/generated/activeGame.ts`: the game's JSON, its images, the sounds of **its** pack
-     (`shared/sfx/<soundPack>/`, overridden by name by `games/<id>/assets/sfx/`) and `fxTable`, the
-     fx events of its mode read from `src/services/fx/catalog.ts` without the briefs.
+     (`shared/sfx/<soundPack>/`, overridden by name by `games/<id>/assets/sfx/`; with
+     `"soundPack": null` only `games/<id>/assets/sfx/`) and `fxTable`, the fx events of its mode
+     read without the briefs from `src/services/fx/catalog.ts` (sim, classic) or
+     `src/services/fx/catalog.haul.ts` (haul: its own table, no other key).
    - `src/generated/mode.ts`: `import entry from '../modes/<mode>'`, the game's mode entry and
      nothing else.
 2. `src/ui/App.tsx` imports `modeEntry` from `src/generated/mode.ts`, calls `installMode(entry)`
-   before anything renders, and renders `entry.Shell` once the save and fonts are in. Metro
+   before anything renders (which also installs `entry.engine`, the mode's own rules, before the
+   store boots), and renders `entry.Shell` once the save and fonts are in. Metro
    bundles what is imported, so the other modes' entries, and everything only they import, are
    not in the bundle.
 3. The mode comes from the bundled game data at build time. Nothing changes it at run time: the
@@ -34,9 +37,9 @@ there are three levels:
 |---|---|---|
 | (a) shared by every game | the folders and files in `SHARED_SRC` (engine rules, state, services, saving, config, dev switches, the generated files, `src/modes/contract.ts`, `src/boot*.ts`), and under `src/ui` only the files listed in `SHARED_UI`: mechanics and a neutral kit. No drawn art of any game, no screens of any game, no game words. | every game |
 | (b) a family | `FAMILIES.tabs`: what sim and classic have in common (the tab shell, header, tab bar, banner, list homes, meta screens, their dialogs and celebrations, and the first game's drawn kit: pens, chest, cards, coin, gem, sparkle, tutorial glove and the six "art:" icons in that style) | the member modes (sim, classic); never haul |
-| (c) a mode's own folders | `src/modes/<mode>/`, `src/ui/sim/` (sim), `src/ui/scene/` (classic), `src/ui/haul/` (haul) | that mode only |
+| (c) a mode's own folders | `src/modes/<mode>/`, `src/ui/sim/` (sim), `src/ui/scene/` (classic); haul: `src/ui/haul/` and its rules and schema, `src/engine/haul.ts`, `src/engine/haul/`, `src/engine/haulMode.ts`, `src/engine/loadout.ts`, `src/engine/fixtures/haul.ts`, `src/config/schema.haul.ts` | that mode only |
 | Node only | `NODE_ONLY`: the fx catalogue, the art icon lists, the game-data lint | no game |
-| sound packs, game data | `shared/sfx/<pack>/` for the games that declare it (`warm`: Pizza Empire; `synth`: Space Miner); `games/<id>/` | that game |
+| sound packs, game data | `shared/sfx/<pack>/` for the games that declare it (`warm`: Pizza Empire); Orbit Haulers declares `"soundPack": null` and ships only `games/space-miner/assets/sfx/`; `games/<id>/` | that game |
 
 The lists live in code in `scripts/lib/modes.js` (`MODE_FOLDERS`, `FAMILIES`, `SHARED_UI`,
 `SHARED_SRC`, `NODE_ONLY`, `MODE_PACKAGES`: three and expo-gl are classic only; `RESTAURANT_RIG`).
@@ -58,12 +61,37 @@ time instead (see the contract below). A family file that needs a mode's drawing
 interface ModeEntry {
   id: 'sim' | 'classic' | 'haul';
   Shell: ComponentType;                       // the whole game screen after loading
-  parts?: { CharIcon?, CardBust?, HintPointer? };  // "char:" icons (GameIcon), the cast member in a big card, the tutorial pointer
-  artIcons?: Record<string, ArtIconSource>;   // every "art:" icon the mode draws (src/ui/art/icons.ts)
+  parts?: { CharIcon?, CardBust?, HintPointer?, Icon?, iconPrefixes? };
+                                              // "char:" icons (GameIcon), the cast member in a big card, the tutorial
+                                              // pointer, and the mode's own icon drawings for names with those prefixes
+  artIcons?: Record<string, ArtIconSource>;   // every "art:" icon the mode draws through the shared registry (src/ui/art/icons.ts)
   hints?: HintSource;                         // the tutorial hand's script (src/ui/hints/source.ts)
   devViews?: Record<string, ComponentType>;   // ?view=<name> review screens in the web preview
+  engine?: EngineMode;                        // the mode's own rules (src/engine/mode.ts), installed before the store boots
+  presets?: (cfg, name, now) => GameState;    // the web preview's ?preset= states
+  soundKeys?: Partial<Record<FxName, FxName>>; // the mode's key for each shared key the shared store plays
 }
 ```
+
+### The engine seam (`src/engine/mode.ts`)
+
+The shared engine (`economy.ts`, `meta.ts`) keeps the sim and classic rules built in. A mode with
+rules of its own hands an `EngineMode` over in its entry: `{id, saveTag, config?, create, reconcile,
+tick, income, activeIncome, offline, prestige, storyTrigger?, missionCounter?, missionUsable?,
+mergeReport?, ...}`. `installMode` installs it; `engineFor(cfg)` returns it only for a config of its
+own mode, so `createInitialState`, `reconcileState`, `tick`, `incomePerSecond`,
+`activeIncomePerSecond`, `computeOffline`, `prestige` and the story and mission checks delegate to it,
+and with nothing installed run exactly the code they ran before (`src/engine/modeRegression.test.ts`
+replays outputs recorded before the seam existed). Sim and classic install nothing.
+
+The haul entry installs `haulEngineMode` (`src/engine/haulMode.ts`, wrapping `src/engine/haul.ts` and
+`src/engine/haul/`). Its `config` parses the game's `haul` block with `src/config/schema.haul.ts`:
+the shared schema keeps that block opaque, so neither the haul rules nor the haul schema (whose
+starting content names haul things) is in any other game's bundle. A Node tool that reads a haul
+game's data parses the block with `withHaulContent(cfg)`. `economy.ts` never imports
+`loadout.ts` or the haul rules: haul code calls `fittedBonus` itself, and Pizza Empire's
+`cardBonus` path is unchanged by construction. The haul save lives under
+`save:<game id>:haul1` (`saveTag`).
 
 - **sim** (`src/modes/sim/index.tsx`): `Shell` is the family's tab shell (`src/ui/shell/TabShell.tsx`)
   with `HomeSim`; `parts` draw the cartoon people, and `HintPointer` is the glove (`HandPointer`,
@@ -82,9 +110,10 @@ interface ModeEntry {
   portraits: a `char:` icon shows the unknown-icon fallback, a card window stays empty unless the
   icon is an `asset:` image. `validate` warns about every `char:` icon in a mode outside
   `PORTRAIT_MODES` (`src/config/artIcons.ts`): classic Space Miner has five until haul replaces it.
-- **haul** (`src/modes/haul/index.tsx`): a placeholder `Shell` (a labelled screen), nothing else.
-  The real mode brings its whole screen here, with no tab bar and its own overlays, its own
-  `hints`, `parts` (its own pointer) and `artIcons`. It may not use the tabs family: not
+- **haul** (`src/modes/haul/index.tsx`): `Shell` is `src/ui/haul/HaulShell.tsx`, the whole screen
+  with no tab bar and its own overlays; `parts` hand over the art kit's reticle as `HintPointer` and
+  `HaulIcon` for "art:" and "mach:" names; `hints`, `engine` (`haulEngineMode`), `presets`,
+  `soundKeys` and the `haul-art` dev view. It may not use the tabs family: not
   `MissionsSheet`, `ChestOverlay`, the header or any `src/ui/meta` screen; it builds its own from
   the level (a) kit (`src/ui/kit`: `Sheet`, `Panel`, rewards, time, overlays).
 
@@ -101,7 +130,9 @@ What the shared code asks of the entry, and where:
 ## Sound packs and fx events
 
 - game.json `soundPack` (required, no default: a game that forgets it does not silently get the
-  restaurant's marimba and service bell): the folder in `shared/sfx/`. Only that pack's
+  restaurant's marimba and service bell): the folder in `shared/sfx/`, or `null` for none at all
+  (Orbit Haulers: its 55 effects and music are its own, in `games/space-miner/assets/sfx/`, so no
+  other game's recipe can ever fill a missing key). Only that pack's
   files are bundled; the game's own `assets/sfx/` still overrides by name (Pizza Empire's
   `music_main.m4a`). A pack that does not exist stops the build with a clear error; a missing sound
   is silent. `src/services/fx/discovery.test.ts` checks that Pizza Empire plays exactly the bytes
@@ -109,7 +140,9 @@ What the shared code asks of the entry, and where:
 - The fx catalogue (`src/services/fx/catalog.ts`) is documentation and types. The app imports only
   its types (`FxName` keeps `fx.play('<key>')` typed) and plays `fxTable` from the generated file.
   An entry with `modes: ['sim']` (the restaurant scene's events and the rush) is left out of other
-  modes' tables; briefs are never shipped. The player preload order and the voice counts are
+  modes' tables; briefs are never shipped. A haul game's table comes from
+  `src/services/fx/catalog.haul.ts` instead (Node only, like catalog.ts), so it holds no sim or
+  classic key; `scripts/lib/fxCatalog.js` picks the catalogue by mode. The player preload order and the voice counts are
   catalogue fields too (`preload`, `voices`), so `src/services/fx/mix.ts` holds no event key and a
   game's bundle names only its own mode's events. `scripts/audio/make_sfx.py` reads the same file
   unchanged; `scripts/lib/fxCatalog.js` is the JS twin of its reader.
@@ -139,7 +172,29 @@ level; `--words` lists every theme-word literal, allowed (blank) or new (✘).
   temporary folder, reads Metro's source map and asset map, and puts back the game that was
   selected. It judges each export by the mode that was bundled (`MODE` in `src/generated/mode.ts`
   inside the source map) and stops when that differs from the game's data (a stale export).
-  `--from <dir>` reads exports made earlier (one folder per game id).
+  `--from <dir>` reads exports made earlier (one folder per game id). Each export runs in a
+  temporary copy of the project (node_modules linked), so a dev server running from this checkout
+  keeps its game: the export never selects another game here.
+- String denylist (both stages, a failure; errata 6, Decision 11): another game's names and lines
+  in a bundle (`denylistOf` in `bundleRules.ts`): its card and module names, character and call-sign
+  names, venue, galaxy and buyer names, station and product names, story lines, and its store
+  title, subtitle, short description and description sentences, over 4 characters. Never its store
+  keywords, the interface labels (`INTERFACE_LABELS`), a single lowercase word or a single plain
+  noun outside the name fields, nor anything the bundled game's own data also says. Single names
+  match case-sensitively as whole words ("TALLY", not the identifier `tally`), phrases in any case.
+  The fast stage reads every bundled file's literals (mode files too), the export stage the shipped
+  JavaScript itself, traced to its module through the source map. A term an engine identifier
+  needs, which no player reads, can be listed with its reason in `scripts/bundle-allow.json`
+  (empty today).
+- Report (export stage): `games/<id>/store/bundle-report.json` with the date, the result, the
+  violations, the files the export was made from and their hash (`sourceHash`). Fingerprint
+  dimension 8 counts it only while that hash still matches (`readBundleReport` in
+  `scripts/lib/fingerprint.ts`): any change to a bundled file, the lockfile or the game's data makes
+  it stale, so run the export right before a release.
+- Release binaries: `npm run scan:binary -- <file.ipa|.aab|.apk> --game <id>` unpacks the archive,
+  reads the printable strings of its JavaScript bundles (Hermes keeps its string table as text) and
+  applies the same denylist, hashes every file against the other games' images and sounds, and writes
+  `games/<id>/store/scans/<file>.json` for the release log (`store/releases.json`).
 
 ## Adding a mode
 
@@ -155,19 +210,24 @@ level; `--words` lists every theme-word literal, allowed (blank) or new (✘).
    the contract (`src/modes/contract.ts`) and hand it over at install, as `parts`, `artIcons` and
    `hints` do. If a shared piece holds something only another mode uses, move that part into that
    mode and hand it back the same way.
-5. Events only your mode fires: add them to the catalogue with `modes: ['<mode>']`. Sounds: a new
-   pack folder in `shared/sfx/` and `"soundPack"` (required) in the game's data.
+5. Events only your mode fires: add them to the catalogue with `modes: ['<mode>']`, or give the mode
+   its own catalogue as haul does (`catalog.<mode>.ts`, Node only, read by `scripts/lib/fxCatalog.js`).
+   Sounds: a new pack folder in `shared/sfx/` and `"soundPack"` (required) in the game's data, or
+   `"soundPack": null` and every sound in `games/<id>/assets/sfx/`.
+   Rules of its own: an `EngineMode` in the entry's `engine` (the engine seam above), its files listed
+   as the mode's folders in `scripts/lib/modes.js`.
 6. `npm run check:bundle -- --game <id> --as-mode <mode>` while no game uses the mode yet; then
    `npm run check:bundle` and `npm run check:bundle -- --export`.
 
 ## Known leftovers (next steps)
 
-- The engine is still one shared engine: `src/engine/chain.ts` (the restaurant production chain,
-  imported by `economy.ts`) and the store's chain events (`fx.play('cook_done')` and friends in
-  `src/state/store.ts`, the preload and voice lists in `src/services/fx/mix.ts`) ship in every
-  game, the haul placeholder included. `src/engine/view.ts` (the list homes' tutorial) ships with
-  sim and classic only, through `src/ui/home/hints.ts`. Splitting the engine is the engine
-  contract's job.
+- The sim and classic rules are still built into the shared engine: `src/engine/chain.ts` (the
+  restaurant production chain, imported by `economy.ts` in creation, the tick, the rates and
+  prestige) and the store's chain events (`fx.play('cook_done')` and friends in
+  `src/state/store.ts`) ship in Orbit Haulers too (18 KB of rules no haul code calls). Moving them
+  means a sim engine mode installed by the sim entry, as `haulMode.ts` is, with
+  `modeRegression.test.ts` as the gate (docs/design/space-build-plan.md, known remainders).
+  `src/engine/view.ts` (the list homes' tutorial) ships with sim and classic only.
 - Level (a) still names the restaurant in engine rule identifiers and in event keys the store
   plays (the words list below): moving those is the engine contract's job.
 
@@ -193,7 +253,8 @@ Tests (`*.test.ts`) are never bundled and are not listed.
 | `src/ui/components/Button.tsx` | a | neutral themed button |
 | `src/ui/components/counterPulse.ts` | a | a plain emitter ("something landed on this counter") the fly layer announces |
 | `src/ui/components/Header.tsx` | b tabs | the tab shell's top bar |
-| `src/ui/components/RollingNumber.tsx`, `headerMetrics.ts`, `moneyWidth.ts`, `rollFormat.ts` | b tabs | the header's counters and their sizing |
+| `src/ui/components/RollingNumber.tsx`, `rollFormat.ts` | a | a number that rolls to its value and its digit formats: no art (Decision 7; the haul dock counter uses it) |
+| `src/ui/components/headerMetrics.ts`, `moneyWidth.ts` | b tabs | the header's sizing |
 | `src/ui/components/TabBar.tsx` | b tabs | the tab bar |
 | `src/ui/components/Banner.tsx` | b tabs | the banner-ad strip of the tab shell |
 | `src/ui/components/Celebration.tsx` | b tabs | the tab shell's celebrations (reads the home layout) |
@@ -209,32 +270,18 @@ Tests (`*.test.ts`) are never bundled and are not listed.
 | `src/ui/play/gate.ts` | b tabs | when the tab-shell scenes may spawn bonuses and openings (used by sim and classic scenes only) |
 | `src/ui/shell/TabShell.tsx` | b tabs | the tab shell |
 
-Counts: level (a) 22 files, family tabs 63 files (of 85 bundled-kind files). Under `src/ui` nothing
+Counts (before the RollingNumber reclass): level (a) 22 files, family tabs 63 files (of 85 bundled-kind files); now 24 and 61. Under `src/ui` nothing
 is unclassified.
 
 ## The haul graph
 
-`npm run check:bundle -- --game space-miner --as-mode haul --list`: 46 project files, 45 of level
-(a) plus the haul entry; no family file, no other mode's file, no asset.
-
-| File | Why it is art-free |
-|---|---|
-| `index.ts`, `src/boot.ts` | registers the root component |
-| `games/space-miner/game.json`, `src/generated/activeGame.ts` | the game's own data, its pack's sounds (none yet) and its mode's fx table |
-| `src/generated/mode.ts` | imports the one entry |
-| `src/modes/contract.ts` | installs the entry's pieces; imports only the registry, hint source and slots |
-| `src/modes/haul/index.tsx` | mode (c): the placeholder screen |
-| `src/config/game.ts`, `src/config/schema.ts`, `src/config/schema.sim.ts` | parse the game data (no lint messages, no icon names: those are Node only) |
-| `src/dev/devtools.ts`, `src/dev/presets.ts` | web-preview switches and bot-made states; no text, no drawing |
-| `src/engine/cards.ts`, `chain.ts`, `economy.ts`, `format.ts`, `meta.ts`, `rng.ts`, `types.ts` | rules, numbers and formatting; no drawing (their identifiers are in the words list) |
-| `src/services/ads.ts`, `firebase.ts`, `iap.ts`, `native.ts`, `region.ts`, `sdks.ts` | SDK wrappers |
-| `src/services/fx/audio.ts`, `clock.ts`, `core.ts`, `haptics.ts`, `index.ts`, `limiter.ts`, `mix.ts`, `pattern.ts`, `settings.ts`, `variants.ts` | the sound and haptics player; plays the generated table, not the catalogue |
-| `src/state/store.ts`, `events.ts`, `overlays.ts` | the store, the tick's event emitter, the one-dialog flags |
-| `src/ui/App.tsx` | loading screen from the game's own data, game loop |
-| `src/ui/art/icons.ts`, `src/ui/art/ArtIcon.tsx` | the registry (empty for haul) and the image cache |
-| `src/ui/components/GameIcon.tsx` | icon dispatch; without the entry's parts it shows emoji and ❔ |
-| `src/ui/hints/source.ts`, `src/ui/modeParts.tsx` | the slots the entry fills |
-| `src/ui/theme.ts`, `src/ui/colors.ts` | colours from the game's data |
+`npm run check:bundle -- --game space-miner --list` prints every project file of Orbit Haulers'
+bundle with its level. On 22 November 2026 (fast stage): 134 project files, 57 of level (a) and 77
+of the haul mode (`src/modes/haul`, `src/ui/haul`, the haul rules and schema); no family file, no
+other mode's file, no other game's data, no file of any shared sound pack; 56 assets, all
+`games/space-miner/assets/sfx/`. The export stage agrees (`games/space-miner/store/bundle-report.json`).
+The level (a) files are the ones listed above as level (a) plus the shared engine, state, services,
+config and dev switches; none holds a drawing or a word of either game (the words list below).
 
 ## Words
 

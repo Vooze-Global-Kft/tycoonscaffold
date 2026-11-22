@@ -6,9 +6,15 @@
  * Writes:
  *   eas.json                               build + submit profiles per game (env GAME=<id>)
  *   games/<id>/store/store.config.json     App Store listing for `eas metadata:push`
- *   games/<id>/store/play/en-US/*.txt      Google Play listing (fastlane `supply` layout)
+ *   games/<id>/store/play/en-US/*.txt      Google Play listing (fastlane `supply` layout), with
+ *                                          changelogs/default.txt from store/releases.json
  *   games/<id>/store/RATING-NOTES.md       answers for the age-rating and data-safety forms,
  *                                          plus the console steps no tool can do
+ *
+ * Apple's promotional text comes from game.json `store.promotionalText`; release notes from
+ * games/<id>/store/releases.json `releaseNotes[<app.version>]` (Apple gets them only once the game has
+ * an earlier Apple submission there: a first version has no "What's New"). The App Review notes are
+ * games/<id>/store/REVIEW-NOTES.md, written by hand and pasted into App Store Connect.
  *
  * A game that sells random items (meta.chestsForSale) gets the disclosure line at the top of
  * both store descriptions (research/policy.md checklist 1).
@@ -16,6 +22,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { GameConfigSchema, type GameConfig } from '../src/config/schema';
+import { promotionalTextOf, type ReleasesFile } from './lib/fingerprint';
 
 const games = require('./lib/games.js');
 const build: Record<string, unknown> = {
@@ -34,6 +41,12 @@ function description(g: GameConfig): string {
 }
 
 const yes = (b: boolean) => (b ? 'Yes' : 'No');
+
+/** games/<id>/store/releases.json, or an empty log. */
+export function releasesOf(id: string): ReleasesFile {
+  const f = path.join(games.gameDir(id), 'store', 'releases.json');
+  return fs.existsSync(f) ? (JSON.parse(fs.readFileSync(f, 'utf8')) as ReleasesFile) : {};
+}
 
 function ratingNotes(g: GameConfig): string {
   const m = g.meta;
@@ -76,8 +89,15 @@ function ratingNotes(g: GameConfig): string {
     '- Target age: **13 and over**. Google Play target audience: tick 13-15, 16-17 and 18+ only.',
     '- **Never** the Apple Kids Category or Google Play\'s Families / "Designed for Families" programme: the',
     '  game uses third-party ads and analytics, which those programmes exclude (policy.md 3).',
-    '- Store art and text: show adult characters, no "kids" or "for children" wording. Google rejects a',
-    '  13+ listing with "youthful animation or young characters" (policy.md 3), so check the screenshots.',
+    ...(Object.keys(g.cast).length
+      ? [
+          '- Store art and text: show adult characters, no "kids" or "for children" wording. Google rejects a',
+          '  13+ listing with "youthful animation or young characters" (policy.md 3), so check the screenshots.',
+        ]
+      : [
+          '- The game draws no people (no cast): machines and call-sign plates only. Keep "kids" and "for',
+          '  children" wording out of the store text, and check the screenshots show no young characters.',
+        ]),
     '- "Could the app unintentionally appeal to children?" (Play): answer honestly; cartoon art can count.',
   );
 
@@ -130,6 +150,12 @@ function ratingNotes(g: GameConfig): string {
     '4. Create every product id in App Store Connect, Play Console and RevenueCat, and attach the',
     '   in-app purchases to the first version you submit.',
     '5. Privacy policy page live at the URL above, listing AdMob, Firebase and RevenueCat.',
+    ...(fs.existsSync(path.join(games.gameDir(g.id), 'store', 'REVIEW-NOTES.md'))
+      ? [
+          `   App Review: paste games/${g.id}/store/REVIEW-NOTES.md into "Notes" in App Store Connect (and the Play`,
+          '   console\'s "App access" instructions), with a contact name, email and phone.',
+        ]
+      : []),
     ...(sellsRandom
       ? [
           '6. Paid random items: switch chest sales off for the storefronts in meta.chestSalesBlockedIn (the app',
@@ -152,12 +178,18 @@ function ratingNotes(g: GameConfig): string {
 export function storeFiles(g: GameConfig, id: string = g.id): Record<string, string> {
   const s = g.store;
   const desc = description(g);
+  const promoText = promotionalTextOf(g, ((games.readGameJson(id) as { store?: object }).store ?? {}) as { promotionalText?: string });
+  const releases = releasesOf(id);
+  const notes = releases.releaseNotes?.[g.app.version];
+  const appleBefore = (releases.submissions ?? []).some((x) => x.store === 'apple');
   const storeDir = path.join('games', id, 'store');
   const appleInfo: Record<string, unknown> = {
     title: s.title,
     subtitle: s.subtitle,
     description: desc,
     keywords: s.keywords,
+    promoText,
+    releaseNotes: appleBefore ? notes : undefined,
     privacyPolicyUrl: s.privacyPolicyUrl,
     supportUrl: s.supportUrl,
     marketingUrl: s.marketingUrl,
@@ -170,7 +202,9 @@ export function storeFiles(g: GameConfig, id: string = g.id): Record<string, str
     },
   };
   const play = path.join(storeDir, 'play', s.locale);
+  const changelog: Record<string, string> = notes ? { [path.join(play, 'changelogs', 'default.txt')]: notes + '\n' } : {};
   return {
+    ...changelog,
     [path.join(storeDir, 'store.config.json')]: JSON.stringify(storeConfig, null, 2) + '\n',
     [path.join(play, 'title.txt')]: s.title + '\n',
     [path.join(play, 'short_description.txt')]: s.shortDescription + '\n',

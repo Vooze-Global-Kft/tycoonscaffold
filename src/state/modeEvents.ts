@@ -32,3 +32,59 @@ export const modeEvents = {
     report = fn;
   },
 };
+
+/**
+ * A mode's own fx key for each shared key the shared store and screens play (errata 30: the store
+ * plays `card_levelup`, `mission_complete`, `offline_collect`, ...; a haul game's table has none of
+ * them). The mode entry sets it at install (src/modes/contract.ts, `ModeEntry.soundKeys`); the fx
+ * service plays `key(name)`. Empty for sim and classic: their keys play as written. Plain data,
+ * no imports, so the entry tests load it under node.
+ */
+let soundKeys: Readonly<Record<string, string>> = {};
+
+export const modeSounds = {
+  set(map: Readonly<Partial<Record<string, string>>> | null): void {
+    const next: Record<string, string> = {};
+    for (const [k, v] of Object.entries(map ?? {})) if (typeof v === 'string') next[k] = v;
+    soundKeys = next;
+  },
+  key(name: string): string {
+    return soundKeys[name] ?? name;
+  },
+};
+
+/**
+ * The latest frame a mode's scene interpolates between ticks (src/engine/mode.ts `frame`; haul:
+ * the route table and the run clock, spec 4.3). The store publishes one after every change of the
+ * game while someone listens; the scene copies it into a Reanimated shared value in its listener,
+ * so nothing re-renders at 10 Hz. `latest()` is the last frame published (null before the first).
+ */
+type FrameListener = (frame: unknown) => void;
+const frameListeners = new Set<FrameListener>();
+let lastFrame: unknown = null;
+
+export const modeFrame = {
+  subscribe(listener: FrameListener): () => void {
+    frameListeners.add(listener);
+    return () => {
+      frameListeners.delete(listener);
+    };
+  },
+  /** Whether anyone listens (the store computes a frame only then). */
+  listening(): boolean {
+    return frameListeners.size > 0;
+  },
+  publish(frame: unknown): void {
+    lastFrame = frame;
+    frameListeners.forEach((l) => {
+      try {
+        l(frame);
+      } catch (e) {
+        report(e, 'modeFrame.listener');
+      }
+    });
+  },
+  latest(): unknown {
+    return lastFrame;
+  },
+};

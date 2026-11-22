@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { bundleViolations, importViolations, levelOf, modeOf, packageOf, themeWordsIn, type BundleContents, type BundleManifest } from './bundleRules';
+import { bundleViolations, denylistOf, denyMatcher, importViolations, levelOf, modeOf, packageOf, textOfData, themeWordsIn, type BundleContents, type BundleManifest } from './bundleRules';
 import { readAliases, resolveImport, runtimeImports } from '../check-bundle';
 
 const M: BundleManifest = {
@@ -247,3 +247,44 @@ describe('import reading', () => {
     expect(packageOf('node_modules/expo/node_modules/@expo/cli/build/x.js')).toBe('@expo/cli');
   });
 });
+
+describe('the string denylist (errata 6)', () => {
+  const other = {
+    characters: [{ id: 'tally', name: 'TALLY' }, { id: 'ops', name: 'OPS-2' }],
+    meta: { cards: [{ name: 'Diamond Bit', title: 'Drill head', flavor: 'Cuts faster. Wears out never.' }], chests: [{ name: 'Scrap Pod' }] },
+    haul: { names: { station: 'Tamsin Station', drone: 'Drone' }, galaxies: { names: ['Cygnus Drift'] }, contracts: { buyers: [{ name: 'Halden Yards' }] }, ores: [{ name: 'Iron' }] },
+    story: [{ lines: ['Drone T-1 idle. Send it to the rock.'] }],
+    strings: { gemName: 'Dark Matter' },
+    store: { title: 'Orbit Haulers', subtitle: 'Route ore drones, idle mining', keywords: ['space', 'freighter cargo'], description: 'Orbit Haulers is an idle mining game about routes and cargo.\n\nFeatures\n- One-swipe freighter launches\n- Close' },
+  };
+  const own = { strings: { gemName: 'Truffles' }, meta: { cards: [{ name: 'Scrap Pod' }] } };
+  const terms = denylistOf('space-miner', other, { labels: ['Close', 'Settings'], ownText: textOfData(own) });
+  const names = terms.map((t) => t.term);
+
+  it('holds the other game\'s names, lines and store sentences', () => {
+    for (const t of ['TALLY', 'OPS-2', 'Diamond Bit', 'Drill head', 'Cuts faster. Wears out never.', 'Tamsin Station', 'Cygnus Drift', 'Halden Yards', 'Drone T-1 idle. Send it to the rock.', 'Orbit Haulers', 'Route ore drones, idle mining', 'Orbit Haulers is an idle mining game about routes and cargo.', 'One-swipe freighter launches'])
+      expect(names).toContain(t);
+  });
+
+  it('never keywords, interface labels, plain nouns, short words, interface strings, or what the bundled game says itself', () => {
+    for (const t of ['space', 'freighter cargo', 'Close', 'Drone', 'Iron', 'Features', 'Dark Matter', 'Scrap Pod']) expect(names).not.toContain(t);
+  });
+
+  it('single names match case-sensitively as whole words, phrases in any case and spacing', () => {
+    const match = denyMatcher(terms);
+    const hit = (text: string) => match(text).map((t) => t.term);
+    expect(hit('TALLY: T-1 is dry.')).toEqual(['TALLY']);
+    expect(hit('const tally = 3; talLY')).toEqual([]);
+    expect(hit('TALLYING')).toEqual([]);
+    expect(hit('welcome to tamsin   station')).toEqual(['Tamsin Station']);
+    expect(hit('Tamsin Stationary')).toEqual([]);
+  });
+
+  it('a hit fails the bundle unless bundle-allow.json lists the term', () => {
+    const term = terms.find((t) => t.term === 'Tamsin Station')!;
+    const denied = [{ file: 'src/engine/meta.ts', line: 3, term }];
+    expect(rules(clean({ denied }))).toEqual(['denied-string src/engine/meta.ts']);
+    expect(rules(clean({ denied, deniedAllowed: { 'Tamsin Station': 'an engine identifier' } }))).toEqual([]);
+  });
+});
+

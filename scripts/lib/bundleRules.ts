@@ -40,6 +40,9 @@ export interface BundleContents {
   themeWords?: readonly { file: string; text: string; words: readonly string[] }[];
   /** Literals allowed to do so: { file: [literal, ...] } (scripts/lib/themeWords.allowed.json). */
   themeWordsAllowed?: Readonly<Record<string, readonly string[]>>;
+  /** Where another game's names and lines were found in the bundle (`deniedHits`), and the terms allowed to stay (bundle-allow.json). */
+  denied?: readonly DeniedHit[];
+  deniedAllowed?: Readonly<Record<string, string>>;
   /** Asset files in the bundle (images, sounds, fonts). */
   assets: readonly string[];
   /** npm packages with at least one module in the bundle. */
@@ -62,7 +65,8 @@ export interface Violation {
     | 'imports-other-family'
     | 'imports-unclassified'
     | 'unresolved'
-    | 'theme-word';
+    | 'theme-word'
+    | 'denied-string';
   file: string;
   message: string;
 }
@@ -128,6 +132,10 @@ export function bundleViolations(b: BundleContents, m: BundleManifest): Violatio
     if (b.themeWordsAllowed?.[h.file]?.includes(h.text)) continue;
     out.push({ rule: 'theme-word', file: h.file, message: `has ${JSON.stringify(h.text.length > 70 ? h.text.slice(0, 67) + '...' : h.text)} with another mode's theme word(s) [${h.words.join(', ')}]: move the text into the game's data or the mode's folders (scripts/lib/modes.js THEME_WORDS_ALLOWED lists the known remainder)` });
   }
+  for (const h of b.denied ?? []) {
+    if (b.deniedAllowed && h.term.term in b.deniedAllowed) continue;
+    out.push({ rule: 'denied-string', file: h.file, message: `${h.line ? `line ${h.line}: ` : ''}holds ${JSON.stringify(h.term.term)}, ${h.term.from} of the game "${h.term.game}" (errata 6): no game's bundle may name another game's things; move it out, or list it with a reason in scripts/bundle-allow.json if it is an engine identifier no player reads` });
+  }
   for (const pkg of b.packages) {
     const allowed = m.modePackages[pkg];
     if (allowed && !allowed.includes(b.mode)) out.push({ rule: 'mode-package', file: `node_modules/${pkg}`, message: `is only for mode ${allowed.map((x) => `"${x}"`).join(', ')}` });
@@ -191,4 +199,103 @@ export function themeWordsIn(text: string, words: readonly string[]): string[] {
     }
   }
   return [...found];
+}
+
+// ---------------------------------------------------------------------------
+// The string denylist (spec 10.4 step 3, errata 6, Decision 11)
+// ---------------------------------------------------------------------------
+
+/** One name or line of a game that no other game's bundle may hold. */
+export interface DenyTerm {
+  term: string;
+  /** Which game it belongs to, and where in its data it was found ("a character name", ...). */
+  game: string;
+  from: string;
+  /** Single names match case-sensitively as a whole word ("TALLY", not the identifier "tally"); phrases in any case. */
+  caseSensitive: boolean;
+}
+
+export interface DeniedHit {
+  file: string;
+  line?: number;
+  term: DenyTerm;
+}
+
+/** Where in a game's data its names and lines live, and whether a single word there is a name (kept) or a plain noun (dropped). */
+const NAME_FIELDS: { path: RegExp; from: string; singleWordIsName: boolean }[] = [
+  { path: /^characters\[\]\.name$/, from: 'a character or call-sign name', singleWordIsName: true },
+  { path: /^meta\.cards\[\]\.(name|title)$/, from: 'a card or module name', singleWordIsName: true },
+  { path: /^meta\.cards\[\]\.flavor$/, from: 'a card text', singleWordIsName: false },
+  { path: /^meta\.chests\[\]\.(name|blurb)$/, from: 'a reward box name', singleWordIsName: false },
+  { path: /^meta\.(deals|dailyShop\.offers)\[\]\.(title|blurb)$/, from: 'an offer name', singleWordIsName: false },
+  { path: /^businesses\[\]\.(name|productName|managerName|flavor)$/, from: 'a station or product name', singleWordIsName: true },
+  { path: /^(sim|economy)\.[A-Za-z]+\.(name|managerName|managerFlavor|workerName|seatName|bellName)$/, from: 'a name of the game\'s rules', singleWordIsName: false },
+  { path: /^sim\.venues\[\]\.(name|blurb)$/, from: 'a venue name', singleWordIsName: true },
+  { path: /^haul\.names\.(station|ai)$/, from: 'the station or AI name', singleWordIsName: true },
+  { path: /^haul\.galaxies\.names\[\]$/, from: 'a galaxy name', singleWordIsName: true },
+  { path: /^haul\.contracts\.buyers\[\]\.name$/, from: 'a buyer name', singleWordIsName: true },
+  { path: /^haul\.(modules|conditions|rings|ores)\[\]\.name$/, from: 'a module, condition, ring or ore name', singleWordIsName: false },
+  { path: /^haul\.conditions\[\]\.lines\[\]$/, from: 'a condition text', singleWordIsName: false },
+  { path: /^haul\.starMap\.nodes\[\]\.name$/, from: 'a Star Map node name', singleWordIsName: false },
+  { path: /^haul\.rig\.tiers\[\]\.name$/, from: 'a rig tier name', singleWordIsName: false },
+  { path: /^story\[\]\.(lines\[\]|text)$/, from: 'a story line', singleWordIsName: false },
+  { path: /^app\.displayName$/, from: 'the app name', singleWordIsName: true },
+  { path: /^store\.(title|subtitle|shortDescription)$/, from: 'a store text', singleWordIsName: true },
+];
+
+/** Every string of a JSON value with its path ("meta.cards[].name"). */
+function stringsWithPaths(value: unknown, at: string, out: [string, string][]): [string, string][] {
+  if (typeof value === 'string') out.push([at, value]);
+  else if (Array.isArray(value)) value.forEach((v) => stringsWithPaths(v, `${at}[]`, out));
+  else if (value && typeof value === 'object') for (const [k, v] of Object.entries(value)) stringsWithPaths(v, at ? `${at}.${k}` : k, out);
+  return out;
+}
+
+const normal = (s: string) => s.replace(/\s+/g, ' ').trim();
+
+/** All strings of a game's data joined, lower case, spaces normalised: what `denylistOf` takes as `ownText`. */
+export function textOfData(data: unknown): string {
+  return stringsWithPaths(data, '', []).map(([, t]) => normal(t).toLowerCase()).join('\n');
+}
+
+/**
+ * The denylist of one game (errata 6): its card or module names, character and call-sign names,
+ * venue, galaxy and buyer names, story lines, and its store title, subtitle and description
+ * sentences, with more than 4 characters. Never its store keywords, the interface labels, a single
+ * lowercase word, a single plain noun outside the name fields, or anything the bundled game's own
+ * data also says (`ownText`: all its strings joined, lower case; dimension 17 measures those).
+ */
+export function denylistOf(gameId: string, data: unknown, opts: { labels: readonly string[]; ownText: string }): DenyTerm[] {
+  const d = (data ?? {}) as { store?: { keywords?: string[]; description?: string } };
+  const skip = new Set([...opts.labels, ...(d.store?.keywords ?? [])].map((x) => x.toLowerCase()));
+  const out = new Map<string, DenyTerm>();
+  const add = (raw: string, from: string, singleWordIsName: boolean) => {
+    for (const piece of raw.split(/\{[^}]*\}/)) {
+      const term = normal(piece).replace(/^[\s"'“‘(]+|[\s"'”’):;,]+$/g, '');
+      if (term.length <= 4 || skip.has(term.toLowerCase()) || opts.ownText.includes(term.toLowerCase())) continue;
+      const single = !/\s/.test(term);
+      if (single && (term === term.toLowerCase() || !singleWordIsName)) continue;
+      if (!out.has(term)) out.set(term, { term, game: gameId, from, caseSensitive: single });
+    }
+  };
+  for (const [at, text] of stringsWithPaths(data, '', [])) {
+    const field = NAME_FIELDS.find((f) => f.path.test(at));
+    if (field) add(text, field.from, field.singleWordIsName);
+  }
+  // The description sentence by sentence (a bullet line is a sentence too).
+  for (const sentence of (d.store?.description ?? '').split(/(?<=[.!?])\s+|\n+/)) add(sentence.replace(/^[-•*]\s*/, ''), 'a store description sentence', false);
+  return [...out.values()];
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** The regular expression source of one term: the whole term, not inside a longer word; any run of spaces between its words. Flags: `u`, plus `i` unless `caseSensitive`. */
+export function denyPattern(t: DenyTerm): string {
+  return `(?<![\\p{L}\\p{N}_])${escapeRe(t.term).replace(/ /g, '\\s+')}(?![\\p{L}\\p{N}_])`;
+}
+
+/** A matcher for the denylist: which terms a text holds (whole words; phrases in any case and spacing). */
+export function denyMatcher(terms: readonly DenyTerm[]): (text: string) => DenyTerm[] {
+  const compiled = terms.map((t) => ({ t, re: new RegExp(denyPattern(t), t.caseSensitive ? 'u' : 'iu') }));
+  return (text: string) => compiled.filter(({ re }) => re.test(text)).map(({ t }) => t);
 }

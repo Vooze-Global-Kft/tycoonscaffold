@@ -6,6 +6,10 @@
  *   npm run validate -- --no-sim        skip the bot playthrough (faster)
  *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
  *
+ * For every pair of games that both have sounds it also runs the sound similarity check
+ * (python3 scripts/audio/compare.py, spec 6.1, Decision 24: fails when a shared key's joint score is
+ * over 0.6); its verdict is fingerprint dimension 16, pending while Python or numpy is missing.
+ *
  * Errors block a release: schema problems, cross-field problems from lintGameConfig (sim, meta,
  * story, icons), missing asset files, bundle or product ids shared with another game, and an
  * economy table that is the same as another game's (or a constant multiple of it).
@@ -15,13 +19,14 @@
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { lintGameConfig } from '../src/config/lint';
 import { PORTRAIT_MODES } from '../src/config/artIcons';
 import { GameConfigSchema, type GameConfig } from '../src/config/schema';
 import { args } from './lib/cli';
 import { economyTableClash, storeTextProblems, textSimilarity } from './lib/checks';
-import { comparePair, formatPair, gameFacts, pairFailures } from './lib/fingerprint';
+import { comparePair, formatPair, gameFacts, pairFailures, promotionalTextOf, type AudioScore, type ReleasesFile } from './lib/fingerprint';
 import { storeFiles } from './sync';
 
 const games = require('./lib/games.js');
@@ -66,6 +71,23 @@ function pacing(id: string, hours: number): { marks: Record<string, number> } | 
   }
 }
 
+/** compare.py for one pair (a second or so): its scores, or why it could not run. */
+function audioScore(a: string, b: string): AudioScore {
+  const out = path.join(os.tmpdir(), `validate-compare-${a}-${b}-${process.pid}.json`);
+  const r = spawnSync('python3', [path.join(__dirname, 'audio', 'compare.py'), a, b, '--json', out], { cwd: games.ROOT, encoding: 'utf8', timeout: 300_000 });
+  try {
+    if (r.error) return { error: r.error.message };
+    if (!fs.existsSync(out)) return { error: (r.stderr || r.stdout || `exit ${r.status}`).trim().split('\n').pop() ?? 'no output' };
+    const j = JSON.parse(fs.readFileSync(out, 'utf8')) as { threshold: number; keys: Record<string, { joint: number }> };
+    const joints = Object.values(j.keys).map((k) => k.joint);
+    return { keys: joints.length, failed: joints.filter((x) => x > j.threshold).length, maxJoint: joints.length ? Math.max(...joints) : 0, threshold: j.threshold };
+  } catch (e) {
+    return { error: (e as Error).message };
+  } finally {
+    fs.rmSync(out, { force: true });
+  }
+}
+
 const mmss = (s: number) => `${Math.floor(s / 60)}m ${String(Math.round(s % 60)).padStart(2, '0')}s`;
 
 for (const id of ids) {
@@ -104,12 +126,29 @@ for (const id of ids) {
   if (portraits.length && !PORTRAIT_MODES.includes(g.mode)) {
     warnings.push(`${portraits.length} "char:" icon(s) (${portraits.map((p) => p.slice(6, -1)).join(', ')}): mode "${g.mode}" draws no portraits, so they show the unknown-icon fallback (❔) and card windows stay empty; use emoji or "asset:" icons`);
   }
-  if (!fs.existsSync(path.join(games.gameDir(id), 'icon.png'))) warnings.push('no icon.png (using the shared placeholder)');
+  // Every fx event of the game's mode needs its own sound (spec 10.3): a missing one is silent in the game.
+  const { fxTableFor } = require('./lib/fxCatalog.js');
+  const soundKeys = new Set(Object.keys(games.listSounds(id) as Record<string, string>).map((k) => k.replace(/_\d+$/, '')));
+  const silent = Object.keys(fxTableFor(g.mode) as Record<string, unknown>).filter((k) => !soundKeys.has(k));
+  if (silent.length) problems.push(`${silent.length} fx event(s) of mode "${g.mode}" have no sound file for this game: ${silent.join(', ')} (games/${id}/assets/sfx/${g.soundPack ? ` or shared/sfx/${g.soundPack}/` : ''})`);
+    if (!fs.existsSync(path.join(games.gameDir(id), 'icon.png'))) warnings.push('no icon.png (using the shared placeholder)');
   if (g.monetization.ads.forceTestAds) warnings.push('forceTestAds is on: test ads in release builds earn nothing. Paste the AdMob units and turn it off before release');
   if (!g.monetization.iap.revenueCatIosKey) warnings.push('no RevenueCat keys (purchases are simulated)');
   if (!g.firebase.iosGoogleServicesFile) warnings.push('no Firebase files (analytics logs to console)');
   if (!g.store.privacyPolicyUrl) warnings.push('no store.privacyPolicyUrl: both stores require one, and the data-safety forms link to it');
-  problems.push(...storeTextProblems(g.store));
+  const rawStore = ((games.readGameJson(id) as { store?: { promotionalText?: string } }).store ?? {}) as { promotionalText?: string };
+  const releases = (() => {
+    const f = path.join(games.gameDir(id), 'store', 'releases.json');
+    try {
+      return fs.existsSync(f) ? (JSON.parse(fs.readFileSync(f, 'utf8')) as ReleasesFile) : null;
+    } catch (e) {
+      problems.push(`store/releases.json: ${(e as Error).message}`);
+      return null;
+    }
+  })();
+  problems.push(...storeTextProblems({ ...g.store, promotionalText: promotionalTextOf(g, rawStore), releaseNotes: releases?.releaseNotes?.[g.app.version] }));
+  if (release && !releases?.releaseNotes?.[g.app.version]) warnings.push(`store/releases.json has no releaseNotes for version ${g.app.version}`);
+  if (release && /\bexample\b/.test(`${g.app.iosBundleId} ${g.app.androidPackage}`)) problems.push(`app ids ${g.app.iosBundleId} / ${g.app.androidPackage} are placeholders: set the studio's domain (spec Decision 27)`);
   // The listing files eas metadata and fastlane upload must be what sync writes from this game.json.
   const stale = Object.entries(storeFiles(g, id)).filter(([rel, content]) => {
     const abs = path.join(games.ROOT, rel);
@@ -152,7 +191,9 @@ const facts = [...parsed].map(([id, cfg]) => gameFacts(games.ROOT, id, cfg, game
 for (let i = 0; i < facts.length; i++) {
   for (let j = i + 1; j < facts.length; j++) {
     if (!named.has(facts[i].id) && !named.has(facts[j].id)) continue;
-    const report = comparePair(facts[i], facts[j]);
+    const hasSound = (f: (typeof facts)[number]) => f.soundHashes.length + f.musicHashes.length > 0;
+    const audio = hasSound(facts[i]) && hasSound(facts[j]) ? audioScore(facts[i].id, facts[j].id) : null;
+    const report = comparePair(facts[i], facts[j], audio);
     const why = pairFailures(report, release ? 'release' : 'everyday');
     console.log(`${why.length ? '✖' : '✔'} ${formatPair(report)}${release ? ' [release]' : ''}`);
     why.forEach((w) => console.log(`    error: ${w}`));

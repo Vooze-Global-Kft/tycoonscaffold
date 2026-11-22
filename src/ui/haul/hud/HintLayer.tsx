@@ -1,41 +1,154 @@
 /**
- * SKELETON. The map's hint layer (spec section 3): asks the rules for the next hint once a
- * second, finds its targets (src/ui/hints/targets.ts) and draws the art kit's ReticleLayer over
- * the whole screen (touches pass through). Waits while a sheet or spoke is open unless the hint's
- * target is inside it (errata 53). The "bay" package finishes it: marking limited hints shown,
- * the 6-step script's timing, the dashed guide fading after the first drag onto a seam.
+ * The map's hint layer (spec section 3, errata 53 to 55): twice a second it takes the first hint
+ * of `allHaulHints()` (the rules' hints in errata 55's order) that has something on screen to point
+ * at, and draws the art kit's ReticleLayer over the whole screen (touches pass through):
+ * - drag: from target A to target B along the dotted guide (1.2 s travel, 0.6 s pause);
+ * - swipe: an 80 pt upward stroke in the launch track;
+ * - tap-tap: two points in a row, drawn as data: the drone first, the rock once a drone is selected;
+ * - point: a pulse; a hint whose control is inside a sheet (station:buyDrone, station:autopilot)
+ *   points at what opens it on the map (`route`, errata 53's first stage). The second stage, inside
+ *   the open sheet, is the sheet's.
+ * It waits while any sheet, spoke or dialog is open (their own hints are theirs), hides while a
+ * finger drags, plays `hint` once per new hint, and marks a limited hint shown once per appearance.
+ * Map targets come from src/ui/hints/targets.ts (the scene sets rock:, slot:, chip:, drone:rack and
+ * station; the bay its own); until the scene has set one, the layout stands in for it.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useAnimatedReaction, runOnJS } from 'react-native-reanimated';
+import type { HaulHint } from '../../../engine/haul';
+import { haulActions } from '../../../modes/haul/actions';
+import { fx } from '../../../services/fx';
 import { useOverlaysOpen } from '../../kit';
-import { targets } from '../../hints/targets';
-import { ReticleLayer, type ReticleHint } from '../art/Reticle';
+import { targets, type TargetRect } from '../../hints/targets';
+import { ReticleLayer, type Point, type ReticleHint } from '../art/Reticle';
+import { DRAG_NONE, dragLine } from '../gestures/fieldInput';
 import { allHaulHints } from '../hints';
 import type { FieldLayout } from '../layout';
+import { useHaulUi, type HaulSelection } from '../uiState';
 
-const centre = (key: string | undefined) => {
-  const r = key ? targets.get(key) : null;
-  return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
-};
+const ASK_MS = 500;
+
+/** A target's rectangle: registered, or for the map's drawn keys, from the layout. */
+export function targetRect(key: string, layout: FieldLayout): TargetRect | null {
+  const r = targets.get(key);
+  if (r) return r;
+  const [kind, arg] = key.split(':');
+  const n = arg === undefined ? NaN : Number(arg);
+  if ((kind === 'rock' || kind === 'slot') && Number.isInteger(n)) {
+    const q = layout.rocks[n];
+    return q ? { x: q.x - q.r, y: q.y - q.r, width: 2 * q.r, height: 2 * q.r } : null;
+  }
+  if (kind === 'chip' && Number.isInteger(n)) {
+    const c = layout.chips.find((x) => x.slot === n);
+    return c ? { x: c.x - 12, y: c.y - 12, width: 24, height: 24 } : null;
+  }
+  if (key === 'drone:rack') {
+    // The first cradles sit on the left arm, near the station.
+    const a = layout.rack.left;
+    return { x: a.x + a.width * 0.45, y: a.y, width: a.width * 0.5, height: a.height * 0.5 };
+  }
+  if (key === 'station') return { x: layout.station.x - layout.station.r, y: layout.station.y - layout.station.r, width: 2 * layout.station.r, height: 2 * layout.station.r };
+  return null;
+}
+
+const centre = (r: TargetRect): Point => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
+
+/** What the reticle shows for `h` now, or null when its targets are not on screen. */
+export function reticleFor(h: HaulHint, layout: FieldLayout, selection: HaulSelection): ReticleHint | null {
+  const at = (key: string | undefined) => {
+    const r = key ? targetRect(key, layout) : null;
+    return r ? centre(r) : null;
+  };
+  if (h.kind === 'tapTap') {
+    const first = at(h.from);
+    const second = at(h.to ?? h.key);
+    if (selection?.kind === 'drone') return second ? { kind: 'point', from: second } : null;
+    return first ? { kind: 'point', from: first } : null;
+  }
+  if (h.kind === 'drag') {
+    const from = at(h.from);
+    const to = at(h.to ?? h.key);
+    return from && to ? { kind: 'drag', from, to } : null;
+  }
+  if (h.kind === 'swipe') {
+    const z = targetRect(h.zone ?? h.key, layout);
+    if (!z) return null;
+    const from = { x: z.x + z.width / 2, y: z.y + z.height - 8 };
+    return { kind: 'swipe', from, to: { x: from.x, y: from.y - 80 } };
+  }
+  // A point hint at a control on the map, or at what opens its sheet.
+  const own = at(h.key);
+  if (own && !h.route.length) return { kind: 'point', from: own };
+  for (const k of h.route) {
+    const p = at(k);
+    if (p) return { kind: 'point', from: p };
+  }
+  return own ? { kind: 'point', from: own } : null;
+}
+
+const same = (a: ReticleHint | null, b: ReticleHint | null) => JSON.stringify(a) === JSON.stringify(b);
 
 export function HintLayer({ layout }: { layout: FieldLayout }) {
   const open = useOverlaysOpen();
-  const [hint, setHint] = useState<ReticleHint | null>(null);
+  const spoke = useHaulUi((s) => s.spoke !== null || s.sheet !== null || s.menuOpen);
+  const [shown, setShown] = useState<ReticleHint | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+  const lastKey = useRef<string | null>(null);
+  const blocked = open > 0 || spoke;
+
+  // Hide while a finger drags (the reaction runs only when the drag starts or ends).
+  useAnimatedReaction(
+    () => dragLine.value.kind !== DRAG_NONE,
+    (now, prev) => {
+      if (now !== prev) runOnJS(setDragging)(now);
+    },
+  );
+
   useEffect(() => {
-    const id = setInterval(() => {
-      const h = allHaulHints()[0];
-      if (!h) return setHint(null);
-      const from = centre(h.from ?? h.key);
-      const to = centre(h.to);
-      if (!from) return setHint(null);
-      setHint(h.kind === 'drag' && to ? { kind: 'drag', from, to } : h.kind === 'swipe' ? { kind: 'swipe', from } : { kind: 'point', from });
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-  if (!hint || open > 0) return null;
+    if (blocked) {
+      setShown(null);
+      return;
+    }
+    const ask = () => {
+      const sel = useHaulUi.getState().selection;
+      let pick: { h: HaulHint; r: ReticleHint } | null = null;
+      for (const h of allHaulHints()) {
+        const r = reticleFor(h, layoutRef.current, sel);
+        if (r) {
+          pick = { h, r };
+          break;
+        }
+      }
+      const key = pick ? `${pick.h.kind}:${pick.h.from ?? ''}>${pick.h.key}` : null;
+      if (key !== lastKey.current) {
+        lastKey.current = key;
+        if (pick) {
+          fx.play('hint');
+          if (pick.h.limit) haulActions.markHintShown(pick.h.key);
+        }
+      }
+      setShown((prev) => (same(prev, pick?.r ?? null) ? prev : (pick?.r ?? null)));
+    };
+    ask();
+    const id = setInterval(ask, ASK_MS);
+    const offSel = useHaulUi.subscribe((s, p) => {
+      if (s.selection !== p.selection) ask();
+    });
+    const offTargets = targets.subscribe(ask);
+    return () => {
+      clearInterval(id);
+      offSel();
+      offTargets();
+    };
+  }, [blocked]);
+
+  if (!shown || blocked || dragging) return null;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <ReticleLayer hint={hint} width={layout.width} height={layout.height} />
+      <ReticleLayer hint={shown} width={layout.width} height={layout.height} />
     </View>
   );
 }

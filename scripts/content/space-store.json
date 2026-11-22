@@ -1,5 +1,5 @@
 {
-  "_comment": "Orbit Haulers store listing (spec 7.6). Owned by the tooling-and-store package; build-space.py copies it into game.json store (fields it does not list are kept).",
+  "_comment": "Orbit Haulers store listing (spec 7.6, Decision 25 subtitle). Owned by the tooling-and-store package; build-space.py copies every field into game.json store. promotionalText is Apple's promotional text (170 max): the shared schema does not list it yet, so sync and validate read it from the raw game.json until it does. Release notes are per version in games/space-miner/store/releases.json.",
   "title": "Orbit Haulers",
   "subtitle": "Route ore drones, idle mining",
   "keywords": [
@@ -17,6 +17,7 @@
     "manager"
   ],
   "shortDescription": "Route drones, ship cargo by freighter and grow a station in an asteroid field.",
+  "promotionalText": "Drag drones onto asteroids, pick which buyer contracts to fill, and grow one mining station into a fleet that keeps shipping while you are away.",
   "description": "Orbit Haulers is an idle mining game about routes and cargo.\n\nYour station sits in an asteroid field. Drag hauler drones onto rocks to set their routes, and watch them carry ore home to the hold. When the hold is full, swipe the freighter off the pad: it warps out and the whole manifest sells at once.\n\nBuyers post contracts for the ores they want, and each contract lapses after a few launches. Pick one, send drones to the rocks that carry its ore, and its units sell for more.\n\nRocks run dry and new ones drift in, sometimes with a different ore, sometimes as a rich bonanza rock. The far rings hold copper, ice, titanium and platinum, but the trips are longer, so where you send each drone matters.\n\nBring the dock autopilot online and the station ships on its own while you are away. Fit modules into three sockets in the Fitting Bay; some of them change the rules. When a run has paid off, jump to a new galaxy, spend Warp Cores on the Star Map, and choose the conditions you will mine under next.\n\nFeatures\n- Drag-to-route drones on a top-down map of the asteroid field\n- One-swipe freighter launches and buyer contracts that lapse\n- Rocks that run dry and come back as new ore\n- A dock autopilot that keeps shipping offline\n- Fitting Bay modules and a Star Map that changes how each run starts\n- Optional rewarded ads; salvage pods are earned in play, never sold",
   "primaryCategory": "GAMES",
   "subcategories": [

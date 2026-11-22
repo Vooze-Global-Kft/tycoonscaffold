@@ -24,9 +24,14 @@ In Expo Go and on web, ads, purchases and Firebase are mocked (purchases succeed
 at once so the flows can be tested). For real ads, IAP and analytics, make a
 development build: `npx eas-cli@latest build --profile pizza-empire-dev --platform ios`.
 
-## Two modes
+## Modes
 
-| | `"mode": "classic"` (space-miner) | `"mode": "sim"` (pizza-empire) |
+Three modes exist: `sim` (Pizza Empire), `haul` (Orbit Haulers, `games/space-miner`: drag drones
+onto asteroids to set routes, money only when the freighter warps out; its own screen, rules, art and
+sounds, specification `docs/design/space-design.md`) and `classic` (the original list game, kept for
+new games made with `new-game`). The two list modes compare like this:
+
+| | `"mode": "classic"` | `"mode": "sim"` (pizza-empire) |
 |---|---|---|
 | Businesses | a list; each pays straight into cash | **stations** of a production chain |
 | Money | per business cycle | only when a guest **pays** at the end of the chain |
@@ -97,14 +102,15 @@ Game code never plays a sound or vibrates directly: it calls the fx service
 (`src/services/fx`, `fx.play('buy')`), whose catalogue (`catalog.ts`) pairs each
 event with a sound and a haptic pattern, and respects the player's settings.
 
-- Sounds come in packs, one folder each in `shared/sfx/<pack>/`. A game names its pack in game.json (`"soundPack": "warm"`, the default; Space Miner's is `"synth"`) and only that pack goes into its bundle. A game overrides any sound with a file of the same name in `games/<id>/assets/sfx/` (`<key>.wav`, `<key>_1.wav` ..., music as `.m4a`). A missing sound is silent. `scripts/lib/games.js` merges the two into the bundle; run `npm run select` (or restart Expo) after adding a file.
+- Sounds come in packs, one folder each in `shared/sfx/<pack>/`. A game names its pack in game.json (`"soundPack": "warm"` for Pizza Empire; required, no default) and only that pack goes into its bundle; `"soundPack": null` means no shared pack (Orbit Haulers: every sound is its own, in `games/space-miner/assets/sfx/`, rendered by `scripts/audio/render_haul.py` and `haul_music.py`). A game overrides any sound with a file of the same name in `games/<id>/assets/sfx/` (`<key>.wav`, `<key>_1.wav` ..., music as `.m4a`). A missing sound is silent. `scripts/lib/games.js` merges the two into the bundle; run `npm run select` (or restart Expo) after adding a file.
 - The catalogue is documentation and types only: the app plays from a table that `scripts/lib/games.js` writes into `src/generated/activeGame.ts` without the briefs and without the events of other modes (an entry with `modes: ['sim']` is for sim games only).
 - Every sound is synthesised by `scripts/audio/` (Python 3 + numpy, ffmpeg for music):
 
 ```bash
 python3 scripts/audio/make_sfx.py --check                                    # every catalogue key has a recipe
 python3 scripts/audio/make_sfx.py --pack warm --out shared/sfx/warm          # the warm pack
-python3 scripts/audio/make_sfx.py --pack synth --out shared/sfx/synth        # the synth pack
+python3 scripts/audio/render_haul.py                                         # Orbit Haulers' own sounds (docs/design/space-audio-notes.md)
+python3 scripts/audio/compare.py space-miner pizza-empire                    # the two games must not sound alike (validate runs it)
 python3 scripts/audio/qa.py shared/sfx/warm                                  # loudness and format checks
 ```
 
@@ -158,7 +164,7 @@ Each shipped game's numbers come from a script with documented formulas, so a
 table is re-tuned in one place and is nobody else's:
 
 ```bash
-npm run content:space                  # writes games/space-miner/game.json (classic)
+npm run content:space                  # writes games/space-miner/game.json (haul; listing from scripts/content/space-store.json)
 npm run content:pizza                  # writes games/pizza-empire/game.json (sim)
 npm run simulate -- space-miner --hours 12
 npm run simulate -- pizza-empire --hours 24 --prestige --quiet
@@ -173,10 +179,9 @@ hours, and (sim) a second venue inside the first hour with transport and sales a
 real but not dominant share of spending. Real players are slower than the bot by
 about a quarter.
 
-Space Miner (classic), `npm run simulate -- space-miner --hours 12`: first hire
-0:49, last business 1:07, first Warp Core 2:13, longest gap 24 min, last purchase
-2:28 (then the reset is the move; `--prestige` jumps at 2:49 for ×1.75).
-The knobs are environment variables of `build-space.py` (e.g. `PB=2.6 npm run content:space`).
+Orbit Haulers (haul): the targets are section 8 of `docs/design/space-design.md`
+(first payout by 0:35, autopilot by 3:30, drags per 10 minutes gated); the numbers in
+`build-space.py` are provisional until the balance pass reports them.
 
 ## Web preview switches
 
@@ -199,7 +204,8 @@ Example: `http://localhost:8081/?preset=mid&speed=10&tab=shop`.
 ```
 games/<id>/game.json     one folder per game (folders starting with _ are ignored)
 games/<id>/assets/sfx/   the game's own sounds (override its pack by name)
-shared/sfx/<pack>/       sound packs (warm: Pizza Empire; synth: Space Miner); a game bundles only its own
+shared/sfx/<pack>/       sound packs (warm: Pizza Empire; Orbit Haulers declares none); a game bundles only its own
+games/<id>/store/        listing files (sync), fingerprint.json, releases.json, REVIEW-NOTES.md, bundle-report.json
 src/engine/              pure TS economy, chain and meta + tests; no React, no native code, deterministic
 src/config/schema*.ts    the GameConfig contract (zod); lint.ts: lintGameConfig (Node only)
 src/services/            ads, iap, firebase, fx (sound + haptics); sdks.ts is the only place native SDKs load
@@ -211,6 +217,8 @@ src/ui/home/             the list homes' shared pieces (rows, station list, tuto
 src/ui/sim/              SIM MODE ONLY: home/ (stage strip and lists), scene/ (the living venue:
                          world/ draws it, play/ is what the player taps), art/ (characters, restaurant props)
 src/ui/scene/            CLASSIC MODE ONLY: the hero scene (Skia, or three.js for a 3D game)
+src/ui/haul/             HAUL MODE ONLY: the map, bay, sheets, spokes and the art kit (art/); rules in
+                         src/engine/haul*.ts, src/engine/haul/, installed through src/engine/mode.ts
 src/ui/art/              shared code-drawn pieces: chests, cards, coin, gem, tutorial hand, shared "art:" icons
 src/ui/meta/             chests, cards, shop, deals, missions, settings, upgrades, empire
 src/ui/hints/, juice/    the tutorial hand and its targets; coins and gems flying to the header
@@ -222,7 +230,9 @@ scripts/                 generate, new-game, validate, simulate, sync, content/,
 `app.config.ts` writes `src/generated/activeGame.ts` and `src/generated/mode.ts`
 so the bundle only contains the selected game (its JSON, images, sound pack and
 fx events) and its own mode's code. `npm run check:bundle` proves it (fast; add
-`--export` for the real bundler); how a mode is added: `docs/design/space-bundle.md`. On EAS, the
+`--export` for the real bundler, run in a copy of the project, which writes
+`games/<id>/store/bundle-report.json`); it also fails on another game's names and lines anywhere
+in a bundle. How a mode is added: `docs/design/space-bundle.md`. On EAS, the
 `eas-build-post-install` hook does the same from the `GAME` env of each profile.
 
 ## Before you publish
@@ -239,7 +249,9 @@ does these; sources in `docs/design/research/policy.md`):
 5. **Age rating**: answer both questionnaires (Advertising: yes; loot boxes: no unless chests are sold) and set Apple's rating to 13+ by hand; Play target audience 13+. Never the Kids Category or Designed for Families: the game has third-party ads and analytics.
 6. **Listing**: a privacy policy URL (`store.privacyPolicyUrl`) that names AdMob, Firebase and RevenueCat; screenshots showing adult characters; no "kids" wording.
 7. **Data safety / App Privacy**: from RATING-NOTES.md; check each SDK's current disclosure.
-8. Build and submit: `npx eas-cli@latest build --profile <id>-production`, then `submit --profile <id>-production`; push the iOS listing with `eas metadata:push` (the Play listing in `store/play/` uses the fastlane `supply` layout).
+8. **App ids**: a real reverse domain in `app.iosBundleId` / `app.androidPackage` (Orbit Haulers still has `com.example.spaceminer`; `validate --release` fails on it).
+9. **Two apps, one account** (`docs/design/research/spam.md`): `npm run check:bundle -- --export` for both games, the side-by-side check filled into `games/<id>/store/fingerprint.json` `human`, then `npm run validate:release` (every one of the 19 fingerprint dimensions known; 8 of 8 must). Paste `store/REVIEW-NOTES.md` into App Review's notes. The first submission of a game at least 14 days after the other's latest one.
+10. Build and submit: `npx eas-cli@latest build --profile <id>-production`, run `npm run scan:binary -- <the .ipa or .aab> --game <id>` on it, then `submit --profile <id>-production`, and add the submission (with the scan report) to `store/releases.json`; push the iOS listing with `eas metadata:push` (the Play listing in `store/play/` uses the fastlane `supply` layout).
 
 `npm run validate` fails when `games/<id>/store/*` is not what `npm run sync` would
 write from game.json (a stale listing must never be uploaded), and when a store
@@ -282,7 +294,10 @@ Consent: Google UMP form, then ATT on iOS, then the SDK init.
 | `npm test` | engine and service tests (also validates every game.json) |
 | `npm run typecheck` | TypeScript |
 | `npm run lint:worklets` | checks that UI-thread animation code only calls UI-thread code (a mistake there crashes on phones, never in the web preview) |
-| `npm run validate -- [<id>] [--no-sim]` | config errors and release warnings |
+| `npm run validate -- [<id>] [--no-sim]` | config errors, release warnings, the fingerprint of every pair of games and the sound similarity check |
+| `npm run validate:release` | the same with every fingerprint dimension required (before a submission) |
+| `npm run check:bundle` (`-- --export`, `-- --words`, `-- --list`) | what each game's app contains, and nothing of another game |
+| `npm run scan:binary -- <file> --game <id>` | the same denylist and file hashes on a store binary |
 | `npm run simulate -- <id>` | pacing report |
 | `npm run content:space`, `content:pizza` | rebuild a shipped game's game.json from its script |
 | `npm run calibrate` | pizza-empire venue costs for target times |

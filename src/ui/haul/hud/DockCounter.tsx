@@ -1,22 +1,137 @@
-/** SKELETON (package "bay"). The dock counter (spec 4.1): Credits as a rolling digital counter (RollingNumber, sized by bayMetrics.ts, no lineHeight), the receipt ticker ("WARPED · MANIFEST ..." for 4 s after a warp-out, else "₵36/s"). Tap: the Contract Board once contracts unlock. Target key `bay:counter`; coins fly to it. */
+/**
+ * The dock counter (spec 4.1): the Credits as a rolling digital counter, then 2 pt, then the
+ * receipt ticker ("WARPED · MANIFEST 48 COPPER · 12 IRON · ₵612" for 4 s after a warp-out,
+ * otherwise the income "₵36/s"). Tap: the Contract Board, once contracts unlock (errata 60).
+ * Target key `bay:counter` (credit glyphs fly to it, the board hint points at it).
+ *
+ * Fixed-height rule (AGENTS.md, ./bayMetrics.ts): both rows absolutely placed at tops that add up
+ * to the block, fonts sized by hand from fontScale with allowFontScaling off, the RollingNumber with
+ * a height and no lineHeight. The counter follows the cash outside React (no render per tick) and
+ * holds a warp-out's credits back until the glyphs land (money arrives with them, not before).
+ */
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { formatMoney } from '../../../engine/format';
+import * as H from '../../../engine/haul';
+import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
-import { Placeholder } from '../Placeholder';
+import { RollingNumber } from '../../components/RollingNumber';
+import { useTarget } from '../../hints/targets';
+import { alpha, SPACE } from '../art/palette';
+import type { Rect } from '../layout';
 import { useRun } from '../useRun';
 import { useHaulUi } from '../uiState';
-import type { Rect } from '../layout';
+import { bayCounterMetrics, bayCounterRows } from './bayMetrics';
+import { DIGITAL, bayWord } from './bayText';
+import { GLYPH_FALL_MS, GLYPH_LEAD_MS } from './feedbackTiming';
+
+/** How long the receipt stays on the ticker after a warp-out. */
+const RECEIPT_MS = 4000;
+/** The widest amount the counter is sized for ("₵999.99Qd"), so its font never jumps as the money grows. */
+const WIDEST_GLYPHS = 9;
+/** Inner padding of the counter's frame, each side. */
+const PAD = 8;
+
+let holdUntil = 0;
+
+/** Feeds the counter every change of cash outside React; a warp-out's credits wait for their glyphs. */
+function followCash(set: (v: number) => void): () => void {
+  set(useGame.getState().game.cash);
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const offEvents = modeEvents.subscribe((events) => {
+    if (events.some((e) => (e as H.HaulEvent).type === 'warp')) holdUntil = Date.now() + GLYPH_LEAD_MS + GLYPH_FALL_MS;
+  });
+  const offCash = useGame.subscribe((s, prev) => {
+    if (s.game.cash === prev.game.cash) return;
+    const wait = holdUntil - Date.now();
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (wait > 0 && s.game.cash > prev.game.cash) timer = setTimeout(() => set(useGame.getState().game.cash), wait);
+    else set(s.game.cash);
+  });
+  return () => {
+    offEvents();
+    offCash();
+    if (timer) clearTimeout(timer);
+  };
+}
+
+/** The receipt line for a warp-out: the manifest by ore (most units first) and the payout. */
+export function receiptText(cfg: H.HaulConfig, cargo: Record<string, number>, payout: number): string {
+  const names = new Map(cfg.haul.ores.map((o) => [o.id, o.name.toUpperCase()]));
+  const parts = Object.entries(cargo)
+    .filter(([, u]) => u >= 0.5)
+    .sort((a, b) => b[1] - a[1])
+    .map(([ore, u]) => `${Math.round(u)} ${names.get(ore) ?? ore.toUpperCase()}`);
+  return [bayWord('receiptWarped', 'WARPED'), `${bayWord('receiptManifest', 'MANIFEST')} ${parts.join(' · ')}`, formatMoney(payout, cfg.strings.currencySymbol)].join(' · ');
+}
 
 export function DockCounter({ rect }: { rect: Rect }) {
-  const cash = useGame((s) => s.game.cash);
   const sym = useGame((s) => s.cfg.strings.currencySymbol);
   const unlocked = useRun((_c, g) => g.haul.contracts.unlocked, false);
+  const income = useRun((cfg, g) => {
+    const v = H.haulIncome(cfg, g);
+    return v > 0 ? `${formatMoney(v, cfg.strings.currencySymbol)}${bayWord('perSecond', '/s')}` : '';
+  }, '');
+  const [startCash] = useState(() => useGame.getState().game.cash);
+  const [receipt, setReceipt] = useState<{ text: string; met: boolean } | null>(null);
+  const target = useTarget('bay:counter');
+  const { fontScale, height } = useWindowDimensions();
+  const compact = height < 740;
+  // The frame's 1 pt border is outside the rows: they add up to the inner height.
+  const m = bayCounterMetrics(compact, rect.height - 2, fontScale, rect.width - 2 * PAD, WIDEST_GLYPHS);
+  const rows = bayCounterRows(m);
+  const pop = useSharedValue(1);
+  const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let popTimer: ReturnType<typeof setTimeout> | null = null;
+    const off = modeEvents.subscribe((events) => {
+      const w = events.find((e) => (e as H.HaulEvent).type === 'warp') as Extract<H.HaulEvent, { type: 'warp' }> | undefined;
+      if (!w) return;
+      const cfg = useGame.getState().cfg as H.HaulConfig;
+      if (!H.isHaul(cfg)) return;
+      setReceipt({ text: receiptText(cfg, w.cargo, w.payout), met: w.met });
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setReceipt(null), RECEIPT_MS);
+      // The counter pops as the first glyphs land.
+      if (popTimer) clearTimeout(popTimer);
+      popTimer = setTimeout(() => {
+        pop.value = withSequence(withTiming(1.06, { duration: 90 }), withTiming(1, { duration: 260 }));
+      }, GLYPH_LEAD_MS + GLYPH_FALL_MS);
+    });
+    return () => {
+      off();
+      if (timer) clearTimeout(timer);
+      if (popTimer) clearTimeout(popTimer);
+    };
+  }, [pop]);
+
+  const ticker = receipt ? receipt.text : income;
+  const tickerColor = receipt ? (receipt.met ? SPACE.green : SPACE.white) : SPACE.steel;
+  const frame = useMemo(
+    () => ({ position: 'absolute' as const, left: rect.x, top: rect.y, width: rect.width, height: rect.height, borderRadius: 8, backgroundColor: SPACE.hull0, borderWidth: 1, borderColor: alpha(SPACE.line, receipt ? 0.75 : 0.4) }),
+    [rect.x, rect.y, rect.width, rect.height, receipt],
+  );
+  const open = unlocked ? () => useHaulUi.getState().openSheet({ type: 'contracts' }) : undefined;
   return (
-    <Placeholder
-      name="DockCounter"
-      pkg="hud/DockCounter.tsx · bay"
-      live={formatMoney(cash, sym)}
-      onPress={unlocked ? () => useHaulUi.getState().openSheet({ type: 'contracts' }) : undefined}
-      style={{ position: 'absolute', left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
-    />
+    <Pressable onPress={open} disabled={!unlocked} accessibilityRole={unlocked ? 'button' : 'text'} style={frame} ref={target.ref} onLayout={target.onLayout} collapsable={false}>
+      <Animated.View style={[{ position: 'absolute', left: PAD, right: PAD, top: rows.counterTop, height: m.counterRow, alignItems: 'center', justifyContent: 'center' }, popStyle]}>
+        <RollingNumber
+          value={startCash}
+          follow={followCash}
+          symbol={sym}
+          allowFontScaling={false}
+          style={[DIGITAL, { color: SPACE.gold, fontSize: m.counterFont, height: rows.counterBox, padding: 0, textAlign: 'center', alignSelf: 'stretch', textShadowColor: alpha(SPACE.gold, 0.45), textShadowRadius: 8 }]}
+        />
+      </Animated.View>
+      <View style={{ position: 'absolute', left: PAD - 2, right: PAD - 2, top: rows.tickerTop, height: m.tickerRow, justifyContent: 'center' }}>
+        <Text allowFontScaling={false} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[DIGITAL, { color: tickerColor, fontSize: m.tickerFont, lineHeight: m.tickerRow, textAlign: 'center', fontWeight: '600' }]}>
+          {ticker}
+        </Text>
+      </View>
+    </Pressable>
   );
 }

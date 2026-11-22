@@ -10,11 +10,14 @@
  *   by the kit's own cache (HaulIcon) through `parts.Icon`; no portraits of people;
  * - `hints`: the rules' hints (src/ui/haul/hints.ts);
  * - `presets`: `?preset=` states from the rules' fixtures (./presets.ts);
+ * - `soundKeys`: the haul key for each shared key the store plays (errata 30, HAUL_SHARED_SOUNDS);
  * - `devViews`: `?view=haul-art`, the art kit's gallery (web preview only: ./devViews.web.ts; on phones ./devViews.ts has none).
  * It never imports the tabs family or another mode's folders (npm run check:bundle).
  */
 import { Text } from 'react-native';
-import { haulEngineMode } from '../../engine/haulMode';
+import { HAUL_SHARED_SOUNDS, haulEngineMode } from '../../engine/haulMode';
+import type { FxName } from '../../services/fx';
+import type { HaulFxName } from '../../services/fx/catalog.haul';
 import { HaulIcon } from '../../ui/haul/art/HaulIcon';
 import { HaulShell } from '../../ui/haul/HaulShell';
 import { haulHints } from '../../ui/haul/hints';
@@ -39,6 +42,8 @@ const entry: ModeEntry = {
   hints: haulHints,
   presets: haulPreset,
   devViews,
+  // The shared store's sound keys in this game's own sounds (errata 30; the haul table has no other key).
+  soundKeys: HAUL_SHARED_SOUNDS satisfies Partial<Record<FxName, HaulFxName>>,
 };
 
 export default entry;

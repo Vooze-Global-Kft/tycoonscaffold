@@ -1,0 +1,5 @@
+{
+  "_comment": "Terms of another game's data (the string denylist of scripts/check-bundle.ts, errata 6) that may stay in a game's bundle, each with the reason. Only engine identifiers no player reads belong here; text a player can see moves into the game's own data or its mode's folders instead. Keyed by the game whose bundle holds the term.",
+  "pizza-empire": {},
+  "space-miner": {}
+}
