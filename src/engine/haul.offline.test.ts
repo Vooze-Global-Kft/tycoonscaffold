@@ -154,7 +154,7 @@ describe('haulOffline', () => {
 
 // 2.11 "offline never beats play", checked on reachable states (contracts and seams on, the game's
 // own config): an hour away pays at most efficiency × what the same station earns in an hour of play
-// with nobody touching it (plus 10 % for the rock streams' variance), so it never beats play. It is
+// with nobody touching it (plus 15 % for the rock streams' variance), so it never beats play. It is
 // not bounded by efficiency × activeRate: activeRate prices each ring at its weight-averaged ore,
 // while the hour away ships the rocks that are really there (a rich far-ring rock under a heavy route
 // pays up to about 1.35 × efficiency × activeRate). That is the rock stream, not a leak.
@@ -177,7 +177,9 @@ describe('2.11 offline never beats play (fixture states)', () => {
       let earned = 0;
       run(base, g, 3600, 1, (_, ev) => ev.forEach((e) => e.type === 'warp' && (earned += e.payout)));
       expect(off.earnings).toBeGreaterThan(0);
-      expect(off.earnings).toBeLessThanOrEqual(eff * earned * 1.1);
+      // 15 % for the rock streams (was 10 %): since Decision 56 an untouched hour earns no contract
+      // bonus at all, so the hour of play is the bare rock stream, which varies more (late: 1.107).
+      expect(off.earnings).toBeLessThanOrEqual(eff * earned * 1.15);
       expect(off.earnings).toBeLessThan(earned);
       const ar = H.haulIncome(base, g) * 3600;
       expect(off.earnings).toBeLessThanOrEqual(eff * ar * 1.5);

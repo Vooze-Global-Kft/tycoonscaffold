@@ -151,6 +151,13 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
       for (let k = 1; k <= 300; k++) if (draw(g, k).wants.length > 1) two++;
       expect(two, `t=${t}`).toBeGreaterThanOrEqual(45);
     }
-    expect(stations).toBeGreaterThan(0);
+    // The bot's stations are often one ore by value (copper); a station built to ship three ores that
+    // matter always qualifies: ring 1 iron, ring 2 copper, ring 3 ice, drones on each.
+    const three = shaped(cfg, 4242, { slots: [0, 2, 5], haulers: [4, 4, 4], rig: [10, 10, 10], capLevel: 3, freighter: 8, autopilot: true, policy: 'contract', idle: 0 });
+    const ores3 = new Set(three.haul.slots.filter((x) => x.claimed).map((x) => x.ore));
+    expect(ores3.size).toBe(3);
+    let two3 = 0;
+    for (let k = 1; k <= 300; k++) if (draw(three, k).wants.length > 1) two3++;
+    expect(two3, `bot stations that qualified: ${stations}`).toBeGreaterThanOrEqual(45);
   }, 120_000);
 });

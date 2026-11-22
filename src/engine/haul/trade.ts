@@ -337,7 +337,11 @@ export interface ContractBasis {
   lifeOf: Record<string, number>;
   /** Drill rate (units/s, base, no seam) of the present rocks of each ore: with one more rig level each, the most a launch can carry of it is `drill × levelGrowth × interval`. */
   drillOf: Record<string, number>;
-  /** Pile capacity of the present rocks of each ore: what a full pile hands the freighter on top of the routes' figure. */
+  /**
+   * What full piles of each ore can add over a contract's launches on top of the routes' figure: the
+   * hold fills by haul rates while piles last, so at most `L × (F × H_o / H − steady_o)`, and never
+   * more than the ore's pile capacity.
+   */
   pileOf: Record<string, number>;
   /** Ores that are the main ore (half the weight or more) of the ring of a claimed slot holding a rock of it: its slots keep bringing it. */
   mainOf: Record<string, boolean>;
@@ -354,6 +358,8 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
   const mainOf: Record<string, boolean> = {};
   const drillOf: Record<string, number> = {};
   const pileOf: Record<string, number> = {};
+  const haulOf: Record<string, number> = {};
+  let haulAll = 0;
   h.slots.forEach((s, i) => {
     const sp = params.slots[i];
     if (!s?.claimed || s.respawnAt !== null || s.rockN < 0 || !sp) return;
@@ -361,11 +367,23 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
     lifeOf[s.ore] = Math.max(lifeOf[s.ore] ?? 0, s.life);
     if (s.life > 0 && sp.rb > 0) drillOf[s.ore] = (drillOf[s.ore] ?? 0) + sp.rb;
     if (sp.rb > 0) pileOf[s.ore] = (pileOf[s.ore] ?? 0) + sp.cap / (sp.seam ? cfg.haul.seam.pileCap : 1);
+    if (s.haulers > 0 && sp.trip > 0 && (s.life > 0 || s.pile > 0)) {
+      const x = (s.haulers * sp.cBase) / sp.trip;
+      if (Number.isFinite(x)) {
+        haulOf[s.ore] = (haulOf[s.ore] ?? 0) + x;
+        haulAll += x;
+      }
+    }
     const w = ringWeights(cfg, sp.ring, h.trait);
     const sum = w.weights.reduce((a, x) => a + x, 0);
     const mine = w.weights[w.ores.indexOf(s.ore)] ?? 0;
     if (sum > 0 && mine >= 0.5 * sum) mainOf[s.ore] = true;
   });
+  const L = cfg.haul.contracts.launches;
+  for (const ore of Object.keys(pileOf)) {
+    const byHaul = haulAll > 0 ? (params.F * (haulOf[ore] ?? 0)) / haulAll : 0;
+    pileOf[ore] = Math.min(pileOf[ore], L * Math.max(0, byHaul - (st.perLaunch[ore] ?? 0)));
+  }
   const measured = (h.contracts.measured ?? 0) >= 3 && h.contracts.recent;
   const recent = measured ? { ...h.contracts.recent } : { ...st.perLaunch };
   const cycle = params.climb + params.away + params.land;

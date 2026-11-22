@@ -850,7 +850,7 @@
       "cost": {
         "base": 3,
         "ringFactor": 40,
-        "growth": 1.7
+        "growth": 1.6
       }
     },
     "claim": {
