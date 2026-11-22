@@ -26,7 +26,7 @@ import type { Rect as Box } from '../layout';
 import { HAUL_STRINGS } from '../strings';
 import { useHaulUi } from '../uiState';
 import { runParams } from '../useRun';
-import { DIGITAL, countText, fillIn, fitLabel, labelMetrics } from './bayText';
+import { DIGITAL, fillIn, fitLabel, labelMetrics, unitShort } from './bayText';
 
 type Run = H.HaulGame & { haul: H.HaulState };
 
@@ -214,7 +214,8 @@ export function HoldTank({ rect }: { rect: Box }) {
       if (shown.full) c.drawPath(circle(w / 2 - 6, -h / 2 + 10, 2), stroke(SPACE.green, 1));
     }),
   );
-  const holdText = `${countText(shown.units)}/${countText(shown.cap)}`;
+  // Both sides in the board's short figures (9.8K/103K, never 9819/103K: play-8, play:new:10).
+  const holdText = `${unitShort(shown.units)}/${unitShort(shown.cap)}`;
   const holdFont = fitLabel(holdText, rect.width, compact ? 11 : 12, fontScale);
   const clip = useMemo(() => skRRect(skRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8), w / 2 - 4, w / 2 - 4), [w, h]);
   const cx = rect.width / 2;

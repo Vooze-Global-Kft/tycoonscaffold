@@ -376,7 +376,7 @@ function ConditionChip({ rect, width, font, name, text: effects, onPress }: { re
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={{ top: 6, bottom: 12, left: 4, right: 4 }}
+      hitSlop={{ top: 6, bottom: 14, left: 4, right: 4 }}
       accessibilityRole="button"
       accessibilityLabel={fillIn(HAUL_STRINGS.conditionLabel, { name, text: effects })}
       style={[styles.chip, { left: rect.x + rect.width - width, top: rect.y + (rect.height - h) / 2, width, height: h, borderRadius: h / 2 }]}
@@ -436,7 +436,7 @@ function RadioLine({ rect, fontScale, radio, name, portrait, color, onClose }: {
         style,
       ]}
     >
-      <Pressable style={styles.press} onPress={onClose} hitSlop={{ top: 6, bottom: 12 }} accessibilityRole="button" accessibilityLabel={full} accessibilityHint={say('close')}>
+      <Pressable style={styles.press} onPress={onClose} hitSlop={{ top: 6, bottom: 14 }} accessibilityRole="button" accessibilityLabel={full} accessibilityHint={say('close')}>
         {portrait ? <HaulIcon name={portrait} size={icon} /> : null}
         <Wave color={tint} height={Math.min(14, rect.height - 10)} id={radio.id} />
         <View style={{ flex: 1, height: rows * row, justifyContent: 'center' }}>
