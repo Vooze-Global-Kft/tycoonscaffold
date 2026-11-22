@@ -17,8 +17,7 @@ import { loadPurchases } from './sdks';
 type RC = typeof import('react-native-purchases').default;
 type StoreProduct = import('react-native-purchases').PurchasesStoreProduct;
 
-const NON_CONSUMABLE: IapProduct['kind'][] = ['noAds', 'multiplier', 'starterPack'];
-export const isNonConsumable = (p: IapProduct) => NON_CONSUMABLE.includes(p.kind);
+export { isNonConsumable } from '../engine/meta';
 
 const apiKey = Platform.OS === 'ios' ? baseGame.monetization.iap.revenueCatIosKey : baseGame.monetization.iap.revenueCatAndroidKey;
 const Purchases: RC | null = apiKey && !isExpoGo && Platform.OS !== 'web' ? loadPurchases() : null;

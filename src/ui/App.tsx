@@ -1,7 +1,7 @@
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { AppState, Text, View } from 'react-native';
+import { AppState, Platform, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { gameAssets } from '../config/game';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import { OfflineModal, StoryModal } from './components/Modals';
 import { BusinessesPanel, ManagersPanel, PrestigePanel, ShopPanel, UpgradesPanel } from './components/Panels';
 import { TabBar } from './components/TabBar';
 import { SkiaScene } from './scene/SkiaScene';
+import { ArtGallery } from './sim/art/Gallery';
 import { ThreeScene } from './scene/ThreeScene';
 import { DISPLAY_FONT, useTheme } from './theme';
 
@@ -64,12 +65,12 @@ function Game() {
       <StatusBar style={t.darkStatusBar ? 'dark' : 'light'} />
       <Header />
       <View style={{ flex: 1, backgroundColor: t.c.background }}>
-        {tab === 'businesses' ? <Scene /> : null}
+        {tab === 'home' ? <Scene /> : null}
         <View style={{ flex: 1 }}>
-          {tab === 'businesses' && <BusinessesPanel />}
-          {tab === 'managers' && <ManagersPanel />}
+          {tab === 'home' && <BusinessesPanel />}
+          {tab === 'staff' && <ManagersPanel />}
           {tab === 'upgrades' && <UpgradesPanel />}
-          {tab === 'prestige' && <PrestigePanel />}
+          {tab === 'empire' && <PrestigePanel />}
           {tab === 'shop' && <ShopPanel />}
         </View>
       </View>
@@ -102,7 +103,15 @@ function Loading() {
   );
 }
 
+/** Dev views for visual review in the web build, e.g. `?view=art`. Never set on phones. */
+const DEV_VIEW = Platform.OS === 'web' && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('view') : null;
+
 export default function App() {
+  if (DEV_VIEW === 'art') return <ArtGallery />;
+  return <Root />;
+}
+
+function Root() {
   const hydrated = useGame((s) => s.hydrated);
   const fontKey = useGame((s) => s.cfg.theme.displayFont);
   const fontSrc = fontKey ? gameAssets[fontKey] : undefined;

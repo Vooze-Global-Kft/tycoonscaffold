@@ -41,7 +41,10 @@ export function TabBar() {
     useShallow((s) => {
       const { cfg, game } = s;
       return {
-        managers: cfg.businesses.some((b) => !game.businesses[b.id].managed && game.businesses[b.id].owned > 0 && game.cash >= b.managerCost),
+        managers: cfg.businesses.some((b) => {
+          const s = game.venues[game.activeVenue].businesses[b.id];
+          return !s.managed && s.owned > 0 && game.cash >= E.managerCost(cfg, game.activeVenue, b.id);
+        }),
         upgrades: cfg.upgrades.some((u) => !u.premium && !game.upgrades.includes(u.id) && game.cash >= u.cost),
         prestige: E.prestigePointsAvailable(cfg, game) >= Math.max(1, game.prestigePoints * 0.5),
         shop: E.canClaimDaily(game, Date.now()),
@@ -49,10 +52,10 @@ export function TabBar() {
     }),
   );
   const items: { key: Tab; icon: string; label: string; badge?: boolean }[] = [
-    { key: 'businesses', icon: t.icons.tabBuild ?? t.heroIcon, label: 'Build' },
-    { key: 'managers', icon: t.icons.tabManagers, label: t.strings.managerTab, badge: badges.managers },
+    { key: 'home', icon: t.icons.tabBuild ?? t.heroIcon, label: 'Build' },
+    { key: 'staff', icon: t.icons.tabManagers, label: t.strings.managerTab, badge: badges.managers },
     { key: 'upgrades', icon: t.icons.tabUpgrades, label: t.strings.upgradeTab, badge: badges.upgrades },
-    { key: 'prestige', icon: t.strings.prestigeIcon, label: t.strings.prestigeVerb, badge: badges.prestige },
+    { key: 'empire', icon: t.strings.prestigeIcon, label: t.strings.prestigeVerb, badge: badges.prestige },
     { key: 'shop', icon: t.icons.tabShop, label: 'Shop', badge: badges.shop },
   ];
   return (

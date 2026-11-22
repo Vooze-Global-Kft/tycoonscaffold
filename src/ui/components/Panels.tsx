@@ -76,7 +76,7 @@ export function ManagersPanel() {
   return (
     <ScrollView contentContainerStyle={styles.list}>
       {cfg.businesses.map((b) => {
-        const s = game.businesses[b.id];
+        const s = game.venues[game.activeVenue].businesses[b.id];
         if (s.owned === 0 && !s.managed) return null;
         return (
           <Card key={b.id}>
@@ -85,7 +85,12 @@ export function ManagersPanel() {
             {s.managed ? (
               <Text style={{ color: t.c.success, fontWeight: '800' }}>Hired ✓</Text>
             ) : (
-              <Button label="Hire" sublabel={formatMoney(b.managerCost, t.strings.currencySymbol)} disabled={game.cash < b.managerCost} onPress={() => hire(b.id)} />
+              <Button
+                label="Hire"
+                sublabel={formatMoney(E.managerCost(cfg, game.activeVenue, b.id), t.strings.currencySymbol)}
+                disabled={game.cash < E.managerCost(cfg, game.activeVenue, b.id)}
+                onPress={() => hire(b.id)}
+              />
             )}
           </Card>
         );
