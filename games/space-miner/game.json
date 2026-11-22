@@ -52,7 +52,7 @@
     "tapPercentOfIncome": 0,
     "milestones": [],
     "prestige": {
-      "threshold": 220000000,
+      "threshold": 130000000,
       "scale": 5,
       "exponent": 0.5,
       "bonusPerPoint": 0

@@ -95,7 +95,7 @@ g['economy'] = {
     'tapBase': 0, 'tapPercentOfIncome': 0,
     'milestones': [],
     # Cores = floor(scale x (lifetime / threshold)^0.5) (tune: first Jump at 2 h 15 to 2 h 45 with 20 to 30 cores).
-    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (Decision 63: median seed\'s first Jump about 2 h 30)', 2.2e8),
+    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (Decision 64: read off the five seeds\' lifetime curves after the rules of Decision 64; first Jump 2 h 10 to 2 h 45)', 1.3e8),
                  'scale': K('coreScale', 5, 1, 20, 'cores scale'), 'exponent': 0.5, 'bonusPerPoint': 0},
     # Offline: 6 h at most, efficiency 0.45 at most (2.11).
     # (tune: maxHours 6); the efficiency is capped at 0.45 by the rules. The bot's gate is "offline per hour
