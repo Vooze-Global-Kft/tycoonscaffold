@@ -829,7 +829,7 @@ function drawNeck(p: Pen, l: ResolvedLook, T: number) {
       break;
     case 'bowtie': {
       // Waiters get a big bow tie (part of the uniform that reads at 52 px); suits a smaller one.
-      const k = l.outfitStyle === 'vest' ? 1.6 : 1.15;
+      const k = l.outfitStyle === 'vest' ? 1.4 : 1.15;
       const y = -T + 6.5 * (k > 1.3 ? 1.12 : 1);
       const wx = 6.5 * k;
       const wy = 3.8 * k;
@@ -916,12 +916,12 @@ function drawTorso(p: Pen, l: ResolvedLook, d: BodyDims) {
     }
     case 'vest': {
       p.shape(body, WHITE, { shade: 4 });
-      const vest = op(body, poly([[-7.5, -T - 4], [7.5, -T - 4], [x, -T * 0.42]]), PathOp.Difference);
+      const vest = op(body, poly([[-6, -T - 4], [6.5, -T - 4], [x, -T * 0.74]]), PathOp.Difference);
       if (vest) {
         p.fill(vest, l.outfit);
         p.stroke(vest, OUTLINE, 1.6);
       }
-      dots(p, [[x, -T * 0.3], [x, -T * 0.12]], 1.4, '#FFD166');
+      dots(p, [[x, -T * 0.6], [x, -T * 0.42]], 1.5, '#FFD166');
       p.stroke(body, OUTLINE, p.ow);
       break;
     }
@@ -994,8 +994,9 @@ function drawApron(p: Pen, l: ResolvedLook, d: BodyDims, bottom: number) {
   const { torso: T, belW: B, hipW: H } = d;
   const x = FS * 0.4;
   const c = l.apron;
-  const waist = -T * 0.44;
   const waiter = l.outfitStyle === 'vest';
+  // A waiter's waist apron sits low, so the uniform vest shows above it.
+  const waist = waiter ? -T * 0.27 : -T * 0.44;
   const skirt = blob([[-B + 3.2, waist, 0], [B - 3.2, waist, 0], [H - 2.2 + (bottom > 5 ? 2 : 0), bottom - 2], [0, bottom - 0.4], [-H + 2.2 - (bottom > 5 ? 2 : 0), bottom - 2]]);
   // Waiters wear a waist apron; everyone else gets a bib.
   const shape = waiter ? skirt : merged(skirt, rrect(x - 7.8, -T * 0.8, 15.6, T * 0.42, 3.4));

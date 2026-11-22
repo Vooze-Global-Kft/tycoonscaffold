@@ -147,14 +147,15 @@ describe('chests: rolls', () => {
   const withChests = (s: GameState, id: string, n: number) => M.grantChest(cfg, s, id, n);
 
   it('the same seed gives the same chest; a different seed can differ', () => {
-    const a = withChests({ ...fresh(), rng: 12345 }, 'plain', 1);
+    // Chests roll from their own stream (chests.seed), not from state.rng (audit.md: no re-rolls).
+    const a = withChests({ ...fresh(), chests: { ...fresh().chests, seed: 12345 } }, 'plain', 1);
     const r1 = M.openChest(cfg, a, 'plain', T0)!;
     const r2 = M.openChest(cfg, a, 'plain', T0)!;
     expect(r1.rewards).toEqual(r2.rewards);
-    expect(r1.state.rng).toBe(r2.state.rng);
+    expect(r1.state.chests.opened).toEqual(r2.state.chests.opened);
     let differs = false;
     for (let seed = 1; seed < 50 && !differs; seed++) {
-      const other = M.openChest(cfg, { ...a, rng: seed }, 'plain', T0)!;
+      const other = M.openChest(cfg, { ...a, chests: { ...a.chests, seed } }, 'plain', T0)!;
       differs = JSON.stringify(other.rewards) !== JSON.stringify(r1.rewards);
     }
     expect(differs).toBe(true);

@@ -24,7 +24,7 @@ import {
   venueIds,
 } from './economy';
 import { formatNumber } from './format';
-import { rngFloat, rngInt, rngPick, rngWeighted } from './rng';
+import { hashString, rngFloat, rngInt, rngMix, rngPick, rngWeighted } from './rng';
 import type { DealState, GameState } from './types';
 
 // ---------------------------------------------------------------- cards
@@ -199,10 +199,14 @@ function effectiveRarityWeights(cfg: GameConfig, chest: Chest): number[] {
   return RARITIES.map((r) => (cfg.meta.cards.some((c) => c.rarity === r) ? Math.max(0, chest.rarityWeights[r]) : 0));
 }
 
-/** Slot weights as the roll uses them: card slots weigh 0 when no rarity can be rolled. */
+/**
+ * Slot weights as the roll uses them: card slots weigh 0 when no rarity can be rolled. A chest left
+ * with no possible slot at all (only card slots, in a game without cards) gives gems in every slot.
+ */
 function effectiveSlotWeights(cfg: GameConfig, chest: Chest): [number, number, number] {
   const cardsPossible = effectiveRarityWeights(cfg, chest).some((w) => w > 0);
-  return [cardsPossible ? Math.max(0, chest.slotWeights.card) : 0, Math.max(0, chest.slotWeights.gems), Math.max(0, chest.slotWeights.cash)];
+  const w: [number, number, number] = [cardsPossible ? Math.max(0, chest.slotWeights.card) : 0, Math.max(0, chest.slotWeights.gems), Math.max(0, chest.slotWeights.cash)];
+  return w[0] + w[1] + w[2] > 0 ? w : [0, 1, 0];
 }
 
 /**
@@ -258,6 +262,285 @@ export function chestRules(cfg: GameConfig, state: GameState, chestId: string): 
   };
 }
 
+// ---------------------------------------------------------------- exact drop-rate facts
+
+/** One rarity line of the drop-rate screen. */
+export interface ChestRarityFact {
+  rarity: Rarity;
+  /**
+   * 0..100: the chance that ONE CHEST holds at least one card of this rarity or better.
+   * Word it "<Rarity> or better: <x>% of chests" ("Legendary: x% of chests" for the top one, and
+   * "Any card: x%" for common). Falls from common to legendary.
+   */
+  atLeastPercent: number;
+  /** 0..100: the share of all cards from this chest that are exactly this rarity ("x% of cards"). */
+  cardPercent: number;
+}
+
+/**
+ * Everything the drop-rate screen states for one chest, computed exactly from the config and the
+ * same rules openChest follows (tested against 60,000 real opens in audit.test.ts). Every number is
+ * a percentage 0..100 unless said otherwise. Show at least `slotOdds`, `perCard` and the rules; the
+ * `lines` are a ready, plain wording of all of it.
+ */
+export interface ChestOddsFacts {
+  chestId: string;
+  /** Slots in the chest. */
+  slots: number;
+  /** Each slot, rolled on its own: card / gems / cash. Same as chestSlotOdds. "Each slot: card x%, ..." */
+  slotOdds: { card: number; gems: number; cash: number };
+  /** Average number of cards per chest (not a percentage), the guarantee's extra card slot included. "About x cards per chest". */
+  cardsPerChest: number;
+  /**
+   * The chance of each rarity PER CARD, guarantee included ("Each card: Common x%, ..."). Adds up to
+   * 100 (all 0 when the chest can hold no card). This is the true share of cards a player gets from
+   * this chest while bad-luck protection is not due; with a guarantee it differs from the base roll
+   * (chestCardOdds), and the guarantee is the reason: say so ("includes the guaranteed card").
+   */
+  perCard: RarityOdds[];
+  /** Per chest, guarantee included, before bad-luck protection. Order: common .. legendary. */
+  perChest: ChestRarityFact[];
+  /** The guarantee in every chest ("At least one Rare or better in every chest"), or null. */
+  guaranteed: Rarity | null;
+  /**
+   * Bad-luck protection: at the latest every N chests that hold cards, a card of this rarity or
+   * better ("An Epic or better at least every 10 chests with cards"). Null when the game has none.
+   * The counter is shared by all chests with cards and resets when the rarity appears by any means.
+   */
+  epicWithin: number | null;
+  legendaryWithin: number | null;
+  /**
+   * Long-run share of these chests with each rarity when the player opens only this kind, with the
+   * protection included ("With protection, over many chests: Epic or better x% of chests"). Higher
+   * than perChest for the protected rarities. Null when no protection applies to this game.
+   */
+  longRun: ChestRarityFact[] | null;
+  /**
+   * The odds of THIS player's next chest of this kind, from their protection counters (reaches 100%
+   * of the chests that hold cards when protection is due: "Your next chest: Epic or better x%").
+   * Null when no state was given or no protection applies.
+   */
+  nextChest: ChestRarityFact[] | null;
+  /** Card copies are multiplied by this for this player (1 without a state). "Card copies x1.4". */
+  copiesMultiplier: number;
+  /**
+   * The whole screen in plain English sentences, every one of them built from the numbers above
+   * (percentages to one decimal, "<0.1%" for tiny non-zero chances). Use them as they are or word
+   * your own from the fields; never round a non-zero chance to 0.
+   */
+  lines: string[];
+}
+
+const RARITY_LABEL: Record<Rarity, string> = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
+
+/** A percentage worded for the screen: one decimal, never a non-zero chance shown as 0. */
+export function formatOddsPercent(p: number): string {
+  if (!(p > 0)) return '0%';
+  if (p >= 99.95 && p < 100) return '>99.9%';
+  if (p < 0.05) return '<0.1%';
+  return `${(Math.round(p * 10) / 10).toFixed(1).replace(/\.0$/, '')}%`;
+}
+
+/** Binomial probabilities P(K = k), k = 0..n. */
+function binomial(n: number, p: number): number[] {
+  const out: number[] = [];
+  let c = 1;
+  for (let k = 0; k <= n; k++) {
+    out.push(c * Math.pow(p, k) * Math.pow(1 - p, n - k));
+    c = (c * (n - k)) / (k + 1);
+  }
+  return out;
+}
+
+interface ChestDistribution {
+  /** P(the chest's best card has at least rarity r), r = 0..3 (no card counts as below common). */
+  atLeast: number[];
+  /** Expected number of cards of each rarity. */
+  count: number[];
+  /** P(the chest holds at least one card) and P(best card is exactly r), for the protection chain. */
+  pCards: number;
+  best: number[];
+}
+
+/**
+ * Exact distribution of one opened chest, following openChest: K card slots ~ Binomial(slots, pCard),
+ * rarities i.i.d.; with no card slot a guarantee turns the last slot into a card of the guaranteed
+ * rarity; then when the best card is below a target (guarantee, or a due protection) the last card
+ * becomes exactly the highest such target. `floor` is that highest target (-1 = none).
+ */
+function chestDistribution(cfg: GameConfig, chest: Chest, dueEpic: boolean, dueLegendary: boolean): ChestDistribution {
+  const n = chest.slots;
+  const slot = chestSlotOdds(cfg, chest.id);
+  const pc = slot.card / 100;
+  const q = chestCardOdds(cfg, chest.id).map((o) => o.percent / 100);
+  const F = (x: number) => (x < 0 ? 0 : q.slice(0, x + 1).reduce((a, b) => a + b, 0));
+  const g = chest.guaranteed ? rollableAtLeast(cfg, rank(chest.guaranteed)) : -1;
+  let floor = g;
+  const epicAt = rollableAtLeast(cfg, rank('epic'));
+  const legendaryAt = rollableAtLeast(cfg, rank('legendary'));
+  if (dueEpic && cfg.meta.pity.epic !== undefined && epicAt >= 0) floor = Math.max(floor, epicAt);
+  if (dueLegendary && cfg.meta.pity.legendary !== undefined && legendaryAt >= 0) floor = Math.max(floor, legendaryAt);
+
+  const pk = binomial(n, pc);
+  const atLeast = [0, 0, 0, 0];
+  const count = [0, 0, 0, 0];
+  const best = [0, 0, 0, 0];
+  let pCards = 0;
+  for (let k = 0; k <= n; k++) {
+    const p = pk[k];
+    if (!(p > 0)) continue;
+    if (k === 0) {
+      if (g >= 0 && n > 0) {
+        // The guaranteed card, raised to the floor by protection when due.
+        pCards += p;
+        count[floor] += p;
+        best[floor] += p;
+        for (let r = 0; r <= floor; r++) atLeast[r] += p;
+      }
+      continue;
+    }
+    pCards += p;
+    // Best of k i.i.d. rarities is below the floor with probability F(floor - 1)^k; then the last card becomes the floor.
+    const below = floor >= 0 ? Math.pow(F(floor - 1), k) : 0;
+    for (let r = 0; r < 4; r++) {
+      let c = k * q[r];
+      if (floor >= 0 && r < floor) c -= q[r] * Math.pow(F(floor - 1), k - 1);
+      if (r === floor) c += below;
+      count[r] += p * c;
+      const pBestAtLeast = r <= floor ? 1 : 1 - Math.pow(F(r - 1), k);
+      atLeast[r] += p * pBestAtLeast;
+    }
+  }
+  for (let r = 0; r < 4; r++) best[r] = 0;
+  // Exact best-rarity distribution from atLeast (atLeast is P(best >= r) among all chests).
+  for (let r = 0; r < 4; r++) best[r] = atLeast[r] - (r < 3 ? atLeast[r + 1] : 0);
+  return { atLeast, count, pCards, best };
+}
+
+function factsFrom(d: ChestDistribution): ChestRarityFact[] {
+  const total = d.count.reduce((a, b) => a + b, 0);
+  // Sums of floating-point terms land a hair below 1 for certainties: snap those to exactly 100.
+  const snap = (x: number) => (Math.abs(x - 1) < 1e-9 ? 1 : x);
+  return RARITIES.map((rarity, r) => ({ rarity, atLeastPercent: snap(d.atLeast[r]) * 100, cardPercent: total > 0 ? snap(d.count[r] / total) * 100 : 0 }));
+}
+
+/**
+ * Long-run odds with bad-luck protection: the stationary distribution of the two protection
+ * counters (capped at their limit minus one, where protection is due) when only this chest is
+ * opened, then the chest's odds averaged over it.
+ */
+function longRunDistribution(cfg: GameConfig, chest: Chest): ChestDistribution {
+  const E = cfg.meta.pity.epic ?? 1;
+  const L = cfg.meta.pity.legendary ?? 1;
+  const hasE = cfg.meta.pity.epic !== undefined;
+  const hasL = cfg.meta.pity.legendary !== undefined;
+  const nE = hasE ? Math.max(1, E) : 1;
+  const nL = hasL ? Math.max(1, L) : 1;
+  const cache = new Map<string, ChestDistribution>();
+  const dist = (a: number, b: number) => {
+    const de = hasE && a >= E - 1;
+    const dl = hasL && b >= L - 1;
+    const key = `${de}${dl}`;
+    let d = cache.get(key);
+    if (!d) cache.set(key, (d = chestDistribution(cfg, chest, de, dl)));
+    return d;
+  };
+  const idx = (a: number, b: number) => a * nL + b;
+  let pi = new Float64Array(nE * nL);
+  pi[0] = 1;
+  for (let it = 0; it < 200_000; it++) {
+    const next = new Float64Array(nE * nL);
+    for (let a = 0; a < nE; a++) {
+      for (let b = 0; b < nL; b++) {
+        const m = pi[idx(a, b)];
+        if (m === 0) continue;
+        const d = dist(a, b);
+        // Lazy chain (half stays) so the iteration converges even for periodic chains.
+        next[idx(a, b)] += m * (0.5 + 0.5 * (1 - d.pCards));
+        for (let r = 0; r < 4; r++) {
+          const p = d.best[r];
+          if (!(p > 0)) continue;
+          const a2 = !hasE || r >= rank('epic') ? 0 : Math.min(a + 1, nE - 1);
+          const b2 = !hasL || r >= rank('legendary') ? 0 : Math.min(b + 1, nL - 1);
+          next[idx(a2, b2)] += 0.5 * m * p;
+        }
+      }
+    }
+    let diff = 0;
+    for (let i = 0; i < next.length; i++) diff += Math.abs(next[i] - pi[i]);
+    pi = next;
+    if (diff < 1e-14) break;
+  }
+  const out: ChestDistribution = { atLeast: [0, 0, 0, 0], count: [0, 0, 0, 0], pCards: 0, best: [0, 0, 0, 0] };
+  for (let a = 0; a < nE; a++) {
+    for (let b = 0; b < nL; b++) {
+      const m = pi[idx(a, b)];
+      if (m === 0) continue;
+      const d = dist(a, b);
+      out.pCards += m * d.pCards;
+      for (let r = 0; r < 4; r++) {
+        out.atLeast[r] += m * d.atLeast[r];
+        out.count[r] += m * d.count[r];
+        out.best[r] += m * d.best[r];
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * The exact drop-rate facts for one chest (see ChestOddsFacts for what each field means and how to
+ * word it). `state` adds this player's next-chest odds and copies multiplier; pass null for the
+ * general screen. Null for an unknown chest. Pure, and cheap enough to call when the screen opens
+ * (not every frame).
+ */
+export function chestOddsFacts(cfg: GameConfig, chestId: string, state: GameState | null): ChestOddsFacts | null {
+  const chest = chestCfg(cfg, chestId);
+  if (!chest) return null;
+  const slotOdds = chestSlotOdds(cfg, chestId);
+  const base = chestDistribution(cfg, chest, false, false);
+  const perChest = factsFrom(base);
+  const cardsPerChest = base.count.reduce((a, b) => a + b, 0);
+  const perCard: RarityOdds[] = perChest.map((f) => ({ rarity: f.rarity, percent: f.cardPercent }));
+  const rules = chestRules(cfg, state ?? ({ stats: { venuesEver: 1 } } as GameState), chestId)!;
+  const protectedGame = cardsPerChest > 0 && (rules.epicWithin !== null || rules.legendaryWithin !== null);
+  const longRun = protectedGame ? factsFrom(longRunDistribution(cfg, chest)) : null;
+  let nextChest: ChestRarityFact[] | null = null;
+  if (protectedGame && state) {
+    const dueE = cfg.meta.pity.epic !== undefined && state.chests.sinceEpic >= cfg.meta.pity.epic - 1;
+    const dueL = cfg.meta.pity.legendary !== undefined && state.chests.sinceLegendary >= cfg.meta.pity.legendary - 1;
+    nextChest = factsFrom(chestDistribution(cfg, chest, dueE, dueL));
+  }
+  const copiesMultiplier = state ? rules.copiesMultiplier : 1;
+
+  const pct = formatOddsPercent;
+  const lines: string[] = [];
+  const kinds = [`a card ${pct(slotOdds.card)}`, `gems ${pct(slotOdds.gems)}`, `cash ${pct(slotOdds.cash)}`].filter((_, i) => [slotOdds.card, slotOdds.gems, slotOdds.cash][i] > 0);
+  lines.push(`${chest.slots} slots. Each slot is rolled on its own: ${kinds.join(', ')}.`);
+  if (cardsPerChest > 0) {
+    lines.push(`About ${(Math.round(cardsPerChest * 100) / 100).toString()} cards per chest on average.`);
+    if (rules.guaranteed) lines.push(`Every chest holds at least one ${RARITY_LABEL[rules.guaranteed]} card or better.`);
+    const protectedNote = rules.epicWithin !== null || rules.legendaryWithin !== null ? ', before bad-luck protection' : '';
+    lines.push(`Each card: ${perCard.map((o) => `${RARITY_LABEL[o.rarity]} ${pct(o.percent)}`).join(', ')}${rules.guaranteed ? ` (the guaranteed card included${protectedNote})` : protectedNote ? ` (${protectedNote.slice(2)})` : ''}.`);
+    const atLeastText = (f: ChestRarityFact[]) =>
+      f.slice(1).map((x) => `${RARITY_LABEL[x.rarity]}${x.rarity === 'legendary' ? '' : ' or better'} ${pct(x.atLeastPercent)}`).join(', ');
+    lines.push(`Chests with at least one: ${atLeastText(perChest)}.`);
+    if (rules.epicWithin !== null || rules.legendaryWithin !== null) {
+      const parts: string[] = [];
+      if (rules.epicWithin !== null) parts.push(`an Epic card or better at least once every ${rules.epicWithin} chests with cards`);
+      if (rules.legendaryWithin !== null) parts.push(`a Legendary at least once every ${rules.legendaryWithin}`);
+      lines.push(`Bad-luck protection: ${parts.join(', and ')}. The count is shared by all chests and starts again when that card appears.`);
+      if (longRun) lines.push(`With protection, over many chests of this kind: ${atLeastText(longRun)}.`);
+      // Only worth a line when protection is due for this player (otherwise it equals the line above).
+      if (nextChest && nextChest.some((x, i) => Math.abs(x.atLeastPercent - perChest[i].atLeastPercent) > 1e-9)) lines.push(`Your next chest of this kind: ${atLeastText(nextChest)}.`);
+    }
+    if (copiesMultiplier !== 1) lines.push(`Card copies are multiplied by ${(Math.round(copiesMultiplier * 100) / 100).toString()} for you (it grows with each new location you open).`);
+  } else {
+    lines.push('This chest holds no cards.');
+  }
+  return { chestId, slots: chest.slots, slotOdds, cardsPerChest, perCard, perChest, guaranteed: rules.guaranteed, epicWithin: rules.epicWithin, legendaryWithin: rules.legendaryWithin, longRun, nextChest, copiesMultiplier, lines };
+}
+
 /** Adds unopened chests to the player's inventory. Unknown chest ids are ignored. */
 export function grantChest(cfg: GameConfig, state: GameState, chestId: string, count = 1): GameState {
   if (!chestCfg(cfg, chestId) || !(count > 0)) return state;
@@ -280,6 +563,11 @@ interface RolledCard {
   rarity: number;
   cardId: string;
   copies: number;
+}
+
+/** The seed the Nth chest (0-based) of an id opens with. Independent of state.rng and of other ids. */
+function chestStream(state: GameState, chestId: string, nth: number): number {
+  return rngMix(rngMix(state.chests.seed ?? 0, hashString(chestId)), nth);
 }
 
 /** Rolls the card and the copies for a card slot of a given rarity (index into RARITIES). */
@@ -311,6 +599,9 @@ function rollableAtLeast(cfg: GameConfig, min: number): number {
  * - Card copies are multiplied by 1 + chestGrowthPerVenue * (stats.venuesEver - 1), rounded.
  * - A rarity with no cards in the game is never rolled.
  * Counts stats.chestsOpened. Returns null when the player has no such chest.
+ * Randomness: the Nth chest of an id rolls from its own stream (chests.seed, the id and N), never
+ * from state.rng, so the result cannot be changed by reloading or by doing anything else first;
+ * only the bad-luck counters (which other chests also move) can change it, and only upwards.
  *
  * Choices:
  * - Each slot's kind is rolled independently (chestSlotOdds). If a chest with a guarantee rolled
@@ -330,7 +621,8 @@ export function openChest(cfg: GameConfig, state: GameState, chestId: string, no
   const mult = copiesMultiplier(cfg, state);
   const slotWeights = effectiveSlotWeights(cfg, chest);
   const rarityWeights = effectiveRarityWeights(cfg, chest);
-  let seed = state.rng;
+  const nth = state.chests.opened?.[chestId] ?? 0;
+  let seed = chestStream(state, chestId, nth);
 
   type Slot = { kind: 'card'; card: RolledCard } | { kind: 'gems'; amount: number } | { kind: 'cash'; seconds: number };
   const slots: Slot[] = [];
@@ -395,8 +687,7 @@ export function openChest(cfg: GameConfig, state: GameState, chestId: string, no
   else delete owned[chestId];
   let s: GameState = {
     ...state,
-    rng: seed,
-    chests: { ...state.chests, owned, sinceEpic, sinceLegendary },
+    chests: { ...state.chests, owned, sinceEpic, sinceLegendary, opened: { ...state.chests.opened, [chestId]: nth + 1 } },
     stats: { ...state.stats, chestsOpened: state.stats.chestsOpened + 1 },
   };
   const rewards: GrantedReward[] = [];
@@ -484,14 +775,15 @@ function freeCharges(fc: NonNullable<GameConfig['meta']['freeChest']>, anchor: n
  * accrue from `state.chests.freeAnchor`, one per recharge period. The period is `everyHours`,
  * except that the Nth chest ever (N = freeClaimed + 1) uses `firstMinutes[N - 1]` when that entry
  * exists. An anchor of 0 means "start counting now" (treat it as `now`, i.e. nothing ready yet,
- * unless firstMinutes[0] is 0). Returns null when the game has no free chest.
+ * unless firstMinutes[0] is 0). Returns null when the game has no free chest (or it names a chest
+ * that does not exist).
  * The countdown: show `nextInMs` (recompute it every second from the state and Date.now(); never
  * keep a separate timer). When the clock was moved back before the anchor, nothing is ready and
  * the countdown shows at most one full period.
  */
 export function freeChestStatus(cfg: GameConfig, state: GameState, now: number): FreeChestStatus | null {
   const fc = cfg.meta.freeChest;
-  if (!fc) return null;
+  if (!fc || !chestCfg(cfg, fc.chestId)) return null;
   const anchor = state.chests.freeAnchor > 0 ? state.chests.freeAnchor : now;
   const { ready, nextAt } = freeCharges(fc, anchor, state.chests.freeClaimed, now);
   const full = ready >= fc.stored;
@@ -551,7 +843,7 @@ function adToday(state: GameState, now: number): { day: string; count: number } 
  */
 export function adChestStatus(cfg: GameConfig, state: GameState, now: number): AdChestStatus | null {
   const ac = cfg.meta.adChest;
-  if (!ac) return null;
+  if (!ac || !chestCfg(cfg, ac.chestId)) return null;
   const { count } = adToday(state, now);
   const left = Math.max(0, ac.perDay - count);
   const cooldown = Math.min(ac.cooldownMinutes * MINUTE, Math.max(0, state.chests.adNextAt - now));
@@ -578,6 +870,17 @@ export function chestSalesAllowed(cfg: GameConfig, region: string | null): boole
 /** True when a reward list contains a chest (such offers are hidden where chest sales are not allowed). */
 export function containsChest(rewards: Reward[]): boolean {
   return rewards.some((r) => r.type === 'chest');
+}
+
+/**
+ * The one check for showing or selling an offer: false only when it is PAID (gems or money) and
+ * contains a chest where chest sales are not allowed (chestSalesAllowed). Free offers, and offers
+ * without a chest, are always allowed. The store calls this before every deal and daily-shop
+ * purchase; screens use it to hide what may not be sold.
+ */
+export function offerAllowed(cfg: GameConfig, region: string | null, rewards: Reward[], paid: boolean): boolean {
+  if (!paid || !containsChest(rewards)) return true;
+  return chestSalesAllowed(cfg, region);
 }
 
 /** Grants the rewarded-ad chest (call after the ad was watched). No-op when the daily limit is used up or the cooldown is running. */
@@ -694,7 +997,7 @@ export function refreshMissions(cfg: GameConfig, state: GameState, now?: number)
   const m = cfg.meta.missions;
   const clock = now === undefined ? missionClock(state) : { now, day: laterDay(dayKey(now), state.missions.day) };
   const byId = new Map(m.templates.map((t) => [t.id, t]));
-  const slots = state.missions.slots.filter((sl) => byId.has(sl.templateId)).slice(0, m.slots);
+  const slots = state.missions.slots.filter((sl) => sl && byId.has(sl.templateId)).slice(0, m.slots);
   let doneToday = state.missions.doneToday;
   let day = state.missions.day;
   if (day !== clock.day) {
@@ -738,7 +1041,7 @@ function missionText(cfg: GameConfig, t: MissionTemplate, target: number): strin
 export function missionViews(cfg: GameConfig, state: GameState): MissionView[] {
   const views: MissionView[] = [];
   state.missions.slots.forEach((sl, index) => {
-    const t = cfg.meta.missions.templates.find((x) => x.id === sl.templateId);
+    const t = sl ? cfg.meta.missions.templates.find((x) => x.id === sl.templateId) : undefined;
     if (!t) return;
     const progress = Math.min(sl.target, Math.max(0, Math.floor(missionCounter(state, t.type) - sl.start + 1e-9)));
     views.push({ index, templateId: t.id, text: missionText(cfg, t, sl.target), progress, target: sl.target, done: progress >= sl.target, reward: t.reward });
@@ -833,7 +1136,7 @@ function dealView(cfg: GameConfig, state: GameState, deal: Deal, now: number): D
   const ds = state.deals[deal.id];
   if (!ds) return null;
   const endsAt = dealEndsAt(deal, ds);
-  const purchasesLeft = deal.maxPurchases - ds.purchases;
+  const purchasesLeft = Math.min(deal.maxPurchases, deal.maxPurchases - ds.purchases);
   if (purchasesLeft <= 0 || (endsAt !== null && now >= endsAt)) return null;
   return { deal, endsAt, purchasesLeft };
 }

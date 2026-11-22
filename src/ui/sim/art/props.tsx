@@ -2181,7 +2181,7 @@ export interface WallProps {
   palette?: Partial<ArtPalette>;
   /** Where a shelf hangs along the wall, 0 (left) .. 1 (right); `null` for none. Default 0.08. */
   shelf?: number | null;
-  /** Where a blank menu board hangs, 0 .. 1; `null` for none. Default 0.92. */
+  /** Where a chalk menu board hangs, 0 .. 1; `null` for none. Default 0.92. */
   menu?: number | null;
   zIndex?: Anim<number>;
 }

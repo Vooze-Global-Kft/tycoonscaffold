@@ -4,7 +4,11 @@ import {
   MAX_SEATS_DRAWN,
   computeLayout,
   cookFrame,
+  decorTiers,
   depthOrder,
+  kitchenPath,
+  passPile,
+  pathLength,
   entrancePoint,
   guestFrame,
   passFullness,
@@ -210,5 +214,54 @@ describe('cooks and effects', () => {
     expect(passFullness(60, 20, 2)).toBeCloseTo(0.5);
     expect(passFullness(1e12, 20, 2)).toBe(1);
     expect(passFullness(5, 0, 0)).toBe(1);
+  });
+});
+
+describe('scene additions', () => {
+  it('shrinks the art with the scene and keeps it on the floor', () => {
+    const small = computeLayout(375, 220, 6, 8);
+    expect(small.artScale).toBeLessThan(L.artScale);
+    expect(L.characterHeight).toBeCloseTo(50 * L.artScale);
+    for (const l of [L, small]) {
+      expect(l.wallBottom).toBeGreaterThan(l.wallHeight);
+      expect(l.wallBottom).toBeLessThan(l.stations[0].y);
+      // A station never reaches up into the strip where the venue chip and round buttons sit.
+      expect(l.stations[0].y - 64 * l.stationScale).toBeGreaterThan(l.wallHeight * 0.5);
+    }
+  });
+
+  it('seats each guest beside their table, the waiter on the other side', () => {
+    L.tables.forEach((t, k) => {
+      expect(L.guests[k].x).toBeGreaterThan(t.x);
+      expect(L.serve[k].x).toBeLessThan(t.x);
+    });
+  });
+
+  it('walks a new cook in through the door, around the end of the counter, to the station', () => {
+    const path = kitchenPath(L, L.cooks[2]);
+    expect(path[0]).toEqual(L.outside);
+    expect(path[1]).toEqual(L.door);
+    expect(path[path.length - 1]).toEqual(L.cooks[2]);
+    // The leg that crosses the counter's line runs clear of its right end.
+    expect(path[2].x).toBeGreaterThan(L.pass.x + L.pass.width);
+    expect(path[3].x).toBeGreaterThan(L.pass.x + L.pass.width);
+    expect(pathLength(path)).toBeGreaterThan(0);
+    expect(L.kitchenGate.x).toBeLessThan(L.width);
+  });
+
+  it('caps the pile on the pass and counts the real number of dishes', () => {
+    expect(passPile(0, 10)).toEqual({ drawn: 0, total: 0 });
+    expect(passPile(30, 10)).toEqual({ drawn: 3, total: 3 });
+    expect(passPile(31, 10)).toEqual({ drawn: 4, total: 4 });
+    expect(passPile(1000, 10)).toEqual({ drawn: 8, total: 100 });
+    expect(passPile(5, 0)).toEqual({ drawn: 0, total: 0 });
+    expect(passPile(Number.NaN, 10)).toEqual({ drawn: 0, total: 0 });
+  });
+
+  it('dresses the room every 25 levels', () => {
+    expect(decorTiers(1, 1)).toEqual({ uniform: 0, dining: 0 });
+    expect(decorTiers(25, 49)).toEqual({ uniform: 1, dining: 1 });
+    expect(decorTiers(80, 100)).toEqual({ uniform: 3, dining: 4 });
+    expect(decorTiers(Number.NaN, -3)).toEqual({ uniform: 0, dining: 0 });
   });
 });

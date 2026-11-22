@@ -23,7 +23,7 @@ import {
   type ChainParams,
   type Stage,
 } from './chain';
-import { seedFrom } from './rng';
+import { rngMix, seedFrom } from './rng';
 import { MAIN_VENUE, type BusinessState, type BuyAmount, type GameState, type VenueChain, type VenueState } from './types';
 
 export { MAIN_VENUE };
@@ -122,7 +122,7 @@ export function createInitialState(cfg: GameConfig, now: number): GameState {
     entitlements: { noAds: false, skipRewarded: false, products: [], multipliers: {} },
     daily: { lastClaimDay: null, streak: 0 },
     cards: {},
-    chests: { owned: {}, freeAnchor: 0, freeClaimed: 0, adDay: null, adCount: 0, adNextAt: 0, sinceEpic: 0, sinceLegendary: 0 },
+    chests: { owned: {}, freeAnchor: 0, freeClaimed: 0, adDay: null, adCount: 0, adNextAt: 0, sinceEpic: 0, sinceLegendary: 0, seed: rngMix(seedFrom(now), 0x43484553), opened: {} },
     missions: { slots: [], completed: {}, total: 0, day: null, doneToday: 0 },
     deals: {},
     dailyShop: { day: null, offerIds: [], bought: [] },
@@ -277,14 +277,58 @@ export function reconcileState(cfg: GameConfig, savedRaw: unknown, now?: number)
   const chestIds = new Set(cfg.meta.chests.map((c) => c.id));
   const owned: Record<string, number> = {};
   for (const [id, n] of Object.entries(chests.owned)) if (chestIds.has(id) && intOr(n, 0) > 0) owned[id] = intOr(n, 0);
-  const dealIds = new Set(cfg.meta.deals.map((d) => d.id));
+  const opened: Record<string, number> = {};
+  for (const [id, n] of Object.entries(chests.opened)) if (intOr(n, 0) > 0) opened[id] = intOr(n, 0);
+  const chestSeed = typeof chests.seed === 'number' && Number.isInteger(chests.seed) ? chests.seed >>> 0 : fresh.chests.seed;
   const deals: GameState['deals'] = {};
-  if (isPlain(saved.deals)) for (const [id, d] of Object.entries(saved.deals)) if (dealIds.has(id) && isPlain(d)) deals[id] = d as unknown as GameState['deals'][string];
+  if (isPlain(saved.deals)) {
+    for (const [id, d] of Object.entries(saved.deals)) {
+      const deal = cfg.meta.deals.find((x) => x.id === id);
+      if (!deal || !isPlain(d)) continue;
+      // A broken start time counts as long ago (an offer is never restarted by a bad save).
+      const startedAt = finiteOr(d.startedAt, 0);
+      const endsAt =
+        d.endsAt === null ? (deal.durationHours === undefined ? null : startedAt + deal.durationHours * 3_600_000)
+        : typeof d.endsAt === 'number' && Number.isFinite(d.endsAt) ? d.endsAt
+        : deal.durationHours !== undefined ? startedAt + deal.durationHours * 3_600_000 : null;
+      deals[id] = { startedAt, endsAt, purchases: Math.min(intOr(d.purchases, 0), deal.maxPurchases), seen: boolOr(d.seen, false) };
+    }
+  }
 
   // Fields this file does not know about (added by the meta systems) still load, shape-checked.
   const known = new Set(['version', 'cash', 'gems', 'runEarnings', 'lifetimeEarnings', 'prestigePoints', 'prestigeCount', 'venues', 'activeVenue', 'upgrades', 'boostUntil', 'rush', 'storySeen', 'entitlements', 'daily', 'cards', 'chests', 'deals', 'rng', 'stats', 'lastSavedAt']);
   const rest: Plain = {};
   for (const [k, f] of Object.entries(fresh)) if (!known.has(k)) rest[k] = mergeShape({ [k]: f }, { [k]: saved[k] })[k];
+
+  // Meta records from the save, checked entry by entry (mergeShape only checked their outer shape).
+  const restMissions = (rest.missions ?? fresh.missions) as GameState['missions'];
+  const templateIds = new Set(cfg.meta.missions.templates.map((t) => t.id));
+  const missionSlots: GameState['missions']['slots'] = [];
+  for (const sl of Array.isArray(restMissions.slots) ? (restMissions.slots as unknown[]) : []) {
+    if (!isPlain(sl) || typeof sl.templateId !== 'string' || !templateIds.has(sl.templateId)) continue;
+    if (missionSlots.some((x) => x.templateId === sl.templateId)) continue;
+    const target = typeof sl.target === 'number' && Number.isFinite(sl.target) && sl.target >= 1 && sl.target <= MAX_CASH ? sl.target : null;
+    if (target === null) continue;
+    missionSlots.push({ templateId: sl.templateId, target, start: finiteOr(sl.start, 0) });
+  }
+  const completed: Record<string, number> = {};
+  for (const [id, n] of Object.entries(isPlain(restMissions.completed) ? restMissions.completed : {})) if (typeof n === 'number' && n >= 0 && Number.isFinite(n)) completed[id] = Math.floor(n);
+  const missions: GameState['missions'] = {
+    slots: missionSlots,
+    completed,
+    total: intOr(restMissions.total, 0),
+    day: typeof restMissions.day === 'string' ? restMissions.day : null,
+    doneToday: intOr(restMissions.doneToday, 0),
+  };
+  const restShop = (rest.dailyShop ?? fresh.dailyShop) as GameState['dailyShop'];
+  const offerIds = new Set(cfg.meta.dailyShop.offers.map((o) => o.id));
+  const shopIds = [...new Set(strings(restShop.offerIds).filter((id) => offerIds.has(id)))];
+  const dailyShop: GameState['dailyShop'] = {
+    day: typeof restShop.day === 'string' ? restShop.day : null,
+    offerIds: shopIds,
+    bought: [...new Set(strings(restShop.bought).filter((id) => shopIds.includes(id)))],
+  };
+  const stats = { ...paid.stats, venuesEver: Math.min(Math.max(1, paid.stats.venuesEver), ids.length) };
 
   const activeVenue = typeof saved.activeVenue === 'string' && venues[saved.activeVenue]?.unlocked ? saved.activeVenue : ids[0];
   return {
@@ -304,8 +348,11 @@ export function reconcileState(cfg: GameConfig, savedRaw: unknown, now?: number)
     rush: { until: finiteOr(rushRaw.until, 0), readyAt: finiteOr(rushRaw.readyAt, 0) },
     storySeen: [...new Set(strings(saved.storySeen))],
     cards,
-    chests: { ...chests, owned },
+    chests: { ...chests, owned, opened, seed: chestSeed },
     deals,
+    missions,
+    dailyShop,
+    stats,
     rng: typeof saved.rng === 'number' && Number.isInteger(saved.rng) ? saved.rng >>> 0 : fresh.rng,
     lastSavedAt: finiteOr(saved.lastSavedAt, fresh.lastSavedAt),
   };
@@ -1009,15 +1056,27 @@ export function dayKey(now: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * True when today's gift can be claimed: once per local day, and only on a day LATER than the last
+ * claim (day keys sort as text), so moving the clock back and forth never pays twice.
+ */
 export function canClaimDaily(state: GameState, now: number): boolean {
-  return state.daily.lastClaimDay !== dayKey(now);
+  return state.daily.lastClaimDay === null || dayKey(now) > state.daily.lastClaimDay;
 }
 
-export function dailyReward(cfg: GameConfig, state: GameState, now: number): { gems: number; streak: number } {
-  const yesterday = dayKey(now - 86_400_000);
-  const streak = state.daily.lastClaimDay === yesterday ? state.daily.streak + 1 : 1;
+/**
+ * The gift the next claim pays. `streak` is the number of days claimed including this one (it is
+ * never reset by a missed day: research meta.md section 5, "counted in days played"). The table
+ * `economy.daily.gems` cycles: claim N pays entry (N - 1) mod length, so a 7-entry table is a
+ * weekly calendar. `day` is that entry, 1-based (show "Day 3 of 7"). Before a claim is possible it
+ * describes the next one.
+ */
+export function dailyReward(cfg: GameConfig, state: GameState, now: number): { gems: number; streak: number; day: number } {
+  void now;
+  const streak = state.daily.streak + 1;
   const table = cfg.economy.daily.gems;
-  return { gems: table[Math.min(streak, table.length) - 1], streak };
+  const i = (streak - 1) % table.length;
+  return { gems: table[i], streak, day: i + 1 };
 }
 
 export function claimDaily(cfg: GameConfig, state: GameState, now: number): GameState {

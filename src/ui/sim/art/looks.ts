@@ -39,7 +39,7 @@ export interface ResolvedLook {
 const WHITE = '#FFFBF2';
 const GOLD = '#FFC93C';
 /** Every waiter wears this vest (a uniform reads as "staff" at 52 px); customers never get it. */
-export const WAITER_VEST = '#8E2A3B';
+export const WAITER_VEST = '#A3263F';
 /** The waiters' bow tie. */
 export const WAITER_TIE = '#2B2130';
 

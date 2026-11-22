@@ -188,8 +188,8 @@ function PosesPage({ clock }: { clock: SharedValue<number> }) {
         {POSES.map((p, i) => {
           const { cx, floor } = cell(i);
           return [
-            <Character key={p + 's'} look={look} x={cx + 34} y={floor} clock={clock} pose={p} dish={dish} scale={SCENE} />,
-            <Character key={p + 'b'} look={look} x={cx + 118} y={floor} clock={clock} pose={p} dish={dish} scale={big * SCENE} />,
+            <Character key={p + 's'} look={look} x={cx + 34} y={floor} clock={clock} poses={POSES} pose={p} dish={dish} scale={SCENE} />,
+            <Character key={p + 'b'} look={look} x={cx + 118} y={floor} clock={clock} poses={POSES} pose={p} dish={dish} scale={big * SCENE} />,
           ];
         })}
       </Canvas>
@@ -223,10 +223,10 @@ function VarietyPage({ clock }: { clock: SharedValue<number> }) {
       <Canvas style={{ width: W, height: h }}>
         {groups.map((g) => [
           ...Array.from({ length: 6 }, (_, i) => (
-            <Character key={`c${g}-${i}`} look={randomLook(g * 40 + i + 1, 'customer')} x={34 + i * 64} y={g * groupH + rowH} clock={clock} pose={pose} scale={SCENE} />
+            <Character key={`c${g}-${i}`} look={randomLook(g * 40 + i + 1, 'customer')} x={34 + i * 64} y={g * groupH + rowH} clock={clock} poses={POSES} pose={pose} scale={SCENE} />
           )),
           ...staff.map((kind, i) => (
-            <Character key={`s${g}-${i}`} look={randomLook(g * 40 + i + 21, kind)} x={34 + i * 64} y={g * groupH + rowH * 2} clock={clock} pose={pose} scale={SCENE} />
+            <Character key={`s${g}-${i}`} look={randomLook(g * 40 + i + 21, kind)} x={34 + i * 64} y={g * groupH + rowH * 2} clock={clock} poses={POSES} pose={pose} scale={SCENE} />
           )),
         ])}
       </Canvas>
@@ -249,7 +249,7 @@ function CastPage({ clock }: { clock: SharedValue<number> }) {
     <View style={{ width: W, height: rows * ch }}>
       <Canvas style={{ width: W, height: rows * ch }}>
         {LOOK_NAMES.map((n, i) => (
-          <Character key={n} look={{ preset: n }} x={(i % cols) * cw + cw / 2} y={Math.floor(i / cols) * ch + ch - 30} clock={clock} scale={3} pose={pose} />
+          <Character key={n} look={{ preset: n }} x={(i % cols) * cw + cw / 2} y={Math.floor(i / cols) * ch + ch - 30} clock={clock} poses={POSES} scale={3} pose={pose} />
         ))}
       </Canvas>
       {LOOK_NAMES.map((n, i) => (
@@ -267,10 +267,10 @@ function CrowdPage({ clock }: { clock: SharedValue<number> }) {
   return (
     <Canvas style={{ width: W, height: 800 }}>
       {LOOK_NAMES.map((n, i) => (
-        <Character key={n} look={{ preset: n }} x={34 + (i % 6) * 62} y={90 + Math.floor(i / 6) * 90} clock={clock} pose={pose} scale={SCENE} />
+        <Character key={n} look={{ preset: n }} x={34 + (i % 6) * 62} y={90 + Math.floor(i / 6) * 90} clock={clock} poses={POSES} pose={pose} scale={SCENE} />
       ))}
       {Array.from({ length: 36 }, (_, i) => (
-        <Character key={i} look={randomLook(i + 1, kinds[i % 6])} x={34 + (i % 6) * 62} y={280 + Math.floor(i / 6) * 84} clock={clock} pose={pose} scale={SCENE} />
+        <Character key={i} look={randomLook(i + 1, kinds[i % 6])} x={34 + (i % 6) * 62} y={280 + Math.floor(i / 6) * 84} clock={clock} poses={POSES} pose={pose} scale={SCENE} />
       ))}
     </Canvas>
   );
@@ -279,7 +279,7 @@ function CrowdPage({ clock }: { clock: SharedValue<number> }) {
 /** A character whose clock stands still at `t`: one frame of a film strip. */
 function Frozen({ t, ...rest }: { t: number } & Omit<CharacterProps, 'clock'>) {
   const clock = useSharedValue(t);
-  return <Character {...rest} clock={clock} />;
+  return <Character poses={POSES} {...rest} clock={clock} />;
 }
 
 /** One pose as a row of frozen frames, `dt` ms apart, to check the motion drawing by drawing. */

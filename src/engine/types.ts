@@ -89,6 +89,10 @@ export interface GameState {
     /** Product multipliers multiply together. */
     multipliers: Record<string, number>;
   };
+  /**
+   * The daily gift. `streak` counts the days the gift was CLAIMED (it never resets because a day
+   * was missed); `lastClaimDay` is the local day key of the last claim.
+   */
   daily: { lastClaimDay: string | null; streak: number };
 
   // --- meta systems (all survive prestige) ---
@@ -110,6 +114,14 @@ export interface GameState {
     /** Chests opened in a row without an epic (or better) card, and without a legendary, for bad-luck protection. */
     sinceEpic: number;
     sinceLegendary: number;
+    /**
+     * Chest rolls come from their own stream: the Nth chest of an id always opens the same way,
+     * whatever else the player did first (so a chest cannot be re-rolled by reloading a save,
+     * claiming a free daily card first or opening another kind first). Fixed at game creation.
+     */
+    seed: number;
+    /** Chests opened so far, by id (the position in that id's stream). */
+    opened: Record<string, number>;
   };
   missions: {
     slots: MissionSlot[];

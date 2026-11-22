@@ -60,6 +60,14 @@ export interface SceneLayout {
   rush: Point;
   /** How tall a standing character is drawn. */
   characterHeight: number;
+  /** Scale for people and furniture drawn with the art kit (1 = the art's own size, a 50 px adult). */
+  artScale: number;
+  /** Scale for the kitchen stations (1 = the art's own 60 x 64 px). */
+  stationScale: number;
+  /** Where the back wall drawing ends and the floor begins (a little above the stations' feet). */
+  wallBottom: number;
+  /** The gap at the right end of the counter that staff walk through to reach the kitchen. */
+  kitchenGate: Point;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -80,20 +88,26 @@ export function computeLayout(width: number, height: number, stationCount: numbe
   const slot = Math.min(width / n, 86 * unit);
   const left = (width - slot * n) / 2;
   const floorLine = height * 0.385;
+  // People and furniture shrink with the scene's height as well as its width: rows of tables are
+  // only about 54 px apart on a 300 px scene, so the 50 px art is drawn a little smaller.
+  const artScale = Math.min(unit, height / 300) * 0.84;
+  const stationSize = Math.min(slot * 0.94, 64 * unit);
+  const stationScale = Math.min(stationSize / 60, artScale * 1.12);
   const stations: Point[] = [];
   const cooks: Point[] = [];
   for (let i = 0; i < n; i++) {
     const x = left + slot * (i + 0.5);
     stations.push({ x, y: floorLine });
-    cooks.push({ x, y: floorLine + height * 0.065 });
+    // The cook stands at the front right corner of the station, turned towards it, so both stay readable.
+    cooks.push({ x: x + Math.min(slot * 0.3, 22 * unit), y: floorLine + height * 0.065 });
   }
-  const stationSize = Math.min(slot * 0.94, 64 * unit);
 
   const pass = { x: width * 0.05, y: height * 0.5, width: width * 0.72, height: height * 0.075 };
   const passStack = { x: pass.x + pass.width * 0.42, y: pass.y + pass.height * 0.2 };
   const bell = { x: pass.x + pass.width - 18 * unit, y: pass.y + pass.height * 0.25 };
 
   const door = { x: width * 0.92, y: height * 0.8 };
+  const kitchenGate = { x: pass.x + pass.width + 14 * unit, y: pass.y + pass.height * 0.9 };
   const rush = { x: width * 0.872, y: height * 0.587 };
   const outside = { x: width + 34 * unit, y: height * 0.82 };
 
@@ -109,8 +123,9 @@ export function computeLayout(width: number, height: number, stationCount: numbe
     const cell = SEAT_ORDER[k];
     const t = { x: colX[cell % 4], y: rowY[Math.floor(cell / 4)] };
     tables.push(t);
-    guests.push({ x: t.x + 4 * unit, y: t.y - height * 0.03 });
-    serve.push({ x: t.x - width * 0.075, y: t.y - height * 0.012 });
+    // One guest per table, on a chair at its right side facing left; the waiter serves from the left.
+    guests.push({ x: t.x + 24.5 * artScale, y: t.y - 3 * artScale });
+    serve.push({ x: t.x - 27 * artScale, y: t.y + 2 * artScale });
   }
 
   return {
@@ -131,7 +146,11 @@ export function computeLayout(width: number, height: number, stationCount: numbe
     door,
     outside,
     rush,
-    characterHeight: clamp(height * 0.19, 40 * unit, 60 * unit),
+    characterHeight: 50 * artScale,
+    artScale,
+    stationScale,
+    wallBottom: floorLine - 14 * stationScale,
+    kitchenGate,
   };
 }
 
@@ -210,13 +229,13 @@ export function guestFrame(layout: SceneLayout, seat: Seat, index: number): Acto
       return { visible: true, ...p, facing: -1, pose: 'walk', moving: true };
     }
     case 'waiting':
-      return { visible: true, ...spot, facing: 1, pose: 'sit-wait', moving: false };
+      return { visible: true, ...spot, facing: -1, pose: 'sit-wait', moving: false };
     case 'eating':
-      return { visible: true, ...spot, facing: 1, pose: 'sit-eat', moving: false };
+      return { visible: true, ...spot, facing: -1, pose: 'sit-eat', moving: false };
     case 'leaving': {
       // A happy hop at the table, then out of the door.
       const t = seat.t;
-      if (t < 0.18) return { visible: true, ...spot, facing: 1, pose: 'cheer', moving: false };
+      if (t < 0.18) return { visible: true, ...spot, facing: -1, pose: 'cheer', moving: false };
       const u = (t - 0.18) / 0.82;
       const p = u < 0.8 ? mix(spot, layout.door, ease(u / 0.8)) : mix(layout.door, layout.outside, ease((u - 0.8) / 0.2));
       return { visible: true, ...p, facing: 1, pose: 'walk', moving: true };
@@ -239,7 +258,51 @@ export function tableState(seat: Seat): TableState {
 export function cookFrame(layout: SceneLayout, stationIndex: number, state: { owned: number; managed: boolean; running: boolean }, workPose: Pose = 'cook'): ActorFrame {
   const spot = layout.cooks[stationIndex];
   if (!spot || !state.managed || state.owned <= 0) return HIDDEN;
-  return { visible: true, ...spot, facing: 1, pose: state.running || state.managed ? workPose : 'idle', moving: false };
+  return { visible: true, ...spot, facing: -1, pose: state.running || state.managed ? workPose : 'idle', moving: false };
+}
+
+/**
+ * The walk of someone newly hired at a station, as waypoints from outside: through the front door,
+ * across the walkway to the gap at the end of the counter, along the back of the counter to the spot.
+ */
+export function kitchenPath(layout: SceneLayout, to: Point): Point[] {
+  const gate = layout.kitchenGate;
+  const behind = { x: gate.x, y: to.y };
+  return [layout.outside, layout.door, { x: gate.x, y: layout.pass.y + layout.pass.height + layout.height * 0.03 }, behind, to];
+}
+
+/** Total length of a path of waypoints, in pixels (to give each leg of a walk a steady speed). */
+export function pathLength(points: readonly Point[]): number {
+  let d = 0;
+  for (let i = 1; i < points.length; i++) d += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  return d;
+}
+
+/** The pass shows at most this many dishes; the rest is a count beside the pile. */
+export const MAX_PASS_DISHES_DRAWN = 8;
+
+/**
+ * Dishes on the pass: how many to draw and how many more to count. `buffer` is the value waiting,
+ * `dishValue` the average value of one dish, so the count is the real number of dishes waiting.
+ */
+export function passPile(buffer: number, dishValue: number): { drawn: number; total: number } {
+  if (!(buffer > 0) || !(dishValue > 0)) return { drawn: 0, total: 0 };
+  // Rounding up: a part-dish is still a plate on the counter, and nothing waiting must never look empty.
+  const total = Math.ceil(buffer / dishValue - 1e-6);
+  return { drawn: Math.min(MAX_PASS_DISHES_DRAWN, total), total };
+}
+
+/** How the room is dressed up as it grows, from the transport and sales levels (no config needed). */
+export interface DecorTiers {
+  /** Changes every 25 transport levels: the waiters' uniform. */
+  uniform: number;
+  /** Every 25 sales levels: 1 fine tablecloths, 2 candles, 3 plants, 4 and up string lights. */
+  dining: number;
+}
+
+export function decorTiers(transportLevel: number, salesLevel: number): DecorTiers {
+  const tier = (level: number) => (Number.isFinite(level) && level > 0 ? Math.floor(level / 25) : 0);
+  return { uniform: tier(transportLevel), dining: tier(salesLevel) };
 }
 
 /** Walk-in path for someone newly hired at a station: from outside, through the door, to their spot. */

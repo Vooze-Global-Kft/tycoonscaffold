@@ -53,3 +53,18 @@ export function rngPick<T>(seed: number, items: readonly T[]): Roll<T> {
 export function seedFrom(n: number): number {
   return (Math.floor(n) ^ 0x9e3779b9) >>> 0;
 }
+
+/** Mixes two 32-bit numbers into a new seed (murmur3 finaliser). Used to derive independent streams. */
+export function rngMix(a: number, b: number): number {
+  let h = (Math.imul((a ^ 0x85ebca6b) >>> 0, 0xcc9e2d51) ^ Math.imul(b >>> 0, 0x1b873593)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+/** A 32-bit hash of a string (FNV-1a), for deriving a stream per id. */
+export function hashString(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+}

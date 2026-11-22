@@ -236,14 +236,19 @@ describe('prestige', () => {
 });
 
 describe('daily, story, purchases', () => {
-  it('daily streak continues on consecutive days and resets after a gap', () => {
+  it('the daily gift counts days claimed: a missed day never resets it, and the table cycles', () => {
     let s = E.createInitialState(cfg, T0);
     s = E.claimDaily(cfg, s, T0);
     expect(E.canClaimDaily(s, T0)).toBe(false);
     s = E.claimDaily(cfg, s, T0 + 86_400_000);
     expect(s.daily.streak).toBe(2);
     s = E.claimDaily(cfg, s, T0 + 5 * 86_400_000);
-    expect(s.daily.streak).toBe(1);
+    expect(s.daily.streak).toBe(3);
+    const table = cfg.economy.daily.gems;
+    let t = T0 + 5 * 86_400_000;
+    for (let i = 3; i < table.length; i++) s = E.claimDaily(cfg, s, (t += 86_400_000));
+    // The claim after the last entry starts the table again.
+    expect(E.dailyReward(cfg, s, t + 86_400_000)).toEqual({ gems: table[0], streak: table.length + 1, day: 1 });
   });
 
   it('story beats fire once, in order', () => {

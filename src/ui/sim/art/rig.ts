@@ -564,7 +564,7 @@ export function stepRig(st: RigState, c: RigConfig, x: number, y: number, facing
   else {
     // A puff of steam rises from the bowl about once a second.
     const u = (t * 0.95) % 1;
-    pop(o.steam, R, hBx + 2 + 3 * Math.sin(u * 5), hBy - 9 - 16 * u, 0.3 * Math.sin(u * 4), wBowl * (0.55 + 0.6 * u) * life(u, 0.2, 0.45));
+    pop(o.steam, R, hBx - 2 + 2.5 * Math.sin(u * 5) - 4 * u, hBy - 8 - 12 * u, 0.3 * Math.sin(u * 4), wBowl * (0.5 + 0.5 * u) * life(u, 0.2, 0.45));
   }
   pop(o.bite, R, hFx + 1, hFy - 1.5, 0, wBite);
 

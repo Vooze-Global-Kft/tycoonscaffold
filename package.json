@@ -59,7 +59,8 @@
     "eas-build-post-install": "node scripts/select-game.js",
     "select": "node scripts/select-game.js",
     "postinstall": "node scripts/select-game.js",
-    "go": "expo start --go -c"
+    "go": "expo start --go -c",
+    "lint:worklets": "tsx scripts/lint-worklets.ts"
   },
   "private": true
 }

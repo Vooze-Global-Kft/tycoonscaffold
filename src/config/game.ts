@@ -37,7 +37,8 @@ export const REMOTE_KEYS = {
 export type RemoteKey = keyof typeof REMOTE_KEYS;
 
 export function applyRemoteOverrides(base: GameConfig, values: Partial<Record<RemoteKey, number>>): GameConfig {
-  const next: GameConfig = structuredClone(base);
+  // The config is plain JSON data, so a JSON round trip is a full copy (structuredClone is not on every phone engine).
+  const next: GameConfig = JSON.parse(JSON.stringify(base));
   for (const [key, value] of Object.entries(values)) {
     const apply = REMOTE_KEYS[key as RemoteKey];
     if (apply && typeof value === 'number' && Number.isFinite(value) && value > 0) apply(next, value);

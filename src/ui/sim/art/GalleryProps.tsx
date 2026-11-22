@@ -177,15 +177,15 @@ function FurniturePage({ clock }: { clock: SharedValue<number> }) {
           { x: 340, y: 94, text: 'door' },
         ]}
       >
-        <Chair x={36} y={80} />
+        <Chair x={60 - CHAIR_OFFSET} y={80} />
+        <Chair x={60 + CHAIR_OFFSET} y={80} facing={-1} />
         <Table x={60} y={84} state="empty" clock={clock} />
-        <Chair x={84} y={80} facing={-1} />
-        <Chair x={136} y={80} />
+        <Chair x={160 - CHAIR_OFFSET} y={80} />
+        <Chair x={160 + CHAIR_OFFSET} y={80} facing={-1} />
         <Table x={160} y={84} state="food" clock={clock} />
-        <Chair x={184} y={80} facing={-1} />
         <Table x={250} y={84} state="finished" clock={clock} />
         <Door x={340} y={90} swing={swing} clock={clock} />
-        <Chair x={45} y={250} scale={BIG} />
+        <Chair x={130 - CHAIR_OFFSET * BIG} y={250} scale={BIG} />
         <Table x={130} y={260} scale={BIG} state="food" clock={clock} />
         <Door x={300} y={300} scale={BIG} swing={swing} clock={clock} />
         <Table x={130} y={420} scale={BIG} state="finished" clock={clock} />
@@ -471,7 +471,7 @@ function ScenePage({ clock }: { clock: SharedValue<number> }) {
       {/* Six tables, back row first. */}
       <TableSet x={COLS[0]} y={ROWS[0]} clock={clock} state="food" left={sit('fiona', COLS[0] - CHAIR_OFFSET, ROWS[0], 1, 'sit-eat')} right={sit(GUEST2, COLS[0] + CHAIR_OFFSET, ROWS[0], -1, 'sit-eat')} />
       <TableSet x={COLS[1]} y={ROWS[0]} clock={clock} state="finished" />
-      <SparkleBurst x={COLS[1]} y={ROWS[0] - 34} trigger={coin} clock={clock} scale={1.2} />
+      <SparkleBurst x={COLS[1]} y={ROWS[0] - 34} trigger={coin} clock={clock} />
       <TableSet x={COLS[2]} y={ROWS[0]} clock={clock} state="empty" right={sit(GUEST, COLS[2] + CHAIR_OFFSET, ROWS[0], -1, 'sit-wait', 'plate')} />
       <TableSet x={COLS[0]} y={ROWS[1]} clock={clock} state="empty" left={sit(GUEST3, COLS[0] - CHAIR_OFFSET, ROWS[1], 1, 'sit-wait')} />
       <TableSet x={COLS[1]} y={ROWS[1]} clock={clock} state="food" dish="plate" right={sit(GUEST4, COLS[1] + CHAIR_OFFSET, ROWS[1], -1, 'sit-eat', 'plate')} />
