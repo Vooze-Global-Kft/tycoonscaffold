@@ -38,15 +38,15 @@ function tenMinutes(): Run {
   return shaped(cfg, 4242, { slots: [0, 1, 2, 3], haulers: [4, 3, 4, 2], rig: [10, 10, 4, 4], capLevel: 3, freighter: 8, autopilot: true, policy: 'contract', idle: 0 });
 }
 
+// Rewritten for Decision 56 (finishing round): draws read the station's basis; `now` is the steady
+// figure of the routes as they are (what one launch carries of each wanted ore).
 function draws(g: Run, n = 300) {
   const p = H.haulParams(cfg, g);
-  const st = H.contractStation(cfg, p, g.haul);
-  const rings = H.claimedRings(cfg, g.haul);
-  const out: { c: H.Contract; now: number[]; routed: number[]; F: number }[] = [];
+  const b = H.contractBasis(cfg, p, g.haul);
+  const out: { c: H.Contract; now: number[]; F: number }[] = [];
   for (let k = 1; k <= n; k++) {
-    const c = H.contractAt(cfg, g.haul.seed, k, rings, p.F, g.haul.trait, st);
-    const r = st.reach(c.wants.map((w) => w.ore));
-    out.push({ c, now: r.now, routed: r.routed, F: p.F });
+    const c = H.contractAt(cfg, g.haul.seed, k, b);
+    out.push({ c, now: c.wants.map((w) => b.steady[w.ore] ?? 0), F: p.F });
   }
   return out;
 }
@@ -58,7 +58,8 @@ describe('audit 2: the contract rule (section 2.6, Decision 32, rewritten for De
     // Spec 2.6: "A contract above the current share is not met by doing nothing." Rewritten for
     // Decision 40 (a contract spans L launches): the test was "at most one launch's share"; it is now
     // "at most L launches' share", with the margin of the never-free bound.
-    const free = draws(tenMinutes()).filter((d) => d.c.wants.every((w, i) => w.units < L * d.now[i] * (1 + cfg.haul.contracts.margin) - 1e-6));
+    // Decision 56: the never-free floor of the raised ore is L × steady × (1 + raise[0] / 2).
+    const free = draws(tenMinutes()).filter((d) => d.c.wants.every((w, i) => w.units < L * d.now[i] * (1 + cfg.haul.contracts.raise[0] / 2) - 1e-6));
     expect(free.map((d) => `${JSON.stringify(d.c.wants)} now ${d.now.map((x) => x.toFixed(1))}`).slice(0, 3)).toEqual([]);
   });
 
@@ -93,14 +94,10 @@ describe('audit 2: the contract rule (section 2.6, Decision 32, rewritten for De
     const all = draws(tenMinutes());
     const ores = new Set(tenMinutes().haul.slots.filter((x) => x.claimed && x.respawnAt === null).map((x) => x.ore));
     expect(ores.size).toBe(2);
-    const p = H.haulParams(cfg, tenMinutes());
-    const st = H.contractStation(cfg, p, tenMinutes().haul);
     const wholeHold = all.filter((d) => d.c.wants.length === 2 && d.c.wants.reduce((a, w) => a + w.units, 0) >= L * Math.floor(d.F) - L);
     expect(wholeHold.length, `e.g. ${JSON.stringify(wholeHold[0]?.c.wants)} with F = ${Math.floor(all[0].F)}`).toBe(0);
-    for (const d of all) {
-      const wide = st.reach(d.c.wants.map((w) => w.ore), { share: cfg.haul.contracts.maxShare, last: true });
-      d.c.wants.forEach((w, i) => expect(w.units).toBeLessThanOrEqual(Math.floor(d.now[i] + (L - 1) * wide.routed[i] + 1e-9)));
-    }
+    // Decision 56 replaced the reachable bound (reach): no ore is asked above maxShare of its launches.
+    for (const d of all) d.c.wants.forEach((w) => expect(w.units).toBeLessThanOrEqual(Math.ceil(L * d.F * cfg.haul.contracts.maxShare) + 1));
   });
 });
 

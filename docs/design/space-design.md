@@ -955,7 +955,9 @@ Bot behaviour: places every idle drone at once on the slot with the highest marg
 
 Bot behaviour with Decision 40 (overrides the contract part above): with none taken, it takes the offer with the highest bonus that it can deliver in `haul.contracts.launches` launches once it routes for it (routed share per launch × launches ≥ units, 5 % to spare), then routes until every wanted ore is on pace with 15 % to spare (one launch's share as routed × launches left ≥ units left), at most `fleetShare` of the fleet per contract, and never drops a taken contract; it swipes by hand when the hold is full or holds everything the contract still needs. The passive player takes the best-paying offer and never routes for it. The watching player (Decision 42) only watches: autopilot on `full`, nothing bought, placed or routed, no contract taken.
 
-Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-miner --hours 12 --prestige [--seed n]` reports them; validate runs seeds 12345, 4 and 99 in parallel and fails on a hard target missed on any of them (Decision 45).
+Bot behaviour in the finishing round (Decisions 56, 57, 62; overrides the two paragraphs above where they differ): the shop is `src/engine/haul/advice.ts` (the same estimate the limit hints use). Every 20 s it moves one to three drones from the route that loses least to the slot where a drone adds most when that raises the income line by more than 2 % (`routeGain`). With no contract taken it takes the offer with the highest bonus whose wanted ores all have a route; at the take and after every warp-out, while the contract's light is not green, it makes the move that raises the contract's pace most (an idle drone onto a rock of the short ore, a drone from another ore's route onto it, or a rig level on it when affordable; between moves that reach the pace, the one that keeps the most income), at most `fleetShare` of the fleet per contract; new drones go to the short ore; when the contract ends it moves the drones back where they were at the take. It runs the day shift once a minute. The player who never takes a contract (`noContracts`) is the same bot with the autopilot on `full`.
+
+Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-miner --hours 12 --prestige [--seed n] [--compare true]` reports them; validate runs seeds 12345, 4, 99, 7 and 2026 in parallel and fails on a hard target missed on any of them, and when pods or Dark Matter per hour miss their window on more than one seed (Decisions 45 and 62). The first Jump's hard window in the gate is 2 h 18 to 2 h 42 (Decision 62).
 
 | Measure | Target | Hard? |
 |---|---|---|
@@ -967,7 +969,7 @@ Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-min
 | First ring-4 slot | 40 to 55 min | no |
 | First ring-5 slot | 1 h 30 to 1 h 55 | no |
 | All 12 slots claimed | 1 h 50 to 2 h 20 | no |
-| First Jump available (cores ≥ 20) | 2 h 15 to 2 h 45 | yes |
+| First Jump available (cores ≥ 20) | 2 h 15 to 2 h 45; the gate 2 h 18 to 2 h 42 (Decision 62) | yes |
 | Run 2 reaches run 1's Jump earnings | ≤ 60 % of run 1's time (target); the gate is 65 % (Decision 33) | yes |
 | Run 3 reaches run 2's Jump earnings | ≤ 70 % of run 2's time | no |
 | Drags (drag, flick or tap-tap that assigns or moves a drone) per 10 min of active play, measured at minutes 30, 60 and 120 | ≥ 4 at each | yes |
@@ -979,6 +981,7 @@ Targets (bot time; humans are about 25 % slower). `npm run simulate -- space-min
 | Share of taken contracts that are met, for the bot that routes for them (Decision 40; replaces "payouts with a met contract") | 60 to 85 % | no |
 | Share of taken contracts that are met for a player who takes contracts but never moves a drone for one (`passive`, first 2.5 h) | ≤ 25 % | no |
 | Contract bonus as a share of run income | report; aim 10 to 25 % | no |
+| Run earnings over the first 2.5 h of the bot that routes for contracts, against the same bot that never takes one (Decision 56, condition 6: the outcome, not the bonus share) | 1.3 to 1.7 times | no |
 | Average launch fill | 70 to 95 % | no |
 | An hour away WITH the Shift Log ad bonus (`haul.offline.adBonus`) vs an hour of active play (the bot that buys and routes) from the same state, at every measurement (minutes 30, 60, 120, then every 2 h) | ≤ 0.60 (Decision 42) | yes |
 | The same vs an hour of only watching (autopilot on `full`, nothing bought, routed or taken) | ≤ 0.90 (Decision 42) | yes |
@@ -1331,3 +1334,30 @@ Knob table (`python3 scripts/content/build-space.py --table`; * = shipped value 
 | partsBase | module parts for level 2 | 2 to 4 | 3 | 3 |
 | partsGrowth | module parts growth per level | 1.25 to 1.45 | 1.35 | 1.35 |
 
+
+### Finishing round (lead, 22 November 2026, after the four verifiers)
+
+These override the fix round's decisions where they differ (`scratchpad/space/finish-decisions.md` is the lead's text; this is the specification's record of it).
+
+#### 56. Contracts are drawn from what the station has really shipped (replaces the unit rule of Decisions 32 and 40; the rest of Decision 40 stands; overrides 2.6's draw)
+The station remembers what it ships: `recent[ore]`, an exponential average of each ore's units per launch over about the last `recentLaunches` (6) warp-outs in play, saved with the run, not used before three launches. An ore can be asked for when it is at least `minValueShare` (0.10) of a launch's value, its share raised by the smallest raise stays under `maxShare` (0.90), and one of its present rocks outlives the contract. The three offers want different ores where enough are eligible; a buyer appears once. A one-ore contract "raises it": `units = round(L × recent × (1 + g))`, `g` drawn in `raise`, never below `L × steady × (1 + raise.lo / 2)` (so a fresh offer's light is never green); its multiplier is the ring's, plus `raiseMult × g`. A two-ore contract (`twoOreChance`, with three ores eligible or shipped) "holds" its second ore at `L × recent × U(holdShare)`. A station that ships one ore gets Decision 40's quota contract (the first minutes only). A freighter level resizes every contract on the board and the `recent` figures by `F_new / F_old` (event `contractResized`, "ORDER RESIZED"), so buying a level never meets a contract. A dropped contract's place stays empty until the next warp-out. `haul.contracts.launches` is 6. From galaxy 2 on there is no fixed first contract. The pace figures of offers and of the taken contract come from one function: the steady per-launch figure of each wanted ore from the routes as they are (`F × r_o / R`, no seam, no pile buffer), the taken contract's next launch counted from the hold; `expected = nextLaunch + (launchesLeft − 1) × perLaunch`; each want carries `raise` (still to gain, 0 on pace; "NEEDS +32 % COPPER"). `contractStation`, `reach`, `now`, `routed` and `margin` are gone. Conditions 1 to 6 of the lead's text are the rules engineer's tests (`haul.audit3.test.ts`); condition 6 is section 8's.
+
+#### 57. The game says what the limit is (overrides section 3's six-step limit after the tutorial)
+After the guided steps, in the first 15 minutes of galaxy 1 (`ADVICE_UNTIL` 900 s of run clock), when nothing has been bought for 40 s (`marks.boughtAt`) and an affordable purchase raises the income line by at least 15 %, the hint engine names it once on the radio and points at it: a step-0 `point` hint on `station:buyDrone`, `station:capacity`, `station:engine`, `station:freighter`, `rig:upgrade` (route `rock:<slot>`) or `slot:<slot>`, at most six showings a run (`hintsShown` of those keys) and never the purchase made last (`marks.lastBuy`). The purchase is chosen by `src/engine/haul/advice.ts`, the same estimate the balance bot buys by (best payback counted from now: `1 / (wait + price / gain)`, singles only). The lines are the `hintLimit*` strings. On the hint path (a person who does only what the hints ask, 2.5 s reactions) the first ring-2 claim comes at the minute given in "Numbers of the finishing round" below.
+
+#### 58. The tutorial's rig upgrade is not wasted on a dying rock (overrides section 3 step 6)
+Step 6 points at the claimed rig whose rock has the most life left (`longestLifeSlot`). The first rock of each ring-1 slot in galaxy 1 lasts at least `haul.start.firstLife` = 600 s of drilling. The Rig sheet says, where it shows "Dry in", that the rig stays for the next rock.
+
+#### 59. Nothing is asked of the player that the screen then contradicts
+The Rig sheet's verdict comes from the actual limit ("Pile full: drones are waiting on the freighter"); the receipt names every ore it shipped, the contract's first, in short figures, and a doubled bonus as "+₵35 x2"; a pile label never shows more than its capacity; condition cards show both lines, the upside first (`haul.conditions[].lines`: Frost Surplus "Ice value x2" first, Long Haul "Contract multipliers +0.3" first, Heavy Ore "All ore values x2" first).
+
+#### 60. The pod counters are drawn, not written as "every Nth"
+A row of manifest stamps or cache slots that fill, with words such as "DERELICT CACHE · 3 MORE ACKS".
+
+#### 61. The loading screen has an arrangement of its own
+A boot log, left-aligned in the lower third, lines arriving one by one, the station ring small in a corner; `?view=boot` shows it in the web preview.
+
+#### 62. The gate has margin
+Validate runs the pacing bot on five seeds (12345, 4, 99, 7, 2026) in parallel; every hard target must hold on each. The first Jump's hard window in the gate is 2 h 18 to 2 h 42 (three minutes inside each edge of 2 h 15 to 2 h 45; `JUMP_MARGIN` 180 s). Pods per hour and Dark Matter per hour in hours 1 to 3 must be inside their windows on at least four of the five seeds (validate fails otherwise). The balance bot runs the day shift (`haulShift` once a minute with its simulated wall time and the UTC day), and the property test has it among its actions (rules engineer).
+
+Also in this round (store and checks): the App Store promotional text no longer uses the first game's "verb, verb, and grow X into Y" frame or its idle promise ("Every rock runs dry. Every buyer wants a different ore. Which drone goes where, and when the freighter leaves the pad, is your call."); Tessaly's call no longer leads with its trade ("Tessaly. {units} {ore} wanted. Paying {mult}. Keep the hold sealed."); NAME-SEARCH.md lists "Drone Orbit: An Incremental Space Mining Drift" (keep the title and the subtitle); validate warns, and fails with `--release`, when a game's store screenshots are older than the last change to its game.json or its mode's strings file (git commit time, or the file's time while it has uncommitted changes), and when two games share one privacy policy address.

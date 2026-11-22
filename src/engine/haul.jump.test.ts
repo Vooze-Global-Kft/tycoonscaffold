@@ -33,8 +33,9 @@ describe('10. Jump', () => {
     expect(j.haul.clock).toBe(0);
     expect(j.haul.slots.filter((s) => s.claimed)).toHaveLength(1);
     expect(j.haul.fleet).toEqual({ drones: 1, capLevel: 1, engineLevel: 1 });
-    expect(j.haul.contracts.unlocked).toBe(true); // from galaxy 1 on
-    expect(j.haul.contracts.active).toBe(0);
+    // Decision 56: from galaxy 2 on the board opens after three launches, with no fixed first contract.
+    expect(j.haul.contracts.unlocked).toBe(false);
+    expect(j.haul.contracts.active).toBeNull();
     expect(j.cash).toBe(cfg.economy.startingCash);
     expect(j.runEarnings).toBe(0);
     expect(j.lifetimeEarnings).toBe(g.lifetimeEarnings);

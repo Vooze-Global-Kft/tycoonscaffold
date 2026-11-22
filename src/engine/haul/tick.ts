@@ -203,11 +203,17 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
   const later: HaulEvent[] = [];
   if (C.unlocked) {
     const fresh = new Set<number>();
+    // A place whose replacement finds nothing to ask (Decision 56, `offerAt`) is removed after the loop.
+    const gone = new Set<number>();
     const replace = (i: number) => {
       const next = drawContract(cfg, h, p.F, p);
+      fresh.add(i);
+      if (!next.contract) {
+        gone.add(i);
+        return;
+      }
       C.board[i] = next.contract;
       C.next = next.next;
-      fresh.add(i);
       later.push({ type: 'contractNew', contract: next.contract, index: i });
     };
     const ti = C.active !== null && C.board[C.active]?.taken ? C.active : -1;
@@ -253,6 +259,14 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
       o.launchesLeft -= 1;
       if (o.launchesLeft > 0) continue;
       replace(i);
+    }
+    if (gone.size) {
+      const keep = C.board.filter((_, i) => !gone.has(i));
+      const activeC = C.active !== null ? C.board[C.active] : null;
+      C.board = keep;
+      C.active = activeC && !gone.has(C.active as number) ? keep.indexOf(activeC) : null;
+      // Indexes of the new offers' events follow the shorter board.
+      for (const e of later) if (e.type === 'contractNew') e.index = C.board.indexOf(e.contract);
     }
     // A place left empty by a drop (Decision 56) gets its offer now.
     for (const i of topUpBoard(cfg, h, p)) later.push({ type: 'contractNew', contract: C.board[i], index: i });

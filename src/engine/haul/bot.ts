@@ -433,14 +433,14 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
       const rocks = g.haul.slots.map((s, i) => (s.claimed && s.respawnAt === null && s.ore === short && s.life > 0 ? i : -1)).filter((i) => i >= 0);
       let best: { next: Run; kind: 'drag' | 'upgrade'; sheet?: string } | null = null;
       let bestScore = 0;
-      // The move that buys the most pace for the least income: free moves (an idle drone, a rig level,
-      // a drone from a route that loses nothing) first, then the drone whose move costs least.
+      // The move that raises the pace most; between moves that put it on pace, the one that costs the
+      // least income.
       const consider = (next: H.HaulGame, kind: 'drag' | 'upgrade', sheetKey?: string) => {
         if (next === g) return;
-        const gain = Math.min(1, paceOf(next as Run)) - view.paceRatio;
+        const pace = paceOf(next as Run);
+        const gain = Math.min(1, pace) - view.paceRatio;
         if (!(gain > 1e-6)) return;
-        const loss = income - H.haulIncome(cfg, next);
-        const score = loss <= income * 1e-6 ? gain * 1e9 : gain / loss;
+        const score = pace >= 1 ? 10 + H.haulIncome(cfg, next) / Math.max(income, 1e-9) : gain;
         if (score > bestScore) {
           bestScore = score;
           best = { next: next as Run, kind, sheet: sheetKey };
@@ -477,9 +477,27 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   let routedFor = -1;
   let routedMoves = 0;
   let warpedSince = true;
+  /**
+   * When a contract ends (met or lapsed), the drones moved for it go back where they were at the take,
+   * as far as the routes still exist (a person puts the field back; section 8, finishing round).
+   */
+  let parked: number[] | null = null;
+  const unpark = () => {
+    if (!parked) return;
+    const want = parked;
+    parked = null;
+    for (let k = 0; k < 80; k++) {
+      const to = g.haul.slots.findIndex((s, i) => s.claimed && s.respawnAt === null && s.haulers < (want[i] ?? 0));
+      const from = g.haul.slots.findIndex((s, i) => s.claimed && s.haulers > (want[i] ?? 0) && s.haulers > 0);
+      if (to < 0 || from < 0) break;
+      if (!act(H.moveDrone(cfg, g, from, to), [])) break;
+      count('drag');
+    }
+  };
   const handleContracts = () => {
     const h = g.haul;
     if (!h.contracts.unlocked || opts.watch || opts.noContracts) return;
+    if (h.contracts.active === null) unpark();
     let fresh = false;
     if (h.contracts.active === null) {
       let pick = -1;
@@ -503,6 +521,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
     if (routedFor !== c.k) {
       routedFor = c.k;
       routedMoves = 0;
+      parked = g.haul.slots.map((s) => (s.claimed ? s.haulers : 0));
     }
     if (!fresh && !warpedSince) return;
     warpedSince = false;
@@ -1086,8 +1105,8 @@ export function runTutorialHuman(cfg: H.HaulConfig, opts: { reaction?: number; s
 export function workedTables(cfg: H.HaulConfig, r: HaulBotResult, human: TutorialRow[]): string {
   const sym = cfg.strings.currencySymbol;
   const out: string[] = [];
-  out.push('**The tutorial path (a person who does only what the hints ask, reacting in 2.5 s; 0.05 s ticks):**', '', '| Time | What happens | Numbers |', '|---|---|---|');
-  for (const row of human) out.push(`| ${mmss(Math.round(row.t * 10) / 10)} | ${row.what} | ${row.numbers} |`);
+  out.push('**The tutorial path (a person who does only what the hints ask, reacting in 2.5 s; 0.05 s ticks; after the guided steps the limit hints of Decision 57):**', '', '| Time | What happens | Numbers |', '|---|---|---|');
+  for (const row of human) out.push(`| ${mmss(Math.round(row.t * 10) / 10)} | ${row.what}${row.advice ? ' (limit hint, Decision 57)' : ''} | ${row.numbers} |`);
   out.push('', `**The bot (section 8's bot, seed 12345, 1 s ticks; income is activeRate):**`, '', '| Time | Event | Income |', '|---|---|---|');
   const m = r.marks;
   const run1 = r.runs[0];

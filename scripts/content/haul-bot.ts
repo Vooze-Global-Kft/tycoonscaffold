@@ -37,7 +37,7 @@ export function simulateHaulCli(cfg: H.HaulConfig, flags: Record<string, string>
       })();
   const targets = evaluate(cfg, r, passive, compare);
   if (flags.table === 'true') {
-    console.log(workedTables(cfg, r, runTutorialHuman(cfg, { seed })));
+    console.log(workedTables(cfg, r, runTutorialHuman(cfg, { seed, seconds: 420 })));
     return;
   }
   if (flags.states) {

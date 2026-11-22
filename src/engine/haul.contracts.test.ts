@@ -111,7 +111,7 @@ describe('contract units follow what the station really ships (Decision 56)', ()
   });
 
   it('the offers of a board want different ores when the station has more than one to ask for', () => {
-    const b = handBasis(cfg, { iron: 50, copper: 30, ice: 20 });
+    const b = handBasis(cfg, { iron: 50, copper: 30, ice: 20 }, { prices: { iron: 1, copper: 1, ice: 1 } });
     for (let j = 0; j < 30; j++) {
       const ores: string[] = [];
       for (let i = 0; i < 3; i++) {
@@ -164,7 +164,7 @@ describe('contract units follow what the station really ships (Decision 56)', ()
     const o = opened as unknown as Run;
     expect(o.haul.contracts.measured).toBe(3);
     expect(o.haul.contracts.board).toHaveLength(C.board);
-    expect(o.haul.contracts.board.some((c) => c.taken || c.k === 0)).toBe(false);
+    expect(o.haul.contracts.board.some((c) => c.taken)).toBe(false);
     expect(o.haul.contracts.active).toBeNull();
     expect(new Set(o.haul.contracts.board.map((c) => c.buyer)).size).toBe(C.board);
     expect(warps).toBeGreaterThanOrEqual(3);
@@ -245,5 +245,110 @@ describe('saves before Decision 40 and damaged boards (rules-8)', () => {
     // Decision 56: the place of the second taken one stays empty until the next warp-out.
     expect(out.haul.contracts.board.map((c) => c.k)).toEqual([3, 5]);
     expect(out.haul.contracts.active).toBe(0);
+  });
+});
+
+describe('Decision 56: what the station remembers, resizing, empty places', () => {
+  it('recent: an exponential average of the cargo, never below the routes\' figure, one hold in all', () => {
+    const h = JSON.parse(JSON.stringify(station().haul)) as H.HaulState;
+    h.contracts = { unlocked: false, board: [], next: 0, active: null };
+    H.noteShipped(cfg, h, { iron: 60, copper: 20 });
+    expect(h.contracts.recent).toEqual({ iron: 60, copper: 20 });
+    expect(h.contracts.measured).toBe(1);
+    H.noteShipped(cfg, h, { iron: 80 });
+    // The second launch weighs 1/2 (the window fills), then 2 / (recentLaunches + 1).
+    expect(h.contracts.recent?.iron).toBeCloseTo(70, 9);
+    expect(h.contracts.recent?.copper).toBeCloseTo(10, 9);
+    // The routes now carry 50 copper a launch of 80: copper rises to it at once, iron gives way.
+    H.noteShipped(cfg, h, { iron: 80 }, { iron: 30, copper: 50 });
+    expect(h.contracts.recent?.copper).toBeCloseTo(50, 9);
+    expect((h.contracts.recent?.iron ?? 0) + (h.contracts.recent?.copper ?? 0)).toBeCloseTo(80, 6);
+  });
+
+  it('a freighter level resizes what every contract still needs (and recent), with an event; the bonus grows', () => {
+    const g0 = station();
+    const p = H.haulParams(cfg, g0);
+    let g: Run = { ...g0, cash: 1e30, haul: { ...g0.haul, contracts: { ...H.openBoard(cfg, g0.haul, p.F, p), recent: { iron: 10, copper: 5 }, measured: 6 } } };
+    g.haul.contracts.board[0].wants[0].got = 4;
+    const before = g.haul.contracts.board.map((c) => c.wants.map((w) => ({ ...w })));
+    const bonus0 = H.contractBonus(cfg, p, g.haul.contracts.board[1]);
+    const ev: H.HaulEvent[] = [];
+    g = H.buyFreighter(cfg, g, ev) as Run;
+    const q = H.haulParams(cfg, g);
+    const f = q.F / p.F;
+    expect(f).toBeGreaterThan(1.1);
+    const resized = ev.filter((e) => e.type === 'contractResized');
+    expect(resized).toHaveLength(g.haul.contracts.board.length);
+    g.haul.contracts.board.forEach((c, i) =>
+      c.wants.forEach((w, j) => {
+        const b = before[i][j];
+        const got = c.taken ? b.got : 0;
+        expect(w.units).toBe(Math.max(1, Math.round(got + Math.max(1, Math.round((b.units - got) * f)))));
+        expect(w.got).toBe(b.got);
+      }),
+    );
+    const r0 = resized[0];
+    expect(r0.type === 'contractResized' && r0.factor).toBeCloseTo(f, 9);
+    expect(g.haul.contracts.recent?.iron).toBeCloseTo(10 * f, 9);
+    expect(g.haul.contracts.sizedF).toBe(q.F);
+    expect(H.contractBonus(cfg, q, g.haul.contracts.board[1])).toBeGreaterThan(bonus0);
+    // Nothing changes when the freighter does not.
+    const ev2: H.HaulEvent[] = [];
+    H.advanceHaul(cfg, g, 1, 0, ev2);
+    expect(ev2.some((e) => e.type === 'contractResized')).toBe(false);
+  });
+
+  it('a station whose launches are one ore, past the first two rings, leaves the place empty (offerAt null); contractAt gives the quota', () => {
+    const b = handBasis(cfg, { copper: 100, iron: 0.5 }, { ringOf: { copper: 2, iron: 0 } });
+    expect(H.offerAt(cfg, 3, 7, b)).toBeNull();
+    expect(H.contractAt(cfg, 3, 7, b).wants[0].ore).toBe('copper');
+    // In the first minutes (rings 1 and 2) a one-ore station gets the quota of Decision 40.
+    expect(H.offerAt(cfg, 3, 7, handBasis(cfg, { iron: 100 }))?.wants[0].ore).toBe('iron');
+    // One ore at 93 % with another under a tenth of the value: never free, it asks more than 93 % of L holds.
+    const dom = handBasis(cfg, { copper: 93, iron: 7 }, { ringOf: { copper: 2, iron: 0 }, prices: { copper: 5, iron: 0.1 } });
+    const c = H.offerAt(cfg, 3, 7, dom);
+    expect(c?.wants[0].ore).toBe('copper');
+    expect(c!.wants[0].units).toBeGreaterThan(cfg.haul.contracts.launches * 93);
+    expect(c!.wants[0].units).toBeLessThanOrEqual(cfg.haul.contracts.launches * 100);
+  });
+
+  it('a save with a board longer than haul.contracts.board keeps the taken contract and the first offers', () => {
+    const g = station();
+    const board = [contractOf(3, 'kade', [['iron', 30]], 1.6, 9), contractOf(4, 'corvo', [['iron', 30]], 1.6, 9), contractOf(5, 'oriel', [['iron', 30]], 1.6, 9), contractOf(6, 'halden', [['iron', 30]], 1.6, 6, true), contractOf(7, 'tessaly', [['iron', 30]], 1.6, 9)];
+    const raw = JSON.parse(JSON.stringify({ ...g, haul: { ...g.haul, contracts: { unlocked: true, board, next: 8, active: 3 } } }));
+    const out = H.reconcileHaul(cfg, raw, raw) as Run;
+    expect(out.haul.contracts.board.map((c) => c.k)).toEqual([6, 3, 4]);
+    expect(out.haul.contracts.active).toBe(0);
+    expect(out.haul.contracts.sizedF).toBe(H.haulParams(cfg, out).F);
+  });
+});
+
+describe('Decisions 57 and 58: the purchase marks and the first rock', () => {
+  it('every purchase sets marks.boughtAt and marks.lastBuy; a reload keeps them', () => {
+    let g: Run = { ...station(), cash: 1e30 };
+    g = { ...g, haul: { ...g.haul, clock: 42 } };
+    g = H.buyDrone(cfg, g) as Run;
+    expect(g.haul.marks).toMatchObject({ boughtAt: 42, lastBuy: 'drone' });
+    g = H.upgradeRig(cfg, g, 1) as Run;
+    expect(g.haul.marks.lastBuy).toBe('rig 1');
+    g = H.claimSlot(cfg, g, 4) as Run;
+    expect(g.haul.marks.lastBuy).toBe('claim 4');
+    for (const [f, key] of [[H.buyCapacity, 'capacity'], [H.buyEngine, 'engine'], [H.buyFreighter, 'freighter']] as const) {
+      g = f(cfg, g) as Run;
+      expect(g.haul.marks.lastBuy).toBe(key);
+    }
+    const raw = JSON.parse(JSON.stringify(g));
+    expect((H.reconcileHaul(cfg, raw, raw) as Run).haul.marks).toMatchObject({ boughtAt: 42, lastBuy: 'freighter' });
+    const bad = JSON.parse(JSON.stringify({ ...g, haul: { ...g.haul, marks: { ...g.haul.marks, lastBuy: 'everything', boughtAt: 'x' } } }));
+    expect((H.reconcileHaul(cfg, bad, bad) as Run).haul.marks).toMatchObject({ boughtAt: null, lastBuy: null });
+  });
+
+  it('firstLife: rock 0 of a ring-1 slot in galaxy 1 lives at least start.firstLife (before the rig tier); later rocks and galaxies do not', () => {
+    const c600 = haulTestConfig({ start: { ...cfg.haul.start, firstLife: 6000 } });
+    const s = H.placeRock(c600, { seed: 1, trait: null, galaxy: 0 }, 1, { ...station().haul.slots[1], rigLevel: 1 }, 0, undefined);
+    expect(s.life).toBeGreaterThanOrEqual(6000);
+    expect(H.placeRock(c600, { seed: 1, trait: null, galaxy: 0 }, 1, { ...station().haul.slots[1], rigLevel: 1 }, 1, undefined).life).toBeLessThan(6000);
+    expect(H.placeRock(c600, { seed: 1, trait: null, galaxy: 1 }, 1, { ...station().haul.slots[1], rigLevel: 1 }, 0, undefined).life).toBeLessThan(6000);
+    expect(H.placeRock(c600, { seed: 1, trait: null, galaxy: 0 }, 2, { ...station().haul.slots[2], rigLevel: 1 }, 0, undefined).life).toBeLessThan(6000);
   });
 });

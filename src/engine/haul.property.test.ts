@@ -2,7 +2,8 @@
 /**
  * Property test: drive the engine with random valid actions (seeded) for 10,000 ticks of random
  * length and check the invariants after every tick: nothing negative, nothing NaN, ore conserved,
- * caps respected, drones counted, cash never above MAX_CASH.
+ * caps respected, drones counted, cash never above MAX_CASH. The day shift (haulShift with the wall
+ * clock moved both ways) is among the actions.
  */
 import { describe, expect, it } from 'vitest';
 import * as H from './haul';
@@ -38,6 +39,9 @@ function invariants(cfg: H.HaulConfig, g: Run): string[] {
     if (seam.slot !== null && seam.guests.length > h.slots[seam.slot].haulers) out.push('more guests than drones on the seam');
   }
   if (h.contracts.active !== null && !h.contracts.board[h.contracts.active]) out.push('active contract out of range');
+  if (h.contracts.board.length > cfg.haul.contracts.board) out.push('board longer than haul.contracts.board');
+  const sh = g.haulStats.shift;
+  if (sh && !(sh.met >= 0 && sh.met <= cfg.haul.shift.contracts)) out.push(`shift met ${sh.met}`);
   if (g.cash > Number.MAX_VALUE) out.push('cash over MAX_CASH');
   if (h.freighter.phase !== 'docked' && !(h.freighter.t >= -1e-6)) out.push(`freighter t ${h.freighter.t}`);
   return out;
@@ -55,13 +59,14 @@ describe('random valid actions for 10,000 ticks', () => {
         return x.value;
       };
       const pickInt = (n: number) => Math.floor(rand() * n);
+      let wall = Date.UTC(2026, 10, 22, 9);
       const n = g.haul.slots.length;
       for (let tick = 0; tick < 10_000; tick++) {
         // A few random actions, valid or not (refused ones must change nothing).
         const k = pickInt(4);
         for (let a = 0; a < k; a++) {
           const before = g;
-          const roll = pickInt(18);
+          const roll = pickInt(19);
           // Money now and then so purchases happen.
           if (roll === 0) g = { ...g, cash: g.cash + rand() * 10 ** pickInt(6) };
           else if (roll === 1) g = H.assignDrone(cfg, g, pickInt(n)) as Run;
@@ -83,6 +88,11 @@ describe('random valid actions for 10,000 ticks', () => {
           else if (roll === 17) {
             const ff = H.fastForward(cfg, g, rand() * 3600, 0.45);
             g = { ...(ff.game as Run), cash: Math.min(Number.MAX_VALUE, ff.game.cash + ff.report.credits) };
+          }
+          else if (roll === 18) {
+            // The day shift (Decision 53), with the wall clock moved by up to two days either way.
+            wall += (rand() - 0.4) * 2 * 86_400_000;
+            g = H.haulShift(cfg, g, wall, new Date(wall).toISOString().slice(0, 10)) as Run;
           }
           const bad = invariants(cfg, g);
           if (bad.length) throw new Error(`tick ${tick}, action ${roll}: ${bad.join('; ')} (state before: ${JSON.stringify(before.haul).length} bytes)`);

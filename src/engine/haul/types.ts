@@ -177,9 +177,10 @@ export interface HaulState {
    * warp-out (Decision 56: a dropped place stays empty until then). `recent`: average units of each
    * ore per launch over about the last `recentLaunches` warp-outs of this run, `measured` the
    * warp-outs counted into it, `sizedF` the freighter capacity the board's units are sized for
-   * (Decision 56; optional in old saves and in hand-built test states, reconcile fills them).
+   * and `peak` the highest routes' figure of each ore since the last warp-out (Decision 56; optional
+   * in old saves and in hand-built test states, reconcile fills them).
    */
-  contracts: { unlocked: boolean; board: Contract[]; next: number; active: number | null; recent?: Record<string, number>; measured?: number; sizedF?: number };
+  contracts: { unlocked: boolean; board: Contract[]; next: number; active: number | null; recent?: Record<string, number>; measured?: number; sizedF?: number; peak?: Record<string, number> };
   /** The natural rich seam and its schedule. `count` = seams started so far (drives the rolls). */
   vein: SeamState & { nextAt: number; count: number };
   /** Survey Flare charges, their refill and ad limits, and the flare's own seam. */

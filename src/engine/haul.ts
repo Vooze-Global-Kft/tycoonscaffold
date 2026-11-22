@@ -65,6 +65,7 @@ export {
   shiftDoubles,
   claimedRings,
   contractAt,
+  offerAt,
   openBoard,
   drawContract,
   topUpBoard,

@@ -319,6 +319,7 @@ function reconcileRun(cfg: HaulConfig, raw: unknown, g: HaulGame): HaulState | n
       active: ct.unlocked === true ? activeRaw : fresh.contracts.active,
       recent: units(ct.recent),
       measured: int(ct.measured, 0),
+      peak: units(ct.peak),
       ...(typeof ct.sizedF === 'number' && Number.isFinite(ct.sizedF) && ct.sizedF > 0 ? { sizedF: ct.sizedF } : {}),
     },
     vein: { slot: vein.slot, until: vein.until, guests: vein.guests, peak: vein.peak, nextAt: num(vein.v.nextAt, fresh.vein.nextAt), count: int(vein.v.count, 0) },

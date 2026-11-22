@@ -37,13 +37,16 @@ function untouched(g0: Run): boolean | null {
   return met;
 }
 
+// Rewritten for Decision 56 (the rules engineer, finishing round): draws read the station's basis
+// (what it ships), and a board taken by hand is sized for the freighter it was drawn at, as in play.
 function draw(g: Run, k: number): H.Contract {
   const p = H.haulParams(cfg, g);
-  return H.contractAt(cfg, g.haul.seed, k, H.claimedRings(cfg, g.haul), p.F, g.haul.trait, H.contractStation(cfg, p, g.haul));
+  return H.contractAt(cfg, g.haul.seed, k, H.contractBasis(cfg, p, g.haul));
 }
 
 function taking(g: Run, c: H.Contract): Run {
-  return { ...g, haul: { ...g.haul, contracts: { unlocked: true, board: [{ ...c, taken: true, launchesLeft: L, wants: c.wants.map((w) => ({ ...w, got: 0 })) }], next: c.k + 1, active: 0 } } };
+  const F = H.haulParams(cfg, g).F;
+  return { ...g, haul: { ...g.haul, contracts: { ...g.haul.contracts, unlocked: true, board: [{ ...c, taken: true, launchesLeft: L, wants: c.wants.map((w) => ({ ...w, got: 0 })) }], next: c.k + 1, active: 0, sizedF: F } } };
 }
 
 describe('audit 3: a contract is not met by doing nothing (Decision 40, "never free")', () => {
@@ -57,14 +60,20 @@ describe('audit 3: a contract is not met by doing nothing (Decision 40, "never f
       const g = taking(g0, draw(g0, k));
       const bigger: Run = { ...g, haul: { ...g.haul, freighter: { ...g.haul.freighter, level: g.haul.freighter.level + 1 } } };
       if (untouched(bigger)) met.push(k);
+      // The same through the purchase (the order is resized at once, with its event).
+      const ev: H.HaulEvent[] = [];
+      const bought = H.buyFreighter(cfg, { ...g, cash: 1e30 }, ev) as Run;
+      expect(ev.some((e) => e.type === 'contractResized')).toBe(true);
+      if (untouched({ ...bought, cash: g.cash })) met.push(-k);
     }
     expect(met, 'contracts met by a bigger freighter alone').toEqual([]);
   });
 
   it('a contract drawn while an ore\'s drones are on the rack is not met once they go back, untouched', () => {
     // The units are drawn from the routes as they are at the draw. Recall the drones of one ore, drop
-    // the taken contract (its replacement is drawn now, on the emptied routes), put the drones back and
-    // take the new one: it asks for a fraction of what the routes always delivered.
+    // the taken contract, put the drones back and take the new one: it asks for a fraction of what the
+    // routes always delivered. Rewritten for Decision 56: a drop no longer redraws at once (its place
+    // stays empty until the next warp-out), so the drones stay on the rack until that warp-out draws.
     for (const ore of ['iron', 'copper']) {
       let g = tenMinutes();
       const p = H.haulParams(cfg, g);
@@ -74,10 +83,18 @@ describe('audit 3: a contract is not met by doing nothing (Decision 40, "never f
         if (s.claimed && s.ore === ore) for (let n = 0; n < s.haulers; n++) where.push(i);
       });
       for (const i of where) g = H.recallDrone(cfg, g, i) as Run;
-      g = H.pickContract(cfg, g, 1) as Run; // drops contract 0: its slot gets a fresh draw
-      const fresh = g.haul.contracts.board[0];
+      g = H.pickContract(cfg, g, null) as Run; // drops contract 0: its place stays empty
+      expect(g.haul.contracts.board).toHaveLength(cfg.haul.contracts.board - 1);
+      let idx = -1;
+      for (let i = 0; i < 4000 && idx < 0; i++) {
+        const ev: H.HaulEvent[] = [];
+        g = H.advanceHaul(cfg, g, 0.5, 0, ev) as Run;
+        for (const e of ev) if (e.type === 'contractNew') idx = e.index;
+      }
+      expect(idx).toBeGreaterThanOrEqual(0);
+      const fresh = g.haul.contracts.board[idx];
       for (const i of where) g = H.assignDrone(cfg, g, i) as Run;
-      g = H.pickContract(cfg, g, 0) as Run;
+      g = H.pickContract(cfg, g, idx) as Run;
       expect(H.activeContract(g.haul)?.k).toBe(fresh.k);
       expect(untouched(g), `${ore}: ${JSON.stringify(fresh.wants)} met with every drone back where it was`).toBe(false);
     }
@@ -110,10 +127,26 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
 
   it('two-ore contracts are still drawn on the bot\'s own station at 25 minutes (twoOreChance 0.4)', () => {
     // Three ores are present (iron, copper, ice); not one of 300 draws wants two of them.
-    const r = runHaulBot(cfg, { hours: 1510 / 3600, prestige: false, seed: 12345, keepAt: [1500], noOffline: true });
-    const g = r.states[1500] as Run;
-    let two = 0;
-    for (let k = 1; k <= 300; k++) if (draw(g, k).wants.length > 1) two++;
-    expect(two).toBeGreaterThanOrEqual(15);
-  }, 60_000);
+    // Rewritten for Decision 56 ("raise one, hold the other", condition 4): a two-ore contract is for
+    // a station that ships three ores (each at least 2 % of a launch). On the bot's stations from 20
+    // minutes to an hour that do, at least 15 % of 300 draws want two ores; one such station must
+    // exist. On every one of them the offers want at least two different ores.
+    const at = [1200, 1500, 1800, 2400, 3000, 3600];
+    const r = runHaulBot(cfg, { hours: 3610 / 3600, prestige: false, seed: 12345, keepAt: at, noOffline: true });
+    let stations = 0;
+    for (const t of at) {
+      const g = r.states[t] as Run;
+      const b = H.contractBasis(cfg, H.haulParams(cfg, g), g.haul);
+      const total = Object.values(b.recent).reduce((a, x) => a + x, 0);
+      const ores = new Set<string>();
+      for (let k = 1; k <= 30; k++) for (const w of draw(g, k).wants) ores.add(w.ore);
+      if (Object.values(b.recent).filter((x) => x > 0.02 * total).length < 3) continue;
+      stations++;
+      expect(ores.size, `t=${t}`).toBeGreaterThanOrEqual(2);
+      let two = 0;
+      for (let k = 1; k <= 300; k++) if (draw(g, k).wants.length > 1) two++;
+      expect(two, `t=${t}`).toBeGreaterThanOrEqual(45);
+    }
+    expect(stations).toBeGreaterThan(0);
+  }, 120_000);
 });

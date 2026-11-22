@@ -74,9 +74,10 @@ describe('12, 13, 14: contract multiplier, payout fixed at launch, order at the 
     expect(ev.some((e) => e.type === 'contractMet')).toBe(false);
     expect(ev.find((e) => e.type === 'warp')).toMatchObject({ met: false, bonus: 0 });
     // The flight was not loaded for the new pick: it neither counts toward it nor uses one of its launches.
-    expect(g.haul.contracts.active).toBe(1);
-    expect(g.haul.contracts.board[1]).toMatchObject({ k: 2, taken: true, launchesLeft: quiet.haul.contracts.launches });
-    expect(g.haul.contracts.board[1].wants[0].got).toBe(0);
+    // Decision 56: the dropped contract left the board (its place filled at this warp-out, at the end).
+    expect(g.haul.contracts.active).toBe(0);
+    expect(g.haul.contracts.board[0]).toMatchObject({ k: 2, taken: true, launchesLeft: quiet.haul.contracts.launches });
+    expect(g.haul.contracts.board[0].wants[0].got).toBe(0);
   });
 
   it('14: met on its last launch it is met and replaced, not lapsed; offers lose one and at 0 are replaced silently', () => {
@@ -174,10 +175,10 @@ describe('17: the Jump flow', () => {
     expect(started.haul.slots[1].claimed).toBe(true);
     expect(started.haulStats.jumps).toBe(1);
     expect(started.haulStats.pendingJump).toBeNull();
-    // 25: from galaxy 1 the board opens at the run start with contract 0 active.
-    expect(started.haul.contracts.unlocked).toBe(true);
-    expect(started.haul.contracts.active).toBe(0);
-    expect(started.haul.contracts.board[0].k).toBe(0);
+    // 25, rewritten for Decision 56: from galaxy 2 on there is no fixed first contract; the board
+    // opens with ordinary offers once three launches of the run are measured.
+    expect(started.haul.contracts.unlocked).toBe(false);
+    expect(started.haul.contracts.board).toEqual([]);
     // The one-call form gives the same run.
     const oneCall = H.prestigeHaul(cfg, g, NOW, pick, ['preload', 'afterburner']) as Run;
     expect(oneCall.haul).toEqual(started.haul);

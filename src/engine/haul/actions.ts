@@ -5,7 +5,7 @@
  */
 import { equip } from '../loadout';
 import { affordable, autopilotCost, droneCapFor, capacityCost, claimCost, droneCost, EPS, engineCost, freighterCost, holdTotal, rigCost, ringOf, slotTable } from './params';
-import { resizeOrders } from './trade';
+import { notePeak, resizeOrders } from './trade';
 import { commit, doLaunch, draftOf, draftParams, dropGuest, grantPod, landOnSeam, seamAt, seamDuration, updateMarks, warmUp, type Draft } from './tick';
 import type { AutopilotPolicy, HaulConfig, HaulEvent, HaulGame, HaulState } from './types';
 
@@ -23,6 +23,7 @@ function finish(cfg: HaulConfig, d: Draft): HaulGame {
   const p = draftParams(cfg, d);
   // Decision 56: a bigger (or smaller) freighter resizes what the board's contracts still need.
   resizeOrders(d.h, p.F, d.events);
+  notePeak(p, d.h);
   updateMarks(cfg, d, p);
   return commit(d);
 }

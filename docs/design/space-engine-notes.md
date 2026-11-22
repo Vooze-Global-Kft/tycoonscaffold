@@ -372,3 +372,23 @@ files.
   drops a taken contract; `passive` takes the best-paying offer and never routes; `watch` (Decision 42)
   only watches (autopilot on `full`, nothing bought, placed, routed or taken). It reports the taken
   contracts met and lapsed, the contract bonus paid, pods per hour by reason and every purchase time.
+
+## Finishing round (Decisions 56 to 62, numbers engineer's part)
+
+- **`src/engine/haul/advice.ts`** (new, pure): `bestSlotForDrone`, `cheapestSource`, `withDrones`,
+  `purchaseOptions`, `rankPurchases` (every purchase priced by `1 / (wait + price / gain)`, alone and
+  with one partner level), `bestPurchase` (the bot's pick) and `advisedPurchase` (Decision 57: the best
+  affordable single that adds at least 15 % to the income line, never the purchase made last). The bot
+  shops through it; `hints.ts` imports it, never `bot.ts`, so the bot stays out of phone bundles
+  (`bestSlotForDrone` is re-exported from `hints.ts` for `haul.ts`).
+- **`hints.ts`**: step 6 points at `longestLifeSlot` (Decision 58); `adviceHint` (Decision 57) reads
+  `marks.boughtAt` and `marks.lastBuy` (the rules write them; without them no advice shows), counts its
+  showings in `hintsShown` over its keys (at most `ADVICE_MAX` 6), stops at `ADVICE_UNTIL` 900 s of run
+  clock and outside galaxy 1, and maps a purchase to its target with `adviceTarget`.
+- **The bot** (`bot.ts`): contracts by the pace light (section 8, finishing round), `unpark` after a
+  contract, `rebalance` every 20 s, the day shift once a minute (UTC day of its simulated wall time),
+  `noContracts` for condition 6's comparison, `lifetime` per minute, `earnedBy`, the `JUMP_MARGIN` gate.
+  `runTutorialHuman` follows the limit hints too (claims of any slot, station levels) and marks the rows
+  they caused (`advice`).
+- **validate**: five seeds, the cross-seed pods and Dark Matter rule, stale screenshots, a shared
+  privacy policy address.
