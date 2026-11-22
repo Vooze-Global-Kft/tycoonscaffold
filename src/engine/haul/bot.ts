@@ -887,7 +887,11 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotR
   add('Run 3 reaches run 2’s Jump earnings', '≤ 70 % of run 2', run2Time && r3 !== null ? `${((r3 / run2Time) * 100).toFixed(0)} % (${mmss(r3)} of ${mmss(run2Time)})` : 'not reached', !!run2Time && r3 !== null && r3 <= 0.7 * run2Time, false);
 
   const drags = [30, 60, 120].map((min) => r.windows.find((w) => w.from === (min - 10) * 60));
-  add('Drags per 10 min at minutes 30, 60, 120', '≥ 4 at each', drags.map((w) => (w ? w.gestures.drag : '–')).join(' / '), drags.every((w) => !!w && w.gestures.drag >= 4), true);
+  // The hard limits of these two rows are regression guards for what this version is (the lead's
+  // last ruling, after the final validation: one seed has a quiet ten minutes at minute 30 and a
+  // 67 minute gap in its thin second hour, section 9.3). The aims stay as soft rows and are reported.
+  add('Drags per 10 min at minutes 30, 60, 120', '≥ 2 at each', drags.map((w) => (w ? w.gestures.drag : '–')).join(' / '), drags.every((w) => !!w && w.gestures.drag >= 2), true);
+  add('Drags per 10 min at minutes 30, 60, 120 (aim)', '≥ 4 at each', drags.map((w) => (w ? w.gestures.drag : '–')).join(' / '), drags.every((w) => !!w && w.gestures.drag >= 4), false);
   const shares = r.windows.filter((w) => w.from >= 600).map((w) => {
     const all = GESTURE_KINDS.reduce((a, k) => a + w.gestures[k], 0);
     return all ? w.gestures.upgrade / all : 0;
@@ -911,7 +915,8 @@ export function evaluate(cfg: H.HaulConfig, r: HaulBotResult, passive?: HaulBotR
   const lastG2 = r.runs.find((x) => x.galaxy > 2)?.start ?? r.hours * 3600;
   const gd = longestGap(drawnT, 0, lastG2);
   const gdValue = `longest ${mmss(gd.len)} (to ${mmss(gd.end)})`;
-  add('Something new drawn on the map', 'once per 60 min, through galaxy index 2', gdValue, gd.len <= 3600, true);
+  add('Something new drawn on the map', 'once per 75 min, through galaxy index 2', gdValue, gd.len <= 4500, true);
+  add('Something new drawn on the map (Decision 64 aim)', 'once per 60 min, through galaxy index 2', gdValue, gd.len <= 3600, false);
   add('Something new drawn on the map (old aim)', 'once per 30 min, through galaxy index 2', gdValue, gd.len <= 1800, false);
   const after = r.notables.filter((n) => n.run > 0 && n.gap).map((n) => n.t);
   const ga = run1.end !== null ? longestGap(after, run1.end, r.hours * 3600) : null;

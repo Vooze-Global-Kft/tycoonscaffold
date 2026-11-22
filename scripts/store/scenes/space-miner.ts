@@ -70,6 +70,9 @@ function boardRows(text: string): string | null {
 /** The radio's first tutorial line ("Drone idle on the rack..."): allowed only in the first-minute scene. */
 const tutorialLine = (text: string): string | null => (/DRONE IDLE ON THE RACK|SEND IT TO THE ROCK/i.test(text) ? 'the tutorial line is on the radio' : null);
 
+/** Any radio line ("SPEAKER: TEXT") at the top of the field: on the Play size it lies over the outer ring's rocks. */
+const radioLine = (text: string): string | null => (/^[A-Z][A-Z .'&-]+: [A-Z0-9]/m.test(text) ? 'a radio line covers the top of the field' : null);
+
 const scenes: GameScenes = {
   game: 'space-miner',
   port: 8302,
@@ -157,6 +160,8 @@ const scenes: GameScenes = {
         { untilText: /CONTRACT BOARD/i, timeout: 8000 },
         { tapText: /^x\d+(\.\d+)?$/, nth: 1 },
         { wait: 1500 },
+        // On a short phone the rows scroll inside the sheet: bring the pod counter up (no-op on a tall one).
+        { scrollTo: /^scrap pod ·/i },
       ],
       check: boardRows,
       tries: 4,
@@ -168,7 +173,8 @@ const scenes: GameScenes = {
       slug: 'far-rings',
       query: 'preset=late',
       settle: 10000,
-      check: tutorialLine,
+      check: radioLine,
+      tries: 5,
       frame: fieldBand,
       caption: 'Far rings. Rich ore.\nLong trips.',
       shows: 'A late station: every ring claimed, routes to copper, ice, titanium and platinum rocks out to the far rings, drones in flight, the hold and the counter. Cropped from the outer ring\'s rocks to just above the nav row.',
@@ -183,7 +189,9 @@ const scenes: GameScenes = {
       check: (t) => (/SHIFT LOG/i.test(t) && /Boost \+50 % · ad/i.test(t) ? null : 'no Shift Log with its Boost key'),
       frame: (v) => {
         const z = field(v).zones;
-        return { y0: 0, y1: Math.min(z.hold.y, z.counter.y) - 8, anchor: 'top', crop: true };
+        // A band a little shorter than the picture box: zoomed in just enough to fill it (the Shift
+        // Log's card keeps its edges), so nothing of the bay shows below.
+        return { y0: 0, y1: Math.min(z.hold.y, z.counter.y) - 8, cx: v.w / 2, maxZoom: 1.25, anchor: 'top' };
       },
       caption: 'Off shift.\nStill shipping.',
       shows: 'The Shift Log after ten minutes away (AWAY 10 m): the ore hauled by kind, rocks gone dry, pods, the credits earned, "Collect" and "Boost +50 % · ad"; the Dock Autopilot shipped while the player was away (without it the log says "Nothing shipped").',
@@ -192,7 +200,9 @@ const scenes: GameScenes = {
       slug: 'star-map',
       query: 'preset=late&spoke=starmap',
       settle: 9000,
-      // The Star Map pins its Jump keys in a footer: the whole screen, top bar to footer.
+      // The Star Map pins its Jump keys in a footer: the whole screen, top bar to footer. On a short
+      // phone the spoke is scrolled until the Jump panel's Kept list shows (no-op on a tall one).
+      steps: () => [{ scrollTo: /Warp Cores and Star Map/i }],
       check: (t) => (/STAR MAP/.test(t) && /JUMP/.test(t) ? null : 'no Star Map'),
       frame: () => ({ y0: 0, y1: { text: /^(jump now|jump anyway.*)$/i, edge: 'bottom', pad: 16 }, anchor: 'top' }),
       caption: 'Jump galaxies.\nKeep your Warp Cores.',

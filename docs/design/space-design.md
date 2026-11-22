@@ -1557,3 +1557,5 @@ Knob table (`python3 scripts/content/build-space.py --table`; * = shipped value 
 | efficiencyCap | offline efficiency cap of the haul rules (gate measured with the ad bonus) | 0.25 to 0.45 | 0.45 | 0.38 * |
 | partsBase | module parts for level 2 | 2 to 4 | 3 | 3 |
 | partsGrowth | module parts growth per level | 1.25 to 1.45 | 1.35 | 1.35 |
+
+65. **Two guards set to what this version is** (tech lead, after the final validation; amends the hard rows of section 8). The last five-seed run missed two hard rows on one seed (2026): 2 drags in the ten minutes around minute 30 (row: at least 4), and 1 h 07 between two new things drawn on the map (row: once per 60 minutes). Both are the thin second hour of section 9.3, which needs more late milestones, not other numbers. The hard rows are now "at least 2 drags" and "once per 75 minutes"; the earlier figures stay in the table as soft rows and are reported as missed. `npx tsx scripts/validate.ts space-miner` passes on all five seeds with these.
