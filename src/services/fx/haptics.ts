@@ -20,8 +20,8 @@ import { PatternPlayer, type HapticPulse } from './pattern';
 
 type HapticsModule = typeof import('expo-haptics');
 
-/** Never buzz more often than this, however fast events arrive (about 12 pulses a second). */
-export const HAPTIC_MIN_GAP_MS = 80;
+/** Never buzz more often than this, however fast events arrive (8 pulses a second, the ceiling Android's haptics guidance suggests). */
+export const HAPTIC_MIN_GAP_MS = 120;
 
 export interface HapticsEngine {
   /** Plays a catalogue pattern. A newer pattern cancels the rest of an older one. */

@@ -6,7 +6,7 @@
  * are the default pizza cast and double as examples of what a look can say.
  */
 import { hashString, luma, mix, rng } from './draw';
-import type { Beard, BodyShape, Brows, CharacterKind, CharacterLook, Glasses, HairStyle, Hat, Moustache, Neckwear, OutfitStyle, Pattern, Species } from './types';
+import type { Beard, BodyShape, Brows, CharacterKind, CharacterLook, Glasses, HairStyle, Hat, LookEntry, Moustache, Neckwear, OutfitStyle, Pattern, Species } from './types';
 
 /** A look with every default filled in. This is what the drawing code reads. */
 export interface ResolvedLook {
@@ -64,9 +64,41 @@ function hatColorFor(hat: Hat, accent: string, outfit: string): string {
   }
 }
 
-/** Fills in every default. Safe to call with `undefined` or `{}`. */
-export function resolveLook(look: CharacterLook | undefined | null): ResolvedLook {
-  const l = look ?? {};
+/** Anything that says who a character is: a look entry from game.json, the name of a built-in look, or nothing (the default customer). */
+export type LookInput = LookEntry | string | null | undefined;
+
+/**
+ * Applies the `preset` of a look entry: the built-in look of that name (or,
+ * for a name that is not built in, a random but stable person seeded from the
+ * name) with the entry's own fields on top. The result has no `preset` left
+ * and only the fields somebody chose; `resolveLook` fills in the rest.
+ */
+export function expandLook(entry: LookInput): CharacterLook {
+  if (!entry) return {};
+  if (typeof entry === 'string') return lookFor(entry);
+  const { preset, ...own } = entry;
+  if (!preset) return own;
+  const out: Record<string, unknown> = { ...lookFor(preset, own.kind ?? 'customer') };
+  for (const [key, value] of Object.entries(own)) if (value !== undefined) out[key] = value;
+  return out as CharacterLook;
+}
+
+/**
+ * Turns a look entry into a complete look: applies `preset`, then fills in
+ * every default (outfit and hat for the `kind`, colours, face details).
+ *
+ *   resolveLook({ preset: 'marco' })                    Chef Marco
+ *   resolveLook({ preset: 'marco', hat: 'bandana' })    Marco in a bandana
+ *   resolveLook({ kind: 'waiter' })                     the default waiter
+ *   resolveLook({ preset: 'luigi', kind: 'chef' })      unknown name: a random chef, the same one every time
+ *   resolveLook('nonna')                                a name alone works too
+ *
+ * Safe to call with `undefined` or `{}`, and with a look that is already
+ * complete (it comes back unchanged), so the result can be stored or passed
+ * on as a `look`.
+ */
+export function resolveLook(entry: LookInput): ResolvedLook {
+  const l = expandLook(entry);
   const kind = l.kind ?? 'customer';
   const species = l.species ?? 'human';
   const k = KIND_DEFAULTS[kind];
@@ -285,9 +317,9 @@ export const LOOKS = {
 export type LookName = keyof typeof LOOKS;
 export const LOOK_NAMES = Object.keys(LOOKS) as LookName[];
 
-/** Looks up a named look; unknown names give a random but stable customer, so a typo in game.json still draws someone. */
+/** Looks up a built-in look; any other name gives a random but stable person of that `kind`, so a typo in game.json still draws someone. */
 export function lookFor(name: string | undefined, kind: CharacterKind = 'customer'): CharacterLook {
-  if (name && name in LOOKS) return LOOKS[name as LookName];
+  if (name && Object.prototype.hasOwnProperty.call(LOOKS, name)) return LOOKS[name as LookName];
   return randomLook(hashString(name ?? 'someone'), kind);
 }
 

@@ -232,14 +232,15 @@ describe('play', () => {
 
   it('rate-limits by the catalogue interval: the sound and the haptic together', async () => {
     const { fx, take, played } = await ready();
-    const interval = FX.cash.minIntervalMs;
-    fx.play('cash');
+    // 'ui_denied' has both a sound interval and a haptic (events the simulation causes, like 'cash', never vibrate).
+    const interval = FX.ui_denied.minIntervalMs;
+    fx.play('ui_denied');
     vi.advanceTimersByTime(interval - 1);
-    fx.play('cash');
+    fx.play('ui_denied');
     expect(take()).toHaveLength(1);
     expect(played).toHaveLength(1);
     vi.advanceTimersByTime(1);
-    fx.play('cash');
+    fx.play('ui_denied');
     expect(take()).toHaveLength(1);
     expect(played).toHaveLength(2);
   });

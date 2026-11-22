@@ -12,6 +12,7 @@ import { ClipOp, PathOp, type SkPath, type SkPicture } from '@shopify/react-nati
 import {
   OUTLINE,
   type BlobPt,
+  type Bounds,
   type Pen,
   alpha,
   arc,
@@ -22,6 +23,7 @@ import {
   curve,
   done,
   ellipse,
+  emptyBounds,
   lightOf,
   line,
   luma,
@@ -451,11 +453,13 @@ function hatLayers(l: ResolvedLook): Layers {
   }
 }
 
+/** The two eyes that blink. An alien's third eye is part of the head and never closes. */
 function eyeCentres(l: ResolvedLook): [number, number][] {
   if (l.species === 'alien')
-    return [[FS - 11, 5.5], [FS + 11, 5.5], [FS, -7.5]];
+    return [[FS - 11, 5.5], [FS + 11, 5.5]];
   return [[FS - EYE_DX, EYE_Y], [FS + EYE_DX, EYE_Y]];
 }
+const THIRD_EYE: [number, number] = [FS, -7.5];
 
 /** Mouth height in head units: moustaches push the mouth down. */
 export const mouthYFor = (l: ResolvedLook) => (l.moustache === 'bushy' ? 16.2 : l.moustache ? 15 : l.species === 'alien' ? 15.5 : 13.2);
@@ -582,6 +586,7 @@ function drawHeadFront(p: Pen, l: ResolvedLook) {
     p.fill(ellipse(FS + 17.6, 11.8, 4.8, 3.2), b);
   }
   if (l.species === 'alien') {
+    drawEyeball(p, THIRD_EYE[0], THIRD_EYE[1], 4, 5.4, true);
     // Antennae: outside the hat if there is one.
     const wide = l.hat !== 'none';
     for (const s of [-1, 1]) {
@@ -594,6 +599,14 @@ function drawHeadFront(p: Pen, l: ResolvedLook) {
       p.dot(x0 + s * 8.5 - 1, y0 - 16.6, 1.1, '#FFFFFF');
     }
   }
+}
+
+function drawEyeball(p: Pen, x: number, y: number, rx: number, ry: number, alien: boolean) {
+  p.fill(ellipse(x, y, rx, ry), INK);
+  // A warm glint low in the eye, then the two highlights.
+  p.fill(ellipse(x, y + ry * 0.42, rx * 0.66, ry * 0.4), alien ? '#2F6B4A' : '#6B4226');
+  p.dot(x - 1.4, y - 2.3, 1.9, '#FFFFFF');
+  p.dot(x + 1.5, y + 2.7, 0.9, alpha('#FFFFFF', 0.9));
 }
 
 function drawEyes(p: Pen, l: ResolvedLook) {
@@ -610,11 +623,7 @@ function drawEyes(p: Pen, l: ResolvedLook) {
   const rx = alien ? 4 : 4.4;
   const ry = alien ? 5.4 : 6;
   eyeCentres(l).forEach(([x, y], i) => {
-    p.fill(ellipse(x, y, rx, ry), INK);
-    // A warm glint low in the eye, then the two highlights.
-    p.fill(ellipse(x, y + ry * 0.42, rx * 0.66, ry * 0.4), alien ? '#2F6B4A' : '#6B4226');
-    p.dot(x - 1.4, y - 2.3, 1.9, '#FFFFFF');
-    p.dot(x + 1.5, y + 2.7, 0.9, alpha('#FFFFFF', 0.9));
+    drawEyeball(p, x, y, rx, ry, alien);
     if (l.lashes && !alien && !l.glasses) {
       const s = i === 0 ? -1 : 1;
       p.stroke(line(x + s * 3.4, y - 3.8, x + s * 6.4, y - 6.2), INK, 1.6);
@@ -685,7 +694,10 @@ function clipBelow(p: Pen, y: number | null, fn: () => void) {
   }
   p.c.save();
   p.c.clipRect({ x: -80, y, width: 160, height: 160 }, ClipOp.Intersect, false);
+  const keep = p.boxTop;
+  p.boxTop = y;
   fn();
+  p.boxTop = keep;
   p.c.restore();
 }
 
@@ -711,34 +723,38 @@ interface HeadPictures {
   mouthChew: SkPicture;
 }
 
+/** What sits behind the body: the back of the hair, hat tails, the far side of a space helmet. */
+function paintHeadBack(p: Pen, l: ResolvedLook) {
+  const hair = l.species === 'robot' ? {} : hairLayers(l);
+  if (l.outfitStyle === 'spacesuit') drawDome(p, false);
+  if (hair.back) clipBelow(p, hairClipY(l), () => hair.back!(p));
+  hatLayers(l).back?.(p);
+}
+
+/** The head itself with everything that never moves on it; eyes and mouth are drawn separately. */
+function paintHead(p: Pen, l: ResolvedLook) {
+  drawHeadFront(p, l);
+  if (l.species !== 'robot') {
+    const hair = hairLayers(l);
+    drawFacialHair(p, l);
+    if (hair.front) clipBelow(p, hairClipY(l), () => hair.front!(p));
+    drawBrows(p, l);
+    if (l.earrings) {
+      p.shape(circle(-27.8, 12.4, 2.7), l.earrings, { ow: 1.6, shade: false });
+      p.dot(-28.6, 11.6, 0.9, '#FFFFFF');
+    }
+  }
+  drawGlasses(p, l);
+  if (l.outfitStyle === 'spacesuit') drawDome(p, true);
+  hatLayers(l).front?.(p);
+}
+
 /** Everything above the neck. `ow` is the outline width (thinner for big portraits). */
 export function drawHeadPictures(l: ResolvedLook, ow = 3.4): HeadPictures {
-  const hair = l.species === 'robot' ? {} : hairLayers(l);
-  const hat = hatLayers(l);
-  const clipY = hairClipY(l);
-  const dome = l.outfitStyle === 'spacesuit';
   const rec = (fn: (p: Pen) => void) => record(fn, OUTLINE, ow);
   return {
-    headBack: rec((p) => {
-      if (dome) drawDome(p, false);
-      if (hair.back) clipBelow(p, clipY, () => hair.back!(p));
-      hat.back?.(p);
-    }),
-    head: rec((p) => {
-      drawHeadFront(p, l);
-      if (l.species !== 'robot') {
-        drawFacialHair(p, l);
-        if (hair.front) clipBelow(p, clipY, () => hair.front!(p));
-        drawBrows(p, l);
-        if (l.earrings) {
-          p.shape(circle(-27.8, 12.4, 2.7), l.earrings, { ow: 1.6, shade: false });
-          p.dot(-28.6, 11.6, 0.9, '#FFFFFF');
-        }
-      }
-      drawGlasses(p, l);
-      if (dome) drawDome(p, true);
-      hat.front?.(p);
-    }),
+    headBack: rec((p) => paintHeadBack(p, l)),
+    head: rec((p) => paintHead(p, l)),
     eyes: rec((p) => drawEyes(p, l)),
     eyesShut: rec((p) => drawEyesShut(p, l)),
     mouthSmile: rec((p) => drawMouth(p, l, 'smile')),
@@ -1066,35 +1082,73 @@ function buildCharacterArt(l: ResolvedLook, key: string): CharacterArt {
   };
 }
 
-// Looks in use are kept alive by a count; unused ones wait in a small queue
-// before their pictures are freed, so a returning customer is usually free.
-interface Entry {
-  art: CharacterArt;
-  refs: number;
-}
-const cache = new Map<string, Entry>();
-const idle: string[] = [];
-const IDLE_MAX = 32;
+/**
+ * Keeps drawings alive while something on screen uses them. Sets in use are
+ * held by a count; unused ones wait in a small queue before their pictures
+ * are freed, so a returning customer is usually free.
+ */
+class ArtCache<T extends { key: string }> {
+  private map = new Map<string, { art: T; refs: number }>();
+  private idle: string[] = [];
+  constructor(private idleMax: number) {}
 
-function disposeArt(art: CharacterArt) {
-  // Wait a moment: a canvas may still hold the last frame that used these.
-  setTimeout(() => {
-    // Skip it if the same drawings were picked up again in the meantime.
-    if (cache.get(art.key)?.art === art) return;
-    for (const v of Object.values(art)) if (v && typeof v === 'object' && 'dispose' in v && typeof v.dispose === 'function') v.dispose();
-  }, 3000);
-}
+  /** The drawings for `key`, built on first use. Safe to call during render. */
+  get(key: string, build: () => T): T {
+    let e = this.map.get(key);
+    if (!e) {
+      e = { art: build(), refs: 0 };
+      this.map.set(key, e);
+      // Not trimmed here: drawings made during a render are claimed a moment later, in the effect.
+      this.idle.push(key);
+    }
+    return e.art;
+  }
 
-function trim() {
-  while (idle.length > IDLE_MAX) {
-    const old = idle.shift()!;
-    const e = cache.get(old);
-    if (e && e.refs === 0) {
-      cache.delete(old);
-      disposeArt(e.art);
+  retain(art: T) {
+    let e = this.map.get(art.key);
+    if (!e || e.art !== art) {
+      // It was dropped between render and commit; put it back.
+      e = { art, refs: 0 };
+      this.map.set(art.key, e);
+    }
+    if (e.refs === 0) {
+      const i = this.idle.indexOf(art.key);
+      if (i >= 0) this.idle.splice(i, 1);
+    }
+    e.refs++;
+  }
+
+  release(art: T) {
+    const e = this.map.get(art.key);
+    if (!e || e.art !== art) return;
+    e.refs--;
+    if (e.refs > 0) return;
+    e.refs = 0;
+    this.idle.push(art.key);
+    while (this.idle.length > this.idleMax) {
+      const old = this.idle.shift()!;
+      const o = this.map.get(old);
+      if (o && o.refs === 0) {
+        this.map.delete(old);
+        this.dispose(o.art);
+      }
     }
   }
+
+  private dispose(art: T) {
+    // Wait a moment: a canvas may still hold the last frame that used these.
+    setTimeout(() => {
+      // Skip it if the same drawings were picked up again in the meantime.
+      if (this.map.get(art.key)?.art === art) return;
+      for (const v of Object.values(art) as unknown[]) {
+        const free = v && typeof v === 'object' ? (v as { dispose?: unknown }).dispose : null;
+        if (typeof free === 'function') free.call(v);
+      }
+    }, 3000);
+  }
 }
+
+const characters = new ArtCache<CharacterArt>(32);
 
 /**
  * The drawings for a look, built on first use. Safe to call during render.
@@ -1103,36 +1157,82 @@ function trim() {
  */
 export function getCharacterArt(l: ResolvedLook): CharacterArt {
   const key = lookKey(l);
-  let e = cache.get(key);
-  if (!e) {
-    e = { art: buildCharacterArt(l, key), refs: 0 };
-    cache.set(key, e);
-    // Not trimmed here: drawings made during a render are claimed a moment later, in the effect.
-    idle.push(key);
-  }
-  return e.art;
+  return characters.get(key, () => buildCharacterArt(l, key));
 }
 
-export function retainCharacterArt(art: CharacterArt) {
-  let e = cache.get(art.key);
-  if (!e || e.art !== art) {
-    // It was dropped between render and commit; put it back.
-    e = { art, refs: 0 };
-    cache.set(art.key, e);
-  }
-  if (e.refs === 0) {
-    const i = idle.indexOf(art.key);
-    if (i >= 0) idle.splice(i, 1);
-  }
-  e.refs++;
+export const retainCharacterArt = (art: CharacterArt) => characters.retain(art);
+export const releaseCharacterArt = (art: CharacterArt) => characters.release(art);
+
+// ---------------------------------------------------------------------------
+// Portraits
+// ---------------------------------------------------------------------------
+
+/** `calm`: a small smile and open eyes that blink. `happy`: laughing, eyes squeezed shut. */
+export type BustMood = 'calm' | 'happy';
+
+/** How far below the middle of the head a portrait is cut off, in head units: just under the collar. */
+export const BUST_BOTTOM = 40;
+
+export interface BustArt {
+  key: string;
+  /** Everything that holds still: hair behind, shoulders, head, mouth. Origin at the middle of the head, in head units. */
+  base: SkPicture;
+  /** Open eyes, drawn over `base` and squashed to blink; null when the mood keeps them shut. */
+  eyes: SkPicture | null;
+  /** What the head, hair and hat cover; the shoulders are not counted. */
+  bounds: Bounds;
 }
 
-export function releaseCharacterArt(art: CharacterArt) {
-  const e = cache.get(art.key);
-  if (!e || e.art !== art) return;
-  e.refs--;
-  if (e.refs > 0) return;
-  e.refs = 0;
-  idle.push(art.key);
-  trim();
+function buildBustArt(l: ResolvedLook, key: string, ow: number, mood: BustMood): BustArt {
+  const d = dimsFor(l);
+  const k = 1 / d.headScale;
+  const bounds = emptyBounds();
+  const base = record(
+    (p) => {
+      p.box = bounds;
+      paintHeadBack(p, l);
+      p.box = null;
+      // The body, standing as in the idle pose, around a head drawn at full size.
+      p.c.save();
+      p.c.scale(k, k);
+      p.c.translate(0, d.headUp + d.torso);
+      drawTorso(p, l, d);
+      for (const s of [-1, 1])
+        p.at(
+          s * d.shoulderX,
+          -d.shoulderY,
+          () => {
+            drawArm(p, l, d);
+            p.c.translate(0, d.arm);
+            drawHand(p, l);
+          },
+          -s * 7.5,
+        );
+      p.c.restore();
+      p.box = bounds;
+      paintHead(p, l);
+      p.box = null;
+      if (mood === 'happy') {
+        drawEyesShut(p, l);
+        drawMouth(p, l, 'open');
+      } else drawMouth(p, l, 'smile');
+    },
+    OUTLINE,
+    ow,
+  );
+  return { key, base, eyes: mood === 'happy' ? null : record((p) => drawEyes(p, l), OUTLINE, ow), bounds };
 }
+
+const busts = new ArtCache<BustArt>(24);
+
+/** Portrait drawings for a look at one outline weight. Same rules as `getCharacterArt`. */
+export function getBustArt(l: ResolvedLook, ow = 3.4, mood: BustMood = 'calm'): BustArt {
+  const key = `${ow}|${mood}|${lookKey(l)}`;
+  return busts.get(key, () => buildBustArt(l, key, ow, mood));
+}
+
+export const retainBustArt = (art: BustArt) => busts.retain(art);
+export const releaseBustArt = (art: BustArt) => busts.release(art);
+
+/** The height of the eye line in head units; eyes blink by squashing towards it. */
+export const EYE_LINE = EYE_Y;

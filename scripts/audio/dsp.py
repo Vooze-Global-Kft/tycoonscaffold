@@ -464,27 +464,13 @@ def lagrange(d: float, order: int = 3):
     return h
 
 
-def karplus(f: float, n: int, rng, t60: float = 1.2, damp: float = 0.35, pick: float = 0.18,
-            hardness: float = 0.6, noise: float = 0.35):
-    """Extended Karplus-Strong plucked string.
+def pluck_burst(f: float, rng, pick: float = 0.18, hardness: float = 0.6, noise: float = 0.35):
+    """What a pick does to a string tuned to f: two periods of excitation.
 
-    A burst (an ideal pluck shape plus some pick noise, combed by the pick
-    position and low-passed by the pick hardness) circulates in a delay line
-    whose loop holds a one-zero low-pass `damp` (0 bright .. 0.5 dull) and a
-    Lagrange fractional delay for exact tuning. The loop only reads samples at
-    least one period old, so it is computed a whole period at a time.
+    An ideal pluck shape plus some pick noise, combed by the pick position
+    (0..0.5 of the string length) and low-passed by the pick hardness.
     """
-    D = SR / f
-    M = int(math.floor(D - damp - 1.0))
-    if M < 4:
-        raise ValueError('karplus: note too high')
-    taps = np.convolve(lagrange(D - damp - M), [1.0 - damp, damp])   # delays M .. M+4
-    # loop gain for the wanted T60 of the fundamental, compensating the loop filter
-    w1 = TAU * f / SR
-    loop_mag = abs(np.sum(taps * np.exp(-1j * w1 * np.arange(5))))
-    rho = min(10.0 ** (-3.0 / (f * t60)) / max(loop_mag, 1e-6), 0.9999)
-
-    L = int(round(D))
+    L = int(round(SR / f))
     k = np.arange(L)
     apex = min(max(int(round(pick * L)), 1), L - 1)
     shape = np.where(k < apex, 1.0 / apex, -1.0 / (L - apex)) * apex      # d/dt of a pluck triangle
@@ -495,20 +481,59 @@ def karplus(f: float, n: int, rng, t60: float = 1.2, damp: float = 0.35, pick: f
     win = rcos_in(len(exc), 0.5) * rcos_out(len(exc), 1.0)
     exc = exc * win
     exc -= win * (exc.sum() / win.sum())       # no DC into the loop: it would circulate for ever
+    return exc
 
+
+def string_loop(f: float, x, t60: float = 1.2, damp: float = 0.35, gain=None):
+    """The Karplus-Strong string itself: excitation `x` in, string out (same length).
+
+    A delay line whose loop holds a one-zero low-pass `damp` (0 bright .. 0.5
+    dull) and a Lagrange fractional delay for exact tuning. The loop only
+    reads samples at least one period old, so it is computed a whole period
+    at a time. `x` may hold any number of plucks (a tremolo is one string
+    plucked again and again); `gain` (array, 0..1) scales the loop gain over
+    time, so a dip is a pick or a finger touching the ringing string.
+    """
+    x = np.asarray(x, float)
+    n = len(x)
+    D = SR / f
+    M = int(math.floor(D - damp - 1.0))
+    if M < 4:
+        raise ValueError('karplus: note too high')
+    taps = np.convolve(lagrange(D - damp - M), [1.0 - damp, damp])   # delays M .. M+4
+    # loop gain for the wanted T60 of the fundamental, compensating the loop filter
+    w1 = TAU * f / SR
+    loop_mag = abs(np.sum(taps * np.exp(-1j * w1 * np.arange(5))))
+    rho = min(10.0 ** (-3.0 / (f * t60)) / max(loop_mag, 1e-6), 0.9999)
     off = M + 5
     y = np.zeros(off + n)
+    if gain is None:
+        for s in range(0, n, M):
+            e = min(s + M, n)
+            acc = x[s:e].copy()
+            for j in range(5):
+                acc += rho * taps[j] * y[off + s - M - j: off + e - M - j]
+            y[off + s: off + e] = acc
+    else:
+        g = rho * np.asarray(gain, float)
+        for s in range(0, n, M):
+            e = min(s + M, n)
+            acc = np.zeros(e - s)
+            for j in range(5):
+                acc += taps[j] * y[off + s - M - j: off + e - M - j]
+            y[off + s: off + e] = x[s:e] + g[s:e] * acc
+    return y[off:]
+
+
+def karplus(f: float, n: int, rng, t60: float = 1.2, damp: float = 0.35, pick: float = 0.18,
+            hardness: float = 0.6, noise: float = 0.35):
+    """Extended Karplus-Strong plucked string: one pluck_burst into a string_loop, peak 1."""
+    exc = pluck_burst(f, rng, pick, hardness, noise)
     x = np.zeros(n)
     m = min(len(exc), n)
     x[:m] = exc[:m]
-    for s in range(0, n, M):
-        e = min(s + M, n)
-        acc = x[s:e].copy()
-        for j in range(5):
-            acc += rho * taps[j] * y[off + s - M - j: off + e - M - j]
-        y[off + s: off + e] = acc
-    out = y[off:]
-    return out / (np.max(np.abs(out[:min(n, 4 * L + 64)])) + 1e-12)
+    out = string_loop(f, x, t60, damp)
+    return out / (np.max(np.abs(out[:min(n, 4 * int(round(SR / f)) + 64)])) + 1e-12)
 
 
 # ---------------------------------------------------------------------------

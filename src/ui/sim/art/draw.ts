@@ -354,10 +354,27 @@ export interface ShapeOpts {
   lightColor?: string;
 }
 
+/** A box in drawing units: left, top, right, bottom. */
+export interface Bounds {
+  l: number;
+  t: number;
+  r: number;
+  b: number;
+}
+
+export const emptyBounds = (): Bounds => ({ l: Infinity, t: Infinity, r: -Infinity, b: -Infinity });
+
 export class Pen {
   readonly c: SkCanvas;
   outline: string;
   ow: number;
+  /**
+   * Set to a box to have everything drawn from then on grow it (used to frame
+   * portraits around whatever hair and hat a look has); null to stop measuring.
+   */
+  box: Bounds | null = null;
+  /** While measuring: nothing above this y counts (hair hidden under a hat). */
+  boxTop: number | null = null;
   private pf: SkPaint;
   private ps: SkPaint;
 
@@ -380,10 +397,38 @@ export class Pen {
     this.ps.dispose();
   }
 
+  /** Grows the measuring box by a rectangle given in the current (possibly moved or rotated) coordinates. */
+  private grow(x0: number, y0: number, x1: number, y1: number) {
+    const box = this.box;
+    if (!box) return;
+    if (this.boxTop !== null) {
+      if (y1 <= this.boxTop) return;
+      if (y0 < this.boxTop) y0 = this.boxTop;
+    }
+    const m = this.c.getTotalMatrix().get();
+    for (let i = 0; i < 4; i++) {
+      const x = i & 1 ? x1 : x0;
+      const y = i & 2 ? y1 : y0;
+      const X = m[0] * x + m[1] * y + m[2];
+      const Y = m[3] * x + m[4] * y + m[5];
+      if (X < box.l) box.l = X;
+      if (X > box.r) box.r = X;
+      if (Y < box.t) box.t = Y;
+      if (Y > box.b) box.b = Y;
+    }
+  }
+
+  private growPath(path: SkPath, pad: number) {
+    if (!this.box) return;
+    const b = path.computeTightBounds();
+    this.grow(b.x - pad, b.y - pad, b.x + b.width + pad, b.y + b.height + pad);
+  }
+
   /** Flat fill. */
   fill(path: SkPath, color: string) {
     this.pf.setColor(skColor(color));
     this.c.drawPath(path, this.pf);
+    this.growPath(path, 0);
   }
 
   /** Stroke with round caps and joins. */
@@ -392,6 +437,7 @@ export class Pen {
     this.ps.setStrokeWidth(width);
     this.ps.setStrokeCap(butt ? StrokeCap.Butt : StrokeCap.Round);
     this.c.drawPath(path, this.ps);
+    this.growPath(path, width / 2);
   }
 
   /** A detail line in the outline colour. */
@@ -423,6 +469,7 @@ export class Pen {
   dot(cx: number, cy: number, r: number, color: string) {
     this.pf.setColor(skColor(color));
     this.c.drawCircle(cx, cy, r, this.pf);
+    this.grow(cx - r, cy - r, cx + r, cy + r);
   }
 
   /** A soft blurred blob (glows, soft shadows). */
@@ -433,6 +480,7 @@ export class Pen {
     const mf = Skia.MaskFilter.MakeBlur(BlurStyle.Normal, sigma, true);
     p.setMaskFilter(mf);
     this.c.drawPath(path, p);
+    this.growPath(path, sigma * 2);
     track(mf);
     track(p);
   }
@@ -444,6 +492,7 @@ export class Pen {
     const sh = Skia.Shader.MakeLinearGradient({ x: x0, y: y0 }, { x: x1, y: y1 }, colors.map(skColor), pos, TileMode.Clamp);
     p.setShader(sh);
     this.c.drawPath(path, p);
+    this.growPath(path, 0);
     track(sh);
     track(p);
   }
@@ -454,6 +503,7 @@ export class Pen {
     const sh = Skia.Shader.MakeRadialGradient({ x: cx, y: cy }, r, colors.map(skColor), pos, TileMode.Clamp);
     p.setShader(sh);
     this.c.drawPath(path, p);
+    this.growPath(path, 0);
     track(sh);
     track(p);
   }

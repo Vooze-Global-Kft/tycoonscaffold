@@ -17,16 +17,20 @@ import { startMapper, stopMapper, useSharedValue, type SharedValue } from 'react
 import { FACE_SHIFT, getCharacterArt, mouthYFor, releaseCharacterArt, retainCharacterArt, type CharacterArt } from './characterArt';
 import { hashString } from './draw';
 import { commonArt, dishArt } from './items';
-import { lookKey, resolveLook } from './looks';
+import { lookKey, resolveLook, type LookInput } from './looks';
 import { POSE_INDEX, makeRig, makeRigState, stepRig, type Rig, type RigConfig, type RigState } from './rig';
-import { POSES, type CharacterLook, type DishKind, type DishLook, type Pose } from './types';
+import { POSES, type DishKind, type DishLook, type Pose } from './types';
 
-/** A plain value or a Reanimated shared value. */
-export type Anim<T> = T | SharedValue<T>;
+/** Anything from Reanimated with a `.value` to read: `useSharedValue`, `useDerivedValue`, Skia's `useClock`. */
+export interface Readable<T> {
+  readonly value: T;
+}
+/** A plain value, or a shared / derived value that changes it without a React render. */
+export type Anim<T> = T | Readable<T>;
 
 export interface CharacterProps {
-  /** Who this is. Plain data; see `CharacterLook`, `LOOKS` and `randomLook`. */
-  look?: CharacterLook;
+  /** Who this is: a look entry from game.json (`preset` and overrides welcome), a built-in name, or nothing for the default customer. */
+  look?: LookInput;
   /** Floor point between the feet, in canvas pixels. */
   x: Anim<number>;
   y: Anim<number>;
@@ -34,7 +38,7 @@ export interface CharacterProps {
   facing?: Anim<number>;
   pose?: Anim<Pose>;
   /** Milliseconds, e.g. Skia's `useClock()`. One clock can drive the whole scene. */
-  clock: SharedValue<number>;
+  clock: Readable<number>;
   /** 1 draws an adult about 50 px tall (`CHARACTER_HEIGHT`). */
   scale?: Anim<number>;
   /** The dish on the tray (`carry`), in the hand (`sit-eat`) and in the thought bubble (`sit-wait`). */
@@ -49,14 +53,14 @@ export interface CharacterProps {
   shadow?: boolean;
 }
 
-function isShared<T>(v: Anim<T>): v is SharedValue<T> {
+function isShared<T>(v: Anim<T>): v is Readable<T> {
   return typeof v === 'object' && v !== null && (v as { _isReanimatedSharedValue?: boolean })._isReanimatedSharedValue === true;
 }
 
 const sharedOnly = (list: unknown[]) => list.filter((v) => isShared(v));
 
 /** The drawings for a look, kept alive while the component is mounted. */
-export function useCharacterArt(look: CharacterLook | undefined): CharacterArt {
+export function useCharacterArt(look: LookInput): CharacterArt {
   const resolved = resolveLook(look);
   const key = lookKey(resolved);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,7 +98,8 @@ export function Character({ look, x, y, facing = 1, pose = 'idle', clock, scale 
     return copy;
   });
   const rig = useSharedValue<Rig>(first);
-  const state = useSharedValue<RigState>(makeRigState());
+  const [blank] = useState(makeRigState);
+  const state = useSharedValue<RigState>(blank);
 
   useEffect(() => {
     const index = POSE_INDEX;

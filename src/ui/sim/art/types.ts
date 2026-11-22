@@ -3,8 +3,9 @@
  *
  * A `CharacterLook` is plain JSON so it can be authored in game.json. Every
  * field is optional: `{}` is a perfectly good customer, and
- * `{ "kind": "chef" }` is a chef in whites and a toque. The `*_VALUES` arrays
- * are exported so the config schema can validate looks with `z.enum(...)`.
+ * `{ "kind": "chef" }` is a chef in whites and a toque. The `as const` arrays
+ * (`CHARACTER_KINDS`, `HAIR_STYLES`, `HATS`, ...) are exported so the config
+ * schema can validate looks with `z.enum(...)`.
  */
 
 export const CHARACTER_KINDS = ['chef', 'waiter', 'customer', 'manager'] as const;
@@ -71,15 +72,15 @@ export interface CharacterLook {
   /** Hat colour. Default depends on the hat (white toque, accent-coloured cap, ...). */
   hatColor?: string;
   /** `true` for a white apron, or a colour. */
-  apron?: boolean | string;
+  apron?: boolean | string | null;
   /** `true` for round glasses. */
-  glasses?: boolean | Glasses;
+  glasses?: boolean | Glasses | null;
   /** `true` for a bushy moustache. */
-  moustache?: boolean | Moustache;
+  moustache?: boolean | Moustache | null;
   /** `true` for a full beard. */
-  beard?: boolean | Beard;
+  beard?: boolean | Beard | null;
   /** `true` for gold earrings, or a colour. */
-  earrings?: boolean | string;
+  earrings?: boolean | string | null;
   /** Rosy cheeks. Default true. */
   blush?: boolean;
   /** Eyelashes. */
@@ -89,6 +90,19 @@ export interface CharacterLook {
   neck?: Neckwear;
   /** Iris colour for big busts and robot / alien eye glow. */
   eyes?: string;
+}
+
+/**
+ * A look as game.json stores it: any `CharacterLook` fields, plus an optional
+ * `preset` naming a built-in look to start from (see `LOOKS` in looks.ts).
+ *
+ *   { "preset": "marco" }                     Chef Marco as drawn
+ *   { "preset": "marco", "hat": "bandana" }   Marco, but in a bandana
+ *   { "kind": "waiter", "hair": "#2E2428" }   the default waiter with black hair
+ *   { "preset": "luigi" }                     not a built-in name: a random but stable person
+ */
+export interface LookEntry extends CharacterLook {
+  preset?: string;
 }
 
 export const POSES = ['idle', 'walk', 'carry', 'cook', 'toss', 'sit-wait', 'sit-eat', 'cheer', 'sleep', 'wave'] as const;
