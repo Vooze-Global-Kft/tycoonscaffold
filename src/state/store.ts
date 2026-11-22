@@ -162,6 +162,8 @@ const inFlight = new Set<string>();
 const PRESTIGE_AD_DELAY_MS = 1000;
 /** A tick never simulates more than this many seconds; longer gaps are offline time. */
 const MAX_TICK_SECONDS = 5;
+/** Time in the background shorter than the offline popup threshold, and at most this long, is simulated as one long tick. */
+const MAX_CATCH_UP_SECONDS = 300;
 
 /**
  * Runs one engine call that may fail (the meta systems are still being written, and a bug in
@@ -404,8 +406,11 @@ export const useGame = create<Store>((set, get) => {
         if (offline || away.seconds >= cfg.economy.offline.minSecondsToShow) {
           // Merge with a popup that is still open, so nothing earned while away is dropped.
           offline = offline ? { seconds: offline.seconds + away.seconds, earnings: offline.earnings + away.earnings } : away;
+        } else if (away.seconds <= MAX_CATCH_UP_SECONDS) {
+          // A short trip to the background (a notification, the app switcher, and on Android every
+          // full-screen ad) is simply caught up at full speed: the chain runs on, nothing is popped up.
+          game = E.tick(cfg, game, away.seconds, now);
         } else {
-          // A short trip to the background (a notification, the app switcher) pays quietly.
           game = E.grantCash(game, away.earnings);
         }
       }

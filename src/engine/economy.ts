@@ -782,7 +782,8 @@ export function rushMultiplier(cfg: GameConfig, state: GameState, now: number): 
  * ends just after the rush no rush at all, and a long tick that ends inside one rush all through.)
  */
 export function simSeconds(cfg: GameConfig, state: GameState, dt: number, now: number): number {
-  if (!isSim(cfg) || !(dt > 0)) return dt;
+  // `until` is 0 until the first rush (and again after a prestige): no window then, whatever `now` is.
+  if (!isSim(cfg) || !(dt > 0) || !(state.rush.until > 0)) return dt;
   const start = now - dt * 1000;
   const begin = Math.max(start, state.rush.until - rushSeconds(cfg, state) * 1000);
   const end = Math.min(now, state.rush.until);

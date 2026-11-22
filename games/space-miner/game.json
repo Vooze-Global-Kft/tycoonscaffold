@@ -22,7 +22,11 @@
       "success": "#3DDC97",
       "danger": "#FF4D6D",
       "progress": "#00E5FF",
-      "gradient": ["#2B1B7A", "#7B5CFF", "#00E5FF"]
+      "gradient": [
+        "#2B1B7A",
+        "#7B5CFF",
+        "#00E5FF"
+      ]
     },
     "radius": 12,
     "scene": "three",
@@ -33,64 +37,692 @@
   "strings": {
     "currencyName": "Credits",
     "currencySymbol": "₵",
+    "currencyIcon": "🪙",
     "gemName": "Dark Matter",
     "gemIcon": "🔮",
     "prestigeName": "Warp Cores",
     "prestigeIcon": "🌀",
     "prestigeVerb": "Jump Galaxy",
-    "prestigeDescription": "Warp to a new galaxy. Your fleet stays behind, but each Warp Core adds 2% to all output permanently.",
+    "prestigeDescription": "Warp to a new galaxy. Your fleet stays behind, but each Warp Core adds 2% to all output for good.",
     "managerTab": "AI Pilots",
     "upgradeTab": "Tech",
-    "tapHint": "Mine the asteroid!"
+    "tapHint": "Tap the asteroid!"
   },
   "economy": {
-    "startingCash": 5,
-    "prestige": { "threshold": 5e11, "scale": 1, "bonusPerPoint": 0.02 },
-    "offline": { "maxHours": 6, "efficiency": 0.4, "minSecondsToShow": 60 },
-    "boost": { "multiplier": 3, "minutesPerAd": 20, "maxMinutes": 180 },
-    "daily": { "gems": [5, 10, 10, 15, 20, 25, 75] },
-    "timeWarp": { "hours": 2, "gemCost": 40 }
+    "startingCash": 6,
+    "prestige": {
+      "threshold": 3000000000.0,
+      "scale": 1,
+      "bonusPerPoint": 0.02
+    },
+    "offline": {
+      "maxHours": 6,
+      "efficiency": 0.4,
+      "minSecondsToShow": 60
+    },
+    "boost": {
+      "multiplier": 2,
+      "minutesPerAd": 20,
+      "maxMinutes": 180
+    },
+    "daily": {
+      "gems": [
+        5,
+        10,
+        10,
+        15,
+        20,
+        25,
+        60
+      ]
+    },
+    "timeWarp": {
+      "hours": 2,
+      "gemCost": 40
+    },
+    "tapBase": 1,
+    "tapPercentOfIncome": 0.03,
+    "milestones": [
+      {
+        "owned": 15,
+        "speedMult": 2
+      },
+      {
+        "owned": 25,
+        "revenueMult": 2
+      },
+      {
+        "owned": 40,
+        "speedMult": 2
+      },
+      {
+        "owned": 60,
+        "revenueMult": 2
+      },
+      {
+        "owned": 100,
+        "revenueMult": 2
+      }
+    ],
+    "milestoneRepeat": {
+      "every": 10,
+      "revenueMult": 1.5
+    },
+    "bonus": {
+      "name": "Comet Shard",
+      "minSec": 50,
+      "maxSec": 120,
+      "incomeSeconds": 100,
+      "minTaps": 40
+    },
+    "combo": {
+      "tapsPerLevel": 14,
+      "maxMultiplier": 4,
+      "decayMs": 1500,
+      "name": "OVERDRIVE"
+    }
   },
   "businesses": [
-    { "id": "drill", "name": "Hand Drill", "icon": "⛏️", "baseCost": 4, "costGrowth": 1.07, "baseRevenue": 1, "cycleSeconds": 0.8, "managerCost": 1000, "managerName": "Unit D-1", "managerIcon": "🤖" },
-    { "id": "rover", "name": "Mining Rover", "icon": "🚙", "baseCost": 70, "costGrowth": 1.15, "baseRevenue": 70, "cycleSeconds": 3, "managerCost": 15000, "managerName": "R0-VR", "managerIcon": "🤖" },
-    { "id": "station", "name": "Orbital Station", "icon": "🛰️", "baseCost": 850, "costGrowth": 1.14, "baseRevenue": 600, "cycleSeconds": 7, "managerCost": 120000, "managerName": "HAL-ish", "managerIcon": "🧠" },
-    { "id": "freighter", "name": "Ore Freighter", "icon": "🚀", "baseCost": 10000, "costGrowth": 1.13, "baseRevenue": 5000, "cycleSeconds": 14, "managerCost": 600000, "managerName": "Captain Byte", "managerIcon": "👩‍✈️" },
-    { "id": "moon_base", "name": "Moon Base", "icon": "🌑", "baseCost": 120000, "costGrowth": 1.12, "baseRevenue": 60000, "cycleSeconds": 28, "managerCost": 1500000, "managerName": "Commander Vega", "managerIcon": "🧑‍🚀" },
-    { "id": "dyson", "name": "Dyson Swarm", "icon": "☀️", "baseCost": 1500000, "costGrowth": 1.11, "baseRevenue": 750000, "cycleSeconds": 110, "managerCost": 12000000, "managerName": "The Swarm Mind", "managerIcon": "🐝" }
+    {
+      "id": "drill",
+      "name": "Hand Drill",
+      "icon": "⛏️",
+      "flavor": "Point at rock. Pull trigger.",
+      "baseCost": 6.0,
+      "costGrowth": 1.07,
+      "baseRevenue": 1.8,
+      "cycleSeconds": 1.1,
+      "managerCost": 180,
+      "managerName": "Unit D-1",
+      "managerIcon": "🤖"
+    },
+    {
+      "id": "rover",
+      "name": "Mining Rover",
+      "icon": "🚙",
+      "flavor": "Six wheels, one scoop, no brakes.",
+      "baseCost": 72,
+      "costGrowth": 1.073,
+      "baseRevenue": 11,
+      "cycleSeconds": 2.3,
+      "managerCost": 2700,
+      "managerName": "Rover Pilot Ixa",
+      "managerIcon": "🤖"
+    },
+    {
+      "id": "refinery",
+      "name": "Ore Refinery",
+      "icon": "🏭",
+      "flavor": "Rock goes in. Shiny comes out.",
+      "baseCost": 1200,
+      "costGrowth": 1.076,
+      "baseRevenue": 88,
+      "cycleSeconds": 4.6,
+      "managerCost": 54000,
+      "managerName": "Smelt-O-Tron",
+      "managerIcon": "🧠"
+    },
+    {
+      "id": "freighter",
+      "name": "Ore Freighter",
+      "icon": "🚀",
+      "flavor": "Hauls a mountain to market every trip.",
+      "baseCost": 23000,
+      "costGrowth": 1.079,
+      "baseRevenue": 910,
+      "cycleSeconds": 9.5,
+      "managerCost": 1400000,
+      "managerName": "Captain Byte",
+      "managerIcon": "👩‍✈️"
+    },
+    {
+      "id": "moon_base",
+      "name": "Moon Base",
+      "icon": "🌑",
+      "flavor": "A quarry with a view.",
+      "baseCost": 550000,
+      "costGrowth": 1.082,
+      "baseRevenue": 11000,
+      "cycleSeconds": 19.4,
+      "managerCost": 40000000,
+      "managerName": "Commander Vega",
+      "managerIcon": "🧑‍🚀"
+    },
+    {
+      "id": "ring_yard",
+      "name": "Ring Shipyard",
+      "icon": "🪐",
+      "flavor": "Builds the haulers that build the haulers.",
+      "baseCost": 15000000,
+      "costGrowth": 1.085,
+      "baseRevenue": 160000,
+      "cycleSeconds": 39.8,
+      "managerCost": 1400000000,
+      "managerName": "Yardmaster Oku",
+      "managerIcon": "👷"
+    },
+    {
+      "id": "sun_array",
+      "name": "Sun Collector Array",
+      "icon": "☀️",
+      "flavor": "A billion mirrors turning starlight into credits.",
+      "baseCost": 500000000,
+      "costGrowth": 1.088,
+      "baseRevenue": 2600000,
+      "cycleSeconds": 81.6,
+      "managerCost": 57000000000,
+      "managerName": "The Array Mind",
+      "managerIcon": "🛰️"
+    }
   ],
   "upgrades": [
-    { "id": "t_drill", "name": "Laser Bits", "icon": "🔦", "cost": 200000, "target": "drill", "revenueMult": 3 },
-    { "id": "t_rover", "name": "Fusion Wheels", "icon": "⚙️", "cost": 600000, "target": "rover", "revenueMult": 3 },
-    { "id": "t_all", "name": "Quantum Logistics", "icon": "🧬", "cost": 2000000000, "target": "all", "revenueMult": 3 },
-    { "id": "t_premium", "name": "Antimatter Core", "icon": "⚛️", "cost": 120, "target": "all", "revenueMult": 2, "premium": true }
+    {
+      "id": "t_drill",
+      "name": "Laser Bits",
+      "icon": "🔦",
+      "cost": 5400,
+      "target": "drill",
+      "revenueMult": 3
+    },
+    {
+      "id": "t_rover",
+      "name": "Fusion Wheels",
+      "icon": "⚙️",
+      "cost": 65000,
+      "target": "rover",
+      "revenueMult": 3
+    },
+    {
+      "id": "t_refinery",
+      "name": "Plasma Crucible",
+      "icon": "🔥",
+      "cost": 1100000,
+      "target": "refinery",
+      "revenueMult": 3
+    },
+    {
+      "id": "t_all_1",
+      "name": "Fleet Telemetry",
+      "icon": "📡",
+      "cost": 2000000,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "t_freighter",
+      "name": "Cargo Folding",
+      "icon": "📦",
+      "cost": 21000000,
+      "target": "freighter",
+      "revenueMult": 3
+    },
+    {
+      "id": "t_all_2",
+      "name": "Quantum Logistics",
+      "icon": "🧬",
+      "cost": 28000000,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "t_all_3",
+      "name": "Gravity Slingshots",
+      "icon": "🌌",
+      "cost": 390000000,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "t_moon_base",
+      "name": "Low-G Conveyors",
+      "icon": "🛤️",
+      "cost": 500000000,
+      "target": "moon_base",
+      "revenueMult": 3
+    },
+    {
+      "id": "t_all_4",
+      "name": "Hyperlane Charter",
+      "icon": "🛸",
+      "cost": 5500000000,
+      "target": "all",
+      "revenueMult": 2
+    },
+    {
+      "id": "t_ring_yard",
+      "name": "Autowelders",
+      "icon": "🔧",
+      "cost": 14000000000,
+      "target": "ring_yard",
+      "revenueMult": 3
+    },
+    {
+      "id": "t_sun_array",
+      "name": "Mirror Polish",
+      "icon": "🪞",
+      "cost": 450000000000,
+      "target": "sun_array",
+      "revenueMult": 3
+    },
+    {
+      "id": "t_premium",
+      "name": "Antimatter Core",
+      "icon": "⚛️",
+      "cost": 120,
+      "target": "all",
+      "revenueMult": 2,
+      "premium": true
+    }
   ],
   "characters": [
-    { "id": "ai", "name": "ARIA", "portrait": "🛸", "color": "#00E5FF" }
+    {
+      "id": "ai",
+      "name": "ARIA",
+      "portrait": "char:aria",
+      "color": "#00E5FF"
+    },
+    {
+      "id": "rival",
+      "name": "Director Rook",
+      "portrait": "char:rook",
+      "color": "#FF4D6D"
+    }
   ],
   "story": [
-    { "id": "intro", "characterId": "ai", "title": "Boot Sequence", "trigger": { "type": "start" }, "lines": ["Good morning, Miner. Your corporation owns one drill and a lot of debt.", "Tap the drill to extract ore. I'll handle the paperwork."] },
-    { "id": "first_station", "characterId": "ai", "trigger": { "type": "owned", "businessId": "station", "count": 1 }, "lines": ["Orbit achieved. Assign an AI Pilot and I'll keep it running while you sleep."], "rewardGems": 10 }
+    {
+      "id": "intro",
+      "characterId": "ai",
+      "title": "Boot Sequence",
+      "trigger": {
+        "type": "start"
+      },
+      "lines": [
+        "Good morning, Miner. Your company owns one drill and a lot of debt.",
+        "Tap the drill to dig out ore. I will handle the paperwork."
+      ]
+    },
+    {
+      "id": "first_pilot",
+      "characterId": "ai",
+      "trigger": {
+        "type": "hired",
+        "businessId": "drill"
+      },
+      "lines": [
+        "Unit D-1 is online. The drill now runs without you.",
+        "Every machine can have a pilot. Pilots never take a lunch break."
+      ],
+      "rewardGems": 5
+    },
+    {
+      "id": "refinery",
+      "characterId": "ai",
+      "trigger": {
+        "type": "owned",
+        "businessId": "refinery",
+        "count": 1
+      },
+      "lines": [
+        "A refinery! Raw rock is cheap. Shiny metal is not.",
+        "Every machine speeds up at 15 and 60 units. Keep building."
+      ],
+      "rewardGems": 5
+    },
+    {
+      "id": "rival",
+      "characterId": "rival",
+      "title": "A Visitor",
+      "trigger": {
+        "type": "lifetimeEarnings",
+        "amount": 2000000.0
+      },
+      "lines": [
+        "Director Rook, Consolidated Rocks. We own this sector. Mostly.",
+        "Sell me your little operation now, while it is still little."
+      ],
+      "rewardGems": 10
+    },
+    {
+      "id": "moon",
+      "characterId": "ai",
+      "title": "Base Camp",
+      "trigger": {
+        "type": "owned",
+        "businessId": "moon_base",
+        "count": 1
+      },
+      "lines": [
+        "We have a base on the Moon. Commander Vega sends her regards.",
+        "Director Rook sends a strongly worded memo."
+      ],
+      "rewardGems": 10
+    },
+    {
+      "id": "array",
+      "characterId": "rival",
+      "title": "Show-off",
+      "trigger": {
+        "type": "owned",
+        "businessId": "sun_array",
+        "count": 1
+      },
+      "lines": [
+        "Mirrors around a star? That is... actually rather clever.",
+        "This is not over, Miner."
+      ],
+      "rewardGems": 15
+    },
+    {
+      "id": "first_jump",
+      "characterId": "ai",
+      "title": "New Galaxy",
+      "trigger": {
+        "type": "prestige",
+        "count": 1
+      },
+      "lines": [
+        "Jump complete. New galaxy, same debt-free you.",
+        "Your Warp Cores make every machine faster here."
+      ],
+      "rewardGems": 20
+    }
   ],
   "monetization": {
     "ads": {
-      "ios": { "appId": "ca-app-pub-3940256099942544~1458002511" },
-      "android": { "appId": "ca-app-pub-3940256099942544~3347511713" },
+      "ios": {
+        "appId": "ca-app-pub-3940256099942544~1458002511"
+      },
+      "android": {
+        "appId": "ca-app-pub-3940256099942544~3347511713"
+      },
       "forceTestAds": true
     },
     "iap": {
       "products": [
-        { "id": "space_no_ads", "title": "No Ads", "kind": "noAds", "fallbackPrice": "$3.99" },
-        { "id": "space_x2", "title": "Overclock ×2", "description": "Permanent 2× output.", "kind": "multiplier", "value": 2, "fallbackPrice": "$4.99", "highlight": true },
-        { "id": "space_gems_100", "title": "Dark Matter Cell", "kind": "gems", "value": 100, "fallbackPrice": "$1.99" }
+        {
+          "id": "space_no_ads",
+          "title": "No Ads",
+          "kind": "noAds",
+          "fallbackPrice": "$5.99"
+        },
+        {
+          "id": "space_x2",
+          "title": "Overclock x2",
+          "description": "Permanent 2x output.",
+          "kind": "multiplier",
+          "value": 2,
+          "fallbackPrice": "$6.99",
+          "highlight": true
+        },
+        {
+          "id": "space_gems_100",
+          "title": "Dark Matter Cell",
+          "kind": "gems",
+          "value": 100,
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "space_gems_550",
+          "title": "Dark Matter Tank",
+          "kind": "gems",
+          "value": 550,
+          "fallbackPrice": "$9.99"
+        }
       ]
     }
   },
   "store": {
-    "title": "Space Miner: Idle Galaxy",
-    "subtitle": "Mine asteroids, build a fleet",
-    "keywords": ["space", "idle", "mining", "tycoon", "galaxy", "clicker", "miner", "planet", "incremental", "sci-fi"],
-    "shortDescription": "Mine asteroids and build an idle mining empire across the galaxy.",
-    "description": "Start with a single hand drill and grow an interstellar mining corporation.\n\n• Automate your fleet with AI pilots\n• Earn credits even while offline\n• Jump galaxies to earn Warp Cores and grow faster\n\nA chill idle tycoon in space."
+    "title": "Asteroid Haul: Ore Empire",
+    "subtitle": "Drill rocks, run a star fleet",
+    "keywords": [
+      "space",
+      "mining",
+      "asteroid",
+      "clicker",
+      "galaxy",
+      "incremental",
+      "sci-fi",
+      "planet",
+      "robots",
+      "fleet",
+      "ore"
+    ],
+    "shortDescription": "Start with one drill and grow a mining fleet that spans the galaxy.",
+    "description": "Start with a single hand drill on a lonely asteroid and grow a mining company that spans the galaxy.\n\n• Build seven kinds of machines, from rovers to mirrors around a star\n• Give every machine an AI pilot so it runs without you\n• Collect a small crew of specialists and level them up\n• A free supply pod drops every few hours, and daily missions pay in Dark Matter\n• Earn credits while the app is closed\n• Jump to a new galaxy to earn Warp Cores and grow faster every run\n• Keep one step ahead of Director Rook and his rock monopoly\n\nAsteroid Haul is a calm space incremental game for short breaks."
+  },
+  "mode": "classic",
+  "cast": {
+    "aria": {
+      "kind": "manager",
+      "species": "robot",
+      "skin": "#9FB4D9",
+      "eyes": "#00E5FF",
+      "outfit": "#2B3A78",
+      "accent": "#00E5FF",
+      "outfitStyle": "spacesuit"
+    },
+    "vega": {
+      "kind": "manager",
+      "skin": "#C68B59",
+      "hair": "#1E1A2E",
+      "hairStyle": "ponytail",
+      "outfit": "#E8ECF8",
+      "accent": "#7B5CFF",
+      "outfitStyle": "spacesuit",
+      "hat": "helmet"
+    },
+    "grub": {
+      "kind": "customer",
+      "species": "alien",
+      "body": "small",
+      "outfit": "#3DDC97",
+      "accent": "#FFD166",
+      "outfitStyle": "overalls",
+      "glasses": "goggles"
+    },
+    "rook": {
+      "kind": "manager",
+      "skin": "#F1C7A5",
+      "hair": "#B0B6C8",
+      "hairStyle": "slick",
+      "outfit": "#3A2F5C",
+      "accent": "#FF4D6D",
+      "outfitStyle": "suit",
+      "neck": "tie",
+      "brows": "smug"
+    }
+  },
+  "meta": {
+    "cards": [
+      {
+        "id": "grub",
+        "name": "Grub",
+        "title": "Rock Sniffer",
+        "icon": "char:grub",
+        "rarity": "common",
+        "stat": "stationValue",
+        "flavor": "Can smell iron through a kilometre of rock."
+      },
+      {
+        "id": "tapper",
+        "name": "Pocket Driller",
+        "title": "Hand Tool",
+        "icon": "🪛",
+        "rarity": "common",
+        "stat": "tapValue",
+        "flavor": "Small, loud and very satisfying."
+      },
+      {
+        "id": "vega",
+        "name": "Commander Vega",
+        "title": "Base Commander",
+        "icon": "char:vega",
+        "rarity": "rare",
+        "stat": "offlineEarnings",
+        "flavor": "Keeps the night shift honest."
+      },
+      {
+        "id": "aria",
+        "name": "ARIA Prime",
+        "title": "Fleet Mind",
+        "icon": "char:aria",
+        "rarity": "epic",
+        "stat": "globalIncome",
+        "flavor": "Runs a thousand ships and still says please."
+      }
+    ],
+    "cardEffect": {
+      "common": {
+        "base": 5,
+        "perLevel": 3
+      },
+      "rare": {
+        "base": 10,
+        "perLevel": 5
+      },
+      "epic": {
+        "base": 6,
+        "perLevel": 3
+      },
+      "legendary": {
+        "base": 10,
+        "perLevel": 5
+      }
+    },
+    "cardCopies": {
+      "base": 2,
+      "growth": 1.5
+    },
+    "chests": [
+      {
+        "id": "ore_crate",
+        "name": "Supply Pod",
+        "icon": "📦",
+        "blurb": "Dropped from orbit every few hours. Free.",
+        "tier": "silver",
+        "slots": 3,
+        "slotWeights": {
+          "card": 80,
+          "gems": 10,
+          "cash": 10
+        },
+        "rarityWeights": {
+          "common": 78,
+          "rare": 18,
+          "epic": 4,
+          "legendary": 0
+        },
+        "cardCopies": {
+          "common": [
+            1,
+            3
+          ],
+          "rare": [
+            1,
+            2
+          ],
+          "epic": [
+            1,
+            1
+          ],
+          "legendary": [
+            1,
+            1
+          ]
+        },
+        "gems": [
+          1,
+          3
+        ],
+        "cashSeconds": [
+          60,
+          240
+        ]
+      }
+    ],
+    "freeChest": {
+      "chestId": "ore_crate",
+      "everyHours": 4,
+      "stored": 2,
+      "firstMinutes": [
+        15,
+        60
+      ]
+    },
+    "pity": {
+      "epic": 12
+    },
+    "chestGrowthPerVenue": 0,
+    "chestsForSale": false,
+    "missions": {
+      "slots": 3,
+      "perDay": 8,
+      "templates": [
+        {
+          "id": "earn",
+          "type": "earn",
+          "text": "Earn {n}",
+          "targets": [
+            30,
+            120,
+            300,
+            600,
+            1200,
+            1800
+          ],
+          "reward": {
+            "type": "gems",
+            "amount": 3
+          }
+        },
+        {
+          "id": "levels",
+          "type": "levels",
+          "text": "Build {n} machines",
+          "targets": [
+            5,
+            15,
+            30,
+            50,
+            80,
+            120
+          ],
+          "reward": {
+            "type": "gems",
+            "amount": 2
+          }
+        },
+        {
+          "id": "taps",
+          "type": "taps",
+          "text": "Tap the asteroid {n} times",
+          "targets": [
+            20,
+            60,
+            120,
+            200
+          ],
+          "reward": {
+            "type": "gems",
+            "amount": 2
+          }
+        }
+      ],
+      "milestones": [
+        {
+          "every": 6,
+          "reward": {
+            "type": "chest",
+            "chestId": "ore_crate",
+            "count": 1
+          }
+        }
+      ]
+    },
+    "deals": [],
+    "dailyShop": {
+      "slots": 3,
+      "offers": []
+    }
   }
 }
