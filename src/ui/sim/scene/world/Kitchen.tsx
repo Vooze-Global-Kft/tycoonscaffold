@@ -8,7 +8,7 @@
  */
 import { Group } from '@shopify/react-native-skia';
 import { useEffect, useMemo } from 'react';
-import { Easing, useDerivedValue, useSharedValue, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
+import { Easing, useDerivedValue, useSharedValue, withDelay, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
 import * as E from '../../../../engine/economy';
 import { simEvents } from '../../../../state/events';
 import { useGame } from '../../../../state/store';
@@ -54,7 +54,8 @@ export function StationSlot({ ctx, info }: { ctx: SceneCtx; info: StationInfo })
   const managed = useSharedValue(initial?.managed && initial.owned > 0 ? 1 : 0);
   /** 0..1 along the hire's walk-in; 1 = at the station. */
   const walk = useSharedValue(1);
-  const arrivedAt = useSharedValue(-1e9);
+  /** 0..1 through the cheer after arriving; 1 = done. */
+  const cheer = useSharedValue(1);
   const flights = [useSharedValue(0), useSharedValue(0)];
 
   // Store changes: running state, levels bought, milestones, the first purchase and the hire.
@@ -79,16 +80,13 @@ export function StationSlot({ ctx, info }: { ctx: SceneCtx; info: StationInfo })
       }
       if (b.managed && !before.managed && b.owned > 0) {
         managed.value = 1;
-        arrivedAt.value = -1e9;
         walk.value = 0;
         const path = kitchenPath(L, spot);
         let len = 0;
         for (let i = 1; i < path.length; i++) len += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
         const ms = Math.max(1200, Math.min(3200, (len / (L.width * 0.42)) * 1000));
-        walk.value = withTiming(1, { duration: ms, easing: Easing.linear }, (done) => {
-          'worklet';
-          if (done) arrivedAt.value = clock.value;
-        });
+        walk.value = withTiming(1, { duration: ms, easing: Easing.linear });
+        cheer.value = withDelay(ms, withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: 1100, easing: Easing.linear })));
       } else if (!b.managed) managed.value = 0;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -143,7 +141,7 @@ export function StationSlot({ ctx, info }: { ctx: SceneCtx; info: StationInfo })
         zIndex={st.y}
       />
       {owned ? (
-        <Cook ctx={ctx} spot={spot} look={info.look} workPose={info.workPose} working={working} managed={managed} walk={walk} arrivedAt={arrivedAt} />
+        <Cook ctx={ctx} spot={spot} look={info.look} workPose={info.workPose} working={working} managed={managed} walk={walk} cheer={cheer} />
       ) : null}
       <SparkleBurst x={st.x} y={st.y - 34 * s} scale={s} trigger={burst} clock={clock} plusOne={false} zIndex={5000} />
       {owned
@@ -161,7 +159,7 @@ function Cook({
   working,
   managed,
   walk,
-  arrivedAt,
+  cheer,
 }: {
   ctx: SceneCtx;
   spot: Point;
@@ -170,7 +168,7 @@ function Cook({
   working: SharedValue<number>;
   managed: SharedValue<number>;
   walk: SharedValue<number>;
-  arrivedAt: SharedValue<number>;
+  cheer: SharedValue<number>;
 }) {
   const { layout: L, clock } = ctx;
   // The walk-in route as plain numbers, so the worklets below can follow it on the UI thread.
@@ -200,7 +198,7 @@ function Cook({
   const facing = useDerivedValue(() => pos.value[2]);
   const pose = useDerivedValue<Pose>(() => {
     if (walk.value < 1) return 'walk';
-    if (clock.value - arrivedAt.value < 1100) return 'cheer';
+    if (cheer.value < 1) return 'cheer';
     return working.value > 0.5 ? workPose : 'idle';
   });
   // Hidden by moving off the canvas: a parent group's opacity does not reach children sorted by zIndex.

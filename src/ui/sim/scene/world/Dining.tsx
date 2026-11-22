@@ -7,7 +7,7 @@
  */
 import { Circle, Group, Oval, Path, Skia } from '@shopify/react-native-skia';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useDerivedValue, useSharedValue, withSpring } from 'react-native-reanimated';
+import { Easing, useDerivedValue, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { simEvents } from '../../../../state/events';
 import { useGame } from '../../../../state/store';
 import { Character, type LookInput } from '../../art';
@@ -58,13 +58,18 @@ export function TableSeat({
   const pose = useSharedValue<Pose>('sit-wait');
   const visible = useSharedValue(0);
   const table = useSharedValue<TableState>('empty');
-  const servedAt = useSharedValue(-1e9);
-  const coinAt = useSharedValue(-1e9);
+  const steam = useSharedValue(1);
+  const coin = useSharedValue(1);
   const pop = useSharedValue(isLateMount(ctx) ? 0 : 1);
 
   useEffect(() => {
     if (pop.value < 1) pop.value = withSpring(1, { damping: 13, stiffness: 170 });
-    handles.set(index, { pay: () => (coinAt.value = clock.value) });
+    handles.set(index, {
+      pay: () => {
+        coin.value = 0;
+        coin.value = withTiming(1, { duration: COIN_MS, easing: Easing.linear });
+      },
+    });
     let shown = false;
     let lastSeat: unknown = null;
     let lastGuest = guest;
@@ -87,7 +92,10 @@ export function TableSeat({
       visible.value = f.visible ? 1 : 0;
       shown = f.visible;
       const ts = tableState(seat);
-      if (ts === 'food' && table.value !== 'food' && !jump) servedAt.value = clock.value;
+      if (ts === 'food' && table.value !== 'food' && !jump) {
+        steam.value = 0;
+        steam.value = withTiming(1, { duration: STEAM_MS, easing: Easing.linear });
+      }
       table.value = ts;
       // The door swings as the guest passes it, coming in and going out.
       const crossed = (phase: string, at: number) => seat.phase === phase && seat.t >= at && (lastPhase !== phase || lastT < at);
@@ -128,16 +136,16 @@ export function TableSeat({
       <Group zIndex={t.y}>
         <Table x={t.x} y={t.y} scale={scale} palette={tablePalette} state={table} dish={dish} clock={clock} />
         {dining >= 2 ? <Candle ctx={ctx} x={t.x - 11 * k} y={t.y - 16.5 * k} seed={index} /> : null}
-        <Steam ctx={ctx} x={t.x} y={t.y - 21 * k} at={servedAt} />
+        <Steam ctx={ctx} x={t.x} y={t.y - 21 * k} progress={steam} />
       </Group>
-      <PayCoin ctx={ctx} x={t.x} y={t.y - 30 * k} at={coinAt} />
+      <PayCoin ctx={ctx} x={t.x} y={t.y - 30 * k} progress={coin} />
     </>
   );
 }
 
 /** Three wisps rising off a freshly served plate. */
-function Steam({ ctx, x, y, at }: { ctx: SceneCtx; x: number; y: number; at: { value: number } }) {
-  const { clock, layout: L } = ctx;
+function Steam({ ctx, x, y, progress }: { ctx: SceneCtx; x: number; y: number; progress: { value: number } }) {
+  const { layout: L } = ctx;
   const k = L.artScale;
   const path = useMemo(() => {
     const b = Skia.PathBuilder.Make();
@@ -148,11 +156,11 @@ function Steam({ ctx, x, y, at }: { ctx: SceneCtx; x: number; y: number; at: { v
     return b.build();
   }, []);
   const opacity = useDerivedValue(() => {
-    const u = (clock.value - at.value) / STEAM_MS;
-    return u < 0 || u > 1 ? 0 : Math.sin(Math.PI * u) * 0.75;
+    const u = progress.value;
+    return u <= 0 || u >= 1 ? 0 : Math.sin(Math.PI * u) * 0.75;
   });
   const transform = useDerivedValue(() => {
-    const u = Math.max(0, Math.min(1, (clock.value - at.value) / STEAM_MS));
+    const u = Math.max(0, Math.min(1, progress.value));
     return [{ translateX: x }, { translateY: y - 6 * k * u }, { scale: k }];
   });
   return (
@@ -186,10 +194,10 @@ function Candle({ ctx, x, y, seed }: { ctx: SceneCtx; x: number; y: number; seed
 }
 
 /** A coin that pops up over a table when the guest pays, spins and fades. */
-function PayCoin({ ctx, x, y, at }: { ctx: SceneCtx; x: number; y: number; at: { value: number } }) {
+function PayCoin({ ctx, x, y, progress }: { ctx: SceneCtx; x: number; y: number; progress: { value: number } }) {
   const { clock, layout: L } = ctx;
   const k = L.artScale;
-  const u = useDerivedValue(() => (clock.value - at.value) / COIN_MS);
+  const u = useDerivedValue(() => progress.value);
   const cy = useDerivedValue(() => {
     const v = Math.max(0, Math.min(1, u.value));
     return y - 22 * k * (1 - (1 - v) * (1 - v));

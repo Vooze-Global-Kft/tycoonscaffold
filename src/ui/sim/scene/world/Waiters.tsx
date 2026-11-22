@@ -7,7 +7,7 @@
  */
 import { Circle, Group, RoundedRect } from '@shopify/react-native-skia';
 import { useEffect } from 'react';
-import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
+import { Easing, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useGame } from '../../../../state/store';
 import { Character, type LookInput } from '../../art';
 import type { DishLook, Pose } from '../../art/types';
@@ -26,7 +26,7 @@ export function Waiter({ ctx, index, look, dish }: { ctx: SceneCtx; index: numbe
   const facing = useSharedValue(1);
   const pose = useSharedValue<Pose>('idle');
   const visible = useSharedValue(0);
-  const bangAt = useSharedValue(-1e9);
+  const bang = useSharedValue(1);
 
   useEffect(() => {
     let shown = false;
@@ -54,7 +54,10 @@ export function Waiter({ ctx, index, look, dish }: { ctx: SceneCtx; index: numbe
       facing.value = f.facing;
       const next: Pose = cheering && !f.moving ? 'cheer' : f.pose;
       // Woken by the bell: the "!" pops as the waiter gets up.
-      if (lastPose === 'sleep' && next !== 'sleep' && !jump) bangAt.value = clock.value;
+      if (lastPose === 'sleep' && next !== 'sleep' && !jump) {
+        bang.value = 0;
+        bang.value = withTiming(1, { duration: BANG_MS, easing: Easing.linear });
+      }
       lastPose = next;
       pose.value = next;
       visible.value = f.visible ? 1 : 0;
@@ -64,7 +67,7 @@ export function Waiter({ ctx, index, look, dish }: { ctx: SceneCtx; index: numbe
     return useGame.subscribe((s, prev) => {
       if (s.game !== prev.game) apply(false);
     });
-  }, [venueId, index, L, x, y, facing, pose, visible, bangAt, clock]);
+  }, [venueId, index, L, x, y, facing, pose, visible, bang]);
 
   // Hidden by moving off the canvas: a parent group's opacity does not reach children sorted by zIndex.
   const shownX = useDerivedValue(() => (visible.value > 0.5 ? x.value : -9999));
@@ -72,17 +75,17 @@ export function Waiter({ ctx, index, look, dish }: { ctx: SceneCtx; index: numbe
   return (
     <Group zIndex={z}>
       <Character look={look} x={shownX} y={y} facing={facing} pose={pose} clock={clock} scale={L.artScale} dish={dish} poses={WAITER_POSES} seed={index * 977 + 3} />
-      <Bang ctx={ctx} x={x} y={y} at={bangAt} />
+      <Bang ctx={ctx} x={x} y={y} progress={bang} />
     </Group>
   );
 }
 
 /** A "!" that pops over a waiter's head when the bell wakes them. */
-function Bang({ ctx, x, y, at }: { ctx: SceneCtx; x: { value: number }; y: { value: number }; at: { value: number } }) {
-  const { clock, layout: L } = ctx;
+function Bang({ ctx, x, y, progress }: { ctx: SceneCtx; x: { value: number }; y: { value: number }; progress: { value: number } }) {
+  const { layout: L } = ctx;
   const k = L.artScale;
   const transform = useDerivedValue(() => {
-    const u = (clock.value - at.value) / BANG_MS;
+    const u = progress.value;
     let s = 0;
     if (u >= 0 && u < 1) {
       // Pop in with an overshoot, hold, then shrink away.

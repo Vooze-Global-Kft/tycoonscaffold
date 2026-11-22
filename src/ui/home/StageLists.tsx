@@ -6,16 +6,16 @@
  * Values per trip and per guest are shown with the global multipliers applied, so they match what
  * the header and the stage strip count.
  */
-import { StyleSheet, Text, View } from "react-native";
-import { useShallow } from "zustand/react/shallow";
-import * as E from "../../engine/economy";
-import { formatMoney } from "../../engine/format";
-import { useGame } from "../../state/store";
-import { GameIcon } from "../components/GameIcon";
-import { useTarget } from "../hints/targets";
-import { alpha, useTheme } from "../theme";
-import { BuyButton } from "./BuyButton";
-import { LevelBadge, RowCard } from "./rows";
+import { StyleSheet, Text, View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
+import * as E from '../../engine/economy';
+import { formatMoney } from '../../engine/format';
+import { useGame } from '../../state/store';
+import { GameIcon } from '../components/GameIcon';
+import { useTarget } from '../hints/targets';
+import { alpha, useTheme } from '../theme';
+import { BuyButton } from './BuyButton';
+import { LevelBadge, RowCard } from './rows';
 
 /** One plain sentence under a stage list about what the stage does, in the config's words. */
 function StageNote({ text }: { text: string }) {
@@ -94,21 +94,10 @@ function StageRow({
           <LevelBadge level={level} color={color} />
         </View>
         <View style={styles.mid}>
-          <Text
-            style={[
-              t.display,
-              { color: t.c.text, fontSize: compact ? 14 : 15.5 },
-            ]}
-            numberOfLines={1}
-          >
+          <Text style={[t.display, { color: t.c.text, fontSize: compact ? 14 : 15.5 }]} numberOfLines={1}>
             {title}
           </Text>
-          <Text
-            style={[styles.line, { color: t.c.text }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-          >
+          <Text style={[styles.line, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
             {line1}
           </Text>
           <Text style={[styles.meta, { color: color }]} numberOfLines={1}>
@@ -143,67 +132,32 @@ function TransportHireCard({ compact }: { compact: boolean }) {
     }),
   );
   const tr = useGame((s) => s.cfg.sim?.transport);
-  const target = useTarget(v.hired ? null : "hireTransport");
+  const target = useTarget(v.hired ? null : 'hireTransport');
   if (!tr) return null;
   const icon = tr.managerIcon ?? t.icons.manager;
   const color = t.c.stages.transport;
   return (
-    <RowCard
-      focusKey="transportManager"
-      accent={color}
-      style={
-        !v.hired
-          ? { borderColor: alpha(t.c.success, 0.5), borderWidth: 1.5 }
-          : undefined
-      }
-    >
-      <View
-        style={[
-          styles.main,
-          { paddingHorizontal: 10, paddingVertical: compact ? 8 : 10 },
-        ]}
-      >
-        <View
-          style={[
-            styles.hireIcon,
-            { backgroundColor: alpha(v.hired ? color : t.c.success, 0.14) },
-          ]}
-        >
+    <RowCard focusKey="transportManager" accent={color} style={!v.hired ? { borderColor: alpha(t.c.success, 0.5), borderWidth: 1.5 } : undefined}>
+      <View style={[styles.main, { paddingHorizontal: 10, paddingVertical: compact ? 8 : 10 }]}>
+        <View style={[styles.hireIcon, { backgroundColor: alpha(v.hired ? color : t.c.success, 0.14) }]}>
           <GameIcon icon={icon} size={compact ? 38 : 44} />
         </View>
         <View style={styles.mid}>
-          <Text
-            style={[styles.kicker, { color: v.hired ? color : t.c.success }]}
-            numberOfLines={1}
-          >
-            {v.hired ? "ON DUTY" : "AUTOMATION"}
+          <Text style={[styles.kicker, { color: v.hired ? color : t.c.success }]} numberOfLines={1}>
+            {v.hired ? 'ON DUTY' : 'AUTOMATION'}
           </Text>
-          <Text
-            style={[
-              t.display,
-              { color: t.c.text, fontSize: compact ? 14 : 15.5 },
-            ]}
-            numberOfLines={1}
-          >
+          <Text style={[t.display, { color: t.c.text, fontSize: compact ? 14 : 15.5 }]} numberOfLines={1}>
             {tr.managerName}
           </Text>
-          <Text
-            style={[styles.meta, { color: t.c.textMuted }]}
-            numberOfLines={2}
-          >
+          <Text style={[styles.meta, { color: t.c.textMuted }]} numberOfLines={2}>
             {v.hired
               ? `Sends every ${tr.workerName.toLowerCase()} out on their own.`
-              : (tr.managerFlavor ??
-                `Sends every ${tr.workerName.toLowerCase()} out without the ${tr.bellName.toLowerCase()}.`)}
+              : (tr.managerFlavor ?? `Sends every ${tr.workerName.toLowerCase()} out without the ${tr.bellName.toLowerCase()}.`)}
           </Text>
         </View>
         {v.hired ? (
-          <View
-            style={[styles.done, { backgroundColor: alpha(t.c.success, 0.14) }]}
-          >
-            <Text style={[t.display, { color: t.c.success, fontSize: 13 }]}>
-              ✓ Hired
-            </Text>
+          <View style={[styles.done, { backgroundColor: alpha(t.c.success, 0.14) }]}>
+            <Text style={[t.display, { color: t.c.success, fontSize: 13 }]}>✓ Hired</Text>
           </View>
         ) : (
           <BuyButton
@@ -222,37 +176,23 @@ function TransportHireCard({ compact }: { compact: boolean }) {
   );
 }
 
-export function TransportList({
-  rowHeight,
-  compact,
-}: {
-  rowHeight: number;
-  compact: boolean;
-}) {
+export function TransportList({ rowHeight, compact }: { rowHeight: number; compact: boolean }) {
   const t = useTheme();
   const buy = useGame((s) => s.buyTransport);
   const tr = useGame((s) => s.cfg.sim?.transport);
-  const buffer = useGame((s) => s.cfg.sim?.buffer.name ?? "");
-  const sales = useGame((s) => s.cfg.sim?.sales.name ?? "");
+  const buffer = useGame((s) => s.cfg.sim?.buffer.name ?? '');
+  const sales = useGame((s) => s.cfg.sim?.sales.name ?? '');
   const v = useGame(
     useShallow((s) => {
       const { cfg, game, buyAmount } = s;
       const venueId = game.activeVenue;
       const chain = game.venues[venueId]?.chain;
       if (!E.isSim(cfg) || !chain) return null;
-      const n = E.resolveStageAmount(
-        cfg,
-        game,
-        venueId,
-        "transport",
-        buyAmount,
-      );
+      const n = E.resolveStageAmount(cfg, game, venueId, 'transport', buyAmount);
       return {
         level: chain.transportLevel,
         workers: chain.workers.length,
-        capacity:
-          E.transportCapacity(cfg, game, venueId) *
-          E.globalMultiplier(cfg, game, Date.now()),
+        capacity: E.transportCapacity(cfg, game, venueId) * E.globalMultiplier(cfg, game, Date.now()),
         n,
         cost: E.transportCost(cfg, game, venueId, n),
         hired: chain.transportManaged,
@@ -271,11 +211,7 @@ export function TransportList({
       level={v.level}
       title={tr.name}
       line1={`${tr.workerName} ×${v.workers}  ·  ${formatMoney(v.capacity, sym)} per trip`}
-      line2={
-        next
-          ? `Next ${tr.workerName.toLowerCase()} at level ${next}`
-          : `Full team: every ${tr.workerName.toLowerCase()} hired`
-      }
+      line2={next ? `Next ${tr.workerName.toLowerCase()} at level ${next}` : `Full team: every ${tr.workerName.toLowerCase()} hired`}
       n={v.n}
       cost={v.cost}
       onBuy={buy}
@@ -285,23 +221,12 @@ export function TransportList({
     />
   );
   const card = <TransportHireCard key="hire" compact={compact} />;
-  const note = (
-    <StageNote
-      key="note"
-      text={`${tr.name} carry what is ready from ${buffer} to ${sales}. Levels raise what one trip carries, and more join at set levels.`}
-    />
-  );
+  const note = <StageNote key="note" text={`${tr.name} carry what is ready from ${buffer} to ${sales}. Levels raise what one trip carries, and more join at set levels.`} />;
   // Until it is hired, the automation hire is the most important thing on this list: show it first.
   return <>{v.hired ? [row, card, note] : [card, row, note]}</>;
 }
 
-export function SalesList({
-  rowHeight,
-  compact,
-}: {
-  rowHeight: number;
-  compact: boolean;
-}) {
+export function SalesList({ rowHeight, compact }: { rowHeight: number; compact: boolean }) {
   const t = useTheme();
   const buy = useGame((s) => s.buySales);
   const sa = useGame((s) => s.cfg.sim?.sales);
@@ -311,13 +236,11 @@ export function SalesList({
       const venueId = game.activeVenue;
       const chain = game.venues[venueId]?.chain;
       if (!E.isSim(cfg) || !chain) return null;
-      const n = E.resolveStageAmount(cfg, game, venueId, "sales", buyAmount);
+      const n = E.resolveStageAmount(cfg, game, venueId, 'sales', buyAmount);
       return {
         level: chain.salesLevel,
         seats: chain.seats.length,
-        spend:
-          E.salesSpend(cfg, game, venueId) *
-          E.globalMultiplier(cfg, game, Date.now()),
+        spend: E.salesSpend(cfg, game, venueId) * E.globalMultiplier(cfg, game, Date.now()),
         n,
         cost: E.salesCost(cfg, game, venueId, n),
       };
@@ -335,11 +258,7 @@ export function SalesList({
         level={v.level}
         title={sa.name}
         line1={`${sa.seatName} ×${v.seats}  ·  ${formatMoney(v.spend, sym)} per guest`}
-        line2={
-          next
-            ? `Next ${sa.seatName.toLowerCase()} at level ${next}`
-            : `Every ${sa.seatName.toLowerCase()} is open`
-        }
+        line2={next ? `Next ${sa.seatName.toLowerCase()} at level ${next}` : `Every ${sa.seatName.toLowerCase()} is open`}
         n={v.n}
         cost={v.cost}
         onBuy={buy}
@@ -347,32 +266,30 @@ export function SalesList({
         rowHeight={rowHeight}
         compact={compact}
       />
-      <StageNote
-        text={`Guests sit in the ${sa.name.toLowerCase()} and pay for what they are served. Levels raise what a guest spends; a new ${sa.seatName.toLowerCase()} opens at set levels.`}
-      />
+      <StageNote text={`Guests sit in the ${sa.name.toLowerCase()} and pay for what they are served. Levels raise what a guest spends; a new ${sa.seatName.toLowerCase()} opens at set levels.`} />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  main: { flexDirection: "row", alignItems: "center", gap: 8 },
-  iconBox: { alignItems: "center", justifyContent: "center" },
-  halo: { position: "absolute" },
+  main: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  iconBox: { alignItems: 'center', justifyContent: 'center' },
+  halo: { position: 'absolute' },
   mid: { flex: 1, minWidth: 0, gap: 1 },
-  line: { fontSize: 12, fontWeight: "800" },
-  meta: { fontSize: 10.5, fontWeight: "800" },
-  kicker: { fontSize: 9.5, fontWeight: "900", letterSpacing: 1 },
+  line: { fontSize: 12, fontWeight: '800' },
+  meta: { fontSize: 10.5, fontWeight: '800' },
+  kicker: { fontSize: 9.5, fontWeight: '900', letterSpacing: 1 },
   hireIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   note: {
     fontSize: 11.5,
-    fontWeight: "600",
+    fontWeight: '600',
     lineHeight: 16,
     marginHorizontal: 22,
     marginTop: 6,

@@ -10,6 +10,8 @@
  *   &chest=<chestId>               open that chest (grants one first)
  *   &deal=<dealId>                 show that deal's popup
  *   &story=1                       keep story dialogs (presets normally mark them all as seen)
+ *   &popups=1                      let offer popups appear by themselves (with a preset they are held back,
+ *                                  so they do not cover what is being looked at)
  *
  * Nothing here runs on a phone: every entry point checks for a browser address first.
  */
@@ -65,4 +67,10 @@ export function applyDevParams(): void {
   }
   const deal = q.get('deal');
   if (deal) useGame.setState({ dealPopup: deal });
+  else if (preset && q.get('popups') !== '1') {
+    // Looking at a prepared state: an offer popping up ten seconds in would cover the screen under review.
+    useGame.subscribe((s) => {
+      if (s.dealPopup !== null) useGame.setState({ dealPopup: null });
+    });
+  }
 }

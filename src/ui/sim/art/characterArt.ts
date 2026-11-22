@@ -1119,58 +1119,70 @@ function buildCharacterArt(l: ResolvedLook, key: string): CharacterArt {
  * are freed, so a returning customer is usually free.
  */
 class ArtCache<T extends { key: string }> {
-  private map = new Map<string, { art: T; refs: number }>();
-  private idle: string[] = [];
+  /** The drawings to hand out for a key. */
+  private map = new Map<string, T>();
+  /**
+   * How many components hold each set of drawings. Counted per SET, not per key: two sets for the
+   * same key can exist for a moment (one dropped from the table while a component that got it
+   * during render has not committed yet, one built since), and freeing by key then freed drawings
+   * that were still on screen.
+   */
+  private refs = new Map<T, number>();
+  /** Sets nobody holds, oldest first; they are freed once more than `idleMax` wait here. */
+  private idle: T[] = [];
   constructor(private idleMax: number) {}
 
   /** The drawings for `key`, built on first use. Safe to call during render. */
   get(key: string, build: () => T): T {
-    let e = this.map.get(key);
-    if (!e) {
-      e = { art: build(), refs: 0 };
-      this.map.set(key, e);
+    let art = this.map.get(key);
+    if (!art) {
+      art = build();
+      this.map.set(key, art);
+      this.refs.set(art, 0);
       // Not trimmed here: drawings made during a render are claimed a moment later, in the effect.
-      this.idle.push(key);
+      this.idle.push(art);
     }
-    return e.art;
+    return art;
   }
 
   retain(art: T) {
-    let e = this.map.get(art.key);
-    if (!e || e.art !== art) {
-      // It was dropped between render and commit; put it back.
-      e = { art, refs: 0 };
-      this.map.set(art.key, e);
-    }
-    if (e.refs === 0) {
-      const i = this.idle.indexOf(art.key);
+    const held = this.refs.get(art) ?? 0;
+    if (held === 0) {
+      const i = this.idle.indexOf(art);
       if (i >= 0) this.idle.splice(i, 1);
     }
-    e.refs++;
+    this.refs.set(art, held + 1);
+    // Dropped from the table between render and commit: findable again, unless a newer set took its key.
+    if (!this.map.has(art.key)) this.map.set(art.key, art);
   }
 
   release(art: T) {
-    const e = this.map.get(art.key);
-    if (!e || e.art !== art) return;
-    e.refs--;
-    if (e.refs > 0) return;
-    e.refs = 0;
-    this.idle.push(art.key);
+    const held = (this.refs.get(art) ?? 0) - 1;
+    if (held > 0) {
+      this.refs.set(art, held);
+      return;
+    }
+    this.refs.set(art, 0);
+    if (!this.idle.includes(art)) this.idle.push(art);
     while (this.idle.length > this.idleMax) {
       const old = this.idle.shift()!;
-      const o = this.map.get(old);
-      if (o && o.refs === 0) {
-        this.map.delete(old);
-        this.dispose(o.art);
-      }
+      if ((this.refs.get(old) ?? 0) > 0) continue;
+      if (this.map.get(old.key) === old) this.map.delete(old.key);
+      this.dispose(old);
     }
   }
 
   private dispose(art: T) {
-    // Wait a moment: a canvas may still hold the last frame that used these.
+    // Wait a moment: a canvas may still hold the last frame that used these, and a component that
+    // got them during a render may be about to claim them.
     setTimeout(() => {
-      // Skip it if the same drawings were picked up again in the meantime.
-      if (this.map.get(art.key)?.art === art) return;
+      if ((this.refs.get(art) ?? 0) > 0) return;
+      // Somebody found it in the table again and may be mid-render with it: let it wait its turn again.
+      if (this.map.get(art.key) === art) {
+        if (!this.idle.includes(art)) this.idle.push(art);
+        return;
+      }
+      this.refs.delete(art);
       for (const v of Object.values(art) as unknown[]) {
         const free = v && typeof v === 'object' ? (v as { dispose?: unknown }).dispose : null;
         if (typeof free === 'function') free.call(v);

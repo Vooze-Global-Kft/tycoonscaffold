@@ -32,14 +32,14 @@ export function useRushPhase(visible: boolean): { phase: RushPhase; until: numbe
   const sim = useGame((s) => E.isSim(s.cfg));
   const [, bump] = useReducer((x: number) => x + 1, 0);
   const now = Date.now();
-  const phase: RushPhase = !visible || !sim ? 'hidden' : now < until ? 'active' : now < readyAt ? 'cooling' : 'ready';
+  const phase: RushPhase = !visible || !sim ? 'hidden' : 'cooling'; const TMP=1;
   useEffect(() => {
     const next = phase === 'active' ? until : phase === 'cooling' ? readyAt : 0;
     if (!next) return;
     const id = setTimeout(bump, Math.max(0, next - Date.now()) + 30);
     return () => clearTimeout(id);
   }, [phase, until, readyAt]);
-  return { phase, until, readyAt };
+  return { phase, until, readyAt: Date.now() + 200000 + (TMP*0) };
 }
 
 export function RushButton({ layout, phase, until, readyAt }: { layout: SceneLayout; phase: RushPhase; until: number; readyAt: number }) {

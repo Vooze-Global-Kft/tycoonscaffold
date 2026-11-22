@@ -146,18 +146,21 @@ export function OpeningSlot({ m, index, kind, rarity, icon, cardId, phase, rest,
     if (phase === 'shown') return settle();
     if (phase === 'dealt') {
       const d = index * DEAL_GAP_MS;
-      shown.value = withDelay(d, withTiming(1, { duration: 60 }));
-      x.value = withDelay(d, withTiming(rest.x, { duration: DEAL_MS, easing: out }));
+      // withDelay(0, ...) is avoided on purpose: the first slot starts its animations directly.
+      const later = <T,>(ms: number, a: T): T => (ms > 0 ? (withDelay(ms, a as never) as T) : a);
+      rot.value = index % 2 === 0 ? -0.5 : 0.5;
+      shown.value = later(d, withTiming(1, { duration: 60 }));
+      x.value = later(d, withTiming(rest.x, { duration: DEAL_MS, easing: out }));
       // An arc: up out of the chest, then down onto its place.
-      y.value = withDelay(
+      y.value = later(
         d,
         withSequence(
           withTiming(Math.min(from.y, rest.y) - 50, { duration: DEAL_MS * 0.45, easing: Easing.out(Easing.quad) }),
           withTiming(rest.y, { duration: DEAL_MS * 0.55, easing: Easing.in(Easing.quad) }),
         ),
       );
-      s.value = withDelay(d, withTiming(rest.scale, { duration: DEAL_MS, easing: out }));
-      rot.value = withDelay(d, withSequence(withTiming(index % 2 === 0 ? -0.5 : 0.5, { duration: 0 }), withTiming(0, { duration: DEAL_MS, easing: out })));
+      s.value = later(d, withTiming(rest.scale, { duration: DEAL_MS, easing: out }));
+      rot.value = later(d, withTiming(0, { duration: DEAL_MS, easing: out }));
       pop.value = withDelay(d + DEAL_MS, withSequence(withTiming(1.08, { duration: 70 }), withTiming(1, { duration: 120 })));
       return;
     }
