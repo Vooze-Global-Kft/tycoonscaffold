@@ -2,6 +2,7 @@
 // config loader can require it without a TypeScript step.
 const fs = require('fs');
 const path = require('path');
+const { readFontMetrics, moneyCharacters } = require('./fontMetrics.js');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const GAMES_DIR = path.join(ROOT, 'games');
@@ -113,6 +114,26 @@ function listSounds(id) {
 }
 
 /**
+ * Line height and character widths of the game's display font (theme.displayFont), read from the
+ * font file, or null: no display font, or a file this reader does not understand. With null the
+ * app falls back to a cautious guess, so a problem here must never stop a build.
+ * @param {string} id
+ * @param {any} game
+ * @returns {{ line: number, advances: Record<string, number> } | null}
+ */
+function displayFontMetrics(id, game) {
+  const key = game.theme && game.theme.displayFont;
+  const rel = key && game.assets && game.assets[key];
+  if (!rel) return null;
+  try {
+    return readFontMetrics(path.join(gameDir(id), rel), moneyCharacters(game.strings && game.strings.currencySymbol));
+  } catch (e) {
+    console.warn(`[font] could not read ${rel}: ${e.message}. The cash counter will size itself by a guess.`);
+    return null;
+  }
+}
+
+/**
  * Writes src/generated/activeGame.ts so the JS bundle contains only this
  * game's JSON, images and sounds. Metro needs static require() calls, so this
  * file is generated instead of computed at runtime. Re-run it (`npm run
@@ -138,6 +159,8 @@ function writeActiveGame(id) {
     'export const gameSounds: Record<string, number> = {',
     ...Object.entries(sounds).map(([key, rel]) => `  ${JSON.stringify(key)}: require(${JSON.stringify(`../../${rel}`)}),`),
     '};',
+    '/** The display font\'s line height and character widths as fractions of the font size (null: no display font). */',
+    'export const displayFontMetrics: { line: number; advances: Record<string, number> } | null = ' + JSON.stringify(displayFontMetrics(id, game)) + ';',
     '',
   ];
   const next = lines.join('\n');
@@ -158,5 +181,6 @@ module.exports = {
   gameFileOr,
   mergeSoundDirs,
   listSounds,
+  displayFontMetrics,
   writeActiveGame,
 };

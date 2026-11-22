@@ -78,10 +78,11 @@ const Chip = memo(function Chip({ info, rate, limiting, selected, prompt, idle, 
       >
         <GameIcon icon={info.icon} size={compact ? 17 : 19} />
         <View style={styles.chipText}>
-          <Text style={[styles.chipName, { color: fg, fontSize: compact ? 11 : 12, lineHeight: compact ? 13 : 14 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} maxFontSizeMultiplier={1.2}>
+          {/* The chip has a fixed height: its two lines do not grow with the phone's text size (they would leave the chip). */}
+          <Text style={[styles.chipName, { color: fg, fontSize: compact ? 11 : 12, lineHeight: compact ? 13 : 14 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} allowFontScaling={false}>
             {info.name}
           </Text>
-          <Text style={[t.display, styles.chipRate, { color: sub, fontSize: prompt ? (compact ? 11 : 12) : compact ? 13 : 15, lineHeight: compact ? 15 : 17 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} maxFontSizeMultiplier={1.2}>
+          <Text style={[t.display, styles.chipRate, { color: sub, fontSize: prompt ? (compact ? 11 : 12) : compact ? 13 : 15, lineHeight: compact ? 15 : 18 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} allowFontScaling={false}>
             {label}
           </Text>
         </View>

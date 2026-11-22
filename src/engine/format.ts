@@ -37,6 +37,29 @@ export function formatNumber(value: number, decimals = 2): string {
   return fixed + suffix;
 }
 
+/**
+ * Like formatNumber, with three significant digits above a thousand ("850B", "85.1B", "8.51B"):
+ * for lines with little room, such as the income per second in the header.
+ */
+export function formatShort(value: number): string {
+  if (!Number.isFinite(value)) return '∞';
+  if (value < 0) return '-' + formatShort(-value);
+  if (value < 1000) return formatNumber(value);
+  let group = Math.floor(Math.log10(value) / 3);
+  if (value / Math.pow(10, group * 3) >= 1000) group++;
+  const scaled = value / Math.pow(10, group * 3);
+  let text = scaled.toFixed(scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2);
+  // Rounding can carry into the next digit: "9.995" -> "10.00" -> "10.0", "99.96" -> "100.0" -> "100".
+  const rounded = Number(text);
+  if (rounded >= 1000) {
+    group++;
+    text = (1).toFixed(2);
+  } else text = rounded.toFixed(rounded >= 100 ? 0 : rounded >= 10 ? 1 : 2);
+  const suffix = suffixOf(group);
+  if (suffix === null) return value.toExponential(2);
+  return text + suffix;
+}
+
 export function formatMoney(value: number, symbol = '$'): string {
   return symbol + formatNumber(value);
 }

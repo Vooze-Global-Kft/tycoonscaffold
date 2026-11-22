@@ -83,7 +83,7 @@ function OfflineSheet({ seconds, earnings }: { seconds: number; earnings: number
         </Animated.View>
         <Text style={[styles.kicker, { color: t.c.textMuted }]}>EARNED WHILE AWAY</Text>
         <View ref={amountRef} collapsable={false} style={styles.amountBox}>
-          <RollingNumber value={earnings} symbol={t.strings.currencySymbol} fromZero duration={1100} style={[t.display, styles.amount, { color: t.c.primary }]} />
+          <RollingNumber value={earnings} symbol={t.strings.currencySymbol} fromZero duration={1100} allowFontScaling={false} style={[t.display, styles.amount, { color: t.c.primary }]} />
         </View>
         <Text style={[styles.small, { color: t.c.textMuted }]}>
           {capped ? `Away ${maxHours} h or more: the most that counts` : `Away ${shortDuration(seconds)}`}

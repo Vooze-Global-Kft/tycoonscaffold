@@ -1,4 +1,5 @@
 import { ACTIVE_GAME_ID, gameAssets, gameSounds, rawGame } from '../generated/activeGame';
+import * as generated from '../generated/activeGame';
 import { GameConfigSchema, type GameConfig } from './schema';
 
 function parse(): GameConfig {
@@ -13,6 +14,18 @@ function parse(): GameConfig {
 /** The config the game was built with. */
 export const baseGame: GameConfig = parse();
 export { ACTIVE_GAME_ID, gameAssets, gameSounds };
+
+/** Line height and character widths of the display font, as fractions of the font size. */
+export interface FontMetrics {
+  line: number;
+  advances: Record<string, number>;
+}
+
+/**
+ * The display font's measures, written by scripts/lib/games.js from the font file; null without a
+ * display font. Read loosely, so a generated file from before this existed still works.
+ */
+export const displayFontMetrics: FontMetrics | null = (generated as { displayFontMetrics?: FontMetrics | null }).displayFontMetrics ?? null;
 
 /**
  * Keys that Firebase Remote Config may override at runtime, for A/B tests and

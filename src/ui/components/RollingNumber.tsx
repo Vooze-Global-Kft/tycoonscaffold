@@ -55,6 +55,10 @@ export function RollingNumber({ value, symbol, duration = 450, fromZero = false,
     const text = symbol !== undefined ? rollMoney(shown.value, symbol) : rollNumber(shown.value);
     return { text, defaultValue: text } as object;
   });
+  // A line height on a text field is how the header's amount ended up on top of the line under it on
+  // iPhones: it is dropped here, whatever the caller passes.
+  const { lineHeight, ...flat } = (StyleSheet.flatten([styles.input, style]) ?? {}) as TextStyle;
+  if (__DEV__ && lineHeight !== undefined) console.warn('RollingNumber: lineHeight is ignored (an iPhone would draw the text at the bottom of the line). Give the box a height instead.');
   const initial = fromZero ? (symbol !== undefined ? formatMoney(0, symbol) : '0') : symbol !== undefined ? formatMoney(value, symbol) : formatNumber(value);
   return (
     <AnimatedInput
@@ -66,7 +70,7 @@ export function RollingNumber({ value, symbol, duration = 450, fromZero = false,
       underlineColorAndroid="transparent"
       defaultValue={initial}
       animatedProps={animatedProps}
-      style={[styles.input, style]}
+      style={flat}
       allowFontScaling={allowFontScaling}
       maxFontSizeMultiplier={1.2}
       accessibilityRole="text"
@@ -84,9 +88,3 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' ? ({ outlineStyle: 'none', cursor: 'default' } as object) : null),
   },
 });
-
-/** A font size that fits `text` into `width` points, from `max` down to `min` (display fonts run about 0.62 em per glyph). */
-export function fitFontSize(text: string, width: number, max: number, min = 12, emPerChar = 0.62): number {
-  if (width <= 0) return max;
-  return Math.max(min, Math.min(max, width / (Math.max(1, text.length) * emPerChar)));
-}

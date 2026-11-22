@@ -7,8 +7,9 @@ import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import { displayFontMetrics } from '../../config/game';
 import * as E from '../../engine/economy';
-import { formatMoney, formatNumber } from '../../engine/format';
+import { formatMoney, formatNumber, formatShort } from '../../engine/format';
 import { ads } from '../../services/ads';
 import { useGame } from '../../state/store';
 import { useTarget } from '../hints/targets';
@@ -18,9 +19,10 @@ import { shopFocus } from '../meta/shop/focus';
 import { formatCountdown, shortDuration } from '../kit/time';
 import { alpha, useTheme } from '../theme';
 import { counterPulse } from './counterPulse';
-import { cashBlockMetrics, cashBoxHeight } from './headerMetrics';
+import { ROW_GAP, cashBlockMetrics, cashBoxHeight } from './headerMetrics';
+import { fitFont, fitsAt, widestEm } from './moneyWidth';
 import { GameIcon } from './GameIcon';
-import { RollingNumber, fitFontSize } from './RollingNumber';
+import { RollingNumber } from './RollingNumber';
 
 /** A shared value that gives a quick squash-and-grow each time the fly layer lands on `target`. */
 function usePulse(target: string) {
@@ -44,18 +46,56 @@ function followCash(set: (v: number) => void): () => void {
   });
 }
 
+/** "1.50K" -> "1.5K", "2.00T" -> "2T": trailing zeros of the decimals say nothing on a short line. */
+function trimZeros(text: string): string {
+  return text.replace(/\.0+(?=\D*$)|(\.\d*?)0+(?=\D*$)/, '$1');
+}
+
+/** The amount never gets smaller than this; below it the phone is too narrow for the header anyway. */
+const MIN_CASH_FONT = 11;
+/** Gap between the coin and the amount (styles.cashRow). */
+const CASH_GAP = 5;
+/** The counter takes about a tick to roll down to a shorter amount; the larger font waits this long for it. */
+const SHRINK_HOLD_MS = 350;
+
 /**
- * The cash counter. It re-renders only when the width of the amount changes (the font size) or the
+ * Follows `value` at once when it grows and only after `holdMs` when it shrinks. The amount's width
+ * goes through this: when money is spent the counter is still rolling down through the longer
+ * amount for a moment, and the font may only grow once it has arrived.
+ */
+function useHeldMax(value: number, holdMs: number): number {
+  const [held, setHeld] = useState(value);
+  useEffect(() => {
+    if (value === held) return;
+    if (value > held) {
+      setHeld(value);
+      return;
+    }
+    const timer = setTimeout(() => setHeld(value), holdMs);
+    return () => clearTimeout(timer);
+  }, [value, held, holdMs]);
+  return Math.max(held, value);
+}
+
+/**
+ * The cash counter. It re-renders only when the shape of the amount changes (the font size) or the
  * income line's text changes; the digits themselves roll on the UI thread.
  */
 function CashCounter({ compact, header }: { compact: boolean; header: number }) {
   const t = useTheme();
   const sym = t.strings.currencySymbol;
-  const cashLen = useGame((s) => formatMoney(s.game.cash, sym).length);
+  // The display font's real widths and line height (from its file); null when the system font draws the text.
+  const font = t.display.fontFamily ? displayFontMetrics : null;
+  // Width of the widest amount shaped like the current one ("$00.00T"), in font sizes.
+  const shapeEm = useHeldMax(
+    useGame((s) => widestEm(formatMoney(s.game.cash, sym), font)),
+    SHRINK_HOLD_MS,
+  );
   const ipsText = useGame((s) => {
     const ips = E.incomePerSecond(s.cfg, s.game, Date.now());
-    // "+$2T/s" rather than "+$2.00T/s": the short line must fit beside the prestige count on small phones.
-    return ips > 0 ? `+${formatMoney(ips, sym).replace(/\.0+(?=\D*$)|(\.\d*?)0+(?=\D*$)/, '$1')}/s` : null;
+    // Three significant digits without trailing zeros ("+$2T/s", "+$153K/s", "+$8.51M/s"): the line
+    // has to fit beside the prestige count under the amount.
+    return ips > 0 ? `+${sym}${trimZeros(formatShort(ips))}/s` : null;
   });
   const points = useGame((s) => s.game.prestigePoints);
   const [startCash] = useState(() => useGame.getState().game.cash);
@@ -63,14 +103,17 @@ function CashCounter({ compact, header }: { compact: boolean; header: number }) 
   const target = useTarget('header:cash');
   const pulse = usePulse('header:cash');
   const { fontScale } = useWindowDimensions();
-  const m = cashBlockMetrics(compact, header, fontScale);
+  const m = cashBlockMetrics(compact, header, fontScale, font?.line);
   const iconSize = Math.min(compact ? 22 : 26, m.cashRow - 4);
-  // The display font's digits, "$" and suffix letters are wide: estimate generously so "$43.09T" never clips.
-  const fontSize = Math.floor(fitFontSize('0'.repeat(cashLen), width - iconSize - 6, m.cashMax, 14, 0.74));
+  // On a very narrow block (a tiny screen with a running boost and a long amount) the coin gives its
+  // place to the amount rather than let the amount be cut off.
+  const showIcon = width <= 0 || fitsAt(shapeEm, width - iconSize - CASH_GAP, MIN_CASH_FONT);
+  // The largest font at which the widest amount of this shape fits beside the coin.
+  const fontSize = fitFont(shapeEm, showIcon ? width - iconSize - CASH_GAP : width, MIN_CASH_FONT, m.cashMax);
   // The amount's box is only as tall as its own line and the row centres the box. A taller box with a
   // line height would leave it to the platform where the digits sit in it, and iPhones put them at
   // the bottom: a long amount (a small font in a tall box) then sat on top of the income line.
-  const cashBox = cashBoxHeight(fontSize, m.cashRow);
+  const cashBox = cashBoxHeight(fontSize, m.cashRow, font?.line);
   const ipsStyle = { color: alpha(t.c.primaryText, 0.92), fontSize: m.ipsFont, lineHeight: m.ipsLine };
   const onLayout = (e: LayoutChangeEvent) => {
     setWidth(e.nativeEvent.layout.width);
@@ -79,7 +122,7 @@ function CashCounter({ compact, header }: { compact: boolean; header: number }) 
   return (
     <View style={[styles.cashBlock, compact && { flex: 1.4 }]} ref={target.ref} collapsable={false} onLayout={onLayout}>
       <Animated.View style={[styles.cashRow, { height: m.cashRow }, pulse]}>
-        <GameIcon icon={t.strings.currencyIcon} size={iconSize} />
+        {showIcon ? <GameIcon icon={t.strings.currencyIcon} size={iconSize} /> : null}
         <RollingNumber
           value={startCash}
           follow={followCash}
@@ -95,7 +138,7 @@ function CashCounter({ compact, header }: { compact: boolean; header: number }) 
         {points > 0 ? (
           <Text style={[styles.ips, ipsStyle, { flexShrink: 0 }]} numberOfLines={1} allowFontScaling={false}>
             {t.strings.prestigeIcon}
-            {formatNumber(points)}
+            {trimZeros(formatShort(points))}
           </Text>
         ) : null}
       </View>
@@ -194,7 +237,9 @@ function GemPill({ compact, plus }: { compact: boolean; plus: boolean }) {
       </Animated.View>
       {plus ? (
         <View style={[styles.plus, { backgroundColor: t.c.surface }]}>
-          <Text style={[styles.plusText, { color: t.c.primary }]}>+</Text>
+          <Text style={[styles.plusText, { color: t.c.primary }]} allowFontScaling={false}>
+            +
+          </Text>
         </View>
       ) : null}
     </Pressable>
@@ -249,8 +294,9 @@ export function Header() {
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 6, overflow: 'hidden' },
   wrapCompact: { paddingHorizontal: 9, gap: 4 },
-  cashBlock: { flex: 1, minWidth: 0, justifyContent: 'center' },
-  cashRow: { flexDirection: 'row', alignItems: 'center', gap: 5, transformOrigin: 'left center' },
+  cashBlock: { flex: 1, minWidth: 0, justifyContent: 'center', gap: ROW_GAP },
+  // The row pops about its centre when a coin lands, so the growth is shared between both ends.
+  cashRow: { flexDirection: 'row', alignItems: 'center', gap: CASH_GAP },
   cash: { flex: 1, minWidth: 0 },
   ipsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, overflow: 'hidden' },
   ips: { fontWeight: '800' },
