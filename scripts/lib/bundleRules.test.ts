@@ -127,6 +127,16 @@ describe('three levels', () => {
       'imports-unclassified src/ui/sim/home/HomeSim.tsx',
     ]);
   });
+
+  it('a Node-only file may import any mode (it is in no bundle), but nothing shared may import it to reach one', () => {
+    const edges = [
+      ['src/services/fx/catalog.ts', 'src/modes/haul/fx.ts'],
+      ['src/services/fx/index.ts', 'src/modes/haul/fx.ts'],
+    ] as const;
+    expect(importViolations(edges, M).map((v) => `${v.rule} ${v.file}`)).toEqual(['shared-imports-mode src/services/fx/index.ts']);
+    // And a bundle that holds the Node-only file still fails.
+    expect(rules(clean({ modules: ['src/ui/App.tsx', 'src/services/fx/catalog.ts'] }))).toContain('node-only src/services/fx/catalog.ts');
+  });
 });
 
 describe('fails closed', () => {

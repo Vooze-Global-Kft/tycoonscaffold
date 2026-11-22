@@ -30,8 +30,8 @@ export interface BundleManifest {
 export interface BundleContents {
   game: string;
   mode: string;
-  /** The game's declared sound pack. */
-  pack: string;
+  /** The game's declared sound pack (null: none, only its own sounds). */
+  pack: string | null;
   /** Project source files in the bundle (node_modules excluded). */
   modules: readonly string[];
   /** Imports the check could not resolve (fast stage): each one fails, since Metro may bundle anything there. */
@@ -121,7 +121,7 @@ export function bundleViolations(b: BundleContents, m: BundleManifest): Violatio
   for (const file of b.assets) {
     if (!file.startsWith(packRoot)) continue;
     const pack = file.slice(packRoot.length).split('/')[0];
-    if (pack !== b.pack) out.push({ rule: 'other-pack', file, message: `is in the sound pack "${pack}", but ${b.game} declares "${b.pack}"` });
+    if (pack !== b.pack) out.push({ rule: 'other-pack', file, message: `is in the sound pack "${pack}", but ${b.game} declares ${b.pack === null ? 'no pack' : `"${b.pack}"`}` });
   }
   for (const u of b.unresolved ?? []) out.push({ rule: 'unresolved', file: u.file, message: `imports "${u.spec}", which the check cannot resolve (Metro might, and bundle anything): use a relative path to a project file or a package in node_modules` });
   for (const h of b.themeWords ?? []) {
@@ -144,6 +144,9 @@ export function importViolations(edges: readonly (readonly [from: string, to: st
   const out: Violation[] = [];
   for (const [from, to] of edges) {
     if (from === m.generatedEntry) continue;
+    // A Node-only file (validate's lint, the fx catalogues) is in no bundle (the node-only rule fails any
+    // bundle that holds it), so what it imports cannot reach a game through it: it may read every mode.
+    if (m.nodeOnly.includes(from)) continue;
     const src = levelOf(from, m);
     const dst = levelOf(to, m);
     const fromName = src.level === 'mode' ? `mode "${src.mode}"` : src.level === 'family' ? `family "${src.family}"` : src.level;

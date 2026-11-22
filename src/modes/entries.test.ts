@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * What the sim and classic entries hand the shared code (src/modes/contract.ts). Every reader of
+ * What the sim, classic and haul entries hand the shared code (src/modes/contract.ts). Every reader of
  * these pieces falls back quietly when one is missing (GameIcon draws ❔, the card window stays
  * empty, the tutorial shows no hand), so nothing else would notice a key dropped while editing an
  * entry: Pizza Empire would lose its glove or its portraits on the phone with every check green.
@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { PORTRAIT_MODES, SIM_ART_ICON_NAMES, TABS_ART_ICON_NAMES } from '../config/artIcons';
+import type { GameConfig } from '../config/schema';
 
 const s = vi.hoisted(() => {
   const named = (name: string) => Object.assign(() => null, { displayName: name });
@@ -36,6 +37,21 @@ vi.mock('../ui/sim/home/HomeSim', () => ({ HomeSim: s.named('HomeSim') }));
 vi.mock('./classic/HomeClassic', () => ({ HomeClassic: s.named('HomeClassic') }));
 vi.mock('./classic/ManagersPanel', () => ({ ManagersPanel: s.named('ManagersPanel') }));
 vi.mock('../ui/art/icons', () => ({ registerArtIcons: vi.fn() }));
+// The active game's config pulls the generated asset table (require of sound files): a raw haul game.json stand-in.
+vi.mock('../config/game', async () => {
+  const { HAUL_STARTING_CONTENT } = await import('../config/schema.haul');
+  return { baseGame: { mode: 'haul', haul: JSON.parse(JSON.stringify(HAUL_STARTING_CONTENT)) } };
+});
+// The store pulls react-native; installMode only reads whether it has booted and may hand it a fresh game.
+vi.mock('../state/store', () => ({ useGame: { getState: () => ({ cfg: {}, hydrated: true }), setState: vi.fn(), subscribe: () => () => {} } }));
+// The haul entry's drawn pieces (Skia, react-native).
+vi.mock('../ui/haul/HaulShell', () => ({ HaulShell: s.named('HaulShell') }));
+vi.mock('../ui/haul/hud/ReticlePointer', () => ({ ReticlePointer: s.named('ReticlePointer') }));
+vi.mock('../ui/haul/art/HaulIcon', () => ({ HaulIcon: s.named('HaulIcon') }));
+vi.mock('../ui/haul/art/Gallery', () => ({ default: s.named('HaulGallery') }));
+vi.mock('../ui/haul/hints', () => ({ haulHints: { ask: () => [], name: 'haulHints' } }));
+vi.mock('./haul/fx', () => ({ listenHaulEvents: vi.fn(), playHaulEvents: vi.fn() }));
+vi.mock('react-native', () => ({ Text: s.named('Text') }));
 
 const nameOf = (c: unknown) => (c as { displayName?: string } | undefined)?.displayName;
 const read = (file: string) => fs.readFileSync(path.join(__dirname, file), 'utf8');
@@ -85,6 +101,62 @@ describe('the classic entry', () => {
     expect(PORTRAIT_MODES, 'validate warns about "char:" icons in modes without portraits').toEqual(['sim']);
     expect(classic.hints).toBe(listHints);
     expect(Object.keys((classic.artIcons as unknown as { sources: object }).sources)).toEqual([...TABS_ART_ICON_NAMES]);
+  });
+});
+
+describe('the haul entry (Orbit Haulers)', () => {
+  it('hands over its own shell, rules, reticle pointer, icon drawing, hints and presets, and no people', async () => {
+    const { default: haul } = await import('./haul');
+    const { haulEngineMode } = await import('../engine/haulMode');
+    const { haulPreset } = await import('./haul/presets');
+    const { haulHints } = await import('../ui/haul/hints');
+    const { listenHaulEvents } = await import('./haul/fx');
+    expect(haul.id).toBe('haul');
+    expect(nameOf(haul.Shell)).toBe('HaulShell');
+    expect(haul.engine).toBe(haulEngineMode);
+    expect(haul.engine?.id).toBe('haul');
+    expect(haul.engine?.saveTag, 'a new save key: the old classic Space Miner save is never read').toBe('haul1');
+    expect(nameOf(haul.parts?.HintPointer)).toBe('ReticlePointer');
+    expect(typeof haul.parts?.Icon).toBe('function');
+    expect(haul.parts?.iconPrefixes).toEqual(['art:', 'mach:']);
+    expect(haul.parts?.CharIcon).toBeUndefined();
+    expect(haul.parts?.CardBust).toBeUndefined();
+    // Its icons go through parts.Icon (the kit's own cache), never the shared "art:" registry.
+    expect(haul.artIcons).toBeUndefined();
+    expect(haul.hints).toBe(haulHints);
+    expect(haul.presets).toBe(haulPreset);
+    expect(listenHaulEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it('ships the art kit\'s gallery on the web only', async () => {
+    expect((await import('./haul/devViews')).devViews).toBeUndefined();
+    const web = (await import('./haul/devViews.web')).devViews!;
+    expect(Object.fromEntries(Object.entries(web).map(([k, v]) => [k, nameOf(v)]))).toEqual({ 'haul-art': 'HaulGallery' });
+    expect(read('haul/index.tsx')).toMatch(/import \{ devViews \} from '\.\/devViews';/);
+  });
+
+  it('is what installMode gives the shared readers, and installs its engine for haul configs only', async () => {
+    const { default: haul } = await import('./haul');
+    const { default: sim } = await import('./sim');
+    const { installMode } = await import('./contract');
+    const { modeParts } = await import('../ui/modeParts');
+    const { hintSource } = await import('../ui/hints/source');
+    const { engineFor, installedEngine } = await import('../engine/mode');
+    const { useGame } = await import('../state/store');
+    const { baseGame } = await import('../config/game');
+    const { HaulSchema } = await import('../config/schema.haul');
+    const raw = JSON.parse(JSON.stringify(baseGame.haul));
+    installMode(haul);
+    // The haul block, opaque in the shared schema, is parsed with its defaults in place (baseGame is what the store reads).
+    expect(baseGame.haul).toEqual(HaulSchema.parse(raw));
+    expect(modeParts()).toBe(haul.parts);
+    expect(hintSource()).toBe(haul.hints);
+    expect(installedEngine()).toBe(haul.engine);
+    expect(engineFor({ mode: 'haul' } as GameConfig)).toBe(haul.engine);
+    expect(engineFor({ mode: 'sim' } as GameConfig), 'a sim config runs the built-in rules').toBeNull();
+    expect(useGame.setState, 'a booted store keeps its game').not.toHaveBeenCalled();
+    installMode(sim);
+    expect(installedEngine(), 'the sim entry installs no engine').toBeNull();
   });
 });
 

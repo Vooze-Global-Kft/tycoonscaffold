@@ -29,14 +29,16 @@ describe('fx table per mode', () => {
     for (const mode of ['classic', 'haul']) {
       const table = fxCatalog.fxTableFor(mode);
       for (const key of simOnly) expect(table[key]).toBeUndefined();
-      expect(table.buy).toEqual(runtime(catalog.buy));
     }
+    expect(fxCatalog.fxTableFor('classic').buy).toEqual(runtime(catalog.buy));
+    // The haul mode plays its own catalogue only (catalog.haul.ts, tested in haulTable.test.ts).
+    expect(fxCatalog.fxTableFor('haul').buy).toBeUndefined();
   });
 
   it('the generated file carries the table of the game\'s own mode', () => {
     expect(games.renderActiveGame('pizza-empire')).toContain('  cook_done: {');
     expect(games.renderActiveGame('space-miner')).not.toContain('cook_done');
     expect(games.renderModeEntry('pizza-empire')).toContain("import entry from '../modes/sim';");
-    expect(games.renderModeEntry('space-miner')).toContain("import entry from '../modes/classic';");
+    expect(games.renderModeEntry('space-miner')).toContain("import entry from '../modes/haul';");
   });
 });

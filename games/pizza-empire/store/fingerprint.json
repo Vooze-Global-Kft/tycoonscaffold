@@ -1,0 +1,14 @@
+{
+  "core_verb": "tap-target",
+  "production_topology": "linear-chain-with-transport",
+  "money_moment": "customer-pays",
+  "main_screen_layout": "side-cross-section",
+  "progression_structure": "location-levels",
+  "prestige_model": "reset-for-currency",
+  "active_skills_events": ["timed-global-speed", "flying-bonus-tap", "tap-combo", "hotspot-tap", "venue-opening", "free-timer-chest"],
+  "meta_systems": ["cards", "chests", "missions", "offers", "daily-shop", "daily-gift", "locations", "prestige"],
+  "art_style": { "style": "flat-vector", "palette": "warm-cream" },
+  "character_kind": "humans",
+  "voice": "warm-playful",
+  "human": {}
+}

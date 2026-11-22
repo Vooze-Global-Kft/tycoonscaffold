@@ -24,13 +24,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, Platform } from 'react-native';
 import { fxTable, gameSounds } from '../../config/game';
 import { AudioEngine, expoAudioDriver } from './audio';
-import type { FxName, FxRuntimeDef } from './catalog';
+import type { FxName as CatalogName, FxRuntimeDef } from './catalog';
+import type { HaulFxName } from './catalog.haul';
 import { systemClock } from './clock';
 import { createFx, type Fx } from './core';
 import { createHaptics } from './haptics';
 import { SettingsStore } from './settings';
 
-export type { FxDef, FxName, FxRuntimeDef, HapticStep } from './catalog';
+export type { FxDef, FxRuntimeDef, HapticStep } from './catalog';
+/** Every event a game can play: the shared catalogue's keys and the haul mode's own (./catalog.haul.ts). Each game's table holds its mode's only. */
+export type FxName = CatalogName | HaulFxName;
 export type { Fx, PlayOptions } from './core';
 export type { FxSettings } from './settings';
 

@@ -14,6 +14,12 @@ import type { GameState } from '../engine/types';
 export const PRESETS = ['fresh', 'early', 'mid', 'late'] as const;
 export type PresetName = (typeof PRESETS)[number];
 
+/** A mode with its own engine builds its own presets (its entry hands them over, src/modes/contract.ts). */
+let modePresets: ((cfg: GameConfig, name: PresetName, now: number) => GameState) | null = null;
+export function setModePresets(fn: typeof modePresets): void {
+  modePresets = fn;
+}
+
 /** Minutes of bot play behind each preset. */
 const MINUTES: Record<PresetName, number> = { fresh: 0, early: 4, mid: 75, late: 420 };
 
@@ -86,6 +92,7 @@ function addMeta(cfg: GameConfig, state: GameState, name: PresetName, now: numbe
  * simulated, so timers (free chest, deals, daily shop) are consistent with the moment of loading.
  */
 export function buildPreset(cfg: GameConfig, name: PresetName, now: number): GameState {
+  if (modePresets) return modePresets(cfg, name, now);
   let s = E.createInitialState(cfg, now);
   const seconds = MINUTES[name] * 60;
   for (let t = 0; t < seconds; t++) s = botStep(cfg, s, now);

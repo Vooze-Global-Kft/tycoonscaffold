@@ -16,7 +16,10 @@
 const MODE_FOLDERS = {
   sim: ['src/modes/sim', 'src/ui/sim'],
   classic: ['src/modes/classic', 'src/ui/scene'],
-  haul: ['src/modes/haul', 'src/ui/haul'],
+  // The haul rules too: only the haul entry reaches them (through src/engine/mode.ts), so no other game bundles them.
+  // Its content schema as well (names like "Long Haul", "Twin Rig" in its starting content): the shared schema keeps
+  // the haul block opaque, and the haul engine mode parses it at install (src/engine/haulMode.ts `config`).
+  haul: ['src/modes/haul', 'src/ui/haul', 'src/engine/haul', 'src/engine/haul.ts', 'src/engine/haulMode.ts', 'src/engine/loadout.ts', 'src/engine/fixtures/haul.ts', 'src/config/schema.haul.ts'],
 };
 
 /**
@@ -36,11 +39,9 @@ const FAMILIES = {
       'src/ui/components/Celebration.tsx',
       'src/ui/components/Header.tsx',
       'src/ui/components/Modals.tsx',
-      'src/ui/components/RollingNumber.tsx',
       'src/ui/components/TabBar.tsx',
       'src/ui/components/headerMetrics.ts',
       'src/ui/components/moneyWidth.ts',
-      'src/ui/components/rollFormat.ts',
       'src/ui/art/clock.ts',
       'src/ui/art/draw.ts',
       'src/ui/art/kit.ts',
@@ -65,6 +66,10 @@ const SHARED_UI = [
   'src/ui/art/icons.ts',
   'src/ui/components/Button.tsx',
   'src/ui/components/GameIcon.tsx',
+  // A number that rolls to its value (a TextInput driven on the UI thread) and its digit formats: no art, no
+  // family import. Reclassed from the header group so the haul dock counter can use it (spec Decisions).
+  'src/ui/components/RollingNumber.tsx',
+  'src/ui/components/rollFormat.ts',
   'src/ui/components/counterPulse.ts',
   'src/ui/hints',
   'src/ui/juice',
@@ -96,7 +101,7 @@ const CLASSIFIED_ROOT = 'src';
  * fx catalogue holds every event's description; the art icon list names every mode's icons; the
  * game-data lint's messages name every mode's things.
  */
-const NODE_ONLY = ['src/services/fx/catalog.ts', 'src/config/artIcons.ts', 'src/config/lint.ts'];
+const NODE_ONLY = ['src/services/fx/catalog.ts', 'src/services/fx/catalog.haul.ts', 'src/config/artIcons.ts', 'src/config/lint.ts'];
 
 /**
  * Words that name a thing of a mode's theme. The bundle check fails on a string literal in a

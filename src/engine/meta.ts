@@ -11,6 +11,7 @@ import {
   businessCost,
   chainParams,
   cycleSeconds,
+  activeIncomePerSecond,
   dayKey,
   grantCash,
   incomePerSecond,
@@ -25,6 +26,7 @@ import {
 } from './economy';
 import { formatNumber } from './format';
 import { hashString, rngFloat, rngInt, rngMix, rngPick, rngWeighted } from './rng';
+import { engineFor } from './mode';
 import type { DealState, GameState } from './types';
 
 // ---------------------------------------------------------------- cards
@@ -53,7 +55,7 @@ export function levelUpCard(cfg: GameConfig, state: GameState, cardId: string): 
 
 /** Cash a "seconds of income" reward is worth right now. Never less than a handful of taps, so it matters early on. */
 export function cashForSeconds(cfg: GameConfig, state: GameState, seconds: number, now: number): number {
-  return Math.max(incomePerSecond(cfg, state, now) * seconds, tapValue(cfg, state, now) * Math.min(seconds, 60));
+  return Math.max(activeIncomePerSecond(cfg, state, now) * seconds, tapValue(cfg, state, now) * Math.min(seconds, 60));
 }
 
 /** What a reward turned into once granted (random cards are resolved), for the UI to show. */
@@ -117,7 +119,9 @@ export function applyRewards(cfg: GameConfig, state: GameState, rewards: Reward[
 
 /** Non-consumable kinds are granted once and restored from the store; the rest are granted on every purchase. */
 export function isNonConsumable(product: IapProduct): boolean {
-  return product.kind === 'noAds' || product.kind === 'skipAds' || product.kind === 'multiplier' || product.kind === 'starterPack';
+  return (
+    product.kind === 'noAds' || product.kind === 'skipAds' || product.kind === 'multiplier' || product.kind === 'starterPack' || product.kind === 'clearance' || product.kind === 'unlock'
+  );
 }
 
 /**
@@ -142,9 +146,18 @@ export function applyProduct(cfg: GameConfig, state: GameState, product: IapProd
     case 'timeWarp':
       return applyRewards(cfg, s, [{ type: 'cash', seconds: product.value * 3600 }], now, product.id);
     case 'starterPack':
-      // A starter pack removes ads and grants gems; `value` is the gem amount.
+      // A starter pack removes ads and grants gems; `value` is the gem amount. With `contents`, it grants those instead.
+      if (product.contents) return applyRewards(cfg, s, product.contents, now, product.id);
       return applyRewards(cfg, s, [{ type: 'noAds' }, { type: 'gems', amount: product.value }], now, product.id);
     case 'deal':
+      return { state: s, granted: [] };
+    case 'clearance': {
+      // One product for no banners or pop-up ads and every rewarded boost without the ad.
+      const r = applyRewards(cfg, s, [{ type: 'noAds' }], now, product.id);
+      return { state: { ...r.state, entitlements: { ...r.state.entitlements, skipRewarded: true } }, granted: r.granted };
+    }
+    case 'unlock':
+      // A permanent rule the mode reads from entitlements.products (recorded above).
       return { state: s, granted: [] };
   }
 }
@@ -943,6 +956,19 @@ function missionCounter(state: GameState, type: MissionType): number {
       return state.stats.rushes;
     case 'hires':
       return state.stats.hires;
+    // Lifetime counters of the haul mode (GameState.stats, kept across a Jump).
+    case 'hauled':
+      return state.stats.hauled ?? 0;
+    case 'launches':
+      return state.stats.launches ?? 0;
+    case 'contracts':
+      return state.stats.contractsMet ?? 0;
+    case 'depleted':
+      return state.stats.depleted ?? 0;
+    case 'claims':
+      return state.stats.claims ?? 0;
+    case 'seamDrags':
+      return state.stats.seamDrags ?? 0;
   }
 }
 
@@ -967,7 +993,8 @@ function missionTypeUsable(cfg: GameConfig, state: GameState, type: MissionType)
         return cfg.businesses.some((b) => !v.businesses[b.id]?.managed) || (v.chain !== null && !v.chain.transportManaged);
       });
     default:
-      return true;
+      // A mode with its own rules decides for its own types (src/engine/mode.ts); others are always usable.
+      return engineFor(cfg)?.missionUsable?.(cfg, state, type) ?? true;
   }
 }
 
@@ -983,7 +1010,7 @@ function missionTarget(cfg: GameConfig, state: GameState, t: MissionTemplate, no
   const done = state.missions.completed[t.id] ?? 0;
   const n = t.targets[Math.min(done, t.targets.length - 1)];
   if (t.type !== 'earn') return Math.max(1, Math.round(n));
-  const cash = Math.max(incomePerSecond(cfg, state, now) * n, tapValue(cfg, state, now) * n);
+  const cash = Math.max(activeIncomePerSecond(cfg, state, now) * n, tapValue(cfg, state, now) * n);
   return Math.max(1, twoDigits(cash));
 }
 

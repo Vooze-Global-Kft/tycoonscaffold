@@ -41,6 +41,9 @@ function typeIcon(cfg: GameConfig, type: MissionTemplate['type']): string {
       return '⚡';
     case 'hires':
       return cfg.theme.icons.manager;
+    default:
+      // Mission types of other modes (haul) never reach the tab shell.
+      return '🎯';
   }
 }
 

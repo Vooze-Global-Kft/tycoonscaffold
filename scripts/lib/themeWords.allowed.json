@@ -1,9 +1,9 @@
 {
-  "src/config/schema.sim.ts": ["rush", "rushDuration", "serve", "stationValue", "venue"],
-  "src/config/schema.ts": ["haul", "timeWarp", "venue"],
+  "src/config/schema.sim.ts": ["hauled", "rush", "rushDuration", "serve", "stationValue", "venue"],
+  "src/config/schema.ts": ["galaxy", "haul", "timeWarp", "venue"],
   "src/engine/chain.ts": ["served"],
   "src/engine/economy.ts": ["activeVenue", "rush", "rushDuration", "rushes", "stationValue", "unknown venue", "venue", "venues"],
-  "src/engine/meta.ts": ["bell", "rush", "serve", "tapStation", "timeWarp", "venue"],
+  "src/engine/meta.ts": ["bell", "hauled", "rush", "serve", "tapStation", "timeWarp", "venue"],
   "src/engine/view.ts": ["startRush", "tapStation", "unlockVenue"],
   "src/state/store.ts": ["New station!", "bell", "cook_done", "rush_end", "rush_reset", "rush_start", "sales_seat", "serve", "time_warp", "unlock_venue", "venue"],
   "src/ui/components/Celebration.tsx": ["venue"],

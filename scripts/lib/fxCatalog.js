@@ -12,6 +12,13 @@ const fs = require('fs');
 const path = require('path');
 
 const CATALOG = path.resolve(__dirname, '..', '..', 'src', 'services', 'fx', 'catalog.ts');
+/**
+ * Modes with a catalogue of their own, read INSTEAD of catalog.ts (same format): the haul mode
+ * plays only its own 56 keys (spec 6.2), so no key of another game can ever sound in it.
+ */
+const CATALOG_BY_MODE = {
+  haul: path.resolve(__dirname, '..', '..', 'src', 'services', 'fx', 'catalog.haul.ts'),
+};
 
 /** Same length as src, with comments and the insides of strings blanked. */
 function maskTs(src) {
@@ -137,7 +144,7 @@ function parseCatalog(file = CATALOG) {
  * @param {string} [file]
  * @returns {Record<string, Record<string, unknown>>}
  */
-function fxTableFor(mode, file = CATALOG) {
+function fxTableFor(mode, file = CATALOG_BY_MODE[mode] || CATALOG) {
   /** @type {Record<string, Record<string, unknown>>} */
   const table = {};
   for (const { key, modes, ...def } of parseCatalog(file)) {
@@ -147,4 +154,4 @@ function fxTableFor(mode, file = CATALOG) {
   return table;
 }
 
-module.exports = { CATALOG, parseCatalog, fxTableFor };
+module.exports = { CATALOG, CATALOG_BY_MODE, parseCatalog, fxTableFor };

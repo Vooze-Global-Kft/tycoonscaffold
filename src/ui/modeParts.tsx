@@ -33,6 +33,12 @@ export interface HintPointerProps {
   angle: number;
 }
 
+/** What GameIcon hands a mode's own icon drawing: the full icon name ("art:ore-iron", "mach:tally") and its size. */
+export interface ModeIconProps {
+  icon: string;
+  size: number;
+}
+
 export interface ModeParts {
   /** Draws a "char:<id>" icon for GameIcon (a React Native view). */
   CharIcon?: ComponentType<CharIconProps>;
@@ -40,6 +46,13 @@ export interface ModeParts {
   CardBust?: ComponentType<CardBustProps>;
   /** The tutorial pointer, a Skia element drawn in HintOverlay's canvas (sim and classic: the glove). None: the hint shows its rings only. */
   HintPointer?: ComponentType<HintPointerProps>;
+  /**
+   * The mode's own icon drawings, for the names that start with one of `iconPrefixes` (haul:
+   * "art:" and "mach:", drawn by its own cache, src/ui/haul/art/HaulIcon.tsx). GameIcon asks it
+   * before its own "char:" and "art:" branches. None: the shared registry and fallbacks as before.
+   */
+  Icon?: ComponentType<ModeIconProps>;
+  iconPrefixes?: readonly string[];
 }
 
 let parts: ModeParts = {};
