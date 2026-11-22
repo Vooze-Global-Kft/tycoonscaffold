@@ -27,8 +27,13 @@ function finish(cfg: HaulConfig, d: Draft): HaulGame {
   return commit(d);
 }
 
-function pay(d: Draft, cost: number): void {
+/** Pays `cost`; `buy` names the purchase for the hints of Decision 57 (`marks.boughtAt`, `marks.lastBuy`). */
+function pay(d: Draft, cost: number, buy?: string): void {
   d.g = { ...d.g, cash: Math.max(0, d.g.cash - cost) };
+  if (buy) {
+    d.h.marks.boughtAt = d.h.clock;
+    d.h.marks.lastBuy = buy;
+  }
 }
 
 /**
@@ -90,7 +95,7 @@ export function upgradeRig(cfg: HaulConfig, g: HaulGame, slot: number, events?: 
   const cost = rigCost(cfg, g, slot);
   if (!affordable(g.cash, cost)) return g;
   const d = draftOf(g, events);
-  pay(d, cost);
+  pay(d, cost, `rig ${slot}`);
   const s = d.h.slots[slot];
   // The current rock keeps its seconds of life (life counts seconds at the rig's current rate); a later rock gets the new tier's life.
   s.rigLevel += 1;
@@ -107,7 +112,7 @@ export function claimSlot(cfg: HaulConfig, g: HaulGame, slot: number, events?: H
   const cost = claimCost(cfg, g, slot);
   if (!affordable(g.cash, cost)) return g;
   const d = draftOf(g, events);
-  pay(d, cost);
+  pay(d, cost, `claim ${slot}`);
   const h = d.h;
   d.haulStats.bestRing = Math.max(d.haulStats.bestRing ?? 1, ringOf(cfg, slot) + 1);
   h.slots[slot] = { ...h.slots[slot], claimed: true, rigLevel: 1, haulers: 0, rockN: -1, ore: '', bonanza: false, life: 0, pile: 0, full: false, respawnAt: h.clock + CLAIM_DRIFT, routeFrom: h.clock, delivered: 0 };
@@ -132,7 +137,7 @@ export function buyDrone(cfg: HaulConfig, g: HaulGame, events?: HaulEvent[]): Ha
   const cost = droneCost(cfg, g);
   if (!affordable(g.cash, cost)) return g;
   const d = draftOf(g, events);
-  pay(d, cost);
+  pay(d, cost, 'drone');
   d.h.fleet.drones += 1;
   d.h.idle += 1;
   return finish(cfg, d);
@@ -144,7 +149,7 @@ export function buyCapacity(cfg: HaulConfig, g: HaulGame, events?: HaulEvent[]):
   const cost = capacityCost(cfg, g);
   if (!affordable(g.cash, cost)) return g;
   const d = draftOf(g, events);
-  pay(d, cost);
+  pay(d, cost, 'capacity');
   d.h.fleet.capLevel += 1;
   return finish(cfg, d);
 }
@@ -155,7 +160,7 @@ export function buyEngine(cfg: HaulConfig, g: HaulGame, events?: HaulEvent[]): H
   const cost = engineCost(cfg, g);
   if (!affordable(g.cash, cost)) return g;
   const d = draftOf(g, events);
-  pay(d, cost);
+  pay(d, cost, 'engine');
   d.h.fleet.engineLevel += 1;
   return finish(cfg, d);
 }
@@ -166,7 +171,7 @@ export function buyFreighter(cfg: HaulConfig, g: HaulGame, events?: HaulEvent[])
   const cost = freighterCost(cfg, g);
   if (!affordable(g.cash, cost)) return g;
   const d = draftOf(g, events);
-  pay(d, cost);
+  pay(d, cost, 'freighter');
   d.h.freighter.level += 1;
   return finish(cfg, d);
 }
@@ -177,7 +182,7 @@ export function buyAutopilot(cfg: HaulConfig, g: HaulGame, events?: HaulEvent[])
   const cost = autopilotCost(cfg, g);
   if (!affordable(g.cash, cost)) return g;
   const d = draftOf(g, events);
-  pay(d, cost);
+  pay(d, cost, 'autopilot');
   d.h.autopilot = { online: true, policy: d.h.autopilot.policy };
   d.haulStats.autopilotSeen = true;
   return finish(cfg, d);

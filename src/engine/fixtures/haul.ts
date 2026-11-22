@@ -304,3 +304,29 @@ export function conservationError(g: Run): number {
 export function contractOf(k: number, buyer: string, wants: [string, number][], mult: number, launchesLeft: number, taken = false): H.Contract {
   return { k, buyer, wants: wants.map(([ore, units]) => ({ ore, units, got: 0 })), mult, launchesLeft, taken };
 }
+
+/**
+ * A contract basis by hand (Decision 56) for tests of the draw: `recent` units per launch by ore
+ * (also the steady figure unless given), prices from the config, every ore the main ore of a ring-1
+ * slot with plenty of drill, 20 s a launch, no income test unless `income` is given.
+ */
+export function handBasis(c: H.HaulConfig, recent: Record<string, number>, opts: Partial<H.ContractBasis> = {}): H.ContractBasis {
+  const ores = Object.keys(recent);
+  const all = (x: number | boolean) => Object.fromEntries(ores.map((o) => [o, x]));
+  return {
+    galaxy: 0,
+    F: ores.reduce((a, o) => a + recent[o], 0),
+    recent,
+    steady: { ...recent },
+    prices: Object.fromEntries(c.haul.ores.map((o) => [o.id, o.value])),
+    G: 1,
+    contractAdd: 0,
+    ringOf: all(0) as Record<string, number>,
+    lifeOf: all(1e6) as Record<string, number>,
+    mainOf: all(true) as Record<string, boolean>,
+    drillOf: all(1e9) as Record<string, number>,
+    interval: 20,
+    income: 0,
+    ...opts,
+  };
+}

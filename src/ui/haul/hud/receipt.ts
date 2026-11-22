@@ -68,7 +68,7 @@ export function metParts(cfg: H.HaulConfig, cargo: Record<string, number>, base:
 export function receiptPages(p: ReceiptParts, fits: (line: string) => boolean): string[] {
   const all = p.lots.join(SEP);
   if (!p.lots.length) return [join([p.heads[0] ?? '', p.tail])];
-  const heads = p.met ? p.heads : p.heads;
+  const heads = p.heads;
   const singles: string[] = [];
   for (const h of heads) singles.push(join([h, all, p.tail]));
   if (!p.met) singles.push(all);

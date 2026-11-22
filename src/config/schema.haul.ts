@@ -163,8 +163,10 @@ export const HaulSchema = z.object({
       pile: z.number().nonnegative().default(8),
       /** Drones owned (idle on the rack) at the start of a run. */
       drones: z.number().int().nonnegative().default(1),
+      /** Decision 58: seconds of drilling the first rock of each ring-1 slot in galaxy 1 lasts at least (0 = off), before the rig tier. */
+      firstLife: z.number().nonnegative().default(0),
     })
-    .default({ pile: 8, drones: 1 }),
+    .default({ pile: 8, drones: 1, firstLife: 0 }),
   rig: z.object({
     /** Drill multiplier per rig level (tune 1.25 to 1.45). */
     levelGrowth: z.number().gt(1).default(1.35),

@@ -17,13 +17,16 @@ function emptySlot(): SlotState {
 
 /**
  * Puts rock `n` of the slot's stream on a slot (life x the rig tier's life multiplier, applied at
- * arrival: errata 31). `noBonanza` forces a plain rock (slot 0's starting rock, errata 28): same ore
+ * arrival: errata 31; rock 0 of a ring-1 slot in galaxy 1 lives at least `start.firstLife`, Decision 58). `noBonanza` forces a plain rock (slot 0's starting rock, errata 28): same ore
  * and draw, without the bonanza flag and its life factor.
  */
-export function placeRock(cfg: HaulConfig, h: Pick<HaulState, 'seed' | 'trait'>, slot: number, s: SlotState, n: number, starMap: StarMapState | undefined, noBonanza = false): SlotState {
+export function placeRock(cfg: HaulConfig, h: Pick<HaulState, 'seed' | 'trait'> & { galaxy?: number }, slot: number, s: SlotState, n: number, starMap: StarMapState | undefined, noBonanza = false): SlotState {
   const rock = rockAt(cfg, h.seed, slot, n, h.trait, starMap);
   const bonanza = rock.bonanza && !noBonanza;
-  const life = rock.bonanza && !bonanza ? rock.life / cfg.haul.bonanza.life : rock.life;
+  let life = rock.bonanza && !bonanza ? rock.life / cfg.haul.bonanza.life : rock.life;
+  // Decision 58: in galaxy 1 the first rock of each ring-1 slot lasts at least `start.firstLife`.
+  const first = cfg.haul.start.firstLife ?? 0;
+  if (n === 0 && first > 0 && (h.galaxy ?? 0) === 0 && ringOf(cfg, slot) === 0) life = Math.max(life, first);
   return { ...s, rockN: n, ore: rock.ore, bonanza, life: life * rigTier(cfg, s.rigLevel).life, pile: 0, full: false, respawnAt: null, delivered: 0 };
 }
 
@@ -72,7 +75,7 @@ export function createHaul(
   entitlements: { products: string[] },
 ): HaulState {
   const H = cfg.haul;
-  const base = { seed: seed >>> 0, trait };
+  const base = { seed: seed >>> 0, trait, galaxy };
   const head = new Set(headStartSlots(cfg, starLevel(cfg, starMap, 'headStart'), haulStats.bestClaimed));
   const slots: SlotState[] = [];
   for (let i = 0; i < slotCount(cfg); i++) {
@@ -106,7 +109,7 @@ export function createHaul(
     // A run that starts with Hangar Expansion's drones has had them (no second mid-run grant).
     flags: hangar > 0 ? { hangarDrones: true } : {},
     hintsShown: {},
-    marks: { idleSince: drones > 0 ? 0 : null, holdFullSince: null, noContractSince: null, flareReadySince: null },
+    marks: { idleSince: drones > 0 ? 0 : null, holdFullSince: null, noContractSince: null, flareReadySince: null, boughtAt: null, lastBuy: null },
     counters: { launches: 0, contractsMet: 0, depleted: 0, hauled: 0, claims: 0, drilled: 0, shipped: 0 },
   };
   // Units already on piles at the start count as drilled (conservation: drilled = piles + hold + cargo + shipped).
@@ -333,7 +336,14 @@ function reconcileRun(cfg: HaulConfig, raw: unknown, g: HaulGame): HaulState | n
     keeper: num(r.keeper, 0),
     flags: bools(r.flags),
     hintsShown: nums(r.hintsShown),
-    marks: { idleSince: mark(marks.idleSince), holdFullSince: mark(marks.holdFullSince), noContractSince: mark(marks.noContractSince), flareReadySince: mark(marks.flareReadySince) },
+    marks: {
+      idleSince: mark(marks.idleSince),
+      holdFullSince: mark(marks.holdFullSince),
+      noContractSince: mark(marks.noContractSince),
+      flareReadySince: mark(marks.flareReadySince),
+      boughtAt: mark(marks.boughtAt),
+      lastBuy: typeof marks.lastBuy === 'string' && /^(drone|capacity|engine|freighter|autopilot|(rig|claim) \d+)$/.test(marks.lastBuy) ? marks.lastBuy : null,
+    },
     counters: {
       launches: num(counters.launches, 0),
       contractsMet: num(counters.contractsMet, 0),

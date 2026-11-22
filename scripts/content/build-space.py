@@ -154,7 +154,9 @@ g['haul'] = {
               'hold': 'Hold', 'flare': 'Survey Flare', 'contract': 'Contract', 'buyer': 'Buyer', 'galaxy': 'Galaxy', 'rockPrefix': 'T-'},
     'ores': [{'id': i, 'name': n, 'color': c, 'value': v} for i, n, c, v in ORES],
     'rings': [{'name': n, 'distance': d, 'slots': s, 'drill': r, 'life': l, 'weights': w} for n, d, s, r, l, w in RINGS],
-    'start': {'pile': K('startPile', 8, 5, 10, 'units on slot 0 at the start'), 'drones': 1},
+    # Decision 58: the first rock of each ring-1 slot in galaxy 1 lasts at least ten minutes of drilling,
+    # so the tutorial's rig level is not spent on a rock about to dry.
+    'start': {'pile': K('startPile', 8, 5, 10, 'units on slot 0 at the start'), 'drones': 1, 'firstLife': 600},
     'rig': {
         'levelGrowth': K('rigLevel', 1.35, 1.25, 1.45, 'drill per rig level', 1.4),
         'tiers': [

@@ -12,7 +12,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import * as H from './haul';
 import { hashString, rngFloat } from './rng';
 import { HAUL_STARTING_CONTENT, HaulSchema } from '../config/schema.haul';
-import { conservationError, freshHaulGame, haulFixtures, haulTestConfig, run, shaped } from './fixtures/haul';
+import { conservationError, freshHaulGame, handBasis, haulFixtures, haulTestConfig, run, shaped } from './fixtures/haul';
 
 type Run = H.HaulGame & { haul: H.HaulState };
 
@@ -258,37 +258,53 @@ describe('rulings: freighter, contracts, counters', () => {
     expect(H.contractViews(cfg, p, g.haul)[0].bonus).toBeCloseTo(want, 9);
   });
 
-  // Errata 27: "the rest: rngMix4(seed, hashString('contract'), k, n) with n = ... 6 units, 7 multiplier."
-  it("errata 27: contract units and multiplier come from the 'contract' stream", () => {
+  // Errata 27: "the rest: rngMix4(seed, hashString('contract'), k, n)". Rewritten for Decision 56: the
+  // stream now gives n = 1 the ore, 2 the raise, 3 one or two ores, 6 the jitter; units are
+  // L × recent × (1 + g) of what the station ships (here a hand-made basis), not a share of F.
+  it("errata 27 (Decision 56): a contract's ore, raise and multiplier come from the 'contract' stream", () => {
     const C = cfg.haul.contracts;
     const seed = 777;
-    const F = 40;
+    const b = handBasis(cfg, { iron: 50, copper: 30 });
+    let one = 0;
     let same = 0;
     for (let k = 1; k <= 40; k++) {
-      const c = H.contractAt(cfg, seed, k, [0], F, null);
-      const draw = (n: number) => H.rngMix4(seed, hashString('contract'), k, n);
-      // Without a station (no routes known) one ore gets (L − 1) F λ, λ = U(reach) (Decision 40).
-      const units = Math.max(1, Math.round((C.launches - 1) * F * (C.reach[0] + (C.reach[1] - C.reach[0]) * roll(draw(6)))));
-      const mult = Math.max(1, Math.round((C.mult[0] + (roll(draw(7)) * 2 - 1) * C.jitter) * 10) / 10);
-      if (c.wants[0].units === units && c.mult === mult) same++;
+      const c = H.contractAt(cfg, seed, k, b);
+      if (c.wants.length !== 1) continue;
+      one++;
+      const draw = (n: number) => roll(H.rngMix4(seed, hashString('contract'), k, n));
+      const pool = ['iron', 'copper'];
+      const ore = pool[Math.floor(draw(1) * pool.length)];
+      const share = b.recent[ore] / b.F;
+      const hi = Math.min(C.raise[1], C.maxShare / share - 1);
+      const g = C.raise[0] + (hi - C.raise[0]) * draw(2);
+      const units = Math.max(Math.round(C.launches * b.recent[ore] * (1 + g)), Math.ceil(C.launches * b.steady[ore] * (1 + g / 2)));
+      const mult = Math.max(1, Math.round((C.mult[0] + (draw(6) * 2 - 1) * C.jitter + C.raiseMult * g) * 10) / 10);
+      if (c.wants[0].ore === ore && c.wants[0].units === units && c.mult === mult) same++;
     }
-    expect(same).toBe(40);
+    expect(one).toBeGreaterThan(15);
+    expect(same).toBe(one);
   });
 
-  // Errata 27: "A two-ore contract has two different ores; if the claimed rings offer only one ore,
-  // it is a one-ore contract." Ring 2 offers copper and iron, so about 40 % must be two-ore contracts.
-  it('errata 27: with a ring offering two ores, two-ore contracts keep their 40 % share', () => {
+  // Errata 27: "A two-ore contract has two different ores". Rewritten for Decision 56 ("raise one,
+  // hold the other"): on a station that ships three ores with room to rise, about twoOreChance of the
+  // draws want two ores; the second is held at holdShare of what it ships.
+  it('errata 27 (Decision 56): with three ores shipped, two-ore contracts keep their twoOreChance share', () => {
+    const C = cfg.haul.contracts;
+    const b = handBasis(cfg, { iron: 40, copper: 30, ice: 30 });
     let two = 0;
     const N = 600;
     for (let k = 1; k <= N; k++) {
-      const c = H.contractAt(cfg, 99, k, [1], 40, null);
+      const c = H.contractAt(cfg, 99, k, b);
       if (c.wants.length === 2) {
         two++;
         expect(c.wants[0].ore).not.toBe(c.wants[1].ore);
+        const held = c.wants[1];
+        expect(held.units).toBeGreaterThanOrEqual(Math.round(C.launches * b.recent[held.ore] * C.holdShare[0]) - 1);
+        expect(held.units).toBeLessThanOrEqual(Math.round(C.launches * b.recent[held.ore] * C.holdShare[1]) + 1);
       }
     }
-    expect(two / N).toBeGreaterThan(0.33);
-    expect(two / N).toBeLessThan(0.47);
+    expect(two / N).toBeGreaterThan(C.twoOreChance - 0.07);
+    expect(two / N).toBeLessThan(C.twoOreChance + 0.07);
   });
 
   // Errata 27: "A ring 'with a rock' means a claimed slot whose rock is present."
@@ -427,7 +443,8 @@ function invariants(g: Run, prev: Run | null): string[] {
   }
   if (h.vein.slot !== null && h.vein.slot === h.flare.slot) out.push('two seams on one slot');
   if (h.contracts.active !== null && !h.contracts.board[h.contracts.active]) out.push('active out of range');
-  if (h.contracts.board.length && h.contracts.board.length !== cfg.haul.contracts.board) out.push('board size');
+  // Decision 56: a dropped contract's place stays empty until the next warp-out, so the board can be shorter (never longer).
+  if (h.contracts.board.length > cfg.haul.contracts.board) out.push('board size');
   const ks = h.contracts.board.map((c) => c.k);
   if (new Set(ks).size !== ks.length) out.push('duplicate contract k');
   for (const c of h.contracts.board) if (c.launchesLeft < 1) out.push('lapsed contract on the board');

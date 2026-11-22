@@ -191,7 +191,19 @@ export interface HaulState {
   /** Times each limited hint has been shown this run (markHintShown). */
   hintsShown: Record<string, number>;
   /** Clock times for the hint rules (null = condition not true now). */
-  marks: { idleSince: number | null; holdFullSince: number | null; noContractSince: number | null; flareReadySince: number | null };
+  marks: {
+    idleSince: number | null;
+    holdFullSince: number | null;
+    noContractSince: number | null;
+    flareReadySince: number | null;
+    /**
+     * Decision 57: `clock` of this run's last purchase (drone, capacity, engine, freighter, rig, claim,
+     * autopilot; null: none yet, read as the run's start) and its key ('drone' | 'capacity' | 'engine' |
+     * 'freighter' | 'autopilot' | 'rig <slot>' | 'claim <slot>'). Optional in old saves and hand-built states.
+     */
+    boughtAt?: number | null;
+    lastBuy?: string | null;
+  };
   /** This run, for display and the conservation check. Lifetime counters live in GameState.stats. */
   counters: { launches: number; contractsMet: number; depleted: number; hauled: number; claims: number; drilled: number; shipped: number };
 }

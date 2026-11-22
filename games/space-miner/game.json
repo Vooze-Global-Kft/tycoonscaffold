@@ -815,7 +815,8 @@
     ],
     "start": {
       "pile": 8,
-      "drones": 1
+      "drones": 1,
+      "firstLife": 600
     },
     "rig": {
       "levelGrowth": 1.4,

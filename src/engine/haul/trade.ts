@@ -454,7 +454,11 @@ export function contractAt(cfg: HaulConfig, seed: number, k: number, basis: Cont
   const mb = multBase(ores);
   // Condition 5: a bonus under `minBonusSeconds` of income is raised (within the cap) until it passes.
   for (let i = 0; i < 8 && g < hi && bonusOfUnits(wantsAt(g), mb + C.raiseMult * g) < minBonus; i++) g = Math.min(hi, g + (hi - lo) / 8 + 0.01);
-  return make(wantsAt(g), round1(mb + C.raiseMult * g));
+  // Never more than its launches can carry in all (the raised ore gives way).
+  const wants = wantsAt(g);
+  const over = wants.reduce((a, w) => a + w.units, 0) - Math.floor(L * F);
+  if (over > 0) wants[0].units = Math.max(1, wants[0].units - over);
+  return make(wants, round1(mb + C.raiseMult * g));
 }
 
 /** Ores the contracts on the board (offers and the taken one) want. */

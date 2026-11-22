@@ -49,7 +49,10 @@ export const HAUL_STRINGS = {
   stripLaunches: '{n} LAUNCHES LEFT',
   stripLaunch: '1 LAUNCH LEFT',
   stripOnPace: 'ON PACE',
-  stripShort: 'SHORT ON {ore}',
+  stripShort: 'NEEDS MORE {ore}',
+  // The board's words and figure (Decision 56, paceRaise): "NEEDS +27 % COPPER".
+  stripRaise: 'NEEDS +{p} % {ore}',
+  stripRaiseShort: '+{p} % {ore}',
   stripMet: 'ALL ABOARD',
   stripAboard: '{n} ABOARD',
   stripResized: 'ORDER RESIZED · {n}',

@@ -53,6 +53,8 @@ interface StripView {
   done: boolean;
   onPace: boolean;
   short: string;
+  /** The raise the short ore still needs, as a whole percent (the board's figure); 0 when none. */
+  raise: number;
   shift: boolean;
 }
 
@@ -68,6 +70,7 @@ const NONE: StripView = {
   done: false,
   onPace: true,
   short: '',
+  raise: 0,
   shift: false,
 };
 
@@ -96,7 +99,11 @@ function stripView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): St
   const k = h.contracts.active;
   const c = k === null ? null : h.contracts.board[k];
   if (!c || k === null || c.taken === false) return { ...NONE, unlocked: true };
-  const routes = h.slots.map((s) => (s.claimed ? `${s.haulers}.${s.rigLevel}.${s.ore}` : '')).join(',') + `|${h.freighter.level}`;
+  // The pace figure counts the next launch from the real hold (Decision 56): the hold in twentieths of
+  // a freighter keeps the strip's "NEEDS +N %" with the board's without a new view per tick.
+  const F = runParams(cfg, g).F;
+  const fill = F > 0 ? Math.floor((H.holdTotal(h) / F) * 20) : 0;
+  const routes = h.slots.map((s) => (s.claimed ? `${s.haulers}.${s.rigLevel}.${s.ore}` : '')).join(',') + `|${h.freighter.level}|${fill}`;
   const shift = (g as { haulStats?: H.HaulStats }).haulStats?.shift;
   if (memo && memo.cfg === cfg && memo.contracts === h.contracts && memo.phase === h.freighter.phase && memo.toward === h.freighter.contract && memo.routes === routes && memo.shift === shift) return memo.view;
   let view: StripView;
@@ -130,6 +137,8 @@ function stripView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): St
       done: cv.wants.every((w) => !(w.left > 0)),
       onPace: cv.onPace,
       short: cv.shortOre ? oreNameOf(cfg, cv.shortOre) : '',
+      // The board's figure (ContractBoardSheet: Math.max(1, round(raise x 100)) of the short ore).
+      raise: raisePercent((cv.wants.find((w) => w.ore === cv.shortOre) as { raise?: number } | undefined)?.raise),
       shift: cv.shift,
     };
   } catch {
@@ -137,6 +146,11 @@ function stripView(cfg: H.HaulConfig, g: H.HaulGame & { haul: H.HaulState }): St
   }
   memo = { cfg, contracts: h.contracts, phase: h.freighter.phase, toward: h.freighter.contract, routes, shift, view };
   return view;
+}
+
+/** A want's raise as the board writes it (whole percent, at least 1), or 0 when there is no figure. */
+function raisePercent(raise: number | undefined): number {
+  return typeof raise === 'number' && raise > 0 && Number.isFinite(raise) ? Math.max(1, Math.round(raise * 100)) : 0;
 }
 
 /** The strip's rows: name, wants, status, at tops that add up inside the card (shrunk together when needed). */
@@ -206,10 +220,20 @@ export function ContractStrip({ rect }: { rect: Rect }) {
   const launches = v.left === 1 ? HAUL_STRINGS.stripLaunch : fillIn(HAUL_STRINGS.stripLaunches, { n: v.left });
   // While the freighter climbs, what it carries for the contract (play-4: the launch is never lost from view).
   const aboard = v.wants.reduce((a, w) => a + w.aboard, 0);
-  const pace = resized && !v.done && aboard < 1 ? resized : v.done ? HAUL_STRINGS.stripMet : aboard >= 1 ? fillIn(HAUL_STRINGS.stripAboard, { n: unitShort(aboard) }) : v.onPace ? HAUL_STRINGS.stripOnPace : fillIn(HAUL_STRINGS.stripShort, { ore: v.short });
+  const statusW = midW + rightW - (v.shift ? 64 : 0) - 10;
+  const statusBase = compact ? 9.5 : 10.5;
+  // Short of pace: the board's words and figure ("NEEDS +27 % COPPER"); "+27 % COPPER" only when that
+  // does not fit at a readable size (85 % of the row's type), "NEEDS MORE COPPER" when there is no figure.
+  const shortWords = () => {
+    if (!v.raise) return fillIn(HAUL_STRINGS.stripShort, { ore: v.short });
+    const full = fillIn(HAUL_STRINGS.stripRaise, { p: v.raise, ore: v.short });
+    const fits = fitLabel(`${launches} · ${full}`, statusW, statusBase, fontScale).font >= labelMetrics(statusBase, fontScale).font * 0.85;
+    return fits ? full : fillIn(HAUL_STRINGS.stripRaiseShort, { p: v.raise, ore: v.short });
+  };
+  const pace = resized && !v.done && aboard < 1 ? resized : v.done ? HAUL_STRINGS.stripMet : aboard >= 1 ? fillIn(HAUL_STRINGS.stripAboard, { n: unitShort(aboard) }) : v.onPace ? HAUL_STRINGS.stripOnPace : shortWords();
   const paceColor = resized && pace === resized ? SPACE.white : v.done || aboard >= 1 || v.onPace ? SPACE.green : SPACE.amber;
   const status = `${launches} · ${pace}`;
-  const statusFit = fitLabel(status, midW + rightW - (v.shift ? 64 : 0) - 10, compact ? 9.5 : 10.5, fontScale);
+  const statusFit = fitLabel(status, statusW, statusBase, fontScale);
   const label = v.active
     ? fillIn(HAUL_STRINGS.stripLabel, {
         buyer: v.name,

@@ -268,6 +268,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
           break;
         }
         case 'warp': {
+          warpedSince = true;
           mark('firstPayout', t);
           payouts.total += 1;
           if (e.met) payouts.met += 1;
@@ -412,21 +413,74 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
   };
 
   /**
+   * Routes for the taken contract until its light is green (Decision 56, the pace light): each step
+   * is the move that raises the contract's pace (`paceRatio` of its view) most for the income it
+   * costs, among: an idle drone onto a rock of the ore furthest behind, a drone from a route of
+   * another ore onto it (taking drones off other ores is how a share of the freighter rises), and one
+   * level of that rock's rig when it can be paid now. At most `budget` steps; returns the steps made.
+   */
+  const paceOf = (x: Run): number => {
+    const v = H.contractViews(cfg, H.haulParams(cfg, x), x.haul, x.haulStats).find((y) => y.active);
+    return v ? (v.onPace ? Infinity : v.paceRatio) : -Infinity;
+  };
+  const routeStep = (budget: number): number => {
+    let steps = 0;
+    for (let guard = 0; guard < 30 && steps < budget; guard++) {
+      const view = activeView();
+      if (!view || view.onPace || !view.shortOre) break;
+      const short = view.shortOre;
+      const income = H.haulIncome(cfg, g);
+      const rocks = g.haul.slots.map((s, i) => (s.claimed && s.respawnAt === null && s.ore === short && s.life > 0 ? i : -1)).filter((i) => i >= 0);
+      let best: { next: Run; kind: 'drag' | 'upgrade'; sheet?: string } | null = null;
+      let bestScore = 0;
+      // The move that buys the most pace for the least income: free moves (an idle drone, a rig level,
+      // a drone from a route that loses nothing) first, then the drone whose move costs least.
+      const consider = (next: H.HaulGame, kind: 'drag' | 'upgrade', sheetKey?: string) => {
+        if (next === g) return;
+        const gain = Math.min(1, paceOf(next as Run)) - view.paceRatio;
+        if (!(gain > 1e-6)) return;
+        const loss = income - H.haulIncome(cfg, next);
+        const score = loss <= income * 1e-6 ? gain * 1e9 : gain / loss;
+        if (score > bestScore) {
+          bestScore = score;
+          best = { next: next as Run, kind, sheet: sheetKey };
+        }
+      };
+      for (const to of rocks) {
+        if (g.haul.idle > 0) consider(H.assignDrone(cfg, g, to), 'drag');
+        g.haul.slots.forEach((s, from) => {
+          if (s.claimed && s.haulers >= 1 && s.ore !== short) consider(H.moveDrone(cfg, g, from, to), 'drag');
+        });
+        if (H.affordable(g.cash, H.rigCost(cfg, g, to))) consider(H.upgradeRig(cfg, g, to), 'upgrade', `rig ${to}`);
+      }
+      const pick = best as { next: Run; kind: 'drag' | 'upgrade'; sheet?: string } | null;
+      if (!pick) break;
+      if (pick.sheet) sheet(pick.sheet);
+      g = pick.next;
+      count(pick.kind);
+      steps += 1;
+    }
+    return steps;
+  };
+
+
+  /**
    * Contracts (section 8, Decision 56): with none taken, it takes the offer with the highest bonus
-   * that has a route for every ore it wants (a finite raise on the board's pace line); then, while
-   * that contract is taken and its pace light is not green, it drags one drone at a time onto the
-   * rock of the ore furthest behind (the one where a drone adds most), from the routes of ores the
-   * contract does not want that lose least, at most `contracts.fleetShare` of the fleet per
-   * contract. It reads only what the board shows (`contractViews`: the steady figure and the hold),
-   * so it plays like a person who follows the light. It never drops a taken contract.
+   * that has a route for every ore it wants (a finite raise); then it routes for it (`routeStep`) at
+   * the take and after every warp-out while its light is not green, at most `contracts.fleetShare` of
+   * the fleet per contract, and new drones go to the ore it is short of. It reads only what the board
+   * shows (`contractViews`: the steady figure and the hold), so later surprises (a rock that dries, a
+   * freighter level, drones bought for other ores) can still make it lapse. It never drops one.
    * With `passive` it takes the best-paying offer and never moves a drone for it (the "does nothing"
    * player: it should meet few); with `watch` or `noContracts` it takes nothing.
    */
   let routedFor = -1;
   let routedMoves = 0;
+  let warpedSince = true;
   const handleContracts = () => {
     const h = g.haul;
     if (!h.contracts.unlocked || opts.watch || opts.noContracts) return;
+    let fresh = false;
     if (h.contracts.active === null) {
       let pick = -1;
       let pickBonus = 0;
@@ -441,6 +495,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
       if (!act(H.pickContract(cfg, g, pick), [])) return;
       count('contract');
       contracts.taken += 1;
+      fresh = true;
     }
     if (opts.passive) return;
     const c = H.activeContract(g.haul);
@@ -449,33 +504,13 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
       routedFor = c.k;
       routedMoves = 0;
     }
+    if (!fresh && !warpedSince) return;
+    warpedSince = false;
     const budget = Math.ceil(cfg.haul.contracts.fleetShare * g.haul.fleet.drones);
-    const ores = c.wants.map((w) => w.ore);
-    for (let guard = 0; guard < 80 && routedMoves < budget; guard++) {
-      const view = activeView();
-      if (!view || view.onPace || !view.shortOre) break;
-      const ore = view.shortOre;
-      const to = bestRockOf(ore);
-      const avoid = g.haul.slots.map((s, k) => (s.claimed && ores.includes(s.ore) ? k : -1)).filter((k) => k >= 0);
-      if (to !== null && moveTo(to, 1, avoid) >= 1) {
-        routedMoves += 1;
-        continue;
-      }
-      // No drone adds more there (the drill is the limit) or none can come: a level of that ore's
-      // busiest rig, when it can be paid now (the Rig sheet's own advice).
-      let rig: number | null = null;
-      g.haul.slots.forEach((s, k) => {
-        if (!s.claimed || s.respawnAt !== null || s.ore !== ore || !(s.life > 0) || s.haulers < 1) return;
-        if (rig === null || s.haulers > g.haul.slots[rig].haulers) rig = k;
-      });
-      if (rig === null || !H.affordable(g.cash, H.rigCost(cfg, g, rig))) break;
-      const ev: H.HaulEvent[] = [];
-      sheet(`rig ${rig}`);
-      if (!act(H.upgradeRig(cfg, g, rig, ev), ev)) break;
-      count('upgrade');
-      routedMoves += 1;
-    }
+    routedMoves += routeStep(budget - routedMoves);
   };
+
+
 
   const useFreeFlare = () => {
     const h = g.haul;
