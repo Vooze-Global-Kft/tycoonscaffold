@@ -10,7 +10,7 @@ Sources: research `docs/design/research/spam.md` (its 19 dimensions and the requ
 
 Conventions in this document:
 - "pt" is a layout point. "s" is seconds of game clock. "₵" is Credits.
-- Every number marked (tune) is a starting value. `scripts/content/build-haul.py` may move it, inside the stated range, to hit the bot targets in section 8. Numbers without (tune) are rules.
+- Every number marked (tune) is a starting value. `scripts/content/build-space.py` (Decision 12) may move it, inside the stated range, to hit the bot targets in section 8. Numbers without (tune) are rules.
 - Galaxy indexes are 0-based in rules and state (`galaxy = 0` is the first galaxy); text shows "Galaxy N" with N = index + 1.
 - "Pizza" means Pizza Empire.
 - Anything marked "later" is not in the first version (section 9 lists it).
@@ -57,7 +57,7 @@ The "Status" column says how the dimension is known: **declared** (a value in `g
 
 **Count, reported the way validate reports it: verified 14 (6 of 8 must), pending 4 (2 of them must), not differing 1.** The verified 14 are 1 to 6, 9, 11, 12, 14 to 18 (5, 6, 16, 17 and 18 become verified as soon as the content files exist). Pending are 7, 8, 13 and 19. Release needs all 8 must, so 7 and 8 must clear; that gives at least 16 of 19 at release even if the side-by-side check rules a meta screen "restyled" (13) and before the release gap is logged (19). Expected at release: 18 of 19.
 
-The fingerprint block in `games/space-miner/game.json` (declared values only):
+The fingerprint block in `games/space-miner/store/fingerprint.json`, next to game.json and never bundled (Decision 26; declared values only):
 
 ```json
 "fingerprint": {
@@ -79,7 +79,7 @@ The fingerprint block in `games/space-miner/game.json` (declared values only):
 }
 ```
 
-And in `games/pizza-empire/game.json` (added by the same package; it changes no gameplay):
+And in `games/pizza-empire/store/fingerprint.json` (Pizza's game.json is unchanged):
 
 ```json
 "fingerprint": {
@@ -104,32 +104,15 @@ Why `network-routes` is honest: there is no fixed chain of stages to balance. Ea
 
 ### 1.3 How each requirement is met
 
-**R1 Bundle.** Generated modules decide what a build contains, for the screens and for the rules.
-- `scripts/lib/games.js` gets `writeModeEntry(id)`, called by `writeActiveGame`. It writes `src/generated/modeEntry.ts`, one line for this game: `export * from '../modes/haul';`. There is no runtime switch and no remote-config path. `cfg.mode` is still validated, and App throws at start-up if it does not equal the exported `MODE`.
-- A mode file (`src/modes/sim.ts`, `src/modes/haul.ts`, `src/modes/classic.ts`) exports: `MODE`, `engineMode` (the mode's rules, below), `Home` (the whole main screen), `Overlays` (the mode's popups), `modeFx` (its sound catalogue), `modeIcons` (the `art:`/`char:`/`mach:` registry used by `GameIcon`), `HintPointer` (the hand or reticle drawn by `HintOverlay`), `hintSource` (the function that picks the next hint), `Galleries` (dev art galleries) and `hintTargets`.
-- **Rules per mode, not a runtime table.** `src/engine/economy.ts` keeps the shared rules (cash, costs, boosts, offline frame, cards, chests, missions, daily) and delegates the mode-specific parts to an installed `EngineMode` (`{create, tick, income, activeIncome, offline, prestige, reconcile}`, type in `src/engine/modes.ts`). App calls `installEngineMode(engineMode)` from modeEntry before the store is created. Only the installed mode's file is imported by the app, so each binary contains only its own rules:
-  - `src/engine/simMode.ts` wraps today's sim code: `chain.ts`, the chain-using parts of `economy.ts`, the three functions of `meta.ts` that call `chain.ts` (`idleWorkers`, `salesRate`, `transportRate` users, moved to `src/engine/simMeta.ts`) and `view.ts` (`guideHint`).
-  - `src/engine/haulMode.ts` wraps `haul.ts` and `loadout.ts`.
-  - `src/engine/classicMode.ts` wraps the business-list code that only classic uses.
-  - Tests: `vitest.setup.ts` installs a test-only dispatcher (`src/engine/testing/dispatch.ts`, imported by tests only) that picks the engine by `cfg.mode`, so every existing Pizza test runs unchanged and both engines are tested in one checkout.
-- `src/ui/App.tsx` keeps only the shared shell: providers, fonts, the save and tick loop, `FlyLayer`, `HintOverlay`, `SettingsSheet`, and what modeEntry exports. It no longer imports `HomeClassic`, `HomeSim`, `TabBar`, `Header`, `Modals`, `Celebration`, `StaffTab`, `CardSheet`, `ChestOverlay`, `ChestOddsSheet`, `DealPopup`, `EmpireTab`, `MissionsSheet`, `ShopTab`, `UpgradesTab`, `OfflineModal`, `StoryModal`, `ManagersPanel` or the galleries. Those move behind `src/modes/sim.ts` (and `classic.ts`). The shell's `Banner` moves into the mode files too: the haul map shows no banner ad (section 5.4).
-- Shared files that import restaurant code today (found with an import grep; P0 re-runs it and bundle:check is its exit test):
-  - `src/ui/hints/HintOverlay.tsx` imports `HandPointer` from `src/ui/sim/art`, `useHomeUi` from `src/ui/home/uiState`, `engine/view` (`guideHint`) and the `Stage` type from `engine/chain`. It gets its pointer and its hint source through `registerHintMode({Pointer, source})`, called by App with modeEntry's `HintPointer` and `hintSource`. Sim registers the existing glove `HandPointer` and `guideHint`; haul registers its own reticle (section 3) and `haul.nextHint`. **`HandPointer` does not move into the kit**: it is Pizza's drawn glove (`drawHand` in `src/ui/sim/art/props.tsx`, animated with that file's `useRig`, in a file that also imports `items.ts` and `rig.ts`), and it stays sim-only.
-  - `src/ui/hints/targets.ts` imports the value `hintKey` from `engine/view`: move `hintKey` into `targets.ts`.
-  - `src/ui/home/uiState.ts`: move `storyOpen` and `bannerOpen` into `src/state/overlays.ts`, so shared code that waits for dialogs never imports `src/ui/home`.
-  - `src/ui/kit/Sheet.tsx` imports `HintOverlay`: fine once HintOverlay is decoupled.
-  - `src/ui/components/Celebration.tsx` imports `src/ui/home/layout` and `uiState`: it becomes sim-only (exported in sim's `Overlays`).
-  - `src/ui/components/RollingNumber.tsx` imports `glideMs` from `src/ui/sim/scene/world/ticker`: move `glideMs` and `glide` to `src/ui/kit/motion.ts`; the sim ticker imports them from there.
-  - `src/ui/scene/SkiaScene.tsx` imports `canSpawnBonus` from `src/ui/sim/scene/play/gate`: move the gate to `src/ui/kit/bonusGate.ts`. SkiaScene and ThreeScene belong to classic mode, behind `src/modes/classic.ts`.
-  - `src/ui/components/GameIcon.tsx` imports `ArtIcon` and `CharacterBust` from `src/ui/sim/art`: GameIcon becomes a cache plus a registry lookup (`registerIcons(modeIcons)` at start-up). A `char:` icon in a haul game is a validate error.
-  - `src/ui/components/Header.tsx`, `TabBar.tsx`, `Modals.tsx`, `src/ui/meta/*` (cards, chest, empire, missions, shop, deals, upgrades) and `src/ui/home/*` become sim-only. They do not change and do not move folders; the import graph is what counts.
-  - `src/ui/theme.ts` imports only the `Stage` type from `engine/chain`; type imports are erased, so it stays. bundle:check confirms `chain.ts` is not in the haul graph.
-  - `src/config/artIcons.ts` (imports sim art) splits into `src/ui/sim/art/icons.ts` and `src/ui/haul/art/icons.ts`, each exported through its mode file. `src/config/artIcons.ts` keeps only id validation helpers.
-  - `src/services/fx/catalog.ts` splits into `catalog.core.ts` (key names any mode's shared code plays, with neutral briefs: `ui_tap`, `ui_tab`, `ui_open`, `ui_close`, `ui_denied`, `hint`, `purchase_success`, `gems`, `boost_start`, `music_main`), `catalog.sim.ts` (every other current key and brief, unchanged, including "Small oven bell") and `catalog.haul.ts` (section 6). `fx` takes `{...coreFx, ...modeFx}`.
-  - Strings: literal strings in shared files that name restaurant things move into `game.json` strings or the sim mode files. The bundle check's string rule is in section 10.4.
-- Sounds: today every game gets the warm pack from `shared/sfx`. A script (`scripts/audio/move-shared.js`) copies every `shared/sfx` file whose key Pizza does not already override into `games/pizza-empire/assets/sfx`, then empties `shared/sfx`. Pizza's existing `music_main.m4a` override stays and wins, as it does today. A fixture test (`scripts/audio/pizza-sounds.test.ts`) asserts that `listSounds('pizza-empire')` returns the same keys with byte-identical hashes before and after; the hash list is committed. Orbit Haulers' sounds live in `games/space-miner/assets/sfx` only.
-- Art: Orbit Haulers ships no image files. `games/space-miner/game.json` has no `assets` entries except `icon.png` (store), no `cast`, no `characters` with looks, and no `char:` icons.
-- Shared, as R1 allows: the generic engine in `economy.ts` (cash, costs, cards, chests, missions, daily, offline frame), libraries, ads, analytics, purchases, saving, the kit (`Sheet`, `useOverlay`, `Panel`, `Button`), `HintOverlay` (now pointer-free), `RollingNumber`, `FlyLayer`, `SettingsSheet`.
+**R1 Bundle.** One generated file decides what a build contains, for the screens and for the rules. This describes what was built (docs/design/space-bundle.md, the skeleton step); the plan this paragraph held before differed in names and details (Decision 1 lists the differences).
+- **The generated mode entry.** `scripts/lib/games.js` (`writeActiveGame`, run by `app.config.ts` and `npm run select`) writes `src/generated/mode.ts`, one import for the selected game: `import entry from '../modes/haul';`, and `src/generated/activeGame.ts` with the game's data, its own sounds and its mode's fx table. There is no runtime switch and no remote-config path to `mode` or `soundPack`.
+- **The mode entry** `src/modes/<mode>/index.tsx` exports a default `ModeEntry` (`src/modes/contract.ts`): `id`, `Shell` (the whole game screen), `parts` (`CharIcon`, `CardBust`, `HintPointer`, and `Icon` with `iconPrefixes` for a mode's own "art:"/"mach:" drawings), `artIcons` (the shared "art:" registry; haul does not use it), `hints` (a `HintSource`, `src/ui/hints/source.ts`), `devViews` (`?view=` screens), `engine` (the mode's own rules) and `presets` (the web preview's `?preset=` states). `src/ui/App.tsx` calls `installMode(modeEntry)` at load, before anything renders, and renders `entry.Shell` once the save and fonts are in.
+- **Rules per mode, not a runtime table.** The shared engine (`src/engine/economy.ts`, `meta.ts`) keeps the sim and classic rules built in and asks `engineFor(cfg)` (`src/engine/mode.ts`) for a mode with its own: `EngineMode {id, saveTag, create, reconcile, tick, income, activeIncome, offline, prestige, storyTrigger?, missionUsable?}`. `createInitialState`, `reconcileState`, `tick`, `incomePerSecond`, `activeIncomePerSecond` (new: the income rewards, mission targets and the Time Warp are priced in), `computeOffline` (returns the advanced `game` and the mode's `report` too), `prestige(cfg, state, now, choice?)` and the story and mission checks delegate to it; with nothing installed they run the code they ran before (`src/engine/modeRegression.test.ts` replays outputs recorded before the seam existed). The haul entry installs `haulEngineMode` (`src/engine/haulMode.ts`, wrapping the rules package's `src/engine/haul.ts`). The rule files (`src/engine/haul.ts`, `src/engine/haul/`, `haulMode.ts`, `loadout.ts`, `fixtures/haul.ts`) are haul mode folders in `scripts/lib/modes.js`, so no other game's bundle may hold them and no shared file may import them. Tests install the engine where they need it (`src/engine/haulMode.test.ts`); no test-only dispatcher is needed, because sim and classic install nothing.
+- **Three levels of code** (`scripts/lib/modes.js`): (a) shared by every game (`SHARED_UI` under `src/ui`, and everything else in `src/` outside the mode folders), (b) the `tabs` family (the tab shell, header, list homes, meta screens and the first game's drawn kit, glove included; sim and classic only), (c) a mode's folders (`src/modes/haul`, `src/ui/haul` and the haul rule files). A shared file imports only shared files; the haul mode never imports the family. The glove `HandPointer` lives in the family (`src/ui/art/props.tsx`), which the haul bundle never contains; `HintOverlay` draws whatever `parts.HintPointer` the entry hands over (sim and classic: the glove; haul: the art kit's reticle).
+- **The haul screens** are `src/ui/haul/HaulShell.tsx` and the pieces under `src/ui/haul/` (docs/design/space-build-plan.md lists every file); the hint layer for drag and swipe hints is the haul mode's own (`src/ui/haul/hud/HintLayer.tsx`, the art kit's `ReticleLayer`), and map targets register with `targets.set(key, rect)`.
+- **Sounds.** A game names a shared pack (`soundPack`, `shared/sfx/<pack>/`) or none: Orbit Haulers sets `"soundPack": null` and plays only `games/space-miner/assets/sfx`, so no other game's recipe can ever fill a missing key (Decision 2). Pizza Empire keeps the `warm` pack, byte for byte (`src/services/fx/discovery.test.ts` with `pizzaSounds.fixture.json`). The fx events: `src/services/fx/catalog.ts` (sim and classic, entries tagged `modes`) and `src/services/fx/catalog.haul.ts` (the haul table, read instead of catalog.ts for a haul game), both Node only; `scripts/lib/fxCatalog.js` writes the game's runtime table without the briefs.
+- **Art.** Orbit Haulers ships no image files: `games/space-miner/game.json` has no `assets`, no `cast` and no `char:` icons; its "art:" and "mach:" icons are drawn by `src/ui/haul/art` through `parts.Icon` (`HaulIcon`).
+- **Shared, as R1 allows:** the generic engine (cash, costs, cards, chests, missions, daily, offline frame), libraries, ads, analytics, purchases, saving, the neutral kit (`Sheet`, `useOverlay`, `Panel`, `Button`), `HintOverlay`, `GameIcon`, `FlyLayer`, `RollingNumber` (reclassed as shared, Decision 7). Known remainders (each game's bundle still carries them; docs/design/space-build-plan.md): the restaurant chain rules `src/engine/chain.ts` (imported by `economy.ts`) and the restaurant event keys in `store.ts` and `fx/mix.ts` ride in the haul bundle; the haul config schema `src/config/schema.haul.ts` (with its starting content) rides in Pizza's.
 
 **R2 Actors.** Everything that moves on the main screen is a machine or a space object drawn for this game in `src/ui/haul/art` (section 4.3). People exist only as voices on the radio; their portraits are call-sign plates with an animated waveform (`mach:` icons), and the station AI is a geometric glyph. The hint pointer is a cyan targeting reticle drawn in `src/ui/haul/art/Reticle.tsx` and animated with plain Reanimated values. No file under `src/ui/sim/**` is in the haul import graph; `src/ui/sim/art/props.tsx`, `items.ts` and `rig.ts` are named in the deny list explicitly (section 10.4).
 
@@ -149,7 +132,7 @@ Why `network-routes` is honest: there is no fixed chain of stages to balance. Ea
 
 ## 2. Rules
 
-All rules live in a new pure file `src/engine/haul.ts` (no React, no `Date.now`, no `Math.random`; randomness from `rng.ts` with the seed in state), wrapped by `src/engine/haulMode.ts` (section 1.3 R1). Game-specific numbers live in `games/space-miner/game.json` under `haul`, schema in `src/config/schema.haul.ts`.
+All rules live in `src/engine/haul.ts` and `src/engine/haul/` (no React, no `Date.now`, no `Math.random`; randomness from `rng.ts` with the seed in state), reached through the engine mode `src/engine/haulMode.ts` (section 1.3 R1). Game-specific numbers live in `games/space-miner/game.json` under `haul`, schema in `src/config/schema.haul.ts`.
 
 **Tech lead's model rule:** the engine does not simulate individual drones. Each route is a rate. Drone positions on screen are derived from the route's trip time and the clock, for display only. This keeps ticks, the bot and offline exact and cheap.
 
@@ -248,7 +231,7 @@ Write `B(stat)` for the fitted-module value of a stat (section 5.1, `loadout.fit
 - Freighter away time: 8 s at levels 1 to 9, 12 s at 10 to 24, 16 s from 25, times `T(away)`, times `(1 − B(metReturn))` for a launch that meets its contract (`B(metReturn)` at most 0.5). Climb 2.5 s, land 2 s.
 - Drone cap: `24 + 4 × galaxy + 6 × (Hangar Expansion owned)`.
 - Ore price: `p_o = ore.value × T(oreValue_o) × (1 + B(orePrice)) × (1 + 0.10 S(assay))`.
-- Contract multiplier when met: `M' = M + 0.1 S(brokerseat) + T(contractAdd)`.
+- Contract multiplier when met: `M' = M + 0.1 S(brokerseat) + A(contractAdd)`, where `A(x)` is an additive condition term, 0 when the condition does not touch x (Decision 3, errata 12).
 - Global multiplier: the existing `globalMultiplier` (shared upgrades; Orbit Haulers sells no income multiplier and runs no timed ad boost). `prestigeMultiplier` is 1 because `bonusPerPoint` is 0.
 
 ### 2.4 What one tick does
@@ -361,7 +344,7 @@ No comet bonus and no tap combo: they matched Pizza's Golden Slice and tip combo
 
 | id | Name | Effects |
 |---|---|---|
-| frost | Frost Surplus | ice weight x3 on rings 2 to 4; ice value x2 |
+| frost | Frost Surplus | ice weight x3 on rings 3 and 4; ice value x2 (Decision 3, errata 72) |
 | solar | Solar Wind | drone speed x1.4; rock life x0.5 |
 | storms | Seam Storms | seam interval x0.5 (first seam included) |
 | longhaul | Long Haul | distances x1.3; contract multipliers +0.3 |
@@ -372,7 +355,7 @@ No comet bonus and no tap combo: they matched Pizza's Golden Slice and tip combo
 
 | Arm | id | Name | Effect per level | Base | Growth | Cap | Station part |
 |---|---|---|---|---|---|---|---|
-| Survey | prospect | Prospect Survey | more bonanza rocks: chance `1 − 0.96 × 0.94^L` | 2 | 1.25 | none | survey array, one petal per 5 levels (up to 8) |
+| Survey | prospect | Prospect Survey | more bonanza rocks: chance `min(0.5, 1 − 0.96 × 0.94^L)` | 2 | 1.25 | 11 (errata 71) | survey array, one petal per 5 levels (up to 8) |
 | Survey | veinsense | Seam Sense | seams 10 s more often and 5 s longer | 2 | 1.4 | 5 | scanner dish |
 | Survey | assay | Assay Rights | +10 % ore price | 1 | 1.3 | 5 | assay lab pod |
 | Trade | brokerseat | Broker Seat | +0.1 to met contract multipliers | 2 | 1.35 | 5 | antenna mast |
@@ -459,7 +442,7 @@ Human time, from the tutorial path in section 2.12. The hint engine (`haul.nextH
 | Time | Screen and voice | Guided step (hint kind, target) | fx and haptic |
 |---|---|---|---|
 | 0:00 | Map. Station at the bottom of the field, one iron rock with a rig on ring 1, one drone on the rack, the freighter on its pad in the bay, the empty hold tank, the dock counter "₵0". TALLY (comms slot): "Drone T-1 idle. Send it to the rock." | **1** `drag` from `drone:rack` to `rock:0` (the reticle travels a dashed guide in 1.2 s, pauses 0.6 s, repeats) | `comms_in`; grab: `route_grab`, select; snap: `route_snap`, light; release: `route_set`, rigid |
-| 0:07 | First delivery; the hold tank shows its first orange band at the first `unload` event | none | `hold_tick` |
+| 0:12 | First unload (4 units); the hold tank shows its first orange band (errata 24) | none | `hold_tick` |
 | 0:22 | Hold 12/12. Chevrons pulse. OPS-2: "Hold full. Clear the pad." | **2** `swipe` in `bay:launch` (the reticle moves up 80 pt, repeats) | pass 30 pt: `launch_arm`, select; release: `launch_charge`, ramp |
 | 0:27 | Freighter climbs through the field, warp flash at the top, receipt "WARPED · MANIFEST 12 IRON · ₵13" on the bay ticker, credit glyphs fall into the dock counter | none | `warp_out`, `payout`, `credit_tick` stream; heavy at the warp |
 | 0:30 | OPS-2: "One more drone would help." | **3** `point` at `station`, then `point` at `station:buyDrone` | `drone_buy`, medium |
@@ -596,7 +579,7 @@ Hub and spoke. The map is the only home.
 - Reused underneath: kit `Sheet`, `geometricCost`, store actions. No `BuyAmountRow`, no `UpgradeRow`.
 
 **Station sheet**. Three blocks drawn as a station schematic strip, not rows:
-- Fleet: "Drones 5/24 · Buy ₵47", "Capacity L3 · 6.3 units · ₵72", "Engines L2 · x1.08 speed · ₵120".
+- Fleet: "Drones 5/24 · Buy ₵44", "Capacity L3 · 6.3 units · ₵72", "Engines L2 · x1.08 speed · ₵120".
 - Freighter: hull art, "L4 · holds 36 · away 8 s · ₵61".
 - Systems: the autopilot beacon (dark until bought), policy chips `FULL` / `CONTRACT` under it.
 
@@ -776,7 +759,7 @@ No permanent income multiplier is sold.
 | launch_abort | spool-down when the swipe is released short | 0.4 | | |
 | warp_out | compressed whoomp plus a bright tail, 0.7 s | 0.8 | | heavy |
 | payout | credit chime | 0.7 | | |
-| credit_tick | tiny sine tick per falling ₵ glyph | 0.25 | 60 | |
+| credit_tick | tiny sine tick per falling ₵ glyph | 0.25 | 45 | |
 | freighter_land | low thump and hiss | 0.45 | | soft |
 | contract_new | radio squelch plus a three-note teletype | 0.5 | | |
 | contract_select | a pulse double tick | 0.45 | | select |
@@ -810,7 +793,7 @@ No permanent income multiplier is sold.
 | trait_pick | selection chord | 0.55 | | select |
 | jump_warp | the long jump: 2.5 s rising, cut, tail | 0.85 | | heavy, 400, heavy |
 
-Total: 56 keys (10 core, 46 haul), 56 files. Validate fails if any key in `catalog.core.ts` or `catalog.haul.ts` has no file for this game, or if any file of this game hashes equal to a Pizza file.
+Total: 56 keys (10 core, 46 haul), 56 files, all in `src/services/fx/catalog.haul.ts` (Decision 6). `src/services/fx/haulTable.test.ts` fails if a key has no file in `games/space-miner/assets/sfx` or differs from `scripts/audio/recipes_haul.py`, or if any file of this game hashes equal to a Pizza file. The haptic column above is superseded where Decision 6 says so.
 
 ### 6.3 Haptics rule
 
@@ -889,7 +872,7 @@ Ten example lines:
 ### 7.6 Store page (written from scratch)
 
 - Title (both stores): **Orbit Haulers**
-- Apple subtitle (30 max): **Idle tycoon: route ore drones** (29). It names the verb and keeps "idle" and "tycoon" honest (R8).
+- Apple subtitle (30 max): **Route ore drones, idle mining** (29). It names the verb and keeps "idle" honest; "tycoon" moves to the description (Decision 25: validate rejects "idle ... tycoon" in a name field).
 - Google short description (80 max): "Route drones, ship cargo by freighter and grow a station in an asteroid field." (78)
 - Keywords (Apple field, 100 max, comma-separated, no words that are already in the title or subtitle, no "miner"; also `store.keywords`): space, mining, asteroid, freighter, cargo, logistics, station, galaxy, rocket, sci-fi, fleet, manager (90 characters). Shared with Pizza's keywords: none. Jaccard 0.0.
 - Categories: Apple Games > Strategy (primary), Simulation (secondary). Google: Strategy.
@@ -930,7 +913,7 @@ Ten example lines:
 
 ## 8. Balance targets for the bot
 
-`scripts/content/build-haul.py` writes the `haul` block and costs of `games/space-miner/game.json` (it replaces `build-space.py`; `npm run content:space` points to it) and, with `--table`, prints the worked tables of section 2.12. `scripts/content/haul-bot.ts` plus a haul branch in `scripts/simulate.ts` run the game through the pure engine and count gestures.
+`scripts/content/build-space.py` writes the whole of `games/space-miner/game.json`, the `haul` block included (Decision 12; `npm run content:space`) and, with `--table`, prints the worked tables of section 2.12. `scripts/content/haul-bot.ts` plus a haul branch in `scripts/simulate.ts` run the game through the pure engine and count gestures.
 
 Bot behaviour: places every idle drone at once on the slot with the highest marginal value `[min(r_i, (n_i + 1) c_i / trip_i) − min(r_i, n_i c_i / trip_i)] × p_ore` (a good player); drags 2 drones onto each rich seam and 1 onto each bonanza rock; picks the contract with the highest `contractGain` it can meet within 3 launches and moves up to 2 drones to routes of its ore; launches by hand when the hold is full or the contract is met until the autopilot is online, then uses `contract`; uses the free flare charge on the best rock; buys the option with the best payback (Δ `activeRate` / cost), and from 2:00 saves for the autopilot; at a Jump spends cores by a fixed priority (Preload, Assay to 5, Afterburner, Seed Credits, then Prospect Survey and the cheapest capped node) and picks the condition with the highest `activeRate` at the new run's start. It counts every gesture: drags and flicks, tap-taps, swipes, Upgrade taps (rig, fleet, freighter, claims), contract picks, sheet opens.
 
@@ -1058,19 +1041,66 @@ New `scripts/lib/fingerprint.ts`, run by `npm run validate` for every pair of ga
 - **`--release` mode:** every dimension must be known; fails below 8 of 8 must or 15 of 19.
 - Also fails in both modes: a haul game with a `cast`, a `char:` icon, a sound key missing for its catalogue, a product id without the game's prefix, two games whose sequences of IAP product kinds are identical, a title containing "Empire" when another game's title does, or a title with the same "X: Y" shape as another game's.
 
-### 10.4 Bundle check (R1, R2) `npm run bundle:check -- <id>`
+### 10.4 Bundle check (R1, R2) `npm run check:bundle`
 
-`scripts/bundle-check.ts`, run for both games in CI and as the exit test of P0:
-1. Static graph: esbuild bundles the app entry with `src/generated/modeEntry.ts` and `activeGame.ts` replaced by an in-memory version for `<id>` (aliases; nothing is written to `src/generated`, and `select-game.js` is not run). Options: `bundle: true`, `metafile: true`, `platform: 'neutral'`, `resolveExtensions: ['.native.tsx', '.native.ts', '.tsx', '.ts', '.js']`, every `node_modules` package external, `loader: {'.png': 'file', '.wav': 'file', '.m4a': 'file', '.ttf': 'file'}`. It fails if any input file of the other mode is in the graph:
-   - For haul: `src/ui/sim/**` (naming `src/ui/sim/art/props.tsx`, `items.ts` and `rig.ts` explicitly in the message), `src/ui/home/**`, `src/ui/meta/{cards,chest,empire,missions,deals,upgrades,shop}/**` except `shop/money.ts`, `src/ui/scene/**`, `src/ui/components/{Header,TabBar,Modals,Panels,Celebration}.tsx`, `src/modes/{sim,classic}.ts`, `src/engine/{chain,view,simMode,simMeta,classicMode}.ts`, `catalog.sim.ts`.
-   - For Pizza: `src/ui/haul/**`, `src/modes/haul.ts`, `src/engine/{haul,haulMode,loadout}.ts`, `catalog.haul.ts`.
-2. Strings: it scans the minified output for the other game's denylist. Matching is on whole string literals and identifiers in word form, case-sensitive. The denylist is every card, business, venue, character, story and store string of the other game's `game.json` with more than 4 characters, plus a fixed list (for the space build: pizza, Pizza, dough, Dough, chef, Chef, waiter, Waiter, guest, Guest, restaurant, Restaurant, Nonna, oven, Oven, Franchise, Chef Stars, Truffles, Golden Slice, Rush Hour, marimba; for Pizza's build: Orbit Haulers, Tamsin, TALLY, Warp Cores, Star Map, Fitting Bay, Salvage Bay, Dark Matter). `scripts/bundle-allow.json` lists generic words that may appear (for example engine identifiers left in shared code); each entry needs a reason. A hit fails.
-3. Assets: it lists the asset files in the graph and fails if any hashes equal to one of the other game's.
-4. It writes `games/<id>/store/bundle-report.json` (date, source hash, result), which validate reads for dimension 8.
-5. Release binaries (later, required before the first submission): `scripts/scan-binary.ts <file.aab|file.ipa>` extracts the Hermes string table and the assets and runs checks 2 and 3 on them; its output is attached to the release log.
+`scripts/check-bundle.ts`, rules in `scripts/lib/bundleRules.ts` (tested in `bundleRules.test.ts`), lists in `scripts/lib/modes.js`. This describes what was built; the esbuild plan this section held before was replaced (Decision 1).
+1. **Fast stage** (default, about 2 s, every game; `--game <id>`, `--as-mode <mode>`): walks the TypeScript import graph from `index.ts` with the platform's extensions, type-only imports skipped, using the generated files as `games.js` would write them for each game (nothing is written, the selection does not change). For each game it counts the project files as shared, family and mode, and fails on: a file of another mode's folders (for Pizza Empire: `src/modes/haul`, `src/ui/haul` and the haul rules `src/engine/haul.ts`, `src/engine/haul/**`, `haulMode.ts`, `loadout.ts`, `fixtures/haul.ts`; for Orbit Haulers: `src/modes/sim`, `src/ui/sim`, and also `src/modes/classic`, `src/ui/scene`), a file of a family the mode is not in (Orbit Haulers never bundles the `tabs` family, so neither the glove nor the header, the tab bar, the list homes or the meta screens), an unclassified `src/ui` file, a Node-only file (the fx catalogues, the art icon lists, the game-data lint), another game's data, a sound from a pack the game does not declare, a package only another mode may use (three, expo-gl), and for any mode but sim the restaurant's people rig. It also fails on any import edge that breaks the three levels.
+2. **Export stage** (`-- --export`, about a minute per game; before a release): runs `npx expo export --platform ios --source-maps --dump-assetmap --no-bytecode` per game, reads Metro's source map and asset map, applies the same rules to what really shipped, and puts back the game that was selected.
+3. **Words** (`-- --words`, a list, never a failure): string literals in each bundle's shared and family files that use another mode's theme words (`THEME_WORDS`). The string denylist of the research (whole words from the other game's game.json, errata 6) is not built yet: the tooling package adds it as a failing stage, with `scripts/bundle-allow.json` for engine identifiers left in shared code.
+4. **Report for dimension 8** (not built yet; tooling package): the export stage writes `games/<id>/store/bundle-report.json` (date, source hash, `result: "pass" | "fail"`), which `scripts/lib/fingerprint.ts` reads.
+5. **Release binaries** (later, required before the first submission): `scripts/scan-binary.ts <file.aab|file.ipa>` extracts the Hermes string table and the assets and runs the word and asset checks on them; its output is attached to the release log.
 
-In this checkout only `GAME=space-miner` may be selected. The Pizza-side run of steps 1 to 3 uses the in-memory alias and is safe here; Pizza's own preview and binary checks run in CI or another checkout.
+In this checkout only `GAME=space-miner` stays selected while a dev server runs from it; the fast stage never changes the selection, and the export stage puts it back itself.
 
 ### 10.5 Before declaring done
 
-`npm run typecheck`, `npm test` (Pizza's existing tests unchanged and passing), `npm run validate` (normal mode passes with pending dimensions), `npm run bundle:check -- space-miner` and `-- pizza-empire`, `npm run lint:worklets`, `npm run simulate -- space-miner --hours 12 --prestige` within the hard targets of section 8, `python3 scripts/audio/compare.py space-miner pizza-empire`, and the web preview checks of 10.1.
+`npm run typecheck`, `npm test` (Pizza's existing tests unchanged and passing), `npm run validate` (normal mode passes with pending dimensions), `npm run check:bundle` (and `-- --export` before a release), `npm run lint:worklets`, `npm run simulate -- space-miner --hours 12 --prestige` within the hard targets of section 8, `python3 scripts/audio/compare.py space-miner pizza-empire`, and the web preview checks of 10.1.
+
+---
+
+## 11. Decisions (tech lead, skeleton step, 22 November 2026)
+
+These settle the open questions of revision 2, the choices the two reviews and the designer's answers left, and every item of the errata list (`spec-errata.md`, 77 items). Each names what it overrides; where the fix was one line it is also made in place. Two decisions are the lead's: **(a)** the game's sounds live in its own folder and it declares no fallback pack (Decision 2); **(b)** where the errata list and the built bundle mechanism disagree on a name, the built name wins (Decision 1). Work packages, files and contracts: `docs/design/space-build-plan.md`.
+
+### Bundle, wiring and tooling
+
+1. **The built mechanism is the truth** (overrides 1.3 R1, 9.1 staffing files, 10.2 file names, 10.4; errata 1, 10, 11 accepted with the built names). Section 1.3 R1 and 10.4 are rewritten to describe it. Differences from the old plan: `src/generated/mode.ts` (not `modeEntry.ts`) imports `src/modes/<mode>/index.tsx` (not `src/modes/<mode>.ts`); `ModeEntry {id, Shell, parts, artIcons, hints, devViews, engine, presets}` replaces `MODE/Home/Overlays/modeFx/modeIcons/HintPointer/hintSource/Galleries/hintTargets`; the hint source is `setHintSource` with `Hint {key, route, row}` (not `registerHintMode`); the pointer is `parts.HintPointer`; the engine install is `ModeEntry.engine` → `installEngineMode` (`src/engine/mode.ts`, not `src/engine/modes.ts`), and the rules are `src/engine/haul.ts` plus `src/engine/haul/` (not one file); the engine wrapper is `src/engine/haulMode.ts`; there is no `simMode.ts`, `simMeta.ts`, `classicMode.ts` or test-only dispatcher: sim and classic keep their built-in rules and install nothing; the bundle check is `scripts/check-bundle.ts` / `npm run check:bundle` (TypeScript import walk plus a Metro export), not esbuild; the Pizza sound fixture is `src/services/fx/discovery.test.ts`; the moved helpers are `src/ui/juice/ticker.ts`, `src/ui/play/gate.ts`, `src/ui/art/draw.ts`.
+2. **Sounds: the game's own folder, no fallback pack** (lead decision a; overrides 1.3 sounds, 6.1 render command, errata 1's and 67's `synth` pack). `games/space-miner/game.json` sets `"soundPack": null` (the schema accepts null: no shared pack at all); `shared/sfx/synth/` is removed; `scripts/lib/games.js` bundles only the game's `assets/sfx/` then. The sound package renders there with `scripts/audio/render_haul.py` (music by `haul_music.py`). `make_sfx.py --recipes haul` is not needed.
+3. **The two rules sections of the errata (items 12 to 36) are decided by the lead and implemented by the rules package as written**: 12 (additive `A(contractAdd)`), 13 (freighter snapshot at launch), 14 (warp-out order), 15 (two seam records), 16 (guest stack, −1 = rack), 17 (Jump flow: preview, confirm, spend, condition, create; nodes also mid-run), 18 (`activeRate` × full bonus), 19 (`drillable`, `dry` event), 20 (interval floor 30 s), 21 (story trigger sources), 22 ("Jump ready" at 20 cores), 23 (launches count at the warp-out), 24 (first unload 0:12), 25 (every run opens with contract 0), 26 (`contractGain` with the missing units), 27 (contract draws), 28 (claim drift through the respawn step), 29 (ghost slots up to the next ring), 30 (shared action keys never reach a missing haul sound), 31 to 36. Recorded, not overruled. Where the skeleton had to choose before the rules' second pass lands: story triggers 21 read the current run (each beat fires once ever, so it is equivalent) until `haulStats` carries `bestRing`, `contractsSeen`, `autopilotSeen`; "Jump ready" is a field of the trigger (`{type: 'jumpReady', cores: 20}`) until the haul block has `jumpReadyCores`; item 30 is met by the haul actions playing haul keys (`src/modes/haul/actions.ts`), and the integration package adds the test that lists every `fx.play` literal reachable from the haul screens.
+4. **Engine seam** (overrides 1.3's `installEngineMode`/`EngineMode` sketch; errata 3 accepted in effect). `src/engine/mode.ts` defines `EngineMode {id, saveTag, create, reconcile, tick, income, activeIncome, offline, prestige, storyTrigger?, missionUsable?}`; `engineFor(cfg)` returns the installed engine only for a config of its mode. `economy.cardBonus` is not touched: haul code calls `fittedBonus` itself and never `cardBonus`, so Pizza's path is unchanged by construction and `economy.ts` never imports `loadout.ts` or the haul rules.
+5. **Saves of the old classic Space Miner are not read** (the specification was silent; the game is unpublished). The haul engine stores its save under `save:space-miner:haul1` (`EngineMode.saveTag`); an old `…:v1` save stays in storage untouched and unread. Pizza Empire keeps `…:v1`.
+6. **The haul fx table is its own catalogue** (overrides 1.3's `catalog.core/sim/haul.ts` split and errata 1's "entries tagged `modes`" for haul; errata 64, 65, 66, 68 accepted). `src/services/fx/catalog.haul.ts` (Node only) holds the 56 keys of 6.2, read by `scripts/lib/fxCatalog.js` instead of `catalog.ts` for a haul game, so a haul game's table has no other key. Volumes and intervals are 6.2's; `credit_tick` 45 ms; haptics are the sound package's accent-aligned patterns (`recipes_haul.py PROPOSED_HAPTICS`: `purchase_success`, `boost_start`, `rig_tier`, `freighter_tier`, `system_online`, `module_fit`, `module_levelup`, `salvage_cut`, `salvage_epic`, `daily_relay`, `jump_warp`), and no haptic on `rock_crumble`, `bonanza`, `vein_start`, `vein_end`, `hold_full`, `pod_arrive`, `freighter_land`; `launch_charge`, `warp_out` and `contract_met` vibrate only after the player's own swipe. Event → key mapping: `src/modes/haul/fx.ts` (errata 64). The table matches `recipes_haul.py` key for key (no key on one side only; `haulTable.test.ts`).
+7. **RollingNumber is shared mechanics** (overrides the bundle step's classification of `RollingNumber.tsx` and `rollFormat.ts` in the `tabs` family). Both hold no art and import only `engine/format`, `juice/ticker` and each other, so they are moved to `SHARED_UI`; the dock counter uses `RollingNumber`, sized by the haul mode's own `bayMetrics.ts` (no lineHeight).
+8. **Icons through the mode, not the shared registry** (overrides 1.3's `registerIcons(modeIcons)`; follows the art notes). `ModeParts` gains `Icon` and `iconPrefixes`; `GameIcon` hands "art:" and "mach:" names to the haul entry's `Icon` (the art kit's `HaulIcon` cache). `src/config/artIcons.ts` lists the haul names (`HAUL_ART_ICON_NAMES`, `HAUL_MACH_ICON_NAMES`) for the lint, and `artIcons.test.ts` checks them against the kit. The icons errata 42 adds (conditions, nodes, products) are the art package's next additions; game.json uses only existing names until then.
+9. **Hints** (errata 47, 53, 55 accepted; errata 54 replaced). The shared `Hint` stays `{key, route, row}`; the rules' `HaulHint` already carries `kind, from, to, zone, step, limit`. The shared `HintOverlay` (inside every kit `Sheet`) draws only `point` hints, with the reticle as `parts.HintPointer`; drag and swipe hints on the map are drawn by the haul mode's own `src/ui/haul/hud/HintLayer.tsx` with the art kit's `ReticleLayer`. Map targets use the existing `targets.set(key, rect)` (errata 47's `setTargetRect`).
+10. **The glove** (errata 2, own ruling): it stays in the `tabs` family file `src/ui/art/props.tsx`; the haul bundle can never contain a family it is not in, and `check:bundle` proves it. `HintOverlay` imports no pointer.
+11. **Denylist and words** (errata 6 accepted for the later failing stage; overrides 10.4 step 2 as built): today `check:bundle -- --words` lists theme words; the failing string stage, `bundle-report.json` and `scan-binary.ts` are the tooling package's.
+12. **One content script** (overrides 8's `build-haul.py` and 2.12's `--table` owner). `scripts/content/build-space.py` is the only source of `games/space-miner/game.json`; it now emits the haul game with the specification's starting values (provisional) and Decisions 3 and 18 applied. The balance package adds `--table` and the calibration to it.
+13. **Schema** (section 2 header confirmed): `mode` `haul`, `haul: HaulSchema.optional()` (imported from the rules package's `src/config/schema.haul.ts`), `businesses` defaults to `[]` and the lint requires at least one for sim and classic, `bonusPerPoint` ≥ 0 with the lint requiring 0 for haul and > 0 otherwise, IAP kinds `clearance` and `unlock`, an optional `contents` on a `starterPack` (Prospector Charter grants 150 DM and 5 Ore Sorter copies without removing ads), the story triggers `launches`, `ring`, `contracts`, `system`, `galaxy`, `jumpReady`, and the mission types `hauled`, `launches`, `contracts`, `depleted`, `claims`, `seamDrags`. Pizza Empire's parsed config is identical (a test compares it with a recorded copy). `CARD_STATS` is not extended (overrides the section 2 header): a module's real stat is `haul.modules[].stat`, and Pizza's card screens loop over `CARD_STATS`.
+14. **Characters** (errata 8 accepted): TALLY, OPS-2, DISPATCH and the six buyers are `characters` with `mach:` portraits; no `cast`; the lint fails a haul game with `cast` or a `char:` icon.
+
+### Rules data and numbers
+
+15. **Open question 2 (run-2 target)**: the 60 % gate stays hard. If the balance package cannot reach it with the named knobs (Afterburner head start, bonanza effect), it reports the best result and the lead decides; no flat node's cap is raised.
+16. **Worked numbers** (open question 9, errata 70, 77): both tables of 2.12 are placeholders; no test reads them; the balance package replaces them from `build-space.py --table`. Section 8 is the only gate.
+17. **Prospect Survey** (errata 71 accepted): chance capped at 0.5, node cap 11 (in game.json).
+18. **Data fixes applied in game.json**: Frost Surplus on rings 3 and 4 (errata 72), seam interval floor 30 s (errata 20), Seed Credits ₵0 at level 0 (errata 32, rules), Derelict pity epic 8, the supply pod every 3 h stored 3 (5.2), contract 0 `min(10, F)` Iron x1.5.
+19. **Small screen** (open question 6): accepted as specified (chips 8 pt clear at 375 x 667); no slots are hidden.
+
+### Screens, art and sound
+
+20. **Sheets** (4.4): until the sheets package builds the haul bottom sheet (46 % height over the bay, registered with `useOverlay`), the placeholders use the kit `Sheet`. Spokes are full-screen views registered with `useOverlay`.
+21. **Errata 37 (atlas interface)**: the built atlas wins (lead decision b): `bakeAtlas({density, freighter})` with sprite names `drone-<ore>`, `rock-<shape>-<ore>`, `bonanza-<shape>`, `crack1-`, `crack2-`, `dry-`, `dryglow-`, `drill`, `chunk-<ore>`, `shard-<ore>-<i>`, `credit`, `freighter`, `flame-<i>` and `spriteXform` (src/ui/haul/art/README.md).
+22. **Errata 38 to 43** accepted: the art package also draws `StationSchematic`, `DishRelay`, `ConditionPreview`, `StarCore`, `NodeRing`, `ReceiptStamp`; one beacon drawing (Systems Preload = the autopilot beacon), 7 node parts plus the beacon; hulls at 1, 10, 25, 50 and segments at 75 to 250; at most 4 drones drawn per route and 6 on the rack; rock radius uses `k × T(distance)`.
+23. **Errata 44 to 63** accepted as written (chips by backtracking from the centre, hit priority, flare and selection taps, views with own touch, Long Haul layout, bay metrics signature `bayCounterMetrics(compact, block, fontScale, innerWidth, glyphCount, lineEm?)`, hints inside sheets in two stages, comms timing, voice lines, ₵44, "Bring online · ₵90", counter tap before contracts, Rig sheet verdicts, board size at 375, T-n is slot n − 1).
+24. **Audio threshold** (open question 7): `compare.py`'s joint score at 0.6 (the sound package's calibration: the p95 of unrelated pairs) is the rule; the spec's either-over-0.6 rule is printed only. The listening check (10.1 #10) stays a person's.
+
+### Store and fingerprint
+
+25. **Subtitle** (overrides 7.6): "Route ore drones, idle mining" (29). "Idle tycoon: route ore drones" matches validate's "Idle … Tycoon" title rule (`scripts/lib/checks.ts`), which exists for a trademark reason.
+26. **The fingerprint block lives next to game.json** (overrides 1.2's "in game.json"): `games/<id>/store/fingerprint.json`, so no app bundles the other game's id. `scripts/lib/fingerprint.ts` (test `fingerprint.test.ts`) compares every pair from `scripts/validate.ts`: closed vocabularies for 1 to 4, 9, 10, 15 and the art style (errata 7); measured, never declared: 5 (image hashes, and a shared drawn kit or family counts as overlap), 6 (store text trigrams), 16 (sound and music hashes, and a shared sound pack), 17 (string share from game.json and `src/ui/<mode>/strings.ts`, minus `INTERFACE_LABELS`), 18 (keyword Jaccard < 0.3), and the mode (two games of one mode cannot differ on 1 to 4). Pending until filled: 7 and 13 (`human.*.by`), 8 (`store/bundle-report.json`), 19 (`store/releases.json`). Everyday mode prints the table and fails only when the known values already lose; `validate --release` needs every dimension known, 8 of 8 must and 15 of 19. Both modes fail on identical product kind sequences, a product id outside the game's prefix, two "Empire" titles or two "X: Y" titles. Today: verified 14 (6 of 8 must), pending 4 (2 must), not differing 1 (errata 9's "today" count is superseded because the measured dimensions are built).
+27. **Open question 1 (bundle ids)**: `com.example.spaceminer` stays until the studio's domain is known; a release blocker owned by the tooling package. `app.slug` is `orbit-haulers`.
+28. **Open question 4 (names)**: Tamsin Station and TALLY stay provisional until the tooling package's store search.
+29. **Open question 8 (shared purchase code)**: covered here by `src/engine/modeRegression.test.ts` (sim and classic outputs recorded before the seam) and the recorded parsed Pizza config; the new kinds are additive cases.
+30. **Open question 5 (classic engine)**: classic stays on the built-in shared rules. Moving the restaurant chain (`chain.ts`) out of the haul bundle is not a pure move of import edges (economy.ts calls it in creation, the tick, rates and prestige), so it is left as a known remainder (build plan).
+31. **Open question 3 (staffing)**: replaced by the build plan's packages.

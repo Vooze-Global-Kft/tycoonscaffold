@@ -11,7 +11,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import * as H from '../../../engine/haul';
 import { haulActions, haulNow } from '../../../modes/haul/actions';
 import { Placeholder } from '../Placeholder';
-import { useGame } from '../../../state/store';
 import { useRunShallow } from '../useRun';
 import type { FieldLayout } from '../layout';
 
@@ -29,7 +28,6 @@ export function Field({ layout }: { layout: FieldLayout }) {
     }),
     { clock: 0, idle: 0, drones: 0, claimed: [], haulers: [], piles: [], ores: [], galaxy: 0 },
   );
-  if (s.clock % 5 === 0) console.log('DBG field', s.clock, (useGame.getState().game as any).haul?.clock);
   const send = () => {
     const now = haulNow();
     if (!now) return;
@@ -41,9 +39,9 @@ export function Field({ layout }: { layout: FieldLayout }) {
       <Placeholder
         name="Field (scene)"
         pkg="scene/Field.tsx · world"
-        live={`galaxy ${s.galaxy} · clock ${s.clock} s · drones ${s.drones} (${s.idle} idle) · tap: send a drone`}
+        live={`G${s.galaxy} · ${s.clock} s · ${s.drones} drones (${s.idle} idle) · tap: send one`}
         onPress={send}
-        style={{ position: 'absolute', left: layout.zones.strip.x, top: layout.zones.strip.y, width: layout.zones.strip.width, height: layout.zones.strip.height }}
+        style={{ position: 'absolute', left: 8, top: layout.zones.bay.y - 70, width: layout.station.x - layout.station.r - 16, height: 64 }}
       />
       {layout.rocks.map((r) => (
         <View key={r.slot} pointerEvents="none" style={[styles.rock, { left: r.x - r.r, top: r.y - r.r, width: 2 * r.r, height: 2 * r.r, borderRadius: r.r, borderStyle: s.claimed[r.slot] ? 'solid' : 'dashed', opacity: s.claimed[r.slot] ? 1 : 0.45 }]}>

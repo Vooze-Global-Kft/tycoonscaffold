@@ -260,30 +260,12 @@ mon['iap'] = {**mon.get('iap', {}), 'products': [
     {'id': 'space_dm_700', 'title': 'Fuel Tank', 'kind': 'gems', 'value': 700, 'icon': 'art:dark-matter', 'fallbackPrice': '$9.99'},
 ]}
 
-# ---------------------------------------------------------------- store page (7.6; the tooling-and-store package owns the final text)
+# ---------------------------------------------------------------- store page (7.6)
+# The listing text lives in scripts/content/space-store.json (owned by the tooling-and-store package,
+# docs/design/space-build-plan.md); this script copies it in. Fields it does not list are kept.
+listing = json.load(open(os.path.join(ROOT, 'scripts/content/space-store.json')))
 store = g.setdefault('store', {})
-store['title'] = 'Orbit Haulers'
-# 29 characters. Not "Idle tycoon: ...": validate rejects "idle ... tycoon" in a name field (Decisions).
-store['subtitle'] = 'Route ore drones, idle mining'
-store['keywords'] = ['space', 'mining', 'asteroid', 'freighter', 'cargo', 'logistics', 'station', 'galaxy', 'rocket', 'sci-fi', 'fleet', 'manager']
-store['shortDescription'] = 'Route drones, ship cargo by freighter and grow a station in an asteroid field.'
-store['description'] = '\n\n'.join([
-    'Orbit Haulers is an idle mining game about routes and cargo.',
-    'Your station sits in an asteroid field. Drag hauler drones onto rocks to set their routes, and watch them carry ore home to the hold. '
-    'When the hold is full, swipe the freighter off the pad: it warps out and the whole manifest sells at once.',
-    'Buyers post contracts for the ores they want, and each contract lapses after a few launches. Pick one, send drones to the rocks that carry '
-    'its ore, and its units sell for more.',
-    'Rocks run dry and new ones drift in, sometimes with a different ore, sometimes as a rich bonanza rock. The far rings hold copper, ice, '
-    'titanium and platinum, but the trips are longer, so where you send each drone matters.',
-    'Bring the dock autopilot online and the station ships on its own while you are away. Fit modules into three sockets in the Fitting Bay; '
-    'some of them change the rules. When a run has paid off, jump to a new galaxy, spend Warp Cores on the Star Map, and choose the conditions '
-    'you will mine under next.',
-    'Features\n- Drag-to-route drones on a top-down map of the asteroid field\n- One-swipe freighter launches and buyer contracts that lapse\n'
-    '- Rocks that run dry and come back as new ore\n- A dock autopilot that keeps shipping offline\n'
-    '- Fitting Bay modules and a Star Map that changes how each run starts\n- Optional rewarded ads; salvage pods are earned in play, never sold',
-])
-store['primaryCategory'] = 'GAMES'
-store['subcategories'] = ['GAMES_STRATEGY', 'GAMES_SIMULATION']
+store.update({k: v for k, v in listing.items() if not k.startswith('_')})
 
 json.dump(g, open(PATH, 'w'), indent=2, ensure_ascii=False)
 open(PATH, 'a').write('\n')

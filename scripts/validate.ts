@@ -4,6 +4,7 @@
  *   npm run validate                    every game
  *   npm run validate -- space-miner     one game (cross-game checks still compare it with all the others)
  *   npm run validate -- --no-sim        skip the bot playthrough (faster)
+ *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
  *
  * Errors block a release: schema problems, cross-field problems from lintGameConfig (sim, meta,
  * story, icons), missing asset files, bundle or product ids shared with another game, and an
@@ -19,6 +20,7 @@ import { lintGameConfig } from '../src/config/lint';
 import { GameConfigSchema, type GameConfig } from '../src/config/schema';
 import { args } from './lib/cli';
 import { economyTableClash, storeTextProblems, textSimilarity } from './lib/checks';
+import { comparePair, formatPair, gameFacts, pairFailures } from './lib/fingerprint';
 import { storeFiles } from './sync';
 
 const games = require('./lib/games.js');
@@ -26,6 +28,10 @@ const { positional, flags } = args();
 const all: string[] = games.listGames();
 const ids: string[] = positional.length ? positional : all;
 const runSim = flags['no-sim'] !== 'true';
+const release = flags.release === 'true';
+const modes = require('./lib/modes.js');
+/** The drawn art kits a game of `mode` can bundle: its own folders and the families it belongs to. */
+const artKitsOf = (mode: string): string[] => [`mode ${mode}`, ...Object.entries(modes.FAMILIES as Record<string, { modes: string[] }>).filter(([, f]) => f.modes.includes(mode)).map(([k]) => `family ${k}`)];
 let failed = false;
 
 // Parse every game once: the cross-game checks compare the named games with all of them.
@@ -134,5 +140,18 @@ for (const id of ids) {
   console.log(`${problems.length ? '✖' : '✔'} ${id}  "${g.store.title}"  [${g.mode}]`);
   problems.forEach((p) => console.log(`    error: ${p}`));
   warnings.forEach((w) => console.log(`    warn:  ${w}`));
+}
+// --- the fingerprint of every pair of games (spec 10.3; scripts/lib/fingerprint.ts) ---
+const named = new Set(ids);
+const facts = [...parsed].map(([id, cfg]) => gameFacts(games.ROOT, id, cfg, games, artKitsOf(cfg.mode)));
+for (let i = 0; i < facts.length; i++) {
+  for (let j = i + 1; j < facts.length; j++) {
+    if (!named.has(facts[i].id) && !named.has(facts[j].id)) continue;
+    const report = comparePair(facts[i], facts[j]);
+    const why = pairFailures(report, release ? 'release' : 'everyday');
+    console.log(`${why.length ? '✖' : '✔'} ${formatPair(report)}${release ? ' [release]' : ''}`);
+    why.forEach((w) => console.log(`    error: ${w}`));
+    if (why.length) failed = true;
+  }
 }
 process.exit(failed ? 1 : 0);
