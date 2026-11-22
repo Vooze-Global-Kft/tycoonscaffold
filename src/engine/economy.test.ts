@@ -12,12 +12,14 @@ import type { GameState } from './types';
 
 const gamesDir = path.resolve(__dirname, '../../games');
 const raw = (id: string) => JSON.parse(fs.readFileSync(path.join(gamesDir, id, 'game.json'), 'utf8'));
+/** A frozen copy of an early classic game: engine tests never depend on shipped content another agent may be editing. */
+const baseGame = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-game.json'), 'utf8'));
 const load = (id: string) => GameConfigSchema.parse(raw(id));
 const T0 = 1_700_000_000_000;
 
 /** A small classic game, independent of the shipped games so content changes never break engine tests. */
 const classicRaw = {
-  ...raw('space-miner'),
+  ...baseGame,
   mode: 'classic',
   sim: undefined,
   story: [
@@ -901,6 +903,9 @@ describe('review: clock (E4)', () => {
     expect(E.simSeconds(simCfg, s, 1, end - 100)).toBeCloseTo(rushCfg.multiplier, 9);
     expect(E.simSeconds(simCfg, s, 1, end + 5000)).toBe(1);
     expect(E.simSeconds(cfg, E.createInitialState(cfg, T0), 1, T0)).toBe(1);
+    // A rush that never started is no rush, even for a caller whose clock reads 0 (the balance bot).
+    expect(E.simSeconds(simCfg, E.createInitialState(simCfg, 0), 1, 0)).toBe(1);
+    expect(E.simSeconds(simCfg, E.prestige(simCfg, { ...s, lifetimeEarnings: 1e20 }, end), 1, end + 500)).toBe(1);
   });
 });
 

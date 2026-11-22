@@ -9,6 +9,8 @@ import type { GameState } from './types';
 
 const gamesDir = path.resolve(__dirname, '../../games');
 const raw = (id: string) => JSON.parse(fs.readFileSync(path.join(gamesDir, id, 'game.json'), 'utf8'));
+/** A frozen copy of an early classic game: engine tests never depend on shipped content another agent may be editing. */
+const baseGame = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/base-game.json'), 'utf8'));
 
 /** Noon local time, far from midnight and DST changes, so day keys are predictable. */
 const T0 = new Date(2026, 0, 10, 12, 0, 0).getTime();
@@ -90,7 +92,7 @@ const metaRaw = {
 };
 
 const baseRaw = {
-  ...raw('space-miner'),
+  ...baseGame,
   economy: {
     startingCash: 0,
     prestige: { threshold: 1e12, scale: 1, bonusPerPoint: 0.02 },
