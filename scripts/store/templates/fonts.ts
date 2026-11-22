@@ -39,3 +39,6 @@ export const FONT_CSS = [
 ].join('\n');
 
 export const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** A caption: escaped, a "\n" in it is a chosen line break. */
+export const cap = (s: string) => esc(s).replace(/\n/g, '<br>');

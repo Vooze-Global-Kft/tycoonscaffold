@@ -6,7 +6,7 @@
  * in the set has the same rigid grid, like a log. Compare templates/warm.ts (Pizza Empire).
  */
 import { pathToFileURL } from 'node:url';
-import { FONT_CSS, esc } from './fonts';
+import { FONT_CSS, cap, esc } from './fonts';
 import type { ShotOpts, FeatureOpts } from './warm';
 
 const DEEP = '#060A16';
@@ -40,7 +40,7 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:${DEEP}}
 .hd{display:flex;align-items:center;gap:${18 * u}px;font-family:'Mono';font-weight:500;font-size:${30 * u}px;letter-spacing:${6 * u}px;color:${MUTED}}
 .hd b{width:${20 * u}px;height:${20 * u}px;background:${AMBER};display:inline-block}
 .hd .r{margin-left:auto}
-.t{margin-top:${26 * u}px;font-family:'Mono';font-weight:800;font-size:${74 * u}px;line-height:1.12;color:${CYAN};
+.t{margin-top:${26 * u}px;font-family:'Mono';font-weight:800;font-size:${84 * u}px;line-height:1.12;color:${CYAN};
   text-transform:uppercase;letter-spacing:${1 * u}px;text-wrap:balance}
 .s{margin-top:${22 * u}px;font-family:'Mono';font-weight:500;font-size:${38 * u}px;color:${AMBER};text-transform:uppercase;letter-spacing:${2 * u}px}
 </style></head><body>
@@ -50,7 +50,7 @@ ${corner(`right:${inset}px;${top ? 'bottom' : 'top'}:${inset}px`, `border-right:
 <div class="panel">
   <div class="rule"></div><div class="ticks"></div><div class="ticks long"></div>
   <div class="hd"><b></b><span>CH ${ch}/${tot}</span><span class="r">HAULER NET</span></div>
-  <div class="t">${esc(o.caption)}</div>
+  <div class="t">${cap(o.caption)}</div>
   <div class="s">&gt; ${esc(o.sub)}</div>
 </div>
 </body></html>`;
@@ -63,15 +63,15 @@ export function featureHtml(o: FeatureOpts): string {
 ${FONT_CSS}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:${W}px;height:${H}px;overflow:hidden;background:${DEEP}}
-.pic{position:absolute;right:0;top:50%;width:${W * 0.62}px;transform:translateY(-52%)}
-.fade{position:absolute;inset:0;background:linear-gradient(90deg, ${DEEP} 0 40%, rgba(6,10,22,.6) 52%, rgba(6,10,22,0) 70%)}
+.pic{position:absolute;right:0;top:0;width:${W * 0.64}px;height:${H}px;background-size:100% auto;background-position:0 64%;background-repeat:no-repeat}
+.fade{position:absolute;inset:0;background:linear-gradient(90deg, ${DEEP} 0 36%, rgba(6,10,22,.55) 46%, rgba(6,10,22,0) 60%)}
 .left{position:absolute;left:${W * 0.055}px;top:0;bottom:0;width:${W * 0.5}px;display:flex;flex-direction:column;justify-content:center}
 .icon{width:${H * 0.26}px;height:${H * 0.26}px;border:3px solid ${CYAN}}
 .t{margin-top:22px;font-family:'Mono';font-weight:800;font-size:${H * 0.11}px;line-height:1;color:${CYAN};letter-spacing:2px;text-transform:uppercase}
 .s{margin-top:14px;font-family:'Mono';font-weight:500;font-size:${H * 0.045}px;color:${AMBER};text-transform:uppercase;letter-spacing:2px}
 .rule{margin-top:20px;height:3px;width:${W * 0.36}px;background:repeating-linear-gradient(90deg, ${CYAN} 0 3px, transparent 3px 16px)}
 </style></head><body>
-<img class="pic" src="${pathToFileURL(o.img).href}"><div class="fade"></div>
+<div class="pic" style="background-image:url('${pathToFileURL(o.img).href}')"></div><div class="fade"></div>
 <div class="left"><img class="icon" src="${pathToFileURL(o.icon).href}"><div class="t">${esc(o.title)}</div><div class="rule"></div><div class="s">&gt; ${esc(o.sub)}</div></div>
 </body></html>`;
 }

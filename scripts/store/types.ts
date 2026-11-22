@@ -86,5 +86,7 @@ export interface GameScenes {
   port: number;
   /** A word that must appear in the preview page's title, to catch the wrong game on the port. */
   titleHas: string;
+  /** The scene (1-based) whose capture goes into the Play feature graphic (default 1). */
+  featureScene?: number;
   scenes: Scene[];
 }

@@ -207,9 +207,9 @@ async function compose(browser: any, def: GameScenes, sizes: Size[], only: numbe
       console.log(`  wrote ${path.relative(ROOT, out)}`);
     }
   }
-  // The Play feature graphic, from the first scene's largest capture.
-  const first = def.scenes[0];
-  const img = rawPath(def.game, SIZES[0], 0, first.slug);
+  // The Play feature graphic, from the largest capture of the scene the game names (featureScene).
+  const fi = (def.featureScene ?? 1) - 1;
+  const img = rawPath(def.game, SIZES[0], fi, def.scenes[fi].slug);
   if (fs.existsSync(img)) {
     const game = JSON.parse(fs.readFileSync(path.join(ROOT, 'games', def.game, 'game.json'), 'utf8'));
     const out = path.join(outDir(def.game), 'play-feature-graphic.png');

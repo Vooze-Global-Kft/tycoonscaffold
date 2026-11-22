@@ -30,6 +30,7 @@ const scenes: GameScenes = {
   game: 'space-miner',
   port: 8301,
   titleHas: 'Orbit',
+  featureScene: 4,
   scenes: [
     {
       slug: 'drag-a-drone',
@@ -43,7 +44,7 @@ const scenes: GameScenes = {
         const to = rock(L, 0);
         return [{ down: from }, { move: lerp(from, to, 0.5), steps: 6 }, { move: lerp(from, to, 0.92), steps: 8 }, { wait: 350 }];
       },
-      caption: 'Drone to rock. Ore to hold.',
+      caption: 'Drone to rock.\nOre to hold.',
       sub: 'Drag to set a route',
       shows: 'A new station (first minute): an idle drone dragged from the rack onto the first rock; the drag line shows the route being set.',
     },
@@ -68,7 +69,7 @@ const scenes: GameScenes = {
           { wait: 150 },
         ];
       },
-      caption: 'Hold full. Freighter away.',
+      caption: 'Hold full.\nFreighter away.',
       sub: 'One swipe sells the whole manifest',
       shows: 'An early station right after the freighter left: the counter shows the WARPED manifest receipt (the ores and what they sold for), the hold is empty and the bay counts down to its return.',
     },
@@ -85,7 +86,7 @@ const scenes: GameScenes = {
       slug: 'far-rings',
       query: 'preset=late',
       settle: 10000,
-      caption: 'Far rings. Rich ore. Long trips.',
+      caption: 'Far rings. Rich ore.\nLong trips.',
       sub: 'Rocks run dry. New ones drift in.',
       shows: 'A late station: every ring claimed, routes to copper, ice, titanium and platinum rocks, drones in flight.',
     },
@@ -101,7 +102,7 @@ const scenes: GameScenes = {
     {
       slug: 'star-map',
       query: 'preset=late&spoke=starmap',
-      caption: 'Jump. Pick the next galaxy.',
+      caption: 'Jump.\nPick the next galaxy.',
       sub: 'Warp Cores rebuild the Star Map',
       shows: 'The Star Map: Warp Cores from a Jump, the nodes they build, and the Jump panel (what is kept, what resets).',
     },

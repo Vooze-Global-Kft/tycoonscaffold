@@ -5,7 +5,7 @@
  * sub-line in Inter. Compare templates/panel.ts (Orbit Haulers), which is the opposite on each count.
  */
 import { pathToFileURL } from 'node:url';
-import { FONT_CSS, esc } from './fonts';
+import { FONT_CSS, cap, esc } from './fonts';
 
 export interface ShotOpts {
   W: number;
@@ -25,7 +25,7 @@ const CRUST = '#3D2C1E';
 /** A sauce wave across the bottom; its bumps shift with the scene so the set reads as a sequence. */
 function wave(W: number, H: number, index: number, top: number): string {
   const phase = index % 2 === 0 ? 0 : 0.5;
-  const amp = W * 0.028;
+  const amp = W * 0.045;
   const n = 3;
   let d = `M0 ${H} L0 ${top}`;
   for (let i = 0; i < n; i++) {
@@ -74,7 +74,7 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:${CREAM}}
 <div class="sun" style="width:${W * 0.9}px;height:${W * 0.9}px;left:${o.index % 2 === 0 ? W * 0.5 : -W * 0.4}px;top:${-W * 0.35}px"></div>
 ${wave(W, H, o.index, waveTop)}
 <div class="card"><img src="${pathToFileURL(o.img).href}"></div>
-<div class="cap"><div class="t">${esc(o.caption)}</div><div class="s">${esc(o.sub)}</div></div>
+<div class="cap"><div class="t">${cap(o.caption)}</div><div class="s">${esc(o.sub)}</div></div>
 <div class="dots">${Array.from({ length: o.total }, (_, i) => `<i class="${i === o.index ? 'on' : ''}"></i>`).join('')}</div>
 </body></html>`;
 }
