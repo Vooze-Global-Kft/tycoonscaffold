@@ -263,13 +263,12 @@ export function noteShipped(cfg: HaulConfig, h: HaulState, cargo: Record<string,
   const C = h.contracts;
   // The highest routes' figure of each ore since the last warp-out counts too (drones recalled just
   // before the warp-out still count), then it starts again from the routes as they are.
+  if (steady) steady = Object.fromEntries(Object.entries(steady).filter(([, x]) => Number.isFinite(x) && x > 0));
   if (steady && C.peak) {
     const top: Record<string, number> = { ...steady };
     for (const [o, x] of Object.entries(C.peak)) if (x > (top[o] ?? 0) && Number.isFinite(x)) top[o] = x;
-    const sum = Object.values(top).reduce((a, x) => a + x, 0);
-    const F = Object.values(steady).reduce((a, x) => a + x, 0);
-    // The peaks of different moments can add up to more than one hold: scaled back to one.
-    if (sum > F && F > 0) for (const o of Object.keys(top)) top[o] *= F / sum;
+    // (The peaks of different moments may add up to more than one hold; each ore keeps its own:
+    // scaling them back would hand the ore whose drones were recalled a smaller figure.)
     C.peak = { ...steady };
     steady = top;
   } else if (steady) C.peak = { ...steady };
@@ -312,7 +311,7 @@ export function notePeak(params: HaulParams, h: HaulState): void {
   const peak = { ...(C.peak ?? {}) };
   let changed = !C.peak;
   for (const [o, x] of Object.entries(st)) {
-    if (x > (peak[o] ?? 0)) {
+    if (Number.isFinite(x) && x > (peak[o] ?? 0)) {
       peak[o] = x;
       changed = true;
     }
@@ -338,6 +337,8 @@ export interface ContractBasis {
   lifeOf: Record<string, number>;
   /** Drill rate (units/s, base, no seam) of the present rocks of each ore: with one more rig level each, the most a launch can carry of it is `drill × levelGrowth × interval`. */
   drillOf: Record<string, number>;
+  /** Pile capacity of the present rocks of each ore: what a full pile hands the freighter on top of the routes' figure. */
+  pileOf: Record<string, number>;
   /** Ores that are the main ore (half the weight or more) of the ring of a claimed slot holding a rock of it: its slots keep bringing it. */
   mainOf: Record<string, boolean>;
   /** Seconds per launch, about: max(climb + away + land, F / R). */
@@ -352,12 +353,14 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
   const lifeOf: Record<string, number> = {};
   const mainOf: Record<string, boolean> = {};
   const drillOf: Record<string, number> = {};
+  const pileOf: Record<string, number> = {};
   h.slots.forEach((s, i) => {
     const sp = params.slots[i];
     if (!s?.claimed || s.respawnAt !== null || s.rockN < 0 || !sp) return;
     ringOf[s.ore] = Math.max(ringOf[s.ore] ?? -1, sp.ring);
     lifeOf[s.ore] = Math.max(lifeOf[s.ore] ?? 0, s.life);
     if (s.life > 0 && sp.rb > 0) drillOf[s.ore] = (drillOf[s.ore] ?? 0) + sp.rb;
+    if (sp.rb > 0) pileOf[s.ore] = (pileOf[s.ore] ?? 0) + sp.cap / (sp.seam ? cfg.haul.seam.pileCap : 1);
     const w = ringWeights(cfg, sp.ring, h.trait);
     const sum = w.weights.reduce((a, x) => a + x, 0);
     const mine = w.weights[w.ores.indexOf(s.ore)] ?? 0;
@@ -370,7 +373,7 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
   let value = 0;
   for (const [ore, n] of Object.entries(recent)) value += n * (params.prices[ore] ?? 0);
   const income = Number.isFinite(interval) && interval > 0 ? (value * params.fullBonus * params.G) / interval : 0;
-  return { galaxy: h.galaxy, F: params.F, recent, steady: st.perLaunch, prices: params.prices, G: params.G, contractAdd: params.contractAdd, ringOf, lifeOf, mainOf, drillOf, interval, income };
+  return { galaxy: h.galaxy, F: params.F, recent, steady: st.perLaunch, prices: params.prices, G: params.G, contractAdd: params.contractAdd, ringOf, lifeOf, mainOf, drillOf, pileOf, interval, income };
 }
 
 /**
@@ -462,8 +465,10 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   const step = cfg.haul.rig.levelGrowth;
   const most = (ore: string) => Math.min(C.maxShare * F, (basis.drillOf[ore] ?? 0) * step * basis.interval);
   const gMax = (ore: string) => Math.min(C.raise[1], most(ore) / Math.max(1e-9, share(ore) * F) - 1);
-  // One-ore units at raise g, never below the routes as they are raised by half of it (the never-free floor).
-  const unitsAt = (ore: string, g: number) => Math.max(Math.round(L * (recent[ore] ?? 0) * (1 + g)), Math.ceil(L * (basis.steady[ore] ?? 0) * (1 + Math.max(C.raise[0], g) / 2)));
+  // One-ore units at raise g over what it shipped, and over the routes as they are (the never-free
+  // floor: Decision 56 sets it at least at 1 + raise[0] / 2; the full raise keeps a rich seam on a
+  // busy rock from meeting it alone, and the ore's full piles are added: the loading takes them first).
+  const unitsAt = (ore: string, g: number) => Math.max(Math.round(L * (recent[ore] ?? 0) * (1 + g)), Math.ceil(L * (basis.steady[ore] ?? 0) * (1 + Math.max(C.raise[0], g)) + (basis.pileOf[ore] ?? 0)));
   const minBonus = C.minBonusSeconds * basis.income;
   // Ores that matter (a tenth of a launch's value) and whose rocks last the contract.
   const worth = oreIds.filter((ore) => recent[ore] > 0 && launchValue > 0 && valueOf(ore) >= C.minValueShare * launchValue && (!!basis.mainOf[ore] || (basis.lifeOf[ore] ?? 0) >= lifeNeed));
@@ -488,7 +493,8 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
     // the launch than that ore already has (the other ores' drones go to it), not for full holds
     // a full-hold autopilot meets anyway.
     const main = worth[0] ?? shipped.slice().sort((a, b) => valueOf(b) - valueOf(a))[0];
-    const sh = Math.min(1, (recent[main] ?? 0) / F);
+    shipShareOnly = false;
+    const sh = main ? Math.min(1, share(main)) : 1;
     if (!main || sh >= 0.95) return oneOre();
     const q = sh + (1 - sh) * (0.5 + 0.4 * draw(9));
     return make([{ ore: main, units: Math.round(L * F * q) }], Math.max(C.quotaMinMult, round1(multBase([main]) - C.quotaMultCut)));
@@ -533,10 +539,16 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   const mb = multBase(ores);
   // Condition 5: a bonus under `minBonusSeconds` of income is raised (within the cap) until it passes.
   for (let i = 0; i < 8 && g < hi && bonusOfUnits(wantsAt(g), mb + C.raiseMult * g) < minBonus; i++) g = Math.min(hi, g + (hi - lo) / 8 + 0.01);
-  // Never more than its launches can carry in all (the raised ore gives way).
-  const wants = wantsAt(g);
-  const over = wants.reduce((a, w) => a + w.units, 0) - Math.floor(L * F);
-  if (over > 0) wants[0].units = Math.max(1, wants[0].units - over);
+  // Never more than maxShare of its launches in all: a second ore that does not fit is dropped, a
+  // raised ore that does not fit gives way.
+  let wants = wantsAt(g);
+  // Two ores leave at least a unit a launch for the rest; one ore stays under maxShare.
+  if (wants.length > 1 && wants.reduce((a, w) => a + w.units, 0) > Math.floor(L * F) - L) {
+    ore2 = null;
+    wants = wantsAt(g);
+  }
+  const room = Math.floor(L * F * C.maxShare);
+  if (wants[0].units > room) wants[0].units = Math.max(1, room);
   return make(wants, round1(mb + C.raiseMult * g));
 }
 
@@ -553,7 +565,7 @@ function boardOres(h: HaulState): string[] {
 export function drawContract(cfg: HaulConfig, h: HaulState, F: number, params?: HaulParams): { contract: Contract | null; next: number } {
   const basis: ContractBasis = params
     ? contractBasis(cfg, params, h)
-    : { galaxy: h.galaxy, F, recent: {}, steady: {}, prices: {}, G: 1, contractAdd: 0, ringOf: {}, lifeOf: {}, mainOf: {}, drillOf: {}, interval: Infinity, income: 0 };
+    : { galaxy: h.galaxy, F, recent: {}, steady: {}, prices: {}, G: 1, contractAdd: 0, ringOf: {}, lifeOf: {}, mainOf: {}, drillOf: {}, pileOf: {}, interval: Infinity, income: 0 };
   const contract = offerAt(cfg, h.seed, h.contracts.next, basis, (h.contracts.board ?? []).map((c) => c.buyer), boardOres(h));
   // A place left empty does not use up a contract of the stream.
   return { contract, next: contract ? h.contracts.next + 1 : h.contracts.next };

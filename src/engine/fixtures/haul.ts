@@ -325,6 +325,7 @@ export function handBasis(c: H.HaulConfig, recent: Record<string, number>, opts:
     lifeOf: all(1e6) as Record<string, number>,
     mainOf: all(true) as Record<string, boolean>,
     drillOf: all(1e9) as Record<string, number>,
+    pileOf: all(0) as Record<string, number>,
     interval: 20,
     income: 0,
     ...opts,

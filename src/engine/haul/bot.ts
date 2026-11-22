@@ -192,6 +192,9 @@ function rigLook(cfg: H.HaulConfig, level: number): boolean {
   return level > last && (level - last) % cfg.haul.rig.stripeEvery === 0;
 }
 
+/** The 20 s rebalance (off: it drove routes onto their drill limit, against section 8's limits target). */
+const REBALANCE = false;
+
 const sumUnits = (u: Record<string, number>) => Object.values(u).reduce((a, b) => a + b, 0);
 /** The calendar day of a wall time, as economy.dayKey writes it, in UTC (the bot's "local" day). */
 const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -726,7 +729,7 @@ export function runHaulBot(cfg: H.HaulConfig, opts: HaulBotOptions): HaulBotResu
 
     if (!opts.watch) {
       placeIdle();
-      if (t % 20 === 0) rebalance();
+      if (REBALANCE && t % 20 === 0) rebalance();
       serveSeamsAndBonanzas();
     }
     handleContracts();

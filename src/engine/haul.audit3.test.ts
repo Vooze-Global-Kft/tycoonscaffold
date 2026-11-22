@@ -128,11 +128,12 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
   it('two-ore contracts are still drawn on the bot\'s own station at 25 minutes (twoOreChance 0.4)', () => {
     // Three ores are present (iron, copper, ice); not one of 300 draws wants two of them.
     // Rewritten for Decision 56 ("raise one, hold the other", condition 4): a two-ore contract is for
-    // a station that ships three ores (each at least 2 % of a launch). On the bot's stations from 20
-    // minutes to an hour that do, at least 15 % of 300 draws want two ores; one such station must
+    // a station that ships three ores (each at least 2 % of a launch, two of them worth a tenth of its
+    // value). On the bot's stations from 20
+    // minutes to two hours that do, at least 15 % of 300 draws want two ores; one such station must
     // exist. On every one of them the offers want at least two different ores.
-    const at = [1200, 1500, 1800, 2400, 3000, 3600];
-    const r = runHaulBot(cfg, { hours: 3610 / 3600, prestige: false, seed: 12345, keepAt: at, noOffline: true });
+    const at = [1200, 1500, 1800, 2400, 3000, 3600, 5400, 7200];
+    const r = runHaulBot(cfg, { hours: 7210 / 3600, prestige: false, seed: 12345, keepAt: at, noOffline: true });
     let stations = 0;
     for (const t of at) {
       const g = r.states[t] as Run;
@@ -140,7 +141,10 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
       const total = Object.values(b.recent).reduce((a, x) => a + x, 0);
       const ores = new Set<string>();
       for (let k = 1; k <= 30; k++) for (const w of draw(g, k).wants) ores.add(w.ore);
-      if (Object.values(b.recent).filter((x) => x > 0.02 * total).length < 3) continue;
+      const value = Object.entries(b.recent).reduce((a, [o, x]) => a + x * (b.prices[o] ?? 0), 0);
+      const worth = Object.entries(b.recent).filter(([o, x]) => x * (b.prices[o] ?? 0) >= cfg.haul.contracts.minValueShare * value).length;
+      // Condition 5 keeps an ore under a tenth of a launch's value off every offer: two of the three must matter.
+      if (Object.values(b.recent).filter((x) => x > 0.02 * total).length < 3 || worth < 2) continue;
       stations++;
       expect(ores.size, `t=${t}`).toBeGreaterThanOrEqual(2);
       let two = 0;

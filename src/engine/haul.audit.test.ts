@@ -277,7 +277,7 @@ describe('rulings: freighter, contracts, counters', () => {
       const share = b.recent[ore] / b.F;
       const hi = Math.min(C.raise[1], C.maxShare / share - 1);
       const g = C.raise[0] + (hi - C.raise[0]) * draw(2);
-      const units = Math.max(Math.round(C.launches * b.recent[ore] * (1 + g)), Math.ceil(C.launches * b.steady[ore] * (1 + g / 2)));
+      const units = Math.max(Math.round(C.launches * b.recent[ore] * (1 + g)), Math.ceil(C.launches * b.steady[ore] * (1 + g) + b.pileOf[ore]));
       const mult = Math.max(1, Math.round((C.mult[0] + (draw(6) * 2 - 1) * C.jitter + C.raiseMult * g) * 10) / 10);
       if (c.wants[0].ore === ore && c.wants[0].units === units && c.mult === mult) same++;
     }
