@@ -435,6 +435,8 @@ export interface ContractBasis {
    * more than the ore's pile capacity.
    */
   pileOf: Record<string, number>;
+  /** What lies in the piles of each ore now (optional): drones recalled while the rock drills leave a stock the next launches carry. */
+  stockOf?: Record<string, number>;
   /** Ores that are the main ore (half the weight or more) of the ring of a claimed slot holding a rock of it: its slots keep bringing it. */
   mainOf: Record<string, boolean>;
   /** Seconds per launch, about: max(climb + away + land, F / R). */
@@ -472,6 +474,10 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
     if (sum > 0 && mine >= 0.5 * sum) mainOf[s.ore] = true;
   });
   const L = cfg.haul.contracts.launches;
+  const stockOf: Record<string, number> = {};
+  h.slots.forEach((s) => {
+    if (s?.claimed && s.respawnAt === null && s.rockN >= 0 && s.pile > 0 && Number.isFinite(s.pile)) stockOf[s.ore] = (stockOf[s.ore] ?? 0) + s.pile;
+  });
   for (const ore of Object.keys(pileOf)) {
     const byHaul = haulAll > 0 ? (params.F * (haulOf[ore] ?? 0)) / haulAll : 0;
     pileOf[ore] = Math.min(pileOf[ore], L * Math.max(0, byHaul - (st.perLaunch[ore] ?? 0)));
@@ -515,7 +521,7 @@ export function contractBasis(cfg: HaulConfig, params: HaulParams, h: HaulState)
       if (x > 0 && Number.isFinite(x)) potential[s.ore] = (potential[s.ore] ?? 0) + x;
     });
   }
-  return { galaxy: h.galaxy, F: params.F, recent, steady: st.perLaunch, lasting, potential, future, prices: params.prices, G: params.G, contractAdd: params.contractAdd, ringOf, lifeOf, mainOf, drillOf, pileOf, interval, income };
+  return { galaxy: h.galaxy, F: params.F, recent, steady: st.perLaunch, lasting, potential, future, prices: params.prices, G: params.G, contractAdd: params.contractAdd, ringOf, lifeOf, mainOf, drillOf, pileOf, stockOf, interval, income };
 }
 
 /**
@@ -623,14 +629,14 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   // drawn at the cap under its floor (NEW[0]).
   const routesFloor = (ore: string) => Math.ceil(L * Math.max(basis.steady[ore] ?? 0, basis.future?.[ore] ?? 0, fig(ore)) * (1 + C.raise[0] / 2) + (basis.pileOf[ore] ?? 0));
   const neverFree = (ore: string) =>
-    Math.min(capUnits(ore), Math.max(routesFloor(ore), Math.ceil(L * (recent[ore] ?? 0) * (1 + C.raise[0] / 2) + (basis.pileOf[ore] ?? 0))));
+    Math.min(capUnits(ore), Math.max(routesFloor(ore), Math.ceil(L * (recent[ore] ?? 0) * (1 + C.raise[0] / 2) + Math.max(basis.pileOf[ore] ?? 0, basis.stockOf?.[ore] ?? 0))));
   const fits = (ore: string) => routesFloor(ore) <= Math.min(capUnits(ore), Math.floor(L * F * C.maxShare));
   // Decision 64, no dominated offers: two offers never want the same ores with raises closer than
   // `raiseGap`, and a larger order of the same ores never pays less.
   const keyOf = (ores: string[]) => [...ores].sort().join('+');
   // (An ore with no route is compared by the figure its cap reads, what it shipped within what its
   // rocks could give: two offers of it are not drawn twice at one size. Fourth rules check, NEW[1].)
-  const raiseOf = (ws: { ore: string; units: number }[]) => (ws.every((w) => capFig(w.ore) > 0) ? Math.max(0, ...ws.map((w) => w.units / (L * capFig(w.ore)) - 1)) : NaN);
+  const raiseOf = (ws: { ore: string; units: number }[]) => (ws.every((w) => capFig(w.ore) > 0) ? Math.max(...ws.map((w) => w.units / (L * capFig(w.ore)) - 1)) : NaN);
   const gap = C.raiseGap;
   const sameOres = (ws: { ore: string }[]) => rivals.filter((r) => keyOf(r.ores) === keyOf(ws.map((w) => w.ore)));
   const clashes = (ws: { ore: string; units: number }[]) => sameOres(ws).some((r) => Number.isFinite(r.raise) && Number.isFinite(raiseOf(ws)) && Math.abs(r.raise - raiseOf(ws)) < gap - 1e-9);
@@ -684,19 +690,23 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   // (Only the raised ore must fit its floor under its cap; an ore that holds need not.)
   const worthFit = worth.filter(fits);
   const paysAt = (ore: string, g: number) => bonusOfUnits([{ ore, units: unitsAt(ore, g) }], multBase([ore]) + C.raiseMult * g) >= minBonus;
-  let eligible = worthFit.filter((ore) => share(ore) * F * (1 + C.raise[0]) < most(ore) && paysAt(ore, gMax(ore)));
+  // Fourth rules check: room is read against what the order can ask, never more than its cap: a share
+  // still lifted by what the ore shipped before its drones moved off does not hide a capped order
+  // that fits the launches.
+  const askShare = (ore: string) => Math.min(share(ore), capUnits(ore) / (L * F * (1 + C.raise[0])));
+  let eligible = worthFit.filter((ore) => askShare(ore) * F * (1 + C.raise[0]) < most(ore) && paysAt(ore, gMax(ore)));
   // The lead's order when nothing passes (finishing round): a board is never left empty. First the
   // value share (and with it the bonus test) is relaxed to any ore the station ships (2 % of a launch
   // or more, its rocks lasting), with the drill limit kept.
   const lasting = shipped.filter((ore) => alive(ore) && (!!basis.mainOf[ore] || (basis.lifeOf[ore] ?? 0) >= lifeNeed) && fits(ore));
-  if (!eligible.length) eligible = lasting.filter((ore) => share(ore) * F * (1 + C.raise[0]) < most(ore));
+  if (!eligible.length) eligible = lasting.filter((ore) => askShare(ore) * F * (1 + C.raise[0]) < most(ore));
   // Then the drill limit: the rig contract. The ores that still have room in a launch are asked for
   // anyway; the player meets it with more rig levels on that ore.
   let cap = gMax;
   if (!eligible.length) {
     cap = (ore: string) => Math.min(C.raise[1], C.maxShare / Math.max(1e-9, share(ore)) - 1);
-    eligible = worthFit.filter((ore) => share(ore) * (1 + C.raise[0]) < C.maxShare && paysAt(ore, cap(ore)));
-    if (!eligible.length) eligible = lasting.filter((ore) => share(ore) * (1 + C.raise[0]) < C.maxShare);
+    eligible = worthFit.filter((ore) => askShare(ore) * (1 + C.raise[0]) < C.maxShare && paysAt(ore, cap(ore)));
+    if (!eligible.length) eligible = lasting.filter((ore) => askShare(ore) * (1 + C.raise[0]) < C.maxShare);
   }
   // Still nothing (the routes as they are fill a launch with one ore, e.g. another ore's drones are
   // on the rack): what it shipped decides. Never a quota on a station that ships several ores: a
@@ -793,7 +803,8 @@ function drawAt(cfg: HaulConfig, seed: number, k: number, basis: ContractBasis, 
   // Moves the raised ore's units to the nearest raise at least `gap` away from the rivals it clashes
   // with, within the cap and not under the never-green half of the smallest raise (Decision 56).
   const moved = (ws: { ore: string; units: number }[]) => {
-    const f = fig(ws[0].ore);
+    // (By the figure the raise is read against: the routes', or what an ore with no route shipped.)
+    const f = capFig(ws[0].ore);
     if (!(f > 0)) return null;
     const now = raiseOf(ws);
     const tries: number[] = [];
@@ -874,7 +885,8 @@ export function rivalsOf(cfg: HaulConfig, basis: ContractBasis, board: Contract[
     .map((c) => ({
       ores: c.wants.map((w) => w.ore),
       // NaN when a wanted ore has no figure at all (never compared).
-      raise: c.wants.every((w) => figOf(w.ore) > 0) ? Math.max(0, ...c.wants.map((w) => w.units / (L * figOf(w.ore)) - 1)) : NaN,
+      // (Not clamped at 0: an offer under its figure, green, is no rival of a fresh one at the floor.)
+      raise: c.wants.every((w) => figOf(w.ore) > 0) ? Math.max(...c.wants.map((w) => w.units / (L * figOf(w.ore)) - 1)) : NaN,
       mult: c.mult,
       bonus: c.wants.reduce((a, w) => a + w.units * (basis.prices[w.ore] ?? 0), 0) * Math.max(0, c.mult + basis.contractAdd - 1) * basis.G,
     }));

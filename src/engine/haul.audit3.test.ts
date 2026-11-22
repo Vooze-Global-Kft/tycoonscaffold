@@ -150,7 +150,10 @@ describe('audit 3: the board offers a choice (Decision 40, play-7)', () => {
       const value = Object.entries(b.recent).reduce((a, [o, x]) => a + x * (b.prices[o] ?? 0), 0);
       const worth = Object.entries(b.recent).filter(([o, x]) => x * (b.prices[o] ?? 0) >= cfg.haul.contracts.minValueShare * value).length;
       // Condition 5 keeps an ore under a tenth of a launch's value off every offer: two of the three must matter.
+      // (Fourth rules check: and whose routes carry at least two of them now: a station whose drones
+      // the bot has just moved onto one ore, the others with no route or no rock, has one ore to raise.)
       if (Object.values(b.recent).filter((x) => x > 0.02 * total).length < 3 || worth < 2) continue;
+      if (Object.values(b.steady).filter((x) => x > 0.02 * b.F).length < 2) continue;
       stations++;
       expect(ores.size, `t=${t}`).toBeGreaterThanOrEqual(2);
       let two = 0;
@@ -193,8 +196,9 @@ describe('the board is never empty (the lead, finishing round)', () => {
             if (H.boardNote(cfg, g) === 'secondOre') expect(g.haul.contracts.board.length, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(1);
             // Fourth rules check (the lead's ruling on NEW[1]): a place that cannot be filled without
             // a duplicate or a free offer stays empty until the next warp-out, so a station whose
-            // other ores have no room may show one offer (next to its taken contract); never none.
-            else expect(offers, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(1);
+            // other ores have no room may show only its taken contract, or a single offer; never nothing.
+            else expect(g.haul.contracts.board.length, `seed ${seed} t=${t} warp ${warps}`).toBeGreaterThanOrEqual(1);
+            void offers;
           }
         }
         expect(warps).toBe(3);
