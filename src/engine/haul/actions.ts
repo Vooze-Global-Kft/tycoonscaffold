@@ -4,7 +4,7 @@
  * to collect what happened.
  */
 import { equip } from '../loadout';
-import { affordable, autopilotCost, capacityCost, claimCost, droneCost, EPS, engineCost, freighterCost, holdTotal, rigCost, ringOf, slotTable } from './params';
+import { affordable, autopilotCost, droneCapFor, capacityCost, claimCost, droneCost, EPS, engineCost, freighterCost, holdTotal, rigCost, ringOf, slotTable } from './params';
 import { commit, doLaunch, draftOf, draftParams, dropGuest, grantPod, landOnSeam, seamAt, seamDuration, updateMarks, warmUp, type Draft } from './tick';
 import type { AutopilotPolicy, HaulConfig, HaulEvent, HaulGame, HaulState } from './types';
 
@@ -267,4 +267,30 @@ export function ackTransmission(cfg: HaulConfig, g: HaulGame, events?: HaulEvent
 export function markHintShown(g: HaulGame, key: string): HaulGame {
   if (!g.haul) return g;
   return { ...g, haul: { ...g.haul, hintsShown: { ...g.haul.hintsShown, [key]: (g.haul.hintsShown[key] ?? 0) + 1 } } };
+}
+
+/**
+ * Hangar Expansion bought (or restored) during a run (section 5.4): its start drones join the run at
+ * once, idle on the rack, never above the new drone cap, once per run (`flags.hangarDrones`; a run
+ * that started with the product owned already has them, see `createHaul`). Refused (same object)
+ * for another product, a product not owned, no run, or a second time.
+ */
+export function grantHangarDrones(cfg: HaulConfig, g: HaulGame, productId: string): HaulGame {
+  const hangar = cfg.haul.hangar;
+  const h = g.haul;
+  if (!hangar || hangar.product !== productId || !h || h.flags.hangarDrones) return g;
+  const products = g.entitlements?.products ?? [];
+  if (!products.includes(productId)) return g;
+  const cap = droneCapFor(cfg, h.galaxy, products);
+  const add = Math.max(0, Math.min(hangar.startDrones, cap - h.fleet.drones));
+  return {
+    ...g,
+    haul: {
+      ...h,
+      flags: { ...h.flags, hangarDrones: true },
+      fleet: { ...h.fleet, drones: h.fleet.drones + add },
+      idle: h.idle + add,
+      marks: add > 0 && h.marks.idleSince === null ? { ...h.marks, idleSince: h.clock } : h.marks,
+    },
+  };
 }

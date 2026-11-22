@@ -129,7 +129,7 @@ function Sequence() {
         <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
           <Rect x={0} y={0} width={width} height={height} color={alpha(SPACE.bg, 0.94)} />
           <Circle cx={cx} cy={cy} r={glowR}>
-            <RadialGradient c={vec(cx, cy)} r={half * 0.6} colors={[alpha(hue, 0.45), alpha(hue, 0)]} />
+            <RadialGradient c={vec(cx, cy)} r={glowR} colors={[alpha(hue, 0.45), alpha(hue, 0)]} />
           </Circle>
           <Group>
             <Path path={streaks} style="stroke" strokeWidth={1.6} strokeCap="round" color={alpha(SPACE.white, 0.85)} />

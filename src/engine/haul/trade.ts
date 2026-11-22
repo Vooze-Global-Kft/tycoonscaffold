@@ -108,6 +108,89 @@ export function claimedRings(cfg: HaulConfig, h: HaulState): number[] {
 }
 
 /**
+ * What the station can put into one launch of each of a set of ores (section 2.6, the contract
+ * rule): the hold fills in proportion to what the routes bring, so one launch carries about
+ * `F × r_o / R` of ore o, with r_o the rate of the routes on rocks of that ore and R that of every
+ * route (each route `min(drill, drones × capacity / trip)`, no seam, no module). `now` is that with
+ * the routes as they are; `routed` after a player sends `fleetShare` of the fleet to the ores' rocks
+ * (split evenly between two ores): idle drones first, then the least useful drones of other routes
+ * (never a route's last drone), each to the rock of its ore where it adds most.
+ */
+export interface ContractStation {
+  /** Ores of the rocks present on claimed slots, by ring (0-based), with their count. */
+  present: Record<number, Record<string, number>>;
+  reach(ores: string[]): { now: number[]; routed: number[] };
+}
+
+export function contractStation(cfg: HaulConfig, params: HaulParams, h: HaulState): ContractStation {
+  const routes: { ore: string; rb: number; e: number; n: number }[] = [];
+  const present: Record<number, Record<string, number>> = {};
+  h.slots.forEach((s, i) => {
+    const sp = params.slots[i];
+    if (!s?.claimed || s.respawnAt !== null || s.rockN < 0 || !sp) return;
+    const row = (present[sp.ring] ??= {});
+    row[s.ore] = (row[s.ore] ?? 0) + 1;
+    routes.push({ ore: s.ore, rb: sp.rb, e: sp.trip > 0 ? sp.cBase / sp.trip : 0, n: s.haulers });
+  });
+  const f = (r: { rb: number; e: number }, n: number) => Math.min(r.rb, n * r.e);
+  const shares = (ns: number[], ores: string[]) => {
+    let R = 0;
+    const by = ores.map(() => 0);
+    routes.forEach((r, i) => {
+      const x = f(r, ns[i]);
+      R += x;
+      const k = ores.indexOf(r.ore);
+      if (k >= 0) by[k] += x;
+    });
+    return by.map((x) => (R > 0 ? (params.F * x) / R : 0));
+  };
+  return {
+    present,
+    reach(ores: string[]) {
+      const ns = routes.map((r) => r.n);
+      const now = shares(ns, ores);
+      const fleet = h.fleet.drones;
+      let idle = Math.max(0, h.idle);
+      const per = Math.ceil((cfg.haul.contracts.fleetShare * fleet) / Math.max(1, ores.length));
+      ores.forEach((ore) => {
+        const mine = routes.map((r, i) => (r.ore === ore ? i : -1)).filter((i) => i >= 0);
+        if (!mine.length) return;
+        let need = per - mine.reduce((a, i) => a + ns[i], 0);
+        for (let guard = 0; need > 0 && guard < 400; guard++) {
+          let from = -1;
+          if (idle <= 0) {
+            let loss = Infinity;
+            routes.forEach((r, i) => {
+              if (ores.includes(r.ore) || ns[i] < 2) return;
+              const l = f(r, ns[i]) - f(r, ns[i] - 1);
+              if (l < loss) {
+                loss = l;
+                from = i;
+              }
+            });
+            if (from < 0) break;
+          }
+          let to = mine[0];
+          let gain = -1;
+          for (const i of mine) {
+            const g = f(routes[i], ns[i] + 1) - f(routes[i], ns[i]);
+            if (g > gain) {
+              gain = g;
+              to = i;
+            }
+          }
+          if (from >= 0) ns[from] -= 1;
+          else idle -= 1;
+          ns[to] += 1;
+          need -= 1;
+        }
+      });
+      return { now, routed: shares(ns, ores) };
+    },
+  };
+}
+
+/**
  * Contract `k` of a run's stream (section 2.6, errata 27). Contract 0 is fixed: the first buyer,
  * min(units, F) of the first ore, its multiplier. Later ones: the buyer from
  * `rngMix4(seed, hashString('buyer'), k, 0)`, the rest from `rngMix4(seed, hashString('contract'), k, n)`
@@ -115,11 +198,14 @@ export function claimedRings(cfg: HaulConfig, h: HaulState): number[] {
  * Ores come from rings with a rock (weighted by ring number) and their weights after the condition,
  * so every contract can be met by routing. A two-ore contract has two different ores: the second
  * comes from another ring with a rock that offers an ore other than the first (else from the first
- * ring), and it is a one-ore contract only when no such ring offers one. Units total
- * `round(F × U(units))`, split evenly (at least 1 each); the multiplier is `mult[farthest ring] ±
- * jitter`, rounded to 0.1.
+ * ring), and it is a one-ore contract only when no such ring offers one. With a `station`, an ore
+ * is drawn among the ores of the ring's present rocks (weighted by the ring's weights), so the
+ * station can deliver it now. Units per ore: `u_o = now_o + λ (routed_o − now_o)` (`reach`, above),
+ * λ = U(reach) shared by both ores, rounded, at least `minUnits` in total and at most F. Without a
+ * station (a ring list only, as in tests) the units are `F × λ / ores` per ore. The multiplier is
+ * `mult[farthest ring] ± jitter`, rounded to 0.1.
  */
-export function contractAt(cfg: HaulConfig, seed: number, k: number, rings: number[], F: number, trait: string | null): Contract {
+export function contractAt(cfg: HaulConfig, seed: number, k: number, rings: number[], F: number, trait: string | null, station?: ContractStation): Contract {
   const C = cfg.haul.contracts;
   if (k === 0) {
     const buyer = C.buyers[Math.min(C.first.buyer, C.buyers.length - 1)];
@@ -135,11 +221,18 @@ export function contractAt(cfg: HaulConfig, seed: number, k: number, rings: numb
     const w = ringWeights(cfg, ring, trait);
     return { ores: w.ores, weights: w.weights.map((x, i) => (w.ores[i] === skip ? 0 : x)) };
   };
-  const pickOre = (ring: number, n: number, skip: string | null) => {
+  const weightsOf = (ring: number, skip: string | null) => {
     const w = weightsWithout(ring, skip);
+    const here = station?.present[ring];
+    if (!here) return w;
+    const live = w.weights.map((x, i) => (here[w.ores[i]] ? x : 0));
+    return live.some((x) => x > 0) ? { ores: w.ores, weights: live } : w;
+  };
+  const pickOre = (ring: number, n: number, skip: string | null) => {
+    const w = weightsOf(ring, skip);
     return w.ores[rngWeighted(draw(n), w.weights).value] ?? w.ores[0];
   };
-  const offersOther = (ring: number, skip: string) => weightsWithout(ring, skip).weights.some((x) => x > 0);
+  const offersOther = (ring: number, skip: string) => weightsOf(ring, skip).weights.some((x) => x > 0);
   const ring1 = pickRing(pool, 1);
   const ore1 = pickOre(ring1, 2, null);
   const picks: { ore: string; ring: number }[] = [{ ore: ore1, ring: ring1 }];
@@ -152,9 +245,22 @@ export function contractAt(cfg: HaulConfig, seed: number, k: number, rings: numb
       if (ore2 !== ore1) picks.push({ ore: ore2, ring: ring2 });
     }
   }
-  const total = Math.max(picks.length, Math.round(F * (C.units[0] + (C.units[1] - C.units[0]) * roll(draw(6)))));
-  const first = Math.max(1, Math.ceil(total / picks.length));
-  const wants = picks.map((p, i) => ({ ore: p.ore, units: i === 0 ? first : Math.max(1, total - first) }));
+  const lambda = C.reach[0] + (C.reach[1] - C.reach[0]) * roll(draw(6));
+  const ores = picks.map((p) => p.ore);
+  const r = station ? station.reach(ores) : { now: ores.map(() => 0), routed: ores.map(() => F / ores.length) };
+  const raw = ores.map((_, i) => Math.max(1, Math.round(r.now[i] + lambda * Math.max(0, r.routed[i] - r.now[i]))));
+  const cap = Math.max(ores.length, Math.floor(F));
+  let total = raw.reduce((a, b) => a + b, 0);
+  const floor = Math.min(cap, C.minUnits);
+  if (total < floor) {
+    raw[0] += floor - total;
+    total = floor;
+  }
+  if (total > cap) {
+    const scale = cap / total;
+    for (let i = 0; i < raw.length; i++) raw[i] = Math.max(1, Math.floor(raw[i] * scale));
+  }
+  const wants = picks.map((p, i) => ({ ore: p.ore, units: raw[i] }));
   const far = Math.max(...picks.map((p) => p.ring));
   const base = C.mult[Math.min(far, C.mult.length - 1)];
   const jitter = (roll(draw(7)) * 2 - 1) * C.jitter;
@@ -162,20 +268,25 @@ export function contractAt(cfg: HaulConfig, seed: number, k: number, rings: numb
   return { k, buyer: buyer.id, wants, mult, launchesLeft: C.lifetime };
 }
 
-/** Takes the next contract from the run's stream (and advances `next`). */
-export function drawContract(cfg: HaulConfig, h: HaulState, F: number): { contract: Contract; next: number } {
-  const contract = contractAt(cfg, h.seed, h.contracts.next, claimedRings(cfg, h), F, h.trait);
+/**
+ * Takes the next contract from the run's stream (and advances `next`). With the run's params the
+ * units follow what the station can deliver (`contractStation`); without them (a run being built)
+ * they are a share of F.
+ */
+export function drawContract(cfg: HaulConfig, h: HaulState, F: number, params?: HaulParams): { contract: Contract; next: number } {
+  const station = params ? contractStation(cfg, params, h) : undefined;
+  const contract = contractAt(cfg, h.seed, h.contracts.next, claimedRings(cfg, h), F, h.trait, station);
   return { contract, next: h.contracts.next + 1 };
 }
 
 /** A fresh board (contract 0 active, then the stream), as at the unlock or the start of a later galaxy. */
-export function openBoard(cfg: HaulConfig, h: HaulState, F: number): HaulState['contracts'] {
+export function openBoard(cfg: HaulConfig, h: HaulState, F: number, params?: HaulParams): HaulState['contracts'] {
   const board: Contract[] = [];
   let next = 0;
   const hh = { ...h, contracts: { ...h.contracts, next: 0 } };
   for (let i = 0; i < cfg.haul.contracts.board; i++) {
     hh.contracts.next = next;
-    const d = drawContract(cfg, hh, F);
+    const d = drawContract(cfg, hh, F, params);
     board.push(d.contract);
     next = d.next;
   }

@@ -131,7 +131,11 @@ export const HaulModuleSchema = z.object({
   cap: z.number().positive().nullable().default(null),
 });
 
-export const HaulBuyerSchema = z.object({ id, name: z.string() });
+/**
+ * A buyer on the contract board. `calls` is the radio line when one of its contracts reaches the
+ * board ({ore}, {units}, {mult} filled by the screen) and `closed` the line when one is met.
+ */
+export const HaulBuyerSchema = z.object({ id, name: z.string(), calls: z.string().optional(), closed: z.string().optional() });
 
 export const HaulSchema = z.object({
   /** Every noun the screens use, so a later game on this archetype renames everything in data. */
@@ -250,8 +254,16 @@ export const HaulSchema = z.object({
     lifetime: z.number().int().positive().default(6),
     /** Delivery fee on the rest of a met cargo (tune 0.05 to 0.15). */
     fee: z.number().nonnegative().default(0.1),
-    /** Total units as a fraction of F, uniformly from this range. */
-    units: range.default([0.4, 0.7]),
+    /**
+     * How far a contract's units sit between what the hold carries of its ores per launch with the
+     * routes as they are (0) and what it carries when the player routes for it (1): uniformly from
+     * this range (section 2.6). Below 0 would be met without doing anything; above 1 not at all.
+     */
+    reach: range.default([0.35, 0.75]),
+    /** The share of the fleet a player sends to a contract's ores when routing for it (section 2.6). */
+    fleetShare: z.number().gt(0).max(1).default(0.5),
+    /** Fewest units a contract asks for in total (never more than F). */
+    minUnits: z.number().int().positive().default(3),
     twoOreChance: z.number().min(0).max(1).default(0.4),
     /** Multiplier by the farthest ring among the contract's ores (index 0 = ring 1). */
     mult: z.array(z.number().positive()).min(1),
@@ -417,7 +429,9 @@ export const HAUL_STARTING_CONTENT: HaulContentInput = {
     board: 3,
     lifetime: 6,
     fee: 0.1,
-    units: [0.4, 0.7],
+    reach: [0.35, 0.75],
+    fleetShare: 0.5,
+    minUnits: 3,
     twoOreChance: 0.4,
     mult: [1.6, 1.9, 2.2, 2.6, 3.0],
     jitter: 0.1,

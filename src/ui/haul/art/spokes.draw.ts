@@ -11,6 +11,7 @@ import { CARTRIDGE_H, drawModuleFace, drawSocketGlyph, type ModuleId, type Socke
 import { RARITY, SPACE, alpha, mix, type Rarity } from './palette';
 import { DEG, TAU, arc, circle, clip, dashed, fill, glow, lamp, line, litStroke, ngon, poly, rrect, stroke } from './pen';
 import { drawNodePartShape, drawStation, type StarNode } from './station.draw';
+import { HAUL_SPOKE_STRINGS, HAUL_STRINGS } from '../strings';
 
 // ---------------------------------------------------------------------------
 // Station schematic (Fitting Bay)
@@ -58,7 +59,8 @@ export interface SchematicOptions {
   state?: Partial<Record<SocketType, SocketState>>;
 }
 
-const SOCKET_LABEL: Record<SocketType, string> = { rig: 'RIG', fleet: 'FLEET', dock: 'DOCK' };
+/** Socket names drawn on the schematic: the string table's (src/ui/haul/strings.ts), in capitals. */
+const socketLabel = (id: SocketType) => (HAUL_SPOKE_STRINGS.socketName[id] ?? id).toUpperCase();
 /** Where on the station each socket's leader line ends (station drawn at schematic scale). */
 const LEADER_END: Record<SocketType, [number, number]> = { rig: [-38, -24], fleet: [38, -24], dock: [0, 44] };
 
@@ -138,7 +140,7 @@ function drawSocket(c: SkCanvas, a: SocketAnchor, id: SocketType, st: SocketStat
   c.drawPath(circle(0, 0, 6.5 * k), fill(SPACE.panel));
   drawSocketGlyph(c, id, 4 * k, col);
   c.restore();
-  drawText(c, SOCKET_LABEL[id], 0, a.r + 6 * k, { size: 7 * k, color: st === 'dim' ? SPACE.steelDim : alpha('#FFFFFF', 0.85), align: 'center', glow: 0, weight: 1.1 * k });
+  drawText(c, socketLabel(id), 0, a.r + 6 * k, { size: 7 * k, color: st === 'dim' ? SPACE.steelDim : alpha('#FFFFFF', 0.85), align: 'center', glow: 0, weight: 1.1 * k });
   c.restore();
 }
 
@@ -373,8 +375,9 @@ export function drawReceiptStamp(c: SkCanvas, w: number, amount?: string, k = 1)
   c.drawPath(outer, fill(alpha(col, 0.08 * t)));
   c.drawPath(outer, stroke(ink, 2.4));
   c.drawPath(rrect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 3), stroke(ink, 1));
-  const size = Math.min(w * 0.075, (w - 20) / Math.max(1, textWidth('CONTRACT MET', 1)));
-  drawText(c, 'CONTRACT MET', 0, amount ? -h / 2 + 8 : -size / 2, { size, color: ink, align: 'center', glow: 0, weight: Math.max(1.2, size * 0.2) });
+  const label = HAUL_STRINGS.receiptMet.toUpperCase();
+  const size = Math.min(w * 0.075, (w - 20) / Math.max(1, textWidth(label, 1)));
+  drawText(c, label, 0, amount ? -h / 2 + 8 : -size / 2, { size, color: ink, align: 'center', glow: 0, weight: Math.max(1.2, size * 0.2) });
   if (amount) drawText(c, amount, 0, h / 2 - 8 - size * 0.9, { size: size * 0.9, color: ink, align: 'center', glow: 0, weight: Math.max(1.1, size * 0.18) });
   // Broken ink: a few gaps scraped out of the stamp (erased, so it works on any background).
   const scrape = stroke('#000000', 1.3);

@@ -3,7 +3,9 @@
  *
  *   npm run validate                    every game
  *   npm run validate -- space-miner     one game (cross-game checks still compare it with all the others)
- *   npm run validate -- --no-sim        skip the bot playthrough (faster)
+ *   npm run validate -- --no-sim        skip the bot playthrough (faster; a haul game's bot plays
+ *                                       12 h with Jumps, about 1 to 2 minutes, and fails on every
+ *                                       hard section 8 target it misses)
  *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
  *
  * For every pair of games that both have sounds it also runs the sound similarity check
@@ -57,11 +59,12 @@ for (const id of new Set([...all, ...ids])) {
 }
 
 /** Runs the pacing bot in a child process (it is a script with its own process state). */
-function pacing(id: string, hours: number): { marks: Record<string, number> } | null {
-  const out = spawnSync(process.execPath, [require.resolve('tsx/cli'), path.join(__dirname, 'simulate.ts'), id, '--hours', String(hours), '--json'], {
+function pacing(id: string, hours: number, extra: string[] = [], timeout = 120_000): { marks: Record<string, number>; hardMissed?: string[] } | null {
+  const out = spawnSync(process.execPath, [require.resolve('tsx/cli'), path.join(__dirname, 'simulate.ts'), id, '--hours', String(hours), '--json', ...extra], {
     cwd: games.ROOT,
     encoding: 'utf8',
-    timeout: 120_000,
+    timeout,
+    env: { ...process.env, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=3000'].filter(Boolean).join(' ') },
   });
   const line = out.stdout?.trim().split('\n').pop();
   try {
@@ -164,8 +167,14 @@ for (const id of ids) {
     );
   }
 
+  // --- pacing of a haul game: its own bot (spec section 8), 12 h with Jumps; every hard target missed is an error ---
+  if (runSim && problems.length === 0 && g.mode === 'haul') {
+    const r = pacing(id, 12, ['--prestige', '--passive', 'false'], 420_000);
+    if (!r || !Array.isArray(r.hardMissed)) problems.push(`pacing: the section 8 bot did not finish within 7 min (npm run simulate -- ${id} --hours 12 --prestige to see why)`);
+    else r.hardMissed.forEach((m) => problems.push(`pacing (section 8, hard): ${m}`));
+  }
   // --- pacing: the same bot as `npm run simulate`, two simulated hours ---
-  if (runSim && problems.length === 0) {
+  else if (runSim && problems.length === 0) {
     const HOURS = 2;
     const r = pacing(id, HOURS);
     if (!r) warnings.push('pacing check could not run (npm run simulate -- ' + id + ' to see why)');

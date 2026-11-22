@@ -9,7 +9,7 @@ import type { SkPicture } from '@shopify/react-native-skia';
 import { drawChevron, drawFreighter, drawPad, drawPolicyChip, type HullId } from './freighter.draw';
 import { drawChargePlate, drawFlare, drawGhostSlot, drawRouteChip, drawSeamRim, starfieldPicture } from './fx.draw';
 import { around, picture } from './pen';
-import { drawPile, drawPileLabel } from './rock.draw';
+import { drawPile } from './rock.draw';
 import { drawDrillHead, drawRigBase, drawRigLamp, type LampState, type RigLook } from './rig.draw';
 import { drawBeacon, drawDockArm, drawRackArm, drawRackOverflow, drawScannerDish, drawStationHub, drawStationPart, drawStationRing, type StarNode, type StationPart } from './station.draw';
 import { drawIdleBadge } from './drone.draw';
@@ -42,6 +42,8 @@ export const pictures = {
     const lv = id === 'prospect' ? Math.min(8, Math.ceil(level / 5)) * 5 : id === 'sparedrones' ? Math.min(6, level) : 1;
     return memo(`part:${id}:${lv}`, () => picture(around(70), (c) => drawStationPart(c, id, lv)));
   },
+  /** The scanner's strut without its dish (the scene draws pictures.scannerDish() over it, sweeping). */
+  scannerStrut: () => memo('strut:veinsense', () => picture(around(70), (c) => drawStationPart(c, 'veinsense', 1, false))),
   /** The scanner dish alone (rotate it ±30° over 6 s at stationPartPos('veinsense')). */
   scannerDish: () => memo('dish', () => picture(around(20), drawScannerDish)),
   /** A Star Map node's part in place (Systems Preload: the beacon at BEACON_POS, lit). */
@@ -53,8 +55,6 @@ export const pictures = {
   rigBase: (look: RigLook, stripes: number) => memo(`rig:${look}:${stripes}`, () => picture(around(26), (c) => drawRigBase(c, { look, stripes }))),
   rigLamp: (state: LampState) => memo(`lamp:${state}`, () => picture(around(7), (c) => drawRigLamp(c, state))),
   drillHead: (r: number) => memo(`head:${r}`, () => picture(around(r + 1), (c) => drawDrillHead(c, r))),
-  /** A pile label on its plate ("62/80"; full = amber with an up-arrow); redraw when the integer changes. */
-  pileLabel: (text: string, full: boolean) => memo(`plabel:${text}:${full}`, () => picture(around(24), (c) => drawPileLabel(c, text, full))),
   pile: (ore: string, step: 0 | 1 | 2 | 3) => memo(`pile:${ore}:${step}`, () => picture(around(14), (c) => drawPile(c, ore, step))),
   ghostSlot: (r: number, price: string) => memo(`ghost:${r}:${price}`, () => picture({ x: -r - 2, y: -r - 2, w: r * 2 + 4, h: r * 2 + 14 }, (c) => drawGhostSlot(c, r, price))),
   seamRim: (r: number) => memo(`seam:${r}`, () => picture(around(r * 1.7), (c) => drawSeamRim(c, r))),

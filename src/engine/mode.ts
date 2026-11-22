@@ -71,10 +71,11 @@ export interface EngineMode {
    */
   entitle?(cfg: GameConfig, state: GameState, productId: string): GameState;
   /**
-   * What the mode's scene interpolates between ticks (haul: the route table, the run clock),
-   * read after every change of the game; `now` is the wall time of that change. Null outside a run.
+   * Whether an absence's report is worth showing although it earned nothing (haul: "Hold full.
+   * Nothing shipped." when the freighter waited for a swipe the whole time). Without it, an
+   * absence that earned nothing shows nothing.
    */
-  frame?(cfg: GameConfig, state: GameState, now: number): unknown;
+  reportAlone?(report: unknown): boolean;
 }
 
 let installed: EngineMode | null = null;

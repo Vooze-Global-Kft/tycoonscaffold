@@ -52,39 +52,3 @@ export const modeSounds = {
     return soundKeys[name] ?? name;
   },
 };
-
-/**
- * The latest frame a mode's scene interpolates between ticks (src/engine/mode.ts `frame`; haul:
- * the route table and the run clock, spec 4.3). The store publishes one after every change of the
- * game while someone listens; the scene copies it into a Reanimated shared value in its listener,
- * so nothing re-renders at 10 Hz. `latest()` is the last frame published (null before the first).
- */
-type FrameListener = (frame: unknown) => void;
-const frameListeners = new Set<FrameListener>();
-let lastFrame: unknown = null;
-
-export const modeFrame = {
-  subscribe(listener: FrameListener): () => void {
-    frameListeners.add(listener);
-    return () => {
-      frameListeners.delete(listener);
-    };
-  },
-  /** Whether anyone listens (the store computes a frame only then). */
-  listening(): boolean {
-    return frameListeners.size > 0;
-  },
-  publish(frame: unknown): void {
-    lastFrame = frame;
-    frameListeners.forEach((l) => {
-      try {
-        l(frame);
-      } catch (e) {
-        report(e, 'modeFrame.listener');
-      }
-    });
-  },
-  latest(): unknown {
-    return lastFrame;
-  },
-};

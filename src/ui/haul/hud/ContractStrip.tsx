@@ -7,19 +7,24 @@
  *
  * Fixed-height card: two rows at tops that add up, fonts sized by hand from fontScale.
  */
-import { useEffect, useRef } from 'react';
-import { Pressable, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
-import { formatMoney } from '../../../engine/format';
-import * as H from '../../../engine/haul';
-import { GameIcon } from '../../components/GameIcon';
-import { useTarget } from '../../hints/targets';
-import { alpha, oreColor, SPACE } from '../art/palette';
-import type { Rect } from '../layout';
-import { HAUL_STRINGS } from '../strings';
-import { useRunShallow } from '../useRun';
-import { useHaulUi } from '../uiState';
-import { DIGITAL, countText, labelMetrics } from './bayText';
+import { useEffect, useRef } from "react";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
+import { formatMoney } from "../../../engine/format";
+import * as H from "../../../engine/haul";
+import { GameIcon } from "../../components/GameIcon";
+import { useTarget } from "../../hints/targets";
+import { alpha, oreColor, SPACE } from "../art/palette";
+import type { Rect } from "../layout";
+import { HAUL_STRINGS } from "../strings";
+import { useRunShallow } from "../useRun";
+import { useHaulUi } from "../uiState";
+import { DIGITAL, countText, fitLabel, labelMetrics } from "./bayText";
 
 interface StripView {
   unlocked: boolean;
@@ -37,13 +42,13 @@ interface StripView {
 const NONE: StripView = {
   unlocked: false,
   active: false,
-  buyer: '',
-  name: '',
+  buyer: "",
+  name: "",
   wants: [],
-  mult: '',
+  mult: "",
   left: 0,
   lifetime: 6,
-  gain: '',
+  gain: "",
   met: false,
 };
 
@@ -71,16 +76,18 @@ export function ContractStrip({ rect }: { rect: Rect }) {
       unlocked: true,
       active: true,
       buyer: c.buyer,
-      name: (cfg.haul.contracts.buyers.find((b) => b.id === c.buyer)?.name ?? c.buyer).toUpperCase(),
+      name: (
+        cfg.haul.contracts.buyers.find((b) => b.id === c.buyer)?.name ?? c.buyer
+      ).toUpperCase(),
       wants,
       mult: `×${c.mult.toFixed(1)}`,
       left: c.launchesLeft,
       lifetime: Math.max(c.launchesLeft, cfg.haul.contracts.lifetime),
-      gain: gain > 0 ? `+${formatMoney(gain, cfg.strings.currencySymbol)}` : '',
+      gain: gain > 0 ? `+${formatMoney(gain, cfg.strings.currencySymbol)}` : "",
       met: wants.every((w) => w.have >= w.want),
     };
   }, NONE);
-  const target = useTarget(v.unlocked ? 'contract:strip' : null);
+  const target = useTarget(v.unlocked ? "contract:strip" : null);
   const { fontScale, height: winH } = useWindowDimensions();
   const compact = winH < 740;
   const name = labelMetrics(compact ? 10.5 : 11.5, fontScale);
@@ -90,15 +97,23 @@ export function ContractStrip({ rect }: { rect: Rect }) {
   const wasActive = useRef(v.active);
   useEffect(() => {
     // "Pick a contract": the strip glows once when the board needs a pick.
-    if (v.unlocked && !v.active && wasActive.current !== false) glow.value = withSequence(withTiming(1, { duration: 260 }), withTiming(0, { duration: 900 }));
+    if (v.unlocked && !v.active && wasActive.current !== false)
+      glow.value = withSequence(
+        withTiming(1, { duration: 260 }),
+        withTiming(0, { duration: 900 }),
+      );
     wasActive.current = v.active;
   }, [v.unlocked, v.active, glow]);
   const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value }));
   if (!v.unlocked) return null;
   const pad = 8;
   const emblem = rect.height - 2 * pad;
-  const rim = v.met ? SPACE.green : v.active ? alpha(SPACE.line, 0.55) : SPACE.amber;
-  const open = () => useHaulUi.getState().openSheet({ type: 'contracts' });
+  const rim = v.met
+    ? SPACE.green
+    : v.active
+      ? alpha(SPACE.line, 0.55)
+      : SPACE.amber;
+  const open = () => useHaulUi.getState().openSheet({ type: "contracts" });
   return (
     <Pressable
       ref={target.ref}
@@ -107,7 +122,7 @@ export function ContractStrip({ rect }: { rect: Rect }) {
       onPress={open}
       accessibilityRole="button"
       style={{
-        position: 'absolute',
+        position: "absolute",
         left: rect.x,
         top: rect.y,
         width: rect.width,
@@ -122,7 +137,7 @@ export function ContractStrip({ rect }: { rect: Rect }) {
         pointerEvents="none"
         style={[
           {
-            position: 'absolute',
+            position: "absolute",
             left: -1,
             top: -1,
             right: -1,
@@ -138,7 +153,7 @@ export function ContractStrip({ rect }: { rect: Rect }) {
         <>
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               left: pad,
               top: pad - 1,
               width: emblem,
@@ -149,82 +164,110 @@ export function ContractStrip({ rect }: { rect: Rect }) {
           </View>
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               left: pad + emblem + 8,
               right: 92,
               top: 5,
               height: name.row,
-              justifyContent: 'center',
+              justifyContent: "center",
             }}
           >
-            <Text allowFontScaling={false} numberOfLines={1} style={[DIGITAL, { color: '#FFFFFF', fontSize: name.font, lineHeight: name.row }]}>
+            <Text
+              allowFontScaling={false}
+              numberOfLines={1}
+              style={[
+                DIGITAL,
+                { color: "#FFFFFF", fontSize: name.font, lineHeight: name.row },
+              ]}
+            >
               {v.name}
             </Text>
           </View>
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               left: pad + emblem + 8,
               right: 92,
               top: 5 + name.row + 2,
               height: small.row,
-              flexDirection: 'row',
-              alignItems: 'center',
+              flexDirection: "row",
+              alignItems: "center",
               gap: 8,
             }}
           >
-            {v.wants.map((w) => (
-              <View
-                key={w.ore}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 4,
-                  flexShrink: 1,
-                }}
-              >
-                {v.wants.length > 1 ? <GameIcon icon={`art:ore-${w.ore}`} size={small.row} /> : null}
+            {v.wants.map((w) => {
+              // Each ore's count gets its share of the row: the font shrinks by hand to fit, never an ellipsis.
+              const label = `${countText(w.have)}/${countText(w.want)}${v.wants.length > 1 ? "" : ` ${w.name}`}`;
+              const barW =
+                v.wants.length > 1 ? (compact ? 22 : 28) : compact ? 34 : 44;
+              const share =
+                (rect.width -
+                  (pad + emblem + 8) -
+                  92 -
+                  8 * (v.wants.length - 1)) /
+                v.wants.length;
+              const room =
+                share - barW - 4 - (v.wants.length > 1 ? small.row + 4 : 0) - 2;
+              const fit = fitLabel(
+                label,
+                room,
+                compact ? 9.5 : 10.5,
+                fontScale,
+              );
+              return (
                 <View
+                  key={w.ore}
                   style={{
-                    width: v.wants.length > 1 ? (compact ? 22 : 28) : compact ? 34 : 44,
-                    height: 7,
-                    borderRadius: 3.5,
-                    backgroundColor: SPACE.hull2,
-                    overflow: 'hidden',
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    flexShrink: 1,
                   }}
                 >
+                  {v.wants.length > 1 ? (
+                    <GameIcon icon={`art:ore-${w.ore}`} size={small.row} />
+                  ) : null}
                   <View
                     style={{
-                      width: `${Math.round((100 * w.have) / Math.max(1, w.want))}%`,
+                      width: barW,
                       height: 7,
-                      backgroundColor: oreColor(w.ore),
+                      borderRadius: 3.5,
+                      backgroundColor: SPACE.hull2,
+                      overflow: "hidden",
                     }}
-                  />
+                  >
+                    <View
+                      style={{
+                        width: `${Math.round((100 * w.have) / Math.max(1, w.want))}%`,
+                        height: 7,
+                        backgroundColor: oreColor(w.ore),
+                      }}
+                    />
+                  </View>
+                  <Text
+                    allowFontScaling={false}
+                    numberOfLines={1}
+                    style={[
+                      DIGITAL,
+                      {
+                        color: SPACE.steel,
+                        fontSize: Math.max(6, fit.font),
+                        lineHeight: small.row,
+                      },
+                    ]}
+                  >
+                    {label}
+                  </Text>
                 </View>
-                <Text
-                  allowFontScaling={false}
-                  numberOfLines={1}
-                  style={[
-                    DIGITAL,
-                    {
-                      color: SPACE.steel,
-                      fontSize: small.font,
-                      lineHeight: small.row,
-                      flexShrink: 1,
-                    },
-                  ]}
-                >
-                  {`${countText(w.have)}/${countText(w.want)}${v.wants.length > 1 ? '' : ` ${w.name}`}`}
-                </Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               left: pad + emblem + 8,
               top: Math.min(rect.height - 7, 5 + name.row + 2 + small.row + 1),
-              flexDirection: 'row',
+              flexDirection: "row",
               gap: 4,
             }}
           >
@@ -242,12 +285,12 @@ export function ContractStrip({ rect }: { rect: Rect }) {
           </View>
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               right: pad + 2,
               top: 4,
               width: 84,
               height: big.row,
-              justifyContent: 'center',
+              justifyContent: "center",
             }}
           >
             <Text
@@ -259,7 +302,7 @@ export function ContractStrip({ rect }: { rect: Rect }) {
                   color: SPACE.gold,
                   fontSize: big.font,
                   lineHeight: big.row,
-                  textAlign: 'right',
+                  textAlign: "right",
                 },
               ]}
             >
@@ -268,12 +311,12 @@ export function ContractStrip({ rect }: { rect: Rect }) {
           </View>
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               right: pad + 2,
               top: 4 + big.row,
               width: 120,
               height: small.row,
-              justifyContent: 'center',
+              justifyContent: "center",
             }}
           >
             <Text
@@ -285,7 +328,7 @@ export function ContractStrip({ rect }: { rect: Rect }) {
                   color: SPACE.green,
                   fontSize: small.font,
                   lineHeight: small.row,
-                  textAlign: 'right',
+                  textAlign: "right",
                 },
               ]}
             >
@@ -296,13 +339,13 @@ export function ContractStrip({ rect }: { rect: Rect }) {
       ) : (
         <View
           style={{
-            position: 'absolute',
+            position: "absolute",
             left: 0,
             right: 0,
             top: 0,
             bottom: 0,
-            alignItems: 'center',
-            justifyContent: 'center',
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           <Text

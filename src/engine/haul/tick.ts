@@ -190,7 +190,7 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
   if (C.unlocked) {
     const fresh = new Set<number>();
     const replace = (i: number) => {
-      const next = drawContract(cfg, h, p.F);
+      const next = drawContract(cfg, h, p.F, p);
       C.board[i] = next.contract;
       C.next = next.next;
       fresh.add(i);
@@ -219,7 +219,7 @@ export function warpOut(cfg: HaulConfig, d: Draft, p: HaulParams): void {
       replace(i);
     }
   } else if (d.stats.launches >= cfg.haul.contracts.unlockLaunches && h.clock >= cfg.haul.contracts.unlockClock - EPS) {
-    h.contracts = openBoard(cfg, h, p.F);
+    h.contracts = openBoard(cfg, h, p.F, p);
     d.haulStats.contractsSeen = true;
     d.events?.push({ type: 'contractsUnlocked' });
   }

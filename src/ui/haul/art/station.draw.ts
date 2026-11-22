@@ -329,10 +329,16 @@ export function drawScannerDish(c: SkCanvas): void {
   c.drawPath(poly([0, -6.5, -9, -18, 9, -18]), fill(alpha(SPACE.line, 0.07)));
 }
 
-/** A station part in place, with its strut (the dish without its sweep). */
-export function drawStationPart(c: SkCanvas, id: StationPart, level = 1): void {
+/** The angle (degrees) a part's shape is drawn at in place: the scanner dish's rest angle, for its sweep. */
+export function partRestAngle(id: StationPart): number {
+  return id === 'afterburner' ? 0 : PART_ANGLE[id] + 90;
+}
+
+/** A station part in place, with its strut. `dish` false: the scanner's strut only (the scene sweeps the dish itself). */
+export function drawStationPart(c: SkCanvas, id: StationPart, level = 1, dish = true): void {
   const p = stationPartPos(id);
   if (id !== 'afterburner') strut(c, id);
+  if (id === 'veinsense' && !dish) return;
   c.save();
   c.translate(p.x, p.y);
   if (id !== 'afterburner') c.rotate(PART_ANGLE[id as Exclude<StationPart, 'afterburner'>] + 90, 0, 0);

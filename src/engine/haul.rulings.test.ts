@@ -371,3 +371,25 @@ describe('36: offline freighter, short and long gaps', () => {
     expect(r.report.credits).toBeCloseTo(value * p.fullBonus * p.G, 6);
   }, 120_000);
 });
+
+describe('Hangar Expansion bought during a run (5.4)', () => {
+  const c = haulTestConfig();
+  it('adds its start drones once, idle, never above the cap; a run that started with it gets none more', () => {
+    const g = freshHaulGame(c, 31);
+    expect(H.grantHangarDrones(c, g, 'space_hangar')).toBe(g); // not owned
+    const owned = { ...g, entitlements: { ...g.entitlements, products: ['space_hangar'] } };
+    const a = H.grantHangarDrones(c, owned, 'space_hangar') as typeof g;
+    expect(a.haul.fleet.drones).toBe(g.haul.fleet.drones + 2);
+    expect(a.haul.idle).toBe(g.haul.idle + 2);
+    expect(a.haul.flags.hangarDrones).toBe(true);
+    expect(H.grantHangarDrones(c, a, 'space_hangar')).toBe(a); // once per run
+    expect(H.grantHangarDrones(c, owned, 'space_other')).toBe(owned);
+    // At the cap: nothing above it.
+    const full = { ...owned, haul: { ...owned.haul, fleet: { ...owned.haul.fleet, drones: 29 } } };
+    expect((H.grantHangarDrones(c, full, 'space_hangar') as typeof g).haul.fleet.drones).toBe(30);
+    // A run built with the product owned already had them.
+    const h = H.createHaul(c, 5, 0, null, { levels: {}, spent: 0 }, { bestClaimed: 1 }, { products: ['space_hangar'] });
+    expect(h.flags.hangarDrones).toBe(true);
+    expect(H.grantHangarDrones(c, { ...owned, haul: h }, 'space_hangar')).toEqual({ ...owned, haul: h });
+  });
+});

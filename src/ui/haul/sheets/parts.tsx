@@ -65,15 +65,18 @@ interface SheetProps {
   right?: ReactNode;
   children: ReactNode;
   scroll?: boolean;
+  /** Share of a short screen (under 740 pt) the sheet may take when its blocks need it (Station sheet: 0.6). */
+  compactShare?: number;
 }
 
 /** The haul bottom sheet (spec 4.4): 46 % high, over the bay, the map live above. */
-export function HaulSheet({ visible, onClose, title, left, right, children, scroll = true }: SheetProps) {
+export function HaulSheet({ visible, onClose, title, left, right, children, scroll = true, compactShare }: SheetProps) {
   const c = useColors();
   const ty = useType();
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const sheetH = Math.round(Math.max(290, height * SHEET_SHARE)) + insets.bottom;
+  const share = compactShare && height < 740 ? Math.max(SHEET_SHARE, compactShare) : SHEET_SHARE;
+  const sheetH = Math.round(Math.max(290, height * share)) + insets.bottom;
   useOverlay(visible);
   // Stays mounted while it slides out; nothing animates once it is gone.
   const [mounted, setMounted] = useState(visible);

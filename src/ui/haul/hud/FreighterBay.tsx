@@ -3,9 +3,9 @@
  * edge, holding the dock counter, the hold tank, the flare launcher, the launch track and the
  * station rail. Money, the hold and every button live here, under the thumb.
  *
- * The panel is opaque: the scene's own canvas lies under it, so the bay draws the pad and the
- * docked freighter itself (./LaunchTrack.tsx); the scene draws the freighter from the bay's top
- * edge upward. The panel takes no touches: the field gesture layer under it hit-tests the hold
+ * The panel is opaque and the bay owns everything below its crest (lead's decision 6): the pad,
+ * the docked freighter, lift-off and landing (./LaunchTrack.tsx); the scene draws the same flight
+ * (./flight.ts) from the crest upward. The panel takes no touches: the field gesture layer under it hit-tests the hold
  * tank, the flare and the launch track (errata 48); the counter and the rail are views of their own.
  */
 import { Canvas, Picture, type SkPicture } from '@shopify/react-native-skia';
@@ -15,6 +15,7 @@ import { builder, linearPaint, litStroke, picture } from '../art/pen';
 import type { FieldLayout } from '../layout';
 import { DockCounter } from './DockCounter';
 import { FlareLauncher } from './FlareLauncher';
+import { bayCrest, flightTop } from './flight';
 import { HoldTank } from './HoldTank';
 import { LaunchTrack } from './LaunchTrack';
 import { StationRail } from './StationRail';
@@ -67,7 +68,7 @@ export function FreighterBay({ layout }: { layout: FieldLayout }) {
       </View>
       <HoldTank rect={z.hold} />
       <FlareLauncher rect={z.flare} />
-      <LaunchTrack rect={z.launch} />
+      <LaunchTrack rect={z.launch} crest={bayCrest(layout)} topY={flightTop(layout)} />
       <DockCounter rect={z.counter} />
       <StationRail rects={z.rail} />
     </>

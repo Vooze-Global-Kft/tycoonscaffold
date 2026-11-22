@@ -24,7 +24,7 @@ import { fx } from '../services/fx';
 import { iap } from '../services/iap';
 import { detectRegion } from '../services/region';
 import { simEvents } from './events';
-import { modeEvents, modeFrame } from './modeEvents';
+import { modeEvents } from './modeEvents';
 import { overlays } from './overlays';
 
 /**
@@ -414,6 +414,7 @@ export const useGame = create<Store>((set, get) => {
         const cfg = applyRemoteOverrides(baseGame, overrides);
         ads.firstInterstitialAfterSec = cfg.monetization.ads.firstInterstitialAfterSec;
         ads.interstitialCooldownSec = cfg.monetization.ads.interstitialCooldownSec;
+        ads.interstitials = cfg.monetization.ads.interstitials !== false;
         ads.maxAdContentRating = cfg.monetization.ads.maxAdContentRating;
 
         const at = Date.now();
@@ -439,7 +440,7 @@ export const useGame = create<Store>((set, get) => {
           cfg,
           game: { ...game, lastSavedAt: at },
           hydrated: true,
-          offline: offline && offline.seconds >= cfg.economy.offline.minSecondsToShow && offline.earnings > 0 ? { seconds: offline.seconds, earnings: offline.earnings, report: offline.report } : null,
+          offline: offline && offline.seconds >= cfg.economy.offline.minSecondsToShow && worthShowing(cfg, offline) ? { seconds: offline.seconds, earnings: offline.earnings, report: offline.report } : null,
         });
         analytics.log(returning ? 'session_resume' : 'first_open_game', { prestige: game.prestigeCount, mode: cfg.mode, session: game.stats.sessions });
         ads.init();
@@ -483,7 +484,7 @@ export const useGame = create<Store>((set, get) => {
       // and never also tick the same time again below.
       const advanced = computed.game !== undefined && away.seconds > 0;
       if (advanced) game = computed.game!;
-      if (away.earnings > 0) {
+      if (away.earnings > 0 || (away.seconds >= cfg.economy.offline.minSecondsToShow && worthShowing(cfg, away))) {
         if (offline || away.seconds >= cfg.economy.offline.minSecondsToShow) {
           // Merge with a popup that is still open, so nothing earned while away is dropped.
           offline = offline ? { seconds: offline.seconds + away.seconds, earnings: offline.earnings + away.earnings, ...mergedReport(cfg, offline.report, away.report) } : away;
@@ -886,7 +887,8 @@ export const useGame = create<Store>((set, get) => {
       set({ tab: 'home' });
       get().save();
       // Policy (policy.md item 11): a short pause so the reset is seen before an interstitial covers it.
-      if (cfg.monetization.ads.interstitials !== false) ads.maybeShowInterstitial('prestige', PRESTIGE_AD_DELAY_MS);
+      // (A game whose data turns interstitials off never shows one: src/services/ads.ts `interstitials`.)
+      ads.maybeShowInterstitial('prestige', PRESTIGE_AD_DELAY_MS);
     },
 
     collectOffline: (doubled) =>
@@ -1019,23 +1021,11 @@ export const useGame = create<Store>((set, get) => {
   };
 });
 
-/**
- * The scene's frame (src/state/modeEvents.ts `modeFrame`): after every change of the game, a mode
- * with its own engine publishes what its scene interpolates (haul: the route table and the run
- * clock, with the wall time of the change), while someone listens. Ticks and actions alike.
- */
-useGame.subscribe((s, prev) => {
-  if (s.game === prev.game || !modeFrame.listening()) return;
-  const mode = engineFor(s.cfg);
-  if (!mode?.frame) return;
-  modeFrame.publish(safe('engine.frame', () => mode.frame!(s.cfg, s.game, Date.now()), null));
-});
-
-/** Publishes the current frame now (a scene that mounts after the last change, or after a resume). */
-export function publishModeFrame(): void {
-  const { cfg, game } = useGame.getState();
+/** An absence worth a popup: it earned something, or the mode says its report speaks alone (src/engine/mode.ts `reportAlone`). */
+function worthShowing(cfg: GameConfig, away: { earnings: number; report?: unknown }): boolean {
+  if (away.earnings > 0) return true;
   const mode = engineFor(cfg);
-  if (mode?.frame) modeFrame.publish(safe('engine.frame', () => mode.frame!(cfg, game, Date.now()), null));
+  return away.report !== undefined && !!mode?.reportAlone && safe('engine.reportAlone', () => mode.reportAlone!(away.report), false);
 }
 
 /** True when the player already owns a non-consumable product. */

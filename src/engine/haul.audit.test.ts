@@ -8,7 +8,7 @@
  * random play, tick splitting, offline bounds, scale) are guards that pass today and must keep
  * passing.
  */
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import * as H from './haul';
 import { hashString, rngFloat } from './rng';
 import { HAUL_STARTING_CONTENT, HaulSchema } from '../config/schema.haul';
@@ -17,6 +17,10 @@ import { conservationError, freshHaulGame, haulFixtures, haulTestConfig, run, sh
 type Run = H.HaulGame & { haul: H.HaulState };
 
 const cfg = haulTestConfig();
+// The fixtures play about 2 h 20 of game time once; build them before the first test's 5 s clock starts.
+beforeAll(() => {
+  haulFixtures(cfg);
+}, 120_000);
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 const roll = (seed: number) => rngFloat(seed).value;
 
@@ -264,7 +268,8 @@ describe('rulings: freighter, contracts, counters', () => {
     for (let k = 1; k <= 40; k++) {
       const c = H.contractAt(cfg, seed, k, [0], F, null);
       const draw = (n: number) => H.rngMix4(seed, hashString('contract'), k, n);
-      const units = Math.max(1, Math.round(F * (C.units[0] + (C.units[1] - C.units[0]) * roll(draw(6)))));
+      // Without a station (no routes known) one ore gets F × λ, λ = U(reach) (section 2.6).
+      const units = Math.max(C.minUnits, Math.round(F * (C.reach[0] + (C.reach[1] - C.reach[0]) * roll(draw(6)))));
       const mult = Math.max(1, Math.round((C.mult[0] + (roll(draw(7)) * 2 - 1) * C.jitter) * 10) / 10);
       if (c.wants[0].units === units && c.mult === mult) same++;
     }

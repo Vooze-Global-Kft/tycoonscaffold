@@ -150,11 +150,7 @@ function Counters({ cfg, bay }: { cfg: H.HaulConfig; bay: ReturnType<typeof bayO
   });
   void now;
   const [ready, stored, secs] = drop ? drop.split('|').map(Number) : [0, 0, 0];
-  const take = () => {
-    const before = useGame.getState().chestOpening;
-    useGame.getState().claimFreeChest();
-    if (useGame.getState().chestOpening !== before) fx.play('salvage_cut');
-  };
+  const take = haulActions.claimSupplyDrop;
   const line = (label: string, parts: { text: string; v: number }[]) => (
     <View style={styles.counter}>
       <Mono size={10} weight="700" color={INK.text} style={{ marginBottom: 4 }}>
@@ -267,8 +263,7 @@ function Opening({ cfg, id, chestId, rewards, next }: { cfg: H.HaulConfig; id: n
             }} style={{ flex: 1 }} />
             {next ? (
               <Key solid label={words(cfg, S.next, { pod: cfg.meta.chests.find((c) => c.id === next)?.name ?? '' })} onPress={() => {
-                useGame.getState().closeChest();
-                haulActions.openPod(next);
+                haulActions.openPod(next, id);
               }} style={{ flex: 1.5 }} />
             ) : null}
           </Animated.View>

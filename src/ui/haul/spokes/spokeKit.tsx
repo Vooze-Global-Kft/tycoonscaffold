@@ -79,7 +79,8 @@ export function Key({ label, sub, onPress, tone = 'cyan', solid = false, disable
       ]}
     >
       <View style={[styles.keyEdge, { backgroundColor: disabled ? INK.edge : solid ? 'rgba(255,255,255,0.55)' : c }]} />
-      <Mono size={small ? 11 : 13} weight="700" color={ink} center lines={1}>
+      {/* A long label wraps to a second row rather than being cut off with an ellipsis. */}
+      <Mono size={small ? 11 : 13} weight="700" color={ink} center lines={2}>
         {label}
       </Mono>
       {sub ? (

@@ -1,8 +1,9 @@
 /**
  * The main scene (spec 4.1, 4.3): ONE full-bleed Skia canvas under the field gesture view, drawing
  * the starfield, ring guides, routes under the rocks, rocks, rigs, piles, drones, the station with
- * its parts, ghost slots, the rich seam, the bay panel with the freighter's pad, its climb and warp
- * flash, and the flare's trail. Touches belong to the gesture layer around it.
+ * its parts, ghost slots, the rich seam, the freighter's climb and landing above the bay's crest
+ * (the bay owns the panel, the pad and everything below it: lead's decision 6, ../hud/flight.ts),
+ * the warp flash and the flare's trail. Touches belong to the gesture layer around it.
  *
  * Built for a steady frame rate: what moves every frame (rocks, drill heads, chunks, debris,
  * drones; drift, turns, blinks, the freighter) is written by ONE frame callback on the UI thread
@@ -19,13 +20,14 @@ import * as H from '../../../engine/haul';
 import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
-import { BEACON_POS, LOADED_FREIGHTER_SCALE, ORE_IDS, RACK_CRADLES, RACK_OVERFLOW, ROUTE_WIDTH, SPACE, alpha, bakeAtlas, oreColor, pictures, rigLamp, routeDash, routeDashPeriod, type HaulAtlas, type HullId } from '../art';
-import { circleRect, rackRect, type FieldLayout } from '../layout';
-import { useRunShallow } from '../useRun';
+import { partRestAngle, stationPartPos, BEACON_POS, LOADED_FREIGHTER_SCALE, ORE_IDS, freighterSize, hullFor, segmentsFor, RACK_CRADLES, RACK_OVERFLOW, ROUTE_WIDTH, SPACE, alpha, bakeAtlas, oreColor, pictures, rigLamp, routeDash, routeDashPeriod, type HaulAtlas, type HullId } from '../art';
+import { bayCrest, flightTop, padSpot } from '../hud/flight';
+import { circleRect, type FieldLayout } from '../layout';
+import { useRun, useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { useFieldAnim, type FieldAnim, type FieldGeometry } from './frameLoop';
 import { EMPTY_TABLE, buildFrame, emptyFx, hubPoint, pileLabels, slotGeometry, slotVMs, spriteTable, stationVM, type FieldFx, type FrameTable, type SlotGeo, type SlotVM, type StationVM } from './model';
-import { bayPanelPicture, freighterFlamePicture, pileLabelPicture, ringGuidesPicture, routePath, seamGuidePicture, warpFlashPicture } from './pics';
+import { freighterFlamePicture, pileLabelPicture, ringGuidesPicture, routePath, seamGuidePicture, warpFlashPicture } from './pics';
 
 const atlases = new Map<number, HaulAtlas | null>();
 /** The sprite atlas for a pixel density, baked once and kept for the life of the app (never freed). */
@@ -92,21 +94,27 @@ export function Field({ layout }: { layout: FieldLayout }) {
   const overlay = useHaulUi((s) => s.overlay);
   const active = spoke === null && overlay === null;
 
-  const launch = layout.zones.launch;
-  const padX = launch.x + launch.width / 2;
-  const padY = launch.y + launch.height - 17;
+  // The freighter's flight, on the bay's curve (../hud/flight.ts): the same pad, scales and times.
+  const level = useRun((_c, g) => g.haul.freighter.level, 1);
+  const spot = useMemo(() => padSpot(layout.zones.launch, layout.compact, freighterSize(hullFor(level), segmentsFor(level)), LOADED_FREIGHTER_SCALE), [layout, level]);
+  const crest = bayCrest(layout);
   const animGeo = useMemo<FieldGeometry>(
     () => ({
-      padX,
-      padY,
-      topY: layout.zones.field.y - 90,
+      padX: spot.x,
+      padY: spot.y,
+      topY: flightTop(layout),
+      loaded: spot.loaded,
+      rest: station.cargo ? spot.loaded : spot.empty,
+      climb: Math.max(0.3, cfg.haul?.freighter.climb ?? 2.5),
+      land: Math.max(0.3, cfg.haul?.freighter.land ?? 2),
+      dishRest: partRestAngle('veinsense'),
       sx: layout.station.x,
       sy: layout.station.y,
       sr: layout.station.r,
       height: layout.height,
       periods: ORE_IDS.map((o) => routeDashPeriod(o)),
     }),
-    [padX, padY, layout],
+    [spot, station.cargo, cfg, layout],
   );
   const anim = useFieldAnim(frame, sprites, density, animGeo, active);
   useMapTargets(layout, slots, station.idle);
@@ -119,6 +127,9 @@ export function Field({ layout }: { layout: FieldLayout }) {
         <Picture picture={stars} />
       </Group>
       <Group transform={anim.starY2}>
+        <Picture picture={stars} />
+      </Group>
+      <Group transform={anim.starY3}>
         <Picture picture={stars} />
       </Group>
       <Picture picture={ringGuidesPicture(layout)} />
@@ -135,11 +146,9 @@ export function Field({ layout }: { layout: FieldLayout }) {
       <Group opacity={anim.flareOn} transform={anim.flare}>
         <Picture picture={pictures.flare()} />
       </Group>
-      <Picture picture={bayPanelPicture(layout)} />
-      <Group transform={[{ translateX: padX }, { translateY: padY }, { scale: 0.8 }]}>
-        <Picture picture={pictures.pad(station.docked && station.cargo)} />
+      <Group clip={{ x: 0, y: 0, width: layout.width, height: crest }}>
+        <Freighter hull={station.hull as HullId} segments={station.segments} anim={anim} />
       </Group>
-      <Freighter hull={station.hull as HullId} segments={station.segments} anim={anim} />
       <Group opacity={anim.flashOn} transform={anim.flash}>
         <Picture picture={warpFlashPicture()} />
       </Group>
@@ -245,6 +254,7 @@ const Station = memo(function Station({ layout, station, anim }: { layout: Field
   const over = station.parts.filter(([n]) => n !== 'afterburner' && n !== 'preload');
   // One beacon drawing: lit whenever the autopilot is online (errata 39).
   const beacon = station.beacon || station.parts.some(([n]) => n === 'preload');
+  const dish = stationPartPos('veinsense');
   return (
     <Group transform={T(st.x, st.y, k)}>
       {under.map(([n, lv]) => (
@@ -255,9 +265,21 @@ const Station = memo(function Station({ layout, station, anim }: { layout: Field
         <Picture picture={pictures.stationRing()} />
       </Group>
       <Picture picture={pictures.stationHub()} />
-      {over.map(([n, lv]) => (
-        <Picture key={n} picture={pictures.nodePart(n, lv)} />
-      ))}
+      {over.map(([n, lv]) =>
+        n === 'veinsense' ? (
+          // The scanner: its strut, then the dish sweeping ±30° (frameLoop dishTurn).
+          <Group key={n}>
+            <Picture picture={pictures.scannerStrut()} />
+            <Group transform={T(dish.x, dish.y)}>
+              <Group transform={anim.dishTurn}>
+                <Picture picture={pictures.scannerDish()} />
+              </Group>
+            </Group>
+          </Group>
+        ) : (
+          <Picture key={n} picture={pictures.nodePart(n, lv)} />
+        ),
+      )}
       {beacon ? (
         <Group transform={T(BEACON_POS.x, BEACON_POS.y)}>
           <Picture picture={pictures.beacon(false)} />
@@ -332,19 +354,16 @@ const PileLabels = memo(function PileLabels({ geo, fx }: { geo: SlotGeo[]; fx: {
   );
 });
 
-/** The freighter on its pad or in flight (climb 2.5 s, land 2 s), flame flickering while it flies. */
+/** The freighter in flight above the bay (climb 2.5 s, land 2 s), flame flickering; the transform carries its scale. */
 const Freighter = memo(function Freighter({ hull, segments, anim }: { hull: HullId; segments: number; anim: FieldAnim }) {
-  const s = 0.8 * LOADED_FREIGHTER_SCALE;
   return (
     <Group opacity={anim.shipOn} transform={anim.ship}>
-      <Group transform={[{ scale: s }]}>
-        {[0, 1, 2].map((i) => (
-          <Group key={i} opacity={anim.flame[i]}>
-            <Picture picture={freighterFlamePicture(hull, segments, i)} />
-          </Group>
-        ))}
-        <Picture picture={pictures.freighter(hull, segments)} />
-      </Group>
+      {[0, 1, 2].map((i) => (
+        <Group key={i} transform={anim.flame[i]}>
+          <Picture picture={freighterFlamePicture(hull, segments, i)} />
+        </Group>
+      ))}
+      <Picture picture={pictures.freighter(hull, segments)} />
     </Group>
   );
 });
@@ -361,7 +380,10 @@ function useMapTargets(layout: FieldLayout, slots: SlotVM[], idle: number) {
       next.set(`slot:${i}`, k === 'g' ? circleRect(r, Math.max(32 * (r.r / 26), r.r * 1.2)) : null);
       next.set(`chip:${i}`, k === 'c' ? circleRect(layout.chips[i], 20) : null);
     });
-    next.set('drone:rack', idle > 0 ? rackRect(layout) : null);
+    // The drone that goes next: the first idle one, on the left arm's cradle nearest the station.
+    const k = layout.station.r / 40;
+    const c = RACK_CRADLES[0];
+    next.set('drone:rack', idle > 0 ? { x: layout.station.x + c.x * k - 12 * k, y: layout.station.y + c.y * k - 16 * k, width: 24 * k, height: 24 * k } : null);
     next.set('station', circleRect(layout.station, layout.station.r));
     next.forEach((rect, k) => {
       targets.set(k, rect);

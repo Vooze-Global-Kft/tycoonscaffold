@@ -264,8 +264,9 @@ describe('5. contracts', () => {
       const c = H.contractAt(cfg, 1234, k, rings, F, k % 3 === 0 ? 'frost' : null);
       for (const w of c.wants) expect(rings.some((r) => (H.ringWeights(cfg, r, k % 3 === 0 ? 'frost' : null).weights[H.ringWeights(cfg, r, null).ores.indexOf(w.ore)] ?? 0) > 0)).toBe(true);
       const total = c.wants.reduce((a, w) => a + w.units, 0);
-      expect(total).toBeGreaterThanOrEqual(Math.max(c.wants.length, Math.round(F * 0.4) - 1));
-      expect(total).toBeLessThanOrEqual(Math.round(F * 0.7) + 1);
+      // No station given: λ × F in all, λ in the reach range (section 2.6).
+      expect(total).toBeGreaterThanOrEqual(Math.max(c.wants.length, Math.round(F * cfg.haul.contracts.reach[0]) - 1));
+      expect(total).toBeLessThanOrEqual(Math.round(F * cfg.haul.contracts.reach[1]) + 1);
       expect(c.wants.length === 1 || c.wants[0].ore !== c.wants[1].ore).toBe(true);
       expect(c.mult).toBeGreaterThanOrEqual(1.5 - 1e-9);
       expect(c.mult).toBeLessThanOrEqual(3.1 + 1e-9);

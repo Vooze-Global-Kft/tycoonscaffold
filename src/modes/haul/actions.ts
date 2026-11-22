@@ -193,10 +193,20 @@ export const haulActions = {
     // (HAUL_SHARED_SOUNDS); the Shift Log's own teleprinter burst plays when it prints.
     await useGame.getState().collectOffline(doubled);
   },
-  /** Cut a pod open in the Salvage Bay (the shared chest opening). */
-  openPod: (chestId: string): void => {
+  /**
+   * Cut a pod open in the Salvage Bay (the shared chest opening). `replaces`: the id of the opening
+   * on screen that "Next pod" replaces (the store then opens it at once instead of refusing it as a
+   * repeated tap).
+   */
+  openPod: (chestId: string, replaces?: number): void => {
     const before = useGame.getState().chestOpening;
-    useGame.getState().openChest(chestId);
+    useGame.getState().openChest(chestId, replaces);
+    if (useGame.getState().chestOpening !== before) fx.play('salvage_cut');
+  },
+  /** Take the stored supply drop (the shared free chest) and cut it open. */
+  claimSupplyDrop: (): void => {
+    const before = useGame.getState().chestOpening;
+    useGame.getState().claimFreeChest();
     if (useGame.getState().chestOpening !== before) fx.play('salvage_cut');
   },
   /** Time Warp for Dark Matter (priced with activeRate through the shared engine). */

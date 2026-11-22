@@ -7,7 +7,6 @@
  * under a spoke (the world package reads useHaulUi's `spoke`).
  *
  * `onBack` null hides the back key (the Star Map while a confirmed Jump waits for its condition).
- * `file` and `pkg` are the skeleton's labels; they are accepted and ignored.
  */
 import { Canvas, Picture, Skia, type SkPicture } from '@shopify/react-native-skia';
 import { useMemo, type ReactNode } from 'react';
@@ -73,10 +72,6 @@ export function SpokeFrame({
   children?: ReactNode;
   scroll?: boolean;
   onBack?: (() => void) | null;
-  /** Skeleton label, ignored. */
-  file?: string;
-  /** Skeleton label, ignored. */
-  pkg?: string;
 }) {
   useOverlay(true);
   const insets = useSafeAreaInsets();

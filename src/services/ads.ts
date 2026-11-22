@@ -80,6 +80,11 @@ class AdsService {
   /** Live tuning values; replaced after Remote Config loads. */
   firstInterstitialAfterSec = baseGame.monetization.ads.firstInterstitialAfterSec;
   interstitialCooldownSec = baseGame.monetization.ads.interstitialCooldownSec;
+  /**
+   * False when the game data turns interstitials off (game.json `monetization.ads.interstitials`;
+   * Orbit Haulers' first version, spec 5.4): none is loaded and no placement can show one.
+   */
+  interstitials = baseGame.monetization.ads.interstitials !== false;
   /** Highest ad content rating to request (policy.md item 9); must be set before init(). */
   maxAdContentRating: Rating = baseGame.monetization.ads.maxAdContentRating;
   /** A full-screen ad is on screen (or opening): never start a second one. */
@@ -177,7 +182,7 @@ class AdsService {
   }
 
   private loadInterstitial() {
-    if (!gma || !this.ready) return;
+    if (!gma || !this.ready || !this.interstitials) return;
     const ad = gma.InterstitialAd.createForAdRequest(unitIds().interstitial, this.request());
     ad.addAdEventListener(gma.AdEventType.LOADED, () => (this.interstitialLoaded = true));
     ad.addAdEventListener(gma.AdEventType.ERROR, () => {
@@ -259,7 +264,7 @@ class AdsService {
     }
     const gmaNow = gma;
     const ad = this.interstitial;
-    if (this.noAds || !gmaNow || !ad || !this.interstitialLoaded || this.fullScreen) return;
+    if (!this.interstitials || this.noAds || !gmaNow || !ad || !this.interstitialLoaded || this.fullScreen) return;
     const now = Date.now();
     if (now - this.sessionStart < this.firstInterstitialAfterSec * 1000) return;
     if (now - this.lastInterstitial < this.interstitialCooldownSec * 1000) return;

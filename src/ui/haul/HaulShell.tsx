@@ -43,7 +43,9 @@ import { useHaulUi } from './uiState';
 /** Plays the Jump sequence when a new galaxy's run starts (the run's galaxy index rises). */
 function useJumpCue(): void {
   useEffect(() => {
-    let last = (useGame.getState().game as unknown as HaulGame).haul?.galaxy ?? null;
+    const g0 = useGame.getState().game as unknown as HaulGame;
+    // A restart while a confirmed Jump waits: any run that starts next is the new galaxy.
+    let last = g0.haul?.galaxy ?? (g0.haulStats?.pendingJump ? -1 : null);
     return useGame.subscribe((s) => {
       const g = (s.game as unknown as HaulGame).haul?.galaxy;
       // Between galaxies there is no run: keep the last galaxy seen until the next run exists.
@@ -58,6 +60,17 @@ function useJumpCue(): void {
   }, []);
 }
 
+/** A pod opening started anywhere shows in the Salvage Bay (its reveal lives there). */
+function useOpeningShowsSalvage(): void {
+  useEffect(
+    () =>
+      useGame.subscribe((s, prev) => {
+        if (s.chestOpening && s.chestOpening !== prev.chestOpening && useHaulUi.getState().spoke !== 'salvage') useHaulUi.getState().openSpoke('salvage');
+      }),
+    [],
+  );
+}
+
 export function HaulShell() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -68,6 +81,7 @@ export function HaulShell() {
   const open = useHaulUi((s) => s.spoke);
   const spoke = usePendingJump() ? 'starmap' : open;
   useJumpCue();
+  useOpeningShowsSalvage();
   useEffect(applyHaulDevParams, []);
   return (
     <View style={[styles.fill, { backgroundColor: cfg.theme.colors.background }]}>

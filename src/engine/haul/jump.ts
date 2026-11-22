@@ -3,7 +3,8 @@
  */
 import { hashString } from '../rng';
 import { claimedRingMax, createHaul, runStartCash } from './create';
-import { rngMix4, roll } from './params';
+import { haulParams, rngMix4, roll } from './params';
+import { openBoard } from './trade';
 import type { HaulConfig, HaulGame, HaulState, JumpPreview, PendingJump, StarMapState, StarNodeView } from './types';
 
 /** Total cores the lifetime earnings are worth: floor(scale × (lifetime / threshold)^exponent) (the shared formula). */
@@ -180,7 +181,13 @@ export function startGalaxy(cfg: HaulConfig, g: HaulGame, now: number, traitId: 
   let chests = g.chests;
   const pod = cfg.haul.pods.derelict;
   if (first && cfg.meta.chests.some((c) => c.id === pod)) chests = { ...chests, owned: { ...chests.owned, [pod]: (chests.owned[pod] ?? 0) + 1 } };
-  return { ...g, cash: runStartCash(cfg, g.starMap), runEarnings: 0, haul, haulStats, chests, lastSavedAt: now };
+  const out = { ...g, cash: runStartCash(cfg, g.starMap), runEarnings: 0, haul, haulStats, chests, lastSavedAt: now };
+  // The opening board's units follow what this run's station can deliver (section 2.6).
+  if (haul.contracts.unlocked) {
+    const p = haulParams(cfg, out as HaulGame & { haul: HaulState });
+    haul.contracts = openBoard(cfg, haul, p.F, p);
+  }
+  return out;
 }
 
 /**

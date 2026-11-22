@@ -58,7 +58,7 @@ function followCash(set: (v: number) => void): () => void {
 }
 
 /**
- * The receipt line for a warp-out, in three lengths (longest first): the manifest by ore (most
+ * The receipt line for a warp-out, in four lengths (longest first): the manifest by ore (most
  * units first) and the payout. The ticker shows the longest that fits its row at a readable size.
  */
 export function receiptTexts(cfg: H.HaulConfig, cargo: Record<string, number>, payout: number): string[] {
@@ -67,11 +67,12 @@ export function receiptTexts(cfg: H.HaulConfig, cargo: Record<string, number>, p
     .filter(([, u]) => u >= 0.5)
     .sort((a, b) => b[1] - a[1]);
   const full = lots.map(([ore, u]) => `${countText(u)} ${names.get(ore) ?? ore.toUpperCase()}`);
-  const short = lots.map(([ore, u]) => `${countText(u)} ${(names.get(ore) ?? ore.toUpperCase()).slice(0, 3)}`);
+  // Shorter: the biggest lot and how many other ores came with it (never names cut to three letters).
+  const lead = full.length > 1 ? `${full[0]} +${full.length - 1}` : (full[0] ?? '');
   const money = formatMoney(payout, cfg.strings.currencySymbol);
-  const warped = bayWord('receiptWarped', 'WARPED');
-  const manifest = bayWord('receiptManifest', 'MANIFEST');
-  return [[warped, `${manifest} ${full.join(' · ')}`, money].join(' · '), [warped, full.join(' · '), money].join(' · '), [warped, short.join(' · '), money].join(' · ')];
+  const warped = bayWord('receiptWarped');
+  const manifest = bayWord('receiptManifest');
+  return [[warped, `${manifest} ${full.join(' · ')}`, money].join(' · '), [warped, full.join(' · '), money].join(' · '), [warped, lead, money].filter(Boolean).join(' · '), [warped, money].join(' · ')];
 }
 
 export function DockCounter({ rect }: { rect: Rect }) {
@@ -79,7 +80,7 @@ export function DockCounter({ rect }: { rect: Rect }) {
   const unlocked = useRun((_c, g) => g.haul.contracts.unlocked, false);
   const income = useRun((cfg, g) => {
     const v = H.haulIncome(cfg, g);
-    return v > 0 ? `${formatMoney(v, cfg.strings.currencySymbol)}${bayWord('perSecond', '/s')}` : '';
+    return v > 0 ? `${formatMoney(v, cfg.strings.currencySymbol)}${bayWord('perSecond')}` : '';
   }, '');
   const [startCash] = useState(() => useGame.getState().game.cash);
   const [receipt, setReceipt] = useState<{ texts: string[]; met: boolean } | null>(null);

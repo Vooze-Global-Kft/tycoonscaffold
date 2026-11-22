@@ -220,11 +220,15 @@ function claimUpTo(cfg: H.HaulConfig, g: Run, ring: number): Run {
   return playFor(cfg, s, 5);
 }
 
-let cache: Record<'fresh' | 'minute3' | 'midGame' | 'late' | 'afterJump', Run> | null = null;
+type Fixtures = Record<'fresh' | 'minute3' | 'midGame' | 'late' | 'afterJump', Run>;
+/** One set of states per config object (a test or a preset with another config gets its own). */
+const cache = new WeakMap<H.HaulConfig, Fixtures>();
+let defaultCfg: H.HaulConfig | null = null;
 
-/** The five fixture states (built once, lazily: `late` plays about 2 h 20 of game time). */
-export function haulFixtures(cfg: H.HaulConfig = haulTestConfig()): Record<'fresh' | 'minute3' | 'midGame' | 'late' | 'afterJump', Run> {
-  if (cache) return cache;
+/** The five fixture states (built once per config object, lazily: `late` plays about 2 h 20 of game time). */
+export function haulFixtures(cfg: H.HaulConfig = (defaultCfg ??= haulTestConfig())): Fixtures {
+  const hit = cache.get(cfg);
+  if (hit) return hit;
   const fresh = freshHaulGame(cfg);
   const minute3 = playFor(cfg, fresh, 180);
   let midGame = playFor(cfg, minute3, 25 * 60 - 180);
@@ -244,8 +248,9 @@ export function haulFixtures(cfg: H.HaulConfig = haulTestConfig()): Record<'fres
   if (H.coresAvailable(cfg, late) < 1) late = { ...late, lifetimeEarnings: Math.max(late.lifetimeEarnings, cfg.economy.prestige.threshold * 25) };
   const offers = H.offersFor(cfg, late.metaSeed, late.haulStats.jumps, late.haul.trait);
   const afterJump = H.prestigeHaul(cfg, late, FIXTURE_NOW + 140 * 60_000, offers[0], ['preload', 'assay', 'assay', 'afterburner', 'seedcredits']) as Run;
-  cache = { fresh, minute3, midGame, late, afterJump };
-  return cache;
+  const made: Fixtures = { fresh, minute3, midGame, late, afterJump };
+  cache.set(cfg, made);
+  return made;
 }
 
 // ---------------------------------------------------------------- test helpers

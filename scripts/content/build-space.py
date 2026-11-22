@@ -87,7 +87,7 @@ g['economy'] = {
     'tapBase': 0, 'tapPercentOfIncome': 0,
     'milestones': [],
     # Cores = floor(scale x (lifetime / threshold)^0.5) (tune: first Jump at 2 h 15 to 2 h 45 with 20 to 30 cores).
-    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (first Jump 2 h 15 to 2 h 45)', 2.2e7),
+    'prestige': {'threshold': K('prestigeThreshold', 2e6, 1e5, 1e10, 'lifetime credits per core squared (first Jump 2 h 15 to 2 h 45)', 1.6e7),
                  'scale': K('coreScale', 5, 1, 20, 'cores scale'), 'exponent': 0.5, 'bonusPerPoint': 0},
     # Offline: 6 h at most, efficiency 0.45 at most (2.11).
     # (tune: maxHours 6); the efficiency is capped at 0.45 by the rules. The bot's gate is "offline per hour
@@ -150,7 +150,7 @@ g['haul'] = {
         'stripeEvery': 15, 'stripeMult': 1.5,
         'cost': {'base': 3, 'ringFactor': 40, 'growth': K('rigGrowth', 1.6, 1.45, 1.8, 'rig cost growth', 1.7)},
     },
-    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)'), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 15), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring', 1.4)},
+    'claim': {'base': K('claimBase', 13, 10, 40, 'claim cost of ring 1 slot 0 (tune, no range stated: 10 to 40 assumed)', 16), 'ringFactor': K('claimRing', 20, 15, 30, 'claim cost per ring', 15), 'jFactor': K('claimJ', 1.6, 1.4, 2.5, 'claim cost per slot within a ring', 1.4)},
     'pile': {'min': 10, 'seconds': 25},
     'drone': {
         'speed': 0.5, 'speedPerLevel': 0.08, 'speedMax': 4, 'capacity': 4,
@@ -174,7 +174,9 @@ g['haul'] = {
     'contracts': {
         'unlockLaunches': 4, 'unlockClock': 90, 'board': 3, 'lifetime': int(K('contractLife', 6, 4, 8, 'launches a contract lasts')),
         'fee': K('fee', 0.1, 0.05, 0.15, 'delivery fee on the rest of a met cargo'),
-        'units': [K('unitsLo', 0.4, 0.3, 0.5, 'contract units, share of F, low'), K('unitsHi', 0.7, 0.55, 0.8, 'contract units, share of F, high')], 'twoOreChance': 0.4,
+        'reach': [K('reachLo', 0.35, 0.2, 0.5, 'contract units: low end, from the hold share as routed (0) to the share routed for it (1)'), K('reachHi', 0.75, 0.6, 0.9, 'contract units: high end of the same range')],
+        'fleetShare': K('fleetShare', 0.5, 0.3, 0.7, 'share of the fleet a player sends to a contract when routing for it'),
+        'minUnits': 3, 'twoOreChance': 0.4,
         'mult': [1.6, 1.9, 2.2, 2.6, 3.0], 'jitter': 0.1,
         'first': {'buyer': 0, 'ore': 'iron', 'units': 10, 'mult': 1.5},
         # `calls` and `closed` wait for the rules' buyer schema to carry them (balance report, "For other owners").
@@ -204,7 +206,7 @@ g['haul'] = {
         ],
         'headStart': [[0, 1], [0, 1, 2], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 5], [0, 1, 2, 3, 4, 5, 6, 7], [0, 1, 2, 3, 4, 5, 6, 7, 8]],
         # Section 8's knob for run 2 (raise the Afterburner head start): the head-start rig level.
-        'headStartRig': int(K('headStartRig', 4, 4, 10, 'rig level of head-start slots (knob: run 2)')),
+        'headStartRig': int(K('headStartRig', 4, 4, 10, 'rig level of head-start slots (knob: run 2)', 6)),
     },
     'galaxies': {'names': GALAXIES},
     'modules': [
@@ -298,8 +300,10 @@ g['meta'] = {
 mon = g.setdefault('monetization', {})
 mon.setdefault('ads', {'forceTestAds': True})
 mon['ads']['showBanner'] = False
+# No interstitial ads in the first version (5.4; lead's integration decision 4): no path may show one.
+mon['ads']['interstitials'] = False
 mon['iap'] = {**mon.get('iap', {}), 'products': [
-    {'id': 'space_clearance', 'title': 'Clearance', 'description': 'No banners or pop-up ads, and every ad reward without the ad.', 'kind': 'clearance', 'icon': 'art:rail-trade', 'fallbackPrice': '$7.99'},
+    {'id': 'space_clearance', 'title': 'Clearance', 'description': 'Every ad reward without watching the ad.', 'kind': 'clearance', 'icon': 'art:rail-trade', 'fallbackPrice': '$7.99'},
     {'id': 'space_hangar', 'title': 'Hangar Expansion', 'description': '+6 drone cap and 2 idle drones at every run start.', 'kind': 'unlock', 'icon': 'art:drone', 'fallbackPrice': '$5.99'},
     {'id': 'space_charter', 'title': 'Prospector Charter', 'description': '150 Dark Matter and 5 Ore Sorter parts. Once.', 'kind': 'starterPack', 'value': 150, 'icon': 'art:warp-core',
      'contents': [{'type': 'gems', 'amount': 150}, {'type': 'card', 'cardId': 'sorter', 'copies': 5}], 'fallbackPrice': '$2.99'},

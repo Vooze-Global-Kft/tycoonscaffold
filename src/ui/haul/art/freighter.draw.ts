@@ -11,6 +11,7 @@ import type { SkCanvas } from '@shopify/react-native-skia';
 import { SPACE, alpha, mix } from './palette';
 import { LINE, TAU, arc, circle, fill, glow, lamp, light, line, part, poly, rrect, stroke } from './pen';
 import { drawText, textWidth } from './glyphs';
+import { HAUL_STRINGS } from '../strings';
 
 export type HullId = 0 | 1 | 2 | 3;
 export const HULL_NAMES = ['Skiff', 'Barge', 'Hauler', 'Bulk Carrier'] as const;
@@ -244,12 +245,17 @@ export function drawAwayArc(c: SkCanvas, k: number, label: string): void {
   drawText(c, label, 0, 22, { size: 5, color: SPACE.steel, align: 'center', glow: 0, weight: 1 });
 }
 
+/** The chip's words for a policy ('full' or 'contract'), from the string table (src/ui/haul/strings.ts). */
+export function policyLabel(policy: string): string {
+  return policy.toLowerCase() === 'contract' ? HAUL_STRINGS.autoContract : HAUL_STRINGS.autoFull;
+}
+
 /**
  * The autopilot policy chip "AUTO · FULL" (or "AUTO · CONTRACT") at the launch track's right end,
  * centred on the origin; the beacon dot blinks with the autopilot. Returns its size.
  */
 export function drawPolicyChip(c: SkCanvas, policy: string, beaconOn = true): { w: number; h: number } {
-  const text = `AUTO · ${policy.toUpperCase()}`;
+  const text = policyLabel(policy);
   const size = 5;
   const w = textWidth(text, size) + 16;
   const h = 13;

@@ -11,7 +11,7 @@ import { GameConfigSchema } from '../config/schema';
 import * as E from './economy';
 import { FIXTURE_NOW, haulFixtures, haulTestConfig } from './fixtures/haul';
 import * as H from './haul';
-import { defaultJumpChoice, grantHangar, HAUL_SHARED_SOUNDS, haulEngineMode, haulFrame, mergeShiftLogs, withHaulContent, type HaulFrame } from './haulMode';
+import { defaultJumpChoice, grantHangar, HAUL_SHARED_SOUNDS, haulEngineMode, mergeShiftLogs, withHaulContent } from './haulMode';
 import * as M from './meta';
 import { engineFor, installEngineMode } from './mode';
 import type { GameState } from './types';
@@ -222,25 +222,11 @@ describe('the integration seam: purchases, the scene frame, the Shift Log', () =
     expect(g.haul.flare.charges).toBeLessThanOrEqual(c.haul.flare.maxCharges);
   });
 
-  it('the scene frame (4.3): route table, run clock and wall time of the state; null without a run', () => {
-    const c = spaceCfg();
-    let g = E.createInitialState(c, FIXTURE_NOW);
-    g = H.assignDrone(c, g as unknown as H.HaulGame & { haul: H.HaulState }, 0) as unknown as GameState;
-    g = E.tick(c, g, 2, FIXTURE_NOW);
-    const f = haulEngineMode.frame!(c, g, FIXTURE_NOW + 5) as HaulFrame;
-    expect(f.at).toBe(FIXTURE_NOW + 5);
-    expect(f.clock).toBeCloseTo(2, 6);
-    expect(f.routes).toEqual(H.routeTable(c, g as unknown as H.HaulGame & { haul: H.HaulState }));
-    expect(f.routes[0]).toMatchObject({ slot: 0, n: 1 });
-    expect(f.idle).toBe(g.haul!.idle);
-    const f2 = haulFrame(c, g, FIXTURE_NOW + 6)!;
-    expect(f2.seq).toBeGreaterThan(f.seq);
-    // Structured-clone safe (it crosses to the UI thread as a shared value).
-    expect(JSON.parse(JSON.stringify(f))).toEqual(f);
-    const { late } = haulFixtures(cfg);
-    const confirmed = E.prestige(cfg, late as unknown as GameState, FIXTURE_NOW, { step: 'confirm' });
-    expect(haulFrame(cfg, confirmed, FIXTURE_NOW)).toBeNull();
-    expect(haulFrame(pizzaCfg, E.createInitialState(pizzaCfg, FIXTURE_NOW), FIXTURE_NOW)).toBeNull();
+  it('an absence that shipped nothing for want of the autopilot still has its Shift Log (2.11)', () => {
+    const r: H.OfflineReport = { seconds: 600, effective: 270, unitsByOre: {}, rocksDry: 0, pods: 0, inFlight: 0, credits: 0, noAutopilot: true, shipped: 0, launches: 0 };
+    expect(haulEngineMode.reportAlone!(r)).toBe(true);
+    expect(haulEngineMode.reportAlone!({ ...r, noAutopilot: false })).toBe(false);
+    expect(haulEngineMode.reportAlone!(undefined)).toBe(false);
   });
 
   it('two Shift Logs of one absence add up', () => {

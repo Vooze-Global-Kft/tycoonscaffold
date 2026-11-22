@@ -9,7 +9,7 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 | | |
 |---|---|
 | Mode | haul |
-| Ads | Yes: Google AdMob, rewarded (opt-in), interstitial. Highest ad content rating: PG (parental guidance) (monetization.ads.maxAdContentRating) |
+| Ads | Yes: Google AdMob, rewarded (opt-in). Highest ad content rating: PG (parental guidance) (monetization.ads.maxAdContentRating) |
 | In-app purchases | Yes: 5 products (clearance, unlock, starterPack, gems) |
 | Premium currency | Yes: Dark Matter, sold for money; never expires |
 | Random items (chests) | 2 kind(s), with odds shown |

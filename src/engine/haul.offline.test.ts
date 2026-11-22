@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as H from './haul';
-import { conservationError, haulTestConfig, run, shaped } from './fixtures/haul';
+import { conservationError, FIXTURE_NOW, haulFixtures, haulTestConfig, run, shaped } from './fixtures/haul';
 
 type Run = H.HaulGame & { haul: H.HaulState };
 const base = haulTestConfig();
@@ -150,4 +150,37 @@ describe('haulOffline', () => {
     const perHourOn = H.haulIncome(cfg, g) * 3600;
     expect(perHourOff / perHourOn).toBeLessThanOrEqual(0.45 * 1.05);
   });
+});
+
+// 2.11 "offline never beats play", checked on reachable states (contracts and seams on, the game's
+// own config): an hour away pays at most efficiency × what the same station earns in an hour of play
+// with nobody touching it (plus 10 % for the rock streams' variance), so it never beats play. It is
+// not bounded by efficiency × activeRate: activeRate prices each ring at its weight-averaged ore,
+// while the hour away ships the rocks that are really there (a rich far-ring rock under a heavy route
+// pays up to about 1.35 × efficiency × activeRate). That is the rock stream, not a leak.
+describe('2.11 offline never beats play (fixture states)', () => {
+  const fx = haulFixtures(base);
+  for (const name of ['minute3', 'midGame', 'late', 'afterJump'] as const) {
+    it(`${name}: an hour away ≤ efficiency × an hour of untouched play`, () => {
+      let g = fx[name];
+      if (!g.haul.autopilot.online) g = { ...g, haul: { ...g.haul, autopilot: { ...g.haul.autopilot, online: true } } };
+      // Idle drones (a fresh run after a Jump) go out first, as a player would before leaving.
+      for (let k = 0; k < 60 && g.haul.idle > 0; k++) {
+        const best = H.bestSlotForDrone(base, g);
+        if (best === null) break;
+        g = H.assignDrone(base, g, best) as Run;
+      }
+      const now = FIXTURE_NOW + 10 * 3600_000;
+      const snap = { ...g, lastSavedAt: now, stats: { ...g.stats, clockHigh: now } } as Run;
+      const off = H.haulOffline(base, snap, now + 3600_000);
+      const eff = Math.min(0.45, base.economy.offline.efficiency);
+      let earned = 0;
+      run(base, g, 3600, 1, (_, ev) => ev.forEach((e) => e.type === 'warp' && (earned += e.payout)));
+      expect(off.earnings).toBeGreaterThan(0);
+      expect(off.earnings).toBeLessThanOrEqual(eff * earned * 1.1);
+      expect(off.earnings).toBeLessThan(earned);
+      const ar = H.haulIncome(base, g) * 3600;
+      expect(off.earnings).toBeLessThanOrEqual(eff * ar * 1.5);
+    }, 60_000);
+  }
 });

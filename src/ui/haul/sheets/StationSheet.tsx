@@ -106,7 +106,7 @@ export function StationSheet() {
   const close = () => useHaulUi.getState().closeSheet();
   const wire = alpha(c.primary, 0.35);
   return (
-    <HaulSheet visible={open && station !== null} onClose={close} title={names.station} left={<ArtView picture={pictures.stationHub()} size={{ w: 34, h: 34 }} scale={0.7} />}>
+    <HaulSheet visible={open && station !== null} onClose={close} title={names.station} compactShare={0.64} left={<ArtView picture={pictures.stationHub()} size={{ w: 34, h: 34 }} scale={0.7} />}>
       {v ? (
         <View>
           {/* The conduit that joins the three blocks: the schematic's spine. */}
@@ -117,7 +117,7 @@ export function StationSheet() {
                 <Line mono size={ty.small} lines={1}>
                   {say('drones', { n: v.drones, cap: v.cap })}
                 </Line>
-                <ActionButton label={say('buy')} price={v.atCap ? undefined : v.droneCost} enabled={v.canDrone} onPress={haulActions.buyDrone} target="station:buyDrone" style={styles.cellButton} />
+                <ActionButton label={v.atCap ? say('max') : say('buy')} price={v.atCap ? undefined : v.droneCost} enabled={v.canDrone} onPress={haulActions.buyDrone} target="station:buyDrone" style={styles.cellButton} />
               </View>
               <View style={styles.cell}>
                 <Line mono size={ty.small} lines={2}>

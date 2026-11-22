@@ -1,4 +1,6 @@
 /// <reference types="node" />
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { HAUL_STARTING_CONTENT, HaulSchema, lintHaul } from './schema.haul';
 
@@ -44,5 +46,19 @@ describe('haul schema', () => {
     expect(HaulSchema.safeParse({ ...HAUL_STARTING_CONTENT, ores: [] }).success).toBe(false);
     expect(HaulSchema.safeParse({ ...HAUL_STARTING_CONTENT, seam: { interval: [150, 90] } }).success).toBe(false);
     expect(HaulSchema.safeParse({ ...HAUL_STARTING_CONTENT, rig: { ...HAUL_STARTING_CONTENT.rig, levelGrowth: 1 } }).success).toBe(false);
+  });
+
+  it('keeps the buyer lines, the contract rule numbers and the seam floor', () => {
+    const shipped = JSON.parse(readFileSync(join(__dirname, '../../games/space-miner/game.json'), 'utf8')).haul;
+    const h = HaulSchema.parse(shipped);
+    expect(h.contracts.buyers.every((b) => typeof b.calls === 'string' && typeof b.closed === 'string')).toBe(true);
+    expect(h.contracts.buyers[0].calls).toContain('{ore}');
+    const d = HaulSchema.parse(HAUL_STARTING_CONTENT);
+    expect(d.contracts.reach).toEqual([0.35, 0.75]);
+    expect(d.contracts.fleetShare).toBe(0.5);
+    expect(d.contracts.minUnits).toBe(3);
+    // Errata 20: the seam interval floor is 30 s, in the defaults too.
+    expect(HaulSchema.parse({ ...HAUL_STARTING_CONTENT, seam: undefined }).seam.minInterval).toBe(30);
+    expect(HaulSchema.safeParse({ ...HAUL_STARTING_CONTENT, contracts: { ...HAUL_STARTING_CONTENT.contracts, fleetShare: 0 } }).success).toBe(false);
   });
 });

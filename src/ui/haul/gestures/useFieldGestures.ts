@@ -50,8 +50,6 @@ interface Touch {
 }
 
 const MAX_SAMPLES = 8;
-/** Points above the rack's arms that still pick up an idle drone (the drone's height over its cradle). */
-const RACK_REACH = 16;
 
 /** The touch's hit, corrected for what the screen really shows (errata 45, 48). */
 function hitAt(p: Pt, layout: FieldLayout, now: Run): Hit {
@@ -64,8 +62,6 @@ function hitAt(p: Pt, layout: FieldLayout, now: Run): Hit {
   );
   // The launcher is hidden until the first charge: a touch there is the bay behind it.
   if (hit.kind === 'flare' && h.flare.charges <= 0) return { kind: 'background' };
-  // Idle drones stand nose up above their cradles: a touch on one, just above the arms, is the rack.
-  if (h.idle > 0 && (hit.kind === 'background' || hit.kind === 'station') && onRack({ x: p.x, y: p.y + RACK_REACH }, layout)) return { kind: 'rack' };
   return hit;
 }
 

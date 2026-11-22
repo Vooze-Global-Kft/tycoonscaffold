@@ -2,14 +2,12 @@
  * Text in the freighter bay (the fixed-height rule of AGENTS.md): one digital face, sizes set by
  * hand from the font scale (never by the system), and the bay's words.
  *
- * Words: interface words come from the mode's string table (src/ui/haul/strings.ts, the content
- * package's file); names of things from game.json (`haul.names`, ores, buyers). Keys the table does
- * not have yet fall back to the text beside them here, so the bay works while the table catches up;
- * the bay package's report lists them for the table's owner.
+ * Words: interface words come from the mode's string table (src/ui/haul/strings.ts, the one source,
+ * lead's decision 5); names of things from game.json (`haul.names`, ores, buyers).
  */
 import { Platform, type TextStyle } from 'react-native';
 import { formatShort } from '../../../engine/format';
-import { HAUL_STRINGS } from '../strings';
+import { HAUL_STRINGS, type HaulStringKey } from '../strings';
 
 /** The digital face of the counters (monospaced, so a rolling number never jitters sideways). */
 export const DIGITAL: TextStyle = {
@@ -18,11 +16,9 @@ export const DIGITAL: TextStyle = {
   fontVariant: ['tabular-nums'],
 };
 
-const TABLE = HAUL_STRINGS as unknown as Record<string, string | undefined>;
-
-/** An interface word of the bay: the string table's entry, or the fallback until the table has it. */
-export function bayWord(key: string, fallback: string): string {
-  return TABLE[key] ?? fallback;
+/** An interface word of the bay, from the string table. */
+export function bayWord(key: HaulStringKey): string {
+  return HAUL_STRINGS[key];
 }
 
 /** Fills "{s}"-style holes. */

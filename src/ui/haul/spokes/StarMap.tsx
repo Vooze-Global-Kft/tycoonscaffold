@@ -28,7 +28,6 @@ import { ARM_COLOR } from '../art/meta.icons.draw';
 import { drawConditionPreview } from '../art/spokes.draw';
 import { spokePictures } from '../art/Spokes';
 import { STATION_PART_NAMES, type StarNode } from '../art/station.draw';
-import { useHaulUi } from '../uiState';
 import { useHaul, useHaulCfg } from './spokeData';
 import { ArtImage, Bracket, INK, Key, Mono, pct, Rule } from './spokeKit';
 import { NODE_EFFECT, RUN_START_EFFECTS, SPOKE_STRINGS as S, words } from './spokeStrings';
@@ -178,10 +177,11 @@ function GalaxyStrip({ cfg, data }: { cfg: H.HaulConfig; data: MapData }) {
   const c = data.condition;
   return (
     <View style={styles.galaxy}>
-      {c ? <HaulIcon name={`art:cond-${c.id}`} size={30} /> : <View style={styles.noCond} />}
+      {/* The first galaxy has no condition: the map's own mark stands in its place. */}
+      <HaulIcon name={c ? `art:cond-${c.id}` : 'art:rail-starmap'} size={30} />
       <View style={{ flex: 1 }}>
         <Mono size={13} weight="700" lines={1}>
-          {`${cfg.haul.names.galaxy} ${data.galaxy + 1} · ${data.galaxyName}`}
+          {`${data.pending ? `${S.leaving} ` : ''}${cfg.haul.names.galaxy} ${data.galaxy + 1} · ${data.galaxyName}`}
         </Mono>
         <Mono size={10} color={c ? INK.line : INK.faint} caps={false} lines={1}>
           {c ? `${c.name}: ${c.lines.join(' · ')}` : S.noCondition}
@@ -392,13 +392,13 @@ function JumpPanel({ cfg, data }: { cfg: H.HaulConfig; data: MapData }) {
       <View style={styles.lists}>
         <View style={{ flex: 1 }}>
           <Rule label={S.kept} color={INK.green} />
-          {S.keptList.map((l) => (
+          {Object.values(S.keptList).map((l) => (
             <Mono key={l} size={10} color={INK.text} caps={false} style={styles.li}>{`+ ${words(cfg, l)}`}</Mono>
           ))}
         </View>
         <View style={{ flex: 1 }}>
           <Rule label={S.reset} color={INK.amber} />
-          {S.resetList.map((l) => (
+          {Object.values(S.resetList).map((l) => (
             <Mono key={l} size={10} color={INK.dim} caps={false} style={styles.li}>{`- ${words(cfg, l)}`}</Mono>
           ))}
         </View>
@@ -455,11 +455,8 @@ function PendingPanel({ cfg, data }: { cfg: H.HaulConfig; data: MapData }) {
   const chosen = pick && data.offers.includes(pick) ? pick : null;
   const start = () => {
     if (!chosen) return;
-    if (haulActions.startGalaxy(chosen)) {
-      const ui = useHaulUi.getState();
-      ui.closeSpoke();
-      ui.openOverlay('jump');
-    }
+    // The shell closes this spoke and plays the Jump sequence once the new run exists (HaulShell useJumpCue).
+    haulActions.startGalaxy(chosen);
   };
   return (
     <Bracket style={styles.jump} color={INK.gold} label={S.pendingTitle}>
@@ -486,7 +483,6 @@ function PendingPanel({ cfg, data }: { cfg: H.HaulConfig; data: MapData }) {
 const styles = StyleSheet.create({
   cores: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: INK.edge, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(12,19,38,0.9)' },
   galaxy: { flexDirection: 'row', alignItems: 'center', gap: 10, borderLeftWidth: 2, borderLeftColor: INK.line, paddingLeft: 10, paddingVertical: 2 },
-  noCond: { width: 30, height: 30, borderWidth: 1, borderColor: INK.edge, borderStyle: 'dashed' },
   armLabel: { position: 'absolute', width: 100, letterSpacing: 1.4 },
   readout: { marginTop: 4, minHeight: 64 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },

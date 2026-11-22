@@ -51,7 +51,7 @@
     "tapPercentOfIncome": 0,
     "milestones": [],
     "prestige": {
-      "threshold": 22000000,
+      "threshold": 16000000,
       "scale": 5,
       "exponent": 0.5,
       "bonusPerPoint": 0
@@ -248,14 +248,15 @@
         "appId": "ca-app-pub-3940256099942544~3347511713"
       },
       "forceTestAds": true,
-      "showBanner": false
+      "showBanner": false,
+      "interstitials": false
     },
     "iap": {
       "products": [
         {
           "id": "space_clearance",
           "title": "Clearance",
-          "description": "No banners or pop-up ads, and every ad reward without the ad.",
+          "description": "Every ad reward without watching the ad.",
           "kind": "clearance",
           "icon": "art:rail-trade",
           "fallbackPrice": "$7.99"
@@ -866,7 +867,7 @@
       }
     },
     "claim": {
-      "base": 13,
+      "base": 16,
       "ringFactor": 15,
       "jFactor": 1.4
     },
@@ -965,10 +966,12 @@
       "board": 3,
       "lifetime": 6,
       "fee": 0.1,
-      "units": [
-        0.4,
-        0.7
+      "reach": [
+        0.35,
+        0.75
       ],
+      "fleetShare": 0.5,
+      "minUnits": 3,
       "twoOreChance": 0.4,
       "mult": [
         1.6,
@@ -1265,7 +1268,7 @@
           8
         ]
       ],
-      "headStartRig": 4
+      "headStartRig": 6
     },
     "galaxies": {
       "names": [

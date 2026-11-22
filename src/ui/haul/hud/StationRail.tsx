@@ -24,13 +24,13 @@ import { useRunShallow } from '../useRun';
 import { useHaulUi, type HaulSpoke } from '../uiState';
 import { bayWord } from './bayText';
 
-const BUTTONS: { id: RailGlyph; spoke: HaulSpoke | null; label: string }[] = [
-  { id: 'comms', spoke: 'comms', label: 'Comms' },
-  { id: 'salvage', spoke: 'salvage', label: 'Salvage Bay' },
-  { id: 'fitting', spoke: 'fitting', label: 'Fitting Bay' },
-  { id: 'starmap', spoke: 'starmap', label: 'Star Map' },
-  { id: 'trade', spoke: 'trade', label: 'Trade Post' },
-  { id: 'menu', spoke: null, label: 'Menu' },
+const BUTTONS: { id: RailGlyph; spoke: HaulSpoke | null }[] = [
+  { id: 'comms', spoke: 'comms' },
+  { id: 'salvage', spoke: 'salvage' },
+  { id: 'fitting', spoke: 'fitting' },
+  { id: 'starmap', spoke: 'starmap' },
+  { id: 'trade', spoke: 'trade' },
+  { id: 'menu', spoke: null },
 ];
 
 /** Recorded button looks; the Dark Matter plate changes with the balance, so the map is bounded (old looks are dropped, never freed). */
@@ -156,7 +156,7 @@ export function StationRail({ rects }: { rects: Rect[] }) {
         </Canvas>
       </View>
       {BUTTONS.map((b, i) => (
-        <RailButton key={b.id} rect={rects[i]} id={b.id} label={bayWord(`rail_${b.id}`, b.label)} shown={shown[b.id]} onPress={open(b.spoke)} />
+        <RailButton key={b.id} rect={rects[i]} id={b.id} label={bayWord(`rail_${b.id}`)} shown={shown[b.id]} onPress={open(b.spoke)} />
       ))}
     </>
   );

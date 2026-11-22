@@ -70,6 +70,8 @@ export const chipPillHeight = (compact: boolean) => (compact ? 20 : 24);
 export const GHOST_TAP_R = 32;
 /** Centre-to-centre spacing of chips. */
 export const CHIP_SPACING = 40;
+/** Points above the rack's arms that still pick up an idle drone: drones stand nose up over their cradles. */
+export const RACK_REACH = 16;
 /** Drop radius of a drag (spec 4.2). */
 export const DROP_R = 40;
 /** Flick cone, half angle in degrees (spec 4.2). */
@@ -298,6 +300,8 @@ export function hitTest(p: Pt, layout: FieldLayout, claimed: readonly boolean[],
   }
   if (rock >= 0) return { kind: 'rock', slot: rock };
   if (ghost >= 0) return { kind: 'ghost', slot: ghost };
+  // An idle drone's body stands up to RACK_REACH above the arm: a touch there is the rack, not the station.
+  if (idle > 0 && (inRect({ x: p.x, y: p.y + RACK_REACH }, layout.rack.left) || inRect({ x: p.x, y: p.y + RACK_REACH }, layout.rack.right))) return { kind: 'rack' };
   if (Math.hypot(p.x - layout.station.x, p.y - layout.station.y) <= layout.station.r) return { kind: 'station' };
   if (inRect(p, layout.zones.launch)) return { kind: 'launch' };
   return { kind: 'background' };

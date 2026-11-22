@@ -401,6 +401,8 @@ export const GameConfigSchema = z.object({
     keywords: z.array(z.string()).min(1),
     shortDescription: z.string().max(80),
     description: z.string().max(4000),
+    /** Apple's promotional text (170 characters, changeable without a review); written by sync. Optional, no default. */
+    promotionalText: z.string().max(170).optional(),
     primaryCategory: z.string().default('GAMES'),
     subcategories: z.array(z.string()).default(['GAMES_SIMULATION', 'GAMES_CASUAL']),
     privacyPolicyUrl: z.string().url().optional(),

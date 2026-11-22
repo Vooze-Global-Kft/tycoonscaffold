@@ -6,10 +6,11 @@
  * "AUTO · FULL" at the right end, a view of its own (errata 48): press 350 ms to switch the policy,
  * tap for the Station sheet's systems block. Target key `bay:launch`.
  *
- * The bay panel is opaque, so the docked freighter, its lift-off and its landing are drawn here;
- * the scene draws its climb through the field and the warp flash. Animations run on the UI thread
- * and only while something moves (the chevrons breathe only while the hold has cargo to ship and
- * no spoke covers the map).
+ * The bay owns everything below its top edge (lead's decision 6): the pad, the docked freighter,
+ * its lift-off and its landing are drawn here, in a canvas that reaches up to the panel's crest;
+ * the scene draws the same flight path (./flight.ts) above the crest, so the freighter crosses the
+ * edge without a jump. Animations run on the UI thread and only while something moves (the
+ * chevrons breathe only while the hold has cargo to ship and no spoke covers the map).
  */
 import { Canvas, Group, Picture, type SkPicture } from '@shopify/react-native-skia';
 import { useEffect, useMemo } from 'react';
@@ -20,7 +21,8 @@ import { haulActions } from '../../../modes/haul/actions';
 import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
-import { drawAwayArc, drawChevron, drawPad, drawPolicyChip, freighterSize, hullFor, LOADED_FREIGHTER_SCALE, segmentsFor } from '../art/freighter.draw';
+import { drawAwayArc, drawChevron, drawPad, drawPolicyChip, freighterSize, policyLabel, hullFor, LOADED_FREIGHTER_SCALE, segmentsFor } from '../art/freighter.draw';
+import { freighterFlamePicture } from '../scene/pics';
 import { SPACE } from '../art/palette';
 import { around, picture } from '../art/pen';
 import { pictures } from '../art/pictures';
@@ -31,6 +33,7 @@ import { HAUL_STRINGS } from '../strings';
 import { useRunShallow } from '../useRun';
 import { useHaulUi } from '../uiState';
 import { DIGITAL, fillIn, labelMetrics } from './bayText';
+import { climbY, landAt, padScaleFor, padSpot } from './flight';
 
 const pics = new Map<string, SkPicture>();
 function memo(key: string, make: () => SkPicture): SkPicture {
@@ -47,7 +50,8 @@ const ARC_STEPS = 48;
 /** The chevrons' loop while there is cargo to ship. */
 const CHEVRON_MS = 1200;
 
-export function LaunchTrack({ rect }: { rect: Rect }) {
+/** `crest`: the bay panel's top edge and `topY` the top of the climb, in screen points (./flight.ts). */
+export function LaunchTrack({ rect, crest, topY }: { rect: Rect; crest: number; topY: number }) {
   const f = useRunShallow(
     (cfg, g) => {
       const fr = g.haul.freighter;
@@ -83,42 +87,51 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
   const Hh = rect.height;
 
   // Geometry: the pad's centre near the bottom of the track; the freighter on it at the loaded scale.
-  const padScale = compact ? 0.72 : 0.8;
-  const cx = W / 2;
-  const cy = Hh - 17 * (padScale / 0.8);
+  const padScale = padScaleFor(compact);
   const hull = hullFor(f.level);
   const seg = segmentsFor(f.level);
   const size = freighterSize(hull, seg);
-  const fit = Math.min(1, (Hh - 6) / (size.h * LOADED_FREIGHTER_SCALE * padScale + 6));
-  const shipScale = (f.cargo ? LOADED_FREIGHTER_SCALE : 1) * padScale * fit;
+  const spot = padSpot(rect, compact, size, LOADED_FREIGHTER_SCALE);
+  const cx = W / 2;
+  const cy = spot.y - rect.y;
+  const shipScale = f.cargo ? spot.loaded : spot.empty;
+  // The canvas reaches from the panel's crest down to the track's bottom: `up` points above the track.
+  const up = Math.max(0, rect.y - crest);
 
-  // Lift-off and landing (0 = on the pad, 1 = gone up through the bay's top).
-  const lift = useSharedValue(f.phase === 'docked' || f.phase === 'land' ? 0 : 1);
+  // The flight on the UI thread: mode 0 resting, 1 climbing, 3 landing; p is the progress (0..1).
+  const mode = useSharedValue(f.phase === 'climb' || f.phase === 'away' ? 1 : 0);
+  const p = useSharedValue(f.phase === 'climb' || f.phase === 'away' ? 1 : 0);
   useEffect(() => {
     const off = modeEvents.subscribe((events) => {
+      const fr = (useGame.getState().cfg as H.HaulConfig).haul?.freighter;
       for (const e of events as H.HaulEvent[]) {
         if (e.type === 'launch') {
-          cancelAnimation(lift);
-          lift.value = withTiming(1, {
-            duration: 450,
-            easing: Easing.in(Easing.cubic),
-          });
+          cancelAnimation(p);
+          mode.value = 1;
+          p.value = 0;
+          p.value = withTiming(1, { duration: Math.max(300, (fr?.climb ?? 2.5) * 1000), easing: Easing.linear });
         } else if (e.type === 'land') {
-          cancelAnimation(lift);
-          lift.value = 1;
-          lift.value = withTiming(0, {
-            duration: Math.max(300, (useGame.getState().cfg as H.HaulConfig).haul?.freighter.land * 1000 || 2000),
-            easing: Easing.out(Easing.cubic),
-          });
+          cancelAnimation(p);
+          mode.value = 3;
+          p.value = 0;
+          p.value = withTiming(1, { duration: Math.max(300, (fr?.land ?? 2) * 1000), easing: Easing.linear });
         }
       }
     });
     return off;
-  }, [lift]);
+  }, [mode, p]);
   // A restart or a preset mid-flight: put the ship where the rules say it is.
   useEffect(() => {
-    if (f.phase === 'away') lift.value = 1;
-  }, [f.phase, lift]);
+    if (f.phase === 'away') {
+      cancelAnimation(p);
+      mode.value = 1;
+      p.value = 1;
+    } else if (f.phase === 'docked') {
+      cancelAnimation(p);
+      mode.value = 0;
+      p.value = 0;
+    }
+  }, [f.phase, mode, p]);
 
   const ready = f.phase === 'docked' && f.cargo;
   const loop = useSharedValue(0);
@@ -133,14 +146,36 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
     return () => cancelAnimation(loop);
   }, [ready, spoke, armed, loop]);
 
-  const rise = Math.max(18, Hh * 0.5);
+  /** Flame frames over one flight (about 18 a second). */
+  const FLICKS = 45;
   const shipXform = useDerivedValue(() => {
-    const d = dragLine.value;
-    const pull = d.kind === DRAG_SWIPE ? Math.max(0, Math.min(60, d.y0 - d.y)) * 0.12 : 0;
-    // Gone (away): scaled to nothing as well, since a picture may ignore its group's opacity.
-    return [{ translateX: cx }, { translateY: cy - lift.value * rise - pull }, { scale: lift.value > 0.995 ? 0 : shipScale }];
+    const m = mode.value;
+    let y = spot.y;
+    let sc = shipScale;
+    if (m === 1) {
+      y = climbY(p.value, spot.y, topY);
+      sc = spot.loaded;
+    } else if (m === 3) {
+      const l = landAt(p.value, spot.y, topY, spot.loaded, shipScale);
+      y = l.y;
+      sc = l.scale;
+    } else {
+      const d = dragLine.value;
+      y -= d.kind === DRAG_SWIPE ? Math.max(0, Math.min(60, d.y0 - d.y)) * 0.12 : 0;
+    }
+    // Above the crest the scene draws it: scaled to nothing here (the canvas clips it anyway).
+    return [{ translateX: cx }, { translateY: y - rect.y + up }, { scale: y < crest - 80 ? 0 : sc }];
   });
-  const shipOpacity = useDerivedValue(() => 1 - lift.value);
+  // The flame flickers (three frames) while the freighter flies.
+  const flameXf = (i: number) => {
+    'worklet';
+    const flying = (mode.value === 1 || mode.value === 3) && p.value < 1;
+    return [{ scale: flying && Math.floor(p.value * FLICKS) % 3 === i ? 1 : 0 }];
+  };
+  const fl0 = useDerivedValue(() => flameXf(0));
+  const fl1 = useDerivedValue(() => flameXf(1));
+  const fl2 = useDerivedValue(() => flameXf(2));
+  const flames = [fl0, fl1, fl2];
   const chevOn = (i: number, l: number) => {
     'worklet';
     return ready ? 0.3 + 0.7 * Math.max(0, Math.min(1, l * 3.6 - i * 1.1)) : 0.22;
@@ -150,7 +185,7 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
   const c2 = useDerivedValue(() => chevOn(2, loop.value));
   const chevA = [c0, c1, c2];
 
-  const chevTop = cy - (size.h / 2) * shipScale - 6;
+  const chevTop = cy + up - (size.h / 2) * shipScale - 6;
   const pad = memo(`pad:${ready}`, () => picture(around(34), (c) => drawPad(c, ready)));
   const chevron = memo('chev', () => picture(around(12), (c) => drawChevron(c, 1)));
   const ship = pictures.freighter(hull, seg);
@@ -158,7 +193,7 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
   const away = f.phase === 'climb' || f.phase === 'away';
   const policyName = f.policy ? f.policy.toUpperCase() : '';
   const chip = memo(`policy:${policyName}`, () => picture(around(60), (c) => drawPolicyChip(c, policyName, true)));
-  const chipW = f.policy ? textWidth(`AUTO · ${policyName}`, 5) + 16 : 0;
+  const chipW = f.policy ? textWidth(policyLabel(policyName), 5) + 16 : 0;
   const chipX = W - chipW / 2 - 4;
   const chipY = 10;
 
@@ -191,13 +226,18 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
         height: Hh,
       }}
     >
-      <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: W, height: Hh }}>
-        <Canvas style={{ width: W, height: Hh }}>
-          <Group transform={[{ translateX: cx }, { translateY: cy }, { scale: padScale }]}>
+      <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: W, height: Hh, overflow: 'visible' }}>
+        <Canvas style={{ position: 'absolute', left: 0, top: -up, width: W, height: Hh + up }}>
+          <Group transform={[{ translateX: cx }, { translateY: cy + up }, { scale: padScale }]}>
             <Picture picture={pad} />
             {away ? <Picture picture={arc} /> : null}
           </Group>
-          <Group transform={shipXform} opacity={shipOpacity} layer>
+          <Group transform={shipXform}>
+            {flames.map((t, i) => (
+              <Group key={i} transform={t}>
+                <Picture picture={freighterFlamePicture(hull, seg, i)} />
+              </Group>
+            ))}
             <Picture picture={ship} />
           </Group>
           {f.phase === 'docked'
@@ -208,7 +248,7 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
               ))
             : null}
           {f.policy ? (
-            <Group transform={[{ translateX: chipX }, { translateY: chipY }]}>
+            <Group transform={[{ translateX: chipX }, { translateY: chipY + up }]}>
               <Picture picture={chip} />
             </Group>
           ) : null}
@@ -246,7 +286,7 @@ export function LaunchTrack({ rect }: { rect: Rect }) {
       {f.policy ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`AUTO · ${policyName}`}
+          accessibilityLabel={policyLabel(policyName)}
           hitSlop={10}
           delayLongPress={350}
           onLongPress={() => haulActions.setPolicy(f.policy === 'full' ? 'contract' : 'full')}

@@ -103,7 +103,8 @@ export function createHaul(
     vein: { slot: null, until: 0, guests: [], peak: 0, nextAt: H.seam.first * T(cfg, trait, 'interval'), count: 0 },
     flare: { slot: null, until: 0, guests: [], peak: 0, charges: 0, nextFreeAt: H.flare.firstAt, adsToday: 0, adDay: '', adNextAt: 0 },
     keeper: 0,
-    flags: {},
+    // A run that starts with Hangar Expansion's drones has had them (no second mid-run grant).
+    flags: hangar > 0 ? { hangarDrones: true } : {},
     hintsShown: {},
     marks: { idleSince: drones > 0 ? 0 : null, holdFullSince: null, noContractSince: null, flareReadySince: null },
     counters: { launches: 0, contractsMet: 0, depleted: 0, hauled: 0, claims: 0, drilled: 0, shipped: 0 },

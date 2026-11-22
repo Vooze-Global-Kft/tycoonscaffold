@@ -3,7 +3,8 @@ import * as H from '../../../engine/haul';
 import { haulFixtures, haulTestConfig } from '../../../engine/fixtures/haul';
 import { money, rockName, units } from './format';
 import { hintLine, sheetHintTarget, sheetOf, shiftLogRows, speaker } from './shellLogic';
-import { SHELL_TEXT_DEFAULTS, say } from './shellText';
+import { HAUL_SPOKE_STRINGS, HAUL_STRINGS } from '../strings';
+import { say } from './shellText';
 
 const cfg = haulTestConfig();
 const run = haulFixtures(cfg).midGame;
@@ -34,8 +35,9 @@ describe('comms slot lines (section 3, errata 56, 57)', () => {
     expect(speaker(c, 'dock')).toBe('dock1');
     expect(typeof speaker(c, 'dispatch')).toBe('string');
   });
-  it('no default line uses an exclamation mark (voice, 7.5)', () => {
-    for (const text of Object.values(SHELL_TEXT_DEFAULTS)) expect(text).not.toContain('!');
+  it('no interface line uses an exclamation mark (voice, 7.5)', () => {
+    const all = (o: object): string[] => Object.values(o).flatMap((v) => (typeof v === 'string' ? [v] : all(v as object)));
+    for (const text of [...all(HAUL_STRINGS), ...all(HAUL_SPOKE_STRINGS)]) expect(text).not.toContain('!');
   });
 });
 

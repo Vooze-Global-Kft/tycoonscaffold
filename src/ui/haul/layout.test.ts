@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { haulTestConfig } from '../../engine/fixtures/haul';
-import { CHIP_SPACING, chipPositions, circleRect, dropTarget, fieldLayout, flickTarget, hitTest, rectDistance, ROCK_TAP, type FieldLayout } from './layout';
+import { CHIP_SPACING, chipPositions, circleRect, dropTarget, fieldLayout, flickTarget, hitTest, RACK_REACH, rectDistance, ROCK_TAP, type FieldLayout } from './layout';
 
 const cfg = haulTestConfig();
 const BIG = { width: 390, height: 844, insets: { top: 47, bottom: 34 } };
@@ -180,6 +180,13 @@ describe('hitTest (errata 45)', () => {
     expect(hitTest(rackP, big, claimed, 1)).toEqual({ kind: 'rack' });
     expect(hitTest(rackP, big, claimed, 0).kind).not.toBe('rack');
     expect(hitTest({ x: 160, y: 600 }, big, claimed, 0)).toEqual({ kind: 'station' });
+  });
+
+  it('an idle drone standing over its cradle answers up to RACK_REACH above the arm', () => {
+    const above = { x: 125, y: big.rack.left.y - RACK_REACH + 2 };
+    expect(hitTest(above, big, none, 1)).toEqual({ kind: 'rack' });
+    expect(hitTest(above, big, none, 0).kind).not.toBe('rack');
+    expect(hitTest({ x: 125, y: big.rack.left.y - RACK_REACH - 4 }, big, none, 1).kind).not.toBe('rack');
   });
 
   it('flare zone, chip over rock, rock over ghost, station, launch, background', () => {

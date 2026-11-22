@@ -56,7 +56,7 @@ function ratingNotes(g: GameConfig): string {
   const earnedChests = m.chests.length > 0;
   const kinds = [...new Set(products.map((p) => p.kind))];
   const gemPrices = m.dailyShop.offers.some((o) => o.gemCost > 0) || m.deals.some((d) => d.gemCost) || g.upgrades.some((u) => u.premium);
-  const adFormats = ['rewarded (opt-in)', 'interstitial', ...(ads.showBanner ? ['banner'] : [])];
+  const adFormats = ['rewarded (opt-in)', ...(ads.interstitials === false ? [] : ['interstitial']), ...(ads.showBanner ? ['banner'] : [])];
   const contentRating = { G: 'G (general audiences)', PG: 'PG (parental guidance)', T: 'T (teen)', MA: 'MA (mature)' }[ads.maxAdContentRating];
   const L: string[] = [];
   const h = (s: string) => L.push('', `## ${s}`, '');

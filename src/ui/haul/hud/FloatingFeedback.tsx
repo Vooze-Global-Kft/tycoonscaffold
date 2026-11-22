@@ -412,7 +412,7 @@ export function FloatingFeedback() {
               ...fl.slice(-3),
               {
                 id: nextId.current++,
-                text: bayWord('tagDry', 'DRY'),
+                text: bayWord('tagDry'),
                 x: r.x,
                 y: r.y - r.r - 10,
                 color: SPACE.red,

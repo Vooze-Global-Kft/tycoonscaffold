@@ -97,7 +97,10 @@ allowed"). Every action and the tick take an optional `events?: HaulEvent[]` to 
 ### Loading, payout, contracts (2.6)
 `loadCargo(cfg, params, hold, contract)`, `payoutFor(params, cargo, contract, keeper, forceMet?)`,
 `contractMet(cargo, contract)`, `activeContract(h)`, `contractGain(cfg, params, h, index)`,
-`contractMissing(h, index)`, `contractAt(cfg, seed, k, rings, F, trait)`, `claimedRings(cfg, h)`, `openBoard(cfg, h, F)`.
+`contractMissing(h, index)`, `contractAt(cfg, seed, k, rings, F, trait, station?)`, `claimedRings(cfg, h)`, `openBoard(cfg, h, F, params?)`,
+`contractStation(cfg, params, h)` → `{ present, reach(ores) → { now, routed } }` (Decision 32: units per launch of each ore with the
+routes as they are and after `fleetShare` of the fleet is sent there; a contract's units are `now + λ (routed − now)`, λ = U(reach)).
+`grantHangarDrones(cfg, g, productId)` (Decision 37). The pure balance bot: `src/engine/haul/bot.ts` (Decision 39).
 
 ### Rates and offline (2.11)
 `slotRates(cfg, params, h) → SlotRate[]`, `freighterRate(params)`, `activeRate(cfg, params, h)`,
@@ -325,3 +328,17 @@ Second pass: `npx vitest run src/engine/haul src/engine/loadout src/config/schem
 takes about 3 minutes. `advanceHaul(3600)` on the late fixture: about 55 ms in Node (was 360 to 860 ms;
 params are rebuilt only when a time event changes them). `npx tsc --noEmit` prints nothing for these
 files.
+
+## Integration step (Decisions 32 to 39)
+
+- **Contracts** (Decision 32): `drawContract` takes the run's params when it has them (every warp-out, the
+  unlock, `startGalaxy`'s second `openBoard`) and builds `contractStation` from the routes at that moment.
+  The model: route rate `min(rb, n × cBase / trip)` (current rock, bonanza included, no seam, no Ore
+  Sorter), one launch carries `F × r_o / R`. The re-routing model takes idle drones first, then one drone
+  at a time from the other route that loses least (never a route's last), and gives it to the route of
+  the ore where it adds most (to a saturated one when none adds). `createHaul` still opens a later
+  galaxy's board without params (F × λ); `startGalaxy` redraws it with the new run's station, so what a
+  player sees is always the station rule. The contract stream's draws (n = 1 to 7) are unchanged; only the
+  ore pool (present rocks) and the units differ.
+- **Fixtures** are cached per config object (a WeakMap), not once for good.
+- **Hangar** (Decision 37): `createHaul` sets `flags.hangarDrones` when the product is owned at run start.

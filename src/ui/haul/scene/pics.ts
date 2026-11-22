@@ -1,13 +1,13 @@
 /**
  * The scene's own recorded pictures (everything else comes from the art kit's `pictures`): the
- * ring guides and the bay panel of a layout, pile labels, the seam guide, the freighter's flame
+ * ring guides of a layout, pile labels, the seam guide, the freighter's flame
  * frames and the warp flash. Recorded once per key. Caches that could grow (labels) drop their
  * oldest entries from the map but never dispose a picture: a mounted canvas may still hold it,
  * and the garbage collector frees it once nothing draws it (AGENTS.md).
  */
 import type { SkPath, SkPicture } from '@shopify/react-native-skia';
-import { builder, line, linearPaint, litStroke } from '../art/pen';
-import { SPACE, drawFreighterFlame, drawPileLabel, drawRingGuides, drawSeamGuide, drawWarpFlash, freighterSize, picture, type HullId } from '../art';
+import { line } from '../art/pen';
+import { drawFreighterFlame, drawPileLabel, drawRingGuides, drawSeamGuide, drawWarpFlash, freighterSize, picture, type HullId } from '../art';
 import type { FieldLayout } from '../layout';
 
 const keep = new Map<string, SkPicture>();
@@ -28,21 +28,6 @@ export function ringGuidesPicture(L: FieldLayout): SkPicture {
     picture({ x: 0, y: 0, w: L.width, h: L.height }, (c) =>
       drawRingGuides(c, L.station.x, L.station.y, L.radii, 62, { rocks: L.rocks.map((r) => [r.x, r.y] as [number, number]), rockR: L.rocks[0]?.r ?? 26 }),
     ),
-  );
-}
-
-/** The freighter bay's dark panel with its lit curved top edge (spec 4.1). */
-export function bayPanelPicture(L: FieldLayout): SkPicture {
-  const top = L.zones.bay.y;
-  const w = L.width;
-  const h = L.height;
-  return memo(`bay:${w}x${h}:${top}`, () =>
-    picture({ x: 0, y: top - 20, w, h: h - top + 20 }, (c) => {
-      const panel = builder().moveTo(0, top + 14).quadTo(w / 2, top - 14, w, top + 14).lineTo(w, h).lineTo(0, h).close().build();
-      c.drawPath(panel, linearPaint(0, top, 0, h, [SPACE.panel, '#080D1C']));
-      const edge = builder().moveTo(0, top + 14).quadTo(w / 2, top - 14, w, top + 14).build();
-      litStroke(c, edge, SPACE.panelEdge, 1.5, 0.8);
-    }),
   );
 }
 

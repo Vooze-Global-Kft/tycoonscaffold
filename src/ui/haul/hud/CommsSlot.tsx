@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import * as E from '../../../engine/economy';
+import * as M from '../../../engine/meta';
 import * as H from '../../../engine/haul';
 import { fx } from '../../../services/fx';
 import { modeEvents } from '../../../state/modeEvents';
@@ -36,6 +37,7 @@ import { hintLine, speaker } from '../sheets/shellLogic';
 import { say } from '../sheets/shellText';
 import { useHaulUi } from '../uiState';
 import type { Rect } from '../layout';
+import { spokenMultiplier, spokenNumber } from '../strings';
 /** How long a line stays up (spec 4.1). */
 export const LINE_MS = 5000;
 /** Least time between two story lines (spec 4.1, errata 56). */
@@ -55,6 +57,57 @@ interface Radio {
   at: number;
 }
 
+/** Rows `text` takes when word-wrapped at `perRow` characters. */
+function wrappedRows(text: string, perRow: number): number {
+  let rows = 1;
+  let used = 0;
+  for (const word of text.split(' ')) {
+    const w = word.length;
+    if (used === 0) used = w;
+    else if (used + 1 + w <= perRow) used += 1 + w;
+    else {
+      rows++;
+      used = w;
+    }
+    while (used > perRow) {
+      rows++;
+      used -= perRow;
+    }
+  }
+  return rows;
+}
+
+/** A buyer's own radio line from game.json (`haul.contracts.buyers[].calls` / `.closed`), or null. */
+function buyerLine(cfg: H.HaulConfig, id: string, kind: 'calls' | 'closed'): string | null {
+  const b = cfg.haul.contracts.buyers.find((x) => x.id === id) as { name: string; calls?: string; closed?: string } | undefined;
+  const line = b?.[kind];
+  if (!b || !line) return null;
+  // The slot already names the speaker ("ORIEL LABS:"): a line that opens with the same name drops it.
+  const first = b.name.split(' ')[0];
+  for (const lead of [b.name, first]) {
+    const m = new RegExp(`^${lead.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[,.]?\\s+`, 'i').exec(line);
+    if (m) {
+      const rest = line.slice(m[0].length);
+      return rest.charAt(0).toUpperCase() + rest.slice(1);
+    }
+  }
+  return line;
+}
+
+/** Fills a line's {holes}; a sentence that now starts with a spoken number gets its capital. */
+function fillLine(text: string, vars: Record<string, string>): string {
+  const filled = text.replace(/\{(\w+)\}/g, (m, k: string) => vars[k] ?? m);
+  return filled.replace(/(^|[.?] )([a-z])/g, (_m, pre: string, ch: string) => pre + ch.toUpperCase());
+}
+
+/** A unit count as the radio says it (spec 7.5: spoken numbers in words), rounded like a person would: "about forty thousand". */
+function spokenUnits(n: number): string {
+  if (n < 1000) return spokenNumber(n);
+  const step = Math.pow(10, Math.floor(Math.log10(n)) - 1);
+  const r = Math.round(n / step) * step;
+  return `${r === n ? '' : 'about '}${spokenNumber(r)}`;
+}
+
 export function CommsSlot({ rect }: { rect: Rect }) {
   const { fontScale } = useWindowDimensions();
   const characters = useGame((s) => s.cfg.characters);
@@ -63,6 +116,8 @@ export function CommsSlot({ rect }: { rect: Rect }) {
   const queue = useRef<Radio[]>([]);
   const lastStory = useRef(-Infinity);
   const lastOreCall = useRef(-Infinity);
+  /** Supply drops ready at the last look (null before the first). */
+  const lastDrop = useRef<number | null>(null);
   /** Hint lines already voiced, per run seed (a restart may voice the current one again, once). */
   const voiced = useRef(new Set<string>());
   useEffect(() => {
@@ -125,6 +180,11 @@ export function CommsSlot({ rect }: { rect: Rect }) {
           return;
         }
       }
+      // A supply drop landing (the shared free chest becoming ready) is a blip of DISPATCH's.
+      const drop = M.freeChestStatus(cfg, game, now)?.ready ?? 0;
+      if (lastDrop.current !== null && drop > lastDrop.current)
+        queue.current = [...queue.current.filter((r) => r.id !== 'drop'), { id: 'drop', kind: 'chatter' as const, who: speaker(cfg, 'dispatch'), text: say('supplyDropReady'), at: now }].slice(-2);
+      lastDrop.current = drop;
       if (cur.current) return;
       // 3. Chatter, freshest first among what is not stale.
       queue.current = queue.current.filter((r) => now - r.at < STALE_MS);
@@ -161,9 +221,13 @@ export function CommsSlot({ rect }: { rect: Rect }) {
           case 'vein':
             if (!ev.flare) add(`seam:${ev.slot}`, ai, say('seam', { rock: rockName(cfg, ev.slot) }));
             break;
-          case 'contractMet':
-            add('contractMet', dispatch, say('contractClosed'));
+          case 'contractMet': {
+            // The buyer's own sign-off when game.json has one, else DISPATCH's plain line.
+            const closed = buyerLine(cfg, ev.contract.buyer, 'closed');
+            if (closed) add('contractMet', ev.contract.buyer, closed);
+            else add('contractMet', dispatch, say('contractClosed'));
             break;
+          }
           case 'contractLapsed':
             if (ev.wasActive)
               add(
@@ -179,9 +243,11 @@ export function CommsSlot({ rect }: { rect: Rect }) {
               add(
                 `new:${ev.contract.k}`,
                 ev.contract.buyer,
-                say('contractNew', {
+                fillLine(buyerLine(cfg, ev.contract.buyer, 'calls') ?? say('contractNew'), {
                   ore: oreName(cfg, ev.contract.wants[0].ore).toLowerCase(),
-                  n: ev.contract.wants.reduce((a, w) => a + w.units, 0),
+                  n: spokenUnits(ev.contract.wants.reduce((a, w) => a + w.units, 0)),
+                  units: spokenUnits(ev.contract.wants.reduce((a, w) => a + w.units, 0)),
+                  mult: spokenMultiplier(ev.contract.mult),
                 }),
               );
             break;
@@ -220,14 +286,20 @@ function RadioLine({ rect, fontScale, radio, name, portrait, color, onClose }: {
   const tint = color || c.primary;
   // Sized by hand (the fixed-height rule): the font from the slot's height and the text size setting.
   const scale = Math.max(0.85, Math.min(1.2, fontScale));
-  const font = Math.round(Math.min(12 * scale, (rect.height - 8) / 1.3) * 2) / 2;
-  const row = Math.ceil(font * 1.3);
   const icon = Math.min(20, rect.height - 4);
   const textW = rect.width - 8 - icon - 8 - 22 - 8;
   const label = name ? `${name.toUpperCase()}: ` : '';
   const full = label + radio.text.toUpperCase();
-  const perRow = Math.max(8, Math.floor(textW / (font * 0.62)));
-  const rows = full.length > perRow ? 2 : 1;
+  // A radio line takes at most two rows (spec 7.5): word-wrapped at the monospaced face's 0.62 em,
+  // the font shrinks by hand (never below 8.5 pt) until the line fits, instead of an ellipsis.
+  let font = Math.round(Math.min(12 * scale, (rect.height - 8) / 1.3) * 2) / 2;
+  let rows = wrappedRows(full, Math.max(8, Math.floor(textW / (font * 0.62))));
+  while (rows > 2 && font > 8.5) {
+    font -= 0.5;
+    rows = wrappedRows(full, Math.max(8, Math.floor(textW / (font * 0.62))));
+  }
+  rows = Math.min(2, rows);
+  const row = Math.ceil(font * 1.3);
   const height = Math.max(rect.height, rows * row + 8);
   const slide = useSharedValue(0);
   useEffect(() => {

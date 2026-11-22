@@ -70,6 +70,14 @@ export function Reticle({ hint, color = SPACE.line }: { hint: ReticleHint; color
   const tx = to.x;
   const ty = to.y;
 
+  // Fades in at the start and out during the pause, so the jump back is never seen.
+  const fadeAt = (u: number) => {
+    'worklet';
+    if (!moving) return 1;
+    if (u < 0.06) return u / 0.06;
+    if (u > travel + (1 - travel) * 0.5) return Math.max(0, 1 - (u - travel - (1 - travel) * 0.5) / ((1 - travel) * 0.5));
+    return 1;
+  };
   const transform = useDerivedValue(() => {
     const u = t.value;
     let x = fx;
@@ -85,17 +93,13 @@ export function Reticle({ hint, color = SPACE.line }: { hint: ReticleHint; color
     } else {
       s = 1 - 0.08 * Math.sin(u * Math.PI * 2);
     }
-    const rot = 0; // The survey frame stays square to the screen; only scale and position move.
-    return [{ translateX: x }, { translateY: y }, { rotate: rot }, { scale: s }];
+    // A Group's opacity does not hide a Picture on the web unless the group is a layer: the fade
+    // also shrinks the frame a little, and a faded-out frame is scaled to nothing.
+    const o = fadeAt(u);
+    s *= o < 0.02 ? 0 : 0.7 + 0.3 * o;
+    return [{ translateX: x }, { translateY: y }, { scale: s }];
   });
-  const reticleOpacity = useDerivedValue(() => {
-    if (!moving) return 1;
-    const u = t.value;
-    // Fades in at the start and out during the pause, so the jump back is never seen.
-    if (u < 0.06) return u / 0.06;
-    if (u > travel + (1 - travel) * 0.5) return Math.max(0, 1 - (u - travel - (1 - travel) * 0.5) / ((1 - travel) * 0.5));
-    return 1;
-  });
+  const reticleOpacity = useDerivedValue(() => fadeAt(t.value));
   const pulseR = useDerivedValue(() => 14 + 24 * t.value);
   const pulseOpacity = useDerivedValue(() => (moving ? 0 : 0.8 * (1 - t.value)));
   const dashPhase = useDerivedValue(() => -t.value * 42);
