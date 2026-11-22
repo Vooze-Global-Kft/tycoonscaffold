@@ -57,7 +57,8 @@ export const HAUL_STRINGS = {
   stripAboard: '{n} ABOARD',
   stripResized: 'ORDER RESIZED · {n}',
   // A wanted ore's rock dries inside the contract's remaining launches (Decision 64).
-  stripDries: '{rock} DRIES IN {t}',
+  // "Empty", not "dries": the Rig sheet's "Dry in" is when the drill stops; this is when the pile is gone too.
+  stripDries: '{rock} EMPTY IN {t}',
   stripShift: 'x2 SHIFT',
   stripLabel: '{buyer} contract. {wants}. {left}. Bonus {bonus}. Opens the Contract Board.',
   // What a drone is worth where it is held (Decision 49).
