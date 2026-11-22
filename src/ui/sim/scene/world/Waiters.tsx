@@ -7,11 +7,12 @@
  */
 import { Circle, Group, RoundedRect } from '@shopify/react-native-skia';
 import { useEffect } from 'react';
-import { Easing, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Easing, useDerivedValue, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useGame } from '../../../../state/store';
 import { Character, type LookInput } from '../../art';
 import type { DishLook, Pose } from '../../art/types';
 import { MAX_WORKERS_DRAWN, workerFrame } from '../../layout';
+import { putTS, useMatrix } from '../matrix';
 import type { SceneCtx } from './context';
 import { glide } from './ticker';
 
@@ -81,25 +82,32 @@ export function Waiter({ ctx, index, look, dish }: { ctx: SceneCtx; index: numbe
 }
 
 /** A "!" that pops over a waiter's head when the bell wakes them. */
-function Bang({ ctx, x, y, progress }: { ctx: SceneCtx; x: { value: number }; y: { value: number }; progress: { value: number } }) {
+function Bang({ ctx, x, y, progress }: { ctx: SceneCtx; x: SharedValue<number>; y: SharedValue<number>; progress: SharedValue<number> }) {
   const { layout: L } = ctx;
   const k = L.artScale;
-  const transform = useDerivedValue(() => {
-    const u = progress.value;
-    let s = 0;
-    if (u >= 0 && u < 1) {
-      // Pop in with an overshoot, hold, then shrink away.
-      if (u < 0.18) {
-        const t = u / 0.18;
-        s = 1 + 0.35 * Math.sin(Math.PI * t) - (1 - t) * 1;
-        s = Math.max(0, s);
-      } else if (u < 0.8) s = 1;
-      else s = 1 - (u - 0.8) / 0.2;
-    }
-    return [{ translateX: x.value + 8 * k }, { translateY: y.value - 62 * k - (u > 0 && u < 1 ? 4 * k * u : 0) }, { scale: s * k }];
-  });
+  // A matrix filled in place; while the "!" is not showing nothing is computed or redrawn,
+  // however much the waiter moves.
+  const matrix = useMatrix(
+    (o) => {
+      'worklet';
+      const u = progress.value;
+      const hidden = !(u >= 0 && u < 1);
+      if (hidden && o[0] === 0) return false;
+      let s = 0;
+      if (!hidden) {
+        // Pop in with an overshoot, hold, then shrink away.
+        if (u < 0.18) {
+          const t = u / 0.18;
+          s = Math.max(0, 1 + 0.35 * Math.sin(Math.PI * t) - (1 - t) * 1);
+        } else if (u < 0.8) s = 1;
+        else s = 1 - (u - 0.8) / 0.2;
+      }
+      putTS(o, x.value + 8 * k, y.value - 62 * k - (u > 0 && u < 1 ? 4 * k * u : 0), s * k, s * k);
+    },
+    [progress, x, y, k],
+  );
   return (
-    <Group transform={transform}>
+    <Group matrix={matrix}>
       <Circle cx={0} cy={0} r={11} color="#3A2416" />
       <Circle cx={0} cy={0} r={9} color="#FFFFFF" />
       <RoundedRect x={-1.9} y={-6.5} width={3.8} height={8} r={1.9} color="#3A2416" />

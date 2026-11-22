@@ -11,7 +11,7 @@ import { formatNumber } from '../../../engine/format';
 import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
-import { alpha, useTheme } from '../../theme';
+import { alpha, textOn, useTheme } from '../../theme';
 import { Countdown, OfferCard, Shine, ShopSection, useFlyFrom, withGemFlight } from './parts';
 
 export function DailyGift() {
@@ -73,7 +73,7 @@ export function DailyGift() {
                   },
                 ]}
               >
-                <Text style={[styles.dayLabel, { color: today ? t.c.primaryText : t.c.textMuted }]} numberOfLines={1}>
+                <Text style={[styles.dayLabel, { color: today ? textOn(t.c.success) : t.c.textMuted }]} numberOfLines={1}>
                   Day {d}
                 </Text>
                 {claimed ? (
@@ -81,7 +81,7 @@ export function DailyGift() {
                 ) : (
                   <GameIcon icon={t.strings.gemIcon} size={18} />
                 )}
-                <Text style={[styles.dayGems, t.display, { color: today ? t.c.primaryText : t.c.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                <Text style={[styles.dayGems, t.display, { color: today ? textOn(t.c.success) : t.c.text }]} numberOfLines={1} adjustsFontSizeToFit>
                   {formatNumber(gemsFor(d))}
                 </Text>
               </View>

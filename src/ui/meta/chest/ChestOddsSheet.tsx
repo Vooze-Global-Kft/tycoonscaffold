@@ -14,7 +14,7 @@ import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
 import { Sheet, shortDuration } from '../../kit';
-import { RARITY_COLORS, RARITY_NAMES, alpha, useTheme } from '../../theme';
+import { RARITY_COLORS, RARITY_NAMES, alpha, inkOf, useTheme } from '../../theme';
 
 /** Percentages as the engine words them: one decimal, never a real chance shown as 0. */
 export function formatOdds(p: number): string {
@@ -102,7 +102,7 @@ function OddsBody({ cfg, chest }: { cfg: GameConfig; chest: Chest }) {
             return (
               <View key={r} style={[styles.rarity, { borderLeftColor: RARITY_COLORS[r] }]}>
                 <View style={styles.rarityHead}>
-                  <Text style={[styles.rarityName, t.display, { color: r === 'common' ? t.c.textMuted : RARITY_COLORS[r] }]}>{RARITY_NAMES[r]}</Text>
+                  <Text style={[styles.rarityName, t.display, { color: inkOf(RARITY_COLORS[r], t.c.surface) }]}>{RARITY_NAMES[r]}</Text>
                   <Text style={[styles.value, t.display, text]}>{formatOdds(odds)}</Text>
                 </View>
                 <Text style={[styles.small, muted]}>

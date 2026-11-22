@@ -6,7 +6,8 @@
  */
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { useAttentionBurst } from '../attention';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import * as E from '../../../engine/economy';
 import { formatMoney, formatNumber } from '../../../engine/format';
 import { prestigePreview } from '../../../engine/view';
@@ -54,6 +55,14 @@ function formatMult(m: number): string {
 /** "+24%" for a multiplier of 1.24. */
 function pct(mult: number): string {
   return `+${formatNumber((mult - 1) * 100, 0)}%`;
+}
+
+/**
+ * The prestige bonus as one short figure, the same on every screen: "+24%" below ×10, then the
+ * multiplier ("×13.0"), which keeps moving as stars are added (a percentage would read "+1K%").
+ */
+export function prestigeBoostLabel(mult: number): string {
+  return mult >= 10 ? `×${formatMult(mult)}` : pct(mult);
 }
 
 export function PrestigeCard() {
@@ -110,7 +119,7 @@ export function PrestigeCard() {
 
         {ready ? (
           <Button
-            variant="accent"
+            variant="success"
             label={`${prestigeVerb}…`}
             onPress={() => {
               fx.play('ui_open');
@@ -170,9 +179,11 @@ function ProgressTrack({ frac }: { frac: number }) {
 function StarBadge({ icon, glow, size = 54 }: { icon: string; glow: boolean; size?: number }) {
   const t = useTheme();
   const spin = useSharedValue(0);
-  useEffect(() => {
-    if (glow) spin.value = withRepeat(withTiming(360, { duration: 12000, easing: Easing.linear }), -1);
-  }, [glow, spin]);
+  // The burst turns one ray step (30 deg, so it looks seamless), then rests on a JS timer.
+  useAttentionBurst(glow, () => {
+    const from = spin.value % 360;
+    spin.value = withSequence(withTiming(from, { duration: 0 }), withTiming(from + 30, { duration: 1400, easing: Easing.inOut(Easing.quad) }));
+  }, 1400, 3000, 200);
   const rays = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value}deg` }] }));
   const box = size + 26;
   return (
@@ -254,7 +265,7 @@ function PrestigeConfirm({ visible, preview, onClose, onConfirm }: { visible: bo
       footer={
         <>
           <Button
-            variant="accent"
+            variant="success"
             label={`${prestigeVerb} for +${formatNumber(preview.points, 0)}`}
             onPress={() => {
               onConfirm();

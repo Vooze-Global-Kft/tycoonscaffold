@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { Platform, StyleSheet, TextInput, type StyleProp, type TextStyle } from 'react-native';
 import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import { formatMoney, formatNumber } from '../../engine/format';
+import { glideMs } from '../sim/scene/world/ticker';
 import { rollMoney, rollNumber } from './rollFormat';
 
 const AnimatedInput = Animated.createAnimatedComponent(TextInput);
@@ -20,14 +21,27 @@ interface Props {
   duration?: number;
   /** Start from zero and count up on mount (the welcome-back amount). */
   fromZero?: boolean;
+  /**
+   * Follow a value that changes every tick without re-rendering: called once with a setter, returns
+   * the unsubscribe. Each new value glides there linearly in the time between ticks, so the
+   * counter never restarts a long animation ten times a second. `value` is then only the start.
+   */
+  follow?: (set: (v: number) => void) => () => void;
   style?: StyleProp<TextStyle>;
 }
 
-export function RollingNumber({ value, symbol, duration = 450, fromZero = false, style }: Props) {
+export function RollingNumber({ value, symbol, duration = 450, fromZero = false, follow, style }: Props) {
   const shown = useSharedValue(fromZero ? 0 : value);
   useEffect(() => {
+    if (follow) return;
     shown.value = withTiming(value, { duration, easing: Easing.out(Easing.cubic) });
-  }, [value, duration, shown]);
+  }, [value, duration, shown, follow]);
+  useEffect(() => {
+    if (!follow) return;
+    return follow((v) => {
+      shown.value = withTiming(v, { duration: glideMs(), easing: Easing.linear });
+    });
+  }, [follow, shown]);
   const animatedProps = useAnimatedProps(() => {
     const text = symbol !== undefined ? rollMoney(shown.value, symbol) : rollNumber(shown.value);
     return { text, defaultValue: text } as object;
@@ -44,6 +58,7 @@ export function RollingNumber({ value, symbol, duration = 450, fromZero = false,
       defaultValue={initial}
       animatedProps={animatedProps}
       style={[styles.input, style]}
+      maxFontSizeMultiplier={1.2}
       accessibilityRole="text"
     />
   );

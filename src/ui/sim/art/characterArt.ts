@@ -36,6 +36,7 @@ import {
   shadeOf,
 } from './draw';
 import { lookKey, type ResolvedLook } from './looks';
+import { RasterSet } from './raster';
 
 /** How far the face sits towards the side the character is facing. */
 export const FACE_SHIFT = 3;
@@ -1093,6 +1094,8 @@ export interface CharacterArt extends HeadPictures {
   legB: SkPicture;
   /** The top of the head, hair and hat, in head units above the middle of the head (a negative number). */
   top: number;
+  /** The parts above as images, per pixel density, made on first use (`Character` draws these when it can). Freed with the set. */
+  rasters: RasterSet;
 }
 
 function buildCharacterArt(l: ResolvedLook, key: string): CharacterArt {
@@ -1110,6 +1113,7 @@ function buildCharacterArt(l: ResolvedLook, key: string): CharacterArt {
     hand: record((p) => drawHand(p, l)),
     legF: record((p) => drawLeg(p, l, d, true)),
     legB: record((p) => drawLeg(p, l, d, false)),
+    rasters: new RasterSet(),
   };
 }
 
@@ -1130,11 +1134,18 @@ class ArtCache<T extends { key: string }> {
   private refs = new Map<T, number>();
   /** Sets nobody holds, oldest first; they are freed once more than `idleMax` wait here. */
   private idle: T[] = [];
+  /** Sets whose drawings have been freed: never handed out or put back in the table again. */
+  private freed = new WeakSet<T>();
   constructor(private idleMax: number) {}
 
   /** The drawings for `key`, built on first use. Safe to call during render. */
   get(key: string, build: () => T): T {
     let art = this.map.get(key);
+    // Never hand out a freed set (drawing it is a crash on phones): build a fresh one.
+    if (art && this.freed.has(art)) {
+      this.map.delete(key);
+      art = undefined;
+    }
     if (!art) {
       art = build();
       this.map.set(key, art);
@@ -1145,7 +1156,13 @@ class ArtCache<T extends { key: string }> {
     return art;
   }
 
-  retain(art: T) {
+  /**
+   * Claims a set for a mounted component. Returns false if the set was already freed (the component
+   * got it during a render and its effect came too late, e.g. the JS thread was blocked for seconds):
+   * the caller must fetch a fresh one with `get` and draw nothing from this one.
+   */
+  retain(art: T): boolean {
+    if (this.freed.has(art)) return false;
     const held = this.refs.get(art) ?? 0;
     if (held === 0) {
       const i = this.idle.indexOf(art);
@@ -1154,9 +1171,11 @@ class ArtCache<T extends { key: string }> {
     this.refs.set(art, held + 1);
     // Dropped from the table between render and commit: findable again, unless a newer set took its key.
     if (!this.map.has(art.key)) this.map.set(art.key, art);
+    return true;
   }
 
   release(art: T) {
+    if (this.freed.has(art)) return;
     const held = (this.refs.get(art) ?? 0) - 1;
     if (held > 0) {
       this.refs.set(art, held);
@@ -1183,6 +1202,7 @@ class ArtCache<T extends { key: string }> {
         return;
       }
       this.refs.delete(art);
+      this.freed.add(art);
       for (const v of Object.values(art) as unknown[]) {
         const free = v && typeof v === 'object' ? (v as { dispose?: unknown }).dispose : null;
         if (typeof free === 'function') free.call(v);
@@ -1203,7 +1223,7 @@ export function getCharacterArt(l: ResolvedLook): CharacterArt {
   return characters.get(key, () => buildCharacterArt(l, key));
 }
 
-export const retainCharacterArt = (art: CharacterArt) => characters.retain(art);
+export const retainCharacterArt = (art: CharacterArt): boolean => characters.retain(art);
 export const releaseCharacterArt = (art: CharacterArt) => characters.release(art);
 
 // ---------------------------------------------------------------------------
@@ -1274,7 +1294,7 @@ export function getBustArt(l: ResolvedLook, ow = 3.4, mood: BustMood = 'calm'): 
   return busts.get(key, () => buildBustArt(l, key, ow, mood));
 }
 
-export const retainBustArt = (art: BustArt) => busts.retain(art);
+export const retainBustArt = (art: BustArt): boolean => busts.retain(art);
 export const releaseBustArt = (art: BustArt) => busts.release(art);
 
 /** The height of the eye line in head units; eyes blink by squashing towards it. */

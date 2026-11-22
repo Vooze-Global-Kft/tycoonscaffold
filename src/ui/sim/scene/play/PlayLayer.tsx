@@ -89,9 +89,13 @@ export function PlayLayer({ layout }: { layout: SceneLayout }) {
       ringP.value = Math.min(1, (until - now) / total);
       ringP.value = withTiming(0, { duration: Math.max(0, until - now), easing: Easing.linear });
     } else if (phase === 'cooling') {
+      // The recharge ring moves a sub-pixel per frame over minutes: step it once a second on a JS
+      // timer instead of animating (and redrawing the effects canvas) every frame while idle.
       const total = Math.max(1, (cfg.sim?.rush.cooldownSeconds ?? 1) * 1000);
-      ringP.value = Math.max(0, 1 - (readyAt - now) / total);
-      ringP.value = withTiming(1, { duration: Math.max(0, readyAt - now), easing: Easing.linear });
+      const step = () => (ringP.value = Math.max(0, Math.min(1, 1 - (readyAt - Date.now()) / total)));
+      step();
+      const id = setInterval(step, 1000);
+      return () => clearInterval(id);
     } else ringP.value = withTiming(1, { duration: 200 });
   }, [phase, until, readyAt, ringP, rushVis]);
 

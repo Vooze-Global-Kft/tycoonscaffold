@@ -17,7 +17,7 @@
  * GPU surfaces (and browsers allow only a handful of WebGL contexts per page).
  */
 import { Canvas, Circle, ClipOp, Group, Picture, Skia, type SkCanvas, type SkPath } from '@shopify/react-native-skia';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Image, PixelRatio, Platform, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Easing, cancelAnimation, useDerivedValue, useSharedValue, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
 import { BUST_BOTTOM, EYE_LINE, getBustArt, releaseBustArt, retainBustArt, type BustArt, type BustMood } from './characterArt';
@@ -98,10 +98,15 @@ function useBustArt(look: LookInput, size: number, mood: BustMood): BustArt {
   const resolved = resolveLook(look);
   const key = lookKey(resolved);
   const ow = bustOutline(size);
+  // Bumped if the set got during render was freed before this component could claim it.
+  const [gen, setGen] = useState(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const art = useMemo(() => getBustArt(resolved, ow, mood), [key, ow, mood]);
-  useEffect(() => {
-    retainBustArt(art);
+  const art = useMemo(() => getBustArt(resolved, ow, mood), [key, ow, mood, gen]);
+  useLayoutEffect(() => {
+    if (!retainBustArt(art)) {
+      setGen((g) => g + 1);
+      return;
+    }
     return () => releaseBustArt(art);
   }, [art]);
   return art;

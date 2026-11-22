@@ -20,6 +20,7 @@ import { useTarget } from '../../hints/targets';
 import { describeReward, ProgressBar, Sheet } from '../../kit';
 import { alpha, useTheme } from '../../theme';
 import { Countdown, Shine, useFlyFrom, withGemFlight } from '../shop/parts';
+import { OddsLink } from '../chest/ChestButton';
 
 /** An icon for each kind of mission, from the game's own config where it has one. */
 function typeIcon(cfg: GameConfig, type: MissionTemplate['type']): string {
@@ -103,6 +104,10 @@ function Milestones({ total }: { total: number }) {
   const cfg = useGame((s) => s.cfg);
   const list = [...cfg.meta.missions.milestones].sort((a, b) => a.every - b.every);
   const first = list[0];
+  // Every chest is one tap from its drop rates (the odds dialog takes the missions dialog's place).
+  const openOdds = (r: Reward) => {
+    if (r.type === 'chest') useGame.getState().openModal({ type: 'chestOdds', chestId: r.chestId });
+  };
   const inRun = total % first.every;
   return (
     <View style={[styles.milestones, { borderColor: alpha(t.c.accent, 0.45), borderRadius: t.radius * 0.7 }]}>
@@ -137,6 +142,7 @@ function Milestones({ total }: { total: number }) {
             <Text style={[styles.msToGo, { color: t.c.textMuted }]} numberOfLines={1}>
               {toGo} to go
             </Text>
+            {ms.reward.type === 'chest' ? <OddsLink compact onPress={() => openOdds(ms.reward)} /> : null}
           </View>
         );
       })}

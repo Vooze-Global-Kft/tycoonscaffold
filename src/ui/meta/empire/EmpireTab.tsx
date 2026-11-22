@@ -13,7 +13,7 @@ import { useGame } from '../../../state/store';
 import { GameIcon } from '../../components/GameIcon';
 import { alpha, useTheme } from '../../theme';
 import { closeEnough, usePaced } from './paced';
-import { PrestigeCard } from './PrestigeCard';
+import { PrestigeCard, prestigeBoostLabel } from './PrestigeCard';
 import { StorySoFar } from './StorySoFar';
 import { VenueJourney } from './VenueJourney';
 
@@ -78,8 +78,8 @@ function Summary({ onReset }: { onReset: () => void }) {
             <Text style={[t.display, { color: t.c.text, fontSize: 18 }]} numberOfLines={1}>
               {formatNumber(v.held, 0)}
             </Text>
-            <Text style={{ color: t.c.textMuted, fontSize: 10, fontWeight: '800' }} numberOfLines={1}>
-              +{formatNumber((v.mult - 1) * 100, 0)}%
+            <Text style={{ color: t.c.textMuted, fontSize: 11, fontWeight: '800' }} numberOfLines={1}>
+              {prestigeBoostLabel(v.mult)}
             </Text>
           </View>
         </View>

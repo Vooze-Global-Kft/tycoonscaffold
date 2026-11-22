@@ -129,3 +129,16 @@ export function levelReadyCount(cfg: GameConfig, cards: GameState['cards']): num
   }
   return n;
 }
+
+/**
+ * The honest contents of a random-card reward: "One of: A, B, C or D (25% each)". The engine picks
+ * uniformly among the cards of that rarity, so the chance is 1 / their number.
+ */
+export function randomCardOdds(cfg: GameConfig, rarity: Rarity): string {
+  const pool = cfg.meta.cards.filter((c) => c.rarity === rarity).map((c) => c.name);
+  if (pool.length === 0) return '';
+  if (pool.length === 1) return `Always ${pool[0]}`;
+  const pct = Math.round((1000 / pool.length)) / 10;
+  const names = `${pool.slice(0, -1).join(', ')} or ${pool[pool.length - 1]}`;
+  return `One of: ${names} (${pct}% each)`;
+}

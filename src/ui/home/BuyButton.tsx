@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useGame } from '../../state/store';
-import { alpha, useTheme } from '../theme';
+import { alpha, textOn, useTheme } from '../theme';
 
 interface Props {
   label: string;
@@ -48,6 +48,7 @@ export function BuyButton({ label, sublabel, onPress, cost, locked, variant = 'p
   const fill = useSavings(cost);
   const fillStyle = useAnimatedStyle(() => ({ width: `${fill.value * 100}%` }));
   const bg = variant === 'success' ? t.c.success : variant === 'accent' ? t.c.accent : t.c.primary;
+  const fg = textOn(bg);
   return (
     <Pressable
       {...target}
@@ -69,11 +70,11 @@ export function BuyButton({ label, sublabel, onPress, cost, locked, variant = 'p
           <Animated.View style={[styles.fill, { backgroundColor: alpha(bg, 0.22) }, fillStyle]} />
         </View>
       ) : null}
-      <Text style={[t.display, styles.label, { color: affordable ? t.c.primaryText : alpha(t.c.text, 0.55) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+      <Text style={[t.display, styles.label, { color: affordable ? fg : alpha(t.c.text, 0.55) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={1.25}>
         {label}
       </Text>
       {sublabel ? (
-        <Text style={[styles.sub, { color: affordable ? t.c.primaryText : alpha(t.c.text, 0.6) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        <Text style={[styles.sub, { color: affordable ? fg : alpha(t.c.text, 0.6) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={1.25}>
           {sublabel}
         </Text>
       ) : null}

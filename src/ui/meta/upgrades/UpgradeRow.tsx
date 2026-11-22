@@ -12,7 +12,7 @@ import { useGame } from '../../../state/store';
 import { GameIcon } from '../../components/GameIcon';
 import { useTarget } from '../../hints/targets';
 import { formatCountdown, shortDuration } from '../../kit';
-import { alpha, useTheme } from '../../theme';
+import { alpha, inkOf, useTheme } from '../../theme';
 import { closeEnough, usePaced } from '../empire/paced';
 import { PriceButton } from './PriceButton';
 import type { UpgradeStatus } from './UpgradesTab';
@@ -67,7 +67,7 @@ export function UpgradeRow({ u, status }: { u: Upgrade; status: UpgradeStatus })
           {u.name}
         </Text>
         <Text style={[styles.effect, { color: t.c.textMuted }]} numberOfLines={1}>
-          <Text style={[t.display, { color: locked ? t.c.textMuted : accent }]}>{effect.mult} </Text>
+          <Text style={[t.display, { color: locked ? t.c.textMuted : inkOf(accent, t.c.surface) }]}>{effect.mult} </Text>
           {effect.what}
         </Text>
         {locked ? (

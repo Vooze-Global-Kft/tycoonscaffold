@@ -73,6 +73,14 @@ export interface SlotMotion {
   z: SharedValue<number>;
 }
 
+/**
+ * Every slot draws above the chest group and the dim wash that share its parent (z 0), so a slot
+ * can never tie with them and land underneath, whatever order the canvas sorts equal zIndex in.
+ */
+export function slotZ(index: number): number {
+  return 10 + index;
+}
+
 export function makeSlotMotion(from: Spot, kind: SlotKind, index: number): SlotMotion {
   return {
     x: makeMutable(from.x),
@@ -86,7 +94,7 @@ export function makeSlotMotion(from: Spot, kind: SlotKind, index: number): SlotM
     rays: makeMutable(0),
     burst: makeMutable(0),
     shimmer: makeMutable(0),
-    z: makeMutable(index),
+    z: makeMutable(slotZ(index)),
   };
 }
 
@@ -108,6 +116,18 @@ interface Props {
 
 const out = Easing.out(Easing.cubic);
 const inOut = Easing.inOut(Easing.quad);
+
+/** A card-sized tile under a cash or gem reward, so every reward in the row reads as a thing won. */
+function RewardTile({ w, h, frame }: { w: number; h: number; frame: string }) {
+  return (
+    <Group>
+      <RoundedRect x={-w / 2} y={-h / 2 + 4} width={w} height={h} r={12} color="rgba(0,0,0,0.35)" />
+      <RoundedRect x={-w / 2} y={-h / 2} width={w} height={h} r={12} color="#FFF4DC" />
+      <RoundedRect x={-w / 2 + 6} y={-h / 2 + 6} width={w - 12} height={h - 12} r={8} color="#F6E2B8" />
+      <RoundedRect x={-w / 2} y={-h / 2} width={w} height={h} r={12} color={frame} style="stroke" strokeWidth={5} />
+    </Group>
+  );
+}
 
 export function OpeningSlot({ m, index, kind, rarity, icon, cardId, phase, rest, from, centre, clock, backPalette, gemColor }: Props) {
   const { x, y, s, rot, shown, flip, pop, glow, rays, burst, shimmer, z } = m;
@@ -141,7 +161,7 @@ export function OpeningSlot({ m, index, kind, rarity, icon, cardId, phase, rest,
       rays.value = 0;
       burst.value = 0;
       shimmer.value = 0;
-      z.value = index;
+      z.value = slotZ(index);
     };
     if (phase === 'hidden') {
       dealt.current = false;
@@ -198,7 +218,7 @@ export function OpeningSlot({ m, index, kind, rarity, icon, cardId, phase, rest,
         burst.value = withDelay(endAt, withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: 700 })));
         break;
       case 'epic':
-        z.value = 50;
+        z.value = 60;
         // Lift towards the player while purple light fans out behind.
         y.value = withSequence(withTiming(rest.y - 22, { duration: plan.pre, easing: out }), withDelay(plan.flip + 300, withTiming(rest.y, { duration: 300, easing: inOut })));
         s.value = withSequence(withTiming(rest.scale * 1.22, { duration: plan.pre, easing: out }), withDelay(plan.flip + 300, withTiming(rest.scale, { duration: 300, easing: inOut })));
@@ -207,7 +227,7 @@ export function OpeningSlot({ m, index, kind, rarity, icon, cardId, phase, rest,
         burst.value = withDelay(endAt, withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: 900 })));
         break;
       case 'legendary': {
-        z.value = 100;
+        z.value = 110;
         const move = 400;
         const beat = (plan.pre - move) / 3;
         x.value = withSequence(withTiming(centre.x, { duration: move, easing: out }), withDelay(plan.flip + 2000, withTiming(rest.x, { duration: 400, easing: inOut })));
@@ -252,11 +272,14 @@ export function OpeningSlot({ m, index, kind, rarity, icon, cardId, phase, rest,
   } else if (kind === 'cash') {
     body = (
       <Group>
+        <RewardTile w={W} h={H} frame="#E0A93A" />
+        <Group transform={[{ translateY: -12 }]}>
         <Coin x={-16} y={30} scale={1.5} />
         <Coin x={14} y={30} scale={1.5} />
         <Coin x={-1} y={18} scale={1.5} />
         <Coin x={-1} y={4} scale={1.6} />
         <Coin x={0} y={-12} scale={1.7} spin={0.35} clock={clock} />
+        </Group>
       </Group>
     );
   } else {
@@ -264,6 +287,7 @@ export function OpeningSlot({ m, index, kind, rarity, icon, cardId, phase, rest,
     // because the icon may be an emoji, which Skia cannot draw without a font).
     body = (
       <Group>
+        <RewardTile w={W} h={H} frame={gemColor} />
         <Path path={sack} color="#D9B47A" />
         <Path path={sack} color="#5B3A1E" style="stroke" strokeWidth={3.5} />
         <Oval x={-24} y={10} width={20} height={26} color="#FFFFFF" opacity={0.25} />

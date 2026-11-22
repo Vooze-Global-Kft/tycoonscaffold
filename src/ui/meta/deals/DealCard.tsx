@@ -102,7 +102,7 @@ export function DealCard({ dealId, inPopup = false }: { dealId: string; inPopup?
 
       <View ref={ref} collapsable={false} style={{ marginTop: 10 }}>
         {product ? (
-          <Button variant="primary" label={iap.price(product)} sublabel="Real-money purchase" onPress={onBuy} />
+          <Button variant="primary" label={iap.price(product)} sublabel={deal.contents.length > 1 ? `All ${deal.contents.length} items` : undefined} onPress={onBuy} />
         ) : deal.gemCost !== undefined ? (
           <Button variant="primary" onPress={onBuy} disabled={short}>
             <GemPrice cost={deal.gemCost} light />

@@ -7,20 +7,24 @@
  */
 import { Circle, Group, Oval, Path, Skia } from '@shopify/react-native-skia';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Easing, useDerivedValue, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { Easing, useDerivedValue, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { simEvents } from '../../../../state/events';
 import { useGame } from '../../../../state/store';
 import { Character, type LookInput } from '../../art';
-import { Chair, Coin, ContactShadow, Table } from '../../art/props';
+import { Coin, ContactShadow, Table } from '../../art/props';
+import { putTS, useMatrix } from '../matrix';
 import type { ArtPalette, DishLook, Pose, TableState } from '../../art/types';
 import { guestFrame, tableState } from '../../layout';
 import { guestLook } from './cast';
+import { useGatedClock } from './gatedClock';
 import { isLateMount, type SceneCtx } from './context';
 import { glide } from './ticker';
 
 const GUEST_POSES: readonly Pose[] = ['walk', 'sit-wait', 'sit-eat', 'cheer'];
 const COIN_MS = 820;
 const STEAM_MS = 1600;
+/** Guests mounted per table, taking turns. */
+const GUESTS_PER_SEAT = 2;
 
 /** What a seat can be asked to show from outside: a payment. */
 export interface SeatHandle {
@@ -34,6 +38,7 @@ export function TableSeat({
   dining,
   handles,
   pool,
+  shadowBaked = false,
 }: {
   ctx: SceneCtx;
   index: number;
@@ -41,6 +46,8 @@ export function TableSeat({
   dining: number;
   handles: Map<number, SeatHandle>;
   pool: readonly LookInput[];
+  /** The table's floor shadow is in the room's baked image (World.tsx BackLayer). */
+  shadowBaked?: boolean;
 }) {
   const { layout: L, clock, venueId, cfg } = ctx;
   const t = L.tables[index];
@@ -48,15 +55,18 @@ export function TableSeat({
   const k = L.artScale;
 
   const seatNow = () => useGame.getState().game.venues[venueId]?.chain?.seats[index];
-  const [guest, setGuest] = useState(() => seatNow()?.guest ?? 0);
-  const look = useMemo(() => guestLook(pool, cfg, index, guest), [pool, cfg, index, guest]);
-  const dish = dishes.length > 0 ? dishes[guest % dishes.length] : undefined;
+  // A few guests per table are mounted once and take turns (shared values pick the one shown), so
+  // a new guest never re-renders React or re-records the canvas. Each seat orders its own dish.
+  const looks = useMemo(() => Array.from({ length: GUESTS_PER_SEAT }, (_, j) => guestLook(pool, cfg, index, index * GUESTS_PER_SEAT + j + 1)), [pool, cfg, index]);
+  const dish = dishes.length > 0 ? dishes[index % dishes.length] : undefined;
 
   const x = useSharedValue(spot.x);
   const y = useSharedValue(spot.y);
   const facing = useSharedValue(-1);
   const pose = useSharedValue<Pose>('sit-wait');
   const visible = useSharedValue(0);
+  /** Which of the seat's guests is the current one. */
+  const slot = useSharedValue(0);
   const table = useSharedValue<TableState>('empty');
   const steam = useSharedValue(1);
   const coin = useSharedValue(1);
@@ -72,16 +82,21 @@ export function TableSeat({
     });
     let shown = false;
     let lastSeat: unknown = null;
-    let lastGuest = guest;
+    let lastGuest = seatNow()?.guest ?? 0;
+    let current = 0;
     let lastPhase = '';
     let lastT = 0;
+    let swings = ctx.doorSwing.value;
+    let table0: TableState = 'empty';
     const apply = (jump: boolean) => {
       const seat = seatNow();
       if (!seat || seat === lastSeat) return;
       lastSeat = seat;
       if (seat.guest !== lastGuest && seat.phase !== 'empty') {
         lastGuest = seat.guest;
-        setGuest(seat.guest);
+        // The next guest is always another face than the one who just left.
+        current = (current + 1) % GUESTS_PER_SEAT;
+        slot.value = current;
       }
       const f = guestFrame(L, seat, index);
       const teleport = jump || !shown || !f.visible;
@@ -92,14 +107,16 @@ export function TableSeat({
       visible.value = f.visible ? 1 : 0;
       shown = f.visible;
       const ts = tableState(seat);
-      if (ts === 'food' && table.value !== 'food' && !jump) {
+      // Compared with a JS-side copy: reading a shared value here would block on the UI thread on phones.
+      if (ts === 'food' && table0 !== 'food' && !jump) {
         steam.value = 0;
         steam.value = withTiming(1, { duration: STEAM_MS, easing: Easing.linear });
       }
-      table.value = ts;
+      if (ts !== table0) table.value = ts;
+      table0 = ts;
       // The door swings as the guest passes it, coming in and going out.
       const crossed = (phase: string, at: number) => seat.phase === phase && seat.t >= at && (lastPhase !== phase || lastT < at);
-      if (!jump && (crossed('arriving', 0.2) || crossed('leaving', 0.82))) ctx.doorSwing.value += 1;
+      if (!jump && (crossed('arriving', 0.2) || crossed('leaving', 0.82))) ctx.doorSwing.value = swings = nextSwing(swings);
       lastPhase = seat.phase;
       lastT = seat.t;
     };
@@ -111,13 +128,9 @@ export function TableSeat({
       off();
       handles.delete(index);
     };
-    // The guest id only seeds the first comparison; later changes come from the store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venueId, index, L, ctx]);
 
-  // Hidden by moving off the canvas: a parent group's opacity does not reach children sorted by zIndex.
-  const shownX = useDerivedValue(() => (visible.value > 0.5 ? x.value : -9999));
-  const z = useDerivedValue(() => y.value);
   const scale = useDerivedValue(() => k * pop.value);
   const tablePalette = useMemo<Partial<ArtPalette>>(
     () => (dining >= 1 ? { ...ctx.palette, primary: ctx.stages.sales } : ctx.palette),
@@ -126,16 +139,18 @@ export function TableSeat({
 
   return (
     <>
-      <Group zIndex={spot.y - 0.5}>
-        <ContactShadow x={t.x + 6 * k} y={t.y} width={70} height={13} scale={scale} />
-        <Chair x={spot.x} y={spot.y} scale={scale} palette={ctx.palette} facing={-1} />
-      </Group>
-      <Group zIndex={z}>
-        <Character look={look} x={shownX} y={y} facing={facing} pose={pose} clock={clock} scale={k} dish={dish} poses={GUEST_POSES} seed={index * 313 + guest} />
-      </Group>
+      {/* The chair (and, once baked, the floor shadow) is drawn by World.tsx as still furniture. */}
+      {shadowBaked ? null : (
+        <Group zIndex={spot.y - 0.5}>
+          <ContactShadow x={t.x + 6 * k} y={t.y} width={70} height={13} scale={scale} />
+        </Group>
+      )}
+      {looks.map((look, j) => (
+        <Guest key={j} ctx={ctx} j={j} slot={slot} visible={visible} look={look} x={x} y={y} facing={facing} pose={pose} dish={dish} seed={index * 313 + j} />
+      ))}
       <Group zIndex={t.y}>
         <Table x={t.x} y={t.y} scale={scale} palette={tablePalette} state={table} dish={dish} clock={clock} />
-        {dining >= 2 ? <Candle ctx={ctx} x={t.x - 11 * k} y={t.y - 16.5 * k} seed={index} /> : null}
+        {dining >= 2 ? <CandleFlame ctx={ctx} at={candleSpot(L, t)} seed={index} /> : null}
         <Steam ctx={ctx} x={t.x} y={t.y - 21 * k} progress={steam} />
       </Group>
       <PayCoin ctx={ctx} x={t.x} y={t.y - 30 * k} progress={coin} />
@@ -143,8 +158,55 @@ export function TableSeat({
   );
 }
 
+/**
+ * One of a seat's guests. Only the current one (`slot`) is shown; the others are parked off the
+ * canvas with a stopped clock, so they cost nothing per frame.
+ */
+function Guest({
+  ctx,
+  j,
+  slot,
+  visible,
+  look,
+  x,
+  y,
+  facing,
+  pose,
+  dish,
+  seed,
+}: {
+  ctx: SceneCtx;
+  j: number;
+  slot: SharedValue<number>;
+  visible: SharedValue<number>;
+  look: LookInput;
+  x: SharedValue<number>;
+  y: SharedValue<number>;
+  facing: SharedValue<number>;
+  pose: SharedValue<Pose>;
+  dish: DishLook | undefined;
+  seed: number;
+}) {
+  const k = ctx.layout.artScale;
+  const on = useDerivedValue<number>(() => (visible.value > 0.5 && slot.value === j ? 1 : 0));
+  const clock = useGatedClock(ctx.clock, on);
+  // Hidden by moving off the canvas: a parent group's opacity does not reach children sorted by zIndex.
+  const shownX = useDerivedValue(() => (on.value > 0.5 ? x.value : -9999));
+  const z = useDerivedValue(() => (on.value > 0.5 ? y.value : -1));
+  return (
+    <Group zIndex={z}>
+      <Character look={look} x={shownX} y={y} facing={facing} pose={pose} clock={clock} scale={k} dish={dish} poses={GUEST_POSES} seed={seed} />
+    </Group>
+  );
+}
+
+/** The next value of a one-shot trigger counter, kept on the JS side (see nextSwing callers). */
+export function nextSwing(n: number): number {
+  return n + 1;
+}
+
 /** Three wisps rising off a freshly served plate. */
-function Steam({ ctx, x, y, progress }: { ctx: SceneCtx; x: number; y: number; progress: { value: number } }) {
+function Steam({ ctx, x, y, progress }: { ctx: SceneCtx; x: number; y: number; progress: SharedValue<number> }) {
   const { layout: L } = ctx;
   const k = L.artScale;
   const path = useMemo(() => {
@@ -159,36 +221,57 @@ function Steam({ ctx, x, y, progress }: { ctx: SceneCtx; x: number; y: number; p
     const u = progress.value;
     return u <= 0 || u >= 1 ? 0 : Math.sin(Math.PI * u) * 0.75;
   });
-  const transform = useDerivedValue(() => {
-    const u = Math.max(0, Math.min(1, progress.value));
-    return [{ translateX: x }, { translateY: y - 6 * k * u }, { scale: k }];
-  });
+  const matrix = useMatrix(
+    (o) => {
+      'worklet';
+      const u = Math.max(0, Math.min(1, progress.value));
+      // Resting (no steam showing): keep the last matrix, nothing to redraw.
+      if ((u <= 0 || u >= 1) && o[5] === y - 6 * k * u) return false;
+      putTS(o, x, y - 6 * k * u, k, k);
+    },
+    [progress, x, y, k],
+  );
   return (
-    <Group transform={transform} opacity={opacity}>
+    <Group matrix={matrix} opacity={opacity}>
       <Path path={path} style="stroke" strokeWidth={2.2} strokeCap="round" color="#FFFFFF" />
     </Group>
   );
 }
 
-/** Decor tier 2: a candle on every table, its flame breathing. */
-function Candle({ ctx, x, y, seed }: { ctx: SceneCtx; x: number; y: number; seed: number }) {
+/** Where a table's candle stands (decor tier 2). */
+export function candleSpot(L: SceneCtx['layout'], t: { x: number; y: number }): { x: number; y: number } {
+  const k = L.artScale;
+  return { x: t.x - 11 * k, y: t.y - 16.5 * k };
+}
+
+/** The candle itself, which never moves: drawn as still furniture by World.tsx. */
+export function CandleBase({ x, y, k }: { x: number; y: number; k: number }) {
+  return (
+    <Group transform={[{ translateX: x }, { translateY: y }, { scale: k }]}>
+      <Oval x={-4} y={-1.6} width={8} height={3.2} color="#C9A24A" />
+      <Path path="M -2.2 0 L -2.2 -8 L 2.2 -8 L 2.2 0 Z" color="#FFF6E0" />
+      <Path path="M -2.2 0 L -2.2 -8 L 2.2 -8 L 2.2 0 Z" style="stroke" strokeWidth={1.2} color="#3A2416" />
+    </Group>
+  );
+}
+
+/** Decor tier 2: the candle's flame, breathing (a matrix filled in place, nothing allocated per frame). */
+function CandleFlame({ ctx, at, seed }: { ctx: SceneCtx; at: { x: number; y: number }; seed: number }) {
   const { clock, layout: L } = ctx;
   const k = L.artScale;
-  const flame = useDerivedValue(() => {
-    const t = clock.value / 1000 + seed * 1.7;
-    return [{ translateX: x }, { translateY: y - 9 * k }, { scaleX: k * (1 + 0.08 * Math.sin(t * 9)) }, { scaleY: k * (1 + 0.16 * Math.sin(t * 7.3)) }];
-  });
+  const { x, y } = at;
+  const flame = useMatrix(
+    (o) => {
+      'worklet';
+      const t = clock.value / 1000 + seed * 1.7;
+      putTS(o, x, y - 9 * k, k * (1 + 0.08 * Math.sin(t * 9)), k * (1 + 0.16 * Math.sin(t * 7.3)));
+    },
+    [clock, x, y, k, seed],
+  );
   return (
-    <Group>
-      <Group transform={[{ translateX: x }, { translateY: y }, { scale: k }]}>
-        <Oval x={-4} y={-1.6} width={8} height={3.2} color="#C9A24A" />
-        <Path path="M -2.2 0 L -2.2 -8 L 2.2 -8 L 2.2 0 Z" color="#FFF6E0" />
-        <Path path="M -2.2 0 L -2.2 -8 L 2.2 -8 L 2.2 0 Z" style="stroke" strokeWidth={1.2} color="#3A2416" />
-      </Group>
-      <Group transform={flame}>
-        <Circle cx={0} cy={-1} r={4.6} color="#FFD98A" opacity={0.35} />
-        <Path path="M 0 -4.5 C 2.4 -1.5 2.2 1.6 0 1.8 C -2.2 1.6 -2.4 -1.5 0 -4.5 Z" color="#FFB238" />
-      </Group>
+    <Group matrix={flame}>
+      <Circle cx={0} cy={-1} r={4.6} color="#FFD98A" opacity={0.35} />
+      <Path path="M 0 -4.5 C 2.4 -1.5 2.2 1.6 0 1.8 C -2.2 1.6 -2.4 -1.5 0 -4.5 Z" color="#FFB238" />
     </Group>
   );
 }

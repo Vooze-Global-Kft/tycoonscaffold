@@ -10,7 +10,9 @@ import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
 import { describeReward } from '../../kit';
-import { alpha, RARITY_NAMES, useTheme } from '../../theme';
+import { alpha, RARITY_NAMES, textOn, useTheme } from '../../theme';
+import { OddsLink } from '../chest/ChestButton';
+import { randomCardOdds } from '../chest/shared';
 import { Countdown, GemPrice, Shine, ShopSection, useFlyFrom, withGemFlight } from './parts';
 
 export function DailyShop() {
@@ -51,8 +53,15 @@ function DailyItem({ offerId, bought }: { offerId: string; bought: boolean }) {
   // The second line says what the item is, never the title again ("Epic card · 3 copies").
   const reward = offer.reward;
   const card = reward.type === 'card' ? cfg.meta.cards.find((c) => c.id === reward.cardId) : undefined;
+  // A random reward always says what it can be: the cards and their chance, or the chest's drop rates.
   const sub =
-    reward.type === 'card' && card ? `${RARITY_NAMES[card.rarity]} card · ${reward.copies} ${reward.copies === 1 ? 'copy' : 'copies'}` : info.label !== offer.title ? info.label : '';
+    reward.type === 'card' && card
+      ? `${RARITY_NAMES[card.rarity]} card · ${reward.copies} ${reward.copies === 1 ? 'copy' : 'copies'}`
+      : reward.type === 'randomCard'
+        ? `×${reward.copies} · ${randomCardOdds(cfg, reward.rarity)}`
+        : info.label !== offer.title
+          ? info.label
+          : '';
   return (
     <View
       style={[
@@ -69,7 +78,7 @@ function DailyItem({ offerId, bought }: { offerId: string; bought: boolean }) {
       <View style={[styles.itemBand, { backgroundColor: alpha(free ? t.c.success : t.c.accent, 0.12), borderTopLeftRadius: t.radius, borderTopRightRadius: t.radius }]} />
       {free ? (
         <View style={[styles.freeTag, { backgroundColor: t.c.success, borderBottomRightRadius: 10, borderTopLeftRadius: t.radius - 2 }]}>
-          <Text style={[styles.freeText, t.display, { color: t.c.primaryText }]}>FREE</Text>
+          <Text style={[styles.freeText, t.display, { color: textOn(t.c.success) }]}>FREE</Text>
         </View>
       ) : null}
       <View style={styles.itemIcon}>
@@ -78,9 +87,10 @@ function DailyItem({ offerId, bought }: { offerId: string; bought: boolean }) {
       <Text style={[styles.itemTitle, t.display, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit>
         {offer.title}
       </Text>
-      <Text style={[styles.itemSub, { color: t.c.textMuted }]} numberOfLines={2}>
+      <Text style={[styles.itemSub, { color: t.c.textMuted }]} numberOfLines={reward.type === 'randomCard' ? 4 : 2}>
         {sub}
       </Text>
+      {reward.type === 'chest' ? <OddsLink compact onPress={() => useGame.getState().openModal({ type: 'chestOdds', chestId: reward.chestId })} /> : null}
       <View ref={ref} collapsable={false} style={{ alignSelf: 'stretch' }}>
         {bought ? (
           <View style={[styles.sold, { borderRadius: t.radius * 0.75, backgroundColor: alpha(t.c.text, 0.07) }]}>

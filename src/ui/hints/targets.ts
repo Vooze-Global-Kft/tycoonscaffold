@@ -24,6 +24,8 @@
  *   stage:production | stage:transport | stage:sales   the three chips of the stage strip
  *   tab:home | tab:staff | tab:upgrades | tab:empire | tab:shop   the tab bar buttons
  *   header:cash | header:gems the counters in the header (where coins and gems fly to)
+ *   chestShelf                the Open button of the first chest on the Staff tab's chest shelf
+ *   shell:content             the visible content area between the header and the banner / tab bar
  */
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { HostInstance } from 'react-native';
@@ -130,11 +132,17 @@ export const targets = {
 export function useTarget(key: string | null | undefined) {
   const ref = useRef<HostInstance>(null);
   const alive = useRef(false);
+  /** The last size seen, so the settling retries can tell when a pop-in animation has finished. */
+  const lastSize = useRef<{ w: number; h: number } | null>(null);
+  const settled = useRef(false);
   const measure = useCallback(() => {
     if (!key) return;
     ref.current?.measureInWindow((x, y, width, height) => {
       // A measurement that comes back after the control went away must not bring its key back.
       if (!alive.current) return;
+      const prev = lastSize.current;
+      settled.current = !!prev && width > 0 && Math.abs(prev.w - width) < 0.5 && Math.abs(prev.h - height) < 0.5;
+      lastSize.current = { w: width, h: height };
       if (width > 0 && height > 0 && Number.isFinite(x) && Number.isFinite(y)) targets.set(key, { x, y, width, height }, measure);
       // Zero-sized (scaled to nothing while it pops in, or not laid out yet): stay registered and try again later.
       else targets.unmeasured(key);
@@ -143,14 +151,25 @@ export function useTarget(key: string | null | undefined) {
   useEffect(() => {
     if (!key) return;
     alive.current = true;
+    settled.current = false;
+    lastSize.current = null;
     targets.register(key, measure);
     // Layout may not have happened yet on the first effect (onLayout covers that), and a control that
-    // animates in is zero-sized for a moment: measure now and a few more times while it settles.
+    // animates in (a pop from scale 0, maybe after a delay) is zero-sized or small for a while: keep
+    // measuring until two looks in a row agree on its size, for at most about 3 s.
     measure();
-    const retries = [120, 350, 700, 1200].map((ms) => setTimeout(measure, ms));
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const again = () => {
+      timer = setTimeout(() => {
+        measure();
+        if (!settled.current && ++tries < 12) again();
+      }, 250);
+    };
+    again();
     return () => {
       alive.current = false;
-      retries.forEach(clearTimeout);
+      if (timer) clearTimeout(timer);
       targets.set(key, null);
     };
   }, [key, measure]);
@@ -183,7 +202,8 @@ export function hintRoute(h: GuideHint): string[] {
     case 'buySales':
       return [key, 'stage:sales', 'tab:home'];
     case 'openChest':
-      return [key, 'tab:home'];
+      // The chest button on home; on the Staff tab the chest shelf's Open button (key 'chestShelf').
+      return [key, 'chestShelf', 'tab:home'];
     case 'claimMission':
       return [key, 'missionsButton', 'tab:home'];
     case 'buyUpgrade':

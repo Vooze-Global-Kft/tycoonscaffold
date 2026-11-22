@@ -7,7 +7,8 @@
  */
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import { useAttentionBurst } from '../attention';
 import { useShallow } from 'zustand/react/shallow';
 import * as M from '../../../engine/meta';
 import { fx } from '../../../services/fx';
@@ -37,15 +38,16 @@ export function ChestButton({ size = 44 }: { size?: number }) {
   const icon = useGame((s) => s.cfg.meta.chests.find((c) => c.id === showId)?.icon ?? '🎁');
   const [info, setInfo] = useState(false);
 
-  // A gentle hop and wiggle every couple of seconds while a free chest waits.
+  // Three gentle hops, then a rest on a JS timer, while a free chest waits.
   const hop = useSharedValue(0);
+  const HOP = withSequence(withTiming(1, { duration: 180, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 260, easing: Easing.bounce }));
+  useAttentionBurst(freeReady > 0, () => {
+    hop.value = withRepeat(HOP, 3, false);
+  }, 3 * 440);
   useEffect(() => {
-    if (freeReady > 0) {
-      hop.value = withRepeat(withSequence(withTiming(1, { duration: 180, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 260, easing: Easing.bounce }), withDelay(1600, withTiming(0, { duration: 1 }))), -1);
-    } else {
-      cancelAnimation(hop);
-      hop.value = withTiming(0, { duration: 150 });
-    }
+    if (freeReady > 0) return;
+    cancelAnimation(hop);
+    hop.value = withTiming(0, { duration: 150 });
   }, [freeReady, hop]);
   const hopStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -hop.value * 6 }, { rotate: `${Math.sin(hop.value * Math.PI * 2) * 8}deg` }] }));
 
@@ -160,7 +162,7 @@ export function OddsLink({ onPress, compact = false }: { onPress: () => void; co
   const t = useTheme();
   return (
     <Pressable onPress={onPress} accessibilityRole="link" accessibilityLabel="See drop rates" hitSlop={compact ? 8 : 4} style={[styles.link, compact && styles.linkCompact]}>
-      <Text style={[styles.linkText, { color: t.c.primary }, compact && { fontSize: 12 }]} numberOfLines={1}>
+      <Text style={[styles.linkText, { color: t.c.textMuted }, compact && { fontSize: 13 }]} numberOfLines={1}>
         ⓘ Drop rates
       </Text>
     </Pressable>
@@ -176,6 +178,6 @@ const styles = StyleSheet.create({
   sub: { fontSize: 13, fontWeight: '600', marginTop: 1 },
   adRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   link: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: 4 },
-  linkCompact: { minHeight: 30 },
-  linkText: { fontSize: 14, fontWeight: '800', textDecorationLine: 'underline' },
+  linkCompact: { minHeight: 28, alignSelf: 'center' },
+  linkText: { fontSize: 14, fontWeight: '800' },
 });

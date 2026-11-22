@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { alpha, useTheme } from '../theme';
+import { alpha, textOn, useTheme } from '../theme';
 
 /** A list row card: icon on the left, text in the middle, a button on the right. */
 export function Card({ children, highlight, dim, style }: { children: ReactNode; highlight?: boolean; dim?: boolean; style?: StyleProp<ViewStyle> }) {
@@ -50,9 +50,10 @@ export function SectionTitle({ children, right }: { children: ReactNode; right?:
 /** A short neutral label on an offer or a card ("ONE TIME", "NEW", "×3"). */
 export function Pill({ children, color, textColor }: { children: ReactNode; color?: string; textColor?: string }) {
   const t = useTheme();
+  const bg = color ?? t.c.accent;
   return (
-    <View style={[styles.pill, { backgroundColor: color ?? t.c.accent }]}>
-      <Text style={[styles.pillText, t.display, { color: textColor ?? t.c.primaryText }]} numberOfLines={1}>
+    <View style={[styles.pill, { backgroundColor: bg }]}>
+      <Text style={[styles.pillText, t.display, { color: textColor ?? textOn(bg) }]} numberOfLines={1}>
         {children}
       </Text>
     </View>
@@ -80,7 +81,11 @@ export function Dot({ count, style }: { count?: number; style?: StyleProp<ViewSt
   const t = useTheme();
   return (
     <View style={[styles.dot, { backgroundColor: t.c.danger, borderColor: t.c.surface }, style]}>
-      {count !== undefined && count > 0 ? <Text style={styles.dotText}>{count > 9 ? '9+' : count}</Text> : null}
+      {count !== undefined && count > 0 ? (
+        <Text style={[styles.dotText, { color: textOn(t.c.danger) }]} maxFontSizeMultiplier={1}>
+          {count > 9 ? '9+' : count}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -97,5 +102,5 @@ const styles = StyleSheet.create({
   track: { overflow: 'hidden', justifyContent: 'center' },
   trackLabel: { position: 'absolute', left: 0, right: 0, textAlign: 'center' },
   dot: { minWidth: 16, height: 16, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
-  dotText: { color: '#FFFFFF', fontSize: 9, fontWeight: '900' },
+  dotText: { fontSize: 9, fontWeight: '900' },
 });

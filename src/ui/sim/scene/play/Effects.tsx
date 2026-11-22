@@ -3,14 +3,17 @@
  * so the layer keeps to one): the rush vignette and speed lines, the skill button's ring, the
  * glow behind the flying bonus, coin bursts and grand-opening confetti. Taps never reach it.
  */
-import { Canvas, Circle, Group, Line, Path, RadialGradient, Rect, RoundedRect, Skia, useClock, vec } from '@shopify/react-native-skia';
-import { useEffect, useMemo } from 'react';
+import { Canvas, Circle, Group, Line, Path, RadialGradient, Rect, RoundedRect, Skia, vec } from '@shopify/react-native-skia';
+import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { Easing, runOnJS, useDerivedValue, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import { Easing, cancelAnimation, runOnJS, useDerivedValue, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
+import { useGame } from '../../../../state/store';
 import { alpha, useTheme } from '../../../theme';
 import type { SceneLayout } from '../../layout';
+import { useSceneClock } from '../../art';
+import { useMatrix, putTR, putTS } from '../matrix';
 import { SLOWMO } from './dev';
-import { bonusPoint, type BonusShared, type BurstSpec, type RushPhase } from './shared';
+import { type BonusShared, type BurstSpec, type RushPhase } from './shared';
 
 /** Geometry of the skill button, shared with RushButton so ring and face line up. */
 export const RUSH_FACE = 46;
@@ -36,12 +39,18 @@ export function Effects({
   onBurstDone: (id: number) => void;
   confettiSeq: number;
 }) {
+  // Nothing invisible animates: the rush atmosphere and the bonus glow are mounted only while they
+  // show (plus their fade-out), and their one shared clock runs only while one of them is mounted.
+  const bonusFlying = useGame((s) => s.bonus.activeId !== null);
+  const atmo = useLinger(rushPhase === 'active', 700);
+  const glow = useLinger(bonusFlying, 250);
+  const clock = useSceneClock(atmo || glow);
   return (
     <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: layout.width, height: layout.height }}>
       <Canvas style={{ width: layout.width, height: layout.height }}>
-        <RushAtmosphere layout={layout} vis={rushVis} />
+        {atmo ? <RushAtmosphere layout={layout} vis={rushVis} clock={clock} /> : null}
         {rushPhase !== 'hidden' ? <RushRing layout={layout} phase={rushPhase} p={ringP} /> : null}
-        <BonusGlow bonus={bonus} unit={layout.unit} />
+        {glow ? <BonusGlow bonus={bonus} unit={layout.unit} clock={clock} /> : null}
         {bursts.map((b) => (
           <CoinBurst key={b.id} spec={b} unit={layout.unit} onDone={onBurstDone} />
         ))}
@@ -51,12 +60,25 @@ export function Effects({
   );
 }
 
+/** True while `on`, and for `ms` after it turns false (so a fade-out can finish before unmounting). */
+function useLinger(on: boolean, ms: number): boolean {
+  const [held, setHeld] = useState(on);
+  useEffect(() => {
+    if (on) {
+      setHeld(true);
+      return;
+    }
+    const id = setTimeout(() => setHeld(false), ms);
+    return () => clearTimeout(id);
+  }, [on, ms]);
+  return on || held;
+}
+
 /** Warm edges and streaks while the rush runs: clearly "faster", but the middle of the room stays clear. */
-function RushAtmosphere({ layout, vis }: { layout: SceneLayout; vis: SharedValue<number> }) {
+function RushAtmosphere({ layout, vis, clock }: { layout: SceneLayout; vis: SharedValue<number>; clock: SharedValue<number> }) {
   const t = useTheme();
   const warm = t.c.stages.production;
   const { width: w, height: h } = layout;
-  const clock = useClock();
   // A fixed set of streaks; their phases differ so a frozen frame still shows several.
   const lines = useMemo(
     () =>
@@ -83,23 +105,35 @@ function RushAtmosphere({ layout, vis }: { layout: SceneLayout; vis: SharedValue
 
 function SpeedLine({ y, len, speed, offset, w, clock, unit, warm }: { y: number; len: number; speed: number; offset: number; w: number; clock: SharedValue<number>; unit: number; warm: string }) {
   // Streaks run right to left, as if the room were rushing forward; they fade towards the middle.
+  // One static line, moved by a matrix filled in place (no allocation per frame).
   const x = useDerivedValue(() => {
     const span = w + len * 2;
-    return w + len - ((clock.value / 1000) * speed + offset * span) % span;
+    return w + len - (((clock.value / 1000) * speed + offset * span) % span);
   });
-  const p1 = useDerivedValue(() => vec(x.value, y));
-  const p2 = useDerivedValue(() => vec(x.value + len, y));
+  const matrix = useMatrix(
+    (o) => {
+      'worklet';
+      putTS(o, x.value, 0, 1, 1);
+    },
+    [x],
+  );
   const op = useDerivedValue(() => {
     const mid = Math.abs(x.value + len / 2 - w / 2) / (w / 2);
     return Math.min(1, mid * mid * 1.6) * 0.95;
   });
+  const p1 = useMemo(() => vec(0, y), [y]);
+  const p2 = useMemo(() => vec(len, y), [len, y]);
   return (
-    <Group opacity={op}>
+    <Group matrix={matrix} opacity={op}>
       <Line p1={p1} p2={p2} color={alpha(warm, 0.55)} strokeWidth={5 * unit} strokeCap="round" />
       <Line p1={p1} p2={p2} color="#FFFFFF" strokeWidth={2.4 * unit} strokeCap="round" />
     </Group>
   );
 }
+
+const PULSE_MS = 1400;
+const PULSES = 3;
+const PULSE_REST_MS = 6000;
 
 /** The ring around the skill button: recharge while cooling, time left while active, a soft pulse when ready. */
 function RushRing({ layout, phase, p }: { layout: SceneLayout; phase: RushPhase; p: SharedValue<number> }) {
@@ -111,28 +145,40 @@ function RushRing({ layout, phase, p }: { layout: SceneLayout; phase: RushPhase;
       .addArc(Skia.XYWHRect(x - RUSH_RING_R, y - RUSH_RING_R, RUSH_RING_R * 2, RUSH_RING_R * 2), -90, 359.9)
       .build();
   }, [x, y]);
-  const clock = useClock();
-  const pulseR = useDerivedValue(() => RUSH_RING_R + 3 + ((clock.value / 1400) % 1) * 9);
-  const pulseOp = useDerivedValue(() => (1 - ((clock.value / 1400) % 1)) * 0.55);
   const color = phase === 'active' ? t.c.stages.production : phase === 'ready' ? t.c.accent : t.c.textMuted;
   return (
     <Group>
-      {phase === 'ready' ? <Circle cx={x} cy={y} r={pulseR} color={t.c.accent} style="stroke" strokeWidth={3} opacity={pulseOp} /> : null}
+      {phase === 'ready' ? <ReadyPulse x={x} y={y} color={t.c.accent} /> : null}
       <Circle cx={x} cy={y} r={RUSH_RING_R} color={alpha('#000000', 0.28)} style="stroke" strokeWidth={RUSH_RING_W} />
       <Path path={circle} color={color} style="stroke" strokeWidth={RUSH_RING_W} strokeCap="round" start={0} end={p} />
     </Group>
   );
 }
 
+/** While the skill is ready: a few soft pulses, then a rest on a JS timer (nothing loops while it waits). */
+function ReadyPulse({ x, y, color }: { x: number; y: number; color: string }) {
+  const u = useSharedValue(1);
+  useEffect(() => {
+    let id: ReturnType<typeof setTimeout> | null = null;
+    const play = () => {
+      u.value = 0;
+      u.value = withRepeat(withTiming(1, { duration: PULSE_MS, easing: Easing.linear }), PULSES, false);
+      id = setTimeout(play, PULSE_MS * PULSES + PULSE_REST_MS);
+    };
+    play();
+    return () => {
+      if (id) clearTimeout(id);
+      cancelAnimation(u);
+    };
+  }, [u]);
+  const r = useDerivedValue(() => RUSH_RING_R + 3 + u.value * 9);
+  const op = useDerivedValue(() => (u.value >= 1 ? 0 : (1 - u.value) * 0.55));
+  return <Circle cx={x} cy={y} r={r} color={color} style="stroke" strokeWidth={3} opacity={op} />;
+}
+
 /** A warm glow, slowly turning rays and a short sparkle trail behind the flying bonus. */
-function BonusGlow({ bonus, unit }: { bonus: BonusShared; unit: number }) {
+function BonusGlow({ bonus, unit, clock }: { bonus: BonusShared; unit: number; clock: SharedValue<number> }) {
   const t = useTheme();
-  const clock = useClock();
-  const c = useDerivedValue(() => {
-    const pt = bonusPoint(bonus.path.value, bonus.p.value);
-    return vec(pt.x, pt.y);
-  });
-  const r = useDerivedValue(() => (46 + Math.sin(clock.value / 180) * 5) * unit);
   const rays = useMemo(() => {
     const b = Skia.PathBuilder.Make();
     const n = 10;
@@ -144,13 +190,36 @@ function BonusGlow({ bonus, unit }: { bonus: BonusShared; unit: number }) {
     }
     return b.build();
   }, [unit]);
-  const rayTransform = useDerivedValue(() => [{ translateX: c.value.x }, { translateY: c.value.y }, { rotate: clock.value / 900 }]);
+  // The glow is drawn once around (0, 0) and moved / breathed by matrices filled in place.
+  const R0 = 46 * unit;
+  const rayM = useMatrix(
+    (o) => {
+      'worklet';
+      const path = bonus.path.value;
+      const u = bonus.p.value;
+      putTR(o, path.x0 + (path.x1 - path.x0) * u, path.y + Math.sin(u * Math.PI * 2 * path.waves) * path.amp, clock.value / 900);
+    },
+    [bonus.path, bonus.p, clock],
+  );
+  const glowM = useMatrix(
+    (o) => {
+      'worklet';
+      const path = bonus.path.value;
+      const u = bonus.p.value;
+      const k = 1 + (Math.sin(clock.value / 180) * 5) / 46;
+      putTS(o, path.x0 + (path.x1 - path.x0) * u, path.y + Math.sin(u * Math.PI * 2 * path.waves) * path.amp, k, k);
+    },
+    [bonus.path, bonus.p, clock],
+  );
+  const origin = useMemo(() => vec(0, 0), []);
   return (
     <Group opacity={bonus.on}>
-      <Path path={rays} transform={rayTransform} color={alpha(t.c.accent, 0.42)} />
-      <Circle c={c} r={r}>
-        <RadialGradient c={c} r={r} colors={[alpha('#FFFFFF', 0.9), alpha(t.c.accent, 0.7), alpha(t.c.accent, 0)]} positions={[0, 0.4, 1]} />
-      </Circle>
+      <Path path={rays} matrix={rayM} color={alpha(t.c.accent, 0.42)} />
+      <Group matrix={glowM}>
+        <Circle cx={0} cy={0} r={R0}>
+          <RadialGradient c={origin} r={R0} colors={[alpha('#FFFFFF', 0.9), alpha(t.c.accent, 0.7), alpha(t.c.accent, 0)]} positions={[0, 0.4, 1]} />
+        </Circle>
+      </Group>
       {[0.025, 0.05, 0.075, 0.1].map((lag, i) => (
         <TrailSpark key={i} bonus={bonus} lag={lag} size={(5 - i) * unit} clock={clock} />
       ))}
@@ -159,12 +228,22 @@ function BonusGlow({ bonus, unit }: { bonus: BonusShared; unit: number }) {
 }
 
 function TrailSpark({ bonus, lag, size, clock }: { bonus: BonusShared; lag: number; size: number; clock: SharedValue<number> }) {
-  const c = useDerivedValue(() => {
-    const path = bonus.path.value;
-    const pt = bonusPoint(path, Math.max(0, bonus.p.value - lag));
-    return vec(pt.x, pt.y + Math.sin(clock.value / 90 + lag * 100) * 4);
-  });
-  return <Circle c={c} r={size} color="#FFE36B" opacity={0.95} />;
+  const m = useMatrix(
+    (o) => {
+      'worklet';
+      const path = bonus.path.value;
+      const u = Math.max(0, bonus.p.value - lag);
+      const px = path.x0 + (path.x1 - path.x0) * u;
+      const py = path.y + Math.sin(u * Math.PI * 2 * path.waves) * path.amp + Math.sin(clock.value / 90 + lag * 100) * 4;
+      putTS(o, px, py, 1, 1);
+    },
+    [bonus.path, bonus.p, clock],
+  );
+  return (
+    <Group matrix={m}>
+      <Circle cx={0} cy={0} r={size} color="#FFE36B" opacity={0.95} />
+    </Group>
+  );
 }
 
 const BURST_COINS = 12;

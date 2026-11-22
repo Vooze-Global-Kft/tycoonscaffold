@@ -7,7 +7,8 @@
  */
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { useAttentionBurst } from '../attention';
 import * as M from '../../../engine/meta';
 import { useGame } from '../../../state/store';
 import { Dot } from '../../kit';
@@ -27,16 +28,15 @@ export function MissionsButton({ size = 44 }: { size?: number }) {
   const target = useTarget(hasMissions && visible ? 'missionsButton' : null);
 
   const wiggle = useSharedValue(0);
+  // Two wiggles, then a rest on a JS timer (no frames run while it rests).
+  useAttentionBurst(ready > 0 && visible, () => {
+    const one = () => withSequence(...[1, -1, 0.7, -0.7, 0].map((v) => withTiming(v, { duration: 90, easing: Easing.inOut(Easing.quad) })));
+    wiggle.value = withSequence(one(), withTiming(0, { duration: 250 }), one());
+  }, 2 * 450 + 250, 7000, 1500);
   useEffect(() => {
-    if (ready > 0) {
-      wiggle.value = withRepeat(
-        withDelay(2600, withSequence(...[1, -1, 0.7, -0.7, 0].map((v) => withTiming(v, { duration: 90, easing: Easing.inOut(Easing.quad) })))),
-        -1,
-      );
-    } else {
-      cancelAnimation(wiggle);
-      wiggle.value = withTiming(0, { duration: 120 });
-    }
+    if (ready > 0) return;
+    cancelAnimation(wiggle);
+    wiggle.value = withTiming(0, { duration: 120 });
   }, [ready, wiggle]);
   const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${wiggle.value * 12}deg` }, { scale: 1 + Math.abs(wiggle.value) * 0.06 }] }));
 

@@ -8,8 +8,8 @@
  * shared values that the drawing reads on the UI thread. React re-renders only when the room's
  * structure changes (stations bought, waiters or tables added, a decor tier, the venue).
  */
-import { Canvas, Group, useClock } from '@shopify/react-native-skia';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Canvas, Group, Image, useClock } from '@shopify/react-native-skia';
+import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react';
 import { View, type HostInstance } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import * as E from '../../../../engine/economy';
@@ -17,12 +17,14 @@ import type { GameState } from '../../../../engine/types';
 import { useGame } from '../../../../state/store';
 import { fly } from '../../../juice/fly';
 import { useStages } from '../../../theme';
-import { makePalette } from '../../art/props';
+import { Chair, ContactShadow, Station, makePalette } from '../../art/props';
+import { UNIT } from '../../art';
 import { MAX_SEATS_DRAWN, MAX_STATIONS_DRAWN, MAX_WORKERS_DRAWN, decorTiers, type SceneLayout } from '../../layout';
 import { Backdrop } from './Backdrop';
+import { useBakedImage } from './bake';
 import { cookLook, dishOf, guestPool, stationKindOf, waiterLook, workPoseOf } from './cast';
 import type { SceneCtx } from './context';
-import { TableSeat, usePayments, type SeatHandle } from './Dining';
+import { CandleBase, TableSeat, candleSpot, usePayments, type SeatHandle } from './Dining';
 import { Entrance, Plant } from './Entrance';
 import { useKeepLooks } from './keep';
 import { StationSlot, type StationInfo } from './Kitchen';
@@ -155,7 +157,20 @@ function Room({ layout: L, venueId }: { layout: SceneLayout; venueId: string }) 
   }, [fade]);
   const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
 
-  const k = L.artScale;
+  // Everything that never moves (the room, the floor shadows of the tables, the padlocked next
+  // station) is drawn once into an image; live vectors stand in until it is ready.
+  const backKey = `${structure}|${L.width}x${L.height}|${venueIndex}|${JSON.stringify(stages)}|${JSON.stringify(venueColors ?? null)}`;
+  const backLayer = () => <BackLayer ctx={ctx} freeSlots={freeSlots} dining={dining} seatCount={seatCount} locked={stations.filter((s) => s.status === 'next')} />;
+  const backImage = useBakedImage(backLayer, L.width, L.height, backKey, Date.now() - bornAt > 600 ? 650 : 0);
+  const baked = backImage !== null;
+
+  // Furniture that never moves but stands among the people (chairs, candle holders, plants) keeps
+  // its place in the depth order: it is drawn once into a transparent image, and each piece shows
+  // its own clipped rectangle of that image at its own zIndex.
+  const fixtures = useMemo(() => fixturesOf(ctx, seatCount, dining), [ctx, seatCount, dining]);
+  const fixturesImage = useBakedImage(() => <FixturesLayer fixtures={fixtures} />, L.width, L.height, `f|${backKey}`, Date.now() - bornAt > 600 ? 650 : 0);
+  const fixed = fixturesImage !== null;
+
   return (
     <View
       ref={root}
@@ -166,25 +181,30 @@ function Room({ layout: L, venueId }: { layout: SceneLayout; venueId: string }) 
     >
       <Animated.View style={[{ width: L.width, height: L.height }, fadeStyle]}>
         <Canvas style={{ width: L.width, height: L.height }}>
-          <Backdrop ctx={ctx} freeSlots={freeSlots} dining={dining} />
+          {backImage ? <Image image={backImage} x={0} y={0} width={L.width} height={L.height} fit="fill" /> : backLayer()}
           <Group>
             <Entrance ctx={ctx} />
             {stations.map((info) => (
-              <StationSlot key={info.businessId} ctx={ctx} info={info} />
+              <StationSlot key={info.businessId} ctx={ctx} info={info} bodyBaked={baked && info.status === 'next'} />
             ))}
             <PassArea ctx={ctx} dishes={dishes} onCount={onCount} />
             {waiterLooks.map((look, i) => (
               <Waiter key={i} ctx={ctx} index={i} look={look} dish={dishes[i % dishes.length]} />
             ))}
             {Array.from({ length: seatCount }, (_, i) => (
-              <TableSeat key={i} ctx={ctx} index={i} dishes={dishes} dining={dining} handles={handles} pool={pool} />
+              <TableSeat key={i} ctx={ctx} index={i} dishes={dishes} dining={dining} handles={handles} pool={pool} shadowBaked={baked} />
             ))}
-            {dining >= 3 ? (
-              <>
-                <Plant ctx={ctx} x={10 * L.unit} y={L.pass.y + L.pass.height + 26 * k} />
-                <Plant ctx={ctx} x={L.door.x - 36 * k} y={L.door.y + 4 * k} size={0.9} />
-              </>
-            ) : null}
+            {fixturesImage
+              ? fixtures.map((f) => (
+                  <Group key={f.key} zIndex={f.z} clip={f.rect}>
+                    <Image image={fixturesImage} x={0} y={0} width={L.width} height={L.height} fit="fill" />
+                  </Group>
+                ))
+              : fixtures.map((f) => (
+                  <Group key={f.key} zIndex={f.z}>
+                    {f.node}
+                  </Group>
+                ))}
           </Group>
         </Canvas>
         <PileCount layout={L} api={countApi} />
@@ -192,4 +212,64 @@ function Room({ layout: L, venueId }: { layout: SceneLayout; venueId: string }) 
       </Animated.View>
     </View>
   );
+}
+
+/** The part of the room that never moves, drawn into the baked image (or live until it is ready). */
+function BackLayer({ ctx, freeSlots, dining, seatCount, locked }: { ctx: SceneCtx; freeSlots: number[]; dining: number; seatCount: number; locked: StationInfo[] }) {
+  const L = ctx.layout;
+  const k = L.artScale;
+  return (
+    <Group>
+      <Backdrop ctx={ctx} freeSlots={freeSlots} dining={dining} />
+      {L.tables.slice(0, seatCount).map((t, i) => (
+        <ContactShadow key={`s${i}`} x={t.x + 6 * k} y={t.y} width={70} height={13} scale={k} />
+      ))}
+      {locked.map((info) => {
+        const st = L.stations[info.index];
+        return st ? <Station key={info.businessId} kind={info.kind} x={st.x} y={st.y} scale={L.stationScale} palette={ctx.palette} working={0} locked clock={ctx.clock} dish={info.dish} seed={info.index * 131} /> : null;
+      })}
+    </Group>
+  );
+}
+
+interface Fixture {
+  key: string;
+  z: number;
+  rect: { x: number; y: number; width: number; height: number };
+  node: ReactElement;
+}
+
+/** The still furniture standing among the people, each with the rectangle it covers. */
+function fixturesOf(ctx: SceneCtx, seatCount: number, dining: number): Fixture[] {
+  const L = ctx.layout;
+  const k = L.artScale;
+  const box = (x: number, y: number, halfW: number, up: number, down: number) => ({ x: x - halfW, y: y - up, width: halfW * 2, height: up + down });
+  const out: Fixture[] = [];
+  for (let i = 0; i < seatCount; i++) {
+    const spot = L.guests[i];
+    const t = L.tables[i];
+    if (!spot || !t) continue;
+    const u = UNIT * k;
+    out.push({ key: `chair${i}`, z: spot.y - 0.5, rect: box(spot.x, spot.y, 19 * u, 46 * u, 3 * u), node: <Chair x={spot.x} y={spot.y} scale={k} palette={ctx.palette} facing={-1} /> });
+    if (dining >= 2) {
+      const c = candleSpot(L, t);
+      out.push({ key: `candle${i}`, z: t.y + 0.1, rect: box(c.x, c.y, 5 * k, 9.5 * k, 2.5 * k), node: <CandleBase x={c.x} y={c.y} k={k} /> });
+    }
+  }
+  if (dining >= 3) {
+    const plants = [
+      { x: 10 * L.unit, y: L.pass.y + L.pass.height + 26 * k, size: 1 },
+      { x: L.door.x - 36 * k, y: L.door.y + 4 * k, size: 0.9 },
+    ];
+    plants.forEach((p, i) => {
+      const s = k * p.size;
+      out.push({ key: `plant${i}`, z: p.y, rect: box(p.x, p.y, 15 * s, 40 * s, 5 * s), node: <Plant ctx={ctx} x={p.x} y={p.y} size={p.size} /> });
+    });
+  }
+  return out;
+}
+
+/** All still furniture at its place in the room, on a transparent background: the source of the fixtures image. */
+function FixturesLayer({ fixtures }: { fixtures: Fixture[] }) {
+  return <Group>{[...fixtures].sort((a, b) => a.z - b.z).map((f) => <Group key={f.key}>{f.node}</Group>)}</Group>;
 }

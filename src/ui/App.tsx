@@ -15,7 +15,8 @@ import { Header } from './components/Header';
 import { OfflineModal, StoryModal } from './components/Modals';
 import { ManagersPanel } from './components/Panels';
 import { TabBar } from './components/TabBar';
-import { HintOverlay, reportTouch } from './hints/HintOverlay';
+import { CONTENT_KEY, HintOverlay, reportTouch } from './hints/HintOverlay';
+import { useTarget } from './hints/targets';
 import { HomeClassic } from './home/HomeClassic';
 import { HomeSim } from './home/HomeSim';
 import { FlyLayer } from './juice/FlyLayer';
@@ -81,6 +82,8 @@ function Game() {
   const t = useTheme();
   const tab = useGame((s) => s.tab);
   const sim = useGame((s) => s.cfg.mode === 'sim');
+  // The visible content area: the tutorial hand never points at a row scrolled outside it.
+  const content = useTarget(CONTENT_KEY);
   useGameLoop();
   return (
     // Every touch passes through here first (without being taken) so the tutorial hand can step aside.
@@ -88,7 +91,7 @@ function Game() {
       <SafeAreaView style={{ flex: 1, backgroundColor: t.c.gradient[0] }} edges={['top']}>
         <StatusBar style={t.darkStatusBar ? 'dark' : 'light'} />
         <Header />
-        <View style={{ flex: 1, backgroundColor: t.c.background }}>
+        <View {...content} style={{ flex: 1, backgroundColor: t.c.background }}>
           {tab === 'home' && (sim ? <HomeSim /> : <HomeClassic />)}
           {tab === 'staff' && <StaffTab top={sim ? undefined : <ManagersPanel />} />}
           {tab === 'upgrades' && <UpgradesTab />}
@@ -96,8 +99,9 @@ function Game() {
           {tab === 'shop' && <ShopTab />}
         </View>
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: t.c.surface }}>
-          {/* No banner ad on the home tab: nothing may sit next to the buttons players tap fastest. */}
-          {tab !== 'home' ? <Banner /> : null}
+          {/* No banner ad on the home tab or on the upgrades list: nothing may sit next to the buttons players
+              tap fastest. Where it shows, it keeps a gap and a divider from the tab bar. */}
+          {tab !== 'home' && tab !== 'upgrades' ? <Banner /> : null}
           <TabBar />
         </SafeAreaView>
 

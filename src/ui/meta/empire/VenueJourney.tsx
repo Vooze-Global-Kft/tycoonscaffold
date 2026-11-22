@@ -6,6 +6,7 @@
  */
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useAttentionBurst } from '../attention';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useShallow } from 'zustand/react/shallow';
 import type { Venue } from '../../../config/schema.sim';
@@ -78,9 +79,12 @@ function JourneyStep({ venue, status, first, last, prevName }: { venue: Venue; s
 function Node({ status }: { status: VenueStatus }) {
   const t = useTheme();
   const pulse = useSharedValue(0);
+  // Two rings, then a rest on a JS timer.
+  useAttentionBurst(status === 'next', () => {
+    pulse.value = withRepeat(withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: 900, easing: Easing.out(Easing.quad) })), 2, false);
+  }, 1800, 5000, 300);
   useEffect(() => {
-    if (status === 'next') pulse.value = withRepeat(withSequence(withTiming(1, { duration: 900, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 0 })), -1);
-    else pulse.value = 0;
+    if (status !== 'next') pulse.value = 0;
   }, [status, pulse]);
   const ring = useAnimatedStyle(() => ({ opacity: status === 'next' ? 0.55 * (1 - pulse.value) : 0, transform: [{ scale: 1 + pulse.value * 0.9 }] }));
   const bg = status === 'open' ? t.c.success : status === 'next' ? t.c.accent : t.c.surface;

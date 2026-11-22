@@ -3,16 +3,54 @@
  * and reports where it sits so the list can scroll to it), the cycle bar that glides on the UI
  * thread, and the level badge.
  */
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { StyleSheet, Text, View, type ScrollViewInstance, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useGame } from '../../state/store';
-import { alpha, useTheme } from '../theme';
+import { alpha, textOn, useTheme } from '../theme';
 import { ROW_GAP } from './layout';
 import { useHomeUi } from './uiState';
 
 /** Lets rows tell their list where they are, so a focus request can scroll to them. */
 export const RowRegistry = createContext<{ register(key: string, y: number, h: number): void } | null>(null);
+
+/**
+ * Scrolls a home list to a focused row (useHomeUi().showRow): right away when the row's place is
+ * known, or as soon as it lays out (a focus that also switched the stage remounts the list).
+ * Spread `ref` on the ScrollView and provide `registry` through RowRegistry around its rows.
+ */
+export function useRowScroller(stage: string) {
+  const scroll = useRef<ScrollViewInstance>(null);
+  const rows = useRef(new Map<string, { y: number; h: number }>());
+  const pending = useRef<string | null>(null);
+  const scrollTo = useCallback((y: number) => scroll.current?.scrollTo({ y: Math.max(0, y - 8), animated: true }), []);
+  const registry = useMemo(
+    () => ({
+      register(key: string, y: number, h: number) {
+        rows.current.set(key, { y, h });
+        if (pending.current === key) {
+          pending.current = null;
+          scrollTo(y);
+        }
+      },
+    }),
+    [scrollTo],
+  );
+  useEffect(
+    () =>
+      useHomeUi.subscribe((s, prev) => {
+        if (!s.focus || s.focus === prev.focus) return;
+        const known = s.stage === prev.stage ? rows.current.get(s.focus.key) : undefined;
+        if (known) scrollTo(known.y);
+        else pending.current = s.focus.key;
+      }),
+    [scrollTo],
+  );
+  useEffect(() => {
+    rows.current.clear();
+  }, [stage]);
+  return { ref: scroll, registry };
+}
 
 /**
  * A list row card. `focusKey` is the key useHomeUi().showRow() uses for it (a business id,
@@ -57,6 +95,7 @@ export function CycleBar({ venueId, businessId, solid, color, height, children }
   const t = useTheme();
   const fill = useSharedValue(0);
   const flash = useSharedValue(0);
+  const trackW = useSharedValue(0);
   useEffect(() => {
     if (solid) {
       fill.value = withTiming(1, { duration: 150 });
@@ -80,10 +119,14 @@ export function CycleBar({ venueId, businessId, solid, color, height, children }
       last = p;
     });
   }, [venueId, businessId, solid, fill, flash]);
-  const fillStyle = useAnimatedStyle(() => ({ width: `${Math.min(1, Math.max(0, fill.value)) * 100}%` }));
+  // A full-width fill slid in from the left (a transform, so no layout pass per frame); the track clips it.
+  const fillStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -(1 - Math.min(1, Math.max(0, fill.value))) * trackW.value }] }));
   const flashStyle = useAnimatedStyle(() => ({ opacity: flash.value * 0.6 }));
   return (
-    <View style={[styles.bar, { height, borderRadius: height / 2, backgroundColor: alpha(t.c.text, 0.08) }]}>
+    <View style={[styles.bar, { height, borderRadius: height / 2, backgroundColor: alpha(t.c.text, 0.08) }]} onLayout={(e) => {
+        trackW.value = e.nativeEvent.layout.width;
+      }}
+    >
       <Animated.View style={[styles.barFill, { backgroundColor: color, borderRadius: height / 2 }, fillStyle]} />
       <View style={[styles.barShine, { borderRadius: height / 2 }]} pointerEvents="none" />
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF', borderRadius: height / 2 }, flashStyle]} pointerEvents="none" />
@@ -97,7 +140,7 @@ export function LevelBadge({ level, color }: { level: number; color: string }) {
   const t = useTheme();
   return (
     <View style={[styles.badge, { backgroundColor: color, borderColor: t.c.surface }]}>
-      <Text style={[t.display, styles.badgeText]} numberOfLines={1}>
+      <Text style={[t.display, styles.badgeText, { color: textOn(color) }]} numberOfLines={1} maxFontSizeMultiplier={1}>
         {level}
       </Text>
     </View>
@@ -125,10 +168,10 @@ export function Pips({ value, color, count = 5 }: { value: number; color: string
 const styles = StyleSheet.create({
   card: { marginHorizontal: 10, marginBottom: ROW_GAP, borderWidth: 1, overflow: 'hidden' },
   bar: { overflow: 'hidden', justifyContent: 'center' },
-  barFill: { position: 'absolute', left: 0, top: 0, bottom: 0 },
+  barFill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
   barShine: { position: 'absolute', left: 3, right: 3, top: 2, height: '35%', backgroundColor: 'rgba(255,255,255,0.28)' },
   badge: { position: 'absolute', top: -4, right: -6, minWidth: 22, height: 18, borderRadius: 9, borderWidth: 2, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
-  badgeText: { color: '#FFFFFF', fontSize: 10, lineHeight: 12 },
+  badgeText: { fontSize: 11, lineHeight: 13 },
   pips: { flexDirection: 'row', gap: 2, width: 46 },
   pip: { flex: 1, height: 5, borderRadius: 2, overflow: 'hidden' },
 });

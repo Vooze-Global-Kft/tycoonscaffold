@@ -3,15 +3,15 @@
  * the selected stage (design sheet section 3). The scene gets its full height (300, or 220 on small
  * phones) unless that would leave room for fewer than three list rows; then it gives up height.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View, useWindowDimensions, type ScrollViewInstance } from 'react-native';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VenueScene } from '../sim/VenueScene';
 import { useTheme } from '../theme';
 import { BuyAmountRow } from './BuyAmountRow';
 import { ROW_GAP, useHomeMetrics, type HomeMetrics } from './layout';
-import { RowRegistry } from './rows';
+import { RowRegistry, useRowScroller } from './rows';
 import { StageStrip } from './StageStrip';
 import { SalesList, TransportList } from './StageLists';
 import { StationList } from './StationList';
@@ -33,37 +33,8 @@ export function HomeSim() {
   const sceneH = sceneHeightFor(m, available);
   const stage = useHomeUi((s) => s.stage);
 
-  // Scroll a focused row into view: right away when we know where it is, or as soon as it lays out
-  // (a focus that also switched the stage remounts the list).
-  const scroll = useRef<ScrollViewInstance>(null);
-  const rows = useRef(new Map<string, { y: number; h: number }>());
-  const pending = useRef<string | null>(null);
-  const scrollTo = useCallback((y: number) => scroll.current?.scrollTo({ y: Math.max(0, y - 8), animated: true }), []);
-  const registry = useMemo(
-    () => ({
-      register(key: string, y: number, h: number) {
-        rows.current.set(key, { y, h });
-        if (pending.current === key) {
-          pending.current = null;
-          scrollTo(y);
-        }
-      },
-    }),
-    [scrollTo],
-  );
-  useEffect(
-    () =>
-      useHomeUi.subscribe((s, prev) => {
-        if (!s.focus || s.focus === prev.focus) return;
-        const known = s.stage === prev.stage ? rows.current.get(s.focus.key) : undefined;
-        if (known) scrollTo(known.y);
-        else pending.current = s.focus.key;
-      }),
-    [scrollTo],
-  );
-  useEffect(() => {
-    rows.current.clear();
-  }, [stage]);
+  // Scroll a focused row into view (a tapped station in the scene, the tutorial hand).
+  const { ref: scroll, registry } = useRowScroller(stage);
 
   return (
     <View style={{ flex: 1 }} onLayout={(e) => setMeasured(e.nativeEvent.layout.height)}>

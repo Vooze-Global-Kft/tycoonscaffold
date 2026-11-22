@@ -6,13 +6,14 @@
  */
 import { memo, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAttentionBurst } from '../attention';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import type { Card } from '../../../config/schema';
 import { copiesForNextLevel } from '../../../engine/cards';
 import { useGame } from '../../../state/store';
 import { GameIcon } from '../../components/GameIcon';
 import { useTarget } from '../../hints/targets';
-import { RARITY_COLORS, RARITY_NAMES, alpha, useTheme } from '../../theme';
+import { RARITY_COLORS, RARITY_NAMES, alpha, inkOf, textOn, useTheme } from '../../theme';
 
 export const CardTile = memo(function CardTile({ card, width }: { card: Card; width: number }) {
   const t = useTheme();
@@ -25,12 +26,14 @@ export const CardTile = memo(function CardTile({ card, width }: { card: Card; wi
   const color = RARITY_COLORS[card.rarity];
 
   const pulse = useSharedValue(0);
+  // Two pulses, then a rest on a JS timer (nothing runs per frame while it rests).
+  useAttentionBurst(ready, () => {
+    pulse.value = withRepeat(withSequence(withTiming(1, { duration: 450 }), withTiming(0, { duration: 450 })), 2, false);
+  }, 1800, 6000, 400);
   useEffect(() => {
-    if (ready) pulse.value = withRepeat(withSequence(withTiming(1, { duration: 650 }), withTiming(0, { duration: 650 })), -1);
-    else {
-      cancelAnimation(pulse);
-      pulse.value = 0;
-    }
+    if (ready) return;
+    cancelAnimation(pulse);
+    pulse.value = 0;
   }, [ready, pulse]);
   const badgeStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 + pulse.value * 0.12 }] }));
 
@@ -54,7 +57,7 @@ export const CardTile = memo(function CardTile({ card, width }: { card: Card; wi
       ]}
     >
       <View style={[styles.band, { backgroundColor: owned ? color : alpha(color, 0.5) }]}>
-        <Text style={styles.bandText} numberOfLines={1}>
+        <Text style={[styles.bandText, { color: owned ? textOn(color) : t.c.text }]} numberOfLines={1}>
           {RARITY_NAMES[card.rarity].toUpperCase()}
         </Text>
       </View>
@@ -74,7 +77,7 @@ export const CardTile = memo(function CardTile({ card, width }: { card: Card; wi
       </Text>
       {owned ? (
         <View style={styles.barRow}>
-          <Text style={[styles.lv, t.display, { color }]}>{`Lv ${level}`}</Text>
+          <Text style={[styles.lv, t.display, { color: inkOf(color, t.c.surface) }]}>{`Lv ${level}`}</Text>
           <View style={[styles.bar, { backgroundColor: alpha(t.c.text, 0.1) }]}>
             <View style={{ width: `${Math.min(1, copies / needed) * 100}%`, height: '100%', borderRadius: 7, backgroundColor: ready ? t.c.success : color }} />
             <Text style={[styles.barText, { color: t.c.text }]} numberOfLines={1}>{`${copies}/${needed}`}</Text>
@@ -87,7 +90,7 @@ export const CardTile = memo(function CardTile({ card, width }: { card: Card; wi
       )}
       {ready ? (
         <Animated.View style={[styles.ready, { backgroundColor: t.c.success, borderColor: t.c.surface }, badgeStyle]}>
-          <Text style={styles.readyText}>⬆</Text>
+          <Text style={[styles.readyText, { color: textOn(t.c.success) }]}>⬆</Text>
         </Animated.View>
       ) : null}
     </Pressable>
@@ -97,13 +100,13 @@ export const CardTile = memo(function CardTile({ card, width }: { card: Card; wi
 const styles = StyleSheet.create({
   tile: { borderWidth: 2.5, alignItems: 'center', paddingBottom: 8, overflow: 'visible' },
   band: { alignSelf: 'stretch', alignItems: 'center', paddingVertical: 2, borderTopLeftRadius: 9, borderTopRightRadius: 9 },
-  bandText: { color: '#FFFFFF', fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
+  bandText: { fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
   window: { marginTop: 6, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' },
   name: { fontSize: 13, marginTop: 5, paddingHorizontal: 4, textAlign: 'center' },
   barRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4, alignSelf: 'stretch', paddingHorizontal: 6 },
   lv: { fontSize: 11 },
   bar: { flex: 1, height: 14, borderRadius: 7, overflow: 'hidden', justifyContent: 'center' },
-  barText: { position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 10, fontWeight: '900' },
+  barText: { position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 11, fontWeight: '900' },
   missing: { fontSize: 11, fontWeight: '700', marginTop: 5 },
   ready: { position: 'absolute', top: -8, right: -8, width: 26, height: 26, borderRadius: 13, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   readyText: { color: '#FFFFFF', fontWeight: '900', fontSize: 14 },

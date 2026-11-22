@@ -13,7 +13,7 @@ import { formatMoney } from '../../engine/format';
 import { useGame } from '../../state/store';
 import { GameIcon } from '../components/GameIcon';
 import { useTarget } from '../hints/targets';
-import { alpha, useTheme } from '../theme';
+import { alpha, inkOf, useTheme } from '../theme';
 import { BuyButton } from './BuyButton';
 import { LevelBadge, RowCard } from './rows';
 
@@ -100,7 +100,7 @@ function StageRow({
           <Text style={[styles.line, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
             {line1}
           </Text>
-          <Text style={[styles.meta, { color: color }]} numberOfLines={1}>
+          <Text style={[styles.meta, { color: inkOf(color, t.c.surface) }]} numberOfLines={1}>
             {line2}
           </Text>
         </View>
@@ -143,7 +143,7 @@ function TransportHireCard({ compact }: { compact: boolean }) {
           <GameIcon icon={icon} size={compact ? 38 : 44} />
         </View>
         <View style={styles.mid}>
-          <Text style={[styles.kicker, { color: v.hired ? color : t.c.success }]} numberOfLines={1}>
+          <Text style={[styles.kicker, { color: inkOf(v.hired ? color : t.c.success, t.c.surface) }]} numberOfLines={1}>
             {v.hired ? 'ON DUTY' : 'AUTOMATION'}
           </Text>
           <Text style={[t.display, { color: t.c.text, fontSize: compact ? 14 : 15.5 }]} numberOfLines={1}>
@@ -157,12 +157,12 @@ function TransportHireCard({ compact }: { compact: boolean }) {
         </View>
         {v.hired ? (
           <View style={[styles.done, { backgroundColor: alpha(t.c.success, 0.14) }]}>
-            <Text style={[t.display, { color: t.c.success, fontSize: 13 }]}>✓ Hired</Text>
+            <Text style={[t.display, { color: inkOf(t.c.success, t.c.surface), fontSize: 13 }]}>✓ Hired</Text>
           </View>
         ) : (
           <BuyButton
             target={target}
-            variant="success"
+            variant="primary"
             label="Hire"
             sublabel={formatMoney(v.cost, t.strings.currencySymbol)}
             cost={v.cost}
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   mid: { flex: 1, minWidth: 0, gap: 1 },
   line: { fontSize: 12, fontWeight: '800' },
   meta: { fontSize: 10.5, fontWeight: '800' },
-  kicker: { fontSize: 9.5, fontWeight: '900', letterSpacing: 1 },
+  kicker: { fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   hireIcon: {
     width: 56,
     height: 56,

@@ -5,14 +5,15 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View, type HostInstance, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { useAttentionBurst } from '../attention';
 import type { Reward } from '../../../config/schema';
 import { formatNumber } from '../../../engine/format';
 import { useGame } from '../../../state/store';
 import { GameIcon } from '../../components/GameIcon';
 import { fly } from '../../juice/fly';
 import { SectionTitle, describeReward, formatCountdown, useNow } from '../../kit';
-import { alpha, useTheme } from '../../theme';
+import { alpha, textOn, useTheme } from '../../theme';
 import { gemsInMoney } from './money';
 
 /** A shop section: the game's standard section heading (the kit's SectionTitle, as on every tab), an optional note on the right (a timer), then its content. */
@@ -74,7 +75,7 @@ export function Ribbon({ text, color }: { text: string; color?: string }) {
   const t = useTheme();
   return (
     <View style={[styles.ribbon, { backgroundColor: color ?? t.c.accent, borderTopRightRadius: t.radius - 2, borderBottomLeftRadius: 10 }]}>
-      <Text style={[styles.ribbonText, t.display, { color: t.c.primaryText }]} numberOfLines={1}>
+      <Text style={[styles.ribbonText, t.display, { color: textOn(color ?? t.c.accent) }]} numberOfLines={1}>
         {text}
       </Text>
     </View>
@@ -147,10 +148,10 @@ export function Countdown({ until, prefix = '', suffix = '', style }: { until: n
 export function Shine({ radius = 0 }: { radius?: number }) {
   const [w, setW] = useState(0);
   const x = useSharedValue(0);
-  useEffect(() => {
-    x.value = 0;
-    x.value = withRepeat(withSequence(withDelay(1800, withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) })), withTiming(0, { duration: 0 })), -1);
-  }, [x]);
+  // One sweep, then a rest on a JS timer (no frames run while it rests).
+  useAttentionBurst(true, () => {
+    x.value = withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }));
+  }, 900, 4000, 800);
   const band = useAnimatedStyle(() => ({ transform: [{ translateX: -80 + x.value * (w + 160) }, { skewX: '-20deg' }] }));
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden', borderRadius: radius }]} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
   ribbon: { position: 'absolute', top: 0, right: 0, paddingHorizontal: 10, paddingVertical: 4, maxWidth: 160 },
   ribbonText: { fontSize: 11, letterSpacing: 0.6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  money: { fontSize: 10, fontWeight: '700', marginTop: 1 },
+  money: { fontSize: 11, fontWeight: '700', marginTop: 1 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 6 },
   tile: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, paddingVertical: 6, minHeight: 44 },
   tileText: { flex: 1, fontSize: 13, fontWeight: '800' },

@@ -17,7 +17,7 @@ import { GameIcon } from '../../components/GameIcon';
 import { useTarget } from '../../hints/targets';
 import { ProgressBar, Sheet } from '../../kit';
 import { Card, CARD_NAMEPLATE, CARD_SIZE } from '../../sim/art/props';
-import { RARITY_COLORS, RARITY_NAMES, alpha, useTheme } from '../../theme';
+import { RARITY_COLORS, RARITY_NAMES, alpha, inkOf, textOn, useTheme } from '../../theme';
 import { Burst, Glow, Rays } from '../chest/Fx';
 import { CardPortrait } from '../chest/Portrait';
 import { RARITY_GLOW, formatPercent, statIcon, statLabel } from '../chest/shared';
@@ -109,16 +109,16 @@ function CardDialog({ card, cfg, onClose }: { card: CardCfg; cfg: GameConfig; on
           </View>
         </View>
         <Animated.View pointerEvents="none" style={[styles.levelBadge, { backgroundColor: t.c.success }, badgeStyle]}>
-          <Text style={[styles.levelBadgeText, t.display]}>{`Level ${level}!`}</Text>
+          <Text style={[styles.levelBadgeText, t.display, { color: textOn(t.c.success) }]}>{`Level ${level}!`}</Text>
         </Animated.View>
       </View>
 
       <View style={styles.meta}>
         <View style={[styles.rarityPill, { backgroundColor: color }]}>
-          <Text style={styles.rarityText}>{RARITY_NAMES[card.rarity].toUpperCase()}</Text>
+          <Text style={[styles.rarityText, { color: textOn(color) }]}>{RARITY_NAMES[card.rarity].toUpperCase()}</Text>
         </View>
         {card.title ? <Text style={[styles.title, { color: t.c.textMuted }]} numberOfLines={1}>{card.title}</Text> : null}
-        {owned ? <Text style={[styles.level, t.display, { color }]}>{`Level ${level}`}</Text> : null}
+        {owned ? <Text style={[styles.level, t.display, { color: inkOf(color, t.c.surface) }]}>{`Level ${level}`}</Text> : null}
       </View>
       {card.flavor ? <Text style={[styles.flavor, { color: t.c.textMuted }]}>{`“${card.flavor}”`}</Text> : null}
 
@@ -154,7 +154,7 @@ function CardDialog({ card, cfg, onClose }: { card: CardCfg; cfg: GameConfig; on
           ) : null}
         </View>
       ) : (
-        <Text style={[styles.readyNote, { color: t.c.success }]}>Ready to level up. Levelling is your choice: copies wait until you do.</Text>
+        <Text style={[styles.readyNote, { color: inkOf(t.c.success, t.c.surface) }]}>Ready to level up. Levelling is your choice: copies wait until you do.</Text>
       )}
     </Sheet>
   );

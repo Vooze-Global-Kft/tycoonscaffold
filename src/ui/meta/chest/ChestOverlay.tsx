@@ -13,10 +13,11 @@
  */
 import { Canvas, Group, useClock } from '@shopify/react-native-skia';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type HostInstance, type LayoutChangeEvent } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, Text, View, type HostInstance, type LayoutChangeEvent } from 'react-native';
 import Animated, { Easing, cancelAnimation, makeMutable, useAnimatedStyle, useDerivedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import type { Rarity } from '../../../config/schema';
 import { formatMoney, formatNumber } from '../../../engine/format';
+import { copiesForNextLevel } from '../../../engine/cards';
 import * as M from '../../../engine/meta';
 import { fx } from '../../../services/fx';
 import { useGame, type ChestOpening } from '../../../state/store';
@@ -25,7 +26,7 @@ import { GameIcon } from '../../components/GameIcon';
 import { fly } from '../../juice/fly';
 import { useOverlay } from '../../kit/overlay';
 import { CARD_NAMEPLATE, CARD_SIZE, Chest, CHEST_SIZE } from '../../sim/art/props';
-import { RARITY_COLORS, RARITY_NAMES, alpha, useTheme } from '../../theme';
+import { RARITY_COLORS, RARITY_NAMES, alpha, inkOf, useTheme } from '../../theme';
 import { Burst, Confetti, Dust, Glow, Wash } from './Fx';
 import { DEAL_GAP_MS, DEAL_MS, OpeningSlot, makeSlotMotion, revealPlan, type SlotKind, type SlotMotion, type SlotPhase, type Spot } from './OpeningSlot';
 import { RARITY_GLOW, bestRarity, cardOf, progressAfterReveal, rewardRarity } from './shared';
@@ -47,6 +48,16 @@ export function ChestOverlay() {
   );
 }
 
+/**
+ * The header title's size: 24 pt, smaller for a long chest name so it fits between the two header
+ * sides (44 + 92 pt and padding) instead of being cut off. adjustsFontSizeToFit does the same on
+ * iOS, but not on Android or the web.
+ */
+function titleSize(name: string, w: number): number {
+  const avail = w - 20 - 44 - 92 - 8;
+  return Math.max(17, Math.min(24, avail / (Math.max(1, name.length) * 0.6)));
+}
+
 type Stage = 'intro' | 'ready' | 'opening' | 'dealing' | 'reveal' | 'summary';
 
 interface SlotInfo {
@@ -58,11 +69,14 @@ interface SlotInfo {
 }
 
 const LABEL_H = 48;
+/** A full level bar: dark enough green for the white count on it (5.4:1). */
+const LEVEL_READY = '#1F7A3A';
 
 /** Where everything sits for a screen size and a number of rewards. */
 function computeLayout(w: number, h: number, n: number) {
   const top = Math.max(70, h * 0.1);
-  const bottom = h - 168;
+  // Room at the bottom for the chest while dealing, then for the summary panel (about 180 pt).
+  const bottom = h - 196;
   const rows = n <= 3 ? 1 : 2;
   const perRow = rows === 1 ? n : Math.ceil(n / 2);
   const colW = (w - 20) / Math.max(perRow, 3);
@@ -108,8 +122,10 @@ function useTimers() {
 const PULSES_FULL: Record<Rarity, number> = { common: 1, rare: 1, epic: 2, legendary: 4 };
 const REVEAL_SOUND = { common: 'reveal_common', rare: 'reveal_rare', epic: 'reveal_epic', legendary: 'reveal_legendary' } as const;
 
-function Opening({ opening, w, h }: { opening: ChestOpening; w: number; h: number }) {
+function Opening({ opening, w: liveW, h: liveH }: { opening: ChestOpening; w: number; h: number }) {
   const t = useTheme();
+  // One layout from the first frame to the summary: a later resize never moves dealt rewards.
+  const [{ w, h }] = useState({ w: liveW, h: liveH });
   const cfg = useGame((s) => s.cfg);
   const closeChest = useGame((s) => s.closeChest);
   const openChest = useGame((s) => s.openChest);
@@ -325,8 +341,15 @@ function Opening({ opening, w, h }: { opening: ChestOpening; w: number; h: numbe
         if (g.isNew) fresh++;
       }
     }
-    return { cash, gems, cards, copies, fresh };
-  }, [rewards]);
+    // Cards that can level up once this chest is in (the state already holds all of it).
+    const ready = new Set<string>();
+    for (const g of rewards) {
+      if (g.type !== 'card') continue;
+      const c = cardsSnap[g.cardId];
+      if (c && c.level > 0 && c.copies >= copiesForNextLevel(cfg, c.level)) ready.add(g.cardId);
+    }
+    return { cash, gems, cards, copies, fresh, ready: ready.size };
+  }, [rewards, cardsSnap, cfg]);
 
   const announce = (after: () => void) => {
     const node = totalsRef.current;
@@ -345,14 +368,35 @@ function Opening({ opening, w, h }: { opening: ChestOpening; w: number; h: numbe
     setTimeout(finish, 120);
   };
 
+  // Collect and Open next end this opening: a double tap must not open two chests (the second
+  // would replace this one before its rewards were shown).
+  const leaving = useRef(false);
   const collect = () => {
+    if (leaving.current) return;
+    leaving.current = true;
     fx.play('ui_close');
     announce(() => closeChest());
   };
   const openNext = () => {
     if (!nextId) return collect();
+    if (leaving.current) return;
+    leaving.current = true;
     announce(() => openChest(nextId));
   };
+
+  // Android back: Skip first, then Collect, like closing any dialog.
+  const backRef = useRef<() => void>(() => {});
+  backRef.current = () => {
+    if (stageRef.current === 'summary') collect();
+    else skip();
+  };
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      backRef.current();
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
 
   // ---- drawing ------------------------------------------------------------------------------
 
@@ -410,7 +454,10 @@ function Opening({ opening, w, h }: { opening: ChestOpening; w: number; h: numbe
               <Dust cx={L.intro.x} cy={L.intro.y} progress={sv.dust} spread={110 * L.intro.scale} />
               <Burst cx={sv.chestX} cy={L.rest.y - 60} progress={sv.openBurst} colors={burstColors} radius={220} count={30} seed={11} />
             </Group>
-            <Wash width={w} height={h} color="#000000" opacity={sv.legendDim} />
+            {/* Over the other rewards (z 10+) and under the legendary one (z 110) while it is held up. */}
+            <Group zIndex={50}>
+              <Wash width={w} height={h} color="#000000" opacity={sv.legendDim} />
+            </Group>
             {slots.map((s, i) => (
               <OpeningSlot
                 key={i}
@@ -446,9 +493,9 @@ function Opening({ opening, w, h }: { opening: ChestOpening; w: number; h: numbe
       {legendOn ? <LegendBanner slot={slots[revealing]} L={L} /> : null}
 
       <View pointerEvents="box-none" style={[styles.header, { width: w }]}>
-        <View style={styles.headerSide} />
+        <View style={styles.headerLeft} />
         <View style={styles.headerMid} pointerEvents="none">
-          <Text style={[styles.title, t.display]} numberOfLines={1} adjustsFontSizeToFit>
+          <Text style={[styles.title, t.display, { fontSize: titleSize(chest?.name ?? '', w) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
             {chest?.name ?? ''}
           </Text>
           <Text style={styles.subtitle} numberOfLines={1}>
@@ -540,7 +587,7 @@ function SlotLabel({ index, slot, L, cardsSnap, rewards }: { index: number; slot
       ) : null}
       <Animated.View pointerEvents="none" style={[styles.label, { left, top, width }, fadeStyle]}>
         {title ? (
-          <Text style={[styles.labelTitle, t.display, { fontSize: 17, color: '#FFE9A8' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+          <Text style={[styles.labelTitle, t.display, { fontSize: 22, color: '#FFE9A8' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
             {title}
           </Text>
         ) : null}
@@ -550,9 +597,9 @@ function SlotLabel({ index, slot, L, cardsSnap, rewards }: { index: number; slot
               {`Lv ${progress.level}`}
             </Text>
             <View style={[styles.bar, { borderColor: alpha('#FFFFFF', 0.35) }]}>
-              <View style={{ width: `${Math.min(1, progress.copies / progress.needed) * 100}%`, height: '100%', backgroundColor: progress.canLevel ? '#5BD46B' : color }} />
+              <View style={{ width: `${Math.min(1, progress.copies / progress.needed) * 100}%`, height: '100%', backgroundColor: progress.canLevel ? LEVEL_READY : color }} />
               <Text style={styles.barText} numberOfLines={1} adjustsFontSizeToFit>
-                {progress.canLevel ? 'Level up ready' : `${progress.copies}/${progress.needed}`}
+                {progress.canLevel ? `${progress.copies}/${progress.needed} ▲` : `${progress.copies}/${progress.needed}`}
               </Text>
             </View>
           </View>
@@ -601,9 +648,30 @@ function LegendBanner({ slot, L }: { slot: SlotInfo; L: ReturnType<typeof comput
   );
 }
 
+/** A number rolling up from 0 to `target` over `ms` (a short burst of renders, then still). */
+function useRollUp(target: number, ms = 600): number {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (target <= 0) return;
+    let raf = 0;
+    const t0 = Date.now();
+    const step = () => {
+      const k = Math.min(1, (Date.now() - t0) / ms);
+      setV(target * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+  return v;
+}
+
+type Totals = { cash: number; gems: number; cards: number; copies: number; fresh: number; ready: number };
+
+/** The payout: the totals roll up big, then Collect (and Open next when another chest waits). */
 function Summary({ totalsRef, totals, left, nextLabel, onCollect, onNext }: {
   totalsRef: React.RefObject<HostInstance | null>;
-  totals: { cash: number; gems: number; cards: number; copies: number; fresh: number };
+  totals: Totals;
   left: number;
   nextLabel: string;
   onCollect: () => void;
@@ -616,24 +684,45 @@ function Summary({ totalsRef, totals, left, nextLabel, onCollect, onNext }: {
     rise.value = withSpring(1, { damping: 14, stiffness: 180 });
   }, [rise]);
   const style = useAnimatedStyle(() => ({ opacity: Math.min(1, rise.value * 1.5), transform: [{ translateY: (1 - rise.value) * 60 }] }));
-  const parts: { icon: string; text: string }[] = [];
-  if (totals.cash > 0) parts.push({ icon: cfg.strings.currencyIcon, text: `+${formatMoney(totals.cash, cfg.strings.currencySymbol)}` });
-  if (totals.gems > 0) parts.push({ icon: cfg.strings.gemIcon, text: `+${formatNumber(totals.gems)}` });
-  if (totals.cards > 0) parts.push({ icon: '🃏', text: `${totals.cards} ${totals.cards === 1 ? 'card' : 'cards'}${totals.copies > totals.cards ? ` (${totals.copies} copies)` : ''}${totals.fresh > 0 ? ` · ${totals.fresh} new` : ''}` });
+  const cash = useRollUp(totals.cash);
+  const gems = useRollUp(totals.gems);
+  const cardLine = `${totals.cards} ${totals.cards === 1 ? 'card' : 'cards'}${totals.copies > totals.cards ? ` · ${totals.copies} copies` : ''}${totals.fresh > 0 ? ` · ${totals.fresh} new` : ''}`;
+  const readyInk = inkOf(LEVEL_READY, t.c.surface);
   return (
     <Animated.View style={[styles.summary, { backgroundColor: t.c.surface, borderRadius: t.radius * 1.3 }, style]}>
       <View ref={totalsRef} style={styles.totals}>
-        {parts.map((p, i) => (
-          <View key={i} style={styles.total}>
-            <GameIcon icon={p.icon} size={22} />
-            <Text style={[styles.totalText, t.display, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit>
-              {p.text}
+        {totals.cash > 0 ? (
+          <View style={styles.total}>
+            <GameIcon icon={cfg.strings.currencyIcon} size={30} />
+            <Text style={[styles.bigText, t.display, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {`+${formatMoney(cash, cfg.strings.currencySymbol)}`}
             </Text>
           </View>
-        ))}
+        ) : null}
+        {totals.gems > 0 ? (
+          <View style={styles.total}>
+            <GameIcon icon={cfg.strings.gemIcon} size={30} />
+            <Text style={[styles.bigText, t.display, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {`+${formatNumber(Math.round(gems))}`}
+            </Text>
+          </View>
+        ) : null}
       </View>
+      {totals.cards > 0 ? (
+        <View style={styles.cardRow}>
+          <GameIcon icon="art:card-back" size={26} />
+          <Text style={[styles.totalText, t.display, { color: t.c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+            {cardLine}
+          </Text>
+        </View>
+      ) : null}
+      {totals.ready > 0 ? (
+        <Text style={[styles.ready, { color: readyInk }]} numberOfLines={1}>
+          {`▲ ${totals.ready} ${totals.ready === 1 ? 'card can' : 'cards can'} level up`}
+        </Text>
+      ) : null}
       <View style={styles.buttons}>
-        {onNext ? <Button label={`Open next (${left} left)`} sublabel={nextLabel} variant="accent" onPress={onNext} style={styles.btn} /> : null}
+        {onNext ? <Button label={`Open next (${left} left)`} sublabel={nextLabel} variant="ghost" onPress={onNext} style={styles.btnNext} /> : null}
         <Button label="Collect" onPress={onCollect} variant="success" style={styles.btn} />
       </View>
     </Animated.View>
@@ -642,6 +731,7 @@ function Summary({ totalsRef, totals, left, nextLabel, onCollect, onNext }: {
 
 const styles = StyleSheet.create({
   header: { position: 'absolute', top: 0, left: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingTop: 10 },
+  headerLeft: { width: 44 },
   headerSide: { width: 92, alignItems: 'flex-end' },
   headerMid: { flex: 1, alignItems: 'center' },
   title: { color: '#FFFFFF', fontSize: 24, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
@@ -661,17 +751,21 @@ const styles = StyleSheet.create({
   barRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, alignSelf: 'stretch' },
   lv: { fontSize: 11 },
   bar: { flex: 1, height: 15, borderRadius: 8, overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, justifyContent: 'center' },
-  barText: { position: 'absolute', left: 2, right: 2, textAlign: 'center', color: '#FFFFFF', fontSize: 10, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.7)', textShadowRadius: 2 },
+  barText: { position: 'absolute', left: 2, right: 2, textAlign: 'center', color: '#FFFFFF', fontSize: 11, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.7)', textShadowRadius: 2 },
   copies: { position: 'absolute', minWidth: 34, height: 24, borderRadius: 12, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF' },
   copiesText: { color: '#FFFFFF', fontSize: 13, textShadowColor: 'rgba(0,0,0,0.4)', textShadowRadius: 2 },
   stamp: { position: 'absolute', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: '#FF4D5E', borderWidth: 2, borderColor: '#FFFFFF' },
   stampText: { color: '#FFFFFF', fontSize: 14, letterSpacing: 1 },
   rarityTag: { position: 'absolute', width: 80, alignItems: 'center', borderRadius: 8, borderWidth: 1.5, backgroundColor: 'rgba(0,0,0,0.6)', paddingVertical: 1 },
   rarityText: { fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
-  summary: { position: 'absolute', left: 12, right: 12, bottom: 14, padding: 12, gap: 10 },
-  totals: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 14, rowGap: 4 },
-  total: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%' },
+  summary: { position: 'absolute', left: 12, right: 12, bottom: 14, padding: 12, gap: 6 },
+  totals: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 18, rowGap: 2 },
+  total: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%' },
+  bigText: { fontSize: 28, flexShrink: 1 },
+  cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   totalText: { fontSize: 17, flexShrink: 1 },
+  ready: { textAlign: 'center', fontSize: 14, fontWeight: '900' },
   buttons: { flexDirection: 'row', gap: 10 },
-  btn: { flex: 1, minHeight: 52 },
+  btnNext: { flex: 1, minHeight: 52 },
+  btn: { flex: 1.3, minHeight: 52 },
 });

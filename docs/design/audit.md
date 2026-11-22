@@ -80,9 +80,87 @@ Economy: `tapBase` 0.25; first hire 250 (the bot hired at 44 s with 140; now 51 
 Pizza Festival), 5e14, 5e17, then a ladder of 12 past the last venue (5e25 to 5e69, x10,000
 apart). `meta.freeChest.firstMinutes` [5, 60]. `sim.production` Kitchen 🍕 and
 `theme.colors.stages` set explicitly. The welcome deal's badge "ONE TIME" is now "Can be bought
-once". Legendary daily-shop offers weigh 0.2 (was 0.5). Prestige: see section 7.
+once". Legendary daily-shop offers weigh 0.2 (was 0.5; it did not change the collection pace, section 5). Prestige: see section 7.
 
-PRESTIGE_SECTION
+## 5. Meta economy of a free player, 30 and 90 days
+
+`npx tsx scripts/content/meta-sim.ts pizza-empire --days 90 --seeds 3` (new; real engine, real
+mission progress): 5 sessions a day of 7 minutes, offline earnings in between (not doubled),
+every free and ad chest, every mission, the daily gift and free daily item, gems spent on named
+card copies rarest first, a reset whenever it at least doubles the prestige multiplier. Averages
+of 3 seeds.
+
+| Day | Gems in / day (gift, missions, chests, shop, story) | Gems out / day | Chests / day (Box, Crate, Golden) | Cards owned | Level C / R / E / L | Income x from cards | Resets | Venues |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 138 (5, 29, 2.3, 0, 102) | 107 | 11, 1, 0 | 9.3 / 12 | 4.3 / 2.6 / 0.8 / 0.2 | x1.18 | 1 | 1 |
+| 7 | 76 (16, 28, 3.2, 1.0, 27) | 72 | 10.2, 0.86, 0.29 | 11.7 / 12 | 10.8 / 8.1 / 4.2 / 1.2 | x1.96 | 12 | 8 |
+| 14 | 59 (16, 25, 3.3, 1.1, 14) | 58 | 10.1, 0.83, 0.26 | 12 / 12 | 12.4 / 9.8 / 5.6 / 2.7 | x2.39 | 15 | 8 |
+| 30 | 49 (16, 22, 4.1, 1.1, 6) | 48 | 9.8, 0.74, 0.23 | 12 / 12 | 14.0 / 11.3 / 7.7 / 4.3 | x2.83 | 18 | 8 |
+| 60 | 44 (16, 20, 3.7, 1.5, 3) | 44 | 9.7, 0.70, 0.23 | 12 / 12 | 15.9 / 13.0 / 9.0 / 5.8 | x3.40 | 20 | 8 |
+| 90 | 43 (16, 20, 4.0, 1.5, 2) | 43 | 9.7, 0.68, 0.22 | 12 / 12 | 17.0 / 14.0 / 9.9 / 6.7 | x3.72 | 21 | 8 |
+
+Before: gems settled at 76 to 82 a day after week one (the gift stuck on its last entry); now 43
+to 49, the research's 45. The player is never starved (gems out equal gems in: every gem buys
+copies within a day or two). Cards: x2.8 income after 30 days, x3.7 after 90 (target x2 to x3 at
+30). Chest tiers: about 10 Boxes, 0.75 Crates and 0.23 Golden chests a day. Every card owned on
+day 6, 10 and 6 (seeds); the research wants about two weeks. Lowering the legendary daily-shop
+weight (0.5 -> 0.2) did not move it: the last cards come from chests (legendary protection every
+40 chests is every 4 days at 10 chests a day). Raising legendary protection to 100 chests (`PITY_L=100` in build-pizza.py, tried with `meta-sim.ts --file`) did not move it either (still day 6, 10, 6): with about 11 chests a day plus daily-shop copies, the collection completes in a week whatever these two knobs say. Left at 40; open item: fewer chests a day (ad chests 3 -> 2, Box legendary weight) or more cards, measured with meta-sim.
+
+## 6. Final venue schedule (`npx tsx scripts/simulate.ts pizza-empire --hours 24`)
+
+Venue costs re-calibrated with `calibrate-venues.py` (the new upgrades sped everything up: before
+recalibration the venues opened at 34 min, 1 h 16, 2 h 05, 2 h 54, 3 h 33, 4 h 51, 6 h 49).
+
+| Venue | Target | Now | Cost |
+|---|---|---|---|
+| Roma | 35 min | 36 min | 1.2e8 |
+| Venezia | 1 h 15 | 1 h 14 | 4.4e11 |
+| Paris | 2 h 15 | 2 h 12 | 4.1e14 |
+| New York | 4 h | 3 h 53 | 1.1e17 |
+| Tokyo | 7 h | 7 h 00 | 3.5e19 |
+| Moon | 12 h | 11 h 39 | 2.2e21 |
+| Planet | 20 h | 19 h 48 | 1.6e23 |
+
+First automation hire at 51 s (was 30 s; target 45 to 120). Longest gap between purchases in the
+first 2 hours: 18 min (81 -> 99 min); before, 28 min (48 -> 76 min), closed by moving the second
+shared upgrade to 6e10.
+
+## 7. The reset loop
+
+`economy.prestige`: threshold 3e15, scale 20 (was 1), bonusPerPoint 0.02. The first Chef Star
+exists at lifetime 7.5e12 (1 h 21 for the non-stop bot); a reset that doubles income needs 50
+stars (lifetime 1.9e16, 2 h 35 for the bot; for the 35-minutes-a-day player, the end of day 1). Before:
+the first reset (bot, 3 h 18) gave 3 stars, +6 %.
+
+Bot with `--prestige` (now: reset when it at least doubles the prestige multiplier), 48 h:
+runs of 2 h 35, 1 h 50, 1 h 13, 48 min, 34 min, 30 min, 25 min, 23 min, 18 min, 16 min, then about
+15 min (the bot's floor) for resets 11 to 21, then longer again: 19, 20, 23, 24, 36 min, 1 h, 1 h 41,
+3 h, 3 h, 5 h 41, 10 h 51 (32 resets, prestige multiplier x9.7e11, lifetime 3.9e46, all finite and
+shown as letter suffixes by format.ts up to 1.8e308).
+
+Verdict: each run is clearly faster than the last for the first ten, and the decision is real
+(the reset screen shows the multiplier after; waiting longer pays more stars but costs time). The
+middle phase is degenerate for a non-stop player: while the venue ladder is still ahead, a x2
+multiplier opens later venues sooner and a run's earnings grow much faster than x4, so resets
+cascade to the 15-minute floor; once a run reaches the last venue, growth comes only from levels,
+milestones and the late upgrades, and the loop settles into resets that take hours and then days.
+For the modelled 35-minutes-a-day player that is 12 resets in week one, then 3 more in week two and
+one every 10 to 15 days by day 90. bonusPerPoint and threshold only scale this; its shape comes from
+points = scale x sqrt(lifetime / threshold) and a linear bonus, which data cannot change (see
+"Remaining risks").
+
+## 8. How long the content lasts
+
+Nothing ever runs out of things to buy: station levels and `milestoneRepeat` (x2 every 100 levels)
+repeat forever. What runs out: the 8th and last venue opens at 19 h 48 of non-stop play without
+resets, at day 7 for the modelled player; the old upgrades end at 5e17 (bought at 4 h 11). Data
+extension made: 12 more "all" x2 upgrades from 5e25 to 5e69, x10,000 apart, past the last venue's
+cost, so every late run has a next goal for many more resets (bot: still buying them at 48 h).
+Further data-only levers: more of that ladder (up to 1e300), and more venues (each needs a name,
+place and icon in `pizza-sim-content.json`; costs continue at UNLOCK_STEP x80 and scale x40, but the
+screens' per-venue art and palettes would need entries too).
+
 
 ## 9. Store re-read (G)
 
@@ -92,3 +170,16 @@ levelUpCard, gemTimeWarp, story gems, rewarded boost and rush reset, offline col
 purchases, chests); `buy`, `hire` and `startBusiness` ignore unknown ids instead of throwing;
 the tick is wrapped like the meta calls. Screens can notice: `closeChest` no longer shows an ad;
 `purchase()` of a deal product goes through `buyDeal`.
+
+## Remaining risks
+
+- Prestige shape (section 7): an optional `economy.prestige.exponent` (default 0.5) in the schema,
+  used by `totalPrestigePoints` as `scale * (lifetime / threshold) ^ exponent`, would let a game
+  damp the cascade (1/3 is the usual choice). Schema change, not made: `src/config` is not mine.
+- Cards are all owned in about a week for an engaged free player (section 5).
+- `chestCardOdds` stays the base roll; any screen that shows it alone for a chest with a guarantee
+  overstates commons. Use `chestOddsFacts`.
+- The daily-gift row in `src/ui/meta/shop/DailyGift.tsx` assumes the last gift repeats past the end of
+  the table; the table now cycles. It shows today's amount correctly (from `dailyReward`), but the
+  row after day 7 is wrong until it uses `E.dailyCalendar`.
+- `formatNumber` shows 999,995 as "999.99K" rather than "1.00M" (cosmetic; format.ts is shared).

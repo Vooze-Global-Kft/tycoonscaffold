@@ -13,9 +13,10 @@ import { useGame } from '../../state/store';
 import { useHomeUi } from '../home/uiState';
 import { fly } from '../juice/fly';
 import { useOverlay, useOverlaysOpen } from '../kit/overlay';
-import { Sheet } from '../kit/Sheet';
+import { DIALOG_GAP_MS, Sheet } from '../kit/Sheet';
+import { overlays } from '../../state/overlays';
 import { shortDuration } from '../kit/time';
-import { alpha, useTheme } from '../theme';
+import { alpha, inkOf, textOn, useTheme } from '../theme';
 import { Button } from './Button';
 import { GameIcon } from './GameIcon';
 import { RollingNumber } from './RollingNumber';
@@ -61,8 +62,8 @@ function OfflineSheet({ seconds, earnings }: { seconds: number; earnings: number
       icon={t.icons.offline}
       footer={
         <>
-          <Button variant="primary" disabled={busy} label="Collect" sublabel={formatMoney(earnings, t.strings.currencySymbol)} onPress={() => run(false)} />
-          <Button variant="ghost" disabled={busy} label="▶ ×2 with an ad" sublabel={`Optional · ${formatMoney(earnings * 2, t.strings.currencySymbol)} in total`} onPress={() => run(true)} />
+          <Button variant="success" disabled={busy} label="Collect" sublabel={formatMoney(earnings, t.strings.currencySymbol)} onPress={() => run(false)} />
+          <Button variant="accent" disabled={busy} label="▶ Watch ad: ×2" sublabel={`Optional · ${formatMoney(earnings * 2, t.strings.currencySymbol)} in total`} onPress={() => run(true)} />
         </>
       }
     >
@@ -104,13 +105,14 @@ export function StoryModal() {
   const banner = useHomeUi((s) => s.bannerOpen);
   const [showing, setShowing] = useState<string | null>(null);
   const [, wake] = useState(0);
-  const waitMs = lastStoryClosedAt + STORY_GAP_MS - Date.now();
+  // Story spacing, and iOS's one-dialog-at-a-time rule: never present while another dialog may still be fading out.
+  const waitMs = Math.max(lastStoryClosedAt + STORY_GAP_MS - Date.now(), blocked ? 0 : DIALOG_GAP_MS + 50 - overlays.msSinceClose());
 
   useEffect(() => {
     if (!beat || showing || waitMs <= 0) return;
     const timer = setTimeout(() => wake((n) => n + 1), waitMs + 50);
     return () => clearTimeout(timer);
-  }, [beat, showing, waitMs]);
+  }, [beat, showing, waitMs, blocked]);
 
   useEffect(() => {
     if (!showing && beat && !blocked && !banner && waitMs <= 0) setShowing(beat.id);
@@ -200,7 +202,7 @@ function StoryScene({ beatId }: { beatId: string }) {
       <Pressable style={[styles.storyBackdrop, { backgroundColor: alpha('#000000', 0.6) }]} onPress={next} accessibilityRole="button" accessibilityLabel={typing ? 'Show the whole line' : last ? 'Close' : 'Next line'}>
         {beat.title ? (
           <Animated.View style={[styles.titlePill, { backgroundColor: color }, bubbleStyle]}>
-            <Text style={[styles.titleText, t.display]} numberOfLines={1} adjustsFontSizeToFit>
+            <Text style={[styles.titleText, t.display, { color: textOn(color) }]} numberOfLines={1} adjustsFontSizeToFit>
               {beat.title}
             </Text>
           </Animated.View>
@@ -211,7 +213,7 @@ function StoryScene({ beatId }: { beatId: string }) {
         </Animated.View>
         <Animated.View style={[styles.bubble, { backgroundColor: t.c.surface, borderRadius: t.radius * 1.2, borderColor: color }, bubbleStyle]}>
           <View style={[styles.nameTag, { backgroundColor: color }]}>
-            <Text style={[styles.nameText, t.display]} numberOfLines={1}>
+            <Text style={[styles.nameText, t.display, { color: textOn(color) }]} numberOfLines={1}>
               {who?.name ?? ''}
             </Text>
           </View>
@@ -232,7 +234,7 @@ function StoryScene({ beatId }: { beatId: string }) {
                 <Text style={[t.display, { color: t.c.text, fontSize: 14 }]}>+{formatNumber(beat.rewardGems)}</Text>
               </View>
             ) : null}
-            <Animated.Text style={[styles.tapHint, t.display, { color, opacity: typing ? 0 : 1 }, typing ? null : hintStyle]}>{last ? (beat.rewardGems > 0 ? 'Collect ▸' : "Let's go ▸") : 'Tap ▸'}</Animated.Text>
+            <Animated.Text style={[styles.tapHint, t.display, { color: inkOf(color, t.c.surface), opacity: typing ? 0 : 1 }, typing ? null : hintStyle]}>{last ? (beat.rewardGems > 0 ? 'Collect ▸' : "Let's go ▸") : 'Tap ▸'}</Animated.Text>
           </View>
         </Animated.View>
       </Pressable>
@@ -249,12 +251,12 @@ const styles = StyleSheet.create({
 
   storyBackdrop: { flex: 1, justifyContent: 'flex-end', padding: 16, paddingBottom: 40 },
   titlePill: { alignSelf: 'center', paddingHorizontal: 22, paddingVertical: 8, borderRadius: 30, marginBottom: 'auto', marginTop: 90, maxWidth: '90%' },
-  titleText: { color: '#FFFFFF', fontSize: 22 },
+  titleText: { fontSize: 22 },
   character: { marginLeft: 6, marginBottom: -28, zIndex: 2, alignSelf: 'flex-start' },
   halo: { position: 'absolute', left: 4, top: 8, width: 172, height: 172, borderRadius: 86 },
   bubble: { borderWidth: 3, padding: 18, paddingTop: 24, minHeight: 150 },
   nameTag: { position: 'absolute', top: -16, right: 18, paddingHorizontal: 14, paddingVertical: 5, borderRadius: 14, maxWidth: '70%' },
-  nameText: { color: '#FFFFFF', fontSize: 16 },
+  nameText: { fontSize: 16 },
   line: { fontSize: 18, lineHeight: 26, fontWeight: '600' },
   bubbleFooter: { flexDirection: 'row', alignItems: 'center', marginTop: 'auto', paddingTop: 12, gap: 10 },
   dots: { flexDirection: 'row', gap: 5, flex: 1 },

@@ -192,7 +192,7 @@ export const StationRow = memo(function StationRow({ b, index, rowHeight, compac
               Runs it on its own, even offline
             </Text>
           </View>
-          <BuyButton target={hireTarget} variant="success" label="Hire" sublabel={formatMoney(v.hireCost, sym)} cost={v.hireCost} onPress={() => hire(b.id)} height={42} style={{ width: compact ? 88 : 96 }} />
+          <BuyButton target={hireTarget} variant="primary" label="Hire" sublabel={formatMoney(v.hireCost, sym)} cost={v.hireCost} onPress={() => hire(b.id)} height={42} style={{ width: compact ? 88 : 96 }} />
         </View>
       ) : null}
     </RowCard>

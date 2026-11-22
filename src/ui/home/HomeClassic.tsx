@@ -4,20 +4,34 @@
  * there is no stage strip because a classic game has only one stage. The chest and missions
  * buttons sit at the scene's top right, where the sim scene has them.
  */
+import type { ComponentType } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ChestButton } from '../meta/chest/ChestButton';
 import { MissionsButton } from '../meta/missions/MissionsButton';
 import { SkiaScene } from '../scene/SkiaScene';
-import { ThreeScene } from '../scene/ThreeScene';
 import { useTheme } from '../theme';
 import { BuyAmountRow } from './BuyAmountRow';
 import { useHomeMetrics } from './layout';
+import { RowRegistry, useRowScroller } from './rows';
 import { StationList } from './StationList';
+
+/**
+ * The three.js scene is loaded only by a game that asks for it, so every other game skips
+ * evaluating three.js and expo-gl at launch.
+ */
+let threeScene: ComponentType | null = null;
+function loadThreeScene(): ComponentType {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  threeScene ??= (require('../scene/ThreeScene') as typeof import('../scene/ThreeScene')).ThreeScene;
+  return threeScene;
+}
 
 export function HomeClassic() {
   const t = useTheme();
   const m = useHomeMetrics();
-  const Scene = t.scene === 'three' ? ThreeScene : SkiaScene;
+  const Scene = t.scene === 'three' ? loadThreeScene() : SkiaScene;
+  // Scroll a focused row into view (the tutorial hand pointing at a row below the fold).
+  const { ref, registry } = useRowScroller('production');
   return (
     <View style={{ flex: 1 }}>
       <View>
@@ -30,9 +44,11 @@ export function HomeClassic() {
       <View style={[styles.bar, { backgroundColor: t.c.backgroundAlt }]}>
         <BuyAmountRow height={m.buyRow + 4} />
       </View>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        <StationList rowHeight={m.row} compact={m.compact} />
-      </ScrollView>
+      <RowRegistry.Provider value={registry}>
+        <ScrollView ref={ref} style={{ flex: 1 }} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+          <StationList rowHeight={m.row} compact={m.compact} />
+        </ScrollView>
+      </RowRegistry.Provider>
     </View>
   );
 }

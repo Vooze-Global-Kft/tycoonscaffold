@@ -5,7 +5,7 @@
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Button } from '../../components/Button';
 import { GameIcon } from '../../components/GameIcon';
-import { useTheme } from '../../theme';
+import { textOn, useTheme } from '../../theme';
 
 interface Props {
   label: string;
@@ -21,7 +21,9 @@ interface Props {
 
 export function PriceButton({ label, price, priceIcon, onPress, disabled, variant = 'primary', style }: Props) {
   const t = useTheme();
-  const fg = variant === 'ghost' ? t.c.text : t.c.primaryText;
+  // The label colour of a filled button comes from its fill, so it reads in any palette.
+  const fill = variant === 'accent' ? t.c.accent : variant === 'success' ? t.c.success : t.c.primary;
+  const fg = variant === 'ghost' ? t.c.text : textOn(fill);
   return (
     <Button onPress={onPress} disabled={disabled} variant={variant} style={[styles.btn, style]}>
       <Text style={[t.display, styles.label, { color: fg }]} numberOfLines={1}>
