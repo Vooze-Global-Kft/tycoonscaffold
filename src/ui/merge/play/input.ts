@@ -23,7 +23,7 @@ import type { SharedValue } from 'react-native-reanimated';
 import * as R from '../../../engine/merge';
 import { mergeActions, mergeNow } from '../../../modes/merge/actions';
 import { fx } from '../../../services/fx';
-import type { MergeLayout } from '../layout';
+import { toPlay, type MergeLayout } from '../layout';
 import { useMergeUi } from '../uiState';
 import { FLOAT_LIFT, FRONT_BASE, cellCentre, hitTest, tapTest, targetRect, type HitGeo } from './geometry';
 import { NO_DRAG, type DragState } from './usePlayAnim';
@@ -159,12 +159,13 @@ interface Touch {
   last: Pt;
 }
 
-function fingerOf(e: GestureResponderEvent, id: Touch['id']): Pt | null {
+/** The tracked finger, in the play canvas's own points (toPlay: the screen's at scale 1, 4.1's overflow step otherwise). */
+function fingerOf(e: GestureResponderEvent, id: Touch['id'], L: MergeLayout): Pt | null {
   const ne = e.nativeEvent;
   const all = [...(ne.changedTouches ?? []), ...(ne.touches ?? [])];
   const t = id === undefined ? null : all.find((x) => x.identifier === id);
-  if (t) return { x: t.pageX, y: t.pageY };
-  return id === undefined || !(ne.touches ?? []).length ? { x: ne.pageX, y: ne.pageY } : null;
+  if (t) return toPlay(L, t.pageX, t.pageY);
+  return id === undefined || !(ne.touches ?? []).length ? toPlay(L, ne.pageX, ne.pageY) : null;
 }
 
 export interface PlayInput {
@@ -230,8 +231,8 @@ export function usePlayInput(L: MergeLayout, geo: HitGeo, drag: SharedValue<Drag
         clearTimer();
         const ui = useMergeUi.getState();
         if (ui.chip !== null) ui.hideChip();
-        const p = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
         const { L: lay, geo: g } = ref.current;
+        const p = toPlay(lay, e.nativeEvent.pageX, e.nativeEvent.pageY);
         const code = tapTest(p.x, p.y, lay, g);
         const now = mergeNow();
         const cell = now && code >= 0 && code < R.BOARD_CELLS && R.isGood(now.g.merge.board[code]) ? code : -1;
@@ -259,7 +260,7 @@ export function usePlayInput(L: MergeLayout, geo: HitGeo, drag: SharedValue<Drag
           cancel();
           return;
         }
-        const p = fingerOf(e, t.id);
+        const p = fingerOf(e, t.id, ref.current.L);
         if (!p) return;
         t.last = p;
         if (!t.moved) {
@@ -284,7 +285,7 @@ export function usePlayInput(L: MergeLayout, geo: HitGeo, drag: SharedValue<Drag
       onResponderRelease: (e: GestureResponderEvent) => {
         const t = touch.current;
         if (!t) return end();
-        const p = fingerOf(e, t.id) ?? t.last;
+        const p = fingerOf(e, t.id, ref.current.L) ?? t.last;
         if (t.pressed) return end();
         if (t.dragging) {
           const code = hitTest(p.x, p.y, ref.current.geo);

@@ -39,11 +39,10 @@ function ShutterBody({ group, onDone }: { group: number; onDone: () => void }) {
       <Txt size={ty.body} bold>
         {S.sheets.shutterReady}
       </Txt>
-      {!v.allowed ? (
-        <Txt size={ty.small} color={INK.warn}>
-          {cond}
-        </Txt>
-      ) : null}
+      <Txt size={ty.small}>{S.sheets.shutterNotStall}</Txt>
+      <Txt size={ty.small} color={v.allowed ? undefined : INK.warn}>
+        {v.allowed ? S.sheets.shutterCondDone(cond) : cond}
+      </Txt>
       {v.holdsGood ? (
         <Txt size={ty.small} bold color={INK.warn}>
           {S.sheets.holdsGood}

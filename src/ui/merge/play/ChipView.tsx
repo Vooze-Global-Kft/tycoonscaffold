@@ -8,7 +8,7 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as R from '../../../engine/merge';
 import { NIGHT } from '../art/palette';
-import type { MergeLayout } from '../layout';
+import { fromPlay, type MergeLayout } from '../layout';
 import { S } from '../strings';
 import { useMerge, useMergeShallow } from '../useMerge';
 import { cellCentre } from './geometry';
@@ -32,11 +32,13 @@ export function ChipView({ layout, cell }: { layout: MergeLayout; cell: number }
   // Width from the longer row at about 0.56 em a letter, capped by the screen.
   const est = Math.max(words.name.length * M.name * 0.58, worth.length * M.worth * 0.56) + PAD_X * 2;
   const w = Math.min(layout.width - GUTTER * 2, Math.ceil(est));
-  const c = cellCentre(layout, cell);
-  const half = layout.board.cell / 2;
+  // The cell in screen points (the canvas may be drawn scaled, 4.1's overflow step).
+  const pc = cellCentre(layout, cell);
+  const c = fromPlay(layout, pc.x, pc.y);
+  const half = (layout.board.cell * layout.play.scale) / 2;
   const x = Math.max(GUTTER, Math.min(layout.width - GUTTER - w, c.x - w / 2));
   // Above the cell; below it when the street is too close.
-  const y = chipTop(c.y, half, M.h, layout.board.y);
+  const y = chipTop(c.y, half, M.h, fromPlay(layout, 0, layout.board.y).y);
   return (
     <View pointerEvents="none" style={[styles.chip, { left: x, top: y, width: w, height: M.h }]}>
       <Text allowFontScaling={false} numberOfLines={1} style={[styles.name, { fontSize: M.name, height: M.nameRow, lineHeight: M.nameRow }]}>

@@ -36,8 +36,10 @@ export function UndoChip({ basket }: { basket: Rect }) {
       onPress={() => mergeActions.undoBasket()}
       accessibilityRole="button"
       accessibilityLabel={S.hud.undoLabel(refund)}
-      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-      style={({ pressed }) => [styles.chip, { left: basket.x - 4, top: basket.y - CHIP_H - 6, minWidth: w, height: CHIP_H }, pressed ? styles.pressed : null]}
+      // No slop upward: the board's bottom row sits right above; the chip overlaps the Basket's top
+      // edge instead (the Basket is idle while the undo is offered), never a board cell.
+      hitSlop={{ top: 0, bottom: 8, left: 4, right: 4 }}
+      style={({ pressed }) => [styles.chip, { left: basket.x - 4, top: basket.y - CHIP_H + 8, minWidth: w, height: CHIP_H }, pressed ? styles.pressed : null]}
     >
       <MergeIcon icon="art:coin" size={14} />
       <Text allowFontScaling={false} numberOfLines={1} style={[styles.text, { fontSize: font }]}>

@@ -5,7 +5,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { TARGET_BASKET, TARGET_COUNTER } from '../../engine/merge';
-import { BARS, CELL_MIN, cellRect, mergeLayout, type MergeLayout } from './layout';
+import { BARS, CELL_MIN, cellRect, fromPlay, mergeLayout, toPlay, type MergeLayout } from './layout';
 import { chipMetrics, chipTop } from './play/chipMetrics';
 import { counterParts, hitGeo, hitTest, TICKET_H } from './play/geometry';
 
@@ -180,4 +180,36 @@ describe('mergeLayout', () => {
       expect(m.name).toBeGreaterThanOrEqual(16);
     }
   });
+});
+
+describe('the overflow step: the play canvas drawn scaled (4.1, small Androids)', () => {
+  const small: [number, number, number, number][] = [
+    [360, 640, 24, 48],
+    [320, 568, 20, 0],
+  ];
+  for (const [w, h, t, b] of small)
+    it(`${w} x ${h}, insets ${t}/${b}: the scaled board ends above the bottom row, every counter inside the width, the hit test maps the finger`, () => {
+      const L = mergeLayout(w, h, { top: t, bottom: b });
+      const s = L.play.scale;
+      expect(s).toBeLessThan(1);
+      // Drawn: the board's bottom edge (in the canvas's points) lands above the bottom row on screen.
+      expect(fromPlay(L, 0, L.board.y + L.board.h).y).toBeLessThanOrEqual(L.bottomRow.y + 0.01);
+      expect(fromPlay(L, L.board.x + L.board.w, 0).x).toBeLessThanOrEqual(w + 0.01);
+      for (const n of [2, 3, 4] as const) for (const r of L.counters[n]) expect(r.x + r.w).toBeLessThanOrEqual(w / s + 0.01);
+      const geo = hitGeo(L, 4);
+      // The last board row (season 1's first shutters, cell 49) is reached by a finger on its centre.
+      const r49 = cellRect(L, 49);
+      const f = fromPlay(L, r49.x + r49.w / 2, r49.y + r49.h / 2);
+      const p = toPlay(L, f.x, f.y);
+      expect(hitTest(p.x, p.y, geo)).toBe(49);
+      // The Basket (screen points, outside the canvas) is hit at its own centre on screen.
+      const k = toPlay(L, L.basket.x + L.basket.w / 2, L.basket.y + L.basket.h / 2);
+      expect(hitTest(k.x, k.y, geo)).toBe(TARGET_BASKET);
+      // The fourth counter's column, at its centre on screen.
+      const c3 = L.counters[4][3];
+      const cf = fromPlay(L, c3.x + c3.w / 2, c3.y + c3.h / 2);
+      const cp = toPlay(L, cf.x, cf.y);
+      expect(cf.x).toBeLessThanOrEqual(w);
+      expect(hitTest(cp.x, cp.y, geo)).toBe(TARGET_COUNTER + 3);
+    });
 });

@@ -11,7 +11,7 @@
  * Pure: no React, no Skia.
  */
 import { TARGET_BASKET, TARGET_COUNTER, TARGET_FESTIVAL, TARGET_NONE } from '../../../engine/merge';
-import { COLS, ROWS, type MergeLayout, type Rect } from '../layout';
+import { COLS, ROWS, rectToPlay, type MergeLayout, type Rect } from '../layout';
 
 /** A paper ticket is 96 pt tall (4.2) on a column 4 pt wider than it. */
 export const TICKET_H = 96;
@@ -62,6 +62,9 @@ export function counterCount(n: number): 2 | 3 | 4 {
 
 export function hitGeo(L: MergeLayout, counters: number): HitGeo {
   const cols = L.counters[counterCount(counters)];
+  // The Basket lies in the bottom row, outside the play canvas, in screen points: brought into the
+  // canvas's own (unscaled) points like every other target, so one point system serves the hit test.
+  const k = rectToPlay(L, L.basket);
   return {
     bx: L.board.x,
     by: L.board.y,
@@ -77,15 +80,16 @@ export function hitGeo(L: MergeLayout, counters: number): HitGeo {
     fy: L.banner.y,
     fw: L.banner.w,
     fh: L.banner.h,
-    kx: L.basket.x,
-    ky: L.basket.y,
-    kw: L.basket.w,
-    kh: L.basket.h,
+    kx: k.x,
+    ky: k.y,
+    kw: k.w,
+    kh: k.h,
   };
 }
 
 /**
- * The drop target under the point (x, y), in the play canvas's points (= the screen's): a board
+ * The drop target under the point (x, y), in the play canvas's points (the screen's at scale 1;
+ * input.ts maps a finger with toPlay): a board
  * cell, a counter's whole column, the Festival banner, the Basket, or TARGET_NONE (the street
  * background, a stall front, a bar, outside). What the cell holds (a good, nothing, a shutter) is
  * the rules' to judge. A worklet; also the pure twin.

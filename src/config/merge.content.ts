@@ -239,11 +239,13 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
  */
 export const MERGE_TUNED: Record<string, unknown> = {
   // Decision M23, gate 2 (Tea 0:45-1:30, Steamer 5-9, Sweets 18-30, Noodles 60-90 min at 2.0 s): from
-  // 120 / 3,200 / 51.2K / 819K / 13.1M. Puffs at its range floor so season 2's Festival takes 0.8 to 1.1 of season 1.
+  // 120 / 3,200 / 51.2K / 819K / 13.1M. Noodles near the top of its window so season 1's Festival (tier 7s of
+  // Noodles) does not land before 110 min (M31); Puffs at its range floor so season 2's Festival takes 0.8 to 1.1
+  // of season 1. Tuned with M50's fill flow (gear.spare 2).
   'costs.stallOpen[0]': 120,
   'costs.stallOpen[1]': 2200,
   'costs.stallOpen[2]': 28_000,
-  'costs.stallOpen[3]': 600_000,
+  'costs.stallOpen[3]': 650_000,
   'costs.stallOpen[4]': 6_550_000,
   // M27 (1.40 to 1.70), from 1.45: dearer gear levels put season 1's tier 7s, and so its Festival, at
   // 110 to 190 min (M31) with the slowest seed within 1.6 times the fastest (M25), without moving the stall windows.

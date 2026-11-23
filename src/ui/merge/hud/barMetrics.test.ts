@@ -67,7 +67,7 @@ describe('bottom row', () => {
     it(`font scale ${fs}: icon over label, rows add up inside 48, labels fit`, () => {
       for (const [i, label] of labels.entries()) {
         const w = i === 0 ? 68 : 64;
-        const m = buttonMetrics(w, fs, label);
+        const m = buttonMetrics(Math.min(w, 64), fs, labels);
         expect(m.iconTop).toBeGreaterThanOrEqual(0);
         expect(m.iconTop + m.iconSize).toBeLessThanOrEqual(m.labelTop);
         expect(m.labelTop + m.labelH).toBeLessThanOrEqual(BOTTOM_H);
@@ -75,4 +75,12 @@ describe('bottom row', () => {
         expect(m.labelFont).toBeGreaterThanOrEqual(8);
       }
     });
+  it('every button of the row shares one icon box and one label baseline (review: "Lanterns" sat lower)', () => {
+    for (const fs of SCALES) {
+      const row = buttonMetrics(64, fs, labels);
+      // The row's one font is the one its longest label fits, so no label is fitted smaller than another.
+      for (const label of labels) expect(textWidth(label, row.labelFont, true)).toBeLessThanOrEqual(64 - 6 + 0.5);
+      expect(row.labelFont).toBeLessThanOrEqual(buttonMetrics(64, fs, S.hud.book).labelFont);
+    }
+  });
 });

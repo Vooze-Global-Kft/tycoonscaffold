@@ -100,6 +100,47 @@ export function goalView(cfg: R.MergeConfig, g: R.MergeGame): GoalView {
   return out;
 }
 
+/** The goal line holds a purchase it names this long (play seconds) before another one replaces it. */
+export const GOAL_HOLD_S = 5;
+
+/** What the goal line holds: the view shown, since when, and what may end the hold at once. */
+export interface GoalHold {
+  view: GoalView;
+  since: number;
+  bought: string;
+  cash: number;
+}
+
+/** Every purchase of the season, as one string: it changes with each purchase (and each season). */
+function boughtSig(g: R.MergeGame): string {
+  const m = g.merge;
+  return `${m.season}|${m.chains.map((ch) => `${ch.open ? 1 : 0}.${ch.gear}.${ch.stall}.${ch.minder}`).join(',')}|${m.shuttersOpened.join(',')}`;
+}
+
+const isBuy = (k: GoalView['kind']) => k === 'gear' || k === 'stall' || k === 'minderHire' || k === 'minderLevel' || k === 'openStall' || k === 'shutter';
+
+/**
+ * The goal line's hold (the player review: "Open the Tea stall · 120" turned into "Grill gear level
+ * 3 · 29" and back within seconds with the same purse, as the rules' income estimate moved). The
+ * rules' advice is still the only source of the goal; the line only keeps a purchase it names for
+ * GOAL_HOLD_S of play before showing another purchase, unless something the player did or can do
+ * changed: a purchase, or the purse crossing either goal's price. Any other kind of goal (the
+ * Basket on a full board, a ticket, the Festival, a lantern) shows at once. Pure.
+ */
+export function holdGoal(prev: GoalHold | null, next: GoalView, g: R.MergeGame): GoalHold {
+  const now = g.stats.playSeconds ?? 0;
+  const bought = boughtSig(g);
+  const fresh = { view: next, since: now, bought, cash: g.cash };
+  if (!prev || now < prev.since) return fresh;
+  const a = prev.view;
+  const same = a.kind === next.kind && a.target === next.target;
+  if (same) return { view: next, since: prev.since, bought, cash: g.cash };
+  const canHold = isBuy(a.kind) && isBuy(next.kind) && bought === prev.bought && now - prev.since < GOAL_HOLD_S;
+  const crossed = (cost: number) => (prev.cash >= cost) !== (g.cash >= cost);
+  if (!canHold || crossed(a.cost) || crossed(next.cost)) return fresh;
+  return { ...prev, cash: g.cash };
+}
+
 function buildGoal(cfg: R.MergeConfig, g: R.MergeGame): GoalView {
   const a = R.advice(cfg, g);
   if (!a) return NO_GOAL;

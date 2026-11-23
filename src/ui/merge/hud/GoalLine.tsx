@@ -90,17 +90,19 @@ export function GoalLine({ layout }: { layout: MergeLayout }) {
   const m = goalMetrics(r.w, fontScale, words, v.costText, est, chevron);
   return (
     <Pressable
-      {...ref}
       onPress={() => {
         fx.play('ui_tap');
         openGoal(v);
       }}
       accessibilityRole="button"
       accessibilityLabel={[words, v.costText, m.showEst ? est : ''].filter(Boolean).join(', ')}
-      hitSlop={{ top: 8, bottom: 16 }}
+      // Upward only: the stall fronts start right under the goal line and keep every point of their own
+      // (on a phone native hit testing would hand a downward slop the top of every awning).
+      hitSlop={{ top: 6, bottom: 0 }}
       style={[styles.line, { left: r.x, top: r.y, width: r.w, height: GOAL_H }]}
     >
-      <View style={styles.row}>
+      {/* The hint target is the text row itself (the firefly sits just after its end, off the purse). */}
+      <View {...ref} style={styles.row}>
         <Text allowFontScaling={false} numberOfLines={1} ellipsizeMode="tail" style={[styles.words, { fontSize: m.font, maxWidth: m.wordsW }]}>
           {words}
         </Text>

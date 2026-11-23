@@ -11,7 +11,7 @@
 import { FilterMode, MipmapMode, Skia, type SkCanvas, type SkPaint, type SkPicture } from '@shopify/react-native-skia';
 import { customerSprite, goodSprite, minderHeadSprite, stallSprite, type MergeAtlas } from '../art/atlas';
 import { drawShelfBadge, drawGearRail, RAIL_H } from '../art/gear.draw';
-import { drawGood, drawTierPip, GOOD_BOX } from '../art/goods.draw';
+import { drawGood, drawTierPip, GOOD_BOX, tierPipWidth } from '../art/goods.draw';
 import { drawLetters, lettersWidth } from '../art/letters';
 import { NIGHT, alpha } from '../art/palette';
 import { INK, at, fill, glow, picture, rrect, stroke } from '../art/pen';
@@ -148,7 +148,13 @@ export function bannerPicture(L: MergeLayout, A: PlayAtlases | null, v: BannerVM
       const g = grid[i];
       const x = bn.x + g.x + g.size / 2;
       const y = bn.y + g.y + g.size / 2;
-      blit(c, A.items, goodSprite(l.c, l.k), x, y, g.size / DESIGN, l.filled ? 0.55 : 1);
+      // The good without its own pip (at 22 pt its dots were 1.6 pt), with a small pip of four and
+      // the rest laid over its lower edge (the same plates as a ticket's).
+      drawPicAt(c, goodNoPip(l.c, l.k), x, y - 2, g.size / DESIGN, l.filled ? 0.55 : 1);
+      const ps = 0.62;
+      const pw = tierPipWidth(Math.min(4, l.k)) * ps;
+      const py = y + g.size / 2 - (l.k > 4 ? PIP_PLATE_H * ps + 0.5 : (PIP_PLATE_H * ps) / 2) - 0.5;
+      drawSmallPip(c, l.k, x - pw / 2, py, ps);
       if (l.filled) at(c, x + g.size * 0.28, y + g.size * 0.22, 1, 0, (q) => drawTick(q, 9));
     });
   });
@@ -199,6 +205,30 @@ function drawPicAt(c: SkCanvas, pic: SkPicture, x: number, y: number, s: number,
   c.restore();
 }
 
+/** The height of the art kit's pip plate at scale 1 (goods.draw.ts PIP_H). */
+const PIP_PLATE_H = 6.4;
+
+/**
+ * A tier pip for a small icon, its left edge at `left`, centred on `cy`: up to four dots in one
+ * plate, the same plate as the goods'; for tiers 5 to 8 the first four on a plate and the rest on a
+ * second plate under it, so "four and two" is seen without counting (the review could not tell a
+ * tier 6 from a tier 7 in a run of 2.5 pt dots). Returns the width used.
+ */
+export function drawSmallPip(c: SkCanvas, k: number, left: number, cy: number, scale: number): number {
+  if (k <= 4) {
+    const w = tierPipWidth(k) * scale;
+    drawTierPip(c, k, left + w / 2, cy, scale);
+    return w;
+  }
+  const gap = 1;
+  const h = PIP_PLATE_H * scale;
+  const w4 = tierPipWidth(4) * scale;
+  const wn = tierPipWidth(k - 4) * scale;
+  drawTierPip(c, 4, left + w4 / 2, cy - (h + gap) / 2, scale);
+  drawTierPip(c, k - 4, left + wn / 2, cy + (h + gap) / 2, scale);
+  return w4;
+}
+
 /** A ticket's rows: the icon of each line (24 pt), its tier pip, a tick when filled, NEW on a stretch line; the price in its box. */
 export function drawTicketBody(c: SkCanvas, t: Rect, v: TicketVM, newWord: string): void {
   at(c, t.x, t.y, 1, 0, (q) => drawTicket(q, t.w, t.h, { gold: v.gold, rows: Math.max(1, v.lines.length) }));
@@ -208,7 +238,9 @@ export function drawTicketBody(c: SkCanvas, t: Rect, v: TicketVM, newWord: strin
     const ix = t.x + row.x + 13;
     const iy = t.y + row.y + row.h / 2;
     drawPicAt(c, goodNoPip(l.c, l.k), ix, iy, 24 / DESIGN, l.filled ? 0.45 : 1);
-    drawTierPip(c, l.k, t.x + row.x + 27 + 9, iy, 0.72);
+    // The pip at the goods' own size (scale 1, dots of 3.5 pt; it was 0.72), in the room right of the icon.
+    const room = row.w - 27;
+    drawSmallPip(c, l.k, t.x + row.x + 27, iy, Math.min(1, room / tierPipWidth(Math.min(4, l.k))));
     if (l.filled) at(c, ix + 7, iy + 4, 1, 0, (q) => drawTick(q, 10));
     else if (l.stretch) {
       at(c, ix - 5, t.y + row.y + 3, 0.78, 0, (q) => drawNewTag(q));
@@ -254,9 +286,14 @@ export type CellKind = 'open' | 'shutter' | 'next' | 'gateTop' | 'gateBottom' | 
 
 export interface ShutterTag {
   cell: number;
-  lines: string[];
-  price: string;
+  /** The group's condition holds: the tag shows the shutter glyph and the price alone. */
   allowed: boolean;
+  /** The price (only when allowed). */
+  price: string;
+  /** While the condition does not hold: its words ("After" "Steamer", or "Make" over `good`). */
+  lines: string[];
+  /** A tier condition: the good to make, drawn with its own pips (never "Grill 3"). */
+  good: { c: number; k: number } | null;
 }
 
 /** The board's cells: tiles, shutters (the next of each group with its paper tag), the season's blocks. */
@@ -271,12 +308,16 @@ export function cellsPicture(L: MergeLayout, A: PlayAtlases | null, kinds: CellK
       if (k === 'gateTop' || k === 'gateBottom' || k === 'brazier') blit(c, A.items, 'cell', x, y, s);
       blit(c, A.items, id, x, y, s);
     });
-    for (const t of tags) drawShutterTag(c, L, t);
+    for (const t of tags) drawShutterTag(c, L, A, t);
   });
 }
 
-/** The next shutter's paper tag: its condition (one or two lines) and its price, fitted to the cell. */
-function drawShutterTag(c: SkCanvas, L: MergeLayout, t: ShutterTag): void {
+/**
+ * The next shutter's paper tag, fitted to the cell. While its condition does not hold: the
+ * condition alone ("AFTER / STEAMER", or "MAKE" over the good's icon and pips), in soft ink, no
+ * price. Once it holds: the shutter glyph and the price, in amber.
+ */
+function drawShutterTag(c: SkCanvas, L: MergeLayout, A: PlayAtlases, t: ShutterTag): void {
   const cell = L.board.cell;
   const { x, y } = cellCentre(L, t.cell);
   const w = cell * 0.86;
@@ -284,19 +325,34 @@ function drawShutterTag(c: SkCanvas, L: MergeLayout, t: ShutterTag): void {
   c.drawPath(rrect(x - w / 2 + 0.8, y - h / 2 + 1.2, w, h, 3), fill(alpha(INK, 0.45)));
   c.drawPath(rrect(x - w / 2, y - h / 2, w, h, 3), fill(NIGHT.paperLight));
   c.drawPath(rrect(x - w / 2, y - h / 2, w, h, 3), stroke(t.allowed ? NIGHT.brass : NIGHT.paperEdge, 1));
-  const lines = t.lines.map(letterText);
   const textW = w - 5;
+  if (t.allowed) {
+    // The shutter glyph, then the price on one line.
+    const glyph = h * 0.62;
+    const priceSize = fitSize(t.price, textW - glyph - 2, cell * 0.17, 0.24);
+    const pw = lettersWidth(t.price, priceSize, 0.24);
+    const left = x - (glyph + 2 + pw) / 2;
+    blit(c, A.items, 'shutter', left + glyph / 2, y, glyph / DESIGN);
+    drawLetters(c, t.price, left + glyph + 2, y - priceSize / 2, { size: priceSize, color: NIGHT.amberDeep, align: 'left', weight: 0.24 });
+    return;
+  }
+  const lines = t.lines.map(letterText);
   const condSize = Math.min(...lines.map((l) => fitSize(l, textW, cell * 0.13, 0.2)));
-  const priceSize = fitSize(t.price, textW, cell * 0.17, 0.24);
   const gap = condSize * 0.45;
-  const total = lines.length * condSize + (lines.length - 1) * gap + gap * 1.6 + priceSize;
+  if (t.good) {
+    // "MAKE" over the good itself, with its tier pips (the pips are the good's own, as on the board).
+    const icon = h - condSize - gap - 4;
+    const top = y - h / 2 + 2;
+    drawLetters(c, lines[0] ?? '', x, top, { size: condSize, color: NIGHT.inkSoft, align: 'center', weight: 0.2 });
+    blit(c, A.items, goodSprite(t.good.c, t.good.k), x, top + condSize + gap + icon / 2, icon / DESIGN);
+    return;
+  }
+  const total = lines.length * condSize + (lines.length - 1) * gap;
   let ty = y - total / 2;
   for (const l of lines) {
-    drawLetters(c, l, x, ty, { size: condSize, color: t.allowed ? NIGHT.ink : NIGHT.inkSoft, align: 'center', weight: 0.2 });
+    drawLetters(c, l, x, ty, { size: condSize, color: NIGHT.inkSoft, align: 'center', weight: 0.2 });
     ty += condSize + gap;
   }
-  ty += gap * 0.6;
-  drawLetters(c, t.price, x, ty, { size: priceSize, color: t.allowed ? NIGHT.amberDeep : NIGHT.paperEdge, align: 'center', weight: 0.24 });
 }
 
 /** The goods on the board, but not the cells in `hidden` (a good being dragged, flying or rising). */

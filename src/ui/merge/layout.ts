@@ -164,6 +164,37 @@ export function mergeLayout(width: number, height: number, insets: Insets, fontS
   return { width: W, height: H, insets: { ...insets }, fontScale, topBar, goalLine, street: streetR, spareAbove, board, spareBelow, bottomRow, play, backdrop, fronts, banner, counters, basket, buttons };
 }
 
+/**
+ * The play canvas's scale (4.1's last overflow step, `play.scale` < 1, small Androids such as 360 ×
+ * 640 with a 48 pt button bar): everything inside the street and the board is laid out in unscaled
+ * points and drawn scaled about the play area's top left (0, play.y). These map a screen point or
+ * rectangle into those points (the hit test, the touch input, a target outside the canvas such as
+ * the Basket) and back (views laid over the canvas, the hint targets). The identity at scale 1.
+ */
+export function toPlay(l: MergeLayout, x: number, y: number): { x: number; y: number } {
+  const s = l.play.scale;
+  return s === 1 ? { x, y } : { x: x / s, y: l.play.y + (y - l.play.y) / s };
+}
+
+export function fromPlay(l: MergeLayout, x: number, y: number): { x: number; y: number } {
+  const s = l.play.scale;
+  return s === 1 ? { x, y } : { x: x * s, y: l.play.y + (y - l.play.y) * s };
+}
+
+export function rectToPlay(l: MergeLayout, r: Rect): Rect {
+  const s = l.play.scale;
+  if (s === 1) return r;
+  const p = toPlay(l, r.x, r.y);
+  return rect(p.x, p.y, r.w / s, r.h / s);
+}
+
+export function rectFromPlay(l: MergeLayout, r: Rect): Rect {
+  const s = l.play.scale;
+  if (s === 1) return r;
+  const p = fromPlay(l, r.x, r.y);
+  return rect(p.x, p.y, r.w * s, r.h * s);
+}
+
 /** The board cell's rectangle (cell i = row × 7 + col), in the play canvas's unscaled points. */
 export function cellRect(l: MergeLayout, i: number): Rect {
   const row = Math.floor(i / COLS);

@@ -114,9 +114,8 @@ export function ticketSig(cfg: R.MergeConfig, g: R.MergeGame, j: number): string
   return `${t.id}:${t.lines.map((l) => (l.filled ? 1 : 0) + (newLine(g, l) ? 2 : 0)).join('')}:${R.ticketPrice(cfg, g, t)}`;
 }
 
-export function cellKinds(cfg: R.MergeConfig, g: R.MergeGame): CellKind[] {
+export function cellKinds(cfg: R.MergeConfig, g: R.MergeGame, p: R.MergeParams = R.mergeParams(cfg, g)): CellKind[] {
   const m = g.merge;
-  const p = R.mergeParams(cfg, g);
   const next = new Set(p.shutters.filter((s): s is NonNullable<typeof s> => !!s).map((s) => s.cell));
   const shape = R.seasonRow(cfg, m.season).shape;
   return m.board.map((cell, i) => {
@@ -129,35 +128,60 @@ export function cellKinds(cfg: R.MergeConfig, g: R.MergeGame): CellKind[] {
   });
 }
 
-export function shutterTags(cfg: R.MergeConfig, g: R.MergeGame): ShutterTag[] {
-  const p = R.mergeParams(cfg, g);
+/**
+ * The next shutter of each group and what its paper tag says (2.2, the review's blocking finding):
+ * while the group's condition does not hold, the condition alone, written as one ("After Steamer",
+ * or "Make" over the good's icon with its pips); once it holds, the shutter glyph and the price
+ * alone. A price is never printed beside a stall's name, so no tag reads as a stall's price.
+ */
+export function shutterTags(cfg: R.MergeConfig, g: R.MergeGame, p: R.MergeParams = R.mergeParams(cfg, g)): ShutterTag[] {
   const names = cfg.merge.chains;
   const out: ShutterTag[] = [];
   p.shutters.forEach((s, gi) => {
     if (!s) return;
     const cond = cfg.merge.board.shutterGroups[gi]?.condition;
     if (!cond) return;
-    const name = names[cond.chain]?.name ?? '';
-    // "Grill 3" on one line; "Steamer open" on two (a 47 pt tag holds about 8 letters a line).
-    const lines = cond.type === 'tierMade' ? [S.play.shutterTier(name, cond.tier)] : S.play.shutterOpen(name).split(' ');
-    out.push({ cell: s.cell, lines, price: coins(cfg, s.cost), allowed: s.allowed });
+    if (s.allowed) out.push({ cell: s.cell, allowed: true, price: coins(cfg, s.cost), lines: [], good: null });
+    else if (cond.type === 'tierMade') out.push({ cell: s.cell, allowed: false, price: '', lines: [S.play.shutterMake], good: { c: cond.chain, k: cond.tier } });
+    // "After" and the stall's name on two lines (a 47 pt tag holds about 8 letters a line).
+    else out.push({ cell: s.cell, allowed: false, price: '', lines: S.play.shutterAfter(names[cond.chain]?.name ?? '').split(' '), good: null });
   });
   return out;
 }
 
+/**
+ * The board layer's signature. Computed ten times a second by a store selector, so it reads the
+ * rules' parameters once and is cached on what it depends on: the board array (the rules replace it
+ * on every change), the shutters opened, the season, the Ladder Book and which stalls are open
+ * with their best tiers (a shutter's condition).
+ */
+let cellsKey: { board: unknown; opened: unknown; book: unknown; season: number; chains: string; cfg: unknown } | null = null;
+let cellsVal = '';
 export function cellsSig(cfg: R.MergeConfig, g: R.MergeGame): string {
-  const kinds = cellKinds(cfg, g)
-    .map((k) => k[0] + (k === 'gateBottom' ? 'b' : ''))
+  const m = g.merge;
+  const chains = m.chains.map((ch) => `${ch.open ? 1 : 0}${ch.best}`).join('');
+  const k = cellsKey;
+  if (k && k.board === m.board && k.opened === m.shuttersOpened && k.book === m.book && k.season === m.season && k.chains === chains && k.cfg === cfg) return cellsVal;
+  const p = R.mergeParams(cfg, g);
+  const kinds = cellKinds(cfg, g, p)
+    .map((kd) => kd[0] + (kd === 'gateBottom' ? 'b' : ''))
     .join('');
-  const tags = shutterTags(cfg, g)
-    .map((t) => `${t.cell}.${t.price}.${t.allowed ? 1 : 0}`)
+  const tags = shutterTags(cfg, g, p)
+    .map((t) => `${t.cell}.${t.allowed ? t.price : t.lines.join(' ')}`)
     .join(',');
-  return `${kinds}|${tags}`;
+  cellsKey = { board: m.board, opened: m.shuttersOpened, book: m.book, season: m.season, chains, cfg };
+  cellsVal = `${kinds}|${tags}`;
+  return cellsVal;
 }
 
 /** The gear rail's notches: each open stall's anchor column (2.4), found by the rules' own drop-cell rule on an empty board. */
+const railCache = new Map<string, number[]>();
 export function railColumns(g: R.MergeGame): number[] {
   const m = g.merge;
+  // The anchor columns depend only on which stalls are open (an empty board): cached by that.
+  const key = `${m.board.length}:${m.chains.map((ch) => (ch.open ? 1 : 0)).join('')}`;
+  const hit = railCache.get(key);
+  if (hit) return hit;
   const empty = { board: m.board.map(() => null) as R.Cell[], basketUndo: null, chains: m.chains };
   const out: number[] = [];
   m.chains.forEach((ch, c) => {
@@ -165,6 +189,7 @@ export function railColumns(g: R.MergeGame): number[] {
     const cell = R.dropCell(empty, c);
     if (cell !== null) out.push(cell % R.BOARD_COLS);
   });
+  railCache.set(key, out);
   return out;
 }
 

@@ -55,7 +55,11 @@ function StallBody({ c }: { c: number }) {
           {S.sheets.openStallWhat(ch.gear)}
         </Txt>
         {v.openNote === '' ? (
-          <Btn label={S.sheets.open} price={cost(v.openCost)} enabled={v.cash >= v.openCost} target="sheet:open" onPress={() => mergeActions.openStall(c)} />
+          <Btn label={S.sheets.open} price={cost(v.openCost)} enabled={v.cash >= v.openCost} target="sheet:open" onPress={() => {
+              // The opening is the moment to see (the awning, the first drop, the new customers): the sheet steps aside.
+              if (mergeActions.openStall(c)) useMergeUi.getState().closeSheet();
+            }}
+          />
         ) : (
           <Txt size={ty.small} color={INK.warn}>
             {v.openNote === 'season' ? S.sheets.opensIn(v.fromSeason) : S.sheets.opensAfter(v.prevChain)}

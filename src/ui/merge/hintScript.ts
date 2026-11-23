@@ -21,7 +21,7 @@
  * Owned by the screens lead since the join (written by the hints and platform package).
  */
 import * as R from '../../engine/merge';
-import { cellRect, type MergeLayout, type Rect } from './layout';
+import { cellRect, rectFromPlay, type MergeLayout, type Rect } from './layout';
 
 /** The guided steps (3.1 with M44), in order: the first merge, the scripted tickets, the first three purchases. */
 export const GUIDED_STEPS = ['merge', 'deliver', 'buy1', 'buy2', 'buy3'] as const;
@@ -146,6 +146,26 @@ export function stepPointer(cfg: R.MergeConfig, g: R.MergeGame, step: GuidedStep
 }
 
 /**
+ * During the guided steps, after a stall opens and until its first good of tier 2 is made: the rules'
+ * hint for that stall's goods (a merge of its drops, or a delivery of one to a ticket), or null.
+ */
+export function newStallPointer(g: R.MergeGame, hints: R.MergeHint[]): FireflyHint | null {
+  const m = g.merge;
+  let c = -1;
+  m.chains.forEach((ch, i) => {
+    if (ch.open && i > 0) c = i;
+  });
+  if (c < 0 || m.book[c]?.[1]) return null;
+  const chainOf = (key: string | undefined) => {
+    const n = key?.startsWith('cell:') ? Number(key.slice(5)) : -1;
+    const cell = n >= 0 ? m.board[n] : null;
+    return R.isGood(cell) ? cell.c : -1;
+  };
+  const h = hints.find((x) => x.id.startsWith(`merge:${c}:`)) ?? hints.find((x) => x.id.startsWith('deliver:') && chainOf(x.from) === c);
+  return h ? asHint(h, true) : null;
+}
+
+/**
  * What the firefly shows now (3.1), or null. Never while the hand is busy or a dialog is open;
  * a guided step's own pointer after `QUIET_MS`; otherwise the rules' first hint after
  * `GUIDED_FALLBACK_MS` (guided season) or `IDLE_MS` (after it).
@@ -156,6 +176,10 @@ export function fireflyHint(cfg: R.MergeConfig, g: R.MergeGame, ui: FireflyUi): 
   const hints = rulesHints(cfg, g);
   const step = currentStep(g);
   if (step) {
+    // A stall just opened (the review: the Tea stall's opening was hidden behind its sheet; the sheet
+    // now closes): the firefly shows its first goods' merge or delivery before the next purchase.
+    const fresh = newStallPointer(g, hints);
+    if (fresh) return ui.idleMs >= QUIET_MS ? fresh : null;
     const own = stepPointer(cfg, g, step, hints);
     if (own) return ui.idleMs >= QUIET_MS ? own : null;
     return ui.idleMs >= GUIDED_FALLBACK_MS && hints[0] ? asHint(hints[0], false) : null;
@@ -167,6 +191,26 @@ export function fireflyHint(cfg: R.MergeConfig, g: R.MergeGame, ui: FireflyUi): 
 
 /** A rectangle of a target key from mergeLayout (the drawn targets of the play canvas and the bars' fixed zones), or null. */
 export function layoutRect(layout: MergeLayout, key: string, ctx: { counters: number; shutterCells: (number | null)[] }): Rect | null {
+  const r = playRect(layout, key, ctx);
+  if (r) return rectFromPlay(layout, r);
+  const [kind, arg] = key.split(':');
+  switch (kind) {
+    case 'goal':
+      // Before the text row has measured itself: the middle half of the line, where its words sit.
+      return { x: layout.goalLine.x + layout.goalLine.w / 4, y: layout.goalLine.y, w: layout.goalLine.w / 2, h: layout.goalLine.h };
+    case 'basket':
+      return layout.basket;
+    case 'button': {
+      const i = ['book', 'lanterns', 'season', 'shop'].indexOf(arg ?? '');
+      return i >= 0 ? (layout.buttons[i] ?? null) : null;
+    }
+    default:
+      return null;
+  }
+}
+
+/** A drawn target of the play canvas, in its own (unscaled) points; layoutRect maps it to the screen. */
+function playRect(layout: MergeLayout, key: string, ctx: { counters: number; shutterCells: (number | null)[] }): Rect | null {
   const [kind, arg] = key.split(':');
   const n = Number(arg);
   switch (kind) {
@@ -183,14 +227,6 @@ export function layoutRect(layout: MergeLayout, key: string, ctx: { counters: nu
     case 'shutter': {
       const cell = ctx.shutterCells[n];
       return cell === null || cell === undefined ? null : cellRect(layout, cell);
-    }
-    case 'goal':
-      return layout.goalLine;
-    case 'basket':
-      return layout.basket;
-    case 'button': {
-      const i = ['book', 'lanterns', 'season', 'shop'].indexOf(arg ?? '');
-      return i >= 0 ? (layout.buttons[i] ?? null) : null;
     }
     default:
       return null;
@@ -218,7 +254,10 @@ export function anchorOf(key: string, r: Rect): Point {
   const kind = key.split(':')[0];
   if (kind === 'counter' || kind === 'banner') return { x: r.x + r.w / 2, y: r.y + r.h + FIREFLY_REACH * 0.6 };
   if (kind === 'shutter') return { x: r.x + FIREFLY_REACH * 0.5, y: r.y + FIREFLY_REACH * 0.5 };
-  if (kind === 'goal') return { x: r.x + FIREFLY_REACH, y: r.y + r.h / 2 };
+  // The goal line's words (its registered rectangle is the centred text row): just after their end,
+  // past the price and the chevron, so the glow sits over the middle of the screen, never the purse
+  // in the top bar's left corner (the review saw it there when it pointed at the line's left end).
+  if (kind === 'goal') return { x: r.x + r.w + FIREFLY_REACH * 0.5, y: r.y + r.h / 2 };
   // A sheet's buy button (label and price centred): its right end, clear of the words and the price.
   if (kind === 'sheet' || kind === 'confirm' || kind === 'ticket') return { x: r.x + r.w - FIREFLY_REACH * 1.6, y: r.y + r.h / 2 };
   return { x: r.x + r.w / 2, y: r.y + r.h / 2 };

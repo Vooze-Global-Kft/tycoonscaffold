@@ -40,9 +40,14 @@ export const S = {
     filled: 'Filled',
     /** The mark on a stretch line (2.7). */
     newLine: 'New',
-    /** The next shutter's condition, printed on its paper tag (2.2): "Grill 3" (a tier ever made) or "Steamer open". */
-    shutterTier: (chain: string, tier: number) => `${chain} ${tier}`,
-    shutterOpen: (chain: string) => `${chain} open`,
+    /**
+     * The next shutter's paper tag while its condition does not hold (2.2), written as a condition,
+     * never as a verb and a price (the review read "Steamer open 279" as the Steamer stall's price):
+     * "After Steamer" (a stall must open first), or "Make" over the good's own icon and pips (a tier
+     * must be made first). Once the condition holds, the tag shows only the shutter glyph and its price.
+     */
+    shutterAfter: (chain: string) => `After ${chain}`,
+    shutterMake: 'Make',
     /** The Festival banner before its lines show (4.2): "0/4". */
     festivalCount: (filled: number, lines: number) => `${filled}/${lines}`,
     /** The long-press chip (4.2): the good's name, then what it is worth on a ticket line. */
@@ -131,7 +136,11 @@ export const S = {
     shutterTitle: 'A shutter',
     shutterCondTier: (tier: string) => `Opens once ${article(tier)} has been made`,
     shutterCondOpen: (chain: string) => `Opens once the ${chain} stall is open`,
+    /** The condition, once it holds: "Opens once a Glazed Skewer has been made: done". */
+    shutterCondDone: (cond: string) => `${cond}: done`,
     shutterReady: 'One more cell for the board',
+    /** A shutter is a cell of the board, never a stall (the review: its tag read as a stall's price). */
+    shutterNotStall: 'A board cell, not a stall: stalls open from their fronts on the street.',
     holdsGood: 'Holds a good',
     // --- the ticket detail (4.4) ---
     ticketTitle: (who: string) => `The ${who}'s ticket`,

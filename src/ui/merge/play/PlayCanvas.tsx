@@ -11,7 +11,7 @@
  * state change, never per frame or per tick. Nothing animates under a spoke.
  * Sets the hint targets of its drawn parts (cell:<i>, counter:<j>, banner, front:<c>, shutter:<g>).
  */
-import { Atlas, Canvas, Group, Picture } from '@shopify/react-native-skia';
+import { Atlas, Canvas, Fill, Group, Picture } from '@shopify/react-native-skia';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { makeMutable, useDerivedValue, useSharedValue } from 'react-native-reanimated';
@@ -20,7 +20,8 @@ import { fx } from '../../../services/fx';
 import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
-import { cellRect, type MergeLayout, type Rect } from '../layout';
+import { cellRect, rectFromPlay, toPlay, type MergeLayout, type Rect } from '../layout';
+import { NIGHT } from '../art/palette';
 import { S } from '../strings';
 import { useMergeUi } from '../uiState';
 import { useMerge } from '../useMerge';
@@ -40,6 +41,7 @@ import { filledStampPicture } from '../art/street.draw';
 
 const NO_BOARD: R.Cell[] = [];
 const NO_ARR: number[] = [];
+const NO_XF: { translateY: number }[] = [];
 
 /** The merge config and game right now, or null. */
 function now(): { cfg: R.MergeConfig; g: R.MergeGame } | null {
@@ -128,8 +130,11 @@ export function PlayCanvas({ layout }: { layout: MergeLayout }) {
         (j, line) => m.counters[j]?.ticket?.lines[line] ?? null,
         (line) => m.festival.lines[line] ?? null,
       );
-      const purse = pointOf('purse', { x: lay.topBar.x + 44, y: lay.topBar.y + lay.topBar.h / 2 });
-      const book = pointOf('button:book', centreOf(lay.buttons[0]));
+      // The purse and the Book button are screen points; the beats fly in the canvas's own points.
+      const ps = pointOf('purse', { x: lay.topBar.x + 44, y: lay.topBar.y + lay.topBar.h / 2 });
+      const bs = pointOf('button:book', centreOf(lay.buttons[0]));
+      const purse = toPlay(lay, ps.x, ps.y);
+      const book = toPlay(lay, bs.x, bs.y);
       const b = beatsFor(events, {
         L: lay,
         counters: nRef.current,
@@ -238,7 +243,8 @@ export function PlayCanvas({ layout }: { layout: MergeLayout }) {
     const keys: string[] = [];
     const set = (k: string, r: Rect) => {
       keys.push(k);
-      targets.set(k, { x: r.x, y: r.y, width: r.w, height: r.h });
+      const q = rectFromPlay(L, r);
+      targets.set(k, { x: q.x, y: q.y, width: q.w, height: q.h });
     };
     for (let i = 0; i < R.BOARD_CELLS; i++) set(`cell:${i}`, cellRect(L, i));
     columns.forEach((r, j) => set(`counter:${j}`, r));
@@ -257,9 +263,14 @@ export function PlayCanvas({ layout }: { layout: MergeLayout }) {
   const outXf4 = useDerivedValue(() => outlineAt(drag.value, 4));
   const outXfs = [outXf1, outXf2, outXf3, outXf4];
 
+  const playXf = useMemo(() => (L.play.scale === 1 ? NO_XF : [{ translateY: L.play.y }, { scale: L.play.scale }, { translateY: -L.play.y }]), [L]);
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Fill color={NIGHT.indigo} />
+        {/* 4.1's last overflow step: the street and the board drawn scaled about the play area's top left (identity at scale 1). */}
+        <Group transform={playXf}>
         <Picture picture={back} />
         <Picture picture={fronts} />
         <Picture picture={boards} />
@@ -299,6 +310,7 @@ export function PlayCanvas({ layout }: { layout: MergeLayout }) {
             <Picture picture={floating} />
           </Group>
         ) : null}
+        </Group>
       </Canvas>
       <View style={[styles.touch, { left: L.play.x, top: L.play.y, width: L.play.w, height: L.play.h }]} {...input.responder} />
       {chip !== null ? <ChipView layout={L} cell={chip} /> : null}

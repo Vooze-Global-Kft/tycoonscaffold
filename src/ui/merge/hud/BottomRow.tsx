@@ -30,9 +30,14 @@ const SLOTS: readonly Slot[] = [
   { key: 'shop', icon: 'art:shop', label: S.hud.shop },
 ];
 
+/** Every label of the row, measured at the narrowest button: one font and one baseline for all five. */
+/** The narrower button width of the row (4.2: the Basket 68, the others 64). */
+const ROW_W = 64;
+const ROW_LABELS: readonly string[] = [S.hud.basket, ...SLOTS.map((s) => s.label)];
+
 function RowButton({ rect, icon, label, target, onPress, armed }: { rect: Rect; icon: string; label: string; target: string; onPress: () => void; armed?: boolean }) {
   const fontScale = useFontScale();
-  const m = buttonMetrics(rect.w, fontScale, label);
+  const m = buttonMetrics(Math.min(rect.w, ROW_W), fontScale, ROW_LABELS);
   const ref = useTarget(target);
   return (
     <Pressable

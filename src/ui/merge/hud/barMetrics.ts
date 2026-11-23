@@ -153,11 +153,18 @@ export interface ButtonMetrics {
   labelH: number;
 }
 
-/** A bottom-row button of width `w` (the Basket 68, the others 64): an icon over its label, rows adding up to 48. */
-export function buttonMetrics(w: number, fontScale: number, label: string): ButtonMetrics {
+/**
+ * A bottom-row button of width `w` (the Basket 68, the others 64): an icon over its label, rows
+ * adding up to 48. `labels` is every label of the row: they share ONE font (the one the longest
+ * fits), so every icon box has one height and every label one baseline (the review saw "Lanterns"
+ * fitted smaller, its icon grown and its label pushed down).
+ */
+export function buttonMetrics(w: number, fontScale: number, labels: string | readonly string[]): ButtonMetrics {
   const scale = barScale(fontScale);
   const want = Math.round(10.5 * scale * 10) / 10;
-  const fit = Math.floor(((w - 6) / Math.max(1, textWidth(label, 1, true))) * 10) / 10;
+  const all = typeof labels === 'string' ? [labels] : labels;
+  const widest = Math.max(1, ...all.map((l) => textWidth(l, 1, true)));
+  const fit = Math.floor(((w - 6) / widest) * 10) / 10;
   const labelFont = Math.max(8, Math.min(want, fit, 13));
   const labelH = lineOf(labelFont);
   const iconSize = Math.min(26, BOTTOM_H - 6 - labelH - 2);

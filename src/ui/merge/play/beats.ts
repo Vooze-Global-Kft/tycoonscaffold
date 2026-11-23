@@ -11,7 +11,7 @@ import * as R from '../../../engine/merge';
 import { goodSprite, minderHeadSprite } from '../art/atlas';
 import { GOOD_BOX } from '../art/goods.draw';
 import { bannerGrid, ticketLayout } from '../art/street.draw';
-import type { MergeLayout } from '../layout';
+import { rectToPlay, type MergeLayout } from '../layout';
 import { E_BACK, E_INOUT, E_LINEAR, E_OUT, K_ARRIVE, K_PAID, K_SHAKE, marker, sprite, type Tween } from './effects';
 import { cellCentre, centreOf, counterCount, counterParts, FLOAT_SCALE } from './geometry';
 
@@ -204,14 +204,14 @@ export function beatsFor(events: readonly R.MergeEvent[], x: BeatContext): Beats
       }
       case 'basketSell': {
         const s = src() ?? cellCentre(L, e.cell);
-        const bk = centreOf(L.basket);
+        const bk = centreOf(rectToPlay(L, L.basket));
         tw.push(sprite(0, goodSprite(e.good.c, e.good.k), s, bk, 0.24, { a0: srcScale, a1: cs * 0.45, o0: 1, o1: 0.3, ease: E_INOUT }));
         for (let i = 0; i < 3; i++) tw.push(sprite(1, 'coin', { x: bk.x + (i - 1) * 8, y: bk.y - 6 }, x.purse, 0.6, { delay: 0.26 + i * 0.08, arc: 26 + i * 8, o0: 1, o1: 0.8, ease: E_INOUT, spin: 3 }));
         break;
       }
       case 'undo': {
         const g = goodAt(events, e.cell);
-        const bk = centreOf(L.basket);
+        const bk = centreOf(rectToPlay(L, L.basket));
         tw.push(sprite(0, goodSprite(g.c, g.k), bk, cellCentre(L, e.cell), 0.3, { a0: cs * 0.5, a1: cs, arc: 20, ease: E_OUT }));
         out.hide.push({ cell: e.cell, ms: ms(0.3) });
         break;

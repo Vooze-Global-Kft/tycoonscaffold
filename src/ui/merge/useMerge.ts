@@ -73,7 +73,18 @@ export function usePlaySecond(): number {
 const NO_GOAL: V.GoalView = { kind: 'none', target: -1, cost: 0, costText: '', estN: -1, estUnit: 's', name: '', level: 0, tier: '', have: 0, need: 0, festivalGear: false };
 /** The advised goal (2.10) as the goal line shows it ('none' when the rules name nothing). */
 export function useGoal(): V.GoalView {
-  return useMergeShallow(V.goalView, NO_GOAL);
+  return useMergeShallow(heldGoal, NO_GOAL);
+}
+
+/** The goal line's hold (views.ts holdGoal): one per app, advanced by whichever reader sees a new game first. */
+let hold: V.GoalHold | null = null;
+let holdFor: unknown = null;
+function heldGoal(cfg: R.MergeConfig, g: R.MergeGame): V.GoalView {
+  if (holdFor !== g) {
+    hold = V.holdGoal(hold, V.goalView(cfg, g), g);
+    holdFor = g;
+  }
+  return hold ? hold.view : NO_GOAL;
 }
 
 /** A stall's rows (gear, stall level, minder, shelf, ads, opening); `exists` false outside a merge game or for a chain that does not exist. */
