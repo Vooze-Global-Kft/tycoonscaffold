@@ -1,0 +1,55 @@
+{
+  "_comment": "Lantern Row store listing (spec 7.1, 7.3, 7.4, 5.7; decisions M7, M11). Owned by the store package (label: listing); build-night.py copies every field that does not start with an underscore into game.json store, EXCEPT `products`, which it must move into monetization.iap.products (it is not a store field). promotionalText is Apple's promotional text (170 max), read from the raw game.json as for Orbit Haulers. Release notes are per version in games/night-market/store/releases.json. Every number in these texts is a number of the specification; the list of which number comes from which rule, and which are (tune), is in `_numbers`: when build-night.py moves a tuned value, update the text here and run npm run sync.",
+  "_numbers": {
+    "description: 'every 5 seconds'": "gear interval T = 5 s, spec 2.2 (tune 4 to 6): update if build-night.py moves T",
+    "description: 'eight steps up'": "8 tiers per chain, spec 2.2 (rule)",
+    "description: 'six stalls'": "6 chains, spec 2.2 and 9.1 (rule for v1)",
+    "description: 'one to three snacks'": "1 to 3 lines per ticket, spec 2.1 line 3 (rule)",
+    "description: 'every 15 seconds'": "minder sale interval Q = 15 s, spec 2.2 (tune 10 to 25): update if moved; Late crowd seasons (x0.67) and lantern 15 (x0.8) shorten it, hence 'a few lanterns and seasons stretch these'",
+    "description: 'up to 4 hours'": "away cap 4 h, spec 2.9 (rule); +2 h lantern 6, +4 h Late Hours",
+    "description: 'up to 6 snacks'": "shelf cap 6, spec 2.4 (rule); 8 with lantern 3",
+    "description: 'Twenty lanterns'": "20 lanterns, spec 5.3 (rule)",
+    "products: Late Hours '4 more hours'": "Late Hours +4 h on the away cap, spec 2.9 and 5.7 (rule)",
+    "products: fallback prices": "spec 5.7 says $2.99 and $4.49; both clash (Pizza's 24h Time Warp is $2.99, Orbit's Hangar Expansion is $4.49). Proposed $3.99 and $5.49, used by neither game: the lead confirms (notes/listing.md)"
+  },
+  "title": "Lantern Row",
+  "subtitle": "Merge snacks, fill each order",
+  "keywords": [
+    "merge",
+    "market",
+    "orders",
+    "board",
+    "skewer",
+    "tea",
+    "dumpling",
+    "stall",
+    "snack",
+    "puzzle",
+    "cozy",
+    "street"
+  ],
+  "shortDescription": "Merge street snacks at dusk and fill each paper order, one line at a time.",
+  "promotionalText": "Lantern Row opens at dusk. Merge street snacks on the board and fill paper orders, one by one.",
+  "description": "Lantern Row is a merge game set on a street of food stalls at dusk.\n\nSnacks drop onto the board below the street, one from each stall's gear every 5 seconds. Drag a snack onto its twin and the two become one finer snack, eight steps up: a Pepper Skewer turns into a Twin Skewer, then a Glazed Skewer, and at the top a Dragon Grill Board.\n\nCustomers step up to the counters holding paper tickets: a fox, a hedgehog, a badger, an otter. Each ticket asks for one to three snacks. Drag each snack onto its line. When the last line is filled, the ticket is stamped, folds into a paper lantern and pays the price printed on it. Who is waiting decides what you merge next.\n\nCoins open new stalls and more of the board, and make each stall's gear finer: higher levels drop better snacks, never faster ones. Six stalls light up in turn: grill, tea, steamer, sweets, noodles, and puffs from the second season.\n\nLantern Row has a small idle side, and this is all of it. Minders you hire put a house snack's price in the till every 15 seconds, while you play and while the app is closed, for up to 4 hours; your gear fills its shelf with up to 6 snacks while you are away. A few lanterns and seasons stretch these. It is not a tycoon race: nothing else plays itself, and every merge and every order is made by your hand.\n\nEach season ends with a Festival ticket. Fill it, and close the season when you choose: coins, stalls and levels start again, while board space, lanterns, the Ladder Book and seasoned gear stay. Each season the street takes a new shape: a moon gate, braziers in the corners, fireflies over the stalls.\n\nTwenty lanterns hang on the Lantern Gate, each lit once by something you did. The Ladder Book keeps every snack you have made. Now and then a paper dragon comes down the street with a gold ticket that pays double.\n\nNo energy. Orders never time out. Ads are optional, and gift box odds are shown before you open one. Gift boxes are earned in play and never sold.",
+  "primaryCategory": "GAMES",
+  "subcategories": [
+    "GAMES_PUZZLE",
+    "GAMES_CASUAL"
+  ],
+  "products": [
+    {
+      "id": "night_lamplighter",
+      "kind": "cosmetic",
+      "title": "Lamplighter's Street",
+      "description": "Blue silk awnings and moon lanterns on every stall, for good. Looks only.",
+      "fallbackPrice": "$3.99"
+    },
+    {
+      "id": "night_late_hours",
+      "kind": "unlock",
+      "title": "Late Hours",
+      "description": "Your minders keep the stalls 4 more hours while you are away, and each Watch ad button gives its reward at once, with no video.",
+      "fallbackPrice": "$5.49"
+    }
+  ]
+}
