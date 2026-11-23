@@ -22,7 +22,7 @@
                                                      with the noise band (the active bot at act + 0.001 s)
     options: --act 2.0 (seconds per bot action: M30's reference; run 1.5 and 2.5 beside it)
              --procs 3 (parallel bot processes; at most 3 on the shared machine)   --set path=value (an extra override, repeatable)
-             --hours 12 --seasons 10 --days 21 (the full run's length)
+             --hours 16 --seasons 10 --days 21 (the full run's length: ten seasons close in 16 h)
              --acts 1.5,2,2.5 (with --check: the check at each action time, M30 (1))
 
 This script is the only source of the game's numbers (AGENTS.md: never hand-edit the table). The
@@ -64,198 +64,9 @@ SOURCES = {'ticket', 'gift', 'till', 'basket', 'away', 'undo', 'spend'}
 # ---------------------------------------------------------------- the tuned numbers
 # RANGES path -> value. Empty means the starting content as it is. `--tune --save` rewrites this block.
 # TUNED-BEGIN
-TUNED = {
-    "costs.gearGrowth": 1.5,
-    "costs.minderBase": 250,
-    "costs.minderGrowth": 2.5,
-    "costs.stallOpen[0]": 120,
-    "costs.stallOpen[1]": 2200,
-    "costs.stallOpen[2]": 28000,
-    "costs.stallOpen[3]": 600000,
-    "costs.stallOpen[4]": 6550000,
-    "festival": [
-        [
-            {
-                "chain": 1,
-                "tier": 7
-            },
-            {
-                "chain": 2,
-                "tier": 7
-            },
-            {
-                "chain": 3,
-                "tier": 7
-            },
-            {
-                "chain": 4,
-                "tier": 7
-            },
-            {
-                "chain": 4,
-                "tier": 7
-            }
-        ],
-        [
-            {
-                "chain": 1,
-                "tier": 7
-            },
-            {
-                "chain": 2,
-                "tier": 7
-            },
-            {
-                "chain": 3,
-                "tier": 7
-            },
-            {
-                "chain": 4,
-                "tier": 7
-            },
-            {
-                "chain": 5,
-                "tier": 3
-            },
-            {
-                "chain": 4,
-                "tier": 7
-            }
-        ],
-        [
-            {
-                "chain": 1,
-                "tier": 8
-            },
-            {
-                "chain": 2,
-                "tier": 8
-            },
-            {
-                "chain": 3,
-                "tier": 7
-            },
-            {
-                "chain": 4,
-                "tier": 7
-            },
-            {
-                "chain": 5,
-                "tier": 5
-            },
-            {
-                "chain": 4,
-                "tier": 7
-            }
-        ],
-        [
-            {
-                "chain": 1,
-                "tier": 8
-            },
-            {
-                "chain": 2,
-                "tier": 8
-            },
-            {
-                "chain": 3,
-                "tier": 8
-            },
-            {
-                "chain": 4,
-                "tier": 8
-            },
-            {
-                "chain": 5,
-                "tier": 6
-            },
-            {
-                "chain": 4,
-                "tier": 7
-            }
-        ],
-        [
-            {
-                "chain": 1,
-                "tier": 8
-            },
-            {
-                "chain": 2,
-                "tier": 8
-            },
-            {
-                "chain": 3,
-                "tier": 8
-            },
-            {
-                "chain": 4,
-                "tier": 8
-            },
-            {
-                "chain": 5,
-                "tier": 7
-            },
-            {
-                "chain": 4,
-                "tier": 7
-            }
-        ],
-        [
-            {
-                "chain": 1,
-                "tier": 8
-            },
-            {
-                "chain": 2,
-                "tier": 8
-            },
-            {
-                "chain": 3,
-                "tier": 8
-            },
-            {
-                "chain": 4,
-                "tier": 8
-            },
-            {
-                "chain": 5,
-                "tier": 7
-            },
-            {
-                "chain": 4,
-                "tier": 8
-            }
-        ],
-        [
-            {
-                "chain": 1,
-                "tier": 8
-            },
-            {
-                "chain": 2,
-                "tier": 8
-            },
-            {
-                "chain": 3,
-                "tier": 8
-            },
-            {
-                "chain": 4,
-                "tier": 8
-            },
-            {
-                "chain": 5,
-                "tier": 8
-            },
-            {
-                "chain": 4,
-                "tier": 8
-            }
-        ]
-    ],
-    "seasons.familiarBase": 0.75,
-    "tickets.outputWindow": 150
-}
+# The numbers step (Nov 2026) moved its tuned values into src/config/merge.content.ts itself (each with its
+# starting value and the aim it serves in a comment), so the content file is the one source; TUNED is empty.
+TUNED = {}
 # TUNED-END
 
 # ---------------------------------------------------------------- the knobs, in the order of 8.4 (with M27)
@@ -571,6 +382,20 @@ def write_game(block):
     mon['ads']['interstitials'] = False
     if products is not None:
         mon['iap'] = {**mon.get('iap', {}), 'products': products}
+    # Decision M1: the written file is no longer the placeholder. A kept text that the skeleton marked
+    # "PLACEHOLDER: " loses the mark (its words stay for the lead to review); anything else still marked refuses.
+    def unmark(x):
+        if isinstance(x, dict):
+            return {k: unmark(v) for k, v in x.items()}
+        if isinstance(x, list):
+            return [unmark(v) for v in x]
+        if isinstance(x, str) and x.startswith('PLACEHOLDER: '):
+            print('  kept text unmarked: ' + x[len('PLACEHOLDER: '):][:70])
+            return x[len('PLACEHOLDER: '):]
+        return x
+    g = unmark(g)
+    if 'PLACEHOLDER' in json.dumps(g):
+        raise SystemExit('REFUSED: a text still says PLACEHOLDER after the listing was copied: ' + re.search(r'.{0,60}PLACEHOLDER.{0,60}', json.dumps(g)).group(0))
     json.dump(g, open(GAME, 'w'), indent=2, ensure_ascii=False)
     open(GAME, 'a').write('\n')
     print('wrote', os.path.relpath(GAME, ROOT), '(mode merge)')
@@ -591,7 +416,7 @@ def print_gates(results, act=None):
 
 
 def gates(act, procs, extra, write):
-    hours, seasons, days = arg('--hours', '12'), arg('--seasons', '10'), arg('--days', '21')
+    hours, seasons, days = arg('--hours', '16'), arg('--seasons', '10'), arg('--days', '21')
     block = block_with(extra)
     t0 = time.time()
     res = run_seeds(block, ['--bot', 'all', '--hours', hours, '--seasons', seasons, '--days', days, '--act', str(act)], procs)

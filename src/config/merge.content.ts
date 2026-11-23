@@ -87,17 +87,23 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     goodNearShare: 0.6,
   },
   costs: {
-    // Decision M23: the stall-opening table (Tea, Steamer, Sweets, Noodles, Puffs), each × F_s.
-    stallOpen: [120, 3200, 51_200, 819_000, 13_100_000],
+    // Decision M23: the stall-opening table (Tea, Steamer, Sweets, Noodles, Puffs), each × F_s. Tuned on the
+    // real engine (numbers step, M30): from 120 / 3,200 / 51.2K / 819K / 13.1M, so the stalls open in gate 2's
+    // windows at 2.0 s an action; Puffs at its range floor so season 2's Festival lands at 0.8 to 1.1 of season 1.
+    stallOpen: [120, 2200, 28_000, 600_000, 6_550_000],
     gearBase: 20,
-    gearGrowth: 1.45,
+    // Tuned from 1.45 (range 1.40 to 1.70, M27): dearer gear levels put season 1's tier 7s, and so its Festival,
+    // at 110 to 190 min (M31) and narrow the spread between seeds (M25), without moving the stall windows.
+    gearGrowth: 1.5,
     // Decision M28: gear level 40 is the top.
     gearMaxLevel: 40,
     stallLevelBase: 50,
     stallLevelGrowth: 1.35,
     stallMaxLevel: 31,
-    minderBase: 150,
-    minderGrowth: 3,
+    // Tuned from 150 and 3 (M27, 2.2): a dearer hire and cheaper levels move minder income from minute 10
+    // (8 to 30 %, M41) toward minutes 60 and 180 (20 to 35 %).
+    minderBase: 250,
+    minderGrowth: 2.5,
     minderMaxLevel: 4,
     roundBelow: 1000,
     sigDigits: 3,
@@ -118,7 +124,8 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     gamma: 1,
     stretch: 0.15,
     beta: 0.15,
-    outputWindow: 180,
+    // Tuned from 180 (range 120 to 300): smaller tickets for gate 3's 90th percentile.
+    outputWindow: 150,
     handActions: 60,
     spareCells: 6,
     notTonightCooldown: 30,
@@ -128,33 +135,65 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
   parade: { every: 600, first: 360, multiplier: 2, lines: 3, outputWindow: 360, handActions: 100 },
   // Decision M25: every row is tuned (4 to 6 lines; 2.8's ranges); season 1's starts as 2.8's lines, seasons 3
   // and 4 as the numbers prototype left them; a season past the last row uses the last row.
+  // Decision M25 with M31 and M40: every row is tuned on the real engine (4 to 6 lines; 2.8's ranges). Season 1
+  // asks for tier 7s of the four higher chains (a low chain's tier 8 made the season chaotic, M31); season 2 adds
+  // the Puffs line at index 4 (RANGES festival[1][4]); later rows climb to tier 8 so that seasons 3 to 10 take
+  // 45 to 90 % of season 1 on the median seed (M40). A season past the last row uses the last row.
   festival: [
     [
-      { chain: 0, tier: 8 },
-      { chain: 1, tier: 8 },
-      { chain: 2, tier: 6 },
-      { chain: 4, tier: 5 },
-    ],
-    [
-      { chain: 0, tier: 8 },
-      { chain: 1, tier: 8 },
-      { chain: 2, tier: 6 },
-      { chain: 4, tier: 5 },
-      { chain: 5, tier: 4 },
-    ],
-    [
-      { chain: 0, tier: 8 },
-      { chain: 1, tier: 8 },
-      { chain: 2, tier: 6 },
-      { chain: 4, tier: 5 },
-      { chain: 5, tier: 4 },
-    ],
-    [
-      { chain: 0, tier: 8 },
-      { chain: 1, tier: 8 },
+      { chain: 1, tier: 7 },
       { chain: 2, tier: 7 },
-      { chain: 4, tier: 5 },
-      { chain: 5, tier: 4 },
+      { chain: 3, tier: 7 },
+      { chain: 4, tier: 7 },
+      { chain: 4, tier: 7 },
+    ],
+    [
+      { chain: 1, tier: 7 },
+      { chain: 2, tier: 7 },
+      { chain: 3, tier: 7 },
+      { chain: 4, tier: 7 },
+      { chain: 5, tier: 3 },
+      { chain: 4, tier: 7 },
+    ],
+    [
+      { chain: 1, tier: 8 },
+      { chain: 2, tier: 8 },
+      { chain: 3, tier: 7 },
+      { chain: 4, tier: 7 },
+      { chain: 5, tier: 5 },
+      { chain: 4, tier: 7 },
+    ],
+    [
+      { chain: 1, tier: 8 },
+      { chain: 2, tier: 8 },
+      { chain: 3, tier: 8 },
+      { chain: 4, tier: 8 },
+      { chain: 5, tier: 6 },
+      { chain: 4, tier: 7 },
+    ],
+    [
+      { chain: 1, tier: 8 },
+      { chain: 2, tier: 8 },
+      { chain: 3, tier: 8 },
+      { chain: 4, tier: 8 },
+      { chain: 5, tier: 7 },
+      { chain: 4, tier: 7 },
+    ],
+    [
+      { chain: 1, tier: 8 },
+      { chain: 2, tier: 8 },
+      { chain: 3, tier: 8 },
+      { chain: 4, tier: 8 },
+      { chain: 5, tier: 7 },
+      { chain: 4, tier: 8 },
+    ],
+    [
+      { chain: 1, tier: 8 },
+      { chain: 2, tier: 8 },
+      { chain: 3, tier: 8 },
+      { chain: 4, tier: 8 },
+      { chain: 5, tier: 8 },
+      { chain: 4, tier: 8 },
     ],
   ],
   // Decision M37: the Festival pays no coins; filling it gives Lucky Sparks.
@@ -214,7 +253,8 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     stepTier: 6,
     // Decision M40: seasoned gear holds one step (two with lantern 9); N equals the gear step s (M25).
     maxSteps: 1,
-    familiarBase: 0.85,
+    // Tuned from 0.85 (range 0.75 to 0.90): season 2's Noodles at 0.6 of season 1's or sooner (gate 10).
+    familiarBase: 0.75,
     familiarMax: 4,
     // Decision M18: the opening board holds 6 Pepper Skewers (the fox's Twin Skewer and the hedgehog's Glazed Skewer).
     openingGoods: 6,
