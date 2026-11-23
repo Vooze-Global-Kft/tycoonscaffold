@@ -262,7 +262,7 @@ describe('measurements over a trace', () => {
   });
 
   it('gate 13: the gift stream itself gives the printed slot odds over 100k draws', () => {
-    const o = B.giftStreamOdds(cfg, mergeState(cfg), 100000);
+    const o = B.giftStreamOdds(cfg, mergeState(cfg, { chains: [{ c: 0 }, { c: 1 }] }), 100000);
     expect(o.n).toBeGreaterThanOrEqual(100000);
     expect(Math.abs(o.coins / o.n - cfg.merge.gift.odds.coins)).toBeLessThan(0.005);
     expect(Math.abs(o.spark / o.n - cfg.merge.gift.odds.spark)).toBeLessThan(0.005);
