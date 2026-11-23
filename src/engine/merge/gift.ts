@@ -16,12 +16,12 @@
  */
 import { commitCash } from './actions';
 import { currentMods } from './lanterns';
-import { baseTier, paceUnit, roundCost, streamValue } from './params';
+import { baseTier, paceUnit, roundCoins, streamValue } from './params';
 import type { GiftBox, GiftSlot, MergeConfig, MergeEvent, MergeGame } from './types';
 
 /** The coin slot's amount of a box earned now (5.5, M24): roundCoins(coinPace × U). */
 export function giftCoinAmount(cfg: MergeConfig, g: MergeGame): number {
-  return roundCost(cfg, cfg.merge.gift.coinPace * paceUnit(cfg, g));
+  return roundCoins(cfg, cfg.merge.gift.coinPace * paceUnit(cfg, g));
 }
 
 /** The box with lifetime index `n` if it were earned in state `g`: pure, the gift stream's values only. */

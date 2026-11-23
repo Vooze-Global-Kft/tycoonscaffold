@@ -602,7 +602,7 @@ def merge_puff(rng, k):
     on = rattle_times(rng_for('night', 'rattle'), 0.0, P['rhz'], k)
     d_pff = on[-1] + 0.045
     m = Mix()
-    m.add(P['clink'] * lid_clink(rng_for('night', 'lid'), 1.0, j / 7.0))
+    m.add(P['clink'] * (1.6 if k == 1 else 1.0) * lid_clink(rng_for('night', 'lid', k), 1.0, j / 7.0))      # tier 1: the lid is most of it
     m.add(pff(rng_for('night', 'pff'), d_pff, P['f1'] * P['f1g'] ** j, P['f2'] * P['f2g'] ** j, q1=P['q1'], q2=P['q2'],
               attack_ms=3.0, tau=P['tau'] * d_pff + 0.01, bal=P['bal0'] + P['bald'] * j), 0.003)
     nl = ns(d_pff)
@@ -696,12 +696,12 @@ def return_(c):
     return m.out()
 
 
-@night_recipe('drop', length=0.11, loud_db=QUIET)
+@night_recipe('drop', length=0.15, loud_db=QUIET)
 def drop(c):
-    """A tiny charcoal crackle as the gear drops a good: six pops in 70 ms over an ember hiss.
-    Quiet (tier -4, catalogue volume 0.22): it plays every 5 s per stall, for an hour."""
+    """A tiny charcoal crackle as the gear drops a good: five sparse pops in 100 ms over a faint
+    ember hiss. Quiet (tier -4, catalogue volume 0.22): it plays every 5 s per stall, for an hour."""
     c.accent(0.0)
-    return charcoal(c.rng, 0.1, pops=6, vel=1.0, ember=0.45)
+    return charcoal(c.rng, 0.14, pops=5, vel=1.0, ember=0.1)
 
 
 # --- tickets and coins ------------------------------------------------------------------------------
@@ -759,11 +759,11 @@ def basket_rustle(rng, dur=0.3):
     600 to 2,800 Hz), the creak of the weave at each clump (a short resonant noise burst at 600 to
     1,000 Hz, Q 6) and the cloth lining rubbed under it (a stick-slip rub, 400 to 1,100 Hz)."""
     m = Mix()
-    for t, d, v in ((0.0, 0.07, 0.8), (0.09, 0.08, 1.0), (0.19, 0.09, 0.6)):
+    for t, d, v in ((0.0, 0.05, 0.8), (0.1, 0.05, 1.0), (0.2, 0.05, 0.6)):
         m.add(v * crinkle(rng, d, 900.0, 600.0, 2800.0, density=[(0, 1.0), (d, 0.1)], sigma=0.6, glen_ms=(0.6, 2.2)), t)
-        nc = ns(0.035)
-        m.add(0.6 * v * bandpass(white(nc, rng), rng.uniform(600.0, 1000.0), 6.0) * decay(nc, 1.0, 0.009), t + 0.01)
-    m.add(0.45 * cloth_rub(rng, dur, 400.0, 1100.0, 26.0, 0.8))
+        nc = ns(0.045)
+        m.add(1.0 * v * bandpass(white(nc, rng), rng.uniform(600.0, 1000.0), 6.0) * decay(nc, 1.0, 0.012), t + 0.01)
+    m.add(0.35 * cloth_rub(rng, dur, 400.0, 1100.0, 22.0, 0.9))
     return m.out()
 
 
@@ -853,9 +853,9 @@ def upgrade(c):
         j = min(n, i + k)
         gate[i:j] = np.maximum(gate[i:j], shape[:j - i])
         tt += 1.0 / rate
-        rate = min(rate * 1.35, 40.0)
+        rate = min(rate * 1.3, 32.0)
     env = points([(0, 0.5), (0.01, 0.7), (d * 0.85, 1.0), (d, 0.0)], n)
-    m.add(soft(y * (0.15 + 0.85 * gate) * env, 2.0))
+    m.add(soft(y * gate * env, 2.0))
     m.add(0.35 * sizzle(c.sub('s'), 0.05, 400.0), d - 0.01)
     c.accent(0.0)
     return m.out()
@@ -863,13 +863,13 @@ def upgrade(c):
 
 @night_recipe('minder_hire', length=0.55)
 def minder_hire(c):
-    """A cloth bow: an apron swishing down as the minder bows (2.2 -> 0.7 kHz), a soft felt pat at
-    the bottom, and a smaller swish back up."""
+    """A cloth bow: the minder's apron rubbed down as they bow (a stick-slip rub that slows, 500 to
+    1,400 Hz), a soft felt pat at the bottom, and a lighter, quicker rub back up."""
     m = Mix()
-    m.add(cloth(c.sub('down'), 0.24, [(0, 2200.0), (0.24, 700.0)], q=0.75, grain_hz=60.0,
-                env=points([(0, 0.5), (0.02, 1.0), (0.24, 0.1)], ns(0.24))))
+    m.add(cloth_rub(c.sub('down'), 0.24, 500.0, 1400.0, 26.0, 0.85,
+                    env=points([(0, 0.5), (0.02, 1.0), (0.24, 0.1)], ns(0.24)), accel=0.5))
     m.add(0.7 * felt_stamp(c.sub('pat'), 1.0, 0.7), 0.24)
-    m.add(0.6 * cloth(c.sub('up'), 0.2, [(0, 800.0), (0.2, 1700.0)], q=0.75, grain_hz=60.0), 0.3)
+    m.add(0.6 * cloth_rub(c.sub('up'), 0.18, 650.0, 1500.0, 36.0, 0.8), 0.3)
     c.accent(0.0, 0.24)
     return m.out()
 

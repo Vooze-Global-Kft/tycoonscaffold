@@ -69,8 +69,10 @@ export { mergeOffline, mergeIncome, mergeActiveIncome, awayReportAlone, mergeAwa
 // =============================================================================================
 
 // --- 2.7 tickets (ORDERS) ---
-export { missing, popsNeeded, goodsAtHand } from './merge/missing';
-export { drawTicket, drawParade, scriptedTicket } from './merge/draw';
+export { missing, missingDetail, popsNeeded, goodsAtHand } from './merge/missing';
+export type { MissingDetail } from './merge/missing';
+export { drawTicket, drawParade, scriptedTicket, checkBounds } from './merge/draw';
+export type { BoundFailures } from './merge/draw';
 
 // --- 2.8 the Festival (ORDERS) ---
 export { festivalFor, festivalLineFilled, festivalPurse, canCloseSeason } from './merge/festival';

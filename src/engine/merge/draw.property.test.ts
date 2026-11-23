@@ -19,7 +19,7 @@
  * lantern and character cases set their numbers here and do not depend on META's unfinished body.
  */
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { freshState, mergeTestConfig } from '../fixtures/merge';
 import { rngFloat } from '../rng';
@@ -183,7 +183,7 @@ function randomState(r: Rand, kind: Kind): Built {
   const step = cfg.merge.gear.step;
   const chains = BASE.merge.chains.map((ch, c) => {
     if (c >= nOpen) return { ...ch, open: false, best: 0, shelf: [] as number[] };
-    const gear = kind === 'baseStep' ? 1 + step * int(r, 0, 3) : mid ? int(r, 3, 25) : int(r, 1, cfg.merge.costs.gearMaxLevel - (cfg.merge.costs.gearMaxLevel > 40 ? 1 : 0));
+    const gear = kind === 'baseStep' ? 1 + step * int(r, 0, 3) : mid ? int(r, 3, 25) : int(r, 1, Math.min(40, cfg.merge.costs.gearMaxLevel));
     return { ...ch, open: true, gear, stall: int(r, 1, 12), minder: int(r, 0, 4), shelf: [] as number[], best: 1 };
   });
   let g: MergeGame = { ...BASE, stats: { ...BASE.stats, playSeconds }, merge: { ...BASE.merge, season, seasonStartedAt: playSeconds - seasonClock, board, shuttersOpened, chains, counters: [], script: 'done', gift: { ...BASE.merge.gift, pendingGoods: [] }, draws: { ...BASE.merge.draws, ticket: int(r, 0, 1_000_000), parade: int(r, 0, 1_000_000) } } };
@@ -203,6 +203,12 @@ function randomState(r: Rand, kind: Kind): Built {
   const tierOf = (c: number) => {
     const b = P.chains[c].base;
     const best = chains2[c].best;
+    if (mid) {
+      // Mid-game boards as play leaves them: mostly fresh drops and their first merges, a few higher goods.
+      let k = Math.min(b, best);
+      while (k < best && r() < 0.5) k++;
+      return k;
+    }
     return r() < 0.15 ? int(r, 1, best) : int(r, Math.min(b, best), best);
   };
   const board2 = g.merge.board.slice();
@@ -257,10 +263,12 @@ interface Tally {
   stretch: number;
   lines: number;
   payable: number;
+  /** Why the last candidate of a "Setting up…" failed: a, b output, b hand, c, d. */
+  setupWhy: Record<string, number>;
 }
 
 function newTally(): Tally {
-  return { states: 0, drawn: 0, setups: 0, setupsByKind: {}, mismatches: [], breaches: [], steps: { draw: 0, lower: 0, dropLine: 0, redraw: 0 }, ticketsWithStep: { draw: 0, lower: 0, dropLine: 0, redraw: 0 }, lineCounts: [0, 0, 0, 0], tiersAboveBase: new Array(9).fill(0), stretch: 0, lines: 0, payable: 0 };
+  return { states: 0, drawn: 0, setups: 0, setupsByKind: {}, mismatches: [], breaches: [], steps: { draw: 0, lower: 0, dropLine: 0, redraw: 0 }, ticketsWithStep: { draw: 0, lower: 0, dropLine: 0, redraw: 0 }, lineCounts: [0, 0, 0, 0], tiersAboveBase: new Array(9).fill(0), stretch: 0, lines: 0, payable: 0, setupWhy: {} };
 }
 
 /** Payable from stock: every line has its own exact good on the board now (one drag each). */
@@ -294,6 +302,8 @@ function checkOne(b: Built, tally: Tally, i: number, full: boolean) {
     }
   }
   if (!out.ticket) {
+    const last = out.trace[out.trace.length - 1]?.failures;
+    if (last) for (const k of ['a', 'bOutput', 'bHand', 'c', 'd'] as const) if (last[k]) tally.setupWhy[k] = (tally.setupWhy[k] ?? 0) + 1;
     tally.setups++;
     kindTally[0]++;
     return;
@@ -348,7 +358,7 @@ describe('drawTicket over 10^5 random valid states (2.7, 10.2)', () => {
   it('0 breaches of (a) to (d1), the verdict re-checked after every fallback step, every ticket fillable', () => {
     const tally = newTally();
     const r = gen(777);
-    const N = 100_000;
+    const N = Number(process.env.DRAW_N ?? 100_000);
     for (let i = 0; i < N; i++) checkOne(randomState(r, KINDS[i % KINDS.length]), tally, i, true);
     modsOverride.value = null;
     expect(tally.mismatches).toEqual([]);
@@ -358,7 +368,7 @@ describe('drawTicket over 10^5 random valid states (2.7, 10.2)', () => {
     const byKind = Object.entries(tally.setupsByKind)
       .map(([k, [s, n]]) => `${k} ${((100 * s) / n).toFixed(1)}%`)
       .join(', ');
-    console.log(`[draw.property] ${N} random states: "Setting up…" ${(100 * share).toFixed(2)}% (${byKind}); steps ${JSON.stringify(tally.steps)}`);
+    console.log(`[draw.property] ${N} random states: "Setting up…" ${(100 * share).toFixed(2)}% (${byKind}); steps ${JSON.stringify(tally.steps)}; setting up fails ${JSON.stringify(tally.setupWhy)}`);
     // Every kind of state produced tickets.
     for (const [k, [s, n]] of Object.entries(tally.setupsByKind)) expect(s, k).toBeLessThan(n);
   }, 600_000);
@@ -367,19 +377,24 @@ describe('drawTicket over 10^5 random valid states (2.7, 10.2)', () => {
 describe('the draw: the scripted tickets, the Parade, the stream, the room check', () => {
   it('the scripted fox and hedgehog are exempt from (d) only', () => {
     modsOverride.value = null;
-    const g = freshState(cfg);
-    for (const which of ['fox', 'hedgehog'] as const) {
-      const t = scriptedTicket(cfg, which, 1);
-      expect(t.scripted).toBe(true);
-      const exempt = checkBounds(cfg, g, 1, t.lines, { scripted: true });
-      const normal = checkBounds(cfg, g, 1, t.lines);
-      expect(normal.d, which).toBe(true);
-      expect({ ...normal, d: false }).toEqual(exempt);
-    }
+    const g0 = freshState(cfg);
+    // At the opening (gear level 1, b = 1) both lines keep (d1) anyway; with the Grill's gear at a
+    // base step (b = 2, a seasoned start) the fox's Twin Skewer breaks (d1), and only (d) is waived.
+    const g = { ...g0, merge: { ...g0.merge, chains: g0.merge.chains.map((ch, c) => (c === 0 ? { ...ch, gear: 1 + cfg.merge.gear.step, best: 2 } : ch)) } };
+    const fox = scriptedTicket(cfg, 'fox', 1);
+    expect(fox.scripted).toBe(true);
+    expect(checkBounds(cfg, g0, 1, fox.lines).d).toBe(false);
+    const normal = checkBounds(cfg, g, 1, fox.lines);
+    const exempt = checkBounds(cfg, g, 1, fox.lines, { scripted: true });
+    expect(normal.d).toBe(true);
+    expect(exempt).toEqual({ ...normal, d: false });
+    const hedgehog = scriptedTicket(cfg, 'hedgehog', 2);
+    expect(hedgehog.scripted).toBe(true);
+    expect(hedgehog.lines).toEqual([{ c: 0, k: 3, filled: false }]);
     // (a) still holds for them: a Glazed Skewer needs best 2, which the first merge makes (2.7).
-    const atStart = checkBounds(cfg, g, 1, scriptedTicket(cfg, 'hedgehog', 1).lines, { scripted: true });
+    const atStart = checkBounds(cfg, g0, 1, scriptedTicket(cfg, 'hedgehog', 1).lines, { scripted: true });
     expect(atStart.a).toBe(true);
-    const afterMerge = { ...g, merge: { ...g.merge, chains: g.merge.chains.map((ch, c) => (c === 0 ? { ...ch, best: 2 } : ch)) } };
+    const afterMerge = { ...g0, merge: { ...g0.merge, chains: g0.merge.chains.map((ch, c) => (c === 0 ? { ...ch, best: 2 } : ch)) } };
     expect(checkBounds(cfg, afterMerge, 1, scriptedTicket(cfg, 'hedgehog', 1).lines, { scripted: true }).a).toBe(false);
     // Exempt from (d) only: on a board too small for it, (c) still refuses it.
     const tiny = { ...afterMerge, merge: { ...afterMerge.merge, board: afterMerge.merge.board.map((cell, i) => (cell === null && i > 25 ? ('block' as const) : cell)) } };
@@ -428,7 +443,9 @@ describe('the draw: the scripted tickets, the Parade, the stream, the room check
 
   it('the stream decides the ticket: a different position gives other tickets, the same position the same', () => {
     const r = gen(99);
-    const b = randomState(r, 'midGame');
+    let b = randomState(r, 'midGame');
+    // A state that has room for a ticket (an empty board with three stalls).
+    while (!drawTicket(cfg, b.g, b.counter).ticket || b.g.merge.counters.some((ct) => ct.ticket)) b = randomState(r, 'midGame');
     modsOverride.value = null;
     const seen = new Set<string>();
     for (let n = 0; n < 50; n++) {
@@ -460,7 +477,7 @@ describe('the draw: the scripted tickets, the Parade, the stream, the room check
     }
     modsOverride.value = null;
     // Source: draw.ts counts no free cells itself.
-    const src = readFileSync(join(__dirname, 'draw.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+    const src = readFileSync(fileURLToPath(new URL('./draw.ts', import.meta.url)), 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
     expect(src).not.toMatch(/freeCells\s*\(|\.F\b|=== null/);
   });
 });
@@ -469,16 +486,16 @@ describe('measurements on mid-game states (for the handover notes)', () => {
   it('line counts, tiers, fallback steps and tickets payable from stock over 10^5 draws', () => {
     const tally = newTally();
     const r = gen(2026);
-    const N = 100_000;
+    const N = Number(process.env.DRAW_N ?? 100_000);
     for (let i = 0; i < N; i++) checkOne(randomState(r, 'midGame'), tally, i, false);
     modsOverride.value = null;
     const pct = (n: number, d: number) => `${((100 * n) / Math.max(1, d)).toFixed(1)}%`;
     const report = [
-      `[draw.measure] ${N} mid-game draws (3 to 4 stalls, gear 3 to 25, season clock 10 to 90 min, board 40 to 80 % full):`,
+      `[draw.measure] ${N} mid-game draws (3 to 4 stalls, gear 3 to 25, season clock 10 to 90 min, board 40 to 80 % full, tiers falling off by half per step above the base):`,
       `  tickets ${tally.drawn}, "Setting up…" ${pct(tally.setups, N)}`,
       `  lines 1/2/3: ${pct(tally.lineCounts[1], tally.drawn)} / ${pct(tally.lineCounts[2], tally.drawn)} / ${pct(tally.lineCounts[3], tally.drawn)}`,
       `  tier above base (k − b) 1..7: ${tally.tiersAboveBase.slice(1, 8).map((n) => pct(n, tally.lines)).join(' ')}; stretch lines ${pct(tally.stretch, tally.lines)}`,
-      `  draws where a step fired: lower ${pct(tally.ticketsWithStep.lower, tally.drawn)} of tickets (${tally.steps.lower} steps), dropLine ${pct(tally.ticketsWithStep.dropLine, tally.drawn)} (${tally.steps.dropLine}), redraw ${pct(tally.ticketsWithStep.redraw, tally.drawn)} (${tally.steps.redraw}); setting up ${tally.setups}`,
+      `  draws where a step fired: lower ${pct(tally.ticketsWithStep.lower, tally.drawn)} of tickets (${tally.steps.lower} steps), dropLine ${pct(tally.ticketsWithStep.dropLine, tally.drawn)} (${tally.steps.dropLine}), redraw ${pct(tally.ticketsWithStep.redraw, tally.drawn)} (${tally.steps.redraw}); setting up ${tally.setups}, its last candidate failing ${JSON.stringify(tally.setupWhy)}`,
       `  payable from stock at the draw (each line's exact good on the board): ${pct(tally.payable, tally.drawn)}`,
     ].join('\n');
     console.log(report);
