@@ -756,3 +756,22 @@ Shared and tooling:
 ### 10.3 Before declaring done
 
 Run `npm run typecheck`, `npm test`, `npm run validate` (with the merge bot gates), `npm run lint:worklets`, `npm run check:bundle` for all three games, and `npm run check:bundle -- --export` before a release. Look at the game in the web preview at both phone sizes.
+
+---
+
+## 11. Lead decisions
+
+Decisions taken after revision 2. A decision here overrides the text above where they differ; the engineer who touches that text brings it in step.
+
+- **M1. The hour-0 commit is a skeleton by one engineer.** It holds the engine interface (`src/engine/merge.ts`, types and every public signature, bodies that throw "not built yet"), the mode wiring (9.2, P3's shared changes), the merge schema with the starting values of 2.2, and a placeholder `games/night-market/` folder so the web preview starts. The placeholder game.json carries the starting values and the word PLACEHOLDER in its description; `build-night.py` replaces it whole after the numbers gate. Until the bot exists, `validate` runs for night-market without a bot.
+- **M2. Which targets fail a build, and when.** Hard from the first run, because they are promises and not tastes: gate 4 (feasibility and honesty), the "six sources" part of gate 8, the "closed form equals event stepping" part of gate 9, and gates 12, 13 and 14. Every pacing band (gates 1, 2, 3, 5, 6, 7, the shares of gate 8, the band of gate 9, and gates 10, 11 and 15) is an aim: `build-night.py` tunes toward it inside the ranges of section 2. After the first full run the lead sets each band once from what the tuned game measures, writes it here, and from then on it is a hard guard. A band is not moved a second time without a rule change.
+- **M3. The hand must have work.** A new measure, reported per minute for minutes 0 to 10: useful actions the active bot had available (a merge, a delivery or an affordable advised purchase), and the longest wait with none. Aim: at least 20 a minute from minute 1 on, and no wait longer than 8 s in minutes 0 to 10. With one stall dropping 12 goods a minute this is likely missed by the starting values; the prototype measures it and proposes the smallest change (more goods on the opening board, goods behind the first shutters, T at its lower bound for the first stall only). The lead picks one before the rules are built.
+- **M4. Bound (d2) is on trial.** The prototype reports, with and without (d2): the share of tickets filled within 2 s of the draw, the fill-time distribution, the "Setting up…" share, and what a hoarder and a "Not tonight whenever ready" player gain. As specified unless the numbers say it costs more than it protects; the lead decides before the rules are built.
+- **M5. Cut from the first version: the Pocket.** No Pocket slots, no `pocket` state, no Pocket drop target, no second bottom-row layout. Lantern 14 (open all 26 shutters) gives "gift boxes hold a fourth slot" (new: yes). Lantern 16 (fill 2,000 tickets) gives "Lucky 1 in 16" (the better of this and lantern 7 applies). The Pocket moves to 9.3 Later.
+- **M6. Bots in the rules phase:** active, lazy, deliver-only, passive, check-in, idle, and the four adversarial habits as switches on the active bot. The hint-follower and tutorial bots are not built; the tutorial script is tested with the hints in the screens phase, and "first ticket paid within 15 s" is measured by the active bot playing the scripted opening.
+- **M7. `cosmetic` joins the shared product-kind enum** (additive; the first two games' data and tests do not change). Late Hours stays one `unlock` whose text names both of its effects.
+- **M8. The away report is the mode's own sheet** (as the second game's Shift Log is its own), with `offlineAdMultiplier` 1.5 and the label "Watch ad: +50 %". No shared popup text changes.
+- **M9. The hit test resolves at the finger point** (1.3), with the dragged good drawn 40 pt above it. To be looked at again after the owner's first phone test.
+- **M10. Ad cooldowns run on the play clock** and say so ("ready after 4 min of play").
+- **M11. The title "Lantern Row" stands unless the store search finds a live game it would be confused with**; the search uses generic terms only and its verdicts go to `games/night-market/store/NAME-SEARCH.md`.
+- **M12. Review rounds are capped:** one audit of the rules with one pass of fixes, one review of the screens with one pass of fixes. What is still open after that is listed for the owner as a known limit, not chased.
