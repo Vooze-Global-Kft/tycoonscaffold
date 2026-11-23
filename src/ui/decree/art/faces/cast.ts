@@ -49,11 +49,11 @@ const ROWS: [string, CastGroup, string][] = [
   //  id            group           tone head   eyes    brows     nose     mouth  facial   glasses extra    hair     hairCol  hat      hatCol   garment    cloth      accent     prop        propAcc
   // You: six faces, at least four tones and both sexes (spec 7.3). The rosette is your vanity.
   ['bramble',      'player',       't2 egg    dot     arched    button   smile  none     none    none     bun      chestnut -        -        cardigan   sage       plum       rosette     violet'],
-  ['fennel',       'player',       't5 long   lidded  level     straight smirk  brush    square  none     crop     black    -        -        suit       navy       ochre      rosette     violet'],
+  ['fennel',       'player',       't5 square lidded  level     straight smirk  none     none    none     swept    brown    -        -        cardigan   copper     cream      rosette     violet'],
   ['quill',        'player',       't6 heart  dot     quizzical snub     smile  none     round   earrings cloud    black    -        -        bow        slate      terracotta rosette     violet'],
-  ['marchpane',    'player',       't1 square crinkle bushy     bulb     smile  none     round   freckles fringe   sandy    -        -        coat       walnut     teal       rosette     violet'],
+  ['marchpane',    'player',       't1 square crinkle bushy     bulb     smile  beard    round   freckles curly    sandy    -        -        coat       walnut     teal       rosette     violet'],
   ['tuttle',       'player',       't4 soft   dot     level     pointed  flat   none     cat     none     waves    auburn   -        -        pearls     plum       dove       rosette     violet'],
-  ['larkspur',     'player',       't3 pear   wide    worried   snub     o      curl     none    none     quiff    brown    -        -        scarf      teal       ochre      rosette     violet'],
+  ['larkspur',     'player',       't3 pear   dot     worried   snub     smile  brush    none    none     quiff    brown    -        -        scarf      teal       ochre      rosette     violet'],
   // Advisors
   ['spinwell',     'advisor',      't3 long   dot     arched    straight grin   none     none    none     part     black    -        -        suit       charcoal   violet     camera      charcoal'],
   ['abacus',       'advisor',      't1 egg    lidded  stern     pointed  pursed none     half    earrings bun      grey     -        -        cardigan   slateBlue  dove       abacus      walnut'],
@@ -81,17 +81,17 @@ const ROWS: [string, CastGroup, string][] = [
   ['goss',         'lobbyist',     't4 soft   dot     arched    button   smile  none     none    earrings bun      auburn   -        -        pearls     teal       dove       fountain    slate'],
   ['slake',        'lobbyist',     't3 square wide    quizzical snub     grin   none     none    none     crop     brown    hatOnHat ochre    waistcoat  cream      terracotta hatbox      terracotta'],
   // Others
-  ['minute',       'other',        't2 pear   lidded  level     long     pursed sideburns square none     bald     white    -        -        suit       charcoal   plum       clipboard   walnut'],
+  ['minute',       'other',        't2 pear   lidded  level     long     pursed beard    square  none     bald     white    -        -        suit       charcoal   plum       clipboard   walnut'],
   ['tallow',       'other',        't6 egg    dot     level     straight flat   none     round   none     bun      grey     -        -        cardigan   navy       dove       envelope    violet'],
   // Ministers
   ['pockle',       'minister',     't3 square dot     arched    button   smile  none     none    none     pixie    grey     -        -        coat       terracotta cream      magnifier   ochre'],
   ['pellow',       'minister',     't1 soft   crinkle level     snub     smile  none     none    cheeks   waves    chestnut -        -        jumper     slateBlue  cream      wateringCan slateBlue'],
-  ['ferrule',      'minister',     't4 square  lidded  stern     pointed  flat   sideburns half   none     cloud    grey     -        -        suit       charcoal   sage       cane        walnut'],
+  ['ferrule',      'minister',     't4 square lidded  stern     pointed  flat   beard    half    none     cloud    grey     -        -        suit       charcoal   sage       cane        walnut'],
   ['hush',         'minister',     't4 heart  lidded  level     button   pursed none     cat     none     bob      grey     -        -        pearls     sage       dove       teacup      sage'],
   ['bole',         'minister',     't2 square wide    bushy     bulb     grin   none     round   cheeks   pixie    auburn   -        -        bow        copper     ochre      bunting     copper'],
   ['gusset',       'minister',     't6 egg    dot     level     snub     smile  beard    none    none     crop     black    trilby   plum     jumper     plum       cream      lifebuoy    terracotta'],
   ['wren',         'minister',     't5 long   dot     arched    pointed  smile  none     round   earrings ponytail black    -        -        turtleneck ochre      dove       windsock    terracotta'],
-  ['tamp',         'minister',     't1 square close   stern     straight flat   none     square  none     crop     sandy    -        -        jumper     dove       moss       level       ochre'],
+  ['tamp',         'minister',     't1 square close   stern     straight flat   brush    square  none     crop     sandy    -        -        jumper     dove       moss       level       ochre'],
   ['nibley',       'minister',     't3 pear   wide    worried   snub     o      none     half    none     waves    fair     beret    plum     coat       plum       slate      boat        slateBlue'],
   // Rivals: an individual with a hobby (the prop), never a party or a colour
   ['stitchley',    'rival',        't4 egg    dot     arched    button   smile  none     none    earrings bob      auburn   flowers  plum     coat       dove       plum       none        plum'],
@@ -99,7 +99,7 @@ const ROWS: [string, CastGroup, string][] = [
   ['setter',       'rival',        't6 heart  dot     quizzical pointed  smirk  none     cat     none     pixie    grey     -        -        turtleneck slate      dove       crossword   slate'],
   ['waft',         'rival',        't3 soft   crinkle level     bulb     smile  beard    none    none     wisps    white    -        -        suit       navy       terracotta spoon       terracotta'],
   ['mallowby',     'rival',        't1 square wide    arched    snub     grin   none     none    freckles long     sandy    bobble   teal     jumper     teal       cream      accordion   terracotta'],
-  ['noonday',      'rival',        't5 pear   lidded  level     straight flat   goatee   none    none     bald     black    -        -        cardigan   moss       ochre      sundial     slate'],
+  ['noonday',      'rival',        't5 pear   lidded  level     straight flat   none     none    none     bald     black    -        -        cardigan   moss       ochre      sundial     slate'],
   ['kalends',      'rival',        't4 long   dot     worried   long     o      none     round   none     swept    grey     -        -        cardigan   walnut     slateBlue  calendar    terracotta'],
   ['strop',        'rival',        't6 square lidded  stern     straight smirk  none     none    earrings bun      white    -        -        bow        navy       dove       chair       plum'],
   ['ringrose',     'rival',        't2 heart  wide    arched    button   o      none     half    none     flick    grey     -        -        pearls     violet     dove       handbell    ochre'],

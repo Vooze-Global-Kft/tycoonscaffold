@@ -26,13 +26,13 @@ import { landNext } from './draw';
 import { scheduleFollowUp } from './followup';
 import { appoint, sendAway } from './ministers';
 import { standIn } from './notBuilt';
-import { commitCash } from './params';
+import { commitCash, EPS } from './params';
 import { checkScandal, countDownScandal, endScandal } from './scandal';
 import { costOf, formVoid } from './size';
-import { buy, slipFor } from './slips';
+import { buy, canBuy, slipFor } from './slips';
 import { checkStrikes, countDownStrikes, endStrike } from './strike';
 import { checkTermEnd, countDay } from './term';
-import { DAY_KINDS, EPS_CASH, type Choice, type DecreeConfig, type DecreeEvent, type DecreeGame, type DeskItem } from './types';
+import { DAY_KINDS, type Choice, type DecreeConfig, type DecreeEvent, type DecreeGame, type DeskItem } from './types';
 
 const withDecree = (g: DecreeGame, patch: Partial<DecreeGame['decree']>): DecreeGame => ({ ...g, decree: { ...g.decree, ...patch } });
 
@@ -46,13 +46,10 @@ export function decide(cfg: DecreeConfig, g: DecreeGame, choice: Choice, clock: 
   const item = g.decree.desk;
   if (!item) return g;
   if (item.type === 'slip') {
-    if (choice === 'sign') {
-      const v = slipVoid(cfg, g, item);
-      if (!v && buy(cfg, g, item.slip.purchase, item.slip.price, []) === g) return g;
-    }
-    return commitItem(cfg, commitPending(cfg, g, clock, events), item, choice, clock, events);
+    if (choice === 'sign' && !slipVoid(cfg, g, item) && canBuy(cfg, g, item.slip.purchase, item.slip.price) !== null) return g;
+    return commitItem(cfg, g, item, choice, clock, events);
   }
-  if (choice === 'sign' && g.cash + EPS_CASH < costOf(item.shown.sign) && !formVoid(cfg, g, item.shown.sign)) return g;
+  if (choice === 'sign' && g.cash + EPS < costOf(item.shown.sign) && !formVoid(cfg, g, item.shown.sign)) return g;
   if (choice === 'sign' && isDay(item)) {
     events.push({ type: 'signed', paper: item.paper.id });
     return withDecree(g, { desk: null, pending: { item, until: clock + cfg.decree.desk.takeBackSeconds } });

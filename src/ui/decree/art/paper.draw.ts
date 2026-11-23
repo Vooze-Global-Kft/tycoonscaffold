@@ -85,13 +85,24 @@ export function drawStrip(c: SkCanvas, w: number, h: number, side: StripSide, o:
   }
   const band = rrect(0, 0, w, h, 4);
   c.drawPath(band, fill(mix(DESK.paperLight, pale, 0.55 + 0.45 * a)));
-  if (a > 0) c.drawPath(band, stroke(ink, 1 + a));
-  else c.drawPath(band, stroke(alpha(ink, 0.45), 0.8));
-  // the edge rule on the side that faces the tray or the drawer
-  const ey = side === 'sign' ? 1.5 : h - 1.5;
-  c.drawPath(line(6, ey, w - 6, ey), stroke(ink, 2));
   const r = o.rows ?? { title: 4, chip1: 4 + h * 0.21, chip2: 4 + h * 0.47, note: 4 + h * 0.74 };
-  c.drawPath(line(8, r.chip1 - 1, w - 8, r.chip1 - 1), stroke(alpha(ink, 0.35), 0.7));
+  // Cues that are not colour (greyscale, colour blindness): SIGN is SOLID (a solid border, a solid
+  // double rule at its edge, a solid heavy rule under its heading); IF STUDIED is BROKEN (a dotted
+  // border and edge rule, a hatched band behind its heading, a dotted rule under it).
+  if (side === 'sign') {
+    c.drawPath(band, stroke(a > 0 ? ink : alpha(ink, 0.8), a > 0 ? 1.4 + a : 1.3));
+    c.drawPath(line(6, 1.6, w - 6, 1.6), stroke(ink, 2.2));
+    c.drawPath(line(6, 5, w - 6, 5), stroke(ink, 1));
+    c.drawPath(line(8, r.chip1 - 1, w - 8, r.chip1 - 1), stroke(alpha(ink, 0.8), 1.4));
+  } else {
+    c.save();
+    clip(c, rrect(0, r.title - 2, w, r.chip1 - r.title + 1, 3));
+    hatch(c, rect(0, r.title - 2, w, r.chip1 - r.title + 1), alpha(ink, 0.22), 4, 0.9, 45);
+    c.restore();
+    c.drawPath(band, dashed(a > 0 ? ink : alpha(ink, 0.8), a > 0 ? 1.4 + a : 1.1, 1.6, 2.6));
+    c.drawPath(line(6, h - 1.6, w - 6, h - 1.6), dashed(ink, 2, 2, 3));
+    c.drawPath(line(8, r.chip1 - 1, w - 8, r.chip1 - 1), dashed(alpha(ink, 0.7), 1, 1.4, 2.4));
+  }
   c.drawPath(line(8, r.note, w - 8, r.note), dashed(alpha(ink, 0.35), 0.7, 2, 2.4));
   // the arrow mark of the direction at the title row's right end
   const ax = w - 12;
@@ -274,63 +285,71 @@ export function picketSignBox(): Box {
   return { x: -26, y: -16, w: 52, h: 22 };
 }
 
+/** How crooked the front page's masthead is set (degrees; the masthead's words are drawn by the caller in the same tilt: at(c, centre of frontPageBoxes().masthead, 1, MASTHEAD_TILT, ...)). */
+export const MASTHEAD_TILT = -4.5;
+
 /**
  * The comic tabloid front page (2.8, 7.9): a paper of its own, w x h: a crooked masthead band, one
- * big headline zone (words by the caller: frontPageBoxes), a small plain photograph of a goose
- * standing (never holding anything, D12), a caption line, and NO columns of body text. Tinted a
- * little warmer than the desk papers so it reads as newsprint, never cream.
+ * big headline zone (words by the caller: frontPageBoxes), a small greyed halftone photograph of a
+ * goose sitting, seen from behind (at most a quarter of the paper's width; never holding anything,
+ * no flat colour, D12), a caption beside it, and NO columns of body text. Tinted a little warmer
+ * than the desk papers so it reads as newsprint, never cream.
  */
 export function drawFrontPage(c: SkCanvas, w: number, h: number, lift = 0): void {
   drawSheet(c, w, h, lift, mix(DESK.paper, DESK.paperShade, 0.25));
   const b = frontPageBoxes(w, h);
-  // masthead: a thick rule above and below, set crooked
-  at(c, b.masthead.x + b.masthead.w / 2, b.masthead.y + b.masthead.h / 2, 1, -2.2, (q) => {
-    q.drawPath(rect(-b.masthead.w / 2, -b.masthead.h / 2, b.masthead.w, 2.4), fill(LINE));
-    q.drawPath(rect(-b.masthead.w / 2, b.masthead.h / 2 - 1.2, b.masthead.w, 1.2), fill(LINE));
+  // masthead: a thick rule above and a thin one below, set visibly crooked (pasted up in a hurry)
+  at(c, b.masthead.x + b.masthead.w / 2, b.masthead.y + b.masthead.h / 2, 1, MASTHEAD_TILT, (q) => {
+    q.drawPath(rect(-b.masthead.w / 2, -b.masthead.h / 2 - 3, b.masthead.w, 3), fill(LINE));
+    q.drawPath(rect(-b.masthead.w / 2, b.masthead.h / 2, b.masthead.w, 1.2), fill(LINE));
   });
   // the scandal bar: brick (a scandal word's band; small)
   c.drawPath(rect(b.headline.x, b.headline.y - 6, 34, 3), fill(DESK.brick));
-  // the photograph
+  // the photograph: a small press photo with a white border
   const p = b.photo;
   c.drawPath(rect(p.x, p.y, p.w, p.h), fill(DESK.white));
-  const inner = { x: p.x + 3, y: p.y + 3, w: p.w - 6, h: p.h - 6 };
-  c.drawPath(rect(inner.x, inner.y, inner.w, inner.h), fill(DESK.slatePale));
+  const inner = { x: p.x + 2.5, y: p.y + 2.5, w: p.w - 5, h: p.h - 5 };
   c.save();
   c.clipRect({ x: inner.x, y: inner.y, width: inner.w, height: inner.h }, 1, true);
-  c.drawPath(rect(inner.x, inner.y + inner.h * 0.68, inner.w, inner.h), fill(DESK.slateLight));
-  at(c, inner.x + inner.w * 0.47, inner.y + inner.h * 0.9, (inner.h * 0.8) / 46, 0, drawGoosePhoto);
-  hatch(c, rect(inner.x, inner.y, inner.w, inner.h), alpha(DESK.slateDeep, 0.18), 2.2, 0.4);
+  c.drawPath(rect(inner.x, inner.y, inner.w, inner.h), fill(mix(DESK.slatePale, DESK.paperShade, 0.3)));
+  c.drawPath(rect(inner.x, inner.y + inner.h * 0.7, inner.w, inner.h), fill(DESK.slateLight));
+  at(c, inner.x + inner.w * 0.5, inner.y + inner.h * 0.92, (inner.h * 0.78) / 40, 0, drawGoosePhoto);
+  // the halftone: a regular dot screen over the whole print
+  const dots = builder();
+  for (let y = inner.y + 1; y < inner.y + inner.h; y += 2.2) for (let x = inner.x + ((y * 0.5) % 2.2); x < inner.x + inner.w; x += 2.2) dots.addCircle(x, y, 0.42);
+  c.drawPath(dots.build(), fill(alpha(DESK.slateDeep, 0.3)));
   c.restore();
   c.drawPath(rect(inner.x, inner.y, inner.w, inner.h), stroke(alpha(LINE, 0.6), 0.6));
-  // a caption rule under the photo, and a fold line
-  c.drawPath(line(p.x, p.y + p.h + 5, p.x + p.w * 0.7, p.y + p.h + 5), stroke(DESK.slateLight, 1.2));
+  // the caption's rule beside the photo, and a fold line
+  c.drawPath(line(b.caption.x, b.caption.y + b.caption.h + 3, b.caption.x + b.caption.w * 0.8, b.caption.y + b.caption.h + 3), stroke(DESK.slateLight, 1.2));
   c.drawPath(line(0, h * 0.5, w, h * 0.5), stroke(alpha(DESK.paperEdge, 0.5), 0.6));
 }
 
-/** The front page's boxes: the masthead's words, the headline's words, the photograph. */
+/** The front page's boxes: the masthead's words, the headline's words, the photograph (at most 25 % of the width), its caption (beside it). */
 export function frontPageBoxes(w: number, h: number): { masthead: Box; headline: Box; photo: Box; caption: Box } {
-  const m = { x: 12, y: 10, w: w - 24, h: Math.max(22, h * 0.09) };
-  const headline = { x: 14, y: m.y + m.h + 14, w: w - 28, h: Math.max(60, h * 0.26) };
-  const ph = Math.min(h * 0.34, 120);
-  const photo = { x: w / 2 - ph * 0.65, y: headline.y + headline.h + 8, w: ph * 1.3, h: ph };
-  const caption = { x: photo.x, y: photo.y + ph + 8, w: photo.w, h: 14 };
+  const m = { x: 12, y: 12, w: w - 24, h: Math.max(22, h * 0.09) };
+  const headline = { x: 14, y: m.y + m.h + 16, w: w - 28, h: Math.max(60, h * 0.26) };
+  const pw = Math.floor(w * 0.25);
+  const ph = Math.round(pw * 0.86);
+  const photo = { x: w - 16 - pw, y: headline.y + headline.h + 10, w: pw, h: ph };
+  const caption = { x: 16, y: photo.y + ph - 30, w: photo.x - 16 - 12, h: 14 };
   return { masthead: m, headline, photo, caption };
 }
 
-/** The goose of the writing as a small, plain press photograph: standing, side-on, holding nothing (D12). Base of its feet at the origin, about 46 tall. */
+/** The goose of the writing as a small, plain press photograph: sitting, seen from behind, holding nothing, in greys only (D12). Base at the origin, about 40 tall. */
 export function drawGoosePhoto(c: SkCanvas): void {
-  const body = builder().moveTo(-16, -12).quadTo(-20, -22, -10, -24).quadTo(4, -26, 12, -18).quadTo(16, -12, 10, -8).quadTo(0, -4, -12, -6).close().build();
-  const neck = builder().moveTo(6, -20).quadTo(10, -34, 8, -40).quadTo(9, -46, 14, -46).quadTo(18, -46, 18, -42).quadTo(14, -38, 13, -32).quadTo(12, -24, 12, -18).close().build();
-  const g = DESK.paperLight;
-  shape(c, body, g, 0.9);
-  shape(c, neck, g, 0.9);
-  c.drawPath(poly([18, -44, 23, -42.6, 18, -41]), fill(DESK.mustard));
-  c.drawPath(circle(14.6, -43.6, 0.9), fill(LINE));
-  c.drawPath(builder().moveTo(-8, -18).quadTo(0, -20, 6, -15).build(), stroke(alpha(LINE, 0.5), 0.8));
-  for (const x of [-4, 3]) {
-    c.drawPath(line(x, -6, x, 0), stroke(DESK.mustardDeep, 1.3));
-    c.drawPath(poly([x - 2.6, 0, x + 3, 0, x, -1.6]), fill(DESK.mustardDeep));
-  }
+  // the body from behind: a round, settled shape, wider than tall, the folded wings' line down its back
+  const body = builder().moveTo(-17, 0).quadTo(-20, -16, -8, -20).quadTo(0, -22, 8, -20).quadTo(20, -16, 17, 0).close().build();
+  shape(c, body, mix(DESK.paperLight, DESK.slateLight, 0.35), 0.8);
+  c.drawPath(builder().moveTo(0, -19).quadTo(-1.5, -10, 0, -2).build(), stroke(alpha(DESK.slateDeep, 0.6), 0.9));
+  c.drawPath(builder().moveTo(-12, -6).quadTo(-6, -12, -1, -16).build(), stroke(alpha(DESK.slateDeep, 0.35), 0.7));
+  c.drawPath(builder().moveTo(12, -6).quadTo(6, -12, 1, -16).build(), stroke(alpha(DESK.slateDeep, 0.35), 0.7));
+  // the tail, a small fan at the bottom centre
+  c.drawPath(poly([-3.4, -1, 0, 3, 3.4, -1]), fill(DESK.slate));
+  // the neck rising from behind, turned a little, the head a dark round shape (no beak in view)
+  const neck = builder().moveTo(-3, -19).quadTo(-4.6, -28, -2.6, -34).quadTo(0, -38, 2.6, -34).quadTo(3.6, -28, 3, -19).close().build();
+  shape(c, neck, DESK.slate, 0.8);
+  c.drawPath(oval(0.4, -36, 3.6, 3.2), fill(DESK.slateDeep));
 }
 
 /**
@@ -443,6 +462,68 @@ export function drawSignature(c: SkCanvas, face: string, progress = 1, k = 1, co
       q.drawPath(nibPath(s, 2.4, -38, end), fill(color));
     }
   });
+}
+
+/**
+ * Where the signature writes itself on the SIGN strip (4.3, and "a hint never covers a number"):
+ * the right part of the strip's TITLE row, which holds no chip: below the strip's double edge rule
+ * and above the first chip row, right of the heading's words and left of the direction chevron.
+ * `stripW` the strip's width, `chipTop` the first chip row's top, both in the strip's own
+ * coordinates (paperMetrics: sign.chips[0].y - sign.y). The box keeps the signature's look: at most
+ * twice as wide as its height allows.
+ */
+export function signatureBox(stripW: number, chipTop: number): Box {
+  const y = 6;
+  const h = Math.max(8, chipTop - 2 - y);
+  const right = stripW - 24;
+  const w = Math.min(right - stripW * 0.44, (h / SIGNATURE_BOX.h) * SIGNATURE_BOX.w * 2);
+  return { x: right - w, y, w, h };
+}
+
+/** The signature's strokes scaled into a box (nib width with them), as dense polylines. */
+function scaledStrokes(face: string, b: Box): { strokes: number[][]; nib: number } {
+  const sig = signatureOf(face);
+  const kx = b.w / SIGNATURE_BOX.w;
+  const ky = b.h / SIGNATURE_BOX.h;
+  const strokes = sig.strokes.map((s) => s.map((v, i) => (i % 2 === 0 ? b.x + v * kx : b.y + v * ky)));
+  return { strokes, nib: 2.4 * Math.max(0.55, Math.min(1.2, (kx + ky) / 2)) };
+}
+
+/**
+ * The signature revealed to `progress` inside a box (signatureBox on the SIGN strip): the same hand
+ * as drawSignature, stretched to the box. Lengths (and so the reveal) follow the box units of the
+ * hand, so the pace with distance does not change with the box.
+ */
+export function drawSignatureIn(c: SkCanvas, face: string, progress: number, b: Box, color: string = DESK.violet): void {
+  const sig = signatureOf(face);
+  const sc = scaledStrokes(face, b);
+  let left = Math.max(0, Math.min(1, progress)) * sig.total;
+  for (let i = 0; i < sc.strokes.length && left > 0; i++) {
+    const s = sc.strokes[i];
+    const take = Math.min(left, sig.lengths[i]);
+    left -= sig.lengths[i];
+    const end = take >= sig.lengths[i] ? s.length / 2 : indexAt(sig.strokes[i], take);
+    if (end < 1.01) continue;
+    c.drawPath(nibPath(s, sc.nib, -38, end), fill(color));
+  }
+}
+
+/** The bounds of the whole signature drawn in a box, the nib's width included (for the "never over a number" test). */
+export function signatureBounds(face: string, b: Box): Box {
+  const sc = scaledStrokes(face, b);
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const s of sc.strokes)
+    for (let i = 0; i < s.length; i += 2) {
+      x0 = Math.min(x0, s[i]);
+      x1 = Math.max(x1, s[i]);
+      y0 = Math.min(y0, s[i + 1]);
+      y1 = Math.max(y1, s[i + 1]);
+    }
+  const m = sc.nib / 2 + 0.5;
+  return { x: x0 - m, y: y0 - m, w: x1 - x0 + 2 * m, h: y1 - y0 + 2 * m };
 }
 
 /** The tip of the signature at `progress` (box units), for the nib scratch spark. */

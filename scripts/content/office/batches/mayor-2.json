@@ -44,7 +44,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A warm seat at the bus stop. We have waited a combined eleven years.",
+      "text": "A warm bus stop seat. Between us we have waited eleven years.",
       "subject": "buses",
       "butt": "thing",
       "shape": "statistic",
@@ -114,7 +114,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "text": "Give us the window seat at Till's Teas at 7:02. We will share a tea.",
+      "text": "Give us Till's Teas' window seat at 7:02. We will share one tea.",
       "subject": "buses",
       "butt": "thing",
       "shape": "undercut"
@@ -182,7 +182,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "swap",
-      "text": "The pavement by the shops is for looking in windows. Buses, opposite.",
+      "text": "Keep the shop pavement for window-gazing. Bus-watching is opposite.",
       "subject": "paperwork",
       "butt": "office",
       "shape": "form-misapplied"
@@ -193,10 +193,10 @@
       "club": "veg",
       "other": "shops",
       "archetype": "swap",
-      "text": "Lend us the Guild's hat stands for show day. The hats can sit down.",
+      "text": "Lend us the Guild's hat stands for show day. Hats can sit down.",
       "subject": "hats",
       "butt": "thing",
-      "shape": "undercut"
+      "shape": "literalism"
     },
     {
       "id": "may2-bus-chimes",
@@ -204,7 +204,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "fee",
-      "text": "We will pay for the clock tower to chime for every bus. Forty a day.",
+      "text": "We pay for the clock to chime for every bus: about forty a day.",
       "subject": "clocks",
       "butt": "thing",
       "shape": "statistic",
@@ -228,10 +228,10 @@
       "club": "bus",
       "other": "shops",
       "archetype": "fee",
-      "text": "We will hire the high street to read the timetable aloud. All day.",
+      "text": "We would hire the high street to read out the timetable. Then the footnotes.",
       "subject": "buses",
       "butt": "visitor",
-      "shape": "undercut",
+      "shape": "escalation",
       "portable": true
     },
     {
@@ -240,10 +240,21 @@
       "club": "shops",
       "other": "veg",
       "archetype": "fee",
-      "text": "Till's Teas will pay to sponsor the show cup. It becomes a teacup.",
+      "text": "Till's Teas would pay to sponsor the show cup. As a teacup.",
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "literalism"
+    },
+    {
+      "id": "may2-pumpkin-birthday",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "fee",
+      "text": "We will hire the hall for the pumpkin's birthday. It is one.",
+      "subject": "ceremonies",
+      "butt": "thing",
+      "shape": "undercut"
     },
     {
       "id": "may2-shelter-seedlings",
@@ -258,17 +269,6 @@
       "portable": true
     },
     {
-      "id": "may2-pumpkin-birthday",
-      "visitor": "gourdley",
-      "club": "veg",
-      "other": "shops",
-      "archetype": "fee",
-      "text": "We will pay for the hall on the prize pumpkin's birthday. It is one.",
-      "subject": "ceremonies",
-      "butt": "thing",
-      "shape": "undercut"
-    },
-    {
       "id": "may2-log-a-bus",
       "visitor": "kerb",
       "club": "bus",
@@ -276,29 +276,6 @@
       "archetype": "treat",
       "text": "Log a bus with us for the Drizzle, Mayor. We will say which bus.",
       "subject": "buses",
-      "butt": "self",
-      "shape": "photo-op"
-    },
-    {
-      "id": "may2-judge-window-week",
-      "visitor": "till",
-      "club": "shops",
-      "other": "bus",
-      "archetype": "treat",
-      "text": "Judge Window Week, Mayor. Admire the windows, not yourself in them.",
-      "subject": "vanity",
-      "butt": "self",
-      "shape": "undercut",
-      "setsUp": "may-window-week"
-    },
-    {
-      "id": "may-weigh-in-goodness",
-      "visitor": "gourdley",
-      "club": "veg",
-      "other": "bus",
-      "archetype": "treat",
-      "text": "Attend the weigh-in, Mayor, and say 'goodness'. We will cue you.",
-      "subject": "vegetable-shows",
       "butt": "self",
       "shape": "photo-op"
     },
@@ -315,16 +292,39 @@
       "portable": true
     },
     {
+      "id": "may2-judge-window-week",
+      "visitor": "till",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "treat",
+      "text": "Judge Window Week, Mayor. Admire each window, not yourself in it.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "photo-op",
+      "setsUp": "may-window-week"
+    },
+    {
       "id": "may2-named-turnip",
       "visitor": "gourdley",
       "club": "veg",
       "other": "bus",
       "archetype": "treat",
-      "text": "Our prize turnip would like your name, Mayor. It has your bearing.",
+      "text": "Our prize turnip asks for your name, Mayor. It has your bearing.",
       "subject": "vegetable-shows",
       "butt": "self",
       "shape": "undercut",
       "setsUp": "may-named-turnip"
+    },
+    {
+      "id": "may-weigh-in-goodness",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "treat",
+      "text": "Attend the weigh-in, Mayor, and say 'goodness'. We will cue you.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "photo-op"
     },
     {
       "id": "may2-napkin-study",
@@ -333,11 +333,11 @@
       "club": "bus",
       "other": "shops",
       "archetype": "committee",
-      "text": "A study of the founding napkin. There may be a timetable on the back.",
+      "text": "A study of the founding napkin. A timetable may be on the back.",
       "subject": "committees",
       "butt": "committee",
       "shape": "callback",
-      "biggerStudy": "The napkin study found a timetable on the back. It asks to find out if it still runs."
+      "biggerStudy": "The napkin study found the timetable. It asks to find out if it still runs."
     },
     {
       "id": "may-study-of-study",
@@ -359,7 +359,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "committee",
-      "text": "A working group on what counts as a vegetable. It will meet over lunch.",
+      "text": "What is a vegetable? A working group will test it over lunch.",
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
@@ -385,7 +385,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "committee",
-      "text": "A study of how many seconds a passer-by gives a window. Three years.",
+      "text": "A study of the seconds a passer-by gives a window. Three years.",
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
@@ -398,31 +398,31 @@
       "club": "veg",
       "other": "bus",
       "archetype": "committee",
-      "text": "A review of the duck pond. It is wet and has ducks. Two meetings more.",
+      "text": "A review of the duck pond. So far: wet, ducks. Two more meetings.",
       "subject": "ducks",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The duck pond review confirms the pond. It asks for a year to look into the ducks."
-    },
-    {
-      "id": "may2-pond-renamed",
-      "visitor": "spinwell",
-      "club": "veg",
-      "archetype": "vanity",
-      "text": "Rename the duck pond after you, Mayor. The ducks will be told in writing.",
-      "subject": "ducks",
-      "butt": "self",
-      "shape": "form-misapplied"
+      "biggerStudy": "The pond review confirms the pond. It asks a year more to look into the ducks."
     },
     {
       "id": "may2-hats-in-windows",
       "visitor": "wimble",
       "club": "shops",
       "archetype": "vanity",
-      "text": "Pose in each shop window in each of your hats. Rodney has picked eleven.",
+      "text": "Pose in every shop window, in each of your hats. Rodney picked eleven.",
       "subject": "hats",
       "butt": "self",
       "shape": "photo-op"
+    },
+    {
+      "id": "may2-pond-renamed",
+      "visitor": "spinwell",
+      "club": "veg",
+      "archetype": "vanity",
+      "text": "Name the duck pond after you. The ducks will be told in writing.",
+      "subject": "ducks",
+      "butt": "self",
+      "shape": "form-misapplied"
     },
     {
       "id": "may2-shelter-portrait",
@@ -439,33 +439,15 @@
       "visitor": "goss",
       "club": "veg",
       "archetype": "basket",
-      "text": "A desk fountain shaped like you. Then one shaped like the desk. Fountains?",
+      "text": "A desk fountain shaped like you. Then one shaped like the desk.",
       "subject": "fountains",
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
-        "text": "About the little fountain: it would like the Society's best rain barrel to drink from.",
+        "text": "About the fountain: it would like the Society's best rain barrel to drink from.",
         "clippings": {
           "sign": "MAYOR'S DESK FOUNTAIN TAKES GROWERS' RAIN BARREL",
           "refuse": "DESK FOUNTAIN TOLD TO FIND ITS OWN WATER"
-        }
-      }
-    },
-    {
-      "id": "may2-lamp-hat",
-      "visitor": "slake",
-      "club": "shops",
-      "archetype": "basket",
-      "text": "A hat for your lamp. Lamps feel the cold. So do clocks, and the pond.",
-      "subject": "hats",
-      "butt": "lobbyist",
-      "shape": "escalation",
-      "portable": true,
-      "favour": {
-        "text": "About the lamp's hat: it would like the Guild's front window. Centre, well lit.",
-        "clippings": {
-          "sign": "LAMP'S HAT TAKES GUILD'S BEST WINDOW; GUILD SPEECHLESS",
-          "refuse": "LAMP'S HAT GOES BACK ON LAMP, SAYS NOTHING"
         }
       }
     },
@@ -474,7 +456,7 @@
       "visitor": "sash",
       "club": "bus",
       "archetype": "basket",
-      "text": "A second basket, so the first one is not lonely. No reason, as before.",
+      "text": "Another basket, to keep the first company. No reason, as before.",
       "subject": "ribbons",
       "butt": "lobbyist",
       "shape": "callback",
@@ -484,6 +466,24 @@
         "clippings": {
           "sign": "BASKET GIVEN WINDOW SEAT ON 7:02; SPOTTERS STAND",
           "refuse": "BASKET TAKES A LATER BUS"
+        }
+      }
+    },
+    {
+      "id": "may2-lamp-hat",
+      "visitor": "slake",
+      "club": "shops",
+      "archetype": "basket",
+      "text": "A hat for your lamp. Lamps feel the cold. So do clocks. And ponds.",
+      "subject": "hats",
+      "butt": "lobbyist",
+      "shape": "escalation",
+      "portable": true,
+      "favour": {
+        "text": "About the lamp's hat: it would like the Guild's front window. Centre, well lit.",
+        "clippings": {
+          "sign": "LAMP'S HAT TAKES GUILD'S BEST WINDOW; GUILD SPEECHLESS",
+          "refuse": "LAMP'S HAT GOES BACK ON LAMP, SAYS NOTHING"
         }
       }
     }

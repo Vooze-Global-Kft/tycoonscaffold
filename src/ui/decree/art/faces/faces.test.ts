@@ -31,15 +31,18 @@ vi.mock('@shopify/react-native-skia', async () => {
 type Kit = typeof import('./index');
 type CastMod = typeof import('./cast');
 type InkMod = typeof import('./ink');
+type HeadMod = typeof import('./head');
 let F: Kit;
 let C: CastMod;
 let I: InkMod;
+let H: HeadMod;
 let Skia: typeof import('@shopify/react-native-skia').Skia;
 
 beforeAll(async () => {
   F = await import('./index');
   C = await import('./cast');
   I = await import('./ink');
+  H = await import('./head');
   Skia = (await import('@shopify/react-native-skia')).Skia;
 }, 60_000);
 
@@ -122,6 +125,65 @@ describe('the cast table', () => {
     expect(new Set(players.map((l) => l.tone)).size).toBeGreaterThanOrEqual(4);
     const kinds = new Set(players.map((l) => C.PLAYER_PRESENTATION[l.id]));
     expect(kinds).toEqual(new Set(['woman', 'man']));
+  });
+
+  it('spreads beards and moustaches across the tones: none is kept to the light or the deep half', () => {
+    // AD finding: facial hair once clustered on the deeper tones. Beards and moustaches (sideburns
+    // aside) must fall 35..65 % in each half (t1-t3, t4-t6), and every such part used by two or more
+    // people appears in both halves. The goatee with a thin moustache (a stock villain) is used by nobody.
+    const light = new Set(['t1', 't2', 't3']);
+    const hair = C.CAST.filter((l) => l.facial !== 'none' && l.facial !== 'sideburns');
+    const lightShare = hair.filter((l) => light.has(l.tone)).length / hair.length;
+    expect(hair.length).toBeGreaterThanOrEqual(8);
+    expect(lightShare).toBeGreaterThanOrEqual(0.35);
+    expect(lightShare).toBeLessThanOrEqual(0.65);
+    const byPart = new Map<string, string[]>();
+    for (const l of hair) byPart.set(l.facial, [...(byPart.get(l.facial) ?? []), l.tone]);
+    const oneSided: string[] = [];
+    for (const [part, tones] of byPart) {
+      if (tones.length < 2) continue;
+      const nLight = tones.filter((t) => light.has(t)).length;
+      if (nLight === 0 || nLight === tones.length) oneSided.push(`${part}: ${tones.join(' ')}`);
+    }
+    expect(oneSided).toEqual([]);
+    expect(C.CAST.filter((l) => l.facial === 'goatee' || l.facial === 'curl').map((l) => l.id)).toEqual([]);
+  });
+
+  it('draws every feature at 3:1 or more against every skin tone (the same ink and rim on all)', () => {
+    // WCAG contrast. A feature line is the feature ink over a pale rim. It reads when the line or its
+    // rim stands 3:1 off the skin, and the line stands 3:1 off its rim. Brows are measured for every
+    // hair colour. One ink, one rim for every tone: nothing here is picked by tone.
+    const lum = (hex: string) => {
+      const [r, g, b] = I.parse(hex).map((v, i) => (i < 3 ? v / 255 : v));
+      const f = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    const ratio = (a: string, b: string) => {
+      const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+      return (x + 0.05) / (y + 0.05);
+    };
+    const over = (top: string, a: number, under: string) => I.mix(under, top, a);
+    const bad: string[] = [];
+    const inks: [string, string][] = [['eyes, nose, mouth, glasses', I.P.feature], ...Object.keys(I.HAIR).map((h) => [`brows ${h}`, H.browColour(I.DEFAULT_PEN, I.HAIR[h as keyof typeof I.HAIR])] as [string, string])];
+    for (const t of I.TONES) {
+      const rim = over(I.P.halo, I.P.haloAlpha, t.base);
+      for (const [what, col] of inks) {
+        const edge = Math.max(ratio(col, t.base), ratio(rim, t.base));
+        const line = ratio(col, rim);
+        if (edge < 3 || line < 3) bad.push(`${t.id} ${what}: edge ${edge.toFixed(2)}, line on rim ${line.toFixed(2)}`);
+      }
+    }
+    expect(bad).toEqual([]);
+    // And the halo is really drawn: a face's feature pixels include rim-pale pixels on the deepest tone.
+    const look = C.lookOf('tuttle')!;
+    const px = render((c) => F.drawBustLook(c, look, { tone: 't6', hatch: false, ground: false }), 100, 125);
+    let pale = 0;
+    for (let y = 45; y < 70; y++)
+      for (let x = 30; x < 70; x++) {
+        const i = (y * 100 + x) * 4;
+        if (px[i + 3] > 250 && I.luma(px[i], px[i + 1], px[i + 2]) > 170) pale++;
+      }
+    expect(pale).toBeGreaterThan(20);
   });
 
   it('mixes the cast: every tone is worn by at least five people', () => {

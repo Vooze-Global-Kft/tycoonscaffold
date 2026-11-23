@@ -1,0 +1,547 @@
+{
+  "batch": "notes-2",
+  "writer": "writer-4",
+  "office": "president",
+  "notes": [
+    {
+      "id": "note-clock-1",
+      "form": "requisition",
+      "ministry": "national-clock-office",
+      "text": "The new hands know which way round to go."
+    },
+    {
+      "id": "note-clock-2",
+      "form": "requisition",
+      "ministry": "national-clock-office",
+      "text": "The clock is right. We checked the other clock."
+    },
+    {
+      "id": "note-clock-3",
+      "form": "requisition",
+      "ministry": "national-clock-office",
+      "text": "Oil for the cogs. They had been squeaking politely."
+    },
+    {
+      "id": "note-clock-4",
+      "form": "requisition",
+      "ministry": "national-clock-office",
+      "text": "The key is back in the drawer it prefers."
+    },
+    {
+      "id": "note-clock-5",
+      "form": "requisition",
+      "ministry": "national-clock-office",
+      "text": "A spare minute hand, in case one wanders off."
+    },
+    {
+      "id": "note-clock-6",
+      "form": "requisition",
+      "ministry": "national-clock-office",
+      "text": "The chime has been tuned. Before, it was nearly a chime."
+    },
+    {
+      "id": "note-clock-7",
+      "form": "requisition",
+      "ministry": "national-clock-office",
+      "text": "The clock face has been dusted. It looks punctual."
+    },
+    {
+      "id": "note-clock-8",
+      "form": "ribbon",
+      "ministry": "national-clock-office",
+      "text": "Cut on the hour. The hour is still being chosen."
+    },
+    {
+      "id": "note-clock-9",
+      "form": "ribbon",
+      "ministry": "national-clock-office",
+      "text": "Every clock will chime for the ribbon. Roughly together."
+    },
+    {
+      "id": "note-clock-10",
+      "form": "ribbon",
+      "ministry": "national-clock-office",
+      "text": "The ribbon is on the pendulum. Cut on the swing."
+    },
+    {
+      "id": "note-motorway-1",
+      "form": "requisition",
+      "ministry": "motorway-board",
+      "text": "The cones have been counted. They were all there."
+    },
+    {
+      "id": "note-motorway-2",
+      "form": "requisition",
+      "ministry": "motorway-board",
+      "text": "New cones. The old ones stand down with dignity."
+    },
+    {
+      "id": "note-motorway-3",
+      "form": "requisition",
+      "ministry": "motorway-board",
+      "text": "The white lines have been repainted white."
+    },
+    {
+      "id": "note-motorway-4",
+      "form": "requisition",
+      "ministry": "motorway-board",
+      "text": "The signs now say how far it is. It is still far."
+    },
+    {
+      "id": "note-motorway-5",
+      "form": "requisition",
+      "ministry": "motorway-board",
+      "text": "A lay-by for coaches to stop in and be admired."
+    },
+    {
+      "id": "note-motorway-6",
+      "form": "requisition",
+      "ministry": "motorway-board",
+      "text": "One new sign, pointing at the old sign."
+    },
+    {
+      "id": "note-motorway-7",
+      "form": "requisition",
+      "ministry": "motorway-board",
+      "text": "The verges have been mown. The cones supervised."
+    },
+    {
+      "id": "note-motorway-8",
+      "form": "ribbon",
+      "ministry": "motorway-board",
+      "text": "Two cones will hold the ribbon. Both volunteered."
+    },
+    {
+      "id": "note-motorway-9",
+      "form": "ribbon",
+      "ministry": "motorway-board",
+      "text": "The first coach will drive through the ribbon. Slowly."
+    },
+    {
+      "id": "note-motorway-10",
+      "form": "ribbon",
+      "ministry": "motorway-board",
+      "text": "A cone will stand beside you in the photograph."
+    },
+    {
+      "id": "note-lamplight-1",
+      "form": "requisition",
+      "ministry": "lamplight-authority",
+      "text": "New bulbs. Each was switched on once, to see."
+    },
+    {
+      "id": "note-lamplight-2",
+      "form": "requisition",
+      "ministry": "lamplight-authority",
+      "text": "The switch now says ON. The other way, OFF."
+    },
+    {
+      "id": "note-lamplight-3",
+      "form": "requisition",
+      "ministry": "lamplight-authority",
+      "text": "Moth arrangements have been made."
+    },
+    {
+      "id": "note-lamplight-4",
+      "form": "requisition",
+      "ministry": "lamplight-authority",
+      "text": "A spare bulb, kept in the dark until needed."
+    },
+    {
+      "id": "note-lamplight-5",
+      "form": "requisition",
+      "ministry": "lamplight-authority",
+      "text": "Lamp glass polished. The lamps look more lit."
+    },
+    {
+      "id": "note-lamplight-6",
+      "form": "requisition",
+      "ministry": "lamplight-authority",
+      "text": "Each lamppost has been told it is the main one."
+    },
+    {
+      "id": "note-lamplight-7",
+      "form": "requisition",
+      "ministry": "lamplight-authority",
+      "text": "Warm white lamps. The Guild asked for warmer."
+    },
+    {
+      "id": "note-lamplight-8",
+      "form": "ribbon",
+      "ministry": "lamplight-authority",
+      "text": "Cut at dusk, please, so the lamps can watch."
+    },
+    {
+      "id": "note-lamplight-9",
+      "form": "ribbon",
+      "ministry": "lamplight-authority",
+      "text": "The lamps will come on as you cut. Please cut slowly."
+    },
+    {
+      "id": "note-lamplight-10",
+      "form": "ribbon",
+      "ministry": "lamplight-authority",
+      "text": "One lamp will shine on you while you cut. Rodney asked."
+    },
+    {
+      "id": "note-parks-1",
+      "form": "requisition",
+      "ministry": "parks-benches",
+      "text": "Each bench has a plaque. One plaque has a bench."
+    },
+    {
+      "id": "note-parks-2",
+      "form": "requisition",
+      "ministry": "parks-benches",
+      "text": "KEEP OFF THE GRASS signs, placed on the grass."
+    },
+    {
+      "id": "note-parks-3",
+      "form": "requisition",
+      "ministry": "parks-benches",
+      "text": "The gravel has been raked into a calmer pattern."
+    },
+    {
+      "id": "note-parks-4",
+      "form": "requisition",
+      "ministry": "parks-benches",
+      "text": "Deckchairs, folded. Unfolding is a separate form."
+    },
+    {
+      "id": "note-parks-5",
+      "form": "requisition",
+      "ministry": "parks-benches",
+      "text": "A new bench facing the old one, for conversation."
+    },
+    {
+      "id": "note-parks-6",
+      "form": "requisition",
+      "ministry": "parks-benches",
+      "text": "The park gates now close at the time on the sign."
+    },
+    {
+      "id": "note-parks-7",
+      "form": "requisition",
+      "ministry": "parks-benches",
+      "text": "The compost has been turned. It seemed restless."
+    },
+    {
+      "id": "note-parks-8",
+      "form": "ribbon",
+      "ministry": "parks-benches",
+      "text": "The ribbon is tied between two benches. Sit afterwards."
+    },
+    {
+      "id": "note-parks-9",
+      "form": "ribbon",
+      "ministry": "parks-benches",
+      "text": "The ducks have been invited to the ribbon. One replied."
+    },
+    {
+      "id": "note-parks-10",
+      "form": "ribbon",
+      "ministry": "parks-benches",
+      "text": "A seat in the front row is kept for the prize pumpkin."
+    },
+    {
+      "id": "note-bunting-1",
+      "form": "requisition",
+      "ministry": "office-brass-bunting",
+      "text": "The euphonium is polished. It can see itself."
+    },
+    {
+      "id": "note-bunting-2",
+      "form": "requisition",
+      "ministry": "office-brass-bunting",
+      "text": "New music stands. They stand."
+    },
+    {
+      "id": "note-bunting-3",
+      "form": "requisition",
+      "ministry": "office-brass-bunting",
+      "text": "The triangle is retuned. It sounds like a triangle."
+    },
+    {
+      "id": "note-bunting-4",
+      "form": "requisition",
+      "ministry": "office-brass-bunting",
+      "text": "Fresh valve oil. The cornets are pleased."
+    },
+    {
+      "id": "note-bunting-5",
+      "form": "requisition",
+      "ministry": "office-brass-bunting",
+      "text": "The bandstand chairs now face the band, as agreed."
+    },
+    {
+      "id": "note-bunting-6",
+      "form": "requisition",
+      "ministry": "office-brass-bunting",
+      "text": "The trombone mute was found. It said nothing."
+    },
+    {
+      "id": "note-bunting-7",
+      "form": "requisition",
+      "ministry": "office-brass-bunting",
+      "text": "The metronome has been reset. It seems relieved."
+    },
+    {
+      "id": "note-bunting-8",
+      "form": "ribbon",
+      "ministry": "office-brass-bunting",
+      "text": "The band will play while you cut. Please cut in time."
+    },
+    {
+      "id": "note-bunting-9",
+      "form": "ribbon",
+      "ministry": "office-brass-bunting",
+      "text": "The cymbals will clash as you cut. Try not to blink."
+    },
+    {
+      "id": "note-bunting-10",
+      "form": "ribbon",
+      "ministry": "office-brass-bunting",
+      "text": "A drumroll has been booked for the ribbon."
+    },
+    {
+      "id": "note-harbour-1",
+      "form": "requisition",
+      "ministry": "harbour-board",
+      "text": "Tables of high water, printed. The sea has a copy."
+    },
+    {
+      "id": "note-harbour-2",
+      "form": "requisition",
+      "ministry": "harbour-board",
+      "text": "The gulls have been asked to keep their voices down."
+    },
+    {
+      "id": "note-harbour-3",
+      "form": "requisition",
+      "ministry": "harbour-board",
+      "text": "New rope for the bollards. The old rope retires to a coil."
+    },
+    {
+      "id": "note-harbour-4",
+      "form": "requisition",
+      "ministry": "harbour-board",
+      "text": "The harbour wall has been repointed. It looks rested."
+    },
+    {
+      "id": "note-harbour-5",
+      "form": "requisition",
+      "ministry": "harbour-board",
+      "text": "The lighthouse lamp has been polished from inside."
+    },
+    {
+      "id": "note-harbour-6",
+      "form": "requisition",
+      "ministry": "harbour-board",
+      "text": "A new buoy. It bobs as instructed."
+    },
+    {
+      "id": "note-harbour-7",
+      "form": "requisition",
+      "ministry": "harbour-board",
+      "text": "The fish were counted by looking. All present."
+    },
+    {
+      "id": "note-harbour-8",
+      "form": "ribbon",
+      "ministry": "harbour-board",
+      "text": "The ribbon will be cut quietly. The scissors are oiled."
+    },
+    {
+      "id": "note-harbour-9",
+      "form": "ribbon",
+      "ministry": "harbour-board",
+      "text": "The ribbon is tied in a harbour knot. Allow time."
+    },
+    {
+      "id": "note-harbour-10",
+      "form": "ribbon",
+      "ministry": "harbour-board",
+      "text": "Applause at the harbour is to be by nodding."
+    },
+    {
+      "id": "note-kite-1",
+      "form": "requisition",
+      "ministry": "kite-breeze-office",
+      "text": "A new windsock. It points where the air went."
+    },
+    {
+      "id": "note-kite-2",
+      "form": "requisition",
+      "ministry": "kite-breeze-office",
+      "text": "The breeze has been measured. It was breezy."
+    },
+    {
+      "id": "note-kite-3",
+      "form": "requisition",
+      "ministry": "kite-breeze-office",
+      "text": "Spare kite tails, sorted by tail."
+    },
+    {
+      "id": "note-kite-4",
+      "form": "requisition",
+      "ministry": "kite-breeze-office",
+      "text": "A form for the breeze. It blew away."
+    },
+    {
+      "id": "note-kite-5",
+      "form": "requisition",
+      "ministry": "kite-breeze-office",
+      "text": "The anemometer spins. Cuthbert was asked not to."
+    },
+    {
+      "id": "note-kite-6",
+      "form": "requisition",
+      "ministry": "kite-breeze-office",
+      "text": "Knots in the string have been untied and logged."
+    },
+    {
+      "id": "note-kite-7",
+      "form": "requisition",
+      "ministry": "kite-breeze-office",
+      "text": "The hill has been mown so the kites can find it."
+    },
+    {
+      "id": "note-kite-8",
+      "form": "ribbon",
+      "ministry": "kite-breeze-office",
+      "text": "The ribbon will be released, not cut. It may come back."
+    },
+    {
+      "id": "note-kite-9",
+      "form": "ribbon",
+      "ministry": "kite-breeze-office",
+      "text": "Please cut the ribbon downwind of the League."
+    },
+    {
+      "id": "note-kite-10",
+      "form": "ribbon",
+      "ministry": "kite-breeze-office",
+      "text": "The ribbon has a tail, in case it would rather fly."
+    },
+    {
+      "id": "note-hedge-1",
+      "form": "requisition",
+      "ministry": "hedgerow-bureau",
+      "text": "Shears sharpened, measured, sharpened again."
+    },
+    {
+      "id": "note-hedge-2",
+      "form": "requisition",
+      "ministry": "hedgerow-bureau",
+      "text": "A spirit level for every hedge. The hedges are level."
+    },
+    {
+      "id": "note-hedge-3",
+      "form": "requisition",
+      "ministry": "hedgerow-bureau",
+      "text": "One hedge was a leaf out. It has been spoken to."
+    },
+    {
+      "id": "note-hedge-4",
+      "form": "requisition",
+      "ministry": "hedgerow-bureau",
+      "text": "Fresh string lines, pulled straight. Then straighter."
+    },
+    {
+      "id": "note-hedge-5",
+      "form": "requisition",
+      "ministry": "hedgerow-bureau",
+      "text": "The clippings were swept into a pile. Then trimmed."
+    },
+    {
+      "id": "note-hedge-6",
+      "form": "requisition",
+      "ministry": "hedgerow-bureau",
+      "text": "Every rung of the new ladders matches the last."
+    },
+    {
+      "id": "note-hedge-7",
+      "form": "requisition",
+      "ministry": "hedgerow-bureau",
+      "text": "The hedge show rosettes have been cut square."
+    },
+    {
+      "id": "note-hedge-8",
+      "form": "ribbon",
+      "ministry": "hedgerow-bureau",
+      "text": "The hedge has been trimmed neatly around the ribbon."
+    },
+    {
+      "id": "note-hedge-9",
+      "form": "ribbon",
+      "ministry": "hedgerow-bureau",
+      "text": "Cut straight, please. The ribbon was measured."
+    },
+    {
+      "id": "note-hedge-10",
+      "form": "ribbon",
+      "ministry": "hedgerow-bureau",
+      "text": "The ribbon runs along the hedge at one even height."
+    },
+    {
+      "id": "note-bridge-1",
+      "form": "requisition",
+      "ministry": "very-long-bridge",
+      "text": "More planks. The far end sends its regards."
+    },
+    {
+      "id": "note-bridge-2",
+      "form": "ribbon",
+      "ministry": "very-long-bridge",
+      "text": "The ribbon is at the far end. A flask has been packed."
+    },
+    {
+      "id": "note-mill-1",
+      "form": "requisition",
+      "ministry": "national-ribbon-mill",
+      "text": "New looms. The mill would like a ribbon of its own."
+    },
+    {
+      "id": "note-mill-2",
+      "form": "ribbon",
+      "ministry": "national-ribbon-mill",
+      "text": "The mill made this ribbon itself. It would like it back."
+    },
+    {
+      "id": "note-umbrella-1",
+      "form": "requisition",
+      "ministry": "national-umbrella",
+      "text": "New spokes. Opening it now takes a morning."
+    },
+    {
+      "id": "note-umbrella-2",
+      "form": "ribbon",
+      "ministry": "national-umbrella",
+      "text": "The ribbon is on the handle. Do not open indoors."
+    },
+    {
+      "id": "note-bandstand-1",
+      "form": "requisition",
+      "ministry": "tallest-bandstand",
+      "text": "Another flight of steps. The band will arrive later."
+    },
+    {
+      "id": "note-bandstand-2",
+      "form": "ribbon",
+      "ministry": "tallest-bandstand",
+      "text": "The ribbon is at the top. The lift is being studied."
+    },
+    {
+      "id": "note-ministries-1",
+      "form": "requisition",
+      "ministry": "ministry-of-ministries",
+      "text": "A new office for the office that oversees offices."
+    },
+    {
+      "id": "note-ministries-2",
+      "form": "ribbon",
+      "ministry": "ministry-of-ministries",
+      "text": "The ribbon has been sent to itself for approval."
+    }
+  ]
+}

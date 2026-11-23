@@ -7,7 +7,7 @@ import type { SkCanvas, SkPicture } from '@shopify/react-native-skia';
 import { CLUB_IDS, DESK, alpha } from './palette';
 import { drawClubBadge } from './clubs.draw';
 import { drawBunting, drawFormFace, drawFrontPage, drawPaper, drawPhotoClip, drawPicketSign, drawRunUpPaper, drawSheet, drawSignature, drawSlip, drawStrip, SIGNATURE_IDS, shakeOffset, type FormKind } from './paper.draw';
-import { drawDeskSet, drawDesk, drawDoor, drawDrawer, drawInTray, drawLamp, drawLampPool, drawOutTray, drawPaperclip, drawPen, drawStickyNote, drawTakeBackRest, drawTelephones, drawWarehousePhoto, type OfficeIx } from './desk.draw';
+import { drawDeskFront, drawDeskSet, drawDeskTop, drawDesk, drawDoor, drawDrawer, drawInTray, drawLamp, drawLampPool, drawOutTray, drawPaperclip, drawPen, drawStickyNote, drawTakeBackRest, drawTelephones, drawWarehousePhoto, type OfficeIx } from './desk.draw';
 import { EFFECT_IDS, drawApprovalChip, drawEffect, drawGossipChip } from './effects.draw';
 import { MINISTRY_IDS, PROJECT_IDS, drawMinistry, drawStoreys } from './ministries.draw';
 import { BUTTON_ICONS, drawButtonIcon, drawCabinetFrame, drawChalkMarks, drawDistrictMap, drawEnvelope, drawLedger, drawTallyBoard, drawTallyResult, tallyRows } from './meta.draw';
@@ -92,18 +92,21 @@ export function gallerySections(): Section[] {
     },
     {
       title: 'The three desks (mayor, governor, president) and the walnut set',
-      height: () => 210,
+      height: () => 290,
       draw: (c, w) => {
         const dw = (w - 40) / 4;
         ([0, 1, 2, 0] as OfficeIx[]).forEach((o, i) => {
           const x = 8 + i * (dw + 8);
           const set = i === 3 ? 'walnut' : 'plain';
-          drawDesk(c, { x, y: 16, w: dw, h: 180 }, o, set);
-          if (o === 1) at(c, x + dw - 20, 50, 1, 0, (q) => drawLampPool(q, 50));
-          if (o === 1) at(c, x + dw - 20, 50, 1, 0, (q) => drawLamp(q, 30));
-          if (o === 2) at(c, x + dw / 2, 44, Math.min(0.9, dw / 100), 0, drawTelephones);
-          if (set === 'walnut') at(c, x + dw / 2, 44, Math.min(0.9, dw / 80), 0, drawDeskSet);
-          label(c, ['MAYOR', 'GOVERNOR', 'PRESIDENT', 'WALNUT SET'][i], x + 10, 190, DESK.paperLight, 6);
+          // the top band (wood behind the bars), the felt with its rim, the front under the drawer
+          drawDeskTop(c, { x, y: 16, w: dw, h: 44 }, o, set);
+          drawDesk(c, { x, y: 60, w: dw, h: 150 }, o, set);
+          drawDeskFront(c, { x, y: 210, w: dw, h: 70 }, o, set);
+          if (o === 1) at(c, x + dw - 26, 100, 1, 0, (q) => drawLampPool(q, 50));
+          if (o === 1) at(c, x + dw - 26, 100, 1, 0, (q) => drawLamp(q, 30));
+          if (o === 2) at(c, x + dw / 2, 94, Math.min(0.9, dw / 100), 0, drawTelephones);
+          if (set === 'walnut') at(c, x + dw / 2, 94, Math.min(0.9, dw / 80), 0, drawDeskSet);
+          label(c, ['MAYOR', 'GOVERNOR', 'PRESIDENT', 'WALNUT SET'][i], x + 14, 200, DESK.paperLight, 6);
         });
       },
     },

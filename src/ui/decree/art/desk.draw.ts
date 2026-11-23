@@ -121,7 +121,7 @@ export function drawWood(c: SkCanvas, b: Box, w: Wood, seed = 3): void {
  */
 export function drawDesk(c: SkCanvas, b: Box, office: OfficeIx, set: DeskSet = 'plain'): void {
   const w = woodOf(office, set);
-  const rim = office === 2 ? 9 : office === 1 ? 8 : 7;
+  const rim = office === 2 ? 12 : office === 1 ? 10 : 7;
   drawWood(c, b, w);
   const felt = { x: b.x + rim, y: b.y, w: b.w - rim * 2, h: b.h };
   drawBaize(c, felt);
@@ -139,6 +139,89 @@ export function drawDesk(c: SkCanvas, b: Box, office: OfficeIx, set: DeskSet = '
     // a tooled border on the president's felt
     c.drawPath(rect(felt.x + 3, felt.y + 3, felt.w - 6, felt.h - 6), stroke(alpha(DESK.brassLight, 0.35), 0.7));
   }
+}
+
+/**
+ * The desk's top band (the wood behind the bars, from the screen's top to the ribbon's bottom edge;
+ * `b` its box, `railY` the y of the ribbon's bottom edge where the band meets the felt): what makes
+ * the three offices read as one room growing.
+ *   mayor     plain dark walnut, one lit bevel at the felt's edge;
+ *   governor  mahogany with a crossbanded lip (a lighter band of short diagonal grain) between two
+ *             brass-coloured stringing lines;
+ *   president long walnut with a gilt tooled double line and a round brass rail along the felt's edge.
+ */
+export function drawDeskTop(c: SkCanvas, b: Box, office: OfficeIx, set: DeskSet = 'plain', railY = b.y + b.h): void {
+  const w = woodOf(office, set);
+  c.drawRect({ x: b.x, y: b.y, width: b.w, height: b.h }, fill(w.deep));
+  drawWood(c, { x: b.x, y: b.y, w: b.w, h: b.h }, { ...w, main: w.deep, deep: mix(w.deep, DESK.line, 0.5) }, 5);
+  const lip = Math.min(b.h, railY - b.y);
+  if (office === 0 && set === 'plain') {
+    c.drawPath(line(b.x, railY - 1, b.x + b.w, railY - 1), stroke(alpha(w.light, 0.6), 1.2));
+    return;
+  }
+  if (office === 1 || (office === 0 && set === 'walnut')) {
+    // crossbanding: the last 7 pt above the felt in the lighter wood with short diagonal grain
+    const y0 = railY - 7;
+    c.drawRect({ x: b.x, y: y0, width: b.w, height: 7 }, fill(w.light));
+    const g = builder();
+    for (let x = b.x - 8; x < b.x + b.w; x += 3.2) g.moveTo(x, railY).lineTo(x + 6, y0);
+    c.drawPath(g.build(), stroke(alpha(w.deep, 0.45), 0.6, false));
+    c.drawPath(line(b.x, y0 - 0.6, b.x + b.w, y0 - 0.6), stroke(w.trim, 1));
+    c.drawPath(line(b.x, railY - 0.6, b.x + b.w, railY - 0.6), stroke(alpha(LINE, 0.8), 1.2));
+    void lip;
+    return;
+  }
+  // the president: gilt tooled double line high on the band and a round brass rail at the felt
+  c.drawPath(line(b.x, railY - 23, b.x + b.w, railY - 23), stroke(alpha(DESK.brassLight, 0.55), 0.7));
+  c.drawPath(line(b.x, railY - 21, b.x + b.w, railY - 21), stroke(alpha(DESK.brassLight, 0.55), 0.7));
+  c.drawRect({ x: b.x, y: railY - 5, width: b.w, height: 5 }, linearPaint(0, railY - 5, 0, railY, [DESK.brassLight, DESK.brass, DESK.brassDeep]));
+  c.drawPath(line(b.x, railY - 0.3, b.x + b.w, railY - 0.3), stroke(alpha(LINE, 0.8), 0.8));
+  // the rail's brackets
+  for (let x = b.x + 24; x < b.x + b.w; x += Math.max(80, b.w / 4)) c.drawPath(rrect(x - 3, railY - 6.5, 6, 8, 1.4), fill(DESK.brassDeep));
+}
+
+/**
+ * The desk's front (the wood under the drawer, from the drawer band's bottom to the screen's
+ * bottom: the goal line and the bottom row sit on it; `b` its box):
+ *   mayor     a plain walnut front with one top edge;
+ *   governor  a mahogany front with inlaid stringing panels and small fan inlays in their corners;
+ *   president a long walnut front with a brass rail along its top edge and a brass kick rail.
+ */
+export function drawDeskFront(c: SkCanvas, b: Box, office: OfficeIx, set: DeskSet = 'plain'): void {
+  const w = woodOf(office, set);
+  drawWood(c, b, { ...w, main: office === 0 && set === 'plain' ? w.deep : w.main }, 9);
+  // the front edge: a lit bevel and a shadow line under the drawer
+  c.drawPath(line(b.x, b.y + 0.6, b.x + b.w, b.y + 0.6), stroke(alpha(DESK.shadow, 0.6), 1.2));
+  c.drawPath(line(b.x, b.y + 2, b.x + b.w, b.y + 2), stroke(alpha(w.light, 0.6), 1));
+  if (office === 0 && set === 'plain') return;
+  if (office === 1 || set === 'walnut') {
+    // a mahogany front of inlaid panels: a stringing line box per panel and small fans in the corners
+    const n = Math.max(2, Math.round(b.w / 130));
+    const pw = (b.w - 12) / n;
+    for (let i = 0; i < n; i++) {
+      const x = b.x + 6 + i * pw;
+      const box = rrect(x + 3, b.y + 6, pw - 6, b.h - 12, 2);
+      c.drawPath(box, stroke(alpha(DESK.brassLight, 0.6), 0.9));
+      c.drawPath(rrect(x + 6, b.y + 9, pw - 12, b.h - 18, 1.5), stroke(alpha(w.deep, 0.8), 0.7));
+      for (const [fx, fy, a0] of [
+        [x + 3, b.y + 6, 0],
+        [x + pw - 3, b.y + 6, 90],
+        [x + pw - 3, b.y + b.h - 6, 180],
+        [x + 3, b.y + b.h - 6, 270],
+      ] as const) {
+        for (let k = 0; k < 4; k++) c.drawPath(line(fx, fy, fx + Math.cos(((a0 + 11 + k * 22) * Math.PI) / 180) * 9, fy + Math.sin(((a0 + 11 + k * 22) * Math.PI) / 180) * 9), stroke(alpha(DESK.brassLight, 0.5), 0.7));
+      }
+    }
+    return;
+  }
+  // the president: a brass rail along the top (round, lit) and a brass kick rail at the bottom
+  c.drawRect({ x: b.x, y: b.y + 1, width: b.w, height: 5 }, linearPaint(0, b.y + 1, 0, b.y + 6, [DESK.brassLight, DESK.brass, DESK.brassDeep]));
+  c.drawPath(line(b.x, b.y + 6.3, b.x + b.w, b.y + 6.3), stroke(alpha(LINE, 0.7), 0.8));
+  c.drawPath(rect(b.x, b.y + b.h - 5, b.w, 5), fill(DESK.brassDeep));
+  c.drawPath(line(b.x, b.y + b.h - 4.4, b.x + b.w, b.y + b.h - 4.4), stroke(DESK.brassLight, 0.8));
+  // long raised mouldings running the whole width
+  c.drawPath(line(b.x + 8, b.y + 12, b.x + b.w - 8, b.y + 12), stroke(alpha(w.light, 0.55), 1));
+  c.drawPath(line(b.x + 8, b.y + b.h - 11, b.x + b.w - 8, b.y + b.h - 11), stroke(alpha(w.light, 0.55), 1));
 }
 
 // ---------------------------------------------------------------------------

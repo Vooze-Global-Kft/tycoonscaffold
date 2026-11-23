@@ -10,12 +10,12 @@ import { deskLayout, type Rect } from '../layout';
 import { paperMetrics } from '../paperMetrics';
 import { CLUB_IDS, DESK, alpha, type ClubId } from './palette';
 import { drawClubBadge } from './clubs.draw';
-import { drawDeskSet, drawDesk, drawDoor, drawDrawer, drawInTray, drawLamp, drawLampPool, drawOutTray, drawStickyNote, drawTelephones, drawerLabelBox, drawerStage, doorGlassBox, type DeskSet, type OfficeIx } from './desk.draw';
+import { drawDeskFront, drawDeskSet, drawDeskTop, drawDesk, drawDoor, drawDrawer, drawInTray, drawLamp, drawLampPool, drawOutTray, drawStickyNote, drawTelephones, drawerLabelBox, drawerStage, doorGlassBox, type DeskSet, type OfficeIx } from './desk.draw';
 import { drawApprovalChip, drawChip, drawEffect, drawGossipChip, type EffectId } from './effects.draw';
 import { drawLetters } from './letters';
 import { drawBustStandIn } from './standin.draw';
 import { drawBust } from './faces';
-import { drawFrontPage, drawPaper, drawPhotoClip, drawPicketSign, drawSignature, frontPageBoxes, picketSignBox } from './paper.draw';
+import { MASTHEAD_TILT, drawFrontPage, drawPaper, drawPhotoClip, drawPicketSign, drawSignatureIn, frontPageBoxes, signatureBox, picketSignBox } from './paper.draw';
 import { LINE, at, clip, fill, oval, rect, rrect, stroke } from './pen';
 import { drawButtonIcon, type ButtonIcon } from './meta.draw';
 
@@ -54,8 +54,7 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
   drawDesk(c, deskBox, office, o.set ?? 'plain');
   if (office === 1) at(c, w - 38, L.outTray.y + L.outTray.h - 2, 1, 0, (q) => drawLampPool(q, 70));
   // bars: top bar, club strip, ribbon (walnut-coloured band with paper text)
-  c.drawRect({ x: 0, y: 0, width: w, height: L.ribbon.y + L.ribbon.h }, fill(DESK.walnutDeep));
-  c.drawRect({ x: 0, y: L.ribbon.y, width: w, height: L.ribbon.h }, fill(DESK.walnut));
+  drawDeskTop(c, { x: 0, y: 0, w, h: L.ribbon.y + L.ribbon.h }, office, o.set ?? 'plain');
   const t = L.bar.treasury;
   at(c, t.x + 12, t.y + t.h / 2, 0.75, 0, (q) => drawEffect(q, 'coin'));
   drawLetters(c, '12,480', t.x + 24, t.y + t.h / 2 + 6, { size: 12, color: DESK.mustardLight, weight: 0.15 });
@@ -83,7 +82,7 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
   const trayW = Math.min(150, w * 0.4, w - doorW - 142);
   at(c, doorW + 20, ob.y + 1, 1, 0, (q) => drawOutTray(q, trayW, ob.h - 2, 31));
   if (office === 1) at(c, w - 38, ob.y + ob.h - 2, Math.min(1.1, (ob.h - 4) / 30), 0, (q) => drawLamp(q, 30));
-  if (office === 2) at(c, w - 50, ob.y + ob.h - 6, Math.min(0.95, (ob.h - 8) / 20), 0, drawTelephones);
+  if (office === 2) at(c, w - 62, ob.y + ob.h - 6, Math.min(0.95, (ob.h - 8) / 20), 0, drawTelephones);
   if (o.set === 'walnut' && office === 0) at(c, w - 46, ob.y + ob.h - 6, Math.min(1, (ob.h - 8) / 18), 0, drawDeskSet);
 
   // the paper
@@ -92,8 +91,9 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
   if (kind === 'front') {
     at(c, p.x, p.y, 1, 0, (q) => drawFrontPage(q, p.w, p.h));
     const fb = frontPageBoxes(p.w, p.h);
-    drawLetters(c, 'THE DITHERING DAILY DRIZZLE', p.x + fb.masthead.x + 6, p.y + fb.masthead.y + fb.masthead.h - 6, { size: 11, color: DESK.line, weight: 0.16, slant: 0.05 });
+    at(c, p.x + fb.masthead.x + fb.masthead.w / 2, p.y + fb.masthead.y + fb.masthead.h / 2, 1, MASTHEAD_TILT, (q) => drawLetters(q, 'THE DITHERING DAILY DRIZZLE', -fb.masthead.w / 2 + 6, fb.masthead.h / 2 - 5, { size: 12, color: DESK.line, weight: 0.17, slant: 0.05 }));
     for (let i = 0; i < 3; i++) words(c, p.x + fb.headline.x, p.y + fb.headline.y + i * 20, fb.headline.w * (i === 2 ? 0.5 : 0.95), 18, DESK.line);
+    words(c, p.x + fb.caption.x, p.y + fb.caption.y, fb.caption.w, fb.caption.h, DESK.slate);
   } else {
     at(c, p.x, p.y, 1, 0, (q) =>
       drawPaper(q, p.w, p.h, {
@@ -139,7 +139,11 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
       at(c, p.x + p.w - 64, p.y + pm.header.y + 30, 0.8, -8, (q) => drawLetters(q, 'GIVE THEM BACK', pb.x + 2, pb.y + pb.h * 0.7, { size: 5.6, color: DESK.brick, weight: 0.16 }));
       drawLetters(c, 'VEGETABLES BELOW 20: BOYCOTT', p.x + 16, p.y + pm.refuse.note.y + pm.refuse.note.h - 5, { size: 8, color: DESK.brick, weight: 0.14 });
     }
-    if (kind === 'signing') at(c, p.x + p.w - 150, p.y + pm.sign.title.y - 2, 1, 0, (q) => drawSignature(q, 'bramble', 0.7, 1.1));
+    if (kind === 'signing') {
+      // the signature writes itself in the SIGN strip's title row, never over a chip (signatureBox)
+      const sb = signatureBox(p.w - 16, pm.sign.chips[0].y - pm.sign.y);
+      at(c, p.x + 8, p.y + pm.sign.y, 1, 0, (q) => drawSignatureIn(q, 'bramble', 0.7, sb));
+    }
   }
 
   // drawer band
@@ -148,7 +152,7 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
   const lb = drawerLabelBox(p.w, db.h);
   drawLetters(c, 'FOR FURTHER STUDY (312)', (w - p.w) / 2 + lb.x + 6, db.y + lb.y + lb.h - 4, { size: Math.min(9, lb.h * 0.55), color: DESK.line, weight: 0.13 });
   // goal line and bottom row
-  c.drawRect({ x: 0, y: L.goalLine.y, width: w, height: L.goalLine.h + L.bottomRow.h + (h - L.bottomRow.y - L.bottomRow.h) }, fill(DESK.walnutDeep));
+  drawDeskFront(c, { x: 0, y: L.goalLine.y, w, h: h - L.goalLine.y }, office, o.set ?? 'plain');
   words(c, 16, L.goalLine.y + 3, w * 0.62, L.goalLine.h - 6, DESK.paperShade);
   const bt = L.buttons;
   at(c, bt.inTray.x, bt.inTray.y, 1, 0, (q) => drawInTray(q, bt.inTray.w, bt.inTray.h, 4, { digits: true }));

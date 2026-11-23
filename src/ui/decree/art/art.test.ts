@@ -124,6 +124,29 @@ describe('names the game uses have drawings', () => {
     for (const p of game.decree.cast.players) expect(K.SIGNATURE_IDS, p.id).toContain(p.id);
     expect(new Set(K.SIGNATURE_IDS.map((id) => K.signatureOf(id).total.toFixed(1))).size).toBe(K.SIGNATURE_IDS.length);
   });
+
+  it('the signature on the SIGN strip never crosses a chip (a hint never covers a number)', async () => {
+    const { paperMetrics } = await import('../paperMetrics');
+    for (const h of [300, 380, 461])
+      for (const s of [1, 1.15, 1.3]) {
+        const pm = paperMetrics(h, s);
+        const stripW = 343 - 16;
+        const chipTop = pm.sign.chips[0].y - pm.sign.y;
+        const box = K.signatureBox(stripW, chipTop);
+        // every chip box of both chip rows, two columns spanning the strip's inner width
+        const chips = pm.sign.chips.flatMap((r) => [0, 1].map((k) => ({ x: 6 + k * (stripW / 2), y: r.y - pm.sign.y, w: stripW / 2 - 12, h: r.h })));
+        for (const id of K.SIGNATURE_IDS) {
+          const b = K.signatureBounds(id, box);
+          expect(b.x, id).toBeGreaterThanOrEqual(0);
+          expect(b.x + b.w, id).toBeLessThanOrEqual(stripW);
+          expect(b.y, id).toBeGreaterThanOrEqual(0);
+          for (const ch of chips) {
+            const apart = b.y + b.h <= ch.y || ch.y + ch.h <= b.y || b.x + b.w <= ch.x || ch.x + ch.w <= b.x;
+            expect(apart, `${id} at h ${h} s ${s}`).toBe(true);
+          }
+        }
+      }
+  });
 });
 
 describe('atlases', () => {

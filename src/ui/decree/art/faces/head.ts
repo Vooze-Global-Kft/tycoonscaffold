@@ -8,7 +8,7 @@
  * y = 28 (`HEAD_TOP`). The cut-outs draw the same head through a transform.
  */
 import type { SkCanvas, SkPath } from '@shopify/react-native-skia';
-import { HAIR, alpha, arc, blob, builder, circle, curve, fill, hatch, ink, intersect, line, mix, oval, poly, sideOf, stroke, union, wash, type HairColour, type Pen } from './ink';
+import { HAIR, P, alpha, arc, blob, builder, circle, curve, fill, hatch, ink, intersect, line, mix, oval, poly, sideOf, stroke, union, wash, type HairColour, type Pen } from './ink';
 
 export const HEAD_X = 50;
 export const HEAD_TOP = 28;
@@ -110,11 +110,43 @@ export function drawFace(c: SkCanvas, pen: Pen, g: HeadGeo, w: Wash): void {
 
 type FeatureDraw = (c: SkCanvas, pen: Pen, g: HeadGeo, w: Wash) => void;
 
+/**
+ * The features' pen, the same on every tone: the line pressed darker (`P.feature`) over a 1-unit pale
+ * rim (`P.halo`), so eyes, brows, nose, mouth and glasses read on the deepest skin as on the lightest.
+ * A pen with its own ink (a cut-out's edge pass, a mono test) keeps that ink and draws no rim.
+ */
+export const HALO_W = 1;
+export function featurePen(pen: Pen): Pen {
+  return pen.ink === P.ink ? { ...pen, ink: P.feature } : pen;
+}
+function haloOn(pen: Pen): boolean {
+  return !pen.edge && pen.ink === P.ink;
+}
+export function haloColour(): string {
+  return alpha(P.halo, P.haloAlpha);
+}
+/** A feature line: the pale rim, then the ink of varying width in the feature colour. */
+function fline(c: SkCanvas, pen: Pen, path: SkPath, w = 0.9): void {
+  if (haloOn(pen)) c.drawPath(path, stroke(haloColour(), w * pen.weight + HALO_W * 2 * 0.5 + 0.4));
+  ink(c, featurePen(pen), path, w);
+}
+/** A filled feature shape (a brow, a dot eye): its pale rim, then the fill. */
+function fshape(c: SkCanvas, pen: Pen, path: SkPath, color: string): void {
+  if (haloOn(pen)) c.drawPath(path, stroke(haloColour(), HALO_W * 2));
+  c.drawPath(path, fill(color));
+}
+/** A thin plain feature stroke (lids, crinkles): rim, then line. */
+function fthin(c: SkCanvas, pen: Pen, path: SkPath, color: string, w: number): void {
+  if (haloOn(pen)) c.drawPath(path, stroke(haloColour(), w + HALO_W * 1.2));
+  c.drawPath(path, stroke(color, w));
+}
+
 function dots(c: SkCanvas, pen: Pen, g: HeadGeo, dx: number, r: number): void {
-  // The same dot and the same small glint on every face, whatever the tone.
+  // The same dot, rim and catchlight on every face, whatever the tone.
+  const fp = featurePen(pen);
   for (const s of [-1, 1]) {
-    c.drawPath(circle(g.cx + s * dx, g.eyeY, r), fill(pen.ink));
-    c.drawPath(circle(g.cx + s * dx - r * 0.35, g.eyeY - r * 0.35, r * 0.32), fill(alpha('#FFFFFF', 0.85)));
+    fshape(c, pen, circle(g.cx + s * dx, g.eyeY, r), fp.ink);
+    c.drawPath(circle(g.cx + s * dx - r * 0.32, g.eyeY - r * 0.32, r * 0.42), fill('#FFFFFF'));
   }
 }
 
@@ -122,19 +154,19 @@ export const EYES = {
   dot: (c, pen, g) => dots(c, pen, g, g.eyeDx, 1.45),
   lidded: (c, pen, g) => {
     dots(c, pen, g, g.eyeDx, 1.35);
-    for (const s of [-1, 1]) c.drawPath(arc(g.cx + s * g.eyeDx, g.eyeY + 0.4, 2.6, 2.2, 200, 140), stroke(pen.ink, 0.75 * pen.weight));
+    for (const s of [-1, 1]) fthin(c, pen, arc(g.cx + s * g.eyeDx, g.eyeY + 0.4, 2.6, 2.2, 200, 140), featurePen(pen).ink, 0.75 * pen.weight);
   },
   close: (c, pen, g) => dots(c, pen, g, g.eyeDx * 0.82, 1.4),
   crinkle: (c, pen, g) => {
     dots(c, pen, g, g.eyeDx, 1.4);
-    for (const s of [-1, 1]) c.drawPath(arc(g.cx + s * g.eyeDx, g.eyeY + 0.6, 2.4, 1.6, 20, 140), stroke(alpha(pen.ink, 0.8), 0.55 * pen.weight));
+    for (const s of [-1, 1]) fthin(c, pen, arc(g.cx + s * g.eyeDx, g.eyeY + 0.6, 2.4, 1.6, 20, 140), featurePen(pen).ink, 0.55 * pen.weight);
   },
   wide: (c, pen, g) => dots(c, pen, g, g.eyeDx * 1.12, 1.5),
 } satisfies Record<string, FeatureDraw>;
 export type EyesId = keyof typeof EYES;
 
 /** A heavy brow: a tapered filled stroke from inner (x0, y0) through a peak to the outer end. */
-function brow(c: SkCanvas, color: string, pts: [number, number][], thick: number): void {
+function brow(c: SkCanvas, pen: Pen, color: string, pts: [number, number][], thick: number): void {
   // Thick at the inner end, tapering outward: a closed shape around the centre line.
   const top: [number, number][] = [];
   const bot: [number, number][] = [];
@@ -143,17 +175,22 @@ function brow(c: SkCanvas, color: string, pts: [number, number][], thick: number
     top.push([x, y - k / 2]);
     bot.push([x, y + k / 2]);
   });
-  c.drawPath(blob([...top, ...bot.reverse()], 0.8), fill(color));
+  fshape(c, pen, blob([...top, ...bot.reverse()], 0.8), color);
 }
 
 function brows(c: SkCanvas, pen: Pen, g: HeadGeo, w: Wash, inner: number, peak: number, outer: number, thick = 2.7, span = 1): void {
-  const color = mix(w.hair, pen.ink, 0.5);
+  const color = browColour(pen, w.hair);
   for (const s of [-1, 1]) {
     const x0 = g.cx + s * g.eyeDx * 0.35;
     const x2 = g.cx + s * g.eyeDx * (1.55 * span);
     const x1 = (x0 + x2) / 2;
-    brow(c, color, [[x0, g.browY + inner], [x1, g.browY + peak], [x2, g.browY + outer]], thick);
+    brow(c, pen, color, [[x0, g.browY + inner], [x1, g.browY + peak], [x2, g.browY + outer]], thick);
   }
+}
+
+/** A brow is the hair colour pressed toward the feature ink (white hair still reads on light skin). */
+export function browColour(pen: Pen, hair: string): string {
+  return mix(hair, featurePen(pen).ink, 0.8);
 }
 
 export const BROWS = {
@@ -163,11 +200,11 @@ export const BROWS = {
   worried: (c, pen, g, w) => brows(c, pen, g, w, -1.3, -0.3, 0.9, 2.5),
   stern: (c, pen, g, w) => brows(c, pen, g, w, 0.8, -0.2, -0.4, 2.9),
   quizzical: (c, pen, g, w) => {
-    const color = mix(w.hair, pen.ink, 0.5);
+    const color = browColour(pen, w.hair);
     const l = g.cx - g.eyeDx;
     const r = g.cx + g.eyeDx;
-    brow(c, color, [[g.cx - g.eyeDx * 0.35, g.browY], [l, g.browY - 0.3], [g.cx - g.eyeDx * 1.55, g.browY + 0.4]], 2.7);
-    brow(c, color, [[g.cx + g.eyeDx * 0.35, g.browY - 0.6], [r, g.browY - 2.6], [g.cx + g.eyeDx * 1.55, g.browY - 1.2]], 2.7);
+    brow(c, pen, color, [[g.cx - g.eyeDx * 0.35, g.browY], [l, g.browY - 0.3], [g.cx - g.eyeDx * 1.55, g.browY + 0.4]], 2.7);
+    brow(c, pen, color, [[g.cx + g.eyeDx * 0.35, g.browY - 0.6], [r, g.browY - 2.6], [g.cx + g.eyeDx * 1.55, g.browY - 1.2]], 2.7);
   },
 } satisfies Record<string, FeatureDraw>;
 export type BrowsId = keyof typeof BROWS;
@@ -176,49 +213,49 @@ export const NOSES = {
   button: (c, pen, g, w) => {
     const y = g.noseY;
     c.drawPath(oval(g.cx + 0.8, y, 2.4, 2), fill(w.skinDeep));
-    ink(c, pen, arc(g.cx + 0.5, y, 2.6, 2.1, 20, 170), 0.85);
+    fline(c, pen, arc(g.cx + 0.5, y, 2.6, 2.1, 20, 170), 0.85);
   },
   straight: (c, pen, g) => {
-    ink(c, pen, curve([[g.cx + 0.6, g.eyeY + 1.5], [g.cx + 1.6, g.noseY - 1], [g.cx + 2.6, g.noseY + 1.2], [g.cx - 0.6, g.noseY + 1.6]]), 0.85);
+    fline(c, pen, curve([[g.cx + 0.6, g.eyeY + 1.5], [g.cx + 1.6, g.noseY - 1], [g.cx + 2.6, g.noseY + 1.2], [g.cx - 0.6, g.noseY + 1.6]]), 0.85);
   },
   long: (c, pen, g) => {
-    ink(c, pen, curve([[g.cx + 0.4, g.eyeY + 0.5], [g.cx + 1.6, g.noseY], [g.cx + 3.2, g.noseY + 2.8], [g.cx + 0.6, g.noseY + 3.3], [g.cx - 1.2, g.noseY + 2.4]]), 0.85);
+    fline(c, pen, curve([[g.cx + 0.4, g.eyeY + 0.5], [g.cx + 1.6, g.noseY], [g.cx + 3.2, g.noseY + 2.8], [g.cx + 0.6, g.noseY + 3.3], [g.cx - 1.2, g.noseY + 2.4]]), 0.85);
   },
   bulb: (c, pen, g, w) => {
     const y = g.noseY + 0.6;
     c.drawPath(circle(g.cx + 0.6, y, 3.4), fill(w.skinDeep));
-    ink(c, pen, curve([[g.cx + 0.4, g.eyeY + 2], [g.cx + 1.2, y - 3]]), 0.8);
-    ink(c, pen, arc(g.cx + 0.6, y, 3.4, 3.2, -40, 260), 0.85);
+    fline(c, pen, curve([[g.cx + 0.4, g.eyeY + 2], [g.cx + 1.2, y - 3]]), 0.8);
+    fline(c, pen, arc(g.cx + 0.6, y, 3.4, 3.2, -40, 260), 0.85);
   },
   pointed: (c, pen, g) => {
-    ink(c, pen, poly([g.cx + 0.3, g.eyeY + 1.5, g.cx + 3.6, g.noseY + 1.6, g.cx - 0.2, g.noseY + 2.2], false), 0.85);
+    fline(c, pen, poly([g.cx + 0.3, g.eyeY + 1.5, g.cx + 3.6, g.noseY + 1.6, g.cx - 0.2, g.noseY + 2.2], false), 0.85);
   },
   snub: (c, pen, g, w) => {
     const y = g.noseY - 0.4;
     c.drawPath(oval(g.cx + 0.4, y + 0.6, 2.8, 1.6), fill(w.skinDeep));
-    ink(c, pen, curve([[g.cx - 2.4, y + 1.6], [g.cx + 0.2, y + 2.4], [g.cx + 2.8, y + 0.8], [g.cx + 1.6, y - 2]]), 0.85);
+    fline(c, pen, curve([[g.cx - 2.4, y + 1.6], [g.cx + 0.2, y + 2.4], [g.cx + 2.8, y + 0.8], [g.cx + 1.6, y - 2]]), 0.85);
   },
 } satisfies Record<string, FeatureDraw>;
 export type NoseId = keyof typeof NOSES;
 
 export const MOUTHS = {
-  smile: (c, pen, g) => ink(c, pen, arc(g.cx, g.mouthY - 2.2, 4.6, 2.6, 25, 130), 0.95),
-  flat: (c, pen, g) => ink(c, pen, curve([[g.cx - 4, g.mouthY], [g.cx, g.mouthY + 0.4], [g.cx + 4, g.mouthY - 0.2]]), 0.95),
-  smirk: (c, pen, g) => ink(c, pen, curve([[g.cx - 3.8, g.mouthY + 0.4], [g.cx + 1, g.mouthY + 0.6], [g.cx + 4.4, g.mouthY - 1.4]]), 0.95),
+  smile: (c, pen, g) => fline(c, pen, arc(g.cx, g.mouthY - 2.2, 4.6, 2.6, 25, 130), 0.95),
+  flat: (c, pen, g) => fline(c, pen, curve([[g.cx - 4, g.mouthY], [g.cx, g.mouthY + 0.4], [g.cx + 4, g.mouthY - 0.2]]), 0.95),
+  smirk: (c, pen, g) => fline(c, pen, curve([[g.cx - 3.8, g.mouthY + 0.4], [g.cx + 1, g.mouthY + 0.6], [g.cx + 4.4, g.mouthY - 1.4]]), 0.95),
   o: (c, pen, g, w) => {
     const p = oval(g.cx, g.mouthY, 1.8, 2.2);
-    c.drawPath(p, fill(mix(w.skinDeep, pen.ink, 0.5)));
-    ink(c, pen, p, 0.75);
+    c.drawPath(p, fill(mix(w.skinDeep, featurePen(pen).ink, 0.6)));
+    fline(c, pen, p, 0.75);
   },
   grin: (c, pen, g, w) => {
     const p = builder().moveTo(g.cx - 5, g.mouthY - 1).quadTo(g.cx, g.mouthY + 5, g.cx + 5, g.mouthY - 1).close().build();
     c.drawPath(p, fill('#F4F1EA'));
     c.drawPath(line(g.cx - 4.6, g.mouthY - 0.2, g.cx + 4.6, g.mouthY - 0.2), stroke(alpha(w.skinDeep, 0.9), 0.5));
-    ink(c, pen, p, 0.9);
+    fline(c, pen, p, 0.9);
   },
   pursed: (c, pen, g, w) => {
     c.drawPath(oval(g.cx, g.mouthY, 2.6, 1.2), fill(w.skinDeep));
-    ink(c, pen, curve([[g.cx - 2.6, g.mouthY], [g.cx, g.mouthY - 0.8], [g.cx + 2.6, g.mouthY]]), 0.8);
+    fline(c, pen, curve([[g.cx - 2.6, g.mouthY], [g.cx, g.mouthY - 0.8], [g.cx + 2.6, g.mouthY]]), 0.8);
   },
 } satisfies Record<string, FeatureDraw>;
 export type MouthId = keyof typeof MOUTHS;
@@ -269,36 +306,36 @@ export const GLASSES = {
     for (const s of [-1, 1]) {
       const p = circle(g.cx + s * g.eyeDx, g.eyeY, 4.3);
       c.drawPath(p, fill(alpha('#FFFFFF', 0.25)));
-      ink(c, pen, p, 0.8);
+      fline(c, pen, p, 0.8);
     }
-    ink(c, pen, arc(g.cx, g.eyeY + 0.6, g.eyeDx - 4.3, 1.6, 200, 140), 0.7);
+    fline(c, pen, arc(g.cx, g.eyeY + 0.6, g.eyeDx - 4.3, 1.6, 200, 140), 0.7);
   },
   half: (c, pen, g) => {
     for (const s of [-1, 1]) {
       const x = g.cx + s * g.eyeDx;
       const p = builder().moveTo(x - 4.4, g.eyeY + 1.2).lineTo(x + 4.4, g.eyeY + 1.2).quadTo(x + 4.2, g.eyeY + 5, x, g.eyeY + 5).quadTo(x - 4.2, g.eyeY + 5, x - 4.4, g.eyeY + 1.2).close().build();
       c.drawPath(p, fill(alpha('#FFFFFF', 0.25)));
-      ink(c, pen, p, 0.8);
+      fline(c, pen, p, 0.8);
     }
-    ink(c, pen, line(g.cx - g.eyeDx + 4.4, g.eyeY + 1.6, g.cx + g.eyeDx - 4.4, g.eyeY + 1.6), 0.7);
+    fline(c, pen, line(g.cx - g.eyeDx + 4.4, g.eyeY + 1.6, g.cx + g.eyeDx - 4.4, g.eyeY + 1.6), 0.7);
   },
   square: (c, pen, g) => {
     for (const s of [-1, 1]) {
       const x = g.cx + s * g.eyeDx;
       const p = builder().addRRect({ rect: { x: x - 4.8, y: g.eyeY - 3.4, width: 9.6, height: 7 }, rx: 1.4, ry: 1.4 }).build();
       c.drawPath(p, fill(alpha('#FFFFFF', 0.22)));
-      ink(c, pen, p, 1.05);
+      fline(c, pen, p, 1.05);
     }
-    ink(c, pen, line(g.cx - g.eyeDx + 4.8, g.eyeY - 1, g.cx + g.eyeDx - 4.8, g.eyeY - 1), 0.9);
+    fline(c, pen, line(g.cx - g.eyeDx + 4.8, g.eyeY - 1, g.cx + g.eyeDx - 4.8, g.eyeY - 1), 0.9);
   },
   cat: (c, pen, g) => {
     for (const s of [-1, 1]) {
       const x = g.cx + s * g.eyeDx;
       const p = blob([[x - s * 4.2, g.eyeY - 1.6], [x + s * 1, g.eyeY - 3], [x + s * 5.6, g.eyeY - 4.2], [x + s * 4, g.eyeY + 2.4], [x - s * 0.6, g.eyeY + 3.6], [x - s * 4.2, g.eyeY + 1.8]], 0.7);
       c.drawPath(p, fill(alpha('#FFFFFF', 0.22)));
-      ink(c, pen, p, 1.0);
+      fline(c, pen, p, 1.0);
     }
-    ink(c, pen, line(g.cx - g.eyeDx + 4.2, g.eyeY - 1, g.cx + g.eyeDx - 4.2, g.eyeY - 1), 0.8);
+    fline(c, pen, line(g.cx - g.eyeDx + 4.2, g.eyeY - 1, g.cx + g.eyeDx - 4.2, g.eyeY - 1), 0.8);
   },
 } satisfies Record<string, FeatureDraw>;
 export type GlassesId = keyof typeof GLASSES;

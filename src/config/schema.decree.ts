@@ -36,6 +36,11 @@
  * (src/engine/fixtures/decree.numbers.json), never on these defaults (lesson 4).
  */
 import { z } from 'zod';
+// The cross-field checks recompute two rules from the numbers with the rules' own ONE functions (2.11, 2.14):
+// pure TypeScript of the decree mode's own folders, which never import this file at run time.
+import { certainWinBound } from '../engine/decree/count';
+import { compositionProblems } from '../engine/decree/twists';
+import type { DecreeConfig } from '../engine/decree/types';
 
 const id = z.string().regex(/^[a-z0-9_]+$/);
 const pos = z.number().positive();
@@ -447,8 +452,8 @@ const OFFICES_DEFAULT: z.input<typeof OfficeSchema>[] = [
     requisitionEvery: 10,
     // D19: the mayor's template share q is 0.25 (was 0).
     templateShare: 0.25,
-    // D14: the first mayoral rival is renamed by the sensitivity editor (names.json); PLACEHOLDER until then.
-    rivals: [{ id: 'mayor_rival_1', name: 'Councillor (PLACEHOLDER, D14)', slogan: 'PLACEHOLDER: She Owns A Hat', hobby: 'her hat', backAgain: 'PLACEHOLDER: back for another go, in the same hat.', resignation: 'PLACEHOLDER: won, then resigned to spend more time with her hat.' }, RIVAL_PLACEHOLDER('mayor', 2), RIVAL_PLACEHOLDER('mayor', 3)],
+    // D14 and the register (scripts/content/office/names.json): Prudence Plumb is Prudence Stitchley; her lines are writer 5's (these follow 2.10's examples).
+    rivals: [{ id: 'stitchley', name: 'Councillor Prudence Stitchley', slogan: 'Stitchley: She Owns A Hat', hobby: 'her hat', backAgain: 'Councillor Stitchley is back for another go, in the same hat.', resignation: 'Councillor Stitchley won, then resigned to spend more time with her hat.' }, RIVAL_PLACEHOLDER('mayor', 2), RIVAL_PLACEHOLDER('mayor', 3)],
   },
   {
     id: 'governor',
@@ -489,7 +494,8 @@ const OFFICES_DEFAULT: z.input<typeof OfficeSchema>[] = [
     winWeight: 2,
     requisitionEvery: 8,
     templateShare: 0.15,
-    rivals: [{ id: 'waft', name: 'Barnaby Waft', slogan: 'Waft: Gently Onwards', hobby: 'the Ceremonial Spoon', backAgain: 'Barnaby Waft is back for another go, spoon polished.', resignation: 'Barnaby Waft won, then resigned to spend more time with his spoon.' }, RIVAL_PLACEHOLDER('governor', 2), RIVAL_PLACEHOLDER('governor', 3)],
+    // The register renamed Barnaby Waft to Leander Waft.
+    rivals: [{ id: 'waft', name: 'Leander Waft', slogan: 'Waft: Gently Onwards', hobby: 'the Ceremonial Spoon', backAgain: 'Leander Waft is back for another go, spoon polished.', resignation: 'Leander Waft won, then resigned to spend more time with his spoon.' }, RIVAL_PLACEHOLDER('governor', 2), RIVAL_PLACEHOLDER('governor', 3)],
   },
   {
     id: 'president',
@@ -507,7 +513,8 @@ const OFFICES_DEFAULT: z.input<typeof OfficeSchema>[] = [
       district('gusting_heights', 'Gusting Heights', 'GH', [10, 15, 10, 10, 30, 10, 15]),
       district('muchpuddle', 'Muchpuddle', 'MP', [10, 10, 15, 10, 10, 30, 15]),
       district('saltpenny_bay', 'Saltpenny Bay', 'SB', [10, 15, 10, 15, 10, 10, 30]),
-      district('kitewell', 'Kitewell', 'KW', [25, 10, 20, 10, 15, 10, 10]),
+      // The register renamed Kitewell to Kitecombe (KC).
+      district('kitecombe', 'Kitecombe', 'KC', [25, 10, 20, 10, 15, 10, 10]),
       district('upper_wobbling', 'Upper Wobbling', 'UW', [10, 20, 10, 25, 10, 15, 10]),
     ],
     majority: 5,
@@ -534,8 +541,8 @@ const OFFICES_DEFAULT: z.input<typeof OfficeSchema>[] = [
     requisitionEvery: 4,
     templateShare: 0.2,
     rivals: [
-      // D14: the first presidential rival is renamed by the sensitivity editor (names.json); PLACEHOLDER until then.
-      { id: 'president_rival_1', name: 'Professor (PLACEHOLDER, D14)', slogan: 'PLACEHOLDER: Abolish Wednesdays', hobby: 'Wednesdays', backAgain: 'PLACEHOLDER: back for another go, still against Wednesdays.', resignation: 'PLACEHOLDER: won, then resigned to spend more time with his Tuesdays.' },
+      // D14 and the register: Ignatius Crumb is Professor Ozias Kalends; his lines are writer 5's.
+      { id: 'kalends', name: 'Professor Ozias Kalends', slogan: 'Kalends: Abolish Wednesdays', hobby: 'Wednesdays', backAgain: 'Professor Kalends is back for another go, still against Wednesdays.', resignation: 'Professor Kalends won, then resigned to spend more time with his Tuesdays.' },
       { id: 'strop', name: 'Ottoline Strop', slogan: 'Strop: Firmly Seated', hobby: 'her chair', backAgain: 'Ottoline Strop is back for another go, chair and all.', resignation: 'Ottoline Strop won, then resigned to spend more time with her chair.' },
       ...Array.from({ length: 10 }, (_, i) => RIVAL_PLACEHOLDER('president', i + 3)),
     ],
@@ -553,18 +560,18 @@ const CLUBS_DEFAULT: z.input<typeof ClubSchema>[] = [
 ];
 
 const M = (idv: string, name: string, initials: string, club: (typeof CLUB_IDS)[number], office: (typeof OFFICE_IDS)[number], rule: z.input<typeof FactorSchema>) => ({ id: idv, name, initials, club, office, rule });
-/** 7.3, in the order they apply (three in each office). */
+/** 7.3, in the order they apply (three in each office); names as the register has them (ids kept, never shown). */
 const MINISTERS_DEFAULT = [
-  M('pockle', 'Dorothy Pockle', 'DP', 'bus', 'mayor', { target: 'requisition.money', club: 'bus', mul: 0.9 }),
-  M('pellow', 'Dorrit Pellow', 'DPe', 'veg', 'mayor', { target: 'settlement.money', club: 'veg', mul: 0.5 }),
+  M('pockle', 'Dorothy Sett', 'DS', 'bus', 'mayor', { target: 'requisition.money', club: 'bus', mul: 0.9 }),
+  M('pellow', 'Dorrit Pellow', 'DP', 'veg', 'mayor', { target: 'settlement.money', club: 'veg', mul: 0.5 }),
   M('ferrule', 'Basil Ferrule', 'BF', 'shops', 'mayor', { target: 'fee.money', club: 'shops', mul: 1.2 }),
   M('hush', 'Wendeline Hush', 'WH', 'shops', 'governor', { target: 'quietDecay', mul: 0.75 }),
-  M('bole', 'Ermintrude Bole', 'EB', 'brass', 'governor', { target: 'ribbon.mood', club: 'brass', add: 1 }),
-  M('gusset', 'Percy Gusset', 'PG', 'anglers', 'governor', { target: 'campaign.money', mul: 0.67 }),
+  M('bole', 'Henrietta Bole', 'HB', 'brass', 'governor', { target: 'ribbon.mood', club: 'brass', add: 1 }),
+  M('gusset', 'Percy Plummet', 'PP', 'anglers', 'governor', { target: 'campaign.money', mul: 0.67 }),
   M('wren', 'Marjorie Wren', 'MW', 'kites', 'president', { target: 'fee.money', club: 'kites', mul: 1.2 }),
   // PLACEHOLDER (sent to the lead, as A Gentle Week): ×0.7 on the cut of "Say nothing" (I × 0.86).
   M('tamp', 'Osric Tamp', 'OT', 'hedges', 'president', { target: 'sayNothing.cut', mul: 0.7 }),
-  M('nibley', 'Florence Nibley', 'FN', 'anglers', 'president', { target: 'requisition.money', club: 'anglers', mul: 0.9 }),
+  M('nibley', 'Florence Mayfly', 'FM', 'anglers', 'president', { target: 'requisition.money', club: 'anglers', mul: 0.9 }),
 ];
 
 // ----------------------------------------------------------------------------- the block
@@ -664,9 +671,13 @@ export const DecreeSchema = z.object({
   away: z.object({ arrivalSeconds: pos.default(360), rate: prob.default(0.35), capHours: pos.default(4), longLunchHours: pos.default(2) }).prefault({}),
   /**
    * The ladder (2.10, 2.12): m_N = 1 + nrFactor × NR (tune 0.01 to 0.04); disarray after n consecutive
-   * losses Y(n) = 2^(n+1) − 2 share points (D15, a rule: +2, +6, +14, +30, +62), so a count is a certain
-   * win after at most `maxLossesBound` (5) losses for any pull up to 12; the transition fund (tune 15 to
-   * 90 s of the old B); the new office's moods 50 + min(moveMoodCap, floor(NR / moveMoodPerNr)).
+   * losses Y(n) = 2^(n+1) − 2 share points (D15, a rule: +2, +6, +14, +30, +62, +126); with D25's count
+   * (a mood below 30 counts three times as far below, so the worst share is Y − R − 60) a count is a
+   * certain win after at most `maxLossesBound` (6, D25) consecutive losses for any pull up to 12: the
+   * validator recomputes the bound from the numbers (count.ts `certainWinBound`) and fails above it;
+   * the transition fund (tune 15 to 90 s of the old B); the new office's moods
+   * 50 + min(moveMoodCap, floor(NR / moveMoodPerNr)); NR += winWeight × (winBase + districts held on
+   * merit) + sweepBonus × winWeight for a sweep on merit (2.10, D26), + winWeight after a loss.
    */
   ladder: z
     .object({
@@ -677,9 +688,16 @@ export const DecreeSchema = z.object({
       moveMoodCap: int.default(5),
       moveMoodPerNr: int.positive().default(20),
       announceSeconds: pos.default(2.5),
-      maxLossesBound: int.positive().default(5),
+      maxLossesBound: int.positive().default(6),
     })
     .prefault({}),
+  /**
+   * The count's utility of a mood (D25, rules; the ONE function is count.ts `moodUtility`): a mood from
+   * `huffBelow` up counts as it is, below it `huffSlope` times as far below (u(m) = m from 30 up,
+   * 3m − 60 below: u(20) = 0, u(0) = −60). Only the count and the poll read it; approval and income use
+   * the plain moods. A club from boycott.below to huffBelow − 1 is "in a huff" on screen.
+   */
+  count: z.object({ huffBelow: int.min(0).max(100).default(30), huffSlope: z.number().min(1).default(3) }).prefault({}),
   /** The vanity shelf (5.8): a monument a term from mayor term 2 for `price` s of B (tune 300 to 1,200), ×factor for good (tune 1.01 to 1.04). */
   vanity: z.object({ price: pos.default(600), factor: pos.default(1.02), fromMayorTerm: int.positive().default(2) }).prefault({}),
   /** The Standing Order (5.10): from governor term 2 (from the first day with the product "Junior Clerk on Duty", D11), buys the advised level when cash ≥ times × price + the reserve. */
@@ -712,8 +730,8 @@ export const DecreeSchema = z.object({
         { id: 'bramble', name: 'Hettie Bramble' },
         { id: 'fennel', name: 'Osgood Fennel' },
         { id: 'quill', name: 'Ada Quill' },
-        { id: 'marchpane', name: 'Rupert Marchpane' },
-        { id: 'tuttle', name: 'Winifred Tuttle' },
+        { id: 'marchpane', name: 'Rupert Borage' },
+        { id: 'tuttle', name: 'Winifred Chervil' },
         { id: 'larkspur', name: 'Cosmo Larkspur' },
       ]),
       clerk: VisitorSchema.default({ face: 'face:abacus', name: 'Gwendolyn Abacus', role: 'Treasury Clerk', club: null }),
@@ -850,10 +868,26 @@ export function lintDecree(d: DecreeContent): string[] {
     if (o.majority > o.districts.length) out.push(`${o.id}: majority ${o.majority} of ${o.districts.length} districts`);
     if (o.ministries[0]?.club !== null) out.push(`${o.id}: ministry 0 serves no club (so income is never zero)`);
     for (const m of o.ministries) if (m.club && !o.clubs.includes(m.club)) out.push(`${o.id}: ministry ${m.id} serves ${m.club}, not a club of this office`);
-    // 2.11 with D15: after `maxLossesBound` consecutive losses Y(n) = 2^(n+1) − 2 alone holds every district.
-    const n = d.ladder.maxLossesBound;
-    if (Math.pow(2, n + 1) - 2 - o.rivalPull < 50) out.push(`${o.id}: 2^(${n}+1) − 2 − R = ${Math.pow(2, n + 1) - 2 - o.rivalPull} < 50: a count is not a certain win after ${n} losses (2.11, D15)`);
+    // 2.11 with D15 and D25: the bound recomputed from the numbers (count.ts, the ONE function of the count's rules).
+    const bound = certainWinBound(d, oi);
+    if (!(bound <= d.ladder.maxLossesBound)) out.push(`${o.id}: a count is a certain win only after ${bound} consecutive losses, more than ${d.ladder.maxLossesBound} (2.11 with D15 and D25: Y(n) − R + u(0) ≥ 50)`);
+    // The ladder of 2.2: only the mayor stands for nothing.
+    if ((oi === 0) !== (o.stand === null)) out.push(`${o.id}: ${oi === 0 ? 'the first office has no requirement to stand' : 'needs its requirements to stand (Name Recognition and the record below)'}`);
+    if (oi < 2 && !o.recordName) out.push(`${o.id}: the record the next office needs has no name`);
+    if (o.callFraction <= 0 || Math.round(o.callFraction * o.termDays) < 1 || Math.round(o.callFraction * o.termDays) > o.termDays) out.push(`${o.id}: the call day C = ${o.callFraction} × ${o.termDays} is not a day of the term`);
+    const mins = d.ministers.filter((m) => m.office === o.id);
+    if (mins.length !== 3) out.push(`${o.id}: ${mins.length} ministers apply here, not 3 (2.9)`);
+    for (const m of d.ministers) if (OFFICE_IDS.indexOf(m.office) <= oi && m.office === o.id && !o.clubs.includes(m.club)) out.push(`minister ${m.id}: club ${m.club} is not a club of ${o.id} (D21: the application would never come)`);
   });
+  // 2.9: ministers' ids and initials are distinct (the initials are printed on the papers they touch).
+  if (new Set(d.ministers.map((m) => m.id)).size !== d.ministers.length) out.push('ministers: duplicate id');
+  if (new Set(d.ministers.map((m) => m.initials)).size !== d.ministers.length) out.push('ministers: duplicate initials (each prints its own on the papers it touches)');
+  const days = d.forms.application.days;
+  if (days.some((x, i) => i > 0 && x <= days[i - 1])) out.push(`forms.application.days ${JSON.stringify(days)} must rise`);
+  if (!(d.count.huffBelow > d.boycott.below)) out.push(`count.huffBelow ${d.count.huffBelow} must be above boycott.below ${d.boycott.below} (D25: "in a huff" from 20 to 29)`);
+  if (!(d.boycott.below < d.boycott.endsAt && d.boycott.endsAt <= d.boycott.rearmAt)) out.push('boycott: below < endsAt ≤ rearmAt (2.8: 20, 25, 30)');
+  // 2.14: the ladder of new things to term 181, and every factor composed with every minister.
+  for (const p of compositionProblems({ decree: d } as unknown as DecreeConfig)) out.push(p);
   const followOnly = new Set<string>(FOLLOW_ONLY_ARCHETYPES);
   for (const a of d.archetypes) if (followOnly.has(a.id) && a.share !== 0) out.push(`archetype ${a.id} is drawn only as a follow-up: its share must be 0`);
   const shares = d.archetypes.filter((a) => !followOnly.has(a.id)).reduce((s, a) => s + a.share, 0);
