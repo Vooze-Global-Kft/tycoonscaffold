@@ -13,12 +13,14 @@ import { S } from '../strings';
 import { useMerge, useMergeShallow } from '../useMerge';
 import { cellCentre } from './geometry';
 import { chipWords } from './vm';
+import { fontScaleOverride } from './devSlow';
 import { CHIP, chipMetrics, chipTop } from './chipMetrics';
 
 const { padX: PAD_X, padY: PAD_Y, gutter: GUTTER, border: BORDER } = CHIP;
 
 export function ChipView({ layout, cell }: { layout: MergeLayout; cell: number }) {
-  const { fontScale } = useWindowDimensions();
+  const dims = useWindowDimensions();
+  const fontScale = fontScaleOverride ?? dims.fontScale;
   const words = useMergeShallow((cfg, g) => chipWords(cfg, g, cell) ?? { name: '', worth: '' }, { name: '', worth: '' });
   const top = useMerge((_c, g) => {
     const good = g.merge.board[cell];

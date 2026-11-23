@@ -33,3 +33,14 @@ export const fxSlow = read();
     return { cells: Array.from({ length: 56 }, (_, i) => cellCentre(L, i)), counters: cols.map(mid), banner: mid(L.banner), basket: mid(L.basket), fronts: L.fronts.map(mid) };
   },
 };
+
+/** `?fontScale=1.3`: the long-press chip sized as on a phone with larger text (the browser has no font scale). */
+export const fontScaleOverride: number | null = (() => {
+  try {
+    const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('fontScale') : null;
+    const v = q ? Number(q) : NaN;
+    return Number.isFinite(v) && v >= 1 && v <= 2 ? v : null;
+  } catch {
+    return null;
+  }
+})();
