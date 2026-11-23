@@ -25,6 +25,7 @@ import { freshState, mergeTestConfig } from '../fixtures/merge';
 import { rngFloat } from '../rng';
 import { checkBounds, drawParade, drawParadeTraced, drawTicket, drawTicketTraced, scriptedTicket, type BoundFailures, type DrawStep } from './draw';
 import { missingDetail, popsNeeded } from './missing';
+import { compressedCells } from './board';
 import { mergeParams } from './params';
 import type { Cell, DrawOutcome, Good, MergeGame, MergeParams, Ticket, TicketLine } from './types';
 
@@ -483,4 +484,71 @@ describe('measurements on mid-game states (for the handover notes)', () => {
     console.log(report);
     expect(tally.breaches).toEqual([]);
   }, 600_000);
+});
+
+describe('bound (c) counts the board after every possible merge (Decision M43)', () => {
+  /** Merges identical pairs below tier 8 in a random order until none is left; the goods left. */
+  function bruteForce(goods: Good[], r: () => number): number {
+    const pile = goods.map((x) => ({ ...x }));
+    for (;;) {
+      const pairs: [number, number][] = [];
+      for (let i = 0; i < pile.length; i++) for (let j = i + 1; j < pile.length; j++) if (pile[i].k < 8 && pile[i].c === pile[j].c && pile[i].k === pile[j].k) pairs.push([i, j]);
+      if (!pairs.length) return pile.length;
+      const [i, j] = pairs[Math.floor(r() * pairs.length)];
+      pile[i] = { c: pile[i].c, k: pile[i].k + 1 };
+      pile.splice(j, 1);
+    }
+  }
+
+  it('compressedCells equals merges made in random order, on 3,000 small random boards', () => {
+    const r = gen(43);
+    for (let n = 0; n < 3000; n++) {
+      const chains = 1 + Math.floor(r() * 3);
+      const count = Math.floor(r() * 20);
+      const goods: Good[] = Array.from({ length: count }, () => ({ c: Math.floor(r() * chains), k: 1 + Math.floor(r() * (r() < 0.3 ? 8 : 3)) }));
+      const board: Cell[] = BASE.merge.board.map((x) => (x === 'shutter' ? x : null));
+      const free = board.map((x, i) => (x === null ? i : -1)).filter((i) => i >= 0);
+      goods.slice(0, free.length).forEach((x, i) => (board[free[i]] = x));
+      const placed = goods.slice(0, free.length);
+      expect(compressedCells(cfg, { board }), `board ${n}`).toBe(bruteForce(placed, r));
+    }
+  });
+
+  it('examples: 6 Pepper Skewers are 2 cells (a Glazed and a Twin Skewer), 8 are 1, tier 8s never merge, chains never mix', () => {
+    const board = (goods: Good[]): { board: Cell[] } => ({ board: [...goods, ...Array.from({ length: 56 - goods.length }, () => null)] });
+    const pepper = (n: number) => Array.from({ length: n }, () => ({ c: 0, k: 1 }));
+    expect(compressedCells(cfg, board(pepper(6)))).toBe(2);
+    expect(compressedCells(cfg, board(pepper(8)))).toBe(1);
+    expect(compressedCells(cfg, board([{ c: 0, k: 8 }, { c: 0, k: 8 }, { c: 0, k: 7 }, { c: 0, k: 7 }]))).toBe(3);
+    expect(compressedCells(cfg, board([{ c: 0, k: 2 }, { c: 1, k: 2 }]))).toBe(2);
+    // The opening board fits any line the opening draws: its 6 goods are 2 cells of bound (c).
+    expect(compressedCells(cfg, BASE.merge)).toBe(2);
+  });
+
+  it('a board of goods that cannot merge fills bound (c): K + cells(k) + R > O fails (c), one good fewer passes', () => {
+    const g0 = freshState(cfg, 4);
+    const P = mergeParams(cfg, g0);
+    const open = g0.merge.board.map((x, i) => (x !== 'shutter' && x !== 'block' ? i : -1)).filter((i) => i >= 0);
+    const line = [{ c: 0, k: 3 }];
+    const need = P.O - cfg.merge.tickets.spareCells - Math.max(1, 3 - P.chains[0].base + 1);
+    // Distinct (chain, tier) goods of the open chain 0 and closed-chain-free tiers: they never merge.
+    const fill = (n: number): MergeGame => {
+      const board: Cell[] = g0.merge.board.map((x) => (x === 'shutter' || x === 'block' ? x : null));
+      for (let i = 0; i < n; i++) board[open[i]] = { c: 0, k: 8 };
+      const chains = g0.merge.chains.map((ch, c) => (c === 0 ? { ...ch, best: 8 } : ch));
+      const counters = g0.merge.counters.map((ct) => ({ ...ct, ticket: null }));
+      return { ...g0, merge: { ...g0.merge, board, chains, counters, script: 'done' } };
+    };
+    expect(compressedCells(cfg, fill(need).merge)).toBe(need);
+    expect(checkBounds(cfg, fill(need), 0, line).c).toBe(false);
+    expect(checkBounds(cfg, fill(need + 1), 0, line).c).toBe(true);
+    // The same number of Pepper Skewers merge down to a few cells: (c) passes.
+    const skewers = (() => {
+      const g = fill(0);
+      const board = g.merge.board.slice();
+      for (let i = 0; i < need + 1; i++) board[open[i]] = { c: 0, k: 1 };
+      return { ...g, merge: { ...g.merge, board } };
+    })();
+    expect(checkBounds(cfg, skewers, 0, line).c).toBe(false);
+  });
 });

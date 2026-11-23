@@ -185,6 +185,8 @@ export interface StallView {
   sale: string;
   saleSecs: string;
   heldBy: 'gear' | 'minder' | '';
+  /** M45: why the rules refuse a minder level now ('gear': the gear holds the house good back; 'top'), or '' when it can be bought. */
+  minderBlock: 'gear' | 'top' | '';
   /** The next minder level's house good and sale (hire: the first), '' when it would not change. */
   nextHouse: string;
   nextSale: string;
@@ -202,6 +204,16 @@ export interface StallView {
   openNote: '' | 'after' | 'season';
   prevChain: string;
   fromSeason: string;
+}
+
+/** M45, from the rules: a hired minder's level refused because the gear holds it back, or at its top. */
+function blockOf(cfg: R.MergeConfig, g: R.MergeGame, c: number): StallView['minderBlock'] {
+  try {
+    const b = R.minderLevelBlock(cfg, g, c);
+    return b === 'gear' || b === 'top' ? b : '';
+  } catch {
+    return '';
+  }
 }
 
 export function stallView(cfg: R.MergeConfig, g: R.MergeGame, c: number): StallView {
@@ -267,6 +279,7 @@ export function stallView(cfg: R.MergeConfig, g: R.MergeGame, c: number): StallV
     sale: ch.houseTier > 0 ? coins(cfg, R.saleAmount(cfg, g, c)) : '',
     saleSecs: figure(ch.saleInterval),
     heldBy: ch.heldBy ?? '',
+    minderBlock: blockOf(cfg, g, c),
     nextHouse,
     nextSale,
     awayHours: figure(p.awayCap / 3600),
@@ -346,7 +359,7 @@ export function ticketView(cfg: R.MergeConfig, g: R.MergeGame, j: number): Ticke
   const clock = g.stats.playSeconds;
   if (!t) return { exists: false, id: -1, gold: false, species: '', coat: 0, lines: '', price: '', bonusPct: 0, parade: '', unfilled: 0, ntGoods: 0, ntRoom: true, ntWait: 0, adOk: false, adWait: 0 };
   const p = R.mergeParams(cfg, g);
-  const lines = t.lines.map((l) => [l.c, l.k, l.filled ? 1 : 0, l.stretch ? 1 : 0, lineGone(cfg, g, l) ? 1 : 0, coins(cfg, R.value(cfg, g, l.c, l.k))].join(',')).join('|');
+  const lines = t.lines.map((l) => [l.c, l.k, l.filled ? 1 : 0, l.stretch && !g.merge.book[l.c]?.[l.k - 1] ? 1 : 0, lineGone(cfg, g, l) ? 1 : 0, coins(cfg, R.value(cfg, g, l.c, l.k))].join(',')).join('|');
   const nt = R.notTonightRoom(g, j);
   const unfilled = t.lines.filter((l) => !l.filled).length;
   let adOk = false;

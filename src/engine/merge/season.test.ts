@@ -270,6 +270,22 @@ describe('seasoned gear and familiar faces (2.11, M25, M28)', () => {
     expect(seasonedAfterClose(cfg, g.merge).slice(0, 5)).toEqual([2, 1, Math.min(max, 4), 1, 0]);
   });
 
+  it('M40: the schema holds seasoned gear to 1 step (2 with lantern 9), tuned 1 to 2; after 3 closes no chain holds more', async () => {
+    const { RANGES } = await import('../../config/schema.merge');
+    // The schema's default (the field left out of the content).
+    expect(mergeTestConfig({ seasons: { ...cfg.merge.seasons, maxSteps: undefined as unknown as number } }).merge.seasons.maxSteps).toBe(1);
+    expect(RANGES.find((r) => r.path === 'seasons.maxSteps')).toMatchObject({ low: 1, high: 2 });
+    const c1 = mergeTestConfig({ seasons: { ...cfg.merge.seasons, maxSteps: 1 } });
+    for (const lit of [[], [9]]) {
+      let m = { ...closable().merge, lanterns: [...closable().merge.lanterns.filter((n) => n !== 9), ...lit] };
+      for (let close = 0; close < 3; close++) m = { ...m, chains: m.chains.map((ch, c) => ({ ...ch, seasoned: seasonedAfterClose(c1, m)[c] })) };
+      const cap = lit.length ? 2 : 1;
+      expect(Math.max(...m.chains.map((ch) => ch.seasoned)), `lanterns ${lit}`).toBe(cap);
+      // So a season starts its gears at level 11 at most (21 with lantern 9), never 31.
+      expect(seasonedStartLevel(c1, Math.min(cap, currentMods(c1, m).seasonedMax))).toBe(1 + cfg.merge.gear.step * cap);
+    }
+  });
+
   it('familiar faces: F_s = base^min(seasons closed, max)', () => {
     const { familiarBase, familiarMax } = cfg.merge.seasons;
     expect(familiarFactor(cfg, 0)).toBe(1);

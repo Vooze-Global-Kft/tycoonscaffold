@@ -117,7 +117,8 @@ export const mergeActions = {
   hireMinder: (c: number) => act('hireMinder', (cfg, g, ev) => R.hireMinder(cfg, g, c, ev), 'minder_hire'),
   levelMinder: (c: number) => act('levelMinder', (cfg, g, ev) => R.levelMinder(cfg, g, c, ev), 'upgrade'),
   openShutter: (group: number) => act('openShutter', (cfg, g, ev) => R.openShutter(cfg, g, group, ev), 'shutter_open'),
-  notTonight: (counter: number) => act('notTonight', (cfg, g, ev) => R.notTonight(cfg, g, counter, ev), 'ui_close'),
+  // No key of its own: "Not tonight" is pressed in the ticket sheet, which closes with its own ui_close (one sound, not two).
+  notTonight: (counter: number) => act('notTonight', (cfg, g, ev) => R.notTonight(cfg, g, counter, ev), null),
   undoBasket: () => act('undoBasket', (cfg, g, ev) => R.undoBasket(cfg, g, ev), 'undo'),
   /** Opens the oldest gift box; the game saves at once after it (5.5, as the shared openChestNow). */
   openGiftBox: (): boolean => {

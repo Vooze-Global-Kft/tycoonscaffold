@@ -138,7 +138,9 @@ function StallBody({ c }: { c: number }) {
             {S.sheets.minderNext(v.nextHouse, v.nextSale)}
           </Txt>
         ) : null}
-        {v.minderCost > 0 ? (
+        {hired && v.minderBlock === 'gear' ? (
+          <Btn label={S.sheets.raiseGearFirst} kind="plain" enabled={false} onPress={() => undefined} />
+        ) : v.minderCost > 0 && v.minderBlock !== 'top' ? (
           <Btn label={hired ? S.sheets.levelUp : S.sheets.hire} price={cost(v.minderCost)} enabled={v.cash >= v.minderCost} target="sheet:minder" onPress={() => (hired ? mergeActions.levelMinder(c) : mergeActions.hireMinder(c))} />
         ) : hired ? (
           <Txt size={ty.tiny} color={INK.faint}>

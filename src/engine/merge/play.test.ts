@@ -604,7 +604,7 @@ const MIX: [Kind, number][] = [
   ['notTonight', 2],
   ['fillLine', 1],
   ['gearRush', 1],
-  ['callDragon', 1],
+  ['callDragon', 3],
   ['giftBox', 2],
   ['close', 2],
   ['away', 0.3],
@@ -644,7 +644,7 @@ function play(start: R.MergeGame, seed: number, actions: number): Run {
 describe('a long random-but-legal player, checked after every action and tick', () => {
   const report = (name: string, run: Run) =>
     console.log(
-      `[play] ${name}: ${run.ticks} ticks over ${(clockOf(run.g) / 3600).toFixed(2)} h of play, season ${run.g.merge.season + 1}, ${run.closes} closes, ${run.drawn} tickets drawn, ${run.g.merge.feats.tickets} paid, cash ${run.g.cash}; accepted ${JSON.stringify(Object.fromEntries(run.accepted))}; refused ${JSON.stringify(Object.fromEntries(run.refused))}`,
+      `[play] ${name}: ${run.ticks} ticks over ${(clockOf(run.g) / 3600).toFixed(2)} h of play, season ${run.g.merge.season + 1}, ${run.closes} closes, ${run.drawn} tickets drawn, ${run.g.merge.feats.tickets} paid, ${run.g.merge.mstats.setups} "Setting up…", cash ${run.g.cash}; accepted ${JSON.stringify(Object.fromEntries(run.accepted))}; refused ${JSON.stringify(Object.fromEntries(run.refused))}`,
     );
 
   it('from a new game: 6,000 actions over hours of play', () => {

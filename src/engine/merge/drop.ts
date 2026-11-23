@@ -135,7 +135,7 @@ function merge(cfg: MergeConfig, g: MergeGame, from: number, to: number, good: G
     feats: { ...m.feats, merges: n + 1, tier8sThisSeason: m.feats.tier8sThisSeason + (made.k === TIERS ? 1 : 0) },
     mstats: { ...m.mstats, luckies: m.mstats.luckies + (lucky ? 1 : 0) },
   });
-  events?.push({ type: 'merge', cell: to, made, lucky, spark });
+  events?.push({ type: 'merge', cell: to, made, lucky, spark, tier: good.k });
   const discovered: Good[] = [];
   for (let k = good.k + 1; k <= made.k; k++) {
     if (!x.merge.book[good.c][k - 1]) discovered.push({ c: good.c, k });

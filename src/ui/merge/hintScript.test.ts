@@ -98,12 +98,11 @@ describe('what the firefly shows, and when', () => {
   it('M44: a purchase step points at the goal line, only while the goal line names a purchase the purse can pay', () => {
     const g = feats(fresh, { merges: 2, tickets: 2 });
     expect(currentStep(g)).toBe('buy1');
-    const goal = R.purchaseAdvice(cfg, g);
-    expect(goal).not.toBeNull();
     const poor = { ...g, cash: 0 };
-    const rich = { ...g, cash: goal!.cost + 1 };
+    const rich = { ...g, cash: 1e6 };
     expect(fireflyHint(cfg, poor, idle(QUIET_MS))?.to ?? null).not.toBe('goal');
     const adv = R.advice(cfg, rich);
+    expect(adv && adv.cost > 0 && adv.cost <= rich.cash).toBe(true);
     const h = fireflyHint(cfg, rich, idle(QUIET_MS));
     expect(h?.to).toBe('goal');
     expect(h?.guided).toBe(true);

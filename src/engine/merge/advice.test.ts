@@ -291,3 +291,31 @@ describe('the awning looks (Decision M29)', () => {
     expect([1, 4, 5, 9, 10, 31].map((L) => awningLook(base, L))).toEqual([0, 0, 1, 1, 2, 2]);
   });
 });
+
+describe('the opening goal line (regression of the integration check, M42)', () => {
+  /** A new game whose first merge made a Glazed Skewer (as a Lucky roll did before M42), the fox still waiting. */
+  function glazedOpening(script: MergeGame['merge']['script']): MergeGame {
+    const g = freshState(cfg, 12345);
+    const board = g.merge.board.slice();
+    const cells = board.map((x, i) => (x && typeof x === 'object' ? i : -1)).filter((i) => i >= 0);
+    board[cells[0]] = null;
+    board[cells[1]] = { c: 0, k: 3 };
+    const book = g.merge.book.map((row, c) => (c === 0 ? row.map((v, i) => v || i < 3) : row));
+    const chains = g.merge.chains.map((ch, c) => (c === 0 ? { ...ch, best: 3 } : ch));
+    return { ...g, merge: { ...g.merge, board, book, chains, script } };
+  }
+
+  it('while the scripted tickets wait, the goal is the ticket, never a lantern', () => {
+    const g = glazedOpening('fox');
+    expect(advice(cfg, g)).toMatchObject({ kind: 'fillTicket', target: 0 });
+    expect(adviceExtras(cfg, g)[0].kind).toBe('fillTicket');
+  });
+
+  it('a "make tier k" feat is measured in basic goods: a tier 3 is not within reach of a tier 6', () => {
+    const g = glazedOpening('done');
+    expect(adviceExtras(cfg, g).some((a) => a.kind === 'lantern')).toBe(false);
+    // A tier 5 is half of a tier 6 in basic goods: within reach (meta.lanternReach 0.5).
+    const five = { ...g, merge: { ...g.merge, chains: g.merge.chains.map((ch, c) => (c === 0 ? { ...ch, best: 5 } : ch)), book: g.merge.book.map((row, c) => (c === 0 ? row.map((v, i) => v || i < 5) : row)) } };
+    expect(adviceExtras(cfg, five).find((a) => a.kind === 'lantern')?.target).toBe(3);
+  });
+});

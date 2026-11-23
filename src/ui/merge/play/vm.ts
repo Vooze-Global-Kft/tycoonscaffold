@@ -89,20 +89,29 @@ export function ticketVM(cfg: R.MergeConfig, g: R.MergeGame, j: number): TicketV
   return {
     kind: 'ticket',
     gold: t.gold,
-    lines: t.lines.map((l) => ({ c: l.c, k: l.k, filled: l.filled, stretch: !!l.stretch })),
+    lines: t.lines.map((l) => ({ c: l.c, k: l.k, filled: l.filled, stretch: newLine(g, l) })),
     price: coins(cfg, R.ticketPrice(cfg, g, t)),
     species: customers[t.customer % Math.max(1, customers.length)] ?? customers[0],
     coat: t.coat,
   };
 }
 
-/** One counter's signature: the ticket's id, its filled lines and its live price (a stall level may raise it). */
+/**
+ * A line shows NEW (2.7's stretch line) only while its good is not yet in the Ladder Book: a stretch
+ * line the player has made before (the H+1 rule at a season's start asks for tiers long found) would
+ * otherwise call a familiar good new.
+ */
+export function newLine(g: R.MergeGame, l: R.TicketLine): boolean {
+  return !!l.stretch && !g.merge.book[l.c]?.[l.k - 1];
+}
+
+/** One counter's signature: the ticket's id, its filled lines, NEW marks and its live price (a stall level may raise it). */
 export function ticketSig(cfg: R.MergeConfig, g: R.MergeGame, j: number): string {
   const ct = g.merge.counters[j];
   if (!ct) return '-';
   const t = ct.ticket;
   if (!t) return ct.blockedAt !== null ? 's' : 'e';
-  return `${t.id}:${t.lines.map((l) => (l.filled ? 1 : 0)).join('')}:${R.ticketPrice(cfg, g, t)}`;
+  return `${t.id}:${t.lines.map((l) => (l.filled ? 1 : 0) + (newLine(g, l) ? 2 : 0)).join('')}:${R.ticketPrice(cfg, g, t)}`;
 }
 
 export function cellKinds(cfg: R.MergeConfig, g: R.MergeGame): CellKind[] {

@@ -146,6 +146,29 @@ describe('reconcile', () => {
     }
   }, 60_000);
 
+  it('regression (M32): a reload never raises best_c for a gear level and never stamps a tier that was not made', () => {
+    let g = { ...freshState(cfg, 4), cash: 20 };
+    g = R.levelGear(cfg, g, 0);
+    g = R.levelGear(cfg, { ...g, cash: 1000 }, 0);
+    // Gear level 3: maxPop 2 (ripe drops), but nothing above a Pepper Skewer was made yet.
+    expect(R.maxPopAt(cfg, R.currentMods(cfg, g.merge), g.merge.chains[0].gear)).toBe(2);
+    expect(g.merge.chains[0].best).toBe(1);
+    expect(g.merge.book[0][1]).toBe(false);
+    const back = mergeEngineMode.reconcile(cfg, { ...base, stats: { ...base.stats, playSeconds: g.stats.playSeconds } }, JSON.parse(JSON.stringify(g))) as R.MergeGame;
+    expect(back.merge.chains[0].best).toBe(1);
+    expect(back.merge.book).toEqual(g.merge.book);
+    // The next ticket draws are the same after a save and load.
+    expect(R.drawTicket(cfg, back, 1)).toEqual(R.drawTicket(cfg, g, 1));
+  });
+
+  it('a reload during the opening script keeps every empty counter held (M42)', () => {
+    const g = freshState(cfg, 4);
+    const back = mergeEngineMode.reconcile(cfg, base, JSON.parse(JSON.stringify(g))) as R.MergeGame;
+    expect(back.merge.script).toBe('fox');
+    expect(back.merge.counters.map((ct) => [ct.refillAt, ct.blockedAt])).toEqual(g.merge.counters.map((ct) => [ct.refillAt, ct.blockedAt]));
+    expect(fixtureProblems(cfg, back)).toEqual([]);
+  });
+
   it('keeps a current save and clears the Basket undo chip (2.5)', () => {
     const { minute10 } = mergeFixtures(cfg);
     const saved = { ...minute10, merge: { ...minute10.merge, basketUndo: { cell: 40, good: { c: 0, k: 1 }, refund: 1, until: 999 } } };

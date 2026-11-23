@@ -320,7 +320,8 @@ export type MergeEvent =
   | { type: 'settingUp'; counter: number }
   | { type: 'paradeArrive'; counter: number }
   | { type: 'undoExpired'; cell: number }
-  | { type: 'merge'; cell: number; made: Good; lucky: boolean; spark: boolean }
+  /** `tier`: the tier of the two goods merged (made.k cannot tell it when the cap at 8 cut a Lucky or Spark step). */
+  | { type: 'merge'; cell: number; made: Good; lucky: boolean; spark: boolean; tier: number }
   | { type: 'discovery'; good: Good }
   | { type: 'move'; from: number; to: number }
   | { type: 'swap'; from: number; to: number }

@@ -74,7 +74,8 @@ Ticket and season functions the board side calls:
 | `scriptedTicket(cfg, 'fox' \| 'hedgehog', id)` (draw.ts) | `createMerge` (the fox); `onMerged` (the hedgehog, at the first merge) |
 | `checkBounds(cfg, g, counter, lines, {parade, scripted})` (draw.ts) | the draw itself (same check), the tests, the bot (gate 4) |
 | `onMerged`, `onTierMade(cfg, g, good, firstEver, events)` (lanterns.ts) | drop.ts after every merge (after `feats.merges` and `tier8sThisSeason`); `noteMade` for every tier first made this season or ever (drops, releases, gift goods, shutter goods, gear rush, "Not tonight"'s returned goods), Lucky-skipped tiers included, ascending |
-| `countGiftTicket`, `onTicketPaid(cfg, g, counter, ticket, coins, events)` (gift.ts, lanterns.ts) | a ticket paid, in this order: `commitCash('ticket')`, till roll (`'till'`), `recent` booked, counter emptied, `mstats.ticketsThisSeason`, `countGiftTicket`, `onTicketPaid` (feats; `restartParade` after a gold ticket; the opening script `done`) |
+| `countGiftTicket`, `onTicketPaid(cfg, g, counter, ticket, coins, events)` (gift.ts, lanterns.ts) | a ticket paid, in this order: `commitCash('ticket')`, till roll (`'till'`), `recent` booked, counter emptied, `mstats.ticketsThisSeason`, `countGiftTicket`, `onTicketPaid` (feats; `restartParade` after a gold ticket; `settleScript`) |
+| `settleScript(cfg, m, clock)` (lanterns.ts) | M42, after a ticket leaves a counter (`onTicketPaid`, `notTonight`): while the opening script waits every empty counter is held (no ordinary draw; `applyLantern` adds held counters too); once no scripted ticket is left after the hedgehog stepped up, `script` = 'done' and every held counter draws `refillDelay` later. drop.ts rolls no Lucky merge while `script` is not 'done' |
 | `checkLanterns(cfg, g, clock, events)` (lanterns.ts) | after every purchase, every merge and tier made, every paid ticket, and twice in the close |
 | `festivalLineFilled(cfg, g, line, events)` (festival.ts) | drop.ts filled a Festival line (it appends `festivalLine`); the last line gives `festivalGift` = 3 Lucky Sparks (5 with lantern 18) and NO coins (M37), sets `filledAt`, appends `festivalDone {sparks}` |
 | `canCloseSeason`, `closeSeason(cfg, g, now, events)` (festival.ts, season.ts) | `EngineMode.canPrestige` and `prestige` (M21). `now` is wall ms (only `lastSavedAt` takes it). The close opens every waiting gift box first (M36), counts the seasoned steps and `seasonsClosed`, resets cash, `runEarnings`, `prestigeCount` + 1 directly (a reset is no coin source), lights the close's lanterns, then `startSeason(cfg, m, season + 1, stats.playSeconds)`, then `checkLanterns` |
@@ -95,7 +96,9 @@ Board and number functions the ticket and season side calls:
 | `recentCoins`, `recentRate`, `streamValue` (params.ts) | R_t of 2.10 (`incomeRate`, which `EngineMode.activeIncome` returns too), the ticket, gift and Parade streams |
 | `startSeason(cfg, m, season, clock)` (create.ts) | `closeSeason` and `createMerge` |
 | `applyLantern(cfg, g, n, clock, events)` (actions.ts) | `checkLanterns`, after it recorded a lantern: a `counters` effect appends counters, a `shelfCap` effect restarts waiting gears |
-| `placeGood`, `dropCell`, `roomFor`, `freeCells`, `looseCount` (board.ts) | gift goods, the opening board, "Not tonight" (`roomFor` is the one room check), bound (c) |
+| `placeGood`, `dropCell`, `roomFor`, `freeCells`, `looseCount` (board.ts) | gift goods, the opening board, "Not tonight" (`roomFor` is the one room check), the drop's loose cap λ (M43: 8) |
+| `compressedCells(cfg, m)` (board.ts) | M43: K of bound (c), the board's goods after every possible merge (pairs carried from tier 1 to 7, tier 8s kept; shelves and pending gift goods not counted); `checkBounds` and the draw read it, the property test checks it against random-order merges |
+| `minderLevelBlock(cfg, g, c)` (params.ts) | M45: why a minder level is refused ('gear': the gear holds the house tier back, "Raise the gear first"; 'top'; 'none'), or null; `levelMinder` refuses unless null, the stall sheet prints the reason |
 | `commitCash(g, delta, source)` (actions.ts) | the one way cash changes, booked in `mstats.coins` under five sources (`ticket`, `gift`, `till`, `basket`, `away`, M37) and two ways out (`spend`, `undo`). The shared store grants the away earnings with `E.grantCash`, so `mstats.coins.away` stays 0 in the app; traces book them with `bookAway` |
 
 Who counts what (types.ts `Feats`, `MergeStats`): drop.ts counts `merges`, `tier8sThisSeason`,
@@ -115,7 +118,7 @@ What the screens and the bot call (all through `src/engine/merge.ts`): `dropAt`,
 `roundCoins`, `advice`, `purchaseAdvice`, `festivalAdvice`, `waitEstimate`, `incomeRate`,
 `hintsFor`, `featProgress`, `featState`, `giftOdds`, `giftBoxAt`, `festivalGift`, `canCloseSeason`,
 `seasonRow`, `SEASON_RESETS`, `SEASON_STAYS` (ids; M36: `giftGoods`, no `giftBoxes`),
-`lineUnmakeable`, `awningLook`, `missing`, `checkBounds`, `mergeOffline`, `advanceMerge`,
+`lineUnmakeable`, `awningLook`, `minderLevelBlock`, `missing`, `checkBounds`, `mergeOffline`, `advanceMerge`,
 `nextMergeStop`, `nextEvent`, `runEvent`. Target codes for the hit test: `TARGET_COUNTER + j`,
 `TARGET_FESTIVAL`, `TARGET_BASKET`, `TARGET_NONE`, a cell's index (types.ts).
 
