@@ -1,6 +1,6 @@
 /** fit.ts on strings whose width can be reasoned about (4.1, 4.2: s = 1.3, 10 % margin). */
 import { describe, expect, it } from 'vitest';
-import { advance, BOLD_FACTOR, BOXES, DEFAULT_ADVANCE, fit, measure, SAFETY, wrap } from './fit';
+import { advance, BOLD_FACTOR, BOXES, DEFAULT_ADVANCE, fit, measure, SAFETY, wrap, type Box } from './fit';
 
 describe('measure', () => {
   it('is the sum of advances × font size × the 10 % margin', () => {
@@ -71,7 +71,7 @@ describe('bold rows and the cut estimate (content-lint-attack.md M1, M3)', () =>
   it('bold boxes measure wider by BOLD_FACTOR: a name that just fits regular does not fit bold', () => {
     expect(BOLD_FACTOR).toBeCloseTo(1.06, 9);
     for (const b of ['name', 'stripTitle', 'stripLabel', 'bottomRow'] as const) expect(BOXES[b].bold).toBe(true);
-    expect(BOXES.proposal.bold).toBeFalsy();
+    expect((BOXES.proposal as Box).bold).toBeFalsy();
     // A run of "n" as wide as the name box at the regular width: 263 pt / (0.59 × 19.5 × 1.1) ≈ 20.8 letters.
     const regular = { ...BOXES.name, bold: false, maxChars: undefined };
     const bold = { ...BOXES.name, maxChars: undefined };

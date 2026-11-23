@@ -645,6 +645,14 @@ function lintText(ctx: Ctx, it: Item) {
     });
   }
 
+  // A name spelt out letter by letter ("B-L-A-I-R", "T.R.U.M.P").
+  for (const m of n.text.matchAll(/(?<![\p{L}])(?:\p{L}[-. ]){2,}\p{L}(?![\p{L}])/gu)) {
+    const joined = lower(m[0].replace(/[-. ]/g, ''));
+    const e = ctx.lists.people.singleSet.get(joined) ?? ctx.lists.fiction.singleSet.get(joined);
+    if (e) add(ctx, { ...base, rule: 'tier2', severity: 'error', match: m[0], reason: `spelt out letter by letter, a real or fictional name: "${e.entry}"; invent a name instead` });
+    else if (/^trump/.test(joined)) add(ctx, { ...base, rule: 'tier1', severity: 'error', match: m[0], reason: 'spelt out letter by letter, a tier 1 word ("trump*"); rewrite without it' });
+  }
+
   // Rule 2: unknown proper nouns. A slogan or title in Title Case ("Stitchley: She Owns A Hat") says
   // nothing by its capitals; its names are checked by tier 2 above.
   if (it.kind !== 'store' && !(titleCase && it.kind !== 'name') && it.field !== 'slogan') {

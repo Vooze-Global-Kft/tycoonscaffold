@@ -854,3 +854,16 @@ Adolf
 Benito
 Kamala
 Hillary
+
+# --- United States: presidents before 1897 a reader knows ---
+Lincoln
+Jefferson
+Fillmore
+Madison
+Buchanan
+~Pierce
+Van Buren
+Garfield
+Hayes
+Polk
+~Tyler

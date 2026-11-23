@@ -269,6 +269,8 @@ describe('the attack: strings that slipped through now fail', () => {
     'Ask Mr Djonson about the bench.',
     'Mrs May would like a bench.',
     'Rename the duck pond Lake Bliar. The ducks have not been asked.',
+    'A statue of Mr B-L-A-I-R for the hall. Rodney insists.',
+    'Councillor Fillmoore asks for a plaque. Nobody remembers why.',
     // Hidden characters (B2).
     'A louder tr\u200Bumpet for the band.',
     'A rose b\u00ADush for the portrait.',
