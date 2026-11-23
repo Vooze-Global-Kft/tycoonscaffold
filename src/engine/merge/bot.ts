@@ -137,7 +137,7 @@ export interface CoinEntry {
 export interface Samples {
   t: number[];
   dt: number[];
-  /** Bit 0: F = 0; bit 1: deadlock (F = 0, no merge, no delivery); bits 2 + c: chain c's gear waits; bits 8 + c: c is one of the two highest open chains. */
+  /** Bit 0: the board is full (F ≤ spare, M50); bit 1: deadlock (full, no merge, no delivery); bits 2 + c: chain c's gear waits; bits 8 + c: c is one of the two highest open chains. */
   f: number[];
   /** Counters, and counters showing "Setting up…". */
   n: number[];
@@ -285,6 +285,11 @@ export function boardView(m: Pick<R.MergeState, 'board'>): BoardView {
     }
   });
   return { cnt, cells };
+}
+
+/** M50: "the board is full" means free cells ≤ gear.spare (0 while the setting is unset: the loose-cap rules of M43). */
+export function boardFull(cfg: R.MergeConfig, m: R.MergeState): boolean {
+  return R.freeCells(m).length <= (cfg.merge.gear.spare ?? 0);
 }
 
 export function anyMerge(v: BoardView): boolean {
@@ -727,9 +732,8 @@ class Runner {
   private sample(pre: R.MergeGame, dt: number) {
     const m = pre.merge;
     const v = boardView(m);
-    const F = R.freeCells(m).length;
     let f = 0;
-    if (F === 0) {
+    if (boardFull(this.cfg, m)) {
       f |= 1;
       if (!anyMerge(v) && deliveries(m, v).length === 0) f |= 2;
     }
@@ -1121,7 +1125,7 @@ function activeStep(r: Runner, opt: { measure: boolean }): number | null {
   const lp = lowestPair(v);
   if (lp && r.merge(lp.c, lp.k)) return o.act;
   // 6. the Basket, only with no free cell and no pair
-  if (R.freeCells(r.m).length === 0 && !lp) {
+  if (boardFull(cfg, r.m) && !lp) {
     const bc = basketChoice(r.m, v, base, values);
     if (bc && r.basket(bc.c, bc.k)) return o.act;
   }
@@ -1157,7 +1161,7 @@ function lazyStep(r: Runner): number | null {
   if (r.m.gift.boxes.length && r.openBox()) return r.o.sheet;
   const lp = lowestPair(v);
   if (lp && r.merge(lp.c, lp.k)) return r.o.act;
-  if (R.freeCells(r.m).length === 0) {
+  if (boardFull(cfg, r.m)) {
     const bc = basketChoice(r.m, v, base, values);
     if (bc && r.basket(bc.c, bc.k)) return r.o.act;
   }
@@ -1713,6 +1717,10 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
   row('1 gap p90 (s)', 'aim', '≤ 50', fmt(gaps.p90), gaps.p90 <= 50, gaps.p90, null, 50);
   row('1 gap max (s)', 'aim', '≤ 60', fmt(gaps.max), gaps.max <= 60, gaps.max, null, 60);
   row('1 purchases in minutes 0-10', 'aim', '≥ 12', gaps.purchases, gaps.purchases >= 12, gaps.purchases, 12, null);
+  // The lead's order of 23 Nov (the player's review): in minutes 0 to 5 the longest gap without a paid ticket ≤ 60 s at 2.0 s.
+  const paid5 = A.tickets.filter((t) => t.filled !== null && t.filled - t0 <= 300).map((t) => t.filled as number);
+  const gap5 = maxGap(paid5, t0, t0 + 300);
+  row('1 longest gap without a paid ticket, minutes 0-5 (s)', 'aim', '≤ 60', fmt(gap5), gap5 <= 60, gap5, null, 60);
   const u = usefulPerMinute(A);
   const u19 = u.perMinute.slice(1);
   row('M3 useful actions a minute, minutes 1-9 (lowest)', 'aim', '≥ 16 on every seed (≥ 20 at the median seed: across seeds)', `${Math.min(...u19)} [${u.perMinute.join(' ')}]`, Math.min(...u19) >= 16, Math.min(...u19), 16, null);
@@ -1725,6 +1733,8 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
     [3, 'Sweets', 18, 30],
     [4, 'Noodles', 60, 90],
   ];
+  // The lead's order of 23 Nov: at 2.5 s an action (a slow thumb) Tea opens within 2:30.
+  if (A.act >= 2.45) windows[0] = [1, 'Tea', 0, 2.5];
   for (const [c, name, lo, hi] of windows) {
     const x = st[c] ?? null;
     row(`2 ${name} stall opens (min)`, 'aim', `${lo} to ${hi}`, x === null ? 'never' : fmt(min(x), 2), x !== null && within(min(x), lo, hi), x === null ? 1e9 : min(x), lo, hi);
@@ -1757,19 +1767,20 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
   }
   // ---- gate 5 (aims)
   const b10 = boardShares(A, t0, t0 + 600);
-  row('5 board full (F = 0), hours 0-3', 'aim', '≤ 15 %', fmt(b3.f0 * 100) + ' %', b3.f0 <= 0.15, b3.f0, null, 0.15);
-  row('5 board full (F = 0), minutes 0-10', 'aim', '≤ 3 %', fmt(b10.f0 * 100) + ' %', b10.f0 <= 0.03, b10.f0, null, 0.03);
-  row('5 deadlock (F = 0, no merge, no delivery), hours 0-3 (M33)', 'aim', '≤ 3 %', fmt(b3.deadlock * 100) + ' %', b3.deadlock <= 0.03, b3.deadlock, null, 0.03);
+  row('5 board full (F ≤ spare, M50), hours 0-3', 'aim', '≤ 15 %', fmt(b3.f0 * 100) + ' %', b3.f0 <= 0.15, b3.f0, null, 0.15);
+  row('5 board full (F ≤ spare, M50), minutes 0-10', 'aim', '≤ 3 %', fmt(b10.f0 * 100) + ' %', b10.f0 <= 0.03, b10.f0, null, 0.03);
+  row('5 deadlock (board full, no merge, no delivery), hours 0-3 (M33)', 'aim', '≤ 3 %', fmt(b3.deadlock * 100) + ' %', b3.deadlock <= 0.03, b3.deadlock, null, 0.03);
   for (const other of [all.lazy, all.deliver, all.passive].filter(Boolean) as Trace[]) {
     const bs = boardShares(other, other.t0, other.t1);
     row(`5 deadlock, the ${other.kind} bot (M33: every bot)`, 'aim', '≤ 3 %', fmt(bs.deadlock * 100) + ' %', !(bs.deadlock > 0.03), bs.deadlock, null, 0.03);
-    row(`report: board full (F = 0), the ${other.kind} bot (M33)`, 'report', 'reported', fmt(bs.f0 * 100) + ' %', true);
+    row(`report: board full (F ≤ spare), the ${other.kind} bot (M33)`, 'report', 'reported', fmt(bs.f0 * 100) + ' %', true);
   }
   const made = A.goodsMade;
   row('5 Basket sales / goods made', 'aim', '≤ 5 %', fmt((A.basketSales / Math.max(1, made)) * 100, 2) + ' %', A.basketSales / Math.max(1, made) <= 0.05, A.basketSales / Math.max(1, made), null, 0.05);
-  row('5 the two highest open chains\' gears waiting, hours 0-3 (M43)', 'aim', '≤ 25 %', `${fmt(b3.waitTop2 * 100)} % (per chain ${b3.waitChain.map((w) => fmt(w * 100, 0)).join('/')} %)`, b3.waitTop2 <= 0.25, b3.waitTop2, null, 0.25);
+  // M50 point 4: the aim on the two highest gears' waiting is dropped (with three stalls the gears out-drop any hand); reported.
+  row('report: 5 the two highest open chains\' gears waiting, hours 0-3 (aim dropped by M50)', 'report', 'reported', `${fmt(b3.waitTop2 * 100)} % (per chain ${b3.waitChain.map((w) => fmt(w * 100, 0)).join('/')} %)`, true);
   const occ = occupancy(A, t0 + 180, t0 + 3600);
-  row('5 goods on the open cells, median of minutes 3-60 (M43)', 'aim', '45 to 85 %', fmt(occ * 100) + ' %', within(occ, 0.45, 0.85), occ, 0.45, 0.85);
+  row('5 goods on the open cells, median of minutes 3-60 (M50)', 'aim', '60 to 100 %', fmt(occ * 100) + ' %', within(occ, 0.6, 1), occ, 0.6, 1);
   // ---- gate 6 (aims)
   const nv = noveltyGaps(A);
   row('6 longest gap without something new, minutes 0-30 (min)', 'aim', '≤ 3', fmt(min(nv.gap30), 2), nv.gap30 <= 180, min(nv.gap30), null, 3);

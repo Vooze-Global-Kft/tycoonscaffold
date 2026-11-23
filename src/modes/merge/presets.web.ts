@@ -6,8 +6,8 @@
  * - fresh: a new game (the app's own createInitialState);
  * - early: the bot's game at 3:00;
  * - mid: at 30:00;
- * - late: just before the first Festival is filled: one line left, a gift box waiting (this run keeps
- *   its boxes) and a Parade out (else the first moment with one line left; at most 4 h of play).
+ * - late: just before the first Festival is filled: one line left, a gift box waiting and a Parade out
+ *   (else the first moment with one line left; at most 4 h of play).
  * If the rules cannot play yet (a rule still throws NotBuiltError, or anything else fails), the
  * preset falls back to the rules' hand-made fixtures (src/engine/fixtures/merge.ts: minute3,
  * minute10, festivalNear), as the skeleton had it. A played state is kept for the page's life.
@@ -31,19 +31,18 @@ function botState(cfg: R.MergeConfig, name: Exclude<PresetName, 'fresh'>, base: 
   let state: R.MergeGame | null = null;
   try {
     if (name === 'late') {
-      // Just before the first Festival is filled: one line left, a gift box waiting (the bot keeps its
-      // boxes for this run: the hoarding habit) and a Parade out; the first one-line-left state if the
-      // three never meet.
+      // Just before the first Festival is filled: one line left, a gift box waiting and a Parade out. The bot
+      // plays to the first moment with one line left, then plays on keeping its boxes (the hoarding habit) until
+      // a box waits beside a Parade; if the Festival fills first, the first one-line-left moment is the preset.
       const oneLeft = (g: R.MergeGame) => g.merge.season === 0 && g.merge.festival.lines.length > 1 && g.merge.festival.lines.filter((l) => !l.filled).length === 1;
-      let first: R.MergeGame | null = null;
-      const stop = (g: R.MergeGame) => {
-        if (g.merge.season > 0 || g.merge.festival.filledAt !== null) return true;
-        if (!oneLeft(g)) return false;
-        if (!first) first = g;
-        return g.merge.gift.boxes.length > 0 && g.merge.counters.some((ct) => ct.ticket?.gold);
-      };
-      const run = runMergeBot(cfg, { seed: 12345, hours: 4, seasons: 1, wall0: now, base: () => base, stop, habits: { hoardBoxes: true } });
-      state = oneLeft(run.game) ? run.game : first;
+      const done = (g: R.MergeGame) => g.merge.season > 0 || g.merge.festival.filledAt !== null;
+      const first = runMergeBot(cfg, { seed: 12345, hours: 4, seasons: 1, wall0: now, base: () => base, stop: (g) => oneLeft(g) || done(g) }).game;
+      state = oneLeft(first) ? first : null;
+      if (state) {
+        const ready = (g: R.MergeGame) => oneLeft(g) && g.merge.gift.boxes.length > 0 && g.merge.counters.some((ct) => ct.ticket?.gold);
+        const on = runMergeBot(cfg, { seed: 12345, hours: 1, seasons: 1, start: state, wall0: now, habits: { hoardBoxes: true }, stop: (g) => ready(g) || done(g) }).game;
+        if (ready(on)) state = on;
+      }
     } else {
       const at = name === 'early' ? 180 : 1800;
       const run = runMergeBot(cfg, { seed: 12345, hours: at / 3600, wall0: now, base: () => base, keepAt: [at] });

@@ -380,7 +380,10 @@ def write_game(block):
     g = json.load(open(GAME)) if os.path.exists(GAME) else {}
     g['mode'] = 'merge'
     g['soundPack'] = None
-    g['merge'] = block
+    if block is not None:
+        g['merge'] = block
+    else:
+        print('  copying only the listing (the merge block keeps its numbers)')
     listing = json.load(open(STORE))
     store = g.setdefault('store', {})
     products = listing.get('products')
@@ -451,7 +454,10 @@ def gates(act, procs, extra, write):
         for h in ph:
             print('  HARD MISSED: ' + h)
     if coin or hard:
-        print('REFUSED: %d hard gate(s) missed (M2); games/night-market/game.json is not written' % (len(coin) + len(hard)))
+        print('REFUSED: %d hard gate(s) missed (M2); the numbers of games/night-market/game.json are not written' % (len(coin) + len(hard)))
+        if write:
+            # The lead's order of 23 Nov: the listing (words, not numbers) is copied on every run whatever the gates say.
+            write_game(None)
         return 1
     print('every hard gate passes on every seed (%d aims missed: warnings until the lead turns them into guards, M2)' % len(aims))
     if write:

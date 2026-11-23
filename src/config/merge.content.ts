@@ -102,8 +102,9 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     roundBelow: 1000,
     sigDigits: 3,
   },
-  // Decision M3: T = 4 s for every gear, a rule. Decision M43: the loose cap is 8 (tune 6 to 12).
-  gear: { interval: 4, step: 10, ripePerLevel: 0.05, ripeMax: 0.6, maxBase: 4, shelf: 6, looseCap: 8, release: 0.5 },
+  // Decision M3: T = 4 s for every gear, a rule. Decision M50: no loose cap; gears fill the board to its last
+  // `spare` cells (2, tune 1 to 4) whatever the chain.
+  gear: { interval: 4, step: 10, ripePerLevel: 0.05, ripeMax: 0.6, maxBase: 4, shelf: 6, spare: 2, release: 0.5 },
   stalls: { bonusPerLevel: 0.1, bonusMax: 3.9, awningLevels: [5, 10] },
   minders: { interval: 15, tillRoll: 60 },
   merges: { luckyOdds: 25 },
