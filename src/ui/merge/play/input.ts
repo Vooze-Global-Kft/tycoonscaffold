@@ -153,8 +153,6 @@ interface Touch {
   pressed: boolean;
   dragging: boolean;
   last: Pt;
-  /** The grant's event time (ms), to tell a late long-press timer from a real one. */
-  ts0: number;
 }
 
 function fingerOf(e: GestureResponderEvent, id: Touch['id']): Pt | null {
@@ -233,7 +231,7 @@ export function usePlayInput(L: MergeLayout, geo: HitGeo, drag: SharedValue<Drag
         const code = tapTest(p.x, p.y, lay, g);
         const now = mergeNow();
         const cell = now && code >= 0 && code < R.BOARD_CELLS && R.isGood(now.g.merge.board[code]) ? code : -1;
-        const t: Touch = { id: e.nativeEvent.identifier, start: p, t0: Date.now(), code, cell, moved: false, pressed: false, dragging: false, last: p, ts0: e.nativeEvent.timestamp || 0 };
+        const t: Touch = { id: e.nativeEvent.identifier, start: p, t0: Date.now(), code, cell, moved: false, pressed: false, dragging: false, last: p };
         touch.current = t;
         down = true;
         if (cell >= 0) {
@@ -262,10 +260,10 @@ export function usePlayInput(L: MergeLayout, geo: HitGeo, drag: SharedValue<Drag
         t.last = p;
         if (!t.moved) {
           if (Math.hypot(p.x - t.start.x, p.y - t.start.y) < DRAG_START) return;
-          // A busy JavaScript thread can run the long-press timer before move events that came first:
-          // the finger moved within 0.4 s by the events' own clock, so this is a drag after all.
-          const ts = e.nativeEvent.timestamp || 0;
-          if (t.pressed && t.ts0 > 0 && ts > 0 && ts - t.ts0 < LONG_PRESS_MS) {
+          // The pan and the long press are separate (4.3): a finger that moves after the chip showed
+          // still drags (the chip goes), and a busy JavaScript thread that ran the press timer before
+          // the first move event cannot turn a drag into a press.
+          if (t.pressed && t.cell >= 0) {
             t.pressed = false;
             useMergeUi.getState().hideChip();
           }

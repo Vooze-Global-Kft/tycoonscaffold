@@ -24,14 +24,14 @@ const ARCH_H = 200;
 
 const pictures = new Map<string, SkPicture>();
 
-function archPicture(w: number, lit: readonly number[], next: readonly number[]): SkPicture {
+function archPicture(w: number, lit: readonly number[], next: readonly number[], total: number): SkPicture {
   const key = `${Math.round(w)}:${[...lit].sort((a, b) => a - b).join(',')}:${next.join(',')}`;
   const hit = pictures.get(key);
   if (hit) return hit;
   const rec = Skia.PictureRecorder();
   const c = rec.beginRecording(Skia.XYWHRect(0, 0, w, ARCH_H));
   // The warm light of the lit lanterns pools under the arch.
-  const share = lit.length / 20;
+  const share = lit.length / Math.max(1, total);
   if (share > 0) glow(c, w / 2, ARCH_H * 0.62, w * 0.42, NIGHT.amber, 0.08 + 0.22 * share);
   drawLanternArch(c, w, ARCH_H);
   archHooks(w, ARCH_H).forEach((p, i) => {
@@ -49,7 +49,7 @@ export function LanternGate() {
   const { width } = useWindowDimensions();
   const view = useSpokeView((cfg, g) => gateView(cfg, g));
   const w = width - 2 * GUTTER;
-  const pic = useMemo(() => (view ? archPicture(w, view.lit, view.next.map((r) => r.n)) : null), [view, w]);
+  const pic = useMemo(() => (view ? archPicture(w, view.lit, view.next.map((r) => r.n), view.total) : null), [view, w]);
   if (!view || !pic) return <SpokeFrame title={W.gateTitle} />;
   return (
     <SpokeFrame title={W.gateTitle}>
