@@ -196,6 +196,12 @@ export const MergeSchema = z.object({
     shelf: int.positive().default(6),
     /** λ, loose goods per chain before drops go to the shelf (Decision M43: 8, tune 6 to 12). */
     looseCap: int.positive().default(8),
+    /**
+     * Decision M50 (flow control): when set, there is NO loose cap: a gear's drop and a shelf release go to the board
+     * while more than `spare` cells are free, whatever the chain, and a freed cell goes to the shelf of the chain
+     * with the fewest loose goods on the board. Unset: the loose cap above (Decision M43).
+     */
+    spare: int.min(0).optional(),
     /** Shelf release and gift-good cadence, s (rule). */
     release: pos.default(0.5),
   }).prefault({}),

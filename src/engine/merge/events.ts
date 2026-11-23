@@ -56,10 +56,29 @@ function loose(cfg: MergeConfig, m: MergeState, c: number): number {
   return n;
 }
 
-/** Room for a good of (c, k) by the drop rules: F > 0, and below the loose cap when the good is loose (2.4 events 1 to 3). */
-function roomForGood(cfg: MergeConfig, m: MergeState, c: number, k: number): boolean {
-  if (freeCells(m).length === 0) return false;
+/** Decision M50: with `gear.spare` set the board fills to its last `spare` cells whatever the chain (no loose cap). */
+const fillFlow = (cfg: MergeConfig): boolean => cfg.merge.gear.spare !== undefined;
+
+/**
+ * Room for a good of (c, k) by the drop rules (2.4 events 1 to 3). With the loose cap (M43): F > 0, and
+ * below the cap when the good is loose. With M50's flow: a good from a gear (a drop or a shelf release)
+ * needs more than `spare` free cells; a gift good may take any free cell (the spare cells are the hand's).
+ */
+function roomForGood(cfg: MergeConfig, m: MergeState, c: number, k: number, fromGear = true): boolean {
+  const F = freeCells(m).length;
+  if (F === 0) return false;
+  if (fillFlow(cfg)) return !fromGear || F > (cfg.merge.gear.spare ?? 0);
   return !isLoose(cfg, m, c, k) || loose(cfg, m, c) < cfg.merge.gear.looseCap;
+}
+
+/** M50: among shelf releases due at the same time, the chain with the fewest loose goods on the board goes first (ties: the higher chain). */
+function beforeByFlow(cfg: MergeConfig, m: MergeState, a: QueuedEvent, b: QueuedEvent): boolean {
+  if (fillFlow(cfg) && a.at === b.at && a.kind === 'release' && b.kind === 'release') {
+    const la = loose(cfg, m, a.index);
+    const lb = loose(cfg, m, b.index);
+    if (la !== lb) return la < lb;
+  }
+  return before(a, b);
 }
 
 /** The time a retry is due: the first freed (or changed) time after it was blocked, else never. */
@@ -114,7 +133,7 @@ export function dueEvents(cfg: MergeConfig, g: MergeGame): QueuedEvent[] {
 /** The earliest due event at or before `until` (game clock), or null; an overdue event is reported at the clock. */
 export function nextEvent(cfg: MergeConfig, g: MergeGame, until: number): QueuedEvent | null {
   let best: QueuedEvent | null = null;
-  for (const e of dueEvents(cfg, g)) if (e.at <= until && (!best || before(e, best))) best = e;
+  for (const e of dueEvents(cfg, g)) if (e.at <= until && (!best || beforeByFlow(cfg, g.merge, e, best))) best = e;
   return best;
 }
 
@@ -146,7 +165,7 @@ export function runDrop(cfg: MergeConfig, g: MergeGame, c: number, t: number, ev
   const n = m.draws.drop[c] ?? 0;
   const k = drawDropTier(cfg, m, mods, c, n);
   const counted = (mm: MergeState): MergeState => ({ ...mm, draws: { ...mm.draws, drop: mm.draws.drop.map((v, i) => (i === c ? n + 1 : v)) }, mstats: { ...mm.mstats, drops: mm.mstats.drops + 1 } });
-  if (!shelveOnly && freeCells(m).length > 0 && loose(cfg, m, c) < cfg.merge.gear.looseCap) {
+  if (!shelveOnly && (fillFlow(cfg) ? freeCells(m).length > (cfg.merge.gear.spare ?? 0) : freeCells(m).length > 0 && loose(cfg, m, c) < cfg.merge.gear.looseCap)) {
     const r = placeMade(cfg, withM(g, counted(m)), { c, k }, t, events);
     if (r) {
       events?.push({ type: 'drop', c, k, cell: r.cell });
@@ -187,7 +206,7 @@ function runGiftGood(cfg: MergeConfig, g: MergeGame, t: number, events?: MergeEv
   const i = pendingIndex(m);
   if (i < 0) return blocked();
   const good = m.gift.pendingGoods[i];
-  if (!roomForGood(cfg, m, good.c, good.k) || dropCell(m, good.c) === null) return blocked();
+  if (!roomForGood(cfg, m, good.c, good.k, false) || dropCell(m, good.c) === null) return blocked();
   const r = placeMade(cfg, g, good, t, events);
   if (!r) return blocked();
   const pendingGoods = r.g.merge.gift.pendingGoods.filter((_, j) => j !== i);
