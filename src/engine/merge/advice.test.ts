@@ -92,13 +92,22 @@ describe('each gain formula against a hand calculation (2.10)', () => {
     expect(find(adviceCandidates(cfg, g), 'openStall', 2)!.gain).toBeCloseTo((80 * 2.4) / 40, 10);
   });
 
-  it('a shutter: κ × R / O', () => {
-    const g0 = game([{ c: 0, gear: 3, best: 3 }], 0, [150]);
+  it('a shutter: κ × R / O (offered while a shelf holds goods, Decision M50)', () => {
+    const g0 = game([{ c: 0, gear: 3, best: 3, shelf: [1] }], 0, [150]);
     const g = { ...g0, merge: { ...g0.merge, book: g0.merge.book.map((row, c) => (c === 0 ? row.map((_, k) => k < 3) : row)) } };
     const R = incomeRate(cfg, g);
     expect(R).toBeCloseTo(150 / 300, 10);
     expect(find(adviceCandidates(cfg, g), 'shutter', 0)!.gain).toBeCloseTo((1 * R) / mergeParams(cfg, g).O, 10);
     expect(mergeParams(cfg, g).O).toBe(30);
+  });
+
+  it('Decision M50 (5): a shutter is never the goal while every shelf is empty (cells stand free)', () => {
+    // Grill 3 made, so the first shutter group's condition holds.
+    const made = (x: MergeGame): MergeGame => ({ ...x, merge: { ...x.merge, book: x.merge.book.map((row, c) => (c === 0 ? row.map((_, k) => k < 3) : row)) } });
+    const empty = made(game([{ c: 0, gear: 3, best: 3 }], 1e6, [150]));
+    expect(adviceCandidates(cfg, empty).some((a) => a.kind === 'shutter')).toBe(false);
+    const shelved = made(game([{ c: 0, gear: 3, best: 3, shelf: [1, 1] }], 1e6, [150]));
+    expect(adviceCandidates(cfg, shelved).some((a) => a.kind === 'shutter')).toBe(true);
   });
 
   it('the score is max(0, cost − cash) / R + cost / gain, lowest first', () => {
@@ -152,7 +161,7 @@ describe('the goal line and the bot agree', () => {
 
   it('never advises what is already bought or at its top', () => {
     const top = cfg.merge.costs.gearMaxLevel;
-    const g0 = game([{ c: 0, gear: top, stall: cfg.merge.costs.stallMaxLevel, minder: cfg.merge.costs.minderMaxLevel, best: 8 }, { c: 1, gear: 1, best: 1 }], 1e9, [300, 300]);
+    const g0 = game([{ c: 0, gear: top, stall: cfg.merge.costs.stallMaxLevel, minder: cfg.merge.costs.minderMaxLevel, best: 8, shelf: [4] }, { c: 1, gear: 1, best: 1 }], 1e9, [300, 300]);
     const g = { ...g0, merge: { ...g0.merge, book: g0.merge.book.map((row, c) => (c === 0 ? row.map(() => true) : row)) } };
     const list = adviceCandidates(cfg, g);
     expect(find(list, 'gear', 0)).toBeUndefined();

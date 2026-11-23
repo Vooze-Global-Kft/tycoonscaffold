@@ -169,6 +169,36 @@ describe('reconcile', () => {
     expect(fixtureProblems(cfg, back)).toEqual([]);
   });
 
+  it("regression (the rules attack's finding 5): a reload keeps the hearth season's braziers on opened shutter cells", () => {
+    // Every shutter group open, then a hearth season (Winter Embers, season index 3): its corner braziers stand on shutter cells.
+    const g0 = freshState(cfg, 12345);
+    const groups = cfg.merge.board.shutterGroups;
+    const board = g0.merge.board.map((cell) => (cell === 'shutter' ? null : cell));
+    const opened = { ...g0.merge, board, shuttersOpened: groups.map((grp) => grp.cells.length) };
+    const clock = 30_000;
+    const season = [0, 1, 2, 3, 4, 5, 6].find((s) => R.seasonRow(cfg, s).shape === 'hearth')!;
+    const m = R.startSeason(cfg, opened, season, clock);
+    const g: R.MergeGame = { ...g0, stats: { ...g0.stats, playSeconds: clock }, merge: m };
+    const shutterCells = new Set(groups.flatMap((grp) => grp.cells));
+    const blocks = m.board.flatMap((cell, i) => (cell === 'block' ? [i] : []));
+    expect(blocks.length).toBe(4);
+    expect(blocks.some((i) => shutterCells.has(i))).toBe(true);
+    const back = mergeEngineMode.reconcile(cfg, { ...base, stats: { ...base.stats, playSeconds: clock } }, JSON.parse(JSON.stringify(g))) as R.MergeGame;
+    expect(back.merge.board).toEqual(m.board);
+    expect(R.mergeParams(cfg, back).O).toBe(R.mergeParams(cfg, g).O);
+  });
+
+  it('M51: a reload does not raise best_c for a good that lies above it (a gift, shutter or returned good)', () => {
+    const g = mergeState(cfg, { clock: 100, chains: [{ c: 0, gear: 1, best: 2 }], goods: [] });
+    const cell = R.freeCells(g.merge)[0];
+    const book = g.merge.book.map((row, c) => (c === 0 ? row.map((v, i) => v || i === 5) : row));
+    const s = { ...g, merge: { ...g.merge, board: g.merge.board.map((x, i) => (i === cell ? { c: 0, k: 6 } : x)), book } };
+    const back = mergeEngineMode.reconcile(cfg, { ...base, stats: { ...base.stats, playSeconds: 100 } }, JSON.parse(JSON.stringify(s))) as R.MergeGame;
+    expect(back.merge.chains[0].best).toBe(2);
+    expect(back.merge.board[cell]).toEqual({ c: 0, k: 6 });
+    expect(back.merge.book[0][5]).toBe(true);
+  });
+
   it('keeps a current save and clears the Basket undo chip (2.5)', () => {
     const { minute10 } = mergeFixtures(cfg);
     const saved = { ...minute10, merge: { ...minute10.merge, basketUndo: { cell: 40, good: { c: 0, k: 1 }, refund: 1, until: 999 } } };
@@ -516,7 +546,9 @@ describe('purchases and buttons (2.5), each checked against cash and conditions'
     // Shutter n = 2 holds tier b + 1 or b + 2 of the open chain with the lowest best (Tea, b = 1).
     const held = g.merge.board[cells[2]];
     expect(R.isGood(held) && held.c === 1 && (held.k === 2 || held.k === 3)).toBe(true);
-    expect(g.merge.chains[1].best).toBe(R.isGood(held) ? held.k : -1);
+    // Decision M51: the shutter's good stamps the Ladder Book and leaves best_c where it was.
+    expect(g.merge.chains[1].best).toBe(1);
+    expect(R.isGood(held) && g.merge.book[1][held.k - 1]).toBe(true);
     expect(g.cash).toBe(10_000_000 - [0, 1, 2].reduce((a, n) => a + R.roundCoins(cfg, cfg.merge.board.shutterBase * cfg.merge.board.shutterGrowth ** n), 0));
   });
 

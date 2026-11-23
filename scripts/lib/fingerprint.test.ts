@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GameConfigSchema } from '../../src/config/schema';
-import { comparePair, declaredProblems, formatPair, gameFacts, pairFailures, readBundleReport, sameMultiset, sourceHashOf, type AudioScore, type DeclaredFingerprint, type GameFacts, type PairReport } from './fingerprint';
+import { comparePair, declaredProblems, formatPair, gameFacts, humanCheckFor, pairFailures, readBundleReport, sameMultiset, sourceHashOf, tableStrings, textsOf, type AudioScore, type DeclaredFingerprint, type GameFacts, type PairReport } from './fingerprint';
 
 /** compare.py's verdict when no shared key is close (what the two packs score today). */
 const quiet: AudioScore = { keys: 10, failed: 0, maxJoint: 0.5, threshold: 0.6 };
@@ -205,5 +205,67 @@ describe('fingerprint check with the third game (Night Market, market-design.md 
       expect(r.verified + r.pending, other).toBeGreaterThanOrEqual(15);
       expect(pairFailures(r, 'everyday'), other).toEqual([]);
     }
+  });
+});
+
+describe('human checks against each game, and the string table (store review, Night Market)', () => {
+  const night = (human: DeclaredFingerprint['human']): Partial<GameFacts> => ({ id: 'night-market', mode: 'merge', artKits: ['mode merge'], declared: { ...declared('night-market'), human } });
+  const row = (r: PairReport, n: number) => r.rows.find((x) => x.dim.n === n)!;
+
+  it('a map keyed by game id holds one check per game; each pair reads its own entry', () => {
+    const human: DeclaredFingerprint['human'] = {
+      icon_and_screenshot_template: {
+        'pizza-empire': { value: 'own', by: 'Reviewer', date: '2026-12-01' },
+        'space-miner': { value: 'own', by: 'Reviewer', date: '2026-12-02' },
+      },
+      meta_screen_layouts: {
+        'pizza-empire': { value: 'different', by: 'Reviewer', date: '2026-12-01' },
+        'space-miner': { value: 'different', by: '', date: '' },
+      },
+    };
+    const vsPizza = comparePair(facts('pizza-empire'), facts('night-market', night(human)), quiet);
+    const vsOrbit = comparePair(facts('space-miner'), facts('night-market', night(human)), quiet);
+    expect(row(vsPizza, 7).status).toBe('differs');
+    expect(row(vsPizza, 7).note).toBe('checked by Reviewer on 2026-12-01');
+    expect(row(vsPizza, 13).status).toBe('differs');
+    expect(row(vsOrbit, 7).status).toBe('differs');
+    expect(row(vsOrbit, 7).note).toBe('checked by Reviewer on 2026-12-02');
+    // An entry without a name stays pending.
+    expect(row(vsOrbit, 13).status).toBe('pending');
+    expect(humanCheckFor(night(human).declared!, 'icon_and_screenshot_template', 'space-miner')).toEqual({ value: 'own', checkedAgainst: 'space-miner', by: 'Reviewer', date: '2026-12-02' });
+    expect(humanCheckFor(night(human).declared!, 'icon_and_screenshot_template', 'other-game')).toBeNull();
+  });
+
+  it('the old shape (one check naming one game) is still read, and only for that game', () => {
+    const one: DeclaredFingerprint['human'] = { icon_and_screenshot_template: { value: 'own', checkedAgainst: 'pizza-empire', by: 'Reviewer', date: '2026-12-01' } };
+    expect(row(comparePair(facts('pizza-empire'), facts('night-market', night(one)), quiet), 7).status).toBe('differs');
+    expect(row(comparePair(facts('space-miner'), facts('night-market', night(one)), quiet), 7).status).toBe('pending');
+    expect(humanCheckFor(night(one).declared!, 'icon_and_screenshot_template', 'pizza-empire')?.by).toBe('Reviewer');
+  });
+
+  it('the string table yields single-quoted texts after a colon, double-quoted texts and the static parts of template literals, not comments', () => {
+    const src = [
+      '/** A `comment` with "quotes" */',
+      "export const S = {",
+      "  a: 'Fill the ticket',",
+      '  b: "The fox\'s ticket",',
+      '  c: (n: number) => `${n} goods wait at ${`the ${n} stalls`} tonight`,',
+      '  // a "line comment"',
+      '};',
+    ].join('\n');
+    const raw = tableStrings(src);
+    expect(raw).toEqual(expect.arrayContaining(['Fill the ticket', "The fox's ticket", ' goods wait at ', 'the ', ' stalls', ' tonight']));
+    // textsOf then keeps texts as before (single bare words read as ids and are left out).
+    const got = textsOf(raw);
+    expect(got).toEqual(['fill the ticket', "the fox's ticket", 'goods wait at']);
+    expect(got.some((t) => /comment|quotes/.test(t))).toBe(false);
+  });
+
+  it('the haul table reads the same texts as before (no double-quoted or template text of its own): Orbit\'s facts do not move', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'src', 'ui', 'haul', 'strings.ts'), 'utf8');
+    const before = new Set(textsOf([...src.matchAll(/:\s*'([^']+)'/g)].map((m) => m[1])));
+    const after = new Set(textsOf(tableStrings(src)));
+    expect([...after].filter((t) => !before.has(t))).toEqual([]);
+    expect(after.size).toBe(before.size);
   });
 });

@@ -543,7 +543,10 @@ function actOnce(run: Run, kind: Kind, r: () => number): void {
       const counter = kind === 'fillLine' && r() < 0.5 ? Math.floor(r() * m.counters.length) : undefined;
       const can = R.canWatchAd(cfg, g, kind, counter);
       out = R.grantAd(cfg, g, kind, counter, ev);
-      refusedBy = !can;
+      // The dragon after a video that a Parade overtook (due or out, cooldown over, script done) is banked, not refused.
+      const banked = kind === 'callDragon' && !can && clock + 1e-9 >= m.ads.callDragon && m.script === 'done' && (m.counters.some((ct) => ct.ticket?.gold) || clock >= m.seasonStartedAt + m.paradeAt);
+      if (banked) expect(out.merge.paradeBanked, `callDragon at ${clock}: banked`).toBe((m.paradeBanked ?? 0) + 1);
+      refusedBy = !can && !banked;
       checkDrawn(run, g, ev); // the dragon's gold ticket, on the state it was drawn on
       break;
     }

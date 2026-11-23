@@ -97,7 +97,25 @@ export interface DeclaredFingerprint {
   art_style: { style: string; palette: string };
   character_kind: string;
   voice: string;
-  human: Partial<Record<'icon_and_screenshot_template' | 'meta_screen_layouts', HumanCheck>>;
+  /**
+   * A person's check of dimensions 7 and 13: one check against one game (`checkedAgainst`), or a map
+   * keyed by the other game's id holding one check per game (a third game is checked against each of
+   * the two before it; `checkedAgainst` may then be left out).
+   */
+  human: Partial<Record<HumanDim, HumanCheck | Record<string, Partial<HumanCheck> & { value: string; by: string; date: string }>>>;
+}
+
+export type HumanDim = 'icon_and_screenshot_template' | 'meta_screen_layouts';
+
+/** The check of `key` a declaration holds against the game `other`, in either shape (a single check, or a map keyed by game id). */
+export function humanCheckFor(d: DeclaredFingerprint | null, key: HumanDim, other: string): HumanCheck | null {
+  const h = d?.human?.[key] as unknown;
+  if (!h || typeof h !== 'object') return null;
+  if (typeof (h as HumanCheck).value === 'string') return (h as HumanCheck).checkedAgainst === other ? (h as HumanCheck) : null;
+  const e = (h as Record<string, Partial<HumanCheck>>)[other];
+  if (!e || typeof e !== 'object' || typeof e.value !== 'string') return null;
+  if (e.checkedAgainst !== undefined && e.checkedAgainst !== other) return null;
+  return { value: e.value, checkedAgainst: other, by: e.by ?? '', date: e.date ?? '' };
 }
 
 /** Everything the comparison reads about one game; built from the repository by `gameFacts`, or by hand in tests. */
@@ -215,9 +233,11 @@ export function comparePair(A: GameFacts, B: GameFacts, audio?: AudioScore | nul
   const overlap = textSimilarity(storeText(A.store), storeText(B.store));
   push(6, overlap < 0.1 ? 'differs' : 'same', A.store.title, B.store.title, `${pct(overlap)} trigram overlap`);
 
-  const human = (n: number, key: 'icon_and_screenshot_template' | 'meta_screen_layouts', good: string) => {
-    const ha = da?.human?.[key];
-    const hb = db?.human?.[key];
+  const human = (n: number, key: HumanDim, good: string) => {
+    // A single check names one game; a map holds one per game: each side's entry for the other game.
+    const single = (d: DeclaredFingerprint | null) => (d?.human?.[key] && typeof (d.human[key] as HumanCheck).value === 'string' ? (d.human[key] as HumanCheck) : undefined);
+    const ha = humanCheckFor(da, key, B.id) ?? single(da);
+    const hb = humanCheckFor(db, key, A.id) ?? single(db);
     // One person's check covers the pair: either game's filled entry naming the other counts.
     const check = [ha?.checkedAgainst === B.id ? ha : null, hb?.checkedAgainst === A.id ? hb : null].find((h) => h && h.by);
     if (!check) return push(n, 'pending', ha?.by ? ha.value : 'unchecked', hb?.by ? hb.value : 'unchecked', 'a person fills fingerprint.human (spec 10.1 #9)');
@@ -403,6 +423,77 @@ export function textsOf(value: unknown, out: string[] = []): string[] {
   return out;
 }
 
+/**
+ * The texts of a mode's string table (src/ui/<mode>/strings.ts) for dimension 17: every single-quoted
+ * string that follows a colon (as before), every double-quoted string, and the static parts of every
+ * template literal (each piece between its `${...}` holes, nested templates included), with comments
+ * skipped. A small scanner, not a TypeScript parser: enough for a table of words.
+ */
+export function tableStrings(src: string): string[] {
+  const out: string[] = [];
+  for (const m of src.matchAll(/:\s*'([^']+)'/g)) out.push(m[1]);
+  const n = src.length;
+  /** Reads a template literal from just after its opening backtick; pushes its static parts; returns the index after its closing one. */
+  const template = (k: number): number => {
+    let part = '';
+    while (k < n) {
+      const c = src[k];
+      if (c === '\\') {
+        part += src[k + 1] ?? '';
+        k += 2;
+      } else if (c === '`') {
+        out.push(part);
+        return k + 1;
+      } else if (c === '$' && src[k + 1] === '{') {
+        out.push(part);
+        part = '';
+        k = code(k + 2, '}');
+      } else {
+        part += c;
+        k++;
+      }
+    }
+    out.push(part);
+    return k;
+  };
+  /** Skips code from k to the matching `close` (or the end), reading the strings and templates inside; returns the index after it. */
+  const code = (k: number, close: string | null): number => {
+    let depth = 0;
+    while (k < n) {
+      const c = src[k];
+      if (c === '/' && src[k + 1] === '/') {
+        const e = src.indexOf('\n', k);
+        k = e < 0 ? n : e;
+      } else if (c === '/' && src[k + 1] === '*') {
+        const e = src.indexOf('*/', k + 2);
+        k = e < 0 ? n : e + 2;
+      } else if (c === "'" || c === '"') {
+        let e = k + 1;
+        let str = '';
+        while (e < n && src[e] !== c && src[e] !== '\n') {
+          if (src[e] === '\\') {
+            str += src[e + 1] ?? '';
+            e += 2;
+          } else str += src[e++];
+        }
+        if (c === '"') out.push(str);
+        k = e + 1;
+      } else if (c === '`') k = template(k + 1);
+      else if (c === '{') {
+        depth++;
+        k++;
+      } else if (c === '}') {
+        if (close === '}' && depth === 0) return k + 1;
+        depth--;
+        k++;
+      } else k++;
+    }
+    return k;
+  };
+  code(0, null);
+  return out;
+}
+
 /** The facts of one game, read from the repository (games/<id>/, its sounds, its mode's string table). */
 export function gameFacts(root: string, id: string, cfg: GameConfig, games: { listSounds(id: string): Record<string, string>; soundPack(id: string): string | null }, artKits: string[]): GameFacts {
   const dir = path.join(root, 'games', id);
@@ -423,7 +514,7 @@ export function gameFacts(root: string, id: string, cfg: GameConfig, games: { li
   const { store: _store, monetization: _m, app: _app, theme: _t, assets: _a, firebase: _f, ...gameTexts } = raw;
   const strings = textsOf(gameTexts);
   const table = path.join(root, 'src', 'ui', cfg.mode, 'strings.ts');
-  if (fs.existsSync(table)) for (const m of fs.readFileSync(table, 'utf8').matchAll(/:\s*'([^']+)'/g)) textsOf(m[1], strings);
+  if (fs.existsSync(table)) for (const t of tableStrings(fs.readFileSync(table, 'utf8'))) textsOf(t, strings);
   const bundle = readBundleReport(root, id);
   const releases = readJson<ReleasesFile>(path.join(dir, 'store', 'releases.json'));
   const last = releases?.submissions?.map((s) => Date.parse(s.date)).filter(Number.isFinite).sort((x, y) => y - x)[0];

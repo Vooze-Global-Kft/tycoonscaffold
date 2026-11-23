@@ -74,9 +74,17 @@ const scenes: GameScenes = {
       query: 'preset=fresh&fxSlow=6',
       settle: 9000,
       steps: (v) => [
-        { drag: [cell(v, SKEWERS[0]), cell(v, SKEWERS[1])], steps: 12 },
-        { wait: 1500 },
-        { drag: [cell(v, SKEWERS[1]), ticket(v, 0)], steps: 14 },
+        // Each drag as a finger: down, a slow move, a short hold, up (a release in the same instant
+        // as the last move is not seen by the gesture on a busy machine).
+        { down: cell(v, SKEWERS[0]) },
+        { move: cell(v, SKEWERS[1]), steps: 12 },
+        { wait: 400 },
+        { up: true },
+        { wait: 2000 },
+        { down: cell(v, SKEWERS[1]) },
+        { move: ticket(v, 0), steps: 14 },
+        { wait: 400 },
+        { up: true },
         { wait: 6200 },
       ],
       shotFrames: 1,

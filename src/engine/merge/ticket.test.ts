@@ -138,17 +138,24 @@ describe('"Fill one line" (5.7)', () => {
     expect(R.canWatchAd(cfg, later, 'fillLine', 0)).toBe(true);
   });
 
-  it('regression: a stretch line the ad filled comes back through "Not tonight" as a made good (best and the Ladder Book rise, M32)', () => {
-    // Found by the long random run (seed 4242, step 3160): a Tea 6 stretch line filled by the ad,
-    // then sent off, put a Tea 6 on the board above best 5 (bound (a) broken for the next draws).
+  it('a stretch line the ad filled comes back through "Not tonight" as a good: the Ladder Book is stamped, best stays (M51)', () => {
+    // The long random run (seed 4242, step 3160) found a Tea 6 stretch line filled by the ad, then sent
+    // off, putting a Tea 6 on the board above best 5. Decision M51: only merges and drops raise best_c,
+    // so the returned good stamps the Book and best stays 5 (the next draws still ask at most best + 1).
     const s = mergeState(cfg, { clock: 100, chains: [{ c: 0, gear: 3, best: 5 }, { c: 1, best: 5 }], goods: [], counters: [[[1, 6], [1, 6]], null] });
     const filled = R.grantAd(cfg, s, 'fillLine', 0);
     expect(filled.merge.counters[0].ticket!.lines.filter((l) => l.filled)).toHaveLength(1);
     const off = R.notTonight(cfg, filled, 0);
     expect(off.merge.board.some((x) => R.isGood(x) && x.c === 1 && x.k === 6)).toBe(true);
-    expect(off.merge.chains[1].best).toBe(6);
+    expect(off.merge.chains[1].best).toBe(5);
     expect(off.merge.book[1][5]).toBe(true);
     expect(fixtureProblems(cfg, off, { afterPlay: true })).toEqual([]);
+    // Merging two of them is the player's own work: that raises best.
+    const spot = R.freeCells(off.merge)[0];
+    const two = { ...off, merge: { ...off.merge, board: off.merge.board.map((x, i) => (i === spot ? { c: 1, k: 6 } : x)) } };
+    const from = two.merge.board.findIndex((x, i) => R.isGood(x) && x.c === 1 && x.k === 6 && i !== spot);
+    const merged = R.dropAt(cfg, two, from, { kind: 'cell', cell: spot }).game;
+    expect(merged.merge.chains[1].best).toBeGreaterThanOrEqual(7);
   });
 
   it('never fills the last line: refused on a ticket with one unfilled line', () => {
@@ -170,5 +177,40 @@ describe('"Fill one line" (5.7)', () => {
     expect(placed).toHaveLength(Math.min(F, 12));
     expect(placed.filter((c) => R.isGood(c) && c.c === 0).every((c) => R.isGood(c) && c.k === 2)).toBe(true);
     expect(x.merge.ads.gearRush).toBe(100 + cfg.merge.ads.gearRushCooldown);
+  });
+});
+
+describe('"Call the dragon" when a Parade overtook the video (M46, the rules attack\'s minor finding)', () => {
+  // The Parade came out while the video played: canWatchAd was true when the button was pressed, false at the grant.
+  const out = mergeState(cfg, { clock: 2000, chains: [{ c: 0, gear: 3, best: 5 }], goods: [], counters: [[[0, 4], [0, 3]], [[0, 4]]], gold: 0 });
+  const g = { ...out, merge: { ...out.merge, ads: { ...out.merge.ads, callDragon: 0 } } };
+
+  it('the reward is banked, never lost: the cooldown starts and the next Parade is due the moment this one leaves', () => {
+    expect(R.canWatchAd(cfg, g, 'callDragon')).toBe(false);
+    const ev: R.MergeEvent[] = [];
+    const x = R.grantAd(cfg, g, 'callDragon', undefined, ev);
+    expect(x).not.toBe(g);
+    expect(x.merge.paradeBanked).toBe(1);
+    expect(x.merge.ads.callDragon).toBe(2000 + cfg.merge.ads.callDragonCooldown);
+    expect(ev).toEqual([{ type: 'adGranted', kind: 'callDragon' }]);
+    // The gold ticket is sent off: the banked Parade is due at once (not one interval later), the bank is spent.
+    const off = R.notTonight(cfg, x, 0);
+    expect(off.merge.paradeAt).toBe(2000 - off.merge.seasonStartedAt);
+    expect(off.merge.paradeBanked).toBeUndefined();
+    expect(R.paradeDue(off.merge, 2000)).toBe(true);
+    // Without a bank the clock restarts one interval later, as before.
+    const plain = R.notTonight(cfg, g, 0);
+    expect(plain.merge.paradeAt).toBe(2000 - plain.merge.seasonStartedAt + R.currentMods(cfg, plain.merge).paradeEvery);
+  });
+
+  it('still refused during its cooldown and during the opening script; a bank left at a close brings the new season\'s first Parade at once', () => {
+    const cooling = { ...g, merge: { ...g.merge, ads: { ...g.merge.ads, callDragon: 5000 } } };
+    expect(R.grantAd(cfg, cooling, 'callDragon')).toBe(cooling);
+    const script = { ...g, merge: { ...g.merge, script: 'hedgehog' as const } };
+    expect(R.grantAd(cfg, script, 'callDragon')).toBe(script);
+    const banked = R.grantAd(cfg, g, 'callDragon');
+    const next = R.startSeason(cfg, banked.merge, 1, 3000);
+    expect(next.paradeAt).toBe(0);
+    expect(next.paradeBanked).toBeUndefined();
   });
 });

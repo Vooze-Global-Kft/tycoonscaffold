@@ -3,7 +3,8 @@
  * tick(a + b) = tick(a) then tick(b) EXACTLY (the whole state and the event list, compared as
  * JSON) over 10^3 random splits of states that run every event kind of 2.4, with player actions
  * at shared split points; the waiting gear's restart; the eligible-time rule of blocked releases,
- * gift goods and empty counters; the highest open chain releasing first (M22); MAX_TICK.
+ * gift goods and empty counters; Decision M50's flow (a gear's good goes to the board while
+ * F > gear.spare, a freed cell goes to the stall with the fewest loose goods); MAX_TICK.
  *
  * Splits are whole multiples of 1/64 s on whole-second clocks, so the clock after a split lands
  * on exactly the same number as after one tick (floating-point addition of such numbers is exact);
@@ -79,10 +80,17 @@ function paradeWake(): R.MergeGame {
   return { ...g, merge: { ...m, paradeAt: 1010, changedAt: 990, freedAt: 990, counters: m.counters.map((ct, j) => (j === 1 ? { ...ct, refillAt: null, blockedAt: 995 } : ct)) } };
 }
 
-/** Three blocked shelves and one cell an undo chip frees at 1001 (M22: the highest open chain releases first). */
-function m22(): R.MergeGame {
+/**
+ * Three blocked shelves, 27 goods on 30 cells (F = 2 = gear.spare: the board is full, M50) and an
+ * undo chip whose cell frees at 1001 (F = 3): one release, to the stall with the fewest loose goods
+ * on the board (Tea: none; the Grill holds 2, Steamer 1).
+ */
+function m50(): R.MergeGame {
   const cells = open30();
-  const goods: [number, number, number][] = cells.slice(0, 29).map((cell, i) => [cell, i % 3, 3 + (i % 2)]);
+  const goods: [number, number, number][] = cells.slice(0, 27).map((cell, i) => [cell, i % 3, 3 + (i % 2)]);
+  goods[0] = [cells[0], 0, 1];
+  goods[3] = [cells[3], 0, 2];
+  goods[2] = [cells[2], 2, 1];
   const g = mergeState(cfg, {
     clock: 1000,
     chains: [
@@ -104,7 +112,7 @@ const scenarios: Record<string, () => R.MergeGame> = {
   festivalNear: () => mergeFixtures(cfg).festivalNear,
   crowded,
   paradeWake,
-  m22,
+  m50,
 };
 
 /** A player action both runs make at the same clock: the first merge on the board, else a Basket sale of the lowest good. */
@@ -185,7 +193,7 @@ describe('the events of 2.4', () => {
   it('a waiting gear restarts at the release that frees its shelf: nextPopAt = that time + T', () => {
     const g = crowded();
     expect(g.merge.chains[0].waiting).toBe(true);
-    // Free room for the Grill: take every loose Grill good off the board (the drop's loose cap), keep two cells free.
+    // Free room for the Grill: take its goods of tiers 1 to 3 off the board (F > gear.spare, M50).
     const board = g.merge.board.map((c) => (R.isGood(c) && c.c === 0 && c.k <= 3 ? null : c));
     const s = { ...g, merge: { ...g.merge, board, basketUndo: null, chains: g.merge.chains.map((ch, c) => (c === 0 ? { ...ch, releaseAt: 1000.5, blockedAt: null } : ch)) } };
     const ev: R.MergeEvent[] = [];
@@ -193,6 +201,90 @@ describe('the events of 2.4', () => {
     expect(ev.find((e) => e.type === 'released' && e.c === 0)).toMatchObject({ type: 'released', c: 0, k: 1 });
     expect(after.merge.chains[0]).toMatchObject({ waiting: false, nextPopAt: 1000.5 + cfg.merge.gear.interval, releaseAt: 1001 });
     expect(after.merge.chains[0].shelf).toHaveLength(5);
+  });
+
+  describe('Decision M50: a gear rests only when the board is full (F <= gear.spare)', () => {
+    const spare = cfg.merge.gear.spare;
+    /** Chain 0 (and the Tea stall) open, the 30 open cells holding `n` goods of chain `c` at its base tier (loose), the Grill's drop due at 102. */
+    const withGoods = (n: number, c = 0, shelf: number[] = []) =>
+      mergeState(cfg, { clock: 100, chains: [{ c: 0, gear: 1, best: 3, shelf }, { c: 1, gear: 1, best: 3 }], goods: open30().slice(0, n).map((cell) => [cell, c, 1] as [number, number, number]) });
+
+    it('the rule is the default: spare 2, and no loose cap', () => {
+      expect(spare).toBe(2);
+      expect((cfg.merge.gear as Record<string, unknown>).looseCap).toBeUndefined();
+    });
+
+    it('a drop goes to the board while F > spare, whatever the chain and however many of its goods lie loose', () => {
+      const g = withGoods(30 - (spare + 1));
+      expect(R.looseCount(cfg, g.merge, 0)).toBe(27);
+      expect(R.boardFull(cfg, g.merge)).toBe(false);
+      const ev: R.MergeEvent[] = [];
+      const after = tick(g, 2, ev);
+      expect(ev.filter((e) => e.type === 'drop')).toHaveLength(1);
+      expect(R.freeCells(after.merge)).toHaveLength(spare);
+      expect(R.boardFull(cfg, after.merge)).toBe(true);
+    });
+
+    it('with F = spare a drop goes to the shelf (and the gear does not wait while the shelf has room)', () => {
+      const g = withGoods(30 - spare);
+      const ev: R.MergeEvent[] = [];
+      const after = tick(g, 2, ev);
+      expect(ev.filter((e) => e.type === 'drop')).toHaveLength(0);
+      expect(ev.filter((e) => e.type === 'shelved' && e.c === 0)).toHaveLength(1);
+      expect(after.merge.chains[0].shelf).toHaveLength(1);
+      expect(after.merge.chains[0].waiting).toBe(false);
+      expect(R.freeCells(after.merge)).toHaveLength(spare);
+    });
+
+    it('a gear only ever waits with F <= spare: 10 minutes from every fill level', () => {
+      for (let n = 0; n <= 30; n += 3) {
+        let g = withGoods(n, 1);
+        for (let t = 0; t < 600; t += 0.5) {
+          const ev: R.MergeEvent[] = [];
+          const before = g;
+          g = tick(g, 0.5, ev);
+          // F at each event: a tick only places goods (nothing here frees a cell).
+          let F = R.freeCells(before.merge).length;
+          for (const e of ev) {
+            if (e.type === 'drop' || e.type === 'released' || e.type === 'giftGoodPlaced') F--;
+            if (e.type === 'gearWaiting' || e.type === 'shelved') expect(F, `n ${n} t ${t}`).toBeLessThanOrEqual(spare);
+          }
+        }
+        expect(R.freeCells(g.merge).length).toBeLessThanOrEqual(spare);
+      }
+    });
+
+    it('a gift good may take a spare cell', () => {
+      const g0 = withGoods(30 - spare);
+      const g = { ...g0, merge: { ...g0.merge, gift: { ...g0.merge.gift, pendingGoods: [{ c: 1, k: 4 }], nextAt: 100.5, blockedAt: null } } };
+      const ev: R.MergeEvent[] = [];
+      const after = tick(g, 1, ev);
+      expect(ev.filter((e) => e.type === 'giftGoodPlaced')).toHaveLength(1);
+      expect(R.freeCells(after.merge)).toHaveLength(spare - 1);
+    });
+
+    it('M51: a gift good stamps the Ladder Book but does not raise best_c; a gear\'s drop does', () => {
+      const g0 = withGoods(10);
+      const g = { ...g0, merge: { ...g0.merge, gift: { ...g0.merge.gift, pendingGoods: [{ c: 1, k: 6 }], nextAt: 100.5, blockedAt: null } } };
+      const after = tick(g, 1);
+      expect(after.merge.board.some((x) => R.isGood(x) && x.c === 1 && x.k === 6)).toBe(true);
+      expect(after.merge.chains[1].best).toBe(3);
+      expect(after.merge.book[1][5]).toBe(true);
+      // A ripe drop above best raises it (gear 9: ripe chance 0.4, maxPop 2; best set to 1 by hand).
+      const low = mergeState(cfg, { clock: 100, chains: [{ c: 0, gear: 9, best: 1 }], goods: [] });
+      let x = low;
+      for (let i = 0; i < 40 && x.merge.chains[0].best < 2; i++) x = tick(x, 4);
+      expect(x.merge.chains[0].best).toBe(2);
+    });
+
+    it('"Not tonight" may return goods into the spare cells', () => {
+      const g0 = withGoods(30 - spare);
+      const g = mergeState(cfg, { clock: 100, chains: [{ c: 0, gear: 1, best: 3 }, { c: 1, gear: 1, best: 3 }], goods: open30().slice(0, 30 - spare).map((cell) => [cell, 0, 1] as [number, number, number]), counters: [[[1, 3, true], [1, 2, true], [1, 3]], null] });
+      void g0;
+      const after = R.notTonight(cfg, g, 0);
+      expect(after).not.toBe(g);
+      expect(R.freeCells(after.merge)).toHaveLength(0);
+    });
   });
 
   it('a full shelf makes the gear wait: no next drop, and the drop stream does not move', () => {
@@ -206,18 +298,29 @@ describe('the events of 2.4', () => {
     expect(R.nextEvent(cfg, after, Infinity)?.kind).not.toBe('drop');
   });
 
-  it('a blocked release waits for the first freedAt after its block, and the highest open chain goes first (M22)', () => {
-    const g = m22();
+  it('a blocked release waits for the first freedAt after its block; the stall with the fewest loose goods goes first (M50)', () => {
+    const g = m50();
+    expect(R.boardFull(cfg, g.merge)).toBe(true);
     const ev: R.MergeEvent[] = [];
     const after = tick(g, 1, ev);
     const released = ev.filter((e) => e.type === 'released');
-    expect(released).toEqual([{ type: 'released', c: 2, k: 1, cell: g.merge.basketUndo!.cell }]);
+    expect(released).toMatchObject([{ type: 'released', c: 1, k: 1 }]);
+    // F is back at spare: the other two found no room at 1001 and wait for the next freed cell.
     expect(after.merge.chains[0].blockedAt).toBe(1001);
-    expect(after.merge.chains[1].blockedAt).toBe(1001);
-    // Nothing more is due for them until another cell is freed.
+    expect(after.merge.chains[2].blockedAt).toBe(1001);
     const later = tick(after, 1, []);
     expect(later.merge.chains[0].shelf).toHaveLength(1);
-    expect(later.merge.chains[1].shelf).toHaveLength(1);
+    expect(later.merge.chains[2].shelf).toHaveLength(1);
+  });
+
+  it('M50: ties of loose goods go to the higher chain', () => {
+    const g0 = m50();
+    // Take the Grill's and the Steamer's loose goods off (tier 3 in their place): every stall has 0 loose goods.
+    const board = g0.merge.board.map((c) => (R.isGood(c) && c.k <= 2 ? { c: c.c, k: 3 } : c));
+    const g = { ...g0, merge: { ...g0.merge, board } };
+    const ev: R.MergeEvent[] = [];
+    tick(g, 1, ev);
+    expect(ev.filter((e) => e.type === 'released').map((e) => e.type === 'released' && e.c)).toEqual([2]);
   });
 
   it('an empty counter that found no ticket redraws at the first changedAt after it; the Parade wakes one that sat from before it fell due', () => {
