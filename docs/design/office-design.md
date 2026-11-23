@@ -297,12 +297,11 @@ Reference hand 6 s per paper, τ = 12 s. Prices exact by the rules; times and in
 | 1:00 to 2:00 | Potholes levels 2 to 6 (120, 150, 188, 234, 293); Town Clock 6 to 9 (37, 46, 57, 72). | 1,197 | about 60 to 100 |
 | about 1:50 | Day 9: the first application (Dorothy Quayle); signed, she runs the Potholes Office (×1.25). | | |
 | about 2:00 | Benches & Bandstands opens (6,000); Town Clock level 10 (89), the first ×2 and its ribbon paper. | 6,089 | about 600 |
-| 2:00 to 6:00 | Levels into the high teens on three ministries; the first ministry request; the marrow follow-up, if signed (sticky note first). | | about 2,500 to 3,500 |
-| about 6:00 | Day 30: the second application. Saving for Bins & Lampposts (400,000). | | |
+| 2:00 to 6:00 | Levels into the high teens; the first ministry request; the marrow follow-up if signed; day 30, the second application. | | about 2,500 to 3,500 |
 | about 6:40 | Bins & Lampposts opens. | 400,000 | about 18,000 |
 | 10:00 | Day 48: the ribbon becomes "Call the election (poll 3 of 5)". About 48 papers, 1 or 2 ministers, 4 ministries, about 100 purchases, gossip 0 to 2, approval about 58 to 62 %. | | about 30,000 to 40,000 |
 
-The reader calls at about day 56 (11:30, poll 4 of 5); three campaign papers, the rally and election night take about 1 min; the first election ends at about 12:30. Usual result: 4 of 5 wards, NR 1 × (3 + 4) = 7. The rough model buys every 2 to 10 s until minute 6 and every 20 to 40 s after: P2 checks the gap aims (8.4) on the real rules.
+The reader calls at about day 56 (11:30, poll 4 of 5); campaign and election night take about 1 min; usual result 4 of 5 wards, NR 1 × (3 + 4) = 7. The rough model buys every 2 to 10 s until minute 6, then every 20 to 40 s: P2 checks the gap aims (8.4).
 
 ### 2.14 The top: further presidential terms
 
@@ -348,10 +347,9 @@ Returns `{seconds, earnings, game, report}` and adds nothing to cash; the store 
 
 ### 3.2 Goals of minutes 3 to 30
 
-- Minutes 3 to 10: three more ministries opening, the first ribbon, the first follow-up, the second minister; the ribbon becomes "Call the election" at day 48 (about 10:00).
-- Minutes 10 to 13: the first call, campaign and election night (2.13). Usual result: 4 of 5 wards, NR 7, "Another term here" (Governor needs 14).
-- Minutes 13 to 26: mayor term 2. The halfway reset makes it contested again. The first strike comes to a player who neglects a club, the first scandal to one who takes baskets. The first vanity monument is offered (a bust of yourself, about 10 min of taxes). The second win usually brings NR to 14: "Stand for Governor".
-- Minutes 26 to 30: Governor of Upper Fudge. The desk becomes mahogany with a green lamp; the Brass Band Guild and the Anglers' Circle join; 7 counties; Sir Barnaby Waft ("Waft: Gently Onwards") pulls 8. The transition fund buys the first levels at once.
+- Minutes 3 to 13: more ministries, the first ribbon, follow-up and second minister; the first call, campaign and election night (usually 4 of 5 wards, NR 7, "Another term here": Governor needs 14).
+- Minutes 13 to 26: mayor term 2, contested again after the halfway reset; the first strike for a player who neglects a club, the first scandal for one who takes baskets; the first monument offered. The second win usually brings NR 14: "Stand for Governor".
+- Minutes 26 to 30: Governor of Upper Fudge: a mahogany desk with a green lamp, the Brass Band Guild and the Anglers' Circle, 7 counties, Sir Barnaby Waft ("Waft: Gently Onwards") pulling 8.
 
 ### 3.3 Hours one to three, and week three
 
@@ -441,9 +439,8 @@ Every dialog is the kit `Sheet` or registers with `useOverlay`; one at a time.
 
 ### 4.5 Phone rules
 
-- One Skia canvas for the desk (papers, trays, drawer, door), never one canvas per row; portraits elsewhere through `GameIcon`.
-- The canvas runs at 60 fps while a finger is down or a paper moves, else 30. One clock per animated thing: `paperY` with its spring, the paper's entrance, the drawer, the sticky note's one wobble, the treasury roll, the election-night calls. Visitors do not idle-animate. Nothing invisible animates.
-- Paper text is Skia paragraphs in fixed boxes sized by hand as 4.2. The treasury is a `RollingNumber` with no `lineHeight`.
+- One Skia canvas for the desk, never one per row (portraits elsewhere through `GameIcon`); 60 fps while a finger is down or a paper moves, else 30. One clock per animated thing (`paperY` and its spring, the entrance, the drawer, the sticky note's wobble, the treasury roll, the election-night calls); visitors do not idle-animate; nothing invisible animates.
+- Paper text is Skia paragraphs in boxes sized as 4.2; the treasury a `RollingNumber` with no `lineHeight`.
 - Atlases under 2,048 px, drawn in code, baked once (`bakeAtlas`), never freed while a canvas may draw: faces (48 busts at 128 × 160 in 8 × 6: 1,024 × 960; the player's 6 faces again as one-colour portraits for the Office Wall, with 3 ageing steps as a drawing parameter); props (1,024 × 1,024). District maps are Skia paths with no atlas.
 - `npm run lint:worklets` passes; the only worklets are the drawing of `paperY` and the spring.
 - Selectors use `useShallow`; the desk reads the desk paper through one selector returning a stable version.
@@ -457,25 +454,24 @@ Desk baize #2E4A3E with a darker felt pattern; walnut rim #6B4A33; paper a cool 
 
 ## 5. Meta systems (each in a container none of the three games uses)
 
-All built from the shared kit (Sheet, overlays); none uses the tabs family, a missions sheet, a chest overlay, ladders, an arch, a scroll, a contract board or a star map.
+All from the shared kit (Sheet, overlays); none uses the tabs family, a missions sheet, a chest overlay, ladders, an arch, a scroll, a contract board or a star map.
 
-1. **The in-tray, the desk and the drawer** (the core): the stack with its count, the door glass with the next visitor's shadow, the sticky note, the wire out-tray that fills over a term, the drawer FOR FURTHER STUDY whose count grows (at 100, 1,000 and 10,000 refusals the drawer is drawn bigger: a second drawer, a filing cabinet, a photograph of a warehouse; looks only).
-2. **Ministries in the Ledger**: a clothbound accounts book from the desk drawer (4.4).
-3. **The Cabinet**: a framed group photograph; 12 ministers from application papers only; never sold, never random; they travel.
-4. **Follow-ups and chains**: 40 chains of 2 to 3 steps; the sticky note one paper ahead; both branches end in a clipping.
-5. **The Gazette corner** (gossip): a folded newspaper at the top bar's gossip chip showing "2/5" and the last headline; at the limit, the front page slides onto the desk.
-6. **Elections**: the pinned ward map on the Poll sheet, the term ribbon's call button, the campaign papers, the chalk tally board of election night, the result sheet.
-7. **The Office** (a full-screen wall): your portraits as mayor, governor and president, greying a little each term; photographs of the towns you left; Grand Projects; terms served, stated as plain facts, never a score.
-8. **The vanity shelf** (on the Office wall; state's graft): one monument offered at the start of every term from mayor term 2, costing 600 s of B (tune 300 to 1,200), giving ×1.02 income for good in every office, from 24 hand-written monuments (a bust of yourself; a bust of the bust; a portrait of you cutting a ribbon; a statue of you pointing at a smaller statue of you; a fountain shaped like your signature). Refusing costs nothing; the offer moves to the next term.
-9. **The scrapbook** (on the Office wall): 80 clippings from the endings of the 40 chains plus a headline per election; the first time a clipping is glued in, +1 Name Recognition; unfound ones show the chain's first line, a reason to choose the other side next time.
-10. **The Standing Order** (state's graft, from governor term 2, on or off in the Ledger): Cuthbert Pell, the intern, buys the advised level while you play when cash ≥ 3 × its price and the purchase leaves the desk paper's sign cost. Never while away, which keeps time away a closed form.
-11. **Shop and rewarded ads** (a sheet, not a system):
-   - Products (none random, none a currency, none a multiplier; none touches a mood, the poll or the count): `office_long_lunch` "Long Lunch" (unlock, $3.99): +4 h on the away cap; `office_bigger_tray` "Bigger In-Tray" (unlock, $2.99): 6 more places, while playing and away; `office_walnut_desk` "Walnut & Brass Desk Set" (cosmetic, $2.99): desk, lamp and gold pen, looks only; `office_do_not_disturb` "Do Not Disturb Sign" (skipAds, $4.99): every Watch-ad reward at once without the video, sold openly under its own name as each of the other three apps sells one, and REVIEW-NOTES says so.
-   - Rewarded ads (optional, labelled "Watch ad", each offered only from a button the player taps; cooldowns on the play clock and stated so; a failed load loses nothing and says "Not available right now"): away report +50 %; **Check the Sofa** (Rodney finds dibs down the back of the office sofa): +40 s of B, once per term, not during the campaign. 40 s is less than one campaign paper's 45 s, so it cannot fund a campaign action by itself (lead ruling 6); **Call the Spin Doctor**: ends a running scandal now; **Send the Biscuit Van**: ends a running strike now; **Open the Doors**: the in-tray fills to its cap now, cooldown 15 min of play.
-   - From the call of an election to the end of election night, no ad and no product is offered.
-   - No interstitials, no banners; the AdMob sensitive category "Politics" is blocked.
+1. **In-tray, desk and drawer** (the core): the stack and its count, the door glass, the sticky note, the wire out-tray that fills over a term, the drawer FOR FURTHER STUDY whose count grows (drawn bigger at 100, 1,000 and 10,000 refusals: a second drawer, a filing cabinet, a photograph of a warehouse; looks only).
+2. **The Ledger** (ministries): a clothbound accounts book (4.4).
+3. **The Cabinet**: a framed photograph; 12 ministers from application papers only; never sold, never random; they travel.
+4. **Follow-ups**: 40 chains of 2 to 3 steps; the sticky note; both branches end in a clipping.
+5. **The Gazette corner** (gossip): a folded newspaper at the gossip chip with the last headline.
+6. **Elections**: the pinned map, the call button, campaign papers, the chalk tally board, the result sheet.
+7. **The Office** (a full-screen wall): your portraits, greying a little each term; photographs of the towns you left; Grand Projects; terms served as plain facts, never a score.
+8. **The vanity shelf** (on the wall; state's graft): one monument offered each term from mayor term 2 for 600 s of B (tune 300 to 1,200), ×1.02 income for good, from 24 hand-written monuments (a bust of yourself; a bust of the bust; a statue of you pointing at a smaller statue of you). Declining costs nothing.
+9. **The scrapbook** (on the wall): 80 clippings plus a headline per election; a new clipping gives +1 Name Recognition once; unfound ones show the chain's first line.
+10. **The Standing Order** (state's graft, from governor term 2, a switch in the Ledger): Cuthbert Pell buys the advised level while you play when cash ≥ 3 × its price, always leaving the desk paper's sign cost. Never while away.
+11. **Shop and rewarded ads** (a sheet):
+   - Products (none random, a currency or a multiplier; none touches a mood, the poll or the count): `office_long_lunch` "Long Lunch" (unlock, $3.99): +4 h away cap; `office_bigger_tray` "Bigger In-Tray" (unlock, $2.99): 6 more places; `office_walnut_desk` "Walnut & Brass Desk Set" (cosmetic, $2.99): looks only; `office_do_not_disturb` "Do Not Disturb Sign" (skipAds, $4.99): every Watch-ad reward without the video, sold openly under its own name as in the other three apps (REVIEW-NOTES says so).
+   - Rewarded ads (optional, "Watch ad", from a button the player taps; play-clock cooldowns stated; a failed load loses nothing): away report +50 %; **Check the Sofa** (Rodney finds dibs down the back of the sofa): +40 s of B, once per term, less than one campaign paper's 45 s (ruling 6); **Call the Spin Doctor**: ends a scandal now; **Send the Biscuit Van**: ends a strike now; **Open the Doors**: fills the in-tray now, cooldown 15 min of play.
+   - From the call of an election to the end of election night, no ad and no product is offered. No interstitials, no banners; AdMob's "Politics" category blocked.
 
-Cut on purpose: chests and any random reward (so there are no odds to show), missions, a manifesto, daily gifts, energy, premium currency, timed offers, starter packs, leaderboards (rivals are computer characters, so no "Contests"), push notifications in v1.
+Cut on purpose: chests and every random reward (no odds to show), missions, a manifesto, daily gifts, energy, premium currency, timed offers, starter packs, leaderboards, push notifications.
 
 ---
 
@@ -528,8 +524,7 @@ Hobby and errand clubs only, never a people, faith, age, class or region: Early 
 - **Advisors**: Rodney Spinwell, Chief of Staff (vanity and spin); Gwendolyn Abacus, Treasury Clerk (ministry requests); Cuthbert Pell, the intern (committees, the Standing Order); Deputy Pruella Marsh (governor; dry, hungry); Secretary Ottilie Fenn (president; has seen three presidents and liked one).
 - **Spokespeople**: Desmond Kerb (Bus), Pauline Till (Shops), Hilda Marrowby (Allotment), Horace Bellows (Brass Band), Marigold Hake (Anglers), Wendell Loft (Kites), Agnes Privet (Hedges); Bert Trowel, shop steward of every strike.
 - **Lobbyists, farce only**: Lionel Sash (Ribbon Makers' Guild), Crispin Vane (Consolidated Umbrellas), Lavinia Goss (Ornamental Fountain Council), Tobias Slake (Novelty Hats & Sons). Gifts are fruit baskets, a fountain shaped like you, a hat with a smaller hat on it; they never pay money and always bring gossip and a favour back.
-- **Others**: Ambrose Minute (Committee on Committees), Agatha Tallow (the Counting Clerk).
-- **Ministers (12)**: Dorothy Quayle ("References: 'She found one.'"), Dorrit Pellow, Barnaby Ferrule, Wendeline Hush, Ignatia Bole, Percy Gimlet, Marjorie Wren, Oswald Tamp, Florence Dibble, Humphrey Lathe, Clemency Ash, Neville Spoke.
+- **Others**: Ambrose Minute (Committee on Committees), Agatha Tallow (the Counting Clerk). **Ministers (12)**: Dorothy Quayle ("References: 'She found one.'"), Dorrit Pellow, Barnaby Ferrule, Wendeline Hush, Ignatia Bole, Percy Gimlet, Marjorie Wren, Oswald Tamp, Florence Dibble, Humphrey Lathe, Clemency Ash, Neville Spoke.
 - **Rivals**, individuals with a hobby and a slogan, never a party or a colour: Councillor Prudence Plumb ("Plumb: She Owns A Hat"), Sir Barnaby Waft ("Waft: Gently Onwards"), Professor Ignatius Crumb ("Crumb: Abolish Wednesdays"), then 12 hand-written presidential rivals (for example Dame Ottoline Strop, "Strop: Firmly Seated").
 - No children, school, soldier, police, clergy or uniform anywhere; no religious or uniform headwear.
 
@@ -616,10 +611,10 @@ The bribe never pays: no branch holds money.
 
 ### 7.9 Store page
 
-- **Title: "Flick of the Pen"** (16 characters). It names the verb (a flick) and the object that signs; no civic word; no "X: Y" shape; no word shared with the three other titles; reads as comedy beside the subtitle. Risk: a common idiom, so a book or an app may hold it; the name-search step checks it first.
-- Alternative 1: **"Sign & Shred"**: the clearest verb pair, but the refusal now goes into a drawer, not a shredder, so the title would promise a destination the game lacks, and it crowds into e-signature and shredder utilities. It stays a candidate only if the lead turns the drawer into a shredder.
-- Alternative 2: **"Rubber Stamp Republic"**: the satirical phrase aims the joke at the player's office, but no stamp exists in the game and the phrase evokes the border-inspection game's stamping; "Republic" leans civic.
-- The search uses generic terms only ("flick of the pen game", "sign and shred game", "rubber stamp republic game") and records results in `games/high-office/store/NAME-SEARCH.md`.
+- **Title: "Flick of the Pen"** (16 characters): names the verb and the signing pen; no civic word, no "X: Y", no word shared with the other three titles. Risk: a common idiom; the name search checks it first.
+- Alternative 1: **"Sign & Shred"**: the clearest verb pair, but the refusal goes into a drawer, not a shredder, and it crowds into e-signature and shredder utilities; a candidate only if the drawer becomes a shredder.
+- Alternative 2: **"Rubber Stamp Republic"**: aims the joke at the office, but no stamp exists in the game, the phrase evokes the border-inspection game, and "Republic" leans civic.
+- The search uses generic terms only and records results in `games/high-office/store/NAME-SEARCH.md`.
 - Subtitle (30): "Funny desk, mayor to president". Category Games/Simulation.
 - Description, first line: "An invented country and a comedy desk: flick each paper up to sign it, or down into the drawer marked FOR FURTHER STUDY." "Idle" and "tycoon" appear only further down; the listing says plainly that ministries earn while you are away and that terms move only when you read.
 - Keywords: desk, mayor, governor, president, papers, sign, office, town hall, funny, satire, decisions, cartoon.
@@ -676,15 +671,14 @@ Hand model: one decision 6 s after the paper lands (also 4 s and 9 s); a purchas
 
 ### 8.4 Aims (reported; the lead sets each band once after the first tuned run, as merge M2 and M54)
 
-- Opening: first paper decided by 10 s; first purchase by 0:15; in minutes 0 to 10 a paying moment (a purchase or a money effect) at least every 30 s at the median and the longest wait with nothing to do 20 s or less; at least 20 purchases.
-- Pace at 6 s: first election 11 to 15 min; governor 24 to 34 min; president 75 to 110 min. At 4 s and 9 s within ±10 % (arrival-bound by design).
-- Desk: decisions a minute about 5 at all three hands; tray empty 35 to 55 % of governing time at 6 s; tray full at most 10 % at 9 s.
-- Tension: the reader's median winning margin 1 district; at least 2 districts within 5 points of 50 in half its elections; first-election win in at least 13 of 15 seeds.
-- Strikes and scandals: the reader at most 1 strike an hour and 1 scandal every 2 h; always-refuse at least 2 strikes an hour; always-sign at least 1 scandal a term.
-- Money: paper money gains 10 to 25 % of all dibs in hours 0 to 3; the reader spends 20 to 35 % of its income on papers, always-sign 45 to 70 %.
-- A new office's income passes the old one's final income within 4 to 8 minutes.
-- Offline: 1 h away with the ad pays 0.3 to 0.6 of 1 h of active income at 30, 60, 120 and 180 min (also with Long Lunch). Passive: governor on day 1, president on day 2 or 3, presidential term 15 to 25 by day 21.
-- Novelty: something new every 3 min in minutes 0 to 30 and every 15 min in hours 1 to 3 (a ministry, a minister, an office, a chain ending, a monument, a Grand Project, a twist).
+- Opening: first paper by 10 s, first purchase by 0:15; in minutes 0 to 10 a paying moment every 30 s at the median, no wait with nothing to do over 20 s, at least 20 purchases.
+- Pace at 6 s: first election 11 to 15 min, governor 24 to 34, president 75 to 110; 4 s and 9 s within ±10 %.
+- Desk: about 5 decisions a minute at every hand; tray empty 35 to 55 % of governing time at 6 s; full at most 10 % at 9 s.
+- Tension: the reader's median margin 1 district; 2 districts within 5 points of 50 in half its elections; first election won in 13 of 15 seeds.
+- Strikes and scandals: reader ≤ 1 strike an hour and ≤ 1 scandal per 2 h; always-refuse ≥ 2 strikes an hour; always-sign ≥ 1 scandal a term.
+- Money: paper gains 10 to 25 % of all dibs in hours 0 to 3; the reader spends 20 to 35 % of income on papers, always-sign 45 to 70 %. A new office passes the old income within 4 to 8 minutes.
+- Offline: 1 h away with the ad pays 0.3 to 0.6 of 1 h active at 30, 60, 120, 180 min. Passive: governor day 1, president day 2 or 3, term 15 to 25 by day 21.
+- Novelty: something new every 3 min in minutes 0 to 30, every 15 min in hours 1 to 3.
 
 Knobs `build-office.py` may move, inside the ranges of section 2: S per office, the ministry step, open costs, cost growth; τ, the away interval and rate; D and the call fraction; R; the archetype shares and ±1 on each base effect; the money tier seconds; the template shares; the request interval; G_max; m_N; Y; the vanity price and factor; the transition fund. Knob order per failing target: habits (archetype nets, then money tiers, then vanity share, then R); pace (NR requirements, then D, then costs); elections (R, starting moods, campaign stakes); text (template share, then τ). Mood bases beyond ±1 are content: the editor changes them from the bot's per-text report, never the tuner. No rule is changed after screens exist without the lead.
 
@@ -725,32 +719,23 @@ More papers per office and chains of 4 steps (content updates); a second rival p
 
 ### 10.1 What anyone can see (web preview, `GAME=high-office`; then a phone)
 
-1. The first three minutes play as 3.1; the first paper is decided within 10 s.
-2. Flicking up past 90 pt signs, down refuses; a short fast flick of 24 pt counts; a slow short drag springs back; a second finger cancels; tap-tap works; the paper never moves sideways or tilts.
-3. On 30 consecutive papers, every number printed on a strip is the value applied (the treasury, the club numbers on tap, the gossip chip).
-4. A strike and a scandal each show their warning on the outcome before the choice, and each ends by its free exit within its paper count.
-5. The poll before a call equals the count; districts are announced safest first; a loss keeps every ministry, level and minister.
-6. No ad button or shop is reachable from the call to the end of election night.
-7. Both sizes at font scale 1.0 and 1.3: nothing clipped, overlapped or wrapped on the paper, the bars or the bottom row.
-8. Android back closes layers in 4.4's order and leaves only from the bare desk.
-9. Away for 1 h: the report shows earnings and waiting papers; the ad adds half; the device clock forward and back pays once; no mood or counter changed.
-10. A person fills `fingerprint.json` `human` against all three games and does the listening check; the greyscale contact sheet tells every face apart.
+1. The first three minutes play as 3.1.
+2. Up past 90 pt signs, down refuses, a fast 24 pt flick counts, a slow short drag springs back, a second finger cancels, tap-tap works; the paper never moves sideways or tilts.
+3. On 30 papers in a row, every printed number is the value applied; strike and scandal warnings show before the choice, and both end by their free exits.
+4. The poll equals the count; safest district first; a loss keeps everything built; no ad or shop from the call to the end of election night.
+5. Both sizes at font scale 1.0 and 1.3: nothing clipped, overlapped or wrapped. Android back follows 4.4.
+6. Away 1 h: earnings and waiting papers; the ad adds half; clock jumps pay once; no mood or counter moved.
+7. A person fills `fingerprint.json` `human` against all three games and does the listening check.
 
 ### 10.2 Tests that must exist (vitest)
 
-Engine (`src/engine/decree*.test.ts`, on fixtures only):
-- `size.test.ts`: the no-clamp lemma over every m from 0 to 100 and every Δ from −10 to 10 (and the fixed +10 and +6); money frozen at the draw; moods frozen at landing.
-- `decide.test.ts`: applied equals shown on 10⁵ random states; sign refused when short; refuse never costs money; the order of per-decision rules.
-- `draw.property.test.ts`: the draw order; no follow-up without its set-up; no hand-written repeat while an unseen eligible one exists; template spacing; petitioner weights; reload re-rolls nothing.
-- `strike.test.ts`, `scandal.test.ts`: triggers, warnings, free exits within their counts, re-arming, no gossip from approval, no second scandal, the term-end rule.
-- `term.test.ts`: call conditions; campaign set-aside; campaign papers not days; halfway reset; asideTray returned.
-- `count.test.ts`: share formula, ties at 50.0, the announcement order; the poll equals the count; the sympathy bound of 2.11 from the params.
-- `move.test.ts`: the resets and carries of 2.12 exactly; `canPrestige` only after a win with NR.
-- `twists.test.ts`: each twist and each of the 45 pairs composes; exactly one new thing per presidential term to term 61.
-- `tick.split.test.ts`: tick(a + b) = tick(a) then tick(b) over random splits with arrivals and a full tray.
-- `offline.test.ts`: closed form equals stepping; cash unchanged until granted; caps; clock jumps pay once; carry adds two short absences.
-- `coins.test.ts` (the five sources), `advice.test.ts` (the bot and the goal line agree), `determinism.test.ts` (byte-identical 1 h trace).
-- `decreeMode.test.ts`: create; reconcile from a broken save; save tag `decree1`; `config` rejects an invalid block; `offlineAdMultiplier` 1.5; `roundPayout`; `entitle` for the tray and Long Lunch.
+Engine (`src/engine/decree*.test.ts`, fixtures only):
+- `size`: the lemma over every m 0 to 100 and Δ −10 to 10 (and the fixed +10, +6); money frozen at the draw, moods at landing. `decide`: applied equals shown on 10⁵ random states; sign refused when short; refuse never costs money.
+- `draw.property`: draw order; no follow-up without its set-up; no repeat while an unseen eligible text exists; template spacing; reload re-rolls nothing.
+- `strike`, `scandal`: triggers, warnings, free exits within their counts, re-arming, no gossip from approval, no second scandal. `term`: call conditions, set-aside, campaign papers not days, halfway reset.
+- `count`: shares, 50.0 ties, announcement order, poll equals count, the 2.11 bound from the params. `move`: 2.12's resets and carries; `canPrestige` only after a qualifying win. `twists`: each twist and pair composes; one new thing per term to term 61.
+- `tick.split` (tick(a + b) = tick(a) then tick(b) with arrivals and a full tray); `offline` (closed form equals stepping, caps, clock jumps pay once, carry); `coins` (five sources); `advice`; `determinism`.
+- `decreeMode`: create, reconcile a broken save, tag `decree1`, invalid block rejected, `offlineAdMultiplier` 1.5, `roundPayout`, `entitle`.
 
 Shared and tooling:
 - `modeRegression.test.ts` unchanged and green; `entries.test.ts` pins the decree entry (`Shell`, `Loading`, `parts` with `Icon` and `HintPointer`, `hints`, `engine`, `presets`, `soundKeys`).
