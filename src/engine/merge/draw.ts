@@ -21,11 +21,13 @@
  *   included, of cells(k) = k − b_c + 1, + Σ_c min(λ, Loose_c), + R ≤ O;
  * - (d) = (d1) only (decision M4): every line has k ≥ b_c + 1. The scripted fox and hedgehog are
  *   exempt from (d) only.
- * Fallback: (1) lower the highest line that is above its kmin by one tier; (2) when no line can be
- * lowered, drop the last line and go on with (1); (3) when no line is left, redraw with one open
- * chain as the only chain (the next open chain after the first drawn line's, cyclically, the
- * first drawn chain last), each redraw going through (1) and (2); (4) no chain passes: "Setting
- * up…" (`ticket: null`), which the caller retries at the next board change (2.4 `changedAt`).
+ * Fallback, read exactly as decision M32 (four steps, each followed by a re-check of (a) to (d)):
+ * (1) while a bound fails and some line is above its kmin, lower by one tier the highest line that
+ * is above its kmin (ties: the last such line); (2) with every line at its kmin and a bound still
+ * failing, drop the last line and go back to (1); (3) with one line at its kmin still failing, try
+ * a single line at kmin of each other open chain in turn, upward from the failed chain and wrapping
+ * round; (4) none passes: "Setting up…" (`ticket: null`), which the caller redraws at the next
+ * board change (2.4 `changedAt`).
  */
 import { missingDetail, goodsAtHand, popsNeeded } from './missing';
 import { mergeParams, streamValue } from './params';
@@ -151,7 +153,7 @@ export function checkBounds(cfg: MergeConfig, g: MergeGame, counter: number, lin
 
 /** One step of a draw, for the tests and the measurements (`drawTicketTraced`). */
 export interface DrawStep {
-  step: 'draw' | 'lower' | 'dropLine' | 'redraw';
+  step: 'draw' | 'lower' | 'dropLine' | 'otherChain';
   lines: { c: number; k: number }[];
   failures: BoundFailures;
 }
@@ -214,12 +216,12 @@ function chainWeights(ctx: DrawContext): number[] {
 }
 
 /** Fallback steps (1) and (2) on `lines` (mutated copies), recording each step; the accepted lines or null. */
-function settle(ctx: DrawContext, lines: { c: number; k: number }[], trace: DrawStep[] | null): { c: number; k: number }[] | null {
+function settle(ctx: DrawContext, lines: { c: number; k: number }[], trace: DrawStep[] | null): { lines: { c: number; k: number }[] | null; failedChain: number } {
   let cur = lines.map((l) => ({ ...l }));
   let f = check(ctx, cur);
   for (;;) {
-    if (!fails(f)) return cur;
-    if (cur.length === 0) return null;
+    if (!fails(f)) return { lines: cur, failedChain: -1 };
+    if (cur.length === 0) return { lines: null, failedChain: -1 };
     // (1) lower the highest line that is above its kmin (ties: the last such line).
     let at = -1;
     for (let i = 0; i < cur.length; i++) if (cur[i].k > kmin(ctx, cur[i].c) && (at < 0 || cur[i].k >= cur[at].k)) at = i;
@@ -231,9 +233,9 @@ function settle(ctx: DrawContext, lines: { c: number; k: number }[], trace: Draw
       trace?.push({ step: 'lower', lines: cur.map((l) => ({ ...l })), failures: f });
       continue;
     }
-    // (2) no line can be lowered: drop the last line.
+    // (2) every line at its kmin: drop the last line; the last one left failing ends (1) and (2).
+    if (cur.length === 1) return { lines: null, failedChain: cur[0].c };
     cur = cur.slice(0, -1);
-    if (cur.length === 0) return null;
     f = check(ctx, cur);
     trace?.push({ step: 'dropLine', lines: cur.map((l) => ({ ...l })), failures: f });
   }
@@ -269,22 +271,24 @@ function drawTicketWith(cfg: MergeConfig, g: MergeGame, counter: number, trace: 
   const coat = Math.floor(next(ctx) * t.coats);
   if (trace) trace.push({ step: 'draw', lines: drawn.map((l) => ({ ...l })), failures: check(ctx, drawn) });
   let lines = settle(ctx, drawn, trace);
-  if (!lines) {
-    // (3) redraw with one open chain as the only chain: the next open chain after the first drawn
-    // line's, cyclically, the first drawn chain last.
-    const first = ctx.open.indexOf(drawn[0].c);
-    for (let s = 1; s <= ctx.open.length && !lines; s++) {
-      const c = ctx.open[(first + s) % ctx.open.length];
-      const n = drawCount(ctx, g);
-      const re: { c: number; k: number }[] = [];
-      for (let i = 0; i < n; i++) re.push({ c, k: drawTier(ctx, c) });
-      if (trace) trace.push({ step: 'redraw', lines: re.map((l) => ({ ...l })), failures: check(ctx, re) });
-      lines = settle(ctx, re, trace);
+  if (!lines.lines && lines.failedChain >= 0) {
+    // (3) one line at its kmin still failing: a single line at kmin of each other open chain in
+    // turn, upward from the failed chain and wrapping round (decision M32); no stream value.
+    const at = ctx.open.indexOf(lines.failedChain);
+    for (let s = 1; s < ctx.open.length; s++) {
+      const c = ctx.open[(at + s) % ctx.open.length];
+      const one = [{ c, k: Math.min(8, kmin(ctx, c)) }];
+      const f = check(ctx, one);
+      if (trace) trace.push({ step: 'otherChain', lines: one.map((l) => ({ ...l })), failures: f });
+      if (!fails(f)) {
+        lines = { lines: one, failedChain: -1 };
+        break;
+      }
     }
   }
   // (4) no chain passes: "Setting up…".
-  if (!lines) return { ticket: null, used: ctx.used };
-  return { ticket: { id: g.merge.nextTicketId, lines: toLines(ctx, lines), gold: false, customer, coat }, used: ctx.used };
+  if (!lines.lines) return { ticket: null, used: ctx.used };
+  return { ticket: { id: g.merge.nextTicketId, lines: toLines(ctx, lines.lines), gold: false, customer, coat }, used: ctx.used };
 }
 
 /**
@@ -343,7 +347,7 @@ function drawParadeWith(cfg: MergeConfig, g: MergeGame, counter: number, trace: 
   // Highest chains first on the ticket, so step (2) drops the lowest chain's line.
   drawn.sort((x, y) => y.c - x.c);
   if (trace) trace.push({ step: 'draw', lines: drawn.map((l) => ({ ...l })), failures: check(ctx, drawn) });
-  const lines = settle(ctx, drawn, trace);
+  const lines = settle(ctx, drawn, trace).lines;
   if (!lines) return { ticket: null, used: ctx.used };
   return { ticket: { id: g.merge.nextTicketId, lines: toLines(ctx, lines), gold: true, customer: 0, coat: 0 }, used: ctx.used };
 }

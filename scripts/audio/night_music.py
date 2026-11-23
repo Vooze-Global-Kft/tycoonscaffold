@@ -70,10 +70,12 @@ def whole(rate, seconds):
     return max(round(rate * seconds), 1) / seconds
 
 
-def drone(f, n, rng, level=1.0, vib=0.003, vib_hz=4.3, breathe_cycles=9, fmax=3600.0):
+def drone(f, n, rng, level=1.0, vib=0.003, vib_hz=4.3, breathe_cycles=9, fmax=3600.0, lift=1.0, fund=1.0):
     """A low free reed held for the whole loop, exactly periodic: the reed spectrum of
     recipes_night (formants at 650 and 1,500 Hz), a slow vibrato, a breathing swell (one per
-    `breathe_cycles`-th of the loop), breath noise in the formant band."""
+    `breathe_cycles`-th of the loop), breath noise in the formant band. lift multiplies harmonics
+    2 to 4 and fund the fundamental: a phone speaker keeps nothing under about 200 Hz, so a low
+    drone is heard there through its 2nd to 4th harmonics."""
     L = n / SR
     f = whole(f, L)
     t = np.arange(n) / SR
@@ -84,7 +86,7 @@ def drone(f, n, rng, level=1.0, vib=0.003, vib_hz=4.3, breathe_cycles=9, fmax=36
     amp = RN._reed_amp(f)
     y = np.zeros(n)
     for k in range(1, int(fmax // f) + 1):
-        a = amp(k, k * f)
+        a = amp(k, k * f) * (fund if k == 1 else lift if k <= 4 else 1.0)
         y += a * np.sin(k * ph + rng.uniform(0, TAU))
     y /= np.max(np.abs(y)) + 1e-12
     breath = periodic_noise(rng, n, 450.0, 2400.0) * 0.05
@@ -166,11 +168,15 @@ def _drum_bar(loop, at, unit, pattern, rng, f_dum, f_tek, level):
         loop.add('drum', y, at + step * unit + rng.normal(0.0, 0.003))
 
 
-def _pad(loop, chords, bar, rng_name, bright):
+def _pad(loop, chords, bar, rng_name, bright, floor=None):
+    """The bowed pad, one voice per chord note. With floor (a note name), every note under it is
+    played an octave up: a phone speaker keeps nothing of a bowed voice under about 200 Hz."""
     for i, chord in enumerate(chords):
         t0 = 3 * i * bar
         span = 3 * bar
         for j, nt in enumerate(chord):
+            if floor is not None and midi(nt) < midi(floor):
+                nt = '%s%d' % (nt[:-1], int(nt[-1]) + 1)
             side = 'pad_l' if j % 2 == 0 else 'pad_r'
             start = t0 - 0.3 if t0 > 0 else 0.0
             y = RN.bowed(hz(nt), span + 1.9 + (t0 - start), rng_for('music', rng_name, i, j), attack=1.3, release=1.9, bright=bright)
@@ -189,11 +195,12 @@ def tune(name):
 
     # the drone, periodic over the loop
     roots = ('G2', 'D3') if summer else ('D2', 'A2')
-    loop.add('drone', drone(hz(roots[0]), n, rng_for('music', name, 'drone0'), 1.0, breathe_cycles=9), 0.0)
-    loop.add('drone', drone(hz(roots[1]), n, rng_for('music', name, 'drone1'), 0.55, breathe_cycles=27 if summer else 9), 0.0)
+    lift, fund = (1.0, 1.0) if summer else (1.45, 0.6)          # spring's D2 is under any phone speaker: lean on its harmonics
+    loop.add('drone', drone(hz(roots[0]), n, rng_for('music', name, 'drone0'), 1.0, breathe_cycles=9, lift=lift, fund=fund), 0.0)
+    loop.add('drone', drone(hz(roots[1]), n, rng_for('music', name, 'drone1'), 0.3 if summer else 0.55, breathe_cycles=27 if summer else 9), 0.0)
 
     # the bowed pad
-    _pad(loop, SUMMER_CHORDS if summer else SPRING_CHORDS, bar, name, 1.8 if summer else 1.4)
+    _pad(loop, SUMMER_CHORDS if summer else SPRING_CHORDS, bar, name, 1.8 if summer else 2.2, None if summer else 'C4')
 
     # the hand drum
     for b in range(BARS):
@@ -205,7 +212,7 @@ def tune(name):
             full = 9 <= b < 18
             pat = SPRING_DRUM_FULL if full else SPRING_DRUM_SPARSE
             lvl = 0.75 if b == BARS - 1 else 1.0
-            _drum_bar(loop, b * bar, unit, pat, rng, 190.0, 300.0, lvl)
+            _drum_bar(loop, b * bar, unit, pat, rng, 215.0, 300.0, lvl)
 
     # the summer reed song
     if summer:

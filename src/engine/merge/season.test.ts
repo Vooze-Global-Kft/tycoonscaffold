@@ -142,6 +142,10 @@ describe('season close (2.11)', () => {
     expect(after.merge.feats.tickets).toBe(before.merge.feats.tickets);
     expect(after.merge.basketUndo).toBeNull();
     expect(after.merge.seasonStartedAt).toBe(before.stats.playSeconds);
+    // `now` is the store's wall clock: only lastSavedAt takes it, never a season time.
+    const wall = closeSeason(cfg, before, 1.8e12);
+    expect(wall.lastSavedAt).toBe(1.8e12);
+    expect(wall.merge.seasonStartedAt).toBe(before.stats.playSeconds);
     expect(after.prestigeCount).toBe(before.prestigeCount + 1);
     expect(after.merge.festival.filledAt).toBeNull();
     expect(events.filter((e) => e.type === 'seasonClosed')).toEqual([{ type: 'seasonClosed', season: 0 }]);

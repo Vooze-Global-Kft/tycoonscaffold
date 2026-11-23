@@ -193,7 +193,9 @@ export const SEASON_BOOKKEEPING: Readonly<Record<string, 'kept' | 'counted' | 'r
 
 /**
  * Closes the season (2.11, M21), refused (the same object) until the Festival is filled; always the
- * player's choice, and the next season is not chosen. In order: each chain that reached tier 6
+ * player's choice, and the next season is not chosen. `now` is the store's wall clock (ms, the wall time
+ * of the caller): only `lastSavedAt` takes it; every season time is the game clock
+ * (`stats.playSeconds`). In order: each chain that reached tier 6
  * earns a seasoned step (up to the limit, +1 with lantern 9); `seasonsClosed` and the shared
  * `prestigeCount` count on; the coins reset (cash to the configured start, `runEarnings` 0);
  * `basketUndo` is cleared; the lanterns of the close light now (8, 15, 18), so Tea opens from the
@@ -202,7 +204,6 @@ export const SEASON_BOOKKEEPING: Readonly<Record<string, 'kept' | 'counted' | 'r
  * yet open wait for it (MECHANICS's placement).
  */
 export function closeSeason(cfg: MergeConfig, g: MergeGame, now: number, events?: MergeEvent[]): MergeGame {
-  void now;
   if (!canCloseSeason(cfg, g)) return g;
   const m = g.merge;
   const clock = g.stats.playSeconds;
@@ -213,7 +214,9 @@ export function closeSeason(cfg: MergeConfig, g: MergeGame, now: number, events?
     feats: { ...m.feats, seasonsClosed: m.feats.seasonsClosed + 1 },
     basketUndo: null,
   };
-  let out: MergeGame = { ...g, cash: Math.max(0, cfg.economy.startingCash ?? 0), runEarnings: 0, prestigeCount: g.prestigeCount + 1, merge: closing };
+  // The coins reset directly (not through commitCash: a reset is no source of 2.3 and no spend).
+  const lastSavedAt = Number.isFinite(now) && now > 0 ? now : g.lastSavedAt;
+  let out: MergeGame = { ...g, cash: Math.max(0, cfg.economy.startingCash ?? 0), runEarnings: 0, prestigeCount: g.prestigeCount + 1, lastSavedAt, merge: closing };
   out = checkLanterns(cfg, out, clock, events);
   out = { ...out, merge: { ...startSeason(cfg, out.merge, m.season + 1, clock), basketUndo: null } };
   out = checkLanterns(cfg, out, clock, events);

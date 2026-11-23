@@ -26,7 +26,7 @@ import { rngFloat } from '../rng';
 import { checkBounds, drawParade, drawParadeTraced, drawTicket, drawTicketTraced, scriptedTicket, type BoundFailures, type DrawStep } from './draw';
 import { missingDetail, popsNeeded } from './missing';
 import { mergeParams } from './params';
-import type { Cell, Good, MergeConfig, MergeGame, MergeParams, Mods, Ticket, TicketLine } from './types';
+import type { Cell, DrawOutcome, Good, MergeConfig, MergeGame, MergeParams, Mods, Ticket, TicketLine } from './types';
 
 const modsOverride: { value: Partial<Mods> | null } = { value: null };
 vi.mock('./lanterns', async (orig) => {
@@ -234,8 +234,8 @@ function randomState(r: Rand, kind: Kind): Built {
   let paradeOut = false;
   for (let j = 0; j < target; j++) {
     if (r() < 0.2) continue;
-    const parade = !paradeOut && r() < 0.2;
-    const out = parade ? drawParade(cfg, g, j) : drawTicket(cfg, g, j);
+    const parade: boolean = !paradeOut && r() < 0.2;
+    const out: DrawOutcome = parade ? drawParade(cfg, g, j) : drawTicket(cfg, g, j);
     if (!out.ticket) continue;
     paradeOut ||= parade;
     const lines = out.ticket.lines.map((l, i, all) => ({ ...l, filled: i < all.length - 1 && r() < 0.2 }));
@@ -268,7 +268,7 @@ interface Tally {
 }
 
 function newTally(): Tally {
-  return { states: 0, drawn: 0, setups: 0, setupsByKind: {}, mismatches: [], breaches: [], steps: { draw: 0, lower: 0, dropLine: 0, redraw: 0 }, ticketsWithStep: { draw: 0, lower: 0, dropLine: 0, redraw: 0 }, lineCounts: [0, 0, 0, 0], tiersAboveBase: new Array(9).fill(0), stretch: 0, lines: 0, payable: 0, setupWhy: {} };
+  return { states: 0, drawn: 0, setups: 0, setupsByKind: {}, mismatches: [], breaches: [], steps: { draw: 0, lower: 0, dropLine: 0, otherChain: 0 }, ticketsWithStep: { draw: 0, lower: 0, dropLine: 0, otherChain: 0 }, lineCounts: [0, 0, 0, 0], tiersAboveBase: new Array(9).fill(0), stretch: 0, lines: 0, payable: 0, setupWhy: {} };
 }
 
 /** Payable from stock: every line has its own exact good on the board now (one drag each). */
@@ -495,7 +495,7 @@ describe('measurements on mid-game states (for the handover notes)', () => {
       `  tickets ${tally.drawn}, "Setting up…" ${pct(tally.setups, N)}`,
       `  lines 1/2/3: ${pct(tally.lineCounts[1], tally.drawn)} / ${pct(tally.lineCounts[2], tally.drawn)} / ${pct(tally.lineCounts[3], tally.drawn)}`,
       `  tier above base (k − b) 1..7: ${tally.tiersAboveBase.slice(1, 8).map((n) => pct(n, tally.lines)).join(' ')}; stretch lines ${pct(tally.stretch, tally.lines)}`,
-      `  draws where a step fired: lower ${pct(tally.ticketsWithStep.lower, tally.drawn)} of tickets (${tally.steps.lower} steps), dropLine ${pct(tally.ticketsWithStep.dropLine, tally.drawn)} (${tally.steps.dropLine}), redraw ${pct(tally.ticketsWithStep.redraw, tally.drawn)} (${tally.steps.redraw}); setting up ${tally.setups}, its last candidate failing ${JSON.stringify(tally.setupWhy)}`,
+      `  draws where a step fired: lower ${pct(tally.ticketsWithStep.lower, tally.drawn)} of tickets (${tally.steps.lower} steps), dropLine ${pct(tally.ticketsWithStep.dropLine, tally.drawn)} (${tally.steps.dropLine}), otherChain ${pct(tally.ticketsWithStep.otherChain, tally.drawn)} (${tally.steps.otherChain}); setting up ${tally.setups}, its last candidate failing ${JSON.stringify(tally.setupWhy)}`,
       `  payable from stock at the draw (each line's exact good on the board): ${pct(tally.payable, tally.drawn)}`,
     ].join('\n');
     console.log(report);

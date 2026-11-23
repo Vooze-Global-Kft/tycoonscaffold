@@ -13,19 +13,30 @@
  * docs/design/market-audio-notes.md.
  *
  * - `merge` has 8 files (merge_1 ... merge_8, `pick: 'ladder'`: the caller picks the tier made,
- *   step = tier - 1). They grow in size and brightness, never up a scale (6.1). At most one every
- *   60 ms (6.2); three voices so a quick run overlaps instead of cutting.
+ *   step = tier - 1, so merge_1 is never heard). Each is a steamer lid lifted by a puff of steam
+ *   (a clay tok, a two-formant pff let out in chuffs as the lid rattles, a sizzle): tier k rattles
+ *   k times, so the size is the length (0.1 to 0.65 s), the low body and the level (mastered 0.4 dB
+ *   louder a tier); the brightness is the formants and the sizzle opening. Never up a scale (6.1;
+ *   `render_night.py --ladder` measures it). At most one every 60 ms (6.2); three voices so a quick
+ *   run overlaps instead of cutting. One file per tier: no variants yet (the shared player cannot
+ *   pick a random variant of a ladder rung; requested).
  * - `drop` at most one every 300 ms (6.2): with four gears dropping every 5 s it is the sound heard
  *   most, so it is the quietest (volume 0.22, mastered 4 dB under the pack).
  * - Haptics follow only what the finger did (6.2): none for drops, coins, the Parade, moves or the
- *   paper slides of a sheet. Patterns land on the sound's own accents (`render_night.py --accents`)
- *   and never pulse faster than 8 a second (the haptics service's ceiling, 125 ms): `discovery`
- *   (brush, stamp at 160 ms), `lantern_lit` (rustle, the flame at 220 ms), `season_close` (wind at
- *   0, reeds at 300 ms, their peak at 900 ms: 3 pulses, under the 4 of 6.2).
- * - Loudness: every file is mastered to the pack target plus a tier (merges, moves, ticks, coins,
- *   the upgrade and the paper slides 2 dB under; ticket_filled 1 dB over; festival_done and
- *   season_close 2 dB over), then `volume` sets the mix: the rare peaks sit about 8 dB over the
- *   sounds heard twenty times a minute.
+ *   sheets. Patterns land on the sound's own accents (`render_night.py --accents`) and no pattern
+ *   pulses faster than 8 a second. Across plays, the haptics service's own floor
+ *   (src/services/fx/haptics.ts HAPTIC_MIN_GAP_MS = 120 ms, so up to 8.3 a second) is what holds
+ *   `merge` and `line_fill` (60 ms floors) near 8 a second; 125 ms is requested. `lantern_lit` and
+ *   `slot_reveal` are played from passive events with no haptic (src/modes/merge/fx.ts): lantern_lit
+ *   vibrates only when the shared `mission_complete` is mapped onto it, slot_reveal only once the
+ *   gift sheet plays it per slot (requested).
+ * - Loudness: every file is mastered to the pack target plus a tier (moves, ticks, coins, the
+ *   upgrade and the sheets 2 dB under; the merges from 2.4 dB under for tier 1 to 0.4 dB over for
+ *   tier 8; ticket_filled 1 dB over; festival_done and season_close 2 dB over), then `volume` sets
+ *   the mix: the rare peaks sit about 8 dB over the sounds heard twenty times a minute.
+ * - `return` (a dull paper tap) is meant to be every button press too: the shared `ui_tap` and
+ *   `ui_tab` should map onto it, not onto the sheet sound `ui_open` as src/modes/merge/soundKeys.ts
+ *   still has them (change requested).
  * - `music_main` is the spring loop ("Lantern Dusk"), the one the shared player starts
  *   (src/services/fx/mix.ts MUSIC). `music_summer` ("Firefly Lane") is rendered and waits for a
  *   way to choose the loop per season (requested of the shared player; until then it is unplayed).
@@ -36,11 +47,11 @@ import type { FxDef } from './catalog';
 
 export const FX = {
   // --- the board: what the finger does many times a minute ---------------------------------------
-  merge: { brief: 'a steam puff growing in size and brightness with the tier (never up a scale); eight files, tier 1 to 8', files: 8, pick: 'ladder', volume: 0.5, preload: 1, voices: 3, minIntervalMs: 60, haptic: ['light'] },
+  merge: { brief: 'a steamer lid lifted by a puff of steam: a clay tok, a two-formant pff let out in chuffs as the lid rattles (tier k rattles k times), a sizzle; grows in size and brightness with the tier, never up a scale; eight files, tier 1 to 8', files: 8, pick: 'ladder', volume: 0.5, preload: 1, voices: 3, minIntervalMs: 60, haptic: ['light'] },
   lucky: { brief: 'a second, brighter puff with a paper flutter', volume: 0.6, preload: 9, voices: 2, minIntervalMs: 120, haptic: ['light'] },
-  move: { brief: 'a cloth slide', volume: 0.35, preload: 2, voices: 2, minIntervalMs: 80 },
-  swap: { brief: 'two cloth slides crossing', volume: 0.38, preload: 6, voices: 2, minIntervalMs: 80 },
-  return: { brief: 'a dull paper tap', volume: 0.35, preload: 3, voices: 2, minIntervalMs: 80 },
+  move: { brief: 'a cloth rub (low cloth noise with a stick-slip)', volume: 0.35, preload: 2, voices: 2, minIntervalMs: 80 },
+  swap: { brief: 'two cloth rubs crossing', volume: 0.38, preload: 6, voices: 2, minIntervalMs: 80 },
+  return: { brief: 'a dull paper tap (meant for ui_tap too: every button press)', volume: 0.35, preload: 3, voices: 2, minIntervalMs: 80 },
   drop: { brief: 'a tiny charcoal crackle, quiet', volume: 0.22, preload: 5, voices: 2, minIntervalMs: 300 },
 
   // --- tickets and money (no bell on any money moment) --------------------------------------------
@@ -53,7 +64,7 @@ export const FX = {
   // --- purchases --------------------------------------------------------------------------------
   shutter_open: { brief: 'a cane shutter rolling up', volume: 0.6, preload: 14, haptic: ['medium'] },
   stall_open: { brief: 'an awning flapping open', volume: 0.7, haptic: ['medium'] },
-  upgrade: { brief: 'a rising steam hiss', volume: 0.5, preload: 10, voices: 3, minIntervalMs: 100, haptic: ['light'] },
+  upgrade: { brief: 'a rising steam hiss: a steamer coming to the boil, its lid rattling faster', volume: 0.5, preload: 10, voices: 3, minIntervalMs: 100, haptic: ['light'] },
   minder_hire: { brief: 'a cloth bow', volume: 0.6, haptic: ['medium'] },
 
   // --- the book, lanterns, the Parade, gift boxes ----------------------------------------------------
@@ -61,7 +72,7 @@ export const FX = {
   lantern_lit: { brief: 'a paper rustle and a flame catching', volume: 0.65, haptic: ['light', 220, 'success'] },
   parade_arrive: { brief: 'a small hand drum roll', volume: 0.6 },
   giftbox_open: { brief: 'paper unfolding', volume: 0.6, haptic: ['light'] },
-  slot_reveal: { brief: 'a crinkle per slot', volume: 0.55, preload: 17, voices: 3, minIntervalMs: 120, haptic: ['light'] },
+  slot_reveal: { brief: 'a crinkle per slot (a felt pat and a short crinkle)', volume: 0.55, preload: 17, voices: 3, minIntervalMs: 120, haptic: ['light'] },
 
   // --- the Festival and the season ------------------------------------------------------------------
   festival_line: { brief: 'a low reed note', volume: 0.65, preload: 16, haptic: ['medium'] },
@@ -69,8 +80,8 @@ export const FX = {
   season_close: { brief: 'a reed swell and wind (3 pulses)', volume: 0.85, haptic: ['light', 300, 'medium', 600, 'success'] },
 
   // --- sheets ---------------------------------------------------------------------------------------
-  ui_open: { brief: 'a paper slide out', volume: 0.4, preload: 11 },
-  ui_close: { brief: 'a paper slide back', volume: 0.35, preload: 15 },
+  ui_open: { brief: 'a sheet unfolded: a fold click and three crinkle bursts, the first the loudest', volume: 0.4, preload: 11 },
+  ui_close: { brief: 'the sheet folded away: two soft crinkles and the fold pressed shut', volume: 0.35, preload: 15 },
   ui_denied: { brief: 'a soft crumple', volume: 0.5, preload: 19, minIntervalMs: 300, haptic: ['light'] },
 
   // --- music ----------------------------------------------------------------------------------------

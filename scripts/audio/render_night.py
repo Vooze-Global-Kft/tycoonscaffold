@@ -6,6 +6,7 @@
   python3 scripts/audio/render_night.py --only 'merge_*,drop' --no-music
   python3 scripts/audio/render_night.py --qa          measure the rendered folder only (no rendering)
   python3 scripts/audio/render_night.py --accents     sound accents next to the haptic patterns
+  python3 scripts/audio/render_night.py --ladder      the merge ladder per tier (size, brightness, not a scale), with its rules
   python3 scripts/audio/render_night.py --rows DIR    rows of twenty of the sounds that repeat fast, measured, plus a picture
   python3 scripts/audio/render_night.py --sheets DIR  one contact sheet (waveform + spectrogram) per group of sounds
   python3 scripts/audio/render_night.py --hash        sha256 of every rendered file (two renders must match)
@@ -349,6 +350,84 @@ def rows_report(sheet_dir):
     return bad
 
 
+def ladder_report():
+    """The merge ladder, measured on the mastered files: does each tier grow in size and brightness
+    without climbing a scale? Prints one row per tier and returns the number of broken rules over
+    the tiers that sound in play (2 to 8: tier 1 cannot be made, so merge_1 is never played).
+
+    Rules (each tier against the one below): spectral centroid at least 8 % higher; span above
+    -20 dB (5 ms RMS envelope) at least 15 % longer; energy under 300 Hz at least 0.5 dB more, and
+    about 1 dB a tier or more on average; mastered 0.4 dB louder (the tier). And on every tier: at
+    least 55 % of the energy above 500 Hz (the phone), at most 60 % in 2 to 5 kHz (fatigue), and
+    the strongest partial of the loudest 50 ms not walking up a scale (reported, with its
+    prominence over its octave)."""
+    sr = dsp.SR
+    rows = []
+    for t in range(1, RN.FILES['merge'] + 1):
+        x, _, _ = render_effect('merge_%d' % t)
+        nf = 1 << 15
+        X = np.abs(np.fft.rfft(x, nf)) ** 2
+        f = np.fft.rfftfreq(nf, 1.0 / sr)
+        tot = X.sum()
+        w = int(0.005 * sr)
+        env = np.sqrt(np.convolve(x * x, np.ones(w) / w, 'same'))
+        idx = np.nonzero(env > env.max() * 10 ** (-20 / 20.0))[0]
+        w50 = int(0.05 * sr)
+        e50 = np.convolve(x * x, np.ones(w50), 'valid') if len(x) > w50 else np.array([float((x * x).sum())])
+        i = int(np.argmax(e50))
+        seg = x[i:i + w50]
+        seg = seg * np.hanning(len(seg))
+        S = np.abs(np.fft.rfft(seg, 16384)) ** 2
+        fs = np.fft.rfftfreq(16384, 1.0 / sr)
+        band_ = (fs > 80) & (fs < 8000)
+        k = int(np.argmax(S * band_))
+        lo, hi = np.searchsorted(fs, [fs[k] / 2 ** 0.5, fs[k] * 2 ** 0.5])
+        rows.append({'tier': t, 'ms': len(x) / sr * 1000.0, 'cent': float((f * X).sum() / tot),
+                     'span': (idx[-1] - idx[0]) / sr * 1000.0, 'low': 10 * np.log10(X[f < 300].sum() + 1e-30),
+                     'a500': float(X[f > 500].sum() / tot), 'mid': float(X[(f > 2000) & (f < 5000)].sum() / tot),
+                     'loud': dsp.loudness_db(x), 'pk': float(fs[k]), 'prom': 10 * np.log10(S[k] / (np.median(S[lo:hi]) + 1e-30))})
+    bad = 0
+    print('%-5s %5s %6s %6s %6s %6s %7s %6s %6s %6s %6s %6s  %s' % ('tier', 'ms', 'cent', 'dcent', 'span', 'dspan', '<300Hz', 'dlow',
+                                                               '>500', '2-5k', 'loud', 'peakHz', 'notes'))
+    prev = None
+    lows = []
+    for r in rows:
+        notes = []
+        d = {}
+        if prev is not None:
+            d = {'c': r['cent'] / prev['cent'] - 1, 's': r['span'] / prev['span'] - 1, 'l': r['low'] - prev['low'], 'L': r['loud'] - prev['loud']}
+        heard = r['tier'] >= 2
+        if prev is not None and heard and prev['tier'] >= 2:
+            lows.append(d['l'])
+            for ok, msg in ((d['c'] >= 0.08, 'centroid +%.0f %% (< 8 %%)' % (100 * d['c'])),
+                            (d['s'] >= 0.15, 'span +%.0f %% (< 15 %%)' % (100 * d['s'])),
+                            (d['l'] >= 0.5, 'low %+.1f dB (< 0.5)' % d['l']),
+                            (abs(d['L'] - 0.4) <= 0.15, 'mastered %+.1f dB (not +0.4)' % d['L'])):
+                if not ok:
+                    notes.append(msg)
+        if heard:
+            if r['a500'] < 0.55:
+                notes.append('%.0f %% above 500 Hz (< 55 %%)' % (100 * r['a500']))
+            if r['mid'] > 0.60:
+                notes.append('%.0f %% in 2-5 kHz (> 60 %%)' % (100 * r['mid']))
+        bad += len(notes)
+        print('%-5s %5.0f %6.0f %6s %6.0f %6s %7.1f %6s %5.0f%% %5.0f%% %6.1f %6.0f  %s'
+              % ('merge_%d' % r['tier'], r['ms'], r['cent'], ('%+.0f%%' % (100 * d['c'])) if d else '', r['span'],
+                 ('%+.0f%%' % (100 * d['s'])) if d else '', r['low'], ('%+.1f' % d['l']) if d else '', 100 * r['a500'], 100 * r['mid'],
+                 r['loud'], r['pk'], '; '.join(notes) if notes else ('(never played)' if not heard else 'ok')))
+        prev = r
+    mean_low = float(np.mean(lows)) if lows else 0.0
+    if mean_low < 1.0:
+        print('low body grows %.2f dB a tier on average over tiers 2 to 8 (< 1.0)' % mean_low)
+        bad += 1
+    pk = [r['pk'] for r in rows[1:]]
+    print('low body: %+.2f dB a tier on average over tiers 2 to 8; strongest partials %s Hz (prominence %s dB): %s'
+          % (mean_low, ', '.join('%.0f' % p for p in pk), ', '.join('%.0f' % r['prom'] for r in rows[1:]),
+             'not a rising scale' if any(b <= a for a, b in zip(pk, pk[1:])) else 'RISES EVERY TIER: check by ear'))
+    print('ladder %s: %d broken rule(s) over tiers 2 to 8' % ('FAILED' if bad else 'passed', bad))
+    return bad
+
+
 GROUPS = [
     ('merges', RN.file_stems('merge') + ['lucky']),
     ('hand', ['move', 'swap', 'return', 'drop', 'line_fill', 'ticket_filled', 'coins', 'basket_sell', 'undo']),
@@ -394,6 +473,7 @@ def main(argv=None):
     ap.add_argument('--check', action='store_true')
     ap.add_argument('--qa', action='store_true', help='measure the folder only')
     ap.add_argument('--accents', action='store_true')
+    ap.add_argument('--ladder', action='store_true', help='measure the merge ladder (size and brightness per tier) and check its rules')
     ap.add_argument('--rows', metavar='DIR', help='rows of twenty; picture into DIR')
     ap.add_argument('--sheets', metavar='DIR', help='contact sheets per group into DIR')
     ap.add_argument('--hash', action='store_true', help='print the sha256 of every file in the folder')
@@ -415,6 +495,8 @@ def main(argv=None):
     if args.accents:
         accents_report()
         return 0
+    if args.ladder:
+        return 1 if ladder_report() else 0
     if args.rows:
         os.makedirs(args.rows, exist_ok=True)
         return 1 if rows_report(args.rows) else 0

@@ -4,7 +4,7 @@
  * rules' own fresh state, every one checked by `fixtureProblems` (the invariants a reachable state
  * keeps: cells and shutters, best tiers and the Ladder Book, ticket lines inside (a) and (d1),
  * counters and lanterns, shelves): src/engine/mergeMode.test.ts runs it on all of them.
- * - `fresh`: a new game at 0:00 (2.7's scripted start: 4 Pepper Skewers, the fox's ticket).
+ * - `fresh`: a new game at 0:00 (2.7's scripted start: 6 Pepper Skewers, Decision M18, the fox's ticket).
  * - `minute3`: about 3:00 in: Grill and Tea open, 2 shutters opened, lantern 1 lit (3 counters).
  * - `minute10`: about 10:00 in: three stalls, two minders, 38 cells, a Parade ticket out, a gift box waiting.
  * - `festivalNear`: about 2:40 in: five stalls, every shutter open, 4 counters, 3 of 4 Festival lines filled.
@@ -12,6 +12,10 @@
  * The config is the specification's starting content (src/config/merge.content.ts) on the frozen
  * shared fixture `base-game.json`; it never reads the shipped game.json. Web only like the haul
  * fixtures (scripts/lib/modes.js WEB_ONLY): the presets reach it, phones never do.
+ *
+ * `mergeState(cfg, description)` builds any other mid-game state from a short description (open
+ * chains and levels, goods on the board, tickets, lanterns, gift boxes): for the rules' tests, the
+ * screens' previews and the bot.
  *
  * Written by the skeleton; owned afterwards by the rules package MECHANICS (the numbers package may
  * add bot-played states beside these).
@@ -75,67 +79,148 @@ export function freshState(cfg: R.MergeConfig = mergeTestConfig(), seed = 12345,
 const g8 = (c: number, k: number): R.Good => ({ c, k });
 const baseOf = (cfg: R.MergeConfig, level: number) => Math.min(cfg.merge.gear.maxBase, 1 + Math.floor((level - 1) / cfg.merge.gear.step));
 
-interface Shape {
-  clock: number;
-  cash: number;
-  chains: { c: number; gear: number; stall: number; minder: number; best: number; shelf?: number[] }[];
-  /** Shutters opened per group. */
-  shutters: number[];
-  goods: [number, R.Good][];
-  counters: (R.TicketLine[] | null)[];
-  /** Index of the counter holding the Parade's gold ticket, if any. */
+/** A ticket line in short form: [chain, tier] or [chain, tier, filled]; or a full TicketLine. */
+export type LineDesc = [number, number] | [number, number, boolean] | R.TicketLine;
+
+/**
+ * A mid-game state in a few words, for the rules' tests, the screens and the bot (`mergeState`).
+ * Everything left out takes the fresh game's value (the clock 0, no cash, the Grill alone at
+ * level 1, the first season, nothing lit). Chains not listed stay closed; a listed chain is open.
+ */
+export interface MergeDesc {
+  /** Game clock (stats.playSeconds) and the season clock's start (default: the season started at 0). */
+  clock?: number;
+  seasonStartedAt?: number;
+  season?: number;
+  cash?: number;
+  seed?: number;
+  /** Open chains: gear, stall and minder levels (default 1, 1, 0), best (default: maxPop, raised to the highest good of the chain on the board), shelf tiers, a waiting gear, seasoned steps. */
+  chains?: { c: number; gear?: number; stall?: number; minder?: number; best?: number; shelf?: number[]; waiting?: boolean; seasoned?: number }[];
+  /** Shutters opened per group (default none). */
+  shutters?: number[];
+  /** Goods on the board: [cell, good] or [cell, chain, tier]. With `goods` given the opening goods go. */
+  goods?: ([number, R.Good] | [number, number, number])[];
+  /** Cells the season's shape blocks. */
+  blocks?: number[];
+  /** Tickets per counter (null: empty and drawing after 2 s); padded with empty counters to the count the lanterns allow. */
+  counters?: (LineDesc[] | null)[];
+  /** The counter whose ticket is the Parade's gold one. */
   gold?: number;
-  lanterns: number[];
-  feats: Partial<R.Feats>;
-  festivalFilled?: number[];
+  lanterns?: number[];
+  feats?: Partial<R.Feats>;
+  /** Festival lines already filled (indices), or true for all (sets filledAt to the clock). */
+  festivalFilled?: number[] | true;
   giftBoxes?: R.GiftBox[];
   ticketsToBox?: number;
+  pendingGoods?: R.Good[];
+  luckySparks?: number;
+  till?: number;
+  /** The opening script's stage (default 'done'). */
+  script?: R.OpeningScript;
+  /** Owned products (`entitlements.products`). */
+  products?: string[];
 }
 
-function build(cfg: R.MergeConfig, s: Shape): R.MergeGame {
-  const g0 = freshState(cfg);
+const toLine = (l: LineDesc): R.TicketLine => (Array.isArray(l) ? { c: l[0], k: l[1], filled: !!l[2] } : { ...l });
+
+/**
+ * Builds the state a description gives (see `MergeDesc`), on top of the rules' own fresh state, so
+ * every field the rules keep is present and consistent: clocks one interval ahead, shelves that
+ * release, empty counters that draw, the Ladder Book holding every tier up to each best. Check the
+ * result with `fixtureProblems` when the description is new.
+ */
+export function mergeState(cfg: R.MergeConfig, d: MergeDesc): R.MergeGame {
+  const clock = d.clock ?? 0;
+  const g0 = freshState(cfg, d.seed ?? 12345);
   const m0 = g0.merge;
-  const board = m0.board.map((c) => (c === 'shutter' ? 'shutter' : null)) as R.Cell[];
-  cfg.merge.board.shutterGroups.forEach((grp, i) => grp.cells.slice(0, s.shutters[i]).forEach((cell) => (board[cell] = null)));
-  for (const [cell, good] of s.goods) board[cell] = good;
+  const shutters = d.shutters ?? cfg.merge.board.shutterGroups.map(() => 0);
+  const board = m0.board.map((c) => (c === 'shutter' ? 'shutter' : d.goods ? null : c)) as R.Cell[];
+  cfg.merge.board.shutterGroups.forEach((grp, i) => grp.cells.slice(0, shutters[i] ?? 0).forEach((cell) => (board[cell] = null)));
+  for (const b of d.blocks ?? []) if (board[b] !== 'shutter') board[b] = 'block';
+  const goods: [number, R.Good][] = (d.goods ?? []).map((x) => (x.length === 3 ? [x[0], g8(x[1], x[2])] : [x[0], { ...x[1] }]));
+  for (const [cell, good] of goods) board[cell] = good;
+  const specs = d.chains ?? [{ c: 0 }];
+  const neutral = R.currentMods(cfg, m0);
   const chains = m0.chains.map((ch, c) => {
-    const spec = s.chains.find((x) => x.c === c);
-    if (!spec) return ch;
-    return { ...ch, open: true, gear: spec.gear, stall: spec.stall, minder: spec.minder, best: spec.best, shelf: spec.shelf ?? [], nextPopAt: s.clock + 2, nextSaleAt: s.clock + 7, releaseAt: spec.shelf?.length ? s.clock + 0.5 : null };
+    const spec = specs.find((x) => x.c === c);
+    if (!spec) return c === 0 && !d.chains ? { ...ch, nextPopAt: clock + 2, nextSaleAt: clock + 7 } : { ...ch, open: false, best: 0, shelf: [], waiting: false };
+    const gear = spec.gear ?? 1;
+    const top = goods.filter(([, gd]) => gd.c === c).reduce((a, [, gd]) => Math.max(a, gd.k), 0);
+    const shelf = spec.shelf ?? [];
+    return {
+      ...ch,
+      open: true,
+      gear,
+      stall: spec.stall ?? 1,
+      minder: spec.minder ?? 0,
+      best: Math.max(spec.best ?? R.maxPopAt(cfg, neutral, gear), top, ...shelf),
+      shelf,
+      waiting: !!spec.waiting,
+      seasoned: spec.seasoned ?? 0,
+      nextPopAt: clock + 2,
+      nextSaleAt: clock + 7,
+      releaseAt: shelf.length ? clock + 0.5 : null,
+      blockedAt: null,
+    };
   });
   const book = m0.book.map((row, c) => row.map((_, k) => k + 1 <= chains[c].best));
   let id = 1;
-  const counters: R.Counter[] = s.counters.map((lines, j) => ({
-    ticket: lines ? { id: id++, lines, gold: s.gold === j, customer: j % cfg.merge.tickets.customers.length, coat: j % cfg.merge.tickets.coats } : null,
-    refillAt: lines ? null : s.clock + 2,
+  const lanterns = d.lanterns ?? [];
+  const allowed = lanterns.includes(4) ? 4 : lanterns.includes(1) ? 3 : cfg.merge.tickets.counters;
+  const descs = (d.counters ?? []).slice();
+  while (descs.length < allowed) descs.push(null);
+  const counters: R.Counter[] = descs.map((lines, j) => ({
+    ticket: lines ? { id: id++, lines: lines.map(toLine), gold: d.gold === j, customer: j % cfg.merge.tickets.customers.length, coat: j % cfg.merge.tickets.coats } : null,
+    refillAt: lines ? null : clock + 2,
     blockedAt: null,
-    notTonightAt: s.clock,
+    notTonightAt: clock,
   }));
-  const festival = { lines: m0.festival.lines.map((l, i) => ({ ...l, filled: !!s.festivalFilled?.includes(i) })), filledAt: null };
+  const seasonStartedAt = d.seasonStartedAt ?? 0;
+  const allFilled = d.festivalFilled === true;
+  const festival = { lines: m0.festival.lines.map((l, i) => ({ ...l, filled: allFilled || (Array.isArray(d.festivalFilled) && d.festivalFilled.includes(i)) })), filledAt: allFilled ? clock : null };
+  const pendingGoods = d.pendingGoods ?? [];
   const merge: R.MergeState = {
     ...m0,
+    season: d.season ?? 0,
+    seasonStartedAt,
+    till: d.till ?? 0,
+    tillAt: seasonStartedAt + 60 * (Math.floor((clock - seasonStartedAt) / 60) + 1),
     board,
-    shuttersOpened: s.shutters.slice(),
+    shuttersOpened: shutters.slice(),
     chains,
     counters,
     nextTicketId: id,
-    script: 'done',
+    script: d.script ?? 'done',
     festival,
-    paradeAt: s.gold !== undefined ? cfg.merge.parade.first : s.clock + 120,
-    gift: { ...m0.gift, boxes: s.giftBoxes ?? [], ticketsToBox: s.ticketsToBox ?? m0.gift.ticketsToBox },
+    paradeAt: d.gold !== undefined ? cfg.merge.parade.first : Math.max(cfg.merge.parade.first, clock - seasonStartedAt + 120),
+    gift: { ...m0.gift, boxes: d.giftBoxes ?? [], ticketsToBox: d.ticketsToBox ?? m0.gift.ticketsToBox, pendingGoods, nextAt: pendingGoods.length ? clock : null, blockedAt: null },
+    luckySparks: d.luckySparks ?? 0,
     book,
-    lanterns: s.lanterns.slice(),
-    feats: { ...m0.feats, ...s.feats },
-    tillAt: Math.ceil((s.clock + 1) / 60) * 60,
-    ads: { fillLine: s.clock, gearRush: s.clock, callDragon: s.clock },
-    recent: { at: Math.floor(s.clock / 5), coins: m0.recent.coins.map((row) => row.slice()) },
-    freedAt: s.clock,
-    changedAt: s.clock,
+    lanterns: lanterns.slice(),
+    feats: { ...m0.feats, ...d.feats },
+    ads: { fillLine: clock, gearRush: clock, callDragon: clock },
+    recent: { at: Math.floor(clock / 5), coins: m0.recent.coins.map((row) => row.slice()) },
+    freedAt: clock,
+    changedAt: clock,
   };
-  return { ...g0, cash: s.cash, runEarnings: s.cash * 3, lifetimeEarnings: s.cash * 3, stats: { ...g0.stats, playSeconds: s.clock }, merge };
+  const cash = d.cash ?? 0;
+  return {
+    ...g0,
+    cash,
+    runEarnings: cash * 3,
+    lifetimeEarnings: cash * 3,
+    entitlements: { ...g0.entitlements, products: (d.products ?? []).slice() },
+    stats: { ...g0.stats, playSeconds: clock },
+    merge,
+  };
 }
 
 const line = (c: number, k: number, filled = false): R.TicketLine => ({ c, k, filled });
+
+/** The skeleton's name for `mergeState` with the fixtures' shape. */
+function build(cfg: R.MergeConfig, s: MergeDesc): R.MergeGame {
+  return mergeState(cfg, s);
+}
 
 /** The hand-made states (see the file comment). Built from `cfg` (default: the starting content). */
 export function mergeFixtures(cfg: R.MergeConfig = mergeTestConfig()) {
@@ -240,6 +325,89 @@ export function fixtureProblems(cfg: R.MergeConfig, g: R.MergeGame): string[] {
     }
   });
   if (gold > 1) out.push(`${gold} gold tickets out`);
+  // The clocks a running state keeps (the tick's queue never stalls on them).
+  const clock = g.stats.playSeconds ?? 0;
+  m.chains.forEach((ch, c) => {
+    if (!ch.open) return;
+    if (ch.shelf.length && ch.releaseAt === null && ch.blockedAt === null) out.push(`chain ${c}: a shelf with no release and no block`);
+    if (ch.waiting && ch.shelf.length < (m.lanterns.includes(3) ? 8 : mc.gear.shelf)) out.push(`chain ${c}: waiting with room on its shelf`);
+    if (![ch.nextPopAt, ch.nextSaleAt].every(Number.isFinite)) out.push(`chain ${c}: a clock that is not a number`);
+    if (ch.gear < 1 || ch.gear > mc.costs.gearMaxLevel) out.push(`chain ${c}: gear level ${ch.gear}`);
+  });
+  m.counters.forEach((ctr, j) => {
+    if (!ctr.ticket && ctr.refillAt === null && ctr.blockedAt === null && !(m.script !== 'done' && j === 1)) out.push(`counter ${j}: empty with no draw coming`);
+  });
+  const ids = m.counters.flatMap((ctr) => (ctr.ticket ? [ctr.ticket.id] : []));
+  if (new Set(ids).size !== ids.length) out.push('two tickets share an id');
+  if (ids.some((x) => x >= m.nextTicketId)) out.push('a ticket id at or above nextTicketId');
+  if (m.basketUndo && m.board[m.basketUndo.cell] !== null) out.push('the undo chip reserves a cell that is not empty');
+  if (m.gift.pendingGoods.length && m.gift.nextAt === null && m.gift.blockedAt === null) out.push('pending gift goods with no placement coming');
+  if (!Number.isFinite(g.cash) || g.cash < 0) out.push(`cash ${g.cash}`);
+  if (m.tillAt <= clock - mc.minders.tillRoll) out.push('the till roll is more than a minute late');
   if ('pocket' in (m as unknown as Record<string, unknown>)) out.push('a Pocket field (cut by Decision M5)');
   return out;
+}
+
+// ------------------------------------------------------------------------- the drop table of 2.5
+
+/** One row of 2.5's drop table as a situation: a state, the dragged (or armed) cell, the target's code, what must happen. */
+export interface DropRow {
+  name: string;
+  game: R.MergeGame;
+  from: number;
+  /** The hit test's number for the target (types.ts TargetCode), as the drag and the tap-tap both hand it over. */
+  code: R.TargetCode;
+  kind: R.DropResult['kind'];
+  reason?: Extract<R.DropResult, { kind: 'return' }>['reason'];
+}
+
+/**
+ * Every row of the drop table of 2.5 (without the Pocket, M5) as a situation, for
+ * src/engine/merge/drop.test.ts (the drag: the hit test's code into `dropAt`) and
+ * src/modes/merge/wiring.test.ts (the tap-tap: arm a cell, tap a target, the store's `dropAt`).
+ * A second finger cancels the drag in the screens: no drop happens, so it has no row here.
+ */
+export function dropRows(cfg: R.MergeConfig): DropRow[] {
+  const c = R.cellAt;
+  const base = (extra: Partial<MergeDesc> = {}) =>
+    mergeState(cfg, {
+      clock: 200,
+      cash: 1000,
+      chains: [{ c: 0, gear: 3, best: 8 }, { c: 1, gear: 1, best: 4 }],
+      goods: [
+        [c(2, 0), 0, 1],
+        [c(2, 1), 0, 1],
+        [c(2, 2), 0, 2],
+        [c(2, 3), 1, 3],
+        [c(3, 0), 0, 8],
+        [c(3, 1), 0, 8],
+        [c(3, 2), 0, 4],
+      ],
+      counters: [[[0, 2], [0, 4]], [[1, 4]]],
+      festivalFilled: [],
+      ...extra,
+    });
+  const g = base();
+  const fest = g.merge.festival.lines[0];
+  const withFestGood = base({ goods: [[c(4, 4), fest.c, fest.k], [c(2, 0), 0, 1]] });
+  const withBlock = { ...g, merge: { ...g.merge, board: g.merge.board.map((x, i) => (i === c(5, 5) ? ('block' as const) : x)) } };
+  const reserved = { ...g, merge: { ...g.merge, board: g.merge.board.map((x, i) => (i === c(5, 0) ? null : x)), basketUndo: { cell: c(5, 0), good: { c: 0, k: 1 }, refund: 1, until: 203 } } };
+  return [
+    { name: 'an identical good below tier 8: merge', game: g, from: c(2, 0), code: c(2, 1), kind: 'merge' },
+    { name: 'an empty open cell: move', game: g, from: c(2, 0), code: c(4, 0), kind: 'move' },
+    { name: 'a different good: swap', game: g, from: c(2, 0), code: c(2, 3), kind: 'swap' },
+    { name: 'a ticket with an unfilled line of exactly (c, k): the line fills', game: g, from: c(2, 2), code: R.TARGET_COUNTER, kind: 'lineFill' },
+    { name: 'a ticket with no matching line: the ticket shakes', game: g, from: c(2, 0), code: R.TARGET_COUNTER + 1, kind: 'ticketShake' },
+    { name: 'the Festival banner with an unfilled line of exactly (c, k): the line fills', game: withFestGood, from: c(4, 4), code: R.TARGET_FESTIVAL, kind: 'festivalFill' },
+    { name: 'the Festival banner with no matching line: returns', game: g, from: c(2, 0), code: R.TARGET_FESTIVAL, kind: 'return', reason: 'noLine' },
+    { name: 'the Basket: sold, an undo chip', game: g, from: c(2, 0), code: R.TARGET_BASKET, kind: 'basket' },
+    { name: 'a tier 8 on a tier 8: returns', game: g, from: c(3, 0), code: c(3, 1), kind: 'return', reason: 'tierMax' },
+    { name: 'a shutter: returns', game: g, from: c(2, 0), code: c(7, 0), kind: 'return', reason: 'closedCell' },
+    { name: 'a block: returns', game: withBlock, from: c(2, 0), code: c(5, 5), kind: 'return', reason: 'closedCell' },
+    { name: 'the cell an undo chip reserves: returns', game: reserved, from: c(2, 0), code: c(5, 0), kind: 'return', reason: 'reserved' },
+    { name: 'the street background, a stall front, a bar or outside: returns', game: g, from: c(2, 0), code: R.TARGET_NONE, kind: 'return', reason: 'noTarget' },
+    { name: 'an empty counter: returns', game: base({ counters: [[[0, 2]], null] }), from: c(2, 0), code: R.TARGET_COUNTER + 1, kind: 'return', reason: 'noTarget' },
+    { name: 'its own cell: returns', game: g, from: c(2, 0), code: c(2, 0), kind: 'return', reason: 'sameCell' },
+    { name: 'from an empty cell: returns', game: g, from: c(4, 0), code: c(2, 0), kind: 'return', reason: 'noGood' },
+  ];
 }

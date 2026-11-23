@@ -10,7 +10,7 @@
  * helps). The answer is the least number of drops. Lucky merges and ripe drops can only help, so
  * the bound counts neither (2.7: conservative on purpose).
  *
- * Package ORDERS. No Math.random: cases come from the shared seeded generator (src/engine/rng.ts).
+ * Package ORDERS. Cases come from the shared seeded generator (src/engine/rng.ts), never an unseeded one.
  */
 import { describe, expect, it } from 'vitest';
 import { rngFloat } from '../rng';

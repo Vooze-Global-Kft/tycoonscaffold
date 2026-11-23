@@ -32,8 +32,16 @@ export {
   paceUnit,
   /** The gear's base tier (2.2). */
   baseTier,
-  /** Price rounding of 2.2. */
+  /** The Parade clock's one restart helper (2.7). */
+  restartParade,
+  /** roundCoins (Decision M19): the one rounding of every amount shown or paid; `roundCost` is its seam name. */
+  roundCoins,
   roundCost,
+  /** A minder's sale, the house tier, Q, a Basket sale (2.2, 2.5, rounded by M19). */
+  saleAmount,
+  houseTierOf,
+  saleInterval,
+  basketPrice,
   /** The ripe chance p and maxPop at a gear level (2.2). */
   ripeChance,
   maxPopAt,
@@ -51,17 +59,17 @@ export { createMerge, startSeason, withMergeFields, reconcileMerge } from './mer
 export { rowOf, colOf, cellAt, isGood, freeCells, roomFor, dropCell, placeGood, looseCount } from './merge/board';
 
 // --- 2.4 the tick and its event queue (MECHANICS) ---
-export { advanceMerge } from './merge/tick';
-export { nextEvent, runEvent } from './merge/events';
+export { advanceMerge, nextMergeEvent, MAX_EVENTS_PER_TICK } from './merge/tick';
+export { nextEvent, runEvent, dueEvents, paradeDue, paradeOut } from './merge/events';
 
 // --- 2.5 the drop (MECHANICS) ---
 export { dropAt, decodeTarget, targetsFor } from './merge/drop';
 
 // --- 2.5, 2.7, 5.7 purchases, buttons, ads, the cash clamp (MECHANICS) ---
-export { commitCash, openStall, levelGear, levelStall, hireMinder, levelMinder, openShutter, notTonight, undoBasket, canWatchAd, grantAd, applyLantern, entitleMerge } from './merge/actions';
+export { commitCash, bookAway, openStall, levelGear, levelStall, hireMinder, levelMinder, openShutter, shutterGood, notTonight, notTonightRoom, undoBasket, canWatchAd, grantAd, applyLantern, entitleMerge, boardGoods } from './merge/actions';
 
 // --- 2.9 time away (MECHANICS) ---
-export { mergeOffline, mergeIncome, mergeActiveIncome, awayReportAlone, mergeAwayReports } from './merge/offline';
+export { mergeOffline, mergeIncome, mergeActiveIncome, awayReportAlone, mergeAwayReports, awaySeconds, awayClosedForm, awayByEvents } from './merge/offline';
 
 // =============================================================================================
 // ORDERS's exports. The rules package ORDERS adds and edits the export lines below this mark itself
@@ -78,14 +86,15 @@ export type { BoundFailures } from './merge/draw';
 export { festivalFor, festivalLineFilled, festivalPurse, canCloseSeason } from './merge/festival';
 
 // --- 2.11 seasons (ORDERS) ---
-export { seasonRow, seasonMods, openingBoard, closeSeason, seasonedStartLevel, familiarFactor } from './merge/season';
+export { seasonRow, seasonMods, openingBoard, closeSeason, seasonedStartLevel, familiarFactor, SEASON_RESETS, SEASON_STAYS, SEASON_BOOKKEEPING, hearthCells, seasonedAfterClose } from './merge/season';
+export type { SeasonListItem } from './merge/season';
 
 // --- 5.3 lanterns and the modifiers (ORDERS) ---
-export { neutralMods, lanternMods, currentMods, onMerged, onTierMade, onTicketPaid, checkLanterns, featProgress } from './merge/lanterns';
+export { neutralMods, lanternMods, currentMods, onMerged, onTierMade, onTicketPaid, checkLanterns, featProgress, featState, featMet, discoveredCount, ladderCount, laddersComplete, chainsThisSeason, betterMod, giftEverySooner } from './merge/lanterns';
 
 // --- 5.5 gift boxes (ORDERS) ---
-export { countGiftTicket, openGiftBox, giftOdds } from './merge/gift';
+export { countGiftTicket, openGiftBox, giftOdds, giftBoxAt, giftCoinAmount } from './merge/gift';
 
 // --- 2.10 advice, 3.1 hints (ORDERS) ---
-export { advice, incomeRate } from './merge/advice';
+export { advice, incomeRate, purchaseAdvice, adviceCandidates, adviceExtras, basketCell, nearestTicket, mergeExists, gearOutput, waitEstimate } from './merge/advice';
 export { hintsFor } from './merge/hints';

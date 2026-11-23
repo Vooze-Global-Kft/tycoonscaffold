@@ -53,7 +53,7 @@ export const MAX_TICK = 3600;
 export interface ChainState {
   /** The stall is open this season. */
   open: boolean;
-  /** Gear level L (1 to 41). */
+  /** Gear level L (1 to 40; Decision M28: 40 is the top). */
   gear: number;
   /** Stall level M (1 to 31). */
   stall: number;
@@ -75,7 +75,7 @@ export interface ChainState {
   blockedAt: number | null;
   /** The minder's next sale (game clock); meaningless with no minder. */
   nextSaleAt: number;
-  /** best_c: the highest tier of this chain made this season (its own drops count; 2.3). 0 while closed. */
+  /** best_c: the highest tier of this chain made this season: it rises only when a good is placed or merged, and is set to maxPop when the chain opens or a season starts (2.3, Decision M32). 0 while closed. */
   best: number;
   /** Seasoned gear steps earned (2.11), kept across seasons. */
   seasoned: number;
@@ -144,7 +144,7 @@ export interface GiftState {
   boxes: GiftBox[];
   /** Paid tickets still needed for the next box. */
   ticketsToBox: number;
-  /** Goods from opened boxes waiting for room, in order (2.4 event 3); they count for (d2). */
+  /** Goods from opened boxes waiting for room, in order (2.4 event 3); `missing()` counts them as goods at hand (2.7). */
   pendingGoods: Good[];
   /** The next pending good's placement (game clock), or null with none or while blocked. */
   nextAt: number | null;
@@ -423,7 +423,7 @@ export interface Mods {
   sparkTiers: number;
   /** Festival purse multiplier (1; 2 with lantern 18). */
   festivalPurseMult: number;
-  /** Paid tickets per gift box (10; 8 with lantern 19). */
+  /** Paid tickets per gift box (N = gift.every, tuned 15 to 40, start 25; a fifth sooner with lantern 19, Decision M24). */
   giftEvery: number;
   /** Multiplier on all ticket pay (1; 1.05 with lantern 20: "lanternPay"). */
   ticketPay: number;

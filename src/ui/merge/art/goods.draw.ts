@@ -2,13 +2,16 @@
  * The 48 goods (spec 2.2, 4.2, 9.2 P4): six chains of eight tiers, drawn as ONE base glyph per chain
  * and ONE dressing per tier, the same eight dressings in every chain, so a player learns them once:
  *
- *   1 the glyph · 2 a pair · 3 a glaze (drizzle and shine) · 4 a ribbon (a bundle of three, tied)
- *   5 on a plate · 6 plate and garnish (dark rim, leaves) · 7 a lantern halo · 8 an indigo lacquer
- *   board with a brass rim
+ *   1 the glyph · 2 a pair · 3 a glaze (the pair coated over its top half, one drip, a gloss line)
+ *   4 a ribbon (a bundle of three, tied) · 5 on a plate · 6 plate and garnish (dark rim, a ring of
+ *   leaves) · 7 a lantern halo behind · 8 an indigo lacquer board with a brass rim round the cell
+ *
+ * From tier 5 the three glyphs stay at the same large size (about 70 % of the cell); each tier adds
+ * a frame AROUND and BEHIND them, so the chain is read first at every tier
  *
  * Every good carries a tier pip (1 to 8 dots, grouped by four) on a dark plate: tier never relies on
  * colour. Glyphs differ by silhouette first (diagonal skewer, cup with handle and leaf, pleated bun,
- * round berry with leaves, wide bowl with chopsticks, three-lobed puff), colour second.
+ * round berry with leaves, wide bowl with chopsticks, tall twisted puff knot), colour second.
  *
  * Coordinates: points, origin at the centre of a 48 pt square (`GOOD_BOX` half size 24), the size a
  * board cell of 47 to 51 pt draws. Pure Skia.
@@ -17,7 +20,10 @@ import type { SkCanvas } from '@shopify/react-native-skia';
 import { CHAIN, CHAIN_IDS, NIGHT, alpha, shade, type ChainId } from './palette';
 import {
   INK,
+  INK_W,
   arc,
+  clip,
+  coat,
   at,
   blob,
   builder,
@@ -135,14 +141,34 @@ function bowl(c: SkCanvas): void {
   for (const x of [-5.6, -1.9, 1.9, 5.6]) c.drawPath(circle(x, 2.8, 0.95), fill(alpha(NIGHT.white, 0.85)));
 }
 
-/** Puffs: three golden lobes (two below, one on top) with sesame seeds and a swirl. */
+/**
+ * Puffs: a tall twisted choux knot (wide base, spiral ridges rising to a curled tip) with sesame
+ * seeds. Its silhouette is a tall cone, never a cluster of round blobs (the Sweets berry is round).
+ */
 function puff(c: SkCanvas): void {
   const col = CHAIN.puffs;
-  const body = union(circle(-4.4, 3, 5), circle(4.4, 3, 5), circle(0, -2.6, 5.6));
-  lit(c, body, col.shade, col.main, -1.2, -1.3);
-  c.drawPath(arc(0, -2.6, 2.6, 180, 250), stroke(shade(col.shade, -0.1), 0.9));
-  for (const [x, y, r] of [[-5, 2.2, 20], [-2.6, 5.2, -30], [3.4, 1.8, 40], [5.6, 4.8, -10], [-1.6, -5, 60], [2.2, -4.4, -40]] as const) {
-    at(c, x, y, 1, r, (k) => k.drawPath(oval(0, 0, 0.6, 1.05), fill(col.accent)));
+  const body = builder()
+    .moveTo(-10.4, 7.2)
+    .cubicTo(-11.6, 1, -7.6, -3.4, -4.6, -6.2)
+    .cubicTo(-2.4, -8.4, -1.6, -11.4, 1.6, -12.6)
+    .cubicTo(3.4, -13.2, 4.6, -11.6, 3.4, -10.4)
+    .cubicTo(5.6, -8, 9.8, -3.6, 10.6, 1.4)
+    .cubicTo(11.2, 4.6, 10.6, 6.6, 9.6, 7.6)
+    .quadTo(0, 10, -10.4, 7.2)
+    .close()
+    .build();
+  lit(c, body, col.shade, col.main, -1.3, -1.2);
+  c.save();
+  clip(c, body);
+  // Spiral ridges climbing round the knot.
+  for (const [y0, y1, d] of [[6.4, 0.6, 1], [1.8, -4.6, 1], [-2.8, -9, 1]] as const) {
+    c.drawPath(curve([[-11, y0], [-2, y0 - 2.6 * d], [11, y1]]), stroke(shade(col.shade, -0.18), 1.1));
+    c.drawPath(curve([[-11, y0 - 1.3], [-2, y0 - 3.9 * d], [11, y1 - 1.3]]), stroke(alpha(col.light, 0.9), 0.9));
+  }
+  c.restore();
+  c.drawPath(body, stroke(INK, INK_W));
+  for (const [x, y, r] of [[-5.6, 3.6, 20], [-1.4, 5.4, -30], [4.4, 2.6, 40], [6.6, 5.4, -10], [-2.6, -3.2, 60], [2.6, -6.4, -40]] as const) {
+    at(c, x, y, 1, r, (k) => k.drawPath(oval(0, 0, 0.65, 1.1), fill(col.accent)));
   }
 }
 
@@ -160,6 +186,21 @@ export function drawGlyph(c: SkCanvas, chain: ChainId | number, s = 1): void {
 
 type G = (c: SkCanvas) => void;
 
+/**
+ * Each chain's glaze (tier 3): a coat that follows the glyph's own outline, picked to change the
+ * glyph's lightness strongly (a pale coat on a dark glyph, a dark one on a pale glyph), so tier 3
+ * reads in greyscale too: honey on the skewer, milk on the tea, soy on the bun, dark chocolate on the berry,
+ * golden broth on the bowl, dark caramel on the puff (its sesame seeds show through).
+ */
+export const GLAZE: Record<ChainId, string> = {
+  grill: '#FFE08A',
+  tea: '#F6F1E6',
+  steamer: '#B9772F',
+  sweets: '#4E2A2E',
+  noodles: '#F2D27A',
+  puffs: '#6E3F17',
+};
+
 /** A drop shadow under a group: a soft dark ellipse. */
 function groundShadow(c: SkCanvas, y: number, rx: number, ry: number): void {
   c.drawPath(oval(0, y, rx, ry), fill(alpha(NIGHT.tealDeep, 0.55)));
@@ -170,26 +211,39 @@ function one(c: SkCanvas, g: G): void {
   at(c, 0, -1.5, 1.5, 0, g);
 }
 
+const PAIR: [number, number][] = [
+  [-6.6, -2.4],
+  [6.6, 2.2],
+];
+
 function pair(c: SkCanvas, g: G): void {
   groundShadow(c, 15.5, 17, 3.2);
-  at(c, -6.6, -2.4, 1.08, 0, g);
-  at(c, 6.6, 2.2, 1.08, 0, g);
+  for (const [x, y] of PAIR) at(c, x, y, 1.08, 0, g);
 }
 
-/** Glaze: an amber drizzle over the pair, drips and three sparkles. */
-function glaze(c: SkCanvas): void {
-  const d = curve([[-15, -4], [-9, -9], [-3, -2], [3, -7], [9, 0], [15, -4]]);
-  c.drawPath(d, stroke(INK, 4.8));
-  c.drawPath(d, stroke(NIGHT.amber, 3.2));
-  c.drawPath(d, stroke(alpha(NIGHT.flame, 0.95), 1.2));
-  for (const [x, y, h] of [[-9, -8.4, 3], [-3, -2.4, 4.2], [9, 0, 5]] as const) {
-    const drip = builder().moveTo(x - 1.2, y).quadTo(x - 1.1, y + h, x, y + h + 1.2).quadTo(x + 1.1, y + h, x + 1.2, y).close().build();
-    shape(c, drip, NIGHT.amber, 0.9);
+/** The glaze's mask in glyph space: everything above a wavy rim at y about -0.5, with one drip. */
+const GLAZE_MASK = (() => {
+  const b = builder().moveTo(-16.0, -20.0).lineTo(16.0, -20.0).lineTo(16.0, 0.6);
+  b.quadTo(11.0, 3.4, 7.0, 1.2).quadTo(5.0, 0.4, 4.4, 2.8).quadTo(4.2, 8.2, 2.6, 8.4).quadTo(1.0, 8.2, 0.9, 2.8);
+  b.quadTo(0.4, 0.2, -3.0, 2.2).quadTo(-8.0, 4.2, -12.0, 1.2).lineTo(-16.0, 0.8).close();
+  return b.build();
+})();
+const GLAZE_RIM = (() => {
+  const b = builder().moveTo(-16.0, 0.8);
+  b.lineTo(-12.0, 1.2).quadTo(-8.0, 4.2, -3.0, 2.2).quadTo(0.4, 0.2, 0.9, 2.8).quadTo(1.0, 8.2, 2.6, 8.4).quadTo(4.2, 8.2, 4.4, 2.8).quadTo(5.0, 0.4, 7.0, 1.2).quadTo(11.0, 3.4, 16.0, 0.6);
+  return b.build();
+})();
+
+/** Glaze: the pair, each coated over its top half (the coat hugs the glyph), one drip, a white gloss line. */
+function glazed(c: SkCanvas, g: G, id: ChainId): void {
+  groundShadow(c, 15.5, 17, 3.2);
+  const col = GLAZE[id];
+  for (const [x, y] of PAIR) {
+    at(c, x, y, 1.08, 0, (q) => {
+      coat(q, g, GLAZE_MASK, alpha(col, 0.88), GLAZE_RIM, shade(col, -0.45), 1.1);
+      gloss(q, -2.2, -2.4, 6.2, 0.95, 200, 60, 1.5);
+    });
   }
-  sparkle(c, -13, -13, 4, NIGHT.white);
-  sparkle(c, 13, -11.5, 3.4, NIGHT.white);
-  sparkle(c, 1, 12.5, 3, NIGHT.flame);
-  sparkle(c, 15, 8, 2.4, NIGHT.flame);
 }
 
 function three(c: SkCanvas, g: G, s: number, y = 0): void {
@@ -201,7 +255,7 @@ function three(c: SkCanvas, g: G, s: number, y = 0): void {
 /** Ribbon: three glyphs bundled and tied with a band and a red bow. */
 function ribbon(c: SkCanvas, g: G): void {
   groundShadow(c, 16, 17, 3.2);
-  three(c, g, 0.96);
+  three(c, g, 1);
   const band = builder().moveTo(-15, 6.6).quadTo(0, 10.6, 15, 6.6).build();
   c.drawPath(band, stroke(INK, 4.4));
   c.drawPath(band, stroke(NIGHT.paperLight, 2.6));
@@ -216,92 +270,97 @@ function ribbon(c: SkCanvas, g: G): void {
   c.drawPath(circle(0, 9.2, 1.9), stroke(INK, 1));
 }
 
-/** The plate: a pale round plate seen at an angle (tier 5); `rim` gives it the dark patterned rim of tier 6. */
-function plate(c: SkCanvas, rim: boolean, rx = 19, ry = 7, y = 7.5): void {
+/** The serving: tiers 5 to 8 all show the same three glyphs at the same large size (the chain stays readable); only the frame round them grows. */
+const SERVE_S = 1.02;
+const SERVE_Y = -3;
+const PLATE = { rx: 21.5, ry: 7.4, y: 10 };
+
+/** The plate under the serving: pale (tier 5) or with the dark brass-dotted rim (tiers 6 to 8). */
+function plate(c: SkCanvas, rim: boolean): void {
+  const { rx, ry, y } = PLATE;
   c.drawPath(oval(0, y + 1.6, rx, ry), fill(alpha(NIGHT.tealDeep, 0.6)));
   const outer = oval(0, y, rx, ry);
   if (rim) {
     c.drawPath(outer, fill(NIGHT.indigoMid));
     c.drawPath(outer, stroke(INK, 1.2));
-    c.drawPath(oval(0, y - 0.5, rx - 4.2, ry - 2.4), fill(NIGHT.paperLight));
-    c.drawPath(oval(0, y - 0.5, rx - 4.2, ry - 2.4), stroke(alpha(INK, 0.6), 0.8));
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      c.drawPath(circle(Math.cos(a) * (rx - 2.1), y + Math.sin(a) * (ry - 1.2), 0.75), fill(NIGHT.brassLight));
+    c.drawPath(oval(0, y - 0.5, rx - 4.6, ry - 2.6), fill(NIGHT.indigoLift));
+    c.drawPath(oval(0, y - 0.5, rx - 4.6, ry - 2.6), stroke(alpha(NIGHT.brass, 0.8), 0.8));
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2;
+      c.drawPath(circle(Math.cos(a) * (rx - 2.3), y + Math.sin(a) * (ry - 1.3), 0.8), fill(NIGHT.brassLight));
     }
   } else {
     c.drawPath(outer, fill(NIGHT.paperLight));
     c.drawPath(outer, stroke(INK, 1.2));
-    c.drawPath(oval(0, y - 0.4, rx - 4.6, ry - 2.6), stroke(alpha(NIGHT.paperEdge, 0.9), 1));
+    c.drawPath(oval(0, y - 0.4, rx - 5, ry - 2.8), stroke(alpha(NIGHT.paperEdge, 0.9), 1));
   }
 }
 
-/** Garnish: leafy sprigs at both sides and a pinch of flakes. */
-function garnish(c: SkCanvas, y = 4): void {
+/** Garnish (tier 6 on): a ring of leaf sprigs round the back of the plate and a big sprig at each end, behind the food. */
+function garnish(c: SkCanvas): void {
+  const { rx, ry, y } = PLATE;
+  for (let i = 0; i < 9; i++) {
+    const a = Math.PI * (1.02 + (0.96 * i) / 8);
+    const x = Math.cos(a) * (rx - 1);
+    const yy = y + Math.sin(a) * (ry + 2.6) - 1;
+    at(c, x, yy, 1.15, (a * 180) / Math.PI + 90, (k) => shape(k, blob([[0, 2.4], [2.3, -0.4], [0, -4.2], [-2.3, -0.4]], 1), i % 2 ? NIGHT.leafDeep : NIGHT.leaf, 0.8));
+  }
   for (const sgn of [-1, 1]) {
-    for (const [dx, dy, r] of [[14.2, 0, 32], [11.2, -4.6, 62], [16.4, -4.8, 12]] as const) {
-      at(c, sgn * dx, y + dy, 1, sgn * r, (k) => shape(k, blob([[0, 2.6], [2.4, 0], [0, -3.6], [-2.4, 0]], 1), NIGHT.leaf, 0.9));
+    for (const [dx, dy, r] of [[0, 0, 70], [-1.6, -3.4, 35], [-1.4, 3, 105]] as const) {
+      at(c, sgn * (rx - 0.4 + dx), y - 1 + dy, 1.35, sgn * r, (k) => shape(k, blob([[0, 2.4], [2.3, -0.4], [0, -4.2], [-2.3, -0.4]], 1), NIGHT.leaf, 0.8));
     }
   }
-  for (const [x, y2] of [[-4, -12], [3, -13.4], [6.4, -10.6]] as const) c.drawPath(circle(x, y + y2 + 4, 0.9), fill(NIGHT.amberPale));
 }
 
-/** The lantern halo: a warm disc of light, a ring and short rays behind the dish. */
-function halo(c: SkCanvas, r = 22.5): void {
-  glow(c, 0, -1, r + 1.5, NIGHT.amber, 0.95);
-  c.drawPath(circle(0, -1, r - 3.4), stroke(alpha(NIGHT.flame, 0.95), 1.6));
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2 + 0.13;
-    c.drawPath(line(Math.cos(a) * (r - 1.2), -1 + Math.sin(a) * (r - 1.2), Math.cos(a) * (r + 0.6), -1 + Math.sin(a) * (r + 0.6)), stroke(alpha(NIGHT.flame, 0.9), 1.3));
-  }
+/** The lantern halo (tier 7 on): a warm disc of light and a thin ring behind the serving. */
+function halo(c: SkCanvas, r = 20.5): void {
+  c.drawPath(circle(0, -2, r), fill(alpha(NIGHT.amber, 0.55)));
+  glow(c, 0, -2, r, NIGHT.flame, 0.9);
+  c.drawPath(circle(0, -2, r), stroke(alpha(NIGHT.flame, 0.95), 1.4));
+  c.drawPath(circle(0, -2, r - 3.2), stroke(alpha(NIGHT.amberPale, 0.6), 0.9));
+  for (const [x, y, k] of [[-15.6, -14.6, 2.6], [15.8, -13.6, 2.2], [-18.6, 0.4, 1.7], [18.4, 1.4, 1.9]] as const) sparkle(c, x, y, k, NIGHT.white);
 }
 
-/** The indigo lacquer board with a brass rim, corner studs and a gloss line. */
+/** The indigo lacquer board with a brass rim (tier 8): a frame round the whole cell, behind the serving. */
 function lacquer(c: SkCanvas): void {
-  const b = rrect(-22, -20.5, 44, 38, 6);
-  c.drawPath(rrect(-22, -19, 44, 38, 6), fill(alpha(INK, 0.7)));
+  const b = rrect(-22.6, -22.6, 45.2, 41.6, 6);
+  c.drawPath(rrect(-22.6, -21.4, 45.2, 41.6, 6), fill(alpha(INK, 0.7)));
   c.drawPath(b, fill(NIGHT.indigo));
-  c.drawPath(b, stroke(NIGHT.brass, 2.4));
+  c.drawPath(b, stroke(NIGHT.brass, 3));
   c.drawPath(b, stroke(INK, 0.6));
-  c.drawPath(rrect(-18.6, -17.1, 37.2, 31.2, 4), stroke(alpha(NIGHT.brassLight, 0.75), 0.8));
-  for (const [x, y] of [[-18.6, -17], [18.6, -17], [-18.6, 14], [18.6, 14]] as const) {
-    c.drawPath(circle(x, y, 1.7), fill(NIGHT.brassLight));
-    c.drawPath(circle(x, y, 1.7), stroke(INK, 0.7));
+  c.drawPath(rrect(-19.4, -19.4, 38.8, 35.2, 4), stroke(alpha(NIGHT.brassLight, 0.8), 0.9));
+  for (const [x, y] of [[-19.4, -19.4], [19.4, -19.4], [-19.4, 15.8], [19.4, 15.8]] as const) {
+    c.drawPath(circle(x, y, 1.9), fill(NIGHT.brassLight));
+    c.drawPath(circle(x, y, 1.9), stroke(INK, 0.7));
   }
-  c.drawPath(line(-15, -18.6, 6, -18.6), stroke(alpha(NIGHT.white, 0.35), 1));
-}
-
-/** The dish of tiers 6 and 7: the rimmed plate, three glyphs, garnish. */
-function dish(c: SkCanvas, g: G, s = 0.88): void {
-  plate(c, true);
-  three(c, g, s, -1.5);
-  garnish(c);
+  c.drawPath(line(-15, -21.2, 6, -21.2), stroke(alpha(NIGHT.white, 0.4), 1));
 }
 
 // ---------------------------------------------------------------------------
 // Tier pip
 // ---------------------------------------------------------------------------
 
-const PIP_R = 1.45;
-const PIP_STEP = 3.5;
-const PIP_GROUP = 1.9;
+const PIP_R = 1.75;
+const PIP_STEP = 4.2;
+const PIP_GROUP = 2;
+const PIP_H = 6.4;
 
 /** Width of a tier pip in points. */
 export function tierPipWidth(tier: number): number {
   const k = Math.max(1, Math.min(8, tier));
-  return (k - 1) * PIP_STEP + (k > 4 ? PIP_GROUP : 0) + PIP_R * 2 + 3.2;
+  return (k - 1) * PIP_STEP + (k > 4 ? PIP_GROUP : 0) + PIP_R * 2 + 3.4;
 }
 
 /**
- * The tier pip: `tier` paper-white dots (grouped by four) on a dark plate, centred on (x, y).
- * `scale` grows it for small icons where the dots must stay countable.
+ * The tier pip: `tier` paper-white dots of 3.5 pt (grouped by four) on a dark plate, centred on
+ * (x, y). `scale` grows it for small icons where the dots must stay countable.
  */
 export function drawTierPip(c: SkCanvas, tier: number, x = 0, y = 0, scale = 1): void {
   const k = Math.max(1, Math.min(8, Math.round(tier)));
   const w = tierPipWidth(k);
   at(c, x, y, scale, 0, (q) => {
-    q.drawPath(rrect(-w / 2, -2.6, w, 5.2, 2.6), fill(alpha(INK, 0.82)));
-    let px = -w / 2 + 1.6 + PIP_R;
+    q.drawPath(rrect(-w / 2, -PIP_H / 2, w, PIP_H, PIP_H / 2), fill(alpha(INK, 0.85)));
+    let px = -w / 2 + 1.7 + PIP_R;
     for (let i = 0; i < k; i++) {
       q.drawPath(circle(px, 0, PIP_R), fill(NIGHT.paperLight));
       px += PIP_STEP + (i === 3 ? PIP_GROUP : 0);
@@ -310,7 +369,7 @@ export function drawTierPip(c: SkCanvas, tier: number, x = 0, y = 0, scale = 1):
 }
 
 /** Where the pip sits inside a good's square (centre). */
-export const PIP_Y = 20.2;
+export const PIP_Y = 20.4;
 
 // ---------------------------------------------------------------------------
 // A good
@@ -319,7 +378,10 @@ export const PIP_Y = 20.2;
 export interface GoodOptions {
   /** Draw the tier pip (default true). */
   pip?: boolean;
-  /** Draw as one flat colour (the Ladder Book's silhouette of the next good). */
+  /**
+   * Draw as one flat colour (the Ladder Book's silhouette of the next good): the glyph
+   * arrangement only, never the plate, halo or board, so the chain is what the shape tells.
+   */
   silhouette?: string;
 }
 
@@ -328,6 +390,7 @@ export function drawGood(c: SkCanvas, chain: ChainId | number, tier: number, o: 
   const id = typeof chain === 'number' ? CHAIN_IDS[chain] : chain;
   const k = Math.max(1, Math.min(TIERS, Math.round(tier)));
   const g = GLYPH[id];
+  const frame = !o.silhouette;
   const body = (q: SkCanvas) => {
     switch (k) {
       case 1:
@@ -337,29 +400,19 @@ export function drawGood(c: SkCanvas, chain: ChainId | number, tier: number, o: 
         pair(q, g);
         break;
       case 3:
-        pair(q, g);
-        glaze(q);
+        glazed(q, g, id);
         break;
       case 4:
         ribbon(q, g);
         break;
-      case 5:
-        plate(q, false);
-        three(q, g, 0.9, -1.5);
-        break;
-      case 6:
-        dish(q, g);
-        break;
-      case 7:
-        halo(q);
-        dish(q, g);
-        break;
       default:
-        lacquer(q);
-        at(q, 0, -1, 0.86, 0, (r) => {
-          halo(r, 17);
-          dish(r, g, 0.86);
-        });
+        if (frame) {
+          if (k >= 8) lacquer(q);
+          if (k >= 7) halo(q);
+          if (k >= 6) garnish(q);
+          plate(q, k >= 6);
+        }
+        three(q, g, SERVE_S, SERVE_Y);
     }
   };
   if (o.silhouette) flat(c, o.silhouette, body);

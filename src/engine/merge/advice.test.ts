@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { freshState, mergeFixtures, mergeTestConfig } from '../fixtures/merge';
-import { advice, adviceCandidates, adviceExtras, basketCell, incomeRate, purchaseAdvice, waitEstimate } from './advice';
+import { advice, adviceCandidates, adviceExtras, basketCell, festivalAdvice, incomeRate, purchaseAdvice, waitEstimate } from './advice';
 import { hintsFor } from './hints';
 import { mergeParams, RECENT_BUCKETS } from './params';
 import type { Advice, ChainState, MergeGame, Ticket } from './types';
@@ -128,7 +128,8 @@ describe('the goal line and the bot agree', () => {
       const bot = purchaseAdvice(cfg, g);
       const line = advice(cfg, g);
       if (bot && bot.cost <= g.cash) expect(line).toEqual(bot);
-      if (bot && line && line.cost > 0) expect(line).toEqual(bot);
+      // Not affordable, no Festival goal: the line shows the same best purchase with its wait.
+      if (bot && bot.cost > g.cash && !festivalAdvice(cfg, g) && !basketCell(cfg, g)) expect(line).toEqual(bot);
     }
   });
 
@@ -173,15 +174,20 @@ describe('the extras (2.10, M22)', () => {
     for (let c = 0; c < 4; c++) for (let k = 1; k <= 8; k++) pool.push({ c, k });
     let n = 0;
     const board = g0.merge.board.map((cell) => (cell === 'shutter' ? cell : pool[n++]));
-    const ticket: Ticket = { id: 1, lines: [{ c: 0, k: 8, filled: false }], gold: false, customer: 0, coat: 0 };
-    const g = { ...g0, merge: { ...g0.merge, board, counters: g0.merge.counters.map((ct, j) => (j === 0 ? { ...ct, ticket } : { ...ct, ticket: null })) } };
+    // The ticket asks for a Candy tier 8 that is not on the board; the Festival is filled: nothing to deliver.
+    const ticket: Ticket = { id: 1, lines: [{ c: 3, k: 8, filled: false }], gold: false, customer: 0, coat: 0 };
+    const g = { ...g0, merge: { ...g0.merge, board, festival: { ...g0.merge.festival, filledAt: 1 }, counters: g0.merge.counters.map((ct, j) => (j === 0 ? { ...ct, ticket } : { ...ct, ticket: null })) } };
     expect(mergeParams(cfg, g).F).toBe(0);
     const cell = basketCell(cfg, g);
     expect(cell).not.toBeNull();
     const sold = g.merge.board[cell!] as { c: number; k: number };
-    expect(sold.k).toBe(8);
-    expect(sold.c).not.toBe(0); // the Grill's tier 8 is wanted by the ticket
+    expect(sold.k).toBe(8); // an unwanted tier 8 first (M22)
     expect(advice(cfg, g)).toMatchObject({ kind: 'basket', target: cell });
+    // M33: the Basket comes first on a deadlock, even with an affordable purchase.
+    expect(advice(cfg, { ...g, cash: 1e9 })).toMatchObject({ kind: 'basket', target: cell });
+    // A delivery exists (a good fills a line): not deadlocked.
+    const deliverable = { ...g, merge: { ...g.merge, counters: g.merge.counters.map((ct, j) => (j === 0 ? { ...ct, ticket: { ...ticket, lines: [{ c: 2, k: 8, filled: false }] } } : ct)) } };
+    expect(basketCell(cfg, deliverable)).toBeNull();
     // With a free cell, no Basket advice.
     const roomy = { ...g, merge: { ...g.merge, board: g.merge.board.map((c, i) => (i === cell ? null : c)) } };
     expect(basketCell(cfg, roomy)).toBeNull();
@@ -195,6 +201,28 @@ describe('the extras (2.10, M22)', () => {
     // 20 of 25 tickets: lantern 2 is within reach.
     const near = { ...early, merge: { ...early.merge, feats: { ...early.merge.feats, tickets: 20 } } };
     expect(find(adviceExtras(cfg, near), 'lantern', 2)).toBeDefined();
+  });
+
+  it('M31: names the Festival\'s missing good, and the gear level that halves its work, when no purchase is within reach', () => {
+    const f = mergeFixtures(cfg).festivalNear;
+    // Nothing affordable: the Festival goal. Its only unfilled line is Noodles 5 (lines 0 to 2 filled).
+    const poor = { ...f, cash: 0 };
+    const fest = festivalAdvice(cfg, poor)!;
+    expect(fest.line).toBe(3);
+    expect(fest.good).toEqual({ c: f.merge.festival.lines[3].c, k: f.merge.festival.lines[3].k });
+    // Noodles gear 3: base 1; level 11 makes base 2 and halves the work.
+    expect(fest.gear).toEqual({ c: 4, level: 11, cost: mergeParams(cfg, poor).chains[4].gearCost });
+    const a = advice(cfg, poor)!;
+    expect(a).toMatchObject({ kind: 'gear', target: 4, cost: fest.gear!.cost });
+    // At the top base tier no level halves it: the line itself.
+    const top = { ...poor, merge: { ...poor.merge, chains: poor.merge.chains.map((ch, c) => (c === 4 ? { ...ch, gear: 31 } : ch)) } };
+    expect(festivalAdvice(cfg, top)!.gear).toBeNull();
+    expect(advice(cfg, top)).toMatchObject({ kind: 'festival', target: 3 });
+    // An affordable purchase comes first.
+    const rich = { ...f, cash: 1e12 };
+    expect(advice(cfg, rich)).toEqual(purchaseAdvice(cfg, rich));
+    // A chain the Festival asks for is closed: no Festival goal.
+    expect(festivalAdvice(cfg, mergeFixtures(cfg).minute10)).toBeNull();
   });
 
   it('rounds the wait as the goal line prints it', () => {

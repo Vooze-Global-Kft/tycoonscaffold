@@ -116,6 +116,22 @@ headless(async (H) => {
     }
     report.greyNeighbours = table;
     report.greyWorst = worst;
+    // The same tier of two different chains (no pips): tiers 1 to 8, every pair of chains.
+    const cross: Record<string, { pair: string; changed: number }> = {};
+    let crossWorst = { tier: 0, pair: '', changed: 1 };
+    for (let k = 1; k <= 8; k++) {
+      const L = [0, 1, 2, 3, 4, 5].map((ch) => lumaFor(ch, k, false));
+      let w = { pair: '', changed: 1 };
+      for (let a = 0; a < 6; a++)
+        for (let b = a + 1; b < 6; b++) {
+          const d = meas.greyDistance(L[a], L[b]).changed;
+          if (d < w.changed) w = { pair: `${CHAIN_IDS[a]}/${CHAIN_IDS[b]}`, changed: +d.toFixed(3) };
+        }
+      cross[`tier${k}`] = w;
+      if (w.changed < crossWorst.changed) crossWorst = { tier: k, ...w };
+    }
+    report.greyCross = cross;
+    console.log(`grey cross-chain, closest pair per tier 1..8: ${Object.values(cross).map((v) => `${v.pair} ${(v.changed * 100).toFixed(0)}%`).join(', ')}`);
     console.log(`grey: worst neighbours ${worst.chain} ${worst.tiers}: ${(worst.changed * 100).toFixed(1)} % of pixels changed (bar ${meas.GREY_MIN_CHANGED * 100} %) ${worst.changed >= meas.GREY_MIN_CHANGED ? 'OK' : 'LOW'}`);
   }
 

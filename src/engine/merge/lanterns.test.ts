@@ -212,7 +212,6 @@ describe('the hooks MECHANICS calls', () => {
     expect(out.merge.feats.tickets).toBe(1);
     expect(out.merge.feats.threeLineTickets).toBe(1);
     expect(out.merge.feats.parades).toBe(1);
-    expect(out.merge.mstats.ticketsThisSeason).toBe(1);
     expect(out.merge.paradeAt).toBe(600 + currentMods(cfg, g.merge).paradeEvery);
     const plain: Ticket = { id: 10, lines: [{ c: 0, k: 2, filled: true }], gold: false, customer: 0, coat: 0 };
     const p = onTicketPaid(cfg, g, 0, plain, 12);

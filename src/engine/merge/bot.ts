@@ -76,7 +76,7 @@ export interface BotOptions {
   hours?: number;
   /** Days of the passive and check-in bots (wall clock). */
   days?: number;
-  /** Seconds per action, and after an action that opens a sheet (default act + 1). */
+  /** Seconds per action (M30: 2.0 is the reference, 1.5 and 2.5 beside it), and after an action that opens a sheet (default act + 1). */
   act?: number;
   sheet?: number;
   /** Stop once this many seasons are closed (active and passive). */
@@ -119,8 +119,10 @@ export interface TicketRecord {
   basket: boolean;
   /** Sent off with Not tonight. */
   sentOff: boolean;
-  /** Bounds of 2.7 this draw broke, as the bot reads them on the state it was drawn on ('a', 'b', 'bH', 'c', 'd'). */
+  /** Bounds of 2.7 this draw broke on the state it was drawn on, by ORDERS's own `checkBounds` ('a', 'b', 'bH', 'c', 'd'), and 'priceFell'. */
   broken: string[];
+  /** The same bounds as the bot reads the text itself (`drawBreaks`): a second opinion, reported, never a gate. */
+  ownReading: string[];
 }
 
 export interface CoinEntry {
@@ -212,16 +214,18 @@ export interface BotRun {
 // the public interface, with the two optional seams (requests.md)
 // ============================================================================================
 
-type RoundFn = (cfg: R.MergeConfig, x: number) => number;
-type AdviceFn = (cfg: R.MergeConfig, g: R.MergeGame) => R.Advice | null;
-const PUB = R as unknown as Record<string, unknown>;
-/** M19's one rounding rule; `roundCost` until MECHANICS exports `roundCoins`. */
-export const roundCoins: RoundFn = (typeof PUB.roundCoins === 'function' ? PUB.roundCoins : R.roundCost) as RoundFn;
+/** M19's one rounding rule, the function the screens print with. */
+export const roundCoins = R.roundCoins;
 const PURCHASES: readonly R.AdviceKind[] = ['gear', 'stall', 'minderHire', 'minderLevel', 'openStall', 'shutter'];
-/** The advised purchase, or null: META's `purchaseAdvice` when it exists, else `advice` when it names a purchase. */
+/** What the goal line names (`advice`, 2.10), split: the purchase it names, or the other goal (M31's Festival good, M33's Basket). */
+export function goalLine(cfg: R.MergeConfig, g: R.MergeGame): { purchase: R.Advice | null; other: R.Advice | null } {
+  const a = R.advice(cfg, g);
+  if (!a) return { purchase: null, other: null };
+  return PURCHASES.includes(a.kind) ? { purchase: a, other: null } : { purchase: null, other: a };
+}
+/** The purchase the goal line names (the bot "buys by advice()"), or null. */
 export function advisedPurchase(cfg: R.MergeConfig, g: R.MergeGame): R.Advice | null {
-  const a = typeof PUB.purchaseAdvice === 'function' ? (PUB.purchaseAdvice as AdviceFn)(cfg, g) : R.advice(cfg, g);
-  return a && PURCHASES.includes(a.kind) ? a : null;
+  return goalLine(cfg, g).purchase;
 }
 
 /** A fixed epoch (23 Nov 2026, 12:00 UTC) so a run is the same on every machine. */
@@ -367,16 +371,21 @@ function ticketOrder(m: R.MergeState, v: BoardView, base: readonly number[]): { 
   return rows.map((r) => r.ls);
 }
 
-function wantedSeq(m: R.MergeState, v: BoardView, base: readonly number[]): { c: number; k: number }[] {
+/** The lines the bot works toward, in order: the tickets nearest completion first, then the Festival; `festivalLine` (the goal line's Festival good, M31) first of all. */
+function wantedSeq(m: R.MergeState, v: BoardView, base: readonly number[], festivalLine: number | null = null): { c: number; k: number }[] {
   const seq: { c: number; k: number }[] = [];
+  const fl = festivalLine !== null ? m.festival.lines[festivalLine] : undefined;
+  if (fl && !fl.filled && m.chains[fl.c]?.open) seq.push({ c: fl.c, k: fl.k });
   for (const ls of ticketOrder(m, v, base)) seq.push(...ls);
-  for (const l of m.festival.lines) if (!l.filled && m.chains[l.c]?.open) seq.push({ c: l.c, k: l.k });
+  m.festival.lines.forEach((l, i) => {
+    if (!l.filled && m.chains[l.c]?.open && i !== festivalLine) seq.push({ c: l.c, k: l.k });
+  });
   return seq;
 }
 
-/** The lowest pair on the path to the line nearest completion (tickets, then the Festival). */
-export function pathMerge(m: R.MergeState, v: BoardView, base: readonly number[]): { c: number; k: number } | null {
-  const seq = wantedSeq(m, v, base);
+/** The lowest pair on the path to the line nearest completion (tickets, then the Festival; the goal line's Festival good first when it names one, M31). */
+export function pathMerge(m: R.MergeState, v: BoardView, base: readonly number[], festivalLine: number | null = null): { c: number; k: number } | null {
+  const seq = wantedSeq(m, v, base, festivalLine);
   const al = allocation(v.cnt, seq, base);
   for (let i = 0; i < al.length; i++) {
     const pairs = [...al[i].alloc.entries()].filter(([j, n]) => n >= 2 && j < R.TIERS).map(([j]) => j).sort((a, b) => a - b);
@@ -426,8 +435,14 @@ export function basketChoice(m: R.MergeState, v: BoardView, base: readonly numbe
 // ============================================================================================
 
 const EVENT_LIMIT = 1e-6;
+/**
+ * The bot acts just after every event due at its action time: it advances to t + ACT_AFTER, so an
+ * event at exactly t (a drop every T s, a refill) has run in either stepping, whatever the float sums
+ * of the clock (gate 14 compares event-to-event and 10 Hz runs).
+ */
+const ACT_AFTER = 1e-7;
 
-function emptyTrace(kind: BotKind, seed: number, act: number, sheet: number, habits: BotHabits, t0: number): Trace {
+export function emptyTrace(kind: BotKind, seed: number, act: number, sheet: number, habits: BotHabits, t0: number): Trace {
   return {
     kind,
     seed,
@@ -512,6 +527,7 @@ class Runner {
     return this.tr.seasons[this.tr.seasons.length - 1];
   }
 
+  /** `pre`: the state the draw saw (a step's start, split just before the refill; after an action, the action's result). */
   private recordTicket(t: R.Ticket, counter: number, post: R.MergeGame, pre: R.MergeGame | null, at: number) {
     if (this.byId.has(t.id)) return;
     const shown = roundCoins(this.cfg, R.ticketPrice(this.cfg, post, t));
@@ -530,14 +546,15 @@ class Runner {
       paid: null,
       basket: false,
       sentOff: false,
-      broken: pre ? drawBreaks(this.cfg, pre, t) : [],
+      broken: pre ? orderBreaks(this.cfg, pre, counter, t) : [],
+      ownReading: pre ? drawBreaks(this.cfg, pre, t) : [],
     };
     this.byId.set(t.id, rec);
     this.tr.tickets.push(rec);
   }
 
   /** Everything a step or an action changed: events, coins, best tiers, prices. */
-  private account(pre: R.MergeGame, post: R.MergeGame, ev: R.MergeEvent[], at: number, preParams: R.MergeParams | null) {
+  private account(pre: R.MergeGame, post: R.MergeGame, ev: R.MergeEvent[], at: number, preParams: R.MergeParams | null, drawnOn: R.MergeGame = pre) {
     const cfg = this.cfg;
     const tr = this.tr;
     const newSeason = post.merge.season !== pre.merge.season;
@@ -555,7 +572,7 @@ class Runner {
           break;
         }
         case 'ticketDrawn':
-          this.recordTicket(e.ticket, e.counter, post, pre, at);
+          this.recordTicket(e.ticket, e.counter, post, drawnOn, at);
           break;
         case 'settingUp':
           tr.setups++;
@@ -717,7 +734,7 @@ class Runner {
   /** Advances the game clock to `t`, splitting at every refill (a draw is checked on the state it was drawn on) and at the kept marks. */
   advanceTo(t: number) {
     let guard = 0;
-    while (this.clock < t - EVENT_LIMIT) {
+    while (this.clock < t - 1e-9) {
       if (++guard > 1e7) throw new Error('merge bot: the clock does not move (advanceMerge returned the same clock)');
       const now = this.clock;
       let to = t;
@@ -764,7 +781,8 @@ class Runner {
     }
     this.g = post;
     this.tr.actions.push({ t: this.clock, what });
-    this.account(pre, post, ev, this.clock, preParams);
+    // A ticket an action draws (the scripted hedgehog after the first merge, a refill after Not tonight) sees the action's result.
+    this.account(pre, post, ev, this.clock, preParams, post);
     return true;
   }
 
@@ -861,6 +879,18 @@ class Runner {
 // the bounds of 2.7, as the bot reads them on the state a ticket was drawn on (gate 4)
 // ============================================================================================
 
+/** The bounds a drawn ticket breaks on `pre`, by the rules' own check (ORDERS's `checkBounds`, the one the draw uses). */
+export function orderBreaks(cfg: R.MergeConfig, pre: R.MergeGame, counter: number, t: R.Ticket): string[] {
+  const f = R.checkBounds(cfg, pre, counter, t.lines.map((l) => ({ c: l.c, k: l.k })), { parade: t.gold, scripted: !!t.scripted });
+  const out: string[] = [];
+  if (f.a) out.push('a');
+  if (f.bOutput) out.push('b');
+  if (f.bHand) out.push('bH');
+  if (f.c) out.push('c');
+  if (f.d) out.push('d');
+  return out;
+}
+
 /**
  * Which bounds of 2.7 (with M4: (d) is (d1) only) a drawn ticket breaks on `pre`, the state just
  * before its draw: (a) every line k ≤ min(8, best_c + 1); (d) k ≥ b_c + 1 (scripted tickets are
@@ -900,14 +930,16 @@ export function drawBreaks(cfg: R.MergeConfig, pre: R.MergeGame, t: R.Ticket): s
       lines.forEach((l, i) => l.c === c && (pops += R.popsNeeded(units[i], ch.base)));
       if ((pops * T) / (1 + ch.ripe) > W + 1e-9) out.push('b');
     }
-    // The hand bound of this ticket alone: goods used + pops − 1 merges + 1 delivery per line.
-    const mine = R.missing(byTierDesc(t.lines.map((l) => ({ c: l.c, k: l.k }))), goods).units;
+    // The hand bound of this ticket alone: per line, (goods used + pops − 1) merges + 1 delivery,
+    // the goods at hand allocated highest tier first (the allocation `missing` describes).
+    const cnt = Array.from({ length: R.CHAINS }, () => Array.from({ length: R.TIERS + 1 }, () => 0));
+    for (const gd of goods) if (gd.c >= 0 && gd.c < R.CHAINS && gd.k >= 1 && gd.k <= R.TIERS) cnt[gd.c][gd.k]++;
+    const mineLines = byTierDesc(t.lines.map((l) => ({ c: l.c, k: l.k })));
     let hand = 0;
-    t.lines.forEach((l, i) => {
-      const ch = P.chains[l.c];
-      const pops = R.popsNeeded(mine[i], ch.base);
-      const goodsUsed = Math.max(0, Math.round((2 ** (l.k - 1) - mine[i]) / 2 ** (ch.base - 1)));
-      hand += goodsUsed + pops - 1 + 1;
+    allocation(cnt, mineLines, P.chains.map((ch) => ch.base)).forEach((a) => {
+      let used = 0;
+      for (const n of a.alloc.values()) used += n;
+      hand += used + a.pops - 1 + 1;
     });
     if (hand > H + 1e-9) out.push('bH');
   } catch (e) {
@@ -982,8 +1014,11 @@ function activeStep(r: Runner, opt: { measure: boolean }): number | null {
   const h = o.habits ?? {};
   const cfg = r.cfg;
   let { v, base, values } = r.view();
-  const adv = advisedPurchase(cfg, r.g);
+  const goal = goalLine(cfg, r.g);
+  const adv = goal.purchase;
   const affordable = !!adv && r.g.cash >= adv.cost;
+  // M31: when the goal line names the Festival's missing good, the bot works toward it first.
+  const festivalLine = goal.other?.kind === 'festival' && goal.other.target !== null ? goal.other.target : null;
   if (opt.measure && r.clock < 660) r.tr.slots.push({ t: r.clock, useful: anyMerge(v) || deliveries(r.m, v).length > 0 || affordable });
   if (affordable) r.tr.affordableUnbought += o.act;
   // 0. close the season once the Festival is filled (the hoarder opens its boxes first)
@@ -1045,7 +1080,7 @@ function activeStep(r: Runner, opt: { measure: boolean }): number | null {
   if (r.m.gift.boxes.length && !h.hoardBoxes && r.openBox()) return o.sheet;
   ({ v, base, values } = r.view());
   // 4. merge the lowest pair on the path to the line nearest completion
-  const pm = pathMerge(r.m, v, base);
+  const pm = pathMerge(r.m, v, base, festivalLine);
   if (pm && r.merge(pm.c, pm.k)) return o.act;
   // 5. merge any lowest pair
   const lp = lowestPair(v);
@@ -1109,7 +1144,7 @@ function checkinStep(r: Runner): number | null {
 function playUntil(r: Runner, until: number, step: () => number | null, stop?: () => boolean): void {
   let t = r.clock + r.o.act;
   while (t <= until + EVENT_LIMIT) {
-    r.advanceTo(t);
+    r.advanceTo(t + ACT_AFTER);
     if (stop?.() || r.o.stop?.(r.g)) return;
     const dur = step();
     if (r.o.stop?.(r.g)) return;
@@ -1125,7 +1160,7 @@ function playUntil(r: Runner, until: number, step: () => number | null, stop?: (
 /** Runs one bot (8.2 with M6). Throws the rules' NotBuiltError at the first rule that is not built yet. */
 export function runMergeBot(cfg: R.MergeConfig, opts: BotOptions = {}): BotRun {
   const kind = opts.kind ?? 'active';
-  const act = opts.act ?? 1.5;
+  const act = opts.act ?? 2;
   const o = { ...opts, act, sheet: opts.sheet ?? act + 1, hz: opts.hz ?? 0, awaySeconds: opts.awaySeconds ?? 3600 };
   const seed = opts.seed ?? 12345;
   const wall0 = opts.wall0 ?? BOT_EPOCH;
@@ -1470,6 +1505,10 @@ export interface GateRow {
   aim: string;
   value: number | string | null;
   ok: boolean;
+  /** For the tuner: the measured number and its band (null: no bound on that side). */
+  num?: number | null;
+  lo?: number | null;
+  hi?: number | null;
 }
 
 export interface AllOptions {
@@ -1514,6 +1553,22 @@ export function canonicalTrace(tr: Trace): string {
   return JSON.stringify(tr, (_k, v) => (typeof v === 'number' ? (Number.isFinite(v) ? Number(v.toPrecision(9)) : String(v)) : v));
 }
 
+/**
+ * What gate 14 compares between event-to-event and 10 Hz stepping: every action with its time, every
+ * purchase, every ticket (lines, when paid, what paid) and the final state. Not the trace's own
+ * bookkeeping times (coins and samples are stamped at the end of each step, and 10 Hz has more steps).
+ */
+export function playKey(run: BotRun): string {
+  const tr = run.trace;
+  return canonicalTrace({
+    actions: tr.actions,
+    purchases: tr.purchases,
+    tickets: tr.tickets.map((t) => ({ id: t.id, lines: t.lines, gold: t.gold, filled: t.filled, paid: t.paid })),
+    cash: run.game.cash,
+    merge: run.game.merge,
+  } as unknown as Trace);
+}
+
 function firstDifference(a: string, b: string): string | null {
   if (a === b) return null;
   let i = 0;
@@ -1523,7 +1578,7 @@ function firstDifference(a: string, b: string): string | null {
 
 /** Every bot run one seed needs for `evaluate`. Throws NotBuiltError at the first unbuilt rule. */
 export function runAll(cfg: R.MergeConfig, o: AllOptions): AllRuns {
-  const act = o.act ?? 1.5;
+  const act = o.act ?? 2;
   const sheet = o.sheet ?? act + 1;
   const hours = o.hours ?? 12;
   const common = { seed: o.seed, act, sheet, base: o.base };
@@ -1543,10 +1598,11 @@ export function runAll(cfg: R.MergeConfig, o: AllOptions): AllRuns {
   }
   if ((o.determinism ?? 10) > 0) {
     const minutes = o.determinism ?? 10;
-    const a = canonicalTrace(runMergeBot(cfg, { ...common, hours: minutes / 60 }).trace);
+    const r1 = runMergeBot(cfg, { ...common, hours: minutes / 60 });
+    const a = canonicalTrace(r1.trace);
     const b = canonicalTrace(runMergeBot(cfg, { ...common, hours: minutes / 60 }).trace);
-    const c = canonicalTrace({ ...runMergeBot(cfg, { ...common, hours: minutes / 60, hz: 10 }).trace, samples: { t: [], dt: [], f: [], n: [], su: [] } });
-    const a0 = canonicalTrace({ ...JSON.parse(a), samples: { t: [], dt: [], f: [], n: [], su: [] } } as Trace);
+    const a0 = playKey(r1);
+    const c = playKey(runMergeBot(cfg, { ...common, hours: minutes / 60, hz: 10 }));
     out.determinism = { minutes, sameTwice: a === b, same10Hz: a0 === c, firstDiff: firstDifference(a, b) ?? firstDifference(a0, c) };
   }
   return out;
@@ -1559,21 +1615,22 @@ const min = (s: number) => s / 60;
 /** Every gate of 8.3 (with M2, M3, M23 to M26) on one seed's runs: name, kind, aim, measured value, ok. */
 export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
   const rows: GateRow[] = [];
-  const row = (name: string, kind: GateRow['kind'], aim: string, value: GateRow['value'], ok: boolean) => rows.push({ name, kind, aim, value, ok });
+  const row = (name: string, kind: GateRow['kind'], aim: string, value: GateRow['value'], ok: boolean, num?: number | null, lo?: number | null, hi?: number | null) =>
+    rows.push(num === undefined ? { name, kind, aim, value, ok } : { name, kind, aim, value, ok, num: Number.isFinite(num as number) ? num : null, lo: lo ?? null, hi: hi ?? null });
   const A = all.active;
   const t0 = A.t0;
   // ---- gate 1 (aims) and M3
   const first = firstTicketPaid(A);
-  row('1 first ticket paid (s)', 'aim', '≤ 15', fmt(first), first <= 15);
+  row('1 first ticket paid (s)', 'aim', '≤ 15', fmt(first), first <= 15, first, null, 15);
   const gaps = payingGaps(A);
-  row('1 gap between paying moments, minutes 0-10: median (s)', 'aim', '≤ 30', fmt(gaps.median), gaps.median <= 30);
-  row('1 gap p90 (s)', 'aim', '≤ 50', fmt(gaps.p90), gaps.p90 <= 50);
-  row('1 gap max (s)', 'aim', '≤ 60', fmt(gaps.max), gaps.max <= 60);
-  row('1 purchases in minutes 0-10', 'aim', '≥ 12', gaps.purchases, gaps.purchases >= 12);
+  row('1 gap between paying moments, minutes 0-10: median (s)', 'aim', '≤ 30', fmt(gaps.median), gaps.median <= 30, gaps.median, null, 30);
+  row('1 gap p90 (s)', 'aim', '≤ 50', fmt(gaps.p90), gaps.p90 <= 50, gaps.p90, null, 50);
+  row('1 gap max (s)', 'aim', '≤ 60', fmt(gaps.max), gaps.max <= 60, gaps.max, null, 60);
+  row('1 purchases in minutes 0-10', 'aim', '≥ 12', gaps.purchases, gaps.purchases >= 12, gaps.purchases, 12, null);
   const u = usefulPerMinute(A);
   const u19 = u.perMinute.slice(1);
-  row('M3 useful actions a minute, minutes 1-9 (lowest)', 'aim', '≥ 16 on every seed (≥ 20 at the median seed: across seeds)', `${Math.min(...u19)} [${u.perMinute.join(' ')}]`, Math.min(...u19) >= 16);
-  row('M3 longest wait with nothing useful, minutes 0-10 (s)', 'aim', '≤ 10', fmt(u.longestWait), u.longestWait <= 10);
+  row('M3 useful actions a minute, minutes 1-9 (lowest)', 'aim', '≥ 16 on every seed (≥ 20 at the median seed: across seeds)', `${Math.min(...u19)} [${u.perMinute.join(' ')}]`, Math.min(...u19) >= 16, Math.min(...u19), 16, null);
+  row('M3 longest wait with nothing useful, minutes 0-10 (s)', 'aim', '≤ 10', fmt(u.longestWait), u.longestWait <= 10, u.longestWait, null, 10);
   // ---- gate 2 (M23 aims)
   const st = stallTimes(A, 0);
   const windows: [number, string, number, number][] = [
@@ -1584,19 +1641,22 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
   ];
   for (const [c, name, lo, hi] of windows) {
     const x = st[c] ?? null;
-    row(`2 ${name} stall opens (min)`, 'aim', `${lo} to ${hi}`, x === null ? 'never' : fmt(min(x), 2), x !== null && within(min(x), lo, hi));
+    row(`2 ${name} stall opens (min)`, 'aim', `${lo} to ${hi}`, x === null ? 'never' : fmt(min(x), 2), x !== null && within(min(x), lo, hi), x === null ? 1e9 : min(x), lo, hi);
   }
   // ---- gate 3 (aims)
   const ft = fillTimes(A, t0, t0 + 3600);
-  row('3 ticket fill time, hour 1: median (s)', 'aim', '20 to 60', fmt(median(ft)), within(median(ft), 20, 60));
-  row('3 ticket fill time, hour 1: p90 (s)', 'aim', '≤ 120', fmt(quantile(ft, 0.9)), quantile(ft, 0.9) <= 120);
+  row('3 ticket fill time, hour 1: median (s)', 'aim', '20 to 60', fmt(median(ft)), within(median(ft), 20, 60), median(ft), 20, 60);
+  row('3 ticket fill time, hour 1: p90 (s)', 'aim', '≤ 120', fmt(quantile(ft, 0.9)), quantile(ft, 0.9) <= 120, quantile(ft, 0.9), null, 120);
   const pf = fillTimes(A, t0, t0 + 10800, null, true);
-  row('3 Parade fill time, hours 0-3: median (min)', 'aim', '≤ 4', pf.length ? fmt(min(median(pf)), 2) : 'no Parade', pf.length > 0 && median(pf) <= 240);
+  row('3 Parade fill time, hours 0-3: median (min)', 'aim', '≤ 4', pf.length ? fmt(min(median(pf)), 2) : 'no Parade', pf.length > 0 && median(pf) <= 240, pf.length ? min(median(pf)) : null, null, 4);
   const gf = gearFillCheck(A, t0 + 10800);
-  row('3 gear purchases followed by slower tickets (M26: 30 each side, × 1.3)', 'aim', '0', `${gf.bad} of ${gf.total}`, gf.bad === 0);
+  row('3 gear purchases followed by slower tickets (M26: 30 each side, × 1.3)', 'aim', '0', `${gf.bad} of ${gf.total}`, gf.bad === 0, gf.total ? gf.bad / gf.total : 0, null, 0);
   // ---- gate 4 (hard)
   const hon = honesty(A);
-  row('4 tickets breaking a bound of 2.7 at the draw', 'hard', '0', `${hon.broken} of ${hon.drawn}${hon.broken ? ` (${Object.entries(hon.byBound).map(([k, v]) => `${k}: ${v}`).join(', ')})` : ''}`, hon.broken === 0);
+  const firstBad = A.tickets.find((t) => t.broken.some((x) => x !== 'priceFell'));
+  row('4 tickets breaking a bound of 2.7 at the draw (checkBounds on the state it was drawn on)', 'hard', '0', `${hon.broken} of ${hon.drawn}${firstBad ? ` (${Object.entries(hon.byBound).map(([k, v]) => `${k}: ${v}`).join(', ')}; first: ticket ${firstBad.id} at counter ${firstBad.counter + 1}, ${fmt(firstBad.drawn, 2)} s, ${firstBad.lines.map((l) => `${l.c}.${l.k}`).join('+')})` : ''}`, hon.broken === 0);
+  const own = A.tickets.filter((t) => t.ownReading.join() !== t.broken.filter((x) => x !== 'priceFell').join());
+  row('report: draws where the bot\'s own reading of 2.7 disagrees with checkBounds', 'report', '0 (a second opinion)', own.length ? `${own.length}: first ticket ${own[0].id} at ${fmt(own[0].drawn)} s, ${own[0].lines.map((l) => `${l.c}.${l.k}`).join('+')}, own [${own[0].ownReading.join(',')}] rules [${own[0].broken.join(',')}]` : 0, true);
   row('4 tickets the active bot finished after a Basket sale', 'hard', '0', hon.basketTickets, hon.basketTickets === 0);
   row('4 tickets whose paid price differs from the shown one', 'hard', '0', hon.shownNotPaid, hon.shownNotPaid === 0);
   row('4 tickets whose shown price fell after the draw (M26)', 'hard', '0', hon.priceFell, hon.priceFell === 0);
@@ -1611,23 +1671,23 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
   }
   // ---- gate 5 (aims)
   const b10 = boardShares(A, t0, t0 + 600);
-  row('5 board full (F = 0), hours 0-3', 'aim', '≤ 15 %', fmt(b3.f0 * 100) + ' %', b3.f0 <= 0.15);
-  row('5 board full (F = 0), minutes 0-10', 'aim', '≤ 3 %', fmt(b10.f0 * 100) + ' %', b10.f0 <= 0.03);
-  row('5 deadlock (F = 0, no merge, no delivery), hours 0-3', 'aim', '≤ 2 %', fmt(b3.deadlock * 100) + ' %', b3.deadlock <= 0.02);
+  row('5 board full (F = 0), hours 0-3', 'aim', '≤ 15 %', fmt(b3.f0 * 100) + ' %', b3.f0 <= 0.15, b3.f0, null, 0.15);
+  row('5 board full (F = 0), minutes 0-10', 'aim', '≤ 3 %', fmt(b10.f0 * 100) + ' %', b10.f0 <= 0.03, b10.f0, null, 0.03);
+  row('5 deadlock (F = 0, no merge, no delivery), hours 0-3', 'aim', '≤ 2 %', fmt(b3.deadlock * 100) + ' %', b3.deadlock <= 0.02, b3.deadlock, null, 0.02);
   const made = A.goodsMade;
-  row('5 Basket sales / goods made', 'aim', '≤ 5 %', fmt((A.basketSales / Math.max(1, made)) * 100, 2) + ' %', A.basketSales / Math.max(1, made) <= 0.05);
-  row('5 the two highest open chains\' gears waiting, hours 0-3', 'aim', '≤ 20 %', `${fmt(b3.waitTop2 * 100)} % (per chain ${b3.waitChain.map((w) => fmt(w * 100, 0)).join('/')} %)`, b3.waitTop2 <= 0.2);
+  row('5 Basket sales / goods made', 'aim', '≤ 5 %', fmt((A.basketSales / Math.max(1, made)) * 100, 2) + ' %', A.basketSales / Math.max(1, made) <= 0.05, A.basketSales / Math.max(1, made), null, 0.05);
+  row('5 the two highest open chains\' gears waiting, hours 0-3', 'aim', '≤ 20 %', `${fmt(b3.waitTop2 * 100)} % (per chain ${b3.waitChain.map((w) => fmt(w * 100, 0)).join('/')} %)`, b3.waitTop2 <= 0.2, b3.waitTop2, null, 0.2);
   // ---- gate 6 (aims)
   const nv = noveltyGaps(A);
-  row('6 longest gap without something new, minutes 0-30 (min)', 'aim', '≤ 3', fmt(min(nv.gap30), 2), nv.gap30 <= 180);
-  row('6 longest gap without something new, hours 0-3 (min)', 'aim', '≤ 20', fmt(min(nv.gap3h), 2), nv.gap3h <= 1200);
-  row('6 longest gap without a first-time tier, hour 1 (min)', 'aim', '≤ 6', fmt(min(nv.tierGapH1), 2), nv.tierGapH1 <= 360);
-  row('6 longest gap without a first-time tier, hours 1-3 (min)', 'aim', '≤ 15', fmt(min(nv.tierGapH13), 2), nv.tierGapH13 <= 900);
+  row('6 longest gap without something new, minutes 0-30 (min)', 'aim', '≤ 3', fmt(min(nv.gap30), 2), nv.gap30 <= 180, min(nv.gap30), null, 3);
+  row('6 longest gap without something new, hours 0-3 (min)', 'aim', '≤ 20', fmt(min(nv.gap3h), 2), nv.gap3h <= 1200, min(nv.gap3h), null, 20);
+  row('6 longest gap without a first-time tier, hour 1 (min)', 'aim', '≤ 6', fmt(min(nv.tierGapH1), 2), nv.tierGapH1 <= 360, min(nv.tierGapH1), null, 6);
+  row('6 longest gap without a first-time tier, hours 1-3 (min)', 'aim', '≤ 15', fmt(min(nv.tierGapH13), 2), nv.tierGapH13 <= 900, min(nv.tierGapH13), null, 15);
   // ---- gate 7 (aim)
   const vpa = valuePerAction(A);
   const r21 = vpa[1] / vpa[0];
   const r32 = vpa[2] / vpa[1];
-  row('7 value per bot action, hour 2 / hour 1 and hour 3 / hour 2', 'aim', '≥ 3 each', `${fmt(r21, 2)} / ${fmt(r32, 2)} (${vpa.map((x) => fmt(x, 1)).join(', ')} c an action)`, r21 >= 3 && r32 >= 3);
+  row('7 value per bot action, hour 2 / hour 1 and hour 3 / hour 2', 'aim', '≥ 3 each', `${fmt(r21, 2)} / ${fmt(r32, 2)} (${vpa.map((x) => fmt(x, 1)).join(', ')} c an action)`, r21 >= 3 && r32 >= 3, Math.min(r21, r32), 3, null);
   // ---- gate 8 (hard: sources; aims: shares; M24)
   const ub = unbookedCoins(A);
   const traces = [A, all.lazy, all.deliver, all.idle, all.checkin, all.passive, ...Object.values(all.adversaries ?? {})].filter(Boolean) as Trace[];
@@ -1635,33 +1695,33 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
   row('8 coins only from the six sources of 2.3 (cash changes not booked, every trace)', 'hard', '0', `${ubAll}${ub.count ? ` (active: ${ub.count}, ${fmt(ub.amount)} c)` : ''}`, ubAll === 0);
   const src10 = coinsBySource(A, t0, t0 + 600);
   const inc10 = income(A, t0, t0 + 600);
-  row('8 tickets / all coins, minutes 0-10', 'aim', '≥ 60 %', fmt(((src10.ticket ?? 0) / inc10) * 100) + ' %', (src10.ticket ?? 0) / inc10 >= 0.6);
+  row('8 tickets / all coins, minutes 0-10', 'aim', '≥ 60 %', fmt(((src10.ticket ?? 0) / inc10) * 100) + ' %', (src10.ticket ?? 0) / inc10 >= 0.6, (src10.ticket ?? 0) / inc10, 0.6, null);
   for (const X of [10, 60, 180]) {
     const s = shareAt(A, X * 60);
-    row(`8 tickets / all coins at minute ${X} (± 5 min)`, 'aim', '≥ 60 %', fmt(s.ticket * 100) + ' %', s.ticket >= 0.6);
+    row(`8 tickets / all coins at minute ${X} (± 5 min)`, 'aim', '≥ 60 %', fmt(s.ticket * 100) + ' %', s.ticket >= 0.6, s.ticket, 0.6, null);
   }
   for (const [X, lo, hi] of [[10, 0.08, 0.25], [30, 0.2, 0.35], [60, 0.2, 0.35], [180, 0.2, 0.35]] as const) {
     const s = shareAt(A, X * 60);
-    row(`8 minder share at minute ${X} (± 5 min)`, 'aim', `${lo * 100} to ${hi * 100} %`, fmt(s.minder * 100) + ' %', within(s.minder, lo, hi));
+    row(`8 minder share at minute ${X} (± 5 min)`, 'aim', `${lo * 100} to ${hi * 100} %`, fmt(s.minder * 100) + ' %', within(s.minder, lo, hi), s.minder, lo, hi);
   }
   const gs = giftShare(A);
-  row('8 gift coins / coins of hours 0-3 (M24)', 'aim', '≤ 15 %', fmt(gs.coinShare * 100) + ' %', gs.coinShare <= 0.15);
-  row('8 gift boxes an hour, hours 0-3 (M24)', 'aim', '6 to 12', fmt(gs.boxesPerHour), within(gs.boxesPerHour, 6, 12));
+  row('8 gift coins / coins of hours 0-3 (M24)', 'aim', '≤ 15 %', fmt(gs.coinShare * 100) + ' %', gs.coinShare <= 0.15, gs.coinShare, null, 0.15);
+  row('8 gift boxes an hour, hours 0-3 (M24)', 'aim', '6 to 12', fmt(gs.boxesPerHour), within(gs.boxesPerHour, 6, 12), gs.boxesPerHour, 6, 12);
   // ---- gate 9 (hard: cross-check; aim: the band)
   const aw = awayRatios(A);
   const crossBad = aw.filter((x) => !x.cross);
   row('9 closed form = event stepping (minder sales, offsets, shelves where comparable)', 'hard', 'every probe', crossBad.length ? `${crossBad.length} of ${aw.length} differ: ${crossBad[0].detail.slice(0, 2).join('; ')}` : `${aw.length} probes agree`, crossBad.length === 0);
-  for (const x of aw) row(`9 1 h away with the ad / 1 h of play at minute ${fmt(min(x.t), 0)}${x.late ? ' (Late Hours)' : ''}`, 'aim', '0.25 to 0.6', fmt(x.ratio, 3), within(x.ratio, 0.25, 0.6));
+  for (const x of aw) row(`9 1 h away with the ad / 1 h of play at minute ${fmt(min(x.t), 0)}${x.late ? ' (Late Hours)' : ''}`, 'aim', '0.25 to 0.6', fmt(x.ratio, 3), within(x.ratio, 0.25, 0.6), x.ratio, 0.25, 0.6);
   // ---- gate 10 (aims, M25)
   const seasons = A.seasons;
   const s1 = seasons.find((s) => s.season === 0)?.festival ?? null;
-  row('10 season 1 Festival filled, active (min)', 'aim', '100 to 160', s1 === null ? 'never' : fmt(min(s1)), s1 !== null && within(min(s1), 100, 160));
+  row('10 season 1 Festival filled, active (min)', 'aim', '100 to 160', s1 === null ? 'never' : fmt(min(s1)), s1 !== null && within(min(s1), 100, 160), s1 === null ? 1e9 : min(s1), 100, 160);
   const s2 = seasons.find((s) => s.season === 1);
   if (s1 !== null && s2) {
     const n1 = seasons[0].stalls[4];
     const n2 = s2.stalls[4];
-    row('10 season 2 Noodles / season 1 Noodles', 'aim', '≤ 0.6', n1 && n2 !== null ? fmt(n2 / n1, 2) : 'never', !!n1 && n2 !== null && n2 / n1 <= 0.6);
-    row('10 season 2 Festival / season 1 Festival (Puffs open)', 'aim', '0.8 to 1.1', s2.festival !== null ? `${fmt(s2.festival / s1, 2)}${s2.stalls[5] === null ? ' (Puffs never opened)' : ''}` : 'never', s2.festival !== null && s2.stalls[5] !== null && within(s2.festival / s1, 0.8, 1.1));
+    row('10 season 2 Noodles / season 1 Noodles', 'aim', '≤ 0.6', n1 && n2 !== null ? fmt(n2 / n1, 2) : 'never', !!n1 && n2 !== null && n2 / n1 <= 0.6, n1 && n2 !== null ? n2 / n1 : null, null, 0.6);
+    row('10 season 2 Festival / season 1 Festival (Puffs open)', 'aim', '0.8 to 1.1', s2.festival !== null ? `${fmt(s2.festival / s1, 2)}${s2.stalls[5] === null ? ' (Puffs never opened)' : ''}` : 'never', s2.festival !== null && s2.stalls[5] !== null && within(s2.festival / s1, 0.8, 1.1), s2.festival !== null ? s2.festival / s1 : null, 0.8, 1.1);
     const later = seasons.filter((s) => s.season >= 2 && s.season <= 9);
     if (later.length) {
       const bad = later.filter((s, i) => s.festival === null || !within(s.festival / s1, 0.5, 0.9) || (i > 0 && later[i - 1].festival !== null && s.festival > 1.1 * (later[i - 1].festival as number)));
@@ -1704,7 +1764,7 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
   // ---- gate 15 (aim)
   if (all.lazy) {
     const ratio = income(all.lazy, all.lazy.t0, all.lazy.t0 + 3600) / Math.max(1e-9, income(A, t0, t0 + 3600));
-    row('15 lazy bot / active bot, hour 1', 'aim', '0.4 to 0.7', fmt(ratio, 3), within(ratio, 0.4, 0.7));
+    row('15 lazy bot / active bot, hour 1', 'aim', '0.4 to 0.7', fmt(ratio, 3), within(ratio, 0.4, 0.7), ratio, 0.4, 0.7);
   }
   // ---- reported (8.4 soft)
   row('report: Not tonight use (share of tickets)', 'report', '≤ 10 %', fmt((A.notTonights / Math.max(1, A.tickets.length)) * 100) + ' %', true);

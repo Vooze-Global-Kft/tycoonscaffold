@@ -128,6 +128,16 @@ export function saleInterval(cfg: MergeConfig, mods: Pick<Mods, 'minderIntervalM
   return cfg.merge.minders.interval * mods.minderIntervalMult;
 }
 
+/**
+ * The Parade clock restarted at game clock `clock` (2.7: "the clock restarts when it is filled or
+ * sent off"): `paradeAt` = season clock now + the Parade interval (with lantern 5 or Market day).
+ * The one helper for every restart: META's `onTicketPaid` after a paid gold ticket, MECHANICS's
+ * `notTonight` when the gold ticket is sent off.
+ */
+export function restartParade(cfg: MergeConfig, m: MergeState, clock: number): MergeState {
+  return { ...m, paradeAt: clock - m.seasonStartedAt + currentMods(cfg, m).paradeEvery };
+}
+
 /** What the Basket pays for `good` now: roundCoins(basketShare × value) (2.5, M19). */
 export function basketPrice(cfg: MergeConfig, g: MergeGame, good: Pick<TicketLine, 'c' | 'k'>): number {
   const mods = currentMods(cfg, g.merge);

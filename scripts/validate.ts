@@ -8,7 +8,8 @@
  *                                       about 3 to 6 minutes, and fails on every hard section 8 target
  *                                       any seed misses: Decisions 45 and 62)
  *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
- *   (a merge game: no bot yet, a warning says so; market-design.md Decision M1)
+ *   (a merge game: its bot, scripts/content/merge-bot.ts, on the same five seeds in parallel: every missed
+ *   hard target of Decision M2 an error, every missed aim a warning; market-design.md 8.1 step 6)
  *
  * For every pair of games that both have sounds it also runs the sound similarity check
  * (python3 scripts/audio/compare.py, spec 6.1, Decision 24: fails when a shared key's joint score is
@@ -28,6 +29,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { lintGameConfig } from '../src/config/lint';
+import { acrossSeeds } from '../src/engine/merge/bot';
 import { PORTRAIT_MODES } from '../src/config/artIcons';
 import { GameConfigSchema, type GameConfig } from '../src/config/schema';
 import { args } from './lib/cli';
@@ -113,6 +115,55 @@ function pacing(id: string, hours: number, extra: string[] = [], timeout = 120_0
     return line ? JSON.parse(line) : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * The pacing of a merge game (market-design.md 8.1 step 6, Decision M2): the merge bot
+ * (scripts/content/merge-bot.ts, src/engine/merge/bot.ts) plays every bot of 8.2 on each of
+ * PACING_SEEDS in its own process (12 h with season closes, stopping at 10 seasons, the passive bot 21
+ * days, the adversaries, the determinism check). Every missed hard target of M2 is an error, every
+ * missed aim a warning (until the lead turns the aims into guards, M2), and the across-seed aims
+ * (M3 at the median seed, M25's slowest season 1 / fastest) too. While game.json is still the
+ * skeleton's placeholder (its text says PLACEHOLDER: build-night.py has not written it, and it writes
+ * only after every hard gate passes) a missed hard target is a warning, and a run that stops at a rule
+ * not built yet (NotBuiltError) is a warning naming the rule.
+ */
+type MergeSeed = { seed?: number; rows?: { name: string; kind: string; aim: string; value: unknown; ok: boolean }[]; summary?: { useful: number[]; season1: number | null }; notBuilt?: string; error?: string; crashed?: boolean; traces?: ({ kind: string; unbooked: { count: number } } | null)[] };
+function mergePacing(id: string, problems: string[], warnings: string[]): void {
+  const placeholder = /PLACEHOLDER/.test(fs.readFileSync(path.join(games.gameDir(id), 'game.json'), 'utf8'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `validate-merge-${id}-`));
+  const q = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`;
+  const bot = path.join(__dirname, 'content', 'merge-bot.ts');
+  const cmd = PACING_SEEDS.map((seed) => [process.execPath, require.resolve('tsx/cli'), bot, '--game', id, '--seed', String(seed), '--bot', 'all', '--hours', '12', '--seasons', '10', '--json'].map(q).join(' ') + ` > ${q(path.join(dir, `${seed}.out`))} 2>&1 &`).join('\n');
+  spawnSync('bash', ['-c', `${cmd}\nwait`], { cwd: games.ROOT, encoding: 'utf8', timeout: 600_000, env: { ...process.env, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=2000'].filter(Boolean).join(' ') } });
+  const results: MergeSeed[] = [];
+  for (const seed of PACING_SEEDS) {
+    let r: MergeSeed | null = null;
+    try {
+      const line = fs.readFileSync(path.join(dir, `${seed}.out`), 'utf8').trim().split('\n').pop();
+      r = line ? (JSON.parse(line) as MergeSeed) : null;
+    } catch {
+      r = null;
+    }
+    if (!r) problems.push(`merge pacing, seed ${seed}: the bot did not finish within 10 min (npx tsx scripts/content/merge-bot.ts --seed ${seed} --bot all to see why)`);
+    else if (r.notBuilt) warnings.push(`merge pacing, seed ${seed}: ${r.error}; the section 8 targets are not checked`);
+    else if (r.crashed || !r.rows) problems.push(`merge pacing, seed ${seed}: the bot crashed: ${String(r.error).split('\n').slice(0, 3).join(' ')}`);
+    else {
+      results.push(r);
+      for (const row of r.rows) {
+        if (row.ok || row.kind === 'report') continue;
+        const msg = `merge pacing (section 8, ${row.kind === 'hard' ? 'hard, M2' : 'aim, M2'}), seed ${seed}: ${row.name}: ${row.value} (aim ${row.aim})`;
+        if (row.kind === 'hard' && !placeholder) problems.push(msg);
+        else warnings.push(row.kind === 'hard' ? `${msg} [hard; a warning only while game.json is the placeholder]` : msg);
+      }
+    }
+  }
+  fs.rmSync(dir, { recursive: true, force: true });
+  if (results.length === PACING_SEEDS.length) {
+    for (const row of acrossSeeds(results.map((r) => ({ seed: r.seed ?? 0, useful: r.summary?.useful ?? [], season1: r.summary?.season1 ?? null })))) {
+      if (!row.ok) warnings.push(`merge pacing (section 8, aim, across the seeds): ${row.name}: ${row.value} (aim ${row.aim})`);
+    }
   }
 }
 
@@ -331,7 +382,7 @@ for (const id of ids) {
   // 10-season run, every missed hard target an error). Until the bot exists (Decision M1) validate runs
   // without one and says so; the numbers package replaces this branch with the bot's run. ---
   else if (g.mode === 'merge') {
-    if (runSim) warnings.push('placeholder: no merge bot yet (src/engine/merge/bot.ts, the numbers package): the pacing targets of section 8 are not checked');
+    if (runSim && problems.length === 0) mergePacing(id, problems, warnings);
   }
   // --- pacing: the same bot as `npm run simulate`, two simulated hours ---
   else if (runSim && problems.length === 0) {

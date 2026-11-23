@@ -8,26 +8,41 @@ never recipes_haul.py (Orbit Haulers), never packs.py (the timbres those two gam
 on). Every instrument below is built here from dsp primitives (noise, filters, envelopes,
 additive voices):
 
-  steam()          filtered-noise puff: a band-pass whose centre jumps up and settles, with a
-                   fine hiss on top and a soft low "whoomph" under it (the merges, the upgrade)
+  pff()            a puff of steam's breath: noise through two vowel-like resonances (f1 0.4 to
+                   1.1 kHz, f2 1.7 to 3.2 kHz) with a deep valley between them, not one flat band
+  lid_clink()      a clay steamer lid knocked: a 2 to 3 ms 'tok' of noise through two wide clay
+                   resonances (the same lid for every tier: a colour, not a note)
+  rattle_gate()    the lid rattling on its seat: a chuff gate, about 18 a second and slowing
+  sizzle()         sparse crackle grains, water on a hot lid
+  merge_puff()     the merges: lid tok + pff + low whoomph, chuffed by the rattle, then a sizzle
+  stickslip()      friction's stick-slip (an amplitude gate, 20 to 110 slips a second): what makes
+                   cloth and paper read as rubbing rather than as a whoosh
+  cloth_rub()      cloth on cloth: low noise (300 to 1,500 Hz, fixed band) with a deep stick-slip
   crinkle()        paper: Poisson clicks of tiny noise grains, band-limited (crinkle, flutter,
-                   crumple, unfolding, the basket)
-  paper_slide()    paper sliding on paper: a band of noise following a path, with fibre grain
+                   crumple, unfolding, the basket); crinkle_burst() one short dense burst of them
+  paper_slide()    paper sliding on paper: a dense stream of fibre micro-clicks in two FIXED bands
+                   with a stick-slip; a rising slide fades the upper band in (no swept filter)
   paper_tick()     a crisp paper tick (a pen tick on a ticket)
   felt_stamp()     a felt stamp: a dull pressed thud with a fibrous pat, no ring
   clay_click()     one clay coin: a few strongly damped inharmonic modes, no ring
-  cloth()          cloth sliding or flapping: friction-grained band noise
+  cloth_flap()     one snap of an awning
   charcoal()       tiny charcoal crackle: a few sparse pops and an ember hiss
   hand_drum()      a small hand drum: membrane modes (circular-membrane ratios) with a palm slap
   reed()           a low free reed: additive, formant-shaped, breathy, slow vibrato
   bowed()          a bowed pad voice: saw-like additive spectrum, bow noise, slow swell
   temple_bell()    the one bell (the Festival's only): a struck modal bell
-  wind(), flame(), brush(), crowd()  the street's air
+  wind(), flame(), crowd()  the street's air
+
+There is no swept band-pass 'whoosh' in this pack (the warm pack's whoosh is a band-pass of white
+noise along a path; the first version of this file had one, and its merges, moves and sheets
+measured as near copies of the other games' whooshes on compare.py's timbre leg). Every noise sound
+here is shaped instead by formants, stick-slip, chuffs or grains.
 
 Rules held to (6.1):
-  - no pitched ladder for the merge tiers: merge_1 .. merge_8 grow in size (length, body, number
-    of overlapping puffs) and brightness (filter centre, hiss), never up a scale; the filter Q
-    stays under 1.1 so no puff has a clear pitch;
+  - no pitched ladder for the merge tiers: merge_1 .. merge_8 grow in size (length, the number of
+    rattles, the low body, the mastering level) and brightness (the formants open, the upper
+    formant and the sizzle grow), never up a scale; no part of a merge has a pitch that moves from
+    tier to tier;
   - no plucked strings, wood knocks, register, marimba, pulse blips, radio squelch;
   - no bell on any money moment (ticket_filled, coins, basket_sell carry none); the bell is only
     in festival_done.
@@ -132,27 +147,6 @@ def decay(n, attack_ms, tau):
 # instruments (used here and by night_music.py)
 # ===========================================================================
 
-def steam(rng, dur, fc_pts, q=0.8, attack_ms=6.0, tau=None, body=0.35, hiss=0.3, hiss_hp=2600.0, turb=0.45,
-          tail_tau=None, tail=0.0):
-    """A puff of steam. Band-passed noise whose centre follows fc_pts [(s, Hz)], a fine
-    high hiss (the escaping jet), turbulence (random flutter), and a soft low whoomph.
-    The envelope is a fast 'pff' (tau) plus, with tail > 0, a slower hissing tail (tail_tau)."""
-    n = ns(dur)
-    t = np.arange(n) / SR
-    tau = tau if tau is not None else dur * 0.3
-    shape = (1.0 - tail) * np.exp(-t / tau)
-    if tail:
-        shape = shape + tail * np.exp(-t / (tail_tau or dur * 0.4))
-    env = rcos_in(n, attack_ms) * shape * rcos_out(n, min(30.0, dur * 250.0))
-    fc = path_env(fc_pts, n, log=True) * np.exp(0.22 * (flutter(rng, n, 25.0, 1.0) - 1.0))     # the centre wanders: no pitch
-    core = svf(white(n, rng), fc, q, 'bp')
-    jet = band(white(n, rng), hiss_hp, 5600.0, 2)
-    turbulence = flutter(rng, n, 90.0, turb)
-    low = lowpass(white(n, rng), 320.0, 2) * decay(n, attack_ms * 2.0, tau * 1.3)
-    y = 1.6 * top(core) * turbulence + hiss * jet * turbulence + body * 3.0 * low
-    return y * env
-
-
 def grains(rng, dur, rate, glen_ms=(0.25, 1.6), sigma=0.9, density=None):
     """Poisson clicks: each a tiny noise grain with a lognormal level. density [(s, 0..1)] thins
     the stream over time. Unfiltered: a raw crackle for crinkle(), charcoal() and the basket."""
@@ -215,7 +209,7 @@ def paper_slide(rng, dur, fc_pts, q=1.0, env=None, grain=0.55, slip_hz=38.0):
     hi_b = band(g, hi_f / w, min(hi_f * w, 5600.0), 2)
     ramp = np.linspace(0.0, 1.0, n) if rising else np.linspace(1.0, 0.0, n)
     y = (1.0 - 0.6 * ramp) * lo_b + (0.25 + 0.75 * ramp) * hi_b
-    y = y / (np.max(np.abs(y)) + 1e-12)
+    y = soft(y, 2.5)                                         # round the grain peaks so the slide reaches its loudness
     y = y * stickslip(rng, n, slip_hz, grain)
     if env is None:
         env = np.sin(np.pi * np.arange(n) / n) ** 1.5
@@ -252,23 +246,24 @@ def clay_click(rng, f0, vel=1.0):
     return vel * (y + 0.6 * grit)
 
 
-def cloth(rng, dur, fc_pts, q=0.7, grain_hz=70.0, grain=0.7, env=None):
-    """Cloth: pink-ish noise in a wide band following fc_pts, with a slow friction grain."""
-    n = ns(dur)
-    fc = path_env(fc_pts, n, log=True)
-    x = colored(n, rng, -2.0)
-    y = svf(x, fc, q, 'bp') * flutter(rng, n, grain_hz, grain)
-    if env is None:
-        env = np.sin(np.pi * np.arange(n) / n) ** 1.2
-    return 1.3 * y * env
-
-
 def cloth_flap(rng, vel=1.0, fc=900.0):
     """One snap of an awning in the wind: a fast attack band of noise, 30 ms."""
     n = ns(0.06)
     y = band(colored(n, rng, -1.5), fc * 0.55, fc * 2.2, 2) * decay(n, 0.8, 0.012)
     low = lowpass(white(n, rng), 300.0, 2) * decay(n, 1.5, 0.02)
     return vel * (2.0 * y + 1.5 * low)
+
+
+def cloth_rub(rng, dur, lo, hi, slip_hz=30.0, depth=0.85, env=None, accel=0.3):
+    """Cloth rubbing on cloth: brown-ish noise in a fixed low band (lo..hi, inside 300 to 1,500 Hz)
+    chopped by a deep stick-slip at slip_hz (20 to 40 a second), slowing as the rub ends. No sweep."""
+    n = ns(dur)
+    y = band(colored(n, rng, -2.0), lo, hi, 2)
+    y = y / (np.max(np.abs(y)) + 1e-12)
+    y = y * stickslip(rng, n, slip_hz, depth, accel=accel)
+    if env is None:
+        env = points([(0, 0.0), (0.008, 1.0), (dur * 0.45, 0.8), (dur, 0.0)], n)
+    return 1.6 * y * env
 
 
 def charcoal(rng, dur=0.08, pops=4, vel=1.0, ember=0.12):
@@ -403,16 +398,6 @@ def flame(rng, dur=0.5, vel=1.0):
     return vel * (1.6 * fw * env + 0.45 * burn + crack * (t > 0.05))
 
 
-def brush(rng, dur=0.2, vel=1.0, up=False):
-    """A brush stroke on paper: noise through a band that slides along the stroke, with a fast
-    bristle grain; pressure swells and lifts."""
-    n = ns(dur)
-    pts = [(0, 1500.0), (dur, 3600.0)] if up else [(0, 3200.0), (dur, 1700.0)]
-    y = top(svf(white(n, rng), path_env(pts, n, log=True), 0.9, 'bp')) * flutter(rng, n, 140.0, 0.8)
-    env = points([(0, 0.55), (0.012, 1.0), (dur * 0.6, 0.8), (dur, 0.0)], n)
-    return vel * 2.0 * y * env
-
-
 def crowd(rng, dur, voices=10, sr_div=4, near=0.5, rate=1.0):
     """A distant crowd: `voices` talkers, each a noise source through two vowel formants that
     change every syllable, gated in syllables (0.1 to 0.3 s) and phrases (1 to 3 s), then the
@@ -488,17 +473,6 @@ def crowd(rng, dur, voices=10, sr_div=4, near=0.5, rate=1.0):
     return L / pk, R / pk
 
 
-def echo(x, delay, fb, taps=2, lp=2600.0):
-    """A soft echo off the stall fronts: `taps` repeats, each darker."""
-    m = Mix()
-    m.add(x)
-    y = x
-    for k in range(1, taps + 1):
-        y = lowpass(y, lp, 2)
-        m.add(y * fb ** k, delay * k)
-    return m.out()
-
-
 # ===========================================================================
 # the sounds of 6.2
 # ===========================================================================
@@ -562,26 +536,9 @@ def rattle_gate(rng, n, rate, depth, dec=0.008, count=None):
     return (1.0 - depth) + depth * g
 
 
-def lid_rattle(rng, dur, rate):
-    """The lid's clay seat knocking at each chuff: a short clay 'tok' per rattle onset, each a little
-    softer, with a random colour (no two the same, no note)."""
-    n = ns(dur) + ns(0.03)
-    out = np.zeros(n)
-    for j, t in enumerate(rattle_times(rng, dur, rate)):
-        c = lid_clink(rng, 0.8 ** j, 0.3)
-        i = int(t * SR)
-        out[i:i + len(c)] += c[:n - i]
-    return out[:ns(dur)]
-
-
-# The merge ladder's constants. The whoomph levels (one per tier) and the formant growth were set by
-# measuring the mastered files (render_night.py --ladder), so that over the tiers that sound in play
-# (2 to 8; tier 1 cannot be made, so merge_1 is never played) the centroid rises at least 8 % a
-# tier, the span above -20 dB grows at least 15 % a tier, the energy under 300 Hz grows about
-# 1.3 dB a tier, and no tier puts more than 55 % of its energy in 2 to 5 kHz.
 MP = dict(clink=0.25, f1=400.0, f1g=1.165, f2=1700.0, f2g=1.105, q1=2.2, q2=2.6, bal0=0.06, bald=0.085, tau=0.6,
           wtab=(0.06, 0.1471, 0.66, 1.2687, 1.5797, 2.45, 3.15, 3.2), sz0=0.15, szdb=4.0, szg=1.22, szd0=0.04, szr=150.0,
-          szrg=1.15, szs=0.3, rhz=18.0, rdec=0.012, szlo=2400.0, szhi=5200.0, drive=2.5)
+          szrg=1.15, szs=0.3, rhz=18.0, rdec=0.012, szlo=2400.0, szhi=4800.0, drive=2.5)
 
 
 def merge_puff(rng, k):
@@ -637,12 +594,14 @@ for _k in range(1, 9):
 
 @night_recipe('lucky', length=0.46)
 def lucky(c):
-    """A puff like a tier-4 merge, then a second, brighter puff 90 ms later with a paper flutter
-    (a crinkle stream gated at about 22 Hz) lifting through it."""
+    """A puff like a tier-4 merge, then a second, brighter puff 90 ms later (the two formants high,
+    900 Hz and 3 kHz, its lid rattling quicker, 26 a second) with a paper flutter (a crinkle stream
+    gated at about 22 Hz) lifting through it."""
     m = Mix()
     m.add(merge_puff(c.sub('a'), 4))
-    m.add(steam(c.sub('b'), 0.26, [(0, 2400.0), (0.05, 4200.0), (0.26, 3000.0)], q=0.9, attack_ms=4.0, tau=0.09,
-                body=0.1, hiss=0.7, hiss_hp=3200.0, turb=0.5), 0.09, 0.9)
+    nb = ns(0.26)
+    bright = pff(c.sub('b'), 0.26, 900.0, 3000.0, attack_ms=4.0, tau=0.09, bal=0.7)
+    m.add(soft(bright * rattle_gate(c.sub('g'), nb, 26.0, 1.0, 0.01), 2.0), 0.09, 0.8)
     n = ns(0.3)
     gate = (0.5 + 0.5 * np.sign(np.sin(TAU * 22.0 * np.arange(n) / SR))) * np.sin(np.pi * np.arange(n) / n)
     m.add(0.5 * crinkle(c.sub('f'), 0.3, 900.0, 2200.0, 5600.0) * lowpass(gate, 200.0, 2), 0.1)
@@ -651,18 +610,6 @@ def lucky(c):
 
 
 # --- moving goods ---------------------------------------------------------------------------------
-
-def cloth_rub(rng, dur, lo, hi, slip_hz=30.0, depth=0.85, env=None, accel=0.3):
-    """Cloth rubbing on cloth: brown-ish noise in a fixed low band (lo..hi, inside 300 to 1,500 Hz)
-    chopped by a deep stick-slip at slip_hz (20 to 40 a second), slowing as the rub ends. No sweep."""
-    n = ns(dur)
-    y = band(colored(n, rng, -2.0), lo, hi, 2)
-    y = y / (np.max(np.abs(y)) + 1e-12)
-    y = y * stickslip(rng, n, slip_hz, depth, accel=accel)
-    if env is None:
-        env = points([(0, 0.0), (0.008, 1.0), (dur * 0.45, 0.8), (dur, 0.0)], n)
-    return 1.6 * y * env
-
 
 @night_recipe('move', length=0.14, loud_db=FREQUENT)
 def move(c):
@@ -685,8 +632,8 @@ def swap(c):
 
 @night_recipe('return', length=0.1, loud_db=FREQUENT)
 def return_(c):
-    """A dull paper tap (the good goes back where it was; also every button press, through the
-    shared ui_tap): a fingertip on a paper ticket. A soft low pat (noise 300 to 1,100 Hz, 14 ms) and,
+    """A dull paper tap (the good goes back where it was; meant also for every button press, through
+    the shared ui_tap: requested of soundKeys.ts): a fingertip on a paper ticket. A soft low pat (noise 300 to 1,100 Hz, 14 ms) and,
     12 ms later, a few fibre grains of the paper giving under it. Nothing above 3 kHz to speak of."""
     c.accent(0.0)
     m = Mix()
@@ -746,7 +693,7 @@ def coins(c):
     times = [0.0, 0.035, 0.07, 0.12, 0.175]
     for j, t in enumerate(times):
         m.add(clay_click(rng, rng.uniform(1700.0, 3100.0), (1.0, 0.7, 0.85, 0.6, 0.5)[j]), t + rng.uniform(0, 0.006))
-    m.add(0.9 * cloth(c.sub('pouch'), 0.16, [(0, 700.0), (0.16, 1300.0)], q=0.7, grain_hz=60.0), 0.16)
+    m.add(0.9 * cloth_rub(c.sub('pouch'), 0.16, 600.0, 1300.0, 28.0, 0.8), 0.16)
     m.add(0.5 * felt_stamp(c.sub('thump'), 1.0, 0.7), 0.2)
     c.accent(0.0)
     return m.out()
@@ -824,8 +771,8 @@ def stall_open(c):
     m = Mix()
     for t, v, fc in ((0.0, 0.7, 1100.0), (0.09, 0.8, 950.0), (0.2, 1.0, 800.0)):
         m.add(cloth_flap(c.sub('f%d' % int(t * 100)), v, fc), t)
-    m.add(0.7 * cloth(c.sub('settle'), 0.36, [(0, 1400.0), (0.36, 800.0)], q=0.6, grain_hz=25.0,
-                      env=points([(0, 0.0), (0.05, 1.0), (0.36, 0.0)], ns(0.36))), 0.22)
+    m.add(0.7 * cloth_rub(c.sub('settle'), 0.36, 700.0, 1400.0, 20.0, 0.75,
+                          env=points([(0, 0.0), (0.05, 1.0), (0.36, 0.0)], ns(0.36))), 0.22)
     c.accent(0.0, 0.2)
     return m.out()
 
@@ -1055,11 +1002,11 @@ def ui_denied(c):
 # ===========================================================================
 
 EVENTS = {
-    'merge': (0.5, 60, ['light'], 'a steam puff growing in size and brightness with the tier (never up a scale); eight files, tier 1 to 8', 3),
+    'merge': (0.5, 60, ['light'], 'a steamer lid lifted by a puff of steam: a clay tok, a two-formant pff let out in chuffs as the lid rattles (tier k rattles k times), a sizzle; grows in size and brightness with the tier, never up a scale; eight files, tier 1 to 8', 3),
     'lucky': (0.6, 120, ['light'], 'a second, brighter puff with a paper flutter', 2),
-    'move': (0.35, 80, None, 'a cloth slide', 2),
-    'swap': (0.38, 80, None, 'two cloth slides crossing', 2),
-    'return': (0.35, 80, None, 'a dull paper tap', 2),
+    'move': (0.35, 80, None, 'a cloth rub (low cloth noise with a stick-slip)', 2),
+    'swap': (0.38, 80, None, 'two cloth rubs crossing', 2),
+    'return': (0.35, 80, None, 'a dull paper tap (meant for ui_tap too: every button press)', 2),
     'drop': (0.22, 300, None, 'a tiny charcoal crackle, quiet', 2),
     'line_fill': (0.45, 60, ['light'], 'a paper tick', 2),
     'ticket_filled': (0.7, 120, ['medium'], 'a felt stamp and a paper fold', 2),
@@ -1068,18 +1015,18 @@ EVENTS = {
     'undo': (0.5, 150, ['light'], 'the basket rustle reversed', 1),
     'shutter_open': (0.6, None, ['medium'], 'a cane shutter rolling up', 1),
     'stall_open': (0.7, None, ['medium'], 'an awning flapping open', 1),
-    'upgrade': (0.5, 100, ['light'], 'a rising steam hiss', 3),
+    'upgrade': (0.5, 100, ['light'], 'a rising steam hiss: a steamer coming to the boil, its lid rattling faster', 3),
     'minder_hire': (0.6, None, ['medium'], 'a cloth bow', 1),
     'discovery': (0.6, 200, ['light', 160, 'success'], 'a brush stroke and a stamp', 1),
     'lantern_lit': (0.65, None, ['light', 220, 'success'], 'a paper rustle and a flame catching', 1),
     'parade_arrive': (0.6, None, None, 'a small hand drum roll', 1),
     'giftbox_open': (0.6, None, ['light'], 'paper unfolding', 1),
-    'slot_reveal': (0.55, 120, ['light'], 'a crinkle per slot', 3),
+    'slot_reveal': (0.55, 120, ['light'], 'a crinkle per slot (a felt pat and a short crinkle)', 3),
     'festival_line': (0.65, None, ['medium'], 'a low reed note', 1),
     'festival_done': (0.8, None, ['success'], 'the one bell and a lantern swell', 1),
     'season_close': (0.85, None, ['light', 300, 'medium', 600, 'success'], 'a reed swell and wind (3 pulses)', 1),
-    'ui_open': (0.4, None, None, 'a paper slide out', 1),
-    'ui_close': (0.35, None, None, 'a paper slide back', 1),
+    'ui_open': (0.4, None, None, 'a sheet unfolded: a fold click and three crinkle bursts, the first the loudest', 1),
+    'ui_close': (0.35, None, None, 'the sheet folded away: two soft crinkles and the fold pressed shut', 1),
     'ui_denied': (0.5, 300, ['light'], 'a soft crumple', 1),
     'music_main': (0.35, None, None, 'the spring loop "Lantern Dusk": 90 s at 72 bpm, D dorian; low reed drone, bowed pad, hand drum, a distant crowd', 1),
     'music_summer': (0.35, None, None, 'the summer loop "Firefly Lane": 90 s at 72 bpm, G lydian; reed drone and reed song, bowed pad, a triplet hand drum, a nearer crowd, fireflies', 1),
@@ -1105,6 +1052,6 @@ def key_of(stem):
 # catalogue's minimum interval), measured by render_night.py --rows.
 ROW_KEYS = {
     'merge_1': 60, 'merge_2': 60, 'merge_3': 60, 'merge_4': 60, 'merge_5': 60, 'merge_6': 60, 'merge_7': 60,
-    'merge_8': 60, 'drop': 300, 'move': 80, 'swap': 80, 'return': 80, 'line_fill': 60, 'coins': 150, 'upgrade': 100,
-    'slot_reveal': 120,
+    'merge_8': 60, 'lucky': 120, 'drop': 300, 'move': 80, 'swap': 80, 'return': 80, 'line_fill': 60, 'coins': 150,
+    'upgrade': 100, 'slot_reveal': 120,
 }

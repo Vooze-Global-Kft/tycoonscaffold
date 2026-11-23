@@ -20,7 +20,7 @@ import { noteMade } from './drop';
 import { paradeOut, seatTicket } from './events';
 import { checkLanterns, currentMods } from './lanterns';
 import { drawParade } from './draw';
-import { baseTier, EPS, MAX_CASH, maxPopAt, mergeParams, saleInterval, streamValue, value } from './params';
+import { baseTier, EPS, MAX_CASH, maxPopAt, mergeParams, restartParade, saleInterval, streamValue, value } from './params';
 import { CHAINS, TIERS, type CoinSource, type Good, type MergeAdKind, type MergeConfig, type MergeEvent, type MergeGame, type MergeState } from './types';
 
 /**
@@ -230,11 +230,10 @@ export function notTonight(cfg: MergeConfig, g: MergeGame, counter: number, even
     if (!placed) return g;
     mm = placed.m;
   }
-  const mods = currentMods(cfg, m);
+  if (ct.ticket.gold) mm = restartParade(cfg, mm, t);
   mm = {
     ...touched(mm, t),
     counters: mm.counters.map((x, i) => (i === counter ? { ...x, ticket: null, refillAt: t + cfg.merge.tickets.refillDelay, blockedAt: null, notTonightAt: t + cfg.merge.tickets.notTonightCooldown } : x)),
-    paradeAt: ct.ticket.gold ? t - m.seasonStartedAt + mods.paradeEvery : mm.paradeAt,
     mstats: { ...mm.mstats, notTonights: mm.mstats.notTonights + 1 },
   };
   events?.push({ type: 'notTonight', counter });

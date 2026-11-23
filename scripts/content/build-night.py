@@ -1,0 +1,431 @@
+#!/usr/bin/env python3
+"""Builds games/night-market/game.json: Lantern Row, a MERGE game (docs/design/market-design.md).
+
+    python3 scripts/content/build-night.py            every gate of 8.3 on the five seeds; writes game.json
+                                                     ONLY when every hard gate (M2) passes on every seed
+    python3 scripts/content/build-night.py --check    the same, writes nothing
+    python3 scripts/content/build-night.py --tune [--budget 40] [--save] [--act 1.5]
+                                                     the tuner: a search inside RANGES, knob by knob in the
+                                                     order of 8.4 (with M27), toward the aims; --save writes
+                                                     the result into TUNED below
+    python3 scripts/content/build-night.py --table    the worked tables of 2.12 and 3.3 and the season times
+                                                     of 8.5 (seasons 1 to 10, active and passive, five seeds)
+    options: --act 1.5 (seconds per bot action; the lead wants every conclusion at 1.5 and at 2.5)
+             --procs 5 (parallel bot processes)   --set path=value (an extra override, repeatable)
+             --hours 12 --seasons 10 --days 21 (the full run's length)
+
+This script is the only source of the game's numbers (AGENTS.md: never hand-edit the table). The
+names and starting values are src/config/merge.content.ts (MERGE_STARTING_CONTENT, read through
+`npx tsx`); the tuned numbers are TUNED below (RANGES paths of src/config/schema.merge.ts); the
+listing is scripts/content/night-store.json (every field not starting with "_"; its "products"
+go to monetization.iap.products). Fields it does not own (app ids, ad units, assets, strings,
+characters) are kept from the existing game.json.
+
+The bot is scripts/content/merge-bot.ts (src/engine/merge/bot.ts): every bot of 8.2 with M6 playing
+the real rules. Coins enter only through the named sources on every trace (2.3; asserted here on
+every trace of every seed before anything is written).
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+GAME = os.path.join(ROOT, 'games/night-market/game.json')
+STORE = os.path.join(ROOT, 'scripts/content/night-store.json')
+BOT = os.path.join(ROOT, 'scripts/content/merge-bot.ts')
+SEEDS = [12345, 4, 99, 7, 2026]
+SOURCES = {'ticket', 'festival', 'gift', 'till', 'basket', 'away', 'undo', 'spend'}
+
+# ---------------------------------------------------------------- the tuned numbers
+# RANGES path -> value. Empty means the starting content as it is. `--tune --save` rewrites this block.
+# TUNED-BEGIN
+TUNED = {}
+# TUNED-END
+
+# ---------------------------------------------------------------- the knobs, in the order of 8.4 (with M27)
+# Each group: the gates (row-name prefixes) that call for it, and its knobs (RANGES paths). A knob is
+# moved only when RANGES has its path (the ranges are the rules package's: a missing one is reported,
+# never invented). T is not a knob (M3); N equals s (M25).
+KNOB_ORDER = [
+    ('opening: shutter and gear costs', ('1 ', 'M3'), ['board.shutterBase', 'board.shutterGrowth', 'costs.gearBase', 'costs.gearGrowth']),
+    ('stall windows: the stall table (M23)', ('2 ',), ['costs.stallOpen[0]', 'costs.stallOpen[1]', 'costs.stallOpen[2]', 'costs.stallOpen[3]', 'costs.stallOpen[4]']),
+    ('minder share: Q, then the minder growth', ('8 minder', '9 '), ['minders.interval', 'costs.minderGrowth', 'costs.minderBase']),
+    ('board full: lambda', ('5 ',), ['gear.looseCap']),
+    ('fill time: gamma, then W', ('3 ',), ['tickets.gamma', 'tickets.outputWindow']),
+    ('gift boxes (M24)', ('8 gift', '8 tickets'), ['gift.every', 'gift.coinPace']),
+    ('stall levels and value per action (M27)', ('7 ', '15 ', '6 '), ['costs.stallLevelBase', 'costs.stallLevelGrowth', 'tickets.stretch']),
+    ('seasons: the Festival purse, the familiar-faces base', ('10 ',), ['festivalPace', 'seasons.familiarBase']),
+    ('rerolling: the Not tonight cooldown', ('report: Not tonight',), ['tickets.notTonightCooldown']),
+]
+
+
+def arg(name, default=None):
+    if name in sys.argv:
+        i = sys.argv.index(name)
+        if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith('--'):
+            return sys.argv[i + 1]
+        return 'true'
+    return default
+
+
+def sets():
+    out = {}
+    for i, a in enumerate(sys.argv):
+        if a == '--set' and i + 1 < len(sys.argv):
+            k, v = sys.argv[i + 1].split('=', 1)
+            out[k] = json.loads(v)
+    return out
+
+
+def tsx(code):
+    """Runs a TypeScript snippet with tsx and returns its stdout (JSON)."""
+    r = subprocess.run(['npx', 'tsx', '-e', code], cwd=ROOT, capture_output=True, text=True, timeout=120)
+    if r.returncode != 0:
+        raise SystemExit('tsx failed:\n' + r.stderr[-2000:])
+    return json.loads(r.stdout.strip().splitlines()[-1])
+
+
+def starting_block():
+    return tsx("import { MERGE_STARTING_CONTENT } from './src/config/merge.content'; import { MergeSchema } from './src/config/schema.merge';"
+               "console.log(JSON.stringify(MergeSchema.parse(JSON.parse(JSON.stringify(MERGE_STARTING_CONTENT)))))")
+
+
+def ranges():
+    return {r['path']: r for r in tsx("import { RANGES } from './src/config/schema.merge'; console.log(JSON.stringify(RANGES))")}
+
+
+def path_parts(p):
+    return [int(x) if x.isdigit() else x for x in re.sub(r'\[(\d+)\]', r'.\1', p).split('.') if x != '']
+
+
+def get_at(obj, p):
+    for k in path_parts(p):
+        obj = obj[k]
+    return obj
+
+
+def set_at(obj, p, v):
+    parts = path_parts(p)
+    for k in parts[:-1]:
+        obj = obj[k]
+    obj[parts[-1]] = v
+
+
+def block_with(overrides):
+    b = starting_block()
+    for p, v in {**TUNED, **overrides}.items():
+        set_at(b, p, v)
+    return b
+
+
+# ---------------------------------------------------------------- running the bot
+
+def run_seed(seed, cfg_path, flags):
+    cmd = ['npx', 'tsx', BOT, '--seed', str(seed), '--json', '--config', cfg_path] + flags
+    env = dict(os.environ, NODE_OPTIONS=(os.environ.get('NODE_OPTIONS', '') + ' --max-old-space-size=2000').strip())
+    r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, env=env, timeout=3600)
+    line = (r.stdout.strip().splitlines() or [''])[-1]
+    try:
+        out = json.loads(line)
+    except json.JSONDecodeError:
+        out = {'crashed': True, 'error': (r.stderr or r.stdout)[-1500:]}
+    out['seed'] = seed
+    return out
+
+
+def run_seeds(block, flags, procs):
+    """The bot on the five seeds in parallel processes; returns their JSON lines in seed order."""
+    with tempfile.NamedTemporaryFile('w', suffix='.json', delete=False, dir=tempfile.gettempdir()) as f:
+        json.dump(block, f)
+        path = f.name
+    try:
+        with ThreadPoolExecutor(max_workers=procs) as ex:
+            return list(ex.map(lambda s: run_seed(s, path, flags), SEEDS))
+    finally:
+        os.unlink(path)
+
+
+def stopped(results):
+    """Seeds whose run did not finish (a rule not built yet, or a crash), as messages."""
+    out = []
+    for r in results:
+        if 'notBuilt' in r:
+            out.append('seed %d: %s' % (r['seed'], r['error']))
+        elif r.get('crashed') or 'rows' not in r:
+            out.append('seed %d: the bot crashed: %s' % (r['seed'], str(r.get('error', '?'))[-600:]))
+    return out
+
+
+def coin_assertion(results):
+    """2.3: coins enter only through the named sources, on every trace of every seed."""
+    bad = []
+    for r in results:
+        for t in r.get('traces', []):
+            if t is None:
+                continue
+            if t['unbooked']['count']:
+                bad.append('seed %d, %s bot: %d cash change(s) booked under no source (%.0f c)' % (r['seed'], t['kind'], t['unbooked']['count'], t['unbooked']['amount']))
+            extra = set(t['sources']) - SOURCES
+            if extra:
+                bad.append('seed %d, %s bot: coins from %s' % (r['seed'], t['kind'], ', '.join(sorted(extra))))
+    return bad
+
+
+def median(xs):
+    s = sorted(xs)
+    if not s:
+        return float('nan')
+    n = len(s)
+    return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+
+
+def across(results):
+    """The across-seed aims (M3 at the median seed, M25's slowest / fastest season 1)."""
+    rows = []
+    ok = [r for r in results if 'summary' in r]
+    if not ok:
+        return rows
+    mins = [median([r['summary']['useful'][i] for r in ok]) for i in range(1, 10)]
+    rows.append(('M3 useful actions a minute at the median seed, minutes 1-9 (lowest)', '>= 20', min(mins), min(mins) >= 20))
+    s1 = [r['summary']['season1'] for r in ok]
+    if all(x is not None for x in s1):
+        ratio = max(s1) / min(s1)
+        rows.append(('10 season 1 Festival: slowest seed / fastest seed (M25)', '<= 1.6', round(ratio, 3), ratio <= 1.6))
+    else:
+        rows.append(('10 season 1 Festival: slowest seed / fastest seed (M25)', '<= 1.6', 'a seed never filled it', False))
+    return rows
+
+
+def loss(results):
+    """How far the aims are, summed over the seeds (0 when every aim holds): each missed band by its relative distance."""
+    tot = 0.0
+    for r in results:
+        if 'rows' not in r:
+            return float('inf')
+        for row in r['rows']:
+            if row['kind'] == 'hard' and not row['ok']:
+                tot += 10.0
+            if row['kind'] != 'aim' or row['ok']:
+                continue
+            num, lo, hi = row.get('num'), row.get('lo'), row.get('hi')
+            if num is None:
+                tot += 1.0
+                continue
+            if lo is not None and num < lo:
+                scale = (hi - lo) if hi is not None and hi > lo else max(abs(lo), 1e-9)
+                tot += min(5.0, (lo - num) / scale)
+            elif hi is not None and num > hi:
+                scale = (hi - lo) if lo is not None and hi > lo else max(abs(hi), 1e-9)
+                tot += min(5.0, (num - hi) / scale)
+    for name, aim, value, ok in across(results):
+        if not ok:
+            tot += 1.0
+    return tot / max(1, len(results))
+
+
+def failing_prefixes(results):
+    names = set()
+    for r in results:
+        for row in r.get('rows', []):
+            if row['kind'] == 'aim' and not row['ok']:
+                names.add(row['name'])
+    return names
+
+
+# ---------------------------------------------------------------- the tuner
+
+def tune(act, procs, budget, extra):
+    R = ranges()
+    flags = ['--bot', 'all', '--hours', '4', '--seasons', '1', '--days', '0', '--no-adversaries', '--determinism', '0', '--act', str(act)]
+    current = dict(extra)
+    base = block_with(current)
+    t0 = time.time()
+    res = run_seeds(base, flags, procs)
+    st = stopped(res)
+    if st:
+        raise SystemExit('the tuner cannot run: the bot did not finish\n  ' + '\n  '.join(st))
+    best = loss(res)
+    evals = 1
+    print('start: loss %.3f (%.0f s)' % (best, time.time() - t0))
+    missing = sorted({k for _, _, ks in KNOB_ORDER for k in ks if k not in R})
+    if missing:
+        print('knobs without a RANGES entry (not moved; requests.md asks MECHANICS for them): ' + ', '.join(missing))
+    step = {p: 0.25 for p in R}
+    improved = True
+    while improved and evals < budget:
+        improved = False
+        fails = failing_prefixes(res)
+        for group, gates, knobs in KNOB_ORDER:
+            if not any(any(n.startswith(g) for g in gates) for n in fails):
+                continue
+            for p in knobs:
+                if p not in R or evals >= budget:
+                    continue
+                lo, hi = R[p]['low'], R[p]['high']
+                cur = current.get(p, get_at(base, p))
+                for direction in (1, -1):
+                    v = cur + direction * step[p] * (hi - lo)
+                    v = min(hi, max(lo, v))
+                    if isinstance(get_at(base, p), int) and float(get_at(base, p)).is_integer() and p in ('gear.looseCap', 'gift.every', 'tickets.spareCells', 'seasons.maxSteps'):
+                        v = int(round(v))
+                    if abs(v - cur) < 1e-12:
+                        continue
+                    trial = dict(current)
+                    trial[p] = v
+                    r2 = run_seeds(block_with(trial), flags, procs)
+                    evals += 1
+                    l2 = loss(r2) if not stopped(r2) else float('inf')
+                    print('  [%s] %s = %s: loss %.3f (best %.3f)' % (group, p, round(v, 6), l2, best))
+                    if l2 < best - 1e-9:
+                        best, current, res, base = l2, trial, r2, block_with(trial)
+                        improved = True
+                        break
+                else:
+                    step[p] /= 2
+                if evals >= budget:
+                    break
+    print('\nbest loss %.3f after %d evaluations (%.0f s)' % (best, evals, time.time() - t0))
+    print('TUNED = ' + json.dumps({**TUNED, **current}, indent=1, sort_keys=True))
+    return {**TUNED, **current}, res
+
+
+def save_tuned(tuned):
+    src = open(__file__).read()
+    body = 'TUNED = ' + json.dumps(tuned, indent=4, sort_keys=True) + '\n'
+    src = re.sub(r'(# TUNED-BEGIN\n)(.*?)(# TUNED-END)', lambda m: m.group(1) + body + m.group(3), src, flags=re.S)
+    open(__file__, 'w').write(src)
+    print('saved TUNED into', os.path.relpath(__file__, ROOT))
+
+
+# ---------------------------------------------------------------- the writer
+
+def write_game(block):
+    g = json.load(open(GAME)) if os.path.exists(GAME) else {}
+    g['mode'] = 'merge'
+    g['soundPack'] = None
+    g['merge'] = block
+    listing = json.load(open(STORE))
+    store = g.setdefault('store', {})
+    products = listing.get('products')
+    store.update({k: v for k, v in listing.items() if not k.startswith('_') and k != 'products'})
+    if not store.get('privacyPolicyUrl'):
+        store['privacyPolicyUrl'] = 'https://example.com/privacy'
+    mon = g.setdefault('monetization', {})
+    mon.setdefault('ads', {'forceTestAds': True})
+    mon['ads']['showBanner'] = False
+    mon['ads']['interstitials'] = False
+    if products is not None:
+        mon['iap'] = {**mon.get('iap', {}), 'products': products}
+    json.dump(g, open(GAME, 'w'), indent=2, ensure_ascii=False)
+    open(GAME, 'a').write('\n')
+    print('wrote', os.path.relpath(GAME, ROOT), '(mode merge)')
+
+
+def print_gates(results):
+    hard, aims = [], []
+    for r in results:
+        for row in r.get('rows', []):
+            if not row['ok'] and row['kind'] == 'hard':
+                hard.append('seed %d: %s: %s (aim %s)' % (r['seed'], row['name'], row['value'], row['aim']))
+            elif not row['ok'] and row['kind'] == 'aim':
+                aims.append('seed %d: %s: %s (aim %s)' % (r['seed'], row['name'], row['value'], row['aim']))
+    for name, aim, value, ok in across(results):
+        if not ok:
+            aims.append('all seeds: %s: %s (aim %s)' % (name, value, aim))
+    return hard, aims
+
+
+def gates(act, procs, extra, write):
+    hours, seasons, days = arg('--hours', '12'), arg('--seasons', '10'), arg('--days', '21')
+    block = block_with(extra)
+    t0 = time.time()
+    res = run_seeds(block, ['--bot', 'all', '--hours', hours, '--seasons', seasons, '--days', days, '--act', str(act)], procs)
+    print('bot on seeds %s at %s s an action: %.0f s' % (', '.join(map(str, SEEDS)), act, time.time() - t0))
+    st = stopped(res)
+    if st:
+        print('REFUSED: the bot did not finish on every seed, so no gate is known:\n  ' + '\n  '.join(st))
+        return 1
+    coin = coin_assertion(res)
+    hard, aims = print_gates(res)
+    for a in aims:
+        print('  aim missed:  ' + a)
+    for h in coin + hard:
+        print('  HARD MISSED: ' + h)
+    if coin or hard:
+        print('REFUSED: %d hard gate(s) missed (M2); games/night-market/game.json is not written' % (len(coin) + len(hard)))
+        return 1
+    print('every hard gate passes on every seed (%d aims missed: warnings until the lead turns them into guards, M2)' % len(aims))
+    if write:
+        write_game(block)
+    return 0
+
+
+# ---------------------------------------------------------------- --table
+
+def tables(act, procs, extra):
+    block = block_with(extra)
+    R = ranges()
+    print('**Knobs (RANGES of src/config/schema.merge.ts; "start" is the starting content):**\n')
+    print('| Knob | Range | Start | Shipped |\n|---|---|---|---|')
+    start = starting_block()
+    for p, r in R.items():
+        try:
+            s, v = get_at(start, p), get_at(block, p)
+        except (KeyError, IndexError, TypeError):
+            s, v = '-', '-'
+        print('| %s | %s to %s | %s | %s%s |' % (p, r['low'], r['high'], s, v, '' if s == v else ' *'))
+    with tempfile.NamedTemporaryFile('w', suffix='.json', delete=False) as f:
+        json.dump(block, f)
+        path = f.name
+    try:
+        r = subprocess.run(['npx', 'tsx', BOT, '--seed', '12345', '--bot', 'active', '--hours', '4', '--table', '--quiet', '--act', str(act), '--config', path], cwd=ROOT, capture_output=True, text=True)
+        out = r.stdout
+        print(out[out.find('\n2.12'):] if '\n2.12' in out else (out + r.stderr)[-3000:])
+    finally:
+        os.unlink(path)
+    res = run_seeds(block, ['--bot', 'all', '--hours', '40', '--seasons', '10', '--days', '21', '--no-adversaries', '--no-others', '--determinism', '0', '--act', str(act)], procs)
+    st = stopped(res)
+    if st:
+        print('8.5: the bot did not finish:\n  ' + '\n  '.join(st))
+        return 1
+    print('\n**8.5 Season times (active bot, %s s an action; season clock in minutes: Tea / Steamer / Sweets / Noodles / Puffs | Festival), five seeds:**\n' % act)
+    print('| Season | ' + ' | '.join('seed %d' % s for s in SEEDS) + ' |\n|---|' + '---|' * len(SEEDS))
+    for i in range(10):
+        cells = []
+        for r in res:
+            ss = r['summary']['seasons']
+            if i < len(ss):
+                s = ss[i]
+                st_ = '/'.join('-' if x is None else '%.0f' % x for x in s['stalls'][1:])
+                cells.append('%s \\| %s' % (st_, '-' if s['festival'] is None else '%.0f' % s['festival']))
+            else:
+                cells.append('-')
+        print('| %d | %s |' % (i + 1, ' | '.join(cells)))
+    print('\n**Passive bot (5 sessions of 8 min a day, the away ad):**\n')
+    print('| Seed | Steamer day | Sweets day | Noodles day | Festival day | seasons by day 7 | by day 21 |\n|---|---|---|---|---|---|---|')
+    for r in res:
+        p = r['summary'].get('passive') or {}
+        print('| %d | %s | %s | %s | %s | %s | %s |' % (r['seed'], p.get('steamer'), p.get('sweets'), p.get('noodles'), p.get('festival'), p.get('seasons7'), p.get('seasons21')))
+    return 0
+
+
+if __name__ == '__main__':
+    if '--help' in sys.argv or '-h' in sys.argv:
+        print(__doc__)
+        sys.exit(0)
+    act = float(arg('--act', '1.5'))
+    procs = int(arg('--procs', '5'))
+    extra = sets()
+    if '--tune' in sys.argv:
+        tuned, _ = tune(act, procs, int(arg('--budget', '40')), extra)
+        if '--save' in sys.argv:
+            save_tuned(tuned)
+        sys.exit(0)
+    if '--table' in sys.argv:
+        sys.exit(tables(act, procs, extra))
+    sys.exit(gates(act, procs, extra, write='--check' not in sys.argv))

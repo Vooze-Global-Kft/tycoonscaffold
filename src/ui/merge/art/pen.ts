@@ -182,6 +182,25 @@ export function flat(c: SkCanvas, color: string, draw: (c: SkCanvas) => void): v
   c.restore();
 }
 
+/**
+ * Draws `draw`, then paints `colour` over it through `mask` only where `draw` left paint (SrcATop):
+ * a glaze or coat that follows the drawing's own outline and never spills past it. `edge`, if
+ * given, is stroked the same way (the coat's lower rim), in `edgeColour`.
+ */
+export function coat(c: SkCanvas, draw: (c: SkCanvas) => void, mask: SkPath, colour: string, edge?: SkPath, edgeColour?: string, edgeW = 1): void {
+  c.saveLayer();
+  draw(c);
+  const p = fill(colour);
+  p.setBlendMode(BlendMode.SrcATop);
+  c.drawPath(mask, p);
+  if (edge) {
+    const e = stroke(edgeColour ?? INK, edgeW);
+    e.setBlendMode(BlendMode.SrcATop);
+    c.drawPath(edge, e);
+  }
+  c.restore();
+}
+
 /** Draws `draw` in greyscale (luminance), for the contact sheet's greyscale switch. */
 export function grey(c: SkCanvas, draw: (c: SkCanvas) => void): void {
   const p = Skia.Paint();

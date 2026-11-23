@@ -96,7 +96,10 @@ export const LanternEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('minderIntervalMult'), value: pos }),
   z.object({ type: z.literal('sparkTiers'), value: int.positive() }),
   z.object({ type: z.literal('festivalPurseMult'), value: pos }),
-  z.object({ type: z.literal('giftEvery'), value: int.positive() }),
+  /** Lantern 19 before Decision M24 (an absolute N); accepted and read as `giftEveryMult` 0.8 (the value is ignored). */
+  z.object({ type: z.literal('giftEvery'), value: int.positive().optional() }),
+  /** Lantern 19 (Decision M24): gift boxes come a fifth sooner, N' = ceil(gift.every × value), value 0.8. */
+  z.object({ type: z.literal('giftEveryMult'), value: z.number().gt(0).lt(1) }),
   z.object({ type: z.literal('ticketPay'), value: pos }),
 ]);
 
@@ -368,11 +371,21 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
   { path: 'values.chainStep', low: 3, high: 5, spec: '2.2' },
   { path: 'values.tierGrowth', low: 2.2, high: 2.6, spec: '2.2' },
   { path: 'board.shutterGrowth', low: 1.4, high: 1.5, spec: '2.2' },
-  { path: 'costs.stallRatio', low: 9, high: 14, spec: '2.2' },
-  { path: 'costs.gearGrowth', low: 1.4, high: 1.55, spec: '2.2' },
-  { path: 'costs.stallLevelGrowth', low: 1.3, high: 1.4, spec: '2.2' },
+  // Decision M23: the stall-opening table. The lead has set no range yet: x0.5 to x2 around the starting table (the numbers package's proposal) until the lead does.
+  { path: 'costs.stallOpen[0]', low: 60, high: 240, spec: 'M23' },
+  { path: 'costs.stallOpen[1]', low: 1600, high: 6400, spec: 'M23' },
+  { path: 'costs.stallOpen[2]', low: 25_600, high: 102_400, spec: 'M23' },
+  { path: 'costs.stallOpen[3]', low: 409_500, high: 1_638_000, spec: 'M23' },
+  { path: 'costs.stallOpen[4]', low: 6_550_000, high: 26_200_000, spec: 'M23' },
+  // Decision M27: the four base costs (x0.5 to x4) and the two growths are tunable.
+  { path: 'costs.gearBase', low: 10, high: 80, spec: 'M27' },
+  { path: 'costs.stallLevelBase', low: 25, high: 200, spec: 'M27' },
+  { path: 'costs.minderBase', low: 75, high: 600, spec: 'M27' },
+  { path: 'board.shutterBase', low: 15, high: 120, spec: 'M27' },
+  { path: 'costs.gearGrowth', low: 1.4, high: 1.7, spec: 'M27' },
+  { path: 'costs.stallLevelGrowth', low: 1.3, high: 1.5, spec: 'M27' },
   { path: 'costs.minderGrowth', low: 2.5, high: 3.5, spec: '2.2' },
-  { path: 'gear.interval', low: 4, high: 6, spec: '2.2' },
+  // gear.interval is not here: T = 4 s is a rule (Decision M3; lintMerge checks it).
   { path: 'gear.step', low: 8, high: 12, spec: '2.2' },
   { path: 'gear.ripePerLevel', low: 0.04, high: 0.06, spec: '2.2' },
   { path: 'gear.looseCap', low: 3, high: 6, spec: '2.3' },
@@ -395,9 +408,10 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
   { path: 'parade.every', low: 480, high: 840, spec: '2.7' },
   { path: 'festivalPace', low: 20, high: 50, spec: '2.3' },
   { path: 'festival[1][4].tier', low: 3, high: 5, spec: '2.8 (season 2: the Puffs line)' },
-  { path: 'gift.coinPace', low: 2, high: 5, spec: '2.3' },
+  { path: 'gift.coinPace', low: 0.25, high: 1.5, spec: 'M24' },
+  { path: 'gift.every', low: 15, high: 40, spec: 'M24' },
   { path: 'seasons.maxSteps', low: 2, high: 4, spec: '2.11' },
-  { path: 'seasons.levelsPerStep', low: 5, high: 10, spec: '2.11' },
+  // seasons.levelsPerStep is not here: N equals the gear step s (Decision M25; lintMerge checks it).
   { path: 'seasons.familiarBase', low: 0.75, high: 0.9, spec: '2.11' },
   { path: 'advice.newStallPhi', low: 20, high: 60, spec: '2.10' },
 ];
@@ -439,5 +453,9 @@ export function lintMerge(m: MergeContent): string[] {
   if (m.costs.gearMaxLevel !== 40) out.push(`costs.gearMaxLevel = ${m.costs.gearMaxLevel}: gear level 40 is the top (Decision M28)`);
   if (m.seasons.levelsPerStep !== m.gear.step) out.push(`seasons.levelsPerStep = ${m.seasons.levelsPerStep} must equal gear.step = ${m.gear.step} (Decision M25: N = s)`);
   if (m.costs.stallBase !== undefined || m.costs.stallRatio !== undefined) out.push('costs.stallBase / costs.stallRatio are ignored: stall-opening costs are the table costs.stallOpen (Decision M23)');
+  if (m.festival[0] && (m.festival[0].length < 4 || m.festival[0].length > 6)) out.push(`festival[0] has ${m.festival[0].length} lines: season 1's Festival is a row of 4 to 6 lines (Decision M25)`);
+  if (m.seasons.openingGoods !== 6) out.push(`seasons.openingGoods = ${m.seasons.openingGoods}: the opening board holds 6 Pepper Skewers (Decision M18)`);
+  const l19 = m.lanterns.find((l) => l.effect.type === 'giftEvery');
+  if (l19) out.push(`lantern ${l19.n}: the effect giftEvery (an absolute N) is replaced by giftEveryMult 0.8 (Decision M24: a fifth sooner)`);
   return out;
 }

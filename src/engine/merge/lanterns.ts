@@ -22,6 +22,7 @@
 import type { Lantern, LanternFeat } from '../../config/schema.merge';
 import { applyLantern } from './actions';
 import { scriptedTicket } from './draw';
+import { restartParade } from './params';
 import { seasonMods } from './season';
 import { CHAINS, TIERS, type Good, type MergeConfig, type MergeEvent, type MergeGame, type MergeState, type Mods, type Ticket } from './types';
 
@@ -266,7 +267,7 @@ export function onTierMade(cfg: MergeConfig, g: MergeGame, good: Good, firstEver
 
 /**
  * A ticket was just paid `coins` at `counter` (after the gift counter): counts `feats.tickets`,
- * `threeLineTickets`, `parades` and `mstats.ticketsThisSeason`; after a gold ticket the Parade clock
+ * `threeLineTickets` and `parades` (MECHANICS's payTicket counts `mstats.ticketsThisSeason`); after a gold ticket the Parade clock
  * restarts (the next is due one interval of season clock from now, 2.7); once both scripted tickets
  * are paid the opening script is done; then `checkLanterns` (lanterns 1, 2, 4, 10, 12, 13, 16, 19).
  */
@@ -280,8 +281,8 @@ export function onTicketPaid(cfg: MergeConfig, g: MergeGame, counter: number, ti
     threeLineTickets: m.feats.threeLineTickets + (ticket.lines.length >= 3 ? 1 : 0),
     parades: m.feats.parades + (ticket.gold ? 1 : 0),
   };
-  let merge: MergeState = { ...m, feats, mstats: { ...m.mstats, ticketsThisSeason: m.mstats.ticketsThisSeason + 1 } };
-  if (ticket.gold) merge = { ...merge, paradeAt: clock - m.seasonStartedAt + currentMods(cfg, m).paradeEvery };
+  let merge: MergeState = { ...m, feats };
+  if (ticket.gold) merge = restartParade(cfg, merge, clock);
   if (m.script === 'hedgehog') {
     const otherScripted = m.counters.some((ct, j) => j !== counter && ct.ticket?.scripted && ct.ticket.id !== ticket.id);
     if (!otherScripted) merge = { ...merge, script: 'done' };

@@ -19,11 +19,18 @@
  * player cannot reach (R = 0 and cost > cash), is never advised; one at its maximum has no cost
  * (params.ts) and is not a candidate.
  *
- * Which goal `advice` returns: the best purchase if it is affordable now; else "Sell spare goods in
- * the Basket" when the board is full and no merge exists (M22: an unwanted tier 8 first); else the
- * best purchase (with its wait); else, when no purchase is possible, the extras in this order:
- * "Fill the Festival" once its chains are open, the next lantern feat within reach, the ticket
- * nearest completion. `adviceExtras` lists the extras for the goal line's sheet.
+ * Which goal `advice` returns, in this order (2.10 with M22, M31, M33):
+ * 1. the board is deadlocked (no free cell, no merge, no delivery): the Basket, naming the cell to
+ *    sell (an unwanted tier 8 first);
+ * 2. the best purchase, if it is affordable now ("within reach");
+ * 3. the Festival (M31), once every chain it asks for is open: the gear level of the missing good's
+ *    chain that halves its work when there is one (kind 'gear', the next level's price; the goal
+ *    line names the level from `festivalAdvice`), else the missing good's line (kind 'festival',
+ *    target = the line's index);
+ * 4. the best purchase with its wait;
+ * 5. when no purchase can be made or waited for: the next lantern feat within reach, then the
+ *    ticket nearest completion.
+ * `adviceExtras` lists the non-purchase goals that apply; `purchaseAdvice` is the best purchase only.
  */
 import { currentMods, featProgress } from './lanterns';
 import { baseTier, maxPopAt, mergeParams, recentRate, ripeChance } from './params';
@@ -114,13 +121,15 @@ function wantedLines(g: MergeGame): Good[] {
 }
 
 /**
- * The cell to sell in the Basket when the board is full and no merge exists (2.10, M22): a good no
- * unfilled line asks for, a tier 8 first, else the lowest value (lowest chain, then tier); null when
- * the board has room, a merge exists, or every good is wanted (then a delivery exists).
+ * The cell to sell in the Basket when the board is deadlocked (2.10, M22, M33: no free cell, no
+ * merge, no delivery): a tier 8 first, else the lowest value; null when the board has room, a merge
+ * exists or a good on it fills an unfilled line.
  */
 export function basketCell(cfg: MergeConfig, g: MergeGame, p: MergeParams = mergeParams(cfg, g)): number | null {
   if (p.F > 0 || mergeExists(g)) return null;
   const wanted = wantedLines(g);
+  // A delivery exists: not deadlocked (M33).
+  if (g.merge.board.some((cell) => isGood(cell) && wanted.some((w) => w.c === cell.c && w.k === cell.k))) return null;
   let best: number | null = null;
   let bestKey = Infinity;
   g.merge.board.forEach((cell, i) => {
@@ -149,9 +158,49 @@ export function nearestTicket(g: MergeGame): number | null {
   return best;
 }
 
+/** Pops of a chain's drops a good of tier k needs: 2^(k − b) (at least 1). */
+const work = (k: number, b: number) => Math.pow(2, Math.max(0, k - b));
+
+/**
+ * The Festival goal of M31: once every chain the Festival asks for is open and it is not filled,
+ * the missing good to name (an unfilled line whose good lies on the board first, a delivery; else
+ * the line needing the most drops of its chain, 2^(k − b), then the lower chain), and, when a gear
+ * level of that chain would halve the work for it (its next base step, within the top level), that
+ * level, its chain and the price of the next level bought toward it. null when it does not apply.
+ */
+export function festivalAdvice(cfg: MergeConfig, g: MergeGame): { line: number; good: Good; gear: { c: number; level: number; cost: number } | null } | null {
+  const m = g.merge;
+  const fest = m.festival;
+  if (fest.filledAt !== null || !fest.lines.some((l) => !l.filled) || !fest.lines.every((l) => l.filled || m.chains[l.c]?.open)) return null;
+  const onBoard = (l: Good) => m.board.some((cell) => isGood(cell) && cell.c === l.c && cell.k === l.k);
+  let line = fest.lines.findIndex((l) => !l.filled && onBoard(l));
+  if (line < 0) {
+    let bestWork = -1;
+    fest.lines.forEach((l, i) => {
+      if (l.filled) return;
+      const w = work(l.k, baseTier(cfg, m.chains[l.c].gear));
+      if (w > bestWork || (w === bestWork && l.c < fest.lines[line].c)) {
+        bestWork = w;
+        line = i;
+      }
+    });
+  }
+  const l = fest.lines[line];
+  const good = { c: l.c, k: l.k };
+  let gear: { c: number; level: number; cost: number } | null = null;
+  if (line >= 0 && !onBoard(good)) {
+    const ch = m.chains[l.c];
+    const b = baseTier(cfg, ch.gear);
+    const level = cfg.merge.gear.step * b + 1;
+    const cost = mergeParams(cfg, g).chains[l.c].gearCost;
+    if (b < cfg.merge.gear.maxBase && l.k > b && level <= cfg.merge.costs.gearMaxLevel && cost !== null && baseTier(cfg, level) === b + 1) gear = { c: l.c, level, cost };
+  }
+  return { line, good, gear };
+}
+
 /**
  * The extra goals of 2.10 that apply now, in the order `advice` would use them: the Basket (board
- * full, no merge: M22), "Fill the Festival" (unfilled, every chain it asks for open), the next
+ * deadlocked: M22, M33), "Fill the Festival" (M31: target = the missing good's line), the next
  * lantern feat within reach (the most advanced of the next three, from `meta.lanternReach` of its
  * progress), the ticket nearest completion.
  */
@@ -161,8 +210,8 @@ export function adviceExtras(cfg: MergeConfig, g: MergeGame): Advice[] {
   const out: Advice[] = [];
   const cell = basketCell(cfg, g, p);
   if (cell !== null) out.push(extra('basket', cell));
-  const fest = m.festival;
-  if (fest.filledAt === null && fest.lines.some((l) => !l.filled) && fest.lines.every((l) => l.filled || m.chains[l.c]?.open)) out.push(extra('festival', null));
+  const fest = festivalAdvice(cfg, g);
+  if (fest) out.push(extra('festival', fest.line));
   const feats = featProgress(cfg, g)
     .filter((f) => f.need > 0 && f.have < f.need && f.have / f.need >= cfg.merge.meta.lanternReach)
     .sort((a, b) => b.have / b.need - a.have / a.need || a.n - b.n);
@@ -177,13 +226,27 @@ export function purchaseAdvice(cfg: MergeConfig, g: MergeGame): Advice | null {
   return adviceCandidates(cfg, g)[0] ?? null;
 }
 
-/** The single next goal (2.10): see the file comment for the order. null when there is nothing to do. */
+/** The single next goal (2.10, M31, M33): see the file comment for the order. null when there is nothing to do. */
 export function advice(cfg: MergeConfig, g: MergeGame): Advice | null {
-  const best = adviceCandidates(cfg, g)[0] ?? null;
-  if (best && best.cost <= g.cash) return best;
+  const candidates = adviceCandidates(cfg, g);
+  const best = candidates[0] ?? null;
   const extras = adviceExtras(cfg, g);
   if (extras[0]?.kind === 'basket') return extras[0];
-  return best ?? extras[0] ?? null;
+  if (best && best.cost <= g.cash) return best;
+  const fest = festivalAdvice(cfg, g);
+  if (fest) {
+    const gear = fest.gear;
+    if (gear) {
+      const own = candidates.find((a) => a.kind === 'gear' && a.target === gear.c);
+      if (own) return own;
+      const R = incomeRate(cfg, g);
+      const short = Math.max(0, gear.cost - g.cash);
+      if (R > 0 || short === 0) return { kind: 'gear', target: gear.c, cost: gear.cost, gain: 0, wait: R > 0 ? short / R : null, score: Infinity };
+    }
+    return extra('festival', fest.line);
+  }
+  if (best) return best;
+  return extras.find((a) => a.kind !== 'festival') ?? null;
 }
 
 /**
