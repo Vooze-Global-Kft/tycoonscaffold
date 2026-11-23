@@ -89,7 +89,7 @@ export function GoalLine({ layout }: { layout: MergeLayout }) {
   const m = goalMetrics(r.w, fontScale, words, v.costText, est, chevron);
   return (
     <Pressable
-      ref={ref}
+      {...ref}
       onPress={() => {
         fx.play('ui_tap');
         openGoal(v);
@@ -105,13 +105,13 @@ export function GoalLine({ layout }: { layout: MergeLayout }) {
         </Text>
         {v.costText ? (
           <Text allowFontScaling={false} numberOfLines={1} style={[styles.sep, { fontSize: m.font }]}>
-            {' · '}
+            {'\u00A0·\u00A0'}
             <Text style={styles.price}>{v.costText}</Text>
           </Text>
         ) : null}
         {m.showEst ? (
           <Text allowFontScaling={false} numberOfLines={1} style={[styles.est, { fontSize: m.font }]}>
-            {' · '}
+            {'\u00A0·\u00A0'}
             {est}
           </Text>
         ) : null}
@@ -130,5 +130,5 @@ const styles = StyleSheet.create({
   sep: { color: NIGHT.paperShade },
   price: { color: NIGHT.amber, fontWeight: '800' },
   est: { color: NIGHT.paperShade },
-  chevron: { color: NIGHT.amber, textAlign: 'right', fontWeight: '700' },
+  chevron: { color: NIGHT.amber, textAlign: 'right', fontWeight: '700', marginLeft: 2 },
 });

@@ -1,11 +1,27 @@
 /**
- * Where the sheets and spokes of spec 4.4 mount (one at a time, `useMergeUi` sheet / spoke; each is
- * the kit Sheet or registers with useOverlay), above the play canvas and the bars. PLACEHOLDER of
- * the skeleton: mounts nothing yet. Owned by the bars, sheets and spokes package; the hints and
- * platform package mounts the overlay registration and the away report here
- * (docs/design/market-build-plan.md).
+ * Where the sheets and spokes of spec 4.4 mount, above the play canvas and the bars. One at a time:
+ * uiState holds one `sheet` and one `spoke`; each sheet is MergeSheet (sheets/parts.tsx, registered
+ * with useOverlay) and shows only while uiState names it. Owned by the bars package (BARS, 7a),
+ * which mounts its own sheets below. The spokes package (SPOKES, 7b) and the hints and platform
+ * package (PLATFORM, 8) each add their mounts inside ONE block marked with their name (an import
+ * and a line per sheet or spoke), re-reading this file immediately before each edit.
  */
 import type { MergeLayout } from '../layout';
+// ===== BARS (bars and sheets package) =====
+import { applySheetDevParams } from '../sheets/dev';
+import { GiftSheet } from '../sheets/GiftSheet';
+import { SettingsSheet } from '../sheets/SettingsSheet';
+import { ShopSheet } from '../sheets/ShopSheet';
+import { ShutterSheet } from '../sheets/ShutterSheet';
+import { StallSheet } from '../sheets/StallSheet';
+import { TicketSheet } from '../sheets/TicketSheet';
+// The preview's &sheet= and &gifts= switches (nothing on a phone).
+applySheetDevParams();
+// ===== end BARS =====
+// ===== SPOKES (spokes package) =====
+// The Ladder Book, the Lantern Gate, the Season scroll, the season close confirm and the change of season.
+import { Spokes } from '../spokes/Spokes';
+// ===== end SPOKES =====
 // ===== PLATFORM (hints and platform package): Android back, the firefly, the away report =====
 import { PlatformLayer } from '../platform';
 // ===== end PLATFORM =====
@@ -13,6 +29,17 @@ import { PlatformLayer } from '../platform';
 export function Overlays({ layout }: { layout: MergeLayout }) {
   return (
     <>
+      {/* ===== BARS ===== */}
+      <StallSheet />
+      <ShutterSheet />
+      <TicketSheet />
+      <GiftSheet />
+      <ShopSheet />
+      <SettingsSheet />
+      {/* ===== end BARS ===== */}
+      {/* ===== SPOKES ===== */}
+      <Spokes />
+      {/* ===== end SPOKES ===== */}
       {/* ===== PLATFORM ===== */}
       <PlatformLayer layout={layout} />
       {/* ===== end PLATFORM ===== */}

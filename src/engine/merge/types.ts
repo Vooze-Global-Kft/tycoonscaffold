@@ -111,7 +111,7 @@ export interface Counter {
   ticket: Ticket | null;
   /** The next draw (game clock) while empty; null while it holds a ticket, or while it waits (`blockedAt`, or the script). */
   refillAt: number | null;
-  /** "Setting up…": a draw found no ticket at this time (game clock); redrawn at the first `changedAt` after it (2.4, 2.7 step 5). */
+  /** "Setting up…": a draw found no ticket at this time (game clock); redrawn at the first `changedAt` after it (2.4; 2.7 fallback step 4, M32). */
   blockedAt: number | null;
   /** "Not tonight" is ready again at this time (game clock). */
   notTonightAt: number;

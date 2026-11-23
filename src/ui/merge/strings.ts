@@ -162,7 +162,7 @@ export const S = {
     giftNext: 'Open the next bag',
     giftDone: 'Done',
     giftSparkGot: 'Lucky Spark',
-    giftGoodWaits: 'waits for room on the board',
+    giftGoodWaits: 'to the board',
     giftNone: 'No gift box waits. One comes with filled tickets.',
     // --- the shop (4.4, 5.7) ---
     shopTitle: 'Shop',
@@ -183,6 +183,7 @@ export const S = {
     adDragon: 'Call the dragon',
     adDragonWhat: 'The Paper Dragon Parade comes now with its gold ticket.',
     adDragonOut: 'The dragon is already here',
+    adDragonWhen: 'Comes when a counter is free',
     adFromTicket: 'Open a ticket',
     adReady: 'Watch ad',
     adReadyAfter: (time: string) => `ready after ${time} of play`,
@@ -213,7 +214,7 @@ export const S = {
     worth: (coins: string) => `Worth ${coins} on a ticket`,
     notYet: 'Not made yet',
     unknown: '?',
-    best: 'Best this season',
+    bestLegend: 'A brass ring marks the best good of each ladder made this season.',
     ladderDone: (n: number) => `The ladder is complete. Lantern ${n} glows for it.`,
     ladderToGo: (n: number) => (n === 1 ? 'One more good completes this ladder.' : `${n} more goods complete this ladder.`),
     bookNote: 'A good made for the first time stamps its rung. Stamps light lanterns; they pay no coins.',
@@ -305,8 +306,8 @@ export const S = {
       boardSpace: 'board space',
       lanterns: 'lanterns',
       ladderBook: 'the Ladder Book',
-      giftGoods: 'goods from gift boxes',
-      giftBoxes: 'goods from gift boxes',
+      giftGoods: 'gift box goods',
+      giftBoxes: 'gift box goods',
       pendingGoods: 'goods waiting for room',
       luckySparks: 'Lucky Sparks',
       purchases: 'purchases',
@@ -344,7 +345,7 @@ export const S = {
     loading: 'Lighting the lanterns',
     /** The away report (spec 2.9, decision M8), the mode's own sheet. */
     away: {
-      title: 'While you were away',
+      title: 'Back at the stalls',
       /** "3 h 10 m", "42 m", "40 s". */
       hours: (h: number, m: number) => `${h} h ${m} m`,
       minutes: (m: number) => `${m} m`,

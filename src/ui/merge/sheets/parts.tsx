@@ -94,7 +94,7 @@ export function Btn({ label, price, onPress, enabled = true, kind = 'buy', targe
   const edge = kind === 'ad' ? INK.tealEdge : kind === 'plain' ? INK.cardEdge : 'transparent';
   return (
     <Pressable
-      ref={ref}
+      {...ref}
       onPress={enabled ? onPress : undefined}
       accessibilityRole="button"
       accessibilityState={{ disabled: !enabled }}
@@ -111,7 +111,7 @@ export function Btn({ label, price, onPress, enabled = true, kind = 'buy', targe
         ) : null}
       </Text>
       {sub ? (
-        <Text allowFontScaling={false} numberOfLines={1} style={{ color: fg, fontSize: ty.tiny, opacity: 0.85 }}>
+        <Text allowFontScaling={false} numberOfLines={2} style={{ color: fg, fontSize: ty.tiny, opacity: 0.85, textAlign: 'center' }}>
           {sub}
         </Text>
       ) : null}

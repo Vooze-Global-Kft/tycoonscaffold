@@ -11,7 +11,7 @@ import type { MergeConfig, MergeEvent, MergeGame } from './types';
 
 const cfg = mergeTestConfig();
 
-/** The cells a season's shape blocks (2.11): the moon gate's stones, the hearth's four braziers. Independent of season.ts's unfinished openingBoard. */
+/** The cells a season's shape blocks (2.11): the moon gate's stones, the hearth's four braziers. Independent of season.ts's openingBoard. */
 function blockedCells(c: MergeConfig, season: number): number {
   const shape = seasonRow(c, season).shape;
   return shape === 'moonGate' ? c.merge.seasons.moonGateCells.length : shape === 'hearth' ? 4 : 0;

@@ -35,7 +35,7 @@ function RowButton({ rect, icon, label, target, onPress, armed }: { rect: Rect; 
   const ref = useTarget(target);
   return (
     <Pressable
-      ref={ref}
+      {...ref}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -44,7 +44,7 @@ function RowButton({ rect, icon, label, target, onPress, armed }: { rect: Rect; 
       <View style={{ position: 'absolute', top: m.iconTop, left: (rect.w - m.iconSize) / 2 }}>
         <MergeIcon icon={icon} size={m.iconSize} />
       </View>
-      <Text allowFontScaling={false} numberOfLines={1} style={[styles.label, { top: m.labelTop, height: m.labelH, fontSize: m.labelFont }]}>
+      <Text allowFontScaling={false} numberOfLines={1} style={[styles.label, { top: m.labelTop, height: m.labelH, lineHeight: m.labelH, fontSize: m.labelFont }]}>
         {label}
       </Text>
     </Pressable>

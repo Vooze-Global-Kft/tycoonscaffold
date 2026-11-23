@@ -1,13 +1,9 @@
 /**
  * The board (spec 2.2, 2.4, 2.7): cells, the drop cell of a chain, placing a good, room.
  *
- * Package MECHANICS (docs/design/market-build-plan.md). Seam: ORDERS calls `placeGood` (gift goods,
- * the opening board), `looseCount` (bound (c)), `roomFor` (the draw, the swap and gift goods
- * use this one function, 2.7) and `freeCells`.
- *
- * Skeleton bodies: every function here is built (create() places the opening goods with them;
- * small, MECHANICS owns and tests them). "Not tonight" (a MECHANICS action) returns filled lines
- * with `placeGood` too.
+ * Seam (docs/design/market-build-plan.md): `placeGood` places drops, releases, gift goods, the
+ * opening board and the goods "Not tonight" returns; `looseCount` serves bound (c); `roomFor` is the
+ * one room check of 2.7 ("Not tonight", gift goods); `freeCells` is F.
  */
 import { BOARD_COLS, BOARD_ROWS, type Cell, type Good, type MergeConfig, type MergeState } from './types';
 

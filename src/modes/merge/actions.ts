@@ -3,12 +3,11 @@
  * player action of spec 2.5. Each calls the rules' public interface (src/engine/merge.ts), stores the
  * result in the shared store, plays its fx key (src/services/fx/catalog.merge.ts), hands the events
  * the rules reported to the mode's listeners (src/state/modeEvents.ts), and is null-safe: outside a
- * merge game, when the rules refuse (they return the same object) or throw (a body not built yet),
- * it plays `ui_denied` and returns false.
+ * merge game, when the rules refuse (they return the same object) or throw (a bug: recorded with
+ * `crash.record`), it plays `ui_denied` and returns false.
  *
  * Screens call `mergeActions.<name>(...)`; they never call the rules to change state.
- * Written by the skeleton; owned afterwards by the rules package MECHANICS (it knows which result
- * plays which key; the sound package may move keys).
+ * Owned by the rules lead (it knows which result plays which key; the sound package may move keys).
  */
 import * as R from '../../engine/merge';
 import type { GameState } from '../../engine/types';

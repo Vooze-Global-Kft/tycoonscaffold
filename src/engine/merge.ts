@@ -63,14 +63,14 @@ export { createMerge, startSeason, withMergeFields, reconcileMerge } from './mer
 export { rowOf, colOf, cellAt, isGood, freeCells, roomFor, dropCell, placeGood, looseCount } from './merge/board';
 
 // --- 2.4 the tick and its event queue (MECHANICS) ---
-export { advanceMerge, nextMergeEvent, nextMergeStop, MAX_EVENTS_PER_TICK } from './merge/tick';
+export { advanceMerge, nextMergeStop } from './merge/tick';
 export { nextEvent, runEvent, dueEvents, paradeDue, paradeOut } from './merge/events';
 
 // --- 2.5 the drop (MECHANICS) ---
 export { dropAt, decodeTarget, targetsFor } from './merge/drop';
 
 // --- 2.5, 2.7, 5.7 purchases, buttons, ads, the cash clamp (MECHANICS) ---
-export { commitCash, bookAway, openStall, levelGear, levelStall, hireMinder, levelMinder, openShutter, shutterGood, notTonight, notTonightRoom, undoBasket, canWatchAd, grantAd, applyLantern, entitleMerge, boardGoods } from './merge/actions';
+export { commitCash, bookAway, openStall, levelGear, levelStall, hireMinder, levelMinder, openShutter, shutterGood, notTonight, notTonightRoom, undoBasket, canWatchAd, grantAd, applyLantern, entitleMerge } from './merge/actions';
 
 // --- 2.9 time away (MECHANICS) ---
 export { mergeOffline, mergeIncome, mergeActiveIncome, awayReportAlone, mergeAwayReports, awaySeconds, awayClosedForm, awayByEvents } from './merge/offline';

@@ -124,13 +124,19 @@ export interface BannerVM {
   count: string;
 }
 
-export function bannerPicture(L: MergeLayout, A: PlayAtlases | null, v: BannerVM, boards: Rect[]): SkPicture {
-  const bn = L.banner;
-  return picture(R(0, bn.y - 4, L.width, bn.h + 8), (c) => {
-    for (const r of boards) {
+/** The counter boards under the ticket columns. */
+export function boardsPicture(L: MergeLayout, columns: Rect[]): SkPicture {
+  return picture(R(0, L.street.y, L.width, L.street.h + 4), (c) => {
+    for (const r of columns) {
       const p = counterParts(r);
       at(c, p.board.x, p.board.y, 1, 0, (q) => drawCounter(q, p.board.w));
     }
+  });
+}
+
+export function bannerPicture(L: MergeLayout, A: PlayAtlases | null, v: BannerVM): SkPicture {
+  const bn = L.banner;
+  return picture(R(bn.x - 4, bn.y - 4, bn.w + 8, bn.h + 8), (c) => {
     at(c, bn.x, bn.y, 1, 0, (q) => drawFestivalBanner(q, bn.w, bn.h, { lit: v.lit }));
     const grid = bannerGrid(bn.w, bn.h);
     if (!v.showLines || !A) {

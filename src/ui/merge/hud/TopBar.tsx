@@ -9,9 +9,9 @@
  */
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { formatShort } from '../../../engine/format';
 import { fx } from '../../../services/fx';
 import { RollingNumber } from '../../components/RollingNumber';
+import { rollNumber } from '../../components/rollFormat';
 import { useTarget } from '../../hints/targets';
 import { MergeIcon } from '../art/MergeIcon';
 import { NIGHT, alpha } from '../art/palette';
@@ -27,12 +27,14 @@ export function TopBar({ layout }: { layout: MergeLayout }) {
   const cash = usePurse();
   const chip = useSeasonChip();
   const gifts = useGiftCount();
-  const purseText = formatShort(Math.floor(cash));
+  // What the RollingNumber settles on (its own format), so the width fits the longest form.
+  const purseText = rollNumber(cash);
   const count = chip.done ? S.hud.festivalDone : S.hud.festivalCount(chip.filled, chip.lines);
-  // Re-measured only when the text's length or the chip changes (not on every coin).
+  // Re-measured only when the text's shape or the chip changes (not on every coin).
+  const purseShape = purseText.replace(/[0-9]/g, '0');
   const m = useMemo(
-    () => topBarMetrics(layout.topBar.w, fontScale, '0'.repeat(purseText.length), chip.season, count, gifts > 0),
-    [layout.topBar.w, fontScale, purseText.length, chip.season, count, gifts],
+    () => topBarMetrics(layout.topBar.w, fontScale, purseShape, chip.season, count, gifts > 0),
+    [layout.topBar.w, fontScale, purseShape, chip.season, count, gifts],
   );
   const purseRef = useTarget('purse');
   const menuRef = useTarget('button:menu');
@@ -44,7 +46,7 @@ export function TopBar({ layout }: { layout: MergeLayout }) {
   };
   return (
     <View style={[styles.bar, { left: r.x, top: r.y, width: r.w, height: TOP_BAR_H }]} pointerEvents="box-none">
-      <View ref={purseRef} style={[styles.purse, { left: BAR_GUTTER, height: TOP_BAR_H }]} accessible accessibilityLabel={S.hud.purseLabel(purseText)}>
+      <View {...purseRef} style={[styles.purse, { left: BAR_GUTTER, height: TOP_BAR_H }]} accessible accessibilityLabel={S.hud.purseLabel(purseText)}>
         <MergeIcon icon="art:coin" size={PURSE_ICON} />
         <View style={{ width: m.purseW, height: m.purseBox, marginLeft: 4 }}>
           <RollingNumber value={cash} allowFontScaling={false} style={[styles.purseText, { fontSize: m.purseFont, height: m.purseBox, width: m.purseW }]} />
@@ -71,7 +73,7 @@ export function TopBar({ layout }: { layout: MergeLayout }) {
       </Pressable>
       {m.bagX !== null ? (
         <Pressable
-          ref={bagRef}
+          {...bagRef}
           onPress={tap(() => useMergeUi.getState().openSheet({ type: 'gift' }))}
           accessibilityRole="button"
           accessibilityLabel={S.hud.giftLabel(gifts)}
@@ -87,7 +89,7 @@ export function TopBar({ layout }: { layout: MergeLayout }) {
         </Pressable>
       ) : null}
       <Pressable
-        ref={menuRef}
+        {...menuRef}
         onPress={tap(() => useMergeUi.getState().openSheet({ type: 'settings' }))}
         accessibilityRole="button"
         accessibilityLabel={S.hud.menuLabel}

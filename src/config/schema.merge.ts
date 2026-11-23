@@ -311,10 +311,11 @@ export const MergeSchema = z.object({
     warmGear: z.object({ ripeAdd: nonneg.default(0.15) }).prefault({}),
     lateCrowd: z.object({ minderIntervalMult: pos.default(0.67) }).prefault({}),
     marketDay: z.object({ paradeEvery: pos.default(300) }).prefault({}),
-    /** Seasoned gear: a step per closed season that reached `stepTier`, up to maxSteps (tune 2 to 4), each worth levelsPerStep gear levels (N: tune 5 to 10). */
+    /** Seasoned gear: a step per closed season that reached `stepTier`, up to maxSteps (tune 2 to 4), each worth N = gear.step levels (Decision M25). */
     stepTier: tier.default(6),
     maxSteps: int.positive().default(3),
-    levelsPerStep: int.positive().default(10),
+    /** N before Decision M25 (N = s): unread, and when given it must equal `gear.step` (lintMerge). */
+    levelsPerStep: int.positive().optional(),
     /** Familiar faces: stall-opening costs × familiarBase^min(seasons closed, familiarMax) (base: tune 0.75 to 0.90). */
     familiarBase: pos.default(0.85),
     familiarMax: int.positive().default(4),
@@ -470,7 +471,7 @@ export function lintMerge(m: MergeContent): string[] {
   // Rules the lead fixed in section 11 (MECHANICS): numbers that are fields but not knobs.
   if (m.gear.interval !== 4) out.push(`gear.interval = ${m.gear.interval}: T is 4 s for every gear, a rule (Decision M3)`);
   if (m.costs.gearMaxLevel !== 40) out.push(`costs.gearMaxLevel = ${m.costs.gearMaxLevel}: gear level 40 is the top (Decision M28)`);
-  if (m.seasons.levelsPerStep !== m.gear.step) out.push(`seasons.levelsPerStep = ${m.seasons.levelsPerStep} must equal gear.step = ${m.gear.step} (Decision M25: N = s)`);
+  if (m.seasons.levelsPerStep !== undefined && m.seasons.levelsPerStep !== m.gear.step) out.push(`seasons.levelsPerStep = ${m.seasons.levelsPerStep} must equal gear.step = ${m.gear.step} (Decision M25: N = s)`);
   if (m.costs.stallBase !== undefined || m.costs.stallRatio !== undefined) out.push('costs.stallBase / costs.stallRatio are ignored: stall-opening costs are the table costs.stallOpen (Decision M23)');
   if (m.festival[0] && (m.festival[0].length < 4 || m.festival[0].length > 6)) out.push(`festival[0] has ${m.festival[0].length} lines: season 1's Festival is a row of 4 to 6 lines (Decision M25)`);
   if (m.seasons.openingGoods !== 6) out.push(`seasons.openingGoods = ${m.seasons.openingGoods}: the opening board holds 6 Pepper Skewers (Decision M18)`);

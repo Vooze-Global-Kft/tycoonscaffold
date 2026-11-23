@@ -1,11 +1,12 @@
 /**
  * The player's purchases and buttons (spec 2.5, 2.7, 5.7 with Decisions M13, M14, M23) and the one
- * clamp through which cash changes (`commitCash`, spec 2.3: coins enter only through the six
- * sources).
+ * clamp through which cash changes (`commitCash`, spec 2.3 with Decision M37: coins enter only
+ * through five sources).
  *
- * Package MECHANICS (docs/design/market-build-plan.md). Seam: ORDERS and META call `commitCash`
- * for the Festival purse ('festival') and gift-box coins ('gift'); nothing else changes `cash`
- * except the shared store's grant of the away earnings (`E.grantCash`, see `commitCash`).
+ * Seam (docs/design/market-build-plan.md): gift.ts calls `commitCash` for gift-box coins ('gift');
+ * nothing else outside this file, drop.ts (tickets, the Basket) and events.ts (the till) changes
+ * `cash`, except the shared store's grant of the away earnings (`E.grantCash`, see `commitCash`)
+ * and the season close's reset (season.ts, 2.11: a reset is no source).
  * The store actions (src/modes/merge/actions.ts) call these through src/engine/merge.ts; each
  * returns the SAME object when refused (the store then plays `ui_denied`).
  *
@@ -28,7 +29,7 @@ import { CHAINS, TIERS, type CoinSource, type Good, type MergeAdKind, type Merge
  * under `source` in `mstats.coins`; income also counts in `runEarnings` and `lifetimeEarnings`.
  * Returns the same object for a zero or non-finite delta, and for a spend the purse cannot cover.
  *
- * The six sources of 2.3 are 'ticket', 'festival', 'gift', 'till', 'basket' and 'away'; 'undo'
+ * The five sources (2.3, M37: the Festival pays no coins) are 'ticket', 'gift', 'till', 'basket' and 'away'; 'undo'
  * (a Basket sale taken back) and 'spend' (purchases) are the two ways coins leave. The away
  * earnings are the exception: the shared store grants them (`E.grantCash`, × 1.5 with the ad), so
  * `mstats.coins.away` stays 0 in the app and a trace books them from `mergeOffline`'s result
@@ -415,9 +416,4 @@ export function entitleMerge(cfg: MergeConfig, g: MergeGame, productId: string):
   void cfg;
   void productId;
   return g;
-}
-
-/** Board goods (for the tests and the bot's bookkeeping). */
-export function boardGoods(m: Pick<MergeState, 'board'>): Good[] {
-  return m.board.filter(isGood).map((x) => ({ c: x.c, k: x.k }));
 }

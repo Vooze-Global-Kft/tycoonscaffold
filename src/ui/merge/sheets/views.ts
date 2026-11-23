@@ -335,14 +335,9 @@ export interface TicketView {
   adWait: number;
 }
 
-/**
- * M34's test of a line a gear upgrade left behind: below its chain's base tier now, so new drops can
- * no longer make it. LOCAL STAND-IN for the rules' `lineUnmakeable(cfg, g, line)` (requested from
- * the rules, requests.md): replace by it once exported.
- */
+/** M34's test of a line a gear upgrade left behind (the rules' `lineUnmakeable`: new drops can no longer make it). */
 export function lineGone(cfg: R.MergeConfig, g: R.MergeGame, line: Pick<R.TicketLine, 'c' | 'k' | 'filled'>): boolean {
-  const ch = g.merge.chains[line.c];
-  return !line.filled && !!ch && line.k < R.baseTier(cfg, ch.gear);
+  return R.lineUnmakeable(cfg, g, line);
 }
 
 export function ticketView(cfg: R.MergeConfig, g: R.MergeGame, j: number): TicketView {

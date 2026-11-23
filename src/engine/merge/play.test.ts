@@ -55,10 +55,11 @@ function lowestPair(g: R.MergeGame, chain?: number): [number, number] | null {
   return best ? [best[0], best[1]] : null;
 }
 
-/** A delivery: a good on the board that an unfilled line wants, as [cell, target code]; tickets before the Festival. */
-function delivery(g: R.MergeGame): [number, R.TargetCode] | null {
+/** A delivery: a good on the board that an unfilled line wants, as [cell, target code]; tickets before the Festival (only the opening script's with `scripted`). */
+function delivery(g: R.MergeGame, scripted = false): [number, R.TargetCode] | null {
+  const wanted = (code: R.TargetCode) => code >= R.TARGET_COUNTER && (!scripted || (code < R.TARGET_FESTIVAL && !!g.merge.counters[code - R.TARGET_COUNTER]?.ticket?.scripted));
   for (let i = 0; i < g.merge.board.length; i++) {
-    const t = R.isGood(g.merge.board[i]) ? R.targetsFor(cfg, g, i).find((code) => code >= R.TARGET_COUNTER) : undefined;
+    const t = R.isGood(g.merge.board[i]) ? R.targetsFor(cfg, g, i).find(wanted) : undefined;
     if (t !== undefined) return [i, t];
   }
   return null;
@@ -128,22 +129,25 @@ function firstMinutes(seed: number) {
     expect(R.checkBounds(cfg, g, 1, hedgehog.lines, { scripted: true })).toEqual({ a: false, bOutput: false, bHand: false, c: false, d: false });
 
     // Both scripted tickets from the opening board (2.7: they need exactly 6 Pepper Skewers): deliver, else merge.
-    while (paid.length < 2) {
-      const d = delivery(g);
+    const scriptedPaid = () => paid.filter((p) => p.id === fox.id || p.id === hedgehog.id);
+    while (scriptedPaid().length < 2) {
+      const d = delivery(g, true);
       if (d) act('deliver a scripted ticket', drop(d[0], d[1]));
-      else act('merge toward the scripted tickets', drop(...lowestPair(g, 0)!));
+      else if (lowestPair(g, 0)) act('merge toward the scripted tickets', drop(...lowestPair(g, 0)!));
+      else tick(ACT); // another counter's ticket took a good the script needed: wait for the next drop
     }
     // The first coins come from the first ticket, under 15 s (gate 1, 10.1 item 1).
     expect(paid[0].at).toBeLessThanOrEqual(15);
-    expect(paid.map((p) => [p.id, p.coins]).sort((x, y) => x[0] - y[0])).toEqual([
+    expect(scriptedPaid().map((p) => [p.id, p.coins]).sort((x, y) => x[0] - y[0])).toEqual([
       [fox.id, 12],
       [hedgehog.id, 29],
     ]);
-    expect(g.cash).toBe(41);
+    expect(g.cash).toBe(paid.reduce((a, p) => a + p.coins, 0)); // nothing else paid yet: no merge, discovery or lantern pays
     expect(g.merge.script).toBe('done');
 
-    // Then a plain hand until the first Parade is paid and a gift box opened: deliver, the scripted
-    // purchases of 3.1 in order, the gift box, the advised purchase, merge the lowest pair.
+    // Then a plain hand until the first Parade is paid and a gift box opened: the scripted purchases
+    // of 3.1 in order as soon as each is affordable, deliver, the gift box, the advised purchase,
+    // merge the lowest pair, the Basket only when the board is deadlocked.
     const goals: [string, (x: R.MergeGame) => R.MergeGame][] = [
       ['gear2', (x) => R.levelGear(cfg, x, 0)],
       ['shutter', (x) => R.openShutter(cfg, x, 0)],
@@ -151,11 +155,6 @@ function firstMinutes(seed: number) {
       ['minder', (x) => R.hireMinder(cfg, x, 0)],
     ];
     for (let n = 0; n < 2000 && !(paid.some((p) => p.gold) && times.giftOpened !== undefined && clockOf(g) >= 600); n++) {
-      const d = delivery(g);
-      if (d) {
-        act('deliver', drop(d[0], d[1]));
-        continue;
-      }
       const goal = goals.find(([what]) => times[what] === undefined);
       if (goal) {
         const next = goal[1](g);
@@ -164,6 +163,11 @@ function firstMinutes(seed: number) {
           act(goal[0], () => next);
           continue;
         }
+      }
+      const d = delivery(g);
+      if (d) {
+        act('deliver', drop(d[0], d[1]));
+        continue;
       }
       if (g.merge.gift.boxes.length) {
         const box = g.merge.gift.boxes[0];
@@ -577,7 +581,7 @@ describe('a long random-but-legal player, checked after every action and tick', 
     for (const k of ['merge', 'deliver', 'move', 'anyDrop', 'basket', 'undo', 'levelGear', 'advised', 'notTonight', 'fillLine', 'gearRush', 'callDragon', 'giftBox', 'away'] as Kind[]) {
       expect(run.accepted.get(k) ?? 0, `accepted ${k}`).toBeGreaterThan(0);
     }
-    const kinds: R.MergeEvent['type'][] = ['merge', 'move', 'swap', 'return', 'lineFill', 'ticketShake', 'ticketPaid', 'basketSell', 'undo', 'undoExpired', 'stallOpen', 'gearLevel', 'stallLevel', 'minderHire', 'minderLevel', 'shutterOpen', 'notTonight', 'adGranted', 'giftEarned', 'giftOpened', 'giftGoodPlaced', 'lanternLit', 'discovery', 'drop', 'shelved', 'released', 'sale', 'tillRoll', 'ticketDrawn', 'paradeArrive'];
+    const kinds: R.MergeEvent['type'][] = ['merge', 'move', 'swap', 'lineFill', 'ticketShake', 'ticketPaid', 'basketSell', 'undo', 'undoExpired', 'stallOpen', 'gearLevel', 'stallLevel', 'minderHire', 'minderLevel', 'shutterOpen', 'notTonight', 'adGranted', 'giftEarned', 'giftOpened', 'giftGoodPlaced', 'lanternLit', 'discovery', 'drop', 'shelved', 'released', 'sale', 'tillRoll', 'ticketDrawn', 'paradeArrive'];
     for (const k of kinds) expect(run.events.has(k), `event ${k}`).toBe(true);
     for (const k of ['levelGear', 'openStall', 'openShutter', 'undo', 'notTonight', 'close', 'anyDrop'] as Kind[]) expect(run.refused.get(k) ?? 0, `refused ${k}`).toBeGreaterThan(0);
     expect(clockOf(run.g)).toBeGreaterThan(3 * 3600);

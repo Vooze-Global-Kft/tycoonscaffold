@@ -4,13 +4,13 @@
  * (./events.ts) over (clock, clock + dt], each event at its own time, and adds `stats.playSeconds`
  * itself. Because every follow-up time comes from the event's own time, tick(a + b) equals tick(a)
  * then tick(b) exactly (src/engine/merge/tick.split.test.ts), and the bot steps from event to
- * event with one call per event (`nextMergeEvent` gives the time to step to).
+ * event with one call per event (`nextMergeStop` gives the time to step to).
  *
  * Package MECHANICS (docs/design/market-build-plan.md). `now` (the wall clock) is not read: the
  * merge rules run on the game clock only (time away is offline.ts's closed form).
  */
 import { dueEvents, nextEvent, runEvent } from './events';
-import { MAX_TICK, type MergeConfig, type MergeEvent, type MergeGame, type QueuedEvent } from './types';
+import { MAX_TICK, type MergeConfig, type MergeEvent, type MergeGame } from './types';
 
 /** Events one tick may run before it stops (a guard against a rule that would re-arm itself at one time; never reached by the rules). */
 export const MAX_EVENTS_PER_TICK = 200_000;
@@ -31,14 +31,6 @@ export function advanceMerge(cfg: MergeConfig, g: MergeGame, dt: number, now: nu
     x = runEvent(cfg, atClock(x, e.at), e, events);
   }
   return atClock(x, end);
-}
-
-/**
- * The next event the queue holds (any time ahead), or null. An event made due by a player action
- * at the current clock is reported AT the clock: it runs first in the next tick of any length.
- */
-export function nextMergeEvent(cfg: MergeConfig, g: MergeGame): QueuedEvent | null {
-  return nextEvent(cfg, g, Infinity);
 }
 
 /**

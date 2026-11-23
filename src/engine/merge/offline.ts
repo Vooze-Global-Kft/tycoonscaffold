@@ -16,9 +16,10 @@
  * Rounding (M19): each minder sale is `saleAmount` (rounded as the till takes it in play); the
  * earnings shown and granted are `roundCoins` of their sum, once.
  */
+import { incomeRate } from './advice';
 import { drawDropTier, runSale } from './events';
 import { currentMods } from './lanterns';
-import { EPS, mergeParams, recentRate, roundCoins, saleAmount, saleInterval } from './params';
+import { EPS, mergeParams, roundCoins, saleAmount, saleInterval } from './params';
 import { CHAINS, type AwayReport, type MergeConfig, type MergeGame, type MergeState } from './types';
 
 /** Away seconds by the shared guard: t = (now − max(lastSavedAt, stats.clockHigh)) / 1000 (time already paid is never paid again). */
@@ -204,9 +205,9 @@ export function mergeIncome(cfg: MergeConfig, g: MergeGame): number {
   return rate;
 }
 
-/** activeIncome(): the `recent` ticket rate plus the minder rate (2.9). */
+/** activeIncome(): the `recent` ticket rate plus the minder rate (2.9): the R of the advice (2.10), one function. */
 export function mergeActiveIncome(cfg: MergeConfig, g: MergeGame): number {
-  return recentRate(g) + mergeIncome(cfg, g);
+  return incomeRate(cfg, g);
 }
 
 const isReport = (r: unknown): r is AwayReport => !!r && typeof r === 'object' && Array.isArray((r as AwayReport).sales) && Array.isArray((r as AwayReport).shelved);

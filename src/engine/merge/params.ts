@@ -2,21 +2,16 @@
  * Derived values and the random streams (spec 2.2, 2.3): `mergeParams(cfg, state)` and the
  * numbers it is made of, read by every other rules file, the screens and the bot.
  *
- * Package MECHANICS (docs/design/market-build-plan.md). Seam: ORDERS calls `mergeParams`,
- * `value`, `ticketPrice`, `paceUnit`, `baseTier`, `ripeChance`, `maxPopAt`, `roundCost`,
- * `recentCoins`, `recentRate` and `streamValue` from here; this file reads the modifiers through ONE
- * object, `Mods`, from ORDERS's `currentMods` (src/engine/merge/lanterns.ts), and the season's
- * numbers from ORDERS's `familiarFactor` (src/engine/merge/season.ts).
- *
- * Skeleton bodies: every function here is BUILT (closed-form formulas of 2.2 and 2.3), so ORDERS
- * can test its draw bounds, purse, gift coins and advice on real numbers without MECHANICS. The
- * values move with `currentMods`, which is neutral until ORDERS writes it. MECHANICS owns and
- * tests them (src/engine/mergeMode.test.ts "params").
+ * Seam (docs/design/market-build-plan.md): the draw, the advice, the gift boxes and the seasons
+ * read every derived number from here; this file reads the modifiers through ONE object, `Mods`,
+ * from `currentMods` (src/engine/merge/lanterns.ts), and the season's familiar-faces factor from
+ * `familiarFactor` (src/engine/merge/season.ts). Tested in src/engine/mergeMode.test.ts "params".
  *
  * Rounding (Decision M19): ONE rule, `roundCoins` (below 1,000 half up to a whole coin, from 1,000
  * to 3 significant digits), applied once at the end to every amount that is shown or paid: each
  * cost, each ticket's price (`ticketPrice`: computed from exact values, then rounded), a Basket
- * sale, a minder's sale, a gift box's coin slot, the Festival purse, the away earnings. `value`
+ * sale, a minder's sale, a gift box's coin slot, the away earnings (the Festival pays no coins,
+ * Decision M37). `value`
  * stays exact (a good's value in a chip is rounded by the screen with `roundCoins`, for display
  * only). `roundCost` is the same function under its seam name.
  */
@@ -194,7 +189,7 @@ export function roundCoins(cfg: MergeConfig, x: number): number {
   return Math.floor(x / f + 0.5 + EPS) * f;
 }
 
-/** The seam name of `roundCoins` (ORDERS calls it for the purse and coin slots). */
+/** `roundCoins` under the skeleton's seam name (the bot's fallback reads it); the same function. */
 export function roundCost(cfg: MergeConfig, x: number): number {
   return roundCoins(cfg, x);
 }

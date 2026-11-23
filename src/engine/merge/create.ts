@@ -39,7 +39,8 @@ const zeroStats = (): MergeStats => ({
  * parts are already right: resets exactly 2.11's "Resets" list (goods on the board, gear, stall
  * and minder levels, stalls, best tiers, shelves, tickets, the till) and the season's own clocks
  * and counters; keeps its "Stays" list (board space and opened shutters, lanterns, the Ladder Book,
- * unopened gift boxes, goods waiting for room, Lucky Sparks, seasoned gear; purchases and coins are
+ * goods from gift boxes waiting for room (the close opened every box first, M36), Lucky Sparks,
+ * seasoned gear; purchases and coins are
  * on the shared state, not here). The new season's shape (`openingBoard`'s blocks), opening goods,
  * Festival and the modifiers of its character and the lit lanterns (`currentMods`) apply.
  * `basketUndo` is cleared. `script` becomes 'done' (the scripted start is the first game's only:
