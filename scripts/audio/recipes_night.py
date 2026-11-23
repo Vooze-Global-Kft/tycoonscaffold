@@ -511,12 +511,12 @@ def rattle_times(rng, dur, rate):
     return out
 
 
-def rattle_gate(rng, n, rate, depth):
+def rattle_gate(rng, n, rate, depth, dec=0.008):
     """An amplitude gate that opens at each rattle onset and closes in about 8 ms: steam let out in
     chuffs as the lid lifts and drops. depth 0..1 (1: the gate closes fully between chuffs)."""
     g = np.zeros(n)
     k = ns(0.03)
-    shape = np.exp(-np.arange(k) / ns(0.008)) * rcos_in(k, 1.0)
+    shape = np.exp(-np.arange(k) / ns(dec)) * rcos_in(k, 2.0)
     for t in rattle_times(rng, n / SR, rate):
         i = int(t * SR)
         j = min(n, i + k)
@@ -537,7 +537,7 @@ def lid_rattle(rng, dur, rate):
 
 
 MP = dict(g=1.25, d0=0.05, clink=0.45, f1=520.0, f1x=1.92, f2=1900.0, f2x=1.37, q1=2.2, q2=2.6, bal0=0.25, bal1=0.3,
-          tau=0.45, plen=1.6, who=0.9, whodb=0.6, sz0=0.22, sz1=0.2, szr=160.0, szr1=200.0, szlo=2400.0, szhi=5200.0, top=None, rat=0.0, rhz=28.0, rdep=0.9, rclk=0.0)
+          tau=0.45, plen=1.6, who=0.9, whodb=0.6, sz0=0.22, sz1=0.2, szr=160.0, szr1=200.0, szlo=2400.0, szhi=5200.0, top=None, rat=0.0, rhz=28.0, rdep=0.9, rclk=0.0, rdec=0.008)
 
 
 def merge_puff(rng, k):
@@ -560,7 +560,7 @@ def merge_puff(rng, k):
           0.02 + 0.7 * d_pff)
     y = m.out()
     if P['rat']:
-        y = y * rattle_gate(rng_for('night', 'rattle'), len(y), P['rhz'], P['rdep'])
+        y = y * rattle_gate(rng_for('night', 'rattle'), len(y), P['rhz'], P['rdep'], P['rdec'])
     if P['rclk']:
         y = y + P['rclk'] * lid_rattle(rng_for('night', 'rattle'), len(y) / SR, P['rhz'])
     return lowpass(y, P['top'], 4) if P['top'] else y

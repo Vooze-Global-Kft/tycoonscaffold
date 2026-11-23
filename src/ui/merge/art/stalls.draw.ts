@@ -27,9 +27,13 @@ export const STALL_TILL = { x: 24.5, y: 11.5 };
 export const STALL_BADGE = { x: -21, y: -1 };
 export const STALL_PIP = { x: -24.5, y: -9 };
 
-/** Which awning a stall level shows (levels 5, 10 and 20 redraw it, 2.2). */
+/**
+ * Which awning a stall level shows. Spec 2.2 names three redraws (levels 5, 10, 20) but 4.5 bakes
+ * three awning states; until the lead settles it: levels 1 to 4 plain, 5 to 9 scalloped, 10 and up
+ * double (level 20 draws the same as 10). See the art handover notes.
+ */
 export function awningFor(stallLevel: number): Awning {
-  return stallLevel >= 20 ? 2 : stallLevel >= 10 ? 1 : 0;
+  return stallLevel >= 10 ? 2 : stallLevel >= 5 ? 1 : 0;
 }
 
 export interface StallOptions {

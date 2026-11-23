@@ -115,7 +115,7 @@ Shutters open in index order within a group and stay open across seasons. Every 
 
 Costs (below 1,000 rounded half up to a whole coin, above to 3 significant digits; shown = paid):
 - Open stall i (i ≥ 1): a table of five tuned costs (decision M23; starting values Tea 120, Steamer 3,200, Sweets 51.2K, Noodles 819K, Puffs 13.1M), each × F_s, the familiar-faces factor of 2.11 (1 in the first season).
-- Gear level L → L+1 (L from 1 to 40): 20 × r_c × 1.45^(L−1) (tune 1.40 to 1.55). Grill: 20, 29, 42, 61, 88 …; Grill L1 → L11 costs 1,782 in all, L1 → L21 75.0K, L1 → L31 3.08M.
+- Gear level L → L+1 (L from 1 to 39; level 40 is the top, decision M28): 20 × r_c × 1.45^(L−1) (tune 1.40 to 1.55). Grill: 20, 29, 42, 61, 88 …; Grill L1 → L11 costs 1,782 in all, L1 → L21 75.0K, L1 → L31 3.08M.
 - Stall level M → M+1 (M from 1 to 30): 50 × r_c × 1.35^(M−1) (tune 1.30 to 1.40).
 - Minder hire: 150 × r_c. Minder level K → K+1 (K from 1 to 3): 150 × r_c × 3^K (tune 2.5 to 3.5).
 
@@ -794,3 +794,4 @@ Decisions taken after revision 2. A decision here overrides the text above where
 - **M25. Season 1's Festival is a tuned row like the later ones** (4 to 6 lines). At the specified lines the season ended minutes after the Noodles stall opened. Aims (gate 10 reworded): the active bot fills season 1's Festival at 100 to 160 min, the slowest seed at most 1.6 times the fastest; seasons 3 to 10 each take 50 to 90 % of season 1; the seasoned-gear step N always equals the gear step s.
 - **M26. Gate wording, from the prototype.** Gate 4: a ticket's price never falls after the draw (a stall level may raise it). Gate 3's gear check compares 30 tickets each side with a 1.3 threshold. Gate 8's ceiling band is dropped (sources and shares stay). Gate 9's cross-check steps events with the board frozen (while away, drops go only to the shelf). The deliver-only bot starts from the active bot's state at minute 3. Gate 1's "something worth doing" is M3's measure.
 - **M27. Prices slow the game, not slower hands.** The prototype pushed seven knobs to the ends of their ranges because nothing could get dearer. Tunable from now on, with the ranges in `RANGES`: the four base costs (gear 20, stall level 50, minder 150, shutter 30, each × 0.5 to × 4), gear growth 1.40 to 1.70, stall growth 1.30 to 1.50, and the stall table of M23. T is not a knob.
+- **M28. Gear level 40 is the top.** At a level 41 the ripe chance would fall back to 0 with the base tier capped at 4, so the last upgrade would make drops worse. The base tier is min(4, 1 + floor((L − 1)/s)) and the ripe chance 0.05 × ((L − 1) mod s) for L from 1 to 40; a seasoned start level above 40 is 40.
