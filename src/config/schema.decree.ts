@@ -56,8 +56,8 @@ const OfficeOrAny = z.enum(['mayor', 'governor', 'president', 'any']);
 /**
  * One BASE effect of an outcome (2.7: at most 4, from the closed set). Base values only: money is
  * sized at the draw, moods at landing (2.7 "Sizing"), never here.
- * - money: `seconds` of B (signed: a cost is negative), or `tier` S / M / L of the money tiers times
- *   `sign`, or a `fixed` amount of dibs (scripted papers only: Till's Teas' +60);
+ * - money: `seconds` of B or `tier` S / M / L of the money tiers, times `sign` (−1 a cost, +1 a gain),
+ *   or a `fixed` signed amount of dibs that is never sized (scripted papers only: Till's Teas' +60);
  * - mood: one club's base Δ; `club` is a club id, or 'petitioner' (the visitor's club), 'other' (the
  *   side the writer names), 'served' (a form's ministry's club) or 'lowest' (the rally);
  * - every: every club of the office, one chip; gossip: `delta`, or `set` (the apology's "to 0");
@@ -269,8 +269,13 @@ export const FollowUpPaperSchema = z.object({
   /** The clipping each choice ends the chain in (a headline, 5.9). */
   clippings: z.object({ sign: text(80), refuse: text(80) }),
 });
-/** A chain (7.6): a set-up comic paper and one follow-up per branch. */
-export const ChainSchema = z.object({ id, setup: id, sign: FollowUpPaperSchema, refuse: FollowUpPaperSchema });
+/**
+ * A chain (7.6): a set-up paper and one follow-up per branch; a branch without one prints no ↩ (the
+ * scripted papers 1 and 2 of 3.1 come back on one side only). Every comic chain of 7.7 has both.
+ */
+export const ChainSchema = z
+  .object({ id, setup: id, sign: FollowUpPaperSchema.optional(), refuse: FollowUpPaperSchema.optional() })
+  .refine((c) => c.sign || c.refuse, 'a chain needs at least one follow-up');
 
 /** A Clerk's note on a form (7.7: on half the forms). */
 export const FormNoteSchema = z.object({ id, form: z.enum(['requisition', 'ribbon', 'application', 'slip']), text: text(60) });
@@ -369,7 +374,8 @@ const OFFICES_DEFAULT: z.input<typeof OfficeSchema>[] = [
     winWeight: 1,
     requisitionEvery: 10,
     templateShare: 0,
-    rivals: [{ id: 'plumb', name: 'Councillor Prudence Plumb', slogan: 'Plumb: She Owns A Hat', hobby: 'her hat', backAgain: 'Councillor Plumb is back for another go, in the same hat.', resignation: 'Councillor Plumb won, then resigned to spend more time with her hat.' }, RIVAL_PLACEHOLDER('mayor', 2), RIVAL_PLACEHOLDER('mayor', 3)],
+    // D14: the first mayoral rival is renamed by the sensitivity editor (names.json); PLACEHOLDER until then.
+    rivals: [{ id: 'mayor_rival_1', name: 'Councillor (PLACEHOLDER, D14)', slogan: 'PLACEHOLDER: She Owns A Hat', hobby: 'her hat', backAgain: 'PLACEHOLDER: back for another go, in the same hat.', resignation: 'PLACEHOLDER: won, then resigned to spend more time with her hat.' }, RIVAL_PLACEHOLDER('mayor', 2), RIVAL_PLACEHOLDER('mayor', 3)],
   },
   {
     id: 'governor',
@@ -455,7 +461,8 @@ const OFFICES_DEFAULT: z.input<typeof OfficeSchema>[] = [
     requisitionEvery: 4,
     templateShare: 0.2,
     rivals: [
-      { id: 'crumb', name: 'Professor Ignatius Crumb', slogan: 'Crumb: Abolish Wednesdays', hobby: 'Wednesdays', backAgain: 'Professor Crumb is back for another go, still against Wednesdays.', resignation: 'Professor Crumb won, then resigned to spend more time with his Tuesdays.' },
+      // D14: the first presidential rival is renamed by the sensitivity editor (names.json); PLACEHOLDER until then.
+      { id: 'president_rival_1', name: 'Professor (PLACEHOLDER, D14)', slogan: 'PLACEHOLDER: Abolish Wednesdays', hobby: 'Wednesdays', backAgain: 'PLACEHOLDER: back for another go, still against Wednesdays.', resignation: 'PLACEHOLDER: won, then resigned to spend more time with his Tuesdays.' },
       { id: 'strop', name: 'Ottoline Strop', slogan: 'Strop: Firmly Seated', hobby: 'her chair', backAgain: 'Ottoline Strop is back for another go, chair and all.', resignation: 'Ottoline Strop won, then resigned to spend more time with her chair.' },
       ...Array.from({ length: 10 }, (_, i) => RIVAL_PLACEHOLDER('president', i + 3)),
     ],
@@ -575,8 +582,8 @@ export const DecreeSchema = z.object({
       eventOverCap: int.min(0).default(1),
     })
     .prefault({}),
-  /** Time away (2.15): arrival every n s (tune 240 to 600), rate a (tune 0.25 to 0.45), the cap (rule 4 h, +4 h with Long Lunch). */
-  away: z.object({ arrivalSeconds: pos.default(360), rate: prob.default(0.35), capHours: pos.default(4), longLunchHours: pos.default(4) }).prefault({}),
+  /** Time away (2.15): arrival every n s (tune 240 to 600), rate a (tune 0.25 to 0.45), the cap (rule 4 h; +2 h with Long Lunch, D11). */
+  away: z.object({ arrivalSeconds: pos.default(360), rate: prob.default(0.35), capHours: pos.default(4), longLunchHours: pos.default(2) }).prefault({}),
   /** The ladder (2.10, 2.12): m_N = 1 + nrFactor × NR (tune 0.01 to 0.04); disarray Y per loss (tune 8 to 10, integer); the transition fund (tune 15 to 90 s of the old B); the new office's moods 50 + min(capBonus, floor(NR / nrPerPoint)). */
   ladder: z
     .object({
@@ -593,7 +600,7 @@ export const DecreeSchema = z.object({
     .prefault({}),
   /** The vanity shelf (5.8): a monument a term from mayor term 2 for `price` s of B (tune 300 to 1,200), ×factor for good (tune 1.01 to 1.04). */
   vanity: z.object({ price: pos.default(600), factor: pos.default(1.02), fromMayorTerm: int.positive().default(2) }).prefault({}),
-  /** The Standing Order (5.10): from governor term 2, buys the advised level when cash ≥ times × price + the reserve. */
+  /** The Standing Order (5.10): from governor term 2 (from the first day with the product "Junior Clerk on Duty", D11), buys the advised level when cash ≥ times × price + the reserve. */
   standingOrder: z.object({ fromGovernorTerm: int.positive().default(2), times: pos.default(3) }).prefault({}),
   /** Advice (2.16): Δincome of a candidate as a share of I, and the record's divisor. */
   advice: z.object({ deltaShare: pos.default(0.02), recordDivisor: pos.default(1.5) }).prefault({}),
@@ -606,9 +613,10 @@ export const DecreeSchema = z.object({
       openDoorsCooldown: pos.default(900),
     })
     .prefault({}),
-  /** The products this mode reads from `entitlements.products` (5.11, D3). */
+  /** The products this mode reads from `entitlements.products` (D11: five; {unlock, unlock, cosmetic, cosmetic, skipAds}). */
   products: z
     .object({
+      standingOrder: z.string().default('office_standing_order'),
       longLunch: z.string().default('office_long_lunch'),
       walnutDesk: z.string().default('office_walnut_desk'),
       portraitFrames: z.string().default('office_portrait_frames'),

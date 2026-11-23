@@ -1,0 +1,22 @@
+# deny-hard.txt: TIER 1 of the satire lint (office-design.md 7.8), the "hard words". Always fails,
+# in any case, wherever it appears, even where the word is harmless ("a rose bush": write "shrub").
+# Matching: the syntax of deny-phrases.txt (whole words, any case, "word*" any ending).
+trump*
+bush
+bushes
+goose step*
+goosestep*
+for life
+third term
+fourth term
+term limit*
+voted twice
+vote twice
+extra votes
+rigged
+rigging
+rig the {vote,votes,election,count}
+stolen election
+stuffed ballot*
+ballot stuffing
+dead voters

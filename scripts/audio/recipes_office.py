@@ -639,12 +639,12 @@ def latch(rng, vel=1.0, heavy=1.0):
 
 def brass_coin(rng, vel=1.0):
     """A heavy brass token set down flat on the leather blotter: a dull contact (the blotter
-    damps the metal: its modes, 1.7 to 4.6 kHz and inharmonic, die in 5 to 9 ms, so it has a
+    damps the metal: its modes, 1.4 to 4 kHz and inharmonic, die in 5 to 9 ms, so it has a
     colour and no note), then the token settling on its rim (a short wobble of six contacts
     speeding up, the 'Euler's disc' of a coin laid down)."""
     m = Mix()
     n = ns(0.05)
-    f = rng.uniform(1650.0, 1800.0)
+    f = rng.uniform(1350.0, 1480.0)
     parts = [(f, 1.0, 0.009, 0.1, 0.0), (f * 1.83, 0.8, 0.007, 0.1, 1.0), (f * 2.31, 0.6, 0.006, 0.1, 2.0), (f * 2.77, 0.5, 0.005, 0.1, 3.0)]
     m.add(modal(parts, n) + 0.5 * band(white(n, rng), 1200.0, 3500.0, 2) * perc(n, 0.1, 0.004))
     m.add(0.5 * highpass(wood_body(rng, WOOD_DESK, 1.0, 1.4, 1.6, 0.3), 400.0, 2))
@@ -707,7 +707,7 @@ for _k in (1, 2, 3):
     globals()['sign_ink_%d' % _k] = _sign_ink(_k)
 
 
-SIGN = ((6, (900.0, 2000.0), 0.024, 1.0, 0.05), (6, (950.0, 2100.0), 0.02, 1.1, 0.044), (7, (850.0, 1900.0), 0.028, 0.9, 0.056))
+SIGN = ((7, (880.0, 2050.0), 0.026, 1.0, 0.048), (6, (950.0, 2100.0), 0.02, 1.1, 0.044), (7, (850.0, 1900.0), 0.028, 0.9, 0.056))
 
 
 def _sign(k):
@@ -832,13 +832,15 @@ def slip_arrive(c):
 
 @office_recipe('buy_level', length=0.2, loud_db=FREQUENT)
 def buy_level(c):
-    """A level bought: the nib ticks the Ledger (a 40 ms check mark) and a heavy brass token is
-    set down on the blotter 50 ms later and settles on its rim (no till, no bell)."""
+    """A level bought: the nib ticks the Ledger (a check mark: a short down-stroke and a longer up-stroke) and a heavy brass token is
+    set down on the blotter 85 ms later and settles on its rim (no till, no bell)."""
     m = Mix()
     d = 0.045
-    m.add(0.7 * nib(c.sub('tick'), d, 22.0, press=[(0, 1.0), (d, 0.5)], squeak=0.6) * points([(0, 0), (0.003, 1), (d, 0)], ns(d)))
-    m.add(brass_coin(c.sub('coin'), 1.0), 0.05)
-    c.accent(0.0, 0.05)
+    for j, (t0, dd) in enumerate(((0.0, 0.018), (0.03, d))):            # a check mark: down, then up and away
+        m.add((0.8 if j else 0.6) * nib(c.sub('tick%d' % j), dd, 30.0, press=[(0, 1.0), (dd, 0.4)], squeak=0.25)
+              * points([(0, 0), (0.002, 1), (dd, 0)], ns(dd)), t0)
+    m.add(brass_coin(c.sub('coin'), 1.0), 0.085)
+    c.accent(0.0, 0.085)
     return m.out()
 
 
@@ -1040,23 +1042,24 @@ def ui_open(c):
     """A sheet opened: a capsule arriving by pneumatic tube, a short puff of tube air (the tube's
     fixed resonances, 90 ms) and the capsule dropping into the brass receiver (a clunk)."""
     m = Mix()
-    m.add(0.6 * tube_air(c.sub('air'), 0.09, 330.0, env=points([(0, 0.2), (0.07, 1.0), (0.09, 0.0)], ns(0.09))))
+    m.add(0.6 * tube_air(c.sub('air'), 0.11, 370.0, env=points([(0, 0.2), (0.09, 1.0), (0.11, 0.0)], ns(0.11))))
     nb = ns(0.1)
     clunk = modal([(780.0, 1.0, 0.018, 0.2, 0.0), (1420.0, 0.7, 0.012, 0.2, 1.0), (2380.0, 0.4, 0.008, 0.2, 2.0)], nb)
-    m.add(0.9 * clunk, 0.085)
-    m.add(0.4 * desk_tap(c.sub('d'), 1.0), 0.085)
+    m.add(0.9 * clunk, 0.105)
+    m.add(0.4 * desk_tap(c.sub('d'), 1.0), 0.105)
     c.accent(0.0)
     return m.out()
 
 
 @office_recipe('ui_close', length=0.2, loud_db=FREQUENT)
 def ui_close(c):
-    """The sheet closed: the capsule sent off with a soft suck of tube air (a lower tube than
-    ui_open's, its level falling) and the receiver's brass lid falling shut on it at 70 ms."""
+    """The sheet closed: the receiver's brass lid falling shut (it hits its rim, a click, and its
+    catch snaps 35 ms later, a clack) and the capsule's air let out under it (a short, low puff
+    of a long tube, 60 ms)."""
     m = Mix()
-    m.add(0.7 * tube_air(c.sub('air'), 0.1, 250.0, env=points([(0, 0.0), (0.01, 1.0), (0.1, 0.0)], ns(0.1))))
-    m.add(0.8 * metal_click(c.sub('lid'), (1600.0, 2900.0, 4200.0), 0.9, 0.01), 0.07)
-    m.add(0.3 * desk_tap(c.sub('d'), 1.0), 0.07)
+    m.add(0.8 * metal_click(c.sub('lid'), (1600.0, 2900.0, 4200.0), 0.9, 0.01))
+    m.add(0.9 * latch(c.sub('catch'), 0.7, 1.1))
+    m.add(0.45 * tube_air(c.sub('air'), 0.06, 190.0, env=points([(0, 0.0), (0.008, 1.0), (0.06, 0.0)], ns(0.06))), 0.05)
     c.accent(0.0)
     return m.out()
 

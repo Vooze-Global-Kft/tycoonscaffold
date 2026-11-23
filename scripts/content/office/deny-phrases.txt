@@ -1,0 +1,348 @@
+# deny-phrases.txt: TIER 1 of the satire lint (docs/design/office-design.md 7.8). Always fails.
+# Real slogans, catchphrases and stock lines of politics in the English-speaking world (US, UK,
+# Canada, Australia, New Zealand, Ireland, South Africa) and the best-known ones beyond, compiled
+# offline from general knowledge. Owned by the content desk; the sensitivity editor extends it.
+#
+# How it is matched (same syntax in every deny-*.txt except deny-people and deny-fiction):
+#   - one phrase per line; "#" starts a comment line; blank lines are ignored;
+#   - any case: the text and the phrase are both lower-cased, accents removed, every run of
+#     characters other than letters, digits and apostrophes becomes one space (so a hyphen is a
+#     space: "goose-step" matches "goose step"), and the phrase must match whole words;
+#   - "word*" matches the word with any ending ("trump*": trumpet, trumped);
+#   - a lone "*" stands for one to four words ("make * great again");
+#   - "{a,b,c}" is one of the alternatives ("drain the {swamp,marsh,bog}");
+#   - a line starting "=" is matched case-sensitively and never at the start of a sentence (for
+#     words that are harmless in lower case: "=Turkey" catches the country, not the bird).
+# Runs of all-caps words are lower-cased before matching, so "=" entries miss them.
+# allow.json lists the exact phrases that pass although they contain a match.
+
+# --- United States ---
+drain the {swamp,marsh,bog,fen,mire}
+build the wall
+build that wall
+make * great again
+keep america great
+america first
+yes we can
+change we can believe in
+hope and change
+the audacity of hope
+i like ike
+a chicken in every pot
+happy days are here again
+new deal
+green new deal
+fair deal
+square deal
+new frontier
+great society
+morning in america
+it's morning again in america
+read my lips
+no new taxes
+it's the economy stupid
+the economy stupid
+a thousand points of light
+kinder gentler
+compassionate conservatism
+mission accomplished
+axis of evil
+stronger together
+i'm with her
+lock her up
+lock him up
+send her back
+feel the bern
+build back better
+not my president
+alternative facts
+crooked hillary
+sleepy joe
+let's go brandon
+stop the steal
+four more years
+the buck stops here
+ask not what your country can do
+tear down this wall
+i am not a crook
+nothing to fear but fear itself
+speak softly and carry a big stick
+return to normalcy
+keep cool with coolidge
+he kept us out of war
+all the way with lbj
+nixon's the one
+contract with america
+moral majority
+silent majority
+just say no
+shining city upon a hill
+city on a hill
+of the people by the people
+we the people
+my fellow americans
+god bless america
+in god we trust
+no taxation without representation
+don't tread on me
+medicare for all
+defund the police
+abolish ice
+thoughts and prayers
+covfefe
+bigly
+witch hunt
+nasty woman
+basket of deplorables
+deplorables
+when they go low we go high
+no collusion
+perfect phone call
+you're fired
+i alone can fix it
+the art of the deal
+america is back
+buy american
+i have a dream
+whip inflation now
+trickle down
+voodoo economics
+the forgotten man
+forgotten men and women
+very fine people
+nevertheless she persisted
+love trumps hate
+country first
+believe in america
+a more perfect union
+the new nationalism
+peace with honor
+peace with honour
+a leader for a change
+let's make america
+read the transcript
+truth social
+fight fight fight
+the big lie
+make america healthy again
+
+# --- United Kingdom ---
+take back control
+taking back control
+get brexit done
+get it done
+strong and stable
+levelling up
+stop the boats
+for the many not the few
+the many not the few
+things can only get better
+new labour new danger
+education education education
+tough on crime
+tough on the causes of crime
+we're all in this together
+big society
+broken britain
+long term economic plan
+coalition of chaos
+brexit means brexit
+no deal is better than a bad deal
+red white and blue brexit
+oven ready deal
+have our cake and eat it
+cakeism
+labour isn't working
+the lady's not for turning
+the lady is not for turning
+there is no alternative
+you've never had it so good
+never had it so good
+the pound in your pocket
+white heat of technology
+crisis what crisis
+winter of discontent
+back to basics
+cones hotline
+the third way
+cool britannia
+the people's princess
+forces of conservatism
+hug a hoodie
+vote blue go green
+bollocks to brexit
+stop brexit
+people's vote
+global britain
+world beating
+hands face space
+stay home protect the nhs
+stay alert control the virus
+eat out to help out
+keep calm and carry on
+dig for victory
+fight them on the beaches
+blood toil tears and sweat
+never surrender
+their finest hour
+peace for our time
+peace in our time
+homes fit for heroes
+a land fit for heroes
+let us face the future
+life's better with the conservatives
+not flash just gordon
+prudence with a purpose
+the nasty party
+magic money tree
+hard working families
+alarm clock britain
+the squeezed middle
+rivers of blood
+britain deserves better
+back boris
+go back to your constituencies
+the iron lady
+land of hope and glory
+rule britannia
+god save the king
+god save the queen
+the enemy within
+a week is a long time in politics
+no ifs no buts
+bring back hanging
+the people's priorities
+the will of the people
+enemy of the people
+enemies of the people
+take back our borders
+take our country back
+taking our country back
+political correctness gone mad
+pc gone mad
+let's get britain moving
+long live the king
+long live the queen
+
+# --- Canada ---
+sunny ways
+because it's 2015
+the land is strong
+stand up for canada
+the true north strong and free
+just watch me
+bedrooms of the nation
+the just society
+canada's back
+canada is back
+axe the tax
+common sense revolution
+choose forward
+vive le quebec libre
+maitres chez nous
+peace order and good government
+
+# --- Australia ---
+kevin 07
+kevin07
+jobs and growth
+how good is australia
+quiet australians
+i don't hold a hose
+the lucky country
+ditch the witch
+we will decide who comes to this country
+children overboard
+the light on the hill
+the recession we had to have
+big australia
+not happy john
+stop the boats now
+the greatest treasurer
+
+# --- New Zealand ---
+let's keep moving
+the team of five million
+go hard go early
+go hard and go early
+jobs jobs jobs
+three strikes
+one law for all
+
+# --- Ireland and Northern Ireland ---
+a nation once again
+our day will come
+tiocfaidh ar la
+celtic tiger
+keep the recovery going
+the armalite and the ballot box
+brits out
+up the ra
+no surrender
+ulster says no
+for god and ulster
+not an inch
+ourselves alone
+sinn fein
+a terrible beauty is born
+the fields of athenry
+
+# --- South Africa ---
+amandla
+amandla awethu
+a better life for all
+the people shall govern
+one settler one bullet
+kill the boer
+rainbow nation
+aluta continua
+the struggle continues
+radical economic transformation
+state capture
+fees must fall
+rhodes must fall
+thuma mina
+mayibuye
+one azania
+pay back the money
+
+# --- Elsewhere, well known in English ---
+liberty equality fraternity
+workers of the world unite
+power to the people
+the personal is political
+hope not hate
+yes she can
+the people united
+long live the revolution
+ein volk
+sieg heil
+heil
+arbeit macht frei
+glory to the motherland
+the great leap forward
+cultural revolution
+let them eat cake
+veni vidi vici
+i shall return
+we shall overcome
+deep state
+fake news media
+the mainstream media
+lamestream
+virtue signalling
+virtue signaling
+cancel culture
+culture war
+snowflakes
+the silent majority
+law and order
+family values
+the forgotten people
+the ruling class
+global elite
+the establishment candidate
+vote early vote often
+every vote counts
+your country needs you
+loose lips sink ships
