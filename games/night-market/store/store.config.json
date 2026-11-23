@@ -1,0 +1,34 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "categories": [
+      [
+        "GAMES",
+        "GAMES_PUZZLE",
+        "GAMES_CASUAL"
+      ]
+    ],
+    "info": {
+      "en-US": {
+        "title": "Lantern Row",
+        "subtitle": "Merge snacks, fill each order",
+        "description": "PLACEHOLDER. This listing is a stand-in written by the skeleton step; the store package writes the real one (scripts/content/night-store.json).",
+        "keywords": [
+          "merge",
+          "market",
+          "orders",
+          "board",
+          "skewer",
+          "tea",
+          "dumpling",
+          "stall",
+          "lantern",
+          "snack",
+          "puzzle",
+          "cozy"
+        ],
+        "privacyPolicyUrl": "https://example.com/lantern-row/privacy"
+      }
+    }
+  }
+}

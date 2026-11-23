@@ -86,16 +86,14 @@ def check():
     """-> (problems, catalogue entries or None)."""
     problems = []
     music = set(RN.MUSIC_KEYS)
-    for k in RN.EVENTS:
-        if k in music:
-            continue
+    for k in effect_keys():
         fn = RN.NIGHT_RECIPES.get(k)
         if fn is None:
             problems.append('%s: no night recipe' % k)
         elif fn.__module__ != RN.__name__ or not getattr(fn, 'night', False):
             problems.append('%s: recipe comes from %s, not from recipes_night' % (k, fn.__module__))
     for k in RN.NIGHT_RECIPES:
-        if k not in RN.EVENTS:
+        if k not in effect_keys():
             problems.append('%s: night recipe without a key in the event table' % k)
     for mod in FOREIGN:
         if mod in sys.modules:
@@ -112,6 +110,10 @@ def check():
         for k in RN.EVENTS:
             if k not in keys:
                 problems.append('%s: in recipes_night.EVENTS but not in catalog.merge.ts' % k)
+        for e in cat:
+            if e['key'] in RN.EVENTS and e.get('files', 1) != RN.FILES.get(e['key'], 1):
+                problems.append('%s: %s file(s) in catalog.merge.ts, %d in recipes_night.FILES'
+                                % (e['key'], e.get('files', 1), RN.FILES.get(e['key'], 1)))
     return problems, cat
 
 
@@ -158,7 +160,7 @@ def qa_effect(key, y):
     every = RN.NIGHT_RECIPES[key].stream_ms
     if every:
         a['loud_db'] = dsp.stream_loudness_db(y, every)
-    err, warn = qa.check_effect(a, (dsp.SR, 1, 16), bool(RN.EVENTS[key][2]), target_db(key))
+    err, warn = qa.check_effect(a, (dsp.SR, 1, 16), bool(event(key)[2]), target_db(key))
     a['low_share'] = low_share(y)
     return a, err, warn
 
@@ -169,7 +171,12 @@ def read_mono(path):
 
 
 def effect_keys():
-    return [k for k in RN.EVENTS if k not in RN.MUSIC_KEYS]
+    """File stems of every effect (merge_1 .. merge_8 for the key merge)."""
+    return [s for k in RN.EVENTS if k not in RN.MUSIC_KEYS for s in RN.file_stems(k)]
+
+
+def event(stem):
+    return RN.EVENTS[RN.key_of(stem)]
 
 
 HEADER = '%-15s %5s %6s %6s %4s %6s %6s %5s %6s %6s %6s  %s' % ('key', 'ms', 'peak', 'loud', 'tier', 'phone', 'cent', '<400', '>8k', 'onset', 'tail', 'notes')
@@ -237,7 +244,7 @@ def qa_folder(out_dir, keys=None):
                      size * 8 / 1000.0 / a['duration'], size / 1000.0, seam['level_db'], seam['level_p99'], seam['level_max'],
                      seam['spec_db'], seam['spec_pct'], seam['jump'], seam['jump_p999'], '; '.join(['FAIL ' + e for e in err] + warn)))
     strays = sorted(f for f in os.listdir(out_dir) if f.lower().endswith(('.wav', '.m4a', '.mp3', '.ogg'))
-                    and os.path.splitext(f)[0] not in RN.EVENTS)
+                    and os.path.splitext(f)[0] not in set(effect_keys()) | set(RN.MUSIC_KEYS))
     if strays:
         print('FAIL not a key of this game: %s' % ', '.join(strays))
         fails += 1
@@ -267,7 +274,7 @@ def accents_report():
     print('%-15s %-34s %-22s %s' % ('key', 'haptic (catalogue)', 'sound accents (ms)', 'pulses/s'))
     for k in effect_keys():
         _, _, acc = render_effect(k)
-        hap = RN.EVENTS[k][2]
+        hap = event(k)[2]
         ht = haptic_times(hap)
         hs = ' '.join('%s@%d' % (s, round(t * 1000)) for s, t in ht) or '-'
         gaps = [b[1] - a[1] for a, b in zip(ht, ht[1:])]
@@ -318,7 +325,7 @@ def rows_report(sheet_dir):
     print('%-13s %6s %7s %7s %7s %8s %7s' % ('key', 'every', 'peak', 'row', 'single', 'dip', 'build'))
     for k, every in RN.ROW_KEYS.items():
         y, _, _ = render_effect(k)
-        vol, _, _, _, voices = RN.EVENTS[k]
+        vol, _, _, _, voices = event(k)
         y = y * vol
         for ms in sorted({every, max(every, 100)}):
             buf = row_of(y, ms, 20, jitter_ms=4.0 if ms > 60 else 0.0, rng=np.random.RandomState(7), voices=voices)
@@ -337,7 +344,7 @@ def rows_report(sheet_dir):
 
 
 GROUPS = [
-    ('merges', ['merge_%d' % k for k in range(1, 9)] + ['lucky']),
+    ('merges', RN.file_stems('merge') + ['lucky']),
     ('hand', ['move', 'swap', 'return', 'drop', 'line_fill', 'ticket_filled', 'coins', 'basket_sell', 'undo']),
     ('purchases', ['shutter_open', 'stall_open', 'upgrade', 'minder_hire', 'discovery', 'lantern_lit']),
     ('events', ['parade_arrive', 'giftbox_open', 'slot_reveal', 'festival_line', 'festival_done', 'season_close']),
@@ -393,7 +400,7 @@ def main(argv=None):
         print('render_night: %d problem(s):\n  %s' % (len(problems), '\n  '.join(problems)), file=sys.stderr)
         return 2
     if args.check:
-        print('night pack ok: %d keys of spec 6.2 (%d effects from recipes_night, %d music loops); no key falls back '
+        print('night pack ok: %d keys of spec 6.2 (%d effect files from recipes_night, %d music loops); no key falls back '
               '(soundPack %s; recipes.py, recipes_haul.py, packs.py not imported); keys checked against %s'
               % (len(RN.EVENTS), len(effect_keys()), len(RN.MUSIC_KEYS),
                  'null' if game_sound_pack() is None else 'not set yet (no game.json)' if game_sound_pack() == 'absent' else game_sound_pack(),

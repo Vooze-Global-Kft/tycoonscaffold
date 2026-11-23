@@ -21,7 +21,7 @@ Conventions:
 2. Each stall's gear (an Ember Grill, a Copper Urn, a Bamboo Steamer) drops a basic snack onto the 7 by 8 board every 5 seconds, and you drag two identical snacks together to make a better one, eight steps up (a Pepper Skewer ends as a Dragon Grill Board).
 3. You are paid only when the exact snacks a ticket lists are dragged onto it: it is stamped, folds into a paper lantern and floats its coins to your purse, so who is waiting sets what you merge.
 4. Coins buy finer (never faster) gear, board space, new stalls and minders, who put a house snack's price into the till, also while you are away.
-5. Each season ends with a Festival ticket; when it is filled you may close the season, and the next one brings a new board shape and a new character of the place, while board space, lanterns, the Ladder Book and seasoned gear carry over (no reset currency, no multiplier).
+5. Each season ends with a Festival ticket; when it is filled you may close the season, and the next one changes the street (a new character of the place, and from the third season a new board shape), while board space, lanterns, the Ladder Book and seasoned gear carry over (no reset currency, no multiplier).
 
 ### 1.2 Fingerprint along the 19 dimensions
 
@@ -46,12 +46,12 @@ Declared in `games/night-market/store/fingerprint.json`, from the closed vocabul
 | 15 | character_kind | animals | humans | robots | differs | differs |
 | 16 | audio_overlap | 0 %: soundPack null, own instruments, compare.py cross-key mode | measured | measured | differs | differs |
 | 17 | tone_and_string_overlap | voice lantern-calm; under 5 % shared strings | warm-playful | dry-radio-chatter | differs | differs |
-| 18 | keyword_overlap | merge, market, orders, board, skewer, tea, dumpling, stall, lantern, snack, puzzle, cozy: Jaccard 0 with both | | | differs | differs |
+| 18 | keyword_overlap | market, board, skewer, tea, dumpling, noodle, sweets, food, stall, street, puzzle, cozy: Jaccard 0 with both | | | differs | differs |
 | 19 | release_gap | first submission at least 14 days after Orbit's last | log | log | pending | pending |
 
 Count: against each game, 8 of 8 must and 19 of 19 planned differ. Verifiable at design time: 15 (1 to 6, 9 to 12, 14 to 18). Pending until release: 7, 8, 13 (a person or the build) and 19 (the log). If dimension 13 were ruled "restyled", the floor is 18 of 19 against each.
 
-Other validate checks: no "Empire", "X: Y" shape or "Night Market" in the title; no "Idle … Tycoon" pattern, and idle and tycoon only in the description; product kinds {cosmetic, unlock} as a multiset, against Pizza's {noAds, skipAds, multiplier ×2, gems ×4, timeWarp, deal ×2} and Orbit's {clearance, unlock, starterPack, gems ×2} (the sequence check stays, a multiset check is added); ids prefixed `night_`; product text under the trigram threshold against both games' product text.
+Other validate checks: no "Empire", "X: Y" shape or "Night Market" in the title; no "Idle … Tycoon" pattern, and idle and tycoon only in the description; product kinds {cosmetic, unlock, skipAds} as a multiset, against Pizza's {noAds, skipAds, multiplier ×2, gems ×4, timeWarp, deal ×2} and Orbit's {clearance, unlock, starterPack, gems ×2} (the sequence check stays, a multiset check is added); ids prefixed `night_`; product text under the trigram threshold against both games' product text.
 
 Weakest claims, argued in `REVIEW-NOTES.md` with the tap path:
 - 3 against Pizza: customers are visible, but none pays on arrival or per item; only a complete ticket pays.
@@ -96,7 +96,7 @@ Chains (v1: 6 chains of 8 tiers; names original):
 | 1 | Tea: Copper Urn | 20 | 4 | Tea Leaf, Cup of Tea, Milk Tea, Pearl Tea, Tea Flight, Tea Tray, Moon Teapot, Midnight Tea Set |
 | 2 | Steamer: Bamboo Steamer | 80 | 16 | Dough Ball, Dumpling, Dumpling Pair, Steamer Basket, Double Basket, Steamer Stack, Lantern Stack, Jade Pagoda |
 | 3 | Sweets: Sugar Pan | 320 | 64 | Sugar Drop, Candied Berry, Berry Stick, Candy Posy, Honey Cake, Cake Stack, Lantern Cake, Festival Cake |
-| 4 | Noodles: Noodle Wok | 1,280 | 256 | Noodle Nest, Noodle Cup, Broth Bowl, Topped Bowl, Big Bowl, Noodle Feast, Long-Life Bowl, Thousand-Thread Pot |
+| 4 | Noodles: Noodle Wok | 1,280 | 256 | Noodle Nest, Noodle Cup, Broth Bowl, Topped Bowl, Big Bowl, Family Bowl, Long-Life Bowl, Thousand-Thread Pot |
 | 5 | Puffs: Lantern Pan (season 2 on) | 5,120 | 1,024 | Puff Drop, Twin Puffs, Sesame Puff, Puff Cone, Puff Basket, Golden Heap, Sun Platter, Paper Moon Tower |
 
 - Chain value step ×4 (tune 3 to 5); tier growth g = 2.4 (tune 2.2 to 2.6, above 2). Grill values: 5, 12, 29, 69, 166, 398, 955, 2,293.
@@ -139,7 +139,7 @@ Minders, one per stall: Old Brindle (badger, Grill), Pim (owl, Tea), Nettle (hed
 - `counters`: 2 to 4 × `{ticket | null, refillAt, notTonightAt}`; a ticket is `{id, lines: [{c, k, filled}], gold}`, and only `filled` ever changes.
 - `festival` (lines, `filledAt`); `paradeAt` (season clock).
 - `gift`: `boxes` (each `{coins, slots}`, fixed when earned), `ticketsToBox`, `pendingGoods` (in order).
-- `luckySparks`, `pocket`, `basketUndo` (`{cell, good, refund, until} | null`).
+- `luckySparks`, `basketUndo` (`{cell, good, refund, until} | null`).
 - `book` (discovered (c, k) of all time); `lanterns` and `feats`.
 - `ads` (`readyAt` per kind, game clock); `recent` (60 five-second buckets of ticket coins); `freedAt`, `changedAt` (2.4); `mstats`.
 
@@ -191,7 +191,6 @@ A drag starts on a good. `dropAt(fromCell, target)` resolves at the finger point
 | A ticket with no matching line | Returns; the ticket shakes, its lines highlighted. |
 | The Festival banner with an unfilled line of exactly (c, k) | Fills that line; the good is consumed. |
 | The Basket | Sold for 25 % of value (40 % with lantern 2). A 4 s undo chip appears and the source cell is reserved until it expires. |
-| A Pocket slot (lantern 14) | Parks the good; dragging it out works like any good. |
 | A tier 8 on a tier 8, a shutter, a block, the street background, a stall front, a bar, outside | Returns; nothing changes. |
 | A second finger touches | The drag is cancelled; the good returns. |
 
@@ -214,7 +213,7 @@ No auto-merge and no auto-delivery exist.
 
 A ticket is drawn when a counter has been empty for 4 s (tune 2 to 8). Customers have no timer and never leave.
 
-Scripted start (a new game's first season only): the fox at counter 1 asks for a Twin Skewer. Counter 2's hedgehog steps up at the first merge, when best_grill = 2, and asks for a Glazed Skewer, which (a) allows; the 4 opening Pepper Skewers make both. The two are exempt from (d) only.
+Scripted start (a new game's first season only): the fox at counter 1 asks for a Twin Skewer. Counter 2's hedgehog steps up at the first merge, when best_grill = 2, and asks for a Glazed Skewer, which (a) allows; the two tickets need 6 Pepper Skewers in all (2 and 4), so the opening board and the first drops make both (decision M18 sets the opening board). The two are exempt from (d) only.
 
 Draw, from the ticket stream:
 - Lines: 1, 2 or 3 at 60/35/5 % while the season clock < 1,800 s, then 45/40/15 % (tune ±10 points each).
@@ -281,7 +280,7 @@ Score = max(0, cost − cash)/R + cost/gain; the lowest wins. Also offered: the 
 ### 2.11 Seasons: the reset
 
 Closing (`EngineMode.prestige`) is refused until the Festival is filled and is always the player's choice; nothing closes a season by time, and the next season is not chosen. The Season scroll says before confirming:
-- "Resets: coins, goods on the board and in the Pocket, gear, stall and minder levels, stalls, best tiers, shelves, tickets, the till."
+- "Resets: coins, goods on the board, gear, stall and minder levels, stalls, best tiers, shelves, tickets, the till."
 - "Stays: board space, lanterns, the Ladder Book, unopened gift boxes, goods waiting for room, Lucky Sparks, purchases, seasoned gear."
 - "Next: Summer Fireflies. The Lantern Pan opens on the street. Fireflies make lucky merges more common."
 
@@ -373,7 +372,7 @@ Something new at least every 20 minutes through hour 3 (gate 6). "New" is a stal
 | 0:50 to 1:10 | The first Festival line within reach: Steamer Stack (steamer 6) at 55 to 65 min, and the banner's first lantern lights when it lands. Steamer gear L11 (28.5K in all). Lantern 5 ("Discover 30 goods": a Parade every 8 min). |
 | 1:10 to 1:40 | Noodles at 70 to 100 min (172,800): a new art set, the Festival's Big Bowl line becomes possible. Tansy. Row-0 shutters. Grill gear L21 (75.0K in all): drops Glazed Skewers. |
 | 1:40 to 2:00 | First tier 8 at about 1:45, Dragon Grill Board: a full-board lantern burst, a Festival line, lantern 6. Sweets gear L11. |
-| 2:00 to 2:30 | Midnight Tea Set; Tea gear L21 (300K in all); lantern 12 ("500 tickets"); shutters finish (56 cells) at 2:15 to 2:45, lantern 14 (a Pocket slot). |
+| 2:00 to 2:30 | Midnight Tea Set; Tea gear L21 (300K in all); lantern 12 ("500 tickets"); shutters finish (56 cells) at 2:15 to 2:45, lantern 14 (gift boxes hold a fourth slot). |
 | 2:30 to 3:30 | Big Bowl; the Festival is filled (active bot 2:30 to 3:30). The Season scroll shows what resets and what stays. Close Spring. Summer Fireflies: the Lantern Pan, fireflies on the street, seasoned gear on the chains that reached tier 6, lantern 8. |
 
 Week three (the passive bot reports 4 to 8 seasons closed by day 21, soft): a new shape and character each season, harder Festivals, the Ladder Book, 20 lanterns, a street piece per season.
@@ -427,7 +426,7 @@ Board (376): 7 × 8 cells drawn from the item atlas in the play canvas, never on
 - A next shutter shows condition and price ("Grill 3 · 30"; a tap opens its confirm), others a plain shutter; blocks show the season piece.
 - While dragging or armed, matches glow, the dragged good floats 40 pt above the finger as a preview, and the cell or target under the finger is outlined. A long press (0.4 s) shows a good's name and value in a chip.
 
-Bottom row (48): Basket (68, a drop target; the undo chip floats above it) and Book, Lanterns, Season, Shop (64 each), gaps 4, gutters 10: 356 at 375. Pocket slots (44 each, lanterns 14 and 16) sit left of the Basket; the Basket shrinks to 52, the buttons to 48 and the gutters to 8: 324 with one slot, 372 with two.
+Bottom row (48): Basket (68, a drop target; the undo chip floats above it) and Book, Lanterns, Season, Shop (64 each), gaps 4, gutters 10: 356 at 375.
 
 ### 4.3 Gestures and the UI thread
 
@@ -500,9 +499,9 @@ Each lantern is earned once by a named feat, lit forever, never bought, never ra
 | 11 | Hire every minder in one season | minders start each season hired | yes |
 | 12 | Fill 500 tickets | every gear p + 0.05 | |
 | 13 | Fill 50 three-line tickets | β + 0.1 | |
-| 14 | Open all 26 shutters | a Pocket slot | yes |
+| 14 | Open all 26 shutters | gift boxes hold a fourth slot | yes |
 | 15 | Close 3 seasons | minders' Q × 0.8 | |
-| 16 | Fill 2,000 tickets | a second Pocket slot | yes |
+| 16 | Fill 2,000 tickets | Lucky 1 in 16 (the better of this and lantern 7) | |
 | 17 | Discover all 48 | Lucky Sparks add two tiers | |
 | 18 | Close 8 seasons | Festival purse ×2 | |
 | 19 | Fill 100 Parades | a gift box every 8 tickets | |
@@ -527,15 +526,17 @@ A paper scroll showing the Festival's lines with ticks, the resets and stays lis
 
 | id | Kind | Price | Title and description |
 |---|---|---|---|
-| `night_lamplighter` | cosmetic | $2.99 | Lamplighter's Street: blue silk awnings and moon lanterns on every stall, for good. Looks only. |
-| `night_late_hours` | unlock | $4.49 | Late Hours: your minders keep the stalls 4 more hours while you are away, and each "Watch ad" button gives its reward at once, with no video (`entitle` applies it now). |
+| `night_awnings` | cosmetic | $2.99 | Blue Silk Awnings: every stall gets blue silk awnings and moon lanterns, for good. Looks only. |
+| `night_late_hours` | unlock | $3.99 | Late Hours: your minders keep the stalls 4 more hours while you are away (`entitle` applies it now). |
+| `night_quiet_evening` | skipAds | $4.99 | Quiet Evening: every "Watch ad" button gives its reward at once, with no video. |
 
-`cosmetic` is added to the shared product-kind enum (P3, additive). Restore purchases is included; nothing else is sold, and nothing random. P3 confirms the price points against both games.
+`cosmetic` is added to the shared product-kind enum (P3, additive); `skipAds` is the shared kind the first game also uses, and the shared store already honours it (decision M13: the ad skip is sold under its own name, not inside another product). Restore purchases is included; nothing else is sold, and nothing random.
 
 Rewarded ads, optional, each labelled "Watch ad" with what it gives. Cooldowns run on the game clock and say so ("ready after 4 min of play"), so moving the device clock does nothing:
 - Fill one line: fills the cheapest unfilled line of a ticket that has 2 or more unfilled lines (never the last), once per 5 min. The ticket still ends with a drag.
 - Gear rush: each open gear drops up to 6 goods of its base tier into free cells now (ignoring the loose cap, never beyond F); 15 min cooldown.
-- The away report's +50 % (the shared popup).
+- Call the dragon: brings the Paper Dragon Parade now when none is out (the Parade clock restarts as after any Parade); 20 min cooldown (decision M14).
+- The away report's +50 % (the mode's own sheet, decision M8).
 
 No interstitials and no banners (`monetization.ads.interstitials: false`, `showBanner: false`).
 
@@ -599,13 +600,13 @@ P5 sets volumes and minimum intervals in the catalogue, as the second game's doe
 ### 7.4 Store page (written from scratch; `scripts/content/night-store.json`, copied into game.json by `build-night.py`)
 
 - Subtitle: "Merge snacks, fill each order" (29).
-- Keywords: merge, market, orders, board, skewer, tea, dumpling, stall, lantern, snack, puzzle, cozy.
+- Keywords: market, board, skewer, tea, dumpling, noodle, sweets, food, stall, street, puzzle, cozy (none repeats a word of the title or subtitle, which the stores index anyway).
 - Promotional text: "Lantern Row opens at dusk. Merge street snacks on the board and fill paper orders, one by one."
 - Description outline:
   1. The board and the verb: two of the same snack become one better snack, eight steps up.
   2. The orders: customers hold paper tickets; drag each snack onto its line; a full ticket is stamped and paid.
   3. The idle part, exactly: "Minders you hire put a house snack's price in the till every 15 seconds, while you play and while the app is closed, for up to 4 hours; your gear fills its shelf with up to 6 snacks while you are away." The words idle and tycoon appear only here.
-  4. Seasons: "Each season the street takes a new shape: a moon gate, braziers in the corners, fireflies over the stalls."
+  4. Seasons: "Seasons change the street: a moon gate one season, braziers in the corners another, fireflies over the stalls." In the listing this paragraph and the lanterns come before the idle part (the order that does not echo the second game's description).
   5. Honesty: "No energy. Orders never time out. Ads are optional, and gift box odds are shown before you open one."
 - Screenshots, board first: a merge with the fox's ticket glowing; a ticket stamped and folding into a lantern; the Ladder Book; the Lantern Gate; the Autumn Moon board. A person compares them with the top merge and market titles, Animal Night Market and Merge Feast by name.
 - Icon: a glowing ticket lantern over two merging skewers on indigo.
@@ -676,8 +677,8 @@ A table of seasons 1 to 10, active and passive bot, time to each stall and to th
 
 - 6 chains × 8 tiers; 4 seasons drawn, the shapes and characters of 2.11; 20 lanterns; 6 minders.
 - Tickets, Parade, Festival, gift boxes, Ladder Book, Lantern Gate, Season scroll, Shop.
-- 2 purchases, 2 rewarded ads plus the away ad.
-- Tap-tap, undo, tier pips, the Pocket.
+- 3 purchases, 3 rewarded ads plus the away ad.
+- Tap-tap, undo, tier pips.
 - Own sounds and two music loops.
 - Web preview presets `?preset=fresh|early|mid|late` from bot states; dev views `merge-art` (contact sheet, greyscale, red share) and `merge-layout`.
 
@@ -712,6 +713,7 @@ The first two games do not change: no file of `src/modes/sim`, `src/modes/haul`,
 - Chain 7 and tiers 9 and 10, with the bot run to season 15.
 - Two more drawn seasons, and own music loops for autumn and winter.
 - More than 4 counters on tablets.
+- The Pocket: one or two slots beside the Basket where a good can be parked (decision M5).
 
 Never: energy, paid random items, auto-merge as a purchase, countdown offers.
 
@@ -741,7 +743,7 @@ Engine (`src/engine/merge*.test.ts`):
 - `ticket.test.ts`: lines never change; shown price = paid price, live with stall level; Parade timing; the fill-one-line ad never fills the last line.
 - `tick.split.test.ts`: tick(a + b) = tick(a) then tick(b) exactly over random splits, covering every event kind of 2.4, the waiting gear's restart and the MAX_TICK cut.
 - `offline.test.ts`: closed form = event stepping on charges, sales and next-event offsets; earnings returned, cash unchanged, no time more than one interval ahead of the clock; the caps; clock forward 4 h, back, forward again pays once; ad cooldowns unmoved; `reportAlone`.
-- `festival.test.ts`: seasons 1 to 10 buildable line by line from the opening board. `season.test.ts`: the lists of 2.11 exactly (pending goods kept, Pocket and `basketUndo` cleared); refused before the Festival; the 16 shapes and characters; braziers only on open cells; precedence; seasoned gear; familiar faces.
+- `festival.test.ts`: seasons 1 to 10 buildable line by line from the opening board. `season.test.ts`: the lists of 2.11 exactly (pending goods kept, `basketUndo` cleared); refused before the Festival; the 16 shapes and characters; braziers only on open cells; precedence; seasoned gear; familiar faces.
 - `lanterns.test.ts`, `gift.test.ts` (odds ±0.5 points over 100k; contents fixed at earning, so a later or reloaded opening gives the same), `advice.test.ts` (the bot and the goal line agree; each gain formula; no estimate at R = 0), `coins.test.ts` (cash moves only through the six sources), `determinism.test.ts` (byte-identical 1 h trace at 10 Hz and event to event).
 - `mergeMode.test.ts`: create; reconcile from a broken save; save tag `merge1`; `config` rejects an invalid block; `offlineAdMultiplier` 1.5; `entitle` for Late Hours; `income` and `activeIncome` as 2.9.
 
@@ -749,7 +751,7 @@ Shared and tooling:
 - `modeRegression.test.ts` unchanged and green; `entries.test.ts` pins the merge entry (`Shell`, `Loading`, `parts` with `Icon`, `beast:` and `HintPointer`, `hints`, `engine`, `presets`, `soundKeys`).
 - `fingerprint.test.ts`: `grid-board` accepted; the Pizza-to-Orbit report byte-identical (a recorded fixture); the kind multiset check; night-market against each game: 8 of 8 must differ or pending, at least 15 known or pending.
 - `bundleRules.test.ts`: a merge file imported by a shared file fails; no merge folder in a sim or haul bundle, and no sim, haul or tabs-family file in the merge bundle.
-- `layout.test.ts`: zones add up at both sizes; street ≤ W; cells ≥ 44; 6 stall fronts ≥ 52 pt; the 6-line banner; the bottom row with 0, 1 and 2 Pocket slots; every bottom-row target and top-row cell reachable by the finger at 375 × 667; fontScale 1.3 fits.
+- `layout.test.ts`: zones add up at both sizes; street ≤ W; cells ≥ 44; 6 stall fronts ≥ 52 pt; the 6-line banner; the bottom row; every bottom-row target and top-row cell reachable by the finger at 375 × 667; fontScale 1.3 fits.
 - compare.py: the cross-key mode passes against both games; Pizza-against-Orbit same-key results unchanged.
 - Store: title, subtitle, keyword, `night_` prefix and kind multiset checks.
 
@@ -769,9 +771,14 @@ Decisions taken after revision 2. A decision here overrides the text above where
 - **M4. Bound (d2) is on trial.** The prototype reports, with and without (d2): the share of tickets filled within 2 s of the draw, the fill-time distribution, the "Setting up…" share, and what a hoarder and a "Not tonight whenever ready" player gain. As specified unless the numbers say it costs more than it protects; the lead decides before the rules are built.
 - **M5. Cut from the first version: the Pocket.** No Pocket slots, no `pocket` state, no Pocket drop target, no second bottom-row layout. Lantern 14 (open all 26 shutters) gives "gift boxes hold a fourth slot" (new: yes). Lantern 16 (fill 2,000 tickets) gives "Lucky 1 in 16" (the better of this and lantern 7 applies). The Pocket moves to 9.3 Later.
 - **M6. Bots in the rules phase:** active, lazy, deliver-only, passive, check-in, idle, and the four adversarial habits as switches on the active bot. The hint-follower and tutorial bots are not built; the tutorial script is tested with the hints in the screens phase, and "first ticket paid within 15 s" is measured by the active bot playing the scripted opening.
-- **M7. `cosmetic` joins the shared product-kind enum** (additive; the first two games' data and tests do not change). Late Hours stays one `unlock` whose text names both of its effects.
+- **M7. `cosmetic` joins the shared product-kind enum** (additive; the first two games' data and tests do not change). The products are those of M13.
 - **M8. The away report is the mode's own sheet** (as the second game's Shift Log is its own), with `offlineAdMultiplier` 1.5 and the label "Watch ad: +50 %". No shared popup text changes.
 - **M9. The hit test resolves at the finger point** (1.3), with the dragged good drawn 40 pt above it. To be looked at again after the owner's first phone test.
 - **M10. Ad cooldowns run on the play clock** and say so ("ready after 4 min of play").
 - **M11. The title "Lantern Row" stands unless the store search finds a live game it would be confused with**; the search uses generic terms only and its verdicts go to `games/night-market/store/NAME-SEARCH.md`.
 - **M12. Review rounds are capped:** one audit of the rules with one pass of fixes, one review of the screens with one pass of fixes. What is still open after that is listed for the owner as a known limit, not chased.
+- **M13. Three products, and the ad skip is sold under its own name.** `night_awnings` (cosmetic, "Blue Silk Awnings", $2.99), `night_late_hours` (unlock, "Late Hours": 4 more hours away, $3.99), `night_quiet_evening` (skipAds, "Quiet Evening": every "Watch ad" reward at once with no video, $4.99). The store reviewer was right that an ad skip folded into an `unlock` hid from our own check what all three apps sell; the fingerprint notes and REVIEW-NOTES say openly that each of the three apps sells an ad skip, as most free games do. The kind multiset {cosmetic, unlock, skipAds} still differs from both games'. No product title uses "Lamplighter" (a live merge game's hero).
+- **M14. A third rewarded ad, "Call the dragon":** brings the Parade now when none is out; 20 min cooldown on the play clock. The owner wants ad income, and this one gives the player a goal instead of a number.
+- **M15. Noodles tier 6 is "Family Bowl"** (not "Noodle Feast": a live merge game about a night food bazaar has "Feast" in its title).
+- **M16. The listing is `scripts/content/night-store.json` as revised after the store review** (title "Lantern Row", subtitle "Merge snacks, fill each order", the keyword list of 7.4, seasons and lanterns before the idle paragraph); its products follow M13. Prices are ordinary store tiers and need not differ from the other games'.
+- **M17. Audience:** Play target 13+ and Apple 13+, as for the first two games. Play's question "could the app unintentionally appeal to children" and the age band of `docs/design/research/policy.md` (checklist 7 and 8) concern all three apps and are the owner's to answer before a submission; nothing in the build depends on the answer. It goes in the final report.

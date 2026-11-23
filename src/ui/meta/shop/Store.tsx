@@ -21,9 +21,10 @@ const GROUP_OF: Record<IapProduct['kind'], Group | null> = {
   noAds: 'ads',
   skipAds: 'ads',
   starterPack: 'ads',
-  // Kinds of other modes (haul), never in a tab-shell game's shop.
+  // Kinds of other modes (haul, merge), never in a tab-shell game's shop.
   clearance: null,
   unlock: null,
+  cosmetic: null,
   multiplier: 'boosts',
   gems: 'gems',
   timeWarp: 'warp',

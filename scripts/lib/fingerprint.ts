@@ -20,7 +20,7 @@
  * known values already make the result impossible (a known must that does not differ, or verified +
  * pending below 15), so engineers are never blocked by a check only a release can answer.
  * Release (`validate --release`): every dimension must be known; fails below 8 of 8 must or 15 of 19.
- * Both modes also fail on: identical IAP product kind sequences, a product id without the game's
+ * Both modes also fail on: identical IAP product kind sequences (or the same kinds in another order), a product id without the game's
  * own prefix (or with the other game's), a title with "Empire" when the other's has it, two titles
  * of the same "X: Y" shape.
  */
@@ -66,7 +66,8 @@ export const VOCABULARY: Record<string, readonly string[]> = {
   core_verb: ['tap-target', 'hold', 'drag/route', 'swipe/aim', 'place/arrange', 'idle-only'],
   production_topology: ['linear-chain-with-transport', 'parallel-generators', 'vertical-shaft', 'spatial-grid', 'network-routes', 'single-node'],
   money_moment: ['customer-pays', 'sale-at-depot', 'contract-complete', 'auto-tick', 'tap-collect'],
-  main_screen_layout: ['side-cross-section', 'top-down-map', 'isometric-room', 'single-object-focus', 'card-list'],
+  // grid-board: a fixed board of cells as the whole play surface, no camera (Night Market, market-design.md 1.2).
+  main_screen_layout: ['side-cross-section', 'top-down-map', 'isometric-room', 'single-object-focus', 'card-list', 'grid-board'],
   progression_structure: ['location-levels', 'sector-map', 'tech-tree', 'endless-single', 'seasons'],
   prestige_model: ['reset-for-currency', 'new-location-carryover', 'none', 'seasonal'],
   character_kind: ['humans', 'robots', 'aliens', 'animals', 'none'],
@@ -162,6 +163,8 @@ const sharedShare = (x: readonly string[], y: readonly string[]) => {
   return x.filter((v) => b.has(v)).length / x.length;
 };
 const pct = (x: number) => `${Math.round(x * 100)} %`;
+/** Two lists hold the same values the same number of times, in any order. */
+export const sameMultiset = (x: readonly string[], y: readonly string[]) => x.length === y.length && [...x].sort().join('\u0000') === [...y].sort().join('\u0000');
 
 /** Problems with one declared fingerprint (values outside the closed vocabularies). */
 export function declaredProblems(d: DeclaredFingerprint | null): string[] {
@@ -269,6 +272,8 @@ export function comparePair(A: GameFacts, B: GameFacts, audio?: AudioScore | nul
 
   // --- the checks that fail in both modes ---
   if (A.productKinds.length > 0 && A.productKinds.join(',') === B.productKinds.join(',')) problems.push(`${A.id} and ${B.id} sell the same sequence of product kinds (${A.productKinds.join(', ')})`);
+  // The same kinds in another order are the same shop (market-design.md 1.2): the multiset check, added beside the sequence check.
+  else if (A.productKinds.length > 0 && sameMultiset(A.productKinds, B.productKinds)) problems.push(`${A.id} and ${B.id} sell the same product kinds in another order (${[...A.productKinds].sort().join(', ')})`);
   for (const [g, o] of [[A, B], [B, A]] as const) {
     const prefix = g.productIds[0]?.split('_')[0];
     const other = o.productIds[0]?.split('_')[0];

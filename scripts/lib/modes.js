@@ -20,6 +20,9 @@ const MODE_FOLDERS = {
   // Its content schema as well (names like "Long Haul", "Twin Rig" in its starting content): the shared schema keeps
   // the haul block opaque, and the haul engine mode parses it at install (src/engine/haulMode.ts `config`).
   haul: ['src/modes/haul', 'src/ui/haul', 'src/engine/haul', 'src/engine/haul.ts', 'src/engine/haulMode.ts', 'src/engine/loadout.ts', 'src/engine/fixtures/haul.ts', 'src/config/schema.haul.ts'],
+  // Night Market (docs/design/market-design.md 9.2): the merge rules, their schema (starting content names
+  // "Pepper Skewer", "Old Brindle", ...) and fixtures belong to the merge mode exactly as haul's do.
+  merge: ['src/modes/merge', 'src/ui/merge', 'src/engine/merge', 'src/engine/merge.ts', 'src/engine/mergeMode.ts', 'src/engine/fixtures/merge.ts', 'src/config/schema.merge.ts'],
 };
 
 /**
@@ -101,7 +104,7 @@ const CLASSIFIED_ROOT = 'src';
  * fx catalogue holds every event's description; the art icon list names every mode's icons; the
  * game-data lint's messages name every mode's things.
  */
-const NODE_ONLY = ['src/services/fx/catalog.ts', 'src/services/fx/catalog.haul.ts', 'src/config/artIcons.ts', 'src/config/lint.ts'];
+const NODE_ONLY = ['src/services/fx/catalog.ts', 'src/services/fx/catalog.haul.ts', 'src/services/fx/catalog.merge.ts', 'src/config/artIcons.ts', 'src/config/lint.ts'];
 
 /**
  * Words that name a thing of a mode's theme. The bundle check fails on a string literal in a
@@ -120,6 +123,10 @@ const THEME_WORDS = {
     'space', 'mining', 'miner', 'mine', 'asteroid', 'ore', 'drone', 'freighter', 'rocket', 'planet', 'galaxy', 'orbit',
     'haul', 'hauler', 'rock', 'crystal', 'fuel', 'cargo', 'station', 'warp', 'pod', 'rig', 'credit',
   ],
+  // Night Market (spec 9.2): each word only if `--words` finds no literal of it in shared or family files.
+  // Not "merge": the shared engine seam's own literals use it ("engine.mergeReport" in src/state/store.ts,
+  // the mode id "merge" in src/config/schema.ts), and the word names no thing a player reads.
+  merge: ['stall', 'lantern', 'skewer', 'dumpling', 'noodle', 'steamer', 'minder', 'parade', 'festival', 'ticket'],
 };
 
 /** npm packages that only these modes may bundle (three.js and the GL view are the classic 3D asteroid's). */
@@ -168,6 +175,11 @@ const WEB_ONLY = [
   'src/ui/haul/dev.web.ts',
   'src/engine/haul/bot.ts',
   'src/engine/fixtures/haul.ts',
+  // Night Market (spec 8.1, 9.2): the merge bot has no Node imports (the web presets are built from its states).
+  'src/modes/merge/presets.web.ts',
+  'src/modes/merge/devViews.web.ts',
+  'src/engine/merge/bot.ts',
+  'src/engine/fixtures/merge.ts',
 ];
 
 /**
@@ -182,6 +194,7 @@ const WEB_ONLY_STRINGS = [
   { text: 'runHaulBot' },
   { text: 'freshBotGame' },
   { text: 'haulFixtures' },
+  { text: 'mergeFixtures' },
   // The page address's switches are read only by the .web.ts tools (src/dev/devtools.web.ts,
   // src/ui/haul/dev.web.ts); a library's own use (node_modules) is not counted. Haul only: the
   // first game's files keep their own web-guarded readers (they do not change). Shipped code only

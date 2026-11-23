@@ -118,9 +118,10 @@ export const IapProductSchema = z.object({
    * starterPack: noAds plus `value` gems (or `contents` when set). deal: only a price; what it grants is set by
    * the deal in `meta.deals` that names this product. clearance: no banners or pop-up ads, and every rewarded
    * boost without the ad (one product). unlock: a permanent rule the mode reads from `entitlements.products`
-   * (haul: `haul.hangar.product`).
+   * (haul: `haul.hangar.product`). cosmetic: looks only, nothing in the rules changes (merge: Lamplighter's
+   * Street, `merge.products.lamplighter`; Decision M7 of docs/design/market-design.md).
    */
-  kind: z.enum(['noAds', 'skipAds', 'multiplier', 'gems', 'starterPack', 'timeWarp', 'deal', 'clearance', 'unlock']),
+  kind: z.enum(['noAds', 'skipAds', 'multiplier', 'gems', 'starterPack', 'timeWarp', 'deal', 'clearance', 'unlock', 'cosmetic']),
   /** starterPack only: what it grants instead of "no ads plus `value` gems" (a pack without no-ads). */
   contents: z.array(RewardSchema).optional(),
   /** Multiplier value, gem amount or warp hours, depending on kind. */
@@ -147,9 +148,11 @@ export const GameConfigSchema = z.object({
    * "sim": businesses are stations in a production chain with visible workers (needs the `sim` block).
    * "haul": the orbital hauling game (needs the `haul` block; `businesses` stays empty). Its rules
    *   are src/engine/haul, installed by its mode entry (src/engine/mode.ts).
+   * "merge": the street-market merge game (needs the `merge` block; `businesses` stays empty). Its rules
+   *   are src/engine/merge, installed by its mode entry (src/engine/mode.ts).
    * The mode picks the code bundled with the game (src/generated/mode.ts) and is never changed at run time.
    */
-  mode: z.enum(['classic', 'sim', 'haul']).default('classic'),
+  mode: z.enum(['classic', 'sim', 'haul', 'merge']).default('classic'),
   /**
    * The sound pack: a folder in shared/sfx/ ("warm": marimba, plate clinks, the service bell;
    * "synth"). Only this pack is bundled with the game; files in the game's own assets/sfx/
@@ -335,6 +338,13 @@ export const GameConfigSchema = z.object({
    * (src/engine/haulMode.ts `config`), and the game-data lint checks it (src/config/lint.ts).
    */
   haul: z.record(z.string(), z.unknown()).optional(),
+  /**
+   * Merge mode: the board, chains, tickets, seasons and lanterns. Opaque here, like `haul`: its schema
+   * (src/config/schema.merge.ts) belongs to the merge mode; the merge engine mode parses this block
+   * with its defaults when the merge entry installs it (src/engine/mergeMode.ts `config`), and the
+   * game-data lint checks it (src/config/lint.ts).
+   */
+  merge: z.record(z.string(), z.unknown()).optional(),
   /** Cards, chests, missions and deals. Works in both modes; everything is optional. */
   meta: MetaSchema.default({
     cards: [],

@@ -125,17 +125,23 @@ def decay(n, attack_ms, tau):
 # instruments (used here and by night_music.py)
 # ===========================================================================
 
-def steam(rng, dur, fc_pts, q=0.8, attack_ms=6.0, tau=None, body=0.35, hiss=0.3, hiss_hp=2600.0, turb=0.45):
+def steam(rng, dur, fc_pts, q=0.8, attack_ms=6.0, tau=None, body=0.35, hiss=0.3, hiss_hp=2600.0, turb=0.45,
+          tail_tau=None, tail=0.0):
     """A puff of steam. Band-passed noise whose centre follows fc_pts [(s, Hz)], a fine
-    high hiss (the escaping jet), turbulence (random flutter), and a soft low whoomph."""
+    high hiss (the escaping jet), turbulence (random flutter), and a soft low whoomph.
+    The envelope is a fast 'pff' (tau) plus, with tail > 0, a slower hissing tail (tail_tau)."""
     n = ns(dur)
+    t = np.arange(n) / SR
     tau = tau if tau is not None else dur * 0.3
-    env = decay(n, attack_ms, tau) * rcos_out(n, min(30.0, dur * 250.0))
-    fc = path_env(fc_pts, n, log=True)
+    shape = (1.0 - tail) * np.exp(-t / tau)
+    if tail:
+        shape = shape + tail * np.exp(-t / (tail_tau or dur * 0.4))
+    env = rcos_in(n, attack_ms) * shape * rcos_out(n, min(30.0, dur * 250.0))
+    fc = path_env(fc_pts, n, log=True) * np.exp(0.22 * (flutter(rng, n, 25.0, 1.0) - 1.0))     # the centre wanders: no pitch
     core = svf(white(n, rng), fc, q, 'bp')
     jet = band(white(n, rng), hiss_hp, 5600.0, 2)
     turbulence = flutter(rng, n, 90.0, turb)
-    low = lowpass(white(n, rng), 320.0, 2) * decay(n, attack_ms * 2.0, tau * 0.7)
+    low = lowpass(white(n, rng), 320.0, 2) * decay(n, attack_ms * 2.0, tau * 1.3)
     y = 1.6 * top(core) * turbulence + hiss * jet * turbulence + body * 3.0 * low
     return y * env
 
@@ -284,13 +290,15 @@ def _reed_amp(f0):
     return amp
 
 
-def reed(f, dur, rng, attack=0.12, release=0.3, vib=0.004, vib_hz=4.6, breath=0.06, fmax=5200.0, swell=None):
+def reed(f, dur, rng, attack=0.12, release=0.3, vib=0.004, vib_hz=4.6, breath=0.06, fmax=5200.0, swell=None, scoop=0.0):
     """A low free reed: additive with a formant spectrum, a chiff of breath at the start, a slow
     vibrato that grows in, and breath noise in the formant band. Peak about 1."""
     n = ns(dur)
     t = np.arange(n) / SR
     depth = vib * np.clip(t / 0.6, 0.0, 1.0)
     fr = f * (1.0 + depth * np.sin(TAU * vib_hz * t + rng.uniform(0, TAU)) + 0.0015 * flutter(rng, n, 1.5, 1.0) - 0.0015)
+    if scoop:
+        fr = fr * 2.0 ** (scoop / 1200.0 * np.exp(-t / 0.05))
     y = harmonics(fr, n, _reed_amp(f), fmax=fmax, ph_rng=rng)
     y /= (np.max(np.abs(y[:min(n, ns(0.3))])) + 1e-12)
     air = band(white(n, rng), 500.0, 2400.0, 2)
@@ -319,7 +327,7 @@ def bowed(f, dur, rng, attack=1.2, release=1.6, bright=1.0, fmax=4200.0):
 
 
 BELL_PARTIALS = ((0.5, 0.12, 1.9), (1.0, 1.0, 1.5), (1.19, 0.55, 1.1), (1.505, 0.5, 0.9), (2.0, 0.45, 0.8),
-                 (2.52, 0.3, 0.55), (2.98, 0.25, 0.45), (4.07, 0.15, 0.3))
+                 (2.52, 0.3, 0.55), (2.98, 0.3, 0.35), (4.07, 0.3, 0.18), (5.43, 0.25, 0.08))
 
 
 def temple_bell(f, dur, rng, vel=1.0):
@@ -332,7 +340,7 @@ def temple_bell(f, dur, rng, vel=1.0):
         parts.append((f * r * 1.0025, a * 0.45, tau * 0.9, 2.0, rng.uniform(0, TAU)))      # the beat
     y = modal(parts, n)
     strike = bandpass(white(n, rng), 2400.0, 1.0) * decay(n, 0.3, 0.004)
-    return vel * (y / (np.max(np.abs(y)) + 1e-12) + 0.3 * strike)
+    return vel * (y / (np.max(np.abs(y)) + 1e-12) + 0.6 * strike)
 
 
 def wind(rng, dur, fc_pts, q=0.6, env=None):
@@ -461,26 +469,28 @@ def echo(x, delay, fb, taps=2, lp=2600.0):
 # --- merges: one steam puff per tier, growing in size and brightness (not up a scale) -------------
 
 def merge_puff(rng, k):
-    """Tier k (1..8). Size: length 0.10 -> 0.34 s, a stronger low whoomph, a second puff from
-    tier 4 and a third from tier 7 (a bigger cloud). Brightness: the band centre's peak rises
-    1.1 -> 3.6 kHz, the hiss opens. Tier 8 adds a short charcoal sizzle under the tail."""
+    """Tier k (1..8). Size: length 0.10 -> 0.34 s, a slower attack (3 -> 12 ms), a longer hissing
+    tail, a stronger low whoomph, a second puff from tier 4 and a third from tier 7 (a bigger cloud).
+    Brightness: the band centre's peak rises 1.1 -> 3.6 kHz and the hiss opens. Tier 8 adds a
+    short charcoal sizzle under the tail. Each is one 'pff': a peak, then a falling tail."""
     u = (k - 1) / 7.0
     dur = 0.10 + 0.24 * u ** 1.1
     peak = 1100.0 * (3.3 ** u)
     m = Mix()
-    m.add(steam(rng, dur, [(0, peak * 0.55), (dur * 0.18, peak), (dur, peak * 0.6)], q=0.75 + 0.25 * u,
-                attack_ms=4.0, tau=dur * (0.28 + 0.1 * u), body=0.22 + 0.4 * u, hiss=0.15 + 0.45 * u,
-                hiss_hp=2400.0 + 1200.0 * u, turb=0.35 + 0.25 * u))
+    m.add(steam(rng, dur, [(0, peak * 0.55), (0.012 + 0.02 * u, peak), (dur, peak * 0.6)], q=0.75 + 0.25 * u,
+                attack_ms=3.0 + 9.0 * u, tau=0.022 + 0.02 * u, tail=0.25 + 0.15 * u, tail_tau=0.04 + 0.08 * u,
+                body=0.3 + 0.6 * u, hiss=0.15 + 0.45 * u, hiss_hp=2400.0 + 1200.0 * u, turb=0.3))
     if k >= 4:
-        d2 = dur * 0.8
-        m.add(steam(rng, d2, [(0, peak * 0.7), (d2 * 0.2, peak * 1.15), (d2, peak * 0.7)], q=0.85, attack_ms=8.0,
-                    tau=d2 * 0.3, body=0.15, hiss=0.3 + 0.3 * u, turb=0.5), 0.035, 0.55 + 0.1 * (k - 4))
+        d2 = dur * 0.75
+        m.add(steam(rng, d2, [(0, peak * 0.7), (0.02, peak * 1.15), (d2, peak * 0.7)], q=0.65, attack_ms=8.0,
+                    tau=0.03, tail=0.3, tail_tau=0.05 + 0.05 * u, body=0.15, hiss=0.3 + 0.3 * u, turb=0.3),
+              0.04, 0.3 + 0.05 * (k - 4))
     if k >= 7:
-        d3 = dur * 0.7
-        m.add(steam(rng, d3, [(0, peak * 0.9), (d3 * 0.2, peak * 1.3), (d3, peak)], q=0.9, attack_ms=10.0,
-                    tau=d3 * 0.3, body=0.1, hiss=0.6, turb=0.55), 0.075, 0.5)
+        d3 = dur * 0.6
+        m.add(steam(rng, d3, [(0, peak * 0.9), (0.02, peak * 1.3), (d3, peak)], q=0.65, attack_ms=10.0,
+                    tau=0.03, tail=0.3, tail_tau=0.06, body=0.1, hiss=0.6, turb=0.3), 0.085, 0.28)
     if k == 8:
-        m.add(charcoal(rng, 0.16, pops=9, vel=0.25, ember=0.25), 0.11)
+        m.add(charcoal(rng, 0.16, pops=9, vel=0.12, ember=0.25), 0.12)
     return m.out()
 
 
@@ -535,15 +545,18 @@ def swap(c):
     return m.out()
 
 
-@night_recipe('return', length=0.08, loud_db=FREQUENT)
+@night_recipe('return', length=0.1, loud_db=FREQUENT)
 def return_(c):
-    """A dull paper tap: the good goes back where it was. A soft tick through a 2.2 kHz low-pass,
-    with a touch of felt."""
+    """A dull paper tap: the good goes back where it was. A soft wide-band tap (600 to 2,400 Hz, no
+    resonance, so it has no pitch) and the short paper drag of it settling."""
     c.accent(0.0)
     m = Mix()
-    m.add(paper_tick(c.rng, 1.0, bright=0.7))
-    m.add(0.35 * felt_stamp(c.sub('f'), 1.0, 0.5))
-    return lowpass(m.out(), 2200.0, 2)
+    n = ns(0.03)
+    m.add(1.6 * band(white(n, c.rng), 600.0, 2400.0, 2) * decay(n, 0.4, 0.005))
+    m.add(0.5 * paper_slide(c.sub('s'), 0.07, [(0, 1800.0), (0.07, 1100.0)], q=0.7,
+                            env=points([(0, 0.0), (0.012, 1.0), (0.07, 0.0)], ns(0.07))), 0.008)
+    m.add(0.3 * felt_stamp(c.sub('f'), 1.0, 0.5))
+    return lowpass(m.out(), 2600.0, 2)
 
 
 @night_recipe('drop', length=0.11, loud_db=QUIET)
@@ -780,11 +793,14 @@ def slot_reveal(c):
 
 @night_recipe('festival_line', length=0.95)
 def festival_line(c):
-    """A low reed note (D3, with its fifth softly under it): one Festival line lands. Speaks at
-    once with a breathy chiff."""
+    """A low reed note: one Festival line lands. A single D3 reed that speaks at once with a breathy
+    chiff, scoops up into pitch from 40 cents under, and gets a second breath push at 0.3 s
+    ('hoo-oo'), with its octave faintly over it."""
     m = Mix()
-    m.add(reed(c.hz('D3'), 0.9, c.sub('r'), attack=0.06, release=0.45, breath=0.08))
-    m.add(0.35 * reed(c.hz('A2'), 0.9, c.sub('r5'), attack=0.12, release=0.5, breath=0.05))
+    n = ns(0.9)
+    push = points([(0, 0.75), (0.2, 0.6), (0.32, 1.0), (0.55, 0.85), (0.9, 0.6)], n)
+    m.add(reed(c.hz('D3'), 0.9, c.sub('r'), attack=0.04, release=0.4, breath=0.1, swell=push, scoop=-40.0))
+    m.add(0.18 * reed(c.hz('D4'), 0.9, c.sub('r8'), attack=0.2, release=0.45, breath=0.04, swell=push))
     m.add(0.35 * felt_stamp(c.sub('pat'), 1.0, 0.6))
     c.accent(0.0)
     return m.out()
@@ -864,18 +880,12 @@ def ui_denied(c):
 
 
 # ===========================================================================
-# the event table (spec 6.2): volume, minimum interval (ms), haptic, brief, voices
+# the event table (spec 6.2, in the shape of src/services/fx/catalog.merge.ts)
+# key: (volume, minimum interval ms, haptic, brief, voices)
 # ===========================================================================
 
 EVENTS = {
-    'merge_1': (0.5, 60, ['light'], 'steam puff, tier 1: the smallest and darkest', 3),
-    'merge_2': (0.5, 60, ['light'], 'steam puff, tier 2', 3),
-    'merge_3': (0.5, 60, ['light'], 'steam puff, tier 3', 3),
-    'merge_4': (0.52, 60, ['light'], 'steam puff, tier 4: a second puff joins', 3),
-    'merge_5': (0.52, 60, ['light'], 'steam puff, tier 5', 3),
-    'merge_6': (0.55, 60, ['light'], 'steam puff, tier 6', 3),
-    'merge_7': (0.55, 60, ['light'], 'steam puff, tier 7: a third puff, a lantern halo', 2),
-    'merge_8': (0.6, 60, ['light'], 'steam puff, tier 8: the biggest and brightest, a sizzle under the tail', 2),
+    'merge': (0.5, 60, ['light'], 'a steam puff growing in size and brightness with the tier (never up a scale); eight files, tier 1 to 8', 3),
     'lucky': (0.6, 120, ['light'], 'a second, brighter puff with a paper flutter', 2),
     'move': (0.35, 80, None, 'a cloth slide', 2),
     'swap': (0.38, 80, None, 'two cloth slides crossing', 2),
@@ -901,16 +911,29 @@ EVENTS = {
     'ui_open': (0.4, None, None, 'a paper slide out', 1),
     'ui_close': (0.35, None, None, 'a paper slide back', 1),
     'ui_denied': (0.5, 300, ['light'], 'a soft crumple', 1),
-    'music_spring': (0.35, None, None, '"Lantern Dusk", 90 s at 72 bpm: reed drone, bowed pad, hand drum, distant crowd', 1),
-    'music_summer': (0.35, None, None, '"Firefly Lane", 90 s at 72 bpm: the summer loop', 1),
+    'music_main': (0.35, None, None, 'the spring loop "Lantern Dusk": 90 s at 72 bpm, D dorian; low reed drone, bowed pad, hand drum, a distant crowd', 1),
+    'music_summer': (0.35, None, None, 'the summer loop "Firefly Lane": 90 s at 72 bpm, G lydian; reed drone and reed song, bowed pad, a triplet hand drum, a nearer crowd, fireflies', 1),
 }
 
-MUSIC_KEYS = ('music_spring', 'music_summer')
+FILES = {'merge': 8}                     # keys with several files: <key>_1 .. <key>_n (pick: ladder, the tier)
+MUSIC_KEYS = ('music_main', 'music_summer')
 
-# The keys of 6.2 that the spec says repeat fast, with the interval they can repeat at in play
-# (the catalogue's minimum interval), measured by render_night.py --rows.
+
+def file_stems(key):
+    n = FILES.get(key, 1)
+    return [key] if n == 1 else ['%s_%d' % (key, i) for i in range(1, n + 1)]
+
+
+def key_of(stem):
+    """The catalogue key a file belongs to (merge_3 -> merge)."""
+    head, _, tail = stem.rpartition('_')
+    return head if tail.isdigit() and head in FILES else stem
+
+
+# The sounds that repeat fast (spec 6.2: merges, drop, move, line_fill, coins; also the other two
+# moves, the upgrade and the gift slots), with the interval they can repeat at in play (the
+# catalogue's minimum interval), measured by render_night.py --rows.
 ROW_KEYS = {
-    'merge_1': 60, 'merge_2': 60, 'merge_3': 60, 'merge_4': 60, 'merge_5': 60, 'merge_6': 60, 'merge_7': 60,
-    'merge_8': 60, 'drop': 300, 'move': 80, 'swap': 80, 'return': 80, 'line_fill': 60, 'coins': 150, 'upgrade': 80,
-    'slot_reveal': 120,
+    'merge_1': 60, 'merge_3': 60, 'merge_5': 60, 'merge_8': 60, 'drop': 300, 'move': 80, 'swap': 80, 'return': 80,
+    'line_fill': 60, 'coins': 150, 'upgrade': 80, 'slot_reveal': 120,
 }

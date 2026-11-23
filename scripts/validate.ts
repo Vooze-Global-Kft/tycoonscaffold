@@ -8,6 +8,7 @@
  *                                       about 3 to 6 minutes, and fails on every hard section 8 target
  *                                       any seed misses: Decisions 45 and 62)
  *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
+ *   (a merge game: no bot yet, a warning says so; market-design.md Decision M1)
  *
  * For every pair of games that both have sounds it also runs the sound similarity check
  * (python3 scripts/audio/compare.py, spec 6.1, Decision 24: fails when a shared key's joint score is
@@ -225,7 +226,11 @@ for (const id of ids) {
   const { fxTableFor } = require('./lib/fxCatalog.js');
   const soundKeys = new Set(Object.keys(games.listSounds(id) as Record<string, string>).map((k) => k.replace(/_\d+$/, '')));
   const silent = Object.keys(fxTableFor(g.mode) as Record<string, unknown>).filter((k) => !soundKeys.has(k));
-  if (silent.length) problems.push(`${silent.length} fx event(s) of mode "${g.mode}" have no sound file for this game: ${silent.join(', ')} (games/${id}/assets/sfx/${g.soundPack ? ` or shared/sfx/${g.soundPack}/` : ''})`);
+  // A merge game before its first rendered sound (the skeleton's placeholder, market-design.md Decision M1): a
+  // warning until the sound package puts the first file in games/<id>/assets/sfx/; from then on every missing one is an error.
+  const placeholderSounds = g.mode === 'merge' && soundKeys.size === 0;
+  if (silent.length && placeholderSounds) warnings.push(`placeholder: no sounds yet; the ${silent.length} fx event(s) of mode "merge" are silent until the sound package renders games/${id}/assets/sfx/`);
+  else if (silent.length) problems.push(`${silent.length} fx event(s) of mode "${g.mode}" have no sound file for this game: ${silent.join(', ')} (games/${id}/assets/sfx/${g.soundPack ? ` or shared/sfx/${g.soundPack}/` : ''})`);
     if (!fs.existsSync(path.join(games.gameDir(id), 'icon.png'))) warnings.push('no icon.png (using the shared placeholder)');
   if (g.monetization.ads.forceTestAds) warnings.push('forceTestAds is on: test ads in release builds earn nothing. Paste the AdMob units and turn it off before release');
   if (!release && !g.monetization.iap.revenueCatIosKey) warnings.push('no RevenueCat keys (purchases are simulated)');
@@ -321,6 +326,12 @@ for (const id of ids) {
       const missed = [...results].filter(([, r]) => r?.targets?.some((x) => x.name === name && !x.ok));
       if (missed.length) warnings.push(`pacing (section 8, soft, Decision 64): "${name}" missed on ${missed.length} of ${results.size} seeds (${missed.map(([seed, r]) => `${seed}: ${r?.targets?.find((x) => x.name === name)?.value}`).join('; ')}); section 9.3 "Later"`);
     }
+  }
+  // --- pacing of a merge game: its own bot (market-design.md 8.1 step 6: 12 h with season closes and a
+  // 10-season run, every missed hard target an error). Until the bot exists (Decision M1) validate runs
+  // without one and says so; the numbers package replaces this branch with the bot's run. ---
+  else if (g.mode === 'merge') {
+    if (runSim) warnings.push('placeholder: no merge bot yet (src/engine/merge/bot.ts, the numbers package): the pacing targets of section 8 are not checked');
   }
   // --- pacing: the same bot as `npm run simulate`, two simulated hours ---
   else if (runSim && problems.length === 0) {

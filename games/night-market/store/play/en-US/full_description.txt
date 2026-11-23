@@ -1,0 +1,1 @@
+PLACEHOLDER. This listing is a stand-in written by the skeleton step; the store package writes the real one (scripts/content/night-store.json).

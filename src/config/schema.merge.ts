@@ -132,7 +132,7 @@ export const MergeSchema = z.object({
     chainStep: pos.default(4),
     /** g (tune 2.2 to 2.6, above 2) */
     tierGrowth: pos.default(2.4),
-  }),
+  }).prefault({}),
   board: z.object({
     cols: z.literal(7).default(7),
     rows: z.literal(8).default(8),
@@ -167,7 +167,7 @@ export const MergeSchema = z.object({
     /** Round below this to a whole coin (half up), above to `sigDigits` significant digits (2.2). */
     roundBelow: pos.default(1000),
     sigDigits: int.positive().default(3),
-  }),
+  }).prefault({}),
   gear: z.object({
     /** T (tune 4 to 6), never changed by level. */
     interval: pos.default(5),
@@ -185,30 +185,30 @@ export const MergeSchema = z.object({
     looseCap: int.positive().default(4),
     /** Shelf release and gift-good cadence, s (rule). */
     release: pos.default(0.5),
-  }),
+  }).prefault({}),
   stalls: z.object({
     /** S_c = 1 + bonusPerLevel × (M − 1), at most bonusMax (rule). */
     bonusPerLevel: nonneg.default(0.1),
     bonusMax: pos.default(3.9),
     /** Stall levels that redraw the awning (looks only). */
     awningLevels: z.array(int.positive()).default([5, 10, 20]),
-  }),
+  }).prefault({}),
   minders: z.object({
     /** Q, s between sales (tune 10 to 25). */
     interval: pos.default(15),
     /** The till joins the purse at each whole minute of the season clock (rule). */
     tillRoll: pos.default(60),
-  }),
+  }).prefault({}),
   merges: z.object({
     /** Lucky: 1 in luckyOdds merges goes two tiers up (rule; 20 with lantern 7, 16 with lantern 16, 12 in a Fireflies season). */
     luckyOdds: pos.default(25),
-  }),
+  }).prefault({}),
   basket: z.object({
     /** A Basket sale pays this share of value (rule; 0.4 with lantern 2). */
     share: prob.default(0.25),
     /** The undo chip's life, s (rule). */
     undoSeconds: pos.default(4),
-  }),
+  }).prefault({}),
   tickets: z.object({
     /** Counters at the first start (lanterns 1 and 4 add the third and fourth). */
     counters: int.min(1).max(4).default(2),
@@ -237,7 +237,7 @@ export const MergeSchema = z.object({
     /** The customers drawn on tickets (`beast:` names) and their coat colours each. */
     customers: z.array(id).min(1).default(['fox', 'hedgehog', 'badger', 'otter', 'bat', 'owl']),
     coats: int.positive().default(3),
-  }),
+  }).prefault({}),
   parade: z.object({
     /** Due every this many s of season clock (tune 480 to 840); the first at `first`. */
     every: pos.default(600),
@@ -249,7 +249,7 @@ export const MergeSchema = z.object({
     /** Its own bounds (b): W and H (rule). */
     outputWindow: pos.default(360),
     handActions: pos.default(100),
-  }),
+  }).prefault({}),
   /**
    * The Festival of each season, season 1 first (spec 2.8): build-night.py writes the rows after
    * season 2 inside 2.8's ranges. A season past the last row uses the last row (decision of the
@@ -264,13 +264,13 @@ export const MergeSchema = z.object({
     /** Slots per box (rule; 4 with lantern 14, Decision M5). */
     slots: int.positive().default(3),
     /** Slot odds: coins, a good, a Lucky Spark (rule). */
-    odds: z.object({ coins: prob.default(0.5), good: prob.default(0.35), spark: prob.default(0.15) }),
+    odds: z.object({ coins: prob.default(0.5), good: prob.default(0.35), spark: prob.default(0.15) }).prefault({}),
     /** A good slot's tier above the chain's base: +2, +3, +4 at these odds (rule), capped at the chain's best. */
     goodSteps: z.array(int.positive()).default([2, 3, 4]),
     goodOdds: z.array(prob).default([0.6, 0.3, 0.1]),
     /** A coin slot = coinPace × U when the box is earned (tune 2 to 5). */
     coinPace: pos.default(3),
-  }),
+  }).prefault({}),
   /** The 20 lanterns of spec 5.3 with Decision M5. */
   lanterns: z.array(LanternSchema).length(20),
   seasons: z.object({
@@ -280,11 +280,11 @@ export const MergeSchema = z.object({
     /** The moon gate's stone cells (always open cells; spec 2.11). */
     moonGateCells: z.array(int.min(0).max(55)).default([23, 24]),
     /** A season character's numbers (spec 2.11; rules). */
-    fireflies: z.object({ luckyOdds: pos.default(12) }),
-    harvest: z.object({ threeLineShare: prob.default(0.25), betaAdd: nonneg.default(0.1) }),
-    warmGear: z.object({ ripeAdd: nonneg.default(0.15) }),
-    lateCrowd: z.object({ minderIntervalMult: pos.default(0.67) }),
-    marketDay: z.object({ paradeEvery: pos.default(300) }),
+    fireflies: z.object({ luckyOdds: pos.default(12) }).prefault({}),
+    harvest: z.object({ threeLineShare: prob.default(0.25), betaAdd: nonneg.default(0.1) }).prefault({}),
+    warmGear: z.object({ ripeAdd: nonneg.default(0.15) }).prefault({}),
+    lateCrowd: z.object({ minderIntervalMult: pos.default(0.67) }).prefault({}),
+    marketDay: z.object({ paradeEvery: pos.default(300) }).prefault({}),
     /** Seasoned gear: a step per closed season that reached `stepTier`, up to maxSteps (tune 2 to 4), each worth levelsPerStep gear levels (N: tune 5 to 10). */
     stepTier: tier.default(6),
     maxSteps: int.positive().default(3),
@@ -303,23 +303,23 @@ export const MergeSchema = z.object({
     gearRushCooldown: pos.default(900),
     /** The away report's ad adds this share (EngineMode.offlineAdMultiplier = 1 + awayBonus; Decision M8). */
     awayBonus: nonneg.default(0.5),
-  }),
+  }).prefault({}),
   away: z.object({
     /** The away cap, h (rule; +2 h with lantern 6, +4 h with Late Hours). */
     capHours: pos.default(4),
     lateHoursHours: pos.default(4),
-  }),
+  }).prefault({}),
   advice: z.object({
     /** Φ, s, the new-stall gain divisor (tune 20 to 60). */
     newStallPhi: pos.default(40),
     /** κ, the shutter gain constant (build-night.py iterates it and prints it). */
     shutterKappa: pos.default(1),
-  }),
+  }).prefault({}),
   /** The products this mode reads from `entitlements.products` (spec 5.7). */
   products: z.object({
     lamplighter: z.string().default('night_lamplighter'),
     lateHours: z.string().default('night_late_hours'),
-  }),
+  }).prefault({}),
 });
 
 export type MergeContent = z.output<typeof MergeSchema>;

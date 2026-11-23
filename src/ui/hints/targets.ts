@@ -27,6 +27,18 @@
  *   header:cash | header:gems the counters in the header (where coins and gems fly to)
  *   chestShelf                the Open button of the first chest on the Staff tab's chest shelf
  *   shell:content             the visible content area between the header and the banner / tab bar
+ *
+ * KEYS of the merge mode (Night Market, docs/design/market-design.md 3.1 and 4.2; a contract between
+ * the rules' hintsFor, src/engine/merge/hints.ts, and the screens in src/ui/merge; drawn targets are
+ * set with `targets.set` from mergeLayout's rectangles, controls use useTarget)
+ *   cell:<i>                  board cell i (0 to 55) in the play canvas      counter:<j>      counter j's ticket column (0 to 3)
+ *   banner                    the Festival banner on the street             basket           the Basket in the bottom row
+ *   front:<c>                 chain c's stall front (opens its sheet)       shutter:<group>  the next shutter of a group (0 to 3)
+ *   goal                      the goal line                                 purse            the purse in the top bar (coins fly here)
+ *   button:book | button:lanterns | button:season | button:shop | button:menu   the bottom-row and top-bar buttons
+ *   sheet:gear | sheet:stall | sheet:minder | sheet:open   the buy buttons of the stall sheet (gear, stall level, minder, open)
+ *   confirm:shutter           the shutter confirm's buy button              ticket:notTonight  the ticket detail's "Not tonight"
+ *   giftbox                   the gift box button (a paper bag on the street), when one waits
  */
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { HostInstance } from 'react-native';
