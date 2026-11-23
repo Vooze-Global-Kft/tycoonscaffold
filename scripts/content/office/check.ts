@@ -178,7 +178,7 @@ function parseFile(file: string, names: NamesFile): Parsed {
       const r = schema.safeParse(rec);
       if (r.success) good.push(r.data);
       else {
-        for (const issue of r.error.issues) findings.push({ severity: 'error', file: rel(file), id: rid, rule: 'format', reason: describeIssue(issue) });
+        for (const reason of new Set(r.error.issues.map(describeIssue))) findings.push({ severity: 'error', file: rel(file), id: rid, rule: 'format', reason });
         loose.push({ id: rid, section, texts: textsOf(rec) });
       }
     });

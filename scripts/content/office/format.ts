@@ -601,7 +601,7 @@ export function describeIssue(issue: z.core.$ZodIssue): string {
   if (issue.code === 'invalid_type' && /received undefined/.test(issue.message)) return `${where}: missing`;
   // zod's own wording ("Too small: expected number to be >=5") said in the format's words.
   const top = String(issue.path[0] ?? '');
-  if (/^delay$/.test(top) || issue.path.includes('delay')) return `${where}: a delay is [from, to] in papers, from 5 to 30, from ≤ to, at most 8 apart, like [10, 14]`;
+  if (/^delay$/.test(top) || issue.path.includes('delay')) return `${issue.path.slice(0, issue.path.indexOf('delay') + 1).join('.')}: a delay is [from, to] in papers, from 5 to 30, from ≤ to, at most 8 apart, like [10, 14]`;
   const i = issue as { minimum?: number | bigint; maximum?: number | bigint; origin?: string; expected?: string; values?: unknown[] };
   if (issue.code === 'too_big') return i.origin === 'string' ? `${where}: at most ${i.maximum} characters; this is longer: cut it` : i.origin === 'array' ? `${where}: at most ${i.maximum} entries` : `${where}: at most ${i.maximum}`;
   if (issue.code === 'too_small') return i.origin === 'string' ? (Number(i.minimum) <= 1 ? `${where}: empty: write it` : `${where}: at least ${i.minimum} characters`) : i.origin === 'array' ? `${where}: at least ${i.minimum} entries` : `${where}: at least ${i.minimum}`;

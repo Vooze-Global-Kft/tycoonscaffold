@@ -2,10 +2,10 @@
 # list is never near-matched to a real or fictional name where its capital letter says nothing: as the
 # first word of a sentence, inside an all-caps run (a headline, a clipping, a picket) or in a Title Case
 # line ("Paint the bench" is not "Paine"; "GIVEN" is not a name). Exact matches of surnames are
-# checked everywhere regardless. Compiled by the content desk from every lower-case word of the
-# project's design documents, game texts and plan.json, plus the game's own vocabulary; surnames of
-# deny-people.txt and deny-fiction.txt are removed. One or several words a line, split at spaces;
-# "#" starts a comment. Regenerate rather than hand-edit (the content desk's mklex.py).
+# checked everywhere regardless. Compiled by the content desk from the lower-case words of the prose
+# of the project's design documents (code spans removed, seen at least twice), plus the game's own vocabulary; surnames of
+# deny-people.txt and deny-fiction.txt are removed. Several words a line, split at commas;
+# "#" starts a comment. A writer who meets a false near match on an everyday word asks the content desk to add the word here.
 ability, about, above, absence, absences, absent, abstract, absurd, accent, accents, accept
 acceptable, accepted, accepts, accessed, accordion, account, accounts, accurate, acknowledged
 across, act, action, actions, active, activities, activity, actors, acts, actually, adapter, add
