@@ -147,7 +147,7 @@ export const BOXES = {
   /** A title on a sheet (a twist, a pair, a monument's name). */
   sheetTitle: { font: 15 * s, width: SHEET_INNER, lines: 1, what: 'a sheet title: 1 line at 19.5 pt in 311 pt' },
   /** A rival's name with its title ("Councillor Prudence Stitchley") on the poll sheet and the result. */
-  rivalName: { bold: true, font: 15 * s, width: SHEET_INNER, lines: 1, maxChars: 32, what: "a rival's name with its title: 1 line at 19.5 pt bold in 311 pt, at most 32 characters" },
+  rivalName: { bold: true, assumed: true, font: 12 * s, width: SHEET_INNER, lines: 1, maxChars: 32, what: "a rival's name with its title: 1 line at 15.6 pt bold in 311 pt on the poll sheet, at most 32 characters (an assumption until the sheets' package fixes it)" },
   /** A rival's slogan on the poll sheet. */
   slogan: { font: 12 * s, width: SHEET_INNER, lines: 1, what: 'a slogan: 1 line at 15.6 pt in 311 pt' },
   /** A district's name on the pinned map. */

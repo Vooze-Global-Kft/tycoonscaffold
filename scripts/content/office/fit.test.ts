@@ -1,6 +1,6 @@
 /** fit.ts on strings whose width can be reasoned about (4.1, 4.2: s = 1.3, 10 % margin). */
 import { describe, expect, it } from 'vitest';
-import { advance, BOXES, DEFAULT_ADVANCE, fit, measure, SAFETY, wrap } from './fit';
+import { advance, BOLD_FACTOR, BOXES, DEFAULT_ADVANCE, fit, measure, SAFETY, wrap } from './fit';
 
 describe('measure', () => {
   it('is the sum of advances × font size × the 10 % margin', () => {
@@ -66,3 +66,30 @@ describe('wrap and fit', () => {
     for (const l of ['Ledger', 'Cabinet', 'Poll', 'Office']) expect(fit(l, 'bottomRow').fits).toBe(true);
   });
 });
+
+describe('bold rows and the cut estimate (content-lint-attack.md M1, M3)', () => {
+  it('bold boxes measure wider by BOLD_FACTOR: a name that just fits regular does not fit bold', () => {
+    expect(BOLD_FACTOR).toBeCloseTo(1.06, 9);
+    for (const b of ['name', 'stripTitle', 'stripLabel', 'bottomRow'] as const) expect(BOXES[b].bold).toBe(true);
+    expect(BOXES.proposal.bold).toBeFalsy();
+    // A run of "n" as wide as the name box at the regular width: 263 pt / (0.59 × 19.5 × 1.1) ≈ 20.8 letters.
+    const regular = { ...BOXES.name, bold: false, maxChars: undefined };
+    const bold = { ...BOXES.name, maxChars: undefined };
+    expect(fit('n'.repeat(20), regular).fits).toBe(true);
+    expect(fit('n'.repeat(20), bold).fits).toBe(false);
+  });
+  it('the cut is the excess, not the line ratio: "Apologise on the steps" is a few characters over the label box', () => {
+    const r = fit('Apologise on the steps', 'stripLabel');
+    expect(r.fits).toBe(false);
+    expect(r.assumed).toBe(true);
+    const cut = Number(/shorten by about (\d+) characters/.exec(r.reason ?? '')?.[1]);
+    expect(cut).toBeGreaterThanOrEqual(1);
+    expect(cut).toBeLessThanOrEqual(6);
+    // Cutting that many characters from the end makes it fit.
+    expect(fit('Apologise on the steps'.slice(0, 22 - cut), 'stripLabel').fits).toBe(true);
+  });
+  it("a rival's name with its title takes up to 32 characters", () => {
+    expect(fit('Councillor Prudence Stitchley', 'rivalName').fits).toBe(true);
+  });
+});
+
