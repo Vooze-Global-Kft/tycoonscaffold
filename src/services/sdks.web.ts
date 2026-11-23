@@ -6,3 +6,6 @@ export const loadPurchases: Loaders['loadPurchases'] = () => null;
 export const loadAnalytics: Loaders['loadAnalytics'] = () => null;
 export const loadCrashlytics: Loaders['loadCrashlytics'] = () => null;
 export const loadRemoteConfig: Loaders['loadRemoteConfig'] = () => null;
+export const loadNotifications: Loaders['loadNotifications'] = () => null;
+export const loadStoreReview: Loaders['loadStoreReview'] = () => null;
+export const loadGameServices: Loaders['loadGameServices'] = () => null;

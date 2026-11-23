@@ -18,9 +18,12 @@
     "expo-font": "~58.0.12",
     "expo-gl": "~58.0.4",
     "expo-haptics": "~58.0.8",
+    "expo-notifications": "~58.1.9",
     "expo-splash-screen": "~58.0.14",
     "expo-status-bar": "~58.0.5",
+    "expo-store-review": "~58.0.3",
     "expo-tracking-transparency": "~58.1.0",
+    "expo-updates": "~58.0.22",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
@@ -70,6 +73,7 @@
     "scan:binary": "tsx scripts/scan-binary.ts",
     "validate:release": "tsx scripts/validate.ts --release",
     "art:haul": "tsx scripts/art/haul-sheets.ts",
+    "art:notify": "python3 scripts/art/notification-icons.py",
     "store:shots": "tsx scripts/store/shots.ts"
   },
   "private": true

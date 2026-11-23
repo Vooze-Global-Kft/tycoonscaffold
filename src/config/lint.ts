@@ -3,6 +3,10 @@
  * (scripts/validate.ts, scripts/generate-game.ts, tests): no app file imports this
  * (scripts/lib/modes.js NODE_ONLY), so its messages, which name every mode's things, ship in no game.
  */
+import { HAUL_METRICS } from '../engine/haulMode';
+import { MERGE_METRICS } from '../engine/mergeMode';
+import { SHARED_METRICS } from '../engine/scores';
+import { reminderTextProblems } from '../services/reminderTexts';
 import { MACH_ICONS_BY_MODE, artIconsFor } from './artIcons';
 import type { GameConfig } from './schema';
 import { HaulSchema, lintHaul } from './schema.haul';
@@ -219,6 +223,32 @@ export function lintGameConfig(cfg: GameConfig, artIcons: readonly string[] = ar
     if (i.startsWith('mach:') && !(MACH_ICONS_BY_MODE[cfg.mode] ?? []).includes(i.slice(5))) problems.push(`icon "${i}" is not a machine portrait of mode "${cfg.mode}"`);
     if (i.startsWith('char:') && cfg.mode === 'haul') problems.push(`icon "${i}": a haul game draws no people ("char:" icons); use a "mach:" portrait`);
   }
+  // --- reminders (local notifications) ---
+  if (cfg.reminders) {
+    if (cfg.mode === 'haul' || cfg.mode === 'merge') {
+      problems.push(`"reminders": a ${cfg.mode} game's reminder words live in its string table (src/ui/${cfg.mode}/strings.ts), which its mode entry hands over; remove the block from game.json`);
+    }
+    problems.push(...reminderTextProblems(cfg.reminders).map((m) => `reminders: ${m}`));
+  }
+
+  // --- leaderboards (Game Center, Play Games) ---
+  if (cfg.leaderboards) {
+    const metrics: readonly string[] = [...SHARED_METRICS, ...(cfg.mode === 'haul' ? HAUL_METRICS : cfg.mode === 'merge' ? MERGE_METRICS : [])];
+    const lb = cfg.leaderboards;
+    const seen = { key: new Set<string>(), iosId: new Set<string>(), androidId: new Set<string>() };
+    for (const b of lb.boards) {
+      if (!metrics.includes(b.metric)) problems.push(`leaderboard "${b.key}" ranks "${b.metric}", which a ${cfg.mode} game does not count (one of ${metrics.join(', ')})`);
+      if (!b.iosId && !b.androidId) problems.push(`leaderboard "${b.key}" has no id on either platform: give it an iosId (chosen here, created in App Store Connect) or an androidId (from the Play Console)`);
+      for (const field of ['key', 'iosId', 'androidId'] as const) {
+        const value = b[field];
+        if (!value) continue;
+        if (seen[field].has(value)) problems.push(`leaderboards: two boards share the ${field} "${value}"`);
+        seen[field].add(value);
+      }
+    }
+    if (lb.boards.some((b) => b.androidId) && !lb.playGamesProjectId) problems.push('leaderboards: a board has an androidId but leaderboards.playGamesProjectId is missing (Play Console, Play Games Services, Configuration)');
+  }
+
   // Each business should be meaningfully more expensive than the last, or the curve feels flat.
   for (let i = 1; i < cfg.businesses.length; i++) {
     if (cfg.businesses[i].baseCost <= cfg.businesses[i - 1].baseCost) {

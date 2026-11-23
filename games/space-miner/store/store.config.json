@@ -17,15 +17,16 @@
           "idle",
           "tycoon",
           "asteroid",
-          "freighter",
-          "cargo",
+          "incremental",
           "logistics",
-          "station",
+          "trade",
+          "automation",
           "galaxy",
-          "rocket",
-          "sci-fi",
+          "simulator",
+          "cargo",
+          "scifi",
           "fleet",
-          "manager"
+          "ore"
         ],
         "promoText": "Every rock runs dry. Every buyer wants a different ore. Which drone goes where, and when the freighter leaves the pad, is your call.",
         "privacyPolicyUrl": "https://example.com/privacy"

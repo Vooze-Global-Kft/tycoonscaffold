@@ -29,6 +29,10 @@ The game shows no banner and no ad between screens.
 Gift boxes (a paper bag of three slots, four after lantern 14) are earned by filling tickets; none are for sale. The bag shows its odds and its coins before it opens, and what is inside was fixed when it was earned.
 
 Three things are for sale, none of them random, each a one-time purchase: Blue Silk Awnings, which changes only how the stalls look; Late Hours, which lets minders work 4 more hours while the app is closed; and Quiet Evening, which gives every "Watch ad" reward at once without playing the video. Our two earlier apps also sell a way to take ad rewards without the video, as most free games do; we say so here rather than leave it for you to find. Purchases can be restored from the Shop and from Settings.
+
+Notifications: the first time the player collects coins after time away, the game asks for permission to send notifications. They are reminders scheduled on the device itself (when the minders have sold for as long as they can, and once three days after the player left); the app registers for no remote push and has no push entitlement, and a reminder is never an offer. The switch is "Reminders" in Settings (the menu button of the top bar).
+
+Game Center: two leaderboards, "Tickets filled" and "Gold tickets". "Leaderboard" in Settings opens them. The game signs in to Game Center quietly at launch and shows Game Center's sign-in screen only when the player taps that button.
 ---
 
 ## Before pasting, check on the submitted build
@@ -41,4 +45,6 @@ Three things are for sale, none of them random, each a one-time purchase: Blue S
 - [ ] The ad waiting times (5, 15 and 20 minutes of play) match game.json `merge.ads` (`fillLineCooldown` 300, `gearRushCooldown` 900, `callDragonCooldown` 1200).
 - [ ] The ad and purchase sentences match what the build does (game.json `monetization`: three products, `interstitials` false, `showBanner` false; spec 5.7 and decisions M13, M14, M46).
 - [ ] The second season is still a rectangle and the third a moon gate (game.json `merge.seasons.table`); if the season table moved, correct point 3.
+- [ ] The notification prompt appears after the first away report is collected, not at launch, and "Reminders" in Settings switches them (`src/ui/merge/strings.ts` `remind`, `sheets.reminders`).
+- [ ] The two leaderboards exist in App Store Connect under the ids of game.json `leaderboards` (lanternrow.tickets, lanternrow.goldtickets), are attached to the version, and "Leaderboard" in Settings opens them.
 - [ ] Nothing in the build, the screenshots or this text names the other games except the first paragraph.

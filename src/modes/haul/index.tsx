@@ -12,7 +12,8 @@
  * - `hints`: the rules' hints (src/ui/haul/hints.ts);
  * - `presets`: `?preset=` states (web only: ./presets.web.ts; on phones ./presets.ts has none);
  * - `soundKeys`: the haul key for each shared key the store plays (errata 30, HAUL_SHARED_SOUNDS);
- * - `devViews`: `?view=haul-art`, the art kit's gallery, and `?view=boot`, the loading screen (web preview only: ./devViews.web.ts; on phones ./devViews.ts has none).
+ * - `devViews`: `?view=haul-art`, the art kit's gallery, and `?view=boot`, the loading screen (web preview only: ./devViews.web.ts; on phones ./devViews.ts has none);
+ * - `reminders`: the words of its reminders (the string table's `ping…` keys).
  * It never imports the tabs family or another mode's folders (npm run check:bundle).
  */
 import { Text } from 'react-native';
@@ -24,6 +25,7 @@ import { HaulShell } from '../../ui/haul/HaulShell';
 import { HaulBoot } from '../../ui/haul/overlays/Boot';
 import { haulHints } from '../../ui/haul/hints';
 import { ReticlePointer } from '../../ui/haul/hud/ReticlePointer';
+import { HAUL_STRINGS } from '../../ui/haul/strings';
 import type { ModeIconProps } from '../../ui/modeParts';
 import type { ModeEntry } from '../contract';
 import { devViews } from './devViews';
@@ -48,6 +50,12 @@ const entry: ModeEntry = {
   devViews,
   // The shared store's sound keys in this game's own sounds (errata 30; the haul table has no other key).
   soundKeys: HAUL_SHARED_SOUNDS satisfies Partial<Record<FxName, HaulFxName>>,
+  // The reminders' words ("away pings"), from this game's own string table.
+  reminders: {
+    channel: HAUL_STRINGS.pingChannel,
+    awayFull: { title: HAUL_STRINGS.pingFullTitle, body: HAUL_STRINGS.pingFullBody },
+    later: { title: HAUL_STRINGS.pingLaterTitle, body: HAUL_STRINGS.pingLaterBody },
+  },
 };
 
 export default entry;

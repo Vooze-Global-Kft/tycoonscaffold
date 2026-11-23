@@ -1,12 +1,14 @@
 /**
  * Account controls shared by the shop footer and the settings dialog: restore purchases (with
- * the result said in place, since alerts do not show everywhere), privacy choices, the privacy
- * policy link, and the development-only reset that asks twice.
+ * the result said in place, since alerts do not show everywhere), the leaderboard of a game that
+ * has one, privacy choices, the privacy policy link, and the development-only reset that asks twice.
  */
 import { useEffect, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { ads } from '../../../services/ads';
+import { boards } from '../../../services/boards';
 import { iap } from '../../../services/iap';
+import { openLeaderboard } from '../../../state/session';
 import { useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
 import { useTheme } from '../../theme';
@@ -29,6 +31,33 @@ export function RestoreButton() {
         }}
       />
       {state !== 'idle' && !busy ? <Text style={[styles.note, { color: t.c.textMuted }]}>{state}</Text> : null}
+    </View>
+  );
+}
+
+/**
+ * Opens the platform's leaderboard (Game Center, Play Games) for a game that has one; says in
+ * place when the player is not signed in there, since the platform shows nothing then.
+ */
+export function LeaderboardButton() {
+  const t = useTheme();
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!boards.available) return null;
+  return (
+    <View>
+      <Button
+        variant="ghost"
+        label="Rankings"
+        disabled={busy}
+        onPress={async () => {
+          setBusy(true);
+          const shown = await openLeaderboard();
+          setBusy(false);
+          setNote(shown ? null : `Sign in to ${boards.serviceName} on this phone to see the rankings.`);
+        }}
+      />
+      {note ? <Text style={[styles.note, { color: t.c.textMuted }]}>{note}</Text> : null}
     </View>
   );
 }

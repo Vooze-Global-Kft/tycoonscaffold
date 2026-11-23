@@ -16,6 +16,7 @@ import { createInitialState } from '../engine/economy';
 import { installEngineMode, type EngineMode } from '../engine/mode';
 import type { GameState } from '../engine/types';
 import type { FxName } from '../services/fx';
+import { setModeReminderTexts, type ReminderTexts } from '../services/reminderTexts';
 import { modeSounds } from '../state/modeEvents';
 import { useGame } from '../state/store';
 import { registerArtIcons, type ArtIconSource } from '../ui/art/icons';
@@ -61,6 +62,12 @@ export interface ModeEntry {
    * none of them (haul). None: the shared keys play as written (sim, classic).
    */
   soundKeys?: Readonly<Partial<Record<FxName, FxName>>>;
+  /**
+   * The words of the game's reminders (local notifications, src/services/reminders.ts), for a mode
+   * whose interface words live in its own string table (haul, merge). None: game.json `reminders`
+   * (sim, classic), and a game with neither shows no reminder.
+   */
+  reminders?: ReminderTexts;
 }
 
 /** Hands the entry's pieces to the shared code. Called once, by App.tsx, before anything renders. */
@@ -70,6 +77,7 @@ export function installMode(entry: ModeEntry): void {
   setHintSource(entry.hints ?? null);
   setModePresets(entry.presets ?? null);
   modeSounds.set(entry.soundKeys ?? null);
+  setModeReminderTexts(entry.reminders ?? null);
   installEngineMode(entry.engine ?? null);
   if (entry.engine) {
     // The mode's own block of game.json (opaque in the shared schema) parsed with its defaults, in

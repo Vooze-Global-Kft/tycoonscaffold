@@ -26,6 +26,16 @@ export function article(name: string): string {
 }
 
 export const S = {
+  // ===== reminders (what the phone shows while the game is closed; src/modes/merge/index.tsx hands them over) =====
+  // Never an offer or a price: a reminder says what the street is doing, and nothing else.
+  remind: {
+    /** The Android notification channel, as the phone's settings list it. */
+    channel: 'Street notes',
+    /** The away cap is reached (2.9): the minders have stopped selling. */
+    awayFull: { title: 'The till is full', body: 'Your minders have kept the stalls as long as they can. The coins are waiting in the till.' },
+    /** Once, three days after the player left. */
+    later: { title: 'The lanterns are still lit', body: 'Customers are standing at the counters with their paper tickets.' },
+  },
   // ===== shell (the skeleton; then the bars, sheets and spokes package) ========================
   shell: {
     placeholder: 'PLACEHOLDER',
@@ -211,6 +221,12 @@ export const S = {
     off: 'Off',
     privacy: 'Privacy policy',
     privacyChoices: 'Privacy choices',
+    /** The reminders switch (the phone's notifications while the game is closed; the words are `remind` below). */
+    reminders: 'Reminders',
+    remindersWhat: 'A note when the till is full',
+    /** The leaderboard on the phone's own game service (`service`: "Game Center" or "Play Games"). */
+    leaderboard: 'Leaderboard',
+    leaderboardSignIn: (service: string) => `Sign in to ${service} on this phone to see the leaderboard.`,
     version: (name: string, version: string, build: string | number) => `${name} ${version} (${build})`,
     // --- durations (cooldowns on the play clock, M10) ---
     seconds: (n: number) => `${n} s`,

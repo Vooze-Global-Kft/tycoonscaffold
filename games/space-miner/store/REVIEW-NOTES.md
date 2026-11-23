@@ -18,6 +18,10 @@ Fitting Bay: the third button on the bottom rail (three hexagons, between the po
 
 No account or sign-in. Ads are rewarded only and always optional (a Survey Flare charge, a +50 % boost on the Shift Log after time away); salvage pods are earned in play and never sold, and their odds are shown before opening. Purchases: Clearance (every ad reward without watching the ad; the game has no banner or pop-up ads), Hangar Expansion, Prospector Charter (once) and two Dark Matter packs.
 
+Notifications: the first time the player collects a Shift Log after time away, the game asks for permission to send notifications. They are reminders scheduled on the device itself (when the dock autopilot has shipped all it can, and once three days after the player left); the app registers for no remote push and has no push entitlement, and a reminder is never an offer. The switch is "Away pings" in the station menu.
+
+Game Center: two leaderboards, "Contracts met" and "Freighter launches". "Fleet standings" in the station menu opens them. The game signs in to Game Center quietly at launch and shows Game Center's sign-in screen only when the player taps that button.
+
 ---
 
 ## Before pasting, check on the submitted build
@@ -26,4 +30,6 @@ No account or sign-in. Ads are rewarded only and always optional (a Survey Flare
 - [ ] The Fitting Bay button is the third on the rail and opens at the stated time.
 - [ ] The ad and purchase sentence matches what the build does (game.json `monetization`; spec 5.4 says
       no interstitials in the first version).
+- [ ] The notification prompt appears after the first Shift Log is collected, not at launch, and "Away pings" in the station menu switches them (`src/ui/haul/strings.ts`, the `ping…` keys).
+- [ ] The two leaderboards exist in App Store Connect under the ids of game.json `leaderboards` (orbithaulers.contracts, orbithaulers.launches), are attached to the version, and "Fleet standings" opens them.
 - [ ] Nothing in the build, the screenshots or this text names the other game except the first sentence.

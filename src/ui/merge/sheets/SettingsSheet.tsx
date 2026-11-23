@@ -1,6 +1,7 @@
 /**
  * Settings (spec 4.4), opened by the menu button of the top bar: sound, music and haptics switches
- * that apply at once (the shared fx settings), "Restore purchases" (the result said in place), the
+ * that apply at once (the shared fx settings), the reminders switch (where the phone can show
+ * them), "Restore purchases" (the result said in place), the
  * privacy choices where ads run, the privacy policy link (the store listing's URL), and the app's
  * name, version and build. The merge mode's own sheet: the first game's settings live in the tab
  * family, which this bundle never contains. Owned by the bars package (BARS, 7a).
@@ -8,8 +9,11 @@
 import { useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import { ads } from '../../../services/ads';
+import { boards } from '../../../services/boards';
 import { fx } from '../../../services/fx';
 import { useFxSettings } from '../../../services/fx/useFxSettings';
+import { useReminders } from '../../../services/useReminders';
+import { openLeaderboard } from '../../../state/session';
 import { useGame } from '../../../state/store';
 import { S } from '../strings';
 import { useMergeUi } from '../uiState';
@@ -39,6 +43,7 @@ function SettingsBody({ note, setNote }: { note: string | null; setNote: (s: str
   const privacyUrl = useGame((s) => s.cfg.store.privacyPolicyUrl);
   const restore = useGame((s) => s.restorePurchases);
   const [busy, setBusy] = useState(false);
+  const remind = useReminders();
   const toggle = (key: Key) => {
     fx.settings.set({ [key]: !settings[key] });
     // After the change, so switching sound off stays silent.
@@ -53,6 +58,28 @@ function SettingsBody({ note, setNote }: { note: string | null; setNote: (s: str
           ))}
         </View>
       </Card>
+      {remind.available ? (
+        <Btn
+          kind={remind.on ? 'buy' : 'plain'}
+          label={S.sheets.reminders}
+          sub={`${S.sheets.remindersWhat} · ${remind.on ? S.sheets.on : S.sheets.off}`}
+          onPress={() => {
+            fx.play('ui_tap');
+            remind.toggle();
+          }}
+        />
+      ) : null}
+      {boards.available ? (
+        <Btn
+          kind="plain"
+          label={S.sheets.leaderboard}
+          enabled={!busy}
+          onPress={async () => {
+            const shown = await openLeaderboard();
+            setNote(shown ? null : S.sheets.leaderboardSignIn(boards.serviceName));
+          }}
+        />
+      ) : null}
       <Btn
         kind="plain"
         label={busy ? S.sheets.restoring : S.sheets.restore}

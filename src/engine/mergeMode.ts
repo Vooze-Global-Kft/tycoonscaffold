@@ -33,6 +33,10 @@ const asState = (g: R.MergeGame) => g as GameState;
 /** A save of a merge game always has `merge` after reconcile; a bare shared state (a test) gets one. */
 const run = (cfg: R.MergeConfig, g: GameState): R.MergeGame => (asGame(g).merge ? asGame(g) : R.withMergeFields(cfg, g));
 
+/** The merge game's own leaderboard figures (src/engine/scores.ts; the game-data lint checks a board's metric against them). */
+export const MERGE_METRICS = ['tickets', 'parades', 'merges', 'seasons', 'lanterns', 'goods'] as const;
+export type MergeMetric = (typeof MERGE_METRICS)[number];
+
 export const mergeEngineMode: EngineMode = {
   id: 'merge',
   saveTag: 'merge1',
@@ -66,4 +70,12 @@ export const mergeEngineMode: EngineMode = {
   offlineAdMultiplier: (cfg) => 1 + (R.isMerge(cfg) ? cfg.merge.ads.awayBonus : 0.5),
   // Decision M19: the away payout with the ad is rounded by the one rule, so the report's figure is the figure paid.
   roundPayout: (cfg, amount) => (R.isMerge(cfg) ? R.roundCoins(cfg, amount) : amount),
+  // The away cap with what raises it (2.9: lantern 6, Late Hours): the reminder of a full till is set from it.
+  awayCapSeconds: (cfg, state) => (R.isMerge(cfg) ? R.mergeParams(cfg, run(cfg, state)).awayCap : cfg.economy.offline.maxHours * 3600),
+  // Lifetime counters a leaderboard may rank (src/engine/scores.ts): none is coins, none falls.
+  scores: (cfg, state): Partial<Record<MergeMetric, number>> => {
+    if (!R.isMerge(cfg)) return {};
+    const m = run(cfg, state).merge;
+    return { tickets: m.feats.tickets, parades: m.feats.parades, merges: m.feats.merges, seasons: m.feats.seasonsClosed, lanterns: m.lanterns.length, goods: R.discoveredCount(m) };
+  },
 };

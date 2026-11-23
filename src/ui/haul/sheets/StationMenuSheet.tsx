@@ -11,8 +11,11 @@ import { useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import * as H from '../../../engine/haul';
 import { ads } from '../../../services/ads';
+import { boards } from '../../../services/boards';
 import { fx } from '../../../services/fx';
 import { useFxSettings } from '../../../services/fx/useFxSettings';
+import { useReminders } from '../../../services/useReminders';
+import { openLeaderboard } from '../../../state/session';
 import { useGame } from '../../../state/store';
 import { HaulIcon } from '../art/HaulIcon';
 import { useHaulUi } from '../uiState';
@@ -31,6 +34,7 @@ export function StationMenuSheet() {
   const restore = useGame((s) => s.restorePurchases);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const pings = useReminders();
   const close = () => {
     setNote(null);
     useHaulUi.getState().setMenu(false);
@@ -52,7 +56,28 @@ export function StationMenuSheet() {
             <Chip key={key} label={`${say(key)} ${settings[key] ? say('on') : say('off')}`} on={settings[key]} onPress={() => toggle(key)} style={styles.switch} />
           ))}
         </View>
+        {pings.available ? (
+          <Chip
+            label={`${say('awayPings')} ${pings.on ? say('on') : say('off')}`}
+            on={pings.on}
+            onPress={() => {
+              fx.play('ui_tap');
+              pings.toggle();
+            }}
+            style={styles.ping}
+          />
+        ) : null}
       </Plate>
+      {boards.available ? (
+        <ActionButton
+          kind="ghost"
+          label={say('standings')}
+          onPress={async () => {
+            const shown = await openLeaderboard();
+            setNote(shown ? null : say('standingsNoLink', { service: boards.serviceName }));
+          }}
+        />
+      ) : null}
       <View style={styles.keys}>
         <ActionButton
           kind="ghost"
@@ -93,6 +118,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   switches: { flexDirection: 'row', gap: 8 },
   switch: { flex: 1, justifyContent: 'center' },
+  ping: { justifyContent: 'center', marginTop: 8 },
   keys: { flexDirection: 'row', gap: 10 },
   center: { textAlign: 'center' },
 });

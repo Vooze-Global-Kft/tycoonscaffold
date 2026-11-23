@@ -1,0 +1,21 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.gameservices'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.gameservices"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+dependencies {
+  // Play Games Services v2 (v1 is closed). Pinned: Google's guide shows ":+", which would change the
+  // SDK under a build without a commit.
+  implementation "com.google.android.gms:play-services-games-v2:22.1.0"
+}

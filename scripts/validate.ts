@@ -35,6 +35,7 @@ import { GameConfigSchema, type GameConfig } from '../src/config/schema';
 import { args } from './lib/cli';
 import { economyTableClash, storeTextProblems, textSimilarity } from './lib/checks';
 import { comparePair, formatPair, gameFacts, pairFailures, promotionalTextOf, type AudioScore, type ReleasesFile } from './lib/fingerprint';
+import { policyIncomplete } from './lib/privacyPolicy';
 import { storeFiles } from './sync';
 
 const games = require('./lib/games.js');
@@ -344,6 +345,16 @@ for (const id of ids) {
   if (g.monetization.ads.forceTestAds) warnings.push('forceTestAds is on: test ads in release builds earn nothing. Paste the AdMob units and turn it off before release');
   if (!release && !g.monetization.iap.revenueCatIosKey) warnings.push('no RevenueCat keys (purchases are simulated)');
   if (!g.firebase.iosGoogleServicesFile) warnings.push('no Firebase files (analytics logs to console)');
+  // Leaderboards: the ids exist only here until someone creates them in the consoles (like products).
+  if (g.leaderboards) {
+    const ios = g.leaderboards.boards.filter((b) => b.iosId).map((b) => b.iosId);
+    if (ios.length) warnings.push(`leaderboards: create ${ios.join(', ')} in App Store Connect (Game Center) and add ${ios.length === 1 ? 'it' : 'them'} to the version you submit; the build has the Game Center entitlement`);
+    if (!g.leaderboards.boards.some((b) => b.androidId)) warnings.push('leaderboards: no board has an androidId, so Android has no leaderboard (create the boards under Play Games Services in the Play Console, then paste their ids and leaderboards.playGamesProjectId)');
+  }
+  // Over-the-air updates need the EAS project (app.config.ts sets updates.url from it).
+  if (!g.app.easProjectId) warnings.push('no app.easProjectId: builds check for no over-the-air update (GAME=' + id + ' npx eas-cli@latest init, then npm run sync)');
+  // Reminders: a sim or classic game writes its words in game.json; haul and merge games bring them in their string tables.
+  if (!g.reminders && (g.mode === 'sim' || g.mode === 'classic')) warnings.push('no "reminders" texts: the game shows no reminder when its offline earnings are full');
   // A game with ads or purchases needs a real privacy policy link on the listing and in the app (Apple
   // 5.1.1, Google's Data safety form): a release fails without one or on a placeholder (play-13, store-0).
   const hasAds = Boolean(g.monetization.ads.ios || g.monetization.ads.android);
@@ -353,6 +364,8 @@ for (const id of ids) {
     const why = !url ? 'no store.privacyPolicyUrl' : /^https?:\/\/([^/]*\.)?example\.(com|org|net)(\/|$)/i.test(url) ? `store.privacyPolicyUrl ${url} is a placeholder` : null;
     if (why) (release ? problems : warnings).push(`${why}: both stores require a working privacy policy link for a game with ads or purchases (listing, Data safety form, and the in-app link)`);
   }
+  // The privacy policy page (store/privacy-policy.html, written by sync) names the publisher and a contact address.
+  if (policyIncomplete(g)) (release ? problems : warnings).push('store.developerName and store.contactEmail are not both set: the privacy policy page (store/privacy-policy.html) shows a placeholder for them');
   // A release that sells products needs the payment keys, or the build simulates purchases and shows
   // the development note (store-8).
   if (release && sells && !(g.monetization.iap.revenueCatIosKey && g.monetization.iap.revenueCatAndroidKey))

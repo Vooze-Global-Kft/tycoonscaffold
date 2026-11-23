@@ -24,6 +24,7 @@ import { fx } from '../services/fx';
 import { iap } from '../services/iap';
 import { detectRegion } from '../services/region';
 import { simEvents } from './events';
+import { lifecycle } from './lifecycle';
 import { modeEvents } from './modeEvents';
 import { overlays } from './overlays';
 
@@ -245,6 +246,7 @@ function mergedReport(cfg: GameConfig, older: unknown, newer: unknown): { report
 
 simEvents.onError((e, where) => crash.record(e, where));
 modeEvents.onError((e, where) => crash.record(e, where));
+lifecycle.onError((e, where) => crash.record(e, where));
 
 function nextBonusAt(cfg: GameConfig, now: number) {
   const { minSec, maxSec } = cfg.economy.bonus;
@@ -445,6 +447,7 @@ export const useGame = create<Store>((set, get) => {
         analytics.log(returning ? 'session_resume' : 'first_open_game', { prestige: game.prestigeCount, mode: cfg.mode, session: game.stats.sessions });
         ads.init();
         detectRegion().then((region) => set({ region }));
+        lifecycle.emit('boot');
       })();
       return booting;
     },
@@ -453,6 +456,7 @@ export const useGame = create<Store>((set, get) => {
       if (!get().hydrated || paused) return;
       paused = true;
       await get().save();
+      lifecycle.emit('pause');
     },
 
     resume() {
@@ -502,6 +506,7 @@ export const useGame = create<Store>((set, get) => {
       set({ game: { ...game, lastSavedAt: now }, offline, combo: { taps: 0, lastTapAt: 0 } });
       if (newSession) analytics.log('session_resume', { prestige: game.prestigeCount, mode: cfg.mode, session: game.stats.sessions });
       get().save();
+      lifecycle.emit('resume');
     },
 
     tick(dt) {
@@ -899,6 +904,7 @@ export const useGame = create<Store>((set, get) => {
       // Policy (policy.md item 11): a short pause so the reset is seen before an interstitial covers it.
       // (A game whose data turns interstitials off never shows one: src/services/ads.ts `interstitials`.)
       ads.maybeShowInterstitial('prestige', PRESTIGE_AD_DELAY_MS);
+      lifecycle.emit('prestige');
     },
 
     collectOffline: (doubled) =>
@@ -925,6 +931,7 @@ export const useGame = create<Store>((set, get) => {
         fx.play('offline_collect');
         analytics.log('earn_virtual_currency', { virtual_currency_name: 'cash', value: amount, source: 'offline' });
         // No interstitial after collecting: it would only ever follow a declined rewarded ad (policy.md item 11).
+        lifecycle.emit('offlineCollected');
       }),
 
     watchBoostAd: () =>

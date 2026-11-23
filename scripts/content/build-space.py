@@ -405,6 +405,17 @@ def texts(x, out):
     return out
 
 
+# Leaderboards on Game Center and Play Games (src/services/boards.ts): which lifetime counter each ranks
+# (src/engine/haulMode.ts `scores`) and its Game Center id, created under the same id in App Store
+# Connect. The Play ids (`androidId`) and `playGamesProjectId` are given by the Play Console when the
+# boards are created there: the owner pastes them here, and until then Android has no board.
+g['leaderboards'] = {
+    'boards': [
+        {'key': 'contracts', 'metric': 'contracts', 'title': 'Contracts met', 'iosId': 'orbithaulers.contracts'},
+        {'key': 'launches', 'metric': 'launches', 'title': 'Freighter launches', 'iosId': 'orbithaulers.launches'},
+    ],
+}
+
 voice = texts({k: g[k] for k in ('strings', 'haul', 'characters', 'story', 'meta')}, [])
 voice += re.findall(r":\s*'([^']+)'", open(os.path.join(ROOT, 'src/ui/haul/strings.ts')).read())
 bad = [t for t in voice if BANNED.search(t)]

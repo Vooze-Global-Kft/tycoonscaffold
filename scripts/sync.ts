@@ -4,12 +4,13 @@
  *   npm run sync
  *
  * Writes:
- *   eas.json                               build + submit profiles per game (env GAME=<id>)
+ *   eas.json                               build + submit profiles per game (env GAME=<id>; update channels)
  *   games/<id>/store/store.config.json     App Store listing for `eas metadata:push`
  *   games/<id>/store/play/en-US/*.txt      Google Play listing (fastlane `supply` layout), with
  *                                          changelogs/default.txt from store/releases.json
  *   games/<id>/store/RATING-NOTES.md       answers for the age-rating and data-safety forms,
  *                                          plus the console steps no tool can do
+ *   games/<id>/store/privacy-policy.html   the privacy policy page to host at store.privacyPolicyUrl
  *
  * Apple's promotional text comes from game.json `store.promotionalText`; release notes from
  * games/<id>/store/releases.json `releaseNotes[<app.version>]` (Apple gets them only once the game has
@@ -23,6 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { GameConfigSchema, type GameConfig } from '../src/config/schema';
 import { promotionalTextOf, type ReleasesFile } from './lib/fingerprint';
+import { policyIncomplete, privacyPolicyHtml } from './lib/privacyPolicy';
 
 const games = require('./lib/games.js');
 const build: Record<string, unknown> = {
@@ -176,7 +178,40 @@ function ratingNotes(g: GameConfig): string {
     '- Players can ask for deletion: say how in the privacy policy (an email address is enough).',
     '- No account, name, email, contacts, photos or precise location are collected.',
     `- Privacy policy URL: ${privacyLine(g.store.privacyPolicyUrl)}.`,
+    `  The page itself is games/${g.id}/store/privacy-policy.html (written by sync from this config): host that file at the URL.${policyIncomplete(g) ? ' **It still needs store.developerName and store.contactEmail.**' : ''}`,
     `- Ad consent: Google UMP form (EEA, UK, US states), then the iOS tracking prompt.`,
+  );
+
+  h('Reminders, leaderboards, backups and updates');
+  const boards = g.leaderboards?.boards ?? [];
+  const iosBoards = boards.filter((b) => b.iosId);
+  const androidBoards = boards.filter((b) => b.androidId);
+  L.push(
+    '- **Reminders** are local notifications scheduled on the device (when the offline earnings are full, and once',
+    '  three days after the player left). No push token is created and nothing is sent to a server: the iOS',
+    '  build has no push entitlement, and no notification data is collected. They are never offers. The',
+    '  player is asked by the system prompt the first time away earnings are collected and can switch them',
+    '  off in the game\'s settings. Play: the app declares POST_NOTIFICATIONS (Android 13+).',
+    boards.length
+      ? `- **Leaderboards** (${boards.map((b) => `"${b.title}"`).join(', ')}): ${iosBoards.length ? 'Game Center on iOS' : 'none on iOS'}; ${androidBoards.length ? 'Play Games Services on Android' : 'none on Android yet (no Play ids in game.json)'}. The game sends one whole number per board; the platform keeps the ranking and shows the player\'s own platform name.`
+      : '- **Leaderboards**: none.',
+    ...(iosBoards.length
+      ? [
+          '  - Apple: Game Center data is collected by Apple, which an app does not list in its own App Privacy answers.',
+          '    Turn Game Center on for the version in App Store Connect and attach the leaderboards to it.',
+        ]
+      : []),
+    ...(androidBoards.length
+      ? [
+          '  - Google: read the Play Games Services entry of Google\'s SDK data-safety guidance and add what it lists',
+          '    (the player\'s Play Games profile id and game activity go to Google under the player\'s own account).',
+          '    Publish the Play Games Services project before the game, and add an OAuth client for the Play App',
+          '    Signing certificate (and one for the upload key, for internal builds).',
+        ]
+      : []),
+    '- **Backups**: the save is in the phone\'s own backup (iCloud or computer backup on iOS, Google\'s Auto Backup on',
+    '  Android), so a restored or new phone has the player\'s game. The developer receives none of it.',
+    `- **Over-the-air updates** (expo-updates): ${g.app.easProjectId ? 'on; publish with `GAME=' + g.id + ' npx eas-cli@latest update --channel production`' : 'off until app.easProjectId is set'}. Fixes only: content switched on after review is a hidden feature (policy.md 4).`,
   );
 
   h('By hand, in the consoles (no tool does these)');
@@ -188,6 +223,12 @@ function ratingNotes(g: GameConfig): string {
     '4. Create every product id in App Store Connect, Play Console and RevenueCat, and attach the',
     '   in-app purchases to the first version you submit.',
     '5. Privacy policy page live at the URL above, listing AdMob, Firebase and RevenueCat.',
+    ...(boards.length
+      ? [
+          `   Leaderboards: ${iosBoards.length ? `create ${iosBoards.map((b) => `${b.iosId} ("${b.title}")`).join(' and ')} in App Store Connect, Game Center` : 'none on iOS'};`,
+          `   ${androidBoards.length ? 'the Play Games Services project is set (see above)' : 'create the same boards under Play Games Services in the Play Console and paste their ids and the project id into the game\'s content script'}.`,
+        ]
+      : []),
     ...(fs.existsSync(path.join(games.gameDir(g.id), 'store', 'REVIEW-NOTES.md'))
       ? [
           `   App Review: paste games/${g.id}/store/REVIEW-NOTES.md into "Notes" in App Store Connect (and the Play`,
@@ -249,6 +290,8 @@ export function storeFiles(g: GameConfig, id: string = g.id): Record<string, str
     [path.join(play, 'short_description.txt')]: s.shortDescription + '\n',
     [path.join(play, 'full_description.txt')]: desc + '\n',
     [path.join(storeDir, 'RATING-NOTES.md')]: ratingNotes(g),
+    // The page to host at store.privacyPolicyUrl: it names what this build contains (scripts/lib/privacyPolicy.ts).
+    [path.join(storeDir, 'privacy-policy.html')]: privacyPolicyHtml(g),
   };
 }
 
@@ -268,8 +311,11 @@ function main() {
   for (const id of games.listGames() as string[]) {
     const g = GameConfigSchema.parse(games.readGameJson(id));
     build[`${id}-dev`] = { extends: 'base', developmentClient: true, distribution: 'internal', env: { GAME: id } };
-    build[`${id}-preview`] = { extends: 'base', distribution: 'internal', env: { GAME: id } };
-    build[`${id}-production`] = { extends: 'base', autoIncrement: true, env: { GAME: id } };
+    // `channel`: where the build looks for over-the-air updates (expo-updates; `eas update --channel <name>`
+    // with GAME=<id>). Each game is its own EAS project, so the two names never mix games. A development
+    // build takes no channel.
+    build[`${id}-preview`] = { extends: 'base', distribution: 'internal', channel: 'preview', env: { GAME: id } };
+    build[`${id}-production`] = { extends: 'base', autoIncrement: true, channel: 'production', env: { GAME: id } };
     submit[`${id}-production`] = {
       ios: { metadataPath: `./games/${id}/store/store.config.json` },
       android: { track: 'internal', releaseStatus: 'draft' },

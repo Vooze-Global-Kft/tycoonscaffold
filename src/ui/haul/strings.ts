@@ -186,10 +186,22 @@ export const HAUL_STRINGS = {
   restoredNone: 'Ledger checked. Nothing to restore.',
   privacyPolicy: 'Privacy policy',
   privacyChoices: 'Privacy choices',
+  awayPings: 'Away pings',
+  standings: 'Fleet standings',
+  standingsNoLink: 'No link to {service}. Sign in there first.',
   simulated: 'Dev build · purchases simulated',
   menuSystems: 'Station systems',
   registry: 'Registry · {station}',
   registryLine: '{name} · v{version} · build {build}',
+
+  // ---------------------------------------------------------------- Away pings (the phone's notifications while the game is closed)
+  // Never an offer or a price: a ping reports the station, and nothing else. `pingChannel` is the
+  // Android notification channel's name, as the phone's settings list it.
+  pingChannel: 'Station pings',
+  pingFullTitle: 'Shift limit reached',
+  pingFullBody: 'Dock autopilot has shipped all it can log. Credits are on the ledger. Awaiting orders.',
+  pingLaterTitle: 'Station standing by',
+  pingLaterBody: 'Drones are racked. Fresh rock has drifted into range.',
 
   // ---------------------------------------------------------------- Shift Log (2.11, 4.6)
   shiftLog: 'SHIFT LOG · {station}',

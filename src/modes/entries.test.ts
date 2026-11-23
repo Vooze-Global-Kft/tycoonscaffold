@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { PORTRAIT_MODES, SIM_ART_ICON_NAMES, TABS_ART_ICON_NAMES } from '../config/artIcons';
-import type { GameConfig } from '../config/schema';
+import { GameConfigSchema, type GameConfig } from '../config/schema';
 
 const s = vi.hoisted(() => {
   const named = (name: string) => Object.assign(() => null, { displayName: name });
@@ -83,6 +83,8 @@ describe('the sim entry (Pizza Empire)', () => {
     const icons = Object.keys((sim.artIcons as unknown as { sources: object }).sources);
     expect(icons).toEqual([...TABS_ART_ICON_NAMES, ...SIM_ART_ICON_NAMES]);
     expect(icons).toHaveLength(11);
+    // Its reminders' words are data (game.json `reminders`), not the entry's.
+    expect(sim.reminders).toBeUndefined();
   });
 
   it('ships its review screens on the web only', async () => {
@@ -142,6 +144,18 @@ describe('the haul entry (Orbit Haulers)', () => {
     // Phones (this file's resolution of ./presets): no presets; the web build's are pinned below.
     expect(haul.presets).toBeUndefined();
     expect(listenHaulEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it('hands over the words of its reminders from its own string table, and none reads as an offer', async () => {
+    const { default: haul } = await import('./haul');
+    const { HAUL_STRINGS } = await import('../ui/haul/strings');
+    const { reminderTextProblems } = await import('../services/reminderTexts');
+    expect(haul.reminders).toEqual({
+      channel: HAUL_STRINGS.pingChannel,
+      awayFull: { title: HAUL_STRINGS.pingFullTitle, body: HAUL_STRINGS.pingFullBody },
+      later: { title: HAUL_STRINGS.pingLaterTitle, body: HAUL_STRINGS.pingLaterBody },
+    });
+    expect(reminderTextProblems(haul.reminders!)).toEqual([]);
   });
 
   it('ships its presets and the balance bot on the web only (phone-12, perf-8)', async () => {
@@ -211,6 +225,14 @@ describe('the merge entry (Night Market)', () => {
     expect(listenMergeEvents).toHaveBeenCalledTimes(1);
   });
 
+  it('hands over the words of its reminders from its own string table, and none reads as an offer', async () => {
+    const { default: merge } = await import('./merge');
+    const { S } = await import('../ui/merge/strings');
+    const { reminderTextProblems } = await import('../services/reminderTexts');
+    expect(merge.reminders).toBe(S.remind);
+    expect(reminderTextProblems(merge.reminders!)).toEqual([]);
+  });
+
   it('ships its presets and its review screens on the web only', async () => {
     expect((await import('./merge/presets')).mergePreset).toBeUndefined();
     expect(typeof (await import('./merge/presets.web')).mergePreset).toBe('function');
@@ -248,5 +270,22 @@ describe('App.tsx', () => {
     expect(install).toBeLessThan(app.indexOf('export default function App'));
     expect(app).toMatch(/^import \{ modeEntry \} from '\.\.\/generated\/mode';$/m);
     expect(app).toMatch(/^import \{ installMode \} from '\.\.\/modes\/contract';$/m);
+  });
+});
+
+// Last in the file: it imports two entries, and the tests above count each entry's first import.
+describe('the reminders\' words', () => {
+  it('installMode hands them over: the mode\'s own, else the game\'s data', async () => {
+    const { default: sim } = await import('./sim');
+    const { default: merge } = await import('./merge');
+    const { installMode } = await import('./contract');
+    const { reminderTexts } = await import('../services/reminderTexts');
+    const pizza = GameConfigSchema.parse((await import('../../games/pizza-empire/game.json')).default);
+    installMode(merge);
+    expect(reminderTexts(pizza)).toBe(merge.reminders);
+    installMode(sim);
+    expect(reminderTexts(pizza)).toBe(pizza.reminders);
+    expect(pizza.reminders?.awayFull.title).toBeTruthy();
+    expect(reminderTexts({ ...pizza, reminders: undefined })).toBeNull();
   });
 });

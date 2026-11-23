@@ -1,16 +1,18 @@
 /**
  * The settings dialog (store modal { type: 'settings' }): sound, music and vibration switches
- * that apply at once, purchases and privacy, and the game's name and version. The reset button
+ * that apply at once, the notifications switch of a game with reminders, the rankings of a game
+ * with a leaderboard, purchases and privacy, and the game's name and version. The reset button
  * exists only in development builds.
  */
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { fx } from '../../../services/fx';
 import { useFxSettings } from '../../../services/fx/useFxSettings';
+import { useReminders } from '../../../services/useReminders';
 import { useGame } from '../../../state/store';
 import { GameIcon } from '../../components/GameIcon';
 import { Sheet } from '../../kit';
 import { alpha, useTheme } from '../../theme';
-import { DevResetButton, PrivacyChoicesButton, PrivacyPolicyButton, RestoreButton, SimulatedNote } from '../shop/account';
+import { DevResetButton, LeaderboardButton, PrivacyChoicesButton, PrivacyPolicyButton, RestoreButton, SimulatedNote } from '../shop/account';
 
 type Key = 'sound' | 'music' | 'haptics';
 
@@ -21,6 +23,9 @@ export function SettingsSheet() {
   const app = useGame((s) => s.cfg.app);
   const heroIcon = useGame((s) => s.cfg.theme.heroIcon);
   const settings = useFxSettings();
+  const remind = useReminders();
+  // Reminders exist only for a game that wrote their words (game.json `reminders`) on a phone that can show them.
+  const hasReminders = useGame((s) => s.cfg.reminders !== undefined) && remind.available;
   if (!open) return null;
 
   const toggle = (key: Key, value: boolean) => {
@@ -65,10 +70,43 @@ export function SettingsSheet() {
             />
           </Pressable>
         ))}
+        {hasReminders ? (
+          <Pressable
+            onPress={() => {
+              fx.play('ui_tap');
+              remind.toggle();
+            }}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: remind.on }}
+            accessibilityLabel="Notifications"
+            style={[styles.row, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: alpha(t.c.text, 0.15) }]}
+          >
+            <Text style={styles.rowIcon}>🔔</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowLabel, t.display, { color: t.c.text }]} numberOfLines={1}>
+                Notifications
+              </Text>
+              <Text style={[styles.rowSub, { color: t.c.textMuted }]} numberOfLines={1}>
+                When your earnings are ready
+              </Text>
+            </View>
+            <Switch
+              value={remind.on}
+              onValueChange={() => {
+                fx.play('ui_tap');
+                remind.toggle();
+              }}
+              trackColor={{ false: alpha(t.c.text, 0.2), true: t.c.success }}
+              thumbColor="#FFFFFF"
+              {...({ activeThumbColor: '#FFFFFF' } as object)}
+            />
+          </Pressable>
+        ) : null}
       </View>
 
-      <Text style={[styles.heading, { color: t.c.textMuted }]}>PURCHASES & PRIVACY</Text>
+      <Text style={[styles.heading, { color: t.c.textMuted }]}>ACCOUNT & PRIVACY</Text>
       <View style={{ gap: 8 }}>
+        <LeaderboardButton />
         <RestoreButton />
         <PrivacyChoicesButton />
         <PrivacyPolicyButton />

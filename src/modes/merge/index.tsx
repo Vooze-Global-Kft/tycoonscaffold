@@ -12,7 +12,8 @@
  * - `hints`: the firefly's script (src/ui/merge/hints.ts);
  * - `presets`: `?preset=` states (web only: ./presets.web.ts; on phones ./presets.ts has none);
  * - `soundKeys`: the merge key for each shared key the store plays (./soundKeys.ts, the sound package's);
- * - `devViews`: web preview only (./devViews.web.ts; on phones ./devViews.ts has none).
+ * - `devViews`: web preview only (./devViews.web.ts; on phones ./devViews.ts has none);
+ * - `reminders`: the words of its reminders (the string table's `remind`).
  * It never imports the tabs family or another mode's folders (npm run check:bundle).
  * Written by the skeleton; owned by the wiring package (spec 9.2 P3).
  */
@@ -24,6 +25,7 @@ import { FireflyPointer } from '../../ui/merge/FireflyPointer';
 import { mergeHints } from '../../ui/merge/hints';
 import { MergeShell } from '../../ui/merge/MergeShell';
 import { MergeLoading } from '../../ui/merge/overlays/Loading';
+import { S } from '../../ui/merge/strings';
 import type { ModeEntry } from '../contract';
 import { devViews } from './devViews';
 import { listenMergeEvents } from './fx';
@@ -42,6 +44,8 @@ const entry: ModeEntry = {
   presets: mergePreset,
   devViews,
   soundKeys: MERGE_SHARED_SOUNDS satisfies Partial<Record<FxName, MergeFxName>>,
+  // The reminders' words, from this game's own string table (src/ui/merge/strings.ts `remind`).
+  reminders: S.remind,
 };
 
 export default entry;

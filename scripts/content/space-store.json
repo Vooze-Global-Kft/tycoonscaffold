@@ -1,27 +1,29 @@
 {
-  "_comment": "Orbit Haulers store listing (spec 7.6, Decision 54 subtitle and short description). Owned by the tooling-and-store package; build-space.py copies every field into game.json store. promotionalText is Apple's promotional text (170 max): the shared schema does not list it yet, so sync and validate read it from the raw game.json until it does. Release notes are per version in games/space-miner/store/releases.json.",
+  "_comment": "Orbit Haulers store listing (spec 7.6, Decision 54 subtitle and short description). Owned by the tooling-and-store package; build-space.py copies every field into game.json store. promotionalText is Apple's promotional text (170 max): the shared schema does not list it yet, so sync and validate read it from the raw game.json until it does. Release notes are per version in games/space-miner/store/releases.json. ASO pass (the owner's request, 23 November 2026, from a search of both stores that day): the title and the subtitle stay (Decision 54; the fingerprint check also refuses two titles of the 'X: Y' shape). The Play short description now leads with the words Play indexes ('Space mining idle game: ...'). The keyword field is filled to 98 of Apple's 100 characters: 'incremental', 'trade', 'automation' and 'simulator' (each a phrase players type with 'games') replace 'freighter' (no game search), 'rocket' (the game has none), 'station' and 'manager'; 'sci-fi' is written without its hyphen (Apple advises against special characters). As Decision 54 and NAME-SEARCH.md rule: no 'idle' in the title or subtitle, never 'idle' directly before 'miner' or 'mining' in any field, and no 'miner' or 'mine' in the keywords.",
   "title": "Orbit Haulers",
   "subtitle": "Space mining by drone routes",
   "keywords": [
     "idle",
     "tycoon",
     "asteroid",
-    "freighter",
-    "cargo",
+    "incremental",
     "logistics",
-    "station",
+    "trade",
+    "automation",
     "galaxy",
-    "rocket",
-    "sci-fi",
+    "simulator",
+    "cargo",
+    "scifi",
     "fleet",
-    "manager"
+    "ore"
   ],
-  "shortDescription": "An asteroid field, a hold of ore, and a freighter waiting for your swipe.",
+  "shortDescription": "Space mining idle game: route drones, fill the hold and launch the freighter.",
   "promotionalText": "Every rock runs dry. Every buyer wants a different ore. Which drone goes where, and when the freighter leaves the pad, is your call.",
   "description": "Orbit Haulers is an idle mining game about routes and cargo.\n\nYour station sits in an asteroid field. Drag hauler drones onto rocks to set their routes, and watch them carry ore home to the hold. When the hold is full, swipe the freighter off the pad: it warps out and the whole manifest sells at once.\n\nBuyers post contracts for the ores they want: so many units within a few launches. Take one, send drones to the rocks that carry its ore, and when the last units arrive the buyer pays its rate on all of them.\n\nRocks run dry and new ones drift in, sometimes with a different ore, sometimes as a rich bonanza rock. The far rings hold copper, ice, titanium and platinum, but the trips are longer, so where you send each drone matters.\n\nBring the dock autopilot online and the station ships on its own while you are away. Fit modules into three sockets in the Fitting Bay; some of them change the rules. When a run has paid off, jump to a new galaxy, spend Warp Cores on the Star Map, and choose the conditions you will mine under next.\n\nFeatures\n- Drag-to-route drones on a top-down map of the asteroid field\n- One-swipe freighter launches and buyer contracts delivered over several launches\n- Rocks that run dry and come back as new ore\n- A dock autopilot that keeps shipping offline\n- Fitting Bay modules and a Star Map that changes how each run starts\n- Optional rewarded ads; salvage pods are earned in play, never sold",
   "primaryCategory": "GAMES",
   "subcategories": [
     "GAMES_STRATEGY",
     "GAMES_SIMULATION"
-  ]
+  ],
+  "privacyPolicyUpdated": "23 November 2026"
 }

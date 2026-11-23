@@ -8,8 +8,8 @@ analytics are shared, so a new game is a new folder and a new store listing.
 
 Stack: Expo SDK 58 / React Native 0.88 · Skia · three.js on expo-gl (optional
 3D scene) · Reanimated · zustand · AdMob (`react-native-google-mobile-ads`) ·
-RevenueCat · Firebase Analytics, Crashlytics and Remote Config · zod-validated
-config · vitest.
+RevenueCat · Firebase Analytics, Crashlytics and Remote Config · local notifications
+· Game Center / Play Games leaderboards · EAS Update · zod-validated config · vitest.
 
 ## Quick start
 
@@ -156,7 +156,8 @@ folder; without them the shared placeholders are used.
 - **meta**, **cast**: see above
 - **monetization**: AdMob ids, interstitial pacing, `maxAdContentRating`, RevenueCat keys, IAP products
 - **firebase**: paths to `GoogleService-Info.plist` / `google-services.json`
-- **store**: title, subtitle, keywords, descriptions, privacy policy URL
+- **store**: title, subtitle, keywords, descriptions, privacy policy URL, publisher name and contact address (for the policy page)
+- **reminders**, **leaderboards**: the notification words (sim and classic games) and the platform leaderboards
 
 Custom art: put 1024 px transparent PNGs named by asset key in a folder, run
 `python3 scripts/import-art.py <folder> <game-id>`, list each under `assets` and
@@ -212,8 +213,10 @@ shared/sfx/<pack>/       sound packs (warm: Pizza Empire; Orbit Haulers declares
 games/<id>/store/        listing files (sync), fingerprint.json, releases.json, REVIEW-NOTES.md, bundle-report.json
 src/engine/              pure TS economy, chain and meta + tests; no React, no native code, deterministic
 src/config/schema*.ts    the GameConfig contract (zod); lint.ts: lintGameConfig (Node only)
-src/services/            ads, iap, firebase, fx (sound + haptics); sdks.ts is the only place native SDKs load
+src/services/            ads, iap, firebase, fx (sound + haptics), reminders, review, boards; sdks.ts is the only place native SDKs load
+modules/game-services/   the repository's own native module: Game Center (Swift) and Play Games Services (Kotlin)
 src/state/store.ts       zustand store: every state change is an action here
+src/state/session.ts     reminders, rating prompt and leaderboard scores at the store's session moments
 src/ui/App.tsx           loading, the game loop, and the active mode's screen (src/generated/mode.ts)
 src/modes/               mode entries (contract.ts; sim/, classic/, haul/): the only way in to mode code
 src/ui/shell/TabShell    header, tabs, and every dialog and overlay of the sim and classic modes
@@ -253,9 +256,10 @@ does these; sources in `docs/design/research/policy.md`):
 5. **Age rating**: answer both questionnaires (Advertising: yes; loot boxes: no unless chests are sold) and set Apple's rating to 13+ by hand; Play target audience 13+. Never the Kids Category or Designed for Families: the game has third-party ads and analytics.
 6. **Listing**: a privacy policy URL (`store.privacyPolicyUrl`) that names AdMob, Firebase and RevenueCat; screenshots showing adult characters; no "kids" wording.
 7. **Data safety / App Privacy**: from RATING-NOTES.md; check each SDK's current disclosure.
-8. **App ids**: a real reverse domain in `app.iosBundleId` / `app.androidPackage` (Orbit Haulers still has `com.example.spaceminer`; `validate --release` fails on it).
-9. **Two apps, one account** (`docs/design/research/spam.md`): `npm run check:bundle -- --export` for both games, the side-by-side check filled into `games/<id>/store/fingerprint.json` `human`, then `npm run validate:release` (every one of the 19 fingerprint dimensions known; 8 of 8 must). Paste `store/REVIEW-NOTES.md` into App Review's notes. The first submission of a game at least 14 days after the other's latest one.
-10. Build and submit: `npx eas-cli@latest build --profile <id>-production`, run `npm run scan:binary -- <the .ipa or .aab> --game <id>` on it, then `submit --profile <id>-production`, and add the submission (with the scan report) to `store/releases.json`; push the iOS listing with `eas metadata:push` (the Play listing in `store/play/` uses the fastlane `supply` layout).
+8. **Leaderboards**: create each `leaderboards.boards[].iosId` in App Store Connect (Game Center) and add them to the version; in the Play Console create a Play Games Services project with the same boards, paste its project id and the board ids into the game's content script, and publish the project before the game. **Privacy page**: set `store.developerName` and `store.contactEmail`, run `npm run sync` and host `games/<id>/store/privacy-policy.html` at `store.privacyPolicyUrl`.
+9. **App ids**: a real reverse domain in `app.iosBundleId` / `app.androidPackage` (Orbit Haulers still has `com.example.spaceminer`; `validate --release` fails on it).
+10. **Two apps, one account** (`docs/design/research/spam.md`): `npm run check:bundle -- --export` for both games, the side-by-side check filled into `games/<id>/store/fingerprint.json` `human`, then `npm run validate:release` (every one of the 19 fingerprint dimensions known; 8 of 8 must). Paste `store/REVIEW-NOTES.md` into App Review's notes. The first submission of a game at least 14 days after the other's latest one.
+11. Build and submit: `npx eas-cli@latest build --profile <id>-production`, run `npm run scan:binary -- <the .ipa or .aab> --game <id>` on it, then `submit --profile <id>-production`, and add the submission (with the scan report) to `store/releases.json`; push the iOS listing with `eas metadata:push` (the Play listing in `store/play/` uses the fastlane `supply` layout).
 
 `npm run validate` fails when `games/<id>/store/*` is not what `npm run sync` would
 write from game.json (a stale listing must never be uploaded), and when a store
@@ -281,6 +285,42 @@ descriptions), never an "Idle <something> Tycoon" title, one account, one releas
 at a time, and time between releases. The safe fallback is one app with the
 themes as worlds inside it.
 
+## Reminders, rating prompt, leaderboards, backups, updates
+
+All five are shared code driven by the game's data; the store only reports the moments of a session
+(`src/state/lifecycle.ts`) and `src/state/session.ts` listens, so none of them can stop the game.
+
+- **Reminders** (`src/services/reminders.ts`, `expo-notifications`): local notifications only, no
+  push token and no push entitlement. Two at most per absence, never between 21:00 and 9:00
+  (`src/engine/reminders.ts`): when the offline cap is reached, and once three days on. The words are
+  the game's own: game.json `reminders` for a sim or classic game, the string table for haul and
+  merge (the mode entry hands them over). The player is asked by the system prompt the first time
+  away earnings are collected, and each game's settings has the switch. A reminder is never an offer
+  (lint). Android's small icon is `games/<id>/notification-icon.png` (`npm run art:notify`).
+- **Rating prompt** (`src/services/review.ts`, `expo-store-review`): asked for after an offline
+  collect once the player has settled in (5 sessions, 45 minutes of play, 3 days since the first
+  launch), at most 3 times, 120 days apart (`src/services/reviewRule.ts`). Never from a button.
+- **Leaderboards** (`src/services/boards.ts`, the repository's own native module
+  `modules/game-services`: Game Center on iOS, Play Games Services v2 on Android). game.json
+  `leaderboards.boards` names each board, the figure it ranks (`src/engine/scores.ts`: lifetime
+  counters, never money) and its id per platform. The Game Center ids are chosen in the content
+  script and created under the same ids in App Store Connect; Play gives its ids (and the project
+  id, `leaderboards.playGamesProjectId`) when the boards are created in the Play Console, and until
+  they are pasted Android has no board and the SDK's start-up pieces are removed from the manifest
+  (`app.config.ts`). Scores go out at launch, when the app goes to the background and at a run
+  reset; each settings screen has the button that opens the platform's own screen.
+- **Backups**: the save is included in the phone's backup (iOS: `RCTAsyncStorageExcludeFromBackup`
+  false in `app.config.ts`; Android: Auto Backup, on by default), so a new or restored phone has the
+  player's game. This is not a sync between two phones in use.
+- **Over-the-air updates** (`expo-updates`): on once `app.easProjectId` is set. `npm run sync` gives
+  the preview and production build profiles their channel; publish with
+  `GAME=<id> npx eas-cli@latest update --channel production --environment production`. The runtime
+  version is the app version: bump `app.version` for every build that changes native code. Fixes
+  only: content switched on after review is a hidden feature (`docs/design/research/spam.md` 5).
+
+None of them runs in the web preview or in Expo Go (`src/services/sdks.web.ts`): they need a
+development or store build.
+
 ## Live tuning, analytics, monetization
 
 Remote Config parameters named after `REMOTE_KEYS` (`src/config/game.ts`)
@@ -305,6 +345,7 @@ Consent: Google UMP form, then ATT on iOS, then the SDK init.
 | `npm run simulate -- <id>` | pacing report |
 | `npm run content:space`, `content:pizza` | rebuild a shipped game's game.json from its script |
 | `npm run calibrate` | pizza-empire venue costs for target times |
-| `npm run sync` | eas.json, store listings, rating notes |
+| `npm run sync` | eas.json (with update channels), store listings, rating notes, the privacy policy page |
+| `npm run art:notify` | each game's Android notification icon |
 | `npm run new-game -- <id>` | clone a game, economy varied |
 | `npm run generate -- "<theme>"` | AI-skinned game (`--dry-run` without the API) |

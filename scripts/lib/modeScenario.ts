@@ -126,6 +126,23 @@ export const CONFIG_UNPINNED = [
   'app.trackingText',
 ] as const;
 
+/**
+ * Top-level blocks of game.json that came after the main branch and that no rule reads: the words
+ * of the reminders (`reminders`) and the platforms' leaderboard ids (`leaderboards`; the figures a
+ * board ranks are computed from the state, src/engine/scores.ts). The recording has none of them,
+ * and is never re-recorded: the guard takes them out of THIS tree's config before it compares, and
+ * proves they are not gameplay by playing the whole scenario with and without them
+ * (src/engine/modeRegression.test.ts). A block a rule reads must never be listed here.
+ */
+export const CONFIG_ADDED_NOT_RULES = ['reminders', 'leaderboards'] as const;
+
+/** `parsed` without the blocks of CONFIG_ADDED_NOT_RULES. */
+export function withoutAddedBlocks<T>(parsed: T): T {
+  const c = { ...(parsed as Record<string, unknown>) };
+  for (const k of CONFIG_ADDED_NOT_RULES) delete c[k];
+  return c as T;
+}
+
 export function pinnedConfig(parsed: unknown): Record<string, unknown> {
   const c = JSON.parse(JSON.stringify(parsed)) as Record<string, unknown>;
   for (const k of CONFIG_UNPINNED) {

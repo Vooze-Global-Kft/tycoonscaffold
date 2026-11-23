@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import pizza from '../../games/pizza-empire/game.json';
-import { modeScenario, pinnedConfig, CONFIG_UNPINNED, INTENDED_DIFFERENCES, type ScenarioEngine } from '../../scripts/lib/modeScenario';
+import { modeScenario, pinnedConfig, withoutAddedBlocks, CONFIG_ADDED_NOT_RULES, CONFIG_UNPINNED, INTENDED_DIFFERENCES, type ScenarioEngine } from '../../scripts/lib/modeScenario';
 import { GameConfigSchema } from '../config/schema';
 // The web build's presets (the bot): the phone file ./presets.ts has none.
 import { buildPreset } from '../dev/presets.web';
@@ -83,9 +83,18 @@ describe('sim and classic engines give what the main branch gives', () => {
     expect(pinned.commit).toMatch(MAIN_COMMIT);
     expect(pinned.unpinned).toStrictEqual([...CONFIG_UNPINNED]);
     const parsed = GameConfigSchema.parse(pizza);
-    expect(pinnedConfig(parsed)).toStrictEqual(pinned.config);
+    // Blocks added after the main branch that no rule reads (the next test proves it) are not in the
+    // recording, which is never re-recorded: they are taken out of this tree's config, nothing else is.
+    for (const k of CONFIG_ADDED_NOT_RULES) expect(pinned.config, `the recording has no "${k}" block`).not.toHaveProperty(k);
+    expect(pinnedConfig(withoutAddedBlocks(parsed))).toStrictEqual(pinned.config);
     expect(parsed.soundPack).toBe('warm');
     // The name under the icon and the slug are pinned (guard:new:2), not left out with the ids.
     expect((pinned.config as { app: unknown }).app).toStrictEqual({ displayName: 'Pizza Empire', slug: 'pizza-empire-idle' });
+  });
+
+  it('the blocks added since (reminders, leaderboards) are not gameplay: the scenario plays the same without them', () => {
+    const parsed = GameConfigSchema.parse(pizza);
+    for (const k of CONFIG_ADDED_NOT_RULES) expect(parsed, `Pizza Empire has a "${k}" block`).toHaveProperty(k);
+    expect(modeScenario(engine, withoutAddedBlocks(parsed))).toStrictEqual(modeScenario(engine, parsed));
   });
 });

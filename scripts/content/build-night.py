@@ -14,6 +14,9 @@
                                                      game.json (Decision M1: its texts keep the word PLACEHOLDER)
                                                      from the starting content and TUNED, with no gate, so the
                                                      placeholder follows the schema while the rules are built
+    python3 scripts/content/build-night.py --listing  copies ONLY the words (the store listing, the products' texts,
+                                                     the leaderboards) into game.json; no bot runs and the merge
+                                                     block keeps the numbers of the last gated run
     python3 scripts/content/build-night.py --table    the worked tables of 2.12 and 3.3 and the season times
                                                      of 8.5 (seasons 1 to 10, active and passive, five seeds)
     python3 scripts/content/build-night.py --paired [--n 30]
@@ -400,6 +403,16 @@ def write_game(block):
     mon['ads']['interstitials'] = False
     if products is not None:
         mon['iap'] = {**mon.get('iap', {}), 'products': products}
+    # Leaderboards on Game Center and Play Games (src/services/boards.ts): which lifetime counter each
+    # ranks (src/engine/mergeMode.ts `scores`) and its Game Center id, created under the same id in App
+    # Store Connect. The Play ids (`androidId`) and `playGamesProjectId` are given by the Play Console when
+    # the boards are created there: the owner pastes them here, and until then Android has no board.
+    g['leaderboards'] = {
+        'boards': [
+            {'key': 'tickets', 'metric': 'tickets', 'title': 'Tickets filled', 'iosId': 'lanternrow.tickets'},
+            {'key': 'gold', 'metric': 'parades', 'title': 'Gold tickets', 'iosId': 'lanternrow.goldtickets'},
+        ],
+    }
     # Decision M1: the written file is no longer the placeholder. A kept text that the skeleton marked
     # "PLACEHOLDER: " loses the mark (its words stay for the lead to review); anything else still marked refuses.
     def unmark(x):
@@ -578,6 +591,11 @@ if __name__ == '__main__':
         for h in hard:
             print('  HARD MISSED: ' + h)
         sys.exit(code or (1 if hard else 0))
+    if '--listing' in sys.argv:
+        # Words only (the store listing, the products' texts, the leaderboards): the merge block and its
+        # tuned numbers are left exactly as the last gated run wrote them.
+        write_game(None)
+        sys.exit(0)
     if '--placeholder' in sys.argv:
         g = json.load(open(GAME))
         if 'PLACEHOLDER' not in json.dumps(g):

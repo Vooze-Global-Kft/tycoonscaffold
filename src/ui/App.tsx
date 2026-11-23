@@ -8,6 +8,7 @@ import { applyDevParams, devSpeed, devView } from '../dev/devtools';
 import { modeEntry } from '../generated/mode';
 import { installMode } from '../modes/contract';
 import { fx } from '../services/fx';
+import { wireSession } from '../state/session';
 import { useGame } from '../state/store';
 import { GameIcon } from './components/GameIcon';
 import { DISPLAY_FONT } from './theme';
@@ -101,6 +102,8 @@ function Root() {
   const [fontsLoaded, fontError] = useFonts(fontSrc ? { [DISPLAY_FONT]: fontSrc } : {});
   const ready = hydrated && (fontsLoaded || fontError !== null || !fontSrc);
   useEffect(() => {
+    // Reminders, the rating prompt and leaderboard scores listen to the store's session moments.
+    wireSession();
     useGame
       .getState()
       .boot()

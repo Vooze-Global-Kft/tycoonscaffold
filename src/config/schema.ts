@@ -132,6 +132,52 @@ export const IapProductSchema = z.object({
   highlight: z.boolean().default(false),
 });
 
+/** What one reminder says: the notification's bold line and the line under it. */
+const ReminderTextSchema = z.object({
+  title: z.string().min(1).max(40),
+  body: z.string().min(1).max(110),
+});
+
+/**
+ * The words of the game's reminders (local notifications for a player who has left; when they are
+ * due is src/engine/reminders.ts). A sim or classic game writes them here; a mode whose words live in
+ * its own string table (haul, merge) hands them over at install instead and leaves this out. A game
+ * with neither shows no reminder and asks for no permission. Never an offer or a price (lint).
+ */
+export const RemindersSchema = z.object({
+  /** The Android notification channel's name, as the phone's settings list it. */
+  channel: z.string().min(1).max(40),
+  /** The game has stopped earning while away (the offline cap is reached). */
+  awayFull: ReminderTextSchema,
+  /** Once, a few days after the player left. */
+  later: ReminderTextSchema,
+});
+
+/** One leaderboard: which figure it ranks and its id on each platform. */
+export const LeaderboardSchema = z.object({
+  /** The game's own name for the board (lower case); the screens and the saved "last score sent" use it. */
+  key: z.string().regex(/^[a-z0-9_]+$/),
+  /** The figure it ranks: a name of src/engine/scores.ts (the shared ones, or the mode's own; lint checks it). */
+  metric: z.string().min(1),
+  /** The board's name as typed into both consoles (players see the consoles' text, not this field). */
+  title: z.string().min(1).max(30),
+  /** Game Center leaderboard ID, chosen here and created under the same ID in App Store Connect. Absent: no board on iOS. */
+  iosId: z.string().regex(/^[A-Za-z0-9._]+$/).max(100).optional(),
+  /** Play Games Services leaderboard id, given by the Play Console when the board is created there ("CgkI..."). Absent: no board on Android. */
+  androidId: z.string().regex(/^[A-Za-z0-9_-]+$/).optional(),
+});
+
+/**
+ * Leaderboards on the platforms' own services (Game Center, Play Games): the platform keeps the
+ * ranking, the names and the screens; the game sends one number per board. Optional: a game without
+ * this block has no leaderboard button and asks no player to sign in.
+ */
+export const LeaderboardsSchema = z.object({
+  /** The Play Games Services project id (Play Console, Play Games Services, Configuration): digits. Absent: no leaderboards on Android. */
+  playGamesProjectId: z.string().regex(/^\d+$/).optional(),
+  boards: z.array(LeaderboardSchema).min(1),
+});
+
 const PlatformAdUnits = z.object({
   appId: z.string(),
   banner: z.string().optional(),
@@ -402,6 +448,11 @@ export const GameConfigSchema = z.object({
     }),
   }),
 
+  /** Reminder words (local notifications). See RemindersSchema. */
+  reminders: RemindersSchema.optional(),
+  /** Leaderboards on Game Center and Play Games. See LeaderboardsSchema. */
+  leaderboards: LeaderboardsSchema.optional(),
+
   firebase: z
     .object({
       /** Relative to the game folder. Download from the Firebase console per app. */
@@ -423,6 +474,14 @@ export const GameConfigSchema = z.object({
     primaryCategory: z.string().default('GAMES'),
     subcategories: z.array(z.string()).default(['GAMES_SIMULATION', 'GAMES_CASUAL']),
     privacyPolicyUrl: z.string().url().optional(),
+    /**
+     * Who publishes the game and how a player reaches them, for the privacy policy page that sync
+     * writes (games/<id>/store/privacy-policy.html, to be hosted at privacyPolicyUrl) and the date
+     * shown on it (written out, e.g. "23 November 2026"). A release fails while the first two are missing.
+     */
+    developerName: z.string().min(1).optional(),
+    contactEmail: z.string().email().optional(),
+    privacyPolicyUpdated: z.string().min(1).optional(),
     supportUrl: z.string().url().optional(),
     marketingUrl: z.string().url().optional(),
     locale: z.string().default('en-US'),
@@ -436,5 +495,6 @@ export type Upgrade = z.output<typeof UpgradeSchema>;
 export type StoryBeat = z.output<typeof StoryBeatSchema>;
 export type IapProduct = z.output<typeof IapProductSchema>;
 export type Character = z.output<typeof CharacterSchema>;
+export type Leaderboard = z.output<typeof LeaderboardSchema>;
 
 // The cross-field checks (lintGameConfig) live in ./lint.ts: Node tools only, so their messages ship in no game.

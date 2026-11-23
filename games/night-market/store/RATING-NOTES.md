@@ -68,7 +68,22 @@ disclosure page before you submit; they change.
 - Players can ask for deletion: say how in the privacy policy (an email address is enough).
 - No account, name, email, contacts, photos or precise location are collected.
 - Privacy policy URL: https://example.com/lantern-row/privacy (**placeholder: replace before release** with this app's own policy page, set in store.privacyPolicyUrl).
+  The page itself is games/night-market/store/privacy-policy.html (written by sync from this config): host that file at the URL. **It still needs store.developerName and store.contactEmail.**
 - Ad consent: Google UMP form (EEA, UK, US states), then the iOS tracking prompt.
+
+## Reminders, leaderboards, backups and updates
+
+- **Reminders** are local notifications scheduled on the device (when the offline earnings are full, and once
+  three days after the player left). No push token is created and nothing is sent to a server: the iOS
+  build has no push entitlement, and no notification data is collected. They are never offers. The
+  player is asked by the system prompt the first time away earnings are collected and can switch them
+  off in the game's settings. Play: the app declares POST_NOTIFICATIONS (Android 13+).
+- **Leaderboards** ("Tickets filled", "Gold tickets"): Game Center on iOS; none on Android yet (no Play ids in game.json). The game sends one whole number per board; the platform keeps the ranking and shows the player's own platform name.
+  - Apple: Game Center data is collected by Apple, which an app does not list in its own App Privacy answers.
+    Turn Game Center on for the version in App Store Connect and attach the leaderboards to it.
+- **Backups**: the save is in the phone's own backup (iCloud or computer backup on iOS, Google's Auto Backup on
+  Android), so a restored or new phone has the player's game. The developer receives none of it.
+- **Over-the-air updates** (expo-updates): off until app.easProjectId is set. Fixes only: content switched on after review is a hidden feature (policy.md 4).
 
 ## By hand, in the consoles (no tool does these)
 
@@ -79,6 +94,8 @@ disclosure page before you submit; they change.
 4. Create every product id in App Store Connect, Play Console and RevenueCat, and attach the
    in-app purchases to the first version you submit.
 5. Privacy policy page live at the URL above, listing AdMob, Firebase and RevenueCat.
+   Leaderboards: create lanternrow.tickets ("Tickets filled") and lanternrow.goldtickets ("Gold tickets") in App Store Connect, Game Center;
+   create the same boards under Play Games Services in the Play Console and paste their ids and the project id into the game's content script.
    App Review: paste games/night-market/store/REVIEW-NOTES.md into "Notes" in App Store Connect (and the Play
    console's "App access" instructions), with a contact name, email and phone.
 6. Answer Play's "could appeal to children" question and decide the age band (M17: the owner's).

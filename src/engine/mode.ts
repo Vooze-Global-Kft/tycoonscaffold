@@ -108,6 +108,18 @@ export interface EngineMode {
    * the run starts (the mode's own action calls meta.missionsAfterReset there).
    */
   awaitsRunStart?(state: GameState): boolean;
+  /**
+   * Seconds of absence after which the game stops earning, for a mode whose limit is not
+   * `economy.offline.maxHours` alone (merge: its away cap with lantern 6 and Late Hours). The
+   * reminder of a full absence is set from it (src/engine/reminders.ts). Without it: maxHours.
+   */
+  awayCapSeconds?(cfg: GameConfig, state: GameState): number;
+  /**
+   * The mode's own figures a leaderboard may rank, by name (src/engine/scores.ts; game.json
+   * `leaderboards.boards[].metric` names one). Whole numbers that never fall while a board's period
+   * lasts. Without it the mode has only the shared figures.
+   */
+  scores?(cfg: GameConfig, state: GameState): Partial<Record<string, number>>;
 }
 
 let installed: EngineMode | null = null;

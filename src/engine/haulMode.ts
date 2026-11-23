@@ -185,6 +185,10 @@ export function haulPricingFloor(cfg: GameConfig, state: GameState, now: number)
   return H.haulIncome(cfg, g);
 }
 
+/** The haul game's own leaderboard figures (src/engine/scores.ts; the game-data lint checks a board's metric against them). */
+export const HAUL_METRICS = ['launches', 'contracts', 'hauled', 'depleted', 'jumps'] as const;
+export type HaulMetric = (typeof HAUL_METRICS)[number];
+
 export const haulEngineMode: EngineMode = {
   id: 'haul',
   // Space Miner's old classic saves (key "v1") are not read: the game was never published (spec Decisions).
@@ -228,4 +232,9 @@ export const haulEngineMode: EngineMode = {
   pricingFloor: haulPricingFloor,
   // A confirmed Jump waits for its condition with no run: "earn" missions are refilled when the galaxy starts.
   awaitsRunStart: (state) => { const g = asGame(state); return !g.haul && !!g.haulStats?.pendingJump; },
+  // Lifetime counters a leaderboard may rank (src/engine/scores.ts): none is credits, none falls.
+  scores: (_cfg, state): Record<HaulMetric, number> => {
+    const g = asGame(state);
+    return { launches: g.stats.launches ?? 0, contracts: g.stats.contractsMet ?? 0, hauled: g.stats.hauled ?? 0, depleted: g.stats.depleted ?? 0, jumps: g.haulStats?.jumps ?? 0 };
+  },
 };

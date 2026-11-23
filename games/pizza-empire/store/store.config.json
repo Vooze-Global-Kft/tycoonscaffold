@@ -10,21 +10,26 @@
     ],
     "info": {
       "en-US": {
-        "title": "Pizza Empire: Restaurant Sim",
-        "subtitle": "Bake, serve & grow an empire",
-        "description": "Turn Nonna's tiny corner kitchen into the biggest pizza empire in the universe!\n\n• Bake at the oven, ring the bell and watch your waiters serve hungry guests\n• Fix the bottleneck: more stations, more waiters, more tables\n• Open eight restaurants, each one bigger and busier than the last\n• Collect a staff of twelve characters and level them up\n• Boxes to earn, daily missions and Rush Hour keep every visit rewarding\n• Your restaurants keep earning Dough while you're away\n• Franchise your empire to earn Chef Stars and grow faster every run\n• Outsmart your rival, Big Cheese Carl\n\nPizza Empire is a relaxing restaurant sim you can play in short bursts all day.",
+        "title": "Pizza Empire: Idle Cooking Sim",
+        "subtitle": "Bake, serve, run restaurants",
+        "description": "Turn Nonna's tiny corner kitchen into the biggest pizza empire in the universe!\n\n• Bake at the oven, ring the bell and watch your waiters serve hungry guests\n• Fix the bottleneck: more stations, more waiters, more tables\n• Open eight restaurants, each one bigger and busier than the last\n• Collect a staff of twelve characters and level them up\n• Boxes to earn, daily missions and Rush Hour keep every visit rewarding\n• Your restaurants keep earning Dough while you're away\n• Franchise your empire to earn Chef Stars and grow faster every run\n• Outsmart your rival, Big Cheese Carl\n\nPizza Empire is a relaxing idle restaurant sim you can play in short bursts all day.",
         "keywords": [
-          "pizza",
-          "idle",
           "tycoon",
-          "clicker",
-          "restaurant",
-          "cooking",
           "chef",
-          "business",
+          "food",
           "simulator",
-          "incremental"
+          "pizzeria",
+          "shop",
+          "business",
+          "manager",
+          "kitchen",
+          "waiter",
+          "clicker",
+          "italian",
+          "baking",
+          "tap"
         ],
+        "promoText": "Fire up the oven. Hire waiters, fix the bottleneck and turn one corner kitchen into eight busy restaurants, all the way to the Moon.",
         "privacyPolicyUrl": "https://example.com/privacy"
       }
     }

@@ -8,7 +8,7 @@
  * comes from games/<id>/game.json, so each game is its own store listing.
  */
 import type { ConfigContext, ExpoConfig } from 'expo/config';
-import { withAndroidManifest, type ConfigPlugin } from 'expo/config-plugins';
+import { AndroidConfig, withAndroidManifest, withStringsXml, type ConfigPlugin } from 'expo/config-plugins';
 
 /**
  * Every app of the factory is a game: `android:appCategory="game"` on the manifest's <application>
@@ -24,6 +24,47 @@ const withGameCategory: ConfigPlugin = (cfg) =>
     if (app) app.$ = { ...app.$, 'android:appCategory': 'game' } as typeof app.$;
     return c;
   });
+
+/** What Play Games Services (v2) puts into every app that links it: its start-up provider and two screens. */
+const PLAY_GAMES_PROVIDER = 'com.google.android.gms.games.provider.PlayGamesInitProvider';
+const PLAY_GAMES_ACTIVITIES = [
+  'com.google.android.gms.games.internal.v2.resolution.GamesResolutionActivity',
+  'com.google.android.gms.games.internal.v2.appshortcuts.PlayGamesAppShortcutsActivity',
+];
+
+/**
+ * Play Games Services for the leaderboards (modules/game-services, src/services/boards.ts).
+ *
+ * With a project id (game.json `leaderboards.playGamesProjectId`): the id goes into a string resource
+ * and the manifest's APP_ID entry points at it (the SDK reads it as a string: a literal number in
+ * the manifest is stored as an integer and read as nothing).
+ *
+ * Without one, the game has no leaderboard on Android, but the SDK is still linked into the app
+ * (one codebase): its start-up provider and its two screens are removed from the manifest, so
+ * nothing of it runs or is reachable, and the native module answers "not configured".
+ */
+const withPlayGames: ConfigPlugin<{ projectId?: string }> = (cfg, { projectId }) => {
+  if (projectId) {
+    cfg = withStringsXml(cfg, (c) => {
+      c.modResults = AndroidConfig.Strings.setStringItem([{ $: { name: 'game_services_project_id', translatable: 'false' }, _: projectId }], c.modResults);
+      return c;
+    });
+  }
+  return withAndroidManifest(cfg, (c) => {
+    const app = AndroidConfig.Manifest.getMainApplicationOrThrow(c.modResults);
+    if (projectId) {
+      AndroidConfig.Manifest.addMetaDataItemToMainApplication(app, 'com.google.android.gms.games.APP_ID', '@string/game_services_project_id');
+      return c;
+    }
+    c.modResults.manifest.$ = { ...c.modResults.manifest.$, 'xmlns:tools': 'http://schemas.android.com/tools' };
+    type Node = { $: Record<string, string> };
+    const nodes = app as unknown as { provider?: Node[]; activity?: Node[] };
+    const removed = (name: string): Node => ({ $: { 'android:name': name, 'tools:node': 'remove' } });
+    nodes.provider = [...(nodes.provider ?? []).filter((n) => n.$['android:name'] !== PLAY_GAMES_PROVIDER), removed(PLAY_GAMES_PROVIDER)];
+    nodes.activity = [...(nodes.activity ?? []).filter((n) => !PLAY_GAMES_ACTIVITIES.includes(n.$['android:name'])), ...PLAY_GAMES_ACTIVITIES.map(removed)];
+    return c;
+  });
+};
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const games = require('./scripts/lib/games.js');
@@ -49,9 +90,24 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const trackingText: string =
     game.app.trackingText ?? 'This lets us show you ads that are more relevant to you, which keeps ' + game.app.displayName + ' free to play.';
 
+  // Leaderboards (game.json `leaderboards`): Game Center needs its entitlement in the iOS app of a game
+  // with a board there; Play Games needs the project id (withPlayGames above).
+  const boards: { iosId?: string; androidId?: string }[] = game.leaderboards?.boards ?? [];
+  const gameCenter = boards.some((b) => b.iosId);
+  const playGamesProjectId: string | undefined = boards.some((b) => b.androidId) ? game.leaderboards?.playGamesProjectId : undefined;
+
+  // Android draws a notification's small icon in one colour from its alpha channel: the game's own
+  // glyph (scripts/art/notification-icons.py) when it has one.
+  const notificationIcon = games.gameFileOr(id, 'notification-icon.png');
+
   const plugins: ExpoConfig['plugins'] = [
     'expo-asset',
-    'expo-audio',
+    // The game never records and never plays while it is in the background (src/services/fx/audio.ts:
+    // `shouldPlayInBackground: false`). Left at its defaults this plugin declares a microphone
+    // purpose string and the audio background mode on iOS, and RECORD_AUDIO plus a media-playback
+    // foreground service on Android: App Review asks what an unused background mode is for
+    // (guideline 2.5.4), and Play wants a declaration with a video for every foreground service type.
+    ['expo-audio', { microphonePermission: false, recordAudioAndroid: false, enableBackgroundPlayback: false }],
     ['expo-splash-screen', { image: splash, imageWidth: 200, resizeMode: 'contain', backgroundColor: game.theme.colors.background }],
     ['expo-tracking-transparency', { userTrackingPermission: trackingText }],
     [
@@ -61,6 +117,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         androidAppId: ads.android?.appId,
         delayAppMeasurementInit: true,
         userTrackingUsageDescription: trackingText,
+      },
+    ],
+    // Reminders are local notifications only (src/services/reminders.ts): no push entitlement, no
+    // token. Listed explicitly, because prebuild applies this plugin with remote notifications ON
+    // for any project that has the package installed.
+    [
+      'expo-notifications',
+      {
+        enableRemoteNotifications: false,
+        color: game.theme.colors.primary,
+        ...(notificationIcon ? { icon: rel(notificationIcon) } : {}),
       },
     ],
     [
@@ -75,7 +142,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins.push('@react-native-firebase/app', '@react-native-firebase/analytics', '@react-native-firebase/crashlytics');
   }
 
-  return withGameCategory({
+  const expo: ExpoConfig = {
     ...config,
     name: game.app.displayName,
     slug: game.app.slug,
@@ -89,7 +156,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       buildNumber: String(game.app.buildNumber ?? 1),
       supportsTablet: false,
       googleServicesFile: iosFirebase ? rel(iosFirebase) : undefined,
-      infoPlist: { ITSAppUsesNonExemptEncryption: false },
+      // EAS does not manage the Game Center capability: the entitlement here is the whole step.
+      entitlements: gameCenter ? { 'com.apple.developer.game-center': true } : undefined,
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+        // The save (AsyncStorage) goes into the phone's backup, so a new or restored iPhone has the
+        // player's game: AsyncStorage keeps itself out of backups unless this is false. Android
+        // backs the same data up by default (Auto Backup, android.allowBackup).
+        RCTAsyncStorageExcludeFromBackup: false,
+      },
     },
     android: {
       package: game.app.androidPackage,
@@ -110,5 +185,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     updates: game.app.easProjectId ? { url: `https://u.expo.dev/${game.app.easProjectId}` } : undefined,
     runtimeVersion: { policy: 'appVersion' },
-  });
+  };
+  return withPlayGames(withGameCategory(expo), { projectId: playGamesProjectId });
 };

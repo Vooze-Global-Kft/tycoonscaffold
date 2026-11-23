@@ -19,6 +19,7 @@
     "night-market-preview": {
       "extends": "base",
       "distribution": "internal",
+      "channel": "preview",
       "env": {
         "GAME": "night-market"
       }
@@ -26,6 +27,7 @@
     "night-market-production": {
       "extends": "base",
       "autoIncrement": true,
+      "channel": "production",
       "env": {
         "GAME": "night-market"
       }
@@ -41,6 +43,7 @@
     "pizza-empire-preview": {
       "extends": "base",
       "distribution": "internal",
+      "channel": "preview",
       "env": {
         "GAME": "pizza-empire"
       }
@@ -48,6 +51,7 @@
     "pizza-empire-production": {
       "extends": "base",
       "autoIncrement": true,
+      "channel": "production",
       "env": {
         "GAME": "pizza-empire"
       }
@@ -63,6 +67,7 @@
     "space-miner-preview": {
       "extends": "base",
       "distribution": "internal",
+      "channel": "preview",
       "env": {
         "GAME": "space-miner"
       }
@@ -70,6 +75,7 @@
     "space-miner-production": {
       "extends": "base",
       "autoIncrement": true,
+      "channel": "production",
       "env": {
         "GAME": "space-miner"
       }

@@ -327,9 +327,18 @@ g['monetization']['iap']['products'] = [
 ]
 
 store = g['store']
-store['title'] = 'Pizza Empire: Restaurant Sim'   # meta.md 1: avoid "Idle ... Tycoon" titles
-store['subtitle'] = 'Bake, serve & grow an empire'   # policy P16: nothing that reads as earning real money
-store['keywords'] = ['pizza', 'idle', 'tycoon', 'clicker', 'restaurant', 'cooking', 'chef', 'business', 'simulator', 'incremental']
+# ASO pass (23 November 2026, from a search of both stores that day): Google Play already lists a
+# "Pizza Empire: Restaurant" by another publisher, so the descriptor after the colon changes to the
+# words players type for this genre ("pizza idle", "cooking", "pizza simulator"); the name under the
+# icon stays "Pizza Empire". The subtitle takes "restaurants" instead and no longer repeats "empire".
+# The keyword field holds no word of the title or subtitle (the stores index those anyway), leaves
+# "incremental" to Orbit Haulers, and is filled to 99 of Apple's 100 characters. checks.ts refuses
+# "idle ... tycoon" in the title, the subtitle and the short description: "tycoon" stays a keyword.
+store['title'] = 'Pizza Empire: Idle Cooking Sim'   # meta.md 1: avoid "Idle ... Tycoon" titles
+store['subtitle'] = 'Bake, serve, run restaurants'   # policy P16: nothing that reads as earning real money
+store['keywords'] = ['tycoon', 'chef', 'food', 'simulator', 'pizzeria', 'shop', 'business', 'manager', 'kitchen', 'waiter', 'clicker', 'italian', 'baking', 'tap']
+# Apple's promotional text (170 characters, changeable without a review).
+store['promotionalText'] = "Fire up the oven. Hire waiters, fix the bottleneck and turn one corner kitchen into eight busy restaurants, all the way to the Moon."
 store['shortDescription'] = "Bake, serve and grow Nonna's tiny kitchen into a pizza empire across the world."
 store['description'] = (
     "Turn Nonna's tiny corner kitchen into the biggest pizza empire in the universe!\n\n"
@@ -341,8 +350,39 @@ store['description'] = (
     "• Your restaurants keep earning Dough while you're away\n"
     "• Franchise your empire to earn Chef Stars and grow faster every run\n"
     "• Outsmart your rival, Big Cheese Carl\n\n"
-    "Pizza Empire is a relaxing restaurant sim you can play in short bursts all day."
+    "Pizza Empire is a relaxing idle restaurant sim you can play in short bursts all day."
 )
+
+# The date printed on the privacy policy page sync writes (games/pizza-empire/store/privacy-policy.html):
+# change it whenever the page's content changes (a new SDK, a new kind of data).
+store['privacyPolicyUpdated'] = '23 November 2026'
+
+# Reminders: local notifications for a player who has left (src/engine/reminders.ts says when: the
+# moment the offline cap is reached, and once three days on). Never an offer, a price or a deal
+# (policy.md 2: promotional pushes need opt-in); the words are this game's own.
+g['reminders'] = {
+    'channel': 'Kitchen news',
+    'awayFull': {
+        'title': 'The registers are full',
+        'body': "Your restaurants have earned all the Dough they can hold while you were away. Come and collect it.",
+    },
+    'later': {
+        'title': 'Nonna saved you a slice',
+        'body': 'The ovens are warm and there is a table waiting at your first restaurant.',
+    },
+}
+
+# Leaderboards on Game Center and Play Games (src/services/boards.ts): which lifetime counter each ranks
+# (src/engine/scores.ts: never money, an idle game's earnings rank nothing but time) and its Game Center
+# id, created under the same id in App Store Connect. The Play ids (`androidId`) and `playGamesProjectId`
+# are given by the Play Console when the boards are created there: the owner pastes them here, and until
+# then Android has no board.
+g['leaderboards'] = {
+    'boards': [
+        {'key': 'guests', 'metric': 'sales', 'title': 'Guests served', 'iosId': 'pizzaempire.guests'},
+        {'key': 'franchises', 'metric': 'prestiges', 'title': 'Franchises opened', 'iosId': 'pizzaempire.franchises'},
+    ],
+}
 
 # OUT=<file> writes a variant elsewhere (for experiments) instead of the game.
 path = os.environ.get('OUT', path)
