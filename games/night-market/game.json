@@ -5,6 +5,7 @@
     "displayName": "Lantern Row",
     "slug": "lantern-row",
     "owner": "roullerz",
+    "easProjectId": "c226b0de-b845-4c7c-999c-38a2e41bf104",
     "iosBundleId": "com.voozeglobal.lanternrow",
     "androidPackage": "com.voozeglobal.lanternrow",
     "version": "1.0.0",
