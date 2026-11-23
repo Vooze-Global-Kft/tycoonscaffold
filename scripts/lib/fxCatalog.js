@@ -20,6 +20,8 @@ const CATALOG_BY_MODE = {
   haul: path.resolve(__dirname, '..', '..', 'src', 'services', 'fx', 'catalog.haul.ts'),
   // The merge mode likewise plays only its own keys (Night Market, spec 6.2).
   merge: path.resolve(__dirname, '..', '..', 'src', 'services', 'fx', 'catalog.merge.ts'),
+  // The decree mode likewise plays only its own keys (High Office, office-design.md 6).
+  decree: path.resolve(__dirname, '..', '..', 'src', 'services', 'fx', 'catalog.decree.ts'),
 };
 
 /** Same length as src, with comments and the insides of strings blanked. */

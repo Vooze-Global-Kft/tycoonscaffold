@@ -23,6 +23,9 @@ const MODE_FOLDERS = {
   // Night Market (docs/design/market-design.md 9.2): the merge rules, their schema (starting content names
   // "Pepper Skewer", "Old Brindle", ...) and fixtures belong to the merge mode exactly as haul's do.
   merge: ['src/modes/merge', 'src/ui/merge', 'src/engine/merge', 'src/engine/merge.ts', 'src/engine/mergeMode.ts', 'src/engine/fixtures/merge.ts', 'src/config/schema.merge.ts', 'src/config/merge.content.ts'],
+  // High Office (docs/design/office-design.md 9.2): the decree rules, their schema (its runtime deck names
+  // "Dithering-on-the-Dawdle", "Bus Spotters' Society", ...), fixtures and generated content, as merge's.
+  decree: ['src/modes/decree', 'src/ui/decree', 'src/engine/decree', 'src/engine/decree.ts', 'src/engine/decreeMode.ts', 'src/engine/fixtures/decree.ts', 'src/config/schema.decree.ts', 'src/config/decree.content.ts'],
 };
 
 /**
@@ -104,7 +107,7 @@ const CLASSIFIED_ROOT = 'src';
  * fx catalogue holds every event's description; the art icon list names every mode's icons; the
  * game-data lint's messages name every mode's things.
  */
-const NODE_ONLY = ['src/services/fx/catalog.ts', 'src/services/fx/catalog.haul.ts', 'src/services/fx/catalog.merge.ts', 'src/config/artIcons.ts', 'src/config/lint.ts'];
+const NODE_ONLY = ['src/services/fx/catalog.ts', 'src/services/fx/catalog.haul.ts', 'src/services/fx/catalog.merge.ts', 'src/services/fx/catalog.decree.ts', 'src/config/artIcons.ts', 'src/config/lint.ts'];
 
 /**
  * Words that name a thing of a mode's theme. The bundle check fails on a string literal in a
@@ -127,6 +130,9 @@ const THEME_WORDS = {
   // Not "merge": the shared engine seam's own literals use it ("engine.mergeReport" in src/state/store.ts,
   // the mode id "merge" in src/config/schema.ts), and the word names no thing a player reads.
   merge: ['stall', 'lantern', 'skewer', 'dumpling', 'noodle', 'steamer', 'minder', 'parade', 'festival', 'ticket'],
+  // High Office (office-design.md 9.2): each word only where `--words` finds no literal of it in shared or
+  // family files. Not "decree": the mode id itself is a shared literal (src/config/schema.ts), and names no thing a player reads.
+  decree: ['mayor', 'governor', 'ministry', 'ward', 'gossip', 'scandal', 'boycott', 'dibs'],
 };
 
 /** npm packages that only these modes may bundle (three.js and the GL view are the classic 3D asteroid's). */
@@ -180,6 +186,11 @@ const WEB_ONLY = [
   'src/modes/merge/devViews.web.ts',
   'src/engine/merge/bot.ts',
   'src/engine/fixtures/merge.ts',
+  // High Office (office-design.md 8.1, 9.2): the decree bot, the rules' fixtures and the web-only tools.
+  'src/modes/decree/presets.web.ts',
+  'src/modes/decree/devViews.web.ts',
+  'src/engine/decree/bot.ts',
+  'src/engine/fixtures/decree.ts',
   // The merge screens' preview switches (lead, 23 Nov: the screens lead lists them; phones take each file's plain twin).
   'src/ui/merge/play/devSlow.web.ts',
   'src/ui/merge/spokes/dev.web.ts',
@@ -201,6 +212,7 @@ const WEB_ONLY_STRINGS = [
   { text: 'freshBotGame' },
   { text: 'haulFixtures' },
   { text: 'mergeFixtures' },
+  { text: 'decreeFixtures' },
   // The page address's switches are read only by the .web.ts tools (src/dev/devtools.web.ts,
   // src/ui/haul/dev.web.ts); a library's own use (node_modules) is not counted. Haul only: the
   // first game's files keep their own web-guarded readers (they do not change). Shipped code only

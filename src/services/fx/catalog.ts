@@ -27,7 +27,7 @@
 export type HapticStep = 'light' | 'medium' | 'heavy' | 'soft' | 'rigid' | 'select' | 'success' | 'warning' | 'error' | number;
 
 /** The game modes (game.json `mode`) an event can be limited to. */
-export type FxMode = 'sim' | 'classic' | 'haul' | 'merge';
+export type FxMode = 'sim' | 'classic' | 'haul' | 'merge' | 'decree';
 
 /** What the app needs of an event at run time (the generated `fxTable` holds these). */
 export interface FxRuntimeDef {

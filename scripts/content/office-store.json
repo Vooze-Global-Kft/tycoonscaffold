@@ -1,0 +1,78 @@
+{
+  "_comment": "Proudly Adequate (High Office, mode decree) store listing: spec docs/design/office-design.md 7.9, 5.11, 2.1, 2.2 and section 11 (D1, D3). Owned by the listing step (label: listing). build-office.py copies every field that does not start with an underscore into game.json store, EXCEPT `products`, which it must move into monetization.iap.products (it is not a store field), as build-night.py does for night-store.json. promotionalText is Apple's promotional text (170 max). Release notes are per version in games/high-office/store/releases.json. Every number in these texts is a number of the specification; `_numbers` lists which rule each comes from and which are (tune): when build-office.py moves a tuned value, update the text here and run npm run sync. Deviations from 7.9, each argued in the listing step's notes: the subtitle (7.9's 'Funny desk, mayor to president' is 31 characters, one over the limit); the skipAds product's display title (5.11's 'Skip the Ad Videos (Private Secretary)' is 38 characters, over App Store Connect's 30 for an in-app purchase display name).",
+  "_numbers": {
+    "description: 'about every 12 seconds'": "arrival interval tau = 12 s for mayor and governor, spec 2.2 (tune 10 to 18); 15 s as President is not claimed ('about' covers the mayor's desk, where every player starts). Update if moved.",
+    "description: 'two seconds' (take-back)": "take-back rest 2 s, spec 2.7 and 4.3 (rule)",
+    "description: 'x0.4 at 0 % to x1.6 at 100 %'": "M(A) = 0.4 + 1.2 x A/100, spec 2.4 (slope tune 0.8 to 1.4): update both ends if the slope moves",
+    "description: 'below 20' and '8 more papers'": "boycott threshold 20 and its run of 8 decided papers, spec 2.1 line 6 and 2.8 (rules)",
+    "description: 'a fifth less for 10 papers'": "'Say nothing': I x 0.8 for 10 decided papers, spec 2.8 (rule)",
+    "description: 'From 60 % of the way through'": "call from C = 0.6 D, spec 2.2 (tune 0.5 to 0.7). Update if moved.",
+    "description: 'four ministries ... six ... eight'": "ministries per office 4 / 6 / 8, spec 2.2 (rule); the Grand Projects are not counted on purpose",
+    "description: 'at 35 % of the rate'": "away rate a = 0.35, spec 2.2 'Other values' (tune 0.25 to 0.45). Update if moved.",
+    "description: 'up to 4 hours'": "away cap 4 h, spec 2.1 line 12 and 2.2 (rule)",
+    "description: 'a paper every 6 minutes'": "away arrival every 360 s, spec 2.1 line 2 and 2.2 (tune 240 to 600). Update if moved.",
+    "description: 'up to 10 in the in-tray'": "tray cap 10, spec 2.1 line 2 and 2.2 (rule)",
+    "description: 'Nine ministers'": "9 ministers, spec 2.9 and 7.3 (rule)",
+    "description: 'half again on the away report'": "offlineAdMultiplier 1.5, spec 2.15 and 10.2 (rule)",
+    "description and products: Long Lunch 'from 4 hours to 8' / 'up to 8 hours instead of 4'": "away cap 4 h, +4 h with Long Lunch, spec 2.2 and 5.11 (rules)",
+    "description: 'Four purchases'": "four products, spec 5.11 and decision D3",
+    "description: the clubs named": "Bus Spotters' Society, Shop Window Guild, Giant Vegetable Society (mayor); brass band, anglers (governor); kites, hedges (president), spec 2.2 (rule; never 4 clubs)",
+    "products: fallback prices": "spec 5.11: $3.99, $2.99, $1.99, $4.99",
+    "promotionalText and shortDescription": "no numbers on purpose"
+  },
+  "title": "Proudly Adequate",
+  "subtitle": "Funny mayor-to-president desk",
+  "keywords": [
+    "governor",
+    "papers",
+    "sign",
+    "town hall",
+    "satire",
+    "decisions",
+    "cartoon",
+    "clerk",
+    "comedy",
+    "approve",
+    "silly politics"
+  ],
+  "shortDescription": "Push each paper up to sign it or down to study it. A comic desk, invented land.",
+  "promotionalText": "The Republic of Middling needs a mayor who reads. You will do. Grant a pumpkin the freedom of the town, decline a fruit basket, call the election when the poll is kind.",
+  "description": "An invented country and a comedy desk: push each paper up to sign it, or pull it down into the drawer marked FOR FURTHER STUDY.\n\nYou are the new mayor of Dithering-on-the-Dawdle, in the Republic of Middling (motto: Proudly Adequate). You were elected unopposed. The other candidate went to the wrong hall.\n\nVisitors queue at your door. A bus spotter would like the 7:02 named after you. A pumpkin grower asks for the freedom of the town for her pumpkin, which has asked very politely. A lobbyist leaves a small fruit basket, for no reason. Each paper prints both outcomes before you touch it, in exact numbers: what signing costs or pays, which club it pleases and which it annoys, and whether the poll moves. Those are the numbers applied. A signed paper rests on the out-tray for two seconds; tap it to take it back.\n\nThe town's opinion belongs to its hobby clubs: the Bus Spotters' Society, the Shop Window Guild and the Giant Vegetable Society, with a brass band, anglers, kite flyers and a hedge committee further up. Their approval multiplies everything your ministries earn, from x0.4 at 0 % to x1.6 at 100 %. A club that falls below 20 boycotts its ministry until you settle with it or 8 more papers are decided. Let the gossip pile up and the town paper prints a front page about your goose: apologise on the steps, or say nothing and collect a fifth less for 10 papers.\n\nA term is a fixed number of papers. From 60 % of the way through you may call the election. The poll board shows exactly how each ward would vote today, and on election night a clerk chalks up the wards, safest first. Win, and your Name Recognition and your ministers come with you to Governor of Upper Wobbling, then President in Middlingham. Lose, and nothing you built is lost: you carry on as Acting Mayor, and the winner resigns to spend more time with her hat.\n\nThe idle part, in full: four ministries in town (six as Governor, eight as President) collect dibs every second. While the app is closed they keep collecting at 35 % of the rate, for up to 4 hours, and a visitor leaves a paper every 6 minutes, up to 10 in the in-tray. Nothing else moves while you are away: no club's mood, no gossip, no poll and no day of the term changes until you come back and read. While you play, a visitor comes about every 12 seconds; when nobody is waiting, the Treasury Clerk slides a budget slip onto the desk, and a flick up buys the next ministry level. The ledger of levels is the tycoon side of the job. The decisions stay yours.\n\nNine ministers apply for posts along the way. Each runs one ministry and brings one desk rule, printed on every paper it touches.\n\nEverything here is invented: the country, its towns and clubs, its politicians, companies and newspapers. There are no parties. Nothing in the game refers to a real person, place or event, and nobody can type a name into it.\n\nAds are optional and start only from a button that says what it gives: half again on the away report; Check the Sofa, a small sum once a term; Call the Spin Doctor, which ends the cost of saying nothing; Send a Courier, which ends a boycott; Open the Doors, which fills the in-tray. There are no banners and no ads between screens. Four purchases, none of them random: Long Lunch (the away limit goes from 4 hours to 8), the Walnut & Brass Desk Set and Gilt Portrait Frames (both looks only), and Skip the Ad Videos, which gives every ad reward without the video. From the moment you call an election until election night ends, no ad or purchase is offered, and no ad or purchase changes a club's mood, the poll or a vote.",
+  "_privacy": "privacyPolicyUrl is this app's own placeholder path until the owner gives the real policy page (both stores require one for an app with ads and purchases; validate warns while it is a placeholder, and validate --release refuses it).",
+  "privacyPolicyUrl": "https://example.com/proudly-adequate/privacy",
+  "primaryCategory": "GAMES",
+  "subcategories": [
+    "GAMES_SIMULATION",
+    "GAMES_STRATEGY"
+  ],
+  "products": [
+    {
+      "id": "office_long_lunch",
+      "kind": "unlock",
+      "title": "Long Lunch",
+      "description": "Away earnings run up to 8 hours instead of 4.",
+      "fallbackPrice": "$3.99"
+    },
+    {
+      "id": "office_walnut_desk",
+      "kind": "cosmetic",
+      "title": "Walnut & Brass Desk Set",
+      "description": "Walnut desk, brass trays. Looks only.",
+      "fallbackPrice": "$2.99"
+    },
+    {
+      "id": "office_portrait_frames",
+      "kind": "cosmetic",
+      "title": "Gilt Portrait Frames",
+      "description": "Gilt frames for your Office wall. Looks only.",
+      "fallbackPrice": "$1.99"
+    },
+    {
+      "id": "office_private_secretary",
+      "kind": "skipAds",
+      "title": "Skip the Ad Videos",
+      "description": "Every Watch-ad reward without the video.",
+      "fallbackPrice": "$4.99"
+    }
+  ]
+}

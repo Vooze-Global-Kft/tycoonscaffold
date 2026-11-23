@@ -22,7 +22,7 @@ import { registerArtIcons, type ArtIconSource } from '../ui/art/icons';
 import { setHintSource, type Hint, type HintSource } from '../ui/hints/source';
 import { setModeParts, type ModeParts } from '../ui/modeParts';
 
-export type ModeId = 'sim' | 'classic' | 'haul' | 'merge';
+export type ModeId = 'sim' | 'classic' | 'haul' | 'merge' | 'decree';
 
 export interface ModeEntry {
   id: ModeId;
