@@ -326,6 +326,10 @@ g['monetization']['iap']['products'] = [
     {'id': 'pizza_franchise_kit', 'kind': 'deal', 'fallbackPrice': '$4.99', 'title': dmap['franchise']['title'], 'description': dmap['franchise']['blurb']},
 ]
 
+# The app ids (the owner's decision of 23 November 2026): the publisher's own prefix, `com.vooze.`, as
+# its first app uses (`com.vooze.app`), then the game's name. Permanent once the game is in a store.
+g['app']['iosBundleId'] = g['app']['androidPackage'] = 'com.vooze.pizzaempire'
+
 store = g['store']
 # ASO pass (23 November 2026, from a search of both stores that day): Google Play already lists a
 # "Pizza Empire: Restaurant" by another publisher, so the descriptor after the colon changes to the
@@ -356,6 +360,13 @@ store['description'] = (
 # The date printed on the privacy policy page sync writes (games/pizza-empire/store/privacy-policy.html):
 # change it whenever the page's content changes (a new SDK, a new kind of data).
 store['privacyPolicyUpdated'] = '23 November 2026'
+# The publisher (the data controller the page names) and its country's data protection authority.
+store['developerName'] = 'Vooze Global Kft.'
+store['contactEmail'] = 'info@vooze.app'
+# The page's address on the owner's site (the owner's answer of 23 November 2026); the page to host
+# there is games/pizza-empire/store/privacy-policy.html, written by `npm run sync`.
+store['privacyPolicyUrl'] = 'https://vooze.hu/games/pizza-empire/privacy'
+store['dataAuthority'] = 'the Hungarian National Authority for Data Protection and Freedom of Information (NAIH), naih.hu'
 
 # Reminders: local notifications for a player who has left (src/engine/reminders.ts says when: the
 # moment the offline cap is reached, and once three days on). Never an offer, a price or a deal

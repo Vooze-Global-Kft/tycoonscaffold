@@ -83,6 +83,28 @@ The image comparison of spec 7.4 (a person, before release; fingerprint dimensio
 Animal Night Market, Merge Feast, Snackrab, Zoo restaurant, Lantern Hollow Merge and Lamplighter:
 Merge & Magic, plus the top merge titles of the day.
 
+## Addendum, 23 November 2026: two live listings named "Lantern Row" (found by the ASO pass)
+
+A search of the stores themselves on 23 November 2026 (the App Store's search interface and the two
+store pages, read that day) found what the web search above could not:
+
+| Name | Where | What the page shows | Verdict |
+|---|---|---|---|
+| Lantern Row: Idle Tycoon | App Store (US), id 6829851378, bundle `com.driftstudios.lanternrow`, seller Kyle Winston Bullock ("© 2026 Drift Studios"), category Simulation, released 22 November 2026 | subtitle "Cozy & Fun Town Building Sim": a cozy idle town-builder where you grow a night market on a floating island that keeps earning while you are away | **the same name, the same setting (a night market), and "cozy" and "idle" in its words.** Not a merge game. It went live the day before this search |
+| Lantern Row Night Market Merge | Google Play, package `com.appcellence.lanternrow` (the page title was read; the research pass that found it reported the publisher as App-cellence, updated 17 October 2026, short description "Merge puzzle: match night-market goods, fill stall orders, and light the street.", a 5 by 5 board with energy; those details were not read a second time) | a merge game about night-market goods and stall orders | **the same name, the same genre and the same setting**, on the store where the earlier web search sees least |
+
+M11 says the title "Lantern Row" stands *unless the store search finds a live game it would be confused
+with*. Both of these are that. Neither is ours (our ids are still placeholders). **The name is the
+owner's decision before any submission**: keep it and expect a player, and a reviewer under Apple 4.1(c)
+or Google's impersonation policy, to set the pages side by side; or rename (the store title, the name
+under the icon, the slug, the promotional text and description, REVIEW-NOTES.md, the leaderboard ids
+and every screenshot that shows the name). Nothing was renamed by the pass that found this.
+
+Also found that day, for Pizza Empire (which has no name-search file): Google Play lists "Pizza Empire:
+Restaurant" (Curzio Games), almost our earlier store title "Pizza Empire: Restaurant Sim"; the store
+title's descriptor was changed to "Pizza Empire: Idle Cooking Sim" (scripts/content/build-pizza.py).
+"Pizza Empire" itself is used by several publishers on both stores.
+
 ## Minder and character names
 
 One query only (16, `"Old Brindle" badger character game`): no character of that name in any game,

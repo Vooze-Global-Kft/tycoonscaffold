@@ -54,13 +54,10 @@ for gone in ('businesses', 'upgrades', 'cast', 'sim'):
 app = g.setdefault('app', {})
 app['displayName'] = 'Orbit Haulers'
 app['slug'] = 'orbit-haulers'
-# Bundle ids stay placeholders until the studio domain is known (specification open question 1,
-# Decision 27): `com.example.orbithaulers`, named after the title, so only the prefix changes when the
-# owner gives the studio's domain. validate --release refuses `example` (store-1). An id that is not a
-# placeholder any more is kept.
-for _k in ('iosBundleId', 'androidPackage'):
-    if not app.get(_k) or app[_k].startswith('com.example.'):
-        app[_k] = 'com.example.orbithaulers'
+# The app ids (the owner's decision of 23 November 2026, closing specification open question 1 and
+# Decision 27): the publisher's own prefix, `com.vooze.`, as its first app uses (`com.vooze.app`),
+# then the game's name. Permanent once the game is in a store.
+app['iosBundleId'] = app['androidPackage'] = 'com.vooze.orbithaulers'
 # The tracking-permission sentence (iOS NSUserTrackingUsageDescription; Decision 55): this game's own
 # words, and honest about what the permission is for. app.config.ts reads app.trackingText.
 app['trackingText'] = ('Orbit Haulers uses this to match the optional ads you can watch for a flare charge or a '
@@ -380,10 +377,10 @@ listing = json.load(open(os.path.join(ROOT, 'scripts/content/space-store.json'))
 store = g.setdefault('store', {})
 store.update({k: v for k, v in listing.items() if not k.startswith('_')})
 # Both stores need a privacy policy link on the listing and in the app (Apple 5.1.1, Google's Data
-# safety form). A placeholder until the owner gives the real page (play-13, store-0): validate warns
-# about example.com, and --release fails on it.
+# safety form): the address is in space-store.json (the owner's site), and the page to host there is
+# games/space-miner/store/privacy-policy.html, written by `npm run sync`.
 if not store.get('privacyPolicyUrl'):
-    store['privacyPolicyUrl'] = 'https://example.com/privacy'
+    raise SystemExit('scripts/content/space-store.json has no privacyPolicyUrl')
 
 # ---------------------------------------------------------------- the voice check (7.5)
 # Every text a player reads from this file and from the mode's string table: no exclamation marks,

@@ -4,8 +4,8 @@
   "app": {
     "displayName": "Orbit Haulers",
     "slug": "orbit-haulers",
-    "iosBundleId": "com.example.orbithaulers",
-    "androidPackage": "com.example.orbithaulers",
+    "iosBundleId": "com.vooze.orbithaulers",
+    "androidPackage": "com.vooze.orbithaulers",
     "version": "1.0.0",
     "buildNumber": 1,
     "trackingText": "Orbit Haulers uses this to match the optional ads you can watch for a flare charge or a Shift Log boost to your interests. Say no and the ads still play, only less matched."
@@ -319,8 +319,11 @@
       "GAMES_SIMULATION"
     ],
     "promotionalText": "Every rock runs dry. Every buyer wants a different ore. Which drone goes where, and when the freighter leaves the pad, is your call.",
-    "privacyPolicyUrl": "https://example.com/privacy",
-    "privacyPolicyUpdated": "23 November 2026"
+    "privacyPolicyUrl": "https://vooze.hu/games/orbit-haulers/privacy",
+    "privacyPolicyUpdated": "23 November 2026",
+    "developerName": "Vooze Global Kft.",
+    "dataAuthority": "the Hungarian National Authority for Data Protection and Freedom of Information (NAIH), naih.hu",
+    "contactEmail": "info@vooze.app"
   },
   "mode": "haul",
   "soundPack": null,

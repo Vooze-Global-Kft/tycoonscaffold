@@ -481,6 +481,10 @@ export const GameConfigSchema = z.object({
      */
     developerName: z.string().min(1).optional(),
     contactEmail: z.string().email().optional(),
+    /** The publisher's registered address, printed under its name on the policy page (a publisher in the EU names itself as the data controller). */
+    developerAddress: z.string().min(1).optional(),
+    /** The data protection authority of the publisher's country, as the policy page names it (EU publishers: the lead authority a player may complain to). */
+    dataAuthority: z.string().min(1).optional(),
     privacyPolicyUpdated: z.string().min(1).optional(),
     supportUrl: z.string().url().optional(),
     marketingUrl: z.string().url().optional(),

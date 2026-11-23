@@ -25,5 +25,9 @@
     "GAMES_STRATEGY",
     "GAMES_SIMULATION"
   ],
-  "privacyPolicyUpdated": "23 November 2026"
+  "privacyPolicyUrl": "https://vooze.hu/games/orbit-haulers/privacy",
+  "privacyPolicyUpdated": "23 November 2026",
+  "developerName": "Vooze Global Kft.",
+  "contactEmail": "info@vooze.app",
+  "dataAuthority": "the Hungarian National Authority for Data Protection and Freedom of Information (NAIH), naih.hu"
 }

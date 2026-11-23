@@ -38,7 +38,8 @@ export function privacyPolicyHtml(g: GameConfig): string {
   const p = (t: string) => P.push(`<p>${t}</p>`);
   const ul = (items: string[]) => P.push(`<ul>\n${items.map((i) => `  <li>${i}</li>`).join('\n')}\n</ul>`);
 
-  p(`This policy explains what information the mobile game <strong>${name}</strong> ("the game") handles, why, and what you can do about it. The game is published by ${developer} ("we").`);
+  const address = g.store.developerAddress ? esc(g.store.developerAddress) : null;
+  p(`This policy explains what information the mobile game <strong>${name}</strong> ("the game") handles, why, and what you can do about it. The game is published by ${developer}${address ? `, ${address}` : ''} ("we"), which is the data controller for the information described here.`);
   p(`You can play ${name} without creating an account. We do not ask for your name, email address, phone number, contacts, photos or precise location, and the game has no chat.`);
 
   h('What is stored on your device');
@@ -72,6 +73,21 @@ export function privacyPolicyHtml(g: GameConfig): string {
   }
   ul(services);
 
+  h('Why this information is used, and on what legal basis');
+  const bases: string[] = [];
+  if (hasAds) {
+    bases.push('<strong>Your consent</strong>: personalised advertising and the use of your device\'s advertising identifier for it. You can withdraw consent at any time (see "Your choices"); the game then shows ads that are not based on your interests.');
+  }
+  bases.push(
+    `<strong>Our legitimate interests</strong>: understanding how the game is played, finding and fixing errors, tuning the game${hasAds ? ', showing ads that are not personalised, limiting how often an ad is shown, and preventing fraud' : ''}. You can object to this use by writing to us.`,
+  );
+  if (sells) bases.push('<strong>Performing our contract with you</strong>: confirming, delivering and restoring the purchases you make.');
+  if (gameCenter || playGames) bases.push('<strong>Your own action</strong>: scores are sent to a leaderboard only while you are signed in to the platform\'s game service.');
+  ul(bases);
+
+  h('Where information is processed');
+  p('The companies named above process information on servers in several countries, including the United States. Where personal data leaves the European Economic Area, the United Kingdom or Switzerland, they rely on the safeguards described in their own policies, such as the EU-US Data Privacy Framework or the European Commission\'s standard contractual clauses.');
+
   if (reminders) {
     h('Notifications');
     p(`If you allow notifications, the game schedules reminders on your own device (for example when your offline earnings are full). They are created on the device: no notification data is sent to us and we do not use a push service. You can turn them off in the game's settings or in your device's settings at any time.`);
@@ -85,7 +101,8 @@ export function privacyPolicyHtml(g: GameConfig): string {
     choices.push(`<strong>Advertising ID on Android.</strong> You can reset or delete your advertising ID in Settings, Google, Ads.`);
   }
   choices.push(`<strong>Deleting your data.</strong> Deleting the game removes your save from the device. To ask for the deletion of information held by the services above, or to ask what is held, write to us at ${email} and tell us which game and which device you use; we will pass the request on to the services that can identify the data.`);
-  choices.push(`<strong>Your rights.</strong> Depending on where you live (for example under the GDPR or the CCPA), you may have the right to access, correct, delete or restrict the use of your personal data, to object to its use, and to complain to your data protection authority. We do not sell personal information.`);
+  const authority = g.store.dataAuthority ? ` You can complain to the data protection authority where you live, or to ours: ${esc(g.store.dataAuthority)}.` : ' You can also complain to your data protection authority.';
+  choices.push(`<strong>Your rights.</strong> Depending on where you live (for example under the GDPR or the CCPA), you have the right to access, correct, delete or restrict the use of your personal data, to receive a copy of it, to object to its use and to withdraw a consent you gave.${authority} We do not sell personal information.`);
   ul(choices);
 
   h('Children');
@@ -98,7 +115,7 @@ export function privacyPolicyHtml(g: GameConfig): string {
   p('When we change this policy we will publish the new version at this address and change the date below.');
 
   h('Contact');
-  p(`${developer}<br>${email}`);
+  p([developer, address, email].filter(Boolean).join('<br>'));
   if (g.store.privacyPolicyUpdated) p(`Last updated: ${esc(g.store.privacyPolicyUpdated)}`);
 
   return `<!doctype html>

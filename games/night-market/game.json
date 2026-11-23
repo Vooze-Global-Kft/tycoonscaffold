@@ -1066,9 +1066,12 @@
       "GAMES_PUZZLE",
       "GAMES_CASUAL"
     ],
-    "privacyPolicyUrl": "https://example.com/lantern-row/privacy",
+    "privacyPolicyUrl": "https://vooze.hu/games/lantern-row/privacy",
     "promotionalText": "Lantern Row opens at dusk. Merge street snacks on the board and fill paper orders, one by one.",
-    "privacyPolicyUpdated": "23 November 2026"
+    "privacyPolicyUpdated": "23 November 2026",
+    "developerName": "Vooze Global Kft.",
+    "dataAuthority": "the Hungarian National Authority for Data Protection and Freedom of Information (NAIH), naih.hu",
+    "contactEmail": "info@vooze.app"
   },
   "leaderboards": {
     "boards": [

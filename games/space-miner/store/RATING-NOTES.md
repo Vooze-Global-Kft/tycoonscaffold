@@ -62,8 +62,8 @@ disclosure page before you submit; they change.
 - Data encrypted in transit: Yes (all SDKs use HTTPS).
 - Players can ask for deletion: say how in the privacy policy (an email address is enough).
 - No account, name, email, contacts, photos or precise location are collected.
-- Privacy policy URL: https://example.com/privacy (**placeholder: replace before release** with this app's own policy page, set in store.privacyPolicyUrl).
-  The page itself is games/space-miner/store/privacy-policy.html (written by sync from this config): host that file at the URL. **It still needs store.developerName and store.contactEmail.**
+- Privacy policy URL: https://vooze.hu/games/orbit-haulers/privacy.
+  The page itself is games/space-miner/store/privacy-policy.html (written by sync from this config): host that file at the URL.
 - Ad consent: Google UMP form (EEA, UK, US states), then the iOS tracking prompt.
 
 ## Reminders, leaderboards, backups and updates
