@@ -19,10 +19,10 @@
  */
 import type { GameConfig } from '../../config/schema';
 import { rngMix4 } from '../rng';
-import { notBuilt } from './notBuilt';
+import { standIn } from './notBuilt';
 import { sayNothingFactor } from './scandal';
-import { deskFactors } from './twists';
-import { SITE, type CashSource, type ClubId, type ClubIx, type DecreeConfig, type DecreeGame, type DecreeParams, type Factors, type Office, type OfficeIx, type Site, type TopBar } from './types';
+import { deskFactors, factorFor } from './twists';
+import { SITE, type CashSource, type ClubId, type ClubIx, type DecreeConfig, type DecreeGame, type DecreeParams, type FactorTarget, type FactorValue, type Factors, type Office, type OfficeIx, type Site, type TopBar } from './types';
 
 /** Floating tolerance of comparisons. */
 export const EPS = 1e-9;
@@ -68,11 +68,13 @@ export function rand(g: DecreeGame, site: Site, x = 0): { value: number; g: Decr
  * from (H5); the rules package may book them per source. Built.
  */
 export function commitCash(g: DecreeGame, delta: number, source: CashSource): DecreeGame {
-  void source;
   if (!Number.isFinite(delta) || delta === 0) return g;
   const cash = Math.min(MAX_CASH, Math.max(0, g.cash + delta));
-  const gain = delta > 0 ? cash - g.cash : 0;
-  return { ...g, cash, runEarnings: g.runEarnings + gain, lifetimeEarnings: g.lifetimeEarnings + gain };
+  const applied = cash - g.cash;
+  const gain = applied > 0 ? applied : 0;
+  const stats = g.decree.stats;
+  const book = { ...stats.book, [source]: (stats.book?.[source] ?? 0) + applied };
+  return { ...g, cash, runEarnings: g.runEarnings + gain, lifetimeEarnings: g.lifetimeEarnings + gain, decree: { ...g.decree, stats: { ...stats, book } } };
 }
 
 /** Disarray after `losses` consecutive losses at a seat: Y(n) = 2^(n+1) − 2 share points (D15: +2, +6, +14, +30, +62). Built. */
@@ -95,35 +97,102 @@ export function rateOf(cfg: DecreeConfig, office: OfficeIx, i: number, m: { open
   return m.open ? ministryValue(cfg, office, i) * m.level * Math.pow(2, storeys(cfg, m.level)) : 0;
 }
 
-/** The price of ministry i's next level, L → L+1 = 15 × v_i × 1.25^(L−1), through roundDibs; Infinity at the cap (2.2). Skeleton: throws notBuilt. */
+/** The raw (unrounded) price of ministry i's next level, L → L+1 = levelCostFactor × v_i × levelGrowth^(L−1); Infinity when closed or at the cap (2.2). */
+export function levelCostRaw(cfg: DecreeConfig, g: DecreeGame, i: number): number {
+  const m = g.decree.ministries[i];
+  const c = cfg.decree.ministry;
+  if (!m || !m.open || m.level >= c.levelCap) return Infinity;
+  return c.levelCostFactor * ministryValue(cfg, g.decree.office, i) * Math.pow(c.levelGrowth, m.level - 1);
+}
+
+/** The price of ministry i's next level through roundDibs; Infinity when closed or at the cap (2.2: "a purchase that would change nothing is refused"). Built. */
 export function levelCost(cfg: DecreeConfig, g: DecreeGame, i: number): number {
-  return notBuilt('levelCost');
+  const raw = levelCostRaw(cfg, g, i);
+  return Number.isFinite(raw) ? roundDibs(cfg, raw) : Infinity;
 }
 
-/** The price of opening ministry i, O_i = S × 150 × r^(i−1) (O_0 = 0), through roundDibs (2.2). Skeleton: throws notBuilt. */
+/** The price of opening ministry i, O_0 = 0, O_i = S × openBase × openRatio^(i−1), through roundDibs; Infinity when it is open or not in the office (2.2). Built. */
 export function openCost(cfg: DecreeConfig, g: DecreeGame, i: number): number {
-  return notBuilt('openCost');
+  const m = g.decree.ministries[i];
+  if (!m || m.open) return Infinity;
+  if (i === 0) return 0;
+  const c = cfg.decree.ministry;
+  return roundDibs(cfg, officeOf(cfg, g.decree.office).scale * c.openBase * Math.pow(c.openRatio, i - 1));
 }
 
-/** The term's monument price, vanity.price s of B (5.8). Skeleton: throws notBuilt. */
+/** The term's monument price, vanity.price seconds of B, through roundDibs (5.8). Built. */
 export function vanityPrice(cfg: DecreeConfig, g: DecreeGame): number {
-  return notBuilt('vanityPrice');
+  return roundDibs(cfg, cfg.decree.vanity.price * decreeParams(cfg, g).B);
+}
+
+/**
+ * One factor target for one club's paper (null: a target of no club), from the ONE Factors object
+ * (twists.ts `factorFor`, P1b). Stand-in until factorFor is built: every list entry on `target` whose
+ * club is null or `club` multiplies (mul) and adds (add), in list order.
+ */
+export function factorOn(f: Factors, target: FactorTarget, club: ClubIx | null): FactorValue {
+  if (!f.list.length) return { mul: 1, add: 0, sources: [] };
+  return standIn(
+    factorFor,
+    () => factorFor(f, target, club),
+    () => {
+      let mul = 1;
+      let add = 0;
+      const sources: FactorValue['sources'] = [];
+      for (const e of f.list) {
+        if (e.target !== target || (e.club !== null && e.club !== club)) continue;
+        mul *= e.mul;
+        add += e.add;
+        sources.push({ initials: e.initials, source: e.source });
+      }
+      return { mul, add, sources };
+    },
+  );
+}
+
+/**
+ * The mixes w_{d,g} after mix twists (2.14 "Brass +0.10 in every mix, others scaled down"): each club
+ * with an add gets w + add (at most 1), the others share what is left in their old proportions, so
+ * every district still sums to 1.
+ */
+export function mixWith(mix: readonly (readonly number[])[], add: readonly number[]): number[][] {
+  if (!add.some((a) => a !== 0)) return mix.map((m) => m.slice());
+  return mix.map((m) => {
+    const raised = m.map((w, gi) => (add[gi] ? Math.min(1, Math.max(0, w + add[gi])) : w));
+    const fixedOld = m.reduce((s, w, gi) => s + (add[gi] ? w : 0), 0);
+    const fixedNew = raised.reduce((s, w, gi) => s + (add[gi] ? w : 0), 0);
+    const restOld = 1 - fixedOld;
+    const restNew = Math.max(0, 1 - fixedNew);
+    return raised.map((w, gi) => (add[gi] ? w : restOld > EPS ? (w * restNew) / restOld : 0));
+  });
+}
+
+/** Approval A for moods `moods` with population weights W: Σ_g W_g × m_g as a whole percent (2.4). */
+export function approvalOf(W: readonly number[], moods: readonly number[]): number {
+  return Math.round(W.reduce((s, w, gi) => s + w * (moods[gi] ?? 0), 0) + EPS);
+}
+
+/** M(A) = 1 + slope × (A − 50)/100 (×1.0 at 50; 2.4). */
+export function multiplierOf(cfg: DecreeConfig, approval: number): number {
+  return 1 + (cfg.decree.approval.slope * (approval - 50)) / 100;
 }
 
 /**
  * Every derived value of 2.4 for the current state, with `factors` (default: `deskFactors(cfg, g)`,
- * the ONE object of twists and ministers). Built for the skeleton's tick (A, M, m_N, V, rates, s_i,
- * B, I, Y, R); the mix twists (Factors.mixAdd), the τ and G_max factors and the "Say nothing" cut
- * factors are P1a's to apply here.
+ * the ONE object of twists and ministers): the mix twists (Factors.mixAdd) on the mixes (and so W and
+ * approval), the τ and G_max factors, the "Say nothing" cut (scandal.ts `sayNothingFactor`). Built.
  */
 export function decreeParams(cfg: DecreeConfig, g: DecreeGame, factors: Factors = deskFactors(cfg, g)): DecreeParams {
   const d = g.decree;
   const c = cfg.decree;
   const row = officeOf(cfg, d.office);
-  const mix = row.districts.map((dist) => dist.mix.map((w) => w / 100));
+  const mix = mixWith(
+    row.districts.map((dist) => dist.mix.map((w) => w / 100)),
+    row.clubs.map((_, gi) => factors.mixAdd[gi] ?? 0),
+  );
   const W = row.clubs.map((_, gi) => mix.reduce((s, m) => s + m[gi], 0) / mix.length);
-  const approval = Math.round(W.reduce((s, w, gi) => s + w * (d.moods[gi] ?? c.mood.start), 0));
-  const multiplier = 1 + (c.approval.slope * (approval - 50)) / 100;
+  const approval = approvalOf(W, d.moods);
+  const multiplier = multiplierOf(cfg, approval);
   const mN = 1 + c.ladder.nrFactor * d.nr;
   const V = Math.pow(c.vanity.factor, d.vanity.length);
   const values = d.ministries.map((_, i) => ministryValue(cfg, d.office, i));
@@ -139,7 +208,29 @@ export function decreeParams(cfg: DecreeConfig, g: DecreeGame, factors: Factors 
   const B = mN * V * sum;
   const I = multiplier * mN * V * sumServed * sayNothing;
   const record = d.ministries.slice(0, row.ministries.length).reduce((s, m) => s + (m.open ? m.level : 0), 0);
-  return { office: d.office, clubs: row.clubs, mix, W, approval, multiplier, mN, V, rates, values, served, B, I, sayNothing, tau: row.tau, gossipMax: row.gossipMax, disarray: disarray(d.losses), rivalPull: row.rivalPull, record };
+  const tf = factorOn(factors, 'tau', null);
+  const gf = factorOn(factors, 'gossipMax', null);
+  return {
+    office: d.office,
+    clubs: row.clubs,
+    mix,
+    W,
+    approval,
+    multiplier,
+    mN,
+    V,
+    rates,
+    values,
+    served,
+    B,
+    I,
+    sayNothing,
+    tau: row.tau * tf.mul + tf.add,
+    gossipMax: Math.max(1, Math.round(row.gossipMax * gf.mul + gf.add)),
+    disarray: disarray(d.losses),
+    rivalPull: row.rivalPull,
+    record,
+  };
 }
 
 /** The top bar's values (4.1). Built. */

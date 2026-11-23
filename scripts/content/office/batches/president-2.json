@@ -1,0 +1,477 @@
+{
+  "batch": "president-2",
+  "writer": "writer-3",
+  "office": "president",
+  "papers": [
+    {
+      "id": "pres-nose-height-rail",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A brass rail along every shop window, at nose height. The spotters know whose.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-band-wants-the-sky",
+      "visitor": "bellows",
+      "club": "brass",
+      "other": "kites",
+      "archetype": "swap",
+      "text": "The band would like the top of Gusting Heights. Then the sky over it. Kites, the rest.",
+      "subject": "kites",
+      "butt": "visitor",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-gold-rosette-onion",
+      "visitor": "wimble",
+      "club": "veg",
+      "archetype": "vanity",
+      "text": "A gold rosette for you at every national show. Cuthbert has entered you as an onion.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-timetable-in-windows",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "fee",
+      "text": "We will pay to hang the timetable in every shop window. All of it. With footnotes.",
+      "subject": "buses",
+      "butt": "visitor",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-hedge-and-kite-show",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "swap",
+      "text": "Rename the hedge show the Hedge and Kite Show. Most of our kites are entered already.",
+      "subject": "hedges",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-band-rowing-boats",
+      "visitor": "slide",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "fee",
+      "text": "Sound carries 40 % further over water. The band will pay to practise in rowing boats.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-tills-teas-bandstand",
+      "visitor": "till",
+      "club": "shops",
+      "other": "brass",
+      "archetype": "swap",
+      "text": "Let the Guild name the national bandstand this summer. Till's Teas has a suggestion.",
+      "subject": "bandstands",
+      "butt": "visitor",
+      "shape": "callback"
+    },
+    {
+      "id": "pres-inquiry-into-mild",
+      "visitor": "gourdley",
+      "cosigner": "minute",
+      "club": "veg",
+      "other": "kites",
+      "archetype": "committee",
+      "text": "A national inquiry into the word 'mild' in forecasts. The onions want it defined.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "The inquiry has defined 'mild'. It now asks to look into 'fairly'."
+    },
+    {
+      "id": "pres-topiary-clock",
+      "visitor": "topiary",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "project",
+      "text": "Clip the hedge by the kite field into a clock. It will be right to the nearest season.",
+      "subject": "hedges",
+      "butt": "thing",
+      "shape": "undercut",
+      "setsUp": "pres-topiary-clock"
+    },
+    {
+      "id": "pres-kite-inquiry",
+      "visitor": "kerb",
+      "cosigner": "minute",
+      "club": "bus",
+      "other": "kites",
+      "archetype": "committee",
+      "text": "An inquiry into why kites land on buses. It will sit on the top deck.",
+      "subject": "buses",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "The inquiry has outgrown the top deck. It asks for a second bus."
+    },
+    {
+      "id": "pres-only-dry-saturday",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "kites",
+      "archetype": "swap",
+      "text": "Give the weigh-in the only dry Saturday. The kites can have the next one, in spring.",
+      "subject": "picnic-weather",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-mown-kite-field",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "project",
+      "text": "Kites rise 12 % better from a mown field. Mow the one beside the hedge show, please.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-gurgling-desk-fountain",
+      "visitor": "goss",
+      "club": "hedges",
+      "archetype": "basket",
+      "text": "A desk fountain, with Lavinia's compliments. It gurgles whenever you are right.",
+      "subject": "fountains",
+      "butt": "lobbyist",
+      "shape": "undercut",
+      "favour": {
+        "text": "About the desk fountain: it has entered the hedge show, and would like to win.",
+        "clippings": {
+          "sign": "FOUNTAIN WINS HEDGE SHOW; HEDGES DAMP AND DISMAYED",
+          "refuse": "FOUNTAIN SENT BACK. IT HAS NOT GURGLED SINCE"
+        }
+      }
+    },
+    {
+      "id": "pres-band-took-thursdays",
+      "visitor": "dabble",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "swap",
+      "text": "The band took our Thursdays by the lake. Then our Fridays. We would like one back.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-ribbon-offcuts",
+      "visitor": "sash",
+      "club": "shops",
+      "archetype": "basket",
+      "text": "Ribbon offcuts for your desk. Just to practise on. Any openings coming up? No reason.",
+      "subject": "ribbons",
+      "butt": "lobbyist",
+      "shape": "callback",
+      "favour": {
+        "text": "About the offcuts: they would like a shop window for Window Week. The best one.",
+        "clippings": {
+          "sign": "OFFCUTS TAKE BEST WINDOW; GUILD DISPLAYS ITS DISMAY",
+          "refuse": "OFFCUTS RETURNED UNCUT. MR SASH 'NOT UPSET'"
+        }
+      }
+    },
+    {
+      "id": "pres-fly-over-hedge-show",
+      "visitor": "updraught",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "fee",
+      "text": "The League will pay to fly over the hedge show. Each kite to apply in writing.",
+      "subject": "kites",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-tuba-carry-study",
+      "visitor": "bellows",
+      "cosigner": "minute",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "committee",
+      "text": "A study of how far the tuba carries. First from the lake, then from the next lake along.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "escalation",
+      "biggerStudy": "The tuba study asks to listen from a third lake, to be thorough."
+    },
+    {
+      "id": "pres-wind-off-show-day",
+      "visitor": "edging",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "fee",
+      "text": "The Committee will pay for no wind on show day. Gwendolyn is getting a quote.",
+      "subject": "picnic-weather",
+      "butt": "office",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-quiet-competition-photo",
+      "visitor": "hake",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "treat",
+      "text": "Sit in the Quiet Competition for an hour. Rodney asks if he may take a quiet photograph.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-book-wind",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "brass",
+      "archetype": "fee",
+      "text": "The League would like to hire the wind over Brassby. They will pay.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "literalism",
+      "setsUp": "pres-book-wind"
+    },
+    {
+      "id": "pres-nose-to-the-glass",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "treat",
+      "text": "Be photographed logging the 7:02, nose to a shop window, as is the custom.",
+      "subject": "buses",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-where-wind-goes",
+      "visitor": "loft",
+      "cosigner": "minute",
+      "club": "kites",
+      "other": "brass",
+      "archetype": "committee",
+      "text": "An inquiry into where the wind goes after Gusting Heights. It will sit in the bandstand.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "biggerStudy": "The wind inquiry has followed the wind to the lake. It asks for a boat."
+    },
+    {
+      "id": "pres-shh-signs",
+      "visitor": "hake",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "project",
+      "text": "Signs round the lake that read SHH, and one on the bandstand that reads SHHH.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-mild-no-wind",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "kites",
+      "archetype": "treat",
+      "text": "Say 'mild, with no wind' at the weigh-in. Onions do 3 % better when you say it.",
+      "subject": "picnic-weather",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-rain-barometer",
+      "visitor": "vane",
+      "club": "bus",
+      "archetype": "basket",
+      "text": "A barometer for your desk, from Consolidated Umbrellas. It only says RAIN.",
+      "subject": "picnic-weather",
+      "butt": "lobbyist",
+      "shape": "slogan",
+      "favour": {
+        "text": "About the barometer: it would like the 7:02 held each morning until it has decided.",
+        "clippings": {
+          "sign": "PRESIDENT HOLDS 7:02 FOR BAROMETER; SPOTTERS LOG DELAY",
+          "refuse": "BAROMETER SENT BACK. IT SAW THIS COMING"
+        }
+      }
+    },
+    {
+      "id": "pres-floats-took-off",
+      "visitor": "hake",
+      "club": "anglers",
+      "other": "kites",
+      "archetype": "swap",
+      "text": "Move kite day away from the lake, please. Last year our floats took off.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-patch-kite-net",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "kites",
+      "archetype": "project",
+      "text": "Kites landed on the patch 12 times this year. One took second prize. A net, please.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-shape-of-the-wind",
+      "visitor": "topiary",
+      "cosigner": "minute",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "committee",
+      "text": "A national inquiry into the shape of the wind. The Committee would like it squarer.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "The inquiry could not find the wind's corners. It asks to look again in autumn."
+    },
+    {
+      "id": "pres-stepladder-hedge",
+      "visitor": "edging",
+      "club": "hedges",
+      "other": "bus",
+      "archetype": "swap",
+      "text": "The spotters lean on our hedge, then their flasks, now a stepladder. Move the stop.",
+      "subject": "hedges",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-heights-launch-ramp",
+      "visitor": "updraught",
+      "club": "kites",
+      "other": "brass",
+      "archetype": "project",
+      "text": "A launch ramp on Gusting Heights, please. The band is sitting on all the good wind.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-nose-print-inquiry",
+      "visitor": "till",
+      "cosigner": "minute",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "committee",
+      "text": "An inquiry into nose prints on shop windows. Witnesses will be asked to lean.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "biggerStudy": "The nose-print inquiry asks for a second window. The first one is now evidence."
+    },
+    {
+      "id": "pres-speeches-in-gilt",
+      "visitor": "fenn",
+      "club": "anglers",
+      "archetype": "vanity",
+      "text": "Your speeches, bound in gilt. Mildred found them in the drawer FOR FURTHER STUDY.",
+      "subject": "paperwork",
+      "butt": "self",
+      "shape": "callback"
+    },
+    {
+      "id": "pres-first-kite",
+      "visitor": "updraught",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "treat",
+      "text": "Launch the first kite of the season, President. Let go when we say. Not before.",
+      "subject": "kites",
+      "butt": "self",
+      "shape": "photo-op",
+      "setsUp": "pres-first-kite"
+    },
+    {
+      "id": "pres-lakeside-bandstand",
+      "visitor": "bellows",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "project",
+      "text": "The national bandstand, by the lake. Then a jetty for the tuba. Then a raft for the drum.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-mild-then-president",
+      "visitor": "spinwell",
+      "club": "bus",
+      "archetype": "vanity",
+      "text": "Have every forecast end with you, Rodney suggests. 'Mild, then the President.'",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-lake-pipe-tap",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "anglers",
+      "archetype": "project",
+      "text": "Open the new pipe from the anglers' lake to the patch. Turn the tap slowly, for the camera.",
+      "subject": "gardens",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-stop-kites-three-to-one",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "kites",
+      "archetype": "swap",
+      "text": "At the bus stop, kites now outnumber buses three to one. The stop is for buses.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-once-on-time-plaque",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "project",
+      "text": "A plaque for the draper's window: THE 7:02 WAS ON TIME HERE, ONCE.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-window-week-timetable",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "treat",
+      "text": "Be photographed admiring Window Week. The best display covers the bus timetable.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-shelters-for-onions",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "fee",
+      "text": "The Society will hire the bus shelters on show day. Onions only, one per seat.",
+      "subject": "vegetable-shows",
+      "butt": "office",
+      "shape": "form-misapplied"
+    }
+  ]
+}

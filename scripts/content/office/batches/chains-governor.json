@@ -1,0 +1,500 @@
+{
+  "batch": "chains-governor",
+  "writer": "writer-2",
+  "office": "governor",
+  "chains": [
+    {
+      "id": "gov-band-jetty",
+      "office": "governor",
+      "title": "Band on the Jetty",
+      "afterSign": {
+        "visitor": "hake",
+        "cosigner": "minute",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "committee",
+        "text": "A study of the jetty since the band came. The fish now keep time.",
+        "subject": "bandstands",
+        "butt": "committee",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR FUNDS STUDY OF FISH IN FOUR-FOUR TIME",
+          "refuse": "STUDY SHELVED; FISH STILL KEEPING TIME"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "treat",
+        "text": "Hear the band's piece for you, 'Further Study'. Mostly rests.",
+        "subject": "bandstands",
+        "butt": "self",
+        "shape": "callback",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR APPLAUDS DURING THE RESTS",
+          "refuse": "'FURTHER STUDY' PLAYED TO AN EMPTY CHAIR"
+        }
+      }
+    },
+    {
+      "id": "gov-silent-sunday",
+      "office": "governor",
+      "title": "The Silent Sunday",
+      "afterSign": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "swap",
+        "text": "A loud Monday for the band, to level out your silent Sunday.",
+        "subject": "ceremonies",
+        "butt": "office",
+        "shape": "literalism",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR SPENDS LOUD MONDAY IN A CUPBOARD",
+          "refuse": "LOUD MONDAY MOVED TO A QUIETER DATE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "hake",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "treat",
+        "text": "Sit by the canal with the Circle, saying nothing. Rodney is worried.",
+        "subject": "ceremonies",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR SILENT FOR AN HOUR; AIDES CONCERNED",
+          "refuse": "ANGLERS SIT IN SILENCE, AS USUAL, WITHOUT GOVERNOR"
+        }
+      }
+    },
+    {
+      "id": "gov-floating-bench",
+      "office": "governor",
+      "title": "The Floating Bench",
+      "afterSign": {
+        "visitor": "dabble",
+        "club": "anglers",
+        "other": "veg",
+        "archetype": "project",
+        "text": "The floating bench has drifted to where growers water. Anchor it?",
+        "subject": "inventions",
+        "butt": "thing",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR'S ANCHOR HOLDS BENCH IN THE WRONG PLACE",
+          "refuse": "FLOATING BENCH CONTINUES ITS TOUR OF THE PROVINCE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "dabble",
+        "cosigner": "minute",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "committee",
+        "text": "Since the bench was refused, the fish sit 4 metres further out. Study it?",
+        "subject": "inventions",
+        "butt": "committee",
+        "shape": "statistic",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR FUNDS STUDY; FISH MOVE AGAIN",
+          "refuse": "FISH LOCATION LEFT A MATTER FOR THE FISH"
+        }
+      }
+    },
+    {
+      "id": "gov-one-bar",
+      "office": "governor",
+      "title": "One Bar",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "brass",
+        "archetype": "vanity",
+        "text": "Rodney proposes pressing your one bar as a record. Both sides.",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR'S ONE BAR RELEASED; REVIEWS BRIEF",
+          "refuse": "ONE BAR REMAINS ONE BAR"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "treat",
+        "text": "The band kept your bar. Conduct half of it? Less to go wrong.",
+        "subject": "bandstands",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR CONDUCTS HALF A BAR; BAND FINISHES IT",
+          "refuse": "BAR STILL UNCONDUCTED; BAND PLAYS IT ANYWAY"
+        }
+      }
+    },
+    {
+      "id": "gov-tuba-shelter",
+      "office": "governor",
+      "title": "The Tuba Shelter",
+      "afterSign": {
+        "visitor": "slide",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "project",
+        "text": "The tuba loves its shelter. Now each cornet wants one, by the canal.",
+        "subject": "bandstands",
+        "butt": "thing",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR CUTS RIBBON ON SHELTER FOR ONE CORNET",
+          "refuse": "CORNETS SHARE A SHELTER; NOBODY SPEAKS"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "slide",
+        "club": "brass",
+        "other": "shops",
+        "archetype": "swap",
+        "text": "The tuba asks to practise in shop doorways. Only the top panes rattle.",
+        "subject": "bandstands",
+        "butt": "thing",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "TUBA IN THE DOORWAYS; WINDOWS ON EDGE",
+          "refuse": "TUBA PRACTISES AT HOME; HOME RATTLES"
+        }
+      }
+    },
+    {
+      "id": "gov-named-shelter",
+      "office": "governor",
+      "title": "The Named Shelter",
+      "afterSign": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "Open the notebook's shelter, standing just behind the notebook.",
+        "subject": "buses",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR UPSTAGED BY NOTEBOOK AT OPENING",
+          "refuse": "NOTEBOOK OPENS OWN SHELTER; SPEECH BRIEF"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "fee",
+        "text": "We would pay to name the shops' bench after the founder's pencil.",
+        "subject": "buses",
+        "butt": "thing",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "BENCH NAMED AFTER PENCIL; GOVERNOR SITS ON IT",
+          "refuse": "PENCIL GOES UNHONOURED; SOCIETY SHARPENS IT"
+        }
+      }
+    },
+    {
+      "id": "gov-tea-sip",
+      "office": "governor",
+      "title": "The Single Sip",
+      "afterSign": {
+        "visitor": "till",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "fee",
+        "text": "Till's Teas will pay to put THE GOVERNOR SIPPED HERE in bus shelters.",
+        "subject": "portraits",
+        "butt": "self",
+        "shape": "slogan",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR'S SIP NOW IN EVERY SHELTER; BUSES MISSED",
+          "refuse": "SIP PHOTOGRAPH KEPT IN THE TEA ROOM, BY THE SUGAR"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "till",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "treat",
+        "text": "Then gaze at the tea through our window? Spotters will stand back.",
+        "subject": "portraits",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR GAZES AT TEA; TEA UNMOVED",
+          "refuse": "TEA ROOM OPENS WITHOUT GOVERNOR; TEA SERVED ANYWAY"
+        }
+      }
+    },
+    {
+      "id": "gov-one-pumpkin-glasshouse",
+      "office": "governor",
+      "title": "A Glasshouse for One",
+      "afterSign": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "shops",
+        "archetype": "swap",
+        "text": "Enter the pumpkin's glasshouse in Window Week? It is mostly window.",
+        "subject": "vegetable-shows",
+        "butt": "thing",
+        "shape": "literalism",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR JUDGES WINDOW WEEK; PICKS A PUMPKIN",
+          "refuse": "PUMPKIN WATCHES WINDOW WEEK FROM ITS GLASSHOUSE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "The pumpkin now lives under a shop's cake cover. Unveil it?",
+        "subject": "vegetable-shows",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR LIFTS COVER; PUMPKIN SAYS NOTHING",
+          "refuse": "PUMPKIN STAYS UNDER COVER, AS DOES THE MATTER"
+        }
+      }
+    },
+    {
+      "id": "gov-towpath-show",
+      "office": "governor",
+      "title": "The Towpath Show",
+      "afterSign": {
+        "visitor": "loam",
+        "club": "veg",
+        "other": "anglers",
+        "archetype": "swap",
+        "text": "May the show's scales stay on the towpath? They have settled in.",
+        "subject": "vegetable-shows",
+        "butt": "thing",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "TOWPATH SCALES NOW PERMANENT; ANGLERS WEIGH THE QUIET",
+          "refuse": "SCALES LEAVE TOWPATH; TOWPATH LIGHTER"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "loam",
+        "cosigner": "minute",
+        "club": "veg",
+        "other": "anglers",
+        "archetype": "committee",
+        "text": "A committee to find a second towpath. It keeps finding the first one.",
+        "subject": "vegetable-shows",
+        "butt": "committee",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "COMMITTEE STILL SEARCHING FOR A SECOND TOWPATH",
+          "refuse": "SEARCH CALLED OFF; ONE TOWPATH DEEMED PLENTY"
+        }
+      }
+    },
+    {
+      "id": "gov-bandstand-bus",
+      "office": "governor",
+      "title": "The Bandstand Stop",
+      "afterSign": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "bus",
+        "archetype": "swap",
+        "text": "Buses at the bandstand stop wait for the tune to end. May the band play slower?",
+        "subject": "buses",
+        "butt": "thing",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "BAND SLOWS DOWN; 7:02 NOW LEAVES AT 7:40",
+          "refuse": "BAND KEEPS TEMPO; BUS LEAVES MID-CHORUS"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "sprott",
+        "club": "bus",
+        "other": "brass",
+        "archetype": "project",
+        "text": "Then a bench by the bandstand for the spotters. Facing the road.",
+        "subject": "buses",
+        "butt": "thing",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR OPENS BENCH; BAND PLAYS TO ITS BACK",
+          "refuse": "SPOTTERS STAND TO WATCH BUSES NOT STOP"
+        }
+      }
+    },
+    {
+      "id": "gov-ceremonial-float",
+      "office": "governor",
+      "title": "The Ceremonial Float",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "anglers",
+        "archetype": "vanity",
+        "text": "Rodney proposes a float with your face on it. It bobs.",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR'S FACE BOBS ON CANAL; ANGLERS LOOK AWAY",
+          "refuse": "GOVERNOR'S FACE FLOAT FILED FOR FURTHER STUDY"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "hake",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "treat",
+        "text": "Not hold the float? Then point at it, gently, for the camera.",
+        "subject": "ceremonies",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR POINTS AT FLOAT; FLOAT HOLDS STILL",
+          "refuse": "FLOAT PHOTOGRAPHED ALONE; LOOKS DIGNIFIED"
+        }
+      }
+    },
+    {
+      "id": "gov-listed-practice",
+      "office": "governor",
+      "title": "Practice as an event",
+      "afterSign": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "fee",
+        "text": "The band will pay to list its tuning up, too. It runs all evening.",
+        "subject": "bandstands",
+        "butt": "office",
+        "shape": "form-misapplied",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR ATTENDS TUNING UP; LEAVES BEFORE THE MUSIC",
+          "refuse": "TUNING UP REMAINS PRIVATE; PRACTICE STILL PUBLIC"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "treat",
+        "text": "Practice is not an event, then. Cut a ribbon at it, so that it is?",
+        "subject": "ribbons",
+        "butt": "self",
+        "shape": "literalism",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR CUTS RIBBON ON BAND PRACTICE; BAND STOPS TO WATCH",
+          "refuse": "PRACTICE GOES AHEAD UNOPENED"
+        }
+      }
+    }
+  ]
+}

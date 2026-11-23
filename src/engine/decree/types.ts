@@ -98,7 +98,15 @@ export type Effect =
   | { type: 'appoint'; minister: string }
   | { type: 'endBoycott'; club: ClubIx }
   | { type: 'endScandal' }
-  | { type: 'district'; district: number; points: number };
+  | { type: 'district'; district: number; points: number }
+  /** A requisition's price: the next level of `ministry` at its live price when the paper lands (× the requisition factor), as a cost (D23). */
+  | { type: 'levelCost'; ministry: number }
+  /** A front page's refuse (2.8 "Say nothing"): I × the factor for the papers, both frozen at landing. */
+  | { type: 'sayNothing' }
+  /** A grievance's refuse (2.8 "Keep the scissors"): the boycott runs this many more decided papers (frozen at landing). */
+  | { type: 'boycottRuns'; club: ClubIx }
+  /** An application's refuse (2.9): the minister applies again returnAfter decisions later. */
+  | { type: 'applyAgain'; minister: string };
 
 /**
  * A follow-up an outcome schedules (2.7 "an optional follow-up {chainId, step, delay}").
@@ -155,8 +163,10 @@ export interface Paper {
   district: number | null;
   /** A Clerk's note (on half the forms), a deck text. */
   note: string | null;
-  /** The money jitter j (money.jitterLow to jitterHigh), drawn at the draw, applied at landing (D23). */
+  /** The money jitter j (money.jitterLow to jitterHigh), drawn at the draw, applied at landing (D23); 1 for forms, events and the run-up. */
   jitter: number;
+  /** A follow-up paper: the record it was drawn from (a move puts it back among the due follow-ups, 2.12). */
+  followUpOf?: FollowUp;
 }
 
 /**
@@ -169,17 +179,21 @@ export type ShownEffect =
   /** `delta` per office club (0 where it does not touch); one entry for a club, every club for `every`. */
   | { type: 'moods'; every: boolean; deltas: number[] }
   | { type: 'gossip'; delta: number }
-  | { type: 'level'; ministry: number }
+  /** `from`: the level at landing; commit applies it only while the ministry still stands at `from` (2.7 "Forms are checked at commit"). */
+  | { type: 'level'; ministry: number; from: number }
   | { type: 'appoint'; minister: string }
   | { type: 'endBoycott'; club: ClubIx }
   | { type: 'endScandal' }
-  | { type: 'district'; district: number; points: number };
+  | { type: 'district'; district: number; points: number }
+  | { type: 'sayNothing'; papers: number; factor: number }
+  | { type: 'boycottRuns'; club: ClubIx; papers: number }
+  | { type: 'applyAgain'; minister: string; papers: number };
 
 /** Both outcomes as frozen at landing (`shown`), and the initials of the factors that touched them ("DP ×0.9"). */
 export interface Shown {
   sign: ShownEffect[];
   refuse: ShownEffect[];
-  factors: { initials: string; text: string }[];
+  factors: { initials: string; text: string; side?: Choice }[];
   /** The moods and B the sizing read (for take-back and the tests: the paper is re-landed byte for byte, H3). */
   moodsAt: number[];
   BAt: number;
@@ -228,6 +242,8 @@ export interface FollowUp {
 /** A boycott running (2.8), counted in decided papers. */
 export interface Strike {
   papersLeft: number;
+  /** True from the start until the decided paper after the grievance's own commit: the count runs only on the decided papers that follow (2.8 "it runs 8 more decided papers"). */
+  waiting?: boolean;
   /** The picket slogan on its Ledger row (none twice a term). */
   picket: string;
   /** The grievance's deck id. */
@@ -237,6 +253,10 @@ export interface Strike {
 /** "Say nothing" running (2.8): I × the factor for papersLeft decided papers. */
 export interface Scandal {
   papersLeft: number;
+  /** I's factor as printed on the front page at landing (H1), e.g. 0.8. */
+  factor?: number;
+  /** True at the commit that starts it: the front page's own commit is not one of the 10 papers. */
+  waiting?: boolean;
 }
 
 /** A minister appointed (2.3 `cabinet[id]`). */
@@ -287,6 +307,12 @@ export interface DecreeStats {
   wins: number;
   /** Every mood clamp the commit had to apply: always 0 (the lemma of 2.7, H1). */
   clamps: number;
+  /** Arrivals drawn by drawNext (a requisition every n-th, 2.7 step 4). */
+  drawn: number;
+  /** Papers made by any path (unique paper ids). */
+  papers: number;
+  /** H5: dibs by source as commitCash applied them (gains positive, spending negative). */
+  book: Partial<Record<CashSource, number>>;
 }
 
 /** The decree fields on the shared state (2.3). */
@@ -337,6 +363,8 @@ export interface DecreeState {
   notesSeen: string[];
   /** Picket slogans used this term (none twice a term). */
   picketsThisTerm: string[];
+  /** Ribbon forms due: a storey reached and its ribbon not drawn yet (2.7 step 4). */
+  ribbonsDue: { ministry: number; storey: number }[];
   campaign: Campaign | null;
   /** The last count, on the result sheet and election night until the choice after it. */
   count: CountResult | null;
@@ -444,18 +472,29 @@ export type DecreeEvent = PaperEvent | TermEvent;
  * ("HT 48.6 → 52.6", count.ts `shares`).
  */
 export type Chip =
-  | { kind: 'club'; club: ClubIx; from: number; to: number; flag: boolean; wide: false }
-  | { kind: 'every'; deltas: number[]; approvalFrom: number; approvalTo: number; wide: true }
-  | { kind: 'money'; amount: number; wide: false }
-  | { kind: 'gossip'; from: number; to: number; max: number; wide: false }
-  | { kind: 'level'; ministry: number; from: number; to: number; wide: false }
-  | { kind: 'appoint'; minister: string; wide: false }
-  | { kind: 'endBoycott'; club: ClubIx; wide: false }
-  | { kind: 'endScandal'; wide: false }
-  | { kind: 'district'; district: number; from: number; to: number; wide: true };
+  | { kind: 'club'; club: ClubIx; from: number; to: number; flag: boolean; wide: false; icon: string }
+  | { kind: 'every'; deltas: number[]; approvalFrom: number; approvalTo: number; wide: true; icon: string }
+  | { kind: 'money'; amount: number; wide: false; icon: string }
+  | { kind: 'gossip'; from: number; to: number; max: number; wide: false; icon: string }
+  | { kind: 'level'; ministry: number; from: number; to: number; wide: false; icon: string }
+  | { kind: 'appoint'; minister: string; wide: false; icon: string }
+  | { kind: 'endBoycott'; club: ClubIx; wide: false; icon: string }
+  | { kind: 'endScandal'; wide: false; icon: string }
+  | { kind: 'district'; district: number; from: number; to: number; wide: true; icon: string };
 
 /** A strip's note row, warnings first (2.7): "Vegetables below 20: BOYCOTT", "Gossip 5/5: SCANDAL", "Short by 240 · about 9 s" (`about` from advice.ts). */
-export type StripNote = { kind: 'boycott'; club: ClubIx } | { kind: 'scandal'; gossip: number; max: number } | { kind: 'short'; by: number; about: About | null };
+export type StripNote =
+  | { kind: 'boycott'; club: ClubIx }
+  | { kind: 'scandal'; gossip: number; max: number }
+  | { kind: 'short'; by: number; about: About | null }
+  /** "Taxes ×0.8 for 10 papers, then Gossip 0" (a front page's refuse, as frozen). */
+  | { kind: 'sayNothing'; papers: number; factor: number }
+  /** "It runs 8 more papers" (a grievance's refuse, as frozen). */
+  | { kind: 'boycottRuns'; club: ClubIx; papers: number }
+  /** "Applies again in 30 papers" (an application's refuse). */
+  | { kind: 'applyAgain'; papers: number }
+  /** A form that would leave with no effect now: "Already done: the Clerk takes it back" or "No longer needed" (2.7). */
+  | { kind: 'void'; reason: 'done' | 'cap' };
 
 /** What a strip prints, as data (2.7): the screen only lays it out and finds the words in strings.ts. */
 export interface Strip {
@@ -473,6 +512,8 @@ export interface Strip {
   /** Sign only: whether the treasury pays it now. Refuse is always possible. */
   affordable: boolean;
   label: string | null;
+  /** A stale form (its level moved) or a capped one: it leaves with no effect, whichever side (2.7). */
+  void: 'done' | 'cap' | null;
 }
 
 /** One Ledger row (4.4), read-only but for one untaught "Raise". */
