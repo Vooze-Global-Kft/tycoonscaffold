@@ -10,7 +10,7 @@
 import type { SkCanvas } from '@shopify/react-native-skia';
 import { drawHeadOf, washOf } from './bust.draw';
 import { lookOf, type Look } from './cast';
-import { HEAD_TOP, headGeo } from './head';
+import { HEAD_TOP, drawHairBack, headGeo } from './head';
 import { CLOTH, GREY_MATRIX, P, at, blob, builder, circle, fill, filtered, flat, mix, oval, poly, rrect, wash, type Pen } from './ink';
 import { PROPS, type PropDef } from './props';
 import type { BustBox } from './bust.draw';
@@ -33,6 +33,8 @@ function figure(c: SkCanvas, look: Look): void {
   const coat = CLOTH[look.cloth];
   const legs = mix(coat, P.ink, 0.45);
   const shoulderY = g.chin + 10;
+  // Long hair falls behind the coat.
+  at(c, CX - 50, 0, 1, 0, (q) => drawHairBack(q, pen, g, look.hair, w));
   // Legs and shoes.
   for (const s of [-1, 1]) {
     wash(c, pen, rrect(CX + s * 9 - 6, 200, 12, FEET_Y - 206, 3), legs, 1);

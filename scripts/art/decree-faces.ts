@@ -32,7 +32,12 @@ headless(async (H) => {
   const t0 = Date.now();
   const report: Record<string, unknown> = {};
   const fontFile = ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'].find((f) => fs.existsSync(f));
-  const label = (size: number) => (fontFile ? H.font(fontFile, size) : null);
+  const fonts = new Map<number, import('@shopify/react-native-skia').SkFont>();
+  const label = (size: number) => {
+    if (!fontFile) return null;
+    if (!fonts.has(size)) fonts.set(size, H.font(fontFile, size));
+    return fonts.get(size) ?? null;
+  };
   const BG = '#2E4A3E';
   const PAPER = '#ECEFEA';
   const text = (c: import('@shopify/react-native-skia').SkCanvas, s: string, x: number, y: number, size: number, color = PAPER) => {

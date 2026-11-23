@@ -126,7 +126,7 @@ export const PROPS = {
     },
   },
   tuba: {
-    at: { x: 22, y: 96, deg: -12, s: 1.1, back: true },
+    at: { x: 27, y: 78, deg: -6, s: 1.35, back: true },
     draw: (c, pen) => {
       // The coil of tubing, the valves, and the great bell opening upward over the shoulder.
       const coil = builder().addCircle(4, 10, 13).addCircle(4, 10, 8).setFillType(FillType.EvenOdd).build();

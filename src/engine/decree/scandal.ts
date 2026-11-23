@@ -15,7 +15,12 @@
 import { notBuilt } from './notBuilt';
 import type { DecreeConfig, DecreeEvent, DecreeGame, Factors } from './types';
 
-/** I's factor while "Say nothing" runs (2.4: 0.8, with the sayNothing factors of A Gentle Week and Osric Tamp), else 1. Built for the skeleton: 1 when none runs, else the plain factor (the factors are P1a's to apply). */
+/**
+ * I's factor while "Say nothing" runs, else 1 (2.4: 0.8). The factors of A Gentle Week and Osric Tamp
+ * act on the CUT, target `sayNothing.cut`: factor = 1 − (1 − 0.8) × cut's mul (×0.6 gives 0.88), so
+ * "gentle" is milder (PLACEHOLDER reading, sent to the lead; the other reading, `sayNothing.papers`,
+ * shortens it). Built for the skeleton: the plain factor (applying the factors is P1a's).
+ */
 export function sayNothingFactor(cfg: DecreeConfig, g: DecreeGame, factors: Factors): number {
   return g.decree.scandal ? cfg.decree.scandal.sayNothingFactor : 1;
 }

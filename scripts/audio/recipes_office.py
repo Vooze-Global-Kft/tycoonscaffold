@@ -1129,7 +1129,7 @@ EVENTS = {
     'ui_open': (0.4, None, None, 'a sheet opened: a capsule arriving by pneumatic tube (the tube\'s hollow note) into its brass receiver', 1),
     'ui_close': (0.35, None, None, 'the sheet closed: the capsule sent off with a suck of air, the receiver lid falling shut', 1),
     # music
-    'music_main': (0.25, None, None, 'the desk loop "Minutes of the Previous Meeting" (spec 6 music_desk): 90 s at 90 bpm in F, bassoon, pizzicato, brushes; sparse, no tune', 1),
+    'music_main': (0.2, None, None, 'the desk loop "Minutes of the Previous Meeting" (spec 6 music_desk): 90 s at 90 bpm in F, bassoon, pizzicato, brushes; sparse, no tune', 1),
     'music_campaign': (0.35, None, None, 'the campaign loop: "The Middling March" for the bandstand, 90 s at 112 bpm in B-flat', 1),
 }
 

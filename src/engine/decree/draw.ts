@@ -7,13 +7,21 @@
  * dueAt, earliest first; (4) a form due: the next application (ministers.ts `nextApplication`), a
  * ribbon at a new storey, a requisition every n-th draw for the open ministry with the best payback;
  * (5) a template with probability q from the shuffled frame bag; else a comic paper by
- * clubWeight × share / cell size. Money is sized at the draw (size.ts `sizeMoney`), never recomputed.
+ * clubWeight × share / cell size (D20: Vanity and Basket are one club-less cell per office). D21: an
+ * application only for a minister whose club the office has. D16: a requisition names the
+ * best-payback level the treasury can pay when it is drawn, else the cheapest next level.
+ * D23: the draw fixes the paper's identity, base effects and jitter; NOTHING is sized here: every
+ * number is fixed when the paper lands (`landPaper` → size.ts `freezeShown`).
+ * D20: a Committee's sign schedules its own bigger study and a Basket's its own favour (FollowUpRef
+ * kind 'study' / 'favour', delays `followUps.*Delay`), unless it sets up a chain.
  *
- * SEAM: what the term (P1b) calls: `drawCampaignPaper` and `drawRally` (the run-up, term.ts),
- * `setAside` (at a call), `restoreAside` (a new term), `returnToDeck` (a move, move.ts), `fillTray`
- * (time away, offline.ts; Open the Doors, grants.ts); what it calls of P1b: ministers.ts
- * `nextApplication`, twists.ts `deskFactors` (shares, τ, prices), count.ts nothing. `landPaper` and
- * `landNext` are step 5 of 2.17 (decide.ts `commitItem`) and the tick's arrivals (tick.ts).
+ * SEAM, what P1b calls here: `drawNext` and `landNext` (tick.ts arrivals; offline.ts after an
+ * absence), `drawCampaignPaper` and `drawRally` (the run-up, term.ts), `setAside` (at a call),
+ * `restoreAside` (a new term), `returnToDeck` (a move, move.ts), `scriptedPaper` + `landPaper` (the
+ * first paper of each office, move.ts), `fillTray` (time away, offline.ts; Open the Doors, grants.ts).
+ * What it calls of P1b: ministers.ts `nextApplication` (step 4), twists.ts `deskFactors` (shares, τ),
+ * count.ts `shares` (`drawCampaignPaper`: a district within 6 points of 50, else the closest).
+ * `landPaper` and `landNext` are also step 5 of 2.17 (decide.ts `commitItem`).
  */
 import { notBuilt } from './notBuilt';
 import { clubIndex, rand } from './params';
@@ -42,7 +50,7 @@ export function landPaper(cfg: DecreeConfig, g: DecreeGame, paper: Paper, clock:
   return { ...g, decree: { ...g.decree, desk: { type: 'paper', paper, shown, landedAt: clock } } };
 }
 
-/** The run-up's k-th campaign paper (2.10: a district within 6 points of 50, else the closest; site campaign; 45 s of B). Skeleton: throws notBuilt. */
+/** The run-up's k-th campaign paper (2.10: a district within 6 points of 50 by count.ts `shares`, else the closest; site campaign; 45 s of B, sized at landing). Skeleton: throws notBuilt. */
 export function drawCampaignPaper(cfg: DecreeConfig, g: DecreeGame, k: number, events: DecreeEvent[]): { paper: Paper; g: DecreeGame } {
   return notBuilt('drawCampaignPaper');
 }
@@ -62,32 +70,37 @@ export function restoreAside(cfg: DecreeConfig, g: DecreeGame): DecreeGame {
   return notBuilt('restoreAside');
 }
 
-/** At a move (2.17): tray and `asideTray` back to the deck unseen (their money was sized at the old B). Skeleton: throws notBuilt. */
+/** At a move (2.17): tray and `asideTray` back to the deck unseen (drawn in the old office). Skeleton: throws notBuilt. */
 export function returnToDeck(cfg: DecreeConfig, g: DecreeGame): DecreeGame {
   return notBuilt('returnToDeck');
 }
 
 /**
  * The base effects of a deck record resolved for the drawing office: club ids to indices,
- * 'petitioner' and 'other' to the paper's sides. Built for what the scripted papers of create()
- * need (mood, every, gossip, a fixed amount); sized money, forms' 'served' and 'lowest', levels,
- * appointments, boycott and scandal exits and district points are P1a's (they throw notBuilt).
+ * 'petitioner' and 'other' to the paper's sides, a tier to its seconds of B (unsized: D23), a
+ * district effect to the paper's district. Built for what create() and the fixtures need (mood with
+ * `fixed`, every, gossip, money, a fixed amount, district points); forms' 'served' and 'lowest',
+ * levels, appointments, boycott and scandal exits are P1a's (they throw notBuilt).
  */
-export function resolveEffects(cfg: DecreeConfig, office: OfficeIx, effects: readonly BaseEffect[], sides: { petitioner: ClubIx | null; other: ClubIx | null }): Effect[] {
+export function resolveEffects(cfg: DecreeConfig, office: OfficeIx, effects: readonly BaseEffect[], sides: { petitioner: ClubIx | null; other: ClubIx | null; district?: number | null }): Effect[] {
   return effects.map((e): Effect => {
     switch (e.type) {
       case 'mood': {
         const club = e.club === 'petitioner' ? sides.petitioner : e.club === 'other' ? sides.other : e.club === 'served' || e.club === 'lowest' ? notBuilt(`resolveEffects(${e.club})`) : clubIndex(cfg, office, e.club);
         if (club === null || club < 0) throw new Error(`decree: a mood effect for a club this office does not have (${e.club})`);
-        return { type: 'mood', club, delta: e.delta };
+        return e.fixed ? { type: 'mood', club, delta: e.delta, fixed: true } : { type: 'mood', club, delta: e.delta };
       }
       case 'every':
         return { type: 'every', delta: e.delta };
       case 'gossip':
         return e.set !== undefined ? { type: 'gossipSet', to: e.set } : { type: 'gossip', delta: e.delta ?? 0 };
       case 'money':
-        if (e.fixed !== undefined) return { type: 'money', amount: e.fixed };
-        return notBuilt('resolveEffects(money)');
+        if (e.fixed !== undefined) return { type: 'moneyFixed', amount: e.fixed };
+        if (e.seconds === undefined && e.tier === undefined) throw new Error('decree: a money effect needs seconds, a tier or a fixed amount');
+        return { type: 'money', seconds: e.sign * (e.seconds ?? cfg.decree.money[e.tier!]) };
+      case 'district':
+        if (sides.district === null || sides.district === undefined) throw new Error('decree: a district effect on a paper without a district');
+        return { type: 'district', district: sides.district, points: e.points };
       default:
         return notBuilt(`resolveEffects(${e.type})`);
     }
@@ -117,7 +130,7 @@ export function scriptedPaper(cfg: DecreeConfig, g: DecreeGame, office: OfficeIx
       const r = rand(next, 'followDelay');
       next = r.g;
       const [lo, hi] = branch.delay;
-      followUp = { chainId: chain.id, step: 1, delay: lo + Math.floor(r.value * (hi - lo + 1)) };
+      followUp = { kind: 'chain', chainId: chain.id, step: 1, delay: lo + Math.floor(r.value * (hi - lo + 1)) };
     }
     return { effects: resolveEffects(cfg, office, def[choice], sides), followUp, label: null };
   };
@@ -130,6 +143,7 @@ export function scriptedPaper(cfg: DecreeConfig, g: DecreeGame, office: OfficeIx
     source: def.id,
     office,
     visitor: { ...def.visitor, clubIx: sides.petitioner },
+    cosigner: def.cosigner ?? null,
     text: def.text,
     returning: null,
     archetype: def.archetype,
@@ -138,11 +152,11 @@ export function scriptedPaper(cfg: DecreeConfig, g: DecreeGame, office: OfficeIx
     tags: null,
     sign,
     refuse,
+    clipping: null,
     ministry: null,
     drawnLevel: null,
     district: null,
     note: null,
-    drawnB: 0,
     jitter: 1,
   };
   return { paper, g: { ...next, decree: { ...next.decree, scriptedDone: [...next.decree.scriptedDone, key] } } };

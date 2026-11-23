@@ -8,7 +8,7 @@
  * y = 28 (`HEAD_TOP`). The cut-outs draw the same head through a transform.
  */
 import type { SkCanvas, SkPath } from '@shopify/react-native-skia';
-import { HAIR, alpha, arc, blob, builder, circle, curve, fill, hatch, ink, intersect, line, mix, oval, poly, sideOf, stroke, wash, type HairColour, type Pen } from './ink';
+import { HAIR, alpha, arc, blob, builder, circle, curve, fill, hatch, ink, intersect, line, mix, oval, poly, sideOf, stroke, union, wash, type HairColour, type Pen } from './ink';
 
 export const HEAD_X = 50;
 export const HEAD_TOP = 28;
@@ -111,7 +111,11 @@ export function drawFace(c: SkCanvas, pen: Pen, g: HeadGeo, w: Wash): void {
 type FeatureDraw = (c: SkCanvas, pen: Pen, g: HeadGeo, w: Wash) => void;
 
 function dots(c: SkCanvas, pen: Pen, g: HeadGeo, dx: number, r: number): void {
-  for (const s of [-1, 1]) c.drawPath(circle(g.cx + s * dx, g.eyeY, r), fill(pen.ink));
+  // The same dot and the same small glint on every face, whatever the tone.
+  for (const s of [-1, 1]) {
+    c.drawPath(circle(g.cx + s * dx, g.eyeY, r), fill(pen.ink));
+    c.drawPath(circle(g.cx + s * dx - r * 0.35, g.eyeY - r * 0.35, r * 0.32), fill(alpha('#FFFFFF', 0.85)));
+  }
 }
 
 export const EYES = {
@@ -224,7 +228,8 @@ export const FACIAL = {
   none: () => undefined,
   brush: (c, pen, g, w) => {
     const y = g.mouthY - 3.4;
-    const p = blob([[g.cx - 5.6, y + 1.6], [g.cx - 3, y - 1.2], [g.cx, y - 0.6], [g.cx + 3, y - 1.2], [g.cx + 5.6, y + 1.6], [g.cx, y + 1.8]], 0.9);
+    // A full, drooping walrus brush, wider than the mouth (never a small block).
+    const p = blob([[g.cx - 7.4, y + 3], [g.cx - 4, y - 1.4], [g.cx, y - 0.8], [g.cx + 4, y - 1.4], [g.cx + 7.4, y + 3], [g.cx + 4, y + 2], [g.cx, y + 2.2], [g.cx - 4, y + 2]], 0.9);
     wash(c, pen, p, w.hair, 0.7);
   },
   curl: (c, pen, g, w) => {
@@ -482,35 +487,35 @@ export const HAIRS = {
     // A full round cloud of curls, wider than the head.
     back: (g) => {
       const { cx, top, hw, h } = g;
-      const b = builder();
+      const parts: SkPath[] = [];
       const n = 14;
       for (let i = 0; i < n; i++) {
         const a = Math.PI * (0.9 + (1.2 * i) / (n - 1));
-        b.addCircle(cx + Math.cos(a) * (hw + 6), top + h * 0.32 + Math.sin(a) * (h * 0.36 + 1), 5.2);
+        parts.push(circle(cx + Math.cos(a) * (hw + 6), top + h * 0.32 + Math.sin(a) * (h * 0.36 + 1), 5.2));
       }
-      b.addOval({ x: cx - hw - 7, y: top - 9, width: (hw + 7) * 2, height: h * 0.8 });
-      return b.build();
+      parts.push(oval(cx, top - 9 + h * 0.4, hw + 7, h * 0.4));
+      return union(...parts);
     },
     front: (g) => {
       const { cx, top, hw, h } = g;
-      const b = builder();
-      for (let i = 0; i < 7; i++) b.addCircle(cx - hw * 0.9 + (i * hw * 1.8) / 6, top + h * 0.1 + (i % 2) * 1.6, 4.2);
-      b.addOval({ x: cx - hw - 2, y: top - 6, width: (hw + 2) * 2, height: h * 0.24 });
-      return b.build();
+      const parts: SkPath[] = [];
+      for (let i = 0; i < 7; i++) parts.push(circle(cx - hw * 0.9 + (i * hw * 1.8) / 6, top + h * 0.1 + (i % 2) * 1.6, 4.2));
+      parts.push(oval(cx, top - 6 + h * 0.12, hw + 2, h * 0.12));
+      return union(...parts);
     },
   },
   curly: {
     // Short curls, close to the head.
     front: (g) => {
       const { cx, top, hw, h } = g;
-      const b = builder();
+      const parts: SkPath[] = [];
       const n = 11;
       for (let i = 0; i < n; i++) {
         const a = Math.PI * (1.05 + (0.9 * i) / (n - 1));
-        b.addCircle(cx + Math.cos(a) * (hw + 0.4), top + h * 0.24 + Math.sin(a) * (h * 0.27), 3.6);
+        parts.push(circle(cx + Math.cos(a) * (hw + 0.4), top + h * 0.24 + Math.sin(a) * (h * 0.27), 3.6));
       }
-      b.addOval({ x: cx - hw + 1, y: top - 2, width: (hw - 1) * 2, height: h * 0.22 });
-      return b.build();
+      parts.push(oval(cx, top - 2 + h * 0.11, hw - 1, h * 0.11));
+      return union(...parts);
     },
   },
   waves: {
@@ -527,19 +532,20 @@ export const HAIRS = {
       [[g.cx + g.hw + 5, g.top + g.h * 0.55], [g.cx + g.hw + 3, g.top + g.h * 0.7], [g.cx + g.hw + 6, g.top + g.h * 0.85]],
     ],
   },
-  beehive: {
-    back: (g) => oval(g.cx, g.top - 6, g.hw + 3.4, 15),
+  flick: {
+    // Shoulder-length hair turned up and out at the ends, a side-swept fringe.
+    back: (g) => {
+      const { cx, top, hw, h } = g;
+      return blob([[cx, top - 5], [cx - hw - 4, top + h * 0.18], [cx - hw - 4.6, top + h * 0.6], [cx - hw - 9, top + h * 0.82], [cx - hw - 3, top + h * 0.86], [cx + hw + 3, top + h * 0.86], [cx + hw + 9, top + h * 0.82], [cx + hw + 4.6, top + h * 0.6], [cx + hw + 4, top + h * 0.18]], 0.9);
+    },
     front: (g) => {
       const { cx, top, hw, h } = g;
-      return blob([[cx - 2, top - 18], [cx - hw - 3.6, top - 3], [cx - hw - 2, top + h * 0.3], [cx - hw + 1.6, top + h * 0.28], [cx - hw * 0.2, top + h * 0.12], [cx + hw - 1.6, top + h * 0.28], [cx + hw + 2, top + h * 0.3], [cx + hw + 3.6, top - 3]], 0.9);
+      return blob([[cx - 2, top - 5.4], [cx - hw - 3.4, top + h * 0.14], [cx - hw - 1.4, top + h * 0.4], [cx - hw + 1.4, top + h * 0.26], [cx - hw * 0.2, top + h * 0.2], [cx + hw * 0.6, top + h * 0.1], [cx + hw + 1.4, top + h * 0.36], [cx + hw + 3.4, top + h * 0.12]], 0.9);
     },
-    // Combed hair, not cloth: swirling strands, no hatching (a hatched dome reads as a wrap).
-    smooth: true,
     strands: (g) => [
-      [[g.cx - g.hw * 0.9, g.top + 6], [g.cx - g.hw * 0.7, g.top - 8], [g.cx, g.top - 16], [g.cx + g.hw * 0.6, g.top - 13]],
-      [[g.cx - g.hw * 0.5, g.top + 7], [g.cx - g.hw * 0.3, g.top - 5], [g.cx + 3, g.top - 11], [g.cx + g.hw * 0.8, g.top - 6]],
-      [[g.cx - 1, g.top + 6], [g.cx + 2, g.top - 3], [g.cx + g.hw * 0.9, g.top - 1]],
-      [[g.cx + g.hw * 1.05, g.top - 4], [g.cx + g.hw * 1.1, g.top + 6]],
+      [[g.cx - g.hw * 0.8, g.top + g.h * 0.22], [g.cx, g.top + 2], [g.cx + g.hw * 0.8, g.top + 1]],
+      [[g.cx - g.hw - 6, g.top + g.h * 0.8], [g.cx - g.hw - 3, g.top + g.h * 0.7]],
+      [[g.cx + g.hw + 6, g.top + g.h * 0.8], [g.cx + g.hw + 3, g.top + g.h * 0.7]],
     ],
   },
   ponytail: {

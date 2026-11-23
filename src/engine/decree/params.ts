@@ -7,8 +7,11 @@
  *   the record), with the ONE Factors object of `deskFactors` (P1b, ./twists.ts) applied: mix
  *   twists to the mixes, τ and G_max factors. tick, offline, advice, count, the strips and the bots
  *   read B and I from here only.
- * - `commitCash(g, delta, source)`: the ONE way cash changes (H5: dibs enter only through the tick,
- *   paper gains, the away payout and its ad top-up, Check the Sofa, the transition fund).
+ * - `commitCash(g, delta, source)`: the ONE way the RULES change cash (H5: the tick, paper gains and
+ *   costs, purchases, Check the Sofa, the transition fund). The away payout and its ad top-up are paid
+ *   by the shared store through economy's grantCash (2.15 `paysOnCompute`), not through here: a coins
+ *   test books `away` and `awayAd` in its own harness.
+ * - `disarray(cfg, losses)`: Y(n) = 2^(n+1) − 2 (D15), read by count.ts and the poll.
  * - `roundDibs(cfg, x)`: every amount of dibs shown or paid (merge M19's rule).
  * - `rand(g, site, x)`: one value in [0, 1) of a random site, advancing its counter (2.3).
  * - prices: `levelCost`, `openCost`, `vanityPrice` (2.2, 5.8): the Ledger, slips, advice and the
@@ -72,6 +75,11 @@ export function commitCash(g: DecreeGame, delta: number, source: CashSource): De
   return { ...g, cash, runEarnings: g.runEarnings + gain, lifetimeEarnings: g.lifetimeEarnings + gain };
 }
 
+/** Disarray after `losses` consecutive losses at a seat: Y(n) = 2^(n+1) − 2 share points (D15: +2, +6, +14, +30, +62). Built. */
+export function disarray(losses: number): number {
+  return losses > 0 ? Math.pow(2, losses + 1) - 2 : 0;
+}
+
 /** v_i = S × valueStep^i (2.2; Grand Project j is i = 8 + j... continues as ministry 7 + j of the president). Built. */
 export function ministryValue(cfg: DecreeConfig, office: OfficeIx, i: number): number {
   return officeOf(cfg, office).scale * Math.pow(cfg.decree.ministry.valueStep, i);
@@ -105,7 +113,8 @@ export function vanityPrice(cfg: DecreeConfig, g: DecreeGame): number {
 /**
  * Every derived value of 2.4 for the current state, with `factors` (default: `deskFactors(cfg, g)`,
  * the ONE object of twists and ministers). Built for the skeleton's tick (A, M, m_N, V, rates, s_i,
- * B, I); the mix twists (Factors.mixAdd) and the τ and G_max factors are P1a's to apply here.
+ * B, I, Y, R); the mix twists (Factors.mixAdd), the τ and G_max factors and the "Say nothing" cut
+ * factors are P1a's to apply here.
  */
 export function decreeParams(cfg: DecreeConfig, g: DecreeGame, factors: Factors = deskFactors(cfg, g)): DecreeParams {
   const d = g.decree;
@@ -114,7 +123,7 @@ export function decreeParams(cfg: DecreeConfig, g: DecreeGame, factors: Factors 
   const mix = row.districts.map((dist) => dist.mix.map((w) => w / 100));
   const W = row.clubs.map((_, gi) => mix.reduce((s, m) => s + m[gi], 0) / mix.length);
   const approval = Math.round(W.reduce((s, w, gi) => s + w * (d.moods[gi] ?? c.mood.start), 0));
-  const multiplier = c.approval.base + (c.approval.slope * approval) / 100;
+  const multiplier = 1 + (c.approval.slope * (approval - 50)) / 100;
   const mN = 1 + c.ladder.nrFactor * d.nr;
   const V = Math.pow(c.vanity.factor, d.vanity.length);
   const values = d.ministries.map((_, i) => ministryValue(cfg, d.office, i));
@@ -130,7 +139,7 @@ export function decreeParams(cfg: DecreeConfig, g: DecreeGame, factors: Factors 
   const B = mN * V * sum;
   const I = multiplier * mN * V * sumServed * sayNothing;
   const record = d.ministries.slice(0, row.ministries.length).reduce((s, m) => s + (m.open ? m.level : 0), 0);
-  return { office: d.office, clubs: row.clubs, mix, W, approval, multiplier, mN, V, rates, values, served, B, I, sayNothing, tau: row.tau, gossipMax: row.gossipMax, record };
+  return { office: d.office, clubs: row.clubs, mix, W, approval, multiplier, mN, V, rates, values, served, B, I, sayNothing, tau: row.tau, gossipMax: row.gossipMax, disarray: disarray(d.losses), rivalPull: row.rivalPull, record };
 }
 
 /** The top bar's values (4.1). Built. */

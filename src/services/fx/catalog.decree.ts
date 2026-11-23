@@ -79,7 +79,7 @@ export const FX = {
   ui_close: { brief: 'the sheet closed: the capsule sent off with a suck of air, the receiver lid falling shut', volume: 0.35, preload: 10 },
 
   // --- music (90 s loops; the shared player starts music_main) ----------------------------------------
-  music_main: { brief: 'the desk loop "Minutes of the Previous Meeting" (spec 6 music_desk): 90 s at 90 bpm in F, bassoon, pizzicato, brushes; sparse, no tune', volume: 0.25, loop: true },
+  music_main: { brief: 'the desk loop "Minutes of the Previous Meeting" (spec 6 music_desk): 90 s at 90 bpm in F, bassoon, pizzicato, brushes; sparse, no tune', volume: 0.2, loop: true },
   music_campaign: { brief: 'the campaign loop: "The Middling March" for the bandstand, 90 s at 112 bpm in B-flat', volume: 0.35, loop: true },
 } as const satisfies Record<string, FxDef>;
 

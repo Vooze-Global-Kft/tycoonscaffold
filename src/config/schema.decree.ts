@@ -24,9 +24,16 @@
  * an office's districts, mixes and ministries are in the office's row, mixes over the office's own
  * clubs in the order of `offices[o].clubs`.
  *
- * Written by the skeleton (spec 9.2 hour 0); owned afterwards by the rules package P1b (fields,
- * defaults that are rules, RANGES, lintDecree); the deck's fields are agreed with the content desk
- * (D7: the one who finishes second keeps the other's names). docs/design/office-build-plan.md.
+ * Written by the skeleton (spec 9.2 hour 0). TWO SECTIONS, each edited only by its owner
+ * (docs/design/office-build-plan.md "The seam"):
+ * - "the runtime deck (D7)" (DeckSchema and its record schemas, the effects of 2.7, the archetype
+ *   table): P1a, the paper core, with the content desk's agreement on every field name (D7);
+ * - everything else (the offices, clubs, ministries, money, forms, ministers, twists, the other
+ *   values, RANGES, lintDecree): P1b.
+ * Numbers: the defaults are the specification's starting values (with section 11's decisions). The
+ * shipped game.json carries the tuned numbers (build-office.py writes them); these defaults never
+ * import src/config/decree.content.ts, and the rules tests run on the fixtures' own frozen numbers
+ * (src/engine/fixtures/decree.numbers.json), never on these defaults (lesson 4).
  */
 import { z } from 'zod';
 
@@ -42,9 +49,16 @@ export const CLUB_IDS = ['bus', 'shops', 'veg', 'brass', 'anglers', 'kites', 'he
 export const ClubIdSchema = z.enum(CLUB_IDS);
 export const OFFICE_IDS = ['mayor', 'governor', 'president'] as const;
 export const OfficeIdSchema = z.enum(OFFICE_IDS);
-/** The archetypes of 2.2 (the writer picks one) and `favour`, the basket's follow-up (2.2, 7.6). */
-export const ARCHETYPE_IDS = ['project', 'swap', 'fee', 'treat', 'committee', 'vanity', 'basket', 'favour'] as const;
+/**
+ * The archetypes of 2.2 (the writer picks one of the first seven) and the two that only follow-ups
+ * use: `favour` (a Basket's follow-up, 2.2, 7.6) and `biggerStudy` (a Committee's follow-up, D20: "a
+ * Committee at the next money tier with nothing after it").
+ */
+export const ARCHETYPE_IDS = ['project', 'swap', 'fee', 'treat', 'committee', 'vanity', 'basket', 'favour', 'biggerStudy'] as const;
 export const ArchetypeIdSchema = z.enum(ARCHETYPE_IDS);
+/** Archetypes no comic paper is written as (share 0; only follow-ups use them). */
+export const FOLLOW_ONLY_ARCHETYPES = ['favour', 'biggerStudy'] as const;
+const WrittenArchetype = ArchetypeIdSchema.exclude(FOLLOW_ONLY_ARCHETYPES);
 /** The eight joke shapes of 7.4 (tags; the lint keeps each under 20 % of a deck). */
 export const SHAPE_IDS = ['undercut', 'escalation', 'literalism', 'form-misapplied', 'statistic', 'slogan', 'photo-op', 'callback'] as const;
 /** Who the joke is on (the authoring format's butt tags; never a club, never a group of real people). */
@@ -56,19 +70,20 @@ const OfficeOrAny = z.enum(['mayor', 'governor', 'president', 'any']);
 // ----------------------------------------------------------------------------- the effects of 2.7
 
 /**
- * One BASE effect of an outcome (2.7: at most 4, from the closed set). Base values only: money is
- * sized at the draw, moods at landing (2.7 "Sizing"), never here.
+ * One BASE effect of an outcome (2.7: at most 4, from the closed set). Base values only: money and
+ * moods are sized when the paper lands (2.7 "Sizing", D23), never here.
  * - money: `seconds` of B or `tier` S / M / L of the money tiers, times `sign` (−1 a cost, +1 a gain),
  *   or a `fixed` signed amount of dibs that is never sized (scripted papers only: Till's Teas' +60);
- * - mood: one club's base Δ; `club` is a club id, or 'petitioner' (the visitor's club), 'other' (the
- *   side the writer names), 'served' (a form's ministry's club) or 'lowest' (the rally);
+ * - mood: one club's base Δ; `club` is a club id, or 'petitioner' (the visitor's club; for a favour
+ *   the club that pays), 'other' (the side the writer names), 'served' (a form's ministry's club) or
+ *   'lowest' (the rally); `fixed` copies Δ unsized (a boycott settlement's +10, 2.8);
  * - every: every club of the office, one chip; gossip: `delta`, or `set` (the apology's "to 0");
  * - level: the form's ministry +1 level; appoint: the application's minister; endBoycott,
  *   endScandal; district: campaign points for the paper's district.
  */
 export const BaseEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('money'), seconds: z.number().optional(), tier: z.enum(['S', 'M', 'L']).optional(), sign: z.union([z.literal(1), z.literal(-1)]).default(-1), fixed: z.number().optional() }),
-  z.object({ type: z.literal('mood'), club: z.union([ClubIdSchema, z.enum(['petitioner', 'other', 'served', 'lowest'])]), delta: int.min(-10).max(10) }),
+  z.object({ type: z.literal('mood'), club: z.union([ClubIdSchema, z.enum(['petitioner', 'other', 'served', 'lowest'])]), delta: int.min(-10).max(10), fixed: z.boolean().optional() }),
   z.object({ type: z.literal('every'), delta: int.min(-10).max(10) }),
   z.object({ type: z.literal('gossip'), delta: int.min(-10).max(10).optional(), set: int.min(0).optional() }),
   z.object({ type: z.literal('level') }),
@@ -166,7 +181,7 @@ export const GrandProjectSchema = z.object({ id, name: text(32), atTerm: int.pos
 /** One row of the archetype table of 2.2 (each base Δ tune ±1; shares tune). */
 export const ArchetypeSchema = z.object({
   id: ArchetypeIdSchema,
-  /** Share of the comic draw (2.7; 0 for favour, which only follow-ups use). */
+  /** Share of the comic draw (2.7; tune ±0.05 each, summing to 1; 0 for favour and biggerStudy, which only follow-ups use). */
   share: prob,
   trap: z.boolean().default(false),
   sign: Effects,
@@ -182,7 +197,10 @@ const ARCHETYPES_DEFAULT: z.input<typeof ArchetypeSchema>[] = [
   { id: 'committee', share: 0.15, sign: [{ type: 'money', tier: 'S', sign: -1 }, pe('petitioner', 1), pe('other', -2)], refuse: [pe('petitioner', -2), pe('other', 1)] },
   { id: 'vanity', share: 0.08, trap: true, sign: [{ type: 'money', tier: 'L', sign: -1 }, { type: 'every', delta: -1 }], refuse: [] },
   { id: 'basket', share: 0.07, trap: true, sign: [{ type: 'gossip', delta: 2 }], refuse: [] },
-  { id: 'favour', share: 0, trap: false, sign: [pe('other', -3), { type: 'gossip', delta: 1 }], refuse: [] },
+  // 2.2: the favour costs on the sign side "a club −3 · gossip +1": the club that pays is the follow-up's own `club` (its petitioner), as both formats say.
+  { id: 'favour', share: 0, trap: false, sign: [pe('petitioner', -3), { type: 'gossip', delta: 1 }], refuse: [] },
+  // D20: a Committee at the next money tier (S → M), with nothing after it.
+  { id: 'biggerStudy', share: 0, trap: false, sign: [{ type: 'money', tier: 'M', sign: -1 }, pe('petitioner', 1), pe('other', -2)], refuse: [pe('petitioner', -2), pe('other', 1)] },
 ];
 
 // ----------------------------------------------------------------------------- ministers and twists
@@ -191,8 +209,10 @@ const ARCHETYPES_DEFAULT: z.input<typeof ArchetypeSchema>[] = [
  * The parameter a minister's desk rule or a twist's factor acts on (2.9, 2.14, 7.3). `mix`: a
  * club's weight in every district (+add, the others scaled down); the rest multiply (`mul`) or add
  * (`add`). Read by twists.ts and ministers.ts, which produce the one Factors object size.ts consumes.
+ * "Say nothing" has two targets: `sayNothing.cut` multiplies the CUT (1 − sayNothingFactor: ×0.6 turns
+ * I × 0.8 into I × 0.88, milder) and `sayNothing.papers` the papers it runs (10).
  */
-export const FACTOR_TARGETS = ['mix', 'committee.share', 'gossipMax', 'ribbon.money', 'ribbon.mood', 'fee.money', 'tau', 'sayNothing', 'settlement.money', 'requisition.money', 'campaign.money', 'quietDecay'] as const;
+export const FACTOR_TARGETS = ['mix', 'committee.share', 'gossipMax', 'ribbon.money', 'ribbon.mood', 'fee.money', 'tau', 'sayNothing.cut', 'sayNothing.papers', 'settlement.money', 'requisition.money', 'campaign.money', 'quietDecay'] as const;
 export const FactorTargetSchema = z.enum(FACTOR_TARGETS);
 /** One factor: on `target`, for one club's papers or ministry (null: all), × mul then + add. */
 export const FactorSchema = z.object({ target: FactorTargetSchema, club: ClubIdSchema.nullable().default(null), mul: pos.default(1), add: z.number().default(0) });
@@ -209,8 +229,11 @@ export const MinisterSchema = z.object({
   rule: FactorSchema,
 });
 
-/** A twist (2.14): one factor on one parameter, told on the result sheet. */
-export const TwistSchema = z.object({ id, name: text(28), factor: FactorSchema, /** Its result-sheet line (writer 5; empty until written). */ text: z.string().default('') });
+/**
+ * A twist (2.14): one or two factors (Ribbon Shortage: "ribbons cost AND please ×2"), told on the
+ * result sheet. The validator's composition check (twists.ts `compositionProblems`) reads every factor.
+ */
+export const TwistSchema = z.object({ id, name: text(28), factors: z.array(FactorSchema).min(1).max(2), /** Its result-sheet line (writer 5; empty until written). */ text: z.string().default('') });
 
 /** Every k-combination of 0..n−1 in lexicographic order (the default fixed orders of pairs and triples). */
 export function combinations(n: number, k: number): number[][] {
@@ -223,21 +246,23 @@ export function combinations(n: number, k: number): number[][] {
   return out;
 }
 
-const T = (id: string, name: string, factor: z.input<typeof FactorSchema>) => ({ id, name, factor });
+const T = (id: string, name: string, ...factors: z.input<typeof FactorSchema>[]) => ({ id, name, factors });
 const TWISTS_DEFAULT = [
   T('bandstand_summer', 'Bandstand Summer', { target: 'mix', club: 'brass', add: 0.1 }),
   T('committee_week', 'Committee Week', { target: 'committee.share', mul: 2 }),
   T('quiet_press', 'Quiet Press', { target: 'gossipMax', add: 2 }),
-  T('ribbon_shortage', 'Ribbon Shortage', { target: 'ribbon.money', mul: 2 }),
+  T('ribbon_shortage', 'Ribbon Shortage', { target: 'ribbon.money', mul: 2 }, { target: 'ribbon.mood', mul: 2 }),
   T('kite_weather', 'Kite Weather', { target: 'mix', club: 'kites', add: 0.1 }),
   T('market_fortnight', 'Market Fortnight', { target: 'fee.money', mul: 1.5 }),
   T('early_doors', 'Early Doors', { target: 'tau', mul: 0.8 }),
   T('hedge_inspection', 'Hedge Inspection', { target: 'mix', club: 'hedges', add: 0.1 }),
-  T('gentle_week', 'A Gentle Week', { target: 'sayNothing', mul: 0.6 }),
+  // PLACEHOLDER (sent to the lead, requests.md): 2.14 "Say nothing ×0.6" read as the milder cut (I × 0.88), not I × 0.48.
+  T('gentle_week', 'A Gentle Week', { target: 'sayNothing.cut', mul: 0.6 }),
   T('grievance_amnesty', 'Grievance Amnesty', { target: 'settlement.money', mul: 0.5 }),
 ];
 
 // ----------------------------------------------------------------------------- the runtime deck (D7)
+// SECTION P1a (the paper core), with the content desk's agreement on every field name.
 //
 // Names follow the content desk's authoring format (scripts/content/office/format.ts, D7: whoever
 // finishes second keeps the other's names): the section names (papers, scripted, chains, notes,
@@ -256,7 +281,21 @@ export const VisitorSchema = z.object({ face: z.string(), name: text(24), role: 
 /** Tags every hand-written paper carries (7.4, 7.8; the lint checks the values). */
 const Tags = { subject: z.enum(SUBJECT_IDS), butt: z.enum(BUTT_IDS), shape: z.enum(SHAPE_IDS) };
 
-/** A comic paper (2.7, 7.7): the writer picks the visitor, the club, the archetype and the other side; numbers come from the archetype. */
+/**
+ * A Basket's own favour (2.2 "↩ favour", D20): what the lobbyist asks after the basket was accepted,
+ * and the two clippings that end it. Everything else is the basket's: the visitor, the co-signer, the
+ * club (the one that pays: the favour's petitioner), the tags; its archetype is `favour`; its delay
+ * `followUps.favourDelay`.
+ */
+export const OwnFavourSchema = z.object({ text: text(90), clippings: z.object({ sign: text(90), refuse: text(90) }) });
+
+/**
+ * A comic paper (2.7, 7.7): the writer picks the visitor, the club, the archetype and the other side;
+ * numbers come from the archetype. D20: every Committee carries its `biggerStudy` and every Basket its
+ * `favour` (lintDecree), unless it sets up a chain of 7.6. The bigger study inherits the paper's
+ * visitor, co-signer, club, other and tags; its archetype is `biggerStudy`, its delay
+ * `followUps.biggerStudyDelay`, and nothing comes after it (no clipping).
+ */
 export const ComicPaperSchema = z.object({
   id: deckId,
   office: OfficeOrAny,
@@ -269,11 +308,15 @@ export const ComicPaperSchema = z.object({
   club: ClubIdSchema,
   /** The other side's club (7.2): required for project, swap, fee, treat, committee. */
   other: ClubIdSchema.nullable().default(null),
-  archetype: ArchetypeIdSchema.exclude(['favour']),
+  archetype: WrittenArchetype,
   text: text(90),
   ...Tags,
   /** The chain (`chains[].id`) this paper sets up (7.6). */
   setsUp: deckId.optional(),
+  /** A Committee's own "↩ bigger study" (D20): its text. */
+  biggerStudy: text(90).optional(),
+  /** A Basket's own "↩ favour" (D20). */
+  favour: OwnFavourSchema.optional(),
 });
 
 /** One branch of a chain (7.6): the follow-up paper and the two clippings that end it. */
@@ -333,7 +376,7 @@ export const ScriptedPaperSchema = z.object({
   setsUp: deckId.optional(),
 });
 /** A template frame (2.7 step 5): a comic paper with ONE slot `{list-id}` filled from a phrase list. */
-export const FrameSchema = z.object({ id: deckId, office: OfficeOrAny.default('any'), visitor: VisitorSchema.optional(), club: ClubIdSchema, other: ClubIdSchema.nullable().default(null), archetype: ArchetypeIdSchema.exclude(['favour']), frame: text(90), ...Tags });
+export const FrameSchema = z.object({ id: deckId, office: OfficeOrAny.default('any'), visitor: VisitorSchema.optional(), club: ClubIdSchema, other: ClubIdSchema.nullable().default(null), archetype: WrittenArchetype, frame: text(90), ...Tags, /** As a comic paper's (D20). */ biggerStudy: text(90).optional(), favour: OwnFavourSchema.optional() });
 /** A phrase list (7.7: 10 lists of 24); phrase ids are `<list>.<index>`, 1-based. */
 export const PhraseListSchema = z.object({ id: deckId, title: z.string().default(''), phrases: z.array(text(60)).min(1) });
 /** A plain line with an id (returning-visitor, away, captions). */
@@ -368,6 +411,7 @@ export const DeckSchema = z.object({
 });
 
 // ----------------------------------------------------------------------------- the defaults of 2.2
+// SECTION P1b from here to the end (the tables, the other values, RANGES, lintDecree).
 
 const RIVAL_PLACEHOLDER = (office: string, n: number) => ({ id: `${office}_rival_${n}`, name: `Rival ${n} (PLACEHOLDER)`, slogan: 'PLACEHOLDER slogan', hobby: 'PLACEHOLDER hobby', backAgain: 'PLACEHOLDER: back for another go.', resignation: 'PLACEHOLDER: resigned to spend more time with a hobby.' });
 const district = (idv: string, name: string, short: string, mix: number[]) => ({ id: idv, name, short, mix });
@@ -394,13 +438,15 @@ const OFFICES_DEFAULT: z.input<typeof OfficeSchema>[] = [
     callFraction: 0.6,
     campaignPapers: 3,
     gossipMax: 5,
-    rivalPull: 7,
+    // D15: the rival's pull starts at 3 / 4 / 5 (range 3 to 12).
+    rivalPull: 3,
     scale: 1,
     stand: null,
     recordName: 'Town Record',
     winWeight: 1,
     requisitionEvery: 10,
-    templateShare: 0,
+    // D19: the mayor's template share q is 0.25 (was 0).
+    templateShare: 0.25,
     // D14: the first mayoral rival is renamed by the sensitivity editor (names.json); PLACEHOLDER until then.
     rivals: [{ id: 'mayor_rival_1', name: 'Councillor (PLACEHOLDER, D14)', slogan: 'PLACEHOLDER: She Owns A Hat', hobby: 'her hat', backAgain: 'PLACEHOLDER: back for another go, in the same hat.', resignation: 'PLACEHOLDER: won, then resigned to spend more time with her hat.' }, RIVAL_PLACEHOLDER('mayor', 2), RIVAL_PLACEHOLDER('mayor', 3)],
   },
@@ -436,7 +482,7 @@ const OFFICES_DEFAULT: z.input<typeof OfficeSchema>[] = [
     callFraction: 0.6,
     campaignPapers: 4,
     gossipMax: 6,
-    rivalPull: 9,
+    rivalPull: 4,
     scale: 1000,
     stand: { nr: 10, record: 80 },
     recordName: 'Province Record',
@@ -480,7 +526,7 @@ const OFFICES_DEFAULT: z.input<typeof OfficeSchema>[] = [
     callFraction: 0.6,
     campaignPapers: 5,
     gossipMax: 7,
-    rivalPull: 11,
+    rivalPull: 5,
     scale: 1_000_000,
     stand: { nr: 50, record: 170 },
     recordName: null,
@@ -516,7 +562,8 @@ const MINISTERS_DEFAULT = [
   M('bole', 'Ermintrude Bole', 'EB', 'brass', 'governor', { target: 'ribbon.mood', club: 'brass', add: 1 }),
   M('gusset', 'Percy Gusset', 'PG', 'anglers', 'governor', { target: 'campaign.money', mul: 0.67 }),
   M('wren', 'Marjorie Wren', 'MW', 'kites', 'president', { target: 'fee.money', club: 'kites', mul: 1.2 }),
-  M('tamp', 'Osric Tamp', 'OT', 'hedges', 'president', { target: 'sayNothing', mul: 0.7 }),
+  // PLACEHOLDER (sent to the lead, as A Gentle Week): ×0.7 on the cut of "Say nothing" (I × 0.86).
+  M('tamp', 'Osric Tamp', 'OT', 'hedges', 'president', { target: 'sayNothing.cut', mul: 0.7 }),
   M('nibley', 'Florence Nibley', 'FN', 'anglers', 'president', { target: 'requisition.money', club: 'anglers', mul: 0.9 }),
 ];
 
@@ -535,7 +582,7 @@ export const DecreeSchema = z.object({
       { id: 'tallest_bandstand', name: 'The Tallest Bandstand', atTerm: 8 },
       { id: 'ministry_of_ministries', name: 'The Ministry of Ministries', atTerm: 10 },
     ]),
-  /** Money tiers in seconds of B, frozen at the draw (tune ×0.5 to ×2 each), × a jitter j (rule 0.85 to 1.15); minimum 5 dibs. */
+  /** Money tiers in seconds of B, sized when the paper lands (D23; tune ×0.5 to ×2 each), × a jitter j drawn at the draw (rule 0.85 to 1.15); minimum 5 dibs. */
   money: z
     .object({
       S: pos.default(15),
@@ -554,8 +601,10 @@ export const DecreeSchema = z.object({
   forms: z
     .object({
       requisition: z.object({ clubGain: int.default(1), clubLoss: int.default(-1) }).prefault({}),
-      ribbon: z.object({ cost: z.enum(['S', 'M', 'L']).default('S'), clubGain: int.default(3), clubLoss: int.default(-1) }).prefault({}),
+      // D21: at a ministry that serves no club (ministry 0, the Grand Projects) the sign pleases every club by `everyGain`, at the same price; its refuse is "No change".
+      ribbon: z.object({ cost: z.enum(['S', 'M', 'L']).default('S'), clubGain: int.default(3), clubLoss: int.default(-1), everyGain: int.default(1) }).prefault({}),
       application: z.object({ clubGain: int.default(1), returnAfter: int.positive().default(30), days: z.array(int.positive()).default([9, 30, 60]) }).prefault({}),
+      // The club's +10 is FIXED (an unsized mood effect, BaseEffect mood `fixed`, 2.8 and the lemma of 2.7).
       settlement: z.object({ seconds: pos.default(20), clubFixed: int.default(10) }).prefault({}),
       apology: z.object({ every: int.default(-3) }).prefault({}),
       campaign: z.object({ seconds: pos.default(45), points: int.positive().default(4), within: pos.default(6) }).prefault({}),
@@ -582,8 +631,8 @@ export const DecreeSchema = z.object({
       quietFrom: int.positive().default(182),
     })
     .prefault({}),
-  /** Approval and its multiplier (2.4): M(A) = base + slope × A/100 (slope tune 0.8 to 1.4). */
-  approval: z.object({ base: z.number().default(0.4), slope: pos.default(1.2) }).prefault({}),
+  /** Approval and its multiplier (2.4): M(A) = 1 + slope × (A − 50)/100, so ×1.0 at 50 whatever the slope (slope tune 0.8 to 1.4; 1.2 gives 0.4 + 1.2 × A/100). */
+  approval: z.object({ slope: pos.default(1.2) }).prefault({}),
   /** Moods (2.2, 2.7): bounds, the sizing cap f ≤ capF, the petitioner weight clamp, the validator's |Δ| bound. */
   mood: z
     .object({
@@ -604,6 +653,8 @@ export const DecreeSchema = z.object({
       treasury: nonneg.default(30),
       trayCap: int.positive().default(10),
       slipDelay: nonneg.default(1),
+      /** D16: a slip on an empty desk with an empty tray keeps back this many seconds of B (tune 10 to 30). */
+      slipReserveSeconds: nonneg.default(15),
       takeBackSeconds: pos.default(2),
       /** At most this many papers past the cap for an event on top (2.7). */
       eventOverCap: int.min(0).default(1),
@@ -611,18 +662,22 @@ export const DecreeSchema = z.object({
     .prefault({}),
   /** Time away (2.15): arrival every n s (tune 240 to 600), rate a (tune 0.25 to 0.45), the cap (rule 4 h; +2 h with Long Lunch, D11). */
   away: z.object({ arrivalSeconds: pos.default(360), rate: prob.default(0.35), capHours: pos.default(4), longLunchHours: pos.default(2) }).prefault({}),
-  /** The ladder (2.10, 2.12): m_N = 1 + nrFactor × NR (tune 0.01 to 0.04); disarray Y per loss (tune 8 to 10, integer); the transition fund (tune 15 to 90 s of the old B); the new office's moods 50 + min(capBonus, floor(NR / nrPerPoint)). */
+  /**
+   * The ladder (2.10, 2.12): m_N = 1 + nrFactor × NR (tune 0.01 to 0.04); disarray after n consecutive
+   * losses Y(n) = 2^(n+1) − 2 share points (D15, a rule: +2, +6, +14, +30, +62), so a count is a certain
+   * win after at most `maxLossesBound` (5) losses for any pull up to 12; the transition fund (tune 15 to
+   * 90 s of the old B); the new office's moods 50 + min(moveMoodCap, floor(NR / moveMoodPerNr)).
+   */
   ladder: z
     .object({
       nrFactor: pos.default(0.02),
-      disarray: int.positive().default(8),
       winBase: int.default(3),
       sweepBonus: int.default(2),
       transitionFund: pos.default(30),
       moveMoodCap: int.default(5),
       moveMoodPerNr: int.positive().default(20),
       announceSeconds: pos.default(2.5),
-      maxLossesBound: int.positive().default(8),
+      maxLossesBound: int.positive().default(5),
     })
     .prefault({}),
   /** The vanity shelf (5.8): a monument a term from mayor term 2 for `price` s of B (tune 300 to 1,200), ×factor for good (tune 1.01 to 1.04). */
@@ -665,6 +720,23 @@ export const DecreeSchema = z.object({
       countingClerk: VisitorSchema.default({ face: 'face:tallow', name: 'Agatha Tallow', role: 'Counting Clerk', club: null }),
     })
     .prefault({}),
+  /**
+   * Follow-ups written with their paper (D20): the delay of a Committee's bigger study and of a
+   * Basket's favour, in decided papers (tune; 7.6 gives the favour 10 to 14; the bigger study's is
+   * PLACEHOLDER until the prototype or the lead sets it).
+   */
+  followUps: z
+    .object({
+      biggerStudyDelay: z.tuple([int.positive(), int.positive()]).default([8, 12]),
+      favourDelay: z.tuple([int.positive(), int.positive()]).default([10, 14]),
+    })
+    .prefault({}),
+  /**
+   * True only in the skeleton's placeholder game.json (scripts/content/office-placeholder.ts writes it;
+   * build-office.py never does): the satire lint's errors are then warnings. validate --release fails
+   * on any decree game.json that still contains the word PLACEHOLDER.
+   */
+  skeletonPlaceholder: z.boolean().default(false),
   deck: DeckSchema.prefault({}),
 });
 
@@ -735,8 +807,14 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
   { path: 'away.arrivalSeconds', low: 240, high: 600, spec: '2.2' },
   { path: 'away.rate', low: 0.25, high: 0.45, spec: '2.2' },
   { path: 'ladder.nrFactor', low: 0.01, high: 0.04, spec: '2.2' },
-  { path: 'ladder.disarray', low: 8, high: 10, spec: '2.2' },
   { path: 'ladder.transitionFund', low: 15, high: 90, spec: '2.2' },
+  { path: 'desk.slipReserveSeconds', low: 10, high: 30, spec: 'D16' },
+  { path: 'followUps.favourDelay[0]', low: 5, high: 30, spec: '7.6, D20' },
+  { path: 'followUps.favourDelay[1]', low: 5, high: 30, spec: '7.6, D20' },
+  { path: 'followUps.biggerStudyDelay[0]', low: 5, high: 30, spec: 'D20 (PLACEHOLDER)' },
+  { path: 'followUps.biggerStudyDelay[1]', low: 5, high: 30, spec: 'D20 (PLACEHOLDER)' },
+  // 8.4 "archetype shares": each ±0.05 around 2.2's share (lintDecree keeps the sum at 1 and traps ≤ 0.15).
+  ...ARCHETYPES_DEFAULT.flatMap((a, i) => (a.share ? [{ path: `archetypes[${i}].share`, low: Math.round((a.share - 0.05) * 100) / 100, high: Math.round((a.share + 0.05) * 100) / 100, spec: '2.2, 8.4' }] : [])),
   { path: 'vanity.price', low: 300, high: 1200, spec: '5.8' },
   { path: 'vanity.factor', low: 1.01, high: 1.04, spec: '2.2' },
   { path: 'approval.slope', low: 0.8, high: 1.4, spec: '2.4' },
@@ -772,11 +850,13 @@ export function lintDecree(d: DecreeContent): string[] {
     if (o.majority > o.districts.length) out.push(`${o.id}: majority ${o.majority} of ${o.districts.length} districts`);
     if (o.ministries[0]?.club !== null) out.push(`${o.id}: ministry 0 serves no club (so income is never zero)`);
     for (const m of o.ministries) if (m.club && !o.clubs.includes(m.club)) out.push(`${o.id}: ministry ${m.id} serves ${m.club}, not a club of this office`);
-    // 2.11: after at most 8 consecutive losses the next count is a certain win.
-    const bound = Math.ceil((50 + o.rivalPull) / d.ladder.disarray);
-    if (bound > d.ladder.maxLossesBound) out.push(`${o.id}: ceil((50 + R) / Y) = ${bound} > ${d.ladder.maxLossesBound} (2.11)`);
+    // 2.11 with D15: after `maxLossesBound` consecutive losses Y(n) = 2^(n+1) − 2 alone holds every district.
+    const n = d.ladder.maxLossesBound;
+    if (Math.pow(2, n + 1) - 2 - o.rivalPull < 50) out.push(`${o.id}: 2^(${n}+1) − 2 − R = ${Math.pow(2, n + 1) - 2 - o.rivalPull} < 50: a count is not a certain win after ${n} losses (2.11, D15)`);
   });
-  const shares = d.archetypes.filter((a) => a.id !== 'favour').reduce((s, a) => s + a.share, 0);
+  const followOnly = new Set<string>(FOLLOW_ONLY_ARCHETYPES);
+  for (const a of d.archetypes) if (followOnly.has(a.id) && a.share !== 0) out.push(`archetype ${a.id} is drawn only as a follow-up: its share must be 0`);
+  const shares = d.archetypes.filter((a) => !followOnly.has(a.id)).reduce((s, a) => s + a.share, 0);
   if (Math.abs(shares - 1) > 1e-9) out.push(`archetype shares sum to ${shares}, not 1`);
   const traps = d.archetypes.filter((a) => a.trap).reduce((s, a) => s + a.share, 0);
   if (traps > 0.15 + 1e-9) out.push(`traps are ${Math.round(traps * 100)} % of the draw (at most 15 %, 2.2)`);
@@ -791,5 +871,21 @@ export function lintDecree(d: DecreeContent): string[] {
   const setsUp = new Set([...d.deck.papers, ...d.deck.scripted].map((p) => p.setsUp).filter(Boolean));
   for (const c of d.deck.chains) if (!setsUp.has(c.id)) out.push(`deck: no paper sets up chain ${c.id} (an orphan follow-up)`);
   for (const p of [...d.deck.papers, ...d.deck.scripted]) if (p.setsUp && !d.deck.chains.some((c) => c.id === p.setsUp)) out.push(`deck: paper ${p.id} sets up unknown chain "${p.setsUp}"`);
+  // An archetype whose effects name 'other' needs `other` on every record that uses it (else the effect has no club).
+  const usesOther = new Set(d.archetypes.filter((a) => [...a.sign, ...a.refuse].some((e) => e.type === 'mood' && e.club === 'other')).map((a) => a.id as string));
+  const needOther = (where: string, archetype: string | null, other: string | null) => {
+    if (archetype && usesOther.has(archetype) && !other) out.push(`deck: ${where} is a ${archetype}, whose effects name the other club, but it has no \`other\``);
+  };
+  for (const p of d.deck.papers) needOther(`paper ${p.id}`, p.archetype, p.other);
+  for (const f of d.deck.frames) needOther(`frame ${f.id}`, f.archetype, f.other);
+  for (const c of d.deck.chains) for (const [b, f] of [['afterSign', c.afterSign], ['afterRefuse', c.afterRefuse]] as const) if (f) needOther(`chain ${c.id}.${b}`, f.archetype, f.other);
+  // D20: every Committee carries its bigger study and every Basket its favour, unless it sets up a chain of 7.6.
+  for (const p of [...d.deck.papers, ...d.deck.frames]) {
+    if (p.archetype === 'committee' && !p.biggerStudy && !('setsUp' in p && p.setsUp)) out.push(`deck: committee ${p.id} has no biggerStudy (D20: ↩ is printed on every Committee sign)`);
+    if (p.archetype === 'basket' && !p.favour && !('setsUp' in p && p.setsUp)) out.push(`deck: basket ${p.id} has no favour (D20: ↩ is printed on every Basket sign)`);
+    if (p.biggerStudy && p.archetype !== 'committee') out.push(`deck: ${p.id} has a biggerStudy but is a ${p.archetype}, not a committee`);
+    if (p.favour && p.archetype !== 'basket') out.push(`deck: ${p.id} has a favour but is a ${p.archetype}, not a basket`);
+  }
+  for (const [k, [lo, hi]] of Object.entries(d.followUps)) if (lo > hi) out.push(`followUps.${k}: [${lo}, ${hi}] is not low ≤ high`);
   return out;
 }
