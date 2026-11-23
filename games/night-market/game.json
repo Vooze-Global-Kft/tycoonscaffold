@@ -4,6 +4,7 @@
   "app": {
     "displayName": "Lantern Row",
     "slug": "lantern-row",
+    "owner": "roullerz",
     "iosBundleId": "com.voozeglobal.lanternrow",
     "androidPackage": "com.voozeglobal.lanternrow",
     "version": "1.0.0",

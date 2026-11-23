@@ -4,6 +4,7 @@
   "app": {
     "displayName": "Pizza Empire",
     "slug": "pizza-empire-idle",
+    "owner": "roullerz",
     "iosBundleId": "com.voozeglobal.pizzaempire",
     "androidPackage": "com.voozeglobal.pizzaempire",
     "version": "1.0.0",

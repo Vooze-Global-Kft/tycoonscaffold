@@ -4,6 +4,7 @@
   "app": {
     "displayName": "Orbit Haulers",
     "slug": "orbit-haulers",
+    "owner": "roullerz",
     "iosBundleId": "com.voozeglobal.orbithaulers",
     "androidPackage": "com.voozeglobal.orbithaulers",
     "version": "1.0.0",
