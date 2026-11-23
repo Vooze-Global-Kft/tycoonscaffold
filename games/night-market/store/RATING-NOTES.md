@@ -12,7 +12,7 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 | Ads | Yes: Google AdMob, rewarded (opt-in). Highest ad content rating: PG (parental guidance) (monetization.ads.maxAdContentRating) |
 | In-app purchases | Yes: 3 products (cosmetic, unlock, skipAds) |
 | Premium currency | Not sold |
-| Random items (chests) | 1 kind: gift boxes (a paper bag of 3 slots) with random contents, earned one every 25 filled tickets (merge.gift.every); the odds and the coin amount are shown before a box is opened |
+| Random items (chests) | 1 kind: gift boxes (a paper bag of 3 slots, 4 after lantern 14) with random contents, earned one every 25 filled tickets (merge.gift.every); the odds and the coin amount are shown before a box is opened |
 | Random items SOLD (money or any currency) | No: gift boxes are only earned by filling tickets; no purchase and no ad gives one |
 | Time-limited offers | No |
 | Daily rewards | No |
