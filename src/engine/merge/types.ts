@@ -267,6 +267,12 @@ export interface MergeState {
   festival: FestivalState;
   /** The next Parade is due at this season-clock time; a gold ticket out means none is drawn (2.7). */
   paradeAt: number;
+  /**
+   * "Call the dragon" rewards banked (M46 with the rules attack's finding): a video watched while a
+   * Parade fell due or came out during it. Each makes the next Parade due at once when the present one
+   * is paid or sent off (`restartParade`), or at the start of the next season. Absent = 0.
+   */
+  paradeBanked?: number;
   gift: GiftState;
   luckySparks: number;
   basketUndo: BasketUndo | null;

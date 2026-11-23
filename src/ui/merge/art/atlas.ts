@@ -37,7 +37,7 @@ import { ClipOp, Skia, type SkCanvas, type SkImage, type SkRect } from '@shopify
 import { BEAST_BOX, FIREFLY_WINGS, MINDERS, drawCustomer, drawDragon, drawFirefly, drawMinder, drawMinderHead, drawTrailPiece } from './animals.draw';
 import { drawLantern } from './lantern.draw';
 import { drawGear, drawTill, drawWaitingPip } from './gear.draw';
-import { GOOD_BOX, drawGood, drawTierPip, tierPipWidth } from './goods.draw';
+import { GOOD_BOX, drawGood, drawTierPip, tierPipHeight, tierPipWidth } from './goods.draw';
 import { CHAIN_IDS, COATS, CUSTOMER_SPECIES } from './palette';
 import { PARTICLES, drawParticle } from './spokes.draw';
 import { STALL_H, STALL_MINDER, STALL_W, drawStallFront, type Awning } from './stalls.draw';
@@ -174,7 +174,7 @@ export function atlasDefs(kind: AtlasKind): Def[] {
     d.push({ name: 'firefly', hw: 19, hh: 19, draw: (q) => drawFirefly(q) });
     for (let w = 0; w < FIREFLY_WINGS; w++) d.push({ name: `firefly-${w}`, hw: 19, hh: 19, draw: (q) => drawFirefly(q, 1, w / (FIREFLY_WINGS - 1)) });
     d.push({ name: 'trail', hw: 6, hh: 6, draw: (q) => drawTrailPiece(q) });
-    for (let k = 1; k <= 8; k++) d.push({ name: `pip-${k}`, hw: tierPipWidth(k) / 2 + 0.5, hh: 3.8, draw: (q) => drawTierPip(q, k) });
+    for (let k = 1; k <= 8; k++) d.push({ name: `pip-${k}`, hw: tierPipWidth(k) / 2 + 0.5, hh: tierPipHeight(k) / 2 + 0.6, draw: (q) => drawTierPip(q, k) });
     for (const p of PARTICLES) d.push({ name: `particle-${p}`, hw: 6, hh: 6, draw: (q) => drawParticle(q, p) });
     d.push({ name: 'waiting', hw: 6, hh: 6, draw: (q) => drawWaitingPip(q) });
     for (let k = 0; k < 5; k++) d.push({ name: `till-${k}`, hw: 8, hh: 11, draw: (q) => drawTill(q, k) });

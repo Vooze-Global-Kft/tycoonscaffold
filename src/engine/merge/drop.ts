@@ -41,17 +41,20 @@ function withBoard(g: MergeGame, board: MergeState['board'], extra: Partial<Merg
 }
 
 /**
- * A good of chain `good.c` at tier `good.k` was made (a merge, a drop, a shelf release, a gift
- * good, a shutter's good, a gear rush): best_c rises to it, the Ladder Book is stamped, and ORDERS's
- * `onTierMade` runs when it is the first of this (c, k) this season (best rose) or ever. Returns
- * the same object when it is neither. MECHANICS; used by events.ts and actions.ts too.
+ * A good of chain `good.c` at tier `good.k` arrived on the board (a merge, a drop, a shelf release,
+ * a gear rush, a gift good, a shutter's good, a good "Not tonight" returns): the Ladder Book is
+ * stamped, and ORDERS's `onTierMade` runs when it is the first of this (c, k) ever or best_c rose.
+ * Decision M51: best_c rises only when `raise` is true, i.e. for the player's own merges and the
+ * gears' drops (a shelf release and a gear rush are drops); a good from a gift box, a shutter, the
+ * opening board or "Not tonight" stamps the Book but leaves best_c as it is. Returns the same object
+ * when nothing changes. MECHANICS; used by events.ts and actions.ts too.
  */
-export function noteMade(cfg: MergeConfig, g: MergeGame, good: Good, events?: MergeEvent[]): MergeGame {
+export function noteMade(cfg: MergeConfig, g: MergeGame, good: Good, events: MergeEvent[] | undefined, raise: boolean): MergeGame {
   const m = g.merge;
   const ch = m.chains[good.c];
   if (!ch || good.k < 1 || good.k > TIERS) return g;
   const firstEver = !m.book[good.c]?.[good.k - 1];
-  const rose = good.k > ch.best;
+  const rose = raise && good.k > ch.best;
   if (!firstEver && !rose) return g;
   let book = m.book;
   if (firstEver) {
@@ -139,7 +142,7 @@ function merge(cfg: MergeConfig, g: MergeGame, from: number, to: number, good: G
   const discovered: Good[] = [];
   for (let k = good.k + 1; k <= made.k; k++) {
     if (!x.merge.book[good.c][k - 1]) discovered.push({ c: good.c, k });
-    x = noteMade(cfg, x, { c: good.c, k }, events);
+    x = noteMade(cfg, x, { c: good.c, k }, events, true);
   }
   x = onMerged(cfg, x, made, to, events);
   return { game: x, result: { kind: 'merge', cell: to, made, lucky, spark, discovered } };

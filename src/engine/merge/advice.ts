@@ -14,7 +14,7 @@
  *   below the cap;
  * - minder hire or level: (value(c, h′) − value(c, h))/Q;
  * - a new stall: ΔU/Φ, ΔU = value(c, max(2, maxPop − 1)) at its opening gear level and stall level 1;
- * - a shutter: κ × R/O (one cell).
+ * - a shutter: κ × R/O (one cell); only while some open stall's shelf holds goods (Decision M50).
  * Score = max(0, cost − cash)/R + cost/gain, the lowest wins. A candidate with no gain, or one the
  * player cannot reach (R = 0 and cost > cash), is never advised; one at its maximum has no cost
  * (params.ts) and is not a candidate.
@@ -90,8 +90,10 @@ export function adviceCandidates(cfg: MergeConfig, g: MergeGame): Advice[] {
       push(scored('openStall', ch.c, ch.openCost, dU / k.advice.newStallPhi, cash, R));
     }
   }
+  // Decision M50 (5): a shutter is a goal only while some open stall's shelf holds goods (the board is short of room), never while cells stand empty.
+  const shelved = m.chains.some((st) => st.open && st.shelf.length > 0);
   p.shutters.forEach((s, group) => {
-    if (s && s.allowed && p.O > 0) push(scored('shutter', group, s.cost, (k.advice.shutterKappa * R) / p.O, cash, R));
+    if (shelved && s && s.allowed && p.O > 0) push(scored('shutter', group, s.cost, (k.advice.shutterKappa * R) / p.O, cash, R));
   });
   return out.map((a, i) => ({ a, i })).sort((x, y) => x.a.score - y.a.score || x.i - y.i).map((x) => x.a);
 }

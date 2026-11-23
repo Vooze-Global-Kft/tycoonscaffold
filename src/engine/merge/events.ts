@@ -1,12 +1,14 @@
 /**
- * The tick's event queue (spec 2.4 with Decision M22): the next due event over (clock, clock + dt]
+ * The tick's event queue (spec 2.4 with Decision M50): the next due event over (clock, clock + dt]
  * and what each one does. Events run strictly in time order, ties broken by (time, kind, index) in
- * the order of `EVENT_KINDS`, except that shelf releases at one time go to the HIGHEST open chain
- * first (M22: when several shelves wait for the same freed cell). Every follow-up time is computed
+ * the order of `EVENT_KINDS`, except that shelf releases at one time go first to the stall with the
+ * FEWEST loose goods on the board, ties to the higher chain (M50, replacing M22's "highest chain
+ * first": the stall whose goods the player uses up is refilled). Every follow-up time is computed
  * from the event's own time, never from the end of the tick, so tick(a + b) equals tick(a) then
  * tick(b) exactly.
  *
- * Eligible times (2.4): a release or gift placement that found no room (F = 0, or the loose cap)
+ * Eligible times (2.4): a release or gift placement that found no room (M50: a gear's good needs
+ * F > gear.spare, a gift good F > 0; there is no loose cap)
  * records `blockedAt` and is due again at `freedAt` once `freedAt` > `blockedAt`; an empty counter
  * whose draw found no ticket records `blockedAt` and is due again at `changedAt` once `changedAt` >
  * `blockedAt`. A player action between ticks sets these to the current clock, so such an event can
@@ -32,7 +34,7 @@ import { CHAINS, EVENT_KINDS, type DrawOutcome, type EventKind, type Good, type 
 
 const KIND_ORDER: Record<EventKind, number> = Object.fromEntries(EVENT_KINDS.map((k, i) => [k, i])) as Record<EventKind, number>;
 
-/** The tie key of an event's index: releases go highest chain first (M22), every other kind lowest index first. */
+/** The tie key of an event's index: releases go highest chain first (the tie of M50's fewest-loose order), every other kind lowest index first. */
 const indexKey = (e: QueuedEvent) => (e.kind === 'release' ? -e.index : e.index);
 
 /** Whether event a runs before event b. */
@@ -42,13 +44,7 @@ export function before(a: QueuedEvent, b: QueuedEvent): boolean {
   return indexKey(a) < indexKey(b);
 }
 
-/** A good of chain c at tier k is "loose" when b_c ≤ k ≤ b_c + 1 (2.3). */
-function isLoose(cfg: MergeConfig, m: MergeState, c: number, k: number): boolean {
-  const b = baseTier(cfg, m.chains[c].gear);
-  return k >= b && k <= b + 1;
-}
-
-/** Loose_c (2.3). */
+/** Loose_c (2.3): chain-c goods on the board at tiers b_c and b_c + 1 (M50: a freed cell goes to the stall with the fewest). */
 function loose(cfg: MergeConfig, m: MergeState, c: number): number {
   const b = baseTier(cfg, m.chains[c].gear);
   let n = 0;
@@ -56,24 +52,19 @@ function loose(cfg: MergeConfig, m: MergeState, c: number): number {
   return n;
 }
 
-/** Decision M50: with `gear.spare` set the board fills to its last `spare` cells whatever the chain (no loose cap). */
-const fillFlow = (cfg: MergeConfig): boolean => cfg.merge.gear.spare !== undefined;
-
 /**
- * Room for a good of (c, k) by the drop rules (2.4 events 1 to 3). With the loose cap (M43): F > 0, and
- * below the cap when the good is loose. With M50's flow: a good from a gear (a drop or a shelf release)
- * needs more than `spare` free cells; a gift good may take any free cell (the spare cells are the hand's).
+ * Decision M50: room for a good by the drop rules (2.4 events 1 to 3). A good from a gear (a drop or a
+ * shelf release) needs more than `gear.spare` free cells, whatever the chain (there is no loose cap); a
+ * gift good may take any free cell (the spare cells are the hand's).
  */
-function roomForGood(cfg: MergeConfig, m: MergeState, c: number, k: number, fromGear = true): boolean {
+function roomForGood(cfg: MergeConfig, m: MergeState, fromGear: boolean): boolean {
   const F = freeCells(m).length;
-  if (F === 0) return false;
-  if (fillFlow(cfg)) return !fromGear || F > (cfg.merge.gear.spare ?? 0);
-  return !isLoose(cfg, m, c, k) || loose(cfg, m, c) < cfg.merge.gear.looseCap;
+  return fromGear ? F > cfg.merge.gear.spare : F > 0;
 }
 
-/** M50: among shelf releases due at the same time, the chain with the fewest loose goods on the board goes first (ties: the higher chain). */
+/** M50: among shelf releases due at the same time, the chain with the fewest loose goods on the board goes first (ties: the higher chain, as `before`). */
 function beforeByFlow(cfg: MergeConfig, m: MergeState, a: QueuedEvent, b: QueuedEvent): boolean {
-  if (fillFlow(cfg) && a.at === b.at && a.kind === 'release' && b.kind === 'release') {
+  if (a.at === b.at && a.kind === 'release' && b.kind === 'release') {
     const la = loose(cfg, m, a.index);
     const lb = loose(cfg, m, b.index);
     if (la !== lb) return la < lb;
@@ -149,11 +140,11 @@ export function drawDropTier(cfg: MergeConfig, m: MergeState, mods: Pick<Mods, '
   return streamValue(m, 'drop', n, c) < ripeChance(cfg, mods, L) ? b + 1 : b;
 }
 
-/** Places a good of chain c at its drop cell at time t and notes it as made. null when no cell is free. */
-function placeMade(cfg: MergeConfig, g: MergeGame, good: Good, t: number, events?: MergeEvent[]): { g: MergeGame; cell: number } | null {
+/** Places a good of chain c at its drop cell at time t and notes it as made (`raise`: a gear's good raises best_c, a gift good does not, M51). null when no cell is free. */
+function placeMade(cfg: MergeConfig, g: MergeGame, good: Good, t: number, events: MergeEvent[] | undefined, raise: boolean): { g: MergeGame; cell: number } | null {
   const placed = placeGood(g.merge, good, t);
   if (!placed) return null;
-  return { g: noteMade(cfg, withM(g, placed.m), good, events), cell: placed.cell };
+  return { g: noteMade(cfg, withM(g, placed.m), good, events, raise), cell: placed.cell };
 }
 
 /** 2.4 event 1: a gear drop. Exported for the away stepping of offline.ts (board frozen: `shelveOnly`). */
@@ -165,8 +156,8 @@ export function runDrop(cfg: MergeConfig, g: MergeGame, c: number, t: number, ev
   const n = m.draws.drop[c] ?? 0;
   const k = drawDropTier(cfg, m, mods, c, n);
   const counted = (mm: MergeState): MergeState => ({ ...mm, draws: { ...mm.draws, drop: mm.draws.drop.map((v, i) => (i === c ? n + 1 : v)) }, mstats: { ...mm.mstats, drops: mm.mstats.drops + 1 } });
-  if (!shelveOnly && (fillFlow(cfg) ? freeCells(m).length > (cfg.merge.gear.spare ?? 0) : freeCells(m).length > 0 && loose(cfg, m, c) < cfg.merge.gear.looseCap)) {
-    const r = placeMade(cfg, withM(g, counted(m)), { c, k }, t, events);
+  if (!shelveOnly && roomForGood(cfg, m, true)) {
+    const r = placeMade(cfg, withM(g, counted(m)), { c, k }, t, events, true);
     if (r) {
       events?.push({ type: 'drop', c, k, cell: r.cell });
       return withM(r.g, setChain(r.g.merge, c, { nextPopAt: t + T }));
@@ -190,8 +181,8 @@ function runRelease(cfg: MergeConfig, g: MergeGame, c: number, t: number, events
   const ch = m.chains[c];
   const k = ch.shelf[0];
   if (k === undefined) return withM(g, setChain(m, c, { releaseAt: null, blockedAt: null }));
-  if (!roomForGood(cfg, m, c, k)) return withM(g, setChain(m, c, { blockedAt: t, releaseAt: null }));
-  const r = placeMade(cfg, g, { c, k }, t, events);
+  if (!roomForGood(cfg, m, true)) return withM(g, setChain(m, c, { blockedAt: t, releaseAt: null }));
+  const r = placeMade(cfg, g, { c, k }, t, events, true);
   if (!r) return withM(g, setChain(m, c, { blockedAt: t, releaseAt: null }));
   const shelf = ch.shelf.slice(1);
   const restart = ch.waiting ? { waiting: false, nextPopAt: t + cfg.merge.gear.interval } : {};
@@ -206,8 +197,8 @@ function runGiftGood(cfg: MergeConfig, g: MergeGame, t: number, events?: MergeEv
   const i = pendingIndex(m);
   if (i < 0) return blocked();
   const good = m.gift.pendingGoods[i];
-  if (!roomForGood(cfg, m, good.c, good.k, false) || dropCell(m, good.c) === null) return blocked();
-  const r = placeMade(cfg, g, good, t, events);
+  if (!roomForGood(cfg, m, false) || dropCell(m, good.c) === null) return blocked();
+  const r = placeMade(cfg, g, good, t, events, false);
   if (!r) return blocked();
   const pendingGoods = r.g.merge.gift.pendingGoods.filter((_, j) => j !== i);
   events?.push({ type: 'giftGoodPlaced', good, cell: r.cell });

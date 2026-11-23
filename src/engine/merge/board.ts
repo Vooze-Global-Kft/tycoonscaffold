@@ -2,7 +2,8 @@
  * The board (spec 2.2, 2.4, 2.7): cells, the drop cell of a chain, placing a good, room.
  *
  * Seam (docs/design/market-build-plan.md): `placeGood` places drops, releases, gift goods, the
- * opening board and the goods "Not tonight" returns; `looseCount` serves the drop's loose cap λ;
+ * opening board and the goods "Not tonight" returns; `looseCount` serves M50's release order (the stall with
+ * the fewest loose goods first); `boardFull` is M50's "the board is full" (F ≤ gear.spare);
  * `compressedCells` serves bound (c) (Decision M43); `roomFor` is the
  * one room check of 2.7 ("Not tonight", gift goods); `freeCells` is F.
  */
@@ -31,6 +32,15 @@ export function roomFor(m: Pick<MergeState, 'board' | 'basketUndo'>, n: number):
 }
 
 /**
+ * Decision M50: "the board is full" means F ≤ gear.spare (the cells a gear leaves to the hand).
+ * Every measure and screen that says "the board is full" reads this one function; only then does
+ * a gear's good go to the shelf, and only with the shelf full does the gear wait.
+ */
+export function boardFull(cfg: MergeConfig, m: Pick<MergeState, 'board' | 'basketUndo'>): boolean {
+  return freeCells(m).length <= cfg.merge.gear.spare;
+}
+
+/**
  * The drop cell for chain c (spec 2.4): its anchor column a_c = round(index × 6 / (open stalls − 1))
  * (one stall: column 3), where index is its place among the open stalls; among free cells the
  * smallest (row, |col − a_c|, col). null when there is no free cell.
@@ -54,8 +64,8 @@ export function dropCell(m: Pick<MergeState, 'board' | 'basketUndo' | 'chains'>,
 /**
  * Places a good at `cell`, or at its chain's drop cell when `cell` is omitted. Returns the new
  * state and the cell, or null when there is no room (the cell is taken or nothing is free). Sets
- * `changedAt` to `at` (2.4: every placed good sets it). Does not check the loose cap (the drop
- * event does).
+ * `changedAt` to `at` (2.4: every placed good sets it). Does not check `gear.spare` (the drop
+ * event does, M50).
  */
 export function placeGood(m: MergeState, good: Good, at: number, cell?: number): { m: MergeState; cell: number } | null {
   const target = cell ?? dropCell(m, good.c);
@@ -66,7 +76,7 @@ export function placeGood(m: MergeState, good: Good, at: number, cell?: number):
 }
 
 /**
- * Loose_c: chain-c goods on the board with b_c ≤ k ≤ b_c + 1 (spec 2.3; the drop's loose cap λ;
+ * Loose_c: chain-c goods on the board with b_c ≤ k ≤ b_c + 1 (spec 2.3; M50: a freed cell goes to the stall with the fewest;
  * since Decision M43 bound (c) reads `compressedCells` instead). b_c is params.ts `baseTier`, written out here so this file does not
  * import params.ts (which imports this one); `mergeParams().chains[c].loose` gives the same number.
  */

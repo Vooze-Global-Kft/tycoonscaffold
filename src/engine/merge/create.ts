@@ -18,7 +18,7 @@ import { isGood, placeGood } from './board';
 import { scriptedTicket } from './draw';
 import { festivalFor } from './festival';
 import { currentMods } from './lanterns';
-import { baseTier, maxPopAt, RECENT_BUCKET, RECENT_BUCKETS } from './params';
+import { baseTier, maxPopAt, RECENT_BUCKET, RECENT_BUCKETS, withBank } from './params';
 import { openingBoard, seasonedStartLevel } from './season';
 import { BOARD_CELLS, CHAINS, TIERS, type Cell, type ChainState, type Counter, type MergeConfig, type MergeGame, type MergeState, type MergeStats, type TicketLine } from './types';
 
@@ -84,7 +84,8 @@ export function startSeason(cfg: MergeConfig, prev: MergeState, season: number, 
     counters,
     script: 'done',
     festival: { lines: festivalFor(cfg, season).map((g) => ({ c: g.c, k: g.k, filled: false })), filledAt: null },
-    paradeAt: m.parade.first,
+    // A banked "Call the dragon" left at the close: the new season's first Parade is due at once.
+    paradeAt: (prev.paradeBanked ?? 0) > 0 ? 0 : m.parade.first,
     gift: { ...prev.gift, nextAt: prev.gift.pendingGoods.length ? clock + m.gear.release : null, blockedAt: null },
     basketUndo: null,
     feats: { ...prev.feats, tier8sThisSeason: 0 },
@@ -93,6 +94,7 @@ export function startSeason(cfg: MergeConfig, prev: MergeState, season: number, 
     changedAt: clock,
     mstats: { ...prev.mstats, ticketsThisSeason: 0 },
   };
+  if ((prev.paradeBanked ?? 0) > 0) state = withBank(state, (prev.paradeBanked ?? 0) - 1);
   // An open chain's own drops count as made (2.3): the tiers b to maxPop are stamped in the Ladder Book.
   const book = state.book.map((row) => row.slice());
   chains.forEach((ch, c) => {
@@ -177,9 +179,9 @@ const isGoodRaw = (x: unknown): x is { c: number; k: number } => !!obj(x) && Num
  * A saved `merge` repaired field by field on top of a fresh state of the same clock (never throws
  * for any input; null when the save has no usable board or chains, which starts afresh). Every
  * number is clamped to its range, every list to its shape; cells follow `shuttersOpened`; goods
- * of closed chains go; the saved best stays (M32: a gear level never raises it; maxPop only for a
- * chain saved without one), a good on the board above it raises it (the Ladder Book is the saved
- * one, with each best tier and every good on the board stamped); counters follow the lit lanterns; a ticket whose lines are not
+ * of closed chains go; a season's block stays on any open cell (opened shutter cells included); the
+ * saved best stays (M32, M51: only merges and drops raise it; maxPop only for a chain saved without
+ * one; the Ladder Book is the saved one, with each best tier and every good on the board stamped); counters follow the lit lanterns; a ticket whose lines are not
  * possible now (bound (a)) or that a base drop would fill (bound (d1)) goes, and its counter draws
  * again; the Basket's undo chip is cleared (2.5).
  */
@@ -210,9 +212,8 @@ function repairMerge(cfg: MergeConfig, raw: unknown, clock: number, seed: number
       releaseAt: shelf.length ? timeOrNull(ch.releaseAt) : null,
       blockedAt: shelf.length ? timeOrNull(ch.blockedAt) : null,
       nextSaleAt: num(ch.nextSaleAt, clock + k.minders.interval),
-      // M32: a gear level never raises best_c, so a reload keeps the saved best (raised below only by
-      // a good on the board above it, as a placed good raises it in play; shelf and gift goods do not
-      // count until they are placed); maxPop is only the floor of an open chain whose save has no best.
+      // M32, M51: a reload keeps the saved best (only merges and drops raise it in play; a good on the
+      // board does not raise it here); maxPop is only the floor of an open chain whose save has no best.
       best: open ? (fin(ch.best) && ch.best >= 1 ? whole(ch.best, 0, 0, TIERS) : maxPopAt(cfg, currentMods(cfg, fresh), gear)) : 0,
       seasoned: whole(ch.seasoned, 0, 0, 10),
     };
@@ -226,11 +227,11 @@ function repairMerge(cfg: MergeConfig, raw: unknown, clock: number, seed: number
   const board: Cell[] = (s.board as unknown[]).map((cell, i) => {
     const sh = shutterOf.get(i);
     if (sh && sh[1] >= shuttersOpened[sh[0]]) return 'shutter';
-    if (cell === 'block' && !sh) return 'block';
-    if (isGoodRaw(cell) && chains[cell.c].open) {
-      chains[cell.c].best = Math.max(chains[cell.c].best, cell.k);
-      return { c: cell.c, k: cell.k };
-    }
+    // A season's block stays wherever the cell is open now, an opened shutter cell included (the
+    // hearth's corner braziers stand on shutter cells once their group is open).
+    if (cell === 'block') return 'block';
+    // M51: a good on the board does not raise best_c (a gift box's, a shutter's or a returned good may lie above it).
+    if (isGoodRaw(cell) && chains[cell.c].open) return { c: cell.c, k: cell.k };
     return null;
   });
   const rawBook = Array.isArray(s.book) ? (s.book as unknown[]) : [];
@@ -328,6 +329,7 @@ function repairMerge(cfg: MergeConfig, raw: unknown, clock: number, seed: number
     nextTicketId: Math.max(whole(s.nextTicketId, 1, 1), maxId + 1),
     festival: { lines: festLines, filledAt },
     paradeAt: num(s.paradeAt, k.parade.first, 0),
+    ...(whole(s.paradeBanked, 0, 0, 10) > 0 ? { paradeBanked: whole(s.paradeBanked, 0, 0, 10) } : {}),
     gift: {
       boxes,
       ticketsToBox: whole(gift0.ticketsToBox, mods.giftEvery, 1, Math.max(1, mods.giftEvery)),

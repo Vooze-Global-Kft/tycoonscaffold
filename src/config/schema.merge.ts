@@ -194,14 +194,16 @@ export const MergeSchema = z.object({
     maxBase: tier.default(4),
     /** The shelf (rule: 6, 8 with lantern 3). */
     shelf: int.positive().default(6),
-    /** λ, loose goods per chain before drops go to the shelf (Decision M43: 8, tune 6 to 12). */
-    looseCap: int.positive().default(8),
+    /** Gone (Decision M50: there is no loose cap). Still parsed so older content loads; ignored by the rules. */
+    looseCap: int.positive().optional(),
     /**
-     * Decision M50 (flow control): when set, there is NO loose cap: a gear's drop and a shelf release go to the board
-     * while more than `spare` cells are free, whatever the chain, and a freed cell goes to the shelf of the chain
-     * with the fewest loose goods on the board. Unset: the loose cap above (Decision M43).
+     * Decision M50 (flow control): there is no loose cap. A gear's drop and a shelf release go to the board while
+     * more than `spare` cells are free, whatever the chain; otherwise to the shelf, and with the shelf full the gear
+     * waits. A freed cell goes to the shelf of the stall with the fewest loose goods on the board (ties: the higher
+     * chain). Gift goods and goods "Not tonight" returns may take any free cell. "The board is full" means F ≤ spare
+     * (`boardFull`). 2, tuned 1 to 4.
      */
-    spare: int.min(0).optional(),
+    spare: int.min(0).default(2),
     /** Shelf release and gift-good cadence, s (rule). */
     release: pos.default(0.5),
   }).prefault({}),
@@ -414,7 +416,7 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
   // gear.interval is not here: T = 4 s is a rule (Decision M3; lintMerge checks it).
   { path: 'gear.step', low: 8, high: 12, spec: '2.2' },
   { path: 'gear.ripePerLevel', low: 0.04, high: 0.06, spec: '2.2' },
-  { path: 'gear.looseCap', low: 6, high: 12, spec: 'M43' },
+  { path: 'gear.spare', low: 1, high: 4, spec: 'M50' },
   { path: 'minders.interval', low: 10, high: 25, spec: '2.2' },
   { path: 'tickets.refillDelay', low: 2, high: 8, spec: '2.7' },
   { path: 'tickets.lineOddsEarly[0]', low: 0.5, high: 0.7, spec: '2.7' },

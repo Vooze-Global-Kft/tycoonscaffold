@@ -83,7 +83,10 @@ describe('names used by the game have drawings', () => {
     for (const sp of K.CUSTOMER_SPECIES) for (let k = 0; k < K.COATS; k++) expect(a).toContain(K.customerSprite(sp, k));
     for (let c = 0; c < 6; c++) expect(a).toContain(K.minderSprite(c));
     expect(a).toContain('dragon');
-    for (const c of game.merge.chains) expect(K.SPECIES as readonly string[]).toContain(c.minder.beast);
+    // A beast name of game.json is a kit species, or an old name the kit still answers to (M38: "raccoon" draws the hare).
+    for (const c of game.merge.chains) expect(K.speciesOf(c.minder.beast), c.minder.beast).not.toBeNull();
+    expect(K.speciesOf('raccoon')).toBe('hare');
+    expect(K.MINDERS.find((m) => m.id === 'tansy')?.species).toBe('hare');
     const items = K.spriteIds('items');
     for (let c = 0; c < 6; c++) {
       expect(items).toContain(K.gearSprite(c));

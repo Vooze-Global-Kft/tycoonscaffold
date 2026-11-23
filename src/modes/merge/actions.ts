@@ -10,6 +10,7 @@
  * Owned by the rules lead (it knows which result plays which key; the sound package may move keys).
  */
 import * as R from '../../engine/merge';
+import { grantCash } from '../../engine/economy';
 import type { GameState } from '../../engine/types';
 import { ads } from '../../services/ads';
 import { crash } from '../../services/firebase';
@@ -85,6 +86,24 @@ function playDrop(result: R.DropResult): void {
   }
 }
 
+/**
+ * Decision M49: away coins waiting to be collected are paid into the purse before a season closes,
+ * so they reset with it (the base amount, rounded as the away sheet prints it; the +50 % ad is not
+ * offered for coins about to reset). Only when the close will happen (the Festival is filled).
+ */
+function payPendingAway(cfg: R.MergeConfig, g: R.MergeGame): void {
+  const { offline } = useGame.getState();
+  if (!offline || !(offline.earnings > 0)) return;
+  let ok = false;
+  try {
+    ok = R.canCloseSeason(cfg, g);
+  } catch (e) {
+    crash.record(e, 'merge.canCloseSeason');
+  }
+  if (!ok) return;
+  useGame.setState({ game: grantCash(g as GameState, R.roundCoins(cfg, offline.earnings)), offline: null });
+}
+
 /** A rewarded ad is open (double taps). */
 let adOpen = false;
 
@@ -130,10 +149,14 @@ export const mergeActions = {
    * Closes the season (2.11) through the shared prestige (the engine mode's `prestige`); refused
    * until the Festival is filled. The store's gate is the engine mode's `canPrestige` (a merge game
    * earns no prestige points), so the close reaches the rules (src/modes/merge/wiring.test.ts).
+   * Decision M49: an away report still waiting (the "Close the season?" sheet was open when the app
+   * came back) is paid first, without the ad, so its coins reset with the purse instead of opening
+   * the next season's stalls.
    */
   closeSeason: (): boolean => {
     const before = mergeNow();
     if (!before) return false;
+    payPendingAway(before.cfg, before.g);
     useGame.getState().prestige();
     const after = mergeNow();
     return !!after && after.g.merge.season > before.g.merge.season;

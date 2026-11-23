@@ -9,8 +9,8 @@
  * From tier 5 the three glyphs stay at the same large size (about 70 % of the cell); each tier adds
  * a frame AROUND and BEHIND them, so the chain is read first at every tier
  *
- * Every good carries a tier pip (1 to 8 dots, grouped by four) on a dark plate: tier never relies on
- * colour. Glyphs differ by silhouette first (diagonal skewer, cup with handle and leaf, pleated bun,
+ * Every good carries a tier pip (1 to 8 dots on dark plates of up to four, a second plate under the
+ * first from tier 5) at its bottom edge: tier never relies on colour. Glyphs differ by silhouette first (diagonal skewer, cup with handle and leaf, pleated bun,
  * round berry with leaves, wide bowl with chopsticks, tall twisted puff knot), colour second.
  *
  * Coordinates: points, origin at the centre of a 48 pt square (`GOOD_BOX` half size 24), the size a
@@ -342,34 +342,60 @@ function lacquer(c: SkCanvas): void {
 
 const PIP_R = 1.75;
 const PIP_STEP = 4.2;
-const PIP_GROUP = 2;
-const PIP_H = 6.4;
+/** The height of one pip plate (points, scale 1). */
+export const PIP_H = 6.4;
+/** The gap between the plate of four and the plate under it (tiers 5 to 8). */
+export const PIP_GAP = 1;
 
-/** Width of a tier pip in points. */
+/** Width of one plate of `n` dots (1 to 4). */
+function plateWidth(n: number): number {
+  return (n - 1) * PIP_STEP + PIP_R * 2 + 3.4;
+}
+
+/** Width of a tier pip in points: its widest plate (a plate of four from tier 4 up). */
 export function tierPipWidth(tier: number): number {
-  const k = Math.max(1, Math.min(8, tier));
-  return (k - 1) * PIP_STEP + (k > 4 ? PIP_GROUP : 0) + PIP_R * 2 + 3.4;
+  const k = Math.max(1, Math.min(8, Math.round(tier)));
+  return plateWidth(Math.min(4, k));
+}
+
+/** Height of a tier pip in points: one plate up to tier 4, two stacked plates from tier 5. */
+export function tierPipHeight(tier: number): number {
+  return Math.round(tier) > 4 ? PIP_H * 2 + PIP_GAP : PIP_H;
+}
+
+function pipPlate(q: SkCanvas, n: number, left: number, cy: number): void {
+  const w = plateWidth(n);
+  q.drawPath(rrect(left, cy - PIP_H / 2, w, PIP_H, PIP_H / 2), fill(alpha(INK, 0.85)));
+  for (let i = 0; i < n; i++) q.drawPath(circle(left + 1.7 + PIP_R + i * PIP_STEP, cy, PIP_R), fill(NIGHT.paperLight));
 }
 
 /**
- * The tier pip: `tier` paper-white dots of 3.5 pt (grouped by four) on a dark plate, centred on
- * (x, y). `scale` grows it for small icons where the dots must stay countable.
+ * The tier pip: `tier` paper-white dots of 3.5 pt on dark plates of up to four, centred on (x, y).
+ * Tiers 1 to 4: one plate. Tiers 5 to 8: a plate of four with a plate of the rest under it, both
+ * flush left, so "four and two" is seen without counting. A ticket line and the Festival banner
+ * draw the same plates (play/pictures.ts drawSmallPip), so a line and the good on the board read
+ * alike. `scale` grows it for small icons where the dots must stay countable.
  */
 export function drawTierPip(c: SkCanvas, tier: number, x = 0, y = 0, scale = 1): void {
   const k = Math.max(1, Math.min(8, Math.round(tier)));
   const w = tierPipWidth(k);
   at(c, x, y, scale, 0, (q) => {
-    q.drawPath(rrect(-w / 2, -PIP_H / 2, w, PIP_H, PIP_H / 2), fill(alpha(INK, 0.85)));
-    let px = -w / 2 + 1.7 + PIP_R;
-    for (let i = 0; i < k; i++) {
-      q.drawPath(circle(px, 0, PIP_R), fill(NIGHT.paperLight));
-      px += PIP_STEP + (i === 3 ? PIP_GROUP : 0);
+    if (k <= 4) pipPlate(q, k, -w / 2, 0);
+    else {
+      const d = (PIP_H + PIP_GAP) / 2;
+      pipPlate(q, 4, -w / 2, -d);
+      pipPlate(q, k - 4, -w / 2, d);
     }
   });
 }
 
-/** Where the pip sits inside a good's square (centre). */
+/** Where a one-plate pip sits inside a good's square (centre); every pip keeps its bottom edge at PIP_Y + PIP_H / 2. */
 export const PIP_Y = 20.4;
+
+/** The centre of a good's tier pip (a two-plate pip grows upward from the same bottom edge). */
+export function pipCentreY(tier: number): number {
+  return PIP_Y + PIP_H / 2 - tierPipHeight(tier) / 2;
+}
 
 // ---------------------------------------------------------------------------
 // A good
@@ -417,7 +443,7 @@ export function drawGood(c: SkCanvas, chain: ChainId | number, tier: number, o: 
   };
   if (o.silhouette) flat(c, o.silhouette, body);
   else body(c);
-  if (o.pip !== false) drawTierPip(c, k, 0, PIP_Y);
+  if (o.pip !== false) drawTierPip(c, k, 0, pipCentreY(k));
 }
 
 /** Every good as [chain index, tier], in data order (48). */

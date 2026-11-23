@@ -9,8 +9,10 @@
  *         minder-<chain id>    a minder by stall: `minderIcon(chain)`; also <minder id> (oldbrindle,
  *                              pim, nettle, juniper, tansy, marlo)
  *         <species>            kept ONLY for game.json's minder portraits (`characters[].portrait`,
- *                              chains' `minder.beast`): badger, owl, hedgehog, otter, raccoon and bat
- *                              draw that species' MINDER; `beast:fox` draws the coat-0 fox customer
+ *                              chains' `minder.beast`): badger, owl, hedgehog, otter, hare and bat
+ *                              draw that species' MINDER; `beast:fox` draws the coat-0 fox customer;
+ *                              `beast:raccoon` (an old game.json's Tansy, decision M38) draws the
+ *                              hare (palette.ts BEAST_ALIASES)
  *         minder-<chain id>    a minder by stall; <minder id> (oldbrindle, pim, nettle, juniper, tansy, marlo)
  *         dragon, firefly
  * art:    good-<chain id>-<1..8>, gear-<chain id>, stall-<chain id>, coin, purse, basket, spark,
@@ -22,7 +24,7 @@ import { BEAST_BOX, MINDERS, drawCustomer, drawDragon, drawFirefly, drawMinder }
 import { drawGear } from './gear.draw';
 import { GOOD_BOX, drawGood } from './goods.draw';
 import { drawLantern } from './lantern.draw';
-import { CHAIN_IDS, COATS, CUSTOMER_SPECIES, NIGHT, alpha } from './palette';
+import { BEAST_ALIASES, CHAIN_IDS, COATS, CUSTOMER_SPECIES, NIGHT, alpha } from './palette';
 import { at, circle, fill, glow, rrect, stroke, INK } from './pen';
 import { drawBambooPole, drawRung, drawSeasonPiece } from './spokes.draw';
 import { STALL_W, drawStallFront } from './stalls.draw';
@@ -56,6 +58,7 @@ function build(): Record<string, IconDraw> {
     I[`beast:${m.id}`] = d;
     I[`beast:${m.species}`] = d;
   }
+  for (const [old, sp] of Object.entries(BEAST_ALIASES)) if (!I[`beast:${old}`] && I[`beast:${sp}`]) I[`beast:${old}`] = I[`beast:${sp}`];
   if (!I['beast:fox']) I['beast:fox'] = I['beast:fox-0'];
   I['beast:dragon'] = fit(B, drawDragon);
   I['beast:firefly'] = fit(17, (c) => drawFirefly(c));

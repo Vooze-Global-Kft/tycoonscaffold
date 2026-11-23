@@ -25,7 +25,13 @@ export type Step =
    * text is the app's own DOM text (React Native web renders it as text). Fails the scene after
    * `timeout` ms (default 30000).
    */
-  | { untilText: RegExp; absent?: boolean; timeout?: number };
+  | { untilText: RegExp; absent?: boolean; timeout?: number }
+  /**
+   * Opens another address of the same preview in the same tab ("" for none, the saved game) and
+   * waits `settle` ms (default 8000): for a state reached across page loads, e.g. a season closed
+   * by the preview's switches, saved, then a second one closed on the next load.
+   */
+  | { goto: string; settle?: number };
 
 export type SizeId = 'ios-6.9' | 'ios-6.5' | 'play-phone';
 
@@ -125,7 +131,7 @@ export interface Scene {
   tries?: number;
   /** The part of the screen the image shows (default: all of it). */
   frame?: (v: View) => BandSpec;
-  /** At most six words. A "\n" is a chosen line break. */
+  /** At most six words (Lantern Row: at most 40 characters). A "\n" is a chosen line break. */
   caption: string;
   /** One short line under the caption (the warm template only; the panel template has none). */
   sub?: string;

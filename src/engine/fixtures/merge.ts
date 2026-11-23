@@ -9,8 +9,11 @@
  * - `minute10`: about 10:00 in: three stalls, two minders, 38 cells, a Parade ticket out, a gift box waiting.
  * - `festivalNear`: about 2:40 in: five stalls, every shutter open, 4 counters, 3 of 4 Festival lines filled.
  *
- * The config is the specification's starting content (src/config/merge.content.ts) on the frozen
- * shared fixture `base-game.json`; it never reads the shipped game.json. Web only like the haul
+ * The config is `MERGE_TEST_CONTENT`, a FROZEN copy of the specification's starting content (taken
+ * from src/config/merge.content.ts on 23 November 2026, with Decision M50's `gear.spare` 2 and no
+ * loose cap), on the frozen shared fixture `base-game.json`; it never reads the shipped game.json or
+ * the content file, so a tuned number can never turn a rules test red (the lead's order 6: only
+ * mergeMode.test.ts's "the shipped content parses, lints clean and sits inside RANGES" reads it). Web only like the haul
  * fixtures (scripts/lib/modes.js WEB_ONLY): the presets reach it, phones never do.
  *
  * `mergeState(cfg, description)` builds any other mid-game state from a short description (open
@@ -21,7 +24,6 @@
  * add bot-played states beside these).
  */
 import { GameConfigSchema } from '../../config/schema';
-import { MERGE_STARTING_CONTENT } from '../../config/merge.content';
 import { MergeSchema, type MergeContentInput } from '../../config/schema.merge';
 import * as R from '../merge';
 import type { GameState } from '../types';
@@ -30,13 +32,229 @@ import baseGame from './base-game.json';
 /** A fixed epoch for fixtures (23 Nov 2026, 12:00 UTC). */
 export const FIXTURE_NOW = Date.UTC(2026, 10, 23, 12, 0, 0);
 
-/** The test config: the shared fields of the frozen fixture, mode "merge", the starting merge content with `overrides` (shallow per top-level key). */
+/**
+ * The rules tests' own merge content, frozen: the starting values of the specification as they stood
+ * when the tests were written (names included). Never edit it to follow a tuning; a rule change that
+ * needs a new number here changes the tests that pin it in the same commit.
+ */
+export const MERGE_TEST_CONTENT: MergeContentInput = {
+  chains: [
+    {
+      id: "grill",
+      name: "Grill",
+      gear: "Ember Grill",
+      tiers: [
+        "Pepper Skewer",
+        "Twin Skewer",
+        "Glazed Skewer",
+        "Skewer Bundle",
+        "Skewer Plate",
+        "Skewer Platter",
+        "Lantern Platter",
+        "Dragon Grill Board",
+      ],
+      minder: { name: "Old Brindle", beast: "badger" },
+    },
+    {
+      id: "tea",
+      name: "Tea",
+      gear: "Copper Urn",
+      tiers: ["Cup of Tea", "Twin Tea", "Milk Tea", "Tea Trio", "Tea Flight", "Tea Tray", "Lantern Tea Tray", "Midnight Tea Set"],
+      minder: { name: "Pim", beast: "owl" },
+    },
+    {
+      id: "steamer",
+      name: "Steamer",
+      gear: "Bamboo Steamer",
+      tiers: [
+        "Dumpling",
+        "Dumpling Pair",
+        "Glazed Dumpling",
+        "Dumpling Bundle",
+        "Dumpling Plate",
+        "Dumpling Platter",
+        "Lantern Steam Tray",
+        "Bamboo Banquet",
+      ],
+      minder: { name: "Nettle", beast: "hedgehog" },
+    },
+    {
+      id: "sweets",
+      name: "Sweets",
+      gear: "Sugar Pan",
+      tiers: [
+        "Candied Berry",
+        "Twin Berry",
+        "Chocolate Berry",
+        "Candy Posy",
+        "Berry Plate",
+        "Berry Platter",
+        "Lantern Berry Tray",
+        "Jewel Berry Board",
+      ],
+      minder: { name: "Juniper", beast: "otter" },
+    },
+    {
+      id: "noodles",
+      name: "Noodles",
+      gear: "Noodle Wok",
+      tiers: [
+        "Noodle Bowl",
+        "Twin Bowl",
+        "Broth Bowl",
+        "Noodle Trio",
+        "Noodle Plate",
+        "Family Bowl",
+        "Lantern Noodle Tray",
+        "Thousand-Thread Board",
+      ],
+      minder: { name: "Tansy", beast: "hare" },
+    },
+    {
+      id: "puffs",
+      name: "Puffs",
+      gear: "Lantern Pan",
+      tiers: ["Puff Drop", "Twin Puff", "Caramel Puff", "Puff Bundle", "Puff Plate", "Golden Heap", "Sun Platter", "Paper Moon Board"],
+      minder: { name: "Marlo", beast: "bat" },
+      fromSeason: 1,
+    },
+  ],
+  values: { base: 5, chainStep: 4, tierGrowth: 2.4 },
+  board: {
+    cols: 7,
+    rows: 8,
+    open: [14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 47],
+    shutterGroups: [
+      { cells: [49, 50, 51, 52, 53, 54], condition: { type: "tierMade", chain: 0, tier: 3 } },
+      { cells: [6, 13, 20, 27, 34, 41, 48, 55], condition: { type: "chainOpen", chain: 2 } },
+      { cells: [7, 8, 9, 10, 11, 12], condition: { type: "chainOpen", chain: 3 } },
+      { cells: [0, 1, 2, 3, 4, 5], condition: { type: "chainOpen", chain: 4 } },
+    ],
+    shutterBase: 30,
+    shutterGrowth: 1.45,
+    goodEvery: 3,
+    goodFirst: 2,
+    goodNearShare: 0.6,
+  },
+  costs: {
+    stallOpen: [120, 3200, 51200, 819000, 13100000],
+    gearBase: 20,
+    gearGrowth: 1.45,
+    gearMaxLevel: 40,
+    stallLevelBase: 50,
+    stallLevelGrowth: 1.35,
+    stallMaxLevel: 31,
+    minderBase: 150,
+    minderGrowth: 3,
+    minderMaxLevel: 4,
+    roundBelow: 1000,
+    sigDigits: 3,
+  },
+  gear: { interval: 4, step: 10, ripePerLevel: 0.05, ripeMax: 0.6, maxBase: 4, shelf: 6, release: 0.5, spare: 2 },
+  stalls: { bonusPerLevel: 0.1, bonusMax: 3.9, awningLevels: [5, 10] },
+  minders: { interval: 15, tillRoll: 60 },
+  merges: { luckyOdds: 25 },
+  basket: { share: 0.25, undoSeconds: 4 },
+  tickets: {
+    counters: 2,
+    refillDelay: 4,
+    lineOddsEarly: [0.6, 0.35, 0.05],
+    lineOddsLate: [0.45, 0.4, 0.15],
+    lateFrom: 1800,
+    topChainWeight: 3,
+    gamma: 1,
+    stretch: 0.15,
+    beta: 0.15,
+    outputWindow: 180,
+    handActions: 60,
+    spareCells: 6,
+    notTonightCooldown: 30,
+    customers: ["fox", "hedgehog", "badger", "otter", "bat", "owl"],
+    coats: 3,
+  },
+  parade: { every: 600, first: 360, multiplier: 2, lines: 3, outputWindow: 360, handActions: 100 },
+  festival: [
+    [{ chain: 0, tier: 8 }, { chain: 1, tier: 8 }, { chain: 2, tier: 6 }, { chain: 4, tier: 5 }],
+    [{ chain: 0, tier: 8 }, { chain: 1, tier: 8 }, { chain: 2, tier: 6 }, { chain: 4, tier: 5 }, { chain: 5, tier: 4 }],
+    [{ chain: 0, tier: 8 }, { chain: 1, tier: 8 }, { chain: 2, tier: 6 }, { chain: 4, tier: 5 }, { chain: 5, tier: 4 }],
+    [{ chain: 0, tier: 8 }, { chain: 1, tier: 8 }, { chain: 2, tier: 7 }, { chain: 4, tier: 5 }, { chain: 5, tier: 4 }],
+  ],
+  festivalSparks: 3,
+  gift: {
+    every: 25,
+    slots: 3,
+    odds: { coins: 0.5, good: 0.35, spark: 0.15 },
+    goodSteps: [2, 3, 4],
+    goodOdds: [0.6, 0.3, 0.1],
+    coinPace: 0.5,
+  },
+  lanterns: [
+    { n: 1, feat: { type: "tickets", count: 3 }, effect: { type: "counters", value: 3 }, isNew: true },
+    { n: 2, feat: { type: "tickets", count: 25 }, effect: { type: "basketShare", value: 0.4 } },
+    { n: 3, feat: { type: "tierMade", tier: 6 }, effect: { type: "shelfCap", value: 8 } },
+    { n: 4, feat: { type: "tickets", count: 100 }, effect: { type: "counters", value: 4 }, isNew: true },
+    { n: 5, feat: { type: "discover", count: 30 }, effect: { type: "paradeEvery", value: 480 }, isNew: true },
+    { n: 6, feat: { type: "tierMade", tier: 8 }, effect: { type: "awayHours", value: 2 } },
+    { n: 7, feat: { type: "merges", count: 1000 }, effect: { type: "luckyOdds", value: 20 } },
+    { n: 8, feat: { type: "seasonsClosed", count: 1 }, effect: { type: "startOpen", chain: 1 }, isNew: true },
+    { n: 9, feat: { type: "ladderComplete" }, effect: { type: "seasonedSteps", value: 1 } },
+    { n: 10, feat: { type: "parades", count: 50 }, effect: { type: "paradeMultiplier", value: 2.5 } },
+    { n: 11, feat: { type: "allMinders" }, effect: { type: "mindersStartHired" }, isNew: true },
+    { n: 12, feat: { type: "tickets", count: 500 }, effect: { type: "ripeAdd", value: 0.05 } },
+    { n: 13, feat: { type: "threeLineTickets", count: 50 }, effect: { type: "betaAdd", value: 0.1 } },
+    { n: 14, feat: { type: "allShutters" }, effect: { type: "giftSlots", value: 4 }, isNew: true },
+    { n: 15, feat: { type: "seasonsClosed", count: 3 }, effect: { type: "minderIntervalMult", value: 0.8 } },
+    { n: 16, feat: { type: "tickets", count: 2000 }, effect: { type: "luckyOdds", value: 16 } },
+    { n: 17, feat: { type: "discover", count: 48 }, effect: { type: "sparkTiers", value: 2 } },
+    { n: 18, feat: { type: "seasonsClosed", count: 8 }, effect: { type: "festivalSparks", value: 5 } },
+    { n: 19, feat: { type: "parades", count: 100 }, effect: { type: "giftEveryMult", value: 0.8 } },
+    { n: 20, feat: { type: "tier8sInSeason", count: 10 }, effect: { type: "ticketPay", value: 1.05 } },
+  ],
+  seasons: {
+    table: [
+      { name: "Spring Lanterns", shape: "rectangle", character: "none" },
+      { name: "Summer Fireflies", shape: "rectangle", character: "fireflies" },
+      { name: "Autumn Moon", shape: "moonGate", character: "harvest" },
+      { name: "Winter Embers", shape: "hearth", character: "warmGear" },
+      { name: "Second Spring", shape: "rectangle", character: "lateCrowd" },
+      { name: "Second Summer", shape: "moonGate", character: "marketDay" },
+      { name: "Second Autumn", shape: "hearth", character: "fireflies" },
+      { name: "Second Winter", shape: "rectangle", character: "harvest" },
+      { name: "Third Spring", shape: "moonGate", character: "warmGear" },
+      { name: "Third Summer", shape: "hearth", character: "lateCrowd" },
+      { name: "Third Autumn", shape: "rectangle", character: "marketDay" },
+      { name: "Third Winter", shape: "moonGate", character: "fireflies" },
+      { name: "Fourth Spring", shape: "hearth", character: "harvest" },
+      { name: "Fourth Summer", shape: "rectangle", character: "warmGear" },
+      { name: "Fourth Autumn", shape: "moonGate", character: "lateCrowd" },
+      { name: "Fourth Winter", shape: "hearth", character: "marketDay" },
+    ],
+    repeatFrom: 1,
+    moonGateCells: [23, 24],
+    fireflies: { luckyOdds: 12 },
+    harvest: { threeLineShare: 0.25, betaAdd: 0.1 },
+    warmGear: { ripeAdd: 0.15 },
+    lateCrowd: { minderIntervalMult: 0.67 },
+    marketDay: { paradeEvery: 300 },
+    stepTier: 6,
+    maxSteps: 1,
+    familiarBase: 0.85,
+    familiarMax: 4,
+    openingGoods: 6,
+  },
+  ads: { fillLineCooldown: 300, gearRushGoods: 6, gearRushCooldown: 900, callDragonCooldown: 1200, awayBonus: 0.5 },
+  away: { capHours: 4, lateHoursHours: 4 },
+  advice: { newStallPhi: 40, shutterKappa: 1 },
+  products: { awnings: "night_awnings", lateHours: "night_late_hours", quietEvening: "night_quiet_evening" },
+};
+
+/** The test config: the shared fields of the frozen fixture, mode "merge", the frozen test content (`MERGE_TEST_CONTENT`) with `overrides` (shallow per top-level key). */
 export function mergeTestConfig(overrides: Partial<MergeContentInput> = {}): R.MergeConfig {
   const raw = { ...(baseGame as Record<string, unknown>), mode: 'merge', soundPack: null, businesses: [], upgrades: [] };
   const cfg = GameConfigSchema.parse(raw);
   cfg.economy.prestige = { ...cfg.economy.prestige, bonusPerPoint: 0 };
   cfg.economy.startingCash = 0;
-  const merge = MergeSchema.parse(JSON.parse(JSON.stringify({ ...MERGE_STARTING_CONTENT, ...overrides })));
+  const merge = MergeSchema.parse(JSON.parse(JSON.stringify({ ...MERGE_TEST_CONTENT, ...overrides })));
   return { ...cfg, merge } as R.MergeConfig;
 }
 
@@ -278,8 +496,8 @@ export function mergeFixtures(cfg: R.MergeConfig = mergeTestConfig()) {
 
 /**
  * What a reachable state keeps, as a list of broken invariants ([] = valid): 56 cells; open cells
- * and shutters as `shuttersOpened` says; goods of open chains only, at tiers 1 to 8, never above
- * best; the Ladder Book holds each best tier and every good on the board; counters as the lit lanterns allow;
+ * and shutters as `shuttersOpened` says; goods of open chains only, at tiers 1 to 8 (M51: a gift,
+ * shutter or returned good may lie above best); the Ladder Book holds each best tier and every good on the board; counters as the lit lanterns allow;
  * every unfilled ticket line inside bound (a) (k ≤ min(8, best + 1)) and (d1) (k ≥ b + 1) unless the
  * ticket is scripted; at most one gold ticket; shelves within their cap; no Pocket field (M5).
  * With `afterPlay` the draw-time bound (d1) is not checked (a gear level bought after the draw may
@@ -303,7 +521,6 @@ export function fixtureProblems(cfg: R.MergeConfig, g: R.MergeGame, opts: { afte
     const ch = m.chains[cell.c];
     if (!ch?.open) out.push(`cell ${i}: a good of closed chain ${cell.c}`);
     if (cell.k < 1 || cell.k > 8) out.push(`cell ${i}: tier ${cell.k}`);
-    if (ch && cell.k > ch.best) out.push(`cell ${i}: tier ${cell.k} above best ${ch.best} of chain ${cell.c}`);
     if (!m.book[cell.c]?.[cell.k - 1]) out.push(`cell ${i}: (${cell.c}, ${cell.k}) on the board but not in the Ladder Book`);
   });
   m.chains.forEach((ch, c) => {

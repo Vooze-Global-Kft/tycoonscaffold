@@ -146,7 +146,7 @@ function goods(): Section {
   const cells: Cell[] = [];
   for (let ch = 0; ch < 6; ch++)
     for (let k = 1; k <= 8; k++) cells.push({ label: `${CHAIN_IDS[ch]} ${k}`, w: 48, h: 48, zoom: ch === 0 ? 2 : 0, draw: (c) => drawGood(c, ch, k) });
-  for (let k = 1; k <= 8; k++) cells.push({ label: `PIP ${k}`, w: 34, h: 8, zoom: 2, draw: (c) => drawTierPip(c, k) });
+  for (let k = 1; k <= 8; k++) cells.push({ label: `PIP ${k}`, w: 22, h: 15, zoom: 2, draw: (c) => drawTierPip(c, k) });
   cells.push({ label: 'SILHOUETTE', w: 48, h: 48, zoom: 2, draw: (c) => drawGood(c, 2, 5, { silhouette: NIGHT.inkSoft, pip: false }) });
   return { title: 'Goods: the eight dressings', cells };
 }

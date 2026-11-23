@@ -96,7 +96,7 @@ export function openStall(cfg: MergeConfig, g: MergeGame, c: number, events?: Me
       let y = withM(x, touched(setChain(m, c, { open: true, stall: 1, minder: mods.mindersStartHired ? 1 : 0, shelf: [], waiting: false, nextPopAt: t + cfg.merge.gear.interval, releaseAt: null, blockedAt: null, nextSaleAt: t + saleInterval(cfg, mods), best: 0 }), t));
       events?.push({ type: 'stallOpen', c });
       const top = maxPopAt(cfg, mods, ch.gear);
-      for (let k = baseTier(cfg, ch.gear); k <= top; k++) y = noteMade(cfg, y, { c, k }, events);
+      for (let k = baseTier(cfg, ch.gear); k <= top; k++) y = noteMade(cfg, y, { c, k }, events, true);
       return y;
     },
     events,
@@ -208,7 +208,8 @@ export function openShutter(cfg: MergeConfig, g: MergeGame, group: number, event
       board[next.cell] = good;
       let y = withM(x, touched({ ...m, board, shuttersOpened: m.shuttersOpened.map((v, i) => (i === group ? v + 1 : v)), draws: good ? { ...m.draws, shutter: m.draws.shutter + 1 } : m.draws }, t));
       events?.push({ type: 'shutterOpen', group, cell: next.cell, good });
-      if (good) y = noteMade(cfg, y, good, events);
+      // M51: a shutter's good stamps the Ladder Book; it does not raise best_c.
+      if (good) y = noteMade(cfg, y, good, events, false);
       return y;
     },
     events,
@@ -243,10 +244,10 @@ export function notTonight(cfg: MergeConfig, g: MergeGame, counter: number, even
   // M42: while the opening script waits, the counter is held; a scripted ticket sent off may end the script.
   mm = settleScript(cfg, mm, t);
   events?.push({ type: 'notTonight', counter });
-  // A returned good is placed, so it counts as made (M32): a line the "Fill one line" ad filled
-  // comes back as a good that was never on the board, and best_c and the Ladder Book must hold it.
+  // A returned good stamps the Ladder Book (a line the "Fill one line" ad filled comes back as a
+  // good that was never on the board); by Decision M51 it does not raise best_c.
   let out = withM(g, mm);
-  for (const good of back) out = noteMade(cfg, out, good, events);
+  for (const good of back) out = noteMade(cfg, out, good, events, false);
   return out;
 }
 
@@ -325,16 +326,25 @@ export function canWatchAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, co
  * service skips the video, Decision M13; the rules never read the product): "Fill one line" fills
  * the cheapest unfilled line of `counter`'s ticket (by value; ties the first), never the last, so
  * the ticket still ends with a drag; "Gear rush" drops up to `gearRushGoods` base-tier goods per
- * open gear into free cells now, highest chain first (the loose cap ignored, never beyond F);
+ * open gear into free cells now, highest chain first (any free cell, `gear.spare` included: the
+ * reward is the hand's; never beyond F);
  * "Call the dragon" (M14, M46) makes the Parade due from this moment: it is seated at once at the
  * lowest empty counter when there is one and a Parade fits its bounds now, otherwise it takes the
  * next counter that frees (the refill draws it, as any due Parade); a player who watched the video
- * never gets nothing. The Parade clock restarts when it is filled or sent off, as after any
- * Parade. Starts the cooldown (play clock, M10). Refused (same object) whenever `canWatchAd` is false.
+ * never gets nothing: when a Parade fell due or came out while the video played (so `canWatchAd` is
+ * false now), the reward is banked (`paradeBanked`): the next Parade is due at once when this one is
+ * paid or sent off. The Parade clock restarts when it is filled or sent off, as after any Parade.
+ * Starts the cooldown (play clock, M10). Otherwise refused (same object) whenever `canWatchAd` is false.
  */
 export function grantAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, counter?: number, events?: MergeEvent[]): MergeGame {
-  if (!canWatchAd(cfg, g, kind, counter)) return g;
   const t = clockOf(g);
+  // "Call the dragon" when a Parade fell due or came out while the video played (its cooldown over, the
+  // script done): the reward is banked, the next Parade due at once after this one (`restartParade`).
+  if (kind === 'callDragon' && !canWatchAd(cfg, g, kind, counter) && t + EPS >= (g.merge.ads.callDragon ?? 0) && g.merge.script === 'done' && (paradeOut(g.merge) || paradeDue(g.merge, t))) {
+    events?.push({ type: 'adGranted', kind });
+    return withM(g, { ...g.merge, paradeBanked: (g.merge.paradeBanked ?? 0) + 1, ads: { ...g.merge.ads, callDragon: t + cooldown(cfg, kind) } });
+  }
+  if (!canWatchAd(cfg, g, kind, counter)) return g;
   const ready = (x: MergeGame): MergeGame => withM(x, { ...x.merge, ads: { ...x.merge.ads, [kind]: t + cooldown(cfg, kind) } });
   let x = g;
   switch (kind) {
@@ -357,7 +367,7 @@ export function grantAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, count
         for (let n = 0; n < per; n++) {
           const placed = placeGood(x.merge, good, t);
           if (!placed) break;
-          x = noteMade(cfg, withM(x, { ...placed.m, mstats: { ...placed.m.mstats, drops: placed.m.mstats.drops + 1 } }), good, events);
+          x = noteMade(cfg, withM(x, { ...placed.m, mstats: { ...placed.m.mstats, drops: placed.m.mstats.drops + 1 } }), good, events, true);
           events?.push({ type: 'drop', c, k: good.k, cell: placed.cell });
         }
       }

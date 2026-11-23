@@ -161,13 +161,24 @@ export function saleInterval(cfg: MergeConfig, mods: Pick<Mods, 'minderIntervalM
   return cfg.merge.minders.interval * mods.minderIntervalMult;
 }
 
+/** `m` with `paradeBanked` set to n (the field absent at 0, so a reload gives the same state). */
+export function withBank(m: MergeState, n: number): MergeState {
+  const { paradeBanked, ...rest } = m;
+  void paradeBanked;
+  return n > 0 ? { ...rest, paradeBanked: n } : rest;
+}
+
 /**
  * The Parade clock restarted at game clock `clock` (2.7: "the clock restarts when it is filled or
  * sent off"): `paradeAt` = season clock now + the Parade interval (with lantern 5 or Market day).
  * The one helper for every restart: META's `onTicketPaid` after a paid gold ticket, MECHANICS's
- * `notTonight` when the gold ticket is sent off.
+ * `notTonight` when the gold ticket is sent off. With a banked "Call the dragon" (`paradeBanked`)
+ * the next Parade is due at once instead, and the bank goes down by one.
  */
 export function restartParade(cfg: MergeConfig, m: MergeState, clock: number): MergeState {
+  const banked = m.paradeBanked ?? 0;
+  // A banked "Call the dragon" (a video watched while this Parade fell due or came out): the next is due at once.
+  if (banked > 0) return withBank({ ...m, paradeAt: clock - m.seasonStartedAt }, banked - 1);
   return { ...m, paradeAt: clock - m.seasonStartedAt + currentMods(cfg, m).paradeEvery };
 }
 

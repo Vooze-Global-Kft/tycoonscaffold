@@ -26,7 +26,7 @@ amber, amberSoft, amberPale, amberDeep, flame, paper, paperLight, paperShade, pa
 brassLight, brassDeep, red, redDeep, ink, inkSoft, white, wood…, bamboo…, stone…, leaf, leafDeep,
 silk, silkLight, silkDeep, moon), `CHAIN_IDS` (grill, tea, steamer, sweets, noodles, puffs = data
 order), `CHAIN` (per chain: main, shade, light, accent, awning, awningShade), `CUSTOMER_SPECIES`,
-`SPECIES` (+ raccoon), `COATS` (3), `COAT`, `alpha`, `mix`, `shade`, `luma`, `GREY_MATRIX`.
+`SPECIES` (+ hare, a minder only; `BEAST_ALIASES` / `speciesOf`: the old name `raccoon` draws the hare, M38), `COATS` (3), `COAT`, `alpha`, `mix`, `shade`, `luma`, `GREY_MATRIX`.
 
 ## pen.ts
 `INK`, `INK_W`, `fill`, `stroke`, `dashed`, `light`, `glowPaint`, `linearPaint`, `clip`, `glow`,
@@ -42,8 +42,8 @@ Words come from the caller (game.json or strings.ts); the kit holds shapes only.
 ## goods.draw.ts (48 pt square, centred)
 - `GOOD_BOX` (24, half size), `TIERS`, `DRESSINGS` (glyph, pair, glaze, ribbon, plate, garnish, halo, lacquer).
 - `drawGood(c, chain, tier, {pip = true, silhouette?: colour})`: chain id or index; tier 1..8. The
-  drawing stays inside the 48 pt square (the atlas test checks it); the tier pip sits at `PIP_Y`
-  (20.4) below the centre. From tier 5 the three glyphs keep one large size (about 70 % of the
+  drawing stays inside the 48 pt square (the atlas test checks it); the tier pip's bottom edge sits at
+  `PIP_Y` + `PIP_H` / 2 (23.6) below the centre (`pipCentreY(tier)`; a two-plate pip grows upward). From tier 5 the three glyphs keep one large size (about 70 % of the
   cell) and each tier adds a frame round and behind them: plate (5), dark rimmed plate and a ring
   of leaves (6), a lantern halo behind (7), the indigo lacquer board round the cell (8). Tier 3 is
   the pair coated over its top half in the chain's `GLAZE` (honey, milk, soy, dark chocolate,
@@ -52,8 +52,11 @@ Words come from the caller (game.json or strings.ts); the kit holds shapes only.
 - `drawGlyph(c, chain, s)`: the chain's base glyph (about 20 pt at s = 1): diagonal skewer, cup with
   handle and leaf, pleated bun on a mat, berry with leaf cap, wide bowl with chopsticks, tall twisted
   puff knot (a cone: never round like the berry). `GLAZE` (tier-3 coat per chain).
-- `drawTierPip(c, tier, x, y, scale)`: 1..8 paper dots of 3.5 pt grouped by four on a dark plate,
-  6.4 x 10..43 pt; `tierPipWidth(tier)`.
+- `drawTierPip(c, tier, x, y, scale)`: 1..8 paper dots of 3.5 pt on dark plates of up to four,
+  centred on (x, y): tiers 1 to 4 one plate (6.4 x 8.9..21.5 pt), tiers 5 to 8 the plate of four with
+  a plate of the rest under it, flush left (21.5 x 13.8 pt); the same plates a ticket line and the
+  Festival banner draw (play/pictures.ts `drawSmallPip`), so a line and its good read alike.
+  `tierPipWidth(tier)` (the widest plate), `tierPipHeight(tier)`, `PIP_H`, `PIP_GAP`.
 - `allGoods()`: every [chain, tier].
 
 ## gear.draw.ts
@@ -87,7 +90,7 @@ badger; otter with a long low head, a pale muzzle band and a sleek neck; bat wit
 its shoulders, a pug nose and tiny fangs; owl with a feather facial disc and beak, no tufts; each
 with a scarf), `drawMinder(c, chainIndex)` (`MINDERS`, each in different work clothes: Old Brindle
 badger, waistcoat and spectacles; Pim owl, sash and a tea sprig; Nettle hedgehog, bib apron and a
-headband; Juniper otter, cross-strap apron and a flower; Tansy raccoon, a cook's neckerchief and a
+headband; Juniper otter, cross-strap apron and a flower; Tansy hare (M38: long dark-tipped ears, one bent; no mask), a cook's neckerchief and a
 ladle; Marlo bat, a short jacket with a lantern pin), `drawMinderHead(c, chain, size)` (head only,
 centred, fitted to a size pt square: the stall front's minder), `drawDragon(c)` (an origami serpent
 of folded facets, paper and amber, accordion body; no mane, whiskers, horns or mask),
@@ -188,8 +191,8 @@ an atlas once). Per frame only transforms, opacities and atlas sprites change.
 - **A customer is never a bare species name**: `customerIcon(species, coat)` → `beast:<species>-<coat>`
   (a ticket's customer). A minder: `minderIcon(chain)` → `beast:minder-<chain>`, or
   `beast:oldbrindle|pim|nettle|juniper|tansy|marlo`. Bare `beast:<species>` exists only for
-  game.json's minder portraits (badger, owl, hedgehog, otter, raccoon and bat draw that MINDER;
-  `beast:fox` draws the coat-0 fox). `beast:dragon`, `beast:firefly`.
+  game.json's minder portraits (badger, owl, hedgehog, otter, hare and bat draw that MINDER;
+  `beast:raccoon`, an old game.json's Tansy, draws the hare; `beast:fox` draws the coat-0 fox). `beast:dragon`, `beast:firefly`.
 - `art:good-<chain>-<1..8>`, `art:gear-<chain>`, `art:stall-<chain>`, `art:coin`, `art:purse`,
   `art:basket`, `art:spark`, `art:giftbag-3|4`, `art:lantern-lit|unlit|moon`, `art:ticket`,
   `art:shutter`, `art:season-<0..3>`, `art:undo`, `art:new`, `art:stamp`, `art:book`, `art:gate`, `art:scroll`, `art:shop`,

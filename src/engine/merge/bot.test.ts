@@ -278,7 +278,7 @@ describe('measurements over a trace', () => {
     const c2 = { ...cfg, merge: { ...cfg.merge, gear: { ...cfg.merge.gear, spare: 2 } } } as R.MergeConfig;
     expect(B.boardFull(c2, { ...g.merge, board: free(2) })).toBe(true);
     expect(B.boardFull(c2, { ...g.merge, board: free(3) })).toBe(false);
-    const c0 = { ...cfg, merge: { ...cfg.merge, gear: { ...cfg.merge.gear, spare: undefined } } } as R.MergeConfig;
+    const c0 = { ...cfg, merge: { ...cfg.merge, gear: { ...cfg.merge.gear, spare: undefined } } } as unknown as R.MergeConfig;
     expect(B.boardFull(c0, { ...g.merge, board: free(1) })).toBe(false);
     expect(B.boardFull(c0, { ...g.merge, board: free(0) })).toBe(true);
   });

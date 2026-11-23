@@ -77,10 +77,24 @@ export const CHAIN: Record<ChainId, { main: string; shade: string; light: string
   puffs: { main: '#E8A43C', shade: '#AD7020', light: '#F7CF7E', accent: '#F8F1DE', awning: '#D69A36', awningShade: '#986A1E' },
 };
 
-/** The animals (spec 7.2): six customer species, plus the raccoon (a minder only, 2.2). */
+/** The animals (spec 7.2): six customer species, plus the hare (a minder only: Tansy, decision M38). */
 export const CUSTOMER_SPECIES = ['fox', 'hedgehog', 'badger', 'otter', 'bat', 'owl'] as const;
-export const SPECIES = [...CUSTOMER_SPECIES, 'raccoon'] as const;
+export const SPECIES = [...CUSTOMER_SPECIES, 'hare'] as const;
 export type Species = (typeof SPECIES)[number];
+
+/**
+ * Old beast names the kit still answers to, with the species it draws now. Decision M38 made Tansy a
+ * hare; a game.json written before that still says "raccoon" (chains' `minder.beast`, the character's
+ * `beast:raccoon` portrait) until build-night.py writes it again, and must show the hare, never a
+ * missing icon. Remove the entry once no game.json names it.
+ */
+export const BEAST_ALIASES: Readonly<Record<string, Species>> = { raccoon: 'hare' };
+
+/** The kit species a beast name draws (an alias resolved), or null when the kit has no such animal. */
+export function speciesOf(beast: string): Species | null {
+  if ((SPECIES as readonly string[]).includes(beast)) return beast as Species;
+  return BEAST_ALIASES[beast] ?? null;
+}
 export const COATS = 3;
 
 /** Coat colours per species: [fur, fur shade, light parts (muzzle, belly), dark parts (ears, mask)]. */
@@ -115,10 +129,10 @@ export const COAT: Record<Species, [string, string, string, string][]> = {
     ['#C9CDD6', '#9AA0AE', '#F7F8FA', '#4A4E5C'],
     ['#B98A4E', '#875F2E', '#F2DFBF', '#4A3520'],
   ],
-  raccoon: [
-    ['#8D919F', '#636776', '#EEEFF2', '#24262F'],
-    ['#9D8E7E', '#6F6255', '#F0EAE2', '#2A241F'],
-    ['#6C7183', '#4A4E5E', '#E2E4EA', '#1D1F28'],
+  hare: [
+    ['#B8875A', '#8A6140', '#F1E4D0', '#3A2A20'],
+    ['#C9B08A', '#9A8262', '#F7EFE2', '#463627'],
+    ['#9B8B7E', '#6F6359', '#ECE6DF', '#2E2925'],
   ],
 };
 

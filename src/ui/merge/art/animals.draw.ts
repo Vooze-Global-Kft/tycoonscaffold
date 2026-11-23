@@ -34,7 +34,7 @@ export const MINDERS: readonly Minder[] = [
   { id: 'pim', name: 'Pim', species: 'owl', chain: 1, apron: '#4F9C80' },
   { id: 'nettle', name: 'Nettle', species: 'hedgehog', chain: 2, apron: '#B89452' },
   { id: 'juniper', name: 'Juniper', species: 'otter', chain: 3, apron: '#B9587D' },
-  { id: 'tansy', name: 'Tansy', species: 'raccoon', chain: 4, apron: '#4C73A6' },
+  { id: 'tansy', name: 'Tansy', species: 'hare', chain: 4, apron: '#4C73A6' },
   { id: 'marlo', name: 'Marlo', species: 'bat', chain: 5, apron: '#D69A36' },
 ];
 
@@ -253,28 +253,52 @@ function owlWings(c: SkCanvas, col: Coat): void {
   c.drawPath(oval(0, 17, 6.6, 9), fill(alpha(col[2], 0.9)));
 }
 
-function raccoon(c: SkCanvas, col: Coat): void {
-  for (const s of [-1, 1]) {
-    lit(c, blob([[s * 5, -11], [s * 10.6, -18.6], [s * 14.2, -8.4]], 0.6), col[1], col[0], 0, 0);
-    c.drawPath(blob([[s * 7.6, -11.4], [s * 10.6, -16], [s * 12.6, -9.8]], 0.6), fill(col[2]));
-  }
-  const head = blob([[-14, -4], [-8, -13.6], [0, -14.8], [8, -13.6], [14, -4], [11.6, 3.6], [0, 8.4], [-11.6, 3.6]], 1);
-  lit(c, head, col[1], col[0], -1.2, -1.2);
-  c.save();
-  clip(c, head);
-  c.drawPath(blob([[-6, -10], [0, -12], [6, -10], [3, -6], [0, -6.4], [-3, -6]], 1), fill(col[2]));
-  // The mask: one band across both eyes, a light muzzle below.
-  c.drawPath(blob([[-14, -6.4], [-6, -7.6], [0, -5], [6, -7.6], [14, -6.4], [12, -0.6], [5.4, 0.4], [0, -2], [-5.4, 0.4], [-12, -0.6]], 1), fill(col[3]));
-  c.drawPath(oval(0, 3.6, 7.4, 5.2), fill(col[2]));
-  c.restore();
-  c.drawPath(head, stroke(INK, 1.25));
-  eyes(c, 5.6, -4, 1.7, NIGHT.white);
-  for (const s of [-1, 1]) c.drawPath(circle(s * 5.6, -3.8, 1.1), fill(INK));
-  nose(c, 1.6, 2.2);
-  smile(c, 4.4, 1.7);
+/**
+ * Hare (decision M38: Tansy, the Noodles minder): long ears with dark tips, one standing and one
+ * bent at the middle, the face smaller than the other heads and set lower so the ears are long
+ * against it within the box; eyes set to the sides, a split upper lip, a small pink nose and whiskers. No eye mask.
+ */
+function hare(c: SkCanvas, col: Coat): void {
+  const inner = mix(col[2], '#E8A0A8', 0.45);
+  /** One ear piece: an oval of half length `h`, rotated `deg`, pale inside, dark-tipped at its far end when `tip`. */
+  const piece = (x: number, y: number, deg: number, w: number, h: number, tip: boolean, pink: boolean) =>
+    at(c, x, y, 1, deg, (k) => {
+      const ear = oval(0, 0, w, h);
+      lit(k, ear, col[1], col[0], -0.6, -1);
+      k.save();
+      clip(k, ear);
+      if (pink) k.drawPath(oval(0, 1, w * 0.48, h * 0.72), fill(inner));
+      if (tip) k.drawPath(circle(0, -h - 0.4, w * 1.05), fill(col[3]));
+      k.restore();
+      k.drawPath(ear, stroke(INK, 1.15));
+    });
+  // The standing ear (left), leaning out a little.
+  piece(-4.4, -11, -14, 2.7, 7.4, true, true);
+  // The bent ear (right): its upper half folds outward, drawn first so the lower half covers the fold.
+  piece(8.8, -15.4, 62, 2.4, 3.6, true, false);
+  piece(4.6, -10.4, 14, 2.7, 4.4, false, true);
+  // The face, smaller than the other heads and set lower, so the ears are long against it.
+  at(c, 0, 2.2, 0.84, 0, (f) => {
+    const head = blob([[-11, -3], [-7, -10.6], [0, -12], [7, -10.6], [11, -3], [9.4, 4.4], [0, 8.2], [-9.4, 4.4]], 1);
+    lit(f, head, col[1], col[0], -1.2, -1.2);
+    f.save();
+    clip(f, head);
+    // A pale muzzle and chin.
+    f.drawPath(oval(0, 4.6, 6.4, 4.4), fill(col[2]));
+    f.restore();
+    f.drawPath(head, stroke(INK, 1.4));
+    eyes(f, 5.6, -3.6, 2);
+    // Whisker pads, the split upper lip, a small pink nose.
+    for (const s of [-1, 1]) f.drawPath(oval(s * 1.9, 2.8, 2.2, 1.7), fill(shade(col[2], 0.2)));
+    f.drawPath(blob([[-1.6, 0.3], [1.6, 0.3], [0, 2]], 1), fill('#D97F8C'));
+    f.drawPath(line(0, 1.9, 0, 3.4), stroke(INK, 0.9));
+    f.drawPath(curve([[-2.4, 4.4], [-1.2, 4.8], [0, 3.4], [1.2, 4.8], [2.4, 4.4]]), stroke(INK, 0.9));
+    for (const s of [-1, 1]) for (const dy of [0, 1.6]) f.drawPath(line(s * 3.6, 2.4 + dy, s * 10, 1 + dy * 1.6), stroke(alpha(INK, 0.55), 0.6));
+    cheeks(f, 7.4, 1.4);
+  });
 }
 
-const HEADS: Record<Species, (c: SkCanvas, col: Coat) => void> = { fox, hedgehog, badger, otter, bat, owl, raccoon };
+const HEADS: Record<Species, (c: SkCanvas, col: Coat) => void> = { fox, hedgehog, badger, otter, bat, owl, hare };
 
 /** What a species wears on its shoulders before the head is drawn (wings, a sleek neck). */
 function body(c: SkCanvas, species: Species, col: Coat, wide = 20): void {
@@ -299,7 +323,7 @@ export function drawCustomer(c: SkCanvas, species: Species, coat: number): void 
   if (species === 'fox') foxTail(c, col);
   body(c, species, col);
   at(c, 0, HEAD_Y, 1, 0, (k) => HEADS[species](k, col));
-  const i = (['fox', 'hedgehog', 'badger', 'otter', 'bat', 'owl', 'raccoon'] as const).indexOf(species);
+  const i = (['fox', 'hedgehog', 'badger', 'otter', 'bat', 'owl', 'hare'] as const).indexOf(species);
   scarf(c, SCARVES[(i * 2 + coat * 3) % SCARVES.length]);
 }
 

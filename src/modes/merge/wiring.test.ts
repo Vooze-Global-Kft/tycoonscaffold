@@ -83,6 +83,33 @@ describe('closing a season through the store (2.11)', () => {
   });
 });
 
+describe('away coins and the season close (Decision M49, the rules attack\'s first finding)', () => {
+  it('an away report still waiting when the season closes is paid into the old purse and resets with it', async () => {
+    const g = { ...filled(mergeFixtures(cfg).festivalNear), cash: 1000 };
+    const { useGame, mergeActions } = await storeWith(g);
+    // The "Close the season?" sheet was open when the app came back: the away sheet waits behind it.
+    useGame.setState({ offline: { seconds: 36_000, earnings: 46_700_000 } });
+    expect(mergeActions.closeSeason()).toBe(true);
+    const after = useGame.getState().game as R.MergeGame;
+    expect(after.merge.season).toBe(g.merge.season + 1);
+    expect(after.cash).toBe(0);
+    expect(useGame.getState().offline).toBeNull();
+    // Nothing is left to collect into the new season.
+    await useGame.getState().collectOffline(true);
+    expect((useGame.getState().game as R.MergeGame).cash).toBe(0);
+  });
+
+  it('a close the rules refuse leaves the waiting away report alone', async () => {
+    const g = mergeFixtures(cfg).festivalNear;
+    const { useGame, mergeActions } = await storeWith(g);
+    const offline = { seconds: 3600, earnings: 5000 };
+    useGame.setState({ offline });
+    expect(mergeActions.closeSeason()).toBe(false);
+    expect(useGame.getState().offline).toBe(offline);
+    expect(useGame.getState().game).toBe(g);
+  });
+});
+
 describe('every row of the drop table by tap-tap through the store (2.5)', () => {
   it('arm a cell, tap a target: the store runs the same dropAt, stores the result, plays its key', async () => {
     const { useMergeUi } = await import('../../ui/merge/uiState');

@@ -11,7 +11,7 @@ import { GameConfigSchema } from '../config/schema';
 import { MERGE_STARTING_CONTENT } from '../config/merge.content';
 import { MergeSchema, RANGES, lintMerge, valueAt } from '../config/schema.merge';
 import * as E from './economy';
-import { FIXTURE_NOW, baseGameState, fixtureProblems, freshState, mergeFixtures, mergeState, mergeTestConfig } from './fixtures/merge';
+import { FIXTURE_NOW, MERGE_TEST_CONTENT, baseGameState, fixtureProblems, freshState, mergeFixtures, mergeState, mergeTestConfig } from './fixtures/merge';
 import * as R from './merge';
 import { mergeEngineMode, withMergeContent } from './mergeMode';
 import { engineFor, installEngineMode } from './mode';
@@ -27,11 +27,11 @@ describe('the merge engine mode', () => {
   });
 
   it('config parses the opaque block with its defaults and throws on an invalid or missing one', () => {
-    const raw = { ...cfg, merge: JSON.parse(JSON.stringify(MERGE_STARTING_CONTENT)) };
+    const raw = { ...cfg, merge: JSON.parse(JSON.stringify(MERGE_TEST_CONTENT)) };
     delete (raw.merge as Record<string, unknown>).basket;
     const parsed = withMergeContent(raw as never) as R.MergeConfig;
     expect(parsed.merge.basket).toEqual({ share: 0.25, undoSeconds: 4 });
-    const broken = { ...cfg, merge: { ...JSON.parse(JSON.stringify(MERGE_STARTING_CONTENT)), chains: [] } };
+    const broken = { ...cfg, merge: { ...JSON.parse(JSON.stringify(MERGE_TEST_CONTENT)), chains: [] } };
     expect(() => withMergeContent(broken as never)).toThrow(/"merge" block is invalid/);
     expect(() => withMergeContent({ ...cfg, merge: undefined } as never)).toThrow(/no "merge" block/);
     expect(withMergeContent(pizzaCfg)).toBe(pizzaCfg);
@@ -365,9 +365,19 @@ describe('the shared engine delegates to it for merge configs only', () => {
 });
 
 describe('the merge schema (src/config/schema.merge.ts)', () => {
-  const parsed = MergeSchema.parse(JSON.parse(JSON.stringify(MERGE_STARTING_CONTENT)));
+  // The rules' frozen test content (fixtures): the facts of the specification pinned below read it.
+  const parsed = MergeSchema.parse(JSON.parse(JSON.stringify(MERGE_TEST_CONTENT)));
+  // The shipped content (the numbers package's, tuned): only "it parses, lints clean, sits inside RANGES" reads it (the lead's order 6).
+  const shipped = MergeSchema.parse(JSON.parse(JSON.stringify(MERGE_STARTING_CONTENT)));
 
-  it('every (tune) default sits inside its range, and the starting content lints clean', () => {
+  it('the shipped content parses, sits inside every range and lints clean; so does the frozen test content', () => {
+    for (const r of RANGES) {
+      const v = valueAt(shipped, r.path);
+      expect(typeof v, r.path).toBe('number');
+      expect(v as number, r.path).toBeGreaterThanOrEqual(r.low);
+      expect(v as number, r.path).toBeLessThanOrEqual(r.high);
+    }
+    expect(lintMerge(shipped)).toEqual([]);
     for (const r of RANGES) {
       const v = valueAt(parsed, r.path);
       expect(typeof v, r.path).toBe('number');
