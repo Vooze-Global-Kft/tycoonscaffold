@@ -5,6 +5,7 @@
  * their files exist. Metro takes this file for the web build and ./devViews.ts (none) for iOS and Android.
  */
 import type { ComponentType } from 'react';
+import { artDevViews } from '../../ui/decree/art/devViews';
 import { DecreeLoading } from '../../ui/decree/overlays/Loading';
 
-export const devViews: Record<string, ComponentType> | undefined = { loading: DecreeLoading };
+export const devViews: Record<string, ComponentType> | undefined = { loading: DecreeLoading, ...artDevViews };

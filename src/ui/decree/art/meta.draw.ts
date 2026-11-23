@@ -11,7 +11,6 @@ import type { SkCanvas, SkPath } from '@shopify/react-native-skia';
 import { DESK, alpha, mix } from './palette';
 import { drawRosette } from './effects.draw';
 import { drawBunting } from './paper.draw';
-import { drawClubGlyph } from './clubs.draw';
 import {
   LINE,
   at,
@@ -387,7 +386,10 @@ export function drawDistrictMap(c: SkCanvas, w: number, h: number, office: 0 | 1
     const waves = builder();
     for (let y = 6; y < 100; y += 11)
       for (let x = ((y / 11) % 2) * 7 + 3; x < 100; x += 14) waves.moveTo(x, y).quadTo(x + 1.5, y - 1.2, x + 3, y).quadTo(x + 4.5, y + 1.2, x + 6, y);
+    q.save();
+    clip(q, rect(0, 0, 100, 100));
     q.drawPath(waves.build(), stroke(alpha(DESK.slateLight, 0.8), 0.5));
+    q.restore();
     districts.forEach((d, i) => {
       const held = o.held?.[i] ?? false;
       q.drawPath(d.path, fill(held ? DESK.violetPale : mix(DESK.slatePale, DESK.white, 0.3)));
@@ -534,27 +536,4 @@ export function drawTallyResult(c: SkCanvas, held: boolean, r = 10): void {
     c.drawPath(circle(0, 0, r * 0.62), stroke(DESK.chalkDust, 1.6));
     c.drawPath(line(-r * 0.4, 0, r * 0.4, 0), stroke(DESK.chalkDust, 1.6));
   }
-}
-
-/** The band in silhouette (at the majority): a row of instruments raised against the light, w wide, the baseline at y = 0. */
-export function drawBandSilhouette(c: SkCanvas, w: number, color: string = DESK.chalkDeep): void {
-  const k = w / 220;
-  at(c, 0, 0, k, 0, (q) => {
-    const ink = color;
-    at(q, 24, -18, 1.6, -10, (z) => drawClubGlyph(z, 'brass', 1, ink));
-    q.drawPath(rrect(52, -26, 26, 22, 4), fill(ink)); // a bass drum
-    q.drawPath(line(54, -30, 76, -2), stroke(alpha(DESK.chalkLine, 0.25), 1));
-    at(q, 104, -22, 1.4, 20, (z) => {
-      z.drawPath(rect(-12, -1.4, 22, 2.8), fill(ink));
-      z.drawPath(poly([10, -5, 18, -8, 18, 8, 10, 5]), fill(ink));
-    }); // a trumpet
-    q.drawPath(line(130, 0, 132, -40), stroke(ink, 2));
-    q.drawPath(poly([132, -40, 152, -36, 132, -30]), fill(ink)); // a pennant
-    at(q, 168, -20, 1.4, -24, (z) => {
-      z.drawPath(rect(-14, -1.6, 24, 3.2), fill(ink));
-      z.drawPath(builder().addOval({ x: 8, y: -7, width: 8, height: 14 }).build(), fill(ink));
-    }); // a trombone's bell
-    q.drawPath(rrect(190, -14, 24, 12, 2), fill(ink)); // a snare
-    q.drawPath(rect(-2, -2, w / k + 4, 4), fill(ink));
-  });
 }

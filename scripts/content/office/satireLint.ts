@@ -99,21 +99,39 @@ const stripAccents = (w: string) => w.normalize('NFD').replace(/\p{M}/gu, '');
 const lower = (w: string) => stripAccents(w).toLowerCase();
 /** "Till's" → "Till"; the possessive never changes who is meant. */
 const unpossess = (w: string) => w.replace(/'s$/i, '');
+/** Invisible formatting characters (zero-width space, soft hyphen, joiners, direction marks). */
+const FORMAT_CHARS = /\p{Cf}/gu;
+/** Abbreviations whose full stop does not end a sentence ("Mr. Brown"). */
+const ABBREV = new Set(['mr', 'mrs', 'ms', 'dr', 'st', 'no', 'messrs', 'prof', 'cllr', 'rev', 'gen', 'sen', 'gov', 'pres']);
+
+/**
+ * The text as the lists see it: NFKC (full-width and other compatibility letters become plain
+ * ones), invisible formatting characters removed (a zero-width space or soft hyphen cannot hide a
+ * word), curly apostrophes straightened. Rule 3 reports the characters themselves.
+ */
+export function cleanText(input: string): string {
+  return input.normalize('NFKC').replace(FORMAT_CHARS, '').replace(/[‘’ʼ]/g, "'");
+}
 
 function normalise(input: string): Norm {
-  const text = input.replace(/[‘’ʼ]/g, "'");
+  const text = cleanText(input);
   const toks: Tok[] = [];
+  let prev: Tok | undefined;
   for (const m of text.matchAll(TOKEN_RE)) {
     const raw = unpossess(m[0]);
     const start = m.index ?? 0;
     const before = text.slice(0, start).replace(/[\s"'“”([{]+$/u, '');
-    const initial = before === '' || /[.!?:;…·\n]$/u.test(before) || /["“]\s*$/u.test(text.slice(0, start));
+    // ":" starts a slogan's or a speaker's words; ";" does not start a sentence in English.
+    let initial = before === '' || /[.!?:…·\n]$/u.test(before) || /["“]\s*$/u.test(text.slice(0, start));
+    if (initial && prev && /\.$/.test(before) && ABBREV.has(prev.low) && before.endsWith(`${prev.raw}.`)) initial = false;
     const letters = raw.replace(/[^\p{L}]/gu, '');
-    toks.push({
+    const t: Tok = {
       raw, low: lower(raw), start, end: start + m[0].length, nStart: 0, nEnd: 0, initial,
       caps: letters.length >= 2 && letters === letters.toUpperCase() && /\p{Lu}/u.test(letters),
       cap: /^\p{Lu}/u.test(raw),
-    });
+    };
+    toks.push(t);
+    prev = t;
   }
   // A single capital ("A", "I") between all-caps words belongs to the run.
   toks.forEach((t, i) => {
@@ -141,17 +159,31 @@ interface Pattern {
   group: string;
   /** Any-case pattern over the normalised string. */
   re?: RegExp;
-  /** First-word keys for a quick pre-filter (exact words), and prefix stems. */
+  /** First-word keys for a quick pre-filter (exact words), and prefix stems; both empty: always run. */
   keys: string[];
   stems: string[];
   /** Case-sensitive entry ("="): its words as written. */
   cs?: string[];
+  /** "==" entry: exactly as written, in any position, all-caps runs included ("==UN"). */
+  anyPos?: boolean;
+}
+interface SingleName {
+  low: string;
+  entry: string;
+  group: string;
+  code: string;
+  vowel: string;
+  /** "~": the surname is also an everyday word ("Grant", "Ford", "Brown"): only capitalised and not
+   * first in a sentence, or after a title ("Mr Brown"); never near-matched. */
+  everyday: boolean;
 }
 interface NameList {
   list: string;
-  single: { low: string; entry: string; group: string; code: string; vowel: string }[];
-  singleSet: Map<string, { entry: string; group: string }>;
+  single: SingleName[];
+  singleSet: Map<string, SingleName>;
   phrases: { words: string[]; entry: string; group: string }[];
+  /** The last word of every full name ("May" of "Theresa May"), for "Mrs May". */
+  lastWords: Map<string, { entry: string; group: string }>;
 }
 export interface LintLists {
   tier1: Pattern[];
@@ -160,6 +192,13 @@ export interface LintLists {
   people: NameList;
   fiction: NameList;
   common: Set<string>;
+  /** Everyday English words (lexicon.txt): never near-matched to a name where capitals say nothing
+   * (a sentence's first word, an all-caps run, a Title Case line). */
+  lexicon: Set<string>;
+  /** A plain replacement for a denied everyday word (hints.txt), shown in the reason. */
+  hints: Map<string, string>;
+  /** deny-innuendo.txt: size words and the objects they must never be next to. */
+  innuendo: { size: Set<string>; objects: RegExp };
   allow: { re: RegExp; phrase: string; reason: string }[];
 }
 
@@ -199,45 +238,58 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Compiles one entry of the deny-phrases syntax. */
 function compile(entry: string, list: string, group: string): Pattern {
+  if (entry.startsWith('==')) {
+    const words = [...entry.slice(2).replace(/[‘’]/g, "'").matchAll(TOKEN_RE)].map((m) => m[0]);
+    return { list, entry, group, keys: [lower(words[0] ?? '')], stems: [], cs: words, anyPos: true };
+  }
   if (entry.startsWith('=')) {
     const words = [...entry.slice(1).replace(/[‘’]/g, "'").matchAll(TOKEN_RE)].map((m) => m[0]);
     return { list, entry, group, keys: [lower(words[0] ?? '')], stems: [], cs: words };
   }
-  // Pattern words: keep letters, digits, apostrophes, "*", braces and commas inside braces.
+  // Pattern words: keep letters, digits, apostrophes, "*", braces and commas inside braces. A
+  // possessive "'s" is dropped, as the text's is ("it's the * stupid" meets "it the pumpkin stupid").
   const cleaned = lower(entry.replace(/[‘’]/g, "'")).replace(/[^\p{L}\p{N}'*{},]+/gu, ' ').trim();
-  const words = cleaned.split(' ').filter(Boolean);
+  const words = cleaned.split(' ').filter(Boolean).map((w) => (w.includes('{') ? w : w.replace(/'s$/, '')));
   const keys: string[] = [];
   const stems: string[] = [];
-  let src = '';
+  const parts: string[] = [];
   words.forEach((w, i) => {
     if (w === '*') {
-      src += `(?:${W}+ ){1,4}`;
+      // One to four words.
+      parts.push(`${W}+(?: ${W}+){0,3}`);
       return;
     }
     const alt = /^\{(.+)\}$/.exec(w);
-    const alts = alt ? alt[1].split(',').map((a) => a.trim()) : [];
-    if (alt) src += `(?:${alts.map(escapeRe).join('|')})`;
-    else if (w.endsWith('*')) src += `${escapeRe(w.slice(0, -1))}${W}*`;
-    else src += escapeRe(w);
-    if (i < words.length - 1) src += ' ';
+    const alts = alt ? alt[1].split(',').map((a) => a.trim().replace(/'s$/, '')) : [];
+    if (alt) parts.push(`(?:${alts.map((x) => (x.endsWith('*') ? `${escapeRe(x.slice(0, -1))}${W}*` : escapeRe(x))).join('|')})`);
+    else if (w.endsWith('*')) parts.push(`${escapeRe(w.slice(0, -1))}${W}*`);
+    else parts.push(escapeRe(w));
     if (i === 0) {
-      if (alt) keys.push(...alts);
-      else if (w.endsWith('*')) stems.push(w.slice(0, -1));
+      if (alt) {
+        for (const x of alts) (x.endsWith('*') ? stems : keys).push(x.replace(/\*$/, ''));
+      } else if (w.endsWith('*')) stems.push(w.slice(0, -1));
       else keys.push(w);
     }
   });
-  const re = new RegExp(`(?<!${W})${src}(?:'s)?(?!${W})`, 'gu');
+  const re = new RegExp(`(?<!${W})${parts.join(' ')}(?:'s)?(?!${W})`, 'gu');
   return { list, entry, group, re, keys, stems };
 }
 
 function readNames(file: string, list: string): NameList {
-  const nl: NameList = { list, single: [], singleSet: new Map(), phrases: [] };
-  for (const { entry, group } of readList(file, false)) {
+  const nl: NameList = { list, single: [], singleSet: new Map(), phrases: [], lastWords: new Map() };
+  for (const { entry: written, group } of readList(file, false)) {
+    const everyday = written.startsWith('~');
+    const entry = everyday ? written.slice(1).trim() : written;
     const words = [...entry.replace(/[‘’]/g, "'").matchAll(TOKEN_RE)].map((m) => lower(m[0]));
     if (words.length === 1) {
-      nl.single.push({ low: words[0], entry, group, code: phonetic(words[0]), vowel: firstVowel(words[0]) });
-      nl.singleSet.set(words[0], { entry, group });
-    } else if (words.length > 1) nl.phrases.push({ words, entry, group });
+      const e: SingleName = { low: words[0], entry, group, code: phonetic(words[0]), vowel: firstVowel(words[0]), everyday };
+      nl.single.push(e);
+      nl.singleSet.set(words[0], e);
+    } else if (words.length > 1) {
+      nl.phrases.push({ words, entry, group });
+      const last = words[words.length - 1];
+      if (last.length >= 2 && !nl.lastWords.has(last)) nl.lastWords.set(last, { entry, group });
+    }
   }
   return nl;
 }
@@ -250,17 +302,31 @@ export function loadLintLists(dir: string = __dirname): LintLists {
   const p = (f: string) => path.join(dir, f);
   const patterns = (f: string) => readList(p(f), true).map(({ entry, group }) => compile(entry, f, group));
   const allowJson = JSON.parse(fs.readFileSync(p('allow.json'), 'utf8')) as { allow: { phrase: string; reason: string }[] };
+  // deny-innuendo.txt: "always" entries are tier 3; "size words" and "objects" meet only side by side.
+  const inn = readList(p('deny-innuendo.txt'), true);
+  const always = inn.filter((e) => /always/i.test(e.group)).map(({ entry, group }) => compile(entry, 'deny-innuendo.txt', group));
+  const size = new Set(inn.filter((e) => /size/i.test(e.group)).map((e) => lower(e.entry)));
+  const objs = inn.filter((e) => /object/i.test(e.group)).map((e) => lower(e.entry));
+  const objects = new RegExp(`^(?:${objs.map((o) => (o.endsWith('*') ? `${escapeRe(o.slice(0, -1))}[\\p{L}']*` : escapeRe(o))).join('|')})$`, 'u');
+  const hints = new Map<string, string>();
+  for (const { entry } of readList(p('hints.txt'), false)) {
+    const m = /^(.+?)\s*->\s*(.+)$/.exec(entry);
+    if (m) for (const w of m[1].split(',')) hints.set(lower(w.trim()), m[2].trim());
+  }
   const lists: LintLists = {
     tier1: [...readList(p('deny-phrases.txt'), false).map(({ entry, group }) => compile(entry, 'deny-phrases.txt', group)), ...patterns('deny-hard.txt')],
     tier3: [
       ...patterns('deny-subjects.txt'), ...patterns('deny-places.txt'), ...patterns('deny-movements.txt'),
       ...patterns('deny-tone.txt'), ...patterns('deny-brands.txt'), ...patterns('deny-games.txt'),
-      ...patterns('deny-innuendo.txt'),
+      ...always,
     ],
     store: patterns('deny-store.txt'),
     people: readNames(p('deny-people.txt'), 'deny-people.txt'),
     fiction: readNames(p('deny-fiction.txt'), 'deny-fiction.txt'),
     common: new Set(readList(p('common-words.txt'), true).map(({ entry }) => lower(unpossess(entry)))),
+    lexicon: new Set(readList(p('lexicon.txt'), true).map(({ entry }) => lower(entry))),
+    hints,
+    innuendo: { size, objects },
     allow: allowJson.allow.map((a) => ({ re: compile(a.phrase, 'allow.json', '').re!, phrase: a.phrase, reason: a.reason })),
   };
   listCache.set(dir, lists);
@@ -276,7 +342,7 @@ const isV = (c: string | undefined) => !!c && 'aeiou'.includes(c);
 export function phonetic(word: string): string {
   let w = lower(word).replace(/[^a-z]/g, '');
   if (!w) return '';
-  w = w.replace(/^(kn|gn|pn|wr|ps)/, (m) => m[1]).replace(/^x/, 's').replace(/^wh/, 'w');
+  w = w.replace(/^(kn|gn|pn|wr|ps)/, (m) => m[1]).replace(/^x/, 's').replace(/^wh/, 'w').replace(/^dj/, 'j');
   let out = '';
   for (let i = 0; i < w.length; i++) {
     const c = w[i];
@@ -417,16 +483,17 @@ function phraseHits(patterns: Pattern[], n: Norm, allowed: [number, number][], n
     if (p.cs) {
       const words = p.cs;
       for (let i = 0; i + words.length <= n.toks.length; i++) {
-        if ((n.toks[i].initial && !nameField) || n.toks[i].caps) continue;
+        if (!p.anyPos && ((n.toks[i].initial && !nameField) || n.toks[i].caps)) continue;
         let ok = true;
-        for (let j = 0; j < words.length && ok; j++) ok = n.toks[i + j].raw === words[j] && !n.toks[i + j].caps;
+        for (let j = 0; j < words.length && ok; j++) ok = n.toks[i + j].raw === words[j] && (p.anyPos || !n.toks[i + j].caps);
         if (ok && !inside(allowed, n.toks[i].nStart, n.toks[i + words.length - 1].nEnd)) {
           hits.push({ p, match: n.text.slice(n.toks[i].start, n.toks[i + words.length - 1].end) });
         }
       }
       continue;
     }
-    if (!p.keys.some((k) => lows.has(k)) && !p.stems.some((s) => n.toks.some((t) => t.low.startsWith(s)))) continue;
+    const always = p.keys.length === 0 && p.stems.length === 0;
+    if (!always && !p.keys.some((k) => lows.has(k)) && !p.stems.some((s) => n.toks.some((t) => t.low.startsWith(s)))) continue;
     p.re!.lastIndex = 0;
     for (const m of n.s.matchAll(p.re!)) {
       const a = m.index ?? 0;
@@ -437,12 +504,39 @@ function phraseHits(patterns: Pattern[], n: Norm, allowed: [number, number][], n
 }
 
 const LOWER_OK = new Set(['i']);
+/** Titles before a surname ("Mr Brown", "MRS MAY", "Councillor Grant"). */
+const HONORIFICS = new Set([
+  'mr', 'mrs', 'ms', 'miss', 'mister', 'missus', 'dr', 'doctor', 'lord', 'lady', 'sir', 'dame', 'senator', 'councillor', 'cllr',
+  'alderman', 'president', 'governor', 'mayor', 'minister', 'chancellor', 'premier', 'prince', 'princess', 'king', 'queen',
+  'secretary', 'general', 'judge', 'justice', 'congressman', 'congresswoman', 'representative', 'deputy', 'comrade', 'chairman', 'uncle', 'auntie',
+]);
+/** Endings that turn a surname into a word about its owner ("Nixonian", "Thatcherite", "Reaganomics"). */
+const NAME_SUFFIXES = ['s', 'es', 'ian', 'ians', 'ite', 'ites', 'ism', 'isms', 'ist', 'ists', 'esque', 'omics', 'ish', 'care', 'mania', 'gate'];
+
+/** The surname entries a token may be ("obamas", "nixonian" → "obama", "nixon"). */
+function surnameForms(low: string): string[] {
+  const out = [low];
+  for (const suf of NAME_SUFFIXES) {
+    if (low.length > suf.length + 2 && low.endsWith(suf)) {
+      const base = low.slice(0, -suf.length);
+      out.push(base, `${base}e`);
+      if (/(.)\1$/.test(base)) out.push(base.slice(0, -1));
+    }
+  }
+  return out;
+}
 
 /** Tiers 1 to 3, rules 2 and 3 on one string. */
 function lintText(ctx: Ctx, it: Item) {
+  const base = { source: it.source, id: it.id, field: it.field };
+  // Rule 3: characters that hide words, and letters of other scripts (look-alikes of Latin ones).
+  const fmt = [...it.text.matchAll(FORMAT_CHARS)].map((m) => `U+${m[0].codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`);
+  if (fmt.length) add(ctx, { ...base, rule: 'rule3', severity: 'error', match: [...new Set(fmt)].join(' '), reason: 'an invisible formatting character (a zero-width space, a soft hyphen, a joiner) is in the text: delete it; retype the word around it' });
+  const foreign = [...it.text.normalize('NFKC').matchAll(/(?=\p{L})[^\p{Script=Latin}]/gu)].map((m) => m[0]);
+  if (foreign.length) add(ctx, { ...base, rule: 'rule3', severity: 'error', match: [...new Set(foreign)].join(''), reason: 'a letter of another alphabet (it can look like a Latin one and hide a word): use plain Latin letters' });
+
   const n = normalise(it.text);
   const allowed = allowedRanges(ctx, n);
-  const base = { source: it.source, id: it.id, field: it.field };
   const flagged = new Set<number>();
   const markTokens = (match: string) => {
     const ml = lower(match);
@@ -450,21 +544,33 @@ function lintText(ctx: Ctx, it: Item) {
       if (ml.includes(t.low)) flagged.add(i);
     });
   };
+  const hint = (match: string) => {
+    const h = ctx.lists.hints.get(lower(match)) ?? ctx.lists.hints.get(lower(match).replace(/s$/, ''));
+    return h ? `; write ${h} instead (hints.txt)` : '';
+  };
 
   // Tier 1.
   for (const { p, match } of phraseHits(ctx.lists.tier1, n, allowed, it.kind === 'name')) {
-    add(ctx, { ...base, rule: 'tier1', severity: 'error', match, reason: `${LIST_WHAT[p.list]} ("${p.entry}"${p.group ? `, ${p.group}` : ''}): tier 1 always fails; rewrite without it` });
+    add(ctx, { ...base, rule: 'tier1', severity: 'error', match, reason: `${LIST_WHAT[p.list]} ("${p.entry}"${p.group ? `, ${p.group}` : ''}): tier 1 always fails; rewrite without it${hint(match)}${p.re && /\*/.test(p.entry) ? ', and without the shape of that slogan' : ''}` });
     markTokens(match);
   }
   // Tier 3 (and the store list on store text and on every string, 1.2).
   for (const { p, match } of phraseHits([...ctx.lists.tier3, ...ctx.lists.store], n, allowed, it.kind === 'name')) {
-    add(ctx, { ...base, rule: 'tier3', severity: 'error', match, reason: `${LIST_WHAT[p.list]} ("${p.entry}"${p.group ? `, ${p.group}` : ''}): use another word${p.list === 'deny-places.txt' ? '; every place is invented (names.json)' : ''}` });
+    const h = hint(match);
+    add(ctx, { ...base, rule: 'tier3', severity: 'error', match, reason: `${LIST_WHAT[p.list]} ("${p.entry}"${p.group ? `, ${p.group}` : ''}): ${h ? h.slice(2) : 'use another word'}${p.list === 'deny-places.txt' ? '; every place is invented (names.json)' : ''}` });
     markTokens(match);
   }
+  // Innuendo (7.4): a size word next to a vegetable, fruit or object.
+  lintInnuendo(ctx, it, n, allowed, base);
 
   // Tier 2: names.
   const isNameField = it.kind === 'name';
+  const SMALL = new Set(['a', 'an', 'the', 'of', 'and', 'to', 'in', 'on', 'for', 'at', 'by', 'or', 'with']);
+  const words = n.toks.filter((t) => !SMALL.has(t.low) && /^\p{L}/u.test(t.raw));
+  const titleCase = words.length >= 2 && words.every((t) => t.cap || t.caps);
+  const known = (low: string) => ctx.lists.common.has(low) || ctx.lists.lexicon.has(low);
   for (const nl of [ctx.lists.people, ctx.lists.fiction]) {
+    const what = LIST_WHAT[nl.list];
     // Full names, in sequence, capitalised.
     for (const ph of nl.phrases) {
       for (let i = 0; i + ph.words.length <= n.toks.length; i++) {
@@ -477,75 +583,116 @@ function lintText(ctx: Ctx, it: Item) {
         const a = n.toks[i];
         const b = n.toks[i + ph.words.length - 1];
         if (inside(allowed, a.nStart, b.nEnd)) continue;
-        add(ctx, { ...base, rule: 'tier2', severity: 'error', match: n.text.slice(a.start, b.end), reason: `${LIST_WHAT[nl.list]}: "${ph.entry}"${ph.group ? ` (${ph.group})` : ''}; invent a name instead` });
+        add(ctx, { ...base, rule: 'tier2', severity: 'error', match: n.text.slice(a.start, b.end), reason: `${what}: "${ph.entry}"${ph.group ? ` (${ph.group})` : ''}; invent a name instead` });
         for (let j = 0; j < ph.words.length; j++) flagged.add(i + j);
       }
     }
-    // Surnames.
     n.toks.forEach((t, i) => {
-      if (flagged.has(i)) return;
-      if (!t.cap && !t.caps) return;
-      if (!t.caps && t.initial && !isNameField) return;
-      if (inside(allowed, t.nStart, t.nEnd)) return;
-      const exact = nl.singleSet.get(t.low);
-      if (exact) {
-        add(ctx, { ...base, rule: 'tier2', severity: 'error', match: t.raw, reason: `${LIST_WHAT[nl.list]}: "${exact.entry}"${exact.group ? ` (${exact.group})` : ''}; invent a name instead` });
+      if (flagged.has(i) || inside(allowed, t.nStart, t.nEnd) || !/^\p{L}/u.test(t.raw)) return;
+      const prevTok = n.toks[i - 1];
+      const afterTitle = !!prevTok && HONORIFICS.has(prevTok.low) && (t.cap || t.caps) && /^\.? $/.test(n.text.slice(prevTok.end, t.start));
+      const report = (entry: string, group: string, how: string) => {
+        add(ctx, { ...base, rule: 'tier2', severity: 'error', match: afterTitle ? `${n.toks[i - 1].raw} ${t.raw}` : t.raw, reason: `${how}${what}: "${entry}"${group ? ` (${group})` : ''}; invent a name instead` });
         flagged.add(i);
-        return;
+      };
+      // A surname that is no everyday word: any case, any position, with its endings ("obama",
+      // "Thatcher's", "THATCHER", "Nixonian").
+      for (const form of surnameForms(t.low)) {
+        const e = nl.singleSet.get(form);
+        if (e && !e.everyday) return report(e.entry, e.group, form === t.low ? '' : `"${t.raw}" is made from `);
       }
-      // Near matches only for name-like words: never for an everyday word of an office name
-      // ("Board", "Trust", "Town"), which the common-word list holds.
-      if (t.caps || t.low.length < 4 || ctx.lists.common.has(t.low)) return;
+      // A surname that is also an everyday word: capitalised mid-sentence, in a name field, or after a title.
+      const ev = nl.singleSet.get(t.low) ?? nl.singleSet.get(t.low.replace(/s$/, ''));
+      const mid = t.cap && !t.caps && (!t.initial || isNameField) && !titleCase;
+      if (ev?.everyday && (mid || afterTitle)) return report(ev.entry, ev.group, '');
+      // After a title: the surname of a full name ("Mrs May", "MR BROWN").
+      const lw = afterTitle ? nl.lastWords.get(t.low) : undefined;
+      if (lw) return report(lw.entry, lw.group, 'a title and the surname of ');
+      // Near matches (one letter away, or sound-alike): on capitalised words and all-caps words of at
+      // least 4 letters, never on an everyday word where capitals say nothing (a sentence's first
+      // word, an all-caps run, a Title Case line) nor on a word of an office name (common-words.txt).
+      if (!t.cap && !t.caps) return;
+      if (t.low.length < 4 || ctx.lists.common.has(t.low)) return;
+      const capsSayNothing = t.caps || (t.initial && !isNameField) || titleCase;
+      if (capsSayNothing && !afterTitle && known(t.low)) return;
       const code = phonetic(t.low);
       const vowel = firstVowel(t.low);
       for (const e of nl.single) {
-        if (e.low.length < 4) continue;
-        const near = within1(t.low, e.low) ? 'is one letter away from' : e.code === code && e.vowel === vowel && e.low[0] === t.low[0] && code.length >= 2 ? 'sounds like' : '';
+        if (e.low.length < 4 || e.everyday) continue;
+        const near = within1(t.low, e.low) ? 'is one letter away from' : e.code === code && e.vowel === vowel && code.length >= 2 ? 'sounds like' : '';
         if (!near) continue;
         if (ctx.cleared.get(t.low)?.has(e.low)) continue;
         add(ctx, {
           ...base, rule: 'tier2', severity: 'error', match: t.raw,
-          reason: `"${t.raw}" ${near} "${e.entry}", ${LIST_WHAT[nl.list]}${e.group ? ` (${e.group})` : ''}: change the name, or the sensitivity editor clears it in names.json (check.cleared)`,
+          reason: `"${t.raw}" ${near} "${e.entry}", ${what}${e.group ? ` (${e.group})` : ''}: if it is meant to recall that name, invent another; if it is a cast name, the sensitivity editor reads it and clears it in names.json (check.cleared)`,
         });
         flagged.add(i);
       }
     });
   }
 
-  // Rule 2: unknown proper nouns. A slogan or title in Title Case ("Plumb: She Owns A Hat") says
-  // nothing by its capitals; its names are still checked by tier 2.
-  const SMALL = new Set(['a', 'an', 'the', 'of', 'and', 'to', 'in', 'on', 'for', 'at', 'by', 'or', 'with']);
-  const words = n.toks.filter((t) => !SMALL.has(t.low) && /^\p{L}/u.test(t.raw));
-  const titleCase = words.length >= 1 && n.toks.length >= 2 && words.every((t) => t.cap || t.caps);
+  // Rule 2: unknown proper nouns. A slogan or title in Title Case ("Stitchley: She Owns A Hat") says
+  // nothing by its capitals; its names are checked by tier 2 above.
   if (it.kind !== 'store' && !(titleCase && it.kind !== 'name') && it.field !== 'slogan') {
     n.toks.forEach((t, i) => {
       if (flagged.has(i) || !t.cap || t.caps || LOWER_OK.has(t.low) || /^\p{N}/u.test(t.raw)) return;
       if (t.initial && !isNameField) return;
+      if (inside(allowed, t.nStart, t.nEnd)) return;
       if (ctx.nameTokens.has(t.low) || ctx.lists.common.has(t.low)) return;
       add(ctx, {
         ...base, rule: 'rule2', severity: 'error', match: t.raw,
-        reason: `"${t.raw}" is capitalised but is not a name in names.json nor a common word: write it in lower case, or ask the sensitivity editor to add the new name to names.json`,
+        reason: `"${t.raw}" is capitalised but is no name of names.json and no common word. If it is a real person, place, party, product or title, it does not belong in the game: invent one. If it is an everyday word, write it in lower case. If it is a new invented name, the sensitivity editor checks it and adds it to names.json first`,
       });
     });
   }
 
-  // Rule 3: years, links, tags, numbered elections.
+  // Rule 3: years, dates, links, tags, numbered elections.
   const r3: [RegExp, string][] = [
     [/(?<![\d,.:])\b(1\d{3}|20\d{2}|21\d{2})\b(?![\d,:])/g, 'a four-digit number reads as a real year: write it in words or drop it'],
-    [/\bhttps?:\/\/\S+|\bwww\.\S+|\b[\w-]+\.(?:com|org|net|gov|edu|io|co|uk|app|ai|info|biz|tv)\b/gi, 'a web address: never in the game'],
+    [/(?<![\d/])\b\d{1,2}\/\d{1,2}\b(?!\/?\d)|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, 'a number/number reads as a date (and some dates are real tragedies): write it in words'],
+    [/(?:^|[\s(])['’]\d{2}\b/g, "an apostrophe and two digits reads as a year ('87): drop it"],
+    [/\bhttps?:\/\/\S+|\bwww\.\S+|\b[a-z][\w-]*\.[a-z]{2,}\b/gi, 'a web address (word.word with no space after the dot): never in the game; put a space after the full stop'],
+    [/\bdot\s+(?:com|org|net|co|uk|gov|io|app|news)\b/gi, 'a web address in words: never in the game'],
     [/#/g, 'a "#" reads as a hashtag or a number: write "number" or drop it'],
     [/(?:^|\s)@\w+/g, 'an "@" handle: never in the game'],
     [/\belection\s*(?:no\.?|number)?\s*\d+|\b\d+(?:st|nd|rd|th)?\s+elections?\b/gi, '"election" with a number reads as a real or counted election (no text counts terms, 2.10)'],
   ];
   for (const [re, reason] of r3) {
-    for (const m of it.text.matchAll(re)) add(ctx, { ...base, rule: 'rule3', severity: 'error', match: m[0].trim(), reason });
+    for (const m of n.text.matchAll(re)) {
+      const hit = m[0].trim();
+      // "e.g", "a.m" and the like are no web address; nor is a time ("7.02") or "Mr.Plumb"-style typo caught here.
+      if (/web address \(/.test(reason) && /^(?:e\.g|i\.e|a\.m|p\.m|etc\.\w+)$/i.test(hit)) continue;
+      add(ctx, { ...base, rule: 'rule3', severity: 'error', match: hit, reason });
+    }
   }
   // A price in the words (the strips print every number, 2.7; a refusal never costs).
   if (it.kind === 'paper' || it.kind === 'label') {
-    for (const m of it.text.matchAll(/\d[\d,.]*\s*(?:dibs?|coins?|pounds|dollars|quid)\b|[£$€]\s*\d|\b(?:costs?|pays?|fee of|price of)\s+\d/gi)) {
+    for (const m of n.text.matchAll(/\d[\d,.]*\s*(?:dibs?|coins?|pounds|dollars|quid)\b|[£$€]\s*\d|\b(?:costs?|pays?|fee of|price of)\s+\d/gi)) {
       add(ctx, { ...base, rule: 'rule6', severity: 'error', match: m[0], reason: 'a price in the words: the strips print every amount from the archetype table; say it without a number' });
     }
+    // A refusal said to cost (2.1: refusing is free): a cheap warning, a reader decides.
+    const rc = /\b(?:study|studying|studied|refuse|refusing|refused|file it|filing it)\b[^.?!]{0,30}\b(?:costs?|will cost|lose|loses|lost)\b/i.exec(n.text);
+    if (rc) add(ctx, { ...base, rule: 'rule6', severity: 'warn', match: rc[0], reason: 'the words say refusing costs something; a refusal never costs money (2.1), and the strip must agree with the words: a reader checks' });
   }
+}
+
+/** 7.4: no vegetable, fruit or object is ever soft, hard, long, big or "at length". */
+function lintInnuendo(ctx: Ctx, it: Item, n: Norm, allowed: [number, number][], base: { source: string; id: string; field: string }) {
+  const { size, objects } = ctx.lists.innuendo;
+  const sizes = n.toks.map((t, i) => ({ t, i })).filter(({ t }) => size.has(t.low) && !inside(allowed, t.nStart, t.nEnd));
+  if (!sizes.length) return;
+  const objs = n.toks.map((t, i) => ({ t, i })).filter(({ t }) => objects.test(t.low));
+  if (!objs.length) return;
+  // Same sentence and at most three words apart: an error; anywhere in the text: a warning.
+  const sentence = (i: number) => n.toks.slice(0, i + 1).filter((t) => t.initial).length;
+  for (const s of sizes) {
+    const close = objs.find((o) => Math.abs(o.i - s.i) <= 3 && sentence(o.i) === sentence(s.i));
+    if (close) {
+      add(ctx, { ...base, rule: 'tier3', severity: 'error', match: `${s.t.raw} … ${close.t.raw}`, reason: `a size word next to a vegetable, fruit or object reads as innuendo (7.4: no vegetable, fruit or object is ever soft, hard, long or big): say what it won, weighs or did instead ("the prize marrow", "the heaviest pumpkin")` });
+      return;
+    }
+  }
+  add(ctx, { ...base, rule: 'tier3', severity: 'warn', match: `${sizes[0].t.raw} / ${objs[0].t.raw}`, reason: 'a size word and a vegetable, fruit or object in one text: a reader checks that nothing reads as innuendo (7.4)' });
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -653,7 +800,7 @@ function lintShape(ctx: Ctx, p: PaperLike) {
 }
 
 /** Office words a portable paper never holds (plan.json rules.portable.officeWords, and their kin). */
-const OFFICE_GENERIC = /\b(mayors?|mayoral|mayoress|governors?|gubernatorial|presidents?|presidential|acting|town hall|council|councils|the town|ward|wards|province|provinces|provincial|county|counties|republic|national|nation|capital|pruella|dimity|mildred|fenn)\b/i;
+const OFFICE_GENERIC = /\b(mayors?|mayoral|mayoress|governors?|gubernatorial|presidents?|presidential|acting|town hall|council|councils|councillors?|councilmen|aldermen|alderman|townsfolk|townspeople|townsmen|your worship|the town|ward|wards|province|provinces|provincial|county|counties|republic|national|nation|capital|pruella|dimity|mildred|fenn)\b/i;
 function officeWord(ctx: Ctx, text: string): string | undefined {
   const g = OFFICE_GENERIC.exec(text);
   if (g) return g[0];
@@ -673,7 +820,17 @@ function officeWord(ctx: Ctx, text: string): string | undefined {
 function collect(ctx: Ctx, units: ContentUnit[]): { items: Item[]; papers: PaperLike[]; decks: DeckStats } {
   const items: Item[] = [];
   const papers: PaperLike[] = [];
-  const decks: DeckStats = { papers: new Map(), scripted: new Map() };
+  const decks: DeckStats = { papers: new Map(), scripted: new Map(), runs: [] };
+  const runsOf = (ps: PaperLike[]) => {
+    let run: PaperLike[] = [];
+    for (const p of [...ps, undefined]) {
+      if (p && run.length && p.shape && p.shape === run[0].shape) run.push(p);
+      else {
+        if (run.length >= 2) decks.runs.push(run);
+        run = p && p.shape ? [p] : [];
+      }
+    }
+  };
   const chains = new Map<string, { source: string; deck?: Deck }>();
   const setUps = new Map<string, { source: string; id: string; archetype?: string; deck?: Deck; scripted?: boolean }[]>();
   const lists = new Map<string, string[]>();
@@ -696,6 +853,8 @@ function collect(ctx: Ctx, units: ContentUnit[]): { items: Item[]; papers: Paper
     const item = (id: string, field: string, text: string, kind: ItemKind, box?: BoxName, deck?: Deck, fitText?: string) =>
       items.push({ source: src, id, field, text, kind, box, deck, fitText });
 
+    {
+    const from = papers.length;
     for (const r of S.papers ?? []) {
       const deck = u.office;
       item(r.id, 'text', r.text, 'paper', 'proposal', deck);
@@ -721,6 +880,8 @@ function collect(ctx: Ctx, units: ContentUnit[]): { items: Item[]; papers: Paper
         add(ctx, { source: src, id: r.id, field: 'favour', rule: 'rule6', severity: 'error', reason: 'a basket comes back after a sign with its favour (2.2 "↩ favour", 7.6 A): write it in favour, with its two clippings' });
       }
       if (r.portable && deck === 'president') add(ctx, { source: src, id: r.id, field: 'portable', rule: 'rule6', severity: 'warn', reason: 'a president paper has no higher office to be carried to; "portable" does nothing here' });
+    }
+    runsOf(papers.slice(from));
     }
     for (const r of S.scripted ?? []) {
       const deck = r.office ?? (u.office !== 'any' ? u.office : undefined);
@@ -777,17 +938,27 @@ function collect(ctx: Ctx, units: ContentUnit[]): { items: Item[]; papers: Paper
       papers.push({ source: src, id: r.id, subject: r.subject, butt: r.butt, shape: r.shape, text: r.text, outcomes: false, tagged: true });
     }
     for (const r of S.apologies ?? []) item(r.id, 'text', r.text, 'label', 'stripLabel');
+    {
+    const from = papers.length;
     for (const r of S.runUp ?? []) {
       const deck = r.office ?? (u.office !== 'any' ? u.office : undefined);
       const d = district(deck);
       item(r.id, 'text', r.text.replace(/\{district\}/g, d.lint), 'paper', 'proposal', deck, r.text.replace(/\{district\}/g, d.fit));
       papers.push({ source: src, id: r.id, deck, subject: r.subject, butt: r.butt, shape: r.shape, text: r.text, visitor: r.visitor, outcomes: false, tagged: true });
     }
+    runsOf(papers.slice(from));
+    }
+    {
+    const from = papers.length;
     for (const r of S.rallies ?? []) {
       const deck = r.office ?? (u.office !== 'any' ? u.office : undefined);
       item(r.id, 'text', r.text, 'paper', 'proposal', deck);
       papers.push({ source: src, id: r.id, deck, subject: r.subject, butt: r.butt, shape: r.shape, text: r.text, visitor: r.visitor, outcomes: false, tagged: true });
     }
+    runsOf(papers.slice(from));
+    }
+    {
+    const from = papers.length;
     for (const r of S.frames ?? []) {
       const deck = r.office ?? u.office;
       const slot = [...r.frame.matchAll(SLOT_RE)][0]?.[1];
@@ -798,6 +969,8 @@ function collect(ctx: Ctx, units: ContentUnit[]): { items: Item[]; papers: Paper
       pushDeck(deck, p);
       if (phrases) phrases.forEach((ph, i) => item(`${r.id}+${slot}.${i + 1}`, 'frame', r.frame.replace(SLOT_RE, ph), 'paper', 'proposal', deck));
       else item(r.id, 'frame', r.frame.replace(SLOT_RE, 'it'), 'paper', undefined, deck);
+    }
+    runsOf(papers.slice(from));
     }
     for (const l of S.lists ?? []) l.phrases.forEach((ph, i) => item(`${l.id}.${i + 1}`, 'phrase', ph, 'phrase'));
     for (const r of S.rivals ?? []) {
@@ -861,6 +1034,8 @@ function collect(ctx: Ctx, units: ContentUnit[]): { items: Item[]; papers: Paper
 interface DeckStats {
   papers: Map<Deck, PaperLike[]>;
   scripted: Map<Deck, { slot: number; p: PaperLike }[]>;
+  /** Runs of two or more neighbouring records of one section, in file order, with one joke shape. */
+  runs: PaperLike[][];
 }
 
 function lintDecks(ctx: Ctx, decks: DeckStats, items: Item[]) {
@@ -905,6 +1080,11 @@ function lintDecks(ctx: Ctx, decks: DeckStats, items: Item[]) {
     if (med > 65) add(ctx, { source: 'deck', id: `deck:${deck}`, rule: 'rule4', severity: sev, match: `median ${med}`, reason: `the median paper of the ${deck} deck is ${med} characters${part}; at most 65 (2.7, 7.4)` });
     const long = lens.filter((l) => l > 80).length;
     if (long > 0.2 * lens.length) add(ctx, { source: 'deck', id: `deck:${deck}`, rule: 'rule4', severity: sev, match: `${long}/${lens.length} over 80`, reason: `${Math.round((100 * long) / lens.length)} % of the ${deck} deck's papers are over 80 characters${part}; at most 20 % (7.4)` });
+  }
+  // No two joke shapes in a row in file order (plan.json rules.noTwoShapesInARow: the draw is random,
+  // so this is a writing discipline): one finding per run, a warning on a batch, an error on all.
+  for (const run of decks.runs) {
+    add(ctx, { source: run[0].source, id: run.length > 2 ? `${run[0].id}…${run[run.length - 1].id}` : run[1].id, field: 'shape', rule: 'rule6', severity: sev, match: `${run[0].shape} ×${run.length}`, reason: `${run.length} papers in a row in file order carry the joke shape "${run[0].shape}" (${run.map((p) => p.id).join(', ')}): no two in a row (7.4, office-style.md 3); reorder them or change a shape` });
   }
   // No two neighbouring papers with the same shape where order is fixed (scripted papers).
   for (const [deck, list] of decks.scripted) {

@@ -7,7 +7,7 @@
  * package's file); the cast's own colours (skin tones, hair, cloth) live here, because they are
  * parameters of the bust part system and nothing else draws people.
  */
-import { BlendMode, ClipOp, PaintStyle, PathOp, Skia, StrokeCap, StrokeJoin, type SkCanvas, type SkPaint, type SkPath, type SkPathBuilder } from '@shopify/react-native-skia';
+import { BlendMode, ClipOp, PaintStyle, PathOp, Skia, StrokeCap, StrokeJoin, type SkCanvas, type SkPaint, type SkPath, type SkPathBuilder, type SkRect } from '@shopify/react-native-skia';
 import { DESK } from '../palette';
 
 // ---------------------------------------------------------------------------
@@ -247,23 +247,18 @@ export function at(c: SkCanvas, x: number, y: number, s: number, deg: number, dr
   c.restore();
 }
 
-/** Draws `draw` through a colour matrix (greyscale, duotone). */
-export function filtered(c: SkCanvas, matrix: number[], draw: (c: SkCanvas) => void): void {
+/**
+ * Draws `draw` through a colour matrix (greyscale, duotone). Give `bounds` (local units) whenever
+ * the drawing is small on a large canvas: a layer without bounds is the whole canvas.
+ */
+export function filtered(c: SkCanvas, matrix: number[], draw: (c: SkCanvas) => void, bounds?: SkRect): void {
   const p = Skia.Paint();
   p.setColorFilter(Skia.ColorFilter.MakeMatrix(matrix));
-  c.saveLayer(p);
+  c.saveLayer(p, bounds ?? null);
   draw(c);
   c.restore();
 }
 
-/** Draws `draw` flattened to one colour (silhouettes, the cut-outs' paper edge). */
-export function flat(c: SkCanvas, color: string, draw: (c: SkCanvas) => void): void {
-  const p = Skia.Paint();
-  p.setColorFilter(Skia.ColorFilter.MakeBlend(Skia.Color(color), BlendMode.SrcIn));
-  c.saveLayer(p);
-  draw(c);
-  c.restore();
-}
 
 // ---------------------------------------------------------------------------
 // The pen: line of varying width, washes, hatching
@@ -278,6 +273,11 @@ export interface Pen {
   hatch: boolean;
   /** Line width multiplier (the cut-outs draw a little heavier). */
   weight: number;
+  /**
+   * The edge pass of a cut-out: every wash and line is drawn in this one colour, grown by `grow`
+   * units, so the figure stands on a paper margin (far cheaper than a dilate filter).
+   */
+  edge?: { color: string; grow: number };
 }
 
 export const DEFAULT_PEN: Pen = { ink: P.ink, hatch: true, weight: 1 };
@@ -289,6 +289,10 @@ export const DEFAULT_PEN: Pen = { ink: P.ink, hatch: true, weight: 1 };
  */
 export function ink(c: SkCanvas, pen: Pen, path: SkPath, w = LINE): void {
   const ww = w * pen.weight;
+  if (pen.edge) {
+    c.drawPath(path, stroke(pen.edge.color, ww + pen.edge.grow * 2));
+    return;
+  }
   c.drawPath(path, stroke(pen.ink, ww * 0.62));
   c.save();
   c.translate(ww * 0.42, ww * 0.38);
@@ -298,6 +302,11 @@ export function ink(c: SkCanvas, pen: Pen, path: SkPath, w = LINE): void {
 
 /** A flat wash with its ink outline. */
 export function wash(c: SkCanvas, pen: Pen, path: SkPath, color: string, w = LINE): void {
+  if (pen.edge) {
+    c.drawPath(path, fill(pen.edge.color));
+    c.drawPath(path, stroke(pen.edge.color, w * pen.weight + pen.edge.grow * 2));
+    return;
+  }
   c.drawPath(path, fill(color));
   if (w > 0) ink(c, pen, path, w);
 }

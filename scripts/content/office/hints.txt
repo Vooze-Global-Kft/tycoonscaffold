@@ -1,0 +1,43 @@
+# hints.txt: the plain word a writer uses instead of a denied everyday word (shown in the lint's
+# reason, and copied into office-style.md's "words to avoid"). These words are denied in every sense
+# because one sense is a subject the game never touches (7.8 tier 3); the replacement keeps the
+# harmless sense. One entry a line: "word[, word...] -> replacement". "#" starts a comment.
+strike, strikes, struck -> "chimes" (a clock) or "a boycott" (2.8)
+toll, tolls -> "rings" (a bell)
+rent, rents, rented -> "hire"
+march, marches, marched, marching -> "a walk", "parade round" (and no months beyond April: "in spring")
+border, borders -> "edge", "bed"; only "flower border", "herbaceous border" and "hedge border" pass
+union, unions -> "merger", "the two clubs together"
+crown, crowns -> "the top of your hat"; for bowls, "the bowling green"
+battle, battles -> "contest"
+veteran, veterans -> "old", "long-serving"
+army, armies -> "flock", "crowd"
+invade, invaded, invading, invasion -> "took over", "filled"
+surrender, surrendered -> "hand back", "give up"
+attack, attacked, attacks -> "pecked", "set upon"
+blind, blinds -> "window blind" and "roller blind" pass; otherwise "shutter"
+crazy -> "mini golf", "unusual"
+mad, bonkers -> "unusual", "excitable"
+mental -> "in his head"
+miracle -> "wonder"
+angel -> "sponge" (cake)
+victoria -> "sponge cake"
+swiss, danish, welsh, turkish, scotch, french, brussels, eccles -> name the food without the place ("sprouts", "chard", "a pastry")
+demonstration, demonstrations -> "display", "showing"
+recount, recounts -> "tell", "go over" (votes are never counted in a joke, 7.4)
+housing -> "case" (a clock's)
+welfare -> "wellbeing"
+colony, colonies -> "flock"
+butt, butts -> "rain barrel"
+punch -> "lemonade"
+execute, executed -> "carry out"
+regime -> "routine"
+sir -> "Mayor", or the person's name
+queen -> a bee is fine without it: "the head bee"
+king, kings -> "grand" ("a grand cushion for the Mayor's chair")
+bush, bushes -> "shrub", "shrubs"
+sick, ill -> "away", "not in today"
+pint, pints -> "a cup of tea"
+uniform, uniforms -> "the band's matching jackets" (7.3: no uniform)
+school, schools, children, child, kids, pupils -> nothing: 7.3 has no children or school
+tax, taxes -> "fee", "charge"; tax changes are never a subject

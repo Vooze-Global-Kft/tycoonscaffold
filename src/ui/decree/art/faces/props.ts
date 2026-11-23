@@ -7,7 +7,7 @@
  * Nothing here is a weapon, a drink, money, a flag, a seal or a symbol of any faith or group.
  */
 import { FillType, type SkCanvas } from '@shopify/react-native-skia';
-import { CLOTH, P, alpha, arc, blob, builder, circle, clip, curve, fill, hatch, ink, line, mix, oval, poly, rrect, stroke, wash, type Pen } from './ink';
+import { P, alpha, arc, blob, builder, circle, clip, curve, fill, hatch, ink, line, mix, oval, poly, rrect, stroke, wash, type Pen } from './ink';
 
 type PropDraw = (c: SkCanvas, pen: Pen, accent: string) => void;
 
@@ -685,5 +685,3 @@ export const PROPS = {
 export type PropId = keyof typeof PROPS;
 export const NO_PROP = 'none';
 
-void CLOTH;
-void hatch;

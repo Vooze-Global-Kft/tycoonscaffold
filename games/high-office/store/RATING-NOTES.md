@@ -12,10 +12,10 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 | Ads | Yes: Google AdMob, rewarded (opt-in). Highest ad content rating: PG (parental guidance) (monetization.ads.maxAdContentRating) |
 | In-app purchases | Yes: 5 products (unlock, cosmetic, skipAds) |
 | Premium currency | Not sold |
-| Random items (chests) | None |
-| Random items SOLD (money or Gems) | No: chests are only earned (timer, missions, rewarded ads) |
+| Random items (chests) | None: no chests, boxes or random rewards of any kind |
+| Random items SOLD (money or any currency) | No |
 | Time-limited offers | No |
-| Daily rewards | Yes |
+| Daily rewards | No |
 | Chat, user-generated content, web browsing, location | No |
 | Simulated gambling (casino games) | No |
 
@@ -24,9 +24,23 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 - Target age: **13 and over**. Google Play target audience: tick 13-15, 16-17 and 18+ only.
 - **Never** the Apple Kids Category or Google Play's Families / "Designed for Families" programme: the
   game uses third-party ads and analytics, which those programmes exclude (policy.md 3).
-- The game draws no people (no cast): machines and call-sign plates only. Keep "kids" and "for
-  children" wording out of the store text, and check the screenshots show no young characters.
+- The game draws people in code: about 48 editorial-cartoon busts of adults (officials, club
+  spokespeople, lobbyists, clerks) and six player faces; no children, school, soldier, police, clergy
+  or uniform (office-design.md 7.3). Keep "kids" and "for children" wording out of the store text.
 - "Could the app unintentionally appeal to children?" (Play): answer honestly; cartoon art can count.
+
+## Satire, and the basket (decisions D9, D13)
+
+- Political satire of office itself (vanity, red tape, committees, ribbon cuttings). Everything is invented:
+  the country, its places, clubs, newspapers and people; no real person, party, country, flag, movement or
+  event, and no real-world hot-button issue (office-design.md 7.8; the satire lint checks every text).
+- The basket, stated exactly (D13): a lobbyist offers a gift, and the player can accept it by signing. It
+  never pays the mayor money and never pleases a club; it adds gossip, and its favour costs the mayor.
+- Money (D13): no ad or purchase moves a mood or a poll point: those move only by papers you decide, and
+  none is offered from the call until election night ends.
+- The sensitivity editor's read: games/high-office/store/SENSITIVITY-READ.md (hand-written, signed by its writer; sync never writes it): **not written yet**.
+- D9: a read by the owner (or someone the owner names) before a submission is still required; nothing here
+  says a person signed what no person signed.
 
 ## App Store Connect: age rating questionnaire
 
@@ -74,7 +88,8 @@ disclosure page before you submit; they change.
 4. Create every product id in App Store Connect, Play Console and RevenueCat, and attach the
    in-app purchases to the first version you submit.
 5. Privacy policy page live at the URL above, listing AdMob, Firebase and RevenueCat.
-6. Release one game at a time from one account, each with its own art, sounds, numbers and
+6. The owner (or someone the owner names) reads the game and games/high-office/store/SENSITIVITY-READ.md before submitting (D9).
+7. Release one game at a time from one account, each with its own art, sounds, numbers and
    listing text: both stores remove families of near-identical apps, and take related accounts with
    them (policy.md 4). `npm run validate` catches shared tables and near-identical descriptions,
    not shared art.

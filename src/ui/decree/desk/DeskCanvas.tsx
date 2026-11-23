@@ -36,7 +36,7 @@ function chipText(cfg: R.DecreeConfig, office: R.OfficeIx, c: R.Chip): string {
     case 'endScandal':
       return S.desk.endChip;
     case 'district':
-      return S.desk.districtChip(c.from, c.to);
+      return S.desk.districtChip(cfg.decree.offices[office].districts[c.district]?.short ?? '?', c.from, c.to);
   }
 }
 
@@ -52,8 +52,17 @@ function stripLines(cfg: R.DecreeConfig, office: R.OfficeIx, s: R.Strip | null):
 function deskText(cfg: R.DecreeConfig, g: R.DecreeGame): string {
   const desk = g.decree.desk;
   if (!desk || desk.type !== 'paper') return '';
-  const sign = stripLines(cfg, g.decree.office, R.stripOf(cfg, g, 'sign'));
-  const refuse = stripLines(cfg, g.decree.office, R.stripOf(cfg, g, 'refuse'));
+  // A strip whose rule is not built yet (a district chip asks count.ts) prints "not built yet", not a clear desk.
+  const strip = (side: R.Choice) => {
+    try {
+      return stripLines(cfg, g.decree.office, R.stripOf(cfg, g, side));
+    } catch (e) {
+      if (!(e instanceof R.NotBuiltError)) throw e;
+      return { title: side === 'sign' ? S.desk.ifSigned : S.desk.ifStudied, chips: `${S.shell.notBuilt} (${e.rule})` };
+    }
+  };
+  const sign = strip('sign');
+  const refuse = strip('refuse');
   const p = desk.paper;
   return [sign.title, sign.chips, `${p.visitor.name} · ${p.visitor.role}`, p.text, refuse.title, refuse.chips].join('\n');
 }

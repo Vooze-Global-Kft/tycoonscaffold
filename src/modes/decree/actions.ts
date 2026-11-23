@@ -60,11 +60,18 @@ function act(where: string, fn: Step, key: DecreeFxName | ((before: R.DecreeGame
 let adOpen = false;
 
 export const decreeActions = {
-  /** 2.6 decide(choice): the desk item signed (up) or studied (down). */
-  decide: (choice: R.Choice) => act('decide', (cfg, g, clock, ev) => R.decide(cfg, g, choice, clock, ev), choice === 'sign' ? 'sign' : 'study'),
+  /**
+   * 2.6 decide(choice): the desk item signed (up) or studied (down). A slip flicked up is a purchase
+   * (buy_level, the sound package's map); flicked down it is put back (study).
+   */
+  decide: (choice: R.Choice) => act('decide', (cfg, g, clock, ev) => R.decide(cfg, g, choice, clock, ev), (before) => (choice === 'refuse' ? 'study' : before.decree.desk?.type === 'slip' ? 'buy_level' : 'sign')),
   /** 2.6 takeBack(): a tap on the out-tray inside the 2 s. */
   takeBack: () => act('takeBack', (cfg, g, clock, ev) => R.takeBack(cfg, g, clock, ev), 'take_back'),
-  /** The pending paper commits now: a tap elsewhere, Android back from the bare desk, the app to the background (2.7). Silent. */
+  /**
+   * The pending paper commits now: a tap elsewhere, Android back from the bare desk, the app to the
+   * background (2.7). Silent. The AppState listener that calls it when the app goes to the background
+   * is the platform package's (P8, src/ui/decree/back.ts beside Android back).
+   */
   commitPending: () => act('commitPending', (cfg, g, clock, ev) => R.commitPending(cfg, g, clock, ev), null),
   /** 2.6 raise(i): the Ledger's untaught button. */
   raise: (ministry: number) => act('raise', (cfg, g, _c, ev) => R.raise(cfg, g, ministry, ev), 'buy_level'),
@@ -85,9 +92,19 @@ export const decreeActions = {
     const before = decreeNow();
     if (!before) return false;
     if (choice === 'moveUp') {
+      // The shared prestige() keeps no events: the same pure move on the same state, with an events list,
+      // gives the ones the listeners need ('moved', 'termStarted'); they are emitted only if the store moved.
+      const events: R.DecreeEvent[] = [];
+      try {
+        R.moveUp(before.cfg, before.g, Date.now(), events);
+      } catch (e) {
+        if (!(e instanceof R.NotBuiltError)) crash.record(e, 'decree.moveUp');
+      }
       useGame.getState().prestige();
       const after = decreeNow();
-      return !!after && after.g.decree.office > before.g.decree.office;
+      const moved = !!after && after.g.decree.office > before.g.decree.office;
+      if (moved && events.length) modeEvents.emit(events);
+      return moved;
     }
     return act('chooseAfterResult', (cfg, g, _c, ev) => R.chooseAfterResult(cfg, g, 'stay', Date.now(), ev), null);
   },
@@ -121,8 +138,14 @@ export const decreeActions = {
       adOpen = false;
     }
   },
-  /** Collect the away report: its earnings were paid when computed (2.15); the ad adds the extra 50 %. */
+  /**
+   * Collect the away report: its earnings were paid when computed (2.15); the ad adds the extra 50 %,
+   * offered only while governing (2.10: no ad from the call to the end of election night; the rules'
+   * canWatchAd 'awayBonus'). The away report sheet (P7) asks canWatchAd before it shows the button.
+   */
   collectAway: async (withAd: boolean): Promise<void> => {
-    await useGame.getState().collectOffline(withAd);
+    const now = decreeNow();
+    const adAllowed = withAd && !!now && R.canWatchAd(now.cfg, now.g, 'awayBonus');
+    await useGame.getState().collectOffline(adAllowed);
   },
 };

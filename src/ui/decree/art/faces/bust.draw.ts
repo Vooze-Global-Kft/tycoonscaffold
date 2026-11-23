@@ -20,6 +20,8 @@ export const BUST_W = 100;
 export const BUST_H = 125;
 /** The oval photograph inside the design box. */
 export const PHOTO = { cx: 50, cy: 62.5, rx: 48.6, ry: 61.4 } as const;
+/** The bounds of a bust's layers (greyscale, portrait): the design box and a little more. */
+const LAYER = { x: -2, y: -2, width: BUST_W + 4, height: BUST_H + 4 };
 /** Where the neck meets the garment. */
 const NECK_Y = 86;
 /** The sitter's scale inside the photograph, about a point near the chin. */
@@ -43,14 +45,16 @@ export interface BustOptions {
   ground?: boolean;
   /** false draws no hatching (flat washes only: the tone test, a flat print). Default true. */
   hatch?: boolean;
+  /** Any two skin washes instead of a tone (the tone-independence test feeds marker colours). */
+  skin?: { base: string; deep: string };
 }
 
 export function photoPath() {
   return oval(PHOTO.cx, PHOTO.cy, PHOTO.rx, PHOTO.ry);
 }
 
-export function washOf(look: Look, tone: ToneId = look.tone, age = 0): Wash {
-  const t = toneOf(tone);
+export function washOf(look: Look, tone: ToneId = look.tone, age = 0, skin?: { base: string; deep: string }): Wash {
+  const t = skin ?? toneOf(tone);
   return { skin: t.base, skinDeep: t.deep, hair: agedHair(look.hairColour, age) };
 }
 
@@ -65,10 +69,10 @@ function drawProp(c: SkCanvas, pen: Pen, look: Look, back: boolean): void {
 }
 
 /** The person alone, in design units, no photograph (the cut-outs reuse the head through `drawHeadOf`). */
-export function drawPerson(c: SkCanvas, look: Look, opts: { tone?: ToneId; age?: number; pen?: Pen } = {}): void {
+export function drawPerson(c: SkCanvas, look: Look, opts: { tone?: ToneId; age?: number; pen?: Pen; skin?: { base: string; deep: string } } = {}): void {
   const pen = opts.pen ?? DEFAULT_PEN;
   const age = opts.age ?? 0;
-  const w = washOf(look, opts.tone, age);
+  const w = washOf(look, opts.tone, age, opts.skin);
   const g = headGeo(look.head, HEAD_X, HEAD_TOP);
   // The sitter fills the photograph a little more than the design grid (read at 44 pt).
   c.save();
@@ -110,7 +114,7 @@ export function drawBustLook(c: SkCanvas, look: Look, o: BustOptions = {}): void
     clip(q, photoPath());
     const pen = o.hatch === false ? { ...DEFAULT_PEN, hatch: false } : DEFAULT_PEN;
     if (o.ground !== false) drawGround(q, pen);
-    drawPerson(q, look, { tone: o.tone, age: o.age, pen });
+    drawPerson(q, look, { tone: o.tone, age: o.age, pen, skin: o.skin });
     q.restore();
     if (o.frame !== false) {
       q.drawPath(photoPath(), stroke(alpha(P.ink, 0.85), 1.1));
@@ -118,9 +122,9 @@ export function drawBustLook(c: SkCanvas, look: Look, o: BustOptions = {}): void
   };
   if (o.mono) {
     const m = o.mono === true ? { ink: P.violet, paper: P.paper } : o.mono;
-    filtered(c, duotoneMatrix(m.ink, m.paper), body);
+    filtered(c, duotoneMatrix(m.ink, m.paper), body, LAYER);
   } else if (o.greyscale) {
-    filtered(c, GREY_MATRIX, body);
+    filtered(c, GREY_MATRIX, body, LAYER);
   } else {
     body(c);
   }

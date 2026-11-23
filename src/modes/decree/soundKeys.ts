@@ -10,11 +10,16 @@ export const DECREE_SHARED_SOUNDS = {
   ui_denied: 'denied',
   ui_open: 'ui_open',
   ui_close: 'ui_close',
-  purchase_success: 'buy_level',
+  // The sound package's map (requests.md [sound]; recipes_office.py SHARED_SOUNDS): a shop purchase is
+  // rare (open_ministry, not the Ledger's frequent buy_level); the move after the result sheet's march is
+  // a storey; the Clerk's away report is the slip's arrival (a payout, no haptic). ui_tap and ui_tab stay
+  // unmapped (silent on purpose).
+  purchase_success: 'open_ministry',
   buy: 'buy_level',
   unlock: 'open_ministry',
-  prestige: 'majority',
-  offline_collect: 'clipping',
+  prestige: 'storey',
+  milestone: 'storey',
+  offline_collect: 'slip_arrive',
   story_open: 'ui_open',
   deal_popup: 'ui_open',
 } as const;

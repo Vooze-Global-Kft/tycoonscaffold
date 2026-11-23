@@ -54,21 +54,24 @@ export function drawGiantScissors(c: SkCanvas, r = 40, o: { open?: number; ribbo
   });
 }
 
-/** The folded napkin (a triangle fold with a stitched hem), centred, about 2·r wide. */
+/** The folded napkin (a square folded in half, its fold and stitched hem showing, a few violet lines of the founding law), centred, about 2·r wide. */
 export function drawNapkin(c: SkCanvas, r = 40): void {
   const k = r / 40;
   at(c, 0, 0, k, 0, (q) => {
-    const back = poly([-40, -6, 40, -6, 0, 30]);
-    washed(q, back, DESK.napkin, DESK.paperShade, 0, 2, 1.4);
-    const fold = poly([-40, -6, 40, -6, 0, 8]);
-    washed(q, fold, DESK.white, DESK.paperShade, 0, -1.6, 1.2);
-    q.drawPath(poly([-33, -2, 33, -2, 0, 24], true), dashed(DESK.slateLight, 0.9, 2.2, 1.8));
-    // a few lines of the founding law, in violet, on the napkin
-    for (let i = 0; i < 3; i++) q.drawPath(line(-14 + i * 4, 12 + i * 4, 14 - i * 4, 12 + i * 4), stroke(alpha(DESK.violet, 0.7), 1.1));
+    const cloth = builder().moveTo(-38, -20).lineTo(38, -24).lineTo(40, 20).lineTo(-36, 24).close().build();
+    washed(q, cloth, DESK.napkin, DESK.paperShade, 0, 2.4, 1.4);
+    // the fold: a lighter upper half
+    q.save();
+    clip(q, cloth);
+    q.drawPath(rect(-44, -30, 88, 28), fill(DESK.white));
+    q.restore();
+    q.drawPath(line(-37, -1, 39, -3), stroke(alpha(LINE, 0.5), 1));
+    q.drawPath(builder().moveTo(-34, -17).lineTo(34, -20.4).lineTo(35.6, 17).lineTo(-32.6, 20.4).close().build(), dashed(DESK.slateLight, 0.9, 2.2, 1.8));
+    for (let i = 0; i < 3; i++) q.drawPath(line(-24, 6 + i * 4.4, 22 - i * 10, 5 + i * 4.4), stroke(alpha(DESK.violet, 0.75), 1.2));
   });
 }
 
-/** The emblem: beige rounded field, napkin, scissors over it. Centred, `r` the half side (40 = an 80 pt emblem). */
+/** The emblem: beige rounded field, the napkin low, the giant scissors lying across it on a slant. Centred, `r` the half side (40 = an 80 pt emblem). */
 export function drawEmblem(c: SkCanvas, r = 40): void {
   const k = r / 40;
   at(c, 0, 0, k, 0, (q) => {
@@ -76,8 +79,8 @@ export function drawEmblem(c: SkCanvas, r = 40): void {
     dropShadow(q, field, 1.6, 2.4, 0.3);
     washed(q, field, DESK.beige, DESK.beigeDeep, 1.6, 1.6, 1.6);
     q.drawPath(rrect(-35, -35, 70, 70, 10), stroke(alpha(DESK.beigeDeep, 0.9), 1));
-    at(q, 0, 10, 0.62, 0, (z) => drawNapkin(z, 40));
-    at(q, 0, -2, 0.72, 0, (z) => drawGiantScissors(z, 40));
+    at(q, 0, 14, 0.66, 0, (z) => drawNapkin(z, 40));
+    at(q, 2, -4, 0.82, 38, (z) => drawGiantScissors(z, 40, { open: 30 }));
   });
 }
 

@@ -1,9 +1,27 @@
-# deny-innuendo.txt: 7.4's "no innuendo" rule, as the comedy editor's plan.json (rules.innuendo)
-# states it: no vegetable, fruit or object is ever soft, hard, long, big or "at length", and none of
-# the size words below appears in any text at all. Always fails.
+# deny-innuendo.txt: 7.4's "no innuendo" rule (no vegetable, fruit or object is ever soft, hard, long,
+# big or "at length"), in three groups:
+#   - "always": words with no plain use in this game's voice; tier 3, any case, wherever they appear.
+#   - "size words" and "objects": a size word within three words of an object in the same sentence is
+#     an error ("a big marrow", "the marrow is very long"); both in one text but further apart is a
+#     warning for a reader. A size word alone passes ("as long as", "a big day", "hard pencil",
+#     "a new member", "the tool shed"): grammar and committee words are not innuendo.
 # Matching: the syntax of deny-phrases.txt (whole words, any case; several entries a line split at
-# commas). Fixed names that contain a word pass through allow.json ("The Very Long Bridge",
-# "Giant Vegetable Society", "Long Lunch", "a firmer tone").
-soft, softer, softest, softly, hard, harder, hardest, long, longer, longest, big, bigger, biggest
-at length, length, girth, thick, stiff, firm, swollen, plump, juicy, size, enormous, huge, massive
-whopper, melons, nuts, balls, member, organ, tool
+# commas; "word*" any ending). allow.json lets fixed names through ("The Very Long Bridge").
+# What only a reader catches: innuendo by context ("the finest rod in town", "very impressive",
+# "the judges could not stop looking"); office-style.md lists the words to avoid.
+
+# --- always ---
+girth, girths, swollen, whopper, whoppers, melons, at length, stiff, stiffer, stiffest, stiffly
+plump, plumper, plumpest, juicy, juicier, juiciest, erect, erects, erected, erecting, erection
+knockers, bulging, bulge, bulges, throbbing, moist, length of his, length of her
+
+# --- size words ---
+long, longer, longest, big, bigger, biggest, hard, harder, hardest, soft, softer, softest, firm
+firmer, firmest, thick, thicker, thickest, huge, enormous, massive, length, size, sized, girthy
+lengthy, hefty, impressive, generous, ample, monster, monstrous, whopping, gigantic
+
+# --- objects ---
+marrow*, cucumber*, courgette*, zucchini*, leek*, parsnip*, carrot*, banana*, melon*, plum, plums
+peach, peaches, pumpkin*, gourd*, squash, squashes, aubergine*, eggplant*, turnip*, radish*
+sausage*, nut, nuts, rod, rods, pole, poles, tackle, truncheon*, sprout*, gherkin*, pickle, pickles
+bean, beans, beanpole*, pepper*, chilli*, chili*, corn, cob, cobs, vegetable*, veg, fruit*, produce

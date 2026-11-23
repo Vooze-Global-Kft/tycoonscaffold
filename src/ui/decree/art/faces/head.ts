@@ -241,9 +241,7 @@ export const FACIAL = {
   },
   beard: (c, pen, g, w) => {
     const top = g.top + g.h * 0.6;
-    const region = intersect(g.path, builder().addRect({ x: g.cx - 40, y: top, width: 80, height: 60 }).build());
     const fuller = blob([[g.cx - g.hw * 0.96, top], [g.cx - g.hw * 0.86, g.top + g.h * 0.86], [g.cx, g.chin + 4.5], [g.cx + g.hw * 0.86, g.top + g.h * 0.86], [g.cx + g.hw * 0.96, top], [g.cx + g.hw * 0.5, top + 4], [g.cx, top + 5], [g.cx - g.hw * 0.5, top + 4]], 1);
-    void region;
     wash(c, pen, fuller, w.hair, 0.8);
     hatch(c, pen, fuller, { within: sideOf(g.cx + 3, g.cx + 2, top, g.chin + 6), a: 0.45 });
     // The mouth shows through.
@@ -368,10 +366,7 @@ const cap = (g: HeadGeo, hairline: number, lift: number, sideDrop: number, widen
 
 export const HAIRS = {
   bald: {
-    front: (g) => {
-      // A clean pate with a gentle shine line only (drawn as strands).
-      return builder().build();
-    },
+    // A clean pate with a gentle shine line only (drawn as strands).
     strands: (g) => [[[g.cx - g.hw * 0.5, g.top + 6], [g.cx - g.hw * 0.2, g.top + 3.2]]],
   },
   fringe: {

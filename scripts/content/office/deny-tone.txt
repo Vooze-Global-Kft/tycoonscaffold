@@ -41,7 +41,7 @@ fake news, vote now, ballot, ballots, ballot box, ballot boxes, ballot paper, ba
 mr president, madam president, oval office, white house, intern, interns, internship
 president of the world, president for life, senate, senator, senators, congress, congressman
 congresswoman, parliament, parliamentary, mp, mps, mep, meps, prime minister
-house of commons, house of lords, downing street, number ten, number 10, cabinet office
+house of commons, house of lords, downing street, =Number Ten, =Number 10, cabinet office
 home office, foreign office, the treasury department, state department, supreme court
 left versus right, liberal versus conservative
 

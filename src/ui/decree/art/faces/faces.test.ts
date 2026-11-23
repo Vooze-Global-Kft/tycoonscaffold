@@ -128,35 +128,39 @@ describe('the cast table', () => {
     for (const t of I.TONE_IDS) expect(C.CAST.filter((l) => l.tone === t).length, t).toBeGreaterThanOrEqual(5);
   });
 
-  it('draws the skin in the same shape in every tone (the tone is only a colour), for every look', () => {
-    // Hatching is off here: a hatch line's anti-aliased fringe changes a light wash more than a
-    // deep one, which is contrast, not shape. The outlines and every part are still drawn.
+  it('draws the skin in the same shape whatever its colour, for every look (tone is only a colour)', () => {
+    // The parts receive the skin only as two wash colours. Feed two marker skins far from every
+    // other colour of the kit (magenta and cyan pairs) and every real tone; the skin's drawn shape
+    // must be the same pixel for pixel: no part grows, shrinks or moves with the colour of the skin.
     const w = 100;
     const h = 125;
+    const MARKERS = [
+      { base: '#FF00FF', deep: '#C000C0' },
+      { base: '#00FFFF', deep: '#00C0C0' },
+    ];
+    const moved: string[] = [];
     for (const id of C.CAST_IDS) {
-      const look = C.lookOf(id)!;
-      const ref = I.toneOf('t1');
-      const base = maskOf(render((c) => F.drawBust(c, id, { x: 0, y: 0, width: w, height: h }, { tone: 't1', hatch: false }), w, h), ref.base);
-      const n = base.reduce((a, b) => a + b, 0);
+      const masks = MARKERS.map((m) => maskOf(render((c) => F.drawBust(c, id, { x: 0, y: 0, width: w, height: h }, { skin: m, hatch: false }), w, h), m.base, 0));
+      const n = masks[0].reduce((a, b) => a + b, 0);
       expect(n, id).toBeGreaterThan(200);
-      for (const t of I.TONE_IDS.slice(1)) {
-        const tone = I.toneOf(t);
-        const m = maskOf(render((c) => F.drawBust(c, id, { x: 0, y: 0, width: w, height: h }, { tone: t, hatch: false }), w, h), tone.base);
-        // A pixel counts as moved only if the other tone has no skin within one pixel of it: an
-        // anti-aliased edge whose blend happens to land on the other tone's colour is not a shape.
-        const near = (mask: Uint8Array, i: number) => {
-          const x = i % w;
-          const y = Math.floor(i / w);
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (mask[(y + dy) * w + x + dx]) return true;
-          return false;
-        };
-        let diff = 0;
-        for (let i = 0; i < m.length; i++) if (m[i] !== base[i] && !(m[i] ? near(base, i) : near(m, i))) diff++;
-        // Under 2 %: the blended edges of thin features (a fair brow on a deep tone) can land on the
-        // other tone's exact colour; a part that changed with tone would move hundreds of pixels.
-        expect(diff / n, `${id} ${look.tone} -> ${t}`).toBeLessThan(0.02);
-      }
+      let diff = 0;
+      for (let i = 0; i < masks[0].length; i++) if (masks[0][i] !== masks[1][i]) diff++;
+      if (diff > 0) moved.push(`${id}: ${diff} px`);
     }
+    expect(moved).toEqual([]);
+  });
+
+  it('control: changing one part does move the skin (the test above can fail)', () => {
+    const look = C.lookOf('bramble')!;
+    const draw = (head: typeof look.head) => {
+      const m = { base: '#FF00FF', deep: '#C000C0' };
+      return maskOf(render((c) => F.drawBustLook(c, { ...look, head }, { skin: m, hatch: false }), 100, 125), m.base, 0);
+    };
+    const a = draw('egg');
+    const b = draw('square');
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) diff++;
+    expect(diff).toBeGreaterThan(50);
   });
 
   it('draws every bust, portrait and cut-out with ink inside its box', () => {

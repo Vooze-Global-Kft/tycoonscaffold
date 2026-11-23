@@ -13,7 +13,10 @@
 #   - "{a,b,c}" is one of the alternatives ("drain the {swamp,marsh,bog}");
 #   - a line starting "=" is matched case-sensitively and never at the start of a sentence (for
 #     words that are harmless in lower case: "=Turkey" catches the country, not the bird).
+#   - a line starting "==" is matched exactly as written, in any position, all-caps runs included.
 # Runs of all-caps words are lower-cased before matching, so "=" entries miss them.
+# The templates section holds the SHAPES of famous slogans with any words in the gaps ("make * grate
+# again", "tough on *, tough on the causes of *"): a parody with one word swapped is still the slogan.
 # allow.json lists the exact phrases that pass although they contain a match.
 
 # --- United States ---
@@ -348,3 +351,68 @@ vote early vote often
 every vote counts
 your country needs you
 loose lips sink ships
+
+# --- templates: famous slogan shapes, any word in the gap (content-lint-attack.md B3) ---
+make * {great,grate,greater} again
+make {great,grate} again
+drain the *
+{tough,hard} on * tough on the causes of *
+things can only get *
+ask not what *
+keep calm and *
+it's the * stupid
+{fight,fighting} them on the *
+we shall fight *
+tear down this *
+tear down that *
+the * stops here
+* you can believe in
+you can believe in
+a * in every pot
+not flash just *
+education education *
+{level,levels,levelled,levelling,leveled,leveling} up
+stable and strong
+get * done
+{build,building} that *
+stop the {boats,boat,buses,bus,ships,ferries,steal,count}
+{four,five,six,ten} more years
+yes we * can
+lock * up and throw away the key
+{leave,brexit,no} means {leave,brexit,no}
+for the many not the few
+coalition of chaos
+long-term economic plan
+northern powerhouse
+big society
+broken britain
+send her back
+build back *
+# --- added after the lint attack: well-known lines missing before ---
+drill baby drill
+all lives matter
+blue lives matter
+black lives matter
+hands up don't shoot
+i can't breathe
+we are the 99 percent, we are the ninety-nine percent, we are the 99 per cent
+vote leave
+leave means leave
+stronger in
+britain stronger in europe
+hang mike pence
+dark brandon
+let's go brandon
+are you thinking what we're thinking
+i'm a uniter not a divider
+peace land and bread
+the great replacement
+the south will rise again
+watergate, partygate, cash for questions, duck house, expenses scandal, cash for honours, sleaze
+nineteen eighty four, nineteen eighty-four, big brother is watching
+committee on committees
+private secretary
+proudly south african
+proudly made in
+nine eleven, seven seven, jan 6, january sixth, january the sixth
+dot com, dot co dot uk

@@ -286,3 +286,15 @@ Oliver Twist
 Artful Dodger
 Fagin
 Mr Bumble
+
+# --- added after the lint attack and the sensitivity editor's renames (content-names.md) ---
+Marchpane
+Ermintrude
+Grouty
+Pargetter
+Puddleby
+Tuttle Twins
+Pennyroyal Academy
+Mulch Diggums
+Septimus Heap
+Mr Stink

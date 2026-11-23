@@ -38,7 +38,8 @@ export const S = {
     levelChip: (from: number, to: number) => `Level ${from} → ${to}`,
     appointChip: 'Appoint',
     endChip: 'Ends it',
-    districtChip: (from: number, to: number) => `District ${from} → ${to}`,
+    /** A district's share, given in hundredths, printed to one decimal ("HT 48.6 → 52.6"). */
+    districtChip: (short: string, from: number, to: number) => `${short} ${(from / 100).toFixed(1)} → ${(to / 100).toFixed(1)}`,
   },
   // ===== bars: top bar, club strip, term ribbon, goal line, bottom row (P7) =======================
   hud: {

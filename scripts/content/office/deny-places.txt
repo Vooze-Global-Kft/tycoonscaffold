@@ -125,3 +125,14 @@ Tottenham, Hartlepool, Grimsby, Doncaster, Barnsley, Wigan, Bolton, Uxbridge, He
 =Bath, =Reading, =Nice, =Jersey, =Guernsey, Isle of Man, Isle of Wight, Anglesey, Orkney, Shetland
 Hebrides, Lake District, Peak District, Snowdonia, Ben Nevis, Loch Ness, Stonehenge, Thames
 Big Ben, Tower Bridge, Trafalgar, Piccadilly, Oxford Street, Fleet Street, Canary Wharf
+
+# --- added after the lint attack (content-lint-attack.md B5; content-names' requests) ---
+nato, n.a.t.o, ==UN, united nations, the u.n, imf, world bank, world trade organisation, wto, unesco, unicef
+eurozone, schengen, brexitland, pentagon, camp david, mar-a-lago, mar a lago, downing, chequers, holyrood
+stormont, harvard, yale, oxbridge, eton, timbuktu, harlem, down under, the outback, kitwell, nibley, north nibley
+parisian, parisians, londoner, londoners, new yorker, new yorkers, glaswegian, glaswegians, mancunian, mancunians
+liverpudlian, liverpudlians, scouser, scousers, geordie, geordies, brummie, brummies, cockney, cockneys
+dubliner, dubliners, sydneysider, sydneysiders, bostonian, bostonians, californian, californians, floridian, floridians
+# national nicknames and slurs (everyday words only capitalised: "=Paddy" passes "a rice paddy")
+=Paddy, =Paddies, =Jock, =Jocks, =Taff, =Taffy, pom, poms, pommie, pommies, pommy, limey, limeys, canuck
+canucks, gringo, gringos, yank, yanks, yankee, yankees, =Kiwi, =Kiwis, =Frog, =Frogs, =Jerry, =Mick, =Micks

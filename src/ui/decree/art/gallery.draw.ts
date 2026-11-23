@@ -10,7 +10,7 @@ import { drawBunting, drawFormFace, drawFrontPage, drawPaper, drawPhotoClip, dra
 import { drawDeskSet, drawDesk, drawDoor, drawDrawer, drawInTray, drawLamp, drawLampPool, drawOutTray, drawPaperclip, drawPen, drawStickyNote, drawTakeBackRest, drawTelephones, drawWarehousePhoto, type OfficeIx } from './desk.draw';
 import { EFFECT_IDS, drawApprovalChip, drawEffect, drawGossipChip } from './effects.draw';
 import { MINISTRY_IDS, PROJECT_IDS, drawMinistry, drawStoreys } from './ministries.draw';
-import { BUTTON_ICONS, drawBandSilhouette, drawButtonIcon, drawCabinetFrame, drawChalkMarks, drawDistrictMap, drawEnvelope, drawLedger, drawTallyBoard, drawTallyResult, tallyRows } from './meta.draw';
+import { BUTTON_ICONS, drawButtonIcon, drawCabinetFrame, drawChalkMarks, drawDistrictMap, drawEnvelope, drawLedger, drawTallyBoard, drawTallyResult, tallyRows } from './meta.draw';
 import { MONUMENTS, drawClipping, drawFrame, drawMonument, drawOpponentsCard, drawScrapbook, drawTownPhoto, drawVanityShelf, drawWallpaper, frameInner } from './wall.draw';
 import { drawCaption, drawCaptionBand, drawEmblem, drawGiantScissors, drawLoadingCard } from './emblem.draw';
 import { drawLetters } from './letters';
@@ -217,7 +217,7 @@ export function gallerySections(): Section[] {
       },
     },
     {
-      title: 'Election night: tally board, envelopes, marks, rosettes, bunting, band',
+      title: 'Election night: tally board, envelopes, marks, rosettes, bunting',
       height: () => 300,
       draw: (c, w) => {
         c.drawRect({ x: 0, y: 10, width: w, height: 290 }, fill(DESK.walnutDeep));
@@ -232,7 +232,6 @@ export function gallerySections(): Section[] {
         });
         at(c, bw + 60, 60, 1, 0, (q) => drawEnvelope(q, 0));
         at(c, bw + 60, 120, 1, 0, (q) => drawEnvelope(q, 0.7));
-        at(c, 10, 290, 1, 0, (q) => drawBandSilhouette(q, Math.min(260, w - 20), DESK.chalk));
       },
     },
     {
@@ -282,7 +281,7 @@ export function gallerySections(): Section[] {
         at(c, 120, 195, 1, 0, (q) => drawEmblem(q, 11));
         at(c, 150, 20, 1, 0, (q) => drawLoadingCard(q, 200, 260, 'THE REPUBLIC OF MIDDLING', 'PROUDLY ADEQUATE'));
         if (w > 560) {
-          at(c, 370, 20, 1, 0, (q) => drawGiantScissors(q, 40, { ribbon: true }));
+          at(c, 440, 100, 1, 0, (q) => drawGiantScissors(q, 40, { ribbon: true }));
           at(c, 370, 190, 1, 0, (q) => {
             drawCaptionBand(q, Math.min(340, w - 380), 92);
             drawCaption(q, ['SIGN IT, OR STUDY IT', 'FOREVER'], 14, 38, 16);

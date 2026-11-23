@@ -114,6 +114,26 @@ describe('a mode without the seams: paid and caught up exactly as before', () =>
     await s.useGame.getState().collectOffline(true);
     expect(s.useGame.getState().game.cash).toBe(1000 + 10_800 * 1.5);
   });
+
+  it('an engine without the seams: boot shows the report and leaves cash unchanged until collect', async () => {
+    const m = standIn({}, true);
+    // boot() runs once per store module: each boot test loads a fresh store (the mocks stay).
+    vi.resetModules();
+    const { installEngineMode } = await import('../engine/mode');
+    installEngineMode(m.mode);
+    const now = nextMoment();
+    vi.useFakeTimers({ now, toFake: ['Date'] });
+    const saved = { ...E.createInitialState(cfg, now - 3_600_000), cash: 500, lastSavedAt: now - 3_600_000 };
+    storage.set('save:pizza-empire:seams1', JSON.stringify(saved));
+    const { useGame } = await import('./store');
+    useGame.setState({ hydrated: false, offline: null });
+    await useGame.getState().boot();
+    expect(useGame.getState().offline?.earnings).toBe(10_800);
+    expect(useGame.getState().game.cash, 'not paid at boot').toBe(500);
+    expect(m.ticked, 'a long absence is not ticked').toEqual([]);
+    await useGame.getState().collectOffline(false);
+    expect(useGame.getState().game.cash, 'paid on collect, as before').toBe(500 + 10_800);
+  });
 });
 
 describe('the seams of 2.15', () => {
@@ -156,6 +176,8 @@ describe('the seams of 2.15', () => {
 
   it('paysOnCompute: boot pays a returning player in the update that loads the save', async () => {
     const m = standIn({ paysOnCompute: true, catchUpSeconds: 0 }, true);
+    // boot() runs once per store module: each boot test loads a fresh store (the mocks stay).
+    vi.resetModules();
     const { installEngineMode } = await import('../engine/mode');
     installEngineMode(m.mode);
     const now = nextMoment();

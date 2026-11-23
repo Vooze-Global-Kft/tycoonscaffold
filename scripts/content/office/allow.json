@@ -1,5 +1,5 @@
 {
-  "$comment": "allow.json: exceptions of the satire lint (office-design.md 7.8). Exact phrases only, matched whole-word and in any case; a lint match that lies wholly inside an allowed phrase is not reported. Each entry carries the editor's reason. The first three are 7.8's own; the others were added by the content desk with the reason given and await the sensitivity editor's read.",
+  "$comment": "allow.json: exceptions of the satire lint (office-design.md 7.8). Exact phrases only, matched whole-word and in any case; a lint match that lies wholly inside an allowed phrase is not reported. Each entry carries the editor's reason. The first three are 7.8's own; the others were added by the content desk with the reason given and await the sensitivity editor's read. The five place-named vegetables were removed after the lint attack (I6): writers say \"sprouts\", \"chard\", \"beans\" (hints.txt). An allowed phrase also silences rule 2 inside it.",
   "allow": [
     {
       "phrase": "flower border",
@@ -24,31 +24,6 @@
     {
       "phrase": "Middling March",
       "reason": "as The Middling March",
-      "by": "content desk; awaits the sensitivity editor"
-    },
-    {
-      "phrase": "Brussels sprout",
-      "reason": "a vegetable's name (the Giant Vegetable Society), not the city",
-      "by": "content desk; awaits the sensitivity editor"
-    },
-    {
-      "phrase": "Brussels sprouts",
-      "reason": "a vegetable's name, not the city",
-      "by": "content desk; awaits the sensitivity editor"
-    },
-    {
-      "phrase": "Swiss chard",
-      "reason": "a vegetable's name, not the country",
-      "by": "content desk; awaits the sensitivity editor"
-    },
-    {
-      "phrase": "French bean",
-      "reason": "a vegetable's name, not the country",
-      "by": "content desk; awaits the sensitivity editor"
-    },
-    {
-      "phrase": "French beans",
-      "reason": "a vegetable's name, not the country",
       "by": "content desk; awaits the sensitivity editor"
     },
     {
@@ -85,6 +60,31 @@
       "phrase": "bigger study",
       "reason": "2.2's own name for a committee's follow-up (\"↩ bigger study\"), not a size word",
       "by": "content desk; awaits the sensitivity editor"
+    },
+    {
+      "phrase": "window blind",
+      "reason": "the Shop Window Guild's vocabulary: a blind on a shop window (content-lint-attack I3)",
+      "by": "content desk after the lint attack; awaits the sensitivity editor"
+    },
+    {
+      "phrase": "window blinds",
+      "reason": "as window blind",
+      "by": "content desk after the lint attack; awaits the sensitivity editor"
+    },
+    {
+      "phrase": "roller blind",
+      "reason": "as window blind",
+      "by": "content desk after the lint attack; awaits the sensitivity editor"
+    },
+    {
+      "phrase": "roller blinds",
+      "reason": "as window blind",
+      "by": "content desk after the lint attack; awaits the sensitivity editor"
+    },
+    {
+      "phrase": "dead heat",
+      "reason": "a vegetable-show and race idiom: a tie (content-lint-attack I3)",
+      "by": "content desk after the lint attack; awaits the sensitivity editor"
     }
   ]
 }

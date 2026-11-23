@@ -5,35 +5,39 @@
 # opposition; the best-known for the rest), royals, and notorious public figures. Compiled offline.
 #
 # How it is matched:
-#   - a line with ONE word is a surname. It is compared with every word of a text that is
-#     capitalised in the middle of a sentence, and with every word of a name field (names.json,
-#     a rival's name, a place, a monument), never with lower-case words or a sentence's first word.
-#     It matches when the word (without a possessive "'s") is the same ignoring case, or is one edit
-#     away (both at least 4 letters), or sounds alike (same first letter, same consonant code and
-#     same first vowel sound; both at least 4 letters). An exact match always fails; a near match
-#     fails until the sensitivity editor clears it in that name's names.json check record.
-#   - a line with SEVERAL words is a full name, used where the surname is a common word
-#     ("Theresa May", "John Major", "Gordon Brown"); it matches those words in sequence, any case.
-#   - words in an all-caps run are compared exactly only.
-# Surnames that are also everyday words appear only as full names, so "a major ribbon" and "Market
-# Ward" pass. "#" starts a comment.
+#   - a line with ONE word is a surname (or a first name that points at one person: "Jacinda").
+#     It matches in ANY case and ANY position: a sentence's first word, lower case ("obama"), an
+#     all-caps headline ("THATCHER"), after ":" or ";", with a possessive or plural, and with the
+#     endings that make a word of a name ("Nixonian", "Thatcherite", "Reaganomics", "Blairism").
+#   - a line starting "~" is a surname that is also an everyday word ("~Grant", "~Ford", "~Brown").
+#     It matches only capitalised in the middle of a sentence, in a name field, or after a title
+#     ("Mr Brown", "MRS MAY"), so "Grant the prize", "a calmer brown" and "Ford the stream" pass.
+#     It is never near-matched.
+#   - near matches (plain surnames of 4 letters or more): a capitalised or all-caps word one edit
+#     away, or sounding alike (same consonant code, which folds c/k, ph/f, dj/j, and the same first
+#     vowel sound). Where a capital says nothing (a sentence's first word, an all-caps run, a Title
+#     Case line) an everyday word of lexicon.txt is not near-matched ("Paint" is not "Paine"). A
+#     near match fails until the sensitivity editor clears it in that name's names.json check.
+#   - a line with SEVERAL words is a full name ("Theresa May", "John Major"), matched in sequence,
+#     capitalised; its last word also matches after a title ("Mrs May").
+# "#" starts a comment.
 
 # --- United States: presidents since 1897 (and Grant, whom 7.8 names) ---
-Grant
+~Grant
 McKinley
 Roosevelt
 Taft
 Wilson
 Harding
 Coolidge
-Hoover
+~Hoover
 Truman
 Eisenhower
 Kennedy
 Johnson
 Nixon
-Ford
-Carter
+~Ford
+~Carter
 Reagan
 Clinton
 Obama
@@ -46,7 +50,7 @@ James Sherman
 Thomas Marshall
 Dawes
 Charles Curtis
-Garner
+~Garner
 Henry Wallace
 Barkley
 Hubert Humphrey
@@ -55,9 +59,9 @@ Rockefeller
 Mondale
 Quayle
 Al Gore
-Gore
+~Gore
 Cheney
-Pence
+~Pence
 Kamala
 Kamala Harris
 Vance
@@ -74,7 +78,7 @@ Adlai Stevenson
 Goldwater
 McGovern
 Dukakis
-Dole
+~Dole
 Kerry
 McCain
 Romney
@@ -99,7 +103,7 @@ John Hay
 Cordell Hull
 Acheson
 Dulles
-Rusk
+~Rusk
 Haig
 Shultz
 James Baker
@@ -128,9 +132,9 @@ Hegseth
 Forrestal
 Ashcroft
 Gonzales
-Holder
-Sessions
-Garland
+~Holder
+~Sessions
+~Garland
 Bondi
 Bill Barr
 William Barr
@@ -141,7 +145,7 @@ John Mitchell
 Haldeman
 Ehrlichman
 Brzezinski
-Bolton
+~Bolton
 Priebus
 Kushner
 Ivanka
@@ -165,7 +169,7 @@ Petraeus
 Buttigieg
 Ocasio
 Ocasio-Cortez
-Sanders
+~Sanders
 Bernie
 Elizabeth Warren
 DeSantis
@@ -188,7 +192,7 @@ Marjorie Taylor Greene
 Gaetz
 Boebert
 Jim Jordan
-Rove
+~Rove
 Limbaugh
 Tucker Carlson
 Hannity
@@ -199,17 +203,17 @@ Hunter Biden
 Kamala
 
 # --- United Kingdom: prime ministers since 1900 ---
-Salisbury
+~Salisbury
 Balfour
 Campbell-Bannerman
 Bannerman
 Asquith
 Lloyd George
 Bonar Law
-Baldwin
+~Baldwin
 MacDonald
 Ramsay MacDonald
-Chamberlain
+~Chamberlain
 Churchill
 Attlee
 Anthony Eden
@@ -227,7 +231,7 @@ Gordon Brown
 Cameron
 Theresa May
 Boris
-Truss
+~Truss
 Liz Truss
 Sunak
 Starmer
@@ -259,16 +263,16 @@ Nigel Lawson
 Lamont
 Ken Clarke
 Kenneth Clarke
-Darling
+~Darling
 Osborne
-Hammond
+~Hammond
 Javid
 Zahawi
 Kwarteng
 Jeremy Hunt
 Reeves
 Curzon
-Halifax
+~Halifax
 Bevin
 Bevan
 Crosland
@@ -281,7 +285,7 @@ Jack Straw
 Margaret Beckett
 Miliband
 Hague
-Cleverly
+~Cleverly
 Joynson-Hicks
 Brittan
 Michael Howard
@@ -322,7 +326,7 @@ Sturgeon
 Salmond
 Yousaf
 Swinney
-Paisley
+~Paisley
 Gerry Adams
 McGuinness
 Trimble
@@ -362,7 +366,7 @@ Ed Davey
 Tice
 
 # --- Royals ---
-Windsor
+~Windsor
 Mountbatten
 Markle
 Meghan
@@ -408,7 +412,7 @@ Mulroney
 Kim Campbell
 Chretien
 Paul Martin
-Harper
+~Harper
 Carney
 # --- deputies, opposition and others ---
 MacEachen
@@ -451,7 +455,7 @@ Goodale
 Axworthy
 
 # --- Australia: prime ministers since 1901 ---
-Barton
+~Barton
 Deakin
 Chris Watson
 George Reid
@@ -484,7 +488,7 @@ Scott Morrison
 Albanese
 # --- deputies, treasurers, opposition and others ---
 Costello
-Downer
+~Downer
 Vaile
 Warren Truss
 Barnaby Joyce
@@ -495,9 +499,9 @@ Plibersek
 Beazley
 Crean
 Latham
-Shorten
+~Shorten
 Dutton
-Peacock
+~Peacock
 Hewson
 Brendan Nelson
 Sussan Ley
@@ -517,7 +521,7 @@ Hall-Jones
 Joseph Ward
 Massey
 Francis Bell
-Coates
+~Coates
 George Forbes
 Michael Joseph Savage
 Peter Fraser
@@ -618,7 +622,7 @@ Holomisa
 Suzman
 Slabbert
 Biko
-Tutu
+~Tutu
 Hani
 Sisulu
 Tambo
@@ -652,12 +656,12 @@ Assad
 Khomeini
 Idi Amin
 Mugabe
-Franco
+~Franco
 Pinochet
 Ceausescu
 Milosevic
 Tito
-Napoleon
+~Napoleon
 Bonaparte
 Rasputin
 Marx
@@ -676,7 +680,7 @@ Ghislaine
 Weinstein
 Savile
 Madoff
-Musk
+~Musk
 Bezos
 Zuckerberg
 Bill Gates
@@ -766,3 +770,88 @@ Gaddafi
 Sadam
 Zedong
 Mao Zedong
+
+# --- added after the lint attack (content-lint-attack.md B1, I2; content-names' requests) ---
+# Surnames that are everyday words ("~"): only capitalised mid-sentence, in a name field, or after a
+# title ("Mr Brown", "MRS MAY"); never near-matched.
+~Brown
+~Major
+~Heath
+~Eden
+~Hunt
+~Foot
+~Benn
+~Adams
+~Harris
+~Key
+~Howard
+~Clark
+~Collins
+~Young
+~Austin
+~Wiles
+~Meadows
+~Hicks
+~Pickles
+~Plumb
+~Kim
+~Xi
+~Maggie
+~Donald
+~Cable
+~Swift
+~English
+~Martin
+# United States
+Walz
+Kaine
+Edwards
+Lieberman
+Haaland
+Ramaswamy
+Leavitt
+Shapiro
+Whitmer
+Emhoff
+Mayorkas
+Sullivan
+Psaki
+Hawley
+Klobuchar
+Kinzinger
+Lutnick
+Vought
+Navarro
+Pruitt
+DeVos
+Carson
+Chao
+Mulvaney
+Cohen
+Avenatti
+Stormy Daniels
+Linda Tripp
+Goss
+# United Kingdom
+Phillipson
+Dorries
+McDonnell
+Vince Cable
+Lee Anderson
+Eric Pickles
+Henry Plumb
+# First names that point at one person
+Diana
+Jacinda
+Dubya
+Barack
+Rishi
+Keir
+Theresa
+Nigel
+Bojo
+Fidel
+Adolf
+Benito
+Kamala
+Hillary

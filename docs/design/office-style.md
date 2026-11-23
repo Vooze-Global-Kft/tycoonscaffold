@@ -8,7 +8,7 @@ The one promise behind every line: **everything is invented, the joke is on offi
 
 ## 1. The world in one page
 
-**The Republic of Middling.** Motto "Proudly Adequate". Its founding law was written on a napkin, which is kept in a drawer. Emblem: a goose holding giant scissors on a beige field. Tune: "The Middling March" (not an anthem). Currency: the **dib** (plural dibs). There are no parties, no colours that stand for sides, no left or right. People belong to **hobby clubs**, and that is all the politics there is.
+**The Republic of Middling.** Motto "Proudly Adequate". Its founding law was written on a napkin, which is kept in a drawer. Emblem: giant ribbon scissors over a folded napkin on a beige field (D12; the goose is written, never drawn holding anything). Tune: "The Middling March" (a fixed name, not an anthem; "march" appears nowhere else). Currency: the **dib** (plural dibs). There are no parties, no colours that stand for sides, no left or right. People belong to **hobby clubs**, and that is all the politics there is.
 
 | Office | Where | Districts | Newspaper | Your desk, your extra advisor |
 |---|---|---|---|---|
@@ -26,7 +26,7 @@ Free to use: in Dithering the clock tower, the bus station, the high street, the
 | `shops` | Shop Window Guild (Shops) | window displays; polished glass, Window Week, hats on stands, the shop bell | all |
 | `veg` | Giant Vegetable Society (Vegetables) | growing prize vegetables; the weigh-in, rosettes, the prize pumpkin | all |
 | `brass` | Brass Band Guild (Brass) | the band; Sunday concerts, the tuba, the bandstand, sheet music | governor, president |
-| `anglers` | Anglers' Circle (Anglers) | sitting by water, quietly; floats, the jetty, the Quiet Competition | governor, president |
+| `anglers` | Anglers' Circle (Anglers) | sitting by water, quietly; floats, lines, the jetty, the Quiet Competition (never "rod" or "tackle") | governor, president |
 | `kites` | Kite Flyers' League (Kites) | kites; wind, string, the Gusting Heights festival | president |
 | `hedges` | Tidy Hedge Committee (Hedges) | topiary; straight edges, shears, the hedge show | president |
 
@@ -49,11 +49,11 @@ Visitors come from this list only (a paper's `visitor` is the id). No new named 
 | `spinwell` | Rodney Spinwell, Chief of Staff | | all | brisk, flattering, sure | your name on things; good photographs | lies about numbers; mocks voters |
 | `abacus` | Gwendolyn Abacus, Treasury Clerk | | all | exact, unimpressed | the books balanced | a joke at the treasury's expense of anyone but you |
 | `wimble` | Cuthbert Wimble, junior clerk | | all | keen, procedural | a form for everything | panics; complains |
-| `dimity` | Deputy Pruella Dimity | | governor | dry, always near lunch | sandwiches; an early finish | flatters you |
+| `dimity` | Deputy Pruella Dimity | | governor | dry, always near lunch (the joke is the sandwich, never her body) | sandwiches; an early finish | flatters you |
 | `fenn` | Secretary Mildred Fenn | | president | has seen three presidents and liked one | quiet; the drawer kept tidy | says which one |
 | `kerb` | Desmond Kerb, Bus Spotters' Society | bus | all | precise, timetabled | buses honoured and on time | sneers at other hobbies |
 | `sprott` | Mervyn Farestage, Timetable Secretary (new) | bus | all | eager, footnoted | a complete record | — |
-| `till` | Pauline Till, Shop Window Guild; Till's Teas | shops | all | brisk, commercial, polite | displays seen; Till's Teas mentioned | haggles; pressures |
+| `till` | Pauline Till, Shop Window Guild; Till's Teas | shops | all | brisk, commercial, polite | displays seen; Till's Teas mentioned | haggles; pressures; appears in a line about hardship |
 | `awning` | Delphine Awning, Display Captain (new) | shops | all | artistic, exacting | the perfect window | — |
 | `gourdley` | Hilda Gourdley, Giant Vegetable Society | veg | all | proud, formal, fond of the pumpkin | the pumpkin respected | boasts of size |
 | `loam` | Bertram Loam, Weigh-in Steward (new) | veg | all | slow, careful | fair scales | — |
@@ -62,7 +62,7 @@ Visitors come from this list only (a paper's `visitor` is the id). No new named 
 | `hake` | Marigold Hake, Anglers' Circle | anglers | gov., pres. | hushed, patient | silence by the water | catches or harms a fish (fish are only watched) |
 | `dabble` | Ewan Reedmace, Keeper of the Quiet (new) | anglers | gov., pres. | whispering | nobody noticing him | — |
 | `loft` | Wendell Loft, Kite Flyers' League | kites | president | airy, optimistic | wind and room | — |
-| `updraught` | Philomena Updraught, Launch Marshal (new) | kites | president | breathless | the first kite up | — |
+| `updraught` | Philomena Updraught, Launch Marshal (new) | kites | president | breathless with excitement (never unwell) | the first kite up | — |
 | `topiary` | Agnes Topiary, Tidy Hedge Committee | hedges | president | crisp, exact | straight lines | builds a hedge to keep anyone out |
 | `edging` | Osmund Edging, Shears Officer (new) | hedges | president | slow, measuring | an even edge | — |
 | `sash` | Lionel Sash, Ribbon Makers' Guild | | all | oily-polite, "no reason" | more ribbon-cuttings | offers money |
@@ -81,7 +81,7 @@ Lobbyists speak only for their own absurd trade; their gifts are fruit baskets, 
 | id | Rival | Office | Hobby |
 |---|---|---|---|
 | `stitchley` | Councillor Prudence Stitchley | mayor | her hat (slogan "Stitchley: She Owns A Hat") |
-| `dunnock` | Cyril Dunnock | mayor | door knockers |
+| `dunnock` | Cyril Dunnock | mayor | doorbells |
 | `setter` | Philippa Setter | mayor | setting crosswords |
 | `waft` | Leander Waft, Keeper of the Ceremonial Spoon (role line "Keeper, Ceremonial Spoon") | governor | the spoon ("Waft: Gently Onwards") |
 | `mallowby` | Hortensia Mallowby | governor | the accordion |
@@ -99,7 +99,7 @@ Lobbyists speak only for their own absurd trade; their gifts are fruit baskets, 
 | `ambling` | Gertrude Ambling | president | her walking boots |
 | `knapp` | Bartholomew Knapp | president | yodelling |
 
-Renamed by the sensitivity read (each reason is in `names.json`): Plumb (a President of the European Parliament) and Crumb (the candidate of a children's novel), as D14 asks; Marchpane and Tuttle (children's books), Dabble (Trumpton's fireman), Vane (a sitting vice-president), Goss (a CIA director), Ermintrude (The Magic Roundabout's cow), Gusset (an underwear word), Nibley (real villages, and Dibley), Clement and Barnaby (a prime minister, a deputy prime minister), Applegarth (Appleby), Pennyroyal, Mulch, Septimus Brindle, Mopley (Mosley), Tansy and Brindle (characters of Lantern Row), Sprott (Jack Sprat), Pockle (a pothole-funding minister), the Committee on Committees (a real legislative committee) and Kitewell (one letter from Kitwell, a district of Birmingham). The spare names Grout (the prison boss of a sitcom) and Pargeter (a radio soap's family) are not used. Write rival lines so the surname appears at most once per line. The seven deputies marked "new" take the bust count to about 52, above the specification's "about 48"; the art package should say if that is too many.
+The sensitivity read of 2026-11-23 renamed 22 names (reasons in `names.json`): use only the names on this page, never an old one. A rival's surname appears at most once per line. The seven "new" deputies take the busts to about 52 (7.3 says about 48).
 
 ---
 
@@ -116,7 +116,7 @@ Dry official language about something silly. The paper is written by a person wh
 - Bad: "We mended the roof. LOL, not really!" (signals the joke; an exclamation; no official voice).
 
 **`escalation`**: a request that climbs in steps, or returns bigger.
-- "Paint one pothole gold, as a memorial. The others will want one too."
+- "Paint one pothole gold, as a landmark. The others will want one too."
 - "A ribbon for the bench. A ribbon for the bench's plaque. A plaque for the ribbon."
 - "We propose a study of why our last study took nine years. It should take about ten."
 - Bad: "A bigger bandstand, then a bigger town, then the whole world." (leaves the world we have; the steps are not specific).
@@ -128,13 +128,13 @@ Dry official language about something silly. The paper is written by a person wh
 - Bad: "The spotters want you to go the extra mile. The 7:02 does not." (a pun on a stock phrase is the whole joke).
 
 **`form-misapplied`**: procedure applied to something that never needed it.
-- "Planning permission for a snowman, in case it snows. Two copies, one for the snowman."
+- "Planning permission for a sandcastle. Two copies, one for the sandcastle."
 - "The duck pond requests a licence to be a pond. It has been one for years without."
 - "Practise on this one. It is a form about forms. File it FOR FURTHER STUDY."
 - Bad: "Make everyone fill in a form before they may vote." (votes; a real procedure; an opinion).
 
 **`statistic`**: a number with official gravity about a silly thing. Numbers in the text are about the thing, never dibs, moods or papers.
-- "Bus spotting is up 4 %. The buses are the same; the spotters are trying harder."
+- "Bus spotting is up 4 %. The buses are the same; the survey was taken at the 7:02."
 - "Potholes are down by one. It moved."
 - "Move the weigh-in off the high street. Our windows are 40 % pumpkin."
 - Bad: "Sales on the high street fell 3 % after the bandstand opened." (a real-economy claim; reads as policy).
@@ -146,12 +146,12 @@ Dry official language about something silly. The paper is written by a person wh
 - Bad: "Paint MAKE DITHERING ADEQUATE AGAIN on the water tower." (echoes a real slogan; fails the lint).
 
 **`photo-op`**: you, posing.
-- "Attend the weigh-in, Mayor, and say 'Goodness'. We will cue you."
+- "Attend the weigh-in, Mayor, and say 'goodness'. We will cue you."
 - "Pose beside the new pothole before it is filled. For the 'before'."
-- "Be photographed reading a book. The right way up, this time."
+- "Be photographed reading a book. Rodney has chosen one with your name on it."
 - Bad: "Kiss a baby at the bus station for the Drizzle." (children; a real campaign cliché).
 
-**`callback`**: pays off a running joke every player has met: the drawer FOR FURTHER STUDY, the first fruit basket, Till's Teas, Rodney, your parking space, the goose on the emblem. A comic paper never calls back to a chain or another comic paper (the player may not have seen it); that is what chains are for.
+**`callback`**: pays off a running joke every player has met: the drawer FOR FURTHER STUDY, the first fruit basket, Till's Teas, Rodney, your parking space, the napkin the founding law is written on. A comic paper never calls back to a chain or another comic paper (the player may not have seen it); that is what chains are for.
 - "The drawer FOR FURTHER STUDY is full. Cuthbert proposes a second drawer, to study the first."
 - "Lionel Sash sends a basket to apologise for the last basket. No reason."
 - "Make your birthday a national holiday. Mildred has a drawer for these."
@@ -161,10 +161,29 @@ Dry official language about something silly. The paper is written by a person wh
 
 - **Rations per deck** (your batch's share is in `plan.json`): the goose at most 1 paper in 40; biscuits 1 in 60; one statue (or bust) per office deck, none in the any-office deck (statues live on the vanity shelf); at most 1 exclamation mark per 50 papers. Write none of these unless your batch has the ration.
 - **Length**: a paper is at most 90 characters. Your batch's median is at most 65; at most 20 % of it is "long" (81 to 90). Aim at 45 to 70. Two short sentences beat one long one. Name ≤ 24, role ≤ 28 (from the cast). Clippings ≤ 60, picket slogans ≤ 18, labels ≤ 28, Clerk's notes ≤ 48 (60 hard).
-- **No innuendo.** No vegetable, fruit or object is ever soft, hard, long, big (or softer, harder, longer, bigger, at length), nor thick, stiff, firm, swollen, plump, juicy, huge, enormous; no "size", "length" or "girth" of anything. A pumpkin is "prize", never large. If you need a word for size, the joke is the wrong joke. (The fixed names "The Very Long Bridge" and "Giant Vegetable Society" are the only exceptions.)
+- **No innuendo.** No vegetable, fruit or object is ever soft, hard, long, big, firm or "at length", nor thick, stiff, swollen, plump, juicy, huge, impressive or erect; no "size", "length" or "girth" of anything. A pumpkin is "prize", never large; if you need a size word, the joke is the wrong joke. The check is to fail some words always, size words beside an object, and only report plain words like "long" or "member" (`plan.json` `rules.innuendo`); until it does (requested), all of them fail, so use the list below. Fixed names pass: The Very Long Bridge, Giant Vegetable Society, Long Lunch, "a firmer tone", "no hard feelings".
 - **No joke about how votes are cast or counted.** No ballots, recounts, extra votes, the pumpkin voting, counting badly. Election night is played straight.
 - **No numbers the rules own.** Never write dibs, a price, a mood, a number of papers or days in the text: the strip prints those, and a text that disagrees with them breaks the game's first promise.
 - **Office words** (Mayor, Governor, President, the town, province, county, ward, national, Republic, the newspaper's name, Pruella, Mildred) never appear in a `portable` paper or the any-office deck. Portable papers say "you".
+
+### Words to avoid
+
+Ordinary words the check stops, or a reader would (the lint attack's false alarms). The swap costs the joke nothing.
+
+| Avoid | Write |
+|---|---|
+| strikes, struck (a clock); tolls (a bell) | chimes; rings |
+| rent, housing, welfare | hire; case; wellbeing |
+| march, March; union; demonstration; recount | stroll (and name no month); merger; display; tell |
+| battle, army, invaded, colony, surrender, attacked, veteran | contest, flock, took over, flock, hand back, pecked, old |
+| crown, king, queen, sir, royal (king-size, queen bee, crown green) | leave out: no crowns, no titles |
+| bush, border, blind, butt, dead (heat) | shrub; flower bed; awning; rain barrel; a tie |
+| crazy, mental, miracle, angel; punch; execute; regime | mini, in his head, a wonder, sponge; lemonade; carry out; routine |
+| a food or thing named after a place (Victoria sponge, Swiss roll, Danish, Welsh rarebit, Turkish delight, Scotch egg, Eccles cake, Brussels sprouts, Swiss chard, French beans, French windows) | sponge, jam roll, pastry, cheese on toast, sprouts, chard, runner beans |
+| a red (or any colour) rosette | a first-prize rosette |
+| rod, tackle, erect, knockers, melon, impressive | float, line, put up, doorbell, apple, fine |
+| long, big, hard, soft, firm, size, member, tool, nuts | ran over, a great day, a sharp pencil, a new face, potting shed, bolts, a cardboard cut-out of you |
+| number ten (a bus); "papers, please" | the 7:02 (buses go by their times); leave out (another game's title) |
 
 ### Who may be the butt (`butt`: self, office, staff, lobbyist, committee, visitor, rival, thing)
 
@@ -184,13 +203,13 @@ You never type a number, but the words must make both printed outcomes obvious. 
 
 - **Project** (sign: the town pays a small sum, the petitioner pleased, the other put out; refuse: the reverse). The petitioner's club asks the town to build, mend, put up or grant something for their hobby. The cost is implied by the thing (a shed, a sign, a hill). The other club loses space, view or quiet. Examples: "Grant the prize pumpkin the freedom of the town..." (G5); "Build Kitecombe a hill..." (G21). **Mistake:** a project that costs nothing in the fiction ("Say something nice about pumpkins": that is a Treat), or one nobody minds.
 - **Swap** (no money; petitioner gains what the other loses; refusing gives it back). Zero-sum: one place, day, name, slot or view both clubs want. Examples: G6 (the 7:02), G9 (the weigh-in in the windows). **Mistake:** a swap whose other club has no reason to mind ("Light the bus station at night" taken from the Guild: they lose nothing).
-- **Fee** (sign: the town earns, the petitioner a little pleased, the other clearly put out; refuse: mild). The petitioner's club (or Till's Teas) pays the town, openly, to get something: a sponsorship, a hire, a booking, a licence, naming rights. The other minds the commercialisation or the loss. Examples: G3 (Till's Teas chime), G16 (the silent Sunday), G23 (hiring the wind). **Mistake:** a fee that earns nothing in the fiction (no one pays), a fee the petitioner would hate ("Charge the spotters per bus"), money to you personally, or anything like a tax, a charge on roads or parking.
-- **Treat** (no money; the petitioner pleased, the other a little put out, gossip rises; refuse: the petitioner sulks). A small honour or gesture: you attend, judge, wear, say, pose. Gossip rises because someone will call it favouritism or print the photograph. Examples: G8 (say "Goodness"), G17 (conduct one bar), G22 (the modest hedge). **Mistake:** a treat that would cost money (a new building), or one with nothing for anyone to talk about.
-- **Committee** (sign: a small sum, the petitioner barely pleased, the other put out, and it comes back as a bigger study; refuse: the petitioner put out). A study, inquiry, working group or review of something silly, usually with Ambrose Minute as `cosigner`. The other minds because the study is about them or takes their place. Write its **bigger-study line** too (`biggerStudy`, ≤ 90): the same study back, asking for more. Examples: G7 (the study of the study), G18 (the working group on noise), G24 (the inquiry on the top deck). **Mistake:** a committee about a real policy ("a review of benefits"), or a bigger-study line that is not bigger.
-- **Vanity** (trap; sign: a large sum and every club a little put out; refuse: nothing). An advisor (Rodney, Pruella, Mildred, Cuthbert) proposes something about you: your portrait, your name, your birthday, your signature on the jam. No club gains; it is plainly expensive and plainly about you. `club` is the club whose thing it touches (it only places the paper in the draw). Examples: G10, G19, G25. **Mistake:** a vanity paper some club would like (a statue at the bandstand the band would love): then "every club put out" does not follow.
-- **Basket** (trap; sign: gossip, and the favour comes back; refuse: nothing). A lobbyist brings a gift and hints, badly, at their trade. It never pays money, never pleases a club, never names an amount. `club` is the club the favour will put out. Write its **favour** (`favour`: the text, ≤ 90, and two clippings, ≤ 60): the lobbyist returns to collect, asking for something that would put that club out; signing costs that club and adds gossip, refusing costs nothing; the signed clipping mocks you. Examples: G4 and its chain, G20, G26. **Mistake:** a basket that pays ("500 dibs, no questions"), one aimed at a club ("for the Guild"), or a favour that names no club's loss.
+- **Fee** (sign: the town earns, the petitioner a little pleased, the other clearly put out; refuse: mild). The petitioner's club (or Till's Teas) pays the town, openly, for a sponsorship, a hire, a booking, a licence or naming rights; the other minds the loss. Examples: G3 (Till's Teas chime), G16 (the silent Sunday), G23 (hiring the wind). **Mistake:** a fee that earns nothing in the fiction (no one pays), a fee the petitioner would hate ("Charge the spotters per bus"), money to you personally, or anything like a tax, a charge on roads or parking.
+- **Treat** (no money; the petitioner pleased, the other a little put out, gossip rises; refuse: the petitioner sulks). A small honour or gesture: you attend, judge, wear, say, pose. Gossip rises because someone will call it favouritism or print the photograph. Examples: G8 (say 'goodness'), G17 (conduct one bar), G22 (the modest hedge). **Mistake:** a treat that would cost money (a new building), or one with nothing for anyone to talk about.
+- **Committee** (sign: a small sum, the petitioner barely pleased, the other put out, and it comes back as a bigger study; refuse: the petitioner put out). A study, inquiry or working group on something silly, usually with Ambrose Minute as `cosigner`; the other minds because it is about them or takes their place. Every Committee carries its **bigger study** (`biggerStudy`, ≤ 90; D20): the same study back, asking for more. Examples: G7 (the study of the study), G18 (the working group on noise), G24 (the inquiry on the top deck). **Mistake:** a committee about a real policy ("a review of benefits"), or a bigger-study line that is not bigger.
+- **Vanity** (trap; sign: a large sum and every club a little put out; refuse: nothing). An advisor (Rodney, Pruella, Mildred, Cuthbert) proposes something about you: your portrait, your name, your birthday, your signature on the jam. No club gains; it is plainly expensive and plainly about you. `club` is the club whose thing it touches; the draw ignores it (D20: vanity is one cell per office). Examples: G10, G19, G25. **Mistake:** a vanity paper some club would like (a statue at the bandstand the band would love): then "every club put out" does not follow.
+- **Basket** (trap; sign: gossip, and the favour comes back; refuse: nothing). A lobbyist brings a gift and hints, badly, at their trade; it never pays, pleases a club or names an amount. `club` is the club the favour puts out (one basket cell per office, D20). Every Basket carries its **favour** (`favour`: text ≤ 90, two clippings ≤ 60): the lobbyist returns to collect something that puts that club out; signing costs that club and adds gossip, refusing costs nothing; the signed clipping mocks you. Examples: G4 and its chain, G20, G26. **Mistake:** a basket that pays ("500 dibs, no questions"), one aimed at a club ("for the Guild"), a favour that names no club's loss, or one that gives the trade what it sells (rain for umbrellas, more hats, ribbon-cuttings or fountains): the basket may hint at the trade; the favour asks something absurd for the gift itself.
 
-**Chains** (12 per office; 7.6). A set-up is one of your office's comic papers, chosen in `plan.json` "chains" as a **premise** (club, archetype, visitor, one sentence). The deck writer writes the set-up to that premise and marks it `setsUp: "<chain id>"`; the chain writer writes both follow-ups and four clippings to the same premise, never to the set-up's exact words, so neither touches the other's file. Each follow-up names what the player chose ("The pumpkin, now a Freeman..."), uses an archetype (or `favour`), and ends in two clippings, headline style, the signed one usually at your expense. Set-ups are Projects, Swaps, Fees or Treats, never portable. The comedy editor reads set-up and follow-ups together at assembly and fixes the seams.
+**Chains** (12 per office; 7.6). A set-up is one of your office's comic papers, chosen in `plan.json` "chains" as a **premise** (club, archetype, visitor, one sentence). The deck writer writes the set-up to it and marks it `setsUp: "<chain id>"`; the chain writer writes both follow-ups and four clippings to the premise, not to the set-up's words, so neither edits the other's file. Each follow-up names what the player chose ("The pumpkin, now a Freeman..."), uses an archetype (or `favour`), and ends in two headline clippings, the signed one usually at your expense. Set-ups are Projects, Swaps, Fees or Treats, never portable; the comedy editor fixes the seams at assembly.
 
 ---
 
@@ -202,14 +221,14 @@ You never type a number, but the words must make both printed outcomes obvious. 
 - **Applications and returns** (9 and 9). The minister's one-line case and the line they bring back after a refusal: "I apply to be your minister. References: 'She found one.'" / "I apply again. Since last time, I have found another one." No ministry named in the text.
 - **Run-up papers** (10 / 16 / 24) and **rallies** (4 per office). Public appearances: judging, opening, cutting, tasting, being photographed. A run-up paper names `{district}` exactly once and must read well with every district of its office (the longest is 14 characters: test "Gusting Heights", "Saltpenny Bay", "Old Town"). Never a vote, a handshake for votes, a speech about policy, a crowd chanting, a march. Rallies happen at a bandstand, a fête, a show; you bring scissors.
 - **Scripted papers** (6). The four of the game's first minute are fixed (G1 to G4); writer 1 writes the first paper of the governor's and of the president's office: an advisor welcoming you, teaching nothing new, setting the new desk's tone.
-- **Templates and phrase lists** (comedy editor; 120 frames, 10 lists of 24). A frame is a comic paper with **one** slot, written `{<list id>}`, filled from one list; frames are drawn by the governor and the president. The joke lives in the frame; the phrase is concrete, neutral flavour. Every list declares its grammar (for example "a singular noun phrase with 'the', lower case, ≤ 28 characters") and every phrase obeys it. **The test:** `check.ts` prints the frame with all 24 phrases; read all 24 aloud. If any one is ungrammatical, too long (frame plus phrase ≤ 90), unfunny, or makes a hot subject or an innuendo in combination, change the frame, move it to another list, or cut the phrase from the list (and re-test every frame of that list). Example: G30.
-- **The lines of 7.7** (writer 5; writer 2 for places). *Rivals*: name, hobby, slogan (Name: Three Words, never a real slogan's shape), "back for another go" line, resignation line about the hobby. *Election night* (30): 12 lines of Agatha Tallow, straight and procedural ("Envelope four."), and one line per rival at the result ("Stitchley: I still own the hat"). *Returning visitors* (60: 18 for anyone, 6 per club): one short last line for a paper seen before, "Back again, with the same pumpkin and a firmer tone." *Away* (10): what happened while you were out, nothing changing ("The clock struck the hours without you. It managed."). *Monuments* (24): a name and one line, from "A bust of yourself" to "A bust of the bust"; at most 8 statues or busts. *Grand Projects* (5 names fixed): one proud line each. *Twists* (10 names fixed) and their 45 *pair names* ("Bandstand Summer" with "Kite Weather" = "A Breezy Concert Season"). *Captions* (6): game start, first governor term, first president term, Acting after a loss, a sweep, "A Quiet Term". *Places* (16, writer 2, first sitting): the 7 counties of Upper Wobbling with two-letter badges, and 9 landmarks; each into `names.json`.
+- **Templates and phrase lists** (comedy editor; 120 frames, 10 lists of 24). A frame is a comic paper with **one** slot, `{<list id>}`, filled from one list. Frames are drawn in every office; D19 needs at least 40 that read right as mayor (`office: "any"`, a mayor club, no office word; `plan.json` asks for 44). The joke lives in the frame; the phrase is concrete, neutral flavour. Every list declares its grammar ("a singular noun phrase with 'the', lower case, ≤ 28 characters"). **The test:** `check.ts` prints the frame with all 24 phrases; read all 24 aloud. If one is ungrammatical, too long (≤ 90 together), unfunny, or makes a hot subject or innuendo, change the frame, move it to another list, or cut the phrase (and re-test that list's frames). Example: G30.
+- **The lines of 7.7** (writer 5; writer 2 for places). *Rivals*: name, hobby, slogan (Name: Three Words, never a real slogan's shape), "back for another go" line, resignation line about the hobby. *Election night* (30): 12 lines of Agatha Tallow, straight and procedural ("Envelope four."), and one line per rival at the result ("Stitchley: I still own the hat"). *Returning visitors* (60: 18 for anyone, 6 per club): a last line for a paper seen before, "Back again, with the same pumpkin and a firmer tone." *Away* (10): what happened while you were out ("The clock chimed the hours without you. It managed."). *Monuments* (24): a name and one line, from "A bust of yourself" to "A bust of the bust"; at most 8 statues or busts. *Grand Projects* (5 names fixed): one proud line each. *Twists* (10 names fixed) and their 45 *pair names* ("Bandstand Summer" with "Kite Weather" = "A Breezy Concert Season"). *Captions* (6): game start, first governor term, first president term, Acting after a loss, a sweep, "A Quiet Term". *Places* (16, writer 2, first sitting): the 7 counties of Upper Wobbling with two-letter badges, and 9 landmarks; each into `names.json`.
 
 ---
 
 ## 6. Thirty gold papers, fifteen rejected
 
-Read aloud: I rewrote or cut fifteen of the first draft (three leaned on the same wind, two were size jokes in disguise). Effects are the archetype's (2.2), shown at mood 50. "SIGN" and "STUDY" give the side that gains; the money tier is in brackets. The same records, in the format, are in `plan.json` `givenRecords`; they count toward the batch that holds them.
+Read aloud: I rewrote or cut fifteen of the first draft (three leaned on the same wind, two were size jokes in disguise). The same records, in the format, are in `plan.json` `givenRecords`; they count toward the batch that holds them.
 
 | # | Who · office | Archetype (club / other) · shape · butt | Text (characters) |
 |---|---|---|---|
@@ -220,7 +239,7 @@ Read aloud: I rewrote or cut fifteen of the first draft (three leaned on the sam
 | G5 | Hilda Gourdley · mayor | project (veg / shops) · literalism · thing; chain "The Pumpkin" | Grant the prize pumpkin the freedom of the town. It has asked very politely. (76) |
 | G6 | Desmond Kerb · mayor | swap (bus / shops) · undercut · self; chain "The Late Bus" | Name the 7:02 bus after you, Mayor. It is late too, and also waves. (67) |
 | G7 | Pauline Till with Ambrose Minute · mayor | committee (shops / veg) · escalation · committee | We propose a study of why our last study took nine years. It should take about ten. (83). Bigger study: The study of the study recommends a third study, to be sure. |
-| G8 | Hilda Gourdley · mayor | treat (veg / bus) · photo-op · self | Attend the weigh-in, Mayor, and say 'Goodness'. We will cue you. (64) |
+| G8 | Hilda Gourdley · mayor | treat (veg / bus) · photo-op · self | Attend the weigh-in, Mayor, and say 'goodness'. We will cue you. (64) |
 | G9 | Pauline Till · mayor | swap (shops / veg) · statistic · thing | Move the weigh-in off the high street. Our windows are 40 % pumpkin. (67) |
 | G10 | Rodney · mayor | vanity (shops) · escalation · self | A portrait of you, Mayor, for the portrait of you in the hall. For scale. (73) |
 | G11 | Hilda Gourdley · any office | project (veg / bus) · undercut · thing | A shed for the prize pumpkin, right where the spotters stand. (61) |
@@ -228,23 +247,23 @@ Read aloud: I rewrote or cut fifteen of the first draft (three leaned on the sam
 | G13 | Dorothy Sett · application | | I apply to be your minister. References: 'She found one.' (57). Return: I apply again. Since last time, I have found another one. |
 | G14 | Hilda Gourdley · grievance | Vegetables boycott · undercut · self | No more pumpkins until you return our ribbon scissors. You know which scissors. (79). "Return the scissors" / "Keep the scissors"; picket GIVE THEM BACK |
 | G15 | the Drizzle · scandal | · undercut · self | MAYOR'S GOOSE GIVEN OWN PARKING SPACE. Goose declines to comment. (65) |
-| G16 | Marigold Hake · governor | fee (anglers / brass) · form-misapplied · office; chain | The Anglers will rent one silent Sunday. Receipts to be whispered. (66) |
+| G16 | Marigold Hake · governor | fee (anglers / brass) · form-misapplied · office; chain | The Anglers will hire one silent Sunday. Receipts to be whispered. (66) |
 | G17 | Horace Bellows · governor | treat (brass / anglers) · photo-op · self; chain | Conduct the band for one bar. One. We will tell you which. (58) |
 | G18 | Marigold Hake with Ambrose · governor | committee (anglers / brass) · literalism · committee | A working group on noise. It will meet in silence, so may take a while. (71). Bigger study: The working group on noise asks for a second room. The first one echoed. |
 | G19 | Pruella Dimity · governor | vanity (veg) · escalation · self | Your face on every jar of Glasshouse jam. Pruella will check each jar. (69) |
-| G20 | Crispin Mizzle · governor | basket (brass) · undercut · lobbyist | An umbrella, just for you. Perhaps say 'rain' more in speeches? (63). Favour: About the umbrella: might the Bandstand Board forecast rain every Sunday? Clippings: GOVERNOR ORDERS RAIN; SUN ATTENDS ANYWAY / UMBRELLA RETURNED, STILL FOLDED, SLIGHTLY HURT |
+| G20 | Crispin Mizzle · governor | basket (brass) · undercut · lobbyist | An umbrella, just for you. Perhaps say 'rain' more in speeches? (63). Favour: About the umbrella: it would like a seat on the Bandstand Board. It has brought its own. Clippings: UMBRELLA JOINS BANDSTAND BOARD; CONCERTS MOVED INDOORS / UMBRELLA LEAVES QUIETLY, STILL FOLDED |
 | G21 | Wendell Loft · president | project (kites / hedges) · undercut · office; chain | Build Kitecombe a hill. The League currently launches from a chair. (67) |
 | G22 | Agnes Topiary · president | treat (hedges / kites) · photo-op · self; chain | Pose beside a hedge clipped in your likeness. A modest hedge. (61) |
 | G23 | Wendell Loft · president | fee (kites / brass) · literalism · thing; chain | The League would like to hire the wind over Brassby. They will pay. (67) |
 | G24 | Desmond Kerb with Ambrose · president | committee (bus / kites) · literalism · committee | An inquiry into why kites land on buses. It will sit on the top deck. (68). Bigger study: The inquiry has outgrown the top deck. It asks for a second bus. |
 | G25 | Mildred Fenn · president | vanity (shops) · callback · self | Make your birthday a national holiday. Mildred has a drawer for these. (70) |
-| G26 | Tobias Slake · president | basket (kites) · escalation · lobbyist | A hat with a smaller hat on it. The smaller hat has a request. (62). Favour: The smaller hat asks that every kite in Kitecombe wear a hat. For company. Clippings: PRESIDENT IN TWO HATS; NEITHER WILL SAY WHICH IS IN CHARGE / HAT REQUEST FILED FOR FURTHER STUDY |
+| G26 | Tobias Slake · president | basket (kites) · escalation · lobbyist | A hat with a smaller hat on it. The smaller hat has a request. (62). Favour: The smaller hat asks for a place in the kite festival. It will need a string. Clippings: PRESIDENT FLIES HAT AT KITE FESTIVAL; KITES UNIMPRESSED / HAT REQUEST FILED FOR FURTHER STUDY |
 | G27 | Horace Bellows · governor | swap (brass / anglers) · undercut · thing; chain | Move band practice to the jetty. The fish have had it easy. (58) |
 | G28 | Rodney · mayor run-up | · undercut · self | Judge the {district} Prize Hedge Show. Say nothing about the leaning one. (73) |
 | G29 | Rodney · mayor rally | · escalation · self | Hold a rally at the bandstand. Bring the ceremonial scissors. Cut something. (76) |
 | G30 | template frame · governor | project (anglers / brass) · slogan · thing | The Anglers ask for a sign by {sign-places}: QUIET PLEASE, FISH THINKING. Test: "by the old jetty", "by the canal lock" and "by the bandstand steps" (the fish, far away, still thinking) all work. |
 
-Changed from the specification, with the reason: G13 names no ministry (an application can come in any office); G14 says "you" for "the Mayor" (a grievance can come in any office); G28 has the `{district}` slot for "Hilltop"; G29 says "ceremonial" for "big" (the innuendo rule). The comic gold runs long (median 67) because the specification's do; your batch's median must still be 65.
+Changed from the specification: G13 names no ministry and G14 says "you" (both can come in any office); G28 has the `{district}` slot; G29 "ceremonial" for "big"; G8 'goodness' in lower case (the check reads a mid-sentence capital as a name); G16 "hire" for "rent". The G20 and G26 favours are rewritten: the drafts gave the umbrella maker rain and the hat maker hats, a bribe that pays. The gold runs long (median 67); your batch's median must still be 65.
 
 **Rejected** (each would fail the check, the read, or both):
 
@@ -276,63 +295,63 @@ Changed from the specification, with the reason: G13 names no ministry (an appli
 4. Every Committee has its `biggerStudy`; every Basket its `favour` with two clippings; every set-up in your `setsUp` list is written to its premise.
 5. Butt is never a club or real people; subject is on the closed list; shape is honest (if it fits two, pick the one the last four words use).
 6. No two papers in a row share a shape; no subject owned by another batch (`owns` in `plan.json`).
-7. No office word in a portable paper; none of the things of section 1's last paragraph; no number the rules own; no size words.
+7. No office word in a portable paper; none of the things of section 1's last paragraph; no number the rules own; no size words; nothing from section 3's words to avoid.
 8. Read the batch aloud, in order, in one go. Mark the ten you would least like to read on the hundredth paper and rewrite or cut them. Weak jokes never make up a count: hand in short and say so.
 
 ---
 
 ## 8. The deck plan (`scripts/content/office/plan.json`)
 
-Planned (club, archetype) counts. Minimum per cell: 4 as mayor, 3 as governor and president for Project to Committee, 2 for the traps (see the note below); any-office none.
+Revision 2 follows D19 (mayor deck 160) and D20. Every (club, archetype) cell of the five non-trap archetypes has at least 4 in every office deck. Vanity and basket are one draw cell each per office (`drawCells`, at least 4); their per-club columns are only a suggested spread. Any-office cells have no minimum.
 
-| Mayor (110) | bus | shops | veg | total | share |
+| Mayor (160) | bus | shops | veg | total | share |
 |---|---|---|---|---|---|
-| project | 9 | 9 | 8 | 26 | 23.6 % |
-| swap | 7 | 8 | 7 | 22 | 20.0 % |
-| fee | 5 | 5 | 6 | 16 | 14.5 % |
-| treat | 4 | 4 | 5 | 13 | 11.8 % |
-| committee | 6 | 5 | 6 | 17 | 15.5 % |
-| vanity | 3 | 3 | 3 | 9 | 8.2 % |
-| basket | 3 | 2 | 2 | 7 | 6.4 % |
+| project | 13 | 13 | 12 | 38 | 23.7 % |
+| swap | 11 | 11 | 10 | 32 | 20.0 % |
+| fee | 7 | 7 | 8 | 22 | 13.8 % |
+| treat | 6 | 6 | 7 | 19 | 11.9 % |
+| committee | 8 | 8 | 9 | 25 | 15.6 % |
+| vanity (spread) | 4 | 5 | 4 | 13 | 8.1 % |
+| basket (spread) | 4 | 3 | 4 | 11 | 6.9 % |
 
 | Governor (150) | bus | shops | veg | brass | anglers | total | share |
 |---|---|---|---|---|---|---|---|
 | project | 7 | 7 | 6 | 8 | 8 | 36 | 24.0 % |
 | swap | 6 | 5 | 5 | 7 | 7 | 30 | 20.0 % |
 | fee | 4 | 4 | 4 | 5 | 4 | 21 | 14.0 % |
-| treat | 3 | 3 | 4 | 4 | 4 | 18 | 12.0 % |
+| treat | 4 | 4 | 4 | 4 | 4 | 20 | 13.3 % |
 | committee | 4 | 4 | 5 | 5 | 5 | 23 | 15.3 % |
-| vanity | 2 | 2 | 2 | 3 | 3 | 12 | 8.0 % |
-| basket | 2 | 2 | 2 | 2 | 2 | 10 | 6.7 % |
+| vanity (spread) | 2 | 2 | 2 | 2 | 3 | 11 | 7.3 % |
+| basket (spread) | 2 | 2 | 2 | 2 | 1 | 9 | 6.0 % |
 
 | President (200) | bus | shops | veg | brass | anglers | kites | hedges | total | share |
 |---|---|---|---|---|---|---|---|---|---|
 | project | 6 | 6 | 6 | 7 | 7 | 8 | 8 | 48 | 24.0 % |
 | swap | 5 | 5 | 5 | 6 | 6 | 7 | 6 | 40 | 20.0 % |
 | fee | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 28 | 14.0 % |
-| treat | 3 | 3 | 3 | 3 | 4 | 4 | 4 | 24 | 12.0 % |
+| treat | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 28 | 14.0 % |
 | committee | 4 | 4 | 4 | 4 | 4 | 5 | 5 | 30 | 15.0 % |
-| vanity | 2 | 2 | 2 | 2 | 2 | 3 | 3 | 16 | 8.0 % |
-| basket | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 14 | 7.0 % |
+| vanity (spread) | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 14 | 7.0 % |
+| basket (spread) | 2 | 2 | 2 | 2 | 2 | 1 | 1 | 12 | 6.0 % |
 
-Any office (30; bus / shops / veg): project 3/2/2, swap 2/2/2, fee 1/2/1, treat 1/1/2, committee 2/2/1, vanity 0/1/1, basket 1/0/1. Traps: mayor 16 (14.5 %), governor 22 (14.7 %), president 30 (15.0 %), any 4. Portable: mayor 33 (30 %), governor 45 (30 %). Clubs new to an office get more papers, because the lower offices' portable papers only bring the old clubs.
+Any office (30; bus / shops / veg): project 3/2/2, swap 2/2/2, fee 1/2/1, treat 1/1/2, committee 2/2/1, vanity 0/1/1, basket 1/0/1. Traps: mayor 24 (15.0 %), governor 20 (13.3 %), president 26 (13.0 %), any 4. Portable: mayor 48 (30 %), governor 45 (30 %). Clubs new to an office get more papers, because the lower offices' portable papers only bring the old clubs.
 
-**Batches** (26; one writer per file under `scripts/content/office/batches/`; archetypes in the order project / swap / fee / treat / committee / vanity / basket):
+**Batches** (27; one writer per file under `scripts/content/office/batches/`; archetypes in the order project / swap / fee / treat / committee / vanity / basket):
 
 | Batch | Writer | Contents |
 |---|---|---|
-| mayor-1, mayor-2, mayor-3 | writer 1 | 37, 37, 36 papers; 9/7/6/4/6/3/2, 9/8/5/4/6/3/2, 8/7/5/5/5/3/3; 11 portable each; 3, 4, 4 chain set-ups |
-| any-office | writer 1 | 30 papers; 7/6/4/4/5/2/2 |
+| mayor-1 to mayor-4 | writer 1 | 40 papers each; 9/8/6/4/7/4/2, 9/8/6/5/6/3/3, 10/8/5/5/6/3/3, 10/8/5/5/6/3/3; 12 portable each; 3, 3, 3, 2 chain set-ups |
+| any-office | writer 5 | 30 papers; 7/6/4/4/5/2/2 |
 | governor-1 to governor-4 | writer 2 | 38, 38, 37, 37 papers; about 9/8/5/5/6/3/2 each; 12, 11, 11, 11 portable; 3 set-ups each |
-| president-1 to president-5 | writer 3 | 40 papers each; about 10/8/5/5/6/3/3; 3, 3, 2, 2, 2 set-ups |
+| president-1 to president-5 | writer 3 | 40 papers each; about 10/8/5/6/6/3/2; 3, 3, 2, 2, 2 set-ups |
 | chains-mayor, chains-governor, chains-president | writers 1, 2, 3 | 12 chains each (24 follow-ups, 48 clippings); mayor's "The Basket" and "The Pumpkin" given |
 | mayor-runup-scripted | writer 1 | 6 scripted (4 given, governor's and president's first to write), 10 run-up, 4 rallies |
 | governor-places-runup | writer 2, **first** | 7 counties, 9 landmarks, 16 run-up, 4 rallies |
 | notes-1, notes-2 | writer 4 | 70 notes (mayor and governor ministries, 4 any), 90 notes (president ministries, Grand Projects) |
 | events-runup | writer 4 | 14 grievances with pickets, 20 front pages, 3 apologies, 9 applications with returns, 24 president run-up, 4 rallies |
 | lines-rivals, lines-returning, lines-shelf | writer 5 | 18 rivals and 30 election-night lines; 60 returning, 10 away, 6 captions; 24 monuments, 5 Grand Projects, 10 twists, 45 pair names |
-| templates-a, templates-b | comedy editor | 5 lists of 24 and 60 frames each |
+| templates-a, templates-b | comedy editor | 5 lists of 24 and 60 frames each; per batch 22 `any`, 25 governor, 13 president frames |
 
-Each comic batch in `plan.json` also gives its exact cells, its joke-shape targets (about undercut 15 %, escalation 15 %, literalism 14 %, form-misapplied 14 %, statistic 12 %, slogan 10 %, photo-op 12 %, callback 8 %; none above 20 %), its rations, the subjects to favour, the running gags it **owns** (no other batch uses them), its cast, its chain set-ups and the given records. About 1,830 strings in all: the 1,700 of 7.7 plus the 75 bigger-study lines and 33 basket favours (99 strings with their clippings) that 2.2's table needs and 7.7 does not count.
+Each comic batch in `plan.json` gives its cells, joke-shape targets (undercut and escalation 15 %, literalism and form-misapplied 14 %, statistic and photo-op 12 %, slogan 10 %, callback 8 %; none above 20 %), rations, subjects to favour, the running gags it **owns**, its cast, set-ups and given records. About 1,890 strings: 7.7's 1,700, D19's 50 papers, and D20's bigger studies and favours.
 
-**Where this departs from 7.7.** Trap cells have a minimum of 2, not 4 or 3: at 2.2's shares, 4 per trap cell would put the mayor's traps at 22 %, above the 15 % ceiling (so 7.7's "84 of 110" is 72 here). `biggerStudy` and `favour` are asked of the writer on the paper, because 2.2 schedules them and nothing else holds them yet. "No two shapes in a row" holds in file order only; the draw is random.
+**Departures.** 27 batches: D19's 50 papers make a fourth mayor batch, and writer 5 takes the any-office deck to even the load. "No two shapes in a row" holds in file order only. The vanity and basket spread stays in batch cells because the format asks every paper for a `club`.

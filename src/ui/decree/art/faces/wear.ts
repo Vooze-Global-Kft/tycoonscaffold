@@ -263,5 +263,4 @@ export function drawNeck(c: SkCanvas, pen: Pen, cx: number, chinY: number, neckY
     .build();
   wash(c, pen, p, skin, 1);
   hatch(c, pen, p, { within: blob([[cx - 20, chinY - 6], [cx + 20, chinY - 6], [cx + 20, chinY + 4], [cx - 20, chinY + 3]], 0.6), a: 0.5 });
-  void oval;
 }

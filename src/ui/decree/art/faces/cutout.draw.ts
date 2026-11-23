@@ -11,7 +11,7 @@ import type { SkCanvas } from '@shopify/react-native-skia';
 import { drawHeadOf, washOf } from './bust.draw';
 import { lookOf, type Look } from './cast';
 import { HEAD_TOP, drawHairBack, headGeo } from './head';
-import { CLOTH, GREY_MATRIX, P, at, blob, builder, circle, fill, filtered, flat, mix, oval, poly, rrect, wash, type Pen } from './ink';
+import { CLOTH, GREY_MATRIX, P, at, blob, builder, circle, fill, filtered, mix, oval, poly, rrect, wash, type Pen } from './ink';
 import { PROPS, type PropDef } from './props';
 import type { BustBox } from './bust.draw';
 
@@ -26,8 +26,7 @@ const HEAD_H = 47;
 const FEET_Y = HEAD_TOP + HEAD_H * 6;
 const CX = 60;
 
-function figure(c: SkCanvas, look: Look): void {
-  const pen = FLAT_PEN;
+function figure(c: SkCanvas, look: Look, pen: Pen = FLAT_PEN): void {
   const w = washOf(look);
   const g = headGeo(look.head, 50, HEAD_TOP);
   const coat = CLOTH[look.cloth];
@@ -84,15 +83,11 @@ function stick(c: SkCanvas): void {
 export function drawCutoutLook(c: SkCanvas, look: Look, o: { greyscale?: boolean } = {}): void {
   const body = (q: SkCanvas) => {
     stick(q);
-    // The paper edge: the figure flattened to white and grown by drawing it round a small circle.
-    const edge = 3.2;
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      flat(q, P.white, (z) => at(z, Math.cos(a) * edge, Math.sin(a) * edge, 1, 0, (y) => figure(y, look)));
-    }
+    // The paper edge: the figure drawn once in white, every shape grown by 3.2 units; then the figure.
+    figure(q, look, { ...FLAT_PEN, edge: { color: P.white, grow: 3.2 } });
     figure(q, look);
   };
-  if (o.greyscale) filtered(c, GREY_MATRIX, body);
+  if (o.greyscale) filtered(c, GREY_MATRIX, body, { x: -12, y: -12, width: CUTOUT_W + 24, height: CUTOUT_H + 24 });
   else body(c);
 }
 
