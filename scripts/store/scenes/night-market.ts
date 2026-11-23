@@ -85,7 +85,7 @@ const scenes: GameScenes = {
         { move: ticket(v, 0), steps: 14 },
         { wait: 400 },
         { up: true },
-        { wait: 6200 },
+        { wait: 3600 },
       ],
       shotFrames: 1,
       frame: boardBand,
