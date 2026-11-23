@@ -157,7 +157,7 @@ Derived values (`mergeParams(cfg, state)`):
 - Loose_c = chain-c goods on the board with b_c ≤ k ≤ b_c + 1 (the tiers its gear drops; older lower tiers left after a base step are not loose). λ = 4 (tune 3 to 6).
 - Precedence: when a season character and a lantern change the same number, the better one applies; they never stack.
 
-Coins enter only through paid tickets, the Festival purse, gift-box coin slots, the till, Basket sales and the away report. No merge, discovery, lantern or level pays coins; `build-night.py` asserts this on every bot trace.
+Coins enter only through paid tickets, gift-box coin slots, the till, Basket sales and the away report (five sources, decision M37). No merge, discovery, lantern or level pays coins; `build-night.py` asserts this on every bot trace.
 
 ### 2.4 What one tick does
 
@@ -251,7 +251,7 @@ Later seasons come from a table that `build-night.py` writes (`festival[s]` in g
 - Each line obeys cells(k) = k − b_start + 1 ≤ O_start − R on the season's opening board, where b_start is the chain's starting base tier.
 - A test builds every season's Festival, seasons 1 to 10, line by line from its opening board (10.2).
 
-Filling the last line pays the Festival purse (30 × U), lights the banner and enables "Close the season". Play continues until the player closes.
+Filling the last line gives 3 Lucky Sparks (decision M37: no coins), lights the banner and enables "Close the season". Play continues until the player closes.
 
 ### 2.9 Offline, as a closed form
 
@@ -503,7 +503,7 @@ Each lantern is earned once by a named feat, lit forever, never bought, never ra
 | 15 | Close 3 seasons | minders' Q × 0.8 | |
 | 16 | Fill 2,000 tickets | Lucky 1 in 16 (the better of this and lantern 7) | |
 | 17 | Discover all 48 | Lucky Sparks add two tiers | |
-| 18 | Close 8 seasons | Festival purse ×2 | |
+| 18 | Close 8 seasons | the Festival gives 5 Lucky Sparks | |
 | 19 | Fill 100 Parades | gift boxes come a fifth sooner | |
 | 20 | Make 10 tier 8s in one season | +5 % on all ticket pay | |
 
@@ -802,3 +802,5 @@ Decisions taken after revision 2. A decision here overrides the text above where
 - **M33. Aims changed by the audit.** Gate 3: the hour-1 median fill time is aimed at 8 to 45 s (with bound (d1) only, four tickets in ten can be made from stock, which is the game working). Gate 5's board-full share is reported for every bot but is an aim only for the active one; what must hold for every bot, the lazy one included, is deadlock (no free cell, no merge, no delivery) at most 3 % of play time, with the goal line naming the Basket when it happens. Gate 8's shares are set after M30's table exists.
 - **M34. A line that a gear upgrade leaves behind.** After one base step an open line can sit exactly at the new base tier (a base drop then fills it by a drag); after two base steps while the same ticket still waits, its good can no longer be made from new drops. Lines never change, so nothing is redrawn: the ticket's detail says "No longer made at this stall" on that line and offers "Not tonight"; the hint points there, the advice never counts that line as within reach, and the bot sends the ticket off. Goods at hand can still fill it.
 - **M35. Where the gift bag lives.** The specification gave the gift box a sheet but no way to reach it. A paper bag with its count sits in the top bar between the season chip and the menu button, shown only while boxes wait; a tap opens the gift box sheet. On a 375 pt screen at font scale 1.3 the season chip shortens to the Festival count before anything wraps.
+- **M36. Closing the season opens every waiting gift box first.** A box's coin slot is fixed when the box is earned, so a box earned late in a season and kept would pay late-season coins on the first minute of the next one (enough to open three stalls at once). So at the close each waiting box is opened: its coins join the purse and reset with it, its goods wait for room in the new season (a good of a stall not yet open waits for that stall), its Lucky Sparks are kept. The close confirm says how many boxes will be opened. 2.11's "Stays" list reads "goods from gift boxes, Lucky Sparks" instead of "unopened gift boxes".
+- **M37. The Festival pays no coins.** The bot showed the Festival purse (30 × U) as 57 % of a season's coins, paid one tap before coins reset: a reward the player loses at once. Filling the Festival now gives 3 Lucky Sparks (5 with lantern 18, which no longer doubles a purse), the season's street piece, and the right to close the season. `festivalPace` is 0 and leaves the knobs; coins enter through five sources: paid tickets, gift-box coin slots, the till, Basket sales and the away report. The Season scroll says what the Festival gives.
