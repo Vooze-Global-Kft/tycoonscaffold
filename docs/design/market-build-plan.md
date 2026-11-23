@@ -42,15 +42,16 @@ signatures. A signature of `src/engine/merge.ts` or a seam type changes only aft
 
 | Package | Owns (after the skeleton) | Shows it works |
 |---|---|---|
-| **1. Rules MECHANICS** (1 engineer) | `src/engine/merge/types.ts`, `params.ts`, `create.ts`, `board.ts`, `events.ts`, `drop.ts`, `tick.ts`, `actions.ts`, `offline.ts`, `notBuilt.ts` (delete when unused), `src/engine/merge.ts` (the index), `src/engine/mergeMode.ts`, `src/engine/mergeMode.test.ts`, `src/engine/fixtures/merge.ts`, `src/config/schema.merge.ts` (fields; the numbers package owns the starting values), `src/modes/merge/actions.ts`, the engine tests of 10.2 on its files (`drop.test.ts`, `tick.split.test.ts`, `offline.test.ts`, `ticket.test.ts`, `coins.test.ts`, `determinism.test.ts`, under `src/engine/merge*.test.ts` or `src/engine/merge/*.test.ts`) | `npx vitest run src/engine/merge src/engine/mergeMode.test.ts` |
-| **2. Rules ORDERS** (1 engineer) | `src/engine/merge/missing.ts`, `draw.ts`, `festival.ts`, `season.ts`, `lanterns.ts`, `gift.ts`, `advice.ts`, `hints.ts`, their tests (`missing.test.ts` with the exact solver `solver.test.ts`, `draw.property.test.ts`, `festival.test.ts`, `season.test.ts`, `lanterns.test.ts`, `gift.test.ts`, `advice.test.ts`) | `npx vitest run src/engine/merge` (its files) |
-| **3. Numbers and bot** (1) | `src/engine/merge/bot.ts`, `scripts/content/merge-bot.ts`, `scripts/content/build-night.py`, `games/night-market/game.json` (generated only, replaced whole after the gate), the starting values in `MERGE_STARTING_CONTENT` and `RANGES` of `src/config/schema.merge.ts`, the merge hook of `scripts/validate.ts` (the branch `g.mode === 'merge'`), `src/modes/merge/presets.web.ts`, section 8.5 of the specification | `npx tsx scripts/content/merge-bot.ts --seed 12345`, `python3 scripts/content/build-night.py`, `npx tsx scripts/validate.ts night-market` |
-| **4. Art kit** (1) | `src/ui/merge/art/**` (palette, goods, gear and rail, stall fronts, animals, minders, the dragon, the firefly, shutters, blocks, season particles, Basket, gift bag, `bakeAtlas`, `MergeIcon.tsx`, its README), the `merge-art` dev view it adds to `src/modes/merge/devViews.web.ts` (one line, agreed with the wiring package) | `?view=merge-art` in the preview; `npx vitest run src/ui/merge/art` |
-| **5. Sound** (1) | `scripts/audio/recipes_night.py`, `render_night.py`, `night_music.py`, the cross-key mode of `scripts/audio/compare.py`, `games/night-market/assets/sfx/**`, `src/services/fx/catalog.merge.ts` (from the skeleton's first version on), `src/modes/merge/fx.ts`, `MERGE_SHARED_SOUNDS` in `src/engine/mergeMode.ts` (agreed with MECHANICS) | `python3 scripts/audio/compare.py night-market pizza-empire --cross`; `npx tsx scripts/validate.ts night-market` (the "no sounds yet" warning becomes an error per missing key once the first file exists) |
-| **6. Play canvas** (1, from hour 2) | `src/ui/merge/layout.ts`, `layout.test.ts`, `src/ui/merge/play/**` (the canvas, board and street, the drag layer, `hitTest`, the pans, tap-tap; `PlayCanvas.tsx` keeps its name and props), the `merge-layout` dev view | `npx vitest run src/ui/merge/layout.test.ts src/ui/merge/play`; `npm run lint:worklets`; the preview |
-| **7. Bars, sheets, spokes** (1, from hour 2) | `src/ui/merge/hud/**` (`TopBar.tsx`, `GoalLine.tsx`, `BottomRow.tsx`, `barMetrics.ts`, the undo chip), `src/ui/merge/sheets/**`, `src/ui/merge/spokes/**`, `src/ui/merge/overlays/Overlays.tsx`, `src/ui/merge/useMerge.ts`, `src/ui/merge/Placeholder.tsx` (delete when unused); steward of `src/ui/merge/strings.ts` (its structure; each package writes only its section) | the preview at 375 × 667 and 390 × 844, fontScale 1.3 |
-| **8. Hints and platform** (1, from hour 2) | `src/ui/merge/hints.ts`, `src/ui/merge/FireflyPointer.tsx`, `src/ui/merge/uiState.ts` (Android back over it; the play canvas calls its armed and chip actions, the bars package its sheet and spoke actions), `src/ui/merge/overlays/Loading.tsx`, the overlay registration and the away report sheet (mounted in `Overlays.tsx`, agreed with package 7), the device checks of 10.1 | the preview; `?view=loading`; a phone |
-| **9. Store, wiring and tooling** (the skeleton's successor) | `src/ui/merge/MergeShell.tsx` (its named slots), `src/modes/merge/index.tsx`, `presets.ts`, `devViews.ts`, `devViews.web.ts`, `src/modes/entries.test.ts`, `scripts/lib/{games.js,fxCatalog.js,modes.js,fingerprint.ts,fingerprint.test.ts,bundleRules.test.ts,fingerprint.pizzaOrbit.fixture.json}`, `src/ui/hints/targets.ts`, `games/night-market/store/**` (`fingerprint.json`, `releases.json`, `REVIEW-NOTES.md`, `RATING-NOTES.md` and the `play/` texts by `npm run sync`, `NAME-SEARCH.md`, `store.config.json`), `scripts/content/night-store.json` (the store writer drafts it), the placeholder images `games/night-market/{icon,adaptive-icon,splash}.png` until the art kit's own, `npm run check:bundle` for all three games | `npm run check:bundle`; `npx vitest run scripts/lib src/modes/entries.test.ts`; `npm run sync` |
+| **1. Rules MECHANICS** (1 engineer) | `src/engine/merge/types.ts`, `params.ts`, `create.ts`, `board.ts`, `events.ts`, `drop.ts`, `tick.ts`, `actions.ts`, `offline.ts`, `notBuilt.ts` (delete when unused), `src/engine/merge.ts` (the index, above its ORDERS mark), `src/engine/mergeMode.ts`, `src/engine/mergeMode.test.ts`, `src/engine/fixtures/merge.ts`, `src/config/schema.merge.ts` (the fields, the defaults that are rules, `RANGES`, `lintMerge`), `src/modes/merge/actions.ts`, `src/modes/merge/wiring.test.ts`, the engine tests of 10.2 on its files (`drop.test.ts`, `tick.split.test.ts`, `offline.test.ts`, `ticket.test.ts`, `coins.test.ts`, `determinism.test.ts`, under `src/engine/merge*.test.ts` or `src/engine/merge/*.test.ts`) | `npx vitest run src/engine/merge src/engine/mergeMode.test.ts src/modes/merge/wiring.test.ts` |
+| **2. Rules ORDERS** (1 engineer) | `src/engine/merge/missing.ts`, `draw.ts`, `festival.ts`, `season.ts`, `lanterns.ts`, `gift.ts`, `advice.ts`, `hints.ts`, the export lines of `src/engine/merge.ts` below its ORDERS mark (it adds its own exports there, without MECHANICS), their tests (`missing.test.ts` with the exact solver `solver.test.ts`, `draw.property.test.ts`, `festival.test.ts`, `season.test.ts`, `lanterns.test.ts`, `gift.test.ts`, `advice.test.ts`) | `npx vitest run src/engine/merge` (its files) |
+| **3. Numbers and bot** (1) | `src/engine/merge/bot.ts`, `scripts/content/merge-bot.ts`, `scripts/content/build-night.py`, `games/night-market/game.json` (generated only, replaced whole after the gate), `src/config/merge.content.ts` (`MERGE_STARTING_CONTENT`: every name and starting value; the schema and `RANGES` are MECHANICS's), the merge hook of `scripts/validate.ts` (the branch `g.mode === 'merge'`), `src/modes/merge/presets.web.ts`, section 8.5 of the specification | `npx tsx scripts/content/merge-bot.ts --seed 12345`, `python3 scripts/content/build-night.py`, `npx tsx scripts/validate.ts night-market` |
+| **4. Art kit** (1) | `src/ui/merge/art/**` (palette, goods, gear and rail, stall fronts, animals, minders, the dragon, the firefly, shutters, blocks, season particles, Basket, gift bag, `bakeAtlas`, `MergeIcon.tsx`, its README), its review screens in `src/ui/merge/art/devViews.ts` (`merge-art`; already wired into `src/modes/merge/devViews.web.ts`) | `?view=merge-art` in the preview; `npx vitest run src/ui/merge/art` |
+| **5. Sound** (1) | `scripts/audio/recipes_night.py`, `render_night.py`, `night_music.py`, the cross-key mode of `scripts/audio/compare.py`, `games/night-market/assets/sfx/**`, `src/services/fx/catalog.merge.ts` (from the skeleton's first version on), `src/modes/merge/fx.ts`, `src/modes/merge/soundKeys.ts` (`MERGE_SHARED_SOUNDS`, moved out of the rules' `mergeMode.ts`) | `python3 scripts/audio/compare.py night-market pizza-empire --cross`; `npx tsx scripts/validate.ts night-market` (a missing key is an error now that sound files exist) |
+| **6. Play canvas** (1, from hour 2) | `src/ui/merge/layout.ts`, `layout.test.ts`, `src/ui/merge/play/**` (the canvas, board and street, the drag layer, `hitTest`, the pans, tap-tap; `PlayCanvas.tsx` keeps its name and props; its review screens in `play/devViews.ts`, `merge-layout`, already wired) | `npx vitest run src/ui/merge/layout.test.ts src/ui/merge/play`; `npm run lint:worklets`; the preview |
+| **7. Bars, sheets, spokes** (1, from hour 2) | `src/ui/merge/hud/**` (`TopBar.tsx`, `GoalLine.tsx`, `BottomRow.tsx`, `barMetrics.ts`, the undo chip), `src/ui/merge/sheets/**` except `sheets/AwaySheet.tsx`, `src/ui/merge/spokes/**`, `src/ui/merge/overlays/Overlays.tsx` (it mounts every sheet and spoke, the away sheet included, by one import line each), `src/ui/merge/useMerge.ts`, `src/ui/merge/Placeholder.tsx` (delete when unused); steward of `src/ui/merge/strings.ts` (its structure; each package writes only its section) | the preview at 375 × 667 and 390 × 844, fontScale 1.3 |
+| **8. Hints and platform** (1, from hour 2) | `src/ui/merge/hints.ts`, `src/ui/merge/FireflyPointer.tsx`, `src/ui/merge/uiState.ts` (Android back over it; the play canvas calls its armed and chip actions, the bars package its sheet and spoke actions), `src/ui/merge/overlays/Loading.tsx`, the overlay registration, the away report sheet `src/ui/merge/sheets/AwaySheet.tsx` (Decision M8; package 7 adds its one mount line in `Overlays.tsx`), the device checks of 10.1 | the preview; `?view=loading`; a phone |
+| **9. Store, wiring and tooling** (the skeleton's successor) | `src/ui/merge/MergeShell.tsx` (its named slots), `src/modes/merge/index.tsx`, `presets.ts`, `devViews.ts`, `devViews.web.ts`, `src/modes/entries.test.ts`, `scripts/lib/{games.js,fxCatalog.js,modes.js,fingerprint.ts,fingerprint.test.ts,bundleRules.test.ts,fingerprint.pizzaOrbit.fixture.json}`, `src/ui/hints/targets.ts`, `games/night-market/store/**` (`fingerprint.json`, `releases.json`, `REVIEW-NOTES.md`, `RATING-NOTES.md` and the `play/` texts by `npm run sync`, `NAME-SEARCH.md`, `store.config.json`), the placeholder images `games/night-market/{icon,adaptive-icon,splash}.png` until the art kit's own, `npm run check:bundle` for all three games, and every SHARED file the skeleton changed (the list under "Shared files" below: `src/config/lint.ts` and its merge branch, `src/config/schema.ts`, `src/engine/mode.ts`, `src/state/store.ts`, `src/services/fx/index.ts`, `src/services/fx/catalog.ts`, ...): a package that needs one of them changed asks this package | `npm run check:bundle`; `npx vitest run scripts/lib src/modes/entries.test.ts`; `npm run sync` |
+| **Store writer** (label `listing`) | `scripts/content/night-store.json` (the listing; `build-night.py` of package 3 copies it into game.json) | `npx tsx scripts/validate.ts night-market` after `build-night.py` |
 
 `src/ui/merge/strings.ts` sections: `shell` (9), `play` (6), `hud`, `sheets`, `spokes` (7), `hints` (8).
 
@@ -58,47 +59,65 @@ signatures. A signature of `src/engine/merge.ts` or a seam type changes only aft
 
 The most important contract of the build. Every function below exists with its final signature
 (doc comments in its file cite the section). "Skeleton" says what the body does today: **built**
-(works, small), **stub** (a fixed or neutral answer so the other side can run), **unchanged**
-(returns the same state, i.e. refused), **throws** (`NotBuiltError`; mock it with `vi.mock` until
-it lands).
+(works; the owner keeps it and tests it), **stub** (a fixed or neutral answer so the other side can
+run), **unchanged** (returns the same state, i.e. refused), **throws** (`NotBuiltError`; mock it with
+`vi.mock` until it lands). Every closed-form number of 2.2, 2.3 and 2.11 is **built**, so each rules
+engineer tests on real numbers without the other: `mergeParams` and everything it is made of.
 
 ORDERS functions that MECHANICS calls:
 
 | Function (file) | Called by MECHANICS when | Skeleton |
 |---|---|---|
 | `drawTicket(cfg, g, counter): DrawOutcome` (draw.ts) | a counter's refill is due (2.4 event 6); advance `draws.ticket` by `used`, take the id from `nextTicketId` | stub: one Grill line at min(8, best + 1), `used` 0 |
-| `drawParade(cfg, g, counter): DrawOutcome` (draw.ts) | a refill while a Parade is due and none is out (2.7) | throws |
-| `scriptedTicket(cfg, 'fox' \| 'hedgehog', id): Ticket` (draw.ts) | create() (the fox) and the first merge (the hedgehog, via `onMerged`) | built |
-| `onMerged(cfg, g, made, cell, events)` (lanterns.ts) | after every merge (`feats.merges` already counted); the scripted hedgehog steps up here | unchanged |
+| `drawParade(cfg, g, counter): DrawOutcome` (draw.ts) | a refill while a Parade is due and none is out (2.7), and the "Call the dragon" ad (M14, `grantAd`) | throws |
+| `scriptedTicket(cfg, 'fox' \| 'hedgehog', id): Ticket` (draw.ts) | create() (the fox); the hedgehog is ORDERS's own, in `onMerged` | built |
+| `onMerged(cfg, g, made, cell, events)` (lanterns.ts) | after every merge, once MECHANICS counted `feats.merges` (and `tier8sThisSeason` for a tier 8); the scripted hedgehog steps up here | unchanged |
 | `onTierMade(cfg, g, good, firstEver, events)` (lanterns.ts) | a merge, drop or gift good makes a (c, k) first this season (best rose) or ever (book stamped by MECHANICS) | unchanged |
-| `countGiftTicket(cfg, g, events)` (gift.ts) | a ticket paid (after `commitCash`), first | unchanged |
-| `onTicketPaid(cfg, g, counter, ticket, coins, events)` (lanterns.ts) | a ticket paid, after `countGiftTicket` | unchanged |
+| `countGiftTicket(cfg, g, events)` (gift.ts) | a ticket paid (after `commitCash` and the `recent` booking), first | unchanged |
+| `onTicketPaid(cfg, g, counter, ticket, coins, events)` (lanterns.ts) | a ticket paid, after `countGiftTicket`; ORDERS counts `feats.tickets`, `threeLineTickets`, `parades` here | unchanged |
+| `checkLanterns(cfg, g, clock, events)` (lanterns.ts) | after EVERY purchase (`openStall`, `levelGear`, `levelStall`, `hireMinder`, `levelMinder`, `openShutter`: lanterns 11 and 14 are feats of purchases); ORDERS's own hooks call it too | unchanged |
 | `festivalLineFilled(cfg, g, line, events)` (festival.ts) | drop.ts set a Festival line `filled` and consumed the good; the last line pays the purse | unchanged |
+| `canCloseSeason(cfg, g)` (festival.ts) | `EngineMode.canPrestige`, the shared store's gate of the close (a merge game earns no prestige points) | built (`festival.filledAt` set) |
 | `neutralMods(cfg): Mods`, `currentMods(cfg, m): Mods` (lanterns.ts) | params.ts reads every modifier through `currentMods` (ONE object, `Mods` in types.ts) | built (neutral); `currentMods` returns neutral |
 | `lanternMods(cfg, lit)`, `seasonMods(cfg, season): Partial<Mods>` (lanterns.ts, season.ts) | read only by `currentMods` (precedence 2.3: the better one, never both) | `{}` |
-| `openingBoard(cfg, m, season): { goods, blocks }` (season.ts) | create() and a season's start: place `goods` by the drop-cell rule, turn `blocks` into blocks | stub: season 1's board for every season |
-| `festivalFor(cfg, season): Good[]` (festival.ts) | create() and a season's start | built (table; past the last row: the last row) |
-| `seasonedStartLevel(cfg, steps)`, `familiarFactor(cfg, seasonsClosed)` (season.ts) | params.ts (gear level at a season's start, stall-opening costs) | throws |
+| `openingBoard(cfg, m, season): { goods, blocks }` (season.ts) | `startSeason`: place `goods` by the drop-cell rule, turn `blocks` into blocks | stub: season 1's board for every season |
+| `festivalFor(cfg, season): Good[]` (festival.ts) | `startSeason` | built (table; past the last row: the last row) |
+| `seasonedStartLevel(cfg, steps)`, `familiarFactor(cfg, seasonsClosed)` (season.ts) | `startSeason` (gear level), `mergeParams` (stall-opening costs) | built |
 | `seasonRow(cfg, season)` (season.ts) | anyone (names, shapes, characters) | built |
-| `closeSeason(cfg, g, now, events)` (season.ts) | `EngineMode.prestige` (the season close of 2.11) | unchanged (refused) |
+| `closeSeason(cfg, g, now, events)` (season.ts) | `EngineMode.prestige` (the season close of 2.11): counts the seasoned steps and `seasonsClosed`, resets the coins on the shared state, then calls MECHANICS's `startSeason`, then `checkLanterns` | unchanged (refused) |
 | `openGiftBox(cfg, g, events)` (gift.ts) | the store action `mergeActions.openGiftBox` | unchanged |
 
 MECHANICS functions that ORDERS calls:
 
 | Function (file) | Used by ORDERS for | Skeleton |
 |---|---|---|
-| `mergeParams(cfg, g): MergeParams` (params.ts) | b_c, p_c, values, S_c, h_c, Loose_c, O, F, U, β, costs (draw bounds, advice, purse, gift coins) | throws |
-| `value(cfg, g, c, k)`, `ticketPrice(cfg, g, ticket)`, `paceUnit(cfg, g)`, `baseTier(cfg, L)`, `roundCost(cfg, x)` (params.ts) | prices, the purse (festivalPace × U), coin slots (coinPace × U), advice | throw |
+| `mergeParams(cfg, g): MergeParams` (params.ts) | b_c, p_c, values, S_c, h_c, Loose_c, O, F, U, β, costs, the next shutters, F_s, the away cap (draw bounds, advice, purse, gift coins) | built |
+| `value(cfg, g, c, k)`, `ticketPrice(cfg, g, ticket)`, `paceUnit(cfg, g)`, `baseTier(cfg, L)`, `ripeChance(cfg, mods, L)`, `maxPopAt(cfg, mods, L)`, `roundCost(cfg, x)` (params.ts) | prices, the purse (festivalPace × U), coin slots (coinPace × U), advice (Δu of a gear level), best_c at a season's start | built |
+| `recentCoins(m, clock, c?)`, `recentRate(g, c?)` (params.ts) | R_t of 2.10, and per chain for the stall-level gain (`recent` holds 60 buckets per chain) | built |
 | `streamValue(m, site, n, x)` (params.ts) | the ticket, gift and Parade streams of 2.3 (`SITE`, `draws`) | built |
-| `placeGood(m, good, at, cell?)`, `dropCell(m, c)` (board.ts) | the opening board (via create), "Not tonight" returns, gift goods | built |
+| `startSeason(cfg, m, season, clock): MergeState` (create.ts) | `closeSeason`: the next season's state (2.11's resets and keeps, the shape, the opening goods, the Festival, the counters, the clocks) | built (create() uses it for season 0) |
+| `applyLantern(cfg, g, n, clock, events)` (actions.ts) | `checkLanterns`, after it recorded lantern n: the effects on MECHANICS's state (lanterns 1 and 4 append a counter, lantern 3 restarts a waiting gear); gift slots and lantern 19's `ticketsToBox` are ORDERS's own | unchanged |
+| `placeGood(m, good, at, cell?)`, `dropCell(m, c)` (board.ts) | gift goods; the opening board (inside `startSeason`) | built |
 | `roomFor(m, n)`, `freeCells(m)` (board.ts) | the one room check of the draw, the swap and gift goods (2.7) | built |
-| `looseCount(cfg, m, c)` (board.ts) | bound (c) | throws |
+| `looseCount(cfg, m, c)` (board.ts) | bound (c) | built |
 | `commitCash(g, delta, source)` (actions.ts) | the one way cash changes: the Festival purse ('festival'), gift coins ('gift'); booked in `mstats.coins` (gate 8) | built |
+
+"Not tonight" is a MECHANICS action (`notTonight`): it returns the filled lines with `roomFor` and
+`placeGood` itself, and sending off the gold ticket restarts the Parade clock. ORDERS restarts it
+after a paid Parade (`onTicketPaid`).
+
+Who counts what (types.ts `Feats`): MECHANICS counts what happens on the board (`merges`,
+`tier8sThisSeason`, `mstats.drops`, `luckies`, `basketSales`, the `recent` buckets of a paid ticket,
+split over its lines' chains by value); ORDERS counts tickets and seasons (`tickets`,
+`threeLineTickets`, `parades`, `seasonsClosed`, `mstats.ticketsDrawn`, `setups`). The away coins
+are granted by the shared store (`E.grantCash`), not by `commitCash`, so `mstats.coins.away` stays
+0 in the app: gate 8's "six sources" check books the away earnings from `mergeOffline`'s result
+(the bot does this itself).
 
 Shared types of the seam (types.ts): `Good`, `Cell`, `Ticket`, `TicketLine`, `Counter`,
 `FestivalState`, `GiftBox`, `GiftSlot`, `Feats`, `Mods`, `MergeParams`, `ChainParams`,
-`DrawOutcome`, `MissingResult`, `MergeEvent`, `CoinSource`, `SITE`. A change to one of these is
-agreed between the two rules engineers (a line in `requests.md`), then made by MECHANICS.
+`DrawOutcome`, `MissingResult`, `MergeEvent`, `CoinSource`, `RecentCoins`, `SITE`. A change to one of
+these is agreed between the two rules engineers (a line in `requests.md`), then made by MECHANICS.
 
 What the screens and the bot call (all through `src/engine/merge.ts`): `dropAt`, `decodeTarget`,
 `targetsFor`, the purchases and buttons of 2.5 (`openStall`, `levelGear`, `levelStall`,
@@ -107,6 +126,12 @@ What the screens and the bot call (all through `src/engine/merge.ts`): `dropAt`,
 `hintsFor`, `featProgress`, `giftOdds`, `festivalPurse`, `canCloseSeason`, `seasonRow`, `missing`,
 `mergeOffline`, `advanceMerge`. Target codes for the hit test: `TARGET_COUNTER + j`,
 `TARGET_FESTIVAL`, `TARGET_BASKET`, `TARGET_NONE`, a cell's index (types.ts).
+
+Products and ads (Decisions M13, M14): `merge.products` names `night_awnings` (cosmetic, looks
+only), `night_late_hours` (unlock: +4 h away, read by `mergeParams().awayCap`) and
+`night_quiet_evening` (the shared kind skipAds: the shared ads service grants every "Watch ad" with
+no video; nothing in the merge code checks it). `MergeAdKind` is `fillLine`, `gearRush` and
+`callDragon` (20 min cooldown, `ads.callDragonCooldown`).
 
 ## Order of work
 
@@ -125,7 +150,9 @@ What the screens and the bot call (all through `src/engine/merge.ts`): `dropAt`,
 
 ## Shared files the skeleton changed (all additive)
 
-`src/modes/contract.ts` (`ModeId` + `'merge'`), `scripts/lib/games.js` (`MODES`),
+`src/modes/contract.ts` (`ModeId` + `'merge'`), `src/engine/mode.ts` (the optional
+`EngineMode.canPrestige` gate) and `src/state/store.ts` (`prestige()` asks it in place of the points
+gate when a mode has it; sim, classic and haul have none, so their path is unchanged), `scripts/lib/games.js` (`MODES`),
 `src/config/schema.ts` (mode enum + `'merge'`, the opaque `merge` block, the `cosmetic` product kind,
 M7), `src/engine/meta.ts` (`cosmetic` is a non-consumable recorded like `unlock`),
 `src/ui/meta/shop/Store.tsx` (`cosmetic: null` in its exhaustive kind table: never in a tab-shell
@@ -140,4 +167,7 @@ branch), `scripts/validate.ts` (the merge hook: warnings while there is no sound
 Known consequence: every shared edit makes Pizza Empire's and Orbit Haulers'
 `store/bundle-report.json` stale (dimension 8 reads "pending" until `npm run check:bundle -- --export`
 runs again before a release). The Pizza-to-Orbit comparison itself is unchanged: its recorded
-fixture (`scripts/lib/fingerprint.pizzaOrbit.fixture.json`) is replayed in `fingerprint.test.ts`.
+fixture (`scripts/lib/fingerprint.pizzaOrbit.fixture.json`) is replayed in `fingerprint.test.ts`. Spec 9.2
+asks the live Pizza-to-Orbit report to stay byte-identical; it reads verified 14, pending 4 (was 15
+and 3) until that export, which writes a file of each of the first two games. The lead rules on it
+(requests.md, [skeleton]): allow the export as a generated file, or reword 9.2.

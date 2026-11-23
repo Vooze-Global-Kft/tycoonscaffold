@@ -1,19 +1,60 @@
 /**
- * The merge mode's icon drawing for shared screens (parts.Icon, spec 7.2): "beast:<animal>" names
- * (the customers and minders) drawn from the art kit's animal atlas. PLACEHOLDER of the skeleton: a
- * round amber badge with the animal's first letter. Owned by the art kit package
- * (docs/design/market-build-plan.md).
+ * The merge mode's icons for list rows, sheets and shared screens (parts.Icon, spec 7.2): "beast:"
+ * names (customers, minders, the dragon, the firefly) and "art:" names (goods, gear, props; see
+ * icons.ts), each drawn once into a small PNG and cached, so a list of 30 icons costs 30 small
+ * images and no GPU surface (AGENTS.md: never one Skia canvas per row). Any size from 12 to 128 pt,
+ * at the device's pixel density. Unknown names show `fallback` (or nothing), remembered.
+ *
+ *   <MergeIcon icon="beast:badger" size={40} />
  */
-import { Text, View } from 'react-native';
+import { Skia } from '@shopify/react-native-skia';
+import { useMemo, type ReactNode } from 'react';
+import { Image, PixelRatio, View, type StyleProp, type ViewStyle } from 'react-native';
 import type { ModeIconProps } from '../../modeParts';
+import { mergeIcons } from './icons';
 
-export function MergeIcon({ icon, size }: ModeIconProps) {
-  const name = icon.startsWith('beast:') ? icon.slice(6) : icon;
+const images = new Map<string, string>();
+const IMAGES_MAX = 240;
+
+/** A PNG data URI of icon `name` at `size` points ('' when it cannot be drawn). */
+export function mergeIconUri(name: string, size: number): string {
+  const density = Math.min(3, Math.max(1, PixelRatio.get()));
+  const key = `${name}|${size}|${density}`;
+  const hit = images.get(key);
+  if (hit !== undefined) return hit;
+  let uri = '';
+  try {
+    const all = mergeIcons();
+    const draw = Object.prototype.hasOwnProperty.call(all, name) ? all[name] : undefined;
+    const px = Math.max(1, Math.ceil(size * density));
+    const surface = draw ? (Skia.Surface.Make(px, px) ?? Skia.Surface.MakeOffscreen(px, px)) : null;
+    if (draw && surface) {
+      const c = surface.getCanvas();
+      c.clear(Skia.Color('#00000000'));
+      c.scale(px / size, px / size);
+      c.translate(size / 2, size / 2);
+      draw(c, size);
+      surface.flush();
+      const snap = surface.makeImageSnapshot();
+      const data = snap.encodeToBase64();
+      snap.dispose();
+      if (data) uri = 'data:image/png;base64,' + data;
+      surface.dispose();
+    }
+  } catch {
+    uri = '';
+  }
+  images.set(key, uri);
+  if (images.size > IMAGES_MAX) images.delete(images.keys().next().value as string);
+  return uri;
+}
+
+export function MergeIcon({ icon, size, fallback = null, style }: ModeIconProps & { fallback?: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const uri = useMemo(() => mergeIconUri(icon, size), [icon, size]);
+  if (!uri) return <>{fallback}</>;
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#F2A541', alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: size * 0.5, color: '#1C2140' }} allowFontScaling={false}>
-        {name.slice(0, 1).toUpperCase()}
-      </Text>
+    <View style={[{ width: size, height: size, pointerEvents: 'none' }, style]}>
+      <Image source={{ uri }} style={{ width: size, height: size }} />
     </View>
   );
 }

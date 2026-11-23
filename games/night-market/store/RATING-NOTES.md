@@ -10,7 +10,7 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 |---|---|
 | Mode | merge |
 | Ads | Yes: Google AdMob, rewarded (opt-in). Highest ad content rating: PG (parental guidance) (monetization.ads.maxAdContentRating) |
-| In-app purchases | Yes: 2 products (cosmetic, unlock) |
+| In-app purchases | Yes: 3 products (cosmetic, unlock, skipAds) |
 | Premium currency | Not sold |
 | Random items (chests) | None |
 | Random items SOLD (money or Gems) | No: chests are only earned (timer, missions, rewarded ads) |
