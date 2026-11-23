@@ -204,7 +204,10 @@ function paperTexts(u: ContentUnit): { id: string; text: string }[] {
     if (r.favour) out.push({ id: `${r.id}.favour`, text: r.favour.text });
   }
   for (const r of S.scripted ?? []) out.push({ id: r.id, text: r.text });
-  for (const c of S.chains ?? []) out.push({ id: `${c.id}.sign`, text: c.afterSign.text }, { id: `${c.id}.refuse`, text: c.afterRefuse.text });
+  for (const c of S.chains ?? []) {
+    if (c.afterSign) out.push({ id: `${c.id}.sign`, text: c.afterSign.text });
+    if (c.afterRefuse) out.push({ id: `${c.id}.refuse`, text: c.afterRefuse.text });
+  }
   for (const r of S.runUp ?? []) out.push({ id: r.id, text: r.text });
   for (const r of S.rallies ?? []) out.push({ id: r.id, text: r.text });
   for (const r of S.frames ?? []) out.push({ id: r.id, text: r.frame });
@@ -377,7 +380,9 @@ function planChecks(p: Parsed, plan: Plan): CheckFinding[] {
       if (len) {
         const lens = papers.map((r) => [...r.text].length);
         const med = median(lens);
-        if (len.medianMax !== undefined && lens.length && med > len.medianMax) out.push(E('(papers)', `the median paper is ${med} characters, at most ${len.medianMax}`));
+        // The median is the batch's once it is complete; while it is being written, a warning.
+        const done = count === undefined || papers.length >= count;
+        if (len.medianMax !== undefined && lens.length && med > len.medianMax) out.push((done ? E : Wn)('(papers)', `the median paper is ${med} characters, at most ${len.medianMax}${done ? '' : ' (so far)'}`));
         const long = lens.filter((l) => l >= (len.longFrom ?? 81)).length;
         if (len.longMax !== undefined && long > len.longMax) out.push(E('(papers)', `${long} papers of ${len.longFrom ?? 81} characters or more, at most ${len.longMax} in this batch`));
       }
@@ -456,6 +461,7 @@ function planChecks(p: Parsed, plan: Plan): CheckFinding[] {
     if (max !== undefined && [...t].length > max) out.push(E(id, `${what} is at most ${max} characters (plan.json rules): ${[...t].length}`, t, field));
   };
   for (const c of S.chains ?? []) for (const [b, f] of [['sign', c.afterSign], ['refuse', c.afterRefuse]] as const) {
+    if (!f) continue;
     cap(`${c.id}.${b}`, 'clippings.sign', f.clippings.sign, R.clippingMax, 'a clipping');
     cap(`${c.id}.${b}`, 'clippings.refuse', f.clippings.refuse, R.clippingMax, 'a clipping');
   }

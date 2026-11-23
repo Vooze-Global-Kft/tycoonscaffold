@@ -42,3 +42,6 @@ Mr, Mrs, Ms, Miss, Mx, Dr, Madam, Madame, Councillor
 SIGN, STUDY, SIGNED, STUDIED, FOR, FURTHER, Next, Gossip, Approval, Taxes, Dibs, Boycott
 Scandal, Level, Levels, Storey, Storeys, Raise, Courier, Spin, Sofa, Doors, Lunch, Long
 Kept, Further, Study
+# everyday words of the invented names (so no near-match is sought for them)
+Press, Thimble, Merit, Moderate, Keeper, Grand, Trust, Board, Town, Quiet, Gentle, Early, Shortage
+Amnesty, Inspection, Weather, Summer, Doors, Class, Spoon, Circle, Society, Guild, League

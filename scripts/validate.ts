@@ -10,8 +10,8 @@
  *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
  *   (a merge game: its bot, scripts/content/merge-bot.ts, on the same five seeds in parallel: every missed
  *   hard target of Decision M2 an error, every missed aim a warning; market-design.md 8.1 step 6)
- *   (a decree game: the satire lint once scripts/content/office/satireLint.ts exists, and a warning while
- *   there is no decree bot yet; office-design.md 7.8, 8.1, decisions D7 and D8)
+ *   (a decree game: the satire lint on its texts once scripts/content/office/satireLint.ts exists, and a
+ *   warning while there is no decree bot yet; office-design.md 7.8, 8.1, decisions D7 and D8)
  *
  * For every pair of games that both have sounds it also runs the sound similarity check
  * (python3 scripts/audio/compare.py, spec 6.1, Decision 24: fails when a shared key's joint score is
@@ -36,7 +36,7 @@ import { PORTRAIT_MODES } from '../src/config/artIcons';
 import { GameConfigSchema, type GameConfig } from '../src/config/schema';
 import { args } from './lib/cli';
 import { economyTableClash, storeTextProblems, textSimilarity } from './lib/checks';
-import { comparePair, formatPair, gameFacts, pairFailures, promotionalTextOf, type AudioScore, type ReleasesFile } from './lib/fingerprint';
+import { comparePair, formatPair, gameFacts, pairFailures, promotionalTextOf, tableStrings, type AudioScore, type ReleasesFile } from './lib/fingerprint';
 import { storeFiles } from './sync';
 
 const games = require('./lib/games.js');
@@ -230,25 +230,55 @@ function mergePacing(id: string, problems: string[], warnings: string[]): void {
 /**
  * The decree hook (office-design.md 7.8, 8.1 step 5, 9.2 P2/P3; decisions D7, D8). Additive: it runs
  * only for a game of mode "decree".
- * - The satire lint (D7: the content desk's `scripts/content/office/satireLint.ts`) runs on every
- *   decree game, with or without --no-sim, once its file exists: `npx tsx <it> --game <id>` in a child
- *   process; a non-zero exit is an error, one per line it printed (at most 40 shown). Until the file
- *   exists a warning says so.
+ * - The satire lint (D7: the content desk's `scripts/content/office/satireLint.ts`, its function
+ *   `satireLint(unit)`) runs on every decree game, with or without --no-sim, once its file exists: on
+ *   every text of the game.json `decree` block (names and roles as names), the store text and the
+ *   products (as store text), and the UI strings of src/ui/decree/strings.ts. An error finding is an
+ *   error; while game.json is the skeleton's PLACEHOLDER (its text says so) each is a warning instead.
+ *   Warnings of the lint are summed in one line. Until the file exists a warning says so.
  * - The balance bot (P2: `scripts/content/decree-bot.ts` running 8.3's hard targets on the five
  *   seeds) replaces the warning below once it exists; until then the section 8 targets are unchecked
  *   and a warning says so.
  */
-function decreeChecks(id: string, runSim: boolean, problems: string[], warnings: string[]): void {
+type LintFinding = { severity: string; id: string; field?: string; rule: string; reason: string; match?: string };
+/** Keys of the decree block whose values are ids or tags, never words a player reads. */
+const DECREE_ID_KEYS = new Set(['id', 'face', 'icon', 'pattern', 'club', 'clubs', 'other', 'archetype', 'subject', 'butt', 'shape', 'office', 'setsUp', 'minister', 'target', 'form', 'slot', 'moment', 'list', 'paper', 'ministry', 'districtWord', 'short', 'type', 'tier', 'cost', 'mayor', 'governor', 'presidentSingles', 'initials', 'longLunch', 'standingOrder', 'walnutDesk', 'portraitFrames', 'privateSecretary']);
+function decreeTexts(node: unknown, key: string, out: { id: string; text: string; field: 'ui' | 'store' | 'name' | 'text' }[], where: string): void {
+  if (typeof node === 'string') {
+    if (!DECREE_ID_KEYS.has(key) && /[A-Za-z]/.test(node)) out.push({ id: where, text: node, field: key === 'name' || key === 'role' ? 'name' : 'text' });
+  } else if (Array.isArray(node)) node.forEach((x, i) => decreeTexts(x, key, out, `${where}[${i}]`));
+  else if (node && typeof node === 'object') for (const [k, v] of Object.entries(node)) if (!DECREE_ID_KEYS.has(k)) decreeTexts(v, k, out, where ? `${where}.${k}` : k);
+}
+function decreeChecks(id: string, g: GameConfig, runSim: boolean, problems: string[], warnings: string[]): void {
   const lint = path.join(__dirname, 'content', 'office', 'satireLint.ts');
   if (!fs.existsSync(lint)) warnings.push('placeholder: no satire lint yet (scripts/content/office/satireLint.ts, the content desk, D7): the words of section 7.8 are not checked');
   else {
-    const r = spawnSync(process.execPath, [require.resolve('tsx/cli'), lint, '--game', id], { cwd: games.ROOT, encoding: 'utf8', timeout: 300_000 });
-    if (r.status !== 0) {
-      const lines = `${r.stdout ?? ''}\n${r.stderr ?? ''}`.split('\n').map((l) => l.trim()).filter(Boolean);
-      const shown = lines.slice(0, 40);
-      problems.push(...(shown.length ? shown : [`exit ${r.status ?? r.signal ?? 'unknown'}`]).map((l) => `satire lint (7.8): ${l}`));
-      if (lines.length > shown.length) problems.push(`satire lint (7.8): ... and ${lines.length - shown.length} more lines (npx tsx scripts/content/office/satireLint.ts --game ${id})`);
+    const placeholder = /PLACEHOLDER/.test(fs.readFileSync(path.join(games.gameDir(id), 'game.json'), 'utf8'));
+    const strings: { id: string; text: string; field: 'ui' | 'store' | 'name' | 'text' }[] = [];
+    decreeTexts(g.decree, '', strings, 'decree');
+    const st = g.store;
+    for (const [k, v] of Object.entries({ title: st.title, subtitle: st.subtitle, shortDescription: st.shortDescription, description: st.description, promotionalText: st.promotionalText ?? '', keywords: st.keywords.join(', ') })) if (v) strings.push({ id: `store.${k}`, text: v, field: 'store' });
+    for (const p of g.monetization.iap.products) strings.push({ id: `product.${p.id}.title`, text: p.title, field: 'store' }, { id: `product.${p.id}.description`, text: p.description ?? '', field: 'store' });
+    const table = path.join(games.ROOT, 'src', 'ui', 'decree', 'strings.ts');
+    if (fs.existsSync(table)) tableStrings(fs.readFileSync(table, 'utf8')).forEach((t, i) => /[A-Za-z]{2}/.test(t) && strings.push({ id: `ui.${i}`, text: t, field: 'ui' }));
+    let findings: LintFinding[] = [];
+    try {
+      const mod = require(lint) as { satireLint: (unit: unknown) => LintFinding[] };
+      findings = mod.satireLint({ source: `games/${id}/game.json`, sections: {}, strings });
+    } catch (e) {
+      problems.push(`satire lint (7.8) could not run: ${(e as Error).message.split('\n')[0]}`);
     }
+    const errors = findings.filter((f) => f.severity === 'error');
+    const line = (f: LintFinding) => `satire lint (7.8, ${f.rule}): ${f.id}${f.field ? `.${f.field}` : ''}: ${f.reason}${f.match ? ` ("${f.match}")` : ''}`;
+    if (placeholder) {
+      // The skeleton's PLACEHOLDER (test papers, names not yet in names.json): one summary line and the first five.
+      if (errors.length) warnings.push(`placeholder: satire lint (7.8) finds ${errors.length} error(s) in the PLACEHOLDER game.json (warnings until build-office.py writes the real one; then each is an error). The first: ${errors.slice(0, 5).map(line).join(' | ')}`);
+    } else {
+      problems.push(...errors.slice(0, 40).map(line));
+      if (errors.length > 40) problems.push(`satire lint (7.8): ... and ${errors.length - 40} more errors`);
+    }
+    const notes = findings.length - errors.length;
+    if (notes) warnings.push(`satire lint (7.8): ${notes} warning(s) for the writers (npx tsx scripts/content/office/check.ts --all)`);
   }
   const bot = path.join(__dirname, 'content', 'decree-bot.ts');
   if (runSim) warnings.push(fs.existsSync(bot) ? 'placeholder: scripts/content/decree-bot.ts exists but this hook does not run it yet (P2 replaces this line with the run of 8.3 on the five seeds)' : 'placeholder: no decree bot yet (src/engine/decree/bot.ts, scripts/content/decree-bot.ts; P2): the targets of section 8 are not checked');
@@ -474,7 +504,7 @@ for (const id of ids) {
   }
   // --- a decree game (office-design.md 7.8, 8.1, 8.3; decisions D7 and D8): the satire lint and the bot ---
   else if (g.mode === 'decree') {
-    decreeChecks(id, runSim, problems, warnings);
+    decreeChecks(id, g, runSim, problems, warnings);
   }
   // --- pacing: the same bot as `npm run simulate`, two simulated hours ---
   else if (runSim && problems.length === 0) {

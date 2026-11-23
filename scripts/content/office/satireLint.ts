@@ -287,7 +287,7 @@ export function phonetic(word: string): string {
     switch (c) {
       case 'b': if (!(p === 'm' && i === w.length - 1)) out += 'B'; break;
       case 'c':
-        if (n === 'h') { out += 'X'; i++; } else if (n && 'iey'.includes(n)) out += 'S'; else if (n !== 'k') out += 'K';
+        if (n === 'h') { out += 'X'; i++; } else if (n && 'iey'.includes(n)) out += 'S'; else { out += 'K'; if (n === 'k') i++; }
         break;
       case 'd': if (n === 'g' && w[i + 2] && 'iey'.includes(w[i + 2])) { out += 'J'; i++; } else out += 'T'; break;
       case 'g':
@@ -297,7 +297,7 @@ export function phonetic(word: string): string {
         else out += 'K';
         break;
       case 'h': if (isV(n) && !(p && 'cgpst'.includes(p))) out += 'H'; break;
-      case 'k': if (p !== 'c') out += 'K'; break;
+      case 'k': out += 'K'; break;
       case 'p': if (n === 'h') { out += 'F'; i++; } else out += 'P'; break;
       case 'q': out += 'K'; if (n === 'u') i++; break;
       case 's':
@@ -493,7 +493,9 @@ function lintText(ctx: Ctx, it: Item) {
         flagged.add(i);
         return;
       }
-      if (t.caps || t.low.length < 4) return;
+      // Near matches only for name-like words: never for an everyday word of an office name
+      // ("Board", "Trust", "Town"), which the common-word list holds.
+      if (t.caps || t.low.length < 4 || ctx.lists.common.has(t.low)) return;
       const code = phonetic(t.low);
       const vowel = firstVowel(t.low);
       for (const e of nl.single) {
@@ -510,8 +512,12 @@ function lintText(ctx: Ctx, it: Item) {
     });
   }
 
-  // Rule 2: unknown proper nouns.
-  if (it.kind !== 'store') {
+  // Rule 2: unknown proper nouns. A slogan or title in Title Case ("Plumb: She Owns A Hat") says
+  // nothing by its capitals; its names are still checked by tier 2.
+  const SMALL = new Set(['a', 'an', 'the', 'of', 'and', 'to', 'in', 'on', 'for', 'at', 'by', 'or', 'with']);
+  const words = n.toks.filter((t) => !SMALL.has(t.low) && /^\p{L}/u.test(t.raw));
+  const titleCase = words.length >= 1 && n.toks.length >= 2 && words.every((t) => t.cap || t.caps);
+  if (it.kind !== 'store' && !(titleCase && it.kind !== 'name') && it.field !== 'slogan') {
     n.toks.forEach((t, i) => {
       if (flagged.has(i) || !t.cap || t.caps || LOWER_OK.has(t.low) || /^\p{N}/u.test(t.raw)) return;
       if (t.initial && !isNameField) return;
@@ -669,7 +675,7 @@ function collect(ctx: Ctx, units: ContentUnit[]): { items: Item[]; papers: Paper
   const papers: PaperLike[] = [];
   const decks: DeckStats = { papers: new Map(), scripted: new Map() };
   const chains = new Map<string, { source: string; deck?: Deck }>();
-  const setUps = new Map<string, { source: string; id: string; archetype?: string; deck?: Deck }[]>();
+  const setUps = new Map<string, { source: string; id: string; archetype?: string; deck?: Deck; scripted?: boolean }[]>();
   const lists = new Map<string, string[]>();
   for (const u of units) for (const l of u.sections.lists ?? []) lists.set(l.id, l.phrases);
 
@@ -727,13 +733,14 @@ function collect(ctx: Ctx, units: ContentUnit[]): { items: Item[]; papers: Paper
       }
       if (r.setsUp) {
         if (!setUps.has(r.setsUp)) setUps.set(r.setsUp, []);
-        setUps.get(r.setsUp)!.push({ source: src, id: r.id, archetype: r.archetype, deck });
+        setUps.get(r.setsUp)!.push({ source: src, id: r.id, archetype: r.archetype, deck, scripted: true });
       }
     }
     for (const c of S.chains ?? []) {
       const deck = c.office ?? u.office;
       chains.set(c.id, { source: src, deck });
       for (const [branch, f] of [['sign', c.afterSign], ['refuse', c.afterRefuse]] as const) {
+        if (!f) continue;
         const id = `${c.id}.${branch}`;
         item(id, 'text', f.text, 'paper', 'proposal', deck);
         item(`${id}.sign`, 'clippings.sign', f.clippings.sign, 'clipping', 'clipping', deck);
@@ -838,7 +845,9 @@ function collect(ctx: Ctx, units: ContentUnit[]): { items: Item[]; papers: Paper
   // A favour follows a basket.
   for (const u of units) for (const c of u.sections.chains ?? []) {
     const up = setUps.get(c.id)?.[0];
+    if ((!c.afterSign || !c.afterRefuse) && up && !up.scripted) add(ctx, { source: u.source, id: c.id, rule: 'rule6', severity: 'error', match: up.id, reason: `a comic set-up's chain has a follow-up for each choice (7.6); this one lacks ${c.afterSign ? 'afterRefuse' : 'afterSign'} (only a scripted paper's chain may have one)` });
     for (const [branch, f] of [['sign', c.afterSign], ['refuse', c.afterRefuse]] as const) {
+      if (!f) continue;
       if (f.archetype === 'favour' && up && up.archetype && up.archetype !== 'basket') add(ctx, { source: u.source, id: `${c.id}.${branch}`, field: 'archetype', rule: 'rule6', severity: 'warn', reason: `a favour is the basket's follow-up (2.2); the set-up ${up.id} is a ${up.archetype}` });
     }
   }

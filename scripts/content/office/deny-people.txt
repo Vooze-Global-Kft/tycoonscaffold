@@ -18,7 +18,8 @@
 # Surnames that are also everyday words appear only as full names, so "a major ribbon" and "Market
 # Ward" pass. "#" starts a comment.
 
-# --- United States: presidents since 1897 ---
+# --- United States: presidents since 1897 (and Grant, whom 7.8 names) ---
+Grant
 McKinley
 Roosevelt
 Taft

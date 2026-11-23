@@ -244,11 +244,15 @@ export const ChainSchema = z.strictObject({
   /** A readable name for the editors ("The Basket"). */
   title: z.string().min(1),
   /** Comes back after the set-up was signed. */
-  afterSign: FollowUpSchema,
+  afterSign: FollowUpSchema.optional(),
   /** Comes back after the set-up was refused (studied). */
-  afterRefuse: FollowUpSchema,
+  afterRefuse: FollowUpSchema.optional(),
   note: z.string().optional(),
-});
+}).refine((c) => c.afterSign || c.afterRefuse, 'a chain needs at least one follow-up (afterSign or afterRefuse)');
+/**
+ * A comic set-up's chain has both follow-ups (7.6); only a scripted paper's chain may have one (3.1:
+ * paper 1's "another copy" after a sign, paper 2's after a study). The lint checks which.
+ */
 export type Chain = z.infer<typeof ChainSchema>;
 
 /** A Clerk's note on a form (7.5 paper 8: "The first shovel is tired."). */
