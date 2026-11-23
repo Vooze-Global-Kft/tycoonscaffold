@@ -21,12 +21,13 @@ Python 3 + numpy; ffmpeg for the AAC export.
                   clash cymbals at the phrase starts. Played from a distance (a lower top, more room).
   majority        the sting: the march's first eight bars, full band, the eighth bar a held B-flat chord
                   with a cymbal (mono .m4a, about 9 s).
-  defeat          the sting: one tuba playing the march's first four bars slowly (70 bpm), two octaves
-                  down, its last note sagging (mono .m4a, about 7 s).
+  defeat          the sting: one tuba playing the march's first four bars slowly (70 bpm), an octave
+                  down (high in the tuba's register), its last note sagging (mono .m4a, about 8 s).
 
 The march is original: written for this game. `--score` prints it, and docs/design/office-audio-notes.md
-records the check against the marches and anthems I could write down from memory (chroma and interval
-n-grams) and against the other three games' music (compare.py --cross, music against music).
+records the check against the marches and anthems I could write down from memory (the verdict rests on
+shared interval runs; the chroma score cannot see a copy at another tempo) and against the other three
+games' music (compare.py --cross, music against music). A person who knows marches must still listen.
 
 The instruments are this game's own (scripts/audio/recipes_office.py: brass, bassoon, pizzicato,
 the bandstand's percussion, the brushes), never the first game's accordion, mandolin or kalimba,
@@ -393,7 +394,9 @@ def render(name, stems_dir=None):
 
 def render_sting(name):
     """-> (mastered mono sting, info). majority: the march's first 8 bars, the 8th a held chord;
-    defeat: one tuba, the first four bars of the tune slowly, two octaves down."""
+    defeat: one tuba, the first four bars of the tune slowly, an octave down (high in the tuba's
+    register, so a phone keeps it: the first version, two octaves down, had 31 % of its energy
+    above 500 Hz)."""
     if name == 'majority':
         unit = 60.0 / MARCH_BPM / 4.0
         bar = MARCH_PER_BAR * unit
@@ -410,8 +413,12 @@ def render_sting(name):
         loop.add('bass_drum', RO.bass_drum(rng, 1.0), at)
         loop.add('snare', RO.snare_roll(rng, 0.25, ((0, 0.4), (1, 0.9)), 30.0, True), at - 0.25)
         strips = dict(MARCH_STRIPS)
+        # the sting is heard on a phone: the tuba and the bass drum a little back, the low end thinned
+        # (render_office.py fails a sting with under half of its energy above 500 Hz)
+        strips['tuba'] = dict(strips['tuba'], gain=0.25)
+        strips['bass_drum'] = dict(strips['bass_drum'], gain=0.25)
         x = music.mixdown(loop, strips, [dsp.reverb_ir(t60=1.2, size=1.4, damp=0.3, lp=4200.0, hp=200.0, spread=s) for s in (1.0, 1.029)])
-        mono = x.mean(axis=1)
+        mono = dsp.highpass(x.mean(axis=1), 250.0, 2)
         n_end = ns(7 * bar + 2.4)
         mono = mono[:n_end] * dsp.rcos_out(n_end, 400.0)
         title, loud = 'The Middling March (eight bars)', 2.0
@@ -425,16 +432,16 @@ def render_sting(name):
             if nt.u >= 4 * MARCH_PER_BAR:
                 break
             d = nt.dur * unit * 0.9
-            f = mtof(nt.m - 24)
+            f = mtof(nt.m - 12)
             n = ns(d + 0.1)
             if nt is last:
                 d = 1.6
                 n = ns(d)
                 fpath = f * 2.0 ** (points([(0, 0.0), (0.5, 0.0), (d, -45.0)], n) / 1200.0)         # the last note sags
                 env = dsp.rcos_in(n, 30.0) * points([(0, 1.0), (0.4, 0.9), (d, 0.0)], n)
-                y = RO.brass(0.0, d, rng, 'tuba', dyn=0.8, env=env, fpath=fpath, phone=300.0)
+                y = RO.brass(0.0, d, rng, 'tuba', dyn=0.85, env=env, fpath=fpath, phone=400.0)
             else:
-                y = RO.brass(f, d + 0.1, rng, 'tuba', dyn=0.7, attack=0.04, release=0.1, phone=300.0)
+                y = RO.brass(f, d + 0.1, rng, 'tuba', dyn=0.85, attack=0.04, release=0.1, phone=400.0)
             m.add(y, nt.u * unit + rng.normal(0.0, 0.012))
         dry = m.out()
         wet = dsp.add_reverb(dry, dsp.reverb_ir(t60=0.9, size=1.2, damp=0.3, lp=3600.0, hp=180.0), 0.2, tail=0.6)

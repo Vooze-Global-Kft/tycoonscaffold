@@ -373,10 +373,7 @@ export const HAIRS = {
       const { cx, top, hw, h } = g;
       const side = (s: number) =>
         blob([[cx + s * (hw + 1.8), top + h * 0.22], [cx + s * (hw + 3.2), top + h * 0.38], [cx + s * (hw + 1.4), top + h * 0.5], [cx + s * (hw - 2.2), top + h * 0.44], [cx + s * (hw - 2.4), top + h * 0.28]], 0.9);
-      const a = side(-1);
-      const b = side(1);
-      a.addPath(b);
-      return a;
+      return builder().addPath(side(-1)).addPath(side(1)).build();
     },
   },
   part: {
@@ -558,9 +555,9 @@ export const HAIRS = {
     // Thin hair combed across a high crown, full at the sides.
     front: (g) => {
       const { cx, top, hw, h } = g;
-      const sides = blob([[cx - hw - 2.4, top + h * 0.2], [cx - hw - 2.6, top + h * 0.46], [cx - hw + 2, top + h * 0.4], [cx - hw + 2.4, top + h * 0.2]], 0.9);
-      sides.addPath(blob([[cx + hw + 2.4, top + h * 0.2], [cx + hw + 2.6, top + h * 0.46], [cx + hw - 2, top + h * 0.4], [cx + hw - 2.4, top + h * 0.2]], 0.9));
-      return sides;
+      const left = blob([[cx - hw - 2.4, top + h * 0.2], [cx - hw - 2.6, top + h * 0.46], [cx - hw + 2, top + h * 0.4], [cx - hw + 2.4, top + h * 0.2]], 0.9);
+      const right = blob([[cx + hw + 2.4, top + h * 0.2], [cx + hw + 2.6, top + h * 0.46], [cx + hw - 2, top + h * 0.4], [cx + hw - 2.4, top + h * 0.2]], 0.9);
+      return builder().addPath(left).addPath(right).build();
     },
     strands: (g) => [
       [[g.cx - g.hw - 1, g.top + g.h * 0.2], [g.cx - 3, g.top - 0.6], [g.cx + g.hw * 0.8, g.top + 3]],

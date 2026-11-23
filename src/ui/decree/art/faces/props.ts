@@ -6,8 +6,8 @@
  *
  * Nothing here is a weapon, a drink, money, a flag, a seal or a symbol of any faith or group.
  */
-import type { SkCanvas } from '@shopify/react-native-skia';
-import { CLOTH, P, alpha, arc, blob, builder, circle, curve, fill, hatch, ink, line, mix, oval, poly, rrect, stroke, wash, type Pen } from './ink';
+import { FillType, type SkCanvas } from '@shopify/react-native-skia';
+import { CLOTH, P, alpha, arc, blob, builder, circle, clip, curve, fill, hatch, ink, line, mix, oval, poly, rrect, stroke, wash, type Pen } from './ink';
 
 type PropDraw = (c: SkCanvas, pen: Pen, accent: string) => void;
 
@@ -403,11 +403,10 @@ export const PROPS = {
     at: { x: 72, y: 106, deg: 0 },
     held: true,
     draw: (c, pen) => {
-      const b = builder().addCircle(0, 0, 10).addCircle(0, 0, 5).build();
-      b.setFillType(1);
+      const b = builder().addCircle(0, 0, 10).addCircle(0, 0, 5).setFillType(FillType.EvenOdd).build();
       c.drawPath(b, fill(PAPER));
       c.save();
-      c.clipPath(b, 1, true);
+      clip(c, b);
       for (const a of [0, 90, 180, 270]) {
         c.save();
         c.rotate(a + 45, 0, 0);
@@ -427,7 +426,7 @@ export const PROPS = {
       const sock = poly([-8, -14, 12, -10, 12, -5, -8, -4]);
       wash(c, pen, sock, PAPER, 0.8);
       c.save();
-      c.clipPath(sock, 1, true);
+      clip(c, sock);
       for (const x of [-3, 7]) c.drawPath(poly([x, -16, x + 5, -16, x + 5, 0, x, 0]), fill('#B5704F'));
       c.restore();
       ink(c, pen, sock, 0.8);
@@ -458,8 +457,7 @@ export const PROPS = {
     held: true,
     draw: (c, pen) => {
       wash(c, pen, circle(0, -8, 3.2), BRASS, 0.8);
-      const ring = builder().addCircle(0, 2, 9).addCircle(0, 2, 6).build();
-      ring.setFillType(1);
+      const ring = builder().addCircle(0, 2, 9).addCircle(0, 2, 6).setFillType(FillType.EvenOdd).build();
       wash(c, pen, ring, BRASS, 0.9);
       hatch(c, pen, ring, { within: poly([2, -10, 12, -10, 12, 14, 2, 14]) });
     },
@@ -581,7 +579,7 @@ export const PROPS = {
       const t = poly([-5, 14, 5, 14, 3, -8, -3, -8]);
       wash(c, pen, t, PAPER, 0.9);
       c.save();
-      c.clipPath(t, 1, true);
+      clip(c, t);
       for (const y of [-4, 4]) c.drawPath(rrect(-8, y, 16, 4, 0), fill('#B5704F'));
       c.restore();
       ink(c, pen, t, 0.9);
@@ -596,8 +594,7 @@ export const PROPS = {
       wash(c, pen, circle(0, 0, 10), PAPER, 0.6);
       c.drawPath(curve([[-6, 4], [-2, -4], [2, 3], [6, -5]]), stroke(acc, 1.6));
       c.drawPath(curve([[-6, -2], [0, -6], [5, 2]]), stroke('#5E7FA3', 1.2));
-      const r = builder().addCircle(0, 0, 10).addCircle(0, 0, 8.6).build();
-      r.setFillType(1);
+      const r = builder().addCircle(0, 0, 10).addCircle(0, 0, 8.6).setFillType(FillType.EvenOdd).build();
       wash(c, pen, r, WOOD, 0.7);
       ink(c, pen, line(5, 5, 12, 12), 0.6);
     },

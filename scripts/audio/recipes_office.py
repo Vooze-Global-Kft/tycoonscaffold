@@ -10,8 +10,9 @@ first two are rendered on). Every instrument below is built here from dsp primit
 impulse trains, biquads, modal banks, additive voices):
 
   nib()            a steel pen nib on paper: impulses of the paper's tooth at a rate that follows
-                   the pen's speed, each ringing the two tines of the nib (3.1 and 4.6 kHz, high Q)
-                   and the sheet (1.2 kHz): a scratch with a squeak in it, not a grain cloud
+                   the pen's speed, each ringing the two tines of the nib and the sheet: for the
+                   signature low, soft tines (1.46 to 1.95 kHz, Q 6) kept to 0.9 to 3.4 kHz; for the
+                   Ledger's tick the original bright tines (2.65 and 3.9 kHz): a scratch, not a grain cloud
   wire_clink()     the wire out-tray: a few thin brass rods struck (free-free bar modes 1, 2.76,
                    5.40), damped by the paper landing on them
   card_slap()      card stock laid on a hard surface: one fat broadband transient
@@ -35,7 +36,7 @@ impulse trains, biquads, modal banks, additive voices):
   scissors()       two blades sliding and closing
   chalk()          chalk on a slate: a tap and a gritty stroke
   tube_air()       pneumatic tube air: noise through the tube's own resonances (a comb, fixed),
-                   never a swept filter
+                   never a swept filter; at high Q (ui_open) the tube's hollow note
   latch()          a brass latch or bolt
   brass_coin()     a heavy coin set down on wood (two contacts, a short brass ring)
   newspaper_slap() a folded newspaper slapped on the desk
@@ -180,11 +181,14 @@ def rate_times(rng, rate_fn, dur, jitter=0.25):
 NIB_TINES = ((2650.0, 12.0, 1.0), (3900.0, 10.0, 0.5), (1250.0, 2.2, 0.8), (1900.0, 4.0, 0.35))
 
 
-def nib(rng, dur, strokes=7.0, press=None, tooth=1800.0, squeak=1.0, lift=None):
+def nib(rng, dur, strokes=7.0, press=None, tooth=1800.0, squeak=1.0, lift=None, tines=NIB_TINES, width=2,
+        scratch_band=(2400.0, 4800.0), lp=4800.0, keep=None):
     """A steel nib writing: the pen's speed rises and falls with each letter stroke (`strokes` a
     second); the paper's tooth gives impulses at tooth x speed a second, each ringing the nib's
-    two tines and the sheet (NIB_TINES), with a little dry scratch noise riding the speed. press
-    [(s, v)] shapes the pressure; lift [(s0, s1)] lifts the pen off the paper between letters."""
+    two tines and the sheet (`tines`, default NIB_TINES), with a little dry scratch noise riding the
+    speed. press [(s, v)] shapes the pressure; lift [(s0, s1)] lifts the pen off the paper between
+    letters. width 1 gives flat-spectrum impulses (2, the default, tilts them up); keep (lo, hi)
+    band-limits the result steeply (a 4th-order high-pass, an 8th-order low-pass)."""
     n = ns(dur)
     t = np.arange(n) / SR
     ph0 = rng.uniform(0, TAU)
@@ -199,12 +203,15 @@ def nib(rng, dur, strokes=7.0, press=None, tooth=1800.0, squeak=1.0, lift=None):
     sp_at = lambda tt: float(np.interp(tt, t, speed * (pr > 0.05)))
     times = rate_times(rng, lambda tt: tooth * max(sp_at(tt), 0.02), dur, 0.45)
     amps = [float(np.interp(tt, t, pr * speed)) * math.exp(rng.normal(0.0, 0.5)) * (1 if rng.uniform() < 0.5 else -1) for tt in times]
-    imp = impulses(n, times, amps, 2)
-    tines = list(NIB_TINES)
+    imp = impulses(n, times, amps, width)
+    tines = list(tines)
     tines[0] = (tines[0][0], tines[0][1], tines[0][2] * squeak)
-    y = filt(reso(imp, tines), butter('lp', 4800.0, 4))
-    scratch = band(white(n, rng), 2400.0, 4800.0, 2) * (pr * speed) ** 1.5
-    return norm(y) + 0.1 * scratch
+    y = filt(reso(imp, tines), butter('lp', lp, 4))
+    scratch = band(white(n, rng), scratch_band[0], scratch_band[1], 2) * (pr * speed) ** 1.5
+    out = norm(y) + 0.1 * scratch
+    if keep:
+        out = filt(out, butter('hp', keep[0], 4) + butter('lp', keep[1], 8))
+    return out
 
 
 def wire_clink(rng, vel=1.0, rods=3, f0=(1150.0, 1650.0), spread=0.016, damp=1.0, settle=0.0):
@@ -307,9 +314,9 @@ DRAWER = ((120.0, 0.7, 0.05), (230.0, 1.0, 0.04), (410.0, 0.8, 0.025), (760.0, 0
           (2100.0, 0.25, 0.005))
 
 
-def drawer_thunk(rng, vel=1.0):
-    """The drawer meeting its stop: a hollow wooden box struck from inside."""
-    return highpass(wood_body(rng, DRAWER, vel, 1.9, 1.1, 1.0), 480.0, 2)
+def drawer_thunk(rng, vel=1.0, tune=1.0):
+    """The drawer meeting its stop: a hollow wooden box struck from inside (tune scales the box)."""
+    return highpass(wood_body(rng, DRAWER, vel, 1.9 * tune, 1.1, 1.0), 480.0, 2)
 
 
 # ===========================================================================
@@ -681,23 +688,33 @@ def newspaper_slap(rng, vel=1.0):
 
 # --- the desk: what the thumb does hundreds of times an hour ---------------------------------------
 
-SIGN_INK = (                      # (letter strokes a second, pen lifts, squeak)
-    (7.0, ((0.12, 0.145),), 1.0),
-    (8.5, ((0.08, 0.1), (0.19, 0.205)), 0.8),
-    (6.0, ((0.16, 0.18),), 1.15),
+# (letter strokes a second, pen lifts, the main tine in Hz). The three variants differ in the
+# nib's own pitch (1460, 1640 and 1950 Hz: -2 and +3 semitones around 1640), not only in the
+# rhythm of the letters, so fifty signatures are not fifty copies of one squeak. The tines sit
+# low (1.5 to 2 kHz, Q 6, the second tine 1.42 x higher and soft) and the whole nib is kept to
+# 900 Hz .. 3.4 kHz: under half of its energy is in 2 to 5 kHz, the band where a sustained
+# scratch grates (the first version rang 2.65 and 3.9 kHz at Q 10 to 12, 83 % in that band).
+SIGN_INK = (
+    (7.0, ((0.08, 0.095),), 1640.0),
+    (8.5, ((0.05, 0.065), (0.12, 0.13)), 1950.0),
+    (6.0, ((0.1, 0.115),), 1460.0),
 )
+SIGN_INK_S = 0.18                 # seconds: the flourish (the first version's 280 ms was a long scratch)
 
 
 def _sign_ink(k):
-    strokes, lifts, squeak = SIGN_INK[k - 1]
+    strokes, lifts, f1 = SIGN_INK[k - 1]
 
-    @office_recipe('sign_ink_%d' % k, length=0.3, loud_db=FREQUENT)
+    @office_recipe('sign_ink_%d' % k, length=0.22, loud_db=FREQUENT)
     def fn(c):
-        """The nib signing from 40 pt: a 280 ms flourish of the steel nib whose pressure grows
-        (the signature writes itself across the strip with the distance)."""
+        """The nib signing from 40 pt: a 180 ms flourish of the steel nib whose pressure grows
+        (the signature writes itself across the strip with the distance). A soft, mid scratch
+        (the tines at f1 and 1.42 f1, the sheet at 1.1 kHz), not a squeak."""
         c.accent(0.0)
-        d = 0.28
-        y = nib(c.rng, d, strokes, press=[(0, 0.6), (0.05, 0.75), (0.2, 1.0), (d, 0.9)], lift=lifts, squeak=squeak)
+        d = SIGN_INK_S
+        tines = ((f1, 6.0, 1.0), (f1 * 1.42, 5.0, 0.35), (1100.0, 2.2, 0.35), (f1 * 0.62, 3.0, 0.3))
+        y = nib(c.rng, d, strokes, press=[(0, 0.6), (0.04, 0.75), (0.13, 1.0), (d, 0.9)], lift=lifts, tines=tines, width=1,
+                scratch_band=(1300.0, 2800.0), lp=3200.0, keep=(900.0, 3400.0))
         return y * points([(0, 0.0), (0.006, 1.0), (d - 0.03, 1.0), (d, 0.0)], ns(d))
     fn.__name__ = 'sign_ink_%d' % k
     return fn
@@ -731,15 +748,17 @@ for _k in (1, 2, 3):
     globals()['sign_%d' % _k] = _sign(_k)
 
 
-STUDY = (                         # (creak rate start, peak, end; creak length; slide length)
-    ((55.0, 95.0, 70.0), 0.13, 0.12),
-    ((45.0, 80.0, 60.0), 0.15, 0.11),
-    ((65.0, 110.0, 80.0), 0.11, 0.13),
+STUDY = (                         # (creak rate start, peak, end; creak length; slide length; tuning in semitones)
+    ((55.0, 95.0, 70.0), 0.13, 0.12, 0.0),
+    ((45.0, 80.0, 60.0), 0.15, 0.11, -2.0),
+    ((65.0, 110.0, 80.0), 0.11, 0.13, 2.0),
 )
+CREAK_RES = ((640.0, 7.0, 1.0), (1380.0, 6.0, 0.7), (2450.0, 5.0, 0.35))
 
 
 def _study(k):
-    rates, dc, ds = STUDY[k - 1]
+    rates, dc, ds, st = STUDY[k - 1]
+    tune = 2.0 ** (st / 12.0)         # the three drawers are three drawers: creak rate, runner wood and box +-2 semitones
 
     @office_recipe('study_%d' % k, length=0.42, loud_db=FREQUENT)
     def fn(c):
@@ -748,9 +767,10 @@ def _study(k):
         friction), and meets its stop with a hollow wooden thunk. Low, woody, longer than the
         clink: told apart from signing by ear with the screen off."""
         m = Mix()
-        m.add(0.9 * creak(c.sub('creak'), dc, [(0, rates[0]), (dc * 0.6, rates[1]), (dc, rates[2])]))
+        m.add(0.9 * creak(c.sub('creak'), dc, [(0, rates[0] * tune), (dc * 0.6, rates[1] * tune), (dc, rates[2] * tune)],
+                          res=tuple((f * tune, q, g) for f, q, g in CREAK_RES)))
         m.add(0.45 * highpass(runner(c.sub('run'), ds), 550.0, 2), dc * 0.6)
-        m.add(0.8 * drawer_thunk(c.sub('thunk'), 1.0), dc * 0.6 + ds)
+        m.add(0.8 * drawer_thunk(c.sub('thunk'), 1.0, tune), dc * 0.6 + ds)
         c.accent(0.0, dc * 0.6 + ds)
         return m.out()
     fn.__name__ = 'study_%d' % k
@@ -789,7 +809,7 @@ def denied(c):
 def _paper_arrive(k):
     gap = (0.13, 0.16)[k - 1]
 
-    @office_recipe('paper_arrive_%d' % k, length=0.5)
+    @office_recipe('paper_arrive_%d' % k, length=0.5, loud_db=FREQUENT)
     def fn(c):
         """A visitor: two knocks on the panelled door (the glass pane answering), then their paper
         laid on the desk (a card-stock slap) 200 ms later."""
@@ -807,24 +827,24 @@ for _k in (1, 2):
     globals()['paper_arrive_%d' % _k] = _paper_arrive(_k)
 
 
-@office_recipe('slip_arrive', length=0.24, loud_db=FREQUENT)
+@office_recipe('slip_arrive', length=0.45, loud_db=FREQUENT)
 def slip_arrive(c):
-    """The Treasury Clerk's budget slip nudged across the baize in two short pushes (the slip's
-    edge catching on the cloth's fibres: two quick runs of soft catches ringing the card at 1.1
-    kHz, 35 ms each, 60 ms apart), then laid flat on the cloth (the air under it pressed out: a
-    low, soft 'thup'). No whoosh, no sweep; nothing rings."""
+    """The Treasury Clerk's budget slip slid slowly across the baize under a fingertip: ONE
+    continuous push of 340 ms, no gaps (the cloth's soft friction: noise kept steeply to 550 Hz ..
+    1.2 kHz, an 8th-order band, its level swelling to the middle of the push and fading as the
+    finger slows), then the slip laid flat (the air under it pressed out: a low, soft 'thup',
+    kept under 1.8 kHz). No whoosh, no sweep, nothing rings, no bursts. (The first version was
+    two or three short noise bursts in 180 ms: the shape of Lantern Row's steam chuffs.)"""
     m = Mix()
-    for j, t0 in enumerate((0.0, 0.06)):
-        d = 0.035
-        n = ns(d)
-        times = rate_times(c.sub('f%d' % j), lambda x: 420.0, d, 0.5)
-        imp = impulses(n, times, [c.rng.uniform(0.3, 1.0) * (1 if c.rng.uniform() < 0.5 else -1) for _ in times], 4)
-        catch = filt(reso(imp, ((1100.0, 4.0, 1.0), (2100.0, 3.0, 0.5), (650.0, 2.5, 0.5))), butter('lp', 4000.0, 4))
-        m.add((0.8 if j else 0.6) * soft(catch, 2.5) * points([(0, 1.0), (d, 0.3)], n), t0)
-    nt = ns(0.06)
-    thup = reso(colored(nt, c.sub('thup'), -2.0) * perc(nt, 2.0, 0.012), ((520.0, 1.6, 1.0), (1100.0, 1.4, 0.5)))
-    m.add(1.0 * norm(thup), 0.12)
-    c.accent(0.0, 0.12)
+    d = 0.34
+    n = ns(d)
+    fric = filt(colored(n, c.sub('n'), -1.0), butter('hp', 550.0, 4) + butter('lp', 1200.0, 8))
+    fric = norm(fric) * wobble(c.sub('w'), n, 25.0, 0.25)
+    m.add(0.7 * norm(fric) * points([(0, 0.0), (d * 0.6, 1.0), (d, 0.3)], n, 1.5))
+    nt = ns(0.07)
+    thup = reso(colored(nt, c.sub('thup'), -2.0) * perc(nt, 2.0, 0.014), ((520.0, 1.6, 1.0), (1000.0, 1.6, 0.5)))
+    m.add(1.0 * norm(filt(thup, butter('lp', 1800.0, 8))), d - 0.01)
+    c.accent(0.0, d - 0.01)
     return m.out()
 
 
@@ -1037,18 +1057,23 @@ def district_lost(c):
 
 # --- the interface: pneumatic tubes -------------------------------------------------------------------
 
-@office_recipe('ui_open', length=0.2, loud_db=FREQUENT)
+@office_recipe('ui_open', length=0.25, loud_db=FREQUENT)
 def ui_open(c):
-    """A sheet opened: a capsule arriving by pneumatic tube, a short puff of tube air (the tube's
-    fixed resonances, 90 ms) and the capsule dropping into the brass receiver (a clunk)."""
+    """A sheet opened: a capsule arriving by pneumatic tube, the tube's own note sounding for 110
+    ms as the air pushes it (the tube's first three resonances at Q 40: a hollow 'hoo' near 415
+    Hz, not a hiss), the capsule dropping into the brass receiver (a 620 Hz clunk) and the desk
+    under it; the whole kept to 450 Hz .. 3 kHz. (The first version's 100 ms of broadband tube
+    hiss was a whoosh, close to Pizza Empire's toss.) The tube's note is a resonance of a length
+    of pipe, so it is not held to the scale (about A-flat 4)."""
     m = Mix()
-    m.add(0.6 * tube_air(c.sub('air'), 0.11, 370.0, env=points([(0, 0.2), (0.09, 1.0), (0.11, 0.0)], ns(0.11))))
+    ad = 0.11
+    m.add(0.6 * tube_air(c.sub('air'), ad, 415.3, env=points([(0, 0.2), (ad * 0.8, 1.0), (ad, 0.0)], ns(ad)), q=40.0, modes=3))
     nb = ns(0.1)
-    clunk = modal([(780.0, 1.0, 0.018, 0.2, 0.0), (1420.0, 0.7, 0.012, 0.2, 1.0), (2380.0, 0.4, 0.008, 0.2, 2.0)], nb)
-    m.add(0.9 * clunk, 0.105)
-    m.add(0.4 * desk_tap(c.sub('d'), 1.0), 0.105)
+    clunk = modal([(620.0, 1.0, 0.018, 0.2, 0.0), (620.0 * 1.82, 0.7, 0.012, 0.2, 1.0), (620.0 * 3.05, 0.4, 0.008, 0.2, 2.0)], nb)
+    m.add(0.9 * clunk, ad - 0.005)
+    m.add(0.2 * desk_tap(c.sub('d'), 1.0), ad - 0.005)
     c.accent(0.0)
-    return m.out()
+    return filt(m.out(), butter('hp', 450.0, 4) + butter('lp', 3000.0, 8))
 
 
 @office_recipe('ui_close', length=0.2, loud_db=FREQUENT)
@@ -1074,13 +1099,13 @@ STING_KEYS = ('majority', 'defeat')                   # rendered by office_music
 
 EVENTS = {
     # the desk: what the thumb does hundreds of times an hour
-    'sign_ink': (0.4, 250, ['light'], 'the steel nib signing from 40 pt: a 280 ms flourish whose pressure grows, the nib squeaking a little; three files, random', 1),
+    'sign_ink': (0.35, 250, ['light'], 'the steel nib signing from 40 pt: a 180 ms soft mid scratch whose pressure grows; three files (three nib pitches), random', 1),
     'sign': (0.5, 150, ['medium'], 'signed: card stock into the wire out-tray, the brass wires clinking (bright, short); three files, random', 2),
-    'study': (0.5, 150, ['medium'], 'for further study: the wooden drawer creaking, sliding on its runners, a hollow thunk at its stop (low, woody); three files, random', 2),
+    'study': (0.5, 150, ['medium'], 'for further study: the wooden drawer creaking, sliding on its runners, a hollow thunk at its stop (low, woody); three files (three drawers, +-2 semitones), random', 2),
     'take_back': (0.45, 150, ['light'], 'taken back: one wire lifted, the paper laid back on the desk', 1),
     'denied': (0.5, 300, ['light'], 'not enough in the treasury: one dull knuckle tap on the desk, the pen rattling on it', 1),
-    'paper_arrive': (0.4, 5000, None, 'a visitor: two knocks on the panelled door, the glass pane answering, their paper laid on the desk; two files, random', 1),
-    'slip_arrive': (0.35, 800, None, "the Treasury Clerk's slip slid across the baize and stopped by a fingertip", 1),
+    'paper_arrive': (0.3, 5000, None, 'a visitor: two knocks on the panelled door, the glass pane answering, their paper laid on the desk; two files, random', 1),
+    'slip_arrive': (0.35, 800, None, "the Treasury Clerk's slip slid slowly across the baize in one push and laid flat", 1),
     # the Ledger
     'buy_level': (0.45, 125, ['light'], 'a level: the nib ticks the Ledger, a heavy brass token set down on the blotter and settling (no till, no bell)', 2),
     'open_ministry': (0.6, None, ['medium'], 'a ministry opens: a brass latch thrown, a tuba blat from the corridor', 1),
@@ -1089,7 +1114,7 @@ EVENTS = {
     'ribbon': (0.6, None, ['light'], 'a ribbon cut: scissors, the ribbon parting, a clarinet flourish', 1),
     # boycotts, scandals, the scrapbook
     'boycott_start': (0.6, None, ['medium'], 'a club walks out: a wordless kazoo chant of three kazoos, a bass drum', 1),
-    'boycott_end': (0.55, None, ['light'], 'the boycott ends: a door unlatched and swinging open on its hinge', 1),
+    'boycott_end': (0.55, None, None, 'the boycott ends: a door unlatched and swinging open on its hinge', 1),
     'scandal': (0.65, None, ['heavy'], 'the front page: a newspaper slapped down, a muted trombone\'s "oh dear"', 1),
     'clipping': (0.45, 300, None, 'a clipping: two snips and the clipping pressed onto the page', 1),
     # the election
@@ -1099,12 +1124,12 @@ EVENTS = {
     'district_held': (0.6, 300, ['success'], 'a district held: the band\'s PAH (rimshot, tuba and euphoniums) and the tuba\'s oom answering', 1),
     'district_lost': (0.5, 300, None, 'a district lost: a trombone sliding down a fourth', 1),
     'majority': (0.8, None, ['heavy'], 'the majority: eight bars of "The Middling March", the full bandstand (B-flat, 2/4 at 112)', 1),
-    'defeat': (0.7, None, ['soft'], 'defeat: one tuba playing the first four bars of "The Middling March" slowly', 1),
+    'defeat': (0.7, None, ['soft'], 'defeat: one tuba, high in its register, playing the first four bars of "The Middling March" slowly', 1),
     # interface
-    'ui_open': (0.4, None, None, 'a sheet opened: a capsule arriving by pneumatic tube into its brass receiver', 1),
+    'ui_open': (0.4, None, None, 'a sheet opened: a capsule arriving by pneumatic tube (the tube\'s hollow note) into its brass receiver', 1),
     'ui_close': (0.35, None, None, 'the sheet closed: the capsule sent off with a suck of air, the receiver lid falling shut', 1),
     # music
-    'music_main': (0.3, None, None, 'the desk loop "Minutes of the Previous Meeting" (spec 6 music_desk): 90 s at 90 bpm in F, bassoon, pizzicato, brushes; sparse, no tune', 1),
+    'music_main': (0.25, None, None, 'the desk loop "Minutes of the Previous Meeting" (spec 6 music_desk): 90 s at 90 bpm in F, bassoon, pizzicato, brushes; sparse, no tune', 1),
     'music_campaign': (0.35, None, None, 'the campaign loop: "The Middling March" for the bandstand, 90 s at 112 bpm in B-flat', 1),
 }
 

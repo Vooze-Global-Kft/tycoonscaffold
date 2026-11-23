@@ -250,6 +250,9 @@ def qa_sting(key, path):
     lo, hi = STING_LEN_S[key]
     if not lo <= a['duration'] <= hi:
         err.append('%.2f s (want %g..%g)' % (a['duration'], lo, hi))
+    a['a500'] = above_500(mono)
+    if a['a500'] < 0.5:
+        err.append('only %.0f %% of its energy above 500 Hz (a phone keeps little else)' % (100 * a['a500']))
     if a['phone_db'] < qa.PHONE_FAIL_DB:
         err.append('phone speaker loses %.1f dB' % -a['phone_db'])
     elif a['phone_db'] < qa.PHONE_WARN_DB:
@@ -292,8 +295,8 @@ def qa_folder(out_dir, keys=None):
             err, warn, a, size, _ = qa_sting(sk, spath)
             total += size
             fails += bool(err)
-            print('%-15s %5.0f %6.1f %6.1f K-RMS, phone %+.1f, centroid %.0f Hz, %.0f KB  %s'
-                  % (sk, a['duration'] * 1000, a['peak_db'], a['krms'], a['phone_db'], a['centroid'], size / 1000.0,
+            print('%-15s %5.0f %6.1f %6.1f K-RMS, phone %+.1f, >500 Hz %.0f %%, centroid %.0f Hz, %.0f KB  %s'
+                  % (sk, a['duration'] * 1000, a['peak_db'], a['krms'], a['phone_db'], 100 * a['a500'], a['centroid'], size / 1000.0,
                      '; '.join(['FAIL ' + e for e in err] + warn)))
         sting_bytes = total - fx_bytes
         for mk in RO.MUSIC_KEYS:
