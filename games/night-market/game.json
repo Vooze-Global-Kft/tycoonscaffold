@@ -333,7 +333,7 @@
       "ripeMax": 0.6,
       "maxBase": 4,
       "shelf": 6,
-      "looseCap": 4,
+      "looseCap": 8,
       "release": 0.5
     },
     "stalls": {
@@ -341,8 +341,7 @@
       "bonusMax": 3.9,
       "awningLevels": [
         5,
-        10,
-        20
+        10
       ]
     },
     "minders": {
@@ -482,7 +481,7 @@
         }
       ]
     ],
-    "festivalPace": 30,
+    "festivalSparks": 3,
     "gift": {
       "every": 25,
       "slots": 3,
@@ -711,8 +710,8 @@
           "count": 8
         },
         "effect": {
-          "type": "festivalPurseMult",
-          "value": 2
+          "type": "festivalSparks",
+          "value": 5
         },
         "isNew": false
       },
@@ -846,8 +845,7 @@
         "paradeEvery": 300
       },
       "stepTier": 6,
-      "maxSteps": 3,
-      "levelsPerStep": 10,
+      "maxSteps": 1,
       "familiarBase": 0.85,
       "familiarMax": 4,
       "openingGoods": 6

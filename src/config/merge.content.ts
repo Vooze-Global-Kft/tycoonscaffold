@@ -102,9 +102,9 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     roundBelow: 1000,
     sigDigits: 3,
   },
-  // Decision M3: T = 4 s for every gear, a rule.
-  gear: { interval: 4, step: 10, ripePerLevel: 0.05, ripeMax: 0.6, maxBase: 4, shelf: 6, looseCap: 4, release: 0.5 },
-  stalls: { bonusPerLevel: 0.1, bonusMax: 3.9, awningLevels: [5, 10, 20] },
+  // Decision M3: T = 4 s for every gear, a rule. Decision M43: the loose cap is 8 (tune 6 to 12).
+  gear: { interval: 4, step: 10, ripePerLevel: 0.05, ripeMax: 0.6, maxBase: 4, shelf: 6, looseCap: 8, release: 0.5 },
+  stalls: { bonusPerLevel: 0.1, bonusMax: 3.9, awningLevels: [5, 10] },
   minders: { interval: 15, tillRoll: 60 },
   merges: { luckyOdds: 25 },
   basket: { share: 0.25, undoSeconds: 4 },
@@ -157,7 +157,8 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
       { chain: 5, tier: 4 },
     ],
   ],
-  festivalPace: 30,
+  // Decision M37: the Festival pays no coins; filling it gives Lucky Sparks.
+  festivalSparks: 3,
   // Decision M24: a box every N = 25 paid tickets (tune 15 to 40), a coin slot of m × U with m = 0.5 (tune 0.25 to 1.5).
   gift: { every: 25, slots: 3, odds: { coins: 0.5, good: 0.35, spark: 0.15 }, goodSteps: [2, 3, 4], goodOdds: [0.6, 0.3, 0.1], coinPace: 0.5 },
   lanterns: [
@@ -179,7 +180,7 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     { n: 15, feat: { type: 'seasonsClosed', count: 3 }, effect: { type: 'minderIntervalMult', value: 0.8 } },
     { n: 16, feat: { type: 'tickets', count: 2000 }, effect: { type: 'luckyOdds', value: 16 } },
     { n: 17, feat: { type: 'discover', count: 48 }, effect: { type: 'sparkTiers', value: 2 } },
-    { n: 18, feat: { type: 'seasonsClosed', count: 8 }, effect: { type: 'festivalPurseMult', value: 2 } },
+    { n: 18, feat: { type: 'seasonsClosed', count: 8 }, effect: { type: 'festivalSparks', value: 5 } },
     // Decision M24: lantern 19 brings gift boxes a fifth sooner (N × 0.8), whatever N is tuned to.
     { n: 19, feat: { type: 'parades', count: 100 }, effect: { type: 'giftEveryMult', value: 0.8 } },
     { n: 20, feat: { type: 'tier8sInSeason', count: 10 }, effect: { type: 'ticketPay', value: 1.05 } },
@@ -211,9 +212,8 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     lateCrowd: { minderIntervalMult: 0.67 },
     marketDay: { paradeEvery: 300 },
     stepTier: 6,
-    maxSteps: 3,
-    // Decision M25: N equals the gear step s.
-    levelsPerStep: 10,
+    // Decision M40: seasoned gear holds one step (two with lantern 9); N equals the gear step s (M25).
+    maxSteps: 1,
     familiarBase: 0.85,
     familiarMax: 4,
     // Decision M18: the opening board holds 6 Pepper Skewers (the fox's Twin Skewer and the hedgehog's Glazed Skewer).

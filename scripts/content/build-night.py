@@ -77,7 +77,7 @@ KNOB_ORDER = [
     ('fill time: gamma, then W', ('3 ',), ['tickets.gamma', 'tickets.outputWindow']),
     ('gift boxes (M24)', ('8 gift', '8 tickets'), ['gift.every', 'gift.coinPace']),
     ('stall levels and value per action (M27)', ('7 ', '15 ', '6 '), ['costs.stallLevelBase', 'costs.stallLevelGrowth', 'tickets.stretch']),
-    ('seasons: the Festival purse, the familiar-faces base', ('10 ',), ['festivalPace', 'seasons.familiarBase']),
+    ('seasons: the Festival purse, the familiar-faces base', ('10 ',), ['seasons.familiarBase']),
     ('rerolling: the Not tonight cooldown', ('report: Not tonight',), ['tickets.notTonightCooldown']),
 ]
 
