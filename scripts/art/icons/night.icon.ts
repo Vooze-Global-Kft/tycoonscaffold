@@ -80,7 +80,7 @@ export function drawTicketLantern(c: SkCanvas, cx: number, cy: number, k = 1): v
 /** Two Pepper Skewers meeting in a spark, centred on (cx, cy), `k` the glyph scale. */
 export function drawMergingSkewers(c: SkCanvas, cx: number, cy: number, k = 12): void {
   at(c, cx - k * 8, cy, k, 0, (q) => drawGlyph(q, 0));
-  at(c, cx + k * 8, cy, k, 90, (q) => drawGlyph(q, 0));
+  at(c, cx + k * 8, cy, k, -90, (q) => drawGlyph(q, 0));
   glow(c, cx, cy - k * 4, k * 9, NIGHT.flame, 0.8);
   sparkle(c, cx, cy - k * 4, k * 5, NIGHT.white);
   sparkle(c, cx, cy - k * 4, k * 2.6, NIGHT.flame);

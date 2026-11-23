@@ -469,16 +469,15 @@ def echo(x, delay, fb, taps=2, lp=2600.0):
 # --- merges: one steam puff per tier, growing in size and brightness (not up a scale) -------------
 
 def lid_clink(rng, vel=1.0, weight=0.0):
-    """A clay steamer lid knocked by the puff: two strongly damped inharmonic modes (2.1 and 3.4
-    kHz, 3 to 6 ms; the same lid for every tier, so it is a colour, not a note) and a grit click.
-    weight 0..1 adds a lower 'tok' of a heavier lid seat."""
-    n = ns(0.03)
-    r = rng.uniform
-    parts = [(2150.0 * r(0.97, 1.03), 1.0, 0.0055, 0.2, r(0, TAU)), (3420.0 * r(0.97, 1.03), 0.6, 0.0035, 0.2, r(0, TAU)),
-             (1240.0 * r(0.97, 1.03), 0.5 * weight, 0.006, 0.3, r(0, TAU))]
-    y = modal(parts, n)
-    grit = band(white(n, rng), 2600.0, 5600.0, 2) * decay(n, 0.1, 0.0009)
-    return vel * (y + 0.7 * grit)
+    """A clay steamer lid knocked by the puff: a 'tok' of noise through two wide clay resonances
+    (2.1 and 3.4 kHz, Q 3, 2 to 3 ms: a colour, not a note; the same lid for every tier) and a grit
+    click. weight 0..1 adds the lower knock of a heavier lid seat (1.2 kHz)."""
+    n = ns(0.025)
+    y = 1.0 * bandpass(white(n, rng), 2150.0, 3.0) * decay(n, 0.1, 0.0028)
+    y += 0.7 * bandpass(white(n, rng), 3400.0, 3.0) * decay(n, 0.1, 0.0020)
+    y += 0.6 * weight * bandpass(white(n, rng), 1240.0, 2.5) * decay(n, 0.2, 0.0035)
+    grit = band(white(n, rng), 2600.0, 5600.0, 2) * decay(n, 0.05, 0.0008)
+    return vel * (2.2 * y + 0.8 * grit)
 
 
 def pff(rng, dur, f1, f2, q1=2.2, q2=2.6, attack_ms=4.0, tau=0.03, bal=0.5, wander=0.06):
@@ -497,29 +496,74 @@ def pff(rng, dur, f1, f2, q1=2.2, q2=2.6, attack_ms=4.0, tau=0.03, bal=0.5, wand
 
 def sizzle(rng, dur, rate, lo=2400.0, hi=5200.0, start=1.0):
     """A sizzle: sparse crackle grains (water on a hot lid) thinning out over dur."""
-    g = grains(rng, dur, rate, (0.15, 0.7), 0.8, [(0, start), (dur, 0.0)])
+    g = grains(rng, dur, rate, (0.15, 0.7), 0.5, [(0, start), (dur, 0.0)])
     return band(g, lo, hi, 2)
 
 
+def rattle_times(rng, dur, rate):
+    """Onsets of a lid rattling at about `rate` a second, slowing as it settles: the same schedule
+    for every tier (a bigger puff only lets the lid rattle longer). rng jitters each gap +-8 %."""
+    t, out, gap = 0.0, [], 1.0 / rate
+    while t < dur:
+        out.append(t)
+        t += gap * rng.uniform(0.92, 1.08)
+        gap *= 1.07
+    return out
+
+
+def rattle_gate(rng, n, rate, depth):
+    """An amplitude gate that opens at each rattle onset and closes in about 8 ms: steam let out in
+    chuffs as the lid lifts and drops. depth 0..1 (1: the gate closes fully between chuffs)."""
+    g = np.zeros(n)
+    k = ns(0.03)
+    shape = np.exp(-np.arange(k) / ns(0.008)) * rcos_in(k, 1.0)
+    for t in rattle_times(rng, n / SR, rate):
+        i = int(t * SR)
+        j = min(n, i + k)
+        g[i:j] = np.maximum(g[i:j], shape[:j - i])
+    return (1.0 - depth) + depth * g
+
+
+def lid_rattle(rng, dur, rate):
+    """The lid's clay seat knocking at each chuff: a short clay 'tok' per rattle onset, each a little
+    softer, with a random colour (no two the same, no note)."""
+    n = ns(dur) + ns(0.03)
+    out = np.zeros(n)
+    for j, t in enumerate(rattle_times(rng, dur, rate)):
+        c = lid_clink(rng, 0.8 ** j, 0.3)
+        i = int(t * SR)
+        out[i:i + len(c)] += c[:n - i]
+    return out[:ns(dur)]
+
+
+MP = dict(g=1.25, d0=0.05, clink=0.45, f1=520.0, f1x=1.92, f2=1900.0, f2x=1.37, q1=2.2, q2=2.6, bal0=0.25, bal1=0.3,
+          tau=0.45, plen=1.6, who=0.9, whodb=0.6, sz0=0.22, sz1=0.2, szr=160.0, szr1=200.0, szlo=2400.0, szhi=5200.0, top=None, rat=0.0, rhz=28.0, rdep=0.9, rclk=0.0)
+
+
 def merge_puff(rng, k):
-    """Tier k (1..8): a steamer lid lifted. A clay lid clink at the attack, a two-formant 'pff' of
-    breath, a low whoomph under it and a sizzle tail of sparse crackle grains. Size (the tier): the
-    pff, the whoomph and the sizzle all last longer and the whoomph gets about 1.5 dB stronger per
-    tier (the file is also mastered 0.4 dB louder per tier). Brightness: the formants open (f1 560
-    -> 900 Hz, f2 2.2 -> 2.9 kHz), the upper formant's share grows and the sizzle gets denser.
-    Never up a scale: no part has a pitch that moves from tier to tier (the lid is the same lid)."""
+    """Tier k (1..8): a steamer lid lifted. A clay lid 'tok' at the attack, a two-formant 'pff' of
+    breath, a low whoomph under it and a sizzle tail of sparse crackle grains."""
+    P = MP
     u = (k - 1) / 7.0
+    g = P['g'] ** (k - 1)
+    rng = rng_for('night', 'merge_puff')
     m = Mix()
-    d_pff = 0.06 + 0.16 * u
-    m.add(0.55 * lid_clink(rng, 1.0, u))
-    m.add(pff(rng, d_pff + 0.04, 560.0 * 1.6 ** u, 2200.0 * 1.32 ** u, attack_ms=3.0 + 6.0 * u, tau=0.018 + 0.05 * u,
-              bal=0.30 + 0.35 * u), 0.003)
-    nl = ns(d_pff + 0.08)
-    whoomph = lowpass(white(nl, rng), 260.0, 2) * decay(nl, 4.0 + 6.0 * u, 0.02 + 0.05 * u)
-    m.add((0.7 * 10 ** (1.5 * (k - 1) / 20.0)) * 3.0 * whoomph, 0.002)
-    d_s = 0.05 + 0.2 * u
-    m.add((0.35 + 0.25 * u) * sizzle(rng, d_s, 120.0 + 260.0 * u), 0.03 + 0.5 * d_pff)
-    return m.out()
+    d_pff = P['d0'] * g
+    m.add(P['clink'] * lid_clink(rng_for('night', 'lid'), 1.0, u))
+    m.add(pff(rng_for('night', 'pff'), d_pff * P['plen'], P['f1'] * P['f1x'] ** u, P['f2'] * P['f2x'] ** u, q1=P['q1'], q2=P['q2'],
+              attack_ms=3.0 + 7.0 * u, tau=P['tau'] * d_pff, bal=P['bal0'] + P['bal1'] * u), 0.003)
+    nl = ns(d_pff * 1.8)
+    whoomph = lowpass(white(nl, rng_for('night', 'whoomph')), 260.0, 2) * decay(nl, 4.0 + 6.0 * u, 0.5 * d_pff)
+    m.add(P['who'] * 10 ** (P['whodb'] * (k - 1) / 20.0) * whoomph, 0.002)
+    d_s = 0.05 * g
+    m.add((P['sz0'] + P['sz1'] * u) * sizzle(rng_for('night', 'sizzle'), d_s, P['szr'] + P['szr1'] * u, P['szlo'], P['szhi']),
+          0.02 + 0.7 * d_pff)
+    y = m.out()
+    if P['rat']:
+        y = y * rattle_gate(rng_for('night', 'rattle'), len(y), P['rhz'], P['rdep'])
+    if P['rclk']:
+        y = y + P['rclk'] * lid_rattle(rng_for('night', 'rattle'), len(y) / SR, P['rhz'])
+    return lowpass(y, P['top'], 4) if P['top'] else y
 
 
 def _merge(k):
