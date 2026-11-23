@@ -21,7 +21,8 @@
  *   run overlaps instead of cutting. One file per tier: no variants yet (the shared player cannot
  *   pick a random variant of a ladder rung; requested).
  * - `drop` at most one every 300 ms (6.2): with four gears dropping every 5 s it is the sound heard
- *   most, so it is the quietest (volume 0.22, mastered 4 dB under the pack).
+ *   most, so it is the quietest (volume 0.26, mastered 4 dB under the pack; its peaks hold it 1.7 dB under
+ *   that, which the volume makes up).
  * - Haptics follow only what the finger did (6.2): none for drops, coins, the Parade, moves or the
  *   sheets. Patterns land on the sound's own accents (`render_night.py --accents`) and no pattern
  *   pulses faster than 8 a second. Across plays, the haptics service's own floor
@@ -52,7 +53,7 @@ export const FX = {
   move: { brief: 'a cloth rub (low cloth noise with a stick-slip)', volume: 0.35, preload: 2, voices: 2, minIntervalMs: 80 },
   swap: { brief: 'two cloth rubs crossing', volume: 0.38, preload: 6, voices: 2, minIntervalMs: 80 },
   return: { brief: 'a dull paper tap (meant for ui_tap too: every button press)', volume: 0.35, preload: 3, voices: 2, minIntervalMs: 80 },
-  drop: { brief: 'a tiny charcoal crackle, quiet', volume: 0.22, preload: 5, voices: 2, minIntervalMs: 300 },
+  drop: { brief: 'a tiny charcoal crackle, quiet', volume: 0.26, preload: 5, voices: 2, minIntervalMs: 300 },
 
   // --- tickets and money (no bell on any money moment) --------------------------------------------
   line_fill: { brief: 'a paper tick', volume: 0.45, preload: 4, voices: 2, minIntervalMs: 60, haptic: ['light'] },

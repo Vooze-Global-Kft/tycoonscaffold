@@ -244,7 +244,11 @@ export const MergeSchema = z.object({
     spareCells: int.min(0).default(6),
     /** "Not tonight" cooldown per counter, s (tune 15 to 120). */
     notTonightCooldown: pos.default(30),
-    /** The customers drawn on tickets (`beast:` names) and their coat colours each. */
+    /**
+     * The customers drawn on tickets, as species names, and their coat colours each. A ticket's
+     * customer icon is `customerIcon(species, coat)` → "beast:<species>-<coat>" (src/ui/merge/art/icons.ts);
+     * a bare "beast:<species>" is that species' MINDER portrait, never a customer.
+     */
     customers: z.array(id).min(1).default(['fox', 'hedgehog', 'badger', 'otter', 'bat', 'owl']),
     coats: int.positive().default(3),
   }).prefault({}),

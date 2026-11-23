@@ -646,7 +646,7 @@ def return_(c):
 @night_recipe('drop', length=0.15, loud_db=QUIET)
 def drop(c):
     """A tiny charcoal crackle as the gear drops a good: five sparse pops in 100 ms over a faint
-    ember hiss. Quiet (tier -4, catalogue volume 0.22): it plays every 5 s per stall, for an hour."""
+    ember hiss. Quiet (tier -4, catalogue volume 0.26): it plays every 5 s per stall, for an hour."""
     c.accent(0.0)
     return charcoal(c.rng, 0.14, pops=5, vel=1.0, ember=0.1)
 
@@ -1007,7 +1007,7 @@ EVENTS = {
     'move': (0.35, 80, None, 'a cloth rub (low cloth noise with a stick-slip)', 2),
     'swap': (0.38, 80, None, 'two cloth rubs crossing', 2),
     'return': (0.35, 80, None, 'a dull paper tap (meant for ui_tap too: every button press)', 2),
-    'drop': (0.22, 300, None, 'a tiny charcoal crackle, quiet', 2),
+    'drop': (0.26, 300, None, 'a tiny charcoal crackle, quiet', 2),
     'line_fill': (0.45, 60, ['light'], 'a paper tick', 2),
     'ticket_filled': (0.7, 120, ['medium'], 'a felt stamp and a paper fold', 2),
     'coins': (0.45, 150, None, 'clay coins into a cloth pouch', 2),
