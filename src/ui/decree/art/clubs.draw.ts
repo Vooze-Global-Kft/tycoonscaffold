@@ -104,17 +104,28 @@ function glyphPumpkin(c: SkCanvas, ink: string): void {
 }
 
 function glyphTuba(c: SkCanvas, ink: string): void {
-  // Coiled body, the big bell flaring up and to the right, three valves.
-  c.drawPath(oval(-2, 3.2, 6.8, 6), stroke(DESK.line, 4.6));
-  c.drawPath(oval(-2, 3.2, 6.8, 6), stroke(ink, 2.8));
-  const bellTube = builder().moveTo(1.6, -1.2).lineTo(4.6, -6.4).build();
-  c.drawPath(bellTube, stroke(DESK.line, 4.4));
-  c.drawPath(bellTube, stroke(ink, 2.6));
-  const bell = poly([2.4, -6.6, 9.8, -11, 11.6, -7.4, 6.6, -4.2]);
-  shape(c, bell, ink, 0.9);
-  shape(c, oval(10.7, -9.2, 1.6, 2.4), DESK.line, 0, DESK.line);
-  for (let i = 0; i < 3; i++) shape(c, rrect(-5.4 + i * 2.6, -4.6, 1.8, 4.4, 0.6), DESK.paper, 0.7);
-  c.drawPath(line(-8.6, 2, -11, -1.2), stroke(DESK.line, 1.4));
+  // An upright tuba: the wide bell on top, the conical body narrowing into the bottom bow, three valves.
+  const body = builder()
+    .moveTo(-6.8, -8.4)
+    .quadTo(-3, -6, -2.6, 0)
+    .lineTo(-2.6, 4.2)
+    .quadTo(-2.6, 9.6, 2.4, 9.6)
+    .quadTo(7, 9.6, 7, 4.6)
+    .lineTo(7, 1)
+    .lineTo(3.6, 1)
+    .lineTo(3.6, 4.4)
+    .quadTo(3.6, 6.4, 2.2, 6.4)
+    .quadTo(1, 6.4, 1, 4)
+    .lineTo(1, 0)
+    .quadTo(1.4, -6, 4.8, -8.4)
+    .close()
+    .build();
+  shape(c, body, ink, 0.9);
+  shape(c, oval(-1, -8.6, 6.4, 2.2), ink, 0.9);
+  c.drawPath(oval(-1, -8.6, 4.6, 1.2), fill(DESK.line));
+  for (let i = 0; i < 3; i++) shape(c, rrect(3.4 + i * 2.3, -3.6, 1.7, 4.6, 0.5), DESK.paperLight, 0.7);
+  c.drawPath(line(3.2, -1.4, 10.4, -1.4), stroke(DESK.line, 0.9));
+  c.drawPath(builder().moveTo(-4.6, -6.6).quadTo(-2.2, -4, -1.8, 1).build(), stroke(alpha(DESK.paper, 0.6), 1));
 }
 
 function glyphFloat(c: SkCanvas, ink: string): void {
