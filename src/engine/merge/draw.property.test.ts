@@ -15,27 +15,18 @@
  * A second block measures the draw on mid-game states (line counts, tiers, fallback steps, tickets
  * payable from stock) and prints the numbers for the handover notes.
  *
- * Package ORDERS. The modifiers come through `currentMods` (META's lanterns.ts): mocked so the
- * lantern and character cases set their numbers here and do not depend on META's unfinished body.
+ * The modifiers come through the real `currentMods` (lanterns.ts): the lantern and character
+ * kinds light lanterns and pick seasons in the state (`seasonAndLanterns`).
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { freshState, mergeTestConfig } from '../fixtures/merge';
 import { rngFloat } from '../rng';
 import { checkBounds, drawParade, drawParadeTraced, drawTicket, drawTicketTraced, scriptedTicket, type BoundFailures, type DrawStep } from './draw';
 import { missingDetail, popsNeeded } from './missing';
 import { mergeParams } from './params';
-import type { Cell, DrawOutcome, Good, MergeConfig, MergeGame, MergeParams, Mods, Ticket, TicketLine } from './types';
-
-const modsOverride: { value: Partial<Mods> | null } = { value: null };
-vi.mock('./lanterns', async (orig) => {
-  const actual = await orig<typeof import('./lanterns')>();
-  return {
-    ...actual,
-    currentMods: (cfg: MergeConfig, m: MergeGame['merge']) => (modsOverride.value ? { ...actual.neutralMods(cfg), ...modsOverride.value } : actual.currentMods(cfg, m)),
-  };
-});
+import type { Cell, DrawOutcome, Good, MergeGame, MergeParams, Ticket, TicketLine } from './types';
 
 const cfg = mergeTestConfig();
 const BASE = freshState(cfg);
@@ -131,25 +122,16 @@ const same = (x: BoundFailures, y: BoundFailures) => x.a === y.a && x.bOutput ==
 const KINDS = ['any', 'full', 'empty', 'oneChain', 'sixChains', 'baseStep', 'best8', 'allLanterns', 'fireflies', 'harvest', 'warmGear', 'lateCrowd', 'marketDay', 'newlyOpened', 'midGame'] as const;
 type Kind = (typeof KINDS)[number];
 
-function modsFor(kind: Kind): Partial<Mods> | null {
-  const s = cfg.merge.seasons;
-  switch (kind) {
-    case 'allLanterns':
-      // Every lantern's number at once (5.3 with M5), with no season character.
-      return { counters: 4, basketShare: 0.4, shelfCap: 8, paradeEvery: 480, awayHours: 2, luckyOdds: 16, startOpen: [1], seasonedMax: 4, paradeMultiplier: 2.5, mindersStartHired: true, ripeAdd: 0.05, betaAdd: 0.1, giftSlots: 4, minderIntervalMult: 0.8, sparkTiers: 2, festivalPurseMult: 2, giftEvery: 20, ticketPay: 1.05 };
-    case 'fireflies':
-      return { luckyOdds: s.fireflies.luckyOdds };
-    case 'harvest':
-      return { threeLineShare: s.harvest.threeLineShare, betaAdd: s.harvest.betaAdd };
-    case 'warmGear':
-      return { ripeAdd: s.warmGear.ripeAdd };
-    case 'lateCrowd':
-      return { minderIntervalMult: s.lateCrowd.minderIntervalMult };
-    case 'marketDay':
-      return { paradeEvery: s.marketDay.paradeEvery };
-    default:
-      return null;
-  }
+/**
+ * The lanterns lit and the season of a state kind: the modifiers come from the real `currentMods`
+ * (lanterns.ts) reading them, never from a stand-in. 'allLanterns' lights all 20; each character
+ * kind takes the first season of the table with that character; every other kind keeps `season`.
+ */
+function seasonAndLanterns(kind: Kind, season: number): { season: number; lanterns: number[] } {
+  const character = ({ fireflies: 'fireflies', harvest: 'harvest', warmGear: 'warmGear', lateCrowd: 'lateCrowd', marketDay: 'marketDay' } as Record<string, string>)[kind];
+  if (character) return { season: cfg.merge.seasons.table.findIndex((row) => row.character === character), lanterns: [] };
+  if (kind === 'allLanterns') return { season, lanterns: cfg.merge.lanterns.map((l) => l.n) };
+  return { season, lanterns: [] };
 }
 
 interface Built {
@@ -162,10 +144,9 @@ interface Built {
 
 /** A random state that keeps the invariants of a reachable one (fixtures' `fixtureProblems`): goods of open chains only, never above best; best ≥ maxPop; shelves within the cap; tickets drawn by the rules themselves. */
 function randomState(r: Rand, kind: Kind): Built {
-  modsOverride.value = modsFor(kind);
   const mid = kind === 'midGame';
   const nOpen = kind === 'oneChain' ? 1 : kind === 'sixChains' ? 6 : mid ? int(r, 3, 4) : int(r, 1, 6);
-  const season = nOpen === 6 ? int(r, 1, 9) : int(r, 0, 9);
+  const { season, lanterns } = seasonAndLanterns(kind, nOpen === 6 ? int(r, 1, 9) : int(r, 0, 9));
   const seasonClock = mid ? 600 + r() * 4800 : r() * 7200;
   const playSeconds = seasonClock + r() * 30000;
   // Shutters and blocks.
@@ -186,7 +167,7 @@ function randomState(r: Rand, kind: Kind): Built {
     const gear = kind === 'baseStep' ? 1 + step * int(r, 0, 3) : mid ? int(r, 3, 25) : int(r, 1, Math.min(40, cfg.merge.costs.gearMaxLevel));
     return { ...ch, open: true, gear, stall: int(r, 1, 12), minder: int(r, 0, 4), shelf: [] as number[], best: 1 };
   });
-  let g: MergeGame = { ...BASE, stats: { ...BASE.stats, playSeconds }, merge: { ...BASE.merge, season, seasonStartedAt: playSeconds - seasonClock, board, shuttersOpened, chains, counters: [], script: 'done', gift: { ...BASE.merge.gift, pendingGoods: [] }, draws: { ...BASE.merge.draws, ticket: int(r, 0, 1_000_000), parade: int(r, 0, 1_000_000) } } };
+  let g: MergeGame = { ...BASE, stats: { ...BASE.stats, playSeconds }, merge: { ...BASE.merge, season, lanterns, seasonStartedAt: playSeconds - seasonClock, board, shuttersOpened, chains, counters: [], script: 'done', gift: { ...BASE.merge.gift, pendingGoods: [] }, draws: { ...BASE.merge.draws, ticket: int(r, 0, 1_000_000), parade: int(r, 0, 1_000_000) } } };
   let P = mergeParams(cfg, g);
   const fresh = kind === 'newlyOpened' && nOpen >= 2 ? nOpen - 1 : -1;
   const chains2 = g.merge.chains.map((ch, c) => {
@@ -286,7 +267,6 @@ function payableFromStock(g: MergeGame, t: Ticket): boolean {
 
 function checkOne(b: Built, tally: Tally, i: number, full: boolean) {
   const { g, counter } = b;
-  modsOverride.value = modsFor(b.kind);
   const P = mergeParams(cfg, g);
   const out = drawTicketTraced(cfg, g, counter);
   tally.states++;
@@ -360,7 +340,6 @@ describe('drawTicket over 10^5 random valid states (2.7, 10.2)', () => {
     const r = gen(777);
     const N = Number(process.env.DRAW_N ?? 100_000);
     for (let i = 0; i < N; i++) checkOne(randomState(r, KINDS[i % KINDS.length]), tally, i, true);
-    modsOverride.value = null;
     expect(tally.mismatches).toEqual([]);
     expect(tally.breaches).toEqual([]);
     expect(tally.states).toBe(N);
@@ -376,7 +355,6 @@ describe('drawTicket over 10^5 random valid states (2.7, 10.2)', () => {
 
 describe('the draw: the scripted tickets, the Parade, the stream, the room check', () => {
   it('the scripted fox and hedgehog are exempt from (d) only', () => {
-    modsOverride.value = null;
     const g0 = freshState(cfg);
     // At the opening (gear level 1, b = 1) both lines keep (d1) anyway; with the Grill's gear at a
     // base step (b = 2, a seasoned start) the fox's Twin Skewer breaks (d1), and only (d) is waived.
@@ -408,7 +386,6 @@ describe('the draw: the scripted tickets, the Parade, the stream, the room check
     const counts = [0, 0, 0, 0];
     for (let i = 0; i < 20_000; i++) {
       const b = randomState(r, KINDS[i % KINDS.length]);
-      modsOverride.value = modsFor(b.kind);
       const P = mergeParams(cfg, b.g);
       const out = drawParadeTraced(cfg, b.g, b.counter);
       for (const s of out.trace) expect(same(independent(b.g, P, b.counter, s.lines, true), s.failures)).toBe(true);
@@ -436,7 +413,6 @@ describe('the draw: the scripted tickets, the Parade, the stream, the room check
       const moved = { ...b.g, merge: { ...b.g.merge, draws: { ...b.g.merge.draws, ticket: b.g.merge.draws.ticket + 17 } } };
       if (i % 50 === 0) expect(drawParade(cfg, moved, b.counter)).toEqual({ ticket: out.ticket, used: out.used });
     }
-    modsOverride.value = null;
     console.log(`[draw.property] Parade over 20000 states: drawn ${drawn}, none ${none}; lines 1/2/3: ${counts.slice(1).join('/')}`);
     expect(drawn).toBeGreaterThan(none);
   }, 300_000);
@@ -446,7 +422,6 @@ describe('the draw: the scripted tickets, the Parade, the stream, the room check
     let b = randomState(r, 'midGame');
     // A state that has room for a ticket (an empty board with three stalls).
     while (!drawTicket(cfg, b.g, b.counter).ticket || b.g.merge.counters.some((ct) => ct.ticket)) b = randomState(r, 'midGame');
-    modsOverride.value = null;
     const seen = new Set<string>();
     for (let n = 0; n < 50; n++) {
       const g = { ...b.g, merge: { ...b.g.merge, draws: { ...b.g.merge.draws, ticket: n * 31 } } };
@@ -462,7 +437,6 @@ describe('the draw: the scripted tickets, the Parade, the stream, the room check
     const r = gen(5150);
     for (let i = 0; i < 300; i++) {
       const b = randomState(r, KINDS[i % KINDS.length]);
-      modsOverride.value = modsFor(b.kind);
       const goods = b.g.merge.board.map((c, j) => ({ c, j })).filter((x) => x.c !== 'shutter' && x.c !== 'block');
       const cells = goods.map((x) => x.c);
       // A fixed shuffle of the open cells' contents.
@@ -475,7 +449,6 @@ describe('the draw: the scripted tickets, the Parade, the stream, the room check
       const moved = { ...b.g, merge: { ...b.g.merge, board } };
       expect(drawTicket(cfg, moved, b.counter)).toEqual(drawTicket(cfg, b.g, b.counter));
     }
-    modsOverride.value = null;
     // Source: draw.ts counts no free cells itself.
     const src = readFileSync(fileURLToPath(new URL('./draw.ts', import.meta.url)), 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
     expect(src).not.toMatch(/freeCells\s*\(|\.F\b|=== null/);
@@ -488,7 +461,6 @@ describe('measurements on mid-game states (for the handover notes)', () => {
     const r = gen(2026);
     const N = Number(process.env.DRAW_N ?? 100_000);
     for (let i = 0; i < N; i++) checkOne(randomState(r, 'midGame'), tally, i, false);
-    modsOverride.value = null;
     const pct = (n: number, d: number) => `${((100 * n) / Math.max(1, d)).toFixed(1)}%`;
     const report = [
       `[draw.measure] ${N} mid-game draws (3 to 4 stalls, gear 3 to 25, season clock 10 to 90 min, board 40 to 80 % full, tiers falling off by half per step above the base):`,

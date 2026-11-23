@@ -5,25 +5,11 @@
  * clock 360 s, no second while one is out, the clock restarted when it is sent off); the
  * "Fill one line" ad never fills the last line; "Call the dragon".
  *
- * The Parade's own draw is ORDERS's (`drawParade`); here it is replaced by a stand-in that returns
- * a two-line gold ticket, so these tests read MECHANICS's timing only.
+ * Every rule is the real one (the Parade's draw included): no stand-in.
  */
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { fixtureProblems, mergeFixtures, mergeState, mergeTestConfig, playOnce, testPrng } from '../fixtures/merge';
 import * as R from '../merge';
-
-vi.mock('./draw', async (importOriginal) => {
-  const orig = await importOriginal<typeof import('./draw')>();
-  return {
-    ...orig,
-    // Stand-in for ORDERS's Parade draw: the best tier of the two highest open chains, gold.
-    drawParade: (_cfg: R.MergeConfig, g: R.MergeGame): R.DrawOutcome => {
-      const open = g.merge.chains.map((ch, c) => (ch.open ? c : -1)).filter((c) => c >= 0);
-      const lines = open.slice(-2).map((c) => ({ c, k: Math.max(2, g.merge.chains[c].best), filled: false }));
-      return { ticket: { id: 0, lines, gold: true, customer: 0, coat: 0 }, used: 1 };
-    },
-  };
-});
 
 const cfg = mergeTestConfig();
 
@@ -93,7 +79,7 @@ describe('the Parade (2.7, 2.4 events 6 and 7)', () => {
     const after = R.advanceMerge(cfg, paid, 10, 0, ev2);
     expect(after.merge.counters[0].ticket?.gold).toBe(true);
     expect(ev2).toContainEqual({ type: 'paradeArrive', counter: 0 });
-    expect(after.merge.draws.parade).toBe(paid.merge.draws.parade + 1);
+    expect(after.merge.draws.parade).toBe(paid.merge.draws.parade + 2 * cfg.merge.parade.lines); // the Parade stream: 2 values per configured line
     expect(R.paradeOut(after.merge)).toBe(true);
     expect(R.paradeDue(after.merge, 400)).toBe(false);
   });
