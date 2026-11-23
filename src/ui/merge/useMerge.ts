@@ -118,4 +118,9 @@ const NO_TICKET: V.TicketView = { exists: false, id: -1, gold: false, species: '
 export function useAdsView(): V.AdsView {
   return useMergeShallow(safe(V.adsView, NO_ADS), NO_ADS);
 }
-const NO_ADS: V.AdsView = { fillWait: 0, fillTicket: false, rushOk: false, rushWait: 0, dragonOk: false, dragonWait: 0, dragonOut: false };
+const NO_ADS: V.AdsView = { fillWait: 0, fillTicket: false, rushOk: false, rushWait: 0, dragonOk: false, dragonWait: 0, dragonOut: false, dragonDue: false };
+
+/** The ad skip is owned (the shared kind skipAds, Quiet Evening, M13): every "Watch ad" gives its reward with no video. */
+export function useAdFree(): boolean {
+  return useGame((s) => !!s.game.entitlements.skipRewarded);
+}

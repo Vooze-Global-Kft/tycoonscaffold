@@ -12,7 +12,7 @@ import { freshState, mergeTestConfig } from '../../engine/fixtures/merge';
 import * as R from '../../engine/merge';
 import { runMergeBot } from '../../engine/merge/bot';
 import { shutterTag } from './art/street.draw';
-import { anchorOf, currentStep, purchasesMade, fireflyHint, FIREFLY_REACH, GUIDED_FALLBACK_MS, GUIDED_STEPS, hintPath, IDLE_MS, layoutRect, QUIET_MS, stepDone, type FireflyUi, type GuidedStep } from './hintScript';
+import { anchorOf, currentStep, newStallPointer, purchasesMade, fireflyHint, FIREFLY_REACH, GUIDED_FALLBACK_MS, GUIDED_STEPS, hintPath, IDLE_MS, layoutRect, QUIET_MS, stepDone, type FireflyUi, type GuidedStep } from './hintScript';
 import { cellRect, mergeLayout } from './layout';
 
 const cfg = mergeTestConfig();
@@ -189,3 +189,25 @@ describe('a player who ignores the firefly is never stuck', () => {
     expect(fireflyHint(cfg, run.game, idle(QUIET_MS))?.guided).toBe(true);
   });
 });
+
+describe('after a stall opens, the firefly shows its first goods (player review: the Tea stall opened unseen)', () => {
+  const fresh = freshState(cfg);
+  it('points at the new stall\'s merge until its first tier 2 is made, then lets go', () => {
+    const tea = withM(fresh, (m) => ({ chains: m.chains.map((ch, i) => (i === 1 ? { ...ch, open: true } : ch)) }));
+    const hints: R.MergeHint[] = [
+      { id: 'merge:0:2', kind: 'drag', from: 'cell:20', to: 'cell:21' },
+      { id: 'merge:1:2', kind: 'drag', from: 'cell:15', to: 'cell:16' },
+    ];
+    expect(newStallPointer(fresh, hints)).toBeNull();
+    expect(newStallPointer(tea, hints)?.id).toBe('merge:1:2');
+    const made = withM(tea, (m) => ({ book: m.book.map((row, c) => (c === 1 ? row.map((v, k) => (k === 1 ? true : v)) : row)) }));
+    expect(newStallPointer(made, hints)).toBeNull();
+  });
+  it('the goal line\'s anchor sits after its words, never in the top bar\'s left corner (the purse)', () => {
+    const L = mergeLayout(375, 667, { top: 20, bottom: 0 });
+    const r = layoutRect(L, 'goal', { counters: 2, shutterCells: [] })!;
+    const p = anchorOf('goal', r);
+    expect(p.x - FIREFLY_REACH).toBeGreaterThan(L.width / 4);
+  });
+});
+

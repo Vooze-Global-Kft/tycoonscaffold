@@ -18,7 +18,7 @@ import { useGame } from '../../../state/store';
 import { useRewardedReady } from '../../kit';
 import { S } from '../strings';
 import { useMergeUi } from '../uiState';
-import { useAdsView, useMergeCfg } from '../useMerge';
+import { useAdFree, useAdsView, useMergeCfg } from '../useMerge';
 import { Btn, Card, INK, MergeSheet, Pill, Txt, useType } from './parts';
 import { cooldownParts, figure } from './views';
 
@@ -65,6 +65,7 @@ function ShopBody() {
   const owned = useGame((s) => s.game.entitlements.products.join(','));
   const ads = useAdsView();
   const adReady = useRewardedReady();
+  const free = useAdFree();
   const restore = useGame((s) => s.restorePurchases);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -76,6 +77,8 @@ function ShopBody() {
   const products = cfg.monetization.iap.products;
   const ownedIds = owned ? owned.split(',') : [];
   const adSub = (waitS: number, ok: boolean, what: string, blocked?: string) => (waitS > 0 ? S.sheets.adReadyAfter(wait(waitS)) : !adReady ? S.sheets.adNotLoaded : blocked && !ok ? blocked : what);
+  // With the ad skip owned no video plays: the button says what it gives, never "Watch ad".
+  const adLabel = free ? S.sheets.adTake : S.sheets.adReady;
   return (
     <>
       <Txt size={ty.small} bold color={INK.soft}>
@@ -117,7 +120,7 @@ function ShopBody() {
         </Txt>
       ) : null}
       <Txt size={ty.small} bold color={INK.soft} style={styles.section}>
-        {S.sheets.shopAds}
+        {free ? S.sheets.shopAdsFree : S.sheets.shopAds}
       </Txt>
       <Card icon="art:ticket">
         <Txt size={ty.body} bold>
@@ -138,19 +141,26 @@ function ShopBody() {
         <Txt size={ty.body} bold>
           {S.sheets.adGearRush}
         </Txt>
-        <Btn kind="ad" label={S.sheets.adReady} sub={adSub(ads.rushWait, ads.rushOk, S.sheets.gearRushWhat(cfg.merge.ads.gearRushGoods), S.sheets.adNotNow)} enabled={ads.rushOk && adReady} onPress={() => void mergeActions.watchAd('gearRush')} />
+        <Btn kind="ad" label={adLabel} sub={adSub(ads.rushWait, ads.rushOk, S.sheets.gearRushWhat(cfg.merge.ads.gearRushGoods), S.sheets.adNotNow)} enabled={ads.rushOk && adReady} onPress={() => void mergeActions.watchAd('gearRush')} />
       </Card>
       <Card icon="beast:dragon" iconSize={40}>
         <Txt size={ty.body} bold>
           {S.sheets.adDragon}
         </Txt>
-        <Btn
-          kind="ad"
-          label={S.sheets.adReady}
-          sub={ads.dragonOut ? S.sheets.adDragonOut : adSub(ads.dragonWait, ads.dragonOk, S.sheets.adDragonWhat, S.sheets.adDragonWhen)}
-          enabled={ads.dragonOk && adReady}
-          onPress={() => void mergeActions.watchAd('callDragon')}
-        />
+        {ads.dragonOut || ads.dragonDue ? (
+          // M46: while the Parade is out or due, no button: the dragon is here, or on its way to the next free counter.
+          <Txt size={ty.small} color={INK.soft}>
+            {ads.dragonOut ? S.sheets.adDragonOut : S.sheets.adDragonComing}
+          </Txt>
+        ) : (
+          <Btn
+            kind="ad"
+            label={adLabel}
+            sub={adSub(ads.dragonWait, ads.dragonOk, S.sheets.adDragonWhat, S.sheets.adNotNow)}
+            enabled={ads.dragonOk && adReady}
+            onPress={() => void mergeActions.watchAd('callDragon')}
+          />
+        )}
       </Card>
     </>
   );

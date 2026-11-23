@@ -27,7 +27,7 @@ import { MergeIcon } from '../art/MergeIcon';
 import { CHAIN_IDS } from '../art/palette';
 import { S } from '../strings';
 import { busyHand, useMergeUi } from '../uiState';
-import { useMerge } from '../useMerge';
+import { useAdFree, useMerge } from '../useMerge';
 import { awayView, type OfflineRecord } from './awayLines';
 import { Btn, Card, INK, MergeSheet, Txt, useType } from './parts';
 
@@ -85,6 +85,7 @@ export function AwayReport() {
 function AwaySheet({ visible, view }: { visible: boolean; view: ReturnType<typeof awayView> }) {
   const ty = useType();
   const adReady = useRewardedReady();
+  const free = useAdFree();
   const [busy, setBusy] = useState(false);
   const collect = (withAd: boolean) => {
     if (busy) return;
@@ -102,7 +103,7 @@ function AwaySheet({ visible, view }: { visible: boolean; view: ReturnType<typeo
         <>
           <Btn label={S.hints.away.collect} price={view.amount ?? undefined} onPress={() => collect(false)} enabled={!busy} />
           {view.withAd ? (
-            <Btn kind="ad" label={S.hints.away.ad(view.adPercent)} price={view.withAd} onPress={() => collect(true)} enabled={adReady && !busy} sub={adReady ? undefined : S.hints.away.adNotReady} />
+            <Btn kind="ad" label={free ? S.hints.away.adFree(view.adPercent) : S.hints.away.ad(view.adPercent)} price={view.withAd} onPress={() => collect(true)} enabled={adReady && !busy} sub={adReady ? undefined : S.hints.away.adNotReady} />
           ) : null}
         </>
       }

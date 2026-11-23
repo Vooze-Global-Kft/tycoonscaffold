@@ -327,13 +327,12 @@ function drawShutterTag(c: SkCanvas, L: MergeLayout, A: PlayAtlases, t: ShutterT
   c.drawPath(rrect(x - w / 2, y - h / 2, w, h, 3), stroke(t.allowed ? NIGHT.brass : NIGHT.paperEdge, 1));
   const textW = w - 5;
   if (t.allowed) {
-    // The shutter glyph, then the price on one line.
-    const glyph = h * 0.62;
-    const priceSize = fitSize(t.price, textW - glyph - 2, cell * 0.17, 0.24);
-    const pw = lettersWidth(t.price, priceSize, 0.24);
-    const left = x - (glyph + 2 + pw) / 2;
-    blit(c, A.items, 'shutter', left + glyph / 2, y, glyph / DESIGN);
-    drawLetters(c, t.price, left + glyph + 2, y - priceSize / 2, { size: priceSize, color: NIGHT.amberDeep, align: 'left', weight: 0.24 });
+    // A small shutter glyph over the price, the price as large as the tag allows.
+    const priceSize = fitSize(t.price, textW, cell * 0.17, 0.24);
+    const glyph = Math.max(8, h - priceSize - 8);
+    const top = y - (glyph + 2 + priceSize) / 2;
+    blit(c, A.items, 'shutter', x, top + glyph / 2, glyph / DESIGN);
+    drawLetters(c, t.price, x, top + glyph + 2, { size: priceSize, color: NIGHT.amberDeep, align: 'center', weight: 0.24 });
     return;
   }
   const lines = t.lines.map(letterText);

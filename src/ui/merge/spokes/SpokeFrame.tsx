@@ -44,7 +44,8 @@ function backdrop(w: number, h: number, top: number, title: string): SkPicture {
     c.drawCircle(rnd() * w, rnd() * (top + HEADER - 6), 0.5 + rnd() * 0.8, star);
   }
   const titleY = top + 14;
-  drawPaperName(c, title.toUpperCase(), w / 2, titleY, 20, w - 2 * (GUTTER + 82));
+  // Room for the back button on the left and a small paper button on the right (the Ladder Book's "Odds").
+  drawPaperName(c, title.toUpperCase(), w / 2, titleY, 20, w - 2 * (GUTTER + 92));
   drawWire(c, -10, w + 10, top + HEADER - 6, Math.max(5, Math.round(w / 52)), Math.max(5, Math.round(w / 52)), 3);
   const edge = Skia.Paint();
   edge.setColor(Skia.Color(alpha(NIGHT.brass, 0.25)));

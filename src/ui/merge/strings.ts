@@ -189,11 +189,16 @@ export const S = {
     adFillLineWhat: 'On a ticket of two lines or more, open the ticket and fill its cheapest line.',
     adGearRush: 'Gear rush',
     adDragon: 'Call the dragon',
-    adDragonWhat: 'The Paper Dragon Parade comes now with its gold ticket.',
+    /** M46: the reward makes the Parade due now; it takes the next free counter (at once when one is empty). */
+    adDragonWhat: 'The paper dragon comes to the next free counter with its gold ticket.',
     adDragonOut: 'The dragon is already here',
-    adDragonWhen: 'Comes when a counter is free',
+    /** M46: a Parade is due (called or by its clock) and waits for a free counter: no button meanwhile. */
+    adDragonComing: 'The dragon is on its way to the next free counter.',
     adFromTicket: 'Open a ticket',
     adReady: 'Watch ad',
+    /** With the ad skip bought (Quiet Evening), no video plays: each button names its reward alone. */
+    shopAdsFree: 'Yours at once, with no video',
+    adTake: 'Take it now',
     adReadyAfter: (time: string) => `ready after ${time} of play`,
     adNotNow: 'Not possible right now',
     adNotLoaded: 'Ad not ready',
@@ -372,6 +377,8 @@ export const S = {
       gain: (coins: string) => `+${coins}`,
       /** The ad's label (decision M8), the share from the rules' multiplier. */
       ad: (percent: number) => `Watch ad: +${percent} %`,
+      /** The same with the ad skip bought: no video, the reward alone. */
+      adFree: (percent: number) => `Collect with +${percent} %`,
       adNotReady: 'The ad is still on its way',
     },
   },

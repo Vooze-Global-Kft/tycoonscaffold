@@ -15,7 +15,7 @@ import { CHAIN_IDS } from '../art/palette';
 import { customerIcon } from '../art/icons';
 import { S } from '../strings';
 import { useMergeUi } from '../uiState';
-import { useMergeCfg, useTicketView } from '../useMerge';
+import { useAdFree, useMergeCfg, useTicketView } from '../useMerge';
 import { Btn, Card, INK, MergeSheet, Pill, Txt, useLastParam, useType } from './parts';
 import { cooldownParts, parseLines } from './views';
 
@@ -54,6 +54,7 @@ function TicketBody({ counter, onDone }: { counter: number; onDone: () => void }
   const cfg = useMergeCfg();
   const v = useTicketView(counter);
   const adReady = useRewardedReady();
+  const free = useAdFree();
   if (!cfg || !v.exists) return null;
   const lines = parseLines(v.lines);
   const ntOk = v.ntRoom && v.ntWait <= 0;
@@ -110,7 +111,7 @@ function TicketBody({ counter, onDone }: { counter: number; onDone: () => void }
       {showAd ? (
         <Btn
           kind="ad"
-          label={S.sheets.fillLine}
+          label={free ? S.sheets.adFillLine : S.sheets.fillLine}
           sub={v.adWait > 0 ? S.sheets.adReadyAfter(wait(v.adWait)) : !adReady ? S.sheets.adNotLoaded : S.sheets.fillLineWhat}
           enabled={v.adOk && adReady}
           onPress={() => void mergeActions.watchAd('fillLine', counter)}

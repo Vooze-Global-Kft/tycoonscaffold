@@ -87,6 +87,10 @@ export function Card({ children, style, glow }: { children: ReactNode; style?: S
 /** A paper button, at least 44 pt tall; disabled it is a dim slate and says so to a screen reader. */
 export function PaperButton({ label, onPress, disabled, tone = 'amber', small }: { label: string; onPress: () => void; disabled?: boolean; tone?: 'amber' | 'paper'; small?: boolean }) {
   const fill = disabled ? C.mid : tone === 'amber' ? C.amber : C.paper;
+  // A small button sits in a spoke's header beside the paper-cut title: its text grows with the font
+  // scale only to 1.15 (at 1.3 the Ladder Book's "Odds" touched the title at 375 pt).
+  const fs = useFs();
+  const size = small ? (14 * Math.min(fs, 1.15)) / fs : 16;
   return (
     <Pressable
       accessibilityRole="button"
@@ -98,7 +102,7 @@ export function PaperButton({ label, onPress, disabled, tone = 'amber', small }:
       onPress={onPress}
       style={({ pressed }) => [styles.button, small && styles.buttonSmall, { backgroundColor: fill, opacity: pressed ? 0.8 : 1 }]}
     >
-      <T size={small ? 14 : 16} weight="700" color={disabled ? C.faint : C.ink} lines={1} align="center">
+      <T size={size} weight="700" color={disabled ? C.faint : C.ink} lines={1} align="center">
         {label}
       </T>
     </Pressable>

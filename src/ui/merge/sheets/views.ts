@@ -457,6 +457,16 @@ export interface AdsView {
   dragonOk: boolean;
   dragonWait: number;
   dragonOut: boolean;
+  /** M46: a Parade is due and waits for the next free counter ("on its way"). */
+  dragonDue: boolean;
+}
+
+function safeDue(m: R.MergeState, clock: number): boolean {
+  try {
+    return R.paradeDue(m, clock);
+  } catch {
+    return false;
+  }
 }
 
 export function adsView(cfg: R.MergeConfig, g: R.MergeGame): AdsView {
@@ -477,5 +487,6 @@ export function adsView(cfg: R.MergeConfig, g: R.MergeGame): AdsView {
     dragonOk: can('callDragon'),
     dragonWait: Math.ceil(Math.max(0, (m.ads.callDragon ?? 0) - clock)),
     dragonOut: m.counters.some((ct) => !!ct.ticket?.gold),
+    dragonDue: safeDue(m, clock),
   };
 }

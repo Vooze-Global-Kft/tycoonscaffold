@@ -74,6 +74,8 @@ disclosure page before you submit; they change.
 4. Create every product id in App Store Connect, Play Console and RevenueCat, and attach the
    in-app purchases to the first version you submit.
 5. Privacy policy page live at the URL above, listing AdMob, Firebase and RevenueCat.
+   App Review: paste games/night-market/store/REVIEW-NOTES.md into "Notes" in App Store Connect (and the Play
+   console's "App access" instructions), with a contact name, email and phone.
 6. Release one game at a time from one account, each with its own art, sounds, numbers and
    listing text: both stores remove families of near-identical apps, and take related accounts with
    them (policy.md 4). `npm run validate` catches shared tables and near-identical descriptions,

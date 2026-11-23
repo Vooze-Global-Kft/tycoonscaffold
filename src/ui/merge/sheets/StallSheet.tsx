@@ -19,7 +19,7 @@ import { CHAIN_IDS } from '../art/palette';
 import { minderIcon } from '../art/icons';
 import { S } from '../strings';
 import { useMergeUi } from '../uiState';
-import { useMergeCfg, useStallView } from '../useMerge';
+import { useAdFree, useMergeCfg, useStallView } from '../useMerge';
 import { Btn, Card, INK, MergeSheet, Txt, useLastParam, useType } from './parts';
 import { coins, cooldownParts } from './views';
 
@@ -41,6 +41,7 @@ function StallBody({ c }: { c: number }) {
   const cfg = useMergeCfg();
   const v = useStallView(c);
   const adReady = useRewardedReady();
+  const free = useAdFree();
   if (!cfg || !v.exists) return null;
   const ch = cfg.merge.chains[c];
   const icon = `art:gear-${CHAIN_IDS[c]}`;
@@ -105,7 +106,7 @@ function StallBody({ c }: { c: number }) {
         {!v.gearTop ? <Btn label={S.sheets.levelUp} price={cost(v.gearCost)} enabled={v.cash >= v.gearCost} target="sheet:gear" onPress={() => mergeActions.levelGear(c)} /> : null}
         <Btn
           kind="ad"
-          label={S.sheets.gearRush}
+          label={free ? S.sheets.adGearRush : S.sheets.gearRush}
           sub={v.rushAfter > 0 ? S.sheets.adReadyAfter(rush.unit === 'min' ? S.sheets.minutes(rush.n) : S.sheets.seconds(rush.n)) : !adReady ? S.sheets.adNotLoaded : S.sheets.gearRushWhat(v.rushGoods)}
           enabled={v.rushReady && adReady}
           onPress={() => void mergeActions.watchAd('gearRush')}

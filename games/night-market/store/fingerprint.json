@@ -1,4 +1,10 @@
 {
+  "_notes": [
+    "Products (decision M13): three, none random. night_awnings (cosmetic, looks only), night_late_hours (unlock: 4 more hours away), night_quiet_evening (skipAds: every Watch ad reward at once, with no video). The ad skip is sold openly under its own name: each of the three apps sells one (Pizza Empire and Orbit Haulers too), as most free games do; REVIEW-NOTES.md says so to the reviewer. The kind multiset {cosmetic, unlock, skipAds} still differs from both other games'.",
+    "Rewarded ads (decisions M8, M14, M46): fill one line, gear rush, call the dragon (the paper dragon comes to the next free counter), and +50 % on the away report. No interstitials, no banner.",
+    "Gift boxes (5.5, M24, M36): earned by filling tickets, never sold; odds and coins shown before opening. The Festival pays no coins (M37).",
+    "human: the values below are declarations, not yet checked: by and date stay empty until a person compares the icon and store screenshots (SIDE-BY-SIDE.png) and the meta screens with each game, and dimensions 7 and 13 read pending until then. Against Orbit Haulers a check can be recorded only once fingerprint.ts accepts one check per game (requested, review finding)."
+  ],
   "core_verb": "place/arrange",
   "production_topology": "spatial-grid",
   "money_moment": "contract-complete",

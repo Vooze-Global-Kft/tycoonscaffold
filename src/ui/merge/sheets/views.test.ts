@@ -9,7 +9,7 @@ import { formatShort } from '../../../engine/format';
 import { mergeFixtures, mergeTestConfig } from '../../../engine/fixtures/merge';
 import * as R from '../../../engine/merge';
 import { article, plural } from '../strings';
-import { adsView, chipView, coins, goalView, nextBaseLevel, parseLines, shutterView, stallView, ticketView } from './views';
+import { adsView, chipView, coins, GOAL_HOLD_S, goalView, holdGoal, nextBaseLevel, parseLines, shutterView, stallView, ticketView, type GoalView } from './views';
 
 const cfg = mergeTestConfig();
 const f = mergeFixtures(cfg);
@@ -97,3 +97,26 @@ describe('word helpers', () => {
     expect(article('Pepper Skewer')).toBe('a Pepper Skewer');
   });
 });
+
+describe('the goal line holds a purchase for a few seconds (player review: it flickered between two goals)', () => {
+  const g0 = f.minute3;
+  const at = (g: R.MergeGame, t: number, cash = g.cash): R.MergeGame => ({ ...g, cash, stats: { ...g.stats, playSeconds: t } });
+  const goal = (kind: GoalView['kind'], target: number, cost: number): GoalView => ({ ...goalView(cfg, g0), kind, target, cost, costText: String(cost) });
+  const tea = goal('openStall', 1, 120);
+  const gear = goal('gear', 0, 29);
+  const t0 = g0.stats.playSeconds;
+  it('another purchase replaces it only after the hold, with the same purse and nothing bought', () => {
+    const h0 = holdGoal(null, tea, at(g0, t0, 50));
+    expect(holdGoal(h0, gear, at(g0, t0 + 1, 50)).view).toBe(tea);
+    expect(holdGoal(h0, gear, at(g0, t0 + GOAL_HOLD_S + 0.1, 50)).view).toBe(gear);
+  });
+  it('the purse crossing a price, a purchase, or a goal that is not a purchase shows at once', () => {
+    const h0 = holdGoal(null, tea, at(g0, t0, 25));
+    expect(holdGoal(h0, gear, at(g0, t0 + 1, 30)).view).toBe(gear);
+    const bought = { ...g0, merge: { ...g0.merge, chains: g0.merge.chains.map((ch, i) => (i === 0 ? { ...ch, gear: ch.gear + 1 } : ch)) } };
+    expect(holdGoal(h0, gear, at(bought, t0 + 1, 25)).view).toBe(gear);
+    const basket = goal('basket', 3, 0);
+    expect(holdGoal(h0, basket, at(g0, t0 + 1, 25)).view).toBe(basket);
+  });
+});
+
