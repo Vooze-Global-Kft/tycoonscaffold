@@ -117,6 +117,13 @@ def flutter(rng, n, rate_hz, depth):
     return np.clip(1.0 + depth * m, 0.0, None)
 
 
+def soft(x, drive=2.0):
+    """A gentle saturation (tanh) of x scaled to unit peak: it rounds the highest peaks of a noise
+    burst by a few dB, so a short puff reaches its loudness without the limiter. Back at unit peak."""
+    pk = np.max(np.abs(x)) + 1e-12
+    return np.tanh(drive * x / pk) / math.tanh(drive)
+
+
 def decay(n, attack_ms, tau):
     return perc(n, attack_ms, tau)
 
@@ -500,24 +507,25 @@ def sizzle(rng, dur, rate, lo=2400.0, hi=5200.0, start=1.0):
     return band(g, lo, hi, 2)
 
 
-def rattle_times(rng, dur, rate):
-    """Onsets of a lid rattling at about `rate` a second, slowing as it settles: the same schedule
-    for every tier (a bigger puff only lets the lid rattle longer). rng jitters each gap +-8 %."""
+def rattle_times(rng, dur, rate, count=None):
+    """Onsets of a lid rattling at about `rate` a second, slowing as it settles (each gap 7 %
+    longer, jittered +-8 %): the same schedule for every tier. With count, the first `count` onsets
+    whatever dur is."""
     t, out, gap = 0.0, [], 1.0 / rate
-    while t < dur:
+    while (t < dur) if count is None else (len(out) < count):
         out.append(t)
         t += gap * rng.uniform(0.92, 1.08)
         gap *= 1.07
     return out
 
 
-def rattle_gate(rng, n, rate, depth, dec=0.008):
+def rattle_gate(rng, n, rate, depth, dec=0.008, count=None):
     """An amplitude gate that opens at each rattle onset and closes in about 8 ms: steam let out in
     chuffs as the lid lifts and drops. depth 0..1 (1: the gate closes fully between chuffs)."""
     g = np.zeros(n)
     k = ns(0.03)
     shape = np.exp(-np.arange(k) / ns(dec)) * rcos_in(k, 2.0)
-    for t in rattle_times(rng, n / SR, rate):
+    for t in rattle_times(rng, n / SR, rate, count):
         i = int(t * SR)
         j = min(n, i + k)
         g[i:j] = np.maximum(g[i:j], shape[:j - i])
@@ -536,38 +544,50 @@ def lid_rattle(rng, dur, rate):
     return out[:ns(dur)]
 
 
-MP = dict(g=1.25, d0=0.05, clink=0.45, f1=520.0, f1x=1.92, f2=1900.0, f2x=1.37, q1=2.2, q2=2.6, bal0=0.25, bal1=0.3,
-          tau=0.45, plen=1.6, who=0.9, whodb=0.6, sz0=0.22, sz1=0.2, szr=160.0, szr1=200.0, szlo=2400.0, szhi=5200.0, top=None, rat=0.0, rhz=28.0, rdep=0.9, rclk=0.0, rdec=0.008)
+MP = dict(g=1.22, d0=0.05, clink=0.25, f1=480.0, f1g=1.09, f2=1700.0, f2g=1.07, q1=2.2, q2=2.6, bal0=0.12, bald=0.07,
+          tau=0.6, plen=1.6, who=1.0, whodb=2.0, sz0=0.15, szdb=2.5, szg=1.3, szd0=0.04, szr=150.0, szrg=1.15,
+          rhz=18.0, rdec=0.012, szlo=2400.0, szhi=5200.0, drive=2.5)
 
 
 def merge_puff(rng, k):
-    """Tier k (1..8): a steamer lid lifted. A clay lid 'tok' at the attack, a two-formant 'pff' of
-    breath, a low whoomph under it and a sizzle tail of sparse crackle grains."""
+    """Tier k (1..8): a steamer lid lifted by the steam.
+
+    A clay lid 'tok' at the attack; a two-formant 'pff' of breath and a low whoomph under it, let
+    out in chuffs as the lid rattles on its seat (about 18 a second, slowing); then a sizzle tail of
+    sparse crackle grains (water on the hot lid).
+
+    Size with the tier: tier k lets the lid rattle k times (the same schedule for every tier, so
+    the length grows 20 % or more a tier: 0.06 s to 0.5 s), the whoomph gets stronger, the sizzle
+    longer, and the file is mastered 0.4 dB louder a tier. Brightness: the formants open (f1 and
+    f2 rise about 10 % and 5 % a tier), the upper formant's share grows and the sizzle gets denser.
+    Never up a scale: nothing has a pitch that moves from tier to tier (the lid is the same lid;
+    the formants are wide noise bands that wander)."""
     P = MP
-    u = (k - 1) / 7.0
-    g = P['g'] ** (k - 1)
-    rng = rng_for('night', 'merge_puff')
+    j = k - 1
+    on = rattle_times(rng_for('night', 'rattle'), 0.0, P['rhz'], k)
+    d_pff = on[-1] + 0.045
     m = Mix()
-    d_pff = P['d0'] * g
-    m.add(P['clink'] * lid_clink(rng_for('night', 'lid'), 1.0, u))
-    m.add(pff(rng_for('night', 'pff'), d_pff * P['plen'], P['f1'] * P['f1x'] ** u, P['f2'] * P['f2x'] ** u, q1=P['q1'], q2=P['q2'],
-              attack_ms=3.0 + 7.0 * u, tau=P['tau'] * d_pff, bal=P['bal0'] + P['bal1'] * u), 0.003)
-    nl = ns(d_pff * 1.8)
-    whoomph = lowpass(white(nl, rng_for('night', 'whoomph')), 260.0, 2) * decay(nl, 4.0 + 6.0 * u, 0.5 * d_pff)
-    m.add(P['who'] * 10 ** (P['whodb'] * (k - 1) / 20.0) * whoomph, 0.002)
-    d_s = 0.05 * g
-    m.add((P['sz0'] + P['sz1'] * u) * sizzle(rng_for('night', 'sizzle'), d_s, P['szr'] + P['szr1'] * u, P['szlo'], P['szhi']),
-          0.02 + 0.7 * d_pff)
+    m.add(P['clink'] * lid_clink(rng_for('night', 'lid'), 1.0, j / 7.0))
+    m.add(pff(rng_for('night', 'pff'), d_pff, P['f1'] * P['f1g'] ** j, P['f2'] * P['f2g'] ** j, q1=P['q1'], q2=P['q2'],
+              attack_ms=3.0, tau=P['tau'] * d_pff + 0.01, bal=P['bal0'] + P['bald'] * j), 0.003)
+    nl = ns(d_pff)
+    whoomph = lowpass(white(nl, rng_for('night', 'whoomph')), 260.0, 2) * decay(nl, 4.0, 0.5 * d_pff + 0.01)
+    m.add(P['who'] * 10 ** (P['whodb'] * j / 20.0) * whoomph, 0.002)
     y = m.out()
-    if P['rat']:
-        y = y * rattle_gate(rng_for('night', 'rattle'), len(y), P['rhz'], P['rdep'], P['rdec'])
-    if P['rclk']:
-        y = y + P['rclk'] * lid_rattle(rng_for('night', 'rattle'), len(y) / SR, P['rhz'])
-    return lowpass(y, P['top'], 4) if P['top'] else y
+    y = y * rattle_gate(rng_for('night', 'rattle'), len(y), P['rhz'], 1.0, P['rdec'], k)
+    y = soft(y, P['drive'])
+    out = Mix()
+    out.add(y)
+    d_s = P['szd0'] * P['szg'] ** j
+    out.add(P['sz0'] * 10 ** (P['szdb'] * j / 20.0) * sizzle(rng_for('night', 'sizzle'), d_s, P['szr'] * P['szrg'] ** j, P['szlo'], P['szhi']),
+            on[-1] + 0.02)
+    return out.out()
 
 
 def _merge(k):
-    @night_recipe('merge_%d' % k, length=0.12 + 0.3 * ((k - 1) / 7.0), loud_db=FREQUENT - 0.4 + 0.4 * (k - 1))
+    last = rattle_times(rng_for('night', 'rattle'), 0.0, MP['rhz'], k)[-1]
+
+    @night_recipe('merge_%d' % k, length=last + 0.1 + 0.015 * (k - 1), loud_db=FREQUENT - 0.4 + 0.4 * (k - 1))
     def fn(c):
         c.accent(0.0)
         return merge_puff(c.rng, k)
