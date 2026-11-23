@@ -47,7 +47,10 @@ export interface EngineMode {
    * report is the mode's own (the haul Shift Log), passed through to its screen. The store saves
    * it with the game until the earnings are collected and hands it back after a restart, so it is
    * plain JSON data, and the mode's screen, `mergeReport` and `reportAlone` take a report that an
-   * earlier build wrote (a field added since is missing from it).
+   * earlier build wrote (a field added since is missing from it). An absence too short for a
+   * report (economy.offline.minSecondsToShow), with none waiting to take it, is not shown: the
+   * store keeps the advanced game and grants its earnings at once, at a start as on a return from
+   * the background, and that absence's report is dropped.
    */
   offline(cfg: GameConfig, state: GameState, now: number): { seconds: number; earnings: number; game: GameState; report?: unknown };
   /**

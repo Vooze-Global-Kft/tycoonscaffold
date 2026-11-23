@@ -185,7 +185,10 @@ let grantSeq = 0;
 const tickEvents: GameEvent[] = [];
 /** boot() runs once; a second call (the app returning to the foreground in older App.tsx builds) becomes resume(). */
 let booting: Promise<void> | null = null;
-/** True between pause() and resume(): the loop must not earn while the app is in the background. */
+/**
+ * True between pause() and resume(): the loop must not earn while the app is in the background, and
+ * a save there must not move the moment time away is measured from (save()).
+ */
 let paused = false;
 /** Wall-clock time the last tick ran. Offline time is measured from here, so time already played is never paid twice. */
 let lastTickAt = 0;
@@ -496,6 +499,11 @@ export const useGame = create<Store>((set, get) => {
         // while the app was closed or in the background (clampClock).
         const waiting = uncollected && worthShowing(cfg, uncollected) ? uncollected : null;
         const pending = waiting && away && (away.earnings > 0 || shown) ? withAbsence(cfg, waiting, away) : (waiting ?? shown);
+        // An absence too short for a report, with none waiting to take it. For sim and classic it
+        // does not count: the game did not move and nothing is paid. A mode engine has moved the
+        // run through it (the game kept above), so what that earned is paid at once, as resume()
+        // pays a short trip to the background: a run never moves on for nothing.
+        if (!pending && offline?.game && offline.earnings > 0) game = E.grantCash(game, offline.earnings);
         syncAds(game);
         rushWasActive = E.isRushActive(game, at);
         lastTickAt = at;
@@ -517,6 +525,9 @@ export const useGame = create<Store>((set, get) => {
     async pause() {
       if (!get().hydrated || paused) return;
       paused = true;
+      // The game ran until now and stands still until resume(): time away is measured from this
+      // moment, and every save in the background keeps it (save()).
+      set({ game: { ...get().game, lastSavedAt: Date.now() } });
       await get().save();
     },
 
@@ -526,9 +537,10 @@ export const useGame = create<Store>((set, get) => {
       const now = Date.now();
       paused = false;
       let game = get().game;
-      // Time away starts when the game last ran: the later of the last save and the last tick (on
-      // Android the JS loop can keep running for a while in the background, and that time was
-      // already paid by the ticks themselves).
+      // Time away starts when the game last ran. After pause() that is the moment it stamped, which
+      // no save in the background moves (save()). Without a pause (a return from 'inactive', a
+      // second boot()) the loop ran on, and it is the later of the last save and the last tick:
+      // the ticks have paid that time themselves.
       const awayFrom = Math.max(game.lastSavedAt, lastTickAt);
       // clampClock caps it at now, and remembers a later time (clock moved back) so it is not paid twice.
       game = E.clampClock(cfg, { ...game, lastSavedAt: awayFrom }, now);
@@ -602,8 +614,15 @@ export const useGame = create<Store>((set, get) => {
     async save() {
       // Before boot has loaded the save, the in-memory game is a blank one: writing it would wipe the player.
       if (!get().hydrated) return;
-      const game = { ...get().game, lastSavedAt: Date.now() };
-      set({ game });
+      // lastSavedAt is the moment the game has run up to: resume() measures time away from it, and
+      // so does boot() from the save. In the foreground that is now. In the background the game
+      // stands still (tick), so a save there keeps the moment pause() stamped. The autosave timer
+      // can run on there, and an action saves when a rewarded ad's result arrives before the app
+      // is back on screen: stamped with their own time, the seconds since the app left would be
+      // neither played nor counted as time away, on the return or at the next start.
+      const held = get().game;
+      const game = paused ? held : { ...held, lastSavedAt: Date.now() };
+      if (game !== held) set({ game });
       try {
         // With the report that waits to be collected, in the same write (PENDING_OFFLINE_KEY): from
         // here on the time away it stands for is counted, so it must not exist in memory only.
