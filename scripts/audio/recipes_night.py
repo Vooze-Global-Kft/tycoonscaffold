@@ -181,15 +181,45 @@ def crinkle(rng, dur, rate=500.0, lo=1500.0, hi=5600.0, density=None, sigma=0.9,
     return y / (np.max(np.abs(y)) + 1e-12)
 
 
-def paper_slide(rng, dur, fc_pts, q=1.0, env=None, grain=0.55):
-    """Paper sliding over paper: noise in a band that follows fc_pts, with fibre grain."""
+def stickslip(rng, n, rate, depth, dec_ms=None, accel=0.0):
+    """Friction's stick-slip: an amplitude gate with one pulse per slip, about `rate` a second
+    (gaps jittered 12 %; accel > 0 slows the slips over the sound), each opening in 1.5 ms and
+    closing in dec_ms. depth 0..1. This, not a moving filter, is what makes cloth and paper read
+    as rubbing."""
+    dec_ms = dec_ms or 350.0 / rate
+    g = np.zeros(n)
+    k = ns(4.0 * dec_ms / 1000.0) + 1
+    shape = rcos_in(k, 1.5) * np.exp(-np.arange(k) / max(ns(dec_ms / 1000.0), 1))
+    t, dur = 0.0, n / SR
+    gap = 1.0 / rate
+    while t < dur:
+        i = int(t * SR)
+        j = min(n, i + k)
+        g[i:j] = np.maximum(g[i:j], shape[:j - i] * rng.uniform(0.7, 1.0))
+        t += gap * rng.uniform(0.88, 1.12) * (1.0 + accel * t / dur)
+    return (1.0 - depth) + depth * g
+
+
+def paper_slide(rng, dur, fc_pts, q=1.0, env=None, grain=0.55, slip_hz=38.0):
+    """Paper sliding over paper: a dense stream of fibre micro-clicks (2,500 a second) in two fixed
+    paper bands, the lowest and the highest frequency of fc_pts, with a stick-slip at about
+    slip_hz. There is no swept filter: a 'rising' slide fades the upper band in, a 'falling' one
+    fades it out. q is kept for the callers' signature and only narrows the two bands."""
     n = ns(dur)
-    fc = path_env(fc_pts, n, log=True)
-    y = top(svf(white(n, rng), fc, q, 'bp'))
-    y = y * flutter(rng, n, 220.0, grain)
+    fs = [v for _, v in fc_pts]
+    lo_f, hi_f = min(fs), max(fs)
+    rising = fs[-1] >= fs[0]
+    g = grains(rng, dur, 2500.0, (0.08, 0.4), 0.6)
+    w = 1.45 / max(q, 0.5)
+    lo_b = band(g, lo_f / w, lo_f * w, 2)
+    hi_b = band(g, hi_f / w, min(hi_f * w, 5600.0), 2)
+    ramp = np.linspace(0.0, 1.0, n) if rising else np.linspace(1.0, 0.0, n)
+    y = (1.0 - 0.6 * ramp) * lo_b + (0.25 + 0.75 * ramp) * hi_b
+    y = y / (np.max(np.abs(y)) + 1e-12)
+    y = y * stickslip(rng, n, slip_hz, grain)
     if env is None:
         env = np.sin(np.pi * np.arange(n) / n) ** 1.5
-    return 1.8 * y * env
+    return 1.2 * y * env
 
 
 def paper_tick(rng, vel=1.0, bright=1.0):
@@ -501,9 +531,9 @@ def pff(rng, dur, f1, f2, q1=2.2, q2=2.6, attack_ms=4.0, tau=0.03, bal=0.5, wand
     return (2.2 * (1.0 - bal) * lo + 2.6 * bal * hi) * flutter(rng, n, 70.0, 0.35) * env
 
 
-def sizzle(rng, dur, rate, lo=2400.0, hi=5200.0, start=1.0):
+def sizzle(rng, dur, rate, lo=2400.0, hi=5200.0, start=1.0, sigma=0.5):
     """A sizzle: sparse crackle grains (water on a hot lid) thinning out over dur."""
-    g = grains(rng, dur, rate, (0.15, 0.7), 0.5, [(0, start), (dur, 0.0)])
+    g = grains(rng, dur, rate, (0.15, 0.7), sigma, [(0, start), (dur, 0.0)])
     return band(g, lo, hi, 2)
 
 
@@ -544,9 +574,14 @@ def lid_rattle(rng, dur, rate):
     return out[:ns(dur)]
 
 
-MP = dict(g=1.22, d0=0.05, clink=0.25, f1=480.0, f1g=1.09, f2=1700.0, f2g=1.07, q1=2.2, q2=2.6, bal0=0.12, bald=0.07,
-          tau=0.6, plen=1.6, who=1.0, whodb=2.0, sz0=0.15, szdb=2.5, szg=1.3, szd0=0.04, szr=150.0, szrg=1.15,
-          rhz=18.0, rdec=0.012, szlo=2400.0, szhi=5200.0, drive=2.5)
+# The merge ladder's constants. The whoomph levels (one per tier) and the formant growth were set by
+# measuring the mastered files (render_night.py --ladder), so that over the tiers that sound in play
+# (2 to 8; tier 1 cannot be made, so merge_1 is never played) the centroid rises at least 8 % a
+# tier, the span above -20 dB grows at least 15 % a tier, the energy under 300 Hz grows about
+# 1.3 dB a tier, and no tier puts more than 55 % of its energy in 2 to 5 kHz.
+MP = dict(clink=0.25, f1=400.0, f1g=1.165, f2=1700.0, f2g=1.105, q1=2.2, q2=2.6, bal0=0.06, bald=0.085, tau=0.6,
+          wtab=(0.06, 0.1471, 0.66, 1.2687, 1.5797, 2.45, 3.15, 3.2), sz0=0.15, szdb=4.0, szg=1.22, szd0=0.04, szr=150.0,
+          szrg=1.15, szs=0.3, rhz=18.0, rdec=0.012, szlo=2400.0, szhi=5200.0, drive=2.5)
 
 
 def merge_puff(rng, k):
@@ -572,14 +607,14 @@ def merge_puff(rng, k):
               attack_ms=3.0, tau=P['tau'] * d_pff + 0.01, bal=P['bal0'] + P['bald'] * j), 0.003)
     nl = ns(d_pff)
     whoomph = lowpass(white(nl, rng_for('night', 'whoomph')), 260.0, 2) * decay(nl, 4.0, 0.5 * d_pff + 0.01)
-    m.add(P['who'] * 10 ** (P['whodb'] * j / 20.0) * whoomph, 0.002)
+    m.add(P['wtab'][j] * whoomph, 0.002)
     y = m.out()
     y = y * rattle_gate(rng_for('night', 'rattle'), len(y), P['rhz'], 1.0, P['rdec'], k)
     y = soft(y, P['drive'])
     out = Mix()
     out.add(y)
     d_s = P['szd0'] * P['szg'] ** j
-    out.add(P['sz0'] * 10 ** (P['szdb'] * j / 20.0) * sizzle(rng_for('night', 'sizzle'), d_s, P['szr'] * P['szrg'] ** j, P['szlo'], P['szhi']),
+    out.add(P['sz0'] * 10 ** (P['szdb'] * j / 20.0) * sizzle(rng_for('night', 'sizzle'), d_s, P['szr'] * P['szrg'] ** j, P['szlo'], P['szhi'], sigma=P['szs']),
             on[-1] + 0.02)
     return out.out()
 

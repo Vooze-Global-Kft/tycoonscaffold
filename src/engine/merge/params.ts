@@ -13,9 +13,12 @@
  * values move with `currentMods`, which is neutral until ORDERS writes it. MECHANICS owns and
  * tests them (src/engine/mergeMode.test.ts "params").
  *
- * Rounding (spec 2.2): only costs are rounded (`roundCost`: below 1,000 half up to a whole coin,
- * above to 3 significant digits; shown = paid). `value` and `ticketPrice` are not rounded; how a
- * screen prints a ticket's P is the bars package's (src/ui/merge/hud), and it must print what is paid.
+ * Rounding (Decision M19): ONE rule, `roundCoins` (below 1,000 half up to a whole coin, from 1,000
+ * to 3 significant digits), applied once at the end to every amount that is shown or paid: each
+ * cost, each ticket's price (`ticketPrice`: computed from exact values, then rounded), a Basket
+ * sale, a minder's sale, a gift box's coin slot, the Festival purse, the away earnings. `value`
+ * stays exact (a good's value in a chip is rounded by the screen with `roundCoins`, for display
+ * only). `roundCost` is the same function under its seam name.
  */
 import type { GameConfig } from '../../config/schema';
 import { rngMix4 } from '../rng';
@@ -54,9 +57,8 @@ export function baseTier(cfg: MergeConfig, gearLevel: number): number {
 
 /**
  * Ripe chance p = ripePerLevel × ((L − 1) mod s) + mods.ripeAdd, at most ripeMax (spec 2.2, 2.3).
- * Built, literally as 2.2 writes it. Known gap of the text (requests.md, for the lead): at the
- * last level, L = 41, the uncapped base would be 5, so b stays 4 and p falls from 0.45 (L = 40) to
- * 0: the last gear purchase makes drops worse. MECHANICS applies the lead's answer here.
+ * Literally as 2.2 writes it, for L from 1 to 40: Decision M28 makes level 40 the top
+ * (`costs.gearMaxLevel`), so the level 41 at which p would fall back to 0 is never reached.
  */
 export function ripeChance(cfg: MergeConfig, mods: Pick<Mods, 'ripeAdd'>, gearLevel: number): number {
   const { ripePerLevel, ripeMax, step } = cfg.merge.gear;
@@ -98,11 +100,38 @@ function priceWith(cfg: MergeConfig, m: MergeState, mods: Mods, ticket: Pick<Tic
 
 /**
  * A ticket's price now (spec 2.1 rule 4, 2.3): Σ value(lines) × (1 + β × (lines − 1)), × the
- * Parade multiplier for a gold ticket. Always the current P: it never falls (a stall level raises it
- * live) and the shown price is the paid one. Not rounded. Built.
+ * Parade multiplier for a gold ticket, rounded once by `roundCoins` (M19). Always the current P: it
+ * never falls after the draw (a stall level, lantern 13 or 20 may raise it live, M26; nothing in a
+ * season lowers a level, β or a multiplier), and the shown price is the paid one: the pay path of
+ * drop.ts calls this same function when the last line lands.
  */
 export function ticketPrice(cfg: MergeConfig, g: MergeGame, ticket: Pick<Ticket, 'gold'> & { lines: readonly Pick<TicketLine, 'c' | 'k'>[] }): number {
-  return priceWith(cfg, g.merge, currentMods(cfg, g.merge), ticket);
+  return roundCoins(cfg, priceWith(cfg, g.merge, currentMods(cfg, g.merge), ticket));
+}
+
+/** A minder's sale of chain c now: roundCoins(value(c, h_c)) (2.2, M19), 0 with no minder. The till takes this, and so does the away closed form. */
+export function saleAmount(cfg: MergeConfig, g: MergeGame, c: number): number {
+  const m = g.merge;
+  const ch = m.chains[c];
+  if (!ch?.open || ch.minder <= 0) return 0;
+  const mods = currentMods(cfg, m);
+  return roundCoins(cfg, valueWith(cfg, m, mods, c, houseTierOf(cfg, ch.minder, ch.gear)));
+}
+
+/** h_c = min(K + 1, b_c + 1) (2.2), 0 with no minder. */
+export function houseTierOf(cfg: MergeConfig, minder: number, gearLevel: number): number {
+  return minder > 0 ? Math.min(minder + 1, baseTier(cfg, gearLevel) + 1) : 0;
+}
+
+/** Q with the modifiers (2.2, lantern 15, Late crowd). */
+export function saleInterval(cfg: MergeConfig, mods: Pick<Mods, 'minderIntervalMult'>): number {
+  return cfg.merge.minders.interval * mods.minderIntervalMult;
+}
+
+/** What the Basket pays for `good` now: roundCoins(basketShare × value) (2.5, M19). */
+export function basketPrice(cfg: MergeConfig, g: MergeGame, good: Pick<TicketLine, 'c' | 'k'>): number {
+  const mods = currentMods(cfg, g.merge);
+  return roundCoins(cfg, mods.basketShare * valueWith(cfg, g.merge, mods, good.c, good.k));
 }
 
 function paceWith(cfg: MergeConfig, m: MergeState, mods: Mods): number {
@@ -117,16 +146,23 @@ export function paceUnit(cfg: MergeConfig, g: MergeGame): number {
 }
 
 /**
- * A price rounded as 2.2 says: below 1,000 half up to a whole coin, above to 3 significant digits;
- * shown = paid. Built. Note for the lead (requests.md): 2.2 prints the Noodles stall as 172,800,
- * while this rule gives 173,000; this function follows the rule.
+ * roundCoins (Decision M19), the one rounding of every amount shown or paid: below 1,000 half up to
+ * a whole coin, from 1,000 to 3 significant digits (half up). Monotone (x ≤ y gives
+ * roundCoins(x) ≤ roundCoins(y)), so a price that rises never shows lower. 0 for anything not a
+ * positive finite number.
  */
-export function roundCost(cfg: MergeConfig, x: number): number {
+export function roundCoins(cfg: MergeConfig, x: number): number {
   const { roundBelow, sigDigits } = cfg.merge.costs;
   if (!Number.isFinite(x) || x <= 0) return 0;
-  if (x < roundBelow) return Math.floor(x + 0.5 + EPS);
+  const whole = Math.floor(x + 0.5 + EPS);
+  if (whole < roundBelow) return whole;
   const f = Math.pow(10, Math.floor(Math.log10(x)) - sigDigits + 1);
   return Math.floor(x / f + 0.5 + EPS) * f;
+}
+
+/** The seam name of `roundCoins` (ORDERS calls it for the purse and coin slots). */
+export function roundCost(cfg: MergeConfig, x: number): number {
+  return roundCoins(cfg, x);
 }
 
 // ----------------------------------------------------------------------------- recent ticket coins (2.3, 2.10)
@@ -191,10 +227,10 @@ export function mergeParams(cfg: MergeConfig, g: MergeGame): MergeParams {
     const base = baseTier(cfg, ch.gear);
     const ripe = ripeChance(cfg, mods, ch.gear);
     const values = Array.from({ length: 8 }, (_, i) => valueWith(cfg, m, mods, c, i + 1));
-    const houseTier = ch.minder > 0 ? Math.min(ch.minder + 1, base + 1) : 0;
+    const houseTier = houseTierOf(cfg, ch.minder, ch.gear);
     let loose = 0;
     for (const cell of m.board) if (isGood(cell) && cell.c === c && cell.k >= base && cell.k <= base + 1) loose++;
-    const openCost = !ch.open && c >= 1 && c === next && m.season >= k.chains[c].fromSeason ? roundCost(cfg, k.costs.stallBase * Math.pow(k.costs.stallRatio, c - 1) * familiar) : null;
+    const openCost = !ch.open && c >= 1 && c === next && m.season >= k.chains[c].fromSeason ? roundCoins(cfg, (k.costs.stallOpen[c - 1] ?? Infinity) * familiar) : null;
     return {
       c,
       open: ch.open,
@@ -208,11 +244,12 @@ export function mergeParams(cfg: MergeConfig, g: MergeGame): MergeParams {
       houseTier,
       heldBy: ch.minder > 0 ? (ch.minder < base ? 'minder' : 'gear') : null,
       saleInterval,
-      minderRate: houseTier > 0 ? values[houseTier - 1] / saleInterval : 0,
+      // What the till actually takes per s: each sale is rounded (M19).
+      minderRate: houseTier > 0 && ch.open ? roundCoins(cfg, values[houseTier - 1]) / saleInterval : 0,
       loose,
-      gearCost: ch.open && ch.gear < k.costs.gearMaxLevel ? roundCost(cfg, k.costs.gearBase * r * Math.pow(k.costs.gearGrowth, ch.gear - 1)) : null,
-      stallCost: ch.open && ch.stall < k.costs.stallMaxLevel ? roundCost(cfg, k.costs.stallLevelBase * r * Math.pow(k.costs.stallLevelGrowth, ch.stall - 1)) : null,
-      minderCost: !ch.open || ch.minder >= k.costs.minderMaxLevel ? null : roundCost(cfg, k.costs.minderBase * r * (ch.minder === 0 ? 1 : Math.pow(k.costs.minderGrowth, ch.minder))),
+      gearCost: ch.open && ch.gear < k.costs.gearMaxLevel ? roundCoins(cfg, k.costs.gearBase * r * Math.pow(k.costs.gearGrowth, ch.gear - 1)) : null,
+      stallCost: ch.open && ch.stall < k.costs.stallMaxLevel ? roundCoins(cfg, k.costs.stallLevelBase * r * Math.pow(k.costs.stallLevelGrowth, ch.stall - 1)) : null,
+      minderCost: !ch.open || ch.minder >= k.costs.minderMaxLevel ? null : roundCoins(cfg, k.costs.minderBase * r * (ch.minder === 0 ? 1 : Math.pow(k.costs.minderGrowth, ch.minder))),
       openCost,
     };
   });
@@ -224,7 +261,7 @@ export function mergeParams(cfg: MergeConfig, g: MergeGame): MergeParams {
     const n = n0 + opened;
     n0 += grp.cells.length;
     if (opened >= grp.cells.length) return null;
-    return { n, cell: grp.cells[opened], cost: roundCost(cfg, k.board.shutterBase * Math.pow(k.board.shutterGrowth, n)), allowed: shutterAllowed(cfg, m, i) };
+    return { n, cell: grp.cells[opened], cost: roundCoins(cfg, k.board.shutterBase * Math.pow(k.board.shutterGrowth, n)), allowed: shutterAllowed(cfg, m, i) };
   });
   const lateHours = g.entitlements.products.includes(k.products.lateHours);
   return {

@@ -150,14 +150,20 @@ export const MergeSchema = z.object({
     goodNearShare: prob.default(0.6),
   }),
   costs: z.object({
-    /** Open stall i (i ≥ 1): stallBase × stallRatio^(i−1) × F_s (stallRatio: tune 9 to 14). */
-    stallBase: pos.default(100),
-    stallRatio: pos.default(12),
-    /** Gear level L → L+1: gearBase × r_c × gearGrowth^(L−1), L 1 to 40 (gearGrowth: tune 1.40 to 1.55). r_c = v_c / 5. */
+    /**
+     * Open stall i (i = 1 to 5, Tea to Puffs): stallOpen[i − 1] × F_s (Decision M23: a table of five
+     * tuned costs, not a ratio). Rounded once by roundCoins (M19).
+     */
+    stallOpen: z.array(pos).length(5).default([120, 3200, 51_200, 819_000, 13_100_000]),
+    /** Removed by Decision M23 (the stall table replaces the ratio); accepted and ignored until the content drops them. */
+    stallBase: pos.optional(),
+    stallRatio: pos.optional(),
+    /** Gear level L → L+1: gearBase × r_c × gearGrowth^(L−1), L 1 to 39 (M27: gearBase and gearGrowth 1.40 to 1.70 are tunable). r_c = v_c / 5. */
     gearBase: pos.default(20),
     gearGrowth: pos.default(1.45),
-    gearMaxLevel: int.positive().default(41),
-    /** Stall level M → M+1: stallLevelBase × r_c × stallLevelGrowth^(M−1), M 1 to 30 (tune 1.30 to 1.40). */
+    /** The top gear level (rule, Decision M28: 40; the last purchase is 39 → 40). */
+    gearMaxLevel: int.positive().default(40),
+    /** Stall level M → M+1: stallLevelBase × r_c × stallLevelGrowth^(M−1), M 1 to 30 (M27: tunable, growth 1.30 to 1.50). */
     stallLevelBase: pos.default(50),
     stallLevelGrowth: pos.default(1.35),
     stallMaxLevel: int.positive().default(31),
@@ -170,8 +176,8 @@ export const MergeSchema = z.object({
     sigDigits: int.positive().default(3),
   }).prefault({}),
   gear: z.object({
-    /** T (tune 4 to 6), never changed by level. */
-    interval: pos.default(5),
+    /** T = 4 s for every gear, a rule (Decision M3: not a knob), never changed by level. */
+    interval: pos.default(4),
     /** s, levels per base step (tune 8 to 12). */
     step: int.positive().default(10),
     /** p per level within a step (tune 0.04 to 0.06). */
@@ -260,8 +266,8 @@ export const MergeSchema = z.object({
   /** The Festival purse = festivalPace × U when its last line lands (tune 20 to 50). */
   festivalPace: pos.default(30),
   gift: z.object({
-    /** One box per this many paid tickets (rule; 8 with lantern 19). */
-    every: int.positive().default(10),
+    /** One box per this many paid tickets (Decision M24: N, tune 15 to 40, start 25; a fifth sooner with lantern 19). */
+    every: int.positive().default(25),
     /** Slots per box (rule; 4 with lantern 14, Decision M5). */
     slots: int.positive().default(3),
     /** Slot odds: coins, a good, a Lucky Spark (rule). */
@@ -269,8 +275,8 @@ export const MergeSchema = z.object({
     /** A good slot's tier above the chain's base: +2, +3, +4 at these odds (rule), capped at the chain's best. */
     goodSteps: z.array(int.positive()).default([2, 3, 4]),
     goodOdds: z.array(prob).default([0.6, 0.3, 0.1]),
-    /** A coin slot = coinPace × U when the box is earned (tune 2 to 5). */
-    coinPace: pos.default(3),
+    /** A coin slot = coinPace × U when the box is earned (Decision M24: m, tune 0.25 to 1.5, start 0.5). */
+    coinPace: pos.default(0.5),
   }).prefault({}),
   /** The 20 lanterns of spec 5.3 with Decision M5. */
   lanterns: z.array(LanternSchema).length(20),
@@ -294,7 +300,7 @@ export const MergeSchema = z.object({
     familiarBase: pos.default(0.85),
     familiarMax: int.positive().default(4),
     /** The opening board of a season: this many goods of the grill's starting base tier (rule). */
-    openingGoods: int.min(0).default(4),
+    openingGoods: int.min(0).default(6),
   }),
   ads: z.object({
     /** "Fill one line": cooldown in s of play (rule). */
@@ -330,6 +336,15 @@ export const MergeSchema = z.object({
     lateHours: z.string().default('night_late_hours'),
     quietEvening: z.string().default('night_quiet_evening'),
   }).prefault({}),
+  // --- META (rules package META: lanterns, seasons, gift boxes, advice; added, nothing above changed) ---
+  /** Rules numbers only the META files read (src/engine/merge/{lanterns,season,gift,advice,hints}.ts). */
+  meta: z.object({
+    /** Lantern 19 (Decision M24): gift boxes come this share sooner, N' = ceil(N × (1 − giftSooner)) (rule: "a fifth"). */
+    giftSooner: prob.default(0.2),
+    /** advice: a lantern feat is "within reach" (offered as an extra goal) from this share of its progress (rule of the META package; 2.10 leaves it open). */
+    lanternReach: prob.default(0.5),
+  }).prefault({}),
+  // --- end META ---
 });
 
 export type MergeContent = z.output<typeof MergeSchema>;
@@ -419,5 +434,10 @@ export function lintMerge(m: MergeContent): string[] {
   if (Math.abs(m.gift.odds.coins + m.gift.odds.good + m.gift.odds.spark - 1) > 1e-9) out.push('gift.odds must add up to 1');
   const sums = m.festival.map((lines) => lines.reduce((a, l) => a + l.tier, 0));
   for (let s = 1; s < sums.length; s++) if (sums[s] < sums[s - 1]) out.push(`festival[${s}]: the sum of tiers falls from the season before (spec 2.8)`);
+  // Rules the lead fixed in section 11 (MECHANICS): numbers that are fields but not knobs.
+  if (m.gear.interval !== 4) out.push(`gear.interval = ${m.gear.interval}: T is 4 s for every gear, a rule (Decision M3)`);
+  if (m.costs.gearMaxLevel !== 40) out.push(`costs.gearMaxLevel = ${m.costs.gearMaxLevel}: gear level 40 is the top (Decision M28)`);
+  if (m.seasons.levelsPerStep !== m.gear.step) out.push(`seasons.levelsPerStep = ${m.seasons.levelsPerStep} must equal gear.step = ${m.gear.step} (Decision M25: N = s)`);
+  if (m.costs.stallBase !== undefined || m.costs.stallRatio !== undefined) out.push('costs.stallBase / costs.stallRatio are ignored: stall-opening costs are the table costs.stallOpen (Decision M23)');
   return out;
 }
