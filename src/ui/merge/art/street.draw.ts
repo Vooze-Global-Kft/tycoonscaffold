@@ -142,7 +142,7 @@ function tornEdge(w: number, y: number, n: number): number[] {
 /** The paper ticket, w x h from the top left (64 x 96 on a 68 pt counter): blank, 3 row guides, a price box. Gold for the Parade. */
 export function drawTicket(c: SkCanvas, w: number, h: number, o: { gold?: boolean; rows?: number } = {}): void {
   // The Parade's ticket is brass foil on the same blue-grey rice paper (never a cream paper, 4.6).
-  const paper = o.gold ? mix(NIGHT.paper, NIGHT.brassLight, 0.12) : NIGHT.paper;
+  const paper = NIGHT.paper;
   const body = poly([0, 2, w, 2, ...tornEdge(w, h - 2.4, Math.round(w / 4))]);
   c.save();
   c.translate(1.2, 1.6);
@@ -170,7 +170,7 @@ export function drawTicket(c: SkCanvas, w: number, h: number, o: { gold?: boolea
     c.drawPath(line(r.x + 2, r.y, r.x + r.w - 2, r.y), dashed(alpha(NIGHT.paperEdge, 0.8), 0.7, 2, 2));
   }
   const p = L.price;
-  c.drawPath(rrect(p.x, p.y, p.w, p.h, 3), fill(o.gold ? alpha(NIGHT.brass, 0.35) : alpha(NIGHT.paperShade, 0.55)));
+  c.drawPath(rrect(p.x, p.y, p.w, p.h, 3), fill(alpha(NIGHT.paperShade, 0.55)));
   c.drawPath(rrect(p.x, p.y, p.w, p.h, 3), stroke(o.gold ? NIGHT.brassDeep : NIGHT.brass, 1));
   if (o.gold) {
     // Brass foil: an inner border and four studs.
@@ -493,6 +493,17 @@ export function drawMoonGate(c: SkCanvas, s: number): void {
   c.drawPath(circle(0, 0, R + 1.4), stroke(GATE_STONE_LIGHT, 2.6));
   c.drawPath(circle(0, 0, R + 1.4), stroke(alpha(INK, 0.9), 0.8));
   c.drawPath(circle(0, 0, R), stroke(INK, 1));
+  // A small tiled eave on top (the wall of a garden, not a machine) and a stone step below.
+  const ey = -h + s * 0.02;
+  const eave = builder().moveTo(-r - 1, ey + s * 0.1).quadTo(-r * 0.6, ey, 0, ey - s * 0.02).quadTo(r * 0.6, ey, r + 1, ey + s * 0.1).lineTo(r - 1, ey + s * 0.17).lineTo(-r + 1, ey + s * 0.17).close().build();
+  c.drawPath(eave, fill(NIGHT.woodDeep));
+  c.save();
+  clip(c, eave);
+  for (let x = -r; x < r; x += s * 0.09) c.drawPath(line(x, ey - 2, x, ey + s * 0.2), stroke(alpha(NIGHT.wood, 0.9), 0.9));
+  c.restore();
+  c.drawPath(eave, stroke(INK, 0.9));
+  // The path through the gate: a pale flagstone track.
+  shape(c, rrect(-R * 0.5, R - 1, R, h - R - s * 0.04, 1.4), GATE_STONE_LIGHT, 0.8);
 }
 
 /** One half of the moon gate (one cell, side s, centred), for the items atlas: 'top' is row 2, 'bottom' row 3. */
@@ -510,7 +521,7 @@ export function drawBrazier(c: SkCanvas, s: number): void {
   at(c, 0, 0, k, 0, (q) => {
     q.drawPath(rrect(-21, -21, 42, 42, 4), fill(NIGHT.stoneDeep));
     q.drawPath(rrect(-21, -21, 42, 42, 4), stroke(INK, 1));
-    glow(q, 0, -4, 22, NIGHT.amber, 0.7);
+    glow(q, 0, -2, 19.5, NIGHT.amber, 0.7);
     for (const x of [-9, 9]) q.drawPath(line(x, 8, x * 1.4, 17), stroke(INK, 3));
     const bowl = builder().moveTo(-15, -4).lineTo(15, -4).quadTo(13, 10, 0, 10).quadTo(-13, 10, -15, -4).close().build();
     lit(q, bowl, '#3E4458', '#5A6278', -1, -1);

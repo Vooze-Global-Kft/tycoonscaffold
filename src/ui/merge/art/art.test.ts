@@ -74,6 +74,8 @@ describe('names used by the game have drawings', () => {
     expect(coats).toBeLessThanOrEqual(K.COATS);
     for (const sp of customers) for (let k = 0; k < coats; k++) names.add(`beast:${sp}-${k}`);
     for (const n of names) expect(K.hasMergeIcon(n), n).toBe(true);
+    for (const sp of customers) for (let k = 0; k < coats; k++) expect(K.hasMergeIcon(K.customerIcon(sp, k)), sp).toBe(true);
+    for (let c = 0; c < 6; c++) expect(K.hasMergeIcon(K.minderIcon(c))).toBe(true);
   });
 
   it('every customer and minder of the schema is a kit species, and every atlas id exists', () => {
@@ -110,10 +112,10 @@ describe('atlases', () => {
       }
   });
 
-  it('have the specified sizes', () => {
-    expect(K.atlasSize('items')).toEqual({ density: 3, width: 1152, height: 1152 });
-    expect(K.atlasSize('animals')).toEqual({ density: 3, width: 800, height: 800 });
-    expect(K.atlasSize('stalls')).toEqual({ density: 4.8, width: 1728, height: 1344 });
+  it('have the specified sizes (spec cells plus a 2 px transparent border each)', () => {
+    expect(K.atlasSize('items')).toEqual({ density: 3, width: 8 * 148, height: 8 * 148 });
+    expect(K.atlasSize('animals')).toEqual({ density: 3, width: 5 * 164, height: 5 * 164 });
+    expect(K.atlasSize('stalls')).toEqual({ density: 4.8, width: 6 * 292, height: 7 * 196 });
     expect(K.spriteIds('items').length).toBeLessThanOrEqual(64);
     expect(K.spriteIds('animals')).toHaveLength(25);
   });
@@ -124,6 +126,33 @@ describe('atlases', () => {
       expect(new Set(ids).size, kind).toBe(ids.length);
     }
   });
+
+  it('no sprite is clipped: every rect edge is transparent (busts are cut at the bottom on purpose)', () => {
+    for (const kind of K.ATLAS_KINDS) {
+      const a = K.bakeAtlas(kind)!;
+      const px = a.image.readPixels(0, 0, { width: a.width, height: a.height, colorType: 4, alphaType: 3 }) as Uint8Array;
+      const at = (x: number, y: number) => px[(y * a.width + x) * 4 + 3];
+      const bad: string[] = [];
+      for (const [name, sp] of Object.entries(a.sprites)) {
+        const x0 = Math.round(sp.rect.x);
+        const y0 = Math.round(sp.rect.y);
+        const x1 = Math.round(sp.rect.x + sp.rect.width) - 1;
+        const y1 = Math.round(sp.rect.y + sp.rect.height) - 1;
+        const cutBottom = kind === 'animals' && name !== 'dragon';
+        let m = 0;
+        for (let x = x0; x <= x1; x++) m = Math.max(m, at(x, y0), cutBottom ? 0 : at(x, y1));
+        for (let y = y0; y <= y1; y++) m = Math.max(m, at(x0, y), at(x1, y));
+        if (m > 8) bad.push(`${name} ${m}`);
+      }
+      expect(bad, kind).toEqual([]);
+    }
+  }, 120_000);
+
+  it('mergeAtlas bakes once per kind and density and hands out the same atlas', () => {
+    const a = K.mergeAtlas('animals', 1);
+    expect(a).not.toBeNull();
+    expect(K.mergeAtlas('animals', 1)).toBe(a);
+  }, 30_000);
 
   it('bake into an image with a rectangle per sprite', () => {
     const a = K.bakeAtlas('animals', 1)!;
@@ -163,6 +192,13 @@ describe('goods', () => {
         const b = K.lumaOf(render((q) => K.drawGood(q, c, k + 1, { pip: false })), 40);
         expect(K.greyDistance(a, b).changed, `${c} ${k}-${k + 1}`).toBeGreaterThan(0.08);
       }
+  }, 60_000);
+
+  it('the same tier of two chains differs in greyscale as much as neighbouring tiers must', () => {
+    for (let k = 1; k <= 8; k++) {
+      const L = [0, 1, 2, 3, 4, 5].map((c) => K.lumaOf(render((q) => K.drawGood(q, c, k, { pip: false })), 40));
+      for (let a = 0; a < 6; a++) for (let b = a + 1; b < 6; b++) expect(K.greyDistance(L[a], L[b]).changed, `tier ${k}: ${a}/${b}`).toBeGreaterThan(0.08);
+    }
   }, 60_000);
 });
 

@@ -7,7 +7,7 @@
  * Used by `scripts/content/merge-bot.ts` (the command line), `scripts/content/build-night.py` (the
  * tuner, through `--json`), the merge branch of `scripts/validate.ts`, and the web presets
  * (`src/modes/merge/presets.web.ts`, which play the active bot to a moment and keep its state).
- * No Node import, no clock, no Math.random: web only (scripts/lib/modes.js WEB_ONLY).
+ * No Node import, no wall clock, no unseeded randomness: web only (scripts/lib/modes.js WEB_ONLY).
  *
  * The one rule of this file: the bot acts ONLY through the public interface a screen calls
  * (src/engine/merge.ts): `dropAt` with targets (a merge is a drop on an identical good, a delivery a

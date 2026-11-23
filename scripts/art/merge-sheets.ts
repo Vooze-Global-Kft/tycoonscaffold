@@ -38,7 +38,7 @@ headless(async (H) => {
 
   if (want('goods')) {
     for (const cell of [47, 51]) {
-      const size = { w: 58 + 8 * cell + 12, h: 18 + 6 * cell + 12 };
+      const size = { w: 40 + 8 * cell + 12, h: 18 + 6 * cell + 12 };
       for (const greyscale of [false, true]) {
         const f = path.join(out, `goods-${cell}${greyscale ? '-grey' : ''}.png`);
         await H.sheet(f, { width: size.w, height: size.h, scale: 3, background: NIGHT.indigo }, (c) => G.drawGoodsBoard(c, cell, { greyscale }));
@@ -46,7 +46,7 @@ headless(async (H) => {
       }
     }
     const f = path.join(out, 'goods-47-nopip-grey.png');
-    await H.sheet(f, { width: 58 + 8 * 47 + 12, height: 18 + 6 * 47 + 12, scale: 3, background: NIGHT.indigo }, (c) => G.drawGoodsBoard(c, 47, { greyscale: true, pip: false }));
+    await H.sheet(f, { width: 40 + 8 * 47 + 12, height: 18 + 6 * 47 + 12, scale: 3, background: NIGHT.indigo }, (c) => G.drawGoodsBoard(c, 47, { greyscale: true, pip: false }));
     console.log('wrote', f);
   }
 

@@ -301,13 +301,13 @@ function garnish(c: SkCanvas): void {
   const { rx, ry, y } = PLATE;
   for (let i = 0; i < 9; i++) {
     const a = Math.PI * (1.02 + (0.96 * i) / 8);
-    const x = Math.cos(a) * (rx - 1);
+    const x = Math.cos(a) * (rx - 2.6);
     const yy = y + Math.sin(a) * (ry + 2.6) - 1;
     at(c, x, yy, 1.15, (a * 180) / Math.PI + 90, (k) => shape(k, blob([[0, 2.4], [2.3, -0.4], [0, -4.2], [-2.3, -0.4]], 1), i % 2 ? NIGHT.leafDeep : NIGHT.leaf, 0.8));
   }
   for (const sgn of [-1, 1]) {
     for (const [dx, dy, r] of [[0, 0, 70], [-1.6, -3.4, 35], [-1.4, 3, 105]] as const) {
-      at(c, sgn * (rx - 0.4 + dx), y - 1 + dy, 1.35, sgn * r, (k) => shape(k, blob([[0, 2.4], [2.3, -0.4], [0, -4.2], [-2.3, -0.4]], 1), NIGHT.leaf, 0.8));
+      at(c, sgn * (rx - 4.6 + dx), y - 1 + dy, 1.15, sgn * r, (k) => shape(k, blob([[0, 2.4], [2.3, -0.4], [0, -4.2], [-2.3, -0.4]], 1), NIGHT.leaf, 0.8));
     }
   }
 }
@@ -323,8 +323,8 @@ function halo(c: SkCanvas, r = 20.5): void {
 
 /** The indigo lacquer board with a brass rim (tier 8): a frame round the whole cell, behind the serving. */
 function lacquer(c: SkCanvas): void {
-  const b = rrect(-22.6, -22.6, 45.2, 41.6, 6);
-  c.drawPath(rrect(-22.6, -21.4, 45.2, 41.6, 6), fill(alpha(INK, 0.7)));
+  const b = rrect(-22.4, -22, 44.8, 41, 6);
+  c.drawPath(rrect(-22.4, -21, 44.8, 41, 6), fill(alpha(INK, 0.7)));
   c.drawPath(b, fill(NIGHT.indigo));
   c.drawPath(b, stroke(NIGHT.brass, 3));
   c.drawPath(b, stroke(INK, 0.6));
@@ -333,7 +333,7 @@ function lacquer(c: SkCanvas): void {
     c.drawPath(circle(x, y, 1.9), fill(NIGHT.brassLight));
     c.drawPath(circle(x, y, 1.9), stroke(INK, 0.7));
   }
-  c.drawPath(line(-15, -21.2, 6, -21.2), stroke(alpha(NIGHT.white, 0.4), 1));
+  c.drawPath(line(-15, -20.6, 6, -20.6), stroke(alpha(NIGHT.white, 0.4), 1));
 }
 
 // ---------------------------------------------------------------------------

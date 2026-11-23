@@ -23,6 +23,8 @@ function measureRed(w: number, h: number): number | null {
     surface.flush();
     const img = surface.makeImageSnapshot();
     const px = img.readPixels(0, 0, { width: w, height: h, colorType: 4, alphaType: 3 });
+    img.dispose();
+    surface.dispose();
     return px ? redShare(px as Uint8Array) : null;
   } catch {
     return null;
@@ -60,16 +62,14 @@ export function MergeArtGallery() {
       <Text style={styles.note}>
         Red share of the mock screen {mockW} x {mockH}: {red === null ? 'not measured' : `${(red * 100).toFixed(2)} % (limit 10 %)`}
       </Text>
-      {boards.map((b) => {
-        const s = Math.min(1, w / b.w);
-        return (
-          <Canvas key={b.cell} style={{ width: b.w * s, height: b.h * s }}>
-            <Group transform={[{ scale: s }]}>
-              <Picture picture={b.pic} />
-            </Group>
+      {/* The boards at TRUE size (1 pt = 1 pt, as on the phone): scroll sideways for tiers 7 and 8. */}
+      {boards.map((b) => (
+        <ScrollView key={b.cell} horizontal style={{ width: Math.min(width, w + 40), flexGrow: 0 }} contentContainerStyle={{ width: b.w }}>
+          <Canvas style={{ width: b.w, height: b.h }}>
+            <Picture picture={b.pic} />
           </Canvas>
-        );
-      })}
+        </ScrollView>
+      ))}
       {sheets.map((s) => (
         <Canvas key={s.title} style={{ width: w, height: s.height }}>
           <Picture picture={s.pic} />

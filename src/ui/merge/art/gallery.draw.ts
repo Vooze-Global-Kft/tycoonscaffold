@@ -5,7 +5,7 @@
  * colour at 47 and 51 pt cells; every section can be drawn in greyscale.
  */
 import type { SkCanvas, SkPicture } from '@shopify/react-native-skia';
-import { MINDERS, drawCustomer, drawDragon, drawFirefly, drawMinder, drawTrailPiece } from './animals.draw';
+import { FIREFLY_WINGS, MINDERS, drawCustomer, drawDragon, drawFirefly, drawMinder, drawMinderHead, drawTrailPiece } from './animals.draw';
 import { drawGear, drawGearRail, drawShelfBadge, drawTill, drawWaitingPip } from './gear.draw';
 import { GOOD_BOX, drawGood, drawTierPip } from './goods.draw';
 import { drawLantern } from './lantern.draw';
@@ -14,7 +14,7 @@ import { LOADING_LANTERNS, drawLoadingScreen } from './loading.draw';
 import { CHAIN_IDS, COATS, CUSTOMER_SPECIES, NIGHT, alpha } from './palette';
 import { at, fill, grey, picture, rrect, stroke } from './pen';
 import { PARTICLES, archHooks, drawGateLantern, drawLadder, drawLanternArch, drawParticle, drawRung, drawScroll, drawSeasonBoard, drawSeasonPiece } from './spokes.draw';
-import { STALL_H, STALL_W, drawStallFront } from './stalls.draw';
+import { STALL_H, STALL_MINDER, STALL_W, drawStallFront } from './stalls.draw';
 import {
   FOLD_FRAMES,
   drawArmedRing,
@@ -24,6 +24,9 @@ import {
   drawCellTile,
   drawCoin,
   drawCounter,
+  drawEffect,
+  drawNewTag,
+  EFFECTS,
   drawFestivalBanner,
   drawFilledStamp,
   drawFlyingLantern,
@@ -111,16 +114,16 @@ export function sectionPicture(section: Section, width: number, o: SheetOptions 
  * the view the 47 pt gate is judged on. Returns its size; draws at the origin.
  */
 export function drawGoodsBoard(c: SkCanvas, cell: number, o: SheetOptions & { pip?: boolean } = {}): { w: number; h: number } {
-  const left = 58;
+  const left = 40;
   const top = 18;
   const w = left + 8 * cell + 12;
   const h = top + 6 * cell + 12;
   const body = (q: SkCanvas) => {
     q.drawRect({ x: 0, y: 0, width: w, height: h }, fill(NIGHT.indigo));
-    label(q, `${cell} PT CELLS`, 8, 5, 7, NIGHT.amberSoft);
+    label(q, `${cell} PT CELLS, TRUE SIZE`, 8, 5, 7, NIGHT.amberSoft);
     at(q, left, top, 1, 0, (k) => drawBoardBase(k, 8, 6, cell));
     for (let ch = 0; ch < 6; ch++) {
-      label(q, CHAIN_IDS[ch], 6, top + ch * cell + cell / 2 - 3, 6);
+      label(q, CHAIN_IDS[ch].slice(0, 5), 4, top + ch * cell + cell / 2 - 3, 5.5);
       for (let k = 1; k <= 8; k++) {
         at(q, left + (k - 1) * cell + cell / 2, top + ch * cell + cell / 2, 1, 0, (z) => {
           drawCellTile(z, cell);
@@ -162,9 +165,23 @@ function stalls(): Section {
   const cells: Cell[] = [];
   for (let ch = 0; ch < 6; ch++)
     for (const a of [0, 1, 2] as const) cells.push({ label: `${CHAIN_IDS[ch]} ${a}`, w: STALL_W, h: STALL_H, zoom: ch === 0 ? 2 : 0, draw: (c) => drawStallFront(c, ch, { awning: a }) });
-  for (let ch = 0; ch < 6; ch++) cells.push({ label: `${CHAIN_IDS[ch]} SILK`, w: STALL_W, h: STALL_H, zoom: ch === 0 ? 2 : 0, draw: (c) => drawStallFront(c, ch, { awning: 1, silk: true }) });
+  for (let ch = 0; ch < 6; ch++)
+    for (const a of [0, 1, 2] as const) cells.push({ label: `${CHAIN_IDS[ch]} SILK ${a}`, w: STALL_W, h: STALL_H, zoom: ch === 0 && a === 0 ? 2 : 0, draw: (c) => drawStallFront(c, ch, { awning: a, silk: true }) });
   for (let ch = 0; ch < 6; ch++) cells.push({ label: `${CHAIN_IDS[ch]} CLOSED`, w: STALL_W, h: STALL_H, zoom: 0, draw: (c) => drawStallFront(c, ch, { closed: true }) });
-  cells.push({ label: 'AT 52 PT', w: 52, h: 35, zoom: 0, draw: (c) => at(c, 0, 0, 52 / 60, 0, (q) => drawStallFront(q, 3, { awning: 2 })) });
+  for (const silk of [false, true])
+    cells.push({
+      label: silk ? 'STREET AT 52 PT, SILK' : 'STREET AT 52 PT',
+      w: 6 * 56,
+      h: 36,
+      zoom: 0,
+      draw: (c) =>
+        CHAIN_IDS.forEach((_, ch) =>
+          at(c, -3 * 56 + 28 + ch * 56, 0, 52 / 60, 0, (q) => {
+            drawStallFront(q, ch, { awning: 0, silk, closed: ch >= 4 });
+            if (ch < 4) at(q, STALL_MINDER.x, STALL_MINDER.y, 1, 0, (z) => drawMinderHead(z, ch, STALL_MINDER.size));
+          }),
+        ),
+    });
   return { title: 'Stall fronts: 3 awnings, silk, closed', cells };
 }
 
@@ -173,8 +190,8 @@ function animals(): Section {
   for (const sp of CUSTOMER_SPECIES) for (let k = 0; k < COATS; k++) cells.push({ label: `${sp} ${k}`, w: 54, h: 54, zoom: k === 0 ? 1.5 : 0, draw: (c) => drawCustomer(c, sp, k) });
   for (const m of MINDERS) cells.push({ label: m.name, w: 54, h: 54, zoom: 1.5, draw: (c) => drawMinder(c, m.chain) });
   cells.push({ label: 'PAPER DRAGON', w: 54, h: 54, zoom: 2, draw: (c) => drawDragon(c) });
-  cells.push({ label: 'MINDER AT 18 PT', w: 20, h: 20, zoom: 0, draw: (c) => at(c, 0, 0, 18 / 53.3, 0, (q) => drawMinder(q, 0)) });
-  cells.push({ label: 'FIREFLY', w: 34, h: 34, zoom: 2, draw: (c) => drawFirefly(c) });
+  for (const m of MINDERS) cells.push({ label: `HEAD ${m.name.split(' ').pop()}`, w: 22, h: 22, zoom: 2, draw: (c) => drawMinderHead(c, m.chain, 20) });
+  for (let wg = 0; wg < FIREFLY_WINGS; wg++) cells.push({ label: `FIREFLY ${wg}`, w: 38, h: 38, zoom: wg === 1 ? 2 : 0, draw: (c) => drawFirefly(c, 1, wg / (FIREFLY_WINGS - 1)) });
   cells.push({ label: 'TRAIL', w: 12, h: 12, zoom: 3, draw: (c) => drawTrailPiece(c) });
   return { title: 'Animals: customers, minders, dragon, firefly', cells };
 }
@@ -191,6 +208,8 @@ function street(): Section {
   cells.push({ label: 'FLYING LANTERN', w: 30, h: 36, zoom: 2, draw: (c) => drawFlyingLantern(c) });
   cells.push({ label: 'BANNER', w: 52, h: 116, zoom: 1.5, draw: (c) => at(c, -26, -58, 1, 0, (q) => drawFestivalBanner(q, 52, 116)) });
   cells.push({ label: 'BANNER LIT', w: 52, h: 116, zoom: 0, draw: (c) => at(c, -26, -58, 1, 0, (q) => drawFestivalBanner(q, 52, 116, { lit: true })) });
+  for (const e of EFFECTS) cells.push({ label: `MOMENT ${e}`, w: 54, h: 54, zoom: 0, draw: (c) => drawEffect(c, e) });
+  cells.push({ label: 'NEW TAG', w: 24, h: 12, zoom: 3, draw: (c) => drawNewTag(c) });
   for (const look of ['lit', 'unlit', 'moon', 'gold'] as const) cells.push({ label: `LANTERN ${look}`, w: 24, h: 30, zoom: 2, draw: (c) => drawLantern(c, 7, { look }) });
   return { title: 'Street: backdrop and wire, counter, ticket, stamp, fold, banner', cells };
 }

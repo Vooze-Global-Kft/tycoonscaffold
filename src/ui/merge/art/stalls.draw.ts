@@ -135,7 +135,7 @@ export function drawStallFront(c: SkCanvas, chain: ChainId | number, o: StallOpt
     for (const x of [-15, 15]) shape(c, rrect(x - 1.1, yTop - 1.2, 2.2, 7.6, 1), NIGHT.brass, 0.6);
     return;
   }
-  const W = 29.4;
+  const W = 28.8;
   const depth = awn === 0 ? 8 : 7;
   const body = builder().moveTo(-W + 0.8, yTop + 2).lineTo(W - 0.8, yTop + 2).lineTo(W, yTop + 2 + depth).lineTo(-W, yTop + 2 + depth).close().build();
   c.save();
@@ -155,8 +155,9 @@ export function drawStallFront(c: SkCanvas, chain: ChainId | number, o: StallOpt
   }
   const yEdge = yTop + 2 + depth;
   if (awn === 0) {
-    c.drawPath(rrect(-W, yEdge - 0.6, 2 * W, 2.4, 1), fill(valance));
-    c.drawPath(rrect(-W, yEdge - 0.6, 2 * W, 2.4, 1), stroke(INK, 0.7));
+    const vh = silk ? 3.8 : 2.4;
+    c.drawPath(rrect(-W, yEdge - 0.6, 2 * W, vh, 1), fill(valance));
+    c.drawPath(rrect(-W, yEdge - 0.6, 2 * W, vh, 1), stroke(INK, 0.7));
   } else {
     const n = 8;
     const sc = builder();
@@ -170,8 +171,8 @@ export function drawStallFront(c: SkCanvas, chain: ChainId | number, o: StallOpt
     c.drawPath(scallops(-W, W, yEdge + 0.8, n, 1.6), stroke(alpha(silk ? NIGHT.moon : clothLight, 0.7), 0.8));
   }
   // Brass rod.
-  c.drawPath(line(-W, yTop + 2, W, yTop + 2), stroke(INK, 2.6));
-  c.drawPath(line(-W, yTop + 2, W, yTop + 2), stroke(NIGHT.brass, 1.3));
+  c.drawPath(line(-W + 1.4, yTop + 2, W - 1.4, yTop + 2), stroke(INK, 2.6));
+  c.drawPath(line(-W + 1.4, yTop + 2, W - 1.4, yTop + 2), stroke(NIGHT.brass, 1.3));
   if (awn === 2) {
     // A second, shorter layer of scallops in the shade colour, tassels and finials.
     const n = 6;
@@ -187,12 +188,12 @@ export function drawStallFront(c: SkCanvas, chain: ChainId | number, o: StallOpt
       c.drawPath(line(x, yEdge, x, yEdge + 4), stroke(NIGHT.brass, 0.9));
       c.drawPath(rrect(x - 0.9, yEdge + 3.6, 1.8, 2.4, 0.8), fill(NIGHT.brassLight));
     }
-    drawFinial(c, -W + 0.6, yTop + 2.4);
-    drawFinial(c, W - 0.6, yTop + 2.4);
+    drawFinial(c, -W + 2, yTop + 3.6);
+    drawFinial(c, W - 2, yTop + 3.6);
   }
   if (silk) {
     // Moon lanterns on a string under the awning, in every state: the purchase's own sign.
-    const y = yEdge + (awn === 0 ? 2.6 : 6.2);
+    const y = yEdge + (awn === 0 ? 3.6 : 6.2);
     c.drawPath(builder().moveTo(-W + 2, y).quadTo(0, y + 4, W - 2, y).build(), stroke(alpha(NIGHT.moon, 0.7), 0.6));
     for (const x of [-18, 0, 18]) {
       c.save();
