@@ -269,3 +269,51 @@ describe('human checks against each game, and the string table (store review, Ni
     expect(after.size).toBe(before.size);
   });
 });
+
+describe('fingerprint check with the fourth game (High Office, office-design.md 1.2, 10.2)', () => {
+  const games = require('./games.js');
+  const modes = require('./modes.js');
+  const kits = (mode: string) => [`mode ${mode}`, ...Object.entries(modes.FAMILIES as Record<string, { modes: string[] }>).filter(([, f]) => f.modes.includes(mode)).map(([k]) => `family ${k}`)];
+  const real = (id: string) => {
+    const cfg = GameConfigSchema.parse(games.readGameJson(id));
+    return gameFacts(ROOT, id, cfg, games, kits(cfg.mode));
+  };
+
+  it('every recorded report of the three existing pairs is byte-identical (recorded before mode decree existed)', () => {
+    const po = JSON.parse(fs.readFileSync(path.join(__dirname, 'fingerprint.pizzaOrbit.fixture.json'), 'utf8')) as { a: GameFacts; b: GameFacts; audio: AudioScore; report: PairReport; formatted: string };
+    const rec = JSON.parse(fs.readFileSync(path.join(__dirname, 'fingerprint.pairs.fixture.json'), 'utf8')) as { pairs: Record<string, { a: GameFacts; b: GameFacts; audio: AudioScore; report: PairReport; formatted: string }> };
+    const all = { 'pizza-empire|space-miner': po, ...rec.pairs };
+    expect(Object.keys(all).sort()).toEqual(['pizza-empire|night-market', 'pizza-empire|space-miner', 'space-miner|night-market']);
+    for (const [pair, r] of Object.entries(all)) {
+      const now = comparePair(r.a, r.b, r.audio);
+      expect(JSON.stringify(now), pair).toBe(JSON.stringify(r.report));
+      expect(formatPair(now), pair).toBe(r.formatted);
+    }
+  });
+
+  it('accepts "office-ladder" as a progression structure, and the declared high-office fingerprint has no vocabulary problem', () => {
+    const d = declared('high-office');
+    expect(declaredProblems(d)).toEqual([]);
+    expect(d.progression_structure).toBe('office-ladder');
+    expect(declaredProblems({ ...d, progression_structure: 'office-tower' })).toEqual([expect.stringMatching(/progression_structure "office-tower"/)]);
+    // The human checks are a map keyed by each of the three other games, all still empty (D9: no person has signed).
+    for (const key of ['icon_and_screenshot_template', 'meta_screen_layouts'] as const) {
+      expect(Object.keys(d.human[key] as object).sort()).toEqual(['night-market', 'pizza-empire', 'space-miner']);
+      for (const other of ['pizza-empire', 'space-miner', 'night-market']) expect(humanCheckFor(d, key, other)?.by).toBe('');
+    }
+  });
+
+  it('high-office against each game: 8 of 8 must differ or are pending, at least 15 known or pending, no problem', () => {
+    const office = real('high-office');
+    expect(office.mode).toBe('decree');
+    // D11: {unlock, unlock, cosmetic, cosmetic, skipAds}, a multiset no other game has.
+    expect([...office.productKinds].sort()).toEqual(['cosmetic', 'cosmetic', 'skipAds', 'unlock', 'unlock']);
+    expect(office.productIds.every((p) => p.startsWith('office_'))).toBe(true);
+    for (const other of ['pizza-empire', 'space-miner', 'night-market']) {
+      const r = comparePair(office, real(other), null);
+      expect(r.mustSame, `${other}: ${formatPair(r)}`).toBe(0);
+      expect(r.verified + r.pending, other).toBeGreaterThanOrEqual(15);
+      expect(pairFailures(r, 'everyday'), other).toEqual([]);
+    }
+  });
+});

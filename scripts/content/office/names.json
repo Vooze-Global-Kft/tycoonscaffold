@@ -1,5 +1,5 @@
 {
-  "$comment": "names.json: every proper noun of High Office (office-design.md 7.1, 7.3, 2.2, 2.14, 5.11), with its kind, an id for cast members (the `visitor` of a paper), ministries, newspapers, twists and Grand Projects, and a check record. The check record is EMPTY until the sensitivity editor checks the name against the four lists of 7.1 (politicians of any rank; notorious public figures; famous fictional politicians and civil servants; places and characters of children's fiction) by generic web searches, and signs it with date and checker (D9: no record may say a person checked what no person checked). `cleared` lists near-matches the satire lint reports (edit distance 1 or sound-alike against deny-people.txt or deny-fiction.txt) that the checker read and accepted, as {\"similar\": \"<the listed name>\", \"reason\": \"...\"}; a cleared near-match is no longer reported. Rule 2 of the lint accepts every word of these names capitalised mid-sentence. Writers add new names through the sensitivity editor.",
+  "$comment": "names.json: every proper noun of High Office (office-design.md 7.1, 7.3, 2.2, 2.14, 5.11), with its kind, an id for cast members (the `visitor` of a paper: the ids of docs/design/office-style.md section 2), and for ministries, Grand Projects and twists the runtime ids of src/config/schema.decree.ts (a note's `ministry`), and for newspapers the id a front page's `paper` names, and a check record. The check record is EMPTY until the sensitivity editor checks the name against the four lists of 7.1 (politicians of any rank; notorious public figures; famous fictional politicians and civil servants; places and characters of children's fiction) by generic web searches, and signs it with date and checker (D9: no record may say a person checked what no person checked). `cleared` lists near-matches the satire lint reports (edit distance 1 or sound-alike against deny-people.txt or deny-fiction.txt) that the checker read and accepted, as {\"similar\": \"<the listed name>\", \"reason\": \"...\"}; a cleared near-match is no longer reported. Rule 2 of the lint accepts every word of these names capitalised mid-sentence. Writers add new names through the sensitivity editor.",
   "names": [
     {
       "name": "Republic of Middling",
@@ -498,7 +498,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "town_clock"
     },
     {
       "name": "Potholes Office",
@@ -514,7 +515,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "potholes"
     },
     {
       "name": "Benches & Bandstands",
@@ -530,7 +532,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "benches"
     },
     {
       "name": "Signposts & Lampposts",
@@ -546,7 +549,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "signposts"
     },
     {
       "name": "Provincial Clock Office",
@@ -561,7 +565,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "prov_clock"
     },
     {
       "name": "Bus Shelter Trust",
@@ -577,7 +582,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "bus_shelter"
     },
     {
       "name": "Market Weights Board",
@@ -593,7 +599,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "market_weights"
     },
     {
       "name": "Glasshouse Office",
@@ -609,7 +616,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "glasshouse"
     },
     {
       "name": "Bandstand Board",
@@ -625,7 +633,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "bandstand_board"
     },
     {
       "name": "Canals & Jetties",
@@ -641,7 +650,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "canals"
     },
     {
       "name": "National Clock Office",
@@ -656,7 +666,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "nat_clock"
     },
     {
       "name": "Motorway Board",
@@ -672,7 +683,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "motorway"
     },
     {
       "name": "Lamplight Authority",
@@ -688,7 +700,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "lamplight"
     },
     {
       "name": "Parks & Benches",
@@ -704,12 +717,13 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "parks"
     },
     {
       "name": "Office of Brass & Bunting",
       "kind": "ministry",
-      "id": "office-of-brass-bunting",
+      "id": "office-brass-bunting",
       "office": "president",
       "club": "brass",
       "check": {
@@ -720,7 +734,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "brass_bunting"
     },
     {
       "name": "Harbour Board",
@@ -736,7 +751,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "harbour"
     },
     {
       "name": "Kite & Breeze Office",
@@ -752,7 +768,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "kite_breeze"
     },
     {
       "name": "Hedgerow Bureau",
@@ -768,7 +785,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "hedgerow"
     },
     {
       "name": "The Very Long Bridge",
@@ -783,7 +801,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "long_bridge"
     },
     {
       "name": "The National Ribbon Mill",
@@ -798,7 +817,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "ribbon_mill"
     },
     {
       "name": "The National Umbrella",
@@ -813,7 +833,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "umbrella"
     },
     {
       "name": "The Tallest Bandstand",
@@ -828,7 +849,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "tallest_bandstand"
     },
     {
       "name": "The Ministry of Ministries",
@@ -843,7 +865,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "ministry_of_ministries"
     },
     {
       "name": "Till's Teas",
@@ -1009,7 +1032,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "committee_week"
     },
     {
       "name": "Market Fortnight",
@@ -1023,7 +1047,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "market_fortnight"
     },
     {
       "name": "Quiet Press",
@@ -1037,7 +1062,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "quiet_press"
     },
     {
       "name": "Bandstand Summer",
@@ -1051,7 +1077,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "bandstand_summer"
     },
     {
       "name": "Ribbon Shortage",
@@ -1065,7 +1092,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "ribbon_shortage"
     },
     {
       "name": "A Gentle Week",
@@ -1079,7 +1107,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "gentle_week"
     },
     {
       "name": "Early Doors",
@@ -1093,7 +1122,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "early_doors"
     },
     {
       "name": "Kite Weather",
@@ -1107,7 +1137,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "kite_weather"
     },
     {
       "name": "Hedge Inspection",
@@ -1121,7 +1152,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "hedge_inspection"
     },
     {
       "name": "Grievance Amnesty",
@@ -1135,7 +1167,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "ref": "grievance_amnesty"
     },
     {
       "name": "A Quiet Term",
@@ -1149,7 +1182,8 @@
         "date": null,
         "checker": null,
         "cleared": []
-      }
+      },
+      "note": "from term 182 (2.14); not a twist of the runtime table"
     },
     {
       "name": "Long Lunch",
@@ -1264,9 +1298,122 @@
       }
     },
     {
+      "name": "Grand Goose (First Class)",
+      "kind": "honour",
+      "note": "office-style.md section 1",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Brass Thimble",
+      "kind": "honour",
+      "note": "office-style.md section 1",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Ribbon of Moderate Merit",
+      "kind": "honour",
+      "note": "office-style.md section 1",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Freedom of the Town",
+      "kind": "honour",
+      "note": "office-style.md section 1",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "River Dawdle",
+      "kind": "place",
+      "office": "mayor",
+      "note": "office-style.md section 1",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Window Week",
+      "kind": "other",
+      "note": "a club's event named in office-style.md section 1 (proposal)",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Quiet Competition",
+      "kind": "other",
+      "note": "a club's event named in office-style.md section 1 (proposal)",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Gusting Heights Kite Festival",
+      "kind": "other",
+      "note": "a club's event named in office-style.md section 1 (proposal)",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
       "name": "Hettie Bramble",
       "kind": "cast",
-      "id": "hettie-bramble",
+      "id": "bramble",
       "role": "Mayor",
       "group": "player",
       "check": {
@@ -1282,7 +1429,7 @@
     {
       "name": "Osgood Fennel",
       "kind": "cast",
-      "id": "osgood-fennel",
+      "id": "fennel",
       "role": "Mayor",
       "group": "player",
       "check": {
@@ -1298,7 +1445,7 @@
     {
       "name": "Ada Quill",
       "kind": "cast",
-      "id": "ada-quill",
+      "id": "quill",
       "role": "Mayor",
       "group": "player",
       "check": {
@@ -1314,7 +1461,7 @@
     {
       "name": "Rupert Marchpane",
       "kind": "cast",
-      "id": "rupert-marchpane",
+      "id": "marchpane",
       "role": "Mayor",
       "group": "player",
       "check": {
@@ -1330,7 +1477,7 @@
     {
       "name": "Winifred Tuttle",
       "kind": "cast",
-      "id": "winifred-tuttle",
+      "id": "tuttle",
       "role": "Mayor",
       "group": "player",
       "check": {
@@ -1346,7 +1493,7 @@
     {
       "name": "Cosmo Larkspur",
       "kind": "cast",
-      "id": "cosmo-larkspur",
+      "id": "larkspur",
       "role": "Mayor",
       "group": "player",
       "check": {
@@ -1362,7 +1509,7 @@
     {
       "name": "Rodney Spinwell",
       "kind": "cast",
-      "id": "rodney-spinwell",
+      "id": "spinwell",
       "role": "Chief of Staff",
       "group": "advisor",
       "check": {
@@ -1378,7 +1525,7 @@
     {
       "name": "Gwendolyn Abacus",
       "kind": "cast",
-      "id": "gwendolyn-abacus",
+      "id": "abacus",
       "role": "Treasury Clerk",
       "group": "advisor",
       "check": {
@@ -1394,7 +1541,7 @@
     {
       "name": "Cuthbert Wimble",
       "kind": "cast",
-      "id": "cuthbert-wimble",
+      "id": "wimble",
       "role": "Junior Clerk",
       "group": "advisor",
       "check": {
@@ -1410,7 +1557,7 @@
     {
       "name": "Pruella Dimity",
       "kind": "cast",
-      "id": "pruella-dimity",
+      "id": "dimity",
       "role": "Deputy",
       "group": "advisor",
       "office": "governor",
@@ -1427,7 +1574,7 @@
     {
       "name": "Mildred Fenn",
       "kind": "cast",
-      "id": "mildred-fenn",
+      "id": "fenn",
       "role": "Secretary",
       "group": "advisor",
       "office": "president",
@@ -1444,7 +1591,7 @@
     {
       "name": "Desmond Kerb",
       "kind": "cast",
-      "id": "desmond-kerb",
+      "id": "kerb",
       "role": "Bus Spotters' Society",
       "group": "spokesperson",
       "club": "bus",
@@ -1459,9 +1606,27 @@
       }
     },
     {
+      "name": "Mervyn Sprott",
+      "kind": "cast",
+      "id": "sprott",
+      "role": "Timetable Secretary",
+      "group": "spokesperson",
+      "club": "bus",
+      "note": "new in office-style.md 2; check before use",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
       "name": "Pauline Till",
       "kind": "cast",
-      "id": "pauline-till",
+      "id": "till",
       "role": "Shop Window Guild",
       "group": "spokesperson",
       "club": "shops",
@@ -1476,9 +1641,27 @@
       }
     },
     {
+      "name": "Delphine Awning",
+      "kind": "cast",
+      "id": "awning",
+      "role": "Display Captain",
+      "group": "spokesperson",
+      "club": "shops",
+      "note": "new in office-style.md 2; check before use",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
       "name": "Hilda Gourdley",
       "kind": "cast",
-      "id": "hilda-gourdley",
+      "id": "gourdley",
       "role": "Giant Vegetable Society",
       "group": "spokesperson",
       "club": "veg",
@@ -1493,9 +1676,27 @@
       }
     },
     {
+      "name": "Bertram Loam",
+      "kind": "cast",
+      "id": "loam",
+      "role": "Weigh-in Steward",
+      "group": "spokesperson",
+      "club": "veg",
+      "note": "new in office-style.md 2; check before use",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
       "name": "Horace Bellows",
       "kind": "cast",
-      "id": "horace-bellows",
+      "id": "bellows",
       "role": "Brass Band Guild",
       "group": "spokesperson",
       "club": "brass",
@@ -1510,9 +1711,27 @@
       }
     },
     {
+      "name": "Cecily Slide",
+      "kind": "cast",
+      "id": "slide",
+      "role": "Second Cornet",
+      "group": "spokesperson",
+      "club": "brass",
+      "note": "new in office-style.md 2; check before use",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
       "name": "Marigold Hake",
       "kind": "cast",
-      "id": "marigold-hake",
+      "id": "hake",
       "role": "Anglers' Circle",
       "group": "spokesperson",
       "club": "anglers",
@@ -1527,9 +1746,27 @@
       }
     },
     {
+      "name": "Ewan Dabble",
+      "kind": "cast",
+      "id": "dabble",
+      "role": "Keeper of the Quiet",
+      "group": "spokesperson",
+      "club": "anglers",
+      "note": "new in office-style.md 2; check before use",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
       "name": "Wendell Loft",
       "kind": "cast",
-      "id": "wendell-loft",
+      "id": "loft",
       "role": "Kite Flyers' League",
       "group": "spokesperson",
       "club": "kites",
@@ -1544,9 +1781,27 @@
       }
     },
     {
+      "name": "Philomena Updraught",
+      "kind": "cast",
+      "id": "updraught",
+      "role": "Launch Marshal",
+      "group": "spokesperson",
+      "club": "kites",
+      "note": "new in office-style.md 2; check before use",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
       "name": "Agnes Topiary",
       "kind": "cast",
-      "id": "agnes-topiary",
+      "id": "topiary",
       "role": "Tidy Hedge Committee",
       "group": "spokesperson",
       "club": "hedges",
@@ -1561,9 +1816,27 @@
       }
     },
     {
+      "name": "Clement Edging",
+      "kind": "cast",
+      "id": "edging",
+      "role": "Shears Officer",
+      "group": "spokesperson",
+      "club": "hedges",
+      "note": "new in office-style.md 2; check before use",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
       "name": "Lionel Sash",
       "kind": "cast",
-      "id": "lionel-sash",
+      "id": "sash",
       "role": "Ribbon Makers' Guild",
       "group": "lobbyist",
       "check": {
@@ -1579,7 +1852,7 @@
     {
       "name": "Crispin Vane",
       "kind": "cast",
-      "id": "crispin-vane",
+      "id": "vane",
       "role": "Consolidated Umbrellas",
       "group": "lobbyist",
       "check": {
@@ -1595,7 +1868,7 @@
     {
       "name": "Lavinia Goss",
       "kind": "cast",
-      "id": "lavinia-goss",
+      "id": "goss",
       "role": "Ornamental Fountain Council",
       "group": "lobbyist",
       "check": {
@@ -1611,7 +1884,7 @@
     {
       "name": "Tobias Slake",
       "kind": "cast",
-      "id": "tobias-slake",
+      "id": "slake",
       "role": "Novelty Hats & Sons",
       "group": "lobbyist",
       "check": {
@@ -1627,9 +1900,10 @@
     {
       "name": "Ambrose Minute",
       "kind": "cast",
-      "id": "ambrose-minute",
+      "id": "minute",
       "role": "Committee on Committees",
       "group": "other",
+      "note": "a co-signer only, never a club's voice (7.3)",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1643,7 +1917,7 @@
     {
       "name": "Agatha Tallow",
       "kind": "cast",
-      "id": "agatha-tallow",
+      "id": "tallow",
       "role": "Counting Clerk",
       "group": "other",
       "check": {
@@ -1659,10 +1933,11 @@
     {
       "name": "Dorothy Pockle",
       "kind": "cast",
-      "id": "dorothy-pockle",
+      "id": "pockle",
       "role": "Applicant",
       "group": "minister",
       "club": "bus",
+      "office": "mayor",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1676,10 +1951,11 @@
     {
       "name": "Dorrit Pellow",
       "kind": "cast",
-      "id": "dorrit-pellow",
+      "id": "pellow",
       "role": "Applicant",
       "group": "minister",
       "club": "veg",
+      "office": "mayor",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1693,10 +1969,11 @@
     {
       "name": "Basil Ferrule",
       "kind": "cast",
-      "id": "basil-ferrule",
+      "id": "ferrule",
       "role": "Applicant",
       "group": "minister",
       "club": "shops",
+      "office": "mayor",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1710,10 +1987,11 @@
     {
       "name": "Wendeline Hush",
       "kind": "cast",
-      "id": "wendeline-hush",
+      "id": "hush",
       "role": "Applicant",
       "group": "minister",
       "club": "shops",
+      "office": "governor",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1727,10 +2005,11 @@
     {
       "name": "Ermintrude Bole",
       "kind": "cast",
-      "id": "ermintrude-bole",
+      "id": "bole",
       "role": "Applicant",
       "group": "minister",
       "club": "brass",
+      "office": "governor",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1744,10 +2023,11 @@
     {
       "name": "Percy Gusset",
       "kind": "cast",
-      "id": "percy-gusset",
+      "id": "gusset",
       "role": "Applicant",
       "group": "minister",
       "club": "anglers",
+      "office": "governor",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1761,10 +2041,11 @@
     {
       "name": "Marjorie Wren",
       "kind": "cast",
-      "id": "marjorie-wren",
+      "id": "wren",
       "role": "Applicant",
       "group": "minister",
       "club": "kites",
+      "office": "president",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1778,10 +2059,11 @@
     {
       "name": "Osric Tamp",
       "kind": "cast",
-      "id": "osric-tamp",
+      "id": "tamp",
       "role": "Applicant",
       "group": "minister",
       "club": "hedges",
+      "office": "president",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1795,10 +2077,11 @@
     {
       "name": "Florence Nibley",
       "kind": "cast",
-      "id": "florence-nibley",
+      "id": "nibley",
       "role": "Applicant",
       "group": "minister",
       "club": "anglers",
+      "office": "president",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1812,10 +2095,47 @@
     {
       "name": "Prudence Plumb",
       "kind": "cast",
-      "id": "prudence-plumb",
+      "id": "plumb",
       "role": "Councillor",
       "group": "rival",
       "office": "mayor",
+      "note": "D14: to be renamed by the sensitivity editor",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Cyril Dunnock",
+      "kind": "cast",
+      "id": "dunnock",
+      "role": "door knockers",
+      "group": "rival",
+      "office": "mayor",
+      "note": "proposed in office-style.md 2",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Philippa Tansy",
+      "kind": "cast",
+      "id": "tansy",
+      "role": "crosswords",
+      "group": "rival",
+      "office": "mayor",
+      "note": "proposed in office-style.md 2",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1829,10 +2149,47 @@
     {
       "name": "Barnaby Waft",
       "kind": "cast",
-      "id": "barnaby-waft",
+      "id": "waft",
       "role": "Keeper of the Ceremonial Spoon",
       "group": "rival",
       "office": "governor",
+      "note": "his role line is 30 characters, over the 28 of 2.7: the sensitivity or comedy editor shortens it (check.ts reports it)",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Hortensia Mallowby",
+      "kind": "cast",
+      "id": "mallowby",
+      "role": "the accordion",
+      "group": "rival",
+      "office": "governor",
+      "note": "proposed in office-style.md 2",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Fergus Applegarth",
+      "kind": "cast",
+      "id": "applegarth",
+      "role": "sundials",
+      "group": "rival",
+      "office": "governor",
+      "note": "proposed in office-style.md 2",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1846,10 +2203,11 @@
     {
       "name": "Ignatius Crumb",
       "kind": "cast",
-      "id": "ignatius-crumb",
+      "id": "crumb",
       "role": "Professor",
       "group": "rival",
       "office": "president",
+      "note": "D14: to be renamed by the sensitivity editor",
       "check": {
         "politicians": null,
         "notorious": null,
@@ -1863,10 +2221,190 @@
     {
       "name": "Ottoline Strop",
       "kind": "cast",
-      "id": "ottoline-strop",
+      "id": "strop",
       "role": "Grand Goose (Second Class)",
       "group": "rival",
       "office": "president",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Wilhelmina Pennyroyal",
+      "kind": "cast",
+      "id": "pennyroyal",
+      "role": "handbells",
+      "group": "rival",
+      "office": "president",
+      "note": "proposed in office-style.md 2",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Thaddeus Mulch",
+      "kind": "cast",
+      "id": "mulch",
+      "role": "his compost heap",
+      "group": "rival",
+      "office": "president",
+      "note": "proposed in office-style.md 2",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Araminta Dovecote",
+      "kind": "cast",
+      "id": "dovecote",
+      "role": "pigeons",
+      "group": "rival",
+      "office": "president",
+      "note": "proposed in office-style.md 2",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Septimus Brindle",
+      "kind": "cast",
+      "id": "brindle",
+      "role": "model lighthouses",
+      "group": "rival",
+      "office": "president",
+      "note": "proposed in office-style.md 2",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Honoria Lathe",
+      "kind": "cast",
+      "id": "lathe",
+      "role": "tapestry",
+      "group": "rival",
+      "office": "president",
+      "note": "proposed in office-style.md 2",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Quentin Furlong",
+      "kind": "cast",
+      "id": "furlong",
+      "role": "the harmonica",
+      "group": "rival",
+      "office": "president",
+      "note": "proposed in office-style.md 2",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Clementine Mopley",
+      "kind": "cast",
+      "id": "mopley",
+      "role": "very large jigsaws",
+      "group": "rival",
+      "office": "president",
+      "note": "proposed in office-style.md 2",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Rufus Pantry",
+      "kind": "cast",
+      "id": "pantry",
+      "role": "barometers",
+      "group": "rival",
+      "office": "president",
+      "note": "proposed in office-style.md 2",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Gertrude Ambling",
+      "kind": "cast",
+      "id": "ambling",
+      "role": "her walking boots",
+      "group": "rival",
+      "office": "president",
+      "note": "proposed in office-style.md 2",
+      "check": {
+        "politicians": null,
+        "notorious": null,
+        "fiction": null,
+        "children": null,
+        "date": null,
+        "checker": null,
+        "cleared": []
+      }
+    },
+    {
+      "name": "Bartholomew Knapp",
+      "kind": "cast",
+      "id": "knapp",
+      "role": "yodelling",
+      "group": "rival",
+      "office": "president",
+      "note": "proposed in office-style.md 2",
       "check": {
         "politicians": null,
         "notorious": null,

@@ -116,8 +116,13 @@ export const id = z
   .string()
   .max(48, 'an id is at most 48 characters')
   .regex(ID_RE, 'an id is lower-case words joined by hyphens, like "may-pumpkin-freedom"');
-/** A cast id from names.json (kind "cast"). */
+/** A cast id from names.json (kind "cast"): the ids of docs/design/office-style.md section 2. */
 export const castId = id;
+/** An id that may also be a runtime id of src/config/schema.decree.ts (a ministry "town_clock"). */
+export const refId = z
+  .string()
+  .max(48)
+  .regex(/^[a-z][a-z0-9]*([_-][a-z0-9]+)*$/, 'an id is lower-case words joined by hyphens or underscores');
 const text = z.string().min(1, 'the text is empty');
 /** Every paper-like text is at most 90 characters (2.7); its box decides the rest (fit.ts). */
 export const PAPER_MAX = 90;
@@ -167,6 +172,22 @@ export const ComicPaperSchema = z.strictObject({
   portable: z.boolean().optional(),
   /** The chain (chains.json id) this paper sets up: its sign and refuse each bring a follow-up. */
   setsUp: id.optional(),
+  /**
+   * A committee's "↩ bigger study" (2.2): the paper that comes back after a sign, asking for a study
+   * of the study. Required on a committee that sets up no chain (plan.json, office-style.md 8).
+   */
+  biggerStudy: paperText.optional(),
+  /**
+   * A basket's "↩ favour" (2.2, 7.6 A): what the lobbyist asks after the basket was accepted, and
+   * the two clippings that end it. Its club (the one that pays) is the basket's `club`, its visitor
+   * the basket's. Required on a basket that sets up no chain.
+   */
+  favour: z
+    .strictObject({
+      text: paperText,
+      clippings: z.strictObject({ sign: paperText, refuse: paperText }),
+    })
+    .optional(),
   /** Optional note for the editors; never shown. */
   note: z.string().optional(),
 });
@@ -234,8 +255,8 @@ export type Chain = z.infer<typeof ChainSchema>;
 export const FormNoteSchema = z.strictObject({
   id,
   form: z.enum(['requisition', 'ribbon', 'any']),
-  /** A ministry id from names.json when the note only makes sense for one. */
-  ministry: id.optional(),
+  /** A ministry or Grand Project id from names.json ("potholes-office") when the note only makes sense for one. */
+  ministry: refId.optional(),
   office: deck.optional(),
   text: text.max(PAPER_MAX),
   note: z.string().optional(),
@@ -260,12 +281,12 @@ export const GrievanceSchema = z.strictObject({
   /** The club's spokesperson (7.3). */
   visitor: castId,
   text: paperText,
-  /** The sign label ("Return the scissors"). */
-  signLabel: text,
+  /** The sign label ("Return the scissors"); at most 28 characters (the runtime deck's cap). */
+  signLabel: text.max(28, 'a button label is at most 28 characters'),
   /** The refuse label ("Keep the scissors"; never "Let them…"). */
-  refuseLabel: text,
-  /** Hangs on the Ledger row ("GIVE THEM BACK"). */
-  picket: text,
+  refuseLabel: text.max(28, 'a button label is at most 28 characters'),
+  /** Hangs on the Ledger row ("GIVE THEM BACK"); at most 24 characters. */
+  picket: text.max(24, 'a picket slogan is at most 24 characters'),
   ...tags,
   note: z.string().optional(),
 });
@@ -284,7 +305,7 @@ export const FrontPageSchema = z.strictObject({
 export type FrontPage = z.infer<typeof FrontPageSchema>;
 
 /** A sign label for a scandal ("Apologise on the steps"); the refuse label is always "Say nothing". */
-export const ApologySchema = z.strictObject({ id, text, note: z.string().optional() });
+export const ApologySchema = z.strictObject({ id, text: text.max(28, 'a button label is at most 28 characters'), note: z.string().optional() });
 export type Apology = z.infer<typeof ApologySchema>;
 
 /** A run-up (campaign) paper (2.10, 7.5 paper 12): a public appearance with exactly one {district}. */
@@ -330,7 +351,7 @@ export type Frame = z.infer<typeof FrameSchema>;
 export const PhraseListSchema = z.strictObject({
   id,
   title: z.string().min(1),
-  phrases: z.array(text).min(1),
+  phrases: z.array(text.max(60, 'a phrase is at most 60 characters')).min(1),
   note: z.string().optional(),
 });
 export type PhraseList = z.infer<typeof PhraseListSchema>;
@@ -354,20 +375,20 @@ export const RivalSchema = z.strictObject({
 export type Rival = z.infer<typeof RivalSchema>;
 
 /** A plain line with an id (returning-visitor, away, captions). */
-export const LineSchema = z.strictObject({ id, text, note: z.string().optional() });
+export const LineSchema = z.strictObject({ id, text: text.max(120, 'a line is at most 120 characters'), note: z.string().optional() });
 export type Line = z.infer<typeof LineSchema>;
 
 /** An election-night line (30): who says it and when. */
 export const NightLineSchema = z.strictObject({
   id,
   moment: z.enum(['open', 'held', 'lost', 'majority', 'defeat', 'any']),
-  text,
+  text: paperText,
   note: z.string().optional(),
 });
 export type NightLine = z.infer<typeof NightLineSchema>;
 
 /** A monument of the vanity shelf (5.8, 24): its name and one line. */
-export const MonumentSchema = z.strictObject({ id, name: text, text, note: z.string().optional() });
+export const MonumentSchema = z.strictObject({ id, name: text.max(40, 'a monument name is at most 40 characters'), text: paperText, note: z.string().optional() });
 export type Monument = z.infer<typeof MonumentSchema>;
 
 /** A Grand Project's line (2.2: the five names are fixed; the writer writes the line). */
@@ -508,8 +529,10 @@ export const EMPTY_CHECK: NameCheck = {
 export const NameEntrySchema = z.strictObject({
   name: z.string().min(1),
   kind: z.enum(NAME_KINDS),
-  /** Cast members only: the id papers use as `visitor`. */
-  id: id.optional(),
+  /** Cast members: the id papers use as `visitor`; ministries, Grand Projects, twists: the id notes and plan.json use. */
+  id: refId.optional(),
+  /** The runtime id of src/config/schema.decree.ts where it differs (a ministry "town_clock"), for build-office.py. */
+  ref: refId.optional(),
   /** Cast: the role line under the name on a paper (≤ 28 characters, 2.7). */
   role: z.string().optional(),
   /** Cast: player | advisor | spokesperson | lobbyist | minister | rival | other. */

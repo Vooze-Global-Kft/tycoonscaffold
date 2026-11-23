@@ -98,7 +98,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
 }
 
 const styles = StyleSheet.create({
-  band: { backgroundColor: PH.walnut, opacity: 0.6 },
+  band: { backgroundColor: PH.band },
   paper: { backgroundColor: PH.paper, borderRadius: 4, overflow: 'hidden', justifyContent: 'center' },
   title: { fontWeight: '700' },
   chips: { color: PH.ink, marginTop: 4 },
@@ -106,6 +106,6 @@ const styles = StyleSheet.create({
   proposal: { color: PH.ink, marginTop: 8, lineHeight: 24 },
   empty: { color: PH.slate, textAlign: 'center' },
   buttons: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16 },
-  button: { minWidth: 96, minHeight: 44, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  button: { minWidth: 96, height: '86%', borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   buttonText: { color: PH.paper, fontSize: 15, fontWeight: '700' },
 });

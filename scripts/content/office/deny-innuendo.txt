@@ -1,0 +1,9 @@
+# deny-innuendo.txt: 7.4's "no innuendo" rule, as the comedy editor's plan.json (rules.innuendo)
+# states it: no vegetable, fruit or object is ever soft, hard, long, big or "at length", and none of
+# the size words below appears in any text at all. Always fails.
+# Matching: the syntax of deny-phrases.txt (whole words, any case; several entries a line split at
+# commas). Fixed names that contain a word pass through allow.json ("The Very Long Bridge",
+# "Giant Vegetable Society", "Long Lunch", "a firmer tone").
+soft, softer, softest, softly, hard, harder, hardest, long, longer, longest, big, bigger, biggest
+at length, length, girth, thick, stiff, firm, swollen, plump, juicy, size, enormous, huge, massive
+whopper, melons, nuts, balls, member, organ, tool

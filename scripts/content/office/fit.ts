@@ -10,13 +10,17 @@
  * until calibrated once on a phone"). Wrapping is a greedy word wrap that may break after a hyphen,
  * as a Skia paragraph does; a single word wider than the box does not fit.
  *
- * The box sizes are the 4.1 / 4.2 numbers. src/ui/decree/paperMetrics.ts (P6) will own them; when it
- * exists, these constants should be read from it instead (it did not exist when this was written).
+ * The box sizes are the 4.1 / 4.2 numbers, read from the desk's own metrics where they exist
+ * (src/ui/decree/paperMetrics.ts and layout.ts, owned by P6: font sizes, the photo, the paper's inner
+ * width, the chip width, the proposal's lines, the bottom-row buttons); the rest (the 304 pt title
+ * row, sheet widths, the Ledger, the map) are 4.1 / 4.2's numbers or this file's stated assumptions.
  * Pure: no file access.
  */
+import { AT_13, CHIP_MAX_W, FONT, PHOTO } from '../../../src/ui/decree/paperMetrics';
+import { BUTTON_W, FONT_SCALE_MAX, PAPER_INNER_W } from '../../../src/ui/decree/layout';
 
 /** The font scale every box is sized for (4.1: s = min(fontScale, 1.3)). */
-export const FONT_SCALE = 1.3;
+export const FONT_SCALE = FONT_SCALE_MAX;
 /** The narrowest phone width the desk is laid out for. */
 export const SCREEN_WIDTH = 375;
 /** Safety margin on every measured width until calibrated on a phone (4.2). */
@@ -75,35 +79,41 @@ export interface Box {
 
 const s = FONT_SCALE;
 /** Inner width of the paper (4.2: width 343, inner 315). */
-export const PAPER_INNER = 315;
+export const PAPER_INNER = PAPER_INNER_W;
 /** Inner width of a sheet at 375 (16 pt gutters, 16 pt padding). */
 export const SHEET_INNER = 311;
 /** Header: name and role sit right of the 44 pt oval photo with an 8 pt gap (4.2). */
-export const HEADER_TEXT = PAPER_INNER - 44 - 8;
+export const HEADER_TEXT = PAPER_INNER - PHOTO.w - 8;
 /** The SIGN / STUDY title row (4.2: "IF SIGNED ↑ · Poll 3 → 4 of 5 ↩" ≤ 304 pt). */
 export const TITLE_ROW = 304;
 /** What the title row holds besides a label, at its widest. */
 export const TITLE_ROW_TAIL = ' ↑ · Poll 3 → 4 of 5 ↩';
+/** What the title row of an event's strip holds besides its label (no ↩: settlements and scandals schedule nothing). */
+export const EVENT_TITLE_TAIL = ' ↑ · Poll 3 → 4 of 5';
 
 /** The boxes of 4.1 and 4.2, and of the sheets that show written lines. */
 export const BOXES = {
   /** 4.2: proposal, 4 lines at 16 × s (line 26) in 315. */
-  proposal: { font: 16 * s, width: PAPER_INNER, lines: 4, what: 'the proposal: 4 lines at 20.8 pt in 315 pt (4.2)' },
+  proposal: { font: FONT.proposal * s, width: PAPER_INNER, lines: AT_13.proposalLines, what: 'the proposal: 4 lines at 20.8 pt in 315 pt (4.2)' },
   /** A Clerk's note on a form: the form's own line takes the first two lines of the proposal box. */
-  formNote: { font: 16 * s, width: PAPER_INNER, lines: 2, what: "a Clerk's note: the 2 proposal lines left under the form line" },
+  formNote: { font: FONT.proposal * s, width: PAPER_INNER, lines: 2, what: "a Clerk's note: the 2 proposal lines left under the form line" },
   /** 4.2 header: name at 15 × s. */
-  name: { font: 15 * s, width: HEADER_TEXT, lines: 1, maxChars: 24, what: 'a visitor name: 1 line at 19.5 pt in 263 pt, at most 24 characters (2.7)' },
+  name: { font: FONT.name * s, width: HEADER_TEXT, lines: 1, maxChars: 24, what: 'a visitor name: 1 line at 19.5 pt in 263 pt, at most 24 characters (2.7)' },
   /** 4.2 header: role (and badge) at 13 × s. */
-  role: { font: 13 * s, width: HEADER_TEXT, lines: 1, maxChars: 28, what: 'a role line: 1 line at 16.9 pt in 263 pt, at most 28 characters (2.7)' },
+  role: { font: FONT.role * s, width: HEADER_TEXT, lines: 1, maxChars: 28, what: 'a role line: 1 line at 16.9 pt in 263 pt, at most 28 characters (2.7)' },
   /** 4.2: a chip ≤ 151 pt at 15 × s; a wide chip fills a row. */
-  chip: { font: 15 * s, width: 151, lines: 1, what: 'a chip: 151 pt at 19.5 pt (4.2)' },
-  chipWide: { font: 15 * s, width: PAPER_INNER, lines: 1, what: 'a wide chip: one row of 315 pt (4.2)' },
+  chip: { font: FONT.chip * s, width: CHIP_MAX_W, lines: 1, what: 'a chip: 151 pt at 19.5 pt (4.2)' },
+  chipWide: { font: FONT.chip * s, width: PAPER_INNER, lines: 1, what: 'a wide chip: one row of 315 pt (4.2)' },
   /** 4.2: the strip title row at 12 × s. */
-  stripTitle: { font: 12 * s, width: TITLE_ROW, lines: 1, what: 'the strip title row: 304 pt at 15.6 pt (4.2)' },
-  /** A button label ("Return the scissors") in the title row, leaving room for "↑ · Poll 3 → 4 of 5 ↩". */
-  stripLabel: { font: 12 * s, width: TITLE_ROW - measure(TITLE_ROW_TAIL, 12 * s), lines: 1, what: 'a button label: the title row less "↑ · Poll 3 → 4 of 5 ↩" (4.2)' },
+  stripTitle: { font: FONT.title * s, width: TITLE_ROW, lines: 1, what: 'the strip title row: 304 pt at 15.6 pt (4.2)' },
+  /**
+   * A button label of a boycott or scandal ("Return the scissors") in place of "IF SIGNED" in the
+   * title row, leaving room for "↑ · Poll 3 → 4 of 5" (an event schedules no ↩). An assumption:
+   * 4.2 sizes the title row for "IF SIGNED"; P6's paperMetrics.ts decides.
+   */
+  stripLabel: { font: FONT.title * s, width: TITLE_ROW - measure(EVENT_TITLE_TAIL, FONT.title * s), lines: 1, what: 'a button label: the title row less "↑ · Poll 3 → 4 of 5" (4.2), about 161 pt at 15.6 pt' },
   /** 4.2: the note row at 12 × s. */
-  noteRow: { font: 12 * s, width: PAPER_INNER, lines: 1, what: 'the note row: 1 line at 15.6 pt in 315 pt (4.2)' },
+  noteRow: { font: FONT.note * s, width: PAPER_INNER, lines: 1, what: 'the note row: 1 line at 15.6 pt in 315 pt (4.2)' },
   /** 4.1 / 2.16: the goal line, at most 34 characters at 12 × s. */
   goalLine: { font: 12 * s, width: SCREEN_WIDTH - 32, lines: 1, maxChars: 34, what: 'the goal line: at most 34 characters (2.16)' },
   /** 4.1: the term ribbon's long form, only where it fits (about 400 pt). */
@@ -111,7 +121,7 @@ export const BOXES = {
   /** 4.1: the term ribbon's short form at 375. */
   ribbonShort: { font: 11 * s, width: SCREEN_WIDTH - 20, lines: 1, what: "the term ribbon's short form: 355 pt at 14.3 pt (4.1)" },
   /** 4.1: a bottom-row button label (64 pt; the in-tray 72). */
-  bottomRow: { font: 11 * s, width: 64, lines: 1, what: 'a bottom-row label: 64 pt at 14.3 pt (4.1)' },
+  bottomRow: { font: FONT.label * s, width: BUTTON_W, lines: 1, what: 'a bottom-row label: 64 pt at 14.3 pt (4.1)' },
   /** A picket slogan on its Ledger row. */
   picket: { font: 11 * s, width: 200, lines: 1, what: 'a picket slogan: 200 pt at 14.3 pt on its Ledger row' },
   /** A ministry or Grand Project name in the Ledger. */

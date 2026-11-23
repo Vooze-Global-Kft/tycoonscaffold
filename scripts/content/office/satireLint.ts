@@ -255,6 +255,7 @@ export function loadLintLists(dir: string = __dirname): LintLists {
     tier3: [
       ...patterns('deny-subjects.txt'), ...patterns('deny-places.txt'), ...patterns('deny-movements.txt'),
       ...patterns('deny-tone.txt'), ...patterns('deny-brands.txt'), ...patterns('deny-games.txt'),
+      ...patterns('deny-innuendo.txt'),
     ],
     store: patterns('deny-store.txt'),
     people: readNames(p('deny-people.txt'), 'deny-people.txt'),
@@ -393,6 +394,7 @@ const LIST_WHAT: Record<string, string> = {
   'deny-brands.txt': 'a real brand or news brand',
   'deny-games.txt': "another game's name or line",
   'deny-store.txt': 'a word kept out of the store page and strings (1.2)',
+  'deny-innuendo.txt': 'a size word (7.4: no innuendo; plan.json rules.innuendo)',
   'deny-people.txt': 'a real person',
   'deny-fiction.txt': 'a famous fictional politician, official or place',
 };
@@ -570,9 +572,6 @@ const SUBJECT_WORDS: Partial<Record<string, [RegExp, string]>> = {
   harbours: [/\b(arriv\w*|keep(?:ing)? (?:them |people |anyone )?out|turn(?:ed|ing)? away|turn(?:ed)? back|send (?:them )?back|newcomers?|incomers?|landing party|boats? of|who comes in|who gets in|let in|letting in)\b/i, 'harbour papers are never about arriving or keeping people out (7.8)'],
   hedges: [/\b(wall|walls|barrier\w*|keep(?:ing)? (?:them |people |anyone |others )?out|fence (?:them|people)|shut out|on the other side|outsiders?)\b/i, 'hedges carry no barrier jokes (7.8)'],
 };
-const VEG = /\b(pumpkins?|marrows?|cucumbers?|carrots?|courgettes?|aubergines?|bananas?|leeks?|parsnips?|gourds?|squash(?:es)?|melons?|fruit|fruits|vegetables?|veg|onions?|potato(?:es)?|turnips?|cabbages?|beans?|peas?|radish(?:es)?|plums?|grapes?|pears?|apples?|aubergine|swedes?|beetroots?|sprouts?|tomato(?:es)?|peppers?|corn|cobs?)\b/i;
-const INNUENDO = /\b(soft|softer|softest|hard|harder|hardest|long|longer|longest|big|bigger|biggest|at length)\b/i;
-
 interface PaperLike {
   source: string;
   id: string;
@@ -645,18 +644,10 @@ function lintShape(ctx: Ctx, p: PaperLike) {
     const hit = officeWord(ctx, p.text);
     if (hit) add(ctx, { ...base, field: 'text', rule: 'rule6', severity: 'error', match: hit, reason: `a portable paper is also drawn in higher offices, so it has no office word ("${hit}"): reword it, or make it not portable` });
   }
-  // 7.4: no innuendo (lint catches the five named words beside a vegetable or fruit only).
-  const veg = VEG.exec(p.text);
-  const inn = INNUENDO.exec(p.text);
-  if (veg && inn && nearby(p.text, veg.index, inn.index, 4)) add(ctx, { ...base, field: 'text', rule: 'rule6', severity: 'error', match: `${veg[0]} … ${inn[0]}`, reason: 'no vegetable, fruit or object is ever soft, hard, long, big or "at length" (7.4): pick another word' });
 }
 
-function nearby(text: string, a: number, b: number, words: number): boolean {
-  const [x, y] = a < b ? [a, b] : [b, a];
-  return text.slice(x, y).split(/\s+/).length <= words + 1;
-}
-
-const OFFICE_GENERIC = /\b(mayors?|mayoral|mayoress|governors?|gubernatorial|presidents?|presidential|town|towns|ward|wards|province|provinces|provincial|county|counties|republic|national|nation|capital)\b/i;
+/** Office words a portable paper never holds (plan.json rules.portable.officeWords, and their kin). */
+const OFFICE_GENERIC = /\b(mayors?|mayoral|mayoress|governors?|gubernatorial|presidents?|presidential|acting|town hall|council|councils|the town|ward|wards|province|provinces|provincial|county|counties|republic|national|nation|capital|pruella|dimity|mildred|fenn)\b/i;
 function officeWord(ctx: Ctx, text: string): string | undefined {
   const g = OFFICE_GENERIC.exec(text);
   if (g) return g[0];
@@ -708,8 +699,20 @@ function collect(ctx: Ctx, units: ContentUnit[]): { items: Item[]; papers: Paper
       if (r.setsUp) {
         if (!setUps.has(r.setsUp)) setUps.set(r.setsUp, []);
         setUps.get(r.setsUp)!.push({ source: src, id: r.id, archetype: r.archetype, deck });
-      } else if (r.archetype === 'basket' || r.archetype === 'committee') {
-        add(ctx, { source: src, id: r.id, field: 'setsUp', rule: 'rule6', severity: 'warn', reason: `the archetype table gives a ${r.archetype} a ↩ (${r.archetype === 'basket' ? 'the favour' : 'a bigger study'}), but this paper sets up no chain: name one in setsUp, or the editor confirms the rules supply it` });
+      }
+      if (r.biggerStudy !== undefined) {
+        item(`${r.id}.study`, 'biggerStudy', r.biggerStudy, 'paper', 'proposal', deck);
+        if (r.archetype !== 'committee') add(ctx, { source: src, id: r.id, field: 'biggerStudy', rule: 'rule6', severity: 'error', reason: `only a committee has a bigger study (2.2); this is a ${r.archetype}` });
+      } else if (r.archetype === 'committee' && !r.setsUp) {
+        add(ctx, { source: src, id: r.id, field: 'biggerStudy', rule: 'rule6', severity: 'error', reason: 'a committee comes back after a sign with a bigger study (2.2 "↩ bigger study"): write it in biggerStudy' });
+      }
+      if (r.favour !== undefined) {
+        item(`${r.id}.favour`, 'favour.text', r.favour.text, 'paper', 'proposal', deck);
+        item(`${r.id}.favour.sign`, 'favour.clippings.sign', r.favour.clippings.sign, 'clipping', 'clipping', deck);
+        item(`${r.id}.favour.refuse`, 'favour.clippings.refuse', r.favour.clippings.refuse, 'clipping', 'clipping', deck);
+        if (r.archetype !== 'basket') add(ctx, { source: src, id: r.id, field: 'favour', rule: 'rule6', severity: 'error', reason: `only a basket has a favour (2.2); this is a ${r.archetype}` });
+      } else if (r.archetype === 'basket' && !r.setsUp) {
+        add(ctx, { source: src, id: r.id, field: 'favour', rule: 'rule6', severity: 'error', reason: 'a basket comes back after a sign with its favour (2.2 "↩ favour", 7.6 A): write it in favour, with its two clippings' });
       }
       if (r.portable && deck === 'president') add(ctx, { source: src, id: r.id, field: 'portable', rule: 'rule6', severity: 'warn', reason: 'a president paper has no higher office to be carried to; "portable" does nothing here' });
     }
@@ -871,7 +874,7 @@ function lintDecks(ctx: Ctx, decks: DeckStats, items: Item[]) {
     const rations: [RegExp, number, string][] = [
       [/\b(goose|geese|gosling)\b/i, Math.max(1, Math.floor(n / 40)), 'the goose at most 1 in 40 papers'],
       [/\bbiscuits?\b/i, Math.max(1, Math.floor(n / 60)), 'biscuits at most 1 in 60 papers'],
-      [/\bstatues?\b/i, 1, 'one statue per office deck'],
+      [/\b(statues?|busts?)\b/i, 1, 'one statue (or bust) per office deck'],
     ];
     for (const [re, max, what] of rations) {
       const k = count(re);
