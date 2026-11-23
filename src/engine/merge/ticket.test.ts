@@ -103,9 +103,22 @@ describe('the Parade (2.7, 2.4 events 6 and 7)', () => {
     expect(ev.map((e) => e.type)).toEqual(['ticketDrawn', 'paradeArrive', 'adGranted']);
     expect(R.canWatchAd(cfg, called, 'callDragon')).toBe(false);
     expect(R.grantAd(cfg, called, 'callDragon')).toBe(called);
-    // No empty counter: refused (the button would promise a dragon that cannot come now).
-    const full = mergeState(cfg, { clock: 100, chains: [{ c: 0, gear: 3, best: 4 }], goods: [], counters: [[[0, 4]], [[0, 3]]] });
-    expect(R.canWatchAd(cfg, full, 'callDragon')).toBe(false);
+    // Decision M46: with no empty counter the ad still delivers: the Parade is due from this moment and
+    // takes the next counter that frees; it is not offered again while one is due.
+    const full = mergeState(cfg, { clock: 100, chains: [{ c: 0, gear: 3, best: 4 }, { c: 1, best: 3 }], goods: [], counters: [[[0, 4]], [[0, 3]]] });
+    expect(R.paradeDue(full.merge, 100)).toBe(false);
+    expect(R.canWatchAd(cfg, full, 'callDragon')).toBe(true);
+    const due = R.grantAd(cfg, full, 'callDragon');
+    expect(due).not.toBe(full);
+    expect(due.merge.counters.some((ct) => ct.ticket?.gold)).toBe(false);
+    expect(R.paradeDue(due.merge, 100)).toBe(true);
+    expect(due.merge.ads.callDragon).toBe(100 + cfg.merge.ads.callDragonCooldown);
+    expect(R.canWatchAd(cfg, due, 'callDragon')).toBe(false);
+    // The next counter that frees seats it: send one ticket off and let its refill come due.
+    const freed = R.notTonight(cfg, due, 0);
+    expect(freed).not.toBe(due);
+    const later = R.advanceMerge(cfg, freed, cfg.merge.tickets.refillDelay + 1, 0);
+    expect(later.merge.counters.some((ct) => ct.ticket?.gold)).toBe(true);
   });
 });
 

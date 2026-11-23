@@ -64,4 +64,6 @@ export const mergeEngineMode: EngineMode = {
   reportAlone: R.awayReportAlone,
   // Decision M8: the away report's ad adds merge.ads.awayBonus (+50 %), not a double.
   offlineAdMultiplier: (cfg) => 1 + (R.isMerge(cfg) ? cfg.merge.ads.awayBonus : 0.5),
+  // Decision M19: the away payout with the ad is rounded by the one rule, so the report's figure is the figure paid.
+  roundPayout: (cfg, amount) => (R.isMerge(cfg) ? R.roundCoins(cfg, amount) : amount),
 };

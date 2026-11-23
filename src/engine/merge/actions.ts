@@ -18,9 +18,8 @@
  */
 import { freeCells, isGood, placeGood, roomFor } from './board';
 import { noteMade } from './drop';
-import { paradeOut, seatTicket } from './events';
+import { paradeDue, paradeOut, seatTicket } from './events';
 import { checkLanterns, currentMods, settleScript } from './lanterns';
-import { drawParade } from './draw';
 import { baseTier, EPS, MAX_CASH, maxPopAt, mergeParams, minderLevelBlock, restartParade, saleInterval, streamValue, value } from './params';
 import { CHAINS, TIERS, type CoinSource, type Good, type MergeAdKind, type MergeConfig, type MergeEvent, type MergeGame, type MergeState } from './types';
 
@@ -298,16 +297,11 @@ function dragonCounter(g: MergeGame): number {
   return g.merge.counters.findIndex((ct) => !ct.ticket && (ct.refillAt !== null || ct.blockedAt !== null));
 }
 
-/** Whether the Parade can be drawn for counter j now (`drawParade` finds a line inside its bounds). */
-function paradeDrawable(cfg: MergeConfig, g: MergeGame, j: number): boolean {
-  return !!drawParade(cfg, g, j).ticket;
-}
-
 /**
  * Whether the rewarded ad `kind` can be offered now: its cooldown on the play clock (M10) is over,
  * and its reward would do what its button says: "Fill one line" needs a ticket with 2 or more
  * unfilled lines (at `counter` when given); "Gear rush" an open gear and a free cell; "Call the
- * dragon" no Parade out, an empty counter to seat it and a Parade that can be drawn (M14).
+ * dragon" no Parade out or already due, and the opening script over (M14, M46).
  */
 export function canWatchAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, counter?: number): boolean {
   const m = g.merge;
@@ -317,11 +311,10 @@ export function canWatchAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, co
       return fillLineCounter(g, counter) >= 0;
     case 'gearRush':
       return m.chains.some((ch) => ch.open) && freeCells(m).length > 0;
-    case 'callDragon': {
-      if (paradeOut(m)) return false;
-      const j = dragonCounter(g);
-      return j >= 0 && paradeDrawable(cfg, g, j);
-    }
+    case 'callDragon':
+      // Decision M46: the reward is "the Parade is due from this moment", so it can always be given:
+      // offered unless a Parade is out or already due, or the opening script still holds the counters.
+      return m.script === 'done' && !paradeOut(m) && !paradeDue(m, clockOf(g));
     default:
       return false;
   }
@@ -333,9 +326,11 @@ export function canWatchAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, co
  * the cheapest unfilled line of `counter`'s ticket (by value; ties the first), never the last, so
  * the ticket still ends with a drag; "Gear rush" drops up to `gearRushGoods` base-tier goods per
  * open gear into free cells now, highest chain first (the loose cap ignored, never beyond F);
- * "Call the dragon" (M14) seats the Parade now at the lowest empty counter (the Parade clock
- * restarts when it is filled or sent off, as after any Parade). Starts the cooldown (play clock,
- * M10). Refused (same object) whenever `canWatchAd` is false.
+ * "Call the dragon" (M14, M46) makes the Parade due from this moment: it is seated at once at the
+ * lowest empty counter when there is one and a Parade fits its bounds now, otherwise it takes the
+ * next counter that frees (the refill draws it, as any due Parade); a player who watched the video
+ * never gets nothing. The Parade clock restarts when it is filled or sent off, as after any
+ * Parade. Starts the cooldown (play clock, M10). Refused (same object) whenever `canWatchAd` is false.
  */
 export function grantAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, counter?: number, events?: MergeEvent[]): MergeGame {
   if (!canWatchAd(cfg, g, kind, counter)) return g;
@@ -371,8 +366,9 @@ export function grantAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, count
     }
     case 'callDragon': {
       const j = dragonCounter(g);
-      x = seatTicket(cfg, g, j, t, events, true);
-      if (x === g || !x.merge.counters[j].ticket?.gold) return g;
+      const seated = j >= 0 ? seatTicket(cfg, g, j, t, events, true) : g;
+      // M46: no counter to seat it now (or no Parade fits its bounds on this board): due from this moment.
+      x = seated !== g && seated.merge.counters[j]?.ticket?.gold ? seated : withM(g, { ...g.merge, paradeAt: t - g.merge.seasonStartedAt });
       break;
     }
     default:
