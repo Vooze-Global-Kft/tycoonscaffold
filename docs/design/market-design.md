@@ -1,6 +1,6 @@
 # Night Market: final design of the merge game
 
-Status: final, revision 2, the version the team builds. Date: 23 November 2026. Revision 2 answers the builder's and the store reviewer's findings in place; the points decided differently from a reviewer's suggestion are argued in 1.3.
+Status: built and merged on 23 November 2026. This is revision 2 of the design (it answers the builder's and the store reviewer's findings in place; the points decided differently from a reviewer's suggestion are argued in 1.3), followed by section 11, the lead's decisions M1 to M55 taken while the game was prototyped, built, attacked, reviewed and tuned. **Section 11 overrides the body wherever they differ**: read it before relying on a rule or a number above it. The tuned numbers are in `src/config/merge.content.ts` and `games/night-market/game.json`; the guards that hold the pacing are `MERGE_GUARDS` in `scripts/validate.ts`.
 Game folder: `games/night-market` (working name; the store title is "Lantern Row", 7.1). Mode (new): `merge`. Save key: `save:night-market:merge1`.
 
 Conventions:
