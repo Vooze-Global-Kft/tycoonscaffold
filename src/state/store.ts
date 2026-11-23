@@ -875,16 +875,23 @@ export const useGame = create<Store>((set, get) => {
     prestige(choice) {
       const { cfg, game } = get();
       const gained = E.prestigePointsAvailable(cfg, game);
-      if (gained <= 0) return fx.play('ui_denied');
-      update((s) => {
+      // A mode whose reset is not bought with points says itself whether it may happen (merge: the
+      // Festival is filled); every other mode keeps the points gate.
+      const gate = engineFor(cfg)?.canPrestige;
+      const allowed = gate ? safe('engine.canPrestige', () => gate(cfg, game), false) : gained > 0;
+      if (!allowed) return fx.play('ui_denied');
+      const next = update((s) => {
         const now = Date.now();
         const reset = E.prestige(cfg, s, now, choice);
+        // The mode's own gate passed but its rules refused (the same object): nothing happens.
+        if (gate && reset === s) return s;
         // A mode whose reset waits for a later step to start the run (haul: the Jump's condition) refills
         // the run's missions when it starts (rules-6: an "earn" target priced on a run that earns nothing).
         const waits = safe('engine.awaitsRunStart', () => engineFor(cfg)?.awaitsRunStart?.(reset) ?? false, false);
         const fresh = waits ? reset : safe('meta.missionsAfterReset', () => M.missionsAfterReset(cfg, reset, now), reset);
         return safe('meta.refreshDeals', () => M.refreshDeals(cfg, fresh, now), fresh);
       });
+      if (gate && next === game) return fx.play('ui_denied');
       fx.play('prestige');
       analytics.log('prestige', { points: gained, count: game.prestigeCount + 1 });
       set({ tab: 'home' });
@@ -909,6 +916,9 @@ export const useGame = create<Store>((set, get) => {
         // a resume() while the ad was open may have merged more time into it.
         const pending = get().offline;
         if (pending && pending !== offline) amount += pending.earnings - offline.earnings;
+        // A mode that rounds what it shows grants the rounded figure (merge, M19); without the hook the amount is unchanged.
+        const round = engineFor(get().cfg)?.roundPayout;
+        if (round) amount = safe('engine.roundPayout', () => round(get().cfg, amount), amount);
         update((s) => E.grantCash(s, amount));
         set({ offline: null });
         get().save();

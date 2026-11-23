@@ -25,7 +25,13 @@ export type Step =
    * text is the app's own DOM text (React Native web renders it as text). Fails the scene after
    * `timeout` ms (default 30000).
    */
-  | { untilText: RegExp; absent?: boolean; timeout?: number };
+  | { untilText: RegExp; absent?: boolean; timeout?: number }
+  /**
+   * Opens another address of the same preview in the same tab ("" for none, the saved game) and
+   * waits `settle` ms (default 8000): for a state reached across page loads, e.g. a season closed
+   * by the preview's switches, saved, then a second one closed on the next load.
+   */
+  | { goto: string; settle?: number };
 
 export type SizeId = 'ios-6.9' | 'ios-6.5' | 'play-phone';
 
@@ -114,6 +120,12 @@ export interface Scene {
    */
   check?: (text: string) => string | null;
   /**
+   * A test run in the page at the moment of the picture, for state the page text does not show
+   * (e.g. a ticket drawn on a canvas): the body of a function that returns what is wrong, or null,
+   * e.g. "return globalThis.__x ? null : 'no x'". Retaken like `check`, up to `tries` times.
+   */
+  pageCheck?: string;
+  /**
    * Milliseconds after the picture to read the page text again for `check` (default 0: the text
    * at the picture). For a moment whose result shows only a little later, e.g. the freighter's
    * "BACK IN n S" after the launch swipe.
@@ -125,7 +137,7 @@ export interface Scene {
   tries?: number;
   /** The part of the screen the image shows (default: all of it). */
   frame?: (v: View) => BandSpec;
-  /** At most six words. A "\n" is a chosen line break. */
+  /** At most six words (Lantern Row: at most 40 characters). A "\n" is a chosen line break. */
   caption: string;
   /** One short line under the caption (the warm template only; the panel template has none). */
   sub?: string;

@@ -8,6 +8,8 @@
  *                                       about 3 to 6 minutes, and fails on every hard section 8 target
  *                                       any seed misses: Decisions 45 and 62)
  *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
+ *   (a merge game: its bot, scripts/content/merge-bot.ts, on the same five seeds in parallel: every missed
+ *   hard target of Decision M2 an error, every missed aim a warning; market-design.md 8.1 step 6)
  *
  * For every pair of games that both have sounds it also runs the sound similarity check
  * (python3 scripts/audio/compare.py, spec 6.1, Decision 24: fails when a shared key's joint score is
@@ -27,6 +29,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { lintGameConfig } from '../src/config/lint';
+import { acrossSeeds } from '../src/engine/merge/bot';
 import { PORTRAIT_MODES } from '../src/config/artIcons';
 import { GameConfigSchema, type GameConfig } from '../src/config/schema';
 import { args } from './lib/cli';
@@ -112,6 +115,113 @@ function pacing(id: string, hours: number, extra: string[] = [], timeout = 120_0
     return line ? JSON.parse(line) : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * The pacing of a merge game (market-design.md 8.1 step 6, Decision M2): the merge bot
+ * (scripts/content/merge-bot.ts, src/engine/merge/bot.ts) plays every bot of 8.2 on each of
+ * PACING_SEEDS in its own process (12 h with season closes, stopping at 10 seasons, the passive bot 21
+ * days, the adversaries, the determinism check). Every missed hard target of M2 is an error, every
+ * missed aim a warning (until the lead turns the aims into guards, M2), and the across-seed aims
+ * (M3 at the median seed, M25's slowest season 1 / fastest) too. While game.json is still the
+ * skeleton's placeholder (its text says PLACEHOLDER: build-night.py has not written it, and it writes
+ * only after every hard gate passes) a missed hard target is a warning, and a run that stops at a rule
+ * not built yet (NotBuiltError) is a warning naming the rule.
+ */
+type MergeSeed = { seed?: number; rows?: { name: string; kind: string; aim: string; value: unknown; ok: boolean; num?: number | null }[]; summary?: { useful: number[]; season1: number | null; seasons?: { festival: number | null }[] }; notBuilt?: string; error?: string; crashed?: boolean; traces?: ({ kind: string; unbooked: { count: number } } | null)[] };
+/**
+ * The pacing guards of a merge game (docs/design/market-design.md, Decisions M2 and M54): the bands
+ * the lead set once from what the tuned game measures (15 seeds at 2.0 s per action, and the five
+ * seeds validate runs). A row whose name starts with the text is an error outside its band and is
+ * silent inside it, whatever its tuning aim said; a row without a guard stays a tuning aim (a
+ * warning). (A prefix that ends in a number does not match a longer number: "minute 60" is not "minute 600".) A band changes only together with a rule (M2).
+ */
+const MERGE_GUARDS: [string, number | null, number | null][] = [
+  ['1 first ticket paid', null, 15],
+  ['1 gap between paying moments, minutes 0-10: median', null, 30],
+  ['1 gap p90', null, 50],
+  ['1 gap max', null, 75],
+  ['1 purchases in minutes 0-10', 12, null],
+  ['1 longest gap without a paid ticket, minutes 0-5', null, 60],
+  ['M3 useful actions a minute', 16, null],
+  ['M3 longest wait with nothing useful', null, 10],
+  ['2 Tea stall opens', 0.75, 1.75],
+  ['2 Steamer stall opens', 5, 10.5],
+  ['2 Sweets stall opens', 18, 32],
+  ['2 Noodles stall opens', 60, 105],
+  ['3 ticket fill time, hour 1: median', 5, 25],
+  ['3 ticket fill time, hour 1: p90', null, 210],
+  ['3 Parade fill time', null, 4],
+  ['5 board full (F ≤ spare, M50), hours 0-3', null, 0.15],
+  ['5 board full (F ≤ spare, M50), minutes 0-10', null, 0.08],
+  ['5 deadlock', null, 0.03],
+  ['5 Basket sales / goods made', null, 0.05],
+  ['5 goods on the open cells', 0.6, 1],
+  ['6 longest gap without something new, minutes 0-30', null, 10],
+  ['6 longest gap without something new, hours 0-3', null, 22],
+  ['8 tickets / all coins, minutes 0-10', 0.6, null],
+  ['8 tickets / all coins at minute 10 ', 0.55, null],
+  ['8 tickets / all coins at minute 60 ', 0.5, null],
+  ['8 tickets / all coins at minute 180 ', 0.5, null],
+  ['8 minder share at minute 10 ', 0.08, 0.36],
+  ['8 minder share at minute 30 ', 0.18, 0.4],
+  ['8 minder share at minute 60 ', 0.16, 0.38],
+  ['8 minder share at minute 180 ', 0.13, 0.36],
+  ['8 gift coins / coins', null, 0.15],
+  ['8 gift boxes an hour', 5, 12],
+  ['9 1 h away with the ad / 1 h of play at minute 30', 0.25, 0.72],
+  ['9 1 h away with the ad / 1 h of play at minute 60', 0.25, 0.6],
+  ['10 season 1 Festival filled', 95, 190],
+  ['10 season 2 Noodles / season 1 Noodles', null, 0.7],
+  ['10 season 2 Festival / season 1 Festival', 0.75, 1.3],
+];
+
+function mergePacing(id: string, problems: string[], warnings: string[]): void {
+  const placeholder = /PLACEHOLDER/.test(fs.readFileSync(path.join(games.gameDir(id), 'game.json'), 'utf8'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `validate-merge-${id}-`));
+  const q = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`;
+  const bot = path.join(__dirname, 'content', 'merge-bot.ts');
+  // 16 h of play so that ten seasons close (8.1 item 6); at most 3 bot processes at a time on a shared 4-core machine.
+  const cmd = PACING_SEEDS.map((seed) => [process.execPath, require.resolve('tsx/cli'), bot, '--game', id, '--seed', String(seed), '--bot', 'all', '--hours', '16', '--seasons', '10', '--json'].map(q).join(' ') + ` > ${q(path.join(dir, `${seed}.out`))} 2>&1 &\nwhile [ "$(jobs -rp | wc -l)" -ge 3 ]; do wait -n; done`).join('\n');
+  spawnSync('bash', ['-c', `${cmd}\nwait`], { cwd: games.ROOT, encoding: 'utf8', timeout: 600_000, env: { ...process.env, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=2000'].filter(Boolean).join(' ') } });
+  const results: MergeSeed[] = [];
+  for (const seed of PACING_SEEDS) {
+    let r: MergeSeed | null = null;
+    try {
+      const line = fs.readFileSync(path.join(dir, `${seed}.out`), 'utf8').trim().split('\n').pop();
+      r = line ? (JSON.parse(line) as MergeSeed) : null;
+    } catch {
+      r = null;
+    }
+    if (!r) problems.push(`merge pacing, seed ${seed}: the bot did not finish within 10 min (npx tsx scripts/content/merge-bot.ts --seed ${seed} --bot all to see why)`);
+    else if (r.notBuilt) warnings.push(`merge pacing, seed ${seed}: ${r.error}; the section 8 targets are not checked`);
+    else if (r.crashed || !r.rows) problems.push(`merge pacing, seed ${seed}: the bot crashed: ${String(r.error).split('\n').slice(0, 3).join(' ')}`);
+    else {
+      results.push(r);
+      for (const row of r.rows) {
+        if (row.kind === 'report') continue;
+        const guard = row.kind === 'aim' ? MERGE_GUARDS.find(([prefix]) => row.name.startsWith(prefix) && !/^\d/.test(row.name.slice(prefix.length))) : undefined;
+        if (guard && typeof row.num === 'number' && Number.isFinite(row.num)) {
+          const [, lo, hi] = guard;
+          if ((lo !== null && row.num < lo) || (hi !== null && row.num > hi)) {
+            const msg = `merge pacing (guard, M54), seed ${seed}: ${row.name}: ${row.value} (guard ${lo ?? '…'} to ${hi ?? '…'})`;
+            (placeholder ? warnings : problems).push(msg);
+          }
+          continue;
+        }
+        if (row.ok) continue;
+        const msg = `merge pacing (section 8, ${row.kind === 'hard' ? 'hard, M2' : 'aim, M2'}), seed ${seed}: ${row.name}: ${row.value} (aim ${row.aim})`;
+        if (row.kind === 'hard' && !placeholder) problems.push(msg);
+        else warnings.push(row.kind === 'hard' ? `${msg} [hard; a warning only while game.json is the placeholder]` : msg);
+      }
+    }
+  }
+  fs.rmSync(dir, { recursive: true, force: true });
+  if (results.length === PACING_SEEDS.length) {
+    for (const row of acrossSeeds(results.map((r) => ({ seed: r.seed ?? 0, useful: r.summary?.useful ?? [], season1: r.summary?.season1 ?? null, seasons: r.summary?.seasons })))) {
+      if (!row.ok) warnings.push(`merge pacing (section 8, aim, across the seeds): ${row.name}: ${row.value} (aim ${row.aim})`);
+    }
   }
 }
 
@@ -225,7 +335,11 @@ for (const id of ids) {
   const { fxTableFor } = require('./lib/fxCatalog.js');
   const soundKeys = new Set(Object.keys(games.listSounds(id) as Record<string, string>).map((k) => k.replace(/_\d+$/, '')));
   const silent = Object.keys(fxTableFor(g.mode) as Record<string, unknown>).filter((k) => !soundKeys.has(k));
-  if (silent.length) problems.push(`${silent.length} fx event(s) of mode "${g.mode}" have no sound file for this game: ${silent.join(', ')} (games/${id}/assets/sfx/${g.soundPack ? ` or shared/sfx/${g.soundPack}/` : ''})`);
+  // A merge game before its first rendered sound (the skeleton's placeholder, market-design.md Decision M1): a
+  // warning until the sound package puts the first file in games/<id>/assets/sfx/; from then on every missing one is an error.
+  const placeholderSounds = g.mode === 'merge' && soundKeys.size === 0;
+  if (silent.length && placeholderSounds) warnings.push(`placeholder: no sounds yet; the ${silent.length} fx event(s) of mode "merge" are silent until the sound package renders games/${id}/assets/sfx/`);
+  else if (silent.length) problems.push(`${silent.length} fx event(s) of mode "${g.mode}" have no sound file for this game: ${silent.join(', ')} (games/${id}/assets/sfx/${g.soundPack ? ` or shared/sfx/${g.soundPack}/` : ''})`);
     if (!fs.existsSync(path.join(games.gameDir(id), 'icon.png'))) warnings.push('no icon.png (using the shared placeholder)');
   if (g.monetization.ads.forceTestAds) warnings.push('forceTestAds is on: test ads in release builds earn nothing. Paste the AdMob units and turn it off before release');
   if (!release && !g.monetization.iap.revenueCatIosKey) warnings.push('no RevenueCat keys (purchases are simulated)');
@@ -321,6 +435,12 @@ for (const id of ids) {
       const missed = [...results].filter(([, r]) => r?.targets?.some((x) => x.name === name && !x.ok));
       if (missed.length) warnings.push(`pacing (section 8, soft, Decision 64): "${name}" missed on ${missed.length} of ${results.size} seeds (${missed.map(([seed, r]) => `${seed}: ${r?.targets?.find((x) => x.name === name)?.value}`).join('; ')}); section 9.3 "Later"`);
     }
+  }
+  // --- pacing of a merge game: its own bot (market-design.md 8.1 step 6: 12 h with season closes and a
+  // 10-season run, every missed hard target an error). Until the bot exists (Decision M1) validate runs
+  // without one and says so; the numbers package replaces this branch with the bot's run. ---
+  else if (g.mode === 'merge') {
+    if (runSim && problems.length === 0) mergePacing(id, problems, warnings);
   }
   // --- pacing: the same bot as `npm run simulate`, two simulated hours ---
   else if (runSim && problems.length === 0) {

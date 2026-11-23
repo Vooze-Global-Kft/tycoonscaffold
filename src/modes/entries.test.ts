@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * What the sim, classic and haul entries hand the shared code (src/modes/contract.ts). Every reader of
+ * What the sim, classic, haul and merge entries hand the shared code (src/modes/contract.ts). Every reader of
  * these pieces falls back quietly when one is missing (GameIcon draws ❔, the card window stays
  * empty, the tutorial shows no hand), so nothing else would notice a key dropped while editing an
  * entry: Pizza Empire would lose its glove or its portraits on the phone with every check green.
@@ -37,6 +37,10 @@ vi.mock('../ui/sim/home/HomeSim', () => ({ HomeSim: s.named('HomeSim') }));
 vi.mock('./classic/HomeClassic', () => ({ HomeClassic: s.named('HomeClassic') }));
 vi.mock('./classic/ManagersPanel', () => ({ ManagersPanel: s.named('ManagersPanel') }));
 vi.mock('../ui/art/icons', () => ({ registerArtIcons: vi.fn() }));
+// Each merge package's own review screens (their files import Skia): stand-ins, so the test checks
+// that devViews.web.ts merges every package's views, whatever each package lists.
+vi.mock('../ui/merge/art/devViews', () => ({ artDevViews: { 'merge-art': s.named('ArtViewStandIn') } }));
+vi.mock('../ui/merge/play/devViews', () => ({ playDevViews: { 'merge-layout': s.named('PlayViewStandIn') } }));
 // The active game's config pulls the generated asset table (require of sound files): a raw haul game.json stand-in.
 vi.mock('../config/game', async () => {
   const { HAUL_STARTING_CONTENT } = await import('../config/schema.haul');
@@ -53,6 +57,13 @@ vi.mock('../ui/haul/art/Gallery', () => ({ default: s.named('HaulGallery') }));
 vi.mock('../ui/haul/hints', () => ({ haulHints: { ask: () => [], name: 'haulHints' } }));
 vi.mock('./haul/fx', () => ({ listenHaulEvents: vi.fn(), playHaulEvents: vi.fn() }));
 vi.mock('react-native', () => ({ Text: s.named('Text') }));
+// The merge entry's drawn pieces (Skia, react-native).
+vi.mock('../ui/merge/MergeShell', () => ({ MergeShell: s.named('MergeShell') }));
+vi.mock('../ui/merge/overlays/Loading', () => ({ MergeLoading: s.named('MergeLoading') }));
+vi.mock('../ui/merge/FireflyPointer', () => ({ FireflyPointer: s.named('FireflyPointer') }));
+vi.mock('../ui/merge/art/MergeIcon', () => ({ MergeIcon: s.named('MergeIcon') }));
+vi.mock('../ui/merge/hints', () => ({ mergeHints: { ask: () => [], name: 'mergeHints' } }));
+vi.mock('./merge/fx', () => ({ listenMergeEvents: vi.fn(), playMergeEvents: vi.fn() }));
 
 const nameOf = (c: unknown) => (c as { displayName?: string } | undefined)?.displayName;
 const read = (file: string) => fs.readFileSync(path.join(__dirname, file), 'utf8');
@@ -169,6 +180,63 @@ describe('the haul entry (Orbit Haulers)', () => {
     expect(useGame.setState, 'a booted store keeps its game').not.toHaveBeenCalled();
     installMode(sim);
     expect(installedEngine(), 'the sim entry installs no engine').toBeNull();
+  });
+});
+
+describe('the merge entry (Night Market)', () => {
+  it('hands over its own shell, loading screen, rules, firefly pointer, "beast:" icons, hints, sound keys and presets, and no people', async () => {
+    const { default: merge } = await import('./merge');
+    const { mergeEngineMode } = await import('../engine/mergeMode');
+    const { MERGE_SHARED_SOUNDS } = await import('./merge/soundKeys');
+    const { FX } = await import('../services/fx/catalog.merge');
+    for (const key of Object.values(MERGE_SHARED_SOUNDS)) expect(Object.keys(FX), 'every shared key maps to a key of the merge table').toContain(key);
+    const { mergeHints } = await import('../ui/merge/hints');
+    const { listenMergeEvents } = await import('./merge/fx');
+    expect(merge.id).toBe('merge');
+    expect(nameOf(merge.Shell)).toBe('MergeShell');
+    expect(nameOf(merge.Loading)).toBe('MergeLoading');
+    expect(merge.engine).toBe(mergeEngineMode);
+    expect(merge.engine?.id).toBe('merge');
+    expect(merge.engine?.saveTag, 'a save key of its own (market-design.md: save:night-market:merge1)').toBe('merge1');
+    expect(nameOf(merge.parts?.HintPointer)).toBe('FireflyPointer');
+    expect(nameOf(merge.parts?.Icon)).toBe('MergeIcon');
+    expect(merge.parts?.iconPrefixes).toEqual(['beast:', 'art:']);
+    expect(merge.parts?.CharIcon).toBeUndefined();
+    expect(merge.parts?.CardBust).toBeUndefined();
+    expect(merge.artIcons).toBeUndefined();
+    expect(merge.hints).toBe(mergeHints);
+    expect(merge.soundKeys).toBe(MERGE_SHARED_SOUNDS);
+    // Phones (this file's resolution of ./presets): no presets; the web build's are pinned below.
+    expect(merge.presets).toBeUndefined();
+    expect(listenMergeEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it('ships its presets and its review screens on the web only', async () => {
+    expect((await import('./merge/presets')).mergePreset).toBeUndefined();
+    expect(typeof (await import('./merge/presets.web')).mergePreset).toBe('function');
+    expect(read('merge/index.tsx')).toMatch(/import \{ mergePreset \} from '\.\/presets';/);
+    expect(read('merge/presets.ts')).not.toMatch(/from '[^']*(bot|fixtures)[^']*'/);
+    expect((await import('./merge/devViews')).devViews).toBeUndefined();
+    const web = (await import('./merge/devViews.web')).devViews!;
+    expect(Object.fromEntries(Object.entries(web).map(([k, v]) => [k, nameOf(v)]))).toEqual({ loading: 'MergeLoading', 'merge-art': 'ArtViewStandIn', 'merge-layout': 'PlayViewStandIn' });
+    expect(read('merge/index.tsx')).toMatch(/import \{ devViews \} from '\.\/devViews';/);
+  });
+
+  it('installs its engine for merge configs only', async () => {
+    const { default: merge } = await import('./merge');
+    const { default: sim } = await import('./sim');
+    const { installMode } = await import('./contract');
+    const { modeParts } = await import('../ui/modeParts');
+    const { hintSource } = await import('../ui/hints/source');
+    const { engineFor, installedEngine } = await import('../engine/mode');
+    installMode(merge);
+    expect(modeParts()).toBe(merge.parts);
+    expect(hintSource()).toBe(merge.hints);
+    expect(installedEngine()).toBe(merge.engine);
+    expect(engineFor({ mode: 'merge' } as GameConfig)).toBe(merge.engine);
+    expect(engineFor({ mode: 'haul' } as GameConfig), 'a haul config is not the merge engine\'s').toBeNull();
+    installMode(sim);
+    expect(installedEngine()).toBeNull();
   });
 });
 

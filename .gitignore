@@ -49,3 +49,7 @@ src/generated/
 
 # Art sheets rendered by scripts/art (look at them, do not commit them)
 scripts/art/out/
+
+# Python byte code (the audio and content scripts)
+__pycache__/
+*.pyc

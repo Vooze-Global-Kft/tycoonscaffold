@@ -48,8 +48,29 @@ export function releasesOf(id: string): ReleasesFile {
   return fs.existsSync(f) ? (JSON.parse(fs.readFileSync(f, 'utf8')) as ReleasesFile) : {};
 }
 
+/**
+ * A merge game's gift boxes (game.json merge.gift, opaque to the shared schema): earned one every
+ * `every` filled tickets, `slots` slots each; null for every other mode. The merge mode has no
+ * daily reward and draws a cast of cartoon animals in code (no `cast` block).
+ */
+function mergeGift(g: GameConfig): { every: number; slots: number; lanternSlots: { n: number; slots: number } | null } | null {
+  if (g.mode !== 'merge') return null;
+  type Lantern = { n?: unknown; effect?: { type?: unknown; value?: unknown } };
+  const m = (g as unknown as { merge?: { gift?: { every?: unknown; slots?: unknown }; lanterns?: unknown } }).merge ?? {};
+  const gift = m.gift ?? {};
+  // A lantern whose effect raises the slot count (decision M5: lantern 14 gives a fourth slot).
+  const lanterns = (Array.isArray(m.lanterns) ? m.lanterns : []) as Lantern[];
+  const more = lanterns.find((l) => l.effect?.type === 'giftSlots');
+  return {
+    every: Number(gift.every ?? 0),
+    slots: Number(gift.slots ?? 0),
+    lanternSlots: more ? { n: Number(more.n), slots: Number(more.effect?.value) } : null,
+  };
+}
+
 function ratingNotes(g: GameConfig): string {
   const m = g.meta;
+  const gift = mergeGift(g);
   const products = g.monetization.iap.products;
   const ads = g.monetization.ads;
   const sellsRandom = m.chestsForSale;
@@ -76,10 +97,17 @@ function ratingNotes(g: GameConfig): string {
     `| Ads | Yes: Google AdMob, ${adFormats.join(', ')}. Highest ad content rating: ${contentRating} (monetization.ads.maxAdContentRating) |`,
     `| In-app purchases | ${products.length ? `Yes: ${products.length} products (${kinds.join(', ')})` : 'No'} |`,
     `| Premium currency | ${products.some((p) => p.kind === 'gems' || p.kind === 'starterPack') ? `Yes: ${g.strings.gemName}, sold for money${gemPrices ? ' and spent in the game' : ''}; never expires` : 'Not sold'} |`,
-    `| Random items (chests) | ${earnedChests ? `${m.chests.length} kind(s), with odds shown` : 'None'} |`,
-    `| Random items SOLD (money or ${g.strings.gemName}) | ${sellsRandom ? `**Yes** (meta.chestsForSale; switched off in ${m.chestSalesBlockedIn.join(', ')})` : 'No: chests are only earned (timer, missions, rewarded ads)'} |`,
+    ...(gift
+      ? [
+          `| Random items (chests) | 1 kind: gift boxes (a paper bag of ${gift.slots} slots${gift.lanternSlots ? `, ${gift.lanternSlots.slots} after lantern ${gift.lanternSlots.n}` : ''}) with random contents, earned one every ${gift.every} filled tickets (merge.gift.every); the odds and the coin amount are shown before a box is opened |`,
+          `| Random items SOLD (money or any currency) | No: gift boxes are only earned by filling tickets; no purchase and no ad gives one |`,
+        ]
+      : [
+          `| Random items (chests) | ${earnedChests ? `${m.chests.length} kind(s), with odds shown` : 'None'} |`,
+          `| Random items SOLD (money or ${g.strings.gemName}) | ${sellsRandom ? `**Yes** (meta.chestsForSale; switched off in ${m.chestSalesBlockedIn.join(', ')})` : 'No: chests are only earned (timer, missions, rewarded ads)'} |`,
+        ]),
     `| Time-limited offers | ${m.deals.some((d) => d.durationHours) ? 'Yes, with real end times of 48 h or more that never return' : 'No'} |`,
-    `| Daily rewards | Yes |`,
+    `| Daily rewards | ${gift ? 'No' : 'Yes'} |`,
     `| Chat, user-generated content, web browsing, location | No |`,
     `| Simulated gambling (casino games) | No |`,
   );
@@ -89,7 +117,17 @@ function ratingNotes(g: GameConfig): string {
     '- Target age: **13 and over**. Google Play target audience: tick 13-15, 16-17 and 18+ only.',
     '- **Never** the Apple Kids Category or Google Play\'s Families / "Designed for Families" programme: the',
     '  game uses third-party ads and analytics, which those programmes exclude (policy.md 3).',
-    ...(Object.keys(g.cast).length
+    ...(gift
+      ? [
+          '- The game draws a cast of rounded cartoon animals in code (fox, hedgehog, badger, otter, bat and owl',
+          '  customers, animal minders, a paper dragon). Google names "youthful animation" among what can make an',
+          '  app appeal to children (policy.md 3): it can count here. Keep "kids" and "for children" wording out',
+          '  of the store text.',
+          '- Decision M17: Play target 13+ and Apple 13+, as for the first two games. Play\'s question "could the',
+          '  app unintentionally appeal to children" and the age band (policy.md checklist 7 and 8) are **the',
+          '  owner\'s to answer before a submission**, for all three apps; nothing in the build depends on it.',
+        ]
+      : Object.keys(g.cast).length
       ? [
           '- Store art and text: show adult characters, no "kids" or "for children" wording. Google rejects a',
           '  13+ listing with "youthful animation or young characters" (policy.md 3), so check the screenshots.',
@@ -156,6 +194,7 @@ function ratingNotes(g: GameConfig): string {
           '   console\'s "App access" instructions), with a contact name, email and phone.',
         ]
       : []),
+    ...(gift ? ['6. Answer Play\'s "could appeal to children" question and decide the age band (M17: the owner\'s).'] : []),
     ...(sellsRandom
       ? [
           '6. Paid random items: switch chest sales off for the storefronts in meta.chestSalesBlockedIn (the app',
@@ -163,7 +202,7 @@ function ratingNotes(g: GameConfig): string {
           '   both descriptions (sync adds it).',
         ]
       : []),
-    `${sellsRandom ? 7 : 6}. Release one game at a time from one account, each with its own art, sounds, numbers and`,
+    `${sellsRandom || gift ? 7 : 6}. Release one game at a time from one account, each with its own art, sounds, numbers and`,
     '   listing text: both stores remove families of near-identical apps, and take related accounts with',
     '   them (policy.md 4). `npm run validate` catches shared tables and near-identical descriptions,',
     '   not shared art.',

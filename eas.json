@@ -8,6 +8,28 @@
       "node": "22.23.5",
       "env": {}
     },
+    "night-market-dev": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "GAME": "night-market"
+      }
+    },
+    "night-market-preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "env": {
+        "GAME": "night-market"
+      }
+    },
+    "night-market-production": {
+      "extends": "base",
+      "autoIncrement": true,
+      "env": {
+        "GAME": "night-market"
+      }
+    },
     "pizza-empire-dev": {
       "extends": "base",
       "developmentClient": true,
@@ -54,6 +76,15 @@
     }
   },
   "submit": {
+    "night-market-production": {
+      "ios": {
+        "metadataPath": "./games/night-market/store/store.config.json"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
     "pizza-empire-production": {
       "ios": {
         "metadataPath": "./games/pizza-empire/store/store.config.json"

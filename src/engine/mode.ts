@@ -52,6 +52,13 @@ export interface EngineMode {
    * nodes to buy). Without a choice the mode picks its default. Returns the same object when refused.
    */
   prestige(cfg: GameConfig, state: GameState, now: number, choice?: unknown): GameState;
+  /**
+   * Whether the run reset may happen now, for a mode whose reset is not bought with prestige
+   * points (merge: a season closes once its Festival is filled, and the game earns no points).
+   * The store's prestige action asks this in place of its points gate when it exists. Without it
+   * (sim, classic, haul) the gate is the prestige points, exactly as before.
+   */
+  canPrestige?(cfg: GameConfig, state: GameState): boolean;
   /** Story triggers the shared schema lists for this mode (true when met); unknown ones are false. */
   storyTrigger?(cfg: GameConfig, state: GameState, trigger: StoryBeat['trigger']): boolean;
   /** Counter of a mission type the mode adds (lifetime stats), or undefined when the type is not the mode's. */
@@ -81,6 +88,13 @@ export interface EngineMode {
    * (haul, Decision 42: 1 + haul.offline.adBonus). Without it: 2, the sim and classic double.
    */
   offlineAdMultiplier?(cfg: GameConfig): number;
+  /**
+   * The amount the offline collect really grants, from the amount it computed (earnings, times the
+   * ad's multiplier when watched): a mode that rounds every amount it shows (merge, Decision M19)
+   * rounds it here with the same function, so the purse gets exactly the figure on the button.
+   * Without it, the amount is granted as computed (sim, classic and haul: unchanged).
+   */
+  roundPayout?(cfg: GameConfig, amount: number): number;
   /**
    * Income per second to price "seconds of income" rewards with (an "earn" mission's target, a
    * pod's cash slot) when `activeIncome` is 0: at the start of a run before any drone is on a route,

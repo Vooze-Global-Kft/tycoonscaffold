@@ -1,0 +1,7 @@
+{
+  "_comment": "Release log and release notes (spec 7.4, fingerprint dimension 19; read by scripts/lib/fingerprint.ts and scripts/sync.ts). Add a submission line, by hand, the day a build goes to a store: {\"version\", \"store\": \"apple\" | \"google\", \"date\": ISO, \"build\", \"scan\": the scan-binary.ts output file}. The first submission must be at least 14 days after Orbit Haulers' latest one (spec 1.2, dimension 19).",
+  "releaseNotes": {
+    "1.0.0": "The lanterns are lit on Lantern Row. Six stalls, twenty lanterns to earn, and the first customers wait at the counters with their tickets."
+  },
+  "submissions": []
+}

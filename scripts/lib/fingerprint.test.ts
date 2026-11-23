@@ -9,7 +9,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { comparePair, pairFailures, readBundleReport, sourceHashOf, type AudioScore, type DeclaredFingerprint, type GameFacts } from './fingerprint';
+import { GameConfigSchema } from '../../src/config/schema';
+import { comparePair, declaredProblems, formatPair, gameFacts, humanCheckFor, pairFailures, readBundleReport, sameMultiset, sourceHashOf, tableStrings, textsOf, type AudioScore, type DeclaredFingerprint, type GameFacts, type PairReport } from './fingerprint';
 
 /** compare.py's verdict when no shared key is close (what the two packs score today). */
 const quiet: AudioScore = { keys: 10, failed: 0, maxJoint: 0.5, threshold: 0.6 };
@@ -158,5 +159,113 @@ describe('fingerprint check', () => {
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('fingerprint check with the third game (Night Market, market-design.md 1.2, 10.2)', () => {
+  it('the Pizza-to-Orbit report is byte-identical to the one recorded before mode merge existed', () => {
+    const rec = JSON.parse(fs.readFileSync(path.join(__dirname, 'fingerprint.pizzaOrbit.fixture.json'), 'utf8')) as { a: GameFacts; b: GameFacts; audio: AudioScore; report: PairReport; formatted: string };
+    const r = comparePair(rec.a, rec.b, rec.audio);
+    expect(JSON.stringify(r)).toBe(JSON.stringify(rec.report));
+    expect(formatPair(r)).toBe(rec.formatted);
+    expect(pairFailures(r, 'everyday')).toEqual(pairFailures(rec.report, 'everyday'));
+  });
+
+  it('accepts "grid-board" as a main screen layout and the declared night-market fingerprint has no vocabulary problem', () => {
+    expect(declaredProblems(declared('night-market'))).toEqual([]);
+    expect(declared('night-market').main_screen_layout).toBe('grid-board');
+  });
+
+  it('the same product kinds in another order fail (the multiset check beside the sequence check)', () => {
+    expect(sameMultiset(['cosmetic', 'unlock'], ['unlock', 'cosmetic'])).toBe(true);
+    expect(sameMultiset(['gems', 'gems', 'unlock'], ['gems', 'unlock', 'unlock'])).toBe(false);
+    const swapped = comparePair(facts('pizza-empire', { productKinds: ['gems', 'noAds'] }), facts('space-miner', { productKinds: ['noAds', 'gems'] }), quiet);
+    expect(pairFailures(swapped, 'everyday').join('\n')).toMatch(/same product kinds in another order/);
+    // The sequence check still names an identical sequence once, as before.
+    const same = comparePair(facts('pizza-empire', { productKinds: ['gems', 'noAds'] }), facts('space-miner', { productKinds: ['gems', 'noAds'] }), quiet);
+    expect(same.problems.filter((p) => /product kinds/.test(p))).toEqual(['pizza-empire and space-miner sell the same sequence of product kinds (gems, noAds)']);
+  });
+
+  it('night-market against each game: 8 of 8 must differ or are pending, at least 15 known or pending, no problem', () => {
+    const games = require('./games.js');
+    const modes = require('./modes.js');
+    const kits = (mode: string) => [`mode ${mode}`, ...Object.entries(modes.FAMILIES as Record<string, { modes: string[] }>).filter(([, f]) => f.modes.includes(mode)).map(([k]) => `family ${k}`)];
+    const real = (id: string) => {
+      const cfg = GameConfigSchema.parse(games.readGameJson(id));
+      return gameFacts(ROOT, id, cfg, games, kits(cfg.mode));
+    };
+    const night = real('night-market');
+    expect(night.mode).toBe('merge');
+    // Decision M13: {cosmetic, unlock, skipAds}, a multiset neither first game has.
+    expect([...night.productKinds].sort()).toEqual(['cosmetic', 'skipAds', 'unlock']);
+    expect(night.productIds.every((p) => p.startsWith('night_'))).toBe(true);
+    for (const other of ['pizza-empire', 'space-miner']) {
+      const r = comparePair(night, real(other), null);
+      expect(r.mustSame, `${other}: ${formatPair(r)}`).toBe(0);
+      expect(r.verified + r.pending, other).toBeGreaterThanOrEqual(15);
+      expect(pairFailures(r, 'everyday'), other).toEqual([]);
+    }
+  });
+});
+
+describe('human checks against each game, and the string table (store review, Night Market)', () => {
+  const night = (human: DeclaredFingerprint['human']): Partial<GameFacts> => ({ id: 'night-market', mode: 'merge', artKits: ['mode merge'], declared: { ...declared('night-market'), human } });
+  const row = (r: PairReport, n: number) => r.rows.find((x) => x.dim.n === n)!;
+
+  it('a map keyed by game id holds one check per game; each pair reads its own entry', () => {
+    const human: DeclaredFingerprint['human'] = {
+      icon_and_screenshot_template: {
+        'pizza-empire': { value: 'own', by: 'Reviewer', date: '2026-12-01' },
+        'space-miner': { value: 'own', by: 'Reviewer', date: '2026-12-02' },
+      },
+      meta_screen_layouts: {
+        'pizza-empire': { value: 'different', by: 'Reviewer', date: '2026-12-01' },
+        'space-miner': { value: 'different', by: '', date: '' },
+      },
+    };
+    const vsPizza = comparePair(facts('pizza-empire'), facts('night-market', night(human)), quiet);
+    const vsOrbit = comparePair(facts('space-miner'), facts('night-market', night(human)), quiet);
+    expect(row(vsPizza, 7).status).toBe('differs');
+    expect(row(vsPizza, 7).note).toBe('checked by Reviewer on 2026-12-01');
+    expect(row(vsPizza, 13).status).toBe('differs');
+    expect(row(vsOrbit, 7).status).toBe('differs');
+    expect(row(vsOrbit, 7).note).toBe('checked by Reviewer on 2026-12-02');
+    // An entry without a name stays pending.
+    expect(row(vsOrbit, 13).status).toBe('pending');
+    expect(humanCheckFor(night(human).declared!, 'icon_and_screenshot_template', 'space-miner')).toEqual({ value: 'own', checkedAgainst: 'space-miner', by: 'Reviewer', date: '2026-12-02' });
+    expect(humanCheckFor(night(human).declared!, 'icon_and_screenshot_template', 'other-game')).toBeNull();
+  });
+
+  it('the old shape (one check naming one game) is still read, and only for that game', () => {
+    const one: DeclaredFingerprint['human'] = { icon_and_screenshot_template: { value: 'own', checkedAgainst: 'pizza-empire', by: 'Reviewer', date: '2026-12-01' } };
+    expect(row(comparePair(facts('pizza-empire'), facts('night-market', night(one)), quiet), 7).status).toBe('differs');
+    expect(row(comparePair(facts('space-miner'), facts('night-market', night(one)), quiet), 7).status).toBe('pending');
+    expect(humanCheckFor(night(one).declared!, 'icon_and_screenshot_template', 'pizza-empire')?.by).toBe('Reviewer');
+  });
+
+  it('the string table yields single-quoted texts after a colon, double-quoted texts and the static parts of template literals, not comments', () => {
+    const src = [
+      '/** A `comment` with "quotes" */',
+      "export const S = {",
+      "  a: 'Fill the ticket',",
+      '  b: "The fox\'s ticket",',
+      '  c: (n: number) => `${n} goods wait at ${`the ${n} stalls`} tonight`,',
+      '  // a "line comment"',
+      '};',
+    ].join('\n');
+    const raw = tableStrings(src);
+    expect(raw).toEqual(expect.arrayContaining(['Fill the ticket', "The fox's ticket", ' goods wait at ', 'the ', ' stalls', ' tonight']));
+    // textsOf then keeps texts as before (single bare words read as ids and are left out).
+    const got = textsOf(raw);
+    expect(got).toEqual(['fill the ticket', "the fox's ticket", 'goods wait at']);
+    expect(got.some((t) => /comment|quotes/.test(t))).toBe(false);
+  });
+
+  it('the haul table reads the same texts as before (no double-quoted or template text of its own): Orbit\'s facts do not move', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'src', 'ui', 'haul', 'strings.ts'), 'utf8');
+    const before = new Set(textsOf([...src.matchAll(/:\s*'([^']+)'/g)].map((m) => m[1])));
+    const after = new Set(textsOf(tableStrings(src)));
+    expect([...after].filter((t) => !before.has(t))).toEqual([]);
+    expect(after.size).toBe(before.size);
   });
 });

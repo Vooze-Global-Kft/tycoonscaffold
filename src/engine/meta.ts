@@ -120,7 +120,7 @@ export function applyRewards(cfg: GameConfig, state: GameState, rewards: Reward[
 /** Non-consumable kinds are granted once and restored from the store; the rest are granted on every purchase. */
 export function isNonConsumable(product: IapProduct): boolean {
   return (
-    product.kind === 'noAds' || product.kind === 'skipAds' || product.kind === 'multiplier' || product.kind === 'starterPack' || product.kind === 'clearance' || product.kind === 'unlock'
+    product.kind === 'noAds' || product.kind === 'skipAds' || product.kind === 'multiplier' || product.kind === 'starterPack' || product.kind === 'clearance' || product.kind === 'unlock' || product.kind === 'cosmetic'
   );
 }
 
@@ -157,7 +157,9 @@ export function applyProduct(cfg: GameConfig, state: GameState, product: IapProd
       return { state: { ...r.state, entitlements: { ...r.state.entitlements, skipRewarded: true } }, granted: r.granted };
     }
     case 'unlock':
-      // A permanent rule the mode reads from entitlements.products (recorded above).
+    case 'cosmetic':
+      // A permanent rule (unlock) or look (cosmetic, Decision M7 of market-design.md) the mode reads from
+      // entitlements.products (recorded above).
       return { state: s, granted: [] };
   }
 }

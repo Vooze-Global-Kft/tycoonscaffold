@@ -6,6 +6,7 @@
 import { MACH_ICONS_BY_MODE, artIconsFor } from './artIcons';
 import type { GameConfig } from './schema';
 import { HaulSchema, lintHaul } from './schema.haul';
+import { MergeSchema, lintMerge } from './schema.merge';
 
 /**
  * Cross-field checks zod can't express per field. Returns a list of problems. `artIcons`: the
@@ -57,6 +58,7 @@ export function lintGameConfig(cfg: GameConfig, artIcons: readonly string[] = ar
     }
   }
 
+  if (cfg.mode !== 'merge' && cfg.merge) problems.push('there is a "merge" block but mode is not "merge"');
   // --- haul mode (spec section 2 header, errata 8) ---
   if (cfg.mode === 'haul') {
     // The shared schema keeps the haul block opaque (its schema is the haul mode's): parse it here.
@@ -71,6 +73,18 @@ export function lintGameConfig(cfg: GameConfig, artIcons: readonly string[] = ar
     for (const m of cfg.meta.missions.templates) {
       if (m.type === 'taps' || m.type === 'bonus' || m.type === 'hires') problems.push(`mission "${m.id}" counts ${m.type}, which a haul game does not have`);
     }
+  } else if (cfg.mode === 'merge') {
+    // --- merge mode (Night Market, market-design.md section 2): the block is opaque in the shared schema too ---
+    if (cfg.haul) problems.push('there is a "haul" block but mode is not "haul"');
+    const merge = cfg.merge ? MergeSchema.safeParse(cfg.merge) : null;
+    if (!merge) problems.push('mode is "merge" but there is no "merge" block');
+    else if (!merge.success) problems.push(...merge.error.issues.map((i) => `merge.${i.path.join('.')}: ${i.message}`));
+    else problems.push(...lintMerge(merge.data).map((m) => `merge: ${m}`));
+    if (cfg.economy.prestige.bonusPerPoint !== 0) problems.push('economy.prestige.bonusPerPoint must be 0 in a merge game (closing a season pays no currency and grows no multiplier, spec 2.11)');
+    if (cfg.businesses.length > 0) problems.push('a merge game has no businesses');
+    if (cfg.upgrades.length > 0) problems.push('a merge game has no upgrades');
+    if (Object.keys(cfg.cast).length > 0) problems.push('a merge game has no "cast": its animals are drawn by the mode ("beast:" icons, spec 7.2)');
+    if (cfg.meta.missions.templates.length > 0) problems.push('a merge game has no missions (spec 5.7: cut on purpose)');
   } else {
     if (cfg.haul) problems.push('there is a "haul" block but mode is not "haul"');
     if (cfg.businesses.length === 0) problems.push('a sim or classic game needs at least one business');

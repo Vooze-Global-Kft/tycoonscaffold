@@ -27,14 +27,15 @@ import { modeSounds } from '../../state/modeEvents';
 import { AudioEngine, expoAudioDriver } from './audio';
 import type { FxName as CatalogName, FxRuntimeDef } from './catalog';
 import type { HaulFxName } from './catalog.haul';
+import type { MergeFxName } from './catalog.merge';
 import { systemClock } from './clock';
 import { createFx, type Fx } from './core';
 import { createHaptics } from './haptics';
 import { SettingsStore } from './settings';
 
 export type { FxDef, FxRuntimeDef, HapticStep } from './catalog';
-/** Every event a game can play: the shared catalogue's keys and the haul mode's own (./catalog.haul.ts). Each game's table holds its mode's only. */
-export type FxName = CatalogName | HaulFxName;
+/** Every event a game can play: the shared catalogue's keys and the haul and merge modes' own (./catalog.haul.ts, ./catalog.merge.ts). Each game's table holds its mode's only. */
+export type FxName = CatalogName | HaulFxName | MergeFxName;
 export type { Fx, PlayOptions } from './core';
 export type { FxSettings } from './settings';
 
