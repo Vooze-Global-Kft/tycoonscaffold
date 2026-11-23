@@ -665,9 +665,100 @@ Knobs `build-night.py` may move, inside the ranges of section 2: the cost growth
 
 Knob order per failing gate: opening, shutter and gear costs; stall windows, the stall ratio; minder share, Q then minder growth; board-full, λ then T; fill time, γ then W; seasons, the Festival table, N, the familiar-faces base; rerolling, the Not tonight cooldown. No rule is re-specified after screens exist without the lead.
 
-### 8.5 Season times (filled by P2 from the first bot run)
+### 8.5 Season times (filled by the numbers step from the tuned game, 23 November 2026)
 
-A table of seasons 1 to 10, active and passive bot, time to each stall and to the Festival, on the five seeds. Empty until the bot runs; no screen work on seasons starts before it is filled.
+Measured on the real engine with the tuned content of `games/night-market/game.json` (written by `build-night.py` after every hard gate passed), by the active bot of 8.2 with M6, M22, M31, M34 and M41 at 1.5, 2.0 (the reference hand of M30) and 2.5 s an action, 16 h of play or ten season closes. Tuning seeds 101 to 115; the five named seeds (12345, 4, 99, 7, 2026) were never seen by the tuning and are shown apart. The whole gate table with pass counts and proposed guards is the numbers step's TABLE.md; the rows here are the season clock in minutes.
+
+**Active bot, 1.5 s an action** (15 seeds; season clock in minutes, median (range); "n/N" = seeds that reached it within 16 h of play):
+
+| Season | Tea | Steamer | Sweets | Noodles | Puffs | Festival | Festival / season 1 | reached |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1 (1-2) | 7 (6-8) | 20 (19-24) | 70 (66-75) | - | 100 (81-124) | - | 15/15 |
+| 2 | 0 (0-0) | 2 (2-3) | 8 (7-9) | 36 (28-42) | 96 (86-106) | 98 (88-109) | 0.96 (0.75-1.24) | 15/15 |
+| 3 | 0 (0-0) | 1 (1-1) | 4 (3-4) | 13 (11-14) | 42 (37-49) | 54 (44-99) | 0.52 (0.35-1.09) | 15/15 |
+| 4 | 0 (0-0) | 1 (1-1) | 3 (2-3) | 10 (8-11) | 33 (30-36) | 51 (41-69) | 0.53 (0.35-0.72) | 15/15 |
+| 5 | 0 (0-0) | 0 (0-1) | 2 (1-2) | 8 (7-10) | 25 (18-31) | 53 (31-76) | 0.52 (0.31-0.79) | 15/15 |
+| 6 | 0 (0-0) | 0 (0-1) | 2 (1-2) | 8 (7-9) | 19 (18-23) | 49 (32-72) | 0.50 (0.32-0.69) | 15/15 |
+| 7 | 0 (0-0) | 1 (0-1) | 2 (1-2) | 8 (7-9) | 19 (16-20) | 45 (30-92) | 0.45 (0.31-1.08) | 15/15 |
+| 8 | 0 (0-0) | 1 (0-1) | 2 (2-2) | 8 (7-9) | 19 (16-22) | 61 (41-116) | 0.61 (0.42-1.36) | 15/15 |
+| 9 | 0 (0-0) | 0 (0-1) | 2 (1-2) | 8 (7-9) | 18 (16-22) | 55 (32-90) | 0.57 (0.31-0.93) | 15/15 |
+| 10 | 0 (0-0) | 1 (0-1) | 2 (2-2) | 8 (7-10) | 19 (17-21) | 54 (34-69) | 0.55 (0.30-0.80) | 15/15 |
+
+Passive bot (5 sessions of 8 min a day, the away ad), per seed: Steamer day 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; Sweets day 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; Noodles day 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; season 1 Festival day 2 2 1 2 2 2 2 2 2 2 1 2 2 2 2; seasons closed by day 7: 6 7 8 6 7 7 6 6 7 6 6 5 6 6 6; by day 21: 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10.
+
+**Active bot, 2.0 s an action** (15 seeds; season clock in minutes, median (range); "n/N" = seeds that reached it within 16 h of play):
+
+| Season | Tea | Steamer | Sweets | Noodles | Puffs | Festival | Festival / season 1 | reached |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1 (1-2) | 8 (7-10) | 25 (22-28) | 86 (78-91) | - | 126 (109-141) | - | 15/15 |
+| 2 | 0 (0-0) | 3 (2-3) | 9 (8-10) | 43 (39-50) | 113 (98-127) | 117 (104-127) | 0.96 (0.74-1.13) | 15/15 |
+| 3 | 0 (0-0) | 1 (1-1) | 4 (3-5) | 15 (13-17) | 50 (45-56) | 66 (51-99) | 0.55 (0.43-0.85) | 15/15 |
+| 4 | 0 (0-0) | 1 (0-1) | 3 (2-4) | 11 (10-13) | 36 (31-42) | 59 (45-83) | 0.49 (0.34-0.71) | 15/15 |
+| 5 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 10 (8-11) | 27 (19-32) | 71 (50-167) | 0.55 (0.41-1.28) | 15/15 |
+| 6 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 10 (8-11) | 21 (18-25) | 73 (34-139) | 0.62 (0.28-1.07) | 15/15 |
+| 7 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 10 (8-11) | 22 (19-25) | 65 (45-122) | 0.56 (0.37-1.05) | 15/15 |
+| 8 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 10 (8-11) | 21 (18-26) | 89 (43-196) | 0.74 (0.31-1.51) | 15/15 |
+| 9 | 0 (0-0) | 1 (0-1) | 2 (2-2) | 10 (8-11) | 21 (19-23) | 61 (44-96) | 0.48 (0.33-0.71) | 15/15 |
+| 10 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 10 (9-11) | 21 (18-24) | 60 (38-112) | 0.52 (0.29-1.03) | 15/15 |
+
+Passive bot (5 sessions of 8 min a day, the away ad), per seed: Steamer day 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; Sweets day 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; Noodles day 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; season 1 Festival day 2 2 2 2 2 2 2 2 2 2 2 3 2 2 2; seasons closed by day 7: 5 5 6 5 4 5 5 5 6 6 6 4 5 5 5; by day 21: 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10.
+
+**Active bot, 2.5 s an action** (15 seeds; season clock in minutes, median (range); "n/N" = seeds that reached it within 16 h of play):
+
+| Season | Tea | Steamer | Sweets | Noodles | Puffs | Festival | Festival / season 1 | reached |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1 (1-2) | 10 (9-11) | 30 (27-33) | 98 (86-105) | - | 132 (113-180) | - | 15/15 |
+| 2 | 0 (0-0) | 3 (2-4) | 11 (10-12) | 50 (40-57) | 128 (103-158) | 131 (107-163) | 1.04 (0.59-1.28) | 15/15 |
+| 3 | 0 (0-0) | 1 (1-1) | 5 (4-5) | 17 (15-18) | 55 (45-60) | 77 (65-93) | 0.60 (0.43-0.70) | 15/15 |
+| 4 | 0 (0-0) | 1 (1-1) | 3 (2-5) | 13 (10-16) | 41 (34-48) | 79 (56-135) | 0.55 (0.39-1.13) | 15/15 |
+| 5 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 11 (8-12) | 31 (23-36) | 77 (53-122) | 0.57 (0.40-0.92) | 15/15 |
+| 6 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 11 (9-12) | 23 (23-27) | 75 (51-140) | 0.56 (0.41-1.05) | 15/15 |
+| 7 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 11 (9-13) | 24 (21-27) | 80 (50-239) | 0.65 (0.32-2.10) | 15/15 |
+| 8 | 0 (0-0) | 1 (0-1) | 3 (2-3) | 11 (9-13) | 24 (22-28) | 75 (54-154) | 0.60 (0.34-1.21) | 15/15 |
+| 9 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 11 (9-12) | 24 (21-26) | 80 (56-165) | 0.58 (0.34-1.26) | 14/15 |
+| 10 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 11 (9-12) | 23 (21-25) | 69 (50-92) | 0.56 (0.28-0.75) | 8/15 |
+
+Passive bot (5 sessions of 8 min a day, the away ad), per seed: Steamer day 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; Sweets day 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; Noodles day 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; season 1 Festival day 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2; seasons closed by day 7: 4 5 5 5 5 5 4 4 6 5 5 5 6 5 5; by day 21: 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10.
+
+**Active bot, 2.0 s, the five named seeds an action** (5 seeds; season clock in minutes, median (range); "n/N" = seeds that reached it within 16 h of play):
+
+| Season | Tea | Steamer | Sweets | Noodles | Puffs | Festival | Festival / season 1 | reached |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1 (1-1) | 8 (7-9) | 27 (23-28) | 83 (76-87) | - | 119 (96-154) | - | 5/5 |
+| 2 | 0 (0-0) | 2 (2-3) | 10 (9-10) | 45 (42-48) | 116 (102-130) | 121 (105-131) | 1.02 (0.68-1.37) | 5/5 |
+| 3 | 0 (0-0) | 1 (1-1) | 5 (4-5) | 16 (15-16) | 47 (43-55) | 66 (55-81) | 0.53 (0.36-0.70) | 5/5 |
+| 4 | 0 (0-0) | 1 (1-1) | 3 (2-3) | 11 (10-12) | 38 (33-42) | 61 (46-84) | 0.44 (0.30-0.74) | 5/5 |
+| 5 | 0 (0-0) | 0 (0-0) | 2 (2-2) | 10 (8-11) | 28 (22-32) | 65 (50-101) | 0.67 (0.33-0.85) | 5/5 |
+| 6 | 0 (0-0) | 1 (0-1) | 2 (2-2) | 10 (8-11) | 23 (20-24) | 54 (52-92) | 0.54 (0.34-0.81) | 5/5 |
+| 7 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 10 (9-11) | 21 (20-25) | 80 (38-96) | 0.52 (0.39-0.84) | 5/5 |
+| 8 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 10 (9-10) | 22 (21-23) | 65 (42-103) | 0.47 (0.36-1.07) | 5/5 |
+| 9 | 0 (0-0) | 1 (0-1) | 2 (2-2) | 9 (7-10) | 20 (19-22) | 61 (45-95) | 0.48 (0.38-0.67) | 5/5 |
+| 10 | 0 (0-0) | 1 (0-1) | 2 (2-3) | 9 (7-11) | 20 (17-22) | 64 (51-93) | 0.50 (0.39-0.82) | 4/5 |
+
+Passive bot (5 sessions of 8 min a day, the away ad), per seed: Steamer day 1 1 1 1 1; Sweets day 1 1 1 1 1; Noodles day 1 1 1 1 1; season 1 Festival day 2 2 2 2 2; seasons closed by day 7: 6 6 5 6 6; by day 21: 10 10 10 10 10.
+
+Reading it:
+- Season 1 at 2.0 s: Tea about 1 min, Steamer 8, Sweets 25, Noodles 86, the Festival 126 (109 to 141 over 15 seeds; 96 to 154 on the five named seeds). At 1.5 s everything comes about a fifth sooner, at 2.5 s Steamer, Sweets and Noodles open 1 to 12 min late for gate 2's windows.
+- Season 2 (Puffs at its range floor, the Puffs line at tier 3) takes about as long as season 1 (0.96 at 2.0 s); seasons 3 to 10 take about half of season 1 on the median seed (0.48 to 0.74 at 2.0 s), with single seeds from 0.28 to 1.5 times, as M40 foresaw.
+- The passive bot opens every stall of season 1 on day 1 (gate 11 asked Noodles on day 2; M41 sets that band from this measurement), fills the first Festival on day 2 and closes 4 to 8 seasons by day 7. "10 by day 21" is the run's cap of ten seasons, not a measurement of more.
+
+The first ten minutes of the tuned game (M47; seed 12345, 2.0 s an action, the active bot; "c.k" is chain c's tier k, chains 0 Grill, 1 Tea, 2 Steamer):
+
+| Time | What the player does and gets | Spent | c/s |
+|---|---|---|---|
+| 0:00 to 0:30 | The six opening skewers make the fox's Twin Skewer (+12) and the hedgehog's Glazed Skewer (+29); three more Grill tickets (+12 each); lantern 1 lights at the third ticket: a third counter. | 0 | 2.6 |
+| 0:30 to 1:00 | One Glazed Skewer ticket (+29); the purse reaches the Tea stall's 120. | 0 | 1.0 |
+| 1:00 to 2:00 | Tea stall (120, at 1:18), Grill gear L2 (20) and L3 (30), Tea gear L2 (80), Grill stall L2 (50), the first shutter (30); first two-line tickets (+47, +103, +110). | 330 | 4.8 |
+| 2:00 to 3:00 | Old Brindle hired (250, at 2:26); Grill stall L3 (68); shutters 2 and 3 (44, 63); a three-line ticket (+170). | 425 | 7.5 |
+| 3:00 to 4:00 | Grill stall L4 and L5 (91, 123), gear levels (45, 120); a Cup of Tea + Skewer Bundle ticket (+159) and a two-Milk-Tea ticket (+265). | 379 | 11.6 |
+| 4:00 to 5:00 | Only merges and deliveries: six tickets (+40 to +158) while the purse saves for Pim. | 0 | 11.6 |
+| 5:00 to 6:00 | Pim hired (1,000, at 5:03); Tea stall L2 (200); shutters (91, 133). | 1,424 | 8.8 |
+| 6:00 to 7:00 | Stall and gear levels (68 to 365), the last row-7 shutter (192); the first Parade (6:21) and its gold ticket. | 1,241 | 17.4 |
+| 7:00 to 8:00 | Seven tickets up to +586 (a Tea 4 + Tea 3 ticket); the first Pearl Tea made. | 0 | 31.6 |
+| 8:00 to 9:00 | Steamer stall (2,200, at 8:23), Steamer gear L2 and L3 (320, 480); first Dumpling and Skewer Fan. | 3,000 | 20.4 |
+| 9:00 to 10:00 | Grill stall level (224); eight tickets, the Steamer's first lines (+192 each). | 224 | 40.5 |
+
+At minute 10: 3 stalls, 2 minders, 3 counters, 36 open cells, 28 purchases, 51 paid tickets (gate 1: first ticket at 4 s; gap between paying moments median 5 s, at most 76 s on the worst of 15 seeds).
 
 ---
 

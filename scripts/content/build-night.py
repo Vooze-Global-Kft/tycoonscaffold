@@ -64,8 +64,8 @@ SOURCES = {'ticket', 'gift', 'till', 'basket', 'away', 'undo', 'spend'}
 # ---------------------------------------------------------------- the tuned numbers
 # RANGES path -> value. Empty means the starting content as it is. `--tune --save` rewrites this block.
 # TUNED-BEGIN
-# The numbers step (Nov 2026) moved its tuned values into src/config/merge.content.ts itself (each with its
-# starting value and the aim it serves in a comment), so the content file is the one source; TUNED is empty.
+# The tuned numbers live in src/config/merge.content.ts as MERGE_TUNED (each with its starting value and the aim
+# it serves); TUNED here is laid over them (empty: `--tune --save` writes a search's result here for review).
 TUNED = {}
 # TUNED-END
 
@@ -139,9 +139,20 @@ def set_at(obj, p, v):
     obj[parts[-1]] = v
 
 
+_CONTENT_TUNED = None
+
+
+def content_tuned():
+    """MERGE_TUNED of src/config/merge.content.ts: the tuned numbers (RANGES path -> value)."""
+    global _CONTENT_TUNED
+    if _CONTENT_TUNED is None:
+        _CONTENT_TUNED = tsx("import { MERGE_TUNED } from './src/config/merge.content'; console.log(JSON.stringify(MERGE_TUNED))")
+    return _CONTENT_TUNED
+
+
 def block_with(overrides):
     b = starting_block()
-    for p, v in {**TUNED, **overrides}.items():
+    for p, v in {**content_tuned(), **TUNED, **overrides}.items():
         set_at(b, p, v)
     return b
 

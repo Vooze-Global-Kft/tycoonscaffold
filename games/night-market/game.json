@@ -8,7 +8,7 @@
     "androidPackage": "com.example.lanternrow",
     "version": "1.0.0",
     "buildNumber": 1,
-    "trackingText": "PLACEHOLDER: Lantern Row asks this to match the optional ads you can choose to watch."
+    "trackingText": "Lantern Row asks this to match the optional ads you can choose to watch."
   },
   "theme": {
     "colors": {
@@ -42,7 +42,7 @@
     "prestigeName": "Seasons",
     "prestigeIcon": "🏮",
     "prestigeVerb": "Close the season",
-    "prestigeDescription": "PLACEHOLDER: fill the Festival, then close the season when you choose."
+    "prestigeDescription": "fill the Festival, then close the season when you choose."
   },
   "economy": {
     "startingCash": 0,
@@ -309,19 +309,19 @@
     "costs": {
       "stallOpen": [
         120,
-        3200,
-        51200,
-        819000,
-        13100000
+        2200,
+        28000,
+        600000,
+        6550000
       ],
       "gearBase": 20,
-      "gearGrowth": 1.45,
+      "gearGrowth": 1.5,
       "gearMaxLevel": 40,
       "stallLevelBase": 50,
       "stallLevelGrowth": 1.35,
       "stallMaxLevel": 31,
-      "minderBase": 150,
-      "minderGrowth": 3,
+      "minderBase": 250,
+      "minderGrowth": 2.5,
       "minderMaxLevel": 4,
       "roundBelow": 1000,
       "sigDigits": 3
@@ -373,7 +373,7 @@
       "gamma": 1,
       "stretch": 0.15,
       "beta": 0.15,
-      "outputWindow": 180,
+      "outputWindow": 150,
       "handActions": 60,
       "spareCells": 6,
       "notTonightCooldown": 30,
@@ -398,86 +398,180 @@
     "festival": [
       [
         {
-          "chain": 0,
-          "tier": 8
-        },
-        {
           "chain": 1,
-          "tier": 8
-        },
-        {
-          "chain": 2,
-          "tier": 6
-        },
-        {
-          "chain": 4,
-          "tier": 5
-        }
-      ],
-      [
-        {
-          "chain": 0,
-          "tier": 8
-        },
-        {
-          "chain": 1,
-          "tier": 8
-        },
-        {
-          "chain": 2,
-          "tier": 6
-        },
-        {
-          "chain": 4,
-          "tier": 5
-        },
-        {
-          "chain": 5,
-          "tier": 4
-        }
-      ],
-      [
-        {
-          "chain": 0,
-          "tier": 8
-        },
-        {
-          "chain": 1,
-          "tier": 8
-        },
-        {
-          "chain": 2,
-          "tier": 6
-        },
-        {
-          "chain": 4,
-          "tier": 5
-        },
-        {
-          "chain": 5,
-          "tier": 4
-        }
-      ],
-      [
-        {
-          "chain": 0,
-          "tier": 8
-        },
-        {
-          "chain": 1,
-          "tier": 8
+          "tier": 7
         },
         {
           "chain": 2,
           "tier": 7
         },
         {
+          "chain": 3,
+          "tier": 7
+        },
+        {
           "chain": 4,
-          "tier": 5
+          "tier": 7
+        },
+        {
+          "chain": 4,
+          "tier": 7
+        }
+      ],
+      [
+        {
+          "chain": 1,
+          "tier": 7
+        },
+        {
+          "chain": 2,
+          "tier": 7
+        },
+        {
+          "chain": 3,
+          "tier": 7
+        },
+        {
+          "chain": 4,
+          "tier": 7
         },
         {
           "chain": 5,
-          "tier": 4
+          "tier": 3
+        },
+        {
+          "chain": 4,
+          "tier": 7
+        }
+      ],
+      [
+        {
+          "chain": 1,
+          "tier": 8
+        },
+        {
+          "chain": 2,
+          "tier": 8
+        },
+        {
+          "chain": 3,
+          "tier": 7
+        },
+        {
+          "chain": 4,
+          "tier": 7
+        },
+        {
+          "chain": 5,
+          "tier": 5
+        },
+        {
+          "chain": 4,
+          "tier": 7
+        }
+      ],
+      [
+        {
+          "chain": 1,
+          "tier": 8
+        },
+        {
+          "chain": 2,
+          "tier": 8
+        },
+        {
+          "chain": 3,
+          "tier": 8
+        },
+        {
+          "chain": 4,
+          "tier": 8
+        },
+        {
+          "chain": 5,
+          "tier": 6
+        },
+        {
+          "chain": 4,
+          "tier": 7
+        }
+      ],
+      [
+        {
+          "chain": 1,
+          "tier": 8
+        },
+        {
+          "chain": 2,
+          "tier": 8
+        },
+        {
+          "chain": 3,
+          "tier": 8
+        },
+        {
+          "chain": 4,
+          "tier": 8
+        },
+        {
+          "chain": 5,
+          "tier": 7
+        },
+        {
+          "chain": 4,
+          "tier": 7
+        }
+      ],
+      [
+        {
+          "chain": 1,
+          "tier": 8
+        },
+        {
+          "chain": 2,
+          "tier": 8
+        },
+        {
+          "chain": 3,
+          "tier": 8
+        },
+        {
+          "chain": 4,
+          "tier": 8
+        },
+        {
+          "chain": 5,
+          "tier": 7
+        },
+        {
+          "chain": 4,
+          "tier": 8
+        }
+      ],
+      [
+        {
+          "chain": 1,
+          "tier": 8
+        },
+        {
+          "chain": 2,
+          "tier": 8
+        },
+        {
+          "chain": 3,
+          "tier": 8
+        },
+        {
+          "chain": 4,
+          "tier": 8
+        },
+        {
+          "chain": 5,
+          "tier": 8
+        },
+        {
+          "chain": 4,
+          "tier": 8
         }
       ]
     ],
@@ -846,7 +940,7 @@
       },
       "stepTier": 6,
       "maxSteps": 1,
-      "familiarBase": 0.85,
+      "familiarBase": 0.75,
       "familiarMax": 4,
       "openingGoods": 6
     },
@@ -924,23 +1018,23 @@
       "products": [
         {
           "id": "night_awnings",
-          "title": "Blue Silk Awnings",
-          "description": "PLACEHOLDER: every stall gets blue silk awnings and moon lanterns, for good. Looks only.",
           "kind": "cosmetic",
+          "title": "Blue Silk Awnings",
+          "description": "Every stall gets blue silk awnings and moon lanterns, for good. Looks only.",
           "fallbackPrice": "$2.99"
         },
         {
           "id": "night_late_hours",
-          "title": "Late Hours",
-          "description": "PLACEHOLDER: your minders keep the stalls 4 more hours while you are away.",
           "kind": "unlock",
+          "title": "Late Hours",
+          "description": "Your minders keep the stalls 4 more hours while you are away.",
           "fallbackPrice": "$3.99"
         },
         {
           "id": "night_quiet_evening",
-          "title": "Quiet Evening",
-          "description": "PLACEHOLDER: every \"Watch ad\" button gives its reward at once, with no video.",
           "kind": "skipAds",
+          "title": "Quiet Evening",
+          "description": "Every Watch ad button gives its reward at once, with no video.",
           "fallbackPrice": "$4.99"
         }
       ]
@@ -963,13 +1057,14 @@
       "puzzle",
       "cozy"
     ],
-    "shortDescription": "PLACEHOLDER: the store writer drafts the real listing.",
-    "description": "PLACEHOLDER. This listing is a stand-in written by the skeleton step; the store package writes the real one (scripts/content/night-store.json).",
+    "shortDescription": "Merge street snacks at dusk and fill each paper order, one line at a time.",
+    "description": "Drag a snack onto its twin and the two become one finer snack. A Pepper Skewer turns into a Twin Skewer, then a Glazed Skewer, and eight steps up into a Dragon Grill Board. Each stall's gear drops a fresh snack onto the board below the street every 4 seconds.\n\nCustomers step up to the counters holding paper tickets: a fox, a hedgehog, a badger, an otter. Each ticket asks for one to three snacks, and you drag each snack onto its line. A ticket pays its printed price only once every line is filled; then it is stamped and folds into a paper lantern. Who is waiting decides what you merge next.\n\nCoins open new stalls and more of the board, and make each stall's gear finer: higher levels drop better snacks, never faster ones. Six stalls light up in turn: grill, tea, steamer, sweets, noodles, and puffs from the second season.\n\nEach season ends with a Festival ticket on the street banner. Fill it, and close the season when you choose: coins, stalls and levels start again, while board space, lanterns, the Ladder Book and seasoned gear stay. Seasons change the street: a moon gate one season, braziers in the corners another, fireflies over the stalls.\n\nTwenty lanterns hang on the Lantern Gate, each lit once by something you did. The Ladder Book keeps every snack you have made. Now and then a paper dragon comes down the street with a gold ticket that pays double.\n\nThe idle part, in full: minders you hire put a house snack's price in the till every 15 seconds, while you play and while the app is closed, for up to 4 hours at a time; in those hours away your gear fills its shelf with up to 6 snacks. Some lanterns and seasons raise these numbers: one lantern adds 2 more hours away. Look in a few times a day and most of your coins will come from the till. What the till cannot do is merge, fill a ticket, light a lantern or close a season: every merge, and the last line of every ticket, is yours to place.\n\nNo energy. Orders never time out. Ads are optional, and gift box odds are shown before you open one. Gift boxes are earned by filling tickets; none are for sale.\n\nThree optional purchases: Blue Silk Awnings for every stall (looks only), Late Hours for 4 more hours away, and Quiet Evening, which gives every ad reward without the video.",
     "primaryCategory": "GAMES",
     "subcategories": [
       "GAMES_PUZZLE",
       "GAMES_CASUAL"
     ],
-    "privacyPolicyUrl": "https://example.com/lantern-row/privacy"
+    "privacyPolicyUrl": "https://example.com/lantern-row/privacy",
+    "promotionalText": "Lantern Row opens at dusk. Merge street snacks on the board and fill paper orders, one by one."
   }
 }

@@ -1,1 +1,15 @@
-PLACEHOLDER. This listing is a stand-in written by the skeleton step; the store package writes the real one (scripts/content/night-store.json).
+Drag a snack onto its twin and the two become one finer snack. A Pepper Skewer turns into a Twin Skewer, then a Glazed Skewer, and eight steps up into a Dragon Grill Board. Each stall's gear drops a fresh snack onto the board below the street every 4 seconds.
+
+Customers step up to the counters holding paper tickets: a fox, a hedgehog, a badger, an otter. Each ticket asks for one to three snacks, and you drag each snack onto its line. A ticket pays its printed price only once every line is filled; then it is stamped and folds into a paper lantern. Who is waiting decides what you merge next.
+
+Coins open new stalls and more of the board, and make each stall's gear finer: higher levels drop better snacks, never faster ones. Six stalls light up in turn: grill, tea, steamer, sweets, noodles, and puffs from the second season.
+
+Each season ends with a Festival ticket on the street banner. Fill it, and close the season when you choose: coins, stalls and levels start again, while board space, lanterns, the Ladder Book and seasoned gear stay. Seasons change the street: a moon gate one season, braziers in the corners another, fireflies over the stalls.
+
+Twenty lanterns hang on the Lantern Gate, each lit once by something you did. The Ladder Book keeps every snack you have made. Now and then a paper dragon comes down the street with a gold ticket that pays double.
+
+The idle part, in full: minders you hire put a house snack's price in the till every 15 seconds, while you play and while the app is closed, for up to 4 hours at a time; in those hours away your gear fills its shelf with up to 6 snacks. Some lanterns and seasons raise these numbers: one lantern adds 2 more hours away. Look in a few times a day and most of your coins will come from the till. What the till cannot do is merge, fill a ticket, light a lantern or close a season: every merge, and the last line of every ticket, is yours to place.
+
+No energy. Orders never time out. Ads are optional, and gift box odds are shown before you open one. Gift boxes are earned by filling tickets; none are for sale.
+
+Three optional purchases: Blue Silk Awnings for every stall (looks only), Late Hours for 4 more hours away, and Quiet Evening, which gives every ad reward without the video.
