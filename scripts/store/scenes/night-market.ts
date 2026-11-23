@@ -98,6 +98,10 @@ const scenes: GameScenes = {
       // paper dragon at a counter with its gold ticket of lines from several stalls.
       query: 'preset=late',
       settle: 12000,
+      // The preset's Parade is not always still out when the picture is taken: the gold ticket is
+      // looked for in the game's state (the preview's test hook, src/ui/merge/play/devSlow.web.ts).
+      pageCheck: "const g = globalThis.__lanternPlay?.game(); return g && g.merge.counters.some((c) => c.ticket && c.ticket.gold) ? null : 'no Parade ticket at a counter';",
+      tries: 4,
       frame: boardBand,
       caption: 'A paper dragon brings a gold ticket',
       shows: 'Late in the first season: four counters, one held by the paper dragon of the Parade with its gold ticket, the stall fronts with their minders, the Festival banner, a full board of skewers, teas, buns and sweets.',

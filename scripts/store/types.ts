@@ -120,6 +120,12 @@ export interface Scene {
    */
   check?: (text: string) => string | null;
   /**
+   * A test run in the page at the moment of the picture, for state the page text does not show
+   * (e.g. a ticket drawn on a canvas): the body of a function that returns what is wrong, or null,
+   * e.g. "return globalThis.__x ? null : 'no x'". Retaken like `check`, up to `tries` times.
+   */
+  pageCheck?: string;
+  /**
    * Milliseconds after the picture to read the page text again for `check` (default 0: the text
    * at the picture). For a moment whose result shows only a little later, e.g. the freighter's
    * "BACK IN n S" after the launch swipe.

@@ -239,7 +239,7 @@ async function capture(browser: any, def: GameScenes, port: number, sizes: Size[
       const scene = def.scenes[i];
       const out = rawPath(def.game, size, i, scene.slug);
       fs.mkdirSync(path.dirname(out), { recursive: true });
-      const tries = scene.check ? (scene.tries ?? 3) : 1;
+      const tries = scene.check || scene.pageCheck ? (scene.tries ?? 3) : 1;
       const t0 = Date.now();
       let errors: string[] = [];
       let notes: string[] = [];
@@ -262,6 +262,7 @@ async function capture(browser: any, def: GameScenes, port: number, sizes: Size[
         if (guard.hidden.length) notes.push('hid non-app overlay: ' + guard.hidden.join(', '));
         if (guard.leaks.length) errors.push('overlay not from the app on screen: ' + guard.leaks.join(', '));
         const text: string = await page.evaluate(() => document.body.innerText || '');
+        const pageBad: string | null = scene.pageCheck ? await page.evaluate((body: string) => { try { return new Function(body)() as string | null; } catch (e) { return 'pageCheck threw: ' + String(e); } }, scene.pageCheck) : null;
         const shot = await sharpShot(page, size, dsfOf(size), scene.shotFrames ?? 3);
         await page.mouse.up().catch(() => undefined);
         let checkText = text;
@@ -279,7 +280,7 @@ async function capture(browser: any, def: GameScenes, port: number, sizes: Size[
         }
         if (/Uncaught Error|Unable to resolve|SyntaxError|Render Error/.test(text)) errors.push('red screen: ' + text.slice(0, 300));
         await page.close();
-        const bad = scene.check?.(checkText) ?? null;
+        const bad = pageBad ?? scene.check?.(checkText) ?? null;
         fs.writeFileSync(out, shot);
         fs.writeFileSync(out.replace(/\.png$/, '.json'), JSON.stringify({ vw: size.vw, vh: size.vh, dsf: dsfOf(size), band, featureBand }, null, 1));
         if (!bad) break;

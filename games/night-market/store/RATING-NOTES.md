@@ -12,10 +12,10 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 | Ads | Yes: Google AdMob, rewarded (opt-in). Highest ad content rating: PG (parental guidance) (monetization.ads.maxAdContentRating) |
 | In-app purchases | Yes: 3 products (cosmetic, unlock, skipAds) |
 | Premium currency | Not sold |
-| Random items (chests) | None |
-| Random items SOLD (money or Gems) | No: chests are only earned (timer, missions, rewarded ads) |
+| Random items (chests) | 1 kind: gift boxes (a paper bag of 3 slots) with random contents, earned one every 25 filled tickets (merge.gift.every); the odds and the coin amount are shown before a box is opened |
+| Random items SOLD (money or any currency) | No: gift boxes are only earned by filling tickets; no purchase and no ad gives one |
 | Time-limited offers | No |
-| Daily rewards | Yes |
+| Daily rewards | No |
 | Chat, user-generated content, web browsing, location | No |
 | Simulated gambling (casino games) | No |
 
@@ -24,8 +24,13 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 - Target age: **13 and over**. Google Play target audience: tick 13-15, 16-17 and 18+ only.
 - **Never** the Apple Kids Category or Google Play's Families / "Designed for Families" programme: the
   game uses third-party ads and analytics, which those programmes exclude (policy.md 3).
-- The game draws no people (no cast): machines and call-sign plates only. Keep "kids" and "for
-  children" wording out of the store text, and check the screenshots show no young characters.
+- The game draws a cast of rounded cartoon animals in code (fox, hedgehog, badger, otter, bat and owl
+  customers, animal minders, a paper dragon). Google names "youthful animation" among what can make an
+  app appeal to children (policy.md 3): it can count here. Keep "kids" and "for children" wording out
+  of the store text.
+- Decision M17: Play target 13+ and Apple 13+, as for the first two games. Play's question "could the
+  app unintentionally appeal to children" and the age band (policy.md checklist 7 and 8) are **the
+  owner's to answer before a submission**, for all three apps; nothing in the build depends on it.
 - "Could the app unintentionally appeal to children?" (Play): answer honestly; cartoon art can count.
 
 ## App Store Connect: age rating questionnaire
@@ -76,7 +81,8 @@ disclosure page before you submit; they change.
 5. Privacy policy page live at the URL above, listing AdMob, Firebase and RevenueCat.
    App Review: paste games/night-market/store/REVIEW-NOTES.md into "Notes" in App Store Connect (and the Play
    console's "App access" instructions), with a contact name, email and phone.
-6. Release one game at a time from one account, each with its own art, sounds, numbers and
+6. Answer Play's "could appeal to children" question and decide the age band (M17: the owner's).
+7. Release one game at a time from one account, each with its own art, sounds, numbers and
    listing text: both stores remove families of near-identical apps, and take related accounts with
    them (policy.md 4). `npm run validate` catches shared tables and near-identical descriptions,
    not shared art.
