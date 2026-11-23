@@ -53,7 +53,7 @@ export const FX = {
   // --- purchases --------------------------------------------------------------------------------
   shutter_open: { brief: 'a cane shutter rolling up', volume: 0.6, preload: 14, haptic: ['medium'] },
   stall_open: { brief: 'an awning flapping open', volume: 0.7, haptic: ['medium'] },
-  upgrade: { brief: 'a rising steam hiss', volume: 0.5, preload: 10, voices: 3, minIntervalMs: 80, haptic: ['light'] },
+  upgrade: { brief: 'a rising steam hiss', volume: 0.5, preload: 10, voices: 3, minIntervalMs: 100, haptic: ['light'] },
   minder_hire: { brief: 'a cloth bow', volume: 0.6, haptic: ['medium'] },
 
   // --- the book, lanterns, the Parade, gift boxes ----------------------------------------------------

@@ -693,17 +693,17 @@ def stall_open(c):
     return m.out()
 
 
-@night_recipe('upgrade', length=0.2, loud_db=FREQUENT)
+@night_recipe('upgrade', length=0.14, loud_db=FREQUENT)
 def upgrade(c):
-    """A rising steam hiss: the band climbs 800 -> 3,600 Hz in 0.11 s and is cut off by a small
+    """A rising steam hiss: the band climbs 800 -> 3,600 Hz in 90 ms and is cut off by a 50 ms
     puff that dies fast, so a run of level-ups (one every 80 ms) stays a row of separate rises
     instead of one long hiss."""
     m = Mix()
-    d = 0.11
+    d = 0.09
     n = ns(d)
     env = points([(0, 0.3), (0.006, 0.55), (d * 0.9, 1.0), (d, 0.3)], n)
     m.add(steam(c.rng, d, [(0, 800.0), (d, 3600.0)], q=0.9, attack_ms=2.0, tau=10.0, body=0.06, hiss=0.35, turb=0.35) * env)
-    m.add(0.55 * merge_puff(c.sub('p'), 1), d - 0.02)
+    m.add(0.5 * merge_puff(c.sub('p'), 1)[:ns(0.05)] * rcos_out(ns(0.05), 25.0), d - 0.015)
     c.accent(0.0)
     return m.out()
 
@@ -900,7 +900,7 @@ EVENTS = {
     'undo': (0.5, 150, ['light'], 'the basket rustle reversed', 1),
     'shutter_open': (0.6, None, ['medium'], 'a cane shutter rolling up', 1),
     'stall_open': (0.7, None, ['medium'], 'an awning flapping open', 1),
-    'upgrade': (0.5, 80, ['light'], 'a rising steam hiss', 3),
+    'upgrade': (0.5, 100, ['light'], 'a rising steam hiss', 3),
     'minder_hire': (0.6, None, ['medium'], 'a cloth bow', 1),
     'discovery': (0.6, 200, ['light', 160, 'success'], 'a brush stroke and a stamp', 1),
     'lantern_lit': (0.65, None, ['light', 220, 'success'], 'a paper rustle and a flame catching', 1),
@@ -937,6 +937,6 @@ def key_of(stem):
 # catalogue's minimum interval), measured by render_night.py --rows.
 ROW_KEYS = {
     'merge_1': 60, 'merge_2': 60, 'merge_3': 60, 'merge_4': 60, 'merge_5': 60, 'merge_6': 60, 'merge_7': 60,
-    'merge_8': 60, 'drop': 300, 'move': 80, 'swap': 80, 'return': 80, 'line_fill': 60, 'coins': 150, 'upgrade': 80,
+    'merge_8': 60, 'drop': 300, 'move': 80, 'swap': 80, 'return': 80, 'line_fill': 60, 'coins': 150, 'upgrade': 100,
     'slot_reveal': 120,
 }
