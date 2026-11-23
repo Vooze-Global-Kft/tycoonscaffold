@@ -18,7 +18,10 @@
  *
  * Near-duplicates: two paper texts of at least 25 characters whose sets of character trigrams (of
  * the lower-cased text, letters and digits only, spaces kept) have a Jaccard similarity of 0.6 or
- * more. Identical texts after that normalisation are errors; the rest are warnings for a reader.
+ * more (a near-copy), or whose sets of stemmed content words (stop words and the game's constant
+ * words removed) have a Jaccard similarity of 0.45 or more with at least 3 words shared (the same
+ * premise in other words). Identical texts after normalisation are errors; the rest are warnings
+ * for a reader, one line per cluster.
  *
  * One line per finding: SEVERITY file: record.field: [rule] what is wrong and what to do ("match").
  * Exit code 1 when there is any error. "--json" prints the findings as JSON instead.
@@ -31,7 +34,7 @@ import {
   type ContentUnit, type Deck, type ExtraString, type LooseRecord, type NamesFile, type SectionName, type Sections,
 } from './format';
 import { fit } from './fit';
-import { satireLint, type Severity } from './satireLint';
+import { satireLint, type LintStats, type Severity } from './satireLint';
 
 const DIR = __dirname;
 const ROOT = path.resolve(DIR, '..', '..', '..');
@@ -232,20 +235,37 @@ function trigrams(t: string): Set<string> {
   for (let i = 0; i + 3 <= t.length; i++) s.add(t.slice(i, i + 3));
   return s;
 }
+/** Words that carry no premise (and the game's constant ones: "mayor", "you"). */
+const STOP = new Set(('a an the of and to in on for at by or with is it its it\'s be are was were has have had this that these those ' +
+  'you your yours mayor governor president sign study please would like asks ask wants want they them their he she his her ' +
+  'we our us i me my not no yes as so too also very just now then than there here from into about after before again one').split(' '));
+/** A crude English stem: enough to meet "bus" and "buses", "named" and "name", "waves" and "waving". */
+const stem = (w: string) => w.replace(/(?:ing|ed|es|s|ly|er|est)$/, '').replace(/e$/, '');
+function contentWords(t: string): Set<string> {
+  return new Set(t.split(' ').filter((w) => w.length > 2 && !STOP.has(w) && !/^\d+$/.test(w)).map(stem));
+}
 function jaccard(a: Set<string>, b: Set<string>): number {
   let inter = 0;
   const [small, big] = a.size < b.size ? [a, b] : [b, a];
   for (const g of small) if (big.has(g)) inter++;
-  return inter / (a.size + b.size - inter);
+  return inter / (a.size + b.size - inter || 1);
 }
+/** Character-trigram Jaccard at or above this: a near-copy. */
 export const NEAR_DUPLICATE = 0.6;
+/** Jaccard of stemmed content words at or above this (and at least 3 shared): the same premise in other words. */
+export const SAME_PREMISE = 0.45;
 
+/**
+ * Identical texts (after normalisation) are errors. Near-copies (trigrams) and the same premise in
+ * other words (content words) are warnings for a reader, one line per cluster of texts that read
+ * alike (pairs joined transitively), so twenty variants make one line, not 190.
+ */
 function similarity(entries: { file: string; id: string; text: string }[]): CheckFinding[] {
   const out: CheckFinding[] = [];
   const items = entries
     .map((e) => ({ ...e, n: simNorm(e.text) }))
     .filter((e) => e.n.length >= 25)
-    .map((e) => ({ ...e, g: trigrams(e.n) }));
+    .map((e) => ({ ...e, g: trigrams(e.n), w: contentWords(e.n) }));
   const exact = new Map<string, (typeof items)[number]>();
   for (const it of items) {
     const prev = exact.get(it.n);
@@ -253,15 +273,45 @@ function similarity(entries: { file: string; id: string; text: string }[]): Chec
     else exact.set(it.n, it);
   }
   const uniq = [...exact.values()];
+  const parent = uniq.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  const how = new Map<number, string[]>();
   for (let i = 0; i < uniq.length; i++) {
     for (let j = i + 1; j < uniq.length; j++) {
       const a = uniq[i];
       const b = uniq[j];
       const ratio = a.g.size / b.g.size;
-      if (ratio < NEAR_DUPLICATE || ratio > 1 / NEAR_DUPLICATE) continue;
-      const s = jaccard(a.g, b.g);
-      if (s >= NEAR_DUPLICATE) out.push({ severity: 'warn', file: b.file, id: b.id, rule: 'duplicate', match: a.id, reason: `reads like ${a.id} (${a.file}; trigram similarity ${s.toFixed(2)}): a reader decides whether both stay` });
+      let why = '';
+      if (ratio >= NEAR_DUPLICATE && ratio <= 1 / NEAR_DUPLICATE) {
+        const s = jaccard(a.g, b.g);
+        if (s >= NEAR_DUPLICATE) why = `trigrams ${s.toFixed(2)}`;
+      }
+      if (!why) {
+        const s = jaccard(a.w, b.w);
+        let shared = 0;
+        for (const w of a.w) if (b.w.has(w)) shared++;
+        if (s >= SAME_PREMISE && shared >= 3) why = `content words ${s.toFixed(2)}`;
+      }
+      if (!why) continue;
+      parent[find(j)] = find(i);
+      const k = Math.min(i, j);
+      how.set(k, [...(how.get(k) ?? []), why]);
     }
+  }
+  const groups = new Map<number, number[]>();
+  uniq.forEach((_, i) => {
+    const r = find(i);
+    groups.set(r, [...(groups.get(r) ?? []), i]);
+  });
+  for (const [, members] of groups) {
+    if (members.length < 2) continue;
+    const ms = members.map((i) => uniq[i]);
+    const scores = members.flatMap((i) => how.get(i) ?? []);
+    const files = [...new Set(ms.map((m) => m.file))];
+    out.push({
+      severity: 'warn', file: files.join(', '), id: ms[0].id, rule: 'duplicate', match: ms.slice(1).map((m) => m.id).join(', '),
+      reason: `${ms.length} texts read alike (${scores.slice(0, 3).join('; ')}${scores.length > 3 ? '; …' : ''}): ${ms.map((m) => m.id).join(', ')}; a reader keeps one premise and rewrites the others`,
+    });
   }
   return out;
 }
@@ -379,16 +429,14 @@ function planChecks(p: Parsed, plan: Plan): CheckFinding[] {
         if (lim.max !== undefined && got > lim.max) out.push(E('(papers)', `joke shape ${s}: ${got}, at most ${lim.max} in this batch`));
         else if (lim.target !== undefined && got < lim.target && have >= (count ?? 0)) out.push(Wn('(papers)', `joke shape ${s}: ${got}, the plan aims at about ${lim.target}`));
       }
-      if (q.noTwoShapesInARow) {
-        for (let i = 1; i < papers.length; i++) if (papers[i].shape && papers[i].shape === papers[i - 1].shape) out.push(E(papers[i].id, `the same joke shape as the paper before it (${papers[i - 1].id}): no two in a row in file order (office-style.md 3)`, papers[i].shape, 'shape'));
-      }
+      // rules.noTwoShapesInARow: the lint checks every section in file order (satireLint.ts, rule 6).
       const len = q.length as { medianMax?: number; longFrom?: number; longMax?: number } | undefined;
       if (len) {
         const lens = papers.map((r) => [...r.text].length);
         const med = median(lens);
         // The median is the batch's once it is complete; while it is being written, a warning.
         const done = count === undefined || papers.length >= count;
-        if (len.medianMax !== undefined && lens.length && med > len.medianMax) out.push((done ? E : Wn)('(papers)', `the median paper is ${med} characters, at most ${len.medianMax}${done ? '' : ' (so far)'}`));
+        if (len.medianMax !== undefined && lens.length && med > len.medianMax) out.push((done ? E : Wn)('(papers)', `the median of this batch's papers section is ${med} characters, at most ${len.medianMax} (plan.json)${done ? '' : ' (so far)'}`));
         const long = lens.filter((l) => l >= (len.longFrom ?? 81)).length;
         if (len.longMax !== undefined && long > len.longMax) out.push(E('(papers)', `${long} papers of ${len.longFrom ?? 81} characters or more, at most ${len.longMax} in this batch`));
       }
@@ -555,7 +603,7 @@ function listAll(): string[] {
   return [path.join(DIR, 'names.json'), ...files];
 }
 
-export function check(files: string[], opts: { all?: boolean; final?: boolean } = {}): CheckFinding[] {
+export function check(files: string[], opts: { all?: boolean; final?: boolean; stats?: LintStats } = {}): CheckFinding[] {
   const findings: CheckFinding[] = [];
   const nameFindings: CheckFinding[] = [];
   const names = readNamesFile(path.join(DIR, 'names.json'), nameFindings);
@@ -564,7 +612,7 @@ export function check(files: string[], opts: { all?: boolean; final?: boolean } 
   for (const p of parsed) findings.push(...p.findings);
 
   const lintOf = (units: ContentUnit[], wholeDecks: boolean) =>
-    satireLint(units, { names, wholeDecks }).map((f): CheckFinding => ({ severity: f.severity, file: f.source, id: f.id, field: f.field, rule: f.rule, reason: f.reason, match: f.match }));
+    satireLint(units, { names, wholeDecks, stats: opts.stats }).map((f): CheckFinding => ({ severity: f.severity, file: f.source, id: f.id, field: f.field, rule: f.rule, reason: f.reason, match: f.match }));
 
   if (!opts.all) {
     for (const p of parsed) {
@@ -627,17 +675,17 @@ function main(argv: string[]) {
     console.log(`ERROR ${f}: no such file`);
     process.exit(1);
   }
-  const findings = check(list, { all, final });
+  const stats: LintStats = { lengths: {} };
+  const findings = check(list, { all, final, stats });
   const order: Record<string, number> = { error: 0, warn: 1, todo: 2 };
   findings.sort((a, b) => order[a.severity] - order[b.severity] || a.file.localeCompare(b.file));
   if (json) console.log(JSON.stringify(findings, null, 2));
   else {
     for (const f of findings) console.log(format(f));
     const n = (s: Severity) => findings.filter((f) => f.severity === s).length;
-    if (!all) for (const f of list) {
-      const p = parseFile(f, { names: [] });
-      const lens = p.unit ? paperTexts(p.unit).map((t) => [...t.text].length) : [];
-      if (lens.length) console.log(`${rel(f)}: ${lens.length} paper texts, median ${median(lens)} characters (at most 65), longest ${Math.max(...lens)} (at most 90)`);
+    // The same lengths as the deck rule (7.4) counts: papers with outcomes, a run-up's {district} filled with the longest name.
+    for (const [deck, lens] of Object.entries(stats.lengths)) {
+      if (lens.length) console.log(`${deck} papers${all ? '' : ` in ${list.map(rel).join(', ')}`}: ${lens.length}, median ${median(lens)} characters (at most 65), longest ${Math.max(...lens)} (at most 90), over 80: ${lens.filter((l) => l > 80).length} (at most 20 %)`);
     }
     console.log(`\n${list.length} file${list.length === 1 ? '' : 's'}: ${n('error')} error${n('error') === 1 ? '' : 's'}, ${n('warn')} warning${n('warn') === 1 ? '' : 's'}, ${n('todo')} to do (${Date.now() - t0} ms)`);
   }

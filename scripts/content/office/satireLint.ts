@@ -63,6 +63,11 @@ export interface LintOptions {
   names?: NamesFile;
   /** The input is every record of its decks: share rules are errors, not warnings. */
   wholeDecks?: boolean;
+  /** Filled with the paper lengths of each deck as the length rules count them (check.ts's summary). */
+  stats?: LintStats;
+}
+export interface LintStats {
+  lengths: Record<string, number[]>;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -441,6 +446,7 @@ interface Ctx {
   findings: Finding[];
   seen: Set<string>;
   wholeDecks: boolean;
+  stats?: LintStats;
 }
 
 function add(ctx: Ctx, f: Finding) {
@@ -1055,7 +1061,8 @@ function lintDecks(ctx: Ctx, decks: DeckStats, items: Item[]) {
     // Joke shapes ≤ 20 % each (7.4).
     const shapes = new Map<string, number>();
     for (const p of ps) if (p.shape) shapes.set(p.shape, (shapes.get(p.shape) ?? 0) + 1);
-    for (const [s, k] of shapes) if (k > 0.2 * n && k > 1) add(ctx, { source: src, id, rule: 'rule6', severity: sev, match: `${s} ${k}/${n}`, reason: `the joke shape "${s}" is ${Math.round((100 * k) / n)} % of the ${deck} deck${part}; at most 20 % (7.4)` });
+    const over = [...shapes].filter(([, k]) => k > 0.2 * n && k > 1);
+    if (over.length) add(ctx, { source: src, id, rule: 'rule6', severity: sev, match: over.map(([s, k]) => `${s} ${k}/${n}`).join(', '), reason: `joke shapes above 20 % of the ${deck} deck${part}: ${over.map(([s, k]) => `"${s}" ${Math.round((100 * k) / n)} %`).join(', ')}; at most 20 % each (7.4)` });
     // Traps ≤ 15 % (2.2).
     const traps = ps.filter((p) => p.archetype && TRAPS.includes(p.archetype)).length;
     if (traps > 0.15 * n) add(ctx, { source: src, id, rule: 'rule6', severity: sev, match: `${traps}/${n}`, reason: `traps (vanity and basket) are ${Math.round((100 * traps) / n)} % of the ${deck} deck${part}; at most 15 % (2.2)` });
@@ -1082,6 +1089,7 @@ function lintDecks(ctx: Ctx, decks: DeckStats, items: Item[]) {
   }
   for (const [deck, lens] of byDeck) {
     lens.sort((a, b) => a - b);
+    if (ctx.stats) ctx.stats.lengths[deck] = [...lens];
     const med = lens.length % 2 ? lens[(lens.length - 1) / 2] : (lens[lens.length / 2 - 1] + lens[lens.length / 2]) / 2;
     if (med > 65) add(ctx, { source: 'deck', id: `deck:${deck}`, rule: 'rule4', severity: sev, match: `median ${med}`, reason: `the median paper of the ${deck} deck is ${med} characters${part}; at most 65 (2.7, 7.4)` });
     const long = lens.filter((l) => l > 80).length;
@@ -1135,7 +1143,7 @@ export function satireLint(input: ContentUnit | ContentUnit[], options: LintOpti
     castIds: new Map(names.names.filter((e) => e.kind === 'cast' && e.id).map((e) => [e.id!, e])),
     newspaperIds: new Set(names.names.filter((e) => e.kind === 'newspaper' && e.id).map((e) => e.id!)),
     ministryIds: new Set(names.names.filter((e) => (e.kind === 'ministry' || e.kind === 'grand-project') && e.id).map((e) => e.id!)),
-    findings: [], seen: new Set(), wholeDecks: !!options.wholeDecks,
+    findings: [], seen: new Set(), wholeDecks: !!options.wholeDecks, stats: options.stats,
   };
   const { items, papers, decks } = collect(ctx, units);
   for (const it of items) {

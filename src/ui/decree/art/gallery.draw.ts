@@ -15,7 +15,7 @@ import { MONUMENTS, drawClipping, drawFrame, drawMonument, drawOpponentsCard, dr
 import { drawCaption, drawCaptionBand, drawEmblem, drawGiantScissors, drawLoadingCard } from './emblem.draw';
 import { drawLetters } from './letters';
 import { drawBustStandIn } from './standin.draw';
-import { at, fill, grey, picture, rect } from './pen';
+import { at, fill, grey, oval, picture, rect } from './pen';
 
 export interface Section {
   title: string;
@@ -130,9 +130,9 @@ export function gallerySections(): Section[] {
     },
     {
       title: 'Papers: day paper, armed SIGN, armed STUDY with shake, slip, forms',
-      height: () => 300,
+      height: (w) => 30 + Math.ceil(7 / Math.max(1, Math.floor((w - 8) / 160))) * 284,
       draw: (c, w) => {
-        drawDesk(c, { x: 0, y: 10, w, h: 290 }, 0);
+        drawDesk(c, { x: 0, y: 10, w, h: 20 + Math.ceil(7 / Math.max(1, Math.floor((w - 8) / 160))) * 284 }, 0);
         const pw = 150;
         const ph = 270;
         const sm = { signY: 4, signH: 70, headerY: 76, headerH: 58, refuseY: ph - 74, refuseH: 70 };
@@ -141,7 +141,7 @@ export function gallerySections(): Section[] {
             drawPaper(q, pw, ph, { m: sm });
             at(q, 14, 80, 1, 0, (z) => {
               z.save();
-              z.clipRect({ x: 1.5, y: 1.5, width: 41, height: 51 }, 1, true);
+              z.clipPath(oval(22, 27, 20.5, 25.5), 1, true);
               drawBustStandIn(z, 44, 54);
               z.restore();
               drawPhotoClip(z);
@@ -164,7 +164,7 @@ export function gallerySections(): Section[] {
           },
         ];
         const per = Math.max(1, Math.floor((w - 8) / (pw + 10)));
-        items.slice(0, per).forEach((d, i) => at(c, 8 + i * (pw + 10), 20, 1, 0, d));
+        items.forEach((d, i) => at(c, 8 + (i % per) * (pw + 10), 20 + Math.floor(i / per) * (ph + 14), 1, 0, d));
       },
     },
     {
