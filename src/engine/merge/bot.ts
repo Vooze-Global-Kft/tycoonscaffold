@@ -593,7 +593,7 @@ class Runner {
         case 'merge': {
           tr.odds.merges++;
           tr.goodsMade++;
-          const from = e.tier ?? e.made.k - (e.lucky ? 2 : 1) - (e.spark ? preParams?.mods.sparkTiers ?? 1 : 0);
+          const from = e.made.k - (e.lucky ? 2 : 1) - (e.spark ? preParams?.mods.sparkTiers ?? 1 : 0);
           if (!e.spark && from >= 1 && from <= R.TIERS - 2) {
             tr.odds.luckyExpected += 1 / (preParams?.mods.luckyOdds ?? cfg.merge.merges.luckyOdds);
             if (e.lucky) tr.odds.luckies++;
