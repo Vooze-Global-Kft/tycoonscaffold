@@ -200,7 +200,7 @@ describe('the merge entry (Night Market)', () => {
     expect(merge.engine?.saveTag, 'a save key of its own (market-design.md: save:night-market:merge1)').toBe('merge1');
     expect(nameOf(merge.parts?.HintPointer)).toBe('FireflyPointer');
     expect(nameOf(merge.parts?.Icon)).toBe('MergeIcon');
-    expect(merge.parts?.iconPrefixes).toEqual(['beast:']);
+    expect(merge.parts?.iconPrefixes).toEqual(['beast:', 'art:']);
     expect(merge.parts?.CharIcon).toBeUndefined();
     expect(merge.parts?.CardBust).toBeUndefined();
     expect(merge.artIcons).toBeUndefined();

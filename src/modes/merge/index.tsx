@@ -37,7 +37,7 @@ const entry: ModeEntry = {
   Shell: MergeShell,
   Loading: MergeLoading,
   engine: mergeEngineMode,
-  parts: { HintPointer: FireflyPointer, Icon: MergeIcon, iconPrefixes: ['beast:'] },
+  parts: { HintPointer: FireflyPointer, Icon: MergeIcon, iconPrefixes: ['beast:', 'art:'] },
   hints: mergeHints,
   presets: mergePreset,
   devViews,

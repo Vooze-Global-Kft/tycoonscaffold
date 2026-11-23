@@ -172,6 +172,11 @@ export function adviceExtras(cfg: MergeConfig, g: MergeGame): Advice[] {
   return out;
 }
 
+/** The best purchase only (2.10's score), affordable now or not; null when no purchase can be made or waited for. The bot buys this when it is affordable. */
+export function purchaseAdvice(cfg: MergeConfig, g: MergeGame): Advice | null {
+  return adviceCandidates(cfg, g)[0] ?? null;
+}
+
 /** The single next goal (2.10): see the file comment for the order. null when there is nothing to do. */
 export function advice(cfg: MergeConfig, g: MergeGame): Advice | null {
   const best = adviceCandidates(cfg, g)[0] ?? null;

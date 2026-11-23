@@ -124,7 +124,7 @@ Gear (per chain, level L), with step s = 10 (tune 8 to 12):
 - Base tier b = min(4, 1 + floor((L − 1)/s)); ripe chance p = 0.05 × ((L − 1) mod s) (tune 0.04 to 0.06), at most 0.6 with all bonuses: a drop is tier b + 1 with probability p, else b. maxPop = b + (p > 0 ? 1 : 0).
 - The sheet says what a base step does to orders: "From level 11: drops Twin Skewers; orders ask for Glazed Skewers and up."
 
-Stall bonus S_c = 1 + 0.1 × (M − 1), at most ×3.9; levels 5, 10 and 20 redraw the awning (looks only).
+Stall bonus S_c = 1 + 0.1 × (M − 1), at most ×3.9; levels 5 and 10 redraw the awning (looks only; three looks, decision M29).
 
 Minders, one per stall: Old Brindle (badger, Grill), Pim (owl, Tea), Nettle (hedgehog, Steamer), Juniper (otter, Sweets), Tansy (raccoon, Noodles), Marlo (bat, Puffs).
 - House tier h_c = min(K + 1, b_c + 1), tied to the gear; sale interval Q = 15 s (tune 10 to 25). The sheet names the limit: "held back by: minder level" when K < b_c, else "held back by: gear level".
@@ -795,3 +795,4 @@ Decisions taken after revision 2. A decision here overrides the text above where
 - **M26. Gate wording, from the prototype.** Gate 4: a ticket's price never falls after the draw (a stall level may raise it). Gate 3's gear check compares 30 tickets each side with a 1.3 threshold. Gate 8's ceiling band is dropped (sources and shares stay). Gate 9's cross-check steps events with the board frozen (while away, drops go only to the shelf). The deliver-only bot starts from the active bot's state at minute 3. Gate 1's "something worth doing" is M3's measure.
 - **M27. Prices slow the game, not slower hands.** The prototype pushed seven knobs to the ends of their ranges because nothing could get dearer. Tunable from now on, with the ranges in `RANGES`: the four base costs (gear 20, stall level 50, minder 150, shutter 30, each × 0.5 to × 4), gear growth 1.40 to 1.70, stall growth 1.30 to 1.50, and the stall table of M23. T is not a knob.
 - **M28. Gear level 40 is the top.** At a level 41 the ripe chance would fall back to 0 with the base tier capped at 4, so the last upgrade would make drops worse. The base tier is min(4, 1 + floor((L − 1)/s)) and the ripe chance 0.05 × ((L − 1) mod s) for L from 1 to 40; a seasoned start level above 40 is 40.
+- **M29. A stall front has three awning looks:** stall levels 1 to 4 plain, 5 to 9 scalloped, 10 and up double. (The body named three redraws; the atlas holds three looks.)

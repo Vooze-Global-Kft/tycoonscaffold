@@ -652,38 +652,48 @@ def lucky(c):
 
 # --- moving goods ---------------------------------------------------------------------------------
 
-@night_recipe('move', length=0.11, loud_db=FREQUENT)
+def cloth_rub(rng, dur, lo, hi, slip_hz=30.0, depth=0.85, env=None, accel=0.3):
+    """Cloth rubbing on cloth: brown-ish noise in a fixed low band (lo..hi, inside 300 to 1,500 Hz)
+    chopped by a deep stick-slip at slip_hz (20 to 40 a second), slowing as the rub ends. No sweep."""
+    n = ns(dur)
+    y = band(colored(n, rng, -2.0), lo, hi, 2)
+    y = y / (np.max(np.abs(y)) + 1e-12)
+    y = y * stickslip(rng, n, slip_hz, depth, accel=accel)
+    if env is None:
+        env = points([(0, 0.0), (0.008, 1.0), (dur * 0.45, 0.8), (dur, 0.0)], n)
+    return 1.6 * y * env
+
+
+@night_recipe('move', length=0.14, loud_db=FREQUENT)
 def move(c):
-    """A short cloth slide: a good set down in a new cell (90 ms, band 900 -> 1,700 Hz)."""
+    """A short cloth rub: a good pushed across the stall cloth into a new cell. 130 ms of low cloth
+    noise (360 to 1,150 Hz) with a 32-a-second stick-slip that slows as it settles."""
     c.accent(0.0)
-    env = points([(0, 0.6), (0.01, 1.0), (0.05, 0.7), (0.09, 0.0)], ns(0.09))
-    return cloth(c.rng, 0.09, [(0, 900.0), (0.09, 1700.0)], q=0.8, grain_hz=110.0, env=env)
+    return cloth_rub(c.sub('x'), 0.13, 360.0, 1150.0, 32.0, 0.92)
 
 
-@night_recipe('swap', length=0.18, loud_db=FREQUENT)
+@night_recipe('swap', length=0.2, loud_db=FREQUENT)
 def swap(c):
-    """Two cloth slides crossing: one rising, one falling, 55 ms apart."""
+    """Two cloth rubs that cross: a lower, slower one (350 to 1,000 Hz, 24 a second), and 70 ms
+    later a lighter, quicker one (650 to 1,500 Hz, 36 a second)."""
     m = Mix()
-    e1 = points([(0, 0.6), (0.01, 1.0), (0.05, 0.7), (0.09, 0.0)], ns(0.09))
-    m.add(cloth(c.sub('a'), 0.09, [(0, 900.0), (0.09, 1800.0)], q=0.8, grain_hz=110.0, env=e1))
-    m.add(cloth(c.sub('b'), 0.1, [(0, 1900.0), (0.1, 1000.0)], q=0.8, grain_hz=110.0,
-                env=points([(0, 0.5), (0.012, 1.0), (0.06, 0.6), (0.1, 0.0)], ns(0.1))), 0.055, 0.85)
-    c.accent(0.0, 0.055)
+    m.add(cloth_rub(c.sub('a'), 0.11, 350.0, 1000.0, 24.0, 0.85))
+    m.add(cloth_rub(c.sub('b'), 0.11, 650.0, 1500.0, 36.0, 0.8), 0.07, 0.8)
+    c.accent(0.0, 0.07)
     return m.out()
 
 
 @night_recipe('return', length=0.1, loud_db=FREQUENT)
 def return_(c):
-    """A dull paper tap: the good goes back where it was. A soft wide-band tap (600 to 2,400 Hz, no
-    resonance, so it has no pitch) and the short paper drag of it settling."""
+    """A dull paper tap (the good goes back where it was; also every button press, through the
+    shared ui_tap): a fingertip on a paper ticket. A soft low pat (noise 300 to 1,100 Hz, 14 ms) and,
+    12 ms later, a few fibre grains of the paper giving under it. Nothing above 3 kHz to speak of."""
     c.accent(0.0)
     m = Mix()
-    n = ns(0.03)
-    m.add(1.6 * band(white(n, c.rng), 600.0, 2400.0, 2) * decay(n, 0.4, 0.005))
-    m.add(0.5 * paper_slide(c.sub('s'), 0.07, [(0, 1800.0), (0.07, 1100.0)], q=0.7,
-                            env=points([(0, 0.0), (0.012, 1.0), (0.07, 0.0)], ns(0.07))), 0.008)
-    m.add(0.3 * felt_stamp(c.sub('f'), 1.0, 0.5))
-    return lowpass(m.out(), 2600.0, 2)
+    n = ns(0.07)
+    m.add(2.0 * band(colored(n, c.rng, -1.0), 300.0, 1100.0, 2) * decay(n, 1.5, 0.014))
+    m.add(0.35 * band(grains(c.sub('g'), 0.03, 700.0, (0.1, 0.5), 0.5, [(0, 1.0), (0.03, 0.0)]), 900.0, 2800.0, 2), 0.012)
+    return m.out()
 
 
 @night_recipe('drop', length=0.11, loud_db=QUIET)
@@ -698,12 +708,10 @@ def drop(c):
 
 @night_recipe('line_fill', length=0.06, loud_db=FREQUENT)
 def line_fill(c):
-    """A paper tick: one line of the ticket is ticked off."""
+    """A paper tick: one line of the ticket is ticked off (a pen tick and the paper's tiny flick)."""
     m = Mix()
-    m.add(paper_tick(c.rng, 1.0, bright=1.15))
-    n = ns(0.05)
-    m.add(0.45 * paper_slide(c.sub('flick'), 0.05, [(0, 2400.0), (0.05, 3600.0)], q=1.2,
-                             env=points([(0, 1.0), (0.05, 0.0)], n) ** 2), 0.004)
+    m.add(paper_tick(c.sub('t'), 1.0, bright=1.15))
+    m.add(0.3 * band(grains(c.sub('flick'), 0.035, 900.0, (0.08, 0.3), 0.5, [(0, 1.0), (0.035, 0.0)]), 2500.0, 5200.0, 2), 0.006)
     c.accent(0.0)
     return m.out()
 
@@ -747,14 +755,15 @@ def coins(c):
 # --- the basket -------------------------------------------------------------------------------------
 
 def basket_rustle(rng, dur=0.3):
-    """A woven basket taking a good: a dense straw crinkle in a lower band with a few creaks
-    (short resonant noise bursts at 600 to 1,100 Hz), swelling and settling."""
+    """A woven basket taking a good: straw crinkling in clumps (three clusters of long, low grains,
+    600 to 2,800 Hz), the creak of the weave at each clump (a short resonant noise burst at 600 to
+    1,000 Hz, Q 6) and the cloth lining rubbed under it (a stick-slip rub, 400 to 1,100 Hz)."""
     m = Mix()
-    m.add(0.8 * crinkle(rng, dur, 1100.0, 900.0, 4200.0, density=[(0, 0.3), (dur * 0.25, 1.0), (dur, 0.0)], sigma=0.7))
-    for t in (0.04, 0.11, 0.19):
+    for t, d, v in ((0.0, 0.07, 0.8), (0.09, 0.08, 1.0), (0.19, 0.09, 0.6)):
+        m.add(v * crinkle(rng, d, 900.0, 600.0, 2800.0, density=[(0, 1.0), (d, 0.1)], sigma=0.6, glen_ms=(0.6, 2.2)), t)
         nc = ns(0.035)
-        m.add(0.5 * bandpass(white(nc, rng), rng.uniform(600.0, 1100.0), 6.0) * decay(nc, 1.0, 0.009), t)
-    m.add(0.6 * cloth(rng, dur, [(0, 800.0), (dur, 1400.0)], q=0.6, grain_hz=50.0))
+        m.add(0.6 * v * bandpass(white(nc, rng), rng.uniform(600.0, 1000.0), 6.0) * decay(nc, 1.0, 0.009), t + 0.01)
+    m.add(0.45 * cloth_rub(rng, dur, 400.0, 1100.0, 26.0, 0.8))
     return m.out()
 
 
@@ -782,28 +791,29 @@ def undo(c):
 
 # --- purchases ----------------------------------------------------------------------------------------
 
-@night_recipe('shutter_open', length=0.62)
+@night_recipe('shutter_open', length=0.66)
 def shutter_open(c):
-    """A cane shutter rolling up: eleven slat clicks (noise, no ring) that speed up and then slow
-    as it rolls, over a rolling rumble whose band rises, and a felt stop at the top."""
+    """A cane shutter rolled up: the cane slats catch on the roller in a stick-slip (a dull,
+    low knock of noise every 45 to 80 ms, uneven, 400 to 1,500 Hz, no ring), the rolled cane
+    rubbing between them, and a felt stop at the top."""
     m = Mix()
     rng = c.rng
-    gaps = [0.06, 0.05, 0.042, 0.036, 0.032, 0.03, 0.032, 0.036, 0.044, 0.055]
+    gaps = [0.07, 0.058, 0.05, 0.046, 0.05, 0.056, 0.064, 0.078]
     t = 0.0
     times = [0.0]
     for g in gaps:
-        t += g
+        t += g * rng.uniform(0.9, 1.1)
         times.append(t)
     for j, tt in enumerate(times):
-        nn = ns(0.02)
-        click = band(white(nn, rng), 1300.0 + 60.0 * j, 3800.0, 2) * decay(nn, 0.2, 0.003)
-        m.add((0.9 - 0.03 * j) * 1.4 * click + 0.3 * lowpass(white(nn, rng), 600.0, 2) * decay(nn, 0.5, 0.006), tt)
-    roll = times[-1] + 0.05
-    nr = ns(roll)
-    rumble = svf(colored(nr, rng, -2.0), path_env([(0, 350.0), (roll, 900.0)], nr, log=True), 0.7, 'bp')
-    m.add(0.9 * rumble * np.sin(np.pi * np.arange(nr) / nr) ** 1.5)
-    m.add(0.8 * felt_stamp(c.sub('stop'), 1.0, 0.8), times[-1] + 0.04)
-    c.accent(0.0, times[-1] + 0.04)
+        nn = ns(0.03)
+        knock = band(colored(nn, rng, -1.0), 400.0, 1500.0, 2) * decay(nn, 0.5, 0.006)
+        grit = band(white(nn, rng), 1800.0, 3600.0, 2) * decay(nn, 0.2, 0.0015)
+        m.add((1.0 - 0.05 * j) * (1.5 * knock + 0.5 * grit), tt)
+    roll = times[-1] + 0.03
+    m.add(0.5 * cloth_rub(c.sub('roll'), roll, 500.0, 1300.0, 70.0, 0.6,
+                          env=points([(0, 0.0), (0.05, 1.0), (roll * 0.7, 0.8), (roll, 0.0)], ns(roll)), accel=0.0))
+    m.add(0.9 * felt_stamp(c.sub('stop'), 1.0, 0.8), times[-1] + 0.05)
+    c.accent(0.0, times[-1] + 0.05)
     return m.out()
 
 
@@ -820,17 +830,33 @@ def stall_open(c):
     return m.out()
 
 
-@night_recipe('upgrade', length=0.14, loud_db=FREQUENT)
+@night_recipe('upgrade', length=0.16, loud_db=FREQUENT)
 def upgrade(c):
-    """A rising steam hiss: the band climbs 800 -> 3,600 Hz in 90 ms and is cut off by a 50 ms
-    puff that dies fast, so a run of level-ups (one every 80 ms) stays a row of separate rises
-    instead of one long hiss."""
+    """A steamer coming to the boil: the two-formant steam breath with its formants rising (f1 500
+    -> 1,000 Hz, f2 1.9 -> 3.2 kHz over 110 ms) while the lid begins to rattle faster (a chuff gate
+    speeding from 14 to 40 a second), then a short sizzle. It rises without a swept band and stays a
+    row of separate boils when level-ups come every 100 ms."""
     m = Mix()
-    d = 0.09
+    d = 0.11
     n = ns(d)
-    env = points([(0, 0.3), (0.006, 0.55), (d * 0.9, 1.0), (d, 0.3)], n)
-    m.add(steam(c.rng, d, [(0, 800.0), (d, 3600.0)], q=0.9, attack_ms=2.0, tau=10.0, body=0.06, hiss=0.35, turb=0.35) * env)
-    m.add(0.5 * merge_puff(c.sub('p'), 1)[:ns(0.05)] * rcos_out(ns(0.05), 25.0), d - 0.015)
+    t = np.arange(n) / SR
+    src = white(n, c.rng)
+    f1 = path_env([(0, 500.0), (d, 1000.0)], n, log=True)
+    f2 = path_env([(0, 1900.0), (d, 3200.0)], n, log=True)
+    y = 2.0 * svf(src, f1, 2.4, 'bp') + 2.4 * points([(0, 0.4), (d, 1.0)], n) * svf(src, f2, 2.8, 'bp')
+    gate = np.zeros(n)
+    k = ns(0.02)
+    shape = rcos_in(k, 1.0) * np.exp(-np.arange(k) / ns(0.006))
+    tt, rate = 0.0, 14.0
+    while tt < d:
+        i = int(tt * SR)
+        j = min(n, i + k)
+        gate[i:j] = np.maximum(gate[i:j], shape[:j - i])
+        tt += 1.0 / rate
+        rate = min(rate * 1.35, 40.0)
+    env = points([(0, 0.5), (0.01, 0.7), (d * 0.85, 1.0), (d, 0.0)], n)
+    m.add(soft(y * (0.15 + 0.85 * gate) * env, 2.0))
+    m.add(0.35 * sizzle(c.sub('s'), 0.05, 400.0), d - 0.01)
     c.accent(0.0)
     return m.out()
 
@@ -852,9 +878,14 @@ def minder_hire(c):
 
 @night_recipe('discovery', length=0.42)
 def discovery(c):
-    """A brush stroke (the name is written into the Ladder Book) and a stamp at 160 ms."""
+    """A brush stroke (the name is written into the Ladder Book) and a stamp at 160 ms. The brush is
+    its bristles dragging: fibre grains in a fixed band (1.2 to 3.4 kHz) chopped by a 55-a-second
+    stick-slip, pressure swelling and lifting; no swept filter."""
     m = Mix()
-    m.add(brush(c.sub('brush'), 0.16, 1.0, up=True))
+    nb = ns(0.15)
+    br = crinkle(c.sub('brush'), 0.15, 2600.0, 1200.0, 3400.0, sigma=0.4, glen_ms=(0.1, 0.5))
+    br = br * stickslip(c.sub('slip'), nb, 55.0, 0.75) * points([(0, 0.4), (0.03, 1.0), (0.11, 0.8), (0.15, 0.0)], nb)
+    m.add(1.4 * br)
     m.add(felt_stamp(c.sub('stamp'), 0.9, 0.9), 0.16)
     m.add(0.4 * paper_tick(c.sub('t'), 1.0), 0.16)
     c.accent(0.0, 0.16)
@@ -907,13 +938,13 @@ def giftbox_open(c):
     return m.out()
 
 
-@night_recipe('slot_reveal', length=0.17)
+@night_recipe('slot_reveal', length=0.1)
 def slot_reveal(c):
-    """One crinkle per slot of the bag as it is turned out, with a little felt pat."""
+    """One slot of the bag turned out: a felt pat as the thing lands, then a short paper crinkle
+    (25 ms) over it. Short and low, so three in a row stay three."""
     m = Mix()
-    m.add(0.8 * crinkle(c.rng, 0.12, 2600.0, 1700.0, 5600.0, density=[(0, 1.0), (0.12, 0.1)], sigma=0.5))
-    m.add(0.6 * paper_slide(c.sub('s'), 0.1, [(0, 1600.0), (0.1, 2400.0)], q=0.9), 0.0)
-    m.add(0.5 * felt_stamp(c.sub('pat'), 1.0, 0.6), 0.0)
+    m.add(0.9 * felt_stamp(c.sub('pat'), 1.0, 0.6))
+    m.add(0.7 * crinkle(c.rng, 0.03, 2200.0, 1300.0, 4200.0, density=[(0, 1.0), (0.03, 0.2)], sigma=0.5), 0.018)
     c.accent(0.0)
     return m.out()
 
@@ -972,38 +1003,48 @@ def season_close(c):
 
 # --- interface ---------------------------------------------------------------------------------------
 
-@night_recipe('ui_open', length=0.13, loud_db=FREQUENT)
+def crinkle_burst(rng, dur, lo, hi, rate=1800.0, sigma=0.5):
+    """One short burst of paper crinkle: grains that start dense and thin out over dur."""
+    return crinkle(rng, dur, rate, lo, hi, density=[(0, 1.0), (dur, 0.05)], sigma=sigma, glen_ms=(0.1, 0.6))
+
+
+@night_recipe('ui_open', length=0.21, loud_db=FREQUENT)
 def ui_open(c):
-    """A sheet of paper slid out: a short slide up (1.0 -> 3.0 kHz) with a soft touch at t = 0."""
+    """A sheet unfolded from its fold: a crisp fold click at 0 with the loudest crinkle burst,
+    then two softer, lower bursts at 55 and 115 ms as the sheet opens flat. No sweep; the energy
+    is in the first 30 ms."""
     m = Mix()
-    d = 0.12
-    m.add(paper_slide(c.rng, d, [(0, 1000.0), (d, 3000.0)], q=1.0,
-                      env=points([(0, 0.4), (0.01, 0.8), (0.08, 1.0), (d, 0.0)], ns(d))))
-    m.add(0.25 * paper_tick(c.sub('t'), 1.0, 0.8))
+    m.add(0.7 * paper_tick(c.sub('fold'), 1.0, 0.9))
+    m.add(1.0 * crinkle_burst(c.sub('a'), 0.03, 1300.0, 5000.0))
+    m.add(0.5 * crinkle_burst(c.sub('b'), 0.025, 900.0, 3200.0), 0.055)
+    m.add(0.3 * crinkle_burst(c.sub('c'), 0.03, 700.0, 2400.0), 0.115)
     c.accent(0.0)
     return m.out()
 
 
-@night_recipe('ui_close', length=0.12, loud_db=FREQUENT)
+@night_recipe('ui_close', length=0.19, loud_db=FREQUENT)
 def ui_close(c):
-    """The sheet slid back: the slide falls 2.8 -> 0.9 kHz and settles with a soft pat."""
+    """The sheet folded away: a soft low crinkle as it is creased (0), a second at 50 ms, and the
+    fold pressed shut at 95 ms (a felt pat and a dull click). The weight is at the end, the reverse
+    of ui_open."""
     m = Mix()
-    d = 0.11
-    m.add(paper_slide(c.rng, d, [(0, 2800.0), (d, 900.0)], q=1.0,
-                      env=points([(0, 0.7), (0.01, 1.0), (0.07, 0.7), (d, 0.0)], ns(d))))
-    m.add(0.3 * felt_stamp(c.sub('p'), 1.0, 0.5), d - 0.02)
+    m.add(0.35 * crinkle_burst(c.sub('a'), 0.03, 700.0, 2600.0))
+    m.add(0.5 * crinkle_burst(c.sub('b'), 0.025, 900.0, 3000.0), 0.05)
+    m.add(0.8 * felt_stamp(c.sub('p'), 1.0, 0.55), 0.095)
+    m.add(0.35 * paper_tick(c.sub('t'), 1.0, 0.6), 0.095)
     c.accent(0.0)
     return m.out()
 
 
-@night_recipe('ui_denied', length=0.2)
+@night_recipe('ui_denied', length=0.22)
 def ui_denied(c):
-    """A soft crumple: a short dull paper crumple (grains through 700 to 3,400 Hz, slower than a
-    crinkle) that dies quickly. Gentle, not a buzzer."""
+    """A soft crumple: a scrap of paper squeezed in the hand, three dull clumps of long, low
+    grains (600 to 2,600 Hz) at 0, 55 and 120 ms, each quieter, over a felt pat. Gentle, not a buzzer."""
     m = Mix()
-    m.add(crinkle(c.rng, 0.17, 650.0, 700.0, 3400.0, density=[(0, 1.0), (0.05, 0.9), (0.17, 0.0)], sigma=0.6,
-                  glen_ms=(0.8, 3.0)))
-    m.add(0.5 * felt_stamp(c.sub('p'), 1.0, 0.5))
+    for t, v, d in ((0.0, 1.0, 0.045), (0.055, 0.7, 0.04), (0.12, 0.45, 0.04)):
+        m.add(v * crinkle(c.sub('k%d' % int(t * 1000)), d, 1100.0, 600.0, 2600.0, density=[(0, 1.0), (d, 0.1)], sigma=0.5,
+                          glen_ms=(0.8, 2.6)), t)
+    m.add(0.6 * felt_stamp(c.sub('p'), 1.0, 0.5))
     c.accent(0.0)
     return m.out()
 
