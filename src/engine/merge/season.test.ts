@@ -267,7 +267,7 @@ describe('seasoned gear and familiar faces (2.11, M25, M28)', () => {
     const with9 = { ...atMax, lanterns: [...atMax.lanterns, 9] };
     // Grill 8, Tea 8, Steamer 6, Sweets 6 reached tier 6; Noodles (best 4) did not.
     expect(seasonedAfterClose(cfg, with9).slice(0, 5)).toEqual([max + 1, max + 1, max + 1, max + 1, max]);
-    expect(seasonedAfterClose(cfg, g.merge).slice(0, 5)).toEqual([2, 1, Math.min(max, 4), 1, 0]);
+    expect(seasonedAfterClose(cfg, g.merge).slice(0, 5)).toEqual([Math.min(max, 2), 1, Math.min(max, 4), 1, 0]);
   });
 
   it('M40: the schema holds seasoned gear to 1 step (2 with lantern 9), tuned 1 to 2; after 3 closes no chain holds more', async () => {

@@ -59,7 +59,7 @@ function crowded(): R.MergeGame {
   const m = g.merge;
   // Chain 2's shelf found no room a second ago; chain 3 releases soon; the reserved cell of an undo chip expires at 1002.5.
   const chains = m.chains.map((ch, c) => (c === 2 ? { ...ch, releaseAt: null, blockedAt: 999 } : c === 3 ? { ...ch, releaseAt: 1000.25 } : ch));
-  return { ...g, merge: { ...m, chains, basketUndo: { cell: cells[29], good: { c: 0, k: 2 }, refund: 3, until: 1002.5 }, gift: { ...m.gift, nextAt: 1001 } } };
+  return { ...g, merge: { ...m, chains, basketUndo: { cell: cells[29], good: { c: 0, k: 2 }, refund: 3, until: 1002.5 }, gift: { ...m.gift, nextAt: 1000.125 } } };
 }
 
 /** A full board, a counter in "Setting up…" from before the Parade falls due at season clock 1010: the Parade event wakes it. */
