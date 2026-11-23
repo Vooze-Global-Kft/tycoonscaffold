@@ -25,7 +25,7 @@ const MODE_FOLDERS = {
   merge: ['src/modes/merge', 'src/ui/merge', 'src/engine/merge', 'src/engine/merge.ts', 'src/engine/mergeMode.ts', 'src/engine/fixtures/merge.ts', 'src/config/schema.merge.ts', 'src/config/merge.content.ts'],
   // High Office (docs/design/office-design.md 9.2): the decree rules, their schema (its runtime deck names
   // "Dithering-on-the-Dawdle", "Bus Spotters' Society", ...), fixtures and generated content, as merge's.
-  decree: ['src/modes/decree', 'src/ui/decree', 'src/engine/decree', 'src/engine/decree.ts', 'src/engine/decreeMode.ts', 'src/engine/fixtures/decree.ts', 'src/config/schema.decree.ts', 'src/config/decree.content.ts'],
+  decree: ['src/modes/decree', 'src/ui/decree', 'src/engine/decree', 'src/engine/decree.ts', 'src/engine/decreeMode.ts', 'src/engine/fixtures/decree.ts', 'src/engine/fixtures/decree.numbers.json', 'src/config/schema.decree.ts', 'src/config/decree.content.ts'],
 };
 
 /**
@@ -191,6 +191,7 @@ const WEB_ONLY = [
   'src/modes/decree/devViews.web.ts',
   'src/engine/decree/bot.ts',
   'src/engine/fixtures/decree.ts',
+  'src/engine/fixtures/decree.numbers.json',
   // The merge screens' preview switches (lead, 23 Nov: the screens lead lists them; phones take each file's plain twin).
   'src/ui/merge/play/devSlow.web.ts',
   'src/ui/merge/spokes/dev.web.ts',

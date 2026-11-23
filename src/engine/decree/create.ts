@@ -45,6 +45,7 @@ export function freshDecree(cfg: DecreeConfig, seed: number, office: OfficeIx = 
     nextArrivalAt: null,
     awayCarry: 0,
     emptySince: null,
+    slipOffered: false,
     followUps: [],
     seen: {},
     frameBag: [],

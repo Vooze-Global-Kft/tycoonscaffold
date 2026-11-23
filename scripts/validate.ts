@@ -234,8 +234,12 @@ function mergePacing(id: string, problems: string[], warnings: string[]): void {
  *   `satireLint(unit)`) runs on every decree game, with or without --no-sim, once its file exists: on
  *   every text of the game.json `decree` block (names and roles as names), the store text and the
  *   products (as store text), and the UI strings of src/ui/decree/strings.ts. An error finding is an
- *   error; while game.json is the skeleton's PLACEHOLDER (its text says so) each is a warning instead.
- *   Warnings of the lint are summed in one line. Until the file exists a warning says so.
+ *   error; only while game.json is the skeleton's placeholder (its explicit marker
+ *   `decree.skeletonPlaceholder: true`, which scripts/content/office-placeholder.ts sets and
+ *   build-office.py never writes; not a text search) each is a warning instead. Warnings of the lint
+ *   are summed in one line. Until the file exists a warning says so.
+ * - --release: a decree game.json that still contains the word PLACEHOLDER anywhere (a name, a
+ *   product text, the marker's own game) is an error.
  * - The balance bot (P2: `scripts/content/decree-bot.ts` running 8.3's hard targets on the five
  *   seeds) replaces the warning below once it exists; until then the section 8 targets are unchecked
  *   and a warning says so.
@@ -253,7 +257,7 @@ function decreeChecks(id: string, g: GameConfig, runSim: boolean, problems: stri
   const lint = path.join(__dirname, 'content', 'office', 'satireLint.ts');
   if (!fs.existsSync(lint)) warnings.push('placeholder: no satire lint yet (scripts/content/office/satireLint.ts, the content desk, D7): the words of section 7.8 are not checked');
   else {
-    const placeholder = /PLACEHOLDER/.test(fs.readFileSync(path.join(games.gameDir(id), 'game.json'), 'utf8'));
+    const placeholder = (g.decree as { skeletonPlaceholder?: unknown } | undefined)?.skeletonPlaceholder === true;
     const strings: { id: string; text: string; field: 'ui' | 'store' | 'name' | 'text' }[] = [];
     decreeTexts(g.decree, '', strings, 'decree');
     const st = g.store;
@@ -272,13 +276,18 @@ function decreeChecks(id: string, g: GameConfig, runSim: boolean, problems: stri
     const line = (f: LintFinding) => `satire lint (7.8, ${f.rule}): ${f.id}${f.field ? `.${f.field}` : ''}: ${f.reason}${f.match ? ` ("${f.match}")` : ''}`;
     if (placeholder) {
       // The skeleton's PLACEHOLDER (test papers, names not yet in names.json): one summary line and the first five.
-      if (errors.length) warnings.push(`placeholder: satire lint (7.8) finds ${errors.length} error(s) in the PLACEHOLDER game.json (warnings until build-office.py writes the real one; then each is an error). The first: ${errors.slice(0, 5).map(line).join(' | ')}`);
+      if (errors.length) warnings.push(`placeholder: satire lint (7.8) finds ${errors.length} error(s) in the skeleton's placeholder game.json (decree.skeletonPlaceholder; warnings until build-office.py writes the real one; then each is an error). The first: ${errors.slice(0, 5).map(line).join(' | ')}`);
     } else {
       problems.push(...errors.slice(0, 40).map(line));
       if (errors.length > 40) problems.push(`satire lint (7.8): ... and ${errors.length - 40} more errors`);
     }
     const notes = findings.length - errors.length;
     if (notes) warnings.push(`satire lint (7.8): ${notes} warning(s) for the writers (npx tsx scripts/content/office/check.ts --all)`);
+  }
+  if (release) {
+    const raw = fs.readFileSync(path.join(games.gameDir(id), 'game.json'), 'utf8');
+    const hits = raw.split('\n').filter((l) => l.includes('PLACEHOLDER'));
+    if (hits.length) problems.push(`a decree release: game.json still contains PLACEHOLDER on ${hits.length} line(s), the first: ${hits[0].trim().slice(0, 120)}`);
   }
   const bot = path.join(__dirname, 'content', 'decree-bot.ts');
   if (runSim) warnings.push(fs.existsSync(bot) ? 'placeholder: scripts/content/decree-bot.ts exists but this hook does not run it yet (P2 replaces this line with the run of 8.3 on the five seeds)' : 'placeholder: no decree bot yet (src/engine/decree/bot.ts, scripts/content/decree-bot.ts; P2): the targets of section 8 are not checked');

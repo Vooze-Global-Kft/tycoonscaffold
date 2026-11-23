@@ -7,7 +7,8 @@
  * call when the reader would call (8.2), and during a boycott or scandal the free exit and the ad. The
  * goal line shows words, price and "about 20 s / 2 min / 1 h" in at most 34 characters (lint).
  *
- * SEAM: slips.ts (P1a) takes `advice(...).slip`; it reads params.ts (P1a) prices and slips.ts `reserve`.
+ * SEAM: slips.ts (P1a) takes `advice(...).slip`; size.ts (P1a) takes `about` for the strip's
+ * "Short by 240 · about 9 s"; it reads params.ts (P1a) prices and slips.ts `reserve` / `reserveParts`.
  */
 import { notBuilt } from './notBuilt';
 import type { About, AdviceResult, DecreeConfig, DecreeGame, Goal } from './types';

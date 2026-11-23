@@ -9,6 +9,10 @@
  * (draw.ts `returnToDeck`, P1a). Carries: Name Recognition; ministers (each runs the new office's
  * ministry of their club); monuments; scrapbook and seen texts; due follow-ups; purchases; the Office
  * wall with the old town's photograph and levels.
+ *
+ * SEAM, what it calls of P1a: create.ts `freshDecree` (the new office's ministries, moods, strikes
+ * and armed lists), draw.ts `returnToDeck`, `scriptedPaper` and `landPaper` (the first paper of each
+ * office, 2.7 step 2), params.ts `decreeParams` (the old B for the transition fund) and `commitCash`.
  */
 import { notBuilt } from './notBuilt';
 import type { DecreeConfig, DecreeEvent, DecreeGame, MoveSheet } from './types';

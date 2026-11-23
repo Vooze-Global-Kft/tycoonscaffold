@@ -8,6 +8,9 @@
  * A pending take-back commits when its 2 s pass (decide.ts `commitPending`). The Standing Order buys
  * while you play (grants.ts). Nothing else moves with time. tick(a + b) = tick(a) then tick(b)
  * exactly (tested); the bot steps from event to event (`nextStop`).
+ *
+ * SEAM, what it calls of P1a: draw.ts `drawNext` and `landNext` (arrivals), slips.ts `slipFor` (the
+ * slip), decide.ts `commitPending` (the take-back window), params.ts `decreeParams` / `commitCash`.
  */
 import { notBuilt } from './notBuilt';
 import { commitCash, decreeParams } from './params';
@@ -24,6 +27,12 @@ export function advanceDecree(cfg: DecreeConfig, g: DecreeGame, dt: number, now:
   const I = decreeParams(cfg, g).I;
   const paid = commitCash(g, I * step, 'tick');
   return { ...paid, stats: { ...paid.stats, playSeconds: paid.stats.playSeconds + step } };
+}
+
+/** "Next visitor 0:07" on the door glass (3.1, 5.1): seconds of play until the next arrival, or null while the arrival clock is stopped. Built. */
+export function nextVisitorIn(cfg: DecreeConfig, g: DecreeGame): number | null {
+  const at = g.decree.nextArrivalAt;
+  return at === null ? null : Math.max(0, at - g.stats.playSeconds);
 }
 
 /** The play-clock time of the next thing that happens by itself (an arrival, a slip, a pending commit), or null; the bot steps to it. Skeleton: throws notBuilt. */

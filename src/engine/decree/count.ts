@@ -1,15 +1,17 @@
 /**
  * Shares, the poll and the count (2.4, 2.10, 2.11, 4.4). Package P1b (docs/design/office-build-plan.md).
  *
- * share_d = min(100, max(0, Σ_g w_{d,g} × m_g + C_d + Y − R)), Y = disarray × losses, in hundredths,
- * shown to one decimal; held when ≥ 50.0; the poll is the number held. The count is the poll, number
- * for number (H2); districts are announced by |share_d − 50|, largest first, 2.5 s each. After at most
- * 8 consecutive losses at any seat the next count is a certain win (2.11; the validator recomputes
- * ceil((50 + R)/Y)).
+ * share_d = min(100, max(0, Σ_g w_{d,g} × m_g + C_d + Y − R)), Y(n) = 2^(n+1) − 2 after n consecutive
+ * losses (D15, params.ts `disarray`; the mixes after mix twists from params.ts `decreeParams`), in
+ * hundredths, shown to one decimal; held when ≥ 50.0; the poll is the number held. The count is the
+ * poll, number for number (H2); districts are announced by |share_d − 50|, largest first, 2.5 s each.
+ * After at most 5 consecutive losses at any seat the next count is a certain win (2.11 with D15; the
+ * validator checks 2^(n+1) − 2 − R ≥ 50 at n = 5).
  *
- * SEAM: what the strips ask (size.ts, P1a): `heldAfter` (the "Poll 3 → 4 of 5" title row for the
- * shown deltas and campaign points) and `closeDistricts` (a club chip's flag: the club is strong,
- * w ≥ 0.4, in a district within 3 points of 50).
+ * SEAM: what the paper core asks (P1a): size.ts `heldAfter` (the "Poll 3 → 4 of 5" title row for the
+ * shown deltas and campaign points), `closeDistricts` (a club chip's flag: the club is strong,
+ * w ≥ 0.4, in a district within 3 points of 50) and `shares` (a district chip's "HT 48.6 → 52.6");
+ * draw.ts `shares` (`drawCampaignPaper`: a district within 6 points of 50, else the closest).
  */
 import { notBuilt } from './notBuilt';
 import type { ClubIx, CountResult, DecreeConfig, DecreeGame, Poll } from './types';

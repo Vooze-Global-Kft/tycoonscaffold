@@ -314,25 +314,36 @@ export function outTraySheets(signed: number): number {
  */
 export function drawOutTray(c: SkCanvas, w: number, h: number, signed: number): void {
   const n = outTraySheets(signed);
-  const depth = Math.min(h * 0.75, n * 0.55);
   const base = h - 3;
-  dropShadow(c, rrect(4, base - 4, w - 8, 6, 2), 1.2, 1.6, 0.35);
+  const backTop = Math.max(2, h * 0.18);
+  const frontTop = base - Math.max(7, h * 0.32);
+  dropShadow(c, rrect(4, base - 5, w - 8, 7, 2), 1.4, 2, 0.35);
+  // the back rim and the floor of the basket
+  const wire = (a: number) => stroke(alpha(DESK.brassDeep, a), 1.1);
+  c.drawPath(rrect(6, backTop, w - 12, base - backTop, 3), wire(0.75));
+  c.drawPath(line(8, backTop + 0.6, w - 8, backTop + 0.6), stroke(alpha(DESK.brassLight, 0.6), 0.6));
+  for (let x = 18; x < w - 12; x += 16) c.drawPath(line(x, backTop, x, base), wire(0.35));
+  // the stack: one sheet per signed paper, the newest on top, slightly askew
+  const depth = Math.min(base - backTop - 3, n * 0.62);
   for (let i = 0; i < n; i++) {
-    const y = base - 2 - (i / Math.max(1, n)) * depth;
-    const dx = Math.sin(i * 2.3) * 1.6;
-    c.drawPath(rect(8 + dx, y - 1.2, w - 16, 1.4), fill(i % 2 ? DESK.paperLight : DESK.paper));
-    c.drawPath(line(8 + dx, y + 0.2, w - 8 + dx, y + 0.2), stroke(alpha(DESK.paperEdge, 0.8), 0.4));
-    if (i % 3 === 0) c.drawPath(line(w * 0.62 + dx, y - 0.6, w * 0.7 + dx, y - 1), stroke(alpha(DESK.violet, 0.8), 0.7));
+    const y = base - 2 - (i / Math.max(1, n - 1)) * depth;
+    const dx = Math.sin(i * 2.3) * 1.8;
+    c.drawPath(rect(10 + dx, y - 1.6, w - 20, 2), fill(i % 2 ? DESK.paperLight : DESK.paper));
+    c.drawPath(line(10 + dx, y + 0.4, w - 10 + dx, y + 0.4), stroke(alpha(DESK.paperEdge, 0.9), 0.4));
+    if (i % 4 === 0) c.drawPath(line(w * 0.6 + dx, y - 0.9, w * 0.72 + dx, y - 1.4), stroke(DESK.violet, 0.7));
   }
-  // the wire basket: a rim and vertical wires, front only
-  const top = Math.max(2, base - Math.max(10, depth + 4));
-  const wire = stroke(DESK.brassDeep, 1.2);
-  const wireLit = stroke(DESK.brassLight, 0.6);
-  c.drawPath(rrect(3, top, w - 6, base - top + 1, 3), wire);
-  c.drawPath(line(5, top + 0.6, w - 5, top + 0.6), wireLit);
-  for (let x = 10; x < w - 6; x += 7) c.drawPath(line(x, top + 1, x, base), stroke(alpha(DESK.brassDeep, 0.9), 0.8));
-  c.drawPath(line(3, (top + base) / 2, w - 3, (top + base) / 2), stroke(alpha(DESK.brassDeep, 0.9), 0.8));
-  for (const x of [8, w - 8]) c.drawPath(rect(x - 3, base, 6, 2), fill(DESK.brassDeep));
+  if (n > 0) {
+    const top = base - 2 - depth - 1.6;
+    c.drawPath(rect(10, top, w - 20, 2.4), fill(DESK.paperLight));
+    c.drawPath(builder().moveTo(w * 0.55, top + 1.6).quadTo(w * 0.6, top - 0.6, w * 0.64, top + 1.2).quadTo(w * 0.68, top + 2, w * 0.72, top + 0.4).build(), stroke(DESK.violet, 0.9));
+  }
+  // the front: a low wire rim with a few uprights, the papers showing above it
+  const fr = rrect(3, frontTop, w - 6, base - frontTop + 1, 3);
+  c.drawPath(fr, stroke(DESK.brassDeep, 1.6));
+  c.drawPath(line(5, frontTop + 0.5, w - 5, frontTop + 0.5), stroke(DESK.brassLight, 0.8));
+  for (let x = 12; x < w - 6; x += 12) c.drawPath(line(x, frontTop + 1, x, base), stroke(DESK.brassDeep, 0.9));
+  c.drawPath(line(3, (frontTop + base) / 2, w - 3, (frontTop + base) / 2), stroke(DESK.brassDeep, 0.8));
+  for (const x of [9, w - 9]) c.drawPath(rect(x - 3, base, 6, 2), fill(DESK.brassDeep));
 }
 
 /** The drawer's growth stage for the refusals ever (5.1): 0 the drawer, 1 a second drawer (100), 2 a filing cabinet (1,000), 3 a photograph of a warehouse (10,000). */

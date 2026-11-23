@@ -9,7 +9,9 @@
  *
  * SEAM: `nextApplication` is what the draw's step (4) asks (draw.ts, P1a: "what the draw needs from
  * the term"); `ministerFactors` goes into the ONE Factors object (./twists.ts `deskFactors`); the
- * appoint effect of an application is applied by decide.ts (P1a) through `appoint`.
+ * appoint effect of an application is applied by decide.ts (P1a) `applyShown` through `appoint`, its
+ * refusal through `sendAway`; slips.ts `ledger` (P1a) reads `cabinet` for each row's minister. D21:
+ * the next application is the next undelivered minister whose club the current office has.
  */
 import { notBuilt } from './notBuilt';
 import type { DecreeConfig, DecreeEvent, DecreeGame, Factors } from './types';

@@ -10,18 +10,23 @@
  * A screen never computes a price, a rate, a share or a time itself: everything a screen prints has
  * a function here (the strip of 2.7 as data `stripOf`, the poll rows of 4.4 `poll`, the Ledger rows
  * `ledger`, the term ribbon `termRibbon`, the goal line `goalLine` with `about`, the reserve
- * `reserve`, the top bar `topBar`, the club strip `clubStrip`, the result and move sheets, the away
- * report). Signatures were fixed by the skeleton (spec 9.2 "hour 0"); each function's doc comment
+ * `reserve` / `reserveParts`, the top bar `topBar`, the club strip `clubStrip`, the door glass
+ * `nextVisitorIn`, the result and move sheets, the away report, whether an ad or the Shop may be
+ * offered `canWatchAd` / `canShop`). Signatures were fixed by the skeleton (spec 9.2 "hour 0"); each function's doc comment
  * (in its file) cites the section it implements and says whether it is built or throws notBuilt.
- * Owned by P1b after the skeleton (it adds exports; a signature changes only with P1a and the lead).
+ * TWO EXPORT BLOCKS, each edited only by its package: "P1a" (the paper core's files) and "P1b" (time,
+ * term and wiring). A package adds the exports of its own files in its own block; a signature changes
+ * only with the other package's agreement and the lead's. The file as a whole is P1b's (9.2).
  * The seam between the rule files: docs/design/office-build-plan.md, "The seam".
  */
 export type * from './decree/types';
 export { SITE, PAPER_KINDS, DAY_KINDS, MAX_TICK } from './decree/types';
+
+// ============================================================================ BLOCK P1a (the paper core)
 export { NotBuiltError, notBuilt } from './decree/notBuilt';
 
 // --- 2.4 derived values, the one rounding, the one cash commit, the streams, prices (P1a: params.ts) ---
-export { isDecree, officeOf, clubIndex, roundDibs, rand, commitCash, ministryValue, storeys, rateOf, levelCost, openCost, vanityPrice, decreeParams, topBar, clubStrip, EPS, MAX_CASH } from './decree/params';
+export { isDecree, officeOf, clubIndex, roundDibs, rand, commitCash, disarray, ministryValue, storeys, rateOf, levelCost, openCost, vanityPrice, decreeParams, topBar, clubStrip, EPS, MAX_CASH } from './decree/params';
 
 // --- 2.3 state: a new game, a loaded save (P1a: create.ts) ---
 export { freshDecree, createDecree, withDecreeFields, reconcileDecree } from './decree/create';
@@ -36,7 +41,7 @@ export { sizeMood, sizeMoney, freezeShown, stripOf } from './decree/size';
 export { decide, takeBack, commitPending, applyShown, commitItem, isDay } from './decree/decide';
 
 // --- 2.6, 2.7 slips, purchases, the reserve, the Ledger (P1a: slips.ts) ---
-export { reserve, slipFor, buy, raise, openMinistry, buyVanity, ledger } from './decree/slips';
+export { reserve, reserveParts, slipFor, buy, raise, openMinistry, buyVanity, ledger } from './decree/slips';
 
 // --- 2.7, 7.6 follow-ups (P1a: followup.ts) ---
 export { scheduleFollowUp, dueFollowUp, followUpPaper, stickyNote } from './decree/followup';
@@ -45,8 +50,10 @@ export { scheduleFollowUp, dueFollowUp, followUpPaper, stickyNote } from './decr
 export { countDownStrikes, checkStrikes, endStrike } from './decree/strike';
 export { sayNothingFactor, countDownScandal, checkScandal, endScandal } from './decree/scandal';
 
+// ============================================================================ BLOCK P1b (time, term and wiring)
+
 // --- 2.5 the tick (P1b: tick.ts) ---
-export { advanceDecree, nextStop } from './decree/tick';
+export { advanceDecree, nextStop, nextVisitorIn } from './decree/tick';
 
 // --- 2.15 time away (P1b: offline.ts) ---
 export { decreeOffline, decreeIncome, decreeActiveIncome, mergeAwayReports, awayReportAlone } from './decree/offline';
@@ -73,4 +80,4 @@ export { nextApplication, ministerFactors, appoint, sendAway, cabinet } from './
 export { hintsFor } from './decree/hints';
 
 // --- 5.10, 5.11 ads, products, the Standing Order, the face (P1b: grants.ts) ---
-export { canWatchAd, grantAd, entitleDecree, setStandingOrder, standingOrderStep, pickFace } from './decree/grants';
+export { canWatchAd, canShop, grantAd, entitleDecree, setStandingOrder, standingOrderStep, pickFace } from './decree/grants';

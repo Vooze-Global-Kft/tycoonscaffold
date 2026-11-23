@@ -41,6 +41,8 @@ export interface BustOptions {
   greyscale?: boolean;
   frame?: boolean;
   ground?: boolean;
+  /** false draws no hatching (flat washes only: the tone test, a flat print). Default true. */
+  hatch?: boolean;
 }
 
 export function photoPath() {
@@ -106,8 +108,9 @@ export function drawBustLook(c: SkCanvas, look: Look, o: BustOptions = {}): void
   const body = (q: SkCanvas) => {
     q.save();
     clip(q, photoPath());
-    if (o.ground !== false) drawGround(q, DEFAULT_PEN);
-    drawPerson(q, look, { tone: o.tone, age: o.age });
+    const pen = o.hatch === false ? { ...DEFAULT_PEN, hatch: false } : DEFAULT_PEN;
+    if (o.ground !== false) drawGround(q, pen);
+    drawPerson(q, look, { tone: o.tone, age: o.age, pen });
     q.restore();
     if (o.frame !== false) {
       q.drawPath(photoPath(), stroke(alpha(P.ink, 0.85), 1.1));

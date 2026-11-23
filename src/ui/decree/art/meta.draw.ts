@@ -258,10 +258,10 @@ const SEEDS: Record<0 | 1 | 2, [number, number][]> = {
   // The Republic: Middlingham, Fogmoor, Brassby, Teacup Downs, Gusting Heights, Muchpuddle, Saltpenny Bay, Kitewell, Upper Wobbling
   2: [
     [50, 50],
-    [28, 16],
-    [66, 26],
-    [22, 46],
-    [80, 12],
+    [32, 24],
+    [62, 26],
+    [22, 50],
+    [76, 30],
     [40, 76],
     [84, 74],
     [86, 46],
@@ -276,8 +276,8 @@ function outline(office: 0 | 1 | 2): [number, number][] {
   const n = 26;
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
-    let rad = 42 + (r() - 0.5) * 10 + Math.sin(a * 3 + office) * 4;
-    if (office === 2 && i >= 3 && i <= 5) rad += 9; // Saltpenny Bay's long spit to the south-east
+    let rad = 39 + (r() - 0.5) * 9 + Math.sin(a * 3 + office) * 4;
+    if (office === 2 && i >= 3 && i <= 5) rad += 7; // Saltpenny Bay's long spit to the south-east
     if (office === 2 && i === 18) rad -= 12; // a bay on the west coast
     if (office === 1 && i >= 10 && i <= 12) rad += 6;
     pts.push([50 + Math.cos(a) * rad, 50 + Math.sin(a) * rad * (office === 0 ? 0.9 : 0.95)]);
@@ -383,8 +383,11 @@ export function drawDistrictMap(c: SkCanvas, w: number, h: number, office: 0 | 1
   c.drawPath(rect(0, 0, w, h), stroke(DESK.paperEdge, 0.8));
   at(c, ox, oy, s, 0, (q) => {
     // sea hatching round the land
-    q.drawPath(rect(0, 0, 100, 100), fill(alpha(DESK.slatePale, 0.5)));
-    hatch(q, rect(0, 0, 100, 100), alpha(DESK.slateLight, 0.5), 3, 0.25 / s + 0.15, 0);
+    q.drawPath(rect(0, 0, 100, 100), fill(alpha(DESK.slatePale, 0.6)));
+    const waves = builder();
+    for (let y = 6; y < 100; y += 11)
+      for (let x = ((y / 11) % 2) * 7 + 3; x < 100; x += 14) waves.moveTo(x, y).quadTo(x + 1.5, y - 1.2, x + 3, y).quadTo(x + 4.5, y + 1.2, x + 6, y);
+    q.drawPath(waves.build(), stroke(alpha(DESK.slateLight, 0.8), 0.5));
     districts.forEach((d, i) => {
       const held = o.held?.[i] ?? false;
       q.drawPath(d.path, fill(held ? DESK.violetPale : mix(DESK.slatePale, DESK.white, 0.3)));

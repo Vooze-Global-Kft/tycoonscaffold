@@ -220,13 +220,13 @@
     "callFraction": 0.6,
     "campaignPapers": 3,
     "gossipMax": 5,
-    "rivalPull": 7,
+    "rivalPull": 3,
     "scale": 1,
     "stand": null,
     "recordName": "Town Record",
     "winWeight": 1,
     "requisitionEvery": 10,
-    "templateShare": 0,
+    "templateShare": 0.25,
     "rivals": [
      {
       "id": "mayor_rival_1",
@@ -391,7 +391,7 @@
     "callFraction": 0.6,
     "campaignPapers": 4,
     "gossipMax": 6,
-    "rivalPull": 9,
+    "rivalPull": 4,
     "scale": 1000,
     "stand": {
      "nr": 10,
@@ -619,7 +619,7 @@
     "callFraction": 0.6,
     "campaignPapers": 5,
     "gossipMax": 7,
-    "rivalPull": 11,
+    "rivalPull": 5,
     "scale": 1000000,
     "stand": {
      "nr": 50,
@@ -976,7 +976,7 @@
     "sign": [
      {
       "type": "mood",
-      "club": "other",
+      "club": "petitioner",
       "delta": -3
      },
      {
@@ -985,6 +985,40 @@
      }
     ],
     "refuse": []
+   },
+   {
+    "id": "biggerStudy",
+    "share": 0,
+    "trap": false,
+    "sign": [
+     {
+      "type": "money",
+      "tier": "M",
+      "sign": -1
+     },
+     {
+      "type": "mood",
+      "club": "petitioner",
+      "delta": 1
+     },
+     {
+      "type": "mood",
+      "club": "other",
+      "delta": -2
+     }
+    ],
+    "refuse": [
+     {
+      "type": "mood",
+      "club": "petitioner",
+      "delta": -2
+     },
+     {
+      "type": "mood",
+      "club": "other",
+      "delta": 1
+     }
+    ]
    }
   ],
   "forms": {
@@ -995,7 +1029,8 @@
    "ribbon": {
     "cost": "S",
     "clubGain": 3,
-    "clubLoss": -1
+    "clubLoss": -1,
+    "everyGain": 1
    },
    "application": {
     "clubGain": 1,
@@ -1122,7 +1157,7 @@
     "club": "hedges",
     "office": "president",
     "rule": {
-     "target": "sayNothing",
+     "target": "sayNothing.cut",
      "club": null,
      "mul": 0.7,
      "add": 0
@@ -1147,111 +1182,137 @@
     {
      "id": "bandstand_summer",
      "name": "Bandstand Summer",
-     "factor": {
-      "target": "mix",
-      "club": "brass",
-      "mul": 1,
-      "add": 0.1
-     },
+     "factors": [
+      {
+       "target": "mix",
+       "club": "brass",
+       "mul": 1,
+       "add": 0.1
+      }
+     ],
      "text": ""
     },
     {
      "id": "committee_week",
      "name": "Committee Week",
-     "factor": {
-      "target": "committee.share",
-      "club": null,
-      "mul": 2,
-      "add": 0
-     },
+     "factors": [
+      {
+       "target": "committee.share",
+       "club": null,
+       "mul": 2,
+       "add": 0
+      }
+     ],
      "text": ""
     },
     {
      "id": "quiet_press",
      "name": "Quiet Press",
-     "factor": {
-      "target": "gossipMax",
-      "club": null,
-      "mul": 1,
-      "add": 2
-     },
+     "factors": [
+      {
+       "target": "gossipMax",
+       "club": null,
+       "mul": 1,
+       "add": 2
+      }
+     ],
      "text": ""
     },
     {
      "id": "ribbon_shortage",
      "name": "Ribbon Shortage",
-     "factor": {
-      "target": "ribbon.money",
-      "club": null,
-      "mul": 2,
-      "add": 0
-     },
+     "factors": [
+      {
+       "target": "ribbon.money",
+       "club": null,
+       "mul": 2,
+       "add": 0
+      },
+      {
+       "target": "ribbon.mood",
+       "club": null,
+       "mul": 2,
+       "add": 0
+      }
+     ],
      "text": ""
     },
     {
      "id": "kite_weather",
      "name": "Kite Weather",
-     "factor": {
-      "target": "mix",
-      "club": "kites",
-      "mul": 1,
-      "add": 0.1
-     },
+     "factors": [
+      {
+       "target": "mix",
+       "club": "kites",
+       "mul": 1,
+       "add": 0.1
+      }
+     ],
      "text": ""
     },
     {
      "id": "market_fortnight",
      "name": "Market Fortnight",
-     "factor": {
-      "target": "fee.money",
-      "club": null,
-      "mul": 1.5,
-      "add": 0
-     },
+     "factors": [
+      {
+       "target": "fee.money",
+       "club": null,
+       "mul": 1.5,
+       "add": 0
+      }
+     ],
      "text": ""
     },
     {
      "id": "early_doors",
      "name": "Early Doors",
-     "factor": {
-      "target": "tau",
-      "club": null,
-      "mul": 0.8,
-      "add": 0
-     },
+     "factors": [
+      {
+       "target": "tau",
+       "club": null,
+       "mul": 0.8,
+       "add": 0
+      }
+     ],
      "text": ""
     },
     {
      "id": "hedge_inspection",
      "name": "Hedge Inspection",
-     "factor": {
-      "target": "mix",
-      "club": "hedges",
-      "mul": 1,
-      "add": 0.1
-     },
+     "factors": [
+      {
+       "target": "mix",
+       "club": "hedges",
+       "mul": 1,
+       "add": 0.1
+      }
+     ],
      "text": ""
     },
     {
      "id": "gentle_week",
      "name": "A Gentle Week",
-     "factor": {
-      "target": "sayNothing",
-      "club": null,
-      "mul": 0.6,
-      "add": 0
-     },
+     "factors": [
+      {
+       "target": "sayNothing.cut",
+       "club": null,
+       "mul": 0.6,
+       "add": 0
+      }
+     ],
      "text": ""
     },
     {
      "id": "grievance_amnesty",
      "name": "Grievance Amnesty",
-     "factor": {
-      "target": "settlement.money",
-      "club": null,
-      "mul": 0.5,
-      "add": 0
-     },
+     "factors": [
+      {
+       "target": "settlement.money",
+       "club": null,
+       "mul": 0.5,
+       "add": 0
+      }
+     ],
      "text": ""
     }
    ],
@@ -2080,7 +2141,6 @@
    "quietFrom": 182
   },
   "approval": {
-   "base": 0.4,
    "slope": 1.2
   },
   "mood": {
@@ -2105,6 +2165,7 @@
    "treasury": 30,
    "trayCap": 10,
    "slipDelay": 1,
+   "slipReserveSeconds": 15,
    "takeBackSeconds": 2,
    "eventOverCap": 1
   },
@@ -2116,14 +2177,13 @@
   },
   "ladder": {
    "nrFactor": 0.02,
-   "disarray": 8,
    "winBase": 3,
    "sweepBonus": 2,
    "transitionFund": 30,
    "moveMoodCap": 5,
    "moveMoodPerNr": 20,
    "announceSeconds": 2.5,
-   "maxLossesBound": 8
+   "maxLossesBound": 5
   },
   "vanity": {
    "price": 600,
@@ -2190,6 +2250,17 @@
     "club": null
    }
   },
+  "followUps": {
+   "biggerStudyDelay": [
+    8,
+    12
+   ],
+   "favourDelay": [
+    10,
+    14
+   ]
+  },
+  "skeletonPlaceholder": true,
   "deck": {
    "papers": [
     {
@@ -2251,7 +2322,8 @@
      "text": "We propose a study of why our last study took nine years. It should take about ten.",
      "subject": "committees",
      "butt": "committee",
-     "shape": "escalation"
+     "shape": "escalation",
+     "biggerStudy": "Test bigger study of the study of the study."
     },
     {
      "id": "may-tills-clock",
@@ -2521,7 +2593,8 @@
      "text": "Test paper 13",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "biggerStudy": "Test bigger study 13"
     },
     {
      "id": "test-mayor-bus-committee-2",
@@ -2539,7 +2612,8 @@
      "text": "Test paper 14",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "photo-op"
+     "shape": "photo-op",
+     "biggerStudy": "Test bigger study 14"
     },
     {
      "id": "test-mayor-bus-committee-3",
@@ -2557,7 +2631,8 @@
      "text": "Test paper 15",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "callback"
+     "shape": "callback",
+     "biggerStudy": "Test bigger study 15"
     },
     {
      "id": "test-mayor-bus-vanity-1",
@@ -2629,7 +2704,14 @@
      "text": "Test paper 19",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "favour": {
+      "text": "Test favour 19",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 19A",
+       "refuse": "TEST FAVOUR CLIPPING 19B"
+      }
+     }
     },
     {
      "id": "test-mayor-bus-basket-2",
@@ -2647,7 +2729,14 @@
      "text": "Test paper 20",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "favour": {
+      "text": "Test favour 20",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 20A",
+       "refuse": "TEST FAVOUR CLIPPING 20B"
+      }
+     }
     },
     {
      "id": "test-mayor-bus-basket-3",
@@ -2665,7 +2754,14 @@
      "text": "Test paper 21",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "favour": {
+      "text": "Test favour 21",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 21A",
+       "refuse": "TEST FAVOUR CLIPPING 21B"
+      }
+     }
     },
     {
      "id": "test-mayor-shops-project-1",
@@ -2899,7 +2995,8 @@
      "text": "Test paper 34",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "literalism"
+     "shape": "literalism",
+     "biggerStudy": "Test bigger study 34"
     },
     {
      "id": "test-mayor-shops-committee-2",
@@ -2917,7 +3014,8 @@
      "text": "Test paper 35",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "biggerStudy": "Test bigger study 35"
     },
     {
      "id": "test-mayor-shops-committee-3",
@@ -2935,7 +3033,8 @@
      "text": "Test paper 36",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "biggerStudy": "Test bigger study 36"
     },
     {
      "id": "test-mayor-shops-vanity-1",
@@ -3007,7 +3106,14 @@
      "text": "Test paper 40",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "undercut"
+     "shape": "undercut",
+     "favour": {
+      "text": "Test favour 40",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 40A",
+       "refuse": "TEST FAVOUR CLIPPING 40B"
+      }
+     }
     },
     {
      "id": "test-mayor-shops-basket-2",
@@ -3025,7 +3131,14 @@
      "text": "Test paper 41",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "escalation"
+     "shape": "escalation",
+     "favour": {
+      "text": "Test favour 41",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 41A",
+       "refuse": "TEST FAVOUR CLIPPING 41B"
+      }
+     }
     },
     {
      "id": "test-mayor-shops-basket-3",
@@ -3043,7 +3156,14 @@
      "text": "Test paper 42",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "literalism"
+     "shape": "literalism",
+     "favour": {
+      "text": "Test favour 42",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 42A",
+       "refuse": "TEST FAVOUR CLIPPING 42B"
+      }
+     }
     },
     {
      "id": "test-mayor-veg-project-1",
@@ -3277,7 +3397,8 @@
      "text": "Test paper 55",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "callback"
+     "shape": "callback",
+     "biggerStudy": "Test bigger study 55"
     },
     {
      "id": "test-mayor-veg-committee-2",
@@ -3295,7 +3416,8 @@
      "text": "Test paper 56",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "undercut"
+     "shape": "undercut",
+     "biggerStudy": "Test bigger study 56"
     },
     {
      "id": "test-mayor-veg-committee-3",
@@ -3313,7 +3435,8 @@
      "text": "Test paper 57",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "escalation"
+     "shape": "escalation",
+     "biggerStudy": "Test bigger study 57"
     },
     {
      "id": "test-mayor-veg-vanity-1",
@@ -3385,7 +3508,14 @@
      "text": "Test paper 61",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "favour": {
+      "text": "Test favour 61",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 61A",
+       "refuse": "TEST FAVOUR CLIPPING 61B"
+      }
+     }
     },
     {
      "id": "test-mayor-veg-basket-2",
@@ -3403,7 +3533,14 @@
      "text": "Test paper 62",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "photo-op"
+     "shape": "photo-op",
+     "favour": {
+      "text": "Test favour 62",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 62A",
+       "refuse": "TEST FAVOUR CLIPPING 62B"
+      }
+     }
     },
     {
      "id": "test-mayor-veg-basket-3",
@@ -3421,7 +3558,14 @@
      "text": "Test paper 63",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "callback"
+     "shape": "callback",
+     "favour": {
+      "text": "Test favour 63",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 63A",
+       "refuse": "TEST FAVOUR CLIPPING 63B"
+      }
+     }
     },
     {
      "id": "test-governor-bus-project-1",
@@ -3655,7 +3799,8 @@
      "text": "Test paper 76",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "biggerStudy": "Test bigger study 76"
     },
     {
      "id": "test-governor-bus-committee-2",
@@ -3673,7 +3818,8 @@
      "text": "Test paper 77",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "biggerStudy": "Test bigger study 77"
     },
     {
      "id": "test-governor-bus-committee-3",
@@ -3691,7 +3837,8 @@
      "text": "Test paper 78",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "photo-op"
+     "shape": "photo-op",
+     "biggerStudy": "Test bigger study 78"
     },
     {
      "id": "test-governor-bus-vanity-1",
@@ -3763,7 +3910,14 @@
      "text": "Test paper 82",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "literalism"
+     "shape": "literalism",
+     "favour": {
+      "text": "Test favour 82",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 82A",
+       "refuse": "TEST FAVOUR CLIPPING 82B"
+      }
+     }
     },
     {
      "id": "test-governor-bus-basket-2",
@@ -3781,7 +3935,14 @@
      "text": "Test paper 83",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "favour": {
+      "text": "Test favour 83",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 83A",
+       "refuse": "TEST FAVOUR CLIPPING 83B"
+      }
+     }
     },
     {
      "id": "test-governor-bus-basket-3",
@@ -3799,7 +3960,14 @@
      "text": "Test paper 84",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "favour": {
+      "text": "Test favour 84",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 84A",
+       "refuse": "TEST FAVOUR CLIPPING 84B"
+      }
+     }
     },
     {
      "id": "test-governor-shops-project-1",
@@ -4033,7 +4201,8 @@
      "text": "Test paper 97",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "escalation"
+     "shape": "escalation",
+     "biggerStudy": "Test bigger study 97"
     },
     {
      "id": "test-governor-shops-committee-2",
@@ -4051,7 +4220,8 @@
      "text": "Test paper 98",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "literalism"
+     "shape": "literalism",
+     "biggerStudy": "Test bigger study 98"
     },
     {
      "id": "test-governor-shops-committee-3",
@@ -4069,7 +4239,8 @@
      "text": "Test paper 99",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "biggerStudy": "Test bigger study 99"
     },
     {
      "id": "test-governor-shops-vanity-1",
@@ -4141,7 +4312,14 @@
      "text": "Test paper 103",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "callback"
+     "shape": "callback",
+     "favour": {
+      "text": "Test favour 103",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 103A",
+       "refuse": "TEST FAVOUR CLIPPING 103B"
+      }
+     }
     },
     {
      "id": "test-governor-shops-basket-2",
@@ -4159,7 +4337,14 @@
      "text": "Test paper 104",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "undercut"
+     "shape": "undercut",
+     "favour": {
+      "text": "Test favour 104",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 104A",
+       "refuse": "TEST FAVOUR CLIPPING 104B"
+      }
+     }
     },
     {
      "id": "test-governor-shops-basket-3",
@@ -4177,7 +4362,14 @@
      "text": "Test paper 105",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "escalation"
+     "shape": "escalation",
+     "favour": {
+      "text": "Test favour 105",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 105A",
+       "refuse": "TEST FAVOUR CLIPPING 105B"
+      }
+     }
     },
     {
      "id": "test-governor-veg-project-1",
@@ -4411,7 +4603,8 @@
      "text": "Test paper 118",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "photo-op"
+     "shape": "photo-op",
+     "biggerStudy": "Test bigger study 118"
     },
     {
      "id": "test-governor-veg-committee-2",
@@ -4429,7 +4622,8 @@
      "text": "Test paper 119",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "callback"
+     "shape": "callback",
+     "biggerStudy": "Test bigger study 119"
     },
     {
      "id": "test-governor-veg-committee-3",
@@ -4447,7 +4641,8 @@
      "text": "Test paper 120",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "undercut"
+     "shape": "undercut",
+     "biggerStudy": "Test bigger study 120"
     },
     {
      "id": "test-governor-veg-vanity-1",
@@ -4519,7 +4714,14 @@
      "text": "Test paper 124",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "favour": {
+      "text": "Test favour 124",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 124A",
+       "refuse": "TEST FAVOUR CLIPPING 124B"
+      }
+     }
     },
     {
      "id": "test-governor-veg-basket-2",
@@ -4537,7 +4739,14 @@
      "text": "Test paper 125",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "favour": {
+      "text": "Test favour 125",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 125A",
+       "refuse": "TEST FAVOUR CLIPPING 125B"
+      }
+     }
     },
     {
      "id": "test-governor-veg-basket-3",
@@ -4555,7 +4764,14 @@
      "text": "Test paper 126",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "photo-op"
+     "shape": "photo-op",
+     "favour": {
+      "text": "Test favour 126",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 126A",
+       "refuse": "TEST FAVOUR CLIPPING 126B"
+      }
+     }
     },
     {
      "id": "test-governor-brass-project-1",
@@ -4789,7 +5005,8 @@
      "text": "Test paper 139",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "biggerStudy": "Test bigger study 139"
     },
     {
      "id": "test-governor-brass-committee-2",
@@ -4807,7 +5024,8 @@
      "text": "Test paper 140",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "biggerStudy": "Test bigger study 140"
     },
     {
      "id": "test-governor-brass-committee-3",
@@ -4825,7 +5043,8 @@
      "text": "Test paper 141",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "biggerStudy": "Test bigger study 141"
     },
     {
      "id": "test-governor-brass-vanity-1",
@@ -4897,7 +5116,14 @@
      "text": "Test paper 145",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "escalation"
+     "shape": "escalation",
+     "favour": {
+      "text": "Test favour 145",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 145A",
+       "refuse": "TEST FAVOUR CLIPPING 145B"
+      }
+     }
     },
     {
      "id": "test-governor-brass-basket-2",
@@ -4915,7 +5141,14 @@
      "text": "Test paper 146",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "literalism"
+     "shape": "literalism",
+     "favour": {
+      "text": "Test favour 146",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 146A",
+       "refuse": "TEST FAVOUR CLIPPING 146B"
+      }
+     }
     },
     {
      "id": "test-governor-brass-basket-3",
@@ -4933,7 +5166,14 @@
      "text": "Test paper 147",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "favour": {
+      "text": "Test favour 147",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 147A",
+       "refuse": "TEST FAVOUR CLIPPING 147B"
+      }
+     }
     },
     {
      "id": "test-governor-anglers-project-1",
@@ -5167,7 +5407,8 @@
      "text": "Test paper 160",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "undercut"
+     "shape": "undercut",
+     "biggerStudy": "Test bigger study 160"
     },
     {
      "id": "test-governor-anglers-committee-2",
@@ -5185,7 +5426,8 @@
      "text": "Test paper 161",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "escalation"
+     "shape": "escalation",
+     "biggerStudy": "Test bigger study 161"
     },
     {
      "id": "test-governor-anglers-committee-3",
@@ -5203,7 +5445,8 @@
      "text": "Test paper 162",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "literalism"
+     "shape": "literalism",
+     "biggerStudy": "Test bigger study 162"
     },
     {
      "id": "test-governor-anglers-vanity-1",
@@ -5275,7 +5518,14 @@
      "text": "Test paper 166",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "photo-op"
+     "shape": "photo-op",
+     "favour": {
+      "text": "Test favour 166",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 166A",
+       "refuse": "TEST FAVOUR CLIPPING 166B"
+      }
+     }
     },
     {
      "id": "test-governor-anglers-basket-2",
@@ -5293,7 +5543,14 @@
      "text": "Test paper 167",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "callback"
+     "shape": "callback",
+     "favour": {
+      "text": "Test favour 167",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 167A",
+       "refuse": "TEST FAVOUR CLIPPING 167B"
+      }
+     }
     },
     {
      "id": "test-governor-anglers-basket-3",
@@ -5311,7 +5568,14 @@
      "text": "Test paper 168",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "undercut"
+     "shape": "undercut",
+     "favour": {
+      "text": "Test favour 168",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 168A",
+       "refuse": "TEST FAVOUR CLIPPING 168B"
+      }
+     }
     },
     {
      "id": "test-president-bus-project-1",
@@ -5545,7 +5809,8 @@
      "text": "Test paper 181",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "biggerStudy": "Test bigger study 181"
     },
     {
      "id": "test-president-bus-committee-2",
@@ -5563,7 +5828,8 @@
      "text": "Test paper 182",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "photo-op"
+     "shape": "photo-op",
+     "biggerStudy": "Test bigger study 182"
     },
     {
      "id": "test-president-bus-committee-3",
@@ -5581,7 +5847,8 @@
      "text": "Test paper 183",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "callback"
+     "shape": "callback",
+     "biggerStudy": "Test bigger study 183"
     },
     {
      "id": "test-president-bus-vanity-1",
@@ -5653,7 +5920,14 @@
      "text": "Test paper 187",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "favour": {
+      "text": "Test favour 187",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 187A",
+       "refuse": "TEST FAVOUR CLIPPING 187B"
+      }
+     }
     },
     {
      "id": "test-president-bus-basket-2",
@@ -5671,7 +5945,14 @@
      "text": "Test paper 188",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "favour": {
+      "text": "Test favour 188",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 188A",
+       "refuse": "TEST FAVOUR CLIPPING 188B"
+      }
+     }
     },
     {
      "id": "test-president-bus-basket-3",
@@ -5689,7 +5970,14 @@
      "text": "Test paper 189",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "favour": {
+      "text": "Test favour 189",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 189A",
+       "refuse": "TEST FAVOUR CLIPPING 189B"
+      }
+     }
     },
     {
      "id": "test-president-shops-project-1",
@@ -5923,7 +6211,8 @@
      "text": "Test paper 202",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "literalism"
+     "shape": "literalism",
+     "biggerStudy": "Test bigger study 202"
     },
     {
      "id": "test-president-shops-committee-2",
@@ -5941,7 +6230,8 @@
      "text": "Test paper 203",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "biggerStudy": "Test bigger study 203"
     },
     {
      "id": "test-president-shops-committee-3",
@@ -5959,7 +6249,8 @@
      "text": "Test paper 204",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "biggerStudy": "Test bigger study 204"
     },
     {
      "id": "test-president-shops-vanity-1",
@@ -6031,7 +6322,14 @@
      "text": "Test paper 208",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "undercut"
+     "shape": "undercut",
+     "favour": {
+      "text": "Test favour 208",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 208A",
+       "refuse": "TEST FAVOUR CLIPPING 208B"
+      }
+     }
     },
     {
      "id": "test-president-shops-basket-2",
@@ -6049,7 +6347,14 @@
      "text": "Test paper 209",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "escalation"
+     "shape": "escalation",
+     "favour": {
+      "text": "Test favour 209",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 209A",
+       "refuse": "TEST FAVOUR CLIPPING 209B"
+      }
+     }
     },
     {
      "id": "test-president-shops-basket-3",
@@ -6067,7 +6372,14 @@
      "text": "Test paper 210",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "literalism"
+     "shape": "literalism",
+     "favour": {
+      "text": "Test favour 210",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 210A",
+       "refuse": "TEST FAVOUR CLIPPING 210B"
+      }
+     }
     },
     {
      "id": "test-president-veg-project-1",
@@ -6301,7 +6613,8 @@
      "text": "Test paper 223",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "callback"
+     "shape": "callback",
+     "biggerStudy": "Test bigger study 223"
     },
     {
      "id": "test-president-veg-committee-2",
@@ -6319,7 +6632,8 @@
      "text": "Test paper 224",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "undercut"
+     "shape": "undercut",
+     "biggerStudy": "Test bigger study 224"
     },
     {
      "id": "test-president-veg-committee-3",
@@ -6337,7 +6651,8 @@
      "text": "Test paper 225",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "escalation"
+     "shape": "escalation",
+     "biggerStudy": "Test bigger study 225"
     },
     {
      "id": "test-president-veg-vanity-1",
@@ -6409,7 +6724,14 @@
      "text": "Test paper 229",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "favour": {
+      "text": "Test favour 229",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 229A",
+       "refuse": "TEST FAVOUR CLIPPING 229B"
+      }
+     }
     },
     {
      "id": "test-president-veg-basket-2",
@@ -6427,7 +6749,14 @@
      "text": "Test paper 230",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "photo-op"
+     "shape": "photo-op",
+     "favour": {
+      "text": "Test favour 230",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 230A",
+       "refuse": "TEST FAVOUR CLIPPING 230B"
+      }
+     }
     },
     {
      "id": "test-president-veg-basket-3",
@@ -6445,7 +6774,14 @@
      "text": "Test paper 231",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "callback"
+     "shape": "callback",
+     "favour": {
+      "text": "Test favour 231",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 231A",
+       "refuse": "TEST FAVOUR CLIPPING 231B"
+      }
+     }
     },
     {
      "id": "test-president-brass-project-1",
@@ -6679,7 +7015,8 @@
      "text": "Test paper 244",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "biggerStudy": "Test bigger study 244"
     },
     {
      "id": "test-president-brass-committee-2",
@@ -6697,7 +7034,8 @@
      "text": "Test paper 245",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "biggerStudy": "Test bigger study 245"
     },
     {
      "id": "test-president-brass-committee-3",
@@ -6715,7 +7053,8 @@
      "text": "Test paper 246",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "photo-op"
+     "shape": "photo-op",
+     "biggerStudy": "Test bigger study 246"
     },
     {
      "id": "test-president-brass-vanity-1",
@@ -6787,7 +7126,14 @@
      "text": "Test paper 250",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "literalism"
+     "shape": "literalism",
+     "favour": {
+      "text": "Test favour 250",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 250A",
+       "refuse": "TEST FAVOUR CLIPPING 250B"
+      }
+     }
     },
     {
      "id": "test-president-brass-basket-2",
@@ -6805,7 +7151,14 @@
      "text": "Test paper 251",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "favour": {
+      "text": "Test favour 251",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 251A",
+       "refuse": "TEST FAVOUR CLIPPING 251B"
+      }
+     }
     },
     {
      "id": "test-president-brass-basket-3",
@@ -6823,7 +7176,14 @@
      "text": "Test paper 252",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "favour": {
+      "text": "Test favour 252",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 252A",
+       "refuse": "TEST FAVOUR CLIPPING 252B"
+      }
+     }
     },
     {
      "id": "test-president-anglers-project-1",
@@ -7057,7 +7417,8 @@
      "text": "Test paper 265",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "escalation"
+     "shape": "escalation",
+     "biggerStudy": "Test bigger study 265"
     },
     {
      "id": "test-president-anglers-committee-2",
@@ -7075,7 +7436,8 @@
      "text": "Test paper 266",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "literalism"
+     "shape": "literalism",
+     "biggerStudy": "Test bigger study 266"
     },
     {
      "id": "test-president-anglers-committee-3",
@@ -7093,7 +7455,8 @@
      "text": "Test paper 267",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "biggerStudy": "Test bigger study 267"
     },
     {
      "id": "test-president-anglers-vanity-1",
@@ -7165,7 +7528,14 @@
      "text": "Test paper 271",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "callback"
+     "shape": "callback",
+     "favour": {
+      "text": "Test favour 271",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 271A",
+       "refuse": "TEST FAVOUR CLIPPING 271B"
+      }
+     }
     },
     {
      "id": "test-president-anglers-basket-2",
@@ -7183,7 +7553,14 @@
      "text": "Test paper 272",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "undercut"
+     "shape": "undercut",
+     "favour": {
+      "text": "Test favour 272",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 272A",
+       "refuse": "TEST FAVOUR CLIPPING 272B"
+      }
+     }
     },
     {
      "id": "test-president-anglers-basket-3",
@@ -7201,7 +7578,14 @@
      "text": "Test paper 273",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "escalation"
+     "shape": "escalation",
+     "favour": {
+      "text": "Test favour 273",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 273A",
+       "refuse": "TEST FAVOUR CLIPPING 273B"
+      }
+     }
     },
     {
      "id": "test-president-kites-project-1",
@@ -7435,7 +7819,8 @@
      "text": "Test paper 286",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "photo-op"
+     "shape": "photo-op",
+     "biggerStudy": "Test bigger study 286"
     },
     {
      "id": "test-president-kites-committee-2",
@@ -7453,7 +7838,8 @@
      "text": "Test paper 287",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "callback"
+     "shape": "callback",
+     "biggerStudy": "Test bigger study 287"
     },
     {
      "id": "test-president-kites-committee-3",
@@ -7471,7 +7857,8 @@
      "text": "Test paper 288",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "undercut"
+     "shape": "undercut",
+     "biggerStudy": "Test bigger study 288"
     },
     {
      "id": "test-president-kites-vanity-1",
@@ -7543,7 +7930,14 @@
      "text": "Test paper 292",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "favour": {
+      "text": "Test favour 292",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 292A",
+       "refuse": "TEST FAVOUR CLIPPING 292B"
+      }
+     }
     },
     {
      "id": "test-president-kites-basket-2",
@@ -7561,7 +7955,14 @@
      "text": "Test paper 293",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "favour": {
+      "text": "Test favour 293",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 293A",
+       "refuse": "TEST FAVOUR CLIPPING 293B"
+      }
+     }
     },
     {
      "id": "test-president-kites-basket-3",
@@ -7579,7 +7980,14 @@
      "text": "Test paper 294",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "photo-op"
+     "shape": "photo-op",
+     "favour": {
+      "text": "Test favour 294",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 294A",
+       "refuse": "TEST FAVOUR CLIPPING 294B"
+      }
+     }
     },
     {
      "id": "test-president-hedges-project-1",
@@ -7813,7 +8221,8 @@
      "text": "Test paper 307",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "biggerStudy": "Test bigger study 307"
     },
     {
      "id": "test-president-hedges-committee-2",
@@ -7831,7 +8240,8 @@
      "text": "Test paper 308",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "statistic"
+     "shape": "statistic",
+     "biggerStudy": "Test bigger study 308"
     },
     {
      "id": "test-president-hedges-committee-3",
@@ -7849,7 +8259,8 @@
      "text": "Test paper 309",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "slogan"
+     "shape": "slogan",
+     "biggerStudy": "Test bigger study 309"
     },
     {
      "id": "test-president-hedges-vanity-1",
@@ -7921,7 +8332,14 @@
      "text": "Test paper 313",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "escalation"
+     "shape": "escalation",
+     "favour": {
+      "text": "Test favour 313",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 313A",
+       "refuse": "TEST FAVOUR CLIPPING 313B"
+      }
+     }
     },
     {
      "id": "test-president-hedges-basket-2",
@@ -7939,7 +8357,14 @@
      "text": "Test paper 314",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "literalism"
+     "shape": "literalism",
+     "favour": {
+      "text": "Test favour 314",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 314A",
+       "refuse": "TEST FAVOUR CLIPPING 314B"
+      }
+     }
     },
     {
      "id": "test-president-hedges-basket-3",
@@ -7957,7 +8382,14 @@
      "text": "Test paper 315",
      "subject": "paperwork",
      "butt": "office",
-     "shape": "form-misapplied"
+     "shape": "form-misapplied",
+     "favour": {
+      "text": "Test favour 315",
+      "clippings": {
+       "sign": "TEST FAVOUR CLIPPING 315A",
+       "refuse": "TEST FAVOUR CLIPPING 315B"
+      }
+     }
     }
    ],
    "scripted": [
@@ -8132,7 +8564,7 @@
        "club": null
       },
       "club": "shops",
-      "other": "shops",
+      "other": null,
       "archetype": "favour",
       "text": "About the basket: the goose at the bottom was not fruit. It would like an office.",
       "subject": "geese",
@@ -8155,7 +8587,7 @@
        "club": null
       },
       "club": "veg",
-      "other": "veg",
+      "other": null,
       "archetype": "favour",
       "text": "No hard feelings. Please accept this smaller basket. It is one grape.",
       "subject": "vanity",
@@ -8234,7 +8666,7 @@
        "club": "bus"
       },
       "club": "bus",
-      "other": null,
+      "other": "shops",
       "archetype": "treat",
       "text": "Test follow-up 1",
       "subject": "paperwork",
@@ -8262,7 +8694,7 @@
        "club": "shops"
       },
       "club": "shops",
-      "other": null,
+      "other": "veg",
       "archetype": "treat",
       "text": "Test follow-up 2",
       "subject": "paperwork",
@@ -9150,35 +9582,35 @@
      "id": "office_standing_order",
      "kind": "unlock",
      "title": "Junior Clerk on Duty",
-     "description": "PLACEHOLDER: the Standing Order from your first day.",
+     "description": "The Standing Order, from your first day.",
      "fallbackPrice": "$3.99"
     },
     {
      "id": "office_long_lunch",
      "kind": "unlock",
      "title": "Long Lunch",
-     "description": "PLACEHOLDER: ministries collect 2 more hours away.",
+     "description": "Away earnings run up to 6 hours, not 4.",
      "fallbackPrice": "$1.99"
     },
     {
      "id": "office_walnut_desk",
      "kind": "cosmetic",
      "title": "Walnut & Brass Desk Set",
-     "description": "PLACEHOLDER: a walnut desk. Looks only.",
+     "description": "Walnut desk, brass trays. Looks only.",
      "fallbackPrice": "$2.99"
     },
     {
      "id": "office_portrait_frames",
      "kind": "cosmetic",
      "title": "Gilt Portrait Frames",
-     "description": "PLACEHOLDER: gilt frames on the wall. Looks only.",
+     "description": "Gilt frames for your Office wall. Looks only.",
      "fallbackPrice": "$1.99"
     },
     {
      "id": "office_private_secretary",
      "kind": "skipAds",
      "title": "Skip the Ad Videos",
-     "description": "PLACEHOLDER: every Watch-ad reward, no video.",
+     "description": "Your secretary sits through the ads for you.",
      "fallbackPrice": "$4.99"
     }
    ]
@@ -9186,29 +9618,28 @@
  },
  "store": {
   "title": "Proudly Adequate",
-  "subtitle": "PLACEHOLDER subtitle",
+  "subtitle": "Sign silly papers, run a town",
   "keywords": [
-   "desk",
    "mayor",
    "governor",
    "president",
-   "papers",
-   "sign",
-   "town hall",
+   "desk",
    "funny",
    "satire",
+   "red tape",
    "decisions",
    "cartoon",
-   "clerk"
+   "clerk",
+   "approve",
+   "comedy"
   ],
-  "shortDescription": "PLACEHOLDER: the store writer drafts the real listing.",
-  "description": "PLACEHOLDER. This is the skeleton's stand-in for the store description of High Office. The store writer drafts the real listing in parallel, and the numbers engineer regenerates this whole file with scripts/content/build-office.py.",
+  "shortDescription": "Push each paper up to sign it, pull it down to refuse. A comedy of town office.",
+  "description": "An invented country and a comedy desk: push each paper up to sign it, or pull it down into the drawer marked FOR FURTHER STUDY.\n\nYou are the new mayor of Dithering-on-the-Dawdle, in the Republic of Middling (motto: Proudly Adequate). You were elected unopposed. The other candidate went to the wrong hall.\n\nVisitors queue at your door. A bus spotter would like the 7:02 named after you. A pumpkin grower asks for the freedom of the town for her pumpkin, which has asked very politely. A lobbyist leaves a small fruit basket, for no reason. Each paper prints both outcomes before you touch it, in exact numbers: what signing costs or pays, which club it pleases and which it annoys, and whether the poll moves. Those are the numbers applied. A signed paper rests on the out-tray for two seconds; tap it to take it back.\n\nThe town's opinion belongs to its hobby clubs: the Bus Spotters' Society, the Shop Window Guild and the Giant Vegetable Society, with a brass band, anglers, kite flyers and a hedge committee further up. Their approval multiplies everything your ministries earn, from x0.4 at 0 % to x1.6 at 100 %. A club that falls below 20 boycotts its ministry until you settle with it or 8 more papers are decided. Let the gossip pile up and the town paper prints a front page about you: apologise on the steps, or say nothing and collect a fifth less for 10 papers.\n\nA term is a fixed number of papers. From 60 % of the way through you may call the election. The poll board shows exactly how each ward would vote today, and on election night a clerk chalks up the wards, safest first. Win, and your Name Recognition grows; with enough of it, and a record of ministry levels to match, you may stand for Governor of Upper Wobbling, then President in Middlingham, taking your ministers with you. Lose, and nothing you built is lost: you carry on as Acting Mayor, and the winner resigns to spend more time with her hat.\n\nTaxes, at least, need no signature, which makes this technically an idle game. Four ministries in town (six as Governor, eight as President) collect dibs every second. With the app shut they go on collecting at 35 % of the rate, for a maximum of 4 hours, and a visitor leaves a paper every 6 minutes, until 10 wait in the in-tray. Moods, gossip, the poll and the term wait for you to read.\n\nAt the desk a visitor comes about every 12 seconds. When nobody is waiting, the Treasury Clerk slides a budget slip across, and a flick up buys what she advises: a level or a new ministry. Nine ministers apply for posts along the way; each runs one ministry and brings one desk rule, printed on every paper it touches. The levels go into the Ledger, a clothbound book kept for the tycoon in you.\n\nEverything here is invented: the country, its towns and clubs, its politicians, companies and newspapers. There are no parties, and nobody can type a name into the game.\n\nWatching an ad is always your choice, made from a button that names its reward: half again on the away report; Check the Sofa, a small sum once a term; Call the Spin Doctor, which ends the cost of saying nothing; Send a Courier, which ends a boycott; Open the Doors, which fills the in-tray. No banners appear, and no ad plays between screens. Five purchases, none of them random: Junior Clerk on Duty (the Standing Order from your first day: the junior clerk buys the advised ministry level while you play), Long Lunch (time away counts for 6 hours, not 4), the Walnut & Brass Desk Set and Gilt Portrait Frames (both looks only), and Skip the Ad Videos: the Private Secretary sits through them, and the reward arrives at once. From the moment you call an election until election night ends, no ad or purchase is offered. No ad or purchase moves a mood or a poll point: those move only by papers you decide.",
   "primaryCategory": "GAMES",
   "subcategories": [
-   "GAMES_SIMULATION",
-   "GAMES_STRATEGY"
+   "GAMES_SIMULATION"
   ],
   "privacyPolicyUrl": "https://example.com/proudly-adequate/privacy",
-  "promotionalText": "PLACEHOLDER: promotional text of the real listing."
+  "promotionalText": "The Republic of Middling needs a mayor who reads. You will do. Grant a pumpkin the freedom of the town, decline a fruit basket, call the election when the poll is kind."
  }
 }

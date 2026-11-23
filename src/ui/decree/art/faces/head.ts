@@ -635,17 +635,17 @@ export interface FaceParts {
 }
 
 export function drawFeatures(c: SkCanvas, pen: Pen, g: HeadGeo, f: FaceParts, w: Wash, age = 0): void {
-  if (f.extra !== 'earrings' && f.extra !== 'pencil') EXTRAS[f.extra](c, pen, g, w);
-  EYES[f.eyes](c, pen, g, w);
-  BROWS[f.brows](c, pen, g, w);
+  if (f.extra !== 'earrings' && f.extra !== 'pencil') (EXTRAS[f.extra] as FeatureDraw)(c, pen, g, w);
+  (EYES[f.eyes] as FeatureDraw)(c, pen, g, w);
+  (BROWS[f.brows] as FeatureDraw)(c, pen, g, w);
   drawAge(c, pen, g, age);
-  NOSES[f.nose](c, pen, g, w);
-  FACIAL[f.facial](c, pen, g, w);
-  MOUTHS[f.mouth](c, pen, g, w);
-  GLASSES[f.glasses](c, pen, g, w);
+  (NOSES[f.nose] as FeatureDraw)(c, pen, g, w);
+  (FACIAL[f.facial] as FeatureDraw)(c, pen, g, w);
+  (MOUTHS[f.mouth] as FeatureDraw)(c, pen, g, w);
+  (GLASSES[f.glasses] as FeatureDraw)(c, pen, g, w);
 }
 
 /** Extras that sit outside the face (earrings, a pencil behind the ear): drawn after the hair. */
 export function drawOuterExtras(c: SkCanvas, pen: Pen, g: HeadGeo, f: FaceParts, w: Wash): void {
-  if (f.extra === 'earrings' || f.extra === 'pencil') EXTRAS[f.extra](c, pen, g, w);
+  if (f.extra === 'earrings' || f.extra === 'pencil') (EXTRAS[f.extra] as FeatureDraw)(c, pen, g, w);
 }

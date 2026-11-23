@@ -56,7 +56,10 @@ export function isDay(item: DeskItem): boolean {
  *     counters −1 (strike.ts, P1a), the "Say nothing" counter −1, quiet and gossip decay (scandal.ts, P1a);
  * (3) the boycott check, then the gossip and scandal check (strike.ts, scandal.ts, P1a);
  * (4) at day D the run-up starts (term.ts `checkTermEnd`, P1b);
- * (5) the next paper lands, or the slip's 1.0 s starts (draw.ts `landNext`, P1a).
+ * (5) the next paper lands (draw.ts `landNext`, P1a), or a slip first when D18 allows one between
+ *     two papers (slips.ts `slipFor`), or the slip's 1.0 s starts on an empty desk.
+ * `applyShown` calls ministers.ts (P1b) `appoint` / `sendAway` for an application, and copies a
+ * follow-up's `Paper.clipping` of the chosen side into `clippings`.
  * Built as the order (the steps it calls throw notBuilt until their packages write them).
  */
 export function commitItem(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, choice: Choice, clock: number, events: DecreeEvent[]): DecreeGame {

@@ -9,10 +9,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GameConfigSchema, type GameConfig } from '../config/schema';
-import { DecreeSchema, RANGES, archetypeRanges, combinations, lintDecree } from '../config/schema.decree';
+import { DecreeSchema, RANGES, archetypeRanges, combinations, lintDecree, type DecreeContentInput } from '../config/schema.decree';
 import * as R from './decree';
 import { decreeEngineMode, withDecreeContent } from './decreeMode';
-import { FIXTURE_NOW, baseGameState, decreeFixtures, decreeTestConfig, freshState } from './fixtures/decree';
+import { DECREE_TEST_NUMBERS, FIXTURE_NOW, baseGameState, decreeFixtures, decreeTestConfig, decreeTestContent, freshState } from './fixtures/decree';
 
 const cfg = decreeTestConfig();
 const M = decreeEngineMode;
@@ -141,7 +141,11 @@ describe('the decree block: defaults, ranges and the shipped placeholder', () =>
       [5, 7, 4],
       [7, 9, 5],
     ].map(([c, n, m], i) => [c, n, m, [4, 6, 8][i]]));
-    for (const o of d.offices) expect(Math.ceil((50 + o.rivalPull) / d.ladder.disarray)).toBeLessThanOrEqual(8);
+    // 2.11 with D15: Y(n) = 2^(n+1) − 2; after 5 consecutive losses every district is held at any pull up to 12.
+    expect([0, 1, 2, 3, 4, 5].map(R.disarray)).toEqual([0, 2, 6, 14, 30, 62]);
+    for (const o of d.offices) expect(R.disarray(d.ladder.maxLossesBound) - o.rivalPull).toBeGreaterThanOrEqual(50);
+    expect(R.disarray(5) - 12).toBeGreaterThanOrEqual(50);
+    expect(d.offices.map((o) => o.rivalPull), 'D15: the pull starts at 3 / 4 / 5').toEqual([3, 4, 5]);
     expect(d.twists.pairs).toHaveLength(45);
     expect(d.twists.triples).toHaveLength(120);
     expect(combinations(4, 2)).toEqual([[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]);
@@ -174,6 +178,16 @@ describe('the fixtures (frozen test content)', () => {
     expect(lintDecree(cfg.decree)).toEqual([]);
   });
 
+  it('the numbers are the frozen test numbers (decree.numbers.json), not the schema defaults (lesson 4)', () => {
+    const fromNumbers = DecreeSchema.parse(JSON.parse(JSON.stringify({ ...DECREE_TEST_NUMBERS, deck: {} })));
+    const { deck: _d, ...numbers } = cfg.decree;
+    const { deck: _e, ...frozen } = fromNumbers;
+    expect(numbers).toEqual(frozen);
+    // Every key of the frozen file is a field of the block (a renamed field fails here, not silently).
+    const fields = Object.keys(DecreeSchema.shape);
+    for (const k of Object.keys(DECREE_TEST_NUMBERS)) expect(fields, k).toContain(k);
+  });
+
   it('the hand-made states are valid', () => {
     const f = decreeFixtures(cfg);
     for (const [name, g] of Object.entries(f)) expect(stateProblems(cfg, g), name).toEqual([]);
@@ -183,5 +197,74 @@ describe('the fixtures (frozen test content)', () => {
     expect(R.decreeParams(cfg, f.governorAtCall).served[3], 'the Glasshouse Office (Vegetables) earns nothing while they boycott').toBe(0);
     expect(f.presidentTerm3.decree.term).toBe(3);
     expect(f.presidentTerm3.decree.office).toBe(2);
+    // The run-up as 2.17 has it: the first campaign paper on the desk at once, the next τ later.
+    const run = f.governorAtCall;
+    expect(run.decree.desk?.type === 'paper' && run.decree.desk.paper.kind).toBe('campaign');
+    expect(run.decree.desk?.type === 'paper' && run.decree.desk.paper.district).toBe(3);
+    expect(run.decree.campaign?.papersLeft).toBe(3);
+    expect(R.nextVisitorIn(cfg, run)).toBe(cfg.decree.offices[1].tau);
+  });
+});
+
+describe('the seam fixes before the rules packages start', () => {
+  /** A hand-made paper with the given sign effects (base, as fixed at the draw). */
+  const paperWith = (g: R.DecreeGame, sign: R.Effect[]): R.Paper => ({ id: 'test:1', kind: 'strike', source: 'griev-scissors', office: g.decree.office, visitor: { face: 'face:test', name: 'Test', role: 'Test', club: null, clubIx: null }, cosigner: null, text: 'Test', returning: null, archetype: null, petitioner: null, other: null, tags: null, sign: { effects: sign, followUp: null, label: null }, refuse: { effects: [], followUp: null, label: null }, clipping: null, ministry: null, drawnLevel: null, district: null, note: null, jitter: 1 });
+
+  it("a settlement's fixed +10 lands unsized (2.8, the lemma of 2.7: 18 → 28, not 18 → 32)", () => {
+    const g0 = freshState(cfg);
+    const g = { ...g0, decree: { ...g0.decree, moods: [50, 50, 18] } };
+    const landed = R.landPaper(cfg, g, paperWith(g, [{ type: 'mood', club: 2, delta: 10, fixed: true }]), 0);
+    expect(landed.decree.desk?.type === 'paper' && landed.decree.desk.shown.sign).toEqual([{ type: 'moods', every: false, deltas: [0, 0, 10] }]);
+    const sized = R.landPaper(cfg, g, paperWith(g, [{ type: 'mood', club: 2, delta: 10 }]), 0);
+    expect(sized.decree.desk?.type === 'paper' && sized.decree.desk.shown.sign, 'the same Δ unfixed is sized by f+ = 1.4').toEqual([{ type: 'moods', every: false, deltas: [0, 0, 14] }]);
+  });
+
+  it('money is sized when the paper lands (D23), from B at landing and the jitter of the draw', () => {
+    const g = freshState(cfg);
+    const B = R.decreeParams(cfg, g).B;
+    const landed = R.landPaper(cfg, g, { ...paperWith(g, [{ type: 'money', seconds: -45 }]), jitter: 1.1 }, 0);
+    const shown = landed.decree.desk?.type === 'paper' ? landed.decree.desk.shown : null;
+    expect(shown?.sign).toEqual([{ type: 'money', amount: -Math.max(cfg.decree.money.minimum, R.roundDibs(cfg, 45 * B * 1.1)) }]);
+    expect(shown?.BAt).toBe(B);
+  });
+
+  it("the favour's club is its own (the club that pays), as both content formats say; no `other` needed", () => {
+    const fav = cfg.decree.archetypes.find((a) => a.id === 'favour')!;
+    const effects = R.resolveEffects(cfg, 0, fav.sign, { petitioner: 1, other: null });
+    expect(effects).toEqual([{ type: 'mood', club: 1, delta: -3 }, { type: 'gossip', delta: 1 }]);
+    const study = cfg.decree.archetypes.find((a) => a.id === 'biggerStudy')!;
+    expect(study.share).toBe(0);
+    expect(study.sign[0]).toEqual({ type: 'money', tier: 'M', sign: -1 });
+  });
+
+  it('lintDecree: an archetype that names the other club needs `other`; D20: every Committee its bigger study, every Basket its favour', () => {
+    const deckOf = (papers: unknown[]) => DecreeSchema.parse({ ...DECREE_TEST_NUMBERS, deck: { papers } } as DecreeContentInput);
+    const base = { office: 'mayor', visitor: { face: 'face:test', name: 'T', role: 'T', club: 'bus' }, club: 'bus', text: 'Test', subject: 'paperwork', butt: 'office', shape: 'undercut' };
+    expect(lintDecree(deckOf([{ ...base, id: 'a', archetype: 'swap' }])).join(' ')).toMatch(/no `other`/);
+    expect(lintDecree(deckOf([{ ...base, id: 'b', archetype: 'committee', other: 'shops' }])).join(' ')).toMatch(/no biggerStudy/);
+    expect(lintDecree(deckOf([{ ...base, id: 'c', archetype: 'basket' }])).join(' ')).toMatch(/no favour/);
+    expect(lintDecree(deckOf([{ ...base, id: 'd', archetype: 'basket', favour: { text: 'Test', clippings: { sign: 'A', refuse: 'B' } } }]))).toEqual([]);
+  });
+
+  it('Ribbon Shortage carries both of its factors (2.14: cost AND please ×2); "Say nothing" factors act on the cut', () => {
+    const t = cfg.decree.twists.list.find((x) => x.id === 'ribbon_shortage')!;
+    expect(t.factors.map((f) => [f.target, f.mul])).toEqual([['ribbon.money', 2], ['ribbon.mood', 2]]);
+    expect(cfg.decree.twists.list.find((x) => x.id === 'gentle_week')!.factors[0].target).toBe('sayNothing.cut');
+  });
+
+  it('M(A) is ×1.0 at 50 whatever the slope (2.4)', () => {
+    for (const slope of [0.8, 1.2, 1.4]) {
+      const c = decreeTestConfig({ approval: { slope } });
+      expect(R.decreeParams(c, freshState(c)).multiplier).toBeCloseTo(1, 12);
+    }
+    expect(decreeTestContent().approval).toEqual({ slope: 1.2 });
+  });
+
+  it('no ad and no product from the call to the end of election night (2.10, 5.11)', () => {
+    const f = decreeFixtures(cfg);
+    expect(R.canShop(cfg, f.fresh)).toBe(true);
+    expect(R.canWatchAd(cfg, f.fresh, 'awayBonus')).toBe(true);
+    expect(R.canShop(cfg, f.governorAtCall)).toBe(false);
+    expect(R.canWatchAd(cfg, f.governorAtCall, 'awayBonus')).toBe(false);
   });
 });

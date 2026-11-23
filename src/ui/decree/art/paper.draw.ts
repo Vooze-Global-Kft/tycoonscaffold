@@ -298,7 +298,7 @@ export function drawFrontPage(c: SkCanvas, w: number, h: number, lift = 0): void
   c.save();
   c.clipRect({ x: inner.x, y: inner.y, width: inner.w, height: inner.h }, 1, true);
   c.drawPath(rect(inner.x, inner.y + inner.h * 0.68, inner.w, inner.h), fill(DESK.slateLight));
-  at(c, inner.x + inner.w * 0.5, inner.y + inner.h * 0.72, inner.h / 46, 0, drawGoosePhoto);
+  at(c, inner.x + inner.w * 0.47, inner.y + inner.h * 0.9, (inner.h * 0.8) / 46, 0, drawGoosePhoto);
   hatch(c, rect(inner.x, inner.y, inner.w, inner.h), alpha(DESK.slateDeep, 0.18), 2.2, 0.4);
   c.restore();
   c.drawPath(rect(inner.x, inner.y, inner.w, inner.h), stroke(alpha(LINE, 0.6), 0.6));

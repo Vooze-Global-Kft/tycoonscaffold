@@ -1,0 +1,2185 @@
+{
+ "clubs": [
+  {
+   "id": "bus",
+   "name": "Bus Spotters' Society",
+   "short": "Bus",
+   "icon": "art:club_bus",
+   "pattern": "terracotta"
+  },
+  {
+   "id": "shops",
+   "name": "Shop Window Guild",
+   "short": "Shops",
+   "icon": "art:club_shops",
+   "pattern": "sage"
+  },
+  {
+   "id": "veg",
+   "name": "Giant Vegetable Society",
+   "short": "Vegetables",
+   "icon": "art:club_veg",
+   "pattern": "slate_blue"
+  },
+  {
+   "id": "brass",
+   "name": "Brass Band Guild",
+   "short": "Brass",
+   "icon": "art:club_brass",
+   "pattern": "copper"
+  },
+  {
+   "id": "anglers",
+   "name": "Anglers' Circle",
+   "short": "Anglers",
+   "icon": "art:club_anglers",
+   "pattern": "plum"
+  },
+  {
+   "id": "kites",
+   "name": "Kite Flyers' League",
+   "short": "Kites",
+   "icon": "art:club_kites",
+   "pattern": "ochre"
+  },
+  {
+   "id": "hedges",
+   "name": "Tidy Hedge Committee",
+   "short": "Hedges",
+   "icon": "art:club_hedges",
+   "pattern": "dove_grey"
+  }
+ ],
+ "offices": [
+  {
+   "id": "mayor",
+   "title": "Mayor",
+   "place": "Dithering-on-the-Dawdle",
+   "newspaper": "the Dithering Daily Drizzle",
+   "districtWord": "ward",
+   "clubs": [
+    "bus",
+    "shops",
+    "veg"
+   ],
+   "districts": [
+    {
+     "id": "market",
+     "name": "Market Ward",
+     "short": "MW",
+     "mix": [
+      20,
+      60,
+      20
+     ]
+    },
+    {
+     "id": "mill",
+     "name": "Mill Ward",
+     "short": "ML",
+     "mix": [
+      55,
+      25,
+      20
+     ]
+    },
+    {
+     "id": "hilltop",
+     "name": "Hilltop",
+     "short": "HT",
+     "mix": [
+      20,
+      20,
+      60
+     ]
+    },
+    {
+     "id": "riverside",
+     "name": "Riverside",
+     "short": "RS",
+     "mix": [
+      45,
+      15,
+      40
+     ]
+    },
+    {
+     "id": "oldtown",
+     "name": "Old Town",
+     "short": "OT",
+     "mix": [
+      30,
+      40,
+      30
+     ]
+    }
+   ],
+   "majority": 3,
+   "ministries": [
+    {
+     "id": "town_clock",
+     "name": "Town Clock Office",
+     "club": null
+    },
+    {
+     "id": "potholes",
+     "name": "Potholes Office",
+     "club": "bus"
+    },
+    {
+     "id": "benches",
+     "name": "Benches & Bandstands",
+     "club": "veg"
+    },
+    {
+     "id": "signposts",
+     "name": "Signposts & Lampposts",
+     "club": "shops"
+    }
+   ],
+   "tau": 12,
+   "termDays": 80,
+   "callFraction": 0.6,
+   "campaignPapers": 3,
+   "gossipMax": 5,
+   "rivalPull": 3,
+   "scale": 1,
+   "stand": null,
+   "recordName": "Town Record",
+   "winWeight": 1,
+   "requisitionEvery": 10,
+   "templateShare": 0.25,
+   "rivals": [
+    {
+     "id": "mayor_rival_1",
+     "name": "Councillor (PLACEHOLDER, D14)",
+     "slogan": "PLACEHOLDER: She Owns A Hat",
+     "hobby": "her hat",
+     "backAgain": "PLACEHOLDER: back for another go, in the same hat.",
+     "resignation": "PLACEHOLDER: won, then resigned to spend more time with her hat."
+    },
+    {
+     "id": "mayor_rival_2",
+     "name": "Rival 2 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    },
+    {
+     "id": "mayor_rival_3",
+     "name": "Rival 3 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    }
+   ]
+  },
+  {
+   "id": "governor",
+   "title": "Governor",
+   "place": "Province of Upper Wobbling",
+   "newspaper": "the Upper Wobbling Evening Fuss",
+   "districtWord": "county",
+   "clubs": [
+    "bus",
+    "shops",
+    "veg",
+    "brass",
+    "anglers"
+   ],
+   "districts": [
+    {
+     "id": "county_a",
+     "name": "County A (PLACEHOLDER)",
+     "short": "CA",
+     "mix": [
+      40,
+      20,
+      15,
+      15,
+      10
+     ]
+    },
+    {
+     "id": "county_b",
+     "name": "County B (PLACEHOLDER)",
+     "short": "CB",
+     "mix": [
+      15,
+      40,
+      15,
+      10,
+      20
+     ]
+    },
+    {
+     "id": "county_c",
+     "name": "County C (PLACEHOLDER)",
+     "short": "CC",
+     "mix": [
+      15,
+      15,
+      40,
+      20,
+      10
+     ]
+    },
+    {
+     "id": "county_d",
+     "name": "County D (PLACEHOLDER)",
+     "short": "CD",
+     "mix": [
+      10,
+      15,
+      20,
+      40,
+      15
+     ]
+    },
+    {
+     "id": "county_e",
+     "name": "County E (PLACEHOLDER)",
+     "short": "CE",
+     "mix": [
+      20,
+      10,
+      10,
+      15,
+      45
+     ]
+    },
+    {
+     "id": "county_f",
+     "name": "County F (PLACEHOLDER)",
+     "short": "CF",
+     "mix": [
+      35,
+      15,
+      10,
+      30,
+      10
+     ]
+    },
+    {
+     "id": "county_g",
+     "name": "County G (PLACEHOLDER)",
+     "short": "CG",
+     "mix": [
+      10,
+      35,
+      30,
+      10,
+      15
+     ]
+    }
+   ],
+   "majority": 4,
+   "ministries": [
+    {
+     "id": "prov_clock",
+     "name": "Provincial Clock Office",
+     "club": null
+    },
+    {
+     "id": "bus_shelter",
+     "name": "Bus Shelter Trust",
+     "club": "bus"
+    },
+    {
+     "id": "market_weights",
+     "name": "Market Weights Board",
+     "club": "shops"
+    },
+    {
+     "id": "glasshouse",
+     "name": "Glasshouse Office",
+     "club": "veg"
+    },
+    {
+     "id": "bandstand_board",
+     "name": "Bandstand Board",
+     "club": "brass"
+    },
+    {
+     "id": "canals",
+     "name": "Canals & Jetties",
+     "club": "anglers"
+    }
+   ],
+   "tau": 12,
+   "termDays": 110,
+   "callFraction": 0.6,
+   "campaignPapers": 4,
+   "gossipMax": 6,
+   "rivalPull": 4,
+   "scale": 1000,
+   "stand": {
+    "nr": 10,
+    "record": 80
+   },
+   "recordName": "Province Record",
+   "winWeight": 2,
+   "requisitionEvery": 8,
+   "templateShare": 0.15,
+   "rivals": [
+    {
+     "id": "waft",
+     "name": "Barnaby Waft",
+     "slogan": "Waft: Gently Onwards",
+     "hobby": "the Ceremonial Spoon",
+     "backAgain": "Barnaby Waft is back for another go, spoon polished.",
+     "resignation": "Barnaby Waft won, then resigned to spend more time with his spoon."
+    },
+    {
+     "id": "governor_rival_2",
+     "name": "Rival 2 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    },
+    {
+     "id": "governor_rival_3",
+     "name": "Rival 3 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    }
+   ]
+  },
+  {
+   "id": "president",
+   "title": "President",
+   "place": "the Republic",
+   "newspaper": "the Middling Morning Murmur",
+   "districtWord": "province",
+   "clubs": [
+    "bus",
+    "shops",
+    "veg",
+    "brass",
+    "anglers",
+    "kites",
+    "hedges"
+   ],
+   "districts": [
+    {
+     "id": "middlingham",
+     "name": "Middlingham",
+     "short": "MI",
+     "mix": [
+      30,
+      10,
+      10,
+      10,
+      15,
+      15,
+      10
+     ]
+    },
+    {
+     "id": "fogmoor",
+     "name": "Fogmoor",
+     "short": "FO",
+     "mix": [
+      10,
+      30,
+      15,
+      10,
+      10,
+      10,
+      15
+     ]
+    },
+    {
+     "id": "brassby",
+     "name": "Brassby",
+     "short": "BR",
+     "mix": [
+      10,
+      10,
+      30,
+      15,
+      15,
+      10,
+      10
+     ]
+    },
+    {
+     "id": "teacup_downs",
+     "name": "Teacup Downs",
+     "short": "TD",
+     "mix": [
+      15,
+      10,
+      10,
+      30,
+      10,
+      15,
+      10
+     ]
+    },
+    {
+     "id": "gusting_heights",
+     "name": "Gusting Heights",
+     "short": "GH",
+     "mix": [
+      10,
+      15,
+      10,
+      10,
+      30,
+      10,
+      15
+     ]
+    },
+    {
+     "id": "muchpuddle",
+     "name": "Muchpuddle",
+     "short": "MP",
+     "mix": [
+      10,
+      10,
+      15,
+      10,
+      10,
+      30,
+      15
+     ]
+    },
+    {
+     "id": "saltpenny_bay",
+     "name": "Saltpenny Bay",
+     "short": "SB",
+     "mix": [
+      10,
+      15,
+      10,
+      15,
+      10,
+      10,
+      30
+     ]
+    },
+    {
+     "id": "kitewell",
+     "name": "Kitewell",
+     "short": "KW",
+     "mix": [
+      25,
+      10,
+      20,
+      10,
+      15,
+      10,
+      10
+     ]
+    },
+    {
+     "id": "upper_wobbling",
+     "name": "Upper Wobbling",
+     "short": "UW",
+     "mix": [
+      10,
+      20,
+      10,
+      25,
+      10,
+      15,
+      10
+     ]
+    }
+   ],
+   "majority": 5,
+   "ministries": [
+    {
+     "id": "nat_clock",
+     "name": "National Clock Office",
+     "club": null
+    },
+    {
+     "id": "motorway",
+     "name": "Motorway Board",
+     "club": "bus"
+    },
+    {
+     "id": "lamplight",
+     "name": "Lamplight Authority",
+     "club": "shops"
+    },
+    {
+     "id": "parks",
+     "name": "Parks & Benches",
+     "club": "veg"
+    },
+    {
+     "id": "brass_bunting",
+     "name": "Office of Brass & Bunting",
+     "club": "brass"
+    },
+    {
+     "id": "harbour",
+     "name": "Harbour Board",
+     "club": "anglers"
+    },
+    {
+     "id": "kite_breeze",
+     "name": "Kite & Breeze Office",
+     "club": "kites"
+    },
+    {
+     "id": "hedgerow",
+     "name": "Hedgerow Bureau",
+     "club": "hedges"
+    }
+   ],
+   "tau": 15,
+   "termDays": 120,
+   "callFraction": 0.6,
+   "campaignPapers": 5,
+   "gossipMax": 7,
+   "rivalPull": 5,
+   "scale": 1000000,
+   "stand": {
+    "nr": 50,
+    "record": 170
+   },
+   "recordName": null,
+   "winWeight": 3,
+   "requisitionEvery": 4,
+   "templateShare": 0.2,
+   "rivals": [
+    {
+     "id": "president_rival_1",
+     "name": "Professor (PLACEHOLDER, D14)",
+     "slogan": "PLACEHOLDER: Abolish Wednesdays",
+     "hobby": "Wednesdays",
+     "backAgain": "PLACEHOLDER: back for another go, still against Wednesdays.",
+     "resignation": "PLACEHOLDER: won, then resigned to spend more time with his Tuesdays."
+    },
+    {
+     "id": "strop",
+     "name": "Ottoline Strop",
+     "slogan": "Strop: Firmly Seated",
+     "hobby": "her chair",
+     "backAgain": "Ottoline Strop is back for another go, chair and all.",
+     "resignation": "Ottoline Strop won, then resigned to spend more time with her chair."
+    },
+    {
+     "id": "president_rival_3",
+     "name": "Rival 3 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    },
+    {
+     "id": "president_rival_4",
+     "name": "Rival 4 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    },
+    {
+     "id": "president_rival_5",
+     "name": "Rival 5 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    },
+    {
+     "id": "president_rival_6",
+     "name": "Rival 6 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    },
+    {
+     "id": "president_rival_7",
+     "name": "Rival 7 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    },
+    {
+     "id": "president_rival_8",
+     "name": "Rival 8 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    },
+    {
+     "id": "president_rival_9",
+     "name": "Rival 9 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    },
+    {
+     "id": "president_rival_10",
+     "name": "Rival 10 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    },
+    {
+     "id": "president_rival_11",
+     "name": "Rival 11 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    },
+    {
+     "id": "president_rival_12",
+     "name": "Rival 12 (PLACEHOLDER)",
+     "slogan": "PLACEHOLDER slogan",
+     "hobby": "PLACEHOLDER hobby",
+     "backAgain": "PLACEHOLDER: back for another go.",
+     "resignation": "PLACEHOLDER: resigned to spend more time with a hobby."
+    }
+   ]
+  }
+ ],
+ "ministry": {
+  "valueStep": 8,
+  "openBase": 150,
+  "openRatio": 16,
+  "levelCostFactor": 15,
+  "levelGrowth": 1.25,
+  "storeyEvery": 12,
+  "levelCap": 96
+ },
+ "grandProjects": [
+  {
+   "id": "long_bridge",
+   "name": "The Very Long Bridge",
+   "atTerm": 2,
+   "text": ""
+  },
+  {
+   "id": "ribbon_mill",
+   "name": "The National Ribbon Mill",
+   "atTerm": 4,
+   "text": ""
+  },
+  {
+   "id": "umbrella",
+   "name": "The National Umbrella",
+   "atTerm": 6,
+   "text": ""
+  },
+  {
+   "id": "tallest_bandstand",
+   "name": "The Tallest Bandstand",
+   "atTerm": 8,
+   "text": ""
+  },
+  {
+   "id": "ministry_of_ministries",
+   "name": "The Ministry of Ministries",
+   "atTerm": 10,
+   "text": ""
+  }
+ ],
+ "money": {
+  "S": 15,
+  "M": 30,
+  "L": 60,
+  "jitterLow": 0.85,
+  "jitterHigh": 1.15,
+  "minimum": 5,
+  "roundBelow": 1000,
+  "sigDigits": 3
+ },
+ "archetypes": [
+  {
+   "id": "project",
+   "share": 0.24,
+   "trap": false,
+   "sign": [
+    {
+     "type": "money",
+     "tier": "S",
+     "sign": -1
+    },
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": 4
+    },
+    {
+     "type": "mood",
+     "club": "other",
+     "delta": -3
+    }
+   ],
+   "refuse": [
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": -3
+    },
+    {
+     "type": "mood",
+     "club": "other",
+     "delta": 2
+    }
+   ]
+  },
+  {
+   "id": "swap",
+   "share": 0.2,
+   "trap": false,
+   "sign": [
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": 4
+    },
+    {
+     "type": "mood",
+     "club": "other",
+     "delta": -4
+    }
+   ],
+   "refuse": [
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": -4
+    },
+    {
+     "type": "mood",
+     "club": "other",
+     "delta": 4
+    }
+   ]
+  },
+  {
+   "id": "fee",
+   "share": 0.14,
+   "trap": false,
+   "sign": [
+    {
+     "type": "money",
+     "tier": "M",
+     "sign": 1
+    },
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": 2
+    },
+    {
+     "type": "mood",
+     "club": "other",
+     "delta": -4
+    }
+   ],
+   "refuse": [
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": -1
+    },
+    {
+     "type": "mood",
+     "club": "other",
+     "delta": 1
+    }
+   ]
+  },
+  {
+   "id": "treat",
+   "share": 0.12,
+   "trap": false,
+   "sign": [
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": 3
+    },
+    {
+     "type": "mood",
+     "club": "other",
+     "delta": -1
+    },
+    {
+     "type": "gossip",
+     "delta": 1
+    }
+   ],
+   "refuse": [
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": -2
+    }
+   ]
+  },
+  {
+   "id": "committee",
+   "share": 0.15,
+   "trap": false,
+   "sign": [
+    {
+     "type": "money",
+     "tier": "S",
+     "sign": -1
+    },
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": 1
+    },
+    {
+     "type": "mood",
+     "club": "other",
+     "delta": -2
+    }
+   ],
+   "refuse": [
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": -2
+    },
+    {
+     "type": "mood",
+     "club": "other",
+     "delta": 1
+    }
+   ]
+  },
+  {
+   "id": "vanity",
+   "share": 0.08,
+   "trap": true,
+   "sign": [
+    {
+     "type": "money",
+     "tier": "L",
+     "sign": -1
+    },
+    {
+     "type": "every",
+     "delta": -1
+    }
+   ],
+   "refuse": []
+  },
+  {
+   "id": "basket",
+   "share": 0.07,
+   "trap": true,
+   "sign": [
+    {
+     "type": "gossip",
+     "delta": 2
+    }
+   ],
+   "refuse": []
+  },
+  {
+   "id": "favour",
+   "share": 0,
+   "trap": false,
+   "sign": [
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": -3
+    },
+    {
+     "type": "gossip",
+     "delta": 1
+    }
+   ],
+   "refuse": []
+  },
+  {
+   "id": "biggerStudy",
+   "share": 0,
+   "trap": false,
+   "sign": [
+    {
+     "type": "money",
+     "tier": "M",
+     "sign": -1
+    },
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": 1
+    },
+    {
+     "type": "mood",
+     "club": "other",
+     "delta": -2
+    }
+   ],
+   "refuse": [
+    {
+     "type": "mood",
+     "club": "petitioner",
+     "delta": -2
+    },
+    {
+     "type": "mood",
+     "club": "other",
+     "delta": 1
+    }
+   ]
+  }
+ ],
+ "forms": {
+  "requisition": {
+   "clubGain": 1,
+   "clubLoss": -1
+  },
+  "ribbon": {
+   "cost": "S",
+   "clubGain": 3,
+   "clubLoss": -1,
+   "everyGain": 1
+  },
+  "application": {
+   "clubGain": 1,
+   "returnAfter": 30,
+   "days": [
+    9,
+    30,
+    60
+   ]
+  },
+  "settlement": {
+   "seconds": 20,
+   "clubFixed": 10
+  },
+  "apology": {
+   "every": -3
+  },
+  "campaign": {
+   "seconds": 45,
+   "points": 4,
+   "within": 6
+  },
+  "rally": {
+   "seconds": 60,
+   "clubGain": 4
+  }
+ },
+ "ministers": [
+  {
+   "id": "pockle",
+   "name": "Dorothy Pockle",
+   "initials": "DP",
+   "club": "bus",
+   "office": "mayor",
+   "rule": {
+    "target": "requisition.money",
+    "club": "bus",
+    "mul": 0.9,
+    "add": 0
+   }
+  },
+  {
+   "id": "pellow",
+   "name": "Dorrit Pellow",
+   "initials": "DPe",
+   "club": "veg",
+   "office": "mayor",
+   "rule": {
+    "target": "settlement.money",
+    "club": "veg",
+    "mul": 0.5,
+    "add": 0
+   }
+  },
+  {
+   "id": "ferrule",
+   "name": "Basil Ferrule",
+   "initials": "BF",
+   "club": "shops",
+   "office": "mayor",
+   "rule": {
+    "target": "fee.money",
+    "club": "shops",
+    "mul": 1.2,
+    "add": 0
+   }
+  },
+  {
+   "id": "hush",
+   "name": "Wendeline Hush",
+   "initials": "WH",
+   "club": "shops",
+   "office": "governor",
+   "rule": {
+    "target": "quietDecay",
+    "club": null,
+    "mul": 0.75,
+    "add": 0
+   }
+  },
+  {
+   "id": "bole",
+   "name": "Ermintrude Bole",
+   "initials": "EB",
+   "club": "brass",
+   "office": "governor",
+   "rule": {
+    "target": "ribbon.mood",
+    "club": "brass",
+    "mul": 1,
+    "add": 1
+   }
+  },
+  {
+   "id": "gusset",
+   "name": "Percy Gusset",
+   "initials": "PG",
+   "club": "anglers",
+   "office": "governor",
+   "rule": {
+    "target": "campaign.money",
+    "club": null,
+    "mul": 0.67,
+    "add": 0
+   }
+  },
+  {
+   "id": "wren",
+   "name": "Marjorie Wren",
+   "initials": "MW",
+   "club": "kites",
+   "office": "president",
+   "rule": {
+    "target": "fee.money",
+    "club": "kites",
+    "mul": 1.2,
+    "add": 0
+   }
+  },
+  {
+   "id": "tamp",
+   "name": "Osric Tamp",
+   "initials": "OT",
+   "club": "hedges",
+   "office": "president",
+   "rule": {
+    "target": "sayNothing.cut",
+    "club": null,
+    "mul": 0.7,
+    "add": 0
+   }
+  },
+  {
+   "id": "nibley",
+   "name": "Florence Nibley",
+   "initials": "FN",
+   "club": "anglers",
+   "office": "president",
+   "rule": {
+    "target": "requisition.money",
+    "club": "anglers",
+    "mul": 0.9,
+    "add": 0
+   }
+  }
+ ],
+ "twists": {
+  "list": [
+   {
+    "id": "bandstand_summer",
+    "name": "Bandstand Summer",
+    "factors": [
+     {
+      "target": "mix",
+      "club": "brass",
+      "mul": 1,
+      "add": 0.1
+     }
+    ],
+    "text": ""
+   },
+   {
+    "id": "committee_week",
+    "name": "Committee Week",
+    "factors": [
+     {
+      "target": "committee.share",
+      "club": null,
+      "mul": 2,
+      "add": 0
+     }
+    ],
+    "text": ""
+   },
+   {
+    "id": "quiet_press",
+    "name": "Quiet Press",
+    "factors": [
+     {
+      "target": "gossipMax",
+      "club": null,
+      "mul": 1,
+      "add": 2
+     }
+    ],
+    "text": ""
+   },
+   {
+    "id": "ribbon_shortage",
+    "name": "Ribbon Shortage",
+    "factors": [
+     {
+      "target": "ribbon.money",
+      "club": null,
+      "mul": 2,
+      "add": 0
+     },
+     {
+      "target": "ribbon.mood",
+      "club": null,
+      "mul": 2,
+      "add": 0
+     }
+    ],
+    "text": ""
+   },
+   {
+    "id": "kite_weather",
+    "name": "Kite Weather",
+    "factors": [
+     {
+      "target": "mix",
+      "club": "kites",
+      "mul": 1,
+      "add": 0.1
+     }
+    ],
+    "text": ""
+   },
+   {
+    "id": "market_fortnight",
+    "name": "Market Fortnight",
+    "factors": [
+     {
+      "target": "fee.money",
+      "club": null,
+      "mul": 1.5,
+      "add": 0
+     }
+    ],
+    "text": ""
+   },
+   {
+    "id": "early_doors",
+    "name": "Early Doors",
+    "factors": [
+     {
+      "target": "tau",
+      "club": null,
+      "mul": 0.8,
+      "add": 0
+     }
+    ],
+    "text": ""
+   },
+   {
+    "id": "hedge_inspection",
+    "name": "Hedge Inspection",
+    "factors": [
+     {
+      "target": "mix",
+      "club": "hedges",
+      "mul": 1,
+      "add": 0.1
+     }
+    ],
+    "text": ""
+   },
+   {
+    "id": "gentle_week",
+    "name": "A Gentle Week",
+    "factors": [
+     {
+      "target": "sayNothing.cut",
+      "club": null,
+      "mul": 0.6,
+      "add": 0
+     }
+    ],
+    "text": ""
+   },
+   {
+    "id": "grievance_amnesty",
+    "name": "Grievance Amnesty",
+    "factors": [
+     {
+      "target": "settlement.money",
+      "club": null,
+      "mul": 0.5,
+      "add": 0
+     }
+    ],
+    "text": ""
+   }
+  ],
+  "mayor": [
+   "committee_week",
+   "market_fortnight",
+   "quiet_press"
+  ],
+  "governor": [
+   "bandstand_summer",
+   "ribbon_shortage",
+   "gentle_week",
+   "early_doors"
+  ],
+  "presidentSingles": [
+   "bandstand_summer",
+   "committee_week",
+   "quiet_press",
+   "ribbon_shortage",
+   "kite_weather",
+   "market_fortnight",
+   "early_doors",
+   "hedge_inspection",
+   "gentle_week",
+   "grievance_amnesty"
+  ],
+  "singleTerms": [
+   3,
+   5,
+   7,
+   9,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16
+  ],
+  "pairs": [
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    0,
+    3
+   ],
+   [
+    0,
+    4
+   ],
+   [
+    0,
+    5
+   ],
+   [
+    0,
+    6
+   ],
+   [
+    0,
+    7
+   ],
+   [
+    0,
+    8
+   ],
+   [
+    0,
+    9
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    1,
+    3
+   ],
+   [
+    1,
+    4
+   ],
+   [
+    1,
+    5
+   ],
+   [
+    1,
+    6
+   ],
+   [
+    1,
+    7
+   ],
+   [
+    1,
+    8
+   ],
+   [
+    1,
+    9
+   ],
+   [
+    2,
+    3
+   ],
+   [
+    2,
+    4
+   ],
+   [
+    2,
+    5
+   ],
+   [
+    2,
+    6
+   ],
+   [
+    2,
+    7
+   ],
+   [
+    2,
+    8
+   ],
+   [
+    2,
+    9
+   ],
+   [
+    3,
+    4
+   ],
+   [
+    3,
+    5
+   ],
+   [
+    3,
+    6
+   ],
+   [
+    3,
+    7
+   ],
+   [
+    3,
+    8
+   ],
+   [
+    3,
+    9
+   ],
+   [
+    4,
+    5
+   ],
+   [
+    4,
+    6
+   ],
+   [
+    4,
+    7
+   ],
+   [
+    4,
+    8
+   ],
+   [
+    4,
+    9
+   ],
+   [
+    5,
+    6
+   ],
+   [
+    5,
+    7
+   ],
+   [
+    5,
+    8
+   ],
+   [
+    5,
+    9
+   ],
+   [
+    6,
+    7
+   ],
+   [
+    6,
+    8
+   ],
+   [
+    6,
+    9
+   ],
+   [
+    7,
+    8
+   ],
+   [
+    7,
+    9
+   ],
+   [
+    8,
+    9
+   ]
+  ],
+  "triples": [
+   [
+    0,
+    1,
+    2
+   ],
+   [
+    0,
+    1,
+    3
+   ],
+   [
+    0,
+    1,
+    4
+   ],
+   [
+    0,
+    1,
+    5
+   ],
+   [
+    0,
+    1,
+    6
+   ],
+   [
+    0,
+    1,
+    7
+   ],
+   [
+    0,
+    1,
+    8
+   ],
+   [
+    0,
+    1,
+    9
+   ],
+   [
+    0,
+    2,
+    3
+   ],
+   [
+    0,
+    2,
+    4
+   ],
+   [
+    0,
+    2,
+    5
+   ],
+   [
+    0,
+    2,
+    6
+   ],
+   [
+    0,
+    2,
+    7
+   ],
+   [
+    0,
+    2,
+    8
+   ],
+   [
+    0,
+    2,
+    9
+   ],
+   [
+    0,
+    3,
+    4
+   ],
+   [
+    0,
+    3,
+    5
+   ],
+   [
+    0,
+    3,
+    6
+   ],
+   [
+    0,
+    3,
+    7
+   ],
+   [
+    0,
+    3,
+    8
+   ],
+   [
+    0,
+    3,
+    9
+   ],
+   [
+    0,
+    4,
+    5
+   ],
+   [
+    0,
+    4,
+    6
+   ],
+   [
+    0,
+    4,
+    7
+   ],
+   [
+    0,
+    4,
+    8
+   ],
+   [
+    0,
+    4,
+    9
+   ],
+   [
+    0,
+    5,
+    6
+   ],
+   [
+    0,
+    5,
+    7
+   ],
+   [
+    0,
+    5,
+    8
+   ],
+   [
+    0,
+    5,
+    9
+   ],
+   [
+    0,
+    6,
+    7
+   ],
+   [
+    0,
+    6,
+    8
+   ],
+   [
+    0,
+    6,
+    9
+   ],
+   [
+    0,
+    7,
+    8
+   ],
+   [
+    0,
+    7,
+    9
+   ],
+   [
+    0,
+    8,
+    9
+   ],
+   [
+    1,
+    2,
+    3
+   ],
+   [
+    1,
+    2,
+    4
+   ],
+   [
+    1,
+    2,
+    5
+   ],
+   [
+    1,
+    2,
+    6
+   ],
+   [
+    1,
+    2,
+    7
+   ],
+   [
+    1,
+    2,
+    8
+   ],
+   [
+    1,
+    2,
+    9
+   ],
+   [
+    1,
+    3,
+    4
+   ],
+   [
+    1,
+    3,
+    5
+   ],
+   [
+    1,
+    3,
+    6
+   ],
+   [
+    1,
+    3,
+    7
+   ],
+   [
+    1,
+    3,
+    8
+   ],
+   [
+    1,
+    3,
+    9
+   ],
+   [
+    1,
+    4,
+    5
+   ],
+   [
+    1,
+    4,
+    6
+   ],
+   [
+    1,
+    4,
+    7
+   ],
+   [
+    1,
+    4,
+    8
+   ],
+   [
+    1,
+    4,
+    9
+   ],
+   [
+    1,
+    5,
+    6
+   ],
+   [
+    1,
+    5,
+    7
+   ],
+   [
+    1,
+    5,
+    8
+   ],
+   [
+    1,
+    5,
+    9
+   ],
+   [
+    1,
+    6,
+    7
+   ],
+   [
+    1,
+    6,
+    8
+   ],
+   [
+    1,
+    6,
+    9
+   ],
+   [
+    1,
+    7,
+    8
+   ],
+   [
+    1,
+    7,
+    9
+   ],
+   [
+    1,
+    8,
+    9
+   ],
+   [
+    2,
+    3,
+    4
+   ],
+   [
+    2,
+    3,
+    5
+   ],
+   [
+    2,
+    3,
+    6
+   ],
+   [
+    2,
+    3,
+    7
+   ],
+   [
+    2,
+    3,
+    8
+   ],
+   [
+    2,
+    3,
+    9
+   ],
+   [
+    2,
+    4,
+    5
+   ],
+   [
+    2,
+    4,
+    6
+   ],
+   [
+    2,
+    4,
+    7
+   ],
+   [
+    2,
+    4,
+    8
+   ],
+   [
+    2,
+    4,
+    9
+   ],
+   [
+    2,
+    5,
+    6
+   ],
+   [
+    2,
+    5,
+    7
+   ],
+   [
+    2,
+    5,
+    8
+   ],
+   [
+    2,
+    5,
+    9
+   ],
+   [
+    2,
+    6,
+    7
+   ],
+   [
+    2,
+    6,
+    8
+   ],
+   [
+    2,
+    6,
+    9
+   ],
+   [
+    2,
+    7,
+    8
+   ],
+   [
+    2,
+    7,
+    9
+   ],
+   [
+    2,
+    8,
+    9
+   ],
+   [
+    3,
+    4,
+    5
+   ],
+   [
+    3,
+    4,
+    6
+   ],
+   [
+    3,
+    4,
+    7
+   ],
+   [
+    3,
+    4,
+    8
+   ],
+   [
+    3,
+    4,
+    9
+   ],
+   [
+    3,
+    5,
+    6
+   ],
+   [
+    3,
+    5,
+    7
+   ],
+   [
+    3,
+    5,
+    8
+   ],
+   [
+    3,
+    5,
+    9
+   ],
+   [
+    3,
+    6,
+    7
+   ],
+   [
+    3,
+    6,
+    8
+   ],
+   [
+    3,
+    6,
+    9
+   ],
+   [
+    3,
+    7,
+    8
+   ],
+   [
+    3,
+    7,
+    9
+   ],
+   [
+    3,
+    8,
+    9
+   ],
+   [
+    4,
+    5,
+    6
+   ],
+   [
+    4,
+    5,
+    7
+   ],
+   [
+    4,
+    5,
+    8
+   ],
+   [
+    4,
+    5,
+    9
+   ],
+   [
+    4,
+    6,
+    7
+   ],
+   [
+    4,
+    6,
+    8
+   ],
+   [
+    4,
+    6,
+    9
+   ],
+   [
+    4,
+    7,
+    8
+   ],
+   [
+    4,
+    7,
+    9
+   ],
+   [
+    4,
+    8,
+    9
+   ],
+   [
+    5,
+    6,
+    7
+   ],
+   [
+    5,
+    6,
+    8
+   ],
+   [
+    5,
+    6,
+    9
+   ],
+   [
+    5,
+    7,
+    8
+   ],
+   [
+    5,
+    7,
+    9
+   ],
+   [
+    5,
+    8,
+    9
+   ],
+   [
+    6,
+    7,
+    8
+   ],
+   [
+    6,
+    7,
+    9
+   ],
+   [
+    6,
+    8,
+    9
+   ],
+   [
+    7,
+    8,
+    9
+   ]
+  ],
+  "pairsFrom": 17,
+  "triplesFrom": 62,
+  "pairNames": [],
+  "quietFrom": 182
+ },
+ "approval": {
+  "slope": 1.2
+ },
+ "mood": {
+  "start": 50,
+  "capF": 1.4,
+  "maxDelta": 10,
+  "petitionerLow": 0.5,
+  "petitionerHigh": 1.5
+ },
+ "boycott": {
+  "below": 20,
+  "endsAt": 25,
+  "rearmAt": 30,
+  "papers": 8
+ },
+ "scandal": {
+  "quietDecay": 8,
+  "sayNothingFactor": 0.8,
+  "sayNothingPapers": 10
+ },
+ "desk": {
+  "treasury": 30,
+  "trayCap": 10,
+  "slipDelay": 1,
+  "slipReserveSeconds": 15,
+  "takeBackSeconds": 2,
+  "eventOverCap": 1
+ },
+ "away": {
+  "arrivalSeconds": 360,
+  "rate": 0.35,
+  "capHours": 4,
+  "longLunchHours": 2
+ },
+ "ladder": {
+  "nrFactor": 0.02,
+  "winBase": 3,
+  "sweepBonus": 2,
+  "transitionFund": 30,
+  "moveMoodCap": 5,
+  "moveMoodPerNr": 20,
+  "announceSeconds": 2.5,
+  "maxLossesBound": 5
+ },
+ "vanity": {
+  "price": 600,
+  "factor": 1.02,
+  "fromMayorTerm": 2
+ },
+ "standingOrder": {
+  "fromGovernorTerm": 2,
+  "times": 3
+ },
+ "advice": {
+  "deltaShare": 0.02,
+  "recordDivisor": 1.5
+ },
+ "ads": {
+  "awayBonus": 0.5,
+  "checkSofaSeconds": 40,
+  "openDoorsCooldown": 900
+ },
+ "products": {
+  "standingOrder": "office_standing_order",
+  "longLunch": "office_long_lunch",
+  "walnutDesk": "office_walnut_desk",
+  "portraitFrames": "office_portrait_frames",
+  "privateSecretary": "office_private_secretary"
+ },
+ "cast": {
+  "players": [
+   {
+    "id": "bramble",
+    "name": "Hettie Bramble"
+   },
+   {
+    "id": "fennel",
+    "name": "Osgood Fennel"
+   },
+   {
+    "id": "quill",
+    "name": "Ada Quill"
+   },
+   {
+    "id": "marchpane",
+    "name": "Rupert Marchpane"
+   },
+   {
+    "id": "tuttle",
+    "name": "Winifred Tuttle"
+   },
+   {
+    "id": "larkspur",
+    "name": "Cosmo Larkspur"
+   }
+  ],
+  "clerk": {
+   "face": "face:abacus",
+   "name": "Gwendolyn Abacus",
+   "role": "Treasury Clerk",
+   "club": null
+  },
+  "countingClerk": {
+   "face": "face:tallow",
+   "name": "Agatha Tallow",
+   "role": "Counting Clerk",
+   "club": null
+  }
+ },
+ "followUps": {
+  "biggerStudyDelay": [
+   8,
+   12
+  ],
+  "favourDelay": [
+   10,
+   14
+  ]
+ }
+}

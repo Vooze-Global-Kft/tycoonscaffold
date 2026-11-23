@@ -18,9 +18,23 @@
 import { notBuilt } from './notBuilt';
 import type { DecreeAdKind, DecreeConfig, DecreeEvent, DecreeGame } from './types';
 
-/** Whether the ad `kind` may be offered now (phase, cooldown, once a term, something to end). Skeleton: throws notBuilt. */
+/** No ad and no product is offered from the call to the end of election night (2.10, 5.11): only while governing. Built. */
+function offering(g: DecreeGame): boolean {
+  return g.decree.phase === 'governing';
+}
+
+/**
+ * Whether the ad `kind` may be offered now (phase, cooldown, once a term, something to end). Built for
+ * `awayBonus` (the away report's +50 %: only while governing); every other kind throws notBuilt.
+ */
 export function canWatchAd(cfg: DecreeConfig, g: DecreeGame, kind: DecreeAdKind): boolean {
+  if (kind === 'awayBonus') return offering(g);
   return notBuilt('canWatchAd');
+}
+
+/** Whether the Shop may offer products now (2.10, 5.11: never from the call to the end of election night). Built. */
+export function canShop(cfg: DecreeConfig, g: DecreeGame): boolean {
+  return offering(g);
 }
 
 /** The ad's grant after the video completed; the same object when it is not allowed now. Skeleton: throws notBuilt. */

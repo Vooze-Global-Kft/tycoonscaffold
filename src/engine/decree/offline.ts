@@ -9,6 +9,10 @@
  * away: moods, gossip, every counter, the day, the poll, cooldowns; a pending take-back was committed
  * when the app went to the background. Every absence, however short, follows these rules
  * (`catchUpSeconds: 0`). Cross-check (10.2): event stepping equals the form at 30 s, 299 s, 301 s, 4 h.
+ *
+ * SEAM, what it calls of P1a: decide.ts `commitPending` (a take-back left pending in a killed app
+ * commits first), draw.ts `fillTray` (the away papers), params.ts `decreeParams`. The store pays
+ * `earnings` itself (src/state/store.ts grantCash, the `paysOnCompute` seam), never commitCash.
  */
 import { notBuilt } from './notBuilt';
 import { decreeParams } from './params';

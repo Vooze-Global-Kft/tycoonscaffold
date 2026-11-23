@@ -3,8 +3,11 @@
  * on frozen fixtures"; lesson 4 of the brief: rules tests never pin tuned numbers).
  *
  * - `decreeTestConfig()`: the shared fields of the frozen fixture `base-game.json`, mode "decree", the
- *   `decree` block's DEFAULTS (src/config/schema.decree.ts) and the FROZEN test deck below. It never
- *   reads the shipped game.json, so a tuned number or a rewritten text can never turn a rules test red.
+ *   FROZEN test numbers (`DECREE_TEST_NUMBERS`, ./decree.numbers.json: the specification's starting
+ *   values with section 11's decisions as of 23 November 2026, D15 to D24 included) and the FROZEN test
+ *   deck below. It reads neither the shipped game.json nor the schema's defaults for a number, so a
+ *   tuned number, a changed default or a rewritten text can never turn a rules test red (lesson 4). A
+ *   field the schema gains later takes its default until a rules change adds it here.
  * - `DECREE_TEST_DECK`: the papers and chains of 7.5 and 7.6 (texts as the specification printed
  *   them on 23 November 2026: scripted papers 1 to 4, the pumpkin, the 7:02 bus, the study of the
  *   study, Till's Teas, the portrait, the requisition's note, Dorothy Pockle's application, the
@@ -14,17 +17,26 @@
  * - `freshState(cfg, seed)`: a new game by the rules' own create.
  * - `decreeFixtures(cfg)`: hand-made mid-game states, typed and valid: `mayorMidTerm` (day 30 of the
  *   first term, three ministries open, a swap paper on the desk), `governorAtCall` (the run-up of the
- *   first governor term with the Vegetables' boycott running), `presidentTerm3` (term 3 as President,
+ *   first governor term, its first campaign paper on the desk, the Vegetables' boycott running after
+ *   its grievance was refused), `presidentTerm3` (term 3 as President,
  *   a Grand Project open, six ministers, the term's twist).
  *
  * Web only (scripts/lib/modes.js WEB_ONLY): the web presets reach it, phones never do. Written by the
  * skeleton; owned afterwards by P1a (the bot engineer may add bot-played states beside these).
  */
 import { GameConfigSchema } from '../../config/schema';
-import { ARCHETYPE_IDS, DecreeSchema, SHAPE_IDS, type ClubId, type DecreeContentInput, type OfficeId } from '../../config/schema.decree';
+import { ARCHETYPE_IDS, DecreeSchema, FOLLOW_ONLY_ARCHETYPES, SHAPE_IDS, type ClubId, type DecreeContentInput, type OfficeId } from '../../config/schema.decree';
 import * as R from '../decree';
 import type { GameState } from '../types';
 import baseGame from './base-game.json';
+import testNumbers from './decree.numbers.json';
+
+/**
+ * The rules tests' own numbers, frozen (./decree.numbers.json; never regenerated from the schema's
+ * defaults or from game.json: a rules change that needs a new number edits it and the tests that pin
+ * it in the same commit). Everything of the `decree` block but the deck.
+ */
+export const DECREE_TEST_NUMBERS = testNumbers as unknown as Omit<DecreeContentInput, 'deck'>;
 
 /** A fixed epoch for fixtures (23 Nov 2026, 12:00 UTC). */
 export const FIXTURE_NOW = Date.UTC(2026, 10, 23, 12, 0, 0);
@@ -57,11 +69,14 @@ function fillerPapers(): NonNullable<Deck['papers']> {
     const clubs = OFFICE_CLUBS[office];
     clubs.forEach((club, ci) => {
       for (const archetype of ARCHETYPE_IDS) {
-        if (archetype === 'favour') continue;
-        const trap = archetype === 'vanity' || archetype === 'basket';
+        if ((FOLLOW_ONLY_ARCHETYPES as readonly string[]).includes(archetype)) continue;
+        const a = archetype as Exclude<(typeof ARCHETYPE_IDS)[number], (typeof FOLLOW_ONLY_ARCHETYPES)[number]>;
+        const trap = a === 'vanity' || a === 'basket';
         for (let k = 0; k < 3; k++) {
           n++;
-          out.push({ id: `test-${office}-${club}-${archetype}-${k + 1}`, office, visitor: CAST.test(n, trap ? null : club), club, other: trap ? null : clubs[(ci + 1) % clubs.length], archetype, text: `Test paper ${n}`, subject: 'paperwork', butt: 'office', shape: SHAPE_IDS[n % SHAPE_IDS.length] });
+          // D20: every Committee carries its bigger study and every Basket its favour.
+          const own = a === 'committee' ? { biggerStudy: `Test bigger study ${n}` } : a === 'basket' ? { favour: { text: `Test favour ${n}`, clippings: { sign: `TEST FAVOUR CLIPPING ${n}A`, refuse: `TEST FAVOUR CLIPPING ${n}B` } } } : {};
+          out.push({ id: `test-${office}-${club}-${a}-${k + 1}`, office, visitor: CAST.test(n, trap ? null : club), club, other: trap ? null : clubs[(ci + 1) % clubs.length], archetype: a, text: `Test paper ${n}`, subject: 'paperwork', butt: 'office', shape: SHAPE_IDS[n % SHAPE_IDS.length], ...own });
         }
       }
     });
@@ -69,7 +84,11 @@ function fillerPapers(): NonNullable<Deck['papers']> {
   return out;
 }
 
-const followTest = (n: number, club: ClubId, archetype: 'treat' | 'favour' | 'committee', delay: [number, number]) => ({ visitor: CAST.test(900 + n, club), club, other: archetype === 'favour' ? club : null, archetype, text: `Test follow-up ${n}`, ...t, delay, clippings: { sign: `TEST CLIPPING ${n}A`, refuse: `TEST CLIPPING ${n}B` } });
+/** A test follow-up of a mayor's chain; `other` the next mayoral club (treat and committee name one; a favour names none). */
+const followTest = (n: number, club: ClubId, archetype: 'treat' | 'favour' | 'committee', delay: [number, number]) => {
+  const clubs = OFFICE_CLUBS.mayor;
+  return { visitor: CAST.test(900 + n, club), club, other: archetype === 'favour' ? null : clubs[(clubs.indexOf(club) + 1) % clubs.length], archetype, text: `Test follow-up ${n}`, ...t, delay, clippings: { sign: `TEST CLIPPING ${n}A`, refuse: `TEST CLIPPING ${n}B` } };
+};
 
 /**
  * The rules tests' own deck, frozen (7.5 and 7.6 as printed on 23 November 2026, plus the fillers).
@@ -93,7 +112,7 @@ export const DECREE_TEST_DECK: Deck = {
     // 7.5 papers 2, 3, 5, 6, 7.
     { id: 'may-pumpkin-freedom', office: 'mayor', visitor: CAST.hilda, club: 'veg', other: 'shops', archetype: 'project', text: 'Grant the prize pumpkin the freedom of the town. It has asked very politely.', subject: 'vegetable-shows', butt: 'thing', shape: 'literalism', setsUp: 'the-pumpkin' },
     { id: 'may-bus-name', office: 'mayor', visitor: CAST.desmond, club: 'bus', other: 'shops', archetype: 'swap', text: 'Name the 7:02 bus after you, Mayor. It is late too, and also waves.', subject: 'buses', butt: 'self', shape: 'undercut' },
-    { id: 'may-study-study', office: 'mayor', visitor: CAST.pauline, cosigner: CAST.ambrose, club: 'shops', other: 'veg', archetype: 'committee', text: 'We propose a study of why our last study took nine years. It should take about ten.', subject: 'committees', butt: 'committee', shape: 'escalation' },
+    { id: 'may-study-study', office: 'mayor', visitor: CAST.pauline, cosigner: CAST.ambrose, club: 'shops', other: 'veg', archetype: 'committee', text: 'We propose a study of why our last study took nine years. It should take about ten.', subject: 'committees', butt: 'committee', shape: 'escalation', biggerStudy: 'Test bigger study of the study of the study.' },
     { id: 'may-tills-clock', office: 'mayor', visitor: CAST.pauline, club: 'shops', other: 'veg', archetype: 'fee', text: "Let Till's Teas sponsor the clock tower. It would chime TILL'S TEAS on the hour.", subject: 'clocks', butt: 'office', shape: 'literalism' },
     { id: 'may-portrait', office: 'mayor', visitor: CAST.rodney, club: 'shops', archetype: 'vanity', text: 'A portrait of you, Mayor, for the portrait of you in the hall. For scale.', subject: 'portraits', butt: 'self', shape: 'escalation' },
     ...fillerPapers(),
@@ -104,8 +123,8 @@ export const DECREE_TEST_DECK: Deck = {
       id: 'the-basket',
       office: 'mayor',
       title: 'The Basket',
-      afterSign: { visitor: CAST.lionel, club: 'shops', other: 'shops', archetype: 'favour', text: 'About the basket: the goose at the bottom was not fruit. It would like an office.', subject: 'geese', butt: 'self', shape: 'escalation', delay: [10, 14], clippings: { sign: 'GOOSE GIVEN OFFICE; MAYOR GIVEN GOOSE', refuse: 'GOOSE RETURNED TO SENDER, WHO DENIES OWNING A GOOSE' } },
-      afterRefuse: { visitor: CAST.lionel, club: 'veg', other: 'veg', archetype: 'favour', text: 'No hard feelings. Please accept this smaller basket. It is one grape.', subject: 'vanity', butt: 'lobbyist', shape: 'undercut', delay: [10, 14], clippings: { sign: 'MAYOR ACCEPTS GRAPE', refuse: 'MAYOR REFUSES GRAPE. GRAPE DEVASTATED' } },
+      afterSign: { visitor: CAST.lionel, club: 'shops', archetype: 'favour', text: 'About the basket: the goose at the bottom was not fruit. It would like an office.', subject: 'geese', butt: 'self', shape: 'escalation', delay: [10, 14], clippings: { sign: 'GOOSE GIVEN OFFICE; MAYOR GIVEN GOOSE', refuse: 'GOOSE RETURNED TO SENDER, WHO DENIES OWNING A GOOSE' } },
+      afterRefuse: { visitor: CAST.lionel, club: 'veg', archetype: 'favour', text: 'No hard feelings. Please accept this smaller basket. It is one grape.', subject: 'vanity', butt: 'lobbyist', shape: 'undercut', delay: [10, 14], clippings: { sign: 'MAYOR ACCEPTS GRAPE', refuse: 'MAYOR REFUSES GRAPE. GRAPE DEVASTATED' } },
     },
     // 7.6 B, "The Pumpkin" (set-up paper 2).
     {
@@ -168,12 +187,12 @@ export const DECREE_TEST_DECK: Deck = {
   ],
 };
 
-/** The decree block of the test config: the schema's defaults and the frozen deck. */
+/** The decree block of the test config: the frozen numbers and the frozen deck (`overrides` shallow per top-level key). */
 export function decreeTestContent(overrides: Partial<DecreeContentInput> = {}) {
-  return DecreeSchema.parse(JSON.parse(JSON.stringify({ deck: DECREE_TEST_DECK, ...overrides })));
+  return DecreeSchema.parse(JSON.parse(JSON.stringify({ ...DECREE_TEST_NUMBERS, deck: DECREE_TEST_DECK, ...overrides })));
 }
 
-/** The test config: the shared fields of the frozen fixture, mode "decree", the defaults with the frozen deck (`overrides` shallow per top-level key). */
+/** The test config: the shared fields of the frozen fixture, mode "decree", the frozen numbers and deck (`overrides` shallow per top-level key). */
 export function decreeTestConfig(overrides: Partial<DecreeContentInput> = {}): R.DecreeConfig {
   const raw = { ...(baseGame as Record<string, unknown>), mode: 'decree', soundPack: null, businesses: [], upgrades: [] };
   const cfg = GameConfigSchema.parse(raw);
@@ -216,14 +235,24 @@ export function freshState(cfg: R.DecreeConfig = decreeTestConfig(), seed = 1234
   return R.createDecree(cfg, baseGameState(now, seed));
 }
 
-/** A comic paper of the test deck fixed by hand (moods only, no money: the skeleton's draw does not size money yet). */
+/** A comic paper of the test deck fixed by hand (the skeleton has no draw yet): its archetype's base effects, jitter 1. */
 function handPaper(cfg: R.DecreeConfig, g: R.DecreeGame, id: string): R.Paper {
   const def = cfg.decree.deck.papers.find((p) => p.id === id)!;
   const office = g.decree.office;
   const arch = cfg.decree.archetypes.find((a) => a.id === def.archetype)!;
   const sides = { petitioner: R.clubIndex(cfg, office, def.club), other: def.other ? R.clubIndex(cfg, office, def.other) : null };
   const side = (effects: typeof arch.sign) => ({ effects: R.resolveEffects(cfg, office, effects, sides), followUp: null, label: null });
-  return { id: `comic:${id}:0`, kind: 'comic', source: id, office, visitor: { ...def.visitor, clubIx: sides.petitioner }, text: def.text, returning: null, archetype: def.archetype, petitioner: sides.petitioner, other: sides.other, tags: { subject: def.subject, butt: def.butt, shape: def.shape }, sign: side(arch.sign), refuse: side(arch.refuse), ministry: null, drawnLevel: null, district: null, note: null, drawnB: R.decreeParams(cfg, g).B, jitter: 1 };
+  return { id: `comic:${id}:0`, kind: 'comic', source: id, office, visitor: { ...def.visitor, clubIx: sides.petitioner }, cosigner: def.cosigner ?? null, text: def.text, returning: null, archetype: def.archetype, petitioner: sides.petitioner, other: sides.other, tags: { subject: def.subject, butt: def.butt, shape: def.shape }, sign: side(arch.sign), refuse: side(arch.refuse), clipping: null, ministry: null, drawnLevel: null, district: null, note: null, jitter: 1 };
+}
+
+/** A campaign paper of the test deck fixed by hand (2.10: sign 45 s of B and the district's +4 campaign points | No change). */
+function handCampaignPaper(cfg: R.DecreeConfig, g: R.DecreeGame, id: string, district: number): R.Paper {
+  const def = cfg.decree.deck.runUp.find((p) => p.id === id)!;
+  const office = g.decree.office;
+  const f = cfg.decree.forms.campaign;
+  const name = cfg.decree.offices[office].districts[district].name;
+  const sign = R.resolveEffects(cfg, office, [{ type: 'money', seconds: f.seconds, sign: -1 }, { type: 'district', points: f.points }], { petitioner: null, other: null, district });
+  return { id: `campaign:${id}:0`, kind: 'campaign', source: id, office, visitor: { ...def.visitor, clubIx: null }, cosigner: null, text: def.text.replace('{district}', name), returning: null, archetype: null, petitioner: null, other: null, tags: { subject: def.subject, butt: def.butt, shape: def.shape }, sign: { effects: sign, followUp: null, label: null }, refuse: { effects: [], followUp: null, label: null }, clipping: null, ministry: null, drawnLevel: null, district, note: null, jitter: 1 };
 }
 
 /** The office `office`'s fresh decree fields on a fresh game (the skeleton has no move yet: a hand-made seat). */
@@ -257,9 +286,11 @@ export function decreeFixtures(cfg: R.DecreeConfig = decreeTestConfig()) {
   };
   const mayorMidTerm = R.landPaper(cfg, mayor0, handPaper(cfg, mayor0, 'may-bus-name'), 240);
 
-  // The run-up of the first governor term, the Vegetables (club 2) boycotting their Glasshouse Office.
+  // The run-up of the first governor term, just called at day 70: the first of K = 4 campaign papers on
+  // the desk (2.17: the first at once), the next τ later; the Vegetables (club 2) boycotting their
+  // Glasshouse Office since their grievance was refused (it runs 5 more papers; no grievance waits).
   const gov = seated(cfg, 1, 4);
-  const governorAtCall: R.DecreeGame = {
+  const gov0: R.DecreeGame = {
     ...gov,
     cash: 1_500_000,
     stats: { ...gov.stats, playSeconds: 1_900 },
@@ -272,8 +303,8 @@ export function decreeFixtures(cfg: R.DecreeConfig = decreeTestConfig()) {
       moods: [52, 47, 18, 55, 60],
       armed: [true, true, false, true, true],
       strikes: [null, null, { papersLeft: 5, picket: 'GIVE THEM BACK', grievance: 'griev-scissors' }, null, null],
-      campaign: { C: [0, 0, 0, 0, 0, 0, 0], papersLeft: 4, rallyDone: false },
-      nextArrivalAt: null,
+      campaign: { C: [0, 0, 0, 0, 0, 0, 0], papersLeft: 3, rallyDone: false },
+      nextArrivalAt: 1_900 + cfg.decree.offices[1].tau,
       cabinet: { pockle: { club: 'bus', termsServed: 2 }, pellow: { club: 'veg', termsServed: 1 }, ferrule: { club: 'shops', termsServed: 1 } },
       applicationsDelivered: ['pockle', 'pellow', 'ferrule'],
       picketsThisTerm: ['GIVE THEM BACK'],
@@ -281,6 +312,7 @@ export function decreeFixtures(cfg: R.DecreeConfig = decreeTestConfig()) {
       stats: { ...gov.decree.stats, decisions: 250, daysEver: 250, boycotts: 1, elections: 2, wins: 2 },
     },
   };
+  const governorAtCall = R.landPaper(cfg, gov0, handCampaignPaper(cfg, gov0, 'run-test-governor-1', 3), 1_900);
 
   // Term 3 as President: The Very Long Bridge open (term 2), six ministers, Bandstand Summer running (term 3's twist).
   const pres = seated(cfg, 2, 99);

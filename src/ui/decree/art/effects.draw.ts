@@ -218,13 +218,13 @@ export function drawApprovalChip(c: SkCanvas, w: number, h: number, value = 62):
 /** The top bar's gossip chip ground with its bubbles and `n` of `max` pips (w x h from top left). */
 export function drawGossipChip(c: SkCanvas, w: number, h: number, n = 2, max = 5): void {
   drawChip(c, w, h, 'bar');
-  at(c, h / 2 + 2, h / 2, (h * 0.7) / 24, 0, drawGossip);
-  const x0 = h + 4;
-  const gap = Math.min(6, (w - x0 - 6) / max);
+  at(c, h * 0.42 + 2, h / 2, (h * 0.6) / 24, 0, drawGossip);
+  const x0 = h * 0.84 + 2;
+  const gap = Math.min(6, (w - x0 - 4) / max);
   for (let i = 0; i < max; i++) {
     const full = i < n;
     const near = n >= max - 1 && full;
-    c.drawPath(circle(x0 + i * gap + gap / 2, h / 2, Math.min(2.2, gap * 0.36)), fill(full ? (near ? DESK.violet : DESK.slateDeep) : DESK.slatePale));
+    c.drawPath(circle(x0 + i * gap + gap / 2, h / 2, Math.min(2.2, gap * 0.42)), fill(full ? (near ? DESK.violet : DESK.slateDeep) : DESK.slateLight));
   }
   void oval;
 }

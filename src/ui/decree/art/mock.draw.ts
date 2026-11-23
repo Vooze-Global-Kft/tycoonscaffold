@@ -14,6 +14,7 @@ import { drawDeskSet, drawDesk, drawDoor, drawDrawer, drawInTray, drawLamp, draw
 import { drawApprovalChip, drawChip, drawEffect, drawGossipChip, type EffectId } from './effects.draw';
 import { drawLetters } from './letters';
 import { drawBustStandIn } from './standin.draw';
+import { drawBust } from './faces';
 import { drawFrontPage, drawPaper, drawPhotoClip, drawPicketSign, drawSignature, frontPageBoxes, picketSignBox } from './paper.draw';
 import { LINE, at, clip, fill, oval, rect, rrect, stroke } from './pen';
 import { drawButtonIcon, type ButtonIcon } from './meta.draw';
@@ -51,7 +52,7 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
   // desk under the out-tray band, the paper and the drawer band
   const deskBox = { x: 0, y: L.outTray.y, w, h: L.drawer.y + L.drawer.h - L.outTray.y };
   drawDesk(c, deskBox, office, o.set ?? 'plain');
-  if (office === 1) at(c, w - 30, L.outTray.y + L.outTray.h - 2, 1, 0, (q) => drawLampPool(q, 70));
+  if (office === 1) at(c, w - 38, L.outTray.y + L.outTray.h - 2, 1, 0, (q) => drawLampPool(q, 70));
   // bars: top bar, club strip, ribbon (walnut-coloured band with paper text)
   c.drawRect({ x: 0, y: 0, width: w, height: L.ribbon.y + L.ribbon.h }, fill(DESK.walnutDeep));
   c.drawRect({ x: 0, y: L.ribbon.y, width: w, height: L.ribbon.h }, fill(DESK.walnut));
@@ -79,11 +80,11 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
   at(c, 10, ob.y + 3, 1, 0, (q) => drawDoor(q, doorW, ob.h - 6, office, 0.6));
   const gb = doorGlassBox(doorW, ob.h - 6);
   words(c, 10 + gb.x + 6, ob.y + 3 + gb.y + gb.h * 0.2, gb.w * 0.7, gb.h * 0.6, DESK.slateDeep);
-  const trayW = Math.min(150, w * 0.4);
-  at(c, (w - trayW) / 2 + 20, ob.y + 1, 1, 0, (q) => drawOutTray(q, trayW, ob.h - 2, 31));
-  if (office === 1) at(c, w - 30, ob.y + ob.h - 2, (ob.h - 4) / 30, 0, (q) => drawLamp(q, 30));
-  if (office === 2) at(c, w - 52, ob.y + ob.h - 4, Math.min(0.62, (ob.h - 6) / 18), 0, drawTelephones);
-  if (o.set === 'walnut' && office === 0) at(c, w - 46, ob.y + ob.h - 6, Math.min(0.62, (ob.h - 6) / 18), 0, drawDeskSet);
+  const trayW = Math.min(150, w * 0.4, w - doorW - 110);
+  at(c, Math.max(doorW + 20, (w - trayW) / 2 - 6), ob.y + 1, 1, 0, (q) => drawOutTray(q, trayW, ob.h - 2, 31));
+  if (office === 1) at(c, w - 38, ob.y + ob.h - 2, Math.min(1.1, (ob.h - 4) / 30), 0, (q) => drawLamp(q, 30));
+  if (office === 2) at(c, w - 50, ob.y + ob.h - 6, Math.min(0.95, (ob.h - 8) / 20), 0, drawTelephones);
+  if (o.set === 'walnut' && office === 0) at(c, w - 46, ob.y + ob.h - 6, Math.min(1, (ob.h - 8) / 18), 0, drawDeskSet);
 
   // the paper
   const p = L.paper;
@@ -106,7 +107,7 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
     const fy = p.y + pm.header.y + 4;
     c.save();
     clip(c, oval(fx + 22, fy + 27, 20.5, 25.5));
-    (o.face ?? ((q, fw, fh) => drawBustStandIn(q, fw, fh)))(at2(c, fx + 1.5, fy + 1.5), 41, 51);
+    (o.face ?? ((q, fw, fh) => (drawBust(q, kind === 'grievance' ? 'gourdley' : 'spinwell', { x: -2, y: -2, width: fw + 4, height: fh + 4 }) ? undefined : drawBustStandIn(q, fw, fh))))(at2(c, fx + 1.5, fy + 1.5), 41, 51);
     c.restore();
     c.restore();
     at(c, fx, fy, 1, 0, (q) => drawPhotoClip(q));
@@ -135,7 +136,7 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
     if (kind === 'grievance') {
       at(c, p.x + p.w - 64, p.y + pm.header.y + 30, 0.8, -8, (q) => drawPicketSign(q, 1));
       const pb = picketSignBox();
-      at(c, p.x + p.w - 64, p.y + pm.header.y + 30, 0.8, -8, (q) => drawLetters(q, 'GIVE THEM BACK', pb.x + 2, pb.y + pb.h * 0.7, { size: 7, color: DESK.brick, weight: 0.16 }));
+      at(c, p.x + p.w - 64, p.y + pm.header.y + 30, 0.8, -8, (q) => drawLetters(q, 'GIVE THEM BACK', pb.x + 2, pb.y + pb.h * 0.7, { size: 5.6, color: DESK.brick, weight: 0.16 }));
       drawLetters(c, 'VEGETABLES BELOW 20: BOYCOTT', p.x + 16, p.y + pm.refuse.note.y + pm.refuse.note.h - 5, { size: 8, color: DESK.brick, weight: 0.14 });
     }
     if (kind === 'signing') at(c, p.x + p.w - 150, p.y + pm.sign.title.y - 2, 1, 0, (q) => drawSignature(q, 'bramble', 0.7, 1.1));
@@ -143,7 +144,7 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
 
   // drawer band
   const db = L.drawer;
-  at(c, (w - p.w) / 2, db.y, 1, 0, (q) => drawDrawer(q, p.w, db.h, drawerStage(312), kind === 'grievance' ? 0.3 : 0, office));
+  at(c, (w - p.w) / 2, db.y, 1, 0, (q) => drawDrawer(q, p.w, db.h, drawerStage(312), 0, office));
   const lb = drawerLabelBox(p.w, db.h);
   drawLetters(c, 'FOR FURTHER STUDY (312)', (w - p.w) / 2 + lb.x + 6, db.y + lb.y + lb.h - 4, { size: Math.min(9, lb.h * 0.55), color: DESK.line, weight: 0.13 });
   // goal line and bottom row
@@ -163,7 +164,7 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
     words(c, r.x + 12, r.y + r.h - 20, r.w - 24, 8, DESK.paperShade);
   }
   // a sticky note on the desk's corner (only with a day paper)
-  if (kind === 'day') at(c, w - 96, L.drawer.y - 22, 1, 4, (q) => drawStickyNote(q, 88, 26));
+  if (kind === 'day' && office === 0 && o.set !== 'walnut') at(c, w - 104, ob.y + 4, 1, 3, (q) => drawStickyNote(q, 90, Math.min(30, ob.h - 8)));
 }
 
 function at2(c: SkCanvas, x: number, y: number): SkCanvas {
