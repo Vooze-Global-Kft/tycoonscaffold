@@ -87,9 +87,9 @@
           "Twin Skewer",
           "Glazed Skewer",
           "Skewer Bundle",
-          "Skewer Fan",
-          "Ember Plate",
-          "Smoke Platter",
+          "Skewer Plate",
+          "Skewer Platter",
+          "Lantern Platter",
           "Dragon Grill Board"
         ],
         "minder": {
@@ -103,13 +103,13 @@
         "name": "Tea",
         "gear": "Copper Urn",
         "tiers": [
-          "Tea Leaf",
           "Cup of Tea",
+          "Twin Tea",
           "Milk Tea",
-          "Pearl Tea",
+          "Tea Trio",
           "Tea Flight",
           "Tea Tray",
-          "Moon Teapot",
+          "Lantern Tea Tray",
           "Midnight Tea Set"
         ],
         "minder": {
@@ -123,14 +123,14 @@
         "name": "Steamer",
         "gear": "Bamboo Steamer",
         "tiers": [
-          "Dough Ball",
           "Dumpling",
           "Dumpling Pair",
-          "Steamer Basket",
-          "Double Basket",
-          "Steamer Stack",
-          "Lantern Stack",
-          "Jade Pagoda"
+          "Glazed Dumpling",
+          "Dumpling Bundle",
+          "Dumpling Plate",
+          "Dumpling Platter",
+          "Lantern Steam Tray",
+          "Bamboo Banquet"
         ],
         "minder": {
           "name": "Nettle",
@@ -143,14 +143,14 @@
         "name": "Sweets",
         "gear": "Sugar Pan",
         "tiers": [
-          "Sugar Drop",
           "Candied Berry",
-          "Berry Stick",
+          "Twin Berry",
+          "Chocolate Berry",
           "Candy Posy",
-          "Honey Cake",
-          "Cake Stack",
-          "Lantern Cake",
-          "Festival Cake"
+          "Berry Plate",
+          "Berry Platter",
+          "Lantern Berry Tray",
+          "Jewel Berry Board"
         ],
         "minder": {
           "name": "Juniper",
@@ -163,18 +163,18 @@
         "name": "Noodles",
         "gear": "Noodle Wok",
         "tiers": [
-          "Noodle Nest",
-          "Noodle Cup",
+          "Noodle Bowl",
+          "Twin Bowl",
           "Broth Bowl",
-          "Topped Bowl",
-          "Big Bowl",
+          "Noodle Trio",
+          "Noodle Plate",
           "Family Bowl",
-          "Long-Life Bowl",
-          "Thousand-Thread Pot"
+          "Lantern Noodle Tray",
+          "Thousand-Thread Board"
         ],
         "minder": {
           "name": "Tansy",
-          "beast": "raccoon"
+          "beast": "hare"
         },
         "fromSeason": 0
       },
@@ -184,13 +184,13 @@
         "gear": "Lantern Pan",
         "tiers": [
           "Puff Drop",
-          "Twin Puffs",
-          "Sesame Puff",
-          "Puff Cone",
-          "Puff Basket",
+          "Twin Puff",
+          "Caramel Puff",
+          "Puff Bundle",
+          "Puff Plate",
           "Golden Heap",
           "Sun Platter",
-          "Paper Moon Tower"
+          "Paper Moon Board"
         ],
         "minder": {
           "name": "Marlo",
@@ -333,7 +333,6 @@
       "ripeMax": 0.6,
       "maxBase": 4,
       "shelf": 6,
-      "looseCap": 8,
       "spare": 2,
       "release": 0.5
     },
@@ -994,7 +993,7 @@
     {
       "id": "tansy",
       "name": "Tansy",
-      "portrait": "beast:raccoon"
+      "portrait": "beast:hare"
     },
     {
       "id": "marlo",

@@ -6,8 +6,8 @@
  * - fresh: a new game (the app's own createInitialState);
  * - early: the bot's game at 3:00;
  * - mid: at 30:00;
- * - late: just before the first Festival is filled: one line left, a gift box waiting and a Parade out
- *   (else the first moment with one line left; at most 4 h of play).
+ * - late: just before the first Festival is filled: one line left, a gift box waiting and a Parade out (the
+ *   bot keeps its boxes for the last 10 to 30 minutes before that); else the first moment with one line left.
  * If the rules cannot play yet (a rule still throws NotBuiltError, or anything else fails), the
  * preset falls back to the rules' hand-made fixtures (src/engine/fixtures/merge.ts: minute3,
  * minute10, festivalNear), as the skeleton had it. A played state is kept for the page's life.
@@ -31,17 +31,29 @@ function botState(cfg: R.MergeConfig, name: Exclude<PresetName, 'fresh'>, base: 
   let state: R.MergeGame | null = null;
   try {
     if (name === 'late') {
-      // Just before the first Festival is filled: one line left, a gift box waiting and a Parade out. The bot
-      // plays to the first moment with one line left, then plays on keeping its boxes (the hoarding habit) until
-      // a box waits beside a Parade; if the Festival fills first, the first one-line-left moment is the preset.
-      const oneLeft = (g: R.MergeGame) => g.merge.season === 0 && g.merge.festival.lines.length > 1 && g.merge.festival.lines.filter((l) => !l.filled).length === 1;
+      // Just before the first Festival is filled: one line left, a gift box waiting and a Parade out.
+      const left = (g: R.MergeGame) => g.merge.festival.lines.filter((l) => !l.filled).length;
+      const oneLeft = (g: R.MergeGame) => g.merge.season === 0 && g.merge.festival.lines.length > 1 && left(g) === 1;
       const done = (g: R.MergeGame) => g.merge.season > 0 || g.merge.festival.filledAt !== null;
+      const ready = (g: R.MergeGame) => oneLeft(g) && g.merge.gift.boxes.length > 0 && g.merge.counters.some((ct) => ct.ticket?.gold);
+      // The bot plays to the first moment with one line left (time t1). Then, from its state some minutes before
+      // t1, it plays on keeping its boxes (the hoarding habit) until a box waits beside a Parade with one line
+      // left; 10, 20 and 30 minutes of hoarding are tried in turn. If the Festival fills first every time, the
+      // first one-line-left moment is the preset.
       const first = runMergeBot(cfg, { seed: 12345, hours: 4, seasons: 1, wall0: now, base: () => base, stop: (g) => oneLeft(g) || done(g) }).game;
-      state = oneLeft(first) ? first : null;
-      if (state) {
-        const ready = (g: R.MergeGame) => oneLeft(g) && g.merge.gift.boxes.length > 0 && g.merge.counters.some((ct) => ct.ticket?.gold);
-        const on = runMergeBot(cfg, { seed: 12345, hours: 1, seasons: 1, start: state, wall0: now, habits: { hoardBoxes: true }, stop: (g) => ready(g) || done(g) }).game;
-        if (ready(on)) state = on;
+      if (oneLeft(first)) {
+        const t1 = first.stats.playSeconds;
+        for (const lead of [600, 1200, 1800]) {
+          const at = Math.max(180, Math.round(t1 - lead));
+          const from = runMergeBot(cfg, { seed: 12345, hours: at / 3600, wall0: now, base: () => base, keepAt: [at] }).states[at];
+          if (!from) continue;
+          const on = runMergeBot(cfg, { seed: 12345, hours: 2, seasons: 1, start: from, wall0: now, habits: { hoardBoxes: true }, stop: (g) => ready(g) || done(g) }).game;
+          if (ready(on)) {
+            state = on;
+            break;
+          }
+        }
+        state = state ?? first;
       }
     } else {
       const at = name === 'early' ? 180 : 1800;

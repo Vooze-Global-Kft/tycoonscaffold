@@ -53,10 +53,19 @@ export function releasesOf(id: string): ReleasesFile {
  * `every` filled tickets, `slots` slots each; null for every other mode. The merge mode has no
  * daily reward and draws a cast of cartoon animals in code (no `cast` block).
  */
-function mergeGift(g: GameConfig): { every: number; slots: number } | null {
+function mergeGift(g: GameConfig): { every: number; slots: number; lanternSlots: { n: number; slots: number } | null } | null {
   if (g.mode !== 'merge') return null;
-  const gift = ((g as unknown as { merge?: { gift?: { every?: unknown; slots?: unknown } } }).merge ?? {}).gift ?? {};
-  return { every: Number(gift.every ?? 0), slots: Number(gift.slots ?? 0) };
+  type Lantern = { n?: unknown; effect?: { type?: unknown; value?: unknown } };
+  const m = (g as unknown as { merge?: { gift?: { every?: unknown; slots?: unknown }; lanterns?: unknown } }).merge ?? {};
+  const gift = m.gift ?? {};
+  // A lantern whose effect raises the slot count (decision M5: lantern 14 gives a fourth slot).
+  const lanterns = (Array.isArray(m.lanterns) ? m.lanterns : []) as Lantern[];
+  const more = lanterns.find((l) => l.effect?.type === 'giftSlots');
+  return {
+    every: Number(gift.every ?? 0),
+    slots: Number(gift.slots ?? 0),
+    lanternSlots: more ? { n: Number(more.n), slots: Number(more.effect?.value) } : null,
+  };
 }
 
 function ratingNotes(g: GameConfig): string {
@@ -90,7 +99,7 @@ function ratingNotes(g: GameConfig): string {
     `| Premium currency | ${products.some((p) => p.kind === 'gems' || p.kind === 'starterPack') ? `Yes: ${g.strings.gemName}, sold for money${gemPrices ? ' and spent in the game' : ''}; never expires` : 'Not sold'} |`,
     ...(gift
       ? [
-          `| Random items (chests) | 1 kind: gift boxes (a paper bag of ${gift.slots} slots) with random contents, earned one every ${gift.every} filled tickets (merge.gift.every); the odds and the coin amount are shown before a box is opened |`,
+          `| Random items (chests) | 1 kind: gift boxes (a paper bag of ${gift.slots} slots${gift.lanternSlots ? `, ${gift.lanternSlots.slots} after lantern ${gift.lanternSlots.n}` : ''}) with random contents, earned one every ${gift.every} filled tickets (merge.gift.every); the odds and the coin amount are shown before a box is opened |`,
           `| Random items SOLD (money or any currency) | No: gift boxes are only earned by filling tickets; no purchase and no ad gives one |`,
         ]
       : [

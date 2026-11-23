@@ -3,7 +3,7 @@
     "Products (decision M13): three, none random. night_awnings (cosmetic, looks only), night_late_hours (unlock: 4 more hours away), night_quiet_evening (skipAds: every Watch ad reward at once, with no video). The ad skip is sold openly under its own name: each of the three apps sells one (Pizza Empire and Orbit Haulers too), as most free games do; REVIEW-NOTES.md says so to the reviewer. The kind multiset {cosmetic, unlock, skipAds} still differs from both other games'.",
     "Rewarded ads (decisions M8, M14, M46): fill one line, gear rush, call the dragon (the paper dragon comes to the next free counter), and +50 % on the away report. No interstitials, no banner.",
     "Gift boxes (5.5, M24, M36): earned by filling tickets, never sold; odds and coins shown before opening. The Festival pays no coins (M37).",
-    "human: one check per game (scripts/lib/fingerprint.ts reads human.<dimension> as a map keyed by the other game's id). The values are declarations, not yet checked: by and date stay empty until a person has looked, and dimensions 7 and 13 read pending until then. Dimension 7 (icon_and_screenshot_template): look at games/night-market/store/screenshots/SIDE-BY-SIDE.png (the three games' icons, iPhone 6.9\" sets and Play feature graphics, one row each) and games/night-market/icon.png beside each game's icon; the template and its differences are described in scripts/store/README.md (\"The templates\": Lantern Row's 'paper tag': game from the top edge, uncropped at the sides, caption below it on a tilted rice-paper tag hanging from a lantern wire, the art kit's paper-cut letters; Pizza's 'warm' framed card on cream with the caption on a sauce wave; Orbit's 'panel' readout band on top in monospace capitals). Write 'own' with your name and the date for each game if no shot, icon or feature graphic could be taken for the other game's. Dimension 13 (meta_screen_layouts): open the preview (port 8302) with ?preset=mid&spoke=book (Ladder Book: six bamboo ladders), ?preset=mid&spoke=lanterns (Lantern Gate: an arch of 20 hooks), ?preset=mid&spoke=season (Season scroll), ?preset=mid&sheet=gift&gifts=1 (gift bag) and compare them with Pizza Empire's Staff, Recipes and Franchise tabs and chest opening (its store shots 3 to 6) and Orbit Haulers' Contract Board, Shift Log and Star Map (its shots 3, 5, 6); the store review asked that the Season scroll's Resets / Stays lists be compared with the Star Map's Kept / Reset panel in particular. Write 'different' or 'restyled' with your name and the date for each game."
+    "human: one check per game (scripts/lib/fingerprint.ts reads human.<dimension> as a map keyed by the other game's id). value, by and date are all left empty on purpose: the person who looks writes the verdict ('own' for dimension 7, 'different' for 13; anything else counts as not differing), their name and the date, one entry per game. Until 'by' is filled the dimension reads pending. Dimension 7 (icon_and_screenshot_template): look at games/night-market/store/screenshots/SIDE-BY-SIDE.png (the three games' icons, iPhone 6.9\" sets and Play feature graphics, one row each) and games/night-market/icon.png beside each game's icon; the template and its differences are described in scripts/store/README.md (\"The templates\": Lantern Row's 'paper tag': game from the top edge, uncropped at the sides, caption below it on a tilted rice-paper tag hanging from a lantern wire, the art kit's paper-cut letters; Pizza's 'warm' framed card on cream with the caption on a sauce wave; Orbit's 'panel' readout band on top in monospace capitals). Write 'own' with your name and the date for each game if no shot, icon or feature graphic could be taken for the other game's. Weigh the two echoes the store review (23 November) named before signing: against Pizza Empire, both sets put the caption below the game (Pizza's on a sauce wave, Lantern Row's on a hanging tag); against Orbit Haulers, both run the game without a device frame on a dark navy ground, and both feature graphics set a white capital wordmark beside a crop of the game (Lantern Row's was warmed toward lantern amber after that review). The review's own reading: 'three distinct templates, not one template, three skins'; its notes are in the store step's scratchpad (notes/store-judge.md). Dimension 13 (meta_screen_layouts): open the preview (port 8302) with ?preset=mid&spoke=book (Ladder Book: six bamboo ladders), ?preset=mid&spoke=lanterns (Lantern Gate: an arch of 20 hooks), ?preset=mid&spoke=season (Season scroll), ?preset=mid&sheet=gift&gifts=1 (gift bag) and compare them with Pizza Empire's Staff, Recipes and Franchise tabs and chest opening (its store shots 3 to 6) and Orbit Haulers' Contract Board, Shift Log and Star Map (its shots 3, 5, 6); the store review asked that the Season scroll's Resets / Stays lists be compared with the Star Map's Kept / Reset panel in particular. Write 'different' or 'restyled' with your name and the date for each game."
   ],
   "core_verb": "place/arrange",
   "production_topology": "spatial-grid",
@@ -33,24 +33,24 @@
   "human": {
     "icon_and_screenshot_template": {
       "pizza-empire": {
-        "value": "own",
+        "value": "",
         "by": "",
         "date": ""
       },
       "space-miner": {
-        "value": "own",
+        "value": "",
         "by": "",
         "date": ""
       }
     },
     "meta_screen_layouts": {
       "pizza-empire": {
-        "value": "different",
+        "value": "",
         "by": "",
         "date": ""
       },
       "space-miner": {
-        "value": "different",
+        "value": "",
         "by": "",
         "date": ""
       }

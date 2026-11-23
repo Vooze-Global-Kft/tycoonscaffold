@@ -21,6 +21,9 @@ const C = {
   indigo: '#1C2140',
   indigoDeep: '#13162E',
   dusk: '#3A3466',
+  /** The feature graphic's left side: the dusk warmed by the lanterns (store review: not another navy-and-white wordmark). */
+  dusky: '#7A4A3E',
+  duskWarm: '#5E3F55',
   teal: '#123A40',
   amber: '#F2A541',
   amberSoft: '#F8CB7E',
@@ -262,17 +265,17 @@ export function featureHtml(o: FeatureOpts): string {
   const size = Math.min(H * 0.2, (W * 0.34) / Math.max(...lines.map(lineUnits)));
   const textTop = H * 0.34;
   const lx = W * 0.06;
-  const text = lines.map((l, i) => letters(l, lx, textTop + i * size * 1.45, size, { color: C.paperLight, edge: C.paperEdge, shadow: 'rgba(5,6,16,.7)', seed: 11 + i * 5 })).join('\n');
+  const text = lines.map((l, i) => letters(l, lx, textTop + i * size * 1.45, size, { color: C.flame, edge: C.brassDeep, shadow: 'rgba(40,16,12,.6)', seed: 11 + i * 5 })).join('\n');
   const picX = W * 0.45;
   const FADE = 'linear-gradient(90deg, transparent 0, #000 22%, #000 100%)';
   const yAt = sagAt(-W * 0.02, W * 1.02, H * 0.06, H * 0.08);
-  const lans = [0.05, 0.17, 0.29, 0.41].map((f) => lantern(W * f, yAt(W * f), H * 0.1)).join('');
+  const lans = [0.05, 0.17, 0.29, 0.41].map((f) => lantern(W * f, yAt(W * f), H * 0.13)).join('');
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:${W}px;height:${H}px;overflow:hidden;background:${C.indigo}}
 .sky{position:absolute;inset:0;background:
-  radial-gradient(ellipse 45% 60% at 22% 70%, rgba(242,165,65,.18), transparent 70%),
-  linear-gradient(180deg, ${C.indigoDeep} 0, ${C.indigo} 60%, ${C.dusk} 100%)}
+  radial-gradient(ellipse 55% 75% at 20% 62%, rgba(248,203,126,.42), rgba(242,165,65,.2) 45%, transparent 75%),
+  linear-gradient(90deg, ${C.dusky} 0, ${C.duskWarm} 30%, ${C.dusk} 55%, ${C.indigo} 100%)}
 .pic{position:absolute;left:${picX}px;top:0;width:${W - picX}px;height:${H}px;overflow:hidden;-webkit-mask-image:${FADE};mask-image:${FADE}}
 svg{position:absolute;left:0;top:0}
 </style></head><body>
