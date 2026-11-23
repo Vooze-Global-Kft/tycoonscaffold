@@ -32,7 +32,7 @@ Free to use: in Dithering the clock tower, the bus station, the high street, the
 
 **Who minds what** (a paper's "other" club needs one of these, or a reason in the text). Feuds: spotters' noses on the Guild's glass; spotters standing on the pumpkin patch to see the 7:02; the band practising by the anglers' water; kite strings in the Committee's hedges. Frictions: displays block the timetable; the weigh-in fills the high street; the tuba rattles shop windows; bus horns at the canal bridge; the Guild decorates the jetty; growers water from the anglers' pond; kites land on shelters, awnings and the patch; the kite festival and the concert want the same hill; strings tangle fishing lines; the Committee trims the hedge the spotters lean on and the willow the anglers sit under. A hedge never keeps anyone out.
 
-**Honours** (invented, no titles): Grand Goose (First and Second Class; a name in `names.json`, a word only, never a badge with a goose on it), Keeper of the Ceremonial Spoon, the Freedom of the Town, the Brass Thimble, the Ribbon of Moderate Merit. Never knight, dame, sir, lord, lady, crown, king, queen, royal.
+**Honours** (invented, no titles): the Order of the Folded Napkin (First and Second Class; written "Folded Napkin (Second Class)" after a name), Keeper of the Ceremonial Spoon, the Freedom of the Town, the Brass Thimble, the Ribbon of Moderate Merit. Never knight, dame, sir, lord, lady, crown, king, queen, royal.
 
 **What does not exist here.** Parties, colours, left and right; votes as a joke (ballots, counting, cheating); uniforms, soldiers, police, clergy, prisons; children, schools, hospitals, illness; drink, smoking, gambling, swearing, violence, fear; taxes, wages, pensions, rent, housing, prices; traffic restriction, lanes, parking schemes, road charges, tolls; borders, arrivals, keeping people out, nationalities; religion and its holidays; weather worse than a picnic drizzle; anything real (people, places, brands, shows, slogans, events, games); money handed to a person.
 
@@ -87,7 +87,7 @@ Lobbyists speak only for their own absurd trade; their gifts are fruit baskets, 
 | `mallowby` | Hortensia Mallowby | governor | the accordion |
 | `noonday` | Fergus Noonday | governor | sundials |
 | `kalends` | Professor Ozias Kalends | president | calendars ("Kalends: Abolish Wednesdays") |
-| `strop` | Ottoline Strop, Grand Goose (Second Class) | president | chairs ("Strop: Firmly Seated") |
+| `strop` | Ottoline Strop, Folded Napkin (Second Class) | president | chairs ("Strop: Firmly Seated") |
 | `ringrose` | Lettice Ringrose | president | handbells |
 | `mould` | Aldous Mould | president | his compost heap |
 | `dovecote` | Araminta Dovecote | president | pigeons |

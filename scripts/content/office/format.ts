@@ -598,7 +598,7 @@ export function describeIssue(issue: z.core.$ZodIssue): string {
     }
     return `${where}: unknown field ${keys.map((k) => `"${k}"`).join(', ')} (see format.ts for the fields of this record)`;
   }
-  if (issue.code === 'invalid_type' && /received undefined/.test(issue.message)) return `${where}: missing`;
+  if (issue.code === 'invalid_type' && /received (undefined|null)/.test(issue.message)) return `${where}: missing`;
   // zod's own wording ("Too small: expected number to be >=5") said in the format's words.
   const top = String(issue.path[0] ?? '');
   if (/^delay$/.test(top) || issue.path.includes('delay')) return `${issue.path.slice(0, issue.path.indexOf('delay') + 1).join('.')}: a delay is [from, to] in papers, from 5 to 30, from ≤ to, at most 8 apart, like [10, 14]`;
@@ -606,7 +606,7 @@ export function describeIssue(issue: z.core.$ZodIssue): string {
   if (issue.code === 'too_big') return i.origin === 'string' ? `${where}: at most ${i.maximum} characters; this is longer: cut it` : i.origin === 'array' ? `${where}: at most ${i.maximum} entries` : `${where}: at most ${i.maximum}`;
   if (issue.code === 'too_small') return i.origin === 'string' ? (Number(i.minimum) <= 1 ? `${where}: empty: write it` : `${where}: at least ${i.minimum} characters`) : i.origin === 'array' ? `${where}: at least ${i.minimum} entries` : `${where}: at least ${i.minimum}`;
   if (issue.code === 'invalid_value' && Array.isArray(i.values)) return `${where}: one of ${i.values.map((v) => JSON.stringify(v)).join(', ')}`;
-  if (issue.code === 'invalid_type') return `${where}: should be ${i.expected === 'array' ? 'a list [ ... ]' : i.expected === 'object' ? 'a record { ... }' : `a ${i.expected}`}`;
+  if (issue.code === 'invalid_type') return `${where}: missing, or not ${i.expected === 'array' ? 'a list [ ... ]' : i.expected === 'object' ? 'a record { ... }' : i.expected === 'string' ? 'text in quotes' : `a ${i.expected}`}`;
   if (issue.code === 'invalid_format') return `${where}: ${issue.message.replace(/^Invalid string: /, 'not the right form: ')}`;
   return `${where}: ${issue.message}`;
 }

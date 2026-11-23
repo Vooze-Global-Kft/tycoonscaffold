@@ -677,3 +677,5 @@ The kind multiset is {unlock, unlock, cosmetic, cosmetic, skipAds}. H10 runs wit
 If the ranges cannot reach this, the prototype proposes, each with its measured effect, in this order: the rival's pull and D25's threshold and slope; base effects (inside ±1, then larger while every effective |Δ| stays ≤ 10); a gentler pull of the f± sizing toward 50 with the no-clamp lemma kept. The lead decides from that report.
 
 **D28. Traps are drawn at their share.** In the comic draw a text with no club carries the sum of the office's clubs' weights where 2.7's formula has clubWeight, so Vanity and Basket papers arrive at the shares of the archetype table (the prototype drew them at a third of it). H8, H10 and the writing demand are measured with this.
+
+**D29. The honour is the Order of the Folded Napkin** (First and Second Class; after a name: "Folded Napkin (Second Class)"), not the "Grand Goose", which would make the goose a state symbol against D12. The register has it.

@@ -401,7 +401,7 @@
       "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
-      "name": "Grand Goose (Second Class)",
+      "name": "Folded Napkin (Second Class)",
       "kind": "honour",
       "check": {
         "politicians": "clear",
@@ -1362,7 +1362,7 @@
       }
     },
     {
-      "name": "Grand Goose (First Class)",
+      "name": "Folded Napkin (First Class)",
       "kind": "honour",
       "note": "office-style.md section 1 | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
@@ -2360,7 +2360,7 @@
       "name": "Ottoline Strop",
       "kind": "cast",
       "id": "strop",
-      "role": "Grand Goose (Second Class)",
+      "role": "Folded Napkin (Second Class)",
       "group": "rival",
       "office": "president",
       "check": {
