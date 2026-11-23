@@ -22,6 +22,9 @@ export const BUST_H = 125;
 export const PHOTO = { cx: 50, cy: 62.5, rx: 48.6, ry: 61.4 } as const;
 /** Where the neck meets the garment. */
 const NECK_Y = 86;
+/** The sitter's scale inside the photograph, about a point near the chin. */
+const PERSON_SCALE = 1.12;
+const PERSON_PIVOT = 64;
 
 export interface BustBox {
   x: number;
@@ -53,7 +56,10 @@ function drawProp(c: SkCanvas, pen: Pen, look: Look, back: boolean): void {
   if (look.prop === 'none') return;
   const def = PROPS[look.prop] as PropDef;
   if (!!def.at.back !== back) return;
-  at(c, def.at.x, def.at.y, def.at.s ?? 1, def.at.deg, (q) => def.draw(q, pen, CLOTH[look.propAccent]));
+  // Front props are pulled toward the middle so the oval never cuts them at small sizes.
+  const x = back ? def.at.x : 50 + (def.at.x - 50) * 0.8;
+  const y = back ? def.at.y : Math.min(def.at.y, 103);
+  at(c, x, y, def.at.s ?? 1, def.at.deg, (q) => def.draw(q, pen, CLOTH[look.propAccent]));
 }
 
 /** The person alone, in design units, no photograph (the cut-outs reuse the head through `drawHeadOf`). */
@@ -62,12 +68,18 @@ export function drawPerson(c: SkCanvas, look: Look, opts: { tone?: ToneId; age?:
   const age = opts.age ?? 0;
   const w = washOf(look, opts.tone, age);
   const g = headGeo(look.head, HEAD_X, HEAD_TOP);
+  // The sitter fills the photograph a little more than the design grid (read at 44 pt).
+  c.save();
+  c.translate(50, PERSON_PIVOT);
+  c.scale(PERSON_SCALE, PERSON_SCALE);
+  c.translate(-50, -PERSON_PIVOT);
   drawProp(c, pen, look, true);
   drawHairBack(c, pen, g, look.hair, w);
   drawNeck(c, pen, HEAD_X, g.chin, NECK_Y, w.skin);
   GARMENTS[look.garment](c, pen, { cx: HEAD_X, neckY: NECK_Y, cloth: CLOTH[look.cloth], accent: CLOTH[look.accent], shirt: '#F1F2EE' });
   drawHeadOf(c, pen, look, w, age);
   drawProp(c, pen, look, false);
+  c.restore();
 }
 
 /** The head with hair and hat, at the design position (HEAD_X, HEAD_TOP). */

@@ -4,9 +4,10 @@
  * beside this one and are reached only through the public index src/engine/decree.ts.
  *
  * `DecreeConfig` is the shared GameConfig plus the parsed `decree` block; `DecreeGame` is the shared
- * GameState plus `decree`. Dibs are the shared `cash`, changed only through the one `commitCash`
- * (src/engine/decree/params.ts); the play clock is the shared `stats.playSeconds`, which the tick
- * advances itself. Purchases are the shared `entitlements.products`.
+ * GameState plus `decree`. Dibs are the shared `cash`, changed by the rules only through the one
+ * `commitCash` (src/engine/decree/params.ts; the store pays the away earnings and the away ad through
+ * the shared economy's grantCash, 2.15); the play clock is the shared `stats.playSeconds`, which the
+ * tick advances itself. Purchases are the shared `entitlements.products`.
  *
  * Indexing: offices 0 mayor, 1 governor, 2 president (`OfficeIx`); a club g indexes the CURRENT
  * office's `clubs` list (so moods[g], strikes[g] and a district's mix[g] line up); `clubIndex` maps a
@@ -14,15 +15,29 @@
  * play-clock seconds (`stats.playSeconds`) unless the comment says "decisions" (`stats.decisions`,
  * what follow-ups count) or "days" (decided day papers of this term).
  *
- * Written by the skeleton. Owned afterwards by P1a (the paper core) with P1b's agreement on every
- * seam type (the ones both sides read: Paper, Shown, Factors, DecreeParams, DeskItem, the events);
- * `types` freezes at hour 2 (9.2). docs/design/office-build-plan.md, "The seam".
+ * ONE MOMENT OF FREEZING (D23): a paper's identity, its effects as base values and its jitter are
+ * fixed when it is DRAWN; every number it prints, money included, is fixed when it LANDS on the desk
+ * (`Shown`, size.ts `freezeShown`). A form's level is the one thing that can go stale; commit checks it.
+ *
+ * THREE SECTIONS, each edited only by its owner (docs/design/office-build-plan.md "The seam"):
+ * - SEAM: the types both rules packages read and write (Paper, Effect, Shown, DeskItem, the state,
+ *   Factors, DecreeParams, CashSource, the event union). A change is agreed by P1a and P1b first;
+ *   frozen at hour 2 (9.2). Edited by P1a once agreed.
+ * - P1a: what the paper core returns to the screens (Chip, Strip, StripNote, Ledger, TopBar) and
+ *   its events (`PaperEvent`).
+ * - P1b: what the term, the count, advice, the away rules and the grants return (Poll, TermRibbon,
+ *   About, Goal, AdviceResult, ResultSheet, MoveSheet, AwayReport, DecreeAdKind) and their events
+ *   (`TermEvent`).
  */
 import type { GameConfig } from '../../config/schema';
 import type { ArchetypeId, BaseEffect, ClubId, DecreeContent, FactorTarget, OfficeId, Visitor } from '../../config/schema.decree';
 import type { GameState } from '../types';
 
 export type * from '../../config/schema.decree';
+
+// ================================================================================================
+// SEAM (P1a and P1b agree on every change; frozen at hour 2)
+// ================================================================================================
 
 /** The shared config with the parsed `decree` block (src/engine/decreeMode.ts `withDecreeContent`). */
 export type DecreeConfig = GameConfig & { decree: DecreeContent };
@@ -41,17 +56,17 @@ export const MAX_TICK = 3600;
  * The random sites of section 2 (`rngMix4(seed, site, counter, x)`), each with one forward-only
  * counter in `draws` (2.3). Nothing else in the rules is random.
  * - pick: which text of the comic draw (draw.ts); petitioner: which club a template speaks for;
- *   jitter: a paper's money jitter j (draw.ts); template: the frame bag's shuffle and a phrase;
- *   followDelay: a follow-up's delay in its [low, high] (followup.ts); campaign: a campaign paper's
- *   district (term.ts via draw.ts); rival: tie-breaks of the rival list (term.ts); note: which Clerk's
- *   note a form carries (draw.ts).
+ *   jitter: a paper's money jitter j, drawn at the draw and applied at landing (draw.ts, D23);
+ *   template: the frame bag's shuffle and a phrase; followDelay: a follow-up's delay in its
+ *   [low, high] (followup.ts); campaign: a campaign paper's district (draw.ts `drawCampaignPaper`);
+ *   rival: tie-breaks of the rival list (term.ts); note: which Clerk's note a form carries (draw.ts).
  */
 export const SITE = { pick: 1, petitioner: 2, jitter: 3, template: 4, followDelay: 5, campaign: 6, rival: 7, note: 8 } as const;
 export type Site = keyof typeof SITE;
 
 // ----------------------------------------------------------------------------- the paper (2.7)
 
-/** The kinds of 2.7. `slip` is a budget slip (not a paper: never a day). */
+/** The kinds of 2.7. A budget slip is not a paper (DeskItem `slip`: never a day). */
 export const PAPER_KINDS = ['comic', 'template', 'followup', 'requisition', 'ribbon', 'application', 'strike', 'scandal', 'campaign', 'rally', 'scripted'] as const;
 export type PaperKind = (typeof PAPER_KINDS)[number];
 /** Kinds that are days (2.17 step 2): every kind but campaign and rally (and slips, which are not papers). */
@@ -60,13 +75,22 @@ export const DAY_KINDS: readonly PaperKind[] = ['comic', 'template', 'followup',
 export type Choice = 'sign' | 'refuse';
 
 /**
- * One effect of an outcome as fixed at the draw (2.7 "Fields": at most 4, from the closed set).
- * Money is already sized at the draw (`amount`, signed dibs: a cost is negative, never recomputed);
- * a mood is still the BASE Δ (`delta`): it is sized at landing into `Shown`.
+ * One effect of an outcome as fixed at the draw (2.7 "Fields": at most 4, from the closed set), as a
+ * BASE value: nothing here is sized yet. Sizing happens at landing (D23) into `Shown`, after the twist
+ * and minister factors (2.17 "before sizing, never after").
+ * - money: `seconds` of B, signed (negative a cost), sized at landing to
+ *   roundDibs(|seconds| × factor × B_landing × paper.jitter), at least money.minimum (size.ts `sizeMoney`);
+ * - moneyFixed: a fixed signed amount of dibs, never sized (scripted paper 3's +60);
+ * - mood: one club's base Δ, sized by f± at landing; `fixed` (a boycott settlement's +10, 2.8) is
+ *   copied unsized (the lemma of 2.7: a settlement's fixed +10 starts below 20);
+ * - every: every club of the office, one chip; gossip / gossipSet (the apology's "to 0");
+ * - level: the form's ministry +1 level (checked at commit against `Paper.drawnLevel`);
+ * - appoint, endBoycott, endScandal; district: campaign points for the paper's district.
  */
 export type Effect =
-  | { type: 'money'; amount: number }
-  | { type: 'mood'; club: ClubIx; delta: number }
+  | { type: 'money'; seconds: number }
+  | { type: 'moneyFixed'; amount: number }
+  | { type: 'mood'; club: ClubIx; delta: number; fixed?: true }
   | { type: 'every'; delta: number }
   | { type: 'gossip'; delta: number }
   | { type: 'gossipSet'; to: number }
@@ -76,8 +100,14 @@ export type Effect =
   | { type: 'endScandal' }
   | { type: 'district'; district: number; points: number };
 
-/** A follow-up an outcome schedules (2.7 "an optional follow-up {chainId, step, delay}"). */
+/**
+ * A follow-up an outcome schedules (2.7 "an optional follow-up {chainId, step, delay}").
+ * - kind 'chain': a chain of the deck (7.6); `chainId` its id.
+ * - kind 'study' / 'favour' (D20): a Committee's own bigger study or a Basket's own favour, written
+ *   with the paper (deck `papers[].biggerStudy` / `.favour`); `chainId` is the set-up paper's deck id.
+ */
 export interface FollowUpRef {
+  kind: 'chain' | 'study' | 'favour';
   chainId: string;
   /** 1: the follow-up of a set-up (chains of v1 have one step). */
   step: number;
@@ -85,7 +115,7 @@ export interface FollowUpRef {
   delay: number;
 }
 
-/** One side of a paper as fixed at the draw: its effects and its follow-up. */
+/** One side of a paper as fixed at the draw: its base effects and its follow-up. */
 export interface Outcome {
   effects: Effect[];
   followUp: FollowUpRef | null;
@@ -93,17 +123,19 @@ export interface Outcome {
   label: string | null;
 }
 
-/** A paper, fixed at its draw (2.7 "Fields"); nothing in it changes after the draw (H1). */
+/** A paper, fixed at its draw (2.7 "Fields"); nothing in it changes after the draw (its printed numbers are `Shown`, fixed at landing). */
 export interface Paper {
   /** Unique within a save: `${kind}:${source}:${draw}`. */
   id: string;
   kind: PaperKind;
-  /** The deck record it came from (a paper, chain, grievance, ... id; or the form's own name). */
+  /** The deck record it came from (a paper, chain branch `<chain>.sign`, own follow-up `<paper>.study` / `.favour`, grievance, ... id; or the form's own name). */
   source: string;
   /** The office it was drawn in. */
   office: OfficeIx;
   visitor: Visitor & { clubIx: ClubIx | null };
-  /** The proposal (≤ 90 characters; a template's frame with its phrase filled in). */
+  /** A co-signer printed beside the visitor ("Pauline Till, with Ambrose Minute", 7.5 paper 5), or null. */
+  cosigner: Visitor | null;
+  /** The proposal (≤ 90 characters; a template's frame with its phrase filled in; a campaign paper with its district named). */
   text: string;
   /** The returning-visitor last line, when the text came back whole (2.7 "with no unseen text left"). */
   returning: string | null;
@@ -114,21 +146,23 @@ export interface Paper {
   tags: { subject: string; butt: string; shape: string } | null;
   sign: Outcome;
   refuse: Outcome;
-  /** Forms: the ministry and its level at the draw ("Potholes Office +1 level (now 7)"). */
+  /** A follow-up's two clippings (5.9, 7.6): the headline each choice ends its chain in; null for every other paper. */
+  clipping: { sign: string; refuse: string } | null;
+  /** Forms: the ministry and its level at the draw ("Potholes Office +1 level (now 7)"); checked at commit (2.7). */
   ministry: number | null;
   drawnLevel: number | null;
   /** A campaign paper's district. */
   district: number | null;
   /** A Clerk's note (on half the forms), a deck text. */
   note: string | null;
-  /** The paper's money as drawn: B at the draw and j (the strip never recomputes them). */
-  drawnB: number;
+  /** The money jitter j (money.jitterLow to jitterHigh), drawn at the draw, applied at landing (D23). */
   jitter: number;
 }
 
 /**
- * One effect as it lands (2.7 "Sizing"): moods sized by f± from the moods at landing, after the
- * twist and minister factors, and frozen. What the strip prints and what commit applies (H1).
+ * One effect as it lands (2.7 "Sizing", D23): money sized from B at landing and moods sized by f±
+ * from the moods at landing, after the twist and minister factors, and frozen. What the strip prints
+ * and what commit applies (H1).
  */
 export type ShownEffect =
   | { type: 'money'; amount: number }
@@ -146,8 +180,9 @@ export interface Shown {
   sign: ShownEffect[];
   refuse: ShownEffect[];
   factors: { initials: string; text: string }[];
-  /** The moods the sizing read (for take-back and the tests: the paper is re-landed byte for byte, H3). */
+  /** The moods and B the sizing read (for take-back and the tests: the paper is re-landed byte for byte, H3). */
   moodsAt: number[];
+  BAt: number;
 }
 
 /** A budget slip (2.7 "Budget slips"): advice()'s purchase at its printed price. */
@@ -178,8 +213,10 @@ export interface Pending {
 
 export type Phase = 'governing' | 'campaign' | 'count' | 'result';
 
-/** A follow-up waiting (2.3 `followUps`). */
+/** A follow-up waiting (2.3 `followUps`): which set-up it answers, which branch, and when it is due. */
 export interface FollowUp {
+  kind: FollowUpRef['kind'];
+  /** The chain id ('chain'), or the set-up paper's deck id ('study', 'favour'). */
   chainId: string;
   step: number;
   /** How the set-up was decided (which branch comes back). */
@@ -193,10 +230,11 @@ export interface Strike {
   papersLeft: number;
   /** The picket slogan on its Ledger row (none twice a term). */
   picket: string;
+  /** The grievance's deck id. */
   grievance: string;
 }
 
-/** "Say nothing" running (2.8): I × factor for papersLeft decided papers. */
+/** "Say nothing" running (2.8): I × the factor for papersLeft decided papers. */
 export interface Scandal {
   papersLeft: number;
 }
@@ -264,7 +302,7 @@ export interface DecreeState {
   /** Decided day papers this term. */
   day: number;
   phase: Phase;
-  /** Consecutive losses at this seat (disarray Y = disarray × losses). */
+  /** Consecutive losses at this seat: disarray Y(n) = 2^(n+1) − 2 (D15; params.ts `disarray`). */
   losses: number;
   /** Ministries of the current office (Grand Projects after them). */
   ministries: { open: boolean; level: number }[];
@@ -277,7 +315,7 @@ export interface DecreeState {
   /** A club below the threshold boycotts only while armed (re-arms at rearmAt). */
   armed: boolean[];
   scandal: Scandal | null;
-  /** The in-tray, each paper fixed at its draw. */
+  /** The in-tray: papers as drawn (identity, base effects, jitter), sized only when each lands (D23). */
   tray: Paper[];
   desk: DeskItem | null;
   pending: Pending | null;
@@ -289,6 +327,8 @@ export interface DecreeState {
   awayCarry: number;
   /** When the desk and tray became empty (the slip lands slipDelay after it), or null. */
   emptySince: number | null;
+  /** D18: a slip was offered since the last paper was decided (at most one slip between two papers). */
+  slipOffered: boolean;
   followUps: FollowUp[];
   /** Deck text id → decisions ever when last drawn (2.3 `seen`). */
   seen: Record<string, number>;
@@ -338,7 +378,8 @@ export interface DecreeState {
 /**
  * The factors twists and ministers put on BASE effects before sizing (2.14, 2.9, 2.17: "never
  * after"): ONE object, neutral by default (`neutralFactors()`), produced by twists.ts and
- * ministers.ts (`deskFactors`), consumed by size.ts, draw.ts (prices, shares, τ) and params.ts (G_max).
+ * ministers.ts (`deskFactors`, P1b), consumed by size.ts (every base effect at landing), draw.ts
+ * (shares of the draw, τ) and params.ts (mixes, G_max, the "Say nothing" cut).
  * Composition (2.14): mix twists add, every other factor multiplies (`mul`) and adds (`add`).
  */
 export interface Factors {
@@ -363,7 +404,7 @@ export interface DecreeParams {
   /** w_{d,g} as fractions, after mix twists; W_g, the mean over districts. */
   mix: number[][];
   W: number[];
-  /** A (whole percent) and M(A). */
+  /** A (whole percent) and M(A) = 1 + slope × (A − 50)/100 (×1.0 at 50). */
   approval: number;
   multiplier: number;
   /** m_N, V. */
@@ -374,19 +415,34 @@ export interface DecreeParams {
   values: number[];
   /** s_i: 0 while ministry i's club boycotts. */
   served: number[];
-  /** B (sizes papers and the transition fund) and I (income per second, while played). */
+  /** B (sizes papers at landing and the transition fund) and I (income per second, while played). */
   B: number;
   I: number;
   /** The "Say nothing" factor in force (1 when none runs). */
   sayNothing: number;
   tau: number;
   gossipMax: number;
+  /** Y(losses) = 2^(n+1) − 2 share points (D15), and the rival's pull R. */
+  disarray: number;
+  rivalPull: number;
   record: number;
 }
 
-// ----------------------------------------------------------------------------- what screens print
+/** Where dibs come from and go (H5). The rules book every change through commitCash; the store pays `away` and `awayAd` through the shared grantCash (2.15), so a coins test books those two in its own harness. */
+export type CashSource = 'tick' | 'paper' | 'away' | 'awayAd' | 'checkSofa' | 'transition' | 'spend';
 
-/** One chip of a strip (2.7 "A strip prints"): an icon and a resulting value. A wide chip takes 2 of the 4 slots. */
+/** What the rules report to the screens and the sounds: the paper core's and the term's (src/modes/decree/fx.ts maps them to keys). */
+export type DecreeEvent = PaperEvent | TermEvent;
+
+// ================================================================================================
+// P1a: what the paper core returns to the screens, and its events
+// ================================================================================================
+
+/**
+ * One chip of a strip (2.7 "A strip prints"): an icon and a resulting value. A wide chip takes 2 of
+ * the 4 slots. A district chip's from/to are the district's share in hundredths before and after
+ * ("HT 48.6 → 52.6", count.ts `shares`).
+ */
 export type Chip =
   | { kind: 'club'; club: ClubIx; from: number; to: number; flag: boolean; wide: false }
   | { kind: 'every'; deltas: number[]; approvalFrom: number; approvalTo: number; wide: true }
@@ -398,8 +454,8 @@ export type Chip =
   | { kind: 'endScandal'; wide: false }
   | { kind: 'district'; district: number; from: number; to: number; wide: true };
 
-/** A strip's note row, warnings first (2.7). */
-export type StripNote = { kind: 'boycott'; club: ClubIx } | { kind: 'scandal'; gossip: number; max: number } | { kind: 'short'; by: number; seconds: number };
+/** A strip's note row, warnings first (2.7): "Vegetables below 20: BOYCOTT", "Gossip 5/5: SCANDAL", "Short by 240 · about 9 s" (`about` from advice.ts). */
+export type StripNote = { kind: 'boycott'; club: ClubIx } | { kind: 'scandal'; gossip: number; max: number } | { kind: 'short'; by: number; about: About | null };
 
 /** What a strip prints, as data (2.7): the screen only lays it out and finds the words in strings.ts. */
 export interface Strip {
@@ -419,6 +475,71 @@ export interface Strip {
   label: string | null;
 }
 
+/** One Ledger row (4.4), read-only but for one untaught "Raise". */
+export interface LedgerRow {
+  ministry: number;
+  open: boolean;
+  level: number;
+  storeys: number;
+  rate: number;
+  club: ClubIx | null;
+  /** The minister who runs it (ministers.ts `cabinet`, P1b), or null. */
+  minister: string | null;
+  /** "Boycott: Vegetables 18, ends at 25 or in 5 papers", with its picket slogan. */
+  boycott: { club: ClubIx; mood: number; endsAt: number; papersLeft: number; picket: string } | null;
+  /** The price of the next level, or of opening. */
+  price: number;
+  /** Why "Raise" is refused now, or null. */
+  refusal: 'cap' | 'cash' | 'reserve' | 'closed' | 'runUp' | null;
+}
+export interface Ledger {
+  rows: LedgerRow[];
+  record: number;
+  recordTarget: number | null;
+  recordName: string | null;
+  /** "Kept for the desk: 540" (2.6). */
+  reserve: number;
+  /** "Kept for the run-up" (D16: from day C until the count, the K campaign papers and the rally at their prices), 0 otherwise. */
+  reserveRunUp: number;
+}
+
+/** The top bar (4.1): "999.9M · +999.9K/s", "62 % ×1.14", gossip. */
+export interface TopBar {
+  cash: number;
+  income: number;
+  approval: number;
+  multiplier: number;
+  gossip: number;
+  gossipMax: number;
+}
+
+/** The paper core's events (draw, land, decide, commit, slips, purchases, boycotts, the scandal, follow-ups). */
+export type PaperEvent =
+  | { type: 'paperArrived'; paper: string; toDesk: boolean }
+  | { type: 'slipArrived' }
+  | { type: 'slipReturned' }
+  | { type: 'signed'; paper: string }
+  | { type: 'studied'; paper: string }
+  | { type: 'committed'; paper: string; choice: Choice }
+  | { type: 'takenBack'; paper: string }
+  | { type: 'formVoid'; paper: string; reason: 'done' | 'cap' }
+  | { type: 'levelBought'; ministry: number; level: number }
+  | { type: 'storey'; ministry: number; storey: number }
+  | { type: 'ministryOpened'; ministry: number }
+  | { type: 'ribbon'; ministry: number }
+  | { type: 'boycottStart'; club: ClubIx }
+  | { type: 'boycottEnd'; club: ClubIx; how: 'settled' | 'count' | 'mood' | 'ad' | 'term' }
+  | { type: 'gossip'; from: number; to: number }
+  | { type: 'scandalStart' }
+  | { type: 'scandalEnd'; how: 'apology' | 'count' | 'ad' | 'term' }
+  | { type: 'followUpScheduled'; chainId: string; dueAt: number }
+  | { type: 'clipping'; headline: string }
+  | { type: 'monument'; monument: string };
+
+// ================================================================================================
+// P1b: what the term, the count, advice, the away rules and the grants return, and their events
+// ================================================================================================
+
 /** One row of the poll (4.4), the number held exactly as the count would hold it today. */
 export interface PollRow {
   district: number;
@@ -437,36 +558,11 @@ export interface Poll {
   majority: number;
   of: number;
   rivalPull: number;
-  /** Y, labelled "Opponents in disarray +8". */
+  /** Y(losses) (D15), labelled "Opponents in disarray +6". */
   disarray: number;
   rival: string;
   canCall: boolean;
   callFrom: number;
-}
-
-/** One Ledger row (4.4), read-only but for one untaught "Raise". */
-export interface LedgerRow {
-  ministry: number;
-  open: boolean;
-  level: number;
-  storeys: number;
-  rate: number;
-  club: ClubIx | null;
-  minister: string | null;
-  /** "Boycott: Vegetables 18, ends at 25 or in 5 papers". */
-  boycott: { club: ClubIx; mood: number; endsAt: number; papersLeft: number } | null;
-  /** The price of the next level, or of opening. */
-  price: number;
-  /** Why "Raise" is refused now, or null. */
-  refusal: 'cap' | 'cash' | 'reserve' | 'closed' | null;
-}
-export interface Ledger {
-  rows: LedgerRow[];
-  record: number;
-  recordTarget: number | null;
-  recordName: string | null;
-  /** "Kept for the desk: 540". */
-  reserve: number;
 }
 
 /** The term ribbon (4.1): both fixed forms' values. */
@@ -484,23 +580,11 @@ export interface TermRibbon {
   poll: { held: number; of: number };
 }
 
-/** The top bar (4.1): "999.9M · +999.9K/s", "62 % ×1.14", gossip. */
-export interface TopBar {
-  cash: number;
-  income: number;
-  approval: number;
-  multiplier: number;
-  gossip: number;
-  gossipMax: number;
-}
-
 /** "about 20 s / 2 min / 1 h" (2.16): a time the screen prints, already rounded by the rules. */
 export interface About {
   value: number;
   unit: 's' | 'min' | 'h';
 }
-
-// ----------------------------------------------------------------------------- advice (2.16)
 
 export type Goal =
   | { kind: 'purchase'; purchase: Purchase; price: number; about: About | null }
@@ -517,11 +601,9 @@ export interface AdviceResult {
   slip: Slip | null;
   /** "Next: Benches opens · 2,400 · about 40 s" when nothing is affordable. */
   next: { purchase: Purchase; price: number; about: About | null } | null;
-  /** The reader would call now (8.2). */
+  /** The reader would call now (8.2, D17). */
   call: boolean;
 }
-
-// ----------------------------------------------------------------------------- the term (2.10, 2.12, 2.15)
 
 export type MoveChoice = 'moveUp' | 'stay';
 
@@ -543,8 +625,8 @@ export interface MoveSheet {
   to: OfficeIx;
   resets: string[];
   stays: string[];
-  /** Seconds until the new office's income passes the old (from advice), or null. */
-  passesIn: number | null;
+  /** When the new office's income passes the old (from advice), or null. */
+  passesIn: About | null;
   transitionFund: number;
 }
 
@@ -560,36 +642,16 @@ export interface AwayReport {
   line: string | null;
 }
 
-export type DecreeAdKind = 'checkSofa' | 'spinDoctor' | 'courier' | 'openDoors';
-
-// ----------------------------------------------------------------------------- events
-
 /**
- * What the rules report to the screens and the sounds (src/modes/decree/fx.ts maps them to keys of
- * src/services/fx/catalog.decree.ts). The player's own actions play in src/modes/decree/actions.ts.
+ * The rewarded ads of 5.11: Check the Sofa, Call the Spin Doctor, Send a Courier, Open the Doors, and
+ * the away report's +50 % (`awayBonus`, paid by the store: EngineMode.offlineAdMultiplier). None is
+ * offered from the call to the end of election night (2.10): grants.ts `canWatchAd`.
  */
-export type DecreeEvent =
-  | { type: 'paperArrived'; paper: string; toDesk: boolean }
-  | { type: 'slipArrived' }
-  | { type: 'slipReturned' }
-  | { type: 'signed'; paper: string }
-  | { type: 'studied'; paper: string }
-  | { type: 'committed'; paper: string; choice: Choice }
-  | { type: 'takenBack'; paper: string }
-  | { type: 'formVoid'; paper: string; reason: 'done' | 'cap' }
-  | { type: 'levelBought'; ministry: number; level: number }
-  | { type: 'storey'; ministry: number; storey: number }
-  | { type: 'ministryOpened'; ministry: number }
+export type DecreeAdKind = 'checkSofa' | 'spinDoctor' | 'courier' | 'openDoors' | 'awayBonus';
+
+/** The term's events (the call, the run-up, the count, the result, a new term, the move, ministers, ads). */
+export type TermEvent =
   | { type: 'appointed'; minister: string }
-  | { type: 'ribbon'; ministry: number }
-  | { type: 'boycottStart'; club: ClubIx }
-  | { type: 'boycottEnd'; club: ClubIx; how: 'settled' | 'count' | 'mood' | 'ad' | 'term' }
-  | { type: 'gossip'; from: number; to: number }
-  | { type: 'scandalStart' }
-  | { type: 'scandalEnd'; how: 'apology' | 'count' | 'ad' | 'term' }
-  | { type: 'followUpScheduled'; chainId: string; dueAt: number }
-  | { type: 'clipping'; headline: string }
-  | { type: 'monument'; monument: string }
   | { type: 'callElection' }
   | { type: 'runUpStarted'; byItself: boolean }
   | { type: 'countStarted' }
@@ -599,9 +661,6 @@ export type DecreeEvent =
   | { type: 'termStarted'; term: number; office: OfficeIx; next: string | null }
   | { type: 'moved'; from: OfficeIx; to: OfficeIx }
   | { type: 'ad'; ad: DecreeAdKind };
-
-/** Where dibs come from and go (H5: dibs enter only through these). */
-export type CashSource = 'tick' | 'paper' | 'away' | 'awayAd' | 'checkSofa' | 'transition' | 'spend';
 
 /** The base effect a deck record carries (re-exported for the rules' signatures). */
 export type { BaseEffect };

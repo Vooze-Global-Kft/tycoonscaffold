@@ -696,7 +696,7 @@ def newspaper_slap(rng, vel=1.0):
 # scratch grates (the first version rang 2.65 and 3.9 kHz at Q 10 to 12, 83 % in that band).
 SIGN_INK = (
     (7.0, ((0.08, 0.095),), 1640.0),
-    (8.5, ((0.05, 0.065), (0.12, 0.13)), 1950.0),
+    (9.0, ((0.05, 0.065), (0.12, 0.13)), 1950.0),
     (6.0, ((0.1, 0.115),), 1460.0),
 )
 SIGN_INK_S = 0.18                 # seconds: the flourish (the first version's 280 ms was a long scratch)

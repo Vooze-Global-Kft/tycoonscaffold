@@ -126,15 +126,18 @@ export const PROPS = {
     },
   },
   tuba: {
-    at: { x: 26, y: 88, deg: -18, s: 1.2, back: true },
+    at: { x: 22, y: 96, deg: -12, s: 1.1, back: true },
     draw: (c, pen) => {
-      const bell = oval(0, -6, 15, 6);
-      const tube = builder().moveTo(-11, -4).quadTo(-6, 18, 4, 26).lineTo(12, 22).quadTo(4, 12, 11, -4).close().build();
-      wash(c, pen, tube, BRASS, 1);
-      hatch(c, pen, tube, { within: poly([2, -8, 20, -8, 20, 30, 2, 30]) });
-      wash(c, pen, bell, BRASS, 1);
-      wash(c, pen, oval(0, -6, 11, 3.8), BRASS_DEEP, 0.7);
-      c.drawPath(arc(-6, -7, 6, 2, 190, 60), stroke('#FFFFFF', 1));
+      // The coil of tubing, the valves, and the great bell opening upward over the shoulder.
+      const coil = builder().addCircle(4, 10, 13).addCircle(4, 10, 8).setFillType(FillType.EvenOdd).build();
+      wash(c, pen, coil, BRASS, 1);
+      hatch(c, pen, coil, { within: poly([6, -10, 24, -10, 24, 30, 6, 30]) });
+      for (const x of [8, 12, 16]) wash(c, pen, rrect(x - 1.4, -4, 2.8, 8, 0.8), BRASS_DEEP, 0.6);
+      const flare = builder().moveTo(-6, 4).quadTo(-10, -6, -18, -16).lineTo(4, -20).quadTo(-2, -8, 2, 2).close().build();
+      wash(c, pen, flare, BRASS, 1);
+      wash(c, pen, oval(-7, -18, 11.5, 4.4), BRASS, 1);
+      wash(c, pen, oval(-7, -18, 8.6, 2.8), BRASS_DEEP, 0.6);
+      c.drawPath(arc(-10, -10, 3, 6, 180, 70), stroke('#FFFFFF', 0.9));
     },
   },
   cornet: {
@@ -386,14 +389,14 @@ export const PROPS = {
     },
   },
   bunting: {
-    at: { x: 50, y: 110, deg: 0 },
+    at: { x: 50, y: 100, deg: 0 },
     draw: (c, pen, acc) => {
-      const pts: [number, number][] = [[-30, -4], [0, 3], [30, -4]];
+      const pts: [number, number][] = [[-26, -4], [0, 3], [26, -4]];
       ink(c, pen, curve(pts), 0.6);
       const cols = [acc, PAPER, '#5E7FA3', acc, PAPER, '#5E7FA3'];
       for (let i = 0; i < 6; i++) {
         const t = (i + 0.5) / 6;
-        const x = -30 + 60 * t;
+        const x = -26 + 52 * t;
         const y = -4 + Math.sin(t * Math.PI) * 6.6;
         wash(c, pen, poly([x - 3.6, y, x + 3.6, y, x, y + 7]), cols[i], 0.5);
       }
@@ -530,13 +533,14 @@ export const PROPS = {
   },
   chair: {
     at: { x: 50, y: 84, deg: 0, back: true },
-    draw: (c, pen, acc) => {
-      // A grand high chair back behind the shoulders (her hobby: chairs).
-      const back = builder().moveTo(-34, 50).lineTo(-34, -24).quadTo(-34, -46, 0, -50).quadTo(34, -46, 34, -24).lineTo(34, 50).close().build();
-      wash(c, pen, back, '#6B4A33', 1.2);
-      const pad = builder().moveTo(-27, 50).lineTo(-27, -20).quadTo(-27, -40, 0, -43).quadTo(27, -40, 27, -20).lineTo(27, 50).close().build();
-      wash(c, pen, pad, acc, 0.8);
-      for (const [x, y] of [[-14, -26], [14, -26], [0, -34], [-20, -6], [20, -6]]) c.drawPath(circle(x, y, 1), fill(BRASS));
+    draw: (c, pen) => {
+      // A plain tall kitchen chair behind the shoulders (her hobby: chairs): two posts, a top rail, spindles.
+      const wood = '#8A5E3E';
+      for (const x of [-33, 27]) wash(c, pen, rrect(x, -44, 6, 96, 2), wood, 1);
+      wash(c, pen, rrect(-36, -50, 72, 9, 3.5), wood, 1);
+      for (const x of [-30, 30]) wash(c, pen, circle(x, -52, 3), wood, 0.8);
+      for (const x of [-18, -6, 6, 18]) wash(c, pen, rrect(x - 1.6, -41, 3.2, 40, 1.4), wood, 0.7);
+      wash(c, pen, rrect(-30, -4, 60, 5, 2), wood, 0.8);
     },
   },
   handbell: {
@@ -560,16 +564,19 @@ export const PROPS = {
     },
   },
   pigeon: {
-    at: { x: 76, y: 88, deg: 0 },
+    at: { x: 74, y: 86, deg: 0 },
     draw: (c, pen) => {
-      const body = blob([[-10, 2], [-4, -4], [4, -5], [10, -2], [7, 5], [-6, 6]], 0.9);
+      // A pigeon perched on the shoulder: round grey chest, a sheen at the neck, small head.
+      const body = blob([[-11, 3], [-6, -3], [2, -5], [8, -3], [9, 4], [1, 8], [-8, 7]], 0.9);
       wash(c, pen, body, '#9AA3AC', 0.9);
-      const head = circle(6, -8, 4);
-      wash(c, pen, head, '#8A939C', 0.8);
-      c.drawPath(circle(7, -8.6, 0.8), fill(pen.ink));
-      wash(c, pen, poly([9.6, -8, 12.4, -7, 9.6, -6.4]), '#C29A45', 0.4);
-      c.drawPath(arc(0, 0, 5, 3, 200, 120), stroke(alpha(pen.ink, 0.6), 0.6));
-      ink(c, pen, line(-10, 2, -15, 4), 0.8);
+      wash(c, pen, poly([-11, 3, -17, 1, -16, 6, -9, 6]), '#7E8790', 0.6);
+      c.drawPath(arc(-1, 1, 6, 3.4, 200, 120), stroke(alpha(pen.ink, 0.6), 0.6));
+      const neck = blob([[3, -4], [8, -9], [10, -4], [8, 1]], 0.9);
+      wash(c, pen, neck, '#6E8F86', 0.6);
+      wash(c, pen, circle(8, -10.5, 3.4), '#8A939C', 0.8);
+      c.drawPath(circle(9, -11, 0.75), fill(pen.ink));
+      wash(c, pen, poly([11.2, -10.6, 13.6, -9.8, 11.2, -9.2]), '#D9CFC0', 0.4);
+      for (const x of [-2, 3]) ink(c, pen, line(x, 7.6, x + 0.6, 10), 0.6);
     },
   },
   lighthouse: {

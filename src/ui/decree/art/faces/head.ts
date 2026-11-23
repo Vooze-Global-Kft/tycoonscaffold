@@ -55,7 +55,7 @@ export const HEADS = {
   pear: { hw: 16.5, h: 46, t: 0.84, j: 0.98, chin: 0.56 },
   long: { hw: 15.2, h: 46, t: 0.94, j: 0.82, chin: 0.42 },
   square: { hw: 17, h: 47, t: 0.95, j: 0.94, chin: 0.62 },
-  heart: { hw: 17, h: 47, t: 1.02, j: 0.66, chin: 0.2 },
+  heart: { hw: 17, h: 47, t: 1.02, j: 0.68, chin: 0.3 },
   soft: { hw: 17.4, h: 48, t: 0.9, j: 0.84, chin: 0.48 },
 } satisfies Record<string, HeadShape>;
 export type HeadId = keyof typeof HEADS;
@@ -336,6 +336,8 @@ interface HairDef {
   front?: (g: HeadGeo) => SkPath;
   /** A few ink strands over the front (texture lines, the same direction for every style). */
   strands?: (g: HeadGeo) => [number, number][][];
+  /** No hatching on this style (shaded by its strands only). */
+  smooth?: boolean;
 }
 
 const cap = (g: HeadGeo, hairline: number, lift: number, sideDrop: number, widen = 1.6): SkPath => {
@@ -531,9 +533,13 @@ export const HAIRS = {
       const { cx, top, hw, h } = g;
       return blob([[cx - 2, top - 18], [cx - hw - 3.6, top - 3], [cx - hw - 2, top + h * 0.3], [cx - hw + 1.6, top + h * 0.28], [cx - hw * 0.2, top + h * 0.12], [cx + hw - 1.6, top + h * 0.28], [cx + hw + 2, top + h * 0.3], [cx + hw + 3.6, top - 3]], 0.9);
     },
+    // Combed hair, not cloth: swirling strands, no hatching (a hatched dome reads as a wrap).
+    smooth: true,
     strands: (g) => [
-      [[g.cx - g.hw * 0.7, g.top + 4], [g.cx - 2, g.top - 10], [g.cx + g.hw * 0.6, g.top - 14]],
-      [[g.cx - g.hw * 0.2, g.top + 6], [g.cx + 4, g.top - 4]],
+      [[g.cx - g.hw * 0.9, g.top + 6], [g.cx - g.hw * 0.7, g.top - 8], [g.cx, g.top - 16], [g.cx + g.hw * 0.6, g.top - 13]],
+      [[g.cx - g.hw * 0.5, g.top + 7], [g.cx - g.hw * 0.3, g.top - 5], [g.cx + 3, g.top - 11], [g.cx + g.hw * 0.8, g.top - 6]],
+      [[g.cx - 1, g.top + 6], [g.cx + 2, g.top - 3], [g.cx + g.hw * 0.9, g.top - 1]],
+      [[g.cx + g.hw * 1.05, g.top - 4], [g.cx + g.hw * 1.1, g.top + 6]],
     ],
   },
   ponytail: {
@@ -581,7 +587,7 @@ export function drawHairFront(c: SkCanvas, pen: Pen, g: HeadGeo, id: HairId, w: 
     const p = d.front(g);
     if (!p.isEmpty()) {
       wash(c, pen, p, w.hair, 1);
-      hatch(c, pen, p, { within: sideOf(g.cx + 3, g.cx + 5, g.top - 30, g.top + 90), a: 0.4 });
+      if (!d.smooth) hatch(c, pen, p, { within: sideOf(g.cx + 3, g.cx + 5, g.top - 30, g.top + 90), a: 0.4 });
     }
   }
   for (const s of d.strands?.(g) ?? []) {

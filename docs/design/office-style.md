@@ -14,7 +14,7 @@ The one promise behind every line: **everything is invented, the joke is on offi
 |---|---|---|---|---|
 | Mayor | Dithering-on-the-Dawdle (a small town on the River Dawdle) | 5 wards: Market Ward, Mill Ward, Hilltop, Riverside, Old Town | the Dithering Daily Drizzle | oak desk |
 | Governor | the Province of Upper Wobbling | 7 counties (writer 2 names them first) | the Upper Wobbling Evening Fuss | mahogany, a green lamp; Deputy Pruella Dimity |
-| President | the Republic, capital Middlingham | 9 provinces: Middlingham, Fogmoor, Brassby, Teacup Downs, Gusting Heights, Muchpuddle, Saltpenny Bay, Kitewell, Upper Wobbling | the Middling Morning Murmur | a long walnut desk, three telephones; Secretary Mildred Fenn |
+| President | the Republic, capital Middlingham | 9 provinces: Middlingham, Fogmoor, Brassby, Teacup Downs, Gusting Heights, Muchpuddle, Saltpenny Bay, Kitecombe, Upper Wobbling | the Middling Morning Murmur | a long walnut desk, three telephones; Secretary Mildred Fenn |
 
 Free to use: in Dithering the clock tower, the bus station, the high street, the duck pond, the patch (the weigh-in field), the Hilltop bandstand, the town hall, your parking space; in Upper Wobbling the canal, its jetty and locks, the glasshouses; in the Republic the motorway, the lighthouses, the harbour at Saltpenny Bay. Any other proper noun is a proposal for `names.json` in your batch's `note` (at most three per batch).
 
@@ -42,7 +42,7 @@ Free to use: in Dithering the clock tower, the bus station, the high street, the
 
 Visitors come from this list only (a paper's `visitor` is the id). No new named people. Your batch's `cast` in `plan.json` says who may appear in it; a portable paper uses only `portableCast`.
 
-**You** (`player`, never a visitor): one of six faces (Hettie Bramble, Osgood Fennel, Ada Quill, Rupert Marchpane, Winifred Tuttle, Cosmo Larkspur). Addressed as "Mayor", "Governor", "President", or "you"; never "Mr President", "Madam", "sir". The main butt: vain, fond of ribbons, photographs and your own name on things; never stupid, never cruel.
+**You** (`player`, never a visitor): one of six faces (Hettie Bramble, Osgood Fennel, Ada Quill, Rupert Borage, Winifred Chervil, Cosmo Larkspur). Addressed as "Mayor", "Governor", "President", or "you"; never "Mr President", "Madam", "sir". The main butt: vain, fond of ribbons, photographs and your own name on things; never stupid, never cruel.
 
 | id | Name, role | Club | Offices | Voice | Wants | Never |
 |---|---|---|---|---|---|---|
@@ -52,7 +52,7 @@ Visitors come from this list only (a paper's `visitor` is the id). No new named 
 | `dimity` | Deputy Pruella Dimity | | governor | dry, always near lunch | sandwiches; an early finish | flatters you |
 | `fenn` | Secretary Mildred Fenn | | president | has seen three presidents and liked one | quiet; the drawer kept tidy | says which one |
 | `kerb` | Desmond Kerb, Bus Spotters' Society | bus | all | precise, timetabled | buses honoured and on time | sneers at other hobbies |
-| `sprott` | Mervyn Sprott, Timetable Secretary (new) | bus | all | eager, footnoted | a complete record | — |
+| `sprott` | Mervyn Farestage, Timetable Secretary (new) | bus | all | eager, footnoted | a complete record | — |
 | `till` | Pauline Till, Shop Window Guild; Till's Teas | shops | all | brisk, commercial, polite | displays seen; Till's Teas mentioned | haggles; pressures |
 | `awning` | Delphine Awning, Display Captain (new) | shops | all | artistic, exacting | the perfect window | — |
 | `gourdley` | Hilda Gourdley, Giant Vegetable Society | veg | all | proud, formal, fond of the pumpkin | the pumpkin respected | boasts of size |
@@ -60,46 +60,46 @@ Visitors come from this list only (a paper's `visitor` is the id). No new named 
 | `bellows` | Horace Bellows, Brass Band Guild | brass | gov., pres. | hearty, loud on paper too | an audience | shouts at anyone |
 | `slide` | Cecily Slide, Second Cornet (new) | brass | gov., pres. | modest, practical | a place to practise | — |
 | `hake` | Marigold Hake, Anglers' Circle | anglers | gov., pres. | hushed, patient | silence by the water | catches or harms a fish (fish are only watched) |
-| `dabble` | Ewan Dabble, Keeper of the Quiet (new) | anglers | gov., pres. | whispering | nobody noticing him | — |
+| `dabble` | Ewan Reedmace, Keeper of the Quiet (new) | anglers | gov., pres. | whispering | nobody noticing him | — |
 | `loft` | Wendell Loft, Kite Flyers' League | kites | president | airy, optimistic | wind and room | — |
 | `updraught` | Philomena Updraught, Launch Marshal (new) | kites | president | breathless | the first kite up | — |
 | `topiary` | Agnes Topiary, Tidy Hedge Committee | hedges | president | crisp, exact | straight lines | builds a hedge to keep anyone out |
-| `edging` | Clement Edging, Shears Officer (new) | hedges | president | slow, measuring | an even edge | — |
+| `edging` | Osmund Edging, Shears Officer (new) | hedges | president | slow, measuring | an even edge | — |
 | `sash` | Lionel Sash, Ribbon Makers' Guild | | all | oily-polite, "no reason" | more ribbon-cuttings | offers money |
-| `vane` | Crispin Vane, Consolidated Umbrellas | | all | gloomy, hopeful of rain | more rain in speeches | wishes harm by weather |
-| `goss` | Lavinia Goss, Ornamental Fountain Council | | all | grand, damp | fountains, ideally of you | — |
+| `vane` | Crispin Mizzle, Consolidated Umbrellas | | all | gloomy, hopeful of rain | more rain in speeches | wishes harm by weather |
+| `goss` | Lavinia Plash, Ornamental Fountain Council | | all | grand, damp | fountains, ideally of you | — |
 | `slake` | Tobias Slake, Novelty Hats & Sons | | all | jaunty | hats on everything | — |
-| `minute` | Ambrose Minute, Committee on Committees | | all | ceremonious; a co-signer only | more meetings | speaks for a club |
+| `minute` | Ambrose Minute, Committee on Next Meetings | | all | ceremonious; a co-signer only | more meetings | speaks for a club |
 | `tallow` | Agatha Tallow, Counting Clerk | | all (election night) | plain, exact | the count read straight | jokes about the count |
 
 Lobbyists speak only for their own absurd trade; their gifts are fruit baskets, a fountain shaped like you, a hat with a smaller hat on it, an umbrella "just for you". A gift is never money and never pays.
 
-**Ministers** (they apply; their applications are writer 4's; the desk rule is the rules'): `pockle` Dorothy Pockle (Bus; "References: 'She found one.'"), `pellow` Dorrit Pellow (Vegetables), `ferrule` Basil Ferrule (Shops), `hush` Wendeline Hush (Shops), `bole` Ermintrude Bole (Brass), `gusset` Percy Gusset (Anglers), `wren` Marjorie Wren (Kites), `tamp` Osric Tamp (Hedges), `nibley` Florence Nibley (Anglers). Each is competent and slightly too proud of one small achievement; an application never names a ministry (the role line does), so it reads true in any office.
+**Ministers** (they apply; their applications are writer 4's; the desk rule is the rules'): `pockle` Dorothy Sett (Bus; "References: 'She found one.'"), `pellow` Dorrit Pellow (Vegetables), `ferrule` Basil Ferrule (Shops), `hush` Wendeline Hush (Shops), `bole` Henrietta Bole (Brass), `gusset` Percy Plummet (Anglers), `wren` Marjorie Wren (Kites), `tamp` Osric Tamp (Hedges), `nibley` Florence Mayfly (Anglers). Each is competent and slightly too proud of one small achievement; an application never names a ministry (the role line does), so it reads true in any office.
 
-**Rivals**: individuals with a hobby and a slogan, never a party, colour or cause; they resign to spend more time with the hobby, never over pressure, health or scandal. New names (and the deputies above) are **proposals** for `names.json`: I dropped near-misses I knew of (Gorse ~ Gore, Quince ~ Quincy, Grommet, Sprocket, Pell, Crouch), but nobody has searched them; the sensitivity editor checks them before use.
+**Rivals**: individuals with a hobby and a slogan, never a party, colour or cause; they resign to spend more time with the hobby, never over pressure, health or scandal. Every name here is in `names.json` with its check (the sensitivity editor's read of 2026-11-23, recorded as an engineer's, D9). Ids are internal and were kept where code or `plan.json` already uses them (`plumb` and `crumb` became `stitchley` and `kalends`; the proposed rivals' ids follow their new names).
 
 | id | Rival | Office | Hobby |
 |---|---|---|---|
-| `plumb` | Councillor Prudence Plumb | mayor | her hat (slogan "Plumb: She Owns A Hat") |
-| `dunnock` | Cyril Dunnock (proposed) | mayor | door knockers |
-| `tansy` | Philippa Tansy (proposed) | mayor | setting crosswords |
-| `waft` | Barnaby Waft, Keeper of the Ceremonial Spoon | governor | the spoon ("Waft: Gently Onwards") |
-| `mallowby` | Hortensia Mallowby (proposed) | governor | the accordion |
-| `applegarth` | Fergus Applegarth (proposed) | governor | sundials |
-| `crumb` | Professor Ignatius Crumb | president | calendars ("Crumb: Abolish Wednesdays") |
+| `stitchley` | Councillor Prudence Stitchley | mayor | her hat (slogan "Stitchley: She Owns A Hat") |
+| `dunnock` | Cyril Dunnock | mayor | door knockers |
+| `setter` | Philippa Setter | mayor | setting crosswords |
+| `waft` | Leander Waft, Keeper of the Ceremonial Spoon (role line "Keeper, Ceremonial Spoon") | governor | the spoon ("Waft: Gently Onwards") |
+| `mallowby` | Hortensia Mallowby | governor | the accordion |
+| `noonday` | Fergus Noonday | governor | sundials |
+| `kalends` | Professor Ozias Kalends | president | calendars ("Kalends: Abolish Wednesdays") |
 | `strop` | Ottoline Strop, Grand Goose (Second Class) | president | chairs ("Strop: Firmly Seated") |
-| `pennyroyal` | Wilhelmina Pennyroyal (proposed) | president | handbells |
-| `mulch` | Thaddeus Mulch (proposed) | president | his compost heap |
-| `dovecote` | Araminta Dovecote (proposed) | president | pigeons |
-| `brindle` | Septimus Brindle (proposed) | president | model lighthouses |
-| `lathe` | Honoria Lathe (proposed) | president | tapestry |
-| `furlong` | Quentin Furlong (proposed) | president | the harmonica |
-| `mopley` | Clementine Mopley (proposed) | president | very large jigsaws |
-| `pantry` | Rufus Pantry (proposed) | president | barometers |
-| `ambling` | Gertrude Ambling (proposed) | president | her walking boots |
-| `knapp` | Bartholomew Knapp (proposed) | president | yodelling |
+| `ringrose` | Lettice Ringrose | president | handbells |
+| `mould` | Aldous Mould | president | his compost heap |
+| `dovecote` | Araminta Dovecote | president | pigeons |
+| `pharos` | Ivo Pharos | president | model lighthouses |
+| `lathe` | Honoria Lathe | president | tapestry |
+| `furlong` | Quentin Furlong | president | the harmonica |
+| `tessel` | Imogen Tessel | president | jigsaws of plain sky |
+| `pantry` | Rufus Pantry | president | barometers |
+| `ambling` | Gertrude Ambling | president | her walking boots |
+| `knapp` | Bartholomew Knapp | president | yodelling |
 
-Two flags from the listing step's name search (`scratchpad/office/requests.md`): "Crumb" is a candidate's surname in a well-known children's novel, and a real Lord Plumb once led a parliament. If the sensitivity editor renames them, write rival lines so the surname appears at most once per line and the swap is mechanical. (Spare proposals: Professor Ignatius Grout, Councillor Prudence Pargeter.) The seven deputies marked "new" take the bust count to about 52, above the specification's "about 48"; the art package should say if that is too many.
+Renamed by the sensitivity read (each reason is in `names.json`): Plumb (a President of the European Parliament) and Crumb (the candidate of a children's novel), as D14 asks; Marchpane and Tuttle (children's books), Dabble (Trumpton's fireman), Vane (a sitting vice-president), Goss (a CIA director), Ermintrude (The Magic Roundabout's cow), Gusset (an underwear word), Nibley (real villages, and Dibley), Clement and Barnaby (a prime minister, a deputy prime minister), Applegarth (Appleby), Pennyroyal, Mulch, Septimus Brindle, Mopley (Mosley), Tansy and Brindle (characters of Lantern Row), Sprott (Jack Sprat), Pockle (a pothole-funding minister), the Committee on Committees (a real legislative committee) and Kitewell (one letter from Kitwell, a district of Birmingham). The spare names Grout (the prison boss of a sitcom) and Pargeter (a radio soap's family) are not used. Write rival lines so the surname appears at most once per line. The seven deputies marked "new" take the bust count to about 52, above the specification's "about 48"; the art package should say if that is too many.
 
 ---
 
@@ -182,7 +182,7 @@ Aim at the powerful: you first, then the office and its staff, lobbyists, commit
 
 You never type a number, but the words must make both printed outcomes obvious. Before you write, say to yourself: **who asks, what they get, who is put out and why, where the money goes or comes from**. Every archetype except the two traps names an `other` club; the reason they mind is in the text or is one of section 1's frictions.
 
-- **Project** (sign: the town pays a small sum, the petitioner pleased, the other put out; refuse: the reverse). The petitioner's club asks the town to build, mend, put up or grant something for their hobby. The cost is implied by the thing (a shed, a sign, a hill). The other club loses space, view or quiet. Examples: "Grant the prize pumpkin the freedom of the town..." (G5); "Build Kitewell a hill..." (G21). **Mistake:** a project that costs nothing in the fiction ("Say something nice about pumpkins": that is a Treat), or one nobody minds.
+- **Project** (sign: the town pays a small sum, the petitioner pleased, the other put out; refuse: the reverse). The petitioner's club asks the town to build, mend, put up or grant something for their hobby. The cost is implied by the thing (a shed, a sign, a hill). The other club loses space, view or quiet. Examples: "Grant the prize pumpkin the freedom of the town..." (G5); "Build Kitecombe a hill..." (G21). **Mistake:** a project that costs nothing in the fiction ("Say something nice about pumpkins": that is a Treat), or one nobody minds.
 - **Swap** (no money; petitioner gains what the other loses; refusing gives it back). Zero-sum: one place, day, name, slot or view both clubs want. Examples: G6 (the 7:02), G9 (the weigh-in in the windows). **Mistake:** a swap whose other club has no reason to mind ("Light the bus station at night" taken from the Guild: they lose nothing).
 - **Fee** (sign: the town earns, the petitioner a little pleased, the other clearly put out; refuse: mild). The petitioner's club (or Till's Teas) pays the town, openly, to get something: a sponsorship, a hire, a booking, a licence, naming rights. The other minds the commercialisation or the loss. Examples: G3 (Till's Teas chime), G16 (the silent Sunday), G23 (hiring the wind). **Mistake:** a fee that earns nothing in the fiction (no one pays), a fee the petitioner would hate ("Charge the spotters per bus"), money to you personally, or anything like a tax, a charge on roads or parking.
 - **Treat** (no money; the petitioner pleased, the other a little put out, gossip rises; refuse: the petitioner sulks). A small honour or gesture: you attend, judge, wear, say, pose. Gossip rises because someone will call it favouritism or print the photograph. Examples: G8 (say "Goodness"), G17 (conduct one bar), G22 (the modest hedge). **Mistake:** a treat that would cost money (a new building), or one with nothing for anyone to talk about.
@@ -203,7 +203,7 @@ You never type a number, but the words must make both printed outcomes obvious. 
 - **Run-up papers** (10 / 16 / 24) and **rallies** (4 per office). Public appearances: judging, opening, cutting, tasting, being photographed. A run-up paper names `{district}` exactly once and must read well with every district of its office (the longest is 14 characters: test "Gusting Heights", "Saltpenny Bay", "Old Town"). Never a vote, a handshake for votes, a speech about policy, a crowd chanting, a march. Rallies happen at a bandstand, a fête, a show; you bring scissors.
 - **Scripted papers** (6). The four of the game's first minute are fixed (G1 to G4); writer 1 writes the first paper of the governor's and of the president's office: an advisor welcoming you, teaching nothing new, setting the new desk's tone.
 - **Templates and phrase lists** (comedy editor; 120 frames, 10 lists of 24). A frame is a comic paper with **one** slot, written `{<list id>}`, filled from one list; frames are drawn by the governor and the president. The joke lives in the frame; the phrase is concrete, neutral flavour. Every list declares its grammar (for example "a singular noun phrase with 'the', lower case, ≤ 28 characters") and every phrase obeys it. **The test:** `check.ts` prints the frame with all 24 phrases; read all 24 aloud. If any one is ungrammatical, too long (frame plus phrase ≤ 90), unfunny, or makes a hot subject or an innuendo in combination, change the frame, move it to another list, or cut the phrase from the list (and re-test every frame of that list). Example: G30.
-- **The lines of 7.7** (writer 5; writer 2 for places). *Rivals*: name, hobby, slogan (Name: Three Words, never a real slogan's shape), "back for another go" line, resignation line about the hobby. *Election night* (30): 12 lines of Agatha Tallow, straight and procedural ("Envelope four."), and one line per rival at the result ("Plumb: I still own the hat"). *Returning visitors* (60: 18 for anyone, 6 per club): one short last line for a paper seen before, "Back again, with the same pumpkin and a firmer tone." *Away* (10): what happened while you were out, nothing changing ("The clock struck the hours without you. It managed."). *Monuments* (24): a name and one line, from "A bust of yourself" to "A bust of the bust"; at most 8 statues or busts. *Grand Projects* (5 names fixed): one proud line each. *Twists* (10 names fixed) and their 45 *pair names* ("Bandstand Summer" with "Kite Weather" = "A Breezy Concert Season"). *Captions* (6): game start, first governor term, first president term, Acting after a loss, a sweep, "A Quiet Term". *Places* (16, writer 2, first sitting): the 7 counties of Upper Wobbling with two-letter badges, and 9 landmarks; each into `names.json`.
+- **The lines of 7.7** (writer 5; writer 2 for places). *Rivals*: name, hobby, slogan (Name: Three Words, never a real slogan's shape), "back for another go" line, resignation line about the hobby. *Election night* (30): 12 lines of Agatha Tallow, straight and procedural ("Envelope four."), and one line per rival at the result ("Stitchley: I still own the hat"). *Returning visitors* (60: 18 for anyone, 6 per club): one short last line for a paper seen before, "Back again, with the same pumpkin and a firmer tone." *Away* (10): what happened while you were out, nothing changing ("The clock struck the hours without you. It managed."). *Monuments* (24): a name and one line, from "A bust of yourself" to "A bust of the bust"; at most 8 statues or busts. *Grand Projects* (5 names fixed): one proud line each. *Twists* (10 names fixed) and their 45 *pair names* ("Bandstand Summer" with "Kite Weather" = "A Breezy Concert Season"). *Captions* (6): game start, first governor term, first president term, Acting after a loss, a sweep, "A Quiet Term". *Places* (16, writer 2, first sitting): the 7 counties of Upper Wobbling with two-letter badges, and 9 landmarks; each into `names.json`.
 
 ---
 
@@ -225,20 +225,20 @@ Read aloud: I rewrote or cut fifteen of the first draft (three leaned on the sam
 | G10 | Rodney · mayor | vanity (shops) · escalation · self | A portrait of you, Mayor, for the portrait of you in the hall. For scale. (73) |
 | G11 | Hilda Gourdley · any office | project (veg / bus) · undercut · thing | A shed for the prize pumpkin, right where the spotters stand. (61) |
 | G12 | Clerk's note · requisition, Potholes Office | | The first shovel is tired. (26) |
-| G13 | Dorothy Pockle · application | | I apply to be your minister. References: 'She found one.' (57). Return: I apply again. Since last time, I have found another one. |
+| G13 | Dorothy Sett · application | | I apply to be your minister. References: 'She found one.' (57). Return: I apply again. Since last time, I have found another one. |
 | G14 | Hilda Gourdley · grievance | Vegetables boycott · undercut · self | No more pumpkins until you return our ribbon scissors. You know which scissors. (79). "Return the scissors" / "Keep the scissors"; picket GIVE THEM BACK |
 | G15 | the Drizzle · scandal | · undercut · self | MAYOR'S GOOSE GIVEN OWN PARKING SPACE. Goose declines to comment. (65) |
 | G16 | Marigold Hake · governor | fee (anglers / brass) · form-misapplied · office; chain | The Anglers will rent one silent Sunday. Receipts to be whispered. (66) |
 | G17 | Horace Bellows · governor | treat (brass / anglers) · photo-op · self; chain | Conduct the band for one bar. One. We will tell you which. (58) |
 | G18 | Marigold Hake with Ambrose · governor | committee (anglers / brass) · literalism · committee | A working group on noise. It will meet in silence, so may take a while. (71). Bigger study: The working group on noise asks for a second room. The first one echoed. |
 | G19 | Pruella Dimity · governor | vanity (veg) · escalation · self | Your face on every jar of Glasshouse jam. Pruella will check each jar. (69) |
-| G20 | Crispin Vane · governor | basket (brass) · undercut · lobbyist | An umbrella, just for you. Perhaps say 'rain' more in speeches? (63). Favour: About the umbrella: might the Bandstand Board forecast rain every Sunday? Clippings: GOVERNOR ORDERS RAIN; SUN ATTENDS ANYWAY / UMBRELLA RETURNED, STILL FOLDED, SLIGHTLY HURT |
-| G21 | Wendell Loft · president | project (kites / hedges) · undercut · office; chain | Build Kitewell a hill. The League currently launches from a chair. (66) |
+| G20 | Crispin Mizzle · governor | basket (brass) · undercut · lobbyist | An umbrella, just for you. Perhaps say 'rain' more in speeches? (63). Favour: About the umbrella: might the Bandstand Board forecast rain every Sunday? Clippings: GOVERNOR ORDERS RAIN; SUN ATTENDS ANYWAY / UMBRELLA RETURNED, STILL FOLDED, SLIGHTLY HURT |
+| G21 | Wendell Loft · president | project (kites / hedges) · undercut · office; chain | Build Kitecombe a hill. The League currently launches from a chair. (67) |
 | G22 | Agnes Topiary · president | treat (hedges / kites) · photo-op · self; chain | Pose beside a hedge clipped in your likeness. A modest hedge. (61) |
 | G23 | Wendell Loft · president | fee (kites / brass) · literalism · thing; chain | The League would like to hire the wind over Brassby. They will pay. (67) |
 | G24 | Desmond Kerb with Ambrose · president | committee (bus / kites) · literalism · committee | An inquiry into why kites land on buses. It will sit on the top deck. (68). Bigger study: The inquiry has outgrown the top deck. It asks for a second bus. |
 | G25 | Mildred Fenn · president | vanity (shops) · callback · self | Make your birthday a national holiday. Mildred has a drawer for these. (70) |
-| G26 | Tobias Slake · president | basket (kites) · escalation · lobbyist | A hat with a smaller hat on it. The smaller hat has a request. (62). Favour: The smaller hat asks that every kite in Kitewell wear a hat. For company. Clippings: PRESIDENT IN TWO HATS; NEITHER WILL SAY WHICH IS IN CHARGE / HAT REQUEST FILED FOR FURTHER STUDY |
+| G26 | Tobias Slake · president | basket (kites) · escalation · lobbyist | A hat with a smaller hat on it. The smaller hat has a request. (62). Favour: The smaller hat asks that every kite in Kitecombe wear a hat. For company. Clippings: PRESIDENT IN TWO HATS; NEITHER WILL SAY WHICH IS IN CHARGE / HAT REQUEST FILED FOR FURTHER STUDY |
 | G27 | Horace Bellows · governor | swap (brass / anglers) · undercut · thing; chain | Move band practice to the jetty. The fish have had it easy. (58) |
 | G28 | Rodney · mayor run-up | · undercut · self | Judge the {district} Prize Hedge Show. Say nothing about the leaning one. (73) |
 | G29 | Rodney · mayor rally | · escalation · self | Hold a rally at the bandstand. Bring the ceremonial scissors. Cut something. (76) |
@@ -258,7 +258,7 @@ Changed from the specification, with the reason: G13 names no ministry (an appli
 | R6 | Hilda would like to say that the pumpkin, which has grown since spring and now weighs as much as the bandstand, wants a ribbon. | Too long (130); a size joke. |
 | R7 | Pauline asks you to light the bus station at night. (as a Swap, Shops against Bus) | The outcome does not follow: the spotters lose nothing. |
 | R8 | Dismiss Gwendolyn in front of everyone. She will cry, but quietly. | Cruelty. |
-| R9 | Lavinia Goss offers 500 dibs for your yes on her fountain. Cash, no questions. | A bribe that pays; a number the rules own. |
+| R9 | Lavinia Plash offers 500 dibs for your yes on her fountain. Cash, no questions. | A bribe that pays; a number the rules own. |
 | R10 | Give the prize pumpkin a vote. It would vote for you. | A joke about how votes are cast. |
 | R11 | Paint TAKE BACK THE BANDSTAND on the bandstand. | Echoes a real slogan. |
 | R12 | Let the school choir sing at the ribbon-cutting. | Children and schools do not exist here. |

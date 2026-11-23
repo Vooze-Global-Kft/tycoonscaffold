@@ -1,73 +1,73 @@
 {
-  "$comment": "names.json: every proper noun of High Office (office-design.md 7.1, 7.3, 2.2, 2.14, 5.11), with its kind, an id for cast members (the `visitor` of a paper: the ids of docs/design/office-style.md section 2), and for ministries, Grand Projects and twists the runtime ids of src/config/schema.decree.ts (a note's `ministry`), and for newspapers the id a front page's `paper` names, and a check record. The check record is EMPTY until the sensitivity editor checks the name against the four lists of 7.1 (politicians of any rank; notorious public figures; famous fictional politicians and civil servants; places and characters of children's fiction) by generic web searches, and signs it with date and checker (D9: no record may say a person checked what no person checked). `cleared` lists near-matches the satire lint reports (edit distance 1 or sound-alike against deny-people.txt or deny-fiction.txt) that the checker read and accepted, as {\"similar\": \"<the listed name>\", \"reason\": \"...\"}; a cleared near-match is no longer reported. Rule 2 of the lint accepts every word of these names capitalised mid-sentence. Writers add new names through the sensitivity editor.",
+  "$comment": "names.json: every proper noun of High Office (office-design.md 7.1, 7.3, 2.2, 2.14, 5.11), with its kind, an id for cast members (the `visitor` of a paper: the ids of docs/design/office-style.md section 2), and for ministries, Grand Projects and twists the runtime ids of src/config/schema.decree.ts (a note's `ministry`), and for newspapers the id a front page's `paper` names, and a check record. The check record of every entry was filled on 2026-11-23 by the sensitivity editor's step (label content-names): each of the four lists of 7.1 reads 'clear', 'clear: <what was found and why it was accepted>' or 'changed: <why the earlier name failed>'; real towns, companies and newspapers (the fifth check of the step) and the verbatim web queries are at the end of `note`, because the check record has no field for them (requested from the content desk). This is an engineer's read under D9: no record here says a person checked anything; the owner's read before submission is still required. `cleared` lists near-matches the satire lint reports that the checker read and accepted, with the reason; a cleared near-match is no longer reported. Rule 2 of the lint accepts every word of these names capitalised mid-sentence. Writers add new names through the sensitivity editor.",
   "names": [
     {
       "name": "Republic of Middling",
       "kind": "country",
-      "note": "7.1; 'the Republic' in text",
+      "note": "7.1; 'the Republic' in text | real towns, companies, newspapers: clear | queries: listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Middling",
       "kind": "country",
-      "note": "short form of the country's name",
+      "note": "short form of the country's name | real towns, companies, newspapers: clear | queries: listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Proudly Adequate",
       "kind": "motto",
-      "note": "the motto and the store title (7.9, D1)",
+      "note": "the motto and the store title (7.9, D1) | real towns, companies, newspapers: clear | queries: listing step's queries 1, 2, 5, 7, 22, 23",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "dib",
       "kind": "currency",
-      "note": "plural dibs; lower case",
+      "note": "plural dibs; lower case | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "The Middling March",
       "kind": "tune",
-      "note": "the band tune; no anthem (7.1, 6)",
+      "note": "the band tune; no anthem (7.1, 6) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -76,27 +76,28 @@
       "kind": "town",
       "office": "mayor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear: 'Much Dithering' is the village of a Dorothy Lambert novel (q14), adult fiction; ours is another name: accepted",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"River Dawdle\" OR \"Dithering\" village fictional ;; listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused"
     },
     {
       "name": "Dawdle",
       "kind": "place",
       "office": "mayor",
-      "note": "the river the town is on",
+      "note": "the river the town is on | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -106,14 +107,15 @@
       "office": "mayor",
       "short": "MW",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Mill Ward",
@@ -121,14 +123,15 @@
       "office": "mayor",
       "short": "ML",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Hilltop",
@@ -136,14 +139,15 @@
       "office": "mayor",
       "short": "HT",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Riverside",
@@ -151,14 +155,15 @@
       "office": "mayor",
       "short": "RS",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Old Town",
@@ -166,41 +171,43 @@
       "office": "mayor",
       "short": "OT",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Province of Upper Wobbling",
       "kind": "province",
       "office": "governor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Brassby\" OR \"Fogmoor\" OR \"Saltpenny\" place ;; \"Muchpuddle\" OR \"Teacup Downs\" OR \"Gusting Heights\" ;; Middlingham village England ;; listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused"
     },
     {
       "name": "Upper Wobbling",
       "kind": "province",
       "office": "governor",
-      "note": "also one of the president's nine provinces",
+      "note": "also one of the president's nine provinces | real towns, companies, newspapers: clear | queries: \"Brassby\" OR \"Fogmoor\" OR \"Saltpenny\" place ;; \"Muchpuddle\" OR \"Teacup Downs\" OR \"Gusting Heights\" ;; Middlingham village England ;; listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -209,14 +216,15 @@
       "kind": "capital",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: Middlingham village England ;; listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused"
     },
     {
       "name": "Fogmoor",
@@ -224,14 +232,15 @@
       "office": "president",
       "short": "FM",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Brassby\" OR \"Fogmoor\" OR \"Saltpenny\" place ;; \"Muchpuddle\" OR \"Teacup Downs\" OR \"Gusting Heights\" ;; Middlingham village England ;; listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused"
     },
     {
       "name": "Brassby",
@@ -239,14 +248,15 @@
       "office": "president",
       "short": "BB",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Brassby\" OR \"Fogmoor\" OR \"Saltpenny\" place ;; \"Muchpuddle\" OR \"Teacup Downs\" OR \"Gusting Heights\" ;; Middlingham village England ;; listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused"
     },
     {
       "name": "Teacup Downs",
@@ -254,14 +264,15 @@
       "office": "president",
       "short": "TD",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Brassby\" OR \"Fogmoor\" OR \"Saltpenny\" place ;; \"Muchpuddle\" OR \"Teacup Downs\" OR \"Gusting Heights\" ;; Middlingham village England ;; listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused"
     },
     {
       "name": "Gusting Heights",
@@ -269,14 +280,15 @@
       "office": "president",
       "short": "GH",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear: echoes the novel Wuthering Heights (not children's fiction, not political): accepted as a place-name pattern",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Muchpuddle\" OR \"Teacup Downs\" OR \"Gusting Heights\""
     },
     {
       "name": "Muchpuddle",
@@ -284,14 +296,15 @@
       "office": "president",
       "short": "MP",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear: near Puddleby-on-the-Marsh (Doctor Dolittle's town) only in one syllable: accepted",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Muchpuddle\" OR \"Teacup Downs\" OR \"Gusting Heights\""
     },
     {
       "name": "Saltpenny Bay",
@@ -299,29 +312,31 @@
       "office": "president",
       "short": "SB",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Brassby\" OR \"Fogmoor\" OR \"Saltpenny\" place ;; \"Muchpuddle\" OR \"Teacup Downs\" OR \"Gusting Heights\" ;; Middlingham village England ;; listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused"
     },
     {
-      "name": "Kitewell",
+      "name": "Kitecombe",
       "kind": "province",
       "office": "president",
-      "short": "KW",
+      "short": "KC",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "renamed from 'Kitewell' by content-names 2026-11-23: real: Kitwell (one letter) is a real district of Birmingham, England (q1). province (president); a combe is a valley, so 'Build Kitecombe a hill' (G21) still works | real towns, companies, newspapers: the old name failed (above); the new name: clear | queries: \"Kitwell\" Birmingham ;; \"Committee for More Meetings\" OR \"Kitecombe\" OR \"Farestage\" surname"
     },
     {
       "name": "Dithering Daily Drizzle",
@@ -329,14 +344,15 @@
       "id": "daily-drizzle",
       "office": "mayor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Daily Drizzle\" OR \"Evening Fuss\" OR \"Morning Murmur\" newspaper"
     },
     {
       "name": "Upper Wobbling Evening Fuss",
@@ -344,14 +360,15 @@
       "id": "evening-fuss",
       "office": "governor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Daily Drizzle\" OR \"Evening Fuss\" OR \"Morning Murmur\" newspaper"
     },
     {
       "name": "Middling Morning Murmur",
@@ -359,131 +376,141 @@
       "id": "morning-murmur",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Daily Drizzle\" OR \"Evening Fuss\" OR \"Morning Murmur\" newspaper"
     },
     {
       "name": "Keeper of the Ceremonial Spoon",
       "kind": "honour",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Grand Goose (Second Class)",
       "kind": "honour",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Bus Spotters' Society",
       "kind": "club",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Bus Spotters' Society\" OR \"Shop Window Guild\" OR \"Tidy Hedge Committee\" OR \"Kite Flyers' League\" OR \"Giant Vegetable Society\""
     },
     {
       "name": "Shop Window Guild",
       "kind": "club",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Bus Spotters' Society\" OR \"Shop Window Guild\" OR \"Tidy Hedge Committee\" OR \"Kite Flyers' League\" OR \"Giant Vegetable Society\""
     },
     {
       "name": "Giant Vegetable Society",
       "kind": "club",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Bus Spotters' Society\" OR \"Shop Window Guild\" OR \"Tidy Hedge Committee\" OR \"Kite Flyers' League\" OR \"Giant Vegetable Society\""
     },
     {
       "name": "Brass Band Guild",
       "kind": "club",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Bus Spotters' Society\" OR \"Shop Window Guild\" OR \"Tidy Hedge Committee\" OR \"Kite Flyers' League\" OR \"Giant Vegetable Society\""
     },
     {
       "name": "Anglers' Circle",
       "kind": "club",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Bus Spotters' Society\" OR \"Shop Window Guild\" OR \"Tidy Hedge Committee\" OR \"Kite Flyers' League\" OR \"Giant Vegetable Society\""
     },
     {
       "name": "Kite Flyers' League",
       "kind": "club",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Bus Spotters' Society\" OR \"Shop Window Guild\" OR \"Tidy Hedge Committee\" OR \"Kite Flyers' League\" OR \"Giant Vegetable Society\""
     },
     {
       "name": "Tidy Hedge Committee",
       "kind": "club",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Bus Spotters' Society\" OR \"Shop Window Guild\" OR \"Tidy Hedge Committee\" OR \"Kite Flyers' League\" OR \"Giant Vegetable Society\""
     },
     {
       "name": "Town Clock Office",
@@ -491,15 +518,16 @@
       "id": "town-clock-office",
       "office": "mayor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "town_clock"
+      "ref": "town_clock",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Potholes Office",
@@ -508,15 +536,16 @@
       "office": "mayor",
       "club": "bus",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "potholes"
+      "ref": "potholes",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Benches & Bandstands",
@@ -525,15 +554,16 @@
       "office": "mayor",
       "club": "veg",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "benches"
+      "ref": "benches",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Signposts & Lampposts",
@@ -542,15 +572,16 @@
       "office": "mayor",
       "club": "shops",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "signposts"
+      "ref": "signposts",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Provincial Clock Office",
@@ -558,15 +589,16 @@
       "id": "provincial-clock-office",
       "office": "governor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "prov_clock"
+      "ref": "prov_clock",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Bus Shelter Trust",
@@ -575,15 +607,16 @@
       "office": "governor",
       "club": "bus",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "bus_shelter"
+      "ref": "bus_shelter",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Market Weights Board",
@@ -592,15 +625,16 @@
       "office": "governor",
       "club": "shops",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "market_weights"
+      "ref": "market_weights",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Glasshouse Office",
@@ -609,15 +643,16 @@
       "office": "governor",
       "club": "veg",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "glasshouse"
+      "ref": "glasshouse",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Bandstand Board",
@@ -626,15 +661,16 @@
       "office": "governor",
       "club": "brass",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "bandstand_board"
+      "ref": "bandstand_board",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Canals & Jetties",
@@ -643,15 +679,16 @@
       "office": "governor",
       "club": "anglers",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "canals"
+      "ref": "canals",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "National Clock Office",
@@ -659,15 +696,16 @@
       "id": "national-clock-office",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "nat_clock"
+      "ref": "nat_clock",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Motorway Board",
@@ -676,15 +714,16 @@
       "office": "president",
       "club": "bus",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "motorway"
+      "ref": "motorway",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Lamplight Authority",
@@ -693,15 +732,16 @@
       "office": "president",
       "club": "shops",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "lamplight"
+      "ref": "lamplight",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Parks & Benches",
@@ -710,15 +750,16 @@
       "office": "president",
       "club": "veg",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "parks"
+      "ref": "parks",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Office of Brass & Bunting",
@@ -727,15 +768,16 @@
       "office": "president",
       "club": "brass",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "brass_bunting"
+      "ref": "brass_bunting",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Harbour Board",
@@ -744,15 +786,16 @@
       "office": "president",
       "club": "anglers",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "harbour"
+      "ref": "harbour",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Kite & Breeze Office",
@@ -761,15 +804,16 @@
       "office": "president",
       "club": "kites",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "kite_breeze"
+      "ref": "kite_breeze",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Hedgerow Bureau",
@@ -778,15 +822,16 @@
       "office": "president",
       "club": "hedges",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "hedgerow"
+      "ref": "hedgerow",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "The Very Long Bridge",
@@ -794,15 +839,16 @@
       "id": "very-long-bridge",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "long_bridge"
+      "ref": "long_bridge",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "The National Ribbon Mill",
@@ -810,15 +856,16 @@
       "id": "national-ribbon-mill",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "ribbon_mill"
+      "ref": "ribbon_mill",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "The National Umbrella",
@@ -826,15 +873,16 @@
       "id": "national-umbrella",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "umbrella"
+      "ref": "umbrella",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "The Tallest Bandstand",
@@ -842,15 +890,16 @@
       "id": "tallest-bandstand",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "tallest_bandstand"
+      "ref": "tallest_bandstand",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "The Ministry of Ministries",
@@ -858,165 +907,170 @@
       "id": "ministry-of-ministries",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "ministry_of_ministries"
+      "ref": "ministry_of_ministries",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Till's Teas",
       "kind": "company",
-      "note": "Pauline Till's tea room (7.5 paper 6)",
+      "note": "Pauline Till's tea room (7.5 paper 6) | real towns, companies, newspapers: clear | queries: \"Till's Teas\" OR \"Tills Teas\" tea room ;; \"Consolidated Umbrellas\" OR \"Ornamental Fountain Council\" OR \"Novelty Hats & Sons\" OR \"Ribbon Makers' Guild\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Ribbon Makers' Guild",
       "kind": "company",
-      "note": "Lionel Sash's trade",
+      "note": "Lionel Sash's trade | real towns, companies, newspapers: clear | queries: \"Till's Teas\" OR \"Tills Teas\" tea room ;; \"Consolidated Umbrellas\" OR \"Ornamental Fountain Council\" OR \"Novelty Hats & Sons\" OR \"Ribbon Makers' Guild\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Consolidated Umbrellas",
       "kind": "company",
-      "note": "Crispin Vane's trade",
+      "note": "Crispin Vane's trade | real towns, companies, newspapers: clear | queries: \"Till's Teas\" OR \"Tills Teas\" tea room ;; \"Consolidated Umbrellas\" OR \"Ornamental Fountain Council\" OR \"Novelty Hats & Sons\" OR \"Ribbon Makers' Guild\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Ornamental Fountain Council",
       "kind": "company",
-      "note": "Lavinia Goss's trade",
+      "note": "Lavinia Goss's trade | real towns, companies, newspapers: clear | queries: \"Till's Teas\" OR \"Tills Teas\" tea room ;; \"Consolidated Umbrellas\" OR \"Ornamental Fountain Council\" OR \"Novelty Hats & Sons\" OR \"Ribbon Makers' Guild\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Novelty Hats & Sons",
       "kind": "company",
-      "note": "Tobias Slake's trade",
+      "note": "Tobias Slake's trade | real towns, companies, newspapers: clear | queries: \"Till's Teas\" OR \"Tills Teas\" tea room ;; \"Consolidated Umbrellas\" OR \"Ornamental Fountain Council\" OR \"Novelty Hats & Sons\" OR \"Ribbon Makers' Guild\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
-      "name": "Committee on Committees",
+      "name": "Committee on Next Meetings",
       "kind": "committee",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "renamed from 'Committee on Committees' by content-names 2026-11-23: real: a real standing committee of several US state legislatures (Kentucky, Montana, Pennsylvania; q13): a real government body. Ambrose Minute's body; 'Committee for More Meetings' failed the lint ('More' ~ Gore) and 'Committee on Rescheduling' reads as drug rescheduling (q40) | real towns, companies, newspapers: the old name failed (above); the new name: clear | queries: \"Committee on Committees\" legislature ;; \"Committee on Further Meetings\" OR \"Committee for Further Meetings\" ;; \"Committee for More Meetings\" OR \"Kitecombe\" OR \"Farestage\" surname ;; \"Committee on Rescheduling\" ;; \"Committee on Next Meetings\""
     },
     {
       "name": "Town Record",
       "kind": "record",
       "office": "mayor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Province Record",
       "kind": "record",
       "office": "governor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Name Recognition",
       "kind": "record",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "FOR FURTHER STUDY",
       "kind": "other",
-      "note": "the drawer's label",
+      "note": "the drawer's label | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Standing Order",
       "kind": "other",
-      "note": "5.10",
+      "note": "5.10 | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -1025,331 +1079,341 @@
       "kind": "twist",
       "id": "committee-week",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "committee_week"
+      "ref": "committee_week",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Market Fortnight",
       "kind": "twist",
       "id": "market-fortnight",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "market_fortnight"
+      "ref": "market_fortnight",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Quiet Press",
       "kind": "twist",
       "id": "quiet-press",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "quiet_press"
+      "ref": "quiet_press",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Bandstand Summer",
       "kind": "twist",
       "id": "bandstand-summer",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "bandstand_summer"
+      "ref": "bandstand_summer",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Ribbon Shortage",
       "kind": "twist",
       "id": "ribbon-shortage",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "ribbon_shortage"
+      "ref": "ribbon_shortage",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "A Gentle Week",
       "kind": "twist",
       "id": "a-gentle-week",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "gentle_week"
+      "ref": "gentle_week",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Early Doors",
       "kind": "twist",
       "id": "early-doors",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "early_doors"
+      "ref": "early_doors",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Kite Weather",
       "kind": "twist",
       "id": "kite-weather",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "kite_weather"
+      "ref": "kite_weather",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Hedge Inspection",
       "kind": "twist",
       "id": "hedge-inspection",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "hedge_inspection"
+      "ref": "hedge_inspection",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Grievance Amnesty",
       "kind": "twist",
       "id": "grievance-amnesty",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "ref": "grievance_amnesty"
+      "ref": "grievance_amnesty",
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "A Quiet Term",
       "kind": "twist",
       "id": "a-quiet-term",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       },
-      "note": "from term 182 (2.14); not a twist of the runtime table"
+      "note": "from term 182 (2.14); not a twist of the runtime table | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Long Lunch",
       "kind": "other",
-      "note": "a product or rewarded ad (5.11)",
+      "note": "a product or rewarded ad (5.11) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Walnut & Brass Desk Set",
       "kind": "other",
-      "note": "a product or rewarded ad (5.11)",
+      "note": "a product or rewarded ad (5.11) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Gilt Portrait Frames",
       "kind": "other",
-      "note": "a product or rewarded ad (5.11)",
+      "note": "a product or rewarded ad (5.11) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Private Secretary",
       "kind": "other",
-      "note": "a product or rewarded ad (5.11)",
+      "note": "the product id office_private_secretary only; never shown (D11: display name 'Skip the Ad Videos'). A real civil-service post and the role of Yes Minister's Bernard Woolley: no player-facing string may use it | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "changed: shown name replaced by 'Skip the Ad Videos' (D11); 'Private Secretary' is the post of Bernard Woolley in Yes Minister",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Check the Sofa",
       "kind": "other",
-      "note": "a product or rewarded ad (5.11)",
+      "note": "a product or rewarded ad (5.11) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Call the Spin Doctor",
       "kind": "other",
-      "note": "a product or rewarded ad (5.11)",
+      "note": "a product or rewarded ad (5.11) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Send a Courier",
       "kind": "other",
-      "note": "a product or rewarded ad (5.11)",
+      "note": "a product or rewarded ad (5.11) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Open the Doors",
       "kind": "other",
-      "note": "a product or rewarded ad (5.11)",
+      "note": "a product or rewarded ad (5.11) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Grand Goose (First Class)",
       "kind": "honour",
-      "note": "office-style.md section 1",
+      "note": "office-style.md section 1 | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Brass Thimble",
       "kind": "honour",
-      "note": "office-style.md section 1",
+      "note": "office-style.md section 1 | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Ribbon of Moderate Merit",
       "kind": "honour",
-      "note": "office-style.md section 1",
+      "note": "office-style.md section 1 | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Freedom of the Town",
       "kind": "honour",
-      "note": "office-style.md section 1",
+      "note": "office-style.md section 1 | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -1357,56 +1421,56 @@
       "name": "River Dawdle",
       "kind": "place",
       "office": "mayor",
-      "note": "office-style.md section 1",
+      "note": "office-style.md section 1 | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Window Week",
       "kind": "other",
-      "note": "a club's event named in office-style.md section 1 (proposal)",
+      "note": "a club's event named in office-style.md section 1 (proposal) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Quiet Competition",
       "kind": "other",
-      "note": "a club's event named in office-style.md section 1 (proposal)",
+      "note": "a club's event named in office-style.md section 1 (proposal) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
       "name": "Gusting Heights Kite Festival",
       "kind": "other",
-      "note": "a club's event named in office-style.md section 1 (proposal)",
+      "note": "a club's event named in office-style.md section 1 (proposal) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -1417,14 +1481,15 @@
       "role": "Mayor",
       "group": "player",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Osgood Fennel",
@@ -1433,14 +1498,15 @@
       "role": "Mayor",
       "group": "player",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Ada Quill",
@@ -1449,46 +1515,49 @@
       "role": "Mayor",
       "group": "player",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
-      "name": "Rupert Marchpane",
+      "name": "Rupert Borage",
       "kind": "cast",
       "id": "marchpane",
       "role": "Mayor",
       "group": "player",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "changed: Marchpane is the vain china-doll villain of Rumer Godden's children's classic The Dolls' House (1947), q3",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "renamed from 'Rupert Marchpane' by content-names 2026-11-23: children: Marchpane is the vain china-doll villain of Rumer Godden's children's classic The Dolls' House (1947), q3. player face; id kept 'marchpane' (runtime id in schema.decree.ts and game.json; never shown) | real towns, companies, newspapers: clear | queries: Marchpane doll Rumer Godden The Dolls' House ;; \"Noonday\" OR \"Tessel\" OR \"Borage\" OR \"Chervil\" surname politician OR character ;; \"Lettice Ringrose\" OR \"Henrietta Bole\" OR \"Imogen Tessel\" OR \"Fergus Noonday\" OR \"Rupert Borage\""
     },
     {
-      "name": "Winifred Tuttle",
+      "name": "Winifred Chervil",
       "kind": "cast",
       "id": "tuttle",
       "role": "Mayor",
       "group": "player",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "changed: Tuttle: The Tuttle Twins, a best-selling US children's book and cartoon series that teaches a real political viewpoint (q4): a political children's fiction",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "renamed from 'Winifred Tuttle' by content-names 2026-11-23: children: Tuttle: The Tuttle Twins, a best-selling US children's book and cartoon series that teaches a real political viewpoint (q4): a political children's fiction. player face; id kept 'tuttle' (runtime id; never shown) | real towns, companies, newspapers: clear | queries: Tuttle Twins books libertarian children's series ;; \"Noonday\" OR \"Tessel\" OR \"Borage\" OR \"Chervil\" surname politician OR character ;; \"Winifred Chervil\" OR \"Dorothy Sett\" OR \"Crispin Mizzle\" OR \"Lavinia Plash\" OR \"Ewan Reedmace\" OR \"Florence Mayfly\""
     },
     {
       "name": "Cosmo Larkspur",
@@ -1497,14 +1566,15 @@
       "role": "Mayor",
       "group": "player",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear: Larkspur is also a small city in California and a flower; a surname, accepted | queries: \"Hettie Bramble\" OR \"Osgood Fennel\" OR \"Ada Quill\" OR \"Cosmo Larkspur\" character"
     },
     {
       "name": "Rodney Spinwell",
@@ -1513,14 +1583,20 @@
       "role": "Chief of Staff",
       "group": "advisor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
-        "cleared": []
-      }
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
+        "cleared": [
+          {
+            "similar": "Romney",
+            "reason": "Rodney is an ordinary English first name; Romney is a surname; nothing else in 'Rodney Spinwell, Chief of Staff' points at Mitt Romney"
+          }
+        ]
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Cuthbert Wimble\" OR \"Pruella Dimity\" OR \"Mildred Fenn\" OR \"Desmond Kerb\" OR \"Pauline Till\" ;; listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused"
     },
     {
       "name": "Gwendolyn Abacus",
@@ -1529,14 +1605,15 @@
       "role": "Treasury Clerk",
       "group": "advisor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Cuthbert Wimble",
@@ -1545,14 +1622,15 @@
       "role": "Junior Clerk",
       "group": "advisor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear: Cuthbert is also a Trumpton fireman (q5) and Tintin's Professor Cuthbert Calculus; first name only, and with Dabble renamed nothing else in the cast recalls Trumpton: accepted",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: Trumpton firemen Pugh Barney McGrew Cuthbert Dibble Grubb ;; \"Cuthbert Wimble\" OR \"Pruella Dimity\" OR \"Mildred Fenn\" OR \"Desmond Kerb\" OR \"Pauline Till\""
     },
     {
       "name": "Pruella Dimity",
@@ -1562,14 +1640,15 @@
       "group": "advisor",
       "office": "governor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear: drawing: her joke is lunch, never her body (no heavier figure, no food on her face)",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Cuthbert Wimble\" OR \"Pruella Dimity\" OR \"Mildred Fenn\" OR \"Desmond Kerb\" OR \"Pauline Till\""
     },
     {
       "name": "Mildred Fenn",
@@ -1579,14 +1658,15 @@
       "group": "advisor",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Desmond Kerb",
@@ -1596,30 +1676,31 @@
       "group": "spokesperson",
       "club": "bus",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
-      "name": "Mervyn Sprott",
+      "name": "Mervyn Farestage",
       "kind": "cast",
       "id": "sprott",
       "role": "Timetable Secretary",
       "group": "spokesperson",
       "club": "bus",
-      "note": "new in office-style.md 2; check before use",
+      "note": "renamed from 'Mervyn Sprott' by content-names 2026-11-23: children: Sprott sounds like Sprat: Jack Sprat of the nursery rhyme. new club deputy (bus); a fare stage is a bus stop where the fare changes; id kept 'sprott' (plan.json) | real towns, companies, newspapers: clear | queries: \"Mopley\" OR \"Sprott\" OR \"Applegarth\" politician fictional character ;; \"Committee for More Meetings\" OR \"Kitecombe\" OR \"Farestage\" surname ;; \"Prudence Stitchley\" OR \"Ozias Kalends\" OR \"Percy Plummet\" OR \"Mervyn Farestage\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "changed: Sprott sounds like Sprat: Jack Sprat of the nursery rhyme",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -1631,14 +1712,15 @@
       "group": "spokesperson",
       "club": "shops",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear: Till is also the surname of Emmett Till, a real tragedy; here it is plainly the shop till of a shopkeeper and Till's Teas: accepted, but no line may pair Till with any hardship",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Till's Teas\" OR \"Tills Teas\" tea room ;; \"Cuthbert Wimble\" OR \"Pruella Dimity\" OR \"Mildred Fenn\" OR \"Desmond Kerb\" OR \"Pauline Till\""
     },
     {
       "name": "Delphine Awning",
@@ -1647,14 +1729,14 @@
       "role": "Display Captain",
       "group": "spokesperson",
       "club": "shops",
-      "note": "new in office-style.md 2; check before use",
+      "note": "new in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -1666,14 +1748,15 @@
       "group": "spokesperson",
       "club": "veg",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Bertram Loam",
@@ -1682,14 +1765,14 @@
       "role": "Weigh-in Steward",
       "group": "spokesperson",
       "club": "veg",
-      "note": "new in office-style.md 2; check before use",
+      "note": "new in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -1701,14 +1784,15 @@
       "group": "spokesperson",
       "club": "brass",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Cecily Slide",
@@ -1717,14 +1801,14 @@
       "role": "Second Cornet",
       "group": "spokesperson",
       "club": "brass",
-      "note": "new in office-style.md 2; check before use",
+      "note": "new in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -1736,30 +1820,44 @@
       "group": "spokesperson",
       "club": "anglers",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
-        "cleared": []
-      }
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
+        "cleared": [
+          {
+            "similar": "Haig",
+            "reason": "a hake is a fish and the joke is the anglers' fish; aloud it is close to Haig and Hague, but her first name and her club point only at the pond"
+          },
+          {
+            "similar": "Hague",
+            "reason": "as Haig"
+          },
+          {
+            "similar": "Hawke",
+            "reason": "Hake and Hawke differ in their vowel; nothing points at Bob Hawke"
+          }
+        ]
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Marigold Hake\" OR \"Wendell Loft\" OR \"Agnes Topiary\" OR \"Horace Bellows\" OR \"Lionel Sash\" OR \"Tobias Slake\""
     },
     {
-      "name": "Ewan Dabble",
+      "name": "Ewan Reedmace",
       "kind": "cast",
       "id": "dabble",
       "role": "Keeper of the Quiet",
       "group": "spokesperson",
       "club": "anglers",
-      "note": "new in office-style.md 2; check before use",
+      "note": "renamed from 'Ewan Dabble' by content-names 2026-11-23: children: Dabble ~ Dibble (one letter): Firefighter Dibble of Trumpton (children's TV, beside its Mayor; q5) and Officer Dibble of Top Cat (a cartoon policeman). new club deputy (anglers); a reedmace is a bulrush; id kept 'dabble' (plan.json casts use it; never shown) | real towns, companies, newspapers: clear | queries: Trumpton firemen Pugh Barney McGrew Cuthbert Dibble Grubb ;; \"Reedmace\" OR \"Mizzle\" OR \"Plash\" surname character ;; \"Winifred Chervil\" OR \"Dorothy Sett\" OR \"Crispin Mizzle\" OR \"Lavinia Plash\" OR \"Ewan Reedmace\" OR \"Florence Mayfly\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "changed: Dabble ~ Dibble (one letter): Firefighter Dibble of Trumpton (children's TV, beside its Mayor; q5) and Officer Dibble of Top Cat (a cartoon policeman)",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -1771,14 +1869,15 @@
       "group": "spokesperson",
       "club": "kites",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Philomena Updraught",
@@ -1787,14 +1886,14 @@
       "role": "Launch Marshal",
       "group": "spokesperson",
       "club": "kites",
-      "note": "new in office-style.md 2; check before use",
+      "note": "new in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -1806,30 +1905,36 @@
       "group": "spokesperson",
       "club": "hedges",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
-        "cleared": []
-      }
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
+        "cleared": [
+          {
+            "similar": "Agnew",
+            "reason": "Agnes is an ordinary first name; Agnew is a surname; 'Agnes Topiary' points at hedges only"
+          }
+        ]
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Marigold Hake\" OR \"Wendell Loft\" OR \"Agnes Topiary\" OR \"Horace Bellows\" OR \"Lionel Sash\" OR \"Tobias Slake\""
     },
     {
-      "name": "Clement Edging",
+      "name": "Osmund Edging",
       "kind": "cast",
       "id": "edging",
       "role": "Shears Officer",
       "group": "spokesperson",
       "club": "hedges",
-      "note": "new in office-style.md 2; check before use",
+      "note": "renamed from 'Clement Edging' by content-names 2026-11-23: politicians: Clement: a rare first name that points first at Clement Attlee (UK Prime Minister) and Clement Freud (MP, posthumously accused of abuse). new club deputy (hedges); id kept 'edging' | real towns, companies, newspapers: clear | queries: \"Leander Waft\" OR \"Aldous Mould\" OR \"Ivo Brindle\" OR \"Perpetua Strop\" OR \"Osmund Edging\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "changed: Clement: a rare first name that points first at Clement Attlee (UK Prime Minister) and Clement Freud (MP, posthumously accused of abuse)",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -1840,46 +1945,49 @@
       "role": "Ribbon Makers' Guild",
       "group": "lobbyist",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
-      "name": "Crispin Vane",
+      "name": "Crispin Mizzle",
       "kind": "cast",
       "id": "vane",
       "role": "Consolidated Umbrellas",
       "group": "lobbyist",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "changed: Vane ~ Vance (one letter): JD Vance, Vice-President of the United States; a lobbyist in a corruption farce must not carry it",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "renamed from 'Crispin Vane' by content-names 2026-11-23: politicians: Vane ~ Vance (one letter): JD Vance, Vice-President of the United States; a lobbyist in a corruption farce must not carry it. lobbyist; mizzle: fine rain (keeps the gloomy, hopeful-of-rain joke); id kept 'vane' (plan.json; never shown) | real towns, companies, newspapers: clear | queries: \"Reedmace\" OR \"Mizzle\" OR \"Plash\" surname character ;; \"Winifred Chervil\" OR \"Dorothy Sett\" OR \"Crispin Mizzle\" OR \"Lavinia Plash\" OR \"Ewan Reedmace\" OR \"Florence Mayfly\""
     },
     {
-      "name": "Lavinia Goss",
+      "name": "Lavinia Plash",
       "kind": "cast",
       "id": "goss",
       "role": "Ornamental Fountain Council",
       "group": "lobbyist",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "changed: Goss: Porter Goss, eight-term US congressman and Director of the CIA 2004-06 (q24); exact surname, on a lobbyist",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "renamed from 'Lavinia Goss' by content-names 2026-11-23: politicians: Goss: Porter Goss, eight-term US congressman and Director of the CIA 2004-06 (q24); exact surname, on a lobbyist. lobbyist; plash: the splash of a fountain; id kept 'goss' (plan.json; never shown) | real towns, companies, newspapers: clear | queries: \"Lavinia Goss\" OR \"Ambrose Minute\" OR \"Agatha Tallow\" OR \"Dorothy Pockle\" OR \"Dorrit Pellow\" OR \"Basil Ferrule\" ;; Porter Goss congressman CIA director ;; \"Reedmace\" OR \"Mizzle\" OR \"Plash\" surname character ;; \"Winifred Chervil\" OR \"Dorothy Sett\" OR \"Crispin Mizzle\" OR \"Lavinia Plash\" OR \"Ewan Reedmace\" OR \"Florence Mayfly\""
     },
     {
       "name": "Tobias Slake",
@@ -1888,14 +1996,15 @@
       "role": "Novelty Hats & Sons",
       "group": "lobbyist",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Ambrose Minute",
@@ -1903,14 +2012,14 @@
       "id": "minute",
       "role": "Committee on Committees",
       "group": "other",
-      "note": "a co-signer only, never a club's voice (7.3)",
+      "note": "a co-signer only, never a club's voice (7.3) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -1921,17 +2030,18 @@
       "role": "Counting Clerk",
       "group": "other",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
-      "name": "Dorothy Pockle",
+      "name": "Dorothy Sett",
       "kind": "cast",
       "id": "pockle",
       "role": "Applicant",
@@ -1939,14 +2049,15 @@
       "club": "bus",
       "office": "mayor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "changed: Pockle ~ Pickles: Eric Pickles, the UK Local Government Secretary best known for pothole funds, and she applies to be Minister for Potholes (7.5 paper 9)",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "renamed from 'Dorothy Pockle' by content-names 2026-11-23: politicians: Pockle ~ Pickles: Eric Pickles, the UK Local Government Secretary best known for pothole funds, and she applies to be Minister for Potholes (7.5 paper 9). minister applicant (Bus); a sett is a paving stone; id kept 'pockle' (runtime id) | real towns, companies, newspapers: clear | queries: \"Lavinia Goss\" OR \"Ambrose Minute\" OR \"Agatha Tallow\" OR \"Dorothy Pockle\" OR \"Dorrit Pellow\" OR \"Basil Ferrule\" ;; \"Plummet\" OR \"Mayfly\" OR \"Sett\" surname character fiction ;; \"Winifred Chervil\" OR \"Dorothy Sett\" OR \"Crispin Mizzle\" OR \"Lavinia Plash\" OR \"Ewan Reedmace\" OR \"Florence Mayfly\""
     },
     {
       "name": "Dorrit Pellow",
@@ -1957,14 +2068,15 @@
       "club": "veg",
       "office": "mayor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Basil Ferrule",
@@ -1975,14 +2087,15 @@
       "club": "shops",
       "office": "mayor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear: 'Fresh Basil' is an item of Pizza Empire; the first name Basil alone is not that phrase: accepted (bundle check matches the phrase) | queries: \"Lavinia Goss\" OR \"Ambrose Minute\" OR \"Agatha Tallow\" OR \"Dorothy Pockle\" OR \"Dorrit Pellow\" OR \"Basil Ferrule\""
     },
     {
       "name": "Wendeline Hush",
@@ -1993,17 +2106,18 @@
       "club": "shops",
       "office": "governor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
-      "name": "Ermintrude Bole",
+      "name": "Henrietta Bole",
       "kind": "cast",
       "id": "bole",
       "role": "Applicant",
@@ -2011,17 +2125,23 @@
       "club": "brass",
       "office": "governor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
-        "cleared": []
-      }
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "changed: Ermintrude is the cow of The Magic Roundabout (children's TV, q6); a rare name that points only there",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
+        "cleared": [
+          {
+            "similar": "Dole",
+            "reason": "Bole (a tree trunk) differs from Bob Dole in its first sound; a minister applicant for the Brass Band Guild, nothing in her evokes him"
+          }
+        ]
+      },
+      "note": "renamed from 'Ermintrude Bole' by content-names 2026-11-23: children: Ermintrude is the cow of The Magic Roundabout (children's TV, q6); a rare name that points only there. minister applicant (Brass); id kept 'bole' (runtime id) | real towns, companies, newspapers: clear | queries: Ermintrude cow Magic Roundabout ;; \"Lettice Ringrose\" OR \"Henrietta Bole\" OR \"Imogen Tessel\" OR \"Fergus Noonday\" OR \"Rupert Borage\""
     },
     {
-      "name": "Percy Gusset",
+      "name": "Percy Plummet",
       "kind": "cast",
       "id": "gusset",
       "role": "Applicant",
@@ -2029,14 +2149,24 @@
       "club": "anglers",
       "office": "governor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
-        "cleared": []
-      }
+        "politicians": "clear",
+        "notorious": "changed: changed for tone, not a person: in British English a gusset is the crotch panel of tights and knickers, an underwear joke a parent would mind (7.4 no innuendo)",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
+        "cleared": [
+          {
+            "similar": "Pearse",
+            "reason": "Percy is an ordinary English first name; Patrick Pearse's surname differs in sound and spelling, and nothing else in the name points at him"
+          },
+          {
+            "similar": "Peres",
+            "reason": "as Pearse: an ordinary first name against Shimon Peres's surname"
+          }
+        ]
+      },
+      "note": "renamed from 'Percy Gusset' by content-names 2026-11-23: notorious: changed for tone, not a person: in British English a gusset is the crotch panel of tights and knickers, an underwear joke a parent would mind (7.4 no innuendo). minister applicant (Anglers); a plummet is the angler's depth weight; first name Percy kept (Percy Weasley of Harry Potter is a fictional ministry official, first name only: noted, accepted as an ordinary name); id kept 'gusset' (runtime id) | real towns, companies, newspapers: clear | queries: \"Wendeline Hush\" OR \"Percy Gusset\" OR \"Marjorie Wren\" OR \"Osric Tamp\" OR \"Ottoline Strop\" ;; \"Plummet\" OR \"Mayfly\" OR \"Sett\" surname character fiction ;; \"Prudence Stitchley\" OR \"Ozias Kalends\" OR \"Percy Plummet\" OR \"Mervyn Farestage\""
     },
     {
       "name": "Marjorie Wren",
@@ -2047,14 +2177,15 @@
       "club": "kites",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Osric Tamp",
@@ -2065,17 +2196,18 @@
       "club": "hedges",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
-      "name": "Florence Nibley",
+      "name": "Florence Mayfly",
       "kind": "cast",
       "id": "nibley",
       "role": "Applicant",
@@ -2083,30 +2215,31 @@
       "club": "anglers",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "changed: Nibley ~ Dibley (one letter; same rhythm aloud): the village of the sitcom The Vicar of Dibley",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "renamed from 'Florence Nibley' by content-names 2026-11-23: fiction: Nibley ~ Dibley (one letter; same rhythm aloud): the village of the sitcom The Vicar of Dibley; real: Nibley and North Nibley are real villages in Gloucestershire (q2). minister applicant (Anglers); the mayfly is the angler's fly; id kept 'nibley' (runtime id) | real towns, companies, newspapers: the old name failed (above); the new name: clear | queries: Nibley village Gloucestershire ;; \"Plummet\" OR \"Mayfly\" OR \"Sett\" surname character fiction ;; \"Winifred Chervil\" OR \"Dorothy Sett\" OR \"Crispin Mizzle\" OR \"Lavinia Plash\" OR \"Ewan Reedmace\" OR \"Florence Mayfly\""
     },
     {
-      "name": "Prudence Plumb",
+      "name": "Prudence Stitchley",
       "kind": "cast",
-      "id": "plumb",
+      "id": "stitchley",
       "role": "Councillor",
       "group": "rival",
       "office": "mayor",
-      "note": "D14: to be renamed by the sensitivity editor",
+      "note": "renamed from 'Prudence Plumb' by content-names 2026-11-23: politicians: Plumb: Henry Plumb, Baron Plumb, President of the European Parliament 1987-89 (listing step, NAME-SEARCH.md q18; D14). rival, mayor; title Councillor; slogan 'Stitchley: She Owns A Hat' (a hat is stitched) | real towns, companies, newspapers: clear | queries: \"Stitchley\" OR \"Kalends\" surname person ;; \"Prudence Stitchley\" OR \"Ozias Kalends\" OR \"Percy Plummet\" OR \"Mervyn Farestage\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "changed: Plumb: Henry Plumb, Baron Plumb, President of the European Parliament 1987-89 (listing step, NAME-SEARCH.md q18; D14)",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -2117,51 +2250,56 @@
       "role": "door knockers",
       "group": "rival",
       "office": "mayor",
-      "note": "proposed in office-style.md 2",
+      "note": "proposed in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
-      "name": "Philippa Tansy",
+      "name": "Philippa Setter",
       "kind": "cast",
-      "id": "tansy",
+      "id": "setter",
       "role": "crosswords",
       "group": "rival",
       "office": "mayor",
-      "note": "proposed in office-style.md 2",
+      "note": "renamed from 'Philippa Tansy' by content-names 2026-11-23: real: 'Tansy' is a character of Lantern Row (games/night-market/game.json): another game's name may not be in this bundle. rival, mayor; setting crosswords (a crossword setter); Rick Setter, a Northern Territory assemblyman 1984-97, noted (q45) and accepted: a territorial backbencher, the surname an everyday word | real towns, companies, newspapers: the old name failed (above); the new name: clear | queries: \"Dunnock\" OR \"Tansy\" OR \"Mallowby\" politician councillor ;; \"Cyril Dunnock\" OR \"Philippa Tansy\" OR \"Hortensia Mallowby\" OR \"Araminta Dovecote\" OR \"Honoria Lathe\" OR \"Rufus Pantry\" OR \"Gertrude Ambling\" OR \"Bartholomew Knapp\" OR \"Quentin Furlong\" ;; \"Philippa Setter\" OR \"Ivo Pharos\" OR \"Setter\" surname politician",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
-      "name": "Barnaby Waft",
+      "name": "Leander Waft",
       "kind": "cast",
       "id": "waft",
-      "role": "Keeper of the Ceremonial Spoon",
+      "role": "Keeper, Ceremonial Spoon",
       "group": "rival",
       "office": "governor",
-      "note": "his role line is 30 characters, over the 28 of 2.7: the sensitivity or comedy editor shortens it (check.ts reports it)",
+      "note": "renamed from 'Barnaby Waft' by content-names 2026-11-23: politicians: Barnaby: a rare first name that, on a rival politician, points at Barnaby Joyce, Deputy Prime Minister of Australia. rival, governor; role shortened from 'Keeper of the Ceremonial Spoon' (30) to 24 characters, the honour itself keeps its name; id kept 'waft' (runtime id) | real towns, companies, newspapers: clear | queries: \"Leander Waft\" OR \"Aldous Mould\" OR \"Ivo Brindle\" OR \"Perpetua Strop\" OR \"Osmund Edging\" ;; listing step's queries 12 to 20 (games/high-office/store/NAME-SEARCH.md), reused",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
-        "cleared": []
+        "politicians": "changed: Barnaby: a rare first name that, on a rival politician, points at Barnaby Joyce, Deputy Prime Minister of Australia",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
+        "cleared": [
+          {
+            "similar": "Taft",
+            "reason": "Waft is an everyday word and the slogan's joke ('Gently Onwards'); it differs from Taft in its first sound and nothing else in the name points at the president"
+          }
+        ]
       }
     },
     {
@@ -2171,50 +2309,50 @@
       "role": "the accordion",
       "group": "rival",
       "office": "governor",
-      "note": "proposed in office-style.md 2",
+      "note": "proposed in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: \"Dunnock\" OR \"Tansy\" OR \"Mallowby\" politician councillor ;; \"Mallaby\" diplomat ambassador; \"Pleat\" OR \"Strop\" surname politician ;; \"Cyril Dunnock\" OR \"Philippa Tansy\" OR \"Hortensia Mallowby\" OR \"Araminta Dovecote\" OR \"Honoria Lathe\" OR \"Rufus Pantry\" OR \"Gertrude Ambling\" OR \"Bartholomew Knapp\" OR \"Quentin Furlong\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear: aloud close to Mallaby (Sir Christopher Mallaby, a British ambassador, a diplomat not a politician; q39): accepted",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
-      "name": "Fergus Applegarth",
+      "name": "Fergus Noonday",
       "kind": "cast",
-      "id": "applegarth",
+      "id": "noonday",
       "role": "sundials",
       "group": "rival",
       "office": "governor",
-      "note": "proposed in office-style.md 2",
+      "note": "renamed from 'Fergus Applegarth' by content-names 2026-11-23: fiction: Apple- ~ Appleby: Sir Humphrey Appleby of Yes Minister, the best-known fictional civil servant (q30 surfaced him); real: Applegarth is a real parish in Dumfriesshire. rival, governor; sundials (noon) | real towns, companies, newspapers: the old name failed (above); the new name: clear | queries: \"Noonday\" OR \"Tessel\" OR \"Borage\" OR \"Chervil\" surname politician OR character ;; \"Mopley\" OR \"Sprott\" OR \"Applegarth\" politician fictional character ;; \"Lettice Ringrose\" OR \"Henrietta Bole\" OR \"Imogen Tessel\" OR \"Fergus Noonday\" OR \"Rupert Borage\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "changed: Apple- ~ Appleby: Sir Humphrey Appleby of Yes Minister, the best-known fictional civil servant (q30 surfaced him)",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
-      "name": "Ignatius Crumb",
+      "name": "Ozias Kalends",
       "kind": "cast",
-      "id": "crumb",
+      "id": "kalends",
       "role": "Professor",
       "group": "rival",
       "office": "president",
-      "note": "D14: to be renamed by the sensitivity editor",
+      "note": "renamed from 'Ignatius Crumb' by content-names 2026-11-23: fiction: Crumb: Mrs Caroline Crumb, the political candidate of David Walliams's children's novel Mr Stink (listing step q19; D14); children: as fiction: a children's novel's candidate. rival, president; title Professor; slogan 'Kalends: Abolish Wednesdays' (the kalends: the first day of a Roman month; keeps the calendar joke). First name changed too: Ignatius is first of all Saint Ignatius of Loyola (religion is not a subject here) | real towns, companies, newspapers: clear | queries: \"Stitchley\" OR \"Kalends\" surname person ;; \"Prudence Stitchley\" OR \"Ozias Kalends\" OR \"Percy Plummet\" OR \"Mervyn Farestage\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "changed: Crumb: Mrs Caroline Crumb, the political candidate of David Walliams's children's novel Mr Stink (listing step q19; D14)",
+        "children": "changed: as fiction: a children's novel's candidate",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -2226,48 +2364,49 @@
       "group": "rival",
       "office": "president",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear: first name shared with Lady Ottoline Morrell (a society hostess, not a politician) and Chris Riddell's children's heroine Ottoline Brown; surname Strop unrelated: accepted",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
-      }
+      },
+      "note": "real towns, companies, newspapers: clear | queries: \"Wendeline Hush\" OR \"Percy Gusset\" OR \"Marjorie Wren\" OR \"Osric Tamp\" OR \"Ottoline Strop\" ;; \"Mallaby\" diplomat ambassador; \"Pleat\" OR \"Strop\" surname politician"
     },
     {
-      "name": "Wilhelmina Pennyroyal",
+      "name": "Lettice Ringrose",
       "kind": "cast",
-      "id": "pennyroyal",
+      "id": "ringrose",
       "role": "handbells",
       "group": "rival",
       "office": "president",
-      "note": "proposed in office-style.md 2",
+      "note": "renamed from 'Wilhelmina Pennyroyal' by content-names 2026-11-23: children: Pennyroyal Academy, a children's fantasy novel series (M. A. Larson, 2014; q16); notorious: pennyroyal is historically a herb taken to end pregnancies (q16): abortion is a forbidden subject; and Wilhelmina is a queen of the Netherlands (royals). rival, president; handbells (ring) | real towns, companies, newspapers: clear | queries: Pennyroyal Academy children's novel; pennyroyal herb history ;; \"Lettice Ringrose\" OR \"Henrietta Bole\" OR \"Imogen Tessel\" OR \"Fergus Noonday\" OR \"Rupert Borage\" ;; Ringrose politician OR \"Ringrose\" MP councillor",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "changed: pennyroyal is historically a herb taken to end pregnancies (q16): abortion is a forbidden subject; and Wilhelmina is a queen of the Netherlands (royals)",
+        "fiction": "clear",
+        "children": "changed: Pennyroyal Academy, a children's fantasy novel series (M. A. Larson, 2014; q16)",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
-      "name": "Thaddeus Mulch",
+      "name": "Aldous Mould",
       "kind": "cast",
-      "id": "mulch",
+      "id": "mould",
       "role": "his compost heap",
       "group": "rival",
       "office": "president",
-      "note": "proposed in office-style.md 2",
+      "note": "renamed from 'Thaddeus Mulch' by content-names 2026-11-23: children: Mulch: Mulch Diggums, the dwarf thief of Artemis Fowl (q17); politicians: Thaddeus: a rare first name that points at Thaddeus Stevens (US congressman). rival, president; his compost heap (leaf mould) | real towns, companies, newspapers: clear | queries: Mulch Diggums Artemis Fowl character ;; \"Leander Waft\" OR \"Aldous Mould\" OR \"Ivo Brindle\" OR \"Perpetua Strop\" OR \"Osmund Edging\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "changed: Thaddeus: a rare first name that points at Thaddeus Stevens (US congressman)",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "changed: Mulch: Mulch Diggums, the dwarf thief of Artemis Fowl (q17)",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -2278,32 +2417,32 @@
       "role": "pigeons",
       "group": "rival",
       "office": "president",
-      "note": "proposed in office-style.md 2",
+      "note": "proposed in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
-      "name": "Septimus Brindle",
+      "name": "Ivo Pharos",
       "kind": "cast",
-      "id": "brindle",
+      "id": "pharos",
       "role": "model lighthouses",
       "group": "rival",
       "office": "president",
-      "note": "proposed in office-style.md 2",
+      "note": "renamed from 'Septimus Brindle' by content-names 2026-11-23: children: Septimus: Septimus Heap, hero of a children's fantasy series; real: Brindle is a real village in Lancashire (q32), and 'Old Brindle' is a character of Lantern Row (games/night-market): another game's name may not be in this bundle. rival, president; model lighthouses (the Pharos of Alexandria) | real towns, companies, newspapers: the old name failed (above); the new name: clear | queries: \"Knapp\" OR \"Brindle\" OR \"Furlong\" OR \"Lathe\" OR \"Ambling\" OR \"Dovecote\" politician MP senator ;; \"Leander Waft\" OR \"Aldous Mould\" OR \"Ivo Brindle\" OR \"Perpetua Strop\" OR \"Osmund Edging\" ;; \"Philippa Setter\" OR \"Ivo Pharos\" OR \"Setter\" surname politician",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "changed: Septimus: Septimus Heap, hero of a children's fantasy series",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -2314,14 +2453,14 @@
       "role": "tapestry",
       "group": "rival",
       "office": "president",
-      "note": "proposed in office-style.md 2",
+      "note": "proposed in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -2332,32 +2471,32 @@
       "role": "the harmonica",
       "group": "rival",
       "office": "president",
-      "note": "proposed in office-style.md 2",
+      "note": "proposed in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: Furlong politician Ireland OR Australia OR Canada minister ;; \"Cyril Dunnock\" OR \"Philippa Tansy\" OR \"Hortensia Mallowby\" OR \"Araminta Dovecote\" OR \"Honoria Lathe\" OR \"Rufus Pantry\" OR \"Gertrude Ambling\" OR \"Bartholomew Knapp\" OR \"Quentin Furlong\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear: Dennis Furlong was a New Brunswick health minister (q37), a provincial cabinet member unknown outside the province; the surname is an everyday word: accepted",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
     {
-      "name": "Clementine Mopley",
+      "name": "Imogen Tessel",
       "kind": "cast",
-      "id": "mopley",
-      "role": "very large jigsaws",
+      "id": "tessel",
+      "role": "jigsaws of plain sky",
       "group": "rival",
       "office": "president",
-      "note": "proposed in office-style.md 2",
+      "note": "renamed from 'Clementine Mopley' by content-names 2026-11-23: politicians: Mopley ~ Mosley (one letter): Oswald Mosley, leader of the British fascists, the most notorious name on the people list. rival, president; hobby reworded from 'very large jigsaws' (a size word); tessel: a small tile | real towns, companies, newspapers: clear | queries: \"Noonday\" OR \"Tessel\" OR \"Borage\" OR \"Chervil\" surname politician OR character ;; \"Mopley\" OR \"Sprott\" OR \"Applegarth\" politician fictional character ;; \"Lettice Ringrose\" OR \"Henrietta Bole\" OR \"Imogen Tessel\" OR \"Fergus Noonday\" OR \"Rupert Borage\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "changed: Mopley ~ Mosley (one letter): Oswald Mosley, leader of the British fascists, the most notorious name on the people list",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -2368,14 +2507,14 @@
       "role": "barometers",
       "group": "rival",
       "office": "president",
-      "note": "proposed in office-style.md 2",
+      "note": "proposed in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -2386,14 +2525,14 @@
       "role": "her walking boots",
       "group": "rival",
       "office": "president",
-      "note": "proposed in office-style.md 2",
+      "note": "proposed in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },
@@ -2404,14 +2543,42 @@
       "role": "yodelling",
       "group": "rival",
       "office": "president",
-      "note": "proposed in office-style.md 2",
+      "note": "proposed in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: Knapp politician congressman OR MP famous ;; \"Cyril Dunnock\" OR \"Philippa Tansy\" OR \"Hortensia Mallowby\" OR \"Araminta Dovecote\" OR \"Honoria Lathe\" OR \"Rufus Pantry\" OR \"Gertrude Ambling\" OR \"Bartholomew Knapp\" OR \"Quentin Furlong\"",
       "check": {
-        "politicians": null,
-        "notorious": null,
-        "fiction": null,
-        "children": null,
-        "date": null,
-        "checker": null,
+        "politicians": "clear: 19th-century US congressmen and a Wyoming state representative bore the surname (q38); none is known today: accepted. Bartholomew Cubbins of Dr Seuss's hat book shares the first name only",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
+        "cleared": []
+      }
+    },
+    {
+      "name": "Skip the Ad Videos",
+      "kind": "other",
+      "note": "a product's display name (D11) | real towns, companies, newspapers: clear | queries: none sent: an everyday phrase, checked from memory",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
+        "cleared": []
+      }
+    },
+    {
+      "name": "Junior Clerk on Duty",
+      "kind": "other",
+      "note": "a product's display name (D11) | real towns, companies, newspapers: clear | queries: none sent: an everyday phrase, checked from memory",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-23",
+        "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     }

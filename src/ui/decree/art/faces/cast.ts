@@ -51,7 +51,7 @@ const ROWS: [string, CastGroup, string][] = [
   ['bramble',     'player',       't2 egg    dot     arched    button   smile  none     none    none     bun      chestnut -        -        cardigan   sage       plum       rosette     violet'],
   ['fennel',      'player',       't5 long   lidded  level     straight smirk  brush    none    none     crop     black    -        -        suit       navy       ochre      rosette     violet'],
   ['quill',       'player',       't6 heart  dot     quizzical snub     smile  none     round   earrings cloud    black    -        -        bow        slate      terracotta rosette     violet'],
-  ['marchpane',   'player',       't1 square crinkle bushy     bulb     grin   none     none    freckles wisps    sandy    -        -        waistcoat  walnut     teal       rosette     violet'],
+  ['marchpane',   'player',       't1 square crinkle bushy     bulb     smile  none     round   freckles fringe   sandy    -        -        coat       walnut     teal       rosette     violet'],
   ['tuttle',      'player',       't4 soft   dot     level     pointed  flat   none     cat     none     waves    auburn   -        -        pearls     plum       dove       rosette     violet'],
   ['larkspur',    'player',       't3 pear   wide    worried   snub     o      curl     none    none     quiff    brown    -        -        scarf      teal       ochre      rosette     violet'],
   // Advisors
@@ -95,7 +95,7 @@ const ROWS: [string, CastGroup, string][] = [
   ['nibley',      'minister',     't3 pear   wide    worried   snub     o      none     half    none     waves    fair     beret    plum     coat       plum       slate      boat        slateBlue'],
   // Rivals: an individual with a hobby (the prop), never a party or a colour
   ['plumb',       'rival',        't4 egg    dot     arched    button   smile  none     none    earrings bob      auburn   flowers  plum     coat       dove       plum       none        plum'],
-  ['dunnock',     'rival',        't2 long   lidded  bushy     long     flat   curl     none    none     fringe   white    -        -        waistcoat  walnut     ochre      knocker     ochre'],
+  ['dunnock',     'rival',        't2 long   lidded  bushy     long     flat   none     half    none     swept    white    -        -        waistcoat  walnut     ochre      knocker     ochre'],
   ['tansy',       'rival',        't6 heart  dot     quizzical pointed  smirk  none     cat     none     pixie    grey     -        -        turtleneck slate      dove       crossword   slate'],
   ['waft',        'rival',        't3 soft   crinkle level     bulb     smile  beard    none    none     wisps    white    -        -        suit       navy       terracotta spoon       terracotta'],
   ['mallowby',    'rival',        't1 square wide    arched    snub     grin   none     none    freckles long     sandy    bobble   teal     jumper     teal       cream      accordion   terracotta'],
@@ -109,7 +109,7 @@ const ROWS: [string, CastGroup, string][] = [
   ['lathe',       'rival',        't4 soft   lidded  arched    snub     smile  none     half    earrings waves    black    -        -        cardigan   plum       sage       hoop        terracotta'],
   ['furlong',     'rival',        't6 long   wide    level     straight grin   none     none    none     quiff    black    -        -        jumper     slate      ochre      harmonica   dove'],
   ['mopley',      'rival',        't2 egg    wide    worried   snub     o      none     square  none     long     chestnut -        -        jumper     ochre      cream      jigsaw      teal'],
-  ['pantry',      'rival',        't1 pear   dot     stern     bulb     flat   brush    round   none     fringe   grey     bowler   charcoal suit       walnut     slate      barometer   walnut'],
+  ['pantry',      'rival',        't1 pear   dot     stern     bulb     flat   sideburns round   none     fringe   grey     bowler   charcoal suit       walnut     slate      barometer   walnut'],
   ['ambling',     'rival',        't5 heart  dot     level     pointed  smile  none     none    freckles ponytail auburn   bucket   moss     coat       moss       ochre      boots       walnut'],
   ['knapp',       'rival',        't3 square crinkle arched    bulb     o      sideburns none   cheeks   part     brown    -        -        scarf      walnut     teal       songsheet   cream'],
 ];
