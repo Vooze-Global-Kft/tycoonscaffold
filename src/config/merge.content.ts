@@ -102,10 +102,9 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     roundBelow: 1000,
     sigDigits: 3,
   },
-  // Decision M3: T = 4 s for every gear, a rule. Decision M43: the loose cap is 8 (tune 6 to 12). Decision M50 (no
-  // loose cap, the board fills to its last `gear.spare` cells) is switched on in MERGE_TUNED below until the rules
-  // make it the default (the rules' tests are built on this starting content).
-  gear: { interval: 4, step: 10, ripePerLevel: 0.05, ripeMax: 0.6, maxBase: 4, shelf: 6, looseCap: 8, release: 0.5 },
+  // Decision M3: T = 4 s for every gear, a rule. Decision M50: no loose cap; gears fill the board to its last
+  // `spare` cells (2, tuned 1 to 4).
+  gear: { interval: 4, step: 10, ripePerLevel: 0.05, ripeMax: 0.6, maxBase: 4, shelf: 6, spare: 2, release: 0.5 },
   stalls: { bonusPerLevel: 0.1, bonusMax: 3.9, awningLevels: [5, 10] },
   minders: { interval: 15, tillRoll: 60 },
   merges: { luckyOdds: 25 },
@@ -239,8 +238,6 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
  * gives it (the rules' tests and fixtures are built on it).
  */
 export const MERGE_TUNED: Record<string, unknown> = {
-  // Decision M50: gears fill the board to its last `spare` cells whatever the chain (no loose cap); 2, tuned 1 to 4.
-  'gear.spare': 2,
   // Decision M23, gate 2 (Tea 0:45-1:30, Steamer 5-9, Sweets 18-30, Noodles 60-90 min at 2.0 s): from
   // 120 / 3,200 / 51.2K / 819K / 13.1M. Noodles near the top of its window so season 1's Festival (tier 7s of
   // Noodles) does not land before 110 min (M31); Puffs at its range floor so season 2's Festival takes 0.8 to 1.1

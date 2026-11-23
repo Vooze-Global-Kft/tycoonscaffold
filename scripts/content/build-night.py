@@ -30,7 +30,7 @@ names and starting values are src/config/merge.content.ts (MERGE_STARTING_CONTEN
 `npx tsx`); the tuned numbers are TUNED below (RANGES paths of src/config/schema.merge.ts); the
 listing is scripts/content/night-store.json (every field not starting with "_"; its "products"
 go to monetization.iap.products). Fields it does not own (app ids, ad units, assets, strings,
-characters) are kept from the existing game.json.
+characters) are kept from the existing game.json, except each minder's portrait, which follows the content's beast (M38).
 
 The bot is scripts/content/merge-bot.ts (src/engine/merge/bot.ts): every bot of 8.2 with M6 playing
 the real rules. Coins enter only through the named sources on every trace (2.3; asserted here on
@@ -77,10 +77,9 @@ KNOB_ORDER = [
     ('opening: shutter and gear costs', ('1 ', 'M3'), ['board.shutterBase', 'board.shutterGrowth', 'costs.gearBase', 'costs.gearGrowth']),
     ('stall windows: the stall table (M23)', ('2 ',), ['costs.stallOpen[0]', 'costs.stallOpen[1]', 'costs.stallOpen[2]', 'costs.stallOpen[3]', 'costs.stallOpen[4]']),
     ('minder share: Q, then the minder growth', ('8 minder', '9 '), ['minders.interval', 'costs.minderGrowth', 'costs.minderBase']),
-    ('board full: lambda', ('5 ',), ['gear.looseCap']),
+    ('board full: the spare cells (M50)', ('5 ',), ['gear.spare']),
     ('fill time: gamma, then W', ('3 ',), ['tickets.gamma', 'tickets.outputWindow']),
     ('gift boxes (M24)', ('8 gift', '8 tickets'), ['gift.every', 'gift.coinPace']),
-    ('board fill (M43): the loose cap', ('5 goods',), ['gear.looseCap']),
     ('stall levels and value per action (M27)', ('7 ', '15 ', '6 '), ['costs.stallLevelBase', 'costs.stallLevelGrowth', 'tickets.stretch']),
     ('seasons: the familiar-faces base and the step limit (M37: no purse; M40)', ('10 ',), ['seasons.familiarBase', 'seasons.maxSteps', 'costs.stallOpen[4]']),
     ('rerolling: the Not tonight cooldown', ('report: Not tonight',), ['tickets.notTonightCooldown']),
@@ -341,7 +340,7 @@ def tune(act, procs, budget, extra):
                 for direction in (1, -1):
                     v = cur + direction * step[p] * (hi - lo)
                     v = min(hi, max(lo, v))
-                    if isinstance(get_at(base, p), int) and float(get_at(base, p)).is_integer() and p in ('gear.looseCap', 'gift.every', 'tickets.spareCells', 'seasons.maxSteps'):
+                    if isinstance(get_at(base, p), int) and float(get_at(base, p)).is_integer() and p in ('gear.spare', 'gift.every', 'tickets.spareCells', 'seasons.maxSteps'):
                         v = int(round(v))
                     if abs(v - cur) < 1e-12:
                         continue
@@ -382,6 +381,11 @@ def write_game(block):
     g['soundPack'] = None
     if block is not None:
         g['merge'] = block
+        # M38 (lead's order 7): a minder's portrait follows the content's beast, whatever the old file said.
+        beasts = {re.sub(r'[^a-z0-9]', '', ch['minder']['name'].lower()): ch['minder']['beast'] for ch in block.get('chains', []) if ch.get('minder')}
+        for c in g.get('characters', []):
+            if c.get('id') in beasts:
+                c['portrait'] = 'beast:' + beasts[c['id']]
     else:
         print('  copying only the listing (the merge block keeps its numbers)')
     listing = json.load(open(STORE))

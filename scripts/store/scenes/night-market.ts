@@ -85,7 +85,7 @@ const scenes: GameScenes = {
         { move: ticket(v, 0), steps: 14 },
         { wait: 400 },
         { up: true },
-        { wait: 3600 },
+        { wait: 4700 },
       ],
       shotFrames: 1,
       frame: boardBand,
@@ -114,6 +114,8 @@ const scenes: GameScenes = {
       slug: 'lantern-gate',
       query: 'preset=mid&spoke=lanterns',
       settle: 12000,
+      // Down to the first lit feat: zoomed in a little so the picture ends under a whole card.
+      frame: () => ({ y0: 0, y1: { text: /^lit$/i, edge: 'bottom', pad: 84 }, anchor: 'top', maxZoom: 1.2 }),
       caption: 'Twenty lanterns, each lit by a feat',
       shows: 'The Lantern Gate at the mid preset: the arch with its twenty hooks, the lanterns lit so far, and the feats that light the next ones with their progress.',
     },

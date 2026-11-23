@@ -259,11 +259,11 @@ export function featureHtml(o: FeatureOpts): string {
   const { W, H } = o;
   const words = o.title.toUpperCase().split(/\s+/);
   const lines = words.length > 1 ? [words[0], words.slice(1).join(' ')] : words;
-  const size = Math.min(H * 0.2, (W * 0.4) / Math.max(...lines.map(lineUnits)));
+  const size = Math.min(H * 0.2, (W * 0.34) / Math.max(...lines.map(lineUnits)));
   const textTop = H * 0.34;
   const lx = W * 0.06;
   const text = lines.map((l, i) => letters(l, lx, textTop + i * size * 1.45, size, { color: C.paperLight, edge: C.paperEdge, shadow: 'rgba(5,6,16,.7)', seed: 11 + i * 5 })).join('\n');
-  const picX = W * 0.44;
+  const picX = W * 0.45;
   const FADE = 'linear-gradient(90deg, transparent 0, #000 22%, #000 100%)';
   const yAt = sagAt(-W * 0.02, W * 1.02, H * 0.06, H * 0.08);
   const lans = [0.05, 0.17, 0.29, 0.41].map((f) => lantern(W * f, yAt(W * f), H * 0.1)).join('');

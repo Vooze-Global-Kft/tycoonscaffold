@@ -268,7 +268,7 @@ describe('measurements over a trace', () => {
     expect(Math.abs(o.spark / o.n - cfg.merge.gift.odds.spark)).toBeLessThan(0.005);
   });
 
-  it('M50: the board is full at free cells <= gear.spare (0 while it is unset)', () => {
+  it('M50: the board is full at free cells <= gear.spare (the rules\' boardFull)', () => {
     const g = mergeState(cfg, { chains: [{ c: 0 }] });
     const filled = g.merge.board.map((c) => (c === null ? { c: 0, k: 1 } : c));
     const free = (n: number) => {
@@ -278,9 +278,9 @@ describe('measurements over a trace', () => {
     const c2 = { ...cfg, merge: { ...cfg.merge, gear: { ...cfg.merge.gear, spare: 2 } } } as R.MergeConfig;
     expect(B.boardFull(c2, { ...g.merge, board: free(2) })).toBe(true);
     expect(B.boardFull(c2, { ...g.merge, board: free(3) })).toBe(false);
-    const c0 = { ...cfg, merge: { ...cfg.merge, gear: { ...cfg.merge.gear, spare: undefined } } } as unknown as R.MergeConfig;
-    expect(B.boardFull(c0, { ...g.merge, board: free(1) })).toBe(false);
-    expect(B.boardFull(c0, { ...g.merge, board: free(0) })).toBe(true);
+    const c1 = { ...cfg, merge: { ...cfg.merge, gear: { ...cfg.merge.gear, spare: 1 } } } as R.MergeConfig;
+    expect(B.boardFull(c1, { ...g.merge, board: free(2) })).toBe(false);
+    expect(B.boardFull(c1, { ...g.merge, board: free(1) })).toBe(true);
   });
 
   it('a gate row carries its number and band for the tuner', () => {

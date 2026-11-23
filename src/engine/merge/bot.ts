@@ -287,9 +287,9 @@ export function boardView(m: Pick<R.MergeState, 'board'>): BoardView {
   return { cnt, cells };
 }
 
-/** M50: "the board is full" means free cells ≤ gear.spare (0 while the setting is unset: the loose-cap rules of M43). */
+/** M50: "the board is full" means free cells ≤ gear.spare: the rules' own reading. */
 export function boardFull(cfg: R.MergeConfig, m: R.MergeState): boolean {
-  return R.freeCells(m).length <= (cfg.merge.gear.spare ?? 0);
+  return R.boardFull(cfg, m);
 }
 
 export function anyMerge(v: BoardView): boolean {

@@ -1,8 +1,8 @@
 # Store screenshots
 
-One tool makes every store image of both games from their running web previews:
+One tool makes every store image of the three games from their running web previews:
 the App Store and Google Play phone screenshots, the Play feature graphic, and a
-side-by-side sheet of both games for signing off the "same template" check
+side-by-side sheet of the games for signing off the "same template" check
 (spam research, `docs/design/research/spam.md`, dimension 7).
 
 ## Run it
@@ -17,8 +17,10 @@ npx serve /tmp/web-pizza-empire -l 8300 -s   # any static server; -s: single-pag
 npx serve /tmp/web-space-miner  -l 8302 -s
 ```
 
-The scenes' default ports: Pizza Empire 8300, Orbit Haulers 8302 (`--port N` for
-another one).
+The scenes' default ports: Pizza Empire 8300, Orbit Haulers 8302, Lantern Row 8302
+(`--port N` for another one; the tool checks the page title, so the wrong game on a
+port stops the run). Lantern Row's images of 2026-11-23 were made from the shared
+development server of the build, `GAME=night-market npx expo start --web --port 8302`.
 
 (The preview switches the scenes use, `?preset=` and the rest, are read on any web
 build, not only in development: `src/dev/devtools.ts`, `src/ui/haul/dev.ts`. The
@@ -31,16 +33,17 @@ Then one command per game makes all of its images, into the repository:
 ```bash
 npx tsx scripts/store/shots.ts --game pizza-empire --write   # 18 shots + feature graphic + the sheet
 npx tsx scripts/store/shots.ts --game space-miner --write    # 18 shots + feature graphic + the sheet
+npx tsx scripts/store/shots.ts --game night-market --write   # 18 shots + feature graphic + the sheet
 npx tsx scripts/store/shots.ts --sheet --write               # only SIDE-BY-SIDE.png, from the images written
 ```
 
-(`--game all --write` does both. Careful: `--sheet` with `--game` still captures
+(`--game all --write` does all three. Careful: `--sheet` with `--game` still captures
 that game first; only `--sheet` alone makes just the sheet.)
 
 Without `--write` nothing in the repository changes: the images go to
 `scripts/store/.cache/out/<game>/` (git-ignored), so a trial run cannot replace the
 approved set. Options: `--out <dir>` (write to `<dir>/<game>/` instead),
-`--game pizza-empire|space-miner|all`, `--port N` (another preview port), `--only 1,3`
+`--game pizza-empire|space-miner|night-market|all`, `--port N` (another preview port), `--only 1,3`
 (scenes, 1-based), `--sizes ios-6.9,play-phone`, `--reuse` (compose again from the
 last captures, no preview needed: for template work), `--sheet` (only the
 side-by-side sheet; without `--game`). The log first says how many scenes and images the run makes.
@@ -94,7 +97,8 @@ games/<id>/store/screenshots/ios-6.9/NN-<slug>.png      1320 x 2868  App Store, 
 games/<id>/store/screenshots/ios-6.5/NN-<slug>.png      1284 x 2778  App Store, iPhone 6.5"
 games/<id>/store/screenshots/play-phone/NN-<slug>.png   1080 x 1920  Google Play phone, 9:16
 games/<id>/store/screenshots/play-feature-graphic.png   1024 x 500   Google Play feature graphic
-games/space-miner/store/screenshots/SIDE-BY-SIDE.png    both icons, both 6.9" sets, both feature graphics
+games/night-market/store/screenshots/SIDE-BY-SIDE.png   every game's icon, 6.9" set and feature graphic, one row each
+games/space-miner/store/screenshots/SIDE-BY-SIDE.png    the two-game sheet of 2026-11-22 (kept as signed off; no longer rewritten)
 scripts/store/.cache/<game>/<size>/NN-<slug>.png/.json  raw captures and the band each shows (git-ignored)
 scripts/store/.cache/out/                               trial runs (git-ignored)
 ```
@@ -142,13 +146,14 @@ of each file it writes.
   shots are zoomed in a little and its feature graphic more), Pizza Empire at 3x.
   Then it composes the store image: an HTML page from the game's template,
   rendered by the same browser at the exact pixel size.
-- `templates/warm.ts` (Pizza Empire) and `templates/panel.ts` (Orbit Haulers): the
-  two templates. `templates/fonts.ts`: the font files. `png.ts`: PNG decode and
+- `templates/warm.ts` (Pizza Empire), `templates/panel.ts` (Orbit Haulers) and
+  `templates/tag.ts` (Lantern Row): the three templates. `templates/fonts.ts`: the font files. `png.ts`: PNG decode and
   alpha removal (Node's zlib only).
 
-## The two templates (dimension 7)
+## The templates (dimension 7)
 
-They differ in composition, not only in colour, and so do the two sets:
+They differ in composition, not only in colour, and so do the sets (Lantern Row's
+"paper tag" is described after the table of the first two):
 
 | | Pizza Empire, "warm" | Orbit Haulers, "panel" |
 |---|---|---|
@@ -161,11 +166,25 @@ They differ in composition, not only in colour, and so do the two sets:
 | Rhythm across the set | the card leans left, right, left...; the sun and the wave's bumps swap sides | rigid: every image on the same grid, like a log, the channel number counting up |
 | Feature graphic | centred and symmetric: the name in Lilita One over a big saffron sun, a wide crop of the restaurant scene under it (no phone, no tilt), on gingham; no icon, no tagline | the asteroid field around the station, its edges fading into a deep-blue nebula (#0B1A3A, the game's black space lifted by a screen blend), a thin letter-spaced cyan wordmark in the lower third; no icon, no tagline |
 
-Nothing in either: no device frame, no store badge, no award, rank, price,
+### Lantern Row, "paper tag" (`templates/tag.ts`)
+
+| | Lantern Row, "paper tag" |
+|---|---|
+| Set | six shots, board first: a merge under the fox's waiting ticket, that ticket stamped and folded into a lantern, the paper dragon's gold ticket, the Ladder Book, the Lantern Gate, the Autumn Moon board |
+| Game picture | from the top edge of the image, the sides uncropped (no card, no frame, no tilt, no band above it); its foot fades softly into a strip of dusk sky (15.5 % of the iPhone images, 19 % of the Play one, where the screen is shown a little narrower than the image) |
+| Caption position | below the game, on a rice-paper tag about two thirds of the width, hanging off-centre from a wire of paper lanterns by a brass string, tilted 3 degrees; left of centre on odd shots, right on even ones; never over a good, a ticket or the purse |
+| Type | the game's own paper-cut letters (the art kit's glyph table, `src/ui/merge/art/letters.ts`, drawn as SVG strips with a cut rim and a shadow, each letter tilted a little): capitals in indigo ink on paper, centred on the tag, two to four short lines; no font file, no sub-line |
+| Colour | the game's palette lantern-night: indigo #1C2140 to dusk #3A3466, lantern amber #F2A541, rice paper #DCE3EA, brass #C9A45C; red only as the lanterns' tassels |
+| Ornament and counter | the lantern wire (four or five lanterns with soft glows); no counter, no rule, no band |
+| Rhythm across the set | the tag swings left, right, left... |
+| Feature graphic | asymmetric: "LANTERN ROW" in large paper-cut letters (paper strips on the night sky) on the left under a wire of lanterns; on the right the street at a Parade (stall fronts with minders, the counters, the dragon's gold ticket, the board's top rows) fading into the sky on its left edge; no icon, no tagline |
+
+Nothing in any of them: no device frame, no store badge, no award, rank, price,
 "free", "No.1", "best", no call to action, no app icon in the feature graphic
 (Play: "do not use prominent branding that is similar to your app icon"). Caption
 blocks stay under 20 % of the image height (Play's limit for taglines), measured
-from the top of the red wave or to the bottom of the readout panel.
+from the top of the red wave, to the bottom of the readout panel, or from the
+lantern wire.
 
 ## Scenes
 
@@ -206,6 +225,27 @@ band, and the Contract Board and far-rings scenes wait for it to close.
 The feature graphic prints only the name, no subtitle (the listing's subtitle,
 "Space mining by drone routes", is in `games/space-miner/game.json`). No sentence is
 shared between the two games' captions.
+
+### Lantern Row (paper tag, lantern-night)
+
+Captions in the lantern-calm voice (spec 7.3), at most 40 characters; the scene
+list and its reasons: `scenes/night-market.ts`. Touches are placed with the game's
+own geometry (`src/ui/merge/layout.ts` mergeLayout, `play/geometry.ts` cellCentre).
+No owl in shots 1 and 2: they are staged in a new game's first seconds, before the
+Tea stall (whose minder is an owl) opens.
+
+| # | Caption | Address and steps | Shows |
+|---|---|---|---|
+| 1 | Two of a kind make one finer snack | `preset=fresh`; a finger down on the third opening skewer, moved onto the second and held | The first seconds: the fox's paper ticket (a Twin Skewer line, the printed price 12), the gear rail, the six opening Pepper Skewers, one held mid-drag above its outlined twin, the matches glowing. |
+| 2 | A full ticket folds into a paper lantern | `preset=fresh&fxSlow=6` (beats six times slower); two skewers merged, the Twin Skewer dragged onto the fox's ticket, the picture 4.7 s later (one frame) | The fox's ticket folded into a paper lantern above its counter, 12 coins in the purse, the hedgehog's ticket (Glazed Skewer, 29) beside it. The beat's phase varies a little by run (FILLED stamp, the fold, or the lantern already rising): look at shot 2 of every size and retake with `--only 2 --sizes <size>`. |
+| 3 | A paper dragon brings a gold ticket | `preset=late` (the bot's first season, one Festival line left, a Parade out) | Four counters, one held by the paper dragon with its gold ticket of three lines; minders at the stall fronts; a full board. Also the feature graphic's picture. |
+| 4 | Each new snack stamps the Ladder Book | `preset=mid&spoke=book` | The Ladder Book: six ladders as tabs with their counts, the Grill ladder's stamped rungs with names and ticket values. |
+| 5 | Twenty lanterns, each lit by a feat | `preset=mid&spoke=lanterns`; band to the first lit feat, zoomed up to 1.2x | The Lantern Gate: the arch of twenty hooks (four lit), the next three feats with progress, the first lit one. |
+| 6 | Seasons change the shape of the board | `preset=late&festival=filled&ceremony=1`, then (a `goto` step, same tab, the saved game) `festival=filled&ceremony=1`, then the saved game with no switch; check: "Autumn Moon" on screen | The third season, Autumn Moon, reached by closing two seasons with the game's own close: the moon gate's stone cells in the board, new tickets at four counters. |
+
+The `goto` step (types.ts) opens another address of the same preview in the same tab,
+so a state reached across page loads (a season closed, saved, a second one closed on
+the next load) can be pictured. Nothing is drawn by hand.
 
 ## Sizes and where they come from
 
@@ -248,6 +288,8 @@ All under the SIL Open Font License 1.1, which allows use in images:
   `LilitaOne-LICENSE.txt` beside it). Pizza Empire's own display face.
 - Inter (SemiBold, Bold): `/usr/share/fonts/opentype/inter/` (Debian package
   `fonts-inter`). Pizza Empire's sub-lines and the side-by-side sheet.
+- Lantern Row uses no font file in its images: its captions and wordmark are the art
+  kit's paper-cut letters (`src/ui/merge/art/letters.ts`, read by `templates/tag.ts`).
 - JetBrains Mono (Regular, Medium, ExtraBold):
   `/usr/share/fonts/truetype/jetbrains-mono/` (Debian package
   `fonts-jetbrains-mono`). Orbit Haulers' captions.
