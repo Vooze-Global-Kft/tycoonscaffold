@@ -207,16 +207,19 @@ def nib(rng, dur, strokes=7.0, press=None, tooth=1800.0, squeak=1.0, lift=None):
     return norm(y) + 0.1 * scratch
 
 
-def wire_clink(rng, vel=1.0, rods=3, f0=(1150.0, 1650.0), spread=0.016, damp=1.0):
+def wire_clink(rng, vel=1.0, rods=3, f0=(1150.0, 1650.0), spread=0.016, damp=1.0, settle=0.0):
     """The wire out-tray: `rods` thin brass rods struck within `spread` seconds; each a free-free
-    bar (modes 1, 2.756, 5.404) damped by the paper resting on it (damp > 1 shortens them)."""
+    bar (modes 1, 2.756, 5.404) damped by the paper resting on it (damp > 1 shortens them).
+    settle > 0: the tray settles that many seconds later and half the rods touch again, softer."""
     n = ns(0.22)
     m = np.zeros(n)
     times = np.sort(rng.uniform(0.0, spread, rods))
     times[0] = 0.0
+    if settle:
+        times = np.concatenate([times, settle + np.sort(rng.uniform(0.0, spread * 0.6, max(rods // 2, 1)))])
     for j, tt in enumerate(times):
         f = rng.uniform(*f0)
-        a = (1.0, 0.7, 0.55, 0.45)[min(j, 3)]
+        a = rng.uniform(0.6, 1.0) * (0.55 if tt >= settle > 0 else 1.0)
         parts = [(f, 1.0, 0.055 / damp, 0.3, rng.uniform(0, TAU)),
                  (f * 2.756, 0.75, 0.03 / damp, 0.2, rng.uniform(0, TAU)),
                  (f * 5.404, 0.4, 0.014 / damp, 0.1, rng.uniform(0, TAU))]
@@ -587,7 +590,7 @@ def chalk(rng, dur=0.12, vel=1.0, grit=1.0):
     Hz, 1.5 kHz), the chalk chattering (skipping about 34 times a second: a dotted line)."""
     m = Mix()
     n0 = ns(0.04)
-    m.add(0.5 * modal([(2600.0, 1.0, 0.004, 0.05, 0.0), (3900.0, 0.6, 0.003, 0.05, 0.0), (700.0, 0.7, 0.008, 0.2, 0.0)], n0))
+    m.add(0.9 * modal([(2600.0, 0.6, 0.004, 0.05, 0.0), (3900.0, 0.4, 0.003, 0.05, 0.0), (560.0, 1.0, 0.02, 0.3, 0.0), (940.0, 0.7, 0.012, 0.3, 0.0)], n0))
     n = ns(dur)
     tt = np.arange(n) / SR
     sp = points([(0, 0.6), (dur * 0.25, 1.0), (dur * 0.8, 0.8), (dur, 0.0)], n)
@@ -704,19 +707,20 @@ for _k in (1, 2, 3):
     globals()['sign_ink_%d' % _k] = _sign_ink(_k)
 
 
-SIGN = ((6, (1050.0, 2300.0), 0.024, 1.0), (6, (1150.0, 2500.0), 0.02, 1.1), (7, (1000.0, 2200.0), 0.028, 0.9))
+SIGN = ((6, (900.0, 2000.0), 0.024, 1.0, 0.05), (6, (950.0, 2100.0), 0.02, 1.1, 0.044), (7, (850.0, 1900.0), 0.028, 0.9, 0.056))
 
 
 def _sign(k):
-    rods, f0, spread, bright = SIGN[k - 1]
+    rods, f0, spread, bright, settle = SIGN[k - 1]
 
     @office_recipe('sign_%d' % k, length=0.24, loud_db=FREQUENT)
     def fn(c):
-        """Signed: the paper laid in the wire out-tray. Card stock meeting the wires (a short slap)
-        and the wires' clink (a few thin brass rods, damped by the paper). Bright, short, light."""
+        """Signed: the paper laid in the wire out-tray. Card stock meeting the wires (a short slap),
+        the wires' clink (six or seven thin brass rods, damped by the paper) and the tray settling
+        45 to 55 ms later (half of them again, softer): 'chk-ching'. Bright, short, light."""
         m = Mix()
-        m.add(0.9 * card_slap(c.sub('slap'), 1.0, 0.7, bright))
-        m.add(wire_clink(c.sub('wire'), 1.0, rods, f0, spread, 1.0), 0.004)
+        m.add(1.0 * card_slap(c.sub('slap'), 1.0, 0.8, bright))
+        m.add(0.8 * wire_clink(c.sub('wire'), 1.0, rods, f0, spread, 1.9, settle), 0.004)
         c.accent(0.0)
         return m.out()
     fn.__name__ = 'sign_%d' % k
@@ -803,21 +807,24 @@ for _k in (1, 2):
     globals()['paper_arrive_%d' % _k] = _paper_arrive(_k)
 
 
-@office_recipe('slip_arrive', length=0.2, loud_db=FREQUENT)
+@office_recipe('slip_arrive', length=0.24, loud_db=FREQUENT)
 def slip_arrive(c):
-    """The Treasury Clerk's budget slip pushed across the baize: the slip's edge catching on the
-    cloth's fibres (a quick run of soft catches, 90 ms, ringing the slip's card at 1.1 kHz: no
-    whoosh, no sweep) and the Clerk's fingertip stopping it (a card tap, the loudest part);
-    nothing rings."""
+    """The Treasury Clerk's budget slip nudged across the baize in two short pushes (the slip's
+    edge catching on the cloth's fibres: two quick runs of soft catches ringing the card at 1.1
+    kHz, 35 ms each, 60 ms apart), then laid flat on the cloth (the air under it pressed out: a
+    low, soft 'thup'). No whoosh, no sweep; nothing rings."""
     m = Mix()
-    d = 0.09
-    n = ns(d)
-    times = rate_times(c.sub('f'), lambda x: 380.0, d, 0.5)
-    imp = impulses(n, times, [c.rng.uniform(0.3, 1.0) * (1 if c.rng.uniform() < 0.5 else -1) for _ in times], 4)
-    catch = reso(imp, ((1100.0, 4.0, 1.0), (2300.0, 3.0, 0.5), (650.0, 2.5, 0.4)))
-    m.add(0.45 * norm(catch) * points([(0, 1.0), (d, 0.3)], n))
-    m.add(card_slap(c.sub('tap'), 1.0, 0.6, 0.8), d)
-    c.accent(0.0, d)
+    for j, t0 in enumerate((0.0, 0.06)):
+        d = 0.035
+        n = ns(d)
+        times = rate_times(c.sub('f%d' % j), lambda x: 420.0, d, 0.5)
+        imp = impulses(n, times, [c.rng.uniform(0.3, 1.0) * (1 if c.rng.uniform() < 0.5 else -1) for _ in times], 4)
+        catch = filt(reso(imp, ((1100.0, 4.0, 1.0), (2100.0, 3.0, 0.5), (650.0, 2.5, 0.5))), butter('lp', 4000.0, 4))
+        m.add((0.8 if j else 0.6) * soft(catch, 2.5) * points([(0, 1.0), (d, 0.3)], n), t0)
+    nt = ns(0.06)
+    thup = reso(colored(nt, c.sub('thup'), -2.0) * perc(nt, 2.0, 0.012), ((520.0, 1.6, 1.0), (1100.0, 1.4, 0.5)))
+    m.add(1.0 * norm(thup), 0.12)
+    c.accent(0.0, 0.12)
     return m.out()
 
 

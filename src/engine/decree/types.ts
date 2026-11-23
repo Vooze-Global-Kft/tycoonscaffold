@@ -237,7 +237,7 @@ export interface WallPhoto {
 
 /** The game counters the rules and the bots read (2.3 `stats`; not the shared stats). */
 export interface DecreeStats {
-  /** Decisions ever (days and campaign papers and slips? no: decided papers of every kind but slips), what follow-ups count. */
+  /** Decisions ever: decided DAY papers of every office and term (2.17 step 2), what follow-ups and returns count. */
   decisions: number;
   daysEver: number;
   signed: number;
