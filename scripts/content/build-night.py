@@ -220,12 +220,16 @@ def across(results):
     return rows
 
 
-def pass_counts(results):
+# Rows the tuner's short run (4 h, no passive bot) cannot reach: left out of its loss (the check runs them).
+QUICK_SKIP = ('10 season 2', '10 seasons 3-10', '10/11', '11 ')
+
+
+def pass_counts(results, skip=()):
     """Per aim row: how many seeds meet it, and the mean relative distance of those that miss."""
     out = {}
     for r in results:
         for row in r.get('rows', []):
-            if row['kind'] != 'aim':
+            if row['kind'] != 'aim' or row['name'].startswith(tuple(skip)):
                 continue
             c = out.setdefault(row['name'], {'pass': 0, 'n': 0, 'dist': 0.0})
             c['n'] += 1
@@ -242,7 +246,7 @@ def pass_counts(results):
     return out
 
 
-def loss(results):
+def loss(results, skip=QUICK_SKIP):
     """M30 (3): for every aim, the seeds still missing to reach 13 of 15 (scaled to the seed count),
     plus a small pull from how far the missing seeds are; every hard miss weighs 10."""
     if any('rows' not in r for r in results):
@@ -250,7 +254,7 @@ def loss(results):
     n = len(results)
     need = PASS_NEEDED * n / len(TUNE_SEEDS)
     tot = 0.0
-    for name, c in pass_counts(results).items():
+    for name, c in pass_counts(results, skip).items():
         tot += max(0.0, need - c['pass']) + 0.1 * c['dist'] / max(1, n)
     for r in results:
         tot += 10.0 * sum(1 for row in r['rows'] if row['kind'] == 'hard' and not row['ok'])
