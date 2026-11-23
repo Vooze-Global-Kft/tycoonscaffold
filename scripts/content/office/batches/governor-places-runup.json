@@ -12,19 +12,19 @@
       "note": "suggested for the Bus-strong county (county_a): where the province waits for the bus, and waits well"
     },
     {
-      "id": "county-pane-end",
+      "id": "county-gleamford",
       "office": "governor",
       "kind": "county",
-      "name": "Pane End",
-      "short": "PE",
-      "note": "suggested for the Shops-strong county (county_b): a county of shop windows"
+      "name": "Gleamford",
+      "short": "GF",
+      "note": "suggested for the Shops-strong county (county_b): its shop windows gleam"
     },
     {
-      "id": "county-cloche-vale",
+      "id": "county-cloche-end",
       "office": "governor",
       "kind": "county",
-      "name": "Cloche Vale",
-      "short": "CV",
+      "name": "Cloche End",
+      "short": "CE",
       "note": "suggested for the Vegetables-strong county (county_c); a cloche is a glass cover for seedlings"
     },
     {
@@ -52,12 +52,12 @@
       "note": "suggested for the Bus-and-Brass county (county_f): buses and bands both clatter"
     },
     {
-      "id": "county-lower-wobbling",
+      "id": "county-hampering",
       "office": "governor",
       "kind": "county",
-      "name": "Lower Wobbling",
-      "short": "LW",
-      "note": "suggested for the Shops-and-Vegetables county (county_g): a county of Upper Wobbling, which nobody explains; the longest county name (14)"
+      "name": "Hampering",
+      "short": "HP",
+      "note": "suggested for the Shops-and-Vegetables county (county_g): a hamper is a basket; hampering is what committees do (a sister to Dithering)"
     },
     {
       "id": "landmark-wobbling-stone",
@@ -67,11 +67,11 @@
       "note": "written 'the Wobbling Stone': the rocking stone the province is named after; serves no club"
     },
     {
-      "id": "landmark-empty-plinth",
+      "id": "landmark-ribbon-steps",
       "office": "governor",
       "kind": "landmark",
-      "name": "Empty Plinth",
-      "note": "written 'the Empty Plinth': a plinth outside the provincial hall, kept free for something (vanity papers; never filled in a paper, the statue ration is 1 per deck)"
+      "name": "Ribbon Steps",
+      "note": "written 'the Ribbon Steps': the steps of the provincial hall, where every ribbon of the province is cut and every apology made; serves no club (an earlier 'Empty Plinth' was cut: with a numbered bandstand it recalled a real square's famous plinth)"
     },
     {
       "id": "landmark-fourth-bandstand",
@@ -128,7 +128,7 @@
       "id": "gov-runup-fete-ribbon",
       "office": "governor",
       "visitor": "spinwell",
-      "text": "Open the {district} fête. The ribbon was cut early, to save time.",
+      "text": "Open the {district} fête. The ribbon is pre-cut, to save time.",
       "subject": "ribbons",
       "butt": "staff",
       "shape": "undercut"
@@ -137,7 +137,7 @@
       "id": "gov-runup-pointing",
       "office": "governor",
       "visitor": "spinwell",
-      "text": "Point at something in {district}. Rodney will decide what, later.",
+      "text": "Point at something in {district}. Rodney will say what, later.",
       "subject": "vanity",
       "butt": "self",
       "shape": "photo-op"
@@ -173,7 +173,7 @@
       "id": "gov-runup-cake-icing",
       "office": "governor",
       "visitor": "spinwell",
-      "text": "Cut the {district} fête cake. The icing says THE GOVERNOR CUT THIS.",
+      "text": "Cut the {district} cake. The icing reads THE GOVERNOR CUT THIS.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "slogan"
@@ -209,7 +209,7 @@
       "id": "gov-runup-benches",
       "office": "governor",
       "visitor": "spinwell",
-      "text": "Tour {district}: 14 benches, and not one with your name on it yet.",
+      "text": "Tour {district}: 14 benches, and not one has your name. Yet.",
       "subject": "vanity",
       "butt": "self",
       "shape": "statistic"
@@ -218,7 +218,7 @@
       "id": "gov-runup-tree",
       "office": "governor",
       "visitor": "abacus",
-      "text": "Plant a tree in {district}. The spade is gilded. The tree is extra.",
+      "text": "Plant a {district} tree. The spade is gilded. The tree is extra.",
       "subject": "gardens",
       "butt": "self",
       "shape": "undercut"
@@ -227,7 +227,7 @@
       "id": "gov-runup-band-contest",
       "office": "governor",
       "visitor": "bellows",
-      "text": "Applaud every band at the {district} contest. And every tuning-up.",
+      "text": "Applaud each band at the {district} contest. And each tuning-up.",
       "subject": "bandstands",
       "butt": "self",
       "shape": "escalation"
@@ -245,7 +245,7 @@
       "id": "gov-runup-pumpkin-pose",
       "office": "governor",
       "visitor": "loam",
-      "text": "Pose with the {district} prize pumpkin. It prefers the left.",
+      "text": "Pose with the {district} prize pumpkin. Mind its good side.",
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "photo-op"
@@ -274,7 +274,7 @@
       "id": "gov-rally-chairs",
       "office": "governor",
       "visitor": "spinwell",
-      "text": "A rally at the bandstand. Rodney has set out 40 chairs, and one for your hat.",
+      "text": "A rally at the bandstand: 40 chairs, and one more for your hat.",
       "subject": "bandstands",
       "butt": "self",
       "shape": "statistic"
@@ -283,7 +283,7 @@
       "id": "gov-rally-hay-bale",
       "office": "governor",
       "visitor": "dimity",
-      "text": "A rally at the show. Stand on the hay bale marked GOVERNOR. Wave the scissors.",
+      "text": "Rally at the show, on a hay bale marked GOVERNOR. Wave the scissors.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "slogan"
@@ -292,16 +292,16 @@
       "id": "gov-rally-forms",
       "office": "governor",
       "visitor": "wimble",
-      "text": "A rally on the green. Cuthbert has the scissors, the ribbon and a form for each.",
+      "text": "A rally on the green. Cuthbert brings the scissors, and a form for them.",
       "subject": "ribbons",
       "butt": "office",
       "shape": "form-misapplied"
     },
     {
-      "id": "gov-rally-plinth",
+      "id": "gov-rally-steps",
       "office": "governor",
       "visitor": "spinwell",
-      "text": "Hold a rally by the empty plinth. Stand near it. Not on it. Not yet.",
+      "text": "A rally on the hall steps. Rodney has had the top step raised, slightly.",
       "subject": "vanity",
       "butt": "self",
       "shape": "undercut"

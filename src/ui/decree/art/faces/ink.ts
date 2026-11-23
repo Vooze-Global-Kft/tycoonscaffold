@@ -27,6 +27,16 @@ export const P = {
   chalkLine: DESK.chalkLine,
   /** The warm-brown drawing ink of every person (never black): the kit's line, a touch warmer. */
   ink: '#46301F',
+  /**
+   * The ink of the face's features (eyes, brows, nose, mouth, glasses): the same warm brown, pressed
+   * harder, on EVERY tone. With the pale under-stroke (`halo`) every feature reaches 3:1 against
+   * every skin tone (faces.test.ts measures it): dark on the light tones, rimmed in pale on the deep
+   * ones. One colour and one rim for everyone; nothing is chosen by tone.
+   */
+  feature: '#26170D',
+  /** The pale under-stroke of every feature line (a 1-unit rim, drawn first, on every tone). */
+  halo: '#F8F3EA',
+  haloAlpha: 0.72,
   /** The photograph's ground inside the oval: the paper, a shade cooler. */
   photo: '#DCE2DF',
   photoShade: '#C9D1CF',

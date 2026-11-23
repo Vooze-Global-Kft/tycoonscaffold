@@ -13,7 +13,7 @@
         "club": "anglers",
         "other": "brass",
         "archetype": "committee",
-        "text": "A study of the jetty since the band came. The fish now keep time.",
+        "text": "The fish have kept time since practice moved here. Study them?",
         "subject": "bandstands",
         "butt": "committee",
         "shape": "undercut",
@@ -72,7 +72,7 @@
         "club": "anglers",
         "other": "brass",
         "archetype": "treat",
-        "text": "Sit by the canal with the Circle, saying nothing. Rodney is worried.",
+        "text": "Then sit by the canal with us and say nothing. Rodney is worried.",
         "subject": "ceremonies",
         "butt": "self",
         "shape": "undercut",
@@ -95,10 +95,10 @@
         "club": "anglers",
         "other": "veg",
         "archetype": "project",
-        "text": "The floating bench has drifted to where growers water. Anchor it?",
+        "text": "The bench has floated 2 locks, to where growers water. Anchor it?",
         "subject": "inventions",
         "butt": "thing",
-        "shape": "undercut",
+        "shape": "statistic",
         "delay": [
           10,
           14
@@ -114,17 +114,17 @@
         "club": "anglers",
         "other": "brass",
         "archetype": "committee",
-        "text": "Since the bench was refused, the fish sit 4 metres further out. Study it?",
+        "text": "Then survey where the fish prefer to sit. Band practice to pause.",
         "subject": "inventions",
         "butt": "committee",
-        "shape": "statistic",
+        "shape": "form-misapplied",
         "delay": [
           12,
           16
         ],
         "clippings": {
-          "sign": "GOVERNOR FUNDS STUDY; FISH MOVE AGAIN",
-          "refuse": "FISH LOCATION LEFT A MATTER FOR THE FISH"
+          "sign": "GOVERNOR FUNDS FISH SEATING SURVEY; FISH UNAVAILABLE",
+          "refuse": "FISH LEFT TO SIT WHERE THEY LIKE"
         }
       }
     },
@@ -177,7 +177,7 @@
         "club": "brass",
         "other": "anglers",
         "archetype": "project",
-        "text": "The tuba loves its shelter. Now each cornet wants one, by the canal.",
+        "text": "The shelter works. Now each cornet wants one, by the canal.",
         "subject": "bandstands",
         "butt": "thing",
         "shape": "escalation",
@@ -195,10 +195,10 @@
         "club": "brass",
         "other": "shops",
         "archetype": "swap",
-        "text": "The tuba asks to practise in shop doorways. Only the top panes rattle.",
+        "text": "The tuba asks to use shop doorways. It rattles only 1 pane in 3.",
         "subject": "bandstands",
         "butt": "thing",
-        "shape": "undercut",
+        "shape": "statistic",
         "delay": [
           12,
           16
@@ -236,10 +236,10 @@
         "club": "bus",
         "other": "shops",
         "archetype": "fee",
-        "text": "We would pay to name the shops' bench after the founder's pencil.",
+        "text": "We will pay, in triplicate, to name the shops' bench after our founder's pencil.",
         "subject": "buses",
         "butt": "thing",
-        "shape": "undercut",
+        "shape": "form-misapplied",
         "delay": [
           12,
           16
@@ -259,8 +259,8 @@
         "club": "shops",
         "other": "bus",
         "archetype": "fee",
-        "text": "Till's Teas will pay to put THE GOVERNOR SIPPED HERE in bus shelters.",
-        "subject": "portraits",
+        "text": "Till's Teas would pay to put THE GOVERNOR SIPPED HERE on bus stops.",
+        "subject": "signage",
         "butt": "self",
         "shape": "slogan",
         "delay": [
@@ -268,7 +268,7 @@
           14
         ],
         "clippings": {
-          "sign": "GOVERNOR'S SIP NOW IN EVERY SHELTER; BUSES MISSED",
+          "sign": "GOVERNOR'S SIP NOW AT EVERY STOP; BUSES MISSED",
           "refuse": "SIP PHOTOGRAPH KEPT IN THE TEA ROOM, BY THE SUGAR"
         }
       },
@@ -277,7 +277,7 @@
         "club": "shops",
         "other": "bus",
         "archetype": "treat",
-        "text": "Then gaze at the tea through our window? Spotters will stand back.",
+        "text": "No sip? Then gaze at our tea from the pavement. Spotters, step back.",
         "subject": "portraits",
         "butt": "self",
         "shape": "photo-op",
@@ -300,7 +300,7 @@
         "club": "veg",
         "other": "shops",
         "archetype": "swap",
-        "text": "Enter the pumpkin's glasshouse in Window Week? It is mostly window.",
+        "text": "Enter the pumpkin's glasshouse as a shop window? It is mostly window.",
         "subject": "vegetable-shows",
         "butt": "thing",
         "shape": "literalism",
@@ -309,8 +309,8 @@
           14
         ],
         "clippings": {
-          "sign": "GOVERNOR JUDGES WINDOW WEEK; PICKS A PUMPKIN",
-          "refuse": "PUMPKIN WATCHES WINDOW WEEK FROM ITS GLASSHOUSE"
+          "sign": "GOVERNOR JUDGES SHOP WINDOWS; PICKS A PUMPKIN",
+          "refuse": "PUMPKIN WATCHES WINDOW PRIZE FROM ITS GLASSHOUSE"
         }
       },
       "afterRefuse": {
@@ -318,7 +318,7 @@
         "club": "veg",
         "other": "shops",
         "archetype": "treat",
-        "text": "The pumpkin now lives under a shop's cake cover. Unveil it?",
+        "text": "No glasshouse, so the pumpkin lives under a shop's cake cover. Unveil it?",
         "subject": "vegetable-shows",
         "butt": "self",
         "shape": "photo-op",
@@ -344,7 +344,7 @@
         "text": "May the show's scales stay on the towpath? They have settled in.",
         "subject": "vegetable-shows",
         "butt": "thing",
-        "shape": "undercut",
+        "shape": "literalism",
         "delay": [
           10,
           14
@@ -360,10 +360,10 @@
         "club": "veg",
         "other": "anglers",
         "archetype": "committee",
-        "text": "A committee to find a second towpath. It keeps finding the first one.",
+        "text": "A committee to find a second towpath. It has found the first one 6 times.",
         "subject": "vegetable-shows",
         "butt": "committee",
-        "shape": "form-misapplied",
+        "shape": "statistic",
         "delay": [
           12,
           16
@@ -383,7 +383,7 @@
         "club": "brass",
         "other": "bus",
         "archetype": "swap",
-        "text": "Buses at the bandstand stop wait for the tune to end. May the band play slower?",
+        "text": "Buses at the bandstand stop wait for each tune to end. Slower tunes?",
         "subject": "buses",
         "butt": "thing",
         "shape": "escalation",
@@ -401,7 +401,7 @@
         "club": "bus",
         "other": "brass",
         "archetype": "project",
-        "text": "Then a bench by the bandstand for the spotters. Facing the road.",
+        "text": "No stop, then. A bench by the bandstand for spotters? Facing the road.",
         "subject": "buses",
         "butt": "thing",
         "shape": "undercut",
@@ -423,10 +423,10 @@
         "visitor": "spinwell",
         "club": "anglers",
         "archetype": "vanity",
-        "text": "Rodney proposes a float with your face on it. It bobs.",
+        "text": "Rodney proposes a float with your face on it, marked STILL AFLOAT.",
         "subject": "vanity",
         "butt": "self",
-        "shape": "escalation",
+        "shape": "slogan",
         "delay": [
           10,
           14

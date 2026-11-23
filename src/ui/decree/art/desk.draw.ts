@@ -264,26 +264,32 @@ export function trayEdges(count: number): number {
  * (inTrayBadge(w, h); the digits are drawn here when `digits` is true, else by the caller).
  */
 export function drawInTray(c: SkCanvas, w: number, h: number, count: number, o: { digits?: boolean; full?: boolean } = {}): void {
-  const wood = woodOf(0);
+  // A brass wire letter tray (the out-tray's own wire language, never a drawer: no pull, no wood
+  // front), seen from the front-top, its waiting papers stacked inside and showing above the rim.
   const tw = w * 0.86;
   const tx = (w - tw) / 2;
-  const ty = h * 0.42;
-  const th = h * 0.42;
-  dropShadow(c, rrect(tx, ty, tw, th, 3), 1.5, 2, 0.35);
-  // back wall
-  washed(c, rrect(tx, ty - 6, tw, 8, 2), wood.main, wood.deep, 0.8, 0.8, 0.9);
-  // papers
+  const ty = h * 0.4;
+  const th = h * 0.46;
+  const base = ty + th;
+  dropShadow(c, rrect(tx, base - 6, tw, 7, 2), 1.5, 2, 0.35);
+  // the back rim of the basket
+  c.drawPath(rrect(tx + 3, ty - 4, tw - 6, base - ty + 4, 2.4), stroke(alpha(DESK.brassDeep, 0.8), 1.3));
+  for (let x = tx + 10; x < tx + tw - 6; x += 9) c.drawPath(line(x, ty - 4, x, base), stroke(alpha(DESK.brassDeep, 0.35), 0.9));
+  // papers: the top sheet tilted a little, the edges under it
   const n = trayEdges(count);
   for (let i = 0; i < n; i++) {
-    const y = ty + 2 - (n - i) * 2.6;
+    const y = ty + 4 - (n - i) * 2.6;
     const dx = ((i * 37) % 5) - 2;
-    washed(c, rrect(tx + 5 + dx, y, tw - 10, th, 1), i === n - 1 ? DESK.paperLight : DESK.paper, DESK.paperShade, 0.6, 0.6, 0.6);
+    washed(c, rrect(tx + 5 + dx, y, tw - 10, base - y - 2, 1), i === n - 1 ? DESK.paperLight : DESK.paper, DESK.paperShade, 0.6, 0.6, 0.6);
   }
-  if (n > 0) for (let i = 0; i < 3; i++) c.drawPath(line(tx + 10, ty - n * 2.6 + 8 + i * 4, tx + tw - 14 - i * 6, ty - n * 2.6 + 8 + i * 4), stroke(DESK.slatePale, 1.4));
-  // front lip
-  washed(c, builder().moveTo(tx, ty + th * 0.35).lineTo(tx + tw, ty + th * 0.35).lineTo(tx + tw - 2, ty + th).lineTo(tx + 2, ty + th).close().build(), wood.light, wood.main, 0.8, 0.8, 1);
-  c.drawPath(rrect(tx + tw / 2 - 7, ty + th * 0.55, 14, 4, 1), fill(DESK.brass));
-  c.drawPath(rrect(tx + tw / 2 - 7, ty + th * 0.55, 14, 4, 1), stroke(LINE, 0.6));
+  if (n > 0) for (let i = 0; i < 3; i++) c.drawPath(line(tx + 10, ty - n * 2.6 + 10 + i * 4, tx + tw - 14 - i * 6, ty - n * 2.6 + 10 + i * 4), stroke(DESK.slateLight, 1.4));
+  // the low wire front: a heavy brass rim, a middle wire, uprights, two little feet
+  const front = ty + th * 0.42;
+  c.drawPath(rrect(tx, front, tw, base - front + 1, 2.4), stroke(DESK.brassDeep, 2.2));
+  c.drawPath(line(tx + 2, front + 0.6, tx + tw - 2, front + 0.6), stroke(DESK.brassLight, 1));
+  c.drawPath(line(tx, (front + base) / 2, tx + tw, (front + base) / 2), stroke(DESK.brassDeep, 1.1));
+  for (let x = tx + 8; x < tx + tw - 4; x += 8) c.drawPath(line(x, front + 1, x, base), stroke(DESK.brassDeep, 1.1));
+  for (const x of [tx + 5, tx + tw - 5]) c.drawPath(rect(x - 3, base, 6, 2.2), fill(DESK.brassDeep));
   // badge
   const b = inTrayBadge(w, h);
   if (count > 0) {

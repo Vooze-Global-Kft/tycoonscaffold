@@ -383,9 +383,15 @@ const MONUMENT_DRAW: Record<MonumentId, (c: SkCanvas) => void> = {
     plinth(c);
     bronze(c, builder().moveTo(-4, 6).lineTo(-3.4, -3).quadTo(0, -5, 3.4, -3).lineTo(4, 6).close().build());
     bronze(c, oval(0, -7.4, 2.4, 3.2));
-    // the pointing arm, up and to the right, at nothing in particular
-    c.drawPath(line(2.4, -3, 9, -9), stroke(DESK.bronzeDeep, 2.4));
-    c.drawPath(line(2.4, -3, 9, -9), stroke(DESK.bronzeLight, 1.2));
+    // the pointing arm, held level (never raised), at a tiny ribbon on two posts at the right
+    c.drawPath(line(2.6, -2.6, 8.4, -2.6), stroke(DESK.bronzeDeep, 2.4));
+    c.drawPath(line(2.6, -2.6, 8.4, -2.6), stroke(DESK.bronzeLight, 1.2));
+    c.drawPath(circle(9, -2.6, 1), fill(DESK.bronzeLight));
+    // the other arm at the side
+    c.drawPath(line(-3.4, -2.4, -4.6, 3), stroke(DESK.bronzeDeep, 1.8));
+    // the ribbon: two little posts with a violet ribbon slung between them (what is being pointed at)
+    for (const x of [8.2, 11.6]) c.drawPath(line(x, 6, x, 1), stroke(DESK.bronzeDeep, 1));
+    c.drawPath(builder().moveTo(8.2, 1.6).quadTo(9.9, 3.4, 11.6, 1.6).build(), stroke(DESK.violet, 1.3));
   },
 };
 

@@ -707,3 +707,63 @@ export type TermEvent =
 export type { BaseEffect };
 /** The office id of an index. */
 export type { OfficeId };
+
+// ================================================================================================
+// rules-term (P1b): what only the time, term and wiring package needs, ADDED here (TypeScript
+// declaration merging; nothing above is changed). Optional on the state, so freshDecree (P1a) needs
+// no change: a state without them behaves as a fresh one.
+// ================================================================================================
+
+/**
+ * The tick's cash anchor (2.5 "cash += I × dt exactly"): between two events cash is
+ * `cash + I × (t − at)` from the last event, never a sum of frames, so tick(a + b) = tick(a) then
+ * tick(b) bit for bit. `run` and `life` anchor the shared runEarnings and lifetimeEarnings likewise.
+ * Re-anchored at every event of the tick and whenever an action changed cash or I (tick.ts).
+ */
+export interface CashAnchor {
+  at: number;
+  cash: number;
+  run: number;
+  life: number;
+  I: number;
+}
+
+/** What the last count decided (2.10, D26), kept for the result sheet until the choice after it. */
+export interface TermResult {
+  won: boolean;
+  /** Name Recognition this count added. */
+  nrGained: number;
+  /** D26: districts held without the disarray bonus, and whether that alone was a sweep. */
+  meritHeld: number;
+  meritSweep: boolean;
+  /** D26: districts carried only by the opponents' disarray ("carried by your opponents' disarray"). */
+  carried: number[];
+  /** After a loss: the rival who won and resigned over a hobby (2.10), else null. */
+  resigned: string | null;
+}
+
+export interface DecreeState {
+  /** rules-term: the tick's cash anchor (null or missing: anchored at the next tick). */
+  cashAnchor?: CashAnchor | null;
+  /** rules-term: the last count's outcome (phase count and result), else null. */
+  result?: TermResult | null;
+  /** rules-term: application slots of this term already used (2.9: days 9, 30, 60), reset each term. */
+  appSlotsUsed?: number;
+}
+
+export interface ResultSheet {
+  /** rules-term (D26): won or lost, the districts held on merit, those carried by disarray. */
+  won: boolean;
+  meritHeld: number;
+  carried: number[];
+}
+
+export interface PollRow {
+  /** rules-term (D25): clubs "in a huff" (moods 20 to 29) and what each costs this district, in hundredths of a share point (negative). */
+  huffs: { club: ClubIx; cost: number }[];
+}
+
+export interface Poll {
+  /** rules-term (D25): the clubs in a huff (moods from boycott.below to count.huffBelow − 1). */
+  huffing: ClubIx[];
+}

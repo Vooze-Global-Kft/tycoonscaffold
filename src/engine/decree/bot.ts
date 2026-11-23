@@ -530,13 +530,15 @@ export interface Trace {
   flicks: number[];
   taps: number[];
   maxNumber: number;
+  /** The rules' own book of dibs by source at the end (DecreeStats.book; H5 cross-check), or null when the rules keep none. */
+  book: Record<string, number> | null;
   /** Times of reaching each office (seconds of play), null when not reached. */
   reached: (number | null)[];
   hash: string;
 }
 
 export function emptyTrace(bot: BotId, seed: number, hand: number, t0: number): Trace {
-  return { bot, seed, hand, started: t0, ended: t0, decisions: [], draws: [], elections: [], cash: [], samples: [], idle: [], events: [], away: [], purchases: [], takeBacks: [], reloads: [], faults: [], flicks: [], taps: [], maxNumber: 0, reached: [t0, null, null], hash: '' };
+  return { bot, seed, hand, started: t0, ended: t0, decisions: [], draws: [], elections: [], cash: [], samples: [], idle: [], events: [], away: [], purchases: [], takeBacks: [], reloads: [], faults: [], flicks: [], taps: [], maxNumber: 0, book: null, reached: [t0, null, null], hash: '' };
 }
 
 /** A short stable hash of the trace's decisions, draws and elections (H3: byte-identical traces). */
@@ -1309,6 +1311,8 @@ export function runDecreeBot(cfg: DecreeConfig, opts: BotOptions): BotRun {
   }
   dr.idleEnd();
   dr.tr.ended = dr.clock;
+  const book = (dr.g.decree.stats as { book?: Record<string, number> }).book;
+  dr.tr.book = book ? { ...book } : null;
   dr.tr.hash = traceHash(dr.tr);
   const rows = notBuilt ? [] : evaluate(cfg, dr.tr);
   return { game: dr.g, states: dr.states, rows, trace: dr.tr, notBuilt, handedOver };
@@ -1400,11 +1404,15 @@ export function h4(tr: Pick<Trace, 'away' | 'faults'>): { absences: number; wron
 }
 
 /** H5: dibs by source; anything unexplained; cash below 0; a refusal that cost money. */
-export function h5(tr: Pick<Trace, 'cash' | 'decisions' | 'faults'>): { bySource: Record<string, number>; unexplained: number; negative: number; refuseCost: number } {
+export const RULE_SOURCES = ['tick', 'paper', 'checkSofa', 'transition', 'spend'] as const;
+export function h5(tr: Pick<Trace, 'cash' | 'decisions' | 'faults' | 'book'>): { bySource: Record<string, number>; unexplained: number; negative: number; refuseCost: number; foreignBook: string[] } {
   const bySource: Record<string, number> = {};
   for (const c of tr.cash) bySource[c.source] = (bySource[c.source] ?? 0) + c.amount;
+  // The rules' own book (commitCash): a gain booked under any other source than the five of H5 is foreign (the away payout is the store's).
+  const foreignBook = Object.entries(tr.book ?? {}).filter(([k, v]) => v > 0 && !(RULE_SOURCES as readonly string[]).includes(k)).map(([k]) => k);
   return {
     bySource,
+    foreignBook,
     unexplained: tr.cash.filter((c) => c.source === 'unexplained').length,
     negative: tr.faults.filter((f) => f.startsWith('H5')).length,
     refuseCost: tr.decisions.filter((d) => d.choice === 'refuse' && d.kind !== 'slip' && d.applied.money < 0).length,
@@ -1726,7 +1734,7 @@ export function evaluate(cfg: DecreeConfig, tr: Trace): BotRow[] {
   rows.push(row('H4 offline: the closed form, nothing else moves, pays once', 'hard', '0 wrong', `${d.absences} absences: ${d.wrongPay} paid wrong, ${d.moved} moved a mood/gossip/counter/day/poll, ${d.tooManyPapers} too many papers, ${d.jumps} clock-jump faults`, d.wrongPay + d.moved + d.tooManyPapers + d.jumps === 0));
   rows.push(row('H4 earnings paid when computed', 'hard', 'paysOnCompute and catchUpSeconds 0', `paysOnCompute ${String(decreeEngineMode.paysOnCompute)}, catchUpSeconds ${String(decreeEngineMode.catchUpSeconds)}`, decreeEngineMode.paysOnCompute === true && decreeEngineMode.catchUpSeconds === 0));
   const e = h5(tr);
-  rows.push(row('H5 dibs only through the named sources', 'hard', '0 unexplained, cash ≥ 0, refusing never costs', `${e.unexplained} unexplained, ${e.negative} below 0, ${e.refuseCost} refusals that cost; by source ${Object.entries(e.bySource).map(([k, v]) => `${k} ${v.toPrecision(3)}`).join(', ')}`, e.unexplained + e.negative + e.refuseCost === 0));
+  rows.push(row('H5 dibs only through the named sources', 'hard', '0 unexplained, cash ≥ 0, refusing never costs, the rules book only their five sources', `${e.unexplained} unexplained, ${e.negative} below 0, ${e.refuseCost} refusals that cost${e.foreignBook.length ? `, rules booked ${e.foreignBook.join(', ')}` : ''}; by source ${Object.entries(e.bySource).map(([k, v]) => `${k} ${v.toPrecision(3)}`).join(', ')}`, e.unexplained + e.negative + e.refuseCost + e.foreignBook.length === 0));
   const f = h6(tr, cfg.decree.boycott.papers, cfg.decree.scandal.sayNothingPapers);
   const bound = certainWinBound(cfg);
   rows.push(row('H6 no dead end', 'hard', 'refuse always possible, every boycott and scandal ends within its count, ministry 0 always earns, 2.11 bound ≤ 8, a win within 6 terms of a first loss', `${f.refuseRefused} refuses refused, ${f.overran} overran, ${f.zeroIncome} samples without ministry 0 income, bound ${bound}, worst ${f.worstTermsToWin ?? 'no loss'} terms`, f.refuseRefused + f.overran + f.zeroIncome === 0 && bound <= 8 && (f.worstTermsToWin === null || f.worstTermsToWin <= 6), bound));

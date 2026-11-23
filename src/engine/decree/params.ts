@@ -233,6 +233,27 @@ export function decreeParams(cfg: DecreeConfig, g: DecreeGame, factors: Factors 
   };
 }
 
+/**
+ * What one more level of ministry i adds to I now (the payback of a requisition, a slip, advice):
+ * Δrate × M(A) × m_N × V × s_i × the "Say nothing" factor; while the ministry earns nothing (a
+ * boycott) its gain at full service, so a payback is never infinite. 0 when closed or capped.
+ */
+export function levelGain(cfg: DecreeConfig, g: DecreeGame, i: number, p: DecreeParams = decreeParams(cfg, g)): number {
+  const m = g.decree.ministries[i];
+  if (!m || !m.open || m.level >= cfg.decree.ministry.levelCap) return 0;
+  const dRate = rateOf(cfg, g.decree.office, i, { open: true, level: m.level + 1 }) - rateOf(cfg, g.decree.office, i, m);
+  const base = dRate * p.multiplier * p.mN * p.V;
+  return p.served[i] ? base * p.sayNothing : base;
+}
+
+/** What opening ministry i adds to I now (its level 1). */
+export function openGain(cfg: DecreeConfig, g: DecreeGame, i: number, p: DecreeParams = decreeParams(cfg, g)): number {
+  const m = g.decree.ministries[i];
+  if (!m || m.open) return 0;
+  const base = rateOf(cfg, g.decree.office, i, { open: true, level: 1 }) * p.multiplier * p.mN * p.V;
+  return p.served[i] ? base * p.sayNothing : base;
+}
+
 /** The top bar's values (4.1). Built. */
 export function topBar(cfg: DecreeConfig, g: DecreeGame): TopBar {
   const p = decreeParams(cfg, g);
