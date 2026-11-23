@@ -111,7 +111,13 @@ def check():
             if k not in keys:
                 problems.append('%s: in recipes_night.EVENTS but not in catalog.merge.ts' % k)
         for e in cat:
-            if e['key'] in RN.EVENTS and e.get('files', 1) != RN.FILES.get(e['key'], 1):
+            if e['key'] not in RN.EVENTS:
+                continue
+            vol, gap, hap, _, voices = RN.EVENTS[e['key']]
+            for field, mine in (('volume', vol), ('minIntervalMs', gap), ('haptic', hap), ('voices', voices if voices > 1 else None)):
+                if e.get(field) != mine:
+                    problems.append('%s: %s %r in catalog.merge.ts, %r in recipes_night.EVENTS' % (e['key'], field, e.get(field), mine))
+            if e.get('files', 1) != RN.FILES.get(e['key'], 1):
                 problems.append('%s: %s file(s) in catalog.merge.ts, %d in recipes_night.FILES'
                                 % (e['key'], e.get('files', 1), RN.FILES.get(e['key'], 1)))
     return problems, cat

@@ -9,7 +9,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { comparePair, pairFailures, readBundleReport, sourceHashOf, type AudioScore, type DeclaredFingerprint, type GameFacts } from './fingerprint';
+import { GameConfigSchema } from '../../src/config/schema';
+import { comparePair, declaredProblems, formatPair, gameFacts, pairFailures, readBundleReport, sameMultiset, sourceHashOf, type AudioScore, type DeclaredFingerprint, type GameFacts, type PairReport } from './fingerprint';
 
 /** compare.py's verdict when no shared key is close (what the two packs score today). */
 const quiet: AudioScore = { keys: 10, failed: 0, maxJoint: 0.5, threshold: 0.6 };
@@ -157,6 +158,51 @@ describe('fingerprint check', () => {
       expect(stale.note).toMatch(/stale/);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('fingerprint check with the third game (Night Market, market-design.md 1.2, 10.2)', () => {
+  it('the Pizza-to-Orbit report is byte-identical to the one recorded before mode merge existed', () => {
+    const rec = JSON.parse(fs.readFileSync(path.join(__dirname, 'fingerprint.pizzaOrbit.fixture.json'), 'utf8')) as { a: GameFacts; b: GameFacts; audio: AudioScore; report: PairReport; formatted: string };
+    const r = comparePair(rec.a, rec.b, rec.audio);
+    expect(JSON.stringify(r)).toBe(JSON.stringify(rec.report));
+    expect(formatPair(r)).toBe(rec.formatted);
+    expect(pairFailures(r, 'everyday')).toEqual(pairFailures(rec.report, 'everyday'));
+  });
+
+  it('accepts "grid-board" as a main screen layout and the declared night-market fingerprint has no vocabulary problem', () => {
+    expect(declaredProblems(declared('night-market'))).toEqual([]);
+    expect(declared('night-market').main_screen_layout).toBe('grid-board');
+  });
+
+  it('the same product kinds in another order fail (the multiset check beside the sequence check)', () => {
+    expect(sameMultiset(['cosmetic', 'unlock'], ['unlock', 'cosmetic'])).toBe(true);
+    expect(sameMultiset(['gems', 'gems', 'unlock'], ['gems', 'unlock', 'unlock'])).toBe(false);
+    const swapped = comparePair(facts('pizza-empire', { productKinds: ['gems', 'noAds'] }), facts('space-miner', { productKinds: ['noAds', 'gems'] }), quiet);
+    expect(pairFailures(swapped, 'everyday').join('\n')).toMatch(/same product kinds in another order/);
+    // The sequence check still names an identical sequence once, as before.
+    const same = comparePair(facts('pizza-empire', { productKinds: ['gems', 'noAds'] }), facts('space-miner', { productKinds: ['gems', 'noAds'] }), quiet);
+    expect(same.problems.filter((p) => /product kinds/.test(p))).toEqual(['pizza-empire and space-miner sell the same sequence of product kinds (gems, noAds)']);
+  });
+
+  it('night-market against each game: 8 of 8 must differ or are pending, at least 15 known or pending, no problem', () => {
+    const games = require('./games.js');
+    const modes = require('./modes.js');
+    const kits = (mode: string) => [`mode ${mode}`, ...Object.entries(modes.FAMILIES as Record<string, { modes: string[] }>).filter(([, f]) => f.modes.includes(mode)).map(([k]) => `family ${k}`)];
+    const real = (id: string) => {
+      const cfg = GameConfigSchema.parse(games.readGameJson(id));
+      return gameFacts(ROOT, id, cfg, games, kits(cfg.mode));
+    };
+    const night = real('night-market');
+    expect(night.mode).toBe('merge');
+    expect([...night.productKinds].sort()).toEqual(['cosmetic', 'unlock']);
+    expect(night.productIds.every((p) => p.startsWith('night_'))).toBe(true);
+    for (const other of ['pizza-empire', 'space-miner']) {
+      const r = comparePair(night, real(other), null);
+      expect(r.mustSame, `${other}: ${formatPair(r)}`).toBe(0);
+      expect(r.verified + r.pending, other).toBeGreaterThanOrEqual(15);
+      expect(pairFailures(r, 'everyday'), other).toEqual([]);
     }
   });
 });

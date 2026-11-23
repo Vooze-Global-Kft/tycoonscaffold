@@ -693,15 +693,17 @@ def stall_open(c):
     return m.out()
 
 
-@night_recipe('upgrade', length=0.3, loud_db=FREQUENT)
+@night_recipe('upgrade', length=0.2, loud_db=FREQUENT)
 def upgrade(c):
-    """A rising steam hiss: the band climbs 700 -> 3,800 Hz in 0.24 s and lets go in a small puff."""
+    """A rising steam hiss: the band climbs 800 -> 3,600 Hz in 0.11 s and is cut off by a small
+    puff that dies fast, so a run of level-ups (one every 80 ms) stays a row of separate rises
+    instead of one long hiss."""
     m = Mix()
-    d = 0.24
+    d = 0.11
     n = ns(d)
-    env = points([(0, 0.35), (0.008, 0.6), (d * 0.85, 1.0), (d, 0.4)], n)
-    m.add(steam(c.rng, d, [(0, 700.0), (d, 3800.0)], q=0.9, attack_ms=3.0, tau=10.0, body=0.08, hiss=0.35, turb=0.4) * env)
-    m.add(0.6 * merge_puff(c.sub('p'), 2), d - 0.03)
+    env = points([(0, 0.3), (0.006, 0.55), (d * 0.9, 1.0), (d, 0.3)], n)
+    m.add(steam(c.rng, d, [(0, 800.0), (d, 3600.0)], q=0.9, attack_ms=2.0, tau=10.0, body=0.06, hiss=0.35, turb=0.35) * env)
+    m.add(0.55 * merge_puff(c.sub('p'), 1), d - 0.02)
     c.accent(0.0)
     return m.out()
 
@@ -934,6 +936,7 @@ def key_of(stem):
 # moves, the upgrade and the gift slots), with the interval they can repeat at in play (the
 # catalogue's minimum interval), measured by render_night.py --rows.
 ROW_KEYS = {
-    'merge_1': 60, 'merge_3': 60, 'merge_5': 60, 'merge_8': 60, 'drop': 300, 'move': 80, 'swap': 80, 'return': 80,
-    'line_fill': 60, 'coins': 150, 'upgrade': 80, 'slot_reveal': 120,
+    'merge_1': 60, 'merge_2': 60, 'merge_3': 60, 'merge_4': 60, 'merge_5': 60, 'merge_6': 60, 'merge_7': 60,
+    'merge_8': 60, 'drop': 300, 'move': 80, 'swap': 80, 'return': 80, 'line_fill': 60, 'coins': 150, 'upgrade': 80,
+    'slot_reveal': 120,
 }

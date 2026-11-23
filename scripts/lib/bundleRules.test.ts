@@ -320,3 +320,46 @@ describe('web-only development tools (store-13, phone-12, perf-8)', () => {
     expect(modes.WEB_ONLY).toContain('src/ui/haul/dev.web.ts');
   });
 });
+
+describe('the merge mode (Night Market, market-design.md 10.2)', async () => {
+  const modes = (await import('./modes.js')) as unknown as { MODE_FOLDERS: Record<string, string[]>; FAMILIES: BundleManifest['families']; NODE_ONLY: string[]; WEB_ONLY: string[] };
+  const MM: BundleManifest = { ...M, modeFolders: { ...M.modeFolders, haul: modes.MODE_FOLDERS.haul, merge: modes.MODE_FOLDERS.merge }, families: modes.FAMILIES, nodeOnly: modes.NODE_ONLY, games: ['pizza-empire', 'space-miner', 'night-market'] };
+  const of = (over: Partial<BundleContents>) => bundleViolations(clean({ packages: [], assets: [], ...over }), MM).map((v) => `${v.rule} ${v.file}`);
+
+  it('lists its rules, schema and fixtures as merge folders, its catalogue as Node only, its bot, fixtures and dev tools as web only', () => {
+    expect(modes.MODE_FOLDERS.merge).toEqual(['src/modes/merge', 'src/ui/merge', 'src/engine/merge', 'src/engine/merge.ts', 'src/engine/mergeMode.ts', 'src/engine/fixtures/merge.ts', 'src/config/schema.merge.ts']);
+    expect(modes.NODE_ONLY).toContain('src/services/fx/catalog.merge.ts');
+    for (const f of ['src/engine/merge/bot.ts', 'src/engine/fixtures/merge.ts', 'src/modes/merge/presets.web.ts', 'src/modes/merge/devViews.web.ts']) expect(modes.WEB_ONLY).toContain(f);
+  });
+
+  it('a merge file imported by a shared file fails; the generated entry and the merge mode itself may import it', () => {
+    const edges = [
+      ['src/engine/economy.ts', 'src/engine/merge.ts'],
+      ['src/ui/kit/Sheet.tsx', 'src/ui/merge/layout.ts'],
+      ['src/generated/mode.ts', 'src/modes/merge/index.tsx'],
+      ['src/modes/merge/index.tsx', 'src/engine/mergeMode.ts'],
+      ['src/engine/mergeMode.ts', 'src/config/schema.merge.ts'],
+      ['src/ui/merge/MergeShell.tsx', 'src/ui/kit/Sheet.tsx'],
+    ] as const;
+    expect(importViolations(edges, MM).map((v) => `${v.rule} ${v.file}`)).toEqual(['shared-imports-mode src/engine/economy.ts', 'shared-imports-mode src/ui/kit/Sheet.tsx']);
+  });
+
+  it('no merge folder in a sim or haul bundle', () => {
+    const merge = ['src/modes/merge/index.tsx', 'src/ui/merge/MergeShell.tsx', 'src/engine/merge/tick.ts', 'src/engine/merge.ts', 'src/engine/mergeMode.ts', 'src/config/schema.merge.ts'];
+    expect(of({ game: 'pizza-empire', mode: 'sim', pack: 'warm', modules: merge })).toEqual(merge.map((f) => `other-mode ${f}`));
+    expect(of({ game: 'space-miner', mode: 'haul', pack: null, modules: merge })).toEqual(merge.map((f) => `other-mode ${f}`));
+  });
+
+  it('no sim, haul or tabs-family file in the merge bundle, and its own files pass', () => {
+    const own = ['src/modes/merge/index.tsx', 'src/ui/merge/layout.ts', 'src/engine/merge/board.ts', 'src/engine/mergeMode.ts', 'games/night-market/game.json', 'src/ui/kit/Sheet.tsx'];
+    expect(of({ game: 'night-market', mode: 'merge', pack: null, modules: own })).toEqual([]);
+    expect(of({ game: 'night-market', mode: 'merge', pack: null, modules: ['src/ui/sim/home/HomeSim.tsx', 'src/modes/haul/index.tsx', 'src/engine/haul.ts', 'src/ui/shell/TabShell.tsx', 'src/ui/meta/shop/Store.tsx'] })).toEqual([
+      'other-mode src/ui/sim/home/HomeSim.tsx',
+      'other-mode src/modes/haul/index.tsx',
+      'other-mode src/engine/haul.ts',
+      'other-family src/ui/shell/TabShell.tsx',
+      'other-family src/ui/meta/shop/Store.tsx',
+    ]);
+    expect(of({ game: 'night-market', mode: 'merge', pack: null, modules: ['src/services/fx/catalog.merge.ts'] })).toEqual(['node-only src/services/fx/catalog.merge.ts']);
+  });
+});
