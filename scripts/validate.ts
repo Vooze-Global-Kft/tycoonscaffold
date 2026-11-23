@@ -10,6 +10,8 @@
  *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
  *   (a merge game: its bot, scripts/content/merge-bot.ts, on the same five seeds in parallel: every missed
  *   hard target of Decision M2 an error, every missed aim a warning; market-design.md 8.1 step 6)
+ *   (a decree game: the satire lint once scripts/content/office/satireLint.ts exists, and a warning while
+ *   there is no decree bot yet; office-design.md 7.8, 8.1, decisions D7 and D8)
  *
  * For every pair of games that both have sounds it also runs the sound similarity check
  * (python3 scripts/audio/compare.py, spec 6.1, Decision 24: fails when a shared key's joint score is
@@ -225,6 +227,33 @@ function mergePacing(id: string, problems: string[], warnings: string[]): void {
   }
 }
 
+/**
+ * The decree hook (office-design.md 7.8, 8.1 step 5, 9.2 P2/P3; decisions D7, D8). Additive: it runs
+ * only for a game of mode "decree".
+ * - The satire lint (D7: the content desk's `scripts/content/office/satireLint.ts`) runs on every
+ *   decree game, with or without --no-sim, once its file exists: `npx tsx <it> --game <id>` in a child
+ *   process; a non-zero exit is an error, one per line it printed (at most 40 shown). Until the file
+ *   exists a warning says so.
+ * - The balance bot (P2: `scripts/content/decree-bot.ts` running 8.3's hard targets on the five
+ *   seeds) replaces the warning below once it exists; until then the section 8 targets are unchecked
+ *   and a warning says so.
+ */
+function decreeChecks(id: string, runSim: boolean, problems: string[], warnings: string[]): void {
+  const lint = path.join(__dirname, 'content', 'office', 'satireLint.ts');
+  if (!fs.existsSync(lint)) warnings.push('placeholder: no satire lint yet (scripts/content/office/satireLint.ts, the content desk, D7): the words of section 7.8 are not checked');
+  else {
+    const r = spawnSync(process.execPath, [require.resolve('tsx/cli'), lint, '--game', id], { cwd: games.ROOT, encoding: 'utf8', timeout: 300_000 });
+    if (r.status !== 0) {
+      const lines = `${r.stdout ?? ''}\n${r.stderr ?? ''}`.split('\n').map((l) => l.trim()).filter(Boolean);
+      const shown = lines.slice(0, 40);
+      problems.push(...(shown.length ? shown : [`exit ${r.status ?? r.signal ?? 'unknown'}`]).map((l) => `satire lint (7.8): ${l}`));
+      if (lines.length > shown.length) problems.push(`satire lint (7.8): ... and ${lines.length - shown.length} more lines (npx tsx scripts/content/office/satireLint.ts --game ${id})`);
+    }
+  }
+  const bot = path.join(__dirname, 'content', 'decree-bot.ts');
+  if (runSim) warnings.push(fs.existsSync(bot) ? 'placeholder: scripts/content/decree-bot.ts exists but this hook does not run it yet (P2 replaces this line with the run of 8.3 on the five seeds)' : 'placeholder: no decree bot yet (src/engine/decree/bot.ts, scripts/content/decree-bot.ts; P2): the targets of section 8 are not checked');
+}
+
 /** compare.py for one pair (a second or so): its scores, or why it could not run. */
 function audioScore(a: string, b: string): AudioScore {
   const out = path.join(os.tmpdir(), `validate-compare-${a}-${b}-${process.pid}.json`);
@@ -337,8 +366,9 @@ for (const id of ids) {
   const silent = Object.keys(fxTableFor(g.mode) as Record<string, unknown>).filter((k) => !soundKeys.has(k));
   // A merge game before its first rendered sound (the skeleton's placeholder, market-design.md Decision M1): a
   // warning until the sound package puts the first file in games/<id>/assets/sfx/; from then on every missing one is an error.
-  const placeholderSounds = g.mode === 'merge' && soundKeys.size === 0;
-  if (silent.length && placeholderSounds) warnings.push(`placeholder: no sounds yet; the ${silent.length} fx event(s) of mode "merge" are silent until the sound package renders games/${id}/assets/sfx/`);
+  // A decree game likewise until its sound package renders the first file (office-design.md 9.2, the skeleton's placeholder).
+  const placeholderSounds = (g.mode === 'merge' || g.mode === 'decree') && soundKeys.size === 0;
+  if (silent.length && placeholderSounds) warnings.push(`placeholder: no sounds yet; the ${silent.length} fx event(s) of mode "${g.mode}" are silent until the sound package renders games/${id}/assets/sfx/`);
   else if (silent.length) problems.push(`${silent.length} fx event(s) of mode "${g.mode}" have no sound file for this game: ${silent.join(', ')} (games/${id}/assets/sfx/${g.soundPack ? ` or shared/sfx/${g.soundPack}/` : ''})`);
     if (!fs.existsSync(path.join(games.gameDir(id), 'icon.png'))) warnings.push('no icon.png (using the shared placeholder)');
   if (g.monetization.ads.forceTestAds) warnings.push('forceTestAds is on: test ads in release builds earn nothing. Paste the AdMob units and turn it off before release');
@@ -441,6 +471,10 @@ for (const id of ids) {
   // without one and says so; the numbers package replaces this branch with the bot's run. ---
   else if (g.mode === 'merge') {
     if (runSim && problems.length === 0) mergePacing(id, problems, warnings);
+  }
+  // --- a decree game (office-design.md 7.8, 8.1, 8.3; decisions D7 and D8): the satire lint and the bot ---
+  else if (g.mode === 'decree') {
+    decreeChecks(id, runSim, problems, warnings);
   }
   // --- pacing: the same bot as `npm run simulate`, two simulated hours ---
   else if (runSim && problems.length === 0) {

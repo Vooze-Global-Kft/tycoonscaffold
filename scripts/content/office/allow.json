@@ -1,0 +1,15 @@
+{
+  "$comment": "allow.json: exceptions of the satire lint (office-design.md 7.8). Exact phrases only, matched whole-word and in any case; a lint match that lies wholly inside an allowed phrase is not reported. Each entry carries the editor's reason. The first three are 7.8's own; the others were added by the content desk with the reason given and await the sensitivity editor's read.",
+  "allow": [
+    { "phrase": "flower border", "reason": "7.8: a garden bed, not a frontier", "by": "specification 7.8" },
+    { "phrase": "herbaceous border", "reason": "7.8: a garden bed, not a frontier", "by": "specification 7.8" },
+    { "phrase": "hedge border", "reason": "7.8: a garden bed, not a frontier", "by": "specification 7.8" },
+    { "phrase": "The Middling March", "reason": "the game's own band tune (7.1, 6), a piece of music, not a protest", "by": "content desk; awaits the sensitivity editor" },
+    { "phrase": "Middling March", "reason": "as The Middling March", "by": "content desk; awaits the sensitivity editor" },
+    { "phrase": "Brussels sprout", "reason": "a vegetable's name (the Giant Vegetable Society), not the city", "by": "content desk; awaits the sensitivity editor" },
+    { "phrase": "Brussels sprouts", "reason": "a vegetable's name, not the city", "by": "content desk; awaits the sensitivity editor" },
+    { "phrase": "Swiss chard", "reason": "a vegetable's name, not the country", "by": "content desk; awaits the sensitivity editor" },
+    { "phrase": "French bean", "reason": "a vegetable's name, not the country", "by": "content desk; awaits the sensitivity editor" },
+    { "phrase": "French beans", "reason": "a vegetable's name, not the country", "by": "content desk; awaits the sensitivity editor" }
+  ]
+}

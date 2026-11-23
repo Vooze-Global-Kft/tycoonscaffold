@@ -416,9 +416,8 @@ def rows_report(sheet_dir):
             bad += clip
             print('%-13s %5d %4d ms %7.1f %7.1f %7.1f %6.1f dB %+6.1f%s  (x%d)' % (RO.key_of(k), len(ys), ms, s['peak_db'], s['loud_db'], s['single_db'],
                                                                          s['dip_db'], s['loud_db'] - s['single_db'], '  CLIPS' if clip else '', count))
-            if count == 20 or RO.key_of(k) == 'sign':
-                a = qa.analyse(buf)
-                items.append({'name': '%s x%d @%d ms' % (RO.key_of(k), count, ms), 'mono': buf[:dsp.ns(6.0)], 'a': a, 'err': [], 'warn': [], 'music': False})
+            if count == 20:
+                items.append({'name': '%s x%d @%d ms' % (RO.key_of(k), count, ms), 'mono': buf, 'a': qa.analyse(buf), 'err': [], 'warn': [], 'music': False})
     # the whole signing gesture fifty times: the nib from 40 pt, the clink 300 ms later
     ink, clink = key_files('sign_ink_1'), key_files('sign_1')
     st = key_files('study_1')
@@ -440,7 +439,8 @@ def rows_report(sheet_dir):
     bad += clip
     print('desk gesture  fifty decisions at 1.2 s (two signed: nib + clink at 300 ms; one studied): peak %.1f dBFS, loudness %.1f dB%s'
           % (dsp.peak_db(buf), dsp.loudness_db(buf), '  CLIPS' if clip else ''))
-    items.append({'name': 'desk x50 @1.2 s (first 6 s)', 'mono': buf[:dsp.ns(6.0)], 'a': qa.analyse(buf), 'err': [], 'warn': [], 'music': False})
+    first = buf[:dsp.ns(8.0)]
+    items.append({'name': 'desk x50 @1.2 s (first 8 s)', 'mono': first, 'a': qa.analyse(first), 'err': [], 'warn': [], 'music': False})
     if sheet_dir:
         path = os.path.join(sheet_dir, 'rows.png')
         qa.contact_sheet(path, items, 'High Office: rows at catalogue volume', cols=4)
@@ -475,21 +475,29 @@ def tell_report():
         print('%-11s %6.0f %7.0f %8.0f%% %7.0f%% %7.0f%%' % (stem, a['duration'] * 1000, a['centroid'], 100 * bp[:3].sum(),
                                                             100 * bp[3:5].sum(), 100 * bp[5:].sum()))
     T = {stem: compare.timbre_features(y) for stem, y, _, _ in rows}
+    Y = {stem: y for stem, y, _, _ in rows}
+    for a_ in RO.file_stems('sign'):                          # the whole gesture: the nib from 40 pt, the clink 300 ms later
+        m = dsp.Mix()
+        m.add(Y['sign_ink_' + a_[-1]])
+        m.add(Y[a_], 0.3)
+        T['ink+' + a_] = compare.timbre_features(m.out())
     worst = 0.0
-    print('timbre score (compare.py --cross timbre leg), signing files against drawer files:')
-    for a_ in RO.file_stems('sign') + RO.file_stems('sign_ink'):
+    print('timbre score (compare.py --cross timbre leg; 0.93 is "a copy"), signing against the drawer:')
+    for a_ in RO.file_stems('sign') + ['ink+' + x for x in RO.file_stems('sign')] + RO.file_stems('sign_ink'):
         line = []
         for b_ in RO.file_stems('study'):
-            s = compare.timbre_score(T[a_], T[b_])
-            worst = max(worst, s)
-            line.append('%s %.2f' % (b_, s))
+            sc = compare.timbre_score(T[a_], T[b_])
+            if not a_.startswith('sign_ink'):
+                worst = max(worst, sc)
+            line.append('%s %.2f' % (b_, sc))
         print('  %-11s %s' % (a_, '  '.join(line)))
     within = [compare.timbre_score(T[a_], T[b_]) for i, a_ in enumerate(RO.file_stems('sign')) for b_ in RO.file_stems('sign')[i + 1:]]
     within += [compare.timbre_score(T[a_], T[b_]) for i, a_ in enumerate(RO.file_stems('study')) for b_ in RO.file_stems('study')[i + 1:]]
-    print('across the two families at most %.2f; within a family (variants of one sound) %.2f to %.2f'
+    print('signing (the clink, and nib + clink) against the drawer at most %.2f; variants within one sound %.2f to %.2f'
           % (worst, min(within), max(within)))
     ok = worst < 0.6
-    print('tell: %s (across < 0.60)' % ('apart' if ok else 'TOO CLOSE'))
+    print('tell: %s (signing against the drawer under 0.60; the nib alone is listed, it only ever sounds before a clink)'
+          % ('apart' if ok else 'TOO CLOSE'))
     return 0 if ok else 1
 
 

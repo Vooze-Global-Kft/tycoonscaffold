@@ -1,0 +1,35 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "categories": [
+      [
+        "GAMES",
+        "GAMES_SIMULATION",
+        "GAMES_STRATEGY"
+      ]
+    ],
+    "info": {
+      "en-US": {
+        "title": "Proudly Adequate",
+        "subtitle": "PLACEHOLDER subtitle",
+        "description": "PLACEHOLDER. This is the skeleton's stand-in for the store description of High Office. The store writer drafts the real listing in parallel, and the numbers engineer regenerates this whole file with scripts/content/build-office.py.",
+        "keywords": [
+          "desk",
+          "mayor",
+          "governor",
+          "president",
+          "papers",
+          "sign",
+          "town hall",
+          "funny",
+          "satire",
+          "decisions",
+          "cartoon",
+          "clerk"
+        ],
+        "promoText": "PLACEHOLDER: promotional text of the real listing.",
+        "privacyPolicyUrl": "https://example.com/proudly-adequate/privacy"
+      }
+    }
+  }
+}

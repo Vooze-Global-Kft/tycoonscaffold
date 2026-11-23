@@ -534,7 +534,7 @@ def hand_bell(f, rng, vel=1.0, dur=1.6):
     return vel * (y + 0.4 * strike)
 
 
-GAVEL = ((980.0, 1.0, 0.016), (1730.0, 0.7, 0.011), (2840.0, 0.5, 0.008), (4150.0, 0.25, 0.005))
+GAVEL = ((980.0, 1.0, 0.024), (1730.0, 0.7, 0.016), (2840.0, 0.5, 0.01), (4150.0, 0.25, 0.006))
 
 
 def gavel(rng, vel=1.0):
@@ -544,7 +544,7 @@ def gavel(rng, vel=1.0):
     blk = modal([(f * rng.uniform(0.98, 1.02), a, tau, 0.2, rng.uniform(0, TAU)) for f, a, tau in GAVEL], n)
     bench = modal([(130.0, 0.8, 0.05, 0.8, 0.0), (240.0, 0.5, 0.03, 0.8, 0.0)], n)
     crack = band(white(n, rng), 2000.0, 5500.0, 2) * perc(n, 0.05, 0.0015)
-    return vel * (blk + 0.35 * bench + 0.8 * crack)
+    return vel * (blk + 0.35 * bench + 0.35 * crack)
 
 
 def metal_click(rng, f=(2300.0, 4100.0, 5300.0), vel=1.0, tau=0.006):
@@ -1082,7 +1082,7 @@ EVENTS = {
     'paper_arrive': (0.4, 5000, None, 'a visitor: two knocks on the panelled door, the glass pane answering, their paper laid on the desk; two files, random', 1),
     'slip_arrive': (0.35, 800, None, "the Treasury Clerk's slip slid across the baize and stopped by a fingertip", 1),
     # the Ledger
-    'buy_level': (0.45, 100, ['light'], 'a level: the nib ticks the Ledger, a heavy brass token set down on the blotter and settling (no till, no bell)', 2),
+    'buy_level': (0.45, 125, ['light'], 'a level: the nib ticks the Ledger, a heavy brass token set down on the blotter and settling (no till, no bell)', 2),
     'open_ministry': (0.6, None, ['medium'], 'a ministry opens: a brass latch thrown, a tuba blat from the corridor', 1),
     'appoint': (0.6, None, ['light'], 'a minister appointed: a press camera, shutter and film-advance ratchet', 1),
     'storey': (0.65, None, ['success'], 'a new storey: a brass hand bell swung twice (F5), a tuba under it', 1),
@@ -1115,6 +1115,8 @@ FILES = {'sign_ink': 3, 'sign': 3, 'study': 3, 'paper_arrive': 2, 'tally': 3}   
 # ui_tap and ui_tab are silent, a reading game needs no click per button).
 SHARED_SOUNDS = {
     'ui_denied': 'denied',
+    'ui_open': 'ui_open',
+    'ui_close': 'ui_close',
     'offline_collect': 'slip_arrive',
     'purchase_success': 'open_ministry',
     'unlock': 'open_ministry',
@@ -1140,6 +1142,6 @@ def key_of(stem):
 # The sounds that repeat fast, with the interval they can repeat at in play (the catalogue's
 # minimum interval, or the fastest a reading hand reaches), measured by render_office.py --rows.
 ROW_KEYS = {
-    'sign_ink_1': 250, 'sign_1': 150, 'study_1': 150, 'take_back': 150, 'denied': 300, 'buy_level': 100,
+    'sign_ink_1': 250, 'sign_1': 150, 'study_1': 150, 'take_back': 150, 'denied': 300, 'buy_level': 125,
     'slip_arrive': 800, 'tally_1': 120, 'clipping': 300, 'district_held': 300,
 }

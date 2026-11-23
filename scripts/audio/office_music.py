@@ -208,7 +208,7 @@ def march(loop, unit, bars_from=0, bars_to=None, tutti_all=False, distant=True):
                 snare_bar(loop, at, unit, rng, 0.8 if tutti else 0.6, busy=(name == 'break' and b >= 6) or (b % 8 == 7))
             loop.add('bass_drum', RO.bass_drum(rng, 0.9 if b % 2 == 0 else 0.7), at)
             loop.add('bass_drum', RO.bass_drum(rng, 0.65), at + 4 * unit)
-            if phrase_start and name != 'intro':
+            if phrase_start:
                 loop.add('cymbal', RO.clash(rng, 0.8 if tutti else 0.6, 1.1), at)
         # melody: cornet in A strains; euphonium + cornet an octave apart in the trio
         if mel:
@@ -324,7 +324,7 @@ DESK_STRIPS = {
     'pizz': dict(gain=0.5, pan=-0.1, send=0.18),
     'brush_tap': dict(gain=0.6, pan=0.3, send=0.15),
     'brush_sweep': dict(gain=0.12, pan=0.3, send=0.1),
-    'bsn1': dict(gain=0.7, pan=0.25, send=0.25),
+    'bsn1': dict(gain=0.42, pan=0.25, send=0.3),
     'bsn2': dict(gain=0.32, pan=-0.35, send=0.3),
 }
 

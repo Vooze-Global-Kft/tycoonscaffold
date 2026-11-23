@@ -1,0 +1,1 @@
+PLACEHOLDER. This is the skeleton's stand-in for the store description of High Office. The store writer drafts the real listing in parallel, and the numbers engineer regenerates this whole file with scripts/content/build-office.py.

@@ -1,0 +1,72 @@
+{
+  "_notes": [
+    "Declared by the skeleton from docs/design/office-design.md 1.2 (with decisions D4 and D11). Dimension 9's value office-ladder was added to the closed vocabulary by the skeleton (scripts/lib/fingerprint.ts, docs/design/research/spam.md).",
+    "human: one check per game (scripts/lib/fingerprint.ts reads human.<dimension> as a map keyed by the other game's id). value, by and date are all left empty on purpose: the person who looks writes the verdict ('own' for dimension 7, 'different' for 13; anything else counts as not differing), their name and the date, one entry per game (D9: an engineer's read is recorded as theirs; a read by the owner stays required before a submission). Until 'by' is filled the dimension reads pending. Dimension 7 waits for the icon and the 'signature' screenshot template (7.9) and SIDE-BY-SIDE.png; dimension 13 for the Ledger, the Cabinet photograph, the pinned ward map, the chalk tally board and the Office wall in the web preview."
+  ],
+  "core_verb": "swipe/aim",
+  "production_topology": "parallel-generators",
+  "money_moment": "auto-tick",
+  "main_screen_layout": "single-object-focus",
+  "progression_structure": "office-ladder",
+  "prestige_model": "new-location-carryover",
+  "active_skills_events": [
+    "strike",
+    "scandal",
+    "follow-up-return",
+    "ribbon-cutting",
+    "campaign-week",
+    "election-night"
+  ],
+  "meta_systems": [
+    "in-tray",
+    "ministers",
+    "follow-ups",
+    "gossip",
+    "elections",
+    "scrapbook",
+    "vanity-shelf",
+    "prestige"
+  ],
+  "art_style": {
+    "style": "flat-vector",
+    "palette": "baize-and-ink"
+  },
+  "character_kind": "humans",
+  "voice": "deadpan-memo",
+  "human": {
+    "icon_and_screenshot_template": {
+      "pizza-empire": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "space-miner": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "night-market": {
+        "value": "",
+        "by": "",
+        "date": ""
+      }
+    },
+    "meta_screen_layouts": {
+      "pizza-empire": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "space-miner": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "night-market": {
+        "value": "",
+        "by": "",
+        "date": ""
+      }
+    }
+  }
+}

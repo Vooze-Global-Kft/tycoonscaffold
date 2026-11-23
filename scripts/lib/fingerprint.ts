@@ -68,7 +68,10 @@ export const VOCABULARY: Record<string, readonly string[]> = {
   money_moment: ['customer-pays', 'sale-at-depot', 'contract-complete', 'auto-tick', 'tap-collect'],
   // grid-board: a fixed board of cells as the whole play surface, no camera (Night Market, market-design.md 1.2).
   main_screen_layout: ['side-cross-section', 'top-down-map', 'isometric-room', 'single-object-focus', 'card-list', 'grid-board'],
-  progression_structure: ['location-levels', 'sector-map', 'tech-tree', 'endless-single', 'seasons'],
+  // office-ladder: a short fixed ladder of offices, each entered only by winning a vote at the end of a term of
+  // decisions; a lost vote repeats the term in place; the top office continues as repeated terms (High Office,
+  // office-design.md 1.2). Not location-levels (offices are never bought), endless-single or seasons.
+  progression_structure: ['location-levels', 'sector-map', 'tech-tree', 'endless-single', 'seasons', 'office-ladder'],
   prestige_model: ['reset-for-currency', 'new-location-carryover', 'none', 'seasonal'],
   character_kind: ['humans', 'robots', 'aliens', 'animals', 'none'],
   art_style: ['flat-vector', 'pixel', '3D-render', 'painted'],

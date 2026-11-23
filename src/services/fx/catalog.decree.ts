@@ -49,7 +49,7 @@ export const FX = {
   slip_arrive: { brief: 'the Treasury Clerk\'s slip slid across the baize and stopped by a fingertip', volume: 0.35, preload: 4, minIntervalMs: 800 },
 
   // --- the Ledger and the cabinet ---------------------------------------------------------------------
-  buy_level: { brief: 'a level: the nib ticks the Ledger, a heavy brass token set down on the blotter and settling (no till, no bell)', volume: 0.45, preload: 6, voices: 2, minIntervalMs: 100, haptic: ['light'] },
+  buy_level: { brief: 'a level: the nib ticks the Ledger, a heavy brass token set down on the blotter and settling (no till, no bell)', volume: 0.45, preload: 6, voices: 2, minIntervalMs: 125, haptic: ['light'] },
   open_ministry: { brief: 'a ministry opens: a brass latch thrown, a tuba blat from the corridor', volume: 0.6, haptic: ['medium'] },
   appoint: { brief: 'a minister appointed: a press camera, shutter and film-advance ratchet', volume: 0.6, haptic: ['light'] },
   storey: { brief: 'a new storey: a brass hand bell swung twice (F5), a tuba under it', volume: 0.65, haptic: ['success'] },
