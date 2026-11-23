@@ -129,7 +129,54 @@ function pacing(id: string, hours: number, extra: string[] = [], timeout = 120_0
  * only after every hard gate passes) a missed hard target is a warning, and a run that stops at a rule
  * not built yet (NotBuiltError) is a warning naming the rule.
  */
-type MergeSeed = { seed?: number; rows?: { name: string; kind: string; aim: string; value: unknown; ok: boolean }[]; summary?: { useful: number[]; season1: number | null; seasons?: { festival: number | null }[] }; notBuilt?: string; error?: string; crashed?: boolean; traces?: ({ kind: string; unbooked: { count: number } } | null)[] };
+type MergeSeed = { seed?: number; rows?: { name: string; kind: string; aim: string; value: unknown; ok: boolean; num?: number | null }[]; summary?: { useful: number[]; season1: number | null; seasons?: { festival: number | null }[] }; notBuilt?: string; error?: string; crashed?: boolean; traces?: ({ kind: string; unbooked: { count: number } } | null)[] };
+/**
+ * The pacing guards of a merge game (docs/design/market-design.md, Decisions M2 and M54): the bands
+ * the lead set once from what the tuned game measures (15 seeds at 2.0 s per action, and the five
+ * seeds validate runs). A row whose name starts with the text is an error outside its band and is
+ * silent inside it, whatever its tuning aim said; a row without a guard stays a tuning aim (a
+ * warning). (A prefix that ends in a number does not match a longer number: "minute 60" is not "minute 600".) A band changes only together with a rule (M2).
+ */
+const MERGE_GUARDS: [string, number | null, number | null][] = [
+  ['1 first ticket paid', null, 15],
+  ['1 gap between paying moments, minutes 0-10: median', null, 30],
+  ['1 gap p90', null, 50],
+  ['1 gap max', null, 75],
+  ['1 purchases in minutes 0-10', 12, null],
+  ['1 longest gap without a paid ticket, minutes 0-5', null, 60],
+  ['M3 useful actions a minute', 16, null],
+  ['M3 longest wait with nothing useful', null, 10],
+  ['2 Tea stall opens', 0.75, 1.75],
+  ['2 Steamer stall opens', 5, 10.5],
+  ['2 Sweets stall opens', 18, 32],
+  ['2 Noodles stall opens', 60, 105],
+  ['3 ticket fill time, hour 1: median', 5, 25],
+  ['3 ticket fill time, hour 1: p90', null, 210],
+  ['3 Parade fill time', null, 4],
+  ['5 board full (F ≤ spare, M50), hours 0-3', null, 0.15],
+  ['5 board full (F ≤ spare, M50), minutes 0-10', null, 0.08],
+  ['5 deadlock', null, 0.03],
+  ['5 Basket sales / goods made', null, 0.05],
+  ['5 goods on the open cells', 0.6, 1],
+  ['6 longest gap without something new, minutes 0-30', null, 10],
+  ['6 longest gap without something new, hours 0-3', null, 22],
+  ['8 tickets / all coins, minutes 0-10', 0.6, null],
+  ['8 tickets / all coins at minute 10 ', 0.55, null],
+  ['8 tickets / all coins at minute 60 ', 0.5, null],
+  ['8 tickets / all coins at minute 180 ', 0.5, null],
+  ['8 minder share at minute 10 ', 0.08, 0.36],
+  ['8 minder share at minute 30 ', 0.18, 0.4],
+  ['8 minder share at minute 60 ', 0.16, 0.38],
+  ['8 minder share at minute 180 ', 0.13, 0.36],
+  ['8 gift coins / coins', null, 0.15],
+  ['8 gift boxes an hour', 5, 12],
+  ['9 1 h away with the ad / 1 h of play at minute 30', 0.25, 0.72],
+  ['9 1 h away with the ad / 1 h of play at minute 60', 0.25, 0.6],
+  ['10 season 1 Festival filled', 95, 190],
+  ['10 season 2 Noodles / season 1 Noodles', null, 0.7],
+  ['10 season 2 Festival / season 1 Festival', 0.75, 1.3],
+];
+
 function mergePacing(id: string, problems: string[], warnings: string[]): void {
   const placeholder = /PLACEHOLDER/.test(fs.readFileSync(path.join(games.gameDir(id), 'game.json'), 'utf8'));
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `validate-merge-${id}-`));
@@ -153,7 +200,17 @@ function mergePacing(id: string, problems: string[], warnings: string[]): void {
     else {
       results.push(r);
       for (const row of r.rows) {
-        if (row.ok || row.kind === 'report') continue;
+        if (row.kind === 'report') continue;
+        const guard = row.kind === 'aim' ? MERGE_GUARDS.find(([prefix]) => row.name.startsWith(prefix) && !/^\d/.test(row.name.slice(prefix.length))) : undefined;
+        if (guard && typeof row.num === 'number' && Number.isFinite(row.num)) {
+          const [, lo, hi] = guard;
+          if ((lo !== null && row.num < lo) || (hi !== null && row.num > hi)) {
+            const msg = `merge pacing (guard, M54), seed ${seed}: ${row.name}: ${row.value} (guard ${lo ?? '…'} to ${hi ?? '…'})`;
+            (placeholder ? warnings : problems).push(msg);
+          }
+          continue;
+        }
+        if (row.ok) continue;
         const msg = `merge pacing (section 8, ${row.kind === 'hard' ? 'hard, M2' : 'aim, M2'}), seed ${seed}: ${row.name}: ${row.value} (aim ${row.aim})`;
         if (row.kind === 'hard' && !placeholder) problems.push(msg);
         else warnings.push(row.kind === 'hard' ? `${msg} [hard; a warning only while game.json is the placeholder]` : msg);

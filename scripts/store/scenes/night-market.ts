@@ -47,7 +47,8 @@ const closeBand = (v: View, zoom: number, cx?: number): BandSpec => {
   const L = layout(v);
   const counterFoot = L.counters[2][0].y + L.counters[2][0].h;
   return {
-    y0: Math.max(L.street.y + 30, counterFoot - Math.round(L.board.cell * 2.5)),
+    // The customers' heads stand about 140 pt above the counter's foot whatever the cell size.
+    y0: Math.max(L.street.y + 10, counterFoot - Math.max(145, Math.round(L.board.cell * 2.5))),
     y1: L.board.y + 4 * L.board.cell,
     anchor: 'top',
     maxZoom: zoom,
@@ -70,8 +71,13 @@ const streetBand = (v: View): BandSpec => {
   };
 };
 
-/** Milliseconds from dropping the Twin Skewer on the fox's ticket to the picture (beats six times slower: the FILLED stamp falls in 1.3 s, the paper folds from 5.4 s to 8.1 s). */
-const FOLD_WAIT = Number(process.env.NIGHT_FOLD_WAIT ?? 6200);
+/**
+ * Milliseconds from dropping the Twin Skewer on the fox's ticket to the picture, with the beats twenty
+ * times slower (fxSlow=20): measured on the 6.9" capture, 12 s shows the FILLED stamp, 18 s the paper
+ * folding, 24 s the lit lantern just risen above the counter (it then flies to the purse for 14 s).
+ * The slow beat makes the window wide enough that the machine's load does not move the picture out of it.
+ */
+const FOLD_WAIT = Number(process.env.NIGHT_FOLD_WAIT ?? 25000);
 
 // The opening board (src/engine/merge/create.ts): six Pepper Skewers in the third row, cells 14 to 19.
 const SKEWERS = [14, 15, 16, 17, 18, 19];
@@ -110,8 +116,8 @@ const scenes: GameScenes = {
       slug: 'ticket-folds',
       // Two skewers merged into a Twin Skewer, dragged onto the fox's ticket: the FILLED stamp
       // falls and the ticket folds into a paper lantern that floats to the purse (play/beats.ts,
-      // played six times slower so the picture can catch the fold).
-      query: 'preset=fresh&fxSlow=6',
+      // played twenty times slower so the picture can catch the lantern).
+      query: 'preset=fresh&fxSlow=20',
       settle: 9000,
       steps: (v) => [
         // Each drag as a finger: down, a slow move, a short hold, up (a release in the same instant
