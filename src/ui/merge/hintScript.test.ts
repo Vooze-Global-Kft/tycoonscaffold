@@ -12,7 +12,7 @@ import { freshState, mergeTestConfig } from '../../engine/fixtures/merge';
 import * as R from '../../engine/merge';
 import { runMergeBot } from '../../engine/merge/bot';
 import { shutterTag } from './art/street.draw';
-import { anchorOf, currentStep, fireflyHint, FIREFLY_REACH, GUIDED_FALLBACK_MS, GUIDED_STEPS, hintPath, IDLE_MS, layoutRect, QUIET_MS, stepDone, type FireflyUi, type GuidedStep } from './hintScript';
+import { anchorOf, currentStep, purchasesMade, fireflyHint, FIREFLY_REACH, GUIDED_FALLBACK_MS, GUIDED_STEPS, hintPath, IDLE_MS, layoutRect, QUIET_MS, stepDone, type FireflyUi, type GuidedStep } from './hintScript';
 import { cellRect, mergeLayout } from './layout';
 
 const cfg = mergeTestConfig();
@@ -33,13 +33,19 @@ describe('the guided steps (3.1)', () => {
     expect(fresh.merge.board.filter((c) => R.isGood(c)).length).toBe(cfg.merge.seasons.openingGoods);
   });
 
+  const shutter0 = (g: R.MergeGame) => withM(g, (m) => ({ shuttersOpened: m.shuttersOpened.map((n, i) => (i === 0 ? n + 1 : n)) }));
+
   it('each step is done by its condition, whatever path got there', () => {
     expect(stepDone(fresh, 'merge')).toBe(false);
     expect(stepDone(feats(fresh, { merges: 1 }), 'merge')).toBe(true);
-    expect(stepDone(feats(fresh, { tickets: 1 }), 'deliver')).toBe(true);
-    expect(stepDone(chain(fresh, 0, { gear: 2 }), 'gear')).toBe(true);
-    expect(stepDone(withM(fresh, (m) => ({ shuttersOpened: m.shuttersOpened.map((n, i) => (i === 0 ? 1 : n)) })), 'shutter')).toBe(true);
-    expect(stepDone(chain(fresh, 1, { open: true }), 'tea')).toBe(true);
+    expect(stepDone(feats(fresh, { tickets: 1 }), 'deliver')).toBe(false);
+    expect(stepDone(feats(fresh, { tickets: 2 }), 'deliver')).toBe(true);
+    expect(stepDone(withM(fresh, () => ({ script: 'done' })), 'deliver')).toBe(true);
+    expect(purchasesMade(fresh)).toBe(0);
+    expect(stepDone(chain(fresh, 0, { gear: 2 }), 'buy1')).toBe(true);
+    expect(stepDone(shutter0(fresh), 'buy1')).toBe(true);
+    expect(stepDone(chain(fresh, 1, { open: true }), 'buy1')).toBe(true);
+    expect(purchasesMade(shutter0(chain(chain(fresh, 1, { open: true }), 0, { gear: 2, minder: 1 })))).toBe(4);
   });
 
   it('runs in order, one step after another', () => {
@@ -47,22 +53,22 @@ describe('the guided steps (3.1)', () => {
     const seen: (GuidedStep | null)[] = [currentStep(g)];
     g = feats(g, { merges: 1 });
     seen.push(currentStep(g));
-    g = feats(g, { tickets: 1 });
+    g = feats(g, { tickets: 2 });
+    seen.push(currentStep(g));
+    g = chain(g, 1, { open: true });
     seen.push(currentStep(g));
     g = chain(g, 0, { gear: 2 });
     seen.push(currentStep(g));
-    g = withM(g, (m) => ({ shuttersOpened: m.shuttersOpened.map((n, i) => (i === 0 ? 1 : n)) }));
-    seen.push(currentStep(g));
-    g = chain(g, 1, { open: true });
+    g = shutter0(g);
     seen.push(currentStep(g));
     expect(seen).toEqual([...GUIDED_STEPS, null]);
   });
 
   it('a player who went ahead is never sent back: a later step done ends the earlier ones', () => {
-    const teaFirst = chain(feats(fresh, { merges: 3, tickets: 2 }), 1, { open: true });
-    expect(currentStep(teaFirst)).toBeNull();
-    const shutterFirst = withM(feats(fresh, { merges: 3 }), (m) => ({ shuttersOpened: m.shuttersOpened.map((n, i) => (i === 0 ? 1 : n)) }));
-    expect(currentStep(shutterFirst)).toBe('tea');
+    const boughtFirst = shutter0(chain(chain(feats(fresh, { merges: 3 }), 1, { open: true }), 0, { gear: 2 }));
+    expect(currentStep(boughtFirst)).toBeNull();
+    const oneBought = chain(feats(fresh, { merges: 3 }), 1, { open: true });
+    expect(currentStep(oneBought)).toBe('buy2');
   });
 
   it('only in the first season of a new game', () => {
@@ -89,24 +95,28 @@ describe('what the firefly shows, and when', () => {
     expect(fireflyHint(cfg, fresh, { ...idle(IDLE_MS * 2), fingerDown: true })).toBeNull();
   });
 
-  it('the gear step points at the Grill (goal line or front) only when the level is affordable, at the rules\' price', () => {
-    const g = feats(fresh, { merges: 2, tickets: 1 });
-    const cost = R.mergeParams(cfg, g).chains[0].gearCost!;
-    expect(cost).toBeGreaterThan(0);
-    const poor = { ...g, cash: cost - 1 };
-    const rich = { ...g, cash: cost };
-    expect(fireflyHint(cfg, poor, idle(QUIET_MS))?.id ?? null).not.toBe('step:gear');
+  it('M44: a purchase step points at the goal line, only while the goal line names a purchase the purse can pay', () => {
+    const g = feats(fresh, { merges: 2, tickets: 2 });
+    expect(currentStep(g)).toBe('buy1');
+    const goal = R.purchaseAdvice(cfg, g);
+    expect(goal).not.toBeNull();
+    const poor = { ...g, cash: 0 };
+    const rich = { ...g, cash: goal!.cost + 1 };
+    expect(fireflyHint(cfg, poor, idle(QUIET_MS))?.to ?? null).not.toBe('goal');
+    const adv = R.advice(cfg, rich);
     const h = fireflyHint(cfg, rich, idle(QUIET_MS));
-    expect(h?.id).toBe('step:gear');
-    expect(['goal', 'front:0']).toContain(h?.to);
+    expect(h?.to).toBe('goal');
+    expect(h?.guided).toBe(true);
+    // The firefly names what the goal line names.
+    expect(h?.id).toBe(`step:goal:${adv!.kind}:${adv!.target ?? ''}`);
   });
 
   it('while a step cannot be done, the rules\' own hint waits GUIDED_FALLBACK_MS; after the guided steps, IDLE_MS (20 s)', () => {
-    const g = { ...feats(fresh, { merges: 2, tickets: 1 }), cash: 0 };
+    const g = { ...feats(fresh, { merges: 2, tickets: 2 }), cash: 0 };
     const any = R.hintsFor(cfg, g, {}).length > 0;
     expect(fireflyHint(cfg, g, idle(GUIDED_FALLBACK_MS - 1))).toBeNull();
     if (any) expect(fireflyHint(cfg, g, idle(GUIDED_FALLBACK_MS))?.guided).toBe(false);
-    const after = chain(withM(feats(fresh, { merges: 5, tickets: 3 }), (m) => ({ shuttersOpened: m.shuttersOpened.map((n, i) => (i === 0 ? 1 : n)) })), 1, { open: true });
+    const after = chain(chain(withM(feats(fresh, { merges: 5, tickets: 3 }), (m) => ({ shuttersOpened: m.shuttersOpened.map((n, i) => (i === 0 ? 1 : n)) })), 1, { open: true }), 0, { gear: 2 });
     expect(currentStep(after)).toBeNull();
     expect(fireflyHint(cfg, after, idle(IDLE_MS - 1))).toBeNull();
     if (R.hintsFor(cfg, after, {}).length) expect(fireflyHint(cfg, after, idle(IDLE_MS))).not.toBeNull();

@@ -46,9 +46,13 @@ export interface DropContext {
 export const dropContext: DropContext = { from: null, fromCell: null };
 
 let down = false;
-/** A finger is on the play canvas (nothing may open by itself meanwhile, 3.1). */
+/** A finger is on the play canvas (nothing may open by itself meanwhile, 3.1). uiState's `fingerDown` mirrors it for the firefly and the away report. */
 export function fingerDown(): boolean {
   return down;
+}
+function setDown(v: boolean): void {
+  down = v;
+  useMergeUi.getState().setFingerDown(v);
 }
 
 /** Whether `code` is a target the good of `from` can be dropped on (an open cell, a counter with a ticket, the banner, the Basket). */
@@ -180,7 +184,7 @@ export function usePlayInput(L: MergeLayout, geo: HitGeo, drag: SharedValue<Drag
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current);
-      down = false;
+      if (down) setDown(false);
     },
     [],
   );
@@ -197,7 +201,7 @@ export function usePlayInput(L: MergeLayout, geo: HitGeo, drag: SharedValue<Drag
     const end = () => {
       clearTimer();
       touch.current = null;
-      down = false;
+      setDown(false);
     };
     /** A second finger, or the system took the touch: the good goes home, nothing else happens. */
     const cancel = () => {
@@ -233,7 +237,7 @@ export function usePlayInput(L: MergeLayout, geo: HitGeo, drag: SharedValue<Drag
         const cell = now && code >= 0 && code < R.BOARD_CELLS && R.isGood(now.g.merge.board[code]) ? code : -1;
         const t: Touch = { id: e.nativeEvent.identifier, start: p, t0: Date.now(), code, cell, moved: false, pressed: false, dragging: false, last: p };
         touch.current = t;
-        down = true;
+        setDown(true);
         if (cell >= 0) {
           timer.current = setTimeout(() => {
             const cur = touch.current;

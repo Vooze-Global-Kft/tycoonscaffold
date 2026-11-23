@@ -7,7 +7,8 @@
  * the board, the board 8 cells tall (7 wide), spare below, the bottom row 48, bottom inset.
  * - cell = min(64, floor((W − 32)/7), floor((H − insets − 108 − 156)/8));
  * - a spare of 34 or more grows the street to 190 and the rest is split around the board (above gets
- *   the floor half); a smaller spare stays below the board;
+ *   the floor half); a smaller spare stays below the board; the spare above is drawn as street (the
+ *   banner and the counters stand on the board's edge, the sky opens above them);
  * - overflow: cells shrink first, to a 44 pt floor; then the street, to 140; then (never expected)
  *   the play canvas scales (`scale` < 1: everything inside street and board is drawn scaled about
  *   the play area's top left, and the hit test divides by it).
@@ -138,16 +139,20 @@ export function mergeLayout(width: number, height: number, insets: Insets, fontS
   const frontsW = 6 * frontW + 5 * STREET_GAP;
   const frontsX = Math.round((streetR.w - frontsW) / 2);
   const fronts = Array.from({ length: 6 }, (_, i) => rect(frontsX + i * (frontW + STREET_GAP), streetR.y, frontW, BACKDROP));
+  // The street sits on the board: the spare above the board (390 pt phones) opens between the stall
+  // fronts and the customers, so the banner and the tickets stand on the board's edge with no empty
+  // band under them; each counter's column (its drop rectangle) reaches up through that spare.
   const lowerY = streetR.y + BACKDROP;
   const lowerH = street - BACKDROP;
-  const banner = rect(STREET_GUTTER, lowerY, BANNER_W, lowerH);
+  const sitY = lowerY + spareAbove / scale;
+  const banner = rect(STREET_GUTTER, sitY, BANNER_W, lowerH);
   const cw = counterWidth(streetR.w);
   const areaX = STREET_GUTTER + BANNER_W + STREET_GAP;
   const areaW = streetR.w - areaX - STREET_GUTTER;
   const columns = (n: number) => {
     const total = n * cw + (n - 1) * STREET_GAP;
     const x0 = areaX + Math.max(0, Math.round((areaW - total) / 2));
-    return Array.from({ length: n }, (_, i) => rect(x0 + i * (cw + STREET_GAP), lowerY, cw, lowerH));
+    return Array.from({ length: n }, (_, i) => rect(x0 + i * (cw + STREET_GAP), lowerY, cw, lowerH + spareAbove / scale));
   };
   const counters = { 2: columns(2), 3: columns(3), 4: columns(4) };
 

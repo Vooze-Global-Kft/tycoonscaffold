@@ -89,12 +89,22 @@ function independent(g: MergeGame, P: MergeParams, counter: number, lines: reado
   }
   let cells = cfg.merge.tickets.spareCells;
   for (const l of [...queue, ...lines]) cells += Math.max(1, l.k - P.chains[l.c].base + 1);
-  for (let c = 0; c < 6; c++) {
-    if (!g.merge.chains[c].open) continue;
-    let loose = 0;
-    for (const cell of g.merge.board) if (cell && typeof cell === 'object' && cell.c === c && cell.k >= P.chains[c].base && cell.k <= P.chains[c].base + 1) loose++;
-    cells += Math.min(cfg.merge.gear.looseCap, loose);
+  // M43: K, the board after every possible merge, counted independently by merging pairs one by one.
+  const pile = g.merge.board.flatMap((cell) => (cell && typeof cell === 'object' ? [{ c: cell.c, k: cell.k }] : []));
+  for (let merged = true; merged; ) {
+    merged = false;
+    for (let i = 0; i < pile.length && !merged; i++) {
+      for (let j = i + 1; j < pile.length; j++) {
+        if (pile[i].k < 8 && pile[i].c === pile[j].c && pile[i].k === pile[j].k) {
+          pile[i] = { c: pile[i].c, k: pile[i].k + 1 };
+          pile.splice(j, 1);
+          merged = true;
+          break;
+        }
+      }
+    }
   }
+  cells += pile.length;
   let O = 0;
   for (const cell of g.merge.board) if (cell !== 'shutter' && cell !== 'block') O++;
   if (cells > O) f.c = true;

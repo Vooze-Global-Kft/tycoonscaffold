@@ -509,8 +509,13 @@ export interface AwayReport {
   /** Time away and the part that counted (t and t′). */
   seconds: number;
   effective: number;
-  /** House goods each minder sold, and their coins. */
+  /**
+   * House goods each minder sold, and their coins. The per-minder `coins` are the unrounded sums of
+   * whole sales: they do NOT add up to `earnings`, which is rounded once (M19). Never print them as
+   * amounts (a screen prints `goods` per minder and `earnings` as the total); they are for the bot.
+   */
   sales: { c: number; goods: number; coins: number }[];
+  /** What is shown and granted: roundCoins of the sum of every sale, once (M19). */
   earnings: number;
   /** Goods each gear put on its shelf while away; the chains whose gear now waits. */
   shelved: { c: number; goods: number }[];

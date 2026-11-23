@@ -122,8 +122,9 @@ function merge(cfg: MergeConfig, g: MergeGame, from: number, to: number, good: G
     up += mods.sparkTiers;
   }
   // The Lucky stream: n = lifetime merges, x = c × 8 + k (2.3).
+  // Decision M42: while the opening script's tickets wait, no merge is Lucky (the roll still reads its value n).
   const roll = streamLucky(m, n, good);
-  const lucky = roll < 1 / mods.luckyOdds;
+  const lucky = m.script === 'done' && roll < 1 / mods.luckyOdds;
   if (lucky) up += 1;
   const made: Good = { c: good.c, k: Math.min(TIERS, good.k + up) };
   const board = m.board.slice();

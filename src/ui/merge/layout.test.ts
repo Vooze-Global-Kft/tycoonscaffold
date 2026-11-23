@@ -53,6 +53,18 @@ describe('mergeLayout', () => {
     expect(l.board.w).toBe(357);
   });
 
+  it('the street sits on the board: banner and tickets stand on its edge at both sizes (no empty band under them)', () => {
+    for (const [w, h, t, b] of [
+      [375, 667, 20, 0],
+      [390, 844, 47, 34],
+      [390, 844, 0, 0],
+    ]) {
+      const l = mergeLayout(w, h, { top: t, bottom: b });
+      expect(l.banner.y + l.banner.h).toBe(l.board.y);
+      for (const n of [2, 3, 4] as const) for (const r of l.counters[n]) expect(r.y + r.h).toBe(l.board.y);
+    }
+  });
+
   it('the zones are stacked without a gap or an overlap', () => {
     for (const [w, h, t, b] of [
       [375, 667, 20, 0],

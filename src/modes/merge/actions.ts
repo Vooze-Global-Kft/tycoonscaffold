@@ -26,7 +26,7 @@ export function mergeNow(): { cfg: R.MergeConfig; g: R.MergeGame } | null {
 }
 
 /** One transition: rules call, store, sound, events. `key` may depend on the result; `step` picks the ladder file. */
-function act(where: string, fn: (cfg: R.MergeConfig, g: R.MergeGame, events: R.MergeEvent[]) => R.MergeGame, key: MergeFxName | ((before: R.MergeGame, after: R.MergeGame) => MergeFxName | null) | null): boolean {
+function act(where: string, fn: (cfg: R.MergeConfig, g: R.MergeGame, events: R.MergeEvent[]) => R.MergeGame, key: MergeFxName | ((before: R.MergeGame, after: R.MergeGame, events: readonly R.MergeEvent[]) => MergeFxName | null) | null): boolean {
   const now = mergeNow();
   if (!now) {
     fx.play('ui_denied');
@@ -45,7 +45,7 @@ function act(where: string, fn: (cfg: R.MergeConfig, g: R.MergeGame, events: R.M
     return false;
   }
   useGame.setState({ game: next as GameState });
-  const k = typeof key === 'function' ? key(now.g, next) : key;
+  const k = typeof key === 'function' ? key(now.g, next, events) : key;
   if (k) fx.play(k);
   if (events.length) modeEvents.emit(events);
   return true;
@@ -159,7 +159,12 @@ export const mergeActions = {
     try {
       if (!(await ads.showRewarded(`merge_${kind}`))) return false;
       // The ad took a while: granted against the latest state (the rules check the cooldown again).
-      return act('grantAd', (cfg, g, ev) => R.grantAd(cfg, g, kind, counter, ev), kind === 'gearRush' ? 'drop' : kind === 'callDragon' ? 'parade_arrive' : 'line_fill');
+      // The events' own sounds play once (src/modes/merge/fx.ts: drop, paradeArrive); the key covers only what no event sounds.
+      return act('grantAd', (cfg, g, ev) => R.grantAd(cfg, g, kind, counter, ev), (_b, _a, ev) => {
+        if (kind === 'fillLine') return 'line_fill';
+        if (kind === 'gearRush') return ev.some((e) => e.type === 'drop') ? null : 'upgrade';
+        return ev.some((e) => e.type === 'paradeArrive') ? null : 'parade_arrive';
+      });
     } finally {
       adOpen = false;
     }

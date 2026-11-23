@@ -14,7 +14,7 @@
  */
 import type { GameState } from '../types';
 import { rngMix } from '../rng';
-import { placeGood } from './board';
+import { isGood, placeGood } from './board';
 import { scriptedTicket } from './draw';
 import { festivalFor } from './festival';
 import { currentMods } from './lanterns';
@@ -177,8 +177,9 @@ const isGoodRaw = (x: unknown): x is { c: number; k: number } => !!obj(x) && Num
  * A saved `merge` repaired field by field on top of a fresh state of the same clock (never throws
  * for any input; null when the save has no usable board or chains, which starts afresh). Every
  * number is clamped to its range, every list to its shape; cells follow `shuttersOpened`; goods
- * of closed chains go; a good above its chain's best raises the best (and the Ladder Book holds
- * every tier up to each best); counters follow the lit lanterns; a ticket whose lines are not
+ * of closed chains go; the saved best stays (M32: a gear level never raises it; maxPop only for a
+ * chain saved without one), a good on the board above it raises it (the Ladder Book is the saved
+ * one, with each best tier and every good on the board stamped); counters follow the lit lanterns; a ticket whose lines are not
  * possible now (bound (a)) or that a base drop would fill (bound (d1)) goes, and its counter draws
  * again; the Basket's undo chip is cleared (2.5).
  */
@@ -209,7 +210,10 @@ function repairMerge(cfg: MergeConfig, raw: unknown, clock: number, seed: number
       releaseAt: shelf.length ? timeOrNull(ch.releaseAt) : null,
       blockedAt: shelf.length ? timeOrNull(ch.blockedAt) : null,
       nextSaleAt: num(ch.nextSaleAt, clock + k.minders.interval),
-      best: open ? Math.max(whole(ch.best, 0, 0, TIERS), maxPopAt(cfg, currentMods(cfg, fresh), gear)) : 0,
+      // M32: a gear level never raises best_c, so a reload keeps the saved best (raised below only by
+      // a good on the board above it, as a placed good raises it in play; shelf and gift goods do not
+      // count until they are placed); maxPop is only the floor of an open chain whose save has no best.
+      best: open ? (fin(ch.best) && ch.best >= 1 ? whole(ch.best, 0, 0, TIERS) : maxPopAt(cfg, currentMods(cfg, fresh), gear)) : 0,
       seasoned: whole(ch.seasoned, 0, 0, 10),
     };
   });
@@ -230,7 +234,9 @@ function repairMerge(cfg: MergeConfig, raw: unknown, clock: number, seed: number
     return null;
   });
   const rawBook = Array.isArray(s.book) ? (s.book as unknown[]) : [];
-  const book = fresh.book.map((row, c) => row.map((_, i) => (Array.isArray(rawBook[c]) && (rawBook[c] as unknown[])[i] === true) || i + 1 <= chains[c].best));
+  // The Book from the save (M32: nothing stamps a tier that was not made); a save without one keeps the fresh Book. Each best tier and every good on the board are stamped.
+  const savedBook = (c: number, i: number) => (Array.isArray(rawBook[c]) ? (rawBook[c] as unknown[])[i] === true : fresh.book[c][i]);
+  const book = fresh.book.map((row, c) => row.map((_, i) => savedBook(c, i) || i + 1 === chains[c].best || board.some((cell) => isGood(cell) && cell.c === c && cell.k === i + 1)));
   const feats0 = obj(s.feats) ?? {};
   const feats = Object.fromEntries(Object.entries(fresh.feats).map(([key, v]) => [key, whole(feats0[key], v)])) as unknown as MergeState['feats'];
   const draws0 = obj(s.draws) ?? {};
@@ -288,8 +294,10 @@ function repairMerge(cfg: MergeConfig, raw: unknown, clock: number, seed: number
     }
     const refill = ticket ? null : timeOrNull(ct?.refillAt);
     const blocked = ticket ? null : timeOrNull(ct?.blockedAt);
-    const held = !ticket && refill === null && blocked === null && script !== 'done' && j === 1;
-    return { ticket, refillAt: ticket || blocked !== null || held ? refill : refill ?? clock + k.tickets.refillDelay, blockedAt: blocked, notTonightAt: num(ct?.notTonightAt, clock) };
+    // M42: while the opening script waits, an empty counter is held (no ordinary draw).
+    const held = !ticket && script !== 'done';
+    if (held) return { ticket, refillAt: null, blockedAt: null, notTonightAt: num(ct?.notTonightAt, clock) };
+    return { ticket, refillAt: ticket || blocked !== null ? refill : refill ?? clock + k.tickets.refillDelay, blockedAt: blocked, notTonightAt: num(ct?.notTonightAt, clock) };
   });
   const fest = obj(s.festival);
   const festLines = fest && Array.isArray(fest.lines) && fest.lines.length >= 1 && (fest.lines as unknown[]).every(isGoodRaw) ? (fest.lines as Raw[]).map((l) => ({ c: l.c as number, k: l.k as number, filled: l.filled === true })) : festivalFor(cfg, season).map((gd) => ({ c: gd.c, k: gd.k, filled: false }));

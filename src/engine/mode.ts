@@ -89,6 +89,13 @@ export interface EngineMode {
    */
   offlineAdMultiplier?(cfg: GameConfig): number;
   /**
+   * The amount the offline collect really grants, from the amount it computed (earnings, times the
+   * ad's multiplier when watched): a mode that rounds every amount it shows (merge, Decision M19)
+   * rounds it here with the same function, so the purse gets exactly the figure on the button.
+   * Without it, the amount is granted as computed (sim, classic and haul: unchanged).
+   */
+  roundPayout?(cfg: GameConfig, amount: number): number;
+  /**
    * Income per second to price "seconds of income" rewards with (an "earn" mission's target, a
    * pod's cash slot) when `activeIncome` is 0: at the start of a run before any drone is on a route,
    * or while a confirmed Jump waits for its condition (haul). Without it, or when it returns 0, the

@@ -6,7 +6,8 @@
  * Package MECHANICS (docs/design/market-build-plan.md).
  *
  * What moves while away (2.9): only the minders' sale clocks and the gears' drop clocks, each
- * re-phased to within one interval of the game clock; the game clock itself does not move, and
+ * re-phased by t′ in every case (also when nothing fell due, so away(a) then away(b) is away(a + b)),
+ * to within one interval of the game clock; the game clock itself does not move, and
  * refills, the Parade, ad cooldowns, `releaseAt`, the till and the undo chip keep their times. The
  * board never changes: every due drop goes to its shelf (its tier drawn from the drop stream, as a
  * drop in play draws it); with the shelf full, the gear waits. On return a shelf that was empty
@@ -46,7 +47,7 @@ const setChain = (m: MergeState, c: number, patch: Partial<MergeState['chains'][
  * sales = t′ ≥ d ? 1 + floor((t′ − d)/Q) : 0; for each open gear that does not wait, n drops the
  * same way with nextPopAt and T, shelf = min(cap, shelf + n) with the tiers drawn from the drop
  * stream, waiting when more were due than the shelf holds. The re-phased clock is the last due
- * time + one interval − t′, accumulated as the event stepping accumulates it (so both give the
+ * time + one interval − t′ (the clock − t′ when nothing fell due), accumulated as the event stepping accumulates it (so both give the
  * same number to the last bit).
  */
 function closedForm(cfg: MergeConfig, g: MergeGame, tp: number): AwayResult {
@@ -62,11 +63,12 @@ function closedForm(cfg: MergeConfig, g: MergeGame, tp: number): AwayResult {
     if (ch.minder > 0) {
       const d = ch.nextSaleAt - clock;
       const sales = tp + EPS >= d ? 1 + Math.floor((tp - d) / Q + EPS) : 0;
+      let next = ch.nextSaleAt;
+      for (let i = 0; i < sales; i++) next += Q;
+      // Re-phased by t′ in every case: an absence shorter than the time to the next sale still counts toward it.
+      m = setChain(m, c, { nextSaleAt: next - tp });
       if (sales > 0) {
         const coins = saleAmount(cfg, g, c);
-        let next = ch.nextSaleAt;
-        for (let i = 0; i < sales; i++) next += Q;
-        m = setChain(m, c, { nextSaleAt: next - tp });
         out.sales.push({ c, goods: sales, coins: sales * coins });
         out.coins += sales * coins;
       }
@@ -74,7 +76,10 @@ function closedForm(cfg: MergeConfig, g: MergeGame, tp: number): AwayResult {
     if (!ch.waiting) {
       const d = ch.nextPopAt - clock;
       const n = tp + EPS >= d ? 1 + Math.floor((tp - d) / T + EPS) : 0;
-      if (n > 0) {
+      if (n === 0) {
+        // No drop fell due: the drop clock is re-phased by t′ all the same (time away is additive).
+        m = setChain(m, c, { nextPopAt: ch.nextPopAt - tp });
+      } else {
         const room = Math.max(0, mods.shelfCap - ch.shelf.length);
         const put = Math.min(n, room);
         const shelf = ch.shelf.slice();
@@ -143,13 +148,13 @@ export function awayByEvents(cfg: MergeConfig, g: MergeGame, tp: number): AwayRe
     const was = g.merge.chains[c];
     if (!ch.open) continue;
     const patch: Partial<MergeState['chains'][number]> = {};
-    if (ch.minder > 0 && sales.has(c)) patch.nextSaleAt = ch.nextSaleAt - tp;
+    if (ch.minder > 0) patch.nextSaleAt = ch.nextSaleAt - tp;
     if (ch.waiting && !was.waiting) {
       // A waiting gear's drop clock means nothing until a release restarts it; keep it as the closed form does.
       waiting.push(c);
       patch.nextPopAt = was.nextPopAt;
     }
-    else if (!ch.waiting && ch.nextPopAt !== was.nextPopAt) patch.nextPopAt = ch.nextPopAt - tp;
+    else if (!ch.waiting && !was.waiting) patch.nextPopAt = ch.nextPopAt - tp;
     if (wasEmpty[c] && ch.shelf.length > 0) Object.assign(patch, { releaseAt: clock, blockedAt: null });
     m = setChain(m, c, patch);
   }

@@ -41,12 +41,14 @@ export interface Beats {
   hide: { cell: number; ms: number }[];
   /** Paid tickets: counter, the ticket as paid, the coins paid, the slot its snapshot uses. */
   paid: { counter: number; ticket: R.Ticket; coins: number; slot: number }[];
+  /** Sounds timed to a beat (spec 6.2 `coins`: the clay coins land in the purse), `ms` after the batch. */
+  sounds: { key: 'coins'; ms: number }[];
 }
 
 const ms = (s: number) => Math.round(s * 1000);
 
 export function beatsFor(events: readonly R.MergeEvent[], x: BeatContext): Beats {
-  const out: Beats = { tweens: [], hide: [], paid: [] };
+  const out: Beats = { tweens: [], hide: [], paid: [], sounds: [] };
   const L = x.L;
   const cell = L.board.cell;
   const cs = cell / (GOOD_BOX * 2);
@@ -174,6 +176,8 @@ export function beatsFor(events: readonly R.MergeEvent[], x: BeatContext): Beats
           const o = { x: top.x + (i - 1.5) * 7, y: top.y + 10 + (i % 2) * 6 };
           tw.push(sprite(1, 'coin', o, x.purse, 0.6, { delay: lift + 0.08 + i * 0.07, a0: 1, a1: 0.8, o0: 1, o1: 0.8, arc: 22 + i * 6, ease: E_INOUT, spin: 3 }));
         }
+        // One pouch sound when the first coin reaches the purse (6.2: no haptic for coins).
+        out.sounds.push({ key: 'coins', ms: ms(lift + 0.08 + 0.6) });
         break;
       }
       case 'ticketDrawn':

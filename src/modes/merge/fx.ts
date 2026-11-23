@@ -4,7 +4,11 @@
  * (src/services/fx/catalog.merge.ts). Haptics follow only what the finger did (6.2): passive events
  * never vibrate. What the player's finger does plays in the action (./actions.ts) instead.
  *
- * Written by the skeleton; owned afterwards by the sound package (docs/design/market-build-plan.md).
+ * Passive events never vibrate: lantern_lit here is quiet (it vibrates only when the shared
+ * mission_complete maps to it). Silent by design: shelved, gearWaiting, sale, tillRoll, ticketDrawn,
+ * settingUp, undoExpired, giftEarned.
+ *
+ * Written by the skeleton; owned since the join by the screens lead.
  */
 import type { MergeEvent } from '../../engine/merge';
 import { fx } from '../../services/fx';
@@ -31,9 +35,8 @@ export function playMergeEvents(events: readonly unknown[]): void {
       case 'lanternLit':
         fx.play('lantern_lit', quiet);
         break;
-      case 'giftEarned':
-        fx.play('slot_reveal', quiet);
-        break;
+      // giftEarned is silent: the gift sheet plays giftbox_open and one slot_reveal per slot (lead, requests.md).
+      // ticketPaid's coins play when they reach the purse (the play canvas's beat, src/ui/merge/play/beats.ts).
       default:
         // The player's own events (merge, lineFill, ticketPaid, ...) play in ./actions.ts; the rest are silent.
         break;

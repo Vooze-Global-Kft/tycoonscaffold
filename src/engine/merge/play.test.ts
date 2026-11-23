@@ -227,12 +227,82 @@ function firstMinutes(seed: number) {
 
 describe('the first ten minutes, played as 3.1 by a scripted hand', () => {
   it('merge, the fox, the hedgehog, gear level 2, a shutter, Tea, a minder, a gift box, the first Parade', () => {
-    // Seed 4 opens with ordinary merges (3.1 exactly); seed 12345's first merge is Lucky (a Glazed
-    // Skewer at once), and the opening still pays both scripted tickets from the board, the first under 15 s.
-    expect(firstMinutes(4).luckyOpening).toBe(false);
-    expect(firstMinutes(12345).luckyOpening).toBe(true);
-    for (const seed of [99, 7, 2026]) firstMinutes(seed);
+    // M42: no merge of the opening is Lucky, on any seed (seed 12345's first merge rolled Lucky before M42).
+    for (const seed of [4, 12345, 99, 7, 2026]) expect(firstMinutes(seed).luckyOpening).toBe(false);
   }, 120_000);
+});
+
+describe('the opening script is deterministic on every seed (M42, regression of the integration check)', () => {
+  /** The opening of `seed` played by the shortest hand: merge the lowest pair, deliver to a scripted ticket. */
+  function opening(seed: number) {
+    let g = freshState(cfg, seed);
+    const goals: string[] = [];
+    const ordinary: { id: number; at: number }[] = [];
+    let hedgehogPaidAt: number | null = null;
+    let lucky = false;
+    for (let n = 0; n < 60 && hedgehogPaidAt === null; n++) {
+      const adv = R.advice(cfg, g);
+      goals.push(adv ? `${adv.kind}:${adv.target}` : 'none');
+      const ev: R.MergeEvent[] = [];
+      const d = delivery(g, true);
+      const pair = lowestPair(g, 0);
+      if (d) g = R.dropAt(cfg, g, d[0], R.decodeTarget(d[1]), ev).game;
+      else if (pair) {
+        const res = R.dropAt(cfg, g, pair[0], { kind: 'cell', cell: pair[1] }, ev);
+        if (res.result.kind === 'merge' && res.result.lucky) lucky = true;
+        g = res.game;
+      }
+      g = R.advanceMerge(cfg, g, 1.5, 0, ev);
+      for (const e of ev) {
+        if (e.type === 'ticketDrawn' && !e.ticket.scripted) ordinary.push({ id: e.ticket.id, at: clockOf(g) });
+        if (e.type === 'ticketPaid' && e.ticket.scripted && cfg.merge.tickets.customers[e.ticket.customer] === 'hedgehog') hedgehogPaidAt = clockOf(g);
+      }
+      expect(fixtureProblems(cfg, g, { afterPlay: true }), `seed ${seed} at ${clockOf(g)}`).toEqual([]);
+    }
+    return { g, goals, ordinary, hedgehogPaidAt, lucky };
+  }
+
+  it('on 300 seeds: no Lucky merge, both scripted tickets paid from the 6 opening goods, no ordinary ticket before the hedgehog is paid, the goal line on the tickets', () => {
+    for (let seed = 1; seed <= 300; seed++) {
+      const o = opening(seed);
+      expect(o.lucky, `seed ${seed}`).toBe(false);
+      expect(o.hedgehogPaidAt, `seed ${seed}: the hedgehog paid from the opening board`).not.toBeNull();
+      expect(o.hedgehogPaidAt!, `seed ${seed}`).toBeLessThanOrEqual(20); // M18: the first 20 s are merges and two paid tickets
+      expect(o.g.merge.script).toBe('done');
+      expect(o.ordinary, `seed ${seed}: an ordinary ticket while the script waited`).toEqual([]);
+      // Every goal before the first coins is a scripted ticket (never a lantern, M42 with 2.10).
+      const beforeCoins = o.goals.slice(0, 2);
+      for (const goal of beforeCoins) expect(goal, `seed ${seed}`).toMatch(/^fillTicket:/);
+      // The first ordinary ticket comes refillDelay after the hedgehog's is paid (at most one tick later).
+      let g = o.g;
+      let first: number | null = null;
+      for (let n = 0; n < 20 && first === null; n++) {
+        const ev: R.MergeEvent[] = [];
+        g = R.advanceMerge(cfg, g, 0.5, 0, ev);
+        const drawn = ev.find((e) => e.type === 'ticketDrawn');
+        if (drawn) first = clockOf(g);
+      }
+      expect(first, `seed ${seed}`).not.toBeNull();
+      expect(first! - o.hedgehogPaidAt!).toBeGreaterThanOrEqual(cfg.merge.tickets.refillDelay - 1.5 - 1e-9);
+      expect(first! - o.hedgehogPaidAt!).toBeLessThanOrEqual(cfg.merge.tickets.refillDelay + 0.5 + 1e-9);
+    }
+  }, 120_000);
+
+  it('a scripted ticket sent off with "Not tonight" holds the counter while the other waits, and ends the script when it was the last', () => {
+    let g = freshState(cfg, 4);
+    const [a, b] = lowestPair(g)!;
+    g = R.dropAt(cfg, g, a, { kind: 'cell', cell: b }).game; // the hedgehog steps up
+    expect(g.merge.script).toBe('hedgehog');
+    g = R.notTonight(cfg, g, 0);
+    expect(g.merge.counters[0]).toMatchObject({ ticket: null, refillAt: null, blockedAt: null });
+    expect(g.merge.script).toBe('hedgehog');
+    g = R.advanceMerge(cfg, g, 30, 0);
+    expect(g.merge.counters[0].ticket).toBeNull();
+    g = R.notTonight(cfg, g, 1);
+    expect(g.merge.script).toBe('done');
+    expect(g.merge.counters.every((ct) => ct.ticket || ct.refillAt === clockOf(g) + cfg.merge.tickets.refillDelay)).toBe(true);
+    expect(fixtureProblems(cfg, g, { afterPlay: true })).toEqual([]);
+  });
 });
 
 // ============================================================================================ 2. the long random player
@@ -403,6 +473,8 @@ function actOnce(run: Run, kind: Kind, r: () => number): void {
       const res = R.dropAt(cfg, g, from, R.decodeTarget(code), ev);
       out = res.game;
       refusedBy = res.result.kind === 'return' || res.result.kind === 'ticketShake';
+      // M42: no merge is Lucky while the opening script's tickets wait.
+      if (res.result.kind === 'merge' && m.script !== 'done') expect(res.result.lucky, `a Lucky merge in the opening at ${clock}`).toBe(false);
       // Paid = shown: a ticket that paid in this drop paid the price it showed just before.
       for (const e of ev) {
         if (e.type !== 'ticketPaid') continue;
@@ -434,7 +506,8 @@ function actOnce(run: Run, kind: Kind, r: () => number): void {
       break;
     case 'levelMinder':
       out = R.levelMinder(cfg, g, chainR, ev);
-      refusedBy = m.chains[chainR].minder < 1 || !afford(ch.minderCost);
+      // M45: a level the gear holds back (or at its top) changes nothing and is refused; the sheet shows why.
+      refusedBy = m.chains[chainR].minder < 1 || R.minderLevelBlock(cfg, g, chainR) !== null || !afford(ch.minderCost);
       break;
     case 'openStall':
       out = R.openStall(cfg, g, chainR, ev);

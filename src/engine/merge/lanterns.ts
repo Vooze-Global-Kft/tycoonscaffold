@@ -291,9 +291,27 @@ export function onTicketPaid(cfg: MergeConfig, g: MergeGame, counter: number, ti
   };
   let merge: MergeState = { ...m, feats };
   if (ticket.gold) merge = restartParade(cfg, merge, clock);
-  if (m.script === 'hedgehog') {
-    const otherScripted = m.counters.some((ct, j) => j !== counter && ct.ticket?.scripted && ct.ticket.id !== ticket.id);
-    if (!otherScripted) merge = { ...merge, script: 'done' };
-  }
+  void counter;
+  merge = settleScript(cfg, merge, clock);
   return checkLanterns(cfg, { ...g, merge }, clock, events);
+}
+
+/**
+ * Decision M42, the opening script kept deterministic: while the scripted tickets of the first
+ * season wait (`script` is not 'done'), no counter draws an ordinary ticket, so every empty counter
+ * is held (no refill, no block). Once the hedgehog has stepped up and no scripted ticket is left at
+ * any counter (paid, or sent off with "Not tonight"), the script is done and every held counter
+ * draws `refillDelay` after `clock`. Called after a ticket leaves a counter (payTicket through
+ * `onTicketPaid`, `notTonight`); the same object when the script is already done.
+ */
+export function settleScript(cfg: MergeConfig, m: MergeState, clock: number): MergeState {
+  if (m.script === 'done') return m;
+  const script = m.script === 'hedgehog' && !m.counters.some((ct) => ct.ticket?.scripted) ? 'done' : m.script;
+  const at = clock + cfg.merge.tickets.refillDelay;
+  const counters = m.counters.map((ct) => {
+    if (ct.ticket) return ct;
+    if (script !== 'done') return ct.refillAt === null && ct.blockedAt === null ? ct : { ...ct, refillAt: null, blockedAt: null };
+    return ct.refillAt === null && ct.blockedAt === null ? { ...ct, refillAt: at } : ct;
+  });
+  return { ...m, script, counters };
 }

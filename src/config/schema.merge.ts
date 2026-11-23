@@ -194,8 +194,8 @@ export const MergeSchema = z.object({
     maxBase: tier.default(4),
     /** The shelf (rule: 6, 8 with lantern 3). */
     shelf: int.positive().default(6),
-    /** λ, loose goods per chain before drops go to the shelf (tune 3 to 6). */
-    looseCap: int.positive().default(4),
+    /** λ, loose goods per chain before drops go to the shelf (Decision M43: 8, tune 6 to 12). */
+    looseCap: int.positive().default(8),
     /** Shelf release and gift-good cadence, s (rule). */
     release: pos.default(0.5),
   }).prefault({}),
@@ -311,9 +311,9 @@ export const MergeSchema = z.object({
     warmGear: z.object({ ripeAdd: nonneg.default(0.15) }).prefault({}),
     lateCrowd: z.object({ minderIntervalMult: pos.default(0.67) }).prefault({}),
     marketDay: z.object({ paradeEvery: pos.default(300) }).prefault({}),
-    /** Seasoned gear: a step per closed season that reached `stepTier`, up to maxSteps (tune 2 to 4), each worth N = gear.step levels (Decision M25). */
+    /** Seasoned gear: a step per closed season that reached `stepTier`, up to maxSteps (Decision M40: 1, 2 with lantern 9; tune 1 to 2), each worth N = gear.step levels (Decision M25). */
     stepTier: tier.default(6),
-    maxSteps: int.positive().default(3),
+    maxSteps: int.positive().default(1),
     /** N before Decision M25 (N = s): unread, and when given it must equal `gear.step` (lintMerge). */
     levelsPerStep: int.positive().optional(),
     /** Familiar faces: stall-opening costs × familiarBase^min(seasons closed, familiarMax) (base: tune 0.75 to 0.90). */
@@ -408,7 +408,7 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
   // gear.interval is not here: T = 4 s is a rule (Decision M3; lintMerge checks it).
   { path: 'gear.step', low: 8, high: 12, spec: '2.2' },
   { path: 'gear.ripePerLevel', low: 0.04, high: 0.06, spec: '2.2' },
-  { path: 'gear.looseCap', low: 3, high: 6, spec: '2.3' },
+  { path: 'gear.looseCap', low: 6, high: 12, spec: 'M43' },
   { path: 'minders.interval', low: 10, high: 25, spec: '2.2' },
   { path: 'tickets.refillDelay', low: 2, high: 8, spec: '2.7' },
   { path: 'tickets.lineOddsEarly[0]', low: 0.5, high: 0.7, spec: '2.7' },
@@ -430,7 +430,7 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
   { path: 'festival[1][4].tier', low: 3, high: 5, spec: '2.8 (season 2: the Puffs line)' },
   { path: 'gift.coinPace', low: 0.25, high: 1.5, spec: 'M24' },
   { path: 'gift.every', low: 15, high: 40, spec: 'M24' },
-  { path: 'seasons.maxSteps', low: 2, high: 4, spec: '2.11' },
+  { path: 'seasons.maxSteps', low: 1, high: 2, spec: 'M40' },
   // seasons.levelsPerStep is not here: N equals the gear step s (Decision M25; lintMerge checks it).
   { path: 'seasons.familiarBase', low: 0.75, high: 0.9, spec: '2.11' },
   { path: 'advice.newStallPhi', low: 20, high: 60, spec: '2.10' },

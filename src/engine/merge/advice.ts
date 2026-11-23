@@ -207,7 +207,8 @@ export function festivalAdvice(cfg: MergeConfig, g: MergeGame): { line: number; 
  * The extra goals of 2.10 that apply now, in the order `advice` would use them: the Basket (board
  * deadlocked: M22, M33), "Fill the Festival" (M31: target = the missing good's line), the next
  * lantern feat within reach (the most advanced of the next three, from `meta.lanternReach` of its
- * progress), the ticket nearest completion.
+ * progress; a "make tier k" feat measured in basic goods), the ticket nearest completion (before
+ * the lantern while the opening script's tickets wait, M42).
  */
 export function adviceExtras(cfg: MergeConfig, g: MergeGame): Advice[] {
   const p = mergeParams(cfg, g);
@@ -218,12 +219,26 @@ export function adviceExtras(cfg: MergeConfig, g: MergeGame): Advice[] {
   const fest = festivalAdvice(cfg, g);
   if (fest) out.push(extra('festival', fest.line));
   const feats = featProgress(cfg, g)
-    .filter((f) => f.need > 0 && f.have < f.need && f.have / f.need >= cfg.merge.meta.lanternReach)
-    .sort((a, b) => b.have / b.need - a.have / a.need || a.n - b.n);
-  if (feats.length) out.push(extra('lantern', feats[0].n));
+    .map((f) => ({ ...f, reach: featReach(cfg, f) }))
+    .filter((f) => f.need > 0 && f.have < f.need && f.reach >= cfg.merge.meta.lanternReach)
+    .sort((a, b) => b.reach - a.reach || a.n - b.n);
   const t = nearestTicket(cfg, g);
-  if (t !== null) out.push(extra('fillTicket', t));
+  // While the opening script's tickets wait (M42), filling them is the goal before any lantern.
+  if (t !== null && m.script !== 'done') out.push(extra('fillTicket', t));
+  if (feats.length) out.push(extra('lantern', feats[0].n));
+  if (t !== null && m.script === 'done') out.push(extra('fillTicket', t));
   return out;
+}
+
+/**
+ * How far a lantern's feat is, 0 to 1, for "within reach": have/need, except a "make tier k" feat,
+ * measured in basic goods (2^(best − 1) of 2^(k − 1)): a tier 3 is a sixteenth of a tier 6, not half.
+ */
+function featReach(cfg: MergeConfig, f: { n: number; have: number; need: number }): number {
+  if (!(f.need > 0)) return 0;
+  const feat = cfg.merge.lanterns.find((l) => l.n === f.n)?.feat;
+  if (feat?.type === 'tierMade') return f.have > 0 ? Math.pow(2, f.have - 1) / Math.pow(2, f.need - 1) : 0;
+  return f.have / f.need;
 }
 
 /** The best purchase only (2.10's score), affordable now or not; null when no purchase can be made or waited for. The bot buys this when it is affordable. */

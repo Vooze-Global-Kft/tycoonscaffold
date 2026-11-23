@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomRow } from './hud/BottomRow';
 import { GoalLine } from './hud/GoalLine';
 import { TopBar } from './hud/TopBar';
+import { devInsets } from './devInsets';
 import { mergeLayout } from './layout';
 import { Overlays } from './overlays/Overlays';
 import { PH } from './Placeholder';
@@ -20,7 +21,9 @@ import { PlayCanvas } from './play/PlayCanvas';
 
 export function MergeShell() {
   const { width, height, fontScale } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
+  const safe = useSafeAreaInsets();
+  // The web preview may pretend a phone's insets (`?insets=47,34`); on a phone devInsets is null.
+  const insets = devInsets ? { ...safe, ...devInsets } : safe;
   const layout = useMemo(() => mergeLayout(width, height, { top: insets.top, bottom: insets.bottom, left: insets.left, right: insets.right }, fontScale), [width, height, insets.top, insets.bottom, insets.left, insets.right, fontScale]);
   return (
     <View style={styles.root}>

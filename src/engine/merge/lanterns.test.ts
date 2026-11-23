@@ -220,10 +220,18 @@ describe('the hooks MECHANICS calls', () => {
     // Script: the fox paid while the hedgehog still waits keeps it; the hedgehog paid last ends it.
     const hh = onMerged(cfg, g, { c: 0, k: 2 }, 20);
     const fox = hh.merge.counters[0].ticket!;
-    const afterFox = onTicketPaid(cfg, hh, 0, fox, 12);
+    const foxGone = { ...hh, merge: { ...hh.merge, counters: hh.merge.counters.map((c, j) => (j === 0 ? { ...c, ticket: null, refillAt: 104 } : c)) } };
+    const afterFox = onTicketPaid(cfg, foxGone, 0, fox, 12);
     expect(afterFox.merge.script).toBe('hedgehog');
-    const noFox = { ...afterFox, merge: { ...afterFox.merge, counters: afterFox.merge.counters.map((c, j) => (j === 0 ? { ...c, ticket: null } : c)) } };
-    expect(onTicketPaid(cfg, noFox, 1, noFox.merge.counters[1].ticket!, 29).merge.script).toBe('done');
+    // M42: the fox's counter is held while the hedgehog waits.
+    expect(afterFox.merge.counters[0]).toMatchObject({ ticket: null, refillAt: null, blockedAt: null });
+    // payTicket empties the hedgehog's counter (refill after refillDelay) before onTicketPaid runs.
+    const hedgehog = afterFox.merge.counters[1].ticket!;
+    const noFox = { ...afterFox, merge: { ...afterFox.merge, counters: afterFox.merge.counters.map((c, j) => (j === 1 ? { ...c, ticket: null, refillAt: 120 + cfg.merge.tickets.refillDelay } : c)) } };
+    const done = onTicketPaid(cfg, noFox, 1, hedgehog, 29);
+    expect(done.merge.script).toBe('done');
+    // ...and every held counter draws refillDelay after it (M42).
+    expect(done.merge.counters.every((c) => c.ticket || c.refillAt !== null)).toBe(true);
     // Lantern 1 at the third paid ticket.
     let t = g;
     for (let i = 0; i < 3; i++) t = onTicketPaid(cfg, t, 0, plain, 12);

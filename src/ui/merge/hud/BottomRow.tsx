@@ -8,7 +8,6 @@
  */
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as R from '../../../engine/merge';
-import { mergeActions } from '../../../modes/merge/actions';
 import { fx } from '../../../services/fx';
 import { useTarget } from '../../hints/targets';
 import { MergeIcon } from '../art/MergeIcon';
@@ -20,6 +19,7 @@ import { buttonMetrics } from './barMetrics';
 import { useFontScale } from './fontScale';
 import { NO_SELECT } from '../sheets/parts';
 import { UndoChip } from './UndoChip';
+import { dropArmedOn } from '../play/input';
 
 type Slot = { key: 'book' | 'lanterns' | 'season' | 'shop'; icon: string; label: string };
 
@@ -37,6 +37,7 @@ function RowButton({ rect, icon, label, target, onPress, armed }: { rect: Rect; 
   return (
     <Pressable
       {...ref}
+      onPressIn={() => useMergeUi.getState().touched()}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -62,11 +63,8 @@ export function BottomRow({ layout }: { layout: MergeLayout }) {
     else ui.openSpoke(key as MergeSpoke);
   };
   const basket = () => {
-    const cell = useMergeUi.getState().armed;
-    if (cell === null) return;
-    // Tap-tap (2.5): the armed good dropped on the Basket, as the drag would.
-    useMergeUi.getState().disarm();
-    mergeActions.dropAt(cell, R.TARGET_BASKET);
+    // Tap-tap (2.5): the armed good dropped on the Basket, as the drag would (the canvas's drop path, so its beat runs).
+    dropArmedOn(R.TARGET_BASKET);
   };
   return (
     <>

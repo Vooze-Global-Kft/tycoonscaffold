@@ -16,6 +16,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { makeMutable, useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import * as R from '../../../engine/merge';
+import { fx } from '../../../services/fx';
 import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
@@ -26,6 +27,7 @@ import { useMerge } from '../useMerge';
 import { spriteTable, usePlayAtlases, type PlayAtlases } from './atlases';
 import { beatsFor, setBeatLookups } from './beats';
 import { ChipView } from './ChipView';
+import { fxSlow } from './devSlow';
 import { sprite, TweenQueue, NO_TWEENS, type Tween } from './effects';
 import { centreOf, counterCount, hitGeo, FLOAT_LIFT } from './geometry';
 import { dropContext, onReturned, usePlayInput } from './input';
@@ -161,6 +163,7 @@ export function PlayCanvas({ layout }: { layout: MergeLayout }) {
       }
       hide(b.hide);
       queue.push(b.tweens);
+      for (const snd of b.sounds) setTimeout(() => fx.play(snd.key, { haptic: false }), snd.ms * fxSlow);
     });
     onReturned((cell, at) => {
       const st = now();

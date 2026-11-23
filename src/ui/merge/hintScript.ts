@@ -1,27 +1,30 @@
 /**
- * The firefly's script (spec 3.1 with decisions M3 and M18), pure: no React, no store. What the
- * firefly shows at a given moment is `fireflyHint(cfg, g, ui)`; where it sits is `hintPath(...)`.
+ * The firefly's script (spec 3.1 with decisions M3, M18, M42 and M44), pure: no React, no store.
+ * What the firefly shows at a given moment is `fireflyHint(cfg, g, ui)`; where it sits is `hintPath(...)`.
  *
- * - The guided steps of 3.1, in order, in the first season of a new game: a merge, a delivery, the
- *   first gear level, the first shutter, the Tea stall. Each ends when the player did it by ANY
- *   path (the state says so, whoever pointed at what), and a step is also over once a later one is
- *   done (a player who went ahead is never sent back). They never block input: the firefly is a
+ * - The guided steps, in the first season of a new game: the first merge, then the two scripted
+ *   tickets (the fox's and the hedgehog's, 2.7 and M42: their deliveries and the merges that make
+ *   their goods), then the first three purchases, for each of which the firefly points at the goal
+ *   line whenever it names an affordable purchase (M44: it follows the rules' advice, so it never
+ *   disagrees with the goal line; 3.1's fixed order of gear, shutter and Tea is dropped). Each step
+ *   ends when the state says it is done, whatever the path, and a later step done ends the earlier
+ *   ones (a player who went ahead is never sent back). They never block input: the firefly is a
  *   drawing under no finger.
- * - While a step's own action is possible, the firefly shows it at once after the hand rests
- *   (`QUIET_MS`); while it is not (too few coins, no pair yet), the rules' best hint shows only
- *   after `GUIDED_FALLBACK_MS` without a touch, so a player busy merging is left alone.
+ * - While a step's own action is possible, the firefly shows it after the hand rests (`QUIET_MS`);
+ *   while it is not (too few coins, no pair yet), the rules' best hint shows only after
+ *   `GUIDED_FALLBACK_MS` without a touch, so a player busy merging is left alone.
  * - After the guided steps: a firefly only after `IDLE_MS` (20 s) without a touch (3.1 "3:00").
  * - Never while a sheet or spoke is open, a good is armed, a chip shows or a finger is down.
  * Which hints apply is the rules' `hintsFor` (src/engine/merge/hints.ts); prices come from
- * `mergeParams` and `advice` only (no number of our own).
+ * `advice` only (no number of our own).
  *
- * Owned by the hints and platform package (docs/design/market-build-plan.md).
+ * Owned by the screens lead since the join (written by the hints and platform package).
  */
 import * as R from '../../engine/merge';
 import { cellRect, type MergeLayout, type Rect } from './layout';
 
-/** The guided steps of 3.1, in order. */
-export const GUIDED_STEPS = ['merge', 'deliver', 'gear', 'shutter', 'tea'] as const;
+/** The guided steps (3.1 with M44), in order: the first merge, the scripted tickets, the first three purchases. */
+export const GUIDED_STEPS = ['merge', 'deliver', 'buy1', 'buy2', 'buy3'] as const;
 export type GuidedStep = (typeof GUIDED_STEPS)[number];
 
 /** After a touch the firefly waits this long before showing a guided step (as the shared hand's quiet, src/ui/hints/HintOverlay.tsx). */
@@ -31,9 +34,24 @@ export const GUIDED_FALLBACK_MS = 8000;
 /** After the guided steps, a firefly only after this long without a touch (3.1, "3:00"). */
 export const IDLE_MS = 20000;
 
-/** The Tea stall's chain index (2.2: Grill 0, Tea 1). */
-const TEA = 1;
-const GRILL = 0;
+/** The advice kinds that are purchases (the goal line opens the sheet that buys them). */
+const PURCHASES: ReadonlySet<R.AdviceKind> = new Set(['gear', 'stall', 'minderHire', 'minderLevel', 'openStall', 'shutter']);
+
+/**
+ * Purchases made this season, read from the state (season 1 of a new game: every level above 1,
+ * every minder, every stall opened after the Grill, every shutter).
+ */
+export function purchasesMade(g: R.MergeGame): number {
+  const m = g.merge;
+  let n = 0;
+  m.chains.forEach((ch, c) => {
+    if (!ch.open) return;
+    if (c > 0) n += 1;
+    n += Math.max(0, ch.gear - 1) + Math.max(0, ch.stall - 1) + Math.max(0, ch.minder);
+  });
+  for (const k of m.shuttersOpened) n += k;
+  return n;
+}
 
 /** Step `step` is done by the state, whoever did it (3.1: by any path). */
 export function stepDone(g: R.MergeGame, step: GuidedStep): boolean {
@@ -42,13 +60,14 @@ export function stepDone(g: R.MergeGame, step: GuidedStep): boolean {
     case 'merge':
       return m.feats.merges > 0;
     case 'deliver':
-      return m.feats.tickets > 0;
-    case 'gear':
-      return m.chains.some((ch) => ch.open && ch.gear > 1);
-    case 'shutter':
-      return m.shuttersOpened.some((n) => n > 0);
-    case 'tea':
-      return !!m.chains[TEA]?.open;
+      // Both scripted tickets paid (M42: the script is 'done'), or two tickets paid by any path.
+      return m.script === 'done' || m.feats.tickets >= 2;
+    case 'buy1':
+      return purchasesMade(g) >= 1;
+    case 'buy2':
+      return purchasesMade(g) >= 2;
+    case 'buy3':
+      return purchasesMade(g) >= 3;
   }
 }
 
@@ -106,9 +125,9 @@ function safe<T>(fn: () => T, fallback: T): T {
 const asHint = (h: R.MergeHint, guided: boolean): FireflyHint => ({ id: h.id, kind: h.kind, from: h.from, to: h.to, guided });
 
 /**
- * The step's own pointer, or null while its action is not possible now. Prices are the rules':
- * `mergeParams` (gear and opening costs, the next shutters) and `advice` (whether the goal line
- * names this purchase, so pointing at the goal line never contradicts it).
+ * The step's own pointer, or null while its action is not possible now. A purchase step points at
+ * the goal line while it names a purchase the purse can pay (M44: the firefly follows the goal line,
+ * the rules' `advice`, and so never names another purchase than the line does).
  */
 export function stepPointer(cfg: R.MergeConfig, g: R.MergeGame, step: GuidedStep, hints: R.MergeHint[]): FireflyHint | null {
   const byId = (prefix: string) => hints.find((h) => h.id.startsWith(prefix)) ?? null;
@@ -121,26 +140,9 @@ export function stepPointer(cfg: R.MergeConfig, g: R.MergeGame, step: GuidedStep
     const h = byId('deliver:') ?? byId('merge:');
     return h ? asHint(h, true) : null;
   }
-  const p = safe(() => R.mergeParams(cfg, g), null);
-  if (!p) return null;
   const goal = safe(() => R.advice(cfg, g), null);
-  const cash = g.cash;
-  if (step === 'gear') {
-    const cost = p.chains[GRILL]?.gearCost ?? null;
-    if (cost === null || cost > cash) return null;
-    // 3.1 0:30: the firefly points at the goal line when it names this level; else at the Grill's front (its sheet sells it).
-    const onGoal = goal?.kind === 'gear' && goal.target === GRILL;
-    return { id: 'step:gear', kind: 'point', to: onGoal ? 'goal' : `front:${GRILL}`, guided: true };
-  }
-  if (step === 'shutter') {
-    const next = p.shutters.findIndex((s) => s !== null && s.allowed && s.cost <= cash);
-    if (next < 0) return null;
-    return { id: `step:shutter:${next}`, kind: 'point', to: `shutter:${next}`, guided: true };
-  }
-  const cost = p.chains[TEA]?.openCost ?? null;
-  if (cost === null || cost > cash) return null;
-  const onGoal = goal?.kind === 'openStall' && goal.target === TEA;
-  return { id: 'step:tea', kind: 'point', to: onGoal ? 'goal' : `front:${TEA}`, guided: true };
+  if (!goal || !PURCHASES.has(goal.kind) || goal.cost > g.cash) return null;
+  return { id: `step:goal:${goal.kind}:${goal.target ?? ''}`, kind: 'point', to: 'goal', guided: true };
 }
 
 /**

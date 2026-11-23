@@ -19,9 +19,9 @@
 import { freeCells, isGood, placeGood, roomFor } from './board';
 import { noteMade } from './drop';
 import { paradeOut, seatTicket } from './events';
-import { checkLanterns, currentMods } from './lanterns';
+import { checkLanterns, currentMods, settleScript } from './lanterns';
 import { drawParade } from './draw';
-import { baseTier, EPS, MAX_CASH, maxPopAt, mergeParams, restartParade, saleInterval, streamValue, value } from './params';
+import { baseTier, EPS, MAX_CASH, maxPopAt, mergeParams, minderLevelBlock, restartParade, saleInterval, streamValue, value } from './params';
 import { CHAINS, TIERS, type CoinSource, type Good, type MergeAdKind, type MergeConfig, type MergeEvent, type MergeGame, type MergeState } from './types';
 
 /**
@@ -157,9 +157,13 @@ export function hireMinder(cfg: MergeConfig, g: MergeGame, c: number, events?: M
   );
 }
 
-/** Minder level K → K + 1 of chain c (2.2), K from 1 to 3; the sale clock keeps its phase. */
+/**
+ * Minder level K → K + 1 of chain c (2.2), K from 1 to 3; the sale clock keeps its phase. Refused
+ * (Decision M45) while the gear holds the house tier back: the level would change nothing
+ * (`minderLevelBlock` gives the reason the sheet prints).
+ */
 export function levelMinder(cfg: MergeConfig, g: MergeGame, c: number, events?: MergeEvent[]): MergeGame {
-  if (!chainOk(c) || g.merge.chains[c].minder < 1) return g;
+  if (!chainOk(c) || minderLevelBlock(cfg, g, c) !== null) return g;
   const cost = mergeParams(cfg, g).chains[c].minderCost;
   return purchase(
     cfg,
@@ -237,6 +241,8 @@ export function notTonight(cfg: MergeConfig, g: MergeGame, counter: number, even
     counters: mm.counters.map((x, i) => (i === counter ? { ...x, ticket: null, refillAt: t + cfg.merge.tickets.refillDelay, blockedAt: null, notTonightAt: t + cfg.merge.tickets.notTonightCooldown } : x)),
     mstats: { ...mm.mstats, notTonights: mm.mstats.notTonights + 1 },
   };
+  // M42: while the opening script waits, the counter is held; a scripted ticket sent off may end the script.
+  mm = settleScript(cfg, mm, t);
   events?.push({ type: 'notTonight', counter });
   // A returned good is placed, so it counts as made (M32): a line the "Fill one line" ad filled
   // comes back as a good that was never on the board, and best_c and the Ladder Book must hold it.
@@ -394,7 +400,8 @@ export function applyLantern(cfg: MergeConfig, g: MergeGame, n: number, clock: n
     case 'counters': {
       if (m.counters.length >= mods.counters) return g;
       const counters = m.counters.slice();
-      while (counters.length < Math.min(4, mods.counters)) counters.push({ ticket: null, refillAt: clock + cfg.merge.tickets.refillDelay, blockedAt: null, notTonightAt: clock });
+      // M42: a counter added while the opening script waits is held until the script is done.
+      while (counters.length < Math.min(4, mods.counters)) counters.push({ ticket: null, refillAt: m.script === 'done' ? clock + cfg.merge.tickets.refillDelay : null, blockedAt: null, notTonightAt: clock });
       return withM(g, { ...m, counters });
     }
     case 'shelfCap': {

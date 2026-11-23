@@ -436,10 +436,35 @@ describe('purchases and buttons (2.5), each checked against cash and conditions'
     g = R.hireMinder(cfg, g, 0);
     expect(g.merge.chains[0]).toMatchObject({ minder: 1, nextSaleAt: 100 + cfg.merge.minders.interval });
     expect(R.hireMinder(cfg, g, 0)).toBe(g);
-    for (let k = 1; k < cfg.merge.costs.minderMaxLevel; k++) g = R.levelMinder(cfg, g, 0);
-    expect(g.merge.chains[0].minder).toBe(cfg.merge.costs.minderMaxLevel);
+    // M45: while the gear holds the house tier back, a minder level changes nothing and is refused.
+    const b0 = R.baseTier(cfg, g.merge.chains[0].gear);
+    expect(R.minderLevelBlock(cfg, g, 0)).toBe(1 >= b0 ? 'gear' : null);
+    if (1 >= b0) expect(R.levelMinder(cfg, g, 0)).toBe(g);
+    // At gear level 31 (base tier 4) every level up to the top raises the house tier.
+    let h = rich({ chains: [{ c: 0, gear: 31, best: 5 }] });
+    h = R.hireMinder(cfg, h, 0);
+    for (let k = 1; k < cfg.merge.costs.minderMaxLevel; k++) {
+      const before = R.mergeParams(cfg, h).chains[0].houseTier;
+      h = R.levelMinder(cfg, h, 0);
+      expect(R.mergeParams(cfg, h).chains[0].houseTier).toBe(before + 1);
+    }
+    expect(h.merge.chains[0].minder).toBe(cfg.merge.costs.minderMaxLevel);
+    expect(R.minderLevelBlock(cfg, h, 0)).toBe('top');
+    expect(R.levelMinder(cfg, h, 0)).toBe(h);
+    expect(R.mergeParams(cfg, h).chains[0].houseTier).toBe(Math.min(cfg.merge.costs.minderMaxLevel + 1, R.baseTier(cfg, 31) + 1));
+  });
+
+  it('M45: levelMinder is refused while the gear holds the house tier back, and allowed once the gear rises', () => {
+    let g = rich({ chains: [{ c: 0, gear: 11, best: 3 }] }); // base tier 2
+    g = R.hireMinder(cfg, g, 0); // K = 1, h = 2
+    g = R.levelMinder(cfg, g, 0); // K = 2, h = 3 = b + 1
+    expect(g.merge.chains[0].minder).toBe(2);
+    expect(R.minderLevelBlock(cfg, g, 0)).toBe('gear');
     expect(R.levelMinder(cfg, g, 0)).toBe(g);
-    expect(R.mergeParams(cfg, g).chains[0].houseTier).toBe(Math.min(cfg.merge.costs.minderMaxLevel + 1, R.baseTier(cfg, 3) + 1));
+    expect(R.advice(cfg, g)?.kind === 'minderLevel' && R.advice(cfg, g)?.target === 0).toBe(false);
+    const raised = { ...g, merge: { ...g.merge, chains: g.merge.chains.map((ch, c) => (c === 0 ? { ...ch, gear: 21 } : ch)) } };
+    expect(R.minderLevelBlock(cfg, raised, 0)).toBeNull();
+    expect(R.levelMinder(cfg, raised, 0).merge.chains[0].minder).toBe(3);
   });
 
   it('openShutter: index order within a group, its printed condition, every third holds a good of the lowest-best chain', () => {

@@ -44,6 +44,8 @@ export {
   basketPrice,
   /** M34: a waiting line no new drop can make (two base steps after its draw). */
   lineUnmakeable,
+  /** M45: why a minder level is refused now ('gear': "Raise the gear first", 'top', 'none'), or null. */
+  minderLevelBlock,
   /** M29: the stall front's awning look (0 plain, 1 scalloped, 2 double) at a stall level. */
   awningLook,
   /** The ripe chance p and maxPop at a gear level (2.2). */
@@ -60,7 +62,7 @@ export {
 export { createMerge, startSeason, withMergeFields, reconcileMerge } from './merge/create';
 
 // --- the board (MECHANICS) ---
-export { rowOf, colOf, cellAt, isGood, freeCells, roomFor, dropCell, placeGood, looseCount } from './merge/board';
+export { rowOf, colOf, cellAt, isGood, freeCells, roomFor, dropCell, placeGood, looseCount, compressedCells } from './merge/board';
 
 // --- 2.4 the tick and its event queue (MECHANICS) ---
 export { advanceMerge, nextMergeStop } from './merge/tick';
@@ -91,7 +93,7 @@ export { seasonRow, seasonMods, openingBoard, closeSeason, seasonedStartLevel, f
 export type { SeasonListItem } from './merge/season';
 
 // --- 5.3 lanterns and the modifiers (ORDERS) ---
-export { neutralMods, lanternMods, currentMods, onMerged, onTierMade, onTicketPaid, checkLanterns, featProgress, featState, featMet, discoveredCount, ladderCount, laddersComplete, chainsThisSeason, betterMod, giftEverySooner } from './merge/lanterns';
+export { neutralMods, lanternMods, currentMods, onMerged, onTierMade, onTicketPaid, checkLanterns, settleScript, featProgress, featState, featMet, discoveredCount, ladderCount, laddersComplete, chainsThisSeason, betterMod, giftEverySooner } from './merge/lanterns';
 
 // --- 5.5 gift boxes (ORDERS) ---
 export { countGiftTicket, openGiftBox, giftOdds, giftBoxAt, giftCoinAmount } from './merge/gift';

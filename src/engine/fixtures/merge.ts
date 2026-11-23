@@ -279,7 +279,7 @@ export function mergeFixtures(cfg: R.MergeConfig = mergeTestConfig()) {
 /**
  * What a reachable state keeps, as a list of broken invariants ([] = valid): 56 cells; open cells
  * and shutters as `shuttersOpened` says; goods of open chains only, at tiers 1 to 8, never above
- * best; the Ladder Book holds every tier up to each best; counters as the lit lanterns allow;
+ * best; the Ladder Book holds each best tier and every good on the board; counters as the lit lanterns allow;
  * every unfilled ticket line inside bound (a) (k ≤ min(8, best + 1)) and (d1) (k ≥ b + 1) unless the
  * ticket is scripted; at most one gold ticket; shelves within their cap; no Pocket field (M5).
  * With `afterPlay` the draw-time bound (d1) is not checked (a gear level bought after the draw may
@@ -304,9 +304,12 @@ export function fixtureProblems(cfg: R.MergeConfig, g: R.MergeGame, opts: { afte
     if (!ch?.open) out.push(`cell ${i}: a good of closed chain ${cell.c}`);
     if (cell.k < 1 || cell.k > 8) out.push(`cell ${i}: tier ${cell.k}`);
     if (ch && cell.k > ch.best) out.push(`cell ${i}: tier ${cell.k} above best ${ch.best} of chain ${cell.c}`);
+    if (!m.book[cell.c]?.[cell.k - 1]) out.push(`cell ${i}: (${cell.c}, ${cell.k}) on the board but not in the Ladder Book`);
   });
   m.chains.forEach((ch, c) => {
-    for (let k = 1; k <= ch.best; k++) if (!m.book[c][k - 1]) out.push(`book misses chain ${c} tier ${k} (best ${ch.best})`);
+    // The Book holds what was made: the best tier, and (below) every good on the board. A placed good
+    // two tiers above best (a shutter's b + 2) stamps only itself: the tier between was never made.
+    if (ch.best > 0 && !m.book[c][ch.best - 1]) out.push(`book misses chain ${c} tier ${ch.best} (its best)`);
     if (ch.shelf.length > (m.lanterns.includes(3) ? 8 : mc.gear.shelf)) out.push(`chain ${c}: shelf of ${ch.shelf.length}`);
     if (!ch.open && (ch.best !== 0 || ch.shelf.length)) out.push(`closed chain ${c} has a best tier or a shelf`);
   });
@@ -338,7 +341,10 @@ export function fixtureProblems(cfg: R.MergeConfig, g: R.MergeGame, opts: { afte
     if (ch.gear < 1 || ch.gear > mc.costs.gearMaxLevel) out.push(`chain ${c}: gear level ${ch.gear}`);
   });
   m.counters.forEach((ctr, j) => {
-    if (!ctr.ticket && ctr.refillAt === null && ctr.blockedAt === null && !(m.script !== 'done' && j === 1)) out.push(`counter ${j}: empty with no draw coming`);
+    // M42: while the opening script waits every empty counter is held; after it, an empty counter always has a draw coming.
+    if (m.script !== 'done' && !ctr.ticket && (ctr.refillAt !== null || ctr.blockedAt !== null)) out.push(`counter ${j}: an ordinary draw coming while the opening script waits (M42)`);
+    if (m.script !== 'done' && ctr.ticket && !ctr.ticket.scripted) out.push(`counter ${j}: an ordinary ticket while the opening script waits (M42)`);
+    if (m.script === 'done' && !ctr.ticket && ctr.refillAt === null && ctr.blockedAt === null) out.push(`counter ${j}: empty with no draw coming`);
   });
   const ids = m.counters.flatMap((ctr) => (ctr.ticket ? [ctr.ticket.id] : []));
   if (new Set(ids).size !== ids.length) out.push('two tickets share an id');

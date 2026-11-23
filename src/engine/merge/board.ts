@@ -2,7 +2,8 @@
  * The board (spec 2.2, 2.4, 2.7): cells, the drop cell of a chain, placing a good, room.
  *
  * Seam (docs/design/market-build-plan.md): `placeGood` places drops, releases, gift goods, the
- * opening board and the goods "Not tonight" returns; `looseCount` serves bound (c); `roomFor` is the
+ * opening board and the goods "Not tonight" returns; `looseCount` serves the drop's loose cap λ;
+ * `compressedCells` serves bound (c) (Decision M43); `roomFor` is the
  * one room check of 2.7 ("Not tonight", gift goods); `freeCells` is F.
  */
 import { BOARD_COLS, BOARD_ROWS, type Cell, type Good, type MergeConfig, type MergeState } from './types';
@@ -65,8 +66,8 @@ export function placeGood(m: MergeState, good: Good, at: number, cell?: number):
 }
 
 /**
- * Loose_c: chain-c goods on the board with b_c ≤ k ≤ b_c + 1 (spec 2.3; bound (c) of 2.7 and the
- * drop's loose cap λ). Built. b_c is params.ts `baseTier`, written out here so this file does not
+ * Loose_c: chain-c goods on the board with b_c ≤ k ≤ b_c + 1 (spec 2.3; the drop's loose cap λ;
+ * since Decision M43 bound (c) reads `compressedCells` instead). b_c is params.ts `baseTier`, written out here so this file does not
  * import params.ts (which imports this one); `mergeParams().chains[c].loose` gives the same number.
  */
 export function looseCount(cfg: MergeConfig, m: Pick<MergeState, 'board' | 'chains'>, c: number): number {
@@ -75,4 +76,32 @@ export function looseCount(cfg: MergeConfig, m: Pick<MergeState, 'board' | 'chai
   let n = 0;
   for (const cell of m.board) if (isGood(cell) && cell.c === c && cell.k >= b && cell.k <= b + 1) n++;
   return n;
+}
+
+/**
+ * Decision M43, the K of bound (c): the cells the board's goods would fill after every possible
+ * merge. For each chain, two goods of a tier make one of the next, carried upward from tier 1 to
+ * tier 7; what is left is at most one good per tier below 8, and every tier-8 good. Only goods on
+ * the board count (shelves and pending gift goods are not on it). The result does not depend on
+ * the order of the merges (the carry is the binary sum of 2^(k − 1) per chain). Pure; `cfg` is for
+ * the seam's shape only.
+ */
+export function compressedCells(cfg: MergeConfig, m: Pick<MergeState, 'board'>): number {
+  void cfg;
+  const counts = new Map<number, number[]>();
+  for (const cell of m.board) {
+    if (!isGood(cell)) continue;
+    let row = counts.get(cell.c);
+    if (!row) counts.set(cell.c, (row = [0, 0, 0, 0, 0, 0, 0, 0, 0]));
+    row[Math.min(8, Math.max(1, cell.k))]++;
+  }
+  let K = 0;
+  for (const row of counts.values()) {
+    for (let k = 1; k < 8; k++) {
+      row[k + 1] += Math.floor(row[k] / 2);
+      K += row[k] % 2;
+    }
+    K += row[8];
+  }
+  return K;
 }

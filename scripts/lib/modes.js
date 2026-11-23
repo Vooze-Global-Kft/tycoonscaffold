@@ -180,6 +180,12 @@ const WEB_ONLY = [
   'src/modes/merge/devViews.web.ts',
   'src/engine/merge/bot.ts',
   'src/engine/fixtures/merge.ts',
+  // The merge screens' preview switches (lead, 23 Nov: the screens lead lists them; phones take each file's plain twin).
+  'src/ui/merge/play/devSlow.web.ts',
+  'src/ui/merge/spokes/dev.web.ts',
+  'src/ui/merge/sheets/dev.web.ts',
+  'src/ui/merge/hud/fontScale.web.ts',
+  'src/ui/merge/devInsets.web.ts',
 ];
 
 /**

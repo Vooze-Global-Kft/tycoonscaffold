@@ -916,6 +916,9 @@ export const useGame = create<Store>((set, get) => {
         // a resume() while the ad was open may have merged more time into it.
         const pending = get().offline;
         if (pending && pending !== offline) amount += pending.earnings - offline.earnings;
+        // A mode that rounds what it shows grants the rounded figure (merge, M19); without the hook the amount is unchanged.
+        const round = engineFor(get().cfg)?.roundPayout;
+        if (round) amount = safe('engine.roundPayout', () => round(get().cfg, amount), amount);
         update((s) => E.grantCash(s, amount));
         set({ offline: null });
         get().save();

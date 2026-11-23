@@ -70,9 +70,9 @@ export function backdropPicture(L: MergeLayout, railCols: number[], lanternsLit:
     c.drawRect({ x: 0, y: 0, width: L.width, height: L.height }, fill(NIGHT.indigo));
     const st = L.street;
     const lanterns = Math.max(3, Math.round(st.w / 48));
-    at(c, st.x, st.y, 1, 0, (q) => drawStreet(q, st.w, st.h, { band: L.backdrop.h, lanterns, lit: Math.min(lanterns, Math.max(1, lanternsLit + 1)) }));
-    // Between the street and the board (the 390 pt phone's spare): the lane's shade, then the board's tray.
-    if (L.board.y > st.y + st.h) c.drawRect({ x: 0, y: st.y + st.h, width: L.width, height: L.board.y - st.y - st.h }, fill(NIGHT.teal));
+    // The street reaches down to the board (the 390 pt phone's spare above the board is street, 4.1).
+    const sh = Math.max(st.h, L.board.y - st.y);
+    at(c, st.x, st.y, 1, 0, (q) => drawStreet(q, st.w, sh, { band: L.backdrop.h, lanterns, lit: Math.min(lanterns, Math.max(1, lanternsLit + 1)) }));
     const b = L.board;
     at(c, b.x, b.y, 1, 0, (q) => drawBoardBase(q, COLS, ROWS, b.cell));
     const slots = railCols.map((col) => (col + 0.5) * b.cell);
@@ -126,7 +126,7 @@ export interface BannerVM {
 
 /** The counter boards under the ticket columns. */
 export function boardsPicture(L: MergeLayout, columns: Rect[]): SkPicture {
-  return picture(R(0, L.street.y, L.width, L.street.h + 4), (c) => {
+  return picture(R(0, L.street.y, L.width, Math.max(L.street.h, L.board.y - L.street.y) + 4), (c) => {
     for (const r of columns) {
       const p = counterParts(r);
       at(c, p.board.x, p.board.y, 1, 0, (q) => drawCounter(q, p.board.w));

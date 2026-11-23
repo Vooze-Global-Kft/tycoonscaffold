@@ -23,6 +23,7 @@ import { MergeIcon } from '../art/MergeIcon';
 import { barScale } from '../hud/barMetrics';
 import { useFontScale } from '../hud/fontScale';
 import { S } from '../strings';
+import { useMergeUi } from '../uiState';
 
 /** On the web a drag that starts over sheet text must not select it (phones never select). */
 export const NO_SELECT = (Platform.OS === 'web' ? { userSelect: 'none' } : {}) as ViewStyle;
@@ -95,6 +96,7 @@ export function Btn({ label, price, onPress, enabled = true, kind = 'buy', targe
   return (
     <Pressable
       {...ref}
+      onPressIn={() => useMergeUi.getState().touched()}
       onPress={enabled ? onPress : undefined}
       accessibilityRole="button"
       accessibilityState={{ disabled: !enabled }}

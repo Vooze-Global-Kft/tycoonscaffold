@@ -88,6 +88,54 @@ describe('the closed form of 2.9 equals event stepping with the board frozen (M2
   }, 60_000);
 });
 
+describe('time away is additive (regression: an absence with nothing due used to count for nothing)', () => {
+  /** Two absences a then b (the game clock does not move while away) against one of a + b. */
+  function twoAgainstOne(g: R.MergeGame, a: number, b: number) {
+    const one = R.awayClosedForm(cfg, g, a + b);
+    const first = R.awayClosedForm(cfg, g, a);
+    const second = R.awayClosedForm(cfg, { ...g, merge: first.m }, b);
+    return { one, first, second };
+  }
+
+  it('away(a) then away(b) gives the sales, shelves, waiting gears and clocks of away(a + b), on 400 random states', () => {
+    const rnd = prng(4242);
+    for (let i = 0; i < 400; i++) {
+      const g = randomState(rnd, 3000 + i);
+      const total = rnd() < 0.5 ? rnd() * 40 : rnd() * 3 * H;
+      const a = rnd() * total;
+      const { one, first, second } = twoAgainstOne(g, a, total - a);
+      expect(first.coins + second.coins, `state ${i}`).toBe(one.coins);
+      const goods = (r: typeof one) => r.sales.reduce((x, s) => x + s.goods, 0);
+      expect(goods(first) + goods(second), `state ${i}`).toBe(goods(one));
+      one.m.chains.forEach((ch, c) => {
+        const two = second.m.chains[c];
+        expect(two.shelf, `state ${i} chain ${c}`).toEqual(ch.shelf);
+        expect(two.waiting, `state ${i} chain ${c}`).toBe(ch.waiting);
+        if (!ch.open) return;
+        // A waiting gear's drop clock means nothing until a release restarts it.
+        if (!ch.waiting) expect(Math.abs(two.nextPopAt - ch.nextPopAt), `state ${i} chain ${c} drop clock`).toBeLessThan(1e-6);
+        if (ch.minder > 0) expect(Math.abs(two.nextSaleAt - ch.nextSaleAt), `state ${i} chain ${c} sale clock`).toBeLessThan(1e-6);
+      });
+      expect(second.m.draws.drop).toEqual(one.m.draws.drop);
+      // The event stepping keeps the same rule.
+      const stepped = R.awayByEvents(cfg, { ...g, merge: R.awayByEvents(cfg, g, a).m }, total - a);
+      expect(stepped.m.chains.map((ch) => ch.shelf)).toEqual(one.m.chains.map((ch) => ch.shelf));
+    }
+  }, 60_000);
+
+  it('5 s then 5 s away pays what 10 s pays when a sale falls due between 5 s and 10 s', () => {
+    const g0 = mergeFixtures(cfg).minute10;
+    const clock = g0.stats.playSeconds;
+    const merge = { ...g0.merge, chains: g0.merge.chains.map((ch) => (ch.open ? { ...ch, minder: Math.max(1, ch.minder), nextSaleAt: clock + 8, nextPopAt: clock + 7 } : ch)) };
+    const g = { ...g0, merge };
+    const { one, first, second } = twoAgainstOne(g, 5, 5);
+    expect(one.coins).toBeGreaterThan(0);
+    expect(first.coins).toBe(0);
+    expect(first.coins + second.coins).toBe(one.coins);
+    expect(second.m.chains[0].shelf).toEqual(one.m.chains[0].shelf);
+  });
+});
+
 describe('mergeOffline (2.9)', () => {
   const g = mergeFixtures(cfg).minute10;
 

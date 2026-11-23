@@ -7,7 +7,7 @@
  * is due and none is out, and the "Call the dragon" ad) draws from the Parade stream, so the caller
  * advances `draws.parade` by its `used`; `scriptedTicket` (create() and the first merge of a new
  * game). Both draws give the ticket `nextTicketId`. This file reads `missingDetail()`
- * (./missing.ts), `mergeParams` and `streamValue` (./params.ts) and nothing else of the state's
+ * (./missing.ts), `mergeParams` and `streamValue` (./params.ts), `compressedCells` (./board.ts) and nothing else of the state's
  * machinery: the draw has no room check of its own (bound (c) is over O, the cells that are open,
  * not over F; the one room check, `roomFor`, is the board's, ./board.ts).
  *
@@ -17,8 +17,9 @@
  *   unfilled lines on that chain (the Parade's included) together with this ticket's, from one
  *   joint `missing()` over the goods at hand, × T/(1 + p_c) ≤ W; and this ticket's hand actions
  *   Σ (goods used + pops − 1 merges + 1 delivery) ≤ H;
- * - (c) space, over the whole board: Σ over the unfilled lines of every open ticket, this one
- *   included, of cells(k) = k − b_c + 1, + Σ_c min(λ, Loose_c), + R ≤ O;
+ * - (c) space, over the whole board (Decision M43): K + Σ over the unfilled lines of every open
+ *   ticket, this one included, of cells(k) = k − b_c + 1, + R ≤ O, where K = `compressedCells`, the
+ *   board as it would be after every possible merge (shelves and pending gift goods do not count);
  * - (d) = (d1) only (decision M4): every line has k ≥ b_c + 1. The scripted fox and hedgehog are
  *   exempt from (d) only.
  * Fallback, read exactly as decision M32 (four steps, each followed by a re-check of (a) to (d)):
@@ -29,6 +30,7 @@
  * round; (4) none passes: "Setting up…" (`ticket: null`), which the caller redraws at the next
  * board change (2.4 `changedAt`).
  */
+import { compressedCells } from './board';
 import { missingDetail, goodsAtHand, popsNeeded } from './missing';
 import { mergeParams, streamValue } from './params';
 import type { DrawOutcome, Good, MergeConfig, MergeGame, MergeParams, MergeState, StreamSite, Ticket, TicketLine } from './types';
@@ -67,7 +69,7 @@ interface DrawContext {
   /** Unfilled lines of every other counter's ticket (the Parade's included). */
   queue: Pick<TicketLine, 'c' | 'k'>[];
   goods: Good[];
-  /** Σ_c min(λ, Loose_c) + Σ cells(k) of the queue + R: the cells (c) has used before this ticket. */
+  /** K (M43) + Σ cells(k) of the queue + R: the cells (c) has used before this ticket. */
   cellsBefore: number;
   W: number;
   H: number;
@@ -92,7 +94,7 @@ function context(cfg: MergeConfig, g: MergeGame, counter: number, W: number, H: 
   });
   let cellsBefore = cfg.merge.tickets.spareCells;
   for (const l of queue) cellsBefore += cellsOf(l.k, P.chains[l.c]?.base ?? 1);
-  for (const c of open) cellsBefore += Math.min(cfg.merge.gear.looseCap, P.chains[c].loose);
+  cellsBefore += compressedCells(cfg, m);
   return { cfg, m, P, open, queue, goods: goodsAtHand(m), cellsBefore, W, H, site, start, used: 0 };
 }
 

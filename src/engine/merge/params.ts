@@ -137,6 +137,20 @@ export function saleAmount(cfg: MergeConfig, g: MergeGame, c: number): number {
   return roundCoins(cfg, valueWith(cfg, m, mods, c, houseTierOf(cfg, ch.minder, ch.gear)));
 }
 
+/**
+ * Decision M45: why a minder level K → K + 1 of chain c is refused now, or null when it may be
+ * bought (price and cash aside): 'top' at the top level; 'gear' while the gear holds the house tier
+ * back (K ≥ b_c, so h = min(K + 2, b + 1) would not rise: the sheet says "Raise the gear first");
+ * 'none' with no minder hired or the stall closed. The rules refuse such a purchase (`levelMinder`).
+ */
+export function minderLevelBlock(cfg: MergeConfig, g: MergeGame, c: number): 'top' | 'gear' | 'none' | null {
+  const ch = g.merge.chains[c];
+  if (!ch?.open || ch.minder < 1) return 'none';
+  if (ch.minder >= cfg.merge.costs.minderMaxLevel) return 'top';
+  if (houseTierOf(cfg, ch.minder + 1, ch.gear) <= houseTierOf(cfg, ch.minder, ch.gear)) return 'gear';
+  return null;
+}
+
 /** h_c = min(K + 1, b_c + 1) (2.2), 0 with no minder. */
 export function houseTierOf(cfg: MergeConfig, minder: number, gearLevel: number): number {
   return minder > 0 ? Math.min(minder + 1, baseTier(cfg, gearLevel) + 1) : 0;
