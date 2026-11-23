@@ -41,3 +41,4 @@ pint, pints -> "a cup of tea"
 uniform, uniforms -> "the band's matching jackets" (7.3: no uniform)
 school, schools, children, child, kids, pupils -> nothing: 7.3 has no children or school
 tax, taxes -> "fee", "charge"; tax changes are never a subject
+madam, madame -> "Mayor", or the person's name

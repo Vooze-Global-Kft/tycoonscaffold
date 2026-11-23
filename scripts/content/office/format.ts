@@ -364,7 +364,7 @@ export type PhraseList = z.infer<typeof PhraseListSchema>;
 export const RivalSchema = z.strictObject({
   id,
   office: office.optional(),
-  /** The rival's name as printed ("Councillor Prudence Plumb"); every token is in names.json. */
+  /** The rival's name as printed, title included ("Councillor Prudence Stitchley", at most 32 characters; fit.ts rivalName); every token is in names.json. */
   name: text,
   /** The role line ("Keeper of the Ceremonial Spoon") or the hobby. */
   hobby: text,

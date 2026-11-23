@@ -66,8 +66,19 @@ export function measure(text: string, fontSize: number): number {
   return em * fontSize * SAFETY;
 }
 
+/**
+ * Bold rows (the visitor's name, the strip title row, a button label, the bottom row: DeskCanvas
+ * draws them at fontWeight 700) are wider than the regular table: SF Pro Bold about 5 to 7 %, Inter
+ * Bold 3 to 4 % (content-lint-attack.md M3). Measured with this factor on top of the margin.
+ */
+export const BOLD_FACTOR = 1.06;
+
 /** A text box: font size in points at s = 1.3, width in points, lines allowed, optional char cap. */
 export interface Box {
+  /** Drawn bold: widths × BOLD_FACTOR. */
+  bold?: boolean;
+  /** The box is this file's assumption, not 4.1 / 4.2's or paperMetrics.ts's: a miss is a warning. */
+  assumed?: boolean;
   font: number;
   width: number;
   lines: number;
@@ -98,20 +109,20 @@ export const BOXES = {
   /** A Clerk's note on a form: the form's own line takes the first two lines of the proposal box. */
   formNote: { font: FONT.proposal * s, width: PAPER_INNER, lines: 2, what: "a Clerk's note: the 2 proposal lines left under the form line" },
   /** 4.2 header: name at 15 × s. */
-  name: { font: FONT.name * s, width: HEADER_TEXT, lines: 1, maxChars: 24, what: 'a visitor name: 1 line at 19.5 pt in 263 pt, at most 24 characters (2.7)' },
+  name: { bold: true, font: FONT.name * s, width: HEADER_TEXT, lines: 1, maxChars: 24, what: 'a visitor name: 1 line at 19.5 pt in 263 pt, at most 24 characters (2.7)' },
   /** 4.2 header: role (and badge) at 13 × s. */
   role: { font: FONT.role * s, width: HEADER_TEXT, lines: 1, maxChars: 28, what: 'a role line: 1 line at 16.9 pt in 263 pt, at most 28 characters (2.7)' },
   /** 4.2: a chip ≤ 151 pt at 15 × s; a wide chip fills a row. */
   chip: { font: FONT.chip * s, width: CHIP_MAX_W, lines: 1, what: 'a chip: 151 pt at 19.5 pt (4.2)' },
   chipWide: { font: FONT.chip * s, width: PAPER_INNER, lines: 1, what: 'a wide chip: one row of 315 pt (4.2)' },
   /** 4.2: the strip title row at 12 × s. */
-  stripTitle: { font: FONT.title * s, width: TITLE_ROW, lines: 1, what: 'the strip title row: 304 pt at 15.6 pt (4.2)' },
+  stripTitle: { bold: true, font: FONT.title * s, width: TITLE_ROW, lines: 1, what: 'the strip title row: 304 pt at 15.6 pt (4.2)' },
   /**
    * A button label of a boycott or scandal ("Return the scissors") in place of "IF SIGNED" in the
    * title row, leaving room for "↑ · Poll 3 → 4 of 5" (an event schedules no ↩). An assumption:
    * 4.2 sizes the title row for "IF SIGNED"; P6's paperMetrics.ts decides.
    */
-  stripLabel: { font: FONT.title * s, width: TITLE_ROW - measure(EVENT_TITLE_TAIL, FONT.title * s), lines: 1, what: 'a button label: the title row less "↑ · Poll 3 → 4 of 5" (4.2), about 161 pt at 15.6 pt' },
+  stripLabel: { bold: true, assumed: true, font: FONT.title * s, width: TITLE_ROW - measure(EVENT_TITLE_TAIL, FONT.title * s * BOLD_FACTOR), lines: 1, what: 'a button label: the title row less "↑ · Poll 3 → 4 of 5" (4.2), about 151 pt at 15.6 pt bold, an assumption until the desk (P6) fixes the box; keep labels under about 18 characters' },
   /** 4.2: the note row at 12 × s. */
   noteRow: { font: FONT.note * s, width: PAPER_INNER, lines: 1, what: 'the note row: 1 line at 15.6 pt in 315 pt (4.2)' },
   /** 4.1 / 2.16: the goal line, at most 34 characters at 12 × s. */
@@ -121,7 +132,7 @@ export const BOXES = {
   /** 4.1: the term ribbon's short form at 375. */
   ribbonShort: { font: 11 * s, width: SCREEN_WIDTH - 20, lines: 1, what: "the term ribbon's short form: 355 pt at 14.3 pt (4.1)" },
   /** 4.1: a bottom-row button label (64 pt; the in-tray 72). */
-  bottomRow: { font: FONT.label * s, width: BUTTON_W, lines: 1, what: 'a bottom-row label: 64 pt at 14.3 pt (4.1)' },
+  bottomRow: { bold: true, font: FONT.label * s, width: BUTTON_W, lines: 1, what: 'a bottom-row label: 64 pt at 14.3 pt (4.1)' },
   /** A picket slogan on its Ledger row. */
   picket: { font: 11 * s, width: 200, lines: 1, what: 'a picket slogan: 200 pt at 14.3 pt on its Ledger row' },
   /** A ministry or Grand Project name in the Ledger. */
@@ -135,6 +146,8 @@ export const BOXES = {
   sheetPara: { font: 12 * s, width: SHEET_INNER, lines: 3, what: 'a sheet paragraph: 3 lines at 15.6 pt in 311 pt' },
   /** A title on a sheet (a twist, a pair, a monument's name). */
   sheetTitle: { font: 15 * s, width: SHEET_INNER, lines: 1, what: 'a sheet title: 1 line at 19.5 pt in 311 pt' },
+  /** A rival's name with its title ("Councillor Prudence Stitchley") on the poll sheet and the result. */
+  rivalName: { bold: true, font: 15 * s, width: SHEET_INNER, lines: 1, maxChars: 32, what: "a rival's name with its title: 1 line at 19.5 pt bold in 311 pt, at most 32 characters" },
   /** A rival's slogan on the poll sheet. */
   slogan: { font: 12 * s, width: SHEET_INNER, lines: 1, what: 'a slogan: 1 line at 15.6 pt in 311 pt' },
   /** A district's name on the pinned map. */
@@ -151,6 +164,8 @@ export interface FitResult {
   overflowWord?: string;
   /** A plain sentence when it does not fit. */
   reason?: string;
+  /** The box is an assumption (a miss is a warning). */
+  assumed?: boolean;
 }
 
 /** Splits text into wrap segments: words, and the parts of hyphenated words (break after "-"). */
@@ -185,12 +200,27 @@ export function wrap(text: string, font: number, width: number): { lines: string
 /** Does `text` fit `box`? */
 export function fit(text: string, box: Box | BoxName): FitResult {
   const b: Box = typeof box === 'string' ? BOXES[box] : box;
-  const { lines, widest, overflowWord } = wrap(text, b.font, b.width);
+  const font = b.bold ? b.font * BOLD_FACTOR : b.font;
+  const { lines, widest, overflowWord } = wrap(text, font, b.width);
   const n = Math.max(1, lines.length);
   const chars = [...text].length;
   let reason: string | undefined;
-  if (b.maxChars !== undefined && chars > b.maxChars) reason = `${chars} characters, the box takes ${b.maxChars} (${b.what})`;
+  if (b.maxChars !== undefined && chars > b.maxChars) reason = `${chars} characters, the box takes ${b.maxChars} (${b.what}); cut ${chars - b.maxChars}`;
   else if (overflowWord) reason = `"${overflowWord}" alone is wider than the box (${b.what})`;
-  else if (n > b.lines) reason = `needs ${n} lines at font scale 1.3, the box has ${b.lines} (${b.what}); shorten by about ${Math.ceil(chars * (1 - b.lines / n))} characters`;
-  return { fits: !reason, lines: n, widest, overflowWord, reason };
+  else if (n > b.lines) reason = `needs ${n} lines at font scale 1.3, the box has ${b.lines} (${b.what}); shorten by about ${cutToFit(text, font, b)} characters`;
+  return { fits: !reason, lines: n, widest, overflowWord, reason, assumed: !!b.assumed };
+}
+
+/** How many characters to cut from the end before the text fits its lines (at least 1). */
+function cutToFit(text: string, font: number, b: Box): number {
+  const chars = [...text];
+  let lo = 0;
+  let hi = chars.length;
+  // The longest prefix that wraps into the box's lines (fitting is monotonic in the prefix length).
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (wrap(chars.slice(0, mid).join(''), font, b.width).lines.length <= b.lines) lo = mid;
+    else hi = mid - 1;
+  }
+  return Math.max(1, chars.length - lo);
 }

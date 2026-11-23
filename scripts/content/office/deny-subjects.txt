@@ -192,7 +192,7 @@ child, children, kid, kids, pupil, pupils, toddler, toddlers, teenager, teenager
 uniformed, soldier, soldiers, vicar, vicars, priest, priests, nun, nuns, bishop, bishops, clergy
 # monarchy
 sceptre, sceptres, scepter, orb, orbs, hrh, her maj, his maj, his excellency, her excellency, your majesty
-your royal highness, coronation, throne, thrones, monarch, monarchs, monarchy
+your royal highness, coronation, throne, thrones, monarch, monarchs, monarchy, madam, madame
 # corruption as instruction
 brown envelope, brown envelopes, sweetener, sweeteners, grease the palm, grease his palm, grease her palm
 backhander, backhanders, kickback, kickbacks, slush fund, bung, bungs

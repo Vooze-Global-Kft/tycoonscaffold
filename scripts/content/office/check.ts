@@ -100,7 +100,13 @@ function parseFile(file: string, names: NamesFile): Parsed {
     const nf = readNamesFile(file, findings);
     const strings: ExtraString[] = [];
     for (const e of nf.names) {
-      strings.push({ id: `name:${e.name}`, text: e.name, field: 'name' });
+      // An entry kept only as a record of an id ("never shown": a product id's old name) is no player string.
+      if (!/never shown/i.test(e.note ?? '')) strings.push({ id: `name:${e.name}`, text: e.name, field: 'name' });
+      // "Add it to names.json" is no shortcut past the check: an entry without its check record fails.
+      const c = e.check;
+      if (!c.date || !c.checker || [c.politicians, c.notorious, c.fiction, c.children].some((v) => !v)) {
+        findings.push({ severity: 'error', file: rel(file), id: `name:${e.name}`, field: 'check', rule: 'format', reason: 'this name has no complete check record (politicians, notorious, fiction, children, date, checker): the sensitivity editor checks a name against the four lists (7.1) before any text may use it' });
+      }
       if (e.kind === 'cast') {
         const rn = fit(e.name, 'name');
         if (!rn.fits) findings.push({ severity: 'error', file: rel(file), id: `name:${e.name}`, field: 'name', rule: 'rule4', reason: `the name does not fit the paper header: ${rn.reason}` });

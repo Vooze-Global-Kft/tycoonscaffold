@@ -140,7 +140,7 @@ Dry official language about something silly. The paper is written by a person wh
 - Bad: "Sales on the high street fell 3 % after the bandstand opened." (a real-economy claim; reads as policy).
 
 **`slogan`**: a motto or sign, read deadpan.
-- "A sign for the bus station: DITHERING. YOU HAVE PROBABLY ARRIVED."
+- "A sign for the bus station: DITHERING. YOU ARE PROBABLY HERE."
 - "Let Till's Teas sponsor the clock tower. It would chime TILL'S TEAS on the hour."
 - "A motto for the shop windows: LOOK, DO NOT LEAN."
 - Bad: "Paint MAKE DITHERING ADEQUATE AGAIN on the water tower." (echoes a real slogan; fails the lint).
@@ -161,28 +161,27 @@ Dry official language about something silly. The paper is written by a person wh
 
 - **Rations per deck** (your batch's share is in `plan.json`): the goose at most 1 paper in 40; biscuits 1 in 60; one statue (or bust) per office deck, none in the any-office deck (statues live on the vanity shelf); at most 1 exclamation mark per 50 papers. Write none of these unless your batch has the ration.
 - **Length**: a paper is at most 90 characters. Your batch's median is at most 65; at most 20 % of it is "long" (81 to 90). Aim at 45 to 70. Two short sentences beat one long one. Name ≤ 24, role ≤ 28 (from the cast). Clippings ≤ 60, picket slogans ≤ 18, labels ≤ 28, Clerk's notes ≤ 48 (60 hard).
-- **No innuendo.** No vegetable, fruit or object is ever soft, hard, long, big, firm or "at length", nor thick, stiff, swollen, plump, juicy, huge, impressive or erect; no "size", "length" or "girth" of anything. A pumpkin is "prize", never large; if you need a size word, the joke is the wrong joke. The check is to fail some words always, size words beside an object, and only report plain words like "long" or "member" (`plan.json` `rules.innuendo`); until it does (requested), all of them fail, so use the list below. Fixed names pass: The Very Long Bridge, Giant Vegetable Society, Long Lunch, "a firmer tone", "no hard feelings".
+- **No innuendo.** No vegetable, fruit or object is ever soft, hard, long, big, firm or "at length", nor thick, stiff, swollen, plump, juicy, huge, impressive or erect; no "size", "length" or "girth" of anything. A pumpkin is "prize", never large; if you need a size word, the joke is the wrong joke. The check (`deny-innuendo.txt`) fails some words always, and a size word within three words of a vegetable, fruit, nut, rod or pole; a size word alone passes ("the meeting ran long", "a new member"). A reader catches the rest: never "rod", "tackle" or "impressive" near anything an angler, a band or a grower holds. Fixed names pass: The Very Long Bridge, Giant Vegetable Society, Long Lunch, "a firmer tone", "no hard feelings".
 - **No joke about how votes are cast or counted.** No ballots, recounts, extra votes, the pumpkin voting, counting badly. Election night is played straight.
 - **No numbers the rules own.** Never write dibs, a price, a mood, a number of papers or days in the text: the strip prints those, and a text that disagrees with them breaks the game's first promise.
 - **Office words** (Mayor, Governor, President, the town, province, county, ward, national, Republic, the newspaper's name, Pruella, Mildred) never appear in a `portable` paper or the any-office deck. Portable papers say "you".
 
 ### Words to avoid
 
-Ordinary words the check stops, or a reader would (the lint attack's false alarms). The swap costs the joke nothing.
+Ordinary words the check stops in every sense, because another sense is a subject the game never touches (the lint attack's false alarms; `hints.txt` is the list, and the check prints its replacement). The swap costs the joke nothing.
 
 | Avoid | Write |
 |---|---|
-| strikes, struck (a clock); tolls (a bell) | chimes; rings |
-| rent, housing, welfare | hire; case; wellbeing |
-| march, March; union; demonstration; recount | stroll (and name no month); merger; display; tell |
+| strike, struck (a clock); toll (a bell) | chimes (or, for a club, a boycott); rings |
+| rent; housing; welfare; tax | hire; case; wellbeing; fee |
+| march (and months after April); union; demonstration; recount | a walk, parade round, "in spring"; merger; display; tell, go over |
 | battle, army, invaded, colony, surrender, attacked, veteran | contest, flock, took over, flock, hand back, pecked, old |
-| crown, king, queen, sir, royal (king-size, queen bee, crown green) | leave out: no crowns, no titles |
-| bush, border, blind, butt, dead (heat) | shrub; flower bed; awning; rain barrel; a tie |
-| crazy, mental, miracle, angel; punch; execute; regime | mini, in his head, a wonder, sponge; lemonade; carry out; routine |
-| a food or thing named after a place (Victoria sponge, Swiss roll, Danish, Welsh rarebit, Turkish delight, Scotch egg, Eccles cake, Brussels sprouts, Swiss chard, French beans, French windows) | sponge, jam roll, pastry, cheese on toast, sprouts, chard, runner beans |
-| a red (or any colour) rosette | a first-prize rosette |
-| rod, tackle, erect, knockers, melon, impressive | float, line, put up, doorbell, apple, fine |
-| long, big, hard, soft, firm, size, member, tool, nuts | ran over, a great day, a sharp pencil, a new face, potting shed, bolts, a cardboard cut-out of you |
+| crown; king; queen; sir, madam | the top of your hat, the bowling green; grand; the head bee; "Mayor" or the name |
+| bush, border, blind, butt | shrub; edge, bed ("flower border" passes); "window blind" or "roller blind" pass, else shutter; rain barrel |
+| crazy, mad, mental, miracle, angel; punch; execute; regime | mini golf, unusual, in his head, wonder, sponge; lemonade; carry out; routine |
+| a food named after a place (Victoria sponge, Swiss roll, Danish, Welsh rarebit, Turkish delight, Scotch egg, Eccles cake, Brussels sprouts, French beans) | the food without the place: sponge cake, a pastry, sprouts, chard, runner beans |
+| sick, ill; pint; uniform; school, children | away, not in today; a cup of tea; the band's matching jackets; nothing (they do not exist here) |
+| a red (or any colour) rosette; dead heat | a first-prize rosette; a tie |
 | number ten (a bus); "papers, please" | the 7:02 (buses go by their times); leave out (another game's title) |
 
 ### Who may be the butt (`butt`: self, office, staff, lobbyist, committee, visitor, rival, thing)

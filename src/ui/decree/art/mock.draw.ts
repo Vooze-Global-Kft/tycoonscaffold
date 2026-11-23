@@ -80,8 +80,8 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
   at(c, 10, ob.y + 3, 1, 0, (q) => drawDoor(q, doorW, ob.h - 6, office, 0.6));
   const gb = doorGlassBox(doorW, ob.h - 6);
   words(c, 10 + gb.x + 6, ob.y + 3 + gb.y + gb.h * 0.2, gb.w * 0.7, gb.h * 0.6, DESK.slateDeep);
-  const trayW = Math.min(150, w * 0.4, w - doorW - 110);
-  at(c, Math.max(doorW + 20, (w - trayW) / 2 - 6), ob.y + 1, 1, 0, (q) => drawOutTray(q, trayW, ob.h - 2, 31));
+  const trayW = Math.min(150, w * 0.4, w - doorW - 142);
+  at(c, doorW + 20, ob.y + 1, 1, 0, (q) => drawOutTray(q, trayW, ob.h - 2, 31));
   if (office === 1) at(c, w - 38, ob.y + ob.h - 2, Math.min(1.1, (ob.h - 4) / 30), 0, (q) => drawLamp(q, 30));
   if (office === 2) at(c, w - 50, ob.y + ob.h - 6, Math.min(0.95, (ob.h - 8) / 20), 0, drawTelephones);
   if (o.set === 'walnut' && office === 0) at(c, w - 46, ob.y + ob.h - 6, Math.min(1, (ob.h - 8) / 18), 0, drawDeskSet);

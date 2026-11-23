@@ -249,7 +249,7 @@ function compile(entry: string, list: string, group: string): Pattern {
   // Pattern words: keep letters, digits, apostrophes, "*", braces and commas inside braces. A
   // possessive "'s" is dropped, as the text's is ("it's the * stupid" meets "it the pumpkin stupid").
   const cleaned = lower(entry.replace(/[‘’]/g, "'")).replace(/[^\p{L}\p{N}'*{},]+/gu, ' ').trim();
-  const words = cleaned.split(' ').filter(Boolean).map((w) => (w.includes('{') ? w : w.replace(/'s$/, '')));
+  const words = (cleaned.match(/\{[^}]*\}|[^\s{}]+/g) ?? []).map((w) => (w.includes('{') ? w : w.replace(/'s$/, '')));
   const keys: string[] = [];
   const stems: string[] = [];
   const parts: string[] = [];
@@ -261,7 +261,7 @@ function compile(entry: string, list: string, group: string): Pattern {
     }
     const alt = /^\{(.+)\}$/.exec(w);
     const alts = alt ? alt[1].split(',').map((a) => a.trim().replace(/'s$/, '')) : [];
-    if (alt) parts.push(`(?:${alts.map((x) => (x.endsWith('*') ? `${escapeRe(x.slice(0, -1))}${W}*` : escapeRe(x))).join('|')})`);
+    if (alt) parts.push(`(?:${alts.map((x) => (x.endsWith('*') ? `${escapeRe(x.slice(0, -1))}${W}*` : escapeRe(x.replace(/\s+/g, ' ')))).join('|')})`);
     else if (w.endsWith('*')) parts.push(`${escapeRe(w.slice(0, -1))}${W}*`);
     else parts.push(escapeRe(w));
     if (i === 0) {
@@ -288,7 +288,7 @@ function readNames(file: string, list: string): NameList {
     } else if (words.length > 1) {
       nl.phrases.push({ words, entry, group });
       const last = words[words.length - 1];
-      if (last.length >= 2 && !nl.lastWords.has(last)) nl.lastWords.set(last, { entry, group });
+      if (last.length >= 3 && !nl.lastWords.has(last)) nl.lastWords.set(last, { entry, group });
     }
   }
   return nl;
@@ -510,6 +510,7 @@ const HONORIFICS = new Set([
   'alderman', 'president', 'governor', 'mayor', 'minister', 'chancellor', 'premier', 'prince', 'princess', 'king', 'queen',
   'secretary', 'general', 'judge', 'justice', 'congressman', 'congresswoman', 'representative', 'deputy', 'comrade', 'chairman', 'uncle', 'auntie',
 ]);
+const PERSONAL_TITLES = new Set(['mr', 'mrs', 'ms', 'miss', 'mister', 'dr', 'lord', 'lady', 'sir', 'dame', 'senator', 'councillor', 'cllr', 'prince', 'princess', 'comrade']);
 /** Endings that turn a surname into a word about its owner ("Nixonian", "Thatcherite", "Reaganomics"). */
 const NAME_SUFFIXES = ['s', 'es', 'ian', 'ians', 'ite', 'ites', 'ism', 'isms', 'ist', 'ists', 'esque', 'omics', 'ish', 'care', 'mania', 'gate'];
 
@@ -568,7 +569,11 @@ function lintText(ctx: Ctx, it: Item) {
   const SMALL = new Set(['a', 'an', 'the', 'of', 'and', 'to', 'in', 'on', 'for', 'at', 'by', 'or', 'with']);
   const words = n.toks.filter((t) => !SMALL.has(t.low) && /^\p{L}/u.test(t.raw));
   const titleCase = words.length >= 2 && words.every((t) => t.cap || t.caps);
-  const known = (low: string) => ctx.lists.common.has(low) || ctx.lists.lexicon.has(low);
+  const has = (w: string) => ctx.lists.common.has(w) || ctx.lists.lexicon.has(w);
+  // An everyday word with an ending ("REFUSES", "PAINTED", "BENCHES", "HURRIED").
+  const known = (low: string) =>
+    has(low) || [['ies', 'y'], ['ied', 'y'], ['es', ''], ['s', ''], ['ed', ''], ['ed', 'e'], ['d', ''], ['ing', ''], ['ing', 'e'], ['ly', ''], ['er', ''], ['er', 'e'], ['ers', ''], ['est', ''], ["'s", '']]
+      .some(([suf, rep]) => low.length > suf.length + 2 && low.endsWith(suf) && has(low.slice(0, -suf.length) + rep));
   for (const nl of [ctx.lists.people, ctx.lists.fiction]) {
     const what = LIST_WHAT[nl.list];
     // Full names, in sequence, capitalised.
@@ -590,7 +595,8 @@ function lintText(ctx: Ctx, it: Item) {
     n.toks.forEach((t, i) => {
       if (flagged.has(i) || inside(allowed, t.nStart, t.nEnd) || !/^\p{L}/u.test(t.raw)) return;
       const prevTok = n.toks[i - 1];
-      const afterTitle = !!prevTok && HONORIFICS.has(prevTok.low) && (t.cap || t.caps) && /^\.? $/.test(n.text.slice(prevTok.end, t.start));
+      // In an all-caps headline "MAYOR REFUSES GRAPE" is a subject and a verb: only personal titles count there.
+      const afterTitle = !!prevTok && (t.caps ? PERSONAL_TITLES.has(prevTok.low) : HONORIFICS.has(prevTok.low)) && (t.cap || t.caps) && (n.text.slice(prevTok.end, t.start) === ' ' || (n.text.slice(prevTok.end, t.start) === '. ' && ABBREV.has(prevTok.low)));
       const report = (entry: string, group: string, how: string) => {
         add(ctx, { ...base, rule: 'tier2', severity: 'error', match: afterTitle ? `${n.toks[i - 1].raw} ${t.raw}` : t.raw, reason: `${how}${what}: "${entry}"${group ? ` (${group})` : ''}; invent a name instead` });
         flagged.add(i);
@@ -619,7 +625,7 @@ function lintText(ctx: Ctx, it: Item) {
       const vowel = firstVowel(t.low);
       for (const e of nl.single) {
         if (e.low.length < 4 || e.everyday) continue;
-        const near = within1(t.low, e.low) ? 'is one letter away from' : e.code === code && e.vowel === vowel && code.length >= 2 ? 'sounds like' : '';
+        const near = within1(t.low, e.low) ? 'is one letter away from' : e.code === code && e.vowel === vowel && code.length >= 2 && isV(e.low[0]) === isV(t.low[0]) ? 'sounds like' : '';
         if (!near) continue;
         if (ctx.cleared.get(t.low)?.has(e.low)) continue;
         add(ctx, {
@@ -709,7 +715,7 @@ function lintFit(ctx: Ctx, it: Item) {
   }
   if (!it.box) return;
   const r = fit(t, it.box);
-  if (!r.fits) add(ctx, { ...base, rule: 'rule4', severity: 'error', match: t.length > 40 ? `${t.slice(0, 37)}...` : t, reason: `does not fit: ${r.reason}` });
+  if (!r.fits) add(ctx, { ...base, rule: 'rule4', severity: r.assumed ? 'warn' : 'error', match: t.length > 40 ? `${t.slice(0, 37)}...` : t, reason: `does not fit: ${r.reason}` });
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -974,7 +980,7 @@ function collect(ctx: Ctx, units: ContentUnit[]): { items: Item[]; papers: Paper
     }
     for (const l of S.lists ?? []) l.phrases.forEach((ph, i) => item(`${l.id}.${i + 1}`, 'phrase', ph, 'phrase'));
     for (const r of S.rivals ?? []) {
-      item(r.id, 'name', r.name, 'name', 'name');
+      item(r.id, 'name', r.name, 'name', 'rivalName');
       item(r.id, 'hobby', r.hobby, 'label', 'role');
       item(r.id, 'slogan', r.slogan, 'label', 'slogan');
       item(r.id, 'backAgain', r.backAgain, 'line', 'sheetPara');
