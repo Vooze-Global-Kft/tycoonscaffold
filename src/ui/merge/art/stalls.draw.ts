@@ -16,7 +16,7 @@ import { drawFinial, drawGear } from './gear.draw';
 import { drawGlyph } from './goods.draw';
 import { drawLantern } from './lantern.draw';
 import { CHAIN, CHAIN_IDS, NIGHT, alpha, mix, shade, type ChainId } from './palette';
-import { INK, builder, clip, fill, line, lit, poly, rrect, scallops, shape, stroke } from './pen';
+import { INK, builder, circle, clip, fill, line, lit, poly, rrect, scallops, shape, stroke } from './pen';
 
 export const STALL_W = 60;
 export const STALL_H = 40;

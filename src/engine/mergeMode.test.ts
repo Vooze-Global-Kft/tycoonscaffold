@@ -11,7 +11,7 @@ import { GameConfigSchema } from '../config/schema';
 import { MERGE_STARTING_CONTENT } from '../config/merge.content';
 import { MergeSchema, RANGES, lintMerge, valueAt } from '../config/schema.merge';
 import * as E from './economy';
-import { FIXTURE_NOW, baseGameState, fixtureProblems, freshState, mergeFixtures, mergeTestConfig } from './fixtures/merge';
+import { FIXTURE_NOW, baseGameState, fixtureProblems, freshState, mergeFixtures, mergeState, mergeTestConfig } from './fixtures/merge';
 import * as R from './merge';
 import { mergeEngineMode, withMergeContent } from './mergeMode';
 import { engineFor, installEngineMode } from './mode';
@@ -387,5 +387,107 @@ describe('the merge schema (src/config/schema.merge.ts)', () => {
     expect(lintMerge({ ...parsed, seasons: { ...parsed.seasons, openingGoods: 4 } }).join('\n')).toMatch(/6 Pepper Skewers/);
     expect(lintMerge({ ...parsed, festival: [parsed.festival[0].slice(0, 3), ...parsed.festival.slice(1)] }).join('\n')).toMatch(/4 to 6 lines/);
     expect(RANGES.some((r) => r.path === 'gear.interval')).toBe(false);
+  });
+});
+
+describe('purchases and buttons (2.5), each checked against cash and conditions', () => {
+  const c = R.cellAt;
+  const rich = (extra: Parameters<typeof mergeState>[1] = {}) => mergeState(cfg, { clock: 100, cash: 10_000_000, chains: [{ c: 0, gear: 3, best: 4 }], goods: [], ...extra });
+
+  it('openStall opens only the next chain, at its table price, with best = maxPop and the Ladder Book stamped', () => {
+    const g = rich();
+    expect(R.openStall(cfg, g, 2)).toBe(g); // not the next chain
+    expect(R.openStall(cfg, g, 0)).toBe(g); // already open
+    const ev: R.MergeEvent[] = [];
+    const x = R.openStall(cfg, g, 1, ev);
+    expect(x.cash).toBe(g.cash - R.roundCoins(cfg, cfg.merge.costs.stallOpen[0]));
+    expect(x.merge.chains[1]).toMatchObject({ open: true, gear: 1, stall: 1, minder: 0, best: 1, nextPopAt: 100 + cfg.merge.gear.interval });
+    expect(x.merge.book[1][0]).toBe(true);
+    expect(ev[0]).toEqual({ type: 'stallOpen', c: 1 });
+    expect(x.merge.mstats.coins.spend).toBe(-R.roundCoins(cfg, cfg.merge.costs.stallOpen[0]));
+    const poor = { ...g, cash: 10 };
+    expect(R.openStall(cfg, poor, 1)).toBe(poor);
+    // Puffs only from season 2 (fromSeason 1).
+    const five = rich({ chains: [0, 1, 2, 3, 4].map((ch) => ({ c: ch })) });
+    expect(R.mergeParams(cfg, five).chains[5].openCost).toBeNull();
+    expect(R.openStall(cfg, five, 5)).toBe(five);
+  });
+
+  it('levelGear makes drops finer, never faster, up to level 40 (M28), and does not raise best (M32)', () => {
+    let g = rich();
+    const T0 = g.merge.chains[0].nextPopAt;
+    g = R.levelGear(cfg, g, 0);
+    expect(g.merge.chains[0]).toMatchObject({ gear: 4, best: 4, nextPopAt: T0 });
+    const top = rich({ chains: [{ c: 0, gear: 40, best: 5 }] });
+    expect(R.levelGear(cfg, top, 0)).toBe(top);
+    const ev: R.MergeEvent[] = [];
+    R.levelGear(cfg, rich({ chains: [{ c: 0, gear: 10, best: 2 }] }), 0, ev);
+    expect(ev[0]).toEqual({ type: 'gearLevel', c: 0, level: 11, baseStep: true });
+    const raised = R.levelGear(cfg, rich({ chains: [{ c: 0, gear: 10, best: 2 }] }), 0);
+    expect(raised.merge.chains[0].best).toBe(2);
+  });
+
+  it('levelStall, hireMinder and levelMinder: prices of 2.2, limits, the first sale one Q away', () => {
+    let g = rich();
+    g = R.levelStall(cfg, g, 0);
+    expect(g.merge.chains[0].stall).toBe(2);
+    expect(R.hireMinder(cfg, g, 1)).toBe(g); // a closed stall
+    expect(R.levelMinder(cfg, g, 0)).toBe(g); // no minder yet
+    g = R.hireMinder(cfg, g, 0);
+    expect(g.merge.chains[0]).toMatchObject({ minder: 1, nextSaleAt: 100 + cfg.merge.minders.interval });
+    expect(R.hireMinder(cfg, g, 0)).toBe(g);
+    for (let k = 1; k < cfg.merge.costs.minderMaxLevel; k++) g = R.levelMinder(cfg, g, 0);
+    expect(g.merge.chains[0].minder).toBe(cfg.merge.costs.minderMaxLevel);
+    expect(R.levelMinder(cfg, g, 0)).toBe(g);
+    expect(R.mergeParams(cfg, g).chains[0].houseTier).toBe(Math.min(cfg.merge.costs.minderMaxLevel + 1, R.baseTier(cfg, 3) + 1));
+  });
+
+  it('openShutter: index order within a group, its printed condition, every third holds a good of the lowest-best chain', () => {
+    const shut = rich({ chains: [{ c: 0, gear: 3, best: 2 }] });
+    expect(R.openShutter(cfg, shut, 0)).toBe(shut); // "Grill 3" not yet made
+    expect(R.openShutter(cfg, shut, 1)).toBe(shut); // "Steamer open" not yet
+    let g = rich({ chains: [{ c: 0, gear: 3, best: 4 }, { c: 1, gear: 1, best: 1 }] });
+    const cells = cfg.merge.board.shutterGroups[0].cells;
+    for (let n = 0; n < 3; n++) {
+      const ev: R.MergeEvent[] = [];
+      g = R.openShutter(cfg, g, 0, ev);
+      expect(ev[0]).toMatchObject({ type: 'shutterOpen', group: 0, cell: cells[n] });
+      expect(g.merge.shuttersOpened[0]).toBe(n + 1);
+      if (n < 2) expect(g.merge.board[cells[n]]).toBeNull();
+    }
+    // Shutter n = 2 holds tier b + 1 or b + 2 of the open chain with the lowest best (Tea, b = 1).
+    const held = g.merge.board[cells[2]];
+    expect(R.isGood(held) && held.c === 1 && (held.k === 2 || held.k === 3)).toBe(true);
+    expect(g.merge.chains[1].best).toBe(R.isGood(held) ? held.k : -1);
+    expect(g.cash).toBe(10_000_000 - [0, 1, 2].reduce((a, n) => a + R.roundCoins(cfg, cfg.merge.board.shutterBase * cfg.merge.board.shutterGrowth ** n), 0));
+  });
+
+  it('"Not tonight": the filled lines return as goods, refused without room (roomFor) or during the cooldown', () => {
+    const g = mergeState(cfg, { clock: 100, chains: [{ c: 0, gear: 3, best: 5 }], goods: [], counters: [[[0, 3, true], [0, 4, true], [0, 5]], null] });
+    const ev: R.MergeEvent[] = [];
+    const x = R.notTonight(cfg, g, 0, ev);
+    expect(x.merge.counters[0]).toMatchObject({ ticket: null, refillAt: 100 + cfg.merge.tickets.refillDelay, notTonightAt: 100 + cfg.merge.tickets.notTonightCooldown });
+    expect(x.merge.board.filter((cell) => R.isGood(cell)).map((cell) => R.isGood(cell) && cell.k).sort()).toEqual([3, 4]);
+    expect(ev).toEqual([{ type: 'notTonight', counter: 0 }]);
+    expect(R.notTonightRoom(g, 0)).toEqual({ goods: 2, room: true, readyAt: 100 });
+    const full = { ...g, merge: { ...g.merge, board: g.merge.board.map((cell, i) => (cell === null && i !== c(2, 0) ? ({ c: 0, k: 1 } as R.Good) : cell)) } };
+    expect(R.notTonightRoom(full, 0).room).toBe(false);
+    expect(R.notTonight(cfg, full, 0)).toBe(full);
+    const cool = { ...g, merge: { ...g.merge, counters: g.merge.counters.map((ct, j) => (j === 0 ? { ...ct, notTonightAt: 120 } : ct)) } };
+    expect(R.notTonight(cfg, cool, 0)).toBe(cool);
+  });
+
+  it('applyLantern: a counters effect appends the counter now; a shelfCap effect restarts a waiting gear', () => {
+    const n1 = cfg.merge.lanterns.find((l) => l.effect.type === 'counters' && l.effect.value === 3)!.n;
+    const g = mergeState(cfg, { clock: 100, chains: [{ c: 0 }], goods: [] });
+    const lit = { ...g, merge: { ...g.merge, lanterns: [n1] } };
+    const x = R.applyLantern(cfg, lit, n1, 100);
+    expect(x.merge.counters).toHaveLength(3);
+    expect(x.merge.counters[2]).toEqual({ ticket: null, refillAt: 100 + cfg.merge.tickets.refillDelay, blockedAt: null, notTonightAt: 100 });
+    const n3 = cfg.merge.lanterns.find((l) => l.effect.type === 'shelfCap')!.n;
+    const w = mergeState(cfg, { clock: 100, chains: [{ c: 0, shelf: [1, 1, 1, 1, 1, 1], waiting: true }], goods: [], lanterns: [n3] });
+    const y = R.applyLantern(cfg, w, n3, 100);
+    expect(y.merge.chains[0]).toMatchObject({ waiting: false, nextPopAt: 100 + cfg.merge.gear.interval });
+    expect(R.applyLantern(cfg, g, 2, 100)).toBe(g);
   });
 });

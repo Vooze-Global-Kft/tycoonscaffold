@@ -4,14 +4,17 @@
  * in a square of `size` points. MergeIcon.tsx turns them into cached images (never one canvas per
  * row). Pure Skia.
  *
- * beast:  <species>            a customer species' coat 0 (fox) or that species' minder (badger, owl,
- *                              hedgehog, otter, raccoon, bat: the names game.json's `characters`
- *                              and chains' `minder.beast` use)
- *         <species>-<coat>     a customer (coat 0..2)
+ * beast:  <species>-<coat>     a CUSTOMER (coat 0..2): build it with `customerIcon(species, coat)`;
+ *                              a customer is never a bare species name
+ *         minder-<chain id>    a minder by stall: `minderIcon(chain)`; also <minder id> (oldbrindle,
+ *                              pim, nettle, juniper, tansy, marlo)
+ *         <species>            kept ONLY for game.json's minder portraits (`characters[].portrait`,
+ *                              chains' `minder.beast`): badger, owl, hedgehog, otter, raccoon and bat
+ *                              draw that species' MINDER; `beast:fox` draws the coat-0 fox customer
  *         minder-<chain id>    a minder by stall; <minder id> (oldbrindle, pim, nettle, juniper, tansy, marlo)
  *         dragon, firefly
  * art:    good-<chain id>-<1..8>, gear-<chain id>, stall-<chain id>, coin, purse, basket, spark,
- *         giftbag-3, giftbag-4, lantern-lit, lantern-unlit, lantern-moon, ticket, shutter, season-<0..3>,
+ *         giftbag-3, giftbag-4, new, stamp, lantern-lit, lantern-unlit, lantern-moon, ticket, shutter, season-<0..3>,
  *         book, gate, scroll, shop, awnings (the Blue Silk Awnings product), late-hours, quiet-evening, undo
  */
 import type { SkCanvas } from '@shopify/react-native-skia';
@@ -23,9 +26,19 @@ import { CHAIN_IDS, COATS, CUSTOMER_SPECIES, NIGHT, alpha } from './palette';
 import { at, circle, fill, glow, rrect, stroke, INK } from './pen';
 import { drawBambooPole, drawRung, drawSeasonPiece } from './spokes.draw';
 import { STALL_W, drawStallFront } from './stalls.draw';
-import { drawBasket, drawCoin, drawGiftBag, drawLuckySpark, drawPurse, drawShutter, drawTicket, drawUndoChip } from './street.draw';
+import { drawBasket, drawCoin, drawFilledStamp, drawGiftBag, drawLuckySpark, drawNewTag, drawPurse, drawShutter, drawTicket, drawUndoChip } from './street.draw';
 
 export type IconDraw = (c: SkCanvas, size: number) => void;
+
+/** The icon name of a customer on a ticket: species from `merge.tickets.customers`, coat 0..2. */
+export function customerIcon(species: string, coat: number): string {
+  return `beast:${species}-${((coat % COATS) + COATS) % COATS}`;
+}
+
+/** The icon name of a stall's minder (chain index 0..5). */
+export function minderIcon(chain: number): string {
+  return `beast:minder-${CHAIN_IDS[((chain % 6) + 6) % 6]}`;
+}
 
 /** Fits a drawing made in a square of half size `half` into `size`. */
 function fit(half: number, draw: (c: SkCanvas) => void, zoom = 1): IconDraw {
@@ -67,6 +80,8 @@ function build(): Record<string, IconDraw> {
   I['art:shutter'] = fit(GOOD_BOX, (c) => drawShutter(c, 48));
   for (let s = 0; s < 4; s++) I[`art:season-${s}`] = fit(GOOD_BOX, (c) => drawSeasonPiece(c, s));
   I['art:undo'] = fit(30, (c) => drawUndoChip(c, 56, 22));
+  I['art:new'] = fit(12, (c) => drawNewTag(c));
+  I['art:stamp'] = fit(22, (c) => drawFilledStamp(c, 18));
   // Bottom row and shop.
   I['art:book'] = fit(24, (c) => {
     for (const x of [-12, 12]) at(c, x, -21, 1, 0, (q) => drawBambooPole(q, 42, 5, 14));

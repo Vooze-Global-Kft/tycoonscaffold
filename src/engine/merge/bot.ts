@@ -42,9 +42,9 @@
  * Check-in: every 4 h, collects (no ad), buys by advice for 2 minutes, never drags. Idle: nothing.
  *
  * Time: the bot steps the game from action to action with one `advanceMerge` per slot (event to
- * event inside it), splitting only where it must see a state: just before and at each counter's
- * refill (so every draw is checked against the board it was drawn on), and at the marks it keeps.
- * `hz: 10` cuts every step to 0.1 s instead (gate 14 compares the two).
+ * event inside it), split only at the marks it keeps. A step that drew a ticket is replayed event by
+ * event with the rules' own queue (`replayDraws`), so every draw is checked against the exact state
+ * it was drawn on. `hz: 10` cuts every step to 0.1 s instead (gate 14 compares the two).
  *
  * Owned by the numbers and bot package (docs/design/market-build-plan.md).
  */
@@ -124,7 +124,7 @@ export interface TicketRecord {
   /** The same bounds as the bot reads the text itself (`drawBreaks`): a second opinion, reported, never a gate. */
   ownReading: string[];
   /** Drawn inside a step of the clock, or by a player action (the hedgehog after the first merge, a retry after a board change). */
-  via?: 'tick' | 'action';
+  via?: 'tick' | 'action' | 'tick (state not replayed)';
 }
 
 export interface CoinEntry {
@@ -487,6 +487,8 @@ class Runner {
   readonly tr: Trace;
   readonly states: Record<number, R.MergeGame> = {};
   private readonly byId = new Map<number, TicketRecord>();
+  /** The exact state each ticket of the current step was drawn on (`replayDraws`). */
+  private drawn = new Map<number, { state: R.MergeGame; counter: number }>();
   private keep: number[];
   private awayAt: number[];
   private shutterGroupsSeen = new Set<number>();
@@ -532,6 +534,11 @@ class Runner {
   /** `pre`: the state the draw saw (a step's start, split just before the refill; after an action, the action's result). */
   private recordTicket(t: R.Ticket, counter: number, post: R.MergeGame, pre: R.MergeGame | null, at: number) {
     if (this.byId.has(t.id)) return;
+    const exact = this.drawn.get(t.id);
+    if (exact) {
+      pre = exact.state;
+      at = exact.state.stats.playSeconds;
+    }
     const shown = roundCoins(this.cfg, R.ticketPrice(this.cfg, post, t));
     const rec: TicketRecord = {
       id: t.id,
@@ -550,7 +557,7 @@ class Runner {
       sentOff: false,
       broken: pre ? orderBreaks(this.cfg, pre, counter, t) : [],
       ownReading: pre ? drawBreaks(this.cfg, pre, t) : [],
-      via: pre === post ? 'action' : 'tick',
+      via: pre === post ? 'action' : exact ? 'tick' : 'tick (state not replayed)',
     };
     this.byId.set(t.id, rec);
     this.tr.tickets.push(rec);
@@ -734,7 +741,7 @@ class Runner {
     s.su.push(m.counters.filter((ct) => !ct.ticket && ct.blockedAt !== null).length);
   }
 
-  /** Advances the game clock to `t`, splitting at every refill (a draw is checked on the state it was drawn on) and at the kept marks. */
+  /** Advances the game clock to `t` (one `advanceMerge`, split only at the kept marks and the away probes; `hz` cuts it to 1/hz s). */
   advanceTo(t: number) {
     let guard = 0;
     while (this.clock < t - 1e-9) {
@@ -742,12 +749,6 @@ class Runner {
       const now = this.clock;
       let to = t;
       if (this.o.hz > 0) to = Math.min(to, now + 1 / this.o.hz);
-      for (const ct of this.m.counters) {
-        if (!ct.ticket && ct.refillAt !== null) {
-          if (ct.refillAt - EVENT_LIMIT > now + EVENT_LIMIT && ct.refillAt - EVENT_LIMIT < to) to = ct.refillAt - EVENT_LIMIT;
-          else if (ct.refillAt > now + EVENT_LIMIT / 2 && ct.refillAt < to) to = ct.refillAt;
-        }
-      }
       if (this.keep.length && this.keep[0] > now + EVENT_LIMIT && this.keep[0] < to) to = this.keep[0];
       if (this.awayAt.length && this.awayAt[0] > now + EVENT_LIMIT && this.awayAt[0] < to) to = this.awayAt[0];
       const dt = to - now;
@@ -759,7 +760,9 @@ class Runner {
       if (post.stats.playSeconds <= now) throw new Error(`merge bot: advanceMerge(${dt}) did not move the clock from ${now}`);
       this.wall += (post.stats.playSeconds - now) * 1000;
       this.g = post;
+      this.drawn = ev.some((e) => e.type === 'ticketDrawn') ? replayDraws(this.cfg, pre, post.stats.playSeconds) : new Map();
       this.account(pre, post, ev, this.clock, preParams);
+      this.drawn = new Map();
       this.marks();
     }
   }
@@ -881,6 +884,30 @@ class Runner {
 // ============================================================================================
 // the bounds of 2.7, as the bot reads them on the state a ticket was drawn on (gate 4)
 // ============================================================================================
+
+/**
+ * The exact state each ticket of a step was drawn on: the step replayed event by event with the
+ * rules' own queue (`nextEvent` / `runEvent`, as events.ts runs it: the clock moved to the event's
+ * time), keeping the state just before every refill that seated a new ticket (ORDERS's replay, in
+ * requests.md). Ticket id → that state and the counter.
+ */
+export function replayDraws(cfg: R.MergeConfig, pre: R.MergeGame, until: number): Map<number, { state: R.MergeGame; counter: number }> {
+  const out = new Map<number, { state: R.MergeGame; counter: number }>();
+  let s = pre;
+  for (let i = 0; i < 1e6; i++) {
+    const e = R.nextEvent(cfg, s, until);
+    if (!e) break;
+    const at: R.MergeGame = { ...s, stats: { ...s.stats, playSeconds: e.at } };
+    const next = R.runEvent(cfg, at, e, []);
+    if (e.kind === 'refill') {
+      const before = at.merge.counters[e.index]?.ticket ?? null;
+      const t = next.merge.counters[e.index]?.ticket ?? null;
+      if (t && (!before || before.id !== t.id)) out.set(t.id, { state: at, counter: e.index });
+    }
+    s = next;
+  }
+  return out;
+}
 
 /** The bounds a drawn ticket breaks on `pre`, by the rules' own check (ORDERS's `checkBounds`, the one the draw uses). */
 export function orderBreaks(cfg: R.MergeConfig, pre: R.MergeGame, counter: number, t: R.Ticket): string[] {

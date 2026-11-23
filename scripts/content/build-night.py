@@ -3,7 +3,8 @@
 
     python3 scripts/content/build-night.py            every gate of 8.3 on the five seeds; writes game.json
                                                      ONLY when every hard gate (M2) passes on every seed
-    python3 scripts/content/build-night.py --check    the same, writes nothing
+    python3 scripts/content/build-night.py --check    the same, writes nothing (and skips the paired comparison; the
+                                                     writer runs it: gates 4 and 12 as M30 (4) judges them)
     python3 scripts/content/build-night.py --tune [--budget 40] [--save] [--act 2.0]
                                                      the tuner: a search inside RANGES, knob by knob in the
                                                      order of 8.4 (with M27), toward the aims; --save writes
@@ -22,6 +23,7 @@
     options: --act 2.0 (seconds per bot action: M30's reference; run 1.5 and 2.5 beside it)
              --procs 4 (parallel bot processes)   --set path=value (an extra override, repeatable)
              --hours 12 --seasons 10 --days 21 (the full run's length)
+             --acts 1.5,2,2.5 (with --check: the check at each action time, M30 (1))
 
 This script is the only source of the game's numbers (AGENTS.md: never hand-edit the table). The
 names and starting values are src/config/merge.content.ts (MERGE_STARTING_CONTENT, read through
@@ -391,6 +393,11 @@ def gates(act, procs, extra, write):
         print('  aim missed:  ' + a)
     for h in coin + hard:
         print('  HARD MISSED: ' + h)
+    if write and '--no-paired' not in sys.argv:
+        code, ph = paired(act, procs, extra, int(arg('--n', '30')))
+        hard += ph
+        for h in ph:
+            print('  HARD MISSED: ' + h)
     if coin or hard:
         print('REFUSED: %d hard gate(s) missed (M2); games/night-market/game.json is not written' % (len(coin) + len(hard)))
         return 1
@@ -402,15 +409,18 @@ def gates(act, procs, extra, write):
 
 # ---------------------------------------------------------------- --paired (M30 (4))
 
-def paired(act, procs, extra, n):
+def paired(act, procs, extra, n, quiet=False):
+    """Returns (exit code, hard misses). Hard (M2 gates 4 and 12, judged as M30 (4) says): a habit's
+    mean paired gain is not above +5 % beyond two standard errors; the deliver-only bot's mean ratio
+    is at most 0.20."""
     block = block_with(extra)
     seeds = PAIRED_SEEDS[:n]
     res = run_seeds(block, ['--bot', 'compare', '--act', str(act)], procs, seeds)
     st = stopped([r for r in res if 'incomes' not in r])
     if st:
         print('the comparison did not finish:\n  ' + '\n  '.join(st))
-        return 1
-    rows = []
+        return 1, ['the paired comparison did not finish']
+    hard = []
 
     def stat(xs):
         m = sum(xs) / len(xs)
@@ -429,8 +439,13 @@ def paired(act, procs, extra, n):
         if not xs:
             continue
         m, sd = stat(xs)
+        se = sd / max(1, len(xs)) ** 0.5
         print('| %s / %s | %+.3f | %.3f | %+.3f | %.3f | %s |' % (key, base_, m, sd, noise[0], noise[1], aim))
-    return 0
+        if key in ('notTonight', 'hoardBoxes', 'sellBuyUndo') and m - 2 * se > 0.05:
+            hard.append('gate 12, habit %s: mean paired gain %+.3f (2 SE %.3f) over %d seeds is above +5 %%' % (key, m, 2 * se, len(xs)))
+        if key == 'deliverFrom3' and 1 + m > 0.2:
+            hard.append('gate 4, deliver-only bot: mean %.3f of the active bot from minute 3 to hour 1, over %d seeds (aim at most 0.20)' % (1 + m, len(xs)))
+    return 0, hard
 
 
 # ---------------------------------------------------------------- --table
@@ -497,7 +512,10 @@ if __name__ == '__main__':
     if '--table' in sys.argv:
         sys.exit(tables(act, procs, extra))
     if '--paired' in sys.argv:
-        sys.exit(paired(act, procs, extra, int(arg('--n', '30'))))
+        code, hard = paired(act, procs, extra, int(arg('--n', '30')))
+        for h in hard:
+            print('  HARD MISSED: ' + h)
+        sys.exit(code or (1 if hard else 0))
     if '--placeholder' in sys.argv:
         g = json.load(open(GAME))
         if 'PLACEHOLDER' not in json.dumps(g):
@@ -507,4 +525,11 @@ if __name__ == '__main__':
         open(GAME, 'a').write('\n')
         print('refreshed the merge block of the placeholder', os.path.relpath(GAME, ROOT), '(no gate: it stays PLACEHOLDER)')
         sys.exit(0)
+    if arg('--acts'):
+        # M30 (1): the same check at several action times side by side; only 2.0 s may write.
+        codes = {}
+        for a in [float(x) for x in arg('--acts').split(',')]:
+            print('\n==== %s s an action ====' % a)
+            codes[a] = gates(a, procs, extra, write=False)
+        sys.exit(codes.get(2.0, max(codes.values())))
     sys.exit(gates(act, procs, extra, write='--check' not in sys.argv))

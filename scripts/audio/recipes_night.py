@@ -891,7 +891,7 @@ def slot_reveal(c):
     (25 ms) over it. Short and low, so three in a row stay three."""
     m = Mix()
     m.add(0.9 * felt_stamp(c.sub('pat'), 1.0, 0.6))
-    m.add(0.7 * crinkle(c.rng, 0.03, 2200.0, 1300.0, 4200.0, density=[(0, 1.0), (0.03, 0.2)], sigma=0.5), 0.018)
+    m.add(0.7 * crinkle(c.sub('r'), 0.03, 2200.0, 1300.0, 4200.0, density=[(0, 1.0), (0.03, 0.2)], sigma=0.5), 0.018)
     c.accent(0.0)
     return m.out()
 

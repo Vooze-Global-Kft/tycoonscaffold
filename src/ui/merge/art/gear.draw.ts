@@ -14,6 +14,11 @@ const COPPER_LIGHT = '#E39C68';
 const IRON = '#3E4458';
 const IRON_LIGHT = '#5A6278';
 
+/** A soft S-curl of steam rising from (x, y): the same curl as the tea glyph's, never a chevron. */
+function steam(c: SkCanvas, x: number, y: number): void {
+  c.drawPath(curve([[x, y], [x + 2.2, y - 2.2], [x - 1.4, y - 4.6], [x + 0.8, y - 7]]), stroke(alpha(NIGHT.white, 0.8), 1.3));
+}
+
 function emberGrill(c: SkCanvas): void {
   // Legs, box, grate, coals and two small flames.
   for (const x of [-11, 11]) c.drawPath(line(x, 8, x + Math.sign(x) * 3, 16), stroke(INK, 3.2));
@@ -46,7 +51,7 @@ function copperUrn(c: SkCanvas): void {
   c.drawPath(oval(0, -12, 6, 1.8), fill(NIGHT.brass));
   c.drawPath(oval(0, -12, 6, 1.8), stroke(INK, 1));
   shape(c, circle(0, -15.4, 2.4), NIGHT.brassLight, 1);
-  c.drawPath(curve([[-4, -18], [-6, -21], [-3, -24]]), stroke(alpha(NIGHT.white, 0.7), 1.2));
+  steam(c, -4, -18);
 }
 
 function bambooSteamer(c: SkCanvas): void {
@@ -60,7 +65,7 @@ function bambooSteamer(c: SkCanvas): void {
   lit(c, lid, NIGHT.bambooDeep, shade(col, 0.15), -1, -1.2);
   for (const x of [-6, 0, 6]) c.drawPath(curve([[x * 0.4, -15], [x * 0.8, -10], [x, -5.5]]), stroke(alpha(INK, 0.35), 0.8));
   shape(c, rrect(-3, -19, 6, 3.4, 1.4), NIGHT.wood, 1);
-  for (const x of [-8, 7]) c.drawPath(curve([[x, -18], [x - 2, -21], [x + 1, -24]]), stroke(alpha(NIGHT.white, 0.75), 1.3));
+  for (const x of [-8, 7]) steam(c, x, -18.6);
 }
 
 function sugarPan(c: SkCanvas): void {
@@ -116,10 +121,13 @@ const GEAR: Record<ChainId, (c: SkCanvas) => void> = {
   puffs: lanternPan,
 };
 
-/** A chain's gear, centred in the 48 pt square (about 36 pt across). */
+/** The gear drawings are made about 50 pt across; this fits them inside the 48 pt square with a margin. */
+const GEAR_FIT = 0.88;
+
+/** A chain's gear, centred in the 48 pt square (about 40 pt across at s = 1, steam and handles inside the square). */
 export function drawGear(c: SkCanvas, chain: ChainId | number, s = 1): void {
   const id = typeof chain === 'number' ? CHAIN_IDS[chain] : chain;
-  at(c, 0, 0, s, 0, GEAR[id]);
+  at(c, 0, 0, s * GEAR_FIT, 0, GEAR[id]);
 }
 
 // ---------------------------------------------------------------------------
@@ -176,8 +184,10 @@ export function drawTill(c: SkCanvas, level: number): void {
   const box = rrect(-6, -2, 12, 8, 1.6);
   lit(c, box, NIGHT.woodDeep, NIGHT.woodLight, -0.6, -0.8, 0.9);
   c.drawPath(line(-2.4, 1, 2.4, 1), stroke(NIGHT.ink, 1));
-  const heaps: [number, number][] = [[-3, -3.4], [0.4, -3.6], [3.4, -3.2], [-1.4, -5.6], [1.8, -5.8], [0.2, -7.8]];
-  const count = [0, 1, 3, 5, 6][k];
+  // Empty: the open top shows a dark, bare inside; then 2, 3, 5 and 6 coins heaped.
+  if (k === 0) c.drawPath(oval(0, -2, 5, 1.3), fill(NIGHT.indigoDeep));
+  const heaps: [number, number][] = [[-2.6, -3.4], [2.6, -3.4], [0, -3.8], [-1.4, -5.8], [1.6, -5.8], [0.1, -8]];
+  const count = [0, 2, 3, 5, 6][k];
   for (let i = 0; i < count; i++) {
     const [x, y] = heaps[i];
     shape(c, oval(x, y, 2.1, 1.3), NIGHT.brass, 0.7);

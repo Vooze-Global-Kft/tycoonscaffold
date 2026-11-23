@@ -49,6 +49,15 @@ export function mergeIconUri(name: string, size: number): string {
   return uri;
 }
 
+/**
+ * Draws and caches `names` at `size` ahead of time (each icon costs about 7 ms on the JS thread the
+ * first time): call it when a sheet or spoke is about to open (an effect on its open flag), so a
+ * list of 30 rows does not stall its first frame.
+ */
+export function warmMergeIcons(names: readonly string[], size: number): void {
+  for (const n of names) mergeIconUri(n, size);
+}
+
 export function MergeIcon({ icon, size, fallback = null, style }: ModeIconProps & { fallback?: ReactNode; style?: StyleProp<ViewStyle> }) {
   const uri = useMemo(() => mergeIconUri(icon, size), [icon, size]);
   if (!uri) return <>{fallback}</>;

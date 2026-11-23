@@ -17,5 +17,5 @@ export * from './street.draw';
 export * from './spokes.draw';
 export * from './loading.draw';
 export * from './atlas';
-export { mergeIcons, mergeIconNames, hasMergeIcon, type IconDraw } from './icons';
+export { mergeIcons, mergeIconNames, hasMergeIcon, customerIcon, minderIcon, type IconDraw } from './icons';
 export { redShare, isRed, greyDistance, lumaOf } from './measure';

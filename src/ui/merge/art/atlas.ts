@@ -183,8 +183,8 @@ export function atlasDefs(kind: AtlasKind): Def[] {
     d.push({ name: 'target', hw: G, hh: G, draw: (q) => drawTargetOutline(q, G * 2 - 2) });
     d.push({ name: 'festival-lit', hw: 23, hh: 23, draw: (q) => drawFestivalLantern(q, true) });
     d.push({ name: 'festival-unlit', hw: 23, hh: 23, draw: (q) => drawFestivalLantern(q, false) });
-    d.push({ name: 'wire-lit', hw: 38, hh: 38, draw: (q) => drawLantern(q, 12, { look: 'lit', glow: 1 }) });
-    d.push({ name: 'wire-unlit', hw: 13, hh: 18, draw: (q) => drawLantern(q, 12, { look: 'unlit' }) });
+    d.push({ name: 'wire-lit', hw: 38, hh: 38, draw: (q) => drawLantern(q, 12, { look: 'lit', glow: 1, cord: 7.2 }) });
+    d.push({ name: 'wire-unlit', hw: 13.5, hh: 26, draw: (q) => drawLantern(q, 12, { look: 'unlit', cord: 7.2 }) });
     d.push({ name: 'stamp', hw: 22, hh: 22, draw: (q) => drawFilledStamp(q, 18) });
     for (const e of EFFECTS) d.push({ name: `fx-${e}`, hw: 26, hh: 26, draw: (q) => drawEffect(q, e) });
     d.push({ name: 'new-tag', hw: 12, hh: 6, draw: (q) => drawNewTag(q) });

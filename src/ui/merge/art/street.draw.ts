@@ -8,7 +8,7 @@
  * Pieces with a size argument take their top-left corner at the origin (street, ticket, banner,
  * board) unless they say "centred"; square props take the side `s` and are centred.
  */
-import { ClipOp, type SkCanvas } from '@shopify/react-native-skia';
+import { ClipOp, type SkCanvas, type SkPicture } from '@shopify/react-native-skia';
 import { drawLetters } from './letters';
 import { drawLantern } from './lantern.draw';
 import { NIGHT, alpha, mix, shade } from './palette';
@@ -28,6 +28,7 @@ import {
   linearPaint,
   lit,
   oval,
+  picture,
   poly,
   rrect,
   scallops,
@@ -210,6 +211,23 @@ export function drawFilledStamp(c: SkCanvas, r = 18, label = '', k = 1): void {
       q.drawPath(t, stroke(alpha(NIGHT.red, a), r * 0.16));
     }
   });
+}
+
+const stamps = new Map<string, SkPicture>();
+
+/**
+ * The FILLED stamp recorded ONCE per (word, radius) and kept for the app's life: the play canvas
+ * animates it with a Group (scale from 1.6 to 1, opacity), never by calling drawFilledStamp(k) per
+ * frame. Centred on the origin.
+ */
+export function filledStampPicture(label: string, r = 18): SkPicture {
+  const key = `${label}|${r}`;
+  let pic = stamps.get(key);
+  if (!pic) {
+    pic = picture({ x: -r * 1.3, y: -r * 1.3, w: r * 2.6, h: r * 2.6 }, (c) => drawFilledStamp(c, r, label, 1));
+    stamps.set(key, pic);
+  }
+  return pic;
 }
 
 // ---------------------------------------------------------------------------

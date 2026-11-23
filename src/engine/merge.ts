@@ -96,5 +96,5 @@ export { neutralMods, lanternMods, currentMods, onMerged, onTierMade, onTicketPa
 export { countGiftTicket, openGiftBox, giftOdds, giftBoxAt, giftCoinAmount } from './merge/gift';
 
 // --- 2.10 advice, 3.1 hints (ORDERS) ---
-export { advice, incomeRate, purchaseAdvice, adviceCandidates, adviceExtras, basketCell, nearestTicket, mergeExists, gearOutput, waitEstimate } from './merge/advice';
+export { advice, incomeRate, purchaseAdvice, adviceCandidates, adviceExtras, basketCell, nearestTicket, mergeExists, gearOutput, waitEstimate, festivalAdvice } from './merge/advice';
 export { hintsFor } from './merge/hints';

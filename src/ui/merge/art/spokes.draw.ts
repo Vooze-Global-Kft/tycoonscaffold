@@ -196,22 +196,36 @@ export function drawSeasonPiece(c: SkCanvas, season: number, s = 48): void {
         break;
       }
       case 'moon-kite': {
-        q.drawPath(line(0, 4, 4, 21), stroke(INK, 2.4));
-        q.drawPath(line(0, 4, 4, 21), stroke(NIGHT.bamboo, 1.2));
-        glow(q, 0, -6, 20, NIGHT.moon, 0.4);
-        q.drawPath(circle(0, -6, 12), fill(NIGHT.moon));
-        q.drawPath(circle(4.4, -9, 10), fill(mix(NIGHT.moon, NIGHT.paperShade, 0.5)));
-        q.drawPath(circle(0, -6, 12), stroke(INK, 1.2));
-        for (const [dx, dy] of [[-12, 0], [12, 0], [0, 6]] as const) q.drawPath(curve([[dx * 0.8, -6 + dy], [dx * 1.2, 4 + dy], [dx, 12 + dy]]), stroke(NIGHT.amber, 1.2));
+        // A diamond paper kite with a crescent moon painted on it, crossed spars and a bowed tail.
+        const tail = curve([[2, 10], [8, 14], [4, 18], [12, 21]]);
+        q.drawPath(tail, stroke(INK, 1.6));
+        q.drawPath(tail, stroke(NIGHT.paperShade, 0.8));
+        for (const [x, y] of [[7, 13.6], [6, 17.4], [10.4, 20.4]] as const) {
+          shape(q, poly([x - 2.2, y - 1.4, x, y, x - 2.2, y + 1.4]), NIGHT.amber, 0.6);
+          shape(q, poly([x + 2.2, y - 1.4, x, y, x + 2.2, y + 1.4]), NIGHT.amber, 0.6);
+        }
+        const kite = poly([0, -20, 13, -5, 0, 11, -13, -5]);
+        glow(q, 0, -5, 20, NIGHT.moon, 0.3);
+        lit(q, kite, NIGHT.paperShade, NIGHT.paper, -1, -1, 1.2);
+        q.drawPath(line(0, -20, 0, 11), stroke(alpha(NIGHT.bambooDeep, 0.9), 1));
+        q.drawPath(line(-13, -5, 13, -5), stroke(alpha(NIGHT.bambooDeep, 0.9), 1));
+        q.drawPath(circle(0, -4, 6.4), fill(NIGHT.silk));
+        q.drawPath(circle(2.4, -5.6, 5.4), fill(NIGHT.paper));
+        q.drawPath(circle(0, -4, 6.4), stroke(alpha(INK, 0.4), 0.6));
         break;
       }
       case 'snow-lantern': {
-        q.drawPath(line(0, -2, 0, 20), stroke(INK, 3.6));
-        q.drawPath(line(0, -2, 0, 20), stroke(NIGHT.stone, 2));
-        shape(q, rrect(-8, 18, 16, 4, 1.4), NIGHT.stoneDeep, 1);
-        at(q, 0, -8, 1, 0, (k) => drawLantern(k, 7, { look: 'lit', tassel: false }));
-        shape(q, blob([[-10, -16], [-4, -20.4], [4, -20.4], [10, -16], [0, -14.6]], 1), NIGHT.white, 1);
-        for (const [x, y] of [[-14, -2], [12, 2], [-10, 12], [14, 14]] as const) q.drawPath(circle(x, y, 1.2), fill(NIGHT.white));
+        // A paper lantern hung from a bare winter branch, snow on the branch and on the lantern's cap.
+        const br = curve([[-20, -15], [-8, -13], [4, -15.6], [18, -12]]);
+        q.drawPath(br, stroke(INK, 3.4));
+        q.drawPath(br, stroke(NIGHT.woodDeep, 2));
+        q.drawPath(curve([[8, -14.6], [12, -19], [16, -20]]), stroke(INK, 2.2));
+        q.drawPath(curve([[8, -14.6], [12, -19], [16, -20]]), stroke(NIGHT.woodDeep, 1));
+        shape(q, blob([[-18, -16], [-10, -17.6], [-2, -16.4], [-9, -14.8]], 1), NIGHT.white, 0.8);
+        shape(q, blob([[6, -17.4], [12, -17.6], [16, -14.6], [10, -15.6]], 1), NIGHT.white, 0.8);
+        at(q, -1, 1, 1, 0, (k) => drawLantern(k, 8, { look: 'lit', tassel: true, cord: 4 }));
+        shape(q, blob([[-6.4, -9.6], [0, -12], [5.4, -9.6], [0, -8.6]], 1), NIGHT.white, 0.8);
+        for (const [x, y] of [[-15, 4], [13, -2], [-12, 16], [15, 15], [9, 21]] as const) sparkle(q, x, y, 1.8, NIGHT.white);
         break;
       }
     }
