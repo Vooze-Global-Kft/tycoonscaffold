@@ -95,6 +95,11 @@ describe('Shift Log rows (2.11, 4.6)', () => {
     expect(rows.map((r) => r.label)).toEqual(['AWAY', 'CREDITS']);
     expect(rows[0].value).toBe('10 m');
   });
+  it('a report read back from a save without every figure (an earlier build wrote it) prints what it has', () => {
+    const { rows, note } = shiftLogRows(cfg, { seconds: 600, earnings: 50, report: { unitsByOre: { [cfg.haul.ores[0].id]: 12 } } });
+    expect(rows.map((r) => `${r.label} ${r.value}`)).toEqual(['AWAY 10 m', `${cfg.haul.ores[0].name.toUpperCase()} 12 u`, 'ROCKS DRY 0', 'PODS 0', `CREDITS ${money(cfg, 50)}`]);
+    expect(note).toBeNull();
+  });
 });
 
 describe('formatting', () => {

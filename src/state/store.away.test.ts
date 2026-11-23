@@ -21,21 +21,25 @@ import * as E from '../engine/economy';
 import type { EngineMode } from '../engine/mode';
 import type { GameState } from '../engine/types';
 
-/** What survives the app being closed: the device's storage. `lost`: writes that never reach it (the app ended first). */
+/** What survives the app being closed: the device's storage. `lost`: writes that never reach it (the app ended first); `refused`: the device refuses them. */
 const disk = vi.hoisted(() => new Map<string, string>());
-const writes = vi.hoisted(() => ({ lost: false }));
-const adResult = vi.hoisted(() => ({ ok: true }));
+const writes = vi.hoisted(() => ({ lost: false, refused: false }));
+/** The rewarded ad: `ok` is whether it is watched to the end; `open`, when set, is an ad still on screen (it ends when the promise does). */
+const adResult = vi.hoisted(() => ({ ok: true, open: null as Promise<boolean> | null }));
 const crashes = vi.hoisted(() => [] as string[]);
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
     getItem: async (k: string) => disk.get(k) ?? null,
-    setItem: async (k: string, v: string) => void (writes.lost || disk.set(k, v)),
+    setItem: async (k: string, v: string) => {
+      if (writes.refused) throw new Error('the device refused the write');
+      if (!writes.lost) disk.set(k, v);
+    },
     removeItem: async (k: string) => void disk.delete(k),
   },
 }));
 vi.mock('../generated/activeGame', async () => ({ ACTIVE_GAME_ID: 'pizza-empire', rawGame: (await import('../../games/pizza-empire/game.json')).default, fxTable: {}, gameAssets: {}, gameSounds: {}, displayFontMetrics: null }));
 vi.mock('../services/fx', () => ({ fx: { play: () => {} } }));
-vi.mock('../services/ads', () => ({ ads: { showRewarded: async () => adResult.ok, maybeShowInterstitial: () => {}, init: () => {}, interstitials: true } }));
+vi.mock('../services/ads', () => ({ ads: { showRewarded: () => adResult.open ?? Promise.resolve(adResult.ok), maybeShowInterstitial: () => {}, init: () => {}, interstitials: true } }));
 vi.mock('../services/firebase', () => ({ analytics: { log: () => {} }, crash: { record: (_e: unknown, where: string) => void crashes.push(where) }, fetchRemoteOverrides: async () => ({}) }));
 vi.mock('../services/iap', () => ({ iap: { init: async () => {}, owned: async () => [], purchase: async () => true, restore: async () => [] } }));
 vi.mock('../services/region', () => ({ detectRegion: async () => null }));
@@ -76,8 +80,10 @@ const at = (time: number) => vi.setSystemTime(time);
 beforeEach(() => {
   disk.clear();
   writes.lost = false;
+  writes.refused = false;
   crashes.length = 0;
   adResult.ok = true;
+  adResult.open = null;
   vi.useFakeTimers({ now: T0, toFake: ['Date'] });
 });
 afterEach(() => {
@@ -274,11 +280,54 @@ describe('Pizza Empire: an away report that was not collected survives the app b
     const both = first.getState().offline!;
     expect(both).toStrictEqual({ seconds: 10800, earnings: report.earnings + earnedIn(3600) });
     await settle();
+    // resume() saved it at once: the save counts the hour, and holds the whole report.
+    expect(saved(SAVE)!.lastSavedAt).toBe(T0 + 3 * HOUR);
+    expect(saved(SAVE)![KEY]).toStrictEqual(both);
 
-    // Closed with no further save: what resume() saved is the whole report.
+    // Closed with no further save.
     const second = await launch();
     expect(second.getState().offline).toStrictEqual(both);
     expect(second.getState().game.cash).toBe(mid.cash);
+  });
+
+  it('a return from the background while the ad is open: its absence is added, and the whole is paid once (the ad doubles what it was offered for)', async () => {
+    at(T0 + 2 * HOUR);
+    await close(await launch());
+    const app = await launch();
+    const report = app.getState().offline!;
+    let endAd: (watched: boolean) => void = () => {};
+    adResult.open = new Promise<boolean>((r) => (endAd = r));
+    const collecting = app.getState().collectOffline(true);
+    // The ad covers the app (on Android it goes to the background for it), and the player is away ten minutes.
+    await app.getState().pause();
+    expect(saved(SAVE)![KEY]).toStrictEqual(report);
+    at(T0 + 2 * HOUR + 10 * MINUTE);
+    app.getState().resume();
+    const grown = app.getState().offline!;
+    expect(grown).toStrictEqual({ seconds: 7200 + 600, earnings: report.earnings + earnedIn(600) });
+    endAd(true);
+    await collecting;
+    expect(app.getState().game.cash).toBe(mid.cash + (report.earnings * 2 + (grown.earnings - report.earnings)));
+    expect(app.getState().offline).toBeNull();
+    await settle();
+    expect(saved(SAVE)![KEY]).toBeUndefined();
+    expect((await launch()).getState().offline).toBeNull();
+  });
+
+  it('closed while the ad is open: the report is back, not paid, and can be collected', async () => {
+    at(T0 + 2 * HOUR);
+    const first = await launch();
+    const report = first.getState().offline!;
+    adResult.open = new Promise<boolean>(() => {});
+    void first.getState().collectOffline(true);
+    await close(first);
+    adResult.open = null;
+
+    const second = await launch();
+    expect(second.getState().offline).toStrictEqual({ seconds: 7200, earnings: report.earnings });
+    expect(second.getState().game.cash).toBe(mid.cash);
+    await second.getState().collectOffline(false);
+    expect(second.getState().game.cash).toBe(mid.cash + report.earnings);
   });
 
   it('a short absence after the app was closed on the report is added to it, as resume() adds one to an open report', async () => {
@@ -331,11 +380,27 @@ describe('Pizza Empire: an away report that was not collected survives the app b
     const { [KEY]: _report, ...game } = saved(SAVE)!;
     expect(game).toStrictEqual(JSON.parse(JSON.stringify(first.getState().game)));
 
-    await first.getState().collectOffline(false);
-    await first.getState().save();
-    expect(disk.get(SAVE)).toBe(JSON.stringify(first.getState().game));
+    // A game loaded from that save does not carry the key either (the engine keeps only what it knows).
     const second = await launch();
+    expect(second.getState().offline).not.toBeNull();
     expect(KEY in second.getState().game).toBe(false);
+
+    await second.getState().collectOffline(false);
+    await second.getState().save();
+    expect(disk.get(SAVE)).toBe(JSON.stringify(second.getState().game));
+  });
+
+  it('a report too large for a save to hold (Infinity) is saved as the most the purse takes, not dropped', async () => {
+    at(T0 + 2 * HOUR);
+    const first = await launch();
+    first.setState({ offline: { seconds: 7200, earnings: Infinity } });
+    await close(first);
+    expect(saved(SAVE)![KEY]).toStrictEqual({ seconds: 7200, earnings: Number.MAX_VALUE });
+
+    const second = await launch();
+    expect(second.getState().offline).toStrictEqual({ seconds: 7200, earnings: Number.MAX_VALUE });
+    await second.getState().collectOffline(false);
+    expect(second.getState().game.cash).toBe(E.MAX_CASH);
   });
 
   it('a record the save cannot be trusted on is no record: the game starts and the absence is paid as usual', async () => {
@@ -346,6 +411,14 @@ describe('Pizza Empire: an away report that was not collected survives the app b
       const app = await launch();
       expect(app.getState().offline, JSON.stringify(record)).toStrictEqual({ seconds: 7200, earnings: earnedIn(7200), report: undefined });
       expect(app.getState().game.cash).toBe(mid.cash);
+    }
+    // Text a save can hold and a game cannot: 1e999 reads as Infinity.
+    for (const field of ['seconds', 'earnings']) {
+      disk.set(SAVE, JSON.stringify({ ...mid, [KEY]: { seconds: 7200, earnings: 100, [field]: 'HUGE' } }).replace('"HUGE"', '1e999'));
+      expect(JSON.parse(disk.get(SAVE)!)[KEY][field]).toBe(Infinity);
+      at(T0 + 2 * HOUR);
+      const app = await launch();
+      expect(app.getState().offline, field).toStrictEqual({ seconds: 7200, earnings: earnedIn(7200), report: undefined });
     }
     // A record that earned nothing and has nothing to say is not shown again either.
     disk.set(SAVE, JSON.stringify({ ...mid, [KEY]: { seconds: 7200, earnings: 0 } }));
@@ -370,27 +443,32 @@ const RATE = 3;
 
 /**
  * A stand-in for a mode with its own engine (as haul has), installed for the active game's config:
- * it earns RATE a second while away (nothing when `earns` is false: then its report speaks alone),
- * stamps the game it returns as the real ones do, and records what `mergeReport` is handed.
+ * it earns RATE a second while away (nothing when `earns` is false: then its report speaks alone,
+ * unless `alone` says otherwise), stamps the game it returns as the real ones do, and records what
+ * `mergeReport` is handed. `ticks`: it also earns RATE a second while played, so every second
+ * since the save is worth the same. `advances: false`: it returns no advanced game, which is the
+ * store's path for the built-in rules (sim and classic).
  */
-function standIn(opts: { earns?: boolean; report?: (ledger: Ledger) => unknown } = {}) {
+function standIn(opts: { earns?: boolean; alone?: boolean; report?: (ledger: Ledger) => unknown; ticks?: boolean; advances?: boolean } = {}) {
   const merges: [unknown, unknown][] = [];
   const earns = opts.earns ?? true;
+  const alone = opts.alone ?? !earns;
   const engine: EngineMode = {
     id: cfg.mode,
     saveTag: 'standin1',
     create: (_cfg, base) => base,
     reconcile: (_cfg, base) => base,
-    tick: (_cfg, state) => state,
+    tick: (_cfg, state, dt) => (opts.ticks ? { ...state, cash: state.cash + dt * RATE } : state),
     income: () => (earns ? RATE : 0),
     activeIncome: () => RATE,
     offline: (c, state, now) => {
       const elapsed = (now - Math.max(state.lastSavedAt, state.stats.clockHigh ?? 0)) / 1000;
       if (!(elapsed > 0)) return { seconds: 0, earnings: 0, game: state };
       const seconds = Math.min(elapsed, c.economy.offline.maxHours * 3600);
-      const ledger: Ledger = { visits: 1, seconds, sold: { tea: seconds / 60, silk: seconds / 600 }, notes: [`${seconds} s away`], idle: !earns };
+      const ledger: Ledger = { visits: 1, seconds, sold: { tea: seconds / 60, silk: seconds / 600 }, notes: [`${seconds} s away`], idle: alone };
       const game = { ...state, lastSavedAt: now, stats: { ...state.stats, clockHigh: Math.max(state.stats.clockHigh ?? 0, now) } };
-      return { seconds, earnings: earns ? seconds * RATE : 0, game, report: opts.report ? opts.report(ledger) : ledger };
+      const away = { seconds, earnings: earns ? seconds * RATE : 0, report: opts.report ? opts.report(ledger) : ledger };
+      return opts.advances === false ? (away as typeof away & { game: GameState }) : { ...away, game };
     },
     prestige: (_cfg, state) => state,
     mergeReport: (older, newer) => {
@@ -459,6 +537,46 @@ describe('a mode with its own engine: its report is saved as it is and handed ba
     const third = await launch(standIn().engine);
     expect(third.getState().offline).toBeNull();
     expect(third.getState().game.cash).toBe(start.cash + 10800 * RATE * 1.5);
+  });
+
+  it('a second absence added by resume() goes through mergeReport the same way: the report on screen first, the new one second', async () => {
+    at(T0 + 2 * HOUR);
+    const { engine, merges } = standIn();
+    const app = await launch(engine);
+    await app.getState().pause();
+    at(T0 + 3 * HOUR);
+    app.getState().resume();
+    expect(merges).toStrictEqual([[ledger(7200), ledger(3600)]]);
+    const both = { seconds: 10800, earnings: 10800 * RATE, report: { visits: 2, seconds: 10800, sold: { tea: 180, silk: 18 }, notes: ['7200 s away', '3600 s away'], idle: false } };
+    expect(app.getState().offline).toStrictEqual(both);
+    await settle();
+    expect(saved(SAVE)![KEY]).toStrictEqual(both);
+  });
+
+  it('an absence that earned nothing is added to a waiting report only when its own report speaks alone', async () => {
+    at(T0 + 2 * HOUR);
+    await close(await launch(standIn().engine));
+
+    // Two hours that earned nothing and say nothing: the waiting report is as it was.
+    at(T0 + 4 * HOUR);
+    const silent = standIn({ earns: false, alone: false });
+    const second = await launch(silent.engine);
+    expect(second.getState().offline).toStrictEqual({ seconds: 7200, earnings: 7200 * RATE, report: ledger(7200) });
+    expect(silent.merges).toStrictEqual([]);
+    await close(second);
+
+    // Two more that earned nothing and have something to say: their time and their words are added.
+    at(T0 + 6 * HOUR);
+    const speaking = standIn({ earns: false });
+    const third = await launch(speaking.engine);
+    expect(speaking.merges).toStrictEqual([[ledger(7200), ledger(7200, true)]]);
+    expect(third.getState().offline).toStrictEqual({
+      seconds: 14400,
+      earnings: 7200 * RATE,
+      report: { visits: 2, seconds: 14400, sold: { tea: 240, silk: 24 }, notes: ['7200 s away', '7200 s away'], idle: false },
+    });
+    await third.getState().collectOffline(false);
+    expect(third.getState().game.cash).toBe(start.cash + 7200 * RATE);
   });
 
   it('collected, then started: nothing is paid twice', async () => {
@@ -535,11 +653,17 @@ describe('a mode with its own engine: its report is saved as it is and handed ba
 
 // ---------------------------------------------------------------- any order of events
 
-/** The books of one copy of the game (on the disk, or in a running app): what is in the purse, what waits, and up to when time away is counted. */
+/**
+ * The books of one copy of the game (on the disk, or in a running app): the purse, the part of it
+ * that an ad added, what waits, the seconds that count for nothing by rule, and the moment up to
+ * which every second is in one of them.
+ */
 interface Books {
   last: number;
   paid: number;
+  bonus: number;
   waiting: { seconds: number; earnings: number } | null;
+  dropped: number;
 }
 
 /** A small seeded generator (mulberry32), so a failing run can be replayed by its seed. */
@@ -555,7 +679,7 @@ function dice(seed: number) {
   return { chance: (p: number) => next() < p, pick: <T>(xs: readonly T[]): T => xs[Math.floor(next() * xs.length)] };
 }
 
-describe('any order of starting, leaving, returning, collecting and closing: time away is paid once, and never lost', () => {
+describe('any order of starting, playing, leaving, returning, collecting and closing: every second is paid once, and none is lost', () => {
   const SAVE = 'save:pizza-empire:standin1';
   const start = E.createInitialState(cfg, T0);
   const CAP = cfg.economy.offline.maxHours * 3600;
@@ -564,23 +688,30 @@ describe('any order of starting, leaving, returning, collecting and closing: tim
   const GAPS = [3, 20, 45, 90, 600, 3600, 3 * 3600, 7 * 3600];
 
   /**
-   * What the store promises, as plainly as it can be written. A copy of the books is on the disk
+   * What the store promises, as plainly as it can be written. One copy of the books is on the disk
    * and one in the running app; a save copies the app's onto the disk; a start copies the disk's
-   * into the app. Time away is added to the report that waits (or starts one, when it is long
-   * enough to show); Collect moves the report into the purse. Nothing else moves coins.
+   * into the app. A second played goes into the purse. Time away is added to the report that waits
+   * (or starts one, when it is long enough to show); Collect moves the report into the purse.
+   * The game here earns the same every second, played or away, so the books always add up to the
+   * time since the save began, less what counts for nothing by rule: the part of an absence past
+   * the cap, and an absence too short for a report at a start (both as before).
    */
   function model() {
-    let disk: Books = { last: T0, paid: 0, waiting: null };
+    let disk: Books = { last: T0, paid: 0, bonus: 0, waiting: null, dropped: 0 };
     let app: Books | null = null;
+    const copy = (b: Books): Books => ({ ...b, waiting: b.waiting && { ...b.waiting } });
     const away = (now: number, onStart: boolean) => {
       const b = app!;
-      const seconds = Math.min((now - b.last) / 1000, CAP);
+      const elapsed = (now - b.last) / 1000;
+      const seconds = Math.min(elapsed, CAP);
       const earnings = seconds * RATE;
+      b.dropped += elapsed - seconds;
       if (earnings > 0) {
         if (b.waiting) b.waiting = { seconds: b.waiting.seconds + seconds, earnings: b.waiting.earnings + earnings };
         else if (seconds >= SHOW) b.waiting = { seconds, earnings };
-        // Too short for a report: a return from the background is paid at once, a start earns nothing (as before).
-        else if (!onStart) b.paid += earnings;
+        // Too short for a report: a return from the background is paid at once, a start earns nothing.
+        else if (onStart) b.dropped += seconds;
+        else b.paid += earnings;
       }
       b.last = now;
     };
@@ -592,16 +723,21 @@ describe('any order of starting, leaving, returning, collecting and closing: tim
         return disk;
       },
       boot(now: number) {
-        app = { ...disk, waiting: disk.waiting && { ...disk.waiting } };
+        app = copy(disk);
         away(now, true);
       },
       resume: (now: number) => away(now, false),
-      save(now: number, lost: boolean) {
+      play(now: number, seconds: number) {
+        app!.paid += seconds * RATE;
         app!.last = now;
-        if (!lost) disk = { ...app!, waiting: app!.waiting && { ...app!.waiting } };
+      },
+      save(now: number, landed: boolean) {
+        app!.last = now;
+        if (landed) disk = copy(app!);
       },
       collect(share: number) {
         app!.paid += app!.waiting!.earnings * share;
+        app!.bonus += app!.waiting!.earnings * (share - 1);
         app!.waiting = null;
       },
       kill() {
@@ -610,10 +746,15 @@ describe('any order of starting, leaving, returning, collecting and closing: tim
     };
   }
 
-  it('120 random runs of the app against the plain model', async () => {
+  /** Every second up to `b.last` is in the purse (the ad's share aside), in the waiting report, or dropped by rule. */
+  const accounted = (b: Books) => b.paid - b.bonus + (b.waiting?.earnings ?? 0) + b.dropped * RATE;
+
+  it('120 random runs of the app against the plain model, on both of the store\'s paths', async () => {
     for (let seed = 1; seed <= 120; seed++) {
       const d = dice(seed);
       const m = model();
+      // Half the runs with an engine that returns the advanced game (a mode's), half without (the built-in rules' path).
+      const engine = () => standIn({ ticks: true, advances: seed % 2 === 0 }).engine;
       const steps: string[] = [];
       disk.clear();
       disk.set(SAVE, JSON.stringify(start));
@@ -621,26 +762,42 @@ describe('any order of starting, leaving, returning, collecting and closing: tim
       let app: Store | null = null;
       let background = false;
       const step = (name: string) => void steps.push(`${name}@${(now - T0) / 1000}`);
-      /** The running app and the disk hold what the model says, to the coin. */
       const check = () => {
         const where = `seed ${seed}: ${steps.join(' ')}`;
+        // The running app and the disk hold what the model says, to the coin.
         if (app) {
           const s = app.getState();
-          expect(s.game.cash, where).toBeCloseTo(start.cash + m.app.paid, 6);
+          expect(s.game.cash, where).toBeCloseTo(start.cash + m.app.paid, 4);
           expect(s.offline ? { seconds: s.offline.seconds, earnings: s.offline.earnings } : null, where).toStrictEqual(m.app.waiting);
+          // Whatever the model says: never more than every second since the beginning, once (the ad's share aside).
+          expect(s.game.cash - start.cash - m.app.bonus + (s.offline?.earnings ?? 0), where).toBeLessThanOrEqual(((now - T0) / 1000) * RATE + 1e-4);
+          expect(accounted(m.app), where).toBeCloseTo(((m.app.last - T0) / 1000) * RATE, 4);
         }
         const onDisk = saved(SAVE)!;
-        expect(onDisk.cash, where).toBeCloseTo(start.cash + m.disk.paid, 6);
+        expect(onDisk.cash, where).toBeCloseTo(start.cash + m.disk.paid, 4);
         const record = onDisk[KEY] as { seconds: number; earnings: number } | undefined;
         expect(record ? { seconds: record.seconds, earnings: record.earnings } : null, where).toStrictEqual(m.disk.waiting);
+        expect(accounted(m.disk), where).toBeCloseTo(((m.disk.last - T0) / 1000) * RATE, 4);
       };
-      /** Runs something that ends with the store saving; `lost`: that write never reaches the disk (the app ended first). */
-      const saving = async (lost: boolean, act: () => unknown) => {
-        writes.lost = lost;
+      /** Runs something that ends with the store saving. `fate`: the write lands, is lost with the app, or is refused by the device. */
+      const saving = async (fate: 'lands' | 'lost' | 'refused', act: () => unknown) => {
+        writes.lost = fate === 'lost';
+        writes.refused = fate === 'refused';
         await act();
         await settle();
-        writes.lost = false;
-        m.save(now, lost);
+        writes.lost = writes.refused = false;
+        m.save(now, fate === 'lands');
+      };
+      const fate = (pLost: number) => (d.chance(pLost) ? d.pick(['lost', 'refused'] as const) : 'lands');
+      /** The app is on screen for `seconds`: the loop ticks them (App.tsx; the store takes at most 5 s a tick). */
+      const play = (seconds: number) => {
+        for (let left = seconds; left > 0; left -= 5) {
+          const dt = Math.min(5, left);
+          now += dt * 1000;
+          at(now);
+          app!.getState().tick(dt);
+          m.play(now, dt);
+        }
       };
 
       for (let i = 0; i < 14; i++) {
@@ -648,7 +805,7 @@ describe('any order of starting, leaving, returning, collecting and closing: tim
           now += d.pick(GAPS) * 1000;
           at(now);
           step('start');
-          app = await launch(standIn().engine);
+          app = await launch(engine());
           background = false;
           m.boot(now);
         } else if (background) {
@@ -662,29 +819,28 @@ describe('any order of starting, leaving, returning, collecting and closing: tim
             step('return');
             // resume() saves; that write is sometimes lost with the app.
             m.resume(now);
-            await saving(d.chance(0.15), () => app!.getState().resume());
+            await saving(fate(0.15), () => app!.getState().resume());
             background = false;
           }
         } else {
-          const what = d.pick(['wait', 'leave', 'leave', 'collect', 'collect', 'crash'] as const);
-          if (what === 'wait') {
-            now += 5000;
-            at(now);
+          const what = d.pick(['play', 'leave', 'leave', 'collect', 'collect', 'crash'] as const);
+          if (what === 'play') {
+            play(d.pick([2, 5, 12]));
             step('autosave');
-            await saving(false, () => app!.getState().save());
+            await saving(fate(0.1), () => app!.getState().save());
           } else if (what === 'leave') {
-            now += d.pick([1000, 4000, 9000]);
-            at(now);
+            play(d.pick([1, 4, 9]));
             step('leave');
-            await saving(d.chance(0.1), () => app!.getState().pause());
+            await saving(fate(0.1), () => app!.getState().pause());
             background = true;
           } else if (what === 'collect' && app.getState().offline) {
             const withAd = d.chance(0.5);
             adResult.ok = d.chance(0.7);
             step(withAd ? (adResult.ok ? 'collect+ad' : 'collect(ad declined)') : 'collect');
             m.collect(withAd && adResult.ok ? 1.5 : 1);
-            await saving(d.chance(0.2), () => app!.getState().collectOffline(withAd));
+            await saving(fate(0.2), () => app!.getState().collectOffline(withAd));
           } else if (what === 'crash') {
+            play(d.pick([0, 3]));
             step('crash');
             app = null;
             m.kill();
@@ -698,18 +854,20 @@ describe('any order of starting, leaving, returning, collecting and closing: tim
         now += 1000;
         at(now);
         step('last start');
-        app = await launch(standIn().engine);
+        app = await launch(engine());
         m.boot(now);
       } else if (background) {
         m.resume(now);
-        await saving(false, () => app!.getState().resume());
+        await saving('lands', () => app!.getState().resume());
       }
       if (app.getState().offline) {
         m.collect(1);
-        await saving(false, () => app!.getState().collectOffline(false));
+        await saving('lands', () => app!.getState().collectOffline(false));
       }
       check();
       expect(app.getState().offline).toBeNull();
     }
+    // The only failures on the way were the refused writes.
+    expect(crashes.every((where) => where === 'save')).toBe(true);
   }, 120_000);
 });

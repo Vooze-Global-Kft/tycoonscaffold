@@ -490,9 +490,10 @@ export const useGame = create<Store>((set, get) => {
         if (offline?.game) game = offline.game;
         const away = offline ? { seconds: offline.seconds, earnings: offline.earnings, report: offline.report } : null;
         const shown = away && away.seconds >= cfg.economy.offline.minSecondsToShow && worthShowing(cfg, away) ? away : null;
-        // A report that was never collected comes back as it was (its time is counted: the save's
-        // lastSavedAt, and stats.clockHigh after a clock moved back, are past it, so it is not computed
-        // again), with this absence added the way resume() adds one to a report that is still open.
+        // A report that was never collected comes back as it was, with this absence added the way
+        // resume() adds one to a report that is still open. Its own time is not computed again: the
+        // save's lastSavedAt is past it, and so is stats.clockHigh when the clock was moved back
+        // while the app was closed or in the background (clampClock).
         const waiting = uncollected && worthShowing(cfg, uncollected) ? uncollected : null;
         const pending = waiting && away && (away.earnings > 0 || shown) ? withAbsence(cfg, waiting, away) : (waiting ?? shown);
         syncAds(game);
@@ -972,9 +973,9 @@ export const useGame = create<Store>((set, get) => {
           if (ok) amount *= mult ? safe('engine.offlineAdMultiplier', () => mult(get().cfg), 1) : 2;
         }
         // Clear the popup in the same update that pays it, and only pay what is still pending:
-        // a resume() while the ad was open may have merged more time into it. Paid and cleared
-        // before anything else can run, and then saved: a save holds the cash or the waiting
-        // report, never both (the next start would pay it again).
+        // a resume() while the ad was open may have merged more time into it. Nothing may save
+        // between paying and clearing (no store listener does): a save holds the cash or the
+        // waiting report, never both, or the next start would pay the report again.
         const pending = get().offline;
         if (pending && pending !== offline) amount += pending.earnings - offline.earnings;
         update((s) => E.grantCash(s, amount));

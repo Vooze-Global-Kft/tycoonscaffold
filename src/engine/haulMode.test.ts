@@ -237,6 +237,27 @@ describe('the integration seam: purchases, the scene frame, the Shift Log', () =
     expect(mergeShiftLogs(a, undefined)).toBe(a);
   });
 
+  it('a Shift Log read back from a save (an earlier build wrote it, or it is damaged) still adds up to figures', () => {
+    const b: H.OfflineReport = { seconds: 60, effective: 27, unitsByOre: { iron: 2, ice: 3 }, rocksDry: 0, pods: 1, inFlight: 0, credits: 20, noAutopilot: false, shipped: 5, launches: 0 };
+    // Fields a later build added are missing; what is missing counts as nothing.
+    expect(mergeShiftLogs({ seconds: 600, unitsByOre: { iron: 10 }, credits: 100 }, b)).toEqual({ seconds: 660, effective: 27, unitsByOre: { iron: 12, ice: 3 }, rocksDry: 0, pods: 1, inFlight: 0, credits: 120, noAutopilot: false, shipped: 5, launches: 0 });
+    // Anything at all in place of a log, or of a figure, never gives a number that is not one.
+    for (const older of ['a log', 7, [], {}, { seconds: 'long', unitsByOre: 'iron', rocksDry: null, pods: NaN, credits: Infinity, noAutopilot: 'yes' }, { unitsByOre: { iron: 'ten', ice: 1 } }]) {
+      const merged = mergeShiftLogs(older, b) as H.OfflineReport;
+      for (const [key, value] of Object.entries(merged)) if (key !== 'unitsByOre' && key !== 'noAutopilot') expect(Number.isFinite(value), `${JSON.stringify(older)} ${key}`).toBe(true);
+      for (const n of Object.values(merged.unitsByOre)) expect(Number.isFinite(n), JSON.stringify(older)).toBe(true);
+      expect(merged.noAutopilot).toBe(false);
+      expect(merged.credits).toBe(20);
+    }
+    // "Nothing shipped" is said only when both logs say it.
+    const idle: H.OfflineReport = { ...b, noAutopilot: true };
+    expect((mergeShiftLogs(idle, idle) as H.OfflineReport).noAutopilot).toBe(true);
+    expect((mergeShiftLogs({ seconds: 600 }, idle) as H.OfflineReport).noAutopilot).toBe(false);
+    // A log without the flag does not speak alone.
+    expect(haulEngineMode.reportAlone!({ seconds: 600 })).toBe(false);
+    expect(haulEngineMode.reportAlone!('a log')).toBe(false);
+  });
+
   it('every shared sound key maps to a key of the haul table', async () => {
     const { FX } = await import('../services/fx/catalog.haul');
     for (const [from, to] of Object.entries(HAUL_SHARED_SOUNDS)) expect(Object.keys(FX), `${from} → ${to}`).toContain(to);

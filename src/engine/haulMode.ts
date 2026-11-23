@@ -126,24 +126,32 @@ export const HAUL_SHARED_SOUNDS = {
   unlock: 'system_online',
 } as const;
 
-/** Two Shift Logs of one absence (a resume while the first one is still on screen) as one. */
+/** A figure of a Shift Log that came back from a save: one that is missing or not a number counts as 0. */
+const logged = (x: unknown): number => (typeof x === 'number' && Number.isFinite(x) ? x : 0);
+
+/**
+ * Two Shift Logs of one absence as one: a resume while the first one is still on screen, or a start
+ * after the app was closed on it. The older one may then come from a save (src/engine/mode.ts
+ * `offline`), written by an earlier build or damaged: what it lacks counts as nothing, so the
+ * sums stay figures.
+ */
 export function mergeShiftLogs(older: unknown, newer: unknown): unknown {
-  const a = older as H.OfflineReport | undefined;
-  const b = newer as H.OfflineReport | undefined;
+  const a = older as Partial<H.OfflineReport> | undefined;
+  const b = newer as Partial<H.OfflineReport> | undefined;
   if (!a || !b) return b ?? a;
-  const units: Record<string, number> = { ...a.unitsByOre };
-  for (const [ore, n] of Object.entries(b.unitsByOre)) units[ore] = (units[ore] ?? 0) + n;
+  const units: Record<string, number> = {};
+  for (const log of [a, b]) for (const [ore, n] of Object.entries(log.unitsByOre ?? {})) units[ore] = (units[ore] ?? 0) + logged(n);
   return {
-    seconds: a.seconds + b.seconds,
-    effective: a.effective + b.effective,
+    seconds: logged(a.seconds) + logged(b.seconds),
+    effective: logged(a.effective) + logged(b.effective),
     unitsByOre: units,
-    rocksDry: a.rocksDry + b.rocksDry,
-    pods: a.pods + b.pods,
-    inFlight: a.inFlight + b.inFlight,
-    credits: a.credits + b.credits,
-    noAutopilot: a.noAutopilot && b.noAutopilot,
-    shipped: a.shipped + b.shipped,
-    launches: a.launches + b.launches,
+    rocksDry: logged(a.rocksDry) + logged(b.rocksDry),
+    pods: logged(a.pods) + logged(b.pods),
+    inFlight: logged(a.inFlight) + logged(b.inFlight),
+    credits: logged(a.credits) + logged(b.credits),
+    noAutopilot: a.noAutopilot === true && b.noAutopilot === true,
+    shipped: logged(a.shipped) + logged(b.shipped),
+    launches: logged(a.launches) + logged(b.launches),
   } satisfies H.OfflineReport;
 }
 

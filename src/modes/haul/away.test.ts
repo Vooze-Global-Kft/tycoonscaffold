@@ -167,11 +167,13 @@ describe('Orbit Haulers: a Shift Log that was not collected survives the app bei
     expect(cash(second)).toBe(before + shown.earnings);
     await close(second);
 
+    // The hour that follows pays what the rules give that hour on the station as it was saved, and no more.
+    const later = H.haulOffline(cfg, second.useGame.getState().game as unknown as Run, T0 + 3 * HOUR);
+    expect(later.earnings).toBeGreaterThan(0);
     at(T0 + 3 * HOUR);
     const third = await launch();
-    expect(log(third)!.seconds).toBe(3600);
-    expect(report(third).seconds).toBe(3600);
-    expect(log(third)!.earnings).toBeLessThan(shown.earnings);
+    expect(log(third)).toStrictEqual({ seconds: 3600, earnings: later.earnings, report: later.report });
+    expect(cash(third)).toBe(later.game.cash);
   });
 
   it('the device clock moved back between the two starts: the same Shift Log, and its time is not paid again when the clock returns', async () => {
@@ -199,6 +201,31 @@ describe('Orbit Haulers: a Shift Log that was not collected survives the app bei
     const cashBefore = cash(forward);
     await forward.haulActions.collectShiftLog(false);
     expect(cash(forward)).toBe(cashBefore + shown.earnings + more.earnings);
+  });
+
+  it('a Shift Log an earlier build saved (figures added since are missing) comes back, prints and adds up without a broken number', async () => {
+    const ore = cfg.haul.ores[0].id;
+    disk.set(SAVE, JSON.stringify({ ...station(), [KEY]: { seconds: 7200, earnings: 500, report: { seconds: 7200, unitsByOre: { [ore]: 120 }, credits: 500 } } }));
+    const first = await launch();
+    expect(log(first)).toStrictEqual({ seconds: 7200, earnings: 500, report: { seconds: 7200, unitsByOre: { [ore]: 120 }, credits: 500 } });
+    const printed = (app: App) => shiftLogRows(cfg, log(app)!).rows.map((r) => `${r.label} ${r.value}`);
+    expect(printed(first).join(' | ')).not.toMatch(/NaN|∞|undefined/);
+    const afterFirst = first.useGame.getState().game as unknown as Run;
+    await close(first);
+
+    at(T0 + 1 * HOUR);
+    const next = H.haulOffline(cfg, afterFirst, T0 + 1 * HOUR);
+    const second = await launch();
+    expect(log(second)!.earnings).toBe(500 + next.earnings);
+    const merged = report(second);
+    expect(merged.seconds).toBe(7200 + 3600);
+    expect(merged.credits).toBe(500 + next.report.credits);
+    expect(merged.unitsByOre[ore]).toBe(120 + (next.report.unitsByOre[ore] ?? 0));
+    for (const [key, value] of Object.entries(merged)) if (typeof value === 'number') expect(Number.isFinite(value), key).toBe(true);
+    expect(printed(second).join(' | ')).not.toMatch(/NaN|∞|undefined/);
+    const before = cash(second);
+    await second.haulActions.collectShiftLog(false);
+    expect(cash(second)).toBe(before + 500 + next.earnings);
   });
 
   it('"Nothing shipped" (no autopilot: the log speaks alone, with no credits) comes back too', async () => {
