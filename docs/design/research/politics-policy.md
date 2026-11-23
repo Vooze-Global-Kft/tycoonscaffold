@@ -15,7 +15,8 @@ Research date: 23 November 2026; every page read that day at the address listed 
 - The 1.1.1 exemption names "professional political satirists and humorists", which most likely means a known satirist, not a game studio. Do not lean on it. Our defence is that nothing is "targeted": no real person, group or government exists in the game.
 - 1.1.6 and 1.1.7 rule out news jokes, and a disclaimer does not rescue real-world content.
 - What a reviewer must see in minutes: an invented country name and map on the first screens, cartoon faces that resemble nobody, and no user-written text that others see (so 1.2 never applies). Notes for Review: "All countries, parties, politicians, companies and newspapers are fictional. No real people, parties, flags or current events; no user-written text is shared."
-- Players pick their character's and country's names from invented lists instead of typing them. A free name field lets a player rename the president after a real leader and post the screenshot (compare Thailand, section 5).
+- Players pick their character's and country's names from invented lists instead of typing them. A free name field lets a player rename the president after a real leader and post the screenshot (own caution; no rule requires it).
+- 3.2.2(iv) forbids "collecting funds within the app for charities and fundraisers" unless an approved nonprofit. **Inference:** "campaign funds" purchases must read as game currency, never as a real donation.
 
 ## 2. Google Play Developer Program policies
 
@@ -31,6 +32,7 @@ Research date: 23 November 2026; every page read that day at the address listed 
 - "Corrupt" is Google's own example of a trait that must not be pinned on a group. Corruption jokes stay on individual invented office-holders, never on an invented people, region or faith.
 - The developer profile shows the real studio name and country.
 - I found no Play policy restricting political themes in games as such.
+- Play Console: "developers must complete the Government apps declaration" [G8] (questions not seen). **Inference:** answer that the app is not made by or for a government.
 
 ## 3. Advertising
 
@@ -42,18 +44,20 @@ Research date: 23 November 2026; every page read that day at the address listed 
   - "promotes irresponsible alcohol consumption";
   - online gambling, which counts only real-money play.
 - **Inference:** a cartoon bribe is not restricted. Swearing, drinking parties, or harm to a recognisable figure would be.
-- AppLovin MAX prohibits "Defamatory or libelous content", "False or misleading news", "excessive profanity" and "Shocking, disturbing, or offensive content". It has no political category [D7].
+- AppLovin prohibits "Libelous or defamatory content", "False or misleading informational content", "Harassment, bullying, threats, excessive profanity, or hate speech that advocates violence or discrimination" and "Other shocking, disturbing, or offensive content". The page never mentions political, government or election [D7].
 
 **Fill and price.**
 - Google Ads advertisers can exclude the content theme "Politics : Political content, such as political statements made by well-known politicians, political elections, or events widely perceived to be political in nature", and "Content themes apply to Mobile app inventory except 'News' themes" [D5].
-- **Inference:** any advertiser ticking "Politics" can skip us if Google files the app under it. Google publishes neither the filing method nor the share of advertisers who exclude it, so the loss is real but of unknown size. Lower it with category Games/Simulation and the comic, invented framing; measure eCPM against the three other games after launch.
+- The same page: Google may "categorize some apps by the app's main function" rather than by the content shown in them [D5].
+- **Inference:** any advertiser ticking "Politics" can skip us if Google files the app under it. Google publishes neither the method nor the share of advertisers who exclude it, so the loss is of unknown size. Filing by "main function" favours a game: category Games/Simulation; measure eCPM against the other three games after launch.
 - Election periods: I found no rule that changes game inventory. In the EU Google restricts "Political advertising as defined under EU Regulation 2024/900", mediation included [D3].
-- **Inference:** block the AdMob sensitive category "Politics" ("block ads from categories related to sensitive topics such as Religion, Politics" [D4]). Otherwise a real candidate's ad can appear beside a cartoon of a crooked mayor, the real-world mapping we promised to avoid. The revenue cost should be small.
+- AdMob lets a publisher block "categories related to sensitive topics such as Religion, Politics, and References to Sex and Sexuality"; "Sensitive category blocking is available for ads in a limited set of languages"; "Blocking any ad lowers your potential earnings" [D4].
+- **Inference:** block "Politics" anyway, or a real candidate's ad can appear beside a cartoon crooked mayor. Cost unmeasured, likely small.
 
 **Advertising the game itself.**
 - Apple Ads 3.15 prohibits "Ad content that contains or directly or indirectly promotes political candidates, office holders, parties, organizations, fundraising, and electoral votes or initiatives" [A4].
-- Meta's political ads policy covers any ad that "Is about any election, referendum or ballot initiative" [M1] (read through a summarising fetch tool). Press, July 2025: Meta, "From early October 2025, we will no longer allow political, electoral and social issue ads on our platforms in the EU"; Google had already stopped them there [M2].
-- **Inference:** a creative saying "Vote for me!" can be machine-classified as an election ad. That means authorisation and a "Paid for by" disclaimer elsewhere, and no delivery at all in the EU. Creatives show the desk, ribbons and the growing town.
+- Meta's policy (version of 2 Jul 2026) covers any ad that "Is about any election, referendum or ballot initiative, including "get out the vote" or election information campaigns", and: "Ads about social issues, elections or politics are not allowed to run in the European Union" (except election authorities' voting information) [M1] (read through a summarising fetch tool). Press, July 2025: Google also planned to stop political ads in the EU by October 2025 [M2].
+- **Inference:** a "Vote for me!" creative can be machine-classified as an election ad: authorisation and disclaimers elsewhere, no delivery in the EU. Creatives show the desk, ribbons and the growing town.
 
 ## 4. Age ratings
 
@@ -76,7 +80,7 @@ Research date: 23 November 2026; every page read that day at the address listed 
 - Ratings are "determined by your questionnaire responses"; "Misrepresentation of your app's content may result in its removal or suspension"; authorities "may change your app's rating after a review" [G6]. The question wording is visible only in Play Console and was not read.
 - ESRB T "may contain ... suggestive themes, crude humor, ... simulated gambling"; "Comic Mischief: Depictions or dialogue involving slapstick or suggestive humor" fits E/E10+ [R1].
 - PEGI 3: "A child should not be able to associate the character on the screen with real life characters". PEGI 16: "depicting criminal activities can be content of apps that are rated 16" [G6].
-- "themes that prominently reference gambling" are PEGI 12; discriminatory stereotypes are "always restricted to a PEGI 18 rating" [R2].
+- "If a game contains themes that prominently reference gambling, it gets a PEGI 12"; simulated casino-style games of chance "will be classified with a PEGI 18"; discrimination is "always restricted to a PEGI 18 rating" [R2]. (pegi.info's PEGI 16 text lacks "criminal activities"; that quote is Google's.)
 - **Inference:** "depicting criminal activities" is the PEGI 16 line. A fruit basket that is refused, returned or backfires is farce; a bribe shown paying off is a depicted crime.
 
 **Children.** Cartoon people are a COPPA child-directed factor (policy.md §3). **Inference:** an election theme is not child-oriented, but child characters, schools or a "class president" frame would be. Keep the cast and the listing adult.
@@ -85,10 +89,10 @@ Research date: 23 November 2026; every page read that day at the address listed 
 
 - **China mainland (Apple):** "games must secure an approval number ... from China's National Press and Publication Administration (NPPA)", plus an ICP filing [A3]. Press: Apple removed 1,131 games there in 2024 for missing licences [A5]. Google Play does not operate there. Exclude.
 - **Vietnam (Apple):** "Vietnamese regulators require games distributed in Vietnam to be licensed" [A3]. Exclude unless licensed.
-- **Korea:** a GRAC number is needed only for 19+ content or "Frequent/Intense" simulated gambling and the like [A3][G7]. It does not apply to us.
-- **Thailand (press, 2014):** censors refused the government-sim *Tropico 5* because "some part of its content might affect peace and order"; reports cite free naming of the country and leader [C1]. That was a boxed game, not a store decision.
+- **Korea:** a GRAC number only for KR-19 or "Frequent/Intense" simulated gambling and the like [A3][G7]; not us.
+- **Thailand (press, Aug 2014, two months after a military coup):** censors refused the dictator-sim *Tropico 5* because "some part of its content might affect peace and order in the country"; no specific content was named, and press guessed "the game's themes of iron-fisted dictatorship might spark unrest" [C1]. A boxed game, not a store decision; the reports do not blame free naming.
 - **Russia (secondary):** a 2019 law fines online "blatant disrespect" for the state, its authorities and its symbols [C2]. China and Russia send Apple the most takedown requests [A5].
-- **Inference:** mocking an invented country is hard to call disrespect of a real state. The concrete barriers are licences. The cautious choice is every territory except China mainland and Vietnam. Optionally, as an owner decision, also skip low-earning territories with insult-the-authorities laws. English only at launch; any translation gets a local read first.
+- **Inference:** mocking an invented country is hard to call disrespect of a real state, but coups, martial law and dictatorship are what drew Thailand's censors; we use none. The concrete barriers are licences. The cautious choice is every territory except China mainland and Vietnam. Optionally, as an owner decision, also skip low-earning territories with insult-the-authorities laws. English only at launch; any translation gets a local read first.
 
 ## 6. Words and pictures on the store page
 
@@ -115,7 +119,7 @@ Research date: 23 November 2026; every page read that day at the address listed 
 - DO NOT:
   - Use a real person, party, country, flag, anthem, building, slogan, event or news brand, or a BRIEF.md hot-button issue.
   - Pin "corrupt" or any trait on an invented people, region or faith.
-  - Show violence to officials, prisons, drinking or swearing.
+  - Show violence to officials, prisons, drinking or swearing; coups, martial law, soldiers in power or a dictator role.
   - Use free-text names, betting or spins, leaderboards, child characters or schools.
 
 **(b) Store page**
@@ -125,7 +129,7 @@ Research date: 23 November 2026; every page read that day at the address listed 
   - 4+-safe cartoon icon and screenshots.
   - Real studio identity in the developer profile.
   - The review-notes sentence from section 1.
-  - Honest questionnaires, then Apple raised by hand to 13+.
+  - Honest questionnaires, then Apple raised by hand to 13+; Play Government apps declaration: not a government app.
   - All territories except China mainland and Vietnam.
 - DO NOT:
   - "Official", or a civic word alone or first in the title.
@@ -156,6 +160,7 @@ Research date: 23 November 2026; every page read that day at the address listed 
 - [G4] Play, Metadata: https://support.google.com/googleplay/android-developer/answer/9898842
 - [G6] Play, Content ratings: https://support.google.com/googleplay/android-developer/answer/188189
 - [G7] Play, Country requirements: https://support.google.com/googleplay/android-developer/answer/6223646
+- [G8] Play, Requirements for apps that communicate government information: https://support.google.com/googleplay/android-developer/answer/9514050
 - [D1] Google Publisher Policies: https://support.google.com/admob/answer/10502938
 - [D2] Google Publisher Restrictions: https://support.google.com/admob/answer/10437795
 - [D3] AdMob, EU political advertising: https://support.google.com/admob/answer/16411313
@@ -170,4 +175,6 @@ Research date: 23 November 2026; every page read that day at the address listed 
 - [C2] Secondary: https://en.wikipedia.org/wiki/Russian_2019_Disrespect_to_Authorities_Law
 - [W1] WIPO, Article 6ter: https://www.wipo.int/article6ter/en/legal_texts/article_6ter.html
 
-**Not verified:** the IARC question wording (Play Console only); AppLovin's restricted-categories page and the Unity/ironSource policies; how Google assigns the "Politics" theme to apps and what it costs in fill; any election-period rule for game inventory (none found).
+**Checked 23 Nov 2026 (research-check-policy):** A1, A2, A3, A4, G1, G2, G3, G4, G6, G8, D1, D2, D3, D4, D5, D7, M1, R2, C1, C2, W1 re-read; quotes corrected where noted. M2 is TechCrunch's paraphrase, not a Meta quote.
+
+**Not verified:** the Government apps declaration's questions; the IARC question wording (Play Console only); AppLovin's restricted-categories page and the Unity/ironSource policies; how Google assigns the "Politics" theme to apps and what it costs in fill; any election-period rule for game inventory (none found).
