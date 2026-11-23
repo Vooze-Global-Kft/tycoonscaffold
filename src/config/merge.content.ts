@@ -17,7 +17,9 @@ const rowCells = (row: number, cols: number[]) => cols.map((c) => cell(row, c));
 const COLS_0_5 = [0, 1, 2, 3, 4, 5];
 
 /**
- * The specification's starting content (2.2, 2.7, 2.8, 2.11, 5.3 with Decision M5, 5.5, 5.7, and
+ * The specification's starting content (2.2, 2.7, 2.8, 2.11, 5.3 with Decision M5, 5.5, 5.7, Decisions M3,
+ * M18 and M23 to M28 (T fixed at 4 s, six opening goods, the stall table, gift boxes every N tickets, the
+ * Festival rows, gear level 40 the top), and
  * Decisions M13 to M15). Names are original (spec 2.2). The fixtures (src/engine/fixtures/merge.ts)
  * and the placeholder games/night-market/game.json use it as it is.
  */
@@ -85,11 +87,12 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     goodNearShare: 0.6,
   },
   costs: {
-    stallBase: 100,
-    stallRatio: 12,
+    // Decision M23: the stall-opening table (Tea, Steamer, Sweets, Noodles, Puffs), each × F_s.
+    stallOpen: [120, 3200, 51_200, 819_000, 13_100_000],
     gearBase: 20,
     gearGrowth: 1.45,
-    gearMaxLevel: 41,
+    // Decision M28: gear level 40 is the top.
+    gearMaxLevel: 40,
     stallLevelBase: 50,
     stallLevelGrowth: 1.35,
     stallMaxLevel: 31,
@@ -99,7 +102,8 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     roundBelow: 1000,
     sigDigits: 3,
   },
-  gear: { interval: 5, step: 10, ripePerLevel: 0.05, ripeMax: 0.6, maxBase: 4, shelf: 6, looseCap: 4, release: 0.5 },
+  // Decision M3: T = 4 s for every gear, a rule.
+  gear: { interval: 4, step: 10, ripePerLevel: 0.05, ripeMax: 0.6, maxBase: 4, shelf: 6, looseCap: 4, release: 0.5 },
   stalls: { bonusPerLevel: 0.1, bonusMax: 3.9, awningLevels: [5, 10, 20] },
   minders: { interval: 15, tillRoll: 60 },
   merges: { luckyOdds: 25 },
@@ -122,6 +126,8 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     coats: 3,
   },
   parade: { every: 600, first: 360, multiplier: 2, lines: 3, outputWindow: 360, handActions: 100 },
+  // Decision M25: every row is tuned (4 to 6 lines; 2.8's ranges); season 1's starts as 2.8's lines, seasons 3
+  // and 4 as the numbers prototype left them; a season past the last row uses the last row.
   festival: [
     [
       { chain: 0, tier: 8 },
@@ -136,9 +142,24 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
       { chain: 4, tier: 5 },
       { chain: 5, tier: 4 },
     ],
+    [
+      { chain: 0, tier: 8 },
+      { chain: 1, tier: 8 },
+      { chain: 2, tier: 6 },
+      { chain: 4, tier: 5 },
+      { chain: 5, tier: 4 },
+    ],
+    [
+      { chain: 0, tier: 8 },
+      { chain: 1, tier: 8 },
+      { chain: 2, tier: 7 },
+      { chain: 4, tier: 5 },
+      { chain: 5, tier: 4 },
+    ],
   ],
   festivalPace: 30,
-  gift: { every: 10, slots: 3, odds: { coins: 0.5, good: 0.35, spark: 0.15 }, goodSteps: [2, 3, 4], goodOdds: [0.6, 0.3, 0.1], coinPace: 3 },
+  // Decision M24: a box every N = 25 paid tickets (tune 15 to 40), a coin slot of m × U with m = 0.5 (tune 0.25 to 1.5).
+  gift: { every: 25, slots: 3, odds: { coins: 0.5, good: 0.35, spark: 0.15 }, goodSteps: [2, 3, 4], goodOdds: [0.6, 0.3, 0.1], coinPace: 0.5 },
   lanterns: [
     { n: 1, feat: { type: 'tickets', count: 3 }, effect: { type: 'counters', value: 3 }, isNew: true },
     { n: 2, feat: { type: 'tickets', count: 25 }, effect: { type: 'basketShare', value: 0.4 } },
@@ -159,7 +180,8 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     { n: 16, feat: { type: 'tickets', count: 2000 }, effect: { type: 'luckyOdds', value: 16 } },
     { n: 17, feat: { type: 'discover', count: 48 }, effect: { type: 'sparkTiers', value: 2 } },
     { n: 18, feat: { type: 'seasonsClosed', count: 8 }, effect: { type: 'festivalPurseMult', value: 2 } },
-    { n: 19, feat: { type: 'parades', count: 100 }, effect: { type: 'giftEvery', value: 8 } },
+    // Decision M24: lantern 19 brings gift boxes a fifth sooner (N × 0.8), whatever N is tuned to.
+    { n: 19, feat: { type: 'parades', count: 100 }, effect: { type: 'giftEveryMult', value: 0.8 } },
     { n: 20, feat: { type: 'tier8sInSeason', count: 10 }, effect: { type: 'ticketPay', value: 1.05 } },
   ],
   seasons: {
@@ -190,10 +212,12 @@ export const MERGE_STARTING_CONTENT: MergeContentInput = {
     marketDay: { paradeEvery: 300 },
     stepTier: 6,
     maxSteps: 3,
+    // Decision M25: N equals the gear step s.
     levelsPerStep: 10,
     familiarBase: 0.85,
     familiarMax: 4,
-    openingGoods: 4,
+    // Decision M18: the opening board holds 6 Pepper Skewers (the fox's Twin Skewer and the hedgehog's Glazed Skewer).
+    openingGoods: 6,
   },
   ads: { fillLineCooldown: 300, gearRushGoods: 6, gearRushCooldown: 900, callDragonCooldown: 1200, awayBonus: 0.5 },
   away: { capHours: 4, lateHoursHours: 4 },

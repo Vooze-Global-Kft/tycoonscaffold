@@ -10,7 +10,7 @@ import { drawLantern } from './lantern.draw';
 import { drawLetters } from './letters';
 import { NIGHT, alpha, mix, shade } from './palette';
 import { INK, arc, at, blob, builder, circle, clip, curve, fill, glow, line, lit, oval, poly, rrect, shape, sparkle, stroke } from './pen';
-import { drawBrazier, drawStoneGate } from './street.draw';
+import { drawBrazier, drawMoonGate } from './street.draw';
 
 // ---------------------------------------------------------------------------
 // The Ladder Book: bamboo
@@ -149,9 +149,11 @@ export function drawSeasonBoard(c: SkCanvas, shapeId: 'rectangle' | 'moongate' |
       const y = r * cell + cell / 2;
       const gate = shapeId === 'moongate' && col === 3 && (r === 2 || r === 3);
       const hearth = shapeId === 'hearth' && ((r === 2 || r === 6) && (col === 0 || col === 5));
-      if (gate) at(c, x, y, 1, 0, (q) => drawStoneGate(q, cell));
-      else if (hearth) at(c, x, y, 1, 0, (q) => drawBrazier(q, cell));
-      else c.drawPath(rrect(x - cell / 2 + 0.8, y - cell / 2 + 0.8, cell - 1.6, cell - 1.6, cell * 0.15), fill(NIGHT.tealCell));
+      if (gate) {
+        // One arch across both cells, drawn once at the lower cell's top edge.
+        if (r === 2) at(c, x, y + cell / 2, 1, 0, (q) => drawMoonGate(q, cell));
+      } else if (hearth) at(c, x, y, 1, 0, (q) => drawBrazier(q, cell));
+      else if (!gate) c.drawPath(rrect(x - cell / 2 + 0.8, y - cell / 2 + 0.8, cell - 1.6, cell - 1.6, cell * 0.15), fill(NIGHT.tealCell));
     }
 }
 

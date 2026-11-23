@@ -143,7 +143,11 @@ export function awayByEvents(cfg: MergeConfig, g: MergeGame, tp: number): AwayRe
     if (!ch.open) continue;
     const patch: Partial<MergeState['chains'][number]> = {};
     if (ch.minder > 0 && sales.has(c)) patch.nextSaleAt = ch.nextSaleAt - tp;
-    if (ch.waiting && !was.waiting) waiting.push(c);
+    if (ch.waiting && !was.waiting) {
+      // A waiting gear's drop clock means nothing until a release restarts it; keep it as the closed form does.
+      waiting.push(c);
+      patch.nextPopAt = was.nextPopAt;
+    }
     else if (!ch.waiting && ch.nextPopAt !== was.nextPopAt) patch.nextPopAt = ch.nextPopAt - tp;
     if (wasEmpty[c] && ch.shelf.length > 0) Object.assign(patch, { releaseAt: clock, blockedAt: null });
     m = setChain(m, c, patch);

@@ -282,9 +282,11 @@ export function mergeFixtures(cfg: R.MergeConfig = mergeTestConfig()) {
  * best; the Ladder Book holds every tier up to each best; counters as the lit lanterns allow;
  * every unfilled ticket line inside bound (a) (k ≤ min(8, best + 1)) and (d1) (k ≥ b + 1) unless the
  * ticket is scripted; at most one gold ticket; shelves within their cap; no Pocket field (M5).
- * A check for fixtures and tests, not a rule: the rules packages add invariants as they build them.
+ * With `afterPlay` the draw-time bound (d1) is not checked (a gear level bought after the draw may
+ * lift the base tier under a waiting line, which is a reachable state). A check for fixtures and
+ * tests, not a rule: the rules packages add invariants as they build them.
  */
-export function fixtureProblems(cfg: R.MergeConfig, g: R.MergeGame): string[] {
+export function fixtureProblems(cfg: R.MergeConfig, g: R.MergeGame, opts: { afterPlay?: boolean } = {}): string[] {
   const out: string[] = [];
   const m = g.merge;
   const mc = cfg.merge;
@@ -321,7 +323,8 @@ export function fixtureProblems(cfg: R.MergeConfig, g: R.MergeGame): string[] {
       const ch = m.chains[l.c];
       if (!ch?.open) out.push(`counter ${j}: a line of closed chain ${l.c}`);
       else if (l.k > Math.min(8, ch.best + 1)) out.push(`counter ${j}: line (${l.c}, ${l.k}) breaks (a), best ${ch.best}`);
-      else if (!t.scripted && l.k < baseOf(cfg, ch.gear) + 1) out.push(`counter ${j}: line (${l.c}, ${l.k}) breaks (d1)`);
+      // (d1) holds at the draw; a gear level bought later may lift the base under a waiting line, so after play it is not an invariant.
+      else if (!opts.afterPlay && !t.scripted && l.k < baseOf(cfg, ch.gear) + 1) out.push(`counter ${j}: line (${l.c}, ${l.k}) breaks (d1)`);
     }
   });
   if (gold > 1) out.push(`${gold} gold tickets out`);
@@ -410,4 +413,78 @@ export function dropRows(cfg: R.MergeConfig): DropRow[] {
     { name: 'its own cell: returns', game: g, from: c(2, 0), code: c(2, 0), kind: 'return', reason: 'sameCell' },
     { name: 'from an empty cell: returns', game: g, from: c(4, 0), code: c(2, 0), kind: 'return', reason: 'noGood' },
   ];
+}
+
+// ------------------------------------------------------------------------- a scripted player for long runs
+
+/** A small deterministic PRNG for tests and previews (never the rules' streams). */
+export function testPrng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * One action of a simple player (not the balance bot): with `pick` (a number in [0, 1) from the
+ * caller's PRNG) it tries, in a mix, a delivery of a good some line wants, the lowest merge, any
+ * purchase or button of 2.5, a Basket sale (and sometimes its undo), "Not tonight", a rewarded
+ * ad's reward, a gift box, the season close. Every call goes through the rules' public index, so a
+ * long run of it exercises every path by which cash and the board change. Returns the new game
+ * (the same object when the chosen action was refused).
+ */
+export function playOnce(cfg: R.MergeConfig, g: R.MergeGame, pick: number, events?: R.MergeEvent[], opts: { close?: (g: R.MergeGame) => R.MergeGame } = {}): R.MergeGame {
+  const m = g.merge;
+  const cells = m.board.map((x, i) => [i, x] as const).filter(([, x]) => R.isGood(x)) as [number, R.Good][];
+  const r = pick;
+  const nth = <T,>(xs: readonly T[], u: number) => xs[Math.min(xs.length - 1, Math.floor(u * xs.length))];
+  const u = (r * 997) % 1;
+  if (r < 0.45) {
+    // Deliver first, then merge the lowest pair.
+    for (const [i] of cells) {
+      const t = R.targetsFor(cfg, g, i).find((code) => code >= R.TARGET_COUNTER);
+      if (t !== undefined) return R.dropAt(cfg, g, i, R.decodeTarget(t), events).game;
+    }
+    let best: [number, number, number] | null = null;
+    for (const [i, x] of cells) {
+      const t = R.targetsFor(cfg, g, i).find((code) => code < R.BOARD_CELLS);
+      if (t !== undefined && (!best || x.k < best[2])) best = [i, t, x.k];
+    }
+    if (best) return R.dropAt(cfg, g, best[0], { kind: 'cell', cell: best[1] }, events).game;
+    return g;
+  }
+  if (r < 0.7) {
+    const c = Math.floor(u * R.CHAINS);
+    const buys = [R.levelGear, R.levelStall, R.hireMinder, R.levelMinder, R.openStall];
+    const f = nth(buys, (u * 31) % 1);
+    const x = f(cfg, g, c, events);
+    return x !== g ? x : R.openShutter(cfg, g, Math.floor(((u * 7) % 1) * 4), events);
+  }
+  if (r < 0.76 && cells.length) {
+    const [i] = nth(cells, u);
+    const sold = R.dropAt(cfg, g, i, { kind: 'basket' }, events).game;
+    return u < 0.3 ? R.undoBasket(cfg, sold, events) : sold;
+  }
+  if (r < 0.8 && cells.length > 1) {
+    const [a] = nth(cells, u);
+    const [b] = nth(cells, (u * 13) % 1);
+    return R.dropAt(cfg, g, a, { kind: 'cell', cell: b }, events).game;
+  }
+  if (r < 0.83) return R.notTonight(cfg, g, Math.floor(u * m.counters.length), events);
+  if (r < 0.86) {
+    const kind = nth(['fillLine', 'gearRush', 'callDragon'] as const, u);
+    return R.grantAd(cfg, g, kind, undefined, events);
+  }
+  if (r < 0.9) return R.openGiftBox(cfg, g, events);
+  if (r < 0.92 && opts.close && R.canCloseSeason(cfg, g)) return opts.close(g);
+  if (r < 0.95) {
+    // An empty cell move (the board's own moves).
+    const empty = R.freeCells(m);
+    if (cells.length && empty.length) return R.dropAt(cfg, g, nth(cells, u)[0], { kind: 'cell', cell: nth(empty, (u * 3) % 1) }, events).game;
+  }
+  return g;
 }

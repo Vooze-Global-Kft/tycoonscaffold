@@ -7,7 +7,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mergeFixtures, mergeTestConfig } from '../fixtures/merge';
 import { canCloseSeason, festivalFor, festivalLineFilled, festivalPurse } from './festival';
-import { mergeParams, roundCost } from './params';
+import { mergeParams, roundCoins } from './params';
 import { seasonRow } from './season';
 import type { MergeConfig, MergeEvent, MergeGame, Mods } from './types';
 
@@ -108,7 +108,7 @@ describe('festivalLineFilled and the purse (2.8, 2.3)', () => {
     const g = allBut([]);
     expect(canCloseSeason(cfg, g)).toBe(false);
     const purse = festivalPurse(cfg, g);
-    expect(purse).toBe(roundCost(cfg, cfg.merge.festivalPace * mergeParams(cfg, g).U));
+    expect(purse).toBe(roundCoins(cfg, cfg.merge.festivalPace * mergeParams(cfg, g).U));
     expect(purse).toBeGreaterThan(0);
     const events: MergeEvent[] = [];
     const paid = festivalLineFilled(cfg, g, 3, events);
@@ -137,7 +137,7 @@ describe('festivalLineFilled and the purse (2.8, 2.3)', () => {
     modsOverride.value = { festivalPurseMult: 2 };
     const U = mergeParams(cfg, g).U;
     const purse = festivalPurse(cfg, g);
-    expect(purse).toBe(roundCost(cfg, cfg.merge.festivalPace * U * 2));
+    expect(purse).toBe(roundCoins(cfg, cfg.merge.festivalPace * U * 2));
     expect(festivalLineFilled(cfg, g, 0).cash).toBe(g.cash + purse);
     modsOverride.value = null;
   });

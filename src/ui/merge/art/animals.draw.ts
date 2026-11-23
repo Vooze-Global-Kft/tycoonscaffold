@@ -3,7 +3,7 @@
  * minders (one per stall, each their species, with an apron and one thing of their own), the Paper
  * Dragon of the Parade, and the firefly (the hint pointer) with its glowing trail piece.
  *
- * Rounded silhouettes, a scarf (customers) or an apron (minders); modelled on no existing game or
+ * Rounded silhouettes, a scarf (customers) or work clothes (minders); modelled on no existing game or
  * film: no tails, no clothing beyond scarf and apron, no national dress, no religious symbol.
  * Design box: a square of half size `BEAST_BOX` (160 px at 3 px a point), origin at its centre,
  * the head's centre at (0, HEAD_Y); the bust's shoulders reach the bottom edge.
@@ -13,7 +13,8 @@ import { COAT, NIGHT, alpha, mix, shade, type Species } from './palette';
 import { INK, arc, at, blob, builder, circle, clip, curve, fill, glow, line, lit, oval, poly, rrect, shape, sparkle, stroke, union } from './pen';
 
 export const BEAST_BOX = 80 / 3;
-export const HEAD_Y = -5;
+/** The head's centre (points): the head sits INTO the shoulders, its base covered by the scarf or collar. */
+export const HEAD_Y = -7;
 
 /** Scarf colours (customers), picked by species and coat so neighbours differ; red is not among them. */
 const SCARVES = [NIGHT.amber, NIGHT.paperLight, '#5FA88B', NIGHT.silkLight, NIGHT.brass, '#B98AD0'];
@@ -23,6 +24,7 @@ export interface Minder {
   name: string;
   species: Species;
   chain: number;
+  /** The colour of the minder's work clothes (the stall's own colour family). */
   apron: string;
 }
 
@@ -57,52 +59,58 @@ function cheeks(c: SkCanvas, dx: number, y: number): void {
   for (const s of [-1, 1]) c.drawPath(oval(s * dx, y, 2, 1.2), fill(alpha('#E07A7A', 0.35)));
 }
 
-/** The shoulders of the bust in the coat colour. */
-function shoulders(c: SkCanvas, col: Coat, wide = 20): void {
-  const b = builder().moveTo(-wide - 1, 27).cubicTo(-wide, 13, -11, 8, 0, 8).cubicTo(11, 8, wide, 13, wide + 1, 27).close().build();
+/** The shoulders of the bust in the coat colour; their top (y = 1) sits under the head's base. */
+function shoulders(c: SkCanvas, col: Coat, wide = 20, top = 1): void {
+  const b = builder().moveTo(-wide - 1, 27.5).cubicTo(-wide, top + 8, -11, top, 0, top).cubicTo(11, top, wide, top + 8, wide + 1, 27.5).close().build();
   lit(c, b, col[1], col[0], -1.4, -1);
 }
 
-function scarf(c: SkCanvas, color: string): void {
-  const band = builder().moveTo(-12.5, 9.5).quadTo(0, 15.5, 12.5, 9.5).lineTo(13, 14.5).quadTo(0, 20.5, -13, 14.5).close().build();
-  lit(c, band, shade(color, -0.25), color, 0, -1);
-  const tail = poly([5, 14, 11, 25, 6.4, 26, 2.4, 16]);
-  lit(c, tail, shade(color, -0.25), color, -0.6, 0);
-  for (const y of [22, 24]) c.drawPath(line(6.4, y + 1.6, 10.6, y), stroke(alpha(INK, 0.4), 0.7));
+/** A neck column in the coat colour joining the head to the shoulders (drawn before the head). */
+function neck(c: SkCanvas, col: Coat, w = 7): void {
+  lit(c, rrect(-w, -4, w * 2, 12, w * 0.6), col[1], col[0], -0.8, 0, 1);
 }
 
-function apron(c: SkCanvas, color: string): void {
-  for (const s of [-1, 1]) c.drawPath(line(s * 6.5, 10.5, s * 4.4, 15), stroke(INK, 2.2));
-  for (const s of [-1, 1]) c.drawPath(line(s * 6.5, 10.5, s * 4.4, 15), stroke(NIGHT.paperLight, 1));
-  const bib = builder().moveTo(-7, 14).lineTo(7, 14).lineTo(9.5, 27).lineTo(-9.5, 27).close().build();
-  lit(c, bib, shade(color, -0.2), color, 0, -1);
-  shape(c, rrect(-4.2, 19.5, 8.4, 4.6, 1.2), shade(color, -0.12), 0.8);
-  c.drawPath(line(-9.5, 17.6, 9.5, 17.6), stroke(alpha(NIGHT.paperLight, 0.7), 1));
+/** The customer's scarf: a band wrapped round the neck over the head's base, one tail hanging. */
+function scarf(c: SkCanvas, color: string): void {
+  const band = builder().moveTo(-11.5, 2.6).quadTo(0, 8.6, 11.5, 2.6).lineTo(12.4, 7.8).quadTo(0, 14.2, -12.4, 7.8).close().build();
+  lit(c, band, shade(color, -0.25), color, 0, -1);
+  const tail = poly([4.6, 8.6, 10.6, 21, 6, 22, 2.2, 10.4]);
+  lit(c, tail, shade(color, -0.25), color, -0.6, 0);
+  for (const y of [17.6, 19.6]) c.drawPath(line(6, y + 1.6, 10.2, y), stroke(alpha(INK, 0.4), 0.7));
 }
 
 // ---------------------------------------------------------------------------
-// Heads (centred on (0, HEAD_Y))
+// Heads (centred on (0, HEAD_Y); every part above y = -19 so the ears fit the 160 px box)
 // ---------------------------------------------------------------------------
 
 function fox(c: SkCanvas, col: Coat): void {
   for (const s of [-1, 1]) {
-    const ear = poly([s * 5, -13, s * 13.5, -25.5, s * 14.2, -9]);
-    lit(c, blob([[s * 4.6, -12.6], [s * 13, -25], [s * 14.6, -9.4]], 0.5), col[1], col[0], 0, 0);
-    c.drawPath(blob([[s * 7.8, -14], [s * 12.6, -22], [s * 12.8, -12]], 0.5), fill(col[3]));
-    void ear;
+    lit(c, blob([[s * 4.4, -11.6], [s * 12.6, -18.6], [s * 14.6, -7.4]], 0.5), col[1], col[0], 0, 0);
+    c.drawPath(blob([[s * 7.4, -12.4], [s * 12, -16.4], [s * 12.8, -9.8]], 0.5), fill(col[3]));
   }
-  const head = blob([[-14, -7], [-9, -14.6], [0, -16], [9, -14.6], [14, -7], [12.4, 1.6], [0, 7.4], [-12.4, 1.6]], 1);
+  const head = blob([[-14.2, -6], [-9, -13], [0, -14.4], [9, -13], [14.2, -6], [12.6, 2], [0, 8.4], [-12.6, 2]], 1);
   lit(c, head, col[1], col[0], -1.2, -1.2);
-  // White cheeks and muzzle.
-  const muzzle = blob([[-12.6, -0.4], [-5, -2.6], [0, 0.4], [5, -2.6], [12.6, -0.4], [6, 5], [0, 7.4], [-6, 5]], 1);
+  // White cheeks and a pointed muzzle.
+  const muzzle = blob([[-13, 0.4], [-5, -2], [0, 0.6], [5, -2], [13, 0.4], [6, 5.4], [0, 8.4], [-6, 5.4]], 1);
   c.save();
   clip(c, head);
   c.drawPath(muzzle, fill(col[2]));
   c.restore();
   c.drawPath(head, stroke(INK, 1.25));
-  eyes(c, 5.6, -5);
-  nose(c, 2.4, 2.2);
-  smile(c, 4.6, 1.8);
+  eyes(c, 5.6, -4.4);
+  nose(c, 3.2, 2.2);
+  smile(c, 5.4, 1.8);
+}
+
+/** The fox's brush curling up behind one shoulder, white-tipped: the fox's own cue at any coat. */
+function foxTail(c: SkCanvas, col: Coat): void {
+  const tail = blob([[12, 26], [16.6, 14], [21.4, 4.6], [25.4, 6], [24.4, 15], [19.6, 26]], 1);
+  lit(c, tail, col[1], col[0], -0.8, -0.8);
+  c.save();
+  clip(c, tail);
+  c.drawPath(circle(24, 5.4, 5.2), fill(col[2]));
+  c.restore();
+  c.drawPath(tail, stroke(INK, 1.1));
 }
 
 function hedgehog(c: SkCanvas, col: Coat): void {
@@ -111,24 +119,24 @@ function hedgehog(c: SkCanvas, col: Coat): void {
   const n = 15;
   for (let i = 0; i <= n; i++) {
     const a = Math.PI * (0.95 + (1.1 * i) / n);
-    const r = i % 2 ? 13 : 18.5;
-    pts.push(Math.cos(a) * r, -3 + Math.sin(a) * r);
+    const r = i % 2 ? 11.6 : 15.6;
+    pts.push(Math.cos(a) * r * 1.05, -2.6 + Math.sin(a) * r);
   }
   pts.push(15, 4, -15, 4);
   const crown = poly(pts);
   lit(c, crown, col[3], col[0], -1, -1.2);
-  for (const s of [-1, 1]) shape(c, circle(s * 9.6, -9.6, 2.8), col[2], 1);
-  const face = blob([[-11, -4], [0, -10.6], [11, -4], [9, 4], [0, 8.6], [-9, 4]], 1);
+  for (const s of [-1, 1]) shape(c, circle(s * 9.4, -8.8, 2.6), col[2], 1);
+  const face = blob([[-11, -3.4], [0, -10], [11, -3.4], [9, 4.4], [0, 8.6], [-9, 4.4]], 1);
   lit(c, face, shade(col[2], -0.12), col[2], -0.8, -1);
-  eyes(c, 4.6, -3.2, 1.8);
-  shape(c, circle(0, 3.4, 1.9), INK, 0);
-  cheeks(c, 7, 1.6);
-  smile(c, 5.4, 1.5);
+  eyes(c, 4.6, -2.8, 1.8);
+  shape(c, circle(0, 3.6, 1.9), INK, 0);
+  cheeks(c, 7, 2);
+  smile(c, 5.6, 1.5);
 }
 
 function badger(c: SkCanvas, col: Coat): void {
-  for (const s of [-1, 1]) shape(c, circle(s * 10.4, -12.4, 3.4), col[0], 1.1);
-  const head = blob([[-13, -4], [-7, -14.4], [0, -15.6], [7, -14.4], [13, -4], [10.6, 4], [0, 8], [-10.6, 4]], 1);
+  for (const s of [-1, 1]) shape(c, circle(s * 10.4, -11.6, 3.2), col[0], 1.1);
+  const head = blob([[-13, -4], [-7, -13.6], [0, -14.8], [7, -13.6], [13, -4], [10.6, 4], [0, 8.4], [-10.6, 4]], 1);
   c.drawPath(head, fill(col[2]));
   c.save();
   clip(c, head);
@@ -143,61 +151,112 @@ function badger(c: SkCanvas, col: Coat): void {
   smile(c, 5.2, 1.7);
 }
 
+/** Otter: a long, low, flat head (wider than tall), small ears set low, a pale muzzle band with whisker pads, a wide nose. */
 function otter(c: SkCanvas, col: Coat): void {
-  for (const s of [-1, 1]) shape(c, circle(s * 11.6, -9.6, 2.7), col[1], 1);
-  const head = blob([[-13.4, -4], [-8, -13], [0, -14.2], [8, -13], [13.4, -4], [12, 4], [0, 8.4], [-12, 4]], 1);
+  for (const s of [-1, 1]) shape(c, oval(s * 13.4, -4.6, 2.2, 1.9), col[1], 1);
+  const head = blob([[-15.6, -1.4], [-11, -9.4], [0, -11], [11, -9.4], [15.6, -1.4], [13, 4.4], [0, 7.4], [-13, 4.4]], 1);
   lit(c, head, col[1], col[0], -1.2, -1.2);
   c.save();
   clip(c, head);
-  c.drawPath(oval(0, 2.6, 9.8, 6.2), fill(col[2]));
+  // The pale band across the lower face, from cheek to cheek.
+  c.drawPath(blob([[-16, 0.2], [-8, -2.2], [0, -0.6], [8, -2.2], [16, 0.2], [13, 8], [-13, 8]], 1), fill(col[2]));
   c.restore();
   c.drawPath(head, stroke(INK, 1.25));
-  eyes(c, 5.8, -5.4, 1.8);
-  c.drawPath(oval(0, 0.6, 3.1, 2), fill(INK));
-  for (const s of [-1, 1]) for (const dy of [0, 1.8]) c.drawPath(line(s * 4.4, 2.4 + dy, s * 9.8, 1.4 + dy * 1.6), stroke(alpha(INK, 0.55), 0.6));
-  smile(c, 3.6, 1.8);
+  eyes(c, 6.6, -4.6, 1.6);
+  // Whisker pads and a wide, flat nose.
+  for (const s of [-1, 1]) c.drawPath(oval(s * 2.6, 3, 3, 2.2), fill(shade(col[2], 0.25)));
+  c.drawPath(rrect(-3, -1.4, 6, 2.8, 1.4), fill(INK));
+  for (const s of [-1, 1]) for (const dy of [0, 1.8]) c.drawPath(line(s * 5, 2.4 + dy, s * 12.4, 1.2 + dy * 1.7), stroke(alpha(INK, 0.6), 0.6));
+  c.drawPath(curve([[-2, 4.6], [0, 5.8], [2, 4.6]]), stroke(INK, 0.9));
 }
 
+/** Bat: big pointed ribbed ears, an upturned pug nose, two tiny fangs. Its folded wings sit on the shoulders (batWings). */
 function bat(c: SkCanvas, col: Coat): void {
   for (const s of [-1, 1]) {
-    const ear = blob([[s * 4, -11], [s * 9, -25], [s * 16.8, -17], [s * 12.4, -6.4]], 0.8);
+    const ear = blob([[s * 3.6, -10.4], [s * 8.4, -19], [s * 16, -14.6], [s * 12.8, -5.4]], 0.6);
     lit(c, ear, col[1], col[0], 0, -1);
-    c.drawPath(blob([[s * 6.4, -11.6], [s * 9.6, -21.4], [s * 14, -16.4], [s * 11.6, -8.6]], 0.8), fill(alpha(col[2], 0.65)));
+    c.drawPath(blob([[s * 6, -10.4], [s * 8.8, -16.4], [s * 13.6, -13.6], [s * 11.4, -7.4]], 0.6), fill(alpha(col[2], 0.7)));
+    c.drawPath(line(s * 7.6, -11, s * 11, -14.4), stroke(alpha(col[1], 0.9), 0.7));
   }
-  const head = blob([[-12, -3.6], [-7, -11.6], [0, -12.8], [7, -11.6], [12, -3.6], [10, 4.6], [0, 8], [-10, 4.6]], 1);
+  const head = blob([[-11.6, -3.4], [-7, -11], [0, -12], [7, -11], [11.6, -3.4], [9.6, 4.6], [0, 7.6], [-9.6, 4.6]], 1);
   lit(c, head, col[1], col[0], -1.2, -1.2);
   c.save();
   clip(c, head);
-  c.drawPath(oval(0, 3, 6.6, 4.4), fill(alpha(col[2], 0.8)));
+  c.drawPath(oval(0, 2.6, 6.4, 4.4), fill(alpha(col[2], 0.85)));
   c.restore();
   c.drawPath(head, stroke(INK, 1.25));
-  eyes(c, 4.8, -3.6, 1.9);
-  c.drawPath(builder().moveTo(-1.6, 0.6).lineTo(1.6, 0.6).lineTo(0, 2.6).close().build(), fill(INK));
-  smile(c, 3.6, 2);
-  c.drawPath(poly([1, 4.4, 2.6, 4.2, 1.8, 6]), fill(NIGHT.white));
+  eyes(c, 4.8, -3.6, 1.8);
+  // The pug nose: a small dark upturned leaf with a notch at its top.
+  c.drawPath(builder().moveTo(-2, 1.4).quadTo(-2.2, -1.4, -0.6, -1.2).lineTo(0, -0.2).lineTo(0.6, -1.2).quadTo(2.2, -1.4, 2, 1.4).quadTo(0, 2.6, -2, 1.4).close().build(), fill(col[3]));
+  for (const s of [-1, 1]) c.drawPath(circle(s * 0.9, 0.9, 0.4), fill(alpha(NIGHT.white, 0.35)));
+  c.drawPath(curve([[-2.6, 3.8], [0, 5.2], [2.6, 3.8]]), stroke(INK, 0.9));
+  for (const s of [-1, 1]) c.drawPath(poly([s * 0.9, 4.4, s * 2.1, 4.3, s * 1.5, 5.9]), fill(NIGHT.white));
 }
 
-function owl(c: SkCanvas, col: Coat): void {
-  for (const s of [-1, 1]) lit(c, poly([s * 4, -12, s * 12.6, -19.4, s * 13.6, -8]), col[1], col[0], 0, -1);
-  const head = blob([[-14.4, -3], [-10, -12.6], [0, -13.6], [10, -12.6], [14.4, -3], [12, 6], [0, 9], [-12, 6]], 1);
-  lit(c, head, col[1], col[0], -1.2, -1.2);
-  // Feather marks on the brow.
-  for (const [x, y] of [[-6, -10], [0, -11.4], [6, -10]] as const) c.drawPath(arc(x, y, 1.6, 20, 140), stroke(alpha(INK, 0.35), 0.7));
+/** The bat's wings folded over its shoulders: dark membrane with finger ribs and a small claw at the top. */
+function batWings(c: SkCanvas, col: Coat): void {
   for (const s of [-1, 1]) {
-    c.drawPath(circle(s * 5.6, -2.6, 5.4), fill(col[2]));
-    c.drawPath(circle(s * 5.6, -2.6, 5.4), stroke(alpha(INK, 0.6), 0.8));
-    c.drawPath(circle(s * 5.6, -2.6, 3), fill(NIGHT.amber));
-    c.drawPath(circle(s * 5.6, -2.4, 1.7), fill(INK));
-    c.drawPath(circle(s * 5.6 - 0.9, -3.4, 0.7), fill(NIGHT.white));
+    const w = blob([[s * 6.6, 4.4], [s * 15.4, 0.8], [s * 21.6, 7.6], [s * 21.6, 27.4], [s * 12.4, 27.4], [s * 8.8, 15.6]], 0.7);
+    lit(c, w, shade(col[3], 0.05), shade(col[1], -0.25), 0, -1);
+    c.save();
+    clip(c, w);
+    for (const [x1, y1] of [[13.6, 27], [18.4, 22], [21, 12.4]] as const) c.drawPath(line(s * 15.4, 1.6, s * x1, y1), stroke(alpha(col[1], 0.85), 0.9));
+    c.restore();
+    c.drawPath(w, stroke(INK, 1.1));
+    c.drawPath(poly([s * 15, 1.4, s * 16.6, -1.6, s * 17, 1.8]), fill(INK));
   }
-  shape(c, poly([-1.8, 1.4, 1.8, 1.4, 0, 5.4]), NIGHT.brass, 0.9);
+}
+
+/** Owl: a round head with a pale feathered facial disc (two joined rims), big round eyes and a hooked beak; no ear tufts. */
+function owl(c: SkCanvas, col: Coat): void {
+  const head = blob([[-15, -2.4], [-11.6, -11.6], [0, -14], [11.6, -11.6], [15, -2.4], [12.4, 5.6], [0, 9], [-12.4, 5.6]], 1);
+  lit(c, head, col[1], col[0], -1.2, -1.2);
+  // Feather scallops on the crown.
+  c.save();
+  clip(c, head);
+  for (const [x, y] of [[-8, -11.6], [-3, -12.8], [2.4, -12.8], [7.6, -11.6], [-5.6, -9], [0, -10], [5.4, -9]] as const) c.drawPath(arc(x, y, 1.8, 20, 140), stroke(alpha(INK, 0.35), 0.7));
+  c.restore();
+  // The facial disc: a pale heart of two joined circles with a darker rim.
+  const disc = union(circle(-5.4, -1.6, 7), circle(5.4, -1.6, 7), oval(0, 3, 6, 5.4));
+  c.drawPath(disc, fill(col[2]));
+  c.drawPath(disc, stroke(col[1], 1.4));
+  c.save();
+  clip(c, disc);
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    for (const s of [-1, 1]) c.drawPath(line(s * 5.4 + Math.cos(a) * 4.4, -1.6 + Math.sin(a) * 4.4, s * 5.4 + Math.cos(a) * 6.4, -1.6 + Math.sin(a) * 6.4), stroke(alpha(col[1], 0.45), 0.6));
+  }
+  c.restore();
+  for (const s of [-1, 1]) {
+    c.drawPath(circle(s * 5.4, -1.8, 3.2), fill(NIGHT.amber));
+    c.drawPath(circle(s * 5.4, -1.8, 3.2), stroke(alpha(INK, 0.7), 0.7));
+    c.drawPath(circle(s * 5.4, -1.6, 1.9), fill(INK));
+    c.drawPath(circle(s * 5.4 - 0.9, -2.6, 0.7), fill(NIGHT.white));
+  }
+  // Hooked beak.
+  shape(c, builder().moveTo(-1.8, 1.8).quadTo(0, 0.6, 1.8, 1.8).quadTo(1.4, 4.8, 0, 6).quadTo(-1.4, 4.8, -1.8, 1.8).close().build(), NIGHT.brass, 0.9);
   c.drawPath(head, stroke(INK, 1.25));
+}
+
+/** The owl's folded wings at the shoulders: feather rows instead of a furry chest. */
+function owlWings(c: SkCanvas, col: Coat): void {
+  for (const s of [-1, 1]) {
+    const w = blob([[s * 7.6, 4], [s * 17.4, 6], [s * 21.6, 16], [s * 20.6, 27.4], [s * 11, 27.4], [s * 8, 15]], 0.8);
+    lit(c, w, col[1], shade(col[0], -0.05), -0.8, -1);
+    c.save();
+    clip(c, w);
+    for (let row = 0; row < 4; row++) for (let i = 0; i < 3; i++) c.drawPath(arc(s * (11 + i * 3.6 + (row % 2) * 1.8), 9 + row * 4.6, 2, 20, 140), stroke(alpha(INK, 0.4), 0.7));
+    c.restore();
+    c.drawPath(w, stroke(INK, 1.1));
+  }
+  // The pale chest between the wings.
+  c.drawPath(oval(0, 17, 6.6, 9), fill(alpha(col[2], 0.9)));
 }
 
 function raccoon(c: SkCanvas, col: Coat): void {
   for (const s of [-1, 1]) {
-    lit(c, blob([[s * 5, -11.6], [s * 10.6, -20.4], [s * 14.2, -9]], 0.6), col[1], col[0], 0, 0);
-    c.drawPath(blob([[s * 7.6, -12], [s * 10.6, -17.4], [s * 12.6, -10.4]], 0.6), fill(col[2]));
+    lit(c, blob([[s * 5, -11], [s * 10.6, -18.6], [s * 14.2, -8.4]], 0.6), col[1], col[0], 0, 0);
+    c.drawPath(blob([[s * 7.6, -11.4], [s * 10.6, -16], [s * 12.6, -9.8]], 0.6), fill(col[2]));
   }
   const head = blob([[-14, -4], [-8, -13.6], [0, -14.8], [8, -13.6], [14, -4], [11.6, 3.6], [0, 8.4], [-11.6, 3.6]], 1);
   lit(c, head, col[1], col[0], -1.2, -1.2);
@@ -217,60 +276,171 @@ function raccoon(c: SkCanvas, col: Coat): void {
 
 const HEADS: Record<Species, (c: SkCanvas, col: Coat) => void> = { fox, hedgehog, badger, otter, bat, owl, raccoon };
 
-/** A customer bust: species, coat colour 0..2, with a scarf. */
-export function drawCustomer(c: SkCanvas, species: Species, coat: number): void {
-  const col = COAT[species][((coat % 3) + 3) % 3];
-  shoulders(c, col);
-  const i = (['fox', 'hedgehog', 'badger', 'otter', 'bat', 'owl', 'raccoon'] as const).indexOf(species);
-  scarf(c, SCARVES[(i * 2 + coat * 3) % SCARVES.length]);
-  at(c, 0, HEAD_Y, 1, 0, (k) => HEADS[species](k, col));
+/** What a species wears on its shoulders before the head is drawn (wings, a sleek neck). */
+function body(c: SkCanvas, species: Species, col: Coat, wide = 20): void {
+  if (species === 'otter') {
+    // Sleek: narrow sloping shoulders and a long neck.
+    shoulders(c, col, wide - 3, 3);
+    neck(c, col, 8.6);
+    c.drawPath(oval(0, 16, 6.6, 10), fill(alpha(col[2], 0.85)));
+  } else if (species === 'owl') {
+    shoulders(c, col, wide);
+    owlWings(c, col);
+  } else {
+    shoulders(c, col, wide);
+    if (species === 'bat') batWings(c, col);
+    else neck(c, col);
+  }
 }
 
-/** A minder (by chain index 0..5): their species with an apron in the stall's colour and one mark of their own. */
+/** A customer bust: species, coat colour 0..2, with a scarf over the head's base. */
+export function drawCustomer(c: SkCanvas, species: Species, coat: number): void {
+  const col = COAT[species][((coat % 3) + 3) % 3];
+  if (species === 'fox') foxTail(c, col);
+  body(c, species, col);
+  at(c, 0, HEAD_Y, 1, 0, (k) => HEADS[species](k, col));
+  const i = (['fox', 'hedgehog', 'badger', 'otter', 'bat', 'owl', 'raccoon'] as const).indexOf(species);
+  scarf(c, SCARVES[(i * 2 + coat * 3) % SCARVES.length]);
+}
+
+// ---------------------------------------------------------------------------
+// Minders: each in different work clothes (a vest, a sash, a bib apron, a cross-strap apron, a
+// cook's neckerchief, a short jacket), so "animals in shop aprons" is not the set's look
+// ---------------------------------------------------------------------------
+
+/** A collar band of `color` round the neck over the head's base. */
+function collar(c: SkCanvas, color: string): void {
+  const band = builder().moveTo(-11, 3).quadTo(0, 8.4, 11, 3).lineTo(11.6, 6.4).quadTo(0, 12, -11.6, 6.4).close().build();
+  lit(c, band, shade(color, -0.2), color, 0, -0.8);
+}
+
+/** A waistcoat: two front panels over the chest with brass buttons. */
+function vest(c: SkCanvas, color: string): void {
+  for (const s of [-1, 1]) {
+    const p = poly([s * 2, 7.6, s * 11.6, 6.4, s * 16, 27.5, s * 1.2, 27.5]);
+    lit(c, p, shade(color, -0.2), color, s * -0.6, -0.8);
+  }
+  for (const y of [13, 18, 23]) shape(c, circle(1.4, y, 1.1), NIGHT.brass, 0.6);
+}
+
+/** A bib apron with a pocket, straps over the shoulders. */
+function bibApron(c: SkCanvas, color: string): void {
+  for (const s of [-1, 1]) c.drawPath(line(s * 6.5, 6, s * 4.6, 13), stroke(INK, 2.2));
+  for (const s of [-1, 1]) c.drawPath(line(s * 6.5, 6, s * 4.6, 13), stroke(NIGHT.paperLight, 1));
+  const bib = builder().moveTo(-7, 12.4).lineTo(7, 12.4).lineTo(9.5, 27.5).lineTo(-9.5, 27.5).close().build();
+  lit(c, bib, shade(color, -0.2), color, 0, -1);
+  shape(c, rrect(-4.2, 19, 8.4, 4.6, 1.2), shade(color, -0.12), 0.8);
+}
+
+/** An apron with straps crossing over the chest. */
+function crossApron(c: SkCanvas, color: string): void {
+  const body = builder().moveTo(-12, 19).quadTo(0, 17.4, 12, 19).lineTo(13, 27.5).lineTo(-13, 27.5).close().build();
+  for (const s of [-1, 1]) {
+    c.drawPath(line(s * 9, 6, -s * 7, 19.6), stroke(INK, 3));
+    c.drawPath(line(s * 9, 6, -s * 7, 19.6), stroke(color, 1.8));
+  }
+  lit(c, body, shade(color, -0.2), color, 0, -1);
+  c.drawPath(line(-12, 21, 12, 21), stroke(alpha(NIGHT.paperLight, 0.7), 0.9));
+}
+
+/** A sash across the chest, shoulder to hip, with a knot. */
+function sash(c: SkCanvas, color: string): void {
+  const p = poly([-12.4, 6.4, -6.4, 4.6, 15.6, 25, 9, 27.5]);
+  lit(c, p, shade(color, -0.2), color, 0, -0.8);
+  shape(c, circle(8.6, 21.4, 2.4), shade(color, -0.1), 0.8);
+}
+
+/** A cook's neckerchief knotted at one side, its two points hanging. */
+function neckerchief(c: SkCanvas, color: string): void {
+  collar(c, color);
+  shape(c, circle(8.4, 8, 2.2), shade(color, -0.1), 0.8);
+  for (const [x1, y1] of [[13.6, 16.4], [9.4, 17.4]] as const) shape(c, poly([7.6, 8.6, x1, y1, x1 - 3.2, y1 + 0.8, 7, 10]), color, 0.8);
+}
+
+function drawMinderOutfit(c: SkCanvas, m: Minder): void {
+  switch (m.id) {
+    case 'oldbrindle':
+      vest(c, m.apron);
+      break;
+    case 'pim':
+      sash(c, m.apron);
+      break;
+    case 'nettle':
+      bibApron(c, m.apron);
+      break;
+    case 'juniper':
+      crossApron(c, m.apron);
+      break;
+    case 'tansy':
+      // A cook: neckerchief, a ladle over the shoulder, the apron's top hem at the bottom.
+      c.drawPath(line(-17.4, 27, -8.4, 4), stroke(INK, 2.6));
+      c.drawPath(line(-17.4, 27, -8.4, 4), stroke(NIGHT.woodLight, 1.3));
+      shape(c, oval(-7.8, 1.8, 3.4, 2.4), NIGHT.stoneLight, 0.9);
+      shape(c, rrect(-12, 22.4, 24, 6, 1), shade(m.apron, 0.2), 0.8);
+      break;
+    case 'marlo':
+      // A short jacket with a stand-up collar, a lantern pin on the lapel.
+      vest(c, m.apron);
+      at(c, -7.4, 13, 1, 0, (q) => drawPinLantern(q));
+      break;
+  }
+}
+
+/** What sits on the minder's head (spectacles, a tea sprig, a headband, a flower; Tansy and Marlo none). */
+function drawMinderMark(k: SkCanvas, m: Minder): void {
+  switch (m.id) {
+    case 'oldbrindle':
+      // Round brass spectacles and a grey brow: the oldest of the street.
+      for (const s of [-1, 1]) k.drawPath(circle(s * 5.4, -4, 3.3), stroke(NIGHT.brass, 1));
+      k.drawPath(line(-2.1, -4.2, 2.1, -4.2), stroke(NIGHT.brass, 0.9));
+      for (const s of [-1, 1]) k.drawPath(line(s * 3, -9.2, s * 7.6, -8.4), stroke(alpha(NIGHT.white, 0.9), 1.1));
+      break;
+    case 'pim':
+      // A sprig of tea leaves tucked at the crown.
+      for (const d of [-30, 20]) at(k, 9.6, -12.6, 1, d, (q) => shape(q, blob([[0, 0], [2, -2.4], [0, -5.6], [-2, -2.4]], 1), NIGHT.leaf, 0.8));
+      break;
+    case 'nettle':
+      // A cloth headband across the spines.
+      k.drawPath(curve([[-12.6, -7.6], [0, -11.4], [12.6, -7.6]]), stroke(INK, 3.6));
+      k.drawPath(curve([[-12.6, -7.6], [0, -11.4], [12.6, -7.6]]), stroke(NIGHT.amber, 2.2));
+      shape(k, blob([[11.4, -8.2], [15.6, -11.4], [15.2, -6.2]], 1), NIGHT.amber, 0.8);
+      break;
+    case 'juniper':
+      // A berry flower behind one ear.
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        shape(k, circle(-12.4 + Math.cos(a) * 2.2, -7.6 + Math.sin(a) * 2.2, 1.6), NIGHT.paperLight, 0.6);
+      }
+      k.drawPath(circle(-12.4, -7.6, 1.3), fill(NIGHT.amber));
+      break;
+  }
+}
+
+/** A minder (by chain index 0..5): their species in their own work clothes and one mark of their own. */
 export function drawMinder(c: SkCanvas, chain: number): void {
   const m = MINDERS[((chain % 6) + 6) % 6];
   const col = COAT[m.species][0];
-  shoulders(c, col, 19);
-  apron(c, m.apron);
+  body(c, m.species, col, 19);
+  drawMinderOutfit(c, m);
   at(c, 0, HEAD_Y, 1, 0, (k) => {
     HEADS[m.species](k, col);
-    switch (m.id) {
-      case 'oldbrindle':
-        // Round brass spectacles and a grey brow: the oldest of the street.
-        for (const s of [-1, 1]) k.drawPath(circle(s * 5.4, -4, 3.3), stroke(NIGHT.brass, 1));
-        k.drawPath(line(-2.1, -4.2, 2.1, -4.2), stroke(NIGHT.brass, 0.9));
-        for (const s of [-1, 1]) k.drawPath(line(s * 3, -9.2, s * 7.6, -8.4), stroke(alpha(NIGHT.white, 0.9), 1.1));
-        break;
-      case 'pim':
-        // A sprig of tea leaves tucked by one tuft.
-        for (const d of [-30, 20]) at(k, 10.6, -15, 1, d, (q) => shape(q, blob([[0, 0], [2, -2.4], [0, -5.6], [-2, -2.4]], 1), NIGHT.leaf, 0.8));
-        break;
-      case 'nettle':
-        // A cloth headband across the spines.
-        k.drawPath(curve([[-13.4, -8.4], [0, -12.6], [13.4, -8.4]]), stroke(INK, 3.6));
-        k.drawPath(curve([[-13.4, -8.4], [0, -12.6], [13.4, -8.4]]), stroke(NIGHT.amber, 2.2));
-        shape(k, blob([[12, -9], [16.4, -12.4], [16, -7]], 1), NIGHT.amber, 0.8);
-        break;
-      case 'juniper':
-        // A berry flower behind one ear.
-        for (let i = 0; i < 5; i++) {
-          const a = (i / 5) * Math.PI * 2;
-          shape(k, circle(-11.6 + Math.cos(a) * 2.2, -9.6 + Math.sin(a) * 2.2, 1.6), NIGHT.paperLight, 0.6);
-        }
-        k.drawPath(circle(-11.6, -9.6, 1.3), fill(NIGHT.amber));
-        break;
-      case 'tansy':
-        // A headscarf knotted on top.
-        k.drawPath(builder().moveTo(-12.4, -9).quadTo(0, -19.6, 12.4, -9).quadTo(0, -13, -12.4, -9).close().build(), fill(NIGHT.silkLight));
-        k.drawPath(builder().moveTo(-12.4, -9).quadTo(0, -19.6, 12.4, -9).quadTo(0, -13, -12.4, -9).close().build(), stroke(INK, 0.9));
-        for (const s of [-1, 1]) shape(k, blob([[0, -15], [s * 4.4, -19], [s * 3, -14.2]], 1), NIGHT.silkLight, 0.8);
-        for (const [x, y] of [[-6, -12.4], [2, -14], [7, -11.6]] as const) k.drawPath(circle(x, y, 0.8), fill(NIGHT.paperLight));
-        break;
-      case 'marlo':
-        // A small lantern pin on one ear.
-        at(k, 11.4, -15.4, 1, 0, (q) => drawPinLantern(q));
-        break;
-    }
+    drawMinderMark(k, m);
+  });
+  if (m.id === 'oldbrindle' || m.id === 'juniper') collar(c, NIGHT.paperLight);
+  else if (m.id === 'tansy') neckerchief(c, m.apron);
+  else if (m.id === 'pim' || m.id === 'nettle' || m.id === 'marlo') collar(c, shade(m.apron, 0.15));
+}
+
+/**
+ * A minder's head alone, centred, fitted to a `size` pt square: what the stall front shows beside
+ * the till (a whole bust at 18 to 22 pt is unreadable).
+ */
+export function drawMinderHead(c: SkCanvas, chain: number, size = 22): void {
+  const m = MINDERS[((chain % 6) + 6) % 6];
+  const col = COAT[m.species][0];
+  at(c, 0, size * 0.06, size / 34, 0, (k) => {
+    HEADS[m.species](k, col);
+    drawMinderMark(k, m);
   });
 }
 
@@ -286,56 +456,68 @@ function drawPinLantern(c: SkCanvas): void {
 // ---------------------------------------------------------------------------
 
 /**
- * The Paper Dragon: a folded-paper festival head with brass whiskers, rounded horns and an
- * accordion body behind it, friendly and invented (no costume of any real tradition).
+ * The Paper Dragon: an origami serpent of flat folded facets in rice-paper blue-grey and lantern
+ * amber, an accordion body curling behind its head, round soft eyes and a small smile. No mane,
+ * whiskers, horns or mask face (nothing of a real festival costume, spec 7.2).
  */
 export function drawDragon(c: SkCanvas): void {
-  const paper = NIGHT.paperLight;
-  const amber = NIGHT.amber;
-  // Accordion body sweeping behind, lower right to left.
-  for (let i = 5; i >= 0; i--) {
-    const x = -16 + i * 6.6;
-    const y = 18 - Math.sin(i * 0.9) * 3;
-    const seg = rrect(x - 4, y - 7, 8, 14, 3);
-    lit(c, seg, i % 2 ? shade(amber, -0.15) : NIGHT.paperShade, i % 2 ? amber : paper, -0.8, -1, 1);
+  // The accordion body: pleats along an S curve from behind the head down to a pointed tail.
+  const n = 9;
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    pts.push([4 - 26 * t, 6 + 16 * Math.sin(Math.PI * t * 0.9) - 6 * t]);
   }
-  // Paper mane: a fringe of teal scallops round the head.
-  const mane: [number, number][] = [];
-  for (let i = 0; i < 14; i++) {
-    const a = Math.PI * (0.85 + (1.3 * i) / 13);
-    const r = i % 2 ? 16 : 19.5;
-    mane.push([Math.cos(a) * r, -6 + Math.sin(a) * r]);
+  for (let i = n - 1; i >= 0; i--) {
+    const [x0, y0] = pts[i];
+    const [x1, y1] = pts[i + 1];
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L;
+    const ny = dx / L;
+    const w0 = 8.4 * (1 - (i / n) * 0.75);
+    const w1 = 8.4 * (1 - ((i + 1) / n) * 0.75);
+    const pleat = poly([x0 + nx * w0, y0 + ny * w0, x1 + nx * w1, y1 + ny * w1, x1 - nx * w1, y1 - ny * w1, x0 - nx * w0, y0 - ny * w0]);
+    shape(c, pleat, i % 2 ? NIGHT.amber : NIGHT.paper, 0.9);
+    c.drawPath(line(x0 + nx * w0 * 0.2, y0 + ny * w0 * 0.2, x1 + nx * w1 * 0.2, y1 + ny * w1 * 0.2), stroke(alpha(i % 2 ? NIGHT.amberDeep : NIGHT.paperEdge, 0.7), 0.7));
   }
-  mane.push([16, 6], [-16, 6]);
-  lit(c, blob(mane, 0.6), '#2F7A6B', '#5FA88B', -1, -1);
-  // Horns.
-  for (const s of [-1, 1]) lit(c, blob([[s * 4, -16], [s * 7, -24.6], [s * 11, -24], [s * 9.6, -15]], 1), NIGHT.brassDeep, NIGHT.brass, 0, -1);
-  // Head: a big rounded paper box with fold lines.
-  const head = blob([[-13.4, -10], [0, -16], [13.4, -10], [14.8, 1], [9.6, 8.6], [0, 10], [-9.6, 8.6], [-14.8, 1]], 1);
-  lit(c, head, NIGHT.paperShade, paper, -1.4, -1.4);
-  c.save();
-  clip(c, head);
-  for (const x of [-7, 0, 7]) c.drawPath(line(x, -16, x * 1.2, 10), stroke(alpha(NIGHT.paperEdge, 0.55), 0.8));
-  c.drawPath(rrect(-16, 2.4, 32, 10, 0), fill(alpha(amber, 0.9)));
-  c.restore();
-  c.drawPath(head, stroke(INK, 1.3));
-  // Brows, eyes, nostrils, a wide smile.
-  for (const s of [-1, 1]) {
-    c.drawPath(curve([[s * 3, -9.6], [s * 6.4, -11.6], [s * 10, -10]]), stroke(INK, 1.4));
-    c.drawPath(circle(s * 6.4, -5.2, 3.4), fill(NIGHT.white));
-    c.drawPath(circle(s * 6.4, -5.2, 3.4), stroke(INK, 1));
-    c.drawPath(circle(s * 6, -4.8, 1.9), fill(INK));
-    c.drawPath(circle(s * 5.4, -5.6, 0.7), fill(NIGHT.white));
-    c.drawPath(oval(s * 3, 1.4, 1.1, 0.8), fill(INK));
+  const tail = pts[n];
+  shape(c, poly([tail[0], tail[1] - 2, tail[0] - 4, tail[1] - 6.4, tail[0] - 1.4, tail[1] + 1.6]), NIGHT.amber, 0.9);
+  // Small folded fins along the back of the body (amber triangles), the dragon's only crest.
+  for (let i = 1; i < n - 1; i += 2) {
+    const [x0, y0] = pts[i];
+    const [x1, y1] = pts[i + 1];
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const L = Math.hypot(dx, dy) || 1;
+    const w = 8.4 * (1 - (i / n) * 0.75);
+    const ox = (dy / L) * w;
+    const oy = (-dx / L) * w;
+    shape(c, poly([x0 + ox, y0 + oy, (x0 + x1) / 2 + ox * 1.5, (y0 + y1) / 2 + oy * 1.5, x1 + ox * 0.9, y1 + oy * 0.9]), NIGHT.amberDeep, 0.8);
   }
-  c.drawPath(curve([[-8.6, 4.8], [-4, 8.4], [0, 6.4], [4, 8.4], [8.6, 4.8]]), stroke(INK, 1.2));
-  for (const s of [-1, 1]) c.drawPath(oval(s * 10.4, 1.6, 1.8, 1.1), fill(alpha('#E07A7A', 0.5)));
-  // Brass whiskers curling out.
-  for (const s of [-1, 1]) {
-    const w = curve([[s * 12.6, 2.6], [s * 19, 1], [s * 22, 5.4], [s * 19.4, 8.6]]);
-    c.drawPath(w, stroke(INK, 2.2));
-    c.drawPath(w, stroke(NIGHT.brassLight, 1));
+  // The head: a long folded wedge pointing forward, facets lit from the top left.
+  const cx = 8;
+  const cy = -8;
+  const rim: [number, number][] = [[-6, -13], [2, -19], [12, -17], [24, -10], [24.6, -4.6], [15, 0.6], [2, 1.6], [-6.4, -4]];
+  const tones = [NIGHT.paperLight, NIGHT.paperLight, NIGHT.paper, NIGHT.paperShade, NIGHT.paperShade, NIGHT.paper, NIGHT.paperShade, NIGHT.paper];
+  for (let i = 0; i < rim.length; i++) {
+    const [x0, y0] = rim[i];
+    const [x1, y1] = rim[(i + 1) % rim.length];
+    c.drawPath(poly([cx, cy, x0, y0, x1, y1]), fill(tones[i]));
+    c.drawPath(line(cx, cy, x0, y0), stroke(alpha(NIGHT.paperEdge, 0.7), 0.7));
   }
+  c.drawPath(poly(rim.flat()), stroke(INK, 1.3));
+  // An amber fold along the jaw.
+  c.drawPath(poly([2, 1.6, 15, 0.6, 24.6, -4.6, 13, -2.6]), fill(alpha(NIGHT.amber, 0.9)));
+  // Round soft eyes, a blush, a small smile, a nostril.
+  for (const [x, y] of [[4.4, -10.4], [12.2, -10.6]] as const) {
+    c.drawPath(circle(x, y, 2.4), fill(INK));
+    c.drawPath(circle(x - 0.8, y - 0.9, 0.85), fill(NIGHT.white));
+  }
+  c.drawPath(oval(16.4, -6.4, 2, 1.1), fill(alpha('#E07A7A', 0.5)));
+  c.drawPath(curve([[17.6, -3.6], [20, -2.4], [22.4, -4]]), stroke(INK, 0.9));
+  c.drawPath(circle(22.4, -8.4, 0.7), fill(INK));
 }
 
 // ---------------------------------------------------------------------------
@@ -343,6 +525,8 @@ export function drawDragon(c: SkCanvas): void {
 // ---------------------------------------------------------------------------
 
 export const FIREFLY_GLOW = '#E8F59A';
+/** Wing poses baked into the fx atlas (`firefly-0` .. `firefly-2`): the beat is a flip between them. */
+export const FIREFLY_WINGS = 3;
 
 /** The firefly, centred on its glowing tail; `k` 0..1 is the glow pulse, `wing` 0..1 the wing beat. */
 export function drawFirefly(c: SkCanvas, k = 1, wing = 0.5): void {
@@ -367,5 +551,3 @@ export function drawTrailPiece(c: SkCanvas, k = 1): void {
   sparkle(c, 0, 0, 2.6, alpha(FIREFLY_GLOW, k));
 }
 
-void union;
-void poly;

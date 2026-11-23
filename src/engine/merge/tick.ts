@@ -9,7 +9,7 @@
  * Package MECHANICS (docs/design/market-build-plan.md). `now` (the wall clock) is not read: the
  * merge rules run on the game clock only (time away is offline.ts's closed form).
  */
-import { nextEvent, runEvent } from './events';
+import { dueEvents, nextEvent, runEvent } from './events';
 import { MAX_TICK, type MergeConfig, type MergeEvent, type MergeGame, type QueuedEvent } from './types';
 
 /** Events one tick may run before it stops (a guard against a rule that would re-arm itself at one time; never reached by the rules). */
@@ -33,7 +33,23 @@ export function advanceMerge(cfg: MergeConfig, g: MergeGame, dt: number, now: nu
   return atClock(x, end);
 }
 
-/** The next event the queue holds (any time ahead), or null: the bot steps to `at` with one tick. */
+/**
+ * The next event the queue holds (any time ahead), or null. An event made due by a player action
+ * at the current clock is reported AT the clock: it runs first in the next tick of any length.
+ */
 export function nextMergeEvent(cfg: MergeConfig, g: MergeGame): QueuedEvent | null {
   return nextEvent(cfg, g, Infinity);
+}
+
+/**
+ * The time the bot steps to when it goes from event to event: the earliest event strictly after
+ * the clock (events due at the clock itself run first in that same tick), or null when nothing is
+ * queued. `advanceMerge(cfg, g, stop − clock, …)` then runs exactly what a 10 Hz run would run up
+ * to `stop` (src/engine/merge/determinism.test.ts).
+ */
+export function nextMergeStop(cfg: MergeConfig, g: MergeGame): number | null {
+  const clock = g.stats.playSeconds ?? 0;
+  let best: number | null = null;
+  for (const e of dueEvents(cfg, g)) if (e.at > clock && (best === null || e.at < best)) best = e.at;
+  return best;
 }

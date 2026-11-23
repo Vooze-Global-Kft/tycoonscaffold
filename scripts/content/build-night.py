@@ -4,14 +4,23 @@
     python3 scripts/content/build-night.py            every gate of 8.3 on the five seeds; writes game.json
                                                      ONLY when every hard gate (M2) passes on every seed
     python3 scripts/content/build-night.py --check    the same, writes nothing
-    python3 scripts/content/build-night.py --tune [--budget 40] [--save] [--act 1.5]
+    python3 scripts/content/build-night.py --tune [--budget 40] [--save] [--act 2.0]
                                                      the tuner: a search inside RANGES, knob by knob in the
                                                      order of 8.4 (with M27), toward the aims; --save writes
                                                      the result into TUNED below
+    python3 scripts/content/build-night.py --placeholder
+                                                     refreshes ONLY the merge block of the skeleton's placeholder
+                                                     game.json (Decision M1: its texts keep the word PLACEHOLDER)
+                                                     from the starting content and TUNED, with no gate, so the
+                                                     placeholder follows the schema while the rules are built
     python3 scripts/content/build-night.py --table    the worked tables of 2.12 and 3.3 and the season times
                                                      of 8.5 (seasons 1 to 10, active and passive, five seeds)
-    options: --act 1.5 (seconds per bot action; the lead wants every conclusion at 1.5 and at 2.5)
-             --procs 5 (parallel bot processes)   --set path=value (an extra override, repeatable)
+    python3 scripts/content/build-night.py --paired [--n 30]
+                                                     M30 (4): the adversaries, the lazy and the deliver-only bot
+                                                     against the active bot as paired differences over 30 seeds,
+                                                     with the noise band (the active bot at act + 0.001 s)
+    options: --act 2.0 (seconds per bot action: M30's reference; run 1.5 and 2.5 beside it)
+             --procs 4 (parallel bot processes)   --set path=value (an extra override, repeatable)
              --hours 12 --seasons 10 --days 21 (the full run's length)
 
 This script is the only source of the game's numbers (AGENTS.md: never hand-edit the table). The
@@ -38,7 +47,14 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 GAME = os.path.join(ROOT, 'games/night-market/game.json')
 STORE = os.path.join(ROOT, 'scripts/content/night-store.json')
 BOT = os.path.join(ROOT, 'scripts/content/merge-bot.ts')
+# Decision M30: the five named seeds are the CHECK (validate runs them); the tuner works on 15 others
+# and never sees these; an aim is met when at least 13 of the 15 tuning seeds meet it (pass counts,
+# never one median); a comparison between two bots is a paired difference over 30 seeds with the
+# noise band beside it (`--paired`).
 SEEDS = [12345, 4, 99, 7, 2026]
+TUNE_SEEDS = list(range(101, 116))
+PAIRED_SEEDS = list(range(201, 231))
+PASS_NEEDED = 13
 SOURCES = {'ticket', 'festival', 'gift', 'till', 'basket', 'away', 'undo', 'spend'}
 
 # ---------------------------------------------------------------- the tuned numbers
@@ -138,14 +154,15 @@ def run_seed(seed, cfg_path, flags):
     return out
 
 
-def run_seeds(block, flags, procs):
-    """The bot on the five seeds in parallel processes; returns their JSON lines in seed order."""
+def run_seeds(block, flags, procs, seeds=None):
+    """The bot on the seeds (the five named ones by default) in parallel processes; returns their JSON lines in seed order."""
+    seeds = SEEDS if seeds is None else seeds
     with tempfile.NamedTemporaryFile('w', suffix='.json', delete=False, dir=tempfile.gettempdir()) as f:
         json.dump(block, f)
         path = f.name
     try:
         with ThreadPoolExecutor(max_workers=procs) as ex:
-            return list(ex.map(lambda s: run_seed(s, path, flags), SEEDS))
+            return list(ex.map(lambda s: run_seed(s, path, flags), seeds))
     finally:
         os.unlink(path)
 
@@ -201,31 +218,44 @@ def across(results):
     return rows
 
 
-def loss(results):
-    """How far the aims are, summed over the seeds (0 when every aim holds): each missed band by its relative distance."""
-    tot = 0.0
+def pass_counts(results):
+    """Per aim row: how many seeds meet it, and the mean relative distance of those that miss."""
+    out = {}
     for r in results:
-        if 'rows' not in r:
-            return float('inf')
-        for row in r['rows']:
-            if row['kind'] == 'hard' and not row['ok']:
-                tot += 10.0
-            if row['kind'] != 'aim' or row['ok']:
+        for row in r.get('rows', []):
+            if row['kind'] != 'aim':
+                continue
+            c = out.setdefault(row['name'], {'pass': 0, 'n': 0, 'dist': 0.0})
+            c['n'] += 1
+            if row['ok']:
+                c['pass'] += 1
                 continue
             num, lo, hi = row.get('num'), row.get('lo'), row.get('hi')
-            if num is None:
-                tot += 1.0
-                continue
-            if lo is not None and num < lo:
-                scale = (hi - lo) if hi is not None and hi > lo else max(abs(lo), 1e-9)
-                tot += min(5.0, (lo - num) / scale)
-            elif hi is not None and num > hi:
-                scale = (hi - lo) if lo is not None and hi > lo else max(abs(hi), 1e-9)
-                tot += min(5.0, (num - hi) / scale)
+            d = 1.0
+            if num is not None and lo is not None and num < lo:
+                d = min(5.0, (lo - num) / ((hi - lo) if hi is not None and hi > lo else max(abs(lo), 1e-9)))
+            elif num is not None and hi is not None and num > hi:
+                d = min(5.0, (num - hi) / ((hi - lo) if lo is not None and hi > lo else max(abs(hi), 1e-9)))
+            c['dist'] += d
+    return out
+
+
+def loss(results):
+    """M30 (3): for every aim, the seeds still missing to reach 13 of 15 (scaled to the seed count),
+    plus a small pull from how far the missing seeds are; every hard miss weighs 10."""
+    if any('rows' not in r for r in results):
+        return float('inf')
+    n = len(results)
+    need = PASS_NEEDED * n / len(TUNE_SEEDS)
+    tot = 0.0
+    for name, c in pass_counts(results).items():
+        tot += max(0.0, need - c['pass']) + 0.1 * c['dist'] / max(1, n)
+    for r in results:
+        tot += 10.0 * sum(1 for row in r['rows'] if row['kind'] == 'hard' and not row['ok'])
     for name, aim, value, ok in across(results):
         if not ok:
             tot += 1.0
-    return tot / max(1, len(results))
+    return tot
 
 
 def failing_prefixes(results):
@@ -241,11 +271,11 @@ def failing_prefixes(results):
 
 def tune(act, procs, budget, extra):
     R = ranges()
-    flags = ['--bot', 'all', '--hours', '4', '--seasons', '1', '--days', '0', '--no-adversaries', '--determinism', '0', '--act', str(act)]
+    flags = ['--bot', 'all', '--hours', '4', '--days', '0', '--no-adversaries', '--determinism', '0', '--act', str(act)]
     current = dict(extra)
     base = block_with(current)
     t0 = time.time()
-    res = run_seeds(base, flags, procs)
+    res = run_seeds(base, flags, procs, TUNE_SEEDS)
     st = stopped(res)
     if st:
         raise SystemExit('the tuner cannot run: the bot did not finish\n  ' + '\n  '.join(st))
@@ -277,7 +307,7 @@ def tune(act, procs, budget, extra):
                         continue
                     trial = dict(current)
                     trial[p] = v
-                    r2 = run_seeds(block_with(trial), flags, procs)
+                    r2 = run_seeds(block_with(trial), flags, procs, TUNE_SEEDS)
                     evals += 1
                     l2 = loss(r2) if not stopped(r2) else float('inf')
                     print('  [%s] %s = %s: loss %.3f (best %.3f)' % (group, p, round(v, 6), l2, best))
@@ -289,7 +319,9 @@ def tune(act, procs, budget, extra):
                     step[p] /= 2
                 if evals >= budget:
                     break
-    print('\nbest loss %.3f after %d evaluations (%.0f s)' % (best, evals, time.time() - t0))
+    print('\nbest loss %.3f after %d evaluations (%.0f s); pass counts on the %d tuning seeds:' % (best, evals, time.time() - t0, len(TUNE_SEEDS)))
+    for name, c in sorted(pass_counts(res).items()):
+        print('  %2d/%d %s%s' % (c['pass'], c['n'], name, '' if c['pass'] >= PASS_NEEDED * c['n'] / len(TUNE_SEEDS) else '   (open aim, M2/M30)'))
     print('TUNED = ' + json.dumps({**TUNED, **current}, indent=1, sort_keys=True))
     return {**TUNED, **current}, res
 
@@ -352,6 +384,9 @@ def gates(act, procs, extra, write):
         return 1
     coin = coin_assertion(res)
     hard, aims = print_gates(res)
+    print('aims on the %d check seeds (pass counts):' % len(res))
+    for name, c in sorted(pass_counts(res).items()):
+        print('  %d/%d %s' % (c['pass'], c['n'], name))
     for a in aims:
         print('  aim missed:  ' + a)
     for h in coin + hard:
@@ -362,6 +397,39 @@ def gates(act, procs, extra, write):
     print('every hard gate passes on every seed (%d aims missed: warnings until the lead turns them into guards, M2)' % len(aims))
     if write:
         write_game(block)
+    return 0
+
+
+# ---------------------------------------------------------------- --paired (M30 (4))
+
+def paired(act, procs, extra, n):
+    block = block_with(extra)
+    seeds = PAIRED_SEEDS[:n]
+    res = run_seeds(block, ['--bot', 'compare', '--act', str(act)], procs, seeds)
+    st = stopped([r for r in res if 'incomes' not in r])
+    if st:
+        print('the comparison did not finish:\n  ' + '\n  '.join(st))
+        return 1
+    rows = []
+
+    def stat(xs):
+        m = sum(xs) / len(xs)
+        sd = (sum((x - m) ** 2 for x in xs) / max(1, len(xs) - 1)) ** 0.5
+        return m, sd
+
+    noise3 = [r['incomes']['noise3h'] / r['incomes']['active3h'] - 1 for r in res if r['incomes']['active3h'] > 0]
+    noise1 = [r['incomes']['noise1h'] / r['incomes']['active1h'] - 1 for r in res if r['incomes']['active1h'] > 0]
+    nm3, ns3 = stat(noise3)
+    nm1, ns1 = stat(noise1)
+    print('M30 (4): paired differences over %d seeds at %s s an action (mean of other / active - 1, sd; the noise band is the active bot at +0.001 s)\n' % (len(res), act))
+    print('| Comparison | mean | sd | noise mean | noise sd | aim |\n|---|---|---|---|---|---|')
+    for key, base_, noise, aim in (('lazy1h', 'active1h', (nm1, ns1), 'lazy 0.4 to 0.7 of active (gate 15)'), ('deliverFrom3', 'activeFrom3', (nm1, ns1), 'deliver-only <= 0.2 (gate 4)'),
+                                   ('notTonight', 'active3h', (nm3, ns3), 'within 5 % (gate 12)'), ('hoardBoxes', 'active3h', (nm3, ns3), 'within 5 % (gate 12)'), ('sellBuyUndo', 'active3h', (nm3, ns3), 'within 5 % (gate 12)')):
+        xs = [r['incomes'][key] / r['incomes'][base_] - 1 for r in res if r['incomes'].get(base_) and key in r['incomes']]
+        if not xs:
+            continue
+        m, sd = stat(xs)
+        print('| %s / %s | %+.3f | %.3f | %+.3f | %.3f | %s |' % (key, base_, m, sd, noise[0], noise[1], aim))
     return 0
 
 
@@ -418,8 +486,8 @@ if __name__ == '__main__':
     if '--help' in sys.argv or '-h' in sys.argv:
         print(__doc__)
         sys.exit(0)
-    act = float(arg('--act', '1.5'))
-    procs = int(arg('--procs', '5'))
+    act = float(arg('--act', '2.0'))
+    procs = int(arg('--procs', '4'))
     extra = sets()
     if '--tune' in sys.argv:
         tuned, _ = tune(act, procs, int(arg('--budget', '40')), extra)
@@ -428,4 +496,15 @@ if __name__ == '__main__':
         sys.exit(0)
     if '--table' in sys.argv:
         sys.exit(tables(act, procs, extra))
+    if '--paired' in sys.argv:
+        sys.exit(paired(act, procs, extra, int(arg('--n', '30'))))
+    if '--placeholder' in sys.argv:
+        g = json.load(open(GAME))
+        if 'PLACEHOLDER' not in json.dumps(g):
+            raise SystemExit('REFUSED: games/night-market/game.json is no longer the placeholder (build-night.py wrote it after the gate); run without --placeholder')
+        g['merge'] = block_with(extra)
+        json.dump(g, open(GAME, 'w'), indent=2, ensure_ascii=False)
+        open(GAME, 'a').write('\n')
+        print('refreshed the merge block of the placeholder', os.path.relpath(GAME, ROOT), '(no gate: it stays PLACEHOLDER)')
+        sys.exit(0)
     sys.exit(gates(act, procs, extra, write='--check' not in sys.argv))

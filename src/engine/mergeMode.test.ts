@@ -60,14 +60,11 @@ describe('create (spec 2.3, 2.7)', () => {
     expect(m.shuttersOpened).toEqual([0, 0, 0, 0]);
   });
 
-  it('puts 4 Pepper Skewers by the drop-cell rule (one stall: anchor column 3, the street row first)', () => {
+  it('puts 6 Pepper Skewers by the drop-cell rule (Decision M18; one stall: anchor column 3, the street row first)', () => {
     const goods = m.board.map((c, i) => [i, c] as const).filter(([, c]) => R.isGood(c));
-    expect(goods).toEqual([
-      [R.cellAt(2, 1), { c: 0, k: 1 }],
-      [R.cellAt(2, 2), { c: 0, k: 1 }],
-      [R.cellAt(2, 3), { c: 0, k: 1 }],
-      [R.cellAt(2, 4), { c: 0, k: 1 }],
-    ]);
+    expect(goods).toEqual([0, 1, 2, 3, 4, 5].map((col) => [R.cellAt(2, col), { c: 0, k: 1 }]));
+    // The fox's Twin Skewer (2) and the hedgehog's Glazed Skewer (4) need exactly these six.
+    expect(2 + 4).toBe(goods.length);
   });
 
   it("the fox's Twin Skewer ticket at counter 1; counter 2 waits for the first merge", () => {
@@ -93,7 +90,8 @@ describe('create (spec 2.3, 2.7)', () => {
     expect(m.paradeAt).toBe(360);
     expect(g.cash).toBe(0);
     expect(m.lanterns).toEqual([]);
-    expect(m.gift.ticketsToBox).toBe(10);
+    expect(m.gift.ticketsToBox).toBe(cfg.merge.gift.every);
+    expect(cfg.merge.gift.every).toBe(25); // Decision M24's starting N
     expect('pocket' in m).toBe(false);
   });
 
@@ -118,6 +116,36 @@ describe('reconcile', () => {
     }
   });
 
+  it('repairs a save broken field by field (300 corrupted saves): never throws, every invariant holds, the tick runs on', () => {
+    const { minute10, festivalNear, minute3 } = mergeFixtures(cfg);
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+    const junk = [null, undefined, 'x', -1, 1e308, Number.NaN, [], {}, true, 99, [1, 2, 3], { c: 9, k: 0 }];
+    const paths = (o: unknown, pre: string[] = [], out: string[][] = []): string[][] => {
+      if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) {
+        out.push([...pre, k]);
+        if (pre.length < 4) paths(v, [...pre, k], out);
+      }
+      return out;
+    };
+    for (let i = 0; i < 300; i++) {
+      const src = [minute10, festivalNear, minute3][i % 3];
+      const raw = JSON.parse(JSON.stringify(src)) as Record<string, unknown>;
+      const all = paths(raw.merge, ['merge']);
+      for (let n = 0; n < 1 + Math.floor(rnd() * 4); n++) {
+        const p = all[Math.floor(rnd() * all.length)];
+        let o = raw as Record<string, unknown>;
+        for (const k of p.slice(0, -1)) o = (o?.[k] ?? {}) as Record<string, unknown>;
+        if (o && typeof o === 'object') o[p[p.length - 1]] = junk[Math.floor(rnd() * junk.length)];
+      }
+      const g = mergeEngineMode.reconcile(cfg, { ...base, stats: { ...base.stats, playSeconds: src.stats.playSeconds } }, raw) as R.MergeGame;
+      expect(g.merge.board, `save ${i}`).toHaveLength(56);
+      expect(fixtureProblems(cfg, g, { afterPlay: true }), `save ${i}`).toEqual([]);
+      const later = mergeEngineMode.tick(cfg, g, 30, FIXTURE_NOW) as R.MergeGame;
+      expect(fixtureProblems(cfg, later, { afterPlay: true }), `save ${i} after 30 s`).toEqual([]);
+    }
+  }, 60_000);
+
   it('keeps a current save and clears the Basket undo chip (2.5)', () => {
     const { minute10 } = mergeFixtures(cfg);
     const saved = { ...minute10, merge: { ...minute10.merge, basketUndo: { cell: 40, good: { c: 0, k: 1 }, refund: 1, until: 999 } } };
@@ -127,14 +155,18 @@ describe('reconcile', () => {
   });
 });
 
-describe('tick (skeleton: the clocks only)', () => {
-  it('adds stats.playSeconds itself, cut to MAX_TICK, and splits exactly', () => {
+describe('tick, income, offline, close, entitle through the engine mode', () => {
+  it('adds stats.playSeconds itself, cut to MAX_TICK, runs the queue, and splits exactly (tick.split.test.ts has the property)', () => {
     const g = freshState(cfg);
     const t = (s: GameState, dt: number) => mergeEngineMode.tick(cfg, s, dt, FIXTURE_NOW);
     expect(t(g, 2.5).stats.playSeconds).toBe(2.5);
     expect(t(g, 99_999).stats.playSeconds).toBe(R.MAX_TICK);
     expect(t(g, -1)).toBe(g);
     expect(t(t(g, 1.25), 0.75)).toEqual(t(g, 2));
+    // The Grill drops every 4 s (Decision M3): by 8 s two drops have come (the board has room).
+    const ev: R.MergeEvent[] = [];
+    mergeEngineMode.tick(cfg, g, 8, FIXTURE_NOW, ev);
+    expect(ev.filter((e) => e.type === 'drop' || e.type === 'shelved')).toHaveLength(2);
   });
 
   it('income and activeIncome are finite and never negative', () => {
@@ -156,7 +188,6 @@ describe('tick (skeleton: the clocks only)', () => {
     expect(mergeEngineMode.prestige(cfg, g, FIXTURE_NOW)).toBe(g);
   });
 
-  it.todo('tick runs every event kind of 2.4 and tick(a + b) = tick(a) then tick(b) over random splits (MECHANICS, tick.split.test.ts)');
   it('Late Hours adds 4 h to the away cap at once (5.7, M13: it no longer skips ads)', () => {
     const g = freshState(cfg);
     expect(R.mergeParams(cfg, g).awayCap).toBe(4 * 3600);
@@ -164,16 +195,34 @@ describe('tick (skeleton: the clocks only)', () => {
     expect(R.mergeParams(cfg, owned).awayCap).toBe(8 * 3600);
     expect(owned.entitlements.skipRewarded).toBe(false);
   });
-  it.todo('income = the minder rate; activeIncome = the recent ticket rate + the minder rate (MECHANICS, 2.9)');
-  it.todo('reportAlone is true when shelves filled with no minder hired (MECHANICS, 2.9)');
+  it('entitle: Late Hours, Blue Silk Awnings and Quiet Evening change nothing in the state (the same object)', () => {
+    const g = mergeFixtures(cfg).minute10;
+    for (const id of [cfg.merge.products.lateHours, cfg.merge.products.awnings, cfg.merge.products.quietEvening, 'night_unknown']) expect(mergeEngineMode.entitle!(cfg, g, id)).toBe(g);
+  });
+
+  it('income = the minder rate; activeIncome = the recent ticket rate + the minder rate (2.9); reportAlone is the away rule', () => {
+    const g = mergeFixtures(cfg).minute10;
+    expect(mergeEngineMode.income(cfg, g, FIXTURE_NOW)).toBeCloseTo(R.mergeParams(cfg, g).minderRate, 12);
+    expect(mergeEngineMode.activeIncome(cfg, g, FIXTURE_NOW)).toBeCloseTo(R.recentRate(g) + R.mergeParams(cfg, g).minderRate, 12);
+    expect(mergeEngineMode.reportAlone!({ sales: [], shelved: [{ c: 0, goods: 3 }], seconds: 60, effective: 60, earnings: 0, waiting: [] })).toBe(true);
+    expect(mergeEngineMode.reportAlone!({ sales: [{ c: 0, goods: 1, coins: 12 }], shelved: [{ c: 0, goods: 3 }], seconds: 60, effective: 60, earnings: 12, waiting: [] })).toBe(false);
+  });
 });
 
 describe('params (2.2, 2.3: built by the skeleton so both rules packages test on real numbers)', () => {
   const g = freshState(cfg);
   const round = (x: number) => R.roundCost(cfg, x);
 
-  it("rounds costs as 2.2 says: below 1,000 half up, above to 3 significant digits", () => {
-    expect([43.5, 63.075, 999.4, 999.5, 1234.5, 172_800, 2_073_600].map(round)).toEqual([44, 63, 999, 1000, 1230, 173_000, 2_070_000]);
+  it('roundCoins (M19): below 1,000 half up to a whole coin, from 1,000 to 3 significant digits; roundCost is the same function', () => {
+    expect([43.5, 63.075, 999.4, 999.5, 1234.5, 1235, 172_800, 2_073_600, 0, -3, Number.NaN].map(round)).toEqual([44, 63, 999, 1000, 1230, 1240, 173_000, 2_070_000, 0, 0, 0]);
+    expect([43.5, 172_800].map((x) => R.roundCoins(cfg, x))).toEqual([44, 173_000]);
+    // Monotone: a price that rises never shows lower.
+    let prev = 0;
+    for (let x = 0; x < 5000; x += 0.37) {
+      const r = R.roundCoins(cfg, x);
+      expect(r).toBeGreaterThanOrEqual(prev);
+      prev = r;
+    }
   });
 
   it("prices the shutters, the gear, the stalls and the minders of 2.2", () => {
@@ -194,12 +243,17 @@ describe('params (2.2, 2.3: built by the skeleton so both rules packages test on
     // 2.2's "75.0K" is the sum of the unrounded costs (74,976); the paid, rounded steps add up to 75,074 (requests.md).
     expect(sum(1, 21)).toBe(75_074);
     expect(round(sum(1, 31))).toBe(3_080_000);
-    expect(p.chains[0]).toMatchObject({ base: 1, ripe: 0, maxPop: 1, stallBonus: 1, gearCost: 20, stallCost: 50, minderCost: 150, houseTier: 0, openCost: null, loose: 4 });
-    expect(p.chains[1].openCost).toBe(100);
+    expect(p.chains[0]).toMatchObject({ base: 1, ripe: 0, maxPop: 1, stallBonus: 1, gearCost: 20, stallCost: 50, minderCost: 150, houseTier: 0, openCost: null, loose: 6 });
+    // Stall opening is the table of Decision M23 × F_s: only the next chain has a price.
+    expect(p.chains[1].openCost).toBe(R.roundCoins(cfg, cfg.merge.costs.stallOpen[0]));
     expect(p.chains.slice(2).map((c) => c.openCost)).toEqual([null, null, null, null]);
-    // Stall opening by 2.2's rule (Noodles: 173K by the rounding rule; 2.2 prints 172,800, requests.md).
-    expect([1, 2, 3, 4, 5].map((i) => round(100 * 12 ** (i - 1)))).toEqual([100, 1200, 14_400, 173_000, 2_070_000]);
-    expect(p).toMatchObject({ O: 30, F: 26, beta: 0.15, familiar: 1, awayCap: 14_400, minderRate: 0 });
+    const later = { ...g, merge: { ...g.merge, feats: { ...g.merge.feats, seasonsClosed: 2 }, chains: g.merge.chains.map((ch, c) => (c <= 3 ? { ...ch, open: true } : ch)) } };
+    expect(R.mergeParams(cfg, later).chains[4].openCost).toBe(R.roundCoins(cfg, cfg.merge.costs.stallOpen[3] * 0.85 ** 2));
+    // Gear level 40 is the top (M28): no price at 40.
+    const top = { ...g, merge: { ...g.merge, chains: g.merge.chains.map((ch, c) => (c === 0 ? { ...ch, gear: 40 } : ch)) } };
+    expect(R.mergeParams(cfg, top).chains[0].gearCost).toBeNull();
+    expect(R.mergeParams(cfg, { ...top, merge: { ...top.merge, chains: top.merge.chains.map((ch, c) => (c === 0 ? { ...ch, gear: 39 } : ch)) } }).chains[0].gearCost).toBe(round(20 * 1.45 ** 38));
+    expect(p).toMatchObject({ O: 30, F: 24, beta: 0.15, familiar: 1, awayCap: 14_400, minderRate: 0 });
     expect(p.U).toBeCloseTo(12, 9); // value(grill, max(2, best − 1) = 2) = 5 × 2.4
   });
 
@@ -217,13 +271,15 @@ describe('params (2.2, 2.3: built by the skeleton so both rules packages test on
     expect(R.value(cfg, g, 0, 3)).toBeCloseTo(5 * 2.4 ** 2, 9);
     expect(R.value(cfg, g, 2, 1)).toBe(80);
     const two = { gold: false, lines: [{ c: 0, k: 2 }, { c: 1, k: 1 }] };
-    expect(R.ticketPrice(cfg, g, two)).toBeCloseTo((12 + 20) * 1.15, 9);
-    expect(R.ticketPrice(cfg, g, { ...two, gold: true })).toBeCloseTo((12 + 20) * 1.15 * 2, 9);
+    // Computed from exact values, then rounded once (M19): (12 + 20) × 1.15 = 36.8 shows and pays 37.
+    expect(R.ticketPrice(cfg, g, two)).toBe(37);
+    expect(R.ticketPrice(cfg, g, { ...two, gold: true })).toBe(R.roundCoins(cfg, (12 + 20) * 1.15 * 2));
+    expect(R.basketPrice(cfg, g, { c: 0, k: 3 })).toBe(R.roundCoins(cfg, 0.25 * 5 * 2.4 ** 2));
     const { minute10 } = mergeFixtures(cfg);
     const p = R.mergeParams(cfg, minute10);
     const hired = p.chains.filter((c) => c.houseTier > 0);
     expect(hired.length).toBeGreaterThan(0);
-    for (const c of hired) expect(c.minderRate).toBeCloseTo(c.values[c.houseTier - 1] / 15, 9);
+    for (const c of hired) expect(c.minderRate).toBeCloseTo(R.roundCoins(cfg, c.values[c.houseTier - 1]) / 15, 9);
     expect(p.minderRate).toBeCloseTo(hired.reduce((a, c) => a + c.minderRate, 0), 9);
     expect(R.looseCount(cfg, minute10.merge, 0)).toBe(p.chains[0].loose);
   });
@@ -323,6 +379,13 @@ describe('the merge schema (src/config/schema.merge.ts)', () => {
   });
 
   it('a range breach is a lint problem, never silently accepted', () => {
-    expect(lintMerge({ ...parsed, gear: { ...parsed.gear, interval: 3 } }).join('\n')).toMatch(/gear\.interval = 3 is outside its range 4 to 6/);
+    expect(lintMerge({ ...parsed, gear: { ...parsed.gear, step: 13 } }).join('\n')).toMatch(/gear\.step = 13 is outside its range 8 to 12/);
+    // The rules of section 11 that are fields but not knobs.
+    expect(lintMerge({ ...parsed, gear: { ...parsed.gear, interval: 5 } }).join('\n')).toMatch(/T is 4 s for every gear/);
+    expect(lintMerge({ ...parsed, costs: { ...parsed.costs, gearMaxLevel: 41 } }).join('\n')).toMatch(/gear level 40 is the top/);
+    expect(lintMerge({ ...parsed, seasons: { ...parsed.seasons, levelsPerStep: 8 } }).join('\n')).toMatch(/N = s/);
+    expect(lintMerge({ ...parsed, seasons: { ...parsed.seasons, openingGoods: 4 } }).join('\n')).toMatch(/6 Pepper Skewers/);
+    expect(lintMerge({ ...parsed, festival: [parsed.festival[0].slice(0, 3), ...parsed.festival.slice(1)] }).join('\n')).toMatch(/4 to 6 lines/);
+    expect(RANGES.some((r) => r.path === 'gear.interval')).toBe(false);
   });
 });

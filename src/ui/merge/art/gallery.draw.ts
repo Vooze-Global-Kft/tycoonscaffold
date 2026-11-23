@@ -32,7 +32,7 @@ import {
   drawMatchGlow,
   drawPurse,
   drawShutter,
-  drawStoneGate,
+  drawMoonGate,
   drawStreet,
   drawTargetOutline,
   drawTicket,
@@ -200,7 +200,7 @@ function board(): Section {
   cells.push({ label: 'CELL', w: 48, h: 48, zoom: 2, draw: (c) => drawCellTile(c, 48) });
   cells.push({ label: 'SHUTTER', w: 48, h: 48, zoom: 2, draw: (c) => drawShutter(c, 48) });
   cells.push({ label: 'NEXT SHUTTER', w: 48, h: 48, zoom: 2, draw: (c) => drawShutter(c, 48, { next: true }) });
-  cells.push({ label: 'STONE GATE', w: 48, h: 48, zoom: 2, draw: (c) => drawStoneGate(c, 48) });
+  cells.push({ label: 'MOON GATE (2 CELLS)', w: 48, h: 96, zoom: 1, draw: (c) => drawMoonGate(c, 48) });
   cells.push({ label: 'BRAZIER', w: 48, h: 48, zoom: 2, draw: (c) => drawBrazier(c, 48) });
   cells.push({ label: 'BASKET', w: 48, h: 48, zoom: 2, draw: (c) => drawBasket(c) });
   cells.push({ label: 'UNDO', w: 58, h: 24, zoom: 2, draw: (c) => drawUndoChip(c) });

@@ -59,7 +59,7 @@ export { createMerge, startSeason, withMergeFields, reconcileMerge } from './mer
 export { rowOf, colOf, cellAt, isGood, freeCells, roomFor, dropCell, placeGood, looseCount } from './merge/board';
 
 // --- 2.4 the tick and its event queue (MECHANICS) ---
-export { advanceMerge, nextMergeEvent, MAX_EVENTS_PER_TICK } from './merge/tick';
+export { advanceMerge, nextMergeEvent, nextMergeStop, MAX_EVENTS_PER_TICK } from './merge/tick';
 export { nextEvent, runEvent, dueEvents, paradeDue, paradeOut } from './merge/events';
 
 // --- 2.5 the drop (MECHANICS) ---

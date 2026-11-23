@@ -227,6 +227,29 @@ describe('measurements over a trace', () => {
     for (const r of rows) expect(typeof r.ok).toBe('boolean');
   });
 
+  it("M31: the season-1 Festival band depends on the bot's action time", () => {
+    expect(B.festivalBand(2)).toEqual([110, 190]);
+    expect(B.festivalBand(1.5)).toEqual([75, null]);
+    expect(B.festivalBand(2.5)).toEqual([null, 280]);
+    const rows = B.acrossSeeds(
+      [6600, 7200, 12000].map((s1, i) => ({ seed: i, useful: Array.from({ length: 10 }, () => 25), season1: s1 })),
+      2,
+    );
+    expect(rows.find((r) => r.name.includes('median seed, 2.0 s'))).toMatchObject({ ok: true, value: 120 });
+  });
+
+  it('M33: deadlock is an aim for every bot; gate 3 aims the hour-1 median at 8 to 45 s', () => {
+    const lazy = tr({ kind: 'lazy', t1: 100, samples: { t: [0], dt: [100], f: [3], n: [2], su: [0] } });
+    const rows = B.evaluate(cfg, { seed: 1, active: tr({ t1: 600 }), lazy, states: {} });
+    expect(rows.find((r) => r.name.startsWith('5 deadlock, the lazy bot'))).toMatchObject({ kind: 'aim', ok: false });
+    expect(rows.find((r) => r.name.startsWith('3 ticket fill time, hour 1: median'))?.aim).toBe('8 to 45');
+  });
+
+  it('a gate row carries its number and band for the tuner', () => {
+    const rows = B.evaluate(cfg, { seed: 1, active: tr({ t1: 600, tickets: [ticket({ filled: 8 })] }), states: {} });
+    expect(rows.find((r) => r.name.startsWith('1 first ticket'))).toMatchObject({ num: 8, lo: null, hi: 15, ok: true });
+  });
+
   it('the away marks of gate 9: minutes 30, 60, 120 and every 2 h after', () => {
     expect(B.awayMarks(12)).toEqual([1800, 3600, 7200, 14400, 21600, 28800, 36000, 43200]);
     expect(B.awayMarks(1)).toEqual([1800, 3600]);
@@ -271,6 +294,26 @@ describe("the bot's view of the board", () => {
     const pm = B.pathMerge(g.merge, v, [1, 1, 1, 1, 1, 1]);
     expect(pm).not.toBeNull();
     expect(B.lowestPair(v)).toEqual({ c: 1, k: 1 });
+  });
+
+  it("works toward the goal line's Festival good first (M31)", () => {
+    const g = mergeState(cfg, {
+      chains: [{ c: 0, best: 3 }, { c: 1 }],
+      goods: [
+        [10, 0, 1],
+        [11, 0, 1],
+        [13, 1, 1],
+        [14, 1, 1],
+      ],
+      counters: [[[1, 2]], null],
+    });
+    const v = B.boardView(g.merge);
+    const base = [1, 1, 1, 1, 1, 1];
+    // the ticket wants Tea 2: without a goal the Tea pair comes first
+    expect(B.pathMerge(g.merge, v, base)).toEqual({ c: 1, k: 1 });
+    const grillLine = g.merge.festival.lines.findIndex((l) => l.c === 0);
+    expect(grillLine).toBeGreaterThanOrEqual(0);
+    expect(B.pathMerge(g.merge, v, base, grillLine)).toEqual({ c: 0, k: 1 });
   });
 
   it('sells an unwanted tier 8 first (M22), else the lowest-value good no line wants', () => {

@@ -275,7 +275,8 @@ function repairMerge(cfg: MergeConfig, raw: unknown, clock: number, seed: number
     if (t && Array.isArray(t.lines) && t.lines.length >= 1 && t.lines.length <= 3) {
       const lines = (t.lines as unknown[]).map((l) => (isGoodRaw(l) ? { c: l.c, k: l.k, filled: (l as Raw).filled === true, ...((l as Raw).stretch === true ? { stretch: true } : {}) } : null));
       const scripted = t.scripted === true;
-      const ok = lines.every((l) => l && chains[l.c].open && (l.filled || (l.k <= Math.min(TIERS, chains[l.c].best + 1) && (scripted || l.k >= baseTier(cfg, chains[l.c].gear) + 1))));
+      // Bound (a) holds for the rest of a season (best never falls); (d1) is a draw-time bound that a later gear level may lift, so it is not re-checked here.
+      const ok = lines.every((l) => l && chains[l.c].open && (l.filled || l.k <= Math.min(TIERS, chains[l.c].best + 1)));
       const isGold = t.gold === true && !gold;
       if (ok && lines.some((l) => !l!.filled)) {
         const id = whole(t.id, 0);

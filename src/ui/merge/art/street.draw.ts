@@ -8,7 +8,7 @@
  * Pieces with a size argument take their top-left corner at the origin (street, ticket, banner,
  * board) unless they say "centred"; square props take the side `s` and are centred.
  */
-import type { SkCanvas } from '@shopify/react-native-skia';
+import { ClipOp, type SkCanvas } from '@shopify/react-native-skia';
 import { drawLetters } from './letters';
 import { drawLantern } from './lantern.draw';
 import { NIGHT, alpha, mix, shade } from './palette';
@@ -30,6 +30,7 @@ import {
   oval,
   poly,
   rrect,
+  scallops,
   seeded,
   shape,
   sparkle,
@@ -67,8 +68,11 @@ export function drawStreet(c: SkCanvas, w: number, h: number, o: { band?: number
     }
     x += rw;
   }
-  b.lineTo(w, band).close();
+  b.lineTo(x, band).close();
+  c.save();
+  c.clipRect({ x: 0, y: 0, width: w, height: h }, ClipOp.Intersect, true);
   c.drawPath(b.build(), fill(NIGHT.indigoDeep));
+  c.restore();
   // Lit windows.
   for (let i = 0; i < 9; i++) c.drawPath(rrect(rnd() * w, band - 4 - rnd() * band * 0.3, 2.2, 2.6, 0.6), fill(alpha(NIGHT.amber, 0.65)));
   // The lane: a warm wash where the counters stand, cobbles near the bottom.
@@ -136,7 +140,8 @@ function tornEdge(w: number, y: number, n: number): number[] {
 
 /** The paper ticket, w x h from the top left (64 x 96 on a 68 pt counter): blank, 3 row guides, a price box. Gold for the Parade. */
 export function drawTicket(c: SkCanvas, w: number, h: number, o: { gold?: boolean; rows?: number } = {}): void {
-  const paper = o.gold ? mix(NIGHT.brassLight, NIGHT.paperLight, 0.35) : NIGHT.paper;
+  // The Parade's ticket is brass foil on the same blue-grey rice paper (never a cream paper, 4.6).
+  const paper = o.gold ? mix(NIGHT.paper, NIGHT.brassLight, 0.12) : NIGHT.paper;
   const body = poly([0, 2, w, 2, ...tornEdge(w, h - 2.4, Math.round(w / 4))]);
   c.save();
   c.translate(1.2, 1.6);
@@ -167,8 +172,14 @@ export function drawTicket(c: SkCanvas, w: number, h: number, o: { gold?: boolea
   c.drawPath(rrect(p.x, p.y, p.w, p.h, 3), fill(o.gold ? alpha(NIGHT.brass, 0.35) : alpha(NIGHT.paperShade, 0.55)));
   c.drawPath(rrect(p.x, p.y, p.w, p.h, 3), stroke(o.gold ? NIGHT.brassDeep : NIGHT.brass, 1));
   if (o.gold) {
-    sparkle(c, w - 6, 9, 2.6, NIGHT.brassDeep);
-    sparkle(c, 6, h - 30, 2, NIGHT.brassDeep);
+    // Brass foil: an inner border and four studs.
+    c.drawPath(rrect(2.6, 5.4, w - 5.2, h - 11, 2), stroke(NIGHT.brass, 1.6));
+    c.drawPath(rrect(2.6, 5.4, w - 5.2, h - 11, 2), stroke(alpha(NIGHT.brassLight, 0.8), 0.6));
+    for (const [x, y] of [[5, 8], [w - 5, 8], [5, h - 9], [w - 5, h - 9]] as const) {
+      c.drawPath(circle(x, y, 1.8), fill(NIGHT.brassLight));
+      c.drawPath(circle(x, y, 1.8), stroke(NIGHT.brassDeep, 0.6));
+    }
+    sparkle(c, w - 9, 12, 2.6, NIGHT.brass);
   }
 }
 
@@ -238,7 +249,7 @@ export function drawTicketFold(c: SkCanvas, f: number, w = 64, h = 96): void {
     shape(c, rrect(-6, -hh / 2 - 3, 12, 4, 1.4), NIGHT.brass, 0.9);
     return;
   }
-  const r = Math.min(w, h) * 0.3;
+  const r = Math.min(w, h) * FOLD_R;
   if (k === 3) {
     // The pleated paper lantern, not yet lit.
     const hh = r * 1.15;
@@ -253,7 +264,33 @@ export function drawTicketFold(c: SkCanvas, f: number, w = 64, h = 96): void {
     shape(c, rrect(-r * 0.5, hh - 1.4, r, 3.4, 1.2), NIGHT.brass, 0.9);
     return;
   }
-  drawLantern(c, r, { look: 'lit', glow: k === 4 ? 0.5 : 1, tassel: true });
+  if (k === 4) {
+    drawLantern(c, r, { look: 'lit', glow: 0.55, tassel: true });
+    return;
+  }
+  // Frame 5: lifting off, smaller and higher, the tassel trailing in a curve, a flame under it:
+  // the hand-over to drawFlyingLantern.
+  at(c, 0, -r * 0.5, 0.78, 0, (q) => {
+    drawLantern(q, r, { look: 'lit', glow: 1, tassel: false });
+    const y = r * 1.15 + r * 0.3;
+    q.drawPath(curve([[0, y - 1], [r * 0.25, y + r * 0.5], [-r * 0.2, y + r * 0.9], [r * 0.12, y + r * 1.3]]), stroke(NIGHT.amberDeep, Math.max(0.6, r * 0.16)));
+    const f = builder().moveTo(-r * 0.22, y).quadTo(0, y + r * 0.6, r * 0.22, y).quadTo(0, y + r * 0.2, -r * 0.22, y).close().build();
+    q.drawPath(f, fill(NIGHT.flame));
+  });
+}
+
+/** The lantern of fold frames 3 to 5 is FOLD_R x the ticket's smaller side. */
+const FOLD_R = 0.3;
+
+/** The half extents (points) that hold fold frame `f` of a w x h ticket, glow included (the fx atlas boxes). */
+export function foldExtent(f: number, w = 64, h = 96): { hw: number; hh: number } {
+  const k = Math.max(0, Math.min(FOLD_FRAMES - 1, Math.round(f)));
+  const r = Math.min(w, h) * FOLD_R;
+  if (k === 0) return { hw: w / 2 + 2.5, hh: h / 2 + 3 };
+  if (k <= 2) return { hw: (w * (k === 1 ? 0.82 : 0.6)) / 2 + 2.5 * k + 1.5, hh: (h * (k === 1 ? 0.9 : 0.68)) / 2 + 4.5 };
+  if (k === 3) return { hw: r + 1.5, hh: r * 1.15 + 4.5 };
+  if (k === 4) return { hw: r * 3.1 + 0.5, hh: r * 3.1 + 0.5 };
+  return { hw: r * 3.1 * 0.78 + 0.5, hh: r * 3.1 * 0.78 + r * 0.5 + 0.5 };
 }
 
 /** The flying lantern (centred, body half width r): lit, with a small flame under it and no tassel. */
@@ -346,51 +383,107 @@ export function shutterTag(s: number): { x: number; y: number; w: number; h: num
 }
 
 /**
- * A shutter over a closed cell, side s, centred: rolled slats with a brass pull. `next`: the one
- * that can be opened now, lighter, with a paper tag (`shutterTag`) for its condition and price.
+ * A closed cell, side s, centred. Plain: a rolled indigo cloth blind hanging in soft folds, tied
+ * with a brass-tagged cord (cloth and paper, never a steel roller door). `next`: the one that can be
+ * opened now, a warm bamboo blind with a paper tag (`shutterTag`) for its condition and price.
  */
 export function drawShutter(c: SkCanvas, s: number, o: { next?: boolean } = {}): void {
   const r = s / 2 - 1.2;
   const body = rrect(-r, -r, r * 2, r * 2, s * 0.1);
-  const base = o.next ? NIGHT.stoneLight : mix(NIGHT.stoneDeep, NIGHT.tealDeep, 0.45);
-  c.drawPath(body, fill(base));
   c.save();
   clip(c, body);
-  const n = 7;
-  for (let i = 0; i < n; i++) {
-    const y = -r + (2 * r * i) / n;
-    c.drawPath(rrect(-r, y, r * 2, (2 * r) / n - 1, 0), fill(o.next ? NIGHT.paperShade : mix(NIGHT.stoneDeep, NIGHT.teal, 0.3)));
-    c.drawPath(line(-r, y + (2 * r) / n - 1, r, y + (2 * r) / n - 1), stroke(alpha(INK, 0.4), 0.7));
+  if (o.next) {
+    c.drawPath(body, fill(NIGHT.bamboo));
+    const n = 9;
+    for (let i = 0; i < n; i++) {
+      const y = -r + s * 0.12 + ((2 * r - s * 0.12) * i) / n;
+      c.drawPath(rrect(-r, y, r * 2, (2 * r - s * 0.12) / n - 0.9, 1), fill(i % 2 ? NIGHT.bamboo : shade(NIGHT.bamboo, 0.12)));
+      c.drawPath(line(-r, y - 0.5, r, y - 0.5), stroke(alpha(NIGHT.bambooDeep, 0.85), 0.8));
+    }
+    for (const x of [-r * 0.55, r * 0.55]) c.drawPath(line(x, -r, x, r), stroke(alpha(NIGHT.woodDeep, 0.7), 1.1));
+  } else {
+    c.drawPath(body, fill(NIGHT.indigoLift));
+    // Soft vertical folds of cloth.
+    for (let i = 0; i < 5; i++) {
+      const x = -r + ((2 * r) / 5) * (i + 0.5);
+      c.drawPath(rrect(x - s * 0.05, -r, s * 0.1, 2 * r, s * 0.05), fill(alpha(NIGHT.indigoMid, 0.75)));
+      c.drawPath(line(x + s * 0.1, -r + s * 0.12, x + s * 0.1, r), stroke(alpha(NIGHT.indigoDeep, 0.6), 0.9));
+    }
+    c.drawPath(scallops(-r, r, r - s * 0.06, 5, s * 0.03), stroke(alpha(NIGHT.brass, 0.5), 0.8));
   }
-  c.drawPath(rrect(-r, -r, r * 2, s * 0.13, 0), fill(o.next ? NIGHT.stone : mix(NIGHT.stoneDeep, NIGHT.tealDeep, 0.6)));
+  // The rolled top.
+  const roll = rrect(-r, -r, r * 2, s * 0.14, s * 0.07);
+  c.drawPath(roll, fill(o.next ? NIGHT.bambooDeep : NIGHT.indigoDeep));
+  c.drawPath(line(-r, -r + s * 0.07, r, -r + s * 0.07), stroke(alpha(NIGHT.white, 0.12), 0.8));
   c.restore();
   c.drawPath(body, stroke(INK, 1));
   if (o.next) {
     const t = shutterTag(s);
     c.drawPath(rrect(t.x, t.y, t.w, t.h, 3), fill(NIGHT.paperLight));
     c.drawPath(rrect(t.x, t.y, t.w, t.h, 3), stroke(NIGHT.brass, 1.2));
-    c.drawPath(circle(0, t.y - 2.4, 1.4), fill(NIGHT.brass));
+    c.drawPath(line(0, -r + s * 0.14, 0, t.y), stroke(NIGHT.woodDeep, 0.9));
+    c.drawPath(circle(0, t.y - 0.6, 1.4), fill(NIGHT.brass));
+  } else {
+    // The tie cord and its small brass tag.
+    c.drawPath(line(0, -r + s * 0.14, 0, r * 0.35), stroke(alpha(NIGHT.brassDeep, 0.9), 1));
+    shape(c, rrect(-s * 0.06, r * 0.35, s * 0.12, s * 0.15, s * 0.03), NIGHT.brass, 0.8);
+    c.drawPath(circle(0, r * 0.35 + s * 0.035, s * 0.016), fill(NIGHT.brassDeep));
   }
-  shape(c, rrect(-s * 0.1, r - s * 0.12, s * 0.2, s * 0.06, 1), NIGHT.brass, 0.8);
 }
 
-/** The moon-gate season block (2.11), side s, centred: a stone gate with a round opening. */
-export function drawStoneGate(c: SkCanvas, s: number): void {
+/** The warm stone of the moon gate. */
+const GATE_STONE = '#A48C72';
+const GATE_STONE_LIGHT = '#C6AE90';
+const GATE_STONE_DEEP = '#6E5A47';
+
+/**
+ * The moon gate of the moon-gate season (2.11): ONE round arch in warm stone that spans its two
+ * cells (column 3, rows 2 and 3), side s each: `s` wide and `2s` tall, centred on the line between
+ * the cells. Through the round opening: the dusk sky, the moon and a sprig of blossom.
+ */
+export function drawMoonGate(c: SkCanvas, s: number): void {
   const r = s / 2 - 1.2;
-  const body = rrect(-r, -r, r * 2, r * 2, s * 0.08);
-  lit(c, body, NIGHT.stoneDeep, NIGHT.stone, 0, -1.2, 1);
+  const h = s - 1.2;
+  const wall = rrect(-r, -h, r * 2, h * 2, s * 0.12);
+  c.drawPath(wall, fill(GATE_STONE));
   c.save();
-  clip(c, body);
-  for (let y = -r + s * 0.25; y < r; y += s * 0.25) c.drawPath(line(-r, y, r, y), stroke(alpha(INK, 0.35), 0.8));
+  clip(c, wall);
+  // Courses of stone, offset every other row.
+  const course = s * 0.2;
+  for (let i = 0, y = -h; y < h; i++, y += course) {
+    c.drawPath(line(-r, y, r, y), stroke(alpha(GATE_STONE_DEEP, 0.55), 0.9));
+    for (let x = -r + (i % 2 ? s * 0.25 : 0); x < r; x += s * 0.5) c.drawPath(line(x, y, x, y + course), stroke(alpha(GATE_STONE_DEEP, 0.45), 0.8));
+    c.drawPath(line(-r, y + 1, r, y + 1), stroke(alpha(GATE_STONE_LIGHT, 0.5), 0.7));
+  }
+  c.drawPath(rrect(-r, -h, r * 2, s * 0.16, 0), fill(GATE_STONE_DEEP));
+  c.drawPath(rrect(-r, h - s * 0.12, r * 2, s * 0.12, 0), fill(alpha(GATE_STONE_DEEP, 0.8)));
   c.restore();
-  c.drawPath(circle(0, s * 0.04, s * 0.3), fill(NIGHT.indigoDeep));
+  c.drawPath(wall, stroke(INK, 1));
+  // The round opening and the view through it.
+  const R = s * 0.4;
+  const hole = circle(0, 0, R);
+  c.drawPath(hole, linearPaint(0, -R, 0, R, [NIGHT.dusk, NIGHT.indigoLift, NIGHT.tealLift]));
   c.save();
-  clip(c, circle(0, s * 0.04, s * 0.3));
-  glow(c, s * 0.08, -s * 0.06, s * 0.2, NIGHT.moon, 0.6);
-  c.drawPath(circle(s * 0.08, -s * 0.06, s * 0.08), fill(NIGHT.moon));
+  clip(c, hole);
+  glow(c, R * 0.3, -R * 0.35, R * 0.7, NIGHT.moon, 0.5);
+  c.drawPath(circle(R * 0.3, -R * 0.35, R * 0.2), fill(NIGHT.moon));
+  c.drawPath(oval(0, R * 0.95, R * 1.1, R * 0.35), fill(NIGHT.tealDeep));
+  const br = curve([[-R, R * 0.1], [-R * 0.55, -R * 0.15], [-R * 0.2, -R * 0.5]]);
+  c.drawPath(br, stroke(NIGHT.woodDeep, 1.4));
+  for (const [x, y] of [[-R * 0.75, -R * 0.02], [-R * 0.45, -R * 0.3], [-R * 0.22, -R * 0.5]] as const) c.drawPath(circle(x, y, s * 0.035), fill('#F2C3D3'));
   c.restore();
-  c.drawPath(circle(0, s * 0.04, s * 0.3), stroke(NIGHT.stoneLight, 2));
-  c.drawPath(circle(0, s * 0.04, s * 0.3), stroke(INK, 0.8));
+  c.drawPath(circle(0, 0, R + 1.4), stroke(GATE_STONE_LIGHT, 2.6));
+  c.drawPath(circle(0, 0, R + 1.4), stroke(alpha(INK, 0.9), 0.8));
+  c.drawPath(circle(0, 0, R), stroke(INK, 1));
+}
+
+/** One half of the moon gate (one cell, side s, centred), for the items atlas: 'top' is row 2, 'bottom' row 3. */
+export function drawMoonGateHalf(c: SkCanvas, s: number, half: 'top' | 'bottom'): void {
+  c.save();
+  c.clipRect({ x: -s / 2, y: -s / 2, width: s, height: s }, ClipOp.Intersect, true);
+  c.translate(0, half === 'top' ? s / 2 : -s / 2);
+  drawMoonGate(c, s);
+  c.restore();
 }
 
 /** The hearth season block (2.11), side s, centred: an iron brazier with embers on a stone slab. */
@@ -525,16 +618,74 @@ export function drawTargetOutline(c: SkCanvas, w: number, h = w): void {
   }
 }
 
-/** The armed good (tap-tap): an amber ring with four ticks round the cell. */
+/**
+ * The armed good (tap-tap): a soft lantern-paper ring round the cell, warm glow inside, six small
+ * paper beads on it. No ticks and no cross (Orbit's pointer is a reticle, spec 3.1).
+ */
 export function drawArmedRing(c: SkCanvas, s: number, k = 1): void {
-  const r = s * 0.5 - 1.5;
-  glow(c, 0, 0, r * 1.2, NIGHT.amber, 0.35 * k);
-  c.drawPath(circle(0, 0, r), stroke(alpha(INK, 0.6), 4));
-  c.drawPath(circle(0, 0, r), stroke(NIGHT.amber, 2.4));
-  for (let i = 0; i < 4; i++) {
-    const a = (i * Math.PI) / 2 + Math.PI / 4;
-    c.drawPath(line(Math.cos(a) * (r - 3), Math.sin(a) * (r - 3), Math.cos(a) * (r + 3), Math.sin(a) * (r + 3)), stroke(NIGHT.flame, 2));
+  const r = s * 0.5 - 2.4;
+  glow(c, 0, 0, r * 1.12, NIGHT.amber, 0.4 * k);
+  c.drawPath(circle(0, 0, r), stroke(alpha(INK, 0.55 * k), 4.6));
+  c.drawPath(circle(0, 0, r), stroke(alpha(NIGHT.amberSoft, k), 2.8));
+  c.drawPath(circle(0, 0, r), stroke(alpha(NIGHT.flame, 0.8 * k), 0.9));
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+    c.drawPath(circle(Math.cos(a) * r, Math.sin(a) * r, 2.3), fill(alpha(NIGHT.paperLight, k)));
+    c.drawPath(circle(Math.cos(a) * r, Math.sin(a) * r, 2.3), stroke(alpha(NIGHT.amberDeep, k), 0.8));
   }
+}
+
+// ---------------------------------------------------------------------------
+// Moments (spec 3.1, 3.3): the merge puff, the Lucky flash, the tier-8 burst, a drop rising
+// ---------------------------------------------------------------------------
+
+export const EFFECTS = ['puff', 'flash', 'burst', 'rise'] as const;
+export type EffectKind = (typeof EFFECTS)[number];
+
+/**
+ * A moment's sprite, centred, within 26 pt of the origin (the play canvas scales and fades it):
+ * puff (a soft steam puff where two goods merge), flash (the Lucky merge's brighter spark burst),
+ * burst (a tier 8 made: small lanterns flung out on a warm ring), rise (the light a drop rises in
+ * from the gear rail, pointing up).
+ */
+export function drawEffect(c: SkCanvas, kind: EffectKind, k = 1): void {
+  switch (kind) {
+    case 'puff':
+      for (const [x, y, r] of [[-9, 4, 8], [8, 3, 9], [0, -5, 11], [-14, -6, 6], [14, -7, 6.4], [2, 9, 7]] as const) {
+        c.drawPath(circle(x, y, r), fill(alpha(NIGHT.paperLight, 0.5 * k)));
+        c.drawPath(circle(x - r * 0.25, y - r * 0.25, r * 0.6), fill(alpha(NIGHT.white, 0.45 * k)));
+      }
+      break;
+    case 'flash':
+      glow(c, 0, 0, 25, NIGHT.amber, 0.8 * k);
+      for (let i = 0; i < 8; i++) at(c, 0, 0, 1, i * 45 + 22.5, (q) => q.drawPath(builder().moveTo(-1.6, -6).lineTo(0, -22).lineTo(1.6, -6).close().build(), fill(alpha(NIGHT.flame, 0.9 * k))));
+      sparkle(c, 0, 0, 12, alpha(NIGHT.white, k));
+      c.drawPath(circle(0, 0, 3), fill(alpha(NIGHT.white, k)));
+      break;
+    case 'burst':
+      glow(c, 0, 0, 25.5, NIGHT.amber, 0.6 * k);
+      c.drawPath(circle(0, 0, 15), stroke(alpha(NIGHT.flame, 0.8 * k), 1.6));
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+        at(c, Math.cos(a) * 17, Math.sin(a) * 17, 1, 0, (q) => drawLantern(q, 3.4, { look: 'lit', glow: 0.6 * k, tassel: false }));
+      }
+      sparkle(c, 0, 0, 7, alpha(NIGHT.white, k));
+      break;
+    case 'rise': {
+      const beam = builder().moveTo(-7, 24).lineTo(7, 24).lineTo(2.4, -24).lineTo(-2.4, -24).close().build();
+      c.drawPath(beam, linearPaint(0, 24, 0, -24, [alpha(NIGHT.amber, 0.75 * k), alpha(NIGHT.amberSoft, 0.3 * k), alpha(NIGHT.amberSoft, 0)]));
+      for (const [x, y, r] of [[-3, 10, 2.4], [3, -2, 2], [-1, -13, 1.6]] as const) sparkle(c, x, y, r, alpha(NIGHT.flame, k));
+      break;
+    }
+  }
+}
+
+/** The NEW mark of a stretch line (2.7), centred, 22 x 10 pt: an amber paper tag with a spark; the word comes from strings. */
+export function drawNewTag(c: SkCanvas, w = 22, h = 10): void {
+  c.drawPath(rrect(-w / 2 + 0.6, -h / 2 + 0.8, w, h, h / 2), fill(alpha(INK, 0.5)));
+  c.drawPath(rrect(-w / 2, -h / 2, w, h, h / 2), fill(NIGHT.amber));
+  c.drawPath(rrect(-w / 2, -h / 2, w, h, h / 2), stroke(INK, 0.9));
+  sparkle(c, -w / 2 + h / 2, 0, h * 0.32, NIGHT.white);
 }
 
 void shade;

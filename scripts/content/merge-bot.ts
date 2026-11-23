@@ -3,14 +3,18 @@
  * The bots and every measurement are pure and live in the rules: src/engine/merge/bot.ts.
  *
  *   npx tsx scripts/content/merge-bot.ts --seed 12345 [--hours 12] [--bot active] [--act 1.5]
- *       [--sheet 2.5] [--seasons 10] [--set key=value ...] [--config file.json] [--json]
+ *       [--sheet 3] [--seasons 10] [--set key=value ...] [--config file.json] [--json]
  *       [--days 21] [--table] [--quiet]
  *
- * --bot     active | lazy | deliver | passive | checkin | idle | all. "all" (also --gates) plays
+ * --act     seconds per action (default 2.0, the reference of Decision M30; report 1.5 and 2.5 beside it);
+ *           --sheet the seconds after an action that opens a sheet (default act + 1)
+ * --bot     active | lazy | deliver | passive | checkin | idle | all | compare. "all" (also --gates) plays
  *           every bot one seed needs for every gate of 8.3 (the active run with its away probes,
  *           lazy, deliver-only from the active bot's minute 3, idle, check-in, passive, the four
  *           adversaries, the determinism check) and evaluates them. One bot alone evaluates what
- *           its own trace can show.
+ *           its own trace can show. "compare" prints (with --json) the incomes of one seed's paired
+ *           comparisons of M30 (4): the active bot, the same at act + 0.001 s (the noise band), the lazy
+ *           and deliver-only bots and three habits; build-night.py --paired runs it on 30 seeds.
  * --hours   play hours of the active run (default 3; with --seasons it stops at that many closes)
  * --days    days of the passive bot (default 21; 0 skips it), --no-adversaries, --no-others,
  *           --determinism <minutes> (default 10; 0 skips it): parts of "all" to leave out
@@ -158,14 +162,20 @@ export function main(argv = process.argv.slice(2)): number {
   }
   const f = parsed.flags;
   const seed = Number(f.seed ?? 12345);
-  const act = Number(f.act ?? 1.5);
+  const act = Number(f.act ?? 2);
   const sheet = f.sheet ? Number(f.sheet) : undefined;
-  const bot = (f.gates === 'true' ? 'all' : f.bot ?? 'active') as B.BotKind | 'all';
+  const bot = (f.gates === 'true' ? 'all' : f.bot ?? 'active') as B.BotKind | 'all' | 'compare';
   const hours = Number(f.hours ?? (bot === 'all' ? 12 : 3));
   const seasons = f.seasons ? Number(f.seasons) : undefined;
   const json = f.json === 'true';
   const started = Date.now();
   try {
+    if (bot === 'compare') {
+      const incomes = B.pairedIncomes(cfg, seed, act);
+      if (json) console.log(JSON.stringify({ seed, bot, act, incomes, ms: Date.now() - started }));
+      else console.log(`seed ${seed} at ${act} s an action:`, Object.entries(incomes).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(', '));
+      return 0;
+    }
     let all: B.AllRuns;
     if (bot === 'all') {
       all = B.runAll(cfg, {

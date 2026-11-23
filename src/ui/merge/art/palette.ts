@@ -52,10 +52,11 @@ export const NIGHT = {
   stoneDeep: '#525A6C',
   leaf: '#6FAE5A',
   leafDeep: '#3F7A3A',
-  // The blue silk of the cosmetic purchase (M13)
-  silk: '#3E6FB5',
-  silkLight: '#7EA6DD',
-  silkDeep: '#27497E',
+  // The blue silk of the cosmetic purchase (M13): a deep night-blue no chain's awning uses (the
+  // Noodles awning is a mid blue, #4C73A6); each stall keeps its own colour on the valance.
+  silk: '#2D3B7E',
+  silkLight: '#7F95D8',
+  silkDeep: '#1D2659',
   moon: '#E9EEF8',
 } as const;
 
@@ -86,7 +87,7 @@ export const COATS = 3;
 export const COAT: Record<Species, [string, string, string, string][]> = {
   fox: [
     ['#D9823B', '#A85C24', '#F4EDE4', '#3A2A28'],
-    ['#A7AEBE', '#7A8296', '#F2F4F8', '#3B3E52'],
+    ['#E2C08E', '#B39062', '#FBF5EA', '#4A382A'],
     ['#93593A', '#663B25', '#EADBC8', '#2E2120'],
   ],
   hedgehog: [

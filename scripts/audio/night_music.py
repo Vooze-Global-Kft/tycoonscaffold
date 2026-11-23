@@ -8,9 +8,12 @@
   music_main    "Lantern Dusk", the spring loop (and the one the shared player starts):
                 27 bars of 4/4 at 72 bpm, D dorian over a D-A reed drone. Nine chords of three bars
                 on a bowed pad; a sparse hand drum on a sixteenth grid that fills out in the middle
-                third; a distant crowd of eight talkers.
+                third; a distant crowd of eight talkers. Voiced for a phone speaker: the pad plays
+                every chord note under C4 an octave up and brighter, the D2 drone leans on its 2nd
+                to 4th harmonics (fundamental 0.6, harmonics 2 to 4 x1.45), and each drum stroke is
+                high-passed at 180 Hz and the drum sits lower in the mix.
   music_summer  "Firefly Lane", the summer loop: 27 bars at 72 bpm on a TRIPLET grid, G lydian over a
-                G-D drone. Other chords (and a bright raised fourth), a lilting 12/8 hand drum pattern,
+                G drone with the D a fifth above it kept quiet (0.3), so its centre is G, not D. Other chords (and a bright raised fourth), a lilting 12/8 hand drum pattern,
                 a reed that sings three short phrases over the drone, a nearer and busier crowd of
                 twelve, and fireflies (soft high shimmers). It differs from spring in key, mode,
                 chords, rhythm grid, drum pattern, a melody and the crowd, not by a filter.
@@ -161,10 +164,14 @@ SUMMER_SONG = (
 )
 
 
-def _drum_bar(loop, at, unit, pattern, rng, f_dum, f_tek, level):
+def _drum_bar(loop, at, unit, pattern, rng, f_dum, f_tek, level, hp=None):
+    """One bar of hand drum. hp: a gentle high-pass (Hz) on each stroke, so the open 'dum' does not
+    spend the mix's loudest moments under what a phone speaker plays."""
     for step, kind, v in pattern:
         f = f_dum if kind == 'dum' else f_tek
         y = RN.hand_drum(rng, f * rng.uniform(0.99, 1.01), v * level * rng.uniform(0.9, 1.05), kind)
+        if hp:
+            y = dsp.highpass(y, hp, 2)
         loop.add('drum', y, at + step * unit + rng.normal(0.0, 0.003))
 
 
@@ -212,7 +219,7 @@ def tune(name):
             full = 9 <= b < 18
             pat = SPRING_DRUM_FULL if full else SPRING_DRUM_SPARSE
             lvl = 0.75 if b == BARS - 1 else 1.0
-            _drum_bar(loop, b * bar, unit, pat, rng, 215.0, 300.0, lvl)
+            _drum_bar(loop, b * bar, unit, pat, rng, 215.0, 300.0, lvl, hp=180.0)
 
     # the summer reed song
     if summer:
@@ -237,7 +244,7 @@ def tune(name):
         'drone': dict(gain=0.42, pan=0.0, send=0.12),
         'pad_l': dict(gain=0.5, pan=-0.6, send=0.3),
         'pad_r': dict(gain=0.5, pan=0.6, send=0.3),
-        'drum': dict(gain=0.9 if summer else 0.8, pan=0.15, send=0.22),
+        'drum': dict(gain=0.9 if summer else 0.62, pan=0.15, send=0.22),
         'crowd_l': dict(gain=0.13 if summer else 0.09, pan=-0.75, send=0.4),
         'crowd_r': dict(gain=0.13 if summer else 0.09, pan=0.75, send=0.4),
     }

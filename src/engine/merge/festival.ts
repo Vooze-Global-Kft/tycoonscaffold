@@ -13,7 +13,7 @@
  * scripts/content/build-night.py; a season past the last row uses the last row.
  */
 import { commitCash } from './actions';
-import { mergeParams, roundCost } from './params';
+import { mergeParams, roundCoins } from './params';
 import type { Good, MergeConfig, MergeEvent, MergeGame } from './types';
 
 /** The Festival's goods of a 0-based season, in table order (M25: season 1 is row 0; past the last row, the last row). ORDERS. */
@@ -29,7 +29,7 @@ export function festivalFor(cfg: MergeConfig, season: number): Good[] {
  */
 export function festivalPurse(cfg: MergeConfig, g: MergeGame): number {
   const P = mergeParams(cfg, g);
-  return roundCost(cfg, cfg.merge.festivalPace * P.U * P.mods.festivalPurseMult);
+  return roundCoins(cfg, cfg.merge.festivalPace * P.U * P.mods.festivalPurseMult);
 }
 
 /**

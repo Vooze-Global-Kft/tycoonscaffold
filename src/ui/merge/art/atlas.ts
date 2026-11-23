@@ -3,32 +3,44 @@
  * an image under 2,048 px a side, with a table of named rectangles and anchors, for one Skia `Atlas`
  * draw per atlas per frame. Never free an atlas image while a canvas may still draw it.
  *
- *   items    64 sprites in an 8 x 8 grid of 48 pt squares (144 px at 3 px a point = 1,152 px):
- *            the 48 goods (with their tier pip), 6 gear icons, the cell tile, the shutter and the
- *            next shutter, the two season blocks, the Basket, the Lucky Spark, the gift bag (3, 4).
- *   animals  25 busts in a 5 x 5 grid of 160 px (800 px): 18 customers, 6 minders, the dragon.
+ *   items    64 sprites in an 8 x 8 grid of 48 pt squares (144 px at 3 px a point, plus a 2 px
+ *            transparent border each: 148 px cells, 1,184 px square): the 48 goods (with their tier
+ *            pip), 6 gear icons, the cell tile, the shutter and the next shutter, the moon gate's top
+ *            and bottom halves, the brazier, the Basket, the Lucky Spark, the gift bag (3, 4).
+ *   animals  25 busts in a 5 x 5 grid of 160 px (+ border: 164 px cells, 820 px): 18 customers,
+ *            6 minders, the dragon.
  *   stalls   6 chains x (3 awnings, 3 silk awnings, closed) at 288 x 192 px (60 x 40 pt at 4.8 px
- *            a point): 1,728 x 1,344 px. The spec's 1,728 x 576 is the first three rows; the silk
- *            rows (M13) and the closed row are added in the same image.
- *   fx       the fourth atlas, shelf-packed: coin, flying lantern, the six fold frames, firefly and
- *            trail piece, tier pips 1 to 8, season particles, the waiting pip, till levels, match
- *            glow, armed ring and target outline at 48 pt, the Festival lantern lit and unlit.
+ *            a point; + border: 292 x 196): 1,752 x 1,372 px. The spec's 1,728 x 576 is the first
+ *            three rows; the silk rows (M13) and the closed row are added in the same image.
+ *   fx       the fourth atlas, shelf-packed: coin, flying lantern, the six fold frames, firefly (and
+ *            3 wing frames) and trail piece, tier pips 1 to 8, season particles, the waiting pip,
+ *            till levels, match glow, armed ring and target outline at 48 pt, the Festival lantern
+ *            lit and unlit, the loading wire's lantern lit and unlit, the FILLED stamp (no word),
+ *            the merge puff, Lucky flash, tier-8 burst and drop rise, the NEW tag, and each minder's
+ *            head at the stall front's size.
  *
- * Usage (the play canvas):
- *   const items = bakeAtlas('items', PixelRatio.get());      // once; keep it while mounted
- *   const s = items.sprites[goodSprite(c, k)];
+ * Every sprite's rect includes its transparent border; nothing is drawn past it (art.test.ts
+ * checks each rect's edge pixels), so linear sampling at any scale never picks up a neighbour.
+ *
+ * Usage (the play canvas; see README "Per frame"):
+ *   const items = mergeAtlas('items', PixelRatio.get());     // cached for the app's life: never bakeAtlas
+ *   const s = items.sprites[goodSprite(c, k)];              // goodSprite & co. are worklets
  *   // Skia <Atlas image={items.image} sprites={[s.rect]} transforms={[Skia.RSXform(...spriteXform(s, items.density, x, y, 0, cell / 48))]} />
  * A sprite's anchor (ax, ay) is its design origin (the centre of a good, a bust, a stall front).
+ * Draw with linear sampling (the <Atlas> default); the stalls are baked at 4.8 px a point so a
+ * 52 to 60 pt front on a 3x phone is a 0.54 to 0.63 downscale: pass PixelRatio.get() as density
+ * to bake them at the device's own density (atlasSize caps it) and draw near 1:1.
  *
  * Pure Skia (no React): runs in the app and in Node (scripts/art/merge-sheets.ts).
  */
 import { ClipOp, Skia, type SkCanvas, type SkImage, type SkRect } from '@shopify/react-native-skia';
-import { BEAST_BOX, MINDERS, drawCustomer, drawDragon, drawFirefly, drawMinder, drawTrailPiece } from './animals.draw';
+import { BEAST_BOX, FIREFLY_WINGS, MINDERS, drawCustomer, drawDragon, drawFirefly, drawMinder, drawMinderHead, drawTrailPiece } from './animals.draw';
+import { drawLantern } from './lantern.draw';
 import { drawGear, drawTill, drawWaitingPip } from './gear.draw';
 import { GOOD_BOX, drawGood, drawTierPip, tierPipWidth } from './goods.draw';
 import { CHAIN_IDS, COATS, CUSTOMER_SPECIES } from './palette';
 import { PARTICLES, drawParticle } from './spokes.draw';
-import { STALL_H, STALL_W, drawStallFront, type Awning } from './stalls.draw';
+import { STALL_H, STALL_MINDER, STALL_W, drawStallFront, type Awning } from './stalls.draw';
 import {
   FOLD_FRAMES,
   drawArmedRing,
@@ -42,9 +54,14 @@ import {
   drawLuckySpark,
   drawMatchGlow,
   drawShutter,
-  drawStoneGate,
+  drawMoonGateHalf,
+  drawFilledStamp,
+  drawEffect,
+  EFFECTS,
+  drawNewTag,
   drawTargetOutline,
   drawTicketFold,
+  foldExtent,
 } from './street.draw';
 
 export type AtlasKind = 'items' | 'animals' | 'stalls' | 'fx';
@@ -86,25 +103,35 @@ interface Def {
 
 /** The items atlas id of a good: chain index 0..5, tier 1..8. */
 export function goodSprite(c: number, k: number): string {
+  'worklet';
   return `good-${CHAIN_IDS[c]}-${k}`;
 }
 export function gearSprite(c: number): string {
+  'worklet';
   return `gear-${CHAIN_IDS[c]}`;
 }
 /** The animals atlas id of a customer (species from `merge.tickets.customers`, coat 0..2). */
 export function customerSprite(species: string, coat: number): string {
+  'worklet';
   return `customer-${species}-${coat}`;
 }
 export function minderSprite(c: number): string {
+  'worklet';
   return `minder-${CHAIN_IDS[c]}`;
+}
+/** The fx atlas id of a minder's head at the stall front's size (STALL_MINDER.size pt): the stall draws this, never the 160 px bust scaled down. */
+export function minderHeadSprite(c: number): string {
+  'worklet';
+  return `minder-head-${CHAIN_IDS[c]}`;
 }
 /** The stalls atlas id of a front: chain index, awning 0..2 (`awningFor(level)`), silk, closed. */
 export function stallSprite(c: number, awning: Awning, silk = false, closed = false): string {
+  'worklet';
   return closed ? `stall-${CHAIN_IDS[c]}-closed` : `stall-${CHAIN_IDS[c]}-${awning}${silk ? '-silk' : ''}`;
 }
 
 /** The ids of the items atlas besides the goods and gear. */
-export const ITEM_PROPS = ['cell', 'shutter', 'shutter-next', 'block-gate', 'block-brazier', 'basket', 'spark', 'giftbag-3', 'giftbag-4'] as const;
+export const ITEM_PROPS = ['cell', 'shutter', 'shutter-next', 'block-gate-top', 'block-gate-bottom', 'block-brazier', 'basket', 'spark', 'giftbag-3', 'giftbag-4'] as const;
 
 // ---------------------------------------------------------------------------
 // Definitions
@@ -120,7 +147,8 @@ export function atlasDefs(kind: AtlasKind): Def[] {
     d.push({ name: 'cell', hw: G, hh: G, draw: (q) => drawCellTile(q, s) });
     d.push({ name: 'shutter', hw: G, hh: G, draw: (q) => drawShutter(q, s) });
     d.push({ name: 'shutter-next', hw: G, hh: G, draw: (q) => drawShutter(q, s, { next: true }) });
-    d.push({ name: 'block-gate', hw: G, hh: G, draw: (q) => drawStoneGate(q, s) });
+    d.push({ name: 'block-gate-top', hw: G, hh: G, draw: (q) => drawMoonGateHalf(q, s, 'top') });
+    d.push({ name: 'block-gate-bottom', hw: G, hh: G, draw: (q) => drawMoonGateHalf(q, s, 'bottom') });
     d.push({ name: 'block-brazier', hw: G, hh: G, draw: (q) => drawBrazier(q, s) });
     d.push({ name: 'basket', hw: G, hh: G, draw: (q) => drawBasket(q, s) });
     d.push({ name: 'spark', hw: G, hh: G, draw: (q) => drawLuckySpark(q, 14) });
@@ -138,19 +166,29 @@ export function atlasDefs(kind: AtlasKind): Def[] {
     for (let c = 0; c < CHAIN_IDS.length; c++) d.push({ name: stallSprite(c, 0, false, true), hw, hh, draw: (q) => drawStallFront(q, c, { closed: true }) });
   } else {
     d.push({ name: 'coin', hw: 7.5, hh: 7.5, draw: (q) => drawCoin(q, 6) });
-    d.push({ name: 'lantern-fly', hw: 22, hh: 26, draw: (q) => drawFlyingLantern(q, 7) });
-    for (let f = 0; f < FOLD_FRAMES; f++) d.push({ name: `fold-${f}`, hw: 35, hh: 50, draw: (q) => drawTicketFold(q, f, 64, 96) });
-    d.push({ name: 'firefly', hw: 17, hh: 17, draw: (q) => drawFirefly(q) });
+    d.push({ name: 'lantern-fly', hw: 22.5, hh: 22.5, draw: (q) => drawFlyingLantern(q, 7) });
+    for (let f = 0; f < FOLD_FRAMES; f++) {
+      const e = foldExtent(f);
+      d.push({ name: `fold-${f}`, hw: e.hw, hh: e.hh, draw: (q) => drawTicketFold(q, f, 64, 96) });
+    }
+    d.push({ name: 'firefly', hw: 19, hh: 19, draw: (q) => drawFirefly(q) });
+    for (let w = 0; w < FIREFLY_WINGS; w++) d.push({ name: `firefly-${w}`, hw: 19, hh: 19, draw: (q) => drawFirefly(q, 1, w / (FIREFLY_WINGS - 1)) });
     d.push({ name: 'trail', hw: 6, hh: 6, draw: (q) => drawTrailPiece(q) });
-    for (let k = 1; k <= 8; k++) d.push({ name: `pip-${k}`, hw: tierPipWidth(k) / 2 + 0.5, hh: 3.2, draw: (q) => drawTierPip(q, k) });
+    for (let k = 1; k <= 8; k++) d.push({ name: `pip-${k}`, hw: tierPipWidth(k) / 2 + 0.5, hh: 3.8, draw: (q) => drawTierPip(q, k) });
     for (const p of PARTICLES) d.push({ name: `particle-${p}`, hw: 6, hh: 6, draw: (q) => drawParticle(q, p) });
     d.push({ name: 'waiting', hw: 6, hh: 6, draw: (q) => drawWaitingPip(q) });
-    for (let k = 0; k < 5; k++) d.push({ name: `till-${k}`, hw: 7.5, hh: 9.5, draw: (q) => drawTill(q, k) });
-    d.push({ name: 'match', hw: G, hh: G, draw: (q) => drawMatchGlow(q, G * 2 - 2) });
-    d.push({ name: 'armed', hw: G, hh: G, draw: (q) => drawArmedRing(q, G * 2 - 2) });
+    for (let k = 0; k < 5; k++) d.push({ name: `till-${k}`, hw: 8, hh: 11, draw: (q) => drawTill(q, k) });
+    d.push({ name: 'match', hw: 30, hh: 30, draw: (q) => drawMatchGlow(q, G * 2 - 2) });
+    d.push({ name: 'armed', hw: 28, hh: 28, draw: (q) => drawArmedRing(q, G * 2 - 2) });
     d.push({ name: 'target', hw: G, hh: G, draw: (q) => drawTargetOutline(q, G * 2 - 2) });
-    d.push({ name: 'festival-lit', hw: 12, hh: 14, draw: (q) => drawFestivalLantern(q, true) });
-    d.push({ name: 'festival-unlit', hw: 12, hh: 14, draw: (q) => drawFestivalLantern(q, false) });
+    d.push({ name: 'festival-lit', hw: 23, hh: 23, draw: (q) => drawFestivalLantern(q, true) });
+    d.push({ name: 'festival-unlit', hw: 23, hh: 23, draw: (q) => drawFestivalLantern(q, false) });
+    d.push({ name: 'wire-lit', hw: 38, hh: 38, draw: (q) => drawLantern(q, 12, { look: 'lit', glow: 1 }) });
+    d.push({ name: 'wire-unlit', hw: 13, hh: 18, draw: (q) => drawLantern(q, 12, { look: 'unlit' }) });
+    d.push({ name: 'stamp', hw: 22, hh: 22, draw: (q) => drawFilledStamp(q, 18) });
+    for (const e of EFFECTS) d.push({ name: `fx-${e}`, hw: 26, hh: 26, draw: (q) => drawEffect(q, e) });
+    d.push({ name: 'new-tag', hw: 12, hh: 6, draw: (q) => drawNewTag(q) });
+    for (const m of MINDERS) d.push({ name: minderHeadSprite(m.chain), hw: STALL_MINDER.size / 2, hh: STALL_MINDER.size / 2, draw: (q) => drawMinderHead(q, m.chain, STALL_MINDER.size) });
   }
   return d;
 }
@@ -170,14 +208,15 @@ interface Placed {
   h: number;
 }
 
+/** Transparent pixels round every sprite (both grid and shelf atlases): neighbours never bleed in under linear sampling. */
 const PAD = 2;
 
 function layout(kind: AtlasKind, density: number): { placed: Placed[]; width: number; height: number } {
   const defs = atlasDefs(kind);
   const grid = GRID[kind];
   if (grid) {
-    const cw = Math.round(grid.w * density);
-    const ch = Math.round(grid.h * density);
+    const cw = Math.round(grid.w * density) + PAD * 2;
+    const ch = Math.round(grid.h * density) + PAD * 2;
     const placed = defs.map((d, i) => ({ d, x: (i % grid.cols) * cw, y: Math.floor(i / grid.cols) * ch, w: cw, h: ch }));
     return { placed, width: grid.cols * cw, height: Math.ceil(defs.length / grid.cols) * ch };
   }
@@ -219,7 +258,7 @@ export function atlasSize(kind: AtlasKind, density: number = SPEC_DENSITY[kind])
   return { density: d, width: l.width, height: l.height };
 }
 
-/** Bakes one atlas (null if no surface could be made). Call once and keep the result while any canvas may draw it. */
+/** Bakes one atlas (null if no surface could be made). Consumers call `mergeAtlas`, which caches; this bakes anew every call (sheets, tests). */
 export function bakeAtlas(kind: AtlasKind, density: number = SPEC_DENSITY[kind]): MergeAtlas | null {
   const { density: dd } = atlasSize(kind, density);
   const { placed, width, height } = layout(kind, dd);
@@ -241,7 +280,26 @@ export function bakeAtlas(kind: AtlasKind, density: number = SPEC_DENSITY[kind])
   }
   surface.flush();
   const image = surface.makeImageSnapshot();
+  surface.dispose();
   return { kind, image, density: dd, sprites, width, height };
+}
+
+const baked = new Map<string, MergeAtlas>();
+
+/**
+ * THE way a consumer gets an atlas: baked once per (kind, density) for the life of the app and
+ * never freed (a canvas may draw it at any moment), so the play canvas, the loading screen, the
+ * spokes and the firefly share one copy and a remount bakes nothing. Call it outside render
+ * (useMemo or module scope); null only if no surface could be made (nothing is cached then).
+ */
+export function mergeAtlas(kind: AtlasKind, density: number = SPEC_DENSITY[kind]): MergeAtlas | null {
+  const d = atlasSize(kind, density).density;
+  const key = `${kind}@${d}`;
+  const hit = baked.get(key);
+  if (hit) return hit;
+  const a = bakeAtlas(kind, d);
+  if (a) baked.set(key, a);
+  return a;
 }
 
 /** The sprite ids of an atlas, in its order (tests and the README). */
