@@ -46,7 +46,9 @@ export const OfficeIdSchema = z.enum(OFFICE_IDS);
 export const ARCHETYPE_IDS = ['project', 'swap', 'fee', 'treat', 'committee', 'vanity', 'basket', 'favour'] as const;
 export const ArchetypeIdSchema = z.enum(ARCHETYPE_IDS);
 /** The eight joke shapes of 7.4 (tags; the lint keeps each under 20 % of a deck). */
-export const SHAPE_IDS = ['undercut', 'escalation', 'literalism', 'form-misapplied', 'statistic', 'slogan', 'photo-opportunity', 'callback'] as const;
+export const SHAPE_IDS = ['undercut', 'escalation', 'literalism', 'form-misapplied', 'statistic', 'slogan', 'photo-op', 'callback'] as const;
+/** Who the joke is on (the authoring format's butt tags; never a club, never a group of real people). */
+export const BUTT_IDS = ['self', 'office', 'staff', 'lobbyist', 'committee', 'visitor', 'rival', 'thing'] as const;
 /** The closed subject list of 7.8. */
 export const SUBJECT_IDS = ['ribbons', 'signage', 'statues', 'ducks', 'geese', 'picnic-weather', 'committees', 'vegetable-shows', 'clocks', 'potholes', 'hats', 'fountains', 'bandstands', 'gardens', 'buses', 'kites', 'hedges', 'harbours', 'inventions', 'ceremonies', 'portraits', 'paperwork', 'vanity'] as const;
 const OfficeOrAny = z.enum(['mayor', 'governor', 'president', 'any']);
@@ -159,7 +161,7 @@ const MinistryNumbers = z.object({
 });
 
 /** Grand Projects (2.2): project j continues the president's ladder as ministry 7 + j (no club). */
-export const GrandProjectSchema = z.object({ id, name: text(32), atTerm: int.positive() });
+export const GrandProjectSchema = z.object({ id, name: text(32), atTerm: int.positive(), /** Its line (writer 5; empty until written). */ text: z.string().default('') });
 
 /** One row of the archetype table of 2.2 (each base Δ tune ±1; shares tune). */
 export const ArchetypeSchema = z.object({
@@ -208,7 +210,7 @@ export const MinisterSchema = z.object({
 });
 
 /** A twist (2.14): one factor on one parameter, told on the result sheet. */
-export const TwistSchema = z.object({ id, name: text(28), factor: FactorSchema });
+export const TwistSchema = z.object({ id, name: text(28), factor: FactorSchema, /** Its result-sheet line (writer 5; empty until written). */ text: z.string().default('') });
 
 /** Every k-combination of 0..n−1 in lexicographic order (the default fixed orders of pairs and triples). */
 export function combinations(n: number, k: number): number[][] {
@@ -236,108 +238,133 @@ const TWISTS_DEFAULT = [
 ];
 
 // ----------------------------------------------------------------------------- the runtime deck (D7)
+//
+// Names follow the content desk's authoring format (scripts/content/office/format.ts, D7: whoever
+// finishes second keeps the other's names): the section names (papers, scripted, chains, notes,
+// applications, grievances, frontPages, apologies, runUp, rallies, frames, lists, night, returning,
+// away, monuments, captions), `club` for the petitioner (the cell a paper fills), `other`, `setsUp`,
+// `afterSign` / `afterRefuse`, `frame`, `phrases`, the tag names and values. What differs is what the
+// runtime needs resolved: a `visitor` here is the person as printed (face, name, role, club), where
+// the authoring file holds a cast id of names.json; a scripted paper carries its effects (the rules'
+// of 3.1 and 7.5, which build-office.py writes; a writer never types them). Rivals, places, Grand
+// Project and twist lines go into the tables above (offices[o].rivals, districts, grandProjects, twists).
 
+/** Deck ids: the authoring format's (lower-case words joined by hyphens; a follow-up is `<chain>.sign`). */
+const deckId = z.string().regex(/^[a-z0-9]+([._-][a-z0-9]+)*$/);
 /** Who lays the paper on the desk (2.7): a face of the art kit, a name ≤ 24, a role ≤ 28, a club or none. */
 export const VisitorSchema = z.object({ face: z.string(), name: text(24), role: text(28), club: ClubIdSchema.nullable() });
-/** Tags every hand-written paper carries (7.4, 7.8). */
-const Tags = { subject: z.enum(SUBJECT_IDS), butt: z.string().min(1), shape: z.enum(SHAPE_IDS) };
+/** Tags every hand-written paper carries (7.4, 7.8; the lint checks the values). */
+const Tags = { subject: z.enum(SUBJECT_IDS), butt: z.enum(BUTT_IDS), shape: z.enum(SHAPE_IDS) };
 
-/** A comic paper (2.7, 7.7): the writer picks the visitor, the archetype and the other side; numbers come from the archetype. */
+/** A comic paper (2.7, 7.7): the writer picks the visitor, the club, the archetype and the other side; numbers come from the archetype. */
 export const ComicPaperSchema = z.object({
-  id,
+  id: deckId,
   office: OfficeOrAny,
   /** No office word: lower offices' portable texts are drawn by higher offices too (2.7). */
   portable: z.boolean().default(false),
   visitor: VisitorSchema,
-  text: text(90),
+  /** A co-signer beside the visitor ("with Ambrose Minute"). */
+  cosigner: VisitorSchema.optional(),
+  /** The petitioner club: the visitor's side, and the (club, archetype) cell the paper fills (a basket's too). */
+  club: ClubIdSchema,
+  /** The other side's club (7.2): required for project, swap, fee, treat, committee. */
+  other: ClubIdSchema.nullable().default(null),
   archetype: ArchetypeIdSchema.exclude(['favour']),
-  /** The other side's club (7.2), or null (vanity, basket). */
-  other: ClubIdSchema.nullable(),
+  text: text(90),
   ...Tags,
-  /** This paper sets up the chain of this id (7.6). */
-  chain: id.optional(),
+  /** The chain (`chains[].id`) this paper sets up (7.6). */
+  setsUp: deckId.optional(),
 });
 
 /** One branch of a chain (7.6): the follow-up paper and the two clippings that end it. */
 export const FollowUpPaperSchema = z.object({
-  /** Delay in decisions ever, drawn in [low, high] (site followDelay). */
-  delay: z.tuple([int.positive(), int.positive()]),
   visitor: VisitorSchema,
-  text: text(90),
+  cosigner: VisitorSchema.optional(),
+  /** The petitioner club; for the favour, the club that pays (7.6: "a club −3"). */
+  club: ClubIdSchema,
+  other: ClubIdSchema.nullable().default(null),
   archetype: ArchetypeIdSchema,
-  other: ClubIdSchema.nullable(),
+  text: text(90),
+  ...Tags,
+  /** Delay in decided papers, drawn in [from, to] at the set-up's draw (site followDelay). */
+  delay: z.tuple([int.positive(), int.positive()]),
   /** The clipping each choice ends the chain in (a headline, 5.9). */
-  clippings: z.object({ sign: text(80), refuse: text(80) }),
+  clippings: z.object({ sign: text(90), refuse: text(90) }),
 });
 /**
- * A chain (7.6): a set-up paper and one follow-up per branch; a branch without one prints no ↩ (the
- * scripted papers 1 and 2 of 3.1 come back on one side only). Every comic chain of 7.7 has both.
+ * A chain (7.6): set up by the paper whose `setsUp` names it; one follow-up per branch. Comic chains
+ * have both; a scripted paper's chain may have one (3.1: paper 1 comes back after a sign, paper 2's
+ * "another copy" after a study), so the branches are optional here.
  */
 export const ChainSchema = z
-  .object({ id, setup: id, sign: FollowUpPaperSchema.optional(), refuse: FollowUpPaperSchema.optional() })
-  .refine((c) => c.sign || c.refuse, 'a chain needs at least one follow-up');
+  .object({ id: deckId, office: OfficeOrAny.default('any'), title: z.string().default(''), afterSign: FollowUpPaperSchema.optional(), afterRefuse: FollowUpPaperSchema.optional() })
+  .refine((c) => c.afterSign || c.afterRefuse, 'a chain needs at least one follow-up');
 
-/** A Clerk's note on a form (7.7: on half the forms). */
-export const FormNoteSchema = z.object({ id, form: z.enum(['requisition', 'ribbon', 'application', 'slip']), text: text(60) });
+/** A Clerk's note on a form (7.5 paper 8; 7.7: on half the forms). */
+export const FormNoteSchema = z.object({ id: deckId, form: z.enum(['requisition', 'ribbon', 'any']), ministry: z.string().optional(), office: OfficeOrAny.default('any'), text: text(90) });
 /** A boycott's grievance and picket slogan (2.8: 14, 2 per club). */
-export const GrievanceSchema = z.object({ id, club: ClubIdSchema, visitor: VisitorSchema, text: text(90), signLabel: text(28), refuseLabel: text(28), picket: text(24) });
-/** A scandal's front page (2.8; 20) and an apology (3). */
-export const FrontPageSchema = z.object({ id, office: OfficeOrAny, headline: text(70), sub: text(60) });
-export const ApologySchema = z.object({ id, text: text(90) });
-/** A minister's application and the return after a refusal (2.9; 9 and 9). */
-export const ApplicationSchema = z.object({ minister: id, visitor: VisitorSchema, text: text(90), returnText: text(90) });
-/** A campaign paper (2.10; 10 / 16 / 24) and a rally (12): a public appearance, never a vote. */
-export const CampaignPaperSchema = z.object({ id, office: OfficeIdSchema, visitor: VisitorSchema, text: text(90) });
-export const RallySchema = z.object({ id, office: OfficeIdSchema, visitor: VisitorSchema, text: text(90) });
+export const GrievanceSchema = z.object({ id: deckId, club: ClubIdSchema, visitor: VisitorSchema, text: text(90), signLabel: text(28), refuseLabel: text(28), picket: text(24), ...Tags });
+/** A scandal's front page (2.8; 20): headline and one dry line as one text; `paper` names the newspaper (default the office's). */
+export const FrontPageSchema = z.object({ id: deckId, office: OfficeOrAny.default('any'), paper: z.string().optional(), text: text(90), ...Tags });
+/** A sign label for a scandal ("Apologise on the steps"; 3); the refuse label is always "Say nothing". */
+export const ApologySchema = z.object({ id: deckId, text: text(28) });
+/** A minister's application and the line they return with after a refusal (2.9; 9 and 9). `minister` is an id of `ministers`. */
+export const ApplicationSchema = z.object({ id: deckId, minister: id, visitor: VisitorSchema, text: text(90), returnText: text(90) });
+/** A run-up paper (2.10; 10 / 16 / 24): a public appearance naming {district} exactly once, never a vote. */
+export const RunUpSchema = z.object({ id: deckId, office: OfficeIdSchema, visitor: VisitorSchema, text: text(90), ...Tags });
+/** A rally (2.10; 12): the last campaign paper. */
+export const RallySchema = z.object({ id: deckId, office: OfficeIdSchema, visitor: VisitorSchema, text: text(90), ...Tags });
 /**
- * A scripted paper (2.7 step 2; 6): the first four of a game ("game:1" ... "game:4") and the first of
- * each higher office ("office:governor", "office:president"), with their effects written out (7.5).
+ * A scripted paper (2.7 step 2; 6): the first four of a game (mayor, slots 1 to 4) and the first of
+ * each higher office (slot 1), with their effects written out (3.1, 7.5).
  */
 export const ScriptedPaperSchema = z.object({
-  id,
-  slot: z.enum(['game:1', 'game:2', 'game:3', 'game:4', 'office:governor', 'office:president']),
+  id: deckId,
+  office: OfficeIdSchema.default('mayor'),
+  slot: int.min(1).max(4),
   visitor: VisitorSchema,
-  text: text(90),
-  archetype: ArchetypeIdSchema.nullable().default(null),
+  cosigner: VisitorSchema.optional(),
+  club: ClubIdSchema.nullable().default(null),
   other: ClubIdSchema.nullable().default(null),
+  archetype: ArchetypeIdSchema.nullable().default(null),
+  text: text(90),
   sign: Effects,
   refuse: Effects,
-  /** A chain this paper sets up (paper 2's "another copy", paper 4's basket). */
-  chain: id.optional(),
+  setsUp: deckId.optional(),
 });
-/** A template frame (2.7 step 5): one {slot} filled from a phrase list. */
-export const FrameSchema = z.object({ id, office: OfficeOrAny, text: text(80), list: id, archetype: ArchetypeIdSchema.exclude(['favour']), visitor: VisitorSchema, other: ClubIdSchema.nullable(), ...Tags });
-export const PhraseListSchema = z.object({ id, phrases: z.array(text(40)).min(1) });
-/** A monument of the vanity shelf (5.8; 24). */
-export const MonumentSchema = z.object({ id, name: text(40) });
+/** A template frame (2.7 step 5): a comic paper with ONE slot `{list-id}` filled from a phrase list. */
+export const FrameSchema = z.object({ id: deckId, office: OfficeOrAny.default('any'), visitor: VisitorSchema.optional(), club: ClubIdSchema, other: ClubIdSchema.nullable().default(null), archetype: ArchetypeIdSchema.exclude(['favour']), frame: text(90), ...Tags });
+/** A phrase list (7.7: 10 lists of 24); phrase ids are `<list>.<index>`, 1-based. */
+export const PhraseListSchema = z.object({ id: deckId, title: z.string().default(''), phrases: z.array(text(60)).min(1) });
+/** A plain line with an id (returning-visitor, away, captions). */
+export const LineSchema = z.object({ id: deckId, text: text(120) });
+/** An election-night line (30): when it is said. */
+export const NightLineSchema = z.object({ id: deckId, moment: z.enum(['open', 'held', 'lost', 'majority', 'defeat', 'any']), text: text(90) });
+/** A monument of the vanity shelf (5.8; 24): its name and one line. */
+export const MonumentSchema = z.object({ id: deckId, name: text(40), text: text(90) });
 
 export const DeckSchema = z.object({
   papers: z.array(ComicPaperSchema).default([]),
+  scripted: z.array(ScriptedPaperSchema).default([]),
   chains: z.array(ChainSchema).default([]),
   notes: z.array(FormNoteSchema).default([]),
+  applications: z.array(ApplicationSchema).default([]),
   grievances: z.array(GrievanceSchema).default([]),
   frontPages: z.array(FrontPageSchema).default([]),
   apologies: z.array(ApologySchema).default([]),
-  applications: z.array(ApplicationSchema).default([]),
-  campaign: z.array(CampaignPaperSchema).default([]),
+  runUp: z.array(RunUpSchema).default([]),
   rallies: z.array(RallySchema).default([]),
-  scripted: z.array(ScriptedPaperSchema).default([]),
   frames: z.array(FrameSchema).default([]),
-  phrases: z.array(PhraseListSchema).default([]),
-  /** The lines of 7.7 that are not part of another record. */
-  lines: z
-    .object({
-      /** 30 election-night lines (Agatha Tallow). */
-      electionNight: z.array(text(90)).default([]),
-      /** 60 returning-visitor last lines (2.7 "with no unseen text left"). */
-      returning: z.array(text(90)).default([]),
-      /** 10 away-report lines. */
-      away: z.array(text(90)).default([]),
-      /** 6 loading-card captions (3.1). */
-      captions: z.array(text(120)).default([]),
-      monuments: z.array(MonumentSchema).default([]),
-    })
-    .prefault({}),
+  lists: z.array(PhraseListSchema).default([]),
+  /** 30 election-night lines (Agatha Tallow). */
+  night: z.array(NightLineSchema).default([]),
+  /** 60 returning-visitor last lines (2.7 "with no unseen text left"). */
+  returning: z.array(LineSchema).default([]),
+  /** 10 away-report lines. */
+  away: z.array(LineSchema).default([]),
+  /** 6 loading-card captions (3.1). */
+  captions: z.array(LineSchema).default([]),
+  monuments: z.array(MonumentSchema).default([]),
 });
 
 // ----------------------------------------------------------------------------- the defaults of 2.2
@@ -501,7 +528,7 @@ export const DecreeSchema = z.object({
   ministry: MinistryNumbers.prefault({}),
   grandProjects: z
     .array(GrandProjectSchema)
-    .default([
+    .prefault([
       { id: 'long_bridge', name: 'The Very Long Bridge', atTerm: 2 },
       { id: 'ribbon_mill', name: 'The National Ribbon Mill', atTerm: 4 },
       { id: 'umbrella', name: 'The National Umbrella', atTerm: 6 },
@@ -549,8 +576,8 @@ export const DecreeSchema = z.object({
       triples: z.array(z.tuple([int.min(0), int.min(0), int.min(0)])).default(combinations(10, 3) as never),
       pairsFrom: int.positive().default(17),
       triplesFrom: int.positive().default(62),
-      /** PLACEHOLDER: the 45 pair names are writer 5's. */
-      pairNames: z.array(text(40)).default([]),
+      /** The 45 pairs' names, by pair index (writer 5's `twistPairs`; empty until written). */
+      pairNames: z.array(z.string()).default([]),
       /** From this term on, "A Quiet Term", honestly labelled. */
       quietFrom: int.positive().default(182),
     })
@@ -667,11 +694,13 @@ export type GrievanceDef = z.output<typeof GrievanceSchema>;
 export type FrontPageDef = z.output<typeof FrontPageSchema>;
 export type ApologyDef = z.output<typeof ApologySchema>;
 export type ApplicationDef = z.output<typeof ApplicationSchema>;
-export type CampaignPaperDef = z.output<typeof CampaignPaperSchema>;
+export type RunUpDef = z.output<typeof RunUpSchema>;
 export type RallyDef = z.output<typeof RallySchema>;
 export type ScriptedPaperDef = z.output<typeof ScriptedPaperSchema>;
 export type FrameDef = z.output<typeof FrameSchema>;
 export type PhraseListDef = z.output<typeof PhraseListSchema>;
+export type LineDef = z.output<typeof LineSchema>;
+export type NightLineDef = z.output<typeof NightLineSchema>;
 export type MonumentDef = z.output<typeof MonumentSchema>;
 export type Deck = z.output<typeof DeckSchema>;
 
@@ -759,6 +788,8 @@ export function lintDecree(d: DecreeContent): string[] {
     if (ids.has(p.id)) out.push(`deck: duplicate paper id "${p.id}"`);
     ids.add(p.id);
   }
-  for (const c of d.deck.chains) if (!ids.has(c.setup)) out.push(`deck: chain ${c.id} has no set-up paper "${c.setup}" (an orphan follow-up)`);
+  const setsUp = new Set([...d.deck.papers, ...d.deck.scripted].map((p) => p.setsUp).filter(Boolean));
+  for (const c of d.deck.chains) if (!setsUp.has(c.id)) out.push(`deck: no paper sets up chain ${c.id} (an orphan follow-up)`);
+  for (const p of [...d.deck.papers, ...d.deck.scripted]) if (p.setsUp && !d.deck.chains.some((c) => c.id === p.setsUp)) out.push(`deck: paper ${p.id} sets up unknown chain "${p.setsUp}"`);
   return out;
 }

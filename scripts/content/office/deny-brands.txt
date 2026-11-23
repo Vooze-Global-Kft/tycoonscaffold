@@ -1,0 +1,32 @@
+# deny-brands.txt: TIER 3 of the satire lint (office-design.md 7.8): real brands, companies and
+# news brands, well known in the English-speaking world. Every company in the game is invented.
+# Matching: the syntax of deny-phrases.txt (whole words, any case; several entries a line split at
+# commas). Brands that are everyday words start with "=" (only capitalised, never first in a
+# sentence: "=Apple" catches the company, not the fruit basket).
+
+Coca-Cola, Coca Cola, =Coke, Pepsi, McDonald's, McDonalds, Burger King, KFC, Starbucks, =Costa
+Greggs, Pret, Tesco, Sainsbury's, Sainsburys, Asda, Waitrose, Marks & Spencer, Marks and Spencer
+M&S, Aldi, Lidl, Morrisons, Walmart, =Target, Costco, Amazon, =Apple, Google
+Facebook, Instagram, Twitter, TikTok, YouTube, WhatsApp, Snapchat, Netflix, Disney
+Pixar, =Marvel, Lego, Nintendo, PlayStation, Xbox, Microsoft, =Windows, iPhone, iPad, Android
+Samsung, Sony, Tesla, SpaceX, Toyota, BMW, Mercedes, Ferrari, Rolls-Royce, Rolls Royce, =Jaguar
+Volkswagen, Nike, Adidas, =Puma, Gucci, Prada, Chanel, Rolex, Barbie, Mattel, Hasbro
+=Monopoly, =Scrabble, =Cluedo, Kleenex, =Hoover, Sellotape, Post-it, Tupperware, Heinz, Cadbury
+Nestle, Kellogg's, Kelloggs, =Mars, Twix, KitKat, Kit Kat, Hershey, Oreo, Pringles, Marmite
+Bovril, Hovis, Warburtons, Ribena, Irn-Bru, Red Bull, Guinness, Heineken, Budweiser, Mastercard
+PayPal, Uber, Airbnb, Spotify, =Zoom, eBay, Etsy, IKEA, Argos, =Boots, Primark, Harrods
+Selfridges, John Lewis, Fortnum, BBC, ITV, CNN, Fox News, Sky News, GB News, MSNBC, =Daily Mail
+=The Sun, =The Times, =Guardian, =Telegraph, =Mirror, =Express, New York Times, Washington Post
+Wall Street Journal, Reuters, Associated Press, Bloomberg, OpenAI, ChatGPT, Wikipedia, Lycra
+Velcro, Jacuzzi, =Frisbee, Thermos, Zippo, Segway, Hula Hoop, Play-Doh, Meccano, Hornby, Airfix
+Subbuteo, Scalextric, Tamagotchi, Pokemon, Minecraft, Fortnite, =Polaroid, Kodak, Photoshop
+Sharpie, =Biro, =Tannoy, Portakabin, JCB, =Tarmac, Dyson, Flymo, Black & Decker, Stihl
+Husqvarna, B&Q, Homebase, Wickes, Screwfix, Halfords, Carling, Routemaster, Oyster card
+=Stagecoach, Megabus, =Greyhound, National Express, Network Rail, Royal Mail, National Trust
+RSPB, Ordnance Survey, =Hallmark, Rotary Club, =Rotary, Women's Institute, Scouts, Girl Guides
+=Brownies, Boy Scouts, Girl Scouts, Weight Watchers, Hermes, Evri, DHL, FedEx, Visa card
+Mr Kipling, Tetley, PG Tips, Twinings, Yorkshire Tea, Typhoo, Hobnobs, =Jaffa, Jaffa Cakes
+McVitie's, McVities, =Walkers, Quavers, Wotsits, Cheerios, Weetabix, Nutella, Ovaltine, Horlicks
+Bisto, Oxo, Paxo, Colman's, Branston, HP Sauce, Hellmann's, Heinz Beanz, Birds Eye, Bird's Eye
+Captain Birdseye, Ronald McDonald, Colonel Sanders, Michelin, Mr Muscle, Domestos, Fairy Liquid
+Duracell, Energizer, =Kinder, Toblerone, Haribo, Smarties, Maltesers, Mars bar, Dairy Milk

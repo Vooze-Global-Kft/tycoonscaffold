@@ -328,7 +328,7 @@ export interface DecreeState {
   standingOrder: boolean;
   /** The face picked on the loading card (3.1), or null until picked. */
   face: string | null;
-  /** The four scripted papers of a game delivered so far; the offices whose first paper came. */
+  /** Scripted papers delivered, as `<office id>:<slot>` (the first four of a game, the first of each higher office). */
   scriptedDone: string[];
   stats: DecreeStats;
 }

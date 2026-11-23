@@ -254,14 +254,14 @@ def march(loop, unit, bars_from=0, bars_to=None, tutti_all=False, distant=True):
 
 
 MARCH_STRIPS = {
-    'lead': dict(gain=0.42, pan=0.1, send=0.3),
+    'lead': dict(gain=0.55, pan=0.1, send=0.3),
     'lead2': dict(gain=0.3, pan=-0.15, send=0.3),
-    'after': dict(gain=0.22, pan=-0.3, send=0.35),
+    'after': dict(gain=0.3, pan=-0.3, send=0.35),
     'counter': dict(gain=0.34, pan=-0.45, send=0.35),
-    'tuba': dict(gain=0.55, pan=0.0, send=0.2),
-    'snare': dict(gain=0.32, pan=0.35, send=0.3),
+    'tuba': dict(gain=0.36, pan=0.0, send=0.2),
+    'snare': dict(gain=0.45, pan=0.35, send=0.3),
     'bass_drum': dict(gain=0.4, pan=0.0, send=0.25),
-    'cymbal': dict(gain=0.16, pan=0.4, send=0.4),
+    'cymbal': dict(gain=0.3, pan=0.4, send=0.4),
 }
 
 
@@ -274,11 +274,11 @@ DESK_BARS = 34
 DESK_PER_BAR = 8
 DESK_CHORDS = ('F', 'Dm7', 'Gm7', 'C7sus4', 'F', 'Bbmaj7', 'Am7', 'D7', 'Gm7', 'C7', 'Am7', 'Dm7', 'Bbmaj7', 'Bbm6', 'F/C', 'Gm7', 'C7')
 DESK_HARM = {     # (pizz root, pizz fifth, a soft held chord tone for the second bassoon)
-    'F': ('F2', 'C3', 'A3'), 'Dm7': ('D2', 'A2', 'F3'), 'Gm7': ('G2', 'D3', 'Bb3'), 'C7sus4': ('C3', 'G2', 'F3'),
-    'Bbmaj7': ('Bb2', 'F3', 'A3'), 'Am7': ('A2', 'E3', 'G3'), 'D7': ('D3', 'A2', 'F#3'), 'C7': ('C3', 'G2', 'E3'),
-    'Bbm6': ('Bb2', 'F3', 'Db4'), 'F/C': ('C3', 'F2', 'A3'),
+    'F': ('F3', 'C4', 'A3'), 'Dm7': ('D3', 'A3', 'F3'), 'Gm7': ('G3', 'D4', 'Bb3'), 'C7sus4': ('C4', 'G3', 'F3'),
+    'Bbmaj7': ('Bb3', 'F4', 'A3'), 'Am7': ('A3', 'E4', 'G3'), 'D7': ('D4', 'A3', 'F#3'), 'C7': ('C4', 'G3', 'E3'),
+    'Bbm6': ('Bb3', 'F4', 'Db4'), 'F/C': ('C4', 'F3', 'A3'),
 }
-DESK_WALK = {1: 'B2', 7: 'Bb2', 13: 'G2', 15: 'C#3', 19: 'F2', 23: 'Bb2', 29: 'A2', 33: 'E2'}       # bar -> a pickup on the last eighth
+DESK_WALK = {1: 'B3', 7: 'Bb3', 13: 'G3', 15: 'C#4', 19: 'F3', 23: 'Bb3', 29: 'A3', 33: 'E3'}       # bar -> a pickup on the last eighth
 # the first bassoon's four remarks: (bar, [(eighth offset, note, eighths, staccato)]); each different
 DESK_REMARKS = (
     (3, ((4, 'C3', 1, True), (5, 'C3', 1, True), (6, 'F2', 2, False))),
@@ -321,10 +321,10 @@ def desk(loop, unit):
 
 
 DESK_STRIPS = {
-    'pizz': dict(gain=0.75, pan=-0.1, send=0.18),
-    'brush_tap': dict(gain=0.28, pan=0.3, send=0.15),
-    'brush_sweep': dict(gain=0.07, pan=0.3, send=0.1),
-    'bsn1': dict(gain=0.5, pan=0.25, send=0.25),
+    'pizz': dict(gain=0.5, pan=-0.1, send=0.18),
+    'brush_tap': dict(gain=0.6, pan=0.3, send=0.15),
+    'brush_sweep': dict(gain=0.12, pan=0.3, send=0.1),
+    'bsn1': dict(gain=0.7, pan=0.25, send=0.25),
     'bsn2': dict(gain=0.32, pan=-0.35, send=0.3),
 }
 

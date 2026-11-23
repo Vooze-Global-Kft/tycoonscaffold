@@ -19,7 +19,7 @@ import { notBuilt } from './notBuilt';
 import { clubIndex, rand } from './params';
 import { freezeShown } from './size';
 import { deskFactors } from './twists';
-import type { BaseEffect, ClubIx, DecreeConfig, DecreeEvent, DecreeGame, Effect, OfficeIx, Outcome, Paper, ScriptedPaperDef } from './types';
+import type { BaseEffect, ClubId, ClubIx, DecreeConfig, DecreeEvent, DecreeGame, Effect, OfficeIx, Outcome, Paper } from './types';
 
 /** One arrival: the next paper by the order above into the tray (or onto an empty desk). Skeleton: throws notBuilt. */
 export function drawNext(cfg: DecreeConfig, g: DecreeGame, clock: number, events: DecreeEvent[]): DecreeGame {
@@ -95,20 +95,23 @@ export function resolveEffects(cfg: DecreeConfig, office: OfficeIx, effects: rea
 }
 
 /**
- * The scripted paper of `slot` (2.7 step 2; 7.5 paper 1 at create), fixed now: its effects resolved
- * and its follow-ups' delays drawn (site followDelay). Built (create needs paper 1).
+ * The scripted paper of slot `slot` of office `office`'s first papers (2.7 step 2; 7.5 paper 1 at
+ * create: mayor slot 1), fixed now: its effects resolved and its follow-ups' delays drawn (site
+ * followDelay); `scriptedDone` records `<office>:<slot>`. Null when the deck has none. Built (create needs paper 1).
  */
-export function scriptedPaper(cfg: DecreeConfig, g: DecreeGame, slot: ScriptedPaperDef['slot']): { paper: Paper; g: DecreeGame } | null {
-  const def = cfg.decree.deck.scripted.find((p) => p.slot === slot);
+export function scriptedPaper(cfg: DecreeConfig, g: DecreeGame, office: OfficeIx, slot: number): { paper: Paper; g: DecreeGame } | null {
+  const officeId = cfg.decree.offices[office].id;
+  const def = cfg.decree.deck.scripted.find((p) => p.office === officeId && p.slot === slot);
   if (!def) return null;
-  const office = g.decree.office;
-  const petitioner = def.visitor.club ? clubIndex(cfg, office, def.visitor.club) : null;
-  const other = def.other ? clubIndex(cfg, office, def.other) : null;
-  const sides = { petitioner: petitioner !== null && petitioner >= 0 ? petitioner : null, other: other !== null && other >= 0 ? other : null };
-  const chain = def.chain ? cfg.decree.deck.chains.find((c) => c.id === def.chain) : undefined;
+  const club = (id: ClubId | null) => {
+    const gi = clubIndex(cfg, office, id);
+    return gi >= 0 ? gi : null;
+  };
+  const sides = { petitioner: club(def.club ?? def.visitor.club), other: club(def.other) };
+  const chain = def.setsUp ? cfg.decree.deck.chains.find((c) => c.id === def.setsUp) : undefined;
   let next = g;
   const outcome = (choice: 'sign' | 'refuse'): Outcome => {
-    const branch = chain?.[choice];
+    const branch = chain?.[choice === 'sign' ? 'afterSign' : 'afterRefuse'];
     let followUp: Outcome['followUp'] = null;
     if (chain && branch) {
       const r = rand(next, 'followDelay');
@@ -120,9 +123,9 @@ export function scriptedPaper(cfg: DecreeConfig, g: DecreeGame, slot: ScriptedPa
   };
   const sign = outcome('sign');
   const refuse = outcome('refuse');
-  const n = Object.values(next.decree.draws).reduce((a, b) => a + b, 0);
+  const key = `${officeId}:${slot}`;
   const paper: Paper = {
-    id: `scripted:${def.id}:${n}`,
+    id: `scripted:${def.id}:${next.decree.stats.decisions}`,
     kind: 'scripted',
     source: def.id,
     office,
@@ -142,5 +145,5 @@ export function scriptedPaper(cfg: DecreeConfig, g: DecreeGame, slot: ScriptedPa
     drawnB: 0,
     jitter: 1,
   };
-  return { paper, g: { ...next, decree: { ...next.decree, scriptedDone: [...next.decree.scriptedDone, slot] } } };
+  return { paper, g: { ...next, decree: { ...next.decree, scriptedDone: [...next.decree.scriptedDone, key] } } };
 }

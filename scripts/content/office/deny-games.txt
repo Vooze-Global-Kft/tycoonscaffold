@@ -1,0 +1,25 @@
+# deny-games.txt: TIER 3 of the satire lint (office-design.md 7.8): other games' names, places,
+# cast and signature lines, from docs/design/research/politics-genre.md section 2, and the titles of
+# this developer's other three games (each app holds only its own game).
+# Matching: the syntax of deny-phrases.txt (whole words, any case; several entries a line split at
+# commas; "=" only capitalised and not first in a sentence).
+
+# --- the genre neighbours (politics-genre.md 2) ---
+Reigns, Her Majesty, Game of Thrones, Reigns Beyond, Three Kingdoms, The Witcher, Witcher
+Swipe and be the King, Nerial, Devolver, =Lapse, Sort the Court, Yes Your Grace, Eryk, Davern
+Talys, Radovia, Papers Please, Arstotzka, Kolechia, Obristan, Glory to Arstotzka, Lucas Pope
+Death and Taxes, Placeholder Gameworks, =Fate, =Democracy, Positech, Suzerain, Sordland
+Anton Rayne, Torpor Games, Pocket Politics, Ultrabit, Kongregate, lobbies, Offshore Account
+The Steal Deal, Fake Media's Pack, Tropico, El Presidente, All hail, Presidente, Feral Interactive
+Coco Play, Hidden Lake, President Simulator, House of Power, Political Sim, Oxiwyle
+Idle Mayor Tycoon, T-Bull, The Political Machine, Political Machine, Stardock, 270 to win
+Paperwork Inc, Chensu, Spirit of the Fallen, =Senator, jester, jesters, Mayor Simulator
+Prime Minister Simulator, Election Simulator, President Inc, Idle President, Lobby Tycoon
+# --- well-known games a reader would see named ---
+SimCity, Sim City, Cities Skylines, Civilization, Animal Crossing, Tom Nook, =Isabelle
+Clash of Clans, Candy Crush, Plague Inc, Frostpunk, This War of Mine, =Beholder, =Orwell
+=Headliner, Theme Hospital, RollerCoaster Tycoon, Stardew Valley
+Football Manager, Tetris, Pac-Man, Super Mario, Mario, Zelda, Sonic, Angry Birds
+=Fallout, Cookie Clicker, AdVenture Capitalist, Egg Inc, Idle Miner
+# --- this developer's other games (bundle separation) ---
+Pizza Empire, Orbit Haulers, Lantern Row, Night Market, Space Miner

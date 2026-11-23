@@ -83,7 +83,7 @@ export function createDecree(cfg: DecreeConfig, base: GameState): DecreeGame {
   const seed = rngMix(base.rng >>> 0, 0x4445_4352) >>> 0;
   const clock = base.stats.playSeconds;
   let g: DecreeGame = { ...base, cash: cfg.decree.desk.treasury, decree: freshDecree(cfg, seed) };
-  const first = scriptedPaper(cfg, g, 'game:1');
+  const first = scriptedPaper(cfg, g, 0, 1);
   if (first) g = landPaper(cfg, first.g, first.paper, clock);
   return { ...g, decree: { ...g.decree, nextArrivalAt: clock + officeOf(cfg, 0).tau } };
 }
