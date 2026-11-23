@@ -52,8 +52,8 @@ const CAST = {
   desmond: v('kerb', 'Desmond Kerb', "Bus Spotters' Society", 'bus'),
   pauline: v('till', 'Pauline Till', 'Shop Window Guild', 'shops'),
   lionel: v('sash', 'Lionel Sash', "Ribbon Makers' Guild"),
-  ambrose: v('minute', 'Ambrose Minute', 'Committee on Committees'),
-  dorothy: v('pockle', 'Dorothy Pockle', 'Applicant'),
+  ambrose: v('minute', 'Ambrose Minute', 'Committee on Next Meetings'),
+  dorothy: v('pockle', 'Dorothy Sett', 'Applicant'),
   test: (n: number, club: ClubId | null) => v('test', `Test Visitor ${n}`, 'Test role', club),
 };
 const t = { subject: 'paperwork' as const, butt: 'office' as const, shape: 'undercut' as const };
@@ -143,7 +143,7 @@ export const DECREE_TEST_DECK: Deck = {
     { id: 'note-test-ribbon', form: 'ribbon', text: 'Test note of a ribbon.' },
   ],
   applications: [
-    { id: 'app-pockle', minister: 'pockle', visitor: CAST.dorothy, text: "I apply to be Minister for Potholes. References: 'She found one.'", returnText: 'Test return of Dorothy Pockle.' },
+    { id: 'app-pockle', minister: 'pockle', visitor: CAST.dorothy, text: "I apply to be Minister for Potholes. References: 'She found one.'", returnText: 'Test return of Dorothy Sett.' },
     ...['pellow', 'ferrule', 'hush', 'bole', 'gusset', 'wren', 'tamp', 'nibley'].map((m, i) => ({ id: `app-${m}`, minister: m, visitor: CAST.test(800 + i, null), text: `Test application ${i + 2}`, returnText: `Test return ${i + 2}` })),
   ],
   grievances: [
@@ -233,6 +233,11 @@ export function baseGameState(now: number, seed = 12345): GameState {
 /** A new decree game (the rules' own create): scripted paper 1 on the desk. */
 export function freshState(cfg: R.DecreeConfig = decreeTestConfig(), seed = 12345, now = FIXTURE_NOW): R.DecreeGame {
   return R.createDecree(cfg, baseGameState(now, seed));
+}
+
+/** A hand-made state on the test config by the rules' own builder (create.ts `buildDecree`), on the shared fixture state. */
+export function built(setup: R.DecreeSetup = {}, cfg: R.DecreeConfig = decreeTestConfig(), now = FIXTURE_NOW): R.DecreeGame {
+  return R.buildDecree(cfg, baseGameState(now, setup.seed ?? 12345), setup);
 }
 
 /** A comic paper of the test deck fixed by hand (the skeleton has no draw yet): its archetype's base effects, jitter 1. */

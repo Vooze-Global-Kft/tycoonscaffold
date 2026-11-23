@@ -216,7 +216,7 @@ function writtenPaper(cfg: DecreeConfig, g: DecreeGame, def: ComicPaperDef | Fra
     source: def.id,
     office,
     visitor: { ...visitor, clubIx: ix(cfg, office, visitor.club) },
-    cosigner: def.cosigner ?? null,
+    cosigner: ('cosigner' in def && def.cosigner) || null,
     text,
     returning,
     archetype: def.archetype,

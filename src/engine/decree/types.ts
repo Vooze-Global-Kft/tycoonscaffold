@@ -717,7 +717,8 @@ export type { OfficeId };
 /**
  * The tick's cash anchor (2.5 "cash += I × dt exactly"): between two events cash is
  * `cash + I × (t − at)` from the last event, never a sum of frames, so tick(a + b) = tick(a) then
- * tick(b) bit for bit. `run` and `life` anchor the shared runEarnings and lifetimeEarnings likewise.
+ * tick(b) bit for bit. `run`, `life` and `book` anchor the shared runEarnings and lifetimeEarnings and
+ * the rules' book of the tick likewise.
  * Re-anchored at every event of the tick and whenever an action changed cash or I (tick.ts).
  */
 export interface CashAnchor {
@@ -725,6 +726,8 @@ export interface CashAnchor {
   cash: number;
   run: number;
   life: number;
+  /** The rules' book of the tick's dibs (DecreeStats.book.tick). */
+  book: number;
   I: number;
 }
 

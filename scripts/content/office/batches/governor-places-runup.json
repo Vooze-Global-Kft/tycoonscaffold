@@ -74,11 +74,11 @@
       "note": "written 'the Ribbon Steps': the steps of the provincial hall, where every ribbon of the province is cut and every apology made; serves no club (an earlier 'Empty Plinth' was cut: with a numbered bandstand it recalled a real square's famous plinth)"
     },
     {
-      "id": "landmark-fourth-bandstand",
+      "id": "landmark-second-bandstand",
       "office": "governor",
       "kind": "landmark",
-      "name": "Fourth Bandstand",
-      "note": "written 'the Fourth Bandstand': nobody can find the other three; Brass"
+      "name": "Second Bandstand",
+      "note": "written 'the Second Bandstand': nobody can find the first; Brass (comedy editor: was 'Fourth Bandstand', which echoes a real square's Fourth Plinth)"
     },
     {
       "id": "landmark-tiptoe-jetty",
@@ -102,11 +102,11 @@
       "note": "written 'the Lingering Locks': a flight of locks on the Unhurried Canal; boats wait in them, anglers watch"
     },
     {
-      "id": "landmark-great-glasshouse",
+      "id": "landmark-patient-glasshouse",
       "office": "governor",
       "kind": "landmark",
-      "name": "Great Glasshouse",
-      "note": "written 'the Great Glasshouse': the oldest of the glasshouses; Vegetables"
+      "name": "Patient Glasshouse",
+      "note": "written 'the Patient Glasshouse': the oldest of the glasshouses, in no hurry, like the canal; Vegetables (comedy editor: was 'Great Glasshouse', the name of a real botanic-garden building)"
     },
     {
       "id": "landmark-first-shelter",
@@ -125,13 +125,13 @@
   ],
   "runUp": [
     {
-      "id": "gov-runup-fete-ribbon",
+      "id": "gov-runup-tree",
       "office": "governor",
-      "visitor": "spinwell",
-      "text": "Open the {district} fête. The ribbon is pre-cut, to save time.",
-      "subject": "ribbons",
-      "butt": "staff",
-      "shape": "undercut"
+      "visitor": "abacus",
+      "text": "Plant a tree in {district}. It will be photogenic in 40 years.",
+      "subject": "gardens",
+      "butt": "self",
+      "shape": "statistic"
     },
     {
       "id": "gov-runup-pointing",
@@ -146,7 +146,7 @@
       "id": "gov-runup-hat-parade",
       "office": "governor",
       "visitor": "slake",
-      "text": "Throw your hat in at the {district} hat parade. Not that hat.",
+      "text": "Judge the {district} hats. Yours has entered. Declare an interest.",
       "subject": "hats",
       "butt": "self",
       "shape": "literalism"
@@ -155,9 +155,9 @@
       "id": "gov-runup-bridge",
       "office": "governor",
       "visitor": "wimble",
-      "text": "Open the {district} bridge. Again for the camera. Again for luck.",
+      "text": "Open the {district} bridge. Again for the camera. Again for the minutes.",
       "subject": "ceremonies",
-      "butt": "self",
+      "butt": "office",
       "shape": "escalation"
     },
     {
@@ -179,31 +179,31 @@
       "shape": "slogan"
     },
     {
-      "id": "gov-runup-ducks",
+      "id": "gov-runup-prizes",
       "office": "governor",
       "visitor": "spinwell",
-      "text": "Feed the {district} ducks. Rodney has asked them to look pleased.",
-      "subject": "ducks",
-      "butt": "staff",
-      "shape": "photo-op"
+      "text": "Award the {district} prizes: best scone, best rose, best photo of you.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "escalation"
     },
     {
       "id": "gov-runup-napkin",
       "office": "governor",
       "visitor": "wimble",
-      "text": "Sign the {district} roll of honour on a napkin, like the founders.",
+      "text": "Sign the {district} roll of honour. Not the napkin; that is the law.",
       "subject": "paperwork",
-      "butt": "office",
+      "butt": "self",
       "shape": "callback"
     },
     {
-      "id": "gov-runup-quiet-hour",
+      "id": "gov-runup-no-comment",
       "office": "governor",
       "visitor": "dabble",
-      "text": "Sit with the {district} Anglers. Say nothing. You will be quoted.",
-      "subject": "ceremonies",
+      "text": "Sit by the water in {district}. Say nothing. You will be quoted.",
+      "subject": "vanity",
       "butt": "self",
-      "shape": "literalism"
+      "shape": "undercut"
     },
     {
       "id": "gov-runup-benches",
@@ -215,19 +215,19 @@
       "shape": "statistic"
     },
     {
-      "id": "gov-runup-tree",
+      "id": "gov-runup-new-ground",
       "office": "governor",
-      "visitor": "abacus",
-      "text": "Plant a {district} tree. The spade is gilded. The tree is extra.",
-      "subject": "gardens",
+      "visitor": "dimity",
+      "text": "Break new ground in {district}. Gently; it is the bowling green.",
+      "subject": "ceremonies",
       "butt": "self",
-      "shape": "undercut"
+      "shape": "literalism"
     },
     {
-      "id": "gov-runup-band-contest",
+      "id": "gov-runup-band-cup",
       "office": "governor",
       "visitor": "bellows",
-      "text": "Applaud each band at the {district} contest. And each tuning-up.",
+      "text": "Present the {district} band cup. We play you on. Off. And on.",
       "subject": "bandstands",
       "butt": "self",
       "shape": "escalation"
@@ -254,19 +254,19 @@
       "id": "gov-runup-flower-show",
       "office": "governor",
       "visitor": "dimity",
-      "text": "Open the {district} flower show. It is open. Open it officially.",
+      "text": "Open the {district} flower show. No ribbon. Put the scissors away.",
       "subject": "gardens",
-      "butt": "office",
-      "shape": "literalism"
+      "butt": "self",
+      "shape": "undercut"
     },
     {
-      "id": "gov-runup-wave-7-02",
+      "id": "gov-runup-bus-route",
       "office": "governor",
       "visitor": "kerb",
-      "text": "Wave off the {district} 7:02. Twice; it may have missed the first.",
+      "text": "Ride the {district} bus. Wave at each stop. Each wave is logged.",
       "subject": "buses",
-      "butt": "thing",
-      "shape": "escalation"
+      "butt": "office",
+      "shape": "form-misapplied"
     }
   ],
   "rallies": [
@@ -283,25 +283,25 @@
       "id": "gov-rally-hay-bale",
       "office": "governor",
       "visitor": "dimity",
-      "text": "Rally at the show, on a hay bale marked GOVERNOR. Wave the scissors.",
-      "subject": "ceremonies",
+      "text": "A rally at the fête, on a hay bale marked GOVERNOR (KEEP OFF).",
+      "subject": "signage",
       "butt": "self",
       "shape": "slogan"
     },
     {
-      "id": "gov-rally-forms",
+      "id": "gov-rally-permit",
       "office": "governor",
       "visitor": "wimble",
-      "text": "A rally on the green. Cuthbert brings the scissors, and a form for them.",
-      "subject": "ribbons",
+      "text": "A rally on the green. Standing on it needs a permit. Queue on it.",
+      "subject": "paperwork",
       "butt": "office",
       "shape": "form-misapplied"
     },
     {
-      "id": "gov-rally-steps",
+      "id": "gov-rally-soapbox",
       "office": "governor",
       "visitor": "spinwell",
-      "text": "A rally on the hall steps. Rodney has had the top step raised, slightly.",
+      "text": "A rally in the square. Rodney has had your soapbox raised, slightly.",
       "subject": "vanity",
       "butt": "self",
       "shape": "undercut"

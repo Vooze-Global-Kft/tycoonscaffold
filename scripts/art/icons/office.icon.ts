@@ -17,9 +17,8 @@
  */
 import type { SkCanvas } from '@shopify/react-native-skia';
 import { DESK, alpha, mix } from '../../../src/ui/decree/art/palette';
-import { at, builder, circle, clip, fill, hatch, line, linearPaint, nibPath, rect, rrect, sampleCurve, stroke } from '../../../src/ui/decree/art/pen';
+import { at, builder, circle, clip, fill, line, linearPaint, nibPath, rect, rrect, sampleCurve, stroke } from '../../../src/ui/decree/art/pen';
 import { drawGiantScissors } from '../../../src/ui/decree/art/emblem.draw';
-import { drawStrip } from '../../../src/ui/decree/art/paper.draw';
 
 export const S = 1024;
 type Draw = (c: SkCanvas) => void;
@@ -31,34 +30,63 @@ export function drawPaperGround(c: SkCanvas, ruled = true): void {
   if (ruled) c.drawPath(line(150, 0, 150, S), stroke(alpha(DESK.violet, 0.22), 5));
 }
 
-/** The flourish: points of a signature-like stroke that loops once and flies up and away. */
-const FLOURISH: [number, number][] = [
-  [90, 700],
-  [200, 640],
-  [330, 520],
-  [400, 380],
-  [380, 270],
-  [290, 250],
-  [240, 340],
-  [300, 430],
-  [430, 450],
-  [580, 380],
-  [720, 260],
-  [860, 140],
-  [1000, 40],
+/**
+ * The signature: an obvious handwritten name (a tall first stroke, a run of rounded humps, a dip),
+ * then the tail flying up and away to the top right, where the pen's nib is still writing it. No
+ * closed loop and no crossing (a crossing loop reads as an awareness ribbon).
+ */
+const SIGNATURE: [number, number][] = [
+  [150, 610],
+  [190, 470],
+  [230, 330],
+  [262, 470],
+  [292, 610],
+  [330, 450],
+  [372, 520],
+  [400, 600],
+  [432, 510],
+  [462, 470],
+  [494, 540],
+  [520, 600],
+  [552, 510],
+  [584, 470],
+  [616, 540],
+  [650, 610],
+  [700, 560],
+  [760, 450],
+  [820, 340],
+  [868, 250],
 ];
 
-/** Draws the flourish (points in 1024 space) with a broad violet nib, plus a few ink drops flung off its end. */
-export function drawFlourish(c: SkCanvas, pts: [number, number][] = FLOURISH, nib = 70, color: string = DESK.violet): void {
+/** Draws the signature (points in 1024 space) with a broad violet nib. */
+export function drawFlourish(c: SkCanvas, pts: [number, number][] = SIGNATURE, nib = 62, color: string = DESK.violet): void {
   const dense = sampleCurve(pts, 4);
   c.drawPath(nibPath(dense, nib, 40), fill(color));
-  const [x, y] = pts[pts.length - 2];
-  for (const [dx, dy, r] of [
-    [60, -10, 14],
-    [30, 40, 9],
-    [95, 25, 7],
-  ] as const)
-    c.drawPath(circle(x + dx, y + dy, r), fill(color));
+}
+
+/** A fountain-pen nib writing at (x, y), its point there, the nib running back along `deg` (0 = the nib points up). `s` is its length. */
+export function drawWritingNib(c: SkCanvas, x: number, y: number, deg: number, s = 220): void {
+  at(c, x, y, s / 100, deg, (q) => {
+    q.drawPath(rrect(-24 + 6, 60 + 8, 48, 60, 10), fill(alpha(DESK.shadow, 0.25)));
+    const nib = builder().moveTo(0, 0).quadTo(22, 26, 24, 62).lineTo(-24, 62).quadTo(-22, 26, 0, 0).close().build();
+    q.drawPath(nib, linearPaint(-24, 0, 24, 0, [DESK.brassLight, DESK.brass, DESK.brassDeep]));
+    q.drawPath(nib, stroke(DESK.line, 4));
+    q.drawPath(line(0, 4, 0, 40), stroke(DESK.line, 4));
+    q.drawPath(circle(0, 42, 5), fill(DESK.line));
+    // the section of the pen behind the nib (violet, the ink's colour)
+    q.drawPath(rrect(-27, 60, 54, 44, 10), fill(DESK.violetDeep));
+    q.drawPath(rrect(-27, 60, 54, 44, 10), stroke(DESK.line, 4));
+    q.drawPath(rect(-27, 66, 54, 7), fill(DESK.brass));
+  });
+}
+
+/** The walnut border band that gives the light tile an edge on a white store page, with a brass bead inside it. */
+export function drawBorder(c: SkCanvas, band = 64, wood: 'walnut' | 'baize' = 'walnut'): void {
+  const [main, deep, light] = wood === 'walnut' ? [DESK.walnut, DESK.walnutDeep, DESK.walnutLight] : [DESK.baize, DESK.baizeDeep, DESK.baizeLift];
+  const frame = builder().addRect({ x: 0, y: 0, width: S, height: S }).addRect({ x: band, y: band, width: S - 2 * band, height: S - 2 * band }).setFillType(1).build();
+  c.drawPath(frame, linearPaint(0, 0, S, S, [light, main, deep]));
+  c.drawPath(rect(band - 6, band - 6, S - 2 * band + 12, S - 2 * band + 12), stroke(DESK.brass, 10));
+  c.drawPath(rect(band + 2, band + 2, S - 2 * band - 4, S - 2 * band - 4), stroke(alpha(DESK.shadow, 0.35), 6));
 }
 
 export interface Candidate {
@@ -89,85 +117,66 @@ const disc = (subject: Draw): Draw => (c) => {
   c.drawPath(circle(512, 512, 496), stroke(DESK.brass, 16));
 };
 
+const tipDeg = (pts: [number, number][]): number => {
+  const [x0, y0] = pts[pts.length - 2];
+  const [x1, y1] = pts[pts.length - 1];
+  // the nib points along the stroke's travel; its body trails behind (deg 0 = pointing up)
+  return (Math.atan2(x1 - x0, -(y1 - y0)) * 180) / Math.PI + 180;
+};
+
+/** A: the signature across the middle, its tail flying up to the top right with the nib still writing; chunky scissors open at the lower right. */
 const subjectA: Draw = (c) => {
-  drawFlourish(c, FLOURISH, 78);
-  at(c, 640, 690, 8.6, -48, (q) => drawGiantScissors(q, 40, { open: 36 }));
+  at(c, 700, 790, 8.4, -32, (q) => drawGiantScissors(q, 40, { open: 40, chunky: 2 }));
+  drawFlourish(c, SIGNATURE, 64);
+  const [x, y] = SIGNATURE[SIGNATURE.length - 1];
+  drawWritingNib(c, x, y, tipDeg(SIGNATURE), 230);
 };
+
+const SIG_B: [number, number][] = SIGNATURE.map(([x, y]) => [x - 40, y + 200 - (x - 150) * 0.1] as [number, number]);
+SIG_B[SIG_B.length - 1] = [860, 300];
+SIG_B[SIG_B.length - 2] = [800, 420];
+
+/** B: the chunky scissors standing big and open at the left, the signature underneath them rising to the right with the nib. */
 const subjectB: Draw = (c) => {
-  drawFlourish(
-    c,
-    [
-      [150, 900],
-      [300, 860],
-      [470, 800],
-      [700, 720],
-      [820, 560],
-      [700, 420],
-      [560, 470],
-      [620, 560],
-      [780, 470],
-      [880, 260],
-      [960, 70],
-    ],
-    90,
-  );
-  at(c, 400, 520, 9.4, -12, (q) => drawGiantScissors(q, 40, { open: 30 }));
-};
-const subjectC: Draw = (c) => {
-  at(c, 512, 560, 1, -8, (q) => {
-    q.drawPath(rrect(-330 + 18, -400 + 26, 660, 800, 30), fill(alpha(DESK.shadow, 0.25)));
-    q.drawPath(rrect(-330, -400, 660, 800, 30), fill(DESK.paperLight));
-    q.drawPath(rrect(-330, -400, 660, 800, 30), stroke(DESK.paperEdge, 8));
-    at(q, -300, -370, 9.4, 0, (z) => drawStrip(z, 64, 22, 'sign', { armed: 0.6 }));
-  });
-  drawFlourish(
-    c,
-    [
-      [260, 330],
-      [360, 260],
-      [430, 330],
-      [520, 250],
-      [600, 300],
-      [700, 200],
-      [830, 110],
-      [990, 20],
-    ],
-    80,
-  );
-  at(c, 300, 860, 6.6, -40, (q) => drawGiantScissors(q, 40, { open: 30 }));
+  at(c, 330, 440, 7.6, -14, (q) => drawGiantScissors(q, 40, { open: 34, chunky: 2 }));
+  drawFlourish(c, SIG_B, 62);
+  const [x, y] = SIG_B[SIG_B.length - 1];
+  drawWritingNib(c, x, y, tipDeg(SIG_B), 230);
 };
 
 export const CANDIDATES: Candidate[] = [
   {
     id: 'office-A',
-    note: 'flourish loops up and away to the top right; scissors across the lower right about to snip its tail',
+    note: 'walnut border; a handwritten signature flying up to the top right with the nib still writing; chunky scissors lower right',
     icon: (c) => {
       drawPaperGround(c, false);
       subjectA(c);
+      drawBorder(c, 64, 'walnut');
     },
     adaptive: shrunk(disc(subjectA), 0.6),
     splash: shrunk(disc(subjectA), 0.86),
   },
   {
     id: 'office-B',
-    note: 'scissors big and upright in the middle, the flourish looping round them',
+    note: 'walnut border; big chunky scissors upright at the left, the signature under them rising to the right with its nib',
     icon: (c) => {
       drawPaperGround(c, false);
       subjectB(c);
+      drawBorder(c, 64, 'walnut');
     },
     adaptive: shrunk(disc(subjectB), 0.6),
     splash: shrunk(disc(subjectB), 0.86),
   },
   {
     id: 'office-C',
-    note: 'a paper tilted on a pale slate tile, the flourish leaving its SIGN strip; scissors pin its corner',
+    note: 'as A on a baize border band (the desk\'s felt round the paper)',
     icon: (c) => {
-      c.drawRect({ x: 0, y: 0, width: S, height: S }, fill(mix(DESK.slatePale, DESK.paperLight, 0.4)));
-      hatch(c, rect(0, 0, S, S), alpha(DESK.slateLight, 0.25), 40, 6);
-      subjectC(c);
+      drawPaperGround(c, false);
+      subjectA(c);
+      drawBorder(c, 72, 'baize');
     },
-    adaptive: shrunk(disc(subjectC), 0.6),
-    splash: shrunk(disc(subjectC), 0.86),
+    adaptive: shrunk(disc(subjectA), 0.6),
+    splash: shrunk(disc(subjectA), 0.86),
   },
 ];
 
@@ -185,4 +194,4 @@ export function chosen(): Candidate {
   return CANDIDATES.find((k) => k.id === CHOSEN) ?? CANDIDATES[0];
 }
 
-void builder;
+

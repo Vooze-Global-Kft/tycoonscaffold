@@ -5,16 +5,19 @@
  * A fresh state by 2.3: the mayor's office, term 1, day 0, governing; the treasury (30); ministry 0
  * (the Town Clock Office) open at level 1, the others closed; every club at 50, armed; gossip 0;
  * empty tray; scripted paper 1 of 7.5 ("Practise on this one...") landed on the desk; the arrival
- * clock started τ from now. `reconcileDecree` repairs a save and never throws.
+ * clock started τ from now. The opening script (3.1): the scripted papers come in slot order, and no
+ * ordinary paper is drawn until every scripted paper of the office is decided (draw.ts step 2).
+ * `reconcileDecree` repairs a save and never throws. `buildDecree` makes any hand-made state the
+ * tests, the other packages and the web presets need.
  */
 import { rngMix } from '../rng';
 import type { GameState } from '../types';
-import { landPaper, scriptedPaper } from './draw';
+import { comicPaper, landPaper, scriptedPaper } from './draw';
 import { officeOf } from './params';
-import type { DecreeConfig, DecreeGame, DecreeState, DecreeStats, OfficeIx, Site } from './types';
+import type { ClubIx, DecreeConfig, DecreeGame, DecreeState, DecreeStats, DeskItem, FollowUp, OfficeIx, Paper, Pending, Phase, Shown, Site, Strike } from './types';
 import { SITE } from './types';
 
-const zeroStats = (): DecreeStats => ({ decisions: 0, daysEver: 0, signed: 0, refused: 0, slipsTaken: 0, boycotts: 0, scandals: 0, elections: 0, wins: 0, clamps: 0 });
+const zeroStats = (): DecreeStats => ({ decisions: 0, daysEver: 0, signed: 0, refused: 0, slipsTaken: 0, boycotts: 0, scandals: 0, elections: 0, wins: 0, clamps: 0, drawn: 0, papers: 0, book: {} });
 const zeroDraws = (): Record<Site, number> => Object.fromEntries(Object.keys(SITE).map((k) => [k, 0])) as Record<Site, number>;
 
 /** The decree fields of a new game in `office` with seed `seed`, before the first paper lands. Built. */
@@ -51,6 +54,7 @@ export function freshDecree(cfg: DecreeConfig, seed: number, office: OfficeIx = 
     frameBag: [],
     notesSeen: [],
     picketsThisTerm: [],
+    ribbonsDue: [],
     campaign: null,
     count: null,
     nr: 0,
@@ -95,17 +99,175 @@ export function withDecreeFields(cfg: DecreeConfig, base: GameState): DecreeGame
   return g.decree ? (g as DecreeGame) : createDecree(cfg, base);
 }
 
+/** Clamps a number to an integer in [lo, hi], or `fallback` when it is not a finite number. */
+const intIn = (x: unknown, lo: number, hi: number, fallback: number) => (typeof x === 'number' && Number.isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x))) : fallback);
+const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
+const isPaper = (x: unknown): x is Paper => isObj(x) && typeof x.id === 'string' && typeof x.kind === 'string' && isObj(x.sign) && isObj(x.refuse) && Array.isArray((x.sign as { effects?: unknown }).effects) && Array.isArray((x.refuse as { effects?: unknown }).effects);
+const isShown = (x: unknown): x is Shown => isObj(x) && Array.isArray(x.sign) && Array.isArray(x.refuse);
+
 /**
- * A loaded save on top of the reconciled shared fields: keeps its `decree` when it has the shape
- * of 2.3 (an object with a numeric seed and an office of 0 to 2), else starts afresh. Never throws.
- * Built for the skeleton; P1a repairs field by field (missing fields from `freshDecree`, moods
- * clamped to 0..100, unknown deck ids dropped) and tests it.
+ * A loaded save on top of the reconciled shared fields (2.3), repaired field by field; never throws:
+ * a `decree` without a numeric seed or an office of 0 to 2 starts afresh; every other field missing or
+ * of the wrong shape takes `freshDecree`'s value; moods are whole numbers clamped to 0..100, one per
+ * club of the office; ministries one per ministry of the office (Grand Projects kept), levels to the
+ * cap; strikes and armed one per club; papers that are not papers dropped (a desk paper without its
+ * frozen `shown` is put back on top of the tray, to be sized when it lands); follow-ups whose deck
+ * record is gone dropped; draws and stats merged with fresh counters. Built.
  */
 export function reconcileDecree(cfg: DecreeConfig, base: GameState, raw: unknown): DecreeGame {
-  const d = (raw as { decree?: Partial<DecreeState> } | null)?.decree;
-  if (d && typeof d === 'object' && typeof d.seed === 'number' && (d.office === 0 || d.office === 1 || d.office === 2)) {
+  try {
+    const d = (raw as { decree?: Partial<DecreeState> } | null)?.decree;
+    if (!d || typeof d !== 'object' || typeof d.seed !== 'number' || !(d.office === 0 || d.office === 1 || d.office === 2)) return createDecree(cfg, base);
     const fresh = freshDecree(cfg, d.seed, d.office);
-    return { ...base, decree: { ...fresh, ...d, draws: { ...fresh.draws, ...(d.draws ?? {}) }, stats: { ...fresh.stats, ...(d.stats ?? {}) } } as DecreeState };
+    const row = officeOf(cfg, d.office);
+    const nClubs = row.clubs.length;
+    const out: DecreeState = { ...fresh };
+    for (const k of Object.keys(fresh) as (keyof DecreeState)[]) {
+      const v = (d as Record<string, unknown>)[k];
+      const f = fresh[k] as unknown;
+      if (v === undefined || v === null ? f !== null : Array.isArray(f) ? !Array.isArray(v) : typeof f !== typeof v && f !== null) continue;
+      (out as unknown as Record<string, unknown>)[k] = v;
+    }
+    out.draws = { ...fresh.draws, ...(isObj(d.draws) ? (d.draws as Record<Site, number>) : {}) };
+    out.stats = { ...fresh.stats, ...(isObj(d.stats) ? (d.stats as Partial<DecreeStats>) : {}) };
+    out.moods = Array.from({ length: nClubs }, (_, gi) => intIn(Array.isArray(d.moods) ? d.moods[gi] : undefined, 0, 100, cfg.decree.mood.start));
+    const cap = cfg.decree.ministry.levelCap;
+    const saved = Array.isArray(d.ministries) ? d.ministries : [];
+    out.ministries = Array.from({ length: Math.max(row.ministries.length, saved.length) }, (_, i) => {
+      const m = saved[i] as { open?: unknown; level?: unknown } | undefined;
+      const open = i === 0 ? true : !!m?.open;
+      return { open, level: open ? intIn(m?.level, 1, cap, 1) : 0 };
+    });
+    out.strikes = Array.from({ length: nClubs }, (_, gi) => {
+      const x = Array.isArray(d.strikes) ? (d.strikes[gi] as Partial<Strike> | null) : null;
+      return isObj(x) && typeof x.papersLeft === 'number' ? { papersLeft: intIn(x.papersLeft, 0, 1000, 0), picket: String(x.picket ?? ''), grievance: String(x.grievance ?? ''), ...(x.waiting ? { waiting: true } : {}) } : null;
+    });
+    out.armed = Array.from({ length: nClubs }, (_, gi) => (Array.isArray(d.armed) && typeof d.armed[gi] === 'boolean' ? (d.armed[gi] as boolean) : !out.strikes[gi]));
+    out.gossip = intIn(d.gossip, 0, 1000, 0);
+    out.tray = (Array.isArray(d.tray) ? d.tray : []).filter(isPaper);
+    out.asideTray = (Array.isArray(d.asideTray) ? d.asideTray : []).filter(isPaper);
+    const desk = d.desk as DeskItem | null | undefined;
+    out.desk = null;
+    if (desk && isObj(desk) && desk.type === 'paper' && isPaper(desk.paper)) {
+      if (isShown(desk.shown)) out.desk = { type: 'paper', paper: desk.paper, shown: desk.shown, landedAt: Number(desk.landedAt) || 0 };
+      else out.tray = [desk.paper, ...out.tray];
+    } else if (desk && isObj(desk) && desk.type === 'slip' && isObj(desk.slip)) out.desk = desk;
+    const pend = d.pending as Pending | null | undefined;
+    out.pending = pend && isObj(pend) && isObj(pend.item) && isPaper(pend.item.paper) && isShown(pend.item.shown) && typeof pend.until === 'number' ? pend : null;
+    const chains = new Set(cfg.decree.deck.chains.map((c) => c.id));
+    const setUps = new Set([...cfg.decree.deck.papers.map((p) => p.id), ...cfg.decree.deck.frames.map((f) => f.id)]);
+    out.followUps = (Array.isArray(d.followUps) ? d.followUps : []).filter((f): f is FollowUp => isObj(f) && typeof f.chainId === 'string' && typeof f.dueAt === 'number' && (f.kind === 'chain' ? chains.has(f.chainId) : (f.kind === 'study' || f.kind === 'favour') && setUps.has(f.chainId)));
+    out.ribbonsDue = (Array.isArray(d.ribbonsDue) ? d.ribbonsDue : []).filter((r) => isObj(r) && typeof r.ministry === 'number' && r.ministry < out.ministries.length);
+    out.rivalIndex = [0, 1, 2].map((o) => intIn(Array.isArray(d.rivalIndex) ? d.rivalIndex[o] : 0, 0, 10_000, 0));
+    return { ...base, decree: out };
+  } catch {
+    return createDecree(cfg, base);
   }
-  return createDecree(cfg, base);
+}
+
+// ----------------------------------------------------------------------------- state builders
+
+/**
+ * What a hand-made state holds (`buildDecree`): any office, term, day, phase, moods, ministries (a
+ * number is a level, 0 closed), cash and play clock, gossip, losses, Name Recognition, decisions ever,
+ * the tray (deck ids of comic papers, or papers), a paper on the desk (a deck id or a paper; it lands
+ * now, sized from this state), a boycott, a scandal ("Say nothing" running), a pending take-back (the
+ * desk paper signed and resting), ministers in the cabinet, twists running. Everything else is a fresh
+ * seat's; the opening script counts as done unless `scripted` says otherwise.
+ */
+export interface DecreeSetup {
+  seed?: number;
+  office?: OfficeIx;
+  term?: number;
+  day?: number;
+  phase?: Phase;
+  losses?: number;
+  nr?: number;
+  cash?: number;
+  clock?: number;
+  moods?: number[];
+  ministries?: (number | { open: boolean; level: number })[];
+  gossip?: number;
+  decisions?: number;
+  tray?: (string | Paper)[];
+  desk?: string | Paper | null;
+  boycott?: { club: ClubIx; papersLeft?: number; waiting?: boolean } | { club: ClubIx; papersLeft?: number; waiting?: boolean }[];
+  scandal?: { papersLeft: number; factor?: number };
+  pending?: boolean;
+  cabinet?: string[];
+  twists?: string[];
+  /** 'done' (default): every scripted paper of every office counts as decided; 'fresh': none. */
+  scripted?: 'done' | 'fresh';
+}
+
+/**
+ * A valid hand-made decree state on top of the shared `base` (the fixtures' `baseGameState`), for the
+ * tests, the other packages and the web presets. Papers are made as the draw makes them (`comicPaper`),
+ * the desk paper lands with `landPaper` (so `shown` is frozen exactly as in play). Built.
+ */
+export function buildDecree(cfg: DecreeConfig, base: GameState, setup: DecreeSetup = {}): DecreeGame {
+  const office = setup.office ?? 0;
+  const seed = setup.seed ?? (rngMix(base.rng >>> 0, 0x4445_4352) >>> 0);
+  const fresh = freshDecree(cfg, seed, office);
+  const row = officeOf(cfg, office);
+  const clock = setup.clock ?? base.stats.playSeconds;
+  const scriptedDone = setup.scripted === 'fresh' ? [] : cfg.decree.deck.scripted.map((p) => `${p.office}:${p.slot}`);
+  const ministries = setup.ministries
+    ? Array.from({ length: Math.max(row.ministries.length, setup.ministries.length) }, (_, i) => {
+        const m = setup.ministries![i];
+        if (m === undefined) return { open: i === 0, level: i === 0 ? 1 : 0 };
+        return typeof m === 'number' ? { open: m > 0, level: m } : m;
+      })
+    : fresh.ministries;
+  const boycotts = setup.boycott === undefined ? [] : Array.isArray(setup.boycott) ? setup.boycott : [setup.boycott];
+  const strikes = fresh.strikes.map((_, gi): Strike | null => {
+    const b = boycotts.find((x) => x.club === gi);
+    if (!b) return null;
+    const def = cfg.decree.deck.grievances.find((x) => x.club === row.clubs[gi]);
+    return { papersLeft: b.papersLeft ?? cfg.decree.boycott.papers, picket: def?.picket ?? '', grievance: def?.id ?? '', ...(b.waiting ? { waiting: true } : {}) };
+  });
+  const cabinet = Object.fromEntries((setup.cabinet ?? []).map((id) => [id, { club: cfg.decree.ministers.find((m) => m.id === id)!.club, termsServed: 0 }]));
+  let g: DecreeGame = {
+    ...base,
+    cash: setup.cash ?? cfg.decree.desk.treasury,
+    stats: { ...base.stats, playSeconds: clock },
+    decree: {
+      ...fresh,
+      term: setup.term ?? 1,
+      presTerms: office === 2 ? (setup.term ?? 1) : 0,
+      day: setup.day ?? 0,
+      phase: setup.phase ?? 'governing',
+      losses: setup.losses ?? 0,
+      nr: setup.nr ?? 0,
+      moods: setup.moods ? setup.moods.slice() : fresh.moods,
+      ministries,
+      gossip: setup.gossip ?? 0,
+      strikes,
+      armed: strikes.map((x) => !x),
+      scandal: setup.scandal ? { papersLeft: setup.scandal.papersLeft, ...(setup.scandal.factor !== undefined ? { factor: setup.scandal.factor } : {}) } : null,
+      picketsThisTerm: strikes.filter((x): x is Strike => !!x).map((x) => x.picket),
+      cabinet,
+      applicationsDelivered: Object.keys(cabinet),
+      twists: setup.twists ?? [],
+      scriptedDone,
+      nextArrivalAt: clock + row.tau,
+      stats: { ...fresh.stats, decisions: setup.decisions ?? 0, daysEver: setup.decisions ?? 0 },
+    },
+  };
+  const paperOf = (x: string | Paper): Paper => {
+    if (typeof x !== 'string') return x;
+    const r = comicPaper(cfg, g, x);
+    g = r.g;
+    return r.paper;
+  };
+  const deskPaper = setup.desk === undefined || setup.desk === null ? null : paperOf(setup.desk);
+  const tray = (setup.tray ?? []).map(paperOf);
+  g = { ...g, decree: { ...g.decree, tray } };
+  if (deskPaper) g = landPaper(cfg, g, deskPaper, clock);
+  else if (!tray.length) g = { ...g, decree: { ...g.decree, emptySince: clock } };
+  if (setup.pending && g.decree.desk?.type === 'paper') {
+    const item = g.decree.desk;
+    g = { ...g, decree: { ...g.decree, desk: null, pending: { item, until: clock + cfg.decree.desk.takeBackSeconds } } };
+  }
+  return g;
 }

@@ -1,0 +1,501 @@
+{
+  "batch": "chains-president",
+  "writer": "writer-3",
+  "office": "president",
+  "chains": [
+    {
+      "id": "pres-kitecombe-hill",
+      "office": "president",
+      "title": "The Hill",
+      "afterSign": {
+        "visitor": "loft",
+        "club": "kites",
+        "other": "hedges",
+        "archetype": "project",
+        "text": "The hill works. Now a second hill, to admire the first one from.",
+        "subject": "kites",
+        "butt": "office",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT BUILDS HILL TO LOOK AT HILL",
+          "refuse": "KITES ADMIRE HILL FROM THE CHAIR"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "updraught",
+        "club": "kites",
+        "other": "hedges",
+        "archetype": "swap",
+        "text": "Then lend the League the Committee's stepladder. Sundays. Mostly Sundays.",
+        "subject": "kites",
+        "butt": "office",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "HEDGES GO UNTRIMMED ON SUNDAYS, AND MOST TUESDAYS",
+          "refuse": "LEAGUE LAUNCHES FROM CHAIR, WITH DIGNITY"
+        }
+      }
+    },
+    {
+      "id": "pres-hedge-likeness",
+      "office": "president",
+      "title": "The Likeness",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "hedges",
+        "archetype": "vanity",
+        "text": "The hedge of you must now match each new haircut. Weekly, I suggest.",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT'S HEDGE HAS BETTER HAIRCUT THAN PRESIDENT",
+          "refuse": "HEDGE OF PRESIDENT GROWS OUT; LIKENESS FADES"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "topiary",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "treat",
+        "text": "Your hedge entered the show alone. Come and watch it come second.",
+        "subject": "hedges",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "PRESIDENT APPLAUDS OWN HEDGE; HEDGE BOWS",
+          "refuse": "HEDGE OF PRESIDENT COLLECTS RIBBON ALONE"
+        }
+      }
+    },
+    {
+      "id": "pres-maze",
+      "office": "president",
+      "title": "The Kite-Free Maze",
+      "afterSign": {
+        "visitor": "loft",
+        "club": "kites",
+        "other": "hedges",
+        "archetype": "project",
+        "text": "The maze is 99 % free of kites. Fund a search for the rest?",
+        "subject": "kites",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "SEARCH PARTY FINDS KITE; SEARCH PARTY NOW LOST",
+          "refuse": "LOST KITE GIVEN POSTAL ADDRESS; STAYS LOST"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "edging",
+        "cosigner": "minute",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "committee",
+        "text": "Then a survey of the strings in the maze. Then one to find the surveyors.",
+        "subject": "hedges",
+        "butt": "committee",
+        "shape": "escalation",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "STRING SURVEY GOES IN; SURVEY OF SURVEY TO FOLLOW",
+          "refuse": "STRINGS STAY IN THE HEDGES, UNCOUNTED"
+        }
+      }
+    },
+    {
+      "id": "pres-book-wind",
+      "office": "president",
+      "title": "The Booked Wind",
+      "afterSign": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "kites",
+        "archetype": "fee",
+        "text": "The band would like to hire one breeze back. For its flags.",
+        "subject": "bandstands",
+        "butt": "self",
+        "shape": "literalism",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT SELLS SAME WIND TWICE; WIND UNAWARE",
+          "refuse": "BAND'S FLAGS HANG STILL; CONCERT CALLED 'RESPECTFUL'"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "loft",
+        "cosigner": "minute",
+        "club": "kites",
+        "other": "brass",
+        "archetype": "committee",
+        "text": "Then study the breeze you refused us. Cuthbert has a drawer it would fit.",
+        "subject": "kites",
+        "butt": "committee",
+        "shape": "callback",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "STUDY OF WIND FINDS WIND; ASKS FOR MORE WIND",
+          "refuse": "WIND OVER BRASSBY STAYS UNMEASURED, AND UNHIRED"
+        }
+      }
+    },
+    {
+      "id": "pres-first-kite",
+      "office": "president",
+      "title": "The First Kite",
+      "afterSign": {
+        "visitor": "updraught",
+        "club": "kites",
+        "other": "hedges",
+        "archetype": "project",
+        "text": "Your first kite is still up, in a hedge. List it as a landmark?",
+        "subject": "kites",
+        "butt": "self",
+        "shape": "form-misapplied",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT'S KITE LISTED; HEDGE LISTED WITH IT",
+          "refuse": "PRESIDENT'S KITE COMES DOWN ON ITS OWN, AT LAST"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "loft",
+        "club": "kites",
+        "other": "hedges",
+        "archetype": "treat",
+        "text": "No first kite, so nobody may fly a second. The League waits.",
+        "subject": "kites",
+        "butt": "office",
+        "shape": "literalism",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "SEASON OPENS AT LAST; FIRST KITE LANDS IN HEDGE",
+          "refuse": "KITE SEASON STILL WAITING TO START"
+        }
+      }
+    },
+    {
+      "id": "pres-topiary-clock",
+      "office": "president",
+      "title": "The Topiary Clock",
+      "afterSign": {
+        "visitor": "topiary",
+        "cosigner": "minute",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "committee",
+        "text": "The hedge clock says spring. The calendar does not. An inquiry?",
+        "subject": "clocks",
+        "butt": "committee",
+        "shape": "form-misapplied",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "INQUIRY BACKS HEDGE; CALENDAR TO BE TRIMMED",
+          "refuse": "HEDGE AND CALENDAR NO LONGER SPEAKING"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "edging",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "treat",
+        "text": "No clock, then. Stand by the hedge at noon and point up? Once.",
+        "subject": "clocks",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "PRESIDENT STANDS IN FOR CLOCK; RUNS AN HOUR SLOW",
+          "refuse": "HEDGE STILL DOES NOT TELL THE TIME. NEVER DID"
+        }
+      }
+    },
+    {
+      "id": "pres-harbour-steps",
+      "office": "president",
+      "title": "Brass on the Steps",
+      "afterSign": {
+        "visitor": "hake",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "swap",
+        "text": "The step we now sit on is 60 % sea. The top step, please.",
+        "subject": "harbours",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "BAND MOVES DOWN TO BOTTOM STEP; TUBA GETS WET",
+          "refuse": "ANGLERS STAY ON WET STEP. 'QUIETER,' SAYS ONE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "project",
+        "text": "Not on the steps, then. Beside them, from a boat. Fund the boat?",
+        "subject": "harbours",
+        "butt": "office",
+        "shape": "literalism",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "BAND PLAYS FROM BOAT; BOAT DRIFTS TOWARDS ANGLERS",
+          "refuse": "BAND PLAYS ON QUAY, WAVING AT A BOAT IT LACKS"
+        }
+      }
+    },
+    {
+      "id": "pres-dim-lighthouse",
+      "office": "president",
+      "title": "The Dim Lighthouse",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "anglers",
+        "archetype": "vanity",
+        "text": "Have the lighthouse spell your initials. Dimly, for the fish.",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "LIGHTHOUSE SPELLS PRESIDENT'S INITIALS; FISH UNMOVED",
+          "refuse": "LIGHTHOUSE STAYS DIM AND ANONYMOUS"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "dabble",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "treat",
+        "text": "Then come and say 'hush' to the lighthouse. It may listen to you.",
+        "subject": "harbours",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "PRESIDENT SHUSHES LIGHTHOUSE; LIGHTHOUSE CARRIES ON",
+          "refuse": "LIGHTHOUSE NOT SHUSHED. ANGLERS SHUSH EACH OTHER"
+        }
+      }
+    },
+    {
+      "id": "pres-motorway-bench",
+      "office": "president",
+      "title": "The Spotting Bench",
+      "afterSign": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "Log one coach from the bench. We will tell you which are coaches.",
+        "subject": "buses",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT LOGS VAN AS COACH; SOCIETY POLITE",
+          "refuse": "BENCH LOGS COACHES ALL DAY WITHOUT PRESIDENT"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "sprott",
+        "club": "bus",
+        "other": "hedges",
+        "archetype": "swap",
+        "text": "No bench. May we lean on the roadside hedge instead? In shifts.",
+        "subject": "buses",
+        "butt": "office",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "HEDGE LEANED ON IN SHIFTS; HEDGE NOW LEANS TOO",
+          "refuse": "SPOTTERS STAND UNAIDED, LOGGING BRAVELY"
+        }
+      }
+    },
+    {
+      "id": "pres-tea-lamps",
+      "office": "president",
+      "title": "Tea-Coloured Lamps",
+      "afterSign": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "swap",
+        "text": "Under the tea lamps, 94 % of coaches are logged 'beige'. One plain lamp?",
+        "subject": "buses",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "ONE PLAIN LAMP LIT; TILL'S TEAS CALLS IT 'WEAK'",
+          "refuse": "COACH OF THE YEAR: 'BEIGE', AGAIN"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "till",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "fee",
+        "text": "Then Till's Teas will hire just the bus stop lamp. It would say TEA.",
+        "subject": "signage",
+        "butt": "thing",
+        "shape": "slogan",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "BUS STOP NOW SAYS TEA; NO TEA ARRIVES",
+          "refuse": "LAMP BY BUS STOP CONTINUES TO SAY NOTHING"
+        }
+      }
+    },
+    {
+      "id": "pres-pumpkin-tour",
+      "office": "president",
+      "title": "The Pumpkin Tour",
+      "afterSign": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "bus",
+        "archetype": "swap",
+        "text": "The pumpkin tours again, in the Society's coach. You need not come.",
+        "subject": "vegetable-shows",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PUMPKIN TOURS ALONE; CHEERS LOUDER, SOME SAY",
+          "refuse": "PUMPKIN STAYS HOME; COACH LEAVES ON TIME, FOR ONCE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "loam",
+        "club": "veg",
+        "other": "bus",
+        "archetype": "treat",
+        "text": "The pumpkin toured without you. It kept your seat. Ride the last stop?",
+        "subject": "vegetable-shows",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "PRESIDENT RIDES LAST STOP; PUMPKIN WAVES FIRST",
+          "refuse": "EMPTY SEAT TOURS NINE PROVINCES; WELL RECEIVED"
+        }
+      }
+    },
+    {
+      "id": "pres-lawn-judged",
+      "office": "president",
+      "title": "The Judged Lawn",
+      "afterSign": {
+        "visitor": "edging",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "treat",
+        "text": "Your lawn came third of three. Edge it yourself for the rematch?",
+        "subject": "gardens",
+        "butt": "self",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT RE-EDGES OWN LAWN. STILL THIRD",
+          "refuse": "LAWN UNEDGED; THIRD PLACE KEPT"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "topiary",
+        "cosigner": "minute",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "committee",
+        "text": "Then we study your lawn edges from the pavement. With a ruler.",
+        "subject": "gardens",
+        "butt": "self",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "STUDY FINDS PRESIDENT'S LAWN 'MOSTLY EDGE'",
+          "refuse": "LAWN EDGES STAY UNSTUDIED, AND UNEVEN"
+        }
+      }
+    }
+  ]
+}

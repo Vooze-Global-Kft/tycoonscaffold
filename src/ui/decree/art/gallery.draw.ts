@@ -279,9 +279,9 @@ export function gallerySections(): Section[] {
       height: () => 300,
       draw: (c, w) => {
         drawDesk(c, { x: 0, y: 10, w, h: 290 }, 0);
-        at(c, 70, 80, 1, 0, (q) => drawEmblem(q, 50));
-        at(c, 70, 200, 1, 0, (q) => drawEmblem(q, 22));
-        at(c, 120, 195, 1, 0, (q) => drawEmblem(q, 11));
+        at(c, 70, 84, 1, 0, (q) => drawEmblem(q, 40));
+        at(c, 52, 222, 1, 0, (q) => drawEmblem(q, 22));
+        at(c, 112, 222, 1, 0, (q) => drawEmblem(q, 11));
         at(c, 150, 20, 1, 0, (q) => drawLoadingCard(q, 200, 260, 'THE REPUBLIC OF MIDDLING', 'PROUDLY ADEQUATE'));
         if (w > 560) {
           at(c, 440, 100, 1, 0, (q) => drawGiantScissors(q, 40, { ribbon: true }));

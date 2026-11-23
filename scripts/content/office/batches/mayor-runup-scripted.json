@@ -1,0 +1,204 @@
+{
+  "batch": "mayor-runup-scripted",
+  "writer": "writer-1",
+  "office": "mayor",
+  "scripted": [
+    {
+      "id": "scripted-1",
+      "slot": 1,
+      "visitor": "spinwell",
+      "text": "Practise on this one. It is a form about forms. File it FOR FURTHER STUDY.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied",
+      "note": "teaches refusal; its sign side brings \"another copy\" back (3.1): the line is written by writer 1 in the chains-mayor batch note until format.ts has a home for a one-branch follow-up"
+    },
+    {
+      "id": "scripted-2",
+      "slot": 2,
+      "visitor": "spinwell",
+      "text": "Welcome, Mayor. Please sign this to say you have read it. You haven't. Sign it.",
+      "subject": "paperwork",
+      "butt": "self",
+      "shape": "undercut",
+      "note": "teaches signing; its study side brings \"another copy\" back (3.1), as scripted-1"
+    },
+    {
+      "id": "scripted-3",
+      "slot": 3,
+      "visitor": "till",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "fee",
+      "text": "Let Till's Teas sponsor the clock tower. It would chime TILL'S TEAS on the hour.",
+      "subject": "clocks",
+      "butt": "thing",
+      "shape": "slogan",
+      "note": "pays a fixed sum (3.1); never also in a comic deck"
+    },
+    {
+      "id": "scripted-4",
+      "slot": 4,
+      "visitor": "sash",
+      "club": "shops",
+      "archetype": "basket",
+      "text": "A small fruit basket for you. No reason. Perhaps more ribbon-cuttings? No reason.",
+      "subject": "ribbons",
+      "butt": "lobbyist",
+      "shape": "undercut",
+      "setsUp": "may-basket"
+    },
+    {
+      "id": "scripted-governor",
+      "office": "governor",
+      "slot": 1,
+      "visitor": "dimity",
+      "text": "Your door says GOVERNOR. Your sandwich says PRUELLA. Welcome.",
+      "subject": "paperwork",
+      "butt": "staff",
+      "shape": "slogan",
+      "note": "the governor's first paper: Pruella welcomes you, dry and hungry; teaches nothing new. Suggested effects for build-office.py (the rules'): as scripted-2 (sign every club +1; study No change), with no follow-up"
+    },
+    {
+      "id": "scripted-president",
+      "office": "president",
+      "slot": 1,
+      "visitor": "fenn",
+      "text": "Welcome, President. I have welcomed three. I liked one of them.",
+      "subject": "paperwork",
+      "butt": "self",
+      "shape": "undercut",
+      "note": "the president's first paper: Mildred has seen three presidents and liked one, and never says which; teaches nothing new. Suggested effects as scripted-governor"
+    }
+  ],
+  "runUp": [
+    {
+      "id": "may-runup-hedge-show",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Judge the {district} Prize Hedge Show. Say nothing about the leaning one.",
+      "subject": "hedges",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "may-runup-pop-in",
+      "office": "mayor",
+      "visitor": "wimble",
+      "text": "Pop in at the {district} fête. Cuthbert's form says: four hours.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "may-runup-kept-bench",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Award {district}'s best-kept bench. Do not sit on it. It is kept.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "may-runup-guest-sash",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Wear the {district} fête sash: GUEST OF HONOUR (SELF-NOMINATED).",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "may-runup-fruit-show",
+      "office": "mayor",
+      "visitor": "abacus",
+      "text": "Judge the {district} fruit show. Declare any baskets first.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "callback"
+    },
+    {
+      "id": "may-runup-twenty-minutes",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Visit {district}: five minutes for you, fifteen for photographs.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "may-runup-paving-stone",
+      "office": "mayor",
+      "visitor": "wimble",
+      "text": "Lay {district}'s first paving stone. The second says you did.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "may-runup-jumble",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Open the {district} jumble sale. Your old hat is on table three.",
+      "subject": "hats",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "may-runup-soup",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Taste the {district} soup. Then pause, nod and say 'remarkable'.",
+      "subject": "ceremonies",
+      "butt": "staff",
+      "shape": "photo-op"
+    },
+    {
+      "id": "may-runup-visitors-book",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Sign the {district} visitors' book. Use the whole first page.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "escalation"
+    }
+  ],
+  "rallies": [
+    {
+      "id": "may-rally-loan-scissors",
+      "office": "mayor",
+      "visitor": "abacus",
+      "text": "A rally at the fête. The scissors are on loan. Snips are counted.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "may-rally-scissors",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Hold a rally at the bandstand. Bring the ceremonial scissors. Cut something.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "may-rally-not-the-pumpkin",
+      "office": "mayor",
+      "visitor": "gourdley",
+      "text": "A rally at the vegetable show. Cut the ribbon. Not the pumpkin.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "may-rally-higher",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "A rally at the show. Scissors up for the Drizzle. Higher. Good.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "photo-op"
+    }
+  ]
+}

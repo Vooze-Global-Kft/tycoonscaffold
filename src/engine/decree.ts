@@ -23,32 +23,33 @@ export type * from './decree/types';
 export { SITE, PAPER_KINDS, DAY_KINDS, MAX_TICK } from './decree/types';
 
 // ============================================================================ BLOCK P1a (the paper core)
-export { NotBuiltError, notBuilt } from './decree/notBuilt';
+export { NotBuiltError, notBuilt, standIn } from './decree/notBuilt';
 
 // --- 2.4 derived values, the one rounding, the one cash commit, the streams, prices (P1a: params.ts) ---
-export { isDecree, officeOf, clubIndex, roundDibs, rand, commitCash, disarray, ministryValue, storeys, rateOf, levelCost, openCost, vanityPrice, decreeParams, topBar, clubStrip, EPS, MAX_CASH } from './decree/params';
+export { isDecree, officeOf, clubIndex, roundDibs, rand, commitCash, disarray, ministryValue, storeys, rateOf, levelCostRaw, levelCost, openCost, vanityPrice, factorOn, mixWith, approvalOf, multiplierOf, levelGain, openGain, decreeParams, topBar, clubStrip, EPS, MAX_CASH } from './decree/params';
 
 // --- 2.3 state: a new game, a loaded save (P1a: create.ts) ---
-export { freshDecree, createDecree, withDecreeFields, reconcileDecree } from './decree/create';
+export { freshDecree, createDecree, withDecreeFields, reconcileDecree, buildDecree } from './decree/create';
+export type { DecreeSetup } from './decree/create';
 
 // --- 2.7 the draw, landing, the run-up's papers, set-aside and return (P1a: draw.ts) ---
-export { drawNext, fillTray, landNext, landPaper, drawCampaignPaper, drawRally, setAside, restoreAside, returnToDeck, resolveEffects, scriptedPaper } from './decree/draw';
+export { drawNext, fillTray, landNext, landPaper, drawCampaignPaper, drawRally, setAside, restoreAside, returnToDeck, resolveEffects, scriptedPaper, comicPaper, comicWeights, clubWeight, requisitionPaper, requisitionMinistry, ribbonPaper, applicationPaper, grievancePaper, frontPagePaper, onTop, isEventPaper, servedClub } from './decree/draw';
 
 // --- 2.7 sizing and the strip (P1a: size.ts) ---
-export { sizeMood, sizeMoney, freezeShown, stripOf } from './decree/size';
+export { sizeMood, sizeMoney, freezeShown, stripOf, costOf, formVoid } from './decree/size';
 
 // --- 2.6, 2.7, 2.17 decide, take back, commit, the order of operations (P1a: decide.ts) ---
 export { decide, takeBack, commitPending, applyShown, commitItem, isDay } from './decree/decide';
 
 // --- 2.6, 2.7 slips, purchases, the reserve, the Ledger (P1a: slips.ts) ---
-export { reserve, reserveParts, slipFor, buy, raise, openMinistry, buyVanity, ledger } from './decree/slips';
+export { reserve, reserveParts, slipFor, slipOf, canBuy, buy, raise, openMinistry, buyVanity, ledger, callFrom, runUpPrices } from './decree/slips';
 
 // --- 2.7, 7.6 follow-ups (P1a: followup.ts) ---
 export { scheduleFollowUp, dueFollowUp, followUpPaper, stickyNote } from './decree/followup';
 
 // --- 2.8 boycotts and the scandal (P1a: strike.ts, scandal.ts) ---
 export { countDownStrikes, checkStrikes, endStrike } from './decree/strike';
-export { sayNothingFactor, countDownScandal, checkScandal, endScandal } from './decree/scandal';
+export { sayNothingFactor, quietLimit, countDownScandal, checkScandal, endScandal } from './decree/scandal';
 
 // ============================================================================ BLOCK P1b (time, term and wiring)
 

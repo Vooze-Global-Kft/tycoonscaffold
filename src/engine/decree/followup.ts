@@ -54,8 +54,8 @@ function followUpDef(cfg: DecreeConfig, f: FollowUp): { text: string; visitor: V
   if (!rec) return null;
   const tags = { subject: rec.subject, butt: rec.butt, shape: rec.shape };
   const visitor = ('visitor' in rec && rec.visitor) || null;
-  if (f.kind === 'study') return rec.biggerStudy ? { text: rec.biggerStudy, visitor, cosigner: rec.cosigner ?? null, club: rec.club, other: rec.other, archetype: 'biggerStudy', tags, clipping: null } : null;
-  return rec.favour ? { text: rec.favour.text, visitor, cosigner: rec.cosigner ?? null, club: rec.club, other: null, archetype: 'favour', tags, clipping: rec.favour.clippings } : null;
+  if (f.kind === 'study') return rec.biggerStudy ? { text: rec.biggerStudy, visitor, cosigner: ('cosigner' in rec && rec.cosigner) || null, club: rec.club, other: rec.other, archetype: 'biggerStudy', tags, clipping: null } : null;
+  return rec.favour ? { text: rec.favour.text, visitor, cosigner: ('cosigner' in rec && rec.cosigner) || null, club: rec.club, other: null, archetype: 'favour', tags, clipping: rec.favour.clippings } : null;
 }
 
 /** The follow-up's paper as drawn (a chain branch, or a paper's own bigger study or favour; its archetype's base effects, sized when it lands), or null when the deck no longer has it or the office lacks one of its clubs. Built. */

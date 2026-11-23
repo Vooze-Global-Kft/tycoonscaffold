@@ -51,7 +51,7 @@
       "subject": "clocks",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "Both faces have been heard. The inquiry now wishes to hear from the hands.",
+      "biggerStudy": "Both faces have spoken. The inquiry now wishes to hear the hands.",
       "note": "Other: the face over the high street is the one the Guild opens by."
     },
     {
@@ -98,7 +98,7 @@
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
-        "text": "About the hat: it would like a window seat on the 7:02. It has no ticket.",
+        "text": "About the hat: it wants a window seat on the 7:02. It has no ticket.",
         "clippings": {
           "sign": "MAYOR'S HAT GIVEN WINDOW SEAT ON THE 7:02",
           "refuse": "HAT WALKS HOME. NO TICKET"
@@ -153,7 +153,7 @@
       "butt": "committee",
       "shape": "form-misapplied",
       "portable": true,
-      "biggerStudy": "The report no longer fits. The working group asks for a season pass."
+      "biggerStudy": "The report no longer fits. The group asks for a season pass."
     },
     {
       "id": "may-unveil-timetable",
@@ -250,7 +250,7 @@
       "butt": "committee",
       "shape": "slogan",
       "portable": true,
-      "biggerStudy": "The sign committee has settled on OPEN. It now asks to begin on CLOSED."
+      "biggerStudy": "OPEN is agreed. The committee asks to begin on CLOSED."
     },
     {
       "id": "may-nose-permits",
@@ -264,7 +264,7 @@
       "butt": "committee",
       "shape": "form-misapplied",
       "portable": true,
-      "biggerStudy": "The nose permit committee asks to cover elbows too. And the odd forehead."
+      "biggerStudy": "The nose committee asks to cover elbows too. And the odd forehead."
     },
     {
       "id": "may-sign-for-sign",
@@ -438,7 +438,7 @@
       "subject": "potholes",
       "butt": "committee",
       "shape": "undercut",
-      "biggerStudy": "The pothole's soil is promising. The study now asks for a second pothole."
+      "biggerStudy": "The soil is promising. The study now asks for a second pothole."
     },
     {
       "id": "may-admirers-census",
@@ -449,10 +449,10 @@
       "archetype": "committee",
       "text": "A census of the prize pumpkin's admirers. So far: 312, some twice.",
       "subject": "vegetable-shows",
-      "butt": "visitor",
+      "butt": "committee",
       "shape": "statistic",
       "portable": true,
-      "biggerStudy": "The census of admirers is complete. It now asks to count those who looked away."
+      "biggerStudy": "The census is complete. It now asks to count those who looked away."
     },
     {
       "id": "may-bus-gaze",
@@ -465,7 +465,7 @@
       "subject": "buses",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "Settled: it looks ahead. The committee would now like to discuss the 7:15."
+      "biggerStudy": "Settled: it looks ahead. The committee now turns to the 7:15."
     },
     {
       "id": "may-vegetable-survey",
@@ -487,7 +487,7 @@
       "butt": "lobbyist",
       "shape": "undercut",
       "favour": {
-        "text": "About the rain gauge: it would like the growers' best bed, for the view.",
+        "text": "About the rain gauge: it wants the growers' best bed, for the view.",
         "clippings": {
           "sign": "MAYOR'S RAIN GAUGE GIVEN PRIZE BED",
           "refuse": "RAIN GAUGE SENT BACK, STILL EMPTY"

@@ -254,14 +254,15 @@ export function drawRibbonCorner(c: SkCanvas, w: number, y0 = 0, k = 1): void {
   });
 }
 
-/** The Republic's small printed mark on forms (the scissors over the napkin), in ±12. */
+/** The Republic's small printed mark on forms (the emblem's oval with the open scissors over the napkin), in ±12. */
 export function drawEmblemMark(c: SkCanvas): void {
-  c.drawPath(poly([-10, 4, 0, -2, 10, 4, 0, 10]), fill(DESK.paperLight));
-  c.drawPath(poly([-10, 4, 0, -2, 10, 4, 0, 10]), stroke(DESK.slate, 1.2));
-  c.drawPath(line(-7, -10, 5, 6), stroke(DESK.slateDeep, 2));
-  c.drawPath(line(7, -10, -5, 6), stroke(DESK.slateDeep, 2));
-  c.drawPath(circle(-6, 8, 2.6), stroke(DESK.slateDeep, 1.6));
-  c.drawPath(circle(6, 8, 2.6), stroke(DESK.slateDeep, 1.6));
+  c.drawPath(oval(0, 0, 9, 11.5), fill(DESK.paperLight));
+  c.drawPath(oval(0, 0, 9, 11.5), stroke(DESK.slate, 1.1));
+  c.drawPath(poly([-6, 8, 0, 2, 6, 8]), fill(DESK.slatePale));
+  c.drawPath(line(-1, 3, -4.5, -8), stroke(DESK.slateDeep, 1.6));
+  c.drawPath(line(1, 3, 4.5, -8), stroke(DESK.slateDeep, 1.6));
+  c.drawPath(circle(-2, 5.4, 1.8), stroke(DESK.slateDeep, 1.2));
+  c.drawPath(circle(2, 5.4, 1.8), stroke(DESK.slateDeep, 1.2));
 }
 
 /**
@@ -470,13 +471,13 @@ export function drawSignature(c: SkCanvas, face: string, progress = 1, k = 1, co
  * and above the first chip row, right of the heading's words and left of the direction chevron.
  * `stripW` the strip's width, `chipTop` the first chip row's top, both in the strip's own
  * coordinates (paperMetrics: sign.chips[0].y - sign.y). The box keeps the signature's look: at most
- * twice as wide as its height allows.
+ * 2.6 times as wide as its height allows.
  */
 export function signatureBox(stripW: number, chipTop: number): Box {
   const y = 6;
   const h = Math.max(8, chipTop - 2 - y);
   const right = stripW - 24;
-  const w = Math.min(right - stripW * 0.44, (h / SIGNATURE_BOX.h) * SIGNATURE_BOX.w * 2);
+  const w = Math.min(right - stripW * 0.4, (h / SIGNATURE_BOX.h) * SIGNATURE_BOX.w * 2.6);
   return { x: right - w, y, w, h };
 }
 
@@ -486,7 +487,7 @@ function scaledStrokes(face: string, b: Box): { strokes: number[][]; nib: number
   const kx = b.w / SIGNATURE_BOX.w;
   const ky = b.h / SIGNATURE_BOX.h;
   const strokes = sig.strokes.map((s) => s.map((v, i) => (i % 2 === 0 ? b.x + v * kx : b.y + v * ky)));
-  return { strokes, nib: 2.4 * Math.max(0.55, Math.min(1.2, (kx + ky) / 2)) };
+  return { strokes, nib: 2.4 * Math.max(0.8, Math.min(1.2, (kx + ky) / 2)) };
 }
 
 /**

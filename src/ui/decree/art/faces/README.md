@@ -58,3 +58,10 @@ canvas may draw it; list rows get cached images (DecreeIcon), never a canvas per
 Add a row to `ROWS` in `cast.ts` with the register's id (the test fails for any register id
 without a look, any look outside the register, two looks with the same parts, or a part that does
 not exist). New parts go in `head.ts` (faces, hair), `wear.ts` (hats, clothes) or `props.ts`.
+
+## Features on every tone (art director's pass, 23 Nov)
+
+Eyes, brows, nose, mouth and glasses are drawn with `P.feature` (#26170D, the warm brown pressed
+harder) over a 1-unit pale rim (`P.halo` #F8F3EA at 0.72), with a white catchlight in every dot eye.
+The same ink and rim on every tone (`featurePen`, `fline`, `fshape` in head.ts); brows are the hair
+colour pressed 80 % toward the feature ink. faces.test.ts measures 3:1 against all six tones.

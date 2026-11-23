@@ -137,7 +137,7 @@ function build(): Record<string, IconDraw> {
   for (const [id, d] of Object.entries(PRODUCT_DRAW)) I[`art:product_${id}`] = fit(12.6, d);
   for (const [id, d] of Object.entries(AD_DRAW)) I[`art:ad_${id}`] = fit(12.6, d);
   for (let n = 0; n <= 8; n++) I[`art:storeys_${n}`] = (c, size) => at(c, 0, size * 0.46, size / 40, 0, (q) => drawStoreys(q, n));
-  I['art:emblem'] = fit(41, (c) => drawEmblem(c, 40));
+  I['art:emblem'] = fit(56, (c) => drawEmblem(c, 40));
   I['art:scissors'] = fit(44, (c) => drawGiantScissors(c, 40));
   I['art:pen'] = (c, size) => at(c, -size * 0.12, -size * 0.48, size / 70, -35, (q) => drawPen(q, 64));
   I['art:paperclip'] = fit(12, (c) => drawPaperclip(c, 22));

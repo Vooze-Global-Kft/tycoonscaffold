@@ -2105,7 +2105,7 @@
   "moveMoodCap": 5,
   "moveMoodPerNr": 20,
   "announceSeconds": 2.5,
-  "maxLossesBound": 5
+  "maxLossesBound": 6
  },
  "vanity": {
   "price": 600,
