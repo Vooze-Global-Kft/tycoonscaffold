@@ -15,7 +15,7 @@ config · vitest.
 
 ```bash
 npm install
-GAME=pizza-empire npx expo start     # or GAME=space-miner
+GAME=pizza-empire npx expo start     # or GAME=space-miner, GAME=night-market
 GAME=pizza-empire npm run go         # Expo Go on your phone: scan the QR code
 GAME=pizza-empire npm run go:fast    # the same without development mode: use this to judge speed
 ```
@@ -26,10 +26,14 @@ development build: `npx eas-cli@latest build --profile pizza-empire-dev --platfo
 
 ## Modes
 
-Three modes exist: `sim` (Pizza Empire), `haul` (Orbit Haulers, `games/space-miner`: drag drones
+Four modes exist: `sim` (Pizza Empire), `haul` (Orbit Haulers, `games/space-miner`: drag drones
 onto asteroids to set routes, money only when the freighter warps out; its own screen, rules, art and
-sounds, specification `docs/design/space-design.md`) and `classic` (the original list game, kept for
-new games made with `new-game`). The two list modes compare like this:
+sounds, specification `docs/design/space-design.md`), `merge` (Lantern Row, `games/night-market`: drag
+two identical snacks together on a 7 by 8 board to make a finer one and fill customers' paper tickets,
+while minders keep the tills while you are away; its own screen, rules, art and sounds, specification
+`docs/design/market-design.md`, numbers tuned by `scripts/content/build-night.py` with the balance bot
+`scripts/content/merge-bot.ts`) and `classic` (the original list game, kept for new games made with
+`new-game`). The two list modes compare like this:
 
 | | `"mode": "classic"` | `"mode": "sim"` (pizza-empire) |
 |---|---|---|

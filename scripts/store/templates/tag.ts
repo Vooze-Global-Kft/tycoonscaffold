@@ -14,7 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { esc } from './fonts';
-import { framed } from './frame';
+import { bandHeightAt, framed } from './frame';
 import type { FeatureOpts, ShotOpts } from './warm';
 
 const C = {
@@ -182,8 +182,13 @@ export function skyShare(W: number, H: number): number {
 export function shotHtml(o: ShotOpts): string {
   const { W, H } = o;
   const u = W / 1320;
-  const sky = Math.round(H * skyShare(W, H));
-  const picH = H - sky;
+  // A band shorter than the picture box at full width, and not zoomed, ends the picture where the band
+  // ends (the sky below grows): the image never shows past what the scene chose (e.g. the Lantern
+  // Gate down to its "Lit" list, not one lit card under a count of four).
+  const fullH = H - Math.round(H * skyShare(W, H));
+  const short = o.band && !o.band.maxZoom && !o.band.crop ? Math.round(bandHeightAt(o.raw, o.band, W)) : fullH;
+  const picH = Math.min(fullH, Math.max(Math.round(fullH * 0.6), short));
+  const sky = H - picH;
   const left = o.index % 2 === 0;
   // The wire: from beyond the left edge to beyond the right, sagging a little below the game's foot.
   const wireY = picH - sky * 0.02;
