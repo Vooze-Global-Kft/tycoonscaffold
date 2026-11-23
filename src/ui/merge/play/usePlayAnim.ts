@@ -118,10 +118,8 @@ export function usePlayAnim(tweens: SharedValue<Tween[]>, drag: SharedValue<Drag
       const b = born.value;
       // Stamp new tweens, and see whether any still runs.
       let busy = false;
-      let maxId = 0;
       for (let i = 0; i < list.length; i++) {
         const t = list[i];
-        if (t.id > maxId) maxId = t.id;
         let t0 = b[t.id];
         if (t0 === undefined) {
           t0 = ts;
@@ -221,7 +219,6 @@ export function usePlayAnim(tweens: SharedValue<Tween[]>, drag: SharedValue<Drag
         for (let i = 0; i < list.length; i++) keep[list[i].id] = b[list[i].id];
         born.value = keep;
       }
-      void maxId;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tweens, drag, items, itemsDensity, fx, fxDensity],
