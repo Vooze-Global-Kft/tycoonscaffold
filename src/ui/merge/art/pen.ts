@@ -10,6 +10,7 @@ import {
   BlendMode,
   ClipOp,
   PaintStyle,
+  PathOp,
   Skia,
   StrokeCap,
   StrokeJoin,
@@ -20,7 +21,7 @@ import {
   type SkPathBuilder,
   type SkPicture,
 } from '@shopify/react-native-skia';
-import { NIGHT, alpha } from './palette';
+import { GREY_MATRIX, NIGHT, alpha } from './palette';
 
 /** Outline width of goods and props at their design size, in points. */
 export const INK_W = 1.25;
@@ -121,10 +122,6 @@ export function lit(c: SkCanvas, path: SkPath, base: string, top: string, dx = -
   c.translate(dx, dy);
   c.drawPath(path, fill(top));
   c.restore();
-  c.save();
-  clip(c, path);
-  c.translate(-dx * 0.6, -dy * 0.6);
-  c.restore();
   if (width > 0) c.drawPath(path, stroke(INK, width));
 }
 
@@ -164,6 +161,34 @@ export function ngon(cx: number, cy: number, r: number, n: number, a0 = 0): SkPa
     pts.push(cx + r * Math.cos(a), cy + r * Math.sin(a));
   }
   return poly(pts);
+}
+
+/** The union of several paths (one outline round overlapping shapes). */
+export function union(...paths: SkPath[]): SkPath {
+  let out = paths[0];
+  for (let i = 1; i < paths.length; i++) out = Skia.Path.MakeFromOp(out, paths[i], PathOp.Union) ?? out;
+  return out;
+}
+
+/**
+ * Draws `draw` flattened to one colour (silhouettes of goods not found yet, shadows): a layer
+ * whose colour filter keeps only the alpha.
+ */
+export function flat(c: SkCanvas, color: string, draw: (c: SkCanvas) => void): void {
+  const p = Skia.Paint();
+  p.setColorFilter(Skia.ColorFilter.MakeBlend(Skia.Color(color), BlendMode.SrcIn));
+  c.saveLayer(p);
+  draw(c);
+  c.restore();
+}
+
+/** Draws `draw` in greyscale (luminance), for the contact sheet's greyscale switch. */
+export function grey(c: SkCanvas, draw: (c: SkCanvas) => void): void {
+  const p = Skia.Paint();
+  p.setColorFilter(Skia.ColorFilter.MakeMatrix(GREY_MATRIX));
+  c.saveLayer(p);
+  draw(c);
+  c.restore();
 }
 
 export function circle(cx: number, cy: number, r: number): SkPath {

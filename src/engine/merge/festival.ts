@@ -8,7 +8,7 @@
  *
  * Skeleton bodies: `festivalFor` is built (a read of the table; a season past the last row uses the
  * last row: a skeleton decision for ORDERS to confirm); `festivalLineFilled` returns the state
- * unchanged; `festivalPurse` and `canCloseSeason` throw notBuilt('<name>').
+ * unchanged; `canCloseSeason` is built; `festivalPurse` throws notBuilt('festivalPurse').
  */
 import { notBuilt } from './notBuilt';
 import type { Good, MergeConfig, MergeEvent, MergeGame } from './types';
@@ -39,9 +39,13 @@ export function festivalPurse(cfg: MergeConfig, g: MergeGame): number {
   throw notBuilt('festivalPurse');
 }
 
-/** Whether "Close the season" is enabled: the Festival is filled (2.11). ORDERS. Skeleton: throws notBuilt('canCloseSeason'). */
+/**
+ * Whether "Close the season" is enabled: the Festival is filled (2.11), i.e. its last line landed
+ * (`filledAt` set by `festivalLineFilled`). The shared store's prestige gate reads it through
+ * `EngineMode.canPrestige` (src/engine/mergeMode.ts). ORDERS. Built (one line, so the store's gate
+ * works before ORDERS writes the close).
+ */
 export function canCloseSeason(cfg: MergeConfig, g: MergeGame): boolean {
   void cfg;
-  void g;
-  throw notBuilt('canCloseSeason');
+  return g.merge.festival.filledAt !== null;
 }

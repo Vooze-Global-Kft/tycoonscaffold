@@ -33,23 +33,6 @@ const asState = (g: R.MergeGame) => g as GameState;
 /** A save of a merge game always has `merge` after reconcile; a bare shared state (a test) gets one. */
 const run = (cfg: R.MergeConfig, g: GameState): R.MergeGame => (asGame(g).merge ? asGame(g) : R.withMergeFields(cfg, g));
 
-/**
- * The merge mode's own fx key for each shared key the shared store plays (spec 6.2 `soundKeys`),
- * handed to the fx service by the mode entry. Every value is a key of the merge table
- * (src/services/fx/catalog.merge.ts). The sound package owns the choices.
- */
-export const MERGE_SHARED_SOUNDS = {
-  offline_collect: 'coins',
-  purchase_success: 'upgrade',
-  prestige: 'season_close',
-  unlock: 'stall_open',
-  mission_complete: 'lantern_lit',
-  card_levelup: 'upgrade',
-  daily_claim: 'coins',
-  ui_tap: 'ui_open',
-  ui_tab: 'ui_open',
-} as const;
-
 export const mergeEngineMode: EngineMode = {
   id: 'merge',
   saveTag: 'merge1',
@@ -74,6 +57,8 @@ export const mergeEngineMode: EngineMode = {
   },
   // Closing the season (2.11): refused (the same object) until the Festival is filled; no choice (the next season is not chosen).
   prestige: (cfg, state, now) => (R.isMerge(cfg) ? asState(R.closeSeason(cfg, run(cfg, state), now)) : state),
+  // The store's prestige gate (a merge game earns no prestige points): the Festival is filled (2.11).
+  canPrestige: (cfg, state) => R.isMerge(cfg) && R.canCloseSeason(cfg, run(cfg, state)),
   entitle: (cfg, state, productId) => (R.isMerge(cfg) ? asState(R.entitleMerge(cfg, run(cfg, state), productId)) : state),
   mergeReport: R.mergeAwayReports,
   reportAlone: R.awayReportAlone,

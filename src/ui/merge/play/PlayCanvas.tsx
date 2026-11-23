@@ -54,7 +54,9 @@ function Street({ layout }: { layout: MergeLayout }) {
       {layout.counters[n].map((r, j) => {
         const t = counters[j]?.ticket;
         const who = t && cfg ? cfg.tickets.customers[t.customer] : '';
-        const lines = t && cfg ? t.lines.map((l) => `${l.filled ? '✓ ' : ''}${cfg.chains[l.c].tiers[l.k - 1]}`).join('\n') : S.play.emptyCounter;
+        // "Setting up…" is the fallback of 2.7 step 5 only (the draw found no ticket: `blockedAt`); an
+        // empty counter waiting for its refill or for the scripted hedgehog shows nothing.
+        const lines = t && cfg ? t.lines.map((l) => `${l.filled ? '✓ ' : ''}${cfg.chains[l.c].tiers[l.k - 1]}`).join('\n') : counters[j]?.blockedAt != null ? S.play.settingUp : '';
         return (
           <Placeholder key={j} rect={r} style={{ justifyContent: 'flex-start', paddingTop: 6 }}>
             <Text style={styles.who} allowFontScaling={false}>

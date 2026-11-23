@@ -52,6 +52,13 @@ export interface EngineMode {
    * nodes to buy). Without a choice the mode picks its default. Returns the same object when refused.
    */
   prestige(cfg: GameConfig, state: GameState, now: number, choice?: unknown): GameState;
+  /**
+   * Whether the run reset may happen now, for a mode whose reset is not bought with prestige
+   * points (merge: a season closes once its Festival is filled, and the game earns no points).
+   * The store's prestige action asks this in place of its points gate when it exists. Without it
+   * (sim, classic, haul) the gate is the prestige points, exactly as before.
+   */
+  canPrestige?(cfg: GameConfig, state: GameState): boolean;
   /** Story triggers the shared schema lists for this mode (true when met); unknown ones are false. */
   storyTrigger?(cfg: GameConfig, state: GameState, trigger: StoryBeat['trigger']): boolean;
   /** Counter of a mission type the mode adds (lifetime stats), or undefined when the type is not the mode's. */

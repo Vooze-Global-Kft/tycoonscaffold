@@ -8,11 +8,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pizza from '../../games/pizza-empire/game.json';
 import { GameConfigSchema } from '../config/schema';
-import { MERGE_STARTING_CONTENT, MergeSchema, RANGES, lintMerge, valueAt } from '../config/schema.merge';
+import { MERGE_STARTING_CONTENT } from '../config/merge.content';
+import { MergeSchema, RANGES, lintMerge, valueAt } from '../config/schema.merge';
 import * as E from './economy';
 import { FIXTURE_NOW, baseGameState, fixtureProblems, freshState, mergeFixtures, mergeTestConfig } from './fixtures/merge';
 import * as R from './merge';
-import { MERGE_SHARED_SOUNDS, mergeEngineMode, withMergeContent } from './mergeMode';
+import { mergeEngineMode, withMergeContent } from './mergeMode';
 import { engineFor, installEngineMode } from './mode';
 import type { GameState } from './types';
 
@@ -40,9 +41,11 @@ describe('the merge engine mode', () => {
     expect(mergeEngineMode.offlineAdMultiplier!(cfg)).toBe(1.5);
   });
 
-  it('hands the shared store keys to keys of its own fx table', async () => {
-    const { FX } = await import('../services/fx/catalog.merge');
-    for (const key of Object.values(MERGE_SHARED_SOUNDS)) expect(Object.keys(FX)).toContain(key);
+  it("canPrestige is the store's gate: the Festival filled (2.11), not prestige points", () => {
+    const g = mergeFixtures(cfg).festivalNear;
+    expect(E.prestigePointsAvailable(cfg, g)).toBe(0);
+    expect(mergeEngineMode.canPrestige!(cfg, g)).toBe(false);
+    expect(mergeEngineMode.canPrestige!(cfg, { ...g, merge: { ...g.merge, festival: { ...g.merge.festival, filledAt: 100 } } } as GameState)).toBe(true);
   });
 });
 
@@ -154,9 +157,112 @@ describe('tick (skeleton: the clocks only)', () => {
   });
 
   it.todo('tick runs every event kind of 2.4 and tick(a + b) = tick(a) then tick(b) over random splits (MECHANICS, tick.split.test.ts)');
-  it.todo('entitle for Late Hours: +4 h away cap and every "Watch ad" at once, applied now (MECHANICS, 5.7)');
+  it('Late Hours adds 4 h to the away cap at once (5.7, M13: it no longer skips ads)', () => {
+    const g = freshState(cfg);
+    expect(R.mergeParams(cfg, g).awayCap).toBe(4 * 3600);
+    const owned = { ...g, entitlements: { ...g.entitlements, products: [cfg.merge.products.lateHours] } };
+    expect(R.mergeParams(cfg, owned).awayCap).toBe(8 * 3600);
+    expect(owned.entitlements.skipRewarded).toBe(false);
+  });
   it.todo('income = the minder rate; activeIncome = the recent ticket rate + the minder rate (MECHANICS, 2.9)');
   it.todo('reportAlone is true when shelves filled with no minder hired (MECHANICS, 2.9)');
+});
+
+describe('params (2.2, 2.3: built by the skeleton so both rules packages test on real numbers)', () => {
+  const g = freshState(cfg);
+  const round = (x: number) => R.roundCost(cfg, x);
+
+  it("rounds costs as 2.2 says: below 1,000 half up, above to 3 significant digits", () => {
+    expect([43.5, 63.075, 999.4, 999.5, 1234.5, 172_800, 2_073_600].map(round)).toEqual([44, 63, 999, 1000, 1230, 173_000, 2_070_000]);
+  });
+
+  it("prices the shutters, the gear, the stalls and the minders of 2.2", () => {
+    const p = R.mergeParams(cfg, g);
+    expect(p.shutters.map((s) => s && [s.n, s.cost, s.allowed])).toEqual([
+      [0, 30, false],
+      [6, 279, false],
+      [14, 5450, false],
+      [20, 50_600, false],
+    ]);
+    const shutterCosts = Array.from({ length: 6 }, (_, n) => round(30 * 1.45 ** n));
+    expect(shutterCosts).toEqual([30, 44, 63, 91, 133, 192]);
+    expect(round(30 * 1.45 ** 25)).toBe(325_000);
+    const gear = (L: number) => round(20 * 1.45 ** (L - 1));
+    expect([1, 2, 3, 4, 5].map(gear)).toEqual([20, 29, 42, 61, 88]);
+    const sum = (a: number, b: number) => Array.from({ length: b - a }, (_, i) => gear(a + i)).reduce((x, y) => x + y, 0);
+    expect(sum(1, 11)).toBe(1782);
+    // 2.2's "75.0K" is the sum of the unrounded costs (74,976); the paid, rounded steps add up to 75,074 (requests.md).
+    expect(sum(1, 21)).toBe(75_074);
+    expect(round(sum(1, 31))).toBe(3_080_000);
+    expect(p.chains[0]).toMatchObject({ base: 1, ripe: 0, maxPop: 1, stallBonus: 1, gearCost: 20, stallCost: 50, minderCost: 150, houseTier: 0, openCost: null, loose: 4 });
+    expect(p.chains[1].openCost).toBe(100);
+    expect(p.chains.slice(2).map((c) => c.openCost)).toEqual([null, null, null, null]);
+    // Stall opening by 2.2's rule (Noodles: 173K by the rounding rule; 2.2 prints 172,800, requests.md).
+    expect([1, 2, 3, 4, 5].map((i) => round(100 * 12 ** (i - 1)))).toEqual([100, 1200, 14_400, 173_000, 2_070_000]);
+    expect(p).toMatchObject({ O: 30, F: 26, beta: 0.15, familiar: 1, awayCap: 14_400, minderRate: 0 });
+    expect(p.U).toBeCloseTo(12, 9); // value(grill, max(2, best − 1) = 2) = 5 × 2.4
+  });
+
+  it('gear: base tier, ripe chance and maxPop by level (2.2)', () => {
+    const neutral = R.neutralMods(cfg);
+    expect([1, 10, 11, 20, 21, 31, 40].map((L) => R.baseTier(cfg, L))).toEqual([1, 1, 2, 2, 3, 4, 4]);
+    expect(R.ripeChance(cfg, neutral, 1)).toBe(0);
+    expect(R.ripeChance(cfg, neutral, 10)).toBeCloseTo(0.45, 12);
+    expect(R.maxPopAt(cfg, neutral, 11)).toBe(2);
+    expect(R.maxPopAt(cfg, neutral, 12)).toBe(3);
+    expect(R.ripeChance(cfg, { ripeAdd: 0.5 }, 10)).toBe(0.6);
+  });
+
+  it('values, ticket price, the Parade, U and the minder rate (2.3)', () => {
+    expect(R.value(cfg, g, 0, 3)).toBeCloseTo(5 * 2.4 ** 2, 9);
+    expect(R.value(cfg, g, 2, 1)).toBe(80);
+    const two = { gold: false, lines: [{ c: 0, k: 2 }, { c: 1, k: 1 }] };
+    expect(R.ticketPrice(cfg, g, two)).toBeCloseTo((12 + 20) * 1.15, 9);
+    expect(R.ticketPrice(cfg, g, { ...two, gold: true })).toBeCloseTo((12 + 20) * 1.15 * 2, 9);
+    const { minute10 } = mergeFixtures(cfg);
+    const p = R.mergeParams(cfg, minute10);
+    const hired = p.chains.filter((c) => c.houseTier > 0);
+    expect(hired.length).toBeGreaterThan(0);
+    for (const c of hired) expect(c.minderRate).toBeCloseTo(c.values[c.houseTier - 1] / 15, 9);
+    expect(p.minderRate).toBeCloseTo(hired.reduce((a, c) => a + c.minderRate, 0), 9);
+    expect(R.looseCount(cfg, minute10.merge, 0)).toBe(p.chains[0].loose);
+  });
+
+  it('recent ticket coins per chain and R_t (2.10)', () => {
+    const g0 = freshState(cfg);
+    const clock = 120;
+    const coins = g0.merge.recent.coins.map((row) => row.slice());
+    coins[1][59] = 30;
+    coins[0][58] = 10;
+    const g1 = { ...g0, stats: { ...g0.stats, playSeconds: clock }, merge: { ...g0.merge, recent: { at: Math.floor(clock / 5), coins } } };
+    expect(R.recentCoins(g1.merge, clock)).toBe(40);
+    expect(R.recentCoins(g1.merge, clock, 1)).toBe(30);
+    expect(R.recentRate(g1)).toBeCloseTo(40 / 120, 12);
+    expect(R.recentRate(g1, 0)).toBeCloseTo(10 / 120, 12);
+    expect(R.recentCoins(g1.merge, clock + 300)).toBe(0); // five minutes later every bucket is stale
+  });
+});
+
+describe('seasons: closed forms and the season start (2.11)', () => {
+  it('familiar faces and seasoned gear', () => {
+    expect([0, 1, 4, 9].map((n) => R.familiarFactor(cfg, n))).toEqual([1, 0.85, 0.85 ** 4, 0.85 ** 4]);
+    expect([0, 1, 3].map((s) => R.seasonedStartLevel(cfg, s))).toEqual([1, 11, 31]);
+  });
+
+  it("startSeason resets 2.11's list and keeps the rest", () => {
+    const { festivalNear } = mergeFixtures(cfg);
+    const m0 = { ...festivalNear.merge, chains: festivalNear.merge.chains.map((ch, c) => ({ ...ch, seasoned: c === 0 ? 1 : 0 })), luckySparks: 2 };
+    const m = R.startSeason(cfg, m0, 1, 5000);
+    expect(m.season).toBe(1);
+    expect(m.seasonStartedAt).toBe(5000);
+    expect(m.chains[0]).toMatchObject({ open: true, gear: 11, stall: 1, minder: 0, best: 2, seasoned: 1, shelf: [] });
+    expect(m.chains.slice(1).every((ch) => !ch.open && ch.best === 0)).toBe(true);
+    expect(m.board.filter((c) => c === 'shutter').length).toBe(festivalNear.merge.board.filter((c) => c === 'shutter').length);
+    expect(m.board.filter((c) => R.isGood(c))).toHaveLength(cfg.merge.seasons.openingGoods);
+    expect(m.counters.every((ct) => ct.ticket === null)).toBe(true);
+    expect(m.festival.lines.map(({ c, k }) => [c, k])).toEqual(cfg.merge.festival[1].map((l) => [l.chain, l.tier]));
+    expect(m).toMatchObject({ till: 0, basketUndo: null, script: 'done', luckySparks: 2, lanterns: m0.lanterns, book: expect.any(Array), shuttersOpened: m0.shuttersOpened });
+  });
 });
 
 describe('the shared engine delegates to it for merge configs only', () => {
@@ -202,10 +308,18 @@ describe('the merge schema (src/config/schema.merge.ts)', () => {
   it("has the chains' names of 2.2 and the Grill's values 5, 12, 29, 69, 166, 398, 955, 2,293", () => {
     expect(parsed.chains.map((c) => c.gear)).toEqual(['Ember Grill', 'Copper Urn', 'Bamboo Steamer', 'Sugar Pan', 'Noodle Wok', 'Lantern Pan']);
     expect(parsed.chains[0].tiers[7]).toBe('Dragon Grill Board');
-    // value(c, k) is not rounded (2.3); 2.2 prints the Grill's values to a whole coin. Its 955 and 2,293 are
-    // 955.5 and 2,293.5 cut down while 28.8 is printed 29, so the check allows the printed rounding.
+    // value(c, k) is not rounded (2.3); 2.2 prints the Grill's values to a whole coin: 28.8 → 29,
+    // 2,293.24 → 2,293, and only 955.51 is printed rounded down (955), so the check allows 0.52.
     const grill = Array.from({ length: 8 }, (_, k) => parsed.values.base * parsed.values.tierGrowth ** k);
     [5, 12, 29, 69, 166, 398, 955, 2293].forEach((printed, k) => expect(Math.abs(grill[k] - printed), `tier ${k + 1}`).toBeLessThan(0.52));
+  });
+
+  it('follows Decisions M13 to M15: three products, a third rewarded ad, Family Bowl', () => {
+    expect(parsed.chains[4].tiers[5]).toBe('Family Bowl');
+    expect(JSON.stringify(parsed)).not.toMatch(/Feast|Lamplighter/i);
+    expect(parsed.products).toEqual({ awnings: 'night_awnings', lateHours: 'night_late_hours', quietEvening: 'night_quiet_evening' });
+    expect(parsed.ads.callDragonCooldown).toBe(1200);
+    expect(freshState(cfg).merge.ads).toEqual({ fillLine: 0, gearRush: 0, callDragon: 0 });
   });
 
   it('a range breach is a lint problem, never silently accepted', () => {

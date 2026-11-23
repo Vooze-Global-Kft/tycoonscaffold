@@ -182,7 +182,10 @@ describe('the haul entry (Orbit Haulers)', () => {
 describe('the merge entry (Night Market)', () => {
   it('hands over its own shell, loading screen, rules, firefly pointer, "beast:" icons, hints, sound keys and presets, and no people', async () => {
     const { default: merge } = await import('./merge');
-    const { mergeEngineMode, MERGE_SHARED_SOUNDS } = await import('../engine/mergeMode');
+    const { mergeEngineMode } = await import('../engine/mergeMode');
+    const { MERGE_SHARED_SOUNDS } = await import('./merge/soundKeys');
+    const { FX } = await import('../services/fx/catalog.merge');
+    for (const key of Object.values(MERGE_SHARED_SOUNDS)) expect(Object.keys(FX), 'every shared key maps to a key of the merge table').toContain(key);
     const { mergeHints } = await import('../ui/merge/hints');
     const { listenMergeEvents } = await import('./merge/fx');
     expect(merge.id).toBe('merge');

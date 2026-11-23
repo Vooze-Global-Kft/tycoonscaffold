@@ -10,11 +10,12 @@
  * Skeleton bodies: `seasonRow` is built (a read of the table with its repeat); `seasonMods`
  * returns {} (no character changes anything yet); `openingBoard` returns season 1's board (the
  * rectangle, `openingGoods` Grill goods of tier 1, no blocks) for every season; `closeSeason`
- * returns the state unchanged (refused); `seasonedStartLevel` and `familiarFactor` throw
- * notBuilt('<name>').
+ * returns the state unchanged (refused); `seasonedStartLevel` and `familiarFactor` are built
+ * (closed forms of 2.11, so MECHANICS's stall costs and season start can run without ORDERS).
+ * `closeSeason` builds the next season's state with MECHANICS's `startSeason` (./create.ts), after
+ * it has counted the seasoned steps, `feats.seasonsClosed` and reset the coins.
  */
 import type { SeasonRow } from '../../config/schema.merge';
-import { notBuilt } from './notBuilt';
 import type { Good, MergeConfig, MergeEvent, MergeGame, MergeState, Mods } from './types';
 
 /** The table row of a 0-based season: rows in order, then from `repeatFrom` on round again. Built. */
@@ -55,16 +56,17 @@ export function closeSeason(cfg: MergeConfig, g: MergeGame, now: number, events?
   return g;
 }
 
-/** A chain's gear level at a season's start: 1 + N × seasoned steps (2.11). ORDERS. Skeleton: throws notBuilt('seasonedStartLevel'). */
+/**
+ * A chain's gear level at a season's start: 1 + N × steps (2.11), at most the top gear level.
+ * `steps` is the chain's seasoned steps already capped by `mods.seasonedMax` (the caller's,
+ * MECHANICS's `startSeason`). ORDERS. Built.
+ */
 export function seasonedStartLevel(cfg: MergeConfig, steps: number): number {
-  void cfg;
-  void steps;
-  throw notBuilt('seasonedStartLevel');
+  return Math.min(cfg.merge.costs.gearMaxLevel, 1 + cfg.merge.seasons.levelsPerStep * Math.max(0, Math.floor(steps)));
 }
 
-/** F_s = familiarBase^min(seasons closed, familiarMax) (2.11). ORDERS. Skeleton: throws notBuilt('familiarFactor'). */
+/** F_s = familiarBase^min(seasons closed, familiarMax) (2.11): 1 in the first season. ORDERS. Built. */
 export function familiarFactor(cfg: MergeConfig, seasonsClosed: number): number {
-  void cfg;
-  void seasonsClosed;
-  throw notBuilt('familiarFactor');
+  const { familiarBase, familiarMax } = cfg.merge.seasons;
+  return Math.pow(familiarBase, Math.min(Math.max(0, seasonsClosed), familiarMax));
 }

@@ -11,12 +11,12 @@
  *   drawn by the art kit); no "char:" portraits, no card bust;
  * - `hints`: the firefly's script (src/ui/merge/hints.ts);
  * - `presets`: `?preset=` states (web only: ./presets.web.ts; on phones ./presets.ts has none);
- * - `soundKeys`: the merge key for each shared key the store plays (MERGE_SHARED_SOUNDS);
+ * - `soundKeys`: the merge key for each shared key the store plays (./soundKeys.ts, the sound package's);
  * - `devViews`: web preview only (./devViews.web.ts; on phones ./devViews.ts has none).
  * It never imports the tabs family or another mode's folders (npm run check:bundle).
  * Written by the skeleton; owned by the wiring package (spec 9.2 P3).
  */
-import { MERGE_SHARED_SOUNDS, mergeEngineMode } from '../../engine/mergeMode';
+import { mergeEngineMode } from '../../engine/mergeMode';
 import type { FxName } from '../../services/fx';
 import type { MergeFxName } from '../../services/fx/catalog.merge';
 import { MergeIcon } from '../../ui/merge/art/MergeIcon';
@@ -28,6 +28,7 @@ import type { ModeEntry } from '../contract';
 import { devViews } from './devViews';
 import { listenMergeEvents } from './fx';
 import { mergePreset } from './presets';
+import { MERGE_SHARED_SOUNDS } from './soundKeys';
 
 listenMergeEvents();
 

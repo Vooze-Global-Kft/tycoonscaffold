@@ -2,14 +2,13 @@
  * The board (spec 2.2, 2.4, 2.7): cells, the drop cell of a chain, placing a good, room.
  *
  * Package MECHANICS (docs/design/market-build-plan.md). Seam: ORDERS calls `placeGood` (gift goods,
- * the opening board, "Not tonight" returning goods), `roomFor` (the draw, the swap and gift goods
+ * the opening board), `looseCount` (bound (c)), `roomFor` (the draw, the swap and gift goods
  * use this one function, 2.7) and `freeCells`.
  *
- * Skeleton bodies: `rowOf`, `colOf`, `cellAt`, `isGood`, `freeCells`, `roomFor`, `dropCell` and
- * `placeGood` are built (create() places the opening goods with them; small, MECHANICS owns and
- * tests them); `looseCount` throws notBuilt('looseCount').
+ * Skeleton bodies: every function here is built (create() places the opening goods with them;
+ * small, MECHANICS owns and tests them). "Not tonight" (a MECHANICS action) returns filled lines
+ * with `placeGood` too.
  */
-import { notBuilt } from './notBuilt';
 import { BOARD_COLS, BOARD_ROWS, type Cell, type Good, type MergeConfig, type MergeState } from './types';
 
 export const rowOf = (i: number) => Math.floor(i / BOARD_COLS);
@@ -69,10 +68,15 @@ export function placeGood(m: MergeState, good: Good, at: number, cell?: number):
   return { m: { ...m, board, changedAt: at }, cell: target };
 }
 
-/** Loose_c: chain-c goods on the board with b_c ≤ k ≤ b_c + 1 (spec 2.3). MECHANICS. Skeleton: throws notBuilt('looseCount'). */
-export function looseCount(cfg: MergeConfig, m: MergeState, c: number): number {
-  void cfg;
-  void m;
-  void c;
-  throw notBuilt('looseCount');
+/**
+ * Loose_c: chain-c goods on the board with b_c ≤ k ≤ b_c + 1 (spec 2.3; bound (c) of 2.7 and the
+ * drop's loose cap λ). Built. b_c is params.ts `baseTier`, written out here so this file does not
+ * import params.ts (which imports this one); `mergeParams().chains[c].loose` gives the same number.
+ */
+export function looseCount(cfg: MergeConfig, m: Pick<MergeState, 'board' | 'chains'>, c: number): number {
+  const { maxBase, step } = cfg.merge.gear;
+  const b = Math.min(maxBase, 1 + Math.floor((Math.max(1, m.chains[c]?.gear ?? 1) - 1) / step));
+  let n = 0;
+  for (const cell of m.board) if (isGood(cell) && cell.c === c && cell.k >= b && cell.k <= b + 1) n++;
+  return n;
 }

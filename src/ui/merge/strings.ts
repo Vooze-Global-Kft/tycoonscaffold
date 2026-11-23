@@ -19,7 +19,8 @@ export const S = {
     /** A good on the placeholder board: "<chain>·<tier>". */
     good: (chain: string, tier: number) => `${chain}·${tier}`,
     shutter: 'shut',
-    emptyCounter: 'Setting up…',
+    /** A counter whose draw found no ticket (2.7 fallback step 5). */
+    settingUp: 'Setting up…',
   },
   // ===== bars: top bar, goal line, bottom row ===================================================
   hud: {

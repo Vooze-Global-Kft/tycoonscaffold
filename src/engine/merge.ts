@@ -34,10 +34,18 @@ export {
   baseTier,
   /** Price rounding of 2.2. */
   roundCost,
+  /** The ripe chance p and maxPop at a gear level (2.2). */
+  ripeChance,
+  maxPopAt,
+  /** Recent ticket coins and R_t, per chain or in all (2.3, 2.10). */
+  recentCoins,
+  recentRate,
+  RECENT_BUCKET,
+  RECENT_BUCKETS,
 } from './merge/params';
 
 // --- 2.3 state: a new game, a loaded save (MECHANICS) ---
-export { createMerge, withMergeFields, reconcileMerge } from './merge/create';
+export { createMerge, startSeason, withMergeFields, reconcileMerge } from './merge/create';
 
 // --- the board (MECHANICS) ---
 export { rowOf, colOf, cellAt, isGood, freeCells, roomFor, dropCell, placeGood, looseCount } from './merge/board';
@@ -50,10 +58,15 @@ export { nextEvent, runEvent } from './merge/events';
 export { dropAt, decodeTarget, targetsFor } from './merge/drop';
 
 // --- 2.5, 2.7, 5.7 purchases, buttons, ads, the cash clamp (MECHANICS) ---
-export { commitCash, openStall, levelGear, levelStall, hireMinder, levelMinder, openShutter, notTonight, undoBasket, canWatchAd, grantAd, entitleMerge } from './merge/actions';
+export { commitCash, openStall, levelGear, levelStall, hireMinder, levelMinder, openShutter, notTonight, undoBasket, canWatchAd, grantAd, applyLantern, entitleMerge } from './merge/actions';
 
 // --- 2.9 time away (MECHANICS) ---
 export { mergeOffline, mergeIncome, mergeActiveIncome, awayReportAlone, mergeAwayReports } from './merge/offline';
+
+// =============================================================================================
+// ORDERS's exports. The rules package ORDERS adds and edits the export lines below this mark itself
+// (docs/design/market-build-plan.md); MECHANICS owns the lines above it.
+// =============================================================================================
 
 // --- 2.7 tickets (ORDERS) ---
 export { missing, popsNeeded, goodsAtHand } from './merge/missing';
@@ -66,7 +79,7 @@ export { festivalFor, festivalLineFilled, festivalPurse, canCloseSeason } from '
 export { seasonRow, seasonMods, openingBoard, closeSeason, seasonedStartLevel, familiarFactor } from './merge/season';
 
 // --- 5.3 lanterns and the modifiers (ORDERS) ---
-export { neutralMods, lanternMods, currentMods, onMerged, onTierMade, onTicketPaid, featProgress } from './merge/lanterns';
+export { neutralMods, lanternMods, currentMods, onMerged, onTierMade, onTicketPaid, checkLanterns, featProgress } from './merge/lanterns';
 
 // --- 5.5 gift boxes (ORDERS) ---
 export { countGiftTicket, openGiftBox, giftOdds } from './merge/gift';

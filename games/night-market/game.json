@@ -168,7 +168,7 @@
           "Broth Bowl",
           "Topped Bowl",
           "Big Bowl",
-          "Noodle Feast",
+          "Family Bowl",
           "Long-Life Bowl",
           "Thousand-Thread Pot"
         ],
@@ -807,6 +807,7 @@
       "fillLineCooldown": 300,
       "gearRushGoods": 6,
       "gearRushCooldown": 900,
+      "callDragonCooldown": 1200,
       "awayBonus": 0.5
     },
     "away": {
@@ -818,8 +819,9 @@
       "shutterKappa": 1
     },
     "products": {
-      "lamplighter": "night_lamplighter",
-      "lateHours": "night_late_hours"
+      "awnings": "night_awnings",
+      "lateHours": "night_late_hours",
+      "quietEvening": "night_quiet_evening"
     }
   },
   "characters": [
@@ -870,18 +872,25 @@
     "iap": {
       "products": [
         {
-          "id": "night_lamplighter",
-          "title": "Lamplighter's Street",
-          "description": "Blue silk awnings and moon lanterns on every stall, for good. Looks only.",
+          "id": "night_awnings",
+          "title": "Blue Silk Awnings",
+          "description": "PLACEHOLDER: every stall gets blue silk awnings and moon lanterns, for good. Looks only.",
           "kind": "cosmetic",
           "fallbackPrice": "$2.99"
         },
         {
           "id": "night_late_hours",
           "title": "Late Hours",
-          "description": "Minders keep the stalls 4 more hours while you are away, and every \"Watch ad\" button gives its reward at once.",
+          "description": "PLACEHOLDER: your minders keep the stalls 4 more hours while you are away.",
           "kind": "unlock",
-          "fallbackPrice": "$4.49"
+          "fallbackPrice": "$3.99"
+        },
+        {
+          "id": "night_quiet_evening",
+          "title": "Quiet Evening",
+          "description": "PLACEHOLDER: every \"Watch ad\" button gives its reward at once, with no video.",
+          "kind": "skipAds",
+          "fallbackPrice": "$4.99"
         }
       ]
     }
@@ -890,16 +899,16 @@
     "title": "Lantern Row",
     "subtitle": "Merge snacks, fill each order",
     "keywords": [
-      "merge",
       "market",
-      "orders",
       "board",
       "skewer",
       "tea",
       "dumpling",
+      "noodle",
+      "sweets",
+      "food",
       "stall",
-      "lantern",
-      "snack",
+      "street",
       "puzzle",
       "cozy"
     ],

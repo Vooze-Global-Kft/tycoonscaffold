@@ -118,8 +118,8 @@ export const IapProductSchema = z.object({
    * starterPack: noAds plus `value` gems (or `contents` when set). deal: only a price; what it grants is set by
    * the deal in `meta.deals` that names this product. clearance: no banners or pop-up ads, and every rewarded
    * boost without the ad (one product). unlock: a permanent rule the mode reads from `entitlements.products`
-   * (haul: `haul.hangar.product`). cosmetic: looks only, nothing in the rules changes (merge: Lamplighter's
-   * Street, `merge.products.lamplighter`; Decision M7 of docs/design/market-design.md).
+   * (haul: `haul.hangar.product`). cosmetic: looks only, nothing in the rules changes (merge: Blue Silk
+   * Awnings, `merge.products.awnings`; Decisions M7 and M13 of docs/design/market-design.md).
    */
   kind: z.enum(['noAds', 'skipAds', 'multiplier', 'gems', 'starterPack', 'timeWarp', 'deal', 'clearance', 'unlock', 'cosmetic']),
   /** starterPack only: what it grants instead of "no ads plus `value` gems" (a pack without no-ads). */

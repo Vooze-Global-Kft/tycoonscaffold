@@ -163,20 +163,33 @@ export interface BasketUndo {
 
 // ----------------------------------------------------------------------------- lanterns, ads, stats
 
-/** Lifetime counters the lantern feats read (spec 5.3). Kept across seasons. */
+/**
+ * Lifetime counters the lantern feats read (spec 5.3). Kept across seasons. Who counts each (the
+ * seam, docs/design/market-build-plan.md): MECHANICS counts what happens on the board, ORDERS what
+ * happens to tickets and seasons, each before it calls the other side's hook.
+ */
 export interface Feats {
+  /** Paid tickets, the Parade's included. ORDERS, in lanterns.ts `onTicketPaid`. */
   tickets: number;
+  /** Paid tickets of 3 lines or more. ORDERS, in `onTicketPaid`. */
   threeLineTickets: number;
+  /** Paid Parade (gold) tickets. ORDERS, in `onTicketPaid`. */
   parades: number;
-  /** Lifetime merges: also the Lucky stream's position n (2.3). */
+  /** Lifetime merges: also the Lucky stream's position n (2.3). MECHANICS, in drop.ts, before `onMerged`. */
   merges: number;
+  /** ORDERS, in season.ts `closeSeason`. */
   seasonsClosed: number;
-  /** Tier 8 goods made in the current season (lantern 20; reset at the close). */
+  /** Tier 8 goods made in the current season (lantern 20). MECHANICS, in drop.ts, at every tier 8 a merge makes (not only the first); reset by `startSeason`. */
   tier8sThisSeason: number;
 }
 
-/** The rewarded ads of spec 5.7 that the mode grants itself (the away ad is the report's, M8). */
-export type MergeAdKind = 'fillLine' | 'gearRush';
+/**
+ * The rewarded ads of spec 5.7 that the mode grants itself (the away ad is the report's, M8):
+ * "Fill one line", "Gear rush" and "Call the dragon" (Decision M14: brings the Parade now when none
+ * is out). With the Quiet Evening product (kind skipAds, M13) the shared ads service gives the
+ * reward with no video (`ads.skipRewarded`); the rules do not know about it.
+ */
+export type MergeAdKind = 'fillLine' | 'gearRush' | 'callDragon';
 
 /**
  * The six ways coins enter (spec 2.3; gate 8 asserts every trace has no other), and spending.
@@ -200,11 +213,17 @@ export interface MergeStats {
   ticketsThisSeason: number;
 }
 
-/** Ticket coins of the last five minutes: 60 buckets of 5 s of game clock (2.3 `recent`; R_t of 2.10). */
+/**
+ * Ticket coins of the last five minutes: 60 buckets of 5 s of game clock (2.3 `recent`; R_t of
+ * 2.10), PER CHAIN, because 2.10's stall-level gain needs "the chain's ticket coins in recent".
+ * A paid ticket books its coins to the chains of its lines in proportion to each line's value
+ * (MECHANICS, drop.ts); the total is the sum over chains (params.ts `recentCoins`).
+ */
 export interface RecentCoins {
-  /** floor(clock / 5) of the newest bucket, `coins[coins.length − 1]`. */
+  /** floor(clock / 5) of the newest bucket, `coins[c][59]`. */
   at: number;
-  coins: number[];
+  /** coins[c][j]: chain c's ticket coins in bucket j (6 rows of 60, oldest first). */
+  coins: number[][];
 }
 
 /** The random sites of 2.3; each draws `rngMix4(seed, site, n, x)` with its own counter n. */
@@ -507,7 +526,7 @@ export interface MergeHint {
   text?: string;
 }
 
-/** The result of `missing()` (spec 2.7): the units still needed per line, in input order, and pops per chain. */
+/** The result of `missing()` (spec 2.7): the basic units still needed per line, in input order (pops: `popsNeeded`). */
 export interface MissingResult {
   /** Basic units (tier-1 goods) still needed by each line after the lines taken before it. */
   units: number[];

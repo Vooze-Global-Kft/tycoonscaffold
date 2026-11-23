@@ -126,7 +126,11 @@ export const mergeActions = {
     if (ok) useGame.getState().save();
     return ok;
   },
-  /** Closes the season (2.11) through the shared prestige (the engine mode's `prestige`); refused until the Festival is filled. */
+  /**
+   * Closes the season (2.11) through the shared prestige (the engine mode's `prestige`); refused
+   * until the Festival is filled. The store's gate is the engine mode's `canPrestige` (a merge game
+   * earns no prestige points), so the close reaches the rules (src/modes/merge/wiring.test.ts).
+   */
   closeSeason: (): boolean => {
     const before = mergeNow();
     if (!before) return false;
@@ -134,7 +138,11 @@ export const mergeActions = {
     const after = mergeNow();
     return !!after && after.g.merge.season > before.g.merge.season;
   },
-  /** A rewarded ad (5.7): "Fill one line" on `counter`'s ticket or "Gear rush"; with Late Hours the reward comes at once. */
+  /**
+   * A rewarded ad (5.7): "Fill one line" on `counter`'s ticket, "Gear rush" or "Call the dragon"
+   * (M14). With Quiet Evening (kind skipAds, M13) the shared ads service returns at once with no
+   * video (`ads.skipRewarded`, set by the shared store from the entitlement); nothing here checks it.
+   */
   watchAd: async (kind: R.MergeAdKind, counter?: number): Promise<boolean> => {
     if (adOpen) return false;
     const now = mergeNow();
@@ -150,10 +158,9 @@ export const mergeActions = {
     }
     adOpen = true;
     try {
-      const lateHours = !!now && useGame.getState().game.entitlements.products.includes(now.cfg.merge.products.lateHours);
-      if (!lateHours && !(await ads.showRewarded(`merge_${kind}`))) return false;
+      if (!(await ads.showRewarded(`merge_${kind}`))) return false;
       // The ad took a while: granted against the latest state (the rules check the cooldown again).
-      return act('grantAd', (cfg, g, ev) => R.grantAd(cfg, g, kind, counter, ev), kind === 'gearRush' ? 'drop' : 'line_fill');
+      return act('grantAd', (cfg, g, ev) => R.grantAd(cfg, g, kind, counter, ev), kind === 'gearRush' ? 'drop' : kind === 'callDragon' ? 'parade_arrive' : 'line_fill');
     } finally {
       adOpen = false;
     }

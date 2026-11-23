@@ -7,6 +7,9 @@
  * The store actions (src/modes/merge/actions.ts) call these through src/engine/merge.ts; each
  * returns the same object when refused (the store then plays `ui_denied`).
  *
+ * After every purchase (openStall, levelGear, levelStall, hireMinder, levelMinder, openShutter)
+ * MECHANICS calls ORDERS's `checkLanterns` (lanterns 11 and 14 are feats of purchases).
+ *
  * Skeleton bodies: `commitCash` is built; every action returns the state unchanged (refused);
  * `canWatchAd` throws notBuilt('canWatchAd').
  */
@@ -83,7 +86,7 @@ export function openShutter(cfg: MergeConfig, g: MergeGame, group: number, event
   return g;
 }
 
-/** "Not tonight" at `counter` (2.7): free, cooldown per counter; filled lines return as goods (roomFor). MECHANICS. Skeleton: unchanged (refused). */
+/** "Not tonight" at `counter` (2.7): free, cooldown per counter; filled lines return as goods (board.ts `roomFor`, then `placeGood`); refused when there is no room; sending off the gold ticket restarts the Parade clock (2.7). MECHANICS. Skeleton: unchanged (refused). */
 export function notTonight(cfg: MergeConfig, g: MergeGame, counter: number, events?: MergeEvent[]): MergeGame {
   void cfg;
   void counter;
@@ -98,7 +101,7 @@ export function undoBasket(cfg: MergeConfig, g: MergeGame, events?: MergeEvent[]
   return g;
 }
 
-/** Whether the rewarded ad `kind` can be offered now (its cooldown on the play clock; "Fill one line" needs a ticket with 2 or more unfilled lines). MECHANICS. Skeleton: throws notBuilt('canWatchAd'). */
+/** Whether the rewarded ad `kind` can be offered now (its cooldown on the play clock; "Fill one line" needs a ticket with 2 or more unfilled lines; "Call the dragon" needs no Parade out). MECHANICS. Skeleton: throws notBuilt('canWatchAd'). */
 export function canWatchAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, counter?: number): boolean {
   void cfg;
   void g;
@@ -108,9 +111,12 @@ export function canWatchAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, co
 }
 
 /**
- * The rewarded ad's reward, after the ad (or at once with Late Hours, 5.7): "Fill one line" fills the
- * cheapest unfilled line of `counter`'s ticket, never the last; "Gear rush" drops up to 6 base-tier
- * goods per open gear into free cells. Starts the cooldown. MECHANICS. Skeleton: unchanged (refused).
+ * The rewarded ad's reward, after the ad (5.7; with Quiet Evening, kind skipAds, the shared ads
+ * service skips the video, Decision M13): "Fill one line" fills the cheapest unfilled line of
+ * `counter`'s ticket, never the last; "Gear rush" drops up to 6 base-tier goods per open gear into
+ * free cells (ignoring the loose cap, never beyond F); "Call the dragon" (M14) draws the Parade now
+ * at an empty counter when none is out (the Parade clock restarts as after any Parade; ORDERS's
+ * `drawParade`). Starts the cooldown (play clock, M10). MECHANICS. Skeleton: unchanged (refused).
  */
 export function grantAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, counter?: number, events?: MergeEvent[]): MergeGame {
   void cfg;
@@ -120,7 +126,28 @@ export function grantAd(cfg: MergeConfig, g: MergeGame, kind: MergeAdKind, count
   return g;
 }
 
-/** EngineMode.entitle: a product just recorded (Late Hours: the away cap and the ads at once, 5.7; Lamplighter: looks only). MECHANICS. Skeleton: unchanged. */
+/**
+ * A lantern was just lit (ORDERS's `checkLanterns` lit it and recorded it in `lanterns`): the
+ * effects on state MECHANICS owns, at game clock `clock` (5.3 with M5): lanterns 1 and 4 append an
+ * empty counter (refill due after `refillDelay`), lantern 3 grows the shelf so a waiting gear
+ * restarts (`nextPopAt` = clock + T). Every other lantern changes only a number read through
+ * `currentMods`, or a part ORDERS owns (gift slots and `ticketsToBox` for lantern 19: ORDERS
+ * adjusts them in `checkLanterns`), so it changes nothing here. MECHANICS. Skeleton: unchanged.
+ */
+export function applyLantern(cfg: MergeConfig, g: MergeGame, n: number, clock: number, events?: MergeEvent[]): MergeGame {
+  void cfg;
+  void n;
+  void clock;
+  void events;
+  return g;
+}
+
+/**
+ * EngineMode.entitle: a product just recorded (5.7, M13). Late Hours: the away cap grows now
+ * (`mergeParams().awayCap` reads the product, so nothing in the state changes). Awnings: looks
+ * only. Quiet Evening: the shared skipAds kind, handled by the shared store. MECHANICS. Skeleton:
+ * unchanged (which is also the answer for all three products as specified).
+ */
 export function entitleMerge(cfg: MergeConfig, g: MergeGame, productId: string): MergeGame {
   void cfg;
   void productId;

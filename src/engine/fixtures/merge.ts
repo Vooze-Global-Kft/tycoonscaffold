@@ -9,7 +9,7 @@
  * - `minute10`: about 10:00 in: three stalls, two minders, 38 cells, a Parade ticket out, a gift box waiting.
  * - `festivalNear`: about 2:40 in: five stalls, every shutter open, 4 counters, 3 of 4 Festival lines filled.
  *
- * The config is the specification's starting content (src/config/schema.merge.ts) on the frozen
+ * The config is the specification's starting content (src/config/merge.content.ts) on the frozen
  * shared fixture `base-game.json`; it never reads the shipped game.json. Web only like the haul
  * fixtures (scripts/lib/modes.js WEB_ONLY): the presets reach it, phones never do.
  *
@@ -17,7 +17,8 @@
  * add bot-played states beside these).
  */
 import { GameConfigSchema } from '../../config/schema';
-import { MERGE_STARTING_CONTENT, MergeSchema, type MergeContentInput } from '../../config/schema.merge';
+import { MERGE_STARTING_CONTENT } from '../../config/merge.content';
+import { MergeSchema, type MergeContentInput } from '../../config/schema.merge';
 import * as R from '../merge';
 import type { GameState } from '../types';
 import baseGame from './base-game.json';
@@ -126,8 +127,8 @@ function build(cfg: R.MergeConfig, s: Shape): R.MergeGame {
     lanterns: s.lanterns.slice(),
     feats: { ...m0.feats, ...s.feats },
     tillAt: Math.ceil((s.clock + 1) / 60) * 60,
-    ads: { fillLine: s.clock, gearRush: s.clock },
-    recent: { at: Math.floor(s.clock / 5), coins: m0.recent.coins.slice() },
+    ads: { fillLine: s.clock, gearRush: s.clock, callDragon: s.clock },
+    recent: { at: Math.floor(s.clock / 5), coins: m0.recent.coins.map((row) => row.slice()) },
     freedAt: s.clock,
     changedAt: s.clock,
   };

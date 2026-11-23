@@ -22,7 +22,7 @@ const MODE_FOLDERS = {
   haul: ['src/modes/haul', 'src/ui/haul', 'src/engine/haul', 'src/engine/haul.ts', 'src/engine/haulMode.ts', 'src/engine/loadout.ts', 'src/engine/fixtures/haul.ts', 'src/config/schema.haul.ts'],
   // Night Market (docs/design/market-design.md 9.2): the merge rules, their schema (starting content names
   // "Pepper Skewer", "Old Brindle", ...) and fixtures belong to the merge mode exactly as haul's do.
-  merge: ['src/modes/merge', 'src/ui/merge', 'src/engine/merge', 'src/engine/merge.ts', 'src/engine/mergeMode.ts', 'src/engine/fixtures/merge.ts', 'src/config/schema.merge.ts'],
+  merge: ['src/modes/merge', 'src/ui/merge', 'src/engine/merge', 'src/engine/merge.ts', 'src/engine/mergeMode.ts', 'src/engine/fixtures/merge.ts', 'src/config/schema.merge.ts', 'src/config/merge.content.ts'],
 };
 
 /**

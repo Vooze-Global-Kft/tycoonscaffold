@@ -62,7 +62,7 @@ export function currentMods(cfg: MergeConfig, m: MergeState): Mods {
   return neutralMods(cfg);
 }
 
-/** After a merge made `made` at `cell` (spec 2.5): feats, the scripted hedgehog (2.7). ORDERS. Skeleton: returns the state unchanged. */
+/** After a merge made `made` at `cell` (spec 2.5; MECHANICS already counted `feats.merges` and `tier8sThisSeason`): the scripted hedgehog (2.7), `checkLanterns` (lanterns 7, 20). ORDERS. Skeleton: returns the state unchanged. */
 export function onMerged(cfg: MergeConfig, g: MergeGame, made: Good, cell: number, events?: MergeEvent[]): MergeGame {
   void cfg;
   void made;
@@ -80,12 +80,27 @@ export function onTierMade(cfg: MergeConfig, g: MergeGame, good: Good, firstEver
   return g;
 }
 
-/** A ticket was just paid `coins` at `counter` (after the gift counter): feats (lanterns 1, 2, 4, 10, 12, 13, 16, 19). ORDERS. Skeleton: returns the state unchanged. */
+/** A ticket was just paid `coins` at `counter` (after the gift counter): counts `feats.tickets`, `threeLineTickets` and `parades` (ORDERS counts these), restarts the Parade clock after a gold ticket, then `checkLanterns` (lanterns 1, 2, 4, 10, 12, 13, 16, 19). ORDERS. Skeleton: returns the state unchanged. */
 export function onTicketPaid(cfg: MergeConfig, g: MergeGame, counter: number, ticket: Ticket, coins: number, events?: MergeEvent[]): MergeGame {
   void cfg;
   void counter;
   void ticket;
   void coins;
+  void events;
+  return g;
+}
+
+/**
+ * Lights every unlit lantern whose feat is met now (5.3), in number order: records it in
+ * `lanterns`, appends `lanternLit`, applies what ORDERS owns (gift slots, lantern 19's
+ * `ticketsToBox`), then calls MECHANICS's `applyLantern` (./actions.ts) for the state MECHANICS
+ * owns (counters, the shelf). Called by MECHANICS after every purchase (lanterns 11 and 14 are
+ * feats of purchases) and by ORDERS's own hooks (`onMerged`, `onTierMade`, `onTicketPaid`,
+ * `closeSeason`). `clock` is the game clock. ORDERS. Skeleton: returns the state unchanged.
+ */
+export function checkLanterns(cfg: MergeConfig, g: MergeGame, clock: number, events?: MergeEvent[]): MergeGame {
+  void cfg;
+  void clock;
   void events;
   return g;
 }
