@@ -352,17 +352,17 @@ export function shutterTag(s: number): { x: number; y: number; w: number; h: num
 export function drawShutter(c: SkCanvas, s: number, o: { next?: boolean } = {}): void {
   const r = s / 2 - 1.2;
   const body = rrect(-r, -r, r * 2, r * 2, s * 0.1);
-  const base = o.next ? NIGHT.stoneLight : NIGHT.stoneDeep;
+  const base = o.next ? NIGHT.stoneLight : mix(NIGHT.stoneDeep, NIGHT.tealDeep, 0.45);
   c.drawPath(body, fill(base));
   c.save();
   clip(c, body);
   const n = 7;
   for (let i = 0; i < n; i++) {
     const y = -r + (2 * r * i) / n;
-    c.drawPath(rrect(-r, y, r * 2, (2 * r) / n - 1, 0), fill(o.next ? NIGHT.paperShade : NIGHT.stone));
+    c.drawPath(rrect(-r, y, r * 2, (2 * r) / n - 1, 0), fill(o.next ? NIGHT.paperShade : mix(NIGHT.stoneDeep, NIGHT.teal, 0.3)));
     c.drawPath(line(-r, y + (2 * r) / n - 1, r, y + (2 * r) / n - 1), stroke(alpha(INK, 0.4), 0.7));
   }
-  c.drawPath(rrect(-r, -r, r * 2, s * 0.13, 0), fill(o.next ? NIGHT.stone : NIGHT.stoneDeep));
+  c.drawPath(rrect(-r, -r, r * 2, s * 0.13, 0), fill(o.next ? NIGHT.stone : mix(NIGHT.stoneDeep, NIGHT.tealDeep, 0.6)));
   c.restore();
   c.drawPath(body, stroke(INK, 1));
   if (o.next) {

@@ -18,7 +18,7 @@ Conventions:
 ### 1.1 The game in five sentences
 
 1. You run the stalls of Lantern Row, a street market at dusk, where fox, hedgehog, badger, otter, bat and owl customers step up to your counters holding paper order tickets.
-2. Each stall's gear (an Ember Grill, a Copper Urn, a Bamboo Steamer) drops a basic snack onto the 7 by 8 board every 5 seconds, and you drag two identical snacks together to make a better one, eight steps up (a Pepper Skewer ends as a Dragon Grill Board).
+2. Each stall's gear (an Ember Grill, a Copper Urn, a Bamboo Steamer) drops a basic snack onto the 7 by 8 board every 4 seconds, and you drag two identical snacks together to make a better one, eight steps up (a Pepper Skewer ends as a Dragon Grill Board).
 3. You are paid only when the exact snacks a ticket lists are dragged onto it: it is stamped, folds into a paper lantern and floats its coins to your purse, so who is waiting sets what you merge.
 4. Coins buy finer (never faster) gear, board space, new stalls and minders, who put a house snack's price into the till, also while you are away.
 5. Each season ends with a Festival ticket; when it is filled you may close the season, and the next one changes the street (a new character of the place, and from the third season a new board shape), while board space, lanterns, the Ladder Book and seasoned gear carry over (no reset currency, no multiplier).
@@ -75,14 +75,14 @@ The rules are pure TypeScript in `src/engine/merge.ts` (the interface) and `src/
 
 ### 2.1 The rules in ten lines (what the player is told, and the whole engine)
 
-1. Each open stall's gear drops one good onto the board every 5 s. If there is no room (the board is full, or 4 of that chain's drop-tier goods are already loose), the drop goes onto the stall's shelf (up to 6); with the shelf full, the gear waits. Nothing is lost.
+1. Each open stall's gear drops one good onto the board every 4 s. If there is no room (the board is full, or 4 of that chain's drop-tier goods are already loose), the drop goes onto the stall's shelf (up to 6); with the shelf full, the gear waits. Nothing is lost.
 2. Drag a good onto an identical good below tier 8: they become one good of the next tier. 1 in 25 merges is Lucky and goes two tiers up.
 3. Each counter has one customer with a ticket of 1 to 3 lines; drag the exact good onto the ticket to fill a line.
 4. Only a full ticket pays, and it pays the price printed on it: Σ value(lines) × (1 + 0.15 × (lines − 1)).
 5. value(c, k) = v_c × 2.4^(k−1) × stall bonus. A tier-k good holds 2^(k−1) basic goods, so each tier up pays 1.2 times more per basic good.
 6. Gear levels make drops finer (a ripe chance of one tier more, and a higher base tier every 10 levels), never faster.
 7. A hired minder puts one house good's price into the stall's till every 15 s, also while you are away (up to 4 h). The till joins the purse every minute and with every paid ticket.
-8. Every line asks for at least one tier more than the gear's base drop and needs at least one drop you do not have yet; a ticket never asks for more than two of your best goods make, more than about 3 minutes of your gear (counting the tickets already waiting on it), or more cells than the board can spare.
+8. Every line asks for at least one tier more than the gear's base drop; a ticket never asks for more than two of your best goods make, more than about 3 minutes of your gear (counting the tickets already waiting on it), or more cells than the board can spare.
 9. Every 10 minutes of play the Paper Dragon Parade brings a gold ticket that pays double.
 10. Fill the season's Festival to close the season when you choose: coins, goods, levels, stalls and minders reset; board space, lanterns, the Ladder Book, seasoned gear and cheaper stalls stay.
 
@@ -114,13 +114,13 @@ Board: 7 × 8 = 56 cells, i = row × 7 + col, row 0 next to the street. Open at 
 Shutters open in index order within a group and stay open across seasons. Every third (n = 2, 5, 8, …) holds a good: tier b + 1 or b + 2 (60/40) of the open chain with the lowest best tier.
 
 Costs (below 1,000 rounded half up to a whole coin, above to 3 significant digits; shown = paid):
-- Open stall i (i ≥ 1): 100 × 12^(i−1) × F_s (tune ratio 9 to 14), where F_s is the familiar-faces factor of 2.11 (1 in the first season): Tea 100, Steamer 1,200, Sweets 14,400, Noodles 173K (172,800 before rounding), Puffs 2.07M.
+- Open stall i (i ≥ 1): a table of five tuned costs (decision M23; starting values Tea 120, Steamer 3,200, Sweets 51.2K, Noodles 819K, Puffs 13.1M), each × F_s, the familiar-faces factor of 2.11 (1 in the first season).
 - Gear level L → L+1 (L from 1 to 40): 20 × r_c × 1.45^(L−1) (tune 1.40 to 1.55). Grill: 20, 29, 42, 61, 88 …; Grill L1 → L11 costs 1,782 in all, L1 → L21 75.0K, L1 → L31 3.08M.
 - Stall level M → M+1 (M from 1 to 30): 50 × r_c × 1.35^(M−1) (tune 1.30 to 1.40).
 - Minder hire: 150 × r_c. Minder level K → K+1 (K from 1 to 3): 150 × r_c × 3^K (tune 2.5 to 3.5).
 
 Gear (per chain, level L), with step s = 10 (tune 8 to 12):
-- Interval T = 5 s (tune 4 to 6), never changed by level.
+- Interval T = 4 s, a rule (decision M3), never changed by level.
 - Base tier b = min(4, 1 + floor((L − 1)/s)); ripe chance p = 0.05 × ((L − 1) mod s) (tune 0.04 to 0.06), at most 0.6 with all bonuses: a drop is tier b + 1 with probability p, else b. maxPop = b + (p > 0 ? 1 : 0).
 - The sheet says what a base step does to orders: "From level 11: drops Twin Skewers; orders ask for Glazed Skewers and up."
 
@@ -164,7 +164,7 @@ Coins enter only through paid tickets, the Festival purse, gift-box coin slots, 
 `EngineMode.tick(cfg, state, dt, now)` is called by the store about 10 times a second; dt is cut to MAX_TICK = 3,600 s (as haul). The tick runs one event queue over (clock, clock + dt]. Events run strictly in time order, ties broken by (time, kind, index) in this kind order, and each follow-up time is computed from the event's own time, never from the end of the tick:
 
 1. Gear drop of chain c at `nextPopAt`: draw the tier (b + 1 with probability p, else b). If F > 0 and Loose_c < λ, place it in the drop cell; else if charges < cap (6; 8 with lantern 3), charges += 1; else the gear waits (`waiting`, no next drop). Not waiting: `nextPopAt` = this time + T.
-2. Shelf release of chain c: place one charge, `releaseAt` = this time + 0.5. A waiting gear restarts: `nextPopAt` = this time + T.
+2. Shelf release of chain c: place one charge, `releaseAt` = this time + 0.5. A waiting gear restarts: `nextPopAt` = this time + T. When several shelves wait for the same freed cell, the highest open chain releases first (decision M22), whatever the order of their times.
 3. Gift-good placement: the first pending good; the next is due 0.5 s later.
 4. Minder sale of chain c at `nextSaleAt`: `till` += value(c, h_c); `nextSaleAt` = this time + Q.
 5. Till roll at each whole minute of the season clock: `cash` += `till`, `till` = 0 (a paid ticket also rolls it).
@@ -206,14 +206,14 @@ No auto-merge and no auto-delivery exist.
 
 - Automated: gear drops and minders' tills. By hand: every merge, delivery, purchase and the season close.
 - The board cannot flood: drops never speed up, and each chain holds at most λ = 4 loose goods plus 6 on its shelf before its gear waits.
-- The arithmetic. Each gear drops 12 goods a minute: 36 with three stalls, 48 with four, 60 with five. The active bot acts 40 times a minute, and absorbing n drops needs about n − 1 merges plus deliveries and purchases. From the fourth stall on, the hand cannot take every drop. That is the design: lower chains fill their shelves and wait, and the player puts the hand where the value is. Nothing is lost; the stall shows a red pip, and its sheet says "Gear waiting: the shelf is full".
+- The arithmetic. Each gear drops 15 goods a minute: 45 with three stalls, 60 with four, 75 with five. The active bot acts 40 times a minute, and absorbing n drops needs about n − 1 merges plus deliveries and purchases. From the fourth stall on, the hand cannot take every drop. That is the design: lower chains fill their shelves and wait, and the player puts the hand where the value is. Nothing is lost; the stall shows a red pip, and its sheet says "Gear waiting: the shelf is full".
 - Gate 5 (8.3) holds the two highest open chains flowing; gate 7 (value per action) watches that the hand's work grows in worth.
 
 ### 2.7 Tickets: the draw, the bounds, the fallback
 
 A ticket is drawn when a counter has been empty for 4 s (tune 2 to 8). Customers have no timer and never leave.
 
-Scripted start (a new game's first season only): the fox at counter 1 asks for a Twin Skewer. Counter 2's hedgehog steps up at the first merge, when best_grill = 2, and asks for a Glazed Skewer, which (a) allows; the two tickets need 6 Pepper Skewers in all (2 and 4), so the opening board and the first drops make both (decision M18 sets the opening board). The two are exempt from (d) only.
+Scripted start (a new game's first season only): the fox at counter 1 asks for a Twin Skewer. Counter 2's hedgehog steps up at the first merge, when best_grill = 2, and asks for a Glazed Skewer, which (a) allows; the two tickets need 6 Pepper Skewers in all (2 and 4), and the opening board holds exactly those 6 (decision M18). The two are exempt from (d) only.
 
 Draw, from the ticket stream:
 - Lines: 1, 2 or 3 at 60/35/5 % while the season clock < 1,800 s, then 45/40/15 % (tune ±10 points each).
@@ -227,9 +227,9 @@ Bounds, in this order, on every draw and after every fallback step:
 - (a) Possible: every line has k ≤ min(8, best_c + 1); two of your best goods make it.
 - (b) Output and hand: per chain on the ticket, (its pops + the pops still needed by every open ticket's and the Parade's unfilled lines on that chain) × T/(1 + p_c) ≤ W = 180 s (tune 120 to 300); hand actions Σ (goods used + pops − 1 merges + 1 delivery) ≤ H = 60 (tune 40 to 90).
 - (c) Space, over the whole board: Σ over the unfilled lines of every open ticket, this one included, of cells(k) = k − b_c + 1 (a binary carry from drops of tier b needs at most that many cells at once), + Σ_c min(λ, Loose_c), + R = 6 (tune 4 to 8; room for a Festival build and the hand), ≤ O. Conservative on purpose: loose goods are counted and also used.
-- (d) Never met by doing nothing: (d1) every line has k ≥ b_c + 1, so no base drop is a line; (d2) every line, after the lines before it took their goods, has missing units > 0, so no line can be filled from what is already on the board, the shelves or pending. Gear and minders never deliver.
+- (d) Never met by doing nothing: every line has k ≥ b_c + 1, so no base drop is a line. Gear and minders never deliver; every line is filled by a drag. (Revision 2's second half, "no line can be filled from what is already on the board", is removed by decision M4: measured, it clogged the board. About a fifth of tickets can now be paid from stock with one drag each, which a player meets as luck earned.)
 
-Fallback, re-checking (a) to (d) after each step: (1) if (a), (b) or (c) fails, lower the highest line by one tier, never below kmin; (2) still failing, drop the last line and repeat (1); (3) if only (d2) fails, raise that line one tier if (a) to (c) hold; (4) redraw with the next open chain as the only chain; (5) no chain passes: the counter shows "Setting up…" and redraws at the next board change (counted by gate 4).
+Fallback, re-checking (a) to (d) after each step: (1) if (a), (b) or (c) fails, lower the highest line by one tier, never below kmin; (2) still failing, drop the last line and repeat (1); (3) redraw with the next open chain as the only chain; (4) no chain passes: the counter shows "Setting up…" and redraws at the next board change (counted by gate 4).
 
 The exact solver (test only, `src/engine/merge/solver.test.ts`) searches all merge sequences on small boards: `missing()` is optimal and every accepted ticket is fillable from the board plus drops within (b) and (c).
 
@@ -284,7 +284,7 @@ Closing (`EngineMode.prestige`) is refused until the Festival is filled and is a
 - "Stays: board space, lanterns, the Ladder Book, unopened gift boxes, goods waiting for room, Lucky Sparks, purchases, seasoned gear."
 - "Next: Summer Fireflies. The Lantern Pan opens on the street. Fireflies make lucky merges more common."
 
-`basketUndo` is cleared; pending goods of a chain not yet open wait for it. The opening board holds 4 grill goods of the grill's starting base tier. No currency is paid and no multiplier grows. What carries over and grows:
+`basketUndo` is cleared; pending goods of a chain not yet open wait for it. The opening board holds 6 grill goods of the grill's starting base tier. No currency is paid and no multiplier grows. What carries over and grows:
 - Seasoned gear: a chain earns one step per closed season in which it reached tier 6, up to 3 (tune 2 to 4; +1 with lantern 9), and starts each season at gear level 1 + N × steps, N = 10 (tune 5 to 10). Its sheet derives the words ("Starts at gear level 11, dropping Twin Skewers").
 - Familiar faces: stall-opening costs × F_s = 0.85^min(seasons closed, 4) (tune base 0.75 to 0.90).
 - Lantern 8: Tea starts open. Lantern 11: minders start hired.
@@ -338,7 +338,7 @@ The hint pointer is our own firefly (Pizza has a glove, Orbit a reticle); drag h
 | 0:00 | Lanterns flicker on along the wire (1.2 s, skippable). The fox holds a Twin Skewer ticket (+12); the firefly traces skewer onto skewer. Goal: "Fill the fox's ticket". | |
 | 0:05 | The hedgehog steps up: Glazed Skewer (+29). | Merges: a soft steam puff; "Twin Skewer" stamps into the Ladder Book corner. |
 | 0:08 | The firefly traces the Twin Skewer to the fox's ticket edge. | Delivers: FILLED stamp, the ticket folds into a lantern, 12 coins float to the purse. |
-| 0:12 | The grill drops a skewer every 5 s from the gear rail. | Merges as they arrive. |
+| 0:12 | The grill drops a skewer every 4 s from the gear rail. | Merges as they arrive. |
 | 0:30 | Goal: "Grill gear level 2 · 20 · 1 in 20 drops is a Twin Skewer". The firefly points at the goal line. | Upgrades. |
 | 0:55 | Lantern 1, "Three tickets": a paper toast on the street (input never blocked). A third counter slides in. The Gate opens only on tap. | |
 | 1:10 | Goal: "Open a shutter · 30". The firefly points at shutter 0. | Taps, confirms. |
@@ -439,7 +439,7 @@ Bottom row (48): Basket (68, a drop target; the undo chip floats above it) and B
 Every dialog is the kit `Sheet` or registers with `useOverlay`; one at a time.
 
 Sheets:
-- Stall, opened only from its front or the goal line (no arrows to other stalls): gear ("Drops a Pepper Skewer every 5 s · 1 in 20 is a Twin Skewer → 2 in 20", the cost, and what a base step does to orders); stall ("Pays ×1.1 → ×1.2"); minder ("Puts a Twin Skewer, 12, in the till every 15 s · held back by: gear level", and its away rate); "Gear waiting: the shelf is full" when it is; "Open the Tea stall" when closed.
+- Stall, opened only from its front or the goal line (no arrows to other stalls): gear ("Drops a Pepper Skewer every 4 s · 1 in 20 is a Twin Skewer → 2 in 20", the cost, and what a base step does to orders); stall ("Pays ×1.1 → ×1.2"); minder ("Puts a Twin Skewer, 12, in the till every 15 s · held back by: gear level", and its away rate); "Gear waiting: the shelf is full" when it is; "Open the Tea stall" when closed.
 - Shutter confirm: condition, price, "holds a good" when it does.
 - Ticket detail: names and values, the multi-line bonus, Not tonight (with the `roomFor` text when disabled), "Watch ad: fill one line" on tickets with 2 or more unfilled lines.
 - Gift box: the 3-slot paper bag with its odds and its coin amount printed before opening.
@@ -504,7 +504,7 @@ Each lantern is earned once by a named feat, lit forever, never bought, never ra
 | 16 | Fill 2,000 tickets | Lucky 1 in 16 (the better of this and lantern 7) | |
 | 17 | Discover all 48 | Lucky Sparks add two tiers | |
 | 18 | Close 8 seasons | Festival purse ×2 | |
-| 19 | Fill 100 Parades | a gift box every 8 tickets | |
+| 19 | Fill 100 Parades | gift boxes come a fifth sooner | |
 | 20 | Make 10 tier 8s in one season | +5 % on all ticket pay | |
 
 ### 5.4 Minders (in the stall sheet, drawn at the stall front)
@@ -513,10 +513,10 @@ One per stall, hired and levelled in the stall sheet. The minder sits in the sta
 
 ### 5.5 Gift boxes (chests, earned only)
 
-- Earned: one every 10 tickets (every 8 with lantern 19). Never sold, no premium currency, no timers.
+- Earned: one every N filled tickets (N tuned, starting at 25; lantern 19 lowers it by a fifth, decision M24). Never sold, no premium currency, no timers.
 - Contents are fixed when the box is earned, from the gift stream: three slots, each independently 50 % coins (3 × U at the earning), 35 % a good of an open chain at tier b + 2, b + 3 or b + 4 (60/30/10) capped at that chain's best, 15 % a Lucky Spark. So a box opened later is worth the same, and reloading a save cannot reroll it. The sheet prints the odds and the coin amount before the tap.
 - The game saves at once after `openGiftBox`, as the shared `openChestNow` does.
-- Boxes wait unopened without limit. Their goods wait in `pendingGoods` until there is room (event 3) and count for (d2).
+- Boxes wait unopened without limit. Their goods wait in `pendingGoods` until there is room (event 3).
 
 ### 5.6 Seasons (the Season scroll spoke)
 
@@ -739,7 +739,7 @@ Never: energy, paid random items, auto-merge as a purchase, countdown offers.
 
 Engine (`src/engine/merge*.test.ts`):
 - `drop.test.ts`: every row of 2.5's table; undo refused after a purchase or when cash < refund; a Lucky skip stamps the skipped tier. `missing.test.ts`: against the exact solver on 10⁴ small boards.
-- `draw.property.test.ts` (10⁵ random states, re-checked after every fallback step): 0 breaches of (a) to (d) as written (the queue in (b), the whole board in (c), per-line (d2)); the H+1 candidate; best_c of a newly opened chain; scripted tickets exempt only from (d); one `roomFor`.
+- `draw.property.test.ts` (10⁵ random states, re-checked after every fallback step): 0 breaches of (a) to (d) as written (the queue in (b), the whole board in (c)); the H+1 candidate; best_c of a newly opened chain; scripted tickets exempt only from (d); one `roomFor`.
 - `ticket.test.ts`: lines never change; shown price = paid price, live with stall level; Parade timing; the fill-one-line ad never fills the last line.
 - `tick.split.test.ts`: tick(a + b) = tick(a) then tick(b) exactly over random splits, covering every event kind of 2.4, the waiting gear's restart and the MAX_TICK cut.
 - `offline.test.ts`: closed form = event stepping on charges, sales and next-event offsets; earnings returned, cash unchanged, no time more than one interval ahead of the clock; the caps; clock forward 4 h, back, forward again pays once; ad cooldowns unmoved; `reportAlone`.
@@ -782,7 +782,15 @@ Decisions taken after revision 2. A decision here overrides the text above where
 - **M15. Noodles tier 6 is "Family Bowl"** (not "Noodle Feast": a live merge game about a night food bazaar has "Feast" in its title).
 - **M16. The listing is `scripts/content/night-store.json` as revised after the store review** (title "Lantern Row", subtitle "Merge snacks, fill each order", the keyword list of 7.4, seasons and lanterns before the idle paragraph); its products follow M13. Prices are ordinary store tiers and need not differ from the other games'.
 - **M17. Audience:** Play target 13+ and Apple 13+, as for the first two games. Play's question "could the app unintentionally appeal to children" and the age band of `docs/design/research/policy.md` (checklist 7 and 8) concern all three apps and are the owner's to answer before a submission; nothing in the build depends on the answer. It goes in the final report.
-- **M18. The opening board** is set from the prototype's measurements for M3 (pending; until then: 4 Pepper Skewers, and the two scripted tickets need two more drops).
+- **M18. The opening board holds 6 Pepper Skewers** (see M3 below): the fox's Twin Skewer and the hedgehog's Glazed Skewer need exactly 6, so the first 20 seconds are all merges and two paid tickets.
 - **M19. One rounding rule for every amount of coins.** `roundCoins(x)`: below 1,000, half up to a whole coin; from 1,000, to 3 significant digits. It is applied once, at the end, to every amount that is shown or paid: each cost (so the Noodles stall costs 173K), each ticket's price (computed from exact values, then rounded), a Basket sale, a minder's sale, a gift box's coin slot, the Festival purse, the away earnings. A single good's value in a chip is rounded the same way for display only. Shown always equals paid because one function gives both.
 - **M20. The first two games' generated bundle reports** (`games/*/store/bundle-report.json`) go stale whenever a shared file changes, and fingerprint dimension 8 then reads "pending" for them. They are regenerated by `npm run check:bundle -- --export` in the final gates; that is a generated record, not a change to those games. What must stay byte-identical during the build is the recorded Pizza-to-Orbit comparison (`scripts/lib/fingerprint.pizzaOrbit.fixture.json`, replayed by `fingerprint.test.ts`).
 - **M21. The shared store asks the mode whether a reset is allowed** (`EngineMode.canPrestige?`, additive; the first two games do not define it and keep their points gate), so "Close the season" depends only on the Festival, never on a prestige-points threshold.
+- **M3, decided from the prototype.** With one stall dropping every 5 s the hand waits; slowing the drops to delay the Tea stall made it worse. So: **T = 4 s for every gear, as a rule** (no longer a knob); **the opening board holds 6 Pepper Skewers** (exactly what the two scripted tickets need); **the Tea stall is cheap and opens within the first 45 to 90 seconds**. Measured in the prototype at 1.5 s per action: 20 useful actions in minute 0, 27 in minute 1, 34 to 37 from minute 2, longest wait 9 s; at 2.5 s per action the hand is never idle. The aim that replaces M3's first wording: at least 20 useful actions a minute from minute 1 at the median seed and at least 16 on the worst, and no wait over 10 s in minutes 0 to 10.
+- **M4, decided from the prototype: bound (d) is (d1) only.** With (d2) the board was full 18 to 61 % of the first three hours and the top gears waited two thirds of the time; without it, under 1 %, and neither a hoarder nor a "Not tonight" player gains. `missing()` stays: bound (b), the advice and the hints use it.
+- **M22. Shelf releases go to the highest open chain first** when several shelves wait for a freed cell. With the lowest first, later seasons deadlocked on low-chain goods in the prototype. The bot's Basket rule and the hint follow: an unwanted tier-8 good is sold first.
+- **M23. Stall-opening costs are a table of five tuned numbers**, not a ratio. New aims for gate 2 (active bot, 1.5 s per action): Tea 0:45 to 1:30, Steamer 5 to 9 min, Sweets 18 to 30 min, Noodles 60 to 90 min.
+- **M24. Gift boxes: one every N filled tickets** (N tuned 15 to 40, start 25) and a coin slot of m × U (m tuned 0.25 to 1.5, start 0.5). At the specification's values gift coins were up to half of all income. Aims: gift coins at most 15 % of the coins of hours 0 to 3; 6 to 12 boxes an hour.
+- **M25. Season 1's Festival is a tuned row like the later ones** (4 to 6 lines). At the specified lines the season ended minutes after the Noodles stall opened. Aims (gate 10 reworded): the active bot fills season 1's Festival at 100 to 160 min, the slowest seed at most 1.6 times the fastest; seasons 3 to 10 each take 50 to 90 % of season 1; the seasoned-gear step N always equals the gear step s.
+- **M26. Gate wording, from the prototype.** Gate 4: a ticket's price never falls after the draw (a stall level may raise it). Gate 3's gear check compares 30 tickets each side with a 1.3 threshold. Gate 8's ceiling band is dropped (sources and shares stay). Gate 9's cross-check steps events with the board frozen (while away, drops go only to the shelf). The deliver-only bot starts from the active bot's state at minute 3. Gate 1's "something worth doing" is M3's measure.
+- **M27. Prices slow the game, not slower hands.** The prototype pushed seven knobs to the ends of their ranges because nothing could get dearer. Tunable from now on, with the ranges in `RANGES`: the four base costs (gear 20, stall level 50, minder 150, shutter 30, each × 0.5 to × 4), gear growth 1.40 to 1.70, stall growth 1.30 to 1.50, and the stall table of M23. T is not a knob.

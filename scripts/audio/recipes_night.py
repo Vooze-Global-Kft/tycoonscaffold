@@ -468,34 +468,62 @@ def echo(x, delay, fb, taps=2, lp=2600.0):
 
 # --- merges: one steam puff per tier, growing in size and brightness (not up a scale) -------------
 
+def lid_clink(rng, vel=1.0, weight=0.0):
+    """A clay steamer lid knocked by the puff: two strongly damped inharmonic modes (2.1 and 3.4
+    kHz, 3 to 6 ms; the same lid for every tier, so it is a colour, not a note) and a grit click.
+    weight 0..1 adds a lower 'tok' of a heavier lid seat."""
+    n = ns(0.03)
+    r = rng.uniform
+    parts = [(2150.0 * r(0.97, 1.03), 1.0, 0.0055, 0.2, r(0, TAU)), (3420.0 * r(0.97, 1.03), 0.6, 0.0035, 0.2, r(0, TAU)),
+             (1240.0 * r(0.97, 1.03), 0.5 * weight, 0.006, 0.3, r(0, TAU))]
+    y = modal(parts, n)
+    grit = band(white(n, rng), 2600.0, 5600.0, 2) * decay(n, 0.1, 0.0009)
+    return vel * (y + 0.7 * grit)
+
+
+def pff(rng, dur, f1, f2, q1=2.2, q2=2.6, attack_ms=4.0, tau=0.03, bal=0.5, wander=0.06):
+    """The breath of a puff: noise through two vowel-like resonances (f1 about 500 to 900 Hz, f2
+    about 2.2 to 2.9 kHz) with a deep valley between them, not one flat band. bal is f2's share.
+    The resonances wander a few per cent (turbulence), never enough to make a pitch."""
+    n = ns(dur)
+    t = np.arange(n) / SR
+    src = white(n, rng)
+    w = np.exp(wander * (flutter(rng, n, 30.0, 1.0) - 1.0))
+    lo = svf(src, f1 * w, q1, 'bp')
+    hi = svf(src, f2 * w, q2, 'bp')
+    env = rcos_in(n, attack_ms) * np.exp(-t / tau) * rcos_out(n, min(20.0, dur * 300.0))
+    return (2.2 * (1.0 - bal) * lo + 2.6 * bal * hi) * flutter(rng, n, 70.0, 0.35) * env
+
+
+def sizzle(rng, dur, rate, lo=2400.0, hi=5200.0, start=1.0):
+    """A sizzle: sparse crackle grains (water on a hot lid) thinning out over dur."""
+    g = grains(rng, dur, rate, (0.15, 0.7), 0.8, [(0, start), (dur, 0.0)])
+    return band(g, lo, hi, 2)
+
+
 def merge_puff(rng, k):
-    """Tier k (1..8). Size: length 0.10 -> 0.34 s, a slower attack (3 -> 12 ms), a longer hissing
-    tail, a stronger low whoomph, a second puff from tier 4 and a third from tier 7 (a bigger cloud).
-    Brightness: the band centre's peak rises 1.1 -> 3.6 kHz and the hiss opens. Tier 8 adds a
-    short charcoal sizzle under the tail. Each is one 'pff': a peak, then a falling tail."""
+    """Tier k (1..8): a steamer lid lifted. A clay lid clink at the attack, a two-formant 'pff' of
+    breath, a low whoomph under it and a sizzle tail of sparse crackle grains. Size (the tier): the
+    pff, the whoomph and the sizzle all last longer and the whoomph gets about 1.5 dB stronger per
+    tier (the file is also mastered 0.4 dB louder per tier). Brightness: the formants open (f1 560
+    -> 900 Hz, f2 2.2 -> 2.9 kHz), the upper formant's share grows and the sizzle gets denser.
+    Never up a scale: no part has a pitch that moves from tier to tier (the lid is the same lid)."""
     u = (k - 1) / 7.0
-    dur = 0.10 + 0.24 * u ** 1.1
-    peak = 1100.0 * (3.3 ** u)
     m = Mix()
-    m.add(steam(rng, dur, [(0, peak * 0.55), (0.012 + 0.02 * u, peak), (dur, peak * 0.6)], q=0.75 + 0.25 * u,
-                attack_ms=3.0 + 9.0 * u, tau=0.022 + 0.02 * u, tail=0.25 + 0.15 * u, tail_tau=0.04 + 0.08 * u,
-                body=0.3 + 0.6 * u, hiss=0.15 + 0.45 * u, hiss_hp=2400.0 + 1200.0 * u, turb=0.3))
-    if k >= 4:
-        d2 = dur * 0.75
-        m.add(steam(rng, d2, [(0, peak * 0.7), (0.02, peak * 1.15), (d2, peak * 0.7)], q=0.65, attack_ms=8.0,
-                    tau=0.03, tail=0.3, tail_tau=0.05 + 0.05 * u, body=0.15, hiss=0.3 + 0.3 * u, turb=0.3),
-              0.04, 0.3 + 0.05 * (k - 4))
-    if k >= 7:
-        d3 = dur * 0.6
-        m.add(steam(rng, d3, [(0, peak * 0.9), (0.02, peak * 1.3), (d3, peak)], q=0.65, attack_ms=10.0,
-                    tau=0.03, tail=0.3, tail_tau=0.06, body=0.1, hiss=0.6, turb=0.3), 0.085, 0.28)
-    if k == 8:
-        m.add(charcoal(rng, 0.16, pops=9, vel=0.12, ember=0.25), 0.12)
+    d_pff = 0.06 + 0.16 * u
+    m.add(0.55 * lid_clink(rng, 1.0, u))
+    m.add(pff(rng, d_pff + 0.04, 560.0 * 1.6 ** u, 2200.0 * 1.32 ** u, attack_ms=3.0 + 6.0 * u, tau=0.018 + 0.05 * u,
+              bal=0.30 + 0.35 * u), 0.003)
+    nl = ns(d_pff + 0.08)
+    whoomph = lowpass(white(nl, rng), 260.0, 2) * decay(nl, 4.0 + 6.0 * u, 0.02 + 0.05 * u)
+    m.add((0.7 * 10 ** (1.5 * (k - 1) / 20.0)) * 3.0 * whoomph, 0.002)
+    d_s = 0.05 + 0.2 * u
+    m.add((0.35 + 0.25 * u) * sizzle(rng, d_s, 120.0 + 260.0 * u), 0.03 + 0.5 * d_pff)
     return m.out()
 
 
 def _merge(k):
-    @night_recipe('merge_%d' % k, length=0.12 + 0.25 * ((k - 1) / 7.0), loud_db=FREQUENT)
+    @night_recipe('merge_%d' % k, length=0.12 + 0.3 * ((k - 1) / 7.0), loud_db=FREQUENT - 0.4 + 0.4 * (k - 1))
     def fn(c):
         c.accent(0.0)
         return merge_puff(c.rng, k)

@@ -179,16 +179,17 @@ function pair(c: SkCanvas, g: G): void {
 /** Glaze: an amber drizzle over the pair, drips and three sparkles. */
 function glaze(c: SkCanvas): void {
   const d = curve([[-15, -4], [-9, -9], [-3, -2], [3, -7], [9, 0], [15, -4]]);
-  c.drawPath(d, stroke(INK, 3.6));
-  c.drawPath(d, stroke(NIGHT.amber, 2.2));
-  c.drawPath(d, stroke(alpha(NIGHT.flame, 0.9), 0.8));
-  for (const [x, y, h] of [[-3, -2.4, 3.6], [9, 0, 4.4]] as const) {
+  c.drawPath(d, stroke(INK, 4.8));
+  c.drawPath(d, stroke(NIGHT.amber, 3.2));
+  c.drawPath(d, stroke(alpha(NIGHT.flame, 0.95), 1.2));
+  for (const [x, y, h] of [[-9, -8.4, 3], [-3, -2.4, 4.2], [9, 0, 5]] as const) {
     const drip = builder().moveTo(x - 1.2, y).quadTo(x - 1.1, y + h, x, y + h + 1.2).quadTo(x + 1.1, y + h, x + 1.2, y).close().build();
     shape(c, drip, NIGHT.amber, 0.9);
   }
-  sparkle(c, -13, -12, 3.2, NIGHT.white);
-  sparkle(c, 12.5, -11, 2.6, NIGHT.white);
-  sparkle(c, 1, 12, 2.4, NIGHT.flame);
+  sparkle(c, -13, -13, 4, NIGHT.white);
+  sparkle(c, 13, -11.5, 3.4, NIGHT.white);
+  sparkle(c, 1, 12.5, 3, NIGHT.flame);
+  sparkle(c, 15, 8, 2.4, NIGHT.flame);
 }
 
 function three(c: SkCanvas, g: G, s: number, y = 0): void {

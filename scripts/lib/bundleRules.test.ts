@@ -327,7 +327,7 @@ describe('the merge mode (Night Market, market-design.md 10.2)', async () => {
   const of = (over: Partial<BundleContents>) => bundleViolations(clean({ packages: [], assets: [], ...over }), MM).map((v) => `${v.rule} ${v.file}`);
 
   it('lists its rules, schema and fixtures as merge folders, its catalogue as Node only, its bot, fixtures and dev tools as web only', () => {
-    expect(modes.MODE_FOLDERS.merge).toEqual(['src/modes/merge', 'src/ui/merge', 'src/engine/merge', 'src/engine/merge.ts', 'src/engine/mergeMode.ts', 'src/engine/fixtures/merge.ts', 'src/config/schema.merge.ts']);
+    expect(modes.MODE_FOLDERS.merge).toEqual(['src/modes/merge', 'src/ui/merge', 'src/engine/merge', 'src/engine/merge.ts', 'src/engine/mergeMode.ts', 'src/engine/fixtures/merge.ts', 'src/config/schema.merge.ts', 'src/config/merge.content.ts']);
     expect(modes.NODE_ONLY).toContain('src/services/fx/catalog.merge.ts');
     for (const f of ['src/engine/merge/bot.ts', 'src/engine/fixtures/merge.ts', 'src/modes/merge/presets.web.ts', 'src/modes/merge/devViews.web.ts']) expect(modes.WEB_ONLY).toContain(f);
   });

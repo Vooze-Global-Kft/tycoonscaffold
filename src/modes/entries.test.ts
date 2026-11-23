@@ -37,6 +37,10 @@ vi.mock('../ui/sim/home/HomeSim', () => ({ HomeSim: s.named('HomeSim') }));
 vi.mock('./classic/HomeClassic', () => ({ HomeClassic: s.named('HomeClassic') }));
 vi.mock('./classic/ManagersPanel', () => ({ ManagersPanel: s.named('ManagersPanel') }));
 vi.mock('../ui/art/icons', () => ({ registerArtIcons: vi.fn() }));
+// Each merge package's own review screens (their files import Skia): stand-ins, so the test checks
+// that devViews.web.ts merges every package's views, whatever each package lists.
+vi.mock('../ui/merge/art/devViews', () => ({ artDevViews: { 'merge-art': s.named('ArtViewStandIn') } }));
+vi.mock('../ui/merge/play/devViews', () => ({ playDevViews: { 'merge-layout': s.named('PlayViewStandIn') } }));
 // The active game's config pulls the generated asset table (require of sound files): a raw haul game.json stand-in.
 vi.mock('../config/game', async () => {
   const { HAUL_STARTING_CONTENT } = await import('../config/schema.haul');
@@ -214,7 +218,7 @@ describe('the merge entry (Night Market)', () => {
     expect(read('merge/presets.ts')).not.toMatch(/from '[^']*(bot|fixtures)[^']*'/);
     expect((await import('./merge/devViews')).devViews).toBeUndefined();
     const web = (await import('./merge/devViews.web')).devViews!;
-    expect(Object.fromEntries(Object.entries(web).map(([k, v]) => [k, nameOf(v)]))).toEqual({ loading: 'MergeLoading' });
+    expect(Object.fromEntries(Object.entries(web).map(([k, v]) => [k, nameOf(v)]))).toEqual({ loading: 'MergeLoading', 'merge-art': 'ArtViewStandIn', 'merge-layout': 'PlayViewStandIn' });
     expect(read('merge/index.tsx')).toMatch(/import \{ devViews \} from '\.\/devViews';/);
   });
 

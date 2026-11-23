@@ -4,5 +4,6 @@
  * Web only: only devViews.web.ts imports this file. Owned by the art kit (package 4): add `'merge-art'` (the contact sheet) here.
  */
 import type { ComponentType } from 'react';
+import { MergeArtGallery } from './Gallery';
 
-export const artDevViews: Record<string, ComponentType> = {};
+export const artDevViews: Record<string, ComponentType> = { 'merge-art': MergeArtGallery };

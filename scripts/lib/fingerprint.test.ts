@@ -196,7 +196,8 @@ describe('fingerprint check with the third game (Night Market, market-design.md 
     };
     const night = real('night-market');
     expect(night.mode).toBe('merge');
-    expect([...night.productKinds].sort()).toEqual(['cosmetic', 'unlock']);
+    // Decision M13: {cosmetic, unlock, skipAds}, a multiset neither first game has.
+    expect([...night.productKinds].sort()).toEqual(['cosmetic', 'skipAds', 'unlock']);
     expect(night.productIds.every((p) => p.startsWith('night_'))).toBe(true);
     for (const other of ['pizza-empire', 'space-miner']) {
       const r = comparePair(night, real(other), null);
