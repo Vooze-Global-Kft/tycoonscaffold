@@ -6,9 +6,9 @@
  *
  * Pure TypeScript, deterministic: time comes in as arguments (`dt`, `now`), randomness from the
  * derived streams of 2.3 (`streamValue`). It never imports economy.ts, chain.ts or another mode's
- * rules. Signatures are fixed by the skeleton (spec 9.2 "hour 0", Decision M1): a change is agreed
- * with the lead first. Which package writes each body, and which bodies are built already:
- * docs/design/market-build-plan.md; a body not built yet throws NotBuiltError ("not built yet").
+ * rules. Signatures were fixed by the skeleton (spec 9.2 "hour 0", Decision M1); every body is
+ * built, and one engineer (the rules lead) owns them all since the integration. The seam between
+ * the rule files: docs/design/market-build-plan.md, "The seam".
  */
 export type * from './merge/types';
 export { BOARD_COLS, BOARD_ROWS, BOARD_CELLS, CHAINS, TIERS, MAX_TICK, SITE, EVENT_KINDS, TARGET_NONE, TARGET_COUNTER, TARGET_FESTIVAL, TARGET_BASKET } from './merge/types';
@@ -42,6 +42,10 @@ export {
   houseTierOf,
   saleInterval,
   basketPrice,
+  /** M34: a waiting line no new drop can make (two base steps after its draw). */
+  lineUnmakeable,
+  /** M29: the stall front's awning look (0 plain, 1 scalloped, 2 double) at a stall level. */
+  awningLook,
   /** The ripe chance p and maxPop at a gear level (2.2). */
   ripeChance,
   maxPopAt,
@@ -71,10 +75,7 @@ export { commitCash, bookAway, openStall, levelGear, levelStall, hireMinder, lev
 // --- 2.9 time away (MECHANICS) ---
 export { mergeOffline, mergeIncome, mergeActiveIncome, awayReportAlone, mergeAwayReports, awaySeconds, awayClosedForm, awayByEvents } from './merge/offline';
 
-// =============================================================================================
-// ORDERS's exports. The rules package ORDERS adds and edits the export lines below this mark itself
-// (docs/design/market-build-plan.md); MECHANICS owns the lines above it.
-// =============================================================================================
+// --- tickets, the Festival, seasons, lanterns, gift boxes, advice and hints (built by ORDERS and META) ---
 
 // --- 2.7 tickets (ORDERS) ---
 export { missing, missingDetail, popsNeeded, goodsAtHand } from './merge/missing';
@@ -83,7 +84,7 @@ export { drawTicket, drawParade, scriptedTicket, checkBounds } from './merge/dra
 export type { BoundFailures } from './merge/draw';
 
 // --- 2.8 the Festival (ORDERS) ---
-export { festivalFor, festivalLineFilled, festivalPurse, canCloseSeason } from './merge/festival';
+export { festivalFor, festivalLineFilled, festivalGift, canCloseSeason } from './merge/festival';
 
 // --- 2.11 seasons (ORDERS) ---
 export { seasonRow, seasonMods, openingBoard, closeSeason, seasonedStartLevel, familiarFactor, SEASON_RESETS, SEASON_STAYS, SEASON_BOOKKEEPING, hearthCells, seasonedAfterClose } from './merge/season';

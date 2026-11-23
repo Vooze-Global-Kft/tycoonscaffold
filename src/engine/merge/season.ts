@@ -17,6 +17,7 @@
 import type { SeasonRow } from '../../config/schema.merge';
 import { startSeason } from './create';
 import { canCloseSeason } from './festival';
+import { openGiftBox } from './gift';
 import { checkLanterns, currentMods } from './lanterns';
 import { BOARD_COLS, BOARD_ROWS, type Good, type MergeConfig, type MergeEvent, type MergeGame, type MergeState, type Mods } from './types';
 
@@ -144,13 +145,16 @@ export const SEASON_RESETS: readonly SeasonListItem[] = [
   { id: 'till', fields: ['merge.till'] },
 ];
 
-/** "Stays: board space, lanterns, the Ladder Book, unopened gift boxes, goods waiting for room, Lucky Sparks, purchases, seasoned gear." (2.11; no Pocket, M5) */
+/**
+ * "Stays: board space, lanterns, the Ladder Book, goods from gift boxes, Lucky Sparks, purchases,
+ * seasoned gear." (2.11 with Decision M36: the close opens every waiting gift box, so its goods
+ * stay and wait for room; no Pocket, M5)
+ */
 export const SEASON_STAYS: readonly SeasonListItem[] = [
   { id: 'boardSpace', fields: ['merge.shuttersOpened', 'merge.board:shutters'] },
   { id: 'lanterns', fields: ['merge.lanterns'] },
   { id: 'ladderBook', fields: ['merge.book'] },
-  { id: 'giftBoxes', fields: ['merge.gift.boxes'] },
-  { id: 'pendingGoods', fields: ['merge.gift.pendingGoods'] },
+  { id: 'giftGoods', fields: ['merge.gift.pendingGoods'] },
   { id: 'luckySparks', fields: ['merge.luckySparks'] },
   { id: 'purchases', fields: ['entitlements'] },
   { id: 'seasonedGear', fields: ['merge.chains[].seasoned'] },
@@ -178,6 +182,8 @@ export const SEASON_BOOKKEEPING: Readonly<Record<string, 'kept' | 'counted' | 'r
   'merge.festival': 'restarted',
   'merge.paradeAt': 'restarted',
   'merge.gift.ticketsToBox': 'kept',
+  // M36: every waiting box is opened by the close (its coins reset with the purse, its goods and Sparks stay).
+  'merge.gift.boxes': 'restarted',
   'merge.gift.nextAt': 'restarted',
   'merge.gift.blockedAt': 'restarted',
   'merge.basketUndo': 'restarted',
@@ -192,10 +198,12 @@ export const SEASON_BOOKKEEPING: Readonly<Record<string, 'kept' | 'counted' | 'r
 // ----------------------------------------------------------------------------- closing (2.11)
 
 /**
- * Closes the season (2.11, M21), refused (the same object) until the Festival is filled; always the
+ * Closes the season (2.11, M21, M36), refused (the same object) until the Festival is filled; always the
  * player's choice, and the next season is not chosen. `now` is the store's wall clock (ms, the wall time
  * of the caller): only `lastSavedAt` takes it; every season time is the game clock
- * (`stats.playSeconds`). In order: each chain that reached tier 6
+ * (`stats.playSeconds`). In order: every waiting gift box is opened (M36: its coins join the purse
+ * and reset with it, its goods wait for room in the new season, a good of a stall not yet open
+ * waiting for that stall, its Lucky Sparks kept); each chain that reached tier 6
  * earns a seasoned step (up to the limit, +1 with lantern 9); `seasonsClosed` and the shared
  * `prestigeCount` count on; the coins reset (cash to the configured start, `runEarnings` 0);
  * `basketUndo` is cleared; the lanterns of the close light now (8, 15, 18), so Tea opens from the
@@ -205,6 +213,14 @@ export const SEASON_BOOKKEEPING: Readonly<Record<string, 'kept' | 'counted' | 'r
  */
 export function closeSeason(cfg: MergeConfig, g: MergeGame, now: number, events?: MergeEvent[]): MergeGame {
   if (!canCloseSeason(cfg, g)) return g;
+  // M36: a box's coin slot is fixed at its earning; kept closed it would pay late-season coins in the next season's first minute.
+  let opened = g;
+  while (opened.merge.gift.boxes.length) {
+    const next = openGiftBox(cfg, opened, events);
+    if (next === opened) break;
+    opened = next;
+  }
+  g = opened;
   const m = g.merge;
   const clock = g.stats.playSeconds;
   const seasoned = seasonedAfterClose(cfg, m);

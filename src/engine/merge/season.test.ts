@@ -1,9 +1,8 @@
 /**
- * Seasons (spec 2.11 with M18, M21, M25, M28; tests of 10.2): the two lists exactly, field by
- * field; refused before the Festival; the 16 rows and the repeat; braziers only on open cells;
- * precedence; seasoned gear; familiar faces; pending gift goods kept; the undo chip cleared.
- * Package META. Uses MECHANICS's built `startSeason` and fixtures; no stub of another package is
- * relied on for a result.
+ * Seasons (spec 2.11 with M18, M21, M25, M28, M36; tests of 10.2): the two lists exactly, field by
+ * field; refused before the Festival; the waiting gift boxes opened by the close; the 16 rows and
+ * the repeat; braziers only on open cells; precedence; seasoned gear; familiar faces; pending gift
+ * goods kept; the undo chip cleared. Every rule is the real one.
  */
 import { describe, expect, it } from 'vitest';
 import { freshState, mergeFixtures, mergeTestConfig } from '../fixtures/merge';
@@ -11,6 +10,8 @@ import { currentMods, neutralMods } from './lanterns';
 import { maxPopAt } from './params';
 import { closeSeason, familiarFactor, hearthCells, openingBoard, SEASON_BOOKKEEPING, SEASON_RESETS, SEASON_STAYS, seasonedAfterClose, seasonedStartLevel, seasonMods, seasonRow } from './season';
 import { isGood } from './board';
+import { openGiftBox } from './gift';
+import { advanceMerge } from './tick';
 import type { MergeEvent, MergeGame } from './types';
 
 const cfg = mergeTestConfig();
@@ -84,7 +85,7 @@ describe('season close (2.11)', () => {
     expect(new Set(listed).size).toBe(listed.length);
     // The Season scroll's items, in 2.11's order (no Pocket, M5).
     expect(SEASON_RESETS.map((x) => x.id)).toEqual(['coins', 'goods', 'gearLevels', 'stallLevels', 'minderLevels', 'stalls', 'bestTiers', 'shelves', 'tickets', 'till']);
-    expect(SEASON_STAYS.map((x) => x.id)).toEqual(['boardSpace', 'lanterns', 'ladderBook', 'giftBoxes', 'pendingGoods', 'luckySparks', 'purchases', 'seasonedGear']);
+    expect(SEASON_STAYS.map((x) => x.id)).toEqual(['boardSpace', 'lanterns', 'ladderBook', 'giftGoods', 'luckySparks', 'purchases', 'seasonedGear']);
   });
 
   it('resets exactly the "Resets" list, field by field', () => {
@@ -115,27 +116,49 @@ describe('season close (2.11)', () => {
     for (const ct of after.merge.counters) expect(ct.ticket).toBeNull();
   });
 
-  it('keeps exactly the "Stays" list, field by field', () => {
+  it('keeps exactly the "Stays" list, field by field (after the close opened the waiting boxes, M36)', () => {
     const before = closable();
     const after = closeSeason(cfg, before, 0);
+    const opened = openGiftBox(cfg, before);
     for (const item of SEASON_STAYS) {
       for (const f of item.fields) {
         if (f === 'merge.chains[].seasoned') expect(at(after, f)).toEqual(seasonedAfterClose(cfg, before.merge));
         else if (f === 'merge.lanterns') expect((at(after, f) as number[]).slice(0, before.merge.lanterns.length)).toEqual(before.merge.lanterns);
-        else expect(at(after, f), f).toEqual(at(before, f));
+        else expect(at(after, f), f).toEqual(at(opened, f));
       }
     }
-    // Pending gift goods are kept even of a chain not open next season (Puffs here): they wait for it.
-    expect(after.merge.gift.pendingGoods).toEqual([{ c: 4, k: 3 }, { c: 5, k: 2 }]);
-    expect(after.merge.gift.boxes).toHaveLength(1);
-    expect(after.merge.luckySparks).toBe(2);
+    // Pending gift goods are kept even of a chain not open next season (Noodles and Puffs here): they wait for it.
+    expect(after.merge.gift.pendingGoods).toEqual([{ c: 4, k: 3 }, { c: 5, k: 2 }, { c: 1, k: 4 }]);
+    expect(after.merge.gift.boxes).toHaveLength(0);
+    expect(after.merge.luckySparks).toBe(3);
+  });
+
+  it('M36: opens every waiting box first: its coins join the purse and reset with it, goods wait for room, Sparks stay', () => {
+    const base = closable();
+    const box = base.merge.gift.boxes[0];
+    const before: MergeGame = { ...base, cash: 1000, merge: { ...base.merge, gift: { ...base.merge.gift, boxes: [box, { coins: 400, slots: [{ kind: 'coins' }, { kind: 'coins' }, { kind: 'spark' }] }] } } };
+    const events: MergeEvent[] = [];
+    const after = closeSeason(cfg, before, 0, events);
+    expect(events.filter((e) => e.type === 'giftOpened')).toHaveLength(2);
+    expect(after.merge.mstats.coins.gift).toBe(before.merge.mstats.coins.gift + 90 + 800);
+    expect(after.cash).toBe(cfg.economy.startingCash ?? 0); // the coins reset with the purse
+    expect(after.merge.gift.boxes).toEqual([]);
+    expect(after.merge.luckySparks).toBe(before.merge.luckySparks + 2);
+    expect(after.merge.gift.pendingGoods.at(-1)).toEqual({ c: 1, k: 4 });
+    // The new season places the open chains' waiting goods (Tea is open: lantern 8), never those of a closed stall.
+    let x = after;
+    for (let i = 0; i < 40; i++) x = advanceMerge(cfg, x, 0.25, 0);
+    expect(x.merge.board.some((cell) => isGood(cell) && cell.c === 1 && cell.k === 4)).toBe(true);
+    expect(x.merge.gift.pendingGoods).toEqual([{ c: 4, k: 3 }, { c: 5, k: 2 }]);
   });
 
   it('bookkeeping: kept fields are kept, counted ones count on; the undo chip is cleared', () => {
     const before = closable();
     const events: MergeEvent[] = [];
     const after = closeSeason(cfg, before, 0, events);
-    for (const [f, how] of Object.entries(SEASON_BOOKKEEPING)) if (how === 'kept') expect(at(after, f), f).toEqual(at(before, f));
+    // Kept as they stand after the close opened the waiting boxes (M36: mstats counts the opening).
+    const opened = openGiftBox(cfg, before);
+    for (const [f, how] of Object.entries(SEASON_BOOKKEEPING)) if (how === 'kept') expect(at(after, f), f).toEqual(at(opened, f));
     expect(after.merge.season).toBe(before.merge.season + 1);
     expect(after.merge.feats.seasonsClosed).toBe(before.merge.feats.seasonsClosed + 1);
     expect(after.merge.feats.tier8sThisSeason).toBe(0);

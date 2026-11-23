@@ -125,6 +125,19 @@ describe('"Fill one line" (5.7)', () => {
     expect(R.canWatchAd(cfg, later, 'fillLine', 0)).toBe(true);
   });
 
+  it('regression: a stretch line the ad filled comes back through "Not tonight" as a made good (best and the Ladder Book rise, M32)', () => {
+    // Found by the long random run (seed 4242, step 3160): a Tea 6 stretch line filled by the ad,
+    // then sent off, put a Tea 6 on the board above best 5 (bound (a) broken for the next draws).
+    const s = mergeState(cfg, { clock: 100, chains: [{ c: 0, gear: 3, best: 5 }, { c: 1, best: 5 }], goods: [], counters: [[[1, 6], [1, 6]], null] });
+    const filled = R.grantAd(cfg, s, 'fillLine', 0);
+    expect(filled.merge.counters[0].ticket!.lines.filter((l) => l.filled)).toHaveLength(1);
+    const off = R.notTonight(cfg, filled, 0);
+    expect(off.merge.board.some((x) => R.isGood(x) && x.c === 1 && x.k === 6)).toBe(true);
+    expect(off.merge.chains[1].best).toBe(6);
+    expect(off.merge.book[1][5]).toBe(true);
+    expect(fixtureProblems(cfg, off, { afterPlay: true })).toEqual([]);
+  });
+
   it('never fills the last line: refused on a ticket with one unfilled line', () => {
     expect(R.canWatchAd(cfg, g, 'fillLine', 1)).toBe(false);
     expect(R.grantAd(cfg, g, 'fillLine', 1)).toBe(g);

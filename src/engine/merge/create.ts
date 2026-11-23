@@ -23,7 +23,7 @@ import { openingBoard, seasonedStartLevel } from './season';
 import { BOARD_CELLS, CHAINS, TIERS, type Cell, type ChainState, type Counter, type MergeConfig, type MergeGame, type MergeState, type MergeStats, type TicketLine } from './types';
 
 const zeroStats = (): MergeStats => ({
-  coins: { ticket: 0, festival: 0, gift: 0, till: 0, basket: 0, away: 0, undo: 0, spend: 0 },
+  coins: { ticket: 0, gift: 0, till: 0, basket: 0, away: 0, undo: 0, spend: 0 },
   drops: 0,
   luckies: 0,
   basketSales: 0,

@@ -6,8 +6,16 @@
  * (docs/design/market-build-plan.md).
  */
 import type { MergeLayout } from '../layout';
+// ===== PLATFORM (hints and platform package): Android back, the firefly, the away report =====
+import { PlatformLayer } from '../platform';
+// ===== end PLATFORM =====
 
 export function Overlays({ layout }: { layout: MergeLayout }) {
-  void layout;
-  return null;
+  return (
+    <>
+      {/* ===== PLATFORM ===== */}
+      <PlatformLayer layout={layout} />
+      {/* ===== end PLATFORM ===== */}
+    </>
+  );
 }

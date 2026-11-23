@@ -237,7 +237,11 @@ export function notTonight(cfg: MergeConfig, g: MergeGame, counter: number, even
     mstats: { ...mm.mstats, notTonights: mm.mstats.notTonights + 1 },
   };
   events?.push({ type: 'notTonight', counter });
-  return withM(g, mm);
+  // A returned good is placed, so it counts as made (M32): a line the "Fill one line" ad filled
+  // comes back as a good that was never on the board, and best_c and the Ladder Book must hold it.
+  let out = withM(g, mm);
+  for (const good of back) out = noteMade(cfg, out, good, events);
+  return out;
 }
 
 /** The goods "Not tonight" would return at `counter` and whether they fit (`roomFor`), for the button's text (2.7). */
@@ -287,13 +291,9 @@ function dragonCounter(g: MergeGame): number {
   return g.merge.counters.findIndex((ct) => !ct.ticket && (ct.refillAt !== null || ct.blockedAt !== null));
 }
 
-/** Whether the Parade can be drawn for counter j now (ORDERS's `drawParade`; its stub throws, which means no). */
+/** Whether the Parade can be drawn for counter j now (`drawParade` finds a line inside its bounds). */
 function paradeDrawable(cfg: MergeConfig, g: MergeGame, j: number): boolean {
-  try {
-    return !!drawParade(cfg, g, j).ticket;
-  } catch {
-    return false;
-  }
+  return !!drawParade(cfg, g, j).ticket;
 }
 
 /**

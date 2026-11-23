@@ -9,11 +9,13 @@
  * The hints, most useful first: a delivery (a good on the board that an unfilled line asks for:
  * the ticket nearest completion first, then the Festival), a merge that serves the open line
  * nearest completion (the lowest pair of that line's chain below its tier), the Basket when the
- * board is stuck (M22), the advised purchase (its stall front or shutter, else the goal line), a
- * gift box waiting. Nothing while a sheet is open or a good is armed (the screens say so in `ui`).
+ * board is stuck (M22), a ticket with a line no new drop can make (M34: its detail offers "Not
+ * tonight"), the advised purchase (its stall front or shutter, else the goal line), a gift box
+ * waiting. Nothing while a sheet is open or a good is armed (the screens say so in `ui`).
  */
 import { advice } from './advice';
 import { isGood } from './board';
+import { lineUnmakeable } from './params';
 import type { Good, MergeConfig, MergeGame, MergeHint, TicketLine } from './types';
 
 /** The ticket lines in the order of "nearest completion": tickets with fewer unfilled lines first (then the lower counter), each ticket's lines highest tier first. */
@@ -63,6 +65,14 @@ export function hintsFor(cfg: MergeConfig, g: MergeGame, ui?: { sheetOpen?: bool
         out.push({ id: `merge:${line.c}:${k}`, kind: 'drag', from: `cell:${a}`, to: `cell:${b}` });
         break merge;
       }
+    }
+  }
+  // M34: a ticket left behind by two base steps: point at it (its detail offers "Not tonight").
+  for (let j = 0; j < g.merge.counters.length; j++) {
+    const t = g.merge.counters[j].ticket;
+    if (t && t.lines.some((l) => lineUnmakeable(cfg, g, l) && cellOf(g, l) < 0)) {
+      out.push({ id: `notTonight:${j}`, kind: 'point', to: `counter:${j}` });
+      break;
     }
   }
   const goal = advice(cfg, g);

@@ -33,7 +33,7 @@
  * `adviceExtras` lists the non-purchase goals that apply; `purchaseAdvice` is the best purchase only.
  */
 import { currentMods, featProgress } from './lanterns';
-import { baseTier, maxPopAt, mergeParams, recentRate, ripeChance } from './params';
+import { baseTier, lineUnmakeable, maxPopAt, mergeParams, recentRate, ripeChance } from './params';
 import { isGood } from './board';
 import type { Advice, Good, MergeConfig, MergeGame, MergeParams } from './types';
 
@@ -143,12 +143,17 @@ export function basketCell(cfg: MergeConfig, g: MergeGame, p: MergeParams = merg
   return best;
 }
 
-/** The counter whose ticket is nearest completion: fewest unfilled lines, then the lowest counter; null with none out. */
-export function nearestTicket(g: MergeGame): number | null {
+/**
+ * The counter whose ticket is nearest completion: fewest unfilled lines, then the lowest counter;
+ * null with none out. A ticket with a line no new drop can make (M34, `lineUnmakeable`) whose good
+ * is not on the board is never within reach, so it is not counted.
+ */
+export function nearestTicket(cfg: MergeConfig, g: MergeGame): number | null {
   let best: number | null = null;
   let bestLeft = Infinity;
   g.merge.counters.forEach((ct, j) => {
     if (!ct.ticket) return;
+    if (ct.ticket.lines.some((l) => lineUnmakeable(cfg, g, l) && !g.merge.board.some((cell) => isGood(cell) && cell.c === l.c && cell.k === l.k))) return;
     const left = ct.ticket.lines.filter((l) => !l.filled).length;
     if (left > 0 && left < bestLeft) {
       bestLeft = left;
@@ -216,7 +221,7 @@ export function adviceExtras(cfg: MergeConfig, g: MergeGame): Advice[] {
     .filter((f) => f.need > 0 && f.have < f.need && f.have / f.need >= cfg.merge.meta.lanternReach)
     .sort((a, b) => b.have / b.need - a.have / a.need || a.n - b.n);
   if (feats.length) out.push(extra('lantern', feats[0].n));
-  const t = nearestTicket(g);
+  const t = nearestTicket(cfg, g);
   if (t !== null) out.push(extra('fillTicket', t));
   return out;
 }

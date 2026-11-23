@@ -81,7 +81,7 @@ const EFFECTS: Record<number, Partial<Mods>> = {
   15: { minderIntervalMult: 0.8 },
   16: { luckyOdds: 16 },
   17: { sparkTiers: 2 },
-  18: { festivalPurseMult: 2 },
+  18: { festivalSparks: 5 },
   19: { giftEvery: 20 },
   20: { ticketPay: 1.05 },
 };

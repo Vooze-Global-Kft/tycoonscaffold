@@ -95,7 +95,10 @@ export const LanternEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('giftSlots'), value: int.positive() }),
   z.object({ type: z.literal('minderIntervalMult'), value: pos }),
   z.object({ type: z.literal('sparkTiers'), value: int.positive() }),
-  z.object({ type: z.literal('festivalPurseMult'), value: pos }),
+  /** Lantern 18 before Decision M37 (a purse multiplier); accepted and read as `festivalSparks` FESTIVAL_SPARKS_LANTERN (the value is ignored). */
+  z.object({ type: z.literal('festivalPurseMult'), value: pos.optional() }),
+  /** Lantern 18 (Decision M37): filling the Festival gives this many Lucky Sparks (5) instead of `festivalSparks`. */
+  z.object({ type: z.literal('festivalSparks'), value: int.positive() }),
   /** Lantern 19 before Decision M24 (an absolute N); accepted and read as `giftEveryMult` 0.8 (the value is ignored). */
   z.object({ type: z.literal('giftEvery'), value: int.positive().optional() }),
   /** Lantern 19 (Decision M24): gift boxes come a fifth sooner, N' = ceil(gift.every × value), value 0.8. */
@@ -200,8 +203,12 @@ export const MergeSchema = z.object({
     /** S_c = 1 + bonusPerLevel × (M − 1), at most bonusMax (rule). */
     bonusPerLevel: nonneg.default(0.1),
     bonusMax: pos.default(3.9),
-    /** Stall levels that redraw the awning (looks only). */
-    awningLevels: z.array(int.positive()).default([5, 10, 20]),
+    /**
+     * The stall levels from which the awning has its second and third look (looks only, Decision
+     * M29: three looks, levels 1 to 4 plain, 5 to 9 scalloped, 10 and up double). Only the first two
+     * entries are read (`awningLook`).
+     */
+    awningLevels: z.array(int.positive()).min(2).default([5, 10]),
   }).prefault({}),
   minders: z.object({
     /** Q, s between sales (tune 10 to 25). */
@@ -270,8 +277,13 @@ export const MergeSchema = z.object({
    * skeleton, for the ORDERS package to confirm: section 2.8 leaves it to the table).
    */
   festival: z.array(z.array(good).min(1).max(6)).min(1),
-  /** The Festival purse = festivalPace × U when its last line lands (tune 20 to 50). */
-  festivalPace: pos.default(30),
+  /**
+   * Filling the Festival gives this many Lucky Sparks (rule, Decision M37: 3; 5 with lantern 18)
+   * and no coins: the Festival purse is gone and `festivalPace` is no longer a knob.
+   */
+  festivalSparks: int.min(0).default(3),
+  /** Removed by Decision M37 (the Festival pays no coins); accepted and ignored until the content drops it. */
+  festivalPace: nonneg.optional(),
   gift: z.object({
     /** One box per this many paid tickets (Decision M24: N, tune 15 to 40, start 25; a fifth sooner with lantern 19). */
     every: int.positive().default(25),
@@ -365,6 +377,9 @@ export type SeasonRow = z.output<typeof SeasonRowSchema>;
 export type SeasonShape = (typeof SEASON_SHAPES)[number];
 export type SeasonCharacter = (typeof SEASON_CHARACTERS)[number];
 
+/** Lantern 18's Lucky Sparks when the content still names its effect by the old purse multiplier (Decision M37: "5 with lantern 18"). */
+export const FESTIVAL_SPARKS_LANTERN = 5;
+
 /**
  * The allowed range of every (tune) number of the specification: a field path of the `merge`
  * block (dots; `[i]` for a list element), its low and high bound and the section that sets it.
@@ -410,7 +425,7 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
   { path: 'tickets.spareCells', low: 4, high: 8, spec: '2.7 (c)' },
   { path: 'tickets.notTonightCooldown', low: 15, high: 120, spec: '2.7' },
   { path: 'parade.every', low: 480, high: 840, spec: '2.7' },
-  { path: 'festivalPace', low: 20, high: 50, spec: '2.3' },
+  // festivalPace is not here: the Festival pays no coins (Decision M37).
   { path: 'festival[1][4].tier', low: 3, high: 5, spec: '2.8 (season 2: the Puffs line)' },
   { path: 'gift.coinPace', low: 0.25, high: 1.5, spec: 'M24' },
   { path: 'gift.every', low: 15, high: 40, spec: 'M24' },

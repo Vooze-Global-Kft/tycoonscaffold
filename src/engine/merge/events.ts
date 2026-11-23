@@ -27,7 +27,6 @@ import { dropCell, freeCells, isGood, placeGood } from './board';
 import { drawParade, drawTicket } from './draw';
 import { noteMade } from './drop';
 import { currentMods } from './lanterns';
-import { NotBuiltError } from './notBuilt';
 import { baseTier, ripeChance, saleAmount, saleInterval, streamValue } from './params';
 import { CHAINS, EVENT_KINDS, type DrawOutcome, type EventKind, type Good, type MergeConfig, type MergeEvent, type MergeGame, type MergeState, type Mods, type QueuedEvent } from './types';
 
@@ -217,16 +216,6 @@ function runTill(cfg: MergeConfig, g: MergeGame, t: number, events?: MergeEvent[
   return x;
 }
 
-/** A Parade draw for counter j, or null: ORDERS's `drawParade` (its stub throws NotBuiltError: treated as "no Parade"). */
-function tryParade(cfg: MergeConfig, g: MergeGame, j: number): DrawOutcome | null {
-  try {
-    return drawParade(cfg, g, j);
-  } catch (e) {
-    if (e instanceof NotBuiltError) return null;
-    throw e;
-  }
-}
-
 /**
  * Draws a ticket for empty counter j at time t and seats it: the Parade when it is due and none is
  * out (a Parade that cannot be drawn leaves it due and the counter draws an ordinary ticket), else
@@ -237,8 +226,8 @@ export function seatTicket(cfg: MergeConfig, g: MergeGame, j: number, t: number,
   let m = g.merge;
   let outcome: DrawOutcome | null = null;
   if (forceParade || paradeDue(m, t)) {
-    outcome = tryParade(cfg, g, j);
-    if (outcome) m = { ...m, draws: { ...m.draws, parade: m.draws.parade + Math.max(0, outcome.used) } };
+    outcome = drawParade(cfg, g, j);
+    m = { ...m, draws: { ...m.draws, parade: m.draws.parade + Math.max(0, outcome.used) } };
   }
   if (!outcome?.ticket) {
     if (forceParade) return g;

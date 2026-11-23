@@ -478,7 +478,7 @@ export function emptyTrace(kind: BotKind, seed: number, act: number, sheet: numb
   };
 }
 
-const SOURCES: R.CoinSource[] = ['ticket', 'festival', 'gift', 'till', 'basket', 'away', 'undo', 'spend'];
+const SOURCES: R.CoinSource[] = ['ticket', 'gift', 'till', 'basket', 'away', 'undo', 'spend'];
 
 /** One bot run's machinery: the game, the wall clock, the trace and the bookkeeping. */
 class Runner {

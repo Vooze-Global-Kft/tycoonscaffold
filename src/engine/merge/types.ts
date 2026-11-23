@@ -192,10 +192,12 @@ export interface Feats {
 export type MergeAdKind = 'fillLine' | 'gearRush' | 'callDragon';
 
 /**
- * The six ways coins enter (spec 2.3; gate 8 asserts every trace has no other), and spending.
- * `commitCash` books every change under one of these, so a test can read where coins came from.
+ * The five ways coins enter (spec 2.3 with Decision M37: paid tickets, gift-box coin slots, the
+ * till, Basket sales and the away report; gate 8 asserts every trace has no other), and the two
+ * ways they leave ('undo' takes a Basket sale back, 'spend' pays a purchase). `commitCash` books
+ * every change under one of these, so a test can read where coins came from.
  */
-export type CoinSource = 'ticket' | 'festival' | 'gift' | 'till' | 'basket' | 'away' | 'undo' | 'spend';
+export type CoinSource = 'ticket' | 'gift' | 'till' | 'basket' | 'away' | 'undo' | 'spend';
 
 /** Counters for the bot, the tests and the reports (not shown as a system). Kept across seasons unless noted. */
 export interface MergeStats {
@@ -327,7 +329,7 @@ export type MergeEvent =
   | { type: 'ticketShake'; counter: number }
   | { type: 'ticketPaid'; counter: number; ticket: Ticket; coins: number }
   | { type: 'festivalLine'; line: number }
-  | { type: 'festivalDone'; coins: number }
+  | { type: 'festivalDone'; sparks: number }
   | { type: 'basketSell'; cell: number; good: Good; coins: number }
   | { type: 'undo'; cell: number }
   | { type: 'shutterOpen'; group: number; cell: number; good: Good | null }
@@ -421,8 +423,8 @@ export interface Mods {
   minderIntervalMult: number;
   /** Tiers a Lucky Spark adds (1; 2 with lantern 17). */
   sparkTiers: number;
-  /** Festival purse multiplier (1; 2 with lantern 18). */
-  festivalPurseMult: number;
+  /** Lucky Sparks the filled Festival gives (3; 5 with lantern 18; Decision M37: no coins). */
+  festivalSparks: number;
   /** Paid tickets per gift box (N = gift.every, tuned 15 to 40, start 25; a fifth sooner with lantern 19, Decision M24). */
   giftEvery: number;
   /** Multiplier on all ticket pay (1; 1.05 with lantern 20: "lanternPay"). */

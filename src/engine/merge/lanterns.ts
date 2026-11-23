@@ -19,7 +19,7 @@
  * A lantern is lit once by its feat, never unlit, never bought, never random. Pure: time comes in
  * as `clock` (game clock) or from `stats.playSeconds`.
  */
-import type { Lantern, LanternFeat } from '../../config/schema.merge';
+import { FESTIVAL_SPARKS_LANTERN, type Lantern, type LanternFeat } from '../../config/schema.merge';
 import { applyLantern } from './actions';
 import { scriptedTicket } from './draw';
 import { restartParade } from './params';
@@ -48,7 +48,7 @@ export function neutralMods(cfg: MergeConfig): Mods {
     giftSlots: m.gift.slots,
     minderIntervalMult: 1,
     sparkTiers: 1,
-    festivalPurseMult: 1,
+    festivalSparks: m.festivalSparks,
     giftEvery: m.gift.every,
     ticketPay: 1,
   };
@@ -99,8 +99,16 @@ function effectMods(cfg: MergeConfig, l: Lantern): Partial<Mods> {
     case 'seasonedSteps':
       return { seasonedMax: cfg.merge.seasons.maxSteps + e.value };
     case 'giftEvery':
-      // M24: "a fifth sooner", from the configured N (the effect's own value is not read).
+      // The old absolute N (before M24): read as "a fifth sooner" from the configured N; its value is not read.
       return { giftEvery: giftEverySooner(cfg, cfg.merge.gift.every) };
+    case 'giftEveryMult':
+      // M24: N' = ceil(N × value), value 0.8 ("a fifth sooner"), whatever N is tuned to.
+      return { giftEvery: Math.max(1, Math.ceil(cfg.merge.gift.every * e.value - 1e-9)) };
+    case 'festivalPurseMult':
+      // Before M37 lantern 18 doubled a purse; now it raises the Festival's Lucky Sparks to 5.
+      return { festivalSparks: FESTIVAL_SPARKS_LANTERN };
+    case 'festivalSparks':
+      return { festivalSparks: e.value };
     default:
       return { [e.type]: e.value } as Partial<Mods>;
   }

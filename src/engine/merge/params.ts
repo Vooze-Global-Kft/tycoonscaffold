@@ -109,6 +109,30 @@ export function ticketPrice(cfg: MergeConfig, g: MergeGame, ticket: Pick<Ticket,
   return roundCoins(cfg, priceWith(cfg, g.merge, currentMods(cfg, g.merge), ticket));
 }
 
+/**
+ * Decision M34: a waiting line that a gear upgrade left behind. After two base steps while its
+ * ticket waits, a line's tier sits below the gear's base tier, so no new drop can make its good
+ * (drops are tier b or b + 1, and merges only go up). Lines never change, so nothing is redrawn:
+ * the ticket's detail says "No longer made at this stall" on that line and offers "Not tonight",
+ * the hint points there, the advice never counts the line as within reach, and the bot sends the
+ * ticket off. Goods at hand can still fill it. The one test for it. A filled line is never
+ * unmakeable; one base step leaves a line at exactly b, which a base drop fills by a drag.
+ */
+export function lineUnmakeable(cfg: MergeConfig, g: MergeGame, line: Pick<TicketLine, 'c' | 'k'> & { filled?: boolean }): boolean {
+  const ch = g.merge.chains[line.c];
+  return !line.filled && !!ch && line.k < baseTier(cfg, ch.gear);
+}
+
+/**
+ * Decision M29: the stall front's awning look at stall level `stallLevel` (looks only): 0 plain
+ * (levels 1 to 4), 1 scalloped (5 to 9), 2 double (10 and up), from the first two entries of
+ * `stalls.awningLevels`. The screens call it; the atlas holds the three looks.
+ */
+export function awningLook(cfg: MergeConfig, stallLevel: number): 0 | 1 | 2 {
+  const [scalloped, double] = cfg.merge.stalls.awningLevels;
+  return stallLevel >= double ? 2 : stallLevel >= scalloped ? 1 : 0;
+}
+
 /** A minder's sale of chain c now: roundCoins(value(c, h_c)) (2.2, M19), 0 with no minder. The till takes this, and so does the away closed form. */
 export function saleAmount(cfg: MergeConfig, g: MergeGame, c: number): number {
   const m = g.merge;

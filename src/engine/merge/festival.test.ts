@@ -1,24 +1,13 @@
 /**
- * The Festival (spec 2.8, 10.2, decisions M21 and M25): seasons 1 to 10 buildable line by line
- * from their opening board, the purse paid once (×2 with lantern 18), the close's gate.
- * Package ORDERS. The modifiers are read through `currentMods` (META's lanterns.ts), mocked here so
- * the lantern-18 case does not depend on META's unfinished body.
+ * The Festival (spec 2.8, 10.2, decisions M21, M25 and M37): seasons 1 to 10 buildable line by line
+ * from their opening board; what the filled Festival gives (3 Lucky Sparks, 5 with lantern 18, and
+ * no coins: M37), once; the close's gate. Every rule is the real one (no stand-in).
  */
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { mergeFixtures, mergeTestConfig } from '../fixtures/merge';
-import { canCloseSeason, festivalFor, festivalLineFilled, festivalPurse } from './festival';
-import { mergeParams, roundCoins } from './params';
+import { canCloseSeason, festivalFor, festivalGift, festivalLineFilled } from './festival';
 import { seasonRow } from './season';
-import type { MergeConfig, MergeEvent, MergeGame, Mods } from './types';
-
-const modsOverride: { value: Partial<Mods> | null } = { value: null };
-vi.mock('./lanterns', async (orig) => {
-  const actual = await orig<typeof import('./lanterns')>();
-  return {
-    ...actual,
-    currentMods: (cfg: MergeConfig, m: MergeGame['merge']) => (modsOverride.value ? { ...actual.neutralMods(cfg), ...modsOverride.value } : actual.currentMods(cfg, m)),
-  };
-});
+import type { MergeConfig, MergeEvent, MergeGame } from './types';
 
 const cfg = mergeTestConfig();
 
@@ -102,27 +91,25 @@ function allBut(open: number[]): MergeGame {
   return { ...g, merge: { ...g.merge, festival: { lines, filledAt: null } } };
 }
 
-describe('festivalLineFilled and the purse (2.8, 2.3)', () => {
-  it('pays the purse once, when the last line lands, through commitCash', () => {
-    modsOverride.value = null;
+describe('festivalLineFilled and what the Festival gives (2.8, M37)', () => {
+  it('gives the Lucky Sparks once, when the last line lands, and no coins (M37)', () => {
     const g = allBut([]);
     expect(canCloseSeason(cfg, g)).toBe(false);
-    const purse = festivalPurse(cfg, g);
-    expect(purse).toBe(roundCoins(cfg, cfg.merge.festivalPace * mergeParams(cfg, g).U));
-    expect(purse).toBeGreaterThan(0);
+    expect(festivalGift(cfg, g)).toEqual({ sparks: cfg.merge.festivalSparks });
+    expect(cfg.merge.festivalSparks).toBe(3);
     const events: MergeEvent[] = [];
-    const paid = festivalLineFilled(cfg, g, 3, events);
-    expect(paid.cash).toBe(g.cash + purse);
-    expect(paid.merge.mstats.coins.festival).toBe(g.merge.mstats.coins.festival + purse);
-    expect(paid.merge.festival.filledAt).toBe(g.stats.playSeconds);
-    expect(events).toEqual([{ type: 'festivalDone', coins: purse }]);
-    expect(canCloseSeason(cfg, paid)).toBe(true);
+    const done = festivalLineFilled(cfg, g, 3, events);
+    expect(done.cash).toBe(g.cash);
+    expect(done.merge.mstats.coins).toEqual(g.merge.mstats.coins);
+    expect(done.merge.luckySparks).toBe(g.merge.luckySparks + 3);
+    expect(done.merge.festival.filledAt).toBe(g.stats.playSeconds);
+    expect(events).toEqual([{ type: 'festivalDone', sparks: 3 }]);
+    expect(canCloseSeason(cfg, done)).toBe(true);
     // Once: any later call is refused with the same object.
-    for (let i = 0; i < 4; i++) expect(festivalLineFilled(cfg, paid, i)).toBe(paid);
+    for (let i = 0; i < 4; i++) expect(festivalLineFilled(cfg, done, i)).toBe(done);
   });
 
-  it('pays nothing while a line is open, for a line not marked filled, or a bad index', () => {
-    modsOverride.value = null;
+  it('gives nothing while a line is open, for a line not marked filled, or a bad index', () => {
     const g = allBut([2]);
     expect(festivalLineFilled(cfg, g, 1)).toBe(g);
     expect(festivalLineFilled(cfg, g, 2)).toBe(g);
@@ -132,13 +119,12 @@ describe('festivalLineFilled and the purse (2.8, 2.3)', () => {
     expect(canCloseSeason(cfg, g)).toBe(false);
   });
 
-  it('the purse doubles with lantern 18 (mods.festivalPurseMult) and is rounded once', () => {
-    const g = allBut([]);
-    modsOverride.value = { festivalPurseMult: 2 };
-    const U = mergeParams(cfg, g).U;
-    const purse = festivalPurse(cfg, g);
-    expect(purse).toBe(roundCoins(cfg, cfg.merge.festivalPace * U * 2));
-    expect(festivalLineFilled(cfg, g, 0).cash).toBe(g.cash + purse);
-    modsOverride.value = null;
+  it('lantern 18 makes it 5 Lucky Sparks (M37), with the old purse-multiplier effect too', () => {
+    const base = allBut([]);
+    const g: MergeGame = { ...base, merge: { ...base.merge, lanterns: [...base.merge.lanterns, 18] } };
+    expect(festivalGift(cfg, g)).toEqual({ sparks: 5 });
+    expect(festivalLineFilled(cfg, g, 0).merge.luckySparks).toBe(g.merge.luckySparks + 5);
+    const newStyle: MergeConfig = { ...cfg, merge: { ...cfg.merge, lanterns: cfg.merge.lanterns.map((l) => (l.n === 18 ? { ...l, effect: { type: 'festivalSparks' as const, value: 5 } } : l)) } };
+    expect(festivalGift(newStyle, g)).toEqual({ sparks: 5 });
   });
 });

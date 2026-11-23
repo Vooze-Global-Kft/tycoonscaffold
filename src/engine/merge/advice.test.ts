@@ -7,9 +7,9 @@
  */
 import { describe, expect, it } from 'vitest';
 import { freshState, mergeFixtures, mergeTestConfig } from '../fixtures/merge';
-import { advice, adviceCandidates, adviceExtras, basketCell, festivalAdvice, incomeRate, purchaseAdvice, waitEstimate } from './advice';
+import { advice, adviceCandidates, adviceExtras, basketCell, festivalAdvice, incomeRate, nearestTicket, purchaseAdvice, waitEstimate } from './advice';
 import { hintsFor } from './hints';
-import { mergeParams, RECENT_BUCKETS } from './params';
+import { awningLook, lineUnmakeable, mergeParams, RECENT_BUCKETS } from './params';
 import type { Advice, ChainState, MergeGame, Ticket } from './types';
 
 const base = mergeTestConfig();
@@ -254,5 +254,40 @@ describe('the firefly (hintsFor)', () => {
     const hints = hintsFor(cfg, { ...g, merge: { ...g.merge, gift: { ...g.merge.gift, boxes: [{ coins: 5, slots: [{ kind: 'spark' }] }] } } });
     expect(hints.find((h) => h.id.startsWith('buy:'))).toMatchObject({ kind: 'point', to: goal.kind === 'shutter' ? `shutter:${goal.target}` : `front:${goal.target}` });
     expect(hints[hints.length - 1]).toEqual({ id: 'giftbox', kind: 'point', to: 'giftbox' });
+  });
+});
+
+describe('a line left behind by two base steps (Decision M34)', () => {
+  /** A Tea ticket of tier 2 drawn at gear 1 (b = 1), now at gear 21 (b = 3): no new drop makes a Cup of Tea. */
+  function leftBehind(onBoard: boolean): MergeGame {
+    const g = game([{ c: 0, gear: 3, best: 4 }, { c: 1, gear: 21, best: 4 }], 0);
+    const ticket: Ticket = { id: 7, lines: [{ c: 1, k: 2, filled: false }, { c: 0, k: 3, filled: false }], gold: false, customer: 0, coat: 0 };
+    const board = g.merge.board.map((cell, i) => (onBoard && i === g.merge.board.findIndex((x) => x === null) ? { c: 1, k: 2 } : cell));
+    return { ...g, merge: { ...g.merge, board, counters: g.merge.counters.map((ct, j) => (j === 0 ? { ...ct, ticket, refillAt: null } : ct)) } };
+  }
+
+  it('lineUnmakeable is the one test: below the base tier and unfilled; one base step (k = b) is still makeable', () => {
+    const g = leftBehind(false);
+    expect(lineUnmakeable(cfg, g, { c: 1, k: 2, filled: false })).toBe(true);
+    expect(lineUnmakeable(cfg, g, { c: 1, k: 2, filled: true })).toBe(false);
+    expect(lineUnmakeable(cfg, g, { c: 1, k: 3 })).toBe(false); // exactly b: a base drop fills it by a drag
+    expect(lineUnmakeable(cfg, g, { c: 0, k: 3 })).toBe(false);
+  });
+
+  it('the advice never counts it as within reach, and the firefly points at its ticket (Not tonight) unless the good is at hand', () => {
+    const g = leftBehind(false);
+    expect(nearestTicket(cfg, g)).toBeNull();
+    expect(hintsFor(cfg, g)).toContainEqual({ id: 'notTonight:0', kind: 'point', to: 'counter:0' });
+    const held = leftBehind(true);
+    expect(nearestTicket(cfg, held)).toBe(0);
+    expect(hintsFor(cfg, held).some((h) => h.id === 'notTonight:0')).toBe(false);
+    expect(hintsFor(cfg, held)[0]).toMatchObject({ id: 'deliver:0', to: 'counter:0' });
+  });
+});
+
+describe('the awning looks (Decision M29)', () => {
+  it('three looks: stall levels 1 to 4 plain, 5 to 9 scalloped, 10 and up double', () => {
+    expect([1, 4, 5, 9, 10, 20, 31].map((L) => awningLook(cfg, L))).toEqual([0, 0, 1, 1, 2, 2, 2]);
+    expect([1, 4, 5, 9, 10, 31].map((L) => awningLook(base, L))).toEqual([0, 0, 1, 1, 2, 2]);
   });
 });
