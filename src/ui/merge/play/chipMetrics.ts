@@ -13,8 +13,8 @@ export function chipMetrics(fontScale: number): { name: number; worth: number; n
   return { name, worth, nameRow, worthRow, h: CHIP.padY * 2 + CHIP.border * 2 + nameRow + worthRow };
 }
 
-/** The chip's top for a cell whose centre is at y (half a cell `half`): above the cell, or below it when the street is too close. */
-export function chipTop(cy: number, half: number, h: number, streetY: number): number {
+/** The chip's top for a cell whose centre is at y (half a cell `half`): above the cell, or below it when above would cover the street (its tickets and prices). */
+export function chipTop(cy: number, half: number, h: number, boardY: number): number {
   const above = cy - half - 6 - h;
-  return above >= streetY + 4 ? above : cy + half + 6;
+  return above >= boardY ? above : cy + half + 6;
 }

@@ -5,9 +5,9 @@
  *   with its name, at the window's size and insets (spec 9.1). Names here are the code's own
  *   identifiers, not words a player reads.
  */
-import { createElement, type ComponentType } from 'react';
+import { createElement, useContext, type ComponentType } from 'react';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { cellRect, mergeLayout, type Rect } from '../layout';
 import { counterParts } from './geometry';
 
@@ -24,7 +24,8 @@ function box(key: string, r: Rect, label: string, i: number, small = false) {
 
 function MergeLayoutView() {
   const { width, height, fontScale } = useWindowDimensions();
-  const ins = useSafeAreaInsets();
+  // A dev view may render outside the app's SafeAreaProvider: no insets then.
+  const ins = useContext(SafeAreaInsetsContext) ?? { top: 0, bottom: 0, left: 0, right: 0 };
   const L = mergeLayout(width, height, { top: ins.top, bottom: ins.bottom }, fontScale);
   const items = [
     box('top', L.topBar, `topBar ${L.topBar.h}`, 0),

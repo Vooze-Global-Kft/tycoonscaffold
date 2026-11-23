@@ -36,7 +36,7 @@ export function ChipView({ layout, cell }: { layout: MergeLayout; cell: number }
   const half = layout.board.cell / 2;
   const x = Math.max(GUTTER, Math.min(layout.width - GUTTER - w, c.x - w / 2));
   // Above the cell; below it when the street is too close.
-  const y = chipTop(c.y, half, M.h, layout.street.y);
+  const y = chipTop(c.y, half, M.h, layout.board.y);
   return (
     <View pointerEvents="none" style={[styles.chip, { left: x, top: y, width: w, height: M.h }]}>
       <Text allowFontScaling={false} numberOfLines={1} style={[styles.name, { fontSize: M.name, height: M.nameRow, lineHeight: M.nameRow }]}>

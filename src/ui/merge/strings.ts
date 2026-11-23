@@ -34,9 +34,6 @@ export const S = {
   },
   // ===== play canvas (board and street) =========================================================
   play: {
-    /** A good on the placeholder board: "<chain>·<tier>" (the merge-layout dev view only). */
-    good: (chain: string, tier: number) => `${chain}·${tier}`,
-    shutter: 'shut',
     /** A counter whose draw found no ticket (2.7 fallback step 5); drawn in paper-cut capitals, one word a line. */
     settingUp: 'Setting up…',
     /** The stamp on a paid ticket (4.2, 3.1). */

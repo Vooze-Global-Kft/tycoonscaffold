@@ -158,11 +158,11 @@ describe('mergeLayout', () => {
       expect(zones(c)).toEqual(zones(a));
       const m = chipMetrics(1.3);
       expect(m.nameRow + m.worthRow + 12).toBe(m.h);
-      // Above or below its cell, the chip stays between the street's top and the bottom row for every cell.
+      // Above or below its cell, the chip stays on the board, off the street's tickets for every cell.
       for (let i = 0; i < 56; i++) {
         const r = cellRect(c, i);
-        const y = chipTop(r.y + r.h / 2, r.h / 2, m.h, c.street.y);
-        expect(y).toBeGreaterThanOrEqual(c.street.y);
+        const y = chipTop(r.y + r.h / 2, r.h / 2, m.h, c.board.y);
+        expect(y).toBeGreaterThanOrEqual(c.board.y);
         expect(y + m.h).toBeLessThanOrEqual(c.bottomRow.y + c.bottomRow.h);
       }
       expect(m.name).toBeGreaterThanOrEqual(16);
