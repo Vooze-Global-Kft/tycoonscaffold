@@ -16,6 +16,7 @@ import { useMergeUi } from '../uiState';
 import { useMerge } from '../useMerge';
 import { barScale } from './barMetrics';
 import { useFontScale } from './fontScale';
+import { NO_SELECT } from '../sheets/parts';
 
 const CHIP_H = 28;
 
@@ -49,6 +50,7 @@ export function UndoChip({ basket }: { basket: Rect }) {
 const styles = StyleSheet.create({
   chip: {
     position: 'absolute',
+    ...NO_SELECT,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

@@ -12,6 +12,7 @@
  * - K_ARRIVE, K_SHAKE: a counter's customer stepping up, a wrong ticket's shake (counter j = x0);
  * - K_PAID: a paid ticket's FILLED stamp over its snapshot (slot = x0).
  */
+import { fxSlow } from './devSlow';
 
 export const K_SPRITE = 0;
 export const K_ARRIVE = 1;
@@ -102,7 +103,10 @@ export class TweenQueue {
     const t = this.now();
     // A tween may start a frame or two late on the UI thread: keep it a second past its life.
     this.list = this.list.filter((e) => e.until > t);
-    for (const tw of tweens) this.list.push({ t: { ...tw, id: this.next++ }, until: t + tweenLife(tw) + 1 });
+    for (const raw of tweens) {
+      const tw = fxSlow === 1 ? raw : { ...raw, delay: raw.delay * fxSlow, d: raw.d * fxSlow, hold: raw.hold * fxSlow };
+      this.list.push({ t: { ...tw, id: this.next++ }, until: t + tweenLife(tw) + 1 });
+    }
     if (this.list.length > this.max) this.list = this.list.slice(this.list.length - this.max);
     this.write(this.list.map((e) => e.t));
   }

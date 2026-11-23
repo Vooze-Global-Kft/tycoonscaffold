@@ -243,5 +243,5 @@ const styles = StyleSheet.create({
   cardIcon: { alignItems: 'center', paddingTop: 2 },
   cardBody: { flex: 1, gap: 4, minWidth: 0 },
   btn: { minHeight: 44, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  pill: { alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
+  pill: { alignSelf: 'center', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
 });

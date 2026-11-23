@@ -21,6 +21,7 @@ import { useMergeUi } from '../uiState';
 import { useGiftCount, usePurse, useSeasonChip } from '../useMerge';
 import { BAR_GUTTER, PURSE_ICON, TOP_BAR_H, TOP_BUTTON, topBarMetrics } from './barMetrics';
 import { useFontScale } from './fontScale';
+import { NO_SELECT } from '../sheets/parts';
 
 export function TopBar({ layout }: { layout: MergeLayout }) {
   const fontScale = useFontScale();
@@ -107,7 +108,7 @@ export function TopBar({ layout }: { layout: MergeLayout }) {
 }
 
 const styles = StyleSheet.create({
-  bar: { position: 'absolute', backgroundColor: NIGHT.indigoDeep, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: alpha(NIGHT.brass, 0.6) },
+  bar: { position: 'absolute', ...NO_SELECT, backgroundColor: NIGHT.indigoDeep, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: alpha(NIGHT.brass, 0.6) },
   purse: { position: 'absolute', top: 0, flexDirection: 'row', alignItems: 'center' },
   purseText: { color: NIGHT.amber, fontWeight: '800', padding: 0, margin: 0, borderWidth: 0, textAlign: 'left' },
   chip: { position: 'absolute', top: 0, justifyContent: 'center' },

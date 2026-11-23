@@ -55,76 +55,68 @@ signatures. A signature of `src/engine/merge.ts` or a seam type changes only aft
 
 `src/ui/merge/strings.ts` sections: `shell` (9), `play` (6), `hud`, `sheets`, `spokes` (7), `hints` (8).
 
-## The seam between MECHANICS and ORDERS
+## The seam between the rule files (in step with the code after the integration)
 
-The most important contract of the build. Every function below exists with its final signature
-(doc comments in its file cite the section). "Skeleton" says what the body does today: **built**
-(works; the owner keeps it and tests it), **stub** (a fixed or neutral answer so the other side can
-run), **unchanged** (returns the same state, i.e. refused), **throws** (`NotBuiltError`; mock it with
-`vi.mock` until it lands). Every closed-form number of 2.2, 2.3 and 2.11 is **built**, so each rules
-engineer tests on real numbers without the other: `mergeParams` and everything it is made of.
+Since the integration (label `rules-lead`) one engineer owns every rules file: `src/engine/merge/**`
+(except the bot's `bot.ts` and `bot.test.ts`, the numbers package's), `src/engine/merge.ts`,
+`src/engine/mergeMode.ts`, `src/engine/fixtures/merge.ts`, `src/config/schema.merge.ts`,
+`src/modes/merge/actions.ts` and their tests. Every body is **built**; no rule throws
+`NotBuiltError` (the class stays only because the bot's guard names it), no test replaces a rules
+file by a stand-in, and `src/engine/merge/play.test.ts` plays the whole engine through the public
+index. The tables below say who calls what, so a change on one side is made with its callers.
 
-ORDERS functions that MECHANICS calls:
+Ticket and season functions the board side calls:
 
-| Function (file) | Called by MECHANICS when | Skeleton |
-|---|---|---|
-| `drawTicket(cfg, g, counter): DrawOutcome` (draw.ts) | a counter's refill is due (2.4 event 6); advance `draws.ticket` by `used`, take the id from `nextTicketId` | stub: one Grill line at min(8, best + 1), `used` 0 |
-| `drawParade(cfg, g, counter): DrawOutcome` (draw.ts) | a refill while a Parade is due and none is out (2.7), and the "Call the dragon" ad (M14, `grantAd`) | throws |
-| `scriptedTicket(cfg, 'fox' \| 'hedgehog', id): Ticket` (draw.ts) | create() (the fox); the hedgehog is ORDERS's own, in `onMerged` | built |
-| `onMerged(cfg, g, made, cell, events)` (lanterns.ts) | after every merge, once MECHANICS counted `feats.merges` (and `tier8sThisSeason` for a tier 8); the scripted hedgehog steps up here | unchanged |
-| `onTierMade(cfg, g, good, firstEver, events)` (lanterns.ts) | a merge, drop or gift good makes a (c, k) first this season (best rose) or ever (book stamped by MECHANICS) | unchanged |
-| `countGiftTicket(cfg, g, events)` (gift.ts) | a ticket paid (after `commitCash` and the `recent` booking), first | unchanged |
-| `onTicketPaid(cfg, g, counter, ticket, coins, events)` (lanterns.ts) | a ticket paid, after `countGiftTicket`; ORDERS counts `feats.tickets`, `threeLineTickets`, `parades` here | unchanged |
-| `checkLanterns(cfg, g, clock, events)` (lanterns.ts) | after EVERY purchase (`openStall`, `levelGear`, `levelStall`, `hireMinder`, `levelMinder`, `openShutter`: lanterns 11 and 14 are feats of purchases); ORDERS's own hooks call it too | unchanged |
-| `festivalLineFilled(cfg, g, line, events)` (festival.ts) | drop.ts set a Festival line `filled` and consumed the good; the last line pays the purse | unchanged |
-| `canCloseSeason(cfg, g)` (festival.ts) | `EngineMode.canPrestige`, the shared store's gate of the close (a merge game earns no prestige points) | built (`festival.filledAt` set) |
-| `neutralMods(cfg): Mods`, `currentMods(cfg, m): Mods` (lanterns.ts) | params.ts reads every modifier through `currentMods` (ONE object, `Mods` in types.ts) | built (neutral); `currentMods` returns neutral |
-| `lanternMods(cfg, lit)`, `seasonMods(cfg, season): Partial<Mods>` (lanterns.ts, season.ts) | read only by `currentMods` (precedence 2.3: the better one, never both) | `{}` |
-| `openingBoard(cfg, m, season): { goods, blocks }` (season.ts) | `startSeason`: place `goods` by the drop-cell rule, turn `blocks` into blocks | stub: season 1's board for every season |
-| `festivalFor(cfg, season): Good[]` (festival.ts) | `startSeason` | built (table; past the last row: the last row) |
-| `seasonedStartLevel(cfg, steps)`, `familiarFactor(cfg, seasonsClosed)` (season.ts) | `startSeason` (gear level), `mergeParams` (stall-opening costs) | built |
-| `seasonRow(cfg, season)` (season.ts) | anyone (names, shapes, characters) | built |
-| `closeSeason(cfg, g, now, events)` (season.ts) | `EngineMode.prestige` (the season close of 2.11): counts the seasoned steps and `seasonsClosed`, resets the coins on the shared state, then calls MECHANICS's `startSeason`, then `checkLanterns` | unchanged (refused) |
-| `openGiftBox(cfg, g, events)` (gift.ts) | the store action `mergeActions.openGiftBox` | unchanged |
+| Function (file) | Called when |
+|---|---|
+| `drawTicket(cfg, g, counter): DrawOutcome` (draw.ts) | a counter's refill is due (2.4 event 6, events.ts `seatTicket`): `draws.ticket` += `used`; the id is set from `nextTicketId` there; a null ticket is "Setting up…" (redrawn at the next `changedAt`); `mstats.ticketsDrawn` and `setups` are counted there |
+| `drawParade(cfg, g, counter): DrawOutcome` (draw.ts) | a refill while the Parade is due and none is out, and "Call the dragon" (M14, `grantAd`): `draws.parade` += `used`; a null Parade keeps it due and the counter draws an ordinary ticket |
+| `scriptedTicket(cfg, 'fox' \| 'hedgehog', id)` (draw.ts) | `createMerge` (the fox); `onMerged` (the hedgehog, at the first merge) |
+| `checkBounds(cfg, g, counter, lines, {parade, scripted})` (draw.ts) | the draw itself (same check), the tests, the bot (gate 4) |
+| `onMerged`, `onTierMade(cfg, g, good, firstEver, events)` (lanterns.ts) | drop.ts after every merge (after `feats.merges` and `tier8sThisSeason`); `noteMade` for every tier first made this season or ever (drops, releases, gift goods, shutter goods, gear rush, "Not tonight"'s returned goods), Lucky-skipped tiers included, ascending |
+| `countGiftTicket`, `onTicketPaid(cfg, g, counter, ticket, coins, events)` (gift.ts, lanterns.ts) | a ticket paid, in this order: `commitCash('ticket')`, till roll (`'till'`), `recent` booked, counter emptied, `mstats.ticketsThisSeason`, `countGiftTicket`, `onTicketPaid` (feats; `restartParade` after a gold ticket; the opening script `done`) |
+| `checkLanterns(cfg, g, clock, events)` (lanterns.ts) | after every purchase, every merge and tier made, every paid ticket, and twice in the close |
+| `festivalLineFilled(cfg, g, line, events)` (festival.ts) | drop.ts filled a Festival line (it appends `festivalLine`); the last line gives `festivalGift` = 3 Lucky Sparks (5 with lantern 18) and NO coins (M37), sets `filledAt`, appends `festivalDone {sparks}` |
+| `canCloseSeason`, `closeSeason(cfg, g, now, events)` (festival.ts, season.ts) | `EngineMode.canPrestige` and `prestige` (M21). `now` is wall ms (only `lastSavedAt` takes it). The close opens every waiting gift box first (M36), counts the seasoned steps and `seasonsClosed`, resets cash, `runEarnings`, `prestigeCount` + 1 directly (a reset is no coin source), lights the close's lanterns, then `startSeason(cfg, m, season + 1, stats.playSeconds)`, then `checkLanterns` |
+| `openingBoard`, `festivalFor`, `seasonedStartLevel`, `familiarFactor`, `seasonRow`, `seasonMods` (season.ts, festival.ts) | `startSeason` (create.ts), `mergeParams` (F_s), `currentMods` |
+| `neutralMods`, `lanternMods`, `currentMods(cfg, m): Mods` (lanterns.ts) | params.ts and every rule read every modifier through ONE `Mods` object (precedence of 2.3: the better one, never both) |
+| `openGiftBox(cfg, g, events)` (gift.ts) | `mergeActions.openGiftBox` and the close (M36): coins through `commitCash('gift')`, goods to `pendingGoods` (`gift.nextAt` = clock + release when none waits), Sparks kept, `mstats.giftBoxesOpened` |
 
-MECHANICS functions that ORDERS calls:
+Board and number functions the ticket and season side calls:
 
-| Function (file) | Used by ORDERS for | Skeleton |
-|---|---|---|
-| `mergeParams(cfg, g): MergeParams` (params.ts) | b_c, p_c, values, S_c, h_c, Loose_c, O, F, U, β, costs, the next shutters, F_s, the away cap (draw bounds, advice, purse, gift coins) | built |
-| `value(cfg, g, c, k)`, `ticketPrice(cfg, g, ticket)`, `paceUnit(cfg, g)`, `baseTier(cfg, L)`, `ripeChance(cfg, mods, L)`, `maxPopAt(cfg, mods, L)`, `roundCost(cfg, x)` (params.ts) | prices, the purse (festivalPace × U), coin slots (coinPace × U), advice (Δu of a gear level), best_c at a season's start | built |
-| `recentCoins(m, clock, c?)`, `recentRate(g, c?)` (params.ts) | R_t of 2.10, and per chain for the stall-level gain (`recent` holds 60 buckets per chain) | built |
-| `streamValue(m, site, n, x)` (params.ts) | the ticket, gift and Parade streams of 2.3 (`SITE`, `draws`) | built |
-| `startSeason(cfg, m, season, clock): MergeState` (create.ts) | `closeSeason`: the next season's state (2.11's resets and keeps, the shape, the opening goods, the Festival, the counters, the clocks) | built (create() uses it for season 0) |
-| `applyLantern(cfg, g, n, clock, events)` (actions.ts) | `checkLanterns`, after it recorded lantern n: the effects on MECHANICS's state (lanterns 1 and 4 append a counter, lantern 3 restarts a waiting gear); gift slots and lantern 19's `ticketsToBox` are ORDERS's own | unchanged |
-| `placeGood(m, good, at, cell?)`, `dropCell(m, c)` (board.ts) | gift goods; the opening board (inside `startSeason`) | built |
-| `roomFor(m, n)`, `freeCells(m)` (board.ts) | the one room check of the draw, the swap and gift goods (2.7) | built |
-| `looseCount(cfg, m, c)` (board.ts) | bound (c) | built |
-| `commitCash(g, delta, source)` (actions.ts) | the one way cash changes: the Festival purse ('festival'), gift coins ('gift'); booked in `mstats.coins` (gate 8) | built |
+| Function (file) | Used for |
+|---|---|
+| `mergeParams(cfg, g): MergeParams` (params.ts) | b_c, p_c, values, S_c, h_c, Loose_c, O, F, U, β, costs, the next shutters, F_s, the away cap |
+| `roundCoins(cfg, x)` (params.ts; `roundCost` is the same function) | M19: the ONE rounding of every amount shown or paid: costs, `ticketPrice`, `basketPrice`, `saleAmount` (the till and the away form), `giftCoinAmount`, the away earnings |
+| `value`, `ticketPrice`, `paceUnit`, `baseTier`, `ripeChance`, `maxPopAt`, `saleAmount`, `houseTierOf`, `saleInterval`, `basketPrice` (params.ts) | prices, coin slots, the advice's gains, best_c at an opening |
+| `lineUnmakeable(cfg, g, line)` (params.ts) | M34: a waiting line below its gear's base tier (two base steps after its draw): `nearestTicket` skips its ticket, `hintsFor` points at it (`notTonight:<j>`), the ticket detail says "No longer made at this stall"; bound (b) adds no pops for it |
+| `awningLook(cfg, stallLevel)` (params.ts) | M29: the stall front's look, 0 plain (1 to 4), 1 scalloped (5 to 9), 2 double (10 and up) |
+| `restartParade(cfg, m, clock)` (params.ts) | the one Parade-clock restart: `onTicketPaid` after a gold ticket, `notTonight` when the gold ticket is sent off |
+| `recentCoins`, `recentRate`, `streamValue` (params.ts) | R_t of 2.10 (`incomeRate`, which `EngineMode.activeIncome` returns too), the ticket, gift and Parade streams |
+| `startSeason(cfg, m, season, clock)` (create.ts) | `closeSeason` and `createMerge` |
+| `applyLantern(cfg, g, n, clock, events)` (actions.ts) | `checkLanterns`, after it recorded a lantern: a `counters` effect appends counters, a `shelfCap` effect restarts waiting gears |
+| `placeGood`, `dropCell`, `roomFor`, `freeCells`, `looseCount` (board.ts) | gift goods, the opening board, "Not tonight" (`roomFor` is the one room check), bound (c) |
+| `commitCash(g, delta, source)` (actions.ts) | the one way cash changes, booked in `mstats.coins` under five sources (`ticket`, `gift`, `till`, `basket`, `away`, M37) and two ways out (`spend`, `undo`). The shared store grants the away earnings with `E.grantCash`, so `mstats.coins.away` stays 0 in the app; traces book them with `bookAway` |
 
-"Not tonight" is a MECHANICS action (`notTonight`): it returns the filled lines with `roomFor` and
-`placeGood` itself, and sending off the gold ticket restarts the Parade clock. ORDERS restarts it
-after a paid Parade (`onTicketPaid`).
-
-Who counts what (types.ts `Feats`): MECHANICS counts what happens on the board (`merges`,
-`tier8sThisSeason`, `mstats.drops`, `luckies`, `basketSales`, the `recent` buckets of a paid ticket,
-split over its lines' chains by value); ORDERS counts tickets and seasons (`tickets`,
-`threeLineTickets`, `parades`, `seasonsClosed`, `mstats.ticketsDrawn`, `setups`). The away coins
-are granted by the shared store (`E.grantCash`), not by `commitCash`, so `mstats.coins.away` stays
-0 in the app: gate 8's "six sources" check books the away earnings from `mergeOffline`'s result
-(the bot does this itself).
+Who counts what (types.ts `Feats`, `MergeStats`): drop.ts counts `merges`, `tier8sThisSeason`,
+`luckies`, `basketSales`, `ticketsThisSeason`; events.ts `drops`, `ticketsDrawn`, `setups`;
+actions.ts `notTonights` and the gear rush's drops; lanterns.ts `onTicketPaid` `tickets`,
+`threeLineTickets`, `parades`; season.ts `seasonsClosed`; gift.ts `giftBoxesOpened`.
 
 Shared types of the seam (types.ts): `Good`, `Cell`, `Ticket`, `TicketLine`, `Counter`,
-`FestivalState`, `GiftBox`, `GiftSlot`, `Feats`, `Mods`, `MergeParams`, `ChainParams`,
-`DrawOutcome`, `MissingResult`, `MergeEvent`, `CoinSource`, `RecentCoins`, `SITE`. A change to one of
-these is agreed between the two rules engineers (a line in `requests.md`), then made by MECHANICS.
+`FestivalState`, `GiftBox`, `GiftSlot`, `Feats`, `Mods` (with `festivalSparks`, M37),
+`MergeParams`, `ChainParams`, `DrawOutcome`, `MissingResult`, `MergeEvent`, `CoinSource`,
+`RecentCoins`, `SITE`.
 
 What the screens and the bot call (all through `src/engine/merge.ts`): `dropAt`, `decodeTarget`,
 `targetsFor`, the purchases and buttons of 2.5 (`openStall`, `levelGear`, `levelStall`,
-`hireMinder`, `levelMinder`, `openShutter`, `notTonight`, `undoBasket`, `openGiftBox`,
-`closeSeason`, `canWatchAd`, `grantAd`), `mergeParams`, `ticketPrice`, `advice`, `incomeRate`,
-`hintsFor`, `featProgress`, `giftOdds`, `festivalPurse`, `canCloseSeason`, `seasonRow`, `missing`,
-`mergeOffline`, `advanceMerge`. Target codes for the hit test: `TARGET_COUNTER + j`,
+`hireMinder`, `levelMinder`, `openShutter`, `notTonight`, `notTonightRoom`, `undoBasket`,
+`openGiftBox`, `closeSeason`, `canWatchAd`, `grantAd`), `mergeParams`, `ticketPrice`,
+`roundCoins`, `advice`, `purchaseAdvice`, `festivalAdvice`, `waitEstimate`, `incomeRate`,
+`hintsFor`, `featProgress`, `featState`, `giftOdds`, `giftBoxAt`, `festivalGift`, `canCloseSeason`,
+`seasonRow`, `SEASON_RESETS`, `SEASON_STAYS` (ids; M36: `giftGoods`, no `giftBoxes`),
+`lineUnmakeable`, `awningLook`, `missing`, `checkBounds`, `mergeOffline`, `advanceMerge`,
+`nextMergeStop`, `nextEvent`, `runEvent`. Target codes for the hit test: `TARGET_COUNTER + j`,
 `TARGET_FESTIVAL`, `TARGET_BASKET`, `TARGET_NONE`, a cell's index (types.ts).
 
 Products and ads (Decisions M13, M14): `merge.products` names `night_awnings` (cosmetic, looks

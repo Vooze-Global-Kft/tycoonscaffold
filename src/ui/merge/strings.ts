@@ -230,7 +230,7 @@ export const S = {
     giftHead: 'Gift boxes',
     giftEvery: (n: number) => `A gift box comes with every ${n} filled tickets.`,
     giftSlots: (n: number) => `It holds ${n} slots; each slot is one of:`,
-    giftCoins: (pct: number, coins: string) => `${pct} %: ${coins} coins, the amount when the box is earned`,
+    giftCoins: (pct: number, coins: string) => `${pct} %: coins, ${coins} at today's pace`,
     giftGood: (pct: number) => `${pct} %: a good from an open stall`,
     giftSpark: (pct: number) => `${pct} %: a Lucky Spark`,
     oddsClose: 'Close',
@@ -326,7 +326,6 @@ export const S = {
     newStall: (gear: string) => `The ${gear} opens on the street.`,
     piecesHead: 'Street pieces',
     piecesNone: 'Each season leaves a piece on the street when its Festival is filled.',
-    pieceThis: 'this season',
     close: 'Close the season',
     closeLocked: 'Fill the Festival to close the season.',
     // --- the season close confirm and the change of season (2.11, M36) ---

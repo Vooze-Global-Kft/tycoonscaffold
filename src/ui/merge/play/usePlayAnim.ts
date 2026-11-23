@@ -25,6 +25,10 @@ export const PAID_SLOTS = 2;
 const SLOW_MS = 32;
 /** The stamp falls in 0.22 s and rests on the ticket until the fold begins at 0.7 s. */
 const STAMP_IN = 0.22;
+/** The paid slot's life at normal speed (beats.ts: the fold begins then). */
+const PAID_D = 0.9;
+/** The stamp falls once the last good has landed on the ticket. */
+const STAMP_AT = 0.18;
 const OFF = [{ translateX: -9999 }, { translateY: -9999 }];
 
 /** The live drag as the JavaScript thread writes it (screen points); `on` 0 when no finger drags a good. */
@@ -175,8 +179,9 @@ export function usePlayAnim(tweens: SharedValue<Tween[]>, drag: SharedValue<Drag
           }
         } else if (t.k === K_PAID) {
           const s = t.x0;
-          if (s < 0 || s >= 2 || age > t.d) continue;
-          const u = Math.min(1, age / STAMP_IN);
+          if (s < 0 || s >= 2 || age < t.delay || age > t.delay + t.d) continue;
+          const k = t.d / PAID_D;
+          const u = Math.max(0, Math.min(1, (age - t.delay - STAMP_AT * k) / (STAMP_IN * k)));
           pOp[s] = 1;
           sX[s] = t.x1;
           sY[s] = t.y1;

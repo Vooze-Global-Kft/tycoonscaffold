@@ -20,7 +20,7 @@ import { at } from '../art/pen';
 import { PARTICLES, drawParticle, drawScroll, drawSeasonBoard } from '../art/spokes.draw';
 import { S } from '../strings';
 import { useMergeUi } from '../uiState';
-import { C, PaperButton, T, useSpokeView } from './kit';
+import { C, PaperButton, T, useFs, useSpokeView } from './kit';
 import { SpokeFrame } from './SpokeFrame';
 import { gearIcon, goodIcon, scrollView, type BoardShape, type FestivalLineView } from './views';
 
@@ -57,6 +57,8 @@ export function seasonBoardPicture(shape: BoardShape, decoration: number, cell =
 
 export function SeasonScroll() {
   const view = useSpokeView((cfg, g) => scrollView(cfg, g));
+  // Two lists side by side fit only at the usual text size; larger text stacks them (nothing wraps).
+  const stacked = useFs() > 1.12;
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const paper = useMemo(() => (size ? scrollPicture(size.w, size.h) : null), [size]);
   const board = useMemo(() => (view ? seasonBoardPicture(view.next.shape, view.next.decoration) : null), [view]);
@@ -105,14 +107,14 @@ export function SeasonScroll() {
             {view.gives}
           </T>
         ) : null}
-        <View style={styles.lists}>
-          <View style={styles.list}>
+        <View style={stacked ? null : styles.lists}>
+          <View style={stacked ? null : styles.list}>
             <PaperHead>{W.resets}</PaperHead>
             {view.resets.map((w) => (
               <Item key={w} text={w} />
             ))}
           </View>
-          <View style={styles.list}>
+          <View style={stacked ? null : styles.list}>
             <PaperHead>{W.stays}</PaperHead>
             {view.stays.map((w) => (
               <Item key={w} text={w} keep />
@@ -145,9 +147,11 @@ export function SeasonScroll() {
           <View style={styles.pieces}>
             {view.pieces.map((p) => (
               <View key={p.season} style={styles.piece}>
-                <MergeIcon icon={`art:season-${p.season % 4}`} size={40} />
+                <View style={[styles.pieceIcon, p.now && styles.pieceNow]}>
+                  <MergeIcon icon={`art:season-${p.season % 4}`} size={40} />
+                </View>
                 <T size={11} color={INK_SOFT} align="center" lines={2}>
-                  {p.now ? `${p.name}, ${W.pieceThis}` : p.name}
+                  {p.name}
                 </T>
               </View>
             ))}
@@ -221,5 +225,7 @@ const styles = StyleSheet.create({
   boardBox: { borderRadius: 6, padding: 2, backgroundColor: alpha(NIGHT.indigo, 0.9) },
   newStall: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   pieces: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  piece: { width: 72, alignItems: 'center' },
+  piece: { width: 84, alignItems: 'center' },
+  pieceIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  pieceNow: { backgroundColor: alpha(NIGHT.amber, 0.25), borderWidth: 1, borderColor: NIGHT.amber },
 });

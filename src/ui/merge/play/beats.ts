@@ -165,7 +165,7 @@ export function beatsFor(events: readonly R.MergeEvent[], x: BeatContext): Beats
         out.paid.push({ counter: e.counter, ticket: e.ticket, coins: e.coins, slot });
         // The FILLED stamp falls on the ticket (0.22 s), it rests, then folds into a paper lantern that floats to the purse with the coins.
         const fold = 0.72;
-        tw.push({ ...marker(K_PAID, slot, fold, 0.18), x1: c.x, y1: c.y + 6 });
+        tw.push({ ...marker(K_PAID, slot, 0.18 + fold), x1: c.x, y1: c.y + 6 });
         for (let f = 0; f < 6; f++) tw.push(sprite(1, `fold-${f}`, c, { x: c.x, y: c.y - f * 3 }, 0.075, { delay: 0.18 + fold + f * 0.075, hold: f === 5 ? 0.05 : 0, ease: E_LINEAR }));
         const lift = 0.18 + fold + 6 * 0.075;
         const top = { x: c.x, y: c.y - 15 };

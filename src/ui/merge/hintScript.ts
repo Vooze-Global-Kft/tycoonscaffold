@@ -209,6 +209,7 @@ export const FIREFLY_REACH = 14;
  * - a ticket column or the Festival banner as a drag's end: just below its bottom edge (3.1: "a
  *   trail may end at a ticket's edge"), never on its lines or price;
  * - the goal line: its left end, before the words (the price follows them);
+ * - a sheet's buy button: its right end (the label and price sit in the middle);
  * - a stall front, a bottom-row button, the Basket, the gift bag: the middle.
  */
 export function anchorOf(key: string, r: Rect): Point {
@@ -216,6 +217,8 @@ export function anchorOf(key: string, r: Rect): Point {
   if (kind === 'counter' || kind === 'banner') return { x: r.x + r.w / 2, y: r.y + r.h + FIREFLY_REACH * 0.6 };
   if (kind === 'shutter') return { x: r.x + FIREFLY_REACH * 0.5, y: r.y + FIREFLY_REACH * 0.5 };
   if (kind === 'goal') return { x: r.x + FIREFLY_REACH, y: r.y + r.h / 2 };
+  // A sheet's buy button (label and price centred): its right end, clear of the words and the price.
+  if (kind === 'sheet' || kind === 'confirm' || kind === 'ticket') return { x: r.x + r.w - FIREFLY_REACH * 1.6, y: r.y + r.h / 2 };
   return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }
 

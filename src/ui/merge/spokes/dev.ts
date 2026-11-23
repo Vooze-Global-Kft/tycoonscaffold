@@ -8,5 +8,10 @@ export function spokeFontScale(fontScale: number): number {
   return fontScale;
 }
 
+/** How long the change of season plays, ms. */
+export function ceremonyMs(ms: number): number {
+  return ms;
+}
+
 /** Applies the preview's spoke switches (nothing on a phone). */
 export function applySpokeDevParams(): void {}

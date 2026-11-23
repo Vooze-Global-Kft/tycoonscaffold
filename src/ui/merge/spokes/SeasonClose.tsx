@@ -11,7 +11,7 @@
  * a worklet of it; the pictures are recorded once per size and kept. It registers with useOverlay,
  * and Android back skips it like a tap. Package SPOKES (7b).
  */
-import { Canvas, Group, Picture, Skia, type SkCanvas, type SkPicture } from '@shopify/react-native-skia';
+import { Canvas, Group, Paint, Picture, Skia, type SkCanvas, type SkPicture } from '@shopify/react-native-skia';
 import { useEffect, useMemo } from 'react';
 import { BackHandler, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, cancelAnimation, runOnJS, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
@@ -26,6 +26,7 @@ import { NIGHT, alpha } from '../art/palette';
 import { at, builder, stroke, INK } from '../art/pen';
 import { S } from '../strings';
 import { useMergeUi } from '../uiState';
+import { ceremonyMs } from './dev';
 import { C, PaperButton, T } from './kit';
 import { useSpokeLocal, type Ceremony as CeremonyState } from './local';
 import { seasonBoardPicture } from './SeasonScroll';
@@ -184,9 +185,10 @@ function ramp(p: number, a: number, b: number): number {
 }
 
 function LitLantern({ pic, i, p }: { pic: SkPicture; i: number; p: SharedValue<number> }) {
-  const opacity = useDerivedValue(() => 1 - ramp(p.value, 0.06 + i * 0.035, 0.12 + i * 0.035));
+  // Out one by one along the wire, then lit again for the new season.
+  const opacity = useDerivedValue(() => 1 - ramp(p.value, 0.06 + i * 0.035, 0.12 + i * 0.035) + ramp(p.value, 0.74 + i * 0.022, 0.79 + i * 0.022));
   return (
-    <Group opacity={opacity} layer>
+    <Group layer={<Paint opacity={opacity} />}>
       <Picture picture={pic} />
     </Group>
   );
@@ -231,6 +233,7 @@ function CeremonyView({ c }: { c: CeremonyState }) {
       to: row.name,
       sentence: W.place[row.character] ?? W.place.none,
       shape: shapeId(row.shape),
+      oldShape: shapeId(R.seasonRow(now.cfg, c.from).shape),
       decoration: decorationOf(c.to),
       opening: opening >= 0 ? opening : null,
       newStall: opening >= 0 ? W.newStall(now.cfg.merge.chains[opening].gear) : null,
@@ -240,13 +243,15 @@ function CeremonyView({ c }: { c: CeremonyState }) {
   const lit = useMemo(() => wireSpots(w, wireY).map((s, i) => litPicture(s, `${Math.round(w)}:${Math.round(wireY)}:${i}`)), [w, wireY]);
   const cell = Math.min(26, Math.floor((w - 120) / 7));
   const board = useMemo(() => (info ? seasonBoardPicture(info.shape, info.decoration, cell) : null), [info, cell]);
+  const oldBoard = useMemo(() => (info ? seasonBoardPicture(info.oldShape, decorationOf(c.from), cell) : null), [info, cell, c.from]);
   const bw = 7 * cell + 8;
   const bh = 8 * cell + 8;
   const boardY = Math.round(h * 0.42 - bh / 2 + 30);
   const boardOpacity = useDerivedValue(() => ramp(p.value, 0.42, 0.6));
+  const oldOpacity = useDerivedValue(() => 1 - ramp(p.value, 0.26, 0.4));
   const boardMove = useDerivedValue(() => [{ translateY: (1 - ramp(p.value, 0.42, 0.62)) * 18 }]);
   useEffect(() => {
-    p.value = withTiming(1, { duration: DURATION, easing: Easing.linear }, (done) => {
+    p.value = withTiming(1, { duration: ceremonyMs(DURATION), easing: Easing.linear }, (done) => {
       if (done) runOnJS(finish)();
     });
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -263,7 +268,7 @@ function CeremonyView({ c }: { c: CeremonyState }) {
     cancelAnimation(p);
     finish();
   };
-  if (!info || !board) return null;
+  if (!info || !board || !oldBoard) return null;
   return (
     <Pressable style={StyleSheet.absoluteFill} onPress={skip} accessibilityRole="button" accessibilityLabel={W.ceremonyTap}>
       <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -271,7 +276,12 @@ function CeremonyView({ c }: { c: CeremonyState }) {
         {lit.map((pic, i) => (
           <LitLantern key={i} pic={pic} i={i} p={p} />
         ))}
-        <Group opacity={boardOpacity} transform={boardMove} layer>
+        <Group layer={<Paint opacity={oldOpacity} />}>
+          <Group transform={[{ translateX: Math.round((w - bw) / 2) }, { translateY: boardY }]}>
+            <Picture picture={oldBoard} />
+          </Group>
+        </Group>
+        <Group transform={boardMove} layer={<Paint opacity={boardOpacity} />}>
           <Group transform={[{ translateX: Math.round((w - bw) / 2) }, { translateY: boardY }]}>
             <Picture picture={board} />
           </Group>

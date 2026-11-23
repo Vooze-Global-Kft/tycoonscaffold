@@ -18,6 +18,7 @@ import { S } from '../strings';
 import { useMergeUi, type MergeSpoke } from '../uiState';
 import { buttonMetrics } from './barMetrics';
 import { useFontScale } from './fontScale';
+import { NO_SELECT } from '../sheets/parts';
 import { UndoChip } from './UndoChip';
 
 type Slot = { key: 'book' | 'lanterns' | 'season' | 'shop'; icon: string; label: string };
@@ -82,7 +83,7 @@ export function BottomRow({ layout }: { layout: MergeLayout }) {
 
 const styles = StyleSheet.create({
   ground: { position: 'absolute', left: 0, right: 0, backgroundColor: NIGHT.indigoDeep, borderTopWidth: StyleSheet.hairlineWidth, borderColor: alpha(NIGHT.brass, 0.45) },
-  button: { position: 'absolute', borderRadius: 10 },
+  button: { position: 'absolute', borderRadius: 10, ...NO_SELECT },
   armed: { backgroundColor: alpha(NIGHT.amber, 0.18), borderWidth: 1, borderColor: alpha(NIGHT.amber, 0.7) },
   pressed: { backgroundColor: alpha(NIGHT.paper, 0.08) },
   label: { position: 'absolute', left: 0, right: 0, textAlign: 'center', color: NIGHT.paper, fontWeight: '600' },

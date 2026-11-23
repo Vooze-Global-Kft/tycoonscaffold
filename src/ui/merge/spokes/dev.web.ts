@@ -7,6 +7,7 @@
  *   &festival=filled              mark every Festival line filled (so "Close the season" is enabled)
  *   &confirm=1                    open the season close confirm
  *   &ceremony=1                   close the season at once and play the change of season
+ *   &cerms=30000                  play the change of season this many ms long
  * Package SPOKES (7b).
  */
 import { Platform } from 'react-native';
@@ -26,6 +27,12 @@ function params(): URLSearchParams | null {
 export function spokeFontScale(fontScale: number): number {
   const fs = Number(params()?.get('fs') ?? NaN);
   return Number.isFinite(fs) && fs > 0 ? fs : fontScale;
+}
+
+/** `&cerms=30000` stretches the change of season to look at it frame by frame. */
+export function ceremonyMs(ms: number): number {
+  const v = Number(params()?.get('cerms') ?? NaN);
+  return Number.isFinite(v) && v > 0 ? v : ms;
 }
 
 export function applySpokeDevParams(): void {

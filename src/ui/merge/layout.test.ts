@@ -3,8 +3,35 @@
  * 4.1's table, cells are at least 44, the street parts fit. The play canvas package extends it
  * (fronts of 52 pt, the 6-line banner, reachability by the finger, fontScale 1.3).
  */
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { TARGET_BASKET, TARGET_COUNTER } from '../../engine/merge';
 import { BARS, CELL_MIN, cellRect, mergeLayout, type MergeLayout } from './layout';
+import { chipMetrics, chipTop } from './play/chipMetrics';
+import { counterParts, hitGeo, hitTest, TICKET_H } from './play/geometry';
+
+// The banner grid lives in the art kit's Skia file: Skia's own test double over CanvasKit (as art.test.ts does).
+vi.mock('@shopify/react-native-skia', async () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const CanvasKitInit = require('canvaskit-wasm/bin/full/canvaskit.js');
+  const CanvasKit = await CanvasKitInit({});
+  (globalThis as Record<string, unknown>).CanvasKit = CanvasKit;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Module = require('node:module');
+  const resolve = Module._resolveFilename;
+  Module._resolveFilename = function (request: string, ...rest: unknown[]) {
+    return resolve.call(this, request === 'react-native' ? 'react-native-web' : request, ...rest);
+  };
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('@shopify/react-native-skia/lib/commonjs/mock').Mock(CanvasKit);
+  } finally {
+    Module._resolveFilename = resolve;
+  }
+});
+let bannerGrid: typeof import('./art/street.draw').bannerGrid;
+beforeAll(async () => {
+  bannerGrid = (await import('./art/street.draw')).bannerGrid;
+}, 60_000);
 
 const zones = (l: MergeLayout) => [l.insets.top, l.topBar.h, l.goalLine.h, l.street.h, l.spareAbove, l.board.h, l.spareBelow, l.bottomRow.h, l.insets.bottom];
 
@@ -62,6 +89,83 @@ describe('mergeLayout', () => {
       expect(l.fronts.every((f) => f.w >= 52)).toBe(true);
       expect(l.buttons[3].x + l.buttons[3].w).toBeLessThanOrEqual(l.width - 10);
       expect(l.basket.x).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+  const phones: [number, number, number, number][] = [
+    [375, 667, 20, 0],
+    [390, 844, 47, 34],
+  ];
+
+  it('six stall fronts of at least 52 pt fit the street with their gaps, centred', () => {
+    for (const [w, h, t, b] of phones) {
+      const l = mergeLayout(w, h, { top: t, bottom: b });
+      expect(l.fronts).toHaveLength(6);
+      for (const f of l.fronts) expect(f.w).toBeGreaterThanOrEqual(52);
+      expect(l.fronts[0].x).toBeGreaterThanOrEqual(10);
+      expect(l.fronts[5].x + l.fronts[5].w).toBeLessThanOrEqual(w - 10);
+      for (let i = 1; i < 6; i++) expect(l.fronts[i].x).toBeGreaterThanOrEqual(l.fronts[i - 1].x + l.fronts[i - 1].w);
+    }
+  });
+
+  it('the banner holds its 6-line grid below its lantern, and a 96 pt ticket fits every counter column', () => {
+    for (const [w, h, t, b] of phones) {
+      const l = mergeLayout(w, h, { top: t, bottom: b });
+      const grid = bannerGrid(l.banner.w, l.banner.h);
+      expect(grid).toHaveLength(6);
+      for (const g of grid) {
+        expect(g.x).toBeGreaterThanOrEqual(0);
+        expect(g.x + g.size).toBeLessThanOrEqual(l.banner.w);
+        expect(g.y).toBeGreaterThanOrEqual(30);
+        expect(g.y + g.size).toBeLessThanOrEqual(l.banner.h - 6);
+      }
+      for (const n of [2, 3, 4] as const) {
+        for (const r of l.counters[n]) {
+          const p = counterParts(r);
+          expect(p.ticket.h).toBe(TICKET_H);
+          expect(p.ticket.y).toBeGreaterThanOrEqual(r.y);
+          expect(p.ticket.y + p.ticket.h).toBeLessThanOrEqual(r.y + r.h);
+          expect(p.ticket.x + p.ticket.w).toBeLessThanOrEqual(r.x + r.w);
+        }
+        // Two and three counters are centred like four.
+        const cs = l.counters[n];
+        const left = cs[0].x - (l.banner.x + l.banner.w);
+        const right = w - (cs[n - 1].x + cs[n - 1].w);
+        expect(Math.abs(left - right)).toBeLessThanOrEqual(14 + 2);
+      }
+    }
+  });
+
+  it('at 375 x 667 the finger reaches every bottom-row target and every top-row cell (the hit test at their centres)', () => {
+    const l = mergeLayout(375, 667, { top: 20, bottom: 0 });
+    const g = hitGeo(l, 4);
+    expect(hitTest(l.basket.x + l.basket.w / 2, l.basket.y + l.basket.h / 2, g)).toBe(TARGET_BASKET);
+    // The Basket's whole rectangle is inside the screen, and its bottom half too (a thumb at the edge).
+    expect(l.basket.y + l.basket.h).toBeLessThanOrEqual(667);
+    for (const r of l.buttons) expect(r.y + r.h).toBeLessThanOrEqual(667);
+    for (let col = 0; col < 7; col++) {
+      const r = cellRect(l, col);
+      expect(hitTest(r.x + r.w / 2, r.y + r.h / 2, g)).toBe(col);
+      expect(r.y).toBeGreaterThanOrEqual(l.street.y + l.street.h);
+    }
+    l.counters[4].forEach((r, j) => expect(hitTest(r.x + r.w / 2, r.y + r.h / 2, g)).toBe(TARGET_COUNTER + j));
+  });
+
+  it('font scale 1.3 fits: the zones do not move, and the long-press chip fits above a cell under the street', () => {
+    for (const [w, h, t, b] of phones) {
+      const a = mergeLayout(w, h, { top: t, bottom: b }, 1);
+      const c = mergeLayout(w, h, { top: t, bottom: b }, 1.3);
+      expect(zones(c)).toEqual(zones(a));
+      const m = chipMetrics(1.3);
+      expect(m.nameRow + m.worthRow + 12).toBe(m.h);
+      // Above or below its cell, the chip stays between the street's top and the bottom row for every cell.
+      for (let i = 0; i < 56; i++) {
+        const r = cellRect(c, i);
+        const y = chipTop(r.y + r.h / 2, r.h / 2, m.h, c.street.y);
+        expect(y).toBeGreaterThanOrEqual(c.street.y);
+        expect(y + m.h).toBeLessThanOrEqual(c.bottomRow.y + c.bottomRow.h);
+      }
+      expect(m.name).toBeGreaterThanOrEqual(16);
     }
   });
 });

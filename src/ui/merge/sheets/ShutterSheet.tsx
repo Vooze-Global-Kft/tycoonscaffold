@@ -4,6 +4,7 @@
  * canvas) or the goal line; the purchase is `mergeActions.openShutter(group)`, after which it closes.
  * Owned by the bars package (BARS, 7a).
  */
+import { useEffect } from 'react';
 import { mergeActions } from '../../../modes/merge/actions';
 import { S } from '../strings';
 import { useMergeUi } from '../uiState';
@@ -15,8 +16,13 @@ export function ShutterSheet() {
   const group = useMergeUi((s) => (s.sheet?.type === 'shutter' ? s.sheet.group : null));
   const g = useLastParam(group);
   const close = () => useMergeUi.getState().closeSheet();
+  // A group whose shutters are all open has nothing to confirm: the sheet closes.
+  const exists = useShutterView(g ?? 0).exists;
+  useEffect(() => {
+    if (group !== null && !exists) useMergeUi.getState().closeSheet();
+  }, [group, exists]);
   return (
-    <MergeSheet visible={group !== null} onClose={close} title={S.sheets.shutterTitle} icon="art:shutter">
+    <MergeSheet visible={group !== null && exists} onClose={close} title={S.sheets.shutterTitle} icon="art:shutter">
       {g !== null ? <ShutterBody group={g} onDone={close} /> : null}
     </MergeSheet>
   );

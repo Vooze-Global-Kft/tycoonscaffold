@@ -16,6 +16,7 @@ import { useMergeUi } from '../uiState';
 import { useGoal } from '../useMerge';
 import { BAR_GUTTER, GOAL_H, goalMetrics } from './barMetrics';
 import { useFontScale } from './fontScale';
+import { NO_SELECT } from '../sheets/parts';
 
 /** The goal's words (strings.ts) from the view the rules gave. */
 export function goalWords(v: GoalView): string {
@@ -124,7 +125,7 @@ export function GoalLine({ layout }: { layout: MergeLayout }) {
 }
 
 const styles = StyleSheet.create({
-  line: { position: 'absolute', justifyContent: 'center', paddingHorizontal: BAR_GUTTER, backgroundColor: alpha(NIGHT.indigoDeep, 0.92) },
+  line: { position: 'absolute', ...NO_SELECT, justifyContent: 'center', paddingHorizontal: BAR_GUTTER, backgroundColor: alpha(NIGHT.indigoDeep, 0.92) },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   words: { color: NIGHT.paperLight, fontWeight: '600', flexShrink: 1 },
   sep: { color: NIGHT.paperShade },

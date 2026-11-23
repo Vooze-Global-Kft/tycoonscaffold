@@ -8,8 +8,10 @@
  *   twice a second it asks the script (./hintScript.ts `fireflyHint`) and draws either a glowing
  *   trail from a good to its target with the firefly flying along it (a drag hint; the trail may end
  *   at a ticket's edge, never on its lines) or the firefly hovering beside a control (a point hint).
- *   It never catches a touch, hides at once when a finger lands, a good is armed or any dialog
- *   opens, flies for 6 s then rests still and half-faded for 9 s (no clock while it rests), and
+ *   It never catches a touch, hides at once when a finger lands, a good is armed, a spoke or any
+ *   other dialog opens; while a sheet is open it shows only the button inside it that finishes the
+ *   guided step (./hints.ts `sheetHints`: the gear level, the Tea stall, the shutter), at the
+ *   button's right end, clear of its label and price. It flies for 6 s then rests still and half-faded for 9 s (no clock while it rests), and
  *   runs at 30 frames a second (4.5: 60 only while a finger is down or a flight runs on the board).
  * Targets: the registry (src/ui/hints/targets.ts) first, else mergeLayout's rectangles.
  * Owned by the hints and platform package (docs/design/market-build-plan.md).
@@ -24,7 +26,8 @@ import { useOverlaysOpen } from '../kit';
 import type { HintPointerProps } from '../modeParts';
 import { targets } from '../hints/targets';
 import { drawFirefly, drawTrailPiece, FIREFLY_WINGS } from './art/animals.draw';
-import { curveAt, fireflyHint, hintPath, layoutRect, type FireflyHint, type HintPath } from './hintScript';
+import { curveAt, fireflyHint, hintPath, layoutRect, QUIET_MS, type FireflyHint, type HintPath } from './hintScript';
+import { sheetHints } from './hints';
 import type { MergeLayout, Rect } from './layout';
 import { useMergeUi } from './uiState';
 
@@ -138,7 +141,8 @@ function activitySignature(g: R.MergeGame): string {
 /** Which hint to show now (asked every ASK_MS and on every UI change), with its path on screen. */
 function useFirefly(layout: MergeLayout): { hint: FireflyHint; path: HintPath } | null {
   const [shown, setShown] = useState<{ hint: FireflyHint; path: HintPath } | null>(null);
-  const busy = useMergeUi((s) => s.fingerDown || s.armed !== null || s.chip !== null || s.sheet !== null || s.spoke !== null);
+  const busy = useMergeUi((s) => s.fingerDown || s.armed !== null || s.chip !== null || s.spoke !== null);
+  const sheet = useMergeUi((s) => s.sheet);
   const touchedAt = useMergeUi((s) => s.touchedAt);
   const dialogs = useOverlaysOpen() > 0;
   const activityAt = useRef(Date.now());
@@ -161,7 +165,8 @@ function useFirefly(layout: MergeLayout): { hint: FireflyHint; path: HintPath } 
   }, []);
 
   useEffect(() => {
-    if (busy || dialogs) {
+    // A sheet open: only the control inside it that finishes the guided step (./hints.ts sheetHints); any other dialog: nothing.
+    if (busy || (dialogs && !sheet)) {
       setShown(null);
       return;
     }
@@ -175,6 +180,14 @@ function useFirefly(layout: MergeLayout): { hint: FireflyHint; path: HintPath } 
       }
       const ui = useMergeUi.getState();
       const idleMs = Date.now() - Math.max(ui.touchedAt, activityAt.current);
+      if (ui.sheet) {
+        const inSheet = idleMs >= QUIET_MS ? sheetHints()[0] : undefined;
+        const r = inSheet ? targets.get(inSheet.key) : null;
+        const hint: FireflyHint | null = inSheet && r ? { id: `sheet:${inSheet.key}`, kind: 'point', to: inSheet.key, guided: true } : null;
+        const path = hint ? hintPath(hint, () => (r ? { x: r.x, y: r.y, w: r.width, h: r.height } : null)) : null;
+        setShown((prev) => (!hint || !path ? null : prev && prev.hint.id === hint.id && samePath(prev.path, path) ? prev : { hint, path }));
+        return;
+      }
       const hint = fireflyHint(cfg, g, { sheetOpen: ui.sheet !== null || ui.spoke !== null, armed: ui.armed !== null || ui.chip !== null, fingerDown: ui.fingerDown, idleMs });
       const path = hint ? hintPath(hint, (k) => rectFor(layoutRef.current, k)) : null;
       setShown((prev) => {
@@ -186,7 +199,7 @@ function useFirefly(layout: MergeLayout): { hint: FireflyHint; path: HintPath } 
     ask();
     const timer = setInterval(ask, ASK_MS);
     return () => clearInterval(timer);
-  }, [busy, dialogs, touchedAt]);
+  }, [busy, dialogs, sheet, touchedAt]);
   return shown;
 }
 

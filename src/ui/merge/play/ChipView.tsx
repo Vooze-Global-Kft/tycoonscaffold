@@ -13,23 +13,9 @@ import { S } from '../strings';
 import { useMerge, useMergeShallow } from '../useMerge';
 import { cellCentre } from './geometry';
 import { chipWords } from './vm';
+import { CHIP, chipMetrics, chipTop } from './chipMetrics';
 
-/** Text sizes at fontScale 1 and the chip's padding. */
-const NAME = 13;
-const WORTH = 11;
-const PAD_X = 10;
-const PAD_Y = 5;
-const GUTTER = 8;
-const BORDER = 1;
-
-export function chipMetrics(fontScale: number): { name: number; worth: number; nameRow: number; worthRow: number; h: number } {
-  const fs = Math.max(1, Math.min(1.5, fontScale));
-  const name = Math.round(NAME * fs);
-  const worth = Math.round(WORTH * fs);
-  const nameRow = Math.ceil(name * 1.3);
-  const worthRow = Math.ceil(worth * 1.3);
-  return { name, worth, nameRow, worthRow, h: PAD_Y * 2 + BORDER * 2 + nameRow + worthRow };
-}
+const { padX: PAD_X, padY: PAD_Y, gutter: GUTTER, border: BORDER } = CHIP;
 
 export function ChipView({ layout, cell }: { layout: MergeLayout; cell: number }) {
   const { fontScale } = useWindowDimensions();
@@ -48,8 +34,7 @@ export function ChipView({ layout, cell }: { layout: MergeLayout; cell: number }
   const half = layout.board.cell / 2;
   const x = Math.max(GUTTER, Math.min(layout.width - GUTTER - w, c.x - w / 2));
   // Above the cell; below it when the street is too close.
-  const above = c.y - half - 6 - M.h;
-  const y = above >= layout.street.y + 4 ? above : c.y + half + 6;
+  const y = chipTop(c.y, half, M.h, layout.street.y);
   return (
     <View pointerEvents="none" style={[styles.chip, { left: x, top: y, width: w, height: M.h }]}>
       <Text allowFontScaling={false} numberOfLines={1} style={[styles.name, { fontSize: M.name, height: M.nameRow, lineHeight: M.nameRow }]}>
