@@ -189,32 +189,33 @@ export function shotHtml(o: ShotOpts): string {
   const x1 = W * 1.05;
   const yAt = sagAt(x0, x1, wireY, sag);
   const lh = 64 * u;
-  // The tag's lantern (the one the string hangs from) and the others, evenly along the wire.
-  const anchorX = left ? W * 0.3 : W * 0.7;
-  const others = [0.08, 0.5, 0.92].map((f) => W * f).filter((x) => Math.abs(x - anchorX) > W * 0.15);
+  // The tag hangs from the wire itself by a short brass string; the lanterns hang beside it.
+  const anchorX = left ? W * 0.36 : W * 0.64;
+  const others = [0.07, 0.29, 0.5, 0.71, 0.93].map((f) => W * f).filter((x) => Math.abs(x - anchorX) > W * 0.12);
   // The tag: a share of the width, its lettering sized to the room (height of the sky, width of the tag).
-  const tagW = W * 0.6;
-  const padX = 46 * u;
-  const padY = 40 * u;
-  const lineGap = 0.5;
+  const tagW = W * 0.64;
+  const padX = 44 * u;
+  const hole = 11 * u;
+  const cut = 30 * u;
+  const padTop = cut + 2 * hole + 14 * u;
+  const padBottom = 34 * u;
+  const lineGap = 0.45;
   let lines = captionLines(o.caption, 14);
   const maxUnits = Math.max(...lines.map(lineUnits));
-  const stringLen = sky * 0.08;
-  const tagTop = yAt(anchorX) + lh + stringLen;
-  const roomH = H - tagTop - sky * 0.06 - 2 * padY;
+  const stringLen = sky * 0.05;
+  const tagTop = yAt(anchorX) + stringLen;
+  const roomH = H - tagTop - sky * 0.07 - padTop - padBottom;
   const sizeByH = roomH / (lines.length + (lines.length - 1) * lineGap);
   const sizeByW = (tagW - 2 * padX) / maxUnits;
   const size = Math.min(64 * u, sizeByH, sizeByW);
   lines = lines.map((l) => l.toUpperCase());
-  const tagH = 2 * padY + size * (lines.length + (lines.length - 1) * lineGap);
+  const tagH = padTop + padBottom + size * (lines.length + (lines.length - 1) * lineGap);
   const tagX = anchorX - tagW / 2;
-  const tilt = left ? -4 : 4;
-  const hole = 11 * u;
-  const cut = 30 * u;
+  const tilt = left ? -3 : 3;
   const text = lines
     .map((l, i) => {
       const lw = lineUnits(l) * size;
-      return letters(l, tagX + (tagW - lw) / 2, tagTop + padY + i * size * (1 + lineGap), size, { color: C.indigo, edge: C.ink, shadow: 'rgba(17,20,40,.28)', seed: 7 + i * 13 + o.index });
+      return letters(l, tagX + (tagW - lw) / 2, tagTop + padTop + i * size * (1 + lineGap), size, { color: C.indigo, edge: C.ink, shadow: 'rgba(17,20,40,.28)', seed: 7 + i * 13 + o.index });
     })
     .join('\n');
   const tagPath = `M${tagX + cut} ${tagTop} L${tagX + tagW - cut} ${tagTop} L${tagX + tagW} ${tagTop + cut} L${tagX + tagW} ${tagTop + tagH} L${tagX} ${tagTop + tagH} L${tagX} ${tagTop + cut} Z`;
@@ -233,14 +234,13 @@ svg{position:absolute;left:0;top:0}
 <div class="pic">${framed(o.raw, o.band, W, picH)}</div>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${DEFS}
 <path d="M${x0} ${wireY} Q ${W / 2} ${wireY + 2 * sag} ${x1} ${wireY}" stroke="${C.ink}" stroke-width="${5 * u}" fill="none"/>
-${others.map((x) => lantern(x, yAt(x), lh * 0.8, 0.8)).join('\n')}
-${lantern(anchorX, yAt(anchorX), lh)}
+${others.map((x, i) => lantern(x, yAt(x), lh * (i % 2 ? 0.8 : 1), i % 2 ? 0.8 : 1)).join('\n')}
 <g transform="rotate(${tilt} ${anchorX} ${tagTop})">
-  <line x1="${anchorX}" y1="${yAt(anchorX) + lh * 1.3}" x2="${anchorX}" y2="${tagTop + cut * 0.9}" stroke="${C.brass}" stroke-width="${4 * u}"/>
+  <line x1="${anchorX}" y1="${yAt(anchorX) - 2 * u}" x2="${anchorX}" y2="${tagTop + cut * 0.5 + hole}" stroke="${C.brass}" stroke-width="${4 * u}"/>
   <path d="${tagPath}" fill="rgba(17,20,40,.45)" transform="translate(${10 * u} ${14 * u})"/>
   <path d="${tagPath}" fill="${C.paper}" stroke="${C.paperEdge}" stroke-width="${3 * u}"/>
   <path d="M${tagX + 18 * u} ${tagTop + tagH - 18 * u} L${tagX + tagW - 18 * u} ${tagTop + tagH - 18 * u}" stroke="${C.paperShade}" stroke-width="${2 * u}" stroke-dasharray="${8 * u} ${8 * u}"/>
-  <circle cx="${anchorX}" cy="${tagTop + cut * 0.9}" r="${hole}" fill="${C.indigo}" stroke="${C.brass}" stroke-width="${4 * u}"/>
+  <circle cx="${anchorX}" cy="${tagTop + cut * 0.5 + hole}" r="${hole}" fill="${C.indigo}" stroke="${C.brass}" stroke-width="${4 * u}"/>
   ${text}
 </g>
 </svg>
