@@ -21,7 +21,7 @@
                                                      against the active bot as paired differences over 30 seeds,
                                                      with the noise band (the active bot at act + 0.001 s)
     options: --act 2.0 (seconds per bot action: M30's reference; run 1.5 and 2.5 beside it)
-             --procs 4 (parallel bot processes)   --set path=value (an extra override, repeatable)
+             --procs 3 (parallel bot processes; at most 3 on the shared machine)   --set path=value (an extra override, repeatable)
              --hours 12 --seasons 10 --days 21 (the full run's length)
              --acts 1.5,2,2.5 (with --check: the check at each action time, M30 (1))
 
@@ -57,7 +57,9 @@ SEEDS = [12345, 4, 99, 7, 2026]
 TUNE_SEEDS = list(range(101, 116))
 PAIRED_SEEDS = list(range(201, 231))
 PASS_NEEDED = 13
-SOURCES = {'ticket', 'festival', 'gift', 'till', 'basket', 'away', 'undo', 'spend'}
+# Decision M37: five sources of coins (tickets, gift-box coin slots, the till, Basket sales, the away
+# report); 'undo' and 'spend' are the Basket undo's take-back and purchases, never a gain.
+SOURCES = {'ticket', 'gift', 'till', 'basket', 'away', 'undo', 'spend'}
 
 # ---------------------------------------------------------------- the tuned numbers
 # RANGES path -> value. Empty means the starting content as it is. `--tune --save` rewrites this block.
@@ -76,8 +78,9 @@ KNOB_ORDER = [
     ('board full: lambda', ('5 ',), ['gear.looseCap']),
     ('fill time: gamma, then W', ('3 ',), ['tickets.gamma', 'tickets.outputWindow']),
     ('gift boxes (M24)', ('8 gift', '8 tickets'), ['gift.every', 'gift.coinPace']),
+    ('board fill (M43): the loose cap', ('5 goods',), ['gear.looseCap']),
     ('stall levels and value per action (M27)', ('7 ', '15 ', '6 '), ['costs.stallLevelBase', 'costs.stallLevelGrowth', 'tickets.stretch']),
-    ('seasons: the Festival purse, the familiar-faces base', ('10 ',), ['seasons.familiarBase']),
+    ('seasons: the familiar-faces base and the step limit (M37: no purse; M40)', ('10 ',), ['seasons.familiarBase', 'seasons.maxSteps', 'costs.stallOpen[4]']),
     ('rerolling: the Not tonight cooldown', ('report: Not tonight',), ['tickets.notTonightCooldown']),
 ]
 
@@ -203,8 +206,9 @@ def median(xs):
     return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
 
 
-def across(results):
-    """The across-seed aims (M3 at the median seed, M25's slowest / fastest season 1)."""
+def across(results, act=None):
+    """The across-seed aims: M3 at the median seed, M25's slowest / fastest season 1, M31's median season 1
+    at 2.0 s, and M40's seasons 3 to 10 at 45 to 90 % of season 1 on the median seed."""
     rows = []
     ok = [r for r in results if 'summary' in r]
     if not ok:
@@ -217,6 +221,23 @@ def across(results):
         rows.append(('10 season 1 Festival: slowest seed / fastest seed (M25)', '<= 1.6', round(ratio, 3), ratio <= 1.6))
     else:
         rows.append(('10 season 1 Festival: slowest seed / fastest seed (M25)', '<= 1.6', 'a seed never filled it', False))
+    act = act if act is not None else ok[0].get('act')
+    med = median([x / 60 if x is not None else float('inf') for x in s1])
+    if act is None or abs(float(act) - 2.0) < 0.05:
+        rows.append(('10 season 1 Festival at the median seed, 2.0 s an action (M31, min)', '110 to 190', round(med, 1), 110 <= med <= 190))
+    # M40: each of seasons 3 to 10, on the median seed (the median across seeds of that season's ratio to season 1).
+    later = []
+    for i in range(2, 10):
+        xs = []
+        for r in ok:
+            ss = r['summary'].get('seasons') or []
+            if len(ss) > i and ss[0].get('festival'):
+                f = ss[i].get('festival')
+                xs.append(f / ss[0]['festival'] if f is not None else float('inf'))
+        if len(xs) == len(ok):
+            later.append(median(xs))
+    if later:
+        rows.append(('10 seasons 3-10 / season 1 at the median seed (M40)', '0.45 to 0.9 each', ' '.join('%.2f' % x for x in later), len(later) == 8 and all(0.45 <= x <= 0.9 for x in later)))
     return rows
 
 
@@ -259,7 +280,7 @@ def loss(results, skip=QUICK_SKIP):
     for r in results:
         tot += 10.0 * sum(1 for row in r['rows'] if row['kind'] == 'hard' and not row['ok'])
     for name, aim, value, ok in across(results):
-        if not ok:
+        if not ok and not name.startswith('10 seasons 3-10'):
             tot += 1.0
     return tot
 
@@ -364,7 +385,7 @@ def write_game(block):
     print('wrote', os.path.relpath(GAME, ROOT), '(mode merge)')
 
 
-def print_gates(results):
+def print_gates(results, act=None):
     hard, aims = [], []
     for r in results:
         for row in r.get('rows', []):
@@ -372,7 +393,7 @@ def print_gates(results):
                 hard.append('seed %d: %s: %s (aim %s)' % (r['seed'], row['name'], row['value'], row['aim']))
             elif not row['ok'] and row['kind'] == 'aim':
                 aims.append('seed %d: %s: %s (aim %s)' % (r['seed'], row['name'], row['value'], row['aim']))
-    for name, aim, value, ok in across(results):
+    for name, aim, value, ok in across(results, act):
         if not ok:
             aims.append('all seeds: %s: %s (aim %s)' % (name, value, aim))
     return hard, aims
@@ -389,7 +410,7 @@ def gates(act, procs, extra, write):
         print('REFUSED: the bot did not finish on every seed, so no gate is known:\n  ' + '\n  '.join(st))
         return 1
     coin = coin_assertion(res)
-    hard, aims = print_gates(res)
+    hard, aims = print_gates(res, act)
     print('aims on the %d check seeds (pass counts):' % len(res))
     for name, c in sorted(pass_counts(res).items()):
         print('  %d/%d %s' % (c['pass'], c['n'], name))
@@ -506,7 +527,7 @@ if __name__ == '__main__':
         print(__doc__)
         sys.exit(0)
     act = float(arg('--act', '2.0'))
-    procs = int(arg('--procs', '4'))
+    procs = int(arg('--procs', '3'))  # the brief: at most 3 bot processes at a time on this shared machine
     extra = sets()
     if '--tune' in sys.argv:
         tuned, _ = tune(act, procs, int(arg('--budget', '40')), extra)

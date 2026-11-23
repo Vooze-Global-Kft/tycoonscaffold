@@ -96,7 +96,7 @@ describe('measurements over a trace', () => {
   });
 
   it('gates 4 and 5: board shares from the samples, cut to the window', () => {
-    const s: B.Samples = { t: [0, 10, 20], dt: [10, 10, 10], f: [0, 1 | 2 | (1 << 2) | (1 << 8) | (1 << 9), 1 << (2 + 1) | (1 << 8) | (1 << 9)], n: [2, 2, 3], su: [0, 1, 0] };
+    const s: B.Samples = { t: [0, 10, 20], dt: [10, 10, 10], f: [0, 1 | 2 | (1 << 2) | (1 << 8) | (1 << 9), 1 << (2 + 1) | (1 << 8) | (1 << 9)], n: [2, 2, 3], su: [0, 1, 0], occ: [0.2, 1, 0.5] };
     const b = B.boardShares(tr({ samples: s }), 0, 30);
     expect(b.f0).toBeCloseTo(1 / 3, 9);
     expect(b.deadlock).toBeCloseTo(1 / 3, 9);
@@ -238,11 +238,34 @@ describe('measurements over a trace', () => {
     expect(rows.find((r) => r.name.includes('median seed, 2.0 s'))).toMatchObject({ ok: true, value: 120 });
   });
 
-  it('M33: deadlock is an aim for every bot; gate 3 aims the hour-1 median at 8 to 45 s', () => {
-    const lazy = tr({ kind: 'lazy', t1: 100, samples: { t: [0], dt: [100], f: [3], n: [2], su: [0] } });
+  it('M33: deadlock is an aim for every bot; gate 3 aims the hour-1 median at 5 to 25 s (M41)', () => {
+    const lazy = tr({ kind: 'lazy', t1: 100, samples: { t: [0], dt: [100], f: [3], n: [2], su: [0], occ: [1] } });
     const rows = B.evaluate(cfg, { seed: 1, active: tr({ t1: 600 }), lazy, states: {} });
     expect(rows.find((r) => r.name.startsWith('5 deadlock, the lazy bot'))).toMatchObject({ kind: 'aim', ok: false });
-    expect(rows.find((r) => r.name.startsWith('3 ticket fill time, hour 1: median'))?.aim).toBe('8 to 45');
+    expect(rows.find((r) => r.name.startsWith('3 ticket fill time, hour 1: median'))?.aim).toBe('5 to 25');
+  });
+
+  it('M43: occupancy is the time-weighted median of goods over open cells in the window', () => {
+    const s: B.Samples = { t: [0, 10, 20], dt: [10, 10, 30], f: [0, 0, 0], n: [2, 2, 2], su: [0, 0, 0], occ: [0.2, 0.9, 0.5] };
+    expect(B.occupancy(tr({ samples: s }), 0, 50)).toBe(0.5);
+    expect(B.occupancy(tr({ samples: s }), 0, 20)).toBe(0.2);
+  });
+
+  it('M41: gate 7 by thirds of season 1, null while season 1 is not filled', () => {
+    expect(B.valuePerThird(tr())).toBeNull();
+    const t = tr({
+      seasons: [{ season: 0, start: 0, stalls: [], festival: 300, closed: 300 }],
+      coins: [{ t: 50, source: 'ticket', amount: 10 }, { t: 150, source: 'ticket', amount: 40 }, { t: 250, source: 'ticket', amount: 90 }],
+      actions: [{ t: 10, what: 'merge' }, { t: 110, what: 'merge' }, { t: 210, what: 'merge' }],
+    });
+    expect(B.valuePerThird(t)).toEqual([10, 40, 90]);
+  });
+
+  it('gate 13: the gift stream itself gives the printed slot odds over 100k draws', () => {
+    const o = B.giftStreamOdds(cfg, mergeState(cfg), 100000);
+    expect(o.n).toBeGreaterThanOrEqual(100000);
+    expect(Math.abs(o.coins / o.n - cfg.merge.gift.odds.coins)).toBeLessThan(0.005);
+    expect(Math.abs(o.spark / o.n - cfg.merge.gift.odds.spark)).toBeLessThan(0.005);
   });
 
   it('a gate row carries its number and band for the tuner', () => {

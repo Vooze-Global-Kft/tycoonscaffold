@@ -142,6 +142,8 @@ export interface Samples {
   /** Counters, and counters showing "Setting up…". */
   n: number[];
   su: number[];
+  /** M43: goods on the board over its open cells (neither shutter nor block). */
+  occ: number[];
 }
 
 export interface AwayProbe {
@@ -458,7 +460,7 @@ export function emptyTrace(kind: BotKind, seed: number, act: number, sheet: numb
     purchases: [],
     tickets: [],
     coins: [],
-    samples: { t: [], dt: [], f: [], n: [], su: [] },
+    samples: { t: [], dt: [], f: [], n: [], su: [], occ: [] },
     novelty: [],
     firstTiers: [],
     seasons: [],
@@ -593,8 +595,10 @@ class Runner {
         case 'merge': {
           tr.odds.merges++;
           tr.goodsMade++;
-          const from = e.made.k - (e.lucky ? 2 : 1) - (e.spark ? preParams?.mods.sparkTiers ?? 1 : 0);
-          if (!e.spark && from >= 1 && from <= R.TIERS - 2) {
+          // The merged goods' tier (the rules' own field: made.k cannot tell a Lucky tier-7 merge capped at 8 from a tier-6 one).
+          const from = e.tier;
+          // M42: no merge is Lucky while the opening script waits, so those merges carry no expectation.
+          if (!e.spark && from >= 1 && from <= R.TIERS - 2 && pre.merge.script === 'done') {
             tr.odds.luckyExpected += 1 / (preParams?.mods.luckyOdds ?? cfg.merge.merges.luckyOdds);
             if (e.lucky) tr.odds.luckies++;
           }
@@ -739,6 +743,14 @@ class Runner {
     s.f.push(f);
     s.n.push(m.counters.length);
     s.su.push(m.counters.filter((ct) => !ct.ticket && ct.blockedAt !== null).length);
+    let goods = 0;
+    let openCells = 0;
+    for (const cell of m.board) {
+      if (cell === 'shutter' || cell === 'block') continue;
+      openCells++;
+      if (cell) goods++;
+    }
+    s.occ.push(openCells > 0 ? goods / openCells : 0);
   }
 
   /** Advances the game clock to `t` (one `advanceMerge`, split only at the kept marks and the away probes; `hz` cuts it to 1/hz s). */
@@ -924,8 +936,8 @@ export function orderBreaks(cfg: R.MergeConfig, pre: R.MergeGame, counter: numbe
 /**
  * Which bounds of 2.7 (with M4: (d) is (d1) only) a drawn ticket breaks on `pre`, the state just
  * before its draw: (a) every line k ≤ min(8, best_c + 1); (d) k ≥ b_c + 1 (scripted tickets are
- * exempt); (c) Σ over the unfilled lines of every open ticket, this one included, of k − b_c + 1,
- * + Σ_c min(λ, Loose_c) + R ≤ O; (b) per chain on the ticket, the pops `missing()` says this ticket
+ * exempt); (c) with M43, K (the board after every possible merge, `compressedCells`) + Σ over the
+ * unfilled lines of every open ticket, this one included, of k − b_c + 1, + R ≤ O; (b) per chain on the ticket, the pops `missing()` says this ticket
  * and every open ticket's unfilled lines on that chain still need × T/(1 + p_c) ≤ W, and the hand
  * actions Σ (goods used + pops − 1 merges + 1 delivery) ≤ H ("bH"); the Parade with its own W and H.
  * (b) needs ORDERS's `missing` and `goodsAtHand`; while they are not built it is not checked.
@@ -942,10 +954,9 @@ export function drawBreaks(cfg: R.MergeConfig, pre: R.MergeGame, t: R.Ticket): s
   }
   const others = m.counters.filter((ct) => ct.ticket && ct.ticket.id !== t.id).flatMap((ct) => (ct.ticket as R.Ticket).lines.filter((l) => !l.filled));
   const all = [...others, ...t.lines];
-  const lam = cfg.merge.gear.looseCap;
-  let cells = cfg.merge.tickets.spareCells;
-  for (const l of all) cells += l.k - (P.chains[l.c]?.base ?? 1) + 1;
-  for (const ch of P.chains) if (ch.open) cells += Math.min(lam, ch.loose);
+  // M43: the board as it would be after every possible merge (shelves and pending goods do not count).
+  let cells = cfg.merge.tickets.spareCells + R.compressedCells(cfg, m);
+  for (const l of all) if (!l.filled) cells += l.k - (P.chains[l.c]?.base ?? 1) + 1;
   if (cells > P.O) out.push('c');
   try {
     const goods = R.goodsAtHand(m);
@@ -1047,6 +1058,15 @@ function activeStep(r: Runner, opt: { measure: boolean }): number | null {
   // 1. deliver any good matching an open line
   const d = chooseDelivery(r.m, v);
   if (d && r.deliver(d)) return o.act;
+  // M34: a ticket with a line its gear has left behind (below the base tier) whose good is not on the
+  // board is sent off, as the hint points ("No longer made at this stall"); goods at hand still fill it.
+  for (const [i, ct] of r.m.counters.entries()) {
+    const t = ct.ticket;
+    if (!t || t.gold || r.clock < ct.notTonightAt) continue;
+    if (t.lines.some((l) => R.lineUnmakeable(cfg, r.g, l) && !(v.cnt[l.c]?.[l.k] > 0))) {
+      if (r.apply('notTonight:M34', (g, ev) => R.notTonight(cfg, g, i, ev), false)) return o.sheet;
+    }
+  }
   // habit: Not tonight whenever ready on a ticket with no filled line the board cannot finish
   if (h.notTonight) {
     for (const [i, ct] of r.m.counters.entries()) {
@@ -1114,7 +1134,13 @@ function lazyStep(r: Runner): number | null {
   const dl = deliveries(r.m, v).sort((a, b) => Number(a.where === 'festival') - Number(b.where === 'festival'));
   if (dl.length && r.deliver(dl[0])) return r.o.act;
   if (R.canCloseSeason(cfg, r.g) && r.close()) return r.o.sheet;
-  // the cheapest affordable purchase
+  // M41: the advised purchase when affordable; while it is less than a minute away, wait for it;
+  // otherwise the cheapest affordable purchase.
+  const adv = advisedPurchase(cfg, r.g);
+  if (adv && r.g.cash >= adv.cost) {
+    if (r.buy(adv)) return r.o.sheet;
+  }
+  const soon = !!adv && adv.wait !== null && adv.wait <= 60;
   const cands: R.Advice[] = [];
   P.chains.forEach((ch, c) => {
     const add = (kind: R.AdviceKind, cost: number | null) => cost !== null && cost <= r.g.cash && cands.push({ kind, target: c, cost, gain: 0, wait: 0, score: cost });
@@ -1124,7 +1150,7 @@ function lazyStep(r: Runner): number | null {
     add('openStall', ch.openCost);
   });
   P.shutters.forEach((s, grp) => s && s.allowed && s.cost <= r.g.cash && cands.push({ kind: 'shutter', target: grp, cost: s.cost, gain: 0, wait: 0, score: s.cost }));
-  if (cands.length) {
+  if (cands.length && !soon) {
     cands.sort((a, b) => a.cost - b.cost);
     if (r.buy(cands[0])) return r.o.sheet;
   }
@@ -1369,6 +1395,49 @@ export function boardShares(tr: Trace, a: number, b: number): { f0: number; dead
   return { f0: q(f0), deadlock: q(dl), setup: cs > 0 ? su / cs : NaN, waitTop2: q(w2), waitChain: wc.map(q) };
 }
 
+/** M43: the time-weighted median share of the open cells holding a good over [a, b]. */
+export function occupancy(tr: Trace, a: number, b: number): number {
+  const s = tr.samples;
+  const xs: { x: number; w: number }[] = [];
+  for (let i = 0; i < s.t.length; i++) {
+    const dt = Math.min(b, s.t[i] + s.dt[i]) - Math.max(a, s.t[i]);
+    if (dt > 0 && s.occ) xs.push({ x: s.occ[i], w: dt });
+  }
+  xs.sort((p, q) => p.x - q.x);
+  const tot = xs.reduce((acc, p) => acc + p.w, 0);
+  let acc = 0;
+  for (const p of xs) {
+    acc += p.w;
+    if (acc >= tot / 2) return p.x;
+  }
+  return NaN;
+}
+
+/** Gate 7 with M41: coins per bot action in each third of season 1 (null when season 1 did not close in the trace). */
+export function valuePerThird(tr: Trace): number[] | null {
+  const s0 = tr.seasons.find((x) => x.season === 0);
+  if (!s0 || s0.festival === null) return null;
+  const len = s0.festival;
+  return [0, 1, 2].map((i) => {
+    const a = s0.start + (i * len) / 3;
+    const b = s0.start + ((i + 1) * len) / 3;
+    const n = tr.actions.filter((x) => x.t >= a && x.t < b).length;
+    return income(tr, a, b) / Math.max(1, n);
+  });
+}
+
+/** Gate 13's gift-slot odds over `slots` draws of the gift stream itself (`giftBoxAt` for box 0, 1, …): the printed odds hold over 100k draws whatever one run earns. */
+export function giftStreamOdds(cfg: R.MergeConfig, g: R.MergeGame, slots = 100000): { n: number; coins: number; good: number; spark: number } {
+  const out = { n: 0, coins: 0, good: 0, spark: 0 };
+  for (let b = 0; out.n < slots; b++) {
+    for (const x of R.giftBoxAt(cfg, g, b).slots) {
+      out.n++;
+      out[x.kind === 'coins' ? 'coins' : x.kind === 'good' ? 'good' : 'spark']++;
+    }
+  }
+  return out;
+}
+
 /** The longest gap between times in [a, b] (both ends count as times). */
 export function maxGap(ts: readonly number[], a: number, b: number): number {
   const xs = [a, ...ts.filter((t) => t > a && t <= b).sort((x, y) => x - y), b];
@@ -1432,7 +1501,7 @@ export function awayRatios(tr: Trace): { t: number; late: boolean; ratio: number
   });
 }
 
-/** Gate 8 (hard part): coins entered only through the six named sources (no unbooked change of cash). */
+/** Gate 8 (hard part): coins entered only through the five named sources (M37) (no unbooked change of cash). */
 export function unbookedCoins(tr: Trace): { count: number; amount: number } {
   const u = tr.coins.filter((e) => e.source === 'unbooked');
   return { count: u.length, amount: u.reduce((a, e) => a + e.amount, 0) };
@@ -1604,7 +1673,9 @@ export function runAll(cfg: R.MergeConfig, o: AllOptions): AllRuns {
     const m3 = active.states[180];
     out.deliver = m3 ? runMergeBot(cfg, { ...common, kind: 'deliver', start: m3, hours: (3600 - m3.stats.playSeconds) / 3600 }).trace : undefined;
     out.idle = runMergeBot(cfg, { ...common, kind: 'idle', hours: 1 }).trace;
-    out.checkin = runMergeBot(cfg, { ...common, kind: 'checkin', days: 1 }).trace;
+    // M41: the check-in bot starts from the active bot's state at minute 10.
+    const m10 = active.states[600];
+    out.checkin = runMergeBot(cfg, { ...common, kind: 'checkin', days: 1, ...(m10 ? { start: m10, wall0: BOT_EPOCH + m10.stats.playSeconds * 1000 } : {}) }).trace;
   }
   if ((o.passiveDays ?? 21) > 0) out.passive = runMergeBot(cfg, { ...common, kind: 'passive', days: o.passiveDays ?? 21, seasons: o.seasons }).trace;
   if (o.adversaries !== false) {
@@ -1660,12 +1731,12 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
   }
   // ---- gate 3 (aims)
   const ft = fillTimes(A, t0, t0 + 3600);
-  row('3 ticket fill time, hour 1: median (s; M33)', 'aim', '8 to 45', fmt(median(ft)), within(median(ft), 8, 45), median(ft), 8, 45);
+  row('3 ticket fill time, hour 1: median (s; M41)', 'aim', '5 to 25', fmt(median(ft)), within(median(ft), 5, 25), median(ft), 5, 25);
   row('3 ticket fill time, hour 1: p90 (s)', 'aim', '≤ 120', fmt(quantile(ft, 0.9)), quantile(ft, 0.9) <= 120, quantile(ft, 0.9), null, 120);
   const pf = fillTimes(A, t0, t0 + 10800, null, true);
   row('3 Parade fill time, hours 0-3: median (min)', 'aim', '≤ 4', pf.length ? fmt(min(median(pf)), 2) : 'no Parade', pf.length > 0 && median(pf) <= 240, pf.length ? min(median(pf)) : null, null, 4);
   const gf = gearFillCheck(A, t0 + 10800);
-  row('3 gear purchases followed by slower tickets (M26: 30 each side, × 1.3)', 'aim', '0', `${gf.bad} of ${gf.total}`, gf.bad === 0, gf.total ? gf.bad / gf.total : 0, null, 0);
+  row('report: 3 gear purchases followed by slower tickets (30 each side, × 1.3; dropped by M41)', 'report', 'reported', `${gf.bad} of ${gf.total}`, true);
   // ---- gate 4 (hard)
   const hon = honesty(A);
   const firstBad = A.tickets.find((t) => t.broken.some((x) => x !== 'priceFell'));
@@ -1696,23 +1767,31 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
   }
   const made = A.goodsMade;
   row('5 Basket sales / goods made', 'aim', '≤ 5 %', fmt((A.basketSales / Math.max(1, made)) * 100, 2) + ' %', A.basketSales / Math.max(1, made) <= 0.05, A.basketSales / Math.max(1, made), null, 0.05);
-  row('5 the two highest open chains\' gears waiting, hours 0-3', 'aim', '≤ 20 %', `${fmt(b3.waitTop2 * 100)} % (per chain ${b3.waitChain.map((w) => fmt(w * 100, 0)).join('/')} %)`, b3.waitTop2 <= 0.2, b3.waitTop2, null, 0.2);
+  row('5 the two highest open chains\' gears waiting, hours 0-3 (M43)', 'aim', '≤ 25 %', `${fmt(b3.waitTop2 * 100)} % (per chain ${b3.waitChain.map((w) => fmt(w * 100, 0)).join('/')} %)`, b3.waitTop2 <= 0.25, b3.waitTop2, null, 0.25);
+  const occ = occupancy(A, t0 + 180, t0 + 3600);
+  row('5 goods on the open cells, median of minutes 3-60 (M43)', 'aim', '45 to 85 %', fmt(occ * 100) + ' %', within(occ, 0.45, 0.85), occ, 0.45, 0.85);
   // ---- gate 6 (aims)
   const nv = noveltyGaps(A);
   row('6 longest gap without something new, minutes 0-30 (min)', 'aim', '≤ 3', fmt(min(nv.gap30), 2), nv.gap30 <= 180, min(nv.gap30), null, 3);
   row('6 longest gap without something new, hours 0-3 (min)', 'aim', '≤ 20', fmt(min(nv.gap3h), 2), nv.gap3h <= 1200, min(nv.gap3h), null, 20);
-  row('6 longest gap without a first-time tier, hour 1 (min)', 'aim', '≤ 6', fmt(min(nv.tierGapH1), 2), nv.tierGapH1 <= 360, min(nv.tierGapH1), null, 6);
-  row('6 longest gap without a first-time tier, hours 1-3 (min)', 'aim', '≤ 15', fmt(min(nv.tierGapH13), 2), nv.tierGapH13 <= 900, min(nv.tierGapH13), null, 15);
+  row('report: 6 longest gap without a first-time tier, hour 1 / hours 1-3 (min; dropped by M41)', 'report', 'reported', `${fmt(min(nv.tierGapH1), 2)} / ${fmt(min(nv.tierGapH13), 2)}`, true);
   // ---- gate 7 (aim)
+  // M41: inside season 1, by thirds of the season; the aim "×3 per hour" is scaled to the third's length (×3^(third / 1 h)).
+  const vpt = valuePerThird(A);
+  if (vpt) {
+    const s1len = (A.seasons.find((x) => x.season === 0)?.festival ?? 0) / 3;
+    const need = Math.pow(3, s1len / 3600);
+    const q21 = vpt[1] / vpt[0];
+    const q32 = vpt[2] / vpt[1];
+    row('7 value per bot action inside season 1: second third / first and third / second (M41)', 'aim', `≥ 3 per hour (here ≥ ${fmt(need, 2)} a third)`, `${fmt(q21, 2)} / ${fmt(q32, 2)} (${vpt.map((x) => fmt(x, 1)).join(', ')} c an action)`, q21 >= need - 1e-9 && q32 >= need - 1e-9, Math.min(q21, q32) / need, 1, null);
+  } else row('7 value per bot action inside season 1 (M41)', 'aim', '≥ 3 per hour', 'season 1 not filled', false, 0, 1, null);
   const vpa = valuePerAction(A);
-  const r21 = vpa[1] / vpa[0];
-  const r32 = vpa[2] / vpa[1];
-  row('7 value per bot action, hour 2 / hour 1 and hour 3 / hour 2', 'aim', '≥ 3 each', `${fmt(r21, 2)} / ${fmt(r32, 2)} (${vpa.map((x) => fmt(x, 1)).join(', ')} c an action)`, r21 >= 3 && r32 >= 3, Math.min(r21, r32), 3, null);
+  row('report: 7 value per bot action by clock hour 1 / 2 / 3 (c)', 'report', 'reported', vpa.map((x) => fmt(x, 1)).join(' / '), true);
   // ---- gate 8 (hard: sources; aims: shares; M24)
   const ub = unbookedCoins(A);
   const traces = [A, all.lazy, all.deliver, all.idle, all.checkin, all.passive, ...Object.values(all.adversaries ?? {})].filter(Boolean) as Trace[];
   const ubAll = traces.reduce((a, tr) => a + unbookedCoins(tr).count, 0);
-  row('8 coins only from the six sources of 2.3 (cash changes not booked, every trace)', 'hard', '0', `${ubAll}${ub.count ? ` (active: ${ub.count}, ${fmt(ub.amount)} c)` : ''}`, ubAll === 0);
+  row('8 coins only from the five sources of 2.3 with M37 (cash changes not booked, every trace)', 'hard', '0', `${ubAll}${ub.count ? ` (active: ${ub.count}, ${fmt(ub.amount)} c)` : ''}`, ubAll === 0);
   const src10 = coinsBySource(A, t0, t0 + 600);
   const inc10 = income(A, t0, t0 + 600);
   row('8 tickets / all coins, minutes 0-10', 'aim', '≥ 60 %', fmt(((src10.ticket ?? 0) / inc10) * 100) + ' %', (src10.ticket ?? 0) / inc10 >= 0.6, (src10.ticket ?? 0) / inc10, 0.6, null);
@@ -1720,9 +1799,9 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
     const s = shareAt(A, X * 60);
     row(`8 tickets / all coins at minute ${X} (± 5 min; provisional, M33)`, 'aim', '≥ 60 %', fmt(s.ticket * 100) + ' %', s.ticket >= 0.6, s.ticket, 0.6, null);
   }
-  for (const [X, lo, hi] of [[10, 0.08, 0.25], [30, 0.2, 0.35], [60, 0.2, 0.35], [180, 0.2, 0.35]] as const) {
+  for (const [X, lo, hi] of [[10, 0.08, 0.3], [30, 0.2, 0.35], [60, 0.2, 0.35], [180, 0.2, 0.35]] as const) {
     const s = shareAt(A, X * 60);
-    row(`8 minder share at minute ${X} (± 5 min; provisional, M33)`, 'aim', `${lo * 100} to ${hi * 100} %`, fmt(s.minder * 100) + ' %', within(s.minder, lo, hi), s.minder, lo, hi);
+    row(`8 minder share at minute ${X} (± 5 min; M41)`, 'aim', `${Math.round(lo * 100)} to ${Math.round(hi * 100)} %`, fmt(s.minder * 100) + ' %', within(s.minder, lo, hi), s.minder, lo, hi);
   }
   const gs = giftShare(A);
   row('8 gift coins / coins of hours 0-3 (M24)', 'aim', '≤ 15 %', fmt(gs.coinShare * 100) + ' %', gs.coinShare <= 0.15, gs.coinShare, null, 0.15);
@@ -1745,18 +1824,20 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
     row('10 season 2 Festival / season 1 Festival (Puffs open)', 'aim', '0.8 to 1.1', s2.festival !== null ? `${fmt(s2.festival / s1, 2)}${s2.stalls[5] === null ? ' (Puffs never opened)' : ''}` : 'never', s2.festival !== null && s2.stalls[5] !== null && within(s2.festival / s1, 0.8, 1.1), s2.festival !== null ? s2.festival / s1 : null, 0.8, 1.1);
     const later = seasons.filter((s) => s.season >= 2 && s.season <= 9);
     if (later.length) {
-      const bad = later.filter((s, i) => s.festival === null || !within(s.festival / s1, 0.5, 0.9) || (i > 0 && later[i - 1].festival !== null && s.festival > 1.1 * (later[i - 1].festival as number)));
-      row('10 seasons 3-10 each 50-90 % of season 1, none 10 % longer than the one before', 'aim', 'every season', later.map((s) => (s.festival === null ? '-' : fmt(s.festival / s1, 2))).join(' '), bad.length === 0 && later.length >= 8);
+      // M40: aimed at 45 to 90 % of season 1 on the median seed (across seeds); per seed it is reported, as is "none 10 % longer than the one before".
+      const ratios = later.map((s) => (s.festival === null ? Infinity : s.festival / s1));
+      const longer = later.filter((s, i) => i > 0 && s.festival !== null && later[i - 1].festival !== null && s.festival > 1.1 * (later[i - 1].festival as number)).length;
+      row('report: 10 seasons 3-10 / season 1, this seed (M40: judged on the median seed)', 'report', '45 to 90 %', ratios.map((x) => (Number.isFinite(x) ? fmt(x, 2) : '-')).join(' '), true);
+      row('report: 10 seasons 3-10 more than 10 % longer than the one before (M40: reported)', 'report', 'reported', longer, true);
     }
   }
   // ---- gate 11 (aims) and the passive Festival of gate 10
   if (all.passive) {
     const p = passiveDays(all.passive);
     row('10/11 passive: season 1 Festival on day', 'aim', '2 or 3', p.festival ?? 'never', p.festival !== null && within(p.festival, 2, 3));
-    row('11 passive: Steamer on day', 'aim', '1', p.steamer ?? 'never', p.steamer === 1);
-    row('11 passive: Sweets on day', 'aim', '1 or 2', p.sweets ?? 'never', p.sweets !== null && p.sweets <= 2);
-    row('11 passive: Noodles on day', 'aim', '2', p.noodles ?? 'never', p.noodles === 2);
-    row('11 passive: advised purchase affordable but unbought', 'aim', '≤ 30 % of session time', fmt(p.affordableUnbought * 100) + ' %', p.affordableUnbought <= 0.3);
+    // M41: gate 11 is set from the measurement (reported until the lead sets its band).
+    row('report: 11 passive: Steamer / Sweets / Noodles on day (spec: 1 / 1-2 / 2)', 'report', 'set from the measurement (M41)', `${p.steamer ?? 'never'} / ${p.sweets ?? 'never'} / ${p.noodles ?? 'never'}`, true);
+    row('report: 11 passive: advised purchase affordable but unbought', 'report', '≤ 30 % of session time (M41: set from the measurement)', fmt(p.affordableUnbought * 100) + ' %', true);
     row('11 passive: seasons closed by day 7 / day 21 (soft)', 'report', '4 to 8 by day 21', `${p.seasons7} / ${p.seasons21}`, true);
   }
   // ---- gate 12 (hard): each habit within 5 % of the active bot's income over hours 0-3, or refused by a rule
@@ -1778,7 +1859,21 @@ export function evaluate(cfg: R.MergeConfig, all: AllRuns): GateRow[] {
     }
   }
   // ---- gate 13 (hard)
-  for (const x of oddsCheck(A)) row(`13 odds: ${x.name}`, 'hard', '± 0.5 points of the printed odds (3 standard errors under 100k draws)', x.n ? `${fmt(x.observed * 100, 2)} % against ${fmt(x.expected * 100, 2)} % over ${x.n}` : 'none drawn', x.ok);
+  for (const x of oddsCheck(A)) {
+    if (x.name.startsWith('gift')) {
+      // One run earns about a hundred boxes: its slots are reported; the hard check draws 100k slots from the gift stream itself.
+      row(`report: 13 odds in this run: ${x.name}`, 'report', 'the printed odds', x.n ? `${fmt(x.observed * 100, 2)} % against ${fmt(x.expected * 100, 2)} % over ${x.n}` : 'none drawn', true);
+    } else row(`13 odds: ${x.name}`, 'hard', '± 0.5 points of the printed odds (3 standard errors under 100k draws)', x.n ? `${fmt(x.observed * 100, 2)} % against ${fmt(x.expected * 100, 2)} % over ${x.n}` : 'none drawn', x.ok);
+  }
+  const gState = all.states[3600] ?? all.states[600] ?? all.states[180];
+  if (gState) {
+    const go = giftStreamOdds(cfg, gState);
+    const od = cfg.merge.gift.odds;
+    for (const [name, hits, p] of [['coins', go.coins, od.coins], ['a good', go.good, od.good], ['a Lucky Spark', go.spark, od.spark]] as const) {
+      const obs = hits / go.n;
+      row(`13 odds: gift slots: ${name} (the gift stream, ${go.n} draws)`, 'hard', '± 0.5 points of the printed odds', `${fmt(obs * 100, 2)} % against ${fmt(p * 100, 2)} %`, Math.abs(obs - p) <= 0.005);
+    }
+  }
   // ---- gate 14 (hard)
   if (all.determinism) {
     const d = all.determinism;
