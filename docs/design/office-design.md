@@ -602,4 +602,28 @@ Shared and tooling: `modeRegression.test.ts` unchanged and green, plus a store t
 
 ## 11. Lead decisions
 
-(Empty: the lead fills this section. A decision here overrides the text above where they differ.)
+A decision here overrides the text above where they differ. Decisions are numbered D1, D2, … in the order taken.
+
+**D1. Title.** "Proudly Adequate" leads; the name search decides (it also checks the echo of buy-local campaigns). Runners-up: "Signed, Not Read", "Flick of the Pen".
+
+**D2. "Open the Doors" stays** as 5.11 and H10 have it: it is a time-saver (ruling 6 allowed filling the in-tray), every mood still moves only by a paper the player decides, and H10's two gates (votes per term within 3 points; time within the computed bound) guard it. If the prototype or the bot shows the vote gate failing, the ad is cut, not the gate.
+
+**D3. Products.** The four of 5.11 stand ({unlock, cosmetic, cosmetic, skipAds}). The store reviewer of the listing step rules on whether the shop reads as Lantern Row's; if it does, the second cosmetic changes, never the principle (nothing random, nothing that reaches a mood, the poll or the count).
+
+**D4. The idle layer is accepted as revised** (budget slips on the desk, storeys every 12 levels, a read-only Ledger with one untaught "Raise", ministers as desk rules). The planning count against Pizza Empire is 17 of 19.
+
+**D5. Writing: all three decks are written for version 1**, in parallel, to the counts of 7.7. 7.7's staging rule stays as the fallback: a deck that fails H7 or either read does not ship, the lead reports the shortfall, and weak jokes are never shipped to make up a count.
+
+**D6. Confirmed as revised:** a boycott's natural end brings no mood change; "Say nothing" does not block calling the election; a campaign paper takes nothing from another district; after a loss the seat is held as "Acting"; the winner resigns over a hobby.
+
+**D7. Who owns the safety check and the two content formats.**
+- The writing package's first step (the "content desk") owns `scripts/content/office/satireLint.ts`, its tests, every deny and allow list, `names.json`, and the **authoring format**: `scripts/content/office/format.ts` (zod schemas and types of every authoring file of 9.2 W) with `scripts/content/office/check.ts` (a command a writer runs on one file: format, lengths, fit, tags, lint). It exists before any writer starts. P3 does not write the lint; it only calls it from `scripts/validate.ts`.
+- The skeleton owns the **runtime format**: the deck inside the game.json `decree` block (`src/engine/decree/types.ts`, `src/config/schema.decree.ts`), with the field names of 2.7.
+- `scripts/content/build-office.py` (P2) maps the authoring files onto the runtime deck and fails loudly on a field it cannot map. Whoever of the content desk and the skeleton finishes second reads the other's file and keeps the same names for the same things.
+
+**D8. Packages as built.** One skeleton engineer does P0 and every shared change of P3 (9.2), checked by an independent engineer, with one pass of fixes, before any rules engineer starts. The store texts and the name search are a separate listing step. The numbers prototype is its own step (not committed); `bot.ts` is written by a third engineer beside P1a and P1b, against the public interface.
+
+**D9. The reads that 7.7 and 7.8 give to "a person".** In this build the comedy editor and the sensitivity editor are engineers; their reads are recorded as theirs in `RATING-NOTES.md` and `names.json`. A read by the owner (or someone the owner names) before a store submission stays required and is listed among what the owner must do; nothing in the repository may say a person signed what no person signed.
+
+**D10. What changed from what the owner was told, to be reported to the owner:** the campaign rally is an in-game paper paid from the treasury, not an ad, and no ad or purchase can move a mood or a vote (ruling 6); a strike is shown as a club's boycott; schools are not among the ministries (policy research 4); the age rating is to be raised by hand to 13+ and two territories left out at submission (7.9), which are the owner's choices.
+
