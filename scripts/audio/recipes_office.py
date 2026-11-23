@@ -58,7 +58,7 @@ import math
 
 import numpy as np
 
-from dsp import (SR, TAU, Mix, bandpass, bq, butter, filt, harmonics, lowpass, midi, modal, mtof, ns, perc, phase,
+from dsp import (SR, TAU, Mix, bandpass, bq, butter, filt, harmonics, highpass, lowpass, midi, modal, mtof, ns, perc, phase,
                  points, rcos_in, rcos_out, rng_for, white, colored)
 
 OFFICE_RECIPES = {}
@@ -177,7 +177,7 @@ def rate_times(rng, rate_fn, dur, jitter=0.25):
 # instruments: desk, pen, tray, drawer
 # ===========================================================================
 
-NIB_TINES = ((3100.0, 11.0, 1.0), (4600.0, 9.0, 0.55), (1250.0, 2.2, 0.8), (2200.0, 4.0, 0.35))
+NIB_TINES = ((2650.0, 12.0, 1.0), (3900.0, 10.0, 0.5), (1250.0, 2.2, 0.8), (1900.0, 4.0, 0.35))
 
 
 def nib(rng, dur, strokes=7.0, press=None, tooth=1800.0, squeak=1.0, lift=None):
@@ -202,9 +202,9 @@ def nib(rng, dur, strokes=7.0, press=None, tooth=1800.0, squeak=1.0, lift=None):
     imp = impulses(n, times, amps, 2)
     tines = list(NIB_TINES)
     tines[0] = (tines[0][0], tines[0][1], tines[0][2] * squeak)
-    y = reso(imp, tines)
-    scratch = band(white(n, rng), 2600.0, 5400.0, 2) * (pr * speed) ** 1.5
-    return norm(y) + 0.12 * scratch
+    y = filt(reso(imp, tines), butter('lp', 4800.0, 4))
+    scratch = band(white(n, rng), 2400.0, 4800.0, 2) * (pr * speed) ** 1.5
+    return norm(y) + 0.1 * scratch
 
 
 def wire_clink(rng, vel=1.0, rods=3, f0=(1150.0, 1650.0), spread=0.016, damp=1.0):
@@ -237,8 +237,8 @@ def card_slap(rng, vel=1.0, weight=1.0, bright=1.0):
     return vel * (1.6 * body + 1.2 * push + 0.5 * edge)
 
 
-WOOD_DESK = ((145.0, 0.8, 0.05), (330.0, 1.0, 0.035), (610.0, 0.8, 0.022), (1050.0, 0.55, 0.014), (1720.0, 0.35, 0.008),
-             (2650.0, 0.2, 0.005))
+WOOD_DESK = ((145.0, 0.8, 0.03), (330.0, 1.0, 0.02), (470.0, 0.7, 0.016), (610.0, 0.8, 0.013), (790.0, 0.6, 0.011),
+             (1050.0, 0.55, 0.009), (1310.0, 0.45, 0.007), (1720.0, 0.35, 0.006), (2150.0, 0.25, 0.004), (2650.0, 0.2, 0.003))
 
 
 def wood_body(rng, modes=WOOD_DESK, vel=1.0, scale=1.0, damp=1.0, click=0.5):
@@ -251,8 +251,11 @@ def wood_body(rng, modes=WOOD_DESK, vel=1.0, scale=1.0, damp=1.0, click=0.5):
 
 
 def desk_tap(rng, vel=1.0):
-    """A knuckle on the desk: the desk top's modes, a dull flesh-on-wood click."""
-    return wood_body(rng, WOOD_DESK, vel, 1.0, 1.3, 0.35)
+    """A knuckle on the desk: the desk top's many damped modes (the lowest thinned: a phone
+    keeps nothing under 300 Hz), a dull flesh-on-wood thud of noise through the top."""
+    n = ns(0.06)
+    thud = reso(colored(n, rng, -1.0) * perc(n, 0.6, 0.01), ((700.0, 1.5, 1.0), (1500.0, 1.5, 0.6)))
+    return highpass(wood_body(rng, WOOD_DESK, vel, 1.7, 1.3, 0.9), 480.0, 2) + 1.2 * vel * np.concatenate([norm(thud), np.zeros(ns(0.18) - n)])
 
 
 DOOR = ((95.0, 0.6, 0.06), (180.0, 1.0, 0.045), (290.0, 0.8, 0.03), (520.0, 0.7, 0.018), (880.0, 0.45, 0.01), (1400.0, 0.3, 0.007))
@@ -262,13 +265,13 @@ def door_knock(rng, vel=1.0):
     """A knuckle on a panelled door with a glass pane: the door's low modes, a knock click, and
     the pane rattling in its frame (a few high damped modes, 2 to 3.5 kHz)."""
     n = ns(0.2)
-    y = wood_body(rng, DOOR, 1.0, 1.0, 1.0, 0.6)
+    y = highpass(wood_body(rng, DOOR, 1.0, 1.8, 1.0, 1.2), 480.0, 2)
     glass = modal([(rng.uniform(2100, 2300), 0.5, 0.02, 1.0, 0.0), (rng.uniform(3200, 3500), 0.35, 0.012, 1.0, 0.0),
                    (rng.uniform(2700, 2900), 0.3, 0.015, 1.0, 0.0)], n)
     out = np.zeros(n)
     out[:len(y)] += y[:n]
     i = ns(0.004)
-    out[i:] += 0.35 * glass[:n - i]
+    out[i:] += 0.6 * glass[:n - i]
     return vel * out
 
 
@@ -303,7 +306,7 @@ DRAWER = ((120.0, 0.7, 0.05), (230.0, 1.0, 0.04), (410.0, 0.8, 0.025), (760.0, 0
 
 def drawer_thunk(rng, vel=1.0):
     """The drawer meeting its stop: a hollow wooden box struck from inside."""
-    return wood_body(rng, DRAWER, vel, 1.0, 1.0, 0.45)
+    return highpass(wood_body(rng, DRAWER, vel, 1.9, 1.1, 1.0), 480.0, 2)
 
 
 # ===========================================================================
@@ -319,7 +322,7 @@ def _formant(kf, forms):
 
 BRASS = {
     #           formants (Hz, gain, width)                     slope bright scoop vib   buzz
-    'tuba': dict(forms=((240.0, 1.0, 160.0), (620.0, 0.45, 320.0)), slope=0.75, bright=0.55, scoop=-40.0, vib=0.0, buzz=0.06, floor=0.18),
+    'tuba': dict(forms=((300.0, 1.0, 180.0), (780.0, 0.6, 380.0)), slope=0.6, bright=0.6, scoop=-40.0, vib=0.0, buzz=0.06, floor=0.18),
     'euph': dict(forms=((420.0, 1.0, 220.0), (1000.0, 0.4, 420.0)), slope=0.8, bright=0.6, scoop=-30.0, vib=0.002, buzz=0.05, floor=0.15),
     'bone': dict(forms=((520.0, 1.0, 260.0), (1250.0, 0.6, 520.0)), slope=0.7, bright=0.75, scoop=-28.0, vib=0.003, buzz=0.06, floor=0.12),
     'cornet': dict(forms=((1050.0, 1.0, 500.0), (2300.0, 0.45, 800.0)), slope=0.75, bright=0.7, scoop=-22.0, vib=0.004, buzz=0.04, floor=0.12),
@@ -329,7 +332,7 @@ CUP_MUTE = [bq('hp', 420.0, 0.8), bq('peak', 1500.0, 2.2, 7.0), bq('peak', 2900.
 
 
 def brass(f, dur, rng, kind='tuba', dyn=0.8, attack=0.035, release=0.09, env=None, fpath=None, mute=False, fmax=5200.0,
-          legato=False):
+          legato=False, phone=None):
     """One brass note. f in Hz (or fpath, a per-sample path, for a slide); dyn 0..1 is how hard
     it is blown: harmonic k grows as level ** (1 + bright * (k - 1) / 4), so a loud note is a
     bright 'blat' and a soft one round. A lip scoop into pitch (cents, 30 ms) and a buzz of
@@ -356,6 +359,8 @@ def brass(f, dur, rng, kind='tuba', dyn=0.8, attack=0.035, release=0.09, env=Non
         y += P['buzz'] * 6.0 * bandpass(white(n, rng), fc, 1.5) * perc(n, 1.0, 0.018) * dyn
     if mute:
         y = filt(y, CUP_MUTE)
+    if phone:
+        y = highpass(y, phone, 2)
     return y
 
 
@@ -435,7 +440,7 @@ def pizz(f, rng, vel=1.0, dur=0.9, bright=1.0):
 # instruments: the bandstand's percussion
 # ===========================================================================
 
-def snare(rng, vel=1.0, wires=1.0, f0=196.0, rim=0.0, dur=0.3):
+def snare(rng, vel=1.0, wires=1.0, f0=233.0, rim=0.0, dur=0.3):
     """A snare drum: the batter head (three damped modes), the stick's click, and the snare wires
     under the bottom head (noise 1.8 to 6 kHz, rattling as the head moves). rim > 0 adds a rim."""
     n = ns(dur)
@@ -443,7 +448,7 @@ def snare(rng, vel=1.0, wires=1.0, f0=196.0, rim=0.0, dur=0.3):
     head = modal([(f0, 1.0, 0.045, 0.4, 0.0), (f0 * 1.52, 0.55, 0.03, 0.4, 1.0), (f0 * 2.3, 0.35, 0.02, 0.4, 2.0)], n)
     wire = band(white(n, rng), 1800.0, 6000.0, 2) * perc(n, 0.4, 0.075 * wires + 0.01) * (1.0 + 0.4 * np.sin(TAU * f0 * t))
     stick = band(white(n, rng), 2500.0, 6000.0, 2) * perc(n, 0.05, 0.0012)
-    y = 0.9 * head + 1.3 * wires * wire + 0.8 * stick
+    y = 0.6 * head + 1.5 * wires * wire + 0.8 * stick
     if rim:
         y += rim * modal([(910.0, 1.0, 0.012, 0.1, 0.0), (1630.0, 0.6, 0.008, 0.1, 0.0)], n)
     return vel * y
@@ -536,7 +541,7 @@ def gavel(rng, vel=1.0):
     blk = modal([(f * rng.uniform(0.98, 1.02), a, tau, 0.2, rng.uniform(0, TAU)) for f, a, tau in GAVEL], n)
     bench = modal([(130.0, 0.8, 0.05, 0.8, 0.0), (240.0, 0.5, 0.03, 0.8, 0.0)], n)
     crack = band(white(n, rng), 2000.0, 5500.0, 2) * perc(n, 0.05, 0.0015)
-    return vel * (blk + 0.9 * bench + 0.8 * crack)
+    return vel * (blk + 0.35 * bench + 0.8 * crack)
 
 
 def metal_click(rng, f=(2300.0, 4100.0, 5300.0), vel=1.0, tau=0.006):
@@ -578,20 +583,25 @@ def scissors(rng, vel=1.0, glide=0.05):
 
 def chalk(rng, dur=0.12, vel=1.0, grit=1.0):
     """A chalk tally mark on a slate: the tap of the chalk landing (slate is stone: a few high,
-    very damped modes and a low tick) and the stroke: dusty grains at a rate that follows the
-    stroke's speed, ringing the slate's board (900 Hz, 1.9 kHz) and drawn with a bit of drag."""
+    very damped modes and a low tick) and the stroke: dusty grains ringing the slate's board (720
+    Hz, 1.5 kHz), the chalk chattering (skipping about 34 times a second: a dotted line)."""
     m = Mix()
     n0 = ns(0.04)
-    m.add(modal([(2600.0, 1.0, 0.004, 0.05, 0.0), (3900.0, 0.6, 0.003, 0.05, 0.0), (700.0, 0.7, 0.008, 0.2, 0.0)], n0))
+    m.add(0.5 * modal([(2600.0, 1.0, 0.004, 0.05, 0.0), (3900.0, 0.6, 0.003, 0.05, 0.0), (700.0, 0.7, 0.008, 0.2, 0.0)], n0))
     n = ns(dur)
     tt = np.arange(n) / SR
-    sp = np.sin(np.pi * np.clip(tt / dur, 0, 1)) ** 0.7
-    times = rate_times(rng, lambda x: 1400.0 * max(float(np.interp(x, tt, sp)), 0.05), dur, 0.6)
+    sp = points([(0, 0.6), (dur * 0.25, 1.0), (dur * 0.8, 0.8), (dur, 0.0)], n)
+    times = rate_times(rng, lambda x: 900.0 * max(float(np.interp(x, tt, sp)), 0.05), dur, 0.6)
     imp = impulses(n, times, [rng.uniform(0.2, 1.0) * (1 if rng.uniform() < 0.5 else -1) for _ in times], 3)
-    stroke = reso(imp, ((900.0, 3.0, 0.6), (1900.0, 2.5, 1.0), (3300.0, 2.0, 0.6)))
+    stroke = reso(imp, ((720.0, 3.0, 0.8), (1500.0, 3.0, 1.0), (2600.0, 2.5, 0.5)))
     dust = band(white(n, rng), 1200.0, 4500.0, 2) * sp
-    m.add(grit * (norm(stroke) + 0.25 * dust) * sp, 0.006)
-    return vel * m.out()
+    skip = np.zeros(n)
+    for t0 in rate_times(rng, lambda x: 34.0, dur, 0.15):
+        i = int(t0 * SR)
+        k = min(ns(0.016), n - i)
+        skip[i:i + k] = np.maximum(skip[i:i + k], np.sin(np.pi * np.arange(k) / k) ** 0.5)
+    m.add(grit * (norm(stroke) + 0.25 * dust) * sp * (0.12 + 0.88 * skip), 0.006)
+    return vel * filt(m.out(), butter('lp', 4000.0, 4))
 
 
 def tube_air(rng, dur, L_hz=310.0, env=None, q=6.0, modes=6, vel=1.0):
@@ -615,7 +625,7 @@ def latch(rng, vel=1.0, heavy=1.0):
     n = ns(0.035)
     times = rate_times(rng, lambda x: 320.0, 0.03, 0.3)
     rasp = reso(impulses(n, times, [rng.uniform(0.5, 1.0) for _ in times], 2), ((1800.0, 6.0, 1.0), (3100.0, 6.0, 0.7)))
-    m.add(0.4 * norm(rasp) * points([(0, 0.4), (0.03, 1.0), (0.035, 0.0)], n))
+    m.add(0.6 * norm(rasp) * points([(0, 1.0), (0.03, 0.7), (0.035, 0.0)], n))
     nb = ns(0.15)
     clack = modal([(900.0 * heavy, 0.8, 0.03, 0.1, 0.0), (1650.0, 1.0, 0.02, 0.1, 0.5), (2550.0, 0.6, 0.014, 0.1, 1.0),
                    (3600.0, 0.35, 0.008, 0.1, 2.0)], nb)
@@ -625,15 +635,23 @@ def latch(rng, vel=1.0, heavy=1.0):
 
 
 def brass_coin(rng, vel=1.0):
-    """A heavy brass coin set down on the desk: a contact, a small bounce 30 ms later, each a
-    short brass ring (2.0 / 3.5 / 5.0 kHz, 20 to 35 ms) over the desk's wooden knock."""
+    """A heavy brass token set down flat on the leather blotter: a dull contact (the blotter
+    damps the metal: its modes, 1.7 to 4.6 kHz and inharmonic, die in 5 to 9 ms, so it has a
+    colour and no note), then the token settling on its rim (a short wobble of six contacts
+    speeding up, the 'Euler's disc' of a coin laid down)."""
     m = Mix()
-    for t, v in ((0.0, 1.0), (0.03, 0.45)):
-        n = ns(0.09)
-        f = rng.uniform(1950.0, 2150.0)
-        ring = modal([(f, 1.0, 0.035, 0.1, 0.0), (f * 1.74, 0.6, 0.022, 0.1, 1.0), (f * 2.52, 0.3, 0.014, 0.1, 2.0)], n)
-        m.add(v * ring, t)
-        m.add(0.6 * v * wood_body(rng, WOOD_DESK, 1.0, 1.0, 1.6, 0.2), t)
+    n = ns(0.05)
+    f = rng.uniform(1650.0, 1800.0)
+    parts = [(f, 1.0, 0.009, 0.1, 0.0), (f * 1.83, 0.8, 0.007, 0.1, 1.0), (f * 2.31, 0.6, 0.006, 0.1, 2.0), (f * 2.77, 0.5, 0.005, 0.1, 3.0)]
+    m.add(modal(parts, n) + 0.5 * band(white(n, rng), 1200.0, 3500.0, 2) * perc(n, 0.1, 0.004))
+    m.add(0.5 * highpass(wood_body(rng, WOOD_DESK, 1.0, 1.4, 1.6, 0.3), 400.0, 2))
+    t, gap = 0.035, 0.022
+    for j in range(6):
+        nn = ns(0.02)
+        ff = f * rng.uniform(1.05, 1.25)
+        m.add((0.42 - 0.05 * j) * modal([(ff, 1.0, 0.004, 0.1, 0.0), (ff * 1.9, 0.6, 0.003, 0.1, 1.0)], nn), t)
+        t += gap
+        gap *= 0.78
     return vel * m.out()
 
 
@@ -676,7 +694,7 @@ def _sign_ink(k):
         (the signature writes itself across the strip with the distance)."""
         c.accent(0.0)
         d = 0.28
-        y = nib(c.rng, d, strokes, press=[(0, 0.35), (0.05, 0.6), (0.2, 1.0), (d, 0.9)], lift=lifts, squeak=squeak)
+        y = nib(c.rng, d, strokes, press=[(0, 0.6), (0.05, 0.75), (0.2, 1.0), (d, 0.9)], lift=lifts, squeak=squeak)
         return y * points([(0, 0.0), (0.006, 1.0), (d - 0.03, 1.0), (d, 0.0)], ns(d))
     fn.__name__ = 'sign_ink_%d' % k
     return fn
@@ -686,7 +704,7 @@ for _k in (1, 2, 3):
     globals()['sign_ink_%d' % _k] = _sign_ink(_k)
 
 
-SIGN = ((3, (1150.0, 1650.0), 0.016, 1.0), (2, (1250.0, 1800.0), 0.012, 1.1), (4, (1100.0, 1550.0), 0.02, 0.9))
+SIGN = ((6, (1050.0, 2300.0), 0.024, 1.0), (6, (1150.0, 2500.0), 0.02, 1.1), (7, (1000.0, 2200.0), 0.028, 0.9))
 
 
 def _sign(k):
@@ -726,9 +744,9 @@ def _study(k):
         friction), and meets its stop with a hollow wooden thunk. Low, woody, longer than the
         clink: told apart from signing by ear with the screen off."""
         m = Mix()
-        m.add(0.55 * creak(c.sub('creak'), dc, [(0, rates[0]), (dc * 0.6, rates[1]), (dc, rates[2])]))
-        m.add(0.5 * runner(c.sub('run'), ds), dc * 0.6)
-        m.add(1.0 * drawer_thunk(c.sub('thunk'), 1.0), dc * 0.6 + ds)
+        m.add(0.9 * creak(c.sub('creak'), dc, [(0, rates[0]), (dc * 0.6, rates[1]), (dc, rates[2])]))
+        m.add(0.45 * highpass(runner(c.sub('run'), ds), 550.0, 2), dc * 0.6)
+        m.add(0.8 * drawer_thunk(c.sub('thunk'), 1.0), dc * 0.6 + ds)
         c.accent(0.0, dc * 0.6 + ds)
         return m.out()
     fn.__name__ = 'study_%d' % k
@@ -752,11 +770,12 @@ def take_back(c):
 
 @office_recipe('denied', length=0.24, loud_db=FREQUENT)
 def denied(c):
-    """Not enough in the treasury: two dull knuckle taps on the desk ('tut-tut'), the second
-    softer, 110 ms apart. No buzzer."""
+    """Not enough in the treasury: one dull knuckle tap on the desk and the pen jumping on it (a
+    small rattle of three ticks, 45 to 95 ms after). No buzzer, no 'uh-uh'."""
     m = Mix()
     m.add(desk_tap(c.sub('a'), 1.0))
-    m.add(desk_tap(c.sub('b'), 0.6), 0.11)
+    for t, v in ((0.045, 0.45), (0.075, 0.3), (0.095, 0.2)):
+        m.add(v * metal_click(c.sub('pen%d' % int(t * 1000)), (2900.0, 4300.0, 5200.0), 1.0, 0.003), t)
     c.accent(0.0)
     return m.out()
 
@@ -784,19 +803,21 @@ for _k in (1, 2):
     globals()['paper_arrive_%d' % _k] = _paper_arrive(_k)
 
 
-@office_recipe('slip_arrive', length=0.26, loud_db=FREQUENT)
+@office_recipe('slip_arrive', length=0.2, loud_db=FREQUENT)
 def slip_arrive(c):
-    """The Treasury Clerk's budget slip slid across the baize: the stiff slip's edge brushing the
-    cloth (a soft fixed-band hush, 160 ms, no sweep and no stick-slip) and the Clerk's fingertip
-    stopping it (a little card tap)."""
+    """The Treasury Clerk's budget slip pushed across the baize: the slip's edge catching on the
+    cloth's fibres (a quick run of soft catches, 90 ms, ringing the slip's card at 1.1 kHz: no
+    whoosh, no sweep) and the Clerk's fingertip stopping it (a card tap, the loudest part);
+    nothing rings."""
     m = Mix()
-    d = 0.16
+    d = 0.09
     n = ns(d)
-    hush = band(colored(n, c.rng, -1.0), 700.0, 3200.0, 2)
-    hush = norm(hush) * wobble(c.sub('w'), n, 25.0, 0.2) * points([(0, 0.0), (0.03, 1.0), (0.12, 0.7), (d, 0.0)], n) ** 1.3
-    m.add(0.6 * hush)
-    m.add(0.6 * card_slap(c.sub('tap'), 1.0, 0.5, 0.8), d - 0.02)
-    c.accent(0.0)
+    times = rate_times(c.sub('f'), lambda x: 380.0, d, 0.5)
+    imp = impulses(n, times, [c.rng.uniform(0.3, 1.0) * (1 if c.rng.uniform() < 0.5 else -1) for _ in times], 4)
+    catch = reso(imp, ((1100.0, 4.0, 1.0), (2300.0, 3.0, 0.5), (650.0, 2.5, 0.4)))
+    m.add(0.45 * norm(catch) * points([(0, 1.0), (d, 0.3)], n))
+    m.add(card_slap(c.sub('tap'), 1.0, 0.6, 0.8), d)
+    c.accent(0.0, d)
     return m.out()
 
 
@@ -804,8 +825,8 @@ def slip_arrive(c):
 
 @office_recipe('buy_level', length=0.2, loud_db=FREQUENT)
 def buy_level(c):
-    """A level bought: the nib ticks the Ledger (a 40 ms check mark) and a heavy brass coin is
-    set down on the desk 50 ms later (contact and a small bounce; no till, no bell)."""
+    """A level bought: the nib ticks the Ledger (a 40 ms check mark) and a heavy brass token is
+    set down on the blotter 50 ms later and settles on its rim (no till, no bell)."""
     m = Mix()
     d = 0.045
     m.add(0.7 * nib(c.sub('tick'), d, 22.0, press=[(0, 1.0), (d, 0.5)], squeak=0.6) * points([(0, 0), (0.003, 1), (d, 0)], ns(d)))
@@ -820,7 +841,7 @@ def open_ministry(c):
     (a short forte B-flat, F2 to Bb2 scooped) from the corridor."""
     m = Mix()
     m.add(latch(c.sub('latch'), 1.0, 1.0))
-    m.add(0.9 * brass(c.hz('Bb2'), 0.5, c.sub('tuba'), 'tuba', dyn=1.0, attack=0.02, release=0.12), 0.16)
+    m.add(0.9 * brass(c.hz('Bb2'), 0.5, c.sub('tuba'), 'tuba', dyn=1.0, attack=0.02, release=0.12, phone=420.0), 0.16)
     m.add(0.35 * brass(c.hz('F3'), 0.42, c.sub('tuba2'), 'euph', dyn=0.8, attack=0.03, release=0.12), 0.2)
     c.accent(0.0, 0.16)
     return m.out()
@@ -841,7 +862,7 @@ def storey(c):
     m = Mix()
     m.add(hand_bell(c.hz('F5'), c.sub('b1'), 1.0, 1.4))
     m.add(hand_bell(c.hz('F5'), c.sub('b2'), 0.65, 1.4), 0.36)
-    m.add(0.3 * brass(c.hz('Bb2'), 0.45, c.sub('t'), 'tuba', dyn=0.6, release=0.2), 0.0)
+    m.add(0.3 * brass(c.hz('Bb2'), 0.45, c.sub('t'), 'tuba', dyn=0.6, release=0.2, phone=420.0), 0.0)
     c.accent(0.0, 0.36)
     return m.out()
 
@@ -849,12 +870,12 @@ def storey(c):
 @office_recipe('ribbon', length=1.0)
 def ribbon(c):
     """A ribbon cut: the scissors close on it (blades sliding, the snip), the ribbon parts (a
-    soft cloth snap of tension let go), and a clarinet's little flourish (D5 F5 Bb5)."""
+    soft cloth snap of tension let go), and a clarinet's little flourish (G5 A5 Bb5, down to F5)."""
     m = Mix()
     m.add(scissors(c.sub('sc'), 1.0, 0.06))
     nr = ns(0.05)
     m.add(0.6 * band(colored(nr, c.sub('rib'), -1.0), 400.0, 2400.0, 2) * perc(nr, 0.3, 0.012), 0.075)
-    for j, (nt, t, d) in enumerate((('D5', 0.14, 0.09), ('F5', 0.22, 0.09), ('Bb5', 0.3, 0.45))):
+    for j, (nt, t, d) in enumerate((('G5', 0.14, 0.07), ('A5', 0.2, 0.07), ('Bb5', 0.26, 0.07), ('F5', 0.34, 0.4))):
         m.add(0.55 * clarinet(c.hz(nt), d, c.sub('cl%d' % j), 0.8, 0.015, 0.06 if j < 2 else 0.2), t)
     c.accent(0.0, 0.065)
     return m.out()
@@ -890,7 +911,7 @@ def boycott_start(c):
             path = f * 2.0 ** (-35.0 / 1200.0 * np.exp(-np.arange(n) / SR / 0.04))
             env = rcos_in(n, 12.0) * rcos_out(n, 40.0) * (1.0 if j != 2 else points([(0, 0.8), (0.1, 1.0), (d, 0.85)], n))
             m.add((0.5 if v else 0.6) * kazoo(path, d, rng, env), t + lag)
-    m.add(0.5 * bass_drum(c.sub('bd'), 1.0), 0.34)
+    m.add(0.35 * highpass(bass_drum(c.sub('bd'), 1.0), 380.0, 2), 0.34)
     c.accent(0.0, 0.34)
     return m.out()
 
@@ -952,18 +973,18 @@ def env_open(c):
     """An envelope opened on election night: a snare roll swelling from nothing (0.7 s) into one
     accented stroke as the clerk reads it."""
     m = Mix()
-    m.add(snare_roll(c.rng, 0.7, ((0, 0.12), (0.6, 0.5), (1.0, 0.9)), 27.0, True))
+    m.add(highpass(snare_roll(c.rng, 0.7, ((0, 0.2), (0.6, 0.55), (1.0, 0.9)), 27.0, True), 300.0, 2))
     c.accent(0.0, 0.7)
     return m.out()
 
 
-TALLY = ((0.11, 1.0), (0.1, 0.9), (0.125, 1.1))
+TALLY = ((0.14, 1.0), (0.12, 0.9), (0.16, 1.1))
 
 
 def _tally(k):
     d, g = TALLY[k - 1]
 
-    @office_recipe('tally_%d' % k, length=0.2)
+    @office_recipe('tally_%d' % k, length=0.24)
     def fn(c):
         """A chalk tally mark on the board: the chalk's tap and a gritty stroke."""
         c.accent(0.0)
@@ -978,28 +999,29 @@ for _k in (1, 2, 3):
 
 @office_recipe('district_held', length=0.75)
 def district_held(c):
-    """A district held: the bandstand's sting, a tuba 'oom-PAH' (F2 then Bb2) with a snare flam
-    and a bass drum on the PAH."""
+    """A district held: the bandstand's sting, back to front: a snare rimshot and the band's
+    'PAH' at once (tuba Bb2, euphonium F3 and D4, a short bright chord), then the tuba's low
+    'oom' answering on F2 a beat later, and a bass drum under it."""
     m = Mix()
-    m.add(0.8 * brass(c.hz('F2'), 0.14, c.sub('t1'), 'tuba', dyn=0.75, attack=0.015, release=0.04))
-    m.add(1.0 * brass(c.hz('Bb2'), 0.45, c.sub('t2'), 'tuba', dyn=1.0, attack=0.015, release=0.15), 0.17)
-    m.add(0.45 * brass(c.hz('D4'), 0.4, c.sub('e'), 'euph', dyn=0.8, attack=0.02, release=0.15), 0.17)
-    m.add(0.35 * snare(c.sub('s0'), 0.6, dur=0.12), 0.15)
-    m.add(0.6 * snare(c.sub('s1'), 1.0, rim=0.3), 0.17)
-    m.add(0.6 * bass_drum(c.sub('bd'), 1.0), 0.17)
-    c.accent(0.0, 0.17)
+    m.add(0.6 * highpass(snare(c.sub('s1'), 1.0, rim=0.5), 400.0, 2))
+    m.add(0.9 * brass(c.hz('Bb2'), 0.22, c.sub('t1'), 'tuba', dyn=1.0, attack=0.012, release=0.06, phone=420.0))
+    m.add(0.45 * brass(c.hz('F3'), 0.22, c.sub('e1'), 'euph', dyn=0.95, attack=0.012, release=0.06, phone=420.0))
+    m.add(0.4 * brass(c.hz('D4'), 0.22, c.sub('e2'), 'euph', dyn=0.9, attack=0.012, release=0.06, phone=420.0))
+    m.add(0.85 * brass(c.hz('F2'), 0.34, c.sub('t2'), 'tuba', dyn=0.85, attack=0.02, release=0.15, phone=420.0), 0.27)
+    m.add(0.35 * highpass(bass_drum(c.sub('bd'), 1.0), 380.0, 2), 0.27)
+    c.accent(0.0, 0.27)
     return m.out()
 
 
 @office_recipe('district_lost', length=1.0)
 def district_lost(c):
-    """A district lost: a trombone sliding down a fourth (F3 to C3) and fading, soft."""
+    """A district lost: a trombone sliding down a fourth (F4 to C4) and fading, soft."""
     m = Mix()
     d = 0.9
     n = ns(d)
-    path = _glide_path(n, [hz('F3'), hz('C3')], [0.0, 0.12], port=0.55)
+    path = _glide_path(n, [hz('F4'), hz('C4')], [0.0, 0.12], port=0.55)
     env = rcos_in(n, 40.0) * points([(0, 0.9), (0.3, 1.0), (d, 0.0)], n)
-    m.add(brass(0.0, d, c.sub('b'), 'bone', dyn=0.65, env=env, fpath=path))
+    m.add(brass(0.0, d, c.sub('b'), 'bone', dyn=0.8, env=env, fpath=path, phone=420.0))
     c.accent(0.0)
     return m.out()
 
@@ -1022,11 +1044,12 @@ def ui_open(c):
 
 @office_recipe('ui_close', length=0.2, loud_db=FREQUENT)
 def ui_close(c):
-    """The sheet closed: the receiver's brass lid snapped shut (a click at 0) and the capsule sent
-    off with a soft suck of tube air (lower tube, falling level)."""
+    """The sheet closed: the capsule sent off with a soft suck of tube air (a lower tube than
+    ui_open's, its level falling) and the receiver's brass lid falling shut on it at 70 ms."""
     m = Mix()
-    m.add(metal_click(c.sub('lid'), (1600.0, 2900.0, 4200.0), 0.9, 0.012))
-    m.add(0.5 * tube_air(c.sub('air'), 0.12, 250.0, env=points([(0, 1.0), (0.02, 0.9), (0.12, 0.0)], ns(0.12))), 0.02)
+    m.add(0.7 * tube_air(c.sub('air'), 0.1, 250.0, env=points([(0, 0.0), (0.01, 1.0), (0.1, 0.0)], ns(0.1))))
+    m.add(0.8 * metal_click(c.sub('lid'), (1600.0, 2900.0, 4200.0), 0.9, 0.01), 0.07)
+    m.add(0.3 * desk_tap(c.sub('d'), 1.0), 0.07)
     c.accent(0.0)
     return m.out()
 
@@ -1045,11 +1068,11 @@ EVENTS = {
     'sign': (0.5, 150, ['medium'], 'signed: card stock into the wire out-tray, the brass wires clinking (bright, short); three files, random', 2),
     'study': (0.5, 150, ['medium'], 'for further study: the wooden drawer creaking, sliding on its runners, a hollow thunk at its stop (low, woody); three files, random', 2),
     'take_back': (0.45, 150, ['light'], 'taken back: one wire lifted, the paper laid back on the desk', 1),
-    'denied': (0.5, 300, ['light'], 'not enough in the treasury: two dull knuckle taps on the desk', 1),
+    'denied': (0.5, 300, ['light'], 'not enough in the treasury: one dull knuckle tap on the desk, the pen rattling on it', 1),
     'paper_arrive': (0.4, 5000, None, 'a visitor: two knocks on the panelled door, the glass pane answering, their paper laid on the desk; two files, random', 1),
     'slip_arrive': (0.35, 800, None, "the Treasury Clerk's slip slid across the baize and stopped by a fingertip", 1),
     # the Ledger
-    'buy_level': (0.45, 100, ['light'], 'a level: the nib ticks the Ledger, a heavy brass coin set down on the desk (no till, no bell)', 2),
+    'buy_level': (0.45, 100, ['light'], 'a level: the nib ticks the Ledger, a heavy brass token set down on the blotter and settling (no till, no bell)', 2),
     'open_ministry': (0.6, None, ['medium'], 'a ministry opens: a brass latch thrown, a tuba blat from the corridor', 1),
     'appoint': (0.6, None, ['light'], 'a minister appointed: a press camera, shutter and film-advance ratchet', 1),
     'storey': (0.65, None, ['success'], 'a new storey: a brass hand bell swung twice (F5), a tuba under it', 1),
@@ -1063,13 +1086,13 @@ EVENTS = {
     'call_election': (0.65, None, ['medium'], 'the election called: the gavel, twice', 1),
     'env_open': (0.5, None, None, 'an envelope opened: a snare roll swelling into one stroke', 1),
     'tally': (0.5, 120, None, 'a chalk tally mark on the board; three files, random', 2),
-    'district_held': (0.6, 300, ['success'], 'a district held: a tuba oom-PAH with snare and bass drum', 1),
+    'district_held': (0.6, 300, ['success'], 'a district held: the band\'s PAH (rimshot, tuba and euphoniums) and the tuba\'s oom answering', 1),
     'district_lost': (0.5, 300, None, 'a district lost: a trombone sliding down a fourth', 1),
     'majority': (0.8, None, ['heavy'], 'the majority: eight bars of "The Middling March", the full bandstand (B-flat, 2/4 at 112)', 1),
     'defeat': (0.7, None, ['soft'], 'defeat: one tuba playing the first four bars of "The Middling March" slowly', 1),
     # interface
     'ui_open': (0.4, None, None, 'a sheet opened: a capsule arriving by pneumatic tube into its brass receiver', 1),
-    'ui_close': (0.35, None, None, 'the sheet closed: the receiver lid snapped shut, the capsule sent off with a suck of air', 1),
+    'ui_close': (0.35, None, None, 'the sheet closed: the capsule sent off with a suck of air, the receiver lid falling shut', 1),
     # music
     'music_main': (0.3, None, None, 'the desk loop "Minutes of the Previous Meeting" (spec 6 music_desk): 90 s at 90 bpm in F, bassoon, pizzicato, brushes; sparse, no tune', 1),
     'music_campaign': (0.35, None, None, 'the campaign loop: "The Middling March" for the bandstand, 90 s at 112 bpm in B-flat', 1),
