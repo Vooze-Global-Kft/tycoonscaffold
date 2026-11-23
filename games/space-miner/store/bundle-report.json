@@ -1,10 +1,10 @@
 {
  "game": "space-miner",
- "date": "2026-11-23T19:47:23.671Z",
+ "date": "2026-11-23T19:57:44.757Z",
  "platform": "ios",
  "stage": "export",
  "result": "pass",
- "sourceHash": "0f95729969132e6b6ae4d917a49e732e07369c4f8a250ffa50610a8978c15850",
+ "sourceHash": "6b72f0a40bda034ab7854f81214d84391b249a624129629adc18552f4ba52d69",
  "sources": [
   "app.config.ts",
   "games/space-miner/assets/sfx/bonanza.wav",
@@ -230,5 +230,5 @@
  "violations": [],
  "modules": 1821,
  "assets": 56,
- "bytes": 4923787
+ "bytes": 4923856
 }

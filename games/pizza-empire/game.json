@@ -5,6 +5,7 @@
     "displayName": "Pizza Empire",
     "slug": "pizza-empire-idle",
     "owner": "roullerz",
+    "easProjectId": "13228625-51cc-4bd7-bf69-ecaf1bf679db",
     "iosBundleId": "com.voozeglobal.pizzaempire",
     "androidPackage": "com.voozeglobal.pizzaempire",
     "version": "1.0.0",

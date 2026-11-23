@@ -5,6 +5,7 @@
     "displayName": "Orbit Haulers",
     "slug": "orbit-haulers",
     "owner": "roullerz",
+    "easProjectId": "a4bd88b5-e98e-4e72-8726-9d5ad5e401ca",
     "iosBundleId": "com.voozeglobal.orbithaulers",
     "androidPackage": "com.voozeglobal.orbithaulers",
     "version": "1.0.0",
