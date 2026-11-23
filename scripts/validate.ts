@@ -129,13 +129,14 @@ function pacing(id: string, hours: number, extra: string[] = [], timeout = 120_0
  * only after every hard gate passes) a missed hard target is a warning, and a run that stops at a rule
  * not built yet (NotBuiltError) is a warning naming the rule.
  */
-type MergeSeed = { seed?: number; rows?: { name: string; kind: string; aim: string; value: unknown; ok: boolean }[]; summary?: { useful: number[]; season1: number | null }; notBuilt?: string; error?: string; crashed?: boolean; traces?: ({ kind: string; unbooked: { count: number } } | null)[] };
+type MergeSeed = { seed?: number; rows?: { name: string; kind: string; aim: string; value: unknown; ok: boolean }[]; summary?: { useful: number[]; season1: number | null; seasons?: { festival: number | null }[] }; notBuilt?: string; error?: string; crashed?: boolean; traces?: ({ kind: string; unbooked: { count: number } } | null)[] };
 function mergePacing(id: string, problems: string[], warnings: string[]): void {
   const placeholder = /PLACEHOLDER/.test(fs.readFileSync(path.join(games.gameDir(id), 'game.json'), 'utf8'));
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `validate-merge-${id}-`));
   const q = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`;
   const bot = path.join(__dirname, 'content', 'merge-bot.ts');
-  const cmd = PACING_SEEDS.map((seed) => [process.execPath, require.resolve('tsx/cli'), bot, '--game', id, '--seed', String(seed), '--bot', 'all', '--hours', '12', '--seasons', '10', '--json'].map(q).join(' ') + ` > ${q(path.join(dir, `${seed}.out`))} 2>&1 &`).join('\n');
+  // 16 h of play so that ten seasons close (8.1 item 6); at most 3 bot processes at a time on a shared 4-core machine.
+  const cmd = PACING_SEEDS.map((seed) => [process.execPath, require.resolve('tsx/cli'), bot, '--game', id, '--seed', String(seed), '--bot', 'all', '--hours', '16', '--seasons', '10', '--json'].map(q).join(' ') + ` > ${q(path.join(dir, `${seed}.out`))} 2>&1 &\nwhile [ "$(jobs -rp | wc -l)" -ge 3 ]; do wait -n; done`).join('\n');
   spawnSync('bash', ['-c', `${cmd}\nwait`], { cwd: games.ROOT, encoding: 'utf8', timeout: 600_000, env: { ...process.env, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=2000'].filter(Boolean).join(' ') } });
   const results: MergeSeed[] = [];
   for (const seed of PACING_SEEDS) {
@@ -161,7 +162,7 @@ function mergePacing(id: string, problems: string[], warnings: string[]): void {
   }
   fs.rmSync(dir, { recursive: true, force: true });
   if (results.length === PACING_SEEDS.length) {
-    for (const row of acrossSeeds(results.map((r) => ({ seed: r.seed ?? 0, useful: r.summary?.useful ?? [], season1: r.summary?.season1 ?? null })))) {
+    for (const row of acrossSeeds(results.map((r) => ({ seed: r.seed ?? 0, useful: r.summary?.useful ?? [], season1: r.summary?.season1 ?? null, seasons: r.summary?.seasons })))) {
       if (!row.ok) warnings.push(`merge pacing (section 8, aim, across the seeds): ${row.name}: ${row.value} (aim ${row.aim})`);
     }
   }

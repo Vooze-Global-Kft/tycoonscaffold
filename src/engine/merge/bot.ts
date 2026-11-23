@@ -1910,7 +1910,7 @@ function adCooldown(cfg: R.MergeConfig, kind: string): number {
 }
 
 /** The across-seed aims (M3, M25, M31): useful actions at the median seed ≥ 20 a minute; the slowest season 1 ≤ 1.6 × the fastest; at 2.0 s the median season 1 in 110 to 190 min. */
-export function acrossSeeds(perSeed: { seed: number; useful: number[]; season1: number | null }[], act = 2): GateRow[] {
+export function acrossSeeds(perSeed: { seed: number; useful: number[]; season1: number | null; seasons?: { festival: number | null }[] }[], act = 2): GateRow[] {
   const rows: GateRow[] = [];
   const mins = Array.from({ length: 9 }, (_, i) => median(perSeed.map((s) => s.useful[i + 1] ?? 0)));
   const lowest = Math.min(...mins);
@@ -1921,6 +1921,18 @@ export function acrossSeeds(perSeed: { seed: number; useful: number[]; season1: 
   if (Math.abs(act - 2) < 0.05) {
     const med = median(perSeed.map((s) => (s.season1 === null ? Infinity : s.season1 / 60)));
     rows.push({ name: '10 season 1 Festival at the median seed, 2.0 s an action (min; M31)', kind: 'aim', aim: '110 to 190', value: Number.isFinite(med) ? Number(med.toFixed(1)) : 'never', ok: within(med, 110, 190) });
+  }
+  // M40: each of seasons 3 to 10 at 45 to 90 % of season 1 on the median seed (the median over seeds of that season's ratio).
+  if (perSeed.length && perSeed.every((p) => p.seasons)) {
+    const ratios: number[] = [];
+    for (let i = 2; i < 10; i++) {
+      ratios.push(median(perSeed.map((p) => {
+        const f1 = p.seasons?.[0]?.festival ?? null;
+        const fi = p.seasons?.[i]?.festival ?? null;
+        return f1 && fi !== null ? fi / f1 : Infinity;
+      })));
+    }
+    rows.push({ name: '10 seasons 3-10 / season 1 at the median seed (M40)', kind: 'aim', aim: '0.45 to 0.9 each', value: ratios.map((x) => (Number.isFinite(x) ? x.toFixed(2) : '-')).join(' '), ok: ratios.every((x) => within(x, 0.45, 0.9)) });
   }
   return rows;
 }

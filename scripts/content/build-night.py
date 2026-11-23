@@ -64,7 +64,198 @@ SOURCES = {'ticket', 'gift', 'till', 'basket', 'away', 'undo', 'spend'}
 # ---------------------------------------------------------------- the tuned numbers
 # RANGES path -> value. Empty means the starting content as it is. `--tune --save` rewrites this block.
 # TUNED-BEGIN
-TUNED = {}
+TUNED = {
+    "costs.gearGrowth": 1.5,
+    "costs.minderBase": 250,
+    "costs.minderGrowth": 2.5,
+    "costs.stallOpen[0]": 120,
+    "costs.stallOpen[1]": 2200,
+    "costs.stallOpen[2]": 28000,
+    "costs.stallOpen[3]": 600000,
+    "costs.stallOpen[4]": 6550000,
+    "festival": [
+        [
+            {
+                "chain": 1,
+                "tier": 7
+            },
+            {
+                "chain": 2,
+                "tier": 7
+            },
+            {
+                "chain": 3,
+                "tier": 7
+            },
+            {
+                "chain": 4,
+                "tier": 7
+            },
+            {
+                "chain": 4,
+                "tier": 7
+            }
+        ],
+        [
+            {
+                "chain": 1,
+                "tier": 7
+            },
+            {
+                "chain": 2,
+                "tier": 7
+            },
+            {
+                "chain": 3,
+                "tier": 7
+            },
+            {
+                "chain": 4,
+                "tier": 7
+            },
+            {
+                "chain": 5,
+                "tier": 3
+            },
+            {
+                "chain": 4,
+                "tier": 7
+            }
+        ],
+        [
+            {
+                "chain": 1,
+                "tier": 8
+            },
+            {
+                "chain": 2,
+                "tier": 8
+            },
+            {
+                "chain": 3,
+                "tier": 7
+            },
+            {
+                "chain": 4,
+                "tier": 7
+            },
+            {
+                "chain": 5,
+                "tier": 5
+            },
+            {
+                "chain": 4,
+                "tier": 7
+            }
+        ],
+        [
+            {
+                "chain": 1,
+                "tier": 8
+            },
+            {
+                "chain": 2,
+                "tier": 8
+            },
+            {
+                "chain": 3,
+                "tier": 8
+            },
+            {
+                "chain": 4,
+                "tier": 8
+            },
+            {
+                "chain": 5,
+                "tier": 6
+            },
+            {
+                "chain": 4,
+                "tier": 7
+            }
+        ],
+        [
+            {
+                "chain": 1,
+                "tier": 8
+            },
+            {
+                "chain": 2,
+                "tier": 8
+            },
+            {
+                "chain": 3,
+                "tier": 8
+            },
+            {
+                "chain": 4,
+                "tier": 8
+            },
+            {
+                "chain": 5,
+                "tier": 7
+            },
+            {
+                "chain": 4,
+                "tier": 7
+            }
+        ],
+        [
+            {
+                "chain": 1,
+                "tier": 8
+            },
+            {
+                "chain": 2,
+                "tier": 8
+            },
+            {
+                "chain": 3,
+                "tier": 8
+            },
+            {
+                "chain": 4,
+                "tier": 8
+            },
+            {
+                "chain": 5,
+                "tier": 7
+            },
+            {
+                "chain": 4,
+                "tier": 8
+            }
+        ],
+        [
+            {
+                "chain": 1,
+                "tier": 8
+            },
+            {
+                "chain": 2,
+                "tier": 8
+            },
+            {
+                "chain": 3,
+                "tier": 8
+            },
+            {
+                "chain": 4,
+                "tier": 8
+            },
+            {
+                "chain": 5,
+                "tier": 8
+            },
+            {
+                "chain": 4,
+                "tier": 8
+            }
+        ]
+    ],
+    "seasons.familiarBase": 0.75,
+    "tickets.outputWindow": 150
+}
 # TUNED-END
 
 # ---------------------------------------------------------------- the knobs, in the order of 8.4 (with M27)
