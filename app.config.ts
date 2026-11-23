@@ -37,12 +37,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const splash = rel(games.gameFileOr(id, 'splash.png', 'assets/splash-icon.png'));
   const adaptiveFg = rel(games.gameFileOr(id, 'adaptive-icon.png', 'assets/android-icon-foreground.png'));
 
-  const iosFirebase = games.gameFileOr(id, game.firebase?.iosGoogleServicesFile);
-  const androidFirebase = games.gameFileOr(id, game.firebase?.androidGoogleServicesFile);
   // React Native Firebase's config plugin fails the build without these files,
   // so it is only enabled once both are present. Until then the app logs
-  // analytics to the console and uses local remote-config defaults.
-  const firebaseEnabled = Boolean(iosFirebase && androidFirebase);
+  // analytics to the console and uses local remote-config defaults, and
+  // react-native.config.js keeps Firebase's native code out of the build.
+  const { ios: iosFirebase, android: androidFirebase, enabled: firebaseEnabled } = games.firebaseFiles(id, game);
 
   const ads = game.monetization?.ads ?? {};
   // The game's own sentence (game.json app.trackingText, Decision 55), else the shared one with its name.
@@ -66,8 +65,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     [
       'expo-build-properties',
       {
-        // React Native Firebase needs static frameworks on iOS.
-        ios: firebaseEnabled ? { useFrameworks: 'static' } : {},
+        // React Native Firebase takes Firebase as Swift packages and refuses static linkage
+        // ("SPM + static linkage is not supported", https://rnfirebase.io/ios-spm).
+        ios: firebaseEnabled ? { useFrameworks: 'dynamic' } : {},
       },
     ],
   ];

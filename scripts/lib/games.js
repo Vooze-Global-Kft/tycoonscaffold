@@ -66,6 +66,16 @@ function gameFileOr(id, rel, fallbackRel) {
 }
 
 /**
+ * The game's two Firebase files, and whether both are there. React Native Firebase is in the native
+ * build only then: app.config.ts adds its plugins, react-native.config.js links its native code.
+ */
+function firebaseFiles(id, game = readGameJson(id)) {
+  const ios = gameFileOr(id, game.firebase?.iosGoogleServicesFile);
+  const android = gameFileOr(id, game.firebase?.androidGoogleServicesFile);
+  return { ios, android, enabled: Boolean(ios && android) };
+}
+
+/**
  * Sound files directly inside `dir`, as { key: absolute path }. A missing
  * folder is simply empty. Files are named like the catalogue keys in
  * src/services/fx/catalog.ts: lowercase letters, digits and "_", with a
@@ -262,6 +272,7 @@ module.exports = {
   gameDir,
   readGameJson,
   gameFileOr,
+  firebaseFiles,
   mergeSoundDirs,
   listSounds,
   listSoundPacks,
