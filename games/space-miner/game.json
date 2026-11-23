@@ -4,8 +4,8 @@
   "app": {
     "displayName": "Orbit Haulers",
     "slug": "orbit-haulers",
-    "iosBundleId": "com.example.orbithaulers",
-    "androidPackage": "com.example.orbithaulers",
+    "iosBundleId": "com.voozeglobal.orbithaulers",
+    "androidPackage": "com.voozeglobal.orbithaulers",
     "version": "1.0.0",
     "buildNumber": 1,
     "trackingText": "Orbit Haulers uses this to match the optional ads you can watch for a flare charge or a Shift Log boost to your interests. Say no and the ads still play, only less matched."

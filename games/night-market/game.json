@@ -4,8 +4,8 @@
   "app": {
     "displayName": "Lantern Row",
     "slug": "lantern-row",
-    "iosBundleId": "com.example.lanternrow",
-    "androidPackage": "com.example.lanternrow",
+    "iosBundleId": "com.voozeglobal.lanternrow",
+    "androidPackage": "com.voozeglobal.lanternrow",
     "version": "1.0.0",
     "buildNumber": 1,
     "trackingText": "Lantern Row asks this to match the optional ads you can choose to watch."

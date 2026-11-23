@@ -253,7 +253,7 @@ does these; sources in `docs/design/research/policy.md`):
 5. **Age rating**: answer both questionnaires (Advertising: yes; loot boxes: no unless chests are sold) and set Apple's rating to 13+ by hand; Play target audience 13+. Never the Kids Category or Designed for Families: the game has third-party ads and analytics.
 6. **Listing**: a privacy policy URL (`store.privacyPolicyUrl`) that names AdMob, Firebase and RevenueCat; screenshots showing adult characters; no "kids" wording.
 7. **Data safety / App Privacy**: from RATING-NOTES.md; check each SDK's current disclosure.
-8. **App ids**: a real reverse domain in `app.iosBundleId` / `app.androidPackage` (Orbit Haulers still has `com.example.spaceminer`; `validate --release` fails on it).
+8. **App ids**: a real reverse domain in `app.iosBundleId` / `app.androidPackage` (`validate --release` fails on a `com.example` placeholder).
 9. **Two apps, one account** (`docs/design/research/spam.md`): `npm run check:bundle -- --export` for both games, the side-by-side check filled into `games/<id>/store/fingerprint.json` `human`, then `npm run validate:release` (every one of the 19 fingerprint dimensions known; 8 of 8 must). Paste `store/REVIEW-NOTES.md` into App Review's notes. The first submission of a game at least 14 days after the other's latest one.
 10. Build and submit: `npx eas-cli@latest build --profile <id>-production`, run `npm run scan:binary -- <the .ipa or .aab> --game <id>` on it, then `submit --profile <id>-production`, and add the submission (with the scan report) to `store/releases.json`; push the iOS listing with `eas metadata:push` (the Play listing in `store/play/` uses the fastlane `supply` layout).
 

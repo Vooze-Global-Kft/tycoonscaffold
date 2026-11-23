@@ -4,8 +4,8 @@
   "app": {
     "displayName": "Pizza Empire",
     "slug": "pizza-empire-idle",
-    "iosBundleId": "com.example.pizzaempire",
-    "androidPackage": "com.example.pizzaempire",
+    "iosBundleId": "com.voozeglobal.pizzaempire",
+    "androidPackage": "com.voozeglobal.pizzaempire",
     "version": "1.0.0",
     "buildNumber": 1
   },
