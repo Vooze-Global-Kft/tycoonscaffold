@@ -403,7 +403,7 @@ export function firstVowel(word: string): string {
   return g[0] === 'y' ? 'i' : g[0];
 }
 
-/** Levenshtein distance, stopping early above 1. */
+/** Edit distance at most 1 (Damerau: a swap of two neighbouring letters counts as one edit). */
 export function within1(a: string, b: string): boolean {
   if (a === b) return true;
   const la = a.length;
@@ -411,7 +411,8 @@ export function within1(a: string, b: string): boolean {
   if (Math.abs(la - lb) > 1) return false;
   let i = 0;
   while (i < la && i < lb && a[i] === b[i]) i++;
-  if (la === lb) return a.slice(i + 1) === b.slice(i + 1);
+  // One substitution, or two neighbouring letters swapped ("Bliar", "Blair").
+  if (la === lb) return a.slice(i + 1) === b.slice(i + 1) || (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2));
   if (la > lb) return a.slice(i + 1) === b.slice(i);
   return a.slice(i) === b.slice(i + 1);
 }
@@ -553,7 +554,7 @@ function lintText(ctx: Ctx, it: Item) {
   };
   const hint = (match: string) => {
     const h = ctx.lists.hints.get(lower(match)) ?? ctx.lists.hints.get(lower(match).replace(/s$/, ''));
-    return h ? `; write ${h} instead (hints.txt)` : '';
+    return h ? `; instead: ${h} (hints.txt)` : '';
   };
 
   // Tier 1.
@@ -574,7 +575,7 @@ function lintText(ctx: Ctx, it: Item) {
   const isNameField = it.kind === 'name';
   const SMALL = new Set(['a', 'an', 'the', 'of', 'and', 'to', 'in', 'on', 'for', 'at', 'by', 'or', 'with']);
   const words = n.toks.filter((t) => !SMALL.has(t.low) && /^\p{L}/u.test(t.raw));
-  const titleCase = words.length >= 2 && words.every((t) => t.cap || t.caps);
+  const titleCase = words.length >= 1 && n.toks.length >= 2 && words.every((t) => t.cap || t.caps);
   const has = (w: string) => ctx.lists.common.has(w) || ctx.lists.lexicon.has(w);
   // An everyday word with an ending ("REFUSES", "PAINTED", "BENCHES", "HURRIED").
   const known = (low: string) =>
@@ -615,7 +616,7 @@ function lintText(ctx: Ctx, it: Item) {
       }
       // A surname that is also an everyday word: capitalised mid-sentence, in a name field, or after a title.
       const ev = nl.singleSet.get(t.low) ?? nl.singleSet.get(t.low.replace(/s$/, ''));
-      const mid = t.cap && !t.caps && (!t.initial || isNameField) && !titleCase;
+      const mid = t.cap && !t.caps && (isNameField || (!t.initial && !titleCase));
       if (ev?.everyday && (mid || afterTitle)) return report(ev.entry, ev.group, '');
       // After a title: the surname of a full name ("Mrs May", "MR BROWN").
       const lw = afterTitle ? nl.lastWords.get(t.low) : undefined;
@@ -625,7 +626,8 @@ function lintText(ctx: Ctx, it: Item) {
       // word, an all-caps run, a Title Case line) nor on a word of an office name (common-words.txt).
       if (!t.cap && !t.caps) return;
       if (t.low.length < 4 || ctx.lists.common.has(t.low)) return;
-      const capsSayNothing = t.caps || (t.initial && !isNameField) || titleCase;
+      // A name field is written in Title Case: its capitals say nothing either ("Sign & Shred" is not "Shrek").
+      const capsSayNothing = t.caps || t.initial || titleCase || isNameField;
       if (capsSayNothing && !afterTitle && known(t.low)) return;
       const code = phonetic(t.low);
       const vowel = firstVowel(t.low);
@@ -636,7 +638,7 @@ function lintText(ctx: Ctx, it: Item) {
         if (ctx.cleared.get(t.low)?.has(e.low)) continue;
         add(ctx, {
           ...base, rule: 'tier2', severity: 'error', match: t.raw,
-          reason: `"${t.raw}" ${near} "${e.entry}", ${what}${e.group ? ` (${e.group})` : ''}: if it is meant to recall that name, invent another; if it is a cast name, the sensitivity editor reads it and clears it in names.json (check.cleared)`,
+          reason: `"${t.raw}" ${near} "${e.entry}", ${what}${e.group ? ` (${e.group})` : ''}: if it is meant to recall that name, invent another; if it is an everyday word, ask the content desk to add it to lexicon.txt; if it is a cast name, the sensitivity editor reads it and clears it in names.json (check.cleared)`,
         });
         flagged.add(i);
       }
@@ -651,6 +653,8 @@ function lintText(ctx: Ctx, it: Item) {
       if (t.initial && !isNameField) return;
       if (inside(allowed, t.nStart, t.nEnd)) return;
       if (ctx.nameTokens.has(t.low) || ctx.lists.common.has(t.low)) return;
+      // In a name ("The Basket", "Sign & Shred") an everyday word is no unknown proper noun.
+      if (isNameField && known(t.low)) return;
       add(ctx, {
         ...base, rule: 'rule2', severity: 'error', match: t.raw,
         reason: `"${t.raw}" is capitalised but is no name of names.json and no common word. If it is a real person, place, party, product or title, it does not belong in the game: invent one. If it is an everyday word, write it in lower case. If it is a new invented name, the sensitivity editor checks it and adds it to names.json first`,

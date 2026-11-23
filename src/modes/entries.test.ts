@@ -68,6 +68,7 @@ vi.mock('./merge/fx', () => ({ listenMergeEvents: vi.fn(), playMergeEvents: vi.f
 vi.mock('../ui/decree/DecreeShell', () => ({ DecreeShell: s.named('DecreeShell') }));
 vi.mock('../ui/decree/overlays/Loading', () => ({ DecreeLoading: s.named('DecreeLoading') }));
 vi.mock('./decree/fx', () => ({ listenDecreeEvents: vi.fn(), playDecreeEvents: vi.fn() }));
+vi.mock('../ui/decree/art/devViews', () => ({ artDevViews: { 'decree-art': s.named('DecreeArtGallery') } }));
 
 const nameOf = (c: unknown) => (c as { displayName?: string } | undefined)?.displayName;
 const read = (file: string) => fs.readFileSync(path.join(__dirname, file), 'utf8');
@@ -277,7 +278,8 @@ describe('the decree entry (High Office)', () => {
     expect(read('decree/presets.ts')).not.toMatch(/from '[^']*(bot|fixtures)[^']*'/);
     expect((await import('./decree/devViews')).devViews).toBeUndefined();
     const web = (await import('./decree/devViews.web')).devViews!;
-    expect(Object.fromEntries(Object.entries(web).map(([k, v]) => [k, nameOf(v)]))).toEqual({ loading: 'DecreeLoading' });
+    // The loading screen, and spec 9.1's `decree-art` (the art package's contact sheet).
+    expect(Object.fromEntries(Object.entries(web).map(([k, v]) => [k, nameOf(v)]))).toEqual({ loading: 'DecreeLoading', 'decree-art': 'DecreeArtGallery' });
     expect(read('decree/index.tsx')).toMatch(/import \{ devViews \} from '\.\/devViews';/);
   });
 

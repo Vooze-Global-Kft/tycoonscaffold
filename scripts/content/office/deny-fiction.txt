@@ -287,7 +287,7 @@ Artful Dodger
 Fagin
 Mr Bumble
 
-# --- added after the lint attack and the sensitivity editor's renames (content-names.md) ---
+# --- names the sensitivity editor retired, and more children's fiction ---
 Marchpane
 Ermintrude
 Grouty

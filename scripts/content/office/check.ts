@@ -19,7 +19,7 @@
  * Near-duplicates: two paper texts of at least 25 characters whose sets of character trigrams (of
  * the lower-cased text, letters and digits only, spaces kept) have a Jaccard similarity of 0.6 or
  * more (a near-copy), or whose sets of stemmed content words (stop words and the game's constant
- * words removed) have a Jaccard similarity of 0.45 or more with at least 3 words shared (the same
+ * words removed) have a Jaccard similarity of 0.34 or more with at least 3 words shared (the same
  * premise in other words). Identical texts after normalisation are errors; the rest are warnings
  * for a reader, one line per cluster.
  *
@@ -252,8 +252,8 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 }
 /** Character-trigram Jaccard at or above this: a near-copy. */
 export const NEAR_DUPLICATE = 0.6;
-/** Jaccard of stemmed content words at or above this (and at least 3 shared): the same premise in other words. */
-export const SAME_PREMISE = 0.45;
+/** Jaccard of stemmed content words at or above this (and at least 3 shared): the same premise in other words. Tuned on the 40 written texts of plan.json and 7.5: it joins only the 7:02 bus paraphrase. */
+export const SAME_PREMISE = 0.34;
 
 /**
  * Identical texts (after normalisation) are errors. Near-copies (trigrams) and the same premise in

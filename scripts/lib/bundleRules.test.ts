@@ -376,9 +376,9 @@ describe('the decree mode (High Office, office-design.md 9.2, 10.2)', async () =
   const of = (over: Partial<BundleContents>) => bundleViolations(clean({ packages: [], assets: [], ...over }), MM).map((v) => `${v.rule} ${v.file}`);
 
   it('lists its rules, schema, fixtures and content as decree folders, its catalogue as Node only, its bot, fixtures and dev tools as web only, and its theme words', () => {
-    expect(modes.MODE_FOLDERS.decree).toEqual(['src/modes/decree', 'src/ui/decree', 'src/engine/decree', 'src/engine/decree.ts', 'src/engine/decreeMode.ts', 'src/engine/fixtures/decree.ts', 'src/config/schema.decree.ts', 'src/config/decree.content.ts']);
+    expect(modes.MODE_FOLDERS.decree).toEqual(['src/modes/decree', 'src/ui/decree', 'src/engine/decree', 'src/engine/decree.ts', 'src/engine/decreeMode.ts', 'src/engine/fixtures/decree.ts', 'src/engine/fixtures/decree.numbers.json', 'src/config/schema.decree.ts', 'src/config/decree.content.ts']);
     expect(modes.NODE_ONLY).toContain('src/services/fx/catalog.decree.ts');
-    for (const f of ['src/engine/decree/bot.ts', 'src/engine/fixtures/decree.ts', 'src/modes/decree/presets.web.ts', 'src/modes/decree/devViews.web.ts']) expect(modes.WEB_ONLY).toContain(f);
+    for (const f of ['src/engine/decree/bot.ts', 'src/engine/fixtures/decree.ts', 'src/engine/fixtures/decree.numbers.json', 'src/modes/decree/presets.web.ts', 'src/modes/decree/devViews.web.ts']) expect(modes.WEB_ONLY).toContain(f);
     expect(modes.WEB_ONLY_STRINGS.map((x) => x.text)).toContain('decreeFixtures');
     expect(modes.THEME_WORDS.decree).toEqual(['mayor', 'governor', 'ministry', 'ward', 'gossip', 'scandal', 'boycott', 'dibs']);
     // The mode id itself is a shared literal (src/config/schema.ts): never a theme word.

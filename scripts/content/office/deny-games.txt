@@ -24,6 +24,6 @@ Football Manager, Tetris, Pac-Man, Super Mario, Mario, Zelda, Sonic, Angry Birds
 # --- this developer's other games (bundle separation) ---
 Pizza Empire, Orbit Haulers, Lantern Row, Night Market, Space Miner
 
-# --- added after the lint attack (content-lint-attack.md I8) ---
+# --- other well-known games ---
 stardew, stardew valley, =Sims, the sims, simcity, sim city, wordle, among us, roblox, minecraft, fortnite
 animal crossing, candy crush, clash of clans, papers please

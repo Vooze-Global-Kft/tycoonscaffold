@@ -352,7 +352,7 @@ every vote counts
 your country needs you
 loose lips sink ships
 
-# --- templates: famous slogan shapes, any word in the gap (content-lint-attack.md B3) ---
+# --- slogan shapes, any word in the gap ---
 make * {great,grate,greater} again
 make {great,grate} again
 drain the *
@@ -388,14 +388,16 @@ big society
 broken britain
 send her back
 build back *
-# --- added after the lint attack: well-known lines missing before ---
+# --- more slogans, chants and scandals ---
 drill baby drill
 all lives matter
 blue lives matter
 black lives matter
 hands up don't shoot
 i can't breathe
-we are the 99 percent, we are the ninety-nine percent, we are the 99 per cent
+we are the 99 percent
+we are the ninety-nine percent
+we are the 99 per cent
 vote leave
 leave means leave
 stronger in
@@ -408,11 +410,41 @@ i'm a uniter not a divider
 peace land and bread
 the great replacement
 the south will rise again
-watergate, partygate, cash for questions, duck house, expenses scandal, cash for honours, sleaze
-nineteen eighty four, nineteen eighty-four, big brother is watching
+watergate
+partygate
+cash for questions
+duck house
+expenses scandal
+cash for honours
+sleaze
+nineteen eighty four
+nineteen eighty-four
+big brother is watching
 committee on committees
 private secretary
 proudly south african
 proudly made in
-nine eleven, seven seven, jan 6, january sixth, january the sixth
-dot com, dot co dot uk
+nine eleven
+seven seven
+jan 6
+january sixth
+january the sixth
+dot com
+dot co dot uk
+# --- pop-culture lines (7.4: no pop culture) and political lines ---
+all animals are equal
+some animals are more equal
+four legs good
+jobs not cuts
+no taxation without representation
+taxation without
+the special relationship
+moat cleaning
+on expenses
+the people's flag
+winter is coming
+hasta la vista
+my precious
+a new hope
+may the force be with you
+i'll be back

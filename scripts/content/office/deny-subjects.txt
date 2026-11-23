@@ -172,40 +172,40 @@ baron, barons, baroness, earl, earls, viscount, peerage, emperor, emperors, empr
 empire, empires, imperial, tsar, tsars, czar, sultan, sultans, pharaoh, pharaohs
 reign, reigns, reigned, regal, majesty, highness, your majesty, your highness
 
-# --- added after the lint attack (content-lint-attack.md B4; 7.3's bans) ---
-# war and weapons
+# --- war and weapons ---
 warzone, warzones, war zone, war zones, postwar, post-war, prewar, pre-war, interwar, warmonger, warmongers
 warmongering, warhead, warheads, warlord, warlords, gunpowder, shooter, shooters, shootout, gunfire, ammo
-# police and prison
+# --- police and prison ---
 constabulary, constable, constables, bobby, bobbies, coppers, the old bill, imprison, imprisons, imprisoned
 imprisoning, imprisonment, jailed, gaoled, behind bars, throw away the key, locked up, lock up, lock it up
-# alcohol and drugs
+# --- alcohol and drugs ---
 pint, pints, sozzled, plastered, tipsy, tiddly, merry on, on something, high as a kite, stoned, hungover
-# illness
+# --- illness ---
 off sick, sick, sickness, jab, jabs, measles, pox, smallpox, chickenpox, hospitalised, hospitalized
 hospitalisation, quarantine, quarantined, plague, plagues, outbreak, outbreaks, contagious, infectious
-# mental health and disability words used as jokes
+# --- mental health and disability words used as jokes ---
 bonkers, mad as a hatter, nutter, nutters, loony, loonies, lunatic, lunatics, psycho, insane
-# 7.3: no children, school, soldier, police, clergy or uniform
+# --- 7.3: no children, school, soldier, police, clergy or uniform ---
 school, schools, schoolchild, schoolchildren, schoolboy, schoolboys, schoolgirl, schoolgirls, schoolteacher
 child, children, kid, kids, pupil, pupils, toddler, toddlers, teenager, teenagers, uniform, uniforms
 uniformed, soldier, soldiers, vicar, vicars, priest, priests, nun, nuns, bishop, bishops, clergy
-# monarchy
+# --- monarchy ---
 sceptre, sceptres, scepter, orb, orbs, hrh, her maj, his maj, his excellency, her excellency, your majesty
 your royal highness, coronation, throne, thrones, monarch, monarchs, monarchy, madam, madame
-# corruption as instruction
+# --- corruption as instruction ---
 brown envelope, brown envelopes, sweetener, sweeteners, grease the palm, grease his palm, grease her palm
 backhander, backhanders, kickback, kickbacks, slush fund, bung, bungs
-# strongman words
+# --- strongman words ---
 {mayor,governor,president} for ever, {mayor,governor,president} forever, forever mayor, forever president
 {fifth,sixth,seventh,eighth,another,a further} term, for ever and ever, until the end of time
-# tax as policy (the game's taxes are the ministries' income, never a subject)
+# --- tax as policy (the game's taxes are the ministries' income, never a subject) ---
 {cut,cuts,cutting,raise,raises,raising,lower,lowers,lowering,slash,slashes,slashing,hike,hikes,scrap,scraps,abolish} {tax,taxes}
 {cut,cuts,cutting,raise,raises,raising,lower,lowers,lowering,slash,slashes,slashing,hike,hikes,scrap,abolish} * {tax,taxes}
 {tax,taxes} on, a tax, new tax, new taxes, taxpayer, taxpayers, taxpayer's
-# election integrity (7.4: no joke about how votes are cast or counted)
+# --- election integrity (7.4: no joke about how votes are cast or counted) ---
 vot* three times, vot* more than once, vot* again, vot* for itself, vot* twice
 count* the votes again, count* * votes again, count* every vote, {missing,lost,extra,spare,found,stolen,miscounted} votes
 votes {went,go,gone} missing, votes were {lost,found}, polling booth*, polling station*, polling day
 voting {list,lists,machine,machines,booth,booths,slip,slips,paper,papers}, electoral roll*, electoral register
 ballot box*, voter roll*, eligible to vote, old enough to vote
+{counted,count,counting,counts} twice, votes were counted, count* * votes twice, vot* * twice

@@ -22,7 +22,7 @@ mental -> "in his head"
 miracle -> "wonder"
 angel -> "sponge" (cake)
 victoria -> "sponge cake"
-swiss, danish, welsh, turkish, scotch, french, brussels, eccles -> name the food without the place ("sprouts", "chard", "a pastry")
+swiss, danish, welsh, turkish, scotch, french, brussels, eccles -> the food without the place ("sprouts", "chard", "a pastry", "cheese on toast")
 demonstration, demonstrations -> "display", "showing"
 recount, recounts -> "tell", "go over" (votes are never counted in a joke, 7.4)
 housing -> "case" (a clock's)

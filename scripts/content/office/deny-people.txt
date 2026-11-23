@@ -771,9 +771,8 @@ Sadam
 Zedong
 Mao Zedong
 
-# --- added after the lint attack (content-lint-attack.md B1, I2; content-names' requests) ---
-# Surnames that are everyday words ("~"): only capitalised mid-sentence, in a name field, or after a
-# title ("Mr Brown", "MRS MAY"); never near-matched.
+# --- surnames that are everyday words ---
+# ("~": only capitalised mid-sentence, in a name field, or after a title: "Mr Brown", "MRS MAY")
 ~Brown
 ~Major
 ~Heath
@@ -802,7 +801,7 @@ Mao Zedong
 ~Swift
 ~English
 ~Martin
-# United States
+# --- United States: nominees, cabinet members and figures ---
 Walz
 Kaine
 Edwards
@@ -832,7 +831,7 @@ Avenatti
 Stormy Daniels
 Linda Tripp
 Goss
-# United Kingdom
+# --- United Kingdom: ministers and figures ---
 Phillipson
 Dorries
 McDonnell
@@ -840,7 +839,7 @@ Vince Cable
 Lee Anderson
 Eric Pickles
 Henry Plumb
-# First names that point at one person
+# --- first names that point at one person ---
 Diana
 Jacinda
 Dubya
