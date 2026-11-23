@@ -17,24 +17,25 @@ Read on 2026-11-23 with generic web searches, public App Store pages (US) and Go
 
 - **A. Swipe cards.** Praise: easy to pick up, humour, "depth" behind a simple input ("Amazing card game", Reigns US, 05/05/2025 [1]). Complaints: "it is to random" and a request to see whether each choice is good or bad (Reigns US, 10/17/2018 [1]); cards "very repetitive toward the end" (Steam forum [17]); repetitive "after about half an hour, even with new flavor text on events that more or less do the same thing" (Harvard Crimson review [17]); Lapse: "difficulty spikes can lead to rapid and frustrating game-over states" (aggregator [7]).
 - **B. Petitions.** Yes, Your Grace is criticised for "withholding information that can very easily be given" (Pocket Gamer [10]); a GOG user had "little grasp as to the consequences of my decisions" [10]. Sort the Court players call it easy to pick up; one found the yes/no format tiring [9].
-- **C. Paperwork.** Pocket Gamer on Papers, Please: "looks, feels, and plays like monotonous work - and it's fantastic" [11]; on phones it "does feel slightly cramped" (148apps [11]). Death and Taxes: repetitive, most of it seen "in about three runs" (Metacritic users, as summarised [12]).
-- **D. President simulators.** The loudest complaints in this whole study are paywalls: "You can't even get through 10 minutes of gameplay without a paywall"; "No, I'm not going to pay five dollars a week" (House of Power, 12/24/2025 [4]); "by the time I'm elected I run out of money and can't play anymore" (09/06/2025 [4]); a funds wall that "requires spending money to progress" (President: Simulator Game, 2025/2026 [5]). The developer answered "We know the campaign and money balance feel too strict right now" [4]. Suzerain: "paragraph after paragraph", a request to skip texts already read because "reading the same texts over and over is becoming annoying" (store review [14]).
-- **E. Political idle.** The President (Coco Play): "too many ads", ads "at least one minute long", levels "START TO REPEAT after about day 50", sexual content complaints, rated 13+ with "Sexual Content or Nudity" [3]. Pocket Politics: ads that fail to load make the game feel "unplayable", notifications "every ten seconds" [6]; Pocket Politics 2: missions that cannot be completed, and a reviewer who says the game "shouldn't make players pick a side" (Liberal or Conservative) [15].
-- **Preachy or partisan.** The one explicit complaint found is the Pocket Politics 2 reviewer above [15]. **Inference:** the genre's own store pages show where the partisan risk sits: real countries and leaders in titles ("Prime Minister UK Politics Sim", "Trump Tycoon", "270 ... US Election" [18][19]), a real party axis [15], and dark-power fantasies ("silence critics, rig the ballot" [4]; "ruthless dictator" [5]) that push age ratings to 13+ with weapons and horror content [4][5].
+- **C. Paperwork.** Papers, Please "looks, feels, and plays like monotonous work - and it's fantastic" (Pocket Gamer, 16 Dec 2014 [11]). Death and Taxes: repetitive, most of it seen "in about three runs" (Metacritic users, as summarised [12]).
+- **D. President simulators.** The loudest complaints in this whole study are paywalls: "You can't even get through 10 minutes of gameplay without a paywall"; "No, I'm not going to pay five dollars a week to play this game"; "I run out of money and can't play anymore" (House of Power [4]); "There is a point where story progression is a hard stop unless you spend money to get coins or diamonds" (President: Simulator Game, 11/11/2025 [5]). The developer answered "We know the campaign and money balance feel too strict right now" [4]. Suzerain: "paragraph after paragraph", a request to skip texts already read because "reading the same texts over and over is becoming annoying" (store review [14]).
+- **E. Political idle.** The President (Coco Play): a review titled "It's a good game but too many…" about commercials, "the ads are at least one minute long and pop up at least five times a level", "THE LEVELS START TO REPEAT after about day 50", nudity complaints; rated 13+ with "Sexual Content or Nudity" [3]. Pocket Politics (rated 4+): "the ads don't play 50% of the time", "ads aren't available" messages (both 11/2018), "stop sending me notifs every ten seconds" [6]. Pocket Politics 2 (rated 13+): "my progress has been completely halted by the "buy x businesses" missions" (07/01/2020) [15].
+- **Preachy or partisan.** The one explicit complaint found is a Pocket Politics 2 review: "you also shouldn't pick a Side it looks like you guys want the democrats to win" (07/10/2020 [15]); the game has the player pick Liberal or Conservative (search summary of its listing [15]), and the reviewer read a real party into it. **Inference:** the partisan risk sits in real countries and leaders in titles ("Prime Minister UK Politics Sim", "Trump Tycoon", "270 ... US Election" [18][19]), a real party axis [15], and dark-power fantasies ("silence critics, rig the ballot" [4]; "ruthless dictator" [5]) that push age ratings to 13+ with weapons and horror content [4][5].
 
 ## 2. The games to stay away from
 
 Genre mechanics (yes/no on a card, meters, a desk, offline income) are free to use. Each line below is that game's own signature: a design that matches any one line must change.
 
-- **Reigns series (Nerial / Devolver)** [1][2][20][21]. Name words: "Reigns", "Her Majesty", "Swipe and be the King". Rules: exactly **four meters** (church, people, army, treasury) where **both empty and full kill** the ruler; tilting a card shows the two answers on its edges (memory); small dots above the meters show which will move but not which way (memory; "a clue ... but it's not complete information" [21]); a years-in-power counter and a dynasty of successive rulers after each death; a hidden long-term goal across generations; a five-item inventory (Her Majesty [22]). Look: flat, faceless geometric portraits on a single card over a coloured background (art by Mieko Murakami [20]), chiptune score by Disasterpeace [20]. Characters: the Devil, the Spirit of the Fallen, the Senator, a skeleton [20]; a jester, a witch (memory). Medieval court.
+- **Reigns series (Nerial / Devolver)** [1][2][20][21]. Name words: "Reigns", "Her Majesty", "Game of Thrones", "Beyond", "Three Kingdoms", "The Witcher" (all Reigns titles [20]), "Swipe and be the King" (its App Store subtitle [1]). Rules: exactly **four meters** (church, people, army, treasury [27]); if one becomes "completely filled or empty" the reign ends [20]; tilting a card shows the two answers on its edges (memory); small dots above the meters show which will move but not which way (memory; "a clue ... but it's not complete information" [21]); a years-in-power counter (memory) and a dynasty of successive rulers after each death; a hidden long-term goal across generations; a five-item inventory (Her Majesty [22]). Look: flat, faceless geometric portraits on a single card over a coloured background (art by Mieko Murakami [20]), chiptune score by Disasterpeace [20]. Characters: the Devil, the Spirit of the Fallen, the Senator, a skeleton, a witch [20]; jester cards [27]. Medieval court.
 - **Lapse (Stefano Cornago)** [7]: swipe cards with four statistics in a post-apocalyptic future nation; a time-loop plot.
 - **Sort the Court! (Graeme Borland)** [9]: three buttons (yes, no, and a third), gold / happiness / population counters, a tiny pixel king on a throne receiving visitors one by one.
-- **Yes, Your Grace (Noodlecake publisher; developer Brave At Night from memory)** [10]: a king's throne room queue of petitioners, a family and a winter siege, a weekly budget of supplies (family and siege from memory).
+- **Yes, Your Grace (Noodlecake publisher; developer Brave At Night from memory)** [10]: Eryk, king of Davern, his three daughters, petitioners in a throne room; the barbarian Talys of Radovia comes to claim an old promise, and an army must be raised from "very finite resources and personnel" (Pocket Gamer, 5 Feb 2024 [10]).
 - **Papers, Please (Lucas Pope)** [11][23]: the invented country Arstotzka and its neighbours (Kolechia, Obristan); a border booth; passports checked against a daily rule list; fingerprints and scans; citations by fax; the **end-of-day family budget** (rent, food, heat), debt ends the game; drab pixel art; "Glory to Arstotzka" (memory); red and green entry stamps (memory).
 - **Death and Taxes (Placeholder Gameworks)** [12]: you are a reaper at a desk deciding from portrait files who lives or dies; a boss named Fate (memory).
 - **Democracy (Positech)** [24]: a screen-wide web of policy icons joined by influence lines, sliders for taxes and spending, coloured voter-group happiness readouts (layout from memory).
 - **Suzerain (Torpor Games)** [14]: the invented country Sordland and its president (memory: Anton Rayne); long branching prose.
-- **Pocket Politics 1 and 2 (Ultrabit / Kongregate)** [6][15]: income buildings called **lobbies**, "President of the World", "President For Life", a Liberal-or-Conservative choice; packs named "Offshore Account", "The Steal Deal", "Fake Media's Pack".
+- **Pocket Politics 1 and 2 (Ultrabit / Kongregate)** [6][15]: income buildings called **lobbies** ("Automate your lobbies, raise idle cash, and become President of the World!" [6]; "watch your lobbies earn billions", "become President For Life!" [15]), a Liberal-or-Conservative choice (Pocket Politics 2 [15]); packs named "Offshore Account", "The Steal Deal" (Pocket Politics [6]) and "Fake Media's Pack" (Pocket Politics 2 [15]).
+- **Tropico (Feral Interactive iOS port; PC series by others)** [33]: "All hail El Presidente!"; a "humorous city-builder with a political twist" on "an underdeveloped Caribbean island"; "Recount elections, calm unruly elements, manage public opinion"; $12.99, 13+. The closest satirical neighbour: no "El Presidente" or presidente-style title for the player, no island or Caribbean setting, no comic dictator hero.
 - **The President (Coco Play)** [3]: "idle mafia game", "become the world's president", dress-up clothing layers.
 - **Hidden Lake Games' President: Simulator Game, House of Power, Prime Minister: Political Sim** [4][5][19]: Oval Office and White House, "Mr President", republic-or-dictator paths, "the election clock never stops", two-round runoffs.
 - **MA / President Simulator / The President: 20th Century (Oxiwyle)** [18]: the "MA n" numbering, real world map and real nations.
@@ -42,7 +43,7 @@ Genre mechanics (yes/no on a card, meters, a desk, offline income) are free to u
 - **The Political Machine (Stardock), 270** [16][18]: a real US electoral map, real candidates (memory), states and issues.
 - **Paperwork Inc (Chensu Games)** [13]: a printer issuing papers to desks, approve or deny, a bribe-risk slider.
 
-**Check for designers (Inference):** our desk must not show four meters that kill at both ends; must not be a single portrait card swiped left or right with answers on its edges; must not end the day on a family budget; must not call its buildings lobbies or its ruler "the King"; must not use a dynasty/years counter as the run score; no faceless geometric portraits, no pixel border-booth look. Our own shape (see `office-design.md`): approve or refuse via two buttons on a paper, several named voter groups, approval as a revenue multiplier, an election as the reset.
+**Check for designers (Inference):** our desk must not show four meters that kill at both ends; must not be a single portrait card swiped left or right with answers on its edges; must not end the day on a family budget; must not call its buildings lobbies or its ruler "the King" or "El Presidente"; must not use a dynasty/years counter as the run score; no faceless geometric portraits, no pixel border-booth look. Our own shape (see `office-design.md`): approve or refuse via two buttons on a paper, several named voter groups, approval as a revenue multiplier, an election as the reset.
 
 ## 3. Written comedy at the length of a phone line
 
@@ -51,28 +52,28 @@ What is known:
 - Reigns: Her Majesty's storylets are "each only a sentence or two long" [21]; its writer found a good card hard because of the limited space [22], and said "It's a whole bunch of modular moments that have to look like they're designed to go together" [22]. The reviewer "laughed out loud five or six times during my first 40 minutes" [21]: a rate, not every card.
 - Reigns' designer: hints "that the apparent randomness of the cards was hiding something" make "every single card ... potentially a meaningful choice" [25]. The Devil storyline exists to explain why characters repeat (press summary of his GDC 2017 talk; the talk itself not read [26]).
 - Reigns removes "all the cards that have been played too recently" and weights cards by the kingdom's state, so a war brings war cards and suppresses jester cards [27].
-- Reading speed: adults read English non-fiction silently at 238 words a minute, most between 175 and 300 [28]. A 30-word paper is therefore 6 to 10 seconds of reading before the decision (**Inference**), which fits the brief's "several seconds per paper".
+- Reading speed: adults read English non-fiction silently at 238 words a minute, most between 175 and 300 (fiction 260); "Reading rates are lower for children, old adults, and readers with English as second language" [28]. A 30-word paper is therefore 6 to 10 seconds for an adult, longer for a twelve-year-old (**Inference**); set the slower reading hand from the low end.
 
 **Inference, from the above and the complaints in section 1:**
 
 - **Forms that last a hundred papers:** a fixed frame with a variable absurd payload (the same committee always proposing a study of itself, each time a bigger study); a petitioner whose request escalates each time they return; dry official language describing something silly ("Proposal: rename Tuesday. Cost: 4 signs."); the player's own vanity as the target (statues, ribbons, a portrait); consequence lines that pay off a setup from the paper the player saw before.
 - **Forms that wear out:** puns (funny once, groan on the second sight); pop-culture references (they date, and they point at real things); a catchphrase on every paper of a character; "random" jokes with no setup; shock or cruelty; anything whose joke is the policy itself, since the effect then reads as an opinion.
-- **Running jokes:** a decision that returns 5 to 30 papers later naming what you chose ("You approved the giant duck. It has a union now."). This is the cheapest way to make the deck feel written for this player (Reigns' modular "designed to go together" [22]). Keep a flag per callback; never show a callback whose setup the player did not see.
+- **Running jokes:** a decision that returns 5 to 30 papers later naming what you chose ("You approved the giant duck. It has a union now."): the cheapest way to make the deck feel written for this player [22]. Never show a callback whose setup the player did not see.
 - **Text budget:** one or two sentences, about 15 to 30 words on the paper, 3 to 6 words on each button, and one short line of outcome. Show effects as icons, not prose. A paper already seen should never be read again at full length (Suzerain complaint [14]); recently seen papers are removed from the draw [27].
 
 ## 4. Keeping approve-or-refuse more than a coin flip
 
 - **The two failure poles found:** too random (Reigns review [1]; Yes, Your Grace hiding information [10]) and mindless juggling ("a mindless juggling of the four bars", a reader quoted in [2]; "the plot is just a quiz", a commenter in [21]).
-- **Definition:** "An option that is so good it's never worth doing anything else is a dominant strategy" [29].
+- **Definition:** a strategy dominates another when it "will always produce a better result than B, regardless of how any other player plays" [29].
 
 **Inference: what makes it a decision**
 
-1. **Visible first-order effect, hidden or delayed second-order.** Show the budget change and which groups like or dislike it before the tap (the brief requires shown numbers to be the numbers applied); keep only the later callback unknown. Players forgive surprises that are stories, not surprises that are numbers.
+1. **Visible first-order effect, hidden or delayed second-order.** Show the budget change and which groups like or dislike it before the tap; keep only the later callback unknown.
 2. **Opposing groups.** Every paper pleases at least one group and annoys another; refuse is never neutral, because the petitioner's group dislikes a refusal.
 3. **Limited resources.** Approvals cost budget or political capital; a full yes-streak runs out of money, a no-streak loses approval and so revenue. Both must lose, measured by bot: always-approve, always-refuse and coin-flip should each land well below a reading player.
 4. **State-dependent value.** The same paper is good when a group is unhappy and bad when it is content; the draw favours papers that answer the current state [27].
 5. **Delayed consequences with a warning.** A returning paper is announced ("The duck committee is back") so the player can plan.
-6. **No instant death from one card.** The genre's sharpest complaint is a run ended by a misread effect [21][7]; in an idle game, unpopularity should cost revenue and bring scandal papers, not wipe progress.
+6. **No instant death from one card.** In Reigns "you can sometimes guess wrong about whether an option will raise or lower a particular stat" [21] and one wrong guess at a full or empty meter ends the reign [20]; Lapse is faulted for "rapid and frustrating game-over states" [7]. In an idle game, unpopularity should cost revenue and bring scandal papers, not wipe progress.
 
 ## 5. Store search
 
@@ -80,7 +81,7 @@ Read from Play search order and the titles seen (no keyword tool with an account
 
 | Term | Who holds it now | Crowding (Inference) |
 |---|---|---|
-| president simulator | Hidden Lake, Oxiwyle (five titles), a dozen "President Simulator: X" clones [18] | saturated; title pattern worn out |
+| president simulator | Hidden Lake, Oxiwyle (six titles), a dozen "President Simulator: X" clones [18] | saturated; title pattern worn out |
 | politics game / political sim | real-country sims, Suzerain, 270, House of Power [19] | crowded, realist and partisan-leaning |
 | mayor / mayor simulator | city builders and three "Mayor Simulator" titles [30] | crowded with city builders; "mayor" alone reads as city building |
 | idle ... tycoon | dozens of "Idle X Tycoon", "X Inc: Idle Tycoon" [31] | worn out (and `meta.md` already advises against "Idle ... Tycoon") |
@@ -88,7 +89,7 @@ Read from Play search order and the titles seen (no keyword tool with an account
 | satire politics | the same realist sims [19] | the word is not a title word anyone owns |
 
 - **Worn-out title patterns:** "President Simulator: …", "Mayor Simulator …", "Idle … Tycoon", "… Inc: Idle Tycoon", "Prime Minister: …", "Election …" with a year.
-- **Words that make the app look like news, official or partisan (Inference):** a real country or leader name; election years ("2024", "2026"); "election", "vote", "ballot", "campaign" as the first title word (reads as a civic or polling app); "government", "official", "ministry of", "senate", "congress", "parliament", "White House", "Oval Office"; "liberal", "conservative", "left", "right", "fake news", "rigged", "dictator", "corrupt" [4][5][15][19]; flags, seals or eagles in the icon.
+- **Words that make the app look like news, official or partisan (Inference):** a real country or leader name; election years ("2024", "2026"); "election", "vote", "ballot", "campaign" as the first title word (reads as a civic or polling app); "government", "official", "ministry of", "senate", "congress", "parliament", "White House", "Oval Office"; "liberal", "conservative", "left", "right", "fake news", "rigged", "dictator", "corrupt", "El Presidente" [4][5][15][19][33]; flags, seals or eagles in the icon.
 - **Keyword ideas (Inference):** lead with a coined, invented title, then a genre subtitle built from words players use and the realist apps do not combine: "town hall", "mayor to president", "funny", "office", "desk", "decisions", "approve", "idle", "tycoon" (in the subtitle only), "cartoon". "Silly politics" / "funny politics" place the app as comedy. Keep "satire" out of the title (unowned but rarely searched, Inference) and use it in the description.
 
 ## For the designers
@@ -111,7 +112,7 @@ Read from Play search order and the titles seen (no keyword tool with an account
 1. Four meters that kill at empty and at full; a dynasty or years counter as the score.
 2. One portrait card swiped left or right with answers on its edges; faceless geometric portraits.
 3. A border booth, passports, a daily rulebook, red/green entry stamps, an end-of-day family budget.
-4. Buildings called "lobbies", "President of the World/For Life", Oval Office, "Mr President".
+4. Buildings called "lobbies", "President of the World/For Life", Oval Office, "Mr President", "El Presidente" or a comic island strongman (Tropico).
 5. A left/right or liberal/conservative choice, or any party that maps onto a real one.
 6. Dictator, rigged-ballot or "silence critics" paths; anything that needs a 13+ violence or horror descriptor.
 7. Puns, pop-culture references and catchphrases as the main joke engine.
@@ -131,7 +132,7 @@ Read from Play search order and the titles seen (no keyword tool with an account
 8. Pocket Gamer, "Idle Mayor Tycoon is a management sim out now for Android" (2 June 2021): https://www.pocketgamer.com/idle-mayor-tycoon-tap-manager-empire-simulator/idle-mayor-tycoon-is-a-management-sim-out-now-for-android/
 9. Sort the Court!, search summary of https://graebor.itch.io/sort-the-court and https://www.mobygames.com/game/sort-the-court
 10. Yes, Your Grace, search summary of https://www.pocketgamer.com/yes-your-grace/review/, https://www.nintendolife.com/reviews/switch-eshop/yes_your_grace, https://www.gog.com/game/yes_your_grace
-11. Papers, Please iPad, search summary of https://www.pocketgamer.com/papers-please/review/, https://148apps.com/reviews/papers-please-review
+11. Jon Mundy, Pocket Gamer, Papers, Please review (16 Dec 2014): https://www.pocketgamer.com/papers-please/review/
 12. Death and Taxes, search summary of https://www.metacritic.com/game/death-and-taxes/, https://techraptor.net/gaming/reviews/death-and-taxes
 13. Paperwork Inc, US App Store: https://apps.apple.com/us/app/paperworkinc/id6758695829
 14. Suzerain, search summary of https://apps.apple.com/gb/app/suzerain/id1590033408 and https://www.pocketgamer.com/suzerain/dec-8-launch
@@ -149,7 +150,10 @@ Read from Play search order and the titles seen (no keyword tool with an account
 26. GDC Vault, "The Casual (but Regal) Swipe" (listing only, talk not watched): https://gdcvault.com/play/1024278/The-Casual-(but-Regal)-Swipe
 27. François Alliot, "Game Design Deep Dive: Creating an adaptive narrative in Reigns", Game Developer (26 Oct 2016): https://gamedeveloper.com/design/game-design-deep-dive-creating-an-adaptive-narrative-in-i-reigns-i-
 28. Brysbaert, "How many words do we read per minute?", Journal of Memory and Language 109 (2019), abstract via search: https://reader.ku.edu/sites/reader/files/2024-01/How%20many%20words%20do%20we%20read%20per%20minute%20(1).pdf
-29. Peachpit, game design article on dominant strategies (via search): https://www.peachpit.com/articles/article.aspx?p=102309
+29. Wikipedia, "Strategic dominance": https://en.wikipedia.org/wiki/Strategic_dominance (replaces a Peachpit address that opened only an index page on 2026-11-23; its quoted sentence could not be found anywhere)
 30. Google Play search "mayor idle tycoon": https://play.google.com/store/search?q=mayor%20idle%20tycoon&c=apps
 31. Google Play search "idle government tycoon": https://play.google.com/store/search?q=idle%20government%20tycoon&c=apps
 32. Google Play search "swipe decision game": https://play.google.com/store/search?q=swipe%20decision%20game&c=apps
+33. Tropico (Feral Interactive), US App Store: https://apps.apple.com/us/app/id1264531625
+
+Checked on 2026-11-23 by a second reader against [1], [3]-[6], [10], [11], [15], [18], [20], [21], [22], [25], [27], [28], [29], [33]: quotes above corrected to the pages' wording where they differed.
