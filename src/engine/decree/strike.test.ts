@@ -87,6 +87,20 @@ describe('the trigger (2.8)', () => {
   });
 });
 
+describe('D46 (a): the slogan used longest ago', () => {
+  it('regression: a club that boycotts in two terms never repeats its first slogan; the third boycott takes the one used longest ago', () => {
+    const g = built({ office: 0, moods: [50, 50, 10] });
+    // A new term clears picketsThisTerm (term.ts newTerm); the boycott is over and the club re-armed.
+    const again = (s: R.DecreeGame, decisions: number) =>
+      R.checkStrikes(cfg, { ...s, decree: { ...s.decree, strikes: [null, null, null], armed: [true, true, true], tray: [], picketsThisTerm: [], stats: { ...s.decree.stats, decisions } } }, []);
+    const first = R.checkStrikes(cfg, g, []);
+    const second = again(first, first.decree.stats.decisions + 30);
+    const third = again(second, second.decree.stats.decisions + 30);
+    expect(second.decree.strikes[VEG]!.picket).not.toBe(first.decree.strikes[VEG]!.picket);
+    expect(third.decree.strikes[VEG]!.picket).toBe(first.decree.strikes[VEG]!.picket);
+  });
+});
+
 describe('the two exits, counted in decided papers', () => {
   it('"Return the scissors": 20 s of B, the club +10 (fixed), the boycott ends; it re-arms only at 30', () => {
     let g = built({ office: 0, moods: [50, 50, 21], ministries: [10, 7, 6, 0], cash: 1e6, desk: 'test-mayor-shops-swap-1' });

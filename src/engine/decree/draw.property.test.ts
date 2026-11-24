@@ -110,6 +110,24 @@ describe('the order of 2.7', () => {
     expect(s.decree.tray[s.decree.tray.length - 1].kind).toBe('comic');
   });
 
+  it('regression D46 (b): a refilled bag deals the frames not yet seen first, then the seen ones, seen longest ago first', () => {
+    const offices = DECREE_TEST_NUMBERS.offices!.map((o, i) => (i === 1 ? { ...o, templateShare: 1 } : o));
+    const c = decreeTestConfig({ offices } as never);
+    const frames = c.decree.deck.frames.filter((f) => f.office === 'governor').map((f) => f.id);
+    expect(frames.length).toBeGreaterThanOrEqual(4);
+    // As after a move: the bag is empty and some frames were seen (the last one most recently, the first longest ago).
+    const seenOnes = frames.slice(0, 3);
+    const g0 = built({ office: 1, ministries: [5, 1, 1, 1, 1, 1], cash: 1e9, handLanded: c.decree.draw.framesAfter }, c);
+    for (let seed = 1; seed <= 6; seed++) {
+      const g = { ...g0, decree: { ...g0.decree, seed, frameBag: [], seen: { ...g0.decree.seen, [seenOnes[0]]: 1, [seenOnes[1]]: 3, [seenOnes[2]]: 2 } } };
+      const dealt: string[] = [];
+      play(c, g, 2 * frames.length + 6, () => 'refuse', (p) => void (p.kind === 'template' && dealt.push(p.source)));
+      const first = dealt.slice(0, frames.length);
+      expect(new Set(first.slice(0, frames.length - 3))).toEqual(new Set(frames.slice(3)));
+      expect(first.slice(frames.length - 3)).toEqual([seenOnes[0], seenOnes[2], seenOnes[1]]);
+    }
+  });
+
   it('a template comes with probability q from the shuffled frame bag, none twice before the bag empties', () => {
     const offices = DECREE_TEST_NUMBERS.offices!.map((o, i) => (i === 1 ? { ...o, templateShare: 1 } : o));
     const c = decreeTestConfig({ offices } as never);

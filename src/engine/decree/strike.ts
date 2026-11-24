@@ -2,7 +2,7 @@
  * Boycotts, the strike named for what it is (2.8). Package P1a (docs/design/office-build-plan.md).
  *
  * After a commit, any club below 20 whose strike is armed boycotts its ministries (s_i = 0); its
- * picket slogan (none twice a term) hangs on its Ledger row and its spokesperson's grievance goes on
+ * picket slogan (the one it used longest ago, none twice a term: D46 (a); `seen` records it) hangs on its Ledger row and its spokesperson's grievance goes on
  * top of the tray (it may exceed the cap by 1). Sign "Return the scissors": 20 s of B, the club +10
  * (fixed), the boycott ends. Refuse "Keep the scissors": it runs 8 more decided papers (counted from
  * the paper after the grievance), then ends with no mood change (D6). While the grievance waits the
@@ -54,12 +54,16 @@ export function checkStrikes(cfg: DecreeConfig, g: DecreeGame, events: DecreeEve
     if (!s.decree.strikes[gi] && s.decree.armed[gi] && m < b.below) {
       const d = s.decree;
       const own = cfg.decree.deck.grievances.filter((x) => x.club === clubs[gi]);
-      const def = own.find((x) => !d.picketsThisTerm.includes(x.picket)) ?? own[0];
+      // D46 (a): the club's slogan used longest ago (never used first, ties in deck order), still none twice a term.
+      const age = (x: { id: string }) => d.seen[x.id] ?? -1;
+      const oldest = (list: typeof own) => list.reduce<(typeof own)[number] | undefined>((a, x) => (!a || age(x) < age(a) ? x : a), undefined);
+      const def = oldest(own.filter((x) => !d.picketsThisTerm.includes(x.picket))) ?? oldest(own);
       const strike: Strike = { papersLeft: b.papers, picket: def?.picket ?? '', grievance: def?.id ?? '', waiting: true };
       s = withDecree(s, {
         strikes: d.strikes.map((x, k) => (k === gi ? strike : x)),
         armed: d.armed.map((x, k) => (k === gi ? false : x)),
         picketsThisTerm: def ? [...d.picketsThisTerm, def.picket] : d.picketsThisTerm,
+        seen: def ? { ...d.seen, [def.id]: d.stats.decisions } : d.seen,
         stats: { ...d.stats, boycotts: d.stats.boycotts + 1 },
       });
       events.push({ type: 'boycottStart', club: gi });

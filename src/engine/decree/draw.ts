@@ -344,7 +344,9 @@ function eligibleFrames(cfg: DecreeConfig, office: OfficeIx): FrameDef[] {
 
 /**
  * A template (2.7 step 5): the next frame of the shuffled bag (refilled and reshuffled from site
- * template when empty), its slot filled with a phrase (site template). `fresh`: only while a frame of
+ * template when empty; D46 (b): a refilled bag deals the frames not yet seen first, in the shuffled
+ * order, then the frames seen, the one seen longest ago first, so a move never brings back a frame of
+ * the last office before the new office's own), its slot filled with a phrase (site template). `fresh`: only while a frame of
  * this bag is still to be dealt (the comic draw's fallback, which must not repeat a frame before it
  * returns a text seen longest ago); a bag never dealt counts as fresh.
  */
@@ -363,6 +365,9 @@ function templatePaper(cfg: DecreeConfig, g: DecreeGame, fresh = false, passOver
       const k = Math.floor(r.value * (i + 1));
       [bag[i], bag[k]] = [bag[k], bag[i]];
     }
+    // D46 (b): the frames not yet seen first (in the shuffled order), then the frames seen, the one seen longest ago first.
+    const age = (id: string) => s.decree.seen[id] ?? -1;
+    bag = bag.map((id, i) => ({ id, i })).sort((a, b) => age(a.id) - age(b.id) || a.i - b.i).map((x) => x.id);
   }
   const frame = frames.find((f) => f.id === bag[0])!;
   s = withDecree(s, { frameBag: bag.slice(1) });
