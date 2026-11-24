@@ -81,8 +81,8 @@ function slipVoid(cfg: DecreeConfig, g: DecreeGame, item: DeskItem & { type: 'sl
   const m = g.decree.ministries[pu.ministry];
   if (!m) return 'done';
   if (pu.type === 'open') return m.open ? 'done' : null;
-  if (!m.open || m.level !== item.slip.drawnLevel) return 'done';
-  return m.level >= cfg.decree.ministry.levelCap ? 'cap' : null;
+  if (m.open && m.level >= cfg.decree.ministry.levelCap) return 'cap';
+  return !m.open || m.level !== item.slip.drawnLevel ? 'done' : null;
 }
 
 /**

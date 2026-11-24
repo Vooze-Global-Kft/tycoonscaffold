@@ -177,8 +177,8 @@ export function formVoid(cfg: DecreeConfig, g: DecreeGame, effects: readonly Sho
   for (const e of effects) {
     if (e.type !== 'level') continue;
     const m = g.decree.ministries[e.ministry];
+    if (m && m.open && m.level >= cfg.decree.ministry.levelCap) return 'cap';
     if (!m || !m.open || m.level !== e.from) return 'done';
-    if (m.level >= cfg.decree.ministry.levelCap) return 'cap';
   }
   return null;
 }
@@ -207,7 +207,7 @@ export function stripOf(cfg: DecreeConfig, g: DecreeGame, side: Choice): Strip |
   const nd = officeOf(cfg, d.office).districts.length;
   const moodDeltas = new Array<number>(n).fill(0);
   const points = new Array<number>(nd).fill(0);
-  const isVoid = formVoid(cfg, g, shown);
+  const isVoid = formVoid(cfg, g, desk.shown.sign);
   for (const e of shown) {
     if (e.type === 'moods') e.deltas.forEach((x, gi) => (moodDeltas[gi] += x));
     else if (e.type === 'district') points[e.district] += e.points;

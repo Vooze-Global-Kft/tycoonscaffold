@@ -10,8 +10,9 @@
  *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
  *   (a merge game: its bot, scripts/content/merge-bot.ts, on the same five seeds in parallel: every missed
  *   hard target of Decision M2 an error, every missed aim a warning; market-design.md 8.1 step 6)
- *   (a decree game: the satire lint on its texts once scripts/content/office/satireLint.ts exists, and a
- *   warning while there is no decree bot yet; office-design.md 7.8, 8.1, decisions D7 and D8)
+ *   (a decree game: the satire lint on its texts, the 2.11 bound, and its bot, scripts/content/decree-bot.ts
+ *   --bot validate, on the same five seeds in parallel: every missed hard target an error, every missed aim
+ *   a warning; office-design.md 7.8, 8.1, 8.3, decisions D7 and D8)
  *
  * For every pair of games that both have sounds it also runs the sound similarity check
  * (python3 scripts/audio/compare.py, spec 6.1, Decision 24: fails when a shared key's joint score is
@@ -289,8 +290,59 @@ function decreeChecks(id: string, g: GameConfig, runSim: boolean, problems: stri
     const hits = raw.split('\n').filter((l) => l.includes('PLACEHOLDER'));
     if (hits.length) problems.push(`a decree release: game.json still contains PLACEHOLDER on ${hits.length} line(s), the first: ${hits[0].trim().slice(0, 120)}`);
   }
+  decreePacing(id, g, runSim, problems, warnings);
+}
+
+/**
+ * The decree bot (office-design.md 8.1 step 5, 8.3, 8.4; the bot and numbers package): the 2.11 bound
+ * from the content (with D15 and D25) always; with the sim, the bot's validate plan
+ * (scripts/content/decree-bot.ts `--bot validate`) on each of PACING_SEEDS in its own process, at most
+ * 3 at a time, as the merge branch does. Every missed hard target is an error, every missed aim a
+ * warning (until the lead turns aims into guards); while game.json is the skeleton's placeholder
+ * (`decree.skeletonPlaceholder`) a missed hard target is a warning. A run that stops at a rule not built
+ * yet is one warning naming the rule (the targets are then not checked).
+ */
+type DecreeSeed = { seed?: number; rows?: { name: string; kind: string; aim: string; value: unknown; ok: boolean }[]; notBuilt?: string | null; error?: string | null; crashed?: boolean };
+function decreePacing(id: string, g: GameConfig, runSim: boolean, problems: string[], warnings: string[]): void {
+  const placeholder = (g.decree as { skeletonPlaceholder?: unknown } | undefined)?.skeletonPlaceholder === true;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { withDecreeContent } = require('../src/engine/decreeMode') as typeof import('../src/engine/decreeMode');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { certainWinBound } = require('../src/engine/decree/bot') as typeof import('../src/engine/decree/bot');
+    const n = certainWinBound(withDecreeContent(g) as never);
+    if (n > 8) problems.push(`2.11 (with D15, D25): a count is a certain win only after ${n} consecutive losses (at most 8)`);
+  } catch (e) {
+    problems.push(`2.11 bound could not be computed: ${(e as Error).message.split('\n')[0]}`);
+  }
   const bot = path.join(__dirname, 'content', 'decree-bot.ts');
-  if (runSim) warnings.push(fs.existsSync(bot) ? 'placeholder: scripts/content/decree-bot.ts exists but this hook does not run it yet (P2 replaces this line with the run of 8.3 on the five seeds)' : 'placeholder: no decree bot yet (src/engine/decree/bot.ts, scripts/content/decree-bot.ts; P2): the targets of section 8 are not checked');
+  if (!runSim) return;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `validate-decree-${id}-`));
+  const q = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`;
+  const cmd = PACING_SEEDS.map((seed) => [process.execPath, require.resolve('tsx/cli'), bot, '--game', id, '--seed', String(seed), '--bot', 'validate', '--json'].map(q).join(' ') + ` > ${q(path.join(dir, `${seed}.out`))} 2>&1 &\nwhile [ "$(jobs -rp | wc -l)" -ge 3 ]; do wait -n; done`).join('\n');
+  spawnSync('bash', ['-c', `${cmd}\nwait`], { cwd: games.ROOT, encoding: 'utf8', timeout: 600_000, env: { ...process.env, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=2000'].filter(Boolean).join(' ') } });
+  const stoppedAt = new Set<string>();
+  for (const seed of PACING_SEEDS) {
+    let r: DecreeSeed | null = null;
+    try {
+      const line = fs.readFileSync(path.join(dir, `${seed}.out`), 'utf8').trim().split('\n').pop();
+      r = line ? (JSON.parse(line) as DecreeSeed) : null;
+    } catch {
+      r = null;
+    }
+    if (!r) problems.push(`decree pacing, seed ${seed}: the bot did not finish within 10 min (npx tsx scripts/content/decree-bot.ts --seed ${seed} --bot validate to see why)`);
+    else if (r.notBuilt) stoppedAt.add(r.notBuilt);
+    else if (r.crashed || !r.rows) problems.push(`decree pacing, seed ${seed}: the bot crashed: ${String(r.error).split('\n').slice(0, 3).join(' ')}`);
+    else
+      for (const row of r.rows) {
+        if (row.kind === 'report' || row.ok) continue;
+        const msg = `decree pacing (section 8, ${row.kind}), seed ${seed}: ${row.name}: ${String(row.value)} (aim ${row.aim})`;
+        if (row.kind === 'hard' && !placeholder) problems.push(msg);
+        else warnings.push(row.kind === 'hard' ? `${msg} [hard; a warning only while game.json is the placeholder]` : msg);
+      }
+  }
+  if (stoppedAt.size) warnings.push(`decree pacing: the bot stopped at a rule that is not built yet (${[...stoppedAt].map((x) => `${x}()`).join(', ')}): the targets of section 8 are not checked`);
+  fs.rmSync(dir, { recursive: true, force: true });
 }
 
 /** compare.py for one pair (a second or so): its scores, or why it could not run. */

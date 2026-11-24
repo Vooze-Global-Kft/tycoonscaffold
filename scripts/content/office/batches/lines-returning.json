@@ -32,12 +32,12 @@
     { "id": "ret-shops-presentation", "text": "The same paper, rearranged slightly for better presentation." },
     { "id": "ret-shops-lit-from-below", "text": "Back again, in a frame, lit from below." },
     { "id": "ret-shops-teas-cup", "text": "Back again. Till's Teas has sent a cup with it, and a reminder." },
-    { "id": "ret-shops-tissue", "text": "Returned, wrapped in tissue paper, with the price label removed." },
+    { "id": "ret-shops-tissue", "text": "Returned in tissue paper, with a bow tied at a careful angle." },
     { "id": "ret-veg-firmer-tone", "text": "Back again, with the same pumpkin and a firmer tone." },
     { "id": "ret-veg-entered", "text": "The paper has been entered for a rosette in the meantime." },
     { "id": "ret-veg-lucky-rosette", "text": "Back again, wearing last year's rosette for luck." },
     { "id": "ret-veg-weighed", "text": "Back again. They have weighed the paper, for fairness." },
-    { "id": "ret-veg-waited-politely", "text": "The pumpkin waited in the corridor this time, politely." },
+    { "id": "ret-veg-waited-politely", "text": "Back again. The pumpkin waits in the corridor, politely." },
     { "id": "ret-veg-patient-seed", "text": "Here again, having waited as patiently as a seed." },
     { "id": "ret-brass-humming", "text": "Back again, humming the request under their breath." },
     { "id": "ret-brass-for-tuba", "text": "The request has since been arranged for tuba." },
@@ -79,7 +79,7 @@
   "captions": [
     { "id": "caption-start", "text": "Mayor of Dithering-on-the-Dawdle, unopposed. The other candidate went to the wrong hall." },
     { "id": "caption-governor", "text": "Governor of Upper Wobbling. A mahogany desk, a green lamp, and Pruella, near lunch." },
-    { "id": "caption-president", "text": "President. A walnut desk, three telephones, and Mildred, who has seen three of you." },
+    { "id": "caption-president", "text": "President. A walnut desk, three telephones, and Mildred, who liked one of the last three." },
     { "id": "caption-acting", "text": "You serve on, as Acting. Rodney has had that word painted very small on the door." },
     { "id": "caption-sweep", "text": "Every district held. Rodney is having the result framed, and then the frame." },
     { "id": "caption-quiet-term", "text": "A Quiet Term. Nothing new this time. The clock has been told, and took it well." }

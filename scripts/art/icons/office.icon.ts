@@ -36,26 +36,34 @@ export function drawPaperGround(c: SkCanvas, ruled = true): void {
  * closed loop and no crossing (a crossing loop reads as an awareness ribbon).
  */
 const SIGNATURE: [number, number][] = [
-  [150, 610],
-  [190, 470],
-  [230, 330],
-  [262, 470],
-  [292, 610],
-  [330, 450],
-  [372, 520],
-  [400, 600],
-  [432, 510],
-  [462, 470],
-  [494, 540],
-  [520, 600],
-  [552, 510],
-  [584, 470],
-  [616, 540],
-  [650, 610],
-  [700, 560],
-  [760, 450],
-  [820, 340],
-  [868, 250],
+  [118, 762],
+  [150, 640],
+  [182, 528],
+  [212, 500],
+  [232, 560],
+  [238, 740],
+  [262, 688],
+  [288, 650],
+  [314, 662],
+  [326, 740],
+  [350, 690],
+  [374, 652],
+  [400, 664],
+  [410, 740],
+  [438, 640],
+  [462, 512],
+  [486, 508],
+  [494, 600],
+  [500, 740],
+  [528, 690],
+  [554, 652],
+  [580, 664],
+  [592, 740],
+  [630, 722],
+  [694, 734],
+  [762, 690],
+  [812, 612],
+  [842, 526],
 ];
 
 /** Draws the signature (points in 1024 space) with a broad violet nib. */
@@ -67,7 +75,6 @@ export function drawFlourish(c: SkCanvas, pts: [number, number][] = SIGNATURE, n
 /** A fountain-pen nib writing at (x, y), its point there, the nib running back along `deg` (0 = the nib points up). `s` is its length. */
 export function drawWritingNib(c: SkCanvas, x: number, y: number, deg: number, s = 220): void {
   at(c, x, y, s / 100, deg, (q) => {
-    q.drawPath(rrect(-24 + 6, 60 + 8, 48, 60, 10), fill(alpha(DESK.shadow, 0.25)));
     const nib = builder().moveTo(0, 0).quadTo(22, 26, 24, 62).lineTo(-24, 62).quadTo(-22, 26, 0, 0).close().build();
     q.drawPath(nib, linearPaint(-24, 0, 24, 0, [DESK.brassLight, DESK.brass, DESK.brassDeep]));
     q.drawPath(nib, stroke(DESK.line, 4));
@@ -124,24 +131,24 @@ const tipDeg = (pts: [number, number][]): number => {
   return (Math.atan2(x1 - x0, -(y1 - y0)) * 180) / Math.PI + 180;
 };
 
-/** A: the signature across the middle, its tail flying up to the top right with the nib still writing; chunky scissors open at the lower right. */
+/** A: chunky scissors lying open across the upper left, blades toward the signature's rising tail; the signature low, flying up to the right with the nib still writing. */
 const subjectA: Draw = (c) => {
-  at(c, 700, 790, 8.4, -32, (q) => drawGiantScissors(q, 40, { open: 40, chunky: 2 }));
-  drawFlourish(c, SIGNATURE, 64);
-  const [x, y] = SIGNATURE[SIGNATURE.length - 1];
-  drawWritingNib(c, x, y, tipDeg(SIGNATURE), 230);
+  at(c, 0, 40, 1, 0, (q) => {
+    at(q, 430, 330, 7.6, 112, (z) => drawGiantScissors(z, 40, { open: 40, chunky: 2 }));
+    drawFlourish(q, SIGNATURE, 50);
+    const [x, y] = SIGNATURE[SIGNATURE.length - 1];
+    drawWritingNib(q, x, y, tipDeg(SIGNATURE), 200);
+  });
 };
 
-const SIG_B: [number, number][] = SIGNATURE.map(([x, y]) => [x - 40, y + 200 - (x - 150) * 0.1] as [number, number]);
-SIG_B[SIG_B.length - 1] = [860, 300];
-SIG_B[SIG_B.length - 2] = [800, 420];
+const SIG_B: [number, number][] = SIGNATURE.map(([x, y]) => [x, y + 40] as [number, number]);
 
-/** B: the chunky scissors standing big and open at the left, the signature underneath them rising to the right with the nib. */
+/** B: the chunky scissors standing big and open, upright at the left, the signature passing under their blades and rising with the nib. */
 const subjectB: Draw = (c) => {
-  at(c, 330, 440, 7.6, -14, (q) => drawGiantScissors(q, 40, { open: 34, chunky: 2 }));
-  drawFlourish(c, SIG_B, 62);
+  at(c, 300, 400, 6.6, -18, (q) => drawGiantScissors(q, 40, { open: 40, chunky: 2 }));
+  drawFlourish(c, SIG_B, 50);
   const [x, y] = SIG_B[SIG_B.length - 1];
-  drawWritingNib(c, x, y, tipDeg(SIG_B), 230);
+  drawWritingNib(c, x, y, tipDeg(SIG_B), 200);
 };
 
 export const CANDIDATES: Candidate[] = [

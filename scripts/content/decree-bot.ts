@@ -12,7 +12,8 @@
  *
  * --bot     one bot of bot.ts BOTS (reader, misreader, casual, alwaysSign, alwaysRefuse, random,
  *           moneyOnly, moodOnly, happier, noBuy, goalFollower, passive, checkIn, idle, adEverything,
- *           or an adversary), a comma list, or "all": the gate plan below (`GATE_PLAN`).
+ *           or an adversary), a comma list, "all" (every run one seed needs: `gatePlan`) or
+ *           "validate" (what npm run validate runs on each named seed: `validatePlan`).
  * --hand    seconds per decision (default 6; also 4 and 9, 8.2)
  * --set     a field of the decree block at a RANGES path (`offices[0].rivalPull=5`,
  *           `archetypes[1].sign[1].delta=-5`, `money.M=60`); the value is JSON. A value outside its
@@ -177,6 +178,26 @@ export function gatePlan(hours = 3): PlanRun[] {
   return plan;
 }
 
+/**
+ * What `npm run validate` runs on each named seed (scripts/validate.ts, about four minutes on four
+ * cores): every hard target one seed shows. The reader (3 h; H1, H2, H5, H7, H8, H10, H11) and the
+ * hour-one text gate of always-refuse, random and ad-everything (H7, D19), the sessions for H4 (one day),
+ * the determinism trio and the adversaries (H3, H4, H5). The targets across seeds (H6's handover, H9,
+ * H10's pairs, H12) are build-office.py's.
+ */
+export function validatePlan(hours = 3): PlanRun[] {
+  const all = gatePlan(hours);
+  const keep = all.map((p) => !p.handover && !['misreader', 'casual', 'moneyOnly', 'moodOnly', 'happier', 'noBuy', 'goalFollower', 'alwaysSign'].includes(p.bot) && !(p.bot === 'reader' && p.hand !== undefined));
+  const index = new Map<number, number>();
+  all.forEach((_, i) => keep[i] && index.set(i, index.size));
+  return all.flatMap((p, i) => {
+    if (!keep[i]) return [];
+    const q: PlanRun = p.bot === 'alwaysRefuse' || p.bot === 'random' ? { ...p, hours: Math.min(p.hours, 1) } : p.days ? { ...p, days: 1 } : { ...p };
+    if (p.sameAs !== undefined) q.sameAs = index.get(p.sameAs);
+    return [q];
+  });
+}
+
 const pad = (s: string, n: number) => (s.length >= n ? s : s + ' '.repeat(n - s.length));
 function printRows(rows: B.BotRow[]) {
   const w = Math.min(70, Math.max(10, ...rows.map((r) => r.name.length)));
@@ -273,6 +294,7 @@ export function main(argv = process.argv.slice(2)): number {
     const hand = f.hand !== undefined ? Number(f.hand) : undefined;
     const bots = (f.bot ?? 'reader').split(',');
     if (bots.length === 1 && bots[0] === 'all') plan = gatePlan(hours);
+    else if (bots.length === 1 && bots[0] === 'validate') plan = validatePlan(hours);
     else {
       plan = bots.map((b) => {
         if (!B.isBotId(b)) throw new Error(`unknown bot "${b}" (one of ${B.ALL_BOTS.join(', ')}, or all)`);
