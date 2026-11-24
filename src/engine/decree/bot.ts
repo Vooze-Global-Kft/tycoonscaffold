@@ -2016,7 +2016,7 @@ export interface SeedSummary {
   /** H6's and H12's handover runs. */
   handover?: { habit: BotId; winsWithin2: boolean; lifted: boolean | null };
   /** For the tuning table (pass counts and ranges per bot and hand): D38, H10, D24, the pace aims. */
-  extra?: { firstElection: number | null; boycottsPerHour: number; scandalsPerHour: number; unaffordable: number; emptyDesk30: number; nothing30: number; emptyDesk13: number | null; signShare: number; lateOpenings: number; monuments: number; papers: number };
+  extra?: { firstElection: number | null; boycottsPerHour: number; scandalsPerHour: number; unaffordable: number; emptyDesk30: number; nothing30: number; emptyDesk13: number | null; signShare: number; lateOpenings: number; monuments: number; papers: number; h8?: { both: number; vsTitle: number; vsMood: number; vsMoney: number }; paperGainShare?: number; paperCostShare?: number; hour1Repeats?: number; repeats23?: number; medianMargin?: number };
 }
 
 export function summarize(tr: Trace, handedOver: BotRun['handedOver'] = null, habit: BotId | null = null, cfg?: DecreeConfig): SeedSummary {
@@ -2035,6 +2035,17 @@ export function summarize(tr: Trace, handedOver: BotRun['handedOver'] = null, ha
       signShare: day.length ? day.filter((d) => d.choice === 'sign').length / day.length : 0, lateOpenings: p.lateOpenings.length,
       monuments: tr.events.filter((e) => e.type === 'monument').length, papers: day.length,
     };
+    if (tr.bot === 'reader' && long) {
+      const h = h8(tr);
+      const mo = money(tr);
+      const t7 = h7(tr);
+      out.extra.h8 = { both: h.bothShare, vsTitle: h.vsTitle, vsMood: h.vsMood, vsMoney: h.vsMoney };
+      out.extra.paperGainShare = mo.paperGainShare;
+      out.extra.paperCostShare = mo.paperCostShare;
+      out.extra.hour1Repeats = t7.hour1Repeats;
+      out.extra.repeats23 = t7.repeatShare23;
+      out.extra.medianMargin = tension(tr).medianMargin;
+    }
   }
   if (handedOver && habit) {
     const after = tr.elections.filter((e) => e.t >= handedOver.t);

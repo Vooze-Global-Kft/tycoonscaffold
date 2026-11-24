@@ -52,7 +52,7 @@
       "id": "office_standing_order",
       "kind": "unlock",
       "title": "Junior Clerk on Duty",
-      "description": "The Standing Order, from your first day.",
+      "description": "Buys the advised level for you as you play.",
       "fallbackPrice": "$3.99"
     },
     {
