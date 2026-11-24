@@ -80,6 +80,13 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
   const tLine = type(13, s);
   const tWho = type(11, s);
   const tRow = type(13, s);
+  // The office's longest district name fits its box on one line: the name's size comes down from 13 × s
+  // when it must (a semibold glyph is about 0.58 of the size wide), never below 11 pt.
+  const longest = Math.max(1, ...model.rows.map((r) => r.name.length));
+  const tName = (boxW: number) => {
+    const size = Math.max(11, Math.min(tRow.fontSize, boxW / (longest * 0.58)));
+    return { fontSize: Math.round(size * 10) / 10, lineHeight: Math.ceil(size * 1.3) };
+  };
   const tBar = type(12, s);
   const headerH = tTitle.lineHeight + tSub.lineHeight + 8;
   const clerkH = Math.max(96, tWho.lineHeight + tLine.lineHeight * 3 + 18);
@@ -267,7 +274,7 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
           const shareX = row.result.x - shareW - 6;
           return (
             <Animated.View key={r.district} style={[styles.abs, { left: 0, top: row.name.y, width: w, height: row.name.h }, i === newest ? newestStyle : styles.still]} accessible accessibilityLabel={S.views.nightRowLabel(r.name, S.views.share(r.share), r.held)}>
-              <Text allowFontScaling={false} numberOfLines={1} style={[styles.abs, styles.rowName, tRow, { left: row.name.x, width: nameW, top: (row.name.h - tRow.lineHeight) / 2 }]}>
+              <Text allowFontScaling={false} numberOfLines={1} style={[styles.abs, styles.rowName, tName(nameW), { left: row.name.x, width: nameW, top: (row.name.h - tName(nameW).lineHeight) / 2 }]}>
                 {r.name}
               </Text>
               <Text allowFontScaling={false} numberOfLines={1} style={[styles.abs, styles.rowShare, tRow, { left: shareX, width: shareW, top: (row.name.h - tRow.lineHeight) / 2 }]}>

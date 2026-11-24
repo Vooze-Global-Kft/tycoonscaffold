@@ -86,8 +86,10 @@ function eachText(deltas: readonly number[]): string {
   const moved = deltas.filter((d) => d !== 0);
   const sign = (d: number) => (d > 0 ? `+${d}` : `−${-d}`);
   if (!moved.length) return S.desk.each(sign(0));
-  const lo = Math.min(...moved);
-  const hi = Math.max(...moved);
+  // smaller first by size: "−3 to −4", "+1 to +2"
+  const byMag = [...moved].sort((a, b) => Math.abs(a) - Math.abs(b));
+  const lo = byMag[0];
+  const hi = byMag[byMag.length - 1];
   return lo === hi ? S.desk.each(sign(lo)) : S.desk.eachRange(sign(lo), sign(hi));
 }
 

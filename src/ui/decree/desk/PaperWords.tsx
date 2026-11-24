@@ -14,7 +14,7 @@ import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { DecreeIcon } from '../art/DecreeIcon';
 import { DESK } from '../art/palette';
 import type { Rect } from '../layout';
-import { BADGE, CHIP_ICON, CHIP_PAD, FONT, HEADLINE_FONT, HEADLINE_LINES, MASTHEAD_FONT, PAD_X, PICKET_FONT, PICKET_W, STRIP_LABEL_W, type PaperMetrics, type StripRows } from '../paperMetrics';
+import { BADGE, CHIP_ICON, FORM_LINE_LINES, FORM_NOTE_LINES, CHIP_PAD, FONT, HEADLINE_FONT, HEADLINE_LINES, MASTHEAD_FONT, PAD_X, PICKET_FONT, PICKET_W, STRIP_LABEL_W, type PaperMetrics, type StripRows } from '../paperMetrics';
 import { S } from '../strings';
 import { MASTHEAD_DEG } from './pictures';
 import { chipBoxes, headerText, proposalBox } from './paperGeo';
@@ -141,11 +141,11 @@ export const PaperWords = memo(function PaperWords({ vm, m, w, s, armed, onTitle
             </View>
           ) : null}
           <View style={abs(pb)}>
-            <Text allowFontScaling={false} numberOfLines={form ? 1 : vm.returning ? 3 : 4} style={[styles.proposal, { fontSize: prop, lineHeight: m.proposal.line, fontWeight: form ? '700' : '400' }]}>
+            <Text allowFontScaling={false} numberOfLines={form ? FORM_LINE_LINES : vm.returning ? 3 : 4} style={[styles.proposal, { fontSize: prop, lineHeight: m.proposal.line, fontWeight: form ? '700' : '400' }]}>
               {vm.text}
             </Text>
             {form && vm.note ? (
-              <Text allowFontScaling={false} numberOfLines={2} style={[styles.proposal, styles.italic, { fontSize: prop * 0.85, lineHeight: m.proposal.line * 0.9 }]}>
+              <Text allowFontScaling={false} numberOfLines={FORM_NOTE_LINES} style={[styles.proposal, styles.italic, { fontSize: prop * 0.85, lineHeight: m.proposal.line * 0.9 }]}>
                 {vm.note}
               </Text>
             ) : null}

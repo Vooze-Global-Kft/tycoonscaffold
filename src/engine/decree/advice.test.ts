@@ -112,7 +112,7 @@ describe('the goal line (2.16)', () => {
     expect(g.decree.standingOrder).toBe(true);
     expect(R.setStandingOrder(cfg, built({ cash: 0 }, cfg), true).decree.standingOrder).toBe(false);
     const pick = R.standingOrderPick(cfg, g)!;
-    const need = c.standingOrder.times * pick.price + R.reserveNow(cfg, g);
+    const need = c.standingOrder.times * pick.price + R.standingOrderReserve(cfg, g);
     const I = R.decreeParams(cfg, g).I;
     const far = { ...g, decree: { ...g.decree, nextArrivalAt: 1e9 } };
     const before = R.advanceDecree(cfg, far, need / I * 0.99, 0);
@@ -125,6 +125,28 @@ describe('the goal line (2.16)', () => {
     // With "Junior Clerk on Duty" (D11) it is there from the first day.
     const owned = { ...built({ cash: 0 }, cfg), entitlements: { ...g.entitlements, products: [c.products.standingOrder] } };
     expect(R.standingOrderAvailable(cfg, owned)).toBe(true);
+  });
+
+  it('D33: the Standing Order keeps back the sign cost of the desk paper and of EVERY waiting paper; the Ledger shows that sum while it is on', () => {
+    const tray = ['test-governor-bus-project-1', 'test-governor-shops-project-1', 'test-governor-veg-project-1', 'test-governor-brass-project-1'];
+    const g0 = built({ office: 1, term: c.standingOrder.fromGovernorTerm, cash: 0, ministries: [5, 3], desk: 'test-governor-bus-project-2', tray }, cfg);
+    const two = R.reserve(cfg, g0);
+    const every = R.standingOrderReserve(cfg, g0);
+    const costs = g0.decree.tray.map((p) => R.costOf(R.freezeShown(cfg, g0, p, R.deskFactors(cfg, g0)).sign));
+    const deskCost = R.costOf(g0.decree.desk!.type === 'paper' ? g0.decree.desk!.shown.sign : []);
+    expect(two).toBe(deskCost + costs[0]);
+    expect(every).toBe(deskCost + costs.reduce((a, b) => a + b, 0));
+    expect(every).toBeGreaterThan(two);
+    // Cash enough for 3 × the price above the two-paper reserve, not above every paper: no purchase.
+    const g = R.setStandingOrder(cfg, g0, true);
+    const pick = R.standingOrderPick(cfg, g)!;
+    const between = { ...g, cash: c.standingOrder.times * pick.price + (two + every) / 2 };
+    expect(R.standingOrderStep(cfg, between, [])).toBe(between);
+    const enough = { ...g, cash: c.standingOrder.times * pick.price + every + 1 };
+    expect(R.standingOrderStep(cfg, enough, [])).not.toBe(enough);
+    // The Ledger: "Kept for the desk" is the Standing Order's sum while it is on, the 2.6 reserve otherwise.
+    expect(R.ledger(cfg, g).reserve).toBe(R.roundDibs(cfg, every));
+    expect(R.ledger(cfg, g0).reserve).toBe(R.roundDibs(cfg, two));
   });
 });
 

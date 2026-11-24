@@ -18,9 +18,10 @@
  */
 import { Canvas, Group, Path, Picture } from '@shopify/react-native-skia';
 import { arc } from '../art/pen';
+import { drawerStage } from '../art/desk.draw';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type AccessibilityActionEvent } from 'react-native';
-import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withSpring, withTiming, Easing, type SharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useDerivedValue, useFrameCallback, useSharedValue, withDelay, withSpring, withTiming, Easing, type SharedValue } from 'react-native-reanimated';
 import type * as R from '../../../engine/decree';
 import { decreeActions } from '../../../modes/decree/actions';
 import { useGame } from '../../../state/store';
@@ -46,6 +47,8 @@ const NONE: DeskVM = { kind: 'none' };
 const NONE_SIG = JSON.stringify(NONE);
 const OFF = [{ translateX: -9999 }, { translateY: -9999 }];
 const ON = [{ translateX: 0 }];
+/** The take-back ring redraws at most 30 times a second (4.5: 60 only while a finger is down or a paper moves). */
+const RING_FRAME_MS = 32;
 const keyOf = (v: DeskVM) => (v.kind === 'none' ? '' : v.key);
 /** A one-line word's size factor so it fits `w` (1, or smaller for an unusually long name). */
 const fitScale = (t: string, font: number, w: number) => Math.min(1, Math.max(0.7, w / Math.max(1, estimateWidth(t, font, true))));
@@ -139,16 +142,33 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   }, [live, enter, paperY, back]);
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
 
-  // The take-back ring: the 2 s window as the rules hold it (until − the play clock), drawn down to 0.
+  // The take-back ring: the window as the rules hold it (until − the play clock), drawn down to 0 by one
+  // frame callback at 30 frames a second (nothing else moves then), stopped when the paper commits.
   const pendingKey = around?.pending ? `${around.pending.key}|${around.pending.until}` : '';
+  const ringFrom = useSharedValue(0);
+  const ringMs = useSharedValue(1);
+  const ringLast = useSharedValue(-1e9);
+  const ringClock = useFrameCallback((f) => {
+    'worklet';
+    const t = f.timeSinceFirstFrame;
+    if (t - ringLast.value < RING_FRAME_MS && t > 0) return;
+    ringLast.value = t;
+    ring.value = ringFrom.value * Math.max(0, 1 - t / ringMs.value);
+  }, false);
   useEffect(() => {
-    if (!around?.pending) {
+    const p = around?.pending;
+    if (!p) {
+      ringClock.setActive(false);
       ring.value = 0;
       return;
     }
-    const left = Math.max(0, around.pending.until - (useGame.getState().game.stats.playSeconds ?? 0));
-    ring.value = Math.min(1, left / 2);
-    ring.value = withTiming(0, { duration: left * 1000, easing: Easing.linear });
+    const left = Math.max(0, p.until - (useGame.getState().game.stats.playSeconds ?? 0));
+    ringFrom.value = Math.min(1, left / Math.max(1e-9, p.window));
+    ringMs.value = Math.max(1, left * 1000);
+    ringLast.value = -1e9;
+    ringClock.setActive(false);
+    ringClock.setActive(true);
+    return () => ringClock.setActive(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingKey]);
 
@@ -269,7 +289,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const aroundRef = useRef(around);
   aroundRef.current = around;
   const room = useMemo(() => (aroundRef.current ? backPicture(L, P, aroundRef.current) : null), [L, P, backKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const drawerKey = around ? `${around.office}|${Math.min(around.drawer, 10000)}` : '';
+  const drawerKey = around ? `${around.office}|${drawerStage(around.drawer)}` : '';
   const drawers = useMemo(() => (around ? drawerPictures(P, around) : []), [P, drawerKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const rest = useMemo(() => restPicture(P), [P]);
   const pic = usePaperPicture(shown, L, m, armed, faces);
@@ -358,7 +378,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
           {around?.door ?? ''}
         </Text>
       </Animated.View>
-      <Animated.View style={[abs(P.drawerLabel), styles.center, overDrawer]} pointerEvents="none">
+      <Animated.View style={[abs(P.drawerLabel), styles.center, overDrawer, buttons ? styles.hidden : null]} pointerEvents="none">
         <Text allowFontScaling={false} numberOfLines={1} style={[styles.drawerLabel, { fontSize: P.font.drawerLabel }]}>
           {S.desk.drawerLabel(String(around?.drawer ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, ','))}
         </Text>
@@ -498,6 +518,7 @@ const DrawerLayer = memo(function DrawerLayer({ k, pic, open }: { k: number; pic
 const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   clip: { overflow: 'hidden' },
+  hidden: { opacity: 0 },
   glass: { color: DESK.slateDeep, fontWeight: '700', fontVariant: ['tabular-nums'] },
   drawerLabel: { color: DESK.line, fontWeight: '700', letterSpacing: 0.4 },
   sticky: { color: DESK.line, fontWeight: '600' },

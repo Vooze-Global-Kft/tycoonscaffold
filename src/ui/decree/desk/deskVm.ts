@@ -170,7 +170,7 @@ export interface AroundVM {
   /** The sticky note: on the band (a follow-up one paper ahead: "Next: Gourdley / is back.") or on the empty desk (the next goal), or null. */
   sticky: { where: 'band' | 'desk'; lines: string[] } | null;
   /** A signed paper rests in its take-back window: its id and the play-clock second it commits. */
-  pending: { key: string; until: number } | null;
+  pending: { key: string; until: number; window: number } | null;
   /** Nothing on the desk and nothing resting on the out-tray. */
   emptyDesk: boolean;
   phase: R.Phase;
@@ -230,7 +230,7 @@ export function aroundVm(cfg: R.DecreeConfig, g: R.DecreeGame): AroundVM {
     door: next === null ? '' : S.desk.nextVisitor(S.desk.clock(Math.ceil(next))),
     doorShadow: next !== null && next <= 3,
     sticky,
-    pending: d.pending ? { key: d.pending.item.paper.id, until: d.pending.until } : null,
+    pending: d.pending ? { key: d.pending.item.paper.id, until: d.pending.until, window: cfg.decree.desk.takeBackSeconds } : null,
     emptyDesk: !d.desk && !d.pending,
     phase: d.phase,
   };

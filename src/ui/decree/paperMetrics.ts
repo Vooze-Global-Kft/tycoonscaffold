@@ -69,7 +69,8 @@ export const CHIP_WIDE_TEXT_W = PAPER_INNER_W - CHIP_ICON - 3 * CHIP_PAD;
 export const NOTE_W = PAPER_INNER_W;
 /** The proposal: 4 lines across the inner width (16 × s, line 26 at 1.3); a returning visitor's last line under it at the note font. */
 export const PROPOSAL_W = PAPER_INNER_W;
-/** A form's own line ("Requisition: Potholes Office +1 level") takes the proposal's first line; the Clerk's note the next two. */
+/** A form's own line ("Requisition: Potholes Office +1 level", bold) takes up to the proposal's first two lines; the Clerk's note (at 0.85 of the proposal's size) the next two. */
+export const FORM_LINE_LINES = 2;
 export const FORM_NOTE_LINES = 2;
 /** The comic front page (2.8): the headline beside the press photograph (the photo takes the right quarter), the masthead above it. */
 export const HEADLINE_W = Math.round(PAPER_INNER_W * 0.68);
@@ -90,7 +91,8 @@ export const PAPER_BOXES = {
   name: { font: FONT.name, width: HEADER_TEXT_W, lines: 1, bold: true },
   role: { font: FONT.role, width: HEADER_TEXT_W - BADGE - 4, lines: 1, bold: false },
   proposal: { font: FONT.proposal, width: PROPOSAL_W, lines: AT_13.proposalLines, bold: false },
-  formNote: { font: FONT.proposal, width: PROPOSAL_W, lines: FORM_NOTE_LINES, bold: false },
+  formLine: { font: FONT.proposal, width: PROPOSAL_W, lines: FORM_LINE_LINES, bold: true },
+  formNote: { font: FONT.proposal * 0.85, width: PROPOSAL_W, lines: FORM_NOTE_LINES, bold: false },
   returning: { font: FONT.note, width: PROPOSAL_W, lines: 1, bold: false },
   headline: { font: HEADLINE_FONT, width: HEADLINE_W, lines: HEADLINE_LINES, bold: true },
   masthead: { font: MASTHEAD_FONT, width: PAPER_INNER_W - 24, lines: 1, bold: true },
