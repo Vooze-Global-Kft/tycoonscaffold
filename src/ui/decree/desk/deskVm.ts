@@ -185,9 +185,24 @@ export function deskVm(cfg: R.DecreeConfig, g: R.DecreeGame, s: number): DeskVM 
   };
 }
 
-/** The desk item as a string signature (what a component selects; parsed once per change). */
+/**
+ * The desk item as a string signature (what a component selects; parsed once per change). The strips'
+ * note rows are left out (finding 7: "Short by 1.69B · about 2 s" changes ten times a second): the
+ * paper's note rows select their own words (`noteSig`), so only those leaf texts re-render.
+ */
 export function deskSig(cfg: R.DecreeConfig, g: R.DecreeGame, s: number): string {
-  return JSON.stringify(deskVm(cfg, g, s));
+  const vm = deskVm(cfg, g, s);
+  if (vm.kind !== 'paper') return JSON.stringify(vm);
+  const still = (v: StripView): StripView => ({ ...v, notes: [], noteScale: 1 });
+  return JSON.stringify({ ...vm, sign: still(vm.sign), refuse: still(vm.refuse) });
+}
+
+/** One strip's note row as the desk draws it now (its parts and size factor), or '' with no paper on the desk. */
+export function noteSig(cfg: R.DecreeConfig, g: R.DecreeGame, side: R.Choice, s: number): string {
+  const vm = deskVm(cfg, g, s);
+  if (vm.kind !== 'paper') return '';
+  const v = side === 'sign' ? vm.sign : vm.refuse;
+  return JSON.stringify({ notes: v.notes, noteScale: v.noteScale });
 }
 
 export interface AroundVM {
@@ -200,7 +215,7 @@ export interface AroundVM {
   signed: number;
   waiting: number;
   trayFull: boolean;
-  /** "Next visitor 0:07", or '' while the arrival clock is stopped. */
+  /** Always '' here: the door glass selects `doorText` itself (finding 7). */
   door: string;
   /** A visitor waits behind the glass (the arrival is near). */
   doorShadow: boolean;
@@ -264,13 +279,20 @@ export function aroundVm(cfg: R.DecreeConfig, g: R.DecreeGame): AroundVM {
     signed: signedThisTerm(g),
     waiting: d.tray.length,
     trayFull: d.tray.length >= cfg.decree.desk.trayCap,
-    door: next === null ? '' : S.desk.nextVisitor(S.desk.clock(Math.ceil(next))),
+    // The door glass's clock selects its own words (`doorText`, finding 7): left out of the signature.
+    door: '',
     doorShadow: next !== null && next <= 3,
     sticky,
     pending: d.pending ? { key: d.pending.item.paper.id, until: d.pending.until, window: cfg.decree.desk.takeBackSeconds } : null,
     emptyDesk: !d.desk && !d.pending,
     phase: d.phase,
   };
+}
+
+/** The door glass (3.1): "Next visitor 0:07", or '' while the arrival clock is stopped. */
+export function doorText(cfg: R.DecreeConfig, g: R.DecreeGame): string {
+  const next = R.nextVisitorIn(cfg, g);
+  return next === null ? '' : S.desk.nextVisitor(S.desk.clock(Math.ceil(next)));
 }
 
 export function aroundSig(cfg: R.DecreeConfig, g: R.DecreeGame): string {

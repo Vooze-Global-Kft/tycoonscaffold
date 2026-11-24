@@ -919,14 +919,14 @@ export const useGame = create<Store>((set, get) => {
         // A mode paid when the absence was computed (decree, 2.15) has the earnings in cash already: here
         // it gets only the ad's extra, earnings × (multiplier − 1), and nothing without a watched ad.
         const paidOnCompute = engineFor(get().cfg)?.paysOnCompute === true;
-        let extra = 0;
+        let adMult: number | null = null;
         if (doubled) {
           const ok = await ads.showRewarded('offline_double');
           // Sim and classic double it; a mode with its own rules says what the ad adds (haul, Decision 42: +50 %).
           const mult = engineFor(get().cfg)?.offlineAdMultiplier;
           if (ok) {
             const m = mult ? safe('engine.offlineAdMultiplier', () => mult(get().cfg), 1) : 2;
-            extra = offline.earnings * (m - 1);
+            adMult = m;
             amount *= m;
           }
         }
@@ -934,7 +934,9 @@ export const useGame = create<Store>((set, get) => {
         // a resume() while the ad was open may have merged more time into it.
         const pending = get().offline;
         if (pending && pending !== offline) amount += pending.earnings - offline.earnings;
-        if (paidOnCompute) amount = Math.max(0, extra);
+        // Paid on compute: only the ad's extra, on the report as it stands after the ad (a resume during the
+        // ad merged more time into it, already in cash: that part gets its half too).
+        if (paidOnCompute) amount = adMult === null ? 0 : Math.max(0, (pending ?? offline).earnings * (adMult - 1));
         // A mode that rounds what it shows grants the rounded figure (merge, M19); without the hook the amount is unchanged.
         const round = engineFor(get().cfg)?.roundPayout;
         if (round) amount = safe('engine.roundPayout', () => round(get().cfg, amount), amount);

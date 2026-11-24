@@ -12,9 +12,13 @@
  * and is refused when it would cut into it. A purchase that would change nothing is refused (merge
  * M45). D16: from the call day C until the count the reserve also keeps back what the run-up can ask
  * (the campaign papers left and the rally at their prices), "Kept for the run-up"; a slip on an empty
- * desk with an empty tray also keeps back desk.slipReserveSeconds of B. D18: a slip may land between
- * two papers (decide.ts `commitItem` step 5: a paper waiting, a purchase affordable above the reserve,
- * no slip since the last decided paper: `DecreeState.slipOffered`), at most one per paper.
+ * desk with an empty tray also keeps back desk.slipReserveSeconds of B. D18 with D42 (b): a slip may land
+ * between two papers (decide.ts `commitItem` step 5: a paper waiting, a purchase affordable above the
+ * reserve, at least `slips.betweenEvery` papers decided since the last slip landed: `papersSinceSlip`).
+ * D42 (a): the slip that lands carries a bundle of levels (`bundleOf`: up to the next storey, as many as
+ * the treasury pays above the slip's reserve; `Slip.levels`), bought at its printed price (D40). D42 (c):
+ * a purchase from the Ledger or by the Standing Order that makes a landed slip stale takes it back at
+ * once (`retireStaleSlip`). D41: nothing is bought on election night or on the result sheet (`ledgerShut`).
  *
  * SEAM: `slipFor` reads advice.ts (P1b) `advice(...).slip`; advice builds its Slip with `slipOf` here (one price, one level, one
  * rate gain). `reserve` / `reserveParts` are read by advice.ts, the Standing Order (grants.ts, P1b)

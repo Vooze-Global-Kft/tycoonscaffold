@@ -5,7 +5,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { measure } from '../../../scripts/content/office/fit';
-import { DESK_FONT, STICKY_LINE, deskLayout, deskParts } from './layout';
+import { DESK_FONT, MIN_GAP, PAPER_W, STICKY_LINE, deskLayout, deskParts } from './layout';
+import { paperFit } from './paperMetrics';
 import { S } from './strings';
 
 const SIZES = [
@@ -89,5 +90,43 @@ describe('deskParts (the desk package’s own parts inside 4.1’s zones)', () =
     expect(bold(S.desk.stickyOpen('Signposts & Lampposts Board'), p.font.deskSticky)).toBeLessThanOrEqual(2 * p.deskStickyText.w);
     expect(bold(`999.9M${S.desk.join}about 59 min`, p.font.deskSticky)).toBeLessThanOrEqual(p.deskStickyText.w);
     expect(3 * Math.round(p.font.deskSticky * STICKY_LINE)).toBeLessThanOrEqual(p.deskStickyText.h);
+  });
+});
+
+describe('narrow and short windows (finding 1): the paper is scaled as a whole, the bars keep their gaps', () => {
+  for (const w of [
+    { w: 320, h: 568, insets: { top: 20, bottom: 0 } },
+    { w: 360, h: 640, insets: { top: 24, bottom: 48 } },
+  ])
+    for (const fontScale of [1, 1.3])
+      it(`${w.w} × ${w.h} (insets ${w.insets.top}/${w.insets.bottom}) at ${fontScale}`, () => {
+        const L = deskLayout(w.w, w.h, w.insets, fontScale);
+        for (const parts of [Object.values(L.bar), Object.values(L.buttons)]) {
+          const xs = [...parts].sort((a, b) => a.x - b.x);
+          expect(xs[0].x).toBeGreaterThanOrEqual(MIN_GAP - 0.5);
+          expect(xs[xs.length - 1].x + xs[xs.length - 1].w).toBeLessThanOrEqual(w.w - MIN_GAP + 0.5);
+          for (let i = 1; i < xs.length; i++) expect(xs[i].x - (xs[i - 1].x + xs[i - 1].w)).toBeGreaterThanOrEqual(MIN_GAP - 0.5);
+        }
+        for (const returning of [false, true]) {
+          const f = paperFit(L.paper, L.width, fontScale, { returning });
+          // the contents are laid out at the design width and hold their natural rows; the scaled paper fits its zone
+          expect(f.design.w).toBe(PAPER_W);
+          expect(f.m.natural).toBeLessThanOrEqual(f.design.h + 1e-6);
+          expect(f.screen.w).toBeLessThanOrEqual(w.w - 16 + 1e-6);
+          expect(f.screen.h).toBeCloseTo(L.paper.h, 6);
+          expect(f.screen.y).toBeCloseTo(L.paper.y, 6);
+          expect(f.k).toBeLessThan(1);
+        }
+      });
+  it('375 × 667 and 390 × 844 are drawn unscaled (without a returning line)', () => {
+    for (const [w, h, t, b] of [
+      [375, 667, 20, 0],
+      [390, 844, 47, 34],
+    ]) {
+      const L = deskLayout(w, h, { top: t, bottom: b }, 1.3);
+      const f = paperFit(L.paper, L.width, 1.3);
+      expect(f.k).toBe(1);
+      expect(f.design).toEqual(L.paper);
+    }
   });
 });

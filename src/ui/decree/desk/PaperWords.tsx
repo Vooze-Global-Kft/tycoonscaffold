@@ -19,13 +19,14 @@ import { BADGE, CHIP_ICON, FORM_LINE_LINES, FORM_NOTE_LINES, CHIP_PAD, FONT, HEA
 import { S } from '../strings';
 import { MASTHEAD_DEG } from './pictures';
 import { chipBoxes, headerText, proposalBox } from './paperGeo';
-import type { PaperVM, SlipVM } from './deskVm';
-import { DENSITY_SCALE, estimateWidth, type StripView } from './stripView';
+import { noteSig, type PaperVM, type SlipVM } from './deskVm';
+import { useDecree } from '../useDecree';
+import { DENSITY_SCALE, estimateWidth, type NotePart, type StripView } from './stripView';
 
 const abs = (r: Rect) => ({ position: 'absolute' as const, left: r.x, top: r.y, width: r.w, height: r.h });
 
 /** One strip's words. `onTitleEnd` reports where the title's words end (the signature writes right of it). */
-const StripWords = memo(function StripWords({ view, rows, w, s, on, onTitleEnd }: { view: StripView; rows: StripRows; w: number; s: number; on: SharedValue<number>; onTitleEnd?: (x: number) => void }) {
+const StripWords = memo(function StripWords({ view, rows, w, s, on, live, onTitleEnd }: { view: StripView; rows: StripRows; w: number; s: number; on: SharedValue<number>; live: boolean; onTitleEnd?: (x: number) => void }) {
   const ink = view.side === 'sign' ? DESK.violet : DESK.slateDeep;
   const title = FONT.title * s * view.titleScale;
   const k = DENSITY_SCALE[view.density];
@@ -102,23 +103,32 @@ const StripWords = memo(function StripWords({ view, rows, w, s, on, onTitleEnd }
           </Text>
         </View>
       ) : null}
-      {view.notes.length ? (
-        <View style={[styles.row, abs({ x: PAD_X, y: rows.note.y - rows.y, w: view.noteW, h: rows.note.h })]}>
-          <Text allowFontScaling={false} numberOfLines={1} style={[styles.note, { fontSize: FONT.note * s * view.noteScale }]}>
-            {view.notes.map((p, i) => (
-              <Text key={i} style={p.warn ? styles.warn : null}>
-                {(i ? S.desk.join : '') + p.text}
-              </Text>
-            ))}
-          </Text>
-        </View>
-      ) : null}
+      {live ? <LiveNotes side={view.side} box={abs({ x: PAD_X, y: rows.note.y - rows.y, w: view.noteW, h: rows.note.h })} s={s} /> : null}
     </Animated.View>
   );
 });
 
+/** A strip's note row, selecting its own words (finding 7: only this text re-renders as "Short by …" counts down). */
+const LiveNotes = memo(function LiveNotes({ side, box, s }: { side: 'sign' | 'refuse'; box: ReturnType<typeof abs>; s: number }) {
+  const sig = useDecree((cfg, g) => noteSig(cfg, g, side, s), '');
+  if (!sig) return null;
+  const { notes, noteScale } = JSON.parse(sig) as { notes: NotePart[]; noteScale: number };
+  if (!notes.length) return null;
+  return (
+    <View style={[styles.row, box]}>
+      <Text allowFontScaling={false} numberOfLines={1} style={[styles.note, { fontSize: FONT.note * s * noteScale }]}>
+        {notes.map((p, i) => (
+          <Text key={i} style={p.warn ? styles.warn : null}>
+            {(i ? S.desk.join : '') + p.text}
+          </Text>
+        ))}
+      </Text>
+    </View>
+  );
+});
+
 /** The paper's words at its size. */
-export const PaperWords = memo(function PaperWords({ vm, m, w, s, signOn, refuseOn, onTitleEnd }: { vm: PaperVM; m: PaperMetrics; w: number; s: number; signOn: SharedValue<number>; refuseOn: SharedValue<number>; onTitleEnd?: (x: number) => void }) {
+export const PaperWords = memo(function PaperWords({ vm, m, w, s, signOn, refuseOn, live = true, onTitleEnd }: { vm: PaperVM; m: PaperMetrics; w: number; s: number; signOn: SharedValue<number>; refuseOn: SharedValue<number>; live?: boolean; onTitleEnd?: (x: number) => void }) {
   const ht = headerText(m);
   const pb = proposalBox(m);
   const name = FONT.name * s;
@@ -128,7 +138,7 @@ export const PaperWords = memo(function PaperWords({ vm, m, w, s, signOn, refuse
   const form = vm.ground === 'requisition' || vm.ground === 'ribbon';
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <StripWords view={vm.sign} rows={m.sign} w={w} s={s} on={signOn} onTitleEnd={onTitleEnd} />
+      <StripWords view={vm.sign} rows={m.sign} w={w} s={s} on={signOn} live={live} onTitleEnd={onTitleEnd} />
       {front ? (
         <FrontWords vm={vm} m={m} w={w} s={s} />
       ) : (
@@ -168,7 +178,7 @@ export const PaperWords = memo(function PaperWords({ vm, m, w, s, signOn, refuse
           ) : null}
         </>
       )}
-      <StripWords view={vm.refuse} rows={m.refuse} w={w} s={s} on={refuseOn} />
+      <StripWords view={vm.refuse} rows={m.refuse} w={w} s={s} on={refuseOn} live={live} />
     </View>
   );
 });
@@ -207,8 +217,12 @@ export const SlipWords = memo(function SlipWords({ vm, s }: { vm: SlipVM; s: num
         {`${S.desk.up} ${vm.held ?? S.desk.slipBuy}`}
       </Text>
       <View style={styles.slipMid}>
+        {/* Finding 5: the sender and the role on lines of their own (one line cut at font scale 1.3) */}
         <Text allowFontScaling={false} numberOfLines={1} style={[styles.role, { fontSize: small }]}>
-          {`${vm.from}, ${vm.role}`}
+          {vm.from}
+        </Text>
+        <Text allowFontScaling={false} numberOfLines={1} style={[styles.role, styles.italic, { fontSize: small }]}>
+          {vm.role}
         </Text>
         <View style={[styles.row, { marginTop: 6 }]}>
           {vm.icon ? <DecreeIcon icon={vm.icon} size={Math.round(22 * s)} /> : null}

@@ -72,6 +72,8 @@ export const CLUB_GAP = 6;
 export const BAR_PARTS = { treasury: 156, approval: 86, gossip: 48, menu: 40 } as const;
 export const IN_TRAY_W = 72;
 export const BUTTON_W = 64;
+/** The least gap between and around the top bar's and the bottom row's parts. */
+export const MIN_GAP = 4;
 
 /** The desk screen's zones for a window of `width` × `height` with safe-area `insets` (4.1). */
 export function deskLayout(width: number, height: number, insets: Insets, fontScale: number): DeskLayout {
@@ -103,8 +105,13 @@ export function deskLayout(width: number, height: number, insets: Insets, fontSc
   const paperW = Math.min(PAPER_W, w);
   const paper: Rect = { x: left + Math.round((w - paperW) / 2), y: paperRow.y, w: paperW, h: paperH };
 
-  // Fixed widths laid out with the spare width as equal gaps and gutters.
-  const spread = (r: Rect, widths: number[]): Rect[] => {
+  // Fixed widths laid out with the spare width as equal gaps and gutters. On a window too narrow for them
+  // (320 pt: Display Zoom, a 360-dp phone at a large display size) the widths shrink together so at least
+  // MIN_GAP stays between and around them (finding 1: the menu touched the screen's edge).
+  const spread = (r: Rect, wanted: number[]): Rect[] => {
+    const sum = wanted.reduce((a, b) => a + b, 0);
+    const room = r.w - (wanted.length + 1) * MIN_GAP;
+    const widths = sum > room ? wanted.map((x) => Math.floor((x * room) / sum)) : wanted;
     const gap = Math.max(0, (r.w - widths.reduce((a, b) => a + b, 0)) / (widths.length + 1));
     let x = r.x + gap;
     return widths.map((wd) => {

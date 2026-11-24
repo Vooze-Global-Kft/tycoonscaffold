@@ -17,14 +17,14 @@ import * as E from '../engine/economy';
 import type { EngineMode } from '../engine/mode';
 import type { GameState } from '../engine/types';
 
-const adResult = vi.hoisted(() => ({ ok: true }));
+const adResult = vi.hoisted(() => ({ ok: true, during: null as null | (() => void) }));
 const storage = vi.hoisted(() => new Map<string, string>());
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: { getItem: async (k: string) => storage.get(k) ?? null, setItem: async (k: string, v: string) => void storage.set(k, v), removeItem: async (k: string) => void storage.delete(k) },
 }));
 vi.mock('../generated/activeGame', async () => ({ ACTIVE_GAME_ID: 'pizza-empire', rawGame: (await import('../../games/pizza-empire/game.json')).default, fxTable: {}, gameAssets: {}, gameSounds: {}, displayFontMetrics: null }));
 vi.mock('../services/fx', () => ({ fx: { play: () => {} } }));
-vi.mock('../services/ads', () => ({ ads: { showRewarded: async () => adResult.ok, maybeShowInterstitial: () => {}, init: () => {}, interstitials: true } }));
+vi.mock('../services/ads', () => ({ ads: { showRewarded: async () => (adResult.during?.(), adResult.ok), maybeShowInterstitial: () => {}, init: () => {}, interstitials: true } }));
 vi.mock('../services/firebase', () => ({ analytics: { log: () => {} }, crash: { record: () => {} }, fetchRemoteOverrides: async () => ({}) }));
 vi.mock('../services/iap', () => ({ iap: { init: async () => {}, owned: async () => [], purchase: async () => true, restore: async () => [] } }));
 vi.mock('../services/region', () => ({ detectRegion: async () => null }));
@@ -76,6 +76,7 @@ async function storeAway(seconds: number, mode: EngineMode | null) {
 afterEach(async () => {
   vi.useRealTimers();
   adResult.ok = true;
+  adResult.during = null;
   (await import('../engine/mode')).installEngineMode(null);
 });
 
@@ -163,6 +164,19 @@ describe('the seams of 2.15', () => {
     useGame.getState().resume();
     await useGame.getState().collectOffline(true);
     expect(useGame.getState().game.cash).toBe(1000 + 10_800 + 5_400);
+  });
+
+  it('paysOnCompute: a resume during the ad merges more time, already paid; the ad pays half of both parts', async () => {
+    const m = standIn({ paysOnCompute: true, catchUpSeconds: 0 }, true);
+    const { useGame } = await storeAway(3600, m.mode);
+    useGame.getState().resume();
+    // While the video plays the app went to the background and came back: 600 s more, paid when computed and merged into the report.
+    adResult.during = () => {
+      const s = useGame.getState();
+      useGame.setState({ game: { ...s.game, cash: s.game.cash + 1_800 }, offline: { ...s.offline!, seconds: s.offline!.seconds + 600, earnings: s.offline!.earnings + 1_800 } });
+    };
+    await useGame.getState().collectOffline(true);
+    expect(useGame.getState().game.cash).toBe(1000 + 10_800 + 1_800 + (10_800 + 1_800) * 0.5);
   });
 
   it('paysOnCompute: a short absence is paid with no report and no tick', async () => {

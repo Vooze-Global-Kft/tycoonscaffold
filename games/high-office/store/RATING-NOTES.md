@@ -42,6 +42,48 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 - D9: a read by the owner (or someone the owner names) before a submission is still required; nothing here
   says a person signed what no person signed.
 
+<!-- BEGIN hand-written answers: kept by npm run sync, edit only between these two lines -->
+## This game's own answers (hand-written; the satire questions, the declarations, the territories)
+
+**Unsigned.** Spec 7.8 and D9 ask the sensitivity editor (an engineer in this build) to read every string,
+and the owner (or someone the owner names) to read the game before submission. The owner's read has not
+happened; nothing here says a person read or signed the game. Brought in step with the build on
+24 November 2026 from the listing step's draft (scratchpad store/RATING-NOTES.md).
+
+| | |
+|---|---|
+| Theme | Comic government of an invented country (the Republic of Middling): a mayor, then governor and president, decides papers brought by invented hobby clubs, lobbyists and advisers. No real person, party, country, flag, event or issue. No parties at all |
+| Choices | Comic choices without moral weight: a pumpkin's freedom of the town, a bus named after the mayor, a portrait of the mayor for the portrait in the hall. No paper concerns religion, ethnicity, nationality, migration, gender, sexuality, abortion, weapons, war, policing, drugs, alcohol, disease, disability or a real tragedy (the satire lint, tier 3) |
+| "Corruption" | Farce, stated exactly (D13): a lobbyist offers a gift (a small fruit basket "for no reason"). The player can accept it by signing. It never pays the mayor money and never pleases a club; it adds gossip, and its favour costs the mayor (a club's mood and more gossip; refusing costs nothing) |
+| Scandals and boycotts | Slapstick: a comic front page with a goose photograph; a hobby club's picket over the mayor keeping its ribbon scissors |
+| Elections | Against invented computer rivals with a hobby and a slogan (the first is Councillor Prudence Stitchley); decided by numbers shown in advance; no voting procedure is shown beyond a clerk chalking up wards. A lost election costs nothing built. The run-up's campaign papers are public appearances paid from dibs earned in play, while the Shop and the ads are closed |
+| Characters | Editorial-cartoon busts of adults (about 48, drawn in code), six player faces; no children, school, soldier, police, clergy or uniform |
+| Language | Dry official wording; no profanity, no insults aimed at groups; the joke is on the player's own office |
+| Ads | Rewarded video only, started from a button; AdMob "Politics" sensitive category blocked; no banners, no interstitials |
+| Purchases | 5 one-time products (D11): Junior Clerk on Duty and Long Lunch (unlock), Walnut & Brass Desk Set and Gilt Portrait Frames (cosmetic), Skip the Ad Videos (skipAds). None random; none reaches a mood, the poll or the count |
+| Random items | None, earned or sold |
+| Gambling, wagers, spins, contests | None: no leaderboard, no player-against-player play |
+| Chat, user-generated content, web browsing, location, free-text names | None |
+
+### App Store Connect: the answers this game changes
+
+- Mature or suggestive themes: **Infrequent** (9+). Apple's definition names "political strife" and "real-world crimes"; the game's frame is elections, scandals and a lobbyist's gifts, though every case is comic and invented. "None" would understate it. Answer **Frequent** only if a read finds papers that are real ethical dilemmas; fix those papers instead.
+- Profanity or crude humour: **None** (if a read finds insult-based lines, the honest answer becomes Infrequent).
+- Expected result 9+; then set the age rating to **13+** by hand, as for the other three games (spec 7.9, D10: the owner's choice). Never the Kids Category.
+
+### Google Play: the answers this game changes
+
+- Crude humour: **No** (or "comic mischief", if the console offers it).
+- Depicts criminal activity: answer the question as it is worded on the day. Our reading: a lobbyist's gift can be accepted and is shown as farce that always leaves the mayor worse off; no theft, violence or illegal act succeeds. If the question asks whether accepting a gift for a favour is shown at all, the honest answer is **Yes, comic**, and the PEGI result then needs a person's judgement before submission; if it asks about crime shown succeeding or rewarded, **No**.
+- Discrimination: **No**. Real-world characters: **No**.
+- **Government apps declaration: the app is not made by or for a government and does not provide or facilitate government services.**
+- News app declaration (if asked): **No**; the in-game newspaper is an obvious comic tabloid of an invented town.
+
+### Territories
+
+All territories **except mainland China** (games need an NPPA approval number and ICP filing; Google Play does not operate there) **and Vietnam** (games must be licensed) (spec 7.9). English only at launch; any translation gets a local read first.
+<!-- END hand-written answers -->
+
 ## App Store Connect: age rating questionnaire
 
 - Violence, horror, sexual content, profanity, drugs, alcohol, mature themes: None.
@@ -88,6 +130,8 @@ disclosure page before you submit; they change.
 4. Create every product id in App Store Connect, Play Console and RevenueCat, and attach the
    in-app purchases to the first version you submit.
 5. Privacy policy page live at the URL above, listing AdMob, Firebase and RevenueCat.
+   App Review: paste games/high-office/store/REVIEW-NOTES.md into "Notes" in App Store Connect (and the Play
+   console's "App access" instructions), with a contact name, email and phone.
 6. The owner (or someone the owner names) reads the game and games/high-office/store/SENSITIVITY-READ.md before submitting (D9).
 7. Release one game at a time from one account, each with its own art, sounds, numbers and
    listing text: both stores remove families of near-identical apps, and take related accounts with

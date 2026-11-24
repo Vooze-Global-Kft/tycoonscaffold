@@ -80,6 +80,20 @@ function decreeGame(g: GameConfig): { read: string; readExists: boolean } | null
   return { read, readExists: fs.existsSync(path.join(games.ROOT, read)) };
 }
 
+/** The markers of RATING-NOTES.md's hand-written block (a decree game only; sync never writes inside them). */
+const HAND_BEGIN = '<!-- BEGIN hand-written answers: kept by npm run sync, edit only between these two lines -->';
+const HAND_END = '<!-- END hand-written answers -->';
+
+/** The hand-written block of a game's RATING-NOTES.md as it stands on disk (trimmed), or a placeholder line. */
+function keptHandWritten(id: string): string {
+  const file = path.join(games.gameDir(id), 'store', 'RATING-NOTES.md');
+  const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  const a = text.indexOf(HAND_BEGIN);
+  const b = text.indexOf(HAND_END);
+  if (a < 0 || b < a) return '_No hand-written answers yet._';
+  return text.slice(a + HAND_BEGIN.length, b).trim() || '_No hand-written answers yet._';
+}
+
 function ratingNotes(g: GameConfig): string {
   const m = g.meta;
   const gift = mergeGift(g);
@@ -177,6 +191,9 @@ function ratingNotes(g: GameConfig): string {
       '- D9: a read by the owner (or someone the owner names) before a submission is still required; nothing here',
       '  says a person signed what no person signed.',
     );
+    // This game's own answers (the satire questions, the declarations, the territories) are written by hand
+    // between the two markers below; sync keeps that block as it finds it and writes everything around it.
+    L.push('', HAND_BEGIN, keptHandWritten(g.id), HAND_END);
   }
 
   h('App Store Connect: age rating questionnaire');

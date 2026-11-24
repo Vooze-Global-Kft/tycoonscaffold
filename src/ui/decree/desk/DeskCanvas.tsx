@@ -36,7 +36,7 @@ import { useDecreeUi } from '../uiState';
 import { useDecree } from '../useDecree';
 import { usePrefs } from '../prefs';
 import { devButtons } from './devButtons';
-import { aroundSig, deskSig, type AroundVM, type DeskVM, type PaperVM } from './deskVm';
+import { aroundSig, deskSig, doorText, type AroundVM, type DeskVM, type PaperVM } from './deskVm';
 import { ARM_AT, ENTER_MS, LEAVE_MS, NEXT_AFTER_MS, SPRING, TAP_SLOP, drawerOf, drawerStep, followOf, inkOf, type Release } from './flick';
 import { useDeskFontScale } from './fontScale';
 import { PaperWords, SlipWords } from './PaperWords';
@@ -437,9 +437,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
 
       {/* the desk's own small words: the door glass, the drawer's card, the sticky note */}
       <Animated.View style={[abs(P.glass), styles.center, overTop]} pointerEvents="none">
-        <Text allowFontScaling={false} numberOfLines={1} style={[styles.glass, { fontSize: P.font.glass }]}>
-          {around?.door ?? ''}
-        </Text>
+        <DoorGlass font={P.font.glass} />
       </Animated.View>
       <Animated.View style={[abs(P.drawerLabel), styles.center, overDrawer, buttons ? styles.hidden : null]} pointerEvents="none">
         <Text allowFontScaling={false} numberOfLines={1} style={[styles.drawerLabel, { fontSize: P.font.drawerLabel }]}>
@@ -494,7 +492,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
       <View style={[abs({ x: 0, y: L.outTray.y, w: L.width, h: L.drawer.y - L.outTray.y }), styles.clip]} pointerEvents="none">
         {leaving && leaving.vm.kind !== 'none' ? (
           <Animated.View style={[abs(up(leaving.vm.kind === 'slip' ? leaving.slip : leaving.fit.design, L.outTray.y)), leaveStyle]}>
-            <Words vm={leaving.vm} m={leaving.fit.m} w={leaving.fit.design.w} s={s} signOn={zero} refuseOn={zero} />
+            <Words vm={leaving.vm} m={leaving.fit.m} w={leaving.fit.design.w} s={s} signOn={zero} refuseOn={zero} live={false} />
           </Animated.View>
         ) : null}
         {shown.kind !== 'none' ? (
@@ -551,9 +549,19 @@ const scaled = (r: Rect, paper: Rect, k: number): Rect => {
 /** A rectangle moved up by `dy` (into a container that starts `dy` down the screen). */
 const up = (r: Rect, dy: number): Rect => ({ ...r, y: r.y - dy });
 
+/** The door glass's clock, selecting its own words once a second (finding 7: the desk does not re-render for it). */
+const DoorGlass = memo(function DoorGlass({ font }: { font: number }) {
+  const text = useDecree(doorText, '');
+  return (
+    <Text allowFontScaling={false} numberOfLines={1} style={[styles.glass, { fontSize: font }]}>
+      {text}
+    </Text>
+  );
+});
+
 /** The words of a desk item (a paper or a slip). */
-function Words({ vm, m, w, s, signOn, refuseOn, onTitleEnd }: { vm: DeskVM; m: ReturnType<typeof paperMetrics>; w: number; s: number; signOn: SharedValue<number>; refuseOn: SharedValue<number>; onTitleEnd?: (x: number) => void }) {
-  if (vm.kind === 'paper') return <PaperWords vm={vm} m={m} w={w} s={s} signOn={signOn} refuseOn={refuseOn} onTitleEnd={onTitleEnd} />;
+function Words({ vm, m, w, s, signOn, refuseOn, live = true, onTitleEnd }: { vm: DeskVM; m: ReturnType<typeof paperMetrics>; w: number; s: number; signOn: SharedValue<number>; refuseOn: SharedValue<number>; live?: boolean; onTitleEnd?: (x: number) => void }) {
+  if (vm.kind === 'paper') return <PaperWords vm={vm} m={m} w={w} s={s} signOn={signOn} refuseOn={refuseOn} live={live} onTitleEnd={onTitleEnd} />;
   if (vm.kind === 'slip') return <SlipWords vm={vm} s={s} />;
   return null;
 }
