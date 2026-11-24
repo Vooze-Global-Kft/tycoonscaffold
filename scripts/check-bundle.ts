@@ -505,7 +505,8 @@ function normaliseSource(src: string, root: string): string {
 /** The files an export was made from, for bundle-report.json: its project modules and assets (generated files by their inputs), the lockfile. */
 function reportSources(r: Report): string[] {
   const own = r.modules.map((m) => m.path).filter((p) => !p.includes('node_modules/') && !p.startsWith('src/generated/'));
-  const inputs = ['package-lock.json', 'app.config.ts', 'scripts/lib/games.js', 'scripts/lib/fxCatalog.js', 'src/services/fx/catalog.ts', 'src/services/fx/catalog.haul.ts', `games/${r.game}/game.json`];
+  // The mode's own sound catalogue too (catalog.<mode>.ts, scripts/lib/fxCatalog.js CATALOG_BY_MODE): the game's fx table is made from it.
+  const inputs = ['package-lock.json', 'app.config.ts', 'scripts/lib/games.js', 'scripts/lib/fxCatalog.js', 'src/services/fx/catalog.ts', 'src/services/fx/catalog.haul.ts', `src/services/fx/catalog.${r.mode}.ts`, `games/${r.game}/game.json`];
   return [...new Set([...own, ...r.assets, ...inputs])].filter((f) => fs.existsSync(path.join(ROOT, f))).sort();
 }
 

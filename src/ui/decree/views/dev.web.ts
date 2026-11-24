@@ -43,6 +43,23 @@ function finishRunUp(cfg: R.DecreeConfig, g0: R.DecreeGame): R.DecreeGame {
   return s;
 }
 
+/** From the governing desk to the run-up (the preset may be a little before the call day): papers refused, then the call. */
+function toRunUp(cfg: R.DecreeConfig, g0: R.DecreeGame): R.DecreeGame {
+  let s = g0;
+  for (let k = 0; k < 3000 && s.decree.phase === 'governing'; k++) {
+    const clock = s.stats.playSeconds;
+    if (R.canCall(cfg, s)) {
+      s = R.callElection(cfg, s, clock, []);
+      break;
+    }
+    if (s.decree.desk) {
+      s = R.decide(cfg, s, 'refuse', clock, []);
+      if (s.decree.pending) s = R.commitPending(cfg, s, clock, []);
+    } else s = R.advanceDecree(cfg, s, 5, 0);
+  }
+  return s;
+}
+
 /** The next office's requirements met (a preview of the move sheet): NR at its need, levels bought free by the rules until the record is met. */
 function meetRequirements(cfg: R.DecreeConfig, g0: R.DecreeGame): R.DecreeGame {
   const req = R.moveRequirements(cfg, g0);
@@ -69,6 +86,7 @@ function applyNow(): void {
   const face = q.get('face');
   if (face) g = R.pickFace(cfg, g, face);
   const which = q.get('night') ?? q.get('result');
+  if (which && g.decree.phase === 'governing') g = toRunUp(cfg, g);
   if (which && g.decree.phase === 'campaign') {
     if (q.get('move') === '1') g = meetRequirements(cfg, g);
     if (which === 'win' || which === 'lose') g = { ...g, decree: { ...g.decree, moods: g.decree.moods.map(() => (which === 'win' ? 90 : 5)) } };

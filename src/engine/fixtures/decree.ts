@@ -270,6 +270,11 @@ export function decreeStateProblems(c: R.DecreeConfig, g: R.DecreeGame): string[
   if (d.nr < 0 || d.losses < 0) out.push('Name Recognition and losses ≥ 0');
   if ((d.phase === 'count' || d.phase === 'result') && (!d.count || !d.result)) out.push('election night and the result sheet have their count');
   if (d.stats.clamps !== 0) out.push('clamps = 0 (H1)');
+  // D42: a slip buys at least one level, never past the next storey; the rhythm's counters are whole and ≥ 0.
+  const slip = d.desk?.type === 'slip' ? d.desk.slip : null;
+  if (slip && !(Number.isInteger(slip.levels) && slip.levels >= 1 && (slip.purchase.type === 'level' ? slip.levels <= R.bundleRoom(c, slip.drawnLevel) : slip.levels === 1))) out.push('a slip carries 1 level up to the next storey (an opening 1)');
+  if (!(Number.isInteger(d.papersSinceSlip) && d.papersSinceSlip >= 0 && Number.isInteger(d.handLanded) && d.handLanded >= 0)) out.push('papersSinceSlip and handLanded are whole numbers ≥ 0');
+  if (!(typeof d.nextArrivalAt === 'number' ? Number.isFinite(d.nextArrivalAt) : d.nextArrivalAt === null)) out.push('nextArrivalAt is a finite number or null');
   return out;
 }
 

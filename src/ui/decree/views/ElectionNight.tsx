@@ -198,7 +198,7 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
           const row = rows[i];
           c.save();
           c.translate(marksX(row), row.marks.y + (row.marks.h - markH) / 2);
-          drawChalkMarks(c, marksOf(r.share), markH, 11 + i * 7);
+          drawChalkMarks(c, marksOf(r.share), markH, 11 + i * 7, r.held);
           c.restore();
           c.save();
           c.translate(row.result.x + row.result.w / 2, row.result.y + row.result.h / 2);

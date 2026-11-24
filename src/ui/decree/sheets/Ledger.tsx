@@ -84,7 +84,7 @@ function Row({ row, ledger, cfg, office, clubs, carried }: { row: R.LedgerRow; l
           {club ? <DecreeIcon icon={row.boycott ? `${club.icon}_boycott` : club.icon} size={20} /> : null}
         </View>
         <Txt size={ty.small} color={INK.soft} style={styles.inked}>
-          {row.open ? `${S.sheets.level(row.level)}  ·  ` : `${S.sheets.closed}  ·  `}
+          {row.open ? `${S.sheets.level(row.level)}  ·  ` : S.sheets.closed}
           {row.open ? (
             <Txt size={ty.small} bold color={INK.money}>
               {S.sheets.rate(dibs(R.roundDibs(cfg, row.rate)))}

@@ -26,6 +26,7 @@ import Animated, { useAnimatedStyle, useDerivedValue, useFrameCallback, useShare
 import type * as R from '../../../engine/decree';
 import { decreeActions } from '../../../modes/decree/actions';
 import { fx } from '../../../services/fx';
+import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
 import { DESK } from '../art/palette';
@@ -51,6 +52,8 @@ const OFF = [{ translateX: -9999 }, { translateY: -9999 }];
 const ON = [{ translateX: 0 }];
 /** The take-back ring redraws at most 30 times a second (4.5: 60 only while a finger is down or a paper moves). */
 const RING_FRAME_MS = 32;
+/** How long the Clerk's note shows when a stale slip is taken back (D42 (c)). */
+const CLERK_NOTE_MS = 2200;
 const keyOf = (v: DeskVM) => (v.kind === 'none' ? '' : v.key);
 /** A one-line word's size factor so it fits `w` (1, or smaller for an unusually long name). */
 const fitScale = (t: string, font: number, w: number) => Math.min(1, Math.max(0.7, w / Math.max(1, estimateWidth(t, font, true))));
@@ -301,6 +304,22 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
     [around, L.paper.y, P.pill],
   );
 
+  // D42 (c): a slip whose purchase the Ledger or the Standing Order just made leaves at once; the Clerk's note says why.
+  const [clerkNote, setClerkNote] = useState(false);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const off = modeEvents.subscribe((events) => {
+      if (!events.some((e) => (e as R.DecreeEvent).type === 'slipReturned' && (e as { reason?: string }).reason === 'done')) return;
+      setClerkNote(true);
+      if (t) clearTimeout(t);
+      t = setTimeout(() => setClerkNote(false), CLERK_NOTE_MS);
+    });
+    return () => {
+      off();
+      if (t) clearTimeout(t);
+    };
+  }, []);
+
   // --- the hint targets of the drawn parts (src/ui/hints/targets.ts)
   const slipOn = shown.kind === 'slip';
   useEffect(() => {
@@ -478,6 +497,13 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
               {t}
             </Text>
           ))}
+        </View>
+      ) : null}
+      {clerkNote && !pending ? (
+        <View style={[abs(P.pill), styles.pill]} pointerEvents="none">
+          <Text allowFontScaling={false} numberOfLines={1} style={[styles.pillText, { fontSize: P.font.pill * fitScale(S.desk.noteDone, P.font.pill, P.pill.w - 16) }]}>
+            {S.desk.noteDone}
+          </Text>
         </View>
       ) : null}
       {pending ? (

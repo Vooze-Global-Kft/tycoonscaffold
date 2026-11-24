@@ -19,7 +19,24 @@ import { moveModel, monumentModel, newThingName, nightModel, playerFaces, result
 const cfg = withDecreeContent(GameConfigSchema.parse(game)) as unknown as R.DecreeConfig;
 /** A new game as the app makes it (the web preset "fresh"). */
 const fresh = decreeEngineMode.create(cfg, baseGameState(FIXTURE_NOW)) as R.DecreeGame;
-const mid = botPresetState(cfg, 'mid').game;
+/**
+ * The preset "mid" in its run-up: the bot's preset is a governor late in a term; when the tuning leaves it a
+ * little before the call day, its papers are refused and the election called (as the preview's &night= does).
+ */
+function toRunUp(g0: R.DecreeGame): R.DecreeGame {
+  let s = g0;
+  for (let k = 0; k < 3000 && s.decree.phase === 'governing'; k++) {
+    const clock = s.stats.playSeconds;
+    if (R.canCall(cfg, s)) return R.callElection(cfg, s, clock, []);
+    if (s.decree.desk) {
+      s = R.decide(cfg, s, 'refuse', clock, []);
+      if (s.decree.pending) s = R.commitPending(cfg, s, clock, []);
+    } else s = R.advanceDecree(cfg, s, 5, 0);
+  }
+  return s;
+}
+const midPreset = botPresetState(cfg, 'mid').game;
+const mid = midPreset ? toRunUp(midPreset) : midPreset;
 const late = botPresetState(cfg, 'late').game;
 
 /** Decides everything the run-up brings (signing when the treasury pays, else refusing) until the votes may be counted, then counts. */
