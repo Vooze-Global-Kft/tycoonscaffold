@@ -11,7 +11,7 @@
  *   costs, purchases, Check the Sofa, the transition fund). The away payout and its ad top-up are paid
  *   by the shared store through economy's grantCash (2.15 `paysOnCompute`), not through here: a coins
  *   test books `away` and `awayAd` in its own harness.
- * - `disarray(losses, rule?)`: Y(n) = 2^(n+1) − 2 (D15; parameters `paperRules.disarray`), read by count.ts and the poll.
+ * - `disarray(losses)`: Y(n) = 2^(n+1) − 2 (D15); `disarrayOf(rule, losses)` with the config's `paperRules.disarray`, read by count.ts and the poll.
  * - `roundDibs(cfg, x)`: every amount of dibs shown or paid (merge M19's rule).
  * - `rand(g, site, x)`: one value in [0, 1) of a random site, advancing its counter (2.3).
  * - prices: `levelCost`, `openCost`, `vanityPrice` (2.2, 5.8): the Ledger, slips, advice and the
@@ -83,14 +83,24 @@ export type DisarrayRule = { first: number; ratio: number };
 export const DISARRAY_D15: DisarrayRule = { first: 2, ratio: 2 };
 
 /**
- * Disarray after `losses` consecutive losses at a seat, the ONE function of D15: Y(n) = first × (ratio^n − 1)/(ratio − 1)
- * share points (first 2, ratio 2: 2^(n+1) − 2 = +2, +6, +14, +30, +62, +126; ratio 1: first × n). `rule` is
- * `cfg.decree.paperRules.disarray` (decreeParams passes it); omitted, D15's numbers. Built.
+ * Disarray after `losses` consecutive losses at a seat under `rule`, the ONE formula of D15:
+ * Y(n) = first × (ratio^n − 1)/(ratio − 1) share points (first 2, ratio 2: 2^(n+1) − 2 = +2, +6, +14, +30,
+ * +62, +126; ratio 1: first × n, the old linear rule). `rule` is `cfg.decree.paperRules.disarray`
+ * (decreeParams passes it, so the shares and the poll follow a tuned rule). Built.
  */
-export function disarray(losses: number, rule: DisarrayRule = DISARRAY_D15): number {
+export function disarrayOf(rule: DisarrayRule, losses: number): number {
   if (!(losses > 0)) return 0;
   const { first, ratio } = rule;
   return Math.abs(ratio - 1) < EPS ? first * losses : (first * (Math.pow(ratio, losses) - 1)) / (ratio - 1);
+}
+
+/**
+ * The seam's `disarray(losses, rule?)` (count.ts, the validator's bound, the bot): `disarrayOf(rule, losses)`
+ * with the config's rule when given (`cfg.decree.paperRules.disarray`), else D15 as decided. A number in
+ * place of the rule (Array.map's index, `[0, 1, 2].map(disarray)`) is ignored. Built.
+ */
+export function disarray(losses: number, rule?: DisarrayRule | number | null): number {
+  return disarrayOf(rule && typeof rule === 'object' ? rule : DISARRAY_D15, losses);
 }
 
 /** v_i = S × valueStep^i (2.2; Grand Project j is i = 8 + j... continues as ministry 7 + j of the president). Built. */
@@ -238,7 +248,7 @@ export function decreeParams(cfg: DecreeConfig, g: DecreeGame, factors: Factors 
     sayNothing,
     tau: row.tau * tf.mul + tf.add,
     gossipMax: Math.max(1, Math.round(row.gossipMax * gf.mul + gf.add)),
-    disarray: disarray(d.losses, c.paperRules.disarray),
+    disarray: disarrayOf(c.paperRules.disarray, d.losses),
     rivalPull: row.rivalPull,
     record,
   };

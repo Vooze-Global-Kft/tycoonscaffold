@@ -21,7 +21,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A bus ticket museum in the old ticket office. Its own tickets go on show.",
+      "text": "A ticket museum in the old ticket office. Then a ticket office for it.",
       "subject": "buses",
       "butt": "thing",
       "shape": "escalation",
@@ -59,7 +59,7 @@
       "visitor": "spinwell",
       "club": "bus",
       "archetype": "vanity",
-      "text": "Sign every bus ticket yourself, Mayor, so each journey is approved.",
+      "text": "Your signature on every bus ticket, Mayor. Each journey, approved.",
       "subject": "vanity",
       "butt": "self",
       "shape": "form-misapplied"
@@ -82,26 +82,26 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "text": "Keep the pothole by the shoe shop. It is all that slows the 7:02.",
+      "text": "Keep the pothole by the shoe shop. It is the 7:02's only stop.",
       "subject": "potholes",
       "butt": "thing",
       "shape": "undercut",
-      "note": "Other: the Guild wants it filled; the spotters gather at it, by the glass."
+      "note": "Other: the Guild wants the pothole outside its shoe shop filled."
     },
     {
       "id": "may-hat-gift",
       "visitor": "slake",
       "club": "bus",
       "archetype": "basket",
-      "text": "A hat, with compliments. It goes with anything, especially hats.",
+      "text": "A hat for you, Mayor. The clock tower's is on order. No hurry.",
       "subject": "hats",
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
-        "text": "About the hat: it wants a window seat on the 7:02. It has no ticket.",
+        "text": "About the hat: it wants the spotters' bench. It has stood for weeks.",
         "clippings": {
-          "sign": "MAYOR'S HAT GIVEN WINDOW SEAT ON THE 7:02",
-          "refuse": "HAT WALKS HOME. NO TICKET"
+          "sign": "MAYOR'S HAT GIVEN SPOTTERS' BENCH; SPOTTERS STAND",
+          "refuse": "HAT STILL STANDING. SPOTTERS SIT DOWN"
         }
       }
     },
@@ -111,7 +111,7 @@
       "club": "bus",
       "other": "veg",
       "archetype": "swap",
-      "text": "The bean rows hide a third of the 7:02. Move one row, please.",
+      "text": "The bean rows hide a third of the 7:02. We want that third back.",
       "subject": "buses",
       "butt": "thing",
       "shape": "statistic",
@@ -123,11 +123,11 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "Give the bus station a new lease of life. Mervyn has drafted one.",
+      "text": "Raise the 7:02's profile. A ramp outside the shops should do it.",
       "subject": "buses",
-      "butt": "staff",
+      "butt": "thing",
       "shape": "literalism",
-      "note": "Other: the works close the pavement by the shops."
+      "note": "Other: the ramp goes up outside the shops."
     },
     {
       "id": "may-boarding-photo",
@@ -135,11 +135,11 @@
       "club": "bus",
       "other": "veg",
       "archetype": "treat",
-      "text": "Be photographed boarding the 7:02, Mayor. Twice, in case of blur.",
+      "text": "Be photographed waiting for the 7:02, Mayor. Bring breakfast.",
       "subject": "buses",
       "butt": "self",
       "shape": "photo-op",
-      "note": "Other: the 7:02 runs past the allotments; the growers wanted you that morning."
+      "note": "Other: the spotters wait at the allotment stop, on the growers' patch (the feud)."
     },
     {
       "id": "may-ticket-group",
@@ -148,7 +148,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "committee",
-      "text": "A working group on why bus tickets are so small. It will report on one.",
+      "text": "A working group on why tickets are so small. It will report on one.",
       "subject": "paperwork",
       "butt": "committee",
       "shape": "form-misapplied",
@@ -161,7 +161,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "Unveil the new bus timetable, Mayor. Point at a likely time.",
+      "text": "Unveil the new timetable board, Mayor. Point at a likely time.",
       "subject": "buses",
       "butt": "self",
       "shape": "photo-op",
@@ -173,7 +173,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "swap",
-      "text": "Move the prize pumpkin out of Till's Teas. People ask its price.",
+      "text": "Move the prize pumpkin out of Till's Teas. People keep ordering it.",
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "callback",
@@ -185,7 +185,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "swap",
-      "text": "The spotters keep an eye on our window. Move the stop: we want it back.",
+      "text": "Our window says PAUSE AND ADMIRE. The 7:02 does both. Move the stop.",
       "subject": "buses",
       "butt": "thing",
       "shape": "literalism",
@@ -210,7 +210,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "fee",
-      "text": "We would hire the bus station wall for a display. Then the bus.",
+      "text": "We will hire the bus station wall. Then a bus. Then the queue.",
       "subject": "buses",
       "butt": "thing",
       "shape": "escalation",
@@ -222,7 +222,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "treat",
-      "text": "Open the Guild's new window, Mayor. It does not open. Stand by it.",
+      "text": "Open our new window, Mayor. It does not open. Declare it anyway.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "literalism"
@@ -272,12 +272,12 @@
       "club": "shops",
       "other": "bus",
       "archetype": "project",
-      "text": "A shop sign. Then a sign for the sign. Then a lamp for that one.",
+      "text": "A sign: SHOPS. Then MORE SHOPS. Then, at the bus stop, NOT BUSES.",
       "subject": "signage",
       "butt": "thing",
       "shape": "escalation",
       "portable": true,
-      "note": "Other: the sign hangs over the bus timetable."
+      "note": "Other: the last sign goes up at the spotters' bus stop."
     },
     {
       "id": "may-mop-photo",
@@ -285,11 +285,11 @@
       "club": "shops",
       "other": "veg",
       "archetype": "project",
-      "text": "Mop the high street for the camera, Mayor. Just by the draper's.",
+      "text": "A sweeper for weigh-in days. Sweep one leaf, Mayor, for the camera.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "photo-op",
-      "note": "Other: the growers' barrows leave the soil there; they would rather it stayed theirs to sweep."
+      "note": "Other: a sweeper for weigh-in days reads to the growers as a remark about the weigh-in."
     },
     {
       "id": "may-glass-roof",
@@ -297,7 +297,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "project",
-      "text": "A glass roof over the high street. Then glass sides. Then it is a window.",
+      "text": "A glass roof on the high street. Then glass sides. Then it is a window.",
       "subject": "gardens",
       "butt": "thing",
       "shape": "escalation",
@@ -309,7 +309,7 @@
       "visitor": "wimble",
       "club": "shops",
       "archetype": "vanity",
-      "text": "A sign at both ends of the high street: THE MAYOR'S HIGH STREET.",
+      "text": "Signs at each end of the high street: THE MAYOR'S. STILL THE MAYOR'S.",
       "subject": "vanity",
       "butt": "self",
       "shape": "slogan"
@@ -330,7 +330,7 @@
       "club": "veg",
       "other": "bus",
       "archetype": "project",
-      "text": "Three visitors in four come for the pumpkin. The fourth is lost. Signs?",
+      "text": "3 visitors in 4 come for the pumpkin. The fourth is lost. Signs?",
       "subject": "signage",
       "butt": "thing",
       "shape": "statistic",
@@ -342,11 +342,10 @@
       "club": "veg",
       "other": "bus",
       "archetype": "project",
-      "text": "Cut the ribbon on our new compost bins, Mayor. Stand upwind.",
+      "text": "Open our compost bins by the bus stop, Mayor. Stand upwind.",
       "subject": "gardens",
       "butt": "self",
-      "shape": "photo-op",
-      "note": "Other: the bins go behind the bus stop."
+      "shape": "photo-op"
     },
     {
       "id": "may-fence-promise",
@@ -365,7 +364,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "swap",
-      "text": "Turn the clock tower to the allotments. Pumpkins it can see do 30 % better.",
+      "text": "Point the clock tower at the plots. Pumpkins it can see do 30 % better.",
       "subject": "clocks",
       "butt": "thing",
       "shape": "statistic"
@@ -376,7 +375,7 @@
       "club": "veg",
       "other": "bus",
       "archetype": "swap",
-      "text": "The 7:02 is not to hoot past the allotments. Nor the 7:15. Nor the clock.",
+      "text": "The 7:02 may not hoot past the plots. Nor the 7:15. Nor the clock.",
       "subject": "buses",
       "butt": "thing",
       "shape": "escalation"
@@ -422,7 +421,7 @@
       "club": "veg",
       "other": "bus",
       "archetype": "treat",
-      "text": "Pose with the prize pumpkin, Mayor. It prefers its left side.",
+      "text": "Pose with the prize pumpkin, Mayor. Its good side, then yours.",
       "subject": "vegetable-shows",
       "butt": "self",
       "shape": "photo-op"
@@ -434,7 +433,7 @@
       "club": "veg",
       "other": "bus",
       "archetype": "committee",
-      "text": "Study the pothole on the high street. Its soil may be better than ours.",
+      "text": "Study the high street pothole. Its soil may be better than ours.",
       "subject": "potholes",
       "butt": "committee",
       "shape": "undercut",
@@ -447,12 +446,12 @@
       "club": "veg",
       "other": "shops",
       "archetype": "committee",
-      "text": "A census of the prize pumpkin's admirers. So far: 312, some twice.",
+      "text": "A study of the prize pumpkin's admirers. So far: 312, some twice.",
       "subject": "vegetable-shows",
       "butt": "committee",
       "shape": "statistic",
       "portable": true,
-      "biggerStudy": "The census is complete. It now asks to count those who looked away."
+      "biggerStudy": "The study is complete. It now asks to count those who looked away."
     },
     {
       "id": "may-bus-gaze",
@@ -465,14 +464,14 @@
       "subject": "buses",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "Settled: it looks ahead. The committee now turns to the 7:15."
+      "biggerStudy": "Settled: ahead. The committee now asks what it should think."
     },
     {
       "id": "may-vegetable-survey",
       "visitor": "spinwell",
       "club": "veg",
       "archetype": "vanity",
-      "text": "Survey the vegetables' feelings about you, Mayor. Early signs are good.",
+      "text": "Ask the vegetables what they think of you. 90 % have not objected.",
       "subject": "vanity",
       "butt": "self",
       "shape": "statistic"
@@ -487,7 +486,7 @@
       "butt": "lobbyist",
       "shape": "undercut",
       "favour": {
-        "text": "About the rain gauge: it wants the growers' best bed, for the view.",
+        "text": "About the rain gauge: it wants the prize bed. Your desk is too dry.",
         "clippings": {
           "sign": "MAYOR'S RAIN GAUGE GIVEN PRIZE BED",
           "refuse": "RAIN GAUGE SENT BACK, STILL EMPTY"

@@ -26,7 +26,7 @@ export { SITE, PAPER_KINDS, DAY_KINDS, MAX_TICK } from './decree/types';
 export { NotBuiltError, notBuilt, standIn } from './decree/notBuilt';
 
 // --- 2.4 derived values, the one rounding, the one cash commit, the streams, prices (P1a: params.ts) ---
-export { isDecree, officeOf, clubIndex, roundDibs, rand, commitCash, disarray, DISARRAY_D15, ministryValue, storeys, rateOf, levelCostRaw, levelCost, openCost, vanityPrice, factorOn, mixWith, approvalOf, multiplierOf, levelGain, openGain, decreeParams, topBar, clubStrip, EPS, MAX_CASH } from './decree/params';
+export { isDecree, officeOf, clubIndex, roundDibs, rand, commitCash, disarray, disarrayOf, DISARRAY_D15, ministryValue, storeys, rateOf, levelCostRaw, levelCost, openCost, vanityPrice, factorOn, mixWith, approvalOf, multiplierOf, levelGain, openGain, decreeParams, topBar, clubStrip, EPS, MAX_CASH } from './decree/params';
 
 // --- 2.3 state: a new game, a loaded save (P1a: create.ts) ---
 export { freshDecree, createDecree, withDecreeFields, reconcileDecree, buildDecree } from './decree/create';

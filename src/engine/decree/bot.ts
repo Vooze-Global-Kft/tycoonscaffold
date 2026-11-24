@@ -616,7 +616,8 @@ export function traceHash(tr: Pick<Trace, 'decisions' | 'draws' | 'elections'>):
     for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
   };
   for (const d of tr.decisions) add(`${d.t.toFixed(6)}|${d.kind}|${d.source}|${d.choice}|${d.printed.money}|${d.printed.moods.join(',')}`);
-  for (const d of tr.draws) add(`${d.t.toFixed(6)}|${d.source}|${d.text}`);
+  // Draws by order and text: their time is the bot's clock at the end of the tick that drew them (the event carries none), which a 10 Hz run stamps up to 0.1 s later.
+  for (const d of tr.draws) add(`${d.source}|${d.text}`);
   for (const e of tr.elections) add(`${e.t.toFixed(6)}|${e.shares.join(',')}|${e.won}`);
   return h.toString(16).padStart(8, '0');
 }
@@ -845,7 +846,14 @@ class Driver {
       this.g = R.advanceDecree(this.cfg, this.g, dt, this.wall, events);
       this.wall += dt * 1000;
       const I1 = R.decreeParams(this.cfg, this.g).I;
-      const gain = this.g.cash - before.cash;
+      let gain = this.g.cash - before.cash;
+      // A take-back committed inside the tick (its 2 s passed, or the rules cut it short: H3) pays its printed money there.
+      const p0 = before.decree.pending;
+      if (p0 && !this.g.decree.pending && events.some((e) => e.type === 'committed')) {
+        const m = printedOf(p0.item.shown.sign, before.decree.moods.length).money;
+        this.book(m >= 0 ? 'paper' : 'spend', m);
+        gain -= m;
+      }
       const bound = Math.max(I0, I1) * dt;
       if (gain > bound * (1 + 1e-9) + 1e-6) {
         this.book('tick', bound);
@@ -1022,15 +1030,22 @@ class Driver {
     const at = item.landedAt + HAND.slip;
     if (this.clock < at) this.advanceTo(at);
     if (this.d.desk?.type !== 'slip') return;
-    const choice: Choice = this.hab.takesSlips ? 'sign' : 'refuse';
+    let choice: Choice = this.hab.takesSlips ? 'sign' : 'refuse';
     const before = this.g;
     const events: DecreeEvent[] = [];
     this.tr.flicks.push(this.clock);
-    const next = R.decide(this.cfg, this.g, choice, this.clock, events);
+    let next = R.decide(this.cfg, this.g, choice, this.clock, events);
+    // A slip the treasury no longer pays (the goal-follower spent it after the slip landed) is put back, as a player would.
+    if (next === before && choice === 'sign') {
+      choice = 'refuse';
+      next = R.decide(this.cfg, this.g, 'refuse', this.clock, events);
+      if (next === before) this.tr.faults.push(`H6: a slip could be neither bought nor put back at ${this.clock.toFixed(1)} s`);
+    }
     this.g = next;
     this.note(events);
     const spent = this.g.cash - before.cash;
     this.book('spend', spent);
+    if (next === before) this.advanceTo(this.clock + HAND.slip);
     if (choice === 'sign' && next !== before) this.tr.purchases.push({ t: this.clock, via: 'slip', purchase: purchaseName(item.slip.purchase), price: item.slip.price });
     if (choice === 'sign' && spent !== -item.slip.price && !this.tr.events.slice(-6).some((e) => e.type === 'formVoid')) this.tr.faults.push(`H1: slip printed ${item.slip.price}, the treasury changed by ${spent}`);
     this.afterDecision();
@@ -1144,8 +1159,18 @@ class Driver {
     }
   }
 
-  /** One step of play: whatever the desk, the phase and the hand say next. Returns false when the run ends. */
+  stuck = 0;
+  lastStep: DecreeGame | null = null;
+  /** One step of play (guarded: a step that changes nothing 1,000 times in a row is a bot bug, said loudly). */
   step(tEnd: number): boolean {
+    const r = this.step1(tEnd);
+    this.stuck = this.g === this.lastStep ? this.stuck + 1 : 0;
+    this.lastStep = this.g;
+    if (this.stuck > 1000) throw new Error(`decree bot (${this.bot}): no step changes the game at ${this.clock.toFixed(2)} s (desk ${this.d.desk?.type ?? 'empty'}, phase ${this.d.phase}): the bot asks for something the rules refuse, over and over`);
+    return r;
+  }
+  /** One step of play: whatever the desk, the phase and the hand say next. Returns false when the run ends. */
+  step1(tEnd: number): boolean {
     if (this.clock >= tEnd - 1e-9) return false;
     if (this.opts.stop?.(this.g)) return false;
     this.sample();
@@ -1215,12 +1240,18 @@ class Driver {
   }
 
   hoardingNow = false;
+  hoardGrew = { n: -1, at: 0 };
+  /** The hoard adversary waits until the tray is full: the cap, the arrival clock stopped (2.5), or no growth for two arrival intervals (the opening's scripted papers hold the draw, 3.1). */
   hoarding(desk: DeskItem & { type: 'paper' }): boolean {
     if (desk.paper.kind === 'strike' || desk.paper.kind === 'scandal') return false;
     const cap = this.cfg.decree.desk.trayCap;
-    if (this.d.tray.length >= cap) this.hoardingNow = false;
-    else if (this.d.tray.length === 0) this.hoardingNow = true;
-    return this.hoardingNow && this.d.tray.length < cap;
+    const n = this.d.tray.length;
+    if (n !== this.hoardGrew.n) this.hoardGrew = { n, at: this.clock };
+    const stalled = this.clock - this.hoardGrew.at > 2 * R.decreeParams(this.cfg, this.g).tau;
+    const full = n >= cap || R.nextVisitorIn(this.cfg, this.g) === null || stalled;
+    if (full) this.hoardingNow = false;
+    else if (n === 0) this.hoardingNow = true;
+    return this.hoardingNow && !full;
   }
 
   /** The clock and absence adversaries (8.2 item 5). Returns true when it acted. */
@@ -1311,7 +1342,8 @@ export function awayAt(cfg: DecreeConfig, save: DecreeGame, now: number, ad: boo
   const tCap = Math.min(t, cap);
   const expected = R.roundDibs(cfg, R.decreeIncome(cfg, g) * tCap);
   const d0 = g.decree;
-  const free = Math.max(0, cfg.decree.desk.trayCap - d0.tray.length);
+  // 2.15's free places: the tray's, and the desk's when no paper is on it (a slip goes back).
+  const free = Math.max(0, cfg.decree.desk.trayCap - d0.tray.length) + (d0.desk?.type === 'paper' || d0.pending ? 0 : 1);
   const expectedArrivedAtMost = d0.phase === 'governing' ? Math.min(free, Math.floor((tCap + d0.awayCarry) / cfg.decree.away.arrivalSeconds)) : 0;
   const shares0 = safeShares(cfg, g);
   const r = R.decreeOffline(cfg, g, now);

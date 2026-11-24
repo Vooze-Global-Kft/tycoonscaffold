@@ -20,7 +20,7 @@
       "id": "grv-bus-stop",
       "club": "bus",
       "visitor": "kerb",
-      "text": "Return the bus stop you posed beside. We are waiting at a lamp post.",
+      "text": "You posed with our bus stop and kept it. We now wait at a lamp post.",
       "signLabel": "Return the stop",
       "refuseLabel": "Keep the stop",
       "picket": "WE WANT OUR STOP",
@@ -32,7 +32,7 @@
       "id": "grv-shops-mirror",
       "club": "shops",
       "visitor": "awning",
-      "text": "No displays until our mirror is back. It was lent for one wave, a month ago.",
+      "text": "No displays until our mirror is back. You were only going to check your hat.",
       "signLabel": "Return the mirror",
       "refuseLabel": "Keep the mirror",
       "picket": "WE NEED THE GLASS",
@@ -41,46 +41,10 @@
       "shape": "undercut"
     },
     {
-      "id": "grv-bus-logbook",
-      "club": "bus",
-      "visitor": "sprott",
-      "text": "No buses logged until you return our logbook. You signed every page.",
-      "signLabel": "Return the book",
-      "refuseLabel": "Keep the book",
-      "picket": "LOGBOOK, PLEASE",
-      "subject": "buses",
-      "butt": "self",
-      "shape": "escalation"
-    },
-    {
-      "id": "grv-brass-audience",
-      "club": "brass",
-      "visitor": "bellows",
-      "text": "No concerts until our crowd comes back. They followed you to a ribbon.",
-      "signLabel": "Return the crowd",
-      "refuseLabel": "Keep the crowd",
-      "picket": "WE PLAY TO NOBODY",
-      "subject": "bandstands",
-      "butt": "self",
-      "shape": "literalism"
-    },
-    {
-      "id": "grv-shops-hat",
-      "club": "shops",
-      "visitor": "till",
-      "text": "Bare windows until the hat from window four is back. It suited the stand.",
-      "signLabel": "Return the hat",
-      "refuseLabel": "Keep the hat",
-      "picket": "HAT TO WINDOW FOUR",
-      "subject": "hats",
-      "butt": "self",
-      "shape": "undercut"
-    },
-    {
       "id": "grv-brass-room",
       "club": "brass",
       "visitor": "slide",
-      "text": "No practice until our room is back. Your portrait sittings are in week six.",
+      "text": "No practice until our room is back. Your portrait sitting is in its sixth week.",
       "signLabel": "Return the room",
       "refuseLabel": "Keep the room",
       "picket": "ROOM TO PRACTISE",
@@ -89,10 +53,34 @@
       "shape": "statistic"
     },
     {
+      "id": "grv-bus-logbook",
+      "club": "bus",
+      "visitor": "sprott",
+      "text": "No buses logged until our logbook is back. You signed every page, then the cover.",
+      "signLabel": "Return the book",
+      "refuseLabel": "Keep the book",
+      "picket": "LOGBOOK, PLEASE",
+      "subject": "buses",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "grv-shops-hat",
+      "club": "shops",
+      "visitor": "till",
+      "text": "Bare windows until the hat from window four is back. It suited the stand better.",
+      "signLabel": "Return the hat",
+      "refuseLabel": "Keep the hat",
+      "picket": "HAT TO WINDOW FOUR",
+      "subject": "hats",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
       "id": "grv-anglers-sign",
       "club": "anglers",
       "visitor": "dabble",
-      "text": "No sitting until our QUIET PLEASE sign is back. Your door was quiet already.",
+      "text": "No sitting until our QUIET PLEASE sign is back. You held it up at your speech.",
       "signLabel": "Return the sign",
       "refuseLabel": "Keep the sign",
       "picket": "SHHH. GIVE IT BACK",
@@ -125,26 +113,14 @@
       "shape": "escalation"
     },
     {
-      "id": "grv-hedges-level",
-      "club": "hedges",
-      "visitor": "topiary",
-      "text": "No trimming until our spirit level is back. Your nameplate is straight now.",
-      "signLabel": "Return the level",
-      "refuseLabel": "Keep the level",
-      "picket": "HEDGES OUT OF TRUE",
-      "subject": "hedges",
-      "butt": "self",
-      "shape": "form-misapplied"
-    },
-    {
-      "id": "grv-anglers-pond",
-      "club": "anglers",
-      "visitor": "hake",
-      "text": "We will not sit until the pond gets its name back. It never asked for yours.",
-      "signLabel": "Return the name",
-      "refuseLabel": "Keep the name",
-      "picket": "THE POND IS POND",
-      "subject": "vanity",
+      "id": "grv-brass-stands",
+      "club": "brass",
+      "visitor": "bellows",
+      "text": "No concerts until our music stands come back. They are holding up your portraits.",
+      "signLabel": "Return the stands",
+      "refuseLabel": "Keep the stands",
+      "picket": "MUSIC NEEDS STANDS",
+      "subject": "portraits",
       "butt": "self",
       "shape": "undercut"
     },
@@ -161,6 +137,18 @@
       "shape": "photo-op"
     },
     {
+      "id": "grv-hedges-level",
+      "club": "hedges",
+      "visitor": "topiary",
+      "text": "No trimming until our spirit level is back. Your nameplate is straight now.",
+      "signLabel": "Return the level",
+      "refuseLabel": "Keep the level",
+      "picket": "HEDGES OUT OF TRUE",
+      "subject": "hedges",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
       "id": "grv-kites-string",
       "club": "kites",
       "visitor": "updraught",
@@ -171,6 +159,18 @@
       "subject": "ribbons",
       "butt": "self",
       "shape": "literalism"
+    },
+    {
+      "id": "grv-anglers-pond",
+      "club": "anglers",
+      "visitor": "hake",
+      "text": "We will not sit until the pond gets its name back. It never asked for yours.",
+      "signLabel": "Return the name",
+      "refuseLabel": "Keep the name",
+      "picket": "THE POND IS POND",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut"
     }
   ],
   "frontPages": [
@@ -191,6 +191,14 @@
       "shape": "escalation"
     },
     {
+      "id": "fp-mayor-welcome",
+      "office": "mayor",
+      "text": "MAYOR ARRIVES EARLY TO OWN WELCOME. Waits to be welcomed.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
       "id": "fp-mayor-benches",
       "office": "mayor",
       "text": "MAYOR'S NAME FOUND ON 41 BENCHES. Town has 40 benches.",
@@ -199,28 +207,20 @@
       "shape": "statistic"
     },
     {
-      "id": "fp-mayor-portrait-wave",
+      "id": "fp-mayor-hat",
       "office": "mayor",
-      "text": "MAYOR WAVES AT OWN PORTRAIT FOR TEN MINUTES. Portrait does not wave back.",
-      "subject": "portraits",
-      "butt": "self",
-      "shape": "undercut"
-    },
-    {
-      "id": "fp-mayor-clock-name",
-      "office": "mayor",
-      "text": "MAYOR ASKED CLOCK TO CHIME OWN NAME. Clock 'considering it'.",
-      "subject": "clocks",
-      "butt": "self",
-      "shape": "literalism"
-    },
-    {
-      "id": "fp-mayor-hat-umbrella",
-      "office": "mayor",
-      "text": "MAYOR'S HAT GIVEN OWN UMBRELLA. Mayor gets wet.",
+      "text": "MAYOR SENDS HAT TO RIBBON-CUTTING. Ribbon cut on time, for once.",
       "subject": "hats",
       "butt": "self",
       "shape": "undercut"
+    },
+    {
+      "id": "fp-mayor-card",
+      "office": "mayor",
+      "text": "MAYOR WRITES SELF A THANK-YOU CARD. Replies the same day.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "escalation"
     },
     {
       "id": "fp-gov-thanks",
@@ -239,12 +239,20 @@
       "shape": "escalation"
     },
     {
-      "id": "fp-gov-canal",
+      "id": "fp-gov-footbridge",
       "office": "governor",
-      "text": "GOVERNOR OPENS CANAL THAT WAS ALREADY OPEN. Canal 'touched'.",
+      "text": "GOVERNOR REOPENS FOOTBRIDGE FOR THIRD TIME. It had never closed.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "undercut"
+    },
+    {
+      "id": "fp-gov-ribbon-nine",
+      "office": "governor",
+      "text": "GOVERNOR CUTS ONE RIBBON NINE TIMES FOR CAMERAS. Ribbon now confetti.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "escalation"
     },
     {
       "id": "fp-gov-photo",
@@ -255,41 +263,33 @@
       "shape": "photo-op"
     },
     {
-      "id": "fp-gov-tomato",
+      "id": "fp-gov-autograph",
       "office": "governor",
-      "text": "GLASSHOUSE TOMATO NAMED AFTER GOVERNOR. Tomato blushes.",
-      "subject": "gardens",
-      "butt": "self",
-      "shape": "undercut"
-    },
-    {
-      "id": "fp-gov-blank-forms",
-      "office": "governor",
-      "text": "GOVERNOR SIGNS 300 BLANK FORMS 'TO SAVE TIME'. Forms now framed.",
+      "text": "GOVERNOR FILLS IN FORM REQUESTING OWN AUTOGRAPH. Request granted.",
       "subject": "paperwork",
-      "butt": "self",
-      "shape": "form-misapplied"
-    },
-    {
-      "id": "fp-pres-napkin",
-      "office": "president",
-      "text": "PRESIDENT AWARDS SELF THE FOLDED NAPKIN. Accepts it graciously from self.",
-      "subject": "ceremonies",
       "butt": "self",
       "shape": "form-misapplied"
     },
     {
       "id": "fp-pres-signature",
       "office": "president",
-      "text": "PRESIDENT'S SIGNATURE NOW THREE PAGES WIDE. Pens 'exhausted'.",
+      "text": "PRESIDENT'S SIGNATURE NOW THREE PAGES WIDE. Law fits on a fourth.",
       "subject": "paperwork",
       "butt": "self",
       "shape": "statistic"
     },
     {
+      "id": "fp-pres-napkin",
+      "office": "president",
+      "text": "PRESIDENT AWARDS SELF THE FOLDED NAPKIN. Accepts, graciously.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "form-misapplied"
+    },
+    {
       "id": "fp-pres-surprise",
       "office": "president",
-      "text": "PRESIDENT REHEARSES OWN SURPRISE PARTY. Surprise 'very convincing'.",
+      "text": "PRESIDENT REHEARSES OWN SURPRISE BIRTHDAY. 'Very convincing'.",
       "subject": "vanity",
       "butt": "self",
       "shape": "undercut"
@@ -297,7 +297,7 @@
     {
       "id": "fp-pres-cake",
       "office": "president",
-      "text": "PRESIDENT'S CAKE GIVEN OWN PRESS OFFICER. Cake 'not taking questions'.",
+      "text": "PRESIDENT'S CAKE GETS PRESS OFFICER. Cake 'not taking questions'.",
       "subject": "vanity",
       "butt": "self",
       "shape": "escalation"
@@ -321,7 +321,7 @@
     {
       "id": "fp-pres-handshake",
       "office": "president",
-      "text": "PRESIDENT PRACTISES HANDSHAKE ON DOOR HANDLE. Door 'warmly received'.",
+      "text": "PRESIDENT PRACTISES HANDSHAKE ON DOOR. Door 'warmly received'.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "photo-op"
@@ -329,17 +329,17 @@
     {
       "id": "fp-pres-kettle",
       "office": "president",
-      "text": "PRESIDENT HAS CARPET ROLLED OUT TO KETTLE. Kettle 'honoured'.",
+      "text": "PRESIDENT HAS CARPET ROLLED OUT TO KETTLE. Tea takes an hour.",
       "subject": "ceremonies",
       "butt": "self",
-      "shape": "undercut"
+      "shape": "escalation"
     }
   ],
   "apologies": [
     {
       "id": "apo-steps",
-      "text": "Apologise on the steps",
-      "note": "mayor (the specification's label)"
+      "text": "Apologise outside",
+      "note": "mayor (the specification's 'Apologise on the steps' does not fit the label box, and mayor-4 owns the town hall steps)"
     },
     {
       "id": "apo-briefly",
@@ -348,7 +348,7 @@
     },
     {
       "id": "apo-humbly",
-      "text": "Apologise humbly",
+      "text": "Apologise in full",
       "note": "president"
     }
   ],
@@ -369,8 +369,8 @@
     {
       "id": "app-ferrule",
       "minister": "ferrule",
-      "text": "I once got a fee out of a shop window. For its own view.",
-      "returnText": "I apply again. I have since billed its reflection.",
+      "text": "I can find a sponsor for anything. I once found one for a puddle.",
+      "returnText": "I apply again. The puddle still speaks well of me.",
       "note": "Shops; fees x1.2"
     },
     {
@@ -397,8 +397,8 @@
     {
       "id": "app-wren",
       "minister": "wren",
-      "text": "I can get a fee out of a breeze. Ask the picnic that paid for one.",
-      "returnText": "I apply again. The breeze sends its regards.",
+      "text": "I once kept a kite up for nine hours. I was asked for one.",
+      "returnText": "I apply again. The kite is still up.",
       "note": "Kites; fees x1.2"
     },
     {
@@ -411,8 +411,8 @@
     {
       "id": "app-nibley",
       "minister": "nibley",
-      "text": "I mended a fishing stool with the rest of the stool. It is still in use.",
-      "returnText": "I apply again. The stool is still standing. So am I.",
+      "text": "I have patched the same waders for twenty years. They are now all patch.",
+      "returnText": "I apply again. In the same waders.",
       "note": "Anglers; requisitions x0.9: thrift"
     }
   ],
@@ -424,23 +424,14 @@
       "text": "Hold the {district} ribbon. Someone else cuts it. Smile anyway.",
       "subject": "ribbons",
       "butt": "self",
-      "shape": "undercut"
+      "shape": "photo-op"
     },
     {
       "id": "pres-runup-band-in",
       "office": "president",
       "visitor": "bellows",
-      "text": "Open the {district} band festival. You will be played in. Twice.",
+      "text": "Open the {district} band festival. The band will play you in. Then out.",
       "subject": "bandstands",
-      "butt": "self",
-      "shape": "escalation"
-    },
-    {
-      "id": "pres-runup-sketching",
-      "office": "president",
-      "visitor": "fenn",
-      "text": "Sit for the {district} art club. They asked for a bowl of fruit.",
-      "subject": "portraits",
       "butt": "self",
       "shape": "undercut"
     },
@@ -449,7 +440,7 @@
       "office": "president",
       "visitor": "abacus",
       "text": "Present the {district} cup. It reads: THE PRESIDENT, AND THE WINNER.",
-      "subject": "gardens",
+      "subject": "ceremonies",
       "butt": "self",
       "shape": "slogan"
     },
@@ -463,19 +454,19 @@
       "shape": "form-misapplied"
     },
     {
-      "id": "pres-runup-old-tree",
+      "id": "pres-runup-sketching",
       "office": "president",
-      "visitor": "spinwell",
-      "text": "Pose by the oldest tree in {district}. Look wise. It will cope.",
-      "subject": "gardens",
+      "visitor": "fenn",
+      "text": "Sit for the {district} art club. They asked for a bowl of fruit.",
+      "subject": "portraits",
       "butt": "self",
-      "shape": "photo-op"
+      "shape": "undercut"
     },
     {
       "id": "pres-runup-timetable",
       "office": "president",
       "visitor": "sprott",
-      "text": "Read the {district} timetable aloud. All of it. Mervyn will check.",
+      "text": "Read the {district} timetable aloud. All of it. Mervyn checks.",
       "subject": "buses",
       "butt": "self",
       "shape": "escalation"
@@ -490,19 +481,28 @@
       "shape": "literalism"
     },
     {
+      "id": "pres-runup-old-tree",
+      "office": "president",
+      "visitor": "spinwell",
+      "text": "Pose by the oldest tree in {district}. Look wise. It will cope.",
+      "subject": "gardens",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
       "id": "pres-runup-teas",
       "office": "president",
       "visitor": "till",
-      "text": "Take tea at Till's Teas in {district}. Keep the cup's name showing.",
+      "text": "Take tea at Till's Teas in {district}. Keep the name showing.",
       "subject": "vanity",
       "butt": "self",
       "shape": "callback"
     },
     {
-      "id": "pres-runup-pancake",
+      "id": "pres-runup-hoop",
       "office": "president",
       "visitor": "spinwell",
-      "text": "Flip the first pancake in {district}. Three cameras. One go.",
+      "text": "Throw a hoop at the {district} fair. Three cameras. One go.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "statistic"
@@ -526,22 +526,22 @@
       "shape": "literalism"
     },
     {
-      "id": "pres-runup-bulb",
+      "id": "pres-runup-ducks",
       "office": "president",
-      "visitor": "fenn",
-      "text": "Plant a bulb in {district}. Its label reads PRESIDENT'S BULB.",
-      "subject": "gardens",
-      "butt": "self",
-      "shape": "slogan"
+      "visitor": "wimble",
+      "text": "Start the {district} duck race. The ducks have been briefed.",
+      "subject": "ducks",
+      "butt": "office",
+      "shape": "form-misapplied"
     },
     {
-      "id": "pres-runup-hedge-path",
+      "id": "pres-runup-kite-launch",
       "office": "president",
-      "visitor": "topiary",
-      "text": "Walk the {district} hedge path. Agnes has marked the middle.",
-      "subject": "hedges",
+      "visitor": "updraught",
+      "text": "Launch the {district} kite. You hold it up. Philomena runs.",
+      "subject": "kites",
       "butt": "self",
-      "shape": "form-misapplied"
+      "shape": "photo-op"
     },
     {
       "id": "pres-runup-napkin",
@@ -553,28 +553,28 @@
       "shape": "callback"
     },
     {
-      "id": "pres-runup-kite-launch",
+      "id": "pres-runup-hedge-sign",
       "office": "president",
-      "visitor": "updraught",
-      "text": "Launch the first kite in {district}. Hold it up. Philomena runs.",
-      "subject": "kites",
-      "butt": "self",
-      "shape": "photo-op"
+      "visitor": "topiary",
+      "text": "Unveil the {district} hedge sign. It is a hedge, trimmed to read HEDGE.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "literalism"
     },
     {
-      "id": "pres-runup-first-leaf",
+      "id": "pres-runup-roses",
       "office": "president",
-      "visitor": "edging",
-      "text": "Trim the first leaf in {district}. Osmund will measure it.",
-      "subject": "hedges",
+      "visitor": "fenn",
+      "text": "Open the {district} flower show. Smell all 400 roses.",
+      "subject": "gardens",
       "butt": "self",
-      "shape": "form-misapplied"
+      "shape": "statistic"
     },
     {
       "id": "pres-runup-library",
       "office": "president",
       "visitor": "abacus",
-      "text": "Open the {district} library shelf. Your book is on loan. To you.",
+      "text": "Open the {district} library. Your book is on loan. To you.",
       "subject": "vanity",
       "butt": "self",
       "shape": "undercut"
@@ -583,19 +583,19 @@
       "id": "pres-runup-dog-show",
       "office": "president",
       "visitor": "spinwell",
-      "text": "Judge the {district} dog show. Every dog wins, and poses with you.",
+      "text": "Judge the {district} dog show. Rodney has taught one to wave.",
       "subject": "ceremonies",
-      "butt": "self",
-      "shape": "escalation"
+      "butt": "staff",
+      "shape": "photo-op"
     },
     {
       "id": "pres-runup-cheese",
       "office": "president",
       "visitor": "spinwell",
-      "text": "Cut the {district} fair cheese. Look surprised. It is rehearsed.",
-      "subject": "ceremonies",
+      "text": "Cut the {district} cheese. A ribbon has been tied round it.",
+      "subject": "ribbons",
       "butt": "self",
-      "shape": "photo-op"
+      "shape": "form-misapplied"
     },
     {
       "id": "pres-runup-windows",
@@ -607,28 +607,28 @@
       "shape": "statistic"
     },
     {
+      "id": "pres-runup-onions",
+      "office": "president",
+      "visitor": "gourdley",
+      "text": "Tour the {district} allotments. Hilda introduces each onion.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
       "id": "pres-runup-model-railway",
       "office": "president",
       "visitor": "wimble",
       "text": "Open the {district} model railway. Tiny ribbon, tiny scissors, same smile.",
       "subject": "ribbons",
       "butt": "self",
-      "shape": "undercut"
-    },
-    {
-      "id": "pres-runup-onions",
-      "office": "president",
-      "visitor": "gourdley",
-      "text": "Tour the {district} allotments: 300 onions, one photograph, you.",
-      "subject": "vegetable-shows",
-      "butt": "self",
-      "shape": "statistic"
+      "shape": "photo-op"
     },
     {
       "id": "pres-runup-market-bell",
       "office": "president",
       "visitor": "abacus",
-      "text": "Ring the {district} market bell once. Then once for the photograph.",
+      "text": "Ring the {district} bell once. Then once for the photograph.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "escalation"
@@ -663,12 +663,12 @@
       "shape": "form-misapplied"
     },
     {
-      "id": "pres-rally-three-angles",
+      "id": "pres-rally-nine-ribbons",
       "office": "president",
       "visitor": "spinwell",
-      "text": "A rally at the fête. Three photographers, three angles, one snip.",
+      "text": "A rally at the fête. Rodney has brought nine ribbons, in case.",
       "subject": "ribbons",
-      "butt": "self",
+      "butt": "staff",
       "shape": "statistic"
     }
   ]

@@ -146,12 +146,15 @@ export function canBuy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, pri
 /**
  * The one purchase path: `purchase` at `price` (a slip's printed price; null: the live price) when it
  * may be bought (`canBuy`); the SAME object when refused. A paper resting in its take-back window
- * commits first (at the play clock). `free` (a requisition's level, its price already paid as the
- * paper printed it) skips the price and the reserve. A level crossing a storey brings its ribbon form
+ * commits first (at the play clock): a player's action is "the next action" of 2.7. `auto` (the
+ * Standing Order, which nobody tapped) is refused instead while a paper rests in the take-back window.
+ * `free` (a requisition's level, its price already paid as the paper printed it) skips the price and the reserve. A level crossing a storey brings its ribbon form
  * (`ribbonsDue`). Built.
  */
-export function buy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, price: number | null, events: DecreeEvent[], opts: { free?: boolean } = {}): DecreeGame {
+export function buy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, price: number | null, events: DecreeEvent[], opts: { free?: boolean; auto?: boolean } = {}): DecreeGame {
   if (opts.free) return applyPurchase(cfg, g, purchase, 0, events);
+  // A purchase nobody tapped (the Standing Order, `auto`) never ends the player's take-back window: refused while a paper rests there.
+  if (opts.auto && g.decree.pending) return g;
   const local: DecreeEvent[] = [];
   const s = g.decree.pending ? commitPending(cfg, g, g.stats.playSeconds, local) : g;
   const live = slipOf(cfg, s, purchase);

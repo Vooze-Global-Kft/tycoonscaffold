@@ -116,6 +116,16 @@ describe('purchases (2.6): one path, the reserve kept, the SAME object when refu
     expect(R.buyVanity(cfg, g, [])).toBe(g);
   });
 
+  it("a player's purchase commits a pending paper first; the Standing Order's (auto) waits instead", () => {
+    const g = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6, desk: 'test-mayor-bus-swap-1' });
+    const signed = R.decide(cfg, g, 'sign', 0, []);
+    expect(signed.decree.pending).not.toBeNull();
+    expect(R.buy(cfg, signed, { type: 'level', ministry: 1 }, null, [], { auto: true })).toBe(signed);
+    const mine = R.buy(cfg, signed, { type: 'level', ministry: 1 }, null, []);
+    expect(mine.decree.pending).toBeNull();
+    expect(mine.decree.ministries[1].level).toBe(8);
+  });
+
   it('a level reaching a storey (every 12) brings its ribbon form', () => {
     const g = built({ office: 0, ministries: [11, 0, 0, 0], cash: 1e6 });
     const events: R.DecreeEvent[] = [];

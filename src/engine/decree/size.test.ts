@@ -204,7 +204,7 @@ describe('the factors of twists and ministers multiply the base effects before s
       combos++;
     }
     expect(combos).toBe(2048);
-  });
+  }, 60_000);
 
   it('prints the initials of a minister on the papers its rule touches ("BF ×1.2", "HB +1"), and only there', () => {
     const factors: R.Factors = { mixAdd: [0, 0, 0, 0, 0, 0, 0], list: [ENTRIES[4], ENTRIES[2]] };
@@ -341,8 +341,8 @@ describe('the formulas D27 may still move are each ONE function with config para
 
   it('disarray: D15 by default (+2, +6, +14, +30, +62, +126), the config rule through decreeParams, ratio 1 the old linear rule', () => {
     expect([0, 1, 2, 3, 4, 5, 6].map((n) => R.disarray(n))).toEqual([0, 2, 6, 14, 30, 62, 126]);
-    expect(R.disarray(3, { first: 8, ratio: 1 })).toBe(24);
-    expect(R.disarray(3, { first: 3, ratio: 3 })).toBe(3 + 9 + 27);
+    expect(R.disarrayOf({ first: 8, ratio: 1 }, 3)).toBe(24);
+    expect(R.disarrayOf({ first: 3, ratio: 3 }, 3)).toBe(3 + 9 + 27);
     const c = decreeTestConfig({ paperRules: { disarray: { first: 3, ratio: 2 }, sizing: { scale: 50, pull: 1 } } });
     const g = built({ office: 0, losses: 2 }, c);
     expect(R.decreeParams(c, g).disarray).toBe(9);

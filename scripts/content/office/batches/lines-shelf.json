@@ -111,7 +111,7 @@
     {
       "id": "duck",
       "name": "A duck, unveiled",
-      "text": "The duck from your first photograph. It came to the unveiling, briefly."
+      "text": "The duck you once fed, on camera. It came to the unveiling, briefly."
     },
     {
       "id": "rosette",
@@ -322,7 +322,7 @@
       "id": "pair-press-market",
       "a": "quiet-press",
       "b": "market-fortnight",
-      "name": "Fees in small print"
+      "name": "The market, on page nine"
     },
     {
       "id": "pair-press-early",
@@ -346,7 +346,7 @@
       "id": "pair-press-amnesty",
       "a": "quiet-press",
       "b": "grievance-amnesty",
-      "name": "Page nine: all is forgiven"
+      "name": "A regret in small print"
     },
     {
       "id": "pair-ribbon-kite",
@@ -436,7 +436,7 @@
       "id": "pair-market-amnesty",
       "a": "market-fortnight",
       "b": "grievance-amnesty",
-      "name": "A sale on apologies"
+      "name": "A forgiveness stall"
     },
     {
       "id": "pair-early-hedge",
@@ -454,7 +454,7 @@
       "id": "pair-early-amnesty",
       "a": "early-doors",
       "b": "grievance-amnesty",
-      "name": "Early regrets"
+      "name": "The apology came early"
     },
     {
       "id": "pair-hedge-gentle",

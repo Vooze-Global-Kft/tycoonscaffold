@@ -104,6 +104,15 @@ function settle(cfg: DecreeConfig, g: DecreeGame, t: number): DecreeGame {
   return x.decree.cashAnchor === a ? x : withDecree(x, { cashAnchor: a });
 }
 
+/**
+ * A cash threshold raised by a relative hair (1e-12), so that at the moment cash reaches it the
+ * rule's own check (`cash − price ≥ what is kept back`, computed in floating point by slips.ts and
+ * grants.ts) passes at any magnitude: an event the tick schedules is never refused when it comes.
+ */
+function above(need: number): number {
+  return need + Math.abs(need) * 1e-12;
+}
+
 /** The time of each timed event of a settled state (Infinity when it is not due), before the clock applies. */
 function eventTimes(cfg: DecreeConfig, g: DecreeGame): Record<TickEvent, number> {
   const d = g.decree;
@@ -115,11 +124,11 @@ function eventTimes(cfg: DecreeConfig, g: DecreeGame): Record<TickEvent, number>
   const live = d.phase === 'governing' || d.phase === 'campaign';
   if (live && !d.desk && !d.tray.length && !d.pending && d.emptySince !== null) {
     const need = slipNeed(cfg, g);
-    if (need !== null) out.slip = Math.max(d.emptySince + cfg.decree.desk.slipDelay, timeCashReaches(a, need));
+    if (need !== null) out.slip = Math.max(d.emptySince + cfg.decree.desk.slipDelay, timeCashReaches(a, above(need)));
   }
   if (live && standingOrderActive(cfg, g)) {
     const pick = standingOrderPick(cfg, g);
-    if (pick) out.order = timeCashReaches(a, cfg.decree.standingOrder.times * pick.price + reserveNow(cfg, g));
+    if (pick) out.order = timeCashReaches(a, above(cfg.decree.standingOrder.times * pick.price + reserveNow(cfg, g)));
   }
   return out;
 }
