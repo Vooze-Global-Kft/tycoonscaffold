@@ -163,6 +163,30 @@ describe('the away report through the store (2.9, M8, 10.1 item 7)', () => {
     expect(empty).toBeNull();
   });
 
+  it('a report back from a save reads as it did (the app was closed on the sheet), and a damaged one never breaks the sheet', async () => {
+    const { lines } = await storeWith(minded());
+    const report: R.AwayReport = { seconds: 3 * 3600, effective: 3 * 3600, sales: [{ c: 0, goods: 720, coins: 8640 }, { c: 1, goods: 720, coins: 34560 }], earnings: 43200, shelved: [{ c: 0, goods: 6 }], waiting: [0] };
+    // The store saves the report with the game while it waits and reads it back at the next start (src/state/store.ts).
+    const saved = JSON.parse(JSON.stringify(report)) as unknown;
+    expect(saved).toEqual(report);
+    const view = lines.awayView(cfg, { seconds: report.seconds, earnings: report.earnings, report }, 1.5, 4 * 3600)!;
+    expect(lines.awayView(cfg, { seconds: report.seconds, earnings: report.earnings, report: saved }, 1.5, 4 * 3600)).toEqual(view);
+    expect(view.lines[0]).toContain('Old Brindle and Pim sold 1,440 house goods');
+    // A save is untrusted: every field in turn missing or of the wrong kind, and things that are no report at all.
+    const junk: unknown[] = [null, 'x', 5, -1, true, {}, [], [null], [5], ['x'], [{}], [[]], [{ c: 'x', goods: 'y', coins: {} }]];
+    const damaged: unknown[] = [...junk];
+    for (const key of Object.keys(report)) {
+      for (const j of junk) damaged.push({ ...report, [key]: j });
+      damaged.push(Object.fromEntries(Object.entries(report).filter(([k]) => k !== key)));
+    }
+    for (const bad of damaged) {
+      const v = lines.awayView(cfg, { seconds: 600, earnings: 40, report: bad }, 1.5, 4 * 3600);
+      // Whatever the report says, the amounts are the record's own: what Collect pays, and with the ad.
+      expect(v, JSON.stringify(bad)).toMatchObject({ amount: '40', withAd: '60', adPercent: 50 });
+      for (const line of v!.lines) expect(typeof line, JSON.stringify(bad)).toBe('string');
+    }
+  });
+
   it('figures as figures: 1,520 goods; one name, two names, three names', async () => {
     const { lines } = await storeWith(minded());
     expect(lines.groupDigits(1520)).toBe('1,520');

@@ -34,6 +34,14 @@ import { overlays } from './overlays';
  */
 const saveKey = () => `save:${ACTIVE_GAME_ID}:${installedEngine()?.saveTag ?? 'v1'}`;
 
+/**
+ * Where, in the saved game, the away report waits that was not collected yet when the game was
+ * saved (the store's `offline`). It lies next to the game's own fields and is not one of them: the
+ * game in memory never holds it (reconcileState takes only the fields it knows), and a build from
+ * before it existed reads such a save as it always did. Written and read here only (save, boot).
+ */
+const PENDING_AWAY = 'pendingAway';
+
 export type Tab = 'home' | 'staff' | 'upgrades' | 'empire' | 'shop';
 
 /** A dialog that more than one screen can open. */
@@ -58,6 +66,13 @@ export interface ChestOpening {
   rewards: GrantedReward[];
 }
 
+/** Time away to pay. `report` is a mode engine's own account of it (haul: the Shift Log), when it has one. */
+interface Away {
+  seconds: number;
+  earnings: number;
+  report?: unknown;
+}
+
 interface Store {
   cfg: GameConfig;
   game: GameState;
@@ -65,8 +80,12 @@ interface Store {
   buyAmount: BuyAmount;
   tab: Tab;
   modal: Modal | null;
-  /** Time away to pay. `report` is a mode engine's own account of it (haul: the Shift Log), when it has one. */
-  offline: { seconds: number; earnings: number; report?: unknown } | null;
+  /**
+   * Time away waiting to be collected (the welcome-back popup, or a mode's own away sheet). Saved
+   * with the game for as long as it waits (PENDING_AWAY), so closing the app before collecting
+   * loses nothing: boot() brings it back. Whatever pays it clears it in the same update.
+   */
+  offline: Away | null;
   /** Floating "+$123" numbers; the UI drains them. */
   tapEvents: { id: number; amount: number; x: number; y: number; big?: boolean }[];
   /** Quick taps in a row; drives the combo multiplier. */
@@ -81,7 +100,11 @@ interface Store {
   /** The player's country (ISO alpha-2) when known. Decides whether chests may be sold: see chestSalesAllowed. */
   region: string | null;
 
-  /** Loads the save and starts the game. Call once at startup; later calls behave like resume(). */
+  /**
+   * Loads the save and starts the game. The time away since the save, and an away report the save
+   * still held (the app was closed before it was collected), come up as one report in `offline`.
+   * Call once at startup; later calls behave like resume().
+   */
   boot(): Promise<void>;
   /** The app went to the background: stop the clock and save. */
   pause(): Promise<void>;
@@ -243,6 +266,40 @@ function mergedReport(cfg: GameConfig, older: unknown, newer: unknown): { report
   return { report: merge ? safe('engine.mergeReport', () => merge(older, newer), newer ?? older) : (newer ?? older) };
 }
 
+/** More time away joins a report still waiting to be collected, so nothing earned while away is dropped. */
+function joinAway(cfg: GameConfig, waiting: Away, away: Away): Away {
+  return { seconds: waiting.seconds + away.seconds, earnings: waiting.earnings + away.earnings, ...mergedReport(cfg, waiting.report, away.report) };
+}
+
+/**
+ * The save as text: the game, and next to it the away report still waiting to be collected. A
+ * mode's report is its own plain data (src/engine/mode.ts `offline`); one that cannot be written
+ * is left out, never the coins and never the game.
+ */
+function saveText(game: GameState, waiting: Away | null): string {
+  if (!waiting) return JSON.stringify(game);
+  try {
+    return JSON.stringify({ ...game, [PENDING_AWAY]: waiting });
+  } catch (e) {
+    crash.record(e, 'save-away');
+    return JSON.stringify({ ...game, [PENDING_AWAY]: { seconds: waiting.seconds, earnings: waiting.earnings } });
+  }
+}
+
+/**
+ * The away report a save holds, or null. The save is untrusted, as the game in it is: the coins and
+ * the time must be numbers above zero (else 0), and a mode's report comes back as it was written
+ * (the mode reads it as it reads the rest of its save: with care). boot() drops a record that pays
+ * nothing and says nothing.
+ */
+function pendingAway(saved: unknown): Away | null {
+  const p = typeof saved === 'object' && saved !== null ? (saved as Record<string, unknown>)[PENDING_AWAY] : null;
+  if (typeof p !== 'object' || p === null || Array.isArray(p)) return null;
+  const { seconds, earnings, report } = p as Record<string, unknown>;
+  const positive = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) && x > 0 ? x : 0);
+  return { seconds: positive(seconds), earnings: positive(earnings), report };
+}
+
 simEvents.onError((e, where) => crash.record(e, where));
 modeEvents.onError((e, where) => crash.record(e, where));
 
@@ -396,11 +453,15 @@ export const useGame = create<Store>((set, get) => {
         const now = Date.now();
         let game = E.createInitialState(baseGame, now);
         let returning = false;
+        // An away report the app was closed on before it was collected (saved with the game).
+        let waiting: Away | null = null;
         try {
           const raw = await AsyncStorage.getItem(saveKey());
           if (raw) {
-            game = E.reconcileState(baseGame, JSON.parse(raw), now);
+            const saved: unknown = JSON.parse(raw);
+            game = E.reconcileState(baseGame, saved, now);
             returning = true;
+            waiting = pendingAway(saved);
           }
         } catch (e) {
           crash.record(e, 'load-save');
@@ -428,20 +489,23 @@ export const useGame = create<Store>((set, get) => {
         game = safe('meta.startFreeChestTimer', () => M.startFreeChestTimer(cfg, game, at), game);
         game = refreshMeta(cfg, game, at);
 
-        const offline = returning ? E.computeOffline(cfg, game, at) : null;
+        const computed = returning ? E.computeOffline(cfg, game, at) : null;
         // A mode engine fast-forwards its own state while away (haul: rocks, piles, the hold); keep it.
-        if (offline?.game) game = offline.game;
+        if (computed?.game) game = computed.game;
+        const away: Away | null = computed && { seconds: computed.seconds, earnings: computed.earnings, report: computed.report };
+        let offline = away && away.seconds >= cfg.economy.offline.minSecondsToShow && worthShowing(cfg, away) ? away : null;
+        // The report the app was closed on is shown again. The time away since that save (counted
+        // from it, so nothing in the report is counted twice) joins it as resume() joins a second
+        // absence into a popup still open: whenever it earned something or is worth a report itself.
+        if (waiting && worthShowing(cfg, waiting)) {
+          offline = away && (offline || away.earnings > 0) ? joinAway(cfg, waiting, away) : waiting;
+        }
         syncAds(game);
         rushWasActive = E.isRushActive(game, at);
         lastTickAt = at;
         sessionStartedAt = at;
         paused = false;
-        set({
-          cfg,
-          game: { ...game, lastSavedAt: at },
-          hydrated: true,
-          offline: offline && offline.seconds >= cfg.economy.offline.minSecondsToShow && worthShowing(cfg, offline) ? { seconds: offline.seconds, earnings: offline.earnings, report: offline.report } : null,
-        });
+        set({ cfg, game: { ...game, lastSavedAt: at }, hydrated: true, offline });
         analytics.log(returning ? 'session_resume' : 'first_open_game', { prestige: game.prestigeCount, mode: cfg.mode, session: game.stats.sessions });
         ads.init();
         detectRegion().then((region) => set({ region }));
@@ -487,7 +551,7 @@ export const useGame = create<Store>((set, get) => {
       if (away.earnings > 0 || (away.seconds >= cfg.economy.offline.minSecondsToShow && worthShowing(cfg, away))) {
         if (offline || away.seconds >= cfg.economy.offline.minSecondsToShow) {
           // Merge with a popup that is still open, so nothing earned while away is dropped.
-          offline = offline ? { seconds: offline.seconds + away.seconds, earnings: offline.earnings + away.earnings, ...mergedReport(cfg, offline.report, away.report) } : away;
+          offline = offline ? joinAway(cfg, offline, away) : away;
         } else if (away.seconds <= MAX_CATCH_UP_SECONDS && !advanced) {
           // A short trip to the background (a notification, the app switcher, and on Android every
           // full-screen ad) is simply caught up at full speed: the chain runs on, nothing is popped up.
@@ -537,10 +601,14 @@ export const useGame = create<Store>((set, get) => {
     async save() {
       // Before boot has loaded the save, the in-memory game is a blank one: writing it would wipe the player.
       if (!get().hydrated) return;
-      const game = { ...get().game, lastSavedAt: Date.now() };
+      const { game: current, offline } = get();
+      const game = { ...current, lastSavedAt: Date.now() };
       set({ game });
       try {
-        await AsyncStorage.setItem(saveKey(), JSON.stringify(game));
+        // One write holds both the game (stamped with now, from where the next time away is measured)
+        // and the away report not collected yet: either both reach the disk or neither does, so a
+        // killed app never loses the report and never finds it again after it was paid.
+        await AsyncStorage.setItem(saveKey(), saveText(game, offline));
       } catch (e) {
         crash.record(e, 'save');
       }
@@ -912,15 +980,15 @@ export const useGame = create<Store>((set, get) => {
           const mult = engineFor(get().cfg)?.offlineAdMultiplier;
           if (ok) amount *= mult ? safe('engine.offlineAdMultiplier', () => mult(get().cfg), 1) : 2;
         }
-        // Clear the popup in the same update that pays it, and only pay what is still pending:
-        // a resume() while the ad was open may have merged more time into it.
+        // Only pay what is still pending: a resume() while the ad was open may have merged more time into it.
         const pending = get().offline;
         if (pending && pending !== offline) amount += pending.earnings - offline.earnings;
         // A mode that rounds what it shows grants the rounded figure (merge, M19); without the hook the amount is unchanged.
         const round = engineFor(get().cfg)?.roundPayout;
         if (round) amount = safe('engine.roundPayout', () => round(get().cfg, amount), amount);
-        update((s) => E.grantCash(s, amount));
-        set({ offline: null });
+        // The popup is cleared in the same update that pays it: the report is saved with the game while
+        // it waits, so no save may ever hold both the coins and the report that paid them.
+        set({ game: E.grantCash(get().game, amount), offline: null });
         get().save();
         fx.play('offline_collect');
         analytics.log('earn_virtual_currency', { virtual_currency_name: 'cash', value: amount, source: 'offline' });
@@ -1039,7 +1107,7 @@ export const useGame = create<Store>((set, get) => {
 });
 
 /** An absence worth a popup: it earned something, or the mode says its report speaks alone (src/engine/mode.ts `reportAlone`). */
-function worthShowing(cfg: GameConfig, away: { earnings: number; report?: unknown }): boolean {
+function worthShowing(cfg: GameConfig, away: Away): boolean {
   if (away.earnings > 0) return true;
   const mode = engineFor(cfg);
   return away.report !== undefined && !!mode?.reportAlone && safe('engine.reportAlone', () => mode.reportAlone!(away.report), false);

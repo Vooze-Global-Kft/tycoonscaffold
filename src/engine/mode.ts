@@ -44,7 +44,11 @@ export interface EngineMode {
   activeIncome(cfg: GameConfig, state: GameState, now: number): number;
   /**
    * Time away: the earnings to grant (not yet added to cash) and the advanced game to keep. The
-   * report is the mode's own (the haul Shift Log), passed through to its screen.
+   * report is the mode's own (the haul Shift Log), passed through to its screen. It is plain data:
+   * while it waits to be collected the store saves it with the game and, when the app was closed
+   * on it, hands it back at the next start as it was written (src/state/store.ts `offline`). So
+   * `mergeReport`, `reportAlone` and the mode's screen read it as a save is read: a report of an
+   * earlier build, or a damaged one, must not break them.
    */
   offline(cfg: GameConfig, state: GameState, now: number): { seconds: number; earnings: number; game: GameState; report?: unknown };
   /**
@@ -66,8 +70,9 @@ export interface EngineMode {
   /** Whether a mission type can be handed out now, or undefined when the type is not the mode's. */
   missionUsable?(cfg: GameConfig, state: GameState, type: string): boolean | undefined;
   /**
-   * Two offline reports of one absence (a resume while the first report is still on screen) as
-   * one. Without it the newer report replaces the older one.
+   * Two offline reports as one: of one absence (a resume while the first report is still on
+   * screen), or of the report the app was closed on and the time away since (`older` then comes
+   * from the save). Without it the newer report replaces the older one.
    */
   mergeReport?(older: unknown, newer: unknown): unknown;
   /**

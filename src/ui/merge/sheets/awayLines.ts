@@ -57,9 +57,15 @@ export function joinNames(names: string[]): string {
   return S.hints.away.and(names.slice(0, -1).join(S.hints.away.comma), names[names.length - 1]);
 }
 
+/**
+ * The rules' report, or something else: a report still waiting when the app was closed comes back
+ * from the save (src/state/store.ts), and a save is untrusted. Lists whose entries are not objects
+ * are no report: the sheet then keeps to the record's own time and coins and never breaks.
+ */
 function isReport(x: unknown): x is R.AwayReport {
   const r = x as R.AwayReport | null;
-  return !!r && typeof r === 'object' && Array.isArray(r.sales) && Array.isArray(r.shelved) && typeof r.seconds === 'number';
+  const rows = (list: unknown) => Array.isArray(list) && list.every((row) => !!row && typeof row === 'object');
+  return !!r && typeof r === 'object' && rows(r.sales) && rows(r.shelved) && typeof r.seconds === 'number';
 }
 
 /** The away cap in whole hours or minutes, as printed. */

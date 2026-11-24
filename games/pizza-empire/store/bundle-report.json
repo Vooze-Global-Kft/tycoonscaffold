@@ -1,10 +1,10 @@
 {
  "game": "pizza-empire",
- "date": "2026-11-23T17:13:18.231Z",
+ "date": "2026-11-24T09:03:37.063Z",
  "platform": "ios",
  "stage": "export",
  "result": "pass",
- "sourceHash": "6ec35a2505c67359e30cb7f7fb755d956f1b763483b9f0b05e2a838f961494b2",
+ "sourceHash": "9b44c5f91c0dbe371a2c31d7db27cbf0cb218ee7a0645f1825c77429ec732583",
  "sources": [
   "app.config.ts",
   "games/pizza-empire/assets/biz_delivery.png",
@@ -249,5 +249,5 @@
  "violations": [],
  "modules": 1842,
  "assets": 65,
- "bytes": 4954547
+ "bytes": 4955148
 }
