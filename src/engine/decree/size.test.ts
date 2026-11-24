@@ -77,7 +77,8 @@ describe('the f± sizing and its lemma (2.7)', () => {
     expect(R.sizeMood(cfg, 30, -4)).toBe(-2);
     // Exact halves round away from zero: 3 × 0.5 = 1.5 → 2; 5 × 0.9 = 4.5 → 5.
     expect(R.sizeMood(cfg, 75, 3)).toBe(2);
-    expect(R.sizeMood(cfg, 45, 5)).toBe(5);
+    expect(R.sizeMood(cfg, 45, -5)).toBe(-5);
+    expect(R.sizeMood(cfg, 45, 5)).toBe(6);
     expect(R.sizeMood(cfg, 100, 5)).toBe(0);
     expect(R.sizeMood(cfg, 0, -5)).toBe(0);
   });
@@ -185,7 +186,10 @@ describe('the factors of twists and ministers multiply the base effects before s
         }
         for (const ini of shown.factors) expect(list.some((e) => e.initials === ini.initials)).toBe(true);
         // Every effective mood stays inside 0..100 (the lemma after factors).
-        for (const side of ['sign', 'refuse'] as const) for (const e of shown[side]) if (e.type === 'moods') e.deltas.forEach((x, gi) => expect(g0.decree.moods[gi] + x).toBeGreaterThanOrEqual(0) && expect(g0.decree.moods[gi] + x).toBeLessThanOrEqual(100));
+        for (const side of ['sign', 'refuse'] as const) for (const e of shown[side]) if (e.type === 'moods') e.deltas.forEach((x, gi) => {
+            expect(g0.decree.moods[gi] + x).toBeGreaterThanOrEqual(0);
+            expect(g0.decree.moods[gi] + x).toBeLessThanOrEqual(100);
+          });
       }
       combos++;
     }
