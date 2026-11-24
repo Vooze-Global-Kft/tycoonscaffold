@@ -150,9 +150,11 @@ export const GameConfigSchema = z.object({
    *   are src/engine/haul, installed by its mode entry (src/engine/mode.ts).
    * "merge": the street-market merge game (needs the `merge` block; `businesses` stays empty). Its rules
    *   are src/engine/merge, installed by its mode entry (src/engine/mode.ts).
+   * "decree": the desk game of offices and papers (needs the `decree` block; `businesses` stays empty).
+   *   Its rules are src/engine/decree, installed by its mode entry (src/engine/mode.ts).
    * The mode picks the code bundled with the game (src/generated/mode.ts) and is never changed at run time.
    */
-  mode: z.enum(['classic', 'sim', 'haul', 'merge']).default('classic'),
+  mode: z.enum(['classic', 'sim', 'haul', 'merge', 'decree']).default('classic'),
   /**
    * The sound pack: a folder in shared/sfx/ ("warm": marimba, plate clinks, the service bell;
    * "synth"). Only this pack is bundled with the game; files in the game's own assets/sfx/
@@ -345,6 +347,13 @@ export const GameConfigSchema = z.object({
    * game-data lint checks it (src/config/lint.ts).
    */
   merge: z.record(z.string(), z.unknown()).optional(),
+  /**
+   * Decree mode: the offices, clubs, ministries, papers and their deck. Opaque here, like `haul` and
+   * `merge`: its schema (src/config/schema.decree.ts) belongs to the decree mode; the decree engine mode
+   * parses this block with its defaults when the decree entry installs it (src/engine/decreeMode.ts
+   * `config`), and the game-data lint checks it (src/config/lint.ts).
+   */
+  decree: z.record(z.string(), z.unknown()).optional(),
   /** Cards, chests, missions and deals. Works in both modes; everything is optional. */
   meta: MetaSchema.default({
     cards: [],

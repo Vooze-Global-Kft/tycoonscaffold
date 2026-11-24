@@ -1,0 +1,49 @@
+# common-words.txt: rule 2 of the satire lint (office-design.md 7.8). Rule 2 flags a word that is
+# capitalised in the middle of a sentence (an unknown proper noun) unless it is a word of a
+# names.json name or a word on this list. This list holds the words a deadpan official memo
+# capitalises without naming anyone: titles and ranks of the invented country, office words, the
+# days and months, the seasons, honorifics, the game's own interface words, and the few words
+# English always capitalises. Compared ignoring case, one word a line or several split at commas;
+# a possessive "'s" is removed first. "#" starts a comment.
+#
+# Not here on purpose: March (a protest word, tier 3), King, Queen, Sir, Dame, Lord (tier 3), and
+# any real office of the seven countries (Senate, Parliament, Prime Minister: tier 3).
+
+I, OK
+# titles and ranks of the invented country
+Mayor, Mayors, Mayoress, Governor, Governors, President, Presidents, Acting, Minister, Ministers
+Deputy, Deputies, Secretary, Secretaries, Clerk, Clerks, Chief, Staff, Councillor, Councillors
+Professor, Doctor, Keeper, Keepers, Spokesperson, Chair, Chairperson, Treasurer, Applicant
+Junior, Senior, Counting, Treasury, Former, Opponent, Opponents, Rival, Rivals, Candidate
+Freeman, Freemen, Freedom, Honorary, Ceremonial, Grand, Second, Class, First, Third, Order
+# office words
+Office, Offices, Ministry, Ministries, Board, Boards, Bureau, Authority, Trust, Committee
+Committees, Society, Guild, League, Circle, Club, Clubs, Council, Councils, Republic, Province
+Provinces, Provincial, County, Counties, Ward, Wards, Town, Towns, Hall, Halls, Record, Records
+Prize, Prizes, Show, Shows, Fair, Fete, Festival, Gala, Week, Weeks, Fortnight, Day, Days, Year
+Annual, Gazette, Daily, Evening, Morning, Weekly, Notice, Notices, Form, Forms, Requisition
+Minutes, Agenda, Item, Items, Motion, Appendix, Section, Clause, Subsection, Annex, Schedule
+Department, Division, Unit, Desk, Tray, In-Tray, Out-Tray, Drawer, Ledger, Cabinet, Poll, Wall
+Shelf, Scrapbook, Standing, Clock, Clocks, Potholes, Pothole, Bench, Benches, Bandstand
+Bandstands, Signposts, Lampposts, Fountain, Fountains, Bridge, Mill, Umbrella, Project
+Projects, Monument, Monuments, Statue, Portrait, Portraits, Ribbon, Ribbons, Spoon, Goose
+Name, Recognition, Election, Night, Count, Result, Results, Term, Terms, Rally, Campaign
+# the clubs' printed names and short names
+Bus, Buses, Shop, Shops, Window, Windows, Vegetable, Vegetables, Giant, Spotters, Brass, Band
+Bands, Anglers, Kite, Kites, Flyers, Hedge, Hedges, Tidy, Bunting, Breeze, Harbour, Lamplight
+Motorway, Parks, Park, Hedgerow, Canals, Jetties, Market, Weights, Glasshouse, Shelter
+# days, months (not March), seasons
+Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday, Mondays, Tuesdays, Wednesdays
+Thursdays, Fridays, Saturdays, Sundays, January, February, April, June, July, August
+September, October, November, December, Spring, Summer, Autumn, Winter
+# honorifics and forms of address
+Mr, Mrs, Ms, Miss, Mx, Dr, Madam, Madame, Councillor
+# interface words a paper may quote
+SIGN, STUDY, SIGNED, STUDIED, FOR, FURTHER, Next, Gossip, Approval, Taxes, Dibs, Boycott
+Scandal, Level, Levels, Storey, Storeys, Raise, Courier, Spin, Sofa, Doors, Lunch, Long
+# the first words of the ad cards' names as the listing quotes them mid-sentence ("Call the Spin Doctor", "Check the Sofa", "Send a Courier", "Open the Doors")
+Call, Check, Send, Open
+Kept, Further, Study
+# everyday words of the invented names (so no near-match is sought for them)
+Press, Thimble, Merit, Moderate, Keeper, Grand, Trust, Board, Town, Quiet, Gentle, Early, Shortage
+Amnesty, Inspection, Weather, Summer, Doors, Class, Spoon, Circle, Society, Guild, League

@@ -39,6 +39,18 @@
  *   sheet:gear | sheet:stall | sheet:minder | sheet:open   the buy buttons of the stall sheet (gear, stall level, minder, open)
  *   confirm:shutter           the shutter confirm's buy button              ticket:notTonight  the ticket detail's "Not tonight"
  *   giftbox                   the gift box button (a paper bag on the street), when one waits
+ *
+ * KEYS of the decree mode (High Office, docs/design/office-design.md 3.1, 4.1 to 4.4; a contract between
+ * the rules' hintsFor, src/engine/decree/hints.ts, and the screens in src/ui/decree; drawn targets are
+ * set with `targets.set` from deskLayout's rectangles, controls use useTarget)
+ *   paper                     the desk paper (the pen draws it down, 3.1 0:02, and up, 0:10)
+ *   strip:sign | strip:refuse the paper's SIGN and REFUSE strips              outTray  the out-tray band (take-back)
+ *   drawer                    the drawer band (FOR FURTHER STUDY)            slip     a budget slip on the desk (0:16)
+ *   top:treasury | top:approval | top:gossip | top:menu   the top bar's parts ("Gossip 0/5" appears at 0:38)
+ *   club:<g>                  club g's icon in the club strip (0 to 6)        ribbon   the term ribbon
+ *   call                      "Call the election" (the ribbon's button)      goal     the goal line
+ *   button:inTray | button:ledger | button:cabinet | button:poll | button:office   the bottom row
+ *   ledger:raise:<i>          ministry i's untaught "Raise" in the Ledger     sticky   the sticky note (a follow-up ahead)
  */
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { HostInstance } from 'react-native';

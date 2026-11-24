@@ -1,0 +1,576 @@
+{
+  "$comment": "Run-up papers and rallies of the three offices. Assembled by content-assemble from mayor-runup-scripted, governor-places-runup, events-runup.",
+  "runUp": [
+    {
+      "id": "may-runup-hedge-show",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Judge the {district} Prize Hedge Show. Say nothing about the leaning one.",
+      "subject": "hedges",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "may-runup-tea-dance",
+      "office": "mayor",
+      "visitor": "wimble",
+      "text": "Open the {district} tea dance. Your dance card is in triplicate.",
+      "subject": "ceremonies",
+      "butt": "office",
+      "shape": "form-misapplied",
+      "note": "replaces may-runup-pop-in (a third fête in the file; 'pop in' against four hours was mild)"
+    },
+    {
+      "id": "may-runup-kept-bench",
+      "office": "mayor",
+      "visitor": "loam",
+      "text": "Award {district}'s best-kept bench. Do not sit on it. It is kept.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "literalism",
+      "note": "visitor Bertram Loam (slow, careful) for a face other than Rodney's"
+    },
+    {
+      "id": "may-runup-guest-sash",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Wear the {district} fête sash: GUEST OF HONOUR (SELF-NOMINATED).",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "may-runup-paving-stone",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Lay {district}'s first paving stone. The second says you did.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut",
+      "note": "retagged undercut (the second stone deflates the first); visitor Rodney (vanity is his)"
+    },
+    {
+      "id": "may-runup-fruit-show",
+      "office": "mayor",
+      "visitor": "abacus",
+      "text": "Judge the {district} fruit show. Declare any baskets first.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "callback",
+      "note": "Gwendolyn speaks (the Treasury Clerk asks for interests declared); calls back to the first fruit basket, which every player meets at 0:38"
+    },
+    {
+      "id": "may-runup-jumble",
+      "office": "mayor",
+      "visitor": "abacus",
+      "text": "Open the {district} jumble sale. Your old hat is on table three.",
+      "subject": "hats",
+      "butt": "self",
+      "shape": "undercut",
+      "note": "visitor Gwendolyn (unimpressed) for variety"
+    },
+    {
+      "id": "may-runup-tour",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Tour {district}: 5 minutes for you, 15 for photographs of you.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "statistic",
+      "note": "replaces may-runup-twenty-minutes: the same idea, with the punch in the last words"
+    },
+    {
+      "id": "may-runup-gate",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Lean on the {district} gate, thoughtfully. The gate is on loan.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "photo-op",
+      "note": "replaces may-runup-soup (too close to gold G8, 'say goodness, we will cue you')"
+    },
+    {
+      "id": "may-runup-plaque",
+      "office": "mayor",
+      "visitor": "wimble",
+      "text": "Unveil a plaque in {district}, where you once unveiled a plaque.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "escalation",
+      "note": "replaces may-runup-visitors-book (its escalation tag was not honest, and the governor run-up already signs a visitors' book)"
+    },
+    {
+      "id": "gov-runup-tree",
+      "office": "governor",
+      "visitor": "abacus",
+      "text": "Plant a tree in {district}. It will be photogenic in 40 years.",
+      "subject": "gardens",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "gov-runup-pointing",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "Point at something in {district}. Rodney will say what, later.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "gov-runup-hat-parade",
+      "office": "governor",
+      "visitor": "dimity",
+      "text": "Judge the {district} hats. Yours has entered. Declare an interest.",
+      "subject": "hats",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "gov-runup-bridge",
+      "office": "governor",
+      "visitor": "wimble",
+      "text": "Open the {district} bridge. Again for the camera. Again for the minutes.",
+      "subject": "ceremonies",
+      "butt": "office",
+      "shape": "escalation"
+    },
+    {
+      "id": "gov-runup-rosette",
+      "office": "governor",
+      "visitor": "gourdley",
+      "text": "Pin the {district} show rosette on the winner. Not on you.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "gov-runup-cake-icing",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "Cut the {district} cake. The icing reads THE GOVERNOR CUT THIS.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "gov-runup-prizes",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "Award the {district} prizes: best scone, best rose, best photo of you.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "gov-runup-napkin",
+      "office": "governor",
+      "visitor": "wimble",
+      "text": "Sign the {district} visitors' book. Not the napkin; that is the law.",
+      "subject": "paperwork",
+      "butt": "self",
+      "shape": "callback"
+    },
+    {
+      "id": "gov-runup-no-comment",
+      "office": "governor",
+      "visitor": "dabble",
+      "text": "Sit by the water in {district}. Say nothing. You will be quoted.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "gov-runup-benches",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "Tour {district}: 14 benches, and not one has your name. Yet.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "gov-runup-new-ground",
+      "office": "governor",
+      "visitor": "dimity",
+      "text": "Break new ground in {district}. Gently; it is the bowling green.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "gov-runup-band-cup",
+      "office": "governor",
+      "visitor": "bellows",
+      "text": "Hand over the {district} band cup. We play you on. Off. And on.",
+      "subject": "bandstands",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "gov-runup-ribbon-halves",
+      "office": "governor",
+      "visitor": "wimble",
+      "text": "Cut the {district} ribbon. Cuthbert needs both halves signed for.",
+      "subject": "ribbons",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "gov-runup-pumpkin-pose",
+      "office": "governor",
+      "visitor": "loam",
+      "text": "Pose with the {district} prize pumpkin. It has been told where to look.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "photo-op"
+    },
+    {
+      "id": "gov-runup-flower-show",
+      "office": "governor",
+      "visitor": "dimity",
+      "text": "Open the {district} flower show. No ribbon. Put the scissors away.",
+      "subject": "gardens",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "gov-runup-bus-route",
+      "office": "governor",
+      "visitor": "kerb",
+      "text": "Ride the {district} bus. Wave at each stop. Each wave is logged.",
+      "subject": "buses",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-runup-hold-ribbon",
+      "office": "president",
+      "visitor": "spinwell",
+      "text": "Hold the {district} ribbon. Someone else cuts it. Smile anyway.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-runup-band-in",
+      "office": "president",
+      "visitor": "bellows",
+      "text": "Open the {district} band festival. The band will play you in. Then out.",
+      "subject": "bandstands",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-runup-cup",
+      "office": "president",
+      "visitor": "abacus",
+      "text": "Present the {district} cup. It reads: THE PRESIDENT, AND THE WINNER.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-runup-pegs",
+      "office": "president",
+      "visitor": "wimble",
+      "text": "Inspect the {district} fishing pegs. Nod. Nodding has a form.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-runup-sketching",
+      "office": "president",
+      "visitor": "fenn",
+      "text": "Sit for the {district} art club. They asked for a bowl of fruit.",
+      "subject": "portraits",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-runup-timetable",
+      "office": "president",
+      "visitor": "sprott",
+      "text": "Read the {district} timetable aloud. All of it. Mervyn checks.",
+      "subject": "buses",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-runup-parrots",
+      "office": "president",
+      "visitor": "spinwell",
+      "text": "Take questions at the {district} parrot show. Answer each one twice.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-runup-old-tree",
+      "office": "president",
+      "visitor": "spinwell",
+      "text": "Pose by the oldest tree in {district}. Look wise. It will cope.",
+      "subject": "gardens",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-runup-teas",
+      "office": "president",
+      "visitor": "till",
+      "text": "Take tea at Till's Teas in {district}. Keep the name showing.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "callback"
+    },
+    {
+      "id": "pres-runup-hoop",
+      "office": "president",
+      "visitor": "spinwell",
+      "text": "Throw a hoop at the {district} fair. Three cameras. One go.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-runup-weathervane",
+      "office": "president",
+      "visitor": "spinwell",
+      "text": "Unveil the {district} weathervane. It points at you, as arranged.",
+      "subject": "signage",
+      "butt": "staff",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-runup-quiet-clap",
+      "office": "president",
+      "visitor": "hake",
+      "text": "Judge the {district} Quiet Competition. Applaud in silence.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-runup-ducks",
+      "office": "president",
+      "visitor": "wimble",
+      "text": "Start the {district} duck race. The ducks have been briefed.",
+      "subject": "ducks",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-runup-kite-launch",
+      "office": "president",
+      "visitor": "updraught",
+      "text": "Launch the {district} kite. You hold it up. Philomena runs.",
+      "subject": "kites",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-runup-napkin",
+      "office": "president",
+      "visitor": "fenn",
+      "text": "Unveil a copy of the founding napkin in {district}. Do not use it.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "callback"
+    },
+    {
+      "id": "pres-runup-hedge-sign",
+      "office": "president",
+      "visitor": "topiary",
+      "text": "Unveil the {district} hedge sign. It is a hedge, trimmed to read HEDGE.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-runup-roses",
+      "office": "president",
+      "visitor": "fenn",
+      "text": "Sniff every rose at the {district} rose show. All 400. Look delighted.",
+      "subject": "gardens",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-runup-library",
+      "office": "president",
+      "visitor": "abacus",
+      "text": "Open the {district} library. Your book is on loan. To you.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-runup-dog-show",
+      "office": "president",
+      "visitor": "spinwell",
+      "text": "Judge the {district} dog show. Rodney has taught one to wave.",
+      "subject": "ceremonies",
+      "butt": "staff",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-runup-cheese",
+      "office": "president",
+      "visitor": "spinwell",
+      "text": "Slice the {district} cheese, ceremonially. A ribbon has been tied round it.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-runup-windows",
+      "office": "president",
+      "visitor": "awning",
+      "text": "Judge the {district} shop windows. You are in all twelve.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-runup-onions",
+      "office": "president",
+      "visitor": "gourdley",
+      "text": "Tour the {district} allotments. Hilda introduces each onion.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-runup-model-railway",
+      "office": "president",
+      "visitor": "wimble",
+      "text": "Open the {district} model railway. Tiny ribbon, tiny scissors, same smile.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-runup-market-bell",
+      "office": "president",
+      "visitor": "abacus",
+      "text": "Ring the {district} bell once. Then once for the photograph.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "escalation"
+    }
+  ],
+  "rallies": [
+    {
+      "id": "may-rally-one-snip",
+      "office": "mayor",
+      "visitor": "abacus",
+      "text": "A rally at the fête. The budget allows one snip. Do not miss.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "undercut",
+      "note": "replaces may-rally-loan-scissors ('snips are counted' read close to counting in an election paper; Gwendolyn was only implied)"
+    },
+    {
+      "id": "may-rally-scissors",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Hold a rally at the bandstand. Bring the ceremonial scissors. Cut something.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "may-rally-not-the-pumpkin",
+      "office": "mayor",
+      "visitor": "gourdley",
+      "text": "A rally at the vegetable show. Cut the ribbon. Not the pumpkin.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "undercut",
+      "note": "retagged undercut: a warning that deflates the ceremony, not a phrase taken at its word"
+    },
+    {
+      "id": "may-rally-higher",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "A rally at the flower show. Hold the scissors up for the Drizzle. Higher. Good.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "photo-op",
+      "note": "'the show' made concrete; Rodney directing the photograph"
+    },
+    {
+      "id": "gov-rally-chairs",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "A rally at the bandstand: 40 chairs, and one more for your hat.",
+      "subject": "bandstands",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "gov-rally-hay-bale",
+      "office": "governor",
+      "visitor": "dimity",
+      "text": "A rally at the fête, on a hay bale marked GOVERNOR (KEEP OFF).",
+      "subject": "signage",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "gov-rally-permit",
+      "office": "governor",
+      "visitor": "wimble",
+      "text": "A rally on the green. The sign says KEEP OFF THE GRASS. There is a form.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "gov-rally-soapbox",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "A rally in the square. Rodney has had your soapbox raised, slightly.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-rally-velvet-box",
+      "office": "president",
+      "visitor": "fenn",
+      "text": "A rally at the bandstand. Your scissors arrive in a box, in a box.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-rally-kite-ribbon",
+      "office": "president",
+      "visitor": "updraught",
+      "text": "A rally at the kite festival. Cut the ribbon on a kite. Watch it go.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-rally-one-leaf",
+      "office": "president",
+      "visitor": "topiary",
+      "text": "A rally at the hedge show. Bring shears. Agnes will say which leaf.",
+      "subject": "hedges",
+      "butt": "self",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-rally-nine-ribbons",
+      "office": "president",
+      "visitor": "spinwell",
+      "text": "A rally at the fête. Rodney has brought nine ribbons, in case.",
+      "subject": "ribbons",
+      "butt": "staff",
+      "shape": "statistic"
+    }
+  ]
+}

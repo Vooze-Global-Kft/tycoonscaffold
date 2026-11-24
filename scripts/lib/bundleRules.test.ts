@@ -363,3 +363,59 @@ describe('the merge mode (Night Market, market-design.md 10.2)', async () => {
     expect(of({ game: 'night-market', mode: 'merge', pack: null, modules: ['src/services/fx/catalog.merge.ts'] })).toEqual(['node-only src/services/fx/catalog.merge.ts']);
   });
 });
+
+describe('the decree mode (High Office, office-design.md 9.2, 10.2)', async () => {
+  const modes = (await import('./modes.js')) as unknown as { MODE_FOLDERS: Record<string, string[]>; FAMILIES: BundleManifest['families']; NODE_ONLY: string[]; WEB_ONLY: string[]; WEB_ONLY_STRINGS: { text: string }[]; THEME_WORDS: Record<string, string[]> };
+  const MM: BundleManifest = {
+    ...M,
+    modeFolders: { ...M.modeFolders, haul: modes.MODE_FOLDERS.haul, merge: modes.MODE_FOLDERS.merge, decree: modes.MODE_FOLDERS.decree },
+    families: modes.FAMILIES,
+    nodeOnly: modes.NODE_ONLY,
+    games: ['pizza-empire', 'space-miner', 'night-market', 'high-office'],
+  };
+  const of = (over: Partial<BundleContents>) => bundleViolations(clean({ packages: [], assets: [], ...over }), MM).map((v) => `${v.rule} ${v.file}`);
+
+  it('lists its rules, schema, fixtures and content as decree folders, its catalogue as Node only, its bot, fixtures and dev tools as web only, and its theme words', () => {
+    expect(modes.MODE_FOLDERS.decree).toEqual(['src/modes/decree', 'src/ui/decree', 'src/engine/decree', 'src/engine/decree.ts', 'src/engine/decreeMode.ts', 'src/engine/fixtures/decree.ts', 'src/engine/fixtures/decree.numbers.json', 'src/config/schema.decree.ts', 'src/config/decree.content.ts']);
+    expect(modes.NODE_ONLY).toContain('src/services/fx/catalog.decree.ts');
+    for (const f of ['src/engine/decree/bot.ts', 'src/engine/fixtures/decree.ts', 'src/engine/fixtures/decree.numbers.json', 'src/modes/decree/presets.web.ts', 'src/modes/decree/devViews.web.ts']) expect(modes.WEB_ONLY).toContain(f);
+    expect(modes.WEB_ONLY_STRINGS.map((x) => x.text)).toContain('decreeFixtures');
+    expect(modes.THEME_WORDS.decree).toEqual(['mayor', 'governor', 'ministry', 'ward', 'gossip', 'scandal', 'boycott', 'dibs']);
+    // The mode id itself is a shared literal (src/config/schema.ts): never a theme word.
+    expect(modes.THEME_WORDS.decree).not.toContain('decree');
+  });
+
+  it('a decree file imported by a shared file fails; the generated entry and the decree mode itself may import it', () => {
+    const edges = [
+      ['src/engine/economy.ts', 'src/engine/decree.ts'],
+      ['src/state/store.ts', 'src/engine/decreeMode.ts'],
+      ['src/ui/kit/Sheet.tsx', 'src/ui/decree/layout.ts'],
+      ['src/generated/mode.ts', 'src/modes/decree/index.tsx'],
+      ['src/modes/decree/index.tsx', 'src/engine/decreeMode.ts'],
+      ['src/engine/decreeMode.ts', 'src/config/schema.decree.ts'],
+      ['src/ui/decree/DecreeShell.tsx', 'src/ui/kit/Sheet.tsx'],
+    ] as const;
+    expect(importViolations(edges, MM).map((v) => `${v.rule} ${v.file}`)).toEqual(['shared-imports-mode src/engine/economy.ts', 'shared-imports-mode src/state/store.ts', 'shared-imports-mode src/ui/kit/Sheet.tsx']);
+  });
+
+  it('no decree folder in a sim, haul or merge bundle', () => {
+    const decree = ['src/modes/decree/index.tsx', 'src/ui/decree/DecreeShell.tsx', 'src/engine/decree/tick.ts', 'src/engine/decree.ts', 'src/engine/decreeMode.ts', 'src/config/schema.decree.ts'];
+    expect(of({ game: 'pizza-empire', mode: 'sim', pack: 'warm', modules: decree })).toEqual(decree.map((f) => `other-mode ${f}`));
+    expect(of({ game: 'space-miner', mode: 'haul', pack: null, modules: decree })).toEqual(decree.map((f) => `other-mode ${f}`));
+    expect(of({ game: 'night-market', mode: 'merge', pack: null, modules: decree })).toEqual(decree.map((f) => `other-mode ${f}`));
+  });
+
+  it('no sim, haul, merge or tabs-family file in the decree bundle, and its own files pass', () => {
+    const own = ['src/modes/decree/index.tsx', 'src/ui/decree/layout.ts', 'src/engine/decree/draw.ts', 'src/engine/decreeMode.ts', 'games/high-office/game.json', 'src/ui/kit/Sheet.tsx'];
+    expect(of({ game: 'high-office', mode: 'decree', pack: null, modules: own })).toEqual([]);
+    expect(of({ game: 'high-office', mode: 'decree', pack: null, modules: ['src/ui/sim/home/HomeSim.tsx', 'src/modes/haul/index.tsx', 'src/engine/merge.ts', 'src/ui/merge/MergeShell.tsx', 'src/ui/shell/TabShell.tsx'] })).toEqual([
+      'other-mode src/ui/sim/home/HomeSim.tsx',
+      'other-mode src/modes/haul/index.tsx',
+      'other-mode src/engine/merge.ts',
+      'other-mode src/ui/merge/MergeShell.tsx',
+      'other-family src/ui/shell/TabShell.tsx',
+    ]);
+    expect(of({ game: 'high-office', mode: 'decree', pack: null, modules: ['src/services/fx/catalog.decree.ts'] })).toEqual(['node-only src/services/fx/catalog.decree.ts']);
+    expect(of({ game: 'high-office', mode: 'decree', pack: null, modules: ['games/night-market/game.json'] })).toEqual(['other-game games/night-market/game.json']);
+  });
+});

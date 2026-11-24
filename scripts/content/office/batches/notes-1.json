@@ -1,0 +1,492 @@
+{
+ "batch": "notes-1",
+ "writer": "writer-4",
+ "notes": [
+  {
+   "id": "note-tc-agrees",
+   "form": "requisition",
+   "ministry": "town-clock-office",
+   "office": "mayor",
+   "text": "The clock now faces your window. Rodney asked it to."
+  },
+  {
+   "id": "note-tc-twice",
+   "form": "requisition",
+   "ministry": "town-clock-office",
+   "office": "mayor",
+   "text": "The clock is right twice a day now. Up from once."
+  },
+  {
+   "id": "note-tc-oiled",
+   "form": "requisition",
+   "ministry": "town-clock-office",
+   "office": "mayor",
+   "text": "The numbers are repainted. In the same places."
+  },
+  {
+   "id": "note-tc-minute-hand",
+   "form": "requisition",
+   "ministry": "town-clock-office",
+   "office": "mayor",
+   "text": "Wound by hand. Cuthbert counted the turns aloud."
+  },
+  {
+   "id": "note-tc-chime-cut",
+   "form": "ribbon",
+   "ministry": "town-clock-office",
+   "office": "mayor",
+   "text": "The clock will chime while you cut. It insists."
+  },
+  {
+   "id": "note-tc-watches",
+   "form": "ribbon",
+   "ministry": "town-clock-office",
+   "office": "mayor",
+   "text": "The clock is practising your name for the ribbon."
+  },
+  {
+   "id": "note-first-shovel",
+   "form": "requisition",
+   "ministry": "potholes-office",
+   "office": "mayor",
+   "text": "The first shovel is tired."
+  },
+  {
+   "id": "note-ph-steamroller",
+   "form": "requisition",
+   "ministry": "potholes-office",
+   "office": "mayor",
+   "text": "So smooth now, a flask stays upright on the top deck."
+  },
+  {
+   "id": "note-ph-warm",
+   "form": "requisition",
+   "ministry": "potholes-office",
+   "office": "mayor",
+   "text": "The potholes were given names. Filling them is harder."
+  },
+  {
+   "id": "note-ph-new-shovel",
+   "form": "requisition",
+   "ministry": "potholes-office",
+   "office": "mayor",
+   "text": "The new shovel has been introduced to the old one."
+  },
+  {
+   "id": "note-ph-into",
+   "form": "ribbon",
+   "ministry": "potholes-office",
+   "office": "mayor",
+   "text": "Cut the ribbon over the hole, not into it."
+  },
+  {
+   "id": "note-ph-unveil",
+   "form": "ribbon",
+   "ministry": "potholes-office",
+   "office": "mayor",
+   "text": "The filled pothole will be unveiled. It looks like road."
+  },
+  {
+   "id": "note-bb-rested",
+   "form": "requisition",
+   "ministry": "benches-bandstands",
+   "office": "mayor",
+   "text": "Cuthbert has tested every bench. He is very rested."
+  },
+  {
+   "id": "note-bb-patch",
+   "form": "requisition",
+   "ministry": "benches-bandstands",
+   "office": "mayor",
+   "text": "Each bench has a small sign: RESERVED FOR SITTING."
+  },
+  {
+   "id": "note-bb-plaque",
+   "form": "requisition",
+   "ministry": "benches-bandstands",
+   "office": "mayor",
+   "text": "The benches are varnished. So, briefly, was the receipt."
+  },
+  {
+   "id": "note-bb-step",
+   "form": "requisition",
+   "ministry": "benches-bandstands",
+   "office": "mayor",
+   "text": "The bandstand is swept daily, in case of a band."
+  },
+  {
+   "id": "note-bb-sit",
+   "form": "ribbon",
+   "ministry": "benches-bandstands",
+   "office": "mayor",
+   "text": "After you cut, you sit first. The bench has been told."
+  },
+  {
+   "id": "note-bb-roof",
+   "form": "ribbon",
+   "ministry": "benches-bandstands",
+   "office": "mayor",
+   "text": "The bandstand roof is up in time for your speech. Just."
+  },
+  {
+   "id": "note-sl-points",
+   "form": "requisition",
+   "ministry": "signposts-lampposts",
+   "office": "mayor",
+   "text": "The lamps by the shops now lean toward the displays."
+  },
+  {
+   "id": "note-sl-night",
+   "form": "requisition",
+   "ministry": "signposts-lampposts",
+   "office": "mayor",
+   "text": "Every lamppost is now lit. Mostly at night."
+  },
+  {
+   "id": "note-sl-this-way",
+   "form": "requisition",
+   "ministry": "signposts-lampposts",
+   "office": "mayor",
+   "text": "A new sign reading SIGNS. It points at the signs."
+  },
+  {
+   "id": "note-sl-agree",
+   "form": "requisition",
+   "ministry": "signposts-lampposts",
+   "office": "mayor",
+   "text": "The signs now agree on where the high street is."
+  },
+  {
+   "id": "note-sl-side",
+   "form": "ribbon",
+   "ministry": "signposts-lampposts",
+   "office": "mayor",
+   "text": "Rodney asks that you be lit from your better side."
+  },
+  {
+   "id": "note-sl-asked",
+   "form": "ribbon",
+   "ministry": "signposts-lampposts",
+   "office": "mayor",
+   "text": "The Guild polished the lamppost you will pose by."
+  },
+  {
+   "id": "note-pc-circular",
+   "form": "requisition",
+   "ministry": "provincial-clock-office",
+   "office": "governor",
+   "text": "It sets the town clocks. The town clocks set it."
+  },
+  {
+   "id": "note-pc-committee",
+   "form": "requisition",
+   "ministry": "provincial-clock-office",
+   "office": "governor",
+   "text": "The clock is wound by a committee. It runs behind."
+  },
+  {
+   "id": "note-pc-lunch",
+   "form": "requisition",
+   "ministry": "provincial-clock-office",
+   "office": "governor",
+   "text": "It now chimes once for each county. It takes a while."
+  },
+  {
+   "id": "note-pc-pendulum",
+   "form": "requisition",
+   "ministry": "provincial-clock-office",
+   "office": "governor",
+   "text": "The pendulum is rehung. It swings with conviction."
+  },
+  {
+   "id": "note-pc-clockmaker",
+   "form": "requisition",
+   "ministry": "provincial-clock-office",
+   "office": "governor",
+   "text": "The clockmaker asks for a clock, to know when to stop."
+  },
+  {
+   "id": "note-pc-chime-all",
+   "form": "ribbon",
+   "ministry": "provincial-clock-office",
+   "office": "governor",
+   "text": "The clock face is polished. You may check your hat in it."
+  },
+  {
+   "id": "note-pc-hour",
+   "form": "ribbon",
+   "ministry": "provincial-clock-office",
+   "office": "governor",
+   "text": "The clock will log your cut. It may round down."
+  },
+  {
+   "id": "note-bs-hook",
+   "form": "requisition",
+   "ministry": "bus-shelter-trust",
+   "office": "governor",
+   "text": "A hook for the notebook. A second hook for the flask."
+  },
+  {
+   "id": "note-bs-tarpaulin",
+   "form": "requisition",
+   "ministry": "bus-shelter-trust",
+   "office": "governor",
+   "text": "A spare shelter was under a tarpaulin. Sheltering."
+  },
+  {
+   "id": "note-bs-glazed",
+   "form": "requisition",
+   "ministry": "bus-shelter-trust",
+   "office": "governor",
+   "text": "The new shelters keep the rain off the timetable first."
+  },
+  {
+   "id": "note-bs-early",
+   "form": "requisition",
+   "ministry": "bus-shelter-trust",
+   "office": "governor",
+   "text": "Shelter clocks run early, to encourage the buses."
+  },
+  {
+   "id": "note-bs-queue",
+   "form": "requisition",
+   "ministry": "bus-shelter-trust",
+   "office": "governor",
+   "text": "Shelter built. A bus has already passed it, so it works."
+  },
+  {
+   "id": "note-bs-log-you",
+   "form": "ribbon",
+   "ministry": "bus-shelter-trust",
+   "office": "governor",
+   "text": "The spotters will log you. Time, route, hat."
+  },
+  {
+   "id": "note-bs-drizzle",
+   "form": "ribbon",
+   "ministry": "bus-shelter-trust",
+   "office": "governor",
+   "text": "Wait in the shelter for the photo. A bus has been asked."
+  },
+  {
+   "id": "note-mw-passed",
+   "form": "requisition",
+   "ministry": "market-weights-board",
+   "office": "governor",
+   "text": "The weights have been weighed. They passed."
+  },
+  {
+   "id": "note-mw-ounce",
+   "form": "requisition",
+   "ministry": "market-weights-board",
+   "office": "governor",
+   "text": "The weights were sorted by name. Then by weight."
+  },
+  {
+   "id": "note-mw-drawer",
+   "form": "requisition",
+   "ministry": "market-weights-board",
+   "office": "governor",
+   "text": "The standard weight lives in a drawer. It has its own key."
+  },
+  {
+   "id": "note-mw-second-set",
+   "form": "requisition",
+   "ministry": "market-weights-board",
+   "office": "governor",
+   "text": "The scales are level. Neither pan will say who began."
+  },
+  {
+   "id": "note-mw-forms",
+   "form": "requisition",
+   "ministry": "market-weights-board",
+   "office": "governor",
+   "text": "Cuthbert has made a form for weighing forms."
+  },
+  {
+   "id": "note-mw-lean",
+   "form": "ribbon",
+   "ministry": "market-weights-board",
+   "office": "governor",
+   "text": "Please do not lean on the scales. They tell."
+  },
+  {
+   "id": "note-mw-ribbon",
+   "form": "ribbon",
+   "ministry": "market-weights-board",
+   "office": "governor",
+   "text": "The ribbon has been weighed in advance. It is within limits."
+  },
+  {
+   "id": "note-gh-sides",
+   "form": "requisition",
+   "ministry": "glasshouse-office",
+   "office": "governor",
+   "text": "The glass is cleaned. The tomatoes can see out again."
+  },
+  {
+   "id": "note-gh-thermometer",
+   "form": "requisition",
+   "ministry": "glasshouse-office",
+   "office": "governor",
+   "text": "The thermometer is in the shade now. It reads nicer."
+  },
+  {
+   "id": "note-gh-counted",
+   "form": "requisition",
+   "ministry": "glasshouse-office",
+   "office": "governor",
+   "text": "Each watering can is filled overnight, to settle."
+  },
+  {
+   "id": "note-gh-seedlings",
+   "form": "requisition",
+   "ministry": "glasshouse-office",
+   "office": "governor",
+   "text": "The seedlings have moved bench. They took it well."
+  },
+  {
+   "id": "note-gh-door",
+   "form": "requisition",
+   "ministry": "glasshouse-office",
+   "office": "governor",
+   "text": "Each glasshouse door now shuts. On the second try."
+  },
+  {
+   "id": "note-gh-hat",
+   "form": "ribbon",
+   "ministry": "glasshouse-office",
+   "office": "governor",
+   "text": "It will be warm. Rodney suggests a lighter hat."
+  },
+  {
+   "id": "note-gh-twice",
+   "form": "ribbon",
+   "ministry": "glasshouse-office",
+   "office": "governor",
+   "text": "The glass is so clean you will be photographed twice."
+  },
+  {
+   "id": "note-bd-tuned",
+   "form": "requisition",
+   "ministry": "bandstand-board",
+   "office": "governor",
+   "text": "The bandstand is tuned. The band will tune to it."
+  },
+  {
+   "id": "note-bd-stoop",
+   "form": "requisition",
+   "ministry": "bandstand-board",
+   "office": "governor",
+   "text": "A new weathervane. It points at the band."
+  },
+  {
+   "id": "note-bd-between",
+   "form": "requisition",
+   "ministry": "bandstand-board",
+   "office": "governor",
+   "text": "Painted between concerts. Some of it, during."
+  },
+  {
+   "id": "note-bd-rail",
+   "form": "requisition",
+   "ministry": "bandstand-board",
+   "office": "governor",
+   "text": "The floor is sanded. It now creaks in tune."
+  },
+  {
+   "id": "note-bd-chairs",
+   "form": "requisition",
+   "ministry": "bandstand-board",
+   "office": "governor",
+   "text": "The echo is adjusted. It now answers sooner."
+  },
+  {
+   "id": "note-bd-beat",
+   "form": "ribbon",
+   "ministry": "bandstand-board",
+   "office": "governor",
+   "text": "A fanfare in your honour has been written. It is brief."
+  },
+  {
+   "id": "note-bd-note",
+   "form": "ribbon",
+   "ministry": "bandstand-board",
+   "office": "governor",
+   "text": "The band will hold one note under your speech."
+  },
+  {
+   "id": "note-cj-mended",
+   "form": "requisition",
+   "ministry": "canals-jetties",
+   "office": "governor",
+   "text": "The towpath was swept without a sound."
+  },
+  {
+   "id": "note-cj-planks",
+   "form": "requisition",
+   "ministry": "canals-jetties",
+   "office": "governor",
+   "text": "The lock-keeper now opens the gates on tiptoe."
+  },
+  {
+   "id": "note-cj-dredged",
+   "form": "requisition",
+   "ministry": "canals-jetties",
+   "office": "governor",
+   "text": "The canal has been dredged. It gave back a hat."
+  },
+  {
+   "id": "note-cj-sign",
+   "form": "requisition",
+   "ministry": "canals-jetties",
+   "office": "governor",
+   "text": "A sign by the water: QUIET, in small letters."
+  },
+  {
+   "id": "note-cj-level",
+   "form": "requisition",
+   "ministry": "canals-jetties",
+   "office": "governor",
+   "text": "A new mooring ring. It has been asked not to clink."
+  },
+  {
+   "id": "note-cj-sitting",
+   "form": "ribbon",
+   "ministry": "canals-jetties",
+   "office": "governor",
+   "text": "Please cut the ribbon quietly. The Anglers are sitting."
+  },
+  {
+   "id": "note-cj-gates",
+   "form": "ribbon",
+   "ministry": "canals-jetties",
+   "office": "governor",
+   "text": "The lock gates will open as you cut. Allow a few minutes."
+  },
+  {
+   "id": "note-any-triplicate",
+   "form": "any",
+   "office": "any",
+   "text": "Cuthbert has filed this in triplicate. He enjoyed it."
+  },
+  {
+   "id": "note-any-initialled",
+   "form": "any",
+   "office": "any",
+   "text": "Gwendolyn has read this. She has no further feelings."
+  },
+  {
+   "id": "note-any-box",
+   "form": "any",
+   "office": "any",
+   "text": "Please sign inside the box. The box is new."
+  },
+  {
+   "id": "note-any-thanks",
+   "form": "any",
+   "office": "any",
+   "text": "Thanks in advance. There is a form for that too."
+  }
+ ]
+}

@@ -68,9 +68,36 @@ function mergeGift(g: GameConfig): { every: number; slots: number; lanternSlots:
   };
 }
 
+/**
+ * A decree game (High Office, office-design.md 5, 7.3, 7.9; decisions D9 and D13): no chests, boxes,
+ * missions or daily reward; about 48 editorial-cartoon busts of adults drawn in code (no `cast`
+ * block); the basket worded exactly as D13 has it. The sensitivity editor's signed read is a
+ * hand-written file beside this one (store/SENSITIVITY-READ.md, D9) that sync links to and never writes.
+ */
+function decreeGame(g: GameConfig): { read: string; readExists: boolean } | null {
+  if (g.mode !== 'decree') return null;
+  const read = `games/${g.id}/store/SENSITIVITY-READ.md`;
+  return { read, readExists: fs.existsSync(path.join(games.ROOT, read)) };
+}
+
+/** The markers of RATING-NOTES.md's hand-written block (a decree game only; sync never writes inside them). */
+const HAND_BEGIN = '<!-- BEGIN hand-written answers: kept by npm run sync, edit only between these two lines -->';
+const HAND_END = '<!-- END hand-written answers -->';
+
+/** The hand-written block of a game's RATING-NOTES.md as it stands on disk (trimmed), or a placeholder line. */
+function keptHandWritten(id: string): string {
+  const file = path.join(games.gameDir(id), 'store', 'RATING-NOTES.md');
+  const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  const a = text.indexOf(HAND_BEGIN);
+  const b = text.indexOf(HAND_END);
+  if (a < 0 || b < a) return '_No hand-written answers yet._';
+  return text.slice(a + HAND_BEGIN.length, b).trim() || '_No hand-written answers yet._';
+}
+
 function ratingNotes(g: GameConfig): string {
   const m = g.meta;
   const gift = mergeGift(g);
+  const decree = decreeGame(g);
   const products = g.monetization.iap.products;
   const ads = g.monetization.ads;
   const sellsRandom = m.chestsForSale;
@@ -102,12 +129,17 @@ function ratingNotes(g: GameConfig): string {
           `| Random items (chests) | 1 kind: gift boxes (a paper bag of ${gift.slots} slots${gift.lanternSlots ? `, ${gift.lanternSlots.slots} after lantern ${gift.lanternSlots.n}` : ''}) with random contents, earned one every ${gift.every} filled tickets (merge.gift.every); the odds and the coin amount are shown before a box is opened |`,
           `| Random items SOLD (money or any currency) | No: gift boxes are only earned by filling tickets; no purchase and no ad gives one |`,
         ]
+      : decree
+      ? [
+          `| Random items (chests) | None: no chests, boxes or random rewards of any kind |`,
+          `| Random items SOLD (money or any currency) | No |`,
+        ]
       : [
           `| Random items (chests) | ${earnedChests ? `${m.chests.length} kind(s), with odds shown` : 'None'} |`,
           `| Random items SOLD (money or ${g.strings.gemName}) | ${sellsRandom ? `**Yes** (meta.chestsForSale; switched off in ${m.chestSalesBlockedIn.join(', ')})` : 'No: chests are only earned (timer, missions, rewarded ads)'} |`,
         ]),
     `| Time-limited offers | ${m.deals.some((d) => d.durationHours) ? 'Yes, with real end times of 48 h or more that never return' : 'No'} |`,
-    `| Daily rewards | ${gift ? 'No' : 'Yes'} |`,
+    `| Daily rewards | ${gift || decree ? 'No' : 'Yes'} |`,
     `| Chat, user-generated content, web browsing, location | No |`,
     `| Simulated gambling (casino games) | No |`,
   );
@@ -127,6 +159,12 @@ function ratingNotes(g: GameConfig): string {
           '  app unintentionally appeal to children" and the age band (policy.md checklist 7 and 8) are **the',
           '  owner\'s to answer before a submission**, for all three apps; nothing in the build depends on it.',
         ]
+      : decree
+      ? [
+          '- The game draws people in code: about 48 editorial-cartoon busts of adults (officials, club',
+          '  spokespeople, lobbyists, clerks) and six player faces; no children, school, soldier, police, clergy',
+          '  or uniform (office-design.md 7.3). Keep "kids" and "for children" wording out of the store text.',
+        ]
       : Object.keys(g.cast).length
       ? [
           '- Store art and text: show adult characters, no "kids" or "for children" wording. Google rejects a',
@@ -138,6 +176,25 @@ function ratingNotes(g: GameConfig): string {
         ]),
     '- "Could the app unintentionally appeal to children?" (Play): answer honestly; cartoon art can count.',
   );
+
+  if (decree) {
+    h('Satire, and the basket (decisions D9, D13)');
+    L.push(
+      '- Political satire of office itself (vanity, red tape, committees, ribbon cuttings). Everything is invented:',
+      '  the country, its places, clubs, newspapers and people; no real person, party, country, flag, movement or',
+      '  event, and no real-world hot-button issue (office-design.md 7.8; the satire lint checks every text).',
+      '- The basket, stated exactly (D13): a lobbyist offers a gift, and the player can accept it by signing. It',
+      '  never pays the mayor money and never pleases a club; it adds gossip, and its favour costs the mayor.',
+      '- Money (D13): no ad or purchase moves a mood or a poll point: those move only by papers you decide, and',
+      '  none is offered from the call until election night ends.',
+      `- The sensitivity editor's read: ${decree.read} (the engineers' reads under D9, unsigned by any person; written by hand, sync never writes it)${decree.readExists ? '.' : ': **not written yet**.'}`,
+      '- D9: a read by the owner (or someone the owner names) before a submission is still required; nothing here',
+      '  says a person signed what no person signed.',
+    );
+    // This game's own answers (the satire questions, the declarations, the territories) are written by hand
+    // between the two markers below; sync keeps that block as it finds it and writes everything around it.
+    L.push('', HAND_BEGIN, keptHandWritten(g.id), HAND_END);
+  }
 
   h('App Store Connect: age rating questionnaire');
   L.push(
@@ -195,6 +252,7 @@ function ratingNotes(g: GameConfig): string {
         ]
       : []),
     ...(gift ? ['6. Answer Play\'s "could appeal to children" question and decide the age band (M17: the owner\'s).'] : []),
+    ...(decree ? [`6. The owner (or someone the owner names) reads the game and ${decree.read} before submitting (D9).`] : []),
     ...(sellsRandom
       ? [
           '6. Paid random items: switch chest sales off for the storefronts in meta.chestSalesBlockedIn (the app',
@@ -202,7 +260,7 @@ function ratingNotes(g: GameConfig): string {
           '   both descriptions (sync adds it).',
         ]
       : []),
-    `${sellsRandom || gift ? 7 : 6}. Release one game at a time from one account, each with its own art, sounds, numbers and`,
+    `${sellsRandom || gift || decree ? 7 : 6}. Release one game at a time from one account, each with its own art, sounds, numbers and`,
     '   listing text: both stores remove families of near-identical apps, and take related accounts with',
     '   them (policy.md 4). `npm run validate` catches shared tables and near-identical descriptions,',
     '   not shared art.',

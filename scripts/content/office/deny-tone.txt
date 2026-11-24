@@ -1,0 +1,50 @@
+# deny-tone.txt: TIER 3 of the satire lint (office-design.md 7.8): tone. Profanity, violence and
+# death, cruelty, real corruption words (corruption is farce: a fruit basket, never a "bribe"),
+# strongman words, and the civic and real-office words 7.8 and the genre research name.
+# Always fails. Matching: the syntax of deny-phrases.txt (whole words, any case; "word*" any
+# ending; several entries a line split at commas; "=" only capitalised, not first in a sentence).
+# Deliberately NOT listed (a reader catches the bad sense): fight (a feud is fine), hang and hanging
+# (hanging baskets), shoot (a photo shoot), grave (grave concerns), idiot, steal and stole (a
+# ceremonial stole), hate, ugly, monster (a monster marrow), freak (freak weather), nightmare,
+# politics and political (store text may call the game a comedy about politics).
+
+# --- profanity ---
+damn, damned, damnit, goddamn, bloody, bugger, buggered, bollocks, crap, crappy, shit*, fuck*
+piss, pissed, pissing, piss off, arse, arses, arsehole, ass, asses, asshole, bastard, bastards
+bitch*, =dick, =dicks, =cock, wank*, twat, twats, cunt*, slut*, whore*, screw you, wtf, omfg
+bloody hell, sod off, prat, tosser, tossers, knobhead, dickhead, jerk off
+
+# --- violence and death ---
+kill, kills, killed, killer, killers, killing, killings, murder*, dead, death, deaths, die, dies
+died, dying, blood, bloodied, bleed, bleeds, bleeding, stab, stabs, stabbed, stabbing
+punch, punched, punches, punching, beat up, beaten up, assault*, attack, attacks, attacked
+attacking, violence, violent, brawl*, torture*, execute, executed, execution, executions
+hanged, noose, behead*, guillotine*, lynch*, slaughter*, suicide, suicidal, poison, poisons
+poisoned, poisoning, strangle*, corpse, corpses, funeral, funerals, coffin, coffins, assassin*
+shot dead, shooting, shootings, gunpoint, firing squad, bloodbath, carnage, mutilate*
+abuse, abused, abusing, bully, bullies, bullied, bullying, threat of violence, beat him
+beat her
+
+# --- corruption as instruction, crime ---
+bribe, bribes, bribed, bribing, bribery, corrupt, corruption, corrupted, kickback, kickbacks
+embezzle*, money laundering, launder money, laundered money, fraud, frauds, fraudster*
+extort*, blackmail*, racketeering, hush money, slush fund, backhander, backhanders, sleaze
+
+# --- strongman words ---
+dictator, dictators, dictatorship, despot, despots, tyrant, tyrants, tyranny, autocrat
+autocrats, autocracy, junta, regime, regimes, coup, coups, martial law, propaganda
+censor, censors, censored, censorship, silence critics, purge, purges, purged, gulag
+secret police, strongman, el presidente, supreme leader, dear leader, great leader
+
+# --- civic and real-office words (7.8; genre research 2 and 5) ---
+fake news, vote now, ballot, ballots, ballot box, ballot boxes, ballot paper, ballot papers
+mr president, madam president, oval office, white house, intern, interns, internship
+president of the world, president for life, senate, senator, senators, congress, congressman
+congresswoman, parliament, parliamentary, mp, mps, mep, meps, prime minister
+house of commons, house of lords, downing street, =Number Ten, =Number 10, cabinet office
+home office, foreign office, the treasury department, state department, supreme court
+left versus right, liberal versus conservative
+
+# --- cruelty and fear ---
+hatred, hateful, kill yourself, fatso, fatty, terrify, terrified
+terrifying, horror, horrific, gore, gory

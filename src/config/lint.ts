@@ -7,6 +7,7 @@ import { MACH_ICONS_BY_MODE, artIconsFor } from './artIcons';
 import type { GameConfig } from './schema';
 import { HaulSchema, lintHaul } from './schema.haul';
 import { MergeSchema, lintMerge } from './schema.merge';
+import { DecreeSchema, lintDecree } from './schema.decree';
 
 /**
  * Cross-field checks zod can't express per field. Returns a list of problems. `artIcons`: the
@@ -59,6 +60,7 @@ export function lintGameConfig(cfg: GameConfig, artIcons: readonly string[] = ar
   }
 
   if (cfg.mode !== 'merge' && cfg.merge) problems.push('there is a "merge" block but mode is not "merge"');
+  if (cfg.mode !== 'decree' && cfg.decree) problems.push('there is a "decree" block but mode is not "decree"');
   // --- haul mode (spec section 2 header, errata 8) ---
   if (cfg.mode === 'haul') {
     // The shared schema keeps the haul block opaque (its schema is the haul mode's): parse it here.
@@ -85,6 +87,18 @@ export function lintGameConfig(cfg: GameConfig, artIcons: readonly string[] = ar
     if (cfg.upgrades.length > 0) problems.push('a merge game has no upgrades');
     if (Object.keys(cfg.cast).length > 0) problems.push('a merge game has no "cast": its animals are drawn by the mode ("beast:" icons, spec 7.2)');
     if (cfg.meta.missions.templates.length > 0) problems.push('a merge game has no missions (spec 5.7: cut on purpose)');
+  } else if (cfg.mode === 'decree') {
+    // --- decree mode (High Office, office-design.md section 2): the block is opaque in the shared schema too ---
+    if (cfg.haul) problems.push('there is a "haul" block but mode is not "haul"');
+    const decree = cfg.decree ? DecreeSchema.safeParse(cfg.decree) : null;
+    if (!decree) problems.push('mode is "decree" but there is no "decree" block');
+    else if (!decree.success) problems.push(...decree.error.issues.map((i) => `decree.${i.path.join('.')}: ${i.message}`));
+    else problems.push(...lintDecree(decree.data).map((m) => `decree: ${m}`));
+    if (cfg.economy.prestige.bonusPerPoint !== 0) problems.push('economy.prestige.bonusPerPoint must be 0 in a decree game (a move up pays no currency and grows no multiplier, spec 2.12)');
+    if (cfg.businesses.length > 0) problems.push('a decree game has no businesses');
+    if (cfg.upgrades.length > 0) problems.push('a decree game has no upgrades');
+    if (Object.keys(cfg.cast).length > 0) problems.push('a decree game has no "cast": its people are drawn by the mode (spec 7.3)');
+    if (cfg.meta.missions.templates.length > 0) problems.push('a decree game has no missions (spec 5: cut on purpose)');
   } else {
     if (cfg.haul) problems.push('there is a "haul" block but mode is not "haul"');
     if (cfg.businesses.length === 0) problems.push('a sim or classic game needs at least one business');

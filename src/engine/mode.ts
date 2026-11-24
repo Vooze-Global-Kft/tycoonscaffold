@@ -108,6 +108,19 @@ export interface EngineMode {
    * the run starts (the mode's own action calls meta.missionsAfterReset there).
    */
   awaitsRunStart?(state: GameState): boolean;
+  /**
+   * True: the store grants an absence's `earnings` in the same update that computes them (resume and
+   * boot), so killing the app with the away report open loses nothing (decree, office-design.md 2.15,
+   * lesson 5 of the brief); the report then only informs, and its rewarded ad grants only the extra
+   * (earnings × (offlineAdMultiplier − 1)) when the ad completes. Unset (sim, classic, haul, merge): the
+   * earnings are paid when the report is collected, exactly as before.
+   */
+  paysOnCompute?: boolean;
+  /**
+   * The longest absence the store catches up by ticking at full speed instead of the mode's away rules
+   * (decree: 0, every absence follows the away rules). Unset: the store's own 300 s, exactly as before.
+   */
+  catchUpSeconds?: number;
 }
 
 let installed: EngineMode | null = null;

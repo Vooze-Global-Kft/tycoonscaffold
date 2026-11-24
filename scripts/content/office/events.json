@@ -1,0 +1,352 @@
+{
+  "$comment": "Boycott grievances with pickets, scandal front pages and apology labels. Assembled by content-assemble from events-runup.",
+  "grievances": [
+    {
+      "id": "grv-veg-scissors",
+      "club": "veg",
+      "visitor": "gourdley",
+      "text": "No more pumpkins until you return our ribbon scissors. You know which scissors.",
+      "signLabel": "Return the scissors",
+      "refuseLabel": "Keep the scissors",
+      "picket": "GIVE THEM BACK",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "grv-bus-stop",
+      "club": "bus",
+      "visitor": "kerb",
+      "text": "You posed with our bus stop and kept it. We now wait at a lamp post.",
+      "signLabel": "Return the stop",
+      "refuseLabel": "Keep the stop",
+      "picket": "WE WANT OUR STOP",
+      "subject": "buses",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "grv-shops-mirror",
+      "club": "shops",
+      "visitor": "awning",
+      "text": "No displays until our mirror is back. You were only going to check your hat.",
+      "signLabel": "Return the mirror",
+      "refuseLabel": "Keep the mirror",
+      "picket": "WE NEED THE GLASS",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "grv-brass-room",
+      "club": "brass",
+      "visitor": "slide",
+      "text": "No practice until our room is back. Your portrait sitting is in its sixth week.",
+      "signLabel": "Return the room",
+      "refuseLabel": "Keep the room",
+      "picket": "ROOM TO PRACTISE",
+      "subject": "portraits",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "grv-bus-logbook",
+      "club": "bus",
+      "visitor": "sprott",
+      "text": "No buses logged until our logbook is back. You signed every page, then the cover.",
+      "signLabel": "Return the book",
+      "refuseLabel": "Keep the book",
+      "picket": "LOGBOOK, PLEASE",
+      "subject": "buses",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "grv-shops-hat",
+      "club": "shops",
+      "visitor": "till",
+      "text": "Bare windows until the hat from window four is back. It suited the stand better.",
+      "signLabel": "Return the hat",
+      "refuseLabel": "Keep the hat",
+      "picket": "HAT TO WINDOW FOUR",
+      "subject": "hats",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "grv-anglers-sign",
+      "club": "anglers",
+      "visitor": "dabble",
+      "text": "No sitting until our QUIET PLEASE sign is back. You held it up at your speech.",
+      "signLabel": "Return the sign",
+      "refuseLabel": "Keep the sign",
+      "picket": "SHHH. GIVE IT BACK",
+      "subject": "signage",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "grv-veg-rosette",
+      "club": "veg",
+      "visitor": "loam",
+      "text": "No weigh-in until our first-prize rosette is back. You did not enter.",
+      "signLabel": "Return the prize",
+      "refuseLabel": "Keep the prize",
+      "picket": "NOT YOUR ROSETTE",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "grv-kites-kite",
+      "club": "kites",
+      "visitor": "loft",
+      "text": "Our best kite was lent for a photograph. It is now framed in your hall.",
+      "signLabel": "Return the kite",
+      "refuseLabel": "Keep the kite",
+      "picket": "KITES ARE FOR SKY",
+      "subject": "kites",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "grv-brass-stands",
+      "club": "brass",
+      "visitor": "bellows",
+      "text": "No concerts until our music stands come back. They are holding up your portraits.",
+      "signLabel": "Return the stands",
+      "refuseLabel": "Keep the stands",
+      "picket": "MUSIC NEEDS STANDS",
+      "subject": "portraits",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "grv-hedges-hedge",
+      "club": "hedges",
+      "visitor": "edging",
+      "text": "Our show hedge went behind you in a photograph. It has not come back.",
+      "signLabel": "Return the hedge",
+      "refuseLabel": "Keep the hedge",
+      "picket": "HEDGE COME HOME",
+      "subject": "hedges",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "grv-hedges-level",
+      "club": "hedges",
+      "visitor": "topiary",
+      "text": "No trimming until our spirit level is back. Your nameplate is straight now.",
+      "signLabel": "Return the level",
+      "refuseLabel": "Keep the level",
+      "picket": "HEDGES OUT OF TRUE",
+      "subject": "hedges",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "grv-kites-string",
+      "club": "kites",
+      "visitor": "updraught",
+      "text": "No launches until our string is back. You keep cutting it at openings.",
+      "signLabel": "Return the string",
+      "refuseLabel": "Keep the string",
+      "picket": "STRING NOT RIBBON",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "grv-anglers-pond",
+      "club": "anglers",
+      "visitor": "hake",
+      "text": "We will not sit until the pond gets its name back. It never asked for yours.",
+      "signLabel": "Return the name",
+      "refuseLabel": "Keep the name",
+      "picket": "THE POND IS POND",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut"
+    }
+  ],
+  "frontPages": [
+    {
+      "id": "fp-goose-parking",
+      "office": "mayor",
+      "text": "MAYOR'S GOOSE GIVEN OWN PARKING SPACE. Goose declines to comment.",
+      "subject": "geese",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "fp-mayor-scissors",
+      "office": "mayor",
+      "text": "MAYOR HOLDS OPENING FOR NEW SCISSORS. Old scissors not invited.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "fp-mayor-welcome",
+      "office": "mayor",
+      "text": "MAYOR ARRIVES EARLY TO OWN WELCOME. Waits to be welcomed.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "fp-mayor-benches",
+      "office": "mayor",
+      "text": "MAYOR'S NAME FOUND ON 41 BENCHES. Town has 40 benches.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "fp-mayor-hat",
+      "office": "mayor",
+      "text": "MAYOR SENDS HAT TO RIBBON-CUTTING. Ribbon cut on time, for once.",
+      "subject": "hats",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "fp-mayor-card",
+      "office": "mayor",
+      "text": "MAYOR WRITES SELF A THANK-YOU CARD. Replies the same day.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "fp-gov-thanks",
+      "office": "governor",
+      "text": "GOVERNOR THANKS GOVERNOR 14 TIMES IN SPEECH. Audience thanked once.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "fp-gov-plaque",
+      "office": "governor",
+      "text": "GOVERNOR UNVEILS PLAQUE TO UNVEILING OF PLAQUE. Another planned.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "fp-gov-footbridge",
+      "office": "governor",
+      "text": "GOVERNOR REOPENS FOOTBRIDGE FOR THIRD TIME. It had never closed.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "fp-gov-ribbon-nine",
+      "office": "governor",
+      "text": "GOVERNOR CUTS ONE RIBBON NINE TIMES FOR CAMERAS. Ribbon now confetti.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "fp-gov-photo",
+      "office": "governor",
+      "text": "GOVERNOR POSES WITH PHOTOGRAPH OF GOVERNOR. Both 'looking well'.",
+      "subject": "portraits",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "fp-gov-autograph",
+      "office": "governor",
+      "text": "GOVERNOR FILLS IN FORM REQUESTING OWN AUTOGRAPH. Request granted.",
+      "subject": "paperwork",
+      "butt": "self",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "fp-pres-signature",
+      "office": "president",
+      "text": "PRESIDENT'S SIGNATURE GIVEN ITS OWN DESK. Law signed on the floor.",
+      "subject": "paperwork",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "fp-pres-napkin",
+      "office": "president",
+      "text": "PRESIDENT AWARDS SELF THE FOLDED NAPKIN. Accepts, graciously.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "fp-pres-surprise",
+      "office": "president",
+      "text": "PRESIDENT REHEARSES OWN SURPRISE BIRTHDAY. 'Very convincing'.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "fp-pres-cake",
+      "office": "president",
+      "text": "PRESIDENT'S CAKE GETS PRESS OFFICER. Cake 'not taking questions'.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "fp-pres-cloud",
+      "office": "president",
+      "text": "PRESIDENT NAMES CLOUD AFTER SELF. Cloud moves on.",
+      "subject": "picnic-weather",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "fp-pres-dictionary",
+      "office": "president",
+      "text": "PRESIDENT'S NAME ADDED TO DICTIONARY. Defined as 'see ribbon'.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "fp-pres-handshake",
+      "office": "president",
+      "text": "PRESIDENT PRACTISES HANDSHAKE ON DOOR. Door 'warmly received'.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "fp-pres-kettle",
+      "office": "president",
+      "text": "PRESIDENT HAS CARPET ROLLED OUT TO KETTLE. Tea takes an hour.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "escalation"
+    }
+  ],
+  "apologies": [
+    {
+      "id": "apo-steps",
+      "text": "Apologise outside",
+      "note": "mayor (the specification's 'Apologise on the steps' does not fit the label box, and mayor-4 owns the town hall steps)"
+    },
+    {
+      "id": "apo-briefly",
+      "text": "Apologise, briefly",
+      "note": "governor"
+    },
+    {
+      "id": "apo-humbly",
+      "text": "Apologise in full",
+      "note": "president"
+    }
+  ]
+}

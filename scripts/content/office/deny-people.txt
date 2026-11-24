@@ -1,0 +1,869 @@
+# deny-people.txt: TIER 2 of the satire lint (office-design.md 7.8): real people.
+# Heads of state and government, their deputies, cabinet-rank ministers and opposition leaders of
+# the United States, United Kingdom, Canada, Australia, New Zealand, Ireland and South Africa since
+# 1900 (complete for heads of government, presidents, vice-presidents and leaders of the main
+# opposition; the best-known for the rest), royals, and notorious public figures. Compiled offline.
+#
+# How it is matched:
+#   - a line with ONE word is a surname (or a first name that points at one person: "Jacinda").
+#     It matches in ANY case and ANY position: a sentence's first word, lower case ("obama"), an
+#     all-caps headline ("THATCHER"), after ":" or ";", with a possessive or plural, and with the
+#     endings that make a word of a name ("Nixonian", "Thatcherite", "Reaganomics", "Blairism").
+#   - a line starting "~" is a surname that is also an everyday word ("~Grant", "~Ford", "~Brown").
+#     It matches only capitalised in the middle of a sentence, in a name field, or after a title
+#     ("Mr Brown", "MRS MAY"), so "Grant the prize", "a calmer brown" and "Ford the stream" pass.
+#     It is never near-matched.
+#   - near matches (plain surnames of 4 letters or more): a capitalised or all-caps word one edit
+#     away, or sounding alike (same consonant code, which folds c/k, ph/f, dj/j, and the same first
+#     vowel sound). Where a capital says nothing (a sentence's first word, an all-caps run, a Title
+#     Case line) an everyday word of lexicon.txt is not near-matched ("Paint" is not "Paine"). A
+#     near match fails until the sensitivity editor clears it in that name's names.json check.
+#   - a line with SEVERAL words is a full name ("Theresa May", "John Major"), matched in sequence,
+#     capitalised; its last word also matches after a title ("Mrs May").
+# "#" starts a comment.
+
+# --- United States: presidents since 1897 (and Grant, whom 7.8 names) ---
+~Grant
+McKinley
+Roosevelt
+Taft
+Wilson
+Harding
+Coolidge
+~Hoover
+Truman
+Eisenhower
+Kennedy
+Johnson
+Nixon
+~Ford
+~Carter
+Reagan
+Clinton
+Obama
+Biden
+# (Bush and Trump are tier 1 hard words)
+# --- vice-presidents ---
+Hobart
+Fairbanks
+James Sherman
+Thomas Marshall
+Dawes
+Charles Curtis
+~Garner
+Henry Wallace
+Barkley
+Hubert Humphrey
+Agnew
+Rockefeller
+Mondale
+Quayle
+Al Gore
+~Gore
+Cheney
+~Pence
+Kamala
+Kamala Harris
+Vance
+# --- losing nominees and congressional leaders ---
+Alton Parker
+Charles Evans Hughes
+James Cox
+John Davis
+Al Smith
+Landon
+Willkie
+Dewey
+Adlai Stevenson
+Goldwater
+McGovern
+Dukakis
+~Dole
+Kerry
+McCain
+Romney
+Pelosi
+McConnell
+Schumer
+Gingrich
+McCarthy
+Boehner
+Paul Ryan
+Hastert
+Rayburn
+Tip O'Neill
+Harry Reid
+Jeffries
+Thune
+Mike Johnson
+# --- cabinet and staff, the best-known ---
+Kissinger
+Elihu Root
+John Hay
+Cordell Hull
+Acheson
+Dulles
+~Rusk
+Haig
+Shultz
+James Baker
+Eagleburger
+Albright
+Colin Powell
+Condoleezza Rice
+Condoleezza
+Tillerson
+Pompeo
+Blinken
+Rubio
+Mellon
+Morgenthau
+Rubin
+Geithner
+Mnuchin
+Yellen
+Bessent
+Rumsfeld
+McNamara
+Weinberger
+Mattis
+Esper
+Hegseth
+Forrestal
+Ashcroft
+Gonzales
+~Holder
+~Sessions
+~Garland
+Bondi
+Bill Barr
+William Barr
+Meese
+Janet Reno
+Robert Mitchell
+John Mitchell
+Haldeman
+Ehrlichman
+Brzezinski
+~Bolton
+Priebus
+Kushner
+Ivanka
+Melania
+Bannon
+Giuliani
+Conway
+Spicer
+Scaramucci
+Gabbard
+Noem
+Stephen Miller
+Mueller
+Comey
+Flynn
+Manafort
+Roger Stone
+Ken Starr
+Lewinsky
+Petraeus
+Buttigieg
+Ocasio
+Ocasio-Cortez
+~Sanders
+Bernie
+Elizabeth Warren
+DeSantis
+Haley
+Newsom
+Cuomo
+Palin
+Bloomberg
+Perot
+Nader
+Huckabee
+Cruz
+Lindsey Graham
+Rand Paul
+Christie
+Abrams
+Ilhan Omar
+Tlaib
+Marjorie Taylor Greene
+Gaetz
+Boebert
+Jim Jordan
+~Rove
+Limbaugh
+Tucker Carlson
+Hannity
+RFK
+Hillary
+Chelsea Clinton
+Hunter Biden
+Kamala
+
+# --- United Kingdom: prime ministers since 1900 ---
+~Salisbury
+Balfour
+Campbell-Bannerman
+Bannerman
+Asquith
+Lloyd George
+Bonar Law
+~Baldwin
+MacDonald
+Ramsay MacDonald
+~Chamberlain
+Churchill
+Attlee
+Anthony Eden
+Macmillan
+Douglas-Home
+Alec Douglas-Home
+Harold Wilson
+Edward Heath
+Ted Heath
+Callaghan
+Thatcher
+John Major
+Blair
+Gordon Brown
+Cameron
+Theresa May
+Boris
+~Truss
+Liz Truss
+Sunak
+Starmer
+# --- deputies, chancellors, foreign and home secretaries, the best-known ---
+Herbert Morrison
+Rab Butler
+George Brown
+Whitelaw
+Geoffrey Howe
+Heseltine
+Prescott
+Clegg
+Raab
+Coffey
+Dowden
+Rayner
+Lammy
+Snowden
+Kingsley Wood
+Dalton
+Cripps
+Gaitskell
+Thorneycroft
+Selwyn Lloyd
+Maudling
+Roy Jenkins
+Healey
+Nigel Lawson
+Lamont
+Ken Clarke
+Kenneth Clarke
+~Darling
+Osborne
+~Hammond
+Javid
+Zahawi
+Kwarteng
+Jeremy Hunt
+Reeves
+Curzon
+~Halifax
+Bevin
+Bevan
+Crosland
+David Owen
+Carrington
+Douglas Hurd
+Rifkind
+Robin Cook
+Jack Straw
+Margaret Beckett
+Miliband
+Hague
+~Cleverly
+Joynson-Hicks
+Brittan
+Michael Howard
+Blunkett
+John Reid
+Jacqui Smith
+Amber Rudd
+Priti Patel
+Patel
+Braverman
+Yvette Cooper
+Mahmood
+Gove
+Mandelson
+Alastair Campbell
+Cummings
+Rees-Mogg
+Mogg
+Farage
+Enoch Powell
+Tony Benn
+Michael Foot
+Kinnock
+John Smith
+Duncan Smith
+Iain Duncan Smith
+Corbyn
+Badenoch
+Davey
+Farron
+Swinson
+Ashdown
+Charles Kennedy
+David Steel
+Jeremy Thorpe
+Grimond
+Sturgeon
+Salmond
+Yousaf
+Swinney
+~Paisley
+Gerry Adams
+McGuinness
+Trimble
+John Hume
+Arlene Foster
+Michelle O'Neill
+Drakeford
+Gething
+Rhodri Morgan
+Livingstone
+Sadiq Khan
+Khan
+Mosley
+Galloway
+Hattersley
+Shirley Williams
+Mowlam
+Clare Short
+Harman
+Diane Abbott
+Hancock
+Shapps
+Mordaunt
+Jenrick
+Gavin Williamson
+Burnham
+Streeting
+Ed Balls
+Lansbury
+Arthur Henderson
+Profumo
+Widdecombe
+Tebbit
+Portillo
+Hoon
+Ed Davey
+Tice
+
+# --- Royals ---
+~Windsor
+Mountbatten
+Markle
+Meghan
+Camilla
+Saxe-Coburg
+Battenberg
+Prince Charles
+King Charles
+Prince Philip
+Prince William
+Prince Harry
+Prince Andrew
+Prince Edward
+Princess Anne
+Princess Diana
+Lady Di
+Princess Margaret
+Queen Elizabeth
+Queen Mother
+Queen Victoria
+King George
+King Edward
+Kate Middleton
+Duchess of Sussex
+Duke of Sussex
+Duke of Edinburgh
+Duke of York
+
+# --- Canada: prime ministers since 1896 ---
+Laurier
+Borden
+Meighen
+Mackenzie King
+Bennett
+Laurent
+St. Laurent
+Diefenbaker
+Pearson
+Trudeau
+Joe Clark
+John Turner
+Mulroney
+Kim Campbell
+Chretien
+Paul Martin
+~Harper
+Carney
+# --- deputies, opposition and others ---
+MacEachen
+Mazankowski
+Sheila Copps
+Manley
+Freeland
+Stanfield
+Broadbent
+Layton
+Mulcair
+Jagmeet Singh
+Ignatieff
+Stephane Dion
+Scheer
+O'Toole
+Poilievre
+Rona Ambrose
+Preston Manning
+Stockwell Day
+Bouchard
+Duceppe
+Parizeau
+Levesque
+Blanchet
+Elizabeth May
+Tommy Douglas
+Doug Ford
+Kenney
+Legault
+Danielle Smith
+Notley
+Wynne
+Mike Harris
+Flaherty
+Morneau
+Baird
+Peter MacKay
+Goodale
+Axworthy
+
+# --- Australia: prime ministers since 1901 ---
+~Barton
+Deakin
+Chris Watson
+George Reid
+Andrew Fisher
+Joseph Cook
+Billy Hughes
+Stanley Bruce
+Scullin
+Joseph Lyons
+Earle Page
+Menzies
+Fadden
+Curtin
+Forde
+Chifley
+Harold Holt
+McEwen
+Gorton
+McMahon
+Whitlam
+Malcolm Fraser
+Hawke
+Keating
+John Howard
+Rudd
+Gillard
+Abbott
+Turnbull
+Scott Morrison
+Albanese
+# --- deputies, treasurers, opposition and others ---
+Costello
+~Downer
+Vaile
+Warren Truss
+Barnaby Joyce
+McCormack
+Marles
+Wayne Swan
+Plibersek
+Beazley
+Crean
+Latham
+~Shorten
+Dutton
+~Peacock
+Hewson
+Brendan Nelson
+Sussan Ley
+Julie Bishop
+Pauline Hanson
+Clive Palmer
+Katter
+Frydenberg
+Chalmers
+Penny Wong
+Credlin
+John Kerr
+
+# --- New Zealand: prime ministers since 1893 ---
+Seddon
+Hall-Jones
+Joseph Ward
+Massey
+Francis Bell
+~Coates
+George Forbes
+Michael Joseph Savage
+Peter Fraser
+Sidney Holland
+Holyoake
+Walter Nash
+Jack Marshall
+Norman Kirk
+Rowling
+Muldoon
+Lange
+Geoffrey Palmer
+Mike Moore
+Bolger
+Shipley
+Helen Clark
+John Key
+Bill English
+Ardern
+Hipkins
+Luxon
+# --- deputies and others ---
+Michael Cullen
+Winston Peters
+Paula Bennett
+Grant Robertson
+Seymour
+Roger Douglas
+Ruth Richardson
+Judith Collins
+Chlöe Swarbrick
+
+# --- Ireland: heads of government since 1922, presidents, others ---
+Cosgrave
+de Valera
+Valera
+John Costello
+Lemass
+Jack Lynch
+Haughey
+FitzGerald
+Albert Reynolds
+Bruton
+Ahern
+Cowen
+Enda Kenny
+Varadkar
+Micheal Martin
+Simon Harris
+Douglas Hyde
+O'Kelly
+Childers
+O Dalaigh
+Hillery
+Mary Robinson
+McAleese
+Michael D. Higgins
+Dick Spring
+Harney
+Coughlan
+Eamon Gilmore
+Joan Burton
+Coveney
+Mary Lou McDonald
+Michael Collins
+Arthur Griffith
+Redmond
+Parnell
+Pearse
+James Connolly
+O'Connell
+
+# --- South Africa: prime ministers and presidents since 1910, others ---
+Botha
+Smuts
+Hertzog
+Malan
+Strijdom
+Verwoerd
+Vorster
+de Klerk
+Klerk
+Mandela
+Mbeki
+Motlanthe
+Zuma
+Ramaphosa
+Mashatile
+Mabuza
+Mlambo-Ngcuka
+Malema
+Maimane
+Steenhuisen
+Zille
+Tony Leon
+Buthelezi
+Holomisa
+Suzman
+Slabbert
+Biko
+~Tutu
+Hani
+Sisulu
+Tambo
+Luthuli
+Winnie Mandela
+
+# --- Notorious public figures, the best-known ---
+Hitler
+Mussolini
+Stalin
+Lenin
+Mao
+Castro
+Guevara
+Pol Pot
+Gaddafi
+Saddam
+Bin Laden
+Kim Jong
+Putin
+Zelensky
+Netanyahu
+Erdogan
+Orban
+Bolsonaro
+Lula
+Modi
+Xi Jinping
+Jinping
+Assad
+Khomeini
+Idi Amin
+Mugabe
+~Franco
+Pinochet
+Ceausescu
+Milosevic
+Tito
+~Napoleon
+Bonaparte
+Rasputin
+Marx
+Trotsky
+Engels
+Goebbels
+Himmler
+Goering
+Eichmann
+Mengele
+Capone
+Escobar
+Manson
+Epstein
+Ghislaine
+Weinstein
+Savile
+Madoff
+~Musk
+Bezos
+Zuckerberg
+Bill Gates
+Murdoch
+Soros
+Assange
+Snowden
+Kardashian
+Oprah
+Beckham
+Branson
+Thunberg
+Martin Luther King
+Malcolm X
+Gandhi
+Oswald
+Jack Ruby
+Wilkes Booth
+Lindbergh
+Profumo
+Keeler
+Rothschild
+Vanderbilt
+Carnegie
+Mother Teresa
+Hirohito
+Tojo
+Lukashenko
+Chavez
+Maduro
+Duterte
+Marcos
+Suharto
+Mobutu
+Bokassa
+Charles Taylor
+Kagame
+Museveni
+Mubarak
+Arafat
+Ariel Sharon
+Menachem Begin
+Golda Meir
+Rabin
+Peres
+Ben-Gurion
+Macron
+Merkel
+Helmut Kohl
+Sarkozy
+Hollande
+Le Pen
+Berlusconi
+Meloni
+Mitterrand
+de Gaulle
+Adenauer
+Willy Brandt
+Schroder
+Scholz
+Juncker
+von der Leyen
+Donald Tusk
+Gorbachev
+Yeltsin
+Khrushchev
+Brezhnev
+Medvedev
+Navalny
+Lavrov
+Ho Chi Minh
+Nehru
+Jinnah
+Bhutto
+Imran Khan
+Sukarno
+Lee Kuan Yew
+Aquino
+Suu Kyi
+Kim Il Sung
+Kim Jong Un
+Ayatollah
+Khamenei
+Ahmadinejad
+Mandela
+Gaddafi
+Sadam
+Zedong
+Mao Zedong
+
+# --- surnames that are everyday words ---
+# ("~": only capitalised mid-sentence, in a name field, or after a title: "Mr Brown", "MRS MAY")
+~Brown
+~Major
+~Heath
+~Eden
+~Hunt
+~Foot
+~Benn
+~Adams
+~Harris
+~Key
+~Howard
+~Clark
+~Collins
+~Young
+~Austin
+~Wiles
+~Meadows
+~Hicks
+~Pickles
+~Plumb
+~Kim
+~Xi
+~Maggie
+~Donald
+~Cable
+~Swift
+~English
+~Martin
+# --- United States: nominees, cabinet members and figures ---
+Walz
+Kaine
+Edwards
+Lieberman
+Haaland
+Ramaswamy
+Leavitt
+Shapiro
+Whitmer
+Emhoff
+Mayorkas
+Sullivan
+Psaki
+Hawley
+Klobuchar
+Kinzinger
+Lutnick
+Vought
+Navarro
+Pruitt
+DeVos
+Carson
+Chao
+Mulvaney
+Cohen
+Avenatti
+Stormy Daniels
+Linda Tripp
+Goss
+# --- United Kingdom: ministers and figures ---
+Phillipson
+Dorries
+McDonnell
+Vince Cable
+Lee Anderson
+Eric Pickles
+Henry Plumb
+# --- first names that point at one person ---
+Diana
+Jacinda
+Dubya
+Barack
+Rishi
+Keir
+Theresa
+Nigel
+Bojo
+Fidel
+Adolf
+Benito
+Kamala
+Hillary
+
+# --- United States: presidents before 1897 a reader knows ---
+Lincoln
+Jefferson
+Fillmore
+Madison
+Buchanan
+~Pierce
+Van Buren
+Garfield
+Hayes
+Polk
+~Tyler

@@ -1,0 +1,364 @@
+{
+  "batch": "lines-rivals",
+  "writer": "writer-5",
+  "note": "Rival lines on election night are night records with id 'night-rival-<rival id>' and moment 'majority' (said after your majority, 4.4); the runtime NightLine has no rival field, so the id is the link (requested).",
+  "rivals": [
+    {
+      "id": "stitchley",
+      "office": "mayor",
+      "name": "Councillor Prudence Stitchley",
+      "hobby": "her hat",
+      "slogan": "Stitchley: She Owns A Hat",
+      "backAgain": "Councillor Stitchley is back for another go. Same hat. She has had it brushed.",
+      "resignation": "Councillor Stitchley won, then resigned to spend more time with her hat.",
+      "note": "slogan, resignation and night line given (spec 2.10, 4.4, style sheet 2)"
+    },
+    {
+      "id": "dunnock",
+      "office": "mayor",
+      "name": "Cyril Dunnock",
+      "hobby": "doorbells",
+      "slogan": "Dunnock: Ring Once, Please",
+      "backAgain": "Cyril Dunnock is back for another go. He is waiting politely on the step.",
+      "resignation": "Cyril Dunnock won, then resigned to spend more time with his doorbells. He has gone to answer one.",
+      "note": "hobby 'doorbells' as the style sheet has it; names.json role still says 'door knockers' (requested)"
+    },
+    {
+      "id": "setter",
+      "office": "mayor",
+      "name": "Philippa Setter",
+      "hobby": "setting crosswords",
+      "slogan": "Setter: Answers In Pencil",
+      "backAgain": "Philippa Setter is back for another go. Her leaflet is a crossword. Nobody has finished it.",
+      "resignation": "Philippa Setter won, then resigned to spend more time with her crosswords. Her notice was eleven across.",
+      "note": "'defeated' has 8 letters: checked"
+    },
+    {
+      "id": "waft",
+      "office": "governor",
+      "name": "Leander Waft",
+      "hobby": "the Ceremonial Spoon",
+      "slogan": "Waft: Gently Onwards",
+      "backAgain": "Leander Waft is back for another go. He has had the spoon engraved: AGAIN.",
+      "resignation": "Leander Waft won, then resigned to spend more time with the Ceremonial Spoon. It is his turn to hold it.",
+      "note": "slogan given; role line on papers is names.json's \"Keeper, Ceremonial Spoon\""
+    },
+    {
+      "id": "mallowby",
+      "office": "governor",
+      "name": "Hortensia Mallowby",
+      "hobby": "the accordion",
+      "slogan": "Mallowby: Push, Then Pull",
+      "backAgain": "Hortensia Mallowby is back for another go. The accordion is wearing a rosette.",
+      "resignation": "Hortensia Mallowby won, then resigned to spend more time with her accordion. It was waiting, half open.",
+      "note": "the slogan is how an accordion is played, and how the desk is"
+    },
+    {
+      "id": "noonday",
+      "office": "governor",
+      "name": "Fergus Noonday",
+      "hobby": "sundials",
+      "slogan": "Noonday: Weather Permitting",
+      "backAgain": "Fergus Noonday is back for another go. He arrived at noon exactly, by his own reckoning.",
+      "resignation": "Fergus Noonday won, then resigned to spend more time with his sundials. The afternoons, mostly.",
+      "note": "weather no worse than cloud (style sheet 1)"
+    },
+    {
+      "id": "kalends",
+      "office": "president",
+      "name": "Professor Ozias Kalends",
+      "hobby": "calendars",
+      "slogan": "Kalends: Abolish Wednesdays",
+      "backAgain": "Professor Kalends is back for another go. He has started on Thursdays.",
+      "resignation": "Professor Kalends won, then resigned to spend more time with his calendars. Effective last Wednesday.",
+      "note": "slogan given"
+    },
+    {
+      "id": "strop",
+      "office": "president",
+      "name": "Ottoline Strop",
+      "hobby": "chairs",
+      "slogan": "Strop: Firmly Seated",
+      "backAgain": "Ottoline Strop is back for another go. She has brought her own chair, and a cushion for it.",
+      "resignation": "Ottoline Strop won, then resigned to spend more time with her chairs. She has not yet chosen one.",
+      "note": "slogan given; role line on papers is names.json's \"Folded Napkin (Second Class)\""
+    },
+    {
+      "id": "ringrose",
+      "office": "president",
+      "name": "Lettice Ringrose",
+      "hobby": "handbells",
+      "slogan": "Ringrose: Mostly In Tune",
+      "backAgain": "Lettice Ringrose is back for another go. She rang ahead to say so.",
+      "resignation": "Lettice Ringrose won, then resigned to spend more time with her handbells. All twelve were consulted."
+    },
+    {
+      "id": "mould",
+      "office": "president",
+      "name": "Aldous Mould",
+      "hobby": "his compost heap",
+      "slogan": "Mould: Turned Every Sunday",
+      "backAgain": "Aldous Mould is back for another go. He says the heap has been building up to this.",
+      "resignation": "Aldous Mould won, then resigned to spend more time with his compost heap. It had been expecting him."
+    },
+    {
+      "id": "dovecote",
+      "office": "president",
+      "name": "Araminta Dovecote",
+      "hobby": "pigeons",
+      "slogan": "Dovecote: Back By Teatime",
+      "backAgain": "Araminta Dovecote is back for another go. A pigeon brought the news ahead of her.",
+      "resignation": "Araminta Dovecote won, then resigned to spend more time with her pigeons. They had written to her.",
+      "note": "homing pigeons; the pigeons are only kept and admired"
+    },
+    {
+      "id": "pharos",
+      "office": "president",
+      "name": "Ivo Pharos",
+      "hobby": "model lighthouses",
+      "slogan": "Pharos: Visible In Fog",
+      "backAgain": "Ivo Pharos is back for another go. He has brought a model lighthouse. It is switched on.",
+      "resignation": "Ivo Pharos won, then resigned to spend more time with his model lighthouses. One needed a new bulb.",
+      "note": "fog as on Fogmoor; never 'flashing'"
+    },
+    {
+      "id": "lathe",
+      "office": "president",
+      "name": "Honoria Lathe",
+      "hobby": "tapestry",
+      "slogan": "Lathe: Nearly Finished",
+      "backAgain": "Honoria Lathe is back for another go. She has left a space in the tapestry for it.",
+      "resignation": "Honoria Lathe won, then resigned to spend more time with her tapestry. It shows her winning, then resigning."
+    },
+    {
+      "id": "furlong",
+      "office": "president",
+      "name": "Quentin Furlong",
+      "hobby": "the harmonica",
+      "slogan": "Furlong: Breathe In, Breathe Out",
+      "backAgain": "Quentin Furlong is back for another go. He played himself in. It took a while.",
+      "resignation": "Quentin Furlong won, then resigned to spend more time with his harmonica. He played his notice.",
+      "note": "a harmonica sounds on the breath in and out"
+    },
+    {
+      "id": "tessel",
+      "office": "president",
+      "name": "Imogen Tessel",
+      "hobby": "jigsaws of plain sky",
+      "slogan": "Tessel: Edges First",
+      "backAgain": "Imogen Tessel is back for another go. She has done the edges.",
+      "resignation": "Imogen Tessel won, then resigned to spend more time with her jigsaws of sky. It is going well, she thinks.",
+      "note": "hobby as names.json"
+    },
+    {
+      "id": "pantry",
+      "office": "president",
+      "name": "Rufus Pantry",
+      "hobby": "barometers",
+      "slogan": "Pantry: Tap For Details",
+      "backAgain": "Rufus Pantry is back for another go. He tapped the glass before coming. It said 'fair'.",
+      "resignation": "Rufus Pantry won, then resigned to spend more time with his barometers. All of them saw it coming.",
+      "note": "'set fair' is a barometer's reading"
+    },
+    {
+      "id": "ambling",
+      "office": "president",
+      "name": "Gertrude Ambling",
+      "hobby": "her walking boots",
+      "slogan": "Ambling: Sensibly Shod",
+      "backAgain": "Gertrude Ambling is back for another go. She walked here. It took a week, by choice.",
+      "resignation": "Gertrude Ambling won, then resigned to spend more time with her walking boots. They were waiting by the door."
+    },
+    {
+      "id": "knapp",
+      "office": "president",
+      "name": "Bartholomew Knapp",
+      "hobby": "yodelling",
+      "slogan": "Knapp: Heard Across The Hills",
+      "backAgain": "Bartholomew Knapp is back for another go. You may have heard him arrive.",
+      "resignation": "Bartholomew Knapp won, then resigned to spend more time with his yodelling. He announced it from a hill."
+    }
+  ],
+  "night": [
+    {
+      "id": "night-rival-stitchley",
+      "moment": "majority",
+      "text": "Stitchley: I still own the hat.",
+      "note": "the rival's line at the result: stitchley"
+    },
+    {
+      "id": "night-rival-dunnock",
+      "moment": "majority",
+      "text": "Dunnock: Nobody is home, then. Understood.",
+      "note": "the rival's line at the result: dunnock"
+    },
+    {
+      "id": "night-rival-setter",
+      "moment": "majority",
+      "text": "Setter: Defeated. Eight letters. I checked.",
+      "note": "the rival's line at the result: setter"
+    },
+    {
+      "id": "night-rival-waft",
+      "moment": "majority",
+      "text": "Waft: The spoon will be disappointed. I shall tell it gently.",
+      "note": "the rival's line at the result: waft"
+    },
+    {
+      "id": "night-rival-mallowby",
+      "moment": "majority",
+      "text": "Mallowby: I shall play something short on the way out. In a minor key.",
+      "note": "the rival's line at the result: mallowby"
+    },
+    {
+      "id": "night-rival-noonday",
+      "moment": "majority",
+      "text": "Noonday: It was never my hour. It has clouded over anyway.",
+      "note": "the rival's line at the result: noonday"
+    },
+    {
+      "id": "night-rival-kalends",
+      "moment": "majority",
+      "text": "Kalends: I have crossed out today. It will not be missed.",
+      "note": "the rival's line at the result: kalends"
+    },
+    {
+      "id": "night-rival-strop",
+      "moment": "majority",
+      "text": "Strop: I shall remain seated. Thank you.",
+      "note": "the rival's line at the result: strop"
+    },
+    {
+      "id": "night-rival-ringrose",
+      "moment": "majority",
+      "text": "Ringrose: The handbells would like to congratulate you. One at a time.",
+      "note": "the rival's line at the result: ringrose"
+    },
+    {
+      "id": "night-rival-mould",
+      "moment": "majority",
+      "text": "Mould: Nothing is wasted. I shall put this evening on the heap.",
+      "note": "the rival's line at the result: mould"
+    },
+    {
+      "id": "night-rival-dovecote",
+      "moment": "majority",
+      "text": "Dovecote: I shall send word. By the usual route.",
+      "note": "the rival's line at the result: dovecote"
+    },
+    {
+      "id": "night-rival-pharos",
+      "moment": "majority",
+      "text": "Pharos: I shall leave a small light on for you.",
+      "note": "the rival's line at the result: pharos"
+    },
+    {
+      "id": "night-rival-lathe",
+      "moment": "majority",
+      "text": "Lathe: I shall add this evening to the tapestry. A small corner.",
+      "note": "the rival's line at the result: lathe"
+    },
+    {
+      "id": "night-rival-furlong",
+      "moment": "majority",
+      "text": "Furlong: A short tune for the winner. Very short.",
+      "note": "the rival's line at the result: furlong"
+    },
+    {
+      "id": "night-rival-tessel",
+      "moment": "majority",
+      "text": "Tessel: There is always one piece missing. I will look under the table.",
+      "note": "the rival's line at the result: tessel"
+    },
+    {
+      "id": "night-rival-pantry",
+      "moment": "majority",
+      "text": "Pantry: Unsettled, then. I shall take my coat.",
+      "note": "the rival's line at the result: pantry"
+    },
+    {
+      "id": "night-rival-ambling",
+      "moment": "majority",
+      "text": "Ambling: I shall walk home. The scenic way.",
+      "note": "the rival's line at the result: ambling"
+    },
+    {
+      "id": "night-rival-knapp",
+      "moment": "majority",
+      "text": "Knapp: I shall congratulate you properly. Please stand well back.",
+      "note": "the rival's line at the result: knapp"
+    },
+    {
+      "id": "night-clerk-open-1",
+      "moment": "open",
+      "text": "Good evening. I will read each envelope once. Applause after, please.",
+      "note": "Agatha Tallow, straight and procedural"
+    },
+    {
+      "id": "night-clerk-open-2",
+      "moment": "open",
+      "text": "Good evening. I have a new stick of chalk, and a spare.",
+      "note": "Agatha Tallow, straight and procedural"
+    },
+    {
+      "id": "night-clerk-held-1",
+      "moment": "held",
+      "text": "Held. One rosette, pinned straight.",
+      "note": "Agatha Tallow, straight and procedural"
+    },
+    {
+      "id": "night-clerk-held-2",
+      "moment": "held",
+      "text": "Held. For the back of the room: held.",
+      "note": "Agatha Tallow, straight and procedural"
+    },
+    {
+      "id": "night-clerk-lost-1",
+      "moment": "lost",
+      "text": "Not held. I will chalk it neatly, all the same.",
+      "note": "Agatha Tallow, straight and procedural"
+    },
+    {
+      "id": "night-clerk-lost-2",
+      "moment": "lost",
+      "text": "To your opponent. The rosette goes back in its box.",
+      "note": "Agatha Tallow, straight and procedural"
+    },
+    {
+      "id": "night-clerk-majority-1",
+      "moment": "majority",
+      "text": "That is a majority. The band may begin.",
+      "note": "Agatha Tallow, straight and procedural"
+    },
+    {
+      "id": "night-clerk-majority-2",
+      "moment": "majority",
+      "text": "That is a majority. Please do not cut anything yet.",
+      "note": "Agatha Tallow, straight and procedural"
+    },
+    {
+      "id": "night-clerk-defeat-1",
+      "moment": "defeat",
+      "text": "That is a majority for your opponent. I will read the rest, as is proper.",
+      "note": "Agatha Tallow, straight and procedural"
+    },
+    {
+      "id": "night-clerk-defeat-2",
+      "moment": "defeat",
+      "text": "Your opponent has a majority. The band will play something quieter.",
+      "note": "Agatha Tallow, straight and procedural"
+    },
+    {
+      "id": "night-clerk-any-1",
+      "moment": "any",
+      "text": "Quiet at the back, please. Thank you.",
+      "note": "Agatha Tallow, straight and procedural"
+    },
+    {
+      "id": "night-clerk-any-2",
+      "moment": "any",
+      "text": "A reminder: the tea urn is off during the reading.",
+      "note": "Agatha Tallow, straight and procedural"
+    }
+  ]
+}

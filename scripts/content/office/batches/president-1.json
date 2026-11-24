@@ -1,0 +1,478 @@
+{
+  "batch": "president-1",
+  "writer": "writer-3",
+  "office": "president",
+  "papers": [
+    {
+      "id": "pres-kitecombe-hill",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "project",
+      "text": "Build Kitecombe a hill. The League currently launches from a chair.",
+      "subject": "kites",
+      "butt": "office",
+      "shape": "undercut",
+      "setsUp": "pres-kitecombe-hill"
+    },
+    {
+      "id": "pres-string-reel",
+      "visitor": "updraught",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "project",
+      "text": "New string for the League. 61 % of the old string is in hedges.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-topiary-kite",
+      "visitor": "topiary",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "project",
+      "text": "A topiary kite on the kite field. Then its string, then its flyer.",
+      "subject": "hedges",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-maze",
+      "visitor": "edging",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "swap",
+      "text": "Declare the Kitecombe maze kite-free. Kites inside may apply to leave.",
+      "subject": "hedges",
+      "butt": "office",
+      "shape": "form-misapplied",
+      "setsUp": "pres-maze"
+    },
+    {
+      "id": "pres-sky-sign",
+      "visitor": "dabble",
+      "club": "anglers",
+      "other": "kites",
+      "archetype": "project",
+      "text": "A sign over the water, facing up: KITES, PLEASE GO ROUND.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-new-shears",
+      "visitor": "edging",
+      "club": "hedges",
+      "other": "anglers",
+      "archetype": "project",
+      "text": "New shears for the Committee. The anglers' willow is worried.",
+      "subject": "hedges",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-level-field",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "brass",
+      "archetype": "swap",
+      "text": "The League asks for a level playing field. The band's, ideally.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-bench-roof",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "kites",
+      "archetype": "project",
+      "text": "Roof the spotters' bench. Last year it logged 30 % kites.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-hedge-likeness",
+      "visitor": "topiary",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "treat",
+      "text": "Pose beside a hedge clipped in your likeness. A modest hedge.",
+      "subject": "hedges",
+      "butt": "self",
+      "shape": "photo-op",
+      "setsUp": "pres-hedge-likeness"
+    },
+    {
+      "id": "pres-dressed-hedges",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "hedges",
+      "archetype": "swap",
+      "text": "Let the Guild arrange the hedges as a display. The Committee did them first.",
+      "subject": "hedges",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-far-indoors",
+      "visitor": "dabble",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "fee",
+      "text": "The Circle will pay for band practice indoors. Far indoors.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-kite-awnings",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "kites",
+      "archetype": "project",
+      "text": "Awnings for the shop windows, printed: THIS IS NOT A LANDING.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-marrow-net",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "kites",
+      "archetype": "project",
+      "text": "A net over the marrow beds. Last year a kite came second.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-hedge-show",
+      "visitor": "edging",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "treat",
+      "text": "Judge the hedge show. All 212 are straight, so point at one and smile.",
+      "subject": "hedges",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-coaches-threes",
+      "visitor": "sprott",
+      "cosigner": "minute",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "committee",
+      "text": "An inquiry into why coaches come in threes. Three copies, in the Guild's window.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "biggerStudy": "Three more coaches came. The inquiry asks for three more windows."
+    },
+    {
+      "id": "pres-first-coach",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "treat",
+      "text": "Ride the first coach of spring. You will be logged as luggage.",
+      "subject": "buses",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-coach-show",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "swap",
+      "text": "Hold the marrow show in the coach park. Parked coaches get weighed.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-tune-committee",
+      "visitor": "slide",
+      "cosigner": "minute",
+      "club": "brass",
+      "other": "kites",
+      "archetype": "committee",
+      "text": "A committee to pick a tune, on the kite field. It will hear every tune first.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "escalation",
+      "biggerStudy": "The tune committee heard every tune. Now it asks for an encore."
+    },
+    {
+      "id": "pres-sound-shell",
+      "visitor": "slide",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "project",
+      "text": "The band would like a hearing. A sound shell by the water will do.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-kites-may-land",
+      "visitor": "updraught",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "swap",
+      "text": "A sign on every hedge: KITES WELCOME. The hedges were not asked.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-echo-licence",
+      "visitor": "bellows",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "fee",
+      "text": "The band will pay for a licence to echo. Anglers hear each tune twice.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-napkin-window",
+      "visitor": "till",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "treat",
+      "text": "Lend a shop window the founding napkin. The Guild will iron it.",
+      "subject": "paperwork",
+      "butt": "thing",
+      "shape": "callback"
+    },
+    {
+      "id": "pres-silence-study",
+      "visitor": "hake",
+      "cosigner": "minute",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "committee",
+      "text": "A study of silence by the water. So far: 70 % quiet, 30 % band.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "statistic",
+      "biggerStudy": "The silence study needs a quieter room. It asks for the band's."
+    },
+    {
+      "id": "pres-marrow-beds",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "veg",
+      "archetype": "fee",
+      "text": "The spotters will pay to stand in the marrow beds. Then to sit.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-loose-ends",
+      "visitor": "updraught",
+      "cosigner": "minute",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "committee",
+      "text": "A working group to tie up loose ends: the kite strings in hedges.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "The loose-ends group is stuck in a hedge. It asks for a rescue group."
+    },
+    {
+      "id": "pres-coach-wave",
+      "visitor": "spinwell",
+      "club": "bus",
+      "archetype": "vanity",
+      "text": "Be photographed waving from every coach. All of them, one a day.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-sunday-quiet",
+      "visitor": "hake",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "swap",
+      "text": "Give the band's Sunday hour to the Circle. Same hour, fewer notes.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-coach-hat",
+      "visitor": "slake",
+      "club": "bus",
+      "archetype": "basket",
+      "text": "A hat for you. And one for your coach. And for each wheel, perhaps?",
+      "subject": "hats",
+      "butt": "lobbyist",
+      "shape": "escalation",
+      "favour": {
+        "text": "About the hat: it asks to be logged by the spotters as a coach.",
+        "clippings": {
+          "sign": "SPOTTERS TOLD TO LOG A HAT; HAT RUNS LATE",
+          "refuse": "HAT IS NOT A COACH, PRESIDENT RULES"
+        }
+      }
+    },
+    {
+      "id": "pres-pane-quiet",
+      "visitor": "till",
+      "club": "shops",
+      "other": "brass",
+      "archetype": "fee",
+      "text": "The Guild will pay for a quiet day. Each tune rattles eleven panes.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-hedge-signature",
+      "visitor": "fenn",
+      "club": "hedges",
+      "archetype": "vanity",
+      "text": "Rodney has clipped your signature into a hedge. He proposes the rest.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "callback"
+    },
+    {
+      "id": "pres-riverbank-bandstand",
+      "visitor": "bellows",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "swap",
+      "text": "Rename the riverbank BANDSTAND (TEMPORARY) on Thursdays. Fish informed.",
+      "subject": "bandstands",
+      "butt": "office",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-hedge-survey",
+      "visitor": "topiary",
+      "cosigner": "minute",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "committee",
+      "text": "Survey the hedges with kite string, pulled tight. The League lends it.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "biggerStudy": "The string is not straight. The survey asks to survey the string."
+    },
+    {
+      "id": "pres-kite-judged",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "kites",
+      "archetype": "fee",
+      "text": "The growers will hire the kite field. Kites that land will be judged.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-noses-glass",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "swap",
+      "text": "Lend the spotters a shop window. Coaches look better framed.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-marrow-pose",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "treat",
+      "text": "Pose with the prize marrow for its portrait. Slightly behind it.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-kites-kept",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "fee",
+      "text": "The League pays per kite fetched from hedges. The hedges hold 41.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-basket-again",
+      "visitor": "sash",
+      "club": "shops",
+      "archetype": "basket",
+      "text": "A fruit basket, as before. A ribbon on it, as before. No reason.",
+      "subject": "ribbons",
+      "butt": "lobbyist",
+      "shape": "callback",
+      "favour": {
+        "text": "About the basket: it would like a shop window. The Guild's best one.",
+        "clippings": {
+          "sign": "PRESIDENT'S BASKET TAKES GUILD'S BEST WINDOW",
+          "refuse": "BASKET REFUSED A WINDOW; TO BE EATEN INSTEAD"
+        }
+      }
+    },
+    {
+      "id": "pres-marrow-group",
+      "visitor": "loam",
+      "cosigner": "minute",
+      "club": "veg",
+      "other": "kites",
+      "archetype": "committee",
+      "text": "A working group on what a marrow is. It meets on the kite field.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "Some marrows may be courgettes. The marrow group asks for a sub-group."
+    },
+    {
+      "id": "pres-desk-fountain",
+      "visitor": "goss",
+      "club": "anglers",
+      "archetype": "basket",
+      "text": "A desk fountain, just for you. It tinkles. The next one up splashes.",
+      "subject": "fountains",
+      "butt": "lobbyist",
+      "shape": "escalation",
+      "favour": {
+        "text": "About the fountain: it is lonely. It asks to live by the anglers' water.",
+        "clippings": {
+          "sign": "DESK FOUNTAIN MOVES TO RIVERBANK; ANGLERS HEAR TINKLING",
+          "refuse": "FOUNTAIN STAYS ON DESK, TINKLING AT NOBODY"
+        }
+      }
+    },
+    {
+      "id": "pres-coach-hedge",
+      "visitor": "topiary",
+      "club": "hedges",
+      "other": "bus",
+      "archetype": "fee",
+      "text": "The Committee will pay to trim the hedge spotters lean on. Leaning rescheduled.",
+      "subject": "hedges",
+      "butt": "office",
+      "shape": "form-misapplied"
+    }
+  ]
+}

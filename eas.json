@@ -8,6 +8,28 @@
       "node": "22.23.5",
       "env": {}
     },
+    "high-office-dev": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "GAME": "high-office"
+      }
+    },
+    "high-office-preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "env": {
+        "GAME": "high-office"
+      }
+    },
+    "high-office-production": {
+      "extends": "base",
+      "autoIncrement": true,
+      "env": {
+        "GAME": "high-office"
+      }
+    },
     "night-market-dev": {
       "extends": "base",
       "developmentClient": true,
@@ -76,6 +98,15 @@
     }
   },
   "submit": {
+    "high-office-production": {
+      "ios": {
+        "metadataPath": "./games/high-office/store/store.config.json"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
     "night-market-production": {
       "ios": {
         "metadataPath": "./games/night-market/store/store.config.json"

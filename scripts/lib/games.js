@@ -19,7 +19,7 @@ const SOUND_PACKS_DIR = path.join(ROOT, 'shared', 'sfx');
 /** game.json `mode` when it has none (the schema's default). */
 const DEFAULT_MODE = 'classic';
 /** The modes that have an entry in src/modes/<mode>/index.tsx. */
-const MODES = ['sim', 'classic', 'haul', 'merge'];
+const MODES = ['sim', 'classic', 'haul', 'merge', 'decree'];
 /** Where a game keeps its own sounds, relative to its folder. */
 const GAME_SFX_REL = path.join('assets', 'sfx');
 /** Sound file types (all bundled by Metro as assets). If one folder has `x.wav` and `x.mp3`, the earlier type wins. */

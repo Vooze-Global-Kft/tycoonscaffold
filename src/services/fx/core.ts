@@ -38,6 +38,12 @@ export interface Fx<Name extends string = string> {
     stop(): void;
     /** Music volume, 0..1, on top of the catalogue volume. Not saved. */
     setVolume(volume: number): void;
+    /**
+     * Chooses which catalogue loop the music plays (`music_main` by default; a mode with a second loop, such
+     * as a campaign march, switches to it and back). A name without a loop file is ignored. Optional, additive:
+     * a game that never calls it plays `music_main` exactly as before.
+     */
+    choose?(name: string): void;
   };
   settings: {
     get(): FxSettings;
@@ -62,7 +68,10 @@ export interface Fx<Name extends string = string> {
 }
 
 /** What the service needs from the sound engine (the real one is `AudioEngine`). */
-export type AudioPort = Pick<AudioEngine, 'register' | 'init' | 'preload' | 'has' | 'play' | 'stopAll' | 'refreshSession' | 'music'>;
+export type AudioPort = Pick<AudioEngine, 'register' | 'init' | 'preload' | 'has' | 'play' | 'stopAll' | 'refreshSession'> & {
+  /** `use` is optional: a port without it simply never switches loops. */
+  music: Omit<AudioEngine['music'], 'use'> & Partial<Pick<AudioEngine['music'], 'use'>>;
+};
 
 export interface FxDeps<Catalog extends Readonly<Record<string, FxRuntimeDef>>> {
   catalog: Catalog;
@@ -209,6 +218,10 @@ export function createFx<Catalog extends Readonly<Record<string, FxRuntimeDef>>>
       },
       setVolume(volume) {
         audio.music.setVolume((catalog[MUSIC]?.volume ?? 1) * clamp01(volume));
+      },
+      choose(name) {
+        const loop = name === MUSIC ? plan.music : plan.loops?.[name];
+        if (loop) audio.music.use?.(loop.source, loop.volume);
       },
     },
 

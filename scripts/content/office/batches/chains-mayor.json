@@ -1,0 +1,497 @@
+{
+  "batch": "chains-mayor",
+  "writer": "writer-1",
+  "office": "mayor",
+  "chains": [
+    {
+      "id": "may-basket",
+      "office": "mayor",
+      "title": "The Basket",
+      "afterSign": {
+        "visitor": "sash",
+        "club": "shops",
+        "archetype": "favour",
+        "text": "About the basket: the goose at the bottom was not fruit. It would like an office.",
+        "subject": "geese",
+        "butt": "self",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOOSE GIVEN OFFICE; MAYOR GIVEN GOOSE",
+          "refuse": "GOOSE RETURNED TO SENDER, WHO DENIES OWNING A GOOSE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "sash",
+        "club": "veg",
+        "archetype": "favour",
+        "text": "No hard feelings. Please accept this smaller basket. It is one grape.",
+        "subject": "ribbons",
+        "butt": "lobbyist",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR ACCEPTS GRAPE",
+          "refuse": "MAYOR REFUSES GRAPE. GRAPE DEVASTATED"
+        }
+      }
+    },
+    {
+      "id": "may-pumpkin",
+      "office": "mayor",
+      "title": "The Pumpkin",
+      "afterSign": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "shops",
+        "archetype": "committee",
+        "text": "The pumpkin, now a Freeman of the town, wishes to address the council. It has slides.",
+        "subject": "vegetable-shows",
+        "butt": "thing",
+        "shape": "escalation",
+        "delay": [
+          8,
+          12
+        ],
+        "clippings": {
+          "sign": "PUMPKIN'S SPEECH CANCELLED; SLIDES LOST",
+          "refuse": "PUMPKIN ADDRESSES EMPTY HALL"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "The pumpkin has not left its crate since your refusal. It faces the wall.",
+        "subject": "vegetable-shows",
+        "butt": "thing",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR APOLOGISES TO VEGETABLE",
+          "refuse": "PUMPKIN: NO COMMENT"
+        }
+      }
+    },
+    {
+      "id": "may-ticket-museum",
+      "office": "mayor",
+      "title": "The Ticket Museum",
+      "afterSign": {
+        "visitor": "sprott",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "project",
+        "text": "The museum keeps each ticket it sells. It asks for a shop window.",
+        "subject": "buses",
+        "butt": "thing",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR OPENS MUSEUM ANNEXE; IS ASKED FOR A TICKET",
+          "refuse": "TICKET MUSEUM FULL. VISITOR ASKED TO WAIT OUTSIDE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "sprott",
+        "cosigner": "minute",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "committee",
+        "text": "No museum? Then a study of each ticket, read aloud in the street.",
+        "subject": "committees",
+        "butt": "committee",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "TICKET STUDY READ ALOUD; MAYOR'S TICKET IS A RECEIPT",
+          "refuse": "TICKETS STAY IN BOXES, BY DATE. MERVYN READS THEM QUIETLY"
+        }
+      }
+    },
+    {
+      "id": "may-late-bus",
+      "office": "mayor",
+      "title": "The Late Bus",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "bus",
+        "archetype": "vanity",
+        "text": "Your name in lights on the 7:02, Mayor. It will be late, but lit.",
+        "subject": "buses",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR'S NAME LIT UP ON 7:02; SEEN ARRIVING LATE FROM AFAR",
+          "refuse": "7:02 STILL NAMED AFTER MAYOR, STILL LATE, STILL WAVING"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "The 7:02 kept its name and runs on time. Wave it off? It will not wait.",
+        "subject": "buses",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR WAVES OFF 7:02; 7:02 LATE FOR FIRST TIME IN WEEKS",
+          "refuse": "7:02 ON TIME AGAIN. NOBODY WAVES"
+        }
+      }
+    },
+    {
+      "id": "may-clock-chimes",
+      "office": "mayor",
+      "title": "Chimes for Buses",
+      "afterSign": {
+        "visitor": "till",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "swap",
+        "text": "38 chimes a day, all for buses. The Guild asks for one at opening.",
+        "subject": "clocks",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR ATTENDS SHOP OPENING CHIME; IT WAS A BUS",
+          "refuse": "CLOCK STAYS WITH BUSES; SHOPS OPEN WITHOUT A CHIME"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "Denied its bus chimes, the clock sulks. Have a word with it?",
+        "subject": "clocks",
+        "butt": "thing",
+        "shape": "literalism",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR SEEN TALKING TO CLOCK; CLOCK SAYS NOTHING",
+          "refuse": "CLOCK STILL SULKING. SPOTTERS TIME IT"
+        }
+      }
+    },
+    {
+      "id": "may-window-week",
+      "office": "mayor",
+      "title": "Window Week",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "shops",
+        "archetype": "vanity",
+        "text": "A window of you, judging windows, Mayor. Card: JUDGE'S CHOICE.",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "slogan",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR'S WINDOW WINS PRIZE; MAYOR WAS THE JUDGE",
+          "refuse": "MAYOR DECLINES OWN WINDOW. GLASS RELIEVED"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "till",
+        "cosigner": "minute",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "committee",
+        "text": "No judge, so all won. A study will pick a winner by nose prints.",
+        "subject": "committees",
+        "butt": "committee",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "STUDY PICKS WINNING WINDOW BY NOSES; MAYOR'S NOSE ON IT",
+          "refuse": "EVERY WINDOW WINS. NONE OF THEM CHEERS"
+        }
+      }
+    },
+    {
+      "id": "may-bunting",
+      "office": "mayor",
+      "title": "The Bunting",
+      "afterSign": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "swap",
+        "text": "The 8:15 left with eleven metres of bunting. May it keep them?",
+        "subject": "ceremonies",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "BUS LEAVES IN BUNTING; MAYOR WAVES, BUS DOES NOT STOP",
+          "refuse": "BUNTING HANDED BACK TO GUILD, FOLDED AND NUMBERED"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "awning",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "treat",
+        "text": "No bunting, so we hung a single ribbon. Cut it level, Mayor.",
+        "subject": "ribbons",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR CUTS GUILD RIBBON, KEEPS BOTH ENDS",
+          "refuse": "RIBBON UNCUT. SHOPPERS STEP OVER IT POLITELY"
+        }
+      }
+    },
+    {
+      "id": "may-signpost",
+      "office": "mayor",
+      "title": "The Fair Signpost",
+      "afterSign": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "swap",
+        "text": "Your signpost points both ways, to the shops. We ask for one arm.",
+        "subject": "signage",
+        "butt": "thing",
+        "shape": "literalism",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR FOLLOWS OWN SIGNPOST, ENDS UP AT BUS STATION",
+          "refuse": "SIGNPOST STAYS FAIR: BOTH ARMS STILL POINT AT SHOPS"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "till",
+        "cosigner": "minute",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "committee",
+        "text": "The old signpost still points to buses. A study will follow it.",
+        "subject": "signage",
+        "butt": "committee",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "SIGNPOST STUDY TAKES WRONG TURN; MAYOR ASKED THE WAY",
+          "refuse": "OLD SIGNPOST STILL POINTS AT BUSES; SHOPS FIND OWN WAY"
+        }
+      }
+    },
+    {
+      "id": "may-named-turnip",
+      "office": "mayor",
+      "title": "The Turnip",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "veg",
+        "archetype": "vanity",
+        "text": "Your turnip came second, Mayor. A portrait, cropped to leave out the winner?",
+        "subject": "portraits",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "TURNIP PORTRAIT UNVEILED; LOOKS MORE LIKE MAYOR DAILY",
+          "refuse": "SECOND-PLACE TURNIP RETURNS TO PRIVATE LIFE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "till",
+        "club": "shops",
+        "other": "veg",
+        "archetype": "fee",
+        "text": "You would not lend the turnip your name. Till's Teas will pay to lend theirs.",
+        "subject": "vegetable-shows",
+        "butt": "self",
+        "shape": "callback",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "TILL'S TEAS TURNIP COMES SECOND; MAYOR'S NAME NOT MENTIONED",
+          "refuse": "TURNIP STAYS NAMELESS. MAYOR'S NAME STILL ON OFFER"
+        }
+      }
+    },
+    {
+      "id": "may-scarecrow",
+      "office": "mayor",
+      "title": "The Scarecrow",
+      "afterSign": {
+        "visitor": "loam",
+        "club": "veg",
+        "other": "bus",
+        "archetype": "treat",
+        "text": "Your scarecrow is photographed more than you. Pose with it, once?",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR POSES WITH SCARECROW; CAPTION GETS THEM BACKWARDS",
+          "refuse": "SCARECROW STANDS ALONE. CROWS STILL UNCONVINCED"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "loam",
+        "club": "veg",
+        "other": "bus",
+        "archetype": "project",
+        "text": "No scarecrow? Then a sign: CROWS BY APPOINTMENT ONLY.",
+        "subject": "signage",
+        "butt": "thing",
+        "shape": "slogan",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "CROWS MAKE APPOINTMENT; MAYOR'S DIARY FULL",
+          "refuse": "CROWS ATTEND WEIGH-IN WITHOUT APPOINTMENT"
+        }
+      }
+    },
+    {
+      "id": "may-weigh-in-move",
+      "office": "mayor",
+      "title": "The Weigh-in Moves",
+      "afterSign": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "bus",
+        "archetype": "fee",
+        "text": "We will pay to book the forecourt yearly. Crowds up 60 %, waiting for buses.",
+        "subject": "vegetable-shows",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR'S HAT WEIGHED BY MISTAKE; BEATEN BY A BUS",
+          "refuse": "BUSES GET FORECOURT BACK; ONE PUMPKIN LEFT BEHIND"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "veg",
+        "archetype": "treat",
+        "text": "You kept our forecourt, Mayor, so we logged you as a bus. Sign here?",
+        "subject": "buses",
+        "butt": "self",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR SIGNS BUS NOTEBOOK; IS LOGGED AS LATE",
+          "refuse": "NOTEBOOK ENTRY UNSIGNED. SPOTTERS NOTE THAT TOO"
+        }
+      }
+    },
+    {
+      "id": "may-bandstand-guild",
+      "office": "mayor",
+      "title": "Hats at the Bandstand",
+      "afterSign": {
+        "visitor": "awning",
+        "club": "shops",
+        "other": "veg",
+        "archetype": "swap",
+        "text": "The hats had the bandstand a day. They ask for a week, and a hat for it.",
+        "subject": "hats",
+        "butt": "thing",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "HATS KEEP BANDSTAND; MAYOR TRIES ONE ON, KEEPS IT",
+          "refuse": "HATS LEAVE BANDSTAND; PUMPKINS TAKE THE STAGE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "The pumpkin show kept its stage. Judge it, Mayor, in a hat?",
+        "subject": "vegetable-shows",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR'S HAT JUDGED BEST IN SHOW, BY MAYOR",
+          "refuse": "PUMPKIN SHOW GOES AHEAD. NO HATS, ONE ROSETTE"
+        }
+      }
+    }
+  ]
+}

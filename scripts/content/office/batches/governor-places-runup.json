@@ -1,0 +1,310 @@
+{
+  "batch": "governor-places-runup",
+  "writer": "writer-2",
+  "office": "governor",
+  "places": [
+    {
+      "id": "county-waitwell",
+      "office": "governor",
+      "kind": "county",
+      "name": "Waitwell",
+      "short": "WW",
+      "note": "suggested for the Bus-strong county (county_a): where the province waits for the bus, and waits well"
+    },
+    {
+      "id": "county-gleamford",
+      "office": "governor",
+      "kind": "county",
+      "name": "Gleamford",
+      "short": "GF",
+      "note": "suggested for the Shops-strong county (county_b): its shop windows gleam"
+    },
+    {
+      "id": "county-cloche-end",
+      "office": "governor",
+      "kind": "county",
+      "name": "Cloche End",
+      "short": "CE",
+      "note": "suggested for the Vegetables-strong county (county_c); a cloche is a glass cover for seedlings"
+    },
+    {
+      "id": "county-bandwick",
+      "office": "governor",
+      "kind": "county",
+      "name": "Bandwick",
+      "short": "BW",
+      "note": "suggested for the Brass-strong county (county_d)"
+    },
+    {
+      "id": "county-dawdlemouth",
+      "office": "governor",
+      "kind": "county",
+      "name": "Dawdlemouth",
+      "short": "DM",
+      "note": "suggested for the Anglers-strong county (county_e): where the River Dawdle reaches the canal"
+    },
+    {
+      "id": "county-clatterby",
+      "office": "governor",
+      "kind": "county",
+      "name": "Clatterby",
+      "short": "CY",
+      "note": "suggested for the Bus-and-Brass county (county_f): buses and bands both clatter"
+    },
+    {
+      "id": "county-hampering",
+      "office": "governor",
+      "kind": "county",
+      "name": "Hampering",
+      "short": "HP",
+      "note": "suggested for the Shops-and-Vegetables county (county_g): a hamper is a basket; hampering is what committees do (a sister to Dithering)"
+    },
+    {
+      "id": "landmark-wobbling-stone",
+      "office": "governor",
+      "kind": "landmark",
+      "name": "Wobbling Stone",
+      "note": "written 'the Wobbling Stone': the rocking stone the province is named after; serves no club"
+    },
+    {
+      "id": "landmark-ribbon-steps",
+      "office": "governor",
+      "kind": "landmark",
+      "name": "Ribbon Steps",
+      "note": "written 'the Ribbon Steps': the steps of the provincial hall, where every ribbon of the province is cut and every apology made; serves no club (an earlier 'Empty Plinth' was cut: with a numbered bandstand it recalled a real square's famous plinth)"
+    },
+    {
+      "id": "landmark-second-bandstand",
+      "office": "governor",
+      "kind": "landmark",
+      "name": "Second Bandstand",
+      "note": "written 'the Second Bandstand': nobody can find the first; Brass (comedy editor: was 'Fourth Bandstand', which echoes a real square's Fourth Plinth)"
+    },
+    {
+      "id": "landmark-tiptoe-jetty",
+      "office": "governor",
+      "kind": "landmark",
+      "name": "Tiptoe Jetty",
+      "note": "written 'Tiptoe Jetty': the quietest jetty on the canal; Anglers"
+    },
+    {
+      "id": "landmark-unhurried-canal",
+      "office": "governor",
+      "kind": "landmark",
+      "name": "Unhurried Canal",
+      "note": "written 'the Unhurried Canal': the province's canal (office-style.md 1)"
+    },
+    {
+      "id": "landmark-lingering-locks",
+      "office": "governor",
+      "kind": "landmark",
+      "name": "Lingering Locks",
+      "note": "written 'the Lingering Locks': a flight of locks on the Unhurried Canal; boats wait in them, anglers watch"
+    },
+    {
+      "id": "landmark-patient-glasshouse",
+      "office": "governor",
+      "kind": "landmark",
+      "name": "Patient Glasshouse",
+      "note": "written 'the Patient Glasshouse': the oldest of the glasshouses, in no hurry, like the canal; Vegetables (comedy editor: was 'Great Glasshouse', the name of a real botanic-garden building)"
+    },
+    {
+      "id": "landmark-first-shelter",
+      "office": "governor",
+      "kind": "landmark",
+      "name": "First Shelter",
+      "note": "written 'the First Shelter': the province's oldest bus shelter, kept as it was and leaned on; Bus"
+    },
+    {
+      "id": "landmark-glass-arcade",
+      "office": "governor",
+      "kind": "landmark",
+      "name": "Glass Arcade",
+      "note": "written 'the Glass Arcade': a covered row of shop windows; Shops"
+    }
+  ],
+  "runUp": [
+    {
+      "id": "gov-runup-tree",
+      "office": "governor",
+      "visitor": "abacus",
+      "text": "Plant a tree in {district}. It will be photogenic in 40 years.",
+      "subject": "gardens",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "gov-runup-pointing",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "Point at something in {district}. Rodney will say what, later.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "gov-runup-hat-parade",
+      "office": "governor",
+      "visitor": "slake",
+      "text": "Judge the {district} hats. Yours has entered. Declare an interest.",
+      "subject": "hats",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "gov-runup-bridge",
+      "office": "governor",
+      "visitor": "wimble",
+      "text": "Open the {district} bridge. Again for the camera. Again for the minutes.",
+      "subject": "ceremonies",
+      "butt": "office",
+      "shape": "escalation"
+    },
+    {
+      "id": "gov-runup-rosette",
+      "office": "governor",
+      "visitor": "gourdley",
+      "text": "Pin the {district} show rosette on the winner. Not on you.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "gov-runup-cake-icing",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "Cut the {district} cake. The icing reads THE GOVERNOR CUT THIS.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "gov-runup-prizes",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "Award the {district} prizes: best scone, best rose, best photo of you.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "gov-runup-napkin",
+      "office": "governor",
+      "visitor": "wimble",
+      "text": "Sign the {district} roll of honour. Not the napkin; that is the law.",
+      "subject": "paperwork",
+      "butt": "self",
+      "shape": "callback"
+    },
+    {
+      "id": "gov-runup-no-comment",
+      "office": "governor",
+      "visitor": "dabble",
+      "text": "Sit by the water in {district}. Say nothing. You will be quoted.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "gov-runup-benches",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "Tour {district}: 14 benches, and not one has your name. Yet.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "gov-runup-new-ground",
+      "office": "governor",
+      "visitor": "dimity",
+      "text": "Break new ground in {district}. Gently; it is the bowling green.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "gov-runup-band-cup",
+      "office": "governor",
+      "visitor": "bellows",
+      "text": "Present the {district} band cup. We play you on. Off. And on.",
+      "subject": "bandstands",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "gov-runup-ribbon-halves",
+      "office": "governor",
+      "visitor": "wimble",
+      "text": "Cut the {district} ribbon. Cuthbert needs both halves signed for.",
+      "subject": "ribbons",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "gov-runup-pumpkin-pose",
+      "office": "governor",
+      "visitor": "loam",
+      "text": "Pose with the {district} prize pumpkin. Mind its good side.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "photo-op"
+    },
+    {
+      "id": "gov-runup-flower-show",
+      "office": "governor",
+      "visitor": "dimity",
+      "text": "Open the {district} flower show. No ribbon. Put the scissors away.",
+      "subject": "gardens",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "gov-runup-bus-route",
+      "office": "governor",
+      "visitor": "kerb",
+      "text": "Ride the {district} bus. Wave at each stop. Each wave is logged.",
+      "subject": "buses",
+      "butt": "office",
+      "shape": "form-misapplied"
+    }
+  ],
+  "rallies": [
+    {
+      "id": "gov-rally-chairs",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "A rally at the bandstand: 40 chairs, and one more for your hat.",
+      "subject": "bandstands",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "gov-rally-hay-bale",
+      "office": "governor",
+      "visitor": "dimity",
+      "text": "A rally at the fête, on a hay bale marked GOVERNOR (KEEP OFF).",
+      "subject": "signage",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "gov-rally-permit",
+      "office": "governor",
+      "visitor": "wimble",
+      "text": "A rally on the green. Standing on it needs a permit. Queue on it.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "gov-rally-soapbox",
+      "office": "governor",
+      "visitor": "spinwell",
+      "text": "A rally in the square. Rodney has had your soapbox raised, slightly.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut"
+    }
+  ]
+}

@@ -76,7 +76,7 @@ Research date: 22 November 2026; policy pages read that day (Apple's guidelines 
 | 6 | store_text_overlap [M] | trigram overlap of title, subtitle, description, promo text, release notes | <10 % | store |
 | 7 | icon_and_screenshot_template [M] | own composition / shared template | own | human |
 | 8 | bundle_foreign_content [M] | other game's assets, strings or scene modules in the bundle | none | build |
-| 9 | progression_structure | location-levels, sector-map, tech-tree, endless-single, seasons | values differ | cfg |
+| 9 | progression_structure | location-levels, sector-map, tech-tree, endless-single, seasons, office-ladder (added for High Office: a short fixed ladder of offices, each entered only by winning a vote at the end of a term of decisions; a lost vote repeats the term in place; the top office continues as repeated terms; office-design.md 1.2) | values differ | cfg |
 | 10 | prestige_model | reset-for-currency, new-location-carryover, none, seasonal | values differ | cfg |
 | 11 | active_skills_events | set of ids | Jaccard < 0.5 | cfg |
 | 12 | meta_systems | set (cards, chests, missions, offers, research, fleet, daily...) | Jaccard < 0.7 or one unique system | cfg |

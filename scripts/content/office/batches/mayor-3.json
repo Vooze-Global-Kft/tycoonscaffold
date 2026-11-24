@@ -1,0 +1,491 @@
+{
+  "batch": "mayor-3",
+  "writer": "writer-1",
+  "office": "mayor",
+  "papers": [
+    {
+      "id": "may3-bunting",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "fee",
+      "text": "Bunting from the clock tower to every shop, at our cost. Buses may bow.",
+      "subject": "ribbons",
+      "butt": "thing",
+      "shape": "undercut",
+      "setsUp": "may-bunting"
+    },
+    {
+      "id": "may3-morale-fountain",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A tap at the bus stop. Then a hose. Then, for morale, a fountain.",
+      "subject": "fountains",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "may3-gallery-wall",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "swap",
+      "text": "Hang our bus portraits on the Guild's wall. Each sat, then left on time.",
+      "subject": "portraits",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "may3-high-street-fountain",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "project",
+      "text": "A shop fountain, from the plots' rain barrel. You would open it, damply.",
+      "subject": "fountains",
+      "butt": "self",
+      "shape": "photo-op",
+      "portable": true
+    },
+    {
+      "id": "may3-third-rosette",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "treat",
+      "text": "Wear our rosette. Third prize, so nobody suspects favourites.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "may3-gate-window",
+      "visitor": "awning",
+      "cosigner": "minute",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "committee",
+      "text": "Is the allotment gate a shop window? A committee will look in.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "biggerStudy": "The committee now asks whether the potting shed is a shop. It has a door."
+    },
+    {
+      "id": "may-windows-pumpkin",
+      "visitor": "till",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "swap",
+      "text": "Move the weigh-in off the high street. Our windows are 40 % pumpkin.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "may3-veg-windows",
+      "visitor": "gourdley",
+      "cosigner": "minute",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "committee",
+      "text": "A study in window-shopping: the pumpkin, wheeled past each window.",
+      "subject": "vegetable-shows",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "The study asks for a second lap. The pumpkin may have missed a hat."
+    },
+    {
+      "id": "may3-pumpkin-bench",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "fee",
+      "text": "We will pay to name a bench after the pumpkin. Then the high street.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "may3-pumpkins-ahead",
+      "visitor": "till",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "swap",
+      "text": "Remove the Society's PUMPKINS AHEAD sign. Ahead is the hatter's.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "may3-seed-packet",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "treat",
+      "text": "Pose with a seed packet. Look as if you know what it grows.",
+      "subject": "gardens",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "may3-modest-statue",
+      "visitor": "spinwell",
+      "club": "veg",
+      "archetype": "vanity",
+      "text": "A statue of you, Mayor, pointing modestly at something else.",
+      "subject": "statues",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "may3-second-bench",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "project",
+      "text": "A second bench at the bus stop. The first is 80 % notebooks.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "statistic",
+      "portable": true
+    },
+    {
+      "id": "may3-standing-licence",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "fee",
+      "text": "We will pay for a licence to stand by the shops. Noses filed separately.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied",
+      "portable": true
+    },
+    {
+      "id": "may3-barrow-bus",
+      "visitor": "sprott",
+      "cosigner": "minute",
+      "club": "bus",
+      "other": "veg",
+      "archetype": "committee",
+      "text": "Is the vegetable barrow a bus? It has wheels and a timetable.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "The committee is split. It asks for a second barrow, to compare."
+    },
+    {
+      "id": "may3-portrait-umbrella",
+      "visitor": "vane",
+      "club": "veg",
+      "archetype": "basket",
+      "text": "An umbrella for your portrait. Then one for the frame. One never knows.",
+      "subject": "portraits",
+      "butt": "lobbyist",
+      "shape": "escalation",
+      "favour": {
+        "text": "About the umbrella: it would like the Society's potting shed. It is warm there.",
+        "clippings": {
+          "sign": "MAYOR'S UMBRELLA GIVEN POTTING SHED",
+          "refuse": "UMBRELLA LEAVES, FOLDED, WITHOUT COMMENT"
+        }
+      }
+    },
+    {
+      "id": "may3-drawer-timetable",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "veg",
+      "archetype": "project",
+      "text": "A spotters' square by your parking space. Half is bean rows.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "callback"
+    },
+    {
+      "id": "may3-standing-line",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "project",
+      "text": "A spotting chair by the shops. You first, Mayor, for the Drizzle.",
+      "subject": "buses",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "may3-signpost-depot",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "swap",
+      "text": "Turn the signpost to the depot. The shops know where they are.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "undercut",
+      "portable": true
+    },
+    {
+      "id": "may3-seedling-watch",
+      "visitor": "loam",
+      "cosigner": "minute",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "committee",
+      "text": "A working group to watch seedlings come up, from the spotters' bench.",
+      "subject": "gardens",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "portable": true,
+      "biggerStudy": "The seedlings came up during the minutes. It asks for another spring."
+    },
+    {
+      "id": "may3-noticeboard",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "veg",
+      "archetype": "swap",
+      "text": "Point the Society's bench at the road. Pumpkins seen leaving since spring: 0.",
+      "subject": "gardens",
+      "butt": "thing",
+      "shape": "statistic",
+      "portable": true
+    },
+    {
+      "id": "may3-windows-badge",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "treat",
+      "text": "Wear our badge for a day: ASK ME ABOUT WINDOWS. Be ready.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "slogan",
+      "portable": true
+    },
+    {
+      "id": "may3-reflections",
+      "visitor": "kerb",
+      "cosigner": "minute",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "committee",
+      "text": "An inquiry: do buses seen in shop windows count as sightings?",
+      "subject": "buses",
+      "butt": "committee",
+      "shape": "literalism",
+      "portable": true,
+      "biggerStudy": "The inquiry asks for a second window, to check the first."
+    },
+    {
+      "id": "may3-photocopier",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "fee",
+      "text": "We will hire the photocopier: timetable, index, the index's index. Shops later.",
+      "subject": "paperwork",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "may3-pumpkin-sitting",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "swap",
+      "text": "Give the pumpkin the Guild's place in your photograph. It never blinks.",
+      "subject": "portraits",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "may3-seed-drawer",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "fee",
+      "text": "Hire us the drawer FOR FURTHER STUDY, for seeds. Desmond's papers can budge up.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "callback"
+    },
+    {
+      "id": "may3-boot-scrapers",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "project",
+      "text": "Boot scrapers for the shops. A third of the plots leave on boots.",
+      "subject": "gardens",
+      "butt": "thing",
+      "shape": "statistic",
+      "portable": true
+    },
+    {
+      "id": "may3-scarecrow",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A scarecrow for the patch, in your likeness. The crows are unconvinced.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut",
+      "setsUp": "may-scarecrow"
+    },
+    {
+      "id": "may3-planting-permit",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "swap",
+      "text": "A bus stop stands on our plot, unpermitted. Move it or plant it.",
+      "subject": "paperwork",
+      "butt": "thing",
+      "shape": "form-misapplied",
+      "portable": true
+    },
+    {
+      "id": "may3-parking-plaque",
+      "visitor": "wimble",
+      "club": "bus",
+      "archetype": "vanity",
+      "text": "A brass plaque for your parking space: HERE THE MAYOR ONCE PARKED.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "may3-fountain-water",
+      "visitor": "goss",
+      "club": "shops",
+      "archetype": "basket",
+      "text": "A bottle of our finest fountain water. Next time, the fountain.",
+      "subject": "fountains",
+      "butt": "lobbyist",
+      "shape": "escalation",
+      "favour": {
+        "text": "About the bottled water: it would like the Guild's best window, on show.",
+        "clippings": {
+          "sign": "MAYOR'S WATER BOTTLE TAKES GUILD'S BEST WINDOW",
+          "refuse": "WATER SENT HOME IN ITS BOTTLE"
+        }
+      }
+    },
+    {
+      "id": "may3-fair-signpost",
+      "visitor": "till",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A shops signpost at the bus stop, pointing both ways. To be fair.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "literalism",
+      "setsUp": "may-signpost"
+    },
+    {
+      "id": "may3-polish-window",
+      "visitor": "till",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "treat",
+      "text": "Polish a shop window for the Drizzle. We chose the cleanest.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "may3-bus-files",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "project",
+      "text": "A file per bus, kept by the shops. Two buses have complained.",
+      "subject": "paperwork",
+      "butt": "thing",
+      "shape": "form-misapplied",
+      "portable": true
+    },
+    {
+      "id": "may3-passer-survey",
+      "visitor": "till",
+      "cosigner": "minute",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "committee",
+      "text": "A survey of noses on our windows. So far, 60 % are yours, Mayor.",
+      "subject": "committees",
+      "butt": "self",
+      "shape": "statistic",
+      "biggerStudy": "The nose survey asks for another year. You keep coming back."
+    },
+    {
+      "id": "may3-logged",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "treat",
+      "text": "Let us log you like a bus: stop, wave, pull away.",
+      "subject": "buses",
+      "butt": "self",
+      "shape": "literalism",
+      "portable": true
+    },
+    {
+      "id": "may3-tread-here",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A sign at the plots: PLEASE ADMIRE THE BUSES FROM ELSEWHERE.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan",
+      "portable": true
+    },
+    {
+      "id": "may-portrait-scale",
+      "visitor": "spinwell",
+      "club": "shops",
+      "archetype": "vanity",
+      "text": "A portrait of you, Mayor, for the portrait of you in the hall. For scale.",
+      "subject": "portraits",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "may3-drawer-basket",
+      "visitor": "sash",
+      "club": "bus",
+      "archetype": "basket",
+      "text": "A basket for the drawer FOR FURTHER STUDY. It gets peckish. Ribbons? No reason.",
+      "subject": "paperwork",
+      "butt": "lobbyist",
+      "shape": "callback",
+      "favour": {
+        "text": "About the drawer's basket: the drawer would now like the bus timetable, to study.",
+        "clippings": {
+          "sign": "MAYOR FILES BUS TIMETABLE FOR FURTHER STUDY",
+          "refuse": "DRAWER RETURNS BASKET, UNSTUDIED"
+        }
+      }
+    },
+    {
+      "id": "may3-mannequins",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "swap",
+      "text": "Move the spotters' bench. Our mannequins now wave at buses.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "undercut",
+      "portable": true
+    }
+  ]
+}

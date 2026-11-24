@@ -1,0 +1,478 @@
+{
+  "batch": "lines-shelf",
+  "writer": "writer-5",
+  "note": "Monument ids are the art kit's (src/ui/decree/art/wall.draw.ts MONUMENTS), so each resolves to its own bronze; names follow the kit's labels where they read well. No line carries an office word: monuments are offered from mayor term 2 and kept for good. Grand Project and twist ids are names.json's; runtime ids differ (very-long-bridge = long_bridge, national-ribbon-mill = ribbon_mill, national-umbrella = umbrella, a-gentle-week = gentle_week; the rest swap hyphens for underscores). Twist lines say what the factor touches, in words, never by how much; the A Gentle Week line is true whether the lead takes the cut or the papers reading. twistPairs are in the runtime pair order (combinations of the schema's TWISTS_DEFAULT order: bandstand, committee, quiet press, ribbon, kite, market, early doors, hedge, gentle week, amnesty), so pair index n is the nth record.",
+  "monuments": [
+    {
+      "id": "bust",
+      "name": "A bust of yourself",
+      "text": "In bronze, facing the door, so that visitors meet you twice."
+    },
+    {
+      "id": "bust-of-bust",
+      "name": "A bust of the bust",
+      "text": "The first bust looked lonely. This one gazes at it, admiringly."
+    },
+    {
+      "id": "scissors",
+      "name": "Bronze ribbon scissors",
+      "text": "They can no longer cut anything. You still bring them to openings."
+    },
+    {
+      "id": "ribbon",
+      "name": "A ribbon, cut, in bronze",
+      "text": "Cut by you, then cast in bronze. It cannot be cut again, which you regret."
+    },
+    {
+      "id": "parking",
+      "name": "Your parking space, in bronze",
+      "text": "Nobody may park on it now. You park beside it and visit."
+    },
+    {
+      "id": "hat",
+      "name": "A hat with a smaller hat on it",
+      "text": "Cast from Tobias Slake's gift. He has since sent a smaller hat, for the top."
+    },
+    {
+      "id": "pumpkin",
+      "name": "The prize pumpkin, in bronze",
+      "text": "Cast from the prize pumpkin itself, which sat very still for it."
+    },
+    {
+      "id": "bench",
+      "name": "A bench with your name",
+      "text": "Your name runs along the backrest in raised letters. Visitors leave wearing it."
+    },
+    {
+      "id": "plaque",
+      "name": "A plaque to the plaque",
+      "text": "It marks the unveiling of the first plaque. A third will mark this one."
+    },
+    {
+      "id": "pen",
+      "name": "Your first pen",
+      "text": "The pen that signed your first paper. You had not read that one either."
+    },
+    {
+      "id": "intray",
+      "name": "The in-tray, empty at last",
+      "text": "Cast on the one afternoon it was empty. There is a photograph."
+    },
+    {
+      "id": "chairs",
+      "name": "A committee of three chairs",
+      "text": "Three bronze chairs face each other. They have not yet decided."
+    },
+    {
+      "id": "fountain",
+      "name": "A fountain shaped like you",
+      "text": "Lavinia Plash calls it a perfect likeness. It, too, never stops talking."
+    },
+    {
+      "id": "umbrella",
+      "name": "Your umbrella, in bronze",
+      "text": "Crispin Mizzle's gift, cast so that it can never be lost. Nor opened."
+    },
+    {
+      "id": "pothole",
+      "name": "A pothole, preserved",
+      "text": "The oldest pothole there is, behind a rope. You opened it to the public."
+    },
+    {
+      "id": "handshake",
+      "name": "A handshake with yourself",
+      "text": "Both hands are yours. Both look delighted to meet you."
+    },
+    {
+      "id": "trophy",
+      "name": "The most adequate trophy",
+      "text": "Awarded to you, by you, for adequacy. The engraving is adequate."
+    },
+    {
+      "id": "sundial",
+      "name": "A sundial set by you",
+      "text": "It tells the time by your arrival, so you have never once been late."
+    },
+    {
+      "id": "bandstand",
+      "name": "A bandstand for one",
+      "text": "There is room for you and a music stand. The band sends its regards."
+    },
+    {
+      "id": "kite",
+      "name": "A kite that will not fly",
+      "text": "Bronze, string and all. It was flown once, by crane, for the photograph."
+    },
+    {
+      "id": "teapot",
+      "name": "A teapot that chimes",
+      "text": "A gift from Till's Teas. It chimes on the hour and pours on the half."
+    },
+    {
+      "id": "duck",
+      "name": "A duck, unveiled",
+      "text": "The duck you once fed, on camera. It came to the unveiling, briefly."
+    },
+    {
+      "id": "rosette",
+      "name": "A rosette of rosettes",
+      "text": "Every rosette you ever pinned on yourself, sewn into one. All first prize."
+    },
+    {
+      "id": "statue-pointing",
+      "name": "You, pointing at something",
+      "text": "A statue of you, pointing boldly to the future. The future is the bus station."
+    }
+  ],
+  "grandProjects": [
+    {
+      "id": "very-long-bridge",
+      "name": "The Very Long Bridge",
+      "text": "It crosses the river, then carries on, in case the river moves."
+    },
+    {
+      "id": "national-ribbon-mill",
+      "name": "The National Ribbon Mill",
+      "text": "Ribbon enough to open everything twice. The mill itself is opened daily."
+    },
+    {
+      "id": "national-umbrella",
+      "name": "The National Umbrella",
+      "text": "It keeps the whole capital dry. Crispin Mizzle calls it a good start."
+    },
+    {
+      "id": "tallest-bandstand",
+      "name": "The Tallest Bandstand",
+      "text": "No bandstand has ever stood higher. The band is still climbing."
+    },
+    {
+      "id": "ministry-of-ministries",
+      "name": "The Ministry of Ministries",
+      "text": "It oversees every ministry. A new ministry now oversees it."
+    }
+  ],
+  "twists": [
+    {
+      "id": "bandstand-summer",
+      "name": "Bandstand Summer",
+      "text": "The band plays in every district this term. Brass carries further."
+    },
+    {
+      "id": "committee-week",
+      "name": "Committee Week",
+      "text": "More committees come to the desk. They have formed one about it."
+    },
+    {
+      "id": "quiet-press",
+      "name": "Quiet Press",
+      "text": "The presses are slow. It takes more gossip to reach the front page."
+    },
+    {
+      "id": "ribbon-shortage",
+      "name": "Ribbon Shortage",
+      "text": "Ribbon is scarce this term. Each cutting costs more, and pleases more."
+    },
+    {
+      "id": "kite-weather",
+      "name": "Kite Weather",
+      "text": "A steady breeze all term. Kites, and the Kite Flyers' League, are up."
+    },
+    {
+      "id": "market-fortnight",
+      "name": "Market Fortnight",
+      "text": "Fees bring in more this term. The fortnight lasts all term, as usual."
+    },
+    {
+      "id": "early-doors",
+      "name": "Early Doors",
+      "text": "Visitors come sooner this term. Some are waiting before the door is open."
+    },
+    {
+      "id": "hedge-inspection",
+      "name": "Hedge Inspection",
+      "text": "The Tidy Hedge Committee counts for more. It has measured how much."
+    },
+    {
+      "id": "a-gentle-week",
+      "name": "A Gentle Week",
+      "text": "Saying nothing after a scandal is gentler. Rodney calls it resting."
+    },
+    {
+      "id": "grievance-amnesty",
+      "name": "Grievance Amnesty",
+      "text": "Settling a boycott costs less. Cuthbert has a form for saying sorry."
+    }
+  ],
+  "twistPairs": [
+    {
+      "id": "pair-bandstand-committee",
+      "a": "bandstand-summer",
+      "b": "committee-week",
+      "name": "The bandstand subcommittee"
+    },
+    {
+      "id": "pair-bandstand-press",
+      "a": "bandstand-summer",
+      "b": "quiet-press",
+      "name": "Loud band, quiet papers"
+    },
+    {
+      "id": "pair-bandstand-ribbon",
+      "a": "bandstand-summer",
+      "b": "ribbon-shortage",
+      "name": "A concert tied with string"
+    },
+    {
+      "id": "pair-bandstand-kite",
+      "a": "bandstand-summer",
+      "b": "kite-weather",
+      "name": "A breezy concert season"
+    },
+    {
+      "id": "pair-bandstand-market",
+      "a": "bandstand-summer",
+      "b": "market-fortnight",
+      "name": "A tuba, sponsored"
+    },
+    {
+      "id": "pair-bandstand-early",
+      "a": "bandstand-summer",
+      "b": "early-doors",
+      "name": "The early overture"
+    },
+    {
+      "id": "pair-bandstand-hedge",
+      "a": "bandstand-summer",
+      "b": "hedge-inspection",
+      "name": "A concert in straight lines"
+    },
+    {
+      "id": "pair-bandstand-gentle",
+      "a": "bandstand-summer",
+      "b": "a-gentle-week",
+      "name": "Sunday, played slowly"
+    },
+    {
+      "id": "pair-bandstand-amnesty",
+      "a": "bandstand-summer",
+      "b": "grievance-amnesty",
+      "name": "The tuba, pardoned"
+    },
+    {
+      "id": "pair-committee-press",
+      "a": "committee-week",
+      "b": "quiet-press",
+      "name": "Minutes nobody prints"
+    },
+    {
+      "id": "pair-committee-ribbon",
+      "a": "committee-week",
+      "b": "ribbon-shortage",
+      "name": "The ribbon working group"
+    },
+    {
+      "id": "pair-committee-kite",
+      "a": "committee-week",
+      "b": "kite-weather",
+      "name": "A study in gusts"
+    },
+    {
+      "id": "pair-committee-market",
+      "a": "committee-week",
+      "b": "market-fortnight",
+      "name": "A committee with a stall"
+    },
+    {
+      "id": "pair-committee-early",
+      "a": "committee-week",
+      "b": "early-doors",
+      "name": "Meetings before breakfast"
+    },
+    {
+      "id": "pair-committee-hedge",
+      "a": "committee-week",
+      "b": "hedge-inspection",
+      "name": "The inquiry into edges"
+    },
+    {
+      "id": "pair-committee-gentle",
+      "a": "committee-week",
+      "b": "a-gentle-week",
+      "name": "Nothing on the agenda"
+    },
+    {
+      "id": "pair-committee-amnesty",
+      "a": "committee-week",
+      "b": "grievance-amnesty",
+      "name": "Apologies for absence"
+    },
+    {
+      "id": "pair-press-ribbon",
+      "a": "quiet-press",
+      "b": "ribbon-shortage",
+      "name": "A ribbon, unphotographed"
+    },
+    {
+      "id": "pair-press-kite",
+      "a": "quiet-press",
+      "b": "kite-weather",
+      "name": "Kites, below the fold"
+    },
+    {
+      "id": "pair-press-market",
+      "a": "quiet-press",
+      "b": "market-fortnight",
+      "name": "The market, on page nine"
+    },
+    {
+      "id": "pair-press-early",
+      "a": "quiet-press",
+      "b": "early-doors",
+      "name": "Before the first edition"
+    },
+    {
+      "id": "pair-press-hedge",
+      "a": "quiet-press",
+      "b": "hedge-inspection",
+      "name": "Hedges off the record"
+    },
+    {
+      "id": "pair-press-gentle",
+      "a": "quiet-press",
+      "b": "a-gentle-week",
+      "name": "Not a word"
+    },
+    {
+      "id": "pair-press-amnesty",
+      "a": "quiet-press",
+      "b": "grievance-amnesty",
+      "name": "A regret in small print"
+    },
+    {
+      "id": "pair-ribbon-kite",
+      "a": "ribbon-shortage",
+      "b": "kite-weather",
+      "name": "Kites without tails"
+    },
+    {
+      "id": "pair-ribbon-market",
+      "a": "ribbon-shortage",
+      "b": "market-fortnight",
+      "name": "Ribbon by the inch"
+    },
+    {
+      "id": "pair-ribbon-early",
+      "a": "ribbon-shortage",
+      "b": "early-doors",
+      "name": "Opened before opening"
+    },
+    {
+      "id": "pair-ribbon-hedge",
+      "a": "ribbon-shortage",
+      "b": "hedge-inspection",
+      "name": "Hedges without bows"
+    },
+    {
+      "id": "pair-ribbon-gentle",
+      "a": "ribbon-shortage",
+      "b": "a-gentle-week",
+      "name": "The ribbon, spared"
+    },
+    {
+      "id": "pair-ribbon-amnesty",
+      "a": "ribbon-shortage",
+      "b": "grievance-amnesty",
+      "name": "The scissors amnesty"
+    },
+    {
+      "id": "pair-kite-market",
+      "a": "kite-weather",
+      "b": "market-fortnight",
+      "name": "Awnings, airborne"
+    },
+    {
+      "id": "pair-kite-early",
+      "a": "kite-weather",
+      "b": "early-doors",
+      "name": "Kites at first light"
+    },
+    {
+      "id": "pair-kite-hedge",
+      "a": "kite-weather",
+      "b": "hedge-inspection",
+      "name": "Strings in the hedges"
+    },
+    {
+      "id": "pair-kite-gentle",
+      "a": "kite-weather",
+      "b": "a-gentle-week",
+      "name": "A breeze, unremarked"
+    },
+    {
+      "id": "pair-kite-amnesty",
+      "a": "kite-weather",
+      "b": "grievance-amnesty",
+      "name": "All strings forgiven"
+    },
+    {
+      "id": "pair-market-early",
+      "a": "market-fortnight",
+      "b": "early-doors",
+      "name": "The early-bird fee"
+    },
+    {
+      "id": "pair-market-hedge",
+      "a": "market-fortnight",
+      "b": "hedge-inspection",
+      "name": "Topiary for sale"
+    },
+    {
+      "id": "pair-market-gentle",
+      "a": "market-fortnight",
+      "b": "a-gentle-week",
+      "name": "The silent auction"
+    },
+    {
+      "id": "pair-market-amnesty",
+      "a": "market-fortnight",
+      "b": "grievance-amnesty",
+      "name": "A forgiveness stall"
+    },
+    {
+      "id": "pair-early-hedge",
+      "a": "early-doors",
+      "b": "hedge-inspection",
+      "name": "The shears at dawn"
+    },
+    {
+      "id": "pair-early-gentle",
+      "a": "early-doors",
+      "b": "a-gentle-week",
+      "name": "The early hush"
+    },
+    {
+      "id": "pair-early-amnesty",
+      "a": "early-doors",
+      "b": "grievance-amnesty",
+      "name": "The apology came early"
+    },
+    {
+      "id": "pair-hedge-gentle",
+      "a": "hedge-inspection",
+      "b": "a-gentle-week",
+      "name": "A quiet trim"
+    },
+    {
+      "id": "pair-hedge-amnesty",
+      "a": "hedge-inspection",
+      "b": "grievance-amnesty",
+      "name": "Clippings swept up"
+    },
+    {
+      "id": "pair-gentle-amnesty",
+      "a": "a-gentle-week",
+      "b": "grievance-amnesty",
+      "name": "Nobody minds much"
+    }
+  ]
+}

@@ -1,0 +1,300 @@
+# deny-fiction.txt: TIER 2 of the satire lint (office-design.md 7.8): fiction a British or American
+# reader would recognise. Fictional politicians, civil servants, officials and places of television
+# satire and comedy; officials, mayors, rulers and places of children's fiction and the classics
+# children meet; the titles of the shows. Compiled offline.
+# Matching: as deny-people.txt (one word: a name, compared capitalised mid-sentence or in a name
+# field, exact or near; several words: a full name or title, matched in sequence, any case).
+
+# --- Television and film satire of politics ---
+Yes Minister
+Yes Prime Minister
+Jim Hacker
+Hacker
+Humphrey Appleby
+Appleby
+Bernard Woolley
+Woolley
+Thick of It
+Malcolm Tucker
+Hugh Abbot
+Nicola Murray
+Ollie Reeder
+Glenn Cullen
+Terri Coverley
+Peter Mannion
+Mannion
+DoSAC
+Veep
+Selina Meyer
+Brookheimer
+Jonah Ryan
+West Wing
+Bartlet
+Josh Lyman
+Toby Ziegler
+Cregg
+McGarry
+Seaborn
+House of Cards
+Frank Underwood
+Underwood
+Francis Urquhart
+Urquhart
+Parks and Recreation
+Leslie Knope
+Knope
+Ron Swanson
+Pawnee
+Haverford
+Gergich
+Mayor Quimby
+Quimby
+Shelbyville
+Montgomery Burns
+McDaniels
+Blackadder
+Baldrick
+Melchett
+B'Stard
+Alan B'Stard
+New Statesman
+Nyborg
+Borgen
+Olivia Pope
+Kirkman
+Designated Survivor
+Spitting Image
+Drop the Dead Donkey
+Have I Got News for You
+Brass Eye
+The Day Today
+Alan Partridge
+Partridge
+Harriet Jones
+Harold Saxon
+Mainwaring
+Walmington
+Dibley
+Geraldine Granger
+Owen Newitt
+Royston Vasey
+Craggy Island
+Ballykissangel
+Ros Pritchard
+Ballot Monkeys
+Waldo
+Mr Bean
+Hyacinth Bucket
+Basil Fawlty
+Fawlty Towers
+David Brent
+Wernham Hogg
+Mr Burns
+Kodos
+Commander in Chief
+Madam Secretary
+The Politician
+Succession
+Logan Roy
+Bob Servant
+Two Ronnies
+
+# --- Children's fiction: officials, rulers, mayors, places ---
+Toytown
+Mayor of Toytown
+Larry the Lamb
+Trumpton
+Chigley
+Camberwick Green
+Windy Miller
+Barney McGrew
+Dibble
+Grubb
+Postman Pat
+Greendale
+Fireman Sam
+Pontypandy
+Fat Controller
+Topham Hatt
+Sodor
+Balamory
+Noddy
+Toyland
+Mr Plod
+Big Ears
+Wombles
+Great Uncle Bulgaria
+Paddington
+Mr Curry
+Mr Gruber
+Winnie-the-Pooh
+Pooh
+Hundred Acre Wood
+Eeyore
+Narnia
+Aslan
+White Witch
+Tumnus
+Hogwarts
+Hogsmeade
+Diagon Alley
+Cornelius Fudge
+Umbridge
+Dolores Umbridge
+Scrimgeour
+Ministry of Magic
+Voldemort
+Dumbledore
+Hermione
+Muggle
+Muggles
+Gotham
+Smallville
+Lex Luthor
+Willy Wonka
+Wonka
+Trunchbull
+Oompa-Loompa
+Oompa
+Grinch
+Lorax
+Whoville
+Sneetches
+Yertle
+Mayor Goodway
+Humdinger
+Adventure Bay
+Lionheart
+Bellwether
+Zootopia
+Zootropolis
+Animal Farm
+Squealer
+Manor Farm
+Farquaad
+Duloc
+Far Far Away
+Emerald City
+Munchkin
+Munchkins
+Bikini Bottom
+Bedrock
+Lilliput
+Lilliputian
+Brobdingnag
+Laputa
+Mad Hatter
+Queen of Hearts
+Red Queen
+Tweedledum
+Tweedledee
+Humpty Dumpty
+Cheshire Cat
+Ankh-Morpork
+Morpork
+Vetinari
+Beeblebrox
+Zaphod
+Vogon
+Vogons
+Panem
+President Snow
+Big Brother
+Oceania
+Airstrip One
+Ministry of Truth
+Ministry of Love
+Thought Police
+Newspeak
+Doublethink
+Middle-earth
+Mordor
+Hobbiton
+Gondor
+Sauron
+Palpatine
+Galactic Senate
+Mr Bumble
+Bumble
+Circumlocution Office
+Tite Barnacle
+Pecksniff
+Uriah Heep
+Gradgrind
+Bounderby
+Podsnap
+Squeers
+Pooh-Bah
+Ko-Ko
+Titipu
+Lord High Executioner
+Joseph Porter
+Toad Hall
+Mr Toad
+Hamelin
+Pied Piper
+Dogberry
+Malvolio
+Henchard
+Casterbridge
+Peppa Pig
+Peppa
+Teletubbies
+Thomas the Tank Engine
+Bob the Builder
+Mr Men
+Little Miss
+Moomin
+Moomins
+Gruffalo
+Hungry Caterpillar
+Horrid Henry
+Tracy Beaker
+Worzel Gummidge
+Wurzel
+Wallace and Gromit
+Gromit
+Shaun the Sheep
+Peter Rabbit
+Jemima Puddle-Duck
+Mrs Tiggy-Winkle
+Mr McGregor
+Squirrel Nutkin
+Tom Kitten
+Hobbit
+Hobbits
+Westeros
+Lannister
+Springfield
+Bart Simpson
+Homer Simpson
+Ned Flanders
+Kermit
+Miss Piggy
+Big Bird
+Muppet
+Muppets
+Shrek
+Dracula
+Frankenstein
+Sherlock
+Moriarty
+Mr Darcy
+Scrooge
+Tiny Tim
+Oliver Twist
+Artful Dodger
+Fagin
+Mr Bumble
+
+# --- names the sensitivity editor retired, and more children's fiction ---
+Marchpane
+Ermintrude
+Grouty
+Pargetter
+Puddleby
+Tuttle Twins
+Pennyroyal Academy
+Mulch Diggums
+Septimus Heap
+Mr Stink

@@ -1,0 +1,79 @@
+{
+  "_notes": [
+    "Declared by the skeleton from docs/design/office-design.md 1.2 (with decisions D4 and D11). Dimension 9's value office-ladder was added to the closed vocabulary by the skeleton (scripts/lib/fingerprint.ts, docs/design/research/spam.md).",
+    "human: one check per game (scripts/lib/fingerprint.ts reads human.<dimension> as a map keyed by the other game's id). value, by and date are all left empty on purpose: the person who looks writes the verdict ('own' for dimension 7, 'different' for 13; anything else counts as not differing), their name and the date, one entry per game (D9: an engineer's read is recorded as theirs; a read by the owner stays required before a submission). Until 'by' is filled the dimension reads pending. Dimension 7 waits for the icon and the 'signature' screenshot template (7.9) and SIDE-BY-SIDE.png; dimension 13 for the Ledger, the Cabinet photograph, the pinned ward map, the chalk tally board and the Office wall in the web preview.",
+    "24 November 2026, after the store review of the built game (screens lead): dimension 13 against Pizza Empire rested on the Ledger, which read as the first game's upgrade list; under D43 it is now a clothbound book (ruled lines, the storeys inked in the margin, the record as a running total, 'Raise' as an inked link, no filled price buttons, the ad card a slip tucked in the book) and it appears in no store image. Dimensions 11 and 12 score Jaccard 0 because each game names its own ids: ministers here are the same idea as Pizza Empire's managers and Lantern Row's minders, and prestige is shared; REVIEW-NOTES.md names that kinship openly. Dimension 17 against Lantern Row sat near the 5 % line: re-measure it (npx tsx scripts/validate.ts high-office) after every change to src/ui/decree/strings.ts. Dimension 8 stays pending until the lead runs npm run check:bundle -- --export after the last content write.",
+    "24 November 2026, the store step: what a person looks at before filling human.<dimension>.<game> (value 'own' for 7, 'different' for 13; by; date), with where the evidence is.",
+    "Dimension 7 (icon and screenshot template), evidence: games/high-office/store/screenshots/SIDE-BY-SIDE.png (the four games' icons, Play feature graphics and first three iPhone 6.9\" shots, one row each), every set under games/<id>/store/screenshots/, the template code scripts/store/templates/signature.ts against warm.ts, panel.ts and tag.ts, and scripts/store/README.md's tables. Ours: the game full-bleed (no card, no frame, no tilt, nothing above it), a translucent baize band across the foot, the caption handwritten in slanted pale-violet nib capitals at the bottom left ending in a flourish and a pen nib; light icon (pale paper, violet signature, ribbon scissors).",
+    "Dimension 7 against pizza-empire: look whether the set reads as the same template as the warm cream frame (Pizza Empire frames the phone screen on a white-edged card leaning left and right on gingham, centred rounded headline plus a sub-line on a red sauce wave BELOW the game). Ours has no card and no sub-line, the caption sits ON the game at the left, in a hand, on green. Icons: Pizza Empire's warm illustrated tile against our pale paper with a violet stroke.",
+    "Dimension 7 against space-miner: look at the caption's place and type (Orbit Haulers: a hard-edged deep-blue readout panel ON TOP with monospaced capitals and a channel counter CH 01/06, the game below it edge to edge). Ours: no panel on top, no counter, no monospace; the nearest point is that both show the game edge to edge. Also the first caption: Orbit's first two are 'Drone to rock. Ore to hold.' and 'Swipe up. Freighter away.'; ours lead with the pull DOWN into the drawer ('Pull it down for further study'), the signing second, no clipped two-part captions. Icons: Orbit's navy tile against our light one.",
+    "Dimension 7 against night-market: FIRST put the two Play feature graphics side by side (SIDE-BY-SIDE.png rows 3 and 4, left column): the store review of 24 November found the first version of ours used Lantern Row's composition (a two-line drawn capital title in the left third, a crop of the game fading in on the right half); it was recomposed (centred tilted paper, centred brass name plate on the rim, nothing faded in from a side). Judge whether the two now read as two templates. Then the foot of the shots (Lantern Row: the game fades into a dusk sky, a rice-paper tag hangs off-centre from a wire of lanterns, upright paper-cut capitals centred on the tag, tilted 3 degrees). Ours: no fade, no tag, no wire, no tilt; a straight band, slanted ink, left-aligned. The nearest point is that both captions are capitals drawn from each game's own art kit (three of the four sets caption in capitals at the foot): judge whether paper-cut letters on a tag and nib lettering on a band read as one house style. Icons: Lantern Row's dusk tile against our light one.",
+    "Dimension 13 (meta screen layouts), evidence in the web preview (GAME=high-office, port 8303; switches in src/ui/decree/*/dev.web.ts): the Ledger (?preset=mid&sheet=ledger: a clothbound book, ruled rows, storeys inked in the margin, Raise as an inked link), the Cabinet photograph (&sheet=cabinet), the pinned ward map (&sheet=poll; store image 4), the chalk tally board (&night=play; store image 5, at the end of the count), the Office wall (&wall=1; store image 6). Against pizza-empire look first at the Ledger beside Pizza Empire's upgrade list (D43: it read as that list before its rework; it is in no store image); against space-miner at the poll map beside the Star Map and the Contract Board; against night-market at the Office wall and the tally board beside the Ladder Book and the Lantern Gate."
+  ],
+  "core_verb": "swipe/aim",
+  "production_topology": "parallel-generators",
+  "money_moment": "auto-tick",
+  "main_screen_layout": "single-object-focus",
+  "progression_structure": "office-ladder",
+  "prestige_model": "new-location-carryover",
+  "active_skills_events": [
+    "strike",
+    "scandal",
+    "follow-up-return",
+    "ribbon-cutting",
+    "campaign-week",
+    "election-night"
+  ],
+  "meta_systems": [
+    "in-tray",
+    "ministers",
+    "follow-ups",
+    "gossip",
+    "elections",
+    "scrapbook",
+    "vanity-shelf",
+    "prestige"
+  ],
+  "art_style": {
+    "style": "flat-vector",
+    "palette": "baize-and-ink"
+  },
+  "character_kind": "humans",
+  "voice": "deadpan-memo",
+  "human": {
+    "icon_and_screenshot_template": {
+      "pizza-empire": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "space-miner": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "night-market": {
+        "value": "",
+        "by": "",
+        "date": ""
+      }
+    },
+    "meta_screen_layouts": {
+      "pizza-empire": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "space-miner": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "night-market": {
+        "value": "",
+        "by": "",
+        "date": ""
+      }
+    }
+  }
+}

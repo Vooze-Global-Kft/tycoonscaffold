@@ -1,0 +1,315 @@
+{
+  "batch": "lines-returning",
+  "writer": "writer-5",
+  "note": "Returning-visitor ids say whom a line fits: ret-any-* for any visitor (advisors and lobbyists included), ret-<club>-* only for a visitor who is that club's spokesperson. No line says whether the paper was signed or refused last time, how many times it has come, or anything about a mood; no office word, so every line reads true in every office. Away lines claim nothing that might not have happened (no visitors, no mood). Comedy editor's pass (2026-11-24): 28 of 76 rewritten or replaced (owned running gags removed: the 7:02, portraits, the parking space, the drawer, the tuba, floats, the wind; 'cast' dropped as a vote word; repeated ideas varied).",
+  "returning": [
+    {
+      "id": "ret-any-ironed",
+      "text": "The same paper as before. It has been ironed."
+    },
+    {
+      "id": "ret-any-hopes-you-changed",
+      "text": "The same paper. The visitor hopes you have changed instead."
+    },
+    {
+      "id": "ret-any-filed-again",
+      "text": "Back again. Cuthbert has filed it under AGAIN."
+    },
+    {
+      "id": "ret-any-wiped-feet",
+      "text": "This paper has been here before. This time it wiped its feet."
+    },
+    {
+      "id": "ret-any-look-as-if",
+      "text": "Back again. Rodney advises you to look as if you remember it."
+    },
+    {
+      "id": "ret-any-covering-letter",
+      "text": "The same request, now with a covering letter about the request."
+    },
+    {
+      "id": "ret-any-not-the-same",
+      "text": "Back again. They say it is a different paper. It is the same paper."
+    },
+    {
+      "id": "ret-any-practised-stairs",
+      "text": "Word for word as before. They practised on the stairs."
+    },
+    {
+      "id": "ret-any-old-answer",
+      "text": "Back again. Gwendolyn has the old answer ready, if you want to save time."
+    },
+    {
+      "id": "ret-any-more-slowly",
+      "text": "Here once more, with the same words, said more slowly."
+    },
+    {
+      "id": "ret-any-fresh-envelope",
+      "text": "A fresh envelope. The words inside are not fresh."
+    },
+    {
+      "id": "ret-any-own-chair",
+      "text": "Back again. They have brought their own chair."
+    },
+    {
+      "id": "ret-any-corridor-names",
+      "text": "Back again. They now know everyone in the corridor by name."
+    },
+    {
+      "id": "ret-any-neater-hand",
+      "text": "The request is the same. The handwriting is neater."
+    },
+    {
+      "id": "ret-any-still-asking",
+      "text": "Returned, unchanged, with a note pinned on: STILL ASKING."
+    },
+    {
+      "id": "ret-any-own-appointment",
+      "text": "Back again, by appointment. They made the appointment."
+    },
+    {
+      "id": "ret-any-ribbon-round-it",
+      "text": "They have heard you like ribbons. There is one round it now."
+    },
+    {
+      "id": "ret-any-in-the-area",
+      "text": "Back again. It says it was in the area."
+    },
+    {
+      "id": "ret-bus-same-time",
+      "text": "Back again, at exactly the same time as last time."
+    },
+    {
+      "id": "ret-bus-spotted",
+      "text": "Back again. You have been spotted, and it is in the notebook."
+    },
+    {
+      "id": "ret-bus-fresh-flask",
+      "text": "Back again, with the same paper and a fresh flask. They expect a wait."
+    },
+    {
+      "id": "ret-bus-request-stop",
+      "text": "Back again. Your office is now a request stop in their notebook."
+    },
+    {
+      "id": "ret-bus-footnote",
+      "text": "Back again. There is a footnote now, and it has a footnote."
+    },
+    {
+      "id": "ret-bus-next-visit",
+      "text": "Back again, with the timetable of their next visit attached."
+    },
+    {
+      "id": "ret-shops-window",
+      "text": "Back again. The paper has spent the week in a shop window."
+    },
+    {
+      "id": "ret-shops-window-notes",
+      "text": "Back again. They have looked at your office window and have notes."
+    },
+    {
+      "id": "ret-shops-dressed",
+      "text": "Back again. The paper has been dressed for the season."
+    },
+    {
+      "id": "ret-shops-lit-from-below",
+      "text": "Back again, in a frame, lit from below."
+    },
+    {
+      "id": "ret-shops-no-bell",
+      "text": "Back again. They rang the bell at your door. Your door has no bell."
+    },
+    {
+      "id": "ret-shops-tissue",
+      "text": "Returned in tissue paper, with a bow tied at a careful angle."
+    },
+    {
+      "id": "ret-veg-firmer-tone",
+      "text": "Back again, with the same pumpkin and a firmer tone."
+    },
+    {
+      "id": "ret-veg-commended",
+      "text": "The paper has been entered for a rosette. It was highly commended."
+    },
+    {
+      "id": "ret-veg-turned",
+      "text": "Back again. It has been turned once a day, so it ripens evenly."
+    },
+    {
+      "id": "ret-veg-weighed",
+      "text": "Back again. They have weighed the paper, for fairness."
+    },
+    {
+      "id": "ret-veg-wheelbarrow",
+      "text": "Back again. They brought the paper in a wheelbarrow, out of habit."
+    },
+    {
+      "id": "ret-veg-cool-dry",
+      "text": "Back again. It has been kept in a cool, dry place, as the label says."
+    },
+    {
+      "id": "ret-brass-humming",
+      "text": "Back again, humming the request under their breath."
+    },
+    {
+      "id": "ret-brass-full-band",
+      "text": "The request has since been arranged for full band."
+    },
+    {
+      "id": "ret-brass-second-verse",
+      "text": "The same request, now with a second verse."
+    },
+    {
+      "id": "ret-brass-music-stand",
+      "text": "Back again. The paper now has its own music stand."
+    },
+    {
+      "id": "ret-brass-cornet-waits",
+      "text": "A cornet waits in the corridor, in case your answer needs a fanfare."
+    },
+    {
+      "id": "ret-brass-louder-paper",
+      "text": "The paper is back, written a little louder."
+    },
+    {
+      "id": "ret-anglers-almost-missed",
+      "text": "Back again, so quietly you almost missed it."
+    },
+    {
+      "id": "ret-anglers-under-door",
+      "text": "The paper came back under the door without a sound."
+    },
+    {
+      "id": "ret-anglers-since-dawn",
+      "text": "Back again. They have sat in the corridor since dawn, perfectly still."
+    },
+    {
+      "id": "ret-anglers-a-bite",
+      "text": "Back again. They have not said a word. They are waiting for a bite."
+    },
+    {
+      "id": "ret-anglers-water-cooler",
+      "text": "They waited by the water cooler, as if it were a pond."
+    },
+    {
+      "id": "ret-anglers-quietly",
+      "text": "Back again. They ask that you sign or study it quietly."
+    },
+    {
+      "id": "ret-kites-looked-up",
+      "text": "Back again. They looked up at your ceiling first, out of habit."
+    },
+    {
+      "id": "ret-kites-tail",
+      "text": "The paper has a tail on it now, for steadiness."
+    },
+    {
+      "id": "ret-kites-window-open",
+      "text": "Back again. They have opened your window, just in case."
+    },
+    {
+      "id": "ret-kites-before-them",
+      "text": "The paper arrived slightly before they did."
+    },
+    {
+      "id": "ret-kites-nearly-flies",
+      "text": "Back again, folded into something that very nearly flies."
+    },
+    {
+      "id": "ret-kites-more-string",
+      "text": "Back again. They have let out a little more string."
+    },
+    {
+      "id": "ret-hedges-plant",
+      "text": "Back again. They have seen your office plant and are not mentioning it."
+    },
+    {
+      "id": "ret-hedges-margins",
+      "text": "Back again. The margins have been measured, twice."
+    },
+    {
+      "id": "ret-hedges-pens",
+      "text": "Your pens are now in a straight line. They did that while waiting."
+    },
+    {
+      "id": "ret-hedges-shears",
+      "text": "Back again, with shears, in case the paper needs editing."
+    },
+    {
+      "id": "ret-hedges-clipped",
+      "text": "The paper has been clipped since. Only the parts that stuck out."
+    },
+    {
+      "id": "ret-hedges-desk-level",
+      "text": "Back again. They have checked that your desk is level. It is not."
+    }
+  ],
+  "away": [
+    {
+      "id": "away-clock-managed",
+      "text": "The clock chimed the hours without you. It managed."
+    },
+    {
+      "id": "away-stationery",
+      "text": "Cuthbert put the stationery cupboard in order, then the stationery."
+    },
+    {
+      "id": "away-books-twice",
+      "text": "Gwendolyn balanced the books, then, to pass the time, balanced them again."
+    },
+    {
+      "id": "away-working-elsewhere",
+      "text": "Rodney told the newspaper you were working very hard elsewhere."
+    },
+    {
+      "id": "away-back-shortly",
+      "text": "Your desk wore a sign saying BACK SHORTLY. It has been very patient."
+    },
+    {
+      "id": "away-barely-noticed",
+      "text": "The ministries collected without you. Gwendolyn says they barely noticed."
+    },
+    {
+      "id": "away-speech",
+      "text": "Rodney wrote a speech for your return. It is mostly about you."
+    },
+    {
+      "id": "away-plant",
+      "text": "A committee watered the office plant, after a short meeting."
+    },
+    {
+      "id": "away-photograph",
+      "text": "Your photograph kept an eye on things. It has nothing to report."
+    },
+    {
+      "id": "away-cushion",
+      "text": "Your chair was kept warm by a cushion with your name on it."
+    }
+  ],
+  "captions": [
+    {
+      "id": "caption-start",
+      "text": "Mayor of Dithering-on-the-Dawdle, unopposed. The other candidate went to the wrong hall."
+    },
+    {
+      "id": "caption-governor",
+      "text": "Governor of Upper Wobbling. A mahogany desk, a green lamp, and Pruella, near lunch."
+    },
+    {
+      "id": "caption-president",
+      "text": "President. A walnut desk, three telephones, and Mildred, who liked one of the last three."
+    },
+    {
+      "id": "caption-acting",
+      "text": "You serve on, as Acting. Rodney has had that word painted very small on the door."
+    },
+    {
+      "id": "caption-sweep",
+      "text": "Every district held. Rodney is having the result framed, and then the frame."
+    },
+    {
+      "id": "caption-quiet-term",
+      "text": "A Quiet Term. Nothing new this time. The clock has been told, and took it well."
+    }
+  ]
+}

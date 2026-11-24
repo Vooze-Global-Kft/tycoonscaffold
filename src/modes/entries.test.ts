@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * What the sim, classic, haul and merge entries hand the shared code (src/modes/contract.ts). Every reader of
+ * What the sim, classic, haul, merge and decree entries hand the shared code (src/modes/contract.ts). Every reader of
  * these pieces falls back quietly when one is missing (GameIcon draws ❔, the card window stays
  * empty, the tutorial shows no hand), so nothing else would notice a key dropped while editing an
  * entry: Pizza Empire would lose its glove or its portraits on the phone with every check green.
@@ -64,6 +64,13 @@ vi.mock('../ui/merge/FireflyPointer', () => ({ FireflyPointer: s.named('FireflyP
 vi.mock('../ui/merge/art/MergeIcon', () => ({ MergeIcon: s.named('MergeIcon') }));
 vi.mock('../ui/merge/hints', () => ({ mergeHints: { ask: () => [], name: 'mergeHints' } }));
 vi.mock('./merge/fx', () => ({ listenMergeEvents: vi.fn(), playMergeEvents: vi.fn() }));
+// The decree entry's drawn pieces (react-native).
+vi.mock('../ui/decree/DecreeShell', () => ({ DecreeShell: s.named('DecreeShell') }));
+vi.mock('../ui/decree/overlays/Loading', () => ({ DecreeLoading: s.named('DecreeLoading') }));
+vi.mock('./decree/fx', () => ({ listenDecreeEvents: vi.fn(), playDecreeEvents: vi.fn() }));
+vi.mock('../ui/decree/art/devViews', () => ({ artDevViews: { 'decree-art': s.named('DecreeArtGallery') } }));
+vi.mock('../ui/decree/art/DecreeIcon', () => ({ DecreeIcon: s.named('DecreeIcon'), DECREE_ICON_PREFIXES: ['art:', 'face:'] }));
+vi.mock('../ui/decree/PenPointer', () => ({ PenPointer: s.named('PenPointer'), decreeHints: { ask: () => [], name: 'decreeHints' } }));
 
 const nameOf = (c: unknown) => (c as { displayName?: string } | undefined)?.displayName;
 const read = (file: string) => fs.readFileSync(path.join(__dirname, file), 'utf8');
@@ -235,6 +242,63 @@ describe('the merge entry (Night Market)', () => {
     expect(installedEngine()).toBe(merge.engine);
     expect(engineFor({ mode: 'merge' } as GameConfig)).toBe(merge.engine);
     expect(engineFor({ mode: 'haul' } as GameConfig), 'a haul config is not the merge engine\'s').toBeNull();
+    installMode(sim);
+    expect(installedEngine()).toBeNull();
+  });
+});
+
+describe('the decree entry (High Office)', () => {
+  it('hands over its own shell, loading screen, rules with the two seams of 2.15, sound keys and presets, and no people yet', async () => {
+    const { default: decree } = await import('./decree');
+    const { decreeEngineMode } = await import('../engine/decreeMode');
+    const { DECREE_SHARED_SOUNDS } = await import('./decree/soundKeys');
+    const { FX } = await import('../services/fx/catalog.decree');
+    for (const key of Object.values(DECREE_SHARED_SOUNDS)) expect(Object.keys(FX), 'every shared key maps to a key of the decree table').toContain(key);
+    const { listenDecreeEvents } = await import('./decree/fx');
+    expect(decree.id).toBe('decree');
+    expect(nameOf(decree.Shell)).toBe('DecreeShell');
+    expect(nameOf(decree.Loading)).toBe('DecreeLoading');
+    expect(decree.engine).toBe(decreeEngineMode);
+    expect(decree.engine?.id).toBe('decree');
+    expect(decree.engine?.saveTag, 'a save key of its own (office-design.md: save:high-office:decree1)').toBe('decree1');
+    expect(decree.engine?.paysOnCompute, '2.15: paid when computed').toBe(true);
+    expect(decree.engine?.catchUpSeconds, '2.15: no full-speed catch-up').toBe(0);
+    // The pen as the hint pointer and its source (PLATFORM), the art kit's icons for "art:" and "face:" names.
+    const { decreeHints } = await import('../ui/decree/PenPointer');
+    expect(nameOf(decree.parts?.HintPointer), 'the pen (3.1)').toBe('PenPointer');
+    expect(nameOf(decree.parts?.Icon)).toBe('DecreeIcon');
+    expect(decree.parts?.iconPrefixes).toEqual(['art:', 'face:']);
+    expect(decree.parts?.CharIcon).toBeUndefined();
+    expect(decree.parts?.CardBust).toBeUndefined();
+    expect(decree.hints).toBe(decreeHints);
+    expect(decree.artIcons).toBeUndefined();
+    expect(decree.soundKeys).toBe(DECREE_SHARED_SOUNDS);
+    // Phones (this file's resolution of ./presets): no presets; the web build's are pinned below.
+    expect(decree.presets).toBeUndefined();
+    expect(listenDecreeEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it('ships its presets and its review screens on the web only', async () => {
+    expect((await import('./decree/presets')).decreePreset).toBeUndefined();
+    expect(typeof (await import('./decree/presets.web')).decreePreset).toBe('function');
+    expect(read('decree/index.tsx')).toMatch(/import \{ decreePreset \} from '\.\/presets';/);
+    expect(read('decree/presets.ts')).not.toMatch(/from '[^']*(bot|fixtures)[^']*'/);
+    expect((await import('./decree/devViews')).devViews).toBeUndefined();
+    const web = (await import('./decree/devViews.web')).devViews!;
+    // The loading screen, and spec 9.1's `decree-art` (the art package's contact sheet).
+    expect(Object.fromEntries(Object.entries(web).map(([k, v]) => [k, nameOf(v)]))).toEqual({ loading: 'DecreeLoading', 'decree-art': 'DecreeArtGallery' });
+    expect(read('decree/index.tsx')).toMatch(/import \{ devViews \} from '\.\/devViews';/);
+  });
+
+  it('installs its engine for decree configs only', async () => {
+    const { default: decree } = await import('./decree');
+    const { default: sim } = await import('./sim');
+    const { installMode } = await import('./contract');
+    const { engineFor, installedEngine } = await import('../engine/mode');
+    installMode(decree);
+    expect(installedEngine()).toBe(decree.engine);
+    expect(engineFor({ mode: 'decree' } as GameConfig)).toBe(decree.engine);
+    expect(engineFor({ mode: 'merge' } as GameConfig), 'a merge config is not the decree engine\'s').toBeNull();
     installMode(sim);
     expect(installedEngine()).toBeNull();
   });

@@ -431,6 +431,8 @@ export const useGame = create<Store>((set, get) => {
         const offline = returning ? E.computeOffline(cfg, game, at) : null;
         // A mode engine fast-forwards its own state while away (haul: rocks, piles, the hold); keep it.
         if (offline?.game) game = offline.game;
+        // A mode that is paid when its absence is computed (decree, 2.15) gets the earnings in this same update.
+        if (offline && offline.earnings > 0 && engineFor(cfg)?.paysOnCompute) game = E.grantCash(game, offline.earnings);
         syncAds(game);
         rushWasActive = E.isRushActive(game, at);
         lastTickAt = at;
@@ -484,11 +486,19 @@ export const useGame = create<Store>((set, get) => {
       // and never also tick the same time again below.
       const advanced = computed.game !== undefined && away.seconds > 0;
       if (advanced) game = computed.game!;
+      // The two seams of a mode engine (src/engine/mode.ts; decree, 2.15): paid in this update, and its own
+      // catch-up limit. A mode that sets neither takes exactly the old path.
+      const seams = engineFor(cfg);
+      const paysNow = seams?.paysOnCompute === true;
+      const catchUp = seams?.catchUpSeconds ?? MAX_CATCH_UP_SECONDS;
+      if (paysNow && away.earnings > 0) game = E.grantCash(game, away.earnings);
       if (away.earnings > 0 || (away.seconds >= cfg.economy.offline.minSecondsToShow && worthShowing(cfg, away))) {
         if (offline || away.seconds >= cfg.economy.offline.minSecondsToShow) {
           // Merge with a popup that is still open, so nothing earned while away is dropped.
           offline = offline ? { seconds: offline.seconds + away.seconds, earnings: offline.earnings + away.earnings, ...mergedReport(cfg, offline.report, away.report) } : away;
-        } else if (away.seconds <= MAX_CATCH_UP_SECONDS && !advanced) {
+        } else if (paysNow) {
+          // Already paid above; a short absence shows no report.
+        } else if (away.seconds <= catchUp && !advanced) {
           // A short trip to the background (a notification, the app switcher, and on Android every
           // full-screen ad) is simply caught up at full speed: the chain runs on, nothing is popped up.
           game = E.tick(cfg, game, away.seconds, now);
@@ -906,16 +916,27 @@ export const useGame = create<Store>((set, get) => {
         const offline = get().offline;
         if (!offline) return;
         let amount = offline.earnings;
+        // A mode paid when the absence was computed (decree, 2.15) has the earnings in cash already: here
+        // it gets only the ad's extra, earnings × (multiplier − 1), and nothing without a watched ad.
+        const paidOnCompute = engineFor(get().cfg)?.paysOnCompute === true;
+        let adMult: number | null = null;
         if (doubled) {
           const ok = await ads.showRewarded('offline_double');
           // Sim and classic double it; a mode with its own rules says what the ad adds (haul, Decision 42: +50 %).
           const mult = engineFor(get().cfg)?.offlineAdMultiplier;
-          if (ok) amount *= mult ? safe('engine.offlineAdMultiplier', () => mult(get().cfg), 1) : 2;
+          if (ok) {
+            const m = mult ? safe('engine.offlineAdMultiplier', () => mult(get().cfg), 1) : 2;
+            adMult = m;
+            amount *= m;
+          }
         }
         // Clear the popup in the same update that pays it, and only pay what is still pending:
         // a resume() while the ad was open may have merged more time into it.
         const pending = get().offline;
         if (pending && pending !== offline) amount += pending.earnings - offline.earnings;
+        // Paid on compute: only the ad's extra, on the report as it stands after the ad (a resume during the
+        // ad merged more time into it, already in cash: that part gets its half too).
+        if (paidOnCompute) amount = adMult === null ? 0 : Math.max(0, (pending ?? offline).earnings * (adMult - 1));
         // A mode that rounds what it shows grants the rounded figure (merge, M19); without the hook the amount is unchanged.
         const round = engineFor(get().cfg)?.roundPayout;
         if (round) amount = safe('engine.roundPayout', () => round(get().cfg, amount), amount);

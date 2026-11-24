@@ -10,6 +10,9 @@
  *   npm run validate -- --release       the fingerprint check in release mode (every dimension known)
  *   (a merge game: its bot, scripts/content/merge-bot.ts, on the same five seeds in parallel: every missed
  *   hard target of Decision M2 an error, every missed aim a warning; market-design.md 8.1 step 6)
+ *   (a decree game: the satire lint on its texts, the 2.11 bound, and its bot, scripts/content/decree-bot.ts
+ *   --bot validate, on the same five seeds in parallel: every missed hard target an error, every missed aim
+ *   a warning; office-design.md 7.8, 8.1, 8.3, decisions D7 and D8)
  *
  * For every pair of games that both have sounds it also runs the sound similarity check
  * (python3 scripts/audio/compare.py, spec 6.1, Decision 24: fails when a shared key's joint score is
@@ -25,6 +28,7 @@
  * write, banned words (scripts/lib/checks.ts) and "Idle ... Tycoon" titles are errors.
  */
 import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -34,7 +38,7 @@ import { PORTRAIT_MODES } from '../src/config/artIcons';
 import { GameConfigSchema, type GameConfig } from '../src/config/schema';
 import { args } from './lib/cli';
 import { economyTableClash, storeTextProblems, textSimilarity } from './lib/checks';
-import { comparePair, formatPair, gameFacts, pairFailures, promotionalTextOf, type AudioScore, type ReleasesFile } from './lib/fingerprint';
+import { comparePair, formatPair, gameFacts, pairFailures, promotionalTextOf, tableStrings, type AudioScore, type ReleasesFile } from './lib/fingerprint';
 import { storeFiles } from './sync';
 
 const games = require('./lib/games.js');
@@ -213,7 +217,7 @@ function mergePacing(id: string, problems: string[], warnings: string[]): void {
         if (row.ok) continue;
         const msg = `merge pacing (section 8, ${row.kind === 'hard' ? 'hard, M2' : 'aim, M2'}), seed ${seed}: ${row.name}: ${row.value} (aim ${row.aim})`;
         if (row.kind === 'hard' && !placeholder) problems.push(msg);
-        else warnings.push(row.kind === 'hard' ? `${msg} [hard; a warning only while game.json is the placeholder]` : msg);
+        else warnings.push(row.kind === 'hard' ? `${msg} [hard; a warning only while game.json is the placeholder or provisional]` : msg);
       }
     }
   }
@@ -223,6 +227,151 @@ function mergePacing(id: string, problems: string[], warnings: string[]): void {
       if (!row.ok) warnings.push(`merge pacing (section 8, aim, across the seeds): ${row.name}: ${row.value} (aim ${row.aim})`);
     }
   }
+}
+
+/**
+ * The decree hook (office-design.md 7.8, 8.1 step 5, 9.2 P2/P3; decisions D7, D8). Additive: it runs
+ * only for a game of mode "decree".
+ * - The satire lint (D7: the content desk's `scripts/content/office/satireLint.ts`, its function
+ *   `satireLint(unit)`) runs on every decree game, with or without --no-sim, once its file exists: on
+ *   every text of the game.json `decree` block (names and roles as names), the store text and the
+ *   products (as store text), and the UI strings of src/ui/decree/strings.ts. An error finding is an
+ *   error; only while game.json is the skeleton's placeholder (its explicit marker
+ *   `decree.skeletonPlaceholder: true`, which scripts/content/office-placeholder.ts sets and
+ *   build-office.py never writes; not a text search) each is a warning instead. Warnings of the lint
+ *   are summed in one line. Until the file exists a warning says so.
+ * - --release: a decree game.json that still contains the word PLACEHOLDER anywhere (a name, a
+ *   product text, the marker's own game) is an error.
+ * - The balance bot (P2: `scripts/content/decree-bot.ts` running 8.3's hard targets on the five
+ *   seeds) replaces the warning below once it exists; until then the section 8 targets are unchecked
+ *   and a warning says so.
+ */
+type LintFinding = { severity: string; id: string; field?: string; rule: string; reason: string; match?: string };
+/** Keys of the decree block whose values are ids or tags, never words a player reads. */
+const DECREE_ID_KEYS = new Set(['provisional', 'rival', 'id', 'face', 'icon', 'pattern', 'club', 'clubs', 'other', 'archetype', 'subject', 'butt', 'shape', 'office', 'setsUp', 'minister', 'target', 'form', 'slot', 'moment', 'list', 'paper', 'ministry', 'districtWord', 'short', 'type', 'tier', 'cost', 'mayor', 'governor', 'presidentSingles', 'initials', 'longLunch', 'standingOrder', 'walnutDesk', 'portraitFrames', 'privateSecretary']);
+function decreeTexts(node: unknown, key: string, out: { id: string; text: string; field: 'ui' | 'store' | 'name' | 'text' }[], where: string): void {
+  if (typeof node === 'string') {
+    if (!DECREE_ID_KEYS.has(key) && /[A-Za-z]/.test(node)) out.push({ id: where, text: node, field: key === 'name' || key === 'role' ? 'name' : 'text' });
+  } else if (Array.isArray(node)) node.forEach((x, i) => decreeTexts(x, key, out, `${where}[${i}]`));
+  else if (node && typeof node === 'object')
+    for (const [k, v] of Object.entries(node)) {
+      // A chain's and a phrase list's title are the writers' labels, never shown (the authoring check does not lint them either).
+      if (k === 'title' && /deck\.(chains|lists)\[\d+\]$/.test(where)) continue;
+      if (!DECREE_ID_KEYS.has(k)) decreeTexts(v, k, out, where ? `${where}.${k}` : k);
+    }
+}
+function decreeChecks(id: string, g: GameConfig, runSim: boolean, problems: string[], warnings: string[]): void {
+  const lint = path.join(__dirname, 'content', 'office', 'satireLint.ts');
+  if (!fs.existsSync(lint)) warnings.push('placeholder: no satire lint yet (scripts/content/office/satireLint.ts, the content desk, D7): the words of section 7.8 are not checked');
+  else {
+    const placeholder = (g.decree as { skeletonPlaceholder?: unknown } | undefined)?.skeletonPlaceholder === true;
+    const strings: { id: string; text: string; field: 'ui' | 'store' | 'name' | 'text' }[] = [];
+    decreeTexts(g.decree, '', strings, 'decree');
+    const st = g.store;
+    for (const [k, v] of Object.entries({ title: st.title, subtitle: st.subtitle, shortDescription: st.shortDescription, description: st.description, promotionalText: st.promotionalText ?? '', keywords: st.keywords.join(', ') })) if (v) strings.push({ id: `store.${k}`, text: v, field: 'store' });
+    for (const p of g.monetization.iap.products) strings.push({ id: `product.${p.id}.title`, text: p.title, field: 'store' }, { id: `product.${p.id}.description`, text: p.description ?? '', field: 'store' });
+    const table = path.join(games.ROOT, 'src', 'ui', 'decree', 'strings.ts');
+    if (fs.existsSync(table)) tableStrings(fs.readFileSync(table, 'utf8')).forEach((t, i) => /[A-Za-z]{2}/.test(t) && strings.push({ id: `ui.${i}`, text: t, field: 'ui' }));
+    let findings: LintFinding[] = [];
+    try {
+      const mod = require(lint) as { satireLint: (unit: unknown) => LintFinding[] };
+      findings = mod.satireLint({ source: `games/${id}/game.json`, sections: {}, strings });
+    } catch (e) {
+      problems.push(`satire lint (7.8) could not run: ${(e as Error).message.split('\n')[0]}`);
+    }
+    // The game.json strings go to the lint as "paper" or "name" (it has no other door for loose strings),
+    // so two of its rules are the authoring check's, not this one's: a visitor's role is the register's
+    // own text (names.json, read and signed by the sensitivity editor; rule 2 asks whether a word is in
+    // that register), and a rival's back-again and resignation lines are sheet paragraphs whose lengths
+    // the runtime schema caps (RivalSchema), not 90-character papers (rule 4). Every other rule holds.
+    const registerText = (f: LintFinding) => (f.rule === 'rule2' && /\.role$/.test(f.id)) || (f.rule === 'rule4' && /\.(resignation|backAgain)$/.test(f.id));
+    findings = findings.filter((f) => !registerText(f));
+    const errors = findings.filter((f) => f.severity === 'error');
+    const line = (f: LintFinding) => `satire lint (7.8, ${f.rule}): ${f.id}${f.field ? `.${f.field}` : ''}: ${f.reason}${f.match ? ` ("${f.match}")` : ''}`;
+    if (placeholder) {
+      // The skeleton's PLACEHOLDER (test papers, names not yet in names.json): one summary line and the first five.
+      if (errors.length) warnings.push(`placeholder: satire lint (7.8) finds ${errors.length} error(s) in the skeleton's placeholder game.json (decree.skeletonPlaceholder; warnings until build-office.py writes the real one; then each is an error). The first: ${errors.slice(0, 5).map(line).join(' | ')}`);
+    } else {
+      problems.push(...errors.slice(0, 40).map(line));
+      if (errors.length > 40) problems.push(`satire lint (7.8): ... and ${errors.length - 40} more errors`);
+      if (process.env.DECREE_LINT_ALL) for (const f of errors) console.error('LINT ' + line(f));
+    }
+    const notes = findings.length - errors.length;
+    if (notes) warnings.push(`satire lint (7.8): ${notes} warning(s) for the writers (npx tsx scripts/content/office/check.ts --all)`);
+  }
+  // build-office.py --provisional (the lead's switch): the real deck before the tuning ended. Its recorded
+  // misses are warnings; a release refuses the file.
+  const prov = (g.decree as { provisional?: { misses?: unknown[] } } | undefined)?.provisional;
+  if (prov) {
+    const misses = Array.isArray(prov.misses) ? prov.misses.map(String) : [];
+    (release ? problems : warnings).push(`decree: game.json is PROVISIONAL (build-office.py --provisional): ${misses.length} recorded miss(es)${misses.length ? `, the first: ${misses.slice(0, 4).join(' | ')}` : ''}; the final game.json is written without the switch`);
+  }
+  if (release) {
+    const raw = fs.readFileSync(path.join(games.gameDir(id), 'game.json'), 'utf8');
+    const hits = raw.split('\n').filter((l) => l.includes('PLACEHOLDER'));
+    if (hits.length) problems.push(`a decree release: game.json still contains PLACEHOLDER on ${hits.length} line(s), the first: ${hits[0].trim().slice(0, 120)}`);
+  }
+  decreePacing(id, g, runSim, problems, warnings);
+}
+
+/**
+ * The decree bot (office-design.md 8.1 step 5, 8.3, 8.4; the bot and numbers package): the 2.11 bound
+ * from the content (with D15 and D25) always; with the sim, the bot's validate plan
+ * (scripts/content/decree-bot.ts `--bot validate`) on each of PACING_SEEDS in its own process, at most
+ * 3 at a time, as the merge branch does. Every missed hard target is an error, every missed aim a
+ * warning (until the lead turns aims into guards); while game.json is the skeleton's placeholder
+ * (`decree.skeletonPlaceholder`) a missed hard target is a warning. A run that stops at a rule not built
+ * yet is one warning naming the rule (the targets are then not checked).
+ */
+type DecreeSeed = { seed?: number; rows?: { name: string; kind: string; aim: string; value: unknown; ok: boolean }[]; notBuilt?: string | null; error?: string | null; crashed?: boolean };
+function decreePacing(id: string, g: GameConfig, runSim: boolean, problems: string[], warnings: string[]): void {
+  // The hard lines are the bot's rows (src/engine/decree/bot.ts `evaluate`), D46's restated gates among
+  // them (H7 hours 2 and 3 ≤ 3 %, H7 hour 1 as D46 words it, H8 both ≥ 25 % and mood-only ≥ 20 %); H10's
+  // vote clause needs 30 paired seeds and is build-office.py's (`acrossSeeds`), not this five-seed run's.
+  // A missed hard target is a warning while game.json is the skeleton's placeholder or a provisional file
+  // (build-office.py --provisional, whose misses are recorded in it); an error on the final file.
+  const placeholder = (g.decree as { skeletonPlaceholder?: unknown } | undefined)?.skeletonPlaceholder === true || !!(g.decree as { provisional?: unknown } | undefined)?.provisional;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { withDecreeContent } = require('../src/engine/decreeMode') as typeof import('../src/engine/decreeMode');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { certainWinBound } = require('../src/engine/decree/bot') as typeof import('../src/engine/decree/bot');
+    const cfg = withDecreeContent(g) as never as { decree: { ladder: { maxLossesBound: number } } };
+    const n = certainWinBound(cfg as never);
+    // 2.11 asks at most 8; D25 tightens it to the content's maxLossesBound (6).
+    const most = Math.min(8, cfg.decree.ladder.maxLossesBound);
+    if (n > most) problems.push(`2.11 (with D15, D25): a count is a certain win only after ${n} consecutive losses (at most ${most})`);
+  } catch (e) {
+    problems.push(`2.11 bound could not be computed: ${(e as Error).message.split('\n')[0]}`);
+  }
+  const bot = path.join(__dirname, 'content', 'decree-bot.ts');
+  if (!runSim) return;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `validate-decree-${id}-`));
+  const q = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`;
+  const cmd = PACING_SEEDS.map((seed) => [process.execPath, require.resolve('tsx/cli'), bot, '--game', id, '--seed', String(seed), '--bot', 'validate', '--json'].map(q).join(' ') + ` > ${q(path.join(dir, `${seed}.out`))} 2>&1 &\nwhile [ "$(jobs -rp | wc -l)" -ge 3 ]; do wait -n; done`).join('\n');
+  spawnSync('bash', ['-c', `${cmd}\nwait`], { cwd: games.ROOT, encoding: 'utf8', timeout: 600_000, env: { ...process.env, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=2000'].filter(Boolean).join(' ') } });
+  const stoppedAt = new Set<string>();
+  for (const seed of PACING_SEEDS) {
+    let r: DecreeSeed | null = null;
+    try {
+      const line = fs.readFileSync(path.join(dir, `${seed}.out`), 'utf8').trim().split('\n').pop();
+      r = line ? (JSON.parse(line) as DecreeSeed) : null;
+    } catch {
+      r = null;
+    }
+    if (!r) problems.push(`decree pacing, seed ${seed}: the bot did not finish within 10 min (npx tsx scripts/content/decree-bot.ts --seed ${seed} --bot validate to see why)`);
+    else if (r.notBuilt) stoppedAt.add(r.notBuilt);
+    else if (r.crashed || !r.rows) problems.push(`decree pacing, seed ${seed}: the bot crashed: ${String(r.error).split('\n').slice(0, 3).join(' ')}`);
+    else
+      for (const row of r.rows) {
+        if (row.kind === 'report' || row.ok) continue;
+        const msg = `decree pacing (section 8, ${row.kind}), seed ${seed}: ${row.name}: ${String(row.value)} (aim ${row.aim})`;
+        if (row.kind === 'hard' && !placeholder) problems.push(msg);
+        else warnings.push(row.kind === 'hard' ? `${msg} [hard; a warning only while game.json is the placeholder or provisional]` : msg);
+      }
+  }
+  if (stoppedAt.size) warnings.push(`decree pacing: the bot stopped at a rule that is not built yet (${[...stoppedAt].map((x) => `${x}()`).join(', ')}): the targets of section 8 are not checked`);
+  fs.rmSync(dir, { recursive: true, force: true });
 }
 
 /** compare.py for one pair (a second or so): its scores, or why it could not run. */
@@ -265,6 +414,19 @@ function lastChange(abs: string): number {
  * or data may show a screen the build no longer has (Apple 2.3.3 and 2.3.7, Google's misleading-
  * metadata policy). Returns one line per stale image set, naming the newest change it predates.
  */
+/** The store tool's record of a full run (screenshots/TAKEN.json), or null when there is none or it cannot be read. */
+function takenRecord(shots: string): { sources: Record<string, string>; images: Set<string> } | null {
+  const file = path.join(shots, 'TAKEN.json');
+  if (!fs.existsSync(file)) return null;
+  try {
+    const m = JSON.parse(fs.readFileSync(file, 'utf8')) as { sources?: unknown; images?: unknown };
+    if (!m.sources || typeof m.sources !== 'object' || !Array.isArray(m.images)) return null;
+    return { sources: m.sources as Record<string, string>, images: new Set(m.images.filter((x): x is string => typeof x === 'string')) };
+  } catch {
+    return null;
+  }
+}
+
 function staleScreenshots(id: string, mode: string): string[] {
   const shots = path.join(games.gameDir(id), 'store', 'screenshots');
   if (!fs.existsSync(shots)) return [];
@@ -282,7 +444,14 @@ function staleScreenshots(id: string, mode: string): string[] {
   const sources = [path.join(games.gameDir(id), 'game.json'), path.join(games.ROOT, 'src', 'ui', mode, 'strings.ts')].filter((f) => fs.existsSync(f));
   const changed = sources.map((f) => ({ f, t: lastChange(f) })).sort((a, b) => b.t - a.t)[0];
   if (!changed) return [];
-  const old = pngs.filter((p) => lastChange(p) < changed.t - 1);
+  // A full run of the store tool records what its images were taken from (TAKEN.json, written by
+  // scripts/store/shots.ts: the sha256 of the game's data and of its mode's words, and the images the
+  // run wrote). While those files still have that content, an image of that run is current even when it
+  // came out byte-identical to the one before and git therefore still shows its older date.
+  const taken = takenRecord(shots);
+  const sameSources = !!taken && sources.every((f) => taken.sources[path.relative(games.ROOT, f).split(path.sep).join('/')] === crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex'));
+  const fromThatRun = (p: string) => sameSources && !!taken && taken.images.has(path.relative(shots, p).split(path.sep).join('/'));
+  const old = pngs.filter((p) => !fromThatRun(p) && lastChange(p) < changed.t - 1);
   if (!old.length) return [];
   const sets = [...new Set(old.map((p) => path.relative(shots, path.dirname(p)) || '.'))];
   const when = new Date(changed.t * 1000).toISOString().slice(0, 16).replace('T', ' ');
@@ -337,8 +506,9 @@ for (const id of ids) {
   const silent = Object.keys(fxTableFor(g.mode) as Record<string, unknown>).filter((k) => !soundKeys.has(k));
   // A merge game before its first rendered sound (the skeleton's placeholder, market-design.md Decision M1): a
   // warning until the sound package puts the first file in games/<id>/assets/sfx/; from then on every missing one is an error.
-  const placeholderSounds = g.mode === 'merge' && soundKeys.size === 0;
-  if (silent.length && placeholderSounds) warnings.push(`placeholder: no sounds yet; the ${silent.length} fx event(s) of mode "merge" are silent until the sound package renders games/${id}/assets/sfx/`);
+  // A decree game likewise until its sound package renders the first file (office-design.md 9.2, the skeleton's placeholder).
+  const placeholderSounds = (g.mode === 'merge' || g.mode === 'decree') && soundKeys.size === 0;
+  if (silent.length && placeholderSounds) warnings.push(`placeholder: no sounds yet; the ${silent.length} fx event(s) of mode "${g.mode}" are silent until the sound package renders games/${id}/assets/sfx/`);
   else if (silent.length) problems.push(`${silent.length} fx event(s) of mode "${g.mode}" have no sound file for this game: ${silent.join(', ')} (games/${id}/assets/sfx/${g.soundPack ? ` or shared/sfx/${g.soundPack}/` : ''})`);
     if (!fs.existsSync(path.join(games.gameDir(id), 'icon.png'))) warnings.push('no icon.png (using the shared placeholder)');
   if (g.monetization.ads.forceTestAds) warnings.push('forceTestAds is on: test ads in release builds earn nothing. Paste the AdMob units and turn it off before release');
@@ -441,6 +611,10 @@ for (const id of ids) {
   // without one and says so; the numbers package replaces this branch with the bot's run. ---
   else if (g.mode === 'merge') {
     if (runSim && problems.length === 0) mergePacing(id, problems, warnings);
+  }
+  // --- a decree game (office-design.md 7.8, 8.1, 8.3; decisions D7 and D8): the satire lint and the bot ---
+  else if (g.mode === 'decree') {
+    decreeChecks(id, g, runSim, problems, warnings);
   }
   // --- pacing: the same bot as `npm run simulate`, two simulated hours ---
   else if (runSim && problems.length === 0) {

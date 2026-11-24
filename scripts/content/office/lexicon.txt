@@ -1,0 +1,370 @@
+# lexicon.txt: everyday English words for tier 2 of the satire lint (office-design.md 7.8). A word on this
+# list is never near-matched to a real or fictional name where its capital letter says nothing: as the
+# first word of a sentence, inside an all-caps run (a headline, a clipping, a picket) or in a Title Case
+# line ("Paint the bench" is not "Paine"; "GIVEN" is not a name). Exact matches of surnames are
+# checked everywhere regardless. Compiled by the content desk from the lower-case words of the prose
+# of the project's design documents (code spans removed, seen at least twice), plus the game's own vocabulary; surnames of
+# deny-people.txt and deny-fiction.txt are removed. Several words a line, split at commas;
+# "#" starts a comment. A writer who meets a false near match on an everyday word asks the content desk to add the word here.
+ability, about, above, absence, absences, absent, abstract, absurd, accent, accents, accept
+acceptable, accepted, accepts, accessed, accordion, account, accounts, accurate, acknowledged
+across, act, action, actions, active, activities, activity, actors, acts, actually, adapter, add
+added, adding, addition, additive, address, adds, ads, adult, adults, advance, advanced
+adversarial, adversary, advertised, advertisers, advertising, advice, advised, advises, advisor
+affiliation, afford, affordable, after, afterwards, again, against, age, ageing, aggregates, ago
+agree, agreed, agreement, agrees, ahead, aim, aimed, aims, air, alarm, alarms, alcohol, alias
+alignment, alike, all, allow, allowed, allows, almost, alone, along, aloud, already, also, always
+amber, ambient, amends, among, amount, analytics, anchor, and, angle, angler, anglers, angles
+animal, animals, animated, animates, animation, animations, announced, announcement, announces
+annoys, another, answer, answered, answering, answers, antenna, anthem, any, anyone, anything
+anyway, anywhere, apart, aperture, apologies, apologise, app, app's, appeal, appear, appearances
+appears, appended, appends, apple, application, applications, applied, applies, apply, appoint
+appoints, approval, approve, approved, apps, april, apron, arc, arch, archetype, archetypes
+archive, arcs, are, area, argued, arguments, arm, armed, arming, arms, army, around, arp, arpeggio
+array, arrival, arrivals, arrive, arrives, arriving, arrows, art, ascending, ask, asked, asks
+assay, asserts, asset, assets, assign, assigns, assumed, asteroid, asteroids, atlas, attack
+attacked, audible, audience, audiences, audio, audit, auditor, august, author, authoring
+authorities, automated, automatic, automatically, automation, autopilot, autopilot's, autumn
+available, average, avoid, awaiting, award, away, awning, awnings, axis, back, backfires
+background, backlog, backtracking, backwards, bad, badge, badger, badly, bag, baize, bake, baked
+balance, balanced, ballot, ballots, bamboo, ban, band, band's, bands, bandstand, banned, banner
+banners, bans, bar, bare, barely, barrier, bars, base, basic, basket, baskets, bass, bassoon
+bassoons, bat, batch, batch's, batches, bay, beacon, bean, beans, bearing, beat, beats, became
+because, become, becomes, bed, been, before, behaviour, behind, beige, being, bell, bells, belong
+below, bench, benches, berry, beside, best, better, between, beyond, big, bigger, biggest, binaries
+binary, bind, binding, binds, birthday, biscuit, biscuits, bit, black, blank, blat, blind, blip
+blips, block, blocked, blocker, blocking, blocks, bloop, blotter, blue, board, board's, boards
+bodies, body, boil, bonanza, bonk, bonnet, bonus, bonuses, book, booked, boost, booster, boosts
+boot, booth, boots, border, borrow, bot, bot's, both, bots, bottleneck, bottlenecks, bottom, bought
+bounces, bound, boundary, bounded, bounds, bow, bowed, box, box's, boxes, boycott, boycotts, bpm
+brackets, branch, branches, brand, branding, brands, brass, braziers, break, breaking, breaks
+breath, breathing, breeze, brew, bribe, bribes, brick, bridge, brief, briefs, bright, brighter
+brightness, bring, brings, brisk, broadband, broken, brokerseat, bronze, brought, brown, brush
+brushes, bubble, budget, budgets, buffer, buffers, build, builder, builder's, builders, building
+buildings, builds, built, bun, bundle, bundled, bundles, burns, burst, bursts, bus, buses, bush
+busier, busiest, businesses, bust, busts, busy, but, butt, button, buttons, buy, buyer, buyers
+buying, buys, buzz, buzzes, buzzy, byte, bytes, cabbage, cabinet, cache, cached, caches, cadences
+cake, calendar, calibrated, calibration, call, callback, called, caller, callers, calling, calls
+calm, came, camera, campaign, campaigns, can, can't, canal, cancel, cancels, candidate, candidates
+cane, canister, cannot, canvas, canvases, cap, capacity, capital, capitalised, capitalize, capitals
+capped, caps, capsule, caption, captions, card, cards, cares, cargo, carried, carrier, carries
+carrot, carry, carrying, cartoon, cartridge, cartridges, cascade, case, cases, cash, cast, casual
+catalog, catalogue, catalogue's, catalogued, catalogues, catch, catches, catching, catchphrases
+categories, category, caught, caused, ceil, ceiling, celebrations, cell, cell's, cells, censors
+centre, centred, centroid, centroids, cents, ceremonial, certain, cfg, chain, chain's, chains
+chalk, chance, change, changed, changes, changing, channels, chant, character, character's
+characters, charcoal, chard, charge, charged, charges, chased, cheap, cheaper, cheapest, cheating
+check, check's, checked, checker's, checklist, checkout, checks, chef, chefs, cherry, chest, chests
+chevrons, child, children, children's, chime, chimes, chip, chips, chiptune, choice, choices
+choose, chooses, chord, chords, chose, chosen, chroma, chuffs, chunk, circle, cities, city, civic
+civil, claim, claimed, claiming, claims, clamp, clamped, clamps, clank, clarinet, class, classic
+clause, clauses, clay, clean, clear, cleared, clearly, clergy, clerk, click, clicks, climate, climb
+climbing, climbs, clink, clip, clipped, clipping, clippings, clips, clock, clocks, close, closed
+closes, closest, closing, cloth, cloud, club, club's, clubs, clumps, clunks, coat, code, coin
+coined, coins, col, collect, collected, collecting, collection, collects, colour, coloured, colours
+column, columns, combine, combo, come, comedy, comes, comet, comic, coming, command, comment
+commit, commits, committed, committee, committees, common, commons, comms, community, companies
+compare, compared, compares, comparison, competent, complaint, complaints, complete, completely
+completes, completion, components, composition, compositions, compute, computed, computes, concept
+concrete, condition, conditions, config, configs, configured, configures, confirm, confirmed
+confirms, conflict, conflicts, consecutive, consequence, consequences, consider, constant
+constants, construction, consumed, contact, contain, containing, contains, content, contents
+context, continues, continuous, continuously, contour, contract, contract's, contracts
+contradictory, contradicts, contrast, control, convention, cook, cooks, cooldown, cooldowns, copied
+copies, copper, copy, core, cores, corner, cornet, correct, corrected, correctly, correlation
+corrupt, cosmetic, cost, costs, could, councillor, count, countdown, counted, counter, counter's
+counters, counties, counting, countries, country, counts, county, coup, coups, court, cover
+coverage, covered, covers, cozy, crackle, cradles, creak, creaking, creaks, cream, create, created
+creating, creation, creatives, credit, credits, crime, crimes, criminal, crinkle, crisp, critics
+critique, crooked, crosses, crossfade, crossing, crowd, crowded, crown, crumb, crumble, crumbles
+crumple, cue, culture, cup, currency, current, currently, curved, curves, cushion, customer
+customers, cut, cuts, cyan, cycle, cycles, cymbal, daily, damp, damped, dark, darker, dashed, data
+date, dates, dawn, day, days, dead, deadlock, deal, deals, dear, dearer, death, debris, decay
+decays, december, decide, decided, decides, deciding, decision, decisions, deck, decks, declaration
+declare, declared, declares, declaring, declined, declines, declining, decoded, decree, deep
+default, defaults, defeat, definition, definitions, delay, delayed, delegate, delete, deliberate
+deliberately, deliver, delivered, deliveries, delivers, delivery, demand, denied, dense, deny
+denylist, depend, dependency, depends, depicting, depot, deputies, deputy, derived, derives
+descending, describe, described, describes, description, design, designed, designer, designers
+desk, desk's, detail, detected, detector, deterministic, detuned, dev, developer, developer's
+developers, development, device, dialog, dialogs, dib, dibs, dictator, dictatorship, did, differ
+differed, difference, differences, different, differently, differing, differs, difficulty, dig
+digits, dim, dimension, dimensions, dip, dips, direct, direction, directly, disabled, disagree
+disagrees, disappears, disarms, disarray, discarded, disclosed, discount, discovered, discovery
+discrimination, discussion, dish, dishes, disk, dispatcher, display, displays, disrespect, distance
+distances, distant, distinct, district, districts, divided, divider, dock, docked, docking, docks
+docs, document, documentation, documented, does, doing, domain, dominates, don't, donation, done
+door, doppler, dorian, dormant, dot, dots, dotted, double, doubled, doubles, down, downbeat
+downward, draft, draft's, drafts, drag, dragged, dragging, dragon, drags, drain, drains, draw
+drawer, drawer's, drawers, drawing, drawings, drawn, draws, dreary, drew, dried, dries, drift
+drifting, drifts, drill, drilled, drilling, drills, drinking, drizzle, drone, drone's, drones, drop
+dropped, dropping, drops, drum, drums, dry, duck, ducks, due, dull, duller, dum, dumpling
+duplicate, duplicates, during, dusk, dust, dusty, dynasty, each, eagles, ear, earlier, early, earn
+earned, earning, earnings, earns, eases, easy, eating, eats, echo, echoed, echoes, economy, edge
+edges, edit, edited, editor, editor's, edits, effect, effective, effects, efficiency, eight, eighth
+either, election, elections, electoral, elements, elevator, eligible, else, elsewhere, ember
+emblem, emblems, emergencies, emits, emoji, empire, empties, empty, encoded, end, ending, ends
+energy, enforcement, engaged, engine, engine's, engineer, engineer's, engineers, engines, enough
+enter, entered, enters, entertainment, entities, entitlement, entitlements, entity, entries, entry
+entry's, enum, envelope, envelopes, epic, equal, equals, equivalent, errata, error, esbuild
+escalate, escalation, established, estimate, etc, ethical, euphoniums, even, evening, event, events
+ever, every, everyone, everything, everywhere, evidence, exact, exactly, example, except, exception
+exclamation, exclude, excludes, exempt, exist, existed, existing, exists, exit, exits, expect
+expected, expense, expensive, experience, expire, expired, expires, explain, explicit, explicitly
+exponential, export, exported, exports, extend, extended, extending, extension, extensions, extra
+extract, extracts, eyes, face, faceless, faces, facing, factor, factors, fade, faded, fades, fading
+fail, failed, failing, fails, failure, faint, faith, fake, fall, fallback, falling, falls, false
+falsely, family, family's, famous, fan, fancy, fanfare, far, farce, farthest, fast, faster, fastest
+fault, faulted, favour, favours, feat, feats, feature, features, february, fee, feed, feedback
+feel, feelings, feels, fees, fell, felt, festival, fetch, few, fewer, fibre, fiction, fictional
+field, fields, fifteen, fifth, fifty, figure, figures, file, file's, files, filing, fill, filled
+filling, fills, filter, filtered, filters, final, find, finding, findings, finds, fine, finer
+finger, fingerprint, fingerprint's, fingerprints, finish, finished, finishes, finishing, finite
+fire, fired, fireflies, firefly, fires, firm, firmer, first, fish, fit, fits, fitted, five, fix
+fixed, fixes, fixture, fixtures, flag, flagged, flags, flame, flare, flare's, flares, flash, flat
+flavour, flecks, fleet, flick, flicked, flicker, flicks, flies, flight, flip, float, floating
+floats, flock, flood, floor, floors, flourish, flow, flower, flows, flutter, flux, fly, flying
+focus, fold, folded, folder, folders, folds, follow, followed, following, follows, followup, fond
+font, fonts, food, for, forbids, forced, foreground, forever, form, formants, format, formats
+forms, formula, formulas, forum, forums, forward, forwards, found, founding, fountain, fountains
+four, fourth, fox, fox's, fps, fraction, fractional, frame, framed, frames, free, freed, freedom
+frees, freeze, freighter, freighter's, frequent, fresh, friction, friday, from, front, fronts
+frost, frozen, fruit, frustrating, fuel, full, fuller, fun, function, functionality, functions
+fund, fundamental, funds, funny, further, future, gain, gained, gains, galaxies, galaxy, galaxy's
+gallery, gambling, game, game's, gameplay, games, gap, gapless, gaps, garnish, gate, gates, gather
+gave, gavel, gear, gear's, gears, geese, gem, gems, gender, generated, generic, generous, genre
+gentle, geometric, geometry, gesture, gestures, get, gets, ghost, giant, gift, gifts, give, given
+gives, glass, glaze, global, glove, gloves, glow, glowing, glows, glyph, glyphs, goal, goals, goes
+going, gold, golden, gone, good, good's, goodness, goods, goose, gossip, got, gourd, gov
+government, governor, governor's, grains, grand, grant, granted, grants, grape, grapes, graph, gray
+green, grew, grey, greyscale, grid, grievance, grievances, grill, group, groups, grow, grower
+growing, growl, grows, growth, guarantee, guaranteed, guard, guarded, guards, guess, guest, guests
+guide, guided, guidelines, guides, guild, gutter, gutters, habit, habits, had, hair, half, halfway
+hall, halls, halo, halved, hammer, hand, hand's, handed, handled, handler, handles, hands, hang
+hangar, happen, happens, happiness, haptic, haptics, harbour, harbours, hard, harder, hare, harm
+harmless, harmonic, harmonics, has, hash, hashes, hat, hatching, hate, hats, haul, haul's, hauled
+hauler, have, haven't, head, header, headline, headroom, heads, health, hear, heard, hears, hearth
+heat, heavier, heavy, hedge, hedgehog, hedgehog's, hedges, height, heights, held, help, helper
+helpers, her, herbaceous, here, hero, heron, herons, hex, hidden, hide, hiding, high, higher
+highest, highlighted, highly, hill, hint, hint's, hints, hire, hired, hires, hiring, his, hiss, hit
+hits, hoarder, hobby, hoe, hold, holding, holds, holiday, hollow, home, homes, honest, honestly
+honesty, hook, hooks, hops, horizontal, horn, horns, horror, hot, hour, hours, house, housekeeping
+housing, how, hub, hue, huff, huge, hull, hulls, hum, human, humans, humble, humor, humorists, hums
+hundreds, hundredths, hurry, ice, icon, icons, ideas, identical, identifier, identifiers, identity
+idle, ids, ignition, ignore, ignored, ignores, ignoring, image, images, immediately, impact
+impersonate, implemented, import, importance, important, imported, importing, imports, impressive
+inactive, include, included, includes, including, income, incomes, incoming, independent, index
+indexed, indigo, individual, individuals, inference, infinite, information, informs, infrequent
+inharmonic, inherits, initials, ink, inline, inner, innuendo, input, inquiry, inset, insets, inside
+install, installed, installs, instant, instead, instrument, instruments, integer, integers
+integration, intended, interface, interfere, interstitial, interstitials, interval, intervals, into
+intro, intro's, invalid, invented, inventory, invisible, invite, iron, island, isolated, issue
+issues, it's, item, items, its, itself, ivory, jacket, jam, january, jar, jester, jetty, jitter
+job, join, joined, joins, joint, joke, jokes, jolly, judge, judged, judges, judging, juggling, july
+jump, jumping, jumps, june, junior, just, kalimba, kazoo, keep, keeping, keeps, kept, kettle, key
+keys, keyword, keywords, kick, kids, kill, kind, kinds, king, kit, kit's, kitchen, kite, kites
+kmin, knight, knob, knobs, knock, knocks, know, known, knows, lab, label, labeled, labelled, labels
+lacks, lacquer, ladder, ladders, lag, laid, lamp, land, landed, landing, landmarks, lands, lanes
+language, lantern, lanterns, lapse, lapsed, lapses, large, larger, largest, laser, last, lasts
+latch, late, later, latest, launch, launch's, launcher, launches, law, laws, lay, layer, layers
+layout, layouts, lays, lazy, lead, lead's, leader, leaderboards, leaders, leads, lean, leaning
+least, leave, leaves, ledger, leek, left, leg, legacy, legal, legendary, legs, lemma, lend, length
+lengths, less, lesson, lessons, let, lets, letter, letters, lettuce, level, level's, levelled
+levelling, levels, libraries, library, licence, licences, licensed, lid, lies, life, lifetime
+lifetimes, lift, lifted, lifts, light, lighthouses, lights, like, liked, likely, limit, limited
+limiter, limiting, limits, line, lines, link, lint, list, listed, listen, listened, listener
+listeners, listening, listens, listing, lists, lit, literal, literalism, literals, little, live
+lives, living, load, loaded, loading, loadout, loads, lobbies, lobbyist, lobbyists, local, location
+locations, lock, locks, log, logistics, long, longer, longest, look, looked, looks, lookup, loop
+loops, loose, loot, lose, loses, loss, losses, lost, loud, louder, loudest, loudly, loudness, low
+lower, lowercase, lowered, lowers, lowest, lucky, lydian, mach, machinery, machines, made, mahogany
+main, mainland, major, majority, make, maker, makes, making, manager, managers, mandolin, manifest
+manifesto, manipulate, manual, many, map, mapped, mapping, maps, march, march's, marches, margin
+marginal, margins, marimba, mark, marked, markers, market, marks, marrow, marsh, martial, mascot
+mast, mastered, mastering, match, matched, matches, matching, material, maths, matter, matters, max
+maximum, may, mayor, mayor's, mean, meaning, means, meant, measure, measured, measurement
+measurements, measures, mechanic, mechanics, mechanism, media, median, medium, meet, meeting, meets
+melody, member, memory, mend, mended, mention, mentions, menu, merely, merge, merged, merges
+merging, merit, merry, messages, messy, met, meta, metadata, metal, meter, meters, metrics, mid
+midnight, might, migration, mild, milestone, milestones, mill, min, mind, minder, minders, mindless
+minds, mine, miner, minimum, mining, minister, minister's, ministers, ministries, ministry, minor
+minors, minus, minute, minutes, misleading, miss, missed, misses, missing, mission, missions, mix
+mixed, mixes, mobile, mocks, mod, modal, mode, mode's, model, modelled, modes, modest, module
+module's, modules, moment, moments, monday, money, mono, monospaced, months, monument, monuments
+mood, moods, moon, moral, more, morning, most, mostly, motion, motorway, motto, mount, mounts
+movable, move, moved, movements, moves, moving, mow, much, mud, muddy, mult, multiple, multiples
+multiplicatively, multiplied, multiplier, multipliers, multiplies, multiply, multiset, music, must
+mute, muted, nag, nail, nails, name, named, names, naming, napkin, narrative, narrow, nation
+national, native, natural, nature, navy, near, nearest, nearly, neat, nebula, need, needed, needle
+needs, negative, neighbour, neighbouring, neither, net, neutral, never, new, newer, news, newspaper
+newspaper's, newspapers, next, nib, nib's, night, nine, nobody, node, node's, nodes, noise, none
+noodle, noon, nor, normal, normalised, noses, not, note, notes, nothing, notice, noticing
+notification, notifications, notorious, noun, november, now, null, number, numbered, numbers
+numerals, numpy, obeys, object, objects, obvious, octave, octaves, october, odd, odds, off, offer
+offered, offers, office, office's, offices, official, officials, offline, offsets, often, old
+older, once, one, ones, onion, online, only, onset, onsets, onto, oom, opaque, open, opened
+opening, openings, openly, opens, opinion, opponents, option, optional, orange, order, orders
+ordinary, ore, ore's, ores, origin, original, other, other's, others, otherwise, otter, our, ours
+out, outcome, outcomes, outfit, outline, outlined, outlines, outlives, output, outputs, outside
+outward, oval, oven, over, overall, overlap, overlapped, overlaps, overlay, overlays, overridden
+override, overrides, overstated, owl, own, owned, owner, owner's, owns, pace, pacing, pack, pack's
+package, package's, packages, packs, pad, pad's, padding, padlock, pads, page, pages, paid, paint
+painted, pair, paired, pairs, pale, palette, palettes, panel, panelled, panels, pans, paper
+paper's, paperclip, papers, parade, paragraph, paragraphs, parallel, parameter, parameters, params
+parity, park, parking, parks, parliament, parsed, parses, parsnip, part, partial, partials
+particles, particular, parties, partisan, partner, parts, party, pass, passed, passes, passing
+passive, passports, past, pat, patch, path, path's, paths, pattern, patterns, pauses, pay, payback
+paying, payment, payments, payout, payouts, pays, paywall, pea, peak, peaks, pear, peas, pen
+pending, pentatonic, people, per, percentile, percussion, perfect, performance, permanent
+permission, person, person's, petals, petitioner, petitioner's, phase, phases, phone, photo
+photograph, photographed, photographs, phrase, phrases, pick, picked, picker, picket, pickets
+picking, picks, picture, pictures, piece, pieces, pigeon, pigeons, pile, piles, pill, pin, pinch
+ping, pings, pink, pinned, pins, pip, pips, pitch, pitched, pitches, pity, pixel, pizza, pizzicato
+place, placed, placeholder, placeholders, placement, places, plain, plainly, plan, planned
+planning, plant, plaque, plate, plates, platform, platform's, platinum, play, playback, played
+player, player's, players, playing, plays, pleasant, please, pleased, pleases, plot, pluck, plucked
+plucks, plum, plums, plural, plus, pneumatic, pod, pods, point, pointer, points, police, policies
+policy, polish, polished, polite, politely, political, politicians, politics, poll, pond, ponds
+pool, pop, pops, popular, popup, port, portable, portrait, portraits, pose, position, positions
+positive, possible, post, potato, pothole, pouch, pour, power, powers, practice, precedence
+precise, prefix, preload, preloading, premise, premium, pres, present, presets, president
+president's, presidential, presidents, press, pressed, pressure, prestige, preview, preview's
+previews, previous, price, priced, prices, primary, primitives, principles, print, printed, printer
+prints, priority, prisons, privacy, prize, probability, problem, problems, procedural, procedure
+process, processes, processing, produce, product, production, products, profanity, profile
+progress, progression, prohibits, project, project's, prominently, promise, promises, promo
+promotes, promotional, prompt, proper, property, proportion, proposal, propose, proposed, proposes
+props, prose, protected, protection, prototype, prototype's, proud, proven, proves, provide
+provider, provides, provinces, provisional, prune, public, publisher, publishes, puddle, puff, pull
+pulling, pulse, pulses, pumpkin, pumpkins, pun, puns, purchase, purchases, pure, purple, purpose
+purposes, purse, push, pushed, pushes, put, puts, putting, puzzle, quarter, queen, question
+questionnaire, questions, queue, quick, quiet, quieter, quietly, quota, quote, quoted, quotes
+raccoon, race, rack, radii, radio, radish, radius, rail, rain, rainy, raise, raised, raises
+raising, rake, rallies, rally, ramp, ran, random, randomness, rang, range, ranges, rank, ranked
+ranks, rapid, rare, rarely, rarest, rarities, rarity, ratchet, rate, rated, rates, rather, rating
+ratings, ratio, ration, rations, rattle, rattles, rattling, raw, rays, reach, reachable, reached
+reaches, reacting, reactions, read, readable, reader, reader's, readers, reading, readings, readout
+readouts, reads, ready, real, realist, really, reason, reasoned, reasoning, rebuilding, rebuilt
+recall, receipt, receiving, recent, recently, recharge, recipe, recipes, recommends, recomputed
+reconcile, record, recorded, recording, recordings, records, recount, rectangle, red, redraw
+redrawn, redraws, reed, reference, reference's, references, referendum, refill, refilled, refills
+refreshes, refund, refusal, refuse, refused, refuses, refusing, regenerated, regime, region
+register, registered, registers, registration, registry, regression, reign, rejected, rejection
+rejects, related, relative, relay, relayed, release, released, releases, religion, religious
+reload, reloading, relying, remainder, remainders, remaining, remains, remarks, removal, removed
+removes, removing, rename, renamed, render, rendered, renders, rent, repackaged, repaint, repairs
+repeat, repeated, repeats, repetitive, replace, replaced, replaces, replacing, replant, replayed
+replays, reply, repo, report, report's, reported, reports, repository, reproduces, request
+requested, requests, require, required, requirement, requirements, requires, requiring, requisition
+requisitions, rescue, research, research's, reserve, reserved, reset, resets, resignation, resigns
+reskins, resolve, resolved, resolves, resonances, resonant, resources, respawn, respawning
+respected, responder, rest, restart, restarts, restaurant, restaurant's, restaurants, restore
+restores, restricted, restriction, rests, restyled, result, resulting, results, resume, retention
+reticle, return, returned, returning, returns, reused, reuses, reveal, revenue, reverb, reverse
+review, review's, reviewed, reviewer, reviewer's, reviewers, reviews, revised, revision, reward
+rewarded, rewards, reworded, rewrites, rewritten, rewrote, rhythm, ribbon, ribbons, rich, ride, rig
+rig's, rigged, right, rights, rigid, rigs, rim, ring, ring's, ringing, rings, ripe, rise, rises
+rising, risk, risks, rival, rival's, rivals, river, road, robots, rock, rock's, rocket, rocks, rod
+rods, role, roles, roll, roller, rolling, rolls, roof, room, root, roots, rope, rosette, rotates
+rough, roughly, round, rounded, rounding, route, route's, routed, router, router's, routes, routine
+routing, row, row's, rows, royal, rub, rubbed, rubbing, rubs, rule, ruled, ruler, rules, ruling
+ruling's, run, run's, rung, rungs, runner, running, runs, runtime, rush, rustle, sad, safe, safest
+safety, sagging, said, sale, sales, salvage, same, sample, sandcastle, satire, satirical, satirists
+saturate, saturated, saturday, save, saved, saves, saving, saw, say, says, scale, scaled, scales
+scalloped, scan, scandal, scandals, scanner, scans, scarf, scene, scene's, scenes, schedule, schema
+schema's, schemas, schematic, school, schools, scissors, scone, scoop, score, scores, scrapbook
+scratch, screen, screens, screenshot, screenshots, script, scripted, scripts, scroll, scrub, seals
+seam, seams, search, searched, searches, season, season's, seasonal, seasoned, seasons, seat, seats
+second, secondary, seconds, secretary, section, sections, see, seed, seed's, seeded, seeds, seek
+seen, sees, segment, segments, select, selected, selection, selector, selects, self, sell, selling
+sells, semitones, send, sends, sense, sensitive, sensitivity, sent, sentence, sentences, separate
+separately, september, sequence, sequences, series, servants, serve, served, server, serves
+service, service's, services, servo, session, sessions, set, sets, setting, settings, settle
+settlement, settlements, settles, settling, setup, seven, several, shafts, shaker, shakes, shape
+shaped, shapes, share, shared, shares, sharing, sharpness, shed, sheet, sheet's, sheets, shelf
+shell, shell's, shelter, shelves, shift, shifted, shimmer, ship, shipped, shipping, ships, shock
+shocking, shop, shops, short, shortens, shorter, shortfall, shot, should, shovel, show, showed
+showing, showings, shown, shows, shred, shredder, shrink, shudder, shut, shutter, shutters, side
+sides, sign, signal, signature, signatures, signed, significant, signing, signs, silence, silences
+silent, silently, silhouette, silhouettes, silly, silver, sim, similar, similarity, simply, sims
+simulated, simulation, simulator, simulators, since, sine, single, sir, sit, site, sites, sits
+sitting, six, sixteenth, sixth, size, sized, sizes, sizing, sizzle, skeleton, skeleton's, sketch
+skewer, skewers, skill, skin, skip, skipped, skipping, skips, sky, slap, slapped, slapstick, slate
+slid, slide, slider, slides, sliding, slightly, slip, slip's, slips, slogan, slogans, slop, slope
+slot, slot's, slots, slow, slower, slowest, slowing, slowly, small, smaller, smallest, smart, snack
+snack's, snacks, snap, snaps, snare, snow, social, society, socket, sockets, soft, softer, sold
+soldiers, solver, some, someone, something, sometimes, soon, sooner, sort, sound, sound's, sounds
+source, sources, space, spaces, spade, spam, span, spare, spark, sparkle, sparse, speak, speaker
+speaks, spec, spec's, specific, specification, specification's, specified, spectra, spectral
+spectrogram, spectrum, speech, speeches, speed, speeds, spend, spending, spends, spent, spike, spin
+spins, spiral, split, splits, spoke, spoken, spokes, spokesperson, spokesperson's, sponge, sponsor
+spotters, spread, spring, sprite, sprites, sprout, sprouts, sqrt, square, squared, squash, squashes
+squeak, squelch, stable, stack, stackable, stacked, stacking, stacks, staff, staffing, stage
+stage's, stages, stale, stall, stall's, stalled, stalls, stamp, stamped, stamps, stand, standing
+stands, stapler, star, starfield, stars, start, started, starter, starting, starts, startup, stat
+state, stated, statement, states, static, station, station's, stations, statistic, stats, statue
+statues, stay, stayed, stays, stdout, steady, steam, steamer, steeply, stem, stems, step, step's
+stepping, steps, stereo, steward, sticky, still, sting, stings, stock, stood, stop, stopped, stops
+storage, store, store's, stored, storefront, stores, storey, storeys, storms, story, straight
+strain, streak, streaks, stream, streams, street, stretch, stretches, strict, strictly, strife
+strike, strikes, string, strings, strip, strip's, stripes, strips, stroke, strokes, strong
+stronger, strongest, struck, structure, stubs, studio, studio's, study, style, subject, subjects
+submission, submit, submitted, submitting, subtitle, success, such, suggested, suggestive, suggests
+sum, summary, summer, sun, sunday, sunny, superseded, supply, sure, surface, surname, survey
+survive, suspended, suspension, swamp, swan, swans, swap, swaps, swearing, sweep, sweeps, sweets
+swell, swelling, swept, swings, swipe, swiped, swipes, switch, switched, switcher, switches
+switching, swoosh, swung, symbol, symbols, sync, synced, synchronous, synth, synthesised, system
+systems, tab, table, tables, tabloid, tabs, tackle, tag, tag's, tagged, tags, tail, tails, take
+taken, takes, taking, talk, talkers, talks, tall, taller, tally, tambourine, tank, tap, tape
+tapping, taps, target, targeted, targets, tasks, taught, tax, taxes, tea, teaches, teaching, teal
+team, teapot, teardown, tech, tek, telephones, teletype, tell, tells, template, templates, tempo
+temporary, ten, tense, term, term's, terminal, terminated, termination, terminations, terms
+territories, test, tested, tests, text, texts, texture, than, thank, that, the, their, them, theme
+themes, themselves, then, there, therefore, these, they, thick, thin, thing, things, thinned
+thinning, third, thirds, this, those, though, thread, three, threshold, thresholds, threw, throne
+through, throughput, throw, throwing, throws, thruster, thrusters, thud, thumb, thump, thumps
+thunk, thup, thursday, tick, tick's, ticker, ticket, ticket's, tickets, ticks, tidy, tie, tied
+tier, tier's, tiers, ties, tightened, till, tilt, tilting, timbre, timbres, time, timed, timeline
+timer, timers, times, timetable, timing, timings, tine, tines, tinted, tiny, tip, tips, tired
+tiring, titanium, title, titles, today, today's, together, toggle, tok, token, tokens, told, toll
+tolls, tomorrow's, tonal, tone, tones, tonight, too, took, tool, tooling, top, topics, tossing
+total, touch, touched, touches, touching, toward, towards, tower, towers, town, towns, trace
+traces, track, trade, trademarks, traffic, trail, trait, transients, transition, transmission
+transmissions, transport, transposition, transpositions, trap, traps, trattoria, tray, trays
+treasury, treat, treated, tree, triad, trick, tried, tries, trigger, triggers, trigram, trigrams
+trim, trimmed, trims, trio, trip, triples, tripod, trips, trombone, trowel, true, trumpet
+truncated, try, trying, tuba, tuba's, tubas, tube, tube's, tuesday, tune, tuned, tuner, tunes
+tuning, turn, turned, turnip, turns, tutorial, tutorial's, tutti, twelve, twenty, twice, twin
+twine, twist, twists, two, tycoon, type, typed, types, typewriter, typing, umbrella, unaffordable
+unbounded, uncapped, unchanged, unclassified, unclear, uncommitted, undelivered, under, undercut
+underneath, undo, undocumented, unfilled, unfolding, unhappy, uniform, union, unique, unit, units
+unknown, unlatched, unless, unlike, unload, unlock, unlocked, unopened, unplayed, unpopularity
+unreadable, unrelated, unseen, unset, untaught, untie, until, untouched, unused, unveil, unverified
+unwanted, update, updated, updates, upgrade, upgrades, upheld, upper, upside, upward, usage, use
+used, useful, user, users, uses, using, usual, usually, vain, validate, validated, validation
+validator, value, valued, values, vanish, vanity, variant, variants, variations, vault, vector, veg
+vegetable, vegetables, venue, venues, verb, verdict, verdicts, verified, version, version's
+versions, vertical, very, veteran, via, vibrate, vibrates, vibration, video, view, views
+violations, violence, violet, visible, visibly, visitor, visitor's, visitors, visual, vitest
+vocabulary, voice, voices, volume, volumes, vote, voter, votes, voting, wages, wait, waited, waiter
+waiters, waiting, waits, wakes, walk, walks, wall, walnut, want, wanted, wants, war, ward, wards
+warehouse, warfare, warm, warning, warnings, warns, warp, warps, was, wash, watch, watched, watches
+watching, water, waveform, waves, way, ways, weak, weapons, wear, weather, web, wednesday, week
+weekend, weekly, weeks, weighs, weight, weighted, weights, well, went, were, what, whatever
+wheelbarrow, when, whenever, where, wherever, whether, which, while, white, who, whoever, whole
+whoomp, whoomph, whoosh, whooshes, whose, why, wide, widely, widen, width, wiki, will, win, wind
+window, windows, windy, winner, winning, wins, winter, wipe, wire, wired, wiring, wishes, with
+within, without, won, wood, wooden, word, wording, wordless, words, work, worked, worker, workers
+working, worklet, worklets, works, world, worlds, worn, worried, worse, worst, worth, would, wrap
+wrapped, wrapping, wraps, write, writer, writers, writes, writing, written, wrong, wrote, year
+years, yellow, yes, yet, you, young, your, yourself, zero, zod, zone, zones, zoom
+# Added by content-assemble (24 November) at the writers' and batch editors' requests (requests.md): everyday words
+# the near-match failed in headlines and clippings. Number words in full, so a statistic can be spelt out.
+tide, tides, bird, birds, cosy, birdbath
+one, two, three, four, five, six, seven, eight, nine, ten, eleven, twelve, thirteen, fourteen, fifteen, sixteen
+seventeen, eighteen, nineteen, twenty, thirty, forty, fifty, sixty, seventy, eighty, ninety, hundred, thousand
+dozen, first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, half, once, twice
+call
+calls
+called
+calling

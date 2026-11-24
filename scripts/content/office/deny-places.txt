@@ -1,0 +1,140 @@
+# deny-places.txt: TIER 3 of the satire lint (office-design.md 7.8): real places. Countries,
+# demonyms, capitals, large regions, the states, provinces and nations of the seven countries of
+# 7.8, and the best-known cities and seats of government. Compiled offline. Always fails.
+# Matching: the syntax of deny-phrases.txt (whole words, any case; several entries a line, split at
+# commas). A name that is an everyday word in lower case starts with "=" and is matched only
+# capitalised and not as a sentence's first word ("=Turkey", "=China", "=Chad"); in an all-caps
+# run those are missed (a reader catches them).
+
+# --- countries ---
+Afghanistan, Albania, Algeria, Andorra, Angola, Antigua, Barbuda, Argentina, Armenia, Australia
+Austria, Azerbaijan, Bahamas, Bahrain, Bangladesh, Barbados, Belarus, Belgium, Belize, Benin
+Bhutan, Bolivia, Bosnia, Herzegovina, Botswana, Brazil, Brunei, Bulgaria, Burkina Faso, Burundi
+Cambodia, Cameroon, Canada, Cape Verde, Cabo Verde, Central African Republic, =Chad, =Chile, =China
+Colombia, Comoros, Congo, Costa Rica, Croatia, Cuba, Cyprus, Czechia, Czech Republic, Denmark
+Djibouti, Dominica, Dominican Republic, Ecuador, Egypt, El Salvador, Equatorial Guinea, Eritrea
+Estonia, Eswatini, Swaziland, Ethiopia, Fiji, Finland, France, Gabon, Gambia, =Georgia, Germany
+Ghana, Greece, Grenada, Guatemala, =Guinea, Guinea-Bissau, Guyana, Haiti, Honduras, Hungary
+Iceland, India, Indonesia, Iran, Iraq, Ireland, Israel, Italy, Ivory Coast, Jamaica, Japan
+=Jordan, Kazakhstan, Kenya, Kiribati, Korea, North Korea, South Korea, Kosovo, Kuwait, Kyrgyzstan
+Laos, Latvia, Lebanon, Lesotho, Liberia, Libya, Liechtenstein, Lithuania, Luxembourg, Madagascar
+Malawi, Malaysia, Maldives, Mali, Malta, Marshall Islands, Mauritania, Mauritius, Mexico
+Micronesia, Moldova, Monaco, Mongolia, Montenegro, Morocco, Mozambique, Myanmar, Burma, Namibia
+Nauru, Nepal, Netherlands, Holland, New Zealand, Nicaragua, Niger, Nigeria, North Macedonia
+Macedonia, Norway, Oman, Pakistan, Palau, Palestine, =Panama, Papua New Guinea, Paraguay, Peru
+Philippines, Poland, Portugal, Qatar, Romania, Russia, Rwanda, Saint Kitts, Saint Lucia
+Saint Vincent, Samoa, San Marino, Sao Tome, Saudi Arabia, Senegal, Serbia, Seychelles
+Sierra Leone, Singapore, Slovakia, Slovenia, Solomon Islands, Somalia, South Africa, South Sudan
+Spain, Sri Lanka, Sudan, Suriname, Sweden, Switzerland, Syria, Taiwan, Tajikistan, Tanzania
+Thailand, Timor, Togo, Tonga, Trinidad, Tobago, Tunisia, =Turkey, Turkmenistan, Tuvalu, Uganda
+Ukraine, United Arab Emirates, Emirates, United Kingdom, Great Britain, Britain, United States
+America, USA, US of A, Uruguay, Uzbekistan, Vanuatu, Vatican, Venezuela, Vietnam, Yemen, Zambia
+Zimbabwe, Greenland, Puerto Rico, Hong Kong, Macau, Tibet, Gibraltar, Bermuda, Falklands
+Falkland Islands, Scotland, England, Wales, Northern Ireland, Ulster, Soviet Union, USSR
+Yugoslavia, Czechoslovakia, Rhodesia, Prussia, Persia, Siam, Zaire, Ceylon, Abyssinia
+
+# --- demonyms and adjectives ---
+Afghan, Afghans, Albanian, Algerian, American, Americans, Argentine, Argentinian, Armenian
+Australian, Australians, Aussie, Aussies, Austrian, Bangladeshi, Belgian, Bolivian, Bosnian
+Brazilian, British, Brit, Brits, Briton, Britons, Bulgarian, Burmese, Cambodian, Cameroonian
+Canadian, Canadians, Chilean, Chinese, Colombian, Congolese, Croatian, Cuban, Cypriot, Czech
+=Danish, =Dutch, Ecuadorian, Egyptian, Egyptians, =English, Englishman, Englishmen, Eritrean
+Estonian, Ethiopian, Fijian, Filipino, Finnish, =French, Frenchman, Frenchmen, German, Germans
+Ghanaian, Greek, Greeks, Guatemalan, Haitian, Honduran, Hungarian, Icelandic, Indian, Indians
+Indonesian, Iranian, Iraqi, Irish, Irishman, Israeli, Israelis, Italian, Italians, Jamaican
+Japanese, Jordanian, Kazakh, Kenyan, Korean, Koreans, Kosovan, Kuwaiti, Kurdish, Kurd, Kurds
+Laotian, Latvian, Lebanese, Liberian, Libyan, Lithuanian, Malagasy, Malawian, Malaysian
+Maltese, Mexican, Mexicans, Moldovan, Mongolian, Moroccan, Mozambican, Namibian, Nepalese
+Nepali, Nicaraguan, Nigerian, Nigerians, Norwegian, Pakistani, Pakistanis, Palestinian
+Palestinians, Panamanian, Paraguayan, Peruvian, =Polish, =Pole, =Poles, Portuguese, Qatari
+Romanian, Russian, Russians, Rwandan, Saudi, Saudis, Scottish, Scot, Scots, Scotsman, Senegalese
+Serbian, Serb, Serbs, Singaporean, Slovak, Slovenian, Somali, Somalis, =Spanish, Spaniard
+Spaniards, Sri Lankan, Sudanese, Swede, Swedes, Swedish, =Swiss, Syrian, Syrians, Taiwanese
+Tajik, Tanzanian, Thai, Tibetan, Tunisian, Turkish, Turk, Turks, Ugandan, Ukrainian, Ukrainians
+Uruguayan, Uzbek, Venezuelan, Vietnamese, Welsh, Welshman, Yemeni, Zambian, Zimbabwean, =Kiwi
+=Kiwis, Yankee, Yankees, Arab, Arabs, Arabian, Asian, Asians, African, Africans, European
+Europeans, Latino, Latinos, Latina, Hispanic, Hispanics, Caribbean, Scandinavian, Nordic, Baltic
+Balkan, Slavic, Celtic, Anglo, Anglo-Saxon, Gaelic, Cockney, Geordie, Scouse, Scouser
+Brummie, Texan, Texans, Californian, Floridian, Quebecois, Afrikaner, Afrikaners, Boer, Boers
+Maori, Aboriginal, Aborigine, Aborigines, Inuit, Eskimo, Native American, Native Americans
+Gypsy, Gypsies, Romani, =Roma, Sami
+
+# --- capitals and seats of government ---
+Kabul, Tirana, Algiers, Luanda, Buenos Aires, Yerevan, Canberra, Vienna, Baku, Nassau, Dhaka
+Minsk, Brussels, Belmopan, La Paz, Sarajevo, Gaborone, Brasilia, Sofia, Phnom Penh, Yaounde
+Ottawa, Santiago, Beijing, Peking, Bogota, Kinshasa, Brazzaville, San Jose, Zagreb, Havana
+Nicosia, Prague, Copenhagen, Cairo, Asmara, Tallinn, Addis Ababa, Helsinki, Paris, Libreville
+Tbilisi, Berlin, Accra, Athens, Guatemala City, Conakry, Georgetown, Port-au-Prince, Tegucigalpa
+Budapest, Reykjavik, New Delhi, Delhi, Jakarta, Tehran, Baghdad, Dublin, Jerusalem, Tel Aviv
+Rome, Kingston, Tokyo, Amman, Astana, Nairobi, Pyongyang, Seoul, Pristina, Bishkek, Vientiane
+Riga, Beirut, Maseru, Monrovia, Tripoli, Vilnius, Antananarivo, Lilongwe, Kuala Lumpur, Bamako
+Valletta, Mexico City, Chisinau, Ulaanbaatar, Podgorica, Rabat, Maputo, Naypyidaw, Rangoon
+Yangon, Windhoek, Kathmandu, Amsterdam, The Hague, =Wellington, Managua, Niamey, Abuja, Lagos
+Skopje, Oslo, Muscat, Islamabad, Ramallah, Panama City, Asuncion, =Lima, Manila, Warsaw, Lisbon
+Doha, Bucharest, Moscow, Kigali, Riyadh, Dakar, Belgrade, Freetown, Bratislava, Ljubljana
+Mogadishu, Pretoria, Johannesburg, Cape Town, Durban, Juba, Madrid, Colombo, Khartoum, Stockholm
+Bern, Geneva, Zurich, Damascus, Taipei, Dushanbe, Dodoma, Dar es Salaam, Bangkok, Lome, Tunis
+Ankara, Istanbul, Constantinople, Ashgabat, Kampala, Kyiv, Kiev, Abu Dhabi, Dubai, London
+Washington, Montevideo, Tashkent, Caracas, Hanoi, Saigon, Sanaa, Lusaka, Harare, Edinburgh
+Cardiff, Belfast, Westminster, Whitehall, Downing Street, Capitol Hill, Kremlin, =Pentagon
+Elysee, Strasbourg, Luxembourg City, Davos, Mecca, Medina, Bethlehem, Lhasa
+
+# --- large regions ---
+Europe, Asia, Africa, Antarctica, Antarctic, =Arctic, Oceania, Eurasia, Scandinavia, Balkans
+Baltics, Caucasus, Caribbean, Latin America, South America, North America, Central America
+Middle East, Near East, Far East, Southeast Asia, Siberia, Sahara, Himalaya, Himalayas, Amazon
+Amazonia, Mediterranean, Pacific, Atlantic, Patagonia, Andes, Alps, Gulf States, Persian Gulf
+Levant, Maghreb, Sahel, Iberia, Anatolia, Mesopotamia, Arabia, Kashmir, Punjab, Bengal
+Catalonia, Basque Country, Flanders, Wallonia, Corsica, Sicily, Sardinia, Crimea, Donbas
+Gaza, West Bank, Golan, Kurdistan, Chechnya, Tibet, Xinjiang, Manchuria, Bavaria, Tuscany
+Lapland, Transylvania, Bohemia, Silesia, Galicia, Andalusia, Provence, Normandy, Brittany
+Riviera, Benelux, Commonwealth, the Global South, Eastern Bloc, Iron Curtain
+Wild West, Deep South, Midwest, Rust Belt, Bible Belt, Sun Belt, New England, Outback
+Highlands, Lowlands, Midlands, Home Counties, Yorkshire, Lancashire, Cornwall, Devon, Kent
+Essex, Sussex, Wessex, Cumbria, Northumberland, Merseyside, Tyneside, East Anglia, Cotswolds
+Munster, Leinster, Connacht, Connaught, Galway, =Cork, Kerry, Donegal, Antrim, Derry
+Londonderry, Fermanagh, Tyrone
+
+# --- United States: states, districts, cities ---
+Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, Florida
+Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland
+Massachusetts, Michigan, Minnesota, Mississippi, Missouri, Montana, Nebraska, Nevada
+New Hampshire, New Jersey, New Mexico, New York, North Carolina, North Dakota, Ohio, Oklahoma
+Oregon, Pennsylvania, Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah
+Vermont, Virginia, West Virginia, Wisconsin, Wyoming, Washington DC, District of Columbia
+Manhattan, Brooklyn, Bronx, Chicago, Los Angeles, Hollywood, San Francisco, Silicon Valley
+Boston, Philadelphia, Detroit, Miami, Atlanta, Seattle, Las Vegas, New Orleans, Baltimore
+Cleveland, Pittsburgh, Nashville, Memphis, Wall Street, Broadway, Alamo, Mount Rushmore
+
+# --- Canada, Australia, New Zealand, South Africa: provinces, states, cities ---
+Ontario, Quebec, British Columbia, Alberta, Manitoba, Saskatchewan, Nova Scotia, New Brunswick
+Newfoundland, Labrador, Prince Edward Island, Yukon, Nunavut, Northwest Territories, Toronto
+Montreal, Vancouver, Calgary, Edmonton, Winnipeg, Halifax, New South Wales, Queensland
+Tasmania, South Australia, Western Australia, Northern Territory, Australian Capital Territory
+=Victoria, =Sydney, Melbourne, Brisbane, Perth, Adelaide, Darwin, Hobart, Auckland
+Christchurch, Dunedin, Waikato, Otago, Canterbury, Gauteng, KwaZulu-Natal, Natal, Transvaal
+Soweto, Orange Free State, Free State, Western Cape, Eastern Cape, Limpopo, Mpumalanga
+
+# --- United Kingdom: cities and the best-known towns ---
+Manchester, Liverpool, Birmingham, Leeds, Sheffield, Bristol, Newcastle, Glasgow, Aberdeen
+Dundee, Swansea, Oxford, Cambridge, Brighton, Blackpool, Coventry, Leicester, Nottingham
+Southampton, Portsmouth, Plymouth, Norwich, =Hull, Bradford, Sunderland, =Stoke, Wolverhampton
+Croydon, Islington, Hackney, Brixton, Chelsea, Kensington, Mayfair, Soho, Wimbledon, Eton
+Windsor, Balmoral, Sandringham, Buckingham, Chequers, Holyrood, Stormont, Hampstead
+Tottenham, Hartlepool, Grimsby, Doncaster, Barnsley, Wigan, Bolton, Uxbridge, Henley
+=Bath, =Reading, =Nice, =Jersey, =Guernsey, Isle of Man, Isle of Wight, Anglesey, Orkney, Shetland
+Hebrides, Lake District, Peak District, Snowdonia, Ben Nevis, Loch Ness, Stonehenge, Thames
+Big Ben, Tower Bridge, Trafalgar, Piccadilly, Oxford Street, Fleet Street, Canary Wharf
+
+# --- international bodies, seats of power, universities, city demonyms ---
+nato, n.a.t.o, ==UN, united nations, the u.n, imf, world bank, world trade organisation, wto, unesco, unicef
+eurozone, schengen, brexitland, pentagon, camp david, mar-a-lago, mar a lago, downing, chequers, holyrood
+stormont, harvard, yale, oxbridge, eton, timbuktu, harlem, down under, the outback, kitwell, nibley, north nibley
+parisian, parisians, londoner, londoners, new yorker, new yorkers, glaswegian, glaswegians, mancunian, mancunians
+liverpudlian, liverpudlians, scouser, scousers, geordie, geordies, brummie, brummies, cockney, cockneys
+dubliner, dubliners, sydneysider, sydneysiders, bostonian, bostonians, californian, californians, floridian, floridians
+# --- national nicknames and slurs ---
+# (everyday words only capitalised: "=Paddy" passes "a rice paddy")
+=Paddy, =Paddies, =Jock, =Jocks, =Taff, =Taffy, pom, poms, pommie, pommies, pommy, limey, limeys, canuck
+canucks, gringo, gringos, yank, yanks, yankee, yankees, =Kiwi, =Kiwis, =Frog, =Frogs, =Jerry, =Mick, =Micks
+eu, e.u, european union, glastonbury, ascot, wimbledon, henley regatta

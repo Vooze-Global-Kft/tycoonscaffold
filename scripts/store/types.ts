@@ -31,7 +31,14 @@ export type Step =
    * waits `settle` ms (default 8000): for a state reached across page loads, e.g. a season closed
    * by the preview's switches, saved, then a second one closed on the next load.
    */
-  | { goto: string; settle?: number };
+  | { goto: string; settle?: number }
+  /**
+   * Runs `run`, the body of a function, in the page (a game's own preview test hook, e.g. Proudly
+   * Adequate's `__decreeDev`, which plays the game's RULES to a named state: a paper by its id landed
+   * on the desk, a run-up refused to the count). It returns a short report for the log; a report
+   * starting "ERR" (or a throw) fails the scene. Then waits `settle` ms (default 1500).
+   */
+  | { run: string; settle?: number };
 
 export type SizeId = 'ios-6.9' | 'ios-6.5' | 'play-phone';
 

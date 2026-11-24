@@ -1,10 +1,10 @@
 {
  "game": "night-market",
- "date": "2026-11-23T17:13:26.417Z",
+ "date": "2026-11-24T17:00:05.702Z",
  "platform": "ios",
  "stage": "export",
  "result": "pass",
- "sourceHash": "59db62ccb4e39df98d6691ba5a1f086b3272a51f6cfd4a352211d2dbe99daa83",
+ "sourceHash": "c194c79f8ecaf47acdafd8bf34fda0e58e6c30ff9771551be388e4bf0d88050d",
  "sources": [
   "app.config.ts",
   "games/night-market/assets/sfx/basket_sell.wav",
@@ -93,6 +93,7 @@
   "src/services/firebase.ts",
   "src/services/fx/audio.ts",
   "src/services/fx/catalog.haul.ts",
+  "src/services/fx/catalog.merge.ts",
   "src/services/fx/catalog.ts",
   "src/services/fx/clock.ts",
   "src/services/fx/core.ts",
@@ -203,5 +204,5 @@
  "violations": [],
  "modules": 1796,
  "assets": 35,
- "bytes": 4787324
+ "bytes": 4787974
 }

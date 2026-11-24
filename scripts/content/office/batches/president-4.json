@@ -1,0 +1,470 @@
+{
+  "batch": "president-4",
+  "writer": "writer-3",
+  "office": "president",
+  "papers": [
+    {
+      "id": "pres-spotting-bench",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "hedges",
+      "archetype": "project",
+      "text": "A motorway bench, where the hedge is, to watch coaches go by. They mostly do.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "undercut",
+      "setsUp": "pres-motorway-bench"
+    },
+    {
+      "id": "pres-clock-back",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "swap",
+      "text": "An extra hour on show day, from the National Clock. Spotters can spare one.",
+      "subject": "clocks",
+      "butt": "office",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-lamps-face-windows",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "project",
+      "text": "Lampshades for the street lamps. Then tassels. The bus stop's gets both.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-second-telephone",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "kites",
+      "archetype": "swap",
+      "text": "Give us the League's telephone. We only ring for early coaches. Twice a year.",
+      "subject": "buses",
+      "butt": "office",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-foghorn-flat",
+      "visitor": "bellows",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "project",
+      "text": "Tune one foghorn to the band. Then all of them. Then book a fog.",
+      "subject": "harbours",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-marrow-licence",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "brass",
+      "archetype": "swap",
+      "text": "We booked the bandstand on the band's form. Instrument: pumpkin.",
+      "subject": "vegetable-shows",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-bandstand-wheels",
+      "visitor": "slide",
+      "club": "brass",
+      "other": "kites",
+      "archetype": "project",
+      "text": "A bandstand on wheels, to go to the audience. It is at the kites.",
+      "subject": "inventions",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-tea-lamp-sponsor",
+      "visitor": "till",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "fee",
+      "text": "Till's Teas will sponsor the motorway lamps, in tea colour. Milky.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "undercut",
+      "setsUp": "pres-tea-lamps"
+    },
+    {
+      "id": "pres-ten-thousandth-coach",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "hedges",
+      "archetype": "treat",
+      "text": "Pose by our ten-thousandth coach. Lean on the hedge, as we do.",
+      "subject": "buses",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-pumpkin-sign",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "project",
+      "text": "An arcade sign: PRIZE PUMPKIN, THIS WAY. It points outside.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-footbridge-sunday",
+      "visitor": "slide",
+      "club": "brass",
+      "other": "bus",
+      "archetype": "swap",
+      "text": "Lend us the spotters' footbridge. Coaches are a loyal audience: they keep coming.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-onion-bank",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "veg",
+      "archetype": "project",
+      "text": "Light the lay-by for night spotting. The marrows may not sleep.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-harbour-wall-kites",
+      "visitor": "updraught",
+      "club": "kites",
+      "other": "anglers",
+      "archetype": "swap",
+      "text": "Kites get the harbour wall. Anglers may apply to sit on the water.",
+      "subject": "harbours",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-cushion-echo",
+      "visitor": "hake",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "project",
+      "text": "Cushion the harbour wall, for the echo. Then the bandstand. Then the band.",
+      "subject": "harbours",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-show-on-kite-field",
+      "visitor": "topiary",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "swap",
+      "text": "A kite that lands in a hedge now belongs to it. Form attached.",
+      "subject": "hedges",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-band-down-telephone",
+      "visitor": "bellows",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "treat",
+      "text": "Hear the harbour band by telephone, for the camera. Nod.",
+      "subject": "bandstands",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-lake-meter",
+      "visitor": "dabble",
+      "club": "anglers",
+      "other": "veg",
+      "archetype": "project",
+      "text": "A lake lighthouse, for floats at dusk. It goes in the marrow bed.",
+      "subject": "inventions",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-lamp-post-kites",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "shops",
+      "archetype": "swap",
+      "text": "Lamp-post signs: KITES MAY REST HERE. In place of SHOPS THIS WAY.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-trim-to-match",
+      "visitor": "edging",
+      "club": "hedges",
+      "other": "shops",
+      "archetype": "project",
+      "text": "Trim the arcade hedge. Then the awnings, to match. Then the hats.",
+      "subject": "hedges",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-hat-reflection",
+      "visitor": "dabble",
+      "club": "anglers",
+      "other": "shops",
+      "archetype": "swap",
+      "text": "Dim the Guild's harbour windows at dusk. The water is 40 % hat.",
+      "subject": "harbours",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-lighthouse-concert",
+      "visitor": "bellows",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "fee",
+      "text": "The band will hire a lighthouse to play from. One bar per step, up to the top.",
+      "subject": "harbours",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-telephones-unhooked",
+      "visitor": "hake",
+      "club": "anglers",
+      "other": "shops",
+      "archetype": "treat",
+      "text": "Unhook the telephones for the Quiet Competition. Till's Teas is ringing.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "callback"
+    },
+    {
+      "id": "pres-motorway-hedge",
+      "visitor": "edging",
+      "club": "hedges",
+      "other": "brass",
+      "archetype": "fee",
+      "text": "We will pay to keep the bandstand in trim. Shears are packed.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-cymbals-carried",
+      "visitor": "slide",
+      "club": "brass",
+      "other": "shops",
+      "archetype": "treat",
+      "text": "Walk the arcade with the band, carrying cymbals. Carrying only.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-landing-circle",
+      "visitor": "updraught",
+      "club": "kites",
+      "other": "veg",
+      "archetype": "project",
+      "text": "A landing circle by the marrows. Kites miss circles by 3 metres.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-pumpkin-junction",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "fee",
+      "text": "We will pay to put the pumpkin on the motorway signs. Coaches may follow it.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-kite-named-you",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "treat",
+      "text": "Launch a kite named after you. Smile before it finds the hedge.",
+      "subject": "kites",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-quiet-minute",
+      "visitor": "hake",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "fee",
+      "text": "We will pay for dark harbour lamps at concerts. The band knows 30 % by heart.",
+      "subject": "harbours",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-late-if-unwatched",
+      "visitor": "sprott",
+      "cosigner": "minute",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "committee",
+      "text": "A study: is a coach late if nobody waits for it? The Guild is asked to wait.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "The lateness study asks the Guild to wait at every stop, in turn."
+    },
+    {
+      "id": "pres-clock-face",
+      "visitor": "fenn",
+      "club": "shops",
+      "archetype": "vanity",
+      "text": "Your face on the National Clock. At noon both hands point at you.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-marrow-control",
+      "visitor": "loam",
+      "cosigner": "minute",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "committee",
+      "text": "A study of marrows by lamplight. Half the high street goes dark, as a control.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "biggerStudy": "The marrow study now needs the lit half dark, and the dark half lit."
+    },
+    {
+      "id": "pres-desk-lamp-gift",
+      "visitor": "sash",
+      "club": "brass",
+      "archetype": "basket",
+      "text": "A desk lamp. It glows near ribbons. Any openings soon? No reason.",
+      "subject": "ribbons",
+      "butt": "lobbyist",
+      "shape": "callback",
+      "favour": {
+        "text": "About the lamp: it would like a solo at the Sunday concert.",
+        "clippings": {
+          "sign": "PRESIDENT'S LAMP GIVEN SOLO; BAND PLAYS IN THE DARK",
+          "refuse": "LAMP STAYS ON THE DESK, GLOWING AT NOTHING"
+        }
+      }
+    },
+    {
+      "id": "pres-hedge-show-switch",
+      "visitor": "topiary",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "treat",
+      "text": "Light up the hedge show for the camera. Kites stay down until you smile.",
+      "subject": "hedges",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-lighthouse-window",
+      "visitor": "till",
+      "cosigner": "minute",
+      "club": "shops",
+      "other": "anglers",
+      "archetype": "committee",
+      "text": "A study on the lighthouse window display. Shortlist: LIGHT, LIGHTHOUSE.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "slogan",
+      "biggerStudy": "The lighthouse study now wishes to dress the beam. In stripes."
+    },
+    {
+      "id": "pres-lighthouse-initials",
+      "visitor": "spinwell",
+      "club": "anglers",
+      "archetype": "vanity",
+      "text": "Flash your initials from a lighthouse. Then your name, all night.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-humming-kite",
+      "visitor": "slide",
+      "cosigner": "minute",
+      "club": "brass",
+      "other": "kites",
+      "archetype": "committee",
+      "text": "A study: is a humming kite an instrument? If so, it joins the band.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "The kite study asks to hear a whistling kite, and one that sighs."
+    },
+    {
+      "id": "pres-lamp-plaques",
+      "visitor": "wimble",
+      "club": "kites",
+      "archetype": "vanity",
+      "text": "A plaque on each lamp: LIT BY THE PRESIDENT. I have done four.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-willow-hedge",
+      "visitor": "edging",
+      "cosigner": "minute",
+      "club": "hedges",
+      "other": "anglers",
+      "archetype": "committee",
+      "text": "Does the anglers' willow need permission to droop? A study.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "biggerStudy": "The willow study asks to inspect every willow for drooping."
+    },
+    {
+      "id": "pres-telephone-umbrellas",
+      "visitor": "vane",
+      "club": "veg",
+      "archetype": "basket",
+      "text": "Three small umbrellas, one per telephone. Bad lines are so damp.",
+      "subject": "vanity",
+      "butt": "lobbyist",
+      "shape": "undercut",
+      "favour": {
+        "text": "About the umbrellas: they wish to judge the marrow show. Open.",
+        "clippings": {
+          "sign": "PRESIDENT'S UMBRELLA JUDGES MARROWS; GROWERS DAMP",
+          "refuse": "UMBRELLAS STAY BY THE TELEPHONES, OPINIONS UNSHARED"
+        }
+      }
+    },
+    {
+      "id": "pres-awning-study",
+      "visitor": "updraught",
+      "cosigner": "minute",
+      "club": "kites",
+      "other": "shops",
+      "archetype": "committee",
+      "text": "Kites land on awnings. A study finds 9 in 10 prefer stripes.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "statistic",
+      "biggerStudy": "The awning study asks to try plain awnings too. And spots."
+    }
+  ]
+}

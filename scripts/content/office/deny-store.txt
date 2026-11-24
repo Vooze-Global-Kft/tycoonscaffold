@@ -1,0 +1,9 @@
+# deny-store.txt: the store-text list of the satire lint (office-design.md 7.8, 1.2): words kept
+# out of the store page and the game's strings so the game does not read as the paperwork game it
+# must not resemble. Applied to every string the lint is given as store text, and to papers too
+# (1.2: "stay out of store text and strings").
+# Matching: the syntax of deny-phrases.txt (whole words, any case).
+audit, audits, audited, auditing, auditor, auditors
+office empire
+processing
+document, documents, documented, documentation

@@ -330,6 +330,19 @@ export class AudioEngine {
       track.fade = fade;
       this.applyMusic(fade);
     },
+    /**
+     * Plays another loop from now on (a mode that chooses its loop, `fx.music.choose`): the current player is
+     * released and the new source eases in if music is on. Nothing calls it unless a mode chooses a loop.
+     */
+    use: (source: number, volume: number): void => {
+      const track = this.track;
+      if (track.source === source) return;
+      this.releaseMusic();
+      track.source = source;
+      track.target = clamp01(volume);
+      track.failures = 0;
+      this.applyMusic(true);
+    },
     setVolume: (volume: number): void => {
       const track = this.track;
       track.target = clamp01(volume);

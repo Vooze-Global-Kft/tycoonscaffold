@@ -1,0 +1,215 @@
+{
+  "batch": "mayor-runup-scripted",
+  "writer": "writer-1",
+  "office": "mayor",
+  "scripted": [
+    {
+      "id": "scripted-1",
+      "slot": 1,
+      "visitor": "spinwell",
+      "text": "Practise on this one. It is a form about forms. File it FOR FURTHER STUDY.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied",
+      "note": "teaches refusal; its sign side brings \"another copy\" back (3.1): the line is written by writer 1 in the chains-mayor batch note until format.ts has a home for a one-branch follow-up"
+    },
+    {
+      "id": "scripted-2",
+      "slot": 2,
+      "visitor": "spinwell",
+      "text": "Welcome, Mayor. Please sign this to say you have read it. You haven't. Sign it.",
+      "subject": "paperwork",
+      "butt": "self",
+      "shape": "undercut",
+      "note": "teaches signing; its study side brings \"another copy\" back (3.1), as scripted-1"
+    },
+    {
+      "id": "scripted-3",
+      "slot": 3,
+      "visitor": "till",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "fee",
+      "text": "Let Till's Teas sponsor the clock tower. It would chime TILL'S TEAS on the hour.",
+      "subject": "clocks",
+      "butt": "thing",
+      "shape": "slogan",
+      "note": "pays a fixed sum (3.1); never also in a comic deck"
+    },
+    {
+      "id": "scripted-4",
+      "slot": 4,
+      "visitor": "sash",
+      "club": "shops",
+      "archetype": "basket",
+      "text": "A small fruit basket for you. No reason. Perhaps more ribbon-cuttings? No reason.",
+      "subject": "ribbons",
+      "butt": "lobbyist",
+      "shape": "undercut",
+      "setsUp": "may-basket"
+    },
+    {
+      "id": "scripted-governor",
+      "office": "governor",
+      "slot": 1,
+      "visitor": "dimity",
+      "text": "Welcome, Governor. Your mug says GOVERNOR. Mine says HOME TIME.",
+      "subject": "paperwork",
+      "butt": "staff",
+      "shape": "slogan",
+      "note": "the governor's first paper: Pruella welcomes you, dry, with an eye on an early finish (lunch is governor-3's running joke, so it is left to them); teaches nothing new. Suggested effects for build-office.py (the rules'): as scripted-2 (sign every club +1; study No change), with no follow-up. Edited by the comedy editor (was the door/sandwich line: leaned on governor-3's Pruella's lunches and ended on 'Welcome')."
+    },
+    {
+      "id": "scripted-president",
+      "office": "president",
+      "slot": 1,
+      "visitor": "fenn",
+      "text": "Welcome, President. I have welcomed three. I liked one.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "statistic",
+      "note": "the president's first paper: Mildred has seen three presidents and liked one, and never says which; teaches nothing new. Suggested effects as scripted-governor. Edited: punch moved to the last words; tagged statistic so the six scripted papers do not end on three undercuts."
+    }
+  ],
+  "runUp": [
+    {
+      "id": "may-runup-hedge-show",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Judge the {district} Prize Hedge Show. Say nothing about the leaning one.",
+      "subject": "hedges",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "may-runup-tea-dance",
+      "office": "mayor",
+      "visitor": "wimble",
+      "text": "Open the {district} tea dance. Your dance card is in triplicate.",
+      "subject": "ceremonies",
+      "butt": "office",
+      "shape": "form-misapplied",
+      "note": "replaces may-runup-pop-in (a third fête in the file; 'pop in' against four hours was mild)"
+    },
+    {
+      "id": "may-runup-kept-bench",
+      "office": "mayor",
+      "visitor": "loam",
+      "text": "Award {district}'s best-kept bench. Do not sit on it. It is kept.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "literalism",
+      "note": "visitor Bertram Loam (slow, careful) for a face other than Rodney's"
+    },
+    {
+      "id": "may-runup-guest-sash",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Wear the {district} fête sash: GUEST OF HONOUR (SELF-NOMINATED).",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "may-runup-paving-stone",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Lay {district}'s first paving stone. The second says you did.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "undercut",
+      "note": "retagged undercut (the second stone deflates the first); visitor Rodney (vanity is his)"
+    },
+    {
+      "id": "may-runup-fruit-show",
+      "office": "mayor",
+      "visitor": "abacus",
+      "text": "Judge the {district} fruit show. Declare any baskets first.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "callback",
+      "note": "Gwendolyn speaks (the Treasury Clerk asks for interests declared); calls back to the first fruit basket, which every player meets at 0:38"
+    },
+    {
+      "id": "may-runup-jumble",
+      "office": "mayor",
+      "visitor": "abacus",
+      "text": "Open the {district} jumble sale. Your old hat is on table three.",
+      "subject": "hats",
+      "butt": "self",
+      "shape": "undercut",
+      "note": "visitor Gwendolyn (unimpressed) for variety"
+    },
+    {
+      "id": "may-runup-tour",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Tour {district}: 5 minutes for you, 15 for photographs of you.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "statistic",
+      "note": "replaces may-runup-twenty-minutes: the same idea, with the punch in the last words"
+    },
+    {
+      "id": "may-runup-gate",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Lean on the {district} gate, thoughtfully. The gate is on loan.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "photo-op",
+      "note": "replaces may-runup-soup (too close to gold G8, 'say goodness, we will cue you')"
+    },
+    {
+      "id": "may-runup-plaque",
+      "office": "mayor",
+      "visitor": "wimble",
+      "text": "Unveil a plaque in {district}, where you once unveiled a plaque.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "escalation",
+      "note": "replaces may-runup-visitors-book (its escalation tag was not honest, and the governor run-up already signs a roll of honour)"
+    }
+  ],
+  "rallies": [
+    {
+      "id": "may-rally-one-snip",
+      "office": "mayor",
+      "visitor": "abacus",
+      "text": "A rally at the fête. The budget allows one snip. Do not miss.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "undercut",
+      "note": "replaces may-rally-loan-scissors ('snips are counted' read close to counting in an election paper; Gwendolyn was only implied)"
+    },
+    {
+      "id": "may-rally-scissors",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "Hold a rally at the bandstand. Bring the ceremonial scissors. Cut something.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "may-rally-not-the-pumpkin",
+      "office": "mayor",
+      "visitor": "gourdley",
+      "text": "A rally at the vegetable show. Cut the ribbon. Not the pumpkin.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "undercut",
+      "note": "retagged undercut: a warning that deflates the ceremony, not a phrase taken at its word"
+    },
+    {
+      "id": "may-rally-higher",
+      "office": "mayor",
+      "visitor": "spinwell",
+      "text": "A rally at the flower show. Hold the scissors up for the Drizzle. Higher. Good.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "photo-op",
+      "note": "'the show' made concrete; Rodney directing the photograph"
+    }
+  ]
+}

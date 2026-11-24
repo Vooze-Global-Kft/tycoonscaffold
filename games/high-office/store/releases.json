@@ -1,0 +1,7 @@
+{
+  "_comment": "Release log and release notes (spec 7.9, fingerprint dimension 19; read by scripts/lib/fingerprint.ts and scripts/sync.ts). Add a submission line, by hand, the day a build goes to a store: {\"version\", \"store\": \"apple\" | \"google\", \"date\": ISO, \"build\", \"scan\": the scan-binary.ts output file}. The first submission must be at least 14 days after Lantern Row's latest one (spec 1.2, dimension 19).",
+  "releaseNotes": {
+    "1.0.0": "Notice to residents: the new mayor has found the desk, the pen and, after some searching, the drawer. Please queue at the door with your papers. Gifts of fruit will be studied."
+  },
+  "submissions": []
+}

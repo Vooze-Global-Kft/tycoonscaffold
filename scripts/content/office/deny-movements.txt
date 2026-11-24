@@ -1,0 +1,46 @@
+# deny-movements.txt: TIER 3 of the satire lint (office-design.md 7.8): real parties, movements,
+# ideologies, factions and party-colour labels. The invented country has no parties at all (7.1).
+# Matching: the syntax of deny-phrases.txt (whole words, any case, several entries a line split
+# at commas; "=" entries only capitalised and not first in a sentence, for words that are
+# everyday words in lower case: "=Labour", "=Liberal", "=Greens").
+
+# --- parties of the seven countries ---
+Republican, Republicans, republicanism, Democrat, Democrats, Democratic Party, GOP
+Dixiecrat, Dixiecrats, Bull Moose, Know Nothing, Federalist, Federalists, Whig, Whigs
+=Labour, Labour Party, New Labour, Old Labour, =Labor, Labor Party, Tory, Tories, Toryism
+=Conservative, =Conservatives, Conservative Party, =Liberal, =Liberals, Liberal Party
+Lib Dem, Lib Dems, Liberal Democrat, Liberal Democrats, Green Party, =Greens, =Green Party
+UKIP, Reform UK, Brexit Party, SNP, Scottish National Party, Plaid Cymru, DUP, UUP, SDLP
+Sinn Fein, Fianna Fail, Fine Gael, Alliance Party, ANC, African National Congress
+Democratic Alliance, Economic Freedom Fighters, Inkatha, National Party, =Nationals
+One Nation, NZ First, New Zealand First, ACT Party, Te Pati Maori, NDP, New Democrats
+New Democratic Party, Bloc Quebecois, Parti Quebecois, Reform Party, Social Credit
+=Coalition, Unionist Party, Ulster Unionist, Ulster Unionists
+# --- movements, factions, ideologies ---
+MAGA, Brexit, Brexiteer, Brexiteers, Brexiter, Remainer, Remainers, =Leaver, =Leavers
+=Momentum, Antifa, Proud Boys, Oath Keepers, =Tea Party, Tea Partier, =Occupy
+Occupy Wall Street, Black Lives Matter, BLM, MeToo, Me Too movement, Extinction Rebellion
+Just Stop Oil, Insulate Britain, wokeness, wokery, anti woke, alt right, alt-right
+far right, far left, hard left, hard right, left wing, right wing, left-winger, right-winger
+leftist, leftists, rightist, rightists, lefty, lefties, leftie, centrist, centrists
+socialist, socialists, socialism, communist, communists, communism, commie, commies
+marxist, marxists, marxism, leninist, leninism, trotskyist, trotskyite, maoist, maoism
+stalinist, stalinism, fascist, fascists, fascism, nazi, nazis, nazism, neo nazi, neo nazis
+capitalist, capitalists, capitalism, libertarian, libertarians, anarchist, anarchists, anarchy
+populist, populists, populism, neocon, neocons, neoliberal, neoliberals, neoliberalism
+globalist, globalists, globalism, evangelical, evangelicals, christian right, religious right
+suffragette, suffragettes, suffragist, chartist, chartists, fenian, fenians, jacobite
+jacobites, jacobin, jacobins, bolshevik, bolsheviks, menshevik, loyalist, loyalists
+thatcherite, thatcherites, thatcherism, blairite, blairites, corbynista, corbynistas
+reaganomics, bidenomics, peronist, gaullist, zionist, zionists, zionism, anti zionist
+qanon, q anon, birther, birthers, truther, truthers, boogaloo, incel, incels, gamergate
+tradwife, red pill, redpilled, sovereign citizen
+# --- party colours as labels ---
+red state, red states, blue state, blue states, purple state, red wall, blue wall, true blue
+red tory, red tories, blue dog, blue dogs, blue labour, champagne socialist
+red rosette, blue rosette, yellow rosette, orange rosette, green rosette
+red team, blue team, rainbow coalition
+
+# --- insults and camps of real political fights ---
+woke, gone woke, go woke, snowflake, snowflakes, libtard, libtards, remoaner, remoaners, remainer, remainers
+leaver, leavers, brexiteer, brexiteers, gammon, occupy the, occupy wall street, antifa, alt-right, alt right
