@@ -15,7 +15,7 @@ config · vitest.
 
 ```bash
 npm install
-GAME=pizza-empire npx expo start     # or GAME=space-miner, GAME=night-market
+GAME=pizza-empire npx expo start     # or GAME=space-miner, GAME=night-market, GAME=high-office
 GAME=pizza-empire npm run go         # Expo Go on your phone: scan the QR code
 GAME=pizza-empire npm run go:fast    # the same without development mode: use this to judge speed
 ```
@@ -26,13 +26,19 @@ development build: `npx eas-cli@latest build --profile pizza-empire-dev --platfo
 
 ## Modes
 
-Four modes exist: `sim` (Pizza Empire), `haul` (Orbit Haulers, `games/space-miner`: drag drones
+Five modes exist: `sim` (Pizza Empire), `haul` (Orbit Haulers, `games/space-miner`: drag drones
 onto asteroids to set routes, money only when the freighter warps out; its own screen, rules, art and
 sounds, specification `docs/design/space-design.md`), `merge` (Lantern Row, `games/night-market`: drag
 two identical snacks together on a 7 by 8 board to make a finer one and fill customers' paper tickets,
 while minders keep the tills while you are away; its own screen, rules, art and sounds, specification
 `docs/design/market-design.md`, numbers tuned by `scripts/content/build-night.py` with the balance bot
-`scripts/content/merge-bot.ts`) and `classic` (the original list game, kept for new games made with
+`scripts/content/merge-bot.ts`), `decree` (Proudly Adequate, `games/high-office`: a satirical
+government desk in an invented country; flick each paper up to sign it or down into the drawer marked
+FOR FURTHER STUDY, while ministries collect taxes and the clubs of voters decide the next election;
+its own screen, rules, art, sounds and about 1,800 written strings, specification
+`docs/design/office-design.md`, style sheet `docs/design/office-style.md`, numbers and deck built by
+`scripts/content/build-office.py` with the balance bot `scripts/content/decree-bot.ts`) and `classic`
+(the original list game, kept for new games made with
 `new-game`). The two list modes compare like this:
 
 | | `"mode": "classic"` | `"mode": "sim"` (pizza-empire) |
