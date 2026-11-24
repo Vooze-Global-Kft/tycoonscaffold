@@ -887,7 +887,8 @@ export function setAside(cfg: DecreeConfig, g: DecreeGame): DecreeGame {
   let desk = d.desk;
   if (desk?.type === 'slip') desk = null;
   else if (desk?.type === 'paper' && !isEventPaper(desk.paper)) {
-    aside.push(desk.paper);
+    // D46 (d): it was on the desk, so it was read: marked, a move does not deal it again.
+    aside.push({ ...desk.paper, landed: true });
     desk = null;
   }
   const events = d.tray.filter(isEventPaper);
@@ -907,7 +908,9 @@ export function restoreAside(cfg: DecreeConfig, g: DecreeGame): DecreeGame {
  * At a move (2.17): tray and `asideTray` back to the deck unseen: a comic text's or frame's `seen`
  * entry is removed (the frame goes back to the front of the bag), a follow-up goes back among the due
  * follow-ups (due now; it is drawn and sized in the new office, 2.12 "Carries"), an application's
- * minister is undelivered again; forms, events and run-up papers of the old office are dropped. Built.
+ * minister is undelivered again; forms, events and run-up papers of the old office are dropped. D46 (d):
+ * the comic text, frame or follow-up that lay on the desk at the call (`landed`) was read: it stays seen
+ * and is not dealt again (a follow-up never lands twice). Built.
  */
 export function returnToDeck(cfg: DecreeConfig, g: DecreeGame): DecreeGame {
   const d = g.decree;
@@ -919,6 +922,8 @@ export function returnToDeck(cfg: DecreeConfig, g: DecreeGame): DecreeGame {
   let delivered = d.applicationsDelivered;
   let returns = d.applicationReturns.slice();
   for (const p of papers) {
+    // D46 (d): the paper that lay on the desk at the call was read: it stays seen (a comic text, a frame), and a follow-up never lands twice (dropped).
+    if (p.landed && (p.kind === 'comic' || p.kind === 'template' || p.kind === 'followup')) continue;
     if (p.kind === 'comic') delete seen[p.source];
     else if (p.kind === 'template') {
       delete seen[p.source];

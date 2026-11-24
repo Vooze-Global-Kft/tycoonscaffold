@@ -107,7 +107,8 @@ describe('the two lists of 2.12, field by field', () => {
     const m = R.movedState(cfg, g, FIXTURE_NOW);
     expect(m.decree.tray).toEqual([]);
     expect(m.decree.asideTray).toEqual([]);
-    for (const p of [...g.decree.tray, ...g.decree.asideTray]) if (p.kind === 'comic') expect(m.decree.seen[p.source]).toBeUndefined();
+    // D46 (d): the paper that lay on the desk at the call (`landed`) was read and stays seen.
+    for (const p of [...g.decree.tray, ...g.decree.asideTray]) if (p.kind === 'comic') expect(m.decree.seen[p.source] === undefined).toBe(!p.landed);
   });
 
   it('the move lands the new office’s first paper and starts its clock; ministers run their club’s ministry there', () => {

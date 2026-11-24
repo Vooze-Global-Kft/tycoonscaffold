@@ -187,7 +187,7 @@ function ratingNotes(g: GameConfig): string {
       '  never pays the mayor money and never pleases a club; it adds gossip, and its favour costs the mayor.',
       '- Money (D13): no ad or purchase moves a mood or a poll point: those move only by papers you decide, and',
       '  none is offered from the call until election night ends.',
-      `- The sensitivity editor's read: ${decree.read} (hand-written, signed by its writer; sync never writes it)${decree.readExists ? '.' : ': **not written yet**.'}`,
+      `- The sensitivity editor's read: ${decree.read} (the engineers' reads under D9, unsigned by any person; written by hand, sync never writes it)${decree.readExists ? '.' : ': **not written yet**.'}`,
       '- D9: a read by the owner (or someone the owner names) before a submission is still required; nothing here',
       '  says a person signed what no person signed.',
     );

@@ -509,7 +509,8 @@ describe('D46 (c): the Clerk\'s forms come when they can be paid', () => {
     const r = R.drawNext(cfg, rich, 2, []);
     expect(deskPaper(r)!.kind).toBe('requisition');
     expect(r.decree.requisitionOwed).toBe(false);
-    expect(R.costOf(r.decree.desk!.type === 'paper' ? r.decree.desk.shown.sign : [])).toBeLessThanOrEqual(r.cash);
+    const desk = r.decree.desk;
+    expect(R.costOf(desk?.type === 'paper' ? desk.shown.sign : [])).toBeLessThanOrEqual(r.cash);
     // A move gives the turn up with the office.
     expect(R.MOVE_RESETS.some((x) => x.fields.includes('requisitionOwed'))).toBe(true);
   });
@@ -547,5 +548,30 @@ describe('D46 (c): the Clerk\'s forms come when they can be paid', () => {
     const ribbons = [deskPaper(later), ...later.decree.tray].filter((p) => p?.kind === 'ribbon');
     expect(ribbons.length).toBe(1);
     expect(later.decree.ribbonsDue).toEqual([]);
+  });
+});
+
+describe('D46 (d): a follow-up never lands twice', () => {
+  it('regression: the paper on the desk at the call was read: a move neither puts its follow-up back among the due ones nor deals its text or frame again', () => {
+    const g = built({ office: 0, ministries: [10, 7, 0, 0], decisions: 50, day: 30 });
+    const f: R.FollowUp = { kind: 'chain', chainId: 'the-basket', step: 1, choice: 'sign', dueAt: 0 };
+    const fp = R.followUpPaper(cfg, g, f)!;
+    expect(fp.paper.followUpOf).toBeTruthy();
+    const waitingId = mayorIds('swap')[0];
+    const w = R.comicPaper(cfg, fp.g, waitingId);
+    // A follow-up on the desk at the call, a comic paper waiting in the tray (never read).
+    const atCall = R.landPaper(cfg, { ...w.g, decree: { ...w.g.decree, tray: [w.paper], followUps: [] } }, fp.paper, 0);
+    const moved = R.returnToDeck(cfg, R.setAside(cfg, atCall));
+    expect(moved.decree.followUps.some((x) => x.chainId === 'the-basket')).toBe(false);
+    expect(moved.decree.seen[waitingId]).toBeUndefined();
+    // A comic text on the desk at the call stays seen after the move.
+    const deskId = mayorIds('swap')[1];
+    const d = R.comicPaper(cfg, g, deskId);
+    const atCall2 = R.landPaper(cfg, d.g, d.paper, 0);
+    const moved2 = R.returnToDeck(cfg, R.setAside(cfg, atCall2));
+    expect(moved2.decree.seen[deskId]).toBeDefined();
+    // The same paper still comes back after the count in the same office (restoreAside), once.
+    const back = R.restoreAside(cfg, R.setAside(cfg, atCall));
+    expect(back.decree.tray.filter((p) => p.id === fp.paper.id).length).toBe(1);
   });
 });

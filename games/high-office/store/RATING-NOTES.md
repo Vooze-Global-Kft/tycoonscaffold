@@ -38,7 +38,7 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
   never pays the mayor money and never pleases a club; it adds gossip, and its favour costs the mayor.
 - Money (D13): no ad or purchase moves a mood or a poll point: those move only by papers you decide, and
   none is offered from the call until election night ends.
-- The sensitivity editor's read: games/high-office/store/SENSITIVITY-READ.md (hand-written, signed by its writer; sync never writes it).
+- The sensitivity editor's read: games/high-office/store/SENSITIVITY-READ.md (the engineers' reads under D9, unsigned by any person; written by hand, sync never writes it).
 - D9: a read by the owner (or someone the owner names) before a submission is still required; nothing here
   says a person signed what no person signed.
 
@@ -51,8 +51,7 @@ happened; nothing here says a person read or signed the game. Brought in step wi
 24 November 2026 from the listing step's draft (scratchpad store/RATING-NOTES.md). The engineers' reads
 (four sensitivity readers over about 2,190 strings and the 171 registered names; the comedy editors) are
 recorded as theirs in SENSITIVITY-READ.md beside this file, with the notes kept for the owner's read.
-SENSITIVITY-READ.md is unsigned by any person: where the generated section above says "signed by its
-writer", that line is wrong (D9) and its fix in scripts/sync.ts is requested of the lead (store, 24 November).
+SENSITIVITY-READ.md is unsigned by any person, and the generated section above says so.
 
 The store images (screenshots/) show the desk (two papers and the Treasury Clerk's budget slip), the poll,
 election night at the end of its count and the Office wall of the game as it is; never the newspaper front page, a run-up paper, the Ledger, a ballot, a flag, a seal, a building or

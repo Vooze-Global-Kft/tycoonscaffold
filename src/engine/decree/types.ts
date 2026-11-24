@@ -167,6 +167,8 @@ export interface Paper {
   jitter: number;
   /** A follow-up paper: the record it was drawn from (a move puts it back among the due follow-ups, 2.12). */
   followUpOf?: FollowUp;
+  /** D46 (d): the paper lay on the desk when a call set it aside (draw.ts `setAside`): it was read, so a move never deals it again. */
+  landed?: boolean;
 }
 
 /**
