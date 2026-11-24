@@ -27,7 +27,7 @@
       "name": "Philippa Setter",
       "hobby": "setting crosswords",
       "slogan": "Setter: Answers In Pencil",
-      "backAgain": "Philippa Setter is back for another go. Her leaflet is a crossword. Nobody has finished it.",
+      "backAgain": "Philippa Setter is back for another go. Her leaflet is a crossword. Nobody has finished.",
       "resignation": "Philippa Setter won, then resigned to spend more time with her crosswords. Her notice was eleven across.",
       "note": "'defeated' has 8 letters: checked"
     },
@@ -77,7 +77,7 @@
       "name": "Ottoline Strop",
       "hobby": "chairs",
       "slogan": "Strop: Firmly Seated",
-      "backAgain": "Ottoline Strop is back for another go. She has brought her own chair, and a cushion for it.",
+      "backAgain": "Ottoline Strop is back for another go. She has brought her own chair and a cushion for it.",
       "resignation": "Ottoline Strop won, then resigned to spend more time with her chairs. She has not yet chosen one.",
       "note": "slogan given; role line on papers is names.json's \"Folded Napkin (Second Class)\""
     },
