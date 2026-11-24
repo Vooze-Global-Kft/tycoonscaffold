@@ -1,7 +1,7 @@
 /**
  * Settings (spec 4.4), opened by the top bar's menu: the Shop, sound, music and haptics (the shared fx
- * settings, applied at once), "Buttons instead of flicks" (the player's preference the desk reads:
- * prefs.ts once PLATFORM has it, a stand-in meanwhile), "Restore purchases" (the result said in
+ * settings, applied at once), "Buttons instead of flicks" (the player's preference the desk reads,
+ * prefs.ts), "Restore purchases" (the result said in
  * place), the privacy policy link and the privacy choices where ads run, and the app's name and
  * version. Owned by the bars package (BARS).
  */
@@ -14,7 +14,7 @@ import { useGame } from '../../../state/store';
 import { S } from '../strings';
 import { useDecreeUi } from '../uiState';
 import { Btn, Card, DecreeSheet, INK, Toggle, Txt, useType } from './parts';
-import { usePrefsStandIn } from './prefsStandIn';
+import { prefs, usePrefs } from '../prefs';
 
 type Key = 'sound' | 'music' | 'haptics';
 const KEYS: readonly Key[] = ['sound', 'music', 'haptics'];
@@ -32,7 +32,7 @@ export function SettingsSheet() {
 function SettingsBody() {
   const ty = useType();
   const settings = useFxSettings();
-  const buttons = usePrefsStandIn((s) => s.buttons);
+  const buttons = usePrefs((s) => s.buttons);
   const app = useGame((s) => s.cfg.app);
   const privacyUrl = useGame((s) => s.cfg.store.privacyPolicyUrl);
   const restore = useGame((s) => s.restorePurchases);
@@ -55,7 +55,7 @@ function SettingsBody() {
           />
         ))}
         <View style={styles.rule} />
-        <Toggle label={S.sheets.buttons} sub={S.sheets.buttonsWhat} value={buttons} onChange={(v) => usePrefsStandIn.getState().set({ buttons: v })} />
+        <Toggle label={S.sheets.buttons} sub={S.sheets.buttonsWhat} value={buttons} onChange={(v) => prefs.set({ buttons: v })} />
       </Card>
       <Btn
         kind="plain"

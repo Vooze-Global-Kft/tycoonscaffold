@@ -22,6 +22,7 @@ import { ShopSheet } from '../sheets/Shop';
 applyBarsDevParams();
 // ===== end BARS =====
 // ===== VIEWS (face picker, Election Night, the Office; result, move, monument sheets) =====
+import { ViewsHost } from '../views/ViewsHost';
 // ===== end VIEWS =====
 // ===== PLATFORM (hints and platform) =====
 import { PlatformLayer } from '../platform';
@@ -41,6 +42,7 @@ export function Overlays({ layout }: { layout: DeskLayout }) {
       <SettingsSheet />
       {/* ===== end BARS ===== */}
       {/* ===== VIEWS ===== */}
+      <ViewsHost />
       {/* ===== end VIEWS ===== */}
       {/* ===== PLATFORM ===== */}
       <PlatformLayer layout={layout} />

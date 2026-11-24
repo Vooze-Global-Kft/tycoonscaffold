@@ -37,13 +37,15 @@ export function backPicture(L: DeskLayout, P: DeskParts, a: AroundVM): SkPicture
     at(c, P.outTray.x, P.outTray.y, 1, 0, (q) => drawOutTray(q, P.outTray.w, P.outTray.h, a.signed));
     // The office's own object at the band's right, under the sticky note when one shows.
     const band = L.outTray;
-    if (!a.sticky) {
+    if (a.sticky?.where !== 'band') {
       if (office === 1) at(c, P.sticky.x + P.sticky.w - 22, band.y + band.h - 2, Math.min(1.1, (band.h - 4) / 30), 0, (q) => drawLamp(q, 30, set));
       if (office === 2) at(c, P.sticky.x + P.sticky.w / 2, band.y + band.h - 6, Math.min(0.95, (band.h - 8) / 20), 0, (q) => drawTelephones(q));
       if (office === 0 && set === 'walnut') at(c, P.sticky.x + P.sticky.w / 2, band.y + band.h - 6, Math.min(1, (band.h - 8) / 18), 0, (q) => drawDeskSet(q));
     } else {
       at(c, P.sticky.x, P.sticky.y, 1, 1.5, (q) => drawStickyNote(q, P.sticky.w, P.sticky.h));
     }
+    // On an empty desk the next goal is a big sticky note on the baize (the desk is never a dead screen).
+    if (a.sticky?.where === 'desk' && a.emptyDesk) at(c, P.deskSticky.x, P.deskSticky.y, 1, -2, (q) => drawStickyNote(q, P.deskSticky.w, P.deskSticky.h));
     // The in-tray in the bottom row's slot: its stack of waiting papers and the count.
     const t = P.inTray;
     at(c, t.x, t.y + 2, 1, 0, (q) => drawInTray(q, t.w, t.h - 4, a.waiting, { digits: true, full: a.trayFull }));

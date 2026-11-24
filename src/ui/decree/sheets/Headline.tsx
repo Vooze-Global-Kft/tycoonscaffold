@@ -2,17 +2,17 @@
  * The Gazette corner (spec 5.5): the gossip chip's tap shows the last headline under the office
  * newspaper's name, as a clipping pinned below the top bar. A tap anywhere closes it, and it closes by
  * itself after a few seconds; it registers with the overlay manager while open. The headline and the
- * newspaper's name are the game's data. State: the bars' stand-in (hud/localUi.ts) until uiState has
- * `headline`. Owned by the bars package (BARS).
+ * newspaper's name are the game's data. State: uiState `headline` (Android back closes it).
+ * Owned by the bars package (BARS).
  */
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useOverlay } from '../../kit';
 import { DecreeIcon } from '../art/DecreeIcon';
 import { DESK } from '../art/palette';
-import { useBarsUi } from '../hud/localUi';
 import type { DeskLayout } from '../layout';
 import { S } from '../strings';
+import { useDecreeUi } from '../uiState';
 import { useHeadline } from '../useDecree';
 import { INK, NO_SELECT, Txt, useType } from './parts';
 
@@ -20,11 +20,11 @@ import { INK, NO_SELECT, Txt, useType } from './parts';
 const SHOW_MS = 6000;
 
 export function HeadlineClipping({ layout }: { layout: DeskLayout }) {
-  const open = useBarsUi((s) => s.headline);
+  const open = useDecreeUi((s) => s.headline);
   useOverlay(open);
   useEffect(() => {
     if (!open) return;
-    const t = setTimeout(() => useBarsUi.getState().closeHeadline(), SHOW_MS);
+    const t = setTimeout(() => useDecreeUi.getState().closeHeadline(), SHOW_MS);
     return () => clearTimeout(t);
   }, [open]);
   if (!open) return null;
@@ -34,7 +34,7 @@ export function HeadlineClipping({ layout }: { layout: DeskLayout }) {
 function Clipping({ layout }: { layout: DeskLayout }) {
   const ty = useType();
   const h = useHeadline();
-  const close = () => useBarsUi.getState().closeHeadline();
+  const close = () => useDecreeUi.getState().closeHeadline();
   const w = Math.min(layout.width - 32, 340);
   return (
     <View style={[StyleSheet.absoluteFill, NO_SELECT]}>
@@ -43,7 +43,7 @@ function Clipping({ layout }: { layout: DeskLayout }) {
           <View style={styles.mast}>
             <DecreeIcon icon="art:fx_gossip" size={22} />
             <Txt size={ty.small} bold color={INK.soft} lines={1} style={styles.flex}>
-              {h.paper}
+              {S.hud.masthead(h.paper)}
             </Txt>
           </View>
           <Txt size={ty.body} bold color={INK.text}>

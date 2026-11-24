@@ -116,11 +116,11 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "text": "Shop doorways for us in drizzle. We will stand still, like a display.",
+      "text": "The shop awnings for us in drizzle. We will stand still, like a display.",
       "subject": "picnic-weather",
       "butt": "visitor",
       "shape": "undercut",
-      "note": "Other: the Guild loses its doorways."
+      "note": "Other: the Guild loses its awnings to spotters."
     },
     {
       "id": "any-potting-shed-hat",
@@ -164,7 +164,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "fee",
-      "text": "We will pay for you to open the allotment in our window. It may watch.",
+      "text": "We will pay for you to open the allotment from our window. The leeks can see.",
       "subject": "ribbons",
       "butt": "self",
       "shape": "photo-op",
@@ -372,10 +372,10 @@
       "butt": "lobbyist",
       "shape": "callback",
       "favour": {
-        "text": "About my gift: both hats would like the first-prize rosette.",
+        "text": "About my gift: both hats would like a place on the prize table, beside the pumpkin.",
         "clippings": {
-          "sign": "YOUR HAT TAKES FIRST PRIZE; PUMPKIN UNPLACED",
-          "refuse": "HATS REFUSED ROSETTE. THEY ARE, OFFICIALS NOTE, HATS"
+          "sign": "HATS TAKE PRIZE TABLE; PUMPKIN WEIGHED ON THE FLOOR",
+          "refuse": "HATS REFUSED A TABLE. THEY ARE, OFFICIALS NOTE, HATS"
         }
       },
       "note": "Callback: 'No reason', the first basket (Lionel Sash). The favour puts the Society out."

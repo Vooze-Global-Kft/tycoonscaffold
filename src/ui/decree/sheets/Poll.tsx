@@ -53,7 +53,7 @@ function PollMap({ poll, office }: { poll: R.Poll; office: R.OfficeIx }) {
   const ty = useType();
   const { width } = useWindowDimensions();
   const w = Math.min(width - 28, 420);
-  const h = Math.round(w * 0.72);
+  const h = Math.round(w * 0.6);
   const held = poll.rows.map((r) => r.held);
   const key = held.join(',');
   const pic = useMemo(() => picture({ x: 0, y: 0, w, h }, (c) => drawDistrictMap(c, w, h, office, { held, pins: true })), [w, h, office, key]); // eslint-disable-line react-hooks/exhaustive-deps

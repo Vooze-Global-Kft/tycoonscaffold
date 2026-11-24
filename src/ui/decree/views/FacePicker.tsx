@@ -35,7 +35,7 @@ function Picker({ onDone }: { onDone: () => void }) {
   const s = viewScale(fontScale);
   const [chosen, setChosen] = useState<string | null>(null);
   const faces = useMemo(() => (cfg ? playerFaces(cfg) : []), [cfg]);
-  const emblem = useMemo(() => picture({ x: -44, y: -44, w: 88, h: 88 }, (c) => drawEmblem(c, 40)), []);
+  const emblem = useMemo(() => picture({ x: -56, y: -56, w: 112, h: 112 }, (c) => drawEmblem(c, 40)), []);
   if (!cfg) return null;
   const W = Math.min(width, 520);
   const pad = 16;
@@ -60,8 +60,8 @@ function Picker({ onDone }: { onDone: () => void }) {
     <View style={[StyleSheet.absoluteFill, styles.root]}>
       <ScrollView contentContainerStyle={[styles.column, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 20, paddingHorizontal: pad, width: W, alignSelf: 'center' }]}>
         <View style={styles.emblem}>
-          <Canvas style={{ width: 88, height: 88 }} pointerEvents="none">
-            <Group transform={[{ translateX: 44 }, { translateY: 44 }]}>
+          <Canvas style={{ width: 112, height: 116 }} pointerEvents="none">
+            <Group transform={[{ translateX: 56 }, { translateY: 58 }]}>
               <Picture picture={emblem} />
             </Group>
           </Canvas>
@@ -111,7 +111,7 @@ function Picker({ onDone }: { onDone: () => void }) {
 
 const styles = StyleSheet.create({
   root: { backgroundColor: INK.paper, zIndex: 50 },
-  column: { alignItems: 'center', flexGrow: 1 },
+  column: { alignItems: 'center', justifyContent: 'center', flexGrow: 1 },
   emblem: { marginBottom: 8 },
   title: { color: INK.violetDeep, fontWeight: '700', textAlign: 'center' },
   what: { color: INK.soft, textAlign: 'center', marginTop: 4, marginBottom: 14 },

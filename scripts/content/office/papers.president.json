@@ -42,7 +42,7 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "swap",
-      "text": "Declare the Kitecombe maze kite-free. Kites inside may apply to leave.",
+      "text": "Declare the Kitecombe maze kite-free. The kites in it will be told, once found.",
       "subject": "hedges",
       "butt": "office",
       "shape": "form-misapplied",
@@ -224,7 +224,7 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "swap",
-      "text": "A sign on every hedge: KITES WELCOME. The hedges were not asked.",
+      "text": "A sign on every hedge: KITE CUSHION. The hedges were not asked.",
       "subject": "signage",
       "butt": "thing",
       "shape": "slogan"
@@ -399,7 +399,7 @@
       "club": "veg",
       "other": "bus",
       "archetype": "treat",
-      "text": "Pose with the prize marrow for its portrait. Slightly behind it.",
+      "text": "Pose with the prize onion for its portrait. Slightly behind it.",
       "subject": "vegetable-shows",
       "butt": "self",
       "shape": "photo-op"
@@ -457,8 +457,8 @@
       "favour": {
         "text": "About the fountain: it is lonely. It asks to live by the anglers' water.",
         "clippings": {
-          "sign": "DESK FOUNTAIN MOVES TO RIVERBANK; ANGLERS HEAR TINKLING",
-          "refuse": "FOUNTAIN STAYS ON DESK, TINKLING AT NOBODY"
+          "sign": "FOUNTAIN MOVES TO RIVERBANK; ANGLERS TOLD NOT TO WATCH IT",
+          "refuse": "FOUNTAIN STAYS ON DOORSTEP; RUNS ONLY FOR THE POSTMAN"
         }
       }
     },
@@ -500,7 +500,7 @@
       "visitor": "wimble",
       "club": "veg",
       "archetype": "vanity",
-      "text": "First prize at every show. Cuthbert has entered you as 'other'.",
+      "text": "First prize at every show. Cuthbert has entered you as an exhibit.",
       "subject": "vanity",
       "butt": "self",
       "shape": "form-misapplied"
@@ -545,7 +545,7 @@
       "other": "brass",
       "archetype": "swap",
       "text": "The band's polishing day, for Window Week. Brass and glass cannot both shine.",
-      "subject": "hats",
+      "subject": "bandstands",
       "butt": "thing",
       "shape": "undercut"
     },
@@ -621,7 +621,7 @@
       "favour": {
         "text": "Your desk fountain has entered the hedge show. It expects to win.",
         "clippings": {
-          "sign": "FOUNTAIN WINS HEDGE SHOW; HEDGES DAMP AND DISMAYED",
+          "sign": "FOUNTAIN ENTERS HEDGE SHOW; GURGLES THROUGHOUT, IS UNPLACED",
           "refuse": "FOUNTAIN SENT BACK. IT HAS NOT GURGLED SINCE"
         }
       }
@@ -816,7 +816,7 @@
       "club": "hedges",
       "other": "bus",
       "archetype": "swap",
-      "text": "Spotters lean on our hedge. Then flasks. Now a stepladder. Move the stop.",
+      "text": "Spotters lean on our hedge. Then picnics. Now a stepladder. Move the stop.",
       "subject": "hedges",
       "butt": "thing",
       "shape": "escalation"
@@ -905,7 +905,7 @@
       "club": "bus",
       "other": "kites",
       "archetype": "swap",
-      "text": "Kites outnumber buses at the stop three to one. It is a bus stop.",
+      "text": "Kites land at the bus stop three times a day. Buses, twice.",
       "subject": "buses",
       "butt": "thing",
       "shape": "statistic"
@@ -949,7 +949,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "project",
-      "text": "Dim the lighthouse so the fish can sleep. The band has torches.",
+      "text": "Dim the lighthouse so the fish can sleep. The band reads its music by it.",
       "subject": "harbours",
       "butt": "thing",
       "shape": "undercut",
@@ -1061,7 +1061,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "swap",
-      "text": "The parade, past our windows this year. The bus station has had nine.",
+      "text": "The holiday bunting, on our windows this year. The bus station has had nine years.",
       "subject": "ceremonies",
       "butt": "thing",
       "shape": "statistic"
@@ -1356,7 +1356,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A plaque for the harbour bus turn: IT TURNS HERE. See the shop door.",
+      "text": "A plaque at the harbour bus turn: BUSES TURN HERE. It goes on the shop door.",
       "subject": "buses",
       "butt": "visitor",
       "shape": "slogan"
@@ -1524,7 +1524,7 @@
       "club": "brass",
       "other": "bus",
       "archetype": "swap",
-      "text": "Lend us the spotters' footbridge. Coaches are a loyal audience: they keep coming.",
+      "text": "Lend us the spotters' footbridge. Coaches are a loyal audience: they never miss a Sunday.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "literalism"
@@ -1535,7 +1535,7 @@
       "club": "bus",
       "other": "veg",
       "archetype": "project",
-      "text": "Light the lay-by for night spotting. The marrows may not sleep.",
+      "text": "Light the pumpkin patch for night spotting. The pumpkins may not sleep.",
       "subject": "buses",
       "butt": "thing",
       "shape": "undercut"
@@ -1978,7 +1978,7 @@
       "visitor": "sash",
       "club": "brass",
       "archetype": "basket",
-      "text": "The Mill's first ribbon. Uncut. It could open something? No reason.",
+      "text": "The Ribbon Mill's first ribbon. Uncut. It could open something? No reason.",
       "subject": "ribbons",
       "butt": "lobbyist",
       "shape": "callback",
@@ -2007,7 +2007,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "fee",
-      "text": "A sign on your fountain, paid for: COACHES, AWAY FROM SHOPS.",
+      "text": "A sign on your fountain, paid for: COACHES, THIS WAY. It used to say SHOPS.",
       "subject": "fountains",
       "butt": "self",
       "shape": "slogan"
@@ -2030,7 +2030,7 @@
       "visitor": "wimble",
       "club": "brass",
       "archetype": "vanity",
-      "text": "Every Mill ribbon to say CUT BY THE PRESIDENT. Before you cut it.",
+      "text": "Print CUT BY THE PRESIDENT on every Ribbon Mill ribbon. Before you cut it.",
       "subject": "ribbons",
       "butt": "self",
       "shape": "slogan"
@@ -2040,14 +2040,14 @@
       "visitor": "goss",
       "club": "anglers",
       "archetype": "basket",
-      "text": "Cufflinks: two small fountains in your shape. A tie pin follows.",
+      "text": "Tin cufflinks: two small fountains in your shape. A tie pin follows.",
       "subject": "fountains",
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
         "text": "About the cufflinks: they would like a seat at the Quiet Competition.",
         "clippings": {
-          "sign": "PRESIDENT'S CUFFLINKS JOIN QUIET COMPETITION; TRICKLE",
+          "sign": "PRESIDENT'S CUFFLINKS JOIN QUIET COMPETITION; SPLASH, ASKED TO LEAVE",
           "refuse": "CUFFLINKS KEPT IN A DRAWER, STILL RUNNING"
         }
       }
@@ -2070,7 +2070,7 @@
       "club": "shops",
       "other": "brass",
       "archetype": "committee",
-      "text": "A study of the next Mill ribbon shade. 40 beiges so far, on the band.",
+      "text": "A study of the Ribbon Mill's next shade. 40 beiges so far, each held up by the band.",
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
@@ -2127,7 +2127,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "project",
-      "text": "A Mill window display: RIBBON, BEING MADE. Rosettes, round the back.",
+      "text": "A Ribbon Mill window display: RIBBON, BEING MADE. Rosettes, round the back.",
       "subject": "ribbons",
       "butt": "thing",
       "shape": "slogan"
@@ -2137,7 +2137,7 @@
       "visitor": "spinwell",
       "club": "hedges",
       "archetype": "vanity",
-      "text": "A fountain in your shape in each province. Rodney wants a tenth.",
+      "text": "A fountain in your shape. Rodney asks for a smaller one, for the fountain.",
       "subject": "fountains",
       "butt": "self",
       "shape": "escalation"
@@ -2169,7 +2169,7 @@
       "visitor": "fenn",
       "club": "kites",
       "archetype": "vanity",
-      "text": "Your signature printed on every form. Then you need never read one.",
+      "text": "Your signature in gilt at the top of every form. The forms now start lower.",
       "subject": "paperwork",
       "butt": "self",
       "shape": "callback"
@@ -2226,7 +2226,7 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "project",
-      "text": "Mill ribbon tails for every kite: a metre, then two. Hedges get the rest.",
+      "text": "Ribbon Mill tails for every kite: a metre, then two. Hedges get the rest.",
       "subject": "ribbons",
       "butt": "thing",
       "shape": "escalation"

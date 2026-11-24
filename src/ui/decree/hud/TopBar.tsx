@@ -22,7 +22,6 @@ import { S, dibs } from '../strings';
 import { useDecreeUi } from '../uiState';
 import { useDecree, useStrip, useTopBarView } from '../useDecree';
 import { useFontScale } from './fontScale';
-import { useBarsUi } from './localUi';
 import { CHIP_PAD, GOSSIP_PAD, slopTo44, topBarMetrics } from './metrics';
 import { usePreviewSide } from './preview';
 import { rollDibs } from './rollDibs';
@@ -130,7 +129,7 @@ export function TopBar({ layout }: { layout: DeskLayout }) {
           {...gossipRef}
           onPress={() => {
             fx.play('ui_tap');
-            useBarsUi.getState().openHeadline();
+            useDecreeUi.getState().openHeadline();
           }}
           accessibilityRole="button"
           accessibilityLabel={S.hud.gossipLabel(t.gossip, t.gossipMax)}

@@ -59,6 +59,11 @@ function ShopBody() {
       <Txt size={ty.small} bold color={INK.soft}>
         {S.sheets.shopProducts}
       </Txt>
+      {!canShop ? (
+        <Txt size={ty.body} bold color={INK.slate}>
+          {S.hud.closedRunUp}
+        </Txt>
+      ) : null}
       {cfg.monetization.iap.products.map((p) => {
         const has = M.isNonConsumable(p) && ownedIds.includes(p.id);
         return (
@@ -74,13 +79,7 @@ function ShopBody() {
                 {p.description}
               </Txt>
             ) : null}
-            {has ? null : canShop ? (
-              <Btn label={iap.price(p)} enabled={iap.available(p)} onPress={() => void useGame.getState().purchase(p)} />
-            ) : (
-              <Txt size={ty.small} bold color={INK.slate}>
-                {S.hud.closedRunUp}
-              </Txt>
-            )}
+            {has || !canShop ? null : <Btn label={iap.price(p)} enabled={iap.available(p)} onPress={() => void useGame.getState().purchase(p)} />}
           </Card>
         );
       })}

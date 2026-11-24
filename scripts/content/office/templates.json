@@ -482,7 +482,7 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "project",
-      "frame": "Clip {dignified-titles} in the kite field hedge. Kites, land elsewhere.",
+      "frame": "Clip the hedge to spell {dignified-titles}. Kites, land elsewhere.",
       "subject": "hedges",
       "butt": "office",
       "shape": "form-misapplied"
@@ -661,7 +661,7 @@
       "club": "bus",
       "other": "anglers",
       "archetype": "committee",
-      "frame": "Is the last bus {dignified-titles}? An inquiry listens by the pond.",
+      "frame": "Should the last bus be made {dignified-titles}? An inquiry, by the pond.",
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",

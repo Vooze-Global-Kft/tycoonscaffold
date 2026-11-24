@@ -55,7 +55,7 @@
       "form": "requisition",
       "ministry": "potholes-office",
       "office": "mayor",
-      "text": "So smooth now, a flask stays upright on the top deck."
+      "text": "Smooth now: a teacup stays upright on the top deck."
     },
     {
       "id": "note-ph-warm",
@@ -223,7 +223,7 @@
       "form": "requisition",
       "ministry": "bus-shelter-trust",
       "office": "governor",
-      "text": "A hook for the notebook. A second hook for the flask."
+      "text": "A hook for the notebook. Another for the sandwiches."
     },
     {
       "id": "note-bs-tarpaulin",
@@ -1058,7 +1058,7 @@
       "id": "note-bridge-2",
       "form": "ribbon",
       "ministry": "very-long-bridge",
-      "text": "The ribbon is at the far end. A flask has been packed.",
+      "text": "The ribbon is at the far end. Sandwiches are packed.",
       "office": "president"
     },
     {

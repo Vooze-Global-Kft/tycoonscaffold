@@ -97,7 +97,7 @@
       "subject": "ceremonies",
       "butt": "self",
       "shape": "escalation",
-      "note": "replaces may-runup-visitors-book (its escalation tag was not honest, and the governor run-up already signs a roll of honour)"
+      "note": "replaces may-runup-visitors-book (its escalation tag was not honest, and the governor run-up already signs a visitors' book)"
     },
     {
       "id": "gov-runup-tree",
@@ -166,7 +166,7 @@
       "id": "gov-runup-napkin",
       "office": "governor",
       "visitor": "wimble",
-      "text": "Sign the {district} roll of honour. Not the napkin; that is the law.",
+      "text": "Sign the {district} visitors' book. Not the napkin; that is the law.",
       "subject": "paperwork",
       "butt": "self",
       "shape": "callback"
@@ -418,7 +418,7 @@
       "id": "pres-runup-cheese",
       "office": "president",
       "visitor": "spinwell",
-      "text": "Cut the {district} cheese. A ribbon has been tied round it.",
+      "text": "Slice the {district} cheese, ceremonially. A ribbon has been tied round it.",
       "subject": "ribbons",
       "butt": "self",
       "shape": "form-misapplied"
@@ -522,7 +522,7 @@
       "id": "gov-rally-permit",
       "office": "governor",
       "visitor": "wimble",
-      "text": "A rally on the green. Standing on it needs a permit. Queue on it.",
+      "text": "A rally on the green. The sign says KEEP OFF THE GRASS. There is a form.",
       "subject": "paperwork",
       "butt": "office",
       "shape": "form-misapplied"

@@ -31,20 +31,23 @@ import { paperMetrics } from '../paperMetrics';
 import { S } from '../strings';
 import { useDecreeUi } from '../uiState';
 import { useDecree } from '../useDecree';
-import { useButtonsPref } from './buttonsPref';
+import { usePrefs } from '../prefs';
+import { devButtons } from './devButtons';
 import { aroundSig, deskSig, type AroundVM, type DeskVM, type PaperVM } from './deskVm';
 import { ENTER_MS, LEAVE_MS, NEXT_AFTER_MS, SPRING, drawerOf, drawerStep, followOf, inkOf, type Release } from './flick';
 import { useDeskFontScale } from './fontScale';
 import { PaperWords, SlipWords } from './PaperWords';
 import { DRAWER_STEPS, backPicture, bakeFaces, drawerPictures, facesReady, paperPicture, restPicture, signaturePicture, slipPicture } from './pictures';
+import { estimateWidth } from './stripView';
 import { useFlick } from './useFlick';
 
-const DBG = true;
 const NONE: DeskVM = { kind: 'none' };
 const NONE_SIG = JSON.stringify(NONE);
 const OFF = [{ translateX: -9999 }, { translateY: -9999 }];
 const ON = [{ translateX: 0 }];
 const keyOf = (v: DeskVM) => (v.kind === 'none' ? '' : v.key);
+/** A one-line word's size factor so it fits `w` (1, or smaller for an unusually long name). */
+const fitScale = (t: string, font: number, w: number) => Math.min(1, Math.max(0.7, w / Math.max(1, estimateWidth(t, font, true))));
 
 export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const L = layout;
@@ -60,7 +63,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const around = useMemo<AroundVM | null>(() => (aSig ? (JSON.parse(aSig) as AroundVM) : null), [aSig]);
   const armed = useDecreeUi((u) => u.armed);
   const finger = useDecreeUi((u) => u.fingerDown);
-  const buttons = useButtonsPref();
+  const buttons = usePrefs((p) => p.buttons) || devButtons();
 
   // --- the clocks (4.5: one per animated thing): the paper's offset and its spring, the entrance,
   // the shake, the leaving paper, the drawer held open after a refusal, the take-back ring.
@@ -252,7 +255,11 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   }, [L, m, P, slipOn]);
 
   // --- the still layers
-  const back = useMemo(() => (around ? backPicture(L, P, around) : null), [L, P, around]);
+  // The room and the desk re-record only when what they draw changes (not each second of the door's clock).
+  const backKey = around ? JSON.stringify({ ...around, door: '', pending: null }) : '';
+  const aroundRef = useRef(around);
+  aroundRef.current = around;
+  const back = useMemo(() => (aroundRef.current ? backPicture(L, P, aroundRef.current) : null), [L, P, backKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const drawerKey = around ? `${around.office}|${Math.min(around.drawer, 10000)}` : '';
   const drawers = useMemo(() => (around ? drawerPictures(P, around) : []), [P, drawerKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const rest = useMemo(() => restPicture(P), [P]);
@@ -296,7 +303,6 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const signWord = slipWords ? S.desk.buy : S.desk.sign;
   const studyWord = slipWords ? S.desk.putBack : S.desk.study;
 
-  if (DBG) return null;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -332,7 +338,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
         ) : null}
       </Canvas>
 
-      {DBG ? null : <>{/* the desk's own small words: the door glass, the drawer's card, the sticky note */}
+      {/* the desk's own small words: the door glass, the drawer's card, the sticky note */}
       <View style={[abs(P.glass), styles.center]} pointerEvents="none">
         <Text allowFontScaling={false} numberOfLines={1} style={[styles.glass, { fontSize: P.font.glass }]}>
           {around?.door ?? ''}
@@ -343,19 +349,16 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
           {S.desk.drawerLabel(String(around?.drawer ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, ','))}
         </Text>
       </Animated.View>
-      {around?.sticky ? (
+      {around?.sticky?.where === 'band' ? (
         <View style={[abs(P.stickyText), { transform: [{ rotate: '1.5deg' }] }]} pointerEvents="none">
-          {around.sticky
-            .filter((t) => t)
-            .map((t, i) => (
-              <Text key={i} allowFontScaling={false} numberOfLines={1} style={[styles.sticky, { fontSize: P.font.sticky, lineHeight: Math.round(P.font.sticky * STICKY_LINE) }]}>
-                {t}
-              </Text>
-            ))}
+          {around.sticky.lines.map((t, i) => (
+            <Text key={i} allowFontScaling={false} numberOfLines={1} style={[styles.sticky, { fontSize: P.font.sticky * fitScale(t, P.font.sticky, P.stickyText.w), lineHeight: Math.round(P.font.sticky * STICKY_LINE) }]}>
+              {t}
+            </Text>
+          ))}
         </View>
       ) : null}
 
-      </>}
       {/* the desk around the paper: takes a resting paper back, commits it, or disarms */}
       <View
         style={abs({ x: 0, y: L.outTray.y, w: L.width, h: L.drawer.y + L.drawer.h - L.outTray.y })}
@@ -364,10 +367,19 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
       />
 
       {empty ? (
-        <View style={[abs(L.paper), styles.center]} pointerEvents="none">
+        <View style={[abs({ x: L.paper.x, y: L.paper.y, w: L.paper.w, h: L.paper.h * 0.45 }), styles.center]} pointerEvents="none">
           <Text allowFontScaling={false} style={[styles.empty, { fontSize: P.font.emptyDesk }]}>
             {S.desk.emptyDesk}
           </Text>
+        </View>
+      ) : null}
+      {empty && around?.sticky?.where === 'desk' ? (
+        <View style={[abs(P.deskStickyText), { transform: [{ rotate: '-2deg' }] }]} pointerEvents="none">
+          {around.sticky.lines.map((t, i) => (
+            <Text key={i} allowFontScaling={false} numberOfLines={i === 0 ? 2 : 1} style={[styles.sticky, { fontSize: P.font.deskSticky, lineHeight: Math.round(P.font.deskSticky * STICKY_LINE) }]}>
+              {t}
+            </Text>
+          ))}
         </View>
       ) : null}
       {pending ? (

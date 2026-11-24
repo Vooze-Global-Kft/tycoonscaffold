@@ -43,9 +43,9 @@ export const S = {
     change: (from: number, to: number) => `${from} → ${to}`,
     /** A district's share, given in hundredths, printed to one decimal ("48.6 → 52.6"). */
     share: (from: number, to: number) => `${(from / 100).toFixed(1)} → ${(to / 100).toFixed(1)}`,
-    /** The "every club" chip: "−1 each", or "−1 to −2 each" when the sizing differs by club. */
+    /** The "every club" chip: "−1 each", or "−1 to −2" when the sizing differs by club. */
     each: (d: string) => `${d} each`,
-    eachRange: (lo: string, hi: string) => `${lo} to ${hi} each`,
+    eachRange: (lo: string, hi: string) => `${lo} to ${hi}`,
     appoint: 'Appoint',
     endBoycott: 'Settled',
     endScandal: 'Closed',
@@ -54,7 +54,7 @@ export const S = {
     noteScandal: (g: number, max: number) => `Gossip ${g}/${max}: SCANDAL`,
     noteShort: (by: string) => `Short by ${by}`,
     noteShortAbout: (by: string, about: string) => `Short by ${by} · ${about}`,
-    noteSayNothing: (factor: string, papers: number) => `Taxes ×${factor} for ${papers} papers, then Gossip 0`,
+    noteSayNothing: (factor: string, papers: number) => `Taxes ×${factor} for ${papers} papers, Gossip to 0`,
     noteBoycottRuns: (papers: number) => `It runs ${papers} more papers`,
     noteApplyAgain: (papers: number) => `Applies again in ${papers} papers`,
     noteDone: 'Already done: the Clerk takes it back',
@@ -76,7 +76,8 @@ export const S = {
     /** The drawer's card (4.3): "FOR FURTHER STUDY (312)". */
     drawerLabel: (n: string) => `FOR FURTHER STUDY (${n})`,
     /** The sticky note (2.7): a follow-up one paper ahead, or the next goal on an empty desk. */
-    stickyBack: (name: string) => `Next: ${name} is back.`,
+    stickyBack: (surname: string) => `Next: ${surname}`,
+    stickyIsBack: 'is back.',
     stickyLevel: (ministry: string) => `Next: ${ministry} +1`,
     stickyOpen: (ministry: string) => `Next: ${ministry} opens`,
     stickyMonument: 'Next: a monument',
@@ -111,6 +112,8 @@ export const S = {
     menuLabel: 'Settings and shop',
     /** The gossip chip's tap: the last headline under the newspaper's name (5.5, the Gazette corner). */
     noHeadline: 'No headlines yet. The press is bored.',
+    /** A newspaper's name as a masthead (the data writes it with a lower-case "the"). */
+    masthead: (paper: string) => paper.charAt(0).toUpperCase() + paper.slice(1),
     clubLabel: (club: string, mood: number) => `${club} ${mood}`,
     /** The club ring's marks (D25, D31). */
     huff: 'in a huff',
@@ -242,7 +245,7 @@ export const S = {
     adNotLoaded: 'No ad to show yet. Nothing is lost.',
     adFailed: 'The ad did not play. Nothing is lost.',
     adOnceTerm: 'Once a term',
-    adCooldown: (about: string) => `Then once every ${about} of play`,
+    adCooldown: (about: string) => `Then ready again after ${about} of play`,
     adCourier: 'Send a Courier',
     adCourierWhat: 'Ends a boycott now, with no change of mood.',
     adSpin: 'Call the Spin Doctor',

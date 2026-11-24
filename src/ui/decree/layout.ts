@@ -130,11 +130,11 @@ export function deskLayout(width: number, height: number, insets: Insets, fontSc
 // ================================================================================================
 
 /** Font sizes at s = 1 of the desk's small words (× s when drawn): the door glass, the drawer's card, the sticky note, the take-back pill. */
-export const DESK_FONT = { glass: 9, drawerLabel: 8, sticky: 8, pill: 12, emptyDesk: 14, slip: 13, slipSmall: 11 } as const;
+export const DESK_FONT = { glass: 8.5, drawerLabel: 8, sticky: 8, deskSticky: 12, pill: 12, emptyDesk: 14, slip: 13, slipSmall: 11 } as const;
 /** Line height of the sticky note's two lines, as a multiple of its font size. */
 export const STICKY_LINE = 1.2;
 /** The out-tray band's three things, left to right at 375 (4.1 does not size them): the door, the wire tray, the sticky note. */
-export const DOOR_W = 128;
+export const DOOR_W = 140;
 export const STICKY_W = 124;
 export const BAND_GUTTER = 8;
 /** The budget slip (2.7: smaller than a paper), centred on the paper's rectangle. */
@@ -143,6 +143,9 @@ export const SLIP_H = 168;
 /** The take-back pill (4.3 "Tap to take it back") at the top of the empty paper rectangle. */
 export const PILL_H = 44;
 export const PILL_W = 240;
+/** The big sticky note on an empty desk. */
+export const DESK_STICKY_W = 260;
+export const DESK_STICKY_H = 92;
 
 export interface DeskParts {
   /** The door with its glass (top left of the out-tray band) and the glass's words box ("Next visitor 0:07"). */
@@ -162,6 +165,9 @@ export interface DeskParts {
   slip: Rect;
   /** The take-back pill at the top of the paper's rectangle while a signed paper rests. */
   pill: Rect;
+  /** The big sticky note on an empty desk (the next goal), and its words box (two lines at deskSticky × s). */
+  deskSticky: Rect;
+  deskStickyText: Rect;
   /** Font sizes at this s. */
   font: { [K in keyof typeof DESK_FONT]: number };
 }
@@ -186,7 +192,7 @@ export function deskParts(L: DeskLayout, s: number = L.s): DeskParts {
   const right = band.x + band.w - BAND_GUTTER;
   const bh = Math.max(20, band.h - 6);
   const by = band.y + Math.round((band.h - bh) / 2);
-  const doorW = Math.min(DOOR_W, Math.round(band.w * 0.34));
+  const doorW = Math.min(DOOR_W, Math.round(band.w * 0.38));
   const door = { x: left, y: by, w: doorW, h: bh };
   const g = doorGlass(doorW, bh);
   const glass = { x: door.x + g.x, y: door.y + g.y, w: g.w, h: g.h };
@@ -200,6 +206,8 @@ export function deskParts(L: DeskLayout, s: number = L.s): DeskParts {
   const drawerLabel = { x: drawer.x + c.x, y: drawer.y + c.y, w: c.w, h: c.h };
   const slip = { x: L.paper.x + Math.round((L.paper.w - SLIP_W) / 2), y: L.paper.y + Math.round((L.paper.h - SLIP_H) / 2), w: SLIP_W, h: SLIP_H };
   const pill = { x: L.paper.x + Math.round((L.paper.w - PILL_W) / 2), y: L.paper.y + 12, w: PILL_W, h: PILL_H };
+  const deskSticky = { x: L.paper.x + Math.round((L.paper.w - DESK_STICKY_W) / 2), y: L.paper.y + Math.round(L.paper.h * 0.5), w: DESK_STICKY_W, h: DESK_STICKY_H };
+  const deskStickyText = { x: deskSticky.x + 12, y: deskSticky.y + 16, w: deskSticky.w - 26, h: deskSticky.h - 22 };
   const font = Object.fromEntries(Object.entries(DESK_FONT).map(([k, v]) => [k, v * s])) as DeskParts['font'];
-  return { door, glass, outTray, sticky, stickyText, drawer, drawerLabel, inTray: L.buttons.inTray, slip, pill, font };
+  return { door, glass, outTray, sticky, stickyText, drawer, drawerLabel, inTray: L.buttons.inTray, slip, pill, deskSticky, deskStickyText, font };
 }

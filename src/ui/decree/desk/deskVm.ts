@@ -167,10 +167,12 @@ export interface AroundVM {
   door: string;
   /** A visitor waits behind the glass (the arrival is near). */
   doorShadow: boolean;
-  /** The sticky note's two lines, or null. */
-  sticky: [string, string] | null;
+  /** The sticky note: on the band (a follow-up one paper ahead: "Next: Gourdley / is back.") or on the empty desk (the next goal), or null. */
+  sticky: { where: 'band' | 'desk'; lines: string[] } | null;
   /** A signed paper rests in its take-back window: its id and the play-clock second it commits. */
   pending: { key: string; until: number } | null;
+  /** Nothing on the desk and nothing resting on the out-tray. */
+  emptyDesk: boolean;
   phase: R.Phase;
 }
 
@@ -185,9 +187,12 @@ function signedThisTerm(g: R.DecreeGame): number {
 }
 
 /** The sticky note (2.7): a follow-up one paper ahead; with the desk and tray empty, the next goal when nothing is affordable. */
-function stickyOf(cfg: R.DecreeConfig, g: R.DecreeGame): [string, string] | null {
+function stickyOf(cfg: R.DecreeConfig, g: R.DecreeGame): AroundVM['sticky'] {
   const note = R.stickyNote(cfg, g);
-  if (note) return [S.desk.stickyBack(note.visitor), ''];
+  if (note) {
+    const words = note.visitor.trim().split(/\s+/);
+    return { where: 'band', lines: [S.desk.stickyBack(words[words.length - 1] ?? ''), S.desk.stickyIsBack] };
+  }
   const d = g.decree;
   if (d.desk || d.pending || d.tray.length) return null;
   const a = R.advice(cfg, g);
@@ -195,14 +200,14 @@ function stickyOf(cfg: R.DecreeConfig, g: R.DecreeGame): [string, string] | null
   const pu = a.next.purchase;
   const head = pu.type === 'monument' ? S.desk.stickyMonument : pu.type === 'open' ? S.desk.stickyOpen(ministryName(cfg, d.office, pu.ministry)) : S.desk.stickyLevel(ministryName(cfg, d.office, pu.ministry));
   const price = dibs(a.next.price);
-  return [head, a.next.about ? `${price}${S.desk.join}${aboutText(a.next.about)}` : price];
+  return { where: 'desk', lines: [head, a.next.about ? `${price}${S.desk.join}${aboutText(a.next.about)}` : price] };
 }
 
 /** Everything around the paper: the trays, the drawer, the door, the sticky note, the take-back. */
 export function aroundVm(cfg: R.DecreeConfig, g: R.DecreeGame): AroundVM {
   const d = g.decree;
   const next = R.nextVisitorIn(cfg, g);
-  let sticky: [string, string] | null = null;
+  let sticky: AroundVM['sticky'] = null;
   try {
     sticky = stickyOf(cfg, g);
   } catch {
@@ -226,6 +231,7 @@ export function aroundVm(cfg: R.DecreeConfig, g: R.DecreeGame): AroundVM {
     doorShadow: next !== null && next <= 3,
     sticky,
     pending: d.pending ? { key: d.pending.item.paper.id, until: d.pending.until } : null,
+    emptyDesk: !d.desk && !d.pending,
     phase: d.phase,
   };
 }

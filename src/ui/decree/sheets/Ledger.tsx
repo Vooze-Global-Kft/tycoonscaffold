@@ -39,11 +39,11 @@ function refusalWords(row: R.LedgerRow, ledger: R.Ledger): string | null {
     case 'cash':
       return S.sheets.refusedCash;
     case 'reserve':
-      return ledger.reserveRunUp > 0 ? S.sheets.keptRunUp(dibs(ledger.reserveRunUp)) : S.sheets.keptDesk(dibs(ledger.reserve));
+      return S.sheets.keptDesk(dibs(ledger.reserve));
     case 'closed':
       return S.sheets.refusedClosed;
     case 'runUp':
-      return S.hud.closedRunUp;
+      return S.sheets.keptRunUp(dibs(ledger.reserveRunUp));
   }
 }
 

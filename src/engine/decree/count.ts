@@ -45,7 +45,8 @@ function sharesOf(cfg: DecreeConfig, p: DecreeParams, moods: readonly number[], 
     let x = 0;
     for (let gi = 0; gi < w.length; gi++) x += w[gi] * 100 * u[gi];
     x += 100 * ((C[d] ?? 0) + Y - p.rivalPull);
-    return Math.min(10000, Math.max(0, Math.round(x)));
+    // A hair above the sum before rounding: D31's quarter points make exact halves common, and w/100 × 100 can land a hair below one.
+    return Math.min(10000, Math.max(0, Math.round(x + 1e-7)));
   });
 }
 

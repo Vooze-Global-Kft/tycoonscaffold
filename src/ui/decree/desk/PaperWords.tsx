@@ -61,6 +61,7 @@ const StripWords = memo(function StripWords({ view, rows, w, s, armed, onTitleEn
       ) : (
         chipBoxes(view, rows).map((b, i) => {
           const c = view.rows.flat()[i];
+          const cf = chipFont * c.scale;
           return (
             <View key={b.key} style={[styles.row, abs({ x: b.x + CHIP_PAD, y: b.y - rows.y, w: b.w - 2 * CHIP_PAD, h: b.h })]}>
               <DecreeIcon icon={c.icon} size={icon} />
@@ -70,16 +71,16 @@ const StripWords = memo(function StripWords({ view, rows, w, s, armed, onTitleEn
                   {` ${c.badge}`}
                 </Text>
               ) : null}
-              <Text allowFontScaling={false} numberOfLines={1} style={[styles.chip, { fontSize: chipFont, color: c.money ? DESK.mustardDeep : DESK.line, marginLeft: CHIP_PAD / 2 }]}>
+              <Text allowFontScaling={false} numberOfLines={1} style={[styles.chip, { fontSize: cf, color: c.money ? DESK.mustardDeep : DESK.line, marginLeft: CHIP_PAD / 2 }]}>
                 {c.text}
               </Text>
               {c.second ? (
                 <>
-                  <Text allowFontScaling={false} style={[styles.chip, { fontSize: chipFont, color: DESK.slate }]}>
+                  <Text allowFontScaling={false} style={[styles.chip, { fontSize: cf, color: DESK.slate }]}>
                     {S.desk.join}
                   </Text>
                   <DecreeIcon icon={c.second.icon} size={icon} />
-                  <Text allowFontScaling={false} numberOfLines={1} style={[styles.chip, { fontSize: chipFont, color: DESK.line, marginLeft: CHIP_PAD / 2 }]}>
+                  <Text allowFontScaling={false} numberOfLines={1} style={[styles.chip, { fontSize: cf, color: DESK.line, marginLeft: CHIP_PAD / 2 }]}>
                     {c.second.text}
                   </Text>
                 </>
@@ -204,7 +205,7 @@ export const SlipWords = memo(function SlipWords({ vm, s }: { vm: SlipVM; s: num
         </Text>
         <View style={[styles.row, { marginTop: 6 }]}>
           {vm.icon ? <DecreeIcon icon={vm.icon} size={Math.round(22 * s)} /> : null}
-          <Text allowFontScaling={false} numberOfLines={1} style={[styles.name, { fontSize: f * 1.1, marginLeft: 6, flexShrink: 1 }]}>
+          <Text allowFontScaling={false} numberOfLines={2} style={[styles.name, { fontSize: f * 1.05, lineHeight: Math.round(f * 1.3), marginLeft: 6, flexShrink: 1 }]}>
             {vm.what}
           </Text>
         </View>

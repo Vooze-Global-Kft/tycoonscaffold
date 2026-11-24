@@ -142,9 +142,9 @@ export interface PenPath {
 }
 
 /** The pen's length on the desk: short, so its body stays inside the rows that print no number. */
-export const PEN_LEN = 46;
+export const PEN_LEN = 58;
 /** The pen lies this far from upright (its body to the right of the nib, nearly level). */
-export const PEN_ANGLE = 64;
+export const PEN_ANGLE = 60;
 /** Where the body of the pen ends, relative to the nib, for a pen at `angle` and `len` (rotation by −angle: positive leans to the lower right). */
 export function penTail(angle: number, len: number): Point {
   const r = (angle * Math.PI) / 180;
@@ -241,13 +241,11 @@ export function penReach(p: PenPath, pad = 4): Rect {
 }
 
 /** How long one stroke lasts, in ms (fade in, move, hold, fade out). */
-export const STROKE_MS = {
-  fadeIn: 180,
-  move: 1100,
-  hold: 500,
-  fadeOut: 260,
-} as const;
+export const STROKE_MS = { fadeIn: 200, move: 1400, hold: 600, fadeOut: 300 } as const;
 export const STROKE_TOTAL = STROKE_MS.fadeIn + STROKE_MS.move + STROKE_MS.hold + STROKE_MS.fadeOut;
+/** One showing plays the stroke this many times (a first-time player may look up late), then the pen is gone. */
+export const STROKE_PASSES = 2;
+export const SHOWING_MS = STROKE_TOTAL * STROKE_PASSES;
 
 /**
  * The nib's position and the pen's opacity `t` ms into a stroke. A worklet: the pen moves on the UI
@@ -265,4 +263,11 @@ export function strokeAt(t: number, ax: number, ay: number, bx: number, by: numb
   // Ease in and out.
   const e = u * u * (3 - 2 * u);
   return { x: ax + (bx - ax) * e, y: ay + (by - ay) * e, o };
+}
+
+/** (After strokeAt: worklets are not hoisted.) The stroke `t` ms into a showing: each pass in turn, nothing after the last. A worklet. */
+export function showingAt(t: number, ax: number, ay: number, bx: number, by: number, back: boolean): { x: number; y: number; o: number } {
+  'worklet';
+  if (t >= SHOWING_MS) return { x: bx, y: by, o: 0 };
+  return strokeAt(t % STROKE_TOTAL, ax, ay, bx, by, back);
 }

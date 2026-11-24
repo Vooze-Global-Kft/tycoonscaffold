@@ -29,7 +29,7 @@ import type { Hint, HintSource } from '../hints/source';
 import { targets } from '../hints/targets';
 import { DESK } from './art/palette';
 import { drawPen } from './art/desk.draw';
-import { guidedHint, penHint, penPath, penReach, shouldPlay, strokeAt, STROKE_TOTAL, type PenHint, type PenPath } from './hints';
+import { guidedHint, penHint, penPath, penReach, shouldPlay, showingAt, SHOWING_MS, type PenHint, type PenPath } from './hints';
 import type { DeskLayout, Rect } from './layout';
 import { useDecreeUi, wall } from './uiState';
 
@@ -181,7 +181,7 @@ export function PenLayer({ layout }: { layout: DeskLayout }) {
   // One stroke, then gone.
   useEffect(() => {
     if (!stroke) return;
-    const t = setTimeout(() => setStroke(null), STROKE_TOTAL + 60);
+    const t = setTimeout(() => setStroke(null), SHOWING_MS + 60);
     return () => clearTimeout(t);
   }, [stroke]);
 
@@ -213,10 +213,10 @@ function Stroke({ path }: { path: PenPath }) {
   const k = path.len / PIC_LEN;
   const rot = (-path.angle * Math.PI) / 180;
   // 30 frames a second: the clock held between frames.
-  const at = useDerivedValue(() => strokeAt(Math.floor(clock.value / 33) * 33, ax, ay, bx, by, back));
+  const at = useDerivedValue(() => showingAt(Math.floor(clock.value / 33) * 33, ax, ay, bx, by, back));
   const transform = useDerivedValue(() => [{ translateX: at.value.x }, { translateY: at.value.y }, { rotate: rot }, { scale: k }]);
   const opacity = useDerivedValue(() => at.value.o);
-  const guideOpacity = useDerivedValue(() => at.value.o * 0.55);
+  const guideOpacity = useDerivedValue(() => at.value.o * 0.7);
   const guide = useMemo(() => {
     try {
       const p = Skia.PathBuilder.Make();

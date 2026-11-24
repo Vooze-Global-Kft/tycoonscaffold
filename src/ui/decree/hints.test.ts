@@ -9,7 +9,7 @@ import * as R from '../../engine/decree';
 import { decreeFixtures, decreeTestConfig, freshState } from '../../engine/fixtures/decree';
 import { deskLayout } from './layout';
 import { paperMetrics } from './paperMetrics';
-import { IDLE_MS, QUIET_MS, guidedHint, idleHint, paperMiddle, penHint, penPath, penReach, penTail, shouldPlay, strokeAt, STROKE_TOTAL, type PenUi } from './hints';
+import { IDLE_MS, QUIET_MS, guidedHint, idleHint, paperMiddle, penHint, penPath, penReach, penTail, shouldPlay, showingAt, SHOWING_MS, strokeAt, STROKE_TOTAL, type PenUi } from './hints';
 
 const cfg = decreeTestConfig();
 const calm: PenUi = {
@@ -205,5 +205,9 @@ describe('never over a number (4.5)', () => {
     const end = strokeAt(STROKE_TOTAL - 300, 0, 0, 0, 100, false);
     expect(end.y).toBeCloseTo(100, 5);
     expect(strokeAt(STROKE_TOTAL - 300, 0, 0, 0, 100, true).y).toBeCloseTo(0, 5);
+    // A showing plays the stroke twice, then nothing.
+    expect(showingAt(STROKE_TOTAL + 10, 0, 0, 0, 100, false).y).toBeCloseTo(0, 0);
+    expect(showingAt(SHOWING_MS, 0, 0, 0, 100, false).o).toBe(0);
+    expect(SHOWING_MS).toBeGreaterThan(STROKE_TOTAL);
   });
 });

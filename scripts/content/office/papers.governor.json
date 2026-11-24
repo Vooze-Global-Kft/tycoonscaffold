@@ -59,11 +59,11 @@
       "club": "bus",
       "other": "anglers",
       "archetype": "project",
-      "text": "A canal bridge plaque: BUSES SEEN HERE TWICE. ONCE UPSIDE DOWN.",
+      "text": "A canal bridge plaque: BUSES SEEN HERE TWICE, IF YOU COUNT THE CANAL.",
       "subject": "signage",
       "butt": "thing",
       "shape": "slogan",
-      "note": "Twice: once in the water. Other: spotters gather on the bridge over the Circle's floats, and buses hoot there (style 1 friction)."
+      "note": "Twice: once reflected. Other: spotters gather on the bridge over the Circle's floats, and buses hoot there (style 1 friction)."
     },
     {
       "id": "gov-float-photo",
@@ -394,7 +394,7 @@
       "club": "shops",
       "other": "brass",
       "archetype": "swap",
-      "text": "Send the Sunday band another way. People are looking at the band.",
+      "text": "Face the Sunday band away from our windows. People are looking at the band.",
       "subject": "bandstands",
       "butt": "visitor",
       "shape": "undercut",
@@ -754,15 +754,15 @@
       "visitor": "sash",
       "club": "veg",
       "archetype": "basket",
-      "text": "A pair of gold ribbon scissors for you. Engraved: NO REASON.",
+      "text": "A pair of ribbon scissors for you, painted gold. Engraved: NO REASON.",
       "subject": "ribbons",
       "butt": "lobbyist",
       "shape": "callback",
       "favour": {
-        "text": "The gold scissors would like to judge the leeks. They have the eye for it.",
+        "text": "The gilt scissors would like to judge the leeks. They have the eye for it.",
         "clippings": {
-          "sign": "GOVERNOR'S GOLD SCISSORS JUDGE LEEKS; GROWERS SILENT",
-          "refuse": "SCISSORS SENT BACK, STILL ENGRAVED NO REASON"
+          "sign": "GOVERNOR'S GILT SCISSORS JUDGE LEEKS; GROWERS SILENT",
+          "refuse": "SCISSORS SENT BACK; GOLD PAINT STILL WET"
         }
       }
     },
@@ -1021,7 +1021,7 @@
       "favour": {
         "text": "The portrait's hat asks to enter the Quiet Competition. It keeps very still.",
         "clippings": {
-          "sign": "PORTRAIT'S HAT WINS QUIET COMPETITION; GOVERNOR BEAMS",
+          "sign": "PORTRAIT'S HAT ENTERS QUIET COMPETITION; GOVERNOR'S FACE TOO LOUD",
           "refuse": "HAT WITHDRAWN; COMPETITION HELD IN USUAL SILENCE"
         }
       }
@@ -1304,7 +1304,7 @@
       "club": "bus",
       "other": "veg",
       "archetype": "project",
-      "text": "A spotting step by the glasshouse. Buses look 20 % greener through it.",
+      "text": "A spotting step by the glasshouse. Buses look 20 % riper through it.",
       "subject": "gardens",
       "butt": "thing",
       "shape": "statistic",
@@ -1757,7 +1757,7 @@
       "club": "veg",
       "other": "bus",
       "archetype": "committee",
-      "text": "An inquiry: why do show results follow the bus times? It reports after them.",
+      "text": "An inquiry: why does the show page follow the bus page? It reports after them.",
       "subject": "paperwork",
       "butt": "committee",
       "shape": "undercut",

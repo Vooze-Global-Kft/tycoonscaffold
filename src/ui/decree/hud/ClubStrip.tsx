@@ -143,9 +143,11 @@ export function ClubStrip({ layout }: { layout: DeskLayout }) {
   const now = Date.now();
   return (
     <View style={[styles.abs, { left: zone.x, top: zone.y, width: zone.w, height: zone.h }]} pointerEvents="box-none">
-      <Canvas style={[styles.abs, { left: 0, top: 0, width: zone.w, height: zone.h }]} pointerEvents="none">
-        <Picture picture={pic} />
-      </Canvas>
+      <View style={[styles.abs, { left: 0, top: 0, width: zone.w, height: zone.h }]} pointerEvents="none">
+        <Canvas style={{ width: zone.w, height: zone.h }}>
+          <Picture picture={pic} />
+        </Canvas>
+      </View>
       {clubs.map((club, i) =>
         m.slots[i] ? <Slot key={club.id} slot={m.slots[i]} club={club} index={i} preview={previews[i]} side={side} visible={m.beside || (shownUntil[i] ?? 0) > now} font={m.numFont} onTap={() => tap(i)} /> : null,
       )}

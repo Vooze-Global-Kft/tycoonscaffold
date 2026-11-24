@@ -122,11 +122,11 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "Raise the 7:02's profile. A ramp outside the shops should do it.",
+      "text": "Raise the 7:02's profile. A low stage outside the shops should do it.",
       "subject": "buses",
       "butt": "thing",
       "shape": "literalism",
-      "note": "Other: the ramp goes up outside the shops."
+      "note": "Other: the stage goes up outside the shops."
     },
     {
       "id": "may-boarding-photo",
@@ -308,7 +308,7 @@
       "visitor": "wimble",
       "club": "shops",
       "archetype": "vanity",
-      "text": "Signs at each end of the high street: THE MAYOR'S. STILL THE MAYOR'S.",
+      "text": "Signs at each end of the high street: THE MAYOR'S. ALSO THE MAYOR'S.",
       "subject": "vanity",
       "butt": "self",
       "shape": "slogan"
@@ -445,7 +445,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "committee",
-      "text": "A study of the prize pumpkin's admirers. So far: 312, some twice.",
+      "text": "A study of the prize pumpkin's admirers. So far: 312, and a heron.",
       "subject": "vegetable-shows",
       "butt": "committee",
       "shape": "statistic",
@@ -659,7 +659,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "swap",
-      "text": "The bus station waiting room, for Till's Teas. We wait on people.",
+      "text": "The bus station waiting room, for Till's Teas. The customers are already seated.",
       "subject": "buses",
       "butt": "thing",
       "shape": "literalism"
@@ -877,7 +877,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
-      "biggerStudy": "Our study's answer is four. It asks for another year to find out four what."
+      "biggerStudy": "The study found four seconds. It asks a year more to time the second glance."
     },
     {
       "id": "may2-duck-pond-review",
@@ -952,7 +952,7 @@
       "favour": {
         "text": "About the second basket: it would like the top deck's front seat. Daily.",
         "clippings": {
-          "sign": "BASKET TAKES FRONT SEAT OF TOP DECK; SPOTTERS STAND",
+          "sign": "BASKET TAKES FRONT SEAT OF TOP DECK; SPOTTERS LOG IT AS A PASSENGER",
           "refuse": "BASKET TAKES A LATER BUS"
         }
       }
@@ -1820,7 +1820,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A flask hook by the draper's. Then a shelf. Then a small kitchen.",
+      "text": "A kettle hook by the draper's. Then a shelf. Then a small kitchen.",
       "subject": "buses",
       "butt": "thing",
       "shape": "escalation",

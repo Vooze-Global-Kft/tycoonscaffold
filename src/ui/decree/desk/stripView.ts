@@ -13,7 +13,7 @@
  *   first, then the note shrinks: a note is never dropped.
  */
 import type * as R from '../../../engine/decree';
-import { FONT, NOTE_W } from '../paperMetrics';
+import { CHIP_ICON, CHIP_PAD, CHIP_WIDE_TEXT_W, FONT, NOTE_W } from '../paperMetrics';
 import { S, aboutText, dibs, signedDibs } from '../strings';
 
 export interface ChipView {
@@ -30,6 +30,8 @@ export interface ChipView {
   flag: boolean;
   /** Money is printed in mustard (4.6: mustard for money only). */
   money: boolean;
+  /** The words' size factor: 1, or smaller for a wide chip whose words would not fit its row at full size. */
+  scale: number;
 }
 
 export interface NotePart {
@@ -89,9 +91,18 @@ function eachText(deltas: readonly number[]): string {
   return lo === hi ? S.desk.each(sign(lo)) : S.desk.eachRange(sign(lo), sign(hi));
 }
 
-/** The words of one chip. */
-export function chipView(c: R.Chip, i: number, names: StripNames): ChipView {
-  const base = { key: `${c.kind}:${i}`, icon: c.icon, badge: null, second: null, wide: c.wide, flag: false, money: false };
+/** The words of one chip, at text scale `s` (a wide chip's words shrink to fit their row, never wrap). */
+export function chipView(c: R.Chip, i: number, names: StripNames, s = 1): ChipView {
+  const v = chipWords(c, i, names);
+  if (!v.wide) return v;
+  const words = `${v.badge ?? ''} ${v.text}${v.second ? `${S.desk.join}${v.second.text}` : ''}`;
+  const room = CHIP_WIDE_TEXT_W - (v.second ? CHIP_ICON * s + CHIP_PAD : 0);
+  const w = estimateWidth(words, FONT.chip * s);
+  return w > room ? { ...v, scale: Math.max(0.7, room / w) } : v;
+}
+
+function chipWords(c: R.Chip, i: number, names: StripNames): ChipView {
+  const base = { key: `${c.kind}:${i}`, icon: c.icon, badge: null, second: null, wide: c.wide, flag: false, money: false, scale: 1 };
   switch (c.kind) {
     case 'club':
       return { ...base, text: S.desk.change(c.from, c.to), flag: c.flag };
@@ -199,7 +210,7 @@ export function noteLine(parts: readonly NotePart[]): string {
 
 /** The strip as the paper draws it at text scale `s`. */
 export function stripView(strip: R.Strip, names: StripNames, s: number): StripView {
-  const chips = strip.chips.map((c, i) => chipView(c, i, names));
+  const chips = strip.chips.map((c, i) => chipView(c, i, names, s));
   const placed = placeChips(chips.map((c) => (c.wide ? 2 : 1)));
   const rows = placed.rows.map((r) => r.map((i) => chips[i]));
   // The note row: the long form if it fits, else the short "Short by", else the whole row smaller.

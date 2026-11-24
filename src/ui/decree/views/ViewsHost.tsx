@@ -3,7 +3,7 @@
  * Night and the Office wall (full-screen views of uiState), the result and move sheets (uiState
  * sheets) and the monument offer (a local stand-in until uiState has its sheet type: ./viewsUi.ts),
  * and the moments the game stops for, opened as the rules' phase asks:
- * - no face yet (3.1): the face picker;
+ * - no face yet on the first day (3.1): the face picker;
  * - the run-up done (the rules' canCount): the votes are counted (decreeActions.countVotes) and
  *   Election Night opens; a reload in the count opens it again;
  * - Election Night closed while the votes are being counted (Android back, 4.4): the night ends
@@ -24,7 +24,11 @@ import * as R from '../../../engine/decree';
 import { ElectionNight } from './ElectionNight';
 import { FacePicker } from './FacePicker';
 import { OfficeWall } from './Office';
+import { applyViewsDevParams } from './dev';
 import { useViewsUi } from './viewsUi';
+
+// The preview's &night=, &result=, &wall=, &monument=, &face= switches (nothing on a phone).
+applyViewsDevParams();
 
 /** The pause after the run-up's last paper before the count begins (the paper leaves the desk first). Presentation only. */
 const COUNT_AFTER_MS = 1400;
@@ -35,7 +39,8 @@ export function ViewsHost() {
   const armed = useDecreeUi((s) => s.armed !== null);
   const monument = useViewsUi((s) => s.monument);
   const isDecree = useDecree(() => true, false);
-  const noFace = useDecree((_c, g) => g.decree.face === null, false);
+  // The first day only (3.1): a save past it without a face (a web preset) is never stopped for one.
+  const noFace = useDecree((_c, g) => g.decree.face === null && g.decree.office === 0 && g.decree.term === 1 && g.decree.day === 0, false);
   const phase = useDecree((_c, g) => g.decree.phase, null);
   const countable = useDecree((c, g) => R.canCount(c, g), false);
   const pending = useDecree((_c, g) => g.decree.pending !== null, false);
@@ -44,8 +49,18 @@ export function ViewsHost() {
 
   // 3.1: the face picker on the first day.
   useEffect(() => {
-    if (isDecree && noFace && free) useDecreeUi.getState().openView('facePicker');
+    if (!isDecree || !noFace || !free) return;
+    const t = setTimeout(() => {
+      const ui = useDecreeUi.getState();
+      if (!ui.view && !ui.sheet) ui.openView('facePicker');
+    }, 600);
+    return () => clearTimeout(t);
   }, [isDecree, noFace, free]);
+  // A state that is not the first day any more (a save loaded over a new game) closes a picker nobody used.
+  const faceless = useDecree((_c, g) => g.decree.face === null, false);
+  useEffect(() => {
+    if (view === 'facePicker' && faceless && !noFace) useDecreeUi.getState().closeView();
+  }, [view, faceless, noFace]);
 
   // The run-up done: count, then election night.
   useEffect(() => {
