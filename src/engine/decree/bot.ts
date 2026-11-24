@@ -527,6 +527,20 @@ export interface SampleRec {
   record: number;
   ministries: number;
   ministry0Rate: number;
+  /** Papers waiting in the tray, and the clubs' moods (the numbers step: tray depth, D44's mean moods). */
+  tray?: number;
+  moods?: number[];
+}
+
+/** A budget slip the bot met (D42 a and d: levels a slip carries, openings, "Open Potholes"). */
+export interface SlipRec {
+  t: number;
+  landedAt: number;
+  office: OfficeIx;
+  levels: number;
+  open: boolean;
+  ministry: number | null;
+  bought: boolean;
 }
 
 export interface IdleRec {
@@ -597,10 +611,12 @@ export interface Trace {
   /** A handover run (H6, H12): the habit that played first, and when the reader took over. Its reader-only rows are not evaluated (they would judge the habit's part). */
   handover?: { habit: BotId; at: number };
   hash: string;
+  /** Every budget slip that landed and was flicked (the numbers step). */
+  slips?: SlipRec[];
 }
 
 export function emptyTrace(bot: BotId, seed: number, hand: number, t0: number): Trace {
-  return { bot, seed, hand, started: t0, ended: t0, decisions: [], draws: [], elections: [], cash: [], samples: [], idle: [], events: [], away: [], purchases: [], takeBacks: [], reloads: [], faults: [], flicks: [], taps: [], maxNumber: 0, book: null, reached: [t0, null, null], hash: '' };
+  return { bot, seed, hand, started: t0, ended: t0, decisions: [], draws: [], elections: [], cash: [], samples: [], idle: [], events: [], away: [], purchases: [], takeBacks: [], reloads: [], faults: [], flicks: [], taps: [], maxNumber: 0, book: null, reached: [t0, null, null], hash: '', slips: [] };
 }
 
 /** A short stable hash of the trace's decisions, draws and elections (H3: byte-identical traces). */
@@ -809,7 +825,7 @@ class Driver {
   sample() {
     while (this.clock >= this.nextSample) {
       const p = R.decreeParams(this.cfg, this.g);
-      this.tr.samples.push({ t: this.clock, office: this.d.office, term: this.d.term, cash: this.g.cash, I: p.I, B: p.B, approval: p.approval, nr: this.d.nr, record: p.record, ministries: this.d.ministries.filter((m) => m.open).length, ministry0Rate: p.rates[0] ?? 0 });
+      this.tr.samples.push({ t: this.clock, office: this.d.office, term: this.d.term, cash: this.g.cash, I: p.I, B: p.B, approval: p.approval, nr: this.d.nr, record: p.record, ministries: this.d.ministries.filter((m) => m.open).length, ministry0Rate: p.rates[0] ?? 0, tray: this.d.tray.length, moods: [...this.d.moods] });
       this.nextSample += 60;
     }
     this.tr.maxNumber = Math.max(this.tr.maxNumber, this.g.cash, R.decreeParams(this.cfg, this.g).I);
@@ -867,7 +883,8 @@ class Driver {
         gain -= m;
       }
       const bound = Math.max(I0, I1) * dt;
-      if (gain > bound * (1 + 1e-9) + 1e-6) {
+      // A few ulps of the treasury (rules-attack 5: at 1e27 dibs one ulp of cash is about 1e11).
+      if (gain > bound * (1 + 1e-9) + 1e-6 + 8 * Number.EPSILON * Math.max(Math.abs(before.cash), Math.abs(this.g.cash))) {
         this.book('tick', bound);
         this.book('unexplained', gain - bound);
       } else this.book('tick', gain);
@@ -1060,6 +1077,8 @@ class Driver {
     this.book('spend', spent);
     if (next === before) this.advanceTo(this.clock + HAND.slip);
     if (choice === 'sign' && next !== before) this.tr.purchases.push({ t: this.clock, via: 'slip', purchase: purchaseName(item.slip.purchase), price: item.slip.price });
+    const pu = item.slip.purchase;
+    this.tr.slips?.push({ t: this.clock, landedAt: item.landedAt, office: before.decree.office, levels: item.slip.levels ?? 1, open: pu.type === 'open', ministry: pu.type === 'monument' ? null : pu.ministry, bought: choice === 'sign' && next !== before });
     if (choice === 'sign' && Math.abs(spent + item.slip.price) > moneyTol(item.slip.price, Math.max(Math.abs(before.cash), Math.abs(this.g.cash))) && !this.tr.events.slice(-6).some((e) => e.type === 'formVoid')) this.tr.faults.push(`H1: slip printed ${item.slip.price}, the treasury changed by ${spent}`);
     this.afterDecision();
   }
@@ -2016,7 +2035,49 @@ export interface SeedSummary {
   /** H6's and H12's handover runs. */
   handover?: { habit: BotId; winsWithin2: boolean; lifted: boolean | null };
   /** For the tuning table (pass counts and ranges per bot and hand): D38, H10, D24, the pace aims. */
-  extra?: { firstElection: number | null; boycottsPerHour: number; scandalsPerHour: number; unaffordable: number; emptyDesk30: number; nothing30: number; emptyDesk13: number | null; signShare: number; lateOpenings: number; monuments: number; papers: number; h8?: { both: number; vsTitle: number; vsMood: number; vsMoney: number }; paperGainShare?: number; paperCostShare?: number; hour1Repeats?: number; repeats23?: number; medianMargin?: number };
+  extra?: { firstElection: number | null; boycottsPerHour: number; scandalsPerHour: number; unaffordable: number; emptyDesk30: number; nothing30: number; emptyDesk13: number | null; signShare: number; lateOpenings: number; monuments: number; papers: number; h8?: { both: number; vsTitle: number; vsMood: number; vsMoney: number }; paperGainShare?: number; paperCostShare?: number; hour1Repeats?: number; repeats23?: number; medianMargin?: number; d44?: ReturnType<typeof d44Of>; rhythm?: ReturnType<typeof rhythmOf> };
+}
+
+/**
+ * D44's measurements (the numbers step): the share of front pages the bot apologised on; per club of the
+ * first hour (office/club) the share of day papers decided on which the chosen side lowered it and its mean
+ * mood; the plain empty-desk share, "nothing on the desk and nothing affordable" and the longest such wait.
+ */
+export function d44Of(tr: Trace, cfg?: DecreeConfig) {
+  const t0 = tr.started;
+  const fronts = tr.decisions.filter((d) => d.kind === 'scandal');
+  const lose: Record<string, number> = {};
+  const mood: Record<string, number> = {};
+  const name = (o: OfficeIx, i: number) => `${cfg ? R.officeOf(cfg, o).id : o}/${cfg ? cfg.decree.offices[o].clubs[i] : i}`;
+  const h1 = tr.decisions.filter((d) => isDayRec(d) && d.t < t0 + 3600);
+  const byOffice = new Map<OfficeIx, DecisionRec[]>();
+  for (const d of h1) byOffice.set(d.office, [...(byOffice.get(d.office) ?? []), d]);
+  for (const [o, ds] of byOffice) {
+    const n = Math.max(...ds.map((d) => d.printed.moods.length));
+    for (let i = 0; i < n; i++) lose[name(o, i)] = ds.filter((d) => (d.printed.moods[i] ?? 0) < 0).length / ds.length;
+  }
+  const ss = tr.samples.filter((x) => x.t < t0 + 3600 && x.moods);
+  const sums = new Map<string, number[]>();
+  for (const x of ss) x.moods!.forEach((m, i) => sums.set(name(x.office, i), [...(sums.get(name(x.office, i)) ?? []), m]));
+  for (const [k, v] of sums) mood[k] = v.reduce((a, b) => a + b, 0) / v.length;
+  const i30 = idleDesk(tr, 0, 1800);
+  const i13 = idleDesk(tr, 3600, 3 * 3600);
+  return { fronts: fronts.length, apologised: fronts.filter((d) => d.choice === 'sign').length, lose, mood, emptyDesk30: i30.emptyShare, nothing30: i30.nothingShare, longest30: i30.longestNothing, emptyDesk13: i13.emptyShare, nothing13: i13.nothingShare, longest13: i13.longestNothing };
+}
+
+/** The desk's rhythm per office (the numbers step): slips flicked per paper decided, the mean levels a level slip carried, the share of slips that were openings, when "Open Potholes" was first offered, the tray each minute. */
+export function rhythmOf(tr: Trace) {
+  const slips = tr.slips ?? [];
+  const per: { office: number; slips: number; papers: number; meanLevels: number; openShare: number }[] = [];
+  for (const o of [0, 1, 2] as OfficeIx[]) {
+    const sl = slips.filter((x) => x.office === o);
+    const papers = tr.decisions.filter((d) => d.office === o && d.kind !== 'slip' && !d.formVoid).length;
+    if (!papers && !sl.length) continue;
+    const lv = sl.filter((x) => !x.open && x.ministry !== null);
+    per.push({ office: o, slips: sl.length, papers, meanLevels: lv.length ? lv.reduce((a, x) => a + x.levels, 0) / lv.length : 0, openShare: sl.length ? sl.filter((x) => x.open).length / sl.length : 0 });
+  }
+  const pot = slips.find((x) => x.office === 0 && x.open && x.ministry === 1);
+  return { per, potholesAt: pot ? pot.landedAt - tr.started : null, tray: tr.samples.filter((x) => x.t < tr.started + 3 * 3600).map((x) => x.tray ?? 0) };
 }
 
 export function summarize(tr: Trace, handedOver: BotRun['handedOver'] = null, habit: BotId | null = null, cfg?: DecreeConfig): SeedSummary {
@@ -2034,7 +2095,10 @@ export function summarize(tr: Trace, handedOver: BotRun['handedOver'] = null, ha
       emptyDesk30: i30.emptyShare, nothing30: i30.nothingShare, emptyDesk13: long ? idleDesk(tr, 3600, 3 * 3600).emptyShare : null,
       signShare: day.length ? day.filter((d) => d.choice === 'sign').length / day.length : 0, lateOpenings: p.lateOpenings.length,
       monuments: tr.events.filter((e) => e.type === 'monument').length, papers: day.length,
+      d44: d44Of(tr, cfg), rhythm: rhythmOf(tr),
     };
+    const t7a = h7(tr, cfg);
+    out.extra.hour1Repeats = t7a.hour1Repeats + t7a.notesRepeated + t7a.picketsRepeated;
     if (tr.bot === 'reader' && long) {
       const h = h8(tr);
       const mo = money(tr);
