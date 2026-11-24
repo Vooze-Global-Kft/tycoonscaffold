@@ -27,11 +27,10 @@
  * exactly as commitCash would (runEarnings, lifetimeEarnings, the rules' book under 'tick'), from
  * the anchor, so the books are exact too.
  */
-import { advice, slipNeed, standingOrderPick, reserveNow } from './advice';
+import { slipNeed, standingOrderPick, reserveNow } from './advice';
 import { commitPending } from './decide';
 import { drawCampaignPaper, drawNext, drawRally, landNext } from './draw';
 import { standingOrderActive, standingOrderStep } from './grants';
-import { standIn } from './notBuilt';
 import { decreeParams } from './params';
 import { slipFor } from './slips';
 import { MAX_TICK, type CashAnchor, type DecreeConfig, type DecreeEvent, type DecreeGame, type Paper } from './types';
@@ -182,7 +181,7 @@ export function runUpArrival(cfg: DecreeConfig, g: DecreeGame, t: number, events
 function runEvent(cfg: DecreeConfig, g: DecreeGame, kind: TickEvent, t: number, events: DecreeEvent[]): DecreeGame {
   switch (kind) {
     case 'pending':
-      return standIn(commitPending, () => commitPending(cfg, g, t, events), () => g);
+      return commitPending(cfg, g, t, events);
     case 'campaign':
       return runUpArrival(cfg, g, t, events);
     case 'arrival': {
@@ -191,7 +190,7 @@ function runEvent(cfg: DecreeConfig, g: DecreeGame, kind: TickEvent, t: number, 
       return withDecree(x, { nextArrivalAt: room ? t + decreeParams(cfg, x).tau : null });
     }
     case 'slip': {
-      const slip = standIn(slipFor, () => slipFor(cfg, g), () => advice(cfg, g).slip);
+      const slip = slipFor(cfg, g);
       if (!slip) return g;
       events.push({ type: 'slipArrived' });
       return withDecree(g, { desk: { type: 'slip', slip, landedAt: t }, emptySince: null, slipOffered: true });

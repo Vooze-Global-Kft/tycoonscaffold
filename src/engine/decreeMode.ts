@@ -32,7 +32,6 @@ export function withDecreeContent(cfg: GameConfig): GameConfig {
   return { ...cfg, decree: r.data as unknown as Record<string, unknown> };
 }
 
-const asGame = (g: GameState) => g as R.DecreeGame;
 const asState = (g: R.DecreeGame) => g as GameState;
 /** A save of a decree game always has `decree` after reconcile; a bare shared state (a test) gets one. */
 const run = (cfg: R.DecreeConfig, g: GameState): R.DecreeGame => R.withDecreeFields(cfg, g);

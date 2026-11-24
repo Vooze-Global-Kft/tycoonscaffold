@@ -20,7 +20,6 @@
  */
 import { reserveNow, standingOrderPick } from './advice';
 import { fillTray, landNext } from './draw';
-import { standIn } from './notBuilt';
 import { commitCash, decreeParams, roundDibs } from './params';
 import { endScandal } from './scandal';
 import { buy } from './slips';
@@ -97,11 +96,11 @@ export function grantAd(cfg: DecreeConfig, g: DecreeGame, kind: DecreeAdKind, ev
       break;
     }
     case 'spinDoctor':
-      next = standIn(endScandal, () => endScandal(cfg, g, 'ad', events), () => g);
+      next = endScandal(cfg, g, 'ad', events);
       break;
     case 'courier': {
       const club = courierClub(g);
-      next = club === null ? g : standIn(endStrike, () => endStrike(cfg, g, club, 'ad', events), () => g);
+      next = club === null ? g : endStrike(cfg, g, club, 'ad', events);
       break;
     }
     case 'openDoors': {
@@ -148,7 +147,7 @@ export function standingOrderStep(cfg: DecreeConfig, g: DecreeGame, events: Decr
   if (!standingOrderActive(cfg, g) || g.decree.pending) return g;
   const pick = standingOrderPick(cfg, g);
   if (!pick || g.cash < cfg.decree.standingOrder.times * pick.price + reserveNow(cfg, g)) return g;
-  return standIn(buy, () => buy(cfg, g, pick.purchase, pick.price, events, { auto: true }), () => g);
+  return buy(cfg, g, pick.purchase, pick.price, events, { auto: true });
 }
 
 /** The face picked on the loading card (3.1): one of the six player faces; the same object once one is picked or for an unknown face. Built. */

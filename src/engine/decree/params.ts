@@ -19,7 +19,6 @@
  */
 import type { GameConfig } from '../../config/schema';
 import { rngMix4 } from '../rng';
-import { standIn } from './notBuilt';
 import { sayNothingFactor } from './scandal';
 import { deskFactors, factorFor } from './twists';
 import { SITE, type CashSource, type ClubId, type ClubIx, type DecreeConfig, type DecreeGame, type DecreeParams, type FactorTarget, type FactorValue, type Factors, type Office, type OfficeIx, type Site, type TopBar } from './types';
@@ -146,29 +145,9 @@ export function vanityPrice(cfg: DecreeConfig, g: DecreeGame): number {
   return roundDibs(cfg, cfg.decree.vanity.price * decreeParams(cfg, g).B);
 }
 
-/**
- * One factor target for one club's paper (null: a target of no club), from the ONE Factors object
- * (twists.ts `factorFor`, P1b). Stand-in until factorFor is built: every list entry on `target` whose
- * club is null or `club` multiplies (mul) and adds (add), in list order.
- */
+/** One factor target for one club's paper (null: a target of no club), from the ONE Factors object (twists.ts `factorFor`). */
 export function factorOn(f: Factors, target: FactorTarget, club: ClubIx | null): FactorValue {
-  if (!f.list.length) return { mul: 1, add: 0, sources: [] };
-  return standIn(
-    factorFor,
-    () => factorFor(f, target, club),
-    () => {
-      let mul = 1;
-      let add = 0;
-      const sources: FactorValue['sources'] = [];
-      for (const e of f.list) {
-        if (e.target !== target || (e.club !== null && e.club !== club)) continue;
-        mul *= e.mul;
-        add += e.add;
-        sources.push({ initials: e.initials, source: e.source });
-      }
-      return { mul, add, sources };
-    },
-  );
+  return factorFor(f, target, club);
 }
 
 /**

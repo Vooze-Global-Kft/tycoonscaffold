@@ -15,8 +15,7 @@
  * two papers (decide.ts `commitItem` step 5: a paper waiting, a purchase affordable above the reserve,
  * no slip since the last decided paper: `DecreeState.slipOffered`), at most one per paper.
  *
- * SEAM: `slipFor` reads advice.ts (P1b) `advice(...).slip` (a stand-in picks the best payback while
- * advice is not built); advice should build its Slip with `slipOf` here (one price, one level, one
+ * SEAM: `slipFor` reads advice.ts (P1b) `advice(...).slip`; advice builds its Slip with `slipOf` here (one price, one level, one
  * rate gain). `reserve` / `reserveParts` are read by advice.ts, the Standing Order (grants.ts, P1b)
  * and the Ledger; `buy` is the one purchase path (Ledger "Raise", slips, the Standing Order, the
  * monument, a requisition's level); `canBuy` says why one would be refused. `ledger` reads the cabinet
@@ -25,7 +24,6 @@
  */
 import { advice } from './advice';
 import { commitPending } from './decide';
-import { standIn } from './notBuilt';
 import { clubIndex, commitCash, decreeParams, EPS, factorOn, levelCost, levelGain, officeOf, openCost, openGain, rateOf, roundDibs, storeys, vanityPrice } from './params';
 import { costOf, freezeShown, sizeMoney } from './size';
 import { deskFactors } from './twists';
@@ -103,24 +101,10 @@ function emptyDeskExtra(cfg: DecreeConfig, g: DecreeGame): number {
   return roundDibs(cfg, cfg.decree.desk.slipReserveSeconds * decreeParams(cfg, g).B);
 }
 
-/** The stand-in of advice's slip while advice.ts is not built: the best payback (price / income added) among the levels and openings affordable above the reserve. */
-function slipStandIn(cfg: DecreeConfig, g: DecreeGame): Slip | null {
-  const keep = reserve(cfg, g) + emptyDeskExtra(cfg, g);
-  let best: Slip | null = null;
-  let bestScore = Infinity;
-  g.decree.ministries.forEach((m, i) => {
-    const s = slipOf(cfg, g, { type: m.open ? 'level' : 'open', ministry: i });
-    if (!s || g.cash - s.price + EPS < keep || s.rateGain <= 0) return;
-    const score = s.price / s.rateGain;
-    if (score < bestScore) [best, bestScore] = [s, score];
-  });
-  return best;
-}
-
 /** The slip that would land now (advice's purchase, affordable above the reserve, D16's extra on an empty desk), or null; never during the count or on the result sheet. Built. */
 export function slipFor(cfg: DecreeConfig, g: DecreeGame): Slip | null {
   if (g.decree.phase === 'count' || g.decree.phase === 'result') return null;
-  const slip = standIn(advice, () => advice(cfg, g).slip, () => slipStandIn(cfg, g));
+  const slip = advice(cfg, g).slip;
   if (!slip) return null;
   return g.cash - slip.price + EPS >= reserve(cfg, g) + emptyDeskExtra(cfg, g) ? slip : null;
 }

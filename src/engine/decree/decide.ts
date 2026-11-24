@@ -25,7 +25,6 @@
 import { landNext } from './draw';
 import { scheduleFollowUp } from './followup';
 import { appoint, sendAway } from './ministers';
-import { standIn } from './notBuilt';
 import { commitCash, EPS } from './params';
 import { checkScandal, countDownScandal, endScandal } from './scandal';
 import { costOf, formVoid } from './size';
@@ -141,13 +140,12 @@ export function applyShown(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, cho
         break;
       case 'appoint': {
         const m = e.minister;
-        s = standIn(appoint, () => appoint(cfg, s, m, events), () => appointStandIn(cfg, s, m, events));
+        s = appoint(cfg, s, m, events);
         break;
       }
       case 'applyAgain': {
         const m = e.minister;
-        const papers = e.papers;
-        s = standIn(sendAway, () => sendAway(cfg, s, m), () => withDecree(s, { applicationReturns: [...s.decree.applicationReturns.filter((r) => r.minister !== m), { minister: m, dueAt: s.decree.stats.decisions + 1 + papers }] }));
+        s = sendAway(cfg, s, m);
         break;
       }
       case 'endBoycott':
@@ -184,21 +182,6 @@ export function applyShown(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, cho
 /** A level +1 through the one purchase path's level step (a requisition already paid its printed price). */
 function levelStep(cfg: DecreeConfig, g: DecreeGame, ministry: number, events: DecreeEvent[]): DecreeGame {
   return buy(cfg, g, { type: 'level', ministry }, 0, events, { free: true });
-}
-
-/** The stand-in of ministers.ts `appoint` while it is not built: the cabinet seat and the delivery. */
-function appointStandIn(cfg: DecreeConfig, g: DecreeGame, minister: string, events: DecreeEvent[]): DecreeGame {
-  const m = cfg.decree.ministers.find((x) => x.id === minister);
-  if (!m || g.decree.cabinet[minister]) return g;
-  events.push({ type: 'appointed', minister });
-  const d = g.decree;
-  return withDecree(g, { cabinet: { ...d.cabinet, [minister]: { club: m.club, termsServed: 0 } }, applicationsDelivered: d.applicationsDelivered.includes(minister) ? d.applicationsDelivered : [...d.applicationsDelivered, minister] });
-}
-
-/** The stand-in of term.ts `countDay` while it is not built: day += 1, decisions ever += 1. */
-function countDayStandIn(g: DecreeGame): DecreeGame {
-  const st = g.decree.stats;
-  return withDecree(g, { day: g.decree.day + 1, stats: { ...st, decisions: st.decisions + 1, daysEver: st.daysEver + 1 } });
 }
 
 /** Whether an item counts as a day (2.17 step 2): a paper of a day kind; never a campaign paper, a rally or a slip. Built. */
@@ -238,8 +221,7 @@ export function commitItem(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, cho
   // (2)
   if (isDay(item)) {
     const gained = item.type === 'paper' && !formVoid(cfg, g, item.shown.sign) && item.shown[choice].some((e) => e.type === 'gossip' && e.delta > 0);
-    const before = s;
-    s = standIn(countDay, () => countDay(cfg, before), () => countDayStandIn(before));
+    s = countDay(cfg, s);
     s = countDownStrikes(cfg, s, events);
     s = countDownScandal(cfg, s, gained, events);
   }
@@ -247,8 +229,7 @@ export function commitItem(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, cho
   s = checkStrikes(cfg, s, events);
   s = checkScandal(cfg, s, events);
   // (4)
-  const atEnd = s;
-  s = standIn(checkTermEnd, () => checkTermEnd(cfg, atEnd, events), () => atEnd);
+  s = checkTermEnd(cfg, s, events);
   // (5)
   const d = s.decree;
   if (isPaper && !d.desk && !d.pending && d.tray.length && !d.slipOffered && d.phase === 'governing') {

@@ -20,8 +20,6 @@
  * tick.ts reads `slipNeed` (when a slip becomes possible) and grants.ts `standingOrderPick`.
  */
 import { decreeParams, levelCost, levelGain, openCost, openGain, roundDibs, vanityPrice } from './params';
-import { costOf } from './size';
-import { standIn } from './notBuilt';
 import { reserve } from './slips';
 import { canWatchAd } from './grants';
 import { canCall } from './term';
@@ -38,13 +36,9 @@ export interface Candidate {
   level: number;
 }
 
-/** The reserve of 2.6 and D16 ("Kept for the desk" and "Kept for the run-up"), from slips.ts; while that is not built, the desk paper's sign cost. */
+/** The reserve of 2.6 and D16 ("Kept for the desk" and "Kept for the run-up"), slips.ts `reserve`. */
 export function reserveNow(cfg: DecreeConfig, g: DecreeGame): number {
-  return standIn(
-    reserve,
-    () => reserve(cfg, g),
-    () => (g.decree.desk?.type === 'paper' ? costOf(g.decree.desk.shown.sign) : 0),
-  );
+  return reserve(cfg, g);
 }
 
 /**
@@ -149,7 +143,7 @@ export function advice(cfg: DecreeConfig, g: DecreeGame): AdviceResult {
   const next = !slip && pick ? { purchase: pick.purchase, price: pick.price, about: aboutWait(pick.price + res - g.cash, I) } : null;
   const call = callNow(cfg, g);
   const t = trouble(g);
-  const adOr = (ad: 'courier' | 'spinDoctor'): boolean => standIn(canWatchAd, () => canWatchAd(cfg, g, ad), () => false);
+  const adOr = (ad: 'courier' | 'spinDoctor'): boolean => canWatchAd(cfg, g, ad);
   let goal: Goal;
   if (call) goal = { kind: 'call', held: poll(cfg, g).held, of: cfg.decree.offices[g.decree.office].districts.length };
   else if (t.boycott !== null) goal = adOr('courier') ? { kind: 'ad', ad: 'courier' } : { kind: 'settle', club: t.boycott };
@@ -162,7 +156,7 @@ export function advice(cfg: DecreeConfig, g: DecreeGame): AdviceResult {
 
 /** The reader calls on the first allowed day on which the poll shows a majority (8.2, D17). */
 export function callNow(cfg: DecreeConfig, g: DecreeGame): boolean {
-  return standIn(canCall, () => canCall(cfg, g), () => false) && poll(cfg, g).held >= cfg.decree.offices[g.decree.office].majority;
+  return canCall(cfg, g) && poll(cfg, g).held >= cfg.decree.offices[g.decree.office].majority;
 }
 
 /** The goal line's goal (4.1): advice's, as the screen prints it. Built. */

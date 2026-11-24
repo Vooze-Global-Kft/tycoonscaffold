@@ -25,8 +25,7 @@
  * absence), `drawCampaignPaper` and `drawRally` (the run-up, term.ts), `setAside` (at a call),
  * `restoreAside` (a new term), `returnToDeck` (a move, move.ts), `scriptedPaper` + `landPaper` (the
  * first paper of each office, move.ts), `fillTray` (time away, offline.ts; Open the Doors, grants.ts).
- * What it calls of P1b: ministers.ts `nextApplication` (step 4; a stand-in answers while it is not
- * built), twists.ts `deskFactors` (the committee share, at landing), count.ts `shares`
+ * What it calls of P1b: ministers.ts `nextApplication` (step 4), twists.ts `deskFactors` (the committee share, at landing), count.ts `shares`
  * (`drawCampaignPaper`). `landPaper` and `landNext` are also step 5 of 2.17 (decide.ts `commitItem`).
  *
  * `drawNext` returns the SAME object when nothing may arrive now (not governing, a full tray, the
@@ -37,7 +36,6 @@ import { shares } from './count';
 // followup.ts builds its papers with this file's builders: the two files call each other at run time only.
 import { dueFollowUp, followUpPaper } from './followup';
 import { nextApplication } from './ministers';
-import { notBuilt, standIn } from './notBuilt';
 import { clubIndex, decreeParams, factorOn, levelCost, levelCostRaw, levelGain, officeOf, rand, roundDibs } from './params';
 import { freezeShown } from './size';
 import { deskFactors } from './twists';
@@ -484,25 +482,9 @@ export function applicationPaper(cfg: DecreeConfig, g: DecreeGame, minister: str
   const d = idr.g.decree;
   return {
     paper,
-    g: withDecree(idr.g, { applicationsDelivered: again ? d.applicationsDelivered : [...d.applicationsDelivered, minister], applicationReturns: d.applicationReturns.filter((r) => r.minister !== minister) }),
+    // A return stays in applicationReturns until it is decided (ministers.ts `decided`), so it never counts as one of the term's slots.
+    g: withDecree(idr.g, { applicationsDelivered: again ? d.applicationsDelivered : [...d.applicationsDelivered, minister] }),
   };
-}
-
-/**
- * The stand-in of ministers.ts `nextApplication` while it is not built (D21, 2.9): at days 9, 30 and
- * 60 of a term, once each, the next undelivered minister whose club the office has; or a minister
- * sent away whose return is due.
- */
-function nextApplicationStandIn(cfg: DecreeConfig, g: DecreeGame): string | null {
-  const d = g.decree;
-  const has = (id: string) => {
-    const m = cfg.decree.ministers.find((x) => x.id === id);
-    return !!m && clubIndex(cfg, d.office, m.club) >= 0;
-  };
-  const back = d.applicationReturns.find((r) => r.dueAt <= d.stats.decisions && has(r.minister));
-  if (back) return back.minister;
-  if (!cfg.decree.forms.application.days.includes(d.day) || d.seen[`@application:${d.office}:${d.term}:${d.day}`] !== undefined) return null;
-  return cfg.decree.ministers.find((m) => !d.applicationsDelivered.includes(m.id) && has(m.id))?.id ?? null;
 }
 
 /** D16: the requisition's ministry: the best-payback level the treasury can pay now, else the cheapest next level; null when every open ministry is capped. */
@@ -548,11 +530,9 @@ function choose(cfg: DecreeConfig, g0: DecreeGame): Drawn | null {
     if (r) return r;
   }
   // (4) forms: an application, a ribbon at a new storey, a requisition every n-th draw.
-  let viaStandIn = false;
-  const minister = standIn(nextApplication, () => nextApplication(cfg, g), () => ((viaStandIn = true), nextApplicationStandIn(cfg, g)));
-  if (minister && !waiting(g).some((p) => p.kind === 'application' && p.sign.effects.some((e) => e.type === 'appoint' && e.minister === minister))) {
-    const marked = viaStandIn ? withDecree(g, { seen: { ...g.decree.seen, [`@application:${g.decree.office}:${g.decree.term}:${g.decree.day}`]: g.decree.stats.decisions } }) : g;
-    const a = applicationPaper(cfg, marked, minister);
+  const minister = nextApplication(cfg, g);
+  if (minister) {
+    const a = applicationPaper(cfg, g, minister);
     if (a) return a;
   }
   const rib = g.decree.ribbonsDue[0];
@@ -692,7 +672,7 @@ export function drawCampaignPaper(cfg: DecreeConfig, g: DecreeGame, k: number, e
   }
   const oid = officeIdOf(cfg, s.decree.office);
   const pick = nextRecord(s, cfg.decree.deck.runUp.filter((r) => r.office === oid));
-  if (!pick) return notBuilt(`drawCampaignPaper: the deck has no run-up paper for ${oid}`);
+  if (!pick) throw new Error(`decree: the deck has no run-up paper for ${oid}`);
   const name = officeOf(cfg, s.decree.office).districts[district].name;
   const sign: Effect[] = [
     { type: 'money', seconds: -f.seconds },
@@ -709,7 +689,7 @@ export function drawRally(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent[
   const lowest = moods.reduce((best, m, gi) => (m < moods[best] ? gi : best), 0);
   const oid = officeIdOf(cfg, g.decree.office);
   const pick = nextRecord(g, cfg.decree.deck.rallies.filter((r) => r.office === oid));
-  if (!pick) return notBuilt(`drawRally: the deck has no rally for ${oid}`);
+  if (!pick) throw new Error(`decree: the deck has no rally for ${oid}`);
   const sign: Effect[] = [
     { type: 'money', seconds: -f.seconds },
     { type: 'mood', club: lowest, delta: f.clubGain },
@@ -824,7 +804,7 @@ export function returnToDeck(cfg: DecreeConfig, g: DecreeGame): DecreeGame {
   const followUps = d.followUps.slice();
   let frameBag = d.frameBag;
   let delivered = d.applicationsDelivered;
-  const returns = d.applicationReturns.slice();
+  let returns = d.applicationReturns.slice();
   for (const p of papers) {
     if (p.kind === 'comic') delete seen[p.source];
     else if (p.kind === 'template') {
@@ -834,8 +814,8 @@ export function returnToDeck(cfg: DecreeConfig, g: DecreeGame): DecreeGame {
     else if (p.kind === 'application') {
       const def = cfg.decree.deck.applications.find((a) => a.id === p.source);
       if (!def) continue;
-      // A first application goes back undelivered; a return goes back among the returns, due now.
-      if (p.text === def.returnText && delivered.includes(def.minister)) returns.push({ minister: def.minister, dueAt: d.stats.decisions });
+      // A first application goes back undelivered; a return (still listed until decided) is due now.
+      if (returns.some((r) => r.minister === def.minister)) returns = returns.map((r) => (r.minister === def.minister ? { ...r, dueAt: d.stats.decisions } : r));
       else delivered = delivered.filter((x) => x !== def.minister);
     }
   }

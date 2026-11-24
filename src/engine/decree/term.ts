@@ -26,7 +26,6 @@ import { callDay, count, currentRival, meritOf, poll } from './count';
 import { commitPending } from './decide';
 import { drawCampaignPaper, landNext, restoreAside, setAside } from './draw';
 import { canMoveUp, moveUp } from './move';
-import { standIn } from './notBuilt';
 import { decreeParams } from './params';
 import { endScandal } from './scandal';
 import { endStrike } from './strike';
@@ -59,7 +58,7 @@ function startRunUp(cfg: DecreeConfig, g: DecreeGame, clock: number, events: Dec
   let x = g;
   if (!byItself) {
     // A tap elsewhere: the take-back window ends (2.7).
-    if (x.decree.pending) x = standIn(commitPending, () => commitPending(cfg, x, clock, events), () => x);
+    if (x.decree.pending) x = commitPending(cfg, x, clock, events);
     if (x.decree.phase !== 'governing') return x;
     events.push({ type: 'callElection' });
   }
@@ -69,7 +68,7 @@ function startRunUp(cfg: DecreeConfig, g: DecreeGame, clock: number, events: Dec
   }
   x = setAside(cfg, x);
   // A scandal running at the term's last day ends (2.8): the call makes this the last day.
-  if (x.decree.scandal) x = standIn(endScandal, () => endScandal(cfg, x, 'term', events), () => withDecree(x, { scandal: null, gossip: 0 }));
+  if (x.decree.scandal) x = endScandal(cfg, x, 'term', events);
   const row = cfg.decree.offices[x.decree.office];
   x = withDecree(x, { phase: 'campaign', campaign: { C: new Array<number>(row.districts.length).fill(0), papersLeft: row.campaignPapers, rallyDone: false }, emptySince: null });
   events.push({ type: 'runUpStarted', byItself });
@@ -202,7 +201,7 @@ export function newTerm(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent[])
     if (x.decree.strikes[gi] && x.decree.moods[gi] >= cfg.decree.boycott.endsAt) {
       const club = gi;
       const before = x;
-      x = standIn(endStrike, () => endStrike(cfg, before, club, 'term', events), () => withDecree(before, { strikes: before.decree.strikes.map((s, k) => (k === club ? null : s)) }));
+      x = endStrike(cfg, before, club, 'term', events);
     }
   }
   // A club the reset lifted to rearmAt is armed again (2.8 "it re-arms at 30", by any means).

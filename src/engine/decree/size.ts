@@ -18,11 +18,10 @@
  * `stripOf` is what the desk prints (a screen never computes a value of a strip), derived from `shown`
  * only; it asks count.ts (P1b) `heldAfter` for the poll title, `closeDistricts` for the flags and
  * `shares` for a district chip ("HT 48.6 → 52.6"), and advice.ts (P1b) `about` for "Short by 240 ·
- * about 9 s" (each with a stand-in while it is not built: no poll row, no flag, no "about").
+ * about 9 s".
  */
 import { about } from './advice';
 import { closeDistricts, heldAfter, shares } from './count';
-import { standIn } from './notBuilt';
 import { approvalOf, clubIndex, decreeParams, EPS, factorOn, levelCostRaw, officeOf, roundDibs } from './params';
 import type { Chip, Choice, ClubIx, DecreeConfig, DecreeGame, Effect, FactorTarget, FactorValue, Factors, Paper, Shown, ShownEffect, Strip, StripNote } from './types';
 
@@ -227,7 +226,7 @@ export function stripOf(cfg: DecreeConfig, g: DecreeGame, side: Choice): Strip |
     moodDeltas.fill(0);
     points.fill(0);
   }
-  const flagged = new Set(standIn(closeDistricts, () => closeDistricts(cfg, g), () => []).flatMap((x) => x.clubs));
+  const flagged = new Set(closeDistricts(cfg, g).flatMap((x) => x.clubs));
   const chips: Chip[] = [];
   let gossipTo = d.gossip;
   for (const e of shown) {
@@ -271,15 +270,9 @@ export function stripOf(cfg: DecreeConfig, g: DecreeGame, side: Choice): Strip |
   }
   // The title row: the poll when the districts held change, else the approval.
   const zeros = (k: number) => new Array<number>(k).fill(0);
-  const pollRow = standIn(
-    heldAfter,
-    () => {
-      const from = heldAfter(cfg, g, zeros(n), zeros(nd));
-      const to = heldAfter(cfg, g, moodDeltas, points);
-      return from !== to ? { from, to, of: nd } : null;
-    },
-    () => null,
-  );
+  const heldFrom = heldAfter(cfg, g, zeros(n), zeros(nd));
+  const heldTo = heldAfter(cfg, g, moodDeltas, points);
+  const pollRow = heldFrom !== heldTo ? { from: heldFrom, to: heldTo, of: nd } : null;
   // The note row: warnings first.
   const notes: StripNote[] = [];
   if (!isVoid) {
@@ -293,7 +286,7 @@ export function stripOf(cfg: DecreeConfig, g: DecreeGame, side: Choice): Strip |
   if (!affordable) {
     const by = Math.max(1, roundDibs(cfg, cost - g.cash));
     const I = p.I;
-    notes.push({ kind: 'short', by, about: I > 0 ? standIn(about, () => about((cost - g.cash) / I), () => null) : null });
+    notes.push({ kind: 'short', by, about: I > 0 ? about((cost - g.cash) / I) : null });
   }
   for (const e of shown) {
     if (e.type === 'sayNothing') notes.push({ kind: 'sayNothing', papers: e.papers, factor: e.factor });

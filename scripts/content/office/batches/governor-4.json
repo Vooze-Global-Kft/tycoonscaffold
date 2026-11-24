@@ -22,7 +22,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "project",
-      "text": "Gilt the market bus stop. Then the bus. Then the notebooks.",
+      "text": "Gild the bus stop to match us. Then the bus. Then the notebooks.",
       "subject": "buses",
       "butt": "visitor",
       "shape": "escalation",
@@ -34,10 +34,11 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "text": "Turn the Provincial Clock to the buses. Shops can go by the 8:15.",
-      "subject": "clocks",
+      "text": "Move the Guild's sandwich board. From our stop, it looks like the 9:40.",
+      "subject": "buses",
       "butt": "thing",
-      "shape": "undercut"
+      "shape": "undercut",
+      "note": "Shops mind: their board moved off the pavement by the stop."
     },
     {
       "id": "gov4-square-sundays",
@@ -45,11 +46,12 @@
       "club": "brass",
       "other": "shops",
       "archetype": "swap",
-      "text": "Clear the stalls on Sunday for the band. Then Saturday, to practise.",
+      "text": "The market on Sundays, to practise. Quietly, then the drum.",
       "subject": "bandstands",
-      "butt": "visitor",
+      "butt": "thing",
       "shape": "escalation",
-      "portable": true
+      "portable": true,
+      "note": "Shops mind: the market given to band practice."
     },
     {
       "id": "gov4-band-bus",
@@ -58,39 +60,41 @@
       "club": "bus",
       "other": "brass",
       "archetype": "committee",
-      "text": "Is a band on a bus a concert or a bus? An inquiry, by field trip.",
+      "text": "A band on a bus: a concert, or a bus? An inquiry will ride the 6:50.",
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
       "portable": true,
-      "biggerStudy": "The band-bus inquiry asks for a second bus. The drum did not fit."
+      "biggerStudy": "The band-bus inquiry asks to ride every route. With the drum."
     },
     {
       "id": "gov4-fuss-front",
-      "visitor": "spinwell",
+      "visitor": "dimity",
       "club": "shops",
       "archetype": "vanity",
-      "text": "Buy the Evening Fuss front page, nightly, for your face. Rodney has a few.",
+      "text": "Rodney wants your face on the Evening Fuss vans. They will go slowly.",
       "subject": "portraits",
       "butt": "self",
-      "shape": "callback"
+      "shape": "callback",
+      "note": "Callback: Rodney. No newspaper bought or controlled: only its vans painted."
     },
     {
       "id": "gov4-desk-fountain",
-      "visitor": "goss",
+      "visitor": "slake",
       "club": "bus",
       "archetype": "basket",
-      "text": "A desk fountain in your likeness. Fountains reflect so well on people.",
-      "subject": "fountains",
+      "text": "A hat for your desk clock, and your lamp. The in-tray looks cold.",
+      "subject": "hats",
       "butt": "lobbyist",
-      "shape": "literalism",
+      "shape": "escalation",
       "favour": {
-        "text": "About the fountain: it asks for a bus shelter, to keep out of the rain.",
+        "text": "The clock's hat asks for the front seat of the 8:15. For the view.",
         "clippings": {
-          "sign": "GOVERNOR GIVES FOUNTAIN A BUS SHELTER; SPOTTERS GET WET",
-          "refuse": "FOUNTAIN STAYS ON DESK. DESK DAMP"
+          "sign": "GOVERNOR GIVES HAT A FRONT SEAT; SPOTTERS LOG A HAT",
+          "refuse": "HAT STAYS ON DESK CLOCK; TIME UNAFFECTED"
         }
-      }
+      },
+      "note": "Replaces the desk fountain (mayor-2, gov3, president-1/2 have desk fountains; president-5 owns fountains in your shape). Favour: Bus put out (the front seat)."
     },
     {
       "id": "gov4-hat-shelter",
@@ -98,23 +102,24 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A bus shelter outside the hat shop. The hats may look through it.",
+      "text": "A bus shelter by the shops, for passing trade. Nine buses pass an hour.",
       "subject": "buses",
       "butt": "thing",
-      "shape": "undercut",
+      "shape": "literalism",
       "portable": true,
-      "note": "Shops mind: the shelter stands in front of the display."
+      "note": "Shops mind: the shelter stands in front of the display. 'Passing trade' taken at its word."
     },
     {
       "id": "gov4-fuss-column",
-      "visitor": "awning",
+      "visitor": "till",
       "club": "shops",
       "other": "bus",
       "archetype": "swap",
-      "text": "Your Evening Fuss notices are 60 % bus times. A column for us?",
-      "subject": "paperwork",
+      "text": "The spotters' arcade bench, for hats. They will watch for buses.",
+      "subject": "hats",
       "butt": "thing",
-      "shape": "statistic"
+      "shape": "undercut",
+      "note": "Bus minds: their bench."
     },
     {
       "id": "gov4-scone-ounce",
@@ -122,11 +127,11 @@
       "club": "shops",
       "other": "veg",
       "archetype": "fee",
-      "text": "Till's Teas will hire the market scales: scones by the official ounce.",
-      "subject": "paperwork",
+      "text": "Till's Teas would hire the show scales. Scones only; marrows by eye.",
+      "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "callback",
-      "note": "Vegetables mind: the scales the growers use."
+      "note": "Callback: Till's Teas. Vegetables mind: their show weighed by eye."
     },
     {
       "id": "gov4-window-stand",
@@ -146,21 +151,22 @@
       "club": "shops",
       "other": "veg",
       "archetype": "committee",
-      "text": "A working group on the growers' pound. Then the ounce. Then the dozen.",
+      "text": "A study of the growers' ounce. So far: three, all different.",
       "subject": "paperwork",
       "butt": "committee",
-      "shape": "escalation",
-      "biggerStudy": "Thirteen is now in doubt. The working group asks for a baker's dozen."
+      "shape": "statistic",
+      "biggerStudy": "The ounce study asks for more time. It has found a fourth.",
+      "note": "Vegetables mind: the study is of their weights. No \"pound\" (reads as money)."
     },
     {
       "id": "gov4-cuckoo",
       "visitor": "wimble",
       "club": "brass",
       "archetype": "vanity",
-      "text": "A cuckoo for the Provincial Clock. Hourly, it says your name.",
+      "text": "A cuckoo in the Provincial Clock to say your name. Another to agree.",
       "subject": "clocks",
       "butt": "self",
-      "shape": "undercut"
+      "shape": "escalation"
     },
     {
       "id": "gov4-ribbon-basket",
@@ -193,26 +199,28 @@
     },
     {
       "id": "gov4-hats-front",
-      "visitor": "till",
+      "visitor": "awning",
       "club": "shops",
-      "other": "veg",
+      "other": "brass",
       "archetype": "swap",
-      "text": "Hats to the market's front, marrows to the back. Marrows can wait.",
-      "subject": "hats",
-      "butt": "thing",
-      "shape": "undercut",
-      "portable": true
+      "text": "For our window: the band's music stands. Then jackets. Then the band.",
+      "subject": "bandstands",
+      "butt": "visitor",
+      "shape": "escalation",
+      "portable": true,
+      "note": "Brass mind: their stands, then their jackets, in a window."
     },
     {
       "id": "gov4-timetable-footer",
       "visitor": "gourdley",
       "club": "veg",
-      "other": "bus",
+      "other": "shops",
       "archetype": "fee",
-      "text": "We will sponsor the bus timetables. Each ends: SEE ALSO MARROWS.",
-      "subject": "signage",
+      "text": "We will pay to make the prize pumpkin a weight. A hat: 0.003 pumpkins.",
+      "subject": "vegetable-shows",
       "butt": "thing",
-      "shape": "slogan"
+      "shape": "statistic",
+      "note": "Shops mind: their hats weighed in pumpkins. A weight, not a size."
     },
     {
       "id": "gov4-certificate-ink",
@@ -220,9 +228,9 @@
       "club": "veg",
       "other": "bus",
       "archetype": "treat",
-      "text": "Sign each prize certificate by hand, Governor. Onions like ink.",
+      "text": "Sign the prize onion's certificate. Bertram confirms: an onion.",
       "subject": "vegetable-shows",
-      "butt": "self",
+      "butt": "office",
       "shape": "form-misapplied"
     },
     {
@@ -254,10 +262,10 @@
       "club": "bus",
       "other": "veg",
       "archetype": "fee",
-      "text": "We will hire the allotments' top corner. Nine buses an hour pass it.",
+      "text": "We will hire an allotment corner. Spotters to register as leeks.",
       "subject": "buses",
-      "butt": "thing",
-      "shape": "statistic",
+      "butt": "office",
+      "shape": "form-misapplied",
       "portable": true,
       "note": "Vegetables mind: spotters standing among the beds (style 1's feud)."
     },
@@ -267,10 +275,11 @@
       "club": "veg",
       "other": "shops",
       "archetype": "swap",
-      "text": "Lend us the market scales on show day. Shops can guess, on a form.",
-      "subject": "vegetable-shows",
-      "butt": "office",
-      "shape": "form-misapplied"
+      "text": "Stop the Provincial Clock on show day. Growers need more time; buses, less.",
+      "subject": "clocks",
+      "butt": "thing",
+      "shape": "literalism",
+      "note": "Bus mind: the buses go by the Provincial Clock."
     },
     {
       "id": "gov4-listed-practice",
@@ -303,7 +312,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "committee",
-      "text": "Proof the band is 30 % quieter than it sounds: a study, to be played.",
+      "text": "A study: the band is 30 % quieter than it sounds. To be played.",
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
@@ -316,11 +325,12 @@
       "club": "veg",
       "other": "bus",
       "archetype": "project",
-      "text": "A pumpkin shelter at the bus stop. Then a bench. Then the bus stop.",
-      "subject": "vegetable-shows",
+      "text": "A plaque where the pumpkin grew: SHE GREW HERE. KINDLY KEEP OFF.",
+      "subject": "signage",
       "butt": "thing",
-      "shape": "escalation",
-      "portable": true
+      "shape": "slogan",
+      "portable": true,
+      "note": "Bus mind: spotters stand there to see the buses (the feud of style 1). Replaces a pumpkin shelter at the stop (G11)."
     },
     {
       "id": "gov4-shelter-sunday",
@@ -341,11 +351,12 @@
       "club": "veg",
       "other": "bus",
       "archetype": "committee",
-      "text": "Why no signpost points to the show: a study. Each fills in a form.",
-      "subject": "signage",
+      "text": "An inquiry: why do show results follow the bus times? It reports after them.",
+      "subject": "paperwork",
       "butt": "committee",
-      "shape": "form-misapplied",
-      "biggerStudy": "The signpost study asks for a signpost to itself. It is hard to find."
+      "shape": "undercut",
+      "biggerStudy": "The inquiry now asks for its own page. It would like to go first, for once.",
+      "note": "Bus mind: an inquiry about their page of the paper."
     },
     {
       "id": "gov4-ceremonial-float",
@@ -367,11 +378,12 @@
       "club": "brass",
       "other": "bus",
       "archetype": "committee",
-      "text": "A committee to decide if the clock chimes a note, or the time.",
-      "subject": "clocks",
+      "text": "Is the bus horn in tune? A study will audition each bus.",
+      "subject": "buses",
       "butt": "committee",
-      "shape": "literalism",
-      "biggerStudy": "The chime committee asks for one more chime, slowly, for the minutes."
+      "shape": "form-misapplied",
+      "biggerStudy": "The auditions ask for a second round. Several buses were nervous.",
+      "note": "Bus mind: their buses auditioned."
     },
     {
       "id": "gov4-second-bandstand",
@@ -379,23 +391,24 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "project",
-      "text": "A second bandstand facing ours, so the band hears itself. Then a third.",
-      "subject": "bandstands",
-      "butt": "visitor",
-      "shape": "escalation",
+      "text": "A bandstand clock, so the band sees when to stop. Facing the audience.",
+      "subject": "clocks",
+      "butt": "thing",
+      "shape": "undercut",
       "portable": true,
-      "note": "Anglers mind: twice the band by the water."
+      "note": "Anglers mind: still no end to practice by the water."
     },
     {
       "id": "gov4-timetable-unveil",
-      "visitor": "kerb",
+      "visitor": "sprott",
       "club": "bus",
       "other": "shops",
       "archetype": "treat",
-      "text": "Unveil the new timetable. Read the 9:14 aloud, with feeling.",
+      "text": "Pose waiting in the new shelter. The 9:14 has been asked to hurry.",
       "subject": "buses",
       "butt": "self",
-      "shape": "photo-op"
+      "shape": "photo-op",
+      "note": "Replaces \"unveil the timetable\" (mayor-1 has it)."
     },
     {
       "id": "gov4-echo-sign",
