@@ -23,6 +23,7 @@
  * 1.0 s after the desk and tray empty) and by decide.ts `commitItem` step 5 (D18).
  */
 import { advice } from './advice';
+import { callDay } from './count';
 import { commitPending } from './decide';
 import { clubIndex, commitCash, decreeParams, EPS, factorOn, levelCost, levelGain, officeOf, openCost, openGain, rateOf, roundDibs, storeys, vanityPrice } from './params';
 import { costOf, freezeShown, sizeMoney } from './size';
@@ -31,10 +32,9 @@ import type { DecreeConfig, DecreeEvent, DecreeGame, Ledger, LedgerRow, Paper, P
 
 const withDecree = (g: DecreeGame, patch: Partial<DecreeGame['decree']>): DecreeGame => ({ ...g, decree: { ...g.decree, ...patch } });
 
-/** The day from which the election may be called, C = callFraction × D (2.2), as the reserve reads it. */
+/** The day from which the election may be called (count.ts `callDay`, the ONE formula), as the reserve reads it. */
 export function callFrom(cfg: DecreeConfig, g: DecreeGame): number {
-  const row = officeOf(cfg, g.decree.office);
-  return Math.ceil(row.callFraction * row.termDays - EPS);
+  return callDay(cfg, g);
 }
 
 /** What a waiting paper's sign would cost if it landed now (D23: it is sized only when it lands). */

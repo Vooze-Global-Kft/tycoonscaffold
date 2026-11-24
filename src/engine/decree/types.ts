@@ -457,7 +457,8 @@ export interface DecreeParams {
 }
 
 /** Where dibs come from and go (H5). The rules book every change through commitCash; the store pays `away` and `awayAd` through the shared grantCash (2.15), so a coins test books those two in its own harness. */
-export type CashSource = 'tick' | 'paper' | 'away' | 'awayAd' | 'checkSofa' | 'transition' | 'spend';
+/** Where dibs come from or go (H5). `reset`: the old treasury set aside at a move (2.12), never a gain. */
+export type CashSource = 'tick' | 'paper' | 'away' | 'awayAd' | 'checkSofa' | 'transition' | 'spend' | 'reset';
 
 /** What the rules report to the screens and the sounds: the paper core's and the term's (src/modes/decree/fx.ts maps them to keys). */
 export type DecreeEvent = PaperEvent | TermEvent;

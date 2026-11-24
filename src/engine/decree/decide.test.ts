@@ -6,55 +6,14 @@
  * longer needed"; a slip up buys at its printed price and down puts it back; 2.17's order (a day paper
  * counts, a campaign paper and a slip do not). Frozen test content only (lesson 4).
  *
- * The other rules package's functions that these rules read are replaced by reference stand-ins
- * written from the specification (twists.ts: neutral factors; advice.ts: no slip unless a test asks
- * for one), so these tests hold against today's bodies and once they change.
+ * Joined (rules-lead): every rules module is the real one (no vi.mock); a slip the real advice.ts
+ * lands between two papers (D18) is put back by the test's helper where a test counts papers.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as R from '../decree';
 import { built, decreeTestConfig } from '../fixtures/decree';
 
-// Stand-ins written without importing the real modules (a factory that imports the original would
-// load the rules' import cycle before the mock is registered, and the rules would see the original).
-const mocked = vi.hoisted(() => ({ slip: null as unknown }));
-vi.mock('./twists', () => {
-  const neutralFactors = () => ({ mixAdd: [0, 0, 0, 0, 0, 0, 0], list: [] });
-  return {
-    QUIET_TERM: 'quiet_term',
-    COMPOSITION_TERMS: 181,
-    neutralFactors,
-    combineFactors: (a: R.Factors, b: R.Factors) => ({ mixAdd: a.mixAdd.map((x, i) => x + (b.mixAdd[i] ?? 0)), list: [...a.list, ...b.list] }),
-    factorFor: (f: R.Factors, target: R.FactorTarget, club: number | null) => {
-      let mul = 1;
-      let add = 0;
-      const sources: R.FactorValue['sources'] = [];
-      for (const e of f.list) if (e.target === target && (e.club === null || e.club === club)) [mul, add] = [mul * e.mul, add + e.add], sources.push({ initials: e.initials, source: e.source });
-      return { mul, add, sources };
-    },
-    deskFactors: neutralFactors,
-    twistFactors: neutralFactors,
-    twistIdsFactors: neutralFactors,
-    ruleFactors: neutralFactors,
-    newThingAt: () => ({ twists: [], grandProject: null, quiet: false }),
-    newThingLabel: () => null,
-    compositionProblems: () => [],
-  };
-});
-vi.mock('./advice', () => ({
-  advice: () => ({ goal: { kind: 'none' }, slip: mocked.slip, next: null, call: false }),
-  goalLine: () => ({ kind: 'none' }),
-  about: (seconds: number) => ({ value: Math.max(1, Math.round(seconds)), unit: 's' }),
-  slipNeed: () => null,
-  standingOrderPick: () => null,
-  candidates: () => [],
-  callNow: () => false,
-  recordShort: () => false,
-}));
-
 const cfg = decreeTestConfig();
-beforeEach(() => {
-  mocked.slip = null;
-});
 
 /** A tiny seeded generator for the random states (the rules' own sites are not used here). */
 function lcg(seed: number) {
@@ -177,8 +136,9 @@ describe('sign, refuse, take back, commit (2.6, 2.7 "Decide")', () => {
     expect(R.commitPending(cfg, once, 7, [])).toBe(once);
     expect(once.decree.stats.signed).toBe(1);
     expect(once.decree.day).toBe(g.decree.day + 1);
-    // The next paper landed after the commit (2.17 step 5).
-    expect(once.decree.desk?.type === 'paper' && once.decree.desk.paper.source).toBe('test-mayor-bus-swap-1');
+    // The next paper landed after the commit (2.17 step 5), behind D18's slip when one is affordable.
+    const next = once.decree.desk?.type === 'slip' ? R.decide(cfg, once, 'refuse', 7, []) : once;
+    expect(next.decree.desk?.type === 'paper' && next.decree.desk.paper.source).toBe('test-mayor-bus-swap-1');
   });
 
   it('every purchase commits a pending paper first (the next action)', () => {

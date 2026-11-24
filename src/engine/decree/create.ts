@@ -76,6 +76,9 @@ export function freshDecree(cfg: DecreeConfig, seed: number, office: OfficeIx = 
     face: null,
     scriptedDone: [],
     stats: zeroStats(),
+    cashAnchor: null,
+    result: null,
+    appSlotsUsed: 0,
   };
 }
 

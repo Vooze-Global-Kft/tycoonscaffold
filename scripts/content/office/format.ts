@@ -347,6 +347,11 @@ export const FrameSchema = z.strictObject({
   archetype: z.enum(ARCHETYPES),
   frame: text.refine((t) => (t.match(SLOT_RE) ?? []).length === 1, 'a frame has exactly one slot, like {weekday}'),
   ...tags,
+  /**
+   * D30: a Committee frame's "↩ bigger study", as a Committee paper has (2.2, D20): the same study
+   * back one money tier up, nothing after it. Plain text, no slot (check.ts lints it).
+   */
+  biggerStudy: paperText.optional(),
   note: z.string().optional(),
 });
 export type Frame = z.infer<typeof FrameSchema>;

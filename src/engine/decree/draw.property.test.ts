@@ -5,61 +5,14 @@
  * the comic draw (D20, D28) and its fallback order; the frame bag; a reload re-rolls nothing (draw,
  * serialise, parse, draw again from the earlier state gives the same paper). Frozen test content only.
  *
- * The other rules package's functions are stand-ins here (twists: neutral; advice: no slip; term:
- * not built, so decide.ts uses its own day count and no run-up starts; ministers: an application only
- * when a test asks for one, appoint and sendAway not built), so these tests hold today and once the
- * real bodies change.
+ * Joined (rules-lead): every rules module is the real one (no vi.mock); a slip the real advice.ts
+ * lands between two papers (D18) is put back by the test's helper where a test counts papers.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as R from '../decree';
 import { built, DECREE_TEST_NUMBERS, decreeTestConfig, freshState } from '../fixtures/decree';
 
-const mocked = vi.hoisted(() => ({ application: null as string | null }));
-vi.mock('./twists', () => {
-  const neutralFactors = () => ({ mixAdd: [0, 0, 0, 0, 0, 0, 0], list: [] });
-  return {
-    QUIET_TERM: 'quiet_term',
-    COMPOSITION_TERMS: 181,
-    neutralFactors,
-    combineFactors: (a: R.Factors, b: R.Factors) => ({ mixAdd: a.mixAdd.map((x, i) => x + (b.mixAdd[i] ?? 0)), list: [...a.list, ...b.list] }),
-    factorFor: () => ({ mul: 1, add: 0, sources: [] }),
-    deskFactors: neutralFactors,
-    twistFactors: neutralFactors,
-    twistIdsFactors: neutralFactors,
-    ruleFactors: neutralFactors,
-    newThingAt: () => ({ twists: [], grandProject: null, quiet: false }),
-    newThingLabel: () => null,
-    compositionProblems: () => [],
-  };
-});
-vi.mock('./advice', () => ({
-  advice: () => ({ goal: { kind: 'none' }, slip: null, next: null, call: false }),
-  goalLine: () => ({ kind: 'none' }),
-  about: (seconds: number) => ({ value: Math.max(1, Math.round(seconds)), unit: 's' }),
-  slipNeed: () => null,
-  standingOrderPick: () => null,
-  candidates: () => [],
-  callNow: () => false,
-}));
-vi.mock('./term', async () => {
-  const { notBuilt } = await import('./notBuilt');
-  return { countDay: () => notBuilt('countDay'), checkTermEnd: () => notBuilt('checkTermEnd'), canCall: () => false };
-});
-vi.mock('./ministers', async () => {
-  const { notBuilt } = await import('./notBuilt');
-  return {
-    nextApplication: (_cfg: R.DecreeConfig, g: R.DecreeGame) => (mocked.application && !g.decree.applicationsDelivered.includes(mocked.application) ? mocked.application : null),
-    appoint: () => notBuilt('appoint'),
-    sendAway: () => notBuilt('sendAway'),
-    ministerFactors: () => ({ mixAdd: [0, 0, 0, 0, 0, 0, 0], list: [] }),
-    cabinet: () => [],
-  };
-});
-
 const cfg = decreeTestConfig();
-beforeEach(() => {
-  mocked.application = null;
-});
 
 function lcg(seed: number) {
   let x = seed >>> 0 || 1;
@@ -86,6 +39,8 @@ function play(c: R.DecreeConfig, g0: R.DecreeGame, n: number, choose: (p: R.Pape
         if (p && (before === 0 || p !== deskPaper(g))) seeDrawn(p, g);
       }
     }
+    // A slip (D18, the real advice.ts) goes back, so the waiting paper lands.
+    if (g.decree.desk?.type === 'slip') g = R.decide(c, g, 'refuse', clock, []);
     const p = deskPaper(g);
     if (!p) continue;
     let choice = choose(p);
@@ -127,9 +82,9 @@ describe('the order of 2.7', () => {
     g = R.onTop(fp.g, fp.paper);
     expect(g.decree.tray.map((p) => p.kind)).toEqual(['strike', 'scandal', 'comic', 'comic']);
     // The forms and follow-ups.
-    mocked.application = 'pockle';
+    // The real ministers.ts: day 9 opens the term's first application slot (2.9), Pockle is the first minister.
     const n = cfg.decree.offices[0].requisitionEvery;
-    let s = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6, decisions: 50 });
+    let s = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6, decisions: 50, day: 9 });
     s = {
       ...s,
       decree: {

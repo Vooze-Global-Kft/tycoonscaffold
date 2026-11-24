@@ -6,46 +6,12 @@
  * then the end with no mood change); the end at 25 by any means and the re-arm at 30; the Courier ad
  * touches no mood; a campaign paper counts nothing; no picket twice a term. Frozen test content only.
  *
- * Stand-ins for the other rules package (twists: neutral; advice: no slip; term and ministers: not
- * built, so decide.ts counts days itself and no run-up starts).
+ * Joined (rules-lead): every rules module is the real one (no vi.mock); a slip the real advice.ts
+ * lands between two papers (D18) is put back by the test's helper where a test counts papers.
  */
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as R from '../decree';
 import { built, decreeTestConfig } from '../fixtures/decree';
-
-vi.mock('./twists', () => {
-  const neutralFactors = () => ({ mixAdd: [0, 0, 0, 0, 0, 0, 0], list: [] });
-  return {
-    QUIET_TERM: 'quiet_term',
-    neutralFactors,
-    combineFactors: (a: R.Factors, b: R.Factors) => ({ mixAdd: a.mixAdd.map((x, i) => x + (b.mixAdd[i] ?? 0)), list: [...a.list, ...b.list] }),
-    factorFor: () => ({ mul: 1, add: 0, sources: [] }),
-    deskFactors: neutralFactors,
-    twistFactors: neutralFactors,
-    twistIdsFactors: neutralFactors,
-    ruleFactors: neutralFactors,
-    newThingAt: () => ({ twists: [], grandProject: null, quiet: false }),
-    newThingLabel: () => null,
-    compositionProblems: () => [],
-  };
-});
-vi.mock('./advice', () => ({
-  advice: () => ({ goal: { kind: 'none' }, slip: null, next: null, call: false }),
-  goalLine: () => ({ kind: 'none' }),
-  about: (seconds: number) => ({ value: Math.max(1, Math.round(seconds)), unit: 's' }),
-  slipNeed: () => null,
-  standingOrderPick: () => null,
-  candidates: () => [],
-  callNow: () => false,
-}));
-vi.mock('./term', async () => {
-  const { notBuilt } = await import('./notBuilt');
-  return { countDay: () => notBuilt('countDay'), checkTermEnd: () => notBuilt('checkTermEnd'), canCall: () => false };
-});
-vi.mock('./ministers', async () => {
-  const { notBuilt } = await import('./notBuilt');
-  return { nextApplication: () => null, appoint: () => notBuilt('appoint'), sendAway: () => notBuilt('sendAway'), ministerFactors: () => ({ mixAdd: [0, 0, 0, 0, 0, 0, 0], list: [] }), cabinet: () => [] };
-});
 
 const cfg = decreeTestConfig();
 const VEG = 2; // mayor clubs: bus 0, shops 1, veg 2; the Benches & Bandstands (ministry 2) serve veg.
@@ -55,10 +21,12 @@ const deskPaper = (g: R.DecreeGame) => (g.decree.desk?.type === 'paper' ? g.decr
 const filler = (n: number) => Array.from({ length: n }, (_, k) => `test-mayor-bus-swap-${(k % 3) + 1}`);
 
 /** decide and commit at once (a short sign becomes a refusal). */
+/** A slip lying on the desk (D18, the real advice.ts) goes back, so the waiting paper lands. */
+const putBackSlip = (g: R.DecreeGame, clock = 0): R.DecreeGame => (g.decree.desk?.type === 'slip' ? R.decide(cfg, g, 'refuse', clock, []) : g);
 function decideNow(g: R.DecreeGame, choice: R.Choice, events: R.DecreeEvent[] = []): R.DecreeGame {
   let s = R.decide(cfg, g, choice, 0, events);
   if (s === g) s = R.decide(cfg, g, 'refuse', 0, events);
-  return s.decree.pending ? R.commitPending(cfg, s, 0, events) : s;
+  return putBackSlip(s.decree.pending ? R.commitPending(cfg, s, 0, events) : s);
 }
 
 /** A refreshed desk: the bus swap papers move only bus and shops (2.7 7.5 paper 3), never veg. */

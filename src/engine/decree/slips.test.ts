@@ -6,52 +6,14 @@
  * per decided paper; the reserve is the sign cost of the desk paper plus the next waiting one, and
  * from day C the run-up's prices; every refused purchase returns the SAME object. Frozen test content.
  *
- * The other rules package's functions are stand-ins (twists: neutral; advice: the slip the test
- * names; term and ministers: not built, so decide.ts uses its own day count and no run-up starts).
+ * Against the real modules: the slip is advice.ts's purchase (the test reads it from `advice`).
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as R from '../decree';
 import { built, decreeTestConfig } from '../fixtures/decree';
 
-const mocked = vi.hoisted(() => ({ slip: null as R.Slip | null }));
-vi.mock('./twists', () => {
-  const neutralFactors = () => ({ mixAdd: [0, 0, 0, 0, 0, 0, 0], list: [] });
-  return {
-    QUIET_TERM: 'quiet_term',
-    neutralFactors,
-    combineFactors: (a: R.Factors, b: R.Factors) => ({ mixAdd: a.mixAdd.map((x, i) => x + (b.mixAdd[i] ?? 0)), list: [...a.list, ...b.list] }),
-    factorFor: () => ({ mul: 1, add: 0, sources: [] }),
-    deskFactors: neutralFactors,
-    twistFactors: neutralFactors,
-    twistIdsFactors: neutralFactors,
-    ruleFactors: neutralFactors,
-    newThingAt: () => ({ twists: [], grandProject: null, quiet: false }),
-    newThingLabel: () => null,
-    compositionProblems: () => [],
-  };
-});
-vi.mock('./advice', () => ({
-  advice: () => ({ goal: { kind: 'none' }, slip: mocked.slip, next: null, call: false }),
-  goalLine: () => ({ kind: 'none' }),
-  about: (seconds: number) => ({ value: Math.max(1, Math.round(seconds)), unit: 's' }),
-  slipNeed: () => null,
-  standingOrderPick: () => null,
-  candidates: () => [],
-  callNow: () => false,
-}));
-vi.mock('./term', async () => {
-  const { notBuilt } = await import('./notBuilt');
-  return { countDay: () => notBuilt('countDay'), checkTermEnd: () => notBuilt('checkTermEnd'), canCall: () => false };
-});
-vi.mock('./ministers', async () => {
-  const { notBuilt } = await import('./notBuilt');
-  return { nextApplication: () => null, appoint: () => notBuilt('appoint'), sendAway: () => notBuilt('sendAway'), ministerFactors: () => ({ mixAdd: [0, 0, 0, 0, 0, 0, 0], list: [] }), cabinet: () => [] };
-});
 
 const cfg = decreeTestConfig();
-beforeEach(() => {
-  mocked.slip = null;
-});
 
 const deskShown = (g: R.DecreeGame) => (g.decree.desk?.type === 'paper' ? g.decree.desk.shown : null);
 const withSlip = (g: R.DecreeGame, slip: R.Slip): R.DecreeGame => ({ ...g, decree: { ...g.decree, desk: { type: 'slip', slip, landedAt: 0 }, emptySince: null } });
@@ -138,19 +100,36 @@ describe('purchases (2.6): one path, the reserve kept, the SAME object when refu
 
 describe('budget slips (2.7, D16, D18)', () => {
   it("carries advice's purchase only when it is affordable above the reserve; on an empty desk and tray it also keeps back 15 s of B; never at the count", () => {
-    const g = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1000 });
+    const g = built({ office: 0, ministries: [10, 7, 0, 0], cash: 0 });
     expect(R.slipFor(cfg, g)).toBeNull();
-    const slip = R.slipOf(cfg, g, { type: 'level', ministry: 1 })!;
-    mocked.slip = slip;
-    const extra = R.roundDibs(cfg, 15 * R.decreeParams(cfg, g).B);
+    const extra = R.roundDibs(cfg, cfg.decree.desk.slipReserveSeconds * R.decreeParams(cfg, g).B);
     expect(extra).toBeGreaterThan(0);
-    expect(R.slipFor(cfg, { ...g, cash: slip.price + extra })).toEqual(slip);
-    expect(R.slipFor(cfg, { ...g, cash: slip.price + extra - 1 })).toBeNull();
+    // Over a range of treasuries: a slip is exactly advice's purchase, and only with its price plus the 15 s kept back.
+    let seen = 0;
+    for (let cash = 0; cash < 20_000; cash += 37) {
+      const s = { ...g, cash };
+      const slip = R.slipFor(cfg, s);
+      const a = R.advice(cfg, s).slip;
+      expect(slip).toEqual(a && cash - a.price >= R.reserve(cfg, s) + extra - 1e-9 ? a : null);
+      if (slip) {
+        seen++;
+        expect(cash - slip.price).toBeGreaterThanOrEqual(extra - 1e-9);
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
     // With a paper waiting the 15 s are not kept back, but the paper's cost is.
-    const w = built({ office: 0, ministries: [10, 7, 0, 0], cash: slip.price, tray: ['test-mayor-bus-swap-1'] });
-    expect(R.slipFor(cfg, w)).toEqual(slip);
-    const wc = built({ office: 0, ministries: [10, 7, 0, 0], cash: slip.price, tray: ['test-mayor-bus-project-1'] });
-    expect(R.slipFor(cfg, wc)).toBeNull();
+    const slipAt = (x: R.DecreeGame) => R.advice(cfg, { ...x, cash: 1e12 }).slip!;
+    const w0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 0, tray: ['test-mayor-bus-swap-1'] });
+    const ws = slipAt(w0);
+    expect(R.costOf(R.freezeShown(cfg, w0, w0.decree.tray[0], R.neutralFactors()).sign)).toBe(0);
+    const w = { ...w0, cash: ws.price };
+    expect(R.slipFor(cfg, w)?.price).toBeLessThanOrEqual(ws.price);
+    expect(R.slipFor(cfg, w)).not.toBeNull();
+    const wc0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 0, tray: ['test-mayor-bus-project-1'] });
+    const keep = R.reserve(cfg, wc0);
+    expect(keep).toBeGreaterThan(0);
+    const cheapest = Math.min(...R.candidates(cfg, wc0).map((c) => c.price));
+    expect(R.slipFor(cfg, { ...wc0, cash: cheapest + keep - 1 })).toBeNull();
     for (const phase of ['count', 'result'] as const) expect(R.slipFor(cfg, { ...g, cash: 1e9, decree: { ...g.decree, phase } })).toBeNull();
   });
 
@@ -167,18 +146,19 @@ describe('budget slips (2.7, D16, D18)', () => {
 
   it('D18: after a decided paper, with a paper waiting and a purchase affordable, the slip lands first; at most one slip per decided paper', () => {
     const g0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6, desk: 'test-mayor-bus-swap-1', tray: ['test-mayor-shops-swap-1', 'test-mayor-veg-swap-1'] });
-    mocked.slip = R.slipOf(cfg, g0, { type: 'level', ministry: 1 });
     let g = R.decide(cfg, g0, 'refuse', 1, []);
     expect(g.decree.desk?.type).toBe('slip');
     expect(g.decree.slipOffered).toBe(true);
     expect(g.decree.tray.length).toBe(2);
-    // Up buys it; the waiting paper lands after it, not another slip.
+    // Up buys it at its printed price; the waiting paper lands after it, not another slip.
+    const taken = g.decree.desk?.type === 'slip' ? g.decree.desk.slip : null;
+    const before = g;
     g = R.decide(cfg, g, 'sign', 2, []);
-    expect(g.decree.ministries[1].level).toBe(8);
+    expect(g.cash).toBe(before.cash - taken!.price);
+    if (taken!.purchase.type === 'level') expect(g.decree.ministries[taken!.purchase.ministry].level).toBe(before.decree.ministries[taken!.purchase.ministry].level + 1);
     expect(g.decree.desk?.type === 'paper' && g.decree.desk.paper.source).toBe('test-mayor-shops-swap-1');
     expect(g.decree.day).toBe(g0.decree.day + 1);
     // The next decided paper may bring one slip again; putting it back lands the paper.
-    mocked.slip = R.slipOf(cfg, g, { type: 'level', ministry: 1 });
     g = R.decide(cfg, g, 'refuse', 3, []);
     expect(g.decree.desk?.type).toBe('slip');
     const cash = g.cash;
@@ -191,7 +171,7 @@ describe('budget slips (2.7, D16, D18)', () => {
 
   it('on an empty desk the slip waits for the 1.0 s that tick.ts counts: a commit with nothing waiting only starts the clock', () => {
     const g0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6, desk: 'test-mayor-bus-swap-1' });
-    mocked.slip = R.slipOf(cfg, g0, { type: 'level', ministry: 1 });
+    expect(R.advice(cfg, g0).slip).not.toBeNull();
     const g = R.decide(cfg, g0, 'refuse', 7, []);
     expect(g.decree.desk).toBeNull();
     expect(g.decree.emptySince).toBe(7);

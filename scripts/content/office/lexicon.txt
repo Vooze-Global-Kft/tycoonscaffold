@@ -358,3 +358,9 @@ within, without, won, wood, wooden, word, wording, wordless, words, work, worked
 working, worklet, worklets, works, world, worlds, worn, worried, worse, worst, worth, would, wrap
 wrapped, wrapping, wraps, write, writer, writers, writes, writing, written, wrong, wrote, year
 years, yellow, yes, yet, you, young, your, yourself, zero, zod, zone, zones, zoom
+# Added by content-assemble (24 November) at the writers' and batch editors' requests (requests.md): everyday words
+# the near-match failed in headlines and clippings. Number words in full, so a statistic can be spelt out.
+tide, tides, bird, birds, cosy, birdbath
+one, two, three, four, five, six, seven, eight, nine, ten, eleven, twelve, thirteen, fourteen, fifteen, sixteen
+seventeen, eighteen, nineteen, twenty, thirty, forty, fifty, sixty, seventy, eighty, ninety, hundred, thousand
+dozen, first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth, half, once, twice

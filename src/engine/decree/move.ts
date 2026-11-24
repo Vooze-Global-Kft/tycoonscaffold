@@ -141,8 +141,8 @@ export function movedState(cfg: DecreeConfig, g: DecreeGame, now: number): Decre
     cashAnchor: null,
   };
   const lastSavedAt = Number.isFinite(now) && now > 0 ? now : back.lastSavedAt;
-  // The old treasury is set aside as every mode's reset does (not a spend), then the fund enters (H5: 'transition').
-  const reset: DecreeGame = { ...back, cash: 0, runEarnings: 0, prestigeCount: back.prestigeCount + 1, lastSavedAt, decree };
+  // The old treasury is set aside as every mode's reset does (booked 'reset', never a spend or a gain), then the fund enters (H5: 'transition').
+  const reset = commitCash({ ...back, runEarnings: 0, prestigeCount: back.prestigeCount + 1, lastSavedAt, decree }, -back.cash, 'reset');
   return commitCash(reset, fund, 'transition');
 }
 

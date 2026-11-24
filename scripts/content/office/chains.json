@@ -1,0 +1,1482 @@
+{
+  "$comment": "The 36 follow-up chains (7.6), 12 per office. Assembled by content-assemble from batches chains-mayor, chains-governor, chains-president; seams fixed against the set-ups.",
+  "chains": [
+    {
+      "id": "gov-band-jetty",
+      "office": "governor",
+      "title": "Band on the Jetty",
+      "afterSign": {
+        "visitor": "hake",
+        "cosigner": "minute",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "committee",
+        "text": "A study, please: since the band came, 3 fish in 4 nod along.",
+        "subject": "harbours",
+        "butt": "committee",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR FUNDS STUDY OF FISH IN FOUR-FOUR TIME",
+          "refuse": "STUDY SHELVED; FISH STILL NODDING ALONG"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "treat",
+        "text": "The band wrote you a piece: 'Further Study'. Mostly rests.",
+        "subject": "bandstands",
+        "butt": "self",
+        "shape": "callback",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR APPLAUDS DURING THE RESTS",
+          "refuse": "'FURTHER STUDY' PLAYED TO AN EMPTY CHAIR"
+        }
+      }
+    },
+    {
+      "id": "gov-silent-sunday",
+      "office": "governor",
+      "title": "The Silent Sunday",
+      "afterSign": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "swap",
+        "text": "The band asks for a loud Monday, to balance your silent Sunday.",
+        "subject": "ceremonies",
+        "butt": "office",
+        "shape": "literalism",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR SPENDS LOUD MONDAY IN A CUPBOARD",
+          "refuse": "LOUD MONDAY MOVED TO A QUIETER DATE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "hake",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "treat",
+        "text": "Then sit by the canal with us and say nothing. Rodney is worried.",
+        "subject": "ceremonies",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR SILENT FOR AN HOUR; AIDES CONCERNED",
+          "refuse": "ANGLERS SIT IN SILENCE, AS USUAL, WITHOUT GOVERNOR"
+        }
+      }
+    },
+    {
+      "id": "gov-floating-bench",
+      "office": "governor",
+      "title": "The Floating Bench",
+      "afterSign": {
+        "visitor": "dabble",
+        "club": "anglers",
+        "other": "veg",
+        "archetype": "project",
+        "text": "The bench drifted two locks, to where growers water. Anchor it?",
+        "subject": "inventions",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR'S ANCHOR HOLDS BENCH IN THE WRONG PLACE",
+          "refuse": "FLOATING BENCH CONTINUES ITS TOUR OF THE PROVINCE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "dabble",
+        "cosigner": "minute",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "committee",
+        "text": "Then we survey the fish on where to sit. The band hushes for replies.",
+        "subject": "inventions",
+        "butt": "committee",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "FISH SURVEYED ON SEATING; NO REPLIES YET",
+          "refuse": "FISH NOT CONSULTED; ANGLERS SIT WHERE THEY SAT"
+        }
+      }
+    },
+    {
+      "id": "gov-one-bar",
+      "office": "governor",
+      "title": "One Bar",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "brass",
+        "archetype": "vanity",
+        "text": "Rodney proposes pressing your one bar as a record. Both sides.",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR'S ONE BAR RELEASED; REVIEWS BRIEF",
+          "refuse": "ONE BAR REMAINS ONE BAR"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "treat",
+        "text": "The band kept your bar. Conduct half of it? Less to go wrong.",
+        "subject": "bandstands",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR CONDUCTS HALF A BAR; BAND FINISHES IT",
+          "refuse": "BAR STILL UNCONDUCTED; BAND PLAYS IT ANYWAY"
+        }
+      }
+    },
+    {
+      "id": "gov-tuba-shelter",
+      "office": "governor",
+      "title": "The Tuba Shelter",
+      "afterSign": {
+        "visitor": "slide",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "project",
+        "text": "Our tuba thrives alone. Each cornet now wants a shelter, by the canal.",
+        "subject": "bandstands",
+        "butt": "thing",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR CUTS RIBBON ON SHELTER FOR ONE CORNET",
+          "refuse": "CORNETS SHARE A SHELTER; NOBODY SPEAKS"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "slide",
+        "club": "brass",
+        "other": "shops",
+        "archetype": "swap",
+        "text": "Our tuba asks for shop doorways instead. It rattles only 1 pane in 3.",
+        "subject": "bandstands",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "TUBA IN THE DOORWAYS; WINDOWS ON EDGE",
+          "refuse": "TUBA PRACTISES AT HOME; HOME RATTLES"
+        }
+      }
+    },
+    {
+      "id": "gov-named-shelter",
+      "office": "governor",
+      "title": "The Named Shelter",
+      "afterSign": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "Open the notebook's shelter, standing just behind the notebook.",
+        "subject": "buses",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR UPSTAGED BY NOTEBOOK AT OPENING",
+          "refuse": "NOTEBOOK OPENS OWN SHELTER; SPEECH BRIEF"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "fee",
+        "text": "Then we will pay to name the shops' bench after the founder's pencil.",
+        "subject": "buses",
+        "butt": "thing",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "BENCH NAMED AFTER PENCIL; GOVERNOR SITS ON IT",
+          "refuse": "PENCIL GOES UNHONOURED; SOCIETY SHARPENS IT"
+        }
+      }
+    },
+    {
+      "id": "gov-tea-sip",
+      "office": "governor",
+      "title": "The Single Sip",
+      "afterSign": {
+        "visitor": "till",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "fee",
+        "text": "Till's Teas would pay to put THE GOVERNOR SIPPED HERE at bus stops.",
+        "subject": "signage",
+        "butt": "self",
+        "shape": "slogan",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR'S SIP NOW AT EVERY STOP; BUSES MISSED",
+          "refuse": "SIP PHOTOGRAPH KEPT IN THE TEA ROOM, BY THE SUGAR"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "till",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "treat",
+        "text": "Then pose at our window, admiring the tea. Strictly no sipping.",
+        "subject": "portraits",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR ADMIRES TEA THROUGH GLASS; TEA GOES COLD",
+          "refuse": "TEA ROOM OPENS WITHOUT GOVERNOR; TEA SERVED ANYWAY"
+        }
+      }
+    },
+    {
+      "id": "gov-one-pumpkin-glasshouse",
+      "office": "governor",
+      "title": "A Glasshouse for One",
+      "afterSign": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "shops",
+        "archetype": "swap",
+        "text": "Enter the pumpkin's glasshouse as a shop window? It is mostly window.",
+        "subject": "vegetable-shows",
+        "butt": "thing",
+        "shape": "literalism",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR JUDGES SHOP WINDOWS; PICKS A PUMPKIN",
+          "refuse": "PUMPKIN WATCHES WINDOW PRIZE FROM ITS GLASSHOUSE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "The pumpkin now lives under a cake cover from the shops. Unveil it?",
+        "subject": "vegetable-shows",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR LIFTS COVER; PUMPKIN SAYS NOTHING",
+          "refuse": "PUMPKIN STAYS UNDER COVER; CAKE LEFT UNCOVERED"
+        }
+      }
+    },
+    {
+      "id": "gov-towpath-show",
+      "office": "governor",
+      "title": "The Towpath Show",
+      "afterSign": {
+        "visitor": "loam",
+        "club": "veg",
+        "other": "anglers",
+        "archetype": "swap",
+        "text": "May the show's scales stay on the towpath? They have settled in.",
+        "subject": "vegetable-shows",
+        "butt": "thing",
+        "shape": "literalism",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "SCALES STAY ON TOWPATH; FLOATS NOW WEIGHED BEFORE USE",
+          "refuse": "SCALES LEAVE TOWPATH; TOWPATH LIGHTER"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "loam",
+        "cosigner": "minute",
+        "club": "veg",
+        "other": "anglers",
+        "archetype": "committee",
+        "text": "A committee to find a second towpath. It has found the first one 6 times.",
+        "subject": "vegetable-shows",
+        "butt": "committee",
+        "shape": "statistic",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "COMMITTEE STILL SEARCHING FOR A SECOND TOWPATH",
+          "refuse": "SEARCH CALLED OFF; ONE TOWPATH DEEMED PLENTY"
+        }
+      }
+    },
+    {
+      "id": "gov-bandstand-bus",
+      "office": "governor",
+      "title": "The Bandstand Stop",
+      "afterSign": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "bus",
+        "archetype": "swap",
+        "text": "Buses at the bandstand stop wait for each tune to end. Slower tunes?",
+        "subject": "buses",
+        "butt": "thing",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "BAND SLOWS DOWN; THE 7:15 NOW LEAVES AT 7:40",
+          "refuse": "BAND KEEPS TEMPO; BUS LEAVES MID-CHORUS"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "sprott",
+        "club": "bus",
+        "other": "brass",
+        "archetype": "project",
+        "text": "No stop, then. A bench by the bandstand for spotters? Facing the road.",
+        "subject": "buses",
+        "butt": "thing",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR OPENS BENCH; BAND PLAYS TO ITS BACK",
+          "refuse": "SPOTTERS STAND TO WATCH BUSES NOT STOP"
+        }
+      }
+    },
+    {
+      "id": "gov-ceremonial-float",
+      "office": "governor",
+      "title": "The Ceremonial Float",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "anglers",
+        "archetype": "vanity",
+        "text": "Rodney proposes a float with your face, marked STILL AFLOAT.",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "slogan",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR'S FACE BOBS ON CANAL; ANGLERS LOOK AWAY",
+          "refuse": "GOVERNOR'S FACE FLOAT FILED FOR FURTHER STUDY"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "hake",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "treat",
+        "text": "Not holding the float? Then point at it, gently, for the camera.",
+        "subject": "ceremonies",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR POINTS AT FLOAT; FLOAT HOLDS STILL",
+          "refuse": "FLOAT PHOTOGRAPHED ALONE; LOOKS DIGNIFIED"
+        }
+      }
+    },
+    {
+      "id": "gov-listed-practice",
+      "office": "governor",
+      "title": "Practice as an Event",
+      "afterSign": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "fee",
+        "text": "The band will pay to list its tuning up too. It runs all evening.",
+        "subject": "bandstands",
+        "butt": "office",
+        "shape": "form-misapplied",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOVERNOR ATTENDS TUNING UP; LEAVES BEFORE THE MUSIC",
+          "refuse": "TUNING UP REMAINS PRIVATE; PRACTICE STILL PUBLIC"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "treat",
+        "text": "Practice is not an event, then. Cut a ribbon, so that it is?",
+        "subject": "ribbons",
+        "butt": "self",
+        "shape": "literalism",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "GOVERNOR CUTS RIBBON ON BAND PRACTICE; BAND STOPS TO WATCH",
+          "refuse": "PRACTICE GOES AHEAD UNOPENED"
+        }
+      }
+    },
+    {
+      "id": "may-basket",
+      "office": "mayor",
+      "title": "The Basket",
+      "afterSign": {
+        "visitor": "sash",
+        "club": "shops",
+        "archetype": "favour",
+        "text": "About the basket: the goose at the bottom was not fruit. It would like an office.",
+        "subject": "geese",
+        "butt": "self",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "GOOSE GIVEN OFFICE; MAYOR GIVEN GOOSE",
+          "refuse": "GOOSE RETURNED TO SENDER, WHO DENIES OWNING A GOOSE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "sash",
+        "club": "veg",
+        "archetype": "favour",
+        "text": "No hard feelings. Please accept this smaller basket. It is one grape.",
+        "subject": "ribbons",
+        "butt": "lobbyist",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR ACCEPTS GRAPE",
+          "refuse": "MAYOR REFUSES GRAPE. GRAPE DEVASTATED"
+        }
+      }
+    },
+    {
+      "id": "may-pumpkin",
+      "office": "mayor",
+      "title": "The Pumpkin",
+      "afterSign": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "shops",
+        "archetype": "committee",
+        "text": "The pumpkin, now a Freeman of the town, wishes to address the council. It has slides.",
+        "subject": "vegetable-shows",
+        "butt": "thing",
+        "shape": "escalation",
+        "delay": [
+          8,
+          12
+        ],
+        "clippings": {
+          "sign": "PUMPKIN'S SPEECH CANCELLED; SLIDES LOST",
+          "refuse": "PUMPKIN ADDRESSES EMPTY HALL"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "The pumpkin has not left its crate since your refusal. It faces the wall.",
+        "subject": "vegetable-shows",
+        "butt": "thing",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR APOLOGISES TO VEGETABLE",
+          "refuse": "PUMPKIN: NO COMMENT"
+        }
+      }
+    },
+    {
+      "id": "may-ticket-museum",
+      "office": "mayor",
+      "title": "The Ticket Museum",
+      "afterSign": {
+        "visitor": "sprott",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "project",
+        "text": "The museum keeps each ticket it sells. It asks for a shop window.",
+        "subject": "buses",
+        "butt": "thing",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR OPENS MUSEUM ANNEXE; IS ASKED FOR A TICKET",
+          "refuse": "TICKET MUSEUM FULL. VISITOR ASKED TO WAIT OUTSIDE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "sprott",
+        "cosigner": "minute",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "committee",
+        "text": "No museum? Then a study of each ticket, read aloud in the street.",
+        "subject": "committees",
+        "butt": "committee",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "TICKET STUDY READ ALOUD; MAYOR'S TICKET IS A RECEIPT",
+          "refuse": "TICKETS STAY IN BOXES, BY DATE. MERVYN READS THEM QUIETLY"
+        }
+      }
+    },
+    {
+      "id": "may-late-bus",
+      "office": "mayor",
+      "title": "The Late Bus",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "bus",
+        "archetype": "vanity",
+        "text": "Your name in lights on the 7:02, Mayor. It will be late, but lit.",
+        "subject": "buses",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR'S NAME LIT UP ON 7:02; SEEN ARRIVING LATE FROM AFAR",
+          "refuse": "7:02 STILL NAMED AFTER MAYOR, STILL LATE, STILL WAVING"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "The 7:02 kept its name and runs on time. Wave it off? It will not wait.",
+        "subject": "buses",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR WAVES OFF 7:02; 7:02 LATE FOR FIRST TIME IN WEEKS",
+          "refuse": "7:02 ON TIME AGAIN. NOBODY WAVES"
+        }
+      }
+    },
+    {
+      "id": "may-clock-chimes",
+      "office": "mayor",
+      "title": "Chimes for Buses",
+      "afterSign": {
+        "visitor": "till",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "swap",
+        "text": "38 chimes a day, all for buses. The Guild asks for one at opening.",
+        "subject": "clocks",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR ATTENDS SHOP OPENING CHIME; IT WAS A BUS",
+          "refuse": "CLOCK STAYS WITH BUSES; SHOPS OPEN WITHOUT A CHIME"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "Denied its bus chimes, the clock sulks. Have a word with it?",
+        "subject": "clocks",
+        "butt": "thing",
+        "shape": "literalism",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR SEEN TALKING TO CLOCK; CLOCK SAYS NOTHING",
+          "refuse": "CLOCK STILL SULKING. SPOTTERS TIME IT"
+        }
+      }
+    },
+    {
+      "id": "may-window-week",
+      "office": "mayor",
+      "title": "Window Week",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "shops",
+        "archetype": "vanity",
+        "text": "A window of you, judging windows, Mayor. Card: JUDGE'S CHOICE.",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "slogan",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR'S WINDOW WINS PRIZE; MAYOR WAS THE JUDGE",
+          "refuse": "MAYOR DECLINES OWN WINDOW. GLASS RELIEVED"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "till",
+        "cosigner": "minute",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "committee",
+        "text": "No judge, so all won. A study will pick a winner by nose prints.",
+        "subject": "committees",
+        "butt": "committee",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "STUDY PICKS WINNING WINDOW BY NOSES; MAYOR'S NOSE ON IT",
+          "refuse": "EVERY WINDOW WINS. NONE OF THEM CHEERS"
+        }
+      }
+    },
+    {
+      "id": "may-bunting",
+      "office": "mayor",
+      "title": "The Bunting",
+      "afterSign": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "swap",
+        "text": "The 8:15 left with eleven metres of bunting. May it keep them?",
+        "subject": "ceremonies",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "BUS LEAVES IN BUNTING; MAYOR WAVES, BUS DOES NOT STOP",
+          "refuse": "BUNTING HANDED BACK TO GUILD, FOLDED AND NUMBERED"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "awning",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "treat",
+        "text": "No bunting, so we hung a single ribbon. Cut it level, Mayor.",
+        "subject": "ribbons",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR CUTS GUILD RIBBON, KEEPS BOTH ENDS",
+          "refuse": "RIBBON UNCUT. SHOPPERS STEP OVER IT POLITELY"
+        }
+      }
+    },
+    {
+      "id": "may-signpost",
+      "office": "mayor",
+      "title": "The Fair Signpost",
+      "afterSign": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "swap",
+        "text": "Your signpost points both ways, to the shops. We ask for one arm.",
+        "subject": "signage",
+        "butt": "thing",
+        "shape": "literalism",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR FOLLOWS OWN SIGNPOST, ENDS UP AT BUS STATION",
+          "refuse": "SIGNPOST STAYS FAIR: BOTH ARMS STILL POINT AT SHOPS"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "till",
+        "cosigner": "minute",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "committee",
+        "text": "The old signpost still points to buses. A study will follow it.",
+        "subject": "signage",
+        "butt": "committee",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "SIGNPOST STUDY TAKES WRONG TURN; MAYOR ASKED THE WAY",
+          "refuse": "OLD SIGNPOST STILL POINTS AT BUSES; SHOPS FIND OWN WAY"
+        }
+      }
+    },
+    {
+      "id": "may-named-turnip",
+      "office": "mayor",
+      "title": "The Turnip",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "veg",
+        "archetype": "vanity",
+        "text": "Your turnip came second, Mayor. A portrait, cropped to leave out the winner?",
+        "subject": "portraits",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "TURNIP PORTRAIT UNVEILED; LOOKS MORE LIKE MAYOR DAILY",
+          "refuse": "SECOND-PLACE TURNIP RETURNS TO PRIVATE LIFE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "till",
+        "club": "shops",
+        "other": "veg",
+        "archetype": "fee",
+        "text": "You would not lend the turnip your name. Till's Teas will pay to lend theirs.",
+        "subject": "vegetable-shows",
+        "butt": "self",
+        "shape": "callback",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "TILL'S TEAS TURNIP COMES SECOND; MAYOR'S NAME NOT MENTIONED",
+          "refuse": "TURNIP STAYS NAMELESS. MAYOR'S NAME STILL ON OFFER"
+        }
+      }
+    },
+    {
+      "id": "may-scarecrow",
+      "office": "mayor",
+      "title": "The Scarecrow",
+      "afterSign": {
+        "visitor": "loam",
+        "club": "veg",
+        "other": "bus",
+        "archetype": "treat",
+        "text": "Your scarecrow is photographed more than you. Pose with it, once?",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR POSES WITH SCARECROW; CAPTION GETS THEM BACKWARDS",
+          "refuse": "SCARECROW STANDS ALONE. CROWS STILL UNCONVINCED"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "loam",
+        "club": "veg",
+        "other": "bus",
+        "archetype": "project",
+        "text": "No scarecrow? Then a sign: CROWS BY APPOINTMENT ONLY.",
+        "subject": "signage",
+        "butt": "thing",
+        "shape": "slogan",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "CROWS MAKE APPOINTMENT; MAYOR'S DIARY FULL",
+          "refuse": "CROWS ATTEND WEIGH-IN WITHOUT APPOINTMENT"
+        }
+      }
+    },
+    {
+      "id": "may-weigh-in-move",
+      "office": "mayor",
+      "title": "The Weigh-in Moves",
+      "afterSign": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "bus",
+        "archetype": "fee",
+        "text": "We will pay to book the forecourt yearly. Crowds up 60 %, waiting for buses.",
+        "subject": "vegetable-shows",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "MAYOR'S HAT WEIGHED BY MISTAKE; BEATEN BY A BUS",
+          "refuse": "BUSES GET FORECOURT BACK; ONE PUMPKIN LEFT BEHIND"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "veg",
+        "archetype": "treat",
+        "text": "You kept our forecourt, Mayor, so we logged you as a bus. Sign here?",
+        "subject": "buses",
+        "butt": "self",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR SIGNS BUS NOTEBOOK; IS LOGGED AS LATE",
+          "refuse": "NOTEBOOK ENTRY UNSIGNED. SPOTTERS NOTE THAT TOO"
+        }
+      }
+    },
+    {
+      "id": "may-bandstand-guild",
+      "office": "mayor",
+      "title": "Hats at the Bandstand",
+      "afterSign": {
+        "visitor": "awning",
+        "club": "shops",
+        "other": "veg",
+        "archetype": "swap",
+        "text": "The hats had the bandstand a day. They ask for a week, and a hat for it.",
+        "subject": "hats",
+        "butt": "thing",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "HATS KEEP BANDSTAND; MAYOR TRIES ONE ON, KEEPS IT",
+          "refuse": "HATS LEAVE BANDSTAND; PUMPKINS TAKE THE STAGE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "shops",
+        "archetype": "treat",
+        "text": "The pumpkin show kept its stage. Judge it, Mayor, in a hat?",
+        "subject": "vegetable-shows",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "MAYOR'S HAT JUDGED BEST IN SHOW, BY MAYOR",
+          "refuse": "PUMPKIN SHOW GOES AHEAD. NO HATS, ONE ROSETTE"
+        }
+      }
+    },
+    {
+      "id": "pres-kitecombe-hill",
+      "office": "president",
+      "title": "The Hill",
+      "afterSign": {
+        "visitor": "loft",
+        "club": "kites",
+        "other": "hedges",
+        "archetype": "project",
+        "text": "The hill works. Now a second hill, to admire the first one from.",
+        "subject": "kites",
+        "butt": "office",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT BUILDS HILL TO LOOK AT HILL",
+          "refuse": "KITES ADMIRE HILL FROM THE CHAIR"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "updraught",
+        "club": "kites",
+        "other": "hedges",
+        "archetype": "swap",
+        "text": "Then lend the League the Committee's stepladder. Sundays. Mostly Sundays.",
+        "subject": "kites",
+        "butt": "office",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "HEDGES GO UNTRIMMED ON SUNDAYS, AND MOST TUESDAYS",
+          "refuse": "LEAGUE LAUNCHES FROM CHAIR, WITH DIGNITY"
+        }
+      }
+    },
+    {
+      "id": "pres-hedge-likeness",
+      "office": "president",
+      "title": "The Likeness",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "hedges",
+        "archetype": "vanity",
+        "text": "The hedge of you must now match each new haircut. Weekly, I suggest.",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT'S HEDGE HAS BETTER HAIRCUT THAN PRESIDENT",
+          "refuse": "HEDGE OF PRESIDENT GROWS OUT; LIKENESS FADES"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "topiary",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "treat",
+        "text": "Your hedge entered the show alone. Come and watch it come second.",
+        "subject": "hedges",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "PRESIDENT APPLAUDS OWN HEDGE; HEDGE BOWS",
+          "refuse": "HEDGE OF PRESIDENT COLLECTS SECOND PRIZE ALONE"
+        }
+      }
+    },
+    {
+      "id": "pres-maze",
+      "office": "president",
+      "title": "The Kite-Free Maze",
+      "afterSign": {
+        "visitor": "loft",
+        "club": "kites",
+        "other": "hedges",
+        "archetype": "project",
+        "text": "The maze is 99 % free of kites. Fund a search for the rest?",
+        "subject": "kites",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "SEARCH PARTY FINDS KITE; SEARCH PARTY NOW LOST",
+          "refuse": "LOST KITE GIVEN POSTAL ADDRESS; STAYS LOST"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "edging",
+        "cosigner": "minute",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "committee",
+        "text": "Then a study of the strings in the maze. It meets at the centre, once found.",
+        "subject": "hedges",
+        "butt": "committee",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "STRING STUDY GOES IN AT NOON; NOT YET OUT",
+          "refuse": "KITE STRINGS STAY IN THE HEDGES, UNCOUNTED"
+        }
+      }
+    },
+    {
+      "id": "pres-book-wind",
+      "office": "president",
+      "title": "The Booked Wind",
+      "afterSign": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "kites",
+        "archetype": "fee",
+        "text": "The band would like to hire one breeze back. For its flags.",
+        "subject": "bandstands",
+        "butt": "self",
+        "shape": "literalism",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT SELLS SAME WIND TWICE; WIND UNAWARE",
+          "refuse": "BAND'S FLAGS HANG STILL; CONCERT CALLED 'RESPECTFUL'"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "loft",
+        "cosigner": "minute",
+        "club": "kites",
+        "other": "brass",
+        "archetype": "committee",
+        "text": "Then fund a study of the breeze over Brassby. By kite, of course.",
+        "subject": "kites",
+        "butt": "committee",
+        "shape": "undercut",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "WIND STUDY FLIES ALL AFTERNOON; NO FINDINGS LAND",
+          "refuse": "WIND OVER BRASSBY STAYS UNMEASURED, AND UNHIRED"
+        }
+      }
+    },
+    {
+      "id": "pres-first-kite",
+      "office": "president",
+      "title": "The First Kite",
+      "afterSign": {
+        "visitor": "updraught",
+        "club": "kites",
+        "other": "hedges",
+        "archetype": "project",
+        "text": "Your first kite is still up, in a hedge. List it as a landmark?",
+        "subject": "kites",
+        "butt": "self",
+        "shape": "form-misapplied",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT'S KITE LISTED; HEDGE LISTED WITH IT",
+          "refuse": "PRESIDENT'S KITE COMES DOWN ON ITS OWN, AT LAST"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "loft",
+        "club": "kites",
+        "other": "hedges",
+        "archetype": "treat",
+        "text": "No first kite, so no second. The League waits. Let go now?",
+        "subject": "kites",
+        "butt": "office",
+        "shape": "literalism",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "SEASON OPENS LATE; PRESIDENT LETS GO EARLY",
+          "refuse": "KITE SEASON STILL WAITING TO START"
+        }
+      }
+    },
+    {
+      "id": "pres-topiary-clock",
+      "office": "president",
+      "title": "The Topiary Clock",
+      "afterSign": {
+        "visitor": "topiary",
+        "cosigner": "minute",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "committee",
+        "text": "The hedge clock says spring. The calendar does not. An inquiry?",
+        "subject": "clocks",
+        "butt": "committee",
+        "shape": "form-misapplied",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "INQUIRY BACKS HEDGE; CALENDAR TO BE TRIMMED",
+          "refuse": "HEDGE AND CALENDAR NO LONGER SPEAKING"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "edging",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "treat",
+        "text": "No clock, then. Stand by the hedge at noon and point up? Once.",
+        "subject": "clocks",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "PRESIDENT STANDS IN FOR CLOCK; RUNS AN HOUR SLOW",
+          "refuse": "HEDGE STILL DOES NOT TELL THE TIME. NEVER DID"
+        }
+      }
+    },
+    {
+      "id": "pres-harbour-steps",
+      "office": "president",
+      "title": "Brass on the Steps",
+      "afterSign": {
+        "visitor": "hake",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "swap",
+        "text": "The step we now sit on is 60 % sea. The top step, please.",
+        "subject": "harbours",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "BAND MOVES DOWN TO BOTTOM STEP; TUBA GETS WET",
+          "refuse": "ANGLERS STAY ON WET STEP. 'QUIETER,' SAYS ONE"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "bellows",
+        "club": "brass",
+        "other": "anglers",
+        "archetype": "project",
+        "text": "Not on the steps, then. Beside them, from a boat. Fund the boat?",
+        "subject": "harbours",
+        "butt": "office",
+        "shape": "literalism",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "BAND PLAYS FROM BOAT; BOAT DRIFTS TOWARDS ANGLERS",
+          "refuse": "BAND PLAYS ON QUAY, WAVING AT A BOAT IT LACKS"
+        }
+      }
+    },
+    {
+      "id": "pres-dim-lighthouse",
+      "office": "president",
+      "title": "The Dim Lighthouse",
+      "afterSign": {
+        "visitor": "spinwell",
+        "club": "anglers",
+        "archetype": "vanity",
+        "text": "A sign for the dim lighthouse: PRESIDENT AT WORK. Lit all night.",
+        "subject": "vanity",
+        "butt": "self",
+        "shape": "slogan",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "LIGHTHOUSE SAYS PRESIDENT AT WORK; FISH AWAKE TO CHECK",
+          "refuse": "FISH SLEEP ON; PRESIDENT'S WORK GOES UNLIT"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "dabble",
+        "club": "anglers",
+        "other": "brass",
+        "archetype": "treat",
+        "text": "Then come and say 'hush' to the lighthouse. It may listen to you.",
+        "subject": "harbours",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "PRESIDENT SHUSHES LIGHTHOUSE; LIGHTHOUSE CARRIES ON",
+          "refuse": "LIGHTHOUSE NOT SHUSHED. ANGLERS SHUSH EACH OTHER"
+        }
+      }
+    },
+    {
+      "id": "pres-motorway-bench",
+      "office": "president",
+      "title": "The Spotting Bench",
+      "afterSign": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "hedges",
+        "archetype": "treat",
+        "text": "Log one coach from the bench. We will tell you which are coaches.",
+        "subject": "buses",
+        "butt": "self",
+        "shape": "undercut",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT LOGS VAN AS COACH; SOCIETY POLITE",
+          "refuse": "BENCH LOGS COACHES ALL DAY WITHOUT PRESIDENT"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "sprott",
+        "club": "bus",
+        "other": "hedges",
+        "archetype": "swap",
+        "text": "No bench, then. May we lean on the hedge? We have a rota.",
+        "subject": "buses",
+        "butt": "office",
+        "shape": "form-misapplied",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "HEDGE LEANED ON IN SHIFTS; HEDGE NOW LEANS TOO",
+          "refuse": "SPOTTERS STAND UNAIDED, LOGGING BRAVELY"
+        }
+      }
+    },
+    {
+      "id": "pres-tea-lamps",
+      "office": "president",
+      "title": "Tea-Coloured Lamps",
+      "afterSign": {
+        "visitor": "kerb",
+        "club": "bus",
+        "other": "shops",
+        "archetype": "swap",
+        "text": "Under the tea lamps, 94 % of coaches are logged 'beige'. One plain lamp?",
+        "subject": "buses",
+        "butt": "thing",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "ONE PLAIN LAMP LIT; TILL'S TEAS CALLS IT 'WEAK'",
+          "refuse": "COACH OF THE YEAR: 'BEIGE', AGAIN"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "till",
+        "club": "shops",
+        "other": "bus",
+        "archetype": "fee",
+        "text": "Then Till's Teas will hire just the bus stop lamp. It would say TEA.",
+        "subject": "signage",
+        "butt": "thing",
+        "shape": "slogan",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "BUS STOP NOW SAYS TEA; NO TEA ARRIVES",
+          "refuse": "LAMP BY BUS STOP CONTINUES TO SAY NOTHING"
+        }
+      }
+    },
+    {
+      "id": "pres-pumpkin-tour",
+      "office": "president",
+      "title": "The Pumpkin Tour",
+      "afterSign": {
+        "visitor": "gourdley",
+        "club": "veg",
+        "other": "bus",
+        "archetype": "swap",
+        "text": "The pumpkin tours again. It asks for the spotters' front seat. Then yours.",
+        "subject": "vegetable-shows",
+        "butt": "self",
+        "shape": "escalation",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PUMPKIN TAKES FRONT SEAT; PRESIDENT IN ROW TWO",
+          "refuse": "SPOTTERS KEEP FRONT SEAT; PUMPKIN TOURS IN THE BOOT"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "loam",
+        "club": "veg",
+        "other": "bus",
+        "archetype": "treat",
+        "text": "The pumpkin toured without you. It kept your seat. Ride the last stop?",
+        "subject": "vegetable-shows",
+        "butt": "self",
+        "shape": "photo-op",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "PRESIDENT RIDES LAST STOP; PUMPKIN WAVES FIRST",
+          "refuse": "EMPTY SEAT TOURS NINE PROVINCES; WELL RECEIVED"
+        }
+      }
+    },
+    {
+      "id": "pres-lawn-judged",
+      "office": "president",
+      "title": "The Judged Lawn",
+      "afterSign": {
+        "visitor": "edging",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "treat",
+        "text": "Your lawn came third of three. Edge it yourself for the rematch?",
+        "subject": "gardens",
+        "butt": "self",
+        "shape": "statistic",
+        "delay": [
+          10,
+          14
+        ],
+        "clippings": {
+          "sign": "PRESIDENT RE-EDGES OWN LAWN. STILL THIRD",
+          "refuse": "LAWN UNEDGED; THIRD PLACE KEPT"
+        }
+      },
+      "afterRefuse": {
+        "visitor": "topiary",
+        "cosigner": "minute",
+        "club": "hedges",
+        "other": "kites",
+        "archetype": "committee",
+        "text": "Then a study of your lawn edges. From the kite field, then from a kite.",
+        "subject": "gardens",
+        "butt": "committee",
+        "shape": "escalation",
+        "delay": [
+          12,
+          16
+        ],
+        "clippings": {
+          "sign": "LAWN STUDY GOES UP BY KITE; EDGES 'STRAIGHTER FROM ABOVE'",
+          "refuse": "LAWN EDGES STAY UNSTUDIED, AND UNEVEN"
+        }
+      }
+    }
+  ]
+}

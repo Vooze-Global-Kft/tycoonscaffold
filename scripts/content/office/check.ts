@@ -337,8 +337,20 @@ interface PlanBatch {
   sections?: Record<string, Record<string, unknown>>;
   givenRecords?: Record<string, { id: string }[]>;
 }
+interface PlanDeck {
+  total?: number;
+  clubs?: string[];
+  archetypes?: Record<string, { planned?: number; share?: number }>;
+  shareTolerance?: number;
+  traps?: { max?: number };
+  portable?: { planned?: number; share?: number };
+  cells?: Record<string, { min?: number; planned?: number }>;
+  drawCells?: Record<string, { min?: number; planned?: number } | string>;
+}
 interface Plan {
   batches?: PlanBatch[];
+  decks?: Record<string, PlanDeck>;
+  chains?: { id: string; office?: string; setup?: { batch?: string } }[];
   rules?: { clippingMax?: number; noteMax?: number; picketMax?: number; labelMax?: number; slogansMax?: number; captionMax?: number; chainSetupArchetypes?: string[] };
 }
 
@@ -353,6 +365,8 @@ function readPlan(): Plan | undefined {
 }
 
 const num = (v: unknown) => (typeof v === 'number' ? v : undefined);
+/** An owned gag matched as whole words in any case ("the wind" is not in "the windows"). */
+const ownedRe = (o: string) => new RegExp(`(?<![\\p{L}\\p{N}])${o.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'iu');
 
 function planChecks(p: Parsed, plan: Plan): CheckFinding[] {
   const out: CheckFinding[] = [];
@@ -380,9 +394,14 @@ function planChecks(p: Parsed, plan: Plan): CheckFinding[] {
     }
   }
   // Running gags other batches own.
-  const owned = (plan.batches ?? []).filter((b) => b.id !== pb.id).flatMap((b) => (b.owns ?? []).map((o) => ({ o, by: b.id })));
-  for (const t of paperTexts(u)) for (const { o, by } of owned) {
-    if (t.text.toLowerCase().includes(o.toLowerCase())) out.push(Wn(t.id, `"${o}" is a running gag the batch ${by} owns (plan.json owns)`, o));
+  const owned = (plan.batches ?? []).filter((b) => b.id !== pb.id).flatMap((b) => (b.owns ?? []).map((o) => ({ o, by: b.id, re: ownedRe(o) })));
+  // A chain's follow-ups are written to their set-up's premise: the gags of the batch that holds the
+  // set-up are the chain's own (plan.json chains[].setup.batch), not another batch's.
+  const setupBatch = new Map((plan.chains ?? []).map((c) => [c.id, c.setup?.batch]));
+  for (const t of paperTexts(u)) for (const { o, by, re } of owned) {
+    const chain = (S.chains ?? []).find((c) => t.id === `${c.id}.sign` || t.id === `${c.id}.refuse`);
+    if (chain && setupBatch.get(chain.id) === by) continue;
+    if (re.test(t.text)) out.push(Wn(t.id, `"${o}" is a running gag the batch ${by} owns (plan.json owns)`, o));
   }
 
   const sec = pb.sections ?? {};
@@ -538,16 +557,18 @@ function planChecks(p: Parsed, plan: Plan): CheckFinding[] {
 // The counts of 7.7 (with --all)
 // ------------------------------------------------------------------------------------------------
 
-function counts7(units: ContentUnit[], final: boolean): CheckFinding[] {
+function counts7(units: ContentUnit[], final: boolean, plan?: Plan): CheckFinding[] {
   const out: CheckFinding[] = [];
   const sev: Severity = final ? 'error' : 'todo';
   const all = <K extends SectionName>(k: K) => units.flatMap((u) => ((u.sections[k] ?? []) as { office?: string }[]).map((r) => ({ r, office: r.office ?? u.office })));
   const papersBy = (d: Deck) => units.filter((u) => u.office === d).flatMap((u) => u.sections.papers ?? []);
+  // D19: the deck totals are plan.json's (mayor 160); 7.7's numbers where the plan has none.
+  const total = (d: Deck, n: number) => plan?.decks?.[d]?.total ?? n;
   const want: [string, number, number][] = [
-    ['mayor papers', papersBy('mayor').length, 110],
-    ['governor papers', papersBy('governor').length, 150],
-    ['president papers', papersBy('president').length, 200],
-    ['any-office papers', papersBy('any').length, 30],
+    ['mayor papers', papersBy('mayor').length, total('mayor', 110)],
+    ['governor papers', papersBy('governor').length, total('governor', 150)],
+    ['president papers', papersBy('president').length, total('president', 200)],
+    ['any-office papers', papersBy('any').length, total('any', 30)],
     ['chains', all('chains').length, 36],
     ...(['mayor', 'governor', 'president'] as const).map((o) => [`${o} chains`, all('chains').filter((x) => x.office === o).length, 12] as [string, number, number]),
     ["Clerk's notes", all('notes').length, 160],
@@ -575,14 +596,32 @@ function counts7(units: ContentUnit[], final: boolean): CheckFinding[] {
   ];
   for (const [what, got, n] of want) if (got < n) out.push({ severity: sev, file: 'scripts/content/office', id: `(count)`, rule: 'count', match: `${got}/${n}`, reason: `${what}: ${got} of the ${n} of 7.7` });
   for (const l of units.flatMap((u) => u.sections.lists ?? [])) if (l.phrases.length < 24) out.push({ severity: sev, file: 'scripts/content/office', id: l.id, rule: 'count', match: `${l.phrases.length}/24`, reason: 'a phrase list holds 24 phrases (7.7)' });
-  // Cells (7.7; office-style.md 8: traps 2 a cell).
+  // Cells: plan.json decks.<deck>.cells[].min (4 for each non-trap cell, D19) and, D20, one vanity and
+  // one basket draw cell per office (decks.<deck>.drawCells, min 4): no trap is demanded per club.
+  // Without plan.json, 7.7's floors (4 as mayor, 3 above).
+  const NON_TRAP = ['project', 'swap', 'fee', 'treat', 'committee'] as const;
   for (const d of ['mayor', 'governor', 'president'] as const) {
     const ps = papersBy(d);
-    const min = d === 'mayor' ? 4 : 3;
-    for (const c of DECK_CLUBS[d]) for (const a of ['project', 'swap', 'fee', 'treat', 'committee', 'vanity', 'basket'] as const) {
+    const pd = plan?.decks?.[d];
+    for (const c of DECK_CLUBS[d]) for (const a of NON_TRAP) {
       const got = ps.filter((p) => p.club === c && p.archetype === a).length;
-      const need = a === 'vanity' || a === 'basket' ? 2 : min;
-      if (got < need) out.push({ severity: sev, file: 'scripts/content/office', id: `(cell ${d} ${c}.${a})`, rule: 'count', match: `${got}/${need}`, reason: `the ${d} cell ${c}.${a} holds ${got} papers, at least ${need} (7.7; traps 2, office-style.md 8)` });
+      const need = pd?.cells?.[`${c}.${a}`]?.min ?? (d === 'mayor' ? 4 : 3);
+      if (got < need) out.push({ severity: sev, file: 'scripts/content/office', id: `(cell ${d} ${c}.${a})`, rule: 'count', match: `${got}/${need}`, reason: `the ${d} cell ${c}.${a} holds ${got} papers, at least ${need} (7.7, D19, plan.json)` });
+    }
+    for (const a of ['vanity', 'basket'] as const) {
+      const dc = pd?.drawCells?.[a];
+      const need = (typeof dc === 'object' ? dc.min : undefined) ?? 4;
+      const got = ps.filter((p) => p.archetype === a).length;
+      if (got < need) out.push({ severity: sev, file: 'scripts/content/office', id: `(cell ${d} ${a})`, rule: 'count', match: `${got}/${need}`, reason: `the ${d} ${a} draw cell holds ${got} papers, at least ${need} (D20: one cell per office)` });
+    }
+    // Archetype shares (2.2's table, plan.json decks.<deck>.archetypes, ± shareTolerance): a warning.
+    if (pd?.archetypes && ps.length) {
+      const tol = pd.shareTolerance ?? 0.02;
+      for (const [a, q] of Object.entries(pd.archetypes)) {
+        if (q.share === undefined) continue;
+        const got = ps.filter((p) => p.archetype === a).length / ps.length;
+        if (Math.abs(got - q.share) > tol + 1e-9) out.push({ severity: 'warn', file: 'scripts/content/office', id: `deck:${d}`, rule: 'count', match: `${a} ${(100 * got).toFixed(1)} %`, reason: `${a} is ${(100 * got).toFixed(1)} % of the ${d} deck; 2.2's share is ${Math.round(100 * q.share)} % (± ${Math.round(100 * tol)}, plan.json)` });
+      }
     }
     if (d !== 'president' && ps.length) {
       const share = ps.filter((p) => p.portable).length / ps.length;
@@ -596,14 +635,47 @@ function counts7(units: ContentUnit[], final: boolean): CheckFinding[] {
 // Main
 // ------------------------------------------------------------------------------------------------
 
-function listAll(): string[] {
+/**
+ * Everything to check together. Once the assembled files of 9.2 W exist they are the truth and the
+ * batches are the writers' record only, so --all reads the assembled files alone; `--batches` adds the
+ * batches as before (a batch record unchanged in an assembled file counts once; a changed one is the
+ * batch's older copy and is reported against the batch).
+ */
+function listAll(withBatches = false): string[] {
   const files = AUTHORING_FILES.map((f) => path.join(DIR, `${f}.json`)).filter((f) => fs.existsSync(f));
   const bdir = path.join(DIR, 'batches');
-  if (fs.existsSync(bdir)) for (const f of fs.readdirSync(bdir).sort()) if (f.endsWith('.json')) files.push(path.join(bdir, f));
+  if ((withBatches || files.length === 0) && fs.existsSync(bdir)) for (const f of fs.readdirSync(bdir).sort()) if (f.endsWith('.json')) files.push(path.join(bdir, f));
   return [path.join(DIR, 'names.json'), ...files];
 }
 
-export function check(files: string[], opts: { all?: boolean; final?: boolean; stats?: LintStats } = {}): CheckFinding[] {
+/** D30: the deck length rules (median 65, over 80 at most 20 %) count hand-written papers only. */
+const isDeckLengthRule = (f: CheckFinding) => f.rule === 'rule4' && f.id.startsWith('deck:') && /^median |over 80/.test(f.match ?? '');
+/** D30: a frame's own median filled length is at most this. */
+export const FRAME_MEDIAN_MAX = 72;
+
+/** A frame's bigger study (D30) is linted as a plain text; the lint reads it as an extra string. */
+function withFrameStudies(u: ContentUnit): ContentUnit {
+  const extra: ExtraString[] = (u.sections.frames ?? []).filter((f) => f.biggerStudy).map((f) => ({ id: `${f.id}.study`, text: f.biggerStudy!, field: 'text' }));
+  return extra.length ? { ...u, strings: [...(u.strings ?? []), ...extra] } : u;
+}
+
+function frameChecks(units: ContentUnit[], wholeDecks: boolean): CheckFinding[] {
+  const out: CheckFinding[] = [];
+  const lists = new Map(units.flatMap((u) => (u.sections.lists ?? []).map((l) => [l.id, l.phrases] as const)));
+  for (const u of units) for (const f of u.sections.frames ?? []) {
+    const slot = [...f.frame.matchAll(/\{([a-z][a-z0-9-]*)\}/g)][0]?.[1];
+    const phrases = slot ? lists.get(slot) : undefined;
+    if (phrases?.length) {
+      const med = median(phrases.map((ph) => [...f.frame.replace(`{${slot}}`, ph)].length));
+      if (med > FRAME_MEDIAN_MAX) out.push({ severity: 'error', file: u.source, id: f.id, field: 'frame', rule: 'rule4', match: `median ${med}`, reason: `the frame's median filled length is ${med} characters; at most ${FRAME_MEDIAN_MAX} (D30)` });
+    }
+    if (f.archetype === 'committee' && !f.biggerStudy) out.push({ severity: wholeDecks ? 'error' : 'warn', file: u.source, id: f.id, field: 'biggerStudy', rule: 'rule6', reason: 'a Committee frame comes back after a sign with its bigger study (D20, D30): write it in biggerStudy' });
+    if (f.biggerStudy && f.archetype !== 'committee') out.push({ severity: 'error', file: u.source, id: f.id, field: 'biggerStudy', rule: 'rule6', reason: `only a committee has a bigger study (2.2); this is a ${f.archetype}` });
+  }
+  return out;
+}
+
+export function check(files: string[], opts: { all?: boolean; final?: boolean; stats?: LintStats & { frames?: number[] } } = {}): CheckFinding[] {
   const findings: CheckFinding[] = [];
   const nameFindings: CheckFinding[] = [];
   const names = readNamesFile(path.join(DIR, 'names.json'), nameFindings);
@@ -611,8 +683,27 @@ export function check(files: string[], opts: { all?: boolean; final?: boolean; s
   const parsed = files.map((f) => parseFile(f, names));
   for (const p of parsed) findings.push(...p.findings);
 
-  const lintOf = (units: ContentUnit[], wholeDecks: boolean) =>
-    satireLint(units, { names, wholeDecks, stats: opts.stats }).map((f): CheckFinding => ({ severity: f.severity, file: f.source, id: f.id, field: f.field, rule: f.rule, reason: f.reason, match: f.match }));
+  const lint1 = (units: ContentUnit[], wholeDecks: boolean, stats?: LintStats) =>
+    satireLint(units, { names, wholeDecks, stats }).map((f): CheckFinding => ({ severity: f.severity, file: f.source, id: f.id, field: f.field, rule: f.rule, reason: f.reason, match: f.match }));
+  // D30: the whole lint on everything, frames filled; the deck length rules once more without frames.
+  const lintOf = (units0: ContentUnit[], wholeDecks: boolean) => {
+    const units = units0.map(withFrameStudies);
+    const hasFrames = units.some((u) => u.sections.frames?.length);
+    const full = lint1(units, wholeDecks, hasFrames ? undefined : opts.stats);
+    const own = frameChecks(units, wholeDecks);
+    if (!hasFrames) return [...full, ...own];
+    const noFrames = units.map((u) => ({ ...u, sections: { ...u.sections, frames: [] }, strings: undefined }));
+    const lens = lint1(noFrames, wholeDecks, opts.stats).filter(isDeckLengthRule);
+    if (opts.stats) {
+      const lists = new Map(units.flatMap((u) => (u.sections.lists ?? []).map((l) => [l.id, l.phrases] as const)));
+      opts.stats.frames = units.flatMap((u) => u.sections.frames ?? []).map((f) => {
+        const slot = [...f.frame.matchAll(/\{([a-z][a-z0-9-]*)\}/g)][0]?.[1];
+        const ph = (slot && lists.get(slot)) || [];
+        return ph.length ? median(ph.map((p) => [...f.frame.replace(`{${slot}}`, p)].length)) : 0;
+      });
+    }
+    return [...full.filter((f) => !isDeckLengthRule(f)), ...lens, ...own];
+  };
 
   if (!opts.all) {
     for (const p of parsed) {
@@ -645,12 +736,15 @@ export function check(files: string[], opts: { all?: boolean; final?: boolean; s
   findings.push(...nameFindings.filter((f) => !findings.some((g) => g.id === f.id && g.reason === f.reason)));
   findings.push(...lintOf(units, true));
   const seen = new Map<string, string>();
-  for (const u of units) for (const { id } of idsOf(u)) {
+  // A chain may carry the id of the paper that sets it up (build-office keys records by section and id).
+  const setUpBy = new Map(units.flatMap((u) => [...(u.sections.papers ?? []), ...(u.sections.scripted ?? [])].filter((r) => r.setsUp).map((r) => [r.setsUp!, r.id] as const)));
+  for (const u of units) for (const { id, section } of idsOf(u)) {
+    if (section === 'chains' && setUpBy.get(id) === id) continue;
     if (seen.has(id)) findings.push({ severity: 'error', file: u.source, id, rule: 'duplicate', reason: `the id is also used in ${seen.get(id)}: ids are unique across all content` });
     else seen.set(id, u.source);
   }
   findings.push(...similarity(units.flatMap((u) => paperTexts(u).map((t) => ({ ...t, file: u.source })))));
-  findings.push(...counts7(units, !!opts.final));
+  findings.push(...counts7(units, !!opts.final, plan));
   if (plan) for (const p of parsed) if (p.kind === 'batch' && p.unit) findings.push(...planChecks(p, plan).filter((f) => f.severity !== 'todo' || opts.final));
   return findings;
 }
@@ -670,12 +764,12 @@ function main(argv: string[]) {
     process.exit(2);
   }
   const t0 = Date.now();
-  const list = all ? listAll() : files;
+  const list = all ? listAll(argv.includes('--batches')) : files;
   for (const f of list) if (!fs.existsSync(f)) {
     console.log(`ERROR ${f}: no such file`);
     process.exit(1);
   }
-  const stats: LintStats = { lengths: {} };
+  const stats: LintStats & { frames?: number[] } = { lengths: {} };
   const findings = check(list, { all, final, stats });
   const order: Record<string, number> = { error: 0, warn: 1, todo: 2 };
   findings.sort((a, b) => order[a.severity] - order[b.severity] || a.file.localeCompare(b.file));
@@ -685,8 +779,9 @@ function main(argv: string[]) {
     const n = (s: Severity) => findings.filter((f) => f.severity === s).length;
     // The same lengths as the deck rule (7.4) counts: papers with outcomes, a run-up's {district} filled with the longest name.
     for (const [deck, lens] of Object.entries(stats.lengths)) {
-      if (lens.length) console.log(`${deck} papers${all ? '' : ` in ${list.map(rel).join(', ')}`}: ${lens.length}, median ${median(lens)} characters (at most 65), longest ${Math.max(...lens)} (at most 90), over 80: ${lens.filter((l) => l > 80).length} (at most 20 %)`);
+      if (lens.length) console.log(`${deck} hand-written papers${all ? '' : ` in ${list.map(rel).join(', ')}`}: ${lens.length}, median ${median(lens)} characters (at most 65), longest ${Math.max(...lens)} (at most 90), over 80: ${lens.filter((l) => l > 80).length} (at most 20 %)`);
     }
+    if (stats.frames?.length) console.log(`template frames: ${stats.frames.length}, median filled length per frame: highest ${Math.max(...stats.frames)} (at most ${FRAME_MEDIAN_MAX}, D30), median of medians ${median(stats.frames)}`);
     console.log(`\n${list.length} file${list.length === 1 ? '' : 's'}: ${n('error')} error${n('error') === 1 ? '' : 's'}, ${n('warn')} warning${n('warn') === 1 ? '' : 's'}, ${n('todo')} to do (${Date.now() - t0} ms)`);
   }
   process.exit(findings.some((f) => f.severity === 'error') ? 1 : 0);

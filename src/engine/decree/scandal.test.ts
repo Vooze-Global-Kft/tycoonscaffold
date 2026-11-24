@@ -6,48 +6,24 @@
  * the call; no second scandal while one runs or a front page waits; "Call the Spin Doctor" touches no
  * mood. Frozen test content only.
  *
- * Stand-ins for the other rules package (twists: neutral; advice: no slip). The term's own day count
- * and `canCall` are the built ones (they read only the phase and the day).
+ * Joined (rules-lead): every rules module is the real one (no vi.mock); a slip the real advice.ts
+ * lands between two papers (D18) is put back by the test's helper where a test counts papers.
  */
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as R from '../decree';
 import { built, decreeTestConfig } from '../fixtures/decree';
-
-vi.mock('./twists', () => {
-  const neutralFactors = () => ({ mixAdd: [0, 0, 0, 0, 0, 0, 0], list: [] });
-  return {
-    QUIET_TERM: 'quiet_term',
-    neutralFactors,
-    combineFactors: (a: R.Factors, b: R.Factors) => ({ mixAdd: a.mixAdd.map((x, i) => x + (b.mixAdd[i] ?? 0)), list: [...a.list, ...b.list] }),
-    factorFor: () => ({ mul: 1, add: 0, sources: [] }),
-    deskFactors: neutralFactors,
-    twistFactors: neutralFactors,
-    twistIdsFactors: neutralFactors,
-    ruleFactors: neutralFactors,
-    newThingAt: () => ({ twists: [], grandProject: null, quiet: false }),
-    newThingLabel: () => null,
-    compositionProblems: () => [],
-  };
-});
-vi.mock('./advice', () => ({
-  advice: () => ({ goal: { kind: 'none' }, slip: null, next: null, call: false }),
-  goalLine: () => ({ kind: 'none' }),
-  about: (seconds: number) => ({ value: Math.max(1, Math.round(seconds)), unit: 's' }),
-  slipNeed: () => null,
-  standingOrderPick: () => null,
-  candidates: () => [],
-  callNow: () => false,
-}));
 
 const cfg = decreeTestConfig();
 const sc = cfg.decree.scandal;
 const GMAX = cfg.decree.offices[0].gossipMax;
 const deskPaper = (g: R.DecreeGame) => (g.decree.desk?.type === 'paper' ? g.decree.desk.paper : null);
 
+/** A slip lying on the desk (D18, the real advice.ts) goes back, so the waiting paper lands. */
+const putBackSlip = (g: R.DecreeGame, clock = 0): R.DecreeGame => (g.decree.desk?.type === 'slip' ? R.decide(cfg, g, 'refuse', clock, []) : g);
 function decideNow(g: R.DecreeGame, choice: R.Choice, events: R.DecreeEvent[] = []): R.DecreeGame {
   let s = R.decide(cfg, g, choice, 0, events);
   if (s === g) s = R.decide(cfg, g, 'refuse', 0, events);
-  return s.decree.pending ? R.commitPending(cfg, s, 0, events) : s;
+  return putBackSlip(s.decree.pending ? R.commitPending(cfg, s, 0, events) : s);
 }
 
 /** Papers that move no gossip (swaps of the bus spotters and the shops), for counting. */

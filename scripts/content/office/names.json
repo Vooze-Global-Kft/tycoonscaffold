@@ -2581,6 +2581,349 @@
         "checker": "content-names (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
+    },
+    {
+      "name": "Waitwell",
+      "kind": "county",
+      "id": "county-waitwell",
+      "office": "governor",
+      "short": "WW",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Waitwell\" OR \"Gleamford\" OR \"Bandwick\" OR \"Clatterby\" place",
+          "\"Dawdlemouth\" OR \"Hampering\" OR \"Cloche End\" town"
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; suggested for the Bus-strong county (county_a): where the province waits for the bus, and waits well"
+    },
+    {
+      "name": "Gleamford",
+      "kind": "county",
+      "id": "county-gleamford",
+      "office": "governor",
+      "short": "GF",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Waitwell\" OR \"Gleamford\" OR \"Bandwick\" OR \"Clatterby\" place",
+          "\"Dawdlemouth\" OR \"Hampering\" OR \"Cloche End\" town"
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; suggested for the Shops-strong county (county_b): its shop windows gleam"
+    },
+    {
+      "name": "Cloche End",
+      "kind": "county",
+      "id": "county-cloche-end",
+      "office": "governor",
+      "short": "CE",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Waitwell\" OR \"Gleamford\" OR \"Bandwick\" OR \"Clatterby\" place",
+          "\"Dawdlemouth\" OR \"Hampering\" OR \"Cloche End\" town"
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; suggested for the Vegetables-strong county (county_c); a cloche is a glass cover for seedlings"
+    },
+    {
+      "name": "Bandwick",
+      "kind": "county",
+      "id": "county-bandwick",
+      "office": "governor",
+      "short": "BW",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Waitwell\" OR \"Gleamford\" OR \"Bandwick\" OR \"Clatterby\" place",
+          "\"Dawdlemouth\" OR \"Hampering\" OR \"Cloche End\" town"
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; suggested for the Brass-strong county (county_d)"
+    },
+    {
+      "name": "Dawdlemouth",
+      "kind": "county",
+      "id": "county-dawdlemouth",
+      "office": "governor",
+      "short": "DM",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Waitwell\" OR \"Gleamford\" OR \"Bandwick\" OR \"Clatterby\" place",
+          "\"Dawdlemouth\" OR \"Hampering\" OR \"Cloche End\" town"
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; suggested for the Anglers-strong county (county_e): where the River Dawdle reaches the canal"
+    },
+    {
+      "name": "Clatterby",
+      "kind": "county",
+      "id": "county-clatterby",
+      "office": "governor",
+      "short": "CY",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Waitwell\" OR \"Gleamford\" OR \"Bandwick\" OR \"Clatterby\" place",
+          "\"Dawdlemouth\" OR \"Hampering\" OR \"Cloche End\" town"
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; suggested for the Bus-and-Brass county (county_f): buses and bands both clatter"
+    },
+    {
+      "name": "Hampering",
+      "kind": "county",
+      "id": "county-hampering",
+      "office": "governor",
+      "short": "HP",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Waitwell\" OR \"Gleamford\" OR \"Bandwick\" OR \"Clatterby\" place",
+          "\"Dawdlemouth\" OR \"Hampering\" OR \"Cloche End\" town"
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; suggested for the Shops-and-Vegetables county (county_g): a hamper is a basket; hampering is what committees do (a sister to Dithering)"
+    },
+    {
+      "name": "Wobbling Stone",
+      "kind": "place",
+      "id": "landmark-wobbling-stone",
+      "office": "governor",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Wobbling Stone\" OR \"Tiptoe Jetty\" OR \"Unhurried Canal\" OR \"Lingering Locks\"",
+          "\"Patient Glasshouse\" OR \"Glass Arcade\" OR \"Second Bandstand\" OR \"Ribbon Steps\" OR \"First Shelter\""
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; written 'the Wobbling Stone': the rocking stone the province is named after; serves no club"
+    },
+    {
+      "name": "Ribbon Steps",
+      "kind": "place",
+      "id": "landmark-ribbon-steps",
+      "office": "governor",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Wobbling Stone\" OR \"Tiptoe Jetty\" OR \"Unhurried Canal\" OR \"Lingering Locks\"",
+          "\"Patient Glasshouse\" OR \"Glass Arcade\" OR \"Second Bandstand\" OR \"Ribbon Steps\" OR \"First Shelter\""
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; written 'the Ribbon Steps': the steps of the provincial hall, where every ribbon of the province is cut and every apology made; serves no club (an earlier 'Empty Plinth' was cut: with a numbered bandstand it recalled a real square's famous plinth)"
+    },
+    {
+      "name": "Second Bandstand",
+      "kind": "place",
+      "id": "landmark-second-bandstand",
+      "office": "governor",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Wobbling Stone\" OR \"Tiptoe Jetty\" OR \"Unhurried Canal\" OR \"Lingering Locks\"",
+          "\"Patient Glasshouse\" OR \"Glass Arcade\" OR \"Second Bandstand\" OR \"Ribbon Steps\" OR \"First Shelter\""
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; written 'the Second Bandstand': nobody can find the first; Brass (comedy editor: was 'Fourth Bandstand', which echoes a real square's Fourth Plinth)"
+    },
+    {
+      "name": "Tiptoe Jetty",
+      "kind": "place",
+      "id": "landmark-tiptoe-jetty",
+      "office": "governor",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Wobbling Stone\" OR \"Tiptoe Jetty\" OR \"Unhurried Canal\" OR \"Lingering Locks\"",
+          "\"Patient Glasshouse\" OR \"Glass Arcade\" OR \"Second Bandstand\" OR \"Ribbon Steps\" OR \"First Shelter\""
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; written 'Tiptoe Jetty': the quietest jetty on the canal; Anglers"
+    },
+    {
+      "name": "Unhurried Canal",
+      "kind": "place",
+      "id": "landmark-unhurried-canal",
+      "office": "governor",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Wobbling Stone\" OR \"Tiptoe Jetty\" OR \"Unhurried Canal\" OR \"Lingering Locks\"",
+          "\"Patient Glasshouse\" OR \"Glass Arcade\" OR \"Second Bandstand\" OR \"Ribbon Steps\" OR \"First Shelter\""
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; written 'the Unhurried Canal': the province's canal (office-style.md 1)"
+    },
+    {
+      "name": "Lingering Locks",
+      "kind": "place",
+      "id": "landmark-lingering-locks",
+      "office": "governor",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Wobbling Stone\" OR \"Tiptoe Jetty\" OR \"Unhurried Canal\" OR \"Lingering Locks\"",
+          "\"Patient Glasshouse\" OR \"Glass Arcade\" OR \"Second Bandstand\" OR \"Ribbon Steps\" OR \"First Shelter\""
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; written 'the Lingering Locks': a flight of locks on the Unhurried Canal; boats wait in them, anglers watch"
+    },
+    {
+      "name": "Patient Glasshouse",
+      "kind": "place",
+      "id": "landmark-patient-glasshouse",
+      "office": "governor",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Wobbling Stone\" OR \"Tiptoe Jetty\" OR \"Unhurried Canal\" OR \"Lingering Locks\"",
+          "\"Patient Glasshouse\" OR \"Glass Arcade\" OR \"Second Bandstand\" OR \"Ribbon Steps\" OR \"First Shelter\""
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; written 'the Patient Glasshouse': the oldest of the glasshouses, in no hurry, like the canal; Vegetables (comedy editor: was 'Great Glasshouse', the name of a real botanic-garden building)"
+    },
+    {
+      "name": "First Shelter",
+      "kind": "place",
+      "id": "landmark-first-shelter",
+      "office": "governor",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Wobbling Stone\" OR \"Tiptoe Jetty\" OR \"Unhurried Canal\" OR \"Lingering Locks\"",
+          "\"Patient Glasshouse\" OR \"Glass Arcade\" OR \"Second Bandstand\" OR \"Ribbon Steps\" OR \"First Shelter\""
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; written 'the First Shelter': the province's oldest bus shelter, kept as it was and leaned on; Bus"
+    },
+    {
+      "name": "Glass Arcade",
+      "kind": "place",
+      "id": "landmark-glass-arcade",
+      "office": "governor",
+      "check": {
+        "politicians": "clear",
+        "notorious": "clear",
+        "fiction": "clear",
+        "children": "clear",
+        "date": "2026-11-24",
+        "checker": "content-assemble (an engineer's read under D9, not a person's signature)",
+        "cleared": [],
+        "real": "clear: no real town, county, building or company of this exact name found (near results only: Waitby, Dawlish; generic canal and bandstand pages)",
+        "queries": [
+          "\"Wobbling Stone\" OR \"Tiptoe Jetty\" OR \"Unhurried Canal\" OR \"Lingering Locks\"",
+          "\"Patient Glasshouse\" OR \"Glass Arcade\" OR \"Second Bandstand\" OR \"Ribbon Steps\" OR \"First Shelter\""
+        ]
+      },
+      "note": "chosen by writer 2 (batches/governor-places-runup.json), registered at assembly; written 'the Glass Arcade': a covered row of shop windows; Shops"
     }
   ]
 }

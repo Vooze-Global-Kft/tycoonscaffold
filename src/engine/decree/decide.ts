@@ -22,7 +22,7 @@
  * SEAM: `commitItem` IS 2.17: one function calling named steps of both rules packages, in order.
  * Each step is owned by the file named beside it; neither side reorders it without the other.
  */
-import { landNext } from './draw';
+import { isEventPaper, landNext } from './draw';
 import { scheduleFollowUp } from './followup';
 import { appoint, sendAway } from './ministers';
 import { commitCash, EPS } from './params';
@@ -197,8 +197,9 @@ export function isDay(item: DeskItem): boolean {
  *     counters −1 (strike.ts), the "Say nothing" counter −1, quiet and gossip decay (scandal.ts);
  * (3) the boycott check, then the gossip and scandal check (strike.ts, scandal.ts);
  * (4) at day D the run-up starts (term.ts `checkTermEnd`, P1b);
- * (5) after a paper, D18: when a paper waits, no slip has been offered since the last decided paper
- *     and a purchase is affordable above the reserve, the slip lands first (slips.ts `slipFor`);
+ * (5) after a paper, D18: when a paper waits (not a settlement or front page, which go first), no
+ *     slip has been offered since the last decided paper and a purchase is affordable above the
+ *     reserve, the slip lands first (slips.ts `slipFor`);
  *     else the next paper lands (draw.ts `landNext`), or the slip's 1.0 s starts on an empty desk.
  * Built.
  */
@@ -232,7 +233,8 @@ export function commitItem(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, cho
   s = checkTermEnd(cfg, s, events);
   // (5)
   const d = s.decree;
-  if (isPaper && !d.desk && !d.pending && d.tray.length && !d.slipOffered && d.phase === 'governing') {
+  // A slip never goes ahead of a settlement or a front page waiting on top (2.7 step 1: events first).
+  if (isPaper && !d.desk && !d.pending && d.tray.length && !isEventPaper(d.tray[0]) && !d.slipOffered && d.phase === 'governing') {
     const slip = slipFor(cfg, s);
     if (slip) {
       events.push({ type: 'slipArrived' });

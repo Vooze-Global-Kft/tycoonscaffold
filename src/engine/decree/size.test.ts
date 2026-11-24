@@ -4,55 +4,12 @@
  * money frozen when the paper lands (D23) with the jitter fixed at the draw; moods at landing; the
  * strip as data, derived from the frozen values. Frozen test content only (lesson 4).
  *
- * The seam functions of the other rules package that sizing and the strip read are replaced by
- * reference stand-ins written from the specification (twists.ts `factorFor`: muls multiply, adds add,
- * a club-less entry applies to every paper; count.ts `shares` / `heldAfter` / `closeDistricts` with
- * the plain mean of 2.4), so these tests hold today and once the real bodies land.
+ * Joined (rules-lead): every rules module is the real one (no vi.mock); a slip the real advice.ts
+ * lands between two papers (D18) is put back by the test's helper where a test counts papers.
  */
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as R from '../decree';
 import { built, decreeTestConfig } from '../fixtures/decree';
-
-// Stand-ins written without importing the real modules (a factory that imports the original would
-// load the rules' import cycle before the mock is registered, and the rules would see the original).
-vi.mock('./twists', () => {
-  const neutralFactors = () => ({ mixAdd: [0, 0, 0, 0, 0, 0, 0], list: [] });
-  return {
-    QUIET_TERM: 'quiet_term',
-    COMPOSITION_TERMS: 181,
-    neutralFactors,
-    combineFactors: (a: R.Factors, b: R.Factors) => ({ mixAdd: a.mixAdd.map((x, i) => x + (b.mixAdd[i] ?? 0)), list: [...a.list, ...b.list] }),
-    factorFor: (f: R.Factors, target: R.FactorTarget, club: number | null): R.FactorValue => {
-      let mul = 1;
-      let add = 0;
-      const sources: R.FactorValue['sources'] = [];
-      for (const e of f.list) if (e.target === target && (e.club === null || e.club === club)) [mul, add] = [mul * e.mul, add + e.add], sources.push({ initials: e.initials, source: e.source });
-      return { mul, add, sources };
-    },
-    deskFactors: neutralFactors,
-    twistFactors: neutralFactors,
-    twistIdsFactors: neutralFactors,
-    ruleFactors: neutralFactors,
-    newThingAt: () => ({ twists: [], grandProject: null, quiet: false }),
-    newThingLabel: () => null,
-    compositionProblems: () => [],
-  };
-});
-vi.mock('./count', () => {
-  const sharesOf = (cfg: R.DecreeConfig, g: R.DecreeGame, moods: readonly number[], C: readonly number[]) =>
-    cfg.decree.offices[g.decree.office].districts.map((d, k) => Math.round(Math.min(100, Math.max(0, d.mix.reduce((s, w, gi) => s + (w / 100) * moods[gi], 0) + (C[k] ?? 0))) * 100));
-  return {
-    HELD_AT: 5000,
-    shares: (cfg: R.DecreeConfig, g: R.DecreeGame, over?: { moods?: readonly number[]; C?: readonly number[] }) => sharesOf(cfg, g, over?.moods ?? g.decree.moods, over?.C ?? g.decree.campaign?.C ?? []),
-    heldAfter: (cfg: R.DecreeConfig, g: R.DecreeGame, dm: readonly number[], pts: readonly number[]) =>
-      sharesOf(cfg, g, g.decree.moods.map((x, gi) => x + dm[gi]), cfg.decree.offices[g.decree.office].districts.map((_, k) => (g.decree.campaign?.C[k] ?? 0) + (pts[k] ?? 0))).filter((x) => x >= 5000).length,
-    closeDistricts: (cfg: R.DecreeConfig, g: R.DecreeGame) =>
-      sharesOf(cfg, g, g.decree.moods, [])
-        .map((x, k) => ({ district: k, x }))
-        .filter((r) => Math.abs(r.x - 5000) <= 300)
-        .map((r) => ({ district: r.district, clubs: cfg.decree.offices[g.decree.office].districts[r.district].mix.flatMap((w, gi) => (w >= 40 ? [gi] : [])) })),
-  };
-});
 
 const cfg = decreeTestConfig();
 
@@ -288,7 +245,7 @@ describe('the strip as data (2.7 "A strip prints")', () => {
     const veg = s.chips.find((c) => c.kind === 'club' && c.club === 2);
     expect(veg && veg.kind === 'club' && veg.flag).toBe(true);
     expect(veg?.icon).toBe(cfg.decree.clubs.find((c) => c.id === 'veg')!.icon);
-    // Veg +4, Bus −3: Hilltop (strong veg) goes up; whether the count changes is the stand-in count's: the row is there only when it does.
+    // Veg +4, Bus −3: Hilltop (strong veg) goes up; whether the count changes is count.ts's: the row is there only when it does.
     if (s.poll) expect(s.poll.from).not.toBe(s.poll.to);
   });
 

@@ -240,6 +240,39 @@ export function built(setup: R.DecreeSetup = {}, cfg: R.DecreeConfig = decreeTes
   return R.buildDecree(cfg, baseGameState(now, setup.seed ?? 12345), setup);
 }
 
+/**
+ * The invariants every decree state keeps (2.3), as text (empty when it holds): one mood, strike and
+ * armed entry per club, moods whole numbers 0 to 100, a ministry entry per ministry of the office,
+ * ministry 0 open (income is never zero), levels 0 to the cap (0 when closed), gossip ≥ 0, a
+ * boycotting club disarmed, counters that count down never below 0, a run-up with its campaign
+ * points per district, the tray within the cap plus the one event that may pass it, the desk and the
+ * take-back window never both full, cash ≥ 0 and finite, Name Recognition ≥ 0, losses ≥ 0, clamps 0
+ * (H1). The decree mode test and the play test (src/engine/decree/play.test.ts) run it.
+ */
+export function decreeStateProblems(c: R.DecreeConfig, g: R.DecreeGame): string[] {
+  const d = g.decree;
+  const row = c.decree.offices[d.office];
+  const n = row.clubs.length;
+  const out: string[] = [];
+  if (d.moods.length !== n || d.strikes.length !== n || d.armed.length !== n) out.push('moods, strikes and armed have one entry per club');
+  if (d.moods.some((m) => !Number.isInteger(m) || m < 0 || m > 100)) out.push('moods are integers 0 to 100');
+  if (d.ministries.length < row.ministries.length) out.push('one ministry entry per ministry of the office');
+  if (!d.ministries[0].open || d.ministries[0].level < 1) out.push('ministry 0 is always open (income is never zero)');
+  if (d.ministries.some((m) => m.level < 0 || m.level > c.decree.ministry.levelCap || (!m.open && m.level !== 0))) out.push('levels 0 to the cap, 0 when closed');
+  if (d.gossip < 0) out.push('gossip ≥ 0');
+  if (d.strikes.some((s, gi) => s && d.armed[gi])) out.push('a boycotting club is not armed');
+  if (d.strikes.some((s) => s && s.papersLeft < 0) || (d.scandal && d.scandal.papersLeft < 0)) out.push('boycott and scandal counters ≥ 0');
+  if (d.phase === 'campaign' && !d.campaign) out.push('a run-up has campaign points');
+  if (d.campaign && d.campaign.C.length !== row.districts.length) out.push('campaign points per district');
+  if (d.tray.length > c.decree.desk.trayCap + d.tray.filter((p) => p.kind === 'strike' || p.kind === 'scandal').length) out.push('the tray holds at most its cap, plus the events on top');
+  if (d.desk && d.pending) out.push('the desk and the take-back window are never both full');
+  if (!(g.cash >= 0) || !Number.isFinite(g.cash)) out.push('cash ≥ 0 and finite');
+  if (d.nr < 0 || d.losses < 0) out.push('Name Recognition and losses ≥ 0');
+  if ((d.phase === 'count' || d.phase === 'result') && (!d.count || !d.result)) out.push('election night and the result sheet have their count');
+  if (d.stats.clamps !== 0) out.push('clamps = 0 (H1)');
+  return out;
+}
+
 /** A comic paper of the test deck fixed by hand (the skeleton has no draw yet): its archetype's base effects, jitter 1. */
 function handPaper(cfg: R.DecreeConfig, g: R.DecreeGame, id: string): R.Paper {
   const def = cfg.decree.deck.papers.find((p) => p.id === id)!;

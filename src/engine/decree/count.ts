@@ -85,7 +85,7 @@ export function currentRival(cfg: DecreeConfig, g: DecreeGame): { id: string; na
   return { id: r.id, name: r.name };
 }
 
-/** The call day C of the current office (2.2: "from 60 % of it", C = the first whole day ≥ callFraction × D; the same day as slips.ts `callFrom`, which keeps the run-up's reserve from it). */
+/** The call day C of the current office (2.2: "from 60 % of it", C = the first whole day ≥ callFraction × D; slips.ts `callFrom` reads it for the run-up's reserve). */
 export function callDay(cfg: DecreeConfig, g: DecreeGame): number {
   return callDayOf(cfg.decree.offices[g.decree.office]);
 }

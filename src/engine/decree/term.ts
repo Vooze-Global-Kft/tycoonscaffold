@@ -258,25 +258,39 @@ export function resultSheet(cfg: DecreeConfig, g: DecreeGame): ResultSheet | nul
 }
 
 /**
- * The term's own fields of a loaded save (types.ts, the rules-term block: `result`, `appSlotsUsed`),
- * repaired from `raw` onto the reconciled state `g` (create.ts `reconcileDecree` rebuilds only the
- * fields of `freshDecree`); never throws. A result is kept only while the phase is count or result, an
- * application slot count is a whole number from 0 to the slots of a term; `cashAnchor` is never read
- * back (the tick anchors anew at its next call). Built.
+ * The term's own fields of a loaded save (types.ts, the rules-term block: `result`, `appSlotsUsed`,
+ * `cashAnchor`), checked after create.ts `reconcileDecree` copied them from `raw` (they are fields of
+ * `freshDecree`, so a saved `result: null` comes back as null and a reload is byte for byte); never
+ * throws. A result is kept only while the phase is count or result and has its fields (else null; on
+ * election night or the result sheet a broken one is rebuilt from the count, and without a count the
+ * next term starts); an
+ * application slot count is a whole number from 0 to the slots of a term (else 0); a cash anchor only
+ * with every field a finite number (else null: the tick anchors anew, and tick.ts `anchorOf` keeps a
+ * saved anchor only while it still matches the state exactly). Built.
  */
 export function reconcileTerm(cfg: DecreeConfig, g: DecreeGame, raw: unknown): DecreeGame {
   try {
     const d = (raw as { decree?: Record<string, unknown> } | null)?.decree;
-    if (!d || typeof d !== 'object') return g;
+    // A save the reconcile could not read started afresh: nothing of it is copied back.
+    if (!d || typeof d !== 'object' || d.seed !== g.decree.seed || d.office !== g.decree.office) return g;
     const patch: Partial<DecreeGame['decree']> = {};
     const slots = d.appSlotsUsed;
-    if (typeof slots === 'number' && Number.isFinite(slots)) patch.appSlotsUsed = Math.max(0, Math.min(cfg.decree.forms.application.days.length, Math.round(slots)));
+    patch.appSlotsUsed = typeof slots === 'number' && Number.isFinite(slots) ? Math.max(0, Math.min(cfg.decree.forms.application.days.length, Math.round(slots))) : 0;
     const r = d.result as Partial<TermResult> | null | undefined;
     const live = g.decree.phase === 'count' || g.decree.phase === 'result';
-    if (live && r && typeof r === 'object' && typeof r.won === 'boolean' && typeof r.nrGained === 'number' && typeof r.meritHeld === 'number') {
-      patch.result = { won: r.won, nrGained: r.nrGained, meritHeld: r.meritHeld, meritSweep: !!r.meritSweep, carried: Array.isArray(r.carried) ? r.carried.filter((x): x is number => typeof x === 'number') : [], resigned: typeof r.resigned === 'string' ? r.resigned : null };
-    }
-    return Object.keys(patch).length ? withDecree(g, patch) : g;
+    patch.result =
+      live && r && typeof r === 'object' && typeof r.won === 'boolean' && typeof r.nrGained === 'number' && typeof r.meritHeld === 'number'
+        ? { won: r.won, nrGained: r.nrGained, meritHeld: r.meritHeld, meritSweep: !!r.meritSweep, carried: Array.isArray(r.carried) ? r.carried.filter((x): x is number => typeof x === 'number') : [], resigned: typeof r.resigned === 'string' ? r.resigned : null }
+        : null;
+    // On election night or the result sheet with a broken result, it is rebuilt from the count (the NR it gave is already in `nr`);
+    // without a count the night cannot be shown, and the next term in the seat starts.
+    const cnt = g.decree.count;
+    if (live && !cnt) return newTerm(cfg, withDecree(g, { ...patch, result: null }), []);
+    if (live && !patch.result && cnt) patch.result = { won: cnt.won, nrGained: 0, meritHeld: cnt.held, meritSweep: cnt.sweep, carried: [], resigned: null };
+    const a = d.cashAnchor as Record<string, unknown> | null | undefined;
+    const fin = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
+    patch.cashAnchor = a && typeof a === 'object' && fin(a.at) && fin(a.cash) && fin(a.run) && fin(a.life) && fin(a.book) && fin(a.I) ? { at: a.at, cash: a.cash, run: a.run, life: a.life, book: a.book, I: a.I } : null;
+    return withDecree(g, patch);
   } catch {
     return g;
   }

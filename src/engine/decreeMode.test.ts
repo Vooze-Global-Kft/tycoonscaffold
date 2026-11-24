@@ -12,7 +12,7 @@ import { GameConfigSchema, type GameConfig } from '../config/schema';
 import { DecreeSchema, RANGES, archetypeRanges, combinations, lintDecree, type DecreeContentInput } from '../config/schema.decree';
 import * as R from './decree';
 import { decreeEngineMode, withDecreeContent } from './decreeMode';
-import { DECREE_TEST_NUMBERS, FIXTURE_NOW, baseGameState, decreeFixtures, decreeTestConfig, decreeTestContent, freshState } from './fixtures/decree';
+import { DECREE_TEST_NUMBERS, FIXTURE_NOW, baseGameState, decreeFixtures, decreeStateProblems, decreeTestConfig, decreeTestContent, freshState } from './fixtures/decree';
 
 const cfg = decreeTestConfig();
 const M = decreeEngineMode;
@@ -22,25 +22,7 @@ function at(obj: unknown, p: string): unknown {
   return p.split('.').flatMap((part) => part.split(/\[(\d+)\]/).filter(Boolean)).reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], obj);
 }
 
-/** The invariants every state the skeleton makes keeps (2.3). */
-function stateProblems(c: R.DecreeConfig, g: R.DecreeGame): string[] {
-  const d = g.decree;
-  const row = c.decree.offices[d.office];
-  const n = row.clubs.length;
-  const out: string[] = [];
-  if (d.moods.length !== n || d.strikes.length !== n || d.armed.length !== n) out.push('moods, strikes and armed have one entry per club');
-  if (d.moods.some((m) => !Number.isInteger(m) || m < 0 || m > 100)) out.push('moods are integers 0 to 100');
-  if (d.ministries.length < row.ministries.length) out.push('one ministry entry per ministry of the office');
-  if (!d.ministries[0].open || d.ministries[0].level < 1) out.push('ministry 0 is always open (income is never zero)');
-  if (d.ministries.some((m) => m.level < 0 || m.level > c.decree.ministry.levelCap || (!m.open && m.level !== 0))) out.push('levels 0 to the cap, 0 when closed');
-  if (d.gossip < 0) out.push('gossip ≥ 0');
-  if (d.strikes.some((s, gi) => s && d.armed[gi])) out.push('a boycotting club is not armed');
-  if (d.phase === 'campaign' && !d.campaign) out.push('a run-up has campaign points');
-  if (d.campaign && d.campaign.C.length !== row.districts.length) out.push('campaign points per district');
-  if (g.cash < 0) out.push('cash ≥ 0');
-  if (d.stats.clamps !== 0) out.push('clamps = 0 (H1)');
-  return out;
-}
+const stateProblems = decreeStateProblems;
 
 describe('the decree engine mode', () => {
   it('is mode "decree" with its own save key and the two seams of 2.15', () => {
