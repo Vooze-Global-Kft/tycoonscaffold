@@ -110,8 +110,21 @@ export const StoryBeatSchema = z.object({
 export const IapProductSchema = z.object({
   /** The store product id. Must match App Store Connect / Play Console / RevenueCat. */
   id: z.string(),
+  /** The product's name, in the game and in the stores (App Store Connect's display name: 2 to 30 characters). */
   title: z.string(),
+  /**
+   * What the product does, as entered for it in the stores: at most 45 characters (App Store
+   * Connect's description of an in-app purchase; `validate` checks this and the title's limit,
+   * scripts/lib/checks.ts). A shop that prints a line under the title prints this one unless
+   * `shopLine` is set.
+   */
   description: z.string().optional(),
+  /**
+   * The line the game's own shop prints instead of `description`, for when it says more than the
+   * stores' 45 characters hold. Never entered in a store. One reading for every shop: `shopLineOf`
+   * (src/engine/meta.ts).
+   */
+  shopLine: z.string().optional(),
   /**
    * noAds: removes banners and pop-up ads. skipAds: rewarded boosts are granted without watching.
    * multiplier: permanent income multiplier (`value`). gems: `value` gems. timeWarp: `value` hours of income.

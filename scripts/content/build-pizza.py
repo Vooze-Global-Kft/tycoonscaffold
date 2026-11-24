@@ -311,6 +311,9 @@ for d in deals: d['icon'] = {'welcome': 'char:nonna', 'franchise': 'char:al'}[d[
 # Prices (US, fallback only; the store shows the real one). genre.md section 5: No Ads at $3.99
 # that also skips rewarded ads undersold it, so the two are split. Gem packs give exact amounts
 # (Crate-sized 100 and Golden-sized 600, policy.md / EU CPC). Deals are their own consumables.
+# A product's description is what the stores get for it: 45 characters at most (App Store Connect;
+# validate checks it). Where the shop says more, the content gives a shopLine beside it, and the shop
+# prints that. A deal's card prints the deal's blurb, so a deal product has only its store description.
 pr = content['products']
 g['monetization']['iap']['products'] = [
     {'id': 'pizza_no_ads', 'kind': 'noAds', 'fallbackPrice': '$5.99', **pr['noAds']},
@@ -322,8 +325,8 @@ g['monetization']['iap']['products'] = [
     {'id': 'pizza_gems_600', 'kind': 'gems', 'value': 600, 'fallbackPrice': '$9.99', 'title': pr['gems'][2], 'icon': 'art:truffle-basket'},
     {'id': 'pizza_gems_1300', 'kind': 'gems', 'value': 1300, 'fallbackPrice': '$19.99', 'title': pr['gems'][3], 'icon': 'art:truffle-crate'},
     {'id': 'pizza_warp_24', 'kind': 'timeWarp', 'value': 24, 'fallbackPrice': '$2.99', **pr['warp']},
-    {'id': 'pizza_welcome_feast', 'kind': 'deal', 'fallbackPrice': '$4.99', 'title': dmap['welcome']['title'], 'description': dmap['welcome']['blurb']},
-    {'id': 'pizza_franchise_kit', 'kind': 'deal', 'fallbackPrice': '$4.99', 'title': dmap['franchise']['title'], 'description': dmap['franchise']['blurb']},
+    {'id': 'pizza_welcome_feast', 'kind': 'deal', 'fallbackPrice': '$4.99', 'title': dmap['welcome']['title'], 'description': pr['deals']['welcome']},
+    {'id': 'pizza_franchise_kit', 'kind': 'deal', 'fallbackPrice': '$4.99', 'title': dmap['franchise']['title'], 'description': pr['deals']['franchise']},
 ]
 
 store = g['store']

@@ -113,6 +113,12 @@ export function modeScenario(x: ScenarioEngine, cfgIn: unknown): Record<string, 
  * under the home-screen icon) and `app.slug` stay pinned (guard:new:2). The `soundPack` key came
  * with the bundle separation (the main branch has none; the test pins it to "warm" separately).
  * A dotted entry removes one key of a block.
+ *
+ * Not in this list, and so still in the recording: each product's `description`. It is listing text
+ * too (what the stores get, 45 characters at most), but the recorded ones are the lines the shop
+ * printed, so src/engine/modeRegression.test.ts keeps them as the reference: it compares the configs
+ * without the products' `description` and `shopLine`, and checks that the game still prints every
+ * recorded line. Adding them here would mean recording again, which is never done.
  */
 export const CONFIG_UNPINNED = [
   'store',

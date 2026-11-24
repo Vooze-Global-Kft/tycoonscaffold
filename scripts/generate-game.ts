@@ -24,7 +24,7 @@ import { z } from 'zod';
 import { lintGameConfig } from '../src/config/lint';
 import { GameConfigSchema, type GameConfig } from '../src/config/schema';
 import { BODY_SHAPES, BROWS, CHARACTER_KINDS, GLASSES, HAIR_STYLES, HATS, NECKWEAR, OUTFIT_STYLES, SPECIES } from '../src/ui/sim/art/types';
-import { IDLE_TYCOON_TITLE } from './lib/checks';
+import { IDLE_TYCOON_TITLE, productTextProblems } from './lib/checks';
 import { args, fail } from './lib/cli';
 import { seededRandom, TEST_ADMOB, varyEconomy } from './lib/vary';
 
@@ -92,7 +92,7 @@ function skinSchema(b: GameConfig) {
     upgrades: z.array(named),
     characters: z.array(z.object({ id: z.string().describe('lowercase letters only'), name: z.string(), color: Color, look: Look })),
     story: z.array(z.object({ id: z.string(), characterId: z.string(), title: z.string().nullable(), lines: z.array(z.string()) })),
-    iapTitles: z.array(z.object({ title: z.string(), description: z.string() })),
+    iapTitles: z.array(z.object({ title: z.string().describe('2 to 30 characters'), description: z.string().describe('what the product does, 45 characters or fewer') })),
     sim: z
       .object({
         production: named, buffer: named,
@@ -163,7 +163,7 @@ Counts (the game breaks if they differ):
 ${n('businesses', base.businesses.length)} From a tiny humble start to something absurdly grand; each a big step up.${isSim ? ' They are stations in a production chain; productName is what each one makes.' : ''}
 ${n('upgrades', base.upgrades.length)} Each name fits what it applies to.
 ${n('story', base.story.length)} Same ids (${base.story.map((s) => s.id).join(', ')}) and meaning as the triggers; 1-3 short lines each; characterId must be one of your characters. The first beat teaches the first tap.
-${n('iapTitles', base.monetization.iap.products.length)} Same meaning as the base products.
+${n('iapTitles', base.monetization.iap.products.length)} Same meaning as the base products. The stores' limits: each title 2 to 30 characters, each description 45 or fewer.
 ${n('cards', m.cards.length)} Staff or specialists whose job fits the effect listed.
 ${n('chests', m.chests.length)} Chests are earned, never bought: never write "buy" or a price in their texts.
 ${n('missions', m.missions.templates.length)} Each must contain {n} where the number goes and count the same thing as the base mission.
@@ -354,7 +354,9 @@ function merge(skin: Skin, id: string): any {
     ...g.monetization,
     // Ad units are per app: create them in AdMob and paste them here before release.
     ads: { ...g.monetization.ads, ios: { appId: TEST_ADMOB.ios }, android: { appId: TEST_ADMOB.android }, forceTestAds: true },
-    iap: { products: g.monetization.iap.products.map((p: any, i: number) => ({ ...p, ...titles[i] })) },
+    // The base's shopLine is the base game's own sentence: it is left behind, so the new game's shop
+    // prints the new description (a shop prints a product's shopLine before its description).
+    iap: { products: g.monetization.iap.products.map(({ shopLine: _baseShopLine, ...p }: any, i: number) => ({ ...p, ...titles[i] })) },
   };
   g.firebase = {};
 
@@ -438,6 +440,8 @@ async function main() {
   if (!parsed.success) fail(`Generated config is invalid:\n${parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n')}`);
   const problems = lintGameConfig(parsed.data);
   if (IDLE_TYCOON_TITLE.test(parsed.data.store.title)) problems.push(`store title "${parsed.data.store.title}" is an "Idle ... Tycoon" title; change it`);
+  // The product texts the stores would not take (validate fails on them too): said here, where they are written.
+  problems.push(...productTextProblems(parsed.data.monetization.iap.products));
 
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game, null, 2) + '\n');

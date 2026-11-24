@@ -22,7 +22,9 @@
  * placeholder privacy policy URL for a game with ads or purchases, no payment keys for a game that
  * sells products, placeholder app ids): test ads on, no privacy policy URL, chests for sale,
  * near-identical store text, pacing the bot finds off. Store files that differ from what sync would
- * write, banned words (scripts/lib/checks.ts) and "Idle ... Tycoon" titles are errors.
+ * write, banned words (scripts/lib/checks.ts) and "Idle ... Tycoon" titles are errors, and so is a
+ * product whose description is over 45 characters or whose title is not 2 to 30: App Store Connect
+ * takes neither when the product is created (scripts/lib/checks.ts, IAP_TEXT_LIMITS).
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -367,7 +369,7 @@ for (const id of ids) {
       return null;
     }
   })();
-  problems.push(...storeTextProblems({ ...g.store, promotionalText: promotionalTextOf(g, rawStore), releaseNotes: releases?.releaseNotes?.[g.app.version] }));
+  problems.push(...storeTextProblems({ ...g.store, promotionalText: promotionalTextOf(g, rawStore), releaseNotes: releases?.releaseNotes?.[g.app.version] }, g.monetization.iap.products));
   if (release && !releases?.releaseNotes?.[g.app.version]) warnings.push(`store/releases.json has no releaseNotes for version ${g.app.version}`);
   if (release && /\bexample\b/.test(`${g.app.iosBundleId} ${g.app.androidPackage}`)) problems.push(`app ids ${g.app.iosBundleId} / ${g.app.androidPackage} are placeholders: set the studio's domain (spec Decision 27)`);
   // The listing files eas metadata and fastlane upload must be what sync writes from this game.json.

@@ -249,7 +249,8 @@
         {
           "id": "space_hangar",
           "title": "Hangar Expansion",
-          "description": "+6 drone cap and 2 idle drones at every run start.",
+          "description": "+6 drone cap and 2 idle drones at run start.",
+          "shopLine": "+6 drone cap and 2 idle drones at every run start.",
           "kind": "unlock",
           "icon": "art:drone",
           "fallbackPrice": "$4.49"

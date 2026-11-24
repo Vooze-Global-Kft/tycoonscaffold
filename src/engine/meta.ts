@@ -169,6 +169,15 @@ export function productOwned(state: GameState, product: IapProduct): boolean {
   return state.entitlements.products.includes(product.id);
 }
 
+/**
+ * The line a shop prints under a product's title: its `shopLine` when it has one, else its
+ * `description` (the stores' text, 45 characters at most); undefined when it has neither. One
+ * reading for every shop, so the stores' text can be shortened without a shop saying less.
+ */
+export function shopLineOf(product: Pick<IapProduct, 'description' | 'shopLine'>): string | undefined {
+  return product.shopLine ?? product.description;
+}
+
 // =====================================================================================
 // Chests, missions, deals, the daily shop, sessions and hints. The signatures and doc
 // comments are the contract the store and UI are written against. Where the contract

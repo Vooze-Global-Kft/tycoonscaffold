@@ -530,6 +530,8 @@ A paper scroll showing the Festival's lines with ticks, the resets and stays lis
 | `night_late_hours` | unlock | $3.99 | Late Hours: your minders keep the stalls 4 more hours while you are away (`entitle` applies it now). |
 | `night_quiet_evening` | skipAds | $4.99 | Quiet Evening: every "Watch ad" button gives its reward at once, with no video. |
 
+These sentences are what the Shop sheet says (`src/ui/merge/strings.ts`). The description entered for each product in the stores is a shorter form of them, 45 characters at most (App Store Connect's limit for an in-app purchase, which `validate` checks): `products` in `scripts/content/night-store.json`.
+
 `cosmetic` is added to the shared product-kind enum (P3, additive); `skipAds` is the shared kind the first game also uses, and the shared store already honours it (decision M13: the ad skip is sold under its own name, not inside another product). Restore purchases is included; nothing else is sold, and nothing random.
 
 Rewarded ads, optional, each labelled "Watch ad" with what it gives. Cooldowns run on the game clock and say so ("ready after 4 min of play"), so moving the device clock does nothing:

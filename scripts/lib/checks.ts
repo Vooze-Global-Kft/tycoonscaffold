@@ -15,8 +15,48 @@ export const BANNED_STORE_WORDS: { pattern: RegExp; why: string }[] = [
   { pattern: /\b(?:supercell|kolibri|clash of|candy crush)\b/i, why: 'another studio\'s name or game' },
 ];
 
-/** Problems with a game's store texts: banned words anywhere, the "Idle ... Tycoon" pattern in what the listing shows as a name. */
-export function storeTextProblems(store: { title: string; subtitle?: string; shortDescription: string; description: string; keywords: string[]; promotionalText?: string; releaseNotes?: string }): string[] {
+/**
+ * Apple's limits for the two localizable texts of an in-app purchase (App Store Connect help,
+ * Reference, "In-App Purchase information", as read on 24 November 2026): "The display name must be
+ * at least two characters and no more than 30 characters", and "The description must be no more than
+ * 45 characters". A product's `title` is entered as the display name and its `description` as the
+ * description.
+ * https://developer.apple.com/help/app-store-connect/reference/in-app-purchases-and-subscriptions/in-app-purchase-information/
+ */
+export const IAP_TEXT_LIMITS = { titleMin: 2, titleMax: 30, descriptionMax: 45 } as const;
+
+/** What the product checks read of a product (game.json monetization.iap.products). */
+export interface ProductTexts {
+  id: string;
+  title: string;
+  description?: string;
+}
+
+/**
+ * Problems with the products' texts as they are typed into App Store Connect when the products are
+ * created: a title that is not 2 to 30 characters, a description over 45 (IAP_TEXT_LIMITS). A
+ * product's `shopLine` is the game's own text and has no limit here.
+ */
+export function productTextProblems(products: readonly ProductTexts[]): string[] {
+  const out: string[] = [];
+  const { titleMin, titleMax, descriptionMax } = IAP_TEXT_LIMITS;
+  for (const p of products) {
+    if (p.title.length < titleMin || p.title.length > titleMax) out.push(`product "${p.id}" title is ${p.title.length} character${p.title.length === 1 ? '' : 's'} (Apple allows ${titleMin} to ${titleMax} for an in-app purchase's display name)`);
+    const length = (p.description ?? '').length;
+    if (length > descriptionMax) out.push(`product "${p.id}" description is ${length} characters (Apple allows ${descriptionMax} for an in-app purchase; a longer line for the game's own shop goes in the product's shopLine)`);
+  }
+  return out;
+}
+
+/**
+ * Problems with a game's store texts: banned words anywhere, the "Idle ... Tycoon" pattern in what the
+ * listing shows as a name, and, for each of `products`, a title or a description App Store Connect
+ * would not take (`productTextProblems`).
+ */
+export function storeTextProblems(
+  store: { title: string; subtitle?: string; shortDescription: string; description: string; keywords: string[]; promotionalText?: string; releaseNotes?: string },
+  products: readonly ProductTexts[] = [],
+): string[] {
   const out: string[] = [];
   const fields: [string, string][] = [
     ['title', store.title],
@@ -33,6 +73,7 @@ export function storeTextProblems(store: { title: string; subtitle?: string; sho
   if ((store.promotionalText ?? '').length > 170) out.push(`store.promotionalText is ${store.promotionalText!.length} characters (Apple allows 170)`);
   if ((store.releaseNotes ?? '').length > 4000) out.push(`release notes are ${store.releaseNotes!.length} characters (both stores allow 4000; Google Play 500 per language)`);
   else if ((store.releaseNotes ?? '').length > 500) out.push(`release notes are ${store.releaseNotes!.length} characters (Google Play allows 500)`);
+  out.push(...productTextProblems(products));
   for (const [name, text] of fields) {
     for (const b of BANNED_STORE_WORDS) {
       const m = text.match(b.pattern);

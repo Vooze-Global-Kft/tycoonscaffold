@@ -484,9 +484,11 @@
     "blurb": "One free treat and three fresh offers every day. New ones at midnight."
   },
   "products": {
+    "_note": "description is the text entered for the product in the stores: 45 characters at most (App Store Connect; validate checks it). shopLine is the line the game's own shop prints instead, when it says more. deals holds the store description of each deal's product; the game shows the deal's blurb.",
     "noAds": {
       "title": "No Ads",
-      "description": "Removes banners and pop-up ads for good. Rewarded ads stay optional."
+      "description": "Removes banners and pop-up ads for good.",
+      "shopLine": "Removes banners and pop-up ads for good. Rewarded ads stay optional."
     },
     "skipAds": {
       "title": "Express Pass",
@@ -498,7 +500,8 @@
     },
     "x3": {
       "title": "Triple Profits",
-      "description": "Permanent ×3 on all income. Stacks with Double."
+      "description": "Permanent ×3 on all income. Stacks with ×2.",
+      "shopLine": "Permanent ×3 on all income. Stacks with Double."
     },
     "gems": [
       "Pinch of Truffles",
@@ -509,6 +512,10 @@
     "warp": {
       "title": "24h Time Warp",
       "description": "Instantly earn a full day of income."
+    },
+    "deals": {
+      "welcome": "A head start: Truffles, staff, 4 h of income.",
+      "franchise": "Rebuild fast: Truffles, staff, 8 h of income."
     }
   }
 }

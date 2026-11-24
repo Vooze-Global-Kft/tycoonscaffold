@@ -209,7 +209,7 @@ function ProductSlot({ cfg, p }: { cfg: H.HaulConfig; p: IapProduct }) {
   const [busy, setBusy] = useState(false);
   const price = iap.price(p);
   const available = iap.available(p);
-  const line = p.kind === 'gems' ? words(cfg, S.fuelLine, { n: formatNumber(p.value ?? 0) }) : (p.description ?? '');
+  const line = p.kind === 'gems' ? words(cfg, S.fuelLine, { n: formatNumber(p.value ?? 0) }) : (M.shopLineOf(p) ?? '');
   return (
     <Slot icon={productIcon(p)} title={p.title} line={line} dim={owned}>
       {owned ? (

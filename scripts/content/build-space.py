@@ -359,6 +359,9 @@ g['meta'] = {
 # ---------------------------------------------------------------- purchases (5.4): a different kind sequence from Pizza's
 # Fallback prices (what the screens show before the store answers; the real prices are set in the two
 # consoles) use none of the first game's price points (Decision 54): $6.49, $4.49, $3.49, $2.49, $8.49.
+# A product's description is the text entered for it in the stores: 45 characters at most (App Store
+# Connect; validate checks it). Where the Trade Post says more, the product has a shopLine beside it,
+# and the Trade Post prints that (Hangar Expansion: specification 5.4's sentence, 50 characters).
 mon = g.setdefault('monetization', {})
 mon.setdefault('ads', {'forceTestAds': True})
 mon['ads']['showBanner'] = False
@@ -366,7 +369,8 @@ mon['ads']['showBanner'] = False
 mon['ads']['interstitials'] = False
 mon['iap'] = {**mon.get('iap', {}), 'products': [
     {'id': 'space_clearance', 'title': 'Clearance', 'description': 'Every ad reward without watching the ad.', 'kind': 'clearance', 'icon': 'art:rail-trade', 'fallbackPrice': '$6.49'},
-    {'id': 'space_hangar', 'title': 'Hangar Expansion', 'description': '+6 drone cap and 2 idle drones at every run start.', 'kind': 'unlock', 'icon': 'art:drone', 'fallbackPrice': '$4.49'},
+    {'id': 'space_hangar', 'title': 'Hangar Expansion', 'description': '+6 drone cap and 2 idle drones at run start.',
+     'shopLine': '+6 drone cap and 2 idle drones at every run start.', 'kind': 'unlock', 'icon': 'art:drone', 'fallbackPrice': '$4.49'},
     {'id': 'space_charter', 'title': 'Prospector Charter', 'description': '150 Dark Matter and 5 Ore Sorter parts. Once.', 'kind': 'starterPack', 'value': 150, 'icon': 'art:warp-core',
      'contents': [{'type': 'gems', 'amount': 150}, {'type': 'card', 'cardId': 'sorter', 'copies': 5}], 'fallbackPrice': '$3.49'},
     {'id': 'space_dm_150', 'title': 'Fuel Cell', 'kind': 'gems', 'value': 150, 'icon': 'art:dark-matter', 'fallbackPrice': '$2.49'},

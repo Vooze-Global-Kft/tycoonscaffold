@@ -154,7 +154,7 @@ folder; without them the shared placeholders are used.
 - **economy**: milestones, prestige, offline cap, ad boost, daily gifts, time warp, `bonus`, `combo`
 - **businesses / upgrades / characters / story**: the content; **sim**: chain, venues, rush (sim mode)
 - **meta**, **cast**: see above
-- **monetization**: AdMob ids, interstitial pacing, `maxAdContentRating`, RevenueCat keys, IAP products
+- **monetization**: AdMob ids, interstitial pacing, `maxAdContentRating`, RevenueCat keys, IAP products (each with a `title`, a `description` for the stores of at most 45 characters and, where the shop says more, a `shopLine`)
 - **firebase**: paths to `GoogleService-Info.plist` / `google-services.json`
 - **store**: title, subtitle, keywords, descriptions, privacy policy URL
 
@@ -247,7 +247,7 @@ both stores' rating and data-safety forms. By hand, in the consoles (no tool
 does these; sources in `docs/design/research/policy.md`):
 
 1. **AdMob**: create the app and its banner, interstitial and rewarded units; paste them into `monetization.ads`; set `forceTestAds: false`; set the max ad content rating there to the same value as `maxAdContentRating`.
-2. **Products**: create every id of `monetization.iap.products` in App Store Connect, Play Console and RevenueCat; paste the RevenueCat keys; turn on its Firebase integration.
+2. **Products**: create every id of `monetization.iap.products` in App Store Connect, Play Console and RevenueCat, with its `title` as the display name and its `description` as the description (App Store Connect takes a name of 2 to 30 characters and a description of at most 45; `validate` checks both); paste the RevenueCat keys; turn on its Firebase integration.
 3. **Firebase**: add the iOS and Android apps, drop the two files in the game folder, point `firebase` at them; link AdMob.
 4. **EAS**: `GAME=<id> npx eas-cli@latest init`, copy the project id into `app.easProjectId`, `npm run sync`.
 5. **Age rating**: answer both questionnaires (Advertising: yes; loot boxes: no unless chests are sold) and set Apple's rating to 13+ by hand; Play target audience 13+. Never the Kids Category or Designed for Families: the game has third-party ads and analytics.
@@ -261,7 +261,11 @@ does these; sources in `docs/design/research/policy.md`):
 write from game.json (a stale listing must never be uploaded), and when a store
 text contains a banned word (real trademarks such as "Michelin", other studios'
 names) or an "Idle ... Tycoon" title; the list is `BANNED_STORE_WORDS` in
-`scripts/lib/checks.ts`.
+`scripts/lib/checks.ts`. It also fails when a product's `description` is over 45
+characters or its `title` is not 2 to 30: Apple's limits for an in-app purchase
+(`IAP_TEXT_LIMITS` in the same file). A line that says more than 45 characters is
+for the game's own shop and goes in the product's `shopLine`, which the shop prints
+instead of the description.
 
 **Web-only files in native exports.** `expo export` always copies `public/`
 (including the 7.9 MB `canvaskit.wasm` the web preview needs) into its output

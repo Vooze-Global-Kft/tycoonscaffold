@@ -42,26 +42,27 @@
     "GAMES_PUZZLE",
     "GAMES_CASUAL"
   ],
+  "_products": "Each product's description is the text entered for it in the stores: 45 characters at most (App Store Connect's limit for an in-app purchase; its title, the display name, 2 to 30; validate checks both). The Shop sheet does not print it: its sentences are awningsWhat, lateHoursWhat and quietEveningWhat in src/ui/merge/strings.ts, which say more.",
   "products": [
     {
       "id": "night_awnings",
       "kind": "cosmetic",
       "title": "Blue Silk Awnings",
-      "description": "Every stall gets blue silk awnings and moon lanterns, for good. Looks only.",
+      "description": "Blue silk awnings on every stall. Looks only.",
       "fallbackPrice": "$2.99"
     },
     {
       "id": "night_late_hours",
       "kind": "unlock",
       "title": "Late Hours",
-      "description": "Your minders keep the stalls 4 more hours while you are away.",
+      "description": "Minders work 4 more hours while you are away.",
       "fallbackPrice": "$3.99"
     },
     {
       "id": "night_quiet_evening",
       "kind": "skipAds",
       "title": "Quiet Evening",
-      "description": "Every Watch ad button gives its reward at once, with no video.",
+      "description": "Ad rewards are yours at once, with no video.",
       "fallbackPrice": "$4.99"
     }
   ]

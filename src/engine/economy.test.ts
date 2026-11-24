@@ -280,6 +280,28 @@ describe('daily, story, purchases', () => {
     s = M.applyProduct(cfg, M.applyProduct(cfg, s, gems, T0).state, gems, T0).state;
     expect(s.gems).toBe(gems.value * 2);
   });
+
+  it('a shop prints a product\'s shopLine when it has one, else its description', () => {
+    expect(M.shopLineOf({ description: 'Short, for the stores.', shopLine: 'The longer line the shop prints.' })).toBe('The longer line the shop prints.');
+    expect(M.shopLineOf({ description: 'Short, for the stores.' })).toBe('Short, for the stores.');
+    expect(M.shopLineOf({})).toBeUndefined();
+    // Read from the parsed config, as the shops do: the field is optional and has no default.
+    const parsed = GameConfigSchema.parse({
+      ...classicRaw,
+      monetization: {
+        ...classicRaw.monetization,
+        iap: {
+          products: [
+            { id: 't_a', title: 'Alpha', kind: 'unlock', description: 'Short.', shopLine: 'Long.' },
+            { id: 't_b', title: 'Beta', kind: 'unlock', description: 'Short.' },
+            { id: 't_c', title: 'Gamma', kind: 'gems' },
+          ],
+        },
+      },
+    }).monetization.iap.products;
+    expect(parsed.map(M.shopLineOf)).toEqual(['Long.', 'Short.', undefined]);
+    expect('shopLine' in parsed[1]).toBe(false);
+  });
 });
 
 describe('combo and bonus', () => {

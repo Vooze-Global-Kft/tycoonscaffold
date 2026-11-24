@@ -634,7 +634,8 @@
           "kind": "noAds",
           "fallbackPrice": "$5.99",
           "title": "No Ads",
-          "description": "Removes banners and pop-up ads for good. Rewarded ads stay optional."
+          "description": "Removes banners and pop-up ads for good.",
+          "shopLine": "Removes banners and pop-up ads for good. Rewarded ads stay optional."
         },
         {
           "id": "pizza_express_pass",
@@ -658,7 +659,8 @@
           "value": 3,
           "fallbackPrice": "$12.99",
           "title": "Triple Profits",
-          "description": "Permanent ×3 on all income. Stacks with Double."
+          "description": "Permanent ×3 on all income. Stacks with ×2.",
+          "shopLine": "Permanent ×3 on all income. Stacks with Double."
         },
         {
           "id": "pizza_gems_100",
@@ -705,14 +707,14 @@
           "kind": "deal",
           "fallbackPrice": "$4.99",
           "title": "Welcome Feast",
-          "description": "A head start for a new restaurant: Truffles, Nonna Rosa herself, Chef Marco, Tony Wheels and 4 h of income."
+          "description": "A head start: Truffles, staff, 4 h of income."
         },
         {
           "id": "pizza_franchise_kit",
           "kind": "deal",
           "fallbackPrice": "$4.99",
           "title": "Franchise Kit",
-          "description": "Rebuild faster after earning Chef Stars: Truffles, Astro Al, Big Cheese Carl (now on your side), Speedy Sal and 8 h of income."
+          "description": "Rebuild fast: Truffles, staff, 8 h of income."
         }
       ]
     }

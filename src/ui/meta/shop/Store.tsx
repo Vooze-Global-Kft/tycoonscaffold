@@ -8,6 +8,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { IapProduct } from '../../../config/schema';
 import * as E from '../../../engine/economy';
 import { formatMoney, formatNumber } from '../../../engine/format';
+import { shopLineOf } from '../../../engine/meta';
 import { iap } from '../../../services/iap';
 import { productOwned, useGame } from '../../../state/store';
 import { Button } from '../../components/Button';
@@ -147,8 +148,9 @@ function ProductRow({ product }: { product: IapProduct }) {
   // The highlight is for a new player only: after the first reset a "start" ribbon would not be true.
   const fresh = useGame((s) => s.game.prestigeCount === 0);
   const { ref, emit } = useFlyFrom();
+  // The product's own line (its shopLine when the shop says more than the stores' description holds).
   const line =
-    (product.description ?? defaultLine(product, t.strings.gemName)) +
+    (shopLineOf(product) ?? defaultLine(product, t.strings.gemName)) +
     (product.kind === 'skipAds' ? ` Banners and pop-up ads still show${noAdsTitle ? `: ${noAdsTitle} removes those` : ''}.` : '');
   const featured = !!product.highlight && !owned && fresh;
   return (
