@@ -544,6 +544,43 @@ def build_block(deck, tables, tuned, extra_sets=None, fallback_deck=True):
     return block, used_fallback
 
 
+SCHEMA_CHECK = """
+import { DecreeSchema } from './src/config/schema.decree';
+let raw = '';
+process.stdin.on('data', (c) => (raw += c));
+process.stdin.on('end', () => {
+  const r = DecreeSchema.safeParse(JSON.parse(raw));
+  console.log(JSON.stringify(r.success ? [] : r.error.issues.map((i) => ({ path: i.path, code: i.code, maximum: (i as { maximum?: unknown }).maximum ?? null, message: i.message }))));
+});
+"""
+
+
+def schema_issues(block):
+    """The runtime schema's complaints about a block (src/config/schema.decree.ts), as [{path, code, maximum, message}]."""
+    return tsx(SCHEMA_CHECK, stdin=json.dumps(block))
+
+
+def preview_fit(block):
+    """PREVIEW ONLY (tuning on batches the content check has not passed; never written): a string over its
+    length limit is cut to it, with a note; any other schema error stops. The gates and the writer never call this."""
+    for _ in range(3):
+        issues = schema_issues(block)
+        if not issues:
+            return block
+        hard = [i for i in issues if not (i['code'] == 'too_big' and isinstance(i.get('maximum'), int))]
+        if hard:
+            raise SystemExit('the merged preview does not fit the runtime schema (D7):\n  ' + '\n  '.join('%s: %s' % ('.'.join(map(str, i['path'])), i['message']) for i in hard[:20]))
+        for i in issues:
+            o = block
+            for k in i['path'][:-1]:
+                o = o[k]
+            v = o[i['path'][-1]]
+            if isinstance(v, str):
+                o[i['path'][-1]] = v[:i['maximum']]
+                print('  (preview) cut to %d characters: %s' % (i['maximum'], '.'.join(map(str, i['path']))))
+    return block
+
+
 # ============================================================================ the bot in parallel processes
 
 def run_seed(seed, cfg_path, bots, hours, extra=()):
@@ -622,6 +659,23 @@ def loss(counts, n):
     return 10 * hard + aims
 
 
+def d27_loss(rows):
+    """D27's targets across seeds, in its order of importance: each miss weighs (8 - its rank) per point
+    of share it misses by, so the search sees how far a knob moves it (pass counts stay the gate)."""
+    out = 0.0
+    for row in rows:
+        m = re.match(r'D27 \((\d+)\)', row['name'])
+        if not m or row.get('num') is None or row['ok']:
+            continue
+        a = re.search(r'([≥≤]) (\d+) %', row['aim'])
+        if not a:
+            continue
+        thr = float(a.group(2)) / 100
+        miss = thr - row['num'] if a.group(1) == '≥' else row['num'] - thr
+        out += (8 - int(m.group(1))) * max(0.0, miss) * 100
+    return out
+
+
 def candidates(r, value):
     lo, hi = r['low'], r['high']
     integer = float(value).is_integer() and float(lo).is_integer() and float(hi).is_integer()
@@ -641,6 +695,7 @@ def tune(procs, budget, groups, hours):
     base_block, fb = build_block(json.loads(json.dumps(deck)), tables, tuned)
     if fb:
         print('tuning with the frozen test deck for: ' + ', '.join(fb))
+    base_block = preview_fit(base_block)
     evals = 0
 
     def score(t, bots):
@@ -651,11 +706,17 @@ def tune(procs, budget, groups, hours):
             set_at(block, p, v)
         res, d = run_seeds(block, TUNE_SEEDS, bots, hours, procs)
         nb, crashed = stopped(res)
-        shutil.rmtree(d, ignore_errors=True)
         if nb or crashed:
+            shutil.rmtree(d, ignore_errors=True)
             raise SystemExit('the tuner stopped: ' + ('rules not built yet: ' + ', '.join(nb) if nb else 'the bot crashed: ' + str(crashed[0].get('error'))[:500]))
+        ac = across(d)
+        shutil.rmtree(d, ignore_errors=True)
         c = pass_counts(res)
-        return loss(c, len(TUNE_SEEDS)), c
+        acr = ac.get('rows', []) if isinstance(ac, dict) else []
+        for row in acr:
+            if row['kind'] != 'report':
+                c['(across) ' + row['name']] = {'kind': row['kind'], 'aim': row['aim'], 'pass': len(TUNE_SEEDS) if row['ok'] else 0, 'of': len(TUNE_SEEDS), 'values': [row['value']]}
+        return loss(c, len(TUNE_SEEDS)) + d27_loss(acr), c
 
     missing = []
     for group, label, knobs in KNOB_ORDER:

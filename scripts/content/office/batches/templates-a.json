@@ -166,7 +166,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "frame": "Make {town-things} a bus lookout. The Guild had dressed it.",
+      "frame": "Make {town-things} a bus lookout. Its display must crouch.",
       "subject": "buses",
       "butt": "thing",
       "shape": "undercut"
@@ -188,7 +188,7 @@
       "visitor": "spinwell",
       "club": "shops",
       "archetype": "vanity",
-      "frame": "Your name on {town-things}, in gold. Then on the back.",
+      "frame": "Your name on {town-things}, in gold. Then the back, for people leaving.",
       "subject": "vanity",
       "butt": "self",
       "shape": "escalation"
@@ -199,7 +199,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "project",
-      "frame": "The Anglers ask for a lid on the bandstand for {small-ceremonies}.",
+      "frame": "Keep a lid on the band, say the Anglers. Off for {small-ceremonies} only.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "literalism"
@@ -221,7 +221,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "treat",
-      "frame": "Cut the Guild's ribbon at {small-ceremonies}. Smile until told.",
+      "frame": "Cut the Guild's ribbon at {small-ceremonies}. Mind your reflection.",
       "subject": "ribbons",
       "butt": "self",
       "shape": "photo-op"
@@ -232,10 +232,10 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "project",
-      "frame": "A music stand on {town-things}. Band practice, by the water.",
+      "frame": "Band seats by {town-things}. Then a roof. The pond hears last.",
       "subject": "bandstands",
       "butt": "thing",
-      "shape": "undercut"
+      "shape": "escalation"
     },
     {
       "id": "tpa-cer-poster",
@@ -265,7 +265,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "project",
-      "frame": "A marquee for {small-ceremonies}, with Till's Teas. On the pumpkin lawn.",
+      "frame": "A Till's Teas marquee for {small-ceremonies}, on the pumpkin bed.",
       "subject": "ceremonies",
       "butt": "thing",
       "shape": "callback"
@@ -276,7 +276,7 @@
       "club": "brass",
       "other": "shops",
       "archetype": "fee",
-      "frame": "The band hires {town-things} for practice. Shop bells up 30 %.",
+      "frame": "The band hires {town-things} for practice. Window-gazing: down 30 %.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "statistic"
@@ -287,10 +287,10 @@
       "club": "veg",
       "other": "bus",
       "archetype": "fee",
-      "frame": "Growers will hire the bus station for {small-ceremonies}. Buses may watch.",
+      "frame": "Growers hire the bus station for {small-ceremonies}. Buses may watch.",
       "subject": "buses",
       "butt": "thing",
-      "shape": "literalism"
+      "shape": "undercut"
     },
     {
       "id": "tpa-thing-quieter",
@@ -310,7 +310,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "swap",
-      "frame": "Hold {small-ceremonies} in a shop window. Then the next one along.",
+      "frame": "Hold {small-ceremonies} in a shop window. Then the next one.",
       "subject": "ceremonies",
       "butt": "thing",
       "shape": "escalation"
@@ -321,7 +321,7 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "swap",
-      "frame": "Protect the hedge by {town-things}. From string, mostly.",
+      "frame": "Give the Committee the kites' lawn by {town-things}. Its last word: 'edged'.",
       "subject": "hedges",
       "butt": "thing",
       "shape": "literalism"
@@ -332,7 +332,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "fee",
-      "frame": "The band hires the canal bank for {small-ceremonies}. And an encore.",
+      "frame": "The band hires the pond for {small-ceremonies}. And the encore's encore.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "escalation"
@@ -343,7 +343,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "treat",
-      "frame": "Lean on {town-things} for the camera. A spotter will show you.",
+      "frame": "Log a bus by {town-things}, for the camera. Neatness counts.",
       "subject": "buses",
       "butt": "self",
       "shape": "photo-op"
@@ -365,7 +365,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "committee",
-      "frame": "Who owns {town-things}? An inquiry sits by it, in case it leaves.",
+      "frame": "Who owns {town-things}? An inquiry sits by it in case it leaves.",
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
@@ -377,7 +377,7 @@
       "club": "bus",
       "other": "brass",
       "archetype": "project",
-      "frame": "A bus clock on the bandstand for {small-ceremonies}. It says BAND LATE.",
+      "frame": "A bus clock on the bandstand for {small-ceremonies}: BAND LATE.",
       "subject": "clocks",
       "butt": "thing",
       "shape": "slogan"
@@ -388,7 +388,7 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "project",
-      "frame": "A kite ramp by {town-things}. Then one to clear the hedge.",
+      "frame": "A kite step by {town-things}. Then one on it, for the hedge.",
       "subject": "kites",
       "butt": "thing",
       "shape": "escalation"
@@ -399,7 +399,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "fee",
-      "frame": "The Guild pays to book {mild-weather}. The growers pencilled it in.",
+      "frame": "The Guild pays to book {mild-weather}. Growers pencilled it in.",
       "subject": "picnic-weather",
       "butt": "office",
       "shape": "literalism"
@@ -410,7 +410,7 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "treat",
-      "frame": "Arrive at {small-ceremonies} by kite. The League has done the sums.",
+      "frame": "Fly a kite at {small-ceremonies}. The League does the flying.",
       "subject": "kites",
       "butt": "self",
       "shape": "photo-op"
@@ -432,7 +432,7 @@
       "visitor": "fenn",
       "club": "hedges",
       "archetype": "vanity",
-      "frame": "A painting of you at {small-ceremonies}. Then one of you admiring it.",
+      "frame": "A painting of you at {small-ceremonies}. Then a copy per corridor.",
       "subject": "portraits",
       "butt": "self",
       "shape": "escalation"
@@ -443,7 +443,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "frame": "A shelter by the shops, against {mild-weather}. Damp notebooks: 11.",
+      "frame": "A canopy by the shops for {mild-weather}. Notebooks at risk: 11.",
       "subject": "buses",
       "butt": "thing",
       "shape": "statistic"
@@ -465,7 +465,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "treat",
-      "frame": "Pose with the prize pumpkin during {mild-weather}. Look weathered.",
+      "frame": "Pose with the pumpkin during {mild-weather}. It gets the good side.",
       "subject": "vegetable-shows",
       "butt": "self",
       "shape": "photo-op"
@@ -487,10 +487,10 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "swap",
-      "frame": "Give {mild-weather} to the hedge show. The League had booked it.",
+      "frame": "The hedge show takes the kite field during {mild-weather}. Kites come folded.",
       "subject": "picnic-weather",
       "butt": "thing",
-      "shape": "literalism"
+      "shape": "undercut"
     },
     {
       "id": "tpa-inv-no-noses",
@@ -498,7 +498,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "project",
-      "frame": "Fund {minor-inventions} for the Guild's window. Sign: NO NOSES.",
+      "frame": "Fund {minor-inventions} for the windows. Card: NOT FOR SPOTTING.",
       "subject": "inventions",
       "butt": "thing",
       "shape": "slogan"
@@ -509,7 +509,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "swap",
-      "frame": "Fish look up 6 % more in {mild-weather}. Anglers want the band's slot.",
+      "frame": "Silence carries 6 % further during {mild-weather}. Anglers want band time.",
       "subject": "picnic-weather",
       "butt": "thing",
       "shape": "statistic"
@@ -532,7 +532,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "project",
-      "frame": "A bandstand sign for {mild-weather}: CONCERT ON. FISH, BRACE.",
+      "frame": "A bandstand sign for {mild-weather}: CONCERT ON. PONDS, BRACE.",
       "subject": "signage",
       "butt": "thing",
       "shape": "slogan"
@@ -543,7 +543,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "project",
-      "frame": "Fund {minor-inventions} for the growers. Then a stall for the queue.",
+      "frame": "A stall for {minor-inventions}. Then one for its queue.",
       "subject": "inventions",
       "butt": "thing",
       "shape": "escalation"
@@ -554,7 +554,7 @@
       "club": "bus",
       "other": "anglers",
       "archetype": "fee",
-      "frame": "The spotters will buy a horn licence, valid in {mild-weather}.",
+      "frame": "Spotters buy a toot licence for {mild-weather}. Toots by the pond.",
       "subject": "paperwork",
       "butt": "office",
       "shape": "form-misapplied"
@@ -576,7 +576,7 @@
       "club": "brass",
       "other": "shops",
       "archetype": "swap",
-      "frame": "Move the band to the arcade in {mild-weather}. Glass hums along.",
+      "frame": "Move the band to the arcade during {mild-weather}. Glass hums along.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "undercut"
@@ -598,7 +598,7 @@
       "visitor": "spinwell",
       "club": "veg",
       "archetype": "vanity",
-      "frame": "Order {mild-weather} for your portrait. Rodney wants flattering light.",
+      "frame": "Have {mild-weather} follow you about. Rodney is pricing it.",
       "subject": "portraits",
       "butt": "self",
       "shape": "callback"
@@ -609,10 +609,10 @@
       "club": "shops",
       "other": "anglers",
       "archetype": "swap",
-      "frame": "Show {minor-inventions} by the canal. Anglers ask it to sit still.",
+      "frame": "Show {minor-inventions} by the pond. It is asked to sit still.",
       "subject": "inventions",
       "butt": "thing",
-      "shape": "literalism"
+      "shape": "undercut"
     },
     {
       "id": "tpa-wx-clear-hedge",
@@ -620,10 +620,10 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "project",
-      "frame": "A kite-shaped gap in the hedge for {mild-weather}. Kites to aim.",
+      "frame": "A kite-shaped gap in the hedge for {mild-weather}. Kites find it 1 in 9.",
       "subject": "kites",
       "butt": "thing",
-      "shape": "undercut"
+      "shape": "statistic"
     },
     {
       "id": "tpa-inv-two-tubas",
@@ -631,10 +631,10 @@
       "club": "brass",
       "other": "shops",
       "archetype": "fee",
-      "frame": "The band hires the arcade for {minor-inventions}. Glass rated: two tubas.",
+      "frame": "The band hires a shop window to show {minor-inventions}. And the band.",
       "subject": "inventions",
       "butt": "thing",
-      "shape": "statistic"
+      "shape": "escalation"
     },
     {
       "id": "tpa-title-napkin",
@@ -642,7 +642,7 @@
       "visitor": "spinwell",
       "club": "shops",
       "archetype": "vanity",
-      "frame": "Be {dignified-titles}. Rodney will stitch it in gold, on the napkin.",
+      "frame": "Be {dignified-titles}. Rodney will add it to the napkin, in gold.",
       "subject": "vanity",
       "butt": "self",
       "shape": "callback"
@@ -653,7 +653,7 @@
       "club": "veg",
       "other": "anglers",
       "archetype": "project",
-      "frame": "A rain barrel for {mild-weather}. It fills from the Anglers' pond.",
+      "frame": "A rain barrel for {mild-weather}, filled from the Anglers' pond.",
       "subject": "gardens",
       "butt": "thing",
       "shape": "undercut"
@@ -664,7 +664,7 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "swap",
-      "frame": "Test {minor-inventions} on the kite field. Sign: KITES, LATER.",
+      "frame": "Show {minor-inventions} on the kite field. Sign: KITES, LATER.",
       "subject": "hedges",
       "butt": "thing",
       "shape": "slogan"
@@ -686,11 +686,11 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "committee",
-      "frame": "A study of how {mild-weather} affects string. 40 % ends in a hedge.",
+      "frame": "A study of how {mild-weather} affects kites. 40 % end in a hedge.",
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
-      "note": "biggerStudy: The string study asks for a second hedge. The first is now mostly string."
+      "note": "biggerStudy: The kite study asks for a second hedge. The first is now mostly kite."
     },
     {
       "id": "tpa-inv-say-nothing",
@@ -698,7 +698,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "treat",
-      "frame": "Sit by the water with {minor-inventions}. Say nothing for the camera.",
+      "frame": "Sit by the water with {minor-inventions}. Say nothing, on camera.",
       "subject": "inventions",
       "butt": "self",
       "shape": "photo-op"
@@ -709,7 +709,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "frame": "Make the 7:02 {dignified-titles}. The Guild nominated its bell.",
+      "frame": "Name the spotters' bench {dignified-titles}. It is in a shop window.",
       "subject": "buses",
       "butt": "thing",
       "shape": "undercut"
@@ -732,7 +732,7 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "project",
-      "frame": "Clip {dignified-titles} into the hedge. Kites must apply to read it.",
+      "frame": "Clip {dignified-titles} into a hedge. Kites must apply to read it.",
       "subject": "hedges",
       "butt": "office",
       "shape": "form-misapplied"
@@ -743,7 +743,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "fee",
-      "frame": "Till's Teas will pay to be {dignified-titles}. It was the pumpkin's.",
+      "frame": "Till's Teas pays to be {dignified-titles}. It was the pumpkin's.",
       "subject": "ceremonies",
       "butt": "thing",
       "shape": "callback"
@@ -754,7 +754,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "project",
-      "frame": "Seat the pumpkin by the shops as {dignified-titles}. Cushion, then staff.",
+      "frame": "Seat the prize onion by the shops as {dignified-titles}. Then a deputy.",
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "escalation"
@@ -765,7 +765,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "project",
-      "frame": "Seat the Anglers' {dignified-titles} on the band lawn. Forms pending.",
+      "frame": "Make the Anglers' shusher {dignified-titles}. Shushes in triplicate.",
       "subject": "paperwork",
       "butt": "office",
       "shape": "form-misapplied"
@@ -820,11 +820,11 @@
       "club": "bus",
       "other": "anglers",
       "archetype": "committee",
-      "frame": "Is the canal bridge {dignified-titles}? An inquiry hears horns.",
+      "frame": "Is the last bus {dignified-titles}? An inquiry will listen by the pond.",
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "note": "biggerStudy: The bridge inquiry asks for a second year of horns. The first was inconclusive."
+      "note": "biggerStudy: The last-bus inquiry asks for a second year by the pond. The horn was inconclusive."
     }
   ]
 }

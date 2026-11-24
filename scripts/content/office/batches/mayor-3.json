@@ -9,7 +9,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "fee",
-      "text": "Bunting from the clock tower to every shop, at our cost. Buses, duck.",
+      "text": "Bunting from the clock tower to every shop, at our cost. Buses may bow.",
       "subject": "ribbons",
       "butt": "thing",
       "shape": "undercut",
@@ -21,7 +21,7 @@
       "club": "veg",
       "other": "bus",
       "archetype": "project",
-      "text": "A tap for the plots. Then a hose. Then, for morale, a fountain.",
+      "text": "A tap at the bus stop. Then a hose. Then, for morale, a fountain.",
       "subject": "fountains",
       "butt": "thing",
       "shape": "escalation"
@@ -32,7 +32,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "text": "Hang our bus portraits on the Guild's gallery wall. They sat well.",
+      "text": "Hang our bus portraits on the Guild's wall. Each sat, then left on time.",
       "subject": "portraits",
       "butt": "thing",
       "shape": "literalism"
@@ -43,7 +43,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "project",
-      "text": "A fountain for the shops. You would turn it on and step back.",
+      "text": "A shop fountain, from the plots' rain barrel. You would open it, damply.",
       "subject": "fountains",
       "butt": "self",
       "shape": "photo-op",
@@ -71,7 +71,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The committee now asks whether the shed is a shop. It has a door."
+      "biggerStudy": "The committee now asks whether the potting shed is a shop. It has a door."
     },
     {
       "id": "may-windows-pumpkin",
@@ -91,11 +91,11 @@
       "club": "veg",
       "other": "shops",
       "archetype": "committee",
-      "text": "A study of our vegetables' favourite shop. So far: the greengrocer's.",
+      "text": "A study in window-shopping: the pumpkin, wheeled past each window.",
       "subject": "vegetable-shows",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "The study would now like a word with the greengrocer."
+      "biggerStudy": "The study asks for a second lap. The pumpkin may have missed a hat."
     },
     {
       "id": "may3-pumpkin-bench",
@@ -114,7 +114,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "swap",
-      "text": "Remove the Society's PUMPKINS AHEAD sign. There are none ahead.",
+      "text": "Remove the Society's PUMPKINS AHEAD sign. Ahead is the hatter's.",
       "subject": "signage",
       "butt": "thing",
       "shape": "slogan"
@@ -158,7 +158,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "fee",
-      "text": "We will pay for a licence to stand by the shops. It is overdue.",
+      "text": "We will pay for a licence to stand by the shops. Noses filed separately.",
       "subject": "paperwork",
       "butt": "office",
       "shape": "form-misapplied",
@@ -175,7 +175,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "The committee is split on the barrow. It asks for a second barrow."
+      "biggerStudy": "The committee is split. It asks for a second barrow, to compare."
     },
     {
       "id": "may3-portrait-umbrella",
@@ -187,7 +187,7 @@
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
-        "text": "About the umbrella: it would like to live in the Society's potting shed. It is warm there.",
+        "text": "About the umbrella: it would like the Society's potting shed. It is warm there.",
         "clippings": {
           "sign": "MAYOR'S UMBRELLA GIVEN POTTING SHED",
           "refuse": "UMBRELLA LEAVES, FOLDED, WITHOUT COMMENT"
@@ -200,9 +200,9 @@
       "club": "bus",
       "other": "veg",
       "archetype": "project",
-      "text": "A timetable for the drawer FOR FURTHER STUDY. Its papers wish to know.",
-      "subject": "paperwork",
-      "butt": "office",
+      "text": "A spotters' square by your parking space. Half is bean rows.",
+      "subject": "buses",
+      "butt": "thing",
       "shape": "callback"
     },
     {
@@ -211,8 +211,8 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A line for spotters to stand behind. You would cut its ribbon.",
-      "subject": "ribbons",
+      "text": "A spotting chair by the shops. You first, Mayor, for the Drizzle.",
+      "subject": "buses",
       "butt": "self",
       "shape": "photo-op"
     },
@@ -248,8 +248,8 @@
       "club": "bus",
       "other": "veg",
       "archetype": "swap",
-      "text": "We want half the Society's noticeboard. It is 90 % pumpkin.",
-      "subject": "paperwork",
+      "text": "Point the Society's bench at the road. Pumpkins seen leaving since spring: 0.",
+      "subject": "gardens",
       "butt": "thing",
       "shape": "statistic",
       "portable": true
@@ -286,7 +286,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "fee",
-      "text": "We will hire the photocopier: the timetable, its index, the index's index.",
+      "text": "We will hire the photocopier: timetable, index, the index's index. Shops later.",
       "subject": "paperwork",
       "butt": "thing",
       "shape": "escalation"
@@ -297,7 +297,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "swap",
-      "text": "The Guild's gallery day, please. The pumpkin will sit. You may stand.",
+      "text": "Give the pumpkin the Guild's place in your photograph. It never blinks.",
       "subject": "portraits",
       "butt": "self",
       "shape": "photo-op"
@@ -343,7 +343,7 @@
       "club": "veg",
       "other": "bus",
       "archetype": "swap",
-      "text": "The bus stop is on our plot unpermitted. Move it, or plant it.",
+      "text": "A bus stop stands on our plot, unpermitted. Move it or plant it.",
       "subject": "paperwork",
       "butt": "thing",
       "shape": "form-misapplied",
@@ -369,7 +369,7 @@
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
-        "text": "About the bottled water: it would like a place in the Guild's best window, on show.",
+        "text": "About the bottled water: it would like the Guild's best window, on show.",
         "clippings": {
           "sign": "MAYOR'S WATER BOTTLE TAKES GUILD'S BEST WINDOW",
           "refuse": "WATER SENT HOME IN ITS BOTTLE"
@@ -382,7 +382,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "project",
-      "text": "A shops signpost at the bus stop. It points both ways, to be fair.",
+      "text": "A shops signpost at the bus stop, pointing both ways. To be fair.",
       "subject": "signage",
       "butt": "thing",
       "shape": "literalism",
@@ -405,7 +405,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A file for every bus, kept at the stop. Two buses have complained.",
+      "text": "A file per bus, kept by the shops. Two buses have complained.",
       "subject": "paperwork",
       "butt": "thing",
       "shape": "form-misapplied",
@@ -418,11 +418,11 @@
       "club": "shops",
       "other": "bus",
       "archetype": "committee",
-      "text": "A survey of who looks in our windows, then at buses. So far, Desmond.",
+      "text": "A survey of noses on our windows. So far, 60 % are yours, Mayor.",
       "subject": "committees",
-      "butt": "committee",
+      "butt": "self",
       "shape": "statistic",
-      "biggerStudy": "The survey keeps finding Desmond. It asks for a second surveyor."
+      "biggerStudy": "The nose survey asks for another year. You keep coming back."
     },
     {
       "id": "may3-logged",
@@ -442,7 +442,7 @@
       "club": "veg",
       "other": "bus",
       "archetype": "project",
-      "text": "A path for spotters through the plots: TREAD HERE, NOT THERE.",
+      "text": "A sign at the plots: PLEASE ADMIRE THE BUSES FROM ELSEWHERE.",
       "subject": "signage",
       "butt": "thing",
       "shape": "slogan",
@@ -463,7 +463,7 @@
       "visitor": "sash",
       "club": "bus",
       "archetype": "basket",
-      "text": "A basket for your drawer FOR FURTHER STUDY. It gets peckish. No reason.",
+      "text": "A basket for the drawer FOR FURTHER STUDY. It gets peckish. Ribbons? No reason.",
       "subject": "paperwork",
       "butt": "lobbyist",
       "shape": "callback",

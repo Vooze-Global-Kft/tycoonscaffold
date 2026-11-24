@@ -474,6 +474,8 @@ export interface DecisionRec {
   formVoid: boolean;
   /** The commit happened inside a tick, out of the bot's sight (an H3 fault says why): printed and applied are not compared. */
   unmeasured?: boolean;
+  /** |cash| at the commit: applied money is a difference of two treasuries, exact only to their last bits. */
+  cashScale?: number;
   /** A stored paper field changed between landing and commit (H1). */
   paperChanged: boolean;
   /** The sign side's printed money (negative a cost) and whether this paper is a basket (8.4). */
@@ -602,6 +604,8 @@ export interface Trace {
   book: Record<string, number> | null;
   /** Times of reaching each office (seconds of play), null when not reached. */
   reached: (number | null)[];
+  /** A handover run (H6, H12): the habit that played first, and when the reader took over. Its reader-only rows are not evaluated (they would judge the habit's part). */
+  handover?: { habit: BotId; at: number };
   hash: string;
 }
 
@@ -1002,6 +1006,7 @@ class Driver {
       applied,
       formVoid,
       unmeasured: cutShort,
+      cashScale: Math.max(Math.abs(atCommit.cash), Math.abs(after.cash)),
       paperChanged: seen ? seen.json !== json(item.paper) : false,
       signMoney: v.sign.money,
       reeval,
@@ -1047,7 +1052,7 @@ class Driver {
     this.book('spend', spent);
     if (next === before) this.advanceTo(this.clock + HAND.slip);
     if (choice === 'sign' && next !== before) this.tr.purchases.push({ t: this.clock, via: 'slip', purchase: purchaseName(item.slip.purchase), price: item.slip.price });
-    if (choice === 'sign' && spent !== -item.slip.price && !this.tr.events.slice(-6).some((e) => e.type === 'formVoid')) this.tr.faults.push(`H1: slip printed ${item.slip.price}, the treasury changed by ${spent}`);
+    if (choice === 'sign' && Math.abs(spent + item.slip.price) > moneyTol(item.slip.price, Math.max(Math.abs(before.cash), Math.abs(this.g.cash))) && !this.tr.events.slice(-6).some((e) => e.type === 'formVoid')) this.tr.faults.push(`H1: slip printed ${item.slip.price}, the treasury changed by ${spent}`);
     this.afterDecision();
   }
 
@@ -1396,6 +1401,7 @@ export function runDecreeBot(cfg: DecreeConfig, opts: BotOptions): BotRun {
         if (mark >= 0 && term0() !== mark && dr.d.phase === 'governing') break;
       }
       handedOver = { t: dr.clock, approval: R.decreeParams(cfg, dr.g).approval, decisions: dr.tr.decisions.length };
+      dr.tr.handover = { habit: opts.handover.habit, at: dr.clock };
       dr.bot = opts.bot;
       dr.hab = habitsOf(opts.bot);
       dr.tr.bot = opts.bot;
@@ -1459,6 +1465,11 @@ const DAY_PAPER = new Set(['comic', 'template', 'followup', 'requisition', 'ribb
 const COMIC = new Set(['comic', 'template', 'followup']);
 const isDayRec = (d: DecisionRec) => DAY_PAPER.has(d.kind);
 
+/** The money tolerance of H1: a millionth of the amount, or the float resolution of the treasury it was added to (cash − cash at 1e20 is exact only to about 1e5). */
+export function moneyTol(amount: number, cashScale: number): number {
+  return Math.max(1e-6 * Math.max(1, Math.abs(amount)), 8 * Number.EPSILON * cashScale);
+}
+
 /** H1: printed against applied on every decision (money, every club's mood, the level); clamps; stored papers changed; stale forms with an effect. */
 export function h1(tr: Pick<Trace, 'decisions' | 'events' | 'faults'>): { differences: number; clamps: number; changed: number; staleWithEffect: number; detail: string[] } {
   let differences = 0;
@@ -1474,7 +1485,7 @@ export function h1(tr: Pick<Trace, 'decisions' | 'events' | 'faults'>): { differ
       continue;
     }
     const moodsDiffer = d.printed.moods.some((x, i) => x !== (d.applied.moods[i] ?? 0));
-    const moneyDiffers = Math.abs(d.printed.money - d.applied.money) > 1e-6 * Math.max(1, Math.abs(d.printed.money));
+    const moneyDiffers = Math.abs(d.printed.money - d.applied.money) > moneyTol(d.printed.money, d.cashScale ?? 0);
     const levelDiffers = d.printed.level !== d.applied.level;
     if (moodsDiffer || moneyDiffers || levelDiffers) {
       differences++;
@@ -1852,6 +1863,13 @@ export function evaluate(cfg: DecreeConfig, tr: Trace): BotRow[] {
   const boundMax = Math.min(8, cfg.decree.ladder.maxLossesBound);
   rows.push(row('H6 no dead end', 'hard', `refuse always possible, every boycott and scandal ends within its count, ministry 0 always earns, 2.11 bound ≤ ${boundMax} (D25), a win within 6 terms of a first loss`, `${f.refuseRefused} refuses refused, ${f.overran} overran, ${f.zeroIncome} samples without ministry 0 income, bound ${bound}, worst ${f.worstTermsToWin ?? 'no loss'} terms`, f.refuseRefused + f.overran + f.zeroIncome === 0 && bound <= boundMax && (f.worstTermsToWin === null || f.worstTermsToWin <= 6), bound));
   const t0 = tr.started;
+  // A handover run: only the rows every trace holds (its targets are acrossSeeds' H6 and H12).
+  if (tr.handover) {
+    rows.push(row('H11 number range', 'hard', 'below 1e30', tr.maxNumber.toExponential(2), tr.maxNumber < 1e30, tr.maxNumber));
+    const w = wins(tr);
+    rows.push(row('wins', 'report', '', `${w.won} of ${w.elections}, the reader from ${tr.handover.habit}'s state at ${f1((tr.handover.at - t0) / 60)} min`, true, w.elections ? w.won / w.elections : null));
+    return rows;
+  }
   // D19: the hour-one gate holds for the reader (at 4, 6 and 9 s), always-refuse and random; ad-everything is reported.
   if (tr.ended - t0 >= 3600 && (tr.bot === 'reader' || tr.bot === 'alwaysRefuse' || tr.bot === 'random' || tr.bot === 'adEverything')) {
     const g = h7(tr, cfg);

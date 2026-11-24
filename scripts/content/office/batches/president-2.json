@@ -7,10 +7,10 @@
       "id": "pres-nose-height-rail",
       "visitor": "awning",
       "club": "shops",
-      "other": "bus",
+      "other": "hedges",
       "archetype": "project",
-      "text": "A rail along our windows at nose height. The spotters know whose.",
-      "subject": "signage",
+      "text": "A window in the hedge, for one hat. The hedge will hardly notice.",
+      "subject": "hedges",
       "butt": "thing",
       "shape": "undercut"
     },
@@ -20,7 +20,7 @@
       "club": "brass",
       "other": "kites",
       "archetype": "swap",
-      "text": "The band asks for the hilltop. Then the sky above it. Kites, the rest.",
+      "text": "Give the band kite day. And the day after, for the encores.",
       "subject": "kites",
       "butt": "visitor",
       "shape": "escalation"
@@ -30,10 +30,10 @@
       "visitor": "wimble",
       "club": "veg",
       "archetype": "vanity",
-      "text": "A gold rosette for you at every show. Cuthbert entered you as a pumpkin.",
+      "text": "First prize at every show. Cuthbert has entered you as 'other'.",
       "subject": "vanity",
       "butt": "self",
-      "shape": "undercut"
+      "shape": "form-misapplied"
     },
     {
       "id": "pres-timetable-in-windows",
@@ -63,10 +63,10 @@
       "club": "brass",
       "other": "shops",
       "archetype": "fee",
-      "text": "The band will pay to rehearse in the arcade. The windows hum, 4 % flat.",
+      "text": "The band will hire a shop window. Display: ONE CORNET, IN USE.",
       "subject": "bandstands",
       "butt": "thing",
-      "shape": "statistic"
+      "shape": "slogan"
     },
     {
       "id": "pres-tills-teas-bandstand",
@@ -74,10 +74,10 @@
       "club": "shops",
       "other": "brass",
       "archetype": "swap",
-      "text": "Let us name the national bandstand. Till's Teas has an idea.",
-      "subject": "bandstands",
-      "butt": "visitor",
-      "shape": "callback"
+      "text": "Lend us the national bandstand for hats. The band may stay, as stands.",
+      "subject": "hats",
+      "butt": "thing",
+      "shape": "undercut"
     },
     {
       "id": "pres-inquiry-into-mild",
@@ -86,7 +86,7 @@
       "club": "veg",
       "other": "kites",
       "archetype": "committee",
-      "text": "An inquiry into 'mild' in forecasts. The onions want it defined.",
+      "text": "An inquiry into 'mild' in kite forecasts. Onions want it defined.",
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
@@ -98,7 +98,7 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "project",
-      "text": "Clip the hedge by the kite field into a clock. Right to the nearest season.",
+      "text": "Clip the kite field hedge into a clock. Accurate to the nearest season.",
       "subject": "hedges",
       "butt": "thing",
       "shape": "undercut",
@@ -123,8 +123,8 @@
       "club": "veg",
       "other": "kites",
       "archetype": "swap",
-      "text": "Give the weigh-in the dry Saturday. Kites can have the next, in spring.",
-      "subject": "picnic-weather",
+      "text": "Give the onion show the dry Saturday. Kites get the next, in spring.",
+      "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "undercut"
     },
@@ -134,7 +134,7 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "project",
-      "text": "Kites fly 12 % better off mown grass. Mow a field by the hedges.",
+      "text": "Ladders for the hedges of Gusting Heights. 31 kites are waiting.",
       "subject": "kites",
       "butt": "thing",
       "shape": "statistic"
@@ -144,12 +144,12 @@
       "visitor": "goss",
       "club": "hedges",
       "archetype": "basket",
-      "text": "A desk fountain for you. It gurgles whenever you are right.",
+      "text": "A desk fountain. It gurgles when you are right. It never stops.",
       "subject": "fountains",
       "butt": "lobbyist",
       "shape": "undercut",
       "favour": {
-        "text": "About the desk fountain: it has entered the hedge show, and would like to win.",
+        "text": "Your desk fountain has entered the hedge show. It expects to win.",
         "clippings": {
           "sign": "FOUNTAIN WINS HEDGE SHOW; HEDGES DAMP AND DISMAYED",
           "refuse": "FOUNTAIN SENT BACK. IT HAS NOT GURGLED SINCE"
@@ -190,9 +190,9 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "fee",
-      "text": "We will pay to fly over the hedge show. Each kite will apply in writing.",
+      "text": "We will pay to fly over the hedge show. Each kite has signed: I WILL NOT LAND.",
       "subject": "kites",
-      "butt": "office",
+      "butt": "thing",
       "shape": "form-misapplied"
     },
     {
@@ -202,7 +202,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "committee",
-      "text": "A study of how far the band carries. From the lake, then the next lake.",
+      "text": "A study of how far the band carries: from the lake, then the next lake.",
       "subject": "committees",
       "butt": "committee",
       "shape": "escalation",
@@ -214,10 +214,10 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "fee",
-      "text": "We will pay to have no wind on show day. Gwendolyn is pricing it.",
-      "subject": "picnic-weather",
-      "butt": "office",
-      "shape": "form-misapplied"
+      "text": "We will sponsor the kite festival if kites keep in line. We drew the lines.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "literalism"
     },
     {
       "id": "pres-quiet-competition-photo",
@@ -225,7 +225,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "treat",
-      "text": "Sit in the Quiet Competition. Rodney will photograph you, quietly.",
+      "text": "Sit with the anglers, for the front page. The band will whisper.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "photo-op"
@@ -248,7 +248,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "treat",
-      "text": "Log the 7:02 for the camera, from the milliner's doorway.",
+      "text": "Log a coach for the camera at the milliner's. It is already logged.",
       "subject": "buses",
       "butt": "self",
       "shape": "photo-op"
@@ -258,13 +258,13 @@
       "visitor": "loft",
       "cosigner": "minute",
       "club": "kites",
-      "other": "brass",
+      "other": "hedges",
       "archetype": "committee",
-      "text": "A working group to share the hill with the band. Alternate gusts.",
+      "text": "A kite festival working group. Item one: move the hedges.",
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The working group asks for a second hill, to try the rota on."
+      "biggerStudy": "The festival group must meet again. The hedges did not attend."
     },
     {
       "id": "pres-shh-signs",
@@ -272,10 +272,10 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "project",
-      "text": "SHH signs round the lake. One on the bandstand saying SHHH.",
-      "subject": "signage",
+      "text": "A lid for the national bandstand. With a hole, for applause.",
+      "subject": "bandstands",
       "butt": "thing",
-      "shape": "slogan"
+      "shape": "undercut"
     },
     {
       "id": "pres-rosette-at-kite-festival",
@@ -298,9 +298,9 @@
       "butt": "lobbyist",
       "shape": "slogan",
       "favour": {
-        "text": "About the barometer: it would like the 7:02 held each morning until it has decided.",
+        "text": "About the barometer: it wants the 8:15 held until it has decided.",
         "clippings": {
-          "sign": "PRESIDENT HOLDS 7:02 FOR BAROMETER; SPOTTERS LOG DELAY",
+          "sign": "PRESIDENT HOLDS 8:15 FOR BAROMETER; SPOTTERS LOG DELAY",
           "refuse": "BAROMETER SENT BACK. IT SAW THIS COMING"
         }
       }
@@ -322,7 +322,7 @@
       "club": "veg",
       "other": "kites",
       "archetype": "project",
-      "text": "Kites landed on the patch 12 times. One came second. A net, please.",
+      "text": "Kites landed in the prize beds 12 times. One came second. A net, please.",
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "statistic"
@@ -373,14 +373,14 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The nose-print inquiry asks for a second window. The first is evidence."
+      "biggerStudy": "The inquiry needs a second window. The first is evidence."
     },
     {
       "id": "pres-speeches-in-gilt",
       "visitor": "fenn",
       "club": "anglers",
       "archetype": "vanity",
-      "text": "Your speeches in gilt. Mildred found them all FOR FURTHER STUDY.",
+      "text": "Your speeches in gilt, beside the founding napkin. The napkin reads better.",
       "subject": "paperwork",
       "butt": "self",
       "shape": "callback"
@@ -403,10 +403,10 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "project",
-      "text": "A bandstand by the lake, then a jetty, then a raft for the drum.",
+      "text": "A bandstand by the lake. The anglers have gone very quiet.",
       "subject": "bandstands",
       "butt": "thing",
-      "shape": "escalation"
+      "shape": "undercut"
     },
     {
       "id": "pres-mild-then-president",
@@ -422,9 +422,9 @@
       "id": "pres-lake-pipe-tap",
       "visitor": "gourdley",
       "club": "veg",
-      "other": "anglers",
+      "other": "brass",
       "archetype": "project",
-      "text": "Pipe the anglers' lake to the patch. Open the tap for the camera.",
+      "text": "An onion bed on the bandstand lawn. Dig the first hole, for the camera.",
       "subject": "gardens",
       "butt": "self",
       "shape": "photo-op"
@@ -446,7 +446,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A plaque on the draper's window: THE 7:02 WAS ON TIME HERE, ONCE.",
+      "text": "A plaque on the draper's window: THE 8:15 WAS ON TIME HERE, ONCE.",
       "subject": "signage",
       "butt": "thing",
       "shape": "slogan"
@@ -468,7 +468,7 @@
       "club": "veg",
       "other": "bus",
       "archetype": "fee",
-      "text": "We will hire the 7:02 on show day. Turnips only, one per seat.",
+      "text": "We will hire the 8:15 on show day. Onions only, one per seat.",
       "subject": "vegetable-shows",
       "butt": "office",
       "shape": "form-misapplied"

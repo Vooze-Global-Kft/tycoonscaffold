@@ -14,7 +14,8 @@
  *   (`emptySince`), or later at the moment cash first pays a purchase above what a slip keeps back
  *   (advice.ts `slipNeed`; slips.ts `slipFor`, P1a, carries it);
  * - the Standing Order (5.10): it buys the advised level at the moment cash reaches 3 × its price plus
- *   the reserve (grants.ts); never while away (the away rules never tick).
+ *   the reserve (grants.ts), never inside the player's take-back window (it waits for the 2 s), never
+ *   while away (the away rules never tick).
  * Nothing else moves with time. Every event time follows from the state and the anchor alone, never
  * from where a tick ends, so tick(a + b) = tick(a) then tick(b) bit for bit (tick.split.test.ts); the
  * bot steps from event to event with `nextStop`. Events due at the same moment run in the order
@@ -126,7 +127,7 @@ function eventTimes(cfg: DecreeConfig, g: DecreeGame): Record<TickEvent, number>
     const need = slipNeed(cfg, g);
     if (need !== null) out.slip = Math.max(d.emptySince + cfg.decree.desk.slipDelay, timeCashReaches(a, above(need)));
   }
-  if (live && standingOrderActive(cfg, g)) {
+  if (live && !d.pending && standingOrderActive(cfg, g)) {
     const pick = standingOrderPick(cfg, g);
     if (pick) out.order = timeCashReaches(a, above(cfg.decree.standingOrder.times * pick.price + reserveNow(cfg, g)));
   }

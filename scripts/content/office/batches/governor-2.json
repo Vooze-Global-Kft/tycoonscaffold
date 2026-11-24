@@ -9,7 +9,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "project",
-      "text": "A bandstand for the tuba alone, by the water. The band asked.",
+      "text": "A bandstand for the tuba alone, by the water. The band insists.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "undercut",
@@ -20,10 +20,10 @@
       "visitor": "spinwell",
       "club": "bus",
       "archetype": "vanity",
-      "text": "Your name on every bus. Then every stop. Then every destination.",
+      "text": "Pose with every bus in the province. One frame per bus.",
       "subject": "vanity",
       "butt": "self",
-      "shape": "escalation"
+      "shape": "photo-op"
     },
     {
       "id": "gov2-pond-sign",
@@ -31,7 +31,7 @@
       "club": "anglers",
       "other": "veg",
       "archetype": "project",
-      "text": "A sign by the pond, facing the pumpkins: LOOK AT SOMETHING ELSE.",
+      "text": "A sign on the pond, for the growers: THIS IS NOT A WATERING CAN.",
       "subject": "signage",
       "butt": "thing",
       "shape": "slogan",
@@ -43,7 +43,7 @@
       "club": "bus",
       "other": "brass",
       "archetype": "swap",
-      "text": "The bandstand overlooks four bus stops. Spotters ask for Sundays.",
+      "text": "The bandstand, for spotting: four stops; five if the band sits.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "statistic",
@@ -68,20 +68,20 @@
       "club": "shops",
       "other": "veg",
       "archetype": "committee",
-      "text": "A review: is a pumpkin in a window a display, or a vegetable?",
+      "text": "A study of pumpkins in windows: one a display, two a show, three a harvest.",
       "subject": "committees",
       "butt": "committee",
-      "shape": "literalism",
+      "shape": "escalation",
       "portable": true,
-      "biggerStudy": "The review finds it is both. It asks for a third category."
+      "biggerStudy": "Four pumpkins now. The study asks for the shop next door."
     },
     {
       "id": "gov2-step-outside",
-      "visitor": "kerb",
+      "visitor": "sprott",
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A step for spotters outside the shops. Facing the road. Mostly.",
+      "text": "Print bus times on every shop awning. Shade, with footnotes.",
       "subject": "buses",
       "butt": "thing",
       "shape": "undercut"
@@ -92,7 +92,7 @@
       "club": "brass",
       "other": "shops",
       "archetype": "swap",
-      "text": "A shop window for the tuba, please. Then the cornets. Then the drum.",
+      "text": "The hat shop's window for the cornets this week. The tuba's next.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "escalation"
@@ -123,7 +123,7 @@
       "id": "gov2-thimble",
       "visitor": "bellows",
       "club": "brass",
-      "other": "anglers",
+      "other": "shops",
       "archetype": "treat",
       "text": "Receive the Brass Thimble on the steps. Hold it up, so it shows.",
       "subject": "ceremonies",
@@ -137,7 +137,7 @@
       "club": "veg",
       "other": "brass",
       "archetype": "swap",
-      "text": "The bandstand for the pumpkins in autumn. They have never had a roof.",
+      "text": "The bandstand for our pumpkins in autumn. They listened all summer.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "undercut",
@@ -149,10 +149,10 @@
       "club": "shops",
       "other": "brass",
       "archetype": "fee",
-      "text": "The Guild will sponsor the sheet music. Each page ends: SEE OUR HATS.",
-      "subject": "hats",
+      "text": "We will sponsor the rests in the band's music. Our windows enjoy those.",
+      "subject": "bandstands",
       "butt": "thing",
-      "shape": "slogan"
+      "shape": "literalism"
     },
     {
       "id": "gov2-window-bus-seen",
@@ -161,12 +161,12 @@
       "club": "bus",
       "other": "shops",
       "archetype": "committee",
-      "text": "A committee to decide whether a bus seen in a shop window counts as seen.",
-      "subject": "committees",
-      "butt": "committee",
-      "shape": "form-misapplied",
+      "text": "Buses slow 9 % by the hat shop. A committee will ask the hats why.",
+      "subject": "hats",
+      "butt": "thing",
+      "shape": "statistic",
       "portable": true,
-      "biggerStudy": "The committee has seen a bus in a puddle. It asks for a year."
+      "biggerStudy": "The hats have not answered. The committee will wait a year, outside."
     },
     {
       "id": "gov2-napkin-window",
@@ -174,7 +174,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "project",
-      "text": "A copy of the founding napkin for a shop window. Pressed, for once.",
+      "text": "A copy of the founding napkin for our window. Pressed, for once.",
       "subject": "ceremonies",
       "butt": "thing",
       "shape": "callback"
@@ -189,9 +189,9 @@
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
-        "text": "The spoon's hat would like a shop window of its own. The best one.",
+        "text": "The spoon's hat asks to judge the shop windows. It has seen so many.",
         "clippings": {
-          "sign": "SPOON'S HAT GETS BEST WINDOW; GOVERNOR CUTS RIBBON",
+          "sign": "SPOON'S HAT JUDGES WINDOWS; GOVERNOR HOLDS SPOON",
           "refuse": "HAT SENT BACK; SPOON BAREHEADED BUT CALM"
         }
       }
@@ -202,7 +202,7 @@
       "club": "anglers",
       "other": "bus",
       "archetype": "swap",
-      "text": "Move the bus stop off the bridge. Each bus makes four anglers look up.",
+      "text": "Move the bus stop off the bridge. We have looked up 212 times this spring.",
       "subject": "buses",
       "butt": "thing",
       "shape": "statistic"
@@ -217,7 +217,7 @@
       "text": "A working group on whether an onion may be applauded, or only the band.",
       "subject": "committees",
       "butt": "committee",
-      "shape": "literalism",
+      "shape": "form-misapplied",
       "biggerStudy": "Somebody clapped. The working group asks for a further year."
     },
     {
@@ -238,7 +238,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "fee",
-      "text": "The band will hire the riverbank to rehearse quietly. For a band.",
+      "text": "The band will hire the riverbank. The tuba will stay in its case.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "undercut"
@@ -249,7 +249,7 @@
       "club": "anglers",
       "other": "shops",
       "archetype": "swap",
-      "text": "Muffle the shop bells by the river. Unmuffling on written request.",
+      "text": "Muffle the shop bells by the river. Unmuffling by written request.",
       "subject": "paperwork",
       "butt": "office",
       "shape": "form-misapplied"
@@ -261,11 +261,11 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "committee",
-      "text": "An inquiry into which way up sheet music goes. Then which way round.",
+      "text": "An inquiry into conducting. It will wave its arms by the canal, to learn.",
       "subject": "committees",
       "butt": "committee",
-      "shape": "escalation",
-      "biggerStudy": "The inquiry has found a third way up. It needs a year to try it."
+      "shape": "literalism",
+      "biggerStudy": "The inquiry can now conduct. It asks for a band to practise on."
     },
     {
       "id": "gov2-provincial-grapes",
@@ -290,10 +290,10 @@
       "club": "veg",
       "other": "anglers",
       "archetype": "swap",
-      "text": "Lend us the pond on Tuesdays, for watering. Down about one heron.",
+      "text": "A corner of the riverbank for one bean row. The beans have plans.",
       "subject": "gardens",
       "butt": "thing",
-      "shape": "statistic"
+      "shape": "escalation"
     },
     {
       "id": "gov2-brass-bunting",
@@ -310,12 +310,12 @@
       "id": "gov2-pose-anglers",
       "visitor": "dabble",
       "club": "anglers",
-      "other": "brass",
+      "other": "veg",
       "archetype": "treat",
-      "text": "Pose with the Anglers for a photograph. Keep still until autumn.",
+      "text": "Sit through the Quiet Competition. Rodney may take one quiet photograph.",
       "subject": "portraits",
-      "butt": "self",
-      "shape": "photo-op"
+      "butt": "staff",
+      "shape": "callback"
     },
     {
       "id": "gov2-bus-sign",
@@ -335,7 +335,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "swap",
-      "text": "Give the band's Sunday to the Anglers. They will do nothing with it.",
+      "text": "Give the Circle the band's Thursday. Bands welcome, empty-handed.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "undercut",
@@ -346,7 +346,7 @@
       "visitor": "spinwell",
       "club": "brass",
       "archetype": "vanity",
-      "text": "Your signature on every tuba. Then every cornet. Then the triangle.",
+      "text": "Your signature round the tuba. It continues on the euphonium.",
       "subject": "vanity",
       "butt": "self",
       "shape": "escalation"
@@ -367,14 +367,14 @@
     },
     {
       "id": "gov2-teas-riverbank",
-      "visitor": "till",
+      "visitor": "awning",
       "club": "shops",
       "other": "anglers",
       "archetype": "swap",
-      "text": "Till's Teas would like tables on the riverbank. Whispered orders.",
-      "subject": "gardens",
+      "text": "The Circle's stools for our hats, please. The hats ask for footrests.",
+      "subject": "hats",
       "butt": "thing",
-      "shape": "callback"
+      "shape": "escalation"
     },
     {
       "id": "gov2-name-the-bus",
@@ -405,8 +405,8 @@
       "club": "veg",
       "other": "bus",
       "archetype": "project",
-      "text": "A platform by the pumpkins, facing the pumpkins. Not the road.",
-      "subject": "vegetable-shows",
+      "text": "Leeks along the bus station roof. The buses never look up.",
+      "subject": "gardens",
       "butt": "thing",
       "shape": "undercut"
     },
@@ -427,10 +427,10 @@
       "club": "veg",
       "other": "bus",
       "archetype": "fee",
-      "text": "We will pay to list our show in the timetable. Then results. Then weights.",
+      "text": "We will hire the departure board on show day: ALL BUSES CALL AT THE MARROWS.",
       "subject": "vegetable-shows",
       "butt": "thing",
-      "shape": "escalation"
+      "shape": "slogan"
     },
     {
       "id": "gov-noise-group",
@@ -451,7 +451,7 @@
       "club": "veg",
       "other": "brass",
       "archetype": "project",
-      "text": "A sign by the vegetable beds: PUMPKINS GROWING. NO TUBA.",
+      "text": "A sign by the prize beds: PUMPKINS AT WORK. TUBA BY APPOINTMENT.",
       "subject": "signage",
       "butt": "thing",
       "shape": "slogan"

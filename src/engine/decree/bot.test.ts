@@ -172,7 +172,7 @@ describe('H1 to H6 on synthetic traces', () => {
     expect(B.h2(trace({ elections: [elec({ pollShares: [5100, 4900, 5200, 4800, 5299] }), elec({ order: [0, 1, 2, 3, 4] })] }))).toEqual({ differences: 1, orderWrong: 1 });
   });
   it('H3 counts take-backs and reloads that did not restore', () => {
-    expect(B.h3(trace({ takeBacks: [{ t: 1, same: true }, { t: 2, same: false }], reloads: [{ t: 1, same: false }] }))).toEqual({ takeBacksWrong: 1, reloadsWrong: 1 });
+    expect(B.h3(trace({ takeBacks: [{ t: 1, same: true }, { t: 2, same: false }], reloads: [{ t: 1, same: false }] }))).toEqual({ takeBacksWrong: 1, reloadsWrong: 1, windowsCut: 0 });
   });
   it('H4 counts wrong pay, moved state, extra papers and clock-jump faults', () => {
     const a = (over: Partial<B.AwayRec>): B.AwayRec => ({ t: 0, seconds: 60, earnings: 21, expected: 21, adTopUp: 0, arrived: 0, expectedArrivedAtMost: 0, unchanged: true, what: '', ...over });
@@ -320,6 +320,26 @@ describe('evaluate and acrossSeeds', () => {
     expect(get('H10 money cannot reach the vote')).toMatchObject({ ok: true, num: 2 });
     expect(get('H6 reader from alwaysRefuse\'s state wins within 2 elections').ok).toBe(true);
     expect(get('H12 no gossip spiral: approval from below 35 to 50 within 80 papers').ok).toBe(true);
+  });
+  it('H1 money: a millionth of the amount, or the float resolution of the treasury it was added to', () => {
+    expect(B.moneyTol(500, 0)).toBeCloseTo(5e-4, 12);
+    expect(B.moneyTol(500, 1e20)).toBeGreaterThan(1e4);
+    const big = 1e20;
+    const spent = big + 123456 - big;
+    expect(Math.abs(spent - 123456)).toBeLessThanOrEqual(B.moneyTol(123456, big + 123456));
+    const h = B.h1(trace({ decisions: [dec({ printed: { money: 123456, moods: [0, 0, 0], level: null, gossip: 0 }, applied: { money: spent, moods: [0, 0, 0], level: null, gossip: 0 }, cashScale: big })] }));
+    expect(h.differences).toBe(0);
+    expect(B.h1(trace({ decisions: [dec({ applied: { money: -11, moods: [4, -4, 0], level: null, gossip: 0 }, cashScale: 1000 })] })).differences).toBe(1);
+  });
+  it('a decision committed out of the bot\'s sight is not compared; the cut window is an H3 fault', () => {
+    expect(B.h1(trace({ decisions: [dec({ unmeasured: true, applied: { money: 0, moods: [0, 0, 0], level: null, gossip: 0 } })] })).differences).toBe(0);
+    expect(B.h3({ takeBacks: [], reloads: [], faults: ['H3: the take-back window of x ended before its 2 s'] }).windowsCut).toBe(1);
+  });
+  it('a handover run holds only the rows every trace holds (H6 and H12 are acrossSeeds\')', () => {
+    const cfg = decreeTestConfig();
+    const rows = B.evaluate(cfg, trace({ handover: { habit: 'alwaysRefuse', at: 7200 }, ended: 3 * 3600 + 7200 }));
+    expect(rows.some((r) => r.name.startsWith('H7') || r.name.startsWith('H8') || r.name.startsWith('8.4'))).toBe(false);
+    expect(rows.some((r) => r.name.startsWith('H1 '))).toBe(true);
   });
   it('D19: the hour-one text gate is hard for the reader, always-refuse and random, a report for ad-everything', () => {
     const cfg = decreeTestConfig();

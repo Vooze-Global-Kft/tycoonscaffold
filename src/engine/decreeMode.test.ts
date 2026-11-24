@@ -105,20 +105,50 @@ describe('the decree engine mode', () => {
     expect(M.income(cfg, g, FIXTURE_NOW)).toBeCloseTo(cfg.decree.away.rate * I, 12);
   });
 
-  it('offline returns zero on the skeleton; entitle changes nothing now; roundPayout is roundDibs', () => {
+  it('offline is the closed form of 2.15 (paid on compute, a report); entitle changes nothing now; roundPayout is roundDibs', () => {
     const g = freshState(cfg);
     const off = M.offline(cfg, g, FIXTURE_NOW + 3_600_000);
-    expect(off.seconds).toBe(0);
-    expect(off.earnings).toBe(0);
+    expect(off.seconds).toBe(3600);
+    expect(off.earnings).toBe(R.roundDibs(cfg, cfg.decree.away.rate * R.decreeParams(cfg, g).I * 3600));
+    expect(off.report).toMatchObject({ seconds: 3600, earnings: off.earnings, capped: false });
+    expect(M.offline(cfg, g, FIXTURE_NOW - 5).earnings).toBe(0);
+    expect(M.mergeReport!(off.report, off.report)).toMatchObject({ seconds: 7200, earnings: 2 * off.earnings });
+    expect(M.offlineAdMultiplier!(cfg)).toBe(1.5);
     expect(M.entitle!(cfg, g, 'office_long_lunch')).toBe(g);
     expect(M.roundPayout!(cfg, 1234.4)).toBe(1230);
     expect(M.roundPayout!(cfg, 999.5)).toBe(1000);
     expect(M.roundPayout!(cfg, 12.5)).toBe(13);
   });
 
-  it('prestige is refused while its rules are not built (the store asks canPrestige first)', () => {
+  it('prestige is refused (the same object) unless canPrestige: the result sheet after a win with both requirements', () => {
     const g = freshState(cfg);
-    expect(() => M.canPrestige!(cfg, g)).toThrow(R.NotBuiltError);
+    expect(M.canPrestige!(cfg, g)).toBe(false);
+    expect(M.prestige(cfg, g, FIXTURE_NOW)).toBe(g);
+  });
+
+  it("reconcile keeps the term's own fields of a save (the result sheet, the application slots) and repairs broken ones", () => {
+    const base = baseGameState(FIXTURE_NOW);
+    const g = freshState(cfg, 3);
+    const result = { won: true, nrGained: 7, meritHeld: 4, meritSweep: false, carried: [2], resigned: null };
+    const onSheet = { ...g, decree: { ...g.decree, phase: 'result' as const, count: { districts: [], order: [], held: 4, majority: 3, won: true, sweep: false, rival: 'x' }, result, appSlotsUsed: 2 } };
+    const back = M.reconcile(cfg, base, JSON.parse(JSON.stringify(onSheet))) as R.DecreeGame;
+    expect(back.decree.result).toEqual(result);
+    expect(back.decree.appSlotsUsed).toBe(2);
+    for (const junk of [{ result: 'x', appSlotsUsed: 'y' }, { result: { won: 'yes' }, appSlotsUsed: -4 }, { result: null, appSlotsUsed: 1e9 }, { appSlotsUsed: Number.NaN }]) {
+      const raw = JSON.parse(JSON.stringify({ ...onSheet, decree: { ...onSheet.decree, ...junk } }));
+      const r = M.reconcile(cfg, base, raw) as R.DecreeGame;
+      expect(stateProblems(cfg, r)).toEqual([]);
+      expect(r.decree.result === undefined || r.decree.result === null || typeof r.decree.result.won === 'boolean').toBe(true);
+      expect(r.decree.appSlotsUsed === undefined || (r.decree.appSlotsUsed >= 0 && r.decree.appSlotsUsed <= cfg.decree.forms.application.days.length)).toBe(true);
+    }
+    // A result outside the count and the result sheet is not kept.
+    const stale = M.reconcile(cfg, base, JSON.parse(JSON.stringify({ ...onSheet, decree: { ...onSheet.decree, phase: 'governing' } }))) as R.DecreeGame;
+    expect(stale.decree.result ?? null).toBeNull();
+    // Every fixture state survives a save and a load unchanged (but the tick's anchor, which is rebuilt).
+    for (const s of Object.values(decreeFixtures(cfg))) {
+      const r = M.reconcile(cfg, base, JSON.parse(JSON.stringify(s))) as R.DecreeGame;
+      expect({ ...r.decree, cashAnchor: null }).toEqual({ ...JSON.parse(JSON.stringify(s.decree)), cashAnchor: null });
+    }
   });
 });
 
@@ -142,9 +172,11 @@ describe('the decree block: defaults, ranges and the shipped placeholder', () =>
       [7, 9, 5],
     ].map(([c, n, m], i) => [c, n, m, [4, 6, 8][i]]));
     // 2.11 with D15: Y(n) = 2^(n+1) − 2; after 5 consecutive losses every district is held at any pull up to 12.
-    expect([0, 1, 2, 3, 4, 5].map(R.disarray)).toEqual([0, 2, 6, 14, 30, 62]);
-    for (const o of d.offices) expect(R.disarray(d.ladder.maxLossesBound) - o.rivalPull).toBeGreaterThanOrEqual(50);
-    expect(R.disarray(5) - 12).toBeGreaterThanOrEqual(50);
+    expect([0, 1, 2, 3, 4, 5, 6].map((n) => R.disarray(n, d.paperRules.disarray))).toEqual([0, 2, 6, 14, 30, 62, 126]);
+    // With D25 the worst share is Y(n) − R + u(0) (u(0) = −60): a certain win after maxLossesBound (6) losses at any pull up to 12.
+    for (const o of d.offices) expect(R.disarray(d.ladder.maxLossesBound, d.paperRules.disarray) - o.rivalPull + R.moodUtility(d.count, 0)).toBeGreaterThanOrEqual(50);
+    expect(R.disarray(6, d.paperRules.disarray) - 12 + R.moodUtility(d.count, 0)).toBeGreaterThanOrEqual(50);
+    for (const o of [0, 1, 2]) expect(R.certainWinBound(d, o)).toBeLessThanOrEqual(d.ladder.maxLossesBound);
     expect(d.offices.map((o) => o.rivalPull), 'D15: the pull starts at 3 / 4 / 5').toEqual([3, 4, 5]);
     expect(d.twists.pairs).toHaveLength(45);
     expect(d.twists.triples).toHaveLength(120);

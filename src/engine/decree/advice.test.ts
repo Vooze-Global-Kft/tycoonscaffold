@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as R from '../decree';
-import { built, decreeTestConfig } from '../fixtures/decree';
+import { built, decreeTestConfig, freshState } from '../fixtures/decree';
 
 const cfg = decreeTestConfig();
 const c = cfg.decree;
@@ -125,5 +125,84 @@ describe('the goal line (2.16)', () => {
     // With "Junior Clerk on Duty" (D11) it is there from the first day.
     const owned = { ...built({ cash: 0 }, cfg), entitlements: { ...g.entitlements, products: [c.products.standingOrder] } };
     expect(R.standingOrderAvailable(cfg, owned)).toBe(true);
+  });
+});
+
+describe('the grants of 5.11 (play-clock cooldowns, per-term limits)', () => {
+  it('Check the Sofa: +checkSofaSeconds of B once a term, booked as its own source', () => {
+    const g = built({ cash: 0, ministries: [6, 3], desk: 'test-mayor-bus-swap-1' }, cfg);
+    const x = R.grantAd(cfg, g, 'checkSofa', []);
+    expect(x.cash).toBe(R.roundDibs(cfg, c.ads.checkSofaSeconds * R.decreeParams(cfg, g).B));
+    expect(x.decree.stats.book.checkSofa).toBe(x.cash);
+    expect(R.canWatchAd(cfg, x, 'checkSofa')).toBe(false);
+    expect(R.grantAd(cfg, x, 'checkSofa', [])).toBe(x);
+  });
+
+  it('Open the Doors fills the in-tray now, then waits its play-clock cooldown', () => {
+    const g = built({ cash: 0, clock: 100, ministries: [6, 3], desk: 'test-mayor-bus-swap-1' }, cfg);
+    const x = R.grantAd(cfg, g, 'openDoors', []);
+    expect(x.decree.tray).toHaveLength(c.desk.trayCap);
+    expect(x.decree.cooldowns.openDoors).toBe(100 + c.ads.openDoorsCooldown);
+    expect(R.canWatchAd(cfg, x, 'openDoors')).toBe(false);
+    const later = { ...x, decree: { ...x.decree, tray: [] }, stats: { ...x.stats, playSeconds: 100 + c.ads.openDoorsCooldown } };
+    expect(R.canWatchAd(cfg, later, 'openDoors')).toBe(true);
+  });
+
+  it('the Courier ends a boycott and the Spin Doctor "Say nothing", with no mood change; neither without its trouble', () => {
+    const b = built({ moods: [50, 50, 15], boycott: { club: 2 }, desk: 'test-mayor-bus-swap-1' }, cfg);
+    const x = R.grantAd(cfg, b, 'courier', []);
+    expect(x.decree.strikes[2]).toBeNull();
+    expect(x.decree.moods).toEqual(b.decree.moods);
+    const calm = built({ desk: 'test-mayor-bus-swap-1' }, cfg);
+    expect(R.grantAd(cfg, calm, 'courier', [])).toBe(calm);
+    expect(R.grantAd(cfg, calm, 'spinDoctor', [])).toBe(calm);
+    const sc = built({ gossip: 4, scandal: { papersLeft: 5, factor: 0.8 }, desk: 'test-mayor-bus-swap-1' }, cfg);
+    const y = R.grantAd(cfg, sc, 'spinDoctor', []);
+    expect(y.decree.scandal).toBeNull();
+    expect(y.decree.gossip).toBe(0);
+    expect(y.decree.moods).toEqual(sc.decree.moods);
+  });
+
+  it('products: Long Lunch lengthens the away cap, the cosmetics are flags; none touches a mood, the poll or the count', () => {
+    const g = built({ desk: 'test-mayor-bus-swap-1' }, cfg);
+    const all = { ...g, entitlements: { ...g.entitlements, products: Object.values(c.products) } };
+    expect(R.cosmetics(cfg, all)).toEqual({ walnutDesk: true, portraitFrames: true });
+    expect(R.cosmetics(cfg, g)).toEqual({ walnutDesk: false, portraitFrames: false });
+    expect(R.awayCap(cfg, all)).toBe((c.away.capHours + c.away.longLunchHours) * 3600);
+    expect(R.poll(cfg, all)).toEqual(R.poll(cfg, g));
+    expect(R.decreeParams(cfg, all)).toEqual(R.decreeParams(cfg, g));
+    for (const id of Object.values(c.products)) expect(R.entitleDecree(cfg, g, id)).toBe(g);
+  });
+});
+
+describe("the pen's hints (3.1)", () => {
+  it('paper 1 down to the drawer, paper 2 up to the out-tray, the first slip; nothing after', () => {
+    const g = freshState(cfg);
+    expect(R.hintsFor(cfg, g)).toEqual(['paper', 'drawer']);
+    const after1 = R.decide(cfg, g, 'refuse', 0, []);
+    const desk = after1.decree.desk;
+    if (desk?.type === 'paper' && desk.paper.kind === 'scripted') expect(R.hintsFor(cfg, after1)).toEqual(['paper', 'outTray']);
+    const slip = built({ cash: 5_000, ministries: [5, 2], desk: null }, cfg);
+    const s = R.advanceDecree(cfg, slip, 2, 0);
+    expect(s.decree.desk?.type).toBe('slip');
+    expect(R.hintsFor(cfg, { ...s, decree: { ...s.decree, office: 0, term: 1 } })).toEqual(['slip']);
+    const taken = R.decide(cfg, s, 'sign', s.stats.playSeconds, []);
+    expect(R.hintsFor(cfg, taken)).toEqual([]);
+    expect(R.hintsFor(cfg, built({ office: 1, desk: 'test-governor-bus-swap-1' }, cfg))).toEqual([]);
+  });
+});
+
+describe('the Standing Order and the take-back window (2.7, 5.10)', () => {
+  it('Cuthbert Wimble never ends the 2 s: he waits until the pending paper commits', () => {
+    const g0 = built({ office: 1, term: c.standingOrder.fromGovernorTerm, cash: 1e9, ministries: [5, 3], desk: 'test-governor-bus-treat-1', pending: true }, cfg);
+    const g = R.setStandingOrder(cfg, g0, true);
+    expect(R.standingOrderStep(cfg, g, [])).toBe(g);
+    const until = g.decree.pending!.until;
+    const mid = R.advanceDecree(cfg, g, (until - g.stats.playSeconds) / 2, 0);
+    expect(mid.decree.pending).not.toBeNull();
+    expect(mid.decree.ministries).toEqual(g.decree.ministries);
+    const after = R.advanceDecree(cfg, g, until - g.stats.playSeconds + 0.5, 0);
+    expect(after.decree.pending).toBeNull();
+    expect(after.decree.ministries.reduce((s, m) => s + m.level, 0)).toBeGreaterThan(g.decree.ministries.reduce((s, m) => s + m.level, 0));
   });
 });

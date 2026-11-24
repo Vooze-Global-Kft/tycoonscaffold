@@ -142,12 +142,13 @@ export function setStandingOrder(cfg: DecreeConfig, g: DecreeGame, on: boolean):
   return withDecree(g, { standingOrder: on });
 }
 
-/** The Standing Order's purchase now, if cash is at 3 × the advised level's price plus the reserve (tick.ts runs it at that moment); the same object otherwise. Built. */
+/** The Standing Order's purchase now, if cash is at 3 × the advised level's price plus the reserve and no paper rests in its take-back window (tick.ts runs it at that moment, after the window); the same object otherwise. Built. */
 export function standingOrderStep(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent[]): DecreeGame {
-  if (!standingOrderActive(cfg, g)) return g;
+  // Never inside the player's take-back window (2.7: Wimble is not "the next action"; slips.ts `buy` with `auto` refuses then too).
+  if (!standingOrderActive(cfg, g) || g.decree.pending) return g;
   const pick = standingOrderPick(cfg, g);
   if (!pick || g.cash < cfg.decree.standingOrder.times * pick.price + reserveNow(cfg, g)) return g;
-  return standIn(buy, () => buy(cfg, g, pick.purchase, pick.price, events), () => g);
+  return standIn(buy, () => buy(cfg, g, pick.purchase, pick.price, events, { auto: true }), () => g);
 }
 
 /** The face picked on the loading card (3.1): one of the six player faces; the same object once one is picked or for an unknown face. Built. */

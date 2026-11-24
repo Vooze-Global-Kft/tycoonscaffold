@@ -83,6 +83,8 @@ export const decreeActions = {
   callElection: () => act('callElection', (cfg, g, clock, ev) => R.callElection(cfg, g, clock, ev), 'call_election'),
   /** 2.6 countVotes(): election night begins (its envelopes sound from the night view). */
   countVotes: () => act('countVotes', (cfg, g, _c, ev) => R.countVotes(cfg, g, ev), null),
+  /** The end of election night (its last envelope, a tap that skips, Android back): the result sheet. Silent (the night view plays its own sounds). */
+  endElectionNight: () => act('endElectionNight', (cfg, g) => R.endElectionNight(cfg, g), null),
   /**
    * 2.6 chooseAfterWin(moveUp | stay), and "Another term here" after a loss. The move goes through the
    * shared prestige (the engine mode's `prestige`, gated by its `canPrestige`), so the store saves and
