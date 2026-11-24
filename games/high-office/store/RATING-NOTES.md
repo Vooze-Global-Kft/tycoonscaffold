@@ -51,9 +51,11 @@ happened; nothing here says a person read or signed the game. Brought in step wi
 24 November 2026 from the listing step's draft (scratchpad store/RATING-NOTES.md). The engineers' reads
 (four sensitivity readers over about 2,190 strings and the 171 registered names; the comedy editors) are
 recorded as theirs in SENSITIVITY-READ.md beside this file, with the notes kept for the owner's read.
+SENSITIVITY-READ.md is unsigned by any person: where the generated section above says "signed by its
+writer", that line is wrong (D9) and its fix in scripts/sync.ts is requested of the lead (store, 24 November).
 
-The store images (screenshots/) show the desk, the poll, election night and the Office wall of the game as
-it is; never the newspaper front page, a run-up paper, the Ledger, a ballot, a flag, a seal, a building or
+The store images (screenshots/) show the desk (two papers and the Treasury Clerk's budget slip), the poll,
+election night at the end of its count and the Office wall of the game as it is; never the newspaper front page, a run-up paper, the Ledger, a ballot, a flag, a seal, a building or
 the goose (policy research 6, D12, D43).
 
 | | |
@@ -65,7 +67,7 @@ the goose (policy research 6, D12, D43).
 | Elections | Against invented computer rivals with a hobby and a slogan (the first is Councillor Prudence Stitchley); decided by numbers shown in advance; no voting procedure is shown beyond a clerk chalking up wards. A lost election costs nothing built. The run-up's campaign papers are public appearances paid from dibs earned in play, while the Shop and the ads are closed |
 | Characters | Editorial-cartoon busts of adults (about 48, drawn in code), six player faces; no children, school, soldier, police, clergy or uniform |
 | Language | Dry official wording; no profanity, no insults aimed at groups; the joke is on the player's own office |
-| Ads | Rewarded video only, started from a button; AdMob "Politics" sensitive category blocked; no banners, no interstitials |
+| Ads | Rewarded video only, started from a button; the AdMob "Politics" sensitive category is to be blocked in the console before submission (REVIEW-NOTES.md checklist); no banners, no interstitials |
 | Purchases | 5 one-time products (D11): Junior Clerk on Duty and Long Lunch (unlock), Walnut & Brass Desk Set and Gilt Portrait Frames (cosmetic), Skip the Ad Videos (skipAds). None random; none reaches a mood, the poll or the count |
 | Random items | None, earned or sold |
 | Gambling, wagers, spins, contests | None: no leaderboard, no player-against-player play |

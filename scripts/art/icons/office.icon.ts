@@ -213,11 +213,10 @@ function wedge(c: SkCanvas, x: number, y: number, deg: number, from: number, len
 // The signature: four uneven humps on a rising line, one small loop after the second, then the tail
 // flies straight on up off the top edge (no hook at the foot, so no "J"; uneven humps, so no "m").
 const SIGNATURE: Pt[] = [
-  [506, 474], [520, 410], [538, 374], [558, 376], [566, 420], [570, 470],
-  [588, 440], [604, 426], [618, 432], [624, 462],
-  [644, 444], [666, 414], [672, 386], [656, 378], [646, 400], [664, 440], [692, 452],
-  [710, 420], [734, 400], [754, 410], [760, 444],
-  [778, 430], [804, 360], [830, 250], [852, 120], [868, -20], [876, -120],
+  [492, 452], [506, 416], [522, 398], [538, 416], [548, 446], [562, 462], [578, 446], [590, 420], [604, 410],
+  [618, 424], [628, 452], [640, 470], [656, 452], [668, 410], [684, 388], [700, 400], [710, 432], [722, 452],
+  [738, 446], [752, 428], [766, 420], [786, 404], [806, 370], [826, 318],
+  [842, 230], [858, 120], [872, 0], [882, -120],
 ];
 
 /**
@@ -226,22 +225,18 @@ const SIGNATURE: Pt[] = [
  */
 const variantSnip: Draw = (c) => {
   drawGround(c, '#C9CCDD', '#8F90AE', [640, 300], 0.3);
-  drawSheet(c, 666, 340, 420, 520, 11, [22, 30], 3);
-  drawSignature(c, SIGNATURE, 58);
-  // the cut point: the gap in the ribbon between the open blades
-  const cx = 244;
-  const cy = 430;
-  drawScissorsOn(c, 268, 600, 10.0, -12, { open: 40, chunky: 2.4, darkSteel: true }, () => {
+  drawSheet(c, 666, 326, 420, 520, 11, [22, 30], 3);
+  drawSignature(c, SIGNATURE, 40);
+  // the scissors: 14 % bigger than round 3's, upright, open on the cut; the ribbon's two pieces end at the blades
+  drawScissorsOn(c, 290, 582, 10.0, -12, { open: 30, chunky: 2.4, darkSteel: true }, () => {
     // the left piece: its cut end forked, springing up and away from the blades
-    drawRibbon(c, [[-40, 540], [90, 520], [160, 486], [196, 440], [204, 392]], 100, 0, 32);
+    drawRibbon(c, [[-40, 610], [90, 606], [170, 590], [214, 546], [222, 480], [200, 420]], 100, 0, 30);
     // the right piece: its cut end forked and springing up the other way, then running off the right edge
-    drawRibbon(c, [[300, 384], [306, 440], [350, 484], [520, 520], [760, 540], [1070, 560]], 100, 32, 0);
-    drawBow(c, 760, 540, 0.82, 3);
+    drawRibbon(c, [[420, 404], [380, 440], [370, 506], [400, 572], [560, 600], [800, 604], [1070, 612]], 100, 30, 0);
+    drawBow(c, 770, 604, 0.84, 3);
   });
-  // the "snip" burst: three short walnut wedges flying up out of the cut, between the blade tips
-  for (const [deg, len] of [[-24, 56], [0, 66], [24, 56]] as [number, number][]) wedge(c, cx, cy, deg, 190, len, 26);
   // one curled ribbon offcut flying up-left
-  at(c, 150, 190, 1, -30, (q) => drawRibbon(q, [[-70, 34], [-24, -6], [26, -10], [62, 24], [70, 60]], 56, 16, 16));
+  at(c, 196, 150, 1, -20, (q) => drawRibbon(q, [[-74, 26], [-36, -16], [10, 6], [56, -18], [80, -50]], 54, 16, 16));
 };
 
 export const CANDIDATES: Candidate[] = [
