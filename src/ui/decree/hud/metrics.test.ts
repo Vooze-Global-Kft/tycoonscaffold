@@ -115,7 +115,7 @@ describe('the term ribbon', () => {
         const L = deskLayout(p.w, p.h, p.insets, fsc);
         const room = L.ribbon.w - 2 * RIBBON_GUTTER;
         offices.forEach((o, i) => {
-          for (const v of [longest(o, offices[i + 1]), { ...longest(o, offices[i + 1]), acting: false, nr: 7, record: 52, day: 9 }]) {
+          for (const v of [longest(o, offices[i + 1]), { ...longest(o, offices[i + 1]), acting: false, nr: 7, record: 52, day: 9 }, ...(i === 0 ? [{ ...longest(o, offices[i + 1]), acting: false, nr: 99, record: 999, firstTerm: true }] : [])]) {
             const t = ribbonTexts(v);
             const m = ribbonForm(L.ribbon, fsc, t.long, t.short);
             const want = Math.round(11 * Math.min(1.3, fsc) * 10) / 10;

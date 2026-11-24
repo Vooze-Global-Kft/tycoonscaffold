@@ -16,6 +16,7 @@ import { cabinetSlots, drawCabinetFrame } from '../art/meta.draw';
 import { DESK } from '../art/palette';
 import { picture } from '../art/pen';
 import { S } from '../strings';
+import { ruleWords } from '../desk/stripView';
 import { useDecreeUi } from '../uiState';
 import { ministryName, useCabinetView, useDecreeCfg, useDecreeJson, useOffice } from '../useDecree';
 import { Card, DecreeSheet, INK, Txt, useType } from './parts';
@@ -30,13 +31,8 @@ export function CabinetSheet() {
   );
 }
 
-/** A desk rule in words, from the minister's factor as the config states it. */
-export function ruleWords(rule: R.MinisterDef['rule'], clubShort: string | null): string {
-  const what = S.sheets.ruleTarget[rule.target] ?? rule.target;
-  const named = clubShort ? S.sheets.ruleClub(clubShort, what) : what;
-  if (Math.abs(rule.mul - 1) > 1e-9) return S.sheets.ruleMul(named, String(rule.mul));
-  return S.sheets.ruleAdd(named, rule.add > 0 ? `+${rule.add}` : `−${Math.abs(rule.add)}`);
-}
+/** A desk rule in words (shared with the application's appoint chip, D43). */
+export { ruleWords };
 
 function CabinetBody() {
   const ty = useType();

@@ -9,8 +9,8 @@
  * what it shows changes (the store's game changes ten times a second).
  */
 import * as R from '../../../engine/decree';
-import { S, aboutText, dibs, nbsp } from '../strings';
-import { stripView, type StripNames, type StripView } from './stripView';
+import { S, aboutText, dibs, nbsp, plural } from '../strings';
+import { ruleWords, stripView, type StripNames, type StripView } from './stripView';
 
 export type Ground = 'day' | 'requisition' | 'ribbon' | 'application' | 'front' | 'runup' | 'grievance';
 
@@ -53,14 +53,27 @@ export interface SlipVM {
 
 export type DeskVM = PaperVM | SlipVM | { kind: 'none' };
 
+/** D43: the papers of a game whose club chips carry the club's name. */
+export const FIRST_NAMED_PAPERS = 3;
+
 const castOf = (face: string) => (face.startsWith('face:') ? face.slice(5) : face);
 
 /** The names a strip needs, from the config. */
-export function namesOf(cfg: R.DecreeConfig, office: R.OfficeIx): StripNames {
+export function namesOf(cfg: R.DecreeConfig, office: R.OfficeIx, clubNames = false): StripNames {
   const row = cfg.decree.offices[office];
+  const word = plural(row.districtWord ?? 'district');
   return {
+    districts: word.charAt(0).toUpperCase() + word.slice(1),
+    clubNames,
     clubShort: (gi) => cfg.decree.clubs.find((c) => c.id === row.clubs[gi])?.short ?? '',
     districtShort: (d) => row.districts[d]?.short ?? '',
+    appointWords: (id) => {
+      const def = cfg.decree.ministers.find((x) => x.id === id);
+      if (!def) return null;
+      const ministry = row.ministries.find((x) => x.club === def.club)?.name ?? null;
+      const clubShort = def.rule.club ? (cfg.decree.clubs.find((c) => c.id === def.rule.club)?.short ?? null) : null;
+      return { ministry, rule: S.desk.ruleWithInitials(def.initials, ruleWords(def.rule, clubShort)) };
+    },
     boycottBelow: cfg.decree.boycott.below,
   };
 }
@@ -96,8 +109,15 @@ function groundOf(p: R.Paper): Ground {
   }
 }
 
-/** Why the rules would refuse the slip's "up" now, in words (nothing on screen may promise what the rules then refuse). */
-function slipHeld(cfg: R.DecreeConfig, g: R.DecreeGame, sl: R.Slip): string | null {
+/**
+ * Why the rules would refuse the slip's "up" now, in words (nothing on screen may promise what the rules
+ * then refuse): a stale or capped slip says so where "Buy it" stood (D42 (c): the rules take it back at
+ * once; this covers the moment between), a slip the treasury cannot pay "Short by …".
+ */
+function slipHeld(cfg: R.DecreeConfig, g: R.DecreeGame, item: R.DeskItem & { type: 'slip' }): string | null {
+  const sl = item.slip;
+  const stale = R.slipVoid(cfg, g, item);
+  if (stale) return stale === 'done' ? S.desk.noteDone : S.desk.noteCap;
   const why = R.canBuy(cfg, g, sl.purchase, sl.price);
   if (why === 'cash') return S.desk.noteShort(dibs(Math.max(0, sl.price - g.cash)));
   if (why === 'reserve' || why === 'runUp') {
@@ -117,7 +137,9 @@ export function deskVm(cfg: R.DecreeConfig, g: R.DecreeGame, s: number): DeskVM 
     const sl = item.slip;
     const pu = sl.purchase;
     const clerk = cfg.decree.cast.clerk;
-    const what = pu.type === 'monument' ? (cfg.decree.deck.monuments.find((m) => m.id === pu.monument)?.name ?? '') : pu.type === 'open' ? S.desk.slipOpen(ministryName(cfg, office, pu.ministry)) : S.desk.slipLevel(ministryName(cfg, office, pu.ministry));
+    // D42 (a): a slip carries a bundle of levels ("+5 levels"), printed with its own whole price and gain.
+    const levels = Math.max(1, Math.floor(sl.levels ?? 1));
+    const what = pu.type === 'monument' ? (cfg.decree.deck.monuments.find((m) => m.id === pu.monument)?.name ?? '') : pu.type === 'open' ? S.desk.slipOpen(ministryName(cfg, office, pu.ministry)) : S.desk.slipLevel(ministryName(cfg, office, pu.ministry), levels);
     return {
       kind: 'slip',
       key: `slip:${item.landedAt}:${pu.type}:${'ministry' in pu ? pu.ministry : pu.monument}`,
@@ -128,11 +150,12 @@ export function deskVm(cfg: R.DecreeConfig, g: R.DecreeGame, s: number): DeskVM 
       what,
       price: `−${dibs(sl.price)}`,
       rate: sl.rateGain > 0 ? S.desk.slipRate(dibs(sl.rateGain)) : null,
-      held: slipHeld(cfg, g, sl),
+      held: slipHeld(cfg, g, item),
     };
   }
   const p = item.paper;
-  const names = namesOf(cfg, office);
+  // D43: on a game's first three papers each club chip carries the club's short name.
+  const names = namesOf(cfg, office, d.stats.decisions < FIRST_NAMED_PAPERS && office === 0 && d.term === 1);
   const sign = R.stripOf(cfg, g, 'sign');
   const refuse = R.stripOf(cfg, g, 'refuse');
   if (!sign || !refuse) return { kind: 'none' };
@@ -157,8 +180,8 @@ export function deskVm(cfg: R.DecreeConfig, g: R.DecreeGame, s: number): DeskVM 
     masthead: p.kind === 'scandal' ? p.visitor.name : null,
     picket,
     factors: item.shown.factors.map((f) => f.text),
-    sign: stripView(sign, names, s),
-    refuse: stripView(refuse, names, s),
+    sign: stripView(sign, names, s, refuse),
+    refuse: stripView(refuse, names, s, sign),
   };
 }
 

@@ -102,7 +102,7 @@ anchor bottom centre, height `storeysHeight(n)`, ≤ 38 pt).
 | `drawSlip(c, w, h, lift)` (budget slip, ledger-ruled) | ~240 x 110 | top left |
 | `drawFormFace(c, w, h, 'requisition'|'ribbon'|'application')`, `drawRibbonCorner`, `drawEmblemMark` | the header + proposal rows | top left |
 | `drawPicketSign(c, k, deg)` + `picketSignBox()` | 60 x 66 | board centre |
-| `drawFrontPage(c, w, h, lift)` + `frontPageBoxes(w, h)` (masthead, headline, photo, caption); `drawGoosePhoto` (the one small plain goose photo, D12) | paper | top left |
+| `drawFrontPage(c, w, h, lift)` + `frontPageBoxes(w, h)` (masthead, headline, photo, caption); `drawGoosePhoto` (the one small plain goose photo: side view in its RESERVED parking bay, D12, D43) | paper | top left |
 | `drawRunUpPaper(c, w, h, o)`, `drawBunting(c, x0, x1, y, n, sag, flag)` | paper | top left |
 | `drawSignature(c, face, progress, k, color)`, `signatureOf(face)`, `signatureTip`, `SIGNATURE_IDS` (the 6 player faces), `SIGNATURE_BOX` 120 x 34 | 120 x 34 · k | box top left |
 
@@ -112,7 +112,7 @@ scrapbook, shelf, call); `drawLedger(c, w, h)` + `ledgerRows(w, h, n)`; `drawCab
 filled[9])` + `cabinetSlots(w, h)`; `districtPaths(office)` (Skia paths in 100 x 100, game.json's
 district order), `drawDistrictMap(c, w, h, office, {held[], focus, pins})`, `districtLabel`,
 `drawDistrictBadge(c, office, i, r, held)`; `drawTallyBoard(c, w, h, n, {majority, bunting})` +
-`tallyRows`, `drawChalkMarks(c, n, h)`, `drawEnvelope(c, open, k)` (40 x 26, centre),
+`tallyRows`, `drawChalkMarks(c, n, h, seed, held?)` (one chalk tick held, one dash not held; finding 49), `drawEnvelope(c, open, k)` (40 x 26, centre),
 `drawTallyResult(c, held, r)`.
 
 ## wall.draw.ts

@@ -361,6 +361,12 @@ export const EXTRAS = {
     c.drawPath(p, fill('#D9B95A'));
     ink(c, pen, p, 0.6);
   },
+  lines: (c, pen, g) => {
+    // A grown-up's face: two brow furrows and the soft lines from nose to mouth (drawn in the feature
+    // ink over its rim, so they read at 44 pt on every tone). Never unkind, never a scar.
+    for (const dy of [5.2, 7.4]) fline(c, pen, curve([[g.cx - 5.6, g.browY - dy + 0.5], [g.cx, g.browY - dy - 0.3], [g.cx + 5.6, g.browY - dy + 0.5]]), 0.7);
+    for (const s of [-1, 1]) fline(c, pen, curve([[g.cx + s * 4.4, g.noseY + 1.2], [g.cx + s * 5.8, g.mouthY - 0.6], [g.cx + s * 5.4, g.mouthY + 1.6]]), 0.7);
+  },
   cheeks: (c, pen, g, w) => {
     for (const s of [-1, 1]) c.drawPath(oval(g.cx + s * g.eyeDx * 1.2, g.eyeY + 7.5, 3.4, 2), fill(alpha(w.skinDeep, 0.9)));
   },

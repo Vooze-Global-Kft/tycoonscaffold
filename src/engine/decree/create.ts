@@ -286,6 +286,8 @@ export interface DecreeSetup {
   pending?: boolean;
   cabinet?: string[];
   twists?: string[];
+  /** D42 (e): papers with a written text landed so far (default: `decisions`, as reconcile estimates an old save). */
+  handLanded?: number;
   /** 'done' (default): every scripted paper of every office counts as decided; 'fresh': none. */
   scripted?: 'done' | 'fresh';
 }
@@ -342,6 +344,7 @@ export function buildDecree(cfg: DecreeConfig, base: GameState, setup: DecreeSet
       scriptedDone,
       nextArrivalAt: clock + row.tau,
       stats: { ...fresh.stats, decisions: setup.decisions ?? 0, daysEver: setup.decisions ?? 0 },
+      handLanded: setup.handLanded ?? setup.decisions ?? 0,
     },
   };
   const paperOf = (x: string | Paper): Paper => {

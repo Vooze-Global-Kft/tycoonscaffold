@@ -6,7 +6,7 @@
  * Faces are the art kit's cached images (DecreeIcon "face:<id>"), never a canvas per face.
  */
 import { Canvas, Group, Picture } from '@shopify/react-native-skia';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { decreeActions, decreeNow } from '../../../modes/decree/actions';
@@ -16,6 +16,7 @@ import { drawEmblem } from '../art/emblem.draw';
 import { picture } from '../art/pen';
 import { useFontScale } from '../hud/fontScale';
 import { S } from '../strings';
+import { useDecreeUi } from '../uiState';
 import { useDecreeCfg } from '../useDecree';
 import { TOUCH, type, viewScale } from './metrics';
 import { openingCaption, pickedForMe, playerFaces } from './model';
@@ -23,6 +24,12 @@ import { INK, ViewButton } from './parts';
 
 export function FacePicker({ visible, onDone }: { visible: boolean; onDone: () => void }) {
   useOverlay(visible);
+  // Finding 10: Android back does not close the first-day face picker (ViewsHost would reopen it).
+  useEffect(() => {
+    if (!visible) return;
+    useDecreeUi.getState().setViewBack(() => true);
+    return () => useDecreeUi.getState().setViewBack(null);
+  }, [visible]);
   if (!visible) return null;
   return <Picker onDone={onDone} />;
 }

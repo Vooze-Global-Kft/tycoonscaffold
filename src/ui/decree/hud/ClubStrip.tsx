@@ -28,6 +28,9 @@ import { usePreviewSide } from './preview';
 
 /** How long a club's number shows after a change or a tap with five or seven clubs (4.1: 2 s; a display time, not a rule). */
 const NUMBER_MS = 2000;
+/** A tapped ring's name label (D43): how long it shows, and the widest it is. */
+const TAG_MS = 2500;
+const TAG_MAX_W = 300;
 
 type ClubId = (typeof CLUB_IDS)[number];
 
@@ -102,10 +105,21 @@ export function ClubStrip({ layout }: { layout: DeskLayout }) {
     const t = setTimeout(() => setShownUntil((u) => u.map((x) => (x > Date.now() ? x : 0))), next - Date.now() + 20);
     return () => clearTimeout(t);
   }, [shownUntil]);
+  // D43: a tapped ring names its club (name, mood, state) for a moment, under the strip.
+  const [tag, setTag] = useState<{ i: number; until: number } | null>(null);
+  useEffect(() => {
+    if (!tag) return;
+    const t = setTimeout(() => setTag(null), Math.max(0, tag.until - Date.now()));
+    return () => clearTimeout(t);
+  }, [tag]);
   const tap = (i: number) => {
     fx.play('ui_tap');
+    setTag({ i, until: Date.now() + TAG_MS });
     if (!m.beside) setShownUntil((u) => clubs.map((_, k) => (k === i ? Date.now() + NUMBER_MS : (u[k] ?? 0))));
   };
+  const tagged = tag ? clubs[tag.i] : null;
+  const tagText = tagged ? S.hud.clubTag(tagged.name, tagged.mood, tagged.boycott ? S.hud.boycott : tagged.huff ? S.hud.huff : tagged.wonOver ? S.hud.wonOver : null) : '';
+  const tagSlot = tag ? m.slots[tag.i] : null;
 
   // One picture for every badge; recorded again only when what it draws changes.
   const key = clubs.map((c, i) => `${c.id}:${previews[i]?.to ?? c.mood}:${c.boycott ? 1 : 0}${c.huff ? 1 : 0}${c.wonOver ? 1 : 0}`).join('|') + `|${m.icon}|${side ?? ''}`;
@@ -142,7 +156,7 @@ export function ClubStrip({ layout }: { layout: DeskLayout }) {
   );
   const now = Date.now();
   return (
-    <View style={[styles.abs, { left: zone.x, top: zone.y, width: zone.w, height: zone.h }]} pointerEvents="box-none">
+    <View style={[styles.abs, { left: zone.x, top: zone.y, width: zone.w, height: zone.h }, tagged ? styles.tagRow : null]} pointerEvents="box-none">
       <View style={[styles.abs, { left: 0, top: 0, width: zone.w, height: zone.h }]} pointerEvents="none">
         <Canvas style={{ width: zone.w, height: zone.h }}>
           <Picture picture={pic} />
@@ -151,6 +165,15 @@ export function ClubStrip({ layout }: { layout: DeskLayout }) {
       {clubs.map((club, i) =>
         m.slots[i] ? <Slot key={club.id} slot={m.slots[i]} club={club} index={i} preview={previews[i]} side={side} visible={m.beside || (shownUntil[i] ?? 0) > now} font={m.numFont} onTap={() => tap(i)} /> : null,
       )}
+      {tagged && tagSlot && !side ? (
+        <View pointerEvents="none" style={[styles.abs, styles.tagRow, { left: 0, top: zone.h + 2, width: zone.w }]}>
+          <View style={[styles.tag, { marginLeft: Math.max(4, Math.min(zone.w - 4 - TAG_MAX_W, tagSlot.icon.x + tagSlot.icon.w / 2 - TAG_MAX_W / 2)) }]}>
+            <Text allowFontScaling={false} numberOfLines={1} style={[styles.tagText, { fontSize: Math.round(m.numFont * 10) / 10 }]}>
+              {tagText}
+            </Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -160,4 +183,7 @@ const styles = StyleSheet.create({
   numBox: { alignItems: 'flex-start', justifyContent: 'center' },
   pill: { paddingHorizontal: 3, borderRadius: 5, backgroundColor: alpha(DESK.paperLight, 0.94), borderWidth: StyleSheet.hairlineWidth, borderColor: DESK.brassDeep },
   num: { fontWeight: '800', fontVariant: ['tabular-nums'], textAlign: 'center' },
+  tagRow: { zIndex: 5, elevation: 5 },
+  tag: { maxWidth: TAG_MAX_W, width: TAG_MAX_W, alignItems: 'center' },
+  tagText: { color: DESK.line, fontWeight: '700', backgroundColor: DESK.paperLight, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: DESK.brassDeep },
 });

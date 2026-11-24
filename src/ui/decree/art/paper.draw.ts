@@ -14,6 +14,7 @@ import type { SkCanvas } from '@shopify/react-native-skia';
 import { DESK, alpha, mix } from './palette';
 import { drawPaperclip } from './desk.draw';
 import { drawPicket } from './effects.draw';
+import { drawLetters, lettersWidth } from './letters';
 import {
   LINE,
   at,
@@ -291,10 +292,10 @@ export const MASTHEAD_TILT = -4.5;
 
 /**
  * The comic tabloid front page (2.8, 7.9): a paper of its own, w x h: a crooked masthead band, one
- * big headline zone (words by the caller: frontPageBoxes), a small greyed halftone photograph of a
- * goose sitting, seen from behind (at most a quarter of the paper's width; never holding anything,
- * no flat colour, D12), a caption beside it, and NO columns of body text. Tinted a little warmer
- * than the desk papers so it reads as newsprint, never cream.
+ * big headline zone (words by the caller: frontPageBoxes), a small greyed halftone press photograph
+ * of the headline's goose (D43: in side view, standing in its own painted parking bay under a small
+ * RESERVED sign; D12: never holding anything, never a mascot, no flat colour), a caption beside it,
+ * and NO columns of body text. Tinted a little warmer than the desk papers so it reads as newsprint.
  */
 export function drawFrontPage(c: SkCanvas, w: number, h: number, lift = 0): void {
   drawSheet(c, w, h, lift, mix(DESK.paper, DESK.paperShade, 0.25));
@@ -313,12 +314,13 @@ export function drawFrontPage(c: SkCanvas, w: number, h: number, lift = 0): void
   c.save();
   c.clipRect({ x: inner.x, y: inner.y, width: inner.w, height: inner.h }, 1, true);
   c.drawPath(rect(inner.x, inner.y, inner.w, inner.h), fill(mix(DESK.slatePale, DESK.paperShade, 0.3)));
-  c.drawPath(rect(inner.x, inner.y + inner.h * 0.7, inner.w, inner.h), fill(DESK.slateLight));
-  at(c, inner.x + inner.w * 0.5, inner.y + inner.h * 0.92, (inner.h * 0.78) / 40, 0, drawGoosePhoto);
+  // the scene is 64 x 50 units (with a margin) around its origin (x -32..32, y -42..8): fitted into the print
+  const k = Math.min(inner.w / 70, inner.h / 56);
+  at(c, inner.x + inner.w * 0.5, inner.y + inner.h - 9 * k, k, 0, drawGoosePhoto);
   // the halftone: a regular dot screen over the whole print
   const dots = builder();
   for (let y = inner.y + 1; y < inner.y + inner.h; y += 2.2) for (let x = inner.x + ((y * 0.5) % 2.2); x < inner.x + inner.w; x += 2.2) dots.addCircle(x, y, 0.42);
-  c.drawPath(dots.build(), fill(alpha(DESK.slateDeep, 0.3)));
+  c.drawPath(dots.build(), fill(alpha(DESK.slateDeep, 0.22)));
   c.restore();
   c.drawPath(rect(inner.x, inner.y, inner.w, inner.h), stroke(alpha(LINE, 0.6), 0.6));
   // the caption's rule beside the photo, and a fold line
@@ -326,31 +328,81 @@ export function drawFrontPage(c: SkCanvas, w: number, h: number, lift = 0): void
   c.drawPath(line(0, h * 0.5, w, h * 0.5), stroke(alpha(DESK.paperEdge, 0.5), 0.6));
 }
 
-/** The front page's boxes: the masthead's words, the headline's words, the photograph (at most 25 % of the width), its caption (beside it). */
+/** The front page's boxes: the masthead's words, the headline's words, the photograph (about 30 % of the width, so the goose reads on a phone), its caption (beside it). */
 export function frontPageBoxes(w: number, h: number): { masthead: Box; headline: Box; photo: Box; caption: Box } {
   const m = { x: 12, y: 12, w: w - 24, h: Math.max(22, h * 0.09) };
   const headline = { x: 14, y: m.y + m.h + 16, w: w - 28, h: Math.max(60, h * 0.26) };
-  const pw = Math.floor(w * 0.25);
-  const ph = Math.round(pw * 0.86);
+  const pw = Math.floor(w * 0.3);
+  const ph = Math.round(pw * 0.8);
   const photo = { x: w - 16 - pw, y: headline.y + headline.h + 10, w: pw, h: ph };
   const caption = { x: 16, y: photo.y + ph - 30, w: photo.x - 16 - 12, h: 14 };
   return { masthead: m, headline, photo, caption };
 }
 
-/** The goose of the writing as a small, plain press photograph: sitting, seen from behind, holding nothing, in greys only (D12). Base at the origin, about 40 tall. */
+/**
+ * The goose of the headline as a plain press photograph, in greys only (D12, D43): a goose in side
+ * view (an S-curved neck, a beak, an eye, a folded wing, two legs on webbed feet), facing right,
+ * standing in a parking bay painted on the tarmac, with a small RESERVED sign on a post behind it.
+ * It holds nothing. The scene spans x -32..32 and y -42..8 around its origin (the bay's back line
+ * at y -4, the feet at y 0); a caller clips it to the photo.
+ */
 export function drawGoosePhoto(c: SkCanvas): void {
-  // the body from behind: a round, settled shape, wider than tall, the folded wings' line down its back
-  const body = builder().moveTo(-17, 0).quadTo(-20, -16, -8, -20).quadTo(0, -22, 8, -20).quadTo(20, -16, 17, 0).close().build();
-  shape(c, body, mix(DESK.paperLight, DESK.slateLight, 0.35), 0.8);
-  c.drawPath(builder().moveTo(0, -19).quadTo(-1.5, -10, 0, -2).build(), stroke(alpha(DESK.slateDeep, 0.6), 0.9));
-  c.drawPath(builder().moveTo(-12, -6).quadTo(-6, -12, -1, -16).build(), stroke(alpha(DESK.slateDeep, 0.35), 0.7));
-  c.drawPath(builder().moveTo(12, -6).quadTo(6, -12, 1, -16).build(), stroke(alpha(DESK.slateDeep, 0.35), 0.7));
-  // the tail, a small fan at the bottom centre
-  c.drawPath(poly([-3.4, -1, 0, 3, 3.4, -1]), fill(DESK.slate));
-  // the neck rising from behind, turned a little, the head a dark round shape (no beak in view)
-  const neck = builder().moveTo(-3, -19).quadTo(-4.6, -28, -2.6, -34).quadTo(0, -38, 2.6, -34).quadTo(3.6, -28, 3, -19).close().build();
-  shape(c, neck, DESK.slate, 0.8);
-  c.drawPath(oval(0.4, -36, 3.6, 3.2), fill(DESK.slateDeep));
+  const ink = DESK.slateDeep;
+  // tarmac from the bay's back line down, a darker kerb line behind it
+  c.drawPath(rect(-60, -6, 120, 40), fill(mix(DESK.slateLight, DESK.slate, 0.35)));
+  c.drawPath(rect(-60, -7.2, 120, 1.6), fill(DESK.slate));
+  // the painted bay: a back line and two sides running toward the viewer
+  const paint = stroke(DESK.paperLight, 1.5, false);
+  c.drawPath(line(-25, -3.5, 25, -3.5), paint);
+  c.drawPath(line(-25, -3.5, -33, 9), paint);
+  c.drawPath(line(25, -3.5, 33, 9), paint);
+  // the sign behind the bay: a post and a white plate lettered RESERVED
+  c.drawPath(rect(-21.7, -30, 1.4, 25), fill(DESK.slate));
+  c.drawPath(rect(-31, -38, 20, 9), fill(DESK.white));
+  c.drawPath(rect(-31, -38, 20, 9), stroke(ink, 0.7));
+  const lw = lettersWidth('RESERVED', { size: 3.4, tracking: 0.06 });
+  drawLetters(c, 'RESERVED', -21 - lw / 2, -31.7, { size: 3.4, tracking: 0.06, color: ink, weight: 0.17 });
+  // its shadow on the tarmac
+  c.drawPath(oval(4, 0.4, 11, 1.4), fill(alpha(DESK.slateDeep, 0.35)));
+  // legs and webbed feet
+  c.drawPath(line(1.5, -11, 1, 0), stroke(ink, 1.1));
+  c.drawPath(line(5.5, -11, 6.5, 0), stroke(ink, 1.1));
+  c.drawPath(poly([-0.6, 0.3, 3.6, 0.6, 0.8, -1.4]), fill(ink));
+  c.drawPath(poly([4.9, 0.3, 9.1, 0.6, 6.3, -1.4]), fill(ink));
+  // the body: a long teardrop, the tail a short upturned point at the left, the breast round at the right
+  const body = builder()
+    .moveTo(-17, -22)
+    .quadTo(-7, -27.5, 6, -25)
+    .quadTo(15.5, -23, 15.5, -16.5)
+    .quadTo(14, -10, 4, -10)
+    .quadTo(-8, -10, -13, -15.5)
+    .quadTo(-15.5, -18.5, -17, -22)
+    .close()
+    .build();
+  shape(c, body, mix(DESK.paperLight, DESK.slateLight, 0.3), 0.9, ink);
+  // the folded wing, darker, with three feather edges toward the tail
+  const wing = builder().moveTo(-14.5, -21).quadTo(-3, -25.5, 8, -21.5).quadTo(3, -15, -9, -16).quadTo(-13, -17.5, -14.5, -21).close().build();
+  shape(c, wing, mix(DESK.slateLight, DESK.slate, 0.45), 0.7, ink);
+  for (const [x0, y0, x1, y1] of [[-11, -19.6, -7, -17.4], [-7, -20.6, -3, -17.6], [-3, -21.4, 1, -18]]) {
+    c.drawPath(builder().moveTo(x0, y0).quadTo((x0 + x1) / 2 + 0.6, (y0 + y1) / 2 - 1.2, x1, y1).build(), stroke(alpha(ink, 0.7), 0.6));
+  }
+  // the neck: an S, back from the breast, then up and forward to the head
+  const neck = builder()
+    .moveTo(7.5, -24)
+    .quadTo(11.5, -29, 9, -33.5)
+    .quadTo(6.6, -38, 9.6, -41.5)
+    .lineTo(14.6, -40)
+    .quadTo(11.8, -36.5, 14, -32)
+    .quadTo(17, -26.5, 15, -19)
+    .close()
+    .build();
+  shape(c, neck, mix(DESK.slateLight, DESK.slate, 0.3), 0.9, ink);
+  // the head, the beak pointing right, the eye
+  shape(c, oval(12.4, -41, 3.7, 2.9), mix(DESK.slateLight, DESK.slate, 0.3), 0.9, ink);
+  const beak = builder().moveTo(15.4, -42.2).quadTo(18.5, -41.8, 21, -40.6).quadTo(18.2, -39.4, 15.4, -39.6).close().build();
+  shape(c, beak, DESK.slate, 0.7, ink);
+  c.drawPath(circle(13, -41.7, 0.85), fill(DESK.line));
+  c.drawPath(circle(13.25, -41.95, 0.28), fill(DESK.white));
 }
 
 /**

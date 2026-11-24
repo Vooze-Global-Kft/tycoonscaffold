@@ -45,16 +45,23 @@ export const S = {
     returns: '↩',
     join: ' · ',
     noChange: 'No change',
-    poll: (from: number, to: number, of: number) => `Poll ${from} → ${to} of ${of}`,
+    /** D43: the headline names the district word of the office ("Wards 1 → 2 of 5"). */
+    poll: (districts: string, from: number, to: number, of: number) => `${districts} ${from} → ${to} of ${of}`,
     approval: (from: number, to: number) => `${from} → ${to}\u00a0%`,
     /** A chip's resulting value: a mood, the gossip, a level ("50 → 54"). */
     change: (from: number, to: number) => `${from} → ${to}`,
+    /** A club chip on a game's first papers (D43): "Vegetables 50 → 54". */
+    namedChange: (club: string, from: number, to: number) => `${club} ${from} → ${to}`,
     /** A district's share, given in hundredths, printed to one decimal ("48.6 → 52.6"). */
     share: (from: number, to: number) => `${(from / 100).toFixed(1)} → ${(to / 100).toFixed(1)}`,
     /** The "every club" chip: "−1 each", or "−1 to −2" when the sizing differs by club. */
     each: (d: string) => `${d} each`,
     eachRange: (lo: string, hi: string) => `${lo} to ${hi}`,
     appoint: 'Appoint',
+    /** D43: an application's SIGN strip prints the ministry and the desk rule. */
+    appointAs: (words: string) => `Appoint: ${words}`,
+    ruleWithInitials: (initials: string, rule: string) => `${initials}: ${rule}`,
+    deskRuleNote: (rule: string) => `Desk rule ${rule}`,
     endBoycott: 'Settled',
     endScandal: 'Closed',
     /** The note row (2.7): warnings first. */
@@ -73,7 +80,8 @@ export const S = {
     formRequisition: (ministry: string) => `Requisition: ${ministry} +1 level`,
     formRibbon: (ministry: string) => `Ribbon to cut: ${ministry}`,
     /** The budget slip (2.7): what it buys, its price, what it adds, and the two directions. */
-    slipLevel: (ministry: string) => `${ministry} +1 level`,
+    /** D42 (a): "Potholes Office +5 levels". */
+    slipLevel: (ministry: string, levels = 1) => `${ministry} +${levels} ${levels === 1 ? 'level' : 'levels'}`,
     slipOpen: (ministry: string) => `${ministry} opens`,
     slipRate: (perSecond: string) => `+${perSecond}/s`,
     /** The slip's two directions; the arrows (`up`, `down`) are put in front where they are drawn. */
@@ -127,6 +135,8 @@ export const S = {
     /** A newspaper's name as a masthead (the data writes it with a lower-case "the"). */
     masthead: (paper: string) => paper.charAt(0).toUpperCase() + paper.slice(1),
     clubLabel: (club: string, mood: number) => `${club} ${mood}`,
+    /** A tapped ring's label (D43): "Giant Vegetable Society 47 · in a huff". */
+    clubTag: (name: string, mood: number, state: string | null) => (state ? `${name} ${mood} · ${state}` : `${name} ${mood}`),
     /** The club ring's marks (D25, D31). */
     huff: 'in a huff',
     wonOver: 'won over',
@@ -135,7 +145,10 @@ export const S = {
     acting: (title: string) => `Acting ${title}`,
     ribbonDay: (day: number, of: number) => `Day ${day}/${of}`,
     ribbonNr: (nr: number, target: number | null) => (target === null ? `NR ${nr}` : `NR ${nr}/${target}`),
-    ribbonLv: (rec: number, target: number | null) => (target === null ? `Lv ${rec}` : `Lv ${rec}/${target}`),
+    /** D43: Name Recognition spelled out while it is new (the game's first term). */
+    ribbonNrLong: (nr: number, target: number | null) => (target === null ? `Name Recognition ${nr}` : `Name Recognition ${nr}/${target}`),
+    /** D43: the record by the Ledger's word. */
+    ribbonLv: (rec: number, target: number | null) => (target === null ? `Record ${rec}` : `Record ${rec}/${target}`),
     ribbonJoin: ' · ',
     ribbonCall: (held: number, of: number) => `Call the election · poll ${held} of ${of}`,
     ribbonRunUp: (held: number, of: number) => `Run-up · poll ${held} of ${of}`,
@@ -167,7 +180,8 @@ export const S = {
     poll: 'Poll',
     office: 'Office',
     trayLabel: (n: number) => `In-tray, ${n} waiting. Shows the next three`,
-    pollBadge: (rec: number, target: number | null) => (target === null ? `Lv ${rec}` : `Lv ${rec}/${target}`),
+    /** The record on the Poll button's badge in the short ribbon form (the Ledger's word, shortened to fit 64 pt). */
+    pollBadge: (rec: number, target: number | null) => (target === null ? `Rec. ${rec}` : `Rec. ${rec}/${target}`),
   },
   // ===== sheets: Ledger, Cabinet, Poll and the call, Shop, Settings, the in-tray peek (BARS) ========
   sheets: {
@@ -187,6 +201,16 @@ export const S = {
     boycottRow: (club: string, mood: number, endsAt: number, papers: number) => `Boycott: ${club} ${mood}, ends at ${endsAt} or in ${papers} papers`,
     raise: 'Raise',
     open: 'Open',
+    /** D43: "Raise" and "Open" as inked links in the book, with their price. */
+    raiseLink: (price: string) => `Raise, ${price} dibs`,
+    openLink: (price: string) => `Open, ${price} dibs`,
+    /** D43: the record as a running total down the book's right-hand column. */
+    carried: 'Levels',
+    carriedLabel: (n: number) => `${n} levels so far`,
+    /** D41: nothing is bought on election night or on the result sheet. */
+    ledgerShut: 'Closed during the count. The book reopens with the new term.',
+    /** Finding 65: what the reserve is for. */
+    keptWhat: 'So you can sign the papers waiting.',
     closed: 'Closed',
     refusedCap: 'Top level',
     refusedCash: 'Not enough in the treasury',
@@ -197,7 +221,8 @@ export const S = {
     standingOrder: 'Standing Order',
     standingOrderWhat: 'The junior clerk buys the advised level while you play. Never while you are away.',
     sofa: 'Check the Sofa',
-    sofaWhat: 'Dibs down the back of the official sofa.',
+    /** Finding 31: the reward in the rules' exact number, as the away report's card names its own. */
+    sofaWhat: (amount: string) => `+${amount} dibs, down the back of the official sofa.`,
     sofaUsed: 'Checked this term. The sofa has been thorough.',
     /** The Cabinet (4.4): the framed photograph. */
     cabinetTitle: 'Cabinet',

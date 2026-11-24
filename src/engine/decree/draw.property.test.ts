@@ -114,13 +114,23 @@ describe('the order of 2.7', () => {
     const offices = DECREE_TEST_NUMBERS.offices!.map((o, i) => (i === 1 ? { ...o, templateShare: 1 } : o));
     const c = decreeTestConfig({ offices } as never);
     const frames = c.decree.deck.frames.filter((f) => f.office === 'governor').map((f) => f.id);
-    let g = built({ office: 1, ministries: [5, 1, 1, 1, 1, 1], cash: 1e9 }, c);
+    let g = built({ office: 1, ministries: [5, 1, 1, 1, 1, 1], cash: 1e9, handLanded: c.decree.draw.framesAfter }, c);
     const dealt: string[] = [];
-    g = play(c, g, 3 * frames.length + 4, () => 'refuse', (p) => {
+    const kinds: string[] = [];
+    g = play(c, g, 6 * frames.length + 8, () => 'refuse', (p) => {
+      kinds.push(p.kind);
       if (p.kind === 'template') dealt.push(p.source);
     });
     expect(dealt.length).toBeGreaterThanOrEqual(2 * frames.length);
     for (let b = 0; b + frames.length <= dealt.length; b += frames.length) expect(new Set(dealt.slice(b, b + frames.length)).size).toBe(frames.length);
+    // D42 (e): never two frames in a row, even at q = 1.
+    for (let k = 1; k < kinds.length; k++) expect(kinds[k] === 'template' && kinds[k - 1] === 'template').toBe(false);
+    // D42 (e): no frame before `draw.framesAfter` papers with a written text have landed in the game.
+    let early = built({ office: 1, ministries: [5, 1, 1, 1, 1, 1], cash: 1e9, handLanded: 0 }, c);
+    let before = 0;
+    early = play(c, early, c.decree.draw.framesAfter - 5, () => 'refuse', (p) => void (p.kind === 'template' && before++));
+    expect(before).toBe(0);
+    expect(early.decree.handLanded).toBeLessThan(c.decree.draw.framesAfter);
     // q = 0 (the mayor's test frames do not exist; the president's q 0.2): with q 0 no template is dealt.
     const none = decreeTestConfig({ offices: DECREE_TEST_NUMBERS.offices!.map((o) => ({ ...o, templateShare: 0 })) } as never);
     let h = built({ office: 1, ministries: [5, 1, 1, 1, 1, 1], cash: 1e9 }, none);
@@ -223,12 +233,13 @@ describe('the comic draw: cells, weights and the fallback', () => {
     let s: R.DecreeGame = { ...gov, decree: { ...gov.decree, seen: gseen, stats: { ...gov.decree.stats, drawn: 1 } } };
     const frames = cfg.decree.deck.frames.filter((f) => f.office === 'governor');
     const kinds: string[] = [];
-    for (let k = 0; k < frames.length + 1; k++) {
+    for (let k = 0; k < 2 * frames.length + 1; k++) {
       s = R.drawNext(cfg, { ...s, decree: { ...s.decree, stats: { ...s.decree.stats, drawn: 1 } } }, k, []);
       const last = s.decree.tray[s.decree.tray.length - 1] ?? deskPaper(s)!;
       kinds.push(last.kind + (last.returning ? '+returning' : ''));
     }
-    expect(kinds).toEqual([...frames.map(() => 'template'), 'comic+returning']);
+    // D42 (e): never two frames in a row, so the oldest texts come back between the frames still to be dealt.
+    expect(kinds).toEqual([...frames.flatMap(() => ['template', 'comic+returning']), 'comic+returning']);
   });
 
   it('a returning line is one for any visitor or for the visitor\'s own club', () => {

@@ -184,7 +184,7 @@ export function drawDeskTop(c: SkCanvas, b: Box, office: OfficeIx, set: DeskSet 
  * The desk's front (the wood under the drawer, from the drawer band's bottom to the screen's
  * bottom: the goal line and the bottom row sit on it; `b` its box):
  *   mayor     a plain walnut front with one top edge;
- *   governor  a mahogany front with inlaid stringing panels and small fan inlays in their corners;
+ *   governor  a mahogany front with one brass stringing line along its top edge (finding 59);
  *   president a long walnut front with a brass rail along its top edge and a brass kick rail.
  */
 export function drawDeskFront(c: SkCanvas, b: Box, office: OfficeIx, set: DeskSet = 'plain'): void {
@@ -195,23 +195,10 @@ export function drawDeskFront(c: SkCanvas, b: Box, office: OfficeIx, set: DeskSe
   c.drawPath(line(b.x, b.y + 2, b.x + b.w, b.y + 2), stroke(alpha(w.light, 0.6), 1));
   if (office === 0 && set === 'plain') return;
   if (office === 1 || set === 'walnut') {
-    // a mahogany front of inlaid panels: a stringing line box per panel and small fans in the corners
-    const n = Math.max(2, Math.round(b.w / 130));
-    const pw = (b.w - 12) / n;
-    for (let i = 0; i < n; i++) {
-      const x = b.x + 6 + i * pw;
-      const box = rrect(x + 3, b.y + 6, pw - 6, b.h - 12, 2);
-      c.drawPath(box, stroke(alpha(DESK.brassLight, 0.6), 0.9));
-      c.drawPath(rrect(x + 6, b.y + 9, pw - 12, b.h - 18, 1.5), stroke(alpha(w.deep, 0.8), 0.7));
-      for (const [fx, fy, a0] of [
-        [x + 3, b.y + 6, 0],
-        [x + pw - 3, b.y + 6, 90],
-        [x + pw - 3, b.y + b.h - 6, 180],
-        [x + 3, b.y + b.h - 6, 270],
-      ] as const) {
-        for (let k = 0; k < 4; k++) c.drawPath(line(fx, fy, fx + Math.cos(((a0 + 11 + k * 22) * Math.PI) / 180) * 9, fy + Math.sin(((a0 + 11 + k * 22) * Math.PI) / 180) * 9), stroke(alpha(DESK.brassLight, 0.5), 0.7));
-      }
-    }
+    // a mahogany front with one brass stringing line along its top edge only (finding 59: the inlaid
+    // panels' frame lines ran through the goal line and between the bottom buttons; the front holds
+    // words and buttons, so its ornament stays a horizontal edge, never a box or a fan)
+    c.drawPath(line(b.x, b.y + 3.4, b.x + b.w, b.y + 3.4), stroke(alpha(DESK.brassLight, 0.55), 0.8));
     return;
   }
   // the president: a brass rail along the top (round, lit) and a brass kick rail at the bottom
@@ -219,9 +206,7 @@ export function drawDeskFront(c: SkCanvas, b: Box, office: OfficeIx, set: DeskSe
   c.drawPath(line(b.x, b.y + 6.3, b.x + b.w, b.y + 6.3), stroke(alpha(LINE, 0.7), 0.8));
   c.drawPath(rect(b.x, b.y + b.h - 5, b.w, 5), fill(DESK.brassDeep));
   c.drawPath(line(b.x, b.y + b.h - 4.4, b.x + b.w, b.y + b.h - 4.4), stroke(DESK.brassLight, 0.8));
-  // long raised mouldings running the whole width
-  c.drawPath(line(b.x + 8, b.y + 12, b.x + b.w - 8, b.y + 12), stroke(alpha(w.light, 0.55), 1));
-  c.drawPath(line(b.x + 8, b.y + b.h - 11, b.x + b.w - 8, b.y + b.h - 11), stroke(alpha(w.light, 0.55), 1));
+  // (no mouldings across the band: a line at mid-height ran through the goal line's words)
 }
 
 // ---------------------------------------------------------------------------

@@ -119,6 +119,8 @@ export interface ClubView {
   /** D25: in a huff (the poll's `huffing`); D31: won over (the poll's `wonOver`). */
   huff: boolean;
   wonOver: boolean;
+  /** The club's full name (D43: a tapped ring names its club). */
+  name: string;
 }
 
 /** The club strip (4.1) with the poll's huff and won-over marks (D25, D31), from the rules only. */
@@ -127,13 +129,13 @@ export function useClubs(): ClubView[] {
     const p = R.poll(cfg, g);
     const huffing = new Set(p.huffing);
     const won = new Set(p.wonOver);
-    return R.clubStrip(cfg, g).map((c) => ({ ...c, huff: huffing.has(c.club), wonOver: won.has(c.club) }));
+    return R.clubStrip(cfg, g).map((c) => ({ ...c, huff: huffing.has(c.club), wonOver: won.has(c.club), name: cfg.decree.clubs.find((x) => x.id === c.id)?.name ?? c.short }));
   }, []);
 }
 
 /** The term ribbon's values (4.1, 2.10), the office's title and phase. */
-export function useRibbonView(): (R.TermRibbon & { title: string; phase: R.Phase }) | null {
-  return useDecreeJson((cfg, g) => ({ ...R.termRibbon(cfg, g), title: R.officeOf(cfg, g.decree.office).title, phase: g.decree.phase }), null);
+export function useRibbonView(): (R.TermRibbon & { title: string; phase: R.Phase; firstTerm: boolean }) | null {
+  return useDecreeJson((cfg, g) => ({ ...R.termRibbon(cfg, g), title: R.officeOf(cfg, g.decree.office).title, phase: g.decree.phase, firstTerm: g.decree.office === 0 && g.decree.term === 1 }), null);
 }
 
 /** The goal line's goal (2.16), with the names its words need and whether its ad may be offered now. */

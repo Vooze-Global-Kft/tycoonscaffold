@@ -13,9 +13,9 @@ import * as R from '../../../engine/decree';
 import * as M from '../../../engine/meta';
 import { iap } from '../../../services/iap';
 import { useGame } from '../../../state/store';
-import { S, aboutText } from '../strings';
+import { S, aboutText, dibs } from '../strings';
 import { useDecreeUi } from '../uiState';
-import { useAdFree, useCanShop, useDecreeCfg } from '../useDecree';
+import { useAdFree, useCanShop, useDecreeCfg, useDecreeJson } from '../useDecree';
 import { AdButton, Btn, Card, DecreeSheet, INK, Pill, Txt, useType } from './parts';
 
 let priceTick = 0;
@@ -42,6 +42,7 @@ export function ShopSheet() {
 }
 
 function ShopBody() {
+  const sofa = useDecreeJson((c, g) => dibs(R.roundDibs(c, R.sofaAmount(c, g))), '');
   const ty = useType();
   const cfg = useDecreeCfg();
   usePrices();
@@ -103,7 +104,7 @@ function ShopBody() {
       <Txt size={ty.small} bold color={INK.soft} style={styles.section}>
         {adFree ? S.sheets.shopAdsFree : S.sheets.shopAds}
       </Txt>
-      <AdButton kind="checkSofa" icon="art:ad_sofa" title={S.sheets.sofa} what={S.sheets.sofaWhat} cooldown={S.sheets.adOnceTerm} idle={S.sheets.sofaUsed} />
+      <AdButton kind="checkSofa" icon="art:ad_sofa" title={S.sheets.sofa} what={S.sheets.sofaWhat(sofa)} cooldown={S.sheets.adOnceTerm} idle={S.sheets.sofaUsed} />
       <AdButton kind="openDoors" icon="art:ad_doors" title={S.sheets.adDoors} what={S.sheets.adDoorsWhat} cooldown={S.sheets.adCooldown(doorsEvery)} />
       <AdButton kind="courier" icon="art:ad_courier" title={S.sheets.adCourier} what={S.sheets.adCourierWhat} />
       <AdButton kind="spinDoctor" icon="art:ad_spin" title={S.sheets.adSpin} what={S.sheets.adSpinWhat} />

@@ -108,6 +108,27 @@ function choice(cfg: DecreeConfig, cs: readonly Candidate[], cash: number, res: 
 /** D42 (d): an opening the treasury can pay is advised over the best level while its payback is at most this many times the level's. */
 export const OPENING_FACTOR = 2;
 
+/**
+ * D42 (d), the rules lead's reading for its aim ("Open Potholes" offered by about 1:15 to a reader who
+ * never opens the Ledger): the opening a slip saves for, when one pays back at least as fast as every
+ * level advice could name (the best payback among them), else null. While one is saved for, no slip
+ * offers a level that pays back slower than it (the cheap levels that pay back faster still come), so
+ * the treasury reaches the opening instead of being spent level by level the moment it can.
+ */
+export function savingFor(cs: readonly Candidate[]): Candidate | null {
+  let bestLevel = Infinity;
+  for (const c of cs) if (c.purchase.type === 'level') bestLevel = Math.min(bestLevel, payback(c));
+  let out: Candidate | null = null;
+  for (const c of cs) if (c.purchase.type === 'open' && payback(c) <= bestLevel && (!out || payback(c) < payback(out))) out = c;
+  return out;
+}
+
+/** The candidates a slip may carry now (D42 (d)): every opening, and the levels that pay back no slower than the opening saved for. */
+export function slipCandidates(cs: readonly Candidate[]): Candidate[] {
+  const save = savingFor(cs);
+  return save ? cs.filter((c) => c.purchase.type === 'open' || payback(c) <= payback(save)) : cs.slice();
+}
+
 /** The best of `cs` by score (ties: the first). */
 function best(cfg: DecreeConfig, cs: readonly Candidate[], cash: number, res: number, I: number, short: boolean): Candidate | null {
   let out: Candidate | null = null;
@@ -155,9 +176,11 @@ export function advice(cfg: DecreeConfig, g: DecreeGame): AdviceResult {
   const cs = candidates(cfg, g, p);
   const res = slipReserve(cfg, g, p);
   const short = recordShort(cfg, g, p);
-  const affordable = cs.filter((c) => g.cash >= c.price + res);
+  const eligible = slipCandidates(cs);
+  const affordable = eligible.filter((c) => g.cash >= c.price + res);
   const pickNow = choice(cfg, affordable, g.cash, res, I, short);
-  const pick = choice(cfg, cs, g.cash, res, I, short);
+  // The goal line: 2.16's best over what a slip may carry (D42 (d): no level slower than an opening saved for).
+  const pick = choice(cfg, eligible, g.cash, res, I, short);
   const slip = pickNow ? slipOf(pickNow) : null;
   const next = !slip && pick ? { purchase: pick.purchase, price: pick.price, about: aboutWait(pick.price + res - g.cash, I) } : null;
   const call = callNow(cfg, g);
@@ -191,7 +214,7 @@ export function goalLine(cfg: DecreeConfig, g: DecreeGame): Goal {
  */
 export function slipNeed(cfg: DecreeConfig, g: DecreeGame): number | null {
   const p = decreeParams(cfg, g);
-  const cs = candidates(cfg, g, p);
+  const cs = slipCandidates(candidates(cfg, g, p));
   if (!cs.length) return null;
   return Math.min(...cs.map((c) => c.price)) + slipReserve(cfg, g, p);
 }

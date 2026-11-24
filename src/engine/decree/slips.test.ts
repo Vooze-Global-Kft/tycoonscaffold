@@ -110,7 +110,8 @@ describe('budget slips (2.7, D16, D18)', () => {
       const s = { ...g, cash };
       const slip = R.slipFor(cfg, s);
       const a = R.advice(cfg, s).slip;
-      expect(slip).toEqual(a && cash - a.price >= R.reserve(cfg, s) + extra - 1e-9 ? a : null);
+      // D42 (a): the slip that lands is advice's level as a bundle (one level at least).
+      expect(slip).toEqual(a && cash - a.price >= R.reserve(cfg, s) + extra - 1e-9 ? R.bundleOf(cfg, s, a) : null);
       if (slip) {
         seen++;
         expect(cash - slip.price).toBeGreaterThanOrEqual(extra - 1e-9);
@@ -145,8 +146,9 @@ describe('budget slips (2.7, D16, D18)', () => {
     expect(after.decree.ministries[1].level).toBe(7);
   });
 
-  it('D18: after a decided paper, with a paper waiting and a purchase affordable, the slip lands first; at most one slip per decided paper', () => {
-    const g0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6, desk: 'test-mayor-bus-swap-1', tray: ['test-mayor-shops-swap-1', 'test-mayor-veg-swap-1'] });
+  it('D18 (with slips.betweenEvery 1): after a decided paper, with a paper waiting and a purchase affordable, the slip lands first; at most one slip per decided paper', () => {
+    const cfg = decreeTestConfig({ slips: { betweenEvery: 1 } } as never);
+    const g0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6, desk: 'test-mayor-bus-swap-1', tray: ['test-mayor-shops-swap-1', 'test-mayor-veg-swap-1'] }, cfg);
     let g = R.decide(cfg, g0, 'refuse', 1, []);
     expect(g.decree.desk?.type).toBe('slip');
     expect(g.decree.slipOffered).toBe(true);
@@ -156,7 +158,7 @@ describe('budget slips (2.7, D16, D18)', () => {
     const before = g;
     g = R.decide(cfg, g, 'sign', 2, []);
     expect(g.cash).toBe(before.cash - taken!.price);
-    if (taken!.purchase.type === 'level') expect(g.decree.ministries[taken!.purchase.ministry].level).toBe(before.decree.ministries[taken!.purchase.ministry].level + 1);
+    if (taken!.purchase.type === 'level') expect(g.decree.ministries[taken!.purchase.ministry].level).toBe(before.decree.ministries[taken!.purchase.ministry].level + taken!.levels);
     expect(g.decree.desk?.type === 'paper' && g.decree.desk.paper.source).toBe('test-mayor-shops-swap-1');
     expect(g.decree.day).toBe(g0.decree.day + 1);
     // The next decided paper may bring one slip again; putting it back lands the paper.

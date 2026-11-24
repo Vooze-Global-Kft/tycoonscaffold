@@ -13,7 +13,7 @@
  *   first, then the note shrinks: a note is never dropped.
  */
 import type * as R from '../../../engine/decree';
-import { CHIP_ICON, CHIP_PAD, CHIP_WIDE_TEXT_W, FONT, NOTE_W } from '../paperMetrics';
+import { CHIP_ICON, CHIP_PAD, CHIP_WIDE_TEXT_W, FONT, NOTE_W, TITLE_ROW_W } from '../paperMetrics';
 import { S, aboutText, dibs, signedDibs } from '../strings';
 
 export interface ChipView {
@@ -66,6 +66,8 @@ export interface StripView {
   factors: string[];
   /** The note row's width left for the notes beside the initials. */
   noteW: number;
+  /** The title row's size factor: 1, or a little smaller when a long district word would pass its 304 pt. */
+  titleScale: number;
 }
 
 /** Names the strip needs from the config: a club's short name by club index, a district's short by index, the boycott threshold. */
@@ -73,6 +75,20 @@ export interface StripNames {
   clubShort: (club: number) => string;
   districtShort: (district: number) => string;
   boycottBelow: number;
+  /** The office's district word in the plural, capitalised ("Wards", "Counties"): the poll headline (D43). */
+  districts: string;
+  /** A game's first papers (D43): each club chip carries the club's short name ("Vegetables 50 → 54"), as a wide chip. */
+  clubNames?: boolean;
+  /** An application's appoint chip and note (D43): the ministry ("Potholes Office") and the minister's desk rule ("DS: Bus requisitions ×0.9"), or null. */
+  appointWords?: (minister: string) => { ministry: string | null; rule: string } | null;
+}
+
+/** A desk rule in words, from the minister's factor as the config states it ("Bus requisitions ×0.9"). */
+export function ruleWords(rule: R.MinisterDef['rule'], clubShort: string | null): string {
+  const what = S.sheets.ruleTarget[rule.target] ?? rule.target;
+  const named = clubShort ? S.sheets.ruleClub(clubShort, what) : what;
+  if (Math.abs(rule.mul - 1) > 1e-9) return S.sheets.ruleMul(named, String(rule.mul));
+  return S.sheets.ruleAdd(named, rule.add > 0 ? `+${rule.add}` : `−${Math.abs(rule.add)}`);
 }
 
 export const DENSITY_SCALE = [1, 0.85, 0.72] as const;
@@ -109,6 +125,7 @@ function chipWords(c: R.Chip, i: number, names: StripNames): ChipView {
   const base = { key: `${c.kind}:${i}`, icon: c.icon, badge: null, second: null, wide: c.wide, flag: false, money: false, scale: 1 };
   switch (c.kind) {
     case 'club':
+      if (names.clubNames) return { ...base, wide: true, text: S.desk.namedChange(names.clubShort(c.club), c.from, c.to), flag: c.flag };
       return { ...base, text: S.desk.change(c.from, c.to), flag: c.flag };
     case 'every':
       return { ...base, text: eachText(c.deltas), second: { icon: 'art:fx_approval', text: S.desk.approval(c.approvalFrom, c.approvalTo) } };
@@ -118,8 +135,10 @@ function chipWords(c: R.Chip, i: number, names: StripNames): ChipView {
       return { ...base, text: S.desk.change(c.from, c.to) };
     case 'level':
       return { ...base, text: S.desk.change(c.from, c.to) };
-    case 'appoint':
-      return { ...base, text: S.desk.appoint };
+    case 'appoint': {
+      const words = names.appointWords?.(c.minister) ?? null;
+      return words?.ministry ? { ...base, wide: true, text: S.desk.appointAs(words.ministry) } : { ...base, text: S.desk.appoint };
+    }
     case 'endBoycott':
       return { ...base, text: S.desk.endBoycott };
     case 'endScandal':
@@ -212,31 +231,43 @@ export function noteLine(parts: readonly NotePart[]): string {
   return parts.map((p) => p.text).join(S.desk.join);
 }
 
-/** The strip as the paper draws it at text scale `s`. */
-export function stripView(strip: R.Strip, names: StripNames, s: number): StripView {
+/**
+ * The strip as the paper draws it at text scale `s`. `other` is the paper's other strip: when either side
+ * moves the districts held, both headlines show districts (D43: like with like), the side that moves
+ * none printing the held count unchanged ("Wards 2 → 2 of 5").
+ */
+export function stripView(strip: R.Strip, names: StripNames, s: number, other: R.Strip | null = null): StripView {
   // A stale or capped form (2.7) leaves with no effect, whichever side: it prints "No change" and its note,
   // never chips the commit will not apply (printed equals applied).
   const chips = strip.void ? [] : strip.chips.map((c, i) => chipView(c, i, names, s));
   const placed = placeChips(chips.map((c) => (c.wide ? 2 : 1)));
   const rows = placed.rows.map((r) => r.map((i) => chips[i]));
   // The note row: the long form if it fits, else the short "Short by", else the whole row smaller.
-  let notes = noteParts(strip.notes, names, true);
+  // D43: an application's SIGN strip prints the minister's desk rule (the words the rule prints on the papers it touches).
+  const appoint = strip.void ? undefined : strip.chips.find((c): c is Extract<R.Chip, { kind: 'appoint' }> => c.kind === 'appoint');
+  const rule = appoint ? (names.appointWords?.(appoint.minister)?.rule ?? null) : null;
+  const withRule = (p: NotePart[]) => (rule ? [...p, { text: S.desk.deskRuleNote(rule), warn: false }] : p);
+  let notes = withRule(noteParts(strip.notes, names, true));
   const factorW = strip.factors.length ? Math.ceil(estimateWidth(strip.factors.join('  '), FONT.note * s, true)) + 8 : 0;
   const noteW = NOTE_W - factorW;
   const fits = (p: NotePart[], k: number) => estimateWidth(noteLine(p), FONT.note * s * k) <= noteW;
   let noteScale = 1;
   if (!fits(notes, 1)) {
-    notes = noteParts(strip.notes, names, false);
+    notes = withRule(noteParts(strip.notes, names, false));
     if (!fits(notes, 1)) noteScale = Math.max(0.6, noteW / estimateWidth(noteLine(notes), FONT.note * s));
   }
   const sign = strip.side === 'sign';
+  const poll = strip.poll ?? (other?.poll ? { from: other.poll.from, to: other.poll.from, of: other.poll.of } : null);
+  const head = strip.label ?? (sign ? S.desk.ifSigned : S.desk.ifStudied);
+  const tail = poll ? S.desk.poll(names.districts, poll.from, poll.to, poll.of) : S.desk.approval(strip.approval.from, strip.approval.to);
+  const titleW = estimateWidth(`${head} ${S.desk.up}${S.desk.join}${poll ? '' : '   '}${tail}${strip.followUp ? ` ${S.desk.returns}` : ''}`, FONT.title * s, true);
   return {
     side: strip.side,
-    head: strip.label ?? (sign ? S.desk.ifSigned : S.desk.ifStudied),
+    head,
     labelled: strip.label !== null,
     arrow: sign ? S.desk.up : S.desk.down,
-    tail: strip.poll ? S.desk.poll(strip.poll.from, strip.poll.to, strip.poll.of) : S.desk.approval(strip.approval.from, strip.approval.to),
-    tailIcon: strip.poll ? null : 'art:fx_approval',
+    tail,
+    tailIcon: poll ? null : 'art:fx_approval',
     returns: strip.followUp,
     rows,
     density: placed.density,
@@ -247,5 +278,6 @@ export function stripView(strip: R.Strip, names: StripNames, s: number): StripVi
     void: strip.void,
     factors: strip.factors,
     noteW,
+    titleScale: titleW > TITLE_ROW_W ? Math.max(0.8, TITLE_ROW_W / titleW) : 1,
   };
 }

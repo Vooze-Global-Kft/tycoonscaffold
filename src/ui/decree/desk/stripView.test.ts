@@ -12,7 +12,7 @@ import { S } from '../strings';
 import { deskVm, namesOf } from './deskVm';
 import { chipView, noteLine, noteParts, placeChips, stripView, type StripNames } from './stripView';
 
-const NAMES: StripNames = { clubShort: (g) => ['Bus', 'Shops', 'Vegetables', 'Brass', 'Anglers', 'Kites', 'Hedges'][g] ?? '', districtShort: () => 'HT', boycottBelow: 20 };
+const NAMES: StripNames = { clubShort: (g) => ['Bus', 'Shops', 'Vegetables', 'Brass', 'Anglers', 'Kites', 'Hedges'][g] ?? '', districtShort: () => 'HT', boycottBelow: 20, districts: 'Wards' };
 
 const ALL_CHIPS: R.Chip[] = [
   { kind: 'club', club: 2, from: 50, to: 54, flag: true, wide: false, icon: 'art:club_veg' },
@@ -113,12 +113,35 @@ describe('stripView (2.7)', () => {
   });
 });
 
+describe('D43: the strips compare like with like', () => {
+  const base = { approval: { from: 50, to: 51 }, followUp: false, chips: [] as R.Chip[], notes: [] as R.StripNote[], factors: [] as string[], affordable: true, label: null, void: null };
+  it('when one side moves the districts, the other shows them unchanged', () => {
+    const sign: R.Strip = { ...base, side: 'sign', poll: { from: 1, to: 2, of: 5 } };
+    const refuse: R.Strip = { ...base, side: 'refuse', poll: null };
+    expect(stripView(sign, NAMES, 1, refuse).tail).toBe(S.desk.poll('Wards', 1, 2, 5));
+    expect(stripView(refuse, NAMES, 1, sign).tail).toBe(S.desk.poll('Wards', 1, 1, 5));
+    expect(stripView(refuse, NAMES, 1, { ...refuse, side: 'sign' }).tail).toBe(S.desk.approval(50, 51));
+  });
+  it('a game’s first papers name the club on its chip, as a wide chip', () => {
+    const c: R.Chip = { kind: 'club', club: 2, from: 50, to: 54, flag: false, wide: false, icon: 'art:club_veg' };
+    const v = chipView(c, 0, { ...NAMES, clubNames: true }, 1.3);
+    expect(v.text).toBe('Vegetables 50 → 54');
+    expect(v.wide).toBe(true);
+    expect(chipView(c, 0, NAMES, 1.3).text).toBe('50 → 54');
+  });
+});
+
 describe('the desk’s own words fit their boxes at font scale 1.3', () => {
   const s = 1.3;
   const bold = (t: string, f: number) => measure(t, f) * 1.06;
   it('the widest title rows', () => {
     for (const head of [S.desk.ifSigned, S.desk.ifStudied])
-      expect(bold(`${head} ${S.desk.down}${S.desk.join}${S.desk.poll(9, 9, 9)} ${S.desk.returns}`, FONT.title * s)).toBeLessThanOrEqual(TITLE_ROW_W);
+      for (const word of ['Wards', 'Counties', 'Provinces']) {
+        const strip: R.Strip = { side: 'refuse', poll: { from: 9, to: 9, of: 9 }, approval: { from: 50, to: 50 }, followUp: true, chips: [], notes: [], factors: [], affordable: true, label: null, void: null };
+        const v = stripView(strip, { ...NAMES, districts: word }, s);
+        expect(v.titleScale).toBeGreaterThanOrEqual(0.85);
+        expect(bold(`${head} ${S.desk.down}${S.desk.join}${S.desk.poll(word, 9, 9, 9)} ${S.desk.returns}`, FONT.title * s * v.titleScale)).toBeLessThanOrEqual(TITLE_ROW_W);
+      }
   });
   it('every note alone, with large numbers', () => {
     const notes: R.StripNote[] = [

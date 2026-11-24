@@ -26,7 +26,8 @@ import { DESK } from '../art/palette';
 import { S } from '../strings';
 
 /** The atlases warmed behind this card, in the order the desk needs them (props first: the trays, clips, icons; then the faces). */
-const WARM: AtlasKind[] = ['props', 'faces'];
+// Finding 8: faces2 too, so no atlas bakes on the JS thread just as the first paper can be flicked.
+const WARM: AtlasKind[] = ['props', 'faces', 'faces2'];
 /** Steps of loading: the card, the save, each atlas. */
 const STEPS = 2 + WARM.length;
 /** The card's size: a sheet of paper, never wider than the screen allows. */

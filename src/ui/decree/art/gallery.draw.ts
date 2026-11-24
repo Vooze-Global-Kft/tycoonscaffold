@@ -229,7 +229,7 @@ export function gallerySections(): Section[] {
           drawTallyBoard(q, bw, 230, 5, { majority: 3, bunting: true });
           tallyRows(bw, 230, 5).forEach((r, i) => {
             drawLetters(q, ['MARKET WARD', 'HILLTOP', 'MILL WARD', 'OLD TOWN', 'RIVERSIDE'][i], r.name.x, r.name.y + r.name.h * 0.64, { size: 9, style: 'chalk', seed: i });
-            at(q, r.marks.x, r.marks.y + r.marks.h * 0.25, 1, 0, (z) => drawChalkMarks(z, 3 + i * 2, r.marks.h * 0.5, i));
+            at(q, r.marks.x, r.marks.y + r.marks.h * 0.25, 1, 0, (z) => drawChalkMarks(z, 0, r.marks.h * 0.5, i, i !== 3));
             at(q, r.result.x + r.result.w / 2, r.result.y + r.result.h / 2, 1, 0, (z) => drawTallyResult(z, i !== 3, r.result.h * 0.4));
           });
         });

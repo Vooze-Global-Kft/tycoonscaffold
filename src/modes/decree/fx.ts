@@ -44,7 +44,7 @@ export function playDecreeEvents(events: readonly unknown[]): void {
         fx.play('appoint', quiet);
         break;
       case 'ribbon':
-        fx.play('ribbon', quiet);
+        // The scissors play at the signing flick itself (src/ui/decree/desk/DeskCanvas.tsx, finding 63), not 2 s later at commit.
         break;
       case 'runUpStarted':
         // Day D starts the run-up by itself (2.10): the gavel. A call by the player plays it in ./actions.ts.

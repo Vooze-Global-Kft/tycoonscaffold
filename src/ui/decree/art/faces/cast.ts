@@ -62,7 +62,7 @@ const ROWS: [string, CastGroup, string][] = [
   ['fenn',         'advisor',      't2 long   lidded  worried   long     flat   none     half    none     pixie    white    -        -        pearls     navy       dove       folder      ochre'],
   // Spokespeople: two per club, each with one prop of the club; the club's colour in the accent.
   ['kerb',         'spokesperson', 't4 long   dot     level     straight flat   none     round   none     crop     black    flatcap  charcoal coat       slate      terracotta notebook    navy'],
-  ['sprott',       'spokesperson', 't1 pear   wide    arched    snub     o      none     none    freckles curly    auburn   -        -        jumper     terracotta cream      binoculars  charcoal'],
+  ['sprott',       'spokesperson', 't1 pear   wide    arched    snub     flat   none     half    lines    curly    auburn   -        -        jumper     terracotta cream      binoculars  charcoal'],
   ['till',         'spokesperson', 't3 heart  dot     arched    pointed  smile  none     none    earrings flick    brown    -        -        bow        sage       cream      bell        ochre'],
   ['awning',       'spokesperson', 't6 egg    lidded  quizzical straight smirk  none     cat     none     pixie    black    beret    plum     turtleneck charcoal   sage       duster      sage'],
   ['gourdley',     'spokesperson', 't2 square dot     stern     bulb     pursed none     none    cheeks   waves    grey     cloche   slateBlue coat      moss       slateBlue  pumpkin     violet'],
@@ -98,7 +98,7 @@ const ROWS: [string, CastGroup, string][] = [
   ['dunnock',      'rival',        't2 long   lidded  bushy     long     flat   none     half    none     swept    white    -        -        waistcoat  walnut     ochre      knocker     ochre'],
   ['setter',       'rival',        't6 heart  dot     quizzical pointed  smirk  none     cat     none     pixie    grey     -        -        turtleneck slate      dove       crossword   slate'],
   ['waft',         'rival',        't3 soft   crinkle level     bulb     smile  beard    none    none     wisps    white    -        -        suit       navy       terracotta spoon       terracotta'],
-  ['mallowby',     'rival',        't1 square wide    arched    snub     grin   none     none    freckles long     sandy    bobble   teal     jumper     teal       cream      accordion   terracotta'],
+  ['mallowby',     'rival',        't1 square wide    arched    snub     grin   none     round   lines    long     sandy    bobble   teal     jumper     teal       cream      accordion   terracotta'],
   ['noonday',      'rival',        't5 pear   lidded  level     straight flat   none     none    none     bald     black    -        -        cardigan   moss       ochre      sundial     slate'],
   ['kalends',      'rival',        't4 long   dot     worried   long     o      none     round   none     swept    grey     -        -        cardigan   walnut     slateBlue  calendar    terracotta'],
   ['strop',        'rival',        't6 square lidded  stern     straight smirk  none     none    earrings bun      white    -        -        bow        navy       dove       chair       plum'],
@@ -111,7 +111,7 @@ const ROWS: [string, CastGroup, string][] = [
   ['tessel',       'rival',        't2 egg    wide    worried   snub     o      none     square  none     long     chestnut -        -        jumper     ochre      cream      jigsaw      teal'],
   ['pantry',       'rival',        't1 pear   dot     stern     bulb     flat   sideburns round   none     fringe   grey     bowler   charcoal suit       walnut     slate      barometer   walnut'],
   ['ambling',      'rival',        't5 heart  dot     level     pointed  smile  none     none    freckles ponytail auburn   bucket   moss     coat       moss       ochre      boots       walnut'],
-  ['knapp',        'rival',        't3 square crinkle arched    bulb     o      sideburns none   cheeks   part     brown    -        -        scarf      walnut     teal       songsheet   cream'],
+  ['knapp',        'rival',        't3 square crinkle arched    bulb     o      sideburns none   lines    fringe    brown    -        -        scarf      walnut     teal       songsheet   cream'],
 ];
 
 function parseRow(id: string, group: CastGroup, spec: string): Look {

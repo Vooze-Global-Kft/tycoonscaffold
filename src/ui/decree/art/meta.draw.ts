@@ -498,19 +498,23 @@ export function drawTallyBoard(c: SkCanvas, w: number, h: number, n: number, o: 
   if (o.bunting) drawBunting(c, 4, w - 4, 4, Math.round(w / 26), 7, 11);
 }
 
-/** Chalk tally marks: `n` marks in gates of five, from (0, 0) as the top left, each `h` tall. */
-export function drawChalkMarks(c: SkCanvas, n: number, h = 16, seed = 3): number {
-  let x = 0;
-  for (let i = 0; i < n; i++) {
-    const g = i % 5;
-    if (g < 4) {
-      c.drawPath(wobble([[x + g * 4, 0], [x + g * 4 + 0.8, h]], 0.6, seed + i), stroke(DESK.chalkLine, 1.5));
-    } else {
-      c.drawPath(wobble([[x - 2, h * 0.8], [x + 15, h * 0.15]], 0.6, seed + i), stroke(DESK.chalkLine, 1.5));
-      x += 24;
-    }
-  }
-  return x + (n % 5) * 4;
+/**
+ * The chalk verdict beside a district's share (D43, finding 49: strokes counted in gates of five read
+ * as a count of votes): one chalk tick for a district held, one chalk dash for one not held, from
+ * (0, 0) as the top left, `h` tall. `held` says which; a caller that passes only `n` (the old
+ * signature: tenths of a share, 5 or more = half or better) gets a tick for n >= 5 and a dash below.
+ * Returns the width drawn.
+ */
+export function drawChalkMarks(c: SkCanvas, n: number, h = 16, seed = 3, held?: boolean): number {
+  const yes = held ?? n >= 5;
+  const w = h * 1.05;
+  const chalk = (pts: [number, number][], k: number) => {
+    c.drawPath(wobble(pts, 0.5, seed + k), stroke(alpha(DESK.chalkLine, 0.55), 2.6));
+    c.drawPath(wobble(pts, 0.4, seed + k + 1), stroke(DESK.chalkLine, 1.5));
+  };
+  if (yes) chalk([[0, h * 0.55], [w * 0.36, h], [w, 0]], 0);
+  else chalk([[w * 0.1, h * 0.52], [w * 0.9, h * 0.48]], 2);
+  return w;
 }
 
 /** An envelope (centred, about 40 x 26), `open` 0..1 lifts its flap and shows a paper inside. */

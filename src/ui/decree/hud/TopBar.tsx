@@ -39,6 +39,11 @@ function Treasury({ font, box, width }: { font: number; box: number; width: numb
       useGame.subscribe((s, prev) => {
         if (s.game.cash === prev.game.cash) return;
         const v = cashNow();
+        // Finding 9: under a full-screen view nothing invisible animates: the number is set, not glided.
+        if (useDecreeUi.getState().view !== null) {
+          shown.value = v;
+          return;
+        }
         shown.value = withTiming(v, { duration: glideMs(), easing: Easing.linear });
       }),
     [shown],

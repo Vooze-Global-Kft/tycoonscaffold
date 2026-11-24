@@ -33,6 +33,14 @@ export function withDecreeContent(cfg: GameConfig): GameConfig {
 }
 
 const asState = (g: R.DecreeGame) => g as GameState;
+
+/**
+ * A save the rules could not read starts a fresh game: one console warning names the field, so a reset is
+ * visible instead of silent (review finding 17). Exported for its test.
+ */
+export function warnFreshStart(field: string): void {
+  console.warn(`[decree] the save could not be read (${field}): a new game starts`);
+}
 /** A save of a decree game always has `decree` after reconcile; a bare shared state (a test) gets one. */
 const run = (cfg: R.DecreeConfig, g: GameState): R.DecreeGame => R.withDecreeFields(cfg, g);
 
@@ -44,9 +52,10 @@ export const decreeEngineMode: EngineMode = {
   reconcile: (cfg, base, raw) => {
     if (!R.isDecree(cfg)) return base;
     try {
-      return asState(R.reconcileTerm(cfg, R.reconcileDecree(cfg, base, raw), raw));
-    } catch {
-      // Never throws (EngineMode contract): a save the rules cannot read starts afresh.
+      return asState(R.reconcileTerm(cfg, R.reconcileDecree(cfg, base, raw, warnFreshStart), raw));
+    } catch (e) {
+      // Never throws (EngineMode contract): a save the rules cannot read starts afresh, with one warning that says why.
+      warnFreshStart(`decree (${e instanceof Error ? e.message : String(e)})`);
       try {
         return asState(R.createDecree(cfg, base));
       } catch {

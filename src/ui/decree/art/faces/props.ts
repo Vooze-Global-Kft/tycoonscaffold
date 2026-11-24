@@ -479,15 +479,19 @@ export const PROPS = {
     },
   },
   spoon: {
-    at: { x: 30, y: 100, deg: -20 },
+    // The Ceremonial Spoon held upright at the shoulder like a mace, bowl up, a ribbon bow on its
+    // handle: well away from the mouth (it must never read as a pipe at 44 pt).
+    at: { x: 24, y: 116, deg: 6 },
+    held: true,
     draw: (c, pen, acc) => {
-      // The Ceremonial Spoon on a ribbon round the neck.
-      ink(c, pen, curve([[20, -22], [10, -10], [2, -6]]), 0.6);
-      c.drawPath(curve([[20, -22], [10, -10], [2, -6]]), stroke(acc, 1.6));
-      wash(c, pen, rrect(-1.4, -6, 2.8, 16, 1.2), BRASS, 0.7);
-      const bowl = oval(0, 14, 5, 7);
+      wash(c, pen, rrect(-1.6, -12, 3.2, 26, 1.4), BRASS, 0.7);
+      const bowl = oval(0, -18, 5.4, 7.4);
       wash(c, pen, bowl, BRASS, 0.9);
-      c.drawPath(arc(-1.4, 12, 2.4, 4, 180, 80), stroke('#FFFFFF', 0.9));
+      c.drawPath(arc(-1.6, -20, 2.4, 2.6, 190, 80), stroke('#FFFFFF', 0.9));
+      const bow = poly([0, 1, -6, -3, -6, 5]);
+      const bow2 = poly([0, 1, 6, -3, 6, 5]);
+      wash(c, pen, bow, acc, 0.6);
+      wash(c, pen, bow2, acc, 0.6);
     },
   },
   accordion: {

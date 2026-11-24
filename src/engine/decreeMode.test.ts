@@ -112,7 +112,7 @@ describe('the decree engine mode', () => {
     const base = baseGameState(FIXTURE_NOW);
     const g = freshState(cfg, 3);
     const result = { won: true, nrGained: 7, meritHeld: 4, meritSweep: false, carried: [2], resigned: null };
-    const onSheet = { ...g, decree: { ...g.decree, phase: 'result' as const, count: { districts: [], order: [], held: 4, majority: 3, won: true, sweep: false, rival: 'x' }, result, appSlotsUsed: 2 } };
+    const onSheet = { ...g, decree: { ...g.decree, phase: 'result' as const, count: { ...R.count(cfg, g), held: 4, majority: 3, won: true, sweep: false, rival: 'x' }, result, appSlotsUsed: 2 } };
     const back = M.reconcile(cfg, base, JSON.parse(JSON.stringify(onSheet))) as R.DecreeGame;
     expect(back.decree.result).toEqual(result);
     expect(back.decree.appSlotsUsed).toBe(2);

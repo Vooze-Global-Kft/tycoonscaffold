@@ -33,7 +33,7 @@ export type { DecreeSetup } from './decree/create';
 export type { DisarrayRule } from './decree/params';
 
 // --- 2.7 the draw, landing, the run-up's papers, set-aside and return (P1a: draw.ts) ---
-export { drawNext, fillTray, landNext, landPaper, drawCampaignPaper, drawRally, setAside, restoreAside, returnToDeck, resolveEffects, scriptedPaper, comicPaper, comicWeights, clubWeight, requisitionPaper, requisitionMinistry, ribbonPaper, applicationPaper, grievancePaper, frontPagePaper, onTop, isEventPaper, servedClub, returningLines } from './decree/draw';
+export { drawNext, fillTray, landNext, landPaper, drawCampaignPaper, drawRally, setAside, restoreAside, returnToDeck, resolveEffects, scriptedPaper, comicPaper, comicWeights, clubWeight, requisitionPaper, requisitionMinistry, ribbonPaper, applicationPaper, grievancePaper, frontPagePaper, onTop, isEventPaper, servedClub, returningLines, nextLanding, recentVisitors, noteDrawn, framesAllowed } from './decree/draw';
 
 // --- 2.7 sizing and the strip (P1a: size.ts) ---
 export { sizeMood, sizeMoney, freezeShown, stripOf, costOf, formVoid } from './decree/size';
@@ -42,7 +42,7 @@ export { sizeMood, sizeMoney, freezeShown, stripOf, costOf, formVoid } from './d
 export { decide, takeBack, commitPending, applyShown, commitItem, isDay } from './decree/decide';
 
 // --- 2.6, 2.7 slips, purchases, the reserve, the Ledger (P1a: slips.ts) ---
-export { reserve, reserveParts, slipFor, slipOf, slipYields, slipsComeNow, canBuy, buy, raise, openMinistry, buyVanity, ledger, callFrom, runUpPrices } from './decree/slips';
+export { reserve, reserveParts, slipFor, slipOf, slipYields, slipsComeNow, canBuy, buy, raise, openMinistry, buyVanity, ledger, callFrom, runUpPrices, bundleOf, bundleRoom, slipVoid, retireStaleSlip, ledgerShut, afterPurchase } from './decree/slips';
 
 // --- 2.7, 7.6 follow-ups (P1a: followup.ts) ---
 export { scheduleFollowUp, dueFollowUp, followUpPaper, stickyNote } from './decree/followup';
@@ -72,7 +72,7 @@ export { MOVE_RESETS, MOVE_STAYS, canMoveUp, moveUp, moveSheet, movedState, move
 export type { MoveListItem } from './decree/move';
 
 // --- 2.16 advice and the goal line (P1b: advice.ts) ---
-export { advice, goalLine, about, candidates, scoreOf, recordShort, slipNeed, slipReserve, reserveNow, standingOrderReserve, standingOrderPick, callNow } from './decree/advice';
+export { advice, goalLine, about, candidates, scoreOf, recordShort, slipNeed, slipReserve, reserveNow, standingOrderReserve, standingOrderPick, standingOrderNeed, callNow, OPENING_FACTOR } from './decree/advice';
 export type { Candidate } from './decree/advice';
 
 // --- 2.14 new things a term, the ONE Factors object (P1b: twists.ts) ---
@@ -85,4 +85,4 @@ export { nextApplication, ministerFactors, appoint, sendAway, cabinet, ministerO
 export { hintsFor, TEACHING_SLOTS } from './decree/hints';
 
 // --- 5.10, 5.11 ads, products, the Standing Order, the face (P1b: grants.ts) ---
-export { canWatchAd, canShop, grantAd, entitleDecree, setStandingOrder, standingOrderStep, standingOrderAvailable, standingOrderActive, pickFace, offering, owns, cosmetics, freePlaces, adCooldownLeft, sofaAmount } from './decree/grants';
+export { canWatchAd, canShop, grantAd, entitleDecree, setStandingOrder, standingOrderStep, standingOrderAvailable, standingOrderActive, pickFace, offering, owns, cosmetics, freePlaces, adCooldownLeft, sofaAmount, openDoorsUseful } from './decree/grants';

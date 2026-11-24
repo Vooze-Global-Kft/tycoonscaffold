@@ -27,7 +27,7 @@ const abs = (r: Rect) => ({ position: 'absolute' as const, left: r.x, top: r.y, 
 /** One strip's words. `onTitleEnd` reports where the title's words end (the signature writes right of it). */
 const StripWords = memo(function StripWords({ view, rows, w, s, on, onTitleEnd }: { view: StripView; rows: StripRows; w: number; s: number; on: SharedValue<number>; onTitleEnd?: (x: number) => void }) {
   const ink = view.side === 'sign' ? DESK.violet : DESK.slateDeep;
-  const title = FONT.title * s;
+  const title = FONT.title * s * view.titleScale;
   const k = DENSITY_SCALE[view.density];
   const chipFont = FONT.chip * s * k;
   const icon = Math.round(CHIP_ICON * s * k);

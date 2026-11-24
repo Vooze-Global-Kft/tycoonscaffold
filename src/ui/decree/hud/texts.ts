@@ -21,6 +21,8 @@ export interface RibbonValues {
   recordTarget: number | null;
   canCall: boolean;
   poll: { held: number; of: number };
+  /** The game's first term (office 0, term 1): Name Recognition is spelled out (D43). */
+  firstTerm?: boolean;
 }
 
 export interface RibbonTexts {
@@ -28,7 +30,7 @@ export interface RibbonTexts {
   kind: 'term' | 'call' | 'runUp' | 'night';
   long: string;
   short: string;
-  /** The record for the Poll button's badge when the short form shows ("Lv 52/80"). */
+  /** The record for the Poll button's badge when the short form shows ("Rec. 52/80"). */
   badge: string | null;
 }
 
@@ -46,7 +48,7 @@ export function ribbonTexts(v: RibbonValues): RibbonTexts {
   }
   const title = v.acting ? S.hud.acting(v.title) : v.title;
   const day = S.hud.ribbonDay(v.day, v.termDays);
-  const nr = S.hud.ribbonNr(v.nr, v.nrTarget);
+  const nr = v.firstTerm ? S.hud.ribbonNrLong(v.nr, v.nrTarget) : S.hud.ribbonNr(v.nr, v.nrTarget);
   const lv = S.hud.ribbonLv(v.record, v.recordTarget);
   // The record matters only while the next office needs it; at the top it is left out.
   const long = [title, day, nr, ...(v.recordTarget !== null ? [lv] : [])].join(j);

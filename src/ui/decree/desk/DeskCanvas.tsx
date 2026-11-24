@@ -17,13 +17,15 @@
  * strings.ts. Keeps its name and props (`layout`). Owned by the desk package.
  */
 import { Canvas, Group, Path, Picture } from '@shopify/react-native-skia';
-import { arc } from '../art/pen';
+import { arc, at, picture } from '../art/pen';
+import { drawGiantScissors } from '../art/emblem.draw';
 import { drawerStage } from '../art/desk.draw';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type AccessibilityActionEvent } from 'react-native';
 import Animated, { useAnimatedStyle, useDerivedValue, useFrameCallback, useSharedValue, withDelay, withSpring, withTiming, Easing, type SharedValue } from 'react-native-reanimated';
 import type * as R from '../../../engine/decree';
 import { decreeActions } from '../../../modes/decree/actions';
+import { fx } from '../../../services/fx';
 import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
 import { DESK } from '../art/palette';
@@ -233,6 +235,8 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
         if (side === 'sign') shakeIt();
         return;
       }
+      // A ribbon-cutting signed: the scissors' snip, heard now and drawn on the paper as it flies (finding 63).
+      if (side === 'sign' && vm.kind === 'paper' && vm.ground === 'ribbon') fx.play('ribbon', { haptic: false });
       startLeave(side, y0);
     },
     [paperY, shakeIt, startLeave],
@@ -339,6 +343,10 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const player = around?.player || 'bramble';
   const signature = useMemo(() => signaturePicture(player, m, D.w, titleEnd), [player, m, D.w, titleEnd]);
   const leaveSignature = useMemo(() => (leaving && leaving.fit !== fit ? signaturePicture(player, leaving.fit.m, leaving.fit.design.w, titleEnd) : null), [leaving, fit, player, titleEnd]);
+  // The snip over a signed ribbon-cutting: the giant scissors closing on the SIGN strip.
+  const snipW = D.w;
+  const snipY = m.sign.y + m.sign.h / 2;
+  const snipPic = useMemo(() => picture({ x: 0, y: 0, w: snipW, h: snipY + 60 }, (c) => at(c, snipW * 0.78, snipY, 0.55, -24, (q) => drawGiantScissors(q, 40, { open: 6 }))), [snipW, snipY]);
   const ringPath = useMemo(() => arc(rest.ring.cx, rest.ring.cy, rest.ring.r, -90, 359.9), [rest]);
 
   // --- what the UI thread computes from paperY
@@ -395,6 +403,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
             <Group transform={[{ translateX: leaving.vm.kind === 'slip' ? leaving.slip.x : leaving.fit.design.x }, { translateY: leaving.vm.kind === 'slip' ? leaving.slip.y : leaving.fit.design.y }]}>
               <Picture picture={leavePic} />
               {leaving.side === 'sign' && leaving.vm.kind === 'paper' ? <Picture picture={(leaveSignature ?? signature).pic} /> : null}
+              {leaving.side === 'sign' && leaving.vm.kind === 'paper' && leaving.vm.ground === 'ribbon' ? <Picture picture={snipPic} /> : null}
             </Group>
           </Group>
         ) : null}

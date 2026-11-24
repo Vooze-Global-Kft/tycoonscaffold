@@ -50,7 +50,7 @@ export const MOVE_RESETS: readonly MoveListItem[] = [
   { id: 'day', fields: ['day', 'phase', 'count', 'result'] },
   { id: 'campaign', fields: ['campaign'] },
   { id: 'losses', fields: ['losses'] },
-  { id: 'tray', fields: ['tray', 'asideTray', 'desk', 'pending', 'nextArrivalAt', 'emptySince', 'slipOffered'] },
+  { id: 'tray', fields: ['tray', 'asideTray', 'desk', 'pending', 'nextArrivalAt', 'emptySince', 'slipOffered', 'papersSinceSlip'] },
 ];
 
 /**
@@ -67,7 +67,7 @@ export const MOVE_STAYS: readonly MoveListItem[] = [
   { id: 'followUps', fields: ['followUps'] },
   { id: 'purchases', fields: ['standingOrder', 'cooldowns'] },
   { id: 'wall', fields: ['wall', 'formerOpponents', 'rivalIndex', 'face'] },
-  { id: 'record', fields: ['seed', 'draws', 'stats', 'scriptedDone', 'awayCarry'] },
+  { id: 'record', fields: ['seed', 'draws', 'stats', 'scriptedDone', 'awayCarry', 'handLanded', 'frameLast', 'visitorsSeen'] },
 ];
 
 /** The next office's requirements and where the player stands (2.10 "what is missing"). */
@@ -116,6 +116,9 @@ export function movedState(cfg: DecreeConfig, g: DecreeGame, now: number): Decre
     stats: d.stats,
     scriptedDone: d.scriptedDone,
     awayCarry: d.awayCarry,
+    handLanded: d.handLanded,
+    frameLast: d.frameLast,
+    visitorsSeen: d.visitorsSeen,
     nr: d.nr,
     cabinet: d.cabinet,
     applicationsDelivered: d.applicationsDelivered,

@@ -13,6 +13,7 @@ import { useFxSettings } from '../../../services/fx/useFxSettings';
 import { useGame } from '../../../state/store';
 import { S } from '../strings';
 import { useDecreeUi } from '../uiState';
+import { useCanShop } from '../useDecree';
 import { Btn, Card, DecreeSheet, INK, Toggle, Txt, useType } from './parts';
 import { prefs, usePrefs } from '../prefs';
 
@@ -38,9 +39,17 @@ function SettingsBody() {
   const restore = useGame((s) => s.restorePurchases);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const canShop = useCanShop();
   return (
     <>
-      <Btn label={S.sheets.shop} onPress={() => useDecreeUi.getState().openSheet({ type: 'shop' })} />
+      {/* Finding 27: from the call to the end of election night no shop is shown, only that it is closed. */}
+      {canShop ? (
+        <Btn label={S.sheets.shop} onPress={() => useDecreeUi.getState().openSheet({ type: 'shop' })} />
+      ) : (
+        <Txt size={ty.small} bold color={INK.slate} center>
+          {S.hud.closedRunUp}
+        </Txt>
+      )}
       <Card>
         {KEYS.map((key) => (
           <Toggle

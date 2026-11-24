@@ -28,9 +28,12 @@ describe('the score of 2.16', () => {
     // D36: a monument on offer is never a candidate (advice, its slips and the goal line never name one).
     const m = { ...g, decree: { ...g.decree, monumentOffer: 'bust' } };
     expect(R.candidates(cfg, m).some((x) => x.purchase.type === 'monument')).toBe(false);
-    // The goal is the lowest score.
-    const goal = R.advice(cfg, g).goal;
-    const best = R.candidates(cfg, g, p).reduce((a, b) => (R.scoreOf(cfg, b, g.cash, res, p.I, short) < R.scoreOf(cfg, a, g.cash, res, p.I, short) ? b : a));
+    // The goal is the lowest score (with every ministry open, so D42 (d)'s openings do not enter).
+    const all = built({ cash: 300, ministries: [8, 3, 1, 1], desk: 'test-mayor-bus-swap-1' }, cfg);
+    const pa = R.decreeParams(cfg, all);
+    const ra = R.slipReserve(cfg, all, pa);
+    const goal = R.advice(cfg, all).goal;
+    const best = R.candidates(cfg, all, pa).reduce((a, b) => (R.scoreOf(cfg, b, all.cash, ra, pa.I, short) < R.scoreOf(cfg, a, all.cash, ra, pa.I, short) ? b : a));
     expect(goal).toMatchObject({ kind: 'purchase', purchase: best.purchase, price: best.price });
   });
 
@@ -159,7 +162,10 @@ describe('the goal line (2.16)', () => {
     const pick = R.standingOrderPick(cfg, g)!;
     const between = { ...g, cash: c.standingOrder.times * pick.price + (two + every) / 2 };
     expect(R.standingOrderStep(cfg, between, [])).toBe(between);
-    const enough = { ...g, cash: c.standingOrder.times * pick.price + every + 1 };
+    // The attack's fix: what it needs is also checked on the state AFTER its purchase (never less than 3 × the price above every paper).
+    const need = R.standingOrderNeed(cfg, g, pick);
+    expect(need).toBeGreaterThanOrEqual(c.standingOrder.times * pick.price + every);
+    const enough = { ...g, cash: need + 1 };
     expect(R.standingOrderStep(cfg, enough, [])).not.toBe(enough);
     // The Ledger: "Kept for the desk" is the Standing Order's sum while it is on, the 2.6 reserve otherwise.
     expect(R.ledger(cfg, g).reserve).toBe(R.roundDibs(cfg, every));
