@@ -237,8 +237,9 @@ export function bandLayout(W: number, H: number, caption: string): { lines: stri
   // Room for the flourish and the nib to the right of the longest line.
   const room = W - left - W * 0.05;
   const maxUnits = Math.max(...lines.map(lineUnits)) + 1.7;
-  const size = Math.min(W * 0.054, room / maxUnits);
-  const bandH = Math.round(size * (0.85 + 1 + (lines.length - 1) * 1.45 + 1.05) + H * 0.012);
+  // The 9:16 Play screen is short (its compact desk puts the drawer's label just above the goal line): a smaller hand there.
+  const size = Math.min(W * (H / W > 2 ? 0.054 : 0.049), room / maxUnits);
+  const bandH = Math.round(size * (0.62 + 1 + (lines.length - 1) * 1.45 + 0.92) + H * 0.012);
   return { lines, size, bandH, left };
 }
 
@@ -247,8 +248,9 @@ export function shotHtml(o: ShotOpts): string {
   const u = W / 1320;
   const { lines, size, bandH, left } = bandLayout(W, H, o.caption);
   const bandY = H - bandH;
-  const base = bandY + size * 0.85 + size;
-  // The band: translucent baize with felt, a brass hairline on top; the game shows through it a little.
+  const base = bandY + size * 0.62 + size;
+  // The band: translucent baize over the game blurred (its colours show through, never its words: the
+  // bottom row's labels stay unreadable), felt, a brass hairline on top.
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:${W}px;height:${H}px;overflow:hidden;background:${DESK.baize}}
@@ -256,9 +258,9 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:${DESK.baize}}
 svg{position:absolute;left:0;top:0}
 </style></head><body>
 <div class="pic">${framed(o.raw, o.band, W, H)}</div>
+<div class="band" style="position:absolute;left:0;top:${bandY}px;width:${W}px;height:${bandH}px;background:rgba(46,74,62,.9);-webkit-backdrop-filter:blur(${Math.round(28 * u)}px);backdrop-filter:blur(${Math.round(28 * u)}px)"></div>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs>${feltDefs(u)}
 <linearGradient id="lift" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${DESK.baizeDeep}" stop-opacity=".35"/><stop offset=".7" stop-color="${DESK.baizeDeep}" stop-opacity="0"/></linearGradient></defs>
-<rect x="0" y="${bandY}" width="${W}" height="${bandH}" fill="${DESK.baize}" fill-opacity=".95"/>
 <rect x="0" y="${bandY}" width="${W}" height="${bandH}" fill="url(#felt)"/>
 <rect x="0" y="${bandY}" width="${W}" height="${bandH}" fill="url(#lift)"/>
 <rect x="0" y="${bandY - 3 * u}" width="${W}" height="${(3 * u).toFixed(1)}" fill="${DESK.brassLight}" fill-opacity=".85"/>

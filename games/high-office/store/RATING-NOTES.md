@@ -38,7 +38,7 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
   never pays the mayor money and never pleases a club; it adds gossip, and its favour costs the mayor.
 - Money (D13): no ad or purchase moves a mood or a poll point: those move only by papers you decide, and
   none is offered from the call until election night ends.
-- The sensitivity editor's read: games/high-office/store/SENSITIVITY-READ.md (hand-written, signed by its writer; sync never writes it): **not written yet**.
+- The sensitivity editor's read: games/high-office/store/SENSITIVITY-READ.md (hand-written, signed by its writer; sync never writes it).
 - D9: a read by the owner (or someone the owner names) before a submission is still required; nothing here
   says a person signed what no person signed.
 

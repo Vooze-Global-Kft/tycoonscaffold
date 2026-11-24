@@ -55,6 +55,7 @@ No login is needed. There is no chat, leaderboard, user-generated content or web
 - [ ] No ad button and no Shop is reachable from the call to the end of election night (spec 2.10, 10.1 item 4); Settings shows "Closed during the run-up" in the Shop button's place.
 - [ ] Campaign papers appear in no store image or preview video (the store reviewer's finding 29).
 - [ ] The Ledger appears in no store image (D43).
+- [ ] The six images in screenshots/ were re-made from the final game.json (`npx tsx scripts/store/shots.ts --game high-office --write`) and each looked at: the refusal first, the signing, the pumpkin's follow-up, the poll, election night, the Office wall; no front page, run-up paper, Ledger, goose, flag, seal, building or date.
 - [ ] The AdMob "Politics" sensitive category is blocked in the AdMob console for this app (policy research 3).
 - [ ] The ad and purchase sentences match what the build does (game.json `monetization`: five products, `interstitials` false, `showBanner` false).
 - [ ] The H10 bot gate (ad-everything against passive, all five products held: share, margin and Name Recognition per term within 3 points) passed in `build-office.py`'s final report.

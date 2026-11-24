@@ -25,7 +25,7 @@
  */
 
 /** Where the values below came from (build-office.py rewrites it with --save). */
-export const DECREE_TUNED_FROM = 'D34 (the prototype final candidate: growth 1.15, call 0.7, slip reserve 30 s, tiers 12 / 60 / 30 s, r 13, five other-club deltas, R 3 / 4 / 5) with D38 starting point (boycott below 25, sizing pull 0.5); before the tuner ran on the engine';
+export const DECREE_TUNED_FROM = 'the numbers step on the final rules (D41 to D45), 24 November: the D34 candidate with the first engineer's E3/G0 balance findings, tuned on seeds 101 to 130 at 4, 6 and 9 s and checked on 201 to 215 (scratchpad/office/numbers2/TABLE.txt)';
 
 // TUNED-BEGIN
 export const DECREE_TUNED: Record<string, number> = {
@@ -33,43 +33,53 @@ export const DECREE_TUNED: Record<string, number> = {
   "archetypes[1].sign[1].delta": -5,
   "archetypes[2].sign[2].delta": -5,
   "archetypes[3].sign[1].delta": -2,
-  "archetypes[4].sign[2].delta": -3,
+  "archetypes[4].refuse[0].delta": -1,
+  "archetypes[4].sign[2].delta": -2,
   "boycott.below": 25,
   "desk.slipReserveSeconds": 30,
   "ministry.levelGrowth": 1.15,
   "ministry.openRatio": 13,
   "money.L": 30,
-  "money.M": 60,
-  "money.S": 12,
-  "offices[0].callFraction": 0.7,
+  "money.M": 30,
+  "money.S": 7.5,
+  "offices[0].callFraction": 0.6,
+  "offices[0].requisitionEvery": 12,
   "offices[0].rivalPull": 3,
-  "offices[1].callFraction": 0.7,
+  "offices[1].callFraction": 0.6,
+  "offices[1].requisitionEvery": 10,
   "offices[1].rivalPull": 4,
-  "offices[2].callFraction": 0.7,
+  "offices[2].callFraction": 0.5,
+  "offices[2].requisitionEvery": 6,
   "offices[2].rivalPull": 5,
+  "offices[2].stand.nr": 65,
   "paperRules.sizing.pull": 0.5
 };
 // TUNED-END
 
 /** Why each tuned value moved (the aim it serves), for the lead's review. */
 export const DECREE_TUNED_WHY: Record<string, string> = {
-  'archetypes[0].sign[2].delta': 'H9 / D27: signing costs the other club more, so reading beats always-sign',
-  'archetypes[1].sign[1].delta': 'H9 / D27, as above',
-  'archetypes[2].sign[2].delta': 'H9 / D27, as above',
-  'archetypes[3].sign[1].delta': 'H9 / D27, as above',
-  'archetypes[4].sign[2].delta': 'H9 / D27, as above',
-  'desk.slipReserveSeconds': 'H10: the reader finds sign unaffordable on at most 5 % of papers (D16)',
-  'ministry.levelGrowth': 'D24: more to buy on an idle desk (D34: 1.15)',
+  'archetypes[0].sign[2].delta': 'H9 / D27: signing a project costs the other club 4 (D34), so reading beats always-sign',
+  'archetypes[1].sign[1].delta': 'H9 / D27, as above (swap, D34)',
+  'archetypes[2].sign[2].delta': 'H9 / D27, as above (fee, D34)',
+  'archetypes[3].sign[1].delta': 'H9 / D27, as above (treat, D34)',
+  'archetypes[4].sign[2].delta': 'D27: −3 → −2. Committee Week (committees ×2, president term 5) bled the clubs the exact reader signs against and cost it that election on every seed (margin −3); softer, it is a close election and the reader wins ≥ 90 % pooled',
+  'archetypes[4].refuse[0].delta': 'D27: −2 → −1, as above: the reader refuses three committees in four, and in Committee Week the petitioners sank below 30 (huff, D25)',
+  'desk.slipReserveSeconds': 'H10: the reader finds sign unaffordable on at most 5 % of papers (D16; at its top already)',
+  'ministry.levelGrowth': 'D24: more to buy on an idle desk (D34: 1.15, the bottom of its range)',
   'ministry.openRatio': '8.4 / D34 pace: every ministry opens by the end of its office\'s first term',
-  'money.L': 'H10: vanity at L is the paper most often unaffordable',
-  'money.M': '8.4 money: paper gains 10 to 25 % of dibs',
-  'money.S': 'H10: the reader finds sign unaffordable on at most 5 % of papers (D34)',
-  'boycott.below': 'D38: a careless mayor meets boycotts (the rules lead: 25 with pull 0.5 gives always-refuse about 2 an hour; 2.11 bound stays 6)',
-  'paperRules.sizing.pull': 'D38 lever 2 with boycott.below: moods drift further from 50, so neglect shows',
-  'offices[0].callFraction': 'D17: the reader calls on the first allowed day with a majority; 8.4 first election 11 to 15 min',
-  'offices[0].rivalPull': 'D27: the one-in-ten and casual readers win shares (the starting value already)',
-  'offices[1].callFraction': 'D17, as above',
-  'offices[1].rivalPull': 'D27: the one-in-ten and casual readers win shares',
-  'offices[2].callFraction': 'D17, as above',
+  'money.S': 'H10: 12 → 7.5 s of B (bottom). Projects, committees and ribbons cost S; after a bundle the treasury sits at the slip reserve, and the forms that land next must be payable',
+  'money.M': 'D27 / H8: 60 → 30 s of B. A fee paid 60 s of B for −5 to another club, so the reader signed every fee and bled the clubs into lost presidential terms; at 30 a fee is a real choice (H8 differs from money-only stays ≥ 25 %)',
+  'money.L': 'H10: vanity at L is the paper most often unaffordable (D34)',
+  'boycott.below': 'D38: a careless mayor meets boycotts (25 with pull 0.5: always-refuse and random about 3 an hour, the happier-club habit 2.5, the reader 0)',
+  'paperRules.sizing.pull': 'D38 lever 2 with boycott.below: moods drift further from 50, so neglect shows (pull 1 measured: H8 both choices fell, nothing gained)',
+  'offices[0].callFraction': 'D44: 0.7 → 0.6 (call from day 48 of 80): the first election night ends at about 10.6 min at 6 s and 9 s (aims 12 and 16)',
+  'offices[1].callFraction': '8.4 pace with D17: 0.7 → 0.6. With 0.5 the reader reached president at 46 min (aim 55 to 95); with 0.7 at 55 but H8 "both choices" fell to 2 of 10 seeds; 0.6 is the middle',
+  'offices[2].callFraction': 'D27: 0.7 → 0.5: the reader calls on the first allowed day with a majority (D17), before a presidential term\'s long drift can sink a club',
+  'offices[0].requisitionEvery': 'H10: 10 → 12 (top): fewer requisitions, the form most often unaffordable after a bundle',
+  'offices[1].requisitionEvery': 'H10: 8 → 10 (top), as above',
+  'offices[2].requisitionEvery': 'H10: 4 → 6 (top), as above (the first engineer\'s F1 finding)',
+  'offices[2].stand.nr': '8.4 pace: 50 → 65 (top): bundles made the climb faster (D42 a); president later, toward 55 to 95 min, and past hour 1 at 6 s (H7: a frame dealt twice across a move)',
+  'offices[0].rivalPull': 'D27: the one-in-ten and casual readers win shares (3 / 4 / 5 is the start; 4 / 6 / 7 cost the misreader its 75 %)',
+  'offices[1].rivalPull': 'D27, as above',
   'offices[2].rivalPull': 'D27, as above',
 };

@@ -786,7 +786,8 @@ def save_tuned(tuned, why):
     body = 'export const DECREE_TUNED: Record<string, number> = ' + json.dumps(tuned, indent=2, sort_keys=True) + ';\n'
     if '// TUNED-BEGIN' in src:
         src = re.sub(r'(// TUNED-BEGIN\n)(.*?)(// TUNED-END)', lambda m: m.group(1) + body + m.group(3), src, flags=re.S)
-        src = re.sub(r"export const DECREE_TUNED_FROM = '.*?';", "export const DECREE_TUNED_FROM = %s;" % json.dumps(why).replace('"', "'"), src)
+        # A JSON string (double quotes): a note with an apostrophe stays one TypeScript string.
+        src = re.sub(r"export const DECREE_TUNED_FROM = (?:'[^\n]*'|\"[^\n]*\");", lambda m: "export const DECREE_TUNED_FROM = %s;" % json.dumps(why, ensure_ascii=False), src)
     else:
         raise SystemExit('src/config/decree.content.ts has no TUNED-BEGIN / TUNED-END block to write into')
     open(CONTENT_TS, 'w').write(src)

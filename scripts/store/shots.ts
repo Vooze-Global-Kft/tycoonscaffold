@@ -413,8 +413,8 @@ async function sheet(browser: any): Promise<void> {
       ${fs.existsSync(feature) ? `<img class="feat" src="${pathToFileURL(feature).href}">` : ''}</div>
       <div class="set">${files.map((f, i) => `<figure><img src="${pathToFileURL(f).href}"><figcaption>${i + 1}</figcaption></figure>`).join('')}</div></section>`);
   }
-  const W = 2600;
   const thumbW = 420;
+  const W = 60 * 2 + 440 + 40 + SHEET_SHOTS * (thumbW + 22);
   const thumbH = Math.round((thumbW * size.h) / size.w);
   const H = 140 + GAMES.length * (thumbH + 120);
   const html = `<!doctype html><html><head><meta charset="utf-8"><style>${FONT_CSS}
