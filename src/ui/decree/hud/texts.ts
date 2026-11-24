@@ -34,7 +34,8 @@ export interface RibbonTexts {
 
 export function ribbonTexts(v: RibbonValues): RibbonTexts {
   const j = S.hud.ribbonJoin;
-  if (v.phase === 'count' || v.phase === 'result') return { kind: 'night', long: S.hud.ribbonNight, short: S.hud.ribbonNight, badge: null };
+  if (v.phase === 'count') return { kind: 'night', long: S.hud.ribbonNight, short: S.hud.ribbonNight, badge: null };
+  if (v.phase === 'result') return { kind: 'night', long: S.hud.ribbonResult, short: S.hud.ribbonResult, badge: null };
   if (v.phase === 'campaign') {
     const t = S.hud.ribbonRunUp(v.poll.held, v.poll.of);
     return { kind: 'runUp', long: t, short: t, badge: null };

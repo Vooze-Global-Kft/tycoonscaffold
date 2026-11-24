@@ -3,7 +3,7 @@
  * come from game.json). The fingerprint (dimension 17), the voice check and the satire lint (7.8: the
  * UI strings) read this file, so no word stays in a component, a fallback or another string file.
  *
- * One marked section per package: `shell` and `hud` and `sheets` (BARS), `desk` (DESK), `views`
+ * One marked section per package: `hud` and `sheets` (BARS), `desk` (DESK), `views`
  * (VIEWS), `platform` (PLATFORM). Each package adds keys only in its own section, re-reading the file
  * immediately before each edit. The bars package (BARS) is the steward of the file's structure: a
  * package that needs a shared helper (an amount, a time) asks it in requests.md.
@@ -22,11 +22,6 @@ export const aboutText = (a: { value: number; unit: 's' | 'min' | 'h' }) => `abo
 export const plural = (word: string) => (/[^aeiou]y$/.test(word) ? `${word.slice(0, -1)}ies` : `${word}s`);
 
 export const S = {
-  // ===== shell (the skeleton; then P7) ============================================================
-  shell: {
-    placeholder: 'PLACEHOLDER',
-    notBuilt: 'not built yet',
-  },
   // ===== desk and flick (P6) =======================================================================
   desk: {
     /** The strips' title rows (2.7, 4.2): the heading, its arrow, the poll or the approval, ↩. */
@@ -70,6 +65,9 @@ export const S = {
     slipRate: (perSecond: string) => `+${perSecond}/s`,
     slipBuy: '↑ Buy it',
     slipBack: '↓ Put it back',
+    /** Up refused for now (the rules' reserve, 2.6 and D16): said where "Buy it" stands. */
+    slipKeptDesk: (amount: string) => `Kept for the desk: ${amount}`,
+    slipKeptRunUp: (amount: string) => `Kept for the run-up: ${amount}`,
     /** The door glass (3.1): "Next visitor 0:07". */
     nextVisitor: (clock: string) => `Next visitor ${clock}`,
     clock: (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`,
@@ -128,6 +126,7 @@ export const S = {
     ribbonCall: (held: number, of: number) => `Call the election · poll ${held} of ${of}`,
     ribbonRunUp: (held: number, of: number) => `Run-up · poll ${held} of ${of}`,
     ribbonNight: 'Election night',
+    ribbonResult: 'The result is in',
     callLabel: (held: number, of: number) => `Call the election. The poll shows ${held} of ${of}`,
     /** The goal line (2.16): the rules' advice in words, at most 34 characters with price and time. */
     goalLevel: (ministry: string) => `${ministry} +1`,
@@ -184,7 +183,7 @@ export const S = {
     standingOrder: 'Standing Order',
     standingOrderWhat: 'The junior clerk buys the advised level while you play. Never while you are away.',
     sofa: 'Check the Sofa',
-    sofaWhat: 'Coins down the back of the official sofa.',
+    sofaWhat: 'Dibs down the back of the official sofa.',
     sofaUsed: 'Checked this term. The sofa has been thorough.',
     /** The Cabinet (4.4): the framed photograph. */
     cabinetTitle: 'Cabinet',

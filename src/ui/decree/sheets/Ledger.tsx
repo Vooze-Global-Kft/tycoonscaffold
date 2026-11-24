@@ -150,9 +150,11 @@ function LedgerFooter() {
         ) : (
           <View style={styles.flex} />
         )}
-        <Txt size={ty.small} bold color={DESK.paperLight}>
-          {S.sheets.keptDesk(dibs(ledger.reserve))}
-        </Txt>
+        {ledger.reserve > 0 ? (
+          <Txt size={ty.small} bold color={DESK.paperLight}>
+            {S.sheets.keptDesk(dibs(ledger.reserve))}
+          </Txt>
+        ) : null}
       </View>
       {ledger.reserveRunUp > 0 ? (
         <Txt size={ty.small} bold color={DESK.paperLight} style={styles.right}>

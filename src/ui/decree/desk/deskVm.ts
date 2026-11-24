@@ -47,6 +47,8 @@ export interface SlipVM {
   what: string;
   price: string;
   rate: string | null;
+  /** Why "up" would be refused now (the rules' canBuy: short, or kept for the desk or the run-up), or null. */
+  held: string | null;
 }
 
 export type DeskVM = PaperVM | SlipVM | { kind: 'none' };
@@ -94,6 +96,17 @@ function groundOf(p: R.Paper): Ground {
   }
 }
 
+/** Why the rules would refuse the slip's "up" now, in words (nothing on screen may promise what the rules then refuse). */
+function slipHeld(cfg: R.DecreeConfig, g: R.DecreeGame, sl: R.Slip): string | null {
+  const why = R.canBuy(cfg, g, sl.purchase, sl.price);
+  if (why === 'cash') return S.desk.noteShort(dibs(Math.max(0, sl.price - g.cash)));
+  if (why === 'reserve' || why === 'runUp') {
+    const parts = R.reserveParts(cfg, g);
+    return why === 'reserve' ? S.desk.slipKeptDesk(dibs(parts.desk)) : S.desk.slipKeptRunUp(dibs(parts.runUp));
+  }
+  return null;
+}
+
 /** What lies on the desk, as the desk draws it, at text scale `s`. */
 export function deskVm(cfg: R.DecreeConfig, g: R.DecreeGame, s: number): DeskVM {
   const d = g.decree;
@@ -115,6 +128,7 @@ export function deskVm(cfg: R.DecreeConfig, g: R.DecreeGame, s: number): DeskVM 
       what,
       price: `−${dibs(sl.price)}`,
       rate: sl.rateGain > 0 ? S.desk.slipRate(dibs(sl.rateGain)) : null,
+      held: slipHeld(cfg, g, sl),
     };
   }
   const p = item.paper;

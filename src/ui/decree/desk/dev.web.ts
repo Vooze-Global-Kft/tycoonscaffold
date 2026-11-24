@@ -25,7 +25,7 @@ function param(): string | null {
 
 export function applyDeskDevParams(): void {
   // The preview's play log reads the state through this (web only; a phone bundle never holds it).
-  (globalThis as { __decreeDev?: unknown }).__decreeDev = { game: () => useGame.getState().game, cfg: () => useGame.getState().cfg, R, ui: () => useDecreeUi.getState() };
+  (globalThis as { __decreeDev?: unknown }).__decreeDev = { game: () => useGame.getState().game, cfg: () => useGame.getState().cfg, R, ui: () => useDecreeUi.getState(), set: (game: GameState) => useGame.setState({ game }) };
   const kind = param();
   if (!kind || !devOncePerPageLoad('decree-desk')) return;
   void devParamsApplied().then(() => setTimeout(() => land(kind), 400));
