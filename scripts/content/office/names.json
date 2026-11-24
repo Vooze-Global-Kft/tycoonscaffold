@@ -1107,7 +1107,7 @@
       "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
-      "name": "Quiet Press",
+      "name": "Busy Presses",
       "kind": "twist",
       "id": "quiet-press",
       "check": {
@@ -1120,7 +1120,7 @@
         "cleared": []
       },
       "ref": "quiet_press",
-      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
+      "note": "renamed from 'Quiet Press' by the lead 2026-11-24 after the sensitivity read (a quiet press reads as a press that was silenced) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "Bandstand Summer",
@@ -1219,7 +1219,7 @@
       "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
-      "name": "Grievance Amnesty",
+      "name": "Mending Season",
       "kind": "twist",
       "id": "grievance-amnesty",
       "check": {
@@ -1232,7 +1232,7 @@
         "cleared": []
       },
       "ref": "grievance_amnesty",
-      "note": "real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
+      "note": "renamed from 'Grievance Amnesty' by the lead 2026-11-24 after the sensitivity read (amnesty points at live issues) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists"
     },
     {
       "name": "A Quiet Term",
@@ -2010,7 +2010,7 @@
       "name": "Ambrose Minute",
       "kind": "cast",
       "id": "minute",
-      "role": "Committee on Committees",
+      "role": "Committee on Next Meetings",
       "group": "other",
       "note": "a co-signer only, never a club's voice (7.3) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
@@ -2244,20 +2244,20 @@
       }
     },
     {
-      "name": "Cyril Dunnock",
+      "name": "Silas Dunnock",
       "kind": "cast",
       "id": "dunnock",
-      "role": "door knockers",
+      "role": "doorbells",
       "group": "rival",
       "office": "mayor",
-      "note": "proposed in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
+      "note": "renamed from 'Cyril Dunnock' by the lead 2026-11-24 after the sensitivity read of the lines (the first name on a rival politician points at a sitting head of state and at a notorious MP); hobby 'door knockers' is now 'doorbells' (an innuendo word); the new name checked from memory against the four lists: clear | proposed in office-style.md 2 (checked) | real towns, companies, newspapers: clear | queries: none sent: an everyday English phrase, checked from memory against the four lists",
       "check": {
         "politicians": "clear",
         "notorious": "clear",
         "fiction": "clear",
         "children": "clear",
-        "date": "2026-11-23",
-        "checker": "content-names (an engineer's read under D9, not a person's signature)",
+        "date": "2026-11-24",
+        "checker": "the lead (an engineer's read under D9, not a person's signature)",
         "cleared": []
       }
     },

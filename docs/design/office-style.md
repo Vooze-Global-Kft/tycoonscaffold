@@ -81,7 +81,7 @@ Lobbyists speak only for their own absurd trade; their gifts are fruit baskets, 
 | id | Rival | Office | Hobby |
 |---|---|---|---|
 | `stitchley` | Councillor Prudence Stitchley | mayor | her hat (slogan "Stitchley: She Owns A Hat") |
-| `dunnock` | Cyril Dunnock | mayor | doorbells |
+| `dunnock` | Silas Dunnock | mayor | doorbells |
 | `setter` | Philippa Setter | mayor | setting crosswords |
 | `waft` | Leander Waft, Keeper of the Ceremonial Spoon (role line "Keeper, Ceremonial Spoon") | governor | the spoon ("Waft: Gently Onwards") |
 | `mallowby` | Hortensia Mallowby | governor | the accordion |

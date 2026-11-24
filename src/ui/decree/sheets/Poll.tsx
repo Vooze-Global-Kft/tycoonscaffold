@@ -5,7 +5,7 @@
  * - One row per district: its exact share to one decimal, held or not, the clubs it weighs (w ≥ 0.4),
  *   campaign points, and what a club in a huff costs it ("Vegetables in a huff −9.0", D25).
  * - The rival's pull and the opponents' disarray as the rules give them ("Opponents in disarray +6"),
- *   and the clubs won over (D31: "won over: counts little more", once the rules list them).
+ *   and the clubs won over (D31: "won over: counts little more", and what each district does not count).
  * - The call button (enabled from day C, 2.10), which opens the confirmation that prints the count as
  *   it stands ("If you call it now: 4 of 5 wards. 3 needed.").
  * Every number is the rules' `poll`, the count's own function (printed equals counted).
@@ -82,7 +82,6 @@ function PollBody() {
   const office = useOffice();
   const clubs = useClubs();
   if (!poll) return null;
-  const won = (poll as R.Poll & { wonOver?: number[] }).wonOver ?? [];
   return (
     <>
       <View style={styles.headRow}>
@@ -114,9 +113,14 @@ function PollBody() {
               </Txt>
             ) : null}
           </View>
-          {(r.huffs ?? []).filter((x) => x.cost !== 0).map((x) => (
-            <Txt key={x.club} size={ty.tiny} color={INK.slate}>
+          {r.huffs.filter((x) => x.cost !== 0).map((x) => (
+            <Txt key={`h${x.club}`} size={ty.tiny} color={INK.slate}>
               {S.sheets.huff(clubs[x.club]?.short ?? '', cost(x.cost))}
+            </Txt>
+          ))}
+          {r.wonOver.filter((x) => x.cost !== 0).map((x) => (
+            <Txt key={`w${x.club}`} size={ty.tiny} color={INK.violet}>
+              {S.sheets.wonOverRow(clubs[x.club]?.short ?? '', cost(x.cost))}
             </Txt>
           ))}
         </View>
@@ -128,7 +132,7 @@ function PollBody() {
             {S.sheets.disarray(poll.disarray)}
           </Txt>
         ) : null}
-        {won.map((g) => (
+        {poll.wonOver.map((g) => (
           <Txt key={g} size={ty.small} color={INK.violetDeep}>
             {S.sheets.wonOver(clubs[g]?.short ?? '')}
           </Txt>

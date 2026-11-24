@@ -14,11 +14,11 @@
     {
       "id": "dunnock",
       "office": "mayor",
-      "name": "Cyril Dunnock",
+      "name": "Silas Dunnock",
       "hobby": "doorbells",
       "slogan": "Dunnock: Ring Once, Please",
-      "backAgain": "Cyril Dunnock is back for another go. He is waiting politely on the step.",
-      "resignation": "Cyril Dunnock won, then resigned to spend more time with his doorbells. He has gone to answer one.",
+      "backAgain": "Silas Dunnock is back for another go. He is waiting politely on the step.",
+      "resignation": "Silas Dunnock won, then resigned to spend more time with his doorbells. He has gone to answer one.",
       "note": "hobby 'doorbells' as the style sheet has it; names.json role still says 'door knockers' (requested)"
     },
     {

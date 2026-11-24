@@ -222,6 +222,7 @@ export const S = {
     campaign: (points: number) => `Campaign +${points}`,
     huff: (club: string, cost: string) => `${club} in a huff ${cost}`,
     wonOver: (club: string) => `${club} won over: counts little more`,
+    wonOverRow: (club: string, cost: string) => `${club} won over, uncounted ${cost}`,
     rivalPull: (name: string, pull: number) => `${name} pulls −${pull} everywhere`,
     disarray: (points: number) => `Opponents in disarray +${points}`,
     callButton: 'Call the election',

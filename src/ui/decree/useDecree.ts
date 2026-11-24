@@ -116,7 +116,7 @@ export interface ClubView {
   icon: string;
   mood: number;
   boycott: boolean;
-  /** D25: in a huff (the poll's `huffing`); D31: won over (the poll's `wonOver` once the rules give it). */
+  /** D25: in a huff (the poll's `huffing`); D31: won over (the poll's `wonOver`). */
   huff: boolean;
   wonOver: boolean;
 }
@@ -124,9 +124,9 @@ export interface ClubView {
 /** The club strip (4.1) with the poll's huff and won-over marks (D25, D31), from the rules only. */
 export function useClubs(): ClubView[] {
   return useDecreeJson((cfg, g) => {
-    const p = R.poll(cfg, g) as R.Poll & { wonOver?: number[] };
-    const huffing = new Set(p.huffing ?? []);
-    const won = new Set(p.wonOver ?? []);
+    const p = R.poll(cfg, g);
+    const huffing = new Set(p.huffing);
+    const won = new Set(p.wonOver);
     return R.clubStrip(cfg, g).map((c) => ({ ...c, huff: huffing.has(c.club), wonOver: won.has(c.club) }));
   }, []);
 }
