@@ -95,7 +95,15 @@ function deepMerge(a: Json, b: Json): Json {
 
 /** Every tunable range: RANGES and the ±1 of every archetype base effect. */
 export function allRanges() {
-  return [...RANGES, ...archetypeRanges()];
+  // D46 widened three ranges (the lead's decision of 24 November). RANGES (src/config/schema.decree.ts,
+  // the rules lead's file) does not carry them yet (requests.md): a local stand-in, written out here so
+  // that no range is widened silently. A D46 range replaces the schema's row of the same path.
+  const d46 = [
+    { path: 'offices[2].stand.nr', low: 35, high: 80, spec: 'D46 (president: up to 80)' },
+    { path: 'scandal.sayNothingFactor', low: 0.5, high: 0.8, spec: 'D46 (the tax of "Say nothing")' },
+    { path: 'scandal.sayNothingPapers', low: 10, high: 20, spec: 'D46 (the length of "Say nothing")' },
+  ];
+  return [...RANGES.filter((r) => !d46.some((x) => x.path === r.path)), ...d46, ...archetypeRanges()];
 }
 
 /** A --set refused outside its range (no silent widening); returns a warning for a path that is a rule. */

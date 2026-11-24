@@ -30,9 +30,10 @@ const side = (over: Partial<B.SideView> = {}, s: Choice = 'sign'): B.SideView =>
   isLevel: false,
   affordable: true,
   cost: 0,
+  sayNothing: null,
   ...over,
 });
-const ctx = (over: Partial<B.PaperView['ctx']> = {}): B.PaperView['ctx'] => ({ B: 100, I: 100, M: 1, H: 600, day: 40, D: 80, cash: 1000, shares0: [50, 50, 50, 50, 50], ...over });
+const ctx = (over: Partial<B.PaperView['ctx']> = {}): B.PaperView['ctx'] => ({ B: 100, I: 100, M: 1, H: 600, day: 40, D: 80, cash: 1000, shares0: [50, 50, 50, 50, 50], tau: 12, ...over });
 const view = (sign: Partial<B.SideView>, refuse: Partial<B.SideView>, over: Partial<B.PaperView> = {}): B.PaperView => ({ kind: 'comic', archetype: 'swap', petitioner: 0, other: 1, moods: [50, 50, 50], sign: side(sign), refuse: side(refuse, 'refuse'), ctx: ctx(), ...over });
 
 describe('the reference reader (8.2 as written, D27)', () => {
@@ -54,6 +55,9 @@ describe('the reference reader (8.2 as written, D27)', () => {
     expect(B.readerValue(side({ endsBoycott: true }), ctx())).toBe(60);
     expect(B.readerValue(side({ appoints: true }), ctx())).toBe(300);
     expect(B.readerValue(side({ rateGain: 5 }), ctx({ H: 600, B: 100 }))).toBeCloseTo(30, 9);
+  });
+  it('D46: counts the tax of "Say nothing" as money lost, (1 − factor) × I × papers × τ in seconds of B', () => {
+    expect(B.readerValue(side({ sayNothing: { papers: 10, factor: 0.8 } }, 'refuse'), ctx({ I: 50, B: 100, tau: 12 }))).toBeCloseTo(-(0.2 * 50 * 10 * 12) / 100, 9);
   });
   it('takes the higher value, refuses ties', () => {
     expect(B.readerChoice(view({ dA: 1 }, { dA: -1 }))).toBe('sign');
@@ -311,7 +315,9 @@ describe('evaluate and acrossSeeds', () => {
       sum('alwaysSign', 1, { won: 3, merit: 1, meritOf: 2, president: null, nrAt3h: 30 }),
       sum('alwaysSign', 2, { won: 2, merit: 0, meritOf: 2, president: null, nrAt3h: 30 }),
       sum('passive', 1),
-      sum('adEverything', 1, { perTerm: [{ office: 0, term: 1, share: 54, margin: 1, nr: 6 }] }),
+      sum('passive', 2, { perTerm: [{ office: 0, term: 1, share: 50, margin: 1, nr: 6 }] }),
+      sum('adEverything', 1, { perTerm: [{ office: 0, term: 1, share: 53, margin: 1, nr: 6 }] }),
+      sum('adEverything', 2, { perTerm: [{ office: 0, term: 1, share: 51, margin: 1, nr: 6 }] }),
       sum('reader', 3, { handover: { habit: 'alwaysRefuse', winsWithin2: true, lifted: true } }),
     ];
     const rows = B.acrossSeeds(sums);
@@ -320,7 +326,8 @@ describe('evaluate and acrossSeeds', () => {
     expect(get('H9 wins always-sign (merit, D26)')).toMatchObject({ ok: true, num: 0.25 });
     expect(get('H9 time to president alwaysSign').ok).toBe(true);
     expect(get('H9 NR at 3 h alwaysSign').num).toBeCloseTo(0.3, 9);
-    expect(get('H10 money cannot reach the vote')).toMatchObject({ ok: true, num: 2 });
+    // D46: medians of ad − passive (won 0, share +1, NR 0) against the passive-against-itself band (share −2..+2).
+    expect(get('H10 money cannot reach the vote')).toMatchObject({ ok: true });
     expect(get('H6 reader from alwaysRefuse\'s state wins within 2 elections').ok).toBe(true);
     expect(get('H12 no gossip spiral: approval from below 35 to 50 within 80 papers').ok).toBe(true);
   });
@@ -338,19 +345,39 @@ describe('evaluate and acrossSeeds', () => {
     expect(B.h1(trace({ decisions: [dec({ unmeasured: true, applied: { money: 0, moods: [0, 0, 0], level: null, gossip: 0 } })] })).differences).toBe(0);
     expect(B.h3({ takeBacks: [], reloads: [], faults: ['H3: the take-back window of x ended before its 2 s'] }).windowsCut).toBe(1);
   });
+  it('H10 vote clause (D46): one-sided over the distribution, against the passive bot\'s own noise band', () => {
+    const sum = (bot: B.BotId, seed: number, share: number, nr = 6, won = 4): B.SeedSummary => ({ seed, bot, hand: 6, elections: 4, won, merit: won, meritOf: 4, firstWon: true, governor: 20, president: 70, nrAt3h: 100, perTerm: [{ office: 0, term: 1, share, margin: 1, nr }] });
+    const passive = [50, 52, 51, 49].map((x, i) => sum('passive', i + 1, x));
+    // Behind by a lot: no failure.
+    const behind = B.h10Vote([...passive, ...[40, 41, 42, 39].map((x, i) => sum('adEverything', i + 1, x, 2, 1))])!;
+    expect(behind.ok).toBe(true);
+    // Ahead by more than the band (passive self-differences −2..+3): a failure.
+    const ahead = B.h10Vote([...passive, ...[60, 62, 61, 59].map((x, i) => sum('adEverything', i + 1, x))])!;
+    expect(ahead.ok).toBe(false);
+    expect(ahead.metrics.map((m) => m.name)).toEqual(['won share', 'mean share', 'NR per term']);
+    expect(ahead.metrics[1].median).toBe(10);
+    expect(B.h10Vote(passive)).toBeNull();
+  });
+  it('H7 (D46): a careless bot\'s slogan may return only after the club\'s other slogan', () => {
+    const ev = (t: number, club: number, picket: string): B.EventRec => ({ t, type: 'boycottStart', office: 0, detail: JSON.stringify({ type: 'boycottStart', club, picket }) });
+    const aba = B.h7(trace({ draws: [], events: [ev(10, 2, 'A'), ev(20, 2, 'B'), ev(30, 2, 'A')], ended: 3600 }));
+    expect(aba).toMatchObject({ picketsRepeated: 1, picketsEarly: 0 });
+    const aa = B.h7(trace({ draws: [], events: [ev(10, 2, 'A'), ev(20, 1, 'C'), ev(30, 2, 'A')], ended: 3600 }));
+    expect(aa).toMatchObject({ picketsRepeated: 1, picketsEarly: 1 });
+  });
   it('a handover run holds only the rows every trace holds (H6 and H12 are acrossSeeds\')', () => {
     const cfg = decreeTestConfig();
     const rows = B.evaluate(cfg, trace({ handover: { habit: 'alwaysRefuse', at: 7200 }, ended: 3 * 3600 + 7200 }));
     expect(rows.some((r) => r.name.startsWith('H7') || r.name.startsWith('H8') || r.name.startsWith('8.4'))).toBe(false);
     expect(rows.some((r) => r.name.startsWith('H1 '))).toBe(true);
   });
-  it('D19: the hour-one text gate is hard for the reader, always-refuse and random, a report for ad-everything', () => {
+  it('D19 with D46: the hour-one text gate is hard for every bot it runs on, the three readers included', () => {
     const cfg = decreeTestConfig();
     const twice = [draw({ t: 10 }), draw({ t: 20 })];
-    for (const bot of ['reader', 'alwaysRefuse', 'random', 'adEverything'] as B.BotId[]) {
+    for (const bot of ['reader', 'misreader', 'casual', 'alwaysRefuse', 'random', 'alwaysSign', 'happier', 'adEverything'] as B.BotId[]) {
       const r = B.evaluate(cfg, { ...trace({ draws: twice }), bot }).find((x) => x.name === 'H7 no text twice in hour 1')!;
       expect(r.ok).toBe(false);
-      expect(r.kind).toBe(bot === 'adEverything' ? 'report' : 'hard');
+      expect(r.kind).toBe('hard');
     }
   });
   it('the trace hash changes with a decision and not otherwise', () => {

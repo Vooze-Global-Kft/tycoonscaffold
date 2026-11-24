@@ -755,3 +755,8 @@ If the ranges cannot reach this, the prototype proposes, each with its measured 
 - The front page (D44): the apology costs every club 1 (was 3), and the reference reader's formula counts the tax of "Say nothing" as money lost. The aim is measured on the front pages the careless bots meet, valued with the reader's formula, because the reader meets about one front page in ninety hours.
 - Kept as known limits and told to the owner: a careful reader wins elections by a median of 3 districts (the aim was 1; closing it costs the misreader's 75 %); as president the desk can stand empty for one arrival interval (15 s); the paper-money shares sit at the low edge of their aims.
 
+**D47. What building D46 found** (24 November; tests in strike.test.ts, draw.property.test.ts, rhythm.test.ts and move.test.ts).
+- D46 (d) was not a follow-up landing twice by itself: the paper lying on the desk when an election is called was set aside and, at a move, went back to the deck as unseen, so it was dealt a second time in the new office (14 of 48 seeds at the 9-second hand). Such a paper now stays seen at a move, and a follow-up among them is dropped. A paper that only waited in the tray and never landed still goes back unseen (2.12): the player never read it.
+- D46 (b) holds at every refill of the frame bag, not only at a move: unseen frames first, then the seen ones, the one seen longest ago first.
+- D46 (c): a requisition is checked when it is drawn (its turn is kept while no level can be paid); a ribbon is checked when it is drawn and again when it lands, and one in the tray that the treasury can no longer pay goes back to the Clerk. While a form waits, the goal line shows the usual advice.
+

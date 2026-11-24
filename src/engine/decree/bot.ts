@@ -131,6 +131,8 @@ export interface SideView {
   affordable: boolean;
   /** The cash the sign side asks (0 for a refuse). */
   cost: number;
+  /** D46: the "Say nothing" note of a front page's refuse strip (taxes × factor for `papers` decided papers), else null. */
+  sayNothing: { papers: number; factor: number } | null;
 }
 
 /** The desk paper as a bot sees it, with the context the reader's formula needs. */
@@ -142,7 +144,7 @@ export interface PaperView {
   moods: number[];
   sign: SideView;
   refuse: SideView;
-  ctx: { B: number; I: number; M: number; H: number; day: number; D: number; cash: number; shares0: number[] };
+  ctx: { B: number; I: number; M: number; H: number; day: number; D: number; cash: number; shares0: number[]; tau: number };
 }
 
 const pct = (hundredths: number) => hundredths / 100;
@@ -205,6 +207,10 @@ export function sideView(cfg: DecreeConfig, g: DecreeGame, strip: Strip, shares0
     isLevel,
     affordable: strip.affordable,
     cost: strip.side === 'sign' ? Math.max(0, -money) : 0,
+    sayNothing: (() => {
+      const n = strip.notes.find((x) => x.kind === 'sayNothing');
+      return n && n.kind === 'sayNothing' ? { papers: n.papers, factor: n.factor } : null;
+    })(),
   };
 }
 
@@ -229,7 +235,7 @@ export function paperView(cfg: DecreeConfig, g: DecreeGame): PaperView | null {
     moods: g.decree.moods.slice(),
     sign: sideView(cfg, g, s, shares0, desk.shown.sign),
     refuse: sideView(cfg, g, r, shares0, desk.shown.refuse),
-    ctx: { B: p.B, I: p.I, M: p.multiplier, H, day, D, cash: g.cash, shares0: shares0.map(pct) },
+    ctx: { B: p.B, I: p.I, M: p.multiplier, H, day, D, cash: g.cash, shares0: shares0.map(pct), tau: p.tau },
   };
 }
 
@@ -247,6 +253,9 @@ export function readerValue(v: SideView, ctx: PaperView['ctx']): number {
   if (v.endsBoycott) x += K.endsBoycott;
   x += (v.rateGain * ctx.H) / B;
   if (v.appoints) x += K.appoints;
+  // D46: the tax of "Say nothing" is money lost, valued as the money chip is (seconds of B): taxes cut by
+  // (1 − factor) for its papers, each about one arrival interval of play.
+  if (v.sayNothing) x -= ((1 - v.sayNothing.factor) * ctx.I * v.sayNothing.papers * (ctx.tau ?? 0)) / B;
   return x;
 }
 
@@ -808,7 +817,9 @@ class Driver {
       const picket = e.type === 'boycottStart' ? this.d.strikes[e.club]?.picket ?? null : undefined;
       const detail = json(picket === undefined ? e : { ...e, picket }).slice(0, 200);
       this.tr.events.push({ t: this.clock, type: e.type, office: this.d.office, detail });
-      if (e.type === 'paperArrived') this.drawn(e.paper);
+      // D46 (rules lead's request): a paper counts when it LANDS on the desk, the text the player reads; one
+      // that only waited in the tray when a call set it aside goes back to the deck unseen at a move (2.12).
+      if (e.type === 'paperArrived' && e.toDesk) this.drawn(e.paper);
     }
     if (this.bot === 'reloadAfterDraw' && events.some((e) => e.type === 'paperArrived')) this.reload();
   }
@@ -1263,6 +1274,7 @@ class Driver {
     const desk = this.d.desk;
     if (desk?.type === 'paper') {
       this.idleEnd();
+      this.drawn(desk.paper.id);
       if (!this.landed.has(desk.paper.id)) this.landed.set(desk.paper.id, { at: desk.landedAt, affordable: R.stripOf(this.cfg, this.g, 'sign')?.affordable ?? true, json: json(desk.paper) });
       if (!this.hab.decides) {
         this.advanceToNext(tEnd);
@@ -1656,7 +1668,7 @@ export function certainWinBound(cfg: DecreeConfig): number {
 }
 
 /** H7: texts drawn twice in hour 1 (hand-written texts, frames, notes, pickets), repeats in hours 2 and 3 as a share of comic draws, cells exhausted while their club is drawn. */
-export function h7(tr: Pick<Trace, 'draws' | 'events' | 'started'>, cfg?: DecreeConfig): { hour1Repeats: number; repeats23: number; comic23: number; repeatShare23: number; notesRepeated: number; picketsRepeated: number; emptyCells: string[]; detail: string[] } {
+export function h7(tr: Pick<Trace, 'draws' | 'events' | 'started'>, cfg?: DecreeConfig): { hour1Repeats: number; repeats23: number; comic23: number; repeatShare23: number; notesRepeated: number; picketsRepeated: number; picketsEarly: number; emptyCells: string[]; detail: string[] } {
   const t0 = tr.started;
   const h1d = tr.draws.filter((d) => d.t < t0 + 3600);
   const seen = new Map<string, number>();
@@ -1674,8 +1686,21 @@ export function h7(tr: Pick<Trace, 'draws' | 'events' | 'started'>, cfg?: Decree
   }
   const notes = h1d.filter((d) => d.note).map((d) => d.note!);
   const notesRepeated = notes.length - new Set(notes).size;
-  const pickets = tr.events.filter((e) => e.type === 'boycottStart' && e.t < t0 + 3600).map((e) => /"picket":"([^"]*)"/.exec(e.detail)?.[1] ?? e.detail);
+  const starts = tr.events.filter((e) => e.type === 'boycottStart' && e.t < t0 + 3600);
+  const pickets = starts.map((e) => /"picket":"([^"]*)"/.exec(e.detail)?.[1] ?? e.detail);
   const picketsRepeated = pickets.length - new Set(pickets).size;
+  // D46: for the careless bots a club's slogan may return only after the club's OTHER slogan was used in
+  // between: a return with no other slogan of that club since its last use counts.
+  let picketsEarly = 0;
+  const byClub = new Map<string, string[]>();
+  starts.forEach((e, i) => {
+    const club = `${e.office}/${/"club":(\d+)/.exec(e.detail)?.[1] ?? '?'}`;
+    const seq = byClub.get(club) ?? [];
+    const last = seq.lastIndexOf(pickets[i]);
+    if (last >= 0 && !seq.slice(last + 1).some((x) => x !== pickets[i])) picketsEarly++;
+    seq.push(pickets[i]);
+    byClub.set(club, seq);
+  });
   const all = new Map<string, number>();
   let repeats23 = 0;
   let comic23 = 0;
@@ -1694,7 +1719,7 @@ export function h7(tr: Pick<Trace, 'draws' | 'events' | 'started'>, cfg?: Decree
     const used = cellUse(tr.draws.filter((d) => d.t < t0 + 3600), cfg);
     for (const c of used) if (c.exhaustedWhileDrawn) emptyCells.push(c.cell);
   }
-  return { hour1Repeats, repeats23, comic23, repeatShare23: comic23 ? repeats23 / comic23 : 0, notesRepeated, picketsRepeated, emptyCells, detail };
+  return { hour1Repeats, repeats23, comic23, repeatShare23: comic23 ? repeats23 / comic23 : 0, notesRepeated, picketsRepeated, picketsEarly, emptyCells, detail };
 }
 
 /** The use of every (office, club, archetype) cell: texts in the deck, distinct texts drawn, draws, and whether the cell ran out while its club was still drawn (H7, 7.7). */
@@ -1937,20 +1962,28 @@ export function evaluate(cfg: DecreeConfig, tr: Trace): BotRow[] {
     rows.push(row('wins', 'report', '', `${w.won} of ${w.elections}, the reader from ${tr.handover.habit}'s state at ${f1((tr.handover.at - t0) / 60)} min`, true, w.elections ? w.won / w.elections : null));
     return rows;
   }
-  // D19: the hour-one gate holds for the reader (at 4, 6 and 9 s), always-refuse and random; ad-everything is reported.
-  if (tr.ended - t0 >= 3600 && (tr.bot === 'reader' || tr.bot === 'alwaysRefuse' || tr.bot === 'random' || tr.bot === 'adEverything')) {
+  // D19 with D46: the hour-one gate holds for every bot it runs on (the three readers of D27 at 4, 6 and 9 s,
+  // always-refuse, random, always-sign, the happier-club habit and ad-everything): no text, frame or note
+  // twice; no picket slogan twice for the three readers; for the careless bots a slogan may return only
+  // after the club's other slogan was used (D46). Papers count when they land (D46, the rules lead's request).
+  if (tr.ended - t0 >= 3600 && (READERS.has(tr.bot) || tr.bot === 'alwaysRefuse' || tr.bot === 'random' || tr.bot === 'alwaysSign' || tr.bot === 'happier' || tr.bot === 'adEverything')) {
     const g = h7(tr, cfg);
-    rows.push(row('H7 no text twice in hour 1', tr.bot === 'adEverything' ? 'report' : 'hard', '0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn', `${g.hour1Repeats} texts, ${g.notesRepeated} notes, ${g.picketsRepeated} pickets; ${g.emptyCells.length} cells ran out${g.emptyCells.length ? ` (${g.emptyCells.slice(0, 3).join(', ')})` : ''}`, g.hour1Repeats + g.notesRepeated + g.picketsRepeated + g.emptyCells.length === 0, g.hour1Repeats));
-    if (tr.bot === 'reader' && tr.ended - t0 >= 3 * 3600) rows.push(row('H7 repeats in hours 2 and 3 (reader)', 'hard', '≤ 2 % of comic draws', `${pc(g.repeatShare23)} (${g.repeats23} of ${g.comic23})`, g.repeatShare23 <= 0.02, g.repeatShare23));
+    const reader = READERS.has(tr.bot);
+    const pk = reader ? g.picketsRepeated : g.picketsEarly;
+    rows.push(row('H7 no text twice in hour 1', 'hard', reader ? '0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn' : '0 hand-written texts, frames or notes twice; a picket slogan back only after the club\'s other one (D46); no cell empty while its club is drawn', `${g.hour1Repeats} texts, ${g.notesRepeated} notes, ${pk} pickets${reader ? '' : ` back early (${g.picketsRepeated} back in all)`}; ${g.emptyCells.length} cells ran out${g.emptyCells.length ? ` (${g.emptyCells.slice(0, 3).join(', ')})` : ''}${g.detail.length ? ` [${g.detail.slice(0, 2).join(', ')}]` : ''}`, g.hour1Repeats + g.notesRepeated + pk + g.emptyCells.length === 0, g.hour1Repeats));
+    // D46: at most 3 % (was 2 %; D42 (e) and (f) use the hand-written papers sooner).
+    if (tr.bot === 'reader' && tr.ended - t0 >= 3 * 3600) rows.push(row('H7 repeats in hours 2 and 3 (reader)', 'hard', '≤ 3 % of comic draws (D46)', `${pc(g.repeatShare23)} (${g.repeats23} of ${g.comic23})`, g.repeatShare23 <= 0.03, g.repeatShare23));
   }
   // H8 is a gate of a 3-hour reader game (its re-evaluations are hours 2 and 3): the short runs that
   // exist for H3 (10 min, 1 h) do not carry it.
   if (tr.bot === 'reader' && tr.ended - t0 >= 3 * 3600) {
     const h = h8(tr);
-    if (tr.ended - t0 >= 3 * 3600) rows.push(row('H8 both choices in other states', 'hard', '≥ 30 % of texts', `${pc(h.bothShare)} of ${h.reevaluated} texts`, h.bothShare >= 0.3, h.bothShare));
+    // D46: at least 25 % of texts (was 30 %).
+    if (tr.ended - t0 >= 3 * 3600) rows.push(row('H8 both choices in other states', 'hard', '≥ 25 % of texts (D46)', `${pc(h.bothShare)} of ${h.reevaluated} texts`, h.bothShare >= 0.25, h.bothShare));
     rows.push(row('H8 reader signs', 'hard', '40 to 65 % of day papers', pc(h.signShare), h.signShare >= 0.4 && h.signShare <= 0.65, h.signShare));
     rows.push(row('H8 differs from money-only', 'hard', '≥ 25 %', pc(h.vsMoney), h.vsMoney >= 0.25, h.vsMoney));
-    rows.push(row('H8 differs from mood-only', 'hard', '≥ 25 %', pc(h.vsMood), h.vsMood >= 0.25, h.vsMood));
+    // D46: at least 20 % (was 25 %).
+    rows.push(row('H8 differs from mood-only', 'hard', '≥ 20 % (D46)', pc(h.vsMood), h.vsMood >= 0.2, h.vsMood));
     rows.push(row('H8 differs from the title line', 'hard', '≤ 30 %', pc(h.vsTitle), h.vsTitle <= 0.3, h.vsTitle));
     const u = unaffordableShare(tr);
     rows.push(row('H10 sign unaffordable for the reader', 'hard', '≤ 5 % of papers', pc(u), u <= 0.05, u));
@@ -2066,7 +2099,9 @@ export function d44Of(tr: Trace, cfg?: DecreeConfig) {
   for (const [k, v] of sums) mood[k] = v.reduce((a, b) => a + b, 0) / v.length;
   const i30 = idleDesk(tr, 0, 1800);
   const i13 = idleDesk(tr, 3600, 3 * 3600);
-  return { fronts: fronts.length, apologised: fronts.filter((d) => d.choice === 'sign').length, lose, mood, emptyDesk30: i30.emptyShare, nothing30: i30.nothingShare, longest30: i30.longestNothing, emptyDesk13: i13.emptyShare, nothing13: i13.nothingShare, longest13: i13.longestNothing };
+  // D46 / D44: on every bot's front pages, whether the reference reader's formula (8.2 with the tax of "Say nothing") would apologise.
+  const readerApologises = fronts.filter((d) => d.vs !== null && d.vr !== null && d.vs > d.vr).length;
+  return { fronts: fronts.length, apologised: fronts.filter((d) => d.choice === 'sign').length, readerApologises, lose, mood, emptyDesk30: i30.emptyShare, nothing30: i30.nothingShare, longest30: i30.longestNothing, emptyDesk13: i13.emptyShare, nothing13: i13.nothingShare, longest13: i13.longestNothing };
 }
 
 /** The desk's rhythm per office (the numbers step): slips flicked per paper decided, the mean levels a level slip carried, the share of slips that were openings, when "Open Potholes" was first offered, the tray each minute. */
@@ -2130,6 +2165,33 @@ export function summarize(tr: Trace, handedOver: BotRun['handedOver'] = null, ha
   return out;
 }
 
+/** H10's vote clause of D46 on the passive and ad-everything summaries (null without a pair). */
+export function h10Vote(sums: readonly SeedSummary[]): { ok: boolean; worst: number; text: string; metrics: { name: string; diffs: number[]; median: number; band: [number, number] }[] } | null {
+  const ads = sums.filter((s) => s.bot === 'adEverything' && !s.handover);
+  const pas = sums.filter((s) => s.bot === 'passive' && !s.handover).sort((x, y) => x.seed - y.seed);
+  const pairs = ads.map((a) => [a, pas.find((p) => p.seed === a.seed)] as const).filter((x): x is readonly [SeedSummary, SeedSummary] => !!x[1]);
+  if (!pairs.length || pas.length < 2) return null;
+  const metric: [string, (s: SeedSummary) => number][] = [
+    ['won share', (s) => (s.elections ? s.won / s.elections : 0)],
+    ['mean share', (s) => (s.perTerm.length ? s.perTerm.reduce((a, t) => a + t.share, 0) / s.perTerm.length : 0)],
+    ['NR per term', (s) => (s.perTerm.length ? s.perTerm[s.perTerm.length - 1].nr / s.perTerm.length : 0)],
+  ];
+  let ok = true;
+  let worst = -Infinity;
+  const metrics = metric.map(([name, f]) => {
+    const diffs = pairs.map(([a, p]) => f(a) - f(p));
+    const self = pas.map((p, i) => f(p) - f(pas[(i + 1) % pas.length]));
+    const band: [number, number] = [quantile(self, 0.1), quantile(self, 0.9)];
+    const med = quantile(diffs, 0.5);
+    if (!(med <= band[1] + 1e-9)) ok = false;
+    worst = Math.max(worst, med - band[1]);
+    return { name, diffs, median: med, band };
+  });
+  const fmt = (x: number) => (Math.abs(x) < 10 ? x.toFixed(3) : x.toFixed(1));
+  const text = `${pairs.length} pairs: ` + metrics.map((m) => `${m.name} ${fmt(m.median)} [${fmt(quantile(m.diffs, 0.1))}..${fmt(quantile(m.diffs, 0.9))}] vs band [${fmt(m.band[0])}..${fmt(m.band[1])}]`).join('; ');
+  return { ok, worst, text, metrics };
+}
+
 /** The targets of 8.3 and 8.4 that need many seeds (H6 handover, H9, H10, H12; first election won; D27's readers). */
 export function acrossSeeds(sums: readonly SeedSummary[]): BotRow[] {
   const rows: BotRow[] = [];
@@ -2190,24 +2252,13 @@ export function acrossSeeds(sums: readonly SeedSummary[]): BotRow[] {
     const nr = xs.reduce((s, x) => s + (x.nrAt3h ?? 0), 0) / xs.length;
     rows.push(row(`H9 NR at 3 h ${b}`, 'hard', `≤ 0.6 × the reader's (${f1(rNR)})`, `${f1(nr / rNR)} ×`, ok(nr / rNR, (x) => x <= 0.6), nr / rNR));
   }
-  // H10: ad-everything against passive on paired seeds, per term.
-  const ads = sums.filter((s) => s.bot === 'adEverything');
-  const pas = sums.filter((s) => s.bot === 'passive');
-  if (ads.length && pas.length) {
-    let worst = 0;
-    let pairs = 0;
-    for (const a of ads) {
-      const p = pas.find((x) => x.seed === a.seed);
-      if (!p) continue;
-      pairs++;
-      a.perTerm.forEach((t, k) => {
-        const q = p.perTerm[k];
-        if (!q) return;
-        worst = Math.max(worst, Math.abs(t.share - q.share), Math.abs(t.nr - q.nr));
-      });
-    }
-    rows.push(row('H10 money cannot reach the vote', 'hard', 'share and NR per term within 3 points (paired seeds)', `worst ${f1(worst)} points over ${pairs} pairs`, pairs > 0 && worst <= 3, worst));
-  }
+  // H10's vote clause, restated by D46: one-sided and over the distribution. Per seed: elections won per
+  // election held, mean share per election (points) and Name Recognition gained per term. The statistic is
+  // the median over the paired seeds of (ad-everything − passive); the noise band is the 10th to 90th
+  // percentile of the passive bot against itself (each seed paired with the next seed of the list). The
+  // gate fails only when ad-everything is AHEAD by more than the band's top; being behind is no failure.
+  const vote = h10Vote(sums);
+  if (vote) rows.push(row('H10 money cannot reach the vote', 'hard', 'ad-everything − passive (median over paired seeds) ≤ the top of the passive-against-itself band, each of won share, mean share, NR per term (D46)', vote.text, vote.ok, vote.worst));
   const firsts = reader.filter((s) => s.firstWon !== null);
   if (firsts.length) rows.push(row('8.4 first election won', 'aim', '13 of 15 seeds', `${firsts.filter((s) => s.firstWon).length} of ${firsts.length}`, firsts.filter((s) => s.firstWon).length >= Math.ceil((13 / 15) * firsts.length), firsts.filter((s) => s.firstWon).length));
   const hand = sums.filter((s) => s.handover);
