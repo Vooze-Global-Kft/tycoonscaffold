@@ -27,7 +27,7 @@
  * exactly as commitCash would (runEarnings, lifetimeEarnings, the rules' book under 'tick'), from
  * the anchor, so the books are exact too.
  */
-import { slipNeed, standingOrderPick, reserveNow } from './advice';
+import { slipNeed, standingOrderPick, standingOrderReserve } from './advice';
 import { commitPending } from './decide';
 import { drawCampaignPaper, drawNext, drawRally, landNext } from './draw';
 import { standingOrderActive, standingOrderStep } from './grants';
@@ -128,7 +128,7 @@ function eventTimes(cfg: DecreeConfig, g: DecreeGame): Record<TickEvent, number>
   }
   if (live && !d.pending && standingOrderActive(cfg, g)) {
     const pick = standingOrderPick(cfg, g);
-    if (pick) out.order = timeCashReaches(a, above(cfg.decree.standingOrder.times * pick.price + reserveNow(cfg, g)));
+    if (pick) out.order = timeCashReaches(a, above(cfg.decree.standingOrder.times * pick.price + standingOrderReserve(cfg, g)));
   }
   return out;
 }

@@ -25,6 +25,7 @@
  */
 import { advice } from './advice';
 import { callDay } from './count';
+import { standingOrderActive } from './grants';
 import { commitPending } from './decide';
 import { clubIndex, commitCash, decreeParams, EPS, factorOn, levelCost, levelGain, officeOf, openCost, openGain, rateOf, roundDibs, storeys, vanityPrice } from './params';
 import { costOf, freezeShown, sizeMoney } from './size';
@@ -52,17 +53,23 @@ export function runUpPrices(cfg: DecreeConfig, g: DecreeGame): { campaign: numbe
   return { campaign: sizeMoney(cfg, f.campaign.seconds * v.mul, B, 1), rally: sizeMoney(cfg, f.rally.seconds * v.mul, B, 1) };
 }
 
-/** The two parts of the reserve (2.6, D16): "Kept for the desk" and "Kept for the run-up" (0 outside day C to the count). Built. */
-export function reserveParts(cfg: DecreeConfig, g: DecreeGame): { desk: number; runUp: number } {
+/**
+ * The two parts of the reserve (2.6, D16): "Kept for the desk" and "Kept for the run-up" (0 outside day C
+ * to the count). The desk part is the sign cost of the desk paper plus the next waiting one; with
+ * `everyPaper` (D33: what the Standing Order keeps back) the desk paper plus EVERY paper waiting in the
+ * tray. Built.
+ */
+export function reserveParts(cfg: DecreeConfig, g: DecreeGame, opts: { everyPaper?: boolean } = {}): { desk: number; runUp: number } {
   const d = g.decree;
+  const limit = opts.everyPaper ? Infinity : 2;
   const costs: number[] = [];
   if (d.pending) costs.push(costOf(d.pending.item.shown.sign));
   if (d.desk?.type === 'paper') costs.push(costOf(d.desk.shown.sign));
   for (const p of d.tray) {
-    if (costs.length >= 2) break;
+    if (costs.length >= limit) break;
     costs.push(waitingCost(cfg, g, p));
   }
-  const desk = costs.slice(0, 2).reduce((a, b) => a + b, 0);
+  const desk = costs.slice(0, limit).reduce((a, b) => a + b, 0);
   let runUp = 0;
   const row = officeOf(cfg, d.office);
   if ((d.phase === 'governing' && d.day >= callFrom(cfg, g)) || d.phase === 'campaign') {
@@ -74,9 +81,9 @@ export function reserveParts(cfg: DecreeConfig, g: DecreeGame): { desk: number; 
   return { desk, runUp };
 }
 
-/** "Kept for the desk" plus "Kept for the run-up" (2.6, D16). Built. */
-export function reserve(cfg: DecreeConfig, g: DecreeGame): number {
-  const r = reserveParts(cfg, g);
+/** "Kept for the desk" plus "Kept for the run-up" (2.6, D16); `everyPaper`: the Standing Order's (D33). Built. */
+export function reserve(cfg: DecreeConfig, g: DecreeGame, opts: { everyPaper?: boolean } = {}): number {
+  const r = reserveParts(cfg, g, opts);
   return r.desk + r.runUp;
 }
 
@@ -209,6 +216,8 @@ export function ledger(cfg: DecreeConfig, g: DecreeGame): Ledger {
   const row = officeOf(cfg, d.office);
   const p = decreeParams(cfg, g);
   const parts = reserveParts(cfg, g);
+  // D33: while the Standing Order buys, the Ledger shows what it keeps back (every waiting paper) as "Kept for the desk".
+  const shown = standingOrderActive(cfg, g) ? reserveParts(cfg, g, { everyPaper: true }) : parts;
   const rows: LedgerRow[] = d.ministries.map((m, i) => {
     const clubId = row.ministries[i]?.club ?? null;
     const gi = clubIndex(cfg, d.office, clubId);
@@ -232,5 +241,5 @@ export function ledger(cfg: DecreeConfig, g: DecreeGame): Ledger {
     };
   });
   const next = d.office < 2 ? cfg.decree.offices[d.office + 1].stand : null;
-  return { rows, record: p.record, recordTarget: next?.record ?? null, recordName: row.recordName, reserve: roundDibs(cfg, parts.desk), reserveRunUp: roundDibs(cfg, parts.runUp) };
+  return { rows, record: p.record, recordTarget: next?.record ?? null, recordName: row.recordName, reserve: roundDibs(cfg, shown.desk), reserveRunUp: roundDibs(cfg, shown.runUp) };
 }

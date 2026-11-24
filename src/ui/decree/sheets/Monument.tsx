@@ -55,6 +55,9 @@ function Body({ m }: { m: MonumentModel }) {
   const why = m.refusal === 'cash' ? S.views.monumentCash : m.refusal === 'reserve' ? S.views.keptDesk(dibs(m.reserve.desk)) : m.refusal === 'runUp' ? S.views.keptRunUp(dibs(m.reserve.runUp)) : null;
   return (
     <View style={styles.body}>
+      <Txt size={ty.small} color={INK.soft} center>
+        {S.views.monumentWhat}
+      </Txt>
       <View style={styles.hero}>
         <DecreeIcon icon={`art:monument_${m.id}`} size={96} />
       </View>

@@ -40,6 +40,7 @@ import { PaperWords, SlipWords } from './PaperWords';
 import { DRAWER_STEPS, backPicture, bakeFaces, drawerPictures, facesReady, paperPicture, restPicture, signaturePicture, slipPicture } from './pictures';
 import { estimateWidth } from './stripView';
 import { useFlick } from './useFlick';
+import { applyDeskDevParams } from './dev';
 
 const NONE: DeskVM = { kind: 'none' };
 const NONE_SIG = JSON.stringify(NONE);
@@ -85,6 +86,9 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const takingBack = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [titleEnd, setTitleEnd] = useState(0);
+
+  // The preview's desk switches (web only; nothing on phones).
+  useEffect(() => applyDeskDevParams(), []);
 
   // The faces atlas is baked once, after the first frame (it costs a few hundred ms of the JS thread).
   const [faces, setFaces] = useState(facesReady());

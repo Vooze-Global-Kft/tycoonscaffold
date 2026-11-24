@@ -17,7 +17,7 @@ import { decreeNow } from '../../../modes/decree/actions';
 import { useOverlay } from '../../kit/overlay';
 import { DecreeIcon } from '../art/DecreeIcon';
 import { DESK, alpha } from '../art/palette';
-import { fill, picture } from '../art/pen';
+import { dashed, picture, rect } from '../art/pen';
 import { drawClipping, drawFrame, drawTownPhoto, drawVanityShelf, drawWallpaper, frameInner, scrapbookSlots, drawScrapbook } from '../art/wall.draw';
 import { useFontScale } from '../hud/fontScale';
 import { S } from '../strings';
@@ -238,7 +238,7 @@ function Opponents({ m, t }: { m: WallModel; t: Types }) {
 // ----------------------------------------------------------------------------- the vanity shelf (5.8)
 
 function Shelf({ m, w, s, t, onOffer }: { m: WallModel; w: number; s: number; t: Types; onOffer: () => void }) {
-  const h = Math.round(Math.min(168, w * 0.44));
+  const h = Math.round(Math.min(132, w * 0.38));
   const placed = useMemo(() => Array.from({ length: 24 }, (_, i) => m.monuments[i]?.id ?? null), [m.monuments]);
   const pic = useMemo(() => picture({ x: 0, y: 0, w, h }, (c) => drawVanityShelf(c, w, h, placed)), [w, h, placed]);
   return (
@@ -263,8 +263,8 @@ function Scrapbook({ m, w, s, t }: { m: WallModel; w: number; s: number; t: Type
   const [page, setPage] = useState(0);
   const at = Math.min(page, pages - 1);
   const entries = m.scrapbook.slice(at * perPage, at * perPage + perPage);
-  // Each place holds a headline of up to 90 characters at 11 × s: six lines and the band above them.
-  const slotH = t.clip.lineHeight * 6 + 22;
+  // Each place holds up to 90 characters at 11 × s: seven lines and the band above them.
+  const slotH = t.clip.lineHeight * 7 + 22;
   const h = slotH * 2 + 3 * 14;
   const slots = scrapbookSlots(w, h);
   const pic = useMemo(
@@ -276,7 +276,7 @@ function Scrapbook({ m, w, s, t }: { m: WallModel; w: number; s: number; t: Type
           c.save();
           c.translate(b.x, b.y);
           if (e.found) drawClipping(c, b.w, b.h, 7 + at * 4 + i, { photo: false });
-          else c.drawRect({ x: 0, y: 0, width: b.w, height: b.h }, fill(alpha(DESK.paperLight, 0.35)));
+          else c.drawPath(rect(1, 1, b.w - 2, b.h - 2), dashed(DESK.slate, 1.2, 5, 4));
           c.restore();
         });
       }),
@@ -305,7 +305,7 @@ function Scrapbook({ m, w, s, t }: { m: WallModel; w: number; s: number; t: Type
                       {S.views.notInPapers}
                     </Text>
                   )}
-                  <Text allowFontScaling={false} numberOfLines={e.found ? 6 : 5} style={[e.found ? styles.headline : styles.unfound, t.clip]}>
+                  <Text allowFontScaling={false} numberOfLines={e.found ? 7 : 6} style={[e.found ? styles.headline : styles.unfound, t.clip]}>
                     {e.text}
                   </Text>
                 </View>
@@ -350,8 +350,8 @@ const styles = StyleSheet.create({
   opponent: { paddingVertical: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: DESK.slateLight },
   below: { marginTop: 8 },
   headline: { color: INK.ink, fontWeight: '800' },
-  unfoundHead: { color: INK.slatePale, fontWeight: '700' },
-  unfound: { color: INK.paperLight, fontStyle: 'italic' },
+  unfoundHead: { color: DESK.slateDeep, fontWeight: '700' },
+  unfound: { color: DESK.slateDeep, fontStyle: 'italic' },
   pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 8 },
   pageBtn: { minWidth: 56 },
 });

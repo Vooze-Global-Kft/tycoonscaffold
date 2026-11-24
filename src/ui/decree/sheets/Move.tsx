@@ -24,7 +24,7 @@ export function MoveSheet({ visible, onClose, onConfirm }: { visible: boolean; o
     <DecreeSheet
       visible={visible && !!m}
       onClose={onClose}
-      title={m ? S.views.moveTitle(m.toTitle) : ''}
+      title={S.views.moveTitle}
       icon="art:btn_office"
       footer={
         m ? (
@@ -61,10 +61,8 @@ function Body({ m }: { m: MoveModel }) {
   return (
     <View style={styles.body}>
       <Txt size={ty.big} bold color={INK.violetDeep}>
-        {S.views.nextPlace(m.toPlace)}
+        {S.views.moveHeadline(m.toTitle, m.toPlace)}
       </Txt>
-      <List title={S.views.resets} items={m.resets} words={S.views.resetItem} />
-      <List title={S.views.stays} items={m.stays} words={S.views.stayItem} />
       <Card>
         <Txt size={ty.body} bold color={INK.violetDeep}>
           {S.views.next}
@@ -77,6 +75,8 @@ function Body({ m }: { m: MoveModel }) {
         </Txt>
         {m.passesIn ? <Txt size={ty.small}>{S.views.passesIn(aboutText(m.passesIn))}</Txt> : null}
       </Card>
+      <List title={S.views.resets} items={m.resets} words={S.views.resetItem} />
+      <List title={S.views.stays} items={m.stays} words={S.views.stayItem} />
     </View>
   );
 }

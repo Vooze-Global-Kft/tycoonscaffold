@@ -18,7 +18,7 @@
  * switch): Cuthbert Wimble buys the advised level (advice.ts `standingOrderPick`) while you play when
  * cash ≥ 3 × its price plus the reserve; never while away (tick.ts runs it; the away rules never tick).
  */
-import { reserveNow, standingOrderPick } from './advice';
+import { standingOrderPick, standingOrderReserve } from './advice';
 import { fillTray, landNext } from './draw';
 import { commitCash, decreeParams, roundDibs } from './params';
 import { endScandal } from './scandal';
@@ -148,7 +148,8 @@ export function standingOrderStep(cfg: DecreeConfig, g: DecreeGame, events: Decr
   // Never inside the player's take-back window (2.7: Wimble is not "the next action"; slips.ts `buy` with `auto` refuses then too).
   if (!standingOrderActive(cfg, g) || g.decree.pending) return g;
   const pick = standingOrderPick(cfg, g);
-  if (!pick || g.cash < cfg.decree.standingOrder.times * pick.price + reserveNow(cfg, g)) return g;
+  // D33: it keeps back every waiting paper's sign cost (and the run-up's), not just the next two.
+  if (!pick || g.cash < cfg.decree.standingOrder.times * pick.price + standingOrderReserve(cfg, g)) return g;
   return buy(cfg, g, pick.purchase, pick.price, events, { auto: true });
 }
 

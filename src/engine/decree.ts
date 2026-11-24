@@ -72,7 +72,7 @@ export { MOVE_RESETS, MOVE_STAYS, canMoveUp, moveUp, moveSheet, movedState, move
 export type { MoveListItem } from './decree/move';
 
 // --- 2.16 advice and the goal line (P1b: advice.ts) ---
-export { advice, goalLine, about, candidates, scoreOf, recordShort, slipNeed, slipReserve, reserveNow, standingOrderPick, callNow } from './decree/advice';
+export { advice, goalLine, about, candidates, scoreOf, recordShort, slipNeed, slipReserve, reserveNow, standingOrderReserve, standingOrderPick, callNow } from './decree/advice';
 export type { Candidate } from './decree/advice';
 
 // --- 2.14 new things a term, the ONE Factors object (P1b: twists.ts) ---

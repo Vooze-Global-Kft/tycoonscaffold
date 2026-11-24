@@ -41,6 +41,11 @@ export function reserveNow(cfg: DecreeConfig, g: DecreeGame): number {
   return reserve(cfg, g);
 }
 
+/** D33: what the Standing Order keeps back: the sign cost of the desk paper and of EVERY paper waiting, and the run-up's (slips.ts `reserve` with everyPaper). */
+export function standingOrderReserve(cfg: DecreeConfig, g: DecreeGame): number {
+  return reserve(cfg, g, { everyPaper: true });
+}
+
 /**
  * What a slip keeps back (D16): the reserve, plus desk.slipReserveSeconds of B when the desk and the
  * tray are empty, through roundDibs: the same threshold slips.ts `slipFor` applies (its
