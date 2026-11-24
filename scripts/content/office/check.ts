@@ -653,9 +653,18 @@ const isDeckLengthRule = (f: CheckFinding) => f.rule === 'rule4' && f.id.startsW
 /** D30: a frame's own median filled length is at most this. */
 export const FRAME_MEDIAN_MAX = 72;
 
-/** A frame's bigger study (D30) is linted as a plain text; the lint reads it as an extra string. */
+/**
+ * A frame's bigger study (D30): the field `biggerStudy`, or, until scripts/content/build-office.py maps
+ * that field, a note that starts "biggerStudy: " (the template batches' form). Either way it is linted.
+ */
+export function frameStudy(f: { biggerStudy?: string; note?: string }): string | undefined {
+  if (f.biggerStudy) return f.biggerStudy;
+  const m = /^biggerStudy: (.+)$/s.exec(f.note ?? '');
+  return m ? m[1].trim() : undefined;
+}
+/** A frame's bigger study is linted as a plain text; the lint reads it as an extra string. */
 function withFrameStudies(u: ContentUnit): ContentUnit {
-  const extra: ExtraString[] = (u.sections.frames ?? []).filter((f) => f.biggerStudy).map((f) => ({ id: `${f.id}.study`, text: f.biggerStudy!, field: 'text' }));
+  const extra: ExtraString[] = (u.sections.frames ?? []).filter((f) => frameStudy(f)).map((f) => ({ id: `${f.id}.study`, text: frameStudy(f)!, field: 'text' }));
   return extra.length ? { ...u, strings: [...(u.strings ?? []), ...extra] } : u;
 }
 
@@ -669,8 +678,10 @@ function frameChecks(units: ContentUnit[], wholeDecks: boolean): CheckFinding[] 
       const med = median(phrases.map((ph) => [...f.frame.replace(`{${slot}}`, ph)].length));
       if (med > FRAME_MEDIAN_MAX) out.push({ severity: 'error', file: u.source, id: f.id, field: 'frame', rule: 'rule4', match: `median ${med}`, reason: `the frame's median filled length is ${med} characters; at most ${FRAME_MEDIAN_MAX} (D30)` });
     }
-    if (f.archetype === 'committee' && !f.biggerStudy) out.push({ severity: wholeDecks ? 'error' : 'warn', file: u.source, id: f.id, field: 'biggerStudy', rule: 'rule6', reason: 'a Committee frame comes back after a sign with its bigger study (D20, D30): write it in biggerStudy' });
-    if (f.biggerStudy && f.archetype !== 'committee') out.push({ severity: 'error', file: u.source, id: f.id, field: 'biggerStudy', rule: 'rule6', reason: `only a committee has a bigger study (2.2); this is a ${f.archetype}` });
+    const study = frameStudy(f);
+    if (study && [...study].length > 90) out.push({ severity: 'error', file: u.source, id: f.id, field: 'biggerStudy', rule: 'rule4', reason: `a bigger study is at most 90 characters: ${[...study].length}` });
+    if (f.archetype === 'committee' && !study) out.push({ severity: wholeDecks ? 'error' : 'warn', file: u.source, id: f.id, field: 'biggerStudy', rule: 'rule6', reason: 'a Committee frame comes back after a sign with its bigger study (D20, D30): write it in biggerStudy' });
+    if (study && f.archetype !== 'committee') out.push({ severity: 'error', file: u.source, id: f.id, field: 'biggerStudy', rule: 'rule6', reason: `only a committee has a bigger study (2.2); this is a ${f.archetype}` });
   }
   return out;
 }

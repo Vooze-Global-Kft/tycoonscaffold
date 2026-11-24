@@ -12,7 +12,8 @@ import { FIXTURE_NOW, decreeTestConfig, freshState } from '../fixtures/decree';
 import { act } from './testPlay';
 
 const cfg = decreeTestConfig();
-const SOURCES: R.CashSource[] = ['tick', 'paper', 'away', 'awayAd', 'checkSofa', 'transition', 'spend'];
+// 'reset': the old treasury set aside at a move (never a gain), booked by the rules since the join.
+const SOURCES: R.CashSource[] = ['tick', 'paper', 'away', 'awayAd', 'checkSofa', 'transition', 'spend', 'reset'];
 const GAINS = new Set<R.CashSource>(['tick', 'paper', 'away', 'awayAd', 'checkSofa', 'transition']);
 
 describe('dibs enter only through the named sources (H5)', () => {
@@ -70,7 +71,8 @@ describe('dibs enter only through the named sources (H5)', () => {
     expect(book.tick).toBeGreaterThan(0);
     expect(refusals).toBeGreaterThan(50);
     expect(g.decree.stats.elections).toBeGreaterThan(0);
-    const total = start + Object.values(book).reduce((s, x) => s + (x ?? 0), 0) + (harness.away ?? 0) + (harness.awayAd ?? 0) - resetLoss;
+    const total = start + Object.values(book).reduce((s, x) => s + (x ?? 0), 0) + (harness.away ?? 0) + (harness.awayAd ?? 0);
+    expect(-(book.reset ?? 0)).toBeCloseTo(resetLoss, 6);
     expect(Math.abs(g.cash - total)).toBeLessThanOrEqual(1e-6 * Math.max(1, Math.abs(g.cash)));
   });
 });

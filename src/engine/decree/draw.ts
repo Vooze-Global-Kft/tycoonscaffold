@@ -38,6 +38,7 @@ import { dueFollowUp, followUpPaper } from './followup';
 import { nextApplication } from './ministers';
 import { clubIndex, decreeParams, factorOn, levelCost, levelCostRaw, levelGain, officeOf, rand, roundDibs } from './params';
 import { freezeShown } from './size';
+import { slipYields } from './slips';
 import { deskFactors } from './twists';
 import type { ApplicationDef, BaseEffect, ChainDef, ClubId, ClubIx, ComicPaperDef, DecreeConfig, DecreeEvent, DecreeGame, Effect, FollowUpRef, FrameDef, GrievanceDef, OfficeIx, Outcome, Paper, PaperKind } from './types';
 
@@ -555,13 +556,9 @@ function choose(cfg: DecreeConfig, g0: DecreeGame): Drawn | null {
   return comicDraw(cfg, s);
 }
 
-/** An arrival lands: onto a free desk (returning a slip lying there first), else into the tray. */
+/** An arrival lands: onto a free desk (a slip lying there goes back first, slips.ts `slipYields`), else into the tray. */
 function arrive(cfg: DecreeConfig, g: DecreeGame, paper: Paper, clock: number, events: DecreeEvent[]): DecreeGame {
-  let s = g;
-  if (s.decree.desk?.type === 'slip') {
-    events.push({ type: 'slipReturned' });
-    s = withDecree(s, { desk: null });
-  }
+  const s = slipYields(cfg, g, events);
   const d = s.decree;
   if (!d.desk && !d.pending) {
     if (!d.tray.length) {

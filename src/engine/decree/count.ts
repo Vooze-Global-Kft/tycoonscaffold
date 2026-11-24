@@ -27,9 +27,15 @@ export const STRONG_WEIGHT = 0.4;
 /** A district is close within this many hundredths of 50 (2.7: "within 3 points"). */
 export const CLOSE_WITHIN = 300;
 
-/** D25's count utility of a mood, the ONE function (parameters `decree.count`): m from huffBelow up, huffBelow − huffSlope × (huffBelow − m) below it. */
-export function moodUtility(c: { huffBelow: number; huffSlope: number }, m: number): number {
-  return m >= c.huffBelow ? m : c.huffBelow - c.huffSlope * (c.huffBelow - m);
+/**
+ * D25's count utility of a mood, the ONE function (parameters `decree.count`): m from huffBelow up,
+ * huffBelow − huffSlope × (huffBelow − m) below it; above `topAbove` (default 100: never) only
+ * `topSlope` per point (the numbers prototype's proposal, for the lead to decide).
+ */
+export function moodUtility(c: { huffBelow: number; huffSlope: number; topAbove?: number; topSlope?: number }, m: number): number {
+  if (m < c.huffBelow) return c.huffBelow - c.huffSlope * (c.huffBelow - m);
+  const top = c.topAbove ?? 100;
+  return m > top ? top + (c.topSlope ?? 1) * (m - top) : m;
 }
 
 /** The shares of the districts in hundredths for moods `moods`, campaign points `C` and disarray `Y`, with the params' mixes and pull. */

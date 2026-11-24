@@ -3,13 +3,13 @@
  * player action of spec 2.6. Each calls the rules' public interface (src/engine/decree.ts), stores
  * the result in the shared store, plays its fx key (src/services/fx/catalog.decree.ts), hands the
  * events the rules reported to the mode's listeners (src/state/modeEvents.ts), and is null-safe:
- * outside a decree game, when the rules refuse (they return the same object) or throw (a body not
- * built yet: NotBuiltError), it plays `denied` and returns false.
+ * outside a decree game, when the rules refuse (they return the same object) or throw (a bug: the
+ * crash service records it), it plays `denied` and returns false.
  *
  * Screens call `decreeActions.<name>(...)`; they never call the rules to change state. The play clock
  * the rules take as `clock` is the shared `stats.playSeconds`.
- * Written by the skeleton; owned afterwards by P1b (it knows which result plays which key; the sound
- * package may move keys).
+ * Written by the skeleton; owned by the rules (rules-lead since the join; the sound package may move
+ * keys).
  */
 import * as R from '../../engine/decree';
 import type { GameState } from '../../engine/types';
@@ -41,8 +41,8 @@ function act(where: string, fn: Step, key: DecreeFxName | ((before: R.DecreeGame
   try {
     next = fn(now.cfg, now.g, now.g.stats.playSeconds, events);
   } catch (e) {
-    // A rule not built yet is expected while the packages work; anything else is a bug worth a report.
-    if (!(e instanceof R.NotBuiltError)) crash.record(e, `decree.${where}`);
+    // Every rule is built: a throw is a bug worth a report.
+    crash.record(e, `decree.${where}`);
     next = now.g;
   }
   if (next === now.g) {
@@ -100,7 +100,7 @@ export const decreeActions = {
       try {
         R.moveUp(before.cfg, before.g, Date.now(), events);
       } catch (e) {
-        if (!(e instanceof R.NotBuiltError)) crash.record(e, 'decree.moveUp');
+        crash.record(e, 'decree.moveUp');
       }
       useGame.getState().prestige();
       const after = decreeNow();
@@ -125,7 +125,7 @@ export const decreeActions = {
     try {
       can = !!now && R.canWatchAd(now.cfg, now.g, kind);
     } catch (e) {
-      if (!(e instanceof R.NotBuiltError)) crash.record(e, 'decree.canWatchAd');
+      crash.record(e, 'decree.canWatchAd');
     }
     if (!can) {
       fx.play('denied');

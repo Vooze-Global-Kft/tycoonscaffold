@@ -318,7 +318,7 @@
       "visitor": "spinwell",
       "club": "shops",
       "archetype": "vanity",
-      "text": "Swap the clock tower's face for yours, Mayor. Right twice a day.",
+      "text": "Put your face on the clock tower, Mayor. People check it every hour.",
       "subject": "clocks",
       "butt": "self",
       "shape": "undercut"
@@ -498,7 +498,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A spotting step by the shops. You go first, and ideally see a bus.",
+      "text": "A bus-shaped bench by the shops. You sit at the front and look punctual.",
       "subject": "buses",
       "butt": "self",
       "shape": "photo-op",
@@ -716,7 +716,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "fee",
-      "text": "We will hire the high street to read the timetable aloud. Then the footnotes.",
+      "text": "We will hire the high street on Sunday to read the timetable aloud. All of it.",
       "subject": "buses",
       "butt": "visitor",
       "shape": "escalation",
@@ -988,17 +988,6 @@
       "setsUp": "may-bunting"
     },
     {
-      "id": "may3-morale-fountain",
-      "visitor": "gourdley",
-      "club": "veg",
-      "other": "bus",
-      "archetype": "project",
-      "text": "A tap at the bus stop. Then a hose. Then, for morale, a fountain.",
-      "subject": "fountains",
-      "butt": "thing",
-      "shape": "escalation"
-    },
-    {
       "id": "may3-gallery-wall",
       "visitor": "kerb",
       "club": "bus",
@@ -1008,6 +997,17 @@
       "subject": "portraits",
       "butt": "thing",
       "shape": "literalism"
+    },
+    {
+      "id": "may3-morale-fountain",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A rain barrel under the bus stop roof. It sheds the finest rain in town.",
+      "subject": "fountains",
+      "butt": "thing",
+      "shape": "undercut"
     },
     {
       "id": "may3-high-street-fountain",
@@ -1130,7 +1130,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "fee",
-      "text": "We will pay for a licence to stand by the shops. Noses filed separately.",
+      "text": "We will pay for a licence to stand by the shops. Leaning is a separate form.",
       "subject": "paperwork",
       "butt": "office",
       "shape": "form-misapplied",
@@ -1183,7 +1183,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A spotting chair by the shops. You first, Mayor, for the Drizzle.",
+      "text": "A plaque by the shops where our first bus was logged. Lean on it, Mayor, nobly.",
       "subject": "buses",
       "butt": "self",
       "shape": "photo-op"
@@ -1341,9 +1341,9 @@
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
-        "text": "About the bottled water: it would like the Guild's best window, on show.",
+        "text": "About the bottled water: it would like to wash the Guild's windows. Thoroughly.",
         "clippings": {
-          "sign": "MAYOR'S WATER BOTTLE TAKES GUILD'S BEST WINDOW",
+          "sign": "FOUNTAIN WATER STREAKS GUILD WINDOWS; GUILD POLISHES ALL NIGHT",
           "refuse": "WATER SENT HOME IN ITS BOTTLE"
         }
       }
@@ -1354,7 +1354,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "project",
-      "text": "A shops signpost at the bus stop, pointing both ways. To be fair.",
+      "text": "A signpost at the bus stop: SHOPS one way, SHOPS the other. To be fair.",
       "subject": "signage",
       "butt": "thing",
       "shape": "literalism",

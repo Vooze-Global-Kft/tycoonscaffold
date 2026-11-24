@@ -12,11 +12,10 @@
  * `ledger`, the term ribbon `termRibbon`, the goal line `goalLine` with `about`, the reserve
  * `reserve` / `reserveParts`, the top bar `topBar`, the club strip `clubStrip`, the door glass
  * `nextVisitorIn`, the result and move sheets, the away report, whether an ad or the Shop may be
- * offered `canWatchAd` / `canShop`). Signatures were fixed by the skeleton (spec 9.2 "hour 0"); each function's doc comment
- * (in its file) cites the section it implements and says whether it is built or throws notBuilt.
- * TWO EXPORT BLOCKS, each edited only by its package: "P1a" (the paper core's files) and "P1b" (time,
- * term and wiring). A package adds the exports of its own files in its own block; a signature changes
- * only with the other package's agreement and the lead's. The file as a whole is P1b's (9.2).
+ * offered `canWatchAd` / `canShop`). Signatures were fixed by the skeleton (spec 9.2 "hour 0"); each
+ * function's doc comment (in its file) cites the section it implements. Every rule is built and the
+ * two packages are joined (rules-lead owns every rules file); the two export blocks below keep the
+ * packages' original grouping only.
  * The seam between the rule files: docs/design/office-build-plan.md, "The seam".
  */
 export type * from './decree/types';
@@ -43,7 +42,7 @@ export { sizeMood, sizeMoney, freezeShown, stripOf, costOf, formVoid } from './d
 export { decide, takeBack, commitPending, applyShown, commitItem, isDay } from './decree/decide';
 
 // --- 2.6, 2.7 slips, purchases, the reserve, the Ledger (P1a: slips.ts) ---
-export { reserve, reserveParts, slipFor, slipOf, canBuy, buy, raise, openMinistry, buyVanity, ledger, callFrom, runUpPrices } from './decree/slips';
+export { reserve, reserveParts, slipFor, slipOf, slipYields, canBuy, buy, raise, openMinistry, buyVanity, ledger, callFrom, runUpPrices } from './decree/slips';
 
 // --- 2.7, 7.6 follow-ups (P1a: followup.ts) ---
 export { scheduleFollowUp, dueFollowUp, followUpPaper, stickyNote } from './decree/followup';

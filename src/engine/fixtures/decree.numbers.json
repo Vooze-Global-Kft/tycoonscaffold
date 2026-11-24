@@ -192,8 +192,8 @@
    "districts": [
     {
      "id": "county_a",
-     "name": "County A (PLACEHOLDER)",
-     "short": "CA",
+     "name": "Waitwell",
+     "short": "WW",
      "mix": [
       40,
       20,
@@ -204,8 +204,8 @@
     },
     {
      "id": "county_b",
-     "name": "County B (PLACEHOLDER)",
-     "short": "CB",
+     "name": "Gleamford",
+     "short": "GF",
      "mix": [
       15,
       40,
@@ -216,8 +216,8 @@
     },
     {
      "id": "county_c",
-     "name": "County C (PLACEHOLDER)",
-     "short": "CC",
+     "name": "Cloche End",
+     "short": "CE",
      "mix": [
       15,
       15,
@@ -228,8 +228,8 @@
     },
     {
      "id": "county_d",
-     "name": "County D (PLACEHOLDER)",
-     "short": "CD",
+     "name": "Bandwick",
+     "short": "BW",
      "mix": [
       10,
       15,
@@ -240,8 +240,8 @@
     },
     {
      "id": "county_e",
-     "name": "County E (PLACEHOLDER)",
-     "short": "CE",
+     "name": "Dawdlemouth",
+     "short": "DM",
      "mix": [
       20,
       10,
@@ -252,8 +252,8 @@
     },
     {
      "id": "county_f",
-     "name": "County F (PLACEHOLDER)",
-     "short": "CF",
+     "name": "Clatterby",
+     "short": "CY",
      "mix": [
       35,
       15,
@@ -264,8 +264,8 @@
     },
     {
      "id": "county_g",
-     "name": "County G (PLACEHOLDER)",
-     "short": "CG",
+     "name": "Hampering",
+     "short": "HP",
      "mix": [
       10,
       35,
@@ -326,11 +326,11 @@
    "rivals": [
     {
      "id": "waft",
-     "name": "Barnaby Waft",
+     "name": "Leander Waft",
      "slogan": "Waft: Gently Onwards",
      "hobby": "the Ceremonial Spoon",
-     "backAgain": "Barnaby Waft is back for another go, spoon polished.",
-     "resignation": "Barnaby Waft won, then resigned to spend more time with his spoon."
+     "backAgain": "Leander Waft is back for another go, spoon polished.",
+     "resignation": "Leander Waft won, then resigned to spend more time with his spoon."
     },
     {
      "id": "governor_rival_2",
@@ -466,8 +466,8 @@
     },
     {
      "id": "kitewell",
-     "name": "Kitewell",
-     "short": "KW",
+     "name": "Kitecombe",
+     "short": "KC",
      "mix": [
       25,
       10,
@@ -983,7 +983,7 @@
  "ministers": [
   {
    "id": "pockle",
-   "name": "Dorothy Pockle",
+   "name": "Dorothy Sett",
    "initials": "DP",
    "club": "bus",
    "office": "mayor",
@@ -1035,7 +1035,7 @@
   },
   {
    "id": "bole",
-   "name": "Ermintrude Bole",
+   "name": "Henrietta Bole",
    "initials": "EB",
    "club": "brass",
    "office": "governor",
@@ -1048,7 +1048,7 @@
   },
   {
    "id": "gusset",
-   "name": "Percy Gusset",
+   "name": "Percy Plummet",
    "initials": "PG",
    "club": "anglers",
    "office": "governor",
@@ -1087,7 +1087,7 @@
   },
   {
    "id": "nibley",
-   "name": "Florence Nibley",
+   "name": "Florence Mayfly",
    "initials": "FN",
    "club": "anglers",
    "office": "president",
@@ -2148,11 +2148,11 @@
    },
    {
     "id": "marchpane",
-    "name": "Rupert Marchpane"
+    "name": "Rupert Borage"
    },
    {
     "id": "tuttle",
-    "name": "Winifred Tuttle"
+    "name": "Winifred Chervil"
    },
    {
     "id": "larkspur",

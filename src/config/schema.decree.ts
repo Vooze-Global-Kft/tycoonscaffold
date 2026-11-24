@@ -387,7 +387,8 @@ export const PhraseListSchema = z.object({ id: deckId, title: z.string().default
 /** A plain line with an id (returning-visitor, away, captions). */
 export const LineSchema = z.object({ id: deckId, text: text(120) });
 /** An election-night line (30): when it is said. */
-export const NightLineSchema = z.object({ id: deckId, moment: z.enum(['open', 'held', 'lost', 'majority', 'defeat', 'any']), text: text(90) });
+/** An election-night line (4.4); `rival`: the rival id whose result line it is (writer 5's 18 rival lines), null for every rival. */
+export const NightLineSchema = z.object({ id: deckId, moment: z.enum(['open', 'held', 'lost', 'majority', 'defeat', 'any']), text: text(90), rival: z.string().nullable().default(null) });
 /** A monument of the vanity shelf (5.8; 24): its name and one line. */
 export const MonumentSchema = z.object({ id: deckId, name: text(40), text: text(90) });
 
@@ -462,16 +463,16 @@ const OFFICES_DEFAULT: z.input<typeof OfficeSchema>[] = [
     newspaper: 'the Upper Wobbling Evening Fuss',
     districtWord: 'county',
     clubs: ['bus', 'shops', 'veg', 'brass', 'anglers'],
-    // PLACEHOLDER: the county names are writer 2's (7.1) and the mixes the numbers engineer's; these follow
+    // The county names are writer 2's (7.1, registered in names.json); PLACEHOLDER: the mixes are the numbers engineer's; these follow
     // the rule of 2.2 (hundredths summing to 100, every club strongest in at least one county and in no more than half).
     districts: [
-      district('county_a', 'County A (PLACEHOLDER)', 'CA', [40, 20, 15, 15, 10]),
-      district('county_b', 'County B (PLACEHOLDER)', 'CB', [15, 40, 15, 10, 20]),
-      district('county_c', 'County C (PLACEHOLDER)', 'CC', [15, 15, 40, 20, 10]),
-      district('county_d', 'County D (PLACEHOLDER)', 'CD', [10, 15, 20, 40, 15]),
-      district('county_e', 'County E (PLACEHOLDER)', 'CE', [20, 10, 10, 15, 45]),
-      district('county_f', 'County F (PLACEHOLDER)', 'CF', [35, 15, 10, 30, 10]),
-      district('county_g', 'County G (PLACEHOLDER)', 'CG', [10, 35, 30, 10, 15]),
+      district('county_a', 'Waitwell', 'WW', [40, 20, 15, 15, 10]),
+      district('county_b', 'Gleamford', 'GF', [15, 40, 15, 10, 20]),
+      district('county_c', 'Cloche End', 'CE', [15, 15, 40, 20, 10]),
+      district('county_d', 'Bandwick', 'BW', [10, 15, 20, 40, 15]),
+      district('county_e', 'Dawdlemouth', 'DM', [20, 10, 10, 15, 45]),
+      district('county_f', 'Clatterby', 'CY', [35, 15, 10, 30, 10]),
+      district('county_g', 'Hampering', 'HP', [10, 35, 30, 10, 15]),
     ],
     majority: 4,
     ministries: [
@@ -665,6 +666,13 @@ export const DecreeSchema = z.object({
       takeBackSeconds: pos.default(2),
       /** At most this many papers past the cap for an event on top (2.7). */
       eventOverCap: int.min(0).default(1),
+      /**
+       * Whether a slip that has landed stays until it is flicked (rules-lead, for the lead's pending
+       * decision on the numbers prototype's "slipStays" proposal): false is 2.7 as written (a visitor's
+       * arrival returns an undragged slip); true keeps the slip and the visitor waits in the tray. The
+       * ONE reader is slips.ts `slipYields`.
+       */
+      slipStays: z.boolean().default(false),
     })
     .prefault({}),
   /** Time away (2.15): arrival every n s (tune 240 to 600), rate a (tune 0.25 to 0.45), the cap (rule 4 h; +2 h with Long Lunch, D11). */
@@ -696,8 +704,18 @@ export const DecreeSchema = z.object({
    * `huffBelow` up counts as it is, below it `huffSlope` times as far below (u(m) = m from 30 up,
    * 3m − 60 below: u(20) = 0, u(0) = −60). Only the count and the poll read it; approval and income use
    * the plain moods. A club from boycott.below to huffBelow − 1 is "in a huff" on screen.
+   * `topAbove` and `topSlope` (rules-lead, for the lead's pending decision on the numbers prototype's
+   * "topT/topK" proposal): a mood above `topAbove` counts `topSlope` per point above it (u(m) = topAbove
+   * + topSlope × (m − topAbove)). The defaults (100, 1) change nothing; the proposal is 70 and 0.25.
    */
-  count: z.object({ huffBelow: int.min(0).max(100).default(30), huffSlope: z.number().min(1).default(3) }).prefault({}),
+  count: z
+    .object({
+      huffBelow: int.min(0).max(100).default(30),
+      huffSlope: z.number().min(1).default(3),
+      topAbove: int.min(0).max(100).default(100),
+      topSlope: z.number().min(0).max(1).default(1),
+    })
+    .prefault({}),
   /** The vanity shelf (5.8): a monument a term from mayor term 2 for `price` s of B (tune 300 to 1,200), ×factor for good (tune 1.01 to 1.04). */
   vanity: z.object({ price: pos.default(600), factor: pos.default(1.02), fromMayorTerm: int.positive().default(2) }).prefault({}),
   /** The Standing Order (5.10): from governor term 2 (from the first day with the product "Junior Clerk on Duty", D11), buys the advised level when cash ≥ times × price + the reserve. */
@@ -902,6 +920,7 @@ export function lintDecree(d: DecreeContent): string[] {
   if (new Set(d.ministers.map((m) => m.initials)).size !== d.ministers.length) out.push('ministers: duplicate initials (each prints its own on the papers it touches)');
   const days = d.forms.application.days;
   if (days.some((x, i) => i > 0 && x <= days[i - 1])) out.push(`forms.application.days ${JSON.stringify(days)} must rise`);
+  if (!(d.count.topAbove > d.count.huffBelow)) out.push(`count.topAbove ${d.count.topAbove} must be above count.huffBelow ${d.count.huffBelow}`);
   if (!(d.count.huffBelow > d.boycott.below)) out.push(`count.huffBelow ${d.count.huffBelow} must be above boycott.below ${d.boycott.below} (D25: "in a huff" from 20 to 29)`);
   if (!(d.boycott.below < d.boycott.endsAt && d.boycott.endsAt <= d.boycott.rearmAt)) out.push('boycott: below < endsAt ≤ rearmAt (2.8: 20, 25, 30)');
   // 2.14: the ladder of new things to term 181, and every factor composed with every minister.

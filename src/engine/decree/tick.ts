@@ -32,7 +32,7 @@ import { commitPending } from './decide';
 import { drawCampaignPaper, drawNext, drawRally, landNext } from './draw';
 import { standingOrderActive, standingOrderStep } from './grants';
 import { decreeParams } from './params';
-import { slipFor } from './slips';
+import { slipFor, slipYields } from './slips';
 import { MAX_TICK, type CashAnchor, type DecreeConfig, type DecreeEvent, type DecreeGame, type Paper } from './types';
 
 /** Events one tick may run before it stops (a guard against a rule that re-arms itself at one time; never reached by the rules). */
@@ -148,11 +148,7 @@ function nextEvent(cfg: DecreeConfig, g: DecreeGame, end: number, blocked: Reado
 
 /** A run-up paper arrives (2.10): a slip lying on the desk goes back, the paper waits behind what is there, and lands on a free desk. */
 function arriveRunUp(cfg: DecreeConfig, g: DecreeGame, paper: Paper, t: number, events: DecreeEvent[]): DecreeGame {
-  let x = g;
-  if (x.decree.desk?.type === 'slip') {
-    events.push({ type: 'slipReturned' });
-    x = withDecree(x, { desk: null });
-  }
+  let x = slipYields(cfg, g, events);
   x = withDecree(x, { tray: [...x.decree.tray, paper] });
   if (!x.decree.desk && !x.decree.pending) return landNext(cfg, x, t, events);
   events.push({ type: 'paperArrived', paper: paper.id, toDesk: false });

@@ -68,8 +68,10 @@ export function rand(g: DecreeGame, site: Site, x = 0): { value: number; g: Decr
  */
 export function commitCash(g: DecreeGame, delta: number, source: CashSource): DecreeGame {
   if (!Number.isFinite(delta) || delta === 0) return g;
-  const cash = Math.min(MAX_CASH, Math.max(0, g.cash + delta));
-  const applied = cash - g.cash;
+  const sum = g.cash + delta;
+  const cash = Math.min(MAX_CASH, Math.max(0, sum));
+  // The book holds the delta itself (not cash − cash, which floating point can make 59.999…) unless a bound bit.
+  const applied = cash === sum ? delta : cash - g.cash;
   const gain = applied > 0 ? applied : 0;
   const stats = g.decree.stats;
   const book = { ...stats.book, [source]: (stats.book?.[source] ?? 0) + applied };

@@ -88,13 +88,14 @@ describe('the two lists of 2.12, field by field', () => {
       for (const f of item.fields) {
         if (f === 'cash' || f === 'runEarnings') continue;
         if (f === 'wall') expect(m.decree.wall).toEqual([...back.decree.wall, { office: 0, terms: g.decree.term, levels: g.decree.ministries.map((x) => (x.open ? x.level : 0)) }]);
-        // The fund is booked under 'transition' (H5); every other counter stays.
-        else if (f === 'stats') expect({ ...m.decree.stats, book: { ...m.decree.stats.book, transition: 0 } }).toEqual({ ...back.decree.stats, book: { ...back.decree.stats.book, transition: 0 } });
+        // The old treasury is booked under 'reset' and the fund under 'transition' (H5); every other counter stays.
+        else if (f === 'stats') expect({ ...m.decree.stats, book: { ...m.decree.stats.book, transition: 0, reset: 0 } }).toEqual({ ...back.decree.stats, book: { ...back.decree.stats.book, transition: 0, reset: 0 } });
         else expect(m.decree[f], `stays ${f}`).toEqual(back.decree[f]);
       }
     }
     // The H5 book: the fund enters through 'transition'; purchases (entitlements) are not touched.
     expect(m.decree.stats.book.transition).toBe((g.decree.stats.book.transition ?? 0) + fund);
+    expect(m.decree.stats.book.reset).toBe((g.decree.stats.book.reset ?? 0) - g.cash);
     expect(m.entitlements).toBe(g.entitlements);
     expect(m.prestigeCount).toBe(g.prestigeCount + 1);
     expect(m.lastSavedAt).toBe(FIXTURE_NOW + 5);

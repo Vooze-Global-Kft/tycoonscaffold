@@ -22,7 +22,7 @@
  *   a Grand Project open, six ministers, the term's twist).
  *
  * Web only (scripts/lib/modes.js WEB_ONLY): the web presets reach it, phones never do. Written by the
- * skeleton; owned afterwards by P1a (the bot engineer may add bot-played states beside these).
+ * skeleton; owned by the rules (rules-lead since the join; the bot engineer may add bot-played states beside these).
  */
 import { GameConfigSchema } from '../../config/schema';
 import { ARCHETYPE_IDS, DecreeSchema, FOLLOW_ONLY_ARCHETYPES, SHAPE_IDS, type ClubId, type DecreeContentInput, type OfficeId } from '../../config/schema.decree';
@@ -273,7 +273,7 @@ export function decreeStateProblems(c: R.DecreeConfig, g: R.DecreeGame): string[
   return out;
 }
 
-/** A comic paper of the test deck fixed by hand (the skeleton has no draw yet): its archetype's base effects, jitter 1. */
+/** A comic paper of the test deck fixed by hand (written before the draw existed; kept so the fixture states stay byte-stable for the screens): its archetype's base effects, jitter 1. */
 function handPaper(cfg: R.DecreeConfig, g: R.DecreeGame, id: string): R.Paper {
   const def = cfg.decree.deck.papers.find((p) => p.id === id)!;
   const office = g.decree.office;
@@ -293,7 +293,7 @@ function handCampaignPaper(cfg: R.DecreeConfig, g: R.DecreeGame, id: string, dis
   return { id: `campaign:${id}:0`, kind: 'campaign', source: id, office, visitor: { ...def.visitor, clubIx: null }, cosigner: null, text: def.text.replace('{district}', name), returning: null, archetype: null, petitioner: null, other: null, tags: { subject: def.subject, butt: def.butt, shape: def.shape }, sign: { effects: sign, followUp: null, label: null }, refuse: { effects: [], followUp: null, label: null }, clipping: null, ministry: null, drawnLevel: null, district, note: null, jitter: 1 };
 }
 
-/** The office `office`'s fresh decree fields on a fresh game (the skeleton has no move yet: a hand-made seat). */
+/** The office `office`'s fresh decree fields on a fresh game (a hand-made seat, not move.ts's: the fixtures choose every field). */
 function seated(cfg: R.DecreeConfig, office: R.OfficeIx, seed: number): R.DecreeGame {
   const g = freshState(cfg, seed);
   return { ...g, decree: { ...R.freshDecree(cfg, g.decree.seed, office), scriptedDone: ['mayor:1', 'mayor:2', 'mayor:3', 'mayor:4'] } };

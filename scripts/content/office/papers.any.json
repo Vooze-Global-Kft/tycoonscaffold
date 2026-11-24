@@ -68,7 +68,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "project",
-      "text": "A pane for noses before each window. Then a pane for that pane.",
+      "text": "A pane in front of each window, for leaning on. Then a pane for that pane.",
       "subject": "inventions",
       "butt": "thing",
       "shape": "escalation",
@@ -307,7 +307,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "It now asks for chairs, and a second pumpkin as a control.",
+      "biggerStudy": "It now asks for chairs. Standing has been studied enough.",
       "note": "Other: the Society minds a study of its pumpkins."
     },
     {

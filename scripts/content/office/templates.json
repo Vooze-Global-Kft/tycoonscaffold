@@ -7,7 +7,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "frame": "Make {town-things} a bus lookout. Its display must crouch.",
+      "frame": "Make {town-things} a bus lookout. The Guild's display must duck.",
       "subject": "buses",
       "butt": "thing",
       "shape": "undercut"
@@ -55,7 +55,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "undercut",
-      "biggerStudy": "The quiet test asks for a second year. The band kept helping."
+      "note": "biggerStudy: The quiet test asks for a second year. The band kept helping."
     },
     {
       "id": "tpa-thing-sign-buses",
@@ -74,19 +74,8 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "project",
-      "frame": "Band seats by {town-things}. Then a roof. The pond hears last.",
+      "frame": "Band seats by {town-things}, backs to the pond. The pond hears anyway.",
       "subject": "bandstands",
-      "butt": "thing",
-      "shape": "escalation"
-    },
-    {
-      "id": "tpa-inv-hedges-warned",
-      "office": "president",
-      "club": "kites",
-      "other": "hedges",
-      "archetype": "fee",
-      "frame": "The League pays to fly {minor-inventions} at the hedge show. Hedges told.",
-      "subject": "kites",
       "butt": "thing",
       "shape": "undercut"
     },
@@ -100,6 +89,17 @@
       "subject": "ribbons",
       "butt": "self",
       "shape": "photo-op"
+    },
+    {
+      "id": "tpa-inv-hedges-warned",
+      "office": "president",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "fee",
+      "frame": "The League pays to fly {minor-inventions} over the hedges. Hedges told.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "undercut"
     },
     {
       "id": "tpa-cer-poster",
@@ -239,21 +239,10 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "swap",
-      "frame": "Give the Committee the kites' lawn by {town-things}. Last word: 'edged'.",
+      "frame": "Give the kites' lawn by {town-things} to the Committee. It is edged.",
       "subject": "hedges",
       "butt": "thing",
-      "shape": "literalism"
-    },
-    {
-      "id": "tpa-thing-kite-ramp",
-      "office": "president",
-      "club": "kites",
-      "other": "hedges",
-      "archetype": "project",
-      "frame": "A kite step by {town-things}. Then one on it, for the hedge.",
-      "subject": "kites",
-      "butt": "thing",
-      "shape": "escalation"
+      "shape": "undercut"
     },
     {
       "id": "tpa-cer-by-kite",
@@ -265,6 +254,17 @@
       "subject": "kites",
       "butt": "self",
       "shape": "photo-op"
+    },
+    {
+      "id": "tpa-thing-kite-ramp",
+      "office": "president",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "project",
+      "frame": "A kite launch step by {town-things}. The hedge beside it will catch.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "undercut"
     },
     {
       "id": "tpa-thing-glass-case",
@@ -320,7 +320,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "The ownership inquiry asks to sit another year. It has grown fond of the view."
+      "note": "biggerStudy: The ownership inquiry asks to sit another year. It has grown fond of the view."
     },
     {
       "id": "tpa-cer-painting",
@@ -339,7 +339,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "treat",
-      "frame": "Pose with the pumpkin during {mild-weather}. It gets the good side.",
+      "frame": "Pose with the pumpkin in {mild-weather}. Hold its umbrella.",
       "subject": "vegetable-shows",
       "butt": "self",
       "shape": "photo-op"
@@ -361,7 +361,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "swap",
-      "frame": "Silence carries 6 % further during {mild-weather}. Anglers want band time.",
+      "frame": "Silence carries 6 % further in {mild-weather}. Anglers want band time.",
       "subject": "picnic-weather",
       "butt": "thing",
       "shape": "statistic"
@@ -372,7 +372,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "swap",
-      "frame": "Swap the timetable for {minor-inventions}. Till's Teas calls it progress.",
+      "frame": "Swap the timetable for {minor-inventions}. Pauline calls it progress.",
       "subject": "inventions",
       "butt": "thing",
       "shape": "callback"
@@ -471,7 +471,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "treat",
-      "frame": "Sit by the water with {minor-inventions}. Say nothing, on camera.",
+      "frame": "Demonstrate {minor-inventions} to the Anglers. Silently.",
       "subject": "inventions",
       "butt": "self",
       "shape": "photo-op"
@@ -482,7 +482,7 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "project",
-      "frame": "Clip {dignified-titles} into a hedge. Kites apply to read it.",
+      "frame": "Clip {dignified-titles} in the kite field hedge. Kites, land elsewhere.",
       "subject": "hedges",
       "butt": "office",
       "shape": "form-misapplied"
@@ -497,7 +497,7 @@
       "subject": "inventions",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "The growing study asks for a second window. The first has produced a teaspoon."
+      "note": "biggerStudy: The growing study asks for a second window. The first has produced a teaspoon."
     },
     {
       "id": "tpa-inv-two-tubas",
@@ -505,7 +505,7 @@
       "club": "brass",
       "other": "shops",
       "archetype": "fee",
-      "frame": "The band hires a window to show {minor-inventions}. And the band.",
+      "frame": "The band hires a window for {minor-inventions}. And plays beside it.",
       "subject": "inventions",
       "butt": "thing",
       "shape": "escalation"
@@ -527,19 +527,8 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "swap",
-      "frame": "Shape a hedge like {minor-inventions} on the kite field. Sign: KITES, LATER.",
+      "frame": "Store {minor-inventions} in the kites' shed. The Committee has the key.",
       "subject": "hedges",
-      "butt": "thing",
-      "shape": "slogan"
-    },
-    {
-      "id": "tpa-title-leek",
-      "office": "any",
-      "club": "veg",
-      "other": "bus",
-      "archetype": "treat",
-      "frame": "Name the prize leek {dignified-titles}. It has taken it well.",
-      "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "undercut"
     },
@@ -553,7 +542,18 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
-      "biggerStudy": "The kite study asks for a second hedge. The first is now mostly kite."
+      "note": "biggerStudy: The kite study asks for a second hedge. The first is now mostly kite."
+    },
+    {
+      "id": "tpa-title-leek",
+      "office": "any",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "treat",
+      "frame": "Name the prize leek {dignified-titles}. It has taken it well.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "undercut"
     },
     {
       "id": "tpa-title-permit",
@@ -583,7 +583,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "frame": "Name the spotters' bench {dignified-titles}. It is in a shop window.",
+      "frame": "Name the Guild's window seat {dignified-titles}. Spotters sit in it.",
       "subject": "buses",
       "butt": "thing",
       "shape": "undercut"
@@ -598,7 +598,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
-      "biggerStudy": "The band-practice study asks for a second band. The first one is too careful now."
+      "note": "biggerStudy: The band-practice study asks for a second band. The first one is too careful now."
     },
     {
       "id": "tpa-title-teas",
@@ -665,7 +665,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The last-bus inquiry asks for a second year by the pond. The bus keeps leaving."
+      "note": "biggerStudy: The last-bus inquiry asks for a second year by the pond. The bus keeps leaving."
     },
     {
       "id": "tpl-hat-timetable-hook",
@@ -710,7 +710,7 @@
       "subject": "hats",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The hat inquiry now asks whether the bus stop is a bus stop. It wants the bench too."
+      "note": "biggerStudy: The hat inquiry now asks whether the bus stop is a bus stop. It wants the bench too."
     },
     {
       "id": "tpl-hat-portrait",
@@ -729,7 +729,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "fee",
-      "frame": "The Guild pays to register {hats} as a bus. Spotters must log it.",
+      "frame": "The Guild pays to list {hats} as a bus. Spotters must log it.",
       "subject": "buses",
       "butt": "thing",
       "shape": "form-misapplied"
@@ -807,7 +807,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "project",
-      "frame": "The Anglers ask for a sign by {sign-places}: QUIET PLEASE, FISH THINKING.",
+      "frame": "The Anglers want a sign by {sign-places}: QUIET PLEASE, FISH THINKING.",
       "subject": "signage",
       "butt": "thing",
       "shape": "slogan",
@@ -867,7 +867,7 @@
       "subject": "signage",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The study has leant on the sign all year. It asks for a second sign, to compare."
+      "note": "biggerStudy: The study has leant on the sign all year. It asks for a second sign, to compare."
     },
     {
       "id": "tpl-sign-says-pond",
@@ -901,7 +901,7 @@
       "subject": "bandstands",
       "butt": "committee",
       "shape": "undercut",
-      "biggerStudy": "The hearing study asks to move the band further off, to be sure. Then further."
+      "note": "biggerStudy: The hearing study asks to move the band further off, to be sure. Then further."
     },
     {
       "id": "tpl-sign-kites-landing",
@@ -931,7 +931,7 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "swap",
-      "frame": "The hedge show gets the spot by {sign-places}. Kites may watch from above.",
+      "frame": "The hedge show takes the spot by {sign-places}. Kites, watch from above.",
       "subject": "signage",
       "butt": "thing",
       "shape": "undercut"
@@ -1020,7 +1020,7 @@
       "club": "shops",
       "other": "brass",
       "archetype": "fee",
-      "frame": "The Guild will pay to tell the bandstand {harmless-complaints}.",
+      "frame": "The Guild pays the band to stop. Reason given: {harmless-complaints}.",
       "subject": "paperwork",
       "butt": "thing",
       "shape": "literalism"
@@ -1053,7 +1053,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "frame": "Logged 41 times: {harmless-complaints}. For 42, spotters need the Guild's step.",
+      "frame": "Logged 41 times: {harmless-complaints}. For 42, we need the Guild's step.",
       "subject": "buses",
       "butt": "thing",
       "shape": "statistic"
@@ -1068,7 +1068,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The study is still unsure. It asks for the kite field in every weather, and the hedges."
+      "note": "biggerStudy: The study is still unsure. It asks for the kite field in every weather, and the hedges."
     },
     {
       "id": "tpl-unit-late",
@@ -1098,7 +1098,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "fee",
-      "frame": "Growers will hire {odd-units} of high street. The pumpkin is receiving.",
+      "frame": "Growers hire {odd-units} of high street. The pumpkin is receiving.",
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "undercut"
@@ -1175,11 +1175,11 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "committee",
-      "frame": "How far does {odd-units} of silence go? A study, by the band.",
+      "frame": "A study: is silence heard {odd-units} from the band? It sits there.",
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "The silence study needs more silence to go on with. It asks for the bandstand."
+      "note": "biggerStudy: The silence study needs more silence to go on with. It asks for the bandstand."
     },
     {
       "id": "tpl-unit-trim",
@@ -1198,7 +1198,7 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "swap",
-      "frame": "Shift the hedge show {odd-units}, for the kites. The napkin allows it.",
+      "frame": "Move the hedge show {odd-units}, for the kites. The napkin allows it.",
       "subject": "kites",
       "butt": "thing",
       "shape": "callback"
@@ -1209,7 +1209,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "fee",
-      "frame": "Growers outbid the Guild to name {things-to-rename}. 9 pumpkins in 10 approve.",
+      "frame": "Growers outbid the Guild to name {things-to-rename}. 9 pumpkins in 10 nod.",
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "statistic"
@@ -1257,7 +1257,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
-      "biggerStudy": "The naming study would like to question the bus. The bus has not replied."
+      "note": "biggerStudy: The naming study would like to question the bus. The bus has not replied."
     },
     {
       "id": "tpl-name-felt",
@@ -1331,7 +1331,7 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "fee",
-      "frame": "The League pays to call {things-to-rename} KITE FIELD TWO. Field one is a hedge.",
+      "frame": "The League pays to call {things-to-rename} KITE FIELD TWO. One is a hedge.",
       "subject": "kites",
       "butt": "thing",
       "shape": "undercut"

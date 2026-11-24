@@ -439,7 +439,7 @@
         "club": "anglers",
         "other": "brass",
         "archetype": "treat",
-        "text": "Not holding the float? Then point at it, gently, for the camera.",
+        "text": "Not holding the float? Then name it, for the Evening Fuss. Something calm.",
         "subject": "ceremonies",
         "butt": "self",
         "shape": "photo-op",
@@ -448,7 +448,7 @@
           16
         ],
         "clippings": {
-          "sign": "GOVERNOR POINTS AT FLOAT; FLOAT HOLDS STILL",
+          "sign": "GOVERNOR NAMES FLOAT AFTER SELF; FLOAT BOBS",
           "refuse": "FLOAT PHOTOGRAPHED ALONE; LOOKS DIGNIFIED"
         }
       }
@@ -724,7 +724,7 @@
         "club": "shops",
         "other": "bus",
         "archetype": "committee",
-        "text": "No judge, so all won. A study will pick a winner by nose prints.",
+        "text": "No judge, so all won. A study will pick a winner by how long people look.",
         "subject": "committees",
         "butt": "committee",
         "shape": "form-misapplied",
@@ -733,7 +733,7 @@
           16
         ],
         "clippings": {
-          "sign": "STUDY PICKS WINNING WINDOW BY NOSES; MAYOR'S NOSE ON IT",
+          "sign": "STUDY PICKS WINNING WINDOW; MAYOR LOOKED LONGEST",
           "refuse": "EVERY WINDOW WINS. NONE OF THEM CHEERS"
         }
       }
@@ -747,7 +747,7 @@
         "club": "bus",
         "other": "shops",
         "archetype": "swap",
-        "text": "The 8:15 left with eleven metres of bunting. May it keep them?",
+        "text": "The 8:15 left wearing eleven metres of bunting. May it keep it?",
         "subject": "ceremonies",
         "butt": "thing",
         "shape": "statistic",
@@ -929,7 +929,7 @@
         "club": "bus",
         "other": "veg",
         "archetype": "treat",
-        "text": "You kept our forecourt, Mayor, so we logged you as a bus. Sign here?",
+        "text": "You kept the forecourt for buses. Sign our notebook as a friend of the 8:15?",
         "subject": "buses",
         "butt": "self",
         "shape": "form-misapplied",

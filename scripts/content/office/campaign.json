@@ -202,7 +202,7 @@
       "id": "gov-runup-band-cup",
       "office": "governor",
       "visitor": "bellows",
-      "text": "Present the {district} band cup. We play you on. Off. And on.",
+      "text": "Hand over the {district} band cup. We play you on. Off. And on.",
       "subject": "bandstands",
       "butt": "self",
       "shape": "escalation"
@@ -220,7 +220,7 @@
       "id": "gov-runup-pumpkin-pose",
       "office": "governor",
       "visitor": "loam",
-      "text": "Pose with the {district} prize pumpkin. Mind its good side.",
+      "text": "Pose with the {district} prize pumpkin. It has been told where to look.",
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "photo-op"
@@ -391,7 +391,7 @@
       "id": "pres-runup-roses",
       "office": "president",
       "visitor": "fenn",
-      "text": "Open the {district} flower show. Smell all 400 roses.",
+      "text": "Sniff every rose at the {district} rose show. All 400. Look delighted.",
       "subject": "gardens",
       "butt": "self",
       "shape": "statistic"
@@ -537,15 +537,6 @@
       "shape": "undercut"
     },
     {
-      "id": "pres-rally-kite-ribbon",
-      "office": "president",
-      "visitor": "updraught",
-      "text": "A rally at the kite festival. Cut the ribbon on a kite. Watch it go.",
-      "subject": "ribbons",
-      "butt": "self",
-      "shape": "undercut"
-    },
-    {
       "id": "pres-rally-velvet-box",
       "office": "president",
       "visitor": "fenn",
@@ -553,6 +544,15 @@
       "subject": "ribbons",
       "butt": "self",
       "shape": "escalation"
+    },
+    {
+      "id": "pres-rally-kite-ribbon",
+      "office": "president",
+      "visitor": "updraught",
+      "text": "A rally at the kite festival. Cut the ribbon on a kite. Watch it go.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "undercut"
     },
     {
       "id": "pres-rally-one-leaf",

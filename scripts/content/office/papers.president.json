@@ -71,17 +71,6 @@
       "shape": "undercut"
     },
     {
-      "id": "pres-level-field",
-      "visitor": "loft",
-      "club": "kites",
-      "other": "brass",
-      "archetype": "swap",
-      "text": "The League asks for a level playing field. The band's, ideally.",
-      "subject": "kites",
-      "butt": "thing",
-      "shape": "literalism"
-    },
-    {
       "id": "pres-bench-roof",
       "visitor": "sprott",
       "club": "bus",
@@ -91,6 +80,17 @@
       "subject": "buses",
       "butt": "thing",
       "shape": "statistic"
+    },
+    {
+      "id": "pres-level-field",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "brass",
+      "archetype": "swap",
+      "text": "Lend the League the band's hill on kite day. The valley echoes nicely.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "undercut"
     },
     {
       "id": "pres-hedge-likeness",
@@ -420,7 +420,7 @@
       "visitor": "sash",
       "club": "shops",
       "archetype": "basket",
-      "text": "A fruit basket, as before. A ribbon on it, as before. No reason.",
+      "text": "A basket for the new President. Bigger than the first. The same no reason.",
       "subject": "ribbons",
       "butt": "lobbyist",
       "shape": "callback",
@@ -450,10 +450,10 @@
       "visitor": "goss",
       "club": "anglers",
       "archetype": "basket",
-      "text": "A desk fountain, just for you. It tinkles. The next one up splashes.",
+      "text": "A doorstep fountain for you. It only runs when someone is watching.",
       "subject": "fountains",
       "butt": "lobbyist",
-      "shape": "escalation",
+      "shape": "undercut",
       "favour": {
         "text": "About the fountain: it is lonely. It asks to live by the anglers' water.",
         "clippings": {
@@ -544,7 +544,7 @@
       "club": "shops",
       "other": "brass",
       "archetype": "swap",
-      "text": "Lend us the national bandstand for hats. The band may stay, as stands.",
+      "text": "The band's polishing day, for Window Week. Brass and glass cannot both shine.",
       "subject": "hats",
       "butt": "thing",
       "shape": "undercut"
@@ -647,9 +647,9 @@
       "butt": "lobbyist",
       "shape": "callback",
       "favour": {
-        "text": "About the offcuts: they want the best shop window. For a month.",
+        "text": "About the offcuts: they would like to be tied round every shop door handle.",
         "clippings": {
-          "sign": "OFFCUTS TAKE BEST WINDOW; GUILD DISPLAYS ITS DISMAY",
+          "sign": "OFFCUTS TIED ON SHOP DOORS; NOBODY CAN GET IN",
           "refuse": "OFFCUTS RETURNED UNCUT. MR SASH 'NOT UPSET'"
         }
       }
@@ -792,7 +792,7 @@
       "club": "veg",
       "other": "kites",
       "archetype": "project",
-      "text": "Kites landed in the prize beds 12 times. One came second. A net, please.",
+      "text": "Kites landed in the onion beds 12 times. The onions flinch. A net, please.",
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "statistic"
@@ -839,11 +839,11 @@
       "club": "shops",
       "other": "bus",
       "archetype": "committee",
-      "text": "An inquiry into nose prints on shop windows. Witnesses will be asked to lean.",
+      "text": "A committee to decide where a window ends and a spotter begins. Chalk provided.",
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The inquiry needs a second window. The first is evidence."
+      "biggerStudy": "The chalk line has been leant off. The committee asks for paint."
     },
     {
       "id": "pres-speeches-in-gilt",
@@ -1005,10 +1005,21 @@
       "club": "veg",
       "other": "bus",
       "archetype": "project",
-      "text": "A marquee for our show. Then over the bus stop. Then the bus.",
+      "text": "A marquee for our show, over the bus stop. Buses may enter as exhibits.",
       "subject": "vegetable-shows",
       "butt": "thing",
-      "shape": "escalation"
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-napkin-kite",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "treat",
+      "text": "Hold our spool for the camera. The kite is in the next province.",
+      "subject": "kites",
+      "butt": "self",
+      "shape": "photo-op"
     },
     {
       "id": "pres-kite-or-fish",
@@ -1022,17 +1033,6 @@
       "butt": "committee",
       "shape": "literalism",
       "biggerStudy": "The kite-or-fish inquiry wants a second summer. The kite is still in."
-    },
-    {
-      "id": "pres-napkin-kite",
-      "visitor": "loft",
-      "club": "kites",
-      "other": "hedges",
-      "archetype": "treat",
-      "text": "Hold our spool for the camera. The kite is in the next province.",
-      "subject": "kites",
-      "butt": "self",
-      "shape": "photo-op"
     },
     {
       "id": "pres-stamp-face",

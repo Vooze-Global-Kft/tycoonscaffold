@@ -172,9 +172,9 @@
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
-        "text": "About the pen's umbrella: it would like a front seat on the morning bus, open.",
+        "text": "About the pen's umbrella: it would like to shelter the timetable. From readers.",
         "clippings": {
-          "sign": "PEN'S UMBRELLA TAKES FRONT SEAT; SPOTTERS STAND",
+          "sign": "UMBRELLA COVERS TIMETABLE; NO BUS TIMES SEEN SINCE",
           "refuse": "TINY UMBRELLA RETURNED, NEATLY FOLDED"
         }
       }
@@ -459,10 +459,10 @@
       "club": "shops",
       "other": "brass",
       "archetype": "fee",
-      "text": "We would hire the bandstand for hats on Saturdays. Then Sundays. Then the park.",
+      "text": "We will pay for a sign on the bandstand roof: HATS, ONE STREET OVER.",
       "subject": "hats",
       "butt": "visitor",
-      "shape": "escalation",
+      "shape": "slogan",
       "portable": true,
       "note": "Replaced (edit): the hat-stand pun. Fee: the Guild pays the province for the hire. Butt: Delphine's own appetite for display space. Other: the band loses its bandstand."
     },
@@ -477,9 +477,9 @@
       "shape": "callback",
       "portable": true,
       "favour": {
-        "text": "About the scissors: they would like a window of their own. The Guild's best.",
+        "text": "About the scissors: they would like to trim the Guild's awnings. Shorter.",
         "clippings": {
-          "sign": "GOVERNOR'S SCISSORS GET BEST WINDOW; HATS MOVED",
+          "sign": "GOVERNOR'S SCISSORS TRIM AWNINGS; HATS NOW IN FULL SUN",
           "refuse": "SCISSORS SENT BACK, STILL IN THE BASKET"
         }
       },
@@ -491,7 +491,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "project",
-      "text": "A bandstand for the tuba alone, by the water. The band insists.",
+      "text": "A shelter for the tuba alone, by the water. The band insists.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "undercut",
@@ -1014,10 +1014,10 @@
       "visitor": "slake",
       "club": "anglers",
       "archetype": "basket",
-      "text": "A hat for your portrait. Then one for the frame. Frames feel the cold.",
+      "text": "A hat for your portrait, painted on. It will raise it to visitors.",
       "subject": "hats",
       "butt": "lobbyist",
-      "shape": "escalation",
+      "shape": "undercut",
       "favour": {
         "text": "The portrait's hat asks to enter the Quiet Competition. It keeps very still.",
         "clippings": {
@@ -1106,7 +1106,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "The jam working group asks for more evidence. And some toast."
+      "biggerStudy": "The jam working group has reached the bottom of the jar. It asks for a second."
     },
     {
       "id": "gov3-hat-doorway",
@@ -1384,19 +1384,6 @@
       "note": "Set-up of 'The Towpath Show'. Other: the Anglers lose their towpath for the day."
     },
     {
-      "id": "gov3-stop-mirror",
-      "visitor": "awning",
-      "club": "shops",
-      "other": "bus",
-      "archetype": "project",
-      "text": "Turn the bus stop to face our windows. Then the buses. Then the spotters.",
-      "subject": "buses",
-      "butt": "thing",
-      "shape": "escalation",
-      "portable": true,
-      "note": "Other: the spotters can no longer see their buses coming."
-    },
-    {
       "id": "gov3-rattle-permit",
       "visitor": "bellows",
       "club": "brass",
@@ -1408,6 +1395,19 @@
       "shape": "form-misapplied",
       "portable": true,
       "note": "Other: the tuba rattles shop windows (style 1 friction)."
+    },
+    {
+      "id": "gov3-stop-mirror",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "project",
+      "text": "Turn the bus stop round to face our windows. The road will keep.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "undercut",
+      "portable": true,
+      "note": "Other: the spotters can no longer see their buses coming."
     },
     {
       "id": "gov4-bandstand-paint",
@@ -1478,7 +1478,7 @@
       "visitor": "dimity",
       "club": "shops",
       "archetype": "vanity",
-      "text": "Rodney wants your face on the Evening Fuss vans. They will go slowly.",
+      "text": "Rodney wants your face on the side of every van. They will drive slowly.",
       "subject": "portraits",
       "butt": "self",
       "shape": "callback",
@@ -1494,9 +1494,9 @@
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
-        "text": "The clock's hat asks for the front seat of the 8:15. For the view.",
+        "text": "The clock's hat asks to hang on the bus stop sign. It wants to be waited for.",
         "clippings": {
-          "sign": "GOVERNOR GIVES HAT A FRONT SEAT; SPOTTERS LOG A HAT",
+          "sign": "GOVERNOR HANGS HAT ON BUS STOP; SPOTTERS WAIT FOR IT",
           "refuse": "HAT STAYS ON DESK CLOCK; TIME UNAFFECTED"
         }
       },
@@ -1545,7 +1545,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "treat",
-      "text": "Stand in our best window for an hour, Governor. As the display.",
+      "text": "Turn the Guild's new sign to OPEN, Governor. We will photograph the click.",
       "subject": "portraits",
       "butt": "self",
       "shape": "photo-op"
@@ -1579,7 +1579,7 @@
       "visitor": "sash",
       "club": "brass",
       "archetype": "basket",
-      "text": "Another basket, like the first. Keep the ribbon round it. No reason.",
+      "text": "A basket of ribbon. The fruit was eaten on the way. No reason.",
       "subject": "ribbons",
       "butt": "lobbyist",
       "shape": "callback",

@@ -137,3 +137,20 @@ describe('2.11: repeated losses end in a win (D15, D25)', () => {
     expect(R.certainWinBound(linear, 0)).toBeGreaterThan(c.ladder.maxLossesBound);
   });
 });
+
+describe("the count's utility is one function with one config block (rules-lead)", () => {
+  it('topAbove/topSlope change nothing at their defaults and, set, flatten moods above the threshold in the count only', () => {
+    expect(c.count.topAbove).toBe(100);
+    for (let m = 0; m <= 100; m++) expect(R.moodUtility(c.count, m)).toBe(m >= c.count.huffBelow ? m : c.count.huffBelow - c.count.huffSlope * (c.count.huffBelow - m));
+    const flat = { ...c.count, topAbove: 70, topSlope: 0.25 };
+    expect(R.moodUtility(flat, 90)).toBe(75);
+    expect(R.moodUtility(flat, 70)).toBe(70);
+    expect(R.moodUtility(flat, 10)).toBe(R.moodUtility(c.count, 10));
+    const tc = decreeTestConfig({ count: flat });
+    const g = built({ moods: [95, 40, 40] }, tc);
+    const plain = built({ moods: [95, 40, 40] }, cfg);
+    expect(R.shares(tc, g)[1]).toBeLessThan(R.shares(cfg, plain)[1]);
+    expect(R.decreeParams(tc, g).approval).toBe(R.decreeParams(cfg, plain).approval);
+    expect(R.poll(tc, g).held).toBe(R.count(tc, g).held);
+  });
+});

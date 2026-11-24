@@ -177,3 +177,20 @@ describe('budget slips (2.7, D16, D18)', () => {
     expect(g.decree.emptySince).toBe(7);
   });
 });
+
+describe('the slip and an arrival: one rule, one switch (rules-lead)', () => {
+  it('2.7 as written puts an undragged slip back; with desk.slipStays the slip stays and the visitor waits in the tray', () => {
+    const stays = decreeTestConfig({ desk: { ...cfg.decree.desk, slipStays: true } });
+    const g0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6 }, stays);
+    const g = withSlip(g0, R.slipOf(stays, g0, { type: 'level', ministry: 1 })!);
+    const events: R.DecreeEvent[] = [];
+    const after = R.drawNext(stays, g, 1, events);
+    expect(events.some((e) => e.type === 'slipReturned')).toBe(false);
+    expect(after.decree.desk?.type).toBe('slip');
+    expect(after.decree.tray.length).toBe(1);
+    // Up still buys it; the visitor lands after it.
+    const up = R.decide(stays, after, 'sign', 2, []);
+    expect(up.decree.ministries[1].level).toBe(8);
+    expect(up.decree.desk?.type).toBe('paper');
+  });
+});

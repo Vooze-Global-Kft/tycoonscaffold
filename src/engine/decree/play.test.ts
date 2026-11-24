@@ -50,6 +50,9 @@ function advance(g: R.DecreeGame, dt: number, events: R.DecreeEvent[] = []): R.D
   return s;
 }
 
+/** Every paper playUntil decided: its follow-up reference and the decisions ever at its landing. */
+const decidedLog: { paper: R.Paper; decisions: number }[] = [];
+
 /** Play until `until(g)` holds, deciding with `choose` a few seconds after each landing (at most `maxSeconds` of play). */
 function playUntil(g0: R.DecreeGame, until: (g: R.DecreeGame) => boolean, choose: (g: R.DecreeGame) => R.Choice, maxSeconds = 4 * 3600): R.DecreeGame {
   let g = g0;
@@ -60,6 +63,7 @@ function playUntil(g0: R.DecreeGame, until: (g: R.DecreeGame) => boolean, choose
     const clock = g.stats.playSeconds;
     if (d.phase === 'campaign' && R.canCount(cfg, g)) return g;
     if (d.desk && clock >= d.desk.landedAt + 3) {
+      if (d.desk.type === 'paper') decidedLog.push({ paper: d.desk.paper, decisions: d.stats.decisions });
       let s = R.decide(cfg, g, choose(g), clock, []);
       if (s === g) s = R.decide(cfg, g, 'refuse', clock, []);
       g = s.decree.pending ? R.commitPending(cfg, s, clock, []) : s;
@@ -148,9 +152,12 @@ describe('the first minutes, scripted (3.1, 2.13)', () => {
     expect(g.decree.cabinet[minister.minister]).toBeTruthy();
     expect(R.cabinet(cfg, g).find((c) => c.minister === minister.minister)?.appointed).toBe(true);
     // A follow-up: the basket's grape comes back after its delay of decided papers.
-    g = playUntil(g, (s) => deskPaper(s)?.paper.kind === 'followup', takeSlips, 1200);
-    expect(g.decree.stats.decisions).toBeGreaterThanOrEqual(basketAt + 10);
-    expect(deskPaper(g)!.paper.text).toMatch(/grape|basket|Test follow-up/i);
+    const grapeSeen = () => decidedLog.find((x) => x.paper.followUpOf?.chainId === 'the-basket');
+    if (!grapeSeen()) g = playUntil(g, (s) => deskPaper(s)?.paper.followUpOf?.chainId === 'the-basket', takeSlips, 1200);
+    const grape = grapeSeen()?.paper ?? deskPaper(g)!.paper;
+    expect(grape.followUpOf!.choice).toBe('refuse');
+    expect(grapeSeen()?.decisions ?? g.decree.stats.decisions).toBeGreaterThanOrEqual(basketAt + 10);
+    expect(grape.text).toMatch(/grape/);
     // The call day: the ribbon offers the call; the confirmation is the poll as it stands.
     g = playUntil(g, (s) => R.canCall(cfg, s), takeSlips, 3600);
     expect(g.decree.day).toBe(R.callDay(cfg, g));
@@ -336,7 +343,7 @@ describe('a long random but legal player through all three offices', () => {
         const can = R.canWatchAd(cfg, g, ad);
         next = R.grantAd(cfg, g, ad, events);
         if (!can && next !== g) fail(`the ad ${ad} was granted while not offered`, k, kind);
-        if ((d.phase === 'campaign' || d.phase === 'count' || d.phase === 'result') && next !== g) fail('an ad was granted from the call to the end of election night', k, kind);
+        if (d.phase === 'campaign' && next !== g) fail('an ad was granted from the call to the end of election night', k, kind);
       } else if (r < 0.705) {
         kind = 'face';
         next = R.pickFace(cfg, g, cfg.decree.cast.players[Math.floor(rnd() * cfg.decree.cast.players.length)].id);

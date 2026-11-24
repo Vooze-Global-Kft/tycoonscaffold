@@ -101,6 +101,17 @@ function emptyDeskExtra(cfg: DecreeConfig, g: DecreeGame): number {
   return roundDibs(cfg, cfg.decree.desk.slipReserveSeconds * decreeParams(cfg, g).B);
 }
 
+/**
+ * A visitor (or a run-up paper) arrives while a slip lies on the desk: 2.7 as written puts the slip
+ * back ("a visitor's arrival returns an undragged slip"); with `desk.slipStays` the slip stays and the
+ * visitor waits in the tray. The ONE place of that rule (draw.ts arrivals, tick.ts run-up arrivals).
+ */
+export function slipYields(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent[]): DecreeGame {
+  if (g.decree.desk?.type !== 'slip' || cfg.decree.desk.slipStays) return g;
+  events.push({ type: 'slipReturned' });
+  return withDecree(g, { desk: null });
+}
+
 /** The slip that would land now (advice's purchase, affordable above the reserve, D16's extra on an empty desk), or null; never during the count or on the result sheet. Built. */
 export function slipFor(cfg: DecreeConfig, g: DecreeGame): Slip | null {
   if (g.decree.phase === 'count' || g.decree.phase === 'result') return null;
