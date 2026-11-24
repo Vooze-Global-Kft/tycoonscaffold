@@ -34,8 +34,6 @@ export const TAP_SLOP = 8;
 export const TAP_MS = 350;
 /** The finger's velocity is measured over its last samples within this window (ms). */
 export const VELOCITY_WINDOW_MS = 80;
-/** How far the paper may follow the finger (beyond it the paper resists: half the extra distance). */
-export const FOLLOW_MAX = 140;
 
 export type Release = 'sign' | 'refuse' | 'spring';
 
@@ -79,26 +77,31 @@ export function isTap(maxMove: number, ms: number): boolean {
   return maxMove <= TAP_SLOP && ms <= TAP_MS;
 }
 
-/** The paper's drawn offset for a finger at `dy`: it follows to FOLLOW_MAX, then resists. Vertical only. */
-export function followOf(dy: number): number {
+/**
+ * The paper's drawn offset for a finger at `dy` (vertical only): it follows the finger 1:1 at first and
+ * then gives like a rubber band, never further than the band beside it (`upRoom`: the out-tray band
+ * above, `downRoom`: the drawer band below), so the strip the player is reading never slides under
+ * the bars. The thresholds of 4.3 count the finger's distance, not the paper's.
+ */
+export function followOf(dy: number, upRoom: number, downRoom: number): number {
   'worklet';
-  const a = Math.abs(dy);
-  const out = a <= FOLLOW_MAX ? a : FOLLOW_MAX + (a - FOLLOW_MAX) * 0.5;
-  return dy < 0 ? -out : out;
+  const room = dy < 0 ? upRoom : downRoom;
+  if (room <= 0) return 0;
+  return room * Math.tanh(dy / room);
 }
 
-/** How much of the signature is written at a paper offset `y` (0..1: nothing before 40 pt up, all of it at 90). */
-export function inkOf(y: number): number {
+/** How much of the signature is written at a finger distance `dy` (0..1: nothing before 40 pt up, all of it at 90). */
+export function inkOf(dy: number): number {
   'worklet';
-  const up = -y;
+  const up = -dy;
   if (up <= ARM_AT) return 0;
   return Math.min(1, (up - ARM_AT) / (FULL_AT - ARM_AT));
 }
 
-/** How far the drawer is open at a paper offset `y` (0..1: closed before 40 pt down, open at 90). */
-export function drawerOf(y: number): number {
+/** How far the drawer is open at a finger distance `dy` (0..1: closed before 40 pt down, open at 90). */
+export function drawerOf(dy: number): number {
   'worklet';
-  const down = y;
+  const down = dy;
   if (down <= ARM_AT) return 0;
   return Math.min(1, (down - ARM_AT) / (FULL_AT - ARM_AT));
 }

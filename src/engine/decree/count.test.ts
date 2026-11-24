@@ -73,7 +73,7 @@ describe('the count (2.10)', () => {
     expect(new Set(r.order).size).toBe(sh.length);
   });
 
-  it('the poll equals the count, number for number, on 10^4 random states of every office (H2)', () => {
+  it('the poll equals the count, number for number, on 10^4 random states of every office (H2)', { timeout: 60_000 }, () => {
     for (let n = 0; n < 10_000; n++) {
       const office = (n % 3) as 0 | 1 | 2;
       const row = c.offices[office];

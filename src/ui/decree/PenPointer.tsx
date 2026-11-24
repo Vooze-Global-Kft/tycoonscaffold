@@ -28,9 +28,10 @@ import type { HintPointerProps } from '../modeParts';
 import type { Hint, HintSource } from '../hints/source';
 import { targets } from '../hints/targets';
 import { DESK } from './art/palette';
+import { useFontScale } from './hud/fontScale';
 import { drawPen } from './art/desk.draw';
 import { guidedHint, penHint, penPath, penReach, shouldPlay, showingAt, SHOWING_MS, type PenHint, type PenPath } from './hints';
-import type { DeskLayout, Rect } from './layout';
+import { FONT_SCALE_MAX, type DeskLayout, type Rect } from './layout';
 import { useDecreeUi, wall } from './uiState';
 
 // ----------------------------------------------------------------------------- the picture (recorded once)
@@ -125,6 +126,9 @@ export function PenLayer({ layout }: { layout: DeskLayout }) {
   open.current = overlaysOpen;
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
+  // The scale the desk draws the paper's rows at (the system's; the web preview's `?fs=`).
+  const scale = useRef(1);
+  scale.current = Math.min(useFontScale() || 1, FONT_SCALE_MAX);
 
   useEffect(() => {
     const ask = () => {
@@ -160,7 +164,7 @@ export function PenLayer({ layout }: { layout: DeskLayout }) {
       )
         return;
       if (!hint) return;
-      const path = penPath(hint, layoutRef.current, registered);
+      const path = penPath(hint, layoutRef.current, registered, scale.current);
       memory.current = { lastId: hint.id, playedAt: now };
       setStroke((s) => ({ hint: hint!, path, n: (s?.n ?? 0) + 1 }));
     };

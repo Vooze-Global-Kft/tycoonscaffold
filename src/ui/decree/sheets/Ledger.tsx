@@ -58,7 +58,16 @@ function Row({ row, ledger, cfg, office, clubs }: { row: R.LedgerRow; ledger: R.
   const price = dibs(R.roundDibs(cfg, row.price));
   return (
     <View style={[styles.row, !row.open ? styles.closedRow : null]}>
-      <View style={styles.margin}>{row.open && row.storeys > 0 ? <DecreeIcon icon={`art:storeys_${Math.min(8, row.storeys)}`} size={30} /> : null}</View>
+      <View style={styles.margin} accessible={row.open && row.storeys > 0} accessibilityLabel={S.sheets.storeysLabel(row.storeys)}>
+        {row.open && row.storeys > 0 ? (
+          <>
+            <DecreeIcon icon={`art:storeys_${Math.min(8, row.storeys)}`} size={34} />
+            <Txt size={ty.tiny} bold color={INK.soft} center>
+              {S.sheets.storeys(row.storeys)}
+            </Txt>
+          </>
+        ) : null}
+      </View>
       <View style={styles.main}>
         <View style={styles.head}>
           <DecreeIcon icon={`art:ministry_${id}`} size={28} />

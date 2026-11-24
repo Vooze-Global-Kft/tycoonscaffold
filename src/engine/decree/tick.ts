@@ -146,7 +146,7 @@ function nextEvent(cfg: DecreeConfig, g: DecreeGame, end: number, blocked: Reado
   return best;
 }
 
-/** A run-up paper arrives (2.10): a slip lying on the desk goes back, the paper waits behind what is there, and lands on a free desk. */
+/** A run-up paper arrives (2.10): a slip lying on the desk stays or goes back by slips.ts `slipYields` (D32), the paper waits behind what is there, and lands on a free desk. */
 function arriveRunUp(cfg: DecreeConfig, g: DecreeGame, paper: Paper, t: number, events: DecreeEvent[]): DecreeGame {
   let x = slipYields(cfg, g, events);
   x = withDecree(x, { tray: [...x.decree.tray, paper] });

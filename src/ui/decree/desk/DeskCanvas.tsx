@@ -74,6 +74,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const leaveK = useSharedValue(1);
   const hold = useSharedValue(0);
   const ring = useSharedValue(0);
+  const back = useSharedValue(0);
 
   // --- what the desk shows: it lags the rules for the 300 ms between a commit and the next paper
   const [shown, setShown] = useState<DeskVM>(live);
@@ -100,6 +101,9 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const dxIn = P.inTray.x + P.inTray.w / 2 - (L.paper.x + L.paper.w / 2);
   const dyIn = P.inTray.y + P.inTray.h / 2 - (L.paper.y + L.paper.h / 2);
   const trayDy = P.outTray.y + P.outTray.h / 2 - (L.paper.y + L.paper.h / 2);
+  // The paper gives no further than the bands beside it (the strips never slide under the bars).
+  const upRoom = Math.max(8, L.outTray.h - 4);
+  const downRoom = Math.max(8, L.drawer.h - 4);
   const drawerDy = P.drawer.y + P.drawer.h / 2 - (L.paper.y + L.paper.h / 2);
 
   useEffect(() => {
@@ -116,8 +120,9 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
         // Taken back: the same paper comes down from the out-tray, exactly as it was (H3).
         takingBack.current = false;
         enter.value = 1;
-        paperY.value = trayDy;
-        paperY.value = withSpring(0, SPRING);
+        paperY.value = 0;
+        back.value = 1;
+        back.value = withTiming(0, { duration: ENTER_MS, easing: Easing.out(Easing.cubic) });
         return;
       }
       paperY.value = 0;
@@ -127,7 +132,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
     const wait = Math.max(0, leaveAt.current + NEXT_AFTER_MS - Date.now());
     if (wait > 0) timer.current = setTimeout(land, wait);
     else land();
-  }, [live, enter, paperY, trayDy]);
+  }, [live, enter, paperY, back]);
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
 
   // The take-back ring: the 2 s window as the rules hold it (until − the play clock), drawn down to 0.
@@ -217,7 +222,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
         paperY.value = withSpring(0, SPRING);
         return;
       }
-      commit(r, followOf(dy));
+      commit(r, followOf(dy, upRoom, downRoom));
     },
   });
 
@@ -259,7 +264,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const backKey = around ? JSON.stringify({ ...around, door: '', pending: null }) : '';
   const aroundRef = useRef(around);
   aroundRef.current = around;
-  const back = useMemo(() => (aroundRef.current ? backPicture(L, P, aroundRef.current) : null), [L, P, backKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const room = useMemo(() => (aroundRef.current ? backPicture(L, P, aroundRef.current) : null), [L, P, backKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const drawerKey = around ? `${around.office}|${Math.min(around.drawer, 10000)}` : '';
   const drawers = useMemo(() => (around ? drawerPictures(P, around) : []), [P, drawerKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const rest = useMemo(() => restPicture(P), [P]);
@@ -274,18 +279,22 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const cy = L.paper.y + L.paper.h / 2;
   const paperXf = useDerivedValue(() => {
     const e = enter.value;
-    return [{ translateX: (1 - e) * dxIn + shake.value }, { translateY: paperY.value + (1 - e) * dyIn }, { scale: 0.3 + 0.7 * e }];
-  }, [dxIn, dyIn]);
+    const b = back.value;
+    return [{ translateX: (1 - e) * dxIn + shake.value }, { translateY: followOf(paperY.value, upRoom, downRoom) + (1 - e) * dyIn + b * trayDy }, { scale: (0.3 + 0.7 * e) * (1 - 0.7 * b) }];
+  }, [dxIn, dyIn, upRoom, downRoom, trayDy]);
   const leaveXf = useDerivedValue(() => [{ translateY: leaveY.value }, { scale: leaveK.value }]);
   const sb = signature.box;
   const inkClip = useDerivedValue(() => ({ x: sb.x - 4, y: sb.y - 8, width: (sb.w + 8) * inkOf(paperY.value), height: sb.h + 16 }), [sb]);
   const drawerOpen = useDerivedValue(() => Math.max(drawerOf(paperY.value), hold.value));
   const paperStyle = useAnimatedStyle(() => {
     const e = enter.value;
-    return { transform: [{ translateX: (1 - e) * dxIn + shake.value }, { translateY: paperY.value + (1 - e) * dyIn }, { scale: 0.3 + 0.7 * e }] };
-  }, [dxIn, dyIn]);
+    const b = back.value;
+    return { transform: [{ translateX: (1 - e) * dxIn + shake.value }, { translateY: followOf(paperY.value, upRoom, downRoom) + (1 - e) * dyIn + b * trayDy }, { scale: (0.3 + 0.7 * e) * (1 - 0.7 * b) }] };
+  }, [dxIn, dyIn, upRoom, downRoom, trayDy]);
+  // The desk's small words hide while the paper lies over them (the door and the sticky note above, the drawer's card below).
+  const overTop = useAnimatedStyle(() => ({ opacity: paperY.value < -6 ? 0 : 1 }));
+  const overDrawer = useAnimatedStyle(() => ({ transform: [{ translateY: drawerOpen.value * P.drawer.h * 0.42 }] }), [P.drawer.h]);
   const leaveStyle = useAnimatedStyle(() => ({ transform: [{ translateY: leaveY.value }, { scale: leaveK.value }] }));
-  const labelStyle = useAnimatedStyle(() => ({ transform: [{ translateY: drawerOpen.value * P.drawer.h * 0.42 }] }), [P.drawer.h]);
 
   const onA11y = useCallback(
     (e: AccessibilityActionEvent) => {
@@ -306,10 +315,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-        {back ? <Picture picture={back} /> : null}
-        {drawers.map((d, k) => (
-          <DrawerLayer key={k} k={k} pic={d} open={drawerOpen} />
-        ))}
+        {room ? <Picture picture={room} /> : null}
         {pending ? (
           <Group>
             <Picture picture={rest.pic} />
@@ -336,27 +342,31 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
             </Group>
           </Group>
         ) : null}
+        {/* the drawer's front over the paper: a refused paper goes into it */}
+        {drawers.map((d, k) => (
+          <DrawerLayer key={k} k={k} pic={d} open={drawerOpen} />
+        ))}
       </Canvas>
 
       {/* the desk's own small words: the door glass, the drawer's card, the sticky note */}
-      <View style={[abs(P.glass), styles.center]} pointerEvents="none">
+      <Animated.View style={[abs(P.glass), styles.center, overTop]} pointerEvents="none">
         <Text allowFontScaling={false} numberOfLines={1} style={[styles.glass, { fontSize: P.font.glass }]}>
           {around?.door ?? ''}
         </Text>
-      </View>
-      <Animated.View style={[abs(P.drawerLabel), styles.center, labelStyle]} pointerEvents="none">
+      </Animated.View>
+      <Animated.View style={[abs(P.drawerLabel), styles.center, overDrawer]} pointerEvents="none">
         <Text allowFontScaling={false} numberOfLines={1} style={[styles.drawerLabel, { fontSize: P.font.drawerLabel }]}>
           {S.desk.drawerLabel(String(around?.drawer ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, ','))}
         </Text>
       </Animated.View>
       {around?.sticky?.where === 'band' ? (
-        <View style={[abs(P.stickyText), { transform: [{ rotate: '1.5deg' }] }]} pointerEvents="none">
+        <Animated.View style={[abs(P.stickyText), { transform: [{ rotate: '1.5deg' }] }, overTop]} pointerEvents="none">
           {around.sticky.lines.map((t, i) => (
             <Text key={i} allowFontScaling={false} numberOfLines={1} style={[styles.sticky, { fontSize: P.font.sticky * fitScale(t, P.font.sticky, P.stickyText.w), lineHeight: Math.round(P.font.sticky * STICKY_LINE) }]}>
               {t}
             </Text>
           ))}
-        </View>
+        </Animated.View>
       ) : null}
 
       {/* the desk around the paper: takes a resting paper back, commits it, or disarms */}
@@ -390,19 +400,19 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
         </View>
       ) : null}
 
-      {/* the leaving paper's words fly with it */}
-      {leaving && leaving.vm.kind !== 'none' ? (
-        <Animated.View style={[abs(leaving.vm.kind === 'slip' ? P.slip : L.paper), leaveStyle]} pointerEvents="none">
-          <Words vm={leaving.vm} m={m} w={L.paper.w} s={s} armed={null} />
-        </Animated.View>
-      ) : null}
-
-      {/* the paper: its words, moved with paperY, and the responder over exactly its rectangle */}
-      {shown.kind !== 'none' ? (
-        <Animated.View style={[abs(shown.kind === 'slip' ? P.slip : L.paper), paperStyle]} pointerEvents="none">
-          <Words vm={shown} m={m} w={L.paper.w} s={s} armed={armed} onTitleEnd={setTitleEnd} />
-        </Animated.View>
-      ) : null}
+      {/* the paper's words, moved with it and cut at the drawer's front (a refused paper goes into the drawer) */}
+      <View style={[abs({ x: 0, y: L.outTray.y, w: L.width, h: L.drawer.y - L.outTray.y }), styles.clip]} pointerEvents="none">
+        {leaving && leaving.vm.kind !== 'none' ? (
+          <Animated.View style={[abs(up(leaving.vm.kind === 'slip' ? P.slip : L.paper, L.outTray.y)), leaveStyle]}>
+            <Words vm={leaving.vm} m={m} w={L.paper.w} s={s} armed={null} />
+          </Animated.View>
+        ) : null}
+        {shown.kind !== 'none' ? (
+          <Animated.View style={[abs(up(shown.kind === 'slip' ? P.slip : L.paper, L.outTray.y)), paperStyle]}>
+            <Words vm={shown} m={m} w={L.paper.w} s={s} armed={armed} onTitleEnd={setTitleEnd} />
+          </Animated.View>
+        ) : null}
+      </View>
       <View
         style={abs(L.paper)}
         pointerEvents={shown.kind === 'none' ? 'none' : 'auto'}
@@ -442,6 +452,8 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
 }
 
 const abs = (r: Rect) => ({ position: 'absolute' as const, left: r.x, top: r.y, width: r.w, height: r.h });
+/** A rectangle moved up by `dy` (into a container that starts `dy` down the screen). */
+const up = (r: Rect, dy: number): Rect => ({ ...r, y: r.y - dy });
 
 /** The words of a desk item (a paper or a slip). */
 function Words({ vm, m, w, s, armed, onTitleEnd }: { vm: DeskVM; m: ReturnType<typeof paperMetrics>; w: number; s: number; armed: 'sign' | 'refuse' | null; onTitleEnd?: (x: number) => void }) {
@@ -481,6 +493,7 @@ const DrawerLayer = memo(function DrawerLayer({ k, pic, open }: { k: number; pic
 
 const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
+  clip: { overflow: 'hidden' },
   glass: { color: DESK.slateDeep, fontWeight: '700', fontVariant: ['tabular-nums'] },
   drawerLabel: { color: DESK.line, fontWeight: '700', letterSpacing: 0.4 },
   sticky: { color: DESK.line, fontWeight: '600' },

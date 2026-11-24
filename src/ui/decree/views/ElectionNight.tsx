@@ -99,6 +99,8 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
   const resultR = Math.min(11, rowH * 0.38);
   const shareW = Math.ceil(52 * s);
   const marksW = 54;
+  /** Where a row's marks start: just left of its share (the name gets the rest of the row). */
+  const marksX = (r: { result: { x: number } }) => r.result.x - shareW - 6 - marksW - 6;
   const cutW = Math.round((clerkH - 4) * (120 / 340));
 
   const [p, setP] = useState<Progress>({ shown: 0, fast: false, stage: 'count', speaker: 'clerk', line: model.openLine, majority: false });
@@ -160,7 +162,7 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
         picture({ x: 0, y: 0, w, h: boardH }, (c) => {
           const row = rows[i];
           c.save();
-          c.translate(row.marks.x, row.marks.y + (row.marks.h - markH) / 2);
+          c.translate(marksX(row), row.marks.y + (row.marks.h - markH) / 2);
           drawChalkMarks(c, marksOf(r.share), markH, 11 + i * 7);
           c.restore();
           c.save();
@@ -169,7 +171,8 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
           c.restore();
         }),
       ),
-    [model.rows, rows, w, boardH, markH, resultR],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [model.rows, rows, w, boardH, markH, resultR, shareW],
   );
   const rivalCut = CUTOUT_IDS.includes(model.rival.id as never);
   const clerkId = model.clerk.face.replace(/^face:/, '');
@@ -183,7 +186,8 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
   );
   const envelopeOpen = useMemo(() => picture({ x: -24, y: -24, w: 48, h: 48 }, (c) => drawEnvelope(c, 1, 0.8)), []);
   const envelopeShut = useMemo(() => picture({ x: -24, y: -24, w: 48, h: 48 }, (c) => drawEnvelope(c, 0, 0.8)), []);
-  const band = useMemo(() => picture({ x: 0, y: 0, w: 160, h: footerH }, (c) => drawBand(c, { x: 0, y: 4, width: 160, height: footerH - 8 }, { color: alpha(DESK.chalkLine, 0.22) })), [footerH]);
+  const bandW = Math.round((footerH - 8) * (240 / 180));
+  const band = useMemo(() => picture({ x: 0, y: 0, w: bandW, h: footerH }, (c) => drawBand(c, { x: 0, y: 4, width: bandW, height: footerH - 8 }, { color: alpha(DESK.chalkLine, 0.22) })), [footerH, bandW]);
   const heldNow = p.shown > 0 ? model.heldAfter[p.shown - 1] : 0;
   const bar = useMemo(
     () =>
@@ -229,7 +233,7 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
           <Picture picture={bar} />
         </Group>
         {p.majority && model.won ? (
-          <Group transform={[{ translateX: x0 + w - 160 }, { translateY: footerY }]}>
+          <Group transform={[{ translateX: x0 - 14 }, { translateY: footerY }]}>
             <Picture picture={band} />
           </Group>
         ) : null}
@@ -259,7 +263,7 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
       <View style={[styles.abs, { left: x0, top: boardY, width: w, height: boardH }]} pointerEvents="none">
         {model.rows.slice(0, p.shown).map((r, i) => {
           const row = rows[i];
-          const nameW = row.marks.x - row.name.x - 6;
+          const nameW = marksX(row) - row.name.x - 6;
           const shareX = row.result.x - shareW - 6;
           return (
             <Animated.View key={r.district} style={[styles.abs, { left: 0, top: row.name.y, width: w, height: row.name.h }, i === newest ? newestStyle : styles.still]} accessible accessibilityLabel={S.views.nightRowLabel(r.name, S.views.share(r.share), r.held)}>
@@ -307,7 +311,7 @@ const styles = StyleSheet.create({
   rowName: { color: INK.chalkLine, fontWeight: '600' },
   rowShare: { color: INK.chalkLine, textAlign: 'right', fontVariant: ['tabular-nums'] },
   bar: { color: INK.chalkDust },
-  footer: { alignItems: 'center', justifyContent: 'center' },
-  toResult: { minWidth: 200 },
+  footer: { alignItems: 'flex-end', justifyContent: 'center' },
+  toResult: { minWidth: 180 },
   hint: { color: INK.chalkDust },
 });

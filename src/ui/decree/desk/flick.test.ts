@@ -3,7 +3,7 @@
  * rule, the second finger, the tap, and what the ink and the drawer show at a distance.
  */
 import { describe, expect, it } from 'vitest';
-import { ARM_AT, COMMIT_DOWN, COMMIT_UP, FAST_DOWN, FAST_DOWN_SPEED, FAST_UP, FAST_UP_SPEED, FOLLOW_MAX, armedAt, drawerOf, drawerStep, followOf, inkOf, isTap, releaseOf, velocityOf } from './flick';
+import { ARM_AT, COMMIT_DOWN, COMMIT_UP, FAST_DOWN, FAST_DOWN_SPEED, FAST_UP, FAST_UP_SPEED, armedAt, drawerOf, drawerStep, followOf, inkOf, isTap, releaseOf, velocityOf } from './flick';
 
 const up = (d: number, v = 0) => releaseOf({ dy: -d, vy: -v, cancelled: false });
 const down = (d: number, v = 0) => releaseOf({ dy: d, vy: v, cancelled: false });
@@ -82,11 +82,16 @@ describe('the flick (4.3)', () => {
     expect(drawerStep(0.5, 6)).toBe(3);
   });
 
-  it('the paper follows the finger, then resists; vertical only', () => {
-    expect(followOf(50)).toBe(50);
-    expect(followOf(-FOLLOW_MAX)).toBe(-FOLLOW_MAX);
-    expect(followOf(FOLLOW_MAX + 40)).toBe(FOLLOW_MAX + 20);
-    expect(followOf(-(FOLLOW_MAX + 40))).toBe(-(FOLLOW_MAX + 20));
+  it('the paper follows the finger, then gives, never past the band beside it (the strip stays out from under the bars)', () => {
+    expect(followOf(0, 36, 36)).toBe(0);
+    expect(followOf(-4, 36, 56)).toBeCloseTo(-4, 0);
+    for (const d of [10, 40, 90, 200, 1000]) {
+      expect(-followOf(-d, 36, 56)).toBeLessThanOrEqual(36);
+      expect(followOf(d, 36, 56)).toBeLessThanOrEqual(56);
+      expect(-followOf(-d, 36, 56)).toBeLessThanOrEqual(d);
+    }
+    expect(followOf(-90, 36, 36)).toBeLessThan(followOf(-40, 36, 36));
+    expect(followOf(-90, 0, 36)).toBe(0);
   });
 
   it('velocity comes from the last 80 ms of samples', () => {

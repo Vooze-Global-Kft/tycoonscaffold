@@ -41,7 +41,7 @@ function PeekCard({ layout }: { layout: DeskLayout }) {
           <View style={styles.faces}>
             {tray.next.map((v, i) => (
               <View key={i} style={styles.face}>
-                <DecreeIcon icon={v.face} size={52} />
+                <DecreeIcon icon={v.face} size={52} fallback={<View style={styles.oval} />} />
                 <Txt size={ty.tiny} bold lines={1} center>
                   {v.name}
                 </Txt>
@@ -70,5 +70,6 @@ function PeekCard({ layout }: { layout: DeskLayout }) {
 const styles = StyleSheet.create({
   card: { position: 'absolute', gap: 8, padding: 12, borderRadius: 10, backgroundColor: INK.paper, borderWidth: 2, borderColor: DESK.walnut, shadowColor: DESK.shadow, shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6 },
   faces: { flexDirection: 'row', gap: 8 },
+  oval: { width: 40, height: 50, borderRadius: 20, backgroundColor: DESK.paperShade, borderWidth: 1, borderColor: DESK.paperEdge },
   face: { flex: 1, alignItems: 'center', gap: 2, minWidth: 0, paddingVertical: 4, borderRadius: 6, backgroundColor: alpha(DESK.paperLight, 0.9) },
 });

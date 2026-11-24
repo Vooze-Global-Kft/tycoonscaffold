@@ -164,6 +164,9 @@ export const S = {
     /** The Ledger (4.4): the clothbound book, read-only but for one untaught "Raise". */
     ledgerTitle: 'Ledger',
     level: (n: number) => `Level ${n}`,
+    /** The storeys drawn in the Ledger's margin (one every 12 levels, 2.2). */
+    storeys: (n: number) => `×${n}`,
+    storeysLabel: (n: number) => (n === 1 ? '1 storey' : `${n} storeys`),
     rate: (perSecond: string) => `+${perSecond}/s`,
     minister: (name: string) => `Minister: ${name}`,
     noMinister: 'No minister',

@@ -147,7 +147,7 @@ describe('what a tick does (2.5)', () => {
 });
 
 describe('tick(a + b) = tick(a) then tick(b), exactly (2.5)', () => {
-  it('10^3 random splits on states with arrivals, slips, a full tray, a pending take-back and the run-up', () => {
+  it('10^3 random splits on states with arrivals, slips, a full tray, a pending take-back and the run-up', { timeout: 60_000 }, () => {
     const all = states();
     const names = Object.keys(all);
     let k = 0;

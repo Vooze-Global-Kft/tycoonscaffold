@@ -17,7 +17,8 @@ const SOURCES: R.CashSource[] = ['tick', 'paper', 'away', 'awayAd', 'checkSofa',
 const GAINS = new Set<R.CashSource>(['tick', 'paper', 'away', 'awayAd', 'checkSofa', 'transition']);
 
 describe('dibs enter only through the named sources (H5)', () => {
-  it('a long random run: the book adds up to the cash, inflows only from the named sources, cash ≥ 0, refusing never costs', () => {
+  // About 3 to 7 s alone (four hours stepped at 0.5 s); the full suite's load can double it.
+  it('a long random run: the book adds up to the cash, inflows only from the named sources, cash ≥ 0, refusing never costs', { timeout: 60_000 }, () => {
     let g = freshState(cfg, 4242);
     const start = g.cash;
     /** The harness's own book of what the store pays (away, awayAd) and what the rules set aside at a move. */

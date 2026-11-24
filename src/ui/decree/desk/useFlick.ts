@@ -4,8 +4,8 @@
  * the paper, at the screen's edges, stays with the system.
  *
  * JavaScript keeps the distance and the velocity from pageY and timestamps (./flick.ts) and writes ONE
- * shared value, `paperY`, which the canvas and the words read on the UI thread; JavaScript never reads
- * it back. Vertical only. From 40 pt the side is armed (uiState.arm: the strip grows, the club strip
+ * shared value, `paperY` (the finger's distance, positive down), from which the UI thread derives the
+ * paper's offset, the ink and the drawer's opening; JavaScript never reads it back. Vertical only. From 40 pt the side is armed (uiState.arm: the strip grows, the club strip
  * previews) with one light haptic and no click; a second finger cancels the gesture until every
  * finger lifts; a touch that hardly moved is a tap (the second path, handled by the desk).
  */
@@ -14,7 +14,7 @@ import type { GestureResponderEvent, GestureResponderHandlers } from 'react-nati
 import { withSpring, type SharedValue } from 'react-native-reanimated';
 import { fx } from '../../../services/fx';
 import { useDecreeUi } from '../uiState';
-import { FAST_UP_SPEED, SPRING, armedAt, followOf, isTap, releaseOf, velocityOf, type Release, type Sample } from './flick';
+import { FAST_UP_SPEED, SPRING, armedAt, isTap, releaseOf, velocityOf, type Release, type Sample } from './flick';
 
 export interface FlickCallbacks {
   /** Whether a paper or slip lies on the desk to flick. */
@@ -93,7 +93,7 @@ export function useFlick(paperY: SharedValue<number>, paperTop: number, cb: Flic
         if (s.samples.length > 12) s.samples.shift();
         s.dy = y - s.startY;
         s.maxMove = Math.max(s.maxMove, Math.abs(s.dy));
-        paperY.value = followOf(s.dy);
+        paperY.value = s.dy;
         arm(armedAt(s.dy));
       },
       onResponderRelease: (e) => {

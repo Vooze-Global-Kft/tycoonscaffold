@@ -152,8 +152,8 @@ export function penTail(angle: number, len: number): Point {
 }
 
 /** The middle of the paper (header and proposal rows), in window points: the only place on a paper with no number. */
-export function paperMiddle(layout: DeskLayout, paper: Rect = layout.paper): Rect {
-  const m = paperMetrics(paper.h, layout.s);
+export function paperMiddle(layout: DeskLayout, paper: Rect = layout.paper, s: number = layout.s): Rect {
+  const m = paperMetrics(paper.h, s);
   const top = paper.y + m.header.y;
   const bottom = paper.y + m.proposal.y + m.proposal.h;
   return { x: paper.x, y: top, w: paper.w, h: bottom - top };
@@ -173,10 +173,10 @@ export function slipFallback(layout: DeskLayout): Rect {
 
 /**
  * The stroke for a hint on this layout (`rectOf` gives a registered target's rectangle, else null:
- * the layout's own rectangles stand in). Every point of the pen (nib to tail) stays inside the
+ * the layout's own rectangles stand in; `s` the font scale the desk draws the paper's rows at). Every point of the pen (nib to tail) stays inside the
  * paper's middle rows for a paper, and below the slip for a slip.
  */
-export function penPath(hint: PenHint, layout: DeskLayout, rectOf: (key: string) => Rect | null = () => null): PenPath {
+export function penPath(hint: PenHint, layout: DeskLayout, rectOf: (key: string) => Rect | null = () => null, s: number = layout.s): PenPath {
   const tail = penTail(PEN_ANGLE, PEN_LEN);
   if (hint.target === 'slip') {
     const slip = rectOf('slip') ?? slipFallback(layout);
@@ -192,7 +192,7 @@ export function penPath(hint: PenHint, layout: DeskLayout, rectOf: (key: string)
     };
   }
   const paper = rectOf('paper') ?? layout.paper;
-  const mid = paperMiddle(layout, paper);
+  const mid = paperMiddle(layout, paper, s);
   // The nib's column: left of the middle, so the body (to its right) ends inside the paper.
   const x = mid.x + Math.min(mid.w * 0.38, mid.w - tail.x - 12);
   const top = mid.y + 6;

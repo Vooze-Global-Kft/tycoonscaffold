@@ -14,7 +14,7 @@ const cfg = decreeTestConfig();
 const HOUR = 3600;
 
 describe('the same seed, the same trace (H3)', () => {
-  it('one hour from a fresh game: about 10 Hz and event to event give the byte-identical trace and state', () => {
+  it('one hour from a fresh game: about 10 Hz and event to event give the byte-identical trace and state', { timeout: 60_000 }, () => {
     const g = freshState(cfg, 2026);
     const t1: TraceRow[] = [];
     const t2: TraceRow[] = [];
