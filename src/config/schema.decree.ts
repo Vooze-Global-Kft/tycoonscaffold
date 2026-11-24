@@ -881,7 +881,8 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
       r('callFraction', 0.5, 0.7),
       r('rivalPull', 3, 12),
       r('scale', row.scale * 0.3, row.scale * 3),
-      ...(row.stand ? [r('stand.nr', row.stand.nr * 0.7, row.stand.nr * 1.3), r('stand.record', Math.round(row.stand.record * 0.7), Math.round(row.stand.record * 1.3))] : []),
+      // D46: the president's Name Recognition requirement may go up to 80 (the pace to president).
+      ...(row.stand ? [r('stand.nr', row.stand.nr * 0.7, o === 2 ? 80 : row.stand.nr * 1.3, o === 2 ? '2.2, D46' : '2.2'), r('stand.record', Math.round(row.stand.record * 0.7), Math.round(row.stand.record * 1.3))] : []),
       r('requisitionEvery', row.requisitionEvery - 2 < 1 ? 1 : row.requisitionEvery - 2, row.requisitionEvery + 2),
       r('templateShare', 0, 0.25),
     ];
@@ -900,6 +901,9 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
   { path: 'slips.betweenEvery', low: 2, high: 4, spec: 'D42' },
   { path: 'count.topAbove', low: 60, high: 80, spec: 'D31' },
   { path: 'boycott.below', low: 20, high: 30, spec: 'D38' },
+  // D46: the tax and the length of "Say nothing" (the store text no longer states them).
+  { path: 'scandal.sayNothingFactor', low: 0.5, high: 0.8, spec: 'D46' },
+  { path: 'scandal.sayNothingPapers', low: 10, high: 20, spec: 'D46' },
   { path: 'paperRules.sizing.pull', low: 0.5, high: 1, spec: 'D27, D38' },
   { path: 'mood.termReset', low: 1 / 3, high: 0.5, spec: 'D38' },
   { path: 'count.topSlope', low: 0.1, high: 0.5, spec: 'D31' },

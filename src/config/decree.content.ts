@@ -25,7 +25,7 @@
  */
 
 /** Where the values below came from (build-office.py rewrites it with --save). */
-export const DECREE_TUNED_FROM = "the final numbers step (D46), 24 November: the apology costs every club 1 and the president needs Name Recognition 75, on the second engineer's table; before that: the numbers step on the final rules (D41 to D45), 24 November: the D34 candidate with the first engineer's E3/G0 balance findings, tuned on seeds 101 to 130 at 4, 6 and 9 s and checked on 201 to 215 (scratchpad/office/numbers2/TABLE.txt)";
+export const DECREE_TUNED_FROM = "D48 (with D46): H8 both choices on the named seeds at the 6-second hand: 28 to 31 % at 0.25 (24 to 30 % at 0.20); more frames as president also lowers the repeats of hours 2 and 3";
 
 // TUNED-BEGIN
 export const DECREE_TUNED: Record<string, number> = {
@@ -53,6 +53,7 @@ export const DECREE_TUNED: Record<string, number> = {
   "offices[2].requisitionEvery": 6,
   "offices[2].rivalPull": 5,
   "offices[2].stand.nr": 75,
+  "offices[2].templateShare": 0.25,
   "paperRules.sizing.pull": 0.5
 };
 // TUNED-END

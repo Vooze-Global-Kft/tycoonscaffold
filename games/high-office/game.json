@@ -622,13 +622,13 @@
     "rivalPull": 5,
     "scale": 1000000,
     "stand": {
-     "nr": 65,
+     "nr": 75,
      "record": 170
     },
     "recordName": null,
     "winWeight": 3,
     "requisitionEvery": 6,
-    "templateShare": 0.2,
+    "templateShare": 0.25,
     "rivals": [
      {
       "id": "kalends",
@@ -1046,7 +1046,7 @@
     "clubFixed": 10
    },
    "apology": {
-    "every": -3
+    "every": -1
    },
    "campaign": {
     "seconds": 45,
@@ -19791,26 +19791,6 @@
      "name": "You, pointing at something",
      "text": "A statue of you, pointing at something important. It is the bus station."
     }
-   ]
-  },
-  "provisional": {
-   "note": "PROVISIONAL (build-office.py --provisional): the real deck and the numbers before the tuning ended; hard targets listed in misses were missed on the named seeds with `--bot validate`. The final game.json is written without this field.",
-   "misses": [
-    "seed 12345: [reader] H8 both choices in other states: 30 % of 330 texts (aim ≥ 30 % of texts)",
-    "seed 12345: [reader] H8 differs from mood-only: 23 % (aim ≥ 25 %)",
-    "seed 12345: [alwaysRefuse] H7 no text twice in hour 1: 0 texts, 0 notes, 2 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 4: [alwaysRefuse] H7 no text twice in hour 1: 0 texts, 0 notes, 2 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 4: [random] H6 no dead end: 0 refuses refused, 1 overran, 0 samples without ministry 0 income, bound 6, worst no loss terms (aim refuse always possible, every boycott and scandal ends within its count, ministry 0 always earns, 2.11 bound ≤ 6 (D25), a win within 6 terms of a first loss)",
-    "seed 4: [random] H7 no text twice in hour 1: 0 texts, 0 notes, 1 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 99: [reader] H7 repeats in hours 2 and 3 (reader): 2 % (8 of 341) (aim ≤ 2 % of comic draws)",
-    "seed 99: [reader] H8 both choices in other states: 28 % of 327 texts (aim ≥ 30 % of texts)",
-    "seed 99: [alwaysRefuse] H7 no text twice in hour 1: 0 texts, 0 notes, 1 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 7: [reader] H8 both choices in other states: 29 % of 324 texts (aim ≥ 30 % of texts)",
-    "seed 7: [reader] H8 differs from mood-only: 22 % (aim ≥ 25 %)",
-    "seed 7: [alwaysRefuse] H7 no text twice in hour 1: 0 texts, 0 notes, 1 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 2026: [reader] H8 both choices in other states: 29 % of 329 texts (aim ≥ 30 % of texts)",
-    "seed 2026: [reader] H8 differs from mood-only: 25 % (aim ≥ 25 %)",
-    "seed 2026: [alwaysRefuse] H7 no text twice in hour 1: 0 texts, 0 notes, 2 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)"
    ]
   }
  },

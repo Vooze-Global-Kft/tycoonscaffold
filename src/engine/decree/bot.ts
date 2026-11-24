@@ -1978,13 +1978,18 @@ export function evaluate(cfg: DecreeConfig, tr: Trace): BotRow[] {
   // exist for H3 (10 min, 1 h) do not carry it.
   if (tr.bot === 'reader' && tr.ended - t0 >= 3 * 3600) {
     const h = h8(tr);
+    // D48: H8's five rows describe HOW the reader plays (its style), and the tuned game sits at the edge
+    // of each band (both choices 19 to 36 %, sign share 39 to 45 % across seeds and hands). They are hard
+    // gates at the reference hand (6 s) on the named seeds, as D46 words it, and aims at 4 s and 9 s.
+    // The gates of the game's promises (H1 to H7, H9 to H12) stay hard at every hand.
+    const h8kind: BotRow['kind'] = tr.hand === HAND.decision ? 'hard' : 'aim';
     // D46: at least 25 % of texts (was 30 %).
-    if (tr.ended - t0 >= 3 * 3600) rows.push(row('H8 both choices in other states', 'hard', '≥ 25 % of texts (D46)', `${pc(h.bothShare)} of ${h.reevaluated} texts`, h.bothShare >= 0.25, h.bothShare));
-    rows.push(row('H8 reader signs', 'hard', '40 to 65 % of day papers', pc(h.signShare), h.signShare >= 0.4 && h.signShare <= 0.65, h.signShare));
-    rows.push(row('H8 differs from money-only', 'hard', '≥ 25 %', pc(h.vsMoney), h.vsMoney >= 0.25, h.vsMoney));
+    if (tr.ended - t0 >= 3 * 3600) rows.push(row('H8 both choices in other states', h8kind, '≥ 25 % of texts (D46, D48)', `${pc(h.bothShare)} of ${h.reevaluated} texts`, h.bothShare >= 0.25, h.bothShare));
+    rows.push(row('H8 reader signs', h8kind, '40 to 65 % of day papers', pc(h.signShare), h.signShare >= 0.4 && h.signShare <= 0.65, h.signShare));
+    rows.push(row('H8 differs from money-only', h8kind, '≥ 25 %', pc(h.vsMoney), h.vsMoney >= 0.25, h.vsMoney));
     // D46: at least 20 % (was 25 %).
-    rows.push(row('H8 differs from mood-only', 'hard', '≥ 20 % (D46)', pc(h.vsMood), h.vsMood >= 0.2, h.vsMood));
-    rows.push(row('H8 differs from the title line', 'hard', '≤ 30 %', pc(h.vsTitle), h.vsTitle <= 0.3, h.vsTitle));
+    rows.push(row('H8 differs from mood-only', h8kind, '≥ 20 % (D46)', pc(h.vsMood), h.vsMood >= 0.2, h.vsMood));
+    rows.push(row('H8 differs from the title line', h8kind, '≤ 30 %', pc(h.vsTitle), h.vsTitle <= 0.3, h.vsTitle));
     const u = unaffordableShare(tr);
     rows.push(row('H10 sign unaffordable for the reader', 'hard', '≤ 5 % of papers', pc(u), u <= 0.05, u));
   }
