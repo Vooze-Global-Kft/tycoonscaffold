@@ -16,16 +16,16 @@
       "note": "Given record (style G11)."
     },
     {
-      "id": "any-lost-property-stop",
+      "id": "any-spotting-step",
       "visitor": "kerb",
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A lost property box for the bus stop. First item: the bus stop.",
+      "text": "A spotting step outside the shops, to rise above the glass.",
       "subject": "buses",
       "butt": "thing",
       "shape": "literalism",
-      "note": "Owned gag: lost property. Other: the box goes on the pavement against the draper's window, where the spotters already lean (noses on the glass)."
+      "note": "Feud: noses on the Guild's glass; the step stands in front of the windows."
     },
     {
       "id": "any-mervyn-bus",
@@ -33,7 +33,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "Mervyn's bus so far: a bench, a roof, a timetable. Fund the wheels?",
+      "text": "Mervyn's bus so far: a bench, a roof, a timetable. Fund wheels?",
       "subject": "inventions",
       "butt": "thing",
       "shape": "escalation",
@@ -45,11 +45,11 @@
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "A timetable facing the shop windows. Shoppers miss 60 % of buses.",
+      "text": "A timetable in each shop window. 60 % of buses are missed at the cakes.",
       "subject": "buses",
       "butt": "thing",
       "shape": "statistic",
-      "note": "Other: the board stands in front of the windows."
+      "note": "Other: the timetable takes window space (displays and timetable, section 1)."
     },
     {
       "id": "any-window-shopper-form",
@@ -64,16 +64,16 @@
       "note": "Other: LEANT is the spotters' box (noses on the glass); they mind being counted."
     },
     {
-      "id": "any-suggestion-box",
-      "visitor": "till",
+      "id": "any-second-pane",
+      "visitor": "awning",
       "club": "shops",
       "other": "bus",
       "archetype": "project",
-      "text": "A suggestion box for the shops. First suggestion: a nicer box.",
-      "subject": "paperwork",
+      "text": "A pane for noses before each window. Then a pane for that pane.",
+      "subject": "inventions",
       "butt": "thing",
       "shape": "escalation",
-      "note": "Other: the box is fixed to the bus stop post the spotters lean on."
+      "note": "Feud: noses on the glass; the spotters lose their lean."
     },
     {
       "id": "any-watering-can",
@@ -93,11 +93,23 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "text": "Turn the hats in the draper's window round. They watch our buses.",
+      "text": "Turn the shop hats round. They watch our buses and take no notes.",
       "subject": "hats",
       "butt": "thing",
-      "shape": "literalism",
-      "note": "Sign: the display faces the wall (Shops lose it); refuse: the hats keep watching."
+      "shape": "undercut",
+      "note": "Sign: the display faces the wall (Shops lose it)."
+    },
+    {
+      "id": "any-timetable-case",
+      "visitor": "till",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "swap",
+      "text": "The timetable case for our display. Its notice: TIMES ON REQUEST.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan",
+      "note": "Displays block the timetable (section 1)."
     },
     {
       "id": "any-doorways-drizzle",
@@ -105,22 +117,11 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "text": "Shop doorways for us in drizzle. Our shelter is only roof-shaped.",
+      "text": "Shop doorways for us in drizzle. We will stand still, like a display.",
       "subject": "picnic-weather",
-      "butt": "thing",
+      "butt": "visitor",
       "shape": "undercut",
-      "note": "Other: the Guild loses its doorways to spotters."
-    },
-    {
-      "id": "any-shelter-summer-hats",
-      "visitor": "till",
-      "club": "shops",
-      "other": "bus",
-      "archetype": "swap",
-      "text": "Lend us the shelter for summer hats. Sign: BUSES ROUND THE BACK.",
-      "subject": "hats",
-      "butt": "thing",
-      "shape": "slogan"
+      "note": "Other: the Guild loses its doorways."
     },
     {
       "id": "any-potting-shed-hat",
@@ -128,11 +129,11 @@
       "club": "shops",
       "other": "veg",
       "archetype": "swap",
-      "text": "A potting shed shelf for a hat. Then a hat stand. Then the shed.",
+      "text": "Let us polish the potting shed window. We have our own hat stand.",
       "subject": "hats",
       "butt": "thing",
       "shape": "escalation",
-      "note": "The potting shed is the Society's."
+      "note": "The potting shed is the Society's; the Guild moves in."
     },
     {
       "id": "any-duck-filed",
@@ -140,7 +141,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "swap",
-      "text": "A duck has filed to nest in our seed trays. Refer it to a shop window box.",
+      "text": "A duck has applied to nest in our seed trays. Refer it to a window box.",
       "subject": "ducks",
       "butt": "thing",
       "shape": "form-misapplied",
@@ -164,7 +165,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "fee",
-      "text": "We will pay for the allotments' ribbon if you cut it in our window.",
+      "text": "We will pay for you to open the allotment in our window. It may watch.",
       "subject": "ribbons",
       "butt": "self",
       "shape": "photo-op",
@@ -176,11 +177,11 @@
       "club": "shops",
       "other": "bus",
       "archetype": "fee",
-      "text": "We would hire the bus shelter for lost umbrellas: FORGOTTEN, BUT OPEN.",
+      "text": "We would hire the bus stop to show lost umbrellas: PLEASE DO NOT CLAIM.",
       "subject": "picnic-weather",
       "butt": "thing",
       "shape": "slogan",
-      "note": "A display of lost umbrellas (owned gag) in the shelter; the spotters lose the shelter."
+      "note": "Owned gag: lost property. The display takes the spotters' stop."
     },
     {
       "id": "any-cress-timetable",
@@ -195,16 +196,16 @@
       "note": "Other: the cress replaces the spotters' printed timetable at the stop."
     },
     {
-      "id": "any-bus-on-the-map",
+      "id": "any-window-seat",
       "visitor": "sprott",
       "club": "bus",
       "other": "shops",
       "archetype": "fee",
-      "text": "We will pay to put the 9:40 on the map. The map is in the draper's window.",
+      "text": "We will hire a window seat for spotting: the baker's, facing the stop.",
       "subject": "buses",
       "butt": "thing",
       "shape": "literalism",
-      "note": "Other: the Guild's window gets a bus route painted on it."
+      "note": "Other: the Guild loses a shop window to two spotters."
     },
     {
       "id": "any-self-cleaning-window",
@@ -267,7 +268,7 @@
       "subject": "paperwork",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "No bus has filled it in. The group asks for a clerk at every stop.",
+      "biggerStudy": "No bus has filled it in. The group asks for a clerk at each stop.",
       "note": "Other: the group meets on the pavement outside the shops."
     },
     {
@@ -277,11 +278,11 @@
       "club": "shops",
       "other": "bus",
       "archetype": "committee",
-      "text": "None of our pens write. A working group will report in spotters' pencil.",
+      "text": "A study of pens that do not write. It will report in a spotter's pencil.",
       "subject": "paperwork",
       "butt": "committee",
       "shape": "undercut",
-      "biggerStudy": "The report is too faint to read. A second report, in crayon?",
+      "biggerStudy": "The study needs a second pencil. The spotters want the first one back.",
       "note": "Owned gag: pens that do not write. Other: the pencils are the spotters'."
     },
     {
@@ -290,25 +291,25 @@
       "club": "veg",
       "other": "bus",
       "archetype": "treat",
-      "text": "Plant the year's first bean for the camera. Bertram knows which end.",
+      "text": "Plant the first bean for the camera. Bertram will replant it.",
       "subject": "gardens",
       "butt": "self",
       "shape": "photo-op",
       "note": "Other: a little put out at the favour (gossip)."
     },
     {
-      "id": "any-ribbon-beige",
+      "id": "any-standing-committee",
       "visitor": "awning",
       "cosigner": "minute",
       "club": "shops",
       "other": "veg",
       "archetype": "committee",
-      "text": "A committee on ribbon colours. After eleven meetings: beige.",
-      "subject": "ribbons",
+      "text": "A standing committee on window pumpkins. It will stand by one.",
+      "subject": "committees",
       "butt": "committee",
-      "shape": "undercut",
-      "biggerStudy": "A second beige has come to light. The committee must meet again.",
-      "note": "Other: the Society's rosettes must match the openings' ribbon."
+      "shape": "literalism",
+      "biggerStudy": "It now asks for chairs, and a second pumpkin as a control.",
+      "note": "Other: the Society minds a study of its pumpkins."
     },
     {
       "id": "any-picnic-group",
@@ -321,15 +322,15 @@
       "subject": "picnic-weather",
       "butt": "committee",
       "shape": "statistic",
-      "biggerStudy": "The picnic weather group asks to meet indoors, for accuracy.",
+      "biggerStudy": "Still unsure. It asks for a second picnic, and a blanket.",
       "note": "Other: it meets on the shops' pavement."
     },
     {
-      "id": "any-autograph-forms",
+      "id": "any-reflection-permits",
       "visitor": "wimble",
       "club": "shops",
       "archetype": "vanity",
-      "text": "Forms for requesting your autograph. I have printed ten thousand.",
+      "text": "Permits for each window you were reflected in. Framed. I counted.",
       "subject": "vanity",
       "butt": "self",
       "shape": "form-misapplied"
@@ -363,22 +364,22 @@
       "note": "Owned gag: umbrellas left at the desk. The favour puts the spotters out (their timetable)."
     },
     {
-      "id": "any-precut-ribbon",
-      "visitor": "sash",
+      "id": "any-matching-hats",
+      "visitor": "slake",
       "club": "veg",
       "archetype": "basket",
-      "text": "A ribbon, already cut, to save you time. Hundreds more, uncut. No reason.",
-      "subject": "ribbons",
+      "text": "Matching hats for you and the pumpkin. No reason. Lionel said to say that.",
+      "subject": "hats",
       "butt": "lobbyist",
       "shape": "callback",
       "favour": {
-        "text": "About the ribbon: it wishes to be tied round the prize pumpkin.",
+        "text": "About my gift: both hats would like the first-prize rosette.",
         "clippings": {
-          "sign": "PUMPKIN WEARS YOUR RIBBON; SOCIETY UNTIES IT NIGHTLY",
-          "refuse": "RIBBON RETURNED, STILL CUT. NO REASON GIVEN"
+          "sign": "YOUR HAT TAKES FIRST PRIZE; PUMPKIN UNPLACED",
+          "refuse": "HATS REFUSED ROSETTE. THEY ARE, OFFICIALS NOTE, HATS"
         }
       },
-      "note": "Callback: 'No reason', the first basket. The favour puts the Society out."
+      "note": "Callback: 'No reason', the first basket (Lionel Sash). The favour puts the Society out."
     }
   ]
 }

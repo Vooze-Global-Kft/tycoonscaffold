@@ -72,7 +72,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "The study now asks whether a bus seen twice through glass is a crop."
+      "biggerStudy": "The study asks for a second bus, as a control. Results at harvest."
     },
     {
       "id": "gov3-portrait-hat",
@@ -84,7 +84,7 @@
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
-        "text": "The portrait's hat would like to enter the Quiet Competition. It keeps very still.",
+        "text": "The portrait's hat asks to enter the Quiet Competition. It keeps very still.",
         "clippings": {
           "sign": "PORTRAIT'S HAT WINS QUIET COMPETITION; GOVERNOR BEAMS",
           "refuse": "HAT WITHDRAWN; COMPETITION HELD IN USUAL SILENCE"
@@ -126,7 +126,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The acoustics inquiry asks for a second glasshouse, to listen from.",
+      "biggerStudy": "The inquiry asks for another season. The first was mostly band.",
       "note": "Other: the band rehearses in the growers' glasshouse for the inquiry."
     },
     {
@@ -152,7 +152,7 @@
       "butt": "lobbyist",
       "shape": "escalation",
       "favour": {
-        "text": "About the fern: it would like to be entered in the county show. It is nearly a vegetable.",
+        "text": "The fern would like to enter the county show. It is nearly a vegetable.",
         "clippings": {
           "sign": "GOVERNOR ENTERS FERN IN VEGETABLE SHOW; JUDGES POLITE",
           "refuse": "FERN STAYS ON DESK, STILL NEAR NO FOUNTAIN"
@@ -319,11 +319,11 @@
       "club": "brass",
       "other": "bus",
       "archetype": "swap",
-      "text": "The spotters' bench for the tuba. Sign: RESERVED, TUBA. SPOTTERS, STAND.",
+      "text": "The spotters' bench for the drum. Sign: RESERVED, DRUM.",
       "subject": "buses",
       "butt": "thing",
       "shape": "slogan",
-      "note": "Other: the spotters lose their bench."
+      "note": "Other: the spotters lose their bench and stand (the sign says so by leaving them out)."
     },
     {
       "id": "gov3-nose-prints",
@@ -336,7 +336,7 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The nose-print inquiry asks to call each pane as a witness. They saw it all."
+      "biggerStudy": "The inquiry asks to call each pane as a witness. They saw it all."
     },
     {
       "id": "gov3-jam-named",
@@ -356,11 +356,11 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "committee",
-      "text": "How far does a cornet carry over water? Ewan sits further off each week.",
+      "text": "A survey: how far does a cornet carry over water? Ewan moves back each week.",
       "subject": "committees",
       "butt": "committee",
       "shape": "escalation",
-      "biggerStudy": "The cornet survey has reached the far bank. It asks for a wider river.",
+      "biggerStudy": "The survey has reached the far bank. It asks for a wider river.",
       "note": "Other: the band minds being measured as a nuisance."
     },
     {
@@ -441,7 +441,7 @@
       "club": "veg",
       "other": "anglers",
       "archetype": "swap",
-      "text": "Lend our show the towpath for a day. The pumpkins have never seen a boat.",
+      "text": "Lend our show the towpath for a day. Pumpkins have never seen a boat.",
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "undercut",

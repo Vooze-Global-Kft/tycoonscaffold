@@ -877,6 +877,7 @@ def table():
     tuned = content_tuned()
     deck, tables, _ = merge(with_batches=True, verbose=False, strict=False)
     block, fb = build_block(deck, tables, tuned, sets())
+    block = preview_fit(block)
     d = tempfile.mkdtemp(prefix='office-table-')
     cfg = os.path.join(d, 'decree.json')
     json.dump({'decree': block}, open(cfg, 'w'))

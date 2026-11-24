@@ -12,19 +12,20 @@
  *
  * The block between TUNED-BEGIN and TUNED-END is written by `build-office.py --tune --save`.
  * Its first values are the numbers prototype's candidate (scratchpad/office/proto/candidate.json, its
- * state of 24 November 2026 09:00, outside the repository; nothing here depends on it), mapped onto the
- * schema's paths: R [3, 3, 3] -> offices[*].rivalPull (D15 starts 3 / 4 / 5); callFrac 0.5 ->
+ * state of 24 November 2026 09:38 ("final candidate"), outside the repository; nothing here depends on it), mapped onto the
+ * schema's paths: R [3, 3, 3] -> offices[*].rivalPull (D15 starts 3 / 4 / 5); callFrac 0.7 ->
  * offices[*].callFraction; growth 1.2 -> ministry.levelGrowth (D24); slipReserveSecs 30 ->
  * desk.slipReserveSeconds (D16); tierM 60 -> money.M; tierL 40 -> money.L; r 13 -> ministry.openRatio;
  * the sign side's "other" club of project −4, swap −5, fee −5, treat −2, committee −3 (each ±1 of 2.2)
- * -> archetypes[i].sign[j].delta. The candidate's three `ruleChanges` (huffK 3, i.e. huffSlope 4; topT 70
- * and topK 0.25, a cap above 70 in the count) are RULES, not tunables: they are not here and not in the
- * schema; they wait for the lead (notes/bot.md). The prototype's final report may move these values;
- * the tuner then re-saves this block.
+ * -> archetypes[i].sign[j].delta. The candidate's `ruleChanges` are RULES, not tunables, and are not
+ * here: topT 70 / topK 0.25 (in the count a club above 70 counts 70 + 0.25 (m − 70)) and slipStays (a
+ * landed slip stays until flicked; 2.7 returns it when a visitor arrives). They wait for the lead
+ * (notes/bot.md). The prototype's REPORT.txt may still move these values; the tuner then re-saves
+ * this block.
  */
 
 /** Where the values below came from (build-office.py rewrites it with --save). */
-export const DECREE_TUNED_FROM = 'the numbers prototype candidate.json as of 24 November 2026 09:00 (mapped by hand onto RANGES paths), before the first bot run on the engine';
+export const DECREE_TUNED_FROM = 'the numbers prototype final candidate.json of 24 November 2026 09:38 (mapped by hand onto RANGES paths), before the tuner ran on the engine';
 
 // TUNED-BEGIN
 export const DECREE_TUNED: Record<string, number> = {
@@ -38,11 +39,11 @@ export const DECREE_TUNED: Record<string, number> = {
   "ministry.openRatio": 13,
   "money.L": 40,
   "money.M": 60,
-  "offices[0].callFraction": 0.5,
+  "offices[0].callFraction": 0.7,
   "offices[0].rivalPull": 3,
-  "offices[1].callFraction": 0.5,
+  "offices[1].callFraction": 0.7,
   "offices[1].rivalPull": 3,
-  "offices[2].callFraction": 0.5,
+  "offices[2].callFraction": 0.7,
   "offices[2].rivalPull": 3
 };
 // TUNED-END

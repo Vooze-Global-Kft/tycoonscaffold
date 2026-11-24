@@ -77,8 +77,7 @@ describe('the habits choose by their own rule only', () => {
     for (const f of [B.readerChoice, B.alwaysRefuseChoice, B.moneyOnlyChoice, B.moodOnlyChoice, B.happierChoice, B.casualChoice]) expect(f(v)).toBe('sign');
     const short = { ...view({ affordable: false, cost: 1100, money: -1100 }, {}, { kind: 'rally' }), ctx: ctx({ cash: 1000, I: 10 }) };
     expect(B.campaignChoice(short)).toBe('wait');
-    // Every bot saves for a campaign paper (D16 reserves its price; the prototype's decision 11).
-    expect(B.campaignChoice({ ...short, ctx: ctx({ cash: 0, I: 10 }) })).toBe('wait');
+    expect(B.campaignChoice({ ...short, ctx: ctx({ cash: 0, I: 10 }) })).toBe('refuse');
   });
   it('money-only takes the side with more money, a level when affordable', () => {
     expect(B.moneyOnlyChoice(view({ money: 50 }, {}))).toBe('sign');
@@ -174,9 +173,13 @@ describe('H1 to H6 on synthetic traces', () => {
   it('H3 counts take-backs and reloads that did not restore', () => {
     expect(B.h3(trace({ takeBacks: [{ t: 1, same: true }, { t: 2, same: false }], reloads: [{ t: 1, same: false }] }))).toEqual({ takeBacksWrong: 1, reloadsWrong: 1, windowsCut: 0 });
   });
+  it('H4: an absence that differs from the same absence stepped event to event (10.2) is counted', () => {
+    const a = { t: 1, seconds: 30, earnings: 10, expected: 10, adTopUp: 0, arrived: 0, expectedArrivedAtMost: 0, unchanged: true, what: 'x' };
+    expect(B.h4({ away: [{ ...a, stepsEqual: false }, { ...a, stepsEqual: true }, a], faults: [] }).stepsDiffer).toBe(1);
+  });
   it('H4 counts wrong pay, moved state, extra papers and clock-jump faults', () => {
     const a = (over: Partial<B.AwayRec>): B.AwayRec => ({ t: 0, seconds: 60, earnings: 21, expected: 21, adTopUp: 0, arrived: 0, expectedArrivedAtMost: 0, unchanged: true, what: '', ...over });
-    expect(B.h4(trace({ away: [a({}), a({ earnings: 22 }), a({ unchanged: false }), a({ arrived: 2, expectedArrivedAtMost: 1 })], faults: ['H4: paid twice'] }))).toEqual({ absences: 4, wrongPay: 1, moved: 1, tooManyPapers: 1, jumps: 1 });
+    expect(B.h4(trace({ away: [a({}), a({ earnings: 22 }), a({ unchanged: false }), a({ arrived: 2, expectedArrivedAtMost: 1 })], faults: ['H4: paid twice'] }))).toEqual({ absences: 4, wrongPay: 1, moved: 1, tooManyPapers: 1, jumps: 1 , stepsDiffer: 0 });
   });
   it('H5 books dibs by source; anything unexplained, a costly refusal or a foreign source in the rules book is a fault', () => {
     const r = B.h5(trace({ cash: [{ t: 1, source: 'tick', amount: 5 }, { t: 2, source: 'unexplained', amount: 1 }], decisions: [dec({ choice: 'refuse', applied: { money: -3, moods: [0, 0, 0], level: null, gossip: 0 } })], book: { tick: 5, paper: 2, away: 9 } }));

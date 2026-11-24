@@ -252,14 +252,10 @@ export function readerValue(v: SideView, ctx: PaperView['ctx']): number {
 
 export type BotChoice = Choice | 'wait';
 
-/**
- * The campaign rule every bot shares: sign when affordable, else wait until the treasury pays it. A
- * campaign paper only adds points and D16 keeps its price back from the call on, so refusing one
- * because slips spent the treasury would make a bot lose for a reason that is not reading (the
- * prototype's decision 11; 8.2 does not say). Income is never 0 (ministry 0), so the wait ends.
- */
+/** The campaign rule every bot shares (8.2, the prototype's final `campWait` 20): sign when affordable; when short wait up to 20 s of income, else refuse. */
 export function campaignChoice(v: PaperView): BotChoice {
-  return v.sign.affordable ? 'sign' : 'wait';
+  if (v.sign.affordable) return 'sign';
+  return v.sign.cost - v.ctx.cash <= READER_CONSTANTS.waitShortSeconds * v.ctx.I ? 'wait' : 'refuse';
 }
 const isCampaign = (v: PaperView) => v.kind === 'campaign' || v.kind === 'rally';
 const signIfAffordable = (v: PaperView, want: boolean): BotChoice => (want && v.sign.affordable ? 'sign' : 'refuse');
