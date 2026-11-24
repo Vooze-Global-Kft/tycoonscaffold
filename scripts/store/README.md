@@ -192,7 +192,7 @@ They differ in composition, not only in colour, and so do the sets (Lantern Row'
 | Colour | the game's palette baize-and-ink (`src/ui/decree/art/palette.ts`): baize #2E4A3E, violet pale #DCD3EA, brass light #E3C78C |
 | Ornament and counter | the flourish and the nib; no counter, no rule, no tag |
 | Rhythm across the set | none on purpose: every caption sits at the same place, like a signature at the foot of each paper |
-| Feature graphic | the baize desk with its felt and a walnut rim along the foot; "PROUDLY ADEQUATE" in the same nib hand with its flourish on the left; on the right the signed pumpkin paper of shot 2 (its SIGN strip with the signature, the visitor, the proposal), level, fading into the baize on its left edge; no icon, no tagline |
+| Feature graphic | centred, no left-title / right-picture split (that is Lantern Row's): the baize desk under a lamp; the signed pumpkin paper of shot 2 (its SIGN strip with the signature, the visitor, the proposal) tilted in the middle as it is flicked up, running off the top edge, speed marks in the felt under it; the walnut rim along the foot with a centred brass name plate, "PROUDLY ADEQUATE" engraved in the same nib hand with its flourish; no icon, no tagline |
 
 Nothing in any of them: no device frame, no store badge, no award, rank, price,
 "free", "No.1", "best", no call to action, no app icon in the feature graphic
@@ -268,22 +268,27 @@ Captions in the deadpan voice (spec 7.4), at most 40 characters; the scene list 
 `scenes/high-office.ts`. Every scene is posed by naming what must be on screen, not by what a
 preset happens to hold: a `run` step (types.ts) plays the game's RULES in the page through the
 preview's test hook `__decreeDev` (`src/ui/decree/desk/dev.web.ts`, the hook the &desk= switch
-lands its papers with): a comic paper landed by its id (`R.comicPaper`, `R.landPaper`), the moods
-set as the &moods= switch sets them, the call day found by `R.canCall`, a run-up refused to the count.
-So after the numbers are retuned, `npx tsx scripts/store/shots.ts --game high-office --write` makes
-the same six pictures with the final prices. Touches come from the game's own geometry
+lands its papers with): a comic paper landed by its id (`R.comicPaper`, `R.landPaper`), a budget
+slip made by `R.slipFor`, the call day found by `R.canCall`, a run-up refused to the count, a term
+lost and a term won for a former opponent. Moods are set as the &moods= switch sets them, and found
+by the rules near a named vector so that what the picture needs holds (a strip that moves a ward;
+a poll of 4 of 5 with Hilltop out). Nothing is caught mid-animation by a timer but the desk's held
+finger: election night is pictured at the end of its count. So after the numbers are retuned,
+`npx tsx scripts/store/shots.ts --game high-office --write` makes the same six pictures with the
+final prices; a scene whose named state the new numbers cannot reach fails with an "ERR" line
+instead of picturing something else. Touches come from the game's own geometry
 (`src/ui/decree/layout.ts` deskLayout). Never in an image (policy research 6, D12, D43): the
 newspaper front page, a run-up (campaign) paper, the Ledger, a ballot, a flag, a seal, a
 real-looking building, "vote now", a date, the goose.
 
 | # | Caption | Address and steps | Shows |
 |---|---|---|---|
-| 1 | Refused papers await further study | `preset=early`; run: moods 56/52/47, paper `may-bus-named` landed; a finger on the paper moved 50 pt down and held (past 40 pt the drawer opens; nothing commits before 90 pt and the release); check: the paper's text, both strips, the drawer's count | Desmond Kerb's "Name the 7:02 bus after you, Mayor. It is late too, and also waves." pulled toward the open drawer FOR FURTHER STUDY (n), the IF STUDIED strip armed, both strips readable, the bars previewing the refusal. |
-| 2 | Both outcomes printed before you sign | the same, paper `may-pumpkin-freedom`, moved 85 pt up and held; check: no "Short by". Also the feature graphic's picture | Hilda Gourdley's "Grant the prize pumpkin the freedom of the town. It has asked very politely." pushed up, the signature writing itself on the SIGN strip, the price and both clubs on each strip. |
-| 3 | A signed pumpkin comes back with slides | run: the pumpkin paper landed and signed by the rules, then every paper and slip refused until its follow-up lands (about 10 decided papers); check: "It has slides" | The follow-up of the chain "The Pumpkin" on the desk: "The pumpkin, now a Freeman of the town, wishes to address the council. It has slides." with both strips. |
-| 4 | The poll is honest, ward by ward | run: moods 58/55/48, the day moved to the first day `R.canCall` allows, the Poll sheet opened; check: "Held today" and "Call the election" | The pinned ward map of Dithering-on-the-Dawdle with the held wards hatched in violet, each ward's share, held or not held, the clubs strong in each, the rival's pull, the call button. |
-| 5 | Counted in chalk, safest ward first | run: papers refused to the call day, the call, moods 58/55/48, the run-up refused to the count (no run-up paper is pictured), the count, Election Night opened; until four ward rows are chalked; check: a majority on the tally line | The chalk board after four envelopes: three ticks with rosettes and one dash in order of safety, bunting at the majority, the Counting Clerk with her envelope, the band in silhouette. The envelopes come every 2.5 s: if a run catches three or five rows, retake with `--only 5 --sizes <size>`. |
-| 6 | Towns left behind go up on the wall | `preset=late&wall=1`; check: "Towns left behind", "President" | The Office of a President: title and place only (D43), photographs of the towns left with their ministries on record, the Grand Projects, former opponents, the vanity shelf's busts. |
+| 1 | Pull it down for further study | `preset=early`; run: paper `may-bus-named` landed at the moods nearest 56/52/47 at which studying it moves a ward; a finger on the paper moved 74 pt down and held (past 40 pt the drawer opens; nothing commits before 90 pt and the release); check: the paper's text, both strips with "Wards n → m of 5", the drawer's count | Desmond Kerb's "Name the 7:02 bus after you, Mayor. It is late too, and also waves." pulled down into the open drawer FOR FURTHER STUDY (n), both strips readable with the wards, the bars previewing the refusal. |
+| 2 | Both outcomes printed before you sign | the same, paper `may-pumpkin-freedom` at the moods at which signing wins a ward, moved 70 pt up and held; check: "Wards", no "Short by". Also the feature graphic's picture | Hilda Gourdley's "Grant the prize pumpkin the freedom of the town. It has asked very politely." pushed up, the signature writing itself on the SIGN strip, the wards, the price and both clubs on each strip. |
+| 3 | The Clerk recommends more potholes | run: desk and tray cleared, Potholes Office levels bought free by the rules until a storey has room, the treasury set where `R.slipFor` bundles the most levels (3 at least), the slip landed; moved 60 pt up and held; check: "Treasury Clerk", "Potholes Office +n levels" | Gwendolyn Abacus's budget slip, "Potholes Office +n levels · −price · +n/s" (D42 a), pushed toward Buy it; a different object from the papers of 1 and 2. |
+| 4 | Five wards, three needed, one sulky hill | run: the day moved to the first day `R.canCall` allows, the moods nearest 58/55/48 at which the poll holds 4 of 5 with Hilltop the one ward not held, the Poll sheet opened; check: "Held today: 4 of 5", "3 needed", Hilltop "not held" | The pinned ward map of Dithering-on-the-Dawdle with the held wards hatched in violet, each ward's share, held or not held, the clubs strong in each. |
+| 5 | Counted in chalk, the closest ward last | run: papers refused to the call day, the call, moods 58/55/48, the run-up refused to the count (no run-up paper is pictured), the count (a win), Election Night opened; until "To the result" (the end of the count); check: a majority, five shares chalked | The whole chalk board: five wards, safest first and the closest last, ticks, one dash, rosettes, "4 of 5 · 3 needed", the Counting Clerk with her envelope, the defeated rival's concession, the band in silhouette. |
+| 6 | Towns left behind go up on the wall | `preset=late`; run: asserts a President with two towns left behind and a monument on the shelf, picks a face if none, plays a lost term then a won term when there is no former opponent, opens the Office; run: scrolls the wall to "Towns left behind"; check: a former opponent, the vanity shelf | The Office of a President (D43: title and place only): photographs of the towns left with their ministries on record, the Grand Projects, a former opponent and the slogan, the vanity shelf's busts above the band. |
 
 Shots 4 and 5 show the poll and the count: never use them in paid or derived ads (policy research
 3); paid creatives use shots 1 to 3, the desk.

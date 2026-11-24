@@ -100,13 +100,13 @@ const scenes: GameScenes = {
   scenes: [
     {
       slug: 'further-study',
-      // The first thing the game teaches (3.1): refusing. A bus spotter's paper, pulled 84 pt toward the
+      // The first thing the game teaches (3.1): refusing. A bus spotter's paper, pulled 74 pt toward the
       // drawer (just short of the 90 pt commit) and held: the drawer is open, the paper's foot inside it,
       // the IF STUDIED strip armed. The moods are the nearest to DESK_MOODS at which studying moves a
       // ward, so both strips print the wards (D43).
       query: 'preset=early',
       settle: 9000,
-      steps: (v) => [{ run: paperMovingWards('may-bus-named', 'refuse', DESK_MOODS) }, ...hold(v, 84)],
+      steps: (v) => [{ run: paperMovingWards('may-bus-named', 'refuse', DESK_MOODS) }, ...hold(v, 74)],
       check: deskText([/Name the 7:02 bus after you/, /IF SIGNED/, /IF STUDIED/, /Wards \d → \d of 5/, /FOR FURTHER STUDY \(\d+\)/]),
       caption: 'Pull it down for further study',
       shows: "Desmond Kerb's paper (Bus Spotters' Society: \"Name the 7:02 bus after you, Mayor. It is late too, and also waves.\") pulled down into the open drawer, both strips printed (\"Wards n → m of 5\", clubs, the follow-up mark), the drawer's label FOR FURTHER STUDY with its count, the bars previewing the refusal.",
