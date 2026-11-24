@@ -6,7 +6,8 @@
  *   &night=play|win|lose    from a run-up (preset=mid): every run-up paper refused, then the count and
  *                           Election Night; win / lose first set every mood to 90 / 5 (a sure result)
  *   &result=play|win|lose   the same, straight to the result sheet (election night ended)
- *   &move=1                 with &result=win: the move sheet when the rules allow the move
+ *   &move=1                 with &result=win: the next office's requirements met first (Name Recognition
+ *                           set to it, levels bought free through the rules' buy), then the move sheet
  *   &wall=1                 the Office wall
  *   &monument=1             this term's monument offer (when the rules have one)
  * Owned by the views package (VIEWS).
@@ -42,6 +43,22 @@ function finishRunUp(cfg: R.DecreeConfig, g0: R.DecreeGame): R.DecreeGame {
   return s;
 }
 
+/** The next office's requirements met (a preview of the move sheet): NR at its need, levels bought free by the rules until the record is met. */
+function meetRequirements(cfg: R.DecreeConfig, g0: R.DecreeGame): R.DecreeGame {
+  const req = R.moveRequirements(cfg, g0);
+  if (!req) return g0;
+  let g: R.DecreeGame = { ...g0, decree: { ...g0.decree, nr: Math.max(g0.decree.nr, req.nrNeeded) } };
+  for (let k = 0; k < 2000 && (R.moveRequirements(cfg, g)?.record ?? Infinity) < req.recordNeeded; k++) {
+    const i = g.decree.ministries.findIndex((m, j) => j < cfg.decree.offices[g.decree.office].ministries.length && (!m.open || m.level < cfg.decree.ministry.levelCap));
+    if (i < 0) break;
+    const m = g.decree.ministries[i];
+    const next = R.buy(cfg, g, m.open ? { type: 'level', ministry: i } : { type: 'open', ministry: i }, null, [], { free: true });
+    if (next === g) break;
+    g = next;
+  }
+  return g;
+}
+
 function applyNow(): void {
   const q = params();
   if (!q) return;
@@ -53,6 +70,7 @@ function applyNow(): void {
   if (face) g = R.pickFace(cfg, g, face);
   const which = q.get('night') ?? q.get('result');
   if (which && g.decree.phase === 'campaign') {
+    if (q.get('move') === '1') g = meetRequirements(cfg, g);
     if (which === 'win' || which === 'lose') g = { ...g, decree: { ...g.decree, moods: g.decree.moods.map(() => (which === 'win' ? 90 : 5)) } };
     g = finishRunUp(cfg, g);
     if (R.canCount(cfg, g)) g = R.countVotes(cfg, g, []);
