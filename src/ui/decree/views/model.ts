@@ -234,6 +234,8 @@ export interface MoveModel {
   /** The rules' transition fund (roundDibs). */
   fund: number;
   passesIn: R.About | null;
+  /** The fund alone buys past the old income (the rules' passesIn is 0). */
+  passesAtOnce: boolean;
   next: { districts: number; districtWords: string; majority: number; newClubs: string[]; rival: string; slogan: string };
 }
 
@@ -253,7 +255,10 @@ export function moveModel(cfg: Cfg, g: G): MoveModel | null {
     resets: ms.resets,
     stays: ms.stays,
     fund: ms.transitionFund,
-    passesIn: ms.passesIn,
+    // The rules' passesIn is 0 (printed "about 1 s") when the transition fund alone buys past the old income
+    // (requests.md 118): said as that, not as a wait.
+    passesIn: ms.passesIn && !(ms.passesIn.unit === 's' && ms.passesIn.value <= 1) ? ms.passesIn : null,
+    passesAtOnce: !!ms.passesIn && ms.passesIn.unit === 's' && ms.passesIn.value <= 1,
     next: { districts: to.districts.length, districtWords: plural(to.districtWord), majority: to.majority, newClubs, rival: r?.name ?? '', slogan: r?.slogan ?? '' },
   };
 }

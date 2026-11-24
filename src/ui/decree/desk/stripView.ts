@@ -212,7 +212,9 @@ export function noteLine(parts: readonly NotePart[]): string {
 
 /** The strip as the paper draws it at text scale `s`. */
 export function stripView(strip: R.Strip, names: StripNames, s: number): StripView {
-  const chips = strip.chips.map((c, i) => chipView(c, i, names, s));
+  // A stale or capped form (2.7) leaves with no effect, whichever side: it prints "No change" and its note,
+  // never chips the commit will not apply (printed equals applied).
+  const chips = strip.void ? [] : strip.chips.map((c, i) => chipView(c, i, names, s));
   const placed = placeChips(chips.map((c) => (c.wide ? 2 : 1)));
   const rows = placed.rows.map((r) => r.map((i) => chips[i]));
   // The note row: the long form if it fits, else the short "Short by", else the whole row smaller.

@@ -339,6 +339,7 @@ export const S = {
     nextClubs: (names: string) => `New clubs: ${names}`,
     nextRival: (name: string, slogan: string) => `Standing against you: ${name}. "${slogan}"`,
     passesIn: (about: string) => `The new office out-earns the old in ${about}`,
+    passesAtOnce: 'The transition fund alone buys past the old income.',
     become: (title: string) => `Become ${title}`,
     notYet: 'Not yet',
     /** The monument offer (5.8). */

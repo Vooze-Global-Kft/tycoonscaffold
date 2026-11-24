@@ -46,5 +46,6 @@ export function DecreeShell() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: DESK.baize },
+  // userSelect: a drag or a quick double tap in the web preview never selects the desk's words (a phone has no text selection here).
+  root: { flex: 1, backgroundColor: DESK.baize, userSelect: 'none' },
 });

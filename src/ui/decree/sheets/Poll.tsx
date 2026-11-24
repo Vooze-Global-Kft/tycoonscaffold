@@ -103,9 +103,11 @@ function PollBody() {
             <Pill label={r.held ? S.sheets.held : S.sheets.notHeld} color={r.held ? INK.violetPale : INK.slatePale} text={r.held ? INK.violetDeep : INK.slate} />
           </View>
           <View style={styles.weighs}>
-            <Txt size={ty.tiny} color={INK.soft}>
-              {S.sheets.weighs}
-            </Txt>
+            {r.strong.length ? (
+              <Txt size={ty.tiny} color={INK.soft}>
+                {S.sheets.weighs}
+              </Txt>
+            ) : null}
             {r.strong.map((g) => (clubs[g] ? <DecreeIcon key={g} icon={clubs[g].icon} size={18} /> : null))}
             {r.campaign > 0 ? (
               <Txt size={ty.tiny} color={INK.violet}>

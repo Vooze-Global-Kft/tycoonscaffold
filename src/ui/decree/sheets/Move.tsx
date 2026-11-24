@@ -73,7 +73,7 @@ function Body({ m }: { m: MoveModel }) {
         <Txt size={ty.small} color={INK.money} bold>
           {S.views.fund(dibs(m.fund))}
         </Txt>
-        {m.passesIn ? <Txt size={ty.small}>{S.views.passesIn(aboutText(m.passesIn))}</Txt> : null}
+        {m.passesIn ? <Txt size={ty.small}>{S.views.passesIn(aboutText(m.passesIn))}</Txt> : m.passesAtOnce ? <Txt size={ty.small}>{S.views.passesAtOnce}</Txt> : null}
       </Card>
       <List title={S.views.resets} items={m.resets} words={S.views.resetItem} />
       <List title={S.views.stays} items={m.stays} words={S.views.stayItem} />
