@@ -215,7 +215,7 @@ describe('sign, refuse, take back, commit (2.6, 2.7 "Decide")', () => {
   it('D40: a landed slip is bought for its printed price whenever cash holds it, whatever queued behind it; short, it says "Short by"', () => {
     const g0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 5000 });
     const slip = R.slipOf(cfg, g0, { type: 'level', ministry: 1 })!;
-    let g = { ...g0, decree: { ...g0.decree, desk: { type: 'slip' as const, slip, landedAt: 0 }, emptySince: null } };
+    let g: R.DecreeGame = { ...g0, decree: { ...g0.decree, desk: { type: 'slip' as const, slip, landedAt: 0 }, emptySince: null } };
     // Visitors queue behind it (D32): their sign costs raise the reserve above what cash keeps after the price.
     const tray: R.Paper[] = [];
     for (const id of ['test-mayor-bus-project-1', 'test-mayor-bus-project-2']) {

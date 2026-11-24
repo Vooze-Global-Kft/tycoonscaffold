@@ -503,8 +503,11 @@ describe('a careless mayor meets boycotts and scandals (D38; rules-lead-check 5)
     mood: { ...DECREE_TEST_NUMBERS.mood, termReset: 1 / 3 },
     paperRules: { sizing: { scale: 50, pull: 0.5 } },
   });
-  it('3,000 actions with every check after every action; the trouble paths all run', { timeout: 600_000 }, () => {
-    const run = longPlayer(careless, { seed: 9191, actions: 3_000, careless: true });
+  it('3 × 3,000 actions with every check after every action; the trouble paths all run', { timeout: 600_000 }, () => {
+    const runs = [9191, 9192, 9193].map((seed) => longPlayer(careless, { seed, actions: 3_000, careless: true }));
+    const sum = (k: keyof LongRun['trouble']) => runs.reduce((a, r) => a + r.trouble[k], 0);
+    const run = { trouble: Object.fromEntries(Object.keys(runs[0].trouble).map((k) => [k, sum(k as keyof LongRun['trouble'])])) as LongRun['trouble'], g: runs[0].g };
+    for (const r of runs) expect(r.g.decree.stats.clamps).toBe(0);
     expect(run.trouble.boycotts).toBeGreaterThan(0);
     expect(run.trouble.scandals).toBeGreaterThan(0);
     expect(run.trouble.settled).toBeGreaterThan(0);
