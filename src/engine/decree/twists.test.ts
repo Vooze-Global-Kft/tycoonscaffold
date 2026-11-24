@@ -146,6 +146,27 @@ describe('ministers (2.9, D21)', () => {
     expect(app(at)).toBe(m);
   });
 
+  it('a returning application, drawn and decided, never uses one of the term\'s slots (regression, rules-lead)', () => {
+    // Before the join the draw removed the return when it drew the paper, so the returning paper
+    // counted as a slot while it waited and again when it was decided: a refusal cost the term a minister.
+    const g = built({ day: 9, decisions: 100 }, cfg);
+    const m = app(g)!;
+    const away = R.sendAway(cfg, g, m);
+    expect(away.decree.appSlotsUsed).toBe(1);
+    const due = away.decree.applicationReturns[0].dueAt;
+    const back = { ...away, decree: { ...away.decree, day: 30, stats: { ...away.decree.stats, decisions: due } } };
+    expect(app(back)).toBe(m);
+    const drawn = R.applicationPaper(cfg, back, m)!;
+    const waiting = { ...drawn.g, decree: { ...drawn.g.decree, tray: [drawn.paper] } };
+    // While the return waits, day 30's slot is still free for the next minister.
+    const next = app(waiting);
+    expect(next).not.toBeNull();
+    expect(next).not.toBe(m);
+    // Deciding the return (either way) leaves the slot count where it was.
+    expect(R.appoint(cfg, waiting, m, []).decree.appSlotsUsed).toBe(1);
+    expect(R.sendAway(cfg, waiting, m).decree.appSlotsUsed).toBe(1);
+  });
+
   it('D21: a minister whose club the office lacks waits for the office that has it', () => {
     const presOnly = c.ministers.find((m) => !c.offices[0].clubs.includes(m.club))!;
     const delivered = c.ministers.filter((m) => m.id !== presOnly.id).map((m) => m.id);

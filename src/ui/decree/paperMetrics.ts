@@ -15,7 +15,7 @@
  * Written by the skeleton exactly as 4.2; owned afterwards by the desk package P6
  * (docs/design/office-build-plan.md). Pure.
  */
-import { FONT_SCALE_MAX, PAPER_INNER_W } from './layout';
+import { FONT_SCALE_MAX, PAPER_INNER_W, PAPER_W } from './layout';
 
 /** The heights and font sizes at s = 1.3 (4.2). */
 export const AT_13 = {
@@ -37,6 +37,65 @@ export const CHIP_MAX_W = 151;
 export const CHIP_GAP = PAPER_INNER_W - 2 * CHIP_MAX_W;
 export const STRIP_SLOTS = 4;
 export const MAYOR_STRIP_CHIPS = 3;
+
+// ---------------------------------------------------------------------------------------------
+// The named text boxes of the paper (the content desk's fit check, scripts/content/office/fit.ts,
+// reads them; widths in points, fonts at s = 1, × s when drawn). Everything a paper prints lies in
+// one of these boxes, so a string that fits its box at s = 1.3 never wraps or clips on 375 × 667.
+// ---------------------------------------------------------------------------------------------
+
+/** The paper's side padding: (343 − 315) / 2, from the paper's edge to the inner width. */
+export const PAD_X = (PAPER_W - PAPER_INNER_W) / 2;
+/** The strip title row (4.2: "IF SIGNED ↑ · Poll 3 → 4 of 5 ↩" ≤ 304 pt). */
+export const TITLE_ROW_W = 304;
+/**
+ * A side's own label in place of "IF SIGNED" / "IF STUDIED" ("Return the scissors", "Apologise outside"),
+ * drawn bold at FONT.title × s: the title row less the widest tail " ↑ · Poll 3 → 4 of 5" (an event's
+ * side schedules no ↩). A longer label is cut by the desk with "…" (never wraps), so the content check
+ * keeps labels inside it.
+ */
+export const STRIP_LABEL_W = 151;
+/** The header's text column: right of the 44 pt photo with an 8 pt gap (name bold 15 × s, role 13 × s). */
+export const HEADER_GAP = 8;
+export const HEADER_TEXT_W = PAPER_INNER_W - PHOTO.w - HEADER_GAP;
+/** The club badge after the role (13 × s tall) and the minister initials ("DP ×0.9") at the header's right. */
+export const BADGE = 13;
+/** A chip: its icon (at the chip font's size) and padding; the text box is what is left of CHIP_MAX_W. */
+export const CHIP_ICON = 16;
+export const CHIP_PAD = 6;
+export const CHIP_TEXT_W = CHIP_MAX_W - CHIP_ICON - 3 * CHIP_PAD;
+export const CHIP_WIDE_TEXT_W = PAPER_INNER_W - CHIP_ICON - 3 * CHIP_PAD;
+/** The note row: one line across the inner width. */
+export const NOTE_W = PAPER_INNER_W;
+/** The proposal: 4 lines across the inner width (16 × s, line 26 at 1.3); a returning visitor's last line under it at the note font. */
+export const PROPOSAL_W = PAPER_INNER_W;
+/** A form's own line ("Requisition: Potholes Office +1 level") takes the proposal's first line; the Clerk's note the next two. */
+export const FORM_NOTE_LINES = 2;
+/** The comic front page (2.8): the headline beside the press photograph (the photo takes the right quarter), the masthead above it. */
+export const HEADLINE_W = Math.round(PAPER_INNER_W * 0.68);
+export const HEADLINE_FONT = 15;
+export const HEADLINE_LINES = 4;
+export const MASTHEAD_FONT = 13;
+/** The picket board on a grievance (two lines at 7 × s on the board). */
+export const PICKET_W = 52;
+export const PICKET_FONT = 7;
+
+/** Every box of the paper by name: font at s = 1, width at any s, lines (the fit check's table). */
+export const PAPER_BOXES = {
+  title: { font: FONT.title, width: TITLE_ROW_W, lines: 1, bold: true },
+  label: { font: FONT.title, width: STRIP_LABEL_W, lines: 1, bold: true },
+  chip: { font: FONT.chip, width: CHIP_TEXT_W, lines: 1, bold: false },
+  chipWide: { font: FONT.chip, width: CHIP_WIDE_TEXT_W, lines: 1, bold: false },
+  note: { font: FONT.note, width: NOTE_W, lines: 1, bold: false },
+  name: { font: FONT.name, width: HEADER_TEXT_W, lines: 1, bold: true },
+  role: { font: FONT.role, width: HEADER_TEXT_W - BADGE - 4, lines: 1, bold: false },
+  proposal: { font: FONT.proposal, width: PROPOSAL_W, lines: AT_13.proposalLines, bold: false },
+  formNote: { font: FONT.proposal, width: PROPOSAL_W, lines: FORM_NOTE_LINES, bold: false },
+  returning: { font: FONT.note, width: PROPOSAL_W, lines: 1, bold: false },
+  headline: { font: HEADLINE_FONT, width: HEADLINE_W, lines: HEADLINE_LINES, bold: true },
+  masthead: { font: MASTHEAD_FONT, width: PAPER_INNER_W - 24, lines: 1, bold: true },
+  picket: { font: PICKET_FONT, width: PICKET_W, lines: 2, bold: true },
+} as const;
 
 export interface StripRows {
   y: number;

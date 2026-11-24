@@ -123,3 +123,83 @@ export function deskLayout(width: number, height: number, insets: Insets, fontSc
   };
   return { width, height, insets, s, compact, topBar, clubStrip, ribbon, outTray, paper, drawer, goalLine, bottomRow, bar: { treasury, approval, gossip, menu }, clubs, buttons: { inTray, ledger, cabinet, poll, office } };
 }
+
+// ================================================================================================
+// The desk's own parts (desk package): what the one desk canvas draws inside 4.1's zones, and the
+// boxes of its words (the content desk's fit check reads the boxes by name).
+// ================================================================================================
+
+/** Font sizes at s = 1 of the desk's small words (× s when drawn): the door glass, the drawer's card, the sticky note, the take-back pill. */
+export const DESK_FONT = { glass: 9, drawerLabel: 8, sticky: 8, pill: 12, emptyDesk: 14, slip: 13, slipSmall: 11 } as const;
+/** Line height of the sticky note's two lines, as a multiple of its font size. */
+export const STICKY_LINE = 1.2;
+/** The out-tray band's three things, left to right at 375 (4.1 does not size them): the door, the wire tray, the sticky note. */
+export const DOOR_W = 128;
+export const STICKY_W = 124;
+export const BAND_GUTTER = 8;
+/** The budget slip (2.7: smaller than a paper), centred on the paper's rectangle. */
+export const SLIP_W = 280;
+export const SLIP_H = 168;
+/** The take-back pill (4.3 "Tap to take it back") at the top of the empty paper rectangle. */
+export const PILL_H = 44;
+export const PILL_W = 240;
+
+export interface DeskParts {
+  /** The door with its glass (top left of the out-tray band) and the glass's words box ("Next visitor 0:07"). */
+  door: Rect;
+  glass: Rect;
+  /** The wire out-tray (signed papers stack here; the take-back rest lies on it). */
+  outTray: Rect;
+  /** The sticky note (right of the out-tray band) and its two-line words box. */
+  sticky: Rect;
+  stickyText: Rect;
+  /** The drawer FOR FURTHER STUDY (the paper's width, the drawer band) and its card's words box. */
+  drawer: Rect;
+  drawerLabel: Rect;
+  /** The in-tray stack (the bottom row's in-tray slot: drawn by the desk, tapped through the bottom row). */
+  inTray: Rect;
+  /** The budget slip, centred on the paper's rectangle. */
+  slip: Rect;
+  /** The take-back pill at the top of the paper's rectangle while a signed paper rests. */
+  pill: Rect;
+  /** Font sizes at this s. */
+  font: { [K in keyof typeof DESK_FONT]: number };
+}
+
+/** The drawer card's box inside a drawer front `dw` × `h` (the art kit's drawerLabelBox, repeated here so this file stays pure of Skia). */
+export function drawerCard(dw: number, h: number): Rect {
+  const lw = Math.min(200, dw * 0.58);
+  const lh = Math.max(12, Math.min(18, h * 0.42));
+  return { x: Math.round((dw - lw) / 2 - dw * 0.06), y: Math.round((h - lh) / 2), w: Math.round(lw), h: Math.round(lh) };
+}
+
+/** The door glass's box inside a door `w` × `h` (the art kit's doorGlassBox). */
+export function doorGlass(w: number, h: number): Rect {
+  const m = Math.max(3, Math.round(h * 0.16));
+  return { x: m + 1, y: m, w: w - 2 * m - 2, h: h - 2 * m };
+}
+
+/** The desk's parts for a layout (pure); `s` the text scale (the layout's own by default). */
+export function deskParts(L: DeskLayout, s: number = L.s): DeskParts {
+  const band = L.outTray;
+  const left = band.x + BAND_GUTTER;
+  const right = band.x + band.w - BAND_GUTTER;
+  const bh = Math.max(20, band.h - 6);
+  const by = band.y + Math.round((band.h - bh) / 2);
+  const doorW = Math.min(DOOR_W, Math.round(band.w * 0.34));
+  const door = { x: left, y: by, w: doorW, h: bh };
+  const g = doorGlass(doorW, bh);
+  const glass = { x: door.x + g.x, y: door.y + g.y, w: g.w, h: g.h };
+  const stickyW = Math.min(STICKY_W, Math.round(band.w * 0.33));
+  const sticky = { x: right - stickyW, y: band.y + 1, w: stickyW, h: band.h - 2 };
+  const stickyText = { x: sticky.x + 6, y: sticky.y + 5, w: sticky.w - 14, h: sticky.h - 7 };
+  const trayX = door.x + door.w + BAND_GUTTER;
+  const outTray = { x: trayX, y: band.y + 1, w: Math.max(40, sticky.x - BAND_GUTTER - trayX), h: band.h - 2 };
+  const drawer = { x: L.paper.x, y: L.drawer.y, w: L.paper.w, h: L.drawer.h };
+  const c = drawerCard(drawer.w, drawer.h);
+  const drawerLabel = { x: drawer.x + c.x, y: drawer.y + c.y, w: c.w, h: c.h };
+  const slip = { x: L.paper.x + Math.round((L.paper.w - SLIP_W) / 2), y: L.paper.y + Math.round((L.paper.h - SLIP_H) / 2), w: SLIP_W, h: SLIP_H };
+  const pill = { x: L.paper.x + Math.round((L.paper.w - PILL_W) / 2), y: L.paper.y + 12, w: PILL_W, h: PILL_H };
+  const font = Object.fromEntries(Object.entries(DESK_FONT).map(([k, v]) => [k, v * s])) as DeskParts['font'];
+  return { door, glass, outTray, sticky, stickyText, drawer, drawerLabel, inTray: L.buttons.inTray, slip, pill, font };
+}
