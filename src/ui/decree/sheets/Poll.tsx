@@ -108,7 +108,16 @@ function PollBody() {
                 {S.sheets.weighs}
               </Txt>
             ) : null}
-            {r.strong.map((g) => (clubs[g] ? <DecreeIcon key={g} icon={clubs[g].icon} size={18} /> : null))}
+            {r.strong.map((g, k) =>
+              clubs[g] ? (
+                <View key={g} style={styles.club}>
+                  <DecreeIcon icon={clubs[g].icon} size={18} />
+                  <Txt size={ty.tiny} color={INK.soft}>
+                    {clubs[g].short + (k < r.strong.length - 1 ? ',' : '')}
+                  </Txt>
+                </View>
+              ) : null,
+            )}
             {r.campaign > 0 ? (
               <Txt size={ty.tiny} color={INK.violet}>
                 {S.sheets.campaign(r.campaign)}
@@ -217,5 +226,6 @@ const styles = StyleSheet.create({
   rowHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   num: { fontVariant: ['tabular-nums'] },
   weighs: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
+  club: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   buttons: { flexDirection: 'row', gap: 10 },
 });

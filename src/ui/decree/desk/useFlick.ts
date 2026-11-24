@@ -5,8 +5,8 @@
  *
  * JavaScript keeps the distance and the velocity from pageY and timestamps (./flick.ts) and writes ONE
  * shared value, `paperY` (the finger's distance, positive down), from which the UI thread derives the
- * paper's offset, the ink and the drawer's opening; JavaScript never reads it back. Vertical only. From 40 pt the side is armed (uiState.arm: the strip grows, the club strip
- * previews) with one light haptic and no click; a second finger cancels the gesture until every
+ * paper's offset, the ink and the drawer's opening; JavaScript never reads it back. Vertical only. From 40 pt the side is armed (the strip grows
+ * on the UI thread; uiState.preview: the bars preview) with one light haptic and no click; a second finger cancels the gesture until every
  * finger lifts; a touch that hardly moved is a tap (the second path, handled by the desk).
  */
 import { useMemo, useRef } from 'react';
@@ -14,7 +14,7 @@ import type { GestureResponderEvent, GestureResponderHandlers } from 'react-nati
 import { withSpring, type SharedValue } from 'react-native-reanimated';
 import { fx } from '../../../services/fx';
 import { useDecreeUi } from '../uiState';
-import { FAST_UP_SPEED, SPRING, armedAt, isTap, releaseOf, velocityOf, type Release, type Sample } from './flick';
+import { FAST_UP_SPEED, SPRING, armedAt, isTap, releaseAt, velocityOf, type Release, type Sample } from './flick';
 
 export interface FlickCallbacks {
   /** Whether a paper or slip lies on the desk to flick. */
@@ -47,12 +47,27 @@ export function useFlick(paperY: SharedValue<number>, paperTop: number, cb: Flic
 
   return useMemo<GestureResponderHandlers>(() => {
     const ui = useDecreeUi.getState;
+    // A drag past 40 pt only PREVIEWS its side in the bars (uiState.preview, set a frame later so the
+    // paper's move is not held up by their re-render); the strip's 110 % and the ink are drawn on the UI
+    // thread from paperY. uiState.arm is the tap path's alone (finding 3: no desk re-render mid-drag).
+    let raf: number | null = null;
+    const preview = (side: 'sign' | 'refuse' | null) => {
+      if (raf !== null) cancelAnimationFrame(raf);
+      if (side === null) {
+        raf = null;
+        ui().setPreview(null);
+        return;
+      }
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        if (g.current?.armed === side) ui().setPreview(side);
+      });
+    };
     const arm = (side: 'sign' | 'refuse' | null) => {
       const s = g.current;
       if (!s || s.armed === side) return;
       s.armed = side;
-      if (side) ui().arm(side);
-      else ui().disarm();
+      preview(side);
       if (side && !s.buzzed) {
         s.buzzed = true;
         const v = velocityOf(s.samples);
@@ -65,6 +80,7 @@ export function useFlick(paperY: SharedValue<number>, paperTop: number, cb: Flic
     const end = (release: Release) => {
       const s = g.current;
       g.current = null;
+      preview(null);
       ui().setFinger(false);
       cbRef.current.onRelease(release, s ? s.dy : 0);
     };
@@ -103,11 +119,14 @@ export function useFlick(paperY: SharedValue<number>, paperTop: number, cb: Flic
         if (s.cancelled) return end('spring');
         if (isTap(s.maxMove, t - s.startT)) {
           g.current = null;
+          preview(null);
           ui().setFinger(false);
           cbRef.current.onTap(e.nativeEvent.pageY - topRef.current);
           return;
         }
-        const r = releaseOf({ dy: s.dy, vy: velocityOf(s.samples), cancelled: false });
+        // The release itself is a sample: iOS sends no move while a finger rests, so a fast push that
+        // then rests and lifts must read as still (finding 0), never as the fast flick it once was.
+        const r = releaseAt(s, e.nativeEvent.pageY, t);
         if (r === 'spring' && s.armed) arm(null);
         end(r);
       },

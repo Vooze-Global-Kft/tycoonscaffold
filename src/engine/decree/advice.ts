@@ -20,7 +20,7 @@
  * tick.ts reads `slipNeed` (when a slip becomes possible) and grants.ts `standingOrderPick`.
  */
 import { decreeParams, levelCost, levelGain, openCost, openGain, roundDibs } from './params';
-import { reserve } from './slips';
+import { afterPurchase, reserve } from './slips';
 import { canWatchAd } from './grants';
 import { canCall } from './term';
 import { poll } from './count';
@@ -89,6 +89,25 @@ export function scoreOf(cfg: DecreeConfig, c: Candidate, cash: number, res: numb
   return c.purchase.type === 'level' && short ? s / cfg.decree.advice.recordDivisor : s;
 }
 
+/** A candidate's payback: price over what it adds to I (seconds). */
+const payback = (c: Candidate): number => c.price / c.gain;
+
+/**
+ * D42 (d): advice's pick among `cs`: the best by 2.16's score, except that the record weighting never
+ * puts a level ahead of an opening the treasury can pay above the reserve (`res`): when the best is a
+ * level, the best-scoring opening affordable above the reserve whose payback is at most
+ * `openingFactor` (2) times that level's payback is advised instead.
+ */
+function choice(cfg: DecreeConfig, cs: readonly Candidate[], cash: number, res: number, I: number, short: boolean): Candidate | null {
+  const b = best(cfg, cs, cash, res, I, short);
+  if (!b || b.purchase.type !== 'level') return b;
+  const opens = cs.filter((c) => c.purchase.type === 'open' && cash >= c.price + res && payback(c) <= OPENING_FACTOR * payback(b));
+  return best(cfg, opens, cash, res, I, short) ?? b;
+}
+
+/** D42 (d): an opening the treasury can pay is advised over the best level while its payback is at most this many times the level's. */
+export const OPENING_FACTOR = 2;
+
 /** The best of `cs` by score (ties: the first). */
 function best(cfg: DecreeConfig, cs: readonly Candidate[], cash: number, res: number, I: number, short: boolean): Candidate | null {
   let out: Candidate | null = null;
@@ -115,7 +134,7 @@ function aboutWait(need: number, I: number): About | null {
 
 /** The slip a candidate makes (2.7 "Budget slips": its printed price, the level it starts from, +n/s). */
 function slipOf(c: Candidate): Slip {
-  return { kind: 'slip', purchase: c.purchase, price: c.price, drawnLevel: c.level, rateGain: c.gain };
+  return { kind: 'slip', purchase: c.purchase, price: c.price, drawnLevel: c.level, rateGain: c.gain, levels: 1 };
 }
 
 /** Whether a boycott or "Say nothing" runs, and which club boycotts first (the grievance on the desk first). */
@@ -137,8 +156,8 @@ export function advice(cfg: DecreeConfig, g: DecreeGame): AdviceResult {
   const res = slipReserve(cfg, g, p);
   const short = recordShort(cfg, g, p);
   const affordable = cs.filter((c) => g.cash >= c.price + res);
-  const pickNow = best(cfg, affordable, g.cash, res, I, short);
-  const pick = best(cfg, cs, g.cash, res, I, short);
+  const pickNow = choice(cfg, affordable, g.cash, res, I, short);
+  const pick = choice(cfg, cs, g.cash, res, I, short);
   const slip = pickNow ? slipOf(pickNow) : null;
   const next = !slip && pick ? { purchase: pick.purchase, price: pick.price, about: aboutWait(pick.price + res - g.cash, I) } : null;
   const call = callNow(cfg, g);
@@ -175,6 +194,18 @@ export function slipNeed(cfg: DecreeConfig, g: DecreeGame): number | null {
   const cs = candidates(cfg, g, p);
   if (!cs.length) return null;
   return Math.min(...cs.map((c) => c.price)) + slipReserve(cfg, g, p);
+}
+
+/**
+ * D33 with the attack's fix: the cash at which the Standing Order buys `pick`: standingOrder.times × its
+ * price plus what it keeps back now, and never less than its price plus what it keeps back on the state
+ * AFTER the purchase (the level raises B, and the waiting papers and the run-up are sized when they land,
+ * D23), so its own purchase never leaves a waiting paper unaffordable. The tick and grants.ts read it.
+ */
+export function standingOrderNeed(cfg: DecreeConfig, g: DecreeGame, pick: Candidate): number {
+  const now = cfg.decree.standingOrder.times * pick.price + standingOrderReserve(cfg, g);
+  const after = pick.price + standingOrderReserve(cfg, afterPurchase(cfg, g, pick.purchase));
+  return Math.max(now, after);
 }
 
 /**

@@ -9,7 +9,7 @@
  * what it shows changes (the store's game changes ten times a second).
  */
 import * as R from '../../../engine/decree';
-import { S, aboutText, dibs } from '../strings';
+import { S, aboutText, dibs, nbsp } from '../strings';
 import { stripView, type StripNames, type StripView } from './stripView';
 
 export type Ground = 'day' | 'requisition' | 'ribbon' | 'application' | 'front' | 'runup' | 'grievance';
@@ -151,9 +151,9 @@ export function deskVm(cfg: R.DecreeConfig, g: R.DecreeGame, s: number): DeskVM 
     name: p.visitor.name,
     role: p.cosigner ? S.desk.withCosigner(p.cosigner.name) : p.visitor.role,
     clubIcon,
-    text,
-    returning: p.returning,
-    note: p.note,
+    text: nbsp(text),
+    returning: p.returning ? nbsp(p.returning) : null,
+    note: p.note ? nbsp(p.note) : null,
     masthead: p.kind === 'scandal' ? p.visitor.name : null,
     picket,
     factors: item.shown.factors.map((f) => f.text),

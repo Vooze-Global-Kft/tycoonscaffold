@@ -3,7 +3,7 @@
  * rule, the second finger, the tap, and what the ink and the drawer show at a distance.
  */
 import { describe, expect, it } from 'vitest';
-import { ARM_AT, COMMIT_DOWN, COMMIT_UP, FAST_DOWN, FAST_DOWN_SPEED, FAST_UP, FAST_UP_SPEED, armedAt, drawerOf, drawerStep, followOf, inkOf, isTap, releaseOf, velocityOf } from './flick';
+import { ARM_AT, COMMIT_DOWN, COMMIT_UP, FAST_DOWN, FAST_DOWN_SPEED, FAST_UP, FAST_UP_SPEED, armedAt, drawerOf, drawerStep, followOf, inkOf, isTap, releaseAt, releaseOf, velocityOf } from './flick';
 
 const up = (d: number, v = 0) => releaseOf({ dy: -d, vy: -v, cancelled: false });
 const down = (d: number, v = 0) => releaseOf({ dy: d, vy: v, cancelled: false });
@@ -109,5 +109,19 @@ describe('the flick (4.3)', () => {
     expect(releaseOf({ dy: 240 - 300, vy: velocityOf(slow), cancelled: false })).toBe('spring');
     const quick = [{ y: 300, t: 0 }, { y: 270, t: 20 }, { y: 240, t: 40 }];
     expect(releaseOf({ dy: 240 - 300, vy: velocityOf(quick), cancelled: false })).toBe('sign');
+  });
+
+  it('a fast push that rests 1 s before the finger lifts springs back (iOS sends no move while it rests)', () => {
+    const g = { startY: 500, samples: [{ y: 500, t: 0 }, { y: 470, t: 25 }, { y: 440, t: 50 }], dy: -60 };
+    expect(releaseOf({ dy: g.dy, vy: velocityOf(g.samples), cancelled: false })).toBe('sign');
+    expect(releaseAt({ ...g, samples: [...g.samples] }, 440, 1050)).toBe('spring');
+    // the same push lifted at once is still a fast flick
+    expect(releaseAt({ ...g, samples: [...g.samples] }, 438, 55)).toBe('sign');
+  });
+
+  it('the release point counts: a finger that slid on to 90 pt between the last move and the lift signs', () => {
+    const g = { startY: 500, samples: [{ y: 500, t: 0 }, { y: 430, t: 400 }], dy: -70 };
+    expect(releaseAt(g, 409, 800)).toBe('sign');
+    expect(g.dy).toBe(-91);
   });
 });

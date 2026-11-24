@@ -119,7 +119,7 @@ function Portrait({ m, w, t }: { m: WallModel; w: number; t: Types }) {
           {name}
         </Text>
         <Text allowFontScaling={false} style={[styles.fact, t.small]}>
-          {S.views.seat(m.place, m.term)}
+          {S.views.seat(m.place)}
         </Text>
       </View>
     </View>
@@ -161,7 +161,7 @@ function Towns({ m, w, t }: { m: WallModel; w: number; t: Types }) {
             {m.photos.map((p, i) => (
               <View key={i} style={{ width: colW, marginRight: i < n - 1 ? 12 : 0 }}>
                 <Text allowFontScaling={false} style={[styles.caption, t.small]}>
-                  {S.views.photoCaption(p.place, p.title, p.terms)}
+                  {S.views.photoCaption(p.place, p.title)}
                 </Text>
                 <Text allowFontScaling={false} style={[styles.soft, t.clip]}>
                   {S.views.levelsOnRecord}

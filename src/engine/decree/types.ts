@@ -207,8 +207,14 @@ export interface Slip {
   price: number;
   /** The level the purchase starts from (a level form; stale when it moved, 2.7 "Forms are checked at commit"). */
   drawnLevel: number;
-  /** +n/s it adds to I at landing (printed "+8/s"). */
+  /** +n/s it adds to I at landing (printed "+8/s"): the sum of its levels' gains. */
   rateGain: number;
+  /**
+   * D42 (a): how many levels the slip buys at once (an integer of at least 1; an opening is always 1):
+   * as many as the treasury can pay above the slip's reserve, up to the next storey. `price` is the sum
+   * of those levels' prices and `rateGain` the sum of their gains, frozen at landing (D23).
+   */
+  levels: number;
 }
 
 /** What a slip, the Ledger or the Standing Order buys. */
@@ -543,6 +549,8 @@ export interface Ledger {
   reserve: number;
   /** "Kept for the run-up" (D16: from day C until the count, the K campaign papers and the rally at their prices), 0 otherwise. */
   reserveRunUp: number;
+  /** D41: nothing can be bought on election night or on the result sheet (every row's refusal is then 'closed'). */
+  shut: boolean;
 }
 
 /** The top bar (4.1): "999.9M · +999.9K/s", "62 % ×1.14", gossip. */
@@ -559,7 +567,8 @@ export interface TopBar {
 export type PaperEvent =
   | { type: 'paperArrived'; paper: string; toDesk: boolean }
   | { type: 'slipArrived' }
-  | { type: 'slipReturned' }
+  /** A slip leaves the desk unbought: put back by a down flick, by a visitor (D32 off), at the call or the count; `reason` 'done' (D42 (c)): the Ledger or the Standing Order bought what it names ("Already done: the Clerk takes it back"). */
+  | { type: 'slipReturned'; reason?: 'done' }
   | { type: 'signed'; paper: string }
   | { type: 'studied'; paper: string }
   | { type: 'committed'; paper: string; choice: Choice }
@@ -759,6 +768,20 @@ export interface DecreeState {
   appSlotsUsed?: number;
   /** The day papers signed this term (the wire out-tray's stack, 4.3 and 5.1): 0 at a new term and a move. */
   signedThisTerm: number;
+  /**
+   * D42 (b): papers decided (not a slip, not a form that left with no effect) since the last slip landed;
+   * a slip lands between two papers only once this reaches `slips.betweenEvery`. 0 at a move.
+   */
+  papersSinceSlip: number;
+  /** D42 (e): papers with a written text (every kind but a template frame and the Clerk's forms) landed in this game. */
+  handLanded: number;
+  /** D42 (e): the last paper drawn was a template frame (never two frames in a row). */
+  frameLast: boolean;
+  /**
+   * D42 (f): visitor name → `stats.papers` when a paper of theirs was last drawn (the Treasury Clerk's forms
+   * and the front page's newspaper are not counted): the two largest are "the last two visitors".
+   */
+  visitorsSeen: Record<string, number>;
 }
 
 export interface ResultSheet {

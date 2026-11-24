@@ -1122,62 +1122,62 @@
     {
       "id": "app-pockle",
       "minister": "pockle",
-      "text": "I apply to be your minister. References: 'She found one.'",
+      "text": "I apply to be Minister for Potholes. References: 'She found one.'",
       "returnText": "I apply again. Since last time, I have found another one."
     },
     {
       "id": "app-pellow",
       "minister": "pellow",
-      "text": "I ended the onion dispute. Both onions are speaking again.",
+      "text": "I apply to be Minister for Benches. I ended the onion dispute. Both onions now speak.",
       "returnText": "I apply again. The onions asked after you.",
       "note": "Vegetables; settlements x0.5: she calms quarrels"
     },
     {
       "id": "app-ferrule",
       "minister": "ferrule",
-      "text": "I can find a sponsor for anything. I once found one for a puddle.",
+      "text": "I apply to be Minister for Lampposts. I once found a sponsor for a puddle.",
       "returnText": "I apply again. The puddle still speaks well of me.",
       "note": "Shops; fees x1.2"
     },
     {
       "id": "app-hush",
       "minister": "hush",
-      "text": "Rumours lose interest when I walk in. I am never talked about.",
+      "text": "I apply to be Minister for Market Weights. Rumours lose interest when I walk in.",
       "returnText": "I apply again. Nobody mentioned I had gone.",
       "note": "Shops; gossip decays sooner"
     },
     {
       "id": "app-bole",
       "minister": "bole",
-      "text": "I have played at 212 ribbon-cuttings. I know when the scissors close.",
+      "text": "Minister for Bandstands, please. 212 ribbon-cuttings; I know when the scissors close.",
       "returnText": "I apply again. I have kept the fanfare warm.",
       "note": "Brass; ribbons please more"
     },
     {
       "id": "app-gusset",
       "minister": "gusset",
-      "text": "I can open a fête with a third of the fuss. I bring my own chair.",
+      "text": "I apply to be Minister for Jetties. I can open a fête with a third of the fuss.",
       "returnText": "I apply again. The chair is already unfolded.",
       "note": "Anglers; campaign papers cheaper"
     },
     {
       "id": "app-wren",
       "minister": "wren",
-      "text": "I once kept a kite up for nine hours. I was asked for one.",
+      "text": "Minister for Kites, please. I once kept a kite up for nine hours. I was asked for one.",
       "returnText": "I apply again. The kite is still up.",
       "note": "Kites; fees x1.2"
     },
     {
       "id": "app-tamp",
       "minister": "tamp",
-      "text": "I have said nothing, very well, for thirty years.",
+      "text": "I apply to run the Hedgerow Bureau. I have said nothing, very well, for thirty years.",
       "returnText": "I apply again. I did not mention it to anyone.",
       "note": "Hedges; 'Say nothing' costs less"
     },
     {
       "id": "app-nibley",
       "minister": "nibley",
-      "text": "I have patched the same waders for twenty years. They are now all patch.",
+      "text": "I apply for Jetties. I have patched the same waders for twenty years. They are all patch.",
       "returnText": "I apply again. In the same waders.",
       "note": "Anglers; requisitions x0.9: thrift"
     }

@@ -99,16 +99,25 @@ export function followUpPaper(cfg: DecreeConfig, g: DecreeGame, f: FollowUp): { 
 }
 
 /**
- * The sticky note one paper ahead ("Next: the pumpkin is back."): the follow-up that lands after the
- * desk paper (the tray's first paper, or with an empty tray the one due after the next decision), its
- * chain id and visitor's name; null otherwise. Built.
+ * The sticky note one paper ahead ("Next: the pumpkin is back."): the follow-up that lands after the desk
+ * paper (D42 (g): the first follow-up waiting in the tray, unless a grievance or front page goes first;
+ * else the one due after the next decision, which then lands next or comes with the next arrival), its
+ * chain id and visitor's name; null otherwise, and never the visitor whose paper already lies on the desk
+ * or rests in the take-back window (review finding 63: "Next: Sash is back." over Sash's paper). Built.
  */
 export function stickyNote(cfg: DecreeConfig, g: DecreeGame): { chainId: string; visitor: string } | null {
   const d = g.decree;
-  const first = d.tray[0];
-  if (first) return first.kind === 'followup' && first.followUpOf ? { chainId: first.followUpOf.chainId, visitor: first.visitor.name } : null;
-  const soon = d.followUps.filter((f) => f.dueAt <= d.stats.decisions + 1).sort((a, b) => a.dueAt - b.dueAt)[0];
-  if (!soon) return null;
-  const def = followUpDef(cfg, soon);
-  return def ? { chainId: soon.chainId, visitor: (def.visitor ?? cfg.decree.cast.clerk).name } : null;
+  const here = d.desk?.type === 'paper' ? d.desk.paper : (d.pending?.item.paper ?? null);
+  const out = ((): { chainId: string; visitor: string } | null => {
+    const first = d.tray[0];
+    if (first && (first.kind === 'strike' || first.kind === 'scandal')) return null;
+    const waiting = d.phase === 'governing' ? d.tray.find((p) => p.kind === 'followup' && p.followUpOf) : first?.kind === 'followup' ? first : undefined;
+    if (waiting?.followUpOf) return { chainId: waiting.followUpOf.chainId, visitor: waiting.visitor.name };
+    if (first && d.phase !== 'governing') return null;
+    const soon = d.followUps.filter((f) => f.dueAt <= d.stats.decisions + 1).sort((a, b) => a.dueAt - b.dueAt)[0];
+    if (!soon) return null;
+    const def = followUpDef(cfg, soon);
+    return def ? { chainId: soon.chainId, visitor: (def.visitor ?? cfg.decree.cast.clerk).name } : null;
+  })();
+  return out && here && here.visitor.name === out.visitor ? null : out;
 }

@@ -22,13 +22,13 @@
  * SEAM: `commitItem` IS 2.17: one function calling named steps of both rules packages, in order.
  * Each step is owned by the file named beside it; neither side reorders it without the other.
  */
-import { isEventPaper, landNext } from './draw';
+import { landNext, nextLanding } from './draw';
 import { scheduleFollowUp } from './followup';
 import { appoint, sendAway } from './ministers';
 import { commitCash, EPS } from './params';
 import { checkScandal, countDownScandal, endScandal } from './scandal';
 import { costOf, formVoid } from './size';
-import { buy, canBuy, slipFor } from './slips';
+import { buy, canBuy, slipFor, slipVoid } from './slips';
 import { checkStrikes, countDownStrikes, endStrike } from './strike';
 import { checkTermEnd, countDay } from './term';
 import { DAY_KINDS, type Choice, type DecreeConfig, type DecreeEvent, type DecreeGame, type DeskItem } from './types';
@@ -74,17 +74,6 @@ export function commitPending(cfg: DecreeConfig, g: DecreeGame, clock: number, e
   return commitItem(cfg, g, p.item, 'sign', clock, events);
 }
 
-/** Why a slip would leave with no effect now: its level moved or its ministry opened ('done'), or the cap ('cap'). */
-function slipVoid(cfg: DecreeConfig, g: DecreeGame, item: DeskItem & { type: 'slip' }): 'done' | 'cap' | null {
-  const pu = item.slip.purchase;
-  if (pu.type === 'monument') return g.decree.monumentOffer === pu.monument && !g.decree.vanity.includes(pu.monument) ? null : 'done';
-  const m = g.decree.ministries[pu.ministry];
-  if (!m) return 'done';
-  if (pu.type === 'open') return m.open ? 'done' : null;
-  if (m.open && m.level >= cfg.decree.ministry.levelCap) return 'cap';
-  return !m.open || m.level !== item.slip.drawnLevel ? 'done' : null;
-}
-
 /**
  * Applies `shown` of `choice` exactly (H1): moods, cash through commitCash (source `paper`), gossip,
  * levels (through slips.ts `buy`'s level step), appointments and returns (ministers.ts `appoint` /
@@ -103,7 +92,8 @@ export function applyShown(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, cho
       events.push({ type: 'formVoid', paper: 'slip', reason: v });
       return g;
     }
-    const s = buy(cfg, g, item.slip.purchase, item.slip.price, events, { landed: true });
+    // D42 (a): the bundle of `levels` levels at its printed price (an opening, a monument: one).
+    const s = buy(cfg, g, item.slip.purchase, item.slip.price, events, { landed: true, levels: item.slip.levels ?? 1 });
     return s === g ? g : withDecree(s, { stats: { ...s.decree.stats, slipsTaken: s.decree.stats.slipsTaken + 1 } });
   }
   const paper = item.paper;
@@ -198,9 +188,10 @@ export function isDay(item: DeskItem): boolean {
  *     counters −1 (strike.ts), the "Say nothing" counter −1, quiet and gossip decay (scandal.ts);
  * (3) the boycott check, then the gossip and scandal check (strike.ts, scandal.ts);
  * (4) at day D the run-up starts (term.ts `checkTermEnd`, P1b);
- * (5) after a paper, D18: when a paper waits (not a settlement or front page, which go first), no
- *     slip has been offered since the last decided paper and a purchase is affordable above the
- *     reserve, the slip lands first (slips.ts `slipFor`);
+ * (5) after a paper, D18 with D42 (b): when a paper waits (not a settlement or front page, nor a due
+ *     follow-up, which go first: D42 (g)), at least `slips.betweenEvery` papers have been decided since
+ *     the last slip landed and a purchase is affordable above the reserve, the slip lands first
+ *     (slips.ts `slipFor`, a bundle of levels: D42 (a));
  *     else the next paper lands (draw.ts `landNext`), or the slip's 1.0 s starts on an empty desk.
  * Built.
  */
@@ -218,6 +209,8 @@ export function commitItem(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, cho
     drawerCount: d0.drawerCount + (counted && choice === 'refuse' ? 1 : 0),
     signedThisTerm: d0.signedThisTerm + (counted && isDay(item) && choice === 'sign' ? 1 : 0),
     slipOffered: isPaper ? false : d0.slipOffered,
+    // D42 (b): papers decided since the last slip landed (a void form is not counted, D39).
+    papersSinceSlip: (d0.papersSinceSlip ?? 0) + (counted ? 1 : 0),
     stats: counted ? { ...st0, signed: st0.signed + (choice === 'sign' ? 1 : 0), refused: st0.refused + (choice === 'refuse' ? 1 : 0) } : st0,
   });
   if (isPaper) events.push({ type: 'committed', paper: item.paper.id, choice });
@@ -238,12 +231,13 @@ export function commitItem(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, cho
   s = checkTermEnd(cfg, s, events);
   // (5)
   const d = s.decree;
-  // A slip never goes ahead of a settlement or a front page waiting on top (2.7 step 1: events first).
-  if (isPaper && !d.desk && !d.pending && d.tray.length && !isEventPaper(d.tray[0]) && !d.slipOffered && d.phase === 'governing') {
-    const slip = slipFor(cfg, s);
+  // A slip never goes ahead of a settlement or a front page waiting on top (2.7 step 1: events first), nor of a due follow-up (D42 (g)).
+  if (isPaper && !d.desk && !d.pending && d.tray.length && d.phase === 'governing' && (d.papersSinceSlip ?? 0) >= cfg.decree.slips.betweenEvery) {
+    const next = nextLanding(cfg, s);
+    const slip = next && next.kind === 'tray' && next.paper.kind !== 'followup' && next.paper.kind !== 'strike' && next.paper.kind !== 'scandal' ? slipFor(cfg, s) : null;
     if (slip) {
       events.push({ type: 'slipArrived' });
-      return withDecree(s, { desk: { type: 'slip', slip, landedAt: clock }, slipOffered: true, emptySince: null });
+      return withDecree(s, { desk: { type: 'slip', slip, landedAt: clock }, slipOffered: true, papersSinceSlip: 0, emptySince: null });
     }
   }
   return landNext(cfg, s, clock, events);

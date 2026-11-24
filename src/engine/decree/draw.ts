@@ -40,7 +40,7 @@ import { clubIndex, decreeParams, factorOn, levelCost, levelCostRaw, levelGain, 
 import { freezeShown } from './size';
 import { slipYields } from './slips';
 import { deskFactors } from './twists';
-import type { ApplicationDef, BaseEffect, ChainDef, ClubId, ClubIx, ComicPaperDef, DecreeConfig, DecreeEvent, DecreeGame, Effect, FollowUpRef, FrameDef, GrievanceDef, OfficeIx, Outcome, Paper, PaperKind } from './types';
+import type { ApplicationDef, BaseEffect, ChainDef, ClubId, ClubIx, ComicPaperDef, DecreeConfig, DecreeEvent, DecreeGame, Effect, FollowUp, FollowUpRef, FrameDef, GrievanceDef, OfficeIx, Outcome, Paper, PaperKind, Visitor } from './types';
 
 type Drawn = { paper: Paper; g: DecreeGame };
 
@@ -100,7 +100,7 @@ export function servedClub(cfg: DecreeConfig, office: OfficeIx, i: number): Club
   return ix(cfg, office, officeOf(cfg, office).ministries[i]?.club ?? null);
 }
 
-/** A paper on top of the tray, after the events already there (2.7 step 1: it may exceed the cap by 1). */
+/** A paper on top of the tray, after the events already there (2.7 step 1; D41: whatever the tray's cap). */
 export function onTop(g: DecreeGame, paper: Paper): DecreeGame {
   const tray = g.decree.tray;
   let k = 0;
@@ -208,7 +208,7 @@ function writtenPaper(cfg: DecreeConfig, g: DecreeGame, def: ComicPaperDef | Fra
   const fu = followUpsOf(cfg, g, def);
   const jit = drawJitter(cfg, fu.g);
   const idr = nextId(jit.g, kind, def.id);
-  const visitor = ('visitor' in def && def.visitor) || spokesperson(cfg, def.club);
+  const visitor = ('visitor' in def && def.visitor) || spokesperson(cfg, g, def.club);
   const paper: Paper = {
     id: idr.id,
     kind,
@@ -234,10 +234,45 @@ function writtenPaper(cfg: DecreeConfig, g: DecreeGame, def: ComicPaperDef | Fra
   return { paper, g: idr.g };
 }
 
-/** A visitor for a frame written without one: the club's spokesperson of the grievances, else the Treasury Clerk. */
-function spokesperson(cfg: DecreeConfig, club: ClubId) {
-  const gr = cfg.decree.deck.grievances.find((x) => x.club === club);
-  return gr ? gr.visitor : { ...cfg.decree.cast.clerk, club };
+/**
+ * A visitor for a frame written without one: one of the club's spokespeople of the grievances, the one
+ * seen longer ago (D42 (f): never seen counts as longest ago; ties the first in the deck), else the
+ * Treasury Clerk.
+ */
+function spokesperson(cfg: DecreeConfig, g: DecreeGame, club: ClubId): Visitor {
+  const seen = g.decree.visitorsSeen ?? {};
+  let out: Visitor | null = null;
+  let at = Infinity;
+  for (const gr of cfg.decree.deck.grievances) {
+    if (gr.club !== club) continue;
+    const t = seen[gr.visitor.name] ?? -1;
+    if (t < at) [out, at] = [gr.visitor, t];
+  }
+  return out ?? { ...cfg.decree.cast.clerk, club };
+}
+
+/** D42 (f): the names of the visitors who brought the last `draw.recentVisitors` papers drawn (the Clerk's forms and the newspaper not counted). */
+export function recentVisitors(cfg: DecreeConfig, g: DecreeGame): Set<string> {
+  const n = cfg.decree.draw.recentVisitors;
+  if (n <= 0) return new Set();
+  const e = Object.entries(g.decree.visitorsSeen ?? {}).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+  return new Set(e.slice(0, n).map((x) => x[0]));
+}
+
+/**
+ * What a paper drawn now records (D42 (e), (f)): whether it was a template frame (never two in a row),
+ * and its visitor's last draw (`stats.papers`, already counting it); the Treasury Clerk's forms and the
+ * front page's newspaper are not visitors of the town.
+ */
+export function noteDrawn(cfg: DecreeConfig, g: DecreeGame, paper: Paper): DecreeGame {
+  const d = g.decree;
+  const town = paper.kind !== 'scandal' && paper.kind !== 'requisition' && paper.kind !== 'ribbon' && paper.visitor.name !== cfg.decree.cast.clerk.name;
+  return withDecree(g, { frameLast: paper.kind === 'template', visitorsSeen: town ? { ...(d.visitorsSeen ?? {}), [paper.visitor.name]: d.stats.papers } : (d.visitorsSeen ?? {}) });
+}
+
+/** D42 (e): a template frame may be drawn now: `draw.framesAfter` papers with a written text have landed in this game, and the last paper drawn was not a frame. */
+export function framesAllowed(cfg: DecreeConfig, g: DecreeGame): boolean {
+  return (g.decree.handLanded ?? 0) >= cfg.decree.draw.framesAfter && !g.decree.frameLast;
 }
 
 /**
@@ -313,7 +348,7 @@ function eligibleFrames(cfg: DecreeConfig, office: OfficeIx): FrameDef[] {
  * this bag is still to be dealt (the comic draw's fallback, which must not repeat a frame before it
  * returns a text seen longest ago); a bag never dealt counts as fresh.
  */
-function templatePaper(cfg: DecreeConfig, g: DecreeGame, fresh = false): Drawn | null {
+function templatePaper(cfg: DecreeConfig, g: DecreeGame, fresh = false, passOver = false): Drawn | null {
   const frames = eligibleFrames(cfg, g.decree.office);
   if (!frames.length) return null;
   const ids = new Set(frames.map((f) => f.id));
@@ -343,6 +378,8 @@ function templatePaper(cfg: DecreeConfig, g: DecreeGame, fresh = false): Drawn |
   }
   const w = writtenPaper(cfg, s, frame, 'template', text, null);
   if (!w) return null;
+  // D42 (f): a frame whose visitor brought one of the last papers is passed over (the frame stays in the bag; the comic draw goes on).
+  if (passOver && recentVisitors(cfg, g).has(w.paper.visitor.name)) return null;
   return { paper: w.paper, g: withDecree(w.g, { seen: { ...w.g.decree.seen, [frame.id]: w.g.decree.stats.decisions } }) };
 }
 
@@ -362,9 +399,14 @@ export function returningLines(cfg: DecreeConfig, club: ClubId | null): { id: st
  */
 function comicDraw(cfg: DecreeConfig, g: DecreeGame): Drawn | null {
   const weights = comicWeights(cfg, g);
-  const chosen = pickWeighted(g, weights.map((w) => ({ weight: w.weight, v: w.def })));
+  // D42 (f): the draw passes over a paper whose visitor brought one of the last papers, when another eligible paper exists.
+  const recent = recentVisitors(cfg, g);
+  const spread = recent.size ? weights.filter((w) => !recent.has(w.def.visitor.name)) : weights;
+  const pool = spread.some((w) => w.weight > 0) ? spread : weights;
+  const chosen = pickWeighted(g, pool.map((w) => ({ weight: w.weight, v: w.def })));
   if (chosen) return comicPaper(cfg, chosen.g, chosen.v.id);
-  const t = templatePaper(cfg, g, true);
+  // D42 (e): the fallback's frame only once frames may come.
+  const t = framesAllowed(cfg, g) ? templatePaper(cfg, g, true) : null;
   if (t) return t;
   const d = g.decree;
   let oldest: ComicPaperDef | null = null;
@@ -524,32 +566,35 @@ function choose(cfg: DecreeConfig, g0: DecreeGame): Drawn | null {
   const n = d0.stats.drawn + 1;
   const g = withDecree(g0, { stats: { ...d0.stats, drawn: n } });
   // (3) a follow-up past its dueAt.
+  let g1 = g;
   const f = dueFollowUp(cfg, g);
   if (f) {
     const rest = withDecree(g, { followUps: g.decree.followUps.filter((x) => x !== f) });
     const r = followUpPaper(cfg, rest, f);
     if (r) return r;
+    // A follow-up the deck or the office can no longer make is dropped (it would hold back every follow-up behind it).
+    g1 = rest;
   }
   // (4) forms: an application, a ribbon at a new storey, a requisition every n-th draw.
-  const minister = nextApplication(cfg, g);
+  const minister = nextApplication(cfg, g1);
   if (minister) {
-    const a = applicationPaper(cfg, g, minister);
+    const a = applicationPaper(cfg, g1, minister);
     if (a) return a;
   }
-  const rib = g.decree.ribbonsDue[0];
-  if (rib) return ribbonPaper(cfg, withDecree(g, { ribbonsDue: g.decree.ribbonsDue.slice(1) }), rib.ministry);
-  if (n % officeOf(cfg, g.decree.office).requisitionEvery === 0) {
-    const i = requisitionMinistry(cfg, g);
-    if (i !== null) return requisitionPaper(cfg, g, i);
+  const rib = g1.decree.ribbonsDue[0];
+  if (rib) return ribbonPaper(cfg, withDecree(g1, { ribbonsDue: g1.decree.ribbonsDue.slice(1) }), rib.ministry);
+  if (n % officeOf(cfg, g1.decree.office).requisitionEvery === 0) {
+    const i = requisitionMinistry(cfg, g1);
+    if (i !== null) return requisitionPaper(cfg, g1, i);
   }
-  // (5) a template with probability q, else a comic paper.
-  const q = officeOf(cfg, g.decree.office).templateShare;
-  let s = g;
+  // (5) a template with probability q (D42 (e): only once frames may come, never two in a row; (f): passed over for a recent visitor), else a comic paper.
+  const q = officeOf(cfg, g1.decree.office).templateShare;
+  let s = g1;
   if (q > 0) {
     const r = rand(s, 'template');
     s = r.g;
-    if (r.value < q) {
-      const t = templatePaper(cfg, s);
+    if (r.value < q && framesAllowed(cfg, s)) {
+      const t = templatePaper(cfg, s, false, true);
       if (t) return t;
     }
   }
@@ -578,7 +623,7 @@ export function drawNext(cfg: DecreeConfig, g: DecreeGame, clock: number, events
   if (d.phase !== 'governing' || d.tray.length >= cfg.decree.desk.trayCap) return g;
   const r = choose(cfg, g);
   if (!r) return g;
-  return arrive(cfg, r.g, r.paper, clock, events);
+  return arrive(cfg, noteDrawn(cfg, r.g, r.paper), r.paper, clock, events);
 }
 
 /** Time away and Open the Doors: up to `n` arrivals in order, with the unchanged state (2.15: a reload re-rolls nothing). Built. */
@@ -592,20 +637,56 @@ export function fillTray(cfg: DecreeConfig, g: DecreeGame, n: number, clock: num
   return s;
 }
 
-/** 2.17 step 5: the next paper from the tray onto a free desk (it lands: `freezeShown`), or, with nothing waiting, `emptySince` starts the slip's 1.0 s. The same object while the desk is taken. Built. */
+/**
+ * What lands next from a non-empty tray (2.17 step 5 with D42 (g)): a grievance or front page on top
+ * first; then, while governing and no scripted paper waits, a follow-up: the first one waiting in the
+ * tray, else one due now and not drawn yet (`due`: it is drawn as it lands); else the tray's first paper.
+ * Null with an empty tray (a due follow-up then comes with the next arrival, 2.7 step 3). Pure: the sticky
+ * note and the D18 slip read it. Built.
+ */
+export function nextLanding(cfg: DecreeConfig, g: DecreeGame): { kind: 'tray'; index: number; paper: Paper } | { kind: 'due'; followUp: FollowUp } | null {
+  const d = g.decree;
+  if (!d.tray.length) return null;
+  if (isEventPaper(d.tray[0]) || d.phase !== 'governing' || d.tray.some((p) => p.kind === 'scripted')) return { kind: 'tray', index: 0, paper: d.tray[0] };
+  const k = d.tray.findIndex((p) => p.kind === 'followup');
+  if (k >= 0) return { kind: 'tray', index: k, paper: d.tray[k] };
+  const f = dueFollowUp(cfg, g);
+  return f ? { kind: 'due', followUp: f } : { kind: 'tray', index: 0, paper: d.tray[0] };
+}
+
+/**
+ * 2.17 step 5: the next paper onto a free desk (it lands: `freezeShown`) by `nextLanding` (D42 (g): a due
+ * follow-up ahead of the tray, behind a grievance or a front page), or, with nothing waiting, `emptySince`
+ * starts the slip's 1.0 s. The same object while the desk is taken. Built.
+ */
 export function landNext(cfg: DecreeConfig, g: DecreeGame, clock: number, events: DecreeEvent[]): DecreeGame {
   const d = g.decree;
   if (d.desk || d.pending) return g;
   if (!d.tray.length) return d.emptySince === null ? withDecree(g, { emptySince: clock }) : g;
-  const [first, ...rest] = d.tray;
+  const next = nextLanding(cfg, g);
+  if (next?.kind === 'due') {
+    const rest = withDecree(g, { followUps: d.followUps.filter((x) => x !== next.followUp) });
+    const r = followUpPaper(cfg, rest, next.followUp);
+    // One the deck can no longer make is dropped; the tray's first paper lands instead.
+    if (!r) return landNext(cfg, rest, clock, events);
+    const x = noteDrawn(cfg, r.g, r.paper);
+    events.push({ type: 'paperArrived', paper: r.paper.id, toDesk: true });
+    return landPaper(cfg, x, r.paper, clock);
+  }
+  const k = next?.kind === 'tray' ? next.index : 0;
+  const first = d.tray[k];
   events.push({ type: 'paperArrived', paper: first.id, toDesk: true });
-  return landPaper(cfg, withDecree(g, { tray: rest }), first, clock);
+  return landPaper(cfg, withDecree(g, { tray: d.tray.filter((_, i) => i !== k) }), first, clock);
 }
 
-/** Lands `paper` on the desk now: every number it prints frozen from the current state with the ONE Factors object (D23). Built. */
+/** D42 (e): the kinds that are not hand-written papers (a template frame, the Clerk's forms): the others count toward `draw.framesAfter`. */
+const NOT_HAND: readonly PaperKind[] = ['template', 'requisition', 'ribbon'];
+
+/** Lands `paper` on the desk now: every number it prints frozen from the current state with the ONE Factors object (D23); a hand-written paper counts toward D42 (e). Built. */
 export function landPaper(cfg: DecreeConfig, g: DecreeGame, paper: Paper, clock: number): DecreeGame {
   const shown = freezeShown(cfg, g, paper, deskFactors(cfg, g));
-  return { ...g, decree: { ...g.decree, desk: { type: 'paper', paper, shown, landedAt: clock }, emptySince: null } };
+  const handLanded = (g.decree.handLanded ?? 0) + (NOT_HAND.includes(paper.kind) ? 0 : 1);
+  return { ...g, decree: { ...g.decree, desk: { type: 'paper', paper, shown, landedAt: clock }, emptySince: null, handLanded } };
 }
 
 // ----------------------------------------------------------------------------- the run-up, events

@@ -131,3 +131,17 @@ export function velocityOf(samples: readonly Sample[]): number {
   if (dt <= 0) return 0;
   return (last.y - first.y) / dt;
 }
+
+/**
+ * What a release does, with the release's own position and time taken as the last sample (the finger
+ * may have rested without a move event: iOS sends none while it is still). Updates `g.dy` to the
+ * release point.
+ */
+export function releaseAt(g: { startY: number; samples: Sample[]; dy: number }, pageY: number, t: number): Release {
+  if (Number.isFinite(pageY) && Number.isFinite(t)) {
+    const last = g.samples[g.samples.length - 1];
+    if (!last || t >= last.t) g.samples.push({ y: pageY, t });
+    g.dy = pageY - g.startY;
+  }
+  return releaseOf({ dy: g.dy, vy: velocityOf(g.samples), cancelled: false });
+}

@@ -126,7 +126,10 @@ export function countVotes(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent
   const formerOpponents = won || d.formerOpponents.includes(rival.id) ? d.formerOpponents : [...d.formerOpponents, rival.id];
   // Nothing is bought on election night: a slip still lying on the desk goes back (a save from before slipsComeNow).
   if (d.desk?.type === 'slip') events.push({ type: 'slipReturned' });
-  return withDecree(g, {
+  // A "Say nothing" started in the run-up (a front page waiting at the call is decided there, and campaign papers
+  // are not days) ends with the term (2.8: a scandal running at the term's last day ends; the attack's finding 2).
+  const quiet = d.scandal ? endScandal(cfg, g, 'term', events) : g;
+  return withDecree(quiet, {
     phase: 'count',
     desk: d.desk?.type === 'slip' ? null : d.desk,
     count: result,
@@ -200,6 +203,8 @@ export function newTerm(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent[])
     emptySince: null,
   });
   x = restoreAside(cfg, x);
+  // A scandal still running (a save from before the count ended it) ends with the term (2.8).
+  if (x.decree.scandal) x = endScandal(cfg, x, 'term', events);
   // Then any boycott whose club is now at endsAt or more ends (2.17 "At a new term").
   for (let gi = 0; gi < x.decree.strikes.length; gi++) {
     if (x.decree.strikes[gi] && x.decree.moods[gi] >= cfg.decree.boycott.endsAt) {

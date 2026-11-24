@@ -120,7 +120,7 @@
     {
       "id": "gov-runup-hat-parade",
       "office": "governor",
-      "visitor": "slake",
+      "visitor": "dimity",
       "text": "Judge the {district} hats. Yours has entered. Declare an interest.",
       "subject": "hats",
       "butt": "self",

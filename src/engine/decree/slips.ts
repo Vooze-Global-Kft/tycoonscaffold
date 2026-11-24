@@ -27,10 +27,11 @@ import { advice } from './advice';
 import { callDay } from './count';
 import { standingOrderActive } from './grants';
 import { commitPending } from './decide';
+import { landNext } from './draw';
 import { clubIndex, commitCash, decreeParams, EPS, factorOn, levelCost, levelGain, officeOf, openCost, openGain, rateOf, roundDibs, storeys, vanityPrice } from './params';
 import { costOf, freezeShown, sizeMoney } from './size';
 import { deskFactors } from './twists';
-import type { DecreeConfig, DecreeEvent, DecreeGame, Ledger, LedgerRow, Paper, Purchase, Slip } from './types';
+import type { DecreeConfig, DecreeEvent, DecreeGame, DeskItem, Ledger, LedgerRow, Paper, Purchase, Slip } from './types';
 
 const withDecree = (g: DecreeGame, patch: Partial<DecreeGame['decree']>): DecreeGame => ({ ...g, decree: { ...g.decree, ...patch } });
 
@@ -93,13 +94,50 @@ export function slipOf(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase): Sl
   const p = decreeParams(cfg, g);
   if (purchase.type === 'monument') {
     if (d.monumentOffer !== purchase.monument || d.vanity.includes(purchase.monument)) return null;
-    return { kind: 'slip', purchase, price: vanityPrice(cfg, g), drawnLevel: 0, rateGain: p.I * (cfg.decree.vanity.factor - 1) };
+    return { kind: 'slip', purchase, price: vanityPrice(cfg, g), drawnLevel: 0, rateGain: p.I * (cfg.decree.vanity.factor - 1), levels: 1 };
   }
   const m = d.ministries[purchase.ministry];
   if (!m) return null;
   const price = purchase.type === 'level' ? levelCost(cfg, g, purchase.ministry) : openCost(cfg, g, purchase.ministry);
   if (!Number.isFinite(price)) return null;
-  return { kind: 'slip', purchase, price, drawnLevel: m.level, rateGain: purchase.type === 'level' ? levelGain(cfg, g, purchase.ministry, p) : openGain(cfg, g, purchase.ministry, p) };
+  return { kind: 'slip', purchase, price, drawnLevel: m.level, rateGain: purchase.type === 'level' ? levelGain(cfg, g, purchase.ministry, p) : openGain(cfg, g, purchase.ministry, p), levels: 1 };
+}
+
+/** The state with ministry i at `level` (a hypothetical: nothing paid, nothing recorded). */
+const atLevel = (g: DecreeGame, i: number, level: number): DecreeGame => withDecree(g, { ministries: g.decree.ministries.map((x, k) => (k === i ? { open: true, level } : x)) });
+
+/** The levels a bundle may carry from level `level`: up to the next storey (2.2: every storeyEvery levels), never past the cap (D42 (a)). */
+export function bundleRoom(cfg: DecreeConfig, level: number): number {
+  const c = cfg.decree.ministry;
+  return Math.max(0, Math.min(c.levelCap, (storeys(cfg, level) + 1) * c.storeyEvery) - level);
+}
+
+/**
+ * D42 (a): the slip of advice's level `one` as the bundle that lands: the largest n (1 up to the next
+ * storey) whose summed price the treasury pays above the slip's reserve, its price the sum of the n
+ * levels' prices and its gain what the n levels add to I. The first level is `one` as offered (D16's
+ * reserve at landing, so the tick's moment is the slip's); each further level is taken only while the
+ * treasury also keeps back the reserve at the B the bundle leaves behind (the waiting papers and the
+ * run-up are sized when they land, D23: the attack's D16 note), so a bundle never leaves the next paper
+ * unaffordable that a single level would have left affordable. An opening, a monument: `one` itself.
+ */
+export function bundleOf(cfg: DecreeConfig, g: DecreeGame, one: Slip): Slip {
+  if (one.purchase.type !== 'level') return one;
+  const i = one.purchase.ministry;
+  const m = g.decree.ministries[i];
+  if (!m || !m.open) return one;
+  const room = bundleRoom(cfg, m.level);
+  let out = one;
+  let price = one.price;
+  for (let n = 2; n <= room; n++) {
+    const next = levelCost(cfg, atLevel(g, i, m.level + n - 1), i);
+    if (!Number.isFinite(next)) break;
+    price += next;
+    const after = atLevel(g, i, m.level + n);
+    if (g.cash - price + EPS < reserve(cfg, after) + emptyDeskExtra(cfg, after)) break;
+    out = { ...one, price, levels: n, rateGain: levelGain(cfg, g, i, decreeParams(cfg, g), n) };
+  }
+  return out;
 }
 
 /** The extra a slip on an empty desk with an empty tray keeps back (D16): slipReserveSeconds of B. */
@@ -131,12 +169,45 @@ export function slipsComeNow(g: DecreeGame): boolean {
   return d.phase === 'campaign' && !(d.campaign && d.campaign.papersLeft <= 0 && d.campaign.rallyDone);
 }
 
-/** The slip that would land now (advice's purchase, affordable above the reserve, D16's extra on an empty desk), or null; never after the rally, during the count or on the result sheet (`slipsComeNow`). Built. */
+/**
+ * The slip that would land now (advice's purchase, affordable above the reserve, D16's extra on an empty
+ * desk), as the bundle of D42 (a) (`bundleOf`), or null; never after the rally, during the count or on the
+ * result sheet (`slipsComeNow`). Built.
+ */
 export function slipFor(cfg: DecreeConfig, g: DecreeGame): Slip | null {
   if (!slipsComeNow(g)) return null;
   const slip = advice(cfg, g).slip;
   if (!slip) return null;
-  return g.cash - slip.price + EPS >= reserve(cfg, g) + emptyDeskExtra(cfg, g) ? slip : null;
+  return g.cash - slip.price + EPS >= reserve(cfg, g) + emptyDeskExtra(cfg, g) ? bundleOf(cfg, g, slip) : null;
+}
+
+/** Why a slip lying on the desk would leave with no effect now: its level moved or its ministry opened ('done'), or the cap ('cap'); null while it still buys what it prints. Built. */
+export function slipVoid(cfg: DecreeConfig, g: DecreeGame, item: DeskItem & { type: 'slip' }): 'done' | 'cap' | null {
+  const pu = item.slip.purchase;
+  if (pu.type === 'monument') return g.decree.monumentOffer === pu.monument && !g.decree.vanity.includes(pu.monument) ? null : 'done';
+  const m = g.decree.ministries[pu.ministry];
+  if (!m) return 'done';
+  if (pu.type === 'open') return m.open ? 'done' : null;
+  if (m.open && m.level + Math.max(1, item.slip.levels ?? 1) > cfg.decree.ministry.levelCap) return 'cap';
+  return !m.open || m.level !== item.slip.drawnLevel ? 'done' : null;
+}
+
+/**
+ * D42 (c): a slip lying on the desk that a purchase from the Ledger or by the Standing Order made stale
+ * (it names the ministry just bought) is taken back at once ("Already done: the Clerk takes it back",
+ * `slipReturned` with reason 'done'), and the desk goes on by the same rules: the next paper lands, or on
+ * an empty desk the slip's 1.0 s starts and advice offers the next slip. The same object otherwise.
+ */
+export function retireStaleSlip(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent[]): DecreeGame {
+  const desk = g.decree.desk;
+  if (desk?.type !== 'slip' || !slipVoid(cfg, g, desk)) return g;
+  events.push({ type: 'slipReturned', reason: 'done' });
+  return landNext(cfg, withDecree(g, { desk: null, emptySince: null }), g.stats.playSeconds, events);
+}
+
+/** Nothing is bought on election night or on the result sheet (D41): the Ledger is shut then. */
+export function ledgerShut(g: DecreeGame): boolean {
+  return g.decree.phase === 'count' || g.decree.phase === 'result';
 }
 
 /** Whether `purchase` at `price` is the slip lying on the desk at its printed price (D40). */
@@ -153,6 +224,8 @@ function isDeskSlip(g: DecreeGame, purchase: Purchase, price: number | null): bo
  * price, is refused only for cash ('cash': "Short by …" as a paper says), whatever queued behind it.
  */
 export function canBuy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, price: number | null, opts: { landed?: boolean } = {}): LedgerRow['refusal'] | 'done' | null {
+  // D41: election night and the result sheet: closed.
+  if (ledgerShut(g)) return 'closed';
   const live = slipOf(cfg, g, purchase);
   if (!live) {
     if (purchase.type === 'level') {
@@ -179,19 +252,30 @@ export function canBuy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, pri
  * `landed` (the slip that lay on the desk, D40) skips only the reserve. A level crossing a storey brings its ribbon form
  * (`ribbonsDue`). Built.
  */
-export function buy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, price: number | null, events: DecreeEvent[], opts: { free?: boolean; auto?: boolean; landed?: boolean } = {}): DecreeGame {
+export function buy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, price: number | null, events: DecreeEvent[], opts: { free?: boolean; auto?: boolean; landed?: boolean; levels?: number } = {}): DecreeGame {
   if (opts.free) return applyPurchase(cfg, g, purchase, 0, events);
+  // D41: nothing is bought on election night or on the result sheet.
+  if (ledgerShut(g)) return g;
   // A purchase nobody tapped (the Standing Order, `auto`) never ends the player's take-back window: refused while a paper rests there.
   if (opts.auto && g.decree.pending) return g;
   const local: DecreeEvent[] = [];
   const s = g.decree.pending ? commitPending(cfg, g, g.stats.playSeconds, local) : g;
   const live = slipOf(cfg, s, purchase);
+  const levels = purchase.type === 'level' ? Math.max(1, Math.floor(opts.levels ?? 1)) : 1;
+  if (levels > 1 && (!opts.landed || purchase.type !== 'level' || levels > bundleRoom(cfg, s.decree.ministries[purchase.ministry]?.level ?? 0))) return g;
   if (!live || canBuy(cfg, s, purchase, price, { landed: opts.landed && !opts.auto }) !== null) return g;
   events.push(...local);
-  return applyPurchase(cfg, s, purchase, price ?? live.price, events);
+  const bought = applyPurchase(cfg, s, purchase, price ?? live.price, events, levels);
+  // D42 (c): the Ledger's or the Standing Order's purchase takes back the slip it made stale (the slip's own purchase left the desk already).
+  return opts.landed ? bought : retireStaleSlip(cfg, bought, events);
 }
 
-function applyPurchase(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, price: number, events: DecreeEvent[]): DecreeGame {
+/** The state after `purchase` of `levels` levels with nothing paid and nothing recorded (what the Standing Order's reserve is measured on, D33 with the attack's fix). */
+export function afterPurchase(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, levels = 1): DecreeGame {
+  return applyPurchase(cfg, g, purchase, 0, [], levels);
+}
+
+function applyPurchase(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, price: number, events: DecreeEvent[], levels = 1): DecreeGame {
   let s = price > 0 ? commitCash(g, -price, 'spend') : g;
   const d = s.decree;
   if (purchase.type === 'monument') {
@@ -206,16 +290,17 @@ function applyPurchase(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, pri
     events.push({ type: 'ministryOpened', ministry: i });
     return withDecree(s, { ministries: d.ministries.map((x, k) => (k === i ? { open: true, level: 1 } : x)) });
   }
-  if (!m.open || m.level >= cfg.decree.ministry.levelCap) return g;
-  const level = m.level + 1;
-  events.push({ type: 'levelBought', ministry: i, level });
+  if (!m.open || m.level + levels > cfg.decree.ministry.levelCap) return g;
+  const level = m.level + levels;
+  for (let k = m.level + 1; k <= level; k++) events.push({ type: 'levelBought', ministry: i, level: k });
   s = withDecree(s, { ministries: d.ministries.map((x, k) => (k === i ? { open: true, level } : x)), stats: { ...d.stats } });
+  // A bundle stops at the next storey (D42 (a)), so it crosses at most one.
   const st = storeys(cfg, level);
   if (st > storeys(cfg, m.level)) {
     events.push({ type: 'storey', ministry: i, storey: st });
     s = withDecree(s, { ribbonsDue: [...s.decree.ribbonsDue, { ministry: i, storey: st }] });
   }
-  return { ...s, stats: { ...s.stats, levelsBought: s.stats.levelsBought + 1 } };
+  return { ...s, stats: { ...s.stats, levelsBought: s.stats.levelsBought + levels } };
 }
 
 /** 2.6 `raise(i)`: the Ledger's untaught button, ministry i +1 level at the live price; the same object when refused. Built. */
@@ -266,5 +351,5 @@ export function ledger(cfg: DecreeConfig, g: DecreeGame): Ledger {
     };
   });
   const next = d.office < 2 ? cfg.decree.offices[d.office + 1].stand : null;
-  return { rows, record: p.record, recordTarget: next?.record ?? null, recordName: row.recordName, reserve: roundDibs(cfg, shown.desk), reserveRunUp: roundDibs(cfg, shown.runUp) };
+  return { rows, record: p.record, recordTarget: next?.record ?? null, recordName: row.recordName, reserve: roundDibs(cfg, shown.desk), reserveRunUp: roundDibs(cfg, shown.runUp), shut: ledgerShut(g) };
 }

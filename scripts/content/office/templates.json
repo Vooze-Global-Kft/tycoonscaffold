@@ -162,7 +162,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "swap",
-      "frame": "Make {town-things} a quiet zone. The band's drum must apply.",
+      "frame": "A quiet zone round {town-things}. The band's drum must apply.",
       "subject": "paperwork",
       "butt": "office",
       "shape": "form-misapplied"
@@ -435,7 +435,7 @@
     {
       "id": "tpa-wx-flatter",
       "office": "any",
-      "visitor": "spinwell",
+      "visitor": "gourdley",
       "club": "veg",
       "archetype": "vanity",
       "frame": "Have {mild-weather} follow you about. Rodney is pricing it.",
@@ -488,18 +488,6 @@
       "shape": "form-misapplied"
     },
     {
-      "id": "tpa-inv-grown",
-      "office": "any",
-      "club": "veg",
-      "other": "shops",
-      "archetype": "committee",
-      "frame": "Study whether {minor-inventions} can be grown in a shop window.",
-      "subject": "inventions",
-      "butt": "committee",
-      "shape": "literalism",
-      "note": "biggerStudy: The growing study asks for a second window. The first has produced a teaspoon."
-    },
-    {
       "id": "tpa-inv-two-tubas",
       "office": "governor",
       "club": "brass",
@@ -516,7 +504,7 @@
       "visitor": "spinwell",
       "club": "shops",
       "archetype": "vanity",
-      "frame": "Be {dignified-titles}. Rodney will add it to the napkin, in gold.",
+      "frame": "Be {dignified-titles}. I will add it to the napkin, in gold.",
       "subject": "vanity",
       "butt": "self",
       "shape": "callback"
@@ -1009,10 +997,10 @@
       "club": "veg",
       "other": "anglers",
       "archetype": "swap",
-      "frame": "Growers say {harmless-complaints}. The Anglers' pond fixes 80 % of it.",
+      "frame": "Growers say {harmless-complaints}. They want the Anglers' bank instead.",
       "subject": "gardens",
       "butt": "thing",
-      "shape": "statistic"
+      "shape": "undercut"
     },
     {
       "id": "tpl-gripe-band-notice",
@@ -1076,10 +1064,10 @@
       "club": "bus",
       "other": "shops",
       "archetype": "swap",
-      "frame": "The 8:15 is {odd-units} late. Spotters to wait in the hat shop.",
+      "frame": "Found on the 8:15: {odd-units}. Show the lot in the Guild's window.",
       "subject": "buses",
       "butt": "thing",
-      "shape": "statistic"
+      "shape": "literalism"
     },
     {
       "id": "tpl-unit-noses",
@@ -1087,7 +1075,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "swap",
-      "frame": "By order of the glass: the spotters' bench, {odd-units} back.",
+      "frame": "Lost on our sill by spotters: {odd-units}. Move their bench, please.",
       "subject": "buses",
       "butt": "thing",
       "shape": "form-misapplied"
@@ -1098,7 +1086,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "fee",
-      "frame": "Growers hire {odd-units} of high street. The pumpkin is receiving.",
+      "frame": "Growers pay for the shop step: the pumpkin by {odd-units}, for scale.",
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "undercut"
@@ -1109,7 +1097,7 @@
       "club": "bus",
       "other": "veg",
       "archetype": "fee",
-      "frame": "Spotters pay to stand {odd-units} nearer the pumpkins. Each.",
+      "frame": "Spotters pay to enter {odd-units} in the pumpkin show. Judges, brace.",
       "subject": "buses",
       "butt": "thing",
       "shape": "form-misapplied"
@@ -1120,7 +1108,7 @@
       "visitor": "spinwell",
       "club": "veg",
       "archetype": "vanity",
-      "frame": "Raise your office floor by {odd-units}. Then the ceiling.",
+      "frame": "Order {odd-units} with your face on. Then a cupboard to match.",
       "subject": "vanity",
       "butt": "self",
       "shape": "escalation"
@@ -1131,7 +1119,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "project",
-      "frame": "Raise the bandstand by {odd-units}, so the band is looked up to.",
+      "frame": "Lend the band {odd-units} to stand on, so it is looked up to.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "literalism"
@@ -1142,7 +1130,7 @@
       "club": "bus",
       "other": "brass",
       "archetype": "swap",
-      "frame": "Stand the band {odd-units} back from the bus stop. Buses flinch.",
+      "frame": "The band stores {odd-units} in the bus shelter. Spotters must stand.",
       "subject": "buses",
       "butt": "thing",
       "shape": "undercut"
@@ -1153,7 +1141,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "fee",
-      "frame": "Anglers will hire {odd-units} of the band's lawn, and keep it quiet.",
+      "frame": "Anglers pay to fill the bandstand with {odd-units}. No tuba fits.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "literalism"
@@ -1164,7 +1152,7 @@
       "club": "veg",
       "other": "brass",
       "archetype": "project",
-      "frame": "Pumpkins: 4 % prouder near music. Move the band {odd-units} nearer.",
+      "frame": "Pumpkins: 4 % prouder to music. Growers will play on {odd-units}.",
       "subject": "gardens",
       "butt": "thing",
       "shape": "statistic"
@@ -1175,7 +1163,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "committee",
-      "frame": "A study: is silence heard {odd-units} from the band? It sits there.",
+      "frame": "Study the quiet of {odd-units} by the pond. The band must wait.",
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
@@ -1187,7 +1175,7 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "project",
-      "frame": "A kite landing circle, {odd-units} wide. 90 % land in the hedge.",
+      "frame": "Mark a kite landing circle with {odd-units}. 90 % land in the hedge.",
       "subject": "hedges",
       "butt": "thing",
       "shape": "statistic"
@@ -1198,7 +1186,7 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "swap",
-      "frame": "Move the hedge show {odd-units}, for the kites. The napkin allows it.",
+      "frame": "Hedge lawn to kites, roped off with {odd-units}. Hedges may watch.",
       "subject": "kites",
       "butt": "thing",
       "shape": "callback"
@@ -1253,7 +1241,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "committee",
-      "frame": "Who named {things-to-rename}? A study: 60 % of findings say a bus.",
+      "frame": "Who named {things-to-rename}? A study. Early findings point at a bus.",
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
@@ -1287,7 +1275,7 @@
       "club": "veg",
       "other": "brass",
       "archetype": "project",
-      "frame": "Ring {things-to-rename} with pumpkins. Then the bandstand.",
+      "frame": "Ring {things-to-rename} with pumpkins. Then the band.",
       "subject": "gardens",
       "butt": "thing",
       "shape": "escalation"
@@ -1335,6 +1323,18 @@
       "subject": "kites",
       "butt": "thing",
       "shape": "undercut"
+    },
+    {
+      "id": "tpa-inv-vegetable",
+      "office": "any",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "committee",
+      "frame": "Is {minor-inventions} a vegetable? A study, in the Guild's window.",
+      "subject": "inventions",
+      "butt": "committee",
+      "shape": "literalism",
+      "note": "biggerStudy: The vegetable study asks for a second window. The first is now judging a teapot."
     }
   ]
 }

@@ -14,7 +14,7 @@ import { drawChip } from '../art/effects.draw';
 import { decreeAtlas, faceAtlasOf } from '../art/atlas';
 import { faceSpriteName } from '../art/faces';
 import { drawDesk, drawDeskFront, drawDeskTop, drawDeskSet, drawDoor, drawDrawer, drawLamp, drawLampPool, drawOutTray, drawStickyNote, drawTakeBackRest, drawTelephones, drawerStage, type DeskSet } from '../art/desk.draw';
-import { MASTHEAD_TILT, drawFormFace, drawFrontPage, drawPaper, drawPhotoClip, drawPicketSign, drawRunUpPaper, drawSignatureIn, drawSlip, signatureBox } from '../art/paper.draw';
+import { MASTHEAD_TILT, drawFormFace, drawFrontPage, drawPaper, drawPhotoClip, drawPicketSign, drawRunUpPaper, drawSignatureIn, drawSlip, drawStrip, signatureBox } from '../art/paper.draw';
 import { at, clip, oval, picture } from '../art/pen';
 import type { DeskLayout, DeskParts, Rect } from '../layout';
 import type { PaperMetrics } from '../paperMetrics';
@@ -104,6 +104,29 @@ function drawFace(c: SkCanvas, cast: string, r: Rect): void {
 /** The paper's rows as the art kit's drawPaper takes them. */
 export function faceRows(m: PaperMetrics) {
   return { signY: m.sign.y, signH: m.sign.h, headerY: m.header.y, headerH: m.header.h, refuseY: m.refuse.y, refuseH: m.refuse.h };
+}
+
+/**
+ * One strip armed (4.2: grown to 110 % towards its edge, its tint deepened) with its chip grounds, to lay
+ * over the paper's plain ground while that side is armed. Recorded once per paper (finding 3: arming
+ * mid-drag shows this layer on the UI thread instead of re-recording the paper).
+ */
+export function armedStripPicture(vm: PaperVM, w: number, m: PaperMetrics, side: 'sign' | 'refuse'): SkPicture {
+  const view = side === 'sign' ? vm.sign : vm.refuse;
+  const sr = side === 'sign' ? m.sign : m.refuse;
+  return picture({ x: -12, y: -14, w: w + 24, h: sr.y + sr.h + 28 }, (c) => {
+    const inset = 8;
+    at(c, inset, sr.y, 1, 0, (q) => drawStrip(q, w - inset * 2, sr.h, side, { armed: 1 }));
+    const ay = side === 'sign' ? sr.y + sr.h : sr.y;
+    for (const b of chipBoxes(view, sr)) {
+      c.save();
+      c.translate(w / 2, ay);
+      c.scale(1.1, 1.1);
+      c.translate(-w / 2, -ay);
+      at(c, b.x, b.y, 1, 0, (q) => drawChip(q, b.w, b.h, side));
+      c.restore();
+    }
+  });
 }
 
 /** A paper's whole ground at its size, with `armed` the strip grown to 110 %. */

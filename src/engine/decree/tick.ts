@@ -27,7 +27,7 @@
  * exactly as commitCash would (runEarnings, lifetimeEarnings, the rules' book under 'tick'), from
  * the anchor, so the books are exact too.
  */
-import { slipNeed, standingOrderPick, standingOrderReserve } from './advice';
+import { slipNeed, standingOrderNeed, standingOrderPick } from './advice';
 import { commitPending } from './decide';
 import { drawCampaignPaper, drawNext, drawRally, landNext } from './draw';
 import { standingOrderActive, standingOrderStep } from './grants';
@@ -97,7 +97,7 @@ function settle(cfg: DecreeConfig, g: DecreeGame, t: number): DecreeGame {
   const full = d.tray.length >= cfg.decree.desk.trayCap;
   // The arrival clock stops at a full tray (2.5) and starts τ after a place frees.
   if (d.phase === 'governing' && full && d.nextArrivalAt !== null) x = withDecree(x, { nextArrivalAt: null });
-  else if (d.phase === 'governing' && d.nextArrivalAt === null && !full) x = withDecree(x, { nextArrivalAt: t + decreeParams(cfg, x).tau });
+  else if (d.phase === 'governing' && !finite(d.nextArrivalAt) && !full) x = withDecree(x, { nextArrivalAt: t + decreeParams(cfg, x).tau });
   const e = x.decree;
   if (!e.desk && !e.tray.length && !e.pending && e.emptySince === null && (e.phase === 'governing' || e.phase === 'campaign')) x = withDecree(x, { emptySince: t });
   const a = anchorOf(cfg, x);
@@ -129,7 +129,7 @@ function eventTimes(cfg: DecreeConfig, g: DecreeGame): Record<TickEvent, number>
   }
   if (live && !d.pending && standingOrderActive(cfg, g)) {
     const pick = standingOrderPick(cfg, g);
-    if (pick) out.order = timeCashReaches(a, above(cfg.decree.standingOrder.times * pick.price + standingOrderReserve(cfg, g)));
+    if (pick) out.order = timeCashReaches(a, above(standingOrderNeed(cfg, g, pick)));
   }
   return out;
 }
@@ -190,7 +190,7 @@ function runEvent(cfg: DecreeConfig, g: DecreeGame, kind: TickEvent, t: number, 
       const slip = slipFor(cfg, g);
       if (!slip) return g;
       events.push({ type: 'slipArrived' });
-      return withDecree(g, { desk: { type: 'slip', slip, landedAt: t }, emptySince: null, slipOffered: true });
+      return withDecree(g, { desk: { type: 'slip', slip, landedAt: t }, emptySince: null, slipOffered: true, papersSinceSlip: 0 });
     }
     case 'order':
       return standingOrderStep(cfg, g, events);

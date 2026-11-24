@@ -62,8 +62,10 @@ export interface StripView {
   noteScale: number;
   affordable: boolean;
   void: 'done' | 'cap' | null;
-  /** Minister initials on this side ("DP ×0.9"). */
+  /** Minister initials on this side ("DP ×0.9"), drawn at the right end of the note row (they belong to a side). */
   factors: string[];
+  /** The note row's width left for the notes beside the initials. */
+  noteW: number;
 }
 
 /** Names the strip needs from the config: a club's short name by club index, a district's short by index, the boycott threshold. */
@@ -160,7 +162,7 @@ export function placeChips(units: readonly number[]): { rows: number[][]; densit
 export function estimateWidth(text: string, font: number, bold = false): number {
   let em = 0;
   for (const ch of text) {
-    if (ch === ' ') em += 0.27;
+    if (ch === ' ' || ch === '\u00a0') em += 0.27;
     else if (/[0-9]/.test(ch)) em += 0.62;
     else if (/[ilj.,:;'|!]/.test(ch)) em += 0.27;
     else if (/[frt()\-/]/.test(ch)) em += 0.36;
@@ -219,11 +221,13 @@ export function stripView(strip: R.Strip, names: StripNames, s: number): StripVi
   const rows = placed.rows.map((r) => r.map((i) => chips[i]));
   // The note row: the long form if it fits, else the short "Short by", else the whole row smaller.
   let notes = noteParts(strip.notes, names, true);
-  const fits = (p: NotePart[], k: number) => estimateWidth(noteLine(p), FONT.note * s * k) <= NOTE_W;
+  const factorW = strip.factors.length ? Math.ceil(estimateWidth(strip.factors.join('  '), FONT.note * s, true)) + 8 : 0;
+  const noteW = NOTE_W - factorW;
+  const fits = (p: NotePart[], k: number) => estimateWidth(noteLine(p), FONT.note * s * k) <= noteW;
   let noteScale = 1;
   if (!fits(notes, 1)) {
     notes = noteParts(strip.notes, names, false);
-    if (!fits(notes, 1)) noteScale = Math.max(0.6, NOTE_W / estimateWidth(noteLine(notes), FONT.note * s));
+    if (!fits(notes, 1)) noteScale = Math.max(0.6, noteW / estimateWidth(noteLine(notes), FONT.note * s));
   }
   const sign = strip.side === 'sign';
   return {
@@ -242,5 +246,6 @@ export function stripView(strip: R.Strip, names: StripNames, s: number): StripVi
     affordable: strip.affordable,
     void: strip.void,
     factors: strip.factors,
+    noteW,
   };
 }

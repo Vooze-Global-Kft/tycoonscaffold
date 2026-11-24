@@ -18,7 +18,7 @@
  * switch): Cuthbert Wimble buys the advised level (advice.ts `standingOrderPick`) while you play when
  * cash ≥ 3 × its price plus the reserve; never while away (tick.ts runs it; the away rules never tick).
  */
-import { standingOrderPick, standingOrderReserve } from './advice';
+import { standingOrderNeed, standingOrderPick } from './advice';
 import { fillTray, landNext } from './draw';
 import { commitCash, decreeParams, roundDibs } from './params';
 import { endScandal } from './scandal';
@@ -61,6 +61,11 @@ export function freePlaces(cfg: DecreeConfig, g: DecreeGame): number {
   return Math.max(0, cfg.decree.desk.trayCap - d.tray.length) + (deskTaken ? 0 : 1);
 }
 
+/** D42 (h): Open the Doors has something to do: the tray holds at most half its cap. */
+export function openDoorsUseful(cfg: DecreeConfig, g: DecreeGame): boolean {
+  return g.decree.tray.length * 2 <= cfg.decree.desk.trayCap;
+}
+
 /** Whether the ad `kind` may be offered now (the phase, its cooldown or once-a-term limit, something for it to do). Built. */
 export function canWatchAd(cfg: DecreeConfig, g: DecreeGame, kind: DecreeAdKind): boolean {
   if (!offering(g)) return false;
@@ -75,7 +80,8 @@ export function canWatchAd(cfg: DecreeConfig, g: DecreeGame, kind: DecreeAdKind)
     case 'courier':
       return courierClub(g) !== null;
     case 'openDoors':
-      return d.phase === 'governing' && g.stats.playSeconds >= (d.cooldowns.openDoors ?? -Infinity) && freePlaces(cfg, g) > 0;
+      // D42 (h): only while the tray holds at most half its cap (above that there is nothing for it to do).
+      return d.phase === 'governing' && g.stats.playSeconds >= (d.cooldowns.openDoors ?? -Infinity) && freePlaces(cfg, g) > 0 && openDoorsUseful(cfg, g);
   }
 }
 
@@ -163,7 +169,8 @@ export function standingOrderStep(cfg: DecreeConfig, g: DecreeGame, events: Decr
   if (!standingOrderActive(cfg, g) || g.decree.pending || !slipsComeNow(g)) return g;
   const pick = standingOrderPick(cfg, g);
   // D33: it keeps back every waiting paper's sign cost (and the run-up's), not just the next two.
-  if (!pick || g.cash < cfg.decree.standingOrder.times * pick.price + standingOrderReserve(cfg, g)) return g;
+  // The reserve is also checked on the state AFTER its purchase (advice.ts `standingOrderNeed`, the attack's finding 1).
+  if (!pick || g.cash < standingOrderNeed(cfg, g, pick)) return g;
   return buy(cfg, g, pick.purchase, pick.price, events, { auto: true });
 }
 

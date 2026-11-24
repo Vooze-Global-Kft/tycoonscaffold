@@ -2,8 +2,8 @@
  * The result of an election (spec 2.10, D6, D15, D26), after election night (phase result).
  * After a win: Name Recognition gained, the districts carried by the opponents' disarray, the same
  * rival "back for another go", and either "Stand for Governor" (only when the rules' canPrestige
- * allows it: views/model.ts `resultModel` follows `resultSheet.canMoveUp`) and "Another term here",
- * or what the next office needs and what is missing, in the rules' numbers. After a loss: the winner
+ * allows it: views/model.ts `resultModel` follows `resultSheet.canMoveUp`) and "Not yet" (D43),
+ * else "Back to the desk", with what the next office needs and what is missing, in the rules' numbers. After a loss: the winner
  * resigning over their hobby, "You serve on as Acting Mayor", nothing lost, "Opponents in disarray
  * +6" on the next poll (the rules' disarray), and the next rival. The term's one new thing either
  * way. No text counts or celebrates terms held. Owned by the views package (VIEWS).
@@ -37,7 +37,7 @@ function Footer({ m, onStand, onStay }: { m: ResultModel; onStand: () => void; o
   return (
     <View style={styles.footer}>
       {canMove ? <Btn label={S.views.standFor(m.nextTitle!)} onPress={onStand} /> : null}
-      <Btn label={S.views.anotherTerm} onPress={onStay} kind={canMove ? 'plain' : 'act'} />
+      <Btn label={canMove ? S.views.notYetMove : S.views.backToDesk} onPress={onStay} kind={canMove ? 'plain' : 'act'} />
     </View>
   );
 }

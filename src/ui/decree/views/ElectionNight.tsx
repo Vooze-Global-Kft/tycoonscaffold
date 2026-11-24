@@ -26,9 +26,10 @@ import { useOverlay } from '../../kit/overlay';
 import { alpha, DESK } from '../art/palette';
 import { fill, picture } from '../art/pen';
 import { drawTallyBoard, drawChalkMarks, drawEnvelope, drawTallyResult, tallyRows } from '../art/meta.draw';
-import { CUTOUT_IDS, drawBand, drawCutout } from '../art/faces';
+import { CAST_IDS, drawBand, drawCutout } from '../art/faces';
+import { DecreeIcon } from '../art/DecreeIcon';
 import { useFontScale } from '../hud/fontScale';
-import { S } from '../strings';
+import { S, nbsp } from '../strings';
 import { useDecreeUi } from '../uiState';
 import { useDecree } from '../useDecree';
 import { type } from './metrics';
@@ -48,6 +49,13 @@ interface Progress {
 }
 
 /** The chalk marks a row shows: one for every ten points of the rules' share (a drawing of the share, never a number of its own). */
+/** A line without its speaker's own prefix ("Waft: The spoon…" under the label "Leander Waft" reads "The spoon…"). */
+function stripSpeaker(line: string | null, name: string): string | null {
+  if (!line) return line;
+  const surname = name.trim().split(/\s+/).pop() ?? '';
+  return surname && line.startsWith(`${surname}: `) ? line.slice(surname.length + 2) : line;
+}
+
 function marksOf(share: number): number {
   return Math.max(0, Math.min(10, Math.round(share / 1000)));
 }
@@ -145,7 +153,8 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
         setP((q) => ({ ...q, stage: 'end', line: model.won ? q.line : (model.endLine ?? q.line) }));
         return;
       }
-      if (p.stage === 'end' && model.rivalLine) {
+      // D43: the rival speaks only when the rival has lost (the concession); after a defeat only the clerk speaks.
+      if (p.stage === 'end' && model.rivalLine && model.won) {
         setP((q) => ({ ...q, stage: 'rival', speaker: 'rival', line: model.rivalLine }));
         return;
       }
@@ -200,15 +209,15 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [model.rows, rows, w, boardH, markH, resultR, shareW],
   );
-  const rivalCut = CUTOUT_IDS.includes(model.rival.id as never);
+  const rivalBust = CAST_IDS.includes(model.rival.id as never);
   const clerkId = model.clerk.face.replace(/^face:/, '');
   const speakerPic = useMemo(
     () =>
       picture({ x: 0, y: 0, w: cutW + 40, h: clerkH }, (c) => {
-        const who = p.speaker === 'rival' && rivalCut ? model.rival.id : clerkId;
-        drawCutout(c, who, { x: 0, y: 2, width: cutW, height: clerkH - 4 });
+        // D43: the Counting Clerk keeps the envelope all night; the rival's line shows beside the rival's small bust.
+        drawCutout(c, clerkId, { x: 0, y: 2, width: cutW, height: clerkH - 4 });
       }),
-    [p.speaker, rivalCut, model.rival.id, clerkId, cutW, clerkH],
+    [clerkId, cutW, clerkH],
   );
   const envelopeOpen = useMemo(() => picture({ x: -24, y: -24, w: 48, h: 48 }, (c) => drawEnvelope(c, 1, 0.8)), []);
   const envelopeShut = useMemo(() => picture({ x: -24, y: -24, w: 48, h: 48 }, (c) => drawEnvelope(c, 0, 0.8)), []);
@@ -236,7 +245,11 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
   const newestStyle = useAnimatedStyle(() => ({ opacity: reveal.value }));
 
   const speakerName = p.speaker === 'rival' ? model.rival.name : S.views.nightSpeaker(model.clerk.name, model.clerk.role);
-  const line = p.shown === 0 && !model.openLine ? S.views.nightWaiting : p.line;
+  const raw = p.shown === 0 && !model.openLine ? S.views.nightWaiting : p.line;
+  // The speaker is labelled above the line, so a rival line's own "Waft: " prefix is not repeated (finding 60).
+  const said = p.speaker === 'rival' ? stripSpeaker(raw, model.rival.name) : raw;
+  const line = said ? nbsp(said) : said;
+  const bust = p.speaker === 'rival' && rivalBust ? Math.round(Math.min(44, clerkH * 0.42)) : 0;
   return (
     <Pressable style={[StyleSheet.absoluteFill, styles.root]} onPress={speedUp} accessibilityHint={p.stage === 'done' ? undefined : S.views.nightFaster}>
       <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -276,13 +289,16 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
       </View>
 
       {/* the speaker's line */}
-      <View style={[styles.abs, styles.bubble, { left: x0 + cutW + 34, top: clerkY + 4, width: w - cutW - 34, height: clerkH - 8 }]} pointerEvents="none">
-        <Text allowFontScaling={false} numberOfLines={1} style={[styles.who, tWho]}>
-          {speakerName}
-        </Text>
-        <Text allowFontScaling={false} numberOfLines={3} style={[styles.line, tLine]}>
-          {line ?? ''}
-        </Text>
+      <View style={[styles.abs, styles.bubble, styles.bubbleRow, { left: x0 + cutW + 34, top: clerkY + 4, width: w - cutW - 34, height: clerkH - 8 }]} pointerEvents="none">
+        {bust ? <DecreeIcon icon={`face:${model.rival.id}`} size={bust} style={styles.bust} /> : null}
+        <View style={styles.flex}>
+          <Text allowFontScaling={false} numberOfLines={1} style={[styles.who, tWho]}>
+            {speakerName}
+          </Text>
+          <Text allowFontScaling={false} numberOfLines={3} style={[styles.line, tLine]}>
+            {line ?? ''}
+          </Text>
+        </View>
       </View>
 
       {/* the board's words: name and share per announced row */}
@@ -332,6 +348,9 @@ const styles = StyleSheet.create({
   title: { color: INK.chalkLine, fontWeight: '700' },
   sub: { color: INK.chalkDust },
   bubble: { justifyContent: 'center' },
+  bubbleRow: { flexDirection: 'row', alignItems: 'center' },
+  bust: { marginRight: 8 },
+  flex: { flex: 1 },
   who: { color: INK.chalkDust, fontWeight: '700' },
   line: { color: INK.chalkLine, fontStyle: 'italic' },
   rowName: { color: INK.chalkLine, fontWeight: '600' },

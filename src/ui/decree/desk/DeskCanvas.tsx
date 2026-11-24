@@ -28,17 +28,17 @@ import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
 import { DESK } from '../art/palette';
 import { FONT_SCALE_MAX, deskParts, STICKY_LINE, type DeskLayout, type Rect } from '../layout';
-import { paperMetrics } from '../paperMetrics';
+import { paperFit, type PaperFit, type paperMetrics } from '../paperMetrics';
 import { S } from '../strings';
 import { useDecreeUi } from '../uiState';
 import { useDecree } from '../useDecree';
 import { usePrefs } from '../prefs';
 import { devButtons } from './devButtons';
 import { aroundSig, deskSig, type AroundVM, type DeskVM, type PaperVM } from './deskVm';
-import { ENTER_MS, LEAVE_MS, NEXT_AFTER_MS, SPRING, drawerOf, drawerStep, followOf, inkOf, type Release } from './flick';
+import { ARM_AT, ENTER_MS, LEAVE_MS, NEXT_AFTER_MS, SPRING, TAP_SLOP, drawerOf, drawerStep, followOf, inkOf, type Release } from './flick';
 import { useDeskFontScale } from './fontScale';
 import { PaperWords, SlipWords } from './PaperWords';
-import { DRAWER_STEPS, backPicture, bakeFaces, drawerPictures, facesReady, paperPicture, restPicture, signaturePicture, slipPicture } from './pictures';
+import { DRAWER_STEPS, armedStripPicture, backPicture, bakeFaces, drawerPictures, facesReady, paperPicture, restPicture, signaturePicture, slipPicture } from './pictures';
 import { estimateWidth } from './stripView';
 import { useFlick } from './useFlick';
 import { applyDeskDevParams } from './dev';
@@ -58,7 +58,6 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const fs = useDeskFontScale();
   const s = Math.min(fs > 0 ? fs : 1, FONT_SCALE_MAX);
   const P = useMemo(() => deskParts(L, s), [L, s]);
-  const m = useMemo(() => paperMetrics(L.paper.h, s), [L.paper.h, s]);
 
   // --- what the rules say (strings compare by value: a render only when the desk's words change)
   const sig = useDecree((cfg, g) => deskSig(cfg, g, s), NONE_SIG);
@@ -79,12 +78,26 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const hold = useSharedValue(0);
   const ring = useSharedValue(0);
   const back = useSharedValue(0);
+  // The tap path's armed side as the UI thread sees it (1 sign, −1 study, 0): written from JS, never read back.
+  const tapSide = useSharedValue(0);
+  const zero = useSharedValue(0);
 
   // --- what the desk shows: it lags the rules for the 300 ms between a commit and the next paper
   const [shown, setShown] = useState<DeskVM>(live);
   const shownRef = useRef(shown);
   shownRef.current = shown;
-  const [leaving, setLeaving] = useState<{ vm: DeskVM; side: R.Choice; n: number } | null>(null);
+  // The paper's contents at the design width, the whole paper scaled to its zone (findings 1 and 2).
+  const returning = shown.kind === 'paper' && !!shown.returning;
+  const fit = useMemo(() => paperFit(L.paper, L.width, s, { returning }), [L.paper, L.width, s, returning]);
+  const fitRef = useRef(fit);
+  fitRef.current = fit;
+  const m = fit.m;
+  const D = fit.design;
+  const k = fit.k;
+  const Pd = useMemo(() => deskParts({ ...L, paper: D }, s), [L, D, s]);
+  const PdRef = useRef(Pd);
+  PdRef.current = Pd;
+  const [leaving, setLeaving] = useState<{ vm: DeskVM; side: R.Choice; n: number; fit: PaperFit; slip: Rect } | null>(null);
   const leaveAt = useRef(0);
   const takingBack = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -185,7 +198,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
     (side: R.Choice, y0: number) => {
       const vm = shownRef.current;
       leaveAt.current = Date.now();
-      setLeaving({ vm, side, n: leaveAt.current });
+      setLeaving({ vm, side, n: leaveAt.current, fit: fitRef.current, slip: PdRef.current.slip });
       setShown(NONE);
       leaveY.value = y0;
       leaveK.value = 1;
@@ -226,14 +239,16 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   );
 
   const sideAt = useCallback(
-    (y: number): R.Choice | null => {
+    (ys: number): R.Choice | null => {
       const vm = shownRef.current;
-      if (vm.kind === 'slip') return y < L.paper.h / 2 ? 'sign' : 'refuse';
+      if (vm.kind === 'slip') return ys < L.paper.h / 2 ? 'sign' : 'refuse';
+      // the tap's distance from the paper's top, in the paper's own (unscaled) points
+      const y = ys / k;
       if (y >= m.sign.y - 6 && y <= m.sign.y + m.sign.h) return 'sign';
       if (y >= m.refuse.y && y <= m.refuse.y + m.refuse.h + 6) return 'refuse';
       return null;
     },
-    [L.paper.h, m],
+    [L.paper.h, m, k],
   );
 
   const handlers = useFlick(paperY, L.paper.y, {
@@ -259,12 +274,16 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   });
 
   // A tap on the desk around the paper: the out-tray takes a resting paper back; elsewhere it commits it, or disarms.
+  const deskGrantY = useRef(0);
   const onDesk = useCallback(
     (pageY: number) => {
       const ui = useDecreeUi.getState();
       const a = around;
       if (a?.pending) {
-        const inTray = pageY < L.paper.y || (pageY >= P.pill.y && pageY <= P.pill.y + P.pill.h);
+        // Only a real tap in the tray band or on the pill takes the paper back; a habitual second flick
+        // that ends in the band is a "tap elsewhere" and commits it (finding 6).
+        const moved = Math.abs(pageY - deskGrantY.current) > TAP_SLOP;
+        const inTray = !moved && (pageY < L.paper.y || (pageY >= P.pill.y && pageY <= P.pill.y + P.pill.h));
         if (inTray) {
           takingBack.current = true;
           if (!decreeActions.takeBack()) takingBack.current = false;
@@ -282,14 +301,15 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const slipOn = shown.kind === 'slip';
   useEffect(() => {
     const r = (q: Rect) => ({ x: q.x, y: q.y, width: q.w, height: q.h });
-    targets.set('paper', r(L.paper));
-    targets.set('strip:sign', r({ x: L.paper.x, y: L.paper.y + m.sign.y, w: L.paper.w, h: m.sign.h }));
-    targets.set('strip:refuse', r({ x: L.paper.x, y: L.paper.y + m.refuse.y, w: L.paper.w, h: m.refuse.h }));
+    const sc = fit.screen;
+    targets.set('paper', r(sc));
+    targets.set('strip:sign', r({ x: sc.x, y: sc.y + m.sign.y * k, w: sc.w, h: m.sign.h * k }));
+    targets.set('strip:refuse', r({ x: sc.x, y: sc.y + m.refuse.y * k, w: sc.w, h: m.refuse.h * k }));
     targets.set('outTray', r(L.outTray));
     targets.set('drawer', r(L.drawer));
-    targets.set('slip', slipOn ? r(P.slip) : null);
+    targets.set('slip', slipOn ? r(scaled(Pd.slip, L.paper, k)) : null);
     return () => ['paper', 'strip:sign', 'strip:refuse', 'outTray', 'drawer', 'slip'].forEach((k) => targets.set(k, null));
-  }, [L, m, P, slipOn]);
+  }, [L, m, k, fit, Pd, slipOn]);
 
   // --- the still layers
   // The room and the desk re-record only when what they draw changes (not each second of the door's clock).
@@ -300,10 +320,25 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const drawerKey = around ? `${around.office}|${drawerStage(around.drawer)}` : '';
   const drawers = useMemo(() => (around ? drawerPictures(P, around) : []), [P, drawerKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const rest = useMemo(() => restPicture(P), [P]);
-  const pic = usePaperPicture(shown, L, m, armed, faces);
-  const leavePic = usePaperPicture(leaving?.vm ?? NONE, L, m, null, faces);
+  const pic = usePaperPicture(shown, D, Pd.slip, m, faces);
+  const leavePic = usePaperPicture(leaving?.vm ?? NONE, leaving?.fit.design ?? D, leaving?.slip ?? Pd.slip, leaving?.fit.m ?? m, faces);
+  // The armed strips (110 %), one small picture per side, recorded with the paper and shown on the UI
+  // thread while that side is armed: by a drag past 40 pt (paperY) or by the tap path (tapSide).
+  const armKey = shown.kind === 'paper' ? JSON.stringify([shown.key, shown.sign.rows.map((r) => r.map((c) => c.wide)), shown.refuse.rows.map((r) => r.map((c) => c.wide)), shown.sign.density, shown.refuse.density]) : '';
+  const armPics = useMemo(() => {
+    const v = shownRef.current;
+    return v.kind === 'paper' ? { sign: armedStripPicture(v, D.w, m, 'sign'), refuse: armedStripPicture(v, D.w, m, 'refuse') } : null;
+  }, [armKey, D.w, m]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    tapSide.value = armed === 'sign' ? 1 : armed === 'refuse' ? -1 : 0;
+  }, [armed, tapSide]);
+  const signOn = useDerivedValue<number>(() => (tapSide.value === 1 || paperY.value <= -ARM_AT ? 1 : 0));
+  const refuseOn = useDerivedValue<number>(() => (tapSide.value === -1 || paperY.value >= ARM_AT ? 1 : 0));
+  const signArmXf = useDerivedValue(() => (signOn.value ? ON : OFF));
+  const refuseArmXf = useDerivedValue(() => (refuseOn.value ? ON : OFF));
   const player = around?.player || 'bramble';
-  const signature = useMemo(() => signaturePicture(player, m, L.paper.w, titleEnd), [player, m, L.paper.w, titleEnd]);
+  const signature = useMemo(() => signaturePicture(player, m, D.w, titleEnd), [player, m, D.w, titleEnd]);
+  const leaveSignature = useMemo(() => (leaving && leaving.fit !== fit ? signaturePicture(player, leaving.fit.m, leaving.fit.design.w, titleEnd) : null), [leaving, fit, player, titleEnd]);
   const ringPath = useMemo(() => arc(rest.ring.cx, rest.ring.cy, rest.ring.r, -90, 359.9), [rest]);
 
   // --- what the UI thread computes from paperY
@@ -312,21 +347,22 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const paperXf = useDerivedValue(() => {
     const e = enter.value;
     const b = back.value;
-    return [{ translateX: (1 - e) * dxIn + shake.value }, { translateY: followOf(paperY.value, upRoom, downRoom) + (1 - e) * dyIn + b * trayDy }, { scale: (0.3 + 0.7 * e) * (1 - 0.7 * b) }];
-  }, [dxIn, dyIn, upRoom, downRoom, trayDy]);
-  const leaveXf = useDerivedValue(() => [{ translateY: leaveY.value }, { scale: leaveK.value }]);
+    return [{ translateX: (1 - e) * dxIn + shake.value }, { translateY: followOf(paperY.value, upRoom, downRoom) + (1 - e) * dyIn + b * trayDy }, { scale: (0.3 + 0.7 * e) * (1 - 0.7 * b) * k }];
+  }, [dxIn, dyIn, upRoom, downRoom, trayDy, k]);
+  const kLeave = leaving?.fit.k ?? 1;
+  const leaveXf = useDerivedValue(() => [{ translateY: leaveY.value }, { scale: leaveK.value * kLeave }], [kLeave]);
   const sb = signature.box;
   const inkClip = useDerivedValue(() => ({ x: sb.x - 4, y: sb.y - 8, width: (sb.w + 8) * inkOf(paperY.value), height: sb.h + 16 }), [sb]);
   const drawerOpen = useDerivedValue(() => Math.max(drawerOf(paperY.value), hold.value));
   const paperStyle = useAnimatedStyle(() => {
     const e = enter.value;
     const b = back.value;
-    return { transform: [{ translateX: (1 - e) * dxIn + shake.value }, { translateY: followOf(paperY.value, upRoom, downRoom) + (1 - e) * dyIn + b * trayDy }, { scale: (0.3 + 0.7 * e) * (1 - 0.7 * b) }] };
-  }, [dxIn, dyIn, upRoom, downRoom, trayDy]);
+    return { transform: [{ translateX: (1 - e) * dxIn + shake.value }, { translateY: followOf(paperY.value, upRoom, downRoom) + (1 - e) * dyIn + b * trayDy }, { scale: (0.3 + 0.7 * e) * (1 - 0.7 * b) * k }] };
+  }, [dxIn, dyIn, upRoom, downRoom, trayDy, k]);
   // The desk's small words hide while the paper lies over them (the door and the sticky note above, the drawer's card below).
   const overTop = useAnimatedStyle(() => ({ opacity: paperY.value < -6 ? 0 : 1 }));
   const overDrawer = useAnimatedStyle(() => ({ transform: [{ translateY: drawerOpen.value * P.drawer.h * 0.42 }] }), [P.drawer.h]);
-  const leaveStyle = useAnimatedStyle(() => ({ transform: [{ translateY: leaveY.value }, { scale: leaveK.value }] }));
+  const leaveStyle = useAnimatedStyle(() => ({ transform: [{ translateY: leaveY.value }, { scale: leaveK.value * kLeave }] }), [kLeave]);
 
   const onA11y = useCallback(
     (e: AccessibilityActionEvent) => {
@@ -356,16 +392,26 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
         ) : null}
         {leaving && leavePic ? (
           <Group transform={leaveXf} origin={{ x: cx, y: cy }}>
-            <Group transform={[{ translateX: leaving.vm.kind === 'slip' ? P.slip.x : L.paper.x }, { translateY: leaving.vm.kind === 'slip' ? P.slip.y : L.paper.y }]}>
+            <Group transform={[{ translateX: leaving.vm.kind === 'slip' ? leaving.slip.x : leaving.fit.design.x }, { translateY: leaving.vm.kind === 'slip' ? leaving.slip.y : leaving.fit.design.y }]}>
               <Picture picture={leavePic} />
-              {leaving.side === 'sign' && leaving.vm.kind === 'paper' ? <Picture picture={signature.pic} /> : null}
+              {leaving.side === 'sign' && leaving.vm.kind === 'paper' ? <Picture picture={(leaveSignature ?? signature).pic} /> : null}
             </Group>
           </Group>
         ) : null}
         {pic ? (
           <Group transform={paperXf} origin={{ x: cx, y: cy }}>
-            <Group transform={[{ translateX: shown.kind === 'slip' ? P.slip.x : L.paper.x }, { translateY: shown.kind === 'slip' ? P.slip.y : L.paper.y }]}>
+            <Group transform={[{ translateX: shown.kind === 'slip' ? Pd.slip.x : D.x }, { translateY: shown.kind === 'slip' ? Pd.slip.y : D.y }]}>
               <Picture picture={pic} />
+              {armPics ? (
+                <>
+                  <Group transform={signArmXf}>
+                    <Picture picture={armPics.sign} />
+                  </Group>
+                  <Group transform={refuseArmXf}>
+                    <Picture picture={armPics.refuse} />
+                  </Group>
+                </>
+              ) : null}
               {shown.kind === 'paper' ? (
                 <Group clip={inkClip}>
                   <Picture picture={signature.pic} />
@@ -405,6 +451,9 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
       <View
         style={abs({ x: 0, y: L.outTray.y, w: L.width, h: L.drawer.y + L.drawer.h - L.outTray.y })}
         onStartShouldSetResponder={() => true}
+        onResponderGrant={(e) => {
+          deskGrantY.current = e.nativeEvent.pageY;
+        }}
         onResponderRelease={(e) => onDesk(e.nativeEvent.pageY)}
       />
 
@@ -435,18 +484,18 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
       {/* the paper's words, moved with it and cut at the drawer's front (a refused paper goes into the drawer) */}
       <View style={[abs({ x: 0, y: L.outTray.y, w: L.width, h: L.drawer.y - L.outTray.y }), styles.clip]} pointerEvents="none">
         {leaving && leaving.vm.kind !== 'none' ? (
-          <Animated.View style={[abs(up(leaving.vm.kind === 'slip' ? P.slip : L.paper, L.outTray.y)), leaveStyle]}>
-            <Words vm={leaving.vm} m={m} w={L.paper.w} s={s} armed={null} />
+          <Animated.View style={[abs(up(leaving.vm.kind === 'slip' ? leaving.slip : leaving.fit.design, L.outTray.y)), leaveStyle]}>
+            <Words vm={leaving.vm} m={leaving.fit.m} w={leaving.fit.design.w} s={s} signOn={zero} refuseOn={zero} />
           </Animated.View>
         ) : null}
         {shown.kind !== 'none' ? (
-          <Animated.View style={[abs(up(shown.kind === 'slip' ? P.slip : L.paper, L.outTray.y)), paperStyle]}>
-            <Words vm={shown} m={m} w={L.paper.w} s={s} armed={armed} onTitleEnd={setTitleEnd} />
+          <Animated.View style={[abs(up(shown.kind === 'slip' ? Pd.slip : D, L.outTray.y)), paperStyle]}>
+            <Words vm={shown} m={m} w={D.w} s={s} signOn={signOn} refuseOn={refuseOn} onTitleEnd={setTitleEnd} />
           </Animated.View>
         ) : null}
       </View>
       <View
-        style={abs(L.paper)}
+        style={abs(shown.kind === 'slip' ? scaled(Pd.slip, L.paper, k) : fit.screen)}
         pointerEvents={shown.kind === 'none' ? 'none' : 'auto'}
         accessible={shown.kind !== 'none'}
         accessibilityLabel={a11yLabel}
@@ -484,21 +533,27 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
 }
 
 const abs = (r: Rect) => ({ position: 'absolute' as const, left: r.x, top: r.y, width: r.w, height: r.h });
+/** A rectangle inside the paper's design rectangle as the screen shows it (scaled by `k` about the paper's centre). */
+const scaled = (r: Rect, paper: Rect, k: number): Rect => {
+  const cx = paper.x + paper.w / 2;
+  const cy = paper.y + paper.h / 2;
+  return { x: cx + (r.x - cx) * k, y: cy + (r.y - cy) * k, w: r.w * k, h: r.h * k };
+};
 /** A rectangle moved up by `dy` (into a container that starts `dy` down the screen). */
 const up = (r: Rect, dy: number): Rect => ({ ...r, y: r.y - dy });
 
 /** The words of a desk item (a paper or a slip). */
-function Words({ vm, m, w, s, armed, onTitleEnd }: { vm: DeskVM; m: ReturnType<typeof paperMetrics>; w: number; s: number; armed: 'sign' | 'refuse' | null; onTitleEnd?: (x: number) => void }) {
-  if (vm.kind === 'paper') return <PaperWords vm={vm} m={m} w={w} s={s} armed={armed} onTitleEnd={onTitleEnd} />;
+function Words({ vm, m, w, s, signOn, refuseOn, onTitleEnd }: { vm: DeskVM; m: ReturnType<typeof paperMetrics>; w: number; s: number; signOn: SharedValue<number>; refuseOn: SharedValue<number>; onTitleEnd?: (x: number) => void }) {
+  if (vm.kind === 'paper') return <PaperWords vm={vm} m={m} w={w} s={s} signOn={signOn} refuseOn={refuseOn} onTitleEnd={onTitleEnd} />;
   if (vm.kind === 'slip') return <SlipWords vm={vm} s={s} />;
   return null;
 }
 
 /** The paper's (or slip's) ground, re-recorded only when what it draws changes (not when a number ticks). */
-function usePaperPicture(vm: DeskVM, L: DeskLayout, m: ReturnType<typeof paperMetrics>, armed: 'sign' | 'refuse' | null, faces: boolean) {
+function usePaperPicture(vm: DeskVM, D: Rect, slip: Rect, m: ReturnType<typeof paperMetrics>, faces: boolean) {
   const key =
     vm.kind === 'paper'
-      ? JSON.stringify([vm.key, vm.ground, vm.face, vm.picket, armed, faces, vm.sign.rows.map((r) => r.map((c) => c.wide)), vm.refuse.rows.map((r) => r.map((c) => c.wide)), vm.sign.density, vm.refuse.density])
+      ? JSON.stringify([vm.key, vm.ground, vm.face, vm.picket, faces, vm.sign.rows.map((r) => r.map((c) => c.wide)), vm.refuse.rows.map((r) => r.map((c) => c.wide)), vm.sign.density, vm.refuse.density])
       : vm.kind === 'slip'
         ? `slip:${vm.key}`
         : '';
@@ -506,11 +561,11 @@ function usePaperPicture(vm: DeskVM, L: DeskLayout, m: ReturnType<typeof paperMe
   vmRef.current = vm;
   return useMemo(() => {
     const v = vmRef.current;
-    if (v.kind === 'paper') return paperPicture(v as PaperVM, L.paper.w, L.paper.h, m, armed);
-    if (v.kind === 'slip') return slipPicture(deskParts(L).slip);
+    if (v.kind === 'paper') return paperPicture(v as PaperVM, D.w, D.h, m, null);
+    if (v.kind === 'slip') return slipPicture(slip);
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, L, m]);
+  }, [key, D.w, D.h, slip.w, slip.h, m]);
 }
 
 /** One of the drawer's openings, shown only while the pull (or a refusal) opens it that far. */

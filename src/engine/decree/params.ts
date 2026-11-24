@@ -240,10 +240,11 @@ export function decreeParams(cfg: DecreeConfig, g: DecreeGame, factors: Factors 
  * Δrate × M(A) × m_N × V × s_i × the "Say nothing" factor; while the ministry earns nothing (a
  * boycott) its gain at full service, so a payback is never infinite. 0 when closed or capped.
  */
-export function levelGain(cfg: DecreeConfig, g: DecreeGame, i: number, p: DecreeParams = decreeParams(cfg, g)): number {
+export function levelGain(cfg: DecreeConfig, g: DecreeGame, i: number, p: DecreeParams = decreeParams(cfg, g), n = 1): number {
   const m = g.decree.ministries[i];
-  if (!m || !m.open || m.level >= cfg.decree.ministry.levelCap) return 0;
-  const dRate = rateOf(cfg, g.decree.office, i, { open: true, level: m.level + 1 }) - rateOf(cfg, g.decree.office, i, m);
+  if (!m || !m.open || n < 1 || m.level + n > cfg.decree.ministry.levelCap) return 0;
+  // D42 (a): n levels at once (a slip's bundle) add the rate of level L + n over level L.
+  const dRate = rateOf(cfg, g.decree.office, i, { open: true, level: m.level + n }) - rateOf(cfg, g.decree.office, i, m);
   const base = dRate * p.multiplier * p.mN * p.V;
   return p.served[i] ? base * p.sayNothing : base;
 }

@@ -14,7 +14,7 @@ import { rngMix } from '../rng';
 import type { GameState } from '../types';
 import { comicPaper, landPaper, scriptedPaper } from './draw';
 import { officeOf } from './params';
-import type { ClubIx, DecreeConfig, DecreeGame, DecreeState, DecreeStats, DeskItem, FollowUp, OfficeIx, Paper, Pending, Phase, Shown, Site, Strike } from './types';
+import type { Campaign, ClubIx, CountResult, DecreeConfig, DecreeGame, DecreeState, DecreeStats, DeskItem, FollowUp, OfficeIx, Paper, Pending, Phase, Scandal, Shown, Site, Strike } from './types';
 import { SITE } from './types';
 
 const zeroStats = (): DecreeStats => ({ decisions: 0, daysEver: 0, signed: 0, refused: 0, slipsTaken: 0, boycotts: 0, scandals: 0, elections: 0, wins: 0, clamps: 0, drawn: 0, papers: 0, book: {} });
@@ -80,6 +80,10 @@ export function freshDecree(cfg: DecreeConfig, seed: number, office: OfficeIx = 
     result: null,
     appSlotsUsed: 0,
     signedThisTerm: 0,
+    papersSinceSlip: 0,
+    handLanded: 0,
+    frameLast: false,
+    visitorsSeen: {},
   };
 }
 
@@ -109,31 +113,103 @@ const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 
 const isPaper = (x: unknown): x is Paper => isObj(x) && typeof x.id === 'string' && typeof x.kind === 'string' && isObj(x.sign) && isObj(x.refuse) && Array.isArray((x.sign as { effects?: unknown }).effects) && Array.isArray((x.refuse as { effects?: unknown }).effects);
 const isShown = (x: unknown): x is Shown => isObj(x) && Array.isArray(x.sign) && Array.isArray(x.refuse);
 
+const fin = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
+const PHASES: readonly Phase[] = ['governing', 'campaign', 'count', 'result'];
+/** The fields of `freshDecree` that may be null, with what a saved value must be to be kept (else null). */
+const NULLABLE: Record<string, (v: unknown) => boolean> = {
+  nextArrivalAt: fin,
+  emptySince: fin,
+  monumentOffer: (v) => typeof v === 'string',
+  face: (v) => typeof v === 'string',
+};
+
+/** A saved scandal ("Say nothing" running), or null when it is not one. */
+function scandalOf(x: unknown): Scandal | null {
+  if (!isObj(x) || !fin(x.papersLeft)) return null;
+  const out: Scandal = { papersLeft: Math.max(0, Math.round(x.papersLeft)) };
+  if (fin(x.factor) && x.factor > 0 && x.factor <= 1) out.factor = x.factor;
+  if (typeof x.waiting === 'boolean') out.waiting = x.waiting;
+  return out;
+}
+
+/** A saved run-up (campaign points per district), or null when it is not one. */
+function campaignOf(x: unknown, districts: number): Campaign | null {
+  if (!isObj(x) || !Array.isArray(x.C)) return null;
+  const C = Array.from({ length: districts }, (_, k) => (fin((x.C as unknown[])[k]) ? Math.max(0, (x.C as number[])[k]) : 0));
+  return { C, papersLeft: fin(x.papersLeft) ? Math.max(0, Math.round(x.papersLeft)) : 0, rallyDone: typeof x.rallyDone === 'boolean' ? x.rallyDone : true };
+}
+
+/** A saved count, or null when it is not one of this office. */
+function countOf(x: unknown, districts: number): CountResult | null {
+  if (!isObj(x) || !Array.isArray(x.districts) || !Array.isArray(x.order) || !fin(x.held) || !fin(x.majority) || typeof x.won !== 'boolean' || typeof x.sweep !== 'boolean' || typeof x.rival !== 'string') return null;
+  const rows = x.districts as unknown[];
+  if (rows.length !== districts || !rows.every((r) => isObj(r) && fin(r.district) && fin(r.share) && typeof r.held === 'boolean')) return null;
+  if (!(x.order as unknown[]).every((k) => fin(k) && k >= 0 && k < districts)) return null;
+  return x as unknown as CountResult;
+}
+
 /**
  * A loaded save on top of the reconciled shared fields (2.3), repaired field by field; never throws:
- * a `decree` without a numeric seed or an office of 0 to 2 starts afresh; every other field missing or
- * of the wrong shape takes `freshDecree`'s value; moods are whole numbers clamped to 0..100, one per
- * club of the office; ministries one per ministry of the office (Grand Projects kept), levels to the
- * cap; strikes and armed one per club; papers that are not papers dropped (a desk paper without its
- * frozen `shown` is put back on top of the tray, to be sized when it lands); follow-ups whose deck
- * record is gone dropped; draws and stats merged with fresh counters. Built.
+ * a `decree` without a numeric seed or an office of 0 to 2 starts afresh (`onProblem` names the field);
+ * every other field missing or of the wrong shape takes `freshDecree`'s value (a missing key is never
+ * copied as undefined; a field that may be null is kept only with its own type: a finite number for
+ * `nextArrivalAt` / `emptySince`, the object shapes of `scandal`, `campaign`, `count`, a string for
+ * `monumentOffer` / `face`; the rules-attack's finding 3); a number is kept only finite and at least 0
+ * (`term` at least 1); the phase must be one of the four, a run-up without its campaign is over
+ * (papersLeft 0, the rally done: the count can be held), and no campaign is kept while governing; moods
+ * are whole numbers clamped to 0..100, one per club of the office; ministries one per ministry of the
+ * office (Grand Projects kept), levels to the cap; strikes and armed one per club; papers that are not
+ * papers dropped (a desk paper without its frozen `shown` is put back on top of the tray, to be sized
+ * when it lands); follow-ups whose deck record is gone dropped; draws and stats merged with fresh
+ * counters (a counter kept only as a finite number). D42 (e): a save without `handLanded` counts its
+ * decisions ever. Built.
  */
-export function reconcileDecree(cfg: DecreeConfig, base: GameState, raw: unknown): DecreeGame {
+export function reconcileDecree(cfg: DecreeConfig, base: GameState, raw: unknown, onProblem?: (field: string) => void): DecreeGame {
   try {
     const d = (raw as { decree?: Partial<DecreeState> } | null)?.decree;
-    if (!d || typeof d !== 'object' || typeof d.seed !== 'number' || !(d.office === 0 || d.office === 1 || d.office === 2)) return createDecree(cfg, base);
+    if (!d || typeof d !== 'object') return createDecree(cfg, base);
+    if (typeof d.seed !== 'number' || !Number.isFinite(d.seed) || !(d.office === 0 || d.office === 1 || d.office === 2)) {
+      onProblem?.(typeof d.seed !== 'number' || !Number.isFinite(d.seed) ? 'decree.seed' : 'decree.office');
+      return createDecree(cfg, base);
+    }
     const fresh = freshDecree(cfg, d.seed, d.office);
     const row = officeOf(cfg, d.office);
     const nClubs = row.clubs.length;
+    const nDistricts = row.districts.length;
     const out: DecreeState = { ...fresh };
+    const has = (k: string) => Object.prototype.hasOwnProperty.call(d, k);
     for (const k of Object.keys(fresh) as (keyof DecreeState)[]) {
+      if (!has(k)) continue;
       const v = (d as Record<string, unknown>)[k];
       const f = fresh[k] as unknown;
-      if (v === undefined || v === null ? f !== null : Array.isArray(f) ? !Array.isArray(v) : typeof f !== typeof v && f !== null) continue;
-      (out as unknown as Record<string, unknown>)[k] = v;
+      let ok: boolean;
+      if (v === undefined) ok = false;
+      else if (f === null) ok = v === null || (NULLABLE[k] ? NULLABLE[k](v) : false);
+      else if (v === null) ok = false;
+      else if (Array.isArray(f)) ok = Array.isArray(v);
+      else if (typeof f === 'number') ok = fin(v) && v >= 0;
+      else if (isObj(f)) ok = isObj(v);
+      else ok = typeof f === typeof v;
+      if (ok) (out as unknown as Record<string, unknown>)[k] = v;
     }
-    out.draws = { ...fresh.draws, ...(isObj(d.draws) ? (d.draws as Record<Site, number>) : {}) };
-    out.stats = { ...fresh.stats, ...(isObj(d.stats) ? (d.stats as Partial<DecreeStats>) : {}) };
+    out.term = Math.max(1, Math.round(out.term));
+    out.losses = Math.round(out.losses);
+    if (!PHASES.includes(out.phase)) out.phase = fresh.phase;
+    out.scandal = scandalOf(d.scandal);
+    out.campaign = campaignOf(d.campaign, nDistricts);
+    if (out.phase === 'governing') out.campaign = null;
+    else if (out.phase === 'campaign' && !out.campaign) out.campaign = { C: new Array<number>(nDistricts).fill(0), papersLeft: 0, rallyDone: true };
+    out.count = countOf(d.count, nDistricts);
+    if (out.monumentOffer !== null && !cfg.decree.deck.monuments.some((m) => m.id === out.monumentOffer)) out.monumentOffer = null;
+    if (!has('handLanded') || !fin(d.handLanded)) out.handLanded = fin(d.stats?.decisions) ? Math.max(0, Math.round(d.stats.decisions)) : 0;
+    const counters = <T extends Record<string, unknown>>(f: T, v: unknown): T => {
+      const o = { ...f };
+      if (isObj(v)) for (const [k, x] of Object.entries(v)) if (k in f ? typeof (f as Record<string, unknown>)[k] === 'number' ? fin(x) : isObj(x) : false) (o as Record<string, unknown>)[k] = x;
+      return o;
+    };
+    out.draws = counters(fresh.draws, d.draws);
+    out.stats = counters(fresh.stats as unknown as Record<string, unknown>, d.stats) as unknown as DecreeStats;
+    out.visitorsSeen = Object.fromEntries(Object.entries(isObj(d.visitorsSeen) ? d.visitorsSeen : {}).filter(([, x]) => fin(x)));
     out.moods = Array.from({ length: nClubs }, (_, gi) => intIn(Array.isArray(d.moods) ? d.moods[gi] : undefined, 0, 100, cfg.decree.mood.start));
     const cap = cfg.decree.ministry.levelCap;
     const saved = Array.isArray(d.ministries) ? d.ministries : [];
@@ -155,19 +231,29 @@ export function reconcileDecree(cfg: DecreeConfig, base: GameState, raw: unknown
     if (desk && isObj(desk) && desk.type === 'paper' && isPaper(desk.paper)) {
       if (isShown(desk.shown)) out.desk = { type: 'paper', paper: desk.paper, shown: desk.shown, landedAt: Number(desk.landedAt) || 0 };
       else out.tray = [desk.paper, ...out.tray];
-    } else if (desk && isObj(desk) && desk.type === 'slip' && isObj(desk.slip)) out.desk = desk;
+    } else if (desk && isObj(desk) && desk.type === 'slip' && isObj(desk.slip) && isSlip(desk.slip)) {
+      // D42 (a): a slip saved before bundles buys one level.
+      out.desk = { type: 'slip', slip: { ...desk.slip, levels: fin(desk.slip.levels) && desk.slip.levels >= 1 ? Math.floor(desk.slip.levels) : 1 }, landedAt: fin(desk.landedAt) ? desk.landedAt : 0 };
+    }
     const pend = d.pending as Pending | null | undefined;
-    out.pending = pend && isObj(pend) && isObj(pend.item) && isPaper(pend.item.paper) && isShown(pend.item.shown) && typeof pend.until === 'number' ? pend : null;
+    out.pending = pend && isObj(pend) && isObj(pend.item) && isPaper(pend.item.paper) && isShown(pend.item.shown) && fin(pend.until) ? pend : null;
+    if (out.pending && out.desk) out.desk = null;
     const chains = new Set(cfg.decree.deck.chains.map((c) => c.id));
     const setUps = new Set([...cfg.decree.deck.papers.map((p) => p.id), ...cfg.decree.deck.frames.map((f) => f.id)]);
-    out.followUps = (Array.isArray(d.followUps) ? d.followUps : []).filter((f): f is FollowUp => isObj(f) && typeof f.chainId === 'string' && typeof f.dueAt === 'number' && (f.kind === 'chain' ? chains.has(f.chainId) : (f.kind === 'study' || f.kind === 'favour') && setUps.has(f.chainId)));
-    out.ribbonsDue = (Array.isArray(d.ribbonsDue) ? d.ribbonsDue : []).filter((r) => isObj(r) && typeof r.ministry === 'number' && r.ministry < out.ministries.length);
+    out.followUps = (Array.isArray(d.followUps) ? d.followUps : []).filter((f): f is FollowUp => isObj(f) && typeof f.chainId === 'string' && fin(f.dueAt) && (f.choice === 'sign' || f.choice === 'refuse') && (f.kind === 'chain' ? chains.has(f.chainId) : (f.kind === 'study' || f.kind === 'favour') && setUps.has(f.chainId)));
+    out.ribbonsDue = (Array.isArray(d.ribbonsDue) ? d.ribbonsDue : []).filter((r) => isObj(r) && fin(r.ministry) && r.ministry < out.ministries.length && fin(r.storey));
     out.rivalIndex = [0, 1, 2].map((o) => intIn(Array.isArray(d.rivalIndex) ? d.rivalIndex[o] : 0, 0, 10_000, 0));
+    for (const k of ['applicationsDelivered', 'notesSeen', 'picketsThisTerm', 'vanity', 'twists', 'formerOpponents', 'clippings', 'scriptedDone', 'frameBag'] as const) out[k] = (out[k] as unknown[]).filter((x): x is string => typeof x === 'string');
+    out.applicationReturns = out.applicationReturns.filter((r) => isObj(r) && typeof r.minister === 'string' && fin(r.dueAt));
+    out.seen = Object.fromEntries(Object.entries(out.seen).filter(([, x]) => fin(x)));
     return { ...base, decree: out };
-  } catch {
+  } catch (e) {
+    onProblem?.(`decree (${e instanceof Error ? e.message : String(e)})`);
     return createDecree(cfg, base);
   }
 }
+
+const isSlip = (x: Record<string, unknown>): boolean => isObj(x.purchase) && typeof x.purchase.type === 'string' && fin(x.price) && fin(x.drawnLevel) && fin(x.rateGain);
 
 // ----------------------------------------------------------------------------- state builders
 

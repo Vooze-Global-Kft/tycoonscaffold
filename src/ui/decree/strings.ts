@@ -18,8 +18,21 @@ export const dibs = (n: number) => (Math.abs(n) < 1000 ? String(Math.round(n)) :
 export const signedDibs = (n: number) => (n < 0 ? `−${dibs(-n)}` : `+${dibs(n)}`);
 /** The rules' About (advice.ts `about`) as words: "about 20 s", "about 2 min", "about 1 h". */
 export const aboutText = (a: { value: number; unit: 's' | 'min' | 'h' }) => `about ${a.value} ${a.unit}`;
+/** A space before "%" as a no-break space (finding 47: "60 %" never breaks before its sign), for written texts at render. */
+export const nbsp = (t: string) => t.replace(/ %/g, '\u00a0%');
 /** A district word in the plural ("ward" → "wards", "county" → "counties"). */
 export const plural = (word: string) => (/[^aeiou]y$/.test(word) ? `${word.slice(0, -1)}ies` : `${word}s`);
+/**
+ * A place as it is named inside a sentence: the data writes "the Republic" with its article and
+ * "Province of Upper Wobbling" without; a place that begins with a common noun and "of" takes "the"
+ * ("The count in the Province of Upper Wobbling"). A town's own name is left as it is.
+ */
+export const thePlace = (place: string) => (/^[A-Z][a-z]+ of /.test(place) ? `the ${place}` : place);
+/** The same at the start of a sentence ("The Republic."). */
+export const ThePlace = (place: string) => {
+  const p = thePlace(place);
+  return p.charAt(0).toUpperCase() + p.slice(1);
+};
 
 export const S = {
   // ===== desk and flick (P6) =======================================================================
@@ -33,7 +46,7 @@ export const S = {
     join: ' · ',
     noChange: 'No change',
     poll: (from: number, to: number, of: number) => `Poll ${from} → ${to} of ${of}`,
-    approval: (from: number, to: number) => `${from} → ${to} %`,
+    approval: (from: number, to: number) => `${from} → ${to}\u00a0%`,
     /** A chip's resulting value: a mood, the gossip, a level ("50 → 54"). */
     change: (from: number, to: number) => `${from} → ${to}`,
     /** A district's share, given in hundredths, printed to one decimal ("48.6 → 52.6"). */
@@ -103,7 +116,7 @@ export const S = {
     rate: (perSecond: string) => `+${perSecond}/s`,
     approvalChip: (pct: number, mult: string) => `${pct} % ×${mult}`,
     /** While a strip is armed: the approval that outcome prints (2.7, 4.1). */
-    approvalPreview: (from: number, to: number) => `${from} → ${to} %`,
+    approvalPreview: (from: number, to: number) => `${from} → ${to}\u00a0%`,
     gossipChip: (g: number, max: number) => `${g}/${max}`,
     treasuryLabel: (amount: string, rate: string) => `Treasury ${amount} dibs, ${rate}`,
     approvalLabel: (pct: number, mult: string) => `Approval ${pct} %, taxes ×${mult}`,
@@ -221,11 +234,13 @@ export const S = {
     pollNeeded: (majority: number) => `${majority} needed`,
     held: 'held',
     notHeld: 'not held',
-    weighs: 'Weighs',
+    /** D43: the clubs strong in a district, by name ("Strong here: Bus, Shops"). */
+    weighs: 'Strong here:',
     campaign: (points: number) => `Campaign +${points}`,
     huff: (club: string, cost: string) => `${club} in a huff ${cost}`,
     wonOver: (club: string) => `${club} won over: counts little more`,
-    wonOverRow: (club: string, cost: string) => `${club} won over, uncounted ${cost}`,
+    /** D31's own words (D43: never "uncounted" beside vote shares). */
+    wonOverRow: (club: string, cost: string) => `${club} won over: counts little more ${cost}`,
     rivalPull: (name: string, pull: number) => `${name} pulls −${pull} everywhere`,
     disarray: (points: number) => `Opponents in disarray +${points}`,
     callButton: 'Call the election',
@@ -283,7 +298,7 @@ export const S = {
     toDesk: 'To the desk',
     /** Election Night (4.4): played straight; the comedy is in the lines around the board. */
     nightTitle: 'Election night',
-    nightCounting: (place: string) => `The count in ${place}`,
+    nightCounting: (place: string) => `The count in ${thePlace(place)}`,
     share: (hundredths: number) => (hundredths / 100).toFixed(1),
     nightBar: (held: number, of: number, majority: number) => `${held} of ${of} · ${majority} needed`,
     nightSpeaker: (name: string, role: string) => `${name}, ${role}`,
@@ -292,14 +307,16 @@ export const S = {
     nightToResult: 'To the result',
     nightRowLabel: (name: string, share: string, held: boolean) => `${name}, ${share}, ${held ? 'held' : 'not held'}`,
     /** The result sheet (2.10, D26); no text counts or celebrates terms held. */
-    resultTitleWon: 'Returned',
-    resultTitleLost: 'Not returned',
+    /** D43: plain headings, no election jargon. */
+    resultTitleWon: 'Elected',
+    resultTitleLost: 'Not elected',
     resultCount: (held: number, of: number, words: string) => `${held} of ${of} ${words}`,
     nrGained: (n: number) => `Name Recognition +${n}`,
     carried: (names: string) => `Carried by your opponents' disarray: ${names}`,
     standFor: (title: string) => `Stand for ${title}`,
-    /** 2.10's "Another term here": the satire lint denies "another term" (a strongman phrase), so the seat is named instead. */
-    anotherTerm: 'Stay in this seat',
+    /** D43: the result sheet's one button; with a higher office open the two are "Stand for …" and "Not yet". (D43 bans three wordings of holding on to office: see the decision.) */
+    backToDesk: 'Back to the desk',
+    notYetMove: 'Not yet',
     missing: (title: string, nrNeeded: number, recordName: string, recordNeeded: number, nr: number, record: number) => `${title} needs Name Recognition ${nrNeeded} and a ${recordName} of ${recordNeeded}: you have ${nr} and ${record}`,
     nextThing: (name: string) => `Next term: ${name}`,
     quietTerm: 'A Quiet Term',
@@ -307,11 +324,11 @@ export const S = {
     nothingLost: 'Nothing built is lost.',
     disarrayNext: (points: number) => `Opponents in disarray +${points} on the next poll`,
     standingNext: (name: string, slogan: string) => `Standing next: ${name}. "${slogan}"`,
-    /** The move sheet (2.12): Resets, Stays, Next. */
+    /** The move sheet (2.12): Resets, Carried over (2.12's "Stays"; D43: no label says stay), Next. */
     moveTitle: 'Moving up',
-    moveHeadline: (title: string, place: string) => `${title} of ${place}`,
+    moveHeadline: (title: string, place: string) => `${title} of ${thePlace(place)}`,
     resets: 'Resets',
-    stays: 'Stays',
+    stays: 'Carried over',
     next: 'Next',
     resetItem: {
       treasury: 'The treasury, to a transition fund',
@@ -361,10 +378,11 @@ export const S = {
     portrait: (title: string, surname: string) => `${title} ${surname}`,
     portraitActing: (title: string, surname: string) => `Acting ${title} ${surname}`,
     noPortrait: 'No portrait yet',
-    seat: (place: string, term: number) => `Term ${term} in this seat, ${place}.`,
+    /** D43: title and place only (no text counts terms held). */
+    seat: (place: string) => `${ThePlace(place)}.`,
     townsLeft: 'Towns left behind',
     noTowns: 'None yet. The removal van is on standby.',
-    photoCaption: (place: string, title: string, terms: number) => `${place}: ${title}, ${terms === 1 ? '1 term' : `${terms} terms`}`,
+    photoCaption: (place: string, title: string) => `${place}: ${title}`,
     levelsOnRecord: 'Ministries on record',
     levelOf: (name: string, level: number) => `${name}: level ${level}`,
     grandProjects: 'Grand Projects',
@@ -406,7 +424,7 @@ export const S = {
       capped: (hours: string) => `The ministries collect for ${hours} at most while you are out.`,
       inTreasury: 'Already in the treasury',
       back: 'Back to the desk',
-      ad: (pct: number) => `Watch ad: +${pct} %`,
+      ad: (pct: number) => `Watch ad: +${pct}\u00a0%`,
       adFree: (pct: number) => `+${pct} %, no video`,
       adNotReady: 'Ad not ready',
       closedRunUp: 'Closed during the run-up',

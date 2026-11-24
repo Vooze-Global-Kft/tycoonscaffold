@@ -674,8 +674,7 @@ export const DecreeObject = z.object({
       /** D16: a slip on an empty desk with an empty tray keeps back this many seconds of B (tune 10 to 30). */
       slipReserveSeconds: nonneg.default(15),
       takeBackSeconds: pos.default(2),
-      /** At most this many papers past the cap for an event on top (2.7). */
-      eventOverCap: int.min(0).default(1),
+      // D41: a boycott's grievance and a scandal's front page go on top of the tray whatever its cap (the old `eventOverCap` is gone; a game.json that still has it loads: the key is dropped).
       /**
        * D32: a slip that has landed stays until it is flicked up or down; a visitor who arrives meanwhile
        * waits in the tray (true). false is 2.7 as first written (an arrival returns an undragged slip).
@@ -684,6 +683,20 @@ export const DecreeObject = z.object({
       slipStays: z.boolean().default(true),
     })
     .prefault({}),
+  /**
+   * The desk's rhythm (D42, rules). `betweenEvery` (b): while a paper waits in the tray, a budget slip lands
+   * only once this many papers have been decided since the last slip landed (2; tune 2 to 4); on an empty
+   * desk with an empty tray a slip lands as D16 has it.
+   */
+  slips: z.object({ betweenEvery: int.positive().default(2) }).prefault({}),
+  /**
+   * The draw's spread (D42, rules). `framesAfter` (e): no template frame is drawn until this many papers
+   * with a written text have landed in the game (40), and never two frames in a row. `recentVisitors` (f):
+   * the comic draw passes over a paper whose visitor brought one of the last this-many papers (2) when
+   * another eligible paper exists; a frame without a visitor of its own takes the club's spokesperson seen
+   * longer ago.
+   */
+  draw: z.object({ framesAfter: int.min(0).default(40), recentVisitors: int.min(0).default(2) }).prefault({}),
   /** Time away (2.15): arrival every n s (tune 240 to 600), rate a (tune 0.25 to 0.45), the cap (rule 4 h; +2 h with Long Lunch, D11). */
   away: z.object({ arrivalSeconds: pos.default(360), rate: prob.default(0.35), capHours: pos.default(4), longLunchHours: pos.default(2) }).prefault({}),
   /**
@@ -884,6 +897,7 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
   { path: 'ladder.nrFactor', low: 0.01, high: 0.04, spec: '2.2' },
   { path: 'ladder.transitionFund', low: 15, high: 90, spec: '2.2' },
   { path: 'desk.slipReserveSeconds', low: 10, high: 30, spec: 'D16' },
+  { path: 'slips.betweenEvery', low: 2, high: 4, spec: 'D42' },
   { path: 'count.topAbove', low: 60, high: 80, spec: 'D31' },
   { path: 'boycott.below', low: 20, high: 30, spec: 'D38' },
   { path: 'paperRules.sizing.pull', low: 0.5, high: 1, spec: 'D27, D38' },

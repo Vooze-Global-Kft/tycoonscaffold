@@ -15,7 +15,7 @@
  * Written by the skeleton exactly as 4.2; owned afterwards by the desk package P6
  * (docs/design/office-build-plan.md). Pure.
  */
-import { FONT_SCALE_MAX, PAPER_INNER_W, PAPER_W } from './layout';
+import { FONT_SCALE_MAX, PAPER_INNER_W, PAPER_W, type Rect } from './layout';
 
 /** The heights and font sizes at s = 1.3 (4.2). */
 export const AT_13 = {
@@ -113,7 +113,7 @@ export interface PaperMetrics {
   sign: StripRows;
   dividerTop: { y: number; h: number };
   header: { y: number; h: number };
-  proposal: { y: number; h: number; line: number; lines: number };
+  proposal: { y: number; h: number; line: number; lines: number; returningLine: number };
   dividerBottom: { y: number; h: number };
   refuse: StripRows;
   /** The rows' natural sum before the proposal took the spare (402 at s = 1.3). */
@@ -127,15 +127,25 @@ export interface PaperMetrics {
 
 const at = (h13: number, s: number) => Math.ceil((h13 * s) / FONT_SCALE_MAX - 1e-9);
 
-/** The paper's rows for a paper `height` tall at font scale `fontScale` (4.2). */
-export function paperMetrics(height: number, fontScale: number): PaperMetrics {
+/**
+ * A returning visitor's last line (2.7 "with one of 60 returning-visitor last lines"): under the returned
+ * text, 2 lines at 12 × s (the content check's box BOXES.returning), line 20 at s = 1.3. A paper that
+ * carries one gets this room on top of the proposal's 4 lines (finding 2: the boxes are the contract).
+ */
+export const RETURNING_FONT = 12;
+export const RETURNING_LINES = 2;
+export const RETURNING_LINE_13 = 20;
+
+/** The paper's rows for a paper `height` tall at font scale `fontScale` (4.2); `returning` adds the returning line's room. */
+export function paperMetrics(height: number, fontScale: number, opts: { returning?: boolean } = {}): PaperMetrics {
   const s = Math.min(fontScale > 0 ? fontScale : 1, FONT_SCALE_MAX);
   const title = at(AT_13.titleRow, s);
   const chip = at(AT_13.chipRow, s);
   const note = at(AT_13.noteRow, s);
   const stripH = AT_13.stripPad + title + 2 * chip + note + AT_13.stripPad;
   const line = at(AT_13.proposalLine, s);
-  const proposalNatural = AT_13.proposalLines * line + AT_13.proposalPad;
+  const returningLine = at(RETURNING_LINE_13, s);
+  const proposalNatural = AT_13.proposalLines * line + AT_13.proposalPad + (opts.returning ? RETURNING_LINES * returningLine : 0);
   const natural = 2 * AT_13.padding + 2 * stripH + 2 * AT_13.divider + AT_13.header + proposalNatural;
   const spare = Math.max(0, height - natural);
   const strip = (y: number): StripRows => {
@@ -149,7 +159,7 @@ export function paperMetrics(height: number, fontScale: number): PaperMetrics {
   y += AT_13.divider;
   const header = { y, h: AT_13.header };
   y += AT_13.header;
-  const proposal = { y, h: proposalNatural + spare, line, lines: AT_13.proposalLines };
+  const proposal = { y, h: proposalNatural + spare, line, lines: AT_13.proposalLines, returningLine };
   y += proposal.h;
   const dividerBottom = { y, h: AT_13.divider };
   y += AT_13.divider;
@@ -157,4 +167,30 @@ export function paperMetrics(height: number, fontScale: number): PaperMetrics {
   y += stripH + AT_13.padding;
   const font = Object.fromEntries(Object.entries(FONT).map(([k, v]) => [k, v * s])) as PaperMetrics['font'];
   return { s, sign, dividerTop, header, proposal, dividerBottom, refuse, natural, total: y, fits: natural <= height, font };
+}
+
+/**
+ * How the paper is drawn in its zone (finding 1): its contents are laid out at the design width (343)
+ * and at a height whose rows hold at least their natural sum, then the whole paper is scaled by `k`
+ * about its centre so it fits a narrow (320 pt) or short (360 × 640) window. `k` is 1 at 375 × 667 and
+ * 390 × 844. `design` is the paper's rectangle before the scale (same centre), `screen` after it (what
+ * the finger touches). The flick's thresholds keep counting finger points.
+ */
+export interface PaperFit {
+  k: number;
+  design: Rect;
+  screen: Rect;
+  m: PaperMetrics;
+}
+export function paperFit(paper: Rect, width: number, fontScale: number, opts: { returning?: boolean } = {}): PaperFit {
+  const natural = paperMetrics(0, fontScale, opts).natural;
+  const raw = Math.min(1, (width - 16) / PAPER_W, paper.h > 0 ? paper.h / natural : 1);
+  const k = raw > 0 ? raw : 1;
+  const cx = paper.x + paper.w / 2;
+  const cy = paper.y + paper.h / 2;
+  const dw = k < 1 || paper.w < PAPER_W ? PAPER_W : paper.w;
+  const dh = paper.h / k;
+  const design = { x: cx - dw / 2, y: cy - dh / 2, w: dw, h: dh };
+  const screen = { x: cx - (dw * k) / 2, y: paper.y, w: dw * k, h: paper.h };
+  return { k, design, screen, m: paperMetrics(dh, fontScale, opts) };
 }
