@@ -25,7 +25,7 @@
  */
 
 /** Where the values below came from (build-office.py rewrites it with --save). */
-export const DECREE_TUNED_FROM = 'the numbers step on the final rules (D41 to D45), 24 November: the D34 candidate with the first engineer's E3/G0 balance findings, tuned on seeds 101 to 130 at 4, 6 and 9 s and checked on 201 to 215 (scratchpad/office/numbers2/TABLE.txt)';
+export const DECREE_TUNED_FROM = "the numbers step on the final rules (D41 to D45), 24 November: the D34 candidate with the first engineer's E3/G0 balance findings, tuned on seeds 101 to 130 at 4, 6 and 9 s and checked on 201 to 215 (scratchpad/office/numbers2/TABLE.txt)";
 
 // TUNED-BEGIN
 export const DECREE_TUNED: Record<string, number> = {
