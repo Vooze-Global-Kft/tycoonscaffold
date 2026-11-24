@@ -308,13 +308,19 @@ function eligibleFrames(cfg: DecreeConfig, office: OfficeIx): FrameDef[] {
   return cfg.decree.deck.frames.filter((f) => (f.office === oid || f.office === 'any') && clubIndex(cfg, office, f.club) >= 0 && (!f.other || clubIndex(cfg, office, f.other) >= 0));
 }
 
-/** A template (2.7 step 5): the next frame of the shuffled bag (refilled and reshuffled from site template when empty), its slot filled with a phrase (site template). */
-function templatePaper(cfg: DecreeConfig, g: DecreeGame): Drawn | null {
+/**
+ * A template (2.7 step 5): the next frame of the shuffled bag (refilled and reshuffled from site
+ * template when empty), its slot filled with a phrase (site template). `fresh`: only while a frame of
+ * this bag is still to be dealt (the comic draw's fallback, which must not repeat a frame before it
+ * returns a text seen longest ago); a bag never dealt counts as fresh.
+ */
+function templatePaper(cfg: DecreeConfig, g: DecreeGame, fresh = false): Drawn | null {
   const frames = eligibleFrames(cfg, g.decree.office);
   if (!frames.length) return null;
   const ids = new Set(frames.map((f) => f.id));
   let s = g;
   let bag = s.decree.frameBag.filter((id) => ids.has(id));
+  if (fresh && !bag.length && frames.some((f) => s.decree.seen[f.id] !== undefined)) return null;
   if (!bag.length) {
     bag = frames.map((f) => f.id);
     for (let i = bag.length - 1; i > 0; i--) {
@@ -341,12 +347,25 @@ function templatePaper(cfg: DecreeConfig, g: DecreeGame): Drawn | null {
   return { paper: w.paper, g: withDecree(w.g, { seen: { ...w.g.decree.seen, [frame.id]: w.g.decree.stats.decisions } }) };
 }
 
-/** The comic draw (2.7), with its fallback order: a template, then the text seen longest ago with a returning-visitor line. */
+/**
+ * The returning-visitor lines a paper of visitor club `club` may take (2.7; the writers' request): the
+ * lines for any visitor (ids `ret-any-*`, and every line without a `ret-` id) and the lines of the
+ * VISITOR's club (`ret-<club>-*`): an advisor or a lobbyist (no club) gets the any-visitor lines only.
+ */
+export function returningLines(cfg: DecreeConfig, club: ClubId | null): { id: string; text: string }[] {
+  return cfg.decree.deck.returning.filter((l) => !l.id.startsWith('ret-') || l.id.startsWith('ret-any-') || (club !== null && l.id.startsWith(`ret-${club}-`)));
+}
+
+/**
+ * The comic draw (2.7), with its fallback order when no unseen eligible text is left: a template
+ * still to be dealt from the current bag, then the text seen longest ago (not one waiting), whole, with
+ * a returning-visitor line (site pick, x = 1); with nothing at all left, a template from a new bag.
+ */
 function comicDraw(cfg: DecreeConfig, g: DecreeGame): Drawn | null {
   const weights = comicWeights(cfg, g);
   const chosen = pickWeighted(g, weights.map((w) => ({ weight: w.weight, v: w.def })));
   if (chosen) return comicPaper(cfg, chosen.g, chosen.v.id);
-  const t = templatePaper(cfg, g);
+  const t = templatePaper(cfg, g, true);
   if (t) return t;
   const d = g.decree;
   let oldest: ComicPaperDef | null = null;
@@ -354,8 +373,8 @@ function comicDraw(cfg: DecreeConfig, g: DecreeGame): Drawn | null {
     if (!eligibleComic(cfg, d.office, p) || waiting(g).some((w) => w.source === p.id)) continue;
     if (!oldest || (d.seen[p.id] ?? -1) < (d.seen[oldest.id] ?? -1)) oldest = p;
   }
-  if (!oldest) return null;
-  const lines = cfg.decree.deck.returning;
+  if (!oldest) return templatePaper(cfg, g);
+  const lines = returningLines(cfg, oldest.visitor.club);
   let s = g;
   let line: string | null = null;
   if (lines.length) {
@@ -529,9 +548,10 @@ function choose(cfg: DecreeConfig, g0: DecreeGame): Drawn | null {
     if (r) return r;
   }
   // (4) forms: an application, a ribbon at a new storey, a requisition every n-th draw.
-  const minister = standIn(nextApplication, () => nextApplication(cfg, g), () => nextApplicationStandIn(cfg, g));
+  let viaStandIn = false;
+  const minister = standIn(nextApplication, () => nextApplication(cfg, g), () => ((viaStandIn = true), nextApplicationStandIn(cfg, g)));
   if (minister && !waiting(g).some((p) => p.kind === 'application' && p.sign.effects.some((e) => e.type === 'appoint' && e.minister === minister))) {
-    const marked = withDecree(g, { seen: { ...g.decree.seen, [`@application:${g.decree.office}:${g.decree.term}:${g.decree.day}`]: g.decree.stats.decisions } });
+    const marked = viaStandIn ? withDecree(g, { seen: { ...g.decree.seen, [`@application:${g.decree.office}:${g.decree.term}:${g.decree.day}`]: g.decree.stats.decisions } }) : g;
     const a = applicationPaper(cfg, marked, minister);
     if (a) return a;
   }

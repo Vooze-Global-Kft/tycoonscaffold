@@ -92,10 +92,10 @@
         "club": "bus",
         "other": "shops",
         "archetype": "project",
-        "text": "The ticket museum is full, and so is your drawer. It asks for the shop next door.",
+        "text": "The museum keeps each ticket it sells. It asks for a shop window.",
         "subject": "buses",
         "butt": "thing",
-        "shape": "callback",
+        "shape": "escalation",
         "delay": [
           10,
           14
@@ -109,9 +109,9 @@
         "visitor": "sprott",
         "cosigner": "minute",
         "club": "bus",
-        "other": "veg",
+        "other": "shops",
         "archetype": "committee",
-        "text": "The tickets now fill a shed on the patch. A study asks: is it a museum?",
+        "text": "No museum? Then a study of each ticket, read aloud in the street.",
         "subject": "committees",
         "butt": "committee",
         "shape": "form-misapplied",
@@ -120,8 +120,8 @@
           16
         ],
         "clippings": {
-          "sign": "STUDY FINDS SHED IS A SHED; ASKS FOR MORE TIME",
-          "refuse": "TICKETS STAY IN SHED. SHED SAYS NOTHING"
+          "sign": "TICKET STUDY READ ALOUD; MAYOR'S TICKET IS A RECEIPT",
+          "refuse": "TICKETS STAY IN BOXES, BY DATE. MERVYN READS THEM QUIETLY"
         }
       }
     },
@@ -133,8 +133,8 @@
         "visitor": "spinwell",
         "club": "bus",
         "archetype": "vanity",
-        "text": "Rodney wants a portrait of your 7:02. It was late for the sitting.",
-        "subject": "portraits",
+        "text": "Your name in lights on the 7:02, Mayor. It will be late, but lit.",
+        "subject": "buses",
         "butt": "self",
         "shape": "undercut",
         "delay": [
@@ -142,7 +142,7 @@
           14
         ],
         "clippings": {
-          "sign": "MAYOR'S BUS PORTRAIT UNVEILED; BUS MISSES UNVEILING",
+          "sign": "MAYOR'S NAME LIT UP ON 7:02; SEEN ARRIVING LATE FROM AFAR",
           "refuse": "7:02 STILL NAMED AFTER MAYOR, STILL LATE, STILL WAVING"
         }
       },
@@ -151,7 +151,7 @@
         "club": "bus",
         "other": "shops",
         "archetype": "treat",
-        "text": "The 7:02 kept its name, and is on time. Will you wave it off?",
+        "text": "The 7:02 kept its name and runs on time. Wave it off? It will not wait.",
         "subject": "buses",
         "butt": "self",
         "shape": "photo-op",
@@ -174,7 +174,7 @@
         "club": "shops",
         "other": "bus",
         "archetype": "swap",
-        "text": "38 chimes a day, all for buses. The Guild asks to borrow one.",
+        "text": "38 chimes a day, all for buses. The Guild asks for one at opening.",
         "subject": "clocks",
         "butt": "thing",
         "shape": "statistic",
@@ -183,7 +183,7 @@
           14
         ],
         "clippings": {
-          "sign": "CLOCK CHIMES SO OFTEN MAYOR CANNOT HEAR OWN SPEECH",
+          "sign": "MAYOR ATTENDS SHOP OPENING CHIME; IT WAS A BUS",
           "refuse": "CLOCK STAYS WITH BUSES; SHOPS OPEN WITHOUT A CHIME"
         }
       },
@@ -214,7 +214,7 @@
         "visitor": "spinwell",
         "club": "shops",
         "archetype": "vanity",
-        "text": "Rodney proposes a window of you, judging. Labelled WINNER.",
+        "text": "A window of you, judging windows, Mayor. Card: JUDGE'S CHOICE.",
         "subject": "vanity",
         "butt": "self",
         "shape": "slogan",
@@ -233,7 +233,7 @@
         "club": "shops",
         "other": "bus",
         "archetype": "committee",
-        "text": "No judge, so every window won. Now a study of the noses on them.",
+        "text": "No judge, so all won. A study will pick a winner by nose prints.",
         "subject": "committees",
         "butt": "committee",
         "shape": "form-misapplied",
@@ -242,7 +242,7 @@
           16
         ],
         "clippings": {
-          "sign": "STUDY OF WINDOWS FINDS NOSES; NAMES NO NOSES",
+          "sign": "STUDY PICKS WINNING WINDOW BY NOSES; MAYOR'S NOSE ON IT",
           "refuse": "EVERY WINDOW WINS. NONE OF THEM CHEERS"
         }
       }
@@ -274,7 +274,7 @@
         "club": "shops",
         "other": "bus",
         "archetype": "treat",
-        "text": "No bunting, so the Guild hung one ribbon. Will you cut it, Mayor?",
+        "text": "No bunting, so we hung a single ribbon. Cut it level, Mayor.",
         "subject": "ribbons",
         "butt": "self",
         "shape": "photo-op",
@@ -297,10 +297,10 @@
         "club": "bus",
         "other": "shops",
         "archetype": "swap",
-        "text": "Your signpost points to shops 100 % of the time. Buses ask for 50 %.",
+        "text": "Your signpost points both ways, to the shops. We ask for one arm.",
         "subject": "signage",
         "butt": "thing",
-        "shape": "statistic",
+        "shape": "literalism",
         "delay": [
           10,
           14
@@ -316,7 +316,7 @@
         "club": "shops",
         "other": "bus",
         "archetype": "committee",
-        "text": "Each night the signpost turns from the shops. A study will watch.",
+        "text": "The old signpost still points to buses. A study will follow it.",
         "subject": "signage",
         "butt": "committee",
         "shape": "form-misapplied",
@@ -325,8 +325,8 @@
           16
         ],
         "clippings": {
-          "sign": "SIGNPOST WATCHED ALL NIGHT, DOES NOTHING; STUDY EXTENDED",
-          "refuse": "SIGNPOST TURNS AGAIN. NOBODY WATCHING"
+          "sign": "SIGNPOST STUDY TAKES WRONG TURN; MAYOR ASKED THE WAY",
+          "refuse": "OLD SIGNPOST STILL POINTS AT BUSES; SHOPS FIND OWN WAY"
         }
       }
     },
@@ -338,7 +338,7 @@
         "visitor": "spinwell",
         "club": "veg",
         "archetype": "vanity",
-        "text": "Your turnip came second. Rodney proposes a portrait, cropped to leave out first.",
+        "text": "Your turnip came second, Mayor. A portrait, cropped to leave out the winner?",
         "subject": "portraits",
         "butt": "self",
         "shape": "undercut",
@@ -356,7 +356,7 @@
         "club": "shops",
         "other": "veg",
         "archetype": "fee",
-        "text": "You would not lend the turnip your name. Till's Teas will pay to lend it theirs.",
+        "text": "You would not lend the turnip your name. Till's Teas will pay to lend theirs.",
         "subject": "vegetable-shows",
         "butt": "self",
         "shape": "callback",
@@ -365,7 +365,7 @@
           16
         ],
         "clippings": {
-          "sign": "TURNIP TAKES TEA SHOP'S NAME; MAYOR ASKS FOR IT BACK",
+          "sign": "TILL'S TEAS TURNIP COMES SECOND; MAYOR'S NAME NOT MENTIONED",
           "refuse": "TURNIP STAYS NAMELESS. MAYOR'S NAME STILL ON OFFER"
         }
       }
@@ -420,16 +420,16 @@
         "club": "veg",
         "other": "bus",
         "archetype": "fee",
-        "text": "The forecourt weigh-in went well. The Society will pay to book it yearly.",
+        "text": "We will pay to book the forecourt yearly. Crowds up 60 %, waiting for buses.",
         "subject": "vegetable-shows",
         "butt": "thing",
-        "shape": "escalation",
+        "shape": "statistic",
         "delay": [
           10,
           14
         ],
         "clippings": {
-          "sign": "MAYOR'S HAT WEIGHED BY MISTAKE; COMES THIRD",
+          "sign": "MAYOR'S HAT WEIGHED BY MISTAKE; BEATEN BY A BUS",
           "refuse": "BUSES GET FORECOURT BACK; ONE PUMPKIN LEFT BEHIND"
         }
       },
@@ -438,7 +438,7 @@
         "club": "bus",
         "other": "veg",
         "archetype": "treat",
-        "text": "Desmond has logged your refusal under buses. Will you sign it?",
+        "text": "You kept our forecourt, Mayor, so we logged you as a bus. Sign here?",
         "subject": "buses",
         "butt": "self",
         "shape": "form-misapplied",
@@ -461,10 +461,10 @@
         "club": "shops",
         "other": "veg",
         "archetype": "swap",
-        "text": "The hats ask to stay on, unless a pumpkin objects in person.",
+        "text": "The hats had the bandstand a day. They ask for a week, and a hat for it.",
         "subject": "hats",
         "butt": "thing",
-        "shape": "literalism",
+        "shape": "escalation",
         "delay": [
           10,
           14

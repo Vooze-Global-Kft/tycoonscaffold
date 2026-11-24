@@ -36,34 +36,45 @@ export function drawPaperGround(c: SkCanvas, ruled = true): void {
  * closed loop and no crossing (a crossing loop reads as an awareness ribbon).
  */
 const SIGNATURE: [number, number][] = [
-  [118, 762],
+  // a tall capital rising from the lower left, rounded over its top and down
+  [112, 770],
   [150, 640],
-  [182, 528],
-  [212, 500],
-  [232, 560],
-  [238, 740],
-  [262, 688],
-  [288, 650],
-  [314, 662],
-  [326, 740],
-  [350, 690],
-  [374, 652],
-  [400, 664],
-  [410, 740],
-  [438, 640],
-  [462, 512],
-  [486, 508],
-  [494, 600],
-  [500, 740],
-  [528, 690],
-  [554, 652],
-  [580, 664],
-  [592, 740],
-  [630, 722],
-  [694, 734],
-  [762, 690],
-  [812, 612],
-  [842, 526],
+  [186, 520],
+  [214, 470],
+  [244, 472],
+  [256, 540],
+  [250, 660],
+  [244, 760],
+  // two rounded humps (an "m"), slanted a little forward
+  [270, 690],
+  [300, 640],
+  [332, 634],
+  [348, 680],
+  [348, 760],
+  [372, 690],
+  [402, 640],
+  [434, 636],
+  [450, 684],
+  [452, 762],
+  // a tall open ascender, rounded at the top (no loop, never crossing itself)
+  [482, 660],
+  [512, 520],
+  [534, 476],
+  [556, 492],
+  [558, 560],
+  [552, 680],
+  [556, 762],
+  // a last hump, then the tail sweeping away under the name and up to the nib
+  [582, 690],
+  [610, 650],
+  [640, 650],
+  [656, 700],
+  [664, 780],
+  [700, 816],
+  [760, 800],
+  [812, 740],
+  [840, 660],
+  [850, 580],
 ];
 
 /** Draws the signature (points in 1024 space) with a broad violet nib. */
@@ -134,7 +145,7 @@ const tipDeg = (pts: [number, number][]): number => {
 /** A: chunky scissors lying open across the upper left, blades toward the signature's rising tail; the signature low, flying up to the right with the nib still writing. */
 const subjectA: Draw = (c) => {
   at(c, 0, 40, 1, 0, (q) => {
-    at(q, 430, 330, 7.6, 112, (z) => drawGiantScissors(z, 40, { open: 40, chunky: 2 }));
+    at(q, 440, 320, 8.4, 112, (z) => drawGiantScissors(z, 40, { open: 40, chunky: 2.2, darkSteel: true }));
     drawFlourish(q, SIGNATURE, 50);
     const [x, y] = SIGNATURE[SIGNATURE.length - 1];
     drawWritingNib(q, x, y, tipDeg(SIGNATURE), 200);
@@ -145,7 +156,7 @@ const SIG_B: [number, number][] = SIGNATURE.map(([x, y]) => [x, y + 40] as [numb
 
 /** B: the chunky scissors standing big and open, upright at the left, the signature passing under their blades and rising with the nib. */
 const subjectB: Draw = (c) => {
-  at(c, 300, 400, 6.6, -18, (q) => drawGiantScissors(q, 40, { open: 40, chunky: 2 }));
+  at(c, 300, 400, 6.6, -18, (q) => drawGiantScissors(q, 40, { open: 40, chunky: 2.2, darkSteel: true }));
   drawFlourish(c, SIG_B, 50);
   const [x, y] = SIG_B[SIG_B.length - 1];
   drawWritingNib(c, x, y, tipDeg(SIG_B), 200);
@@ -188,12 +199,14 @@ export const CANDIDATES: Candidate[] = [
 ];
 
 /**
- * CHOSEN: A. At 60 px beside the other three games it is the only light tile (Pizza's cream is
- * warmer and full of a face; Orbit's navy and Lantern Row's dusk are dark), and A's two shapes stay
- * apart: the violet flourish is one bold diagonal and the brass-ringed scissors a second clear
- * silhouette, so it reads as "scissors and a flying signature", a joke, not a pen-and-paper
- * utility. B crowds the scissors inside the loop (a muddle at 60 px); C's sheet with a strip reads
- * as a document app, the thing 7.9 warns against.
+ * CHOSEN: A (redrawn after the art director's look). At 60 px beside the other three games it is
+ * the only light tile, and the walnut band with its brass bead gives it an edge on a white or
+ * #F2F2F7 store page. Its two shapes stay apart: the violet signature is a cursive name (rounded
+ * humps, a tall open ascender, no closed or crossing loop, so it cannot read as an awareness
+ * ribbon) whose tail rises to a brass nib still writing it, and the chunky slate-bladed scissors
+ * (each blade wider than 3 px at 60 px) lie open over its ascender as if about to snip it: a joke,
+ * not a craft or document utility. B stacks the scissors' rings on the name (a muddle at 60 px);
+ * C's baize band is darker than the walnut and loses the edge on the dark home screen less well.
  */
 export const CHOSEN = 'office-A';
 

@@ -7,7 +7,7 @@
    "form": "requisition",
    "ministry": "town-clock-office",
    "office": "mayor",
-   "text": "The clock now agrees with itself."
+   "text": "The clock now faces your window. Rodney asked it to."
   },
   {
    "id": "note-tc-twice",
@@ -21,14 +21,14 @@
    "form": "requisition",
    "ministry": "town-clock-office",
    "office": "mayor",
-   "text": "The clock has been oiled. It ticks more smugly."
+   "text": "The numbers are repainted. In the same places."
   },
   {
    "id": "note-tc-minute-hand",
    "form": "requisition",
    "ministry": "town-clock-office",
    "office": "mayor",
-   "text": "The minute hand has asked for an assistant."
+   "text": "Wound by hand. Cuthbert counted the turns aloud."
   },
   {
    "id": "note-tc-chime-cut",
@@ -42,7 +42,7 @@
    "form": "ribbon",
    "ministry": "town-clock-office",
    "office": "mayor",
-   "text": "The whole town has set its watch by the ceremony."
+   "text": "The clock is practising your name for the ribbon."
   },
   {
    "id": "note-first-shovel",
@@ -56,14 +56,14 @@
    "form": "requisition",
    "ministry": "potholes-office",
    "office": "mayor",
-   "text": "The spotters have logged the steamroller. Twice."
+   "text": "So smooth now, a flask stays upright on the top deck."
   },
   {
    "id": "note-ph-warm",
    "form": "requisition",
    "ministry": "potholes-office",
    "office": "mayor",
-   "text": "The tarmac comes warm. Please do not sit on it."
+   "text": "The potholes were given names. Filling them is harder."
   },
   {
    "id": "note-ph-new-shovel",
@@ -98,28 +98,28 @@
    "form": "requisition",
    "ministry": "benches-bandstands",
    "office": "mayor",
-   "text": "The new bench faces the patch, as the growers asked."
+   "text": "Each bench has a small sign: RESERVED FOR SITTING."
   },
   {
    "id": "note-bb-plaque",
    "form": "requisition",
    "ministry": "benches-bandstands",
    "office": "mayor",
-   "text": "Each new bench has a plaque saying it is a bench."
+   "text": "The benches are varnished. So, briefly, was the receipt."
   },
   {
    "id": "note-bb-step",
    "form": "requisition",
    "ministry": "benches-bandstands",
    "office": "mayor",
-   "text": "The bandstand's old step is kept as a spare."
+   "text": "The bandstand is swept daily, in case of a band."
   },
   {
    "id": "note-bb-sit",
    "form": "ribbon",
    "ministry": "benches-bandstands",
    "office": "mayor",
-   "text": "A ribbon on a bench. Cut it before anyone sits."
+   "text": "After you cut, you sit first. The bench has been told."
   },
   {
    "id": "note-bb-roof",
@@ -133,7 +133,7 @@
    "form": "requisition",
    "ministry": "signposts-lampposts",
    "office": "mayor",
-   "text": "The new signpost points to the old signpost."
+   "text": "The lamps by the shops now lean toward the displays."
   },
   {
    "id": "note-sl-night",
@@ -147,7 +147,7 @@
    "form": "requisition",
    "ministry": "signposts-lampposts",
    "office": "mayor",
-   "text": "A sign reading THIS WAY. It faces this way."
+   "text": "A new sign reading SIGNS. It points at the signs."
   },
   {
    "id": "note-sl-agree",
@@ -168,7 +168,7 @@
    "form": "ribbon",
    "ministry": "signposts-lampposts",
    "office": "mayor",
-   "text": "Two lampposts hold the ribbon. Nobody asked them."
+   "text": "The Guild polished the lamppost you will pose by."
   },
   {
    "id": "note-pc-circular",
@@ -189,7 +189,7 @@
    "form": "requisition",
    "ministry": "provincial-clock-office",
    "office": "governor",
-   "text": "Pruella asks if the clock could reach lunch sooner."
+   "text": "It now chimes once for each county. It takes a while."
   },
   {
    "id": "note-pc-pendulum",
@@ -217,14 +217,14 @@
    "form": "ribbon",
    "ministry": "provincial-clock-office",
    "office": "governor",
-   "text": "Cut on the hour. The clock will decide which."
+   "text": "The clock will log your cut. It may round down."
   },
   {
    "id": "note-bs-hook",
    "form": "requisition",
    "ministry": "bus-shelter-trust",
    "office": "governor",
-   "text": "Each shelter now has a hook for notebooks."
+   "text": "A hook for the notebook. A second hook for the flask."
   },
   {
    "id": "note-bs-tarpaulin",
@@ -238,7 +238,7 @@
    "form": "requisition",
    "ministry": "bus-shelter-trust",
    "office": "governor",
-   "text": "The shelters are glazed on the timetable side."
+   "text": "The new shelters keep the rain off the timetable first."
   },
   {
    "id": "note-bs-early",
@@ -252,7 +252,7 @@
    "form": "requisition",
    "ministry": "bus-shelter-trust",
    "office": "governor",
-   "text": "The new shelter has a queue already. It is the spotters."
+   "text": "Shelter built. A bus has already passed it, so it works."
   },
   {
    "id": "note-bs-log-you",
@@ -266,7 +266,7 @@
    "form": "ribbon",
    "ministry": "bus-shelter-trust",
    "office": "governor",
-   "text": "Pose under the shelter. It may drizzle."
+   "text": "Wait in the shelter for the photo. A bus has been asked."
   },
   {
    "id": "note-mw-passed",
@@ -280,7 +280,7 @@
    "form": "requisition",
    "ministry": "market-weights-board",
    "office": "governor",
-   "text": "The ounce was polished. It is a touch lighter."
+   "text": "The weights were sorted by name. Then by weight."
   },
   {
    "id": "note-mw-drawer",
@@ -294,7 +294,7 @@
    "form": "requisition",
    "ministry": "market-weights-board",
    "office": "governor",
-   "text": "A new set of weights, to check the old set."
+   "text": "The scales are level. Neither pan will say who began."
   },
   {
    "id": "note-mw-forms",
@@ -322,7 +322,7 @@
    "form": "requisition",
    "ministry": "glasshouse-office",
    "office": "governor",
-   "text": "Cleaned inside and out. Outside was easier."
+   "text": "The glass is cleaned. The tomatoes can see out again."
   },
   {
    "id": "note-gh-thermometer",
@@ -336,7 +336,7 @@
    "form": "requisition",
    "ministry": "glasshouse-office",
    "office": "governor",
-   "text": "The panes have been counted. All present."
+   "text": "Each watering can is filled overnight, to settle."
   },
   {
    "id": "note-gh-seedlings",
@@ -378,35 +378,35 @@
    "form": "requisition",
    "ministry": "bandstand-board",
    "office": "governor",
-   "text": "A new bandstand roof. The band no longer stoops."
+   "text": "A new weathervane. It points at the band."
   },
   {
    "id": "note-bd-between",
    "form": "requisition",
    "ministry": "bandstand-board",
    "office": "governor",
-   "text": "Painted between concerts. Mostly between."
+   "text": "Painted between concerts. Some of it, during."
   },
   {
    "id": "note-bd-rail",
    "form": "requisition",
    "ministry": "bandstand-board",
    "office": "governor",
-   "text": "The rail is polished. The band can see itself playing."
+   "text": "The floor is sanded. It now creaks in tune."
   },
   {
    "id": "note-bd-chairs",
    "form": "requisition",
    "ministry": "bandstand-board",
    "office": "governor",
-   "text": "The deck chairs face the bandstand now. A first."
+   "text": "The echo is adjusted. It now answers sooner."
   },
   {
    "id": "note-bd-beat",
    "form": "ribbon",
    "ministry": "bandstand-board",
    "office": "governor",
-   "text": "The band will play as you cut. Please cut on the beat."
+   "text": "A fanfare in your honour has been written. It is brief."
   },
   {
    "id": "note-bd-note",
@@ -427,7 +427,7 @@
    "form": "requisition",
    "ministry": "canals-jetties",
    "office": "governor",
-   "text": "Planks numbered. Each angler has a favourite."
+   "text": "The lock-keeper now opens the gates on tiptoe."
   },
   {
    "id": "note-cj-dredged",
@@ -448,7 +448,7 @@
    "form": "requisition",
    "ministry": "canals-jetties",
    "office": "governor",
-   "text": "The water level has been checked. It is level."
+   "text": "A new mooring ring. It has been asked not to clink."
   },
   {
    "id": "note-cj-sitting",
@@ -474,7 +474,7 @@
    "id": "note-any-initialled",
    "form": "any",
    "office": "any",
-   "text": "Checked and initialled. Initialled twice, to be safe."
+   "text": "Gwendolyn has read this. She has no further feelings."
   },
   {
    "id": "note-any-box",

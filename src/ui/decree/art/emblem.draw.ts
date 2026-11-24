@@ -15,7 +15,7 @@ import { drawLetters, lettersWidth } from './letters';
 import { LINE, at, builder, circle, clip, dashed, dropShadow, fill, hatch, line, nibPath, oval, poly, rect, rrect, sampleCurve, shape, stroke, washed, type Box } from './pen';
 
 /** The giant ribbon scissors, open, points up, centred, about 2·r tall. `blade`/`ring` colours. */
-export function drawGiantScissors(c: SkCanvas, r = 40, o: { open?: number; ribbon?: boolean; chunky?: number } = {}): void {
+export function drawGiantScissors(c: SkCanvas, r = 40, o: { open?: number; ribbon?: boolean; chunky?: number; darkSteel?: boolean } = {}): void {
   const k = r / 40;
   const open = o.open ?? 22;
   // `chunky` widens the blades and thickens the rings (the app icon: at least 3 px a blade at 60 px)
@@ -32,7 +32,9 @@ export function drawGiantScissors(c: SkCanvas, r = 40, o: { open?: number; ribbo
           .quadTo(2.8 * mirror * b, -20, 2.6 * mirror * b, 0)
           .close()
           .build();
-        washed(z, blade, mix(DESK.slatePale, DESK.white, 0.4), DESK.slateLight, 1.4 * mirror, 0, 1.4);
+        // darkSteel: slate blades that stand off a pale ground (the app icon at 60 px)
+        if (o.darkSteel) washed(z, blade, DESK.slateLight, DESK.slateDeep, 1.4 * mirror, 0, 1.4);
+        else washed(z, blade, mix(DESK.slatePale, DESK.white, 0.4), DESK.slateLight, 1.4 * mirror, 0, 1.4);
         z.drawPath(line(0.6 * mirror, -4, 0.2 * mirror, -36), stroke(alpha(DESK.white, 0.8), 1));
         // shank and ring (brass, a big oval loop)
         washed(z, rrect(-2.2, 0, 4.4, 10, 1.6), DESK.brass, DESK.brassDeep, 0.8, 0.8, 1.2);
@@ -98,8 +100,8 @@ export function drawCutRibbon(c: SkCanvas, r = 40): void {
       q.drawPath(line(-5 * m, -2, -3 * m, 6), stroke(DESK.violetLight, 1));
       for (const t of [0.2, 0.55, 0.85]) q.drawPath(line(-5 * m + 2 * m * t, -2 + 8 * t, -1.6 * m + 2 * m * t, -1 + 8 * t), stroke(alpha(DESK.violetDeep, 0.8), 0.6));
     };
-    at(q, -7, 2, 1, -26, () => half(1));
-    at(q, 7, 2, 1, 26, () => half(-1));
+    at(q, -11, 4, 1, -30, () => half(1));
+    at(q, 11, 4, 1, 30, () => half(-1));
   });
 }
 
@@ -133,7 +135,7 @@ export function drawEmblem(c: SkCanvas, r = 40): void {
     clip(q, oval(0, 0, 33, 43));
     at(q, 0, 22, 0.62, 0, (z) => drawNapkin(z, 40));
     at(q, 0, -4, 0.78, 0, (z) => drawGiantScissors(z, 40, { open: 34 }));
-    at(q, 0, -20, 0.7, 0, (z) => drawCutRibbon(z, 40));
+    at(q, 0, -24, 0.7, 0, (z) => drawCutRibbon(z, 40));
     q.restore();
   });
 }

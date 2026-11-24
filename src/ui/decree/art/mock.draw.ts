@@ -12,7 +12,7 @@ import { CLUB_IDS, DESK, alpha, type ClubId } from './palette';
 import { drawClubBadge } from './clubs.draw';
 import { drawDeskFront, drawDeskSet, drawDeskTop, drawDesk, drawDoor, drawDrawer, drawInTray, drawLamp, drawLampPool, drawOutTray, drawStickyNote, drawTelephones, drawerLabelBox, drawerStage, doorGlassBox, type DeskSet, type OfficeIx } from './desk.draw';
 import { drawApprovalChip, drawChip, drawEffect, drawGossipChip, type EffectId } from './effects.draw';
-import { drawLetters } from './letters';
+import { drawLetters, lettersWidth } from './letters';
 import { drawBustStandIn } from './standin.draw';
 import { drawBust } from './faces';
 import { MASTHEAD_TILT, drawFrontPage, drawPaper, drawPhotoClip, drawPicketSign, drawSignatureIn, frontPageBoxes, signatureBox, picketSignBox } from './paper.draw';
@@ -136,7 +136,10 @@ export function drawDeskMock(c: SkCanvas, w: number, h: number, o: MockOptions =
     if (kind === 'grievance') {
       at(c, p.x + p.w - 64, p.y + pm.header.y + 30, 0.8, -8, (q) => drawPicketSign(q, 1));
       const pb = picketSignBox();
-      at(c, p.x + p.w - 64, p.y + pm.header.y + 30, 0.8, -8, (q) => drawLetters(q, 'GIVE THEM BACK', pb.x + 2, pb.y + pb.h * 0.7, { size: 5.6, color: DESK.brick, weight: 0.16 }));
+      // the caller's words fit the sign's box: two short lines, centred
+      at(c, p.x + p.w - 64, p.y + pm.header.y + 30, 0.8, -8, (q) =>
+        ['GIVE THEM', 'BACK'].forEach((t, i) => drawLetters(q, t, pb.x + pb.w / 2 - lettersWidth(t, { size: 6.4 }) / 2, pb.y + 9 + i * 9, { size: 6.4, color: DESK.brick, weight: 0.16 })),
+      );
       drawLetters(c, 'VEGETABLES BELOW 20: BOYCOTT', p.x + 16, p.y + pm.refuse.note.y + pm.refuse.note.h - 5, { size: 8, color: DESK.brick, weight: 0.14 });
     }
     if (kind === 'signing') {

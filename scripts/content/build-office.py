@@ -9,7 +9,8 @@
                        of scripts/content/office/format.ts) mapped onto the runtime deck of the decree block
                        (D7: a field it cannot map fails loudly); says plainly which decks are missing.
                        --with-batches also merges the writers' batch files that are not assembled yet
-                       (a preview for tuning; never written into game.json)
+                       (a preview for tuning; never written into game.json). --preview merges every batch
+                       even with check errors in them, to test the mapping (never written either)
     python3 scripts/content/build-office.py --tune [--budget 40] [--save] [--groups habits,pace]
                        (2) the tuner: a search inside RANGES (src/config/schema.decree.ts), knob by knob in
                        the order of 8.4, the bot on the tuning seeds 101 to 115 in parallel processes; it
@@ -136,9 +137,24 @@ def sets():
     return out
 
 
+class Run:
+    def __init__(self, returncode, stdout, stderr):
+        self.returncode, self.stdout, self.stderr = returncode, stdout, stderr
+
+
+def run_node(cmd, timeout=600, env=None, stdin=None):
+    """subprocess.run for a Node command with stdout and stderr in files, not pipes: Node writes a pipe
+    asynchronously and a process.exit() cuts what is still buffered (a 144 KB JSON came back cut)."""
+    with tempfile.TemporaryFile(mode='w+') as out, tempfile.TemporaryFile(mode='w+') as err:
+        r = subprocess.run(cmd, cwd=ROOT, stdout=out, stderr=err, text=True, timeout=timeout, env=env, input=stdin)
+        out.seek(0)
+        err.seek(0)
+        return Run(r.returncode, out.read(), err.read())
+
+
 def tsx(code, stdin=None):
     """Runs a TypeScript snippet with tsx and returns the JSON on its last line of stdout."""
-    r = subprocess.run(['npx', 'tsx', '-e', code], cwd=ROOT, capture_output=True, text=True, timeout=300, input=stdin)
+    r = run_node(['npx', 'tsx', '-e', code], timeout=300, stdin=stdin)
     if r.returncode != 0:
         raise SystemExit('tsx failed:\n' + r.stderr[-3000:])
     return json.loads(r.stdout.strip().splitlines()[-1])
@@ -163,7 +179,7 @@ def set_at(obj, p, v):
 
 def ranges():
     """Every (tune) range: RANGES and the archetype base effects' ±1 (the bot prints them)."""
-    r = subprocess.run(['npx', 'tsx', BOT, '--print-ranges'], cwd=ROOT, capture_output=True, text=True, timeout=120)
+    r = run_node(['npx', 'tsx', BOT, '--print-ranges'], timeout=120)
     if r.returncode != 0:
         raise SystemExit('decree-bot.ts --print-ranges failed:\n' + r.stderr[-2000:])
     return {x['path']: x for x in json.loads(r.stdout.strip().splitlines()[-1])}
@@ -217,7 +233,7 @@ def read_sections():
 
 def run_check(merged_files):
     """The content desk's check over everything (--all); an error in a merged file refuses the merge."""
-    r = subprocess.run(['npx', 'tsx', CHECK, '--all', '--json'], cwd=ROOT, capture_output=True, text=True, timeout=600)
+    r = run_node(['npx', 'tsx', CHECK, '--all', '--json'], timeout=600)
     try:
         findings = json.loads(r.stdout)
     except ValueError:
@@ -533,7 +549,7 @@ def build_block(deck, tables, tuned, extra_sets=None, fallback_deck=True):
 def run_seed(seed, cfg_path, bots, hours, extra=()):
     cmd = ['npx', 'tsx', BOT, '--seed', str(seed), '--bot', bots, '--hours', str(hours), '--json', '--config', cfg_path, *extra]
     env = {**os.environ, 'NODE_OPTIONS': (os.environ.get('NODE_OPTIONS', '') + ' --max-old-space-size=2000').strip()}
-    r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=3600, env=env)
+    r = run_node(cmd, timeout=3600, env=env)
     line = (r.stdout.strip().splitlines() or [''])[-1]
     try:
         out = json.loads(line)
@@ -555,7 +571,7 @@ def run_seeds(block, seeds, bots, hours, procs, extra=()):
 
 
 def across(dirpath):
-    r = subprocess.run(['npx', 'tsx', BOT, '--across', dirpath, '--json'], cwd=ROOT, capture_output=True, text=True, timeout=300)
+    r = run_node(['npx', 'tsx', BOT, '--across', dirpath, '--json'], timeout=300)
     try:
         return json.loads(r.stdout.strip().splitlines()[-1])
     except (ValueError, IndexError):
@@ -819,7 +835,8 @@ def main():
     seeds = [int(x) for x in arg('--seeds').split(',')] if arg('--seeds') else SEEDS
     if arg('--merge'):
         try:
-            deck, tables, report = merge(with_batches=bool(arg('--with-batches')))
+            preview = bool(arg('--preview'))
+            deck, tables, report = merge(with_batches=bool(arg('--with-batches')) or preview, strict=not preview)
         except MergeError as e:
             print('✖ ' + str(e))
             return 1

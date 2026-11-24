@@ -45,6 +45,14 @@ import { rngMix4 } from '../rng';
 import type { GameState } from '../types';
 import * as R from '../decree';
 import type { Choice, ClubIx, DecreeConfig, DecreeEvent, DecreeGame, DeskItem, OfficeIx, Paper, Purchase, Strip } from './types';
+import { endElectionNight as endNightStandIn } from './term';
+
+/**
+ * STAND-IN (requests.md "[bot] to TERM"): the end of election night (term.ts `endElectionNight`, phase
+ * count -> result) is not exported by the index yet, nor an action of decreeActions. The bot takes the
+ * index's export when it exists, else term.ts's own function (the same body a screen will call).
+ */
+const endElectionNight: (cfg: DecreeConfig, g: DecreeGame) => DecreeGame = ((R as unknown as Record<string, unknown>).endElectionNight as typeof endNightStandIn | undefined) ?? endNightStandIn;
 
 // ============================================================================================
 // the bots, the hand
@@ -991,12 +999,8 @@ class Driver {
     if (this.g === before) throw new Error('decree bot: countVotes refused after the rally (the run-up is over and nothing waits)');
     if (this.bot === 'quitElectionNight') this.away(600, 'quit during election night');
     this.advanceTo(this.clock + HAND.electionNight);
-    if (this.d.phase === 'count') {
-      events = [];
-      const after = R.countVotes(cfg, this.g, events);
-      this.note(events);
-      this.g = after;
-    }
+    // The last envelope (or a tap that skips): the night ends.
+    if (this.d.phase === 'count') this.g = endElectionNight(cfg, this.g);
     if (this.d.phase !== 'result') throw new Error(`decree bot: after election night the phase is "${this.d.phase}", not "result" (term.ts: how does the count end?)`);
     const c = this.d.count!;
     const order = c.order;
@@ -1092,10 +1096,8 @@ class Driver {
     if (d.phase === 'count') {
       this.advanceTo(this.clock + HAND.electionNight);
       if (this.d.phase === 'count') {
-        const events: DecreeEvent[] = [];
-        this.g = R.countVotes(this.cfg, this.g, events);
-        this.note(events);
-        if (this.d.phase === 'count') throw new Error('decree bot: phase "count" does not end (neither the night nor countVotes moves it to "result")');
+        this.g = endElectionNight(this.cfg, this.g);
+        if (this.d.phase === 'count') throw new Error('decree bot: phase "count" does not end (endElectionNight does not move it to "result")');
       }
       return true;
     }
@@ -1314,7 +1316,14 @@ export function runDecreeBot(cfg: DecreeConfig, opts: BotOptions): BotRun {
   const book = (dr.g.decree.stats as { book?: Record<string, number> }).book;
   dr.tr.book = book ? { ...book } : null;
   dr.tr.hash = traceHash(dr.tr);
-  const rows = notBuilt ? [] : evaluate(cfg, dr.tr);
+  // A run stopped at an unbuilt rule is still measured up to that point (its rows are partial; the CLI says so).
+  let rows: BotRow[] = [];
+  try {
+    rows = evaluate(cfg, dr.tr);
+  } catch (e) {
+    if (!(e instanceof R.NotBuiltError)) throw e;
+    notBuilt = notBuilt ?? e.rule;
+  }
   return { game: dr.g, states: dr.states, rows, trace: dr.tr, notBuilt, handedOver };
 }
 
@@ -1456,12 +1465,14 @@ export function h6(tr: Pick<Trace, 'faults' | 'events' | 'decisions' | 'samples'
   return { refuseRefused, overran, zeroIncome, worstTermsToWin: worst };
 }
 
-/** The 2.11 bound with D25 (a club's u(m) ≥ −60): the losses after which Y(n) − R − 60 ≥ 50 holds every district. */
+/** The 2.11 bound with D15 and D25 (the worst count utility u(0) = huffBelow − huffSlope × huffBelow, −60 at 30 and 3): the losses after which Y(n) − R + u(0) ≥ 50 holds every district. */
 export function certainWinBound(cfg: DecreeConfig): number {
+  const c = cfg.decree.count;
+  const u0 = c.huffBelow - c.huffSlope * c.huffBelow;
   let worst = 0;
   for (const o of cfg.decree.offices) {
     let n = 0;
-    while (R.disarray(n) - o.rivalPull - 60 < 50 && n < 64) n++;
+    while (R.disarray(n) - o.rivalPull + u0 < 50 && n < 64) n++;
     worst = Math.max(worst, n);
   }
   return worst;
@@ -1737,11 +1748,13 @@ export function evaluate(cfg: DecreeConfig, tr: Trace): BotRow[] {
   rows.push(row('H5 dibs only through the named sources', 'hard', '0 unexplained, cash ≥ 0, refusing never costs, the rules book only their five sources', `${e.unexplained} unexplained, ${e.negative} below 0, ${e.refuseCost} refusals that cost${e.foreignBook.length ? `, rules booked ${e.foreignBook.join(', ')}` : ''}; by source ${Object.entries(e.bySource).map(([k, v]) => `${k} ${v.toPrecision(3)}`).join(', ')}`, e.unexplained + e.negative + e.refuseCost + e.foreignBook.length === 0));
   const f = h6(tr, cfg.decree.boycott.papers, cfg.decree.scandal.sayNothingPapers);
   const bound = certainWinBound(cfg);
-  rows.push(row('H6 no dead end', 'hard', 'refuse always possible, every boycott and scandal ends within its count, ministry 0 always earns, 2.11 bound ≤ 8, a win within 6 terms of a first loss', `${f.refuseRefused} refuses refused, ${f.overran} overran, ${f.zeroIncome} samples without ministry 0 income, bound ${bound}, worst ${f.worstTermsToWin ?? 'no loss'} terms`, f.refuseRefused + f.overran + f.zeroIncome === 0 && bound <= 8 && (f.worstTermsToWin === null || f.worstTermsToWin <= 6), bound));
+  const boundMax = Math.min(8, cfg.decree.ladder.maxLossesBound);
+  rows.push(row('H6 no dead end', 'hard', `refuse always possible, every boycott and scandal ends within its count, ministry 0 always earns, 2.11 bound ≤ ${boundMax} (D25), a win within 6 terms of a first loss`, `${f.refuseRefused} refuses refused, ${f.overran} overran, ${f.zeroIncome} samples without ministry 0 income, bound ${bound}, worst ${f.worstTermsToWin ?? 'no loss'} terms`, f.refuseRefused + f.overran + f.zeroIncome === 0 && bound <= boundMax && (f.worstTermsToWin === null || f.worstTermsToWin <= 6), bound));
   const t0 = tr.started;
+  // D19: the hour-one gate holds for the reader (at 4, 6 and 9 s), always-refuse and random; ad-everything is reported.
   if (tr.ended - t0 >= 3600 && (tr.bot === 'reader' || tr.bot === 'alwaysRefuse' || tr.bot === 'random' || tr.bot === 'adEverything')) {
     const g = h7(tr, cfg);
-    rows.push(row('H7 no text twice in hour 1', 'hard', '0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn', `${g.hour1Repeats} texts, ${g.notesRepeated} notes, ${g.picketsRepeated} pickets; ${g.emptyCells.length} cells ran out${g.emptyCells.length ? ` (${g.emptyCells.slice(0, 3).join(', ')})` : ''}`, g.hour1Repeats + g.notesRepeated + g.picketsRepeated + g.emptyCells.length === 0, g.hour1Repeats));
+    rows.push(row('H7 no text twice in hour 1', tr.bot === 'adEverything' ? 'report' : 'hard', '0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn', `${g.hour1Repeats} texts, ${g.notesRepeated} notes, ${g.picketsRepeated} pickets; ${g.emptyCells.length} cells ran out${g.emptyCells.length ? ` (${g.emptyCells.slice(0, 3).join(', ')})` : ''}`, g.hour1Repeats + g.notesRepeated + g.picketsRepeated + g.emptyCells.length === 0, g.hour1Repeats));
     if (tr.bot === 'reader' && tr.ended - t0 >= 3 * 3600) rows.push(row('H7 repeats in hours 2 and 3 (reader)', 'hard', '≤ 2 % of comic draws', `${pc(g.repeatShare23)} (${g.repeats23} of ${g.comic23})`, g.repeatShare23 <= 0.02, g.repeatShare23));
   }
   if (tr.bot === 'reader') {

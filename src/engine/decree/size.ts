@@ -8,7 +8,7 @@
  * requisition's price = roundDibs(the level's raw live price × factor); each mood effect is frozen into
  * `shown`: f+ = min(1.4, (100 − m)/50) for a gain, f− = min(1.4, m/50) for a loss,
  * shown = sign(Δ) × max(1, round(|Δ| × f)) (half away from zero), 0 with no headroom (`sizeMood`, the
- * ONE function of the f± rule: its parameters are `mood.capF` and the 50 of the rule); a FIXED mood
+ * ONE function of the f± rule: its parameters are `mood.capF` and `paperRules.sizing`); a FIXED mood
  * effect (a settlement's +10, 2.8) is copied unsized. The lemma (tested): with |Δ| ≤ 10, m + shown
  * stays in 0 to 100 (a settlement's fixed +10 starts below 20); the commit asserts clamps = 0 (H1).
  * Gossip gains are frozen up to the limit (gossip never passes G_max); "set to 0" as the change from
@@ -27,19 +27,30 @@ import { approvalOf, clubIndex, decreeParams, EPS, factorOn, levelCostRaw, offic
 import type { Chip, Choice, ClubIx, DecreeConfig, DecreeGame, Effect, FactorTarget, FactorValue, Factors, Paper, Shown, ShownEffect, Strip, StripNote } from './types';
 
 /**
- * The frozen mood change of base Δ `delta` at mood `m` (2.7 "Sizing"): f = min(capF, headroom/50),
- * shown = sign(Δ) × max(1, round(|Δ| × f)), half away from zero, 0 with no headroom. Exact in integer
- * arithmetic for whole Δ (no floating error at halves). Built.
+ * The frozen mood change of base Δ `delta` at mood `m` (2.7 "Sizing"), the ONE function of the f± rule
+ * (parameters `mood.capF` and `paperRules.sizing` {scale, pull}): headroom = 100 − m for a gain, m for a
+ * loss; f = min(capF, 1 + pull × (headroom/scale − 1)) (pull 1, scale 50: 2.7's min(1.4, headroom/50));
+ * shown = sign(Δ) × max(1, round(|Δ| × f)), half away from zero, 0 with no headroom, and never more
+ * than the headroom (with 2.7's numbers the lemma makes that bound idle: |Δ| ≤ 10 gives |Δ| × f ≤
+ * headroom/5; it is what keeps the lemma for a gentler pull, D27). Exact in integer arithmetic for
+ * 2.7's numbers and whole Δ (no floating error at halves). Built.
  */
 export function sizeMood(cfg: DecreeConfig, m: number, delta: number): number {
   if (delta === 0) return 0;
   const room = delta > 0 ? 100 - m : m;
   if (room <= 0) return 0;
-  const h = Math.min(cfg.decree.mood.capF * 50, room);
   const a = Math.abs(delta);
-  // |Δ| × h / 50 rounded half up: floor((|Δ| × h + 25) / 50) for whole numbers; EPS for the rest.
-  const size = Number.isInteger(a) && Number.isInteger(h) ? Math.floor((a * h + 25) / 50) : Math.floor((a * h) / 50 + 0.5 + EPS);
-  return Math.sign(delta) * Math.max(1, size);
+  const { scale, pull } = cfg.decree.paperRules.sizing;
+  const capF = cfg.decree.mood.capF;
+  let size: number;
+  if (pull === 1 && scale === 50 && Number.isInteger(a) && Number.isInteger(room) && Number.isInteger(capF * 50)) {
+    // |Δ| × h / 50 rounded half up: floor((|Δ| × h + 25) / 50), h = min(capF × 50, headroom).
+    size = Math.floor((a * Math.min(capF * 50, room) + 25) / 50);
+  } else {
+    const f = Math.max(0, Math.min(capF, 1 + pull * (room / scale - 1)));
+    size = Math.floor(a * f + 0.5 + EPS);
+  }
+  return Math.sign(delta) * Math.min(room, Math.max(1, size));
 }
 
 /**

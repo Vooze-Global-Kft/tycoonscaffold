@@ -349,7 +349,9 @@ export function main(argv = process.argv.slice(2)): number {
   }
   if (notBuiltMsg) {
     console.error(`✖ ${notBuiltMsg}`);
-    if (outs.length > 1) printRows(rows);
+    const played = outs[outs.length - 1];
+    if (played) console.error(`  (${played.label} played ${(played.seconds / 60).toFixed(1)} min before it stopped; the rows below measure only that part)`);
+    printRows(rows);
     return 3;
   }
   console.log(`decree bot · seed ${seed} · ${plan.length === 1 ? plan[0].bot : `${plan.length} runs`} · ${(ms / 1000).toFixed(1)} s`);
@@ -359,4 +361,5 @@ export function main(argv = process.argv.slice(2)): number {
   return 0;
 }
 
-if (require.main === module) process.exit(main());
+// exitCode, not exit(): a piped stdout (build-office.py, validate) is written asynchronously and exit() would cut the JSON line.
+if (require.main === module) process.exitCode = main();

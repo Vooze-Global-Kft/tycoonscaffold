@@ -749,6 +749,24 @@ export const DecreeSchema = z.object({
       favourDelay: z.tuple([int.positive(), int.positive()]).default([10, 14]),
     })
     .prefault({}),
+  // ---------------------------------------------------------------- rules-paper (P1a): added block
+  /**
+   * rules-paper: the parameters of two formulas the numbers prototype's final report may still move
+   * (D27), each read by ONE function of the paper core, so a change is one line here:
+   * - `disarray` (params.ts `disarray`, D15): Y(n) = first × (ratio^n − 1)/(ratio − 1) share points after
+   *   n consecutive losses (first 2, ratio 2: 2^(n+1) − 2 = +2, +6, +14, +30, +62, +126; ratio 1 is the
+   *   old linear rule first × n).
+   * - `sizing` (size.ts `sizeMood`, 2.7 f±): f = min(capF, 1 + pull × (headroom/scale − 1)); pull 1 and
+   *   scale 50 are 2.7's f+ = min(1.4, (100 − m)/50), f− = min(1.4, m/50); a pull below 1 is D27's
+   *   "gentler pull toward 50", with the no-clamp lemma kept (|shown| never exceeds the headroom).
+   */
+  paperRules: z
+    .object({
+      disarray: z.object({ first: pos.default(2), ratio: z.number().min(1).default(2) }).prefault({}),
+      sizing: z.object({ scale: pos.default(50), pull: z.number().min(0).max(1).default(1) }).prefault({}),
+    })
+    .prefault({}),
+  // ---------------------------------------------------------------- end of rules-paper block
   /**
    * True only in the skeleton's placeholder game.json (scripts/content/office-placeholder.ts writes it;
    * build-office.py never does): the satire lint's errors are then warnings. validate --release fails
