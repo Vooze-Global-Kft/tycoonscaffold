@@ -232,6 +232,8 @@ export const GOAL_MAX_CHARS = 34;
 export const GOAL_GUTTER = 12;
 /** The goal line's "Watch ad" button: its width; its hit slop makes it 44 tall. */
 export const GOAL_BUTTON_W = 84;
+/** "Closed during the run-up" where that button would be: a wider pill, smaller type. */
+export const GOAL_CLOSED_W = 150;
 
 export interface GoalMetrics {
   font: number;
@@ -248,15 +250,15 @@ export interface GoalMetrics {
  * longest first) that keeps to 34 characters and fits the room beside the button (`button` false:
  * the whole line); if none fits, the last form, set smaller. `buttonLabel` is the button's word.
  */
-export function goalForm(zone: { w: number; h: number }, fontScale: number, forms: readonly string[], button: string | null): GoalMetrics {
+export function goalForm(zone: { w: number; h: number }, fontScale: number, forms: readonly string[], button: string | null, buttonW = GOAL_BUTTON_W): GoalMetrics {
   const s = scaleOf(fontScale);
   const want = r1(12 * s);
-  const room = zone.w - 2 * GOAL_GUTTER - (button ? GOAL_BUTTON_W + 6 : 0);
+  const room = zone.w - 2 * GOAL_GUTTER - (button ? buttonW + 6 : 0);
   const ok = forms.find((f) => f.length <= GOAL_MAX_CHARS && textW(f, want) <= room);
   const text = ok ?? forms[forms.length - 1] ?? '';
   const font = ok ? want : fitFont(text, want, room, false, want * 0.6);
   const box = Math.min(zone.h, boxOf(font));
-  const buttonFont = button ? fitFont(button, r1(11 * s), GOAL_BUTTON_W - 8, true) : 0;
+  const buttonFont = button ? fitFont(button, r1(11 * s), buttonW - 8, true, 7) : 0;
   return { font, box, top: Math.floor((zone.h - box) / 2), text, room, buttonFont };
 }
 

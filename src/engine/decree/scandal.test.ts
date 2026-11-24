@@ -6,7 +6,7 @@
  * the call; no second scandal while one runs or a front page waits; "Call the Spin Doctor" touches no
  * mood. Frozen test content only.
  *
- * Joined (rules-lead): every rules module is the real one (no vi.mock); a slip the real advice.ts
+ * Joined (rules-lead): every rules module is the real one (no module mock); a slip the real advice.ts
  * lands between two papers (D18) is put back by the test's helper where a test counts papers.
  */
 import { describe, expect, it } from 'vitest';

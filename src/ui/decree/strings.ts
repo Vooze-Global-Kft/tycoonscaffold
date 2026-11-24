@@ -29,24 +29,74 @@ export const S = {
   },
   // ===== desk and flick (P6) =======================================================================
   desk: {
-    /** The strips' title rows (2.7). */
-    ifSigned: 'IF SIGNED ↑',
-    ifStudied: 'IF STUDIED ↓',
-    noChange: 'No change',
+    /** The strips' title rows (2.7, 4.2): the heading, its arrow, the poll or the approval, ↩. */
+    ifSigned: 'IF SIGNED',
+    ifStudied: 'IF STUDIED',
+    up: '↑',
+    down: '↓',
     returns: '↩',
-    /** The placeholder's two plain buttons (the flick replaces them; "Buttons instead of flicks" keeps them, 4.4). */
+    join: ' · ',
+    noChange: 'No change',
+    poll: (from: number, to: number, of: number) => `Poll ${from} → ${to} of ${of}`,
+    approval: (from: number, to: number) => `${from} → ${to} %`,
+    /** A chip's resulting value: a mood, the gossip, a level ("50 → 54"). */
+    change: (from: number, to: number) => `${from} → ${to}`,
+    /** A district's share, given in hundredths, printed to one decimal ("48.6 → 52.6"). */
+    share: (from: number, to: number) => `${(from / 100).toFixed(1)} → ${(to / 100).toFixed(1)}`,
+    /** The "every club" chip: "−1 each", or "−1 to −2 each" when the sizing differs by club. */
+    each: (d: string) => `${d} each`,
+    eachRange: (lo: string, hi: string) => `${lo} to ${hi} each`,
+    appoint: 'Appoint',
+    endBoycott: 'Settled',
+    endScandal: 'Closed',
+    /** The note row (2.7): warnings first. */
+    noteBoycott: (club: string, below: number) => `${club} below ${below}: BOYCOTT`,
+    noteScandal: (g: number, max: number) => `Gossip ${g}/${max}: SCANDAL`,
+    noteShort: (by: string) => `Short by ${by}`,
+    noteShortAbout: (by: string, about: string) => `Short by ${by} · ${about}`,
+    noteSayNothing: (factor: string, papers: number) => `Taxes ×${factor} for ${papers} papers, then Gossip 0`,
+    noteBoycottRuns: (papers: number) => `It runs ${papers} more papers`,
+    noteApplyAgain: (papers: number) => `Applies again in ${papers} papers`,
+    noteDone: 'Already done: the Clerk takes it back',
+    noteCap: 'No longer needed',
+    /** The header: a co-signer printed in place of the role (7.5). */
+    withCosigner: (name: string) => `with ${name}`,
+    /** A form's own line (2.2 routine papers), the ministry's name from game.json. */
+    formRequisition: (ministry: string) => `Requisition: ${ministry} +1 level`,
+    formRibbon: (ministry: string) => `Ribbon to cut: ${ministry}`,
+    /** The budget slip (2.7): what it buys, its price, what it adds, and the two directions. */
+    slipLevel: (ministry: string) => `${ministry} +1 level`,
+    slipOpen: (ministry: string) => `${ministry} opens`,
+    slipRate: (perSecond: string) => `+${perSecond}/s`,
+    slipBuy: '↑ Buy it',
+    slipBack: '↓ Put it back',
+    /** The door glass (3.1): "Next visitor 0:07". */
+    nextVisitor: (clock: string) => `Next visitor ${clock}`,
+    clock: (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`,
+    /** The drawer's card (4.3): "FOR FURTHER STUDY (312)". */
+    drawerLabel: (n: string) => `FOR FURTHER STUDY (${n})`,
+    /** The sticky note (2.7): a follow-up one paper ahead, or the next goal on an empty desk. */
+    stickyBack: (name: string) => `Next: ${name} is back.`,
+    stickyLevel: (ministry: string) => `Next: ${ministry} +1`,
+    stickyOpen: (ministry: string) => `Next: ${ministry} opens`,
+    stickyMonument: 'Next: a monument',
+    stickyPrice: (price: string) => price,
+    /** The take-back (4.3). */
+    takeBack: 'Tap to take it back',
+    emptyDesk: 'The desk is clear.',
+    /** The second path (4.3): a tapped strip is armed. */
+    armSign: 'Tap again to sign',
+    armRefuse: 'Tap again to study',
+    armBuy: 'Tap again to buy',
+    armBack: 'Tap again to put it back',
+    /** "Buttons instead of flicks" (4.4) and the screen reader's actions (4.3). */
     sign: 'Sign',
     study: 'Study',
-    emptyDesk: 'The desk is clear.',
-    approval: (from: number, to: number) => `${from} → ${to} %`,
-    clubChip: (club: string, from: number, to: number) => `${club} ${from} → ${to}`,
-    everyChip: (deltas: string, from: number, to: number) => `every club ${deltas} · ${from} → ${to} %`,
-    gossipChip: (from: number, to: number) => `Gossip ${from} → ${to}`,
-    levelChip: (from: number, to: number) => `Level ${from} → ${to}`,
-    appointChip: 'Appoint',
-    endChip: 'Ends it',
-    /** A district's share, given in hundredths, printed to one decimal ("HT 48.6 → 52.6"). */
-    districtChip: (short: string, from: number, to: number) => `${short} ${(from / 100).toFixed(1)} → ${(to / 100).toFixed(1)}`,
+    buy: 'Buy',
+    putBack: 'Put back',
+    paperLabel: (name: string, text: string) => `${name}: ${text}`,
+    slipLabel: (what: string, price: string) => `Budget slip: ${what}, ${price}`,
+    takeBackLabel: 'Take the signed paper back',
   },
   // ===== bars: top bar, club strip, term ribbon, goal line, bottom row (BARS) =====================
   hud: {
@@ -86,7 +136,8 @@ export const S = {
     goalSettleShort: (club: string) => `${club} boycott: study it or settle`,
     goalCourier: (club: string) => `${club} boycott: a courier ends it`,
     goalCourierShort: 'A courier ends the boycott',
-    goalSpin: 'Say nothing ends sooner by spin',
+    goalSayNothing: (papers: number) => `"Say nothing" ends in ${papers} papers`,
+    goalSpin: 'The Spin Doctor ends it now',
     goalApologise: 'Front page: sign it or say nothing',
     goalNone: 'The desk is in order.',
     goalJoin: ' · ',

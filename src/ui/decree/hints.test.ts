@@ -12,7 +12,14 @@ import { paperMetrics } from './paperMetrics';
 import { IDLE_MS, QUIET_MS, guidedHint, idleHint, paperMiddle, penHint, penPath, penReach, penTail, shouldPlay, strokeAt, STROKE_TOTAL, type PenUi } from './hints';
 
 const cfg = decreeTestConfig();
-const calm: PenUi = { sheetOpen: false, viewOpen: false, peek: false, armed: false, fingerDown: false, idleMs: QUIET_MS };
+const calm: PenUi = {
+  sheetOpen: false,
+  viewOpen: false,
+  peek: false,
+  armed: false,
+  fingerDown: false,
+  idleMs: QUIET_MS,
+};
 const idle: PenUi = { ...calm, idleMs: IDLE_MS };
 
 /** One decision by the rules (any path: the flick, the tap-tap, the buttons all end here), the take-back window committed. */
@@ -57,7 +64,7 @@ describe('the guided steps (3.1)', () => {
     if (resting.decree.pending) expect(penHint(cfg, resting, idle)).toBeNull();
   });
 
-  it('signing paper 2 ends the signing step, by the rules\' count and not the gesture', () => {
+  it("signing paper 2 ends the signing step, by the rules' count and not the gesture", () => {
     const g2 = decided(nextPaper(decided(freshState(cfg), 'refuse')), 'sign');
     expect(g2.decree.stats.signed).toBe(1);
     const h = guidedHint(cfg, g2);
@@ -113,7 +120,12 @@ describe('when the pen shows', () => {
     const h = penHint(cfg, mayorMidTerm, idle);
     expect(h?.guided).toBe(false);
     expect(h?.kind).toBe('rock');
-    expect(idleHint({ ...mayorMidTerm, decree: { ...mayorMidTerm.decree, desk: null } })).toBeNull();
+    expect(
+      idleHint({
+        ...mayorMidTerm,
+        decree: { ...mayorMidTerm.decree, desk: null },
+      }),
+    ).toBeNull();
   });
 
   it('each teaching moment plays once; again only after IDLE_MS of quiet and IDLE_MS since it played', () => {

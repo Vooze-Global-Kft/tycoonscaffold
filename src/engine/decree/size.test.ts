@@ -4,7 +4,7 @@
  * money frozen when the paper lands (D23) with the jitter fixed at the draw; moods at landing; the
  * strip as data, derived from the frozen values. Frozen test content only (lesson 4).
  *
- * Joined (rules-lead): every rules module is the real one (no vi.mock); a slip the real advice.ts
+ * Joined (rules-lead): every rules module is the real one (no module mock); a slip the real advice.ts
  * lands between two papers (D18) is put back by the test's helper where a test counts papers.
  */
 import { describe, expect, it } from 'vitest';

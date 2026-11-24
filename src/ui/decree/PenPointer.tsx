@@ -25,10 +25,11 @@ import * as R from '../../engine/decree';
 import { useGame } from '../../state/store';
 import { useOverlaysOpen } from '../kit';
 import type { HintPointerProps } from '../modeParts';
+import type { Hint, HintSource } from '../hints/source';
 import { targets } from '../hints/targets';
 import { DESK } from './art/palette';
 import { drawPen } from './art/desk.draw';
-import { penHint, penPath, penReach, shouldPlay, strokeAt, STROKE_TOTAL, type PenHint, type PenPath } from './hints';
+import { guidedHint, penHint, penPath, penReach, shouldPlay, strokeAt, STROKE_TOTAL, type PenHint, type PenPath } from './hints';
 import type { DeskLayout, Rect } from './layout';
 import { useDecreeUi, wall } from './uiState';
 
@@ -66,6 +67,29 @@ export function PenPointer({ x, y, scale, angle }: HintPointerProps) {
   );
 }
 
+// ----------------------------------------------------------------------------- the shared hint source
+
+/**
+ * The mode entry's `hints` (the shared HintOverlay's source): the guided step's target as a hint
+ * (route: the target itself). The desk's own PenLayer draws the pen; the shared overlay only draws
+ * inside a kit Sheet, and only its own dialog keys, so this source never doubles the pen. Never throws.
+ */
+export const decreeHints: HintSource = {
+  ask: (): Hint[] => {
+    try {
+      const st = useGame.getState();
+      const cfg = st.cfg as R.DecreeConfig;
+      const g = st.game as R.DecreeGame;
+      if (!R.isDecree(cfg) || !g.decree) return [];
+      const h = guidedHint(cfg, g);
+      return h ? [{ key: h.target, route: [h.target], row: null }] : [];
+    } catch {
+      return [];
+    }
+  },
+  sceneKeys: ['paper', 'slip'],
+};
+
 // ----------------------------------------------------------------------------- the desk's layer
 
 /** Ask the script this often. */
@@ -87,8 +111,15 @@ function activitySignature(g: R.DecreeGame): string {
 /** The desk's pen: asks the script twice a second, plays one stroke when one is due. */
 export function PenLayer({ layout }: { layout: DeskLayout }) {
   const overlaysOpen = useOverlaysOpen() > 0;
-  const [stroke, setStroke] = useState<{ hint: PenHint; path: PenPath; n: number } | null>(null);
-  const memory = useRef<{ lastId: string | null; playedAt: number }>({ lastId: null, playedAt: 0 });
+  const [stroke, setStroke] = useState<{
+    hint: PenHint;
+    path: PenPath;
+    n: number;
+  } | null>(null);
+  const memory = useRef<{ lastId: string | null; playedAt: number }>({
+    lastId: null,
+    playedAt: 0,
+  });
   const activity = useRef<{ sig: string; at: number }>({ sig: '', at: 0 });
   const open = useRef(overlaysOpen);
   open.current = overlaysOpen;
@@ -106,7 +137,14 @@ export function PenLayer({ layout }: { layout: DeskLayout }) {
       if (sig !== activity.current.sig) activity.current = { sig, at: now };
       const ui = useDecreeUi.getState();
       const idleMs = now - Math.max(ui.touchedAt, activity.current.at);
-      const pen = { sheetOpen: ui.sheet !== null || open.current || st.offline !== null, viewOpen: ui.view !== null, peek: ui.peek, armed: ui.armed !== null, fingerDown: ui.fingerDown, idleMs };
+      const pen = {
+        sheetOpen: ui.sheet !== null || open.current || st.offline !== null,
+        viewOpen: ui.view !== null,
+        peek: ui.peek,
+        armed: ui.armed !== null,
+        fingerDown: ui.fingerDown,
+        idleMs,
+      };
       let hint: PenHint | null = null;
       try {
         hint = penHint(cfg, g, pen);
@@ -114,7 +152,13 @@ export function PenLayer({ layout }: { layout: DeskLayout }) {
         hint = null;
       }
       const mem = memory.current;
-      if (!shouldPlay(hint, pen, { lastId: mem.lastId, msSinceLast: now - mem.playedAt })) return;
+      if (
+        !shouldPlay(hint, pen, {
+          lastId: mem.lastId,
+          msSinceLast: now - mem.playedAt,
+        })
+      )
+        return;
       if (!hint) return;
       const path = penPath(hint, layoutRef.current, registered);
       memory.current = { lastId: hint.id, playedAt: now };
@@ -153,7 +197,12 @@ function Stroke({ path }: { path: PenPath }) {
   const pic = penPicture();
   const box = useMemo(() => {
     const r = penReach(path, MARGIN);
-    return { x: Math.floor(r.x), y: Math.floor(r.y), w: Math.ceil(r.w), h: Math.ceil(r.h) };
+    return {
+      x: Math.floor(r.x),
+      y: Math.floor(r.y),
+      w: Math.ceil(r.w),
+      h: Math.ceil(r.h),
+    };
   }, [path]);
   const clock = useClock();
   const ax = path.a.x - box.x;
@@ -169,25 +218,31 @@ function Stroke({ path }: { path: PenPath }) {
   const opacity = useDerivedValue(() => at.value.o);
   const guideOpacity = useDerivedValue(() => at.value.o * 0.55);
   const guide = useMemo(() => {
-    const p = Skia.Path.Make();
-    p.moveTo(ax, ay);
-    p.lineTo(bx, by);
-    if (!back) {
-      // A small chevron at the end: the way the paper goes.
-      const dir = by > ay ? 1 : -1;
-      p.moveTo(bx - 5, by - 5 * dir);
+    try {
+      const p = Skia.PathBuilder.Make();
+      p.moveTo(ax, ay);
       p.lineTo(bx, by);
-      p.lineTo(bx + 5, by - 5 * dir);
+      if (!back) {
+        // A small chevron at the end: the way the paper goes.
+        const dir = by > ay ? 1 : -1;
+        p.moveTo(bx - 5, by - 5 * dir);
+        p.lineTo(bx, by);
+        p.lineTo(bx + 5, by - 5 * dir);
+      }
+      return p.build();
+    } catch {
+      return null;
     }
-    return p;
   }, [ax, ay, bx, by, back]);
   if (!pic) return null;
   return (
     <View style={[styles.layer, { left: box.x, top: box.y, width: box.w, height: box.h }]} pointerEvents="none">
       <Canvas style={{ width: box.w, height: box.h }} pointerEvents="none">
-        <Path path={guide} style="stroke" strokeWidth={1.6} strokeCap="round" color={DESK.violet} opacity={guideOpacity}>
-          {back ? null : <DashPathEffect intervals={[2, 5]} />}
-        </Path>
+        {guide ? (
+          <Path path={guide} style="stroke" strokeWidth={1.6} strokeCap="round" color={DESK.violet} opacity={guideOpacity}>
+            {back ? null : <DashPathEffect intervals={[2, 5]} />}
+          </Path>
+        ) : null}
         <Group transform={transform} opacity={opacity}>
           <Picture picture={pic} />
         </Group>

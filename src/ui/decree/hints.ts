@@ -163,7 +163,12 @@ export function paperMiddle(layout: DeskLayout, paper: Rect = layout.paper): Rec
 export function slipFallback(layout: DeskLayout): Rect {
   const w = Math.min(240, layout.paper.w);
   const h = 110;
-  return { x: layout.paper.x + (layout.paper.w - w) / 2, y: layout.paper.y + (layout.paper.h - h) / 2, w, h };
+  return {
+    x: layout.paper.x + (layout.paper.w - w) / 2,
+    y: layout.paper.y + (layout.paper.h - h) / 2,
+    w,
+    h,
+  };
 }
 
 /**
@@ -178,7 +183,13 @@ export function penPath(hint: PenHint, layout: DeskLayout, rectOf: (key: string)
     // The nib touches the slip's lower edge from below, right of its middle (the price is printed inside the slip, never under the nib).
     const x = slip.x + slip.w * 0.62;
     const y = slip.y + slip.h + 3;
-    return { a: { x, y: y + 16 }, b: { x, y }, angle: PEN_ANGLE, len: PEN_LEN, back: true };
+    return {
+      a: { x, y: y + 16 },
+      b: { x, y },
+      angle: PEN_ANGLE,
+      len: PEN_LEN,
+      back: true,
+    };
   }
   const paper = rectOf('paper') ?? layout.paper;
   const mid = paperMiddle(layout, paper);
@@ -187,11 +198,31 @@ export function penPath(hint: PenHint, layout: DeskLayout, rectOf: (key: string)
   const top = mid.y + 6;
   const bottom = mid.y + mid.h - tail.y - 6;
   const span = Math.max(0, bottom - top);
-  if (hint.kind === 'pull') return { a: { x, y: top }, b: { x, y: top + span }, angle: PEN_ANGLE, len: PEN_LEN, back: false };
-  if (hint.kind === 'push') return { a: { x, y: top + span }, b: { x, y: top }, angle: PEN_ANGLE, len: PEN_LEN, back: false };
+  if (hint.kind === 'pull')
+    return {
+      a: { x, y: top },
+      b: { x, y: top + span },
+      angle: PEN_ANGLE,
+      len: PEN_LEN,
+      back: false,
+    };
+  if (hint.kind === 'push')
+    return {
+      a: { x, y: top + span },
+      b: { x, y: top },
+      angle: PEN_ANGLE,
+      len: PEN_LEN,
+      back: false,
+    };
   // rock: a short way up and down over the header, never into the proposal's lines' middle.
   const c = top + Math.min(span, 28);
-  return { a: { x, y: c }, b: { x, y: top }, angle: PEN_ANGLE, len: PEN_LEN, back: true };
+  return {
+    a: { x, y: c },
+    b: { x, y: top },
+    angle: PEN_ANGLE,
+    len: PEN_LEN,
+    back: true,
+  };
 }
 
 /** The bounding box of everything the pen covers along a path (nib, body and the ink trail), for tests and for sizing its canvas. */
@@ -201,11 +232,21 @@ export function penReach(p: PenPath, pad = 4): Rect {
   const ys = [p.a.y, p.b.y, p.a.y + t.y, p.b.y + t.y];
   const x0 = Math.min(...xs) - pad;
   const y0 = Math.min(...ys) - pad;
-  return { x: x0, y: y0, w: Math.max(...xs) + pad - x0, h: Math.max(...ys) + pad - y0 };
+  return {
+    x: x0,
+    y: y0,
+    w: Math.max(...xs) + pad - x0,
+    h: Math.max(...ys) + pad - y0,
+  };
 }
 
 /** How long one stroke lasts, in ms (fade in, move, hold, fade out). */
-export const STROKE_MS = { fadeIn: 180, move: 1100, hold: 500, fadeOut: 260 } as const;
+export const STROKE_MS = {
+  fadeIn: 180,
+  move: 1100,
+  hold: 500,
+  fadeOut: 260,
+} as const;
 export const STROKE_TOTAL = STROKE_MS.fadeIn + STROKE_MS.move + STROKE_MS.hold + STROKE_MS.fadeOut;
 
 /**

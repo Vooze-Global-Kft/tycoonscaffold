@@ -11,6 +11,7 @@ import type { DeskLayout } from '../layout';
 // ===== P7 (bars, sheets and views) =====
 // ===== end P7 =====
 // ===== P8 (hints and platform) =====
+import { PlatformLayer } from '../platform';
 // ===== end P8 =====
 
 export function Overlays({ layout }: { layout: DeskLayout }) {
@@ -20,6 +21,7 @@ export function Overlays({ layout }: { layout: DeskLayout }) {
       {/* ===== P7 ===== */}
       {/* ===== end P7 ===== */}
       {/* ===== P8 ===== */}
+      <PlatformLayer layout={layout} />
       {/* ===== end P8 ===== */}
     </>
   );

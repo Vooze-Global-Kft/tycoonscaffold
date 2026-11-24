@@ -6,7 +6,7 @@
  * then the end with no mood change); the end at 25 by any means and the re-arm at 30; the Courier ad
  * touches no mood; a campaign paper counts nothing; no picket twice a term. Frozen test content only.
  *
- * Joined (rules-lead): every rules module is the real one (no vi.mock); a slip the real advice.ts
+ * Joined (rules-lead): every rules module is the real one (no module mock); a slip the real advice.ts
  * lands between two papers (D18) is put back by the test's helper where a test counts papers.
  */
 import { describe, expect, it } from 'vitest';

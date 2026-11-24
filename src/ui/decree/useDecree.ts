@@ -143,6 +143,8 @@ export interface GoalView {
   /** The boycotting club's short name and the papers its boycott still runs, for 'settle' and the courier. */
   club: string | null;
   papersLeft: number | null;
+  /** The papers "Say nothing" still runs (2.8), or null. */
+  scandalLeft: number | null;
   /** The goal's ad may be offered now (the rules' canWatchAd). */
   adOk: boolean;
   runUp: boolean;
@@ -158,7 +160,7 @@ export function useGoalView(): GoalView | null {
     const strip = clubIx >= 0 ? R.clubStrip(cfg, g)[clubIx] : null;
     const papersLeft = clubIx >= 0 ? (d.strikes[clubIx]?.papersLeft ?? null) : null;
     const adOk = goal.kind === 'ad' ? R.canWatchAd(cfg, g, goal.ad) : false;
-    return { goal, name, club: strip?.short ?? null, papersLeft, adOk, runUp: !R.canShop(cfg, g) };
+    return { goal, name, club: strip?.short ?? null, papersLeft, scandalLeft: d.scandal?.papersLeft ?? null, adOk, runUp: !R.canShop(cfg, g) };
   }, null);
 }
 

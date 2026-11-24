@@ -69,6 +69,8 @@ vi.mock('../ui/decree/DecreeShell', () => ({ DecreeShell: s.named('DecreeShell')
 vi.mock('../ui/decree/overlays/Loading', () => ({ DecreeLoading: s.named('DecreeLoading') }));
 vi.mock('./decree/fx', () => ({ listenDecreeEvents: vi.fn(), playDecreeEvents: vi.fn() }));
 vi.mock('../ui/decree/art/devViews', () => ({ artDevViews: { 'decree-art': s.named('DecreeArtGallery') } }));
+vi.mock('../ui/decree/art/DecreeIcon', () => ({ DecreeIcon: s.named('DecreeIcon'), DECREE_ICON_PREFIXES: ['art:', 'face:'] }));
+vi.mock('../ui/decree/PenPointer', () => ({ PenPointer: s.named('PenPointer'), decreeHints: { ask: () => [], name: 'decreeHints' } }));
 
 const nameOf = (c: unknown) => (c as { displayName?: string } | undefined)?.displayName;
 const read = (file: string) => fs.readFileSync(path.join(__dirname, file), 'utf8');
@@ -261,9 +263,14 @@ describe('the decree entry (High Office)', () => {
     expect(decree.engine?.saveTag, 'a save key of its own (office-design.md: save:high-office:decree1)').toBe('decree1');
     expect(decree.engine?.paysOnCompute, '2.15: paid when computed').toBe(true);
     expect(decree.engine?.catchUpSeconds, '2.15: no full-speed catch-up').toBe(0);
-    // The skeleton hands over no parts and no hints yet (the pen and the art are P8's and P4's: one line each in the entry).
-    expect(decree.parts).toBeUndefined();
-    expect(decree.hints).toBeUndefined();
+    // The pen as the hint pointer and its source (PLATFORM), the art kit's icons for "art:" and "face:" names.
+    const { decreeHints } = await import('../ui/decree/PenPointer');
+    expect(nameOf(decree.parts?.HintPointer), 'the pen (3.1)').toBe('PenPointer');
+    expect(nameOf(decree.parts?.Icon)).toBe('DecreeIcon');
+    expect(decree.parts?.iconPrefixes).toEqual(['art:', 'face:']);
+    expect(decree.parts?.CharIcon).toBeUndefined();
+    expect(decree.parts?.CardBust).toBeUndefined();
+    expect(decree.hints).toBe(decreeHints);
     expect(decree.artIcons).toBeUndefined();
     expect(decree.soundKeys).toBe(DECREE_SHARED_SOUNDS);
     // Phones (this file's resolution of ./presets): no presets; the web build's are pinned below.

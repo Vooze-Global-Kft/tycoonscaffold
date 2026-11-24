@@ -10,15 +10,20 @@
  * - `presets`: `?preset=` states (web only: ./presets.web.ts; on phones ./presets.ts has none);
  * - `soundKeys`: the decree key for each shared key the store plays (./soundKeys.ts, the sound package's);
  * - `devViews`: web preview only (./devViews.web.ts; on phones ./devViews.ts has none).
- * Not yet: `parts.HintPointer` (the pen, P8) and `hints` (src/ui/decree/hints.ts over the rules'
- * hintsFor, P8), `parts.Icon` for the faces and club icons (the art package): each is one line here.
+ * - `parts`: the pen as the hint pointer (src/ui/decree/PenPointer.tsx, PLATFORM) and `parts.Icon`
+ *   for "art:" and "face:" names (the art kit's DecreeIcon: cached PNGs of the clubs, effects,
+ *   ministries, monuments, buttons and the cast's busts); no "char:" portraits, no card bust;
+ * - `hints`: the pen's source for the shared hint layer (src/ui/decree/PenPointer.tsx `decreeHints`,
+ *   over the rules' hintsFor; the desk's own pen layer draws the strokes);
  * It never imports the tabs family or another mode's folders (npm run check:bundle).
  * Written by the skeleton; owned by the wiring owner (spec 9.2 P3).
  */
 import { decreeEngineMode } from '../../engine/decreeMode';
 import type { FxName } from '../../services/fx';
 import type { DecreeFxName } from '../../services/fx/catalog.decree';
+import { DecreeIcon, DECREE_ICON_PREFIXES } from '../../ui/decree/art/DecreeIcon';
 import { DecreeShell } from '../../ui/decree/DecreeShell';
+import { decreeHints, PenPointer } from '../../ui/decree/PenPointer';
 import { DecreeLoading } from '../../ui/decree/overlays/Loading';
 import type { ModeEntry } from '../contract';
 import { devViews } from './devViews';
@@ -33,6 +38,8 @@ const entry: ModeEntry = {
   Shell: DecreeShell,
   Loading: DecreeLoading,
   engine: decreeEngineMode,
+  parts: { HintPointer: PenPointer, Icon: DecreeIcon, iconPrefixes: DECREE_ICON_PREFIXES },
+  hints: decreeHints,
   presets: decreePreset,
   devViews,
   soundKeys: DECREE_SHARED_SOUNDS satisfies Partial<Record<FxName, DecreeFxName>>,

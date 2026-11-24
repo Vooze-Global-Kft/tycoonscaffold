@@ -6,7 +6,7 @@
  * longer needed"; a slip up buys at its printed price and down puts it back; 2.17's order (a day paper
  * counts, a campaign paper and a slip do not). Frozen test content only (lesson 4).
  *
- * Joined (rules-lead): every rules module is the real one (no vi.mock); a slip the real advice.ts
+ * Joined (rules-lead): every rules module is the real one (no module mock); a slip the real advice.ts
  * lands between two papers (D18) is put back by the test's helper where a test counts papers.
  */
 import { describe, expect, it } from 'vitest';

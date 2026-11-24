@@ -11,19 +11,21 @@ import game from '../../../../games/high-office/game.json';
 import { GameConfigSchema } from '../../../config/schema';
 import * as R from '../../../engine/decree';
 import { decreeEngineMode, withDecreeContent } from '../../../engine/decreeMode';
+import { FIXTURE_NOW, baseGameState } from '../../../engine/fixtures/decree';
 import { botPresetState } from '../../../modes/decree/presets.web';
 import { S } from '../strings';
 import { moveModel, monumentModel, newThingName, nightModel, playerFaces, resultModel, wallModel } from './model';
 
 const cfg = withDecreeContent(GameConfigSchema.parse(game)) as unknown as R.DecreeConfig;
-const fresh = R.createDecree ? (decreeEngineMode.create(cfg, Date.UTC(2026, 10, 24, 12)) as R.DecreeGame) : (null as never);
+/** A new game as the app makes it (the web preset "fresh"). */
+const fresh = decreeEngineMode.create(cfg, baseGameState(FIXTURE_NOW)) as R.DecreeGame;
 const mid = botPresetState(cfg, 'mid').game;
 const late = botPresetState(cfg, 'late').game;
 
 /** Decides everything the run-up brings (signing when the treasury pays, else refusing) until the votes may be counted, then counts. */
 function countFrom(g: R.DecreeGame, choice: R.Choice): R.DecreeGame {
   let s = g;
-  for (let k = 0; k < 60 && !R.canCount(cfg, s); k++) {
+  for (let k = 0; k < 600 && !R.canCount(cfg, s); k++) {
     const clock = s.stats.playSeconds;
     if (s.decree.desk) {
       let next = R.decide(cfg, s, choice, clock, []);
