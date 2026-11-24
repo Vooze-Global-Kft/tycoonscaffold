@@ -34,6 +34,8 @@ describe('decree web presets', () => {
     const r = botPresetState(cfg, 'early');
     if (r.game) expect(r.game.stats.playSeconds).toBeGreaterThan(0);
     else expect(r.why).toMatch(/not built|crashed|did not reach/);
-    expect(PRESET_STOPS.mid.stop({ ...r.game!, decree: { ...(r.game ?? decreePreset(cfg, 'mid', now) as R.DecreeGame).decree, office: 1, phase: 'campaign' } } as R.DecreeGame)).toBe(true);
+    const g0 = r.game ?? (decreePreset(cfg, 'mid', now) as R.DecreeGame);
+    expect(PRESET_STOPS.mid.stop({ ...g0, stats: { ...g0.stats, playSeconds: 27 * 60 }, decree: { ...g0.decree, office: 1, phase: 'governing' } } as R.DecreeGame)).toBe(true);
+    expect(PRESET_STOPS.late.stop({ ...g0, decree: { ...g0.decree, office: 2, term: 3, phase: 'governing' } } as R.DecreeGame)).toBe(true);
   });
 }, 120_000);

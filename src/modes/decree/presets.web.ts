@@ -4,9 +4,11 @@
  * real engine (src/engine/decree/bot.ts, seed 12345, 6 s hand), re-dated to the moment of loading on
  * the app's own shared fields:
  * - fresh: a new game (the app's own createInitialState);
- * - early: the reader at minute 5 of the first mayoral term (a paper on the desk when there is one);
- * - mid: the reader at the first call of the election as governor (the run-up of 2.10);
- * - late: the reader in the third presidential term.
+ * - early: the reader at minute 3 of the first mayoral term (a paper on the desk when there is one);
+ * - mid: about minute 30 as governor with a boycott running: the reader to minute 26 as governor,
+ *   then the happier-club habit (the careless mayor of D38) from that state until a club boycotts
+ *   (always-refuse if the habit has not caused one within 20 minutes);
+ * - late: the reader as president in term 3 on the call day (the first day the call is allowed).
  * While a rule a run needs is not built yet (NotBuiltError), or the run never reaches the moment, the
  * preset falls back to the rules' hand-made fixtures (src/engine/fixtures/decree.ts: early =
  * `mayorMidTerm`, mid = `governorAtCall`, late = `presidentTerm3`), and says so on the console.
@@ -26,19 +28,28 @@ export const PRESET_SEED = 12345;
 
 /** When each preset stops the reader, and the play hours it may take to get there. */
 export const PRESET_STOPS: Record<Exclude<PresetName, 'fresh'>, { hours: number; stop: (g: R.DecreeGame) => boolean }> = {
-  early: { hours: 5 / 60, stop: () => false },
-  mid: { hours: 1.5, stop: (g) => g.decree.office === 1 && g.decree.phase === 'campaign' },
+  early: { hours: 3 / 60, stop: () => false },
+  mid: { hours: 1.5, stop: (g) => g.decree.office === 1 && g.decree.phase === 'governing' && g.stats.playSeconds >= 26 * 60 },
+  // The call day (R.canCall) is added in botPresetState, which has the config.
   late: { hours: 4, stop: (g) => g.decree.office === 2 && g.decree.term >= 3 && g.decree.phase === 'governing' },
 };
 
+/** mid's second leg: a careless habit from the reader's governor state until a boycott runs. */
+const boycottRuns = (g: R.DecreeGame) => g.decree.office === 1 && g.decree.phase === 'governing' && g.decree.strikes.some((s) => s !== null) && !g.decree.desk;
+
 /** The reader's state for a preset, or null when the run stops at an unbuilt rule or never gets there. Pure. */
 export function botPresetState(cfg: R.DecreeConfig, name: Exclude<PresetName, 'fresh'>): { game: R.DecreeGame | null; why: string } {
-  const at = PRESET_STOPS[name];
+  const at = name === 'late' ? { ...PRESET_STOPS.late, stop: (g: R.DecreeGame) => g.decree.office === 2 && g.decree.term >= 3 && g.decree.phase === 'governing' && R.canCall(cfg, g) } : PRESET_STOPS[name];
   try {
     const run = runDecreeBot(cfg, { bot: 'reader', seed: PRESET_SEED, hours: at.hours, wall0: BOT_EPOCH, stop: at.stop, reeval: false });
     if (run.notBuilt) return { game: null, why: `the bot stopped at ${run.notBuilt}(), not built yet` };
     if (name !== 'early' && !at.stop(run.game)) return { game: null, why: `the reader did not reach the "${name}" moment in ${at.hours} h` };
-    return { game: run.game, why: 'bot state' };
+    if (name !== 'mid') return { game: run.game, why: 'bot state' };
+    for (const habit of ['happier', 'alwaysRefuse'] as const) {
+      const leg = runDecreeBot(cfg, { bot: habit, seed: PRESET_SEED, hours: 20 / 60, wall0: BOT_EPOCH + run.game.stats.playSeconds * 1000, start: run.game, stop: boycottRuns, reeval: false });
+      if (!leg.notBuilt && boycottRuns(leg.game)) return { game: leg.game, why: `bot state (the reader to minute 26 as governor, then ${habit} until a boycott)` };
+    }
+    return { game: null, why: 'no habit caused a boycott within 20 minutes of the reader\'s governor state' };
   } catch (e) {
     return { game: null, why: `the bot crashed: ${(e as Error).message}` };
   }

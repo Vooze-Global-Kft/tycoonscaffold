@@ -27,6 +27,9 @@
                        numbers and the merged deck only when every hard target passes on every named seed
                        and no deck is missing, refusing otherwise with the list. --quick skips the 30-seed
                        runs (their rows are then "not run", and nothing is written but the listing).
+    python3 scripts/content/build-office.py --save-sets --set path=value [--set ...] [--why "..."]
+                       writes DECREE_TUNED (src/config/decree.content.ts): the tuned values it has, with each
+                       --set laid over them (each checked against its range by the bot; never widened)
     python3 scripts/content/build-office.py --provisional
                        a PROVISIONAL game.json (the lead, 24 November: the real deck in the preview before the
                        tuning ends): the merged deck and the tuned numbers are written although hard targets may
@@ -69,7 +72,10 @@ CONTENT_TS = os.path.join(ROOT, 'src/config/decree.content.ts')
 # 8.1 step 5: the gate seeds (validate runs them); the tuner works on 101 to 115 and never sees them;
 # H9 and H10 are paired over 30 seeds, H6's handover and H12 over 15.
 SEEDS = [12345, 4, 99, 7, 2026]
-TUNE_SEEDS = list(range(101, 116))
+# The numbers step (24 November): tune on 30 seeds, check on 15 the tuner never saw (an aim is met when
+# at least 13 of the 15 held-out seeds meet it, at the 6 s hand).
+TUNE_SEEDS = list(range(101, 131))
+HELDOUT_SEEDS = list(range(201, 216))
 SEEDS15 = SEEDS + list(range(101, 111))
 SEEDS30 = SEEDS + list(range(101, 126))
 PASS_NEEDED = 13
@@ -981,6 +987,17 @@ def main():
         return table()
     if arg('--provisional'):
         return provisional(procs, hours)
+    if arg('--save-sets'):
+        tuned = dict(content_tuned())
+        rng = ranges()
+        for k, v in sets().items():
+            if k not in rng:
+                raise SystemExit('--set %s: no range in RANGES (a rule, not a tunable)' % k)
+            if not (rng[k]['low'] - 1e-9 <= v <= rng[k]['high'] + 1e-9):
+                raise SystemExit('--set %s=%s is outside its range %s to %s' % (k, v, rng[k]['low'], rng[k]['high']))
+            tuned[k] = v
+        save_tuned(tuned, arg('--why', 'build-office.py --save-sets'))
+        return 0
     return gates(procs, hours, bool(arg('--quick')), bool(arg('--write')), seeds)
 
 
