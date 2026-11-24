@@ -70,20 +70,23 @@ export function goalForms(v: GoalValues): string[] {
     case 'purchase': {
       const words = g.purchase.type === 'monument' ? S.hud.goalMonument : g.purchase.type === 'open' ? S.hud.goalOpen(v.name ?? '') : S.hud.goalLevel(v.name ?? '');
       const price = dibs(g.price);
-      const out = [];
+      const out: string[] = [];
       if (g.about && g.about.value > 0 && Number.isFinite(g.about.value)) out.push([words, price, aboutText(g.about)].join(j));
       out.push([words, price].join(j));
+      // A long ministry name: the name and the price, then the name alone (34 characters, 2.16).
+      if (g.purchase.type === 'level' && v.name) out.push([v.name, price].join(j));
+      out.push(words);
       return out;
     }
     case 'call':
       return [S.hud.goalCall(g.held, g.of), S.hud.goalCallShort(g.held, g.of)];
     case 'settle':
-      return [...(v.papersLeft !== null ? [S.hud.goalSettle(v.club ?? '', v.papersLeft)] : []), S.hud.goalSettleShort(v.club ?? '')];
+      return [...(v.papersLeft !== null ? [S.hud.goalSettle(v.club ?? '', v.papersLeft)] : []), S.hud.goalSettleShort];
     case 'apologise':
       return [S.hud.goalApologise];
     case 'ad':
       // The free exit in words, the ad as the line's button (2.16).
-      if (g.ad === 'courier') return [...(v.papersLeft !== null ? [S.hud.goalSettle(v.club ?? '', v.papersLeft)] : []), S.hud.goalCourier(v.club ?? ''), S.hud.goalCourierShort];
+      if (g.ad === 'courier') return [...(v.papersLeft !== null ? [S.hud.goalSettle(v.club ?? '', v.papersLeft)] : []), S.hud.goalCourier];
       if (g.ad === 'spinDoctor') return [...(v.scandalLeft !== null ? [S.hud.goalSayNothing(v.scandalLeft)] : []), S.hud.goalSpin];
       return [];
     case 'none':

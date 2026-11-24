@@ -56,7 +56,9 @@ function courierClub(g: DecreeGame): number | null {
 /** The in-tray's free places (2.15 and Open the Doors: the tray's room, and the desk's when it holds no paper). */
 export function freePlaces(cfg: DecreeConfig, g: DecreeGame): number {
   const d = g.decree;
-  return Math.max(0, cfg.decree.desk.trayCap - d.tray.length) + (d.desk?.type === 'paper' || d.pending ? 0 : 1);
+  // D32: a slip lying on the desk keeps its place (the visitor waits in the tray); without D32 it would go back.
+  const deskTaken = d.desk?.type === 'paper' || !!d.pending || (d.desk?.type === 'slip' && cfg.decree.desk.slipStays);
+  return Math.max(0, cfg.decree.desk.trayCap - d.tray.length) + (deskTaken ? 0 : 1);
 }
 
 /** Whether the ad `kind` may be offered now (the phase, its cooldown or once-a-term limit, something for it to do). Built. */

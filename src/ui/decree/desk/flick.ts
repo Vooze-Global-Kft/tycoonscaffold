@@ -39,6 +39,13 @@ export const FOLLOW_MAX = 140;
 
 export type Release = 'sign' | 'refuse' | 'spring';
 
+/** The one spring that brings a paper back (4.5: one clock per animated thing). */
+export const SPRING = { damping: 17, stiffness: 240, mass: 0.9 } as const;
+/** A committed paper flies into the out-tray or the drawer in this long (ms); the next slides in from the in-tray 300 ms after the commit (4.3). */
+export const LEAVE_MS = 260;
+export const NEXT_AFTER_MS = 300;
+export const ENTER_MS = 280;
+
 export interface ReleaseInput {
   /** Distance moved, positive down (pt). */
   dy: number;

@@ -105,7 +105,8 @@ export function useTopBarView(): Omit<R.TopBar, 'cash'> {
 
 /** The last headline (5.5, the Gazette corner) and the office's newspaper. */
 export function useHeadline(): { paper: string; headline: string | null } {
-  return useDecreeShallow((cfg, g) => ({ paper: R.officeOf(cfg, g.decree.office).newspaper, headline: g.decree.clippings[g.decree.clippings.length - 1] ?? null }), { paper: '', headline: null });
+  const none: { paper: string; headline: string | null } = { paper: '', headline: null };
+  return useDecreeShallow((cfg, g): { paper: string; headline: string | null } => ({ paper: R.officeOf(cfg, g.decree.office).newspaper, headline: g.decree.clippings[g.decree.clippings.length - 1] ?? null }), none);
 }
 
 export interface ClubView {

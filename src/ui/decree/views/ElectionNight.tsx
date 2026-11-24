@@ -27,6 +27,7 @@ import { alpha, DESK } from '../art/palette';
 import { fill, picture } from '../art/pen';
 import { drawTallyBoard, drawChalkMarks, drawEnvelope, drawTallyResult, tallyRows } from '../art/meta.draw';
 import { CUTOUT_IDS, drawBand, drawCutout } from '../art/faces';
+import { useFontScale } from '../hud/fontScale';
 import { S } from '../strings';
 import { useDecree } from '../useDecree';
 import { type } from './metrics';
@@ -63,7 +64,8 @@ export function ElectionNight({ visible, onEnd }: { visible: boolean; onEnd: () 
 }
 
 function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
-  const { width, height, fontScale } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const fontScale = useFontScale();
   const insets = useSafeAreaInsets();
   const s = Math.max(1, Math.min(fontScale || 1, 1.3));
   const n = model.rows.length;

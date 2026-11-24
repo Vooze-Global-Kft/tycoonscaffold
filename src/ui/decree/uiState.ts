@@ -11,7 +11,9 @@
  *   nothing opens by itself while a finger is down or a strip is armed (`busyHand`).
  * - `viewBack`: a full-screen view may claim Android back before it closes (Election Night jumps to
  *   its result first, 4.4): it registers a handler with `setViewBack` while it is mounted.
- * `closeTop()` closes the top layer in 4.4's Android-back order (armed strip, in-tray peek, sheet,
+ * - `preview`: a drag armed past 40 pt (set by the desk; the bars' rings and approval chip preview it);
+ * - `headline`: the gossip chip's last-headline bubble (the bars').
+ * `closeTop()` closes the top layer in 4.4's Android-back order (armed strip, the headline bubble, in-tray peek, sheet,
  * full-screen view, the view's own handler first) and says whether it closed one (Android back
  * leaves the app only from the bare desk, after committing a pending take-back: ./back.ts).
  *
@@ -48,6 +50,10 @@ export interface DecreeUi {
   /** Wall-clock ms of the last touch (0: none yet this session). */
   touchedAt: number;
   viewBack: ViewBack | null;
+  /** A drag armed past 40 pt (4.1: the club rings and the approval chip preview its side), or null. Set by the desk, read by the bars. */
+  preview: 'sign' | 'refuse' | null;
+  /** The gossip chip's last-headline bubble is open (5.5, the Gazette corner). */
+  headline: boolean;
   arm(side: 'sign' | 'refuse'): void;
   disarm(): void;
   openPeek(): void;
@@ -62,6 +68,9 @@ export interface DecreeUi {
   touch(): void;
   /** A full-screen view claims Android back while mounted (null when it unmounts). */
   setViewBack(fn: ViewBack | null): void;
+  setPreview(side: 'sign' | 'refuse' | null): void;
+  openHeadline(): void;
+  closeHeadline(): void;
   closeTop(): boolean;
 }
 
@@ -76,14 +85,16 @@ export const useDecreeUi = create<DecreeUi>((set, get) => ({
   fingerDown: false,
   touchedAt: 0,
   viewBack: null,
+  preview: null,
+  headline: false,
   arm: (side) => set({ armed: side, peek: false, touchedAt: wall() }),
   disarm: () => set({ armed: null, touchedAt: wall() }),
-  openPeek: () => set({ peek: true, armed: null, touchedAt: wall() }),
+  openPeek: () => set({ peek: true, armed: null, headline: false, touchedAt: wall() }),
   closePeek: () => set({ peek: false, touchedAt: wall() }),
   // One dialog at a time (4.4); opening one disarms the desk.
-  openSheet: (sheet) => set({ sheet, armed: null, peek: false, touchedAt: wall() }),
+  openSheet: (sheet) => set({ sheet, armed: null, peek: false, headline: false, touchedAt: wall() }),
   closeSheet: () => set({ sheet: null, touchedAt: wall() }),
-  openView: (view) => set({ view, sheet: null, armed: null, peek: false, touchedAt: wall() }),
+  openView: (view) => set({ view, sheet: null, armed: null, peek: false, headline: false, touchedAt: wall() }),
   closeView: () => set({ view: null, viewBack: null, touchedAt: wall() }),
   setFinger: (down) => {
     if (get().fingerDown !== down) set({ fingerDown: down, touchedAt: wall() });
@@ -91,10 +102,16 @@ export const useDecreeUi = create<DecreeUi>((set, get) => ({
   },
   touch: () => set({ touchedAt: wall() }),
   setViewBack: (fn) => set({ viewBack: fn }),
+  setPreview: (side) => {
+    if (get().preview !== side) set({ preview: side });
+  },
+  openHeadline: () => set({ headline: true, peek: false, armed: null, touchedAt: wall() }),
+  closeHeadline: () => set({ headline: false, touchedAt: wall() }),
   closeTop: () => {
     const s = get();
     let next: Partial<DecreeUi> | null = null;
     if (s.armed !== null) next = { armed: null };
+    else if (s.headline) next = { headline: false };
     else if (s.peek) next = { peek: false };
     else if (s.sheet) next = { sheet: null };
     else if (s.view) {

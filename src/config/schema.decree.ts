@@ -667,12 +667,11 @@ export const DecreeSchema = z.object({
       /** At most this many papers past the cap for an event on top (2.7). */
       eventOverCap: int.min(0).default(1),
       /**
-       * Whether a slip that has landed stays until it is flicked (rules-lead, for the lead's pending
-       * decision on the numbers prototype's "slipStays" proposal): false is 2.7 as written (a visitor's
-       * arrival returns an undragged slip); true keeps the slip and the visitor waits in the tray. The
-       * ONE reader is slips.ts `slipYields`.
+       * D32: a slip that has landed stays until it is flicked up or down; a visitor who arrives meanwhile
+       * waits in the tray (true). false is 2.7 as first written (an arrival returns an undragged slip).
+       * The ONE reader is slips.ts `slipYields`.
        */
-      slipStays: z.boolean().default(false),
+      slipStays: z.boolean().default(true),
     })
     .prefault({}),
   /** Time away (2.15): arrival every n s (tune 240 to 600), rate a (tune 0.25 to 0.45), the cap (rule 4 h; +2 h with Long Lunch, D11). */
@@ -704,16 +703,15 @@ export const DecreeSchema = z.object({
    * `huffBelow` up counts as it is, below it `huffSlope` times as far below (u(m) = m from 30 up,
    * 3m − 60 below: u(20) = 0, u(0) = −60). Only the count and the poll read it; approval and income use
    * the plain moods. A club from boycott.below to huffBelow − 1 is "in a huff" on screen.
-   * `topAbove` and `topSlope` (rules-lead, for the lead's pending decision on the numbers prototype's
-   * "topT/topK" proposal): a mood above `topAbove` counts `topSlope` per point above it (u(m) = topAbove
-   * + topSlope × (m − topAbove)). The defaults (100, 1) change nothing; the proposal is 70 and 0.25.
+   * D31: a mood above `topAbove` counts only `topSlope` per point above it (u(m) = topAbove + topSlope ×
+   * (m − topAbove): 70 and 0.25, tune 60 to 80 and 0.1 to 0.5); a club above it is "won over" on screen.
    */
   count: z
     .object({
       huffBelow: int.min(0).max(100).default(30),
       huffSlope: z.number().min(1).default(3),
-      topAbove: int.min(0).max(100).default(100),
-      topSlope: z.number().min(0).max(1).default(1),
+      topAbove: int.min(0).max(100).default(70),
+      topSlope: z.number().min(0).max(1).default(0.25),
     })
     .prefault({}),
   /** The vanity shelf (5.8): a monument a term from mayor term 2 for `price` s of B (tune 300 to 1,200), ×factor for good (tune 1.01 to 1.04). */
@@ -863,6 +861,8 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
   { path: 'ladder.nrFactor', low: 0.01, high: 0.04, spec: '2.2' },
   { path: 'ladder.transitionFund', low: 15, high: 90, spec: '2.2' },
   { path: 'desk.slipReserveSeconds', low: 10, high: 30, spec: 'D16' },
+  { path: 'count.topAbove', low: 60, high: 80, spec: 'D31' },
+  { path: 'count.topSlope', low: 0.1, high: 0.5, spec: 'D31' },
   { path: 'followUps.favourDelay[0]', low: 5, high: 30, spec: '7.6, D20' },
   { path: 'followUps.favourDelay[1]', low: 5, high: 30, spec: '7.6, D20' },
   { path: 'followUps.biggerStudyDelay[0]', low: 5, high: 30, spec: 'D20 (PLACEHOLDER)' },

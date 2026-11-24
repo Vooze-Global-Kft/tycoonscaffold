@@ -1,28 +1,50 @@
 /**
  * Where the sheets and full-screen views of spec 4.4 mount, above the desk and the bars. One at a
- * time: uiState holds one `sheet` and one `view`; each sheet is the kit Sheet (registered with
- * useOverlay) and shows only while uiState names it. PLACEHOLDER now: nothing mounts yet.
+ * time: uiState holds one `sheet` and one `view`; each sheet is DecreeSheet (sheets/parts.tsx,
+ * registered with useOverlay) or the kit Sheet, and shows only while uiState names it.
  *
- * Owned by the bars, sheets and views package (P7), which mounts its own sheets and views in its block.
- * The hints and platform package (P8) adds its mounts (Android back, the pen, the away report's
- * platform part) inside ITS block, an import and a line each, re-reading this file before each edit.
+ * Owned by the bars package (BARS), which mounts its own sheets in its block. The views package
+ * (VIEWS) and the hints and platform package (PLATFORM) each add their mounts inside ONE block marked
+ * with their name (an import and a line per sheet or view), re-reading this file immediately before
+ * each edit.
  */
 import type { DeskLayout } from '../layout';
-// ===== P7 (bars, sheets and views) =====
-// ===== end P7 =====
-// ===== P8 (hints and platform) =====
+// ===== BARS (bars and sheets) =====
+import { CabinetSheet } from '../sheets/Cabinet';
+import { applyBarsDevParams } from '../sheets/dev';
+import { HeadlineClipping } from '../sheets/Headline';
+import { LedgerSheet } from '../sheets/Ledger';
+import { TrayPeek } from '../sheets/Peek';
+import { CallConfirmSheet, PollSheet } from '../sheets/Poll';
+import { SettingsSheet } from '../sheets/Settings';
+import { ShopSheet } from '../sheets/Shop';
+// The preview's &sheet=, &peek=, &headline=, &arm= switches (nothing on a phone).
+applyBarsDevParams();
+// ===== end BARS =====
+// ===== VIEWS (face picker, Election Night, the Office; result, move, monument sheets) =====
+// ===== end VIEWS =====
+// ===== PLATFORM (hints and platform) =====
 import { PlatformLayer } from '../platform';
-// ===== end P8 =====
+// ===== end PLATFORM =====
 
 export function Overlays({ layout }: { layout: DeskLayout }) {
-  void layout;
   return (
     <>
-      {/* ===== P7 ===== */}
-      {/* ===== end P7 ===== */}
-      {/* ===== P8 ===== */}
+      {/* ===== BARS ===== */}
+      <TrayPeek layout={layout} />
+      <HeadlineClipping layout={layout} />
+      <LedgerSheet />
+      <CabinetSheet />
+      <PollSheet />
+      <CallConfirmSheet />
+      <ShopSheet />
+      <SettingsSheet />
+      {/* ===== end BARS ===== */}
+      {/* ===== VIEWS ===== */}
+      {/* ===== end VIEWS ===== */}
+      {/* ===== PLATFORM ===== */}
       <PlatformLayer layout={layout} />
-      {/* ===== end P8 ===== */}
+      {/* ===== end PLATFORM ===== */}
     </>
   );
 }

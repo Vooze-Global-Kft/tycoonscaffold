@@ -4,7 +4,8 @@
  *
  * 1.0 s after desk and tray become empty, Gwendolyn Abacus slides advice()'s purchase onto the desk
  * if it is affordable above the reserve ("Benches & Bandstands +1 level · −120 · +8/s"); up buys it at
- * the printed price, down puts it back; a visitor's arrival returns an undragged slip (draw.ts); never
+ * the printed price, down puts it back; D32: it stays until flicked, a visitor arriving meanwhile waits
+ * in the tray (`slipYields`, the one place of that rule); never
  * a day, never a counter. Every purchase other than a paper keeps back the reserve, the sign cost of
  * the desk paper plus the next waiting one ("Kept for the desk: 540"; a paper in the take-back window
  * counts as the desk paper, and a waiting paper's cost is what it would print if it landed now, D23),
@@ -102,9 +103,9 @@ function emptyDeskExtra(cfg: DecreeConfig, g: DecreeGame): number {
 }
 
 /**
- * A visitor (or a run-up paper) arrives while a slip lies on the desk: 2.7 as written puts the slip
- * back ("a visitor's arrival returns an undragged slip"); with `desk.slipStays` the slip stays and the
- * visitor waits in the tray. The ONE place of that rule (draw.ts arrivals, tick.ts run-up arrivals).
+ * A visitor (or a run-up paper) arrives while a slip lies on the desk: D32 (`desk.slipStays`, true) keeps
+ * the slip until it is flicked and the visitor waits in the tray; with slipStays false (2.7 as first
+ * written) the slip goes back. The ONE place of that rule (draw.ts arrivals, tick.ts run-up arrivals).
  */
 export function slipYields(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent[]): DecreeGame {
   if (g.decree.desk?.type !== 'slip' || cfg.decree.desk.slipStays) return g;

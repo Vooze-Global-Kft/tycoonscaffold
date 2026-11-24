@@ -101,6 +101,8 @@ export interface TopBarMetrics {
 export const RATE_GAP = 4;
 /** Inner padding of the approval and gossip chips. */
 export const CHIP_PAD = 4;
+/** The gossip chip's inner padding. */
+export const GOSSIP_PAD = 2;
 /** The approval and gossip chips' height inside the bar. */
 export const CHIP_H = 26;
 
@@ -112,7 +114,7 @@ export const CHIP_H = 26;
  * 0.355 × (cash font − rate font). When both would not fit the treasury's 156 pt they are set
  * smaller together.
  */
-export function topBarMetrics(h: number, bar: { treasury: Rect; approval: Rect; gossip: Rect; menu: Rect }, fontScale: number, cash: string, rate: string, chip: string, gossip: string): TopBarMetrics {
+export function topBarMetrics(h: number, bar: { treasury: Rect; approval: Rect; gossip: Rect; menu: Rect }, fontScale: number, cash: string, rate: string, chips: readonly string[], gossip: string): TopBarMetrics {
   const s = scaleOf(fontScale);
   let cashFont = r1(15 * s);
   let rateFont = r1(12 * s);
@@ -130,9 +132,10 @@ export function topBarMetrics(h: number, bar: { treasury: Rect; approval: Rect; 
   const rateW = textW(rate, rateFont, true);
   const chipBox = Math.min(CHIP_H, h - 6);
   const chipTop = Math.floor((h - chipBox) / 2);
-  const chipFont = fitFont(chip, r1(12 * s), bar.approval.w - 2 * CHIP_PAD, true);
-  const gossipIcon = Math.min(18, chipBox - 6);
-  const gossipFont = fitFont(gossip, r1(12 * s), bar.gossip.w - 2 * CHIP_PAD - gossipIcon - 2, true);
+  const chipFont = Math.min(...chips.map((c) => fitFont(c, r1(12 * s), bar.approval.w - 2 * CHIP_PAD, true, 6)));
+  // The gossip chip is narrow (48): a smaller newspaper and tighter padding at the larger scales.
+  const gossipIcon = Math.min(s >= 1.15 ? 14 : 18, chipBox - 6);
+  const gossipFont = fitFont(gossip, r1(12 * s), bar.gossip.w - 2 * GOSSIP_PAD - gossipIcon - 2, true, 6);
   return { s, cashFont, cashBox, cashTop, cashW, rateFont, rateBox, rateTop, rateW, chipFont, chipBox, chipTop, gossipIcon, gossipFont, menuIcon: 20 };
 }
 

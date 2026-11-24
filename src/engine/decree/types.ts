@@ -765,9 +765,13 @@ export interface ResultSheet {
 export interface PollRow {
   /** rules-term (D25): clubs "in a huff" (moods 20 to 29) and what each costs this district, in hundredths of a share point (negative). */
   huffs: { club: ClubIx; cost: number }[];
+  /** rules-lead (D31): clubs "won over" (moods above count.topAbove) and what of their mood this district does not count, in hundredths (negative). */
+  wonOver: { club: ClubIx; cost: number }[];
 }
 
 export interface Poll {
   /** rules-term (D25): the clubs in a huff (moods from boycott.below to count.huffBelow − 1). */
   huffing: ClubIx[];
+  /** rules-lead (D31): the clubs "won over" (moods above count.topAbove): "counts little more". */
+  wonOver: ClubIx[];
 }

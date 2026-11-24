@@ -23,13 +23,13 @@ import { useDecreeUi } from '../uiState';
 import { useDecree, useStrip, useTopBarView } from '../useDecree';
 import { useFontScale } from './fontScale';
 import { useBarsUi } from './localUi';
-import { CHIP_PAD, slopTo44, topBarMetrics } from './metrics';
+import { CHIP_PAD, GOSSIP_PAD, slopTo44, topBarMetrics } from './metrics';
 import { usePreviewSide } from './preview';
 import { rollDibs } from './rollDibs';
 
 const AnimatedInput = Animated.createAnimatedComponent(TextInput);
-/** The approval chip's widest text, for measuring only. */
-const CHIP_SAMPLE = S.hud.approvalChip(100, '1.60').length >= S.hud.approvalPreview(100, 100).length ? S.hud.approvalChip(100, '1.60') : S.hud.approvalPreview(100, 100);
+/** The approval chip's widest texts, for measuring only (never shown). */
+const CHIP_SAMPLES = [S.hud.approvalChip(100, '1.60'), S.hud.approvalPreview(100, 100)];
 
 /** The treasury, rounded by the rules, followed outside React: it glides on the UI thread between ticks. */
 function Treasury({ font, box, width }: { font: number; box: number; width: number }) {
@@ -94,7 +94,7 @@ export function TopBar({ layout }: { layout: DeskLayout }) {
   const bar = layout.bar;
   const m = useMemo(
     // The chip's font fits its widest form (a measuring sample, never shown), so it does not jump as the values change.
-    () => topBarMetrics(r.h, bar, fontScale, cashShape, rate, CHIP_SAMPLE, gossip),
+    () => topBarMetrics(r.h, bar, fontScale, cashShape, rate, CHIP_SAMPLES, gossip),
     [r.h, bar, fontScale, cashShape, rate, gossip],
   );
   const treasuryRef = useTarget('top:treasury');
@@ -135,7 +135,7 @@ export function TopBar({ layout }: { layout: DeskLayout }) {
           accessibilityRole="button"
           accessibilityLabel={S.hud.gossipLabel(t.gossip, t.gossipMax)}
           hitSlop={slopTo44(bar.gossip.w, m.chipBox)}
-          style={[styles.abs, styles.chip, styles.row, { left: x(bar.gossip), width: bar.gossip.w, top: m.chipTop, height: m.chipBox, backgroundColor: alpha(DESK.paper, 0.92), borderColor: t.gossip >= t.gossipMax - 1 && t.gossipMax > 0 ? DESK.violet : DESK.brassDeep }]}
+          style={[styles.abs, styles.chip, styles.row, { paddingHorizontal: GOSSIP_PAD, left: x(bar.gossip), width: bar.gossip.w, top: m.chipTop, height: m.chipBox, backgroundColor: alpha(DESK.paper, 0.92), borderColor: t.gossip >= t.gossipMax - 1 && t.gossipMax > 0 ? DESK.violet : DESK.brassDeep }]}
         >
           <DecreeIcon icon="art:fx_gossip" size={m.gossipIcon} />
           <Text allowFontScaling={false} numberOfLines={1} style={[styles.chipText, { fontSize: m.gossipFont, color: DESK.line, marginLeft: 2 }]}>

@@ -3,8 +3,8 @@
  * (docs/design/office-build-plan.md).
  *
  * share_d = Σ_g w_{d,g} × u(m_g) + C_d + Y − R, held between 0 and 100, in hundredths (shown to one
- * decimal); held when ≥ 50.0; the poll is the number held. u is D25's count utility (`moodUtility`, the
- * ONE function: u(m) = m from 30 up, 3m − 60 below, from `decree.count`); Y(n) = 2^(n+1) − 2 after n
+ * decimal); held when ≥ 50.0; the poll is the number held. u is the count's utility (`moodUtility`, the
+ * ONE function, from `decree.count`: D25 3m − 60 below 30, m from 30 to 70, D31 70 + (m − 70)/4 above); Y(n) = 2^(n+1) − 2 after n
  * consecutive losses (D15, params.ts `disarray`, the ONE function); the mixes after mix twists and R
  * from params.ts `decreeParams`. Only the count and the poll read u: approval and income use the plain
  * moods. The count is the poll, number for number (H2); districts are announced by |share_d − 50|,
@@ -28,9 +28,9 @@ export const STRONG_WEIGHT = 0.4;
 export const CLOSE_WITHIN = 300;
 
 /**
- * D25's count utility of a mood, the ONE function (parameters `decree.count`): m from huffBelow up,
- * huffBelow − huffSlope × (huffBelow − m) below it; above `topAbove` (default 100: never) only
- * `topSlope` per point (the numbers prototype's proposal, for the lead to decide).
+ * The count's utility of a mood (D25 with D31), the ONE function (parameters `decree.count`):
+ * huffBelow − huffSlope × (huffBelow − m) below huffBelow (3m − 60 below 30), m up to topAbove,
+ * topAbove + topSlope × (m − topAbove) above it (70 + (m − 70)/4 above 70: "won over").
  */
 export function moodUtility(c: { huffBelow: number; huffSlope: number; topAbove?: number; topSlope?: number }, m: number): number {
   if (m < c.huffBelow) return c.huffBelow - c.huffSlope * (c.huffBelow - m);
@@ -118,6 +118,8 @@ export function poll(cfg: DecreeConfig, g: DecreeGame): Poll {
     campaign: d.campaign?.C[k] ?? 0,
     // D25: what a club below huffBelow costs this district (u(m) − m, weighted), in hundredths.
     huffs: d.moods.flatMap((m, gi) => (m < c.huffBelow ? [{ club: gi, cost: Math.round(p.mix[k][gi] * 100 * (moodUtility(c, m) - m)) }] : [])),
+    // D31: what a won-over club's mood above topAbove does not count in this district (u(m) − m, weighted), in hundredths.
+    wonOver: d.moods.flatMap((m, gi) => (m > c.topAbove ? [{ club: gi, cost: Math.round(p.mix[k][gi] * 100 * (moodUtility(c, m) - m)) }] : [])),
   }));
   const held = rows.filter((r) => r.held).length;
   const C = callDay(cfg, g);
@@ -132,6 +134,7 @@ export function poll(cfg: DecreeConfig, g: DecreeGame): Poll {
     canCall: d.phase === 'governing' && d.day >= C,
     callFrom: C,
     huffing: d.moods.flatMap((m, gi) => (m >= cfg.decree.boycott.below && m < c.huffBelow ? [gi] : [])),
+    wonOver: d.moods.flatMap((m, gi) => (m > c.topAbove ? [gi] : [])),
   };
 }
 

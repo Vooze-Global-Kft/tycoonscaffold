@@ -133,11 +133,12 @@ describe('budget slips (2.7, D16, D18)', () => {
     for (const phase of ['count', 'result'] as const) expect(R.slipFor(cfg, { ...g, cash: 1e9, decree: { ...g.decree, phase } })).toBeNull();
   });
 
-  it('an arriving visitor returns an undragged slip', () => {
-    const g0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6 });
-    const g = withSlip(g0, R.slipOf(cfg, g0, { type: 'level', ministry: 1 })!);
+  it('without D32 (desk.slipStays false, 2.7 as first written) an arriving visitor returns an undragged slip', () => {
+    const goes = decreeTestConfig({ desk: { ...cfg.decree.desk, slipStays: false } });
+    const g0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6 }, goes);
+    const g = withSlip(g0, R.slipOf(goes, g0, { type: 'level', ministry: 1 })!);
     const events: R.DecreeEvent[] = [];
-    const after = R.drawNext(cfg, g, 1, events);
+    const after = R.drawNext(goes, g, 1, events);
     expect(events[0]).toEqual({ type: 'slipReturned' });
     expect(after.decree.desk?.type).toBe('paper');
     expect(after.cash).toBe(g.cash);
@@ -179,8 +180,9 @@ describe('budget slips (2.7, D16, D18)', () => {
 });
 
 describe('the slip and an arrival: one rule, one switch (rules-lead)', () => {
-  it('2.7 as written puts an undragged slip back; with desk.slipStays the slip stays and the visitor waits in the tray', () => {
-    const stays = decreeTestConfig({ desk: { ...cfg.decree.desk, slipStays: true } });
+  it('D32 (the default): a landed slip stays until flicked, the visitor waits in the tray; the desk is not a free place', () => {
+    const stays = cfg;
+    expect(stays.decree.desk.slipStays).toBe(true);
     const g0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6 }, stays);
     const g = withSlip(g0, R.slipOf(stays, g0, { type: 'level', ministry: 1 })!);
     const events: R.DecreeEvent[] = [];
@@ -188,6 +190,7 @@ describe('the slip and an arrival: one rule, one switch (rules-lead)', () => {
     expect(events.some((e) => e.type === 'slipReturned')).toBe(false);
     expect(after.decree.desk?.type).toBe('slip');
     expect(after.decree.tray.length).toBe(1);
+    expect(R.freePlaces(stays, g)).toBe(stays.decree.desk.trayCap);
     // Up still buys it; the visitor lands after it.
     const up = R.decide(stays, after, 'sign', 2, []);
     expect(up.decree.ministries[1].level).toBe(8);

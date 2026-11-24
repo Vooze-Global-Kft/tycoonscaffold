@@ -1,120 +1,483 @@
 /**
- * The desk (spec 4.2, 4.3, 4.5): one Skia canvas with the paper, the out-tray and the drawer, the
- * flick on the paper's rectangle, the ink, the take-back rest, the trays. PLACEHOLDER now: the desk
- * paper as plain text (visitor, proposal, both strips' printed effects from the rules' `stripOf`) and
- * two plain buttons "Sign" and "Study" so the loop can be clicked through once the rules decide.
+ * The desk (spec 4.1 to 4.3, 4.5, 2.7, 3.1): ONE Skia canvas behind the bars with the room, the desk
+ * of the office (baize and rim), the door with its glass ("Next visitor 0:07"), the wire out-tray whose
+ * stack grows with the term's signed papers, the drawer FOR FURTHER STUDY (growing with the refusals,
+ * creaking open with the pull), the in-tray stack, the sticky note, and the paper or the budget slip on
+ * the desk with the visitor's bust; the paper's words over it (./PaperWords.tsx), moved with it.
  *
- * Keeps its name and props (`layout`). Written by the skeleton; owned by the desk package P6
- * (docs/design/office-build-plan.md).
+ * The flick (./useFlick.ts, ./flick.ts): the responder covers exactly the paper; JavaScript writes ONE
+ * shared value, `paperY`, which the canvas and the words read on the UI thread (transforms, the ink's
+ * clip, the drawer's opening). After a commit the paper flies into the tray or the drawer and the next
+ * slides in from the in-tray 300 ms later; a signed day paper rests 2 s on the out-tray, where a tap
+ * takes it back; a tap elsewhere commits it. The second path (tap a strip to arm it, tap it again to
+ * commit) is always there, never taught; "Buttons instead of flicks" adds two buttons under the paper;
+ * screen readers get Sign and Refuse as actions.
+ *
+ * Every number shown comes from the rules (src/engine/decree.ts) through ./deskVm.ts; every word from
+ * strings.ts. Keeps its name and props (`layout`). Owned by the desk package.
  */
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import * as R from '../../../engine/decree';
+import { Canvas, Group, Path, Picture } from '@shopify/react-native-skia';
+import { arc } from '../art/pen';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, type AccessibilityActionEvent } from 'react-native';
+import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withSpring, withTiming, Easing, type SharedValue } from 'react-native-reanimated';
+import type * as R from '../../../engine/decree';
 import { decreeActions } from '../../../modes/decree/actions';
-import type { DeskLayout } from '../layout';
+import { useGame } from '../../../state/store';
+import { targets } from '../../hints/targets';
+import { DESK } from '../art/palette';
+import { FONT_SCALE_MAX, deskParts, STICKY_LINE, type DeskLayout, type Rect } from '../layout';
 import { paperMetrics } from '../paperMetrics';
-import { at, PH } from '../placeholder';
-import { S, signedDibs } from '../strings';
+import { S } from '../strings';
+import { useDecreeUi } from '../uiState';
 import { useDecree } from '../useDecree';
+import { useButtonsPref } from './buttonsPref';
+import { aroundSig, deskSig, type AroundVM, type DeskVM, type PaperVM } from './deskVm';
+import { ENTER_MS, LEAVE_MS, NEXT_AFTER_MS, SPRING, drawerOf, drawerStep, followOf, inkOf, type Release } from './flick';
+import { useDeskFontScale } from './fontScale';
+import { PaperWords, SlipWords } from './PaperWords';
+import { DRAWER_STEPS, backPicture, bakeFaces, drawerPictures, facesReady, paperPicture, restPicture, signaturePicture, slipPicture } from './pictures';
+import { useFlick } from './useFlick';
 
-/** The words of one chip (a screen only formats what the rules print). */
-function chipText(cfg: R.DecreeConfig, office: R.OfficeIx, c: R.Chip): string {
-  const club = (gi: number) => cfg.decree.clubs.find((x) => x.id === cfg.decree.offices[office].clubs[gi])?.short ?? '?';
-  switch (c.kind) {
-    case 'club':
-      return S.desk.clubChip(club(c.club), c.from, c.to);
-    case 'every':
-      return S.desk.everyChip(c.deltas.map((d) => (d > 0 ? `+${d}` : `${d}`)).join(' '), c.approvalFrom, c.approvalTo);
-    case 'money':
-      return signedDibs(c.amount);
-    case 'gossip':
-      return S.desk.gossipChip(c.from, c.to);
-    case 'level':
-      return S.desk.levelChip(c.from, c.to);
-    case 'appoint':
-      return S.desk.appointChip;
-    case 'endBoycott':
-    case 'endScandal':
-      return S.desk.endChip;
-    case 'district':
-      return S.desk.districtChip(cfg.decree.offices[office].districts[c.district]?.short ?? '?', c.from, c.to);
-  }
-}
-
-/** One strip as text lines: the title row, then the chips (or "No change"). */
-function stripLines(cfg: R.DecreeConfig, office: R.OfficeIx, s: R.Strip | null): { title: string; chips: string } {
-  if (!s) return { title: '', chips: '' };
-  const title = `${s.side === 'sign' ? S.desk.ifSigned : S.desk.ifStudied} · ${S.desk.approval(s.approval.from, s.approval.to)}${s.followUp ? ` ${S.desk.returns}` : ''}`;
-  const chips = s.chips.length ? s.chips.map((c) => chipText(cfg, office, c)).join(' · ') : S.desk.noChange;
-  return { title, chips };
-}
-
-/** The desk's printed text, one string per line (a primitive for the store selector). */
-function deskText(cfg: R.DecreeConfig, g: R.DecreeGame): string {
-  const desk = g.decree.desk;
-  if (!desk || desk.type !== 'paper') return '';
-  // A strip whose rule is not built yet (a district chip asks count.ts) prints "not built yet", not a clear desk.
-  const strip = (side: R.Choice) => {
-    try {
-      return stripLines(cfg, g.decree.office, R.stripOf(cfg, g, side));
-    } catch (e) {
-      if (!(e instanceof R.NotBuiltError)) throw e;
-      return { title: side === 'sign' ? S.desk.ifSigned : S.desk.ifStudied, chips: `${S.shell.notBuilt} (${e.rule})` };
-    }
-  };
-  const sign = strip('sign');
-  const refuse = strip('refuse');
-  const p = desk.paper;
-  return [sign.title, sign.chips, `${p.visitor.name} · ${p.visitor.role}`, p.text, refuse.title, refuse.chips].join('\n');
-}
+const DBG = true;
+const NONE: DeskVM = { kind: 'none' };
+const NONE_SIG = JSON.stringify(NONE);
+const OFF = [{ translateX: -9999 }, { translateY: -9999 }];
+const ON = [{ translateX: 0 }];
+const keyOf = (v: DeskVM) => (v.kind === 'none' ? '' : v.key);
 
 export function DeskCanvas({ layout }: { layout: DeskLayout }) {
-  const text = useDecree(deskText, '');
-  const m = paperMetrics(layout.paper.h, layout.s);
-  const [signTitle, signChips, visitor, proposal, refuseTitle, refuseChips] = text ? text.split('\n') : [];
+  const L = layout;
+  const fs = useDeskFontScale();
+  const s = Math.min(fs > 0 ? fs : 1, FONT_SCALE_MAX);
+  const P = useMemo(() => deskParts(L, s), [L, s]);
+  const m = useMemo(() => paperMetrics(L.paper.h, s), [L.paper.h, s]);
+
+  // --- what the rules say (strings compare by value: a render only when the desk's words change)
+  const sig = useDecree((cfg, g) => deskSig(cfg, g, s), NONE_SIG);
+  const live = useMemo<DeskVM>(() => JSON.parse(sig) as DeskVM, [sig]);
+  const aSig = useDecree(aroundSig, '');
+  const around = useMemo<AroundVM | null>(() => (aSig ? (JSON.parse(aSig) as AroundVM) : null), [aSig]);
+  const armed = useDecreeUi((u) => u.armed);
+  const finger = useDecreeUi((u) => u.fingerDown);
+  const buttons = useButtonsPref();
+
+  // --- the clocks (4.5: one per animated thing): the paper's offset and its spring, the entrance,
+  // the shake, the leaving paper, the drawer held open after a refusal, the take-back ring.
+  const paperY = useSharedValue(0);
+  const enter = useSharedValue(1);
+  const shake = useSharedValue(0);
+  const leaveY = useSharedValue(0);
+  const leaveK = useSharedValue(1);
+  const hold = useSharedValue(0);
+  const ring = useSharedValue(0);
+
+  // --- what the desk shows: it lags the rules for the 300 ms between a commit and the next paper
+  const [shown, setShown] = useState<DeskVM>(live);
+  const shownRef = useRef(shown);
+  shownRef.current = shown;
+  const [leaving, setLeaving] = useState<{ vm: DeskVM; side: R.Choice; n: number } | null>(null);
+  const leaveAt = useRef(0);
+  const takingBack = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [titleEnd, setTitleEnd] = useState(0);
+
+  // The faces atlas is baked once, after the first frame (it costs a few hundred ms of the JS thread).
+  const [faces, setFaces] = useState(facesReady());
+  useEffect(() => {
+    if (faces) return;
+    const t = setTimeout(() => {
+      bakeFaces();
+      setFaces(true);
+    }, 50);
+    return () => clearTimeout(t);
+  }, [faces]);
+
+  // Entrance from the in-tray, in screen points from the paper's centre.
+  const dxIn = P.inTray.x + P.inTray.w / 2 - (L.paper.x + L.paper.w / 2);
+  const dyIn = P.inTray.y + P.inTray.h / 2 - (L.paper.y + L.paper.h / 2);
+  const trayDy = P.outTray.y + P.outTray.h / 2 - (L.paper.y + L.paper.h / 2);
+  const drawerDy = P.drawer.y + P.drawer.h / 2 - (L.paper.y + L.paper.h / 2);
+
+  useEffect(() => {
+    if (keyOf(live) === keyOf(shownRef.current)) {
+      if (live !== shownRef.current) setShown(live);
+      return;
+    }
+    if (timer.current) clearTimeout(timer.current);
+    const land = () => {
+      timer.current = null;
+      setShown(live);
+      if (live.kind === 'none') return;
+      if (takingBack.current) {
+        // Taken back: the same paper comes down from the out-tray, exactly as it was (H3).
+        takingBack.current = false;
+        enter.value = 1;
+        paperY.value = trayDy;
+        paperY.value = withSpring(0, SPRING);
+        return;
+      }
+      paperY.value = 0;
+      enter.value = 0;
+      enter.value = withTiming(1, { duration: ENTER_MS, easing: Easing.out(Easing.cubic) });
+    };
+    const wait = Math.max(0, leaveAt.current + NEXT_AFTER_MS - Date.now());
+    if (wait > 0) timer.current = setTimeout(land, wait);
+    else land();
+  }, [live, enter, paperY, trayDy]);
+  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
+
+  // The take-back ring: the 2 s window as the rules hold it (until − the play clock), drawn down to 0.
+  const pendingKey = around?.pending ? `${around.pending.key}|${around.pending.until}` : '';
+  useEffect(() => {
+    if (!around?.pending) {
+      ring.value = 0;
+      return;
+    }
+    const left = Math.max(0, around.pending.until - (useGame.getState().game.stats.playSeconds ?? 0));
+    ring.value = Math.min(1, left / 2);
+    ring.value = withTiming(0, { duration: left * 1000, easing: Easing.linear });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingKey]);
+
+  // --- committing: the rules decide; the paper flies into the tray (up) or the drawer (down)
+  const startLeave = useCallback(
+    (side: R.Choice, y0: number) => {
+      const vm = shownRef.current;
+      leaveAt.current = Date.now();
+      setLeaving({ vm, side, n: leaveAt.current });
+      setShown(NONE);
+      leaveY.value = y0;
+      leaveK.value = 1;
+      leaveY.value = withTiming(side === 'sign' ? trayDy : drawerDy, { duration: LEAVE_MS, easing: Easing.in(Easing.quad) });
+      leaveK.value = withTiming(0.22, { duration: LEAVE_MS, easing: Easing.in(Easing.quad) });
+      if (side === 'refuse') {
+        hold.value = 1;
+        hold.value = withDelay(LEAVE_MS, withTiming(0, { duration: 320 }));
+      }
+      paperY.value = 0;
+      setTimeout(() => setLeaving((l) => (l && l.n === leaveAt.current ? null : l)), LEAVE_MS + 30);
+    },
+    [trayDy, drawerDy, leaveY, leaveK, hold, paperY],
+  );
+
+  const shakeIt = useCallback(() => {
+    shake.value = withTiming(7, { duration: 50 }, () => {
+      shake.value = withSpring(0, { damping: 4, stiffness: 900, mass: 0.4 });
+    });
+  }, [shake]);
+
+  const commit = useCallback(
+    (side: R.Choice, y0: number) => {
+      const vm = shownRef.current;
+      const ui = useDecreeUi.getState();
+      if (vm.kind === 'none') return;
+      const ok = decreeActions.decide(side);
+      ui.disarm();
+      if (!ok) {
+        // Signing while short (or a slip the treasury cannot pay now) springs back and shakes the strip.
+        paperY.value = withSpring(0, SPRING);
+        if (side === 'sign') shakeIt();
+        return;
+      }
+      startLeave(side, y0);
+    },
+    [paperY, shakeIt, startLeave],
+  );
+
+  const sideAt = useCallback(
+    (y: number): R.Choice | null => {
+      const vm = shownRef.current;
+      if (vm.kind === 'slip') return y < L.paper.h / 2 ? 'sign' : 'refuse';
+      if (y >= m.sign.y - 6 && y <= m.sign.y + m.sign.h) return 'sign';
+      if (y >= m.refuse.y && y <= m.refuse.y + m.refuse.h + 6) return 'refuse';
+      return null;
+    },
+    [L.paper.h, m],
+  );
+
+  const handlers = useFlick(paperY, L.paper.y, {
+    enabled: () => shownRef.current.kind !== 'none',
+    onTap: (y) => {
+      const ui = useDecreeUi.getState();
+      const side = sideAt(y);
+      if (!side) {
+        ui.disarm();
+        ui.touch();
+        return;
+      }
+      if (ui.armed === side) commit(side, 0);
+      else ui.arm(side);
+    },
+    onRelease: (r: Release, dy: number) => {
+      if (r === 'spring') {
+        paperY.value = withSpring(0, SPRING);
+        return;
+      }
+      commit(r, followOf(dy));
+    },
+  });
+
+  // A tap on the desk around the paper: the out-tray takes a resting paper back; elsewhere it commits it, or disarms.
+  const onDesk = useCallback(
+    (pageY: number) => {
+      const ui = useDecreeUi.getState();
+      const a = around;
+      if (a?.pending) {
+        const inTray = pageY < L.paper.y || (pageY >= P.pill.y && pageY <= P.pill.y + P.pill.h);
+        if (inTray) {
+          takingBack.current = true;
+          if (!decreeActions.takeBack()) takingBack.current = false;
+        } else decreeActions.commitPending();
+        ui.touch();
+        return;
+      }
+      if (ui.armed) ui.disarm();
+      else ui.touch();
+    },
+    [around, L.paper.y, P.pill],
+  );
+
+  // --- the hint targets of the drawn parts (src/ui/hints/targets.ts)
+  const slipOn = shown.kind === 'slip';
+  useEffect(() => {
+    const r = (q: Rect) => ({ x: q.x, y: q.y, width: q.w, height: q.h });
+    targets.set('paper', r(L.paper));
+    targets.set('strip:sign', r({ x: L.paper.x, y: L.paper.y + m.sign.y, w: L.paper.w, h: m.sign.h }));
+    targets.set('strip:refuse', r({ x: L.paper.x, y: L.paper.y + m.refuse.y, w: L.paper.w, h: m.refuse.h }));
+    targets.set('outTray', r(L.outTray));
+    targets.set('drawer', r(L.drawer));
+    targets.set('slip', slipOn ? r(P.slip) : null);
+    return () => ['paper', 'strip:sign', 'strip:refuse', 'outTray', 'drawer', 'slip'].forEach((k) => targets.set(k, null));
+  }, [L, m, P, slipOn]);
+
+  // --- the still layers
+  const back = useMemo(() => (around ? backPicture(L, P, around) : null), [L, P, around]);
+  const drawerKey = around ? `${around.office}|${Math.min(around.drawer, 10000)}` : '';
+  const drawers = useMemo(() => (around ? drawerPictures(P, around) : []), [P, drawerKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rest = useMemo(() => restPicture(P), [P]);
+  const pic = usePaperPicture(shown, L, m, armed, faces);
+  const leavePic = usePaperPicture(leaving?.vm ?? NONE, L, m, null, faces);
+  const player = around?.player || 'bramble';
+  const signature = useMemo(() => signaturePicture(player, m, L.paper.w, titleEnd), [player, m, L.paper.w, titleEnd]);
+  const ringPath = useMemo(() => arc(rest.ring.cx, rest.ring.cy, rest.ring.r, -90, 359.9), [rest]);
+
+  // --- what the UI thread computes from paperY
+  const cx = L.paper.x + L.paper.w / 2;
+  const cy = L.paper.y + L.paper.h / 2;
+  const paperXf = useDerivedValue(() => {
+    const e = enter.value;
+    return [{ translateX: (1 - e) * dxIn + shake.value }, { translateY: paperY.value + (1 - e) * dyIn }, { scale: 0.3 + 0.7 * e }];
+  }, [dxIn, dyIn]);
+  const leaveXf = useDerivedValue(() => [{ translateY: leaveY.value }, { scale: leaveK.value }]);
+  const sb = signature.box;
+  const inkClip = useDerivedValue(() => ({ x: sb.x - 4, y: sb.y - 8, width: (sb.w + 8) * inkOf(paperY.value), height: sb.h + 16 }), [sb]);
+  const drawerOpen = useDerivedValue(() => Math.max(drawerOf(paperY.value), hold.value));
+  const paperStyle = useAnimatedStyle(() => {
+    const e = enter.value;
+    return { transform: [{ translateX: (1 - e) * dxIn + shake.value }, { translateY: paperY.value + (1 - e) * dyIn }, { scale: 0.3 + 0.7 * e }] };
+  }, [dxIn, dyIn]);
+  const leaveStyle = useAnimatedStyle(() => ({ transform: [{ translateY: leaveY.value }, { scale: leaveK.value }] }));
+  const labelStyle = useAnimatedStyle(() => ({ transform: [{ translateY: drawerOpen.value * P.drawer.h * 0.42 }] }), [P.drawer.h]);
+
+  const onA11y = useCallback(
+    (e: AccessibilityActionEvent) => {
+      if (e.nativeEvent.actionName === 'sign') commit('sign', 0);
+      else if (e.nativeEvent.actionName === 'refuse') commit('refuse', 0);
+    },
+    [commit],
+  );
+
+  const pending = !!around?.pending;
+  const empty = shown.kind === 'none' && !leaving && !pending;
+  const showPill = armed !== null && !finger && shown.kind !== 'none';
+  const slipWords = shown.kind === 'slip';
+  const a11yLabel = shown.kind === 'paper' ? S.desk.paperLabel(shown.name, shown.text) : shown.kind === 'slip' ? S.desk.slipLabel(shown.what, shown.price) : S.desk.emptyDesk;
+  const signWord = slipWords ? S.desk.buy : S.desk.sign;
+  const studyWord = slipWords ? S.desk.putBack : S.desk.study;
+
+  if (DBG) return null;
   return (
-    <>
-      <View style={[at(layout.outTray), styles.band]} pointerEvents="none" />
-      <View style={[at(layout.paper), styles.paper]}>
-        {text ? (
-          <>
-            <View style={{ position: 'absolute', top: m.sign.y, left: 14, right: 14, height: m.sign.h }}>
-              <Text allowFontScaling={false} style={[styles.title, { fontSize: m.font.title, color: PH.violet }]}>{signTitle}</Text>
-              <Text allowFontScaling={false} style={[styles.chips, { fontSize: m.font.chip }]}>{signChips}</Text>
-            </View>
-            <View style={{ position: 'absolute', top: m.header.y, left: 14, right: 14, height: m.header.h + m.proposal.h }}>
-              <Text allowFontScaling={false} style={[styles.visitor, { fontSize: m.font.name }]} numberOfLines={1}>{visitor}</Text>
-              <Text allowFontScaling={false} style={[styles.proposal, { fontSize: m.font.proposal }]}>{proposal}</Text>
-            </View>
-            <View style={{ position: 'absolute', top: m.refuse.y, left: 14, right: 14, height: m.refuse.h }}>
-              <Text allowFontScaling={false} style={[styles.title, { fontSize: m.font.title, color: PH.slate }]}>{refuseTitle}</Text>
-              <Text allowFontScaling={false} style={[styles.chips, { fontSize: m.font.chip }]}>{refuseChips}</Text>
-            </View>
-          </>
-        ) : (
-          <Text allowFontScaling={false} style={styles.empty}>{S.desk.emptyDesk}</Text>
-        )}
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+        {back ? <Picture picture={back} /> : null}
+        {drawers.map((d, k) => (
+          <DrawerLayer key={k} k={k} pic={d} open={drawerOpen} />
+        ))}
+        {pending ? (
+          <Group>
+            <Picture picture={rest.pic} />
+            <Path path={ringPath} style="stroke" strokeWidth={2} color={DESK.slate} start={0} end={ring} />
+          </Group>
+        ) : null}
+        {leaving && leavePic ? (
+          <Group transform={leaveXf} origin={{ x: cx, y: cy }}>
+            <Group transform={[{ translateX: leaving.vm.kind === 'slip' ? P.slip.x : L.paper.x }, { translateY: leaving.vm.kind === 'slip' ? P.slip.y : L.paper.y }]}>
+              <Picture picture={leavePic} />
+              {leaving.side === 'sign' && leaving.vm.kind === 'paper' ? <Picture picture={signature.pic} /> : null}
+            </Group>
+          </Group>
+        ) : null}
+        {pic ? (
+          <Group transform={paperXf} origin={{ x: cx, y: cy }}>
+            <Group transform={[{ translateX: shown.kind === 'slip' ? P.slip.x : L.paper.x }, { translateY: shown.kind === 'slip' ? P.slip.y : L.paper.y }]}>
+              <Picture picture={pic} />
+              {shown.kind === 'paper' ? (
+                <Group clip={inkClip}>
+                  <Picture picture={signature.pic} />
+                </Group>
+              ) : null}
+            </Group>
+          </Group>
+        ) : null}
+      </Canvas>
+
+      {DBG ? null : <>{/* the desk's own small words: the door glass, the drawer's card, the sticky note */}
+      <View style={[abs(P.glass), styles.center]} pointerEvents="none">
+        <Text allowFontScaling={false} numberOfLines={1} style={[styles.glass, { fontSize: P.font.glass }]}>
+          {around?.door ?? ''}
+        </Text>
       </View>
-      <View style={[at(layout.drawer), styles.band, styles.buttons]}>
-        <Pressable accessibilityRole="button" onPress={() => decreeActions.decide('sign')} style={[styles.button, { backgroundColor: PH.violet }]}>
-          <Text allowFontScaling={false} style={styles.buttonText}>{S.desk.sign}</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => decreeActions.decide('refuse')} style={[styles.button, { backgroundColor: PH.slate }]}>
-          <Text allowFontScaling={false} style={styles.buttonText}>{S.desk.study}</Text>
-        </Pressable>
-      </View>
-    </>
+      <Animated.View style={[abs(P.drawerLabel), styles.center, labelStyle]} pointerEvents="none">
+        <Text allowFontScaling={false} numberOfLines={1} style={[styles.drawerLabel, { fontSize: P.font.drawerLabel }]}>
+          {S.desk.drawerLabel(String(around?.drawer ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, ','))}
+        </Text>
+      </Animated.View>
+      {around?.sticky ? (
+        <View style={[abs(P.stickyText), { transform: [{ rotate: '1.5deg' }] }]} pointerEvents="none">
+          {around.sticky
+            .filter((t) => t)
+            .map((t, i) => (
+              <Text key={i} allowFontScaling={false} numberOfLines={1} style={[styles.sticky, { fontSize: P.font.sticky, lineHeight: Math.round(P.font.sticky * STICKY_LINE) }]}>
+                {t}
+              </Text>
+            ))}
+        </View>
+      ) : null}
+
+      </>}
+      {/* the desk around the paper: takes a resting paper back, commits it, or disarms */}
+      <View
+        style={abs({ x: 0, y: L.outTray.y, w: L.width, h: L.drawer.y + L.drawer.h - L.outTray.y })}
+        onStartShouldSetResponder={() => true}
+        onResponderRelease={(e) => onDesk(e.nativeEvent.pageY)}
+      />
+
+      {empty ? (
+        <View style={[abs(L.paper), styles.center]} pointerEvents="none">
+          <Text allowFontScaling={false} style={[styles.empty, { fontSize: P.font.emptyDesk }]}>
+            {S.desk.emptyDesk}
+          </Text>
+        </View>
+      ) : null}
+      {pending ? (
+        <View style={[abs(P.pill), styles.pill]} pointerEvents="none">
+          <Text allowFontScaling={false} numberOfLines={1} style={[styles.pillText, { fontSize: P.font.pill }]}>
+            {S.desk.takeBack}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* the leaving paper's words fly with it */}
+      {leaving && leaving.vm.kind !== 'none' ? (
+        <Animated.View style={[abs(leaving.vm.kind === 'slip' ? P.slip : L.paper), leaveStyle]} pointerEvents="none">
+          <Words vm={leaving.vm} m={m} w={L.paper.w} s={s} armed={null} />
+        </Animated.View>
+      ) : null}
+
+      {/* the paper: its words, moved with paperY, and the responder over exactly its rectangle */}
+      {shown.kind !== 'none' ? (
+        <Animated.View style={[abs(shown.kind === 'slip' ? P.slip : L.paper), paperStyle]} pointerEvents="none">
+          <Words vm={shown} m={m} w={L.paper.w} s={s} armed={armed} onTitleEnd={setTitleEnd} />
+        </Animated.View>
+      ) : null}
+      <View
+        style={abs(L.paper)}
+        pointerEvents={shown.kind === 'none' ? 'none' : 'auto'}
+        accessible={shown.kind !== 'none'}
+        accessibilityLabel={a11yLabel}
+        accessibilityActions={shown.kind !== 'none' ? [{ name: 'sign', label: signWord }, { name: 'refuse', label: studyWord }] : undefined}
+        onAccessibilityAction={onA11y}
+        {...handlers}
+      />
+
+      {showPill ? (
+        <View style={[abs(armed === 'sign' ? L.outTray : L.drawer), styles.center]} pointerEvents="none">
+          <View style={[styles.armPill, { borderColor: armed === 'sign' ? DESK.violet : DESK.slate }]}>
+            <Text allowFontScaling={false} numberOfLines={1} style={[styles.armText, { fontSize: 12 * s, color: armed === 'sign' ? DESK.violet : DESK.slateDeep }]}>
+              {armed === 'sign' ? (slipWords ? S.desk.armBuy : S.desk.armSign) : slipWords ? S.desk.armBack : S.desk.armRefuse}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {buttons && shown.kind !== 'none' ? (
+        <View style={[abs(L.drawer), styles.buttons]} pointerEvents="box-none">
+          <Pressable accessibilityRole="button" hitSlop={8} onPress={() => commit('sign', 0)} style={[styles.button, { backgroundColor: DESK.violet }]}>
+            <Text allowFontScaling={false} style={[styles.buttonText, { fontSize: 13 * s }]}>
+              {`${S.desk.up} ${signWord}`}
+            </Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" hitSlop={8} onPress={() => commit('refuse', 0)} style={[styles.button, { backgroundColor: DESK.slate }]}>
+            <Text allowFontScaling={false} style={[styles.buttonText, { fontSize: 13 * s }]}>
+              {`${S.desk.down} ${studyWord}`}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
+const abs = (r: Rect) => ({ position: 'absolute' as const, left: r.x, top: r.y, width: r.w, height: r.h });
+
+/** The words of a desk item (a paper or a slip). */
+function Words({ vm, m, w, s, armed, onTitleEnd }: { vm: DeskVM; m: ReturnType<typeof paperMetrics>; w: number; s: number; armed: 'sign' | 'refuse' | null; onTitleEnd?: (x: number) => void }) {
+  if (vm.kind === 'paper') return <PaperWords vm={vm} m={m} w={w} s={s} armed={armed} onTitleEnd={onTitleEnd} />;
+  if (vm.kind === 'slip') return <SlipWords vm={vm} s={s} />;
+  return null;
+}
+
+/** The paper's (or slip's) ground, re-recorded only when what it draws changes (not when a number ticks). */
+function usePaperPicture(vm: DeskVM, L: DeskLayout, m: ReturnType<typeof paperMetrics>, armed: 'sign' | 'refuse' | null, faces: boolean) {
+  const key =
+    vm.kind === 'paper'
+      ? JSON.stringify([vm.key, vm.ground, vm.face, vm.picket, armed, faces, vm.sign.rows.map((r) => r.map((c) => c.wide)), vm.refuse.rows.map((r) => r.map((c) => c.wide)), vm.sign.density, vm.refuse.density])
+      : vm.kind === 'slip'
+        ? `slip:${vm.key}`
+        : '';
+  const vmRef = useRef(vm);
+  vmRef.current = vm;
+  return useMemo(() => {
+    const v = vmRef.current;
+    if (v.kind === 'paper') return paperPicture(v as PaperVM, L.paper.w, L.paper.h, m, armed);
+    if (v.kind === 'slip') return slipPicture(deskParts(L).slip);
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, L, m]);
+}
+
+/** One of the drawer's openings, shown only while the pull (or a refusal) opens it that far. */
+const DrawerLayer = memo(function DrawerLayer({ k, pic, open }: { k: number; pic: ReturnType<typeof drawerPictures>[number]; open: SharedValue<number> }) {
+  const xf = useDerivedValue(() => (drawerStep(open.value, DRAWER_STEPS) === k ? ON : OFF), [k]);
+  return (
+    <Group transform={xf}>
+      <Picture picture={pic} />
+    </Group>
+  );
+});
+
 const styles = StyleSheet.create({
-  band: { backgroundColor: PH.band },
-  paper: { backgroundColor: PH.paper, borderRadius: 4, overflow: 'hidden', justifyContent: 'center' },
-  title: { fontWeight: '700' },
-  chips: { color: PH.ink, marginTop: 4 },
-  visitor: { color: PH.ink, fontWeight: '700' },
-  proposal: { color: PH.ink, marginTop: 8, lineHeight: 24 },
-  empty: { color: PH.slate, textAlign: 'center' },
-  buttons: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16 },
-  button: { minWidth: 96, height: '86%', borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  buttonText: { color: PH.paper, fontSize: 15, fontWeight: '700' },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  glass: { color: DESK.slateDeep, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  drawerLabel: { color: DESK.line, fontWeight: '700', letterSpacing: 0.4 },
+  sticky: { color: DESK.line, fontWeight: '600' },
+  empty: { color: DESK.paperShade, fontStyle: 'italic' },
+  pill: { alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: DESK.paperLight, borderWidth: 1.5, borderColor: DESK.slate },
+  pillText: { color: DESK.slateDeep, fontWeight: '700' },
+  armPill: { paddingHorizontal: 12, paddingVertical: 3, borderRadius: 12, borderWidth: 1.5, backgroundColor: DESK.paperLight },
+  armText: { fontWeight: '700' },
+  buttons: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 24 },
+  button: { minWidth: 120, minHeight: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  buttonText: { color: DESK.white, fontWeight: '700' },
 });

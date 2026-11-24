@@ -17,23 +17,21 @@
  *   nothing was earned.
  * - "Back to the desk", a tap on the dimmed desk and Android back (../back.ts) close it without the ad.
  * - Killing the app with it open loses nothing: the earnings were saved in the treasury already.
- * It is a pale paper card over the dimmed desk (not a native Modal: the kit Sheet's theme colours are
- * the shell's, not the desk's) and registers with the overlay manager (useOverlay).
+ * Built on the bars package's DecreeSheet (./parts.tsx: pale paper, slides up, registers with the
+ * overlay manager, plays ui_open / ui_close), not the kit Sheet (its theme colours are the shell's).
  * Owned by the hints and platform package (PLATFORM); mounted by ../platform.tsx.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { engineFor } from '../../../engine/mode';
 import * as R from '../../../engine/decree';
 import { decreeActions } from '../../../modes/decree/actions';
 import { useGame } from '../../../state/store';
-import { useOverlay, useRewardedReady } from '../../kit';
-import { DESK } from '../art/palette';
+import { useRewardedReady } from '../../kit';
 import { DecreeIcon } from '../art/DecreeIcon';
 import { awayView, type AwayView, type OfflineRecord } from '../away';
-import { useFontScale } from '../hud/fontScale';
-import { FONT_SCALE_MAX } from '../layout';
 import { S } from '../strings';
+import { Btn, Card, DecreeSheet, INK, Txt, useType } from './parts';
 import { busyHand, useDecreeUi } from '../uiState';
 
 /** The engine's multiplier of the away ad (EngineMode.offlineAdMultiplier), 1 when there is none. */
@@ -91,16 +89,15 @@ export function AwayReport() {
     }
   }, [view, presented, busy, otherOpen]);
 
+  // The last view stays while the sheet slides out.
   const shown = useRef<AwayView | null>(null);
   if (view) shown.current = view;
-  const visible = presented && !!view;
-  useOverlay(visible);
-  if (!visible || !shown.current) return null;
-  return <AwayCard view={shown.current} />;
+  if (!shown.current) return null;
+  return <AwayCard visible={presented && !!view} view={shown.current} />;
 }
 
-function AwayCard({ view }: { view: AwayView }) {
-  const s = Math.min(useFontScale(), FONT_SCALE_MAX);
+function AwayCard({ visible, view }: { visible: boolean; view: AwayView }) {
+  const ty = useType();
   const adReady = useRewardedReady();
   const adFree = useGame((st) => !!st.game.entitlements?.skipRewarded);
   const [busy, setBusy] = useState(false);
@@ -112,160 +109,66 @@ function AwayCard({ view }: { view: AwayView }) {
       if (useDecreeUi.getState().sheet?.type === 'away') useDecreeUi.getState().closeSheet();
     });
   };
-  const f = (n: number) => Math.round(n * s);
   const ad = view.ad;
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <Pressable style={styles.backdrop} onPress={() => close(false)} accessibilityRole="button" accessibilityLabel={S.platform.away.back} />
-      <View style={styles.centre} pointerEvents="box-none">
-        <View style={styles.card} accessibilityViewIsModal>
-          <View style={styles.head}>
-            <DecreeIcon icon="art:ad_away" size={f(30)} />
-            <Text allowFontScaling={false} style={[styles.title, { fontSize: f(19), lineHeight: f(25) }]} numberOfLines={1}>
-              {S.platform.away.title}
-            </Text>
-          </View>
-          <View style={styles.rule} />
-          {view.lines.map((line, i) => (
-            <Text key={i} allowFontScaling={false} style={[styles.body, { fontSize: f(15), lineHeight: f(21) }]}>
-              {line}
-            </Text>
-          ))}
-          {view.amount ? (
-            <View style={styles.amountRow}>
-              <DecreeIcon icon="art:fx_coin" size={f(24)} />
-              <Text allowFontScaling={false} style={[styles.amount, { fontSize: f(24), lineHeight: f(30) }]} numberOfLines={1}>
-                {view.amount}
-              </Text>
-              <Text allowFontScaling={false} style={[styles.small, { fontSize: f(12), lineHeight: f(16) }]} numberOfLines={1}>
-                {S.platform.away.inTreasury}
-              </Text>
-            </View>
+    <DecreeSheet
+      visible={visible}
+      onClose={() => close(false)}
+      title={S.platform.away.title}
+      icon="art:ad_away"
+      footer={
+        <>
+          {ad === 'closed' ? (
+            <Btn label={S.platform.away.closedRunUp} onPress={() => {}} enabled={false} />
+          ) : ad ? (
+            <Btn
+              kind="ad"
+              label={adFree ? S.platform.away.adFree(ad.pct) : S.platform.away.ad(ad.pct)}
+              price={S.platform.away.gain(ad.extra)}
+              onPress={() => close(true)}
+              enabled={adReady && !busy}
+              sub={adReady ? undefined : S.platform.away.adNotReady}
+            />
           ) : null}
-          {view.capped ? (
-            <Text allowFontScaling={false} style={[styles.small, { fontSize: f(12), lineHeight: f(17) }]}>
-              {view.capped}
-            </Text>
-          ) : null}
-          {view.quip ? (
-            <Text allowFontScaling={false} style={[styles.quip, { fontSize: f(13), lineHeight: f(18) }]}>
-              {view.quip}
-            </Text>
-          ) : null}
-          <View style={styles.buttons}>
-            {ad === 'closed' ? (
-              <View style={[styles.button, styles.closedButton]}>
-                <Text allowFontScaling={false} style={[styles.closedText, { fontSize: f(13) }]} numberOfLines={1}>
-                  {S.platform.away.closedRunUp}
-                </Text>
-              </View>
-            ) : ad ? (
-              <Pressable
-                onPress={() => close(true)}
-                disabled={busy || !adReady}
-                accessibilityRole="button"
-                accessibilityLabel={adFree ? S.platform.away.adFree(ad.pct) : S.platform.away.ad(ad.pct)}
-                style={({ pressed }) => [styles.button, styles.adButton, (!adReady || busy) && styles.dim, pressed && styles.pressed]}
-              >
-                <Text allowFontScaling={false} style={[styles.adText, { fontSize: f(15) }]} numberOfLines={1}>
-                  {adFree ? S.platform.away.adFree(ad.pct) : S.platform.away.ad(ad.pct)}
-                </Text>
-                <Text allowFontScaling={false} style={[styles.adSub, { fontSize: f(12) }]} numberOfLines={1}>
-                  {adReady ? S.platform.away.gain(ad.extra) : S.platform.away.adNotReady}
-                </Text>
-              </Pressable>
-            ) : null}
-            <Pressable onPress={() => close(false)} disabled={busy} accessibilityRole="button" style={({ pressed }) => [styles.button, styles.backButton, pressed && styles.pressed]}>
-              <Text allowFontScaling={false} style={[styles.backText, { fontSize: f(15) }]} numberOfLines={1}>
-                {S.platform.away.back}
-              </Text>
-            </Pressable>
-          </View>
+          <Btn kind="plain" label={S.platform.away.back} onPress={() => close(false)} enabled={!busy} />
+        </>
+      }
+    >
+      <Card icon="art:intray" iconSize={36}>
+        {view.lines.map((line, i) => (
+          <Txt key={i} size={ty.body} color={i === 0 ? INK.text : INK.soft}>
+            {line}
+          </Txt>
+        ))}
+      </Card>
+      {view.amount ? (
+        <View style={styles.amountRow}>
+          <DecreeIcon icon="art:fx_coin" size={Math.round(ty.big * 1.3)} />
+          <Txt size={Math.round(ty.big * 1.3)} bold color={INK.money} style={styles.tabular}>
+            {view.amount}
+          </Txt>
+          <Txt size={ty.small} color={INK.soft} style={styles.shrink} lines={1}>
+            {S.platform.away.inTreasury}
+          </Txt>
         </View>
-      </View>
-    </View>
+      ) : null}
+      {view.capped ? (
+        <Txt size={ty.small} color={INK.soft}>
+          {view.capped}
+        </Txt>
+      ) : null}
+      {view.quip ? (
+        <Txt size={ty.small} color={INK.soft} style={styles.quip}>
+          {view.quip}
+        </Txt>
+      ) : null}
+    </DecreeSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(20, 30, 26, 0.62)',
-  },
-  centre: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  card: {
-    alignSelf: 'stretch',
-    maxWidth: 420,
-    marginHorizontal: 'auto',
-    backgroundColor: DESK.paperLight,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: DESK.paperEdge,
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 16,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 12,
-  },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  title: { flex: 1, color: DESK.violet, fontWeight: '700' },
-  rule: {
-    height: 1,
-    backgroundColor: DESK.violet,
-    opacity: 0.45,
-    marginBottom: 2,
-  },
-  body: { color: DESK.line },
-  amountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 2,
-  },
-  amount: {
-    color: DESK.mustardDeep,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
-  },
-  small: { color: DESK.slateDeep, flexShrink: 1 },
-  quip: { color: DESK.slateDeep, fontStyle: 'italic' },
-  buttons: { gap: 8, marginTop: 6 },
-  button: {
-    minHeight: 48,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  adButton: { backgroundColor: DESK.violet },
-  adText: { color: DESK.paperLight, fontWeight: '700' },
-  adSub: { color: DESK.violetPale, fontVariant: ['tabular-nums'] },
-  backButton: {
-    borderWidth: 1.5,
-    borderColor: DESK.slate,
-    backgroundColor: 'transparent',
-  },
-  backText: { color: DESK.slateDeep, fontWeight: '700' },
-  closedButton: { backgroundColor: DESK.slatePale },
-  closedText: { color: DESK.slateDeep },
-  dim: { opacity: 0.55 },
-  pressed: { opacity: 0.8 },
+  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 4 },
+  tabular: { fontVariant: ['tabular-nums'] },
+  shrink: { flexShrink: 1 },
+  quip: { fontStyle: 'italic', paddingHorizontal: 4, marginTop: 4 },
 });

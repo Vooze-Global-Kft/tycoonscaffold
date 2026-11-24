@@ -67,9 +67,25 @@ function paint(color: string) {
   return p;
 }
 
+let faces = false;
+/** Bakes the faces' pages once (the atlas kit caches them for the app's life and never frees them). */
+export function bakeFaces(): void {
+  try {
+    decreeAtlas('faces');
+    decreeAtlas('faces2');
+  } catch {
+    // no surface: the photo stays an empty oval
+  }
+  faces = true;
+}
+/** Whether the faces' pages were baked (the paper draws the bust only then; before, an empty oval). */
+export function facesReady(): boolean {
+  return faces;
+}
+
 /** The visitor's bust from the faces atlas, clipped to the oval (nothing while the atlas is not baked yet). */
 function drawFace(c: SkCanvas, cast: string, r: Rect): void {
-  if (!cast) return;
+  if (!cast || !faces) return;
   const name = faceSpriteName(cast);
   const page = faceAtlasOf(name);
   if (!page) return;

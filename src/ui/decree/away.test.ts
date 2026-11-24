@@ -142,7 +142,7 @@ describe('the away report on the store path (2.15)', () => {
     expect(useGame.getState().game.cash).toBe(before.cash + both.earnings);
   });
 
-  it('the ad adds exactly the extra the sheet prints (the rules\' multiplier), and only when it completes', async () => {
+  it("the ad adds exactly the extra the sheet prints (the rules' multiplier), and only when it completes", async () => {
     const now = nextMoment();
     const before = savedAt(now, HOUR);
     const useGame = await storeWith(before, now);
@@ -166,7 +166,13 @@ describe('the away report on the store path (2.15)', () => {
   it('from the call to the end of election night the ad is "closed", not offered', () => {
     const { governorAtCall } = decreeFixtures(cfg);
     expect(governorAtCall.decree.phase).not.toBe('governing');
-    const v = awayView(cfg, governorAtCall, { seconds: 3600, earnings: 500, report: { seconds: 3600, capped: false, earnings: 500, arrived: 0, waiting: 0, line: null } }, 1.5, R.canWatchAd(cfg, governorAtCall, 'awayBonus'));
+    const v = awayView(
+      cfg,
+      governorAtCall,
+      { seconds: 3600, earnings: 500, report: { seconds: 3600, capped: false, earnings: 500, arrived: 0, waiting: 0, line: null } },
+      1.5,
+      R.canWatchAd(cfg, governorAtCall, 'awayBonus'),
+    );
     expect(v?.ad).toBe('closed');
   });
 
@@ -180,7 +186,7 @@ describe('the away report on the store path (2.15)', () => {
   });
 });
 
-describe('Android back and the app\'s life (4.4, 2.7)', () => {
+describe("Android back and the app's life (4.4, 2.7)", () => {
   it('Android back closes the away report without the ad', async () => {
     const now = nextMoment();
     const useGame = await storeWith(savedAt(now, HOUR), now);
@@ -195,7 +201,7 @@ describe('Android back and the app\'s life (4.4, 2.7)', () => {
     expect(useDecreeUi.getState().sheet).toBeNull();
   });
 
-  it('closeTop: armed strip, peek, sheet, view (the view\'s own step first), then the bare desk', async () => {
+  it("closeTop: armed strip, peek, sheet, view (the view's own step first), then the bare desk", async () => {
     const { useDecreeUi } = await import('./uiState');
     const ui = useDecreeUi.getState;
     ui().openView('electionNight');
@@ -210,6 +216,9 @@ describe('Android back and the app\'s life (4.4, 2.7)', () => {
     ui().arm('sign');
     expect(ui().closeTop()).toBe(true);
     expect(ui().armed).toBeNull();
+    ui().openHeadline();
+    expect(ui().closeTop()).toBe(true);
+    expect(ui().headline, 'the headline bubble before the peek').toBe(false);
     expect(ui().peek).toBe(false);
     ui().openPeek();
     expect(ui().closeTop()).toBe(true);

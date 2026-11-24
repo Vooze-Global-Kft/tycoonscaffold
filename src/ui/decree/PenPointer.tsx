@@ -140,7 +140,7 @@ export function PenLayer({ layout }: { layout: DeskLayout }) {
       const pen = {
         sheetOpen: ui.sheet !== null || open.current || st.offline !== null,
         viewOpen: ui.view !== null,
-        peek: ui.peek,
+        peek: ui.peek || ui.headline,
         armed: ui.armed !== null,
         fingerDown: ui.fingerDown,
         idleMs,
@@ -169,7 +169,7 @@ export function PenLayer({ layout }: { layout: DeskLayout }) {
   }, []);
 
   // A touch, an armed strip or anything opening hides the pen at once.
-  const busy = useDecreeUi((s) => s.fingerDown || s.armed !== null || s.sheet !== null || s.view !== null || s.peek);
+  const busy = useDecreeUi((s) => s.fingerDown || s.armed !== null || s.sheet !== null || s.view !== null || s.peek || s.headline);
   useEffect(() => {
     if (busy || overlaysOpen) setStroke(null);
   }, [busy, overlaysOpen]);

@@ -11,7 +11,8 @@ import { built, decreeTestConfig, decreeTestContent } from '../fixtures/decree';
 
 const cfg = decreeTestConfig();
 const c = cfg.decree;
-const u = (m: number) => (m >= c.count.huffBelow ? m : c.count.huffBelow - c.count.huffSlope * (c.count.huffBelow - m));
+// The count's utility by hand: D25 below huffBelow, D31 above topAbove.
+const u = (m: number) => (m < c.count.huffBelow ? c.count.huffBelow - c.count.huffSlope * (c.count.huffBelow - m) : m > c.count.topAbove ? c.count.topAbove + c.count.topSlope * (m - c.count.topAbove) : m);
 
 /** share_d by hand: Σ w × u(m) + C + Y − R, held between 0 and 100, in hundredths. */
 function handShares(office: 0 | 1 | 2, moods: number[], C: number[], losses: number): number[] {
@@ -139,18 +140,22 @@ describe('2.11: repeated losses end in a win (D15, D25)', () => {
 });
 
 describe("the count's utility is one function with one config block (rules-lead)", () => {
-  it('topAbove/topSlope change nothing at their defaults and, set, flatten moods above the threshold in the count only', () => {
-    expect(c.count.topAbove).toBe(100);
-    for (let m = 0; m <= 100; m++) expect(R.moodUtility(c.count, m)).toBe(m >= c.count.huffBelow ? m : c.count.huffBelow - c.count.huffSlope * (c.count.huffBelow - m));
-    const flat = { ...c.count, topAbove: 70, topSlope: 0.25 };
-    expect(R.moodUtility(flat, 90)).toBe(75);
-    expect(R.moodUtility(flat, 70)).toBe(70);
-    expect(R.moodUtility(flat, 10)).toBe(R.moodUtility(c.count, 10));
-    const tc = decreeTestConfig({ count: flat });
-    const g = built({ moods: [95, 40, 40] }, tc);
-    const plain = built({ moods: [95, 40, 40] }, cfg);
-    expect(R.shares(tc, g)[1]).toBeLessThan(R.shares(cfg, plain)[1]);
-    expect(R.decreeParams(tc, g).approval).toBe(R.decreeParams(cfg, plain).approval);
-    expect(R.poll(tc, g).held).toBe(R.count(tc, g).held);
+  it('D25 with D31: 3m − 60 below 30, m from 30 to 70, 70 + (m − 70)/4 above; in the count only; "won over" on the poll', () => {
+    for (let m = 0; m <= 100; m++) expect(R.moodUtility(c.count, m)).toBe(m < 30 ? 3 * m - 60 : m <= 70 ? m : 70 + (m - 70) / 4);
+    // Set to (100, 1) the top part changes nothing: the threshold and slope are config (D31: tune 60 to 80, 0.1 to 0.5).
+    const plainCount = { ...c.count, topAbove: 100, topSlope: 1 };
+    for (let m = 30; m <= 100; m++) expect(R.moodUtility(plainCount, m)).toBe(m);
+    const tc = decreeTestConfig({ count: plainCount });
+    const g = built({ moods: [95, 40, 40] }, cfg);
+    const plain = built({ moods: [95, 40, 40] }, tc);
+    // Bus (95) is strong in Mill Ward: it counts less there; approval and income use the plain moods.
+    expect(R.shares(cfg, g)[1]).toBeLessThan(R.shares(tc, plain)[1]);
+    expect(R.decreeParams(cfg, g).approval).toBe(R.decreeParams(tc, plain).approval);
+    const p = R.poll(cfg, g);
+    expect(p.held).toBe(R.count(cfg, g).held);
+    expect(p.wonOver).toEqual([0]);
+    expect(p.rows[1].wonOver[0].club).toBe(0);
+    expect(p.rows[1].wonOver[0].cost).toBeLessThan(0);
+    expect(R.poll(cfg, built({ moods: [70, 40, 40] }, cfg)).wonOver).toEqual([]);
   });
 });
