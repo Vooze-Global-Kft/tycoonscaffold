@@ -1,19 +1,22 @@
 /**
  * Proudly Adequate. The six store screenshots, the desk first and the refusal before the signing
- * (D43 and the lead's store notes of 24 November): a paper pulled down toward the drawer FOR FURTHER
+ * (D43 and the lead's store notes of 24 November): a paper pulled down into the drawer FOR FURTHER
  * STUDY, both strips readable; the pumpkin's paper pushed up to sign, the signature writing itself;
- * the pumpkin back with its follow-up; the poll map before a call; election night's chalk board; the
- * Office wall. Captions in the deadpan voice (spec 7.4), at most 40 characters, handwritten by
- * templates/signature.ts.
+ * the Treasury Clerk's budget slip with a bundle of levels (D42 a); the poll map before a call;
+ * election night's chalk board at the end of the count; the Office wall. Captions in the deadpan
+ * voice (spec 7.4), at most 40 characters, handwritten by templates/signature.ts.
  *
  * Every picture is a real state of the game in the shared web preview (port 8303), named, not left
  * to what a preset happens to hold: the scenes play the game's RULES (src/engine/decree.ts, through
  * the preview's test hook `__decreeDev` of src/ui/decree/desk/dev.web.ts, the way the preview's own
- * &desk= switch lands a paper) to a paper chosen by its id, a follow-up reached by deciding papers,
- * the call day reached by the rules' own canCall, a run-up refused to the count. Moods are set in
- * the page (as the preview's &moods= switch does), so the strips and the poll read the same after the
- * numbers are retuned: re-run `npx tsx scripts/store/shots.ts --game high-office --write` and the six
- * pictures come back with the final prices. Touches are placed with the game's own geometry
+ * &desk= switch lands a paper) to a paper chosen by its id, a slip made by the rules' slipFor, the
+ * call day reached by the rules' own canCall, a run-up refused to the count, a term lost and a term
+ * won for a former opponent. Moods are set in the page (as the preview's &moods= switch does), found
+ * by the rules near a named vector so that the strips move a ward and the poll holds 4 of 5 with
+ * Hilltop out: the same pictures come back after the numbers are retuned. Re-run
+ * `npx tsx scripts/store/shots.ts --game high-office --write` and the six pictures come back with
+ * the final prices. No picture is caught mid-animation by a timer except the desk's held finger
+ * (election night is taken at its end). Touches are placed with the game's own geometry
  * (src/ui/decree/layout.ts deskLayout: the function the screen and its responder use).
  *
  * Never in an image (policy research 6, D12, D43): the newspaper front page, a campaign (run-up)
@@ -96,107 +99,146 @@ const scenes: GameScenes = {
   scenes: [
     {
       slug: 'further-study',
-      // The first thing the game teaches (3.1): refusing. A bus spotter's paper, pulled 50 pt toward
-      // the drawer and held: past 40 pt the drawer creaks open and the IF STUDIED strip is armed, the
-      // bars preview what refusing does; both strips still read.
+      // The first thing the game teaches (3.1): refusing. A bus spotter's paper, pulled 84 pt toward the
+      // drawer (just short of the 90 pt commit) and held: the drawer is open, the paper's foot inside it,
+      // the IF STUDIED strip armed. The moods are the nearest to DESK_MOODS at which studying moves a
+      // ward, so both strips print the wards (D43).
       query: 'preset=early',
       settle: 9000,
-      steps: (v) => [{ run: `${HOOK}\n${moods(DESK_MOODS)}\n${landPaper('may-bus-named')}\nd.set(g); return 'landed ' + g.decree.desk.paper.text;` }, ...hold(v, 50)],
-      check: deskText([/Name the 7:02 bus after you/, /IF SIGNED/, /IF STUDIED/, /FOR FURTHER STUDY \(\d+\)/]),
-      caption: 'Refused papers await further study',
-      shows: "Desmond Kerb's paper (Bus Spotters' Society: \"Name the 7:02 bus after you, Mayor. It is late too, and also waves.\") pulled toward the open drawer, both strips printed (wards, clubs, the follow-up mark), the drawer's label FOR FURTHER STUDY with its count, the bars previewing the refusal.",
+      steps: (v) => [{ run: paperMovingWards('may-bus-named', 'refuse', DESK_MOODS) }, ...hold(v, 84)],
+      check: deskText([/Name the 7:02 bus after you/, /IF SIGNED/, /IF STUDIED/, /Wards \d → \d of 5/, /FOR FURTHER STUDY \(\d+\)/]),
+      caption: 'Pull it down for further study',
+      shows: "Desmond Kerb's paper (Bus Spotters' Society: \"Name the 7:02 bus after you, Mayor. It is late too, and also waves.\") pulled down into the open drawer, both strips printed (\"Wards n → m of 5\", clubs, the follow-up mark), the drawer's label FOR FURTHER STUDY with its count, the bars previewing the refusal.",
     },
     {
       slug: 'sign-the-pumpkin',
-      // The signing, second: the prize pumpkin's paper pushed 85 pt up toward the out-tray and held;
-      // the signature writes itself across the SIGN strip, the price and both clubs printed.
+      // The signing, second: the prize pumpkin's paper pushed 70 pt up toward the out-tray and held (the
+      // strip clears the Next visitor plate); the signature writes itself across the SIGN strip. The
+      // moods are the nearest to DESK_MOODS at which signing wins a ward.
       query: 'preset=early',
       settle: 9000,
-      steps: (v) => [{ run: `${HOOK}\n${moods(DESK_MOODS)}\n${landPaper('may-pumpkin-freedom')}\nd.set(g); return 'landed ' + g.decree.desk.paper.text + ' cash ' + Math.round(g.cash);` }, ...hold(v, -85)],
-      check: deskText([/Grant the prize pumpkin the freedom/, /IF SIGNED/, /IF STUDIED/]),
+      steps: (v) => [{ run: paperMovingWards('may-pumpkin-freedom', 'sign', DESK_MOODS, true) }, ...hold(v, -70)],
+      check: deskText([/Grant the prize pumpkin the freedom/, /IF SIGNED/, /IF STUDIED/, /Wards \d → \d of 5/]),
       caption: 'Both outcomes printed before you sign',
-      shows: "Hilda Gourdley's paper (Giant Vegetable Society: \"Grant the prize pumpkin the freedom of the town. It has asked very politely.\") pushed up toward the out-tray, the signature writing itself on the SIGN strip; both strips print the price, the two clubs and the follow-up mark.",
+      shows: "Hilda Gourdley's paper (Giant Vegetable Society: \"Grant the prize pumpkin the freedom of the town. It has asked very politely.\") pushed up toward the out-tray, the signature writing itself on the SIGN strip; both strips print the wards, the price, the two clubs and the follow-up mark.",
     },
     {
-      slug: 'pumpkin-returns',
-      // The follow-up (7.6 B): the pumpkin's paper signed by the rules, then every paper and slip
-      // after it refused until the pumpkin's follow-up lands on the desk (8 to 12 decided papers later).
+      slug: 'clerk-slip',
+      // A budget slip carrying a bundle (D42 a), not a paper: the Treasury Clerk's slip for the Potholes
+      // Office. Levels bought free by the rules (as the views' &move= does) until a storey has room for a
+      // bundle, the treasury set to the amount at which slipFor bundles the most levels (3 at least), the
+      // slip landed as the clock lands it, then pushed 60 pt up (Buy it) and held. Never the Ledger (D43).
       query: 'preset=early',
       settle: 9000,
-      steps: () => [
+      steps: (v) => [
         {
-          run: `${HOOK}\n${moods(DESK_MOODS)}\n${landPaper('may-pumpkin-freedom')}
-g = decide(g, 'sign');
-if (!g.decree.followUps.some((f) => f.chainId === 'may-pumpkin')) return 'ERR the pumpkin paper was not signed (cash ' + Math.round(g.cash) + ')';
-let k = 0;
-for (; k < 600; k++) { const it = g.decree.desk; if (it && it.type === 'paper' && it.paper.followUpOf && it.paper.followUpOf.chainId === 'may-pumpkin') break; g = step(g); }
-if (k === 600) return 'ERR the follow-up never landed';
-d.set(g); return 'follow-up after ' + k + ' steps: ' + g.decree.desk.paper.text;`,
-          settle: 2500,
+          run: `${HOOK}
+g = withMoods(g, ${JSON.stringify(DESK_MOODS)});
+g = { ...g, decree: { ...g.decree, desk: null, pending: null, tray: [], emptySince: null } };
+const i = 1;
+for (let k = 0; k < 40 && R.bundleRoom(cfg, g.decree.ministries[i].level) < 6; k++) g = R.buy(cfg, g, { type: 'level', ministry: i }, null, [], { free: true });
+let best = null, cash = 0;
+for (let c = Math.round(R.reserve(cfg, g)); c < 1e9; c = Math.round(c * 1.04) + 1) { const s = R.slipFor(cfg, { ...g, cash: c }); if (s && s.purchase.type === 'level' && s.purchase.ministry === i && (!best || s.levels > best.levels)) { best = s; cash = c; } }
+if (!best || best.levels < 3) return 'ERR no bundle of 3 levels or more (' + (best ? best.levels : 'no slip') + ')';
+g = { ...g, cash, decree: { ...g.decree, desk: { type: 'slip', slip: best, landedAt: g.stats.playSeconds }, slipOffered: true, papersSinceSlip: 0 } };
+d.set(g); return 'slip +' + best.levels + ' levels of ministry ' + i + ' at ' + Math.round(best.price) + ', treasury ' + cash;`,
         },
+        ...hold(v, -60),
       ],
-      check: deskText([/It has slides/, /IF SIGNED/, /IF STUDIED/]),
-      caption: 'A signed pumpkin comes back with slides',
-      shows: 'The follow-up of the pumpkin chain on the desk: Hilda Gourdley, "The pumpkin, now a Freeman of the town, wishes to address the council. It has slides." with both strips; the drawer holding the papers refused on the way.',
+      check: deskText([/Treasury Clerk/, /Potholes Office \+\d+ levels/, /Buy it/]),
+      caption: 'The Clerk recommends more potholes',
+      shows: 'Gwendolyn Abacus, Treasury Clerk: a budget slip "Potholes Office +n levels · −price · +n/s" pushed up toward Buy it; the drawer FOR FURTHER STUDY below. No paper, no strips: the other object on the desk.',
     },
     {
       slug: 'poll-map',
       // The Poll sheet on the call day (reached by the rules' canCall, not a fixed day): the pinned map
-      // of the five wards, held ones in violet hatching, each ward's share, the rival's pull, the call button.
+      // of the five wards, each ward's share; the moods nearest VOTE_MOODS at which the poll holds 4 of 5
+      // with Hilltop the one ward not held (the caption's "sulky hill").
       query: 'preset=early',
       settle: 9000,
       steps: () => [
         {
-          run: `${HOOK}\n${moods(VOTE_MOODS)}
+          run: `${HOOK}
 for (let k = 0; k < 400 && !R.canCall(cfg, g); k++) g = { ...g, decree: { ...g.decree, day: g.decree.day + 1 } };
 if (!R.canCall(cfg, g)) return 'ERR no call day';
-d.set(g); d.ui().openSheet({ type: 'poll' }); const p = R.poll(cfg, g); return 'day ' + g.decree.day + ' poll ' + p.held + ' of ' + p.of;`,
+const at = findMoods(${JSON.stringify(VOTE_MOODS)}, (t) => { const p = R.poll(cfg, t); const out = p.rows.filter((r) => !r.held); return p.held === 4 && p.of === 5 && out.length === 1 && out[0].name === 'Hilltop' ? t : null; });
+if (!at) return 'ERR no moods with Hilltop the only ward not held';
+d.set(at); d.ui().openSheet({ type: 'poll' }); const p = R.poll(cfg, at); return 'day ' + at.decree.day + ' moods ' + at.decree.moods + ' poll ' + p.held + ' of ' + p.of;`,
           settle: 2500,
         },
       ],
-      check: (t) => (/Held today: \d of 5/.test(t) && /Call the election/.test(t) ? null : 'no poll with its call button'),
-      caption: 'The poll is honest, ward by ward',
-      shows: "The Poll sheet on the first day the election may be called: the ward map of Dithering-on-the-Dawdle (held wards hatched in violet), every ward's share to one decimal, held or not held, the clubs strong in each, the rival's pull, \"Call the election\".",
+      check: (t) => (/Held today: 4 of 5/.test(t) && /3 needed/.test(t) && /Hilltop\n\d+\.\d\nnot held/.test(t) && /Call the election/.test(t) ? null : 'no poll of 4 of 5 with Hilltop not held'),
+      caption: 'Five wards, three needed, one sulky hill',
+      shows: "The Poll sheet on the first day the election may be called: the ward map of Dithering-on-the-Dawdle (held wards hatched in violet), every ward's share to one decimal, held or not held (Hilltop not), 3 needed, the clubs strong in each.",
     },
     {
       slug: 'election-night',
-      // Election night (4.4): the mayor's run-up refused to the count by the rules (no run-up paper is
-      // pictured), the moods of the poll above; the board after the fourth envelope: a majority with
-      // one ward lost, chalk ticks and the dash, rosettes, bunting, the band in silhouette.
+      // Election night (4.4) at its END, a fixed moment (the envelopes come on the view's 2.5 s clock, so
+      // a picture mid-count is never the same twice): every ward chalked, safest first and the closest
+      // last, ticks, the dash, rosettes, the tally line, the defeated rival's concession, "To the result".
+      // The mayor's run-up refused to the count by the rules (no run-up paper is pictured).
       query: 'preset=early',
       settle: 9000,
       steps: () => [
         {
           run: `${HOOK}
 for (let k = 0; k < 3000 && g.decree.phase === 'governing'; k++) { if (R.canCall(cfg, g)) { g = R.callElection(cfg, g, g.stats.playSeconds, []); break; } g = step(g); }
-${moods(VOTE_MOODS)}
+g = withMoods(g, ${JSON.stringify(VOTE_MOODS)});
 for (let k = 0; k < 600 && !R.canCount(cfg, g); k++) g = step(g);
 if (!R.canCount(cfg, g)) return 'ERR cannot count (' + g.decree.phase + ')';
-g = R.countVotes(cfg, g, []); d.set(g); d.ui().openView('electionNight'); const p = R.poll(cfg, g); return 'count ' + p.held + ' of ' + p.of;`,
+g = R.countVotes(cfg, g, []); if (!g.decree.result || !g.decree.result.won) return 'ERR the count was lost';
+d.set(g); d.ui().openView('electionNight'); const p = R.poll(cfg, g); return 'count ' + p.held + ' of ' + p.of;`,
           settle: 500,
         },
-        // The fourth envelope: four ward rows on the board (each row's name and share are page text).
-        { untilText: /\n\d{1,3}\.\d\n(?:[^\n]+\n\d{1,3}\.\d\n){3}/, timeout: 40000 },
-        { wait: 400 },
+        // The end of the night: the button that leaves it is drawn once every envelope and the concession are in.
+        { untilText: /To the result/, timeout: 45000 },
+        { wait: 800 },
       ],
       check: (t) => {
         const m = /(\d) of 5 · (\d) needed/.exec(t);
         if (!m) return 'no tally line';
-        return Number(m[1]) >= Number(m[2]) ? null : `no majority yet (${m[0]})`;
+        if (Number(m[1]) < Number(m[2])) return `no majority (${m[0]})`;
+        const shares = [...t.matchAll(/\n(\d{1,3}\.\d)\n/g)].length;
+        return shares >= 5 ? null : `only ${shares} wards chalked`;
       },
-      tries: 3,
-      caption: 'Counted in chalk, safest ward first',
-      shows: 'Election night in Dithering-on-the-Dawdle: Agatha Tallow, the Counting Clerk, with her envelope; four wards chalked on the board in order of how safe they are (ticks, one dash, rosettes), the majority reached, bunting, the band in silhouette.',
+      caption: 'Counted in chalk, the closest ward last',
+      shows: "Election night in Dithering-on-the-Dawdle at the end of the count: all five wards chalked, safest first and the closest last (ticks, one dash, rosettes), \"4 of 5 · 3 needed\", the Counting Clerk with her envelope, the defeated rival's one-line concession, the band in silhouette.",
     },
     {
       slug: 'office-wall',
-      // The Office wall of a late game (D43: title and place only): the President's portrait, the towns
-      // left behind as photographs with their ministries on record, the Grand Projects, the vanity shelf.
-      query: 'preset=late&wall=1',
+      // The Office wall of a President (D43: title and place only). Named, not left to the preset: a
+      // President with two towns left behind and a monument on the shelf (each asserted), a portrait
+      // picked when none is, and one former opponent made by the rules (a term lost, then a term won, so
+      // the title is not "Acting"); scrolled so the towns are at the top and the vanity shelf sits above
+      // the caption band.
+      query: 'preset=late',
       settle: 12000,
-      check: (t) => (/Towns left behind/.test(t) && /President/.test(t) ? null : 'not the Office wall of a President'),
+      steps: () => [
+        {
+          run: `${HOOK}
+const term = (s, mood) => {
+  for (let k = 0; k < 4000 && s.decree.phase === 'governing'; k++) { if (R.canCall(cfg, s)) { s = R.callElection(cfg, s, s.stats.playSeconds, []); break; } s = step(s); }
+  for (let k = 0; k < 600 && !R.canCount(cfg, s); k++) s = step(withMoods(s, s.decree.moods.map(() => mood)));
+  s = R.countVotes(cfg, withMoods(s, s.decree.moods.map(() => mood)), []);
+  s = R.endElectionNight(cfg, s);
+  return R.chooseAfterResult(cfg, s, 'stay', s.stats.playSeconds, []);
+};
+if (g.decree.office !== 2) return 'ERR not a President (office ' + g.decree.office + ')';
+if (g.decree.wall.length < 2) return 'ERR fewer than two towns left behind';
+if (!g.decree.vanity.length) return 'ERR nothing on the vanity shelf';
+if (!g.decree.face) g = R.pickFace(cfg, g, cfg.decree.cast.players[0].id);
+if (!g.decree.formerOpponents.length) { g = term(g, 5); g = term(g, 90); }
+if (!g.decree.formerOpponents.length) return 'ERR no former opponent after a lost term';
+if (g.decree.losses) return 'ERR still acting (' + g.decree.losses + ' losses)';
+d.set(g); d.ui().openView('office');
+return 'term ' + g.decree.term + ', opponents ' + g.decree.formerOpponents + ', shelf ' + g.decree.vanity;`,
+          settle: 2500,
+        },
+        { run: scrollWall(/^Towns left behind$/), settle: 1200 },
+      ],
+      check: (t) => (/Towns left behind/.test(t) && /President/.test(t) && /Former opponents\n(?!Nobody)/.test(t) && /The vanity shelf/.test(t) ? null : 'not the Office wall of a President with a former opponent'),
       caption: 'Towns left behind go up on the wall',
-      shows: 'The Office of a President: the portrait with title and place, photographs of Dithering-on-the-Dawdle and the Province of Upper Wobbling with their ministries on record, the Grand Projects, former opponents, the top of the vanity shelf with its busts.',
+      shows: "The Office of a President, scrolled to the towns: photographs of Dithering-on-the-Dawdle (Mayor) and the Province of Upper Wobbling (Governor) with their ministries on record, the Grand Projects, a former opponent with the slogan, the vanity shelf with its busts.",
     },
   ],
 };
