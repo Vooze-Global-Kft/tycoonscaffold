@@ -148,10 +148,12 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
   const ringFrom = useSharedValue(0);
   const ringMs = useSharedValue(1);
   const ringLast = useSharedValue(-1e9);
+  const ringT0 = useSharedValue(-1);
   const ringClock = useFrameCallback((f) => {
     'worklet';
-    const t = f.timeSinceFirstFrame;
-    if (t - ringLast.value < RING_FRAME_MS && t > 0) return;
+    if (ringT0.value < 0) ringT0.value = f.timestamp;
+    const t = f.timestamp - ringT0.value;
+    if (t - ringLast.value < RING_FRAME_MS) return;
     ringLast.value = t;
     ring.value = ringFrom.value * Math.max(0, 1 - t / ringMs.value);
   }, false);
@@ -166,6 +168,8 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
     ringFrom.value = Math.min(1, left / Math.max(1e-9, p.window));
     ringMs.value = Math.max(1, left * 1000);
     ringLast.value = -1e9;
+    ringT0.value = -1;
+    ring.value = ringFrom.value;
     ringClock.setActive(false);
     ringClock.setActive(true);
     return () => ringClock.setActive(false);

@@ -19,7 +19,7 @@ import { S } from '../strings';
 import { MASTHEAD_DEG } from './pictures';
 import { chipBoxes, headerText, proposalBox } from './paperGeo';
 import type { PaperVM, SlipVM } from './deskVm';
-import { DENSITY_SCALE, type StripView } from './stripView';
+import { DENSITY_SCALE, estimateWidth, type StripView } from './stripView';
 
 const abs = (r: Rect) => ({ position: 'absolute' as const, left: r.x, top: r.y, width: r.w, height: r.h });
 
@@ -173,12 +173,15 @@ export const PaperWords = memo(function PaperWords({ vm, m, w, s, armed, onTitle
 function FrontWords({ vm, m, w, s }: { vm: PaperVM; m: PaperMetrics; w: number; s: number }) {
   const top = m.header.y;
   const k = 0.8;
-  const mh = Math.max(22, (m.header.h + m.proposal.h) / k * 0.09) * k;
+  const mh = Math.max(22, ((m.header.h + m.proposal.h) / k) * 0.09) * k;
+  const masthead = (vm.masthead ?? '').toUpperCase();
+  const boxW = w - 16 - 24 * k - 8;
+  const mf = MASTHEAD_FONT * s * Math.min(1, Math.max(0.6, boxW / Math.max(1, estimateWidth(masthead, MASTHEAD_FONT * s, true))));
   return (
     <>
       <View style={[abs({ x: 8 + 12 * k, y: top + 12 * k, w: w - 16 - 24 * k, h: mh }), styles.center, { transform: [{ rotate: `${MASTHEAD_DEG}deg` }] }]}>
-        <Text allowFontScaling={false} numberOfLines={1} style={[styles.masthead, { fontSize: MASTHEAD_FONT * s }]}>
-          {(vm.masthead ?? '').toUpperCase()}
+        <Text allowFontScaling={false} numberOfLines={1} style={[styles.masthead, { fontSize: mf }]}>
+          {masthead}
         </Text>
       </View>
       <View style={abs({ x: PAD_X, y: top + 12 * k + mh + 10, w: Math.round((w - 2 * PAD_X) * 0.68), h: m.header.h + m.proposal.h - (12 * k + mh + 14) })}>
@@ -242,7 +245,7 @@ const styles = StyleSheet.create({
   proposal: { color: DESK.line },
   italic: { fontStyle: 'italic' },
   picket: { color: DESK.brick, fontWeight: '700', textAlign: 'center' },
-  masthead: { color: DESK.line, fontWeight: '900', letterSpacing: 1 },
+  masthead: { color: DESK.line, fontWeight: '900' },
   headline: { color: DESK.line, fontWeight: '800' },
   slip: { paddingHorizontal: 24, paddingVertical: 10, justifyContent: 'space-between' },
   slipMid: { flex: 1, justifyContent: 'center' },
