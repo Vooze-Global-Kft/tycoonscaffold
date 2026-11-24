@@ -29,17 +29,33 @@ const paperMid = (v: View): P => {
   return [r.x + r.w / 2, r.y + r.h / 2];
 };
 
-/** Page code: the preview's test hook and two helpers (decide the desk's item, step the clock). */
+/** Page code: the preview's test hook and helpers (decide the desk's item, step the clock, find moods). */
 const HOOK = `const d = globalThis.__decreeDev; if (!d) return 'ERR no __decreeDev (not the decree preview?)';
 const R = d.R, cfg = d.cfg(); let g = d.game();
 const decide = (s, choice) => { const c = s.stats.playSeconds; s = R.decide(cfg, s, choice, c, []); return s.decree.pending ? R.commitPending(cfg, s, c, []) : s; };
-const step = (s) => s.decree.desk ? decide(s, 'refuse') : R.advanceDecree(cfg, s, 2, 0);`;
+const step = (s) => s.decree.desk ? decide(s, 'refuse') : R.advanceDecree(cfg, s, 2, 0);
+const withMoods = (s, m) => ({ ...s, decree: { ...s.decree, moods: m.slice(0, s.decree.moods.length) } });
+const findMoods = (base, ok) => {
+  const ds = []; for (let a = -12; a <= 12; a += 2) for (let b = -12; b <= 12; b += 2) for (let c = -12; c <= 12; c += 2) ds.push([a, b, c]);
+  ds.sort((x, y) => x[0] * x[0] + x[1] * x[1] + x[2] * x[2] - (y[0] * y[0] + y[1] * y[1] + y[2] * y[2]));
+  for (const dl of ds) { const r = ok(withMoods(g, base.map((v, i) => Math.max(5, Math.min(95, v + (dl[i] || 0)))))); if (r) return r; }
+  return null;
+};`;
 
-/** Sets the clubs' moods (as &moods= does: moods only, nothing else moves). */
-const moods = (m: number[]) => `g = { ...g, decree: { ...g.decree, moods: ${JSON.stringify(m)}.slice(0, g.decree.moods.length) } };`;
+/** Lands comic paper `id` on the desk of state `s`, drawn and sized by the rules (as &desk= lands its kinds). */
+const LAND = `const land = (s, id) => { const r = R.comicPaper(cfg, s, id); return R.landPaper(cfg, { ...r.g, decree: { ...r.g.decree, desk: null, pending: null } }, r.paper, s.stats.playSeconds); };`;
 
-/** Lands comic paper `id` on the desk, drawn and sized by the rules (as &desk= lands its kinds). */
-const landPaper = (id: string) => `{ const r = R.comicPaper(cfg, g, ${JSON.stringify(id)}); g = R.landPaper(cfg, { ...r.g, decree: { ...r.g.decree, desk: null, pending: null } }, r.paper, g.stats.playSeconds); }`;
+/**
+ * Paper `id` on the desk at the moods nearest `base` whose `side` moves the wards held (2 to 4 held
+ * before), so both strips print the districts ("Wards 3 → 2 of 5", D43) and the desk shows how a
+ * paper moves the vote; `gain` asks that the side win a ward. Moods only (as &moods= sets them).
+ */
+const paperMovingWards = (id: string, side: 'sign' | 'refuse', base: number[], gain = false) => `${HOOK}
+${LAND}
+const at = findMoods(${JSON.stringify(base)}, (t) => { const s = land(t, ${JSON.stringify(id)}); const st = R.stripOf(cfg, s, '${side}'); const p = st && st.poll; return p && p.from >= 2 && p.from <= 4 && p.to !== p.from${gain ? ' && p.to > p.from' : ''} ? s : null; });
+if (!at) return 'ERR no moods near ${base.join('/')} where the ${side} side of ${id} moves a ward';
+d.set(at); const p = R.stripOf(cfg, at, '${side}').poll;
+return 'landed ' + at.decree.desk.paper.text.slice(0, 50) + ' moods ' + at.decree.moods + ' ${side} wards ' + p.from + ' -> ' + p.to;`;
 
 /** The mayor's moods for the desk shots: three clubs near the middle, none in a huff. */
 const DESK_MOODS = [56, 52, 47];
@@ -63,6 +79,14 @@ const paperBand = (v: View): BandSpec => {
   const y0 = layout(v).paper.y - 100;
   return { y0, y1: y0 + 318, anchor: 'top', maxZoom: 1.25, cx: v.w / 2 };
 };
+
+/** Page code: scrolls the Office wall so the heading `re` sits just under the view's top bar. */
+const scrollWall = (re: RegExp) => `const find = (re) => { const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) if (re.test(n.textContent)) return n.parentElement; return null; };
+const el = find(${re.toString()}); if (!el) return 'ERR no ${re.source.replace(/[\\^$]/g, '')} on the wall';
+let sc = el.parentElement; while (sc && !(sc.scrollHeight > sc.clientHeight + 4 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+if (!sc) return 'ERR the wall does not scroll';
+sc.scrollTop += el.getBoundingClientRect().top - sc.getBoundingClientRect().top - 12;
+return 'wall scrolled ' + Math.round(sc.scrollTop);`;
 
 const scenes: GameScenes = {
   game: 'high-office',

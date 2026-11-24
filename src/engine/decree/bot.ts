@@ -1609,7 +1609,8 @@ export function h6(tr: Pick<Trace, 'faults' | 'events' | 'decisions' | 'samples'
   const refuseRefused = tr.faults.filter((f) => f.startsWith('H6')).length;
   // A boycott (scandal) that ran more decided day papers than its count, +1 for the paper that started it.
   let overran = 0;
-  const dayTimes = tr.decisions.filter(isDayRec).map((d) => d.t);
+  // D39: a form that left with no effect (stale or capped) is not a day: the rules' counters skip it, and so does this count.
+  const dayTimes = tr.decisions.filter((d) => isDayRec(d) && !d.formVoid).map((d) => d.t);
   const papersBetween = (a: number, b: number) => dayTimes.filter((t) => t > a && t <= b).length;
   const open: Record<string, number> = {};
   for (const e of tr.events) {

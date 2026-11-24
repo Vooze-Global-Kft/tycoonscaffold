@@ -217,7 +217,7 @@
     ],
     "tau": 12,
     "termDays": 80,
-    "callFraction": 0.7,
+    "callFraction": 0.6,
     "campaignPapers": 3,
     "gossipMax": 5,
     "rivalPull": 3,
@@ -225,7 +225,7 @@
     "stand": null,
     "recordName": "Town Record",
     "winWeight": 1,
-    "requisitionEvery": 10,
+    "requisitionEvery": 12,
     "templateShare": 0.25,
     "rivals": [
      {
@@ -249,7 +249,7 @@
       "name": "Philippa Setter",
       "slogan": "Setter: Answers In Pencil",
       "hobby": "setting crosswords",
-      "backAgain": "Philippa Setter is back for another go. Her leaflet is a crossword. Nobody has finished it",
+      "backAgain": "Philippa Setter is back for another go. Her leaflet is a crossword. Nobody has solved it.",
       "resignation": "Philippa Setter won, then resigned to spend more time with her crosswords. Her notice was eleven across."
      }
     ]
@@ -388,7 +388,7 @@
     ],
     "tau": 12,
     "termDays": 110,
-    "callFraction": 0.7,
+    "callFraction": 0.6,
     "campaignPapers": 4,
     "gossipMax": 6,
     "rivalPull": 4,
@@ -399,7 +399,7 @@
     },
     "recordName": "Province Record",
     "winWeight": 2,
-    "requisitionEvery": 8,
+    "requisitionEvery": 10,
     "templateShare": 0.15,
     "rivals": [
      {
@@ -616,18 +616,18 @@
     ],
     "tau": 15,
     "termDays": 120,
-    "callFraction": 0.7,
+    "callFraction": 0.5,
     "campaignPapers": 5,
     "gossipMax": 7,
     "rivalPull": 5,
     "scale": 1000000,
     "stand": {
-     "nr": 50,
+     "nr": 65,
      "record": 170
     },
     "recordName": null,
     "winWeight": 3,
-    "requisitionEvery": 4,
+    "requisitionEvery": 6,
     "templateShare": 0.2,
     "rivals": [
      {
@@ -643,7 +643,7 @@
       "name": "Ottoline Strop",
       "slogan": "Strop: Firmly Seated",
       "hobby": "chairs",
-      "backAgain": "Ottoline Strop is back for another go. She has brought her own chair, and a cushion for it",
+      "backAgain": "Ottoline Strop is back for another go. She has brought her own chair and a cushion for it.",
       "resignation": "Ottoline Strop won, then resigned to spend more time with her chairs. She has not yet chosen one."
      },
      {
@@ -771,8 +771,8 @@
    }
   ],
   "money": {
-   "S": 12,
-   "M": 60,
+   "S": 7.5,
+   "M": 30,
    "L": 30,
    "jitterLow": 0.85,
    "jitterHigh": 1.15,
@@ -924,14 +924,14 @@
      {
       "type": "mood",
       "club": "other",
-      "delta": -3
+      "delta": -2
      }
     ],
     "refuse": [
      {
       "type": "mood",
       "club": "petitioner",
-      "delta": -2
+      "delta": -1
      },
      {
       "type": "mood",
@@ -2215,8 +2215,14 @@
    "slipDelay": 1,
    "slipReserveSeconds": 30,
    "takeBackSeconds": 2,
-   "eventOverCap": 1,
    "slipStays": true
+  },
+  "slips": {
+   "betweenEvery": 2
+  },
+  "draw": {
+   "framesAfter": 40,
+   "recentVisitors": 2
   },
   "away": {
    "arrivalSeconds": 360,
@@ -12485,7 +12491,7 @@
      "club": "bus",
      "other": "shops",
      "archetype": "swap",
-     "text": "The shop awnings for us in drizzle. We will stand still, like a display.",
+     "text": "Lend us the shop awnings in drizzle. We will stand still, like a display.",
      "subject": "picnic-weather",
      "butt": "visitor",
      "shape": "undercut"
@@ -16082,7 +16088,7 @@
       "role": "Applicant",
       "club": "bus"
      },
-     "text": "I apply to be your minister. References: 'She found one.'",
+     "text": "I apply to be Minister for Potholes. References: 'She found one.'",
      "returnText": "I apply again. Since last time, I have found another one."
     },
     {
@@ -16094,7 +16100,7 @@
       "role": "Applicant",
       "club": "veg"
      },
-     "text": "I ended the onion dispute. Both onions are speaking again.",
+     "text": "I apply to be Minister for Benches. I ended the onion dispute. Both onions now speak.",
      "returnText": "I apply again. The onions asked after you."
     },
     {
@@ -16106,7 +16112,7 @@
       "role": "Applicant",
       "club": "shops"
      },
-     "text": "I can find a sponsor for anything. I once found one for a puddle.",
+     "text": "I apply to be Minister for Lampposts. I once found a sponsor for a puddle.",
      "returnText": "I apply again. The puddle still speaks well of me."
     },
     {
@@ -16118,7 +16124,7 @@
       "role": "Applicant",
       "club": "shops"
      },
-     "text": "Rumours lose interest when I walk in. I am never talked about.",
+     "text": "I apply to be Minister for Market Weights. Rumours lose interest when I walk in.",
      "returnText": "I apply again. Nobody mentioned I had gone."
     },
     {
@@ -16130,7 +16136,7 @@
       "role": "Applicant",
       "club": "brass"
      },
-     "text": "I have played at 212 ribbon-cuttings. I know when the scissors close.",
+     "text": "Minister for Bandstands, please. 212 ribbon-cuttings; I know when the scissors close.",
      "returnText": "I apply again. I have kept the fanfare warm."
     },
     {
@@ -16142,7 +16148,7 @@
       "role": "Applicant",
       "club": "anglers"
      },
-     "text": "I can open a fête with a third of the fuss. I bring my own chair.",
+     "text": "I apply to be Minister for Jetties. I can open a fête with a third of the fuss.",
      "returnText": "I apply again. The chair is already unfolded."
     },
     {
@@ -16154,7 +16160,7 @@
       "role": "Applicant",
       "club": "kites"
      },
-     "text": "I once kept a kite up for nine hours. I was asked for one.",
+     "text": "Minister for Kites, please. I once kept a kite up for nine hours. I was asked for one.",
      "returnText": "I apply again. The kite is still up."
     },
     {
@@ -16166,7 +16172,7 @@
       "role": "Applicant",
       "club": "hedges"
      },
-     "text": "I have said nothing, very well, for thirty years.",
+     "text": "I apply to run the Hedgerow Bureau. I have said nothing, very well, for thirty years.",
      "returnText": "I apply again. I did not mention it to anyone."
     },
     {
@@ -16178,7 +16184,7 @@
       "role": "Applicant",
       "club": "anglers"
      },
-     "text": "I have patched the same waders for twenty years. They are now all patch.",
+     "text": "I apply for Jetties. I have patched the same waders for twenty years. They are all patch.",
      "returnText": "I apply again. In the same waders."
     }
    ],
@@ -16771,9 +16777,9 @@
      "id": "gov-runup-hat-parade",
      "office": "governor",
      "visitor": {
-      "face": "face:slake",
-      "name": "Tobias Slake",
-      "role": "Novelty Hats & Sons",
+      "face": "face:dimity",
+      "name": "Pruella Dimity",
+      "role": "Deputy",
       "club": null
      },
      "text": "Judge the {district} hats. Yours has entered. Declare an interest.",
@@ -17638,7 +17644,7 @@
      "club": "anglers",
      "other": "brass",
      "archetype": "swap",
-     "frame": "Make {town-things} a quiet zone. The band's drum must apply.",
+     "frame": "A quiet zone round {town-things}. The band's drum must apply.",
      "subject": "paperwork",
      "butt": "office",
      "shape": "form-misapplied"
@@ -17925,10 +17931,10 @@
      "butt": "self",
      "shape": "callback",
      "visitor": {
-      "face": "face:spinwell",
-      "name": "Rodney Spinwell",
-      "role": "Chief of Staff",
-      "club": null
+      "face": "face:gourdley",
+      "name": "Hilda Gourdley",
+      "role": "Giant Vegetable Society",
+      "club": "veg"
      }
     },
     {
@@ -17976,18 +17982,6 @@
      "shape": "form-misapplied"
     },
     {
-     "id": "tpa-inv-grown",
-     "office": "any",
-     "club": "veg",
-     "other": "shops",
-     "archetype": "committee",
-     "frame": "Study whether {minor-inventions} can be grown in a shop window.",
-     "subject": "inventions",
-     "butt": "committee",
-     "shape": "literalism",
-     "biggerStudy": "The growing study asks for a second window. The first has produced a teaspoon."
-    },
-    {
      "id": "tpa-inv-two-tubas",
      "office": "governor",
      "club": "brass",
@@ -18004,7 +17998,7 @@
      "club": "shops",
      "other": null,
      "archetype": "vanity",
-     "frame": "Be {dignified-titles}. Rodney will add it to the napkin, in gold.",
+     "frame": "Be {dignified-titles}. I will add it to the napkin, in gold.",
      "subject": "vanity",
      "butt": "self",
      "shape": "callback",
@@ -18530,10 +18524,10 @@
      "club": "veg",
      "other": "anglers",
      "archetype": "swap",
-     "frame": "Growers say {harmless-complaints}. The Anglers' pond fixes 80 % of it.",
+     "frame": "Growers say {harmless-complaints}. They want the Anglers' bank instead.",
      "subject": "gardens",
      "butt": "thing",
-     "shape": "statistic"
+     "shape": "undercut"
     },
     {
      "id": "tpl-gripe-band-notice",
@@ -18597,10 +18591,10 @@
      "club": "bus",
      "other": "shops",
      "archetype": "swap",
-     "frame": "The 8:15 is {odd-units} late. Spotters to wait in the hat shop.",
+     "frame": "Found on the 8:15: {odd-units}. Show the lot in the Guild's window.",
      "subject": "buses",
      "butt": "thing",
-     "shape": "statistic"
+     "shape": "literalism"
     },
     {
      "id": "tpl-unit-noses",
@@ -18608,7 +18602,7 @@
      "club": "shops",
      "other": "bus",
      "archetype": "swap",
-     "frame": "By order of the glass: the spotters' bench, {odd-units} back.",
+     "frame": "Lost on our sill by spotters: {odd-units}. Move their bench, please.",
      "subject": "buses",
      "butt": "thing",
      "shape": "form-misapplied"
@@ -18619,7 +18613,7 @@
      "club": "veg",
      "other": "shops",
      "archetype": "fee",
-     "frame": "Growers hire {odd-units} of high street. The pumpkin is receiving.",
+     "frame": "Growers pay for the shop step: the pumpkin by {odd-units}, for scale.",
      "subject": "vegetable-shows",
      "butt": "thing",
      "shape": "undercut"
@@ -18630,7 +18624,7 @@
      "club": "bus",
      "other": "veg",
      "archetype": "fee",
-     "frame": "Spotters pay to stand {odd-units} nearer the pumpkins. Each.",
+     "frame": "Spotters pay to enter {odd-units} in the pumpkin show. Judges, brace.",
      "subject": "buses",
      "butt": "thing",
      "shape": "form-misapplied"
@@ -18641,7 +18635,7 @@
      "club": "veg",
      "other": null,
      "archetype": "vanity",
-     "frame": "Raise your office floor by {odd-units}. Then the ceiling.",
+     "frame": "Order {odd-units} with your face on. Then a cupboard to match.",
      "subject": "vanity",
      "butt": "self",
      "shape": "escalation",
@@ -18658,7 +18652,7 @@
      "club": "brass",
      "other": "anglers",
      "archetype": "project",
-     "frame": "Raise the bandstand by {odd-units}, so the band is looked up to.",
+     "frame": "Lend the band {odd-units} to stand on, so it is looked up to.",
      "subject": "bandstands",
      "butt": "thing",
      "shape": "literalism"
@@ -18669,7 +18663,7 @@
      "club": "bus",
      "other": "brass",
      "archetype": "swap",
-     "frame": "Stand the band {odd-units} back from the bus stop. Buses flinch.",
+     "frame": "The band stores {odd-units} in the bus shelter. Spotters must stand.",
      "subject": "buses",
      "butt": "thing",
      "shape": "undercut"
@@ -18680,7 +18674,7 @@
      "club": "anglers",
      "other": "brass",
      "archetype": "fee",
-     "frame": "Anglers will hire {odd-units} of the band's lawn, and keep it quiet.",
+     "frame": "Anglers pay to fill the bandstand with {odd-units}. No tuba fits.",
      "subject": "bandstands",
      "butt": "thing",
      "shape": "literalism"
@@ -18691,7 +18685,7 @@
      "club": "veg",
      "other": "brass",
      "archetype": "project",
-     "frame": "Pumpkins: 4 % prouder near music. Move the band {odd-units} nearer.",
+     "frame": "Pumpkins: 4 % prouder to music. Growers will play on {odd-units}.",
      "subject": "gardens",
      "butt": "thing",
      "shape": "statistic"
@@ -18702,7 +18696,7 @@
      "club": "anglers",
      "other": "brass",
      "archetype": "committee",
-     "frame": "A study: is silence heard {odd-units} from the band? It sits there.",
+     "frame": "Study the quiet of {odd-units} by the pond. The band must wait.",
      "subject": "committees",
      "butt": "committee",
      "shape": "literalism",
@@ -18714,7 +18708,7 @@
      "club": "kites",
      "other": "hedges",
      "archetype": "project",
-     "frame": "A kite landing circle, {odd-units} wide. 90 % land in the hedge.",
+     "frame": "Mark a kite landing circle with {odd-units}. 90 % land in the hedge.",
      "subject": "hedges",
      "butt": "thing",
      "shape": "statistic"
@@ -18725,7 +18719,7 @@
      "club": "kites",
      "other": "hedges",
      "archetype": "swap",
-     "frame": "Move the hedge show {odd-units}, for the kites. The napkin allows it.",
+     "frame": "Hedge lawn to kites, roped off with {odd-units}. Hedges may watch.",
      "subject": "kites",
      "butt": "thing",
      "shape": "callback"
@@ -18786,7 +18780,7 @@
      "club": "shops",
      "other": "bus",
      "archetype": "committee",
-     "frame": "Who named {things-to-rename}? A study: 60 % of findings say a bus.",
+     "frame": "Who named {things-to-rename}? A study. Early findings point at a bus.",
      "subject": "committees",
      "butt": "committee",
      "shape": "statistic",
@@ -18820,7 +18814,7 @@
      "club": "veg",
      "other": "brass",
      "archetype": "project",
-     "frame": "Ring {things-to-rename} with pumpkins. Then the bandstand.",
+     "frame": "Ring {things-to-rename} with pumpkins. Then the band.",
      "subject": "gardens",
      "butt": "thing",
      "shape": "escalation"
@@ -18868,6 +18862,18 @@
      "subject": "kites",
      "butt": "thing",
      "shape": "undercut"
+    },
+    {
+     "id": "tpa-inv-vegetable",
+     "office": "any",
+     "club": "veg",
+     "other": "shops",
+     "archetype": "committee",
+     "frame": "Is {minor-inventions} a vegetable? A study, in the Guild's window.",
+     "subject": "inventions",
+     "butt": "committee",
+     "shape": "literalism",
+     "biggerStudy": "The vegetable study asks for a second window. The first is now judging a teapot."
     }
    ],
    "lists": [
@@ -19113,15 +19119,15 @@
     },
     {
      "id": "odd-units",
-     "title": "Odd units of distance",
+     "title": "Odd amounts of things",
      "phrases": [
       "three teaspoons",
       "half a bench",
       "two teapots",
-      "a hat's width",
-      "eleven ducks",
+      "a hat stand",
+      "eleven doilies",
       "seven teacups",
-      "six polite paces",
+      "six egg cups",
       "a dozen rosettes",
       "two timetables",
       "three benches",
@@ -19134,7 +19140,7 @@
       "three doormats",
       "two notebooks",
       "four flower tubs",
-      "a duck and a half",
+      "a scone and a half",
       "a roll of ribbon",
       "two garden gnomes",
       "four deckchairs",
@@ -19790,35 +19796,21 @@
   "provisional": {
    "note": "PROVISIONAL (build-office.py --provisional): the real deck and the numbers before the tuning ended; hard targets listed in misses were missed on the named seeds with `--bot validate`. The final game.json is written without this field.",
    "misses": [
-    "runtime schema: offices.0.rivals.2.backAgain: Too big: expected string to have <=90 characters (\"Philippa Setter is back for another go. Her leaflet is a crossword. Nobody has finished it.\")",
-    "runtime schema: offices.2.rivals.1.backAgain: Too big: expected string to have <=90 characters (\"Ottoline Strop is back for another go. She has brought her own chair, and a cushion for it.\")",
-    "seed 12345: [reader] H8 both choices in other states: 28 % of 320 texts (aim ≥ 30 % of texts)",
-    "seed 12345: [reader] H8 differs from mood-only: 24 % (aim ≥ 25 %)",
-    "seed 12345: [reader] H10 sign unaffordable for the reader: 6 % (aim ≤ 5 % of papers)",
-    "seed 12345: [alwaysRefuse] H7 no text twice in hour 1: 5 texts, 0 notes, 1 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 12345: [random] H7 no text twice in hour 1: 6 texts, 0 notes, 2 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 4: [reader] H8 both choices in other states: 23 % of 328 texts (aim ≥ 30 % of texts)",
-    "seed 4: [reader] H10 sign unaffordable for the reader: 7 % (aim ≤ 5 % of papers)",
-    "seed 4: [alwaysRefuse] H7 no text twice in hour 1: 7 texts, 0 notes, 5 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 4: [random] H7 no text twice in hour 1: 10 texts, 0 notes, 1 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 4: H3 determinism: reader 10 min (10 Hz) equals reader 10 min (event): 4af4bdeb vs 893bbd4b (aim byte-identical traces)",
-    "seed 99: [reader] H8 both choices in other states: 24 % of 331 texts (aim ≥ 30 % of texts)",
-    "seed 99: [reader] H10 sign unaffordable for the reader: 9 % (aim ≤ 5 % of papers)",
-    "seed 99: [alwaysRefuse] H7 no text twice in hour 1: 11 texts, 0 notes, 2 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 99: [random] H7 no text twice in hour 1: 10 texts, 0 notes, 0 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 7: [reader] H8 differs from the title line: 30 % (aim ≤ 30 %)",
-    "seed 7: [reader] H10 sign unaffordable for the reader: 6 % (aim ≤ 5 % of papers)",
-    "seed 7: [alwaysRefuse] H7 no text twice in hour 1: 14 texts, 0 notes, 3 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 7: [random] H7 no text twice in hour 1: 15 texts, 0 notes, 1 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 7: H3 determinism: reader 10 min (10 Hz) equals reader 10 min (event): 3acdf610 vs 6544abf4 (aim byte-identical traces)",
-    "seed 2026: [reader] H7 no text twice in hour 1: 1 texts, 0 notes, 0 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 2026: [reader] H8 both choices in other states: 20 % of 328 texts (aim ≥ 30 % of texts)",
-    "seed 2026: [reader] H8 differs from money-only: 25 % (aim ≥ 25 %)",
-    "seed 2026: [reader] H10 sign unaffordable for the reader: 8 % (aim ≤ 5 % of papers)",
-    "seed 2026: [alwaysRefuse] H7 no text twice in hour 1: 1 texts, 0 notes, 4 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 2026: [random] H7 no text twice in hour 1: 2 texts, 0 notes, 2 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 2026: [reader 1 h] H7 no text twice in hour 1: 1 texts, 0 notes, 0 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
-    "seed 2026: H3 determinism: reader 10 min (10 Hz) equals reader 10 min (event): db8a0982 vs 97883922 (aim byte-identical traces)"
+    "seed 12345: [reader] H8 both choices in other states: 30 % of 330 texts (aim ≥ 30 % of texts)",
+    "seed 12345: [reader] H8 differs from mood-only: 23 % (aim ≥ 25 %)",
+    "seed 12345: [alwaysRefuse] H7 no text twice in hour 1: 0 texts, 0 notes, 2 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
+    "seed 4: [alwaysRefuse] H7 no text twice in hour 1: 0 texts, 0 notes, 2 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
+    "seed 4: [random] H6 no dead end: 0 refuses refused, 1 overran, 0 samples without ministry 0 income, bound 6, worst no loss terms (aim refuse always possible, every boycott and scandal ends within its count, ministry 0 always earns, 2.11 bound ≤ 6 (D25), a win within 6 terms of a first loss)",
+    "seed 4: [random] H7 no text twice in hour 1: 0 texts, 0 notes, 1 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
+    "seed 99: [reader] H7 repeats in hours 2 and 3 (reader): 2 % (8 of 341) (aim ≤ 2 % of comic draws)",
+    "seed 99: [reader] H8 both choices in other states: 28 % of 327 texts (aim ≥ 30 % of texts)",
+    "seed 99: [alwaysRefuse] H7 no text twice in hour 1: 0 texts, 0 notes, 1 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
+    "seed 7: [reader] H8 both choices in other states: 29 % of 324 texts (aim ≥ 30 % of texts)",
+    "seed 7: [reader] H8 differs from mood-only: 22 % (aim ≥ 25 %)",
+    "seed 7: [alwaysRefuse] H7 no text twice in hour 1: 0 texts, 0 notes, 1 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)",
+    "seed 2026: [reader] H8 both choices in other states: 29 % of 329 texts (aim ≥ 30 % of texts)",
+    "seed 2026: [reader] H8 differs from mood-only: 25 % (aim ≥ 25 %)",
+    "seed 2026: [alwaysRefuse] H7 no text twice in hour 1: 0 texts, 0 notes, 2 pickets; 0 cells ran out (aim 0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn)"
    ]
   }
  },
@@ -19842,7 +19834,7 @@
      "id": "office_standing_order",
      "kind": "unlock",
      "title": "Junior Clerk on Duty",
-     "description": "The Standing Order, from your first day.",
+     "description": "Buys the advised level for you as you play.",
      "fallbackPrice": "$3.99"
     },
     {
@@ -19893,8 +19885,8 @@
    "approve",
    "comedy"
   ],
-  "shortDescription": "Push each paper up to sign it, pull it down to refuse. A comedy of town office.",
-  "description": "An invented country and a comedy desk: push each paper up to sign it, or pull it down into the drawer marked FOR FURTHER STUDY.\n\nYou are the new mayor of Dithering-on-the-Dawdle, in the Republic of Middling (motto: Proudly Adequate). You were elected unopposed. The other candidate went to the wrong hall.\n\nVisitors queue at your door. A bus spotter would like the 7:02 named after you. A pumpkin grower asks for the freedom of the town for her pumpkin, which has asked very politely. A lobbyist leaves a small fruit basket, for no reason. Each paper prints both outcomes before you touch it, in exact numbers: what signing costs or pays, which club it pleases and which it annoys, and whether the poll moves. Those are the numbers applied. A signed paper rests on the out-tray for two seconds; tap it to take it back.\n\nThe town's opinion belongs to its hobby clubs: the Bus Spotters' Society, the Shop Window Guild and the Giant Vegetable Society, with a brass band, anglers, kite flyers and a hedge committee further up. Their approval multiplies everything your ministries earn, from x0.4 at 0 % to x1.6 at 100 %. A club that falls below 20 boycotts its ministry until you settle with it or 8 more papers are decided. Let the gossip pile up and the town paper prints a front page about you: apologise on the steps, or say nothing and collect a fifth less for 10 papers.\n\nA term is a fixed number of papers. From 60 % of the way through you may call the election. The poll board shows exactly how each ward would vote today, and on election night a clerk chalks up the wards, safest first. Win, and your Name Recognition grows; with enough of it, and a record of ministry levels to match, you may stand for Governor of Upper Wobbling, then President in Middlingham, taking your ministers with you. Lose, and nothing you built is lost: you carry on as Acting Mayor, and the winner resigns to spend more time with her hat.\n\nTaxes, at least, need no signature, which makes this technically an idle game. Four ministries in town (six as Governor, eight as President) collect dibs every second. With the app shut they go on collecting at 35 % of the rate, for a maximum of 4 hours, and a visitor leaves a paper every 6 minutes, until 10 wait in the in-tray. Moods, gossip, the poll and the term wait for you to read.\n\nAt the desk a visitor comes about every 12 seconds. When nobody is waiting, the Treasury Clerk slides a budget slip across, and a flick up buys what she advises: a level or a new ministry. Nine ministers apply for posts along the way; each runs one ministry and brings one desk rule, printed on every paper it touches. The levels go into the Ledger, a clothbound book kept for the tycoon in you.\n\nEverything here is invented: the country, its towns and clubs, its politicians, companies and newspapers. There are no parties, and nobody can type a name into the game.\n\nWatching an ad is always your choice, made from a button that names its reward: half again on the away report; Check the Sofa, a small sum once a term; Call the Spin Doctor, which ends the cost of saying nothing; Send a Courier, which ends a boycott; Open the Doors, which fills the in-tray. No banners appear, and no ad plays between screens. Five purchases, none of them random: Junior Clerk on Duty (the Standing Order from your first day: the junior clerk buys the advised ministry level while you play), Long Lunch (time away counts for 6 hours, not 4), the Walnut & Brass Desk Set and Gilt Portrait Frames (both looks only), and Skip the Ad Videos: the Private Secretary sits through them, and the reward arrives at once. From the moment you call an election until election night ends, no ad or purchase is offered. No ad or purchase moves a mood or a poll point: those move only by papers you decide.",
+  "shortDescription": "Pull a paper down to refuse it, push it up to sign. A comedy of town office.",
+  "description": "An invented country and a comedy desk: pull a paper down into the drawer marked FOR FURTHER STUDY, or push it up to sign it.\n\nYou are the new mayor of Dithering-on-the-Dawdle, in the Republic of Middling (motto: Proudly Adequate). You were elected unopposed. The other candidate went to the wrong hall.\n\nVisitors queue at your door. A bus spotter would like the 7:02 named after you. A pumpkin grower asks for the freedom of the town for her pumpkin, which has asked very politely. A lobbyist leaves a small fruit basket, for no reason. Each paper prints both outcomes before you touch it, in exact numbers: what signing costs or pays, which club it pleases and which it annoys, and whether the poll moves. Those are the numbers applied. A signed paper rests on the out-tray for two seconds; tap it to take it back.\n\nThe town's opinion belongs to its hobby clubs: the Bus Spotters' Society, the Shop Window Guild and the Giant Vegetable Society, with a brass band, anglers, kite flyers and a hedge committee further up. Their approval multiplies everything your ministries earn, from x0.4 at 0 % to x1.6 at 100 %. A club pushed too far boycotts its ministry until you settle with it or 8 more papers are decided. Let the gossip pile up and the town paper prints a front page about you: apologise on the steps, or say nothing and collect a fifth less for 10 papers.\n\nA term is a fixed number of papers. Late in the term you may call the election. The poll board shows exactly how each ward would vote today, and on election night a clerk chalks up the wards, safest first. Win, and your Name Recognition grows; with enough of it, and a record of ministry levels to match, you may stand for Governor of Upper Wobbling, then President in Middlingham, taking your ministers with you. Lose, and nothing you built is lost: you carry on as Acting Mayor, and the winner resigns to spend more time with her hat.\n\nTaxes, at least, need no signature, which makes this technically an idle game. Four ministries in town (six as Governor, eight as President) collect dibs every second. With the app shut they go on collecting at 35 % of the rate, for a maximum of 4 hours, and a visitor leaves a paper every 6 minutes, until 10 wait in the in-tray. Moods, gossip, the poll and the term wait for you to read.\n\nAt the desk a visitor comes about every 12 seconds. When nobody is waiting, the Treasury Clerk slides a budget slip across, and a flick up buys what she advises: a level or a new ministry. Nine ministers apply for posts along the way; each runs one ministry and brings one desk rule, printed on every paper it touches. The levels go into the Ledger, a clothbound book kept for the tycoon in you.\n\nEverything here is invented: the country, its towns and clubs, its politicians, companies and newspapers. There are no parties, and nobody can type a name into the game.\n\nWatching an ad is always your choice, made from a button that names its reward: half again on the away report; Check the Sofa, a small sum once a term; Call the Spin Doctor, which ends the cost of saying nothing; Send a Courier, which ends a boycott; Open the Doors, which fills the in-tray. No banners appear, and no ad plays between screens. Five purchases, none of them random: Junior Clerk on Duty (the Standing Order from your first day: the junior clerk buys the advised ministry level while you play), Long Lunch (time away counts for 6 hours, not 4), the Walnut & Brass Desk Set and Gilt Portrait Frames (both looks only), and Skip the Ad Videos: your secretary sits through them, and the reward arrives at once. From the moment you call an election until election night ends, no ad or purchase is offered. No ad or purchase moves a mood or a poll point: those move only by papers you decide.",
   "primaryCategory": "GAMES",
   "subcategories": [
    "GAMES_SIMULATION"
