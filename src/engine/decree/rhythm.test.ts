@@ -491,3 +491,61 @@ describe('the whole: a long careless game keeps every invariant with the new rhy
     expect(slips).toBeGreaterThan(20);
   });
 });
+
+describe('D46 (c): the Clerk\'s forms come when they can be paid', () => {
+  const n = c.offices[0].requisitionEvery;
+  const at = (g: R.DecreeGame, patch: Partial<R.DecreeGame['decree']>, cash: number): R.DecreeGame => ({ ...g, cash, decree: { ...g.decree, ...patch } });
+  const lastDrawn = (g: R.DecreeGame) => g.decree.tray[g.decree.tray.length - 1] ?? deskPaper(g)!;
+
+  it('regression: a requisition whose turn comes while no level can be paid waits (its turn kept, another paper drawn), then comes once one can', () => {
+    const g = built({ office: 0, ministries: [10, 7, 0, 0], decisions: 50, day: 1 });
+    const poor = at(g, { stats: { ...g.decree.stats, drawn: n - 1 } }, 0);
+    expect(R.requisitionMinistry(cfg, poor)).toBeNull();
+    const s = R.drawNext(cfg, poor, 1, []);
+    expect(lastDrawn(s).kind).not.toBe('requisition');
+    expect(s.decree.requisitionOwed).toBe(true);
+    // Off its turn, the next draw that can pay a level brings it, at a price the treasury holds.
+    const rich = at(s, { desk: null, tray: [] }, 1e6);
+    const r = R.drawNext(cfg, rich, 2, []);
+    expect(deskPaper(r)!.kind).toBe('requisition');
+    expect(r.decree.requisitionOwed).toBe(false);
+    expect(R.costOf(r.decree.desk!.type === 'paper' ? r.decree.desk.shown.sign : [])).toBeLessThanOrEqual(r.cash);
+    // A move gives the turn up with the office.
+    expect(R.MOVE_RESETS.some((x) => x.fields.includes('requisitionOwed'))).toBe(true);
+  });
+
+  it('regression: a ribbon is drawn only when the treasury holds its price; until then it waits with the Clerk and other papers come', () => {
+    const g = built({ office: 0, ministries: [12, 7, 0, 0], decisions: 50, day: 1 });
+    const poor = at(g, { ribbonsDue: [{ ministry: 0, storey: 1 }] }, 0);
+    const s = R.drawNext(cfg, poor, 1, []);
+    expect(lastDrawn(s).kind).not.toBe('ribbon');
+    expect(s.decree.ribbonsDue).toEqual([{ ministry: 0, storey: 1 }]);
+    const r = R.drawNext(cfg, at(s, { desk: null, tray: [] }, 1e6), 2, []);
+    expect(deskPaper(r)!.kind).toBe('ribbon');
+    expect(r.decree.ribbonsDue).toEqual([]);
+  });
+
+  it('a ribbon in the tray the treasury can no longer pay goes back to the Clerk: other papers land; alone, the desk waits and the ribbon lands once it can be paid', () => {
+    const g = built({ office: 0, ministries: [12, 7, 0, 0], decisions: 50, day: 1, cash: 1e6 });
+    const rib = R.ribbonPaper(cfg, g, 0);
+    const com = R.comicPaper(cfg, rib.g, mayorIds('swap')[0]);
+    // Behind it a comic paper: the comic lands, the ribbon waits with the Clerk; the sticky note never names it.
+    const two = at(com.g, { desk: null, tray: [rib.paper, com.paper] }, 0);
+    expect(R.nextLanding(cfg, two)).toMatchObject({ kind: 'tray', paper: { id: com.paper.id } });
+    const landed = R.landNext(cfg, two, 0, []);
+    expect(deskPaper(landed)!.id).toBe(com.paper.id);
+    expect(landed.decree.tray).toEqual([]);
+    expect(landed.decree.ribbonsDue.map((x) => x.ministry)).toEqual([0]);
+    // Alone in the tray: nothing lands, the desk waits; with income the next arrival that can pay brings it (no deadlock).
+    const alone = at(com.g, { desk: null, tray: [rib.paper], nextArrivalAt: 5 }, 0);
+    expect(R.nextLanding(cfg, alone)).toBeNull();
+    const w = R.landNext(cfg, alone, 0, []);
+    expect(w.decree.desk).toBeNull();
+    expect(w.decree.ribbonsDue.length).toBe(1);
+    const ev: R.DecreeEvent[] = [];
+    const later = R.advanceDecree(cfg, w, 3000, 0, ev);
+    const ribbons = [deskPaper(later), ...later.decree.tray].filter((p) => p?.kind === 'ribbon');
+    expect(ribbons.length).toBe(1);
+    expect(later.decree.ribbonsDue).toEqual([]);
+  });
+});

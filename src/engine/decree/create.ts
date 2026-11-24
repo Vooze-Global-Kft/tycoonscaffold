@@ -81,6 +81,7 @@ export function freshDecree(cfg: DecreeConfig, seed: number, office: OfficeIx = 
     appSlotsUsed: 0,
     signedThisTerm: 0,
     papersSinceSlip: 0,
+    requisitionOwed: false,
     handLanded: 0,
     frameLast: false,
     visitorsSeen: {},

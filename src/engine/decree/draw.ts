@@ -8,8 +8,9 @@
  * undrawn or undecided (3.1); (3) a follow-up past its dueAt, earliest first (followup.ts: it was
  * scheduled at its set-up's commit, so never without its decided set-up); (4) a form due: the next
  * application (ministers.ts `nextApplication`; D21: only for a club the office has), a ribbon at a new
- * storey (`ribbonsDue`), a requisition every n-th draw for the open ministry with the best payback the
- * treasury can pay when it is drawn, else the cheapest next level (D16); (5) a template with
+ * storey (`ribbonsDue`) once the treasury holds its price, a requisition every n-th draw for the open
+ * ministry with the best payback the treasury can pay when it is drawn (D46 (c): none payable, its turn
+ * is kept and another paper comes); (5) a template with
  * probability q from the shuffled frame bag (none twice before it empties); else a comic paper by
  * clubWeight × share / cell size (D20: Vanity and Basket are one club-less cell per office; D28: a
  * club-less text carries the sum of the office's clubs' weights). With no unseen comic text left: a
@@ -36,8 +37,8 @@ import { shares } from './count';
 // followup.ts builds its papers with this file's builders: the two files call each other at run time only.
 import { dueFollowUp, followUpPaper } from './followup';
 import { nextApplication } from './ministers';
-import { clubIndex, decreeParams, factorOn, levelCost, levelCostRaw, levelGain, officeOf, rand, roundDibs } from './params';
-import { freezeShown } from './size';
+import { clubIndex, decreeParams, factorOn, levelCost, levelCostRaw, levelGain, officeOf, rand, roundDibs, storeys } from './params';
+import { costOf, freezeShown } from './size';
 import { slipYields } from './slips';
 import { deskFactors } from './twists';
 import type { ApplicationDef, BaseEffect, ChainDef, ClubId, ClubIx, ComicPaperDef, DecreeConfig, DecreeEvent, DecreeGame, Effect, FollowUp, FollowUpRef, FrameDef, GrievanceDef, OfficeIx, Outcome, Paper, PaperKind, Visitor } from './types';
@@ -535,26 +536,40 @@ export function applicationPaper(cfg: DecreeConfig, g: DecreeGame, minister: str
   };
 }
 
-/** D16: the requisition's ministry: the best-payback level the treasury can pay now, else the cheapest next level; null when every open ministry is capped. */
+/**
+ * D16 with D46 (c): the requisition's ministry: the best-payback level the treasury can pay now at the
+ * price the form prints; null when it can pay none (the requisition waits: `requisitionOwed`) or every
+ * open ministry is capped. D16's "else the cheapest next level" is gone.
+ */
 export function requisitionMinistry(cfg: DecreeConfig, g: DecreeGame): number | null {
   const d = g.decree;
   const p = decreeParams(cfg, g);
   const factors = deskFactors(cfg, g);
   let best = -1;
   let bestPayback = Infinity;
-  let cheapest = -1;
-  let cheapestPrice = Infinity;
   for (let i = 0; i < d.ministries.length; i++) {
     const raw = levelCostRaw(cfg, g, i);
     if (!Number.isFinite(raw)) continue;
     const price = roundDibs(cfg, raw * factorOn(factors, 'requisition.money', servedClub(cfg, d.office, i)).mul);
-    if (price < cheapestPrice) [cheapest, cheapestPrice] = [i, price];
     if (price <= g.cash) {
       const payback = price / Math.max(1e-12, levelGain(cfg, g, i, p));
       if (payback < bestPayback) [best, bestPayback] = [i, payback];
     }
   }
-  return best >= 0 ? best : cheapest >= 0 ? cheapest : null;
+  return best >= 0 ? best : null;
+}
+
+/** D46 (c): whether the treasury holds what `paper` would print on its sign side if it landed now (D23: frozen at landing). */
+export function formPayable(cfg: DecreeConfig, g: DecreeGame, paper: Paper): boolean {
+  return g.cash >= costOf(freezeShown(cfg, g, paper, deskFactors(cfg, g)).sign);
+}
+
+/** D46 (c): a ribbon in the tray the treasury cannot pay goes back to the Clerk (`ribbonsDue`, at its head) until it can; the same object when none. */
+function ribbonsBack(cfg: DecreeConfig, g: DecreeGame): DecreeGame {
+  const d = g.decree;
+  const back = d.tray.filter((p) => p.kind === 'ribbon' && p.ministry !== null && !formPayable(cfg, g, p));
+  if (!back.length) return g;
+  return withDecree(g, { tray: d.tray.filter((p) => !back.includes(p)), ribbonsDue: [...back.map((p) => ({ ministry: p.ministry!, storey: storeys(cfg, p.drawnLevel ?? 0) })), ...d.ribbonsDue] });
 }
 
 // ----------------------------------------------------------------------------- the order of 2.7
@@ -586,11 +601,21 @@ function choose(cfg: DecreeConfig, g0: DecreeGame): Drawn | null {
     const a = applicationPaper(cfg, g1, minister);
     if (a) return a;
   }
-  const rib = g1.decree.ribbonsDue[0];
-  if (rib) return ribbonPaper(cfg, withDecree(g1, { ribbonsDue: g1.decree.ribbonsDue.slice(1) }), rib.ministry);
-  if (n % officeOf(cfg, g1.decree.office).requisitionEvery === 0) {
+  // D46 (c): a ribbon is drawn only when the treasury holds the price it will print; until then it waits with the Clerk and other papers come.
+  const due = g1.decree.ribbonsDue;
+  for (let k = 0; k < due.length; k++) {
+    const r = ribbonPaper(cfg, withDecree(g1, { ribbonsDue: due.filter((_, j) => j !== k) }), due[k].ministry);
+    if (formPayable(cfg, r.g, r.paper)) return r;
+  }
+  // D46 (c): a requisition only when the treasury can pay the level it names; otherwise its turn is kept (`requisitionOwed`) and another paper is drawn.
+  const turn = n % officeOf(cfg, g1.decree.office).requisitionEvery === 0;
+  if (turn || g1.decree.requisitionOwed) {
     const i = requisitionMinistry(cfg, g1);
-    if (i !== null) return requisitionPaper(cfg, g1, i);
+    if (i !== null) {
+      const r = requisitionPaper(cfg, withDecree(g1, { requisitionOwed: false }), i);
+      if (formPayable(cfg, r.g, r.paper)) return r;
+    }
+    if (!g1.decree.requisitionOwed) g1 = withDecree(g1, { requisitionOwed: true });
   }
   // (5) a template with probability q (D42 (e): only once frames may come, never two in a row; (f): passed over for a recent visitor), else a comic paper.
   const q = officeOf(cfg, g1.decree.office).templateShare;
@@ -649,14 +674,17 @@ export function fillTray(cfg: DecreeConfig, g: DecreeGame, n: number, clock: num
  * Null with an empty tray (a due follow-up then comes with the next arrival, 2.7 step 3). Pure: the sticky
  * note and the D18 slip read it. Built.
  */
-export function nextLanding(cfg: DecreeConfig, g: DecreeGame): { kind: 'tray'; index: number; paper: Paper } | { kind: 'due'; followUp: FollowUp } | null {
+export function nextLanding(cfg: DecreeConfig, g0: DecreeGame): { kind: 'tray'; index: number; paper: Paper } | { kind: 'due'; followUp: FollowUp } | null {
+  // D46 (c): a ribbon the treasury cannot pay is not what lands next (landNext gives it back to the Clerk).
+  const g = ribbonsBack(cfg, g0);
   const d = g.decree;
+  const at = (paper: Paper) => ({ kind: 'tray' as const, index: g0.decree.tray.indexOf(paper), paper });
   if (!d.tray.length) return null;
-  if (isEventPaper(d.tray[0]) || d.phase !== 'governing' || d.tray.some((p) => p.kind === 'scripted')) return { kind: 'tray', index: 0, paper: d.tray[0] };
+  if (isEventPaper(d.tray[0]) || d.phase !== 'governing' || d.tray.some((p) => p.kind === 'scripted')) return at(d.tray[0]);
   const k = d.tray.findIndex((p) => p.kind === 'followup');
-  if (k >= 0) return { kind: 'tray', index: k, paper: d.tray[k] };
+  if (k >= 0) return at(d.tray[k]);
   const f = dueFollowUp(cfg, g);
-  return f ? { kind: 'due', followUp: f } : { kind: 'tray', index: 0, paper: d.tray[0] };
+  return f ? { kind: 'due', followUp: f } : at(d.tray[0]);
 }
 
 /**
@@ -664,9 +692,11 @@ export function nextLanding(cfg: DecreeConfig, g: DecreeGame): { kind: 'tray'; i
  * follow-up ahead of the tray, behind a grievance or a front page), or, with nothing waiting, `emptySince`
  * starts the slip's 1.0 s. The same object while the desk is taken. Built.
  */
-export function landNext(cfg: DecreeConfig, g: DecreeGame, clock: number, events: DecreeEvent[]): DecreeGame {
+export function landNext(cfg: DecreeConfig, g0: DecreeGame, clock: number, events: DecreeEvent[]): DecreeGame {
+  if (g0.decree.desk || g0.decree.pending) return g0;
+  // D46 (c): a ribbon in the tray lands only when the treasury holds its price; until then it waits with the Clerk.
+  const g = ribbonsBack(cfg, g0);
   const d = g.decree;
-  if (d.desk || d.pending) return g;
   if (!d.tray.length) return d.emptySince === null ? withDecree(g, { emptySince: clock }) : g;
   const next = nextLanding(cfg, g);
   if (next?.kind === 'due') {

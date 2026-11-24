@@ -773,6 +773,8 @@ export interface DecreeState {
    * a slip lands between two papers only once this reaches `slips.betweenEvery`. 0 at a move.
    */
   papersSinceSlip: number;
+  /** D46 (c): a requisition's turn came while the treasury could pay no level; the next draw that can pay one brings it. false at a move. */
+  requisitionOwed: boolean;
   /** D42 (e): papers with a written text (every kind but a template frame and the Clerk's forms) landed in this game. */
   handLanded: number;
   /** D42 (e): the last paper drawn was a template frame (never two frames in a row). */

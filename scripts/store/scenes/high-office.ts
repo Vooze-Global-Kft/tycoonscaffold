@@ -80,8 +80,8 @@ const deskText = (needs: RegExp[]) => (t: string) => {
 /** The paper with its strips and nothing beside it (the feature graphic tilts it as a sheet): as wide as the paper, from above its raised strip. */
 const paperBand = (v: View): BandSpec => {
   const r = layout(v).paper;
-  const y0 = r.y - 100;
-  return { y0, y1: y0 + 318, anchor: 'top', maxZoom: v.w / (r.w + 6), cx: r.x + r.w / 2 };
+  const y0 = r.y - 78;
+  return { y0, y1: y0 + 296, anchor: 'top', maxZoom: v.w / (r.w + 6), cx: r.x + r.w / 2 };
 };
 
 /** Page code: scrolls the Office wall so the heading `re` sits just under the view's top bar. */

@@ -192,7 +192,7 @@ They differ in composition, not only in colour, and so do the sets (Lantern Row'
 | Colour | the game's palette baize-and-ink (`src/ui/decree/art/palette.ts`): baize #2E4A3E, violet pale #DCD3EA, brass light #E3C78C |
 | Ornament and counter | the flourish and the nib; no counter, no rule, no tag |
 | Rhythm across the set | none on purpose: every caption sits at the same place, like a signature at the foot of each paper |
-| Feature graphic | centred, no left-title / right-picture split (that is Lantern Row's): the baize desk under a lamp; the signed pumpkin paper of shot 2 (its SIGN strip with the signature, the visitor, the proposal) tilted in the middle as it is flicked up, running off the top edge, speed marks in the felt under it; the walnut rim along the foot with a centred brass name plate, "PROUDLY ADEQUATE" engraved in the same nib hand with its flourish; no icon, no tagline |
+| Feature graphic | centred, no left-title / right-picture split (that is Lantern Row's): the baize desk under a lamp; the signed pumpkin paper of shot 2 (its SIGN strip with the signature, the visitor, the proposal) tilted in the middle as it is flicked up, speed marks in the felt under it; the walnut rim along the foot with a centred brass name plate, "PROUDLY ADEQUATE" engraved in the same nib hand with its flourish; no icon, no tagline |
 
 Nothing in any of them: no device frame, no store badge, no award, rank, price,
 "free", "No.1", "best", no call to action, no app icon in the feature graphic

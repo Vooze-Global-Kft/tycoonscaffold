@@ -275,8 +275,7 @@ ${inkCaption(lines, left, base, size, DESK.violetPale, 11 + o.index * 3)}
  * Play feature graphic, 1024 x 500: no icon, no tagline (Play: no branding similar to the app
  * icon). A centred composition with no left-title / right-picture split (store review, 24 November:
  * that split is Lantern Row's): the baize desk seen from above under a lamp; in the middle, a signed
- * paper of the game (the capture's band) tilted as it is flicked up toward the out-tray, running off
- * the top edge, with the felt's speed marks under it; along the foot the desk's walnut rim, and on
+ * paper of the game (the capture's band) tilted as it is flicked up toward the out-tray, with the felt's speed marks under it; along the foot the desk's walnut rim, and on
  * it, centred, a brass name plate with the name engraved in the same nib hand, ending in its
  * flourish. Compare warm.ts (a centred name over a sun, the scene in a box under it), panel.ts (the
  * field full-bleed, a thin letter-spaced wordmark low down) and tag.ts (paper-cut capitals at the
@@ -287,26 +286,26 @@ export function featureHtml(o: FeatureOpts): string {
   const rim = Math.round(H * 0.2);
   const rimY = H - rim;
   // The paper: a box about as wide as the paper (the band's maxZoom lets it fill it), centred, run off the top.
-  const boxH = Math.round(H * 0.86);
+  const boxH = Math.round(H * 0.74);
   const boxW = Math.round(boxH * 0.9);
   const boxX = Math.round(W / 2 - boxW / 2);
-  const boxY = Math.round(-H * 0.1);
+  const boxY = Math.round(H * 0.035);
   // The plate: one line of the nib hand, centred on the rim.
   const title = o.title.replace(/\s+/g, ' ').trim();
-  const size = Math.min(rim * 0.42, (W * 0.5) / (lineUnits(title) + 1.7));
+  const size = Math.min(rim * 0.34, (W * 0.46) / (lineUnits(title) + 1.7));
   const textW = lineUnits(title) * size;
-  const plateW = Math.round(textW + size * 2.6);
-  const plateH = Math.round(rim * 0.7);
+  const plateW = Math.round(textW + size * 3.6);
+  const plateH = Math.round(rim * 0.8);
   const plateX = Math.round(W / 2 - plateW / 2);
   const plateY = Math.round(rimY + (rim - plateH) / 2);
-  const tx = W / 2 - (textW + size * 0.9) / 2;
-  const ty = plateY + plateH / 2 + size * 0.42;
+  const tx = W / 2 - (textW + size * 1.6) / 2;
+  const ty = plateY + plateH * 0.5 + size * 0.3;
   const screw = (cx: number) => `<circle cx="${cx}" cy="${plateY + plateH / 2}" r="${(plateH * 0.07).toFixed(1)}" fill="${DESK.brassDeep}"/><line x1="${cx - plateH * 0.05}" y1="${plateY + plateH / 2 - plateH * 0.05}" x2="${cx + plateH * 0.05}" y2="${plateY + plateH / 2 + plateH * 0.05}" stroke="${DESK.brassLight}" stroke-width="1.2"/>`;
   const streak = (x: number, y: number, l: number) => `<path d="M${x} ${y} l${(-l * 0.1).toFixed(1)} ${l}" stroke="${DESK.baizeLift}" stroke-width="${(H * 0.012).toFixed(1)}" stroke-linecap="round" opacity=".9"/>`;
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:${W}px;height:${H}px;overflow:hidden;background:${DESK.baize}}
-.paper{position:absolute;left:${boxX}px;top:${boxY}px;width:${boxW}px;height:${boxH}px;overflow:hidden;transform:rotate(-6deg);transform-origin:50% 100%;border-radius:4px;box-shadow:0 ${Math.round(H * 0.04)}px ${Math.round(H * 0.06)}px rgba(20,34,28,.55)}
+.paper{position:absolute;left:${boxX}px;top:${boxY}px;width:${boxW}px;height:${boxH}px;overflow:hidden;transform:rotate(-5deg);transform-origin:50% 50%;border-radius:4px;box-shadow:0 ${Math.round(H * 0.04)}px ${Math.round(H * 0.06)}px rgba(20,34,28,.55)}
 svg{position:absolute;left:0;top:0}
 </style></head><body>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs>${feltDefs(0.8)}
