@@ -252,7 +252,12 @@ function decreeTexts(node: unknown, key: string, out: { id: string; text: string
   if (typeof node === 'string') {
     if (!DECREE_ID_KEYS.has(key) && /[A-Za-z]/.test(node)) out.push({ id: where, text: node, field: key === 'name' || key === 'role' ? 'name' : 'text' });
   } else if (Array.isArray(node)) node.forEach((x, i) => decreeTexts(x, key, out, `${where}[${i}]`));
-  else if (node && typeof node === 'object') for (const [k, v] of Object.entries(node)) if (!DECREE_ID_KEYS.has(k)) decreeTexts(v, k, out, where ? `${where}.${k}` : k);
+  else if (node && typeof node === 'object')
+    for (const [k, v] of Object.entries(node)) {
+      // A chain's and a phrase list's title are the writers' labels, never shown (the authoring check does not lint them either).
+      if (k === 'title' && /deck\.(chains|lists)\[\d+\]$/.test(where)) continue;
+      if (!DECREE_ID_KEYS.has(k)) decreeTexts(v, k, out, where ? `${where}.${k}` : k);
+    }
 }
 function decreeChecks(id: string, g: GameConfig, runSim: boolean, problems: string[], warnings: string[]): void {
   const lint = path.join(__dirname, 'content', 'office', 'satireLint.ts');
@@ -273,6 +278,13 @@ function decreeChecks(id: string, g: GameConfig, runSim: boolean, problems: stri
     } catch (e) {
       problems.push(`satire lint (7.8) could not run: ${(e as Error).message.split('\n')[0]}`);
     }
+    // The game.json strings go to the lint as "paper" or "name" (it has no other door for loose strings),
+    // so two of its rules are the authoring check's, not this one's: a visitor's role is the register's
+    // own text (names.json, read and signed by the sensitivity editor; rule 2 asks whether a word is in
+    // that register), and a rival's back-again and resignation lines are sheet paragraphs whose lengths
+    // the runtime schema caps (RivalSchema), not 90-character papers (rule 4). Every other rule holds.
+    const registerText = (f: LintFinding) => (f.rule === 'rule2' && /\.role$/.test(f.id)) || (f.rule === 'rule4' && /\.(resignation|backAgain)$/.test(f.id));
+    findings = findings.filter((f) => !registerText(f));
     const errors = findings.filter((f) => f.severity === 'error');
     const line = (f: LintFinding) => `satire lint (7.8, ${f.rule}): ${f.id}${f.field ? `.${f.field}` : ''}: ${f.reason}${f.match ? ` ("${f.match}")` : ''}`;
     if (placeholder) {
@@ -281,6 +293,7 @@ function decreeChecks(id: string, g: GameConfig, runSim: boolean, problems: stri
     } else {
       problems.push(...errors.slice(0, 40).map(line));
       if (errors.length > 40) problems.push(`satire lint (7.8): ... and ${errors.length - 40} more errors`);
+      if (process.env.DECREE_LINT_ALL) for (const f of errors) console.error('LINT ' + line(f));
     }
     const notes = findings.length - errors.length;
     if (notes) warnings.push(`satire lint (7.8): ${notes} warning(s) for the writers (npx tsx scripts/content/office/check.ts --all)`);

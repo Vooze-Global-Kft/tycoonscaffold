@@ -246,8 +246,8 @@ interface RunOut {
 
 function runOne(cfg: R.DecreeConfig, seed: number, p: PlanRun, wall0: number): { out: RunOut; run: B.BotRun } {
   const run = B.runDecreeBot(cfg, { bot: p.bot, seed, hours: p.hours, hand: p.hand, wall0, days: p.days, stepping: p.stepping, handover: p.handover });
-  const hand = p.hand ?? (p.bot === 'flickBlind' ? 1 : B.HAND.decision);
-  return { run, out: { bot: p.bot, hand, label: p.label ?? `${p.bot}${p.hand ? ` @${p.hand} s` : ''}`, rows: run.rows, summary: run.notBuilt ? null : B.summarize(run.trace, run.handedOver, p.handover?.habit ?? null), hash: run.trace.hash, notBuilt: run.notBuilt, seconds: run.trace.ended - run.trace.started } };
+  const hand = p.bot === 'flickBlind' ? 1 : p.hand ?? B.HAND.decision;
+  return { run, out: { bot: p.bot, hand, label: p.label ?? `${p.bot}${p.hand ? ` @${p.hand} s` : ''}`, rows: run.rows, summary: run.notBuilt ? null : B.summarize(run.trace, run.handedOver, p.handover?.habit ?? null, cfg), hash: run.trace.hash, notBuilt: run.notBuilt, seconds: run.trace.ended - run.trace.started } };
 }
 
 function readAcross(files: string[]): B.SeedSummary[] {

@@ -560,7 +560,7 @@ export interface AwayRec {
 
 export interface PurchaseRec {
   t: number;
-  via: 'slip' | 'raise' | 'goal' | 'standing';
+  via: 'slip' | 'raise' | 'goal' | 'standing' | 'monument';
   purchase: string;
   price: number;
 }
@@ -769,7 +769,7 @@ class Driver {
     this.g = opts.start ?? botNewGame(cfg, opts.seed, opts.wall0);
     const products = opts.products ?? (bot === 'adEverything' ? Object.values(cfg.decree.products) : []);
     if (products.length) this.g = { ...this.g, entitlements: { ...this.g.entitlements, products: [...new Set([...this.g.entitlements.products, ...products])] } };
-    this.hand = opts.hand ?? (bot === 'flickBlind' ? 1 : HAND.decision);
+    this.hand = bot === 'flickBlind' ? 1 : opts.hand ?? HAND.decision; // the adversary's 1 s hand overrides --hand (rules-lead request 129)
     this.tr = emptyTrace(bot, opts.seed, this.hand, this.clock);
     this.hab = habitsOf(bot);
     this.keepAt = [...(opts.keepAt ?? [])].sort((a, b) => a - b);
@@ -842,9 +842,16 @@ class Driver {
   advanceTo(t: number) {
     const fixed = this.opts.stepping === 'fixed';
     let guard = 0;
-    while (this.clock < t - 1e-9) {
+    while (this.clock < t) {
       if (++guard > 5_000_000) throw new Error('decree bot: the clock does not advance (advanceDecree returned the same play time)');
-      const dt = Math.min(t - this.clock, fixed ? 0.1 : R.MAX_TICK);
+      let dt = Math.min(t - this.clock, fixed ? 0.1 : R.MAX_TICK);
+      // A 10 Hz step that would leave a sliver (under 1 µs) before `t` takes the sliver with it.
+      if (fixed && t - (this.clock + dt) < 1e-6) dt = t - this.clock;
+      // The last step lands the play clock on `t` exactly (clock + (t − clock) can miss t by an ulp, and a
+      // 10 Hz run reaches it through a different sum than an event-stepped one): the hand's moments are
+      // then the same doubles at 10 Hz and event to event, and so is every time the rules derive from
+      // them (a slip's 1.0 s after an empty desk against an arrival at the same instant, H3).
+      if (dt === t - this.clock) for (let k = 0; k < 4 && this.clock + dt !== t; k++) dt += t - (this.clock + dt);
       const before = this.g;
       const I0 = R.decreeParams(this.cfg, before).I;
       const events: DecreeEvent[] = [];
@@ -1150,6 +1157,29 @@ class Driver {
     return true;
   }
 
+  /**
+   * D36: the term's offered monument is bought whenever the treasury holds its price above the reserve
+   * (a fixed habit of every bot that buys as the reader; advice never names a monument). One tap on the
+   * shelf (a slip's hand, 1.5 s).
+   */
+  monumentHabit(): boolean {
+    const offer = this.d.monumentOffer;
+    if (!offer || this.d.vanity.includes(offer) || this.d.pending) return false;
+    const purchase = { type: 'monument', monument: offer } as const;
+    const price = R.vanityPrice(this.cfg, this.g);
+    if (R.canBuy(this.cfg, this.g, purchase, price) !== null) return false;
+    const events: DecreeEvent[] = [];
+    const before = this.g;
+    this.g = R.buyVanity(this.cfg, this.g, events);
+    this.note(events);
+    if (this.g === before) return false;
+    this.tr.taps.push(this.clock);
+    this.book('spend', this.g.cash - before.cash);
+    this.tr.purchases.push({ t: this.clock, via: 'monument', purchase: purchaseName(purchase), price: before.cash - this.g.cash });
+    this.advanceTo(this.clock + HAND.slip);
+    return true;
+  }
+
   /** Ad-everything: every ad the rules offer now (Check the Sofa once a term, the Spin Doctor, the Courier, Open the Doors). */
   watchAds() {
     for (const kind of ['checkSofa', 'spinDoctor', 'courier', 'openDoors'] as const) {
@@ -1207,6 +1237,7 @@ class Driver {
     }
     if (this.hab.ads && d.phase === 'governing') this.watchAds();
     if (this.hab.goalFollower && d.phase === 'governing' && this.goalBuy()) return true;
+    if (this.hab.takesSlips && d.phase === 'governing' && this.monumentHabit()) return true;
     const desk = this.d.desk;
     if (desk?.type === 'paper') {
       this.idleEnd();
@@ -1765,12 +1796,11 @@ export function pace(tr: Pick<Trace, 'elections' | 'reached' | 'events' | 'decis
     for (const o of [0, 1, 2] as OfficeIx[]) {
       const enter = tr.reached[o];
       if (enter === null) continue;
-      const half = R.officeOf(cfg, o).termDays / 2;
-      const days = tr.decisions.filter((d) => d.office === o && d.term === 1 && isDayRec(d));
-      const halfAt = days.length > half ? days[Math.floor(half)].t : null;
-      const opened = new Set(tr.events.filter((e) => e.type === 'ministryOpened' && e.office === o && e.t >= enter && (halfAt === null || e.t <= halfAt)).map((e) => /"ministry":(\d+)/.exec(e.detail)?.[1]));
+      // D34: every ministry of an office opens by the END of the office's first term (its first count).
+      const endAt = tr.elections.find((e) => e.office === o && e.term === 1)?.t ?? null;
+      const opened = new Set(tr.events.filter((e) => e.type === 'ministryOpened' && e.office === o && e.t >= enter && (endAt === null || e.t <= endAt)).map((e) => /"ministry":(\d+)/.exec(e.detail)?.[1]));
       const n = R.officeOf(cfg, o).ministries.length;
-      if (halfAt !== null && opened.size < n - 1) lateOpenings.push(`${R.officeOf(cfg, o).id}: ${opened.size + 1} of ${n} open at half of the first term`);
+      if (endAt !== null && opened.size < n - 1) lateOpenings.push(`${R.officeOf(cfg, o).id}: ${opened.size + 1} of ${n} open at the end of the first term`);
     }
   }
   return { firstElection: tr.elections.length ? m(tr.elections[0].t) : null, governor: m(tr.reached[1]), president: m(tr.reached[2]), lateOpenings };
@@ -1847,6 +1877,7 @@ export function passesOld(tr: Pick<Trace, 'samples' | 'reached'>): (number | nul
 // ============================================================================================
 
 const f1 = (x: number | null | undefined) => (x === null || x === undefined || !Number.isFinite(x) ? 'n/a' : x.toFixed(1));
+const f2 = (x: number | null | undefined) => (x === null || x === undefined || !Number.isFinite(x) ? 'n/a' : x.toFixed(2));
 const pc = (x: number) => `${(100 * x).toFixed(0)} %`;
 const row = (name: string, kind: BotRow['kind'], aim: string, value: string, ok: boolean, num: number | null = null): BotRow => ({ name, kind, aim, value, ok, num });
 const READERS = new Set<BotId>(['reader', 'misreader', 'casual']);
@@ -1864,7 +1895,8 @@ export function evaluate(cfg: DecreeConfig, tr: Trace): BotRow[] {
   rows.push(row('H2 the poll is the count', 'hard', '0 differences, order as 2.10', `${b.differences} differences, ${b.orderWrong} orders wrong over ${tr.elections.length} counts`, b.differences + b.orderWrong === 0, b.differences));
   const c = h3(tr);
   const cut = tr.faults.find((f) => f.startsWith('H3: the take-back window'));
-  rows.push(row('H3 take-back and reload restore byte for byte', 'hard', '0 wrong; every take-back window lasts its 2 s', `${c.takeBacksWrong} take-backs, ${c.reloadsWrong} reloads wrong (of ${tr.takeBacks.length}, ${tr.reloads.length}); ${c.windowsCut} windows cut short${cut ? ` (${cut.slice(4)})` : ''}`, c.takeBacksWrong + c.reloadsWrong + c.windowsCut === 0));
+  const h3Exercised = tr.takeBacks.length + tr.reloads.length > 0;
+  rows.push(row('H3 take-back and reload restore byte for byte', 'hard', '0 wrong; every take-back window lasts its 2 s', `${h3Exercised ? '' : 'not exercised (no take-back, no reload in this run; the windows are still checked): '}${c.takeBacksWrong} take-backs, ${c.reloadsWrong} reloads wrong (of ${tr.takeBacks.length}, ${tr.reloads.length}); ${c.windowsCut} windows cut short${cut ? ` (${cut.slice(4)})` : ''}`, c.takeBacksWrong + c.reloadsWrong + c.windowsCut === 0));
   const d = h4(tr);
   rows.push(row('H4 offline: the closed form, nothing else moves, pays once', 'hard', '0 wrong', `${d.absences} absences: ${d.wrongPay} paid wrong, ${d.moved} moved a mood/gossip/counter/day/poll, ${d.tooManyPapers} too many papers, ${d.jumps} clock-jump faults, ${d.stepsDiffer} differ from stepping`, d.wrongPay + d.moved + d.tooManyPapers + d.jumps + d.stepsDiffer === 0));
   rows.push(row('H4 earnings paid when computed', 'hard', 'paysOnCompute and catchUpSeconds 0', `paysOnCompute ${String(decreeEngineMode.paysOnCompute)}, catchUpSeconds ${String(decreeEngineMode.catchUpSeconds)}`, decreeEngineMode.paysOnCompute === true && decreeEngineMode.catchUpSeconds === 0));
@@ -1922,12 +1954,13 @@ export function evaluate(cfg: DecreeConfig, tr: Trace): BotRow[] {
     rows.push(row('8.4 pace: first election', 'aim', '11 to 15 min', f1(p.firstElection), inBand(p.firstElection, 11, 15), p.firstElection));
     rows.push(row('8.4 pace: governor', 'aim', '12 to 30 min', f1(p.governor), inBand(p.governor, 12, 30), p.governor));
     rows.push(row('8.4 pace: president', 'aim', '55 to 95 min', f1(p.president), inBand(p.president, 55, 95), p.president));
-    rows.push(row('8.4 every ministry opens by half of its first term', 'aim', 'all', p.lateOpenings.join('; ') || 'all', p.lateOpenings.length === 0));
+    rows.push(row('8.4 every ministry opens by the end of its first term (D34)', 'aim', 'all', p.lateOpenings.join('; ') || 'all', p.lateOpenings.length === 0));
     const tn = tension(tr);
     rows.push(row('8.4 median margin', 'aim', '1 district', f1(tn.medianMargin), tn.medianMargin === 1, tn.medianMargin));
     rows.push(row('8.4 two districts within 5 points', 'aim', 'in half the elections', pc(tn.twoClose), tn.twoClose >= 0.5, tn.twoClose));
     const ev = eventsRate(tr);
-    rows.push(row('8.4 reader boycotts', 'aim', '≤ 1 an hour', f1(ev.boycottsPerHour), ev.boycottsPerHour <= 1, ev.boycottsPerHour));
+    if (tr.bot === 'reader') rows.push(row('D38 reader boycotts', 'aim', '≤ 0.3 an hour', f2(ev.boycottsPerHour), ev.boycottsPerHour <= 0.3, ev.boycottsPerHour));
+    else rows.push(row('8.4 reader boycotts', 'aim', '≤ 1 an hour', f2(ev.boycottsPerHour), ev.boycottsPerHour <= 1, ev.boycottsPerHour));
     rows.push(row('8.4 reader scandals', 'aim', '≤ 1 per 2 h', f1(ev.scandalsPerHour), ev.scandalsPerHour <= 0.5, ev.scandalsPerHour));
     rows.push(row('8.4 reader refuses baskets', 'aim', '≥ 80 %', pc(ev.basketsRefused), ev.basketsRefused >= 0.8, ev.basketsRefused));
     const mo = money(tr);
@@ -1938,9 +1971,11 @@ export function evaluate(cfg: DecreeConfig, tr: Trace): BotRow[] {
     rows.push(row('8.4 novelty, minutes 0 to 30', 'aim', 'something new every 3 min', `${f1(novelty(tr, 0, 1800) / 60)} min longest gap`, novelty(tr, 0, 1800) <= 180, novelty(tr, 0, 1800)));
     if (tr.ended - t0 >= 3 * 3600) rows.push(row('8.4 novelty, hours 1 to 3', 'aim', 'every 15 min', `${f1(novelty(tr, 3600, 3 * 3600) / 60)} min longest gap`, novelty(tr, 3600, 3 * 3600) <= 900, novelty(tr, 3600, 3 * 3600)));
   }
-  if (tr.bot === 'alwaysRefuse') {
+  // D38: a careless mayor meets boycotts (the happier-club habit ≥ 1 an hour, always-refuse and random ≥ 0.5; the reader ≤ 0.3 above).
+  if (tr.bot === 'alwaysRefuse' || tr.bot === 'random' || tr.bot === 'happier') {
     const ev = eventsRate(tr);
-    rows.push(row('8.4 always-refuse boycotts', 'aim', '≥ 2 an hour', f1(ev.boycottsPerHour), ev.boycottsPerHour >= 2, ev.boycottsPerHour));
+    const aim = tr.bot === 'happier' ? 1 : 0.5;
+    rows.push(row(`D38 ${tr.bot} boycotts`, 'aim', `≥ ${aim} an hour`, f2(ev.boycottsPerHour), ev.boycottsPerHour >= aim, ev.boycottsPerHour));
   }
   if (tr.bot === 'alwaysSign') {
     const ev = eventsRate(tr);
@@ -1980,13 +2015,27 @@ export interface SeedSummary {
   perTerm: ReturnType<typeof perTerm>;
   /** H6's and H12's handover runs. */
   handover?: { habit: BotId; winsWithin2: boolean; lifted: boolean | null };
+  /** For the tuning table (pass counts and ranges per bot and hand): D38, H10, D24, the pace aims. */
+  extra?: { firstElection: number | null; boycottsPerHour: number; scandalsPerHour: number; unaffordable: number; emptyDesk30: number; nothing30: number; emptyDesk13: number | null; signShare: number; lateOpenings: number; monuments: number; papers: number };
 }
 
-export function summarize(tr: Trace, handedOver: BotRun['handedOver'] = null, habit: BotId | null = null): SeedSummary {
+export function summarize(tr: Trace, handedOver: BotRun['handedOver'] = null, habit: BotId | null = null, cfg?: DecreeConfig): SeedSummary {
   const w = wins(tr);
-  const p = pace(tr);
+  const p = pace(tr, cfg);
   const at3 = [...tr.samples].filter((s) => s.t <= tr.started + 3 * 3600).pop();
   const out: SeedSummary = { seed: tr.seed, bot: tr.bot, hand: tr.hand, elections: w.elections, won: w.won, merit: w.merit, meritOf: w.meritOf, firstWon: tension(tr).firstWon, governor: p.governor, president: p.president, nrAt3h: at3 ? at3.nr : null, perTerm: perTerm(tr) };
+  if (!handedOver) {
+    const ev = eventsRate(tr);
+    const i30 = idleDesk(tr, 0, 1800);
+    const long = tr.ended - tr.started >= 3 * 3600;
+    const day = tr.decisions.filter(isDayRec);
+    out.extra = {
+      firstElection: p.firstElection, boycottsPerHour: ev.boycottsPerHour, scandalsPerHour: ev.scandalsPerHour, unaffordable: unaffordableShare(tr),
+      emptyDesk30: i30.emptyShare, nothing30: i30.nothingShare, emptyDesk13: long ? idleDesk(tr, 3600, 3 * 3600).emptyShare : null,
+      signShare: day.length ? day.filter((d) => d.choice === 'sign').length / day.length : 0, lateOpenings: p.lateOpenings.length,
+      monuments: tr.events.filter((e) => e.type === 'monument').length, papers: day.length,
+    };
+  }
   if (handedOver && habit) {
     const after = tr.elections.filter((e) => e.t >= handedOver.t);
     const winsWithin2 = after.slice(0, 2).some((e) => e.won);
