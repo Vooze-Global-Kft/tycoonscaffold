@@ -472,6 +472,8 @@ export interface DecisionRec {
   applied: { money: number; moods: number[]; level: number | null; gossip: number };
   /** The stale form of 2.7 left with no effect. */
   formVoid: boolean;
+  /** The commit happened inside a tick, out of the bot's sight (an H3 fault says why): printed and applied are not compared. */
+  unmeasured?: boolean;
   /** A stored paper field changed between landing and commit (H1). */
   paperChanged: boolean;
   /** The sign side's printed money (negative a cost) and whether this paper is a basket (8.4). */
@@ -940,6 +942,7 @@ class Driver {
     this.g = next;
     this.note(events);
     let atCommit = before;
+    let cutShort = false;
     if (this.d.pending && this.d.pending.item.paper.id === item.paper.id) {
       // The take-back window (2.7): the reload adversary saves inside it; one in five is taken back and decided again.
       if (this.bot === 'reloadInTakeBack') {
@@ -960,6 +963,11 @@ class Driver {
       this.advanceTo(Math.max(this.clock, until - REST_TAP));
       atCommit = this.g;
       if (this.d.pending) this.commitPending();
+      else {
+        // The rules committed it inside the rest, before the bot's tap: the take-back window was cut short (H3).
+        cutShort = true;
+        this.tr.faults.push(`H3: the take-back window of ${item.paper.id} ended before its ${this.cfg.decree.desk.takeBackSeconds} s (committed by the rules inside the tick, by ${atCommit.stats.playSeconds.toFixed(1)} s)`);
+      }
     }
     const after = this.g;
     const applied = appliedOf(atCommit, after);
@@ -985,6 +993,7 @@ class Driver {
       printed,
       applied,
       formVoid,
+      unmeasured: cutShort,
       paperChanged: seen ? seen.json !== json(item.paper) : false,
       signMoney: v.sign.money,
       reeval,
@@ -1424,6 +1433,7 @@ export function h1(tr: Pick<Trace, 'decisions' | 'events' | 'faults'>): { differ
   let staleWithEffect = 0;
   const detail: string[] = [];
   for (const d of tr.decisions) {
+    if (d.unmeasured) continue;
     if (d.formVoid) {
       if (d.applied.money !== 0 || d.applied.moods.some((x) => x !== 0) || d.applied.level !== null) {
         staleWithEffect++;
@@ -1455,8 +1465,8 @@ export function h2(tr: Pick<Trace, 'elections'>): { differences: number; orderWr
 }
 
 /** H3 on one trace: take-backs and reloads that did not restore byte for byte. */
-export function h3(tr: Pick<Trace, 'takeBacks' | 'reloads'>): { takeBacksWrong: number; reloadsWrong: number } {
-  return { takeBacksWrong: tr.takeBacks.filter((x) => !x.same).length, reloadsWrong: tr.reloads.filter((x) => !x.same).length };
+export function h3(tr: Pick<Trace, 'takeBacks' | 'reloads'> & { faults?: string[] }): { takeBacksWrong: number; reloadsWrong: number; windowsCut: number } {
+  return { takeBacksWrong: tr.takeBacks.filter((x) => !x.same).length, reloadsWrong: tr.reloads.filter((x) => !x.same).length, windowsCut: (tr.faults ?? []).filter((f) => f.startsWith('H3: the take-back window')).length };
 }
 
 /** H4: every absence paid the closed form, moved nothing else, never paid more papers than the rule; faults of the clock jumps. */
@@ -1798,7 +1808,8 @@ export function evaluate(cfg: DecreeConfig, tr: Trace): BotRow[] {
   const b = h2(tr);
   rows.push(row('H2 the poll is the count', 'hard', '0 differences, order as 2.10', `${b.differences} differences, ${b.orderWrong} orders wrong over ${tr.elections.length} counts`, b.differences + b.orderWrong === 0, b.differences));
   const c = h3(tr);
-  rows.push(row('H3 take-back and reload restore byte for byte', 'hard', '0 wrong', `${c.takeBacksWrong} take-backs, ${c.reloadsWrong} reloads wrong (of ${tr.takeBacks.length}, ${tr.reloads.length})`, c.takeBacksWrong + c.reloadsWrong === 0));
+  const cut = tr.faults.find((f) => f.startsWith('H3: the take-back window'));
+  rows.push(row('H3 take-back and reload restore byte for byte', 'hard', '0 wrong; every take-back window lasts its 2 s', `${c.takeBacksWrong} take-backs, ${c.reloadsWrong} reloads wrong (of ${tr.takeBacks.length}, ${tr.reloads.length}); ${c.windowsCut} windows cut short${cut ? ` (${cut.slice(4)})` : ''}`, c.takeBacksWrong + c.reloadsWrong + c.windowsCut === 0));
   const d = h4(tr);
   rows.push(row('H4 offline: the closed form, nothing else moves, pays once', 'hard', '0 wrong', `${d.absences} absences: ${d.wrongPay} paid wrong, ${d.moved} moved a mood/gossip/counter/day/poll, ${d.tooManyPapers} too many papers, ${d.jumps} clock-jump faults`, d.wrongPay + d.moved + d.tooManyPapers + d.jumps === 0));
   rows.push(row('H4 earnings paid when computed', 'hard', 'paysOnCompute and catchUpSeconds 0', `paysOnCompute ${String(decreeEngineMode.paysOnCompute)}, catchUpSeconds ${String(decreeEngineMode.catchUpSeconds)}`, decreeEngineMode.paysOnCompute === true && decreeEngineMode.catchUpSeconds === 0));

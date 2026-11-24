@@ -19,7 +19,7 @@
  * "Short by 240 · about 9 s"; it reads params.ts (P1a) prices and gains and slips.ts `reserve`;
  * tick.ts reads `slipNeed` (when a slip becomes possible) and grants.ts `standingOrderPick`.
  */
-import { decreeParams, levelCost, levelGain, openCost, openGain, roundDibs, vanityPrice } from './params';
+import { decreeParams, levelCost, levelGain, openCost, openGain, vanityPrice } from './params';
 import { costOf } from './size';
 import { standIn } from './notBuilt';
 import { reserve } from './slips';
@@ -47,11 +47,15 @@ export function reserveNow(cfg: DecreeConfig, g: DecreeGame): number {
   );
 }
 
-/** What a slip keeps back (D16): the reserve, plus desk.slipReserveSeconds of B when the desk and the tray are empty. */
+/**
+ * What a slip keeps back (D16): the reserve, plus desk.slipReserveSeconds of B when the desk and the
+ * tray are empty. Not an amount shown (the Ledger shows the reserve), so not rounded: the same
+ * threshold slips.ts `slipFor` applies, so a slip the tick schedules is never refused when it lands.
+ */
 export function slipReserve(cfg: DecreeConfig, g: DecreeGame, p: DecreeParams = decreeParams(cfg, g)): number {
   const d = g.decree;
   const empty = !d.desk && !d.tray.length && !d.pending;
-  return reserveNow(cfg, g) + (empty ? roundDibs(cfg, cfg.decree.desk.slipReserveSeconds * p.B) : 0);
+  return reserveNow(cfg, g) + (empty ? cfg.decree.desk.slipReserveSeconds * p.B : 0);
 }
 
 /** Every purchase possible now, in the order levels, openings, the monument (by ministry). Built. */

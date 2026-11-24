@@ -4,12 +4,12 @@
   "office": "president",
   "papers": [
     {
-      "id": "pres-motorway-bench",
+      "id": "pres-spotting-bench",
       "visitor": "kerb",
       "club": "bus",
       "other": "hedges",
       "archetype": "project",
-      "text": "A motorway bench for watching coaches go by. Where the hedge is now.",
+      "text": "A motorway bench for watching coaches. Where the hedge is now.",
       "subject": "buses",
       "butt": "thing",
       "shape": "undercut",
@@ -21,21 +21,21 @@
       "club": "veg",
       "other": "bus",
       "archetype": "swap",
-      "text": "Put the National Clock back an hour on show day. Growers need more time.",
+      "text": "The National Clock back an hour on show day: growers need more time. Spotters, less.",
       "subject": "clocks",
       "butt": "office",
       "shape": "literalism"
     },
     {
-      "id": "pres-harbour-display",
+      "id": "pres-lamps-face-windows",
       "visitor": "awning",
       "club": "shops",
-      "other": "anglers",
+      "other": "bus",
       "archetype": "project",
-      "text": "Light the harbour wall like a shop window. Anglers to sit tastefully.",
-      "subject": "harbours",
+      "text": "Turn the street lamps to the shop windows. Then the bus stop's. Then the lighthouse.",
+      "subject": "signage",
       "butt": "thing",
-      "shape": "undercut"
+      "shape": "escalation"
     },
     {
       "id": "pres-second-telephone",
@@ -43,32 +43,10 @@
       "club": "bus",
       "other": "kites",
       "archetype": "swap",
-      "text": "May the Society have your second telephone? The League rings it 40 times a day.",
+      "text": "Your second telephone, please. The League rings it 40 times a day.",
       "subject": "buses",
       "butt": "office",
       "shape": "statistic"
-    },
-    {
-      "id": "pres-bandstand-wheels",
-      "visitor": "slide",
-      "club": "brass",
-      "other": "kites",
-      "archetype": "project",
-      "text": "A bandstand on wheels, to follow the audience. It is at the kites.",
-      "subject": "inventions",
-      "butt": "thing",
-      "shape": "undercut"
-    },
-    {
-      "id": "pres-marrow-licence",
-      "visitor": "gourdley",
-      "club": "veg",
-      "other": "brass",
-      "archetype": "swap",
-      "text": "Give the marrows the band's Sunday. They have a performing licence.",
-      "subject": "vegetable-shows",
-      "butt": "office",
-      "shape": "form-misapplied"
     },
     {
       "id": "pres-foghorn-flat",
@@ -76,30 +54,52 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "project",
-      "text": "Tune the foghorn to B flat. Then the next one to F. Then book a fog.",
+      "text": "Tune a foghorn to the band. Then all of them. Then book a fog.",
       "subject": "harbours",
       "butt": "thing",
       "shape": "escalation"
     },
     {
-      "id": "pres-tea-lamps",
+      "id": "pres-marrow-licence",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "brass",
+      "archetype": "swap",
+      "text": "Give the marrows the band's Sunday. They are licensed to perform.",
+      "subject": "vegetable-shows",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-bandstand-wheels",
+      "visitor": "slide",
+      "club": "brass",
+      "other": "kites",
+      "archetype": "project",
+      "text": "A bandstand on wheels. We were told to go where the audience is: the kites.",
+      "subject": "inventions",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-tea-lamp-sponsor",
       "visitor": "till",
       "club": "shops",
       "other": "bus",
       "archetype": "fee",
-      "text": "Till's Teas will sponsor the lamps, if they glow the colour of tea. Milky.",
+      "text": "Till's Teas will sponsor the lamps, if they glow tea-coloured. Milky.",
       "subject": "signage",
       "butt": "thing",
       "shape": "undercut",
       "setsUp": "pres-tea-lamps"
     },
     {
-      "id": "pres-wave-at-coach",
+      "id": "pres-ten-thousandth-coach",
       "visitor": "kerb",
       "club": "bus",
       "other": "shops",
       "archetype": "treat",
-      "text": "Wave at the 6:15 coach for the Society's album. It has never waved back.",
+      "text": "Pose with our ten-thousandth coach. It will not be stopping.",
       "subject": "buses",
       "butt": "self",
       "shape": "photo-op"
@@ -110,7 +110,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "project",
-      "text": "A sign in the arcade: PRIZE PUMPKIN, THIS WAY. It points outside.",
+      "text": "An arcade sign: PRIZE PUMPKIN, THIS WAY. It points outside.",
       "subject": "signage",
       "butt": "thing",
       "shape": "slogan"
@@ -121,7 +121,7 @@
       "club": "brass",
       "other": "bus",
       "archetype": "swap",
-      "text": "Sunday practice on the motorway footbridge. The rare coaches run on Sundays.",
+      "text": "Band practice on the motorway bridge? Sunday is rare-coach day.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "undercut"
@@ -132,7 +132,7 @@
       "club": "bus",
       "other": "veg",
       "archetype": "project",
-      "text": "A spotting platform by the motorway. The bank is 80 % onion bed.",
+      "text": "A spotting platform by the motorway. The bank is 80 % onion.",
       "subject": "buses",
       "butt": "thing",
       "shape": "statistic"
@@ -143,18 +143,18 @@
       "club": "kites",
       "other": "anglers",
       "archetype": "swap",
-      "text": "Give the League the harbour wall. Anglers may apply to sit on the water.",
+      "text": "Kites get the harbour wall. Anglers may apply to sit on the water.",
       "subject": "harbours",
       "butt": "office",
       "shape": "form-misapplied"
     },
     {
-      "id": "pres-soundproof-end",
+      "id": "pres-cushion-echo",
       "visitor": "hake",
       "club": "anglers",
       "other": "brass",
       "archetype": "project",
-      "text": "Soundproof the band's end of the harbour. Then the middle. Then the band.",
+      "text": "Cushion the harbour wall, for the echo. Then the bandstand. Then the band.",
       "subject": "harbours",
       "butt": "thing",
       "shape": "escalation"
@@ -165,7 +165,7 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "swap",
-      "text": "Hold the hedge show on the kite field. Any kite that lands gets clipped.",
+      "text": "The hedge show, on the kite field. Kites that land get clipped.",
       "subject": "hedges",
       "butt": "thing",
       "shape": "literalism"
@@ -176,7 +176,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "treat",
-      "text": "Hear the band down your third telephone, for the camera. Nod in time.",
+      "text": "Hear the band down the third telephone, for the camera. Nod.",
       "subject": "bandstands",
       "butt": "self",
       "shape": "photo-op"
@@ -187,7 +187,7 @@
       "club": "anglers",
       "other": "veg",
       "archetype": "project",
-      "text": "A meter on our lake, to count the growers' watering cans. By hand.",
+      "text": "A meter on our lake, counting the growers' watering cans. By hand.",
       "subject": "inventions",
       "butt": "office",
       "shape": "form-misapplied"
@@ -198,18 +198,18 @@
       "club": "kites",
       "other": "shops",
       "archetype": "swap",
-      "text": "Signs on the lamp posts: KITES MAY REST HERE. The Guild's baskets to budge up.",
+      "text": "Lamp-post signs: KITES MAY REST HERE. Guild baskets to budge up.",
       "subject": "signage",
       "butt": "thing",
       "shape": "slogan"
     },
     {
-      "id": "pres-hedge-window",
+      "id": "pres-trim-to-match",
       "visitor": "edging",
       "club": "hedges",
       "other": "shops",
       "archetype": "project",
-      "text": "Clip the arcade hedge into a shop window. Then a hat for it. Then a shopper.",
+      "text": "Trim the arcade hedge. Then the awnings, to match. Then the hats.",
       "subject": "hedges",
       "butt": "thing",
       "shape": "escalation"
@@ -231,7 +231,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "fee",
-      "text": "The band will hire a lighthouse for one concert. The tunes go round.",
+      "text": "The band will hire a lighthouse for a concert. The tunes go round.",
       "subject": "harbours",
       "butt": "thing",
       "shape": "literalism"
@@ -242,7 +242,7 @@
       "club": "anglers",
       "other": "shops",
       "archetype": "treat",
-      "text": "Unhook your telephones for the Quiet Competition. Till's Teas will keep trying.",
+      "text": "Unhook the telephones for the Quiet Competition. Till's Teas keeps trying.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "callback"
@@ -253,7 +253,7 @@
       "club": "hedges",
       "other": "bus",
       "archetype": "fee",
-      "text": "We will pay for a hedge down the middle of the motorway. Spotters lose the far side.",
+      "text": "We will pay for a hedge down the motorway. Spotters lose the far side.",
       "subject": "hedges",
       "butt": "thing",
       "shape": "undercut"
@@ -275,7 +275,7 @@
       "club": "kites",
       "other": "veg",
       "archetype": "project",
-      "text": "A landing circle by the marrow beds. Kites miss circles by 3 metres.",
+      "text": "A landing circle by the marrows. Kites miss circles by 3 metres.",
       "subject": "kites",
       "butt": "thing",
       "shape": "statistic"
@@ -286,7 +286,7 @@
       "club": "veg",
       "other": "bus",
       "archetype": "fee",
-      "text": "We will pay to name a motorway junction after the pumpkin. Then the rest.",
+      "text": "We will pay to name a junction after the pumpkin. Then the rest. Spotters liked numbers.",
       "subject": "signage",
       "butt": "thing",
       "shape": "escalation"
@@ -308,30 +308,30 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "fee",
-      "text": "The Circle will sponsor the National Clock's quietest minute. Plaque: SHH.",
+      "text": "We will sponsor the National Clock's quietest minute. Band to rest. Plaque: SHH.",
       "subject": "clocks",
       "butt": "thing",
       "shape": "slogan"
     },
     {
-      "id": "pres-coach-in-window",
-      "visitor": "kerb",
+      "id": "pres-late-if-unwatched",
+      "visitor": "sprott",
       "cosigner": "minute",
       "club": "bus",
       "other": "shops",
       "archetype": "committee",
-      "text": "A working group on whether a coach seen in a shop window counts as seen.",
+      "text": "A study: is a coach late if nobody waits for it? The Guild is asked to wait.",
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "The group now asks whether a coach seen in a puddle counts. It needs a wet year."
+      "biggerStudy": "The study asks the Guild to wait at a second stop, as a control."
     },
     {
       "id": "pres-clock-face",
       "visitor": "fenn",
       "club": "shops",
       "archetype": "vanity",
-      "text": "Your face on the National Clock. At noon, both hands will point at you.",
+      "text": "Your face on the National Clock. At noon both hands point at you.",
       "subject": "vanity",
       "butt": "self",
       "shape": "undercut"
@@ -343,23 +343,23 @@
       "club": "veg",
       "other": "shops",
       "archetype": "committee",
-      "text": "A study of marrows by lamplight. Half the lamps go off, as a control.",
+      "text": "A study of marrows by lamplight. Half the high street goes dark, as a control.",
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The marrow study asks for a second control: the other half of the lamps."
+      "biggerStudy": "The marrow study needs the dark half lit again, and the lit half dark."
     },
     {
       "id": "pres-desk-lamp-gift",
       "visitor": "sash",
       "club": "brass",
       "archetype": "basket",
-      "text": "A desk lamp, as a gift. It glows near scissors. Any openings? No reason.",
+      "text": "A desk lamp. It glows near ribbons. Any openings soon? No reason.",
       "subject": "ribbons",
       "butt": "lobbyist",
       "shape": "callback",
       "favour": {
-        "text": "About the lamp: it would like a solo at the Sunday concert. It glows.",
+        "text": "About the lamp: it would like a solo at the Sunday concert.",
         "clippings": {
           "sign": "PRESIDENT'S LAMP GIVEN SOLO; BAND PLAYS IN THE DARK",
           "refuse": "LAMP STAYS ON THE DESK, GLOWING AT NOTHING"
@@ -372,7 +372,7 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "treat",
-      "text": "Light the hedge show on the kite field. Stand by the switch, looking pleased.",
+      "text": "Switch on the night hedge show. Stand by the switch. Look pleased.",
       "subject": "hedges",
       "butt": "self",
       "shape": "photo-op"
@@ -384,18 +384,18 @@
       "club": "shops",
       "other": "anglers",
       "archetype": "committee",
-      "text": "A working group on dressing the lighthouse window. Every idea is Till's Teas.",
+      "text": "A study on dressing the lighthouse window. So far, all Till's Teas.",
       "subject": "committees",
       "butt": "committee",
       "shape": "callback",
-      "biggerStudy": "The lighthouse group now wishes to dress the beam. Stripes, on alternate sweeps."
+      "biggerStudy": "The lighthouse study now wishes to dress the beam. Stripes, alternately."
     },
     {
       "id": "pres-lighthouse-initials",
       "visitor": "spinwell",
       "club": "anglers",
       "archetype": "vanity",
-      "text": "A lighthouse that flashes your initials. Then your name. Then your speeches.",
+      "text": "A lighthouse to flash your initials. Then your name. Then speeches.",
       "subject": "vanity",
       "butt": "self",
       "shape": "escalation"
@@ -407,18 +407,18 @@
       "club": "brass",
       "other": "kites",
       "archetype": "committee",
-      "text": "A working group on whether a humming kite is an instrument. Bring kites.",
+      "text": "A study: is a humming kite an instrument? Bring kites.",
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "The group asks to study a whistling kite as well, and one that sighs."
+      "biggerStudy": "The kite study asks to hear a whistling kite, and one that sighs."
     },
     {
       "id": "pres-lamp-plaques",
       "visitor": "wimble",
       "club": "kites",
       "archetype": "vanity",
-      "text": "A plaque on every lamp: LIT BY THE PRESIDENT. I have done four so far.",
+      "text": "A plaque on each lamp: LIT BY THE PRESIDENT. I have done four.",
       "subject": "vanity",
       "butt": "self",
       "shape": "slogan"
@@ -430,23 +430,23 @@
       "club": "hedges",
       "other": "anglers",
       "archetype": "committee",
-      "text": "A working group on the anglers' willow: is it a hedge? If so, it gets trimmed.",
+      "text": "A study: is the anglers' willow a hedge? If so, it gets trimmed.",
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The willow group asks to inspect every willow in the Republic. Shears packed."
+      "biggerStudy": "The willow study asks to inspect every willow. Shears packed."
     },
     {
       "id": "pres-telephone-umbrellas",
       "visitor": "vane",
       "club": "veg",
       "archetype": "basket",
-      "text": "Three small umbrellas, one per telephone. Do say 'rain' when you answer?",
+      "text": "Three small umbrellas, one per telephone. Say 'rain' more often?",
       "subject": "vanity",
       "butt": "lobbyist",
       "shape": "undercut",
       "favour": {
-        "text": "About the umbrellas: they would like to judge the marrow show. Open.",
+        "text": "About the umbrellas: they wish to judge the marrow show. Open.",
         "clippings": {
           "sign": "PRESIDENT'S UMBRELLA JUDGES MARROWS; GROWERS DAMP",
           "refuse": "UMBRELLAS STAY BY THE TELEPHONES, OPINIONS UNSHARED"
@@ -460,11 +460,11 @@
       "club": "kites",
       "other": "shops",
       "archetype": "committee",
-      "text": "A study of which awnings kites land on. So far, 9 in 10 prefer stripes.",
+      "text": "A study of awnings kites land on. So far, 9 in 10 prefer stripes.",
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
-      "biggerStudy": "The awning study asks to study plain awnings too, for balance. And spots."
+      "biggerStudy": "The awning study asks to try plain awnings too. And spots."
     }
   ]
 }

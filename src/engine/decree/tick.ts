@@ -94,7 +94,10 @@ export function timeCashReaches(a: CashAnchor, need: number): number {
 function settle(cfg: DecreeConfig, g: DecreeGame, t: number): DecreeGame {
   let x = g;
   const d = x.decree;
-  if (d.phase === 'governing' && d.nextArrivalAt === null && d.tray.length < cfg.decree.desk.trayCap) x = withDecree(x, { nextArrivalAt: t + decreeParams(cfg, x).tau });
+  const full = d.tray.length >= cfg.decree.desk.trayCap;
+  // The arrival clock stops at a full tray (2.5) and starts τ after a place frees.
+  if (d.phase === 'governing' && full && d.nextArrivalAt !== null) x = withDecree(x, { nextArrivalAt: null });
+  else if (d.phase === 'governing' && d.nextArrivalAt === null && !full) x = withDecree(x, { nextArrivalAt: t + decreeParams(cfg, x).tau });
   const e = x.decree;
   if (!e.desk && !e.tray.length && !e.pending && e.emptySince === null && (e.phase === 'governing' || e.phase === 'campaign')) x = withDecree(x, { emptySince: t });
   const a = anchorOf(cfg, x);

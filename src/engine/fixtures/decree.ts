@@ -10,7 +10,7 @@
  *   field the schema gains later takes its default until a rules change adds it here.
  * - `DECREE_TEST_DECK`: the papers and chains of 7.5 and 7.6 (texts as the specification printed
  *   them on 23 November 2026: scripted papers 1 to 4, the pumpkin, the 7:02 bus, the study of the
- *   study, Till's Teas, the portrait, the requisition's note, Dorothy Pockle's application, the
+ *   study, Till's Teas, the portrait, the requisition's note, the first minister's application, the
  *   scissors grievance, the goose front page, the hedge show and the rally; the chains "The Basket"
  *   and "The Pumpkin"), plus generated filler papers "Test paper n" so every (club, archetype) cell of
  *   every office holds at least three, and the fewest other records each draw needs.

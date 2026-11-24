@@ -80,7 +80,7 @@
         ],
         "clippings": {
           "sign": "PRESIDENT APPLAUDS OWN HEDGE; HEDGE BOWS",
-          "refuse": "HEDGE OF PRESIDENT COLLECTS RIBBON ALONE"
+          "refuse": "HEDGE OF PRESIDENT COLLECTS SECOND PRIZE ALONE"
         }
       }
     },
@@ -112,17 +112,17 @@
         "club": "hedges",
         "other": "kites",
         "archetype": "committee",
-        "text": "Then a survey of the strings in the maze. Then one to find the surveyors.",
+        "text": "Then a study of the strings in the maze. It meets at the centre, once found.",
         "subject": "hedges",
         "butt": "committee",
-        "shape": "escalation",
+        "shape": "form-misapplied",
         "delay": [
           12,
           16
         ],
         "clippings": {
-          "sign": "STRING SURVEY GOES IN; SURVEY OF SURVEY TO FOLLOW",
-          "refuse": "STRINGS STAY IN THE HEDGES, UNCOUNTED"
+          "sign": "STRING STUDY GOES IN AT NOON; NOT YET OUT",
+          "refuse": "KITE STRINGS STAY IN THE HEDGES, UNCOUNTED"
         }
       }
     },
@@ -154,16 +154,16 @@
         "club": "kites",
         "other": "brass",
         "archetype": "committee",
-        "text": "Then study the breeze you refused us. Cuthbert has a drawer it would fit.",
+        "text": "Then fund a study of the breeze over Brassby. By kite, of course.",
         "subject": "kites",
         "butt": "committee",
-        "shape": "callback",
+        "shape": "undercut",
         "delay": [
           12,
           16
         ],
         "clippings": {
-          "sign": "STUDY OF WIND FINDS WIND; ASKS FOR MORE WIND",
+          "sign": "WIND STUDY FLIES ALL AFTERNOON; NO FINDINGS LAND",
           "refuse": "WIND OVER BRASSBY STAYS UNMEASURED, AND UNHIRED"
         }
       }
@@ -195,7 +195,7 @@
         "club": "kites",
         "other": "hedges",
         "archetype": "treat",
-        "text": "No first kite, so nobody may fly a second. The League waits.",
+        "text": "No first kite, so no second. The League waits. Let go now?",
         "subject": "kites",
         "butt": "office",
         "shape": "literalism",
@@ -204,7 +204,7 @@
           16
         ],
         "clippings": {
-          "sign": "SEASON OPENS AT LAST; FIRST KITE LANDS IN HEDGE",
+          "sign": "SEASON OPENS LATE; PRESIDENT LETS GO EARLY",
           "refuse": "KITE SEASON STILL WAITING TO START"
         }
       }
@@ -300,17 +300,17 @@
         "visitor": "spinwell",
         "club": "anglers",
         "archetype": "vanity",
-        "text": "Have the lighthouse spell your initials. Dimly, for the fish.",
+        "text": "A sign for the dim lighthouse: PRESIDENT AT WORK. Lit all night.",
         "subject": "vanity",
         "butt": "self",
-        "shape": "escalation",
+        "shape": "slogan",
         "delay": [
           10,
           14
         ],
         "clippings": {
-          "sign": "LIGHTHOUSE SPELLS PRESIDENT'S INITIALS; FISH UNMOVED",
-          "refuse": "LIGHTHOUSE STAYS DIM AND ANONYMOUS"
+          "sign": "LIGHTHOUSE SAYS PRESIDENT AT WORK; FISH AWAKE TO CHECK",
+          "refuse": "FISH SLEEP ON; PRESIDENT'S WORK GOES UNLIT"
         }
       },
       "afterRefuse": {
@@ -339,7 +339,7 @@
       "afterSign": {
         "visitor": "kerb",
         "club": "bus",
-        "other": "shops",
+        "other": "hedges",
         "archetype": "treat",
         "text": "Log one coach from the bench. We will tell you which are coaches.",
         "subject": "buses",
@@ -359,7 +359,7 @@
         "club": "bus",
         "other": "hedges",
         "archetype": "swap",
-        "text": "No bench. May we lean on the roadside hedge instead? In shifts.",
+        "text": "No bench, then. May we lean on the hedge? We have a rota.",
         "subject": "buses",
         "butt": "office",
         "shape": "form-misapplied",
@@ -423,17 +423,17 @@
         "club": "veg",
         "other": "bus",
         "archetype": "swap",
-        "text": "The pumpkin tours again, in the Society's coach. You need not come.",
+        "text": "The pumpkin tours again. It asks for the spotters' front seat. Then yours.",
         "subject": "vegetable-shows",
         "butt": "self",
-        "shape": "undercut",
+        "shape": "escalation",
         "delay": [
           10,
           14
         ],
         "clippings": {
-          "sign": "PUMPKIN TOURS ALONE; CHEERS LOUDER, SOME SAY",
-          "refuse": "PUMPKIN STAYS HOME; COACH LEAVES ON TIME, FOR ONCE"
+          "sign": "PUMPKIN TAKES FRONT SEAT; PRESIDENT IN ROW TWO",
+          "refuse": "SPOTTERS KEEP FRONT SEAT; PUMPKIN TOURS IN THE BOOT"
         }
       },
       "afterRefuse": {
@@ -483,16 +483,16 @@
         "club": "hedges",
         "other": "kites",
         "archetype": "committee",
-        "text": "Then we study your lawn edges from the pavement. With a ruler.",
+        "text": "Then a study of your lawn edges. From the kite field, then from a kite.",
         "subject": "gardens",
-        "butt": "self",
-        "shape": "form-misapplied",
+        "butt": "committee",
+        "shape": "escalation",
         "delay": [
           12,
           16
         ],
         "clippings": {
-          "sign": "STUDY FINDS PRESIDENT'S LAWN 'MOSTLY EDGE'",
+          "sign": "LAWN STUDY GOES UP BY KITE; EDGES 'STRAIGHTER FROM ABOVE'",
           "refuse": "LAWN EDGES STAY UNSTUDIED, AND UNEVEN"
         }
       }
