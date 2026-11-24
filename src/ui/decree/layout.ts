@@ -137,6 +137,8 @@ export const STICKY_LINE = 1.2;
 export const DOOR_W = 140;
 export const STICKY_W = 124;
 export const BAND_GUTTER = 8;
+/** The tallest the door and the tray stand in the out-tray band (a tall phone's band is deeper). */
+export const BAND_ITEM_MAX = 34;
 /** The budget slip (2.7: smaller than a paper), centred on the paper's rectangle. */
 export const SLIP_W = 280;
 export const SLIP_H = 168;
@@ -190,17 +192,20 @@ export function deskParts(L: DeskLayout, s: number = L.s): DeskParts {
   const band = L.outTray;
   const left = band.x + BAND_GUTTER;
   const right = band.x + band.w - BAND_GUTTER;
-  const bh = Math.max(20, band.h - 6);
-  const by = band.y + Math.round((band.h - bh) / 2);
+  // On a tall phone the band is deep: the door, the tray and the note keep their size and stand on its lower edge.
+  const bh = Math.max(20, Math.min(BAND_ITEM_MAX, band.h - 6));
+  const by = band.y + band.h - 3 - bh;
   const doorW = Math.min(DOOR_W, Math.round(band.w * 0.38));
   const door = { x: left, y: by, w: doorW, h: bh };
   const g = doorGlass(doorW, bh);
   const glass = { x: door.x + g.x, y: door.y + g.y, w: g.w, h: g.h };
   const stickyW = Math.min(STICKY_W, Math.round(band.w * 0.33));
-  const sticky = { x: right - stickyW, y: band.y + 1, w: stickyW, h: band.h - 2 };
+  const sh = Math.min(BAND_ITEM_MAX + 6, band.h - 2);
+  const sticky = { x: right - stickyW, y: band.y + band.h - 1 - sh, w: stickyW, h: sh };
   const stickyText = { x: sticky.x + 6, y: sticky.y + 5, w: sticky.w - 14, h: sticky.h - 7 };
   const trayX = door.x + door.w + BAND_GUTTER;
-  const outTray = { x: trayX, y: band.y + 1, w: Math.max(40, sticky.x - BAND_GUTTER - trayX), h: band.h - 2 };
+  const th = Math.min(BAND_ITEM_MAX + 6, band.h - 2);
+  const outTray = { x: trayX, y: band.y + band.h - 1 - th, w: Math.max(40, sticky.x - BAND_GUTTER - trayX), h: th };
   const drawer = { x: L.paper.x, y: L.drawer.y, w: L.paper.w, h: L.drawer.h };
   const c = drawerCard(drawer.w, drawer.h);
   const drawerLabel = { x: drawer.x + c.x, y: drawer.y + c.y, w: c.w, h: c.h };

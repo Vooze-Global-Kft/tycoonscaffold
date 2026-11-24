@@ -184,7 +184,7 @@ export const S = {
     standingOrder: 'Standing Order',
     standingOrderWhat: 'The junior clerk buys the advised level while you play. Never while you are away.',
     sofa: 'Check the Sofa',
-    sofaWhat: 'Coins down the back of the official sofa. Once a term.',
+    sofaWhat: 'Coins down the back of the official sofa.',
     sofaUsed: 'Checked this term. The sofa has been thorough.',
     /** The Cabinet (4.4): the framed photograph. */
     cabinetTitle: 'Cabinet',

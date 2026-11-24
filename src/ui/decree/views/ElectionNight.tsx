@@ -97,8 +97,8 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
   const rowH = rows[0]?.name.h ?? 24;
   const markH = Math.min(16, Math.max(8, rowH - 10));
   const resultR = Math.min(11, rowH * 0.38);
-  const shareW = Math.ceil(52 * s);
-  const marksW = 54;
+  const shareW = Math.ceil(42 * s);
+  const marksW = 50;
   /** Where a row's marks start: just left of its share (the name gets the rest of the row). */
   const marksX = (r: { result: { x: number } }) => r.result.x - shareW - 6 - marksW - 6;
   const cutW = Math.round((clerkH - 4) * (120 / 340));
