@@ -10,7 +10,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "committee",
-      "text": "A study of the band's quietest tune. Of 40 tried, the interval leads.",
+      "text": "A study of the band's quietest tune. Of 40, the interval leads.",
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
@@ -22,7 +22,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "project",
-      "text": "Glass over the park's prize vegetable beds. Then price cards. Then a shop bell.",
+      "text": "Glaze the park's bean rows. Then price cards. Then a shop bell.",
       "subject": "gardens",
       "butt": "thing",
       "shape": "escalation"
@@ -34,7 +34,7 @@
       "club": "bus",
       "other": "hedges",
       "archetype": "committee",
-      "text": "A study of the 900 park benches. So far, 3 face a road. The rest, hedge.",
+      "text": "A study of the 900 park benches. 3 face a road. The rest, hedge.",
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
@@ -46,7 +46,7 @@
       "club": "hedges",
       "other": "bus",
       "archetype": "project",
-      "text": "Box hedge round the park's coach turning circle. Coaches will learn to turn square.",
+      "text": "Hedge the park's coach turning circle. Coaches will learn to turn square.",
       "subject": "gardens",
       "butt": "thing",
       "shape": "undercut"
@@ -79,7 +79,7 @@
       "club": "bus",
       "other": "hedges",
       "archetype": "project",
-      "text": "Open the park's new coach stop, cut into the hedge. Stand in for the coach.",
+      "text": "Open the coach stop cut into the park hedge. Stand in for the coach.",
       "subject": "buses",
       "butt": "self",
       "shape": "photo-op"
@@ -90,7 +90,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "swap",
-      "text": "The anglers have had 211 still evenings this year. The band would like one.",
+      "text": "The anglers have had 211 still evenings. The band would like one.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "statistic"
@@ -130,7 +130,7 @@
       "club": "kites",
       "other": "bus",
       "archetype": "project",
-      "text": "Mow a kite runway past the park's coach stop. Ours have nowhere to taxi.",
+      "text": "Mow a kite runway by the coach stop. Ours have nowhere to taxi.",
       "subject": "kites",
       "butt": "thing",
       "shape": "literalism"
@@ -141,7 +141,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "fee",
-      "text": "We will pay to hang a sign on your fountain: COACHES, AWAY FROM SHOPS.",
+      "text": "A sign on your fountain, paid for: COACHES, AWAY FROM SHOPS.",
       "subject": "fountains",
       "butt": "self",
       "shape": "slogan"
@@ -153,18 +153,18 @@
       "club": "hedges",
       "other": "veg",
       "archetype": "committee",
-      "text": "A study: are the park's vegetable beds straight enough to be beds?",
+      "text": "A study: are the park's leek beds straight enough to be beds?",
       "subject": "gardens",
       "butt": "committee",
       "shape": "form-misapplied",
-      "biggerStudy": "The bed study now wants to check each row with a spirit level."
+      "biggerStudy": "The bed study asks to inspect each leek row from a ladder."
     },
     {
       "id": "pres-mill-motto",
       "visitor": "wimble",
       "club": "brass",
       "archetype": "vanity",
-      "text": "Every Mill ribbon to read CUT BY THE PRESIDENT. Before you cut it.",
+      "text": "Every Mill ribbon to say CUT BY THE PRESIDENT. Before you cut it.",
       "subject": "ribbons",
       "butt": "self",
       "shape": "slogan"
@@ -192,7 +192,7 @@
       "club": "brass",
       "other": "veg",
       "archetype": "swap",
-      "text": "The marrows have had the band's front row since the founding napkin. Move them.",
+      "text": "The marrows have had the band's front row since the napkin. Move them.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "callback"
@@ -204,7 +204,7 @@
       "club": "shops",
       "other": "brass",
       "archetype": "committee",
-      "text": "A study to pick the Mill's next ribbon shade, on the band. So far, 40 beiges.",
+      "text": "A study of the next Mill ribbon shade. 40 beiges so far, on the band.",
       "subject": "committees",
       "butt": "committee",
       "shape": "statistic",
@@ -239,7 +239,7 @@
       "club": "brass",
       "other": "kites",
       "archetype": "project",
-      "text": "A bandstand on the park's kite hill. Its roof is a lovely place to land.",
+      "text": "A bandstand on the kite field. Its roof is a lovely place to land.",
       "subject": "bandstands",
       "butt": "thing",
       "shape": "undercut"
@@ -250,10 +250,10 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "swap",
-      "text": "Lend the League the hedge show lawn. 9 kites in 10 end up there anyway.",
+      "text": "Lend us a corner of the hedge show lawn. Kites need very little. At first.",
       "subject": "kites",
       "butt": "thing",
-      "shape": "statistic"
+      "shape": "escalation"
     },
     {
       "id": "pres-mill-window",
@@ -261,7 +261,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "project",
-      "text": "A Mill shop window: RIBBON, BEING MADE. The rosette loom moves to the back.",
+      "text": "A Mill window display: RIBBON, BEING MADE. Rosettes, round the back.",
       "subject": "ribbons",
       "butt": "thing",
       "shape": "slogan"
@@ -271,7 +271,7 @@
       "visitor": "spinwell",
       "club": "hedges",
       "archetype": "vanity",
-      "text": "A fountain in your shape in all nine provinces. Rodney wants a tenth.",
+      "text": "A fountain in your shape in each province. Rodney wants a tenth.",
       "subject": "fountains",
       "butt": "self",
       "shape": "escalation"
@@ -325,7 +325,7 @@
       "club": "anglers",
       "other": "kites",
       "archetype": "fee",
-      "text": "We will pay for a still lake. Any kite wishing to be reflected must apply.",
+      "text": "We will pay for a still lake. Reflected kites must apply.",
       "subject": "kites",
       "butt": "office",
       "shape": "form-misapplied"
@@ -337,11 +337,11 @@
       "club": "brass",
       "other": "shops",
       "archetype": "committee",
-      "text": "A study of where the band stands. It will stand in the arcade until it knows.",
+      "text": "A study of where the band stands. It is standing in the arcade.",
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "The standing study has stood in the arcade all summer. It asks for chairs."
+      "biggerStudy": "The standing study stood in the arcade all summer. It asks for chairs."
     },
     {
       "id": "pres-fountain-faces",
@@ -349,7 +349,7 @@
       "club": "shops",
       "other": "veg",
       "archetype": "swap",
-      "text": "Turn your fountain to face the arcade. It has seen enough marrows.",
+      "text": "Turn your fountain to the arcade. It has seen enough marrows.",
       "subject": "fountains",
       "butt": "self",
       "shape": "undercut"
@@ -360,7 +360,7 @@
       "club": "kites",
       "other": "hedges",
       "archetype": "project",
-      "text": "Ribbon Mill tails for every kite. A metre, then two. Then the hedges get the rest.",
+      "text": "Mill ribbon tails for every kite: a metre, then two. Hedges get the rest.",
       "subject": "ribbons",
       "butt": "thing",
       "shape": "escalation"
@@ -371,7 +371,7 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "treat",
-      "text": "Keep time for the band at the lake concert. Rodney will have it framed.",
+      "text": "Keep time for the band's lake concert. Rodney will frame it.",
       "subject": "bandstands",
       "butt": "self",
       "shape": "literalism"
@@ -393,7 +393,7 @@
       "club": "shops",
       "other": "hedges",
       "archetype": "fee",
-      "text": "We will pay to keep the park hedges in good shape. Our shape: a hat.",
+      "text": "We will pay to keep the park hedges in shape. Ours: a hat.",
       "subject": "hedges",
       "butt": "thing",
       "shape": "literalism"
@@ -415,7 +415,7 @@
       "club": "kites",
       "other": "veg",
       "archetype": "fee",
-      "text": "We will hire the growers' bean canes overnight. Kites like to sleep upright.",
+      "text": "We will hire the growers' bean canes at night. Kites sleep upright.",
       "subject": "kites",
       "butt": "thing",
       "shape": "undercut"
@@ -426,7 +426,7 @@
       "club": "anglers",
       "other": "hedges",
       "archetype": "project",
-      "text": "Replace the lake's hedge with a bench. 3 fish in 4 have asked who is there.",
+      "text": "Swap the lake hedge for a bench. 3 fish in 4 ask who is there.",
       "subject": "gardens",
       "butt": "thing",
       "shape": "statistic"
@@ -450,7 +450,7 @@
       "club": "anglers",
       "other": "veg",
       "archetype": "swap",
-      "text": "Growers water from our lake: a can, a hose, now a pump. It is one duck deep.",
+      "text": "Growers water from our lake: a can, a hose, a pump. It is one duck deep.",
       "subject": "gardens",
       "butt": "thing",
       "shape": "escalation"
@@ -461,7 +461,7 @@
       "club": "hedges",
       "other": "kites",
       "archetype": "project",
-      "text": "Swap the park benches for hedge, clipped to look like benches. Rodney sat on one.",
+      "text": "Swap the park benches for hedge, clipped as benches. Rodney sat on one.",
       "subject": "hedges",
       "butt": "staff",
       "shape": "callback"
