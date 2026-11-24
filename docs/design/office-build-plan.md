@@ -139,7 +139,7 @@ the whole engine through that index only.
 |---|---|---|
 | `decreeParams(cfg, g, factors?)`: every derived value of 2.4 (A, M(A) = 1 + slope × (A − 50)/100, m_N, V, rates, s_i, B, I, the "Say nothing" factor, τ, G_max, Y and R, the record) | P1a (params.ts) | tick, offline, advice, count, move, the strips, the bots: B and I are read from here only |
 | `disarrayOf(rule, losses)`: Y(n) = first × (ratio^n − 1)/(ratio − 1), the ONE formula (D15 at `decree.paperRules.disarray` {first 2, ratio 2}: 2^(n+1) − 2); `disarray(losses, rule?)` the same with D15 when no rule is passed | P1a (params.ts) | `decreeParams` (so count.ts `shares` and the poll), count.ts `certainWinBound` (the validator) |
-| `moodUtility(c, m)`: D25's count utility, the ONE function of the count (parameters `decree.count`: `huffBelow` 30, `huffSlope` 3, and `topAbove` 100 / `topSlope` 1, which change nothing until the lead decides the prototype's top-of-the-scale proposal) | P1b (count.ts) | `shares`, the poll's huffs, `certainWinBound` |
+| `moodUtility(c, m)`: D25's count utility with D31, the ONE function of the count (parameters `decree.count`: `huffSlope` 3, `topAbove` 70 / `topSlope` 0.25; `huffBelow` is DERIVED, D38: `boycott.below + boycott.huffAbove`, 30) | P1b (count.ts) | count.ts `shares` and `poll` (huffs, wonOver), `certainWinBound` (the validator), the bot's bound |
 | `commitCash(g, delta, source)`: the ONE way **the rules** change cash (`paper`, `checkSofa`, `transition`, `spend`, and `reset`: the old treasury set aside at a move, never a gain); it books the delta itself in `stats.book` (not cash − cash) unless the 0 floor bit. The tick pays I × dt from its anchor and books it under `tick` exactly as commitCash would (tick.ts `payTo`) | P1a (params.ts) | every rules cash change on both sides. **Not** the away payout: the store pays `away` and `awayAd` through the shared `E.grantCash` (src/state/store.ts, the `paysOnCompute` seam); the bot, coins.test and play.test book those two in their own harness |
 | `roundDibs(cfg, x)`: every amount shown or paid | P1a (params.ts) | both; `EngineMode.roundPayout` |
 | `rand(g, site, x?)`: one value of a random site of 2.3 (`pick`, `petitioner`, `jitter`, `template`, `followDelay`, `campaign`, `rival`, `note`), its counter advanced | P1a (params.ts) | draw.ts (pick, petitioner, jitter, template, note, campaign), followup.ts (followDelay), term.ts (rival) |
@@ -155,14 +155,14 @@ the whole engine through that index only.
 | `commitPending(cfg, g, clock, events)`: a pending take-back commits | P1a (decide.ts) | tick.ts (its 2 s passed), offline.ts (a take-back left pending in a killed app commits before the away rules), `decreeActions.commitPending` (a tap elsewhere, Android back, the app to the background: P8's AppState listener) |
 | What the draw needs from the term: `nextApplication(cfg, g)` (ministers.ts: the minister due at days 9, 30, 60 or returning 30 papers after a refusal; D21: only one whose club the office has); the phase and day from state; the campaign papers are the term's call | P1b | draw.ts step (4) |
 | What the term needs from the draw: arrivals `drawNext(cfg, g, clock, events)` and `landNext(cfg, g, clock, events)`; at a call `setAside(cfg, g)`, then `drawCampaignPaper(cfg, g, k, events)` × K τ apart (the first at once) and `drawRally(cfg, g, events)`; at a new term `restoreAside(cfg, g)`; at a move `returnToDeck(cfg, g)`, then `scriptedPaper(cfg, g, office, 1)` and `landPaper(cfg, g, paper, clock)` (the first paper of each office); time away and Open the Doors `fillTray(cfg, g, n, clock, events)` | P1a (draw.ts) | tick.ts (drawNext, landNext), offline.ts (fillTray, landNext), term.ts, move.ts, grants.ts |
-| `slipFor(cfg, g)`: the slip that would land now (advice's purchase, above the reserve and D16's 15 s on an empty desk) | P1a (slips.ts) | tick.ts (1.0 s after desk and tray empty), decide.ts `commitItem` step 5 (D18) |
+| `slipFor(cfg, g)`: the slip that would land now (advice's purchase, above the reserve and D16's 15 s on an empty desk); none once the run-up's last paper has come, on election night or on the result sheet (`slipsComeNow(g)`, the ONE place of that rule, also read by the tick for the slip and the Standing Order) | P1a (slips.ts) | tick.ts (1.0 s after desk and tray empty), decide.ts `commitItem` step 5 (D18), grants.ts `standingOrderStep` |
 | `slipYields(cfg, g, events)`: an arrival meets a slip on the desk: the ONE place of 2.7's "a visitor's arrival returns an undragged slip" (`desk.slipStays` false); with `slipStays` true the slip stays and the visitor waits (the prototype's proposal, for the lead) | P1a (slips.ts) | draw.ts `arrive` (every arrival), tick.ts `arriveRunUp` (campaign papers, the rally) |
 | `callDay(cfg, g)` / `callDayOf(row)`: C = the first whole day ≥ callFraction × D, the ONE formula | P1b (count.ts) | term.ts `canCall`, the ribbon and the poll, slips.ts `callFrom` (the run-up's reserve), schema.decree.ts `lintDecree` |
-| The exits: `endStrike(cfg, g, club, how, events)` (strike.ts), `endScandal(cfg, g, how, events)` (scandal.ts), `sayNothingFactor` (scandal.ts) | P1a | grants.ts (Courier, Spin Doctor), term.ts (the new term's reset: boycotts at 25 end; a scandal at the term's last day), params.ts |
+| The exits: `endStrike(cfg, g, club, how, events)` (strike.ts; the grievance leaves with the boycott from the tray, the desk and the take-back window, and the caller lands the next paper: grants.ts does for the Courier), `endScandal(cfg, g, how, events)` (scandal.ts), `sayNothingFactor` (scandal.ts) | P1a | grants.ts (Courier, Spin Doctor), term.ts (the new term's reset: boycotts at 25 end; a scandal at the term's last day), params.ts |
 | `appoint(cfg, g, minister, events)`, `sendAway(cfg, g, minister)`, `cabinet(cfg, g)` | P1b (ministers.ts) | decide.ts `applyShown` (an application's sign and refuse), slips.ts `ledger` (each row's minister) |
 | `advice(cfg, g)` (`.slip`, `.goal`, `.next`, `.call`) | P1b (advice.ts) | slips.ts `slipFor`, the goal line, the bot |
 | `reserve(cfg, g, {everyPaper?})`, `reserveParts(cfg, g, {everyPaper?})` (`{desk, runUp}`, D16; `everyPaper`: the desk paper and EVERY waiting paper, what the Standing Order keeps back, D33, advice.ts `standingOrderReserve`; the Ledger shows it as "Kept for the desk" while the Standing Order is on), `buy(cfg, g, purchase, price, events, {auto?, free?})` (the one purchase path; `auto`, the Standing Order, is refused while a paper rests in its take-back window instead of committing it) | P1a (slips.ts) | advice.ts, grants.ts (the Standing Order), the Ledger |
-| `canWatchAd(cfg, g, kind)` (with `awayBonus`, the away report's +50 %), `canShop(cfg, g)`: nothing offered from the call to the end of election night | P1b (grants.ts) | the away report sheet and the Shop (P7), `decreeActions.collectAway` / `watchAd` |
+| `canWatchAd(cfg, g, kind)` (with `awayBonus`, the away report's +50 %), `canShop(cfg, g)`: nothing offered from the call to the end of election night; `adCooldownLeft(cfg, g, kind)` (the play seconds left of Open the Doors' cooldown), `sofaAmount(cfg, g)` (what Check the Sofa pays, printed before the video) | P1b (grants.ts) | the away report sheet and the Shop (P7), `decreeActions.collectAway` / `watchAd` |
 | `nextStop(cfg, g)` (event stepping), `nextVisitorIn(cfg, g)` (the door glass "Next visitor 0:07") | P1b (tick.ts) | the bot; the desk (P6) |
 | A save: `reconcileDecree(cfg, base, raw)` then `reconcileTerm(cfg, g, raw)` (decreeMode `reconcile`): `result`, `appSlotsUsed` and `cashAnchor` are fields of `freshDecree`, so a saved `result: null` comes back null and a save round trip is byte for byte (play.test checks it after every action); reconcileTerm checks those three fields | P1a (create.ts), P1b (term.ts) | the store's load (decreeMode.ts) |
 
@@ -173,6 +173,13 @@ Shared types of the seam (types.ts): `Paper`, `Effect`, `Outcome`, `FollowUpRef`
 types are in the P1a section (`Chip`, `Strip`, `StripNote`, `Ledger`, `LedgerRow`, `TopBar`) and the P1b
 section (`Poll`, `PollRow`, `TermRibbon`, `About`, `Goal`, `AdviceResult`, `ResultSheet`, `MoveSheet`,
 `AwayReport`, `DecreeAdKind`).
+
+**The config's derived thresholds (D38)**: `DecreeObject` is the block as game.json writes it;
+`DecreeSchema` (its transform) derives `boycott.endsAt` (below + endsAbove), `boycott.rearmAt` (below +
+rearmAbove) and `count.huffBelow` (below + huffAbove) from the one lever `boycott.below` (RANGES 20 to
+30), so every reader sees them move together; a value written for them in game.json is ignored. D38's
+other levers are `paperRules.sizing.pull` (RANGES 0.5 to 1) and `mood.termReset` (how far a new term
+moves moods back, 0.5; RANGES 1/3 to 1/2), read only by size.ts `sizeMood` and term.ts `halfwayBack`.
 
 **The fixtures' numbers are frozen** (lesson 4): `decreeTestConfig()` reads
 `src/engine/fixtures/decree.numbers.json` (the starting values with D15 to D24, written once by the
@@ -190,7 +197,7 @@ them, resume and boot; the report only informs; its ad grants earnings × 0.5 wh
 **What screens and the bot call** (all through `src/engine/decree.ts`): `stripOf`, `topBar`,
 `clubStrip`, `termRibbon`, `goalLine`, `about`, `poll`, `ledger`, `reserve`, `reserveParts`, `cabinet`,
 `resultSheet`, `moveSheet`, `stickyNote`, `nextVisitorIn`, `canCall`, `canWatchAd`, `canShop`,
-`decreeParams`, `roundDibs`, `hintsFor`; and through
+`decreeParams`, `roundDibs`, `hintsFor`, `adCooldownLeft`, `sofaAmount`, `slipsComeNow`, and the state's `signedThisTerm` (the out-tray stack); and through
 `decreeActions` (src/modes/decree/actions.ts) one action per player action of 2.6: `decide`,
 `takeBack`, `commitPending`, `raise`, `openMinistry`, `buyVanity`, `callElection`, `countVotes`,
 `chooseAfterResult` (the move goes through the shared `prestige()`; the action collects the move's

@@ -85,4 +85,4 @@ export { nextApplication, ministerFactors, appoint, sendAway, cabinet, ministerO
 export { hintsFor, TEACHING_SLOTS } from './decree/hints';
 
 // --- 5.10, 5.11 ads, products, the Standing Order, the face (P1b: grants.ts) ---
-export { canWatchAd, canShop, grantAd, entitleDecree, setStandingOrder, standingOrderStep, standingOrderAvailable, standingOrderActive, pickFace, offering, owns, cosmetics, freePlaces } from './decree/grants';
+export { canWatchAd, canShop, grantAd, entitleDecree, setStandingOrder, standingOrderStep, standingOrderAvailable, standingOrderActive, pickFace, offering, owns, cosmetics, freePlaces, adCooldownLeft, sofaAmount } from './decree/grants';

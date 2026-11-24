@@ -114,11 +114,12 @@ describe('the goal line (2.16)', () => {
     expect(R.advice(cfg, built({ day: C - 1, moods: [80, 80, 80], desk: 'test-mayor-bus-swap-1' }, cfg)).call).toBe(false);
     expect(R.advice(cfg, built({ day: C, moods: [20, 20, 20], desk: 'test-mayor-bus-swap-1' }, cfg)).call).toBe(false);
     const b = built({ moods: [50, 50, 15], boycott: { club: 2 }, desk: 'test-mayor-bus-swap-1' }, cfg);
-    expect(R.advice(cfg, b).goal).toEqual({ kind: 'ad', ad: 'courier' });
+    // D39: the free way out first, the ad second.
+    expect(R.advice(cfg, b).goal).toEqual({ kind: 'ad', ad: 'courier', free: { kind: 'settle', club: 2 } });
     const used = { ...b, decree: { ...b.decree, phase: 'campaign' as const } };
     expect(R.advice(cfg, used).goal).toEqual({ kind: 'settle', club: 2 });
     const sc = built({ scandal: { papersLeft: 5, factor: 0.8 }, desk: 'test-mayor-bus-swap-1' }, cfg);
-    expect(R.advice(cfg, sc).goal).toEqual({ kind: 'ad', ad: 'spinDoctor' });
+    expect(R.advice(cfg, sc).goal).toEqual({ kind: 'ad', ad: 'spinDoctor', free: { kind: 'sayNothing', papersLeft: sc.decree.scandal!.papersLeft } });
     expect(R.goalLine(cfg, sc)).toEqual(R.advice(cfg, sc).goal);
   });
 
@@ -169,8 +170,11 @@ describe('the goal line (2.16)', () => {
 describe('the grants of 5.11 (play-clock cooldowns, per-term limits)', () => {
   it('Check the Sofa: +checkSofaSeconds of B once a term, booked as its own source', () => {
     const g = built({ cash: 0, ministries: [6, 3], desk: 'test-mayor-bus-swap-1' }, cfg);
+    const promised = R.sofaAmount(cfg, g);
     const x = R.grantAd(cfg, g, 'checkSofa', []);
     expect(x.cash).toBe(R.roundDibs(cfg, c.ads.checkSofaSeconds * R.decreeParams(cfg, g).B));
+    // The amount the card prints before the video is the one paid.
+    expect(x.cash - g.cash).toBe(promised);
     expect(x.decree.stats.book.checkSofa).toBe(x.cash);
     expect(R.canWatchAd(cfg, x, 'checkSofa')).toBe(false);
     expect(R.grantAd(cfg, x, 'checkSofa', [])).toBe(x);
@@ -182,6 +186,9 @@ describe('the grants of 5.11 (play-clock cooldowns, per-term limits)', () => {
     expect(x.decree.tray).toHaveLength(c.desk.trayCap);
     expect(x.decree.cooldowns.openDoors).toBe(100 + c.ads.openDoorsCooldown);
     expect(R.canWatchAd(cfg, x, 'openDoors')).toBe(false);
+    expect(R.adCooldownLeft(cfg, g, 'openDoors')).toBe(0);
+    expect(R.adCooldownLeft(cfg, x, 'openDoors')).toBe(c.ads.openDoorsCooldown);
+    expect(R.adCooldownLeft(cfg, { ...x, stats: { ...x.stats, playSeconds: 160 } }, 'openDoors')).toBe(c.ads.openDoorsCooldown - 60);
     const later = { ...x, decree: { ...x.decree, tray: [] }, stats: { ...x.stats, playSeconds: 100 + c.ads.openDoorsCooldown } };
     expect(R.canWatchAd(cfg, later, 'openDoors')).toBe(true);
   });

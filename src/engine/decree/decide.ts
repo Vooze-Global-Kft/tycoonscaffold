@@ -45,6 +45,7 @@ export function decide(cfg: DecreeConfig, g: DecreeGame, choice: Choice, clock: 
   const item = g.decree.desk;
   if (!item) return g;
   if (item.type === 'slip') {
+    // D40: a landed slip is bought for its printed price whenever cash holds it (canBuy knows the desk's slip).
     if (choice === 'sign' && !slipVoid(cfg, g, item) && canBuy(cfg, g, item.slip.purchase, item.slip.price) !== null) return g;
     return commitItem(cfg, g, item, choice, clock, events);
   }
@@ -102,7 +103,7 @@ export function applyShown(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, cho
       events.push({ type: 'formVoid', paper: 'slip', reason: v });
       return g;
     }
-    const s = buy(cfg, g, item.slip.purchase, item.slip.price, events);
+    const s = buy(cfg, g, item.slip.purchase, item.slip.price, events, { landed: true });
     return s === g ? g : withDecree(s, { stats: { ...s.decree.stats, slipsTaken: s.decree.stats.slipsTaken + 1 } });
   }
   const paper = item.paper;
@@ -193,7 +194,7 @@ export function isDay(item: DeskItem): boolean {
  * The commit of `item` with `choice` and everything 2.17 runs after it, in this order:
  * (0) the item leaves the desk (or the out-tray), with its counts (signed, refused, the drawer);
  * (1) apply `shown` (`applyShown`), schedule any follow-up (followup.ts);
- * (2) for a day paper only: day += 1 and decisions ever += 1 (term.ts `countDay`, P1b), boycott
+ * (2) for a day paper only, and not for a form that left with no effect (D39): day += 1 and decisions ever += 1 (term.ts `countDay`, P1b), boycott
  *     counters −1 (strike.ts), the "Say nothing" counter −1, quiet and gossip decay (scandal.ts);
  * (3) the boycott check, then the gossip and scandal check (strike.ts, scandal.ts);
  * (4) at day D the run-up starts (term.ts `checkTermEnd`, P1b);
@@ -208,21 +209,24 @@ export function commitItem(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, cho
   const d0 = g.decree;
   const st0 = d0.stats;
   const isPaper = item.type === 'paper';
+  // D39: a form that leaves with no effect (stale or capped) is not a day and not a decision: nothing counts it.
+  const voided = item.type === 'paper' && !!formVoid(cfg, g, item.shown.sign);
+  const counted = isPaper && !voided;
   let s = withDecree(g, {
     desk: d0.desk === item ? null : d0.desk,
     pending: d0.pending?.item === item ? null : d0.pending,
-    drawerCount: d0.drawerCount + (isPaper && choice === 'refuse' ? 1 : 0),
-    signedThisTerm: d0.signedThisTerm + (isDay(item) && choice === 'sign' ? 1 : 0),
+    drawerCount: d0.drawerCount + (counted && choice === 'refuse' ? 1 : 0),
+    signedThisTerm: d0.signedThisTerm + (counted && isDay(item) && choice === 'sign' ? 1 : 0),
     slipOffered: isPaper ? false : d0.slipOffered,
-    stats: isPaper ? { ...st0, signed: st0.signed + (choice === 'sign' ? 1 : 0), refused: st0.refused + (choice === 'refuse' ? 1 : 0) } : st0,
+    stats: counted ? { ...st0, signed: st0.signed + (choice === 'sign' ? 1 : 0), refused: st0.refused + (choice === 'refuse' ? 1 : 0) } : st0,
   });
   if (isPaper) events.push({ type: 'committed', paper: item.paper.id, choice });
   // (1)
   s = applyShown(cfg, s, item, choice, events);
   if (item.type === 'paper') s = scheduleFollowUp(cfg, s, item, choice, events);
   // (2)
-  if (isDay(item)) {
-    const gained = item.type === 'paper' && !formVoid(cfg, g, item.shown.sign) && item.shown[choice].some((e) => e.type === 'gossip' && e.delta > 0);
+  if (isDay(item) && !voided) {
+    const gained = item.type === 'paper' && item.shown[choice].some((e) => e.type === 'gossip' && e.delta > 0);
     s = countDay(cfg, s);
     s = countDownStrikes(cfg, s, events);
     s = countDownScandal(cfg, s, gained, events);

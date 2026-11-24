@@ -146,8 +146,9 @@ export function advice(cfg: DecreeConfig, g: DecreeGame): AdviceResult {
   const adOr = (ad: 'courier' | 'spinDoctor'): boolean => canWatchAd(cfg, g, ad);
   let goal: Goal;
   if (call) goal = { kind: 'call', held: poll(cfg, g).held, of: cfg.decree.offices[g.decree.office].districts.length };
-  else if (t.boycott !== null) goal = adOr('courier') ? { kind: 'ad', ad: 'courier' } : { kind: 'settle', club: t.boycott };
-  else if (t.scandal && adOr('spinDoctor')) goal = { kind: 'ad', ad: 'spinDoctor' };
+  // D39: the free way out first, the ad second (never the ad alone).
+  else if (t.boycott !== null) goal = adOr('courier') ? { kind: 'ad', ad: 'courier', free: { kind: 'settle', club: t.boycott } } : { kind: 'settle', club: t.boycott };
+  else if (t.scandal && adOr('spinDoctor')) goal = { kind: 'ad', ad: 'spinDoctor', free: { kind: 'sayNothing', papersLeft: g.decree.scandal?.papersLeft ?? 0 } };
   else if (t.frontPage) goal = { kind: 'apologise' };
   else if (pick) goal = { kind: 'purchase', purchase: pick.purchase, price: pick.price, about: aboutWait(pick.price + res - g.cash, I) };
   else goal = { kind: 'none' };

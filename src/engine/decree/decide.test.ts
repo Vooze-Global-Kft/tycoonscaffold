@@ -163,6 +163,13 @@ describe('sign, refuse, take back, commit (2.6, 2.7 "Decide")', () => {
       expect(after.cash).toBe(raised.cash);
       expect(after.decree.moods).toEqual(raised.decree.moods);
       expect(after.decree.ministries[1].level).toBe(8);
+      // D39: nothing counts a form that left with no effect: not a day, not a decision, no drawer, no out-tray.
+      expect(after.decree.day).toBe(raised.decree.day);
+      expect(after.decree.stats.decisions).toBe(raised.decree.stats.decisions);
+      expect(after.decree.stats.daysEver).toBe(raised.decree.stats.daysEver);
+      expect(after.decree.drawerCount).toBe(raised.decree.drawerCount);
+      expect(after.decree.signedThisTerm).toBe(raised.decree.signedThisTerm);
+      expect([after.decree.stats.signed, after.decree.stats.refused]).toEqual([raised.decree.stats.signed, raised.decree.stats.refused]);
     }
     const cap = cfg.decree.ministry.levelCap;
     const c = built({ office: 0, ministries: [10, cap - 1, 0, 0], cash: 1e15 });
@@ -205,6 +212,33 @@ describe('sign, refuse, take back, commit (2.6, 2.7 "Decide")', () => {
     expect(stale.cash).toBe(moved.cash);
   });
 
+  it('D40: a landed slip is bought for its printed price whenever cash holds it, whatever queued behind it; short, it says "Short by"', () => {
+    const g0 = built({ office: 0, ministries: [10, 7, 0, 0], cash: 5000 });
+    const slip = R.slipOf(cfg, g0, { type: 'level', ministry: 1 })!;
+    let g = { ...g0, decree: { ...g0.decree, desk: { type: 'slip' as const, slip, landedAt: 0 }, emptySince: null } };
+    // Visitors queue behind it (D32): their sign costs raise the reserve above what cash keeps after the price.
+    const tray: R.Paper[] = [];
+    for (const id of ['test-mayor-bus-project-1', 'test-mayor-bus-project-2']) {
+      const r = R.comicPaper(cfg, g, id);
+      g = r.g;
+      tray.push(r.paper);
+    }
+    g = { ...g, cash: slip.price + 1, decree: { ...g.decree, tray } };
+    const purchase = slip.purchase;
+    expect(R.reserveParts(cfg, g).desk).toBeGreaterThan(g.cash - slip.price);
+    // The Ledger's own Raise still keeps the reserve; the slip on the desk does not.
+    expect(R.canBuy(cfg, g, purchase, null)).toBe('reserve');
+    expect(R.canBuy(cfg, g, purchase, slip.price)).toBeNull();
+    const up = R.decide(cfg, g, 'sign', 0, []);
+    expect(up).not.toBe(g);
+    expect(up.cash).toBe(g.cash - slip.price);
+    expect(up.decree.ministries[1].level).toBe(8);
+    // Short of the printed price: refused, and canBuy says 'cash' (the desk prints "Short by …").
+    const poor = { ...g, cash: slip.price - 1 };
+    expect(R.canBuy(cfg, poor, purchase, slip.price)).toBe('cash');
+    expect(R.decide(cfg, poor, 'sign', 0, [])).toBe(poor);
+  });
+
   it("2.17: a day paper counts (day, decisions ever); a campaign paper and the rally do not; refusals commit at once", () => {
     const g = built({ office: 0, ministries: [10, 7, 0, 0], cash: 1e6, desk: 'test-mayor-bus-swap-1', day: 5, decisions: 40 });
     const r = R.decide(cfg, g, 'refuse', 0, []);
@@ -218,6 +252,11 @@ describe('sign, refuse, take back, commit (2.6, 2.7 "Decide")', () => {
     expect(signed.decree.day).toBe(5);
     expect(signed.decree.stats.decisions).toBe(40);
     expect(signed.cash).toBe(onDesk.cash + (deskShown(onDesk)!.sign.find((e) => e.type === 'money') as { amount: number }).amount);
+    // The out-tray's stack (signedThisTerm) counts signed day papers only: not a refusal, not the rally.
+    expect(r.decree.signedThisTerm).toBe(g.decree.signedThisTerm);
+    expect(signed.decree.signedThisTerm).toBe(onDesk.decree.signedThisTerm);
+    const day = R.commitPending(cfg, R.decide(cfg, g, 'sign', 0, []), 0, []);
+    expect(day.decree.signedThisTerm).toBe(g.decree.signedThisTerm + 1);
   });
 
   it('a follow-up is scheduled at the commit, due its drawn delay of decided papers later', () => {

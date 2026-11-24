@@ -12,7 +12,7 @@ import { GameConfigSchema, type GameConfig } from '../config/schema';
 import { DecreeObject, DecreeSchema, RANGES, archetypeRanges, combinations, lintDecree, type DecreeContentInput } from '../config/schema.decree';
 import * as R from './decree';
 import { decreeEngineMode, withDecreeContent } from './decreeMode';
-import { DECREE_TEST_NUMBERS, FIXTURE_NOW, baseGameState, decreeFixtures, decreeStateProblems, decreeTestConfig, decreeTestContent, freshState } from './fixtures/decree';
+import { DECREE_TEST_NUMBERS, FIXTURE_NOW, baseGameState, built, decreeFixtures, decreeStateProblems, decreeTestConfig, decreeTestContent, freshState } from './fixtures/decree';
 
 const cfg = decreeTestConfig();
 const M = decreeEngineMode;
@@ -123,6 +123,10 @@ describe('the decree engine mode', () => {
       expect(r.decree.result === undefined || r.decree.result === null || typeof r.decree.result.won === 'boolean').toBe(true);
       expect(r.decree.appSlotsUsed === undefined || (r.decree.appSlotsUsed >= 0 && r.decree.appSlotsUsed <= cfg.decree.forms.application.days.length)).toBe(true);
     }
+    // Regression (the careless mayor of play.test.ts): a boycott counting down (`waiting: false`) survives a save byte for byte.
+    const counting = built({ office: 0, moods: [50, 50, 15], boycott: { club: 2, papersLeft: 5, waiting: false } }, cfg);
+    const counted = { ...counting, decree: { ...counting.decree, strikes: counting.decree.strikes.map((x) => (x ? { ...x, waiting: false } : x)) } };
+    expect((M.reconcile(cfg, base, JSON.parse(JSON.stringify(counted))) as R.DecreeGame).decree.strikes).toEqual(counted.decree.strikes);
     // A result outside the count and the result sheet is not kept.
     const stale = M.reconcile(cfg, base, JSON.parse(JSON.stringify({ ...onSheet, decree: { ...onSheet.decree, phase: 'governing' } }))) as R.DecreeGame;
     expect(stale.decree.result ?? null).toBeNull();

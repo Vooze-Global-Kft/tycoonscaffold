@@ -633,7 +633,11 @@ export type Goal =
   | { kind: 'call'; held: number; of: number }
   | { kind: 'settle'; club: ClubIx }
   | { kind: 'apologise' }
-  | { kind: 'ad'; ad: DecreeAdKind }
+  /**
+   * During a boycott or "Say nothing" with its ad offered (D39): the free way out FIRST (`free`: settle the
+   * grievance, or let "Say nothing" run its papers), the ad second; never the ad alone.
+   */
+  | { kind: 'ad'; ad: DecreeAdKind; free?: { kind: 'settle'; club: ClubIx } | { kind: 'sayNothing'; papersLeft: number } }
   | { kind: 'none' };
 
 /** advice() (pure): one goal for the bot, the slip and the goal line. */

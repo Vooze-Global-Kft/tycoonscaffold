@@ -79,6 +79,18 @@ export function canWatchAd(cfg: DecreeConfig, g: DecreeGame, kind: DecreeAdKind)
   }
 }
 
+/** The play seconds until the ad `kind` is allowed again by its cooldown (Open the Doors' 15 min), 0 when it is not cooling down (the card prints the time left). Built. */
+export function adCooldownLeft(cfg: DecreeConfig, g: DecreeGame, kind: DecreeAdKind): number {
+  void cfg;
+  const at = g.decree.cooldowns[kind];
+  return typeof at === 'number' && Number.isFinite(at) ? Math.max(0, at - g.stats.playSeconds) : 0;
+}
+
+/** What Check the Sofa would pay now (40 s of B through roundDibs), the very amount `grantAd` pays when the video completes with the state unchanged. Built. */
+export function sofaAmount(cfg: DecreeConfig, g: DecreeGame): number {
+  return roundDibs(cfg, cfg.decree.ads.checkSofaSeconds * decreeParams(cfg, g).B);
+}
+
 /** Whether the Shop may offer products now (2.10, 5.11: never from the call to the end of election night). Built. */
 export function canShop(cfg: DecreeConfig, g: DecreeGame): boolean {
   void cfg;
@@ -93,7 +105,7 @@ export function grantAd(cfg: DecreeConfig, g: DecreeGame, kind: DecreeAdKind, ev
   let next: DecreeGame = g;
   switch (kind) {
     case 'checkSofa': {
-      const amount = roundDibs(cfg, cfg.decree.ads.checkSofaSeconds * decreeParams(cfg, g).B);
+      const amount = sofaAmount(cfg, g);
       next = amount > 0 ? commitCash(g, amount, 'checkSofa') : g;
       break;
     }

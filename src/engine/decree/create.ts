@@ -144,7 +144,7 @@ export function reconcileDecree(cfg: DecreeConfig, base: GameState, raw: unknown
     });
     out.strikes = Array.from({ length: nClubs }, (_, gi) => {
       const x = Array.isArray(d.strikes) ? (d.strikes[gi] as Partial<Strike> | null) : null;
-      return isObj(x) && typeof x.papersLeft === 'number' ? { papersLeft: intIn(x.papersLeft, 0, 1000, 0), picket: String(x.picket ?? ''), grievance: String(x.grievance ?? ''), ...(x.waiting ? { waiting: true } : {}) } : null;
+      return isObj(x) && typeof x.papersLeft === 'number' ? { papersLeft: intIn(x.papersLeft, 0, 1000, 0), picket: String(x.picket ?? ''), grievance: String(x.grievance ?? ''), ...(typeof x.waiting === 'boolean' ? { waiting: x.waiting } : x.waiting ? { waiting: true } : {}) } : null;
     });
     out.armed = Array.from({ length: nClubs }, (_, gi) => (Array.isArray(d.armed) && typeof d.armed[gi] === 'boolean' ? (d.armed[gi] as boolean) : !out.strikes[gi]));
     out.gossip = intIn(d.gossip, 0, 1000, 0);

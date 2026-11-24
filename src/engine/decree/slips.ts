@@ -139,8 +139,20 @@ export function slipFor(cfg: DecreeConfig, g: DecreeGame): Slip | null {
   return g.cash - slip.price + EPS >= reserve(cfg, g) + emptyDeskExtra(cfg, g) ? slip : null;
 }
 
-/** Why `purchase` at `price` (null: the live price) would be refused now, or null when it may be bought. */
-export function canBuy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, price: number | null): LedgerRow['refusal'] | 'done' | null {
+/** Whether `purchase` at `price` is the slip lying on the desk at its printed price (D40). */
+function isDeskSlip(g: DecreeGame, purchase: Purchase, price: number | null): boolean {
+  const desk = g.decree.desk;
+  if (desk?.type !== 'slip' || price === null || desk.slip.price !== price) return false;
+  const a = desk.slip.purchase;
+  return a.type === purchase.type && (a.type === 'monument' ? purchase.type === 'monument' && a.monument === purchase.monument : purchase.type !== 'monument' && a.ministry === purchase.ministry);
+}
+
+/**
+ * Why `purchase` at `price` (null: the live price) would be refused now, or null when it may be bought.
+ * D40: the reserve decides only whether a slip is OFFERED; the slip lying on the desk, at its printed
+ * price, is refused only for cash ('cash': "Short by …" as a paper says), whatever queued behind it.
+ */
+export function canBuy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, price: number | null, opts: { landed?: boolean } = {}): LedgerRow['refusal'] | 'done' | null {
   const live = slipOf(cfg, g, purchase);
   if (!live) {
     if (purchase.type === 'level') {
@@ -151,6 +163,7 @@ export function canBuy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, pri
   }
   const cost = price ?? live.price;
   if (g.cash + EPS < cost) return 'cash';
+  if (opts.landed || isDeskSlip(g, purchase, price)) return null;
   const parts = reserveParts(cfg, g);
   if (g.cash - cost + EPS < parts.desk) return 'reserve';
   if (g.cash - cost + EPS < parts.desk + parts.runUp) return 'runUp';
@@ -162,17 +175,18 @@ export function canBuy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, pri
  * may be bought (`canBuy`); the SAME object when refused. A paper resting in its take-back window
  * commits first (at the play clock): a player's action is "the next action" of 2.7. `auto` (the
  * Standing Order, which nobody tapped) is refused instead while a paper rests in the take-back window.
- * `free` (a requisition's level, its price already paid as the paper printed it) skips the price and the reserve. A level crossing a storey brings its ribbon form
+ * `free` (a requisition's level, its price already paid as the paper printed it) skips the price and the reserve;
+ * `landed` (the slip that lay on the desk, D40) skips only the reserve. A level crossing a storey brings its ribbon form
  * (`ribbonsDue`). Built.
  */
-export function buy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, price: number | null, events: DecreeEvent[], opts: { free?: boolean; auto?: boolean } = {}): DecreeGame {
+export function buy(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase, price: number | null, events: DecreeEvent[], opts: { free?: boolean; auto?: boolean; landed?: boolean } = {}): DecreeGame {
   if (opts.free) return applyPurchase(cfg, g, purchase, 0, events);
   // A purchase nobody tapped (the Standing Order, `auto`) never ends the player's take-back window: refused while a paper rests there.
   if (opts.auto && g.decree.pending) return g;
   const local: DecreeEvent[] = [];
   const s = g.decree.pending ? commitPending(cfg, g, g.stats.playSeconds, local) : g;
   const live = slipOf(cfg, s, purchase);
-  if (!live || canBuy(cfg, s, purchase, price) !== null) return g;
+  if (!live || canBuy(cfg, s, purchase, price, { landed: opts.landed && !opts.auto }) !== null) return g;
   events.push(...local);
   return applyPurchase(cfg, s, purchase, price ?? live.price, events);
 }

@@ -175,7 +175,7 @@ export function passesIn(cfg: DecreeConfig, g: DecreeGame, moved: DecreeGame): n
   for (let k = 0; k < 500; k++) {
     const p = decreeParams(cfg, s);
     if (p.I >= target) return t;
-    const cs = candidates(cfg, s, p).filter((c) => c.purchase.type !== 'monument');
+    const cs = candidates(cfg, s, p);
     if (!cs.length || !(p.I > 0)) return null;
     const short = recordShort(cfg, s, p);
     let best = cs[0];

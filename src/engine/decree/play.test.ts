@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import type { GameState } from '../types';
 import * as R from '../decree';
 import { decreeEngineMode } from '../decreeMode';
-import { FIXTURE_NOW, decreeStateProblems, decreeTestConfig, freshState } from '../fixtures/decree';
+import { DECREE_TEST_NUMBERS, FIXTURE_NOW, decreeStateProblems, decreeTestConfig, freshState } from '../fixtures/decree';
 
 const cfg = decreeTestConfig();
 
@@ -232,9 +232,36 @@ function booked(g: R.DecreeGame, away: number): number {
   return Object.values(b).reduce((a: number, x) => a + (x ?? 0), 0) + away;
 }
 
-describe('a long random but legal player through all three offices', () => {
-  it('10^4 actions: invariants, H1, H2, H5, refusals, the save round trip and tick splits after every action', { timeout: 600_000 }, () => {
-    const rnd = lcg(4242);
+interface LongRun {
+  kinds: Map<Kind, number>;
+  wins: number;
+  losses: number;
+  moves: number;
+  reached: Set<number>;
+  g: R.DecreeGame;
+  /** Boycotts and scandals that started; Couriers granted with the grievance on the desk; grievances settled and kept; actions taken during a boycott or "Say nothing". */
+  trouble: { boycotts: number; scandals: number; courierOnDesk: number; settled: number; kept: number; spin: number; apologies: number; awayInTrouble: number; reloadInTrouble: number };
+}
+
+/**
+ * The long random-but-legal player on `cfg`, with every check after every action. `careless`: a mayor
+ * who signs whatever angers a club (the side that LOWERS approval most of the time), the habit D38
+ * wants to meet boycotts and scandals; the reader of sorts otherwise.
+ */
+function longPlayer(cfg: R.DecreeConfig, opts: { seed: number; actions: number; careless?: boolean }): LongRun {
+  const advance = (x: R.DecreeGame, dt: number, events: R.DecreeEvent[] = []): R.DecreeGame => {
+    let s = x;
+    let left = dt;
+    while (left > 1e-12) {
+      const step = Math.min(R.MAX_TICK, left);
+      s = R.advanceDecree(cfg, s, step, 0, events);
+      left -= step;
+    }
+    return s;
+  };
+  const trouble = { boycotts: 0, scandals: 0, courierOnDesk: 0, settled: 0, kept: 0, spin: 0, apologies: 0, awayInTrouble: 0, reloadInTrouble: 0 };
+  {
+    const rnd = lcg(opts.seed);
     let g = freshState(cfg, 777);
     const start = g.cash;
     let away = 0;
@@ -246,7 +273,7 @@ describe('a long random but legal player through all three offices', () => {
     const reached = new Set<number>([0]);
     const allowed = new Set(['tick', 'paper', 'spend', 'checkSofa', 'transition', 'reset']);
     const n0 = () => g.decree.moods.length;
-    const ACTIONS = 10_000;
+    const ACTIONS = opts.actions;
 
     const fail = (what: string, k: number, kind: string) => {
       throw new Error(`action ${k} (${kind}) at ${g.stats.playSeconds.toFixed(2)} s, office ${g.decree.office} term ${g.decree.term} day ${g.decree.day}: ${what}`);
@@ -299,12 +326,25 @@ describe('a long random but legal player through all three offices', () => {
           commit = { shown: d.pending.item.shown.sign, void: !!R.formVoid(cfg, g, d.pending.item.shown.sign) };
           next = R.commitPending(cfg, g, clock, events);
         }
+      } else if (opts.careless && desk?.type === 'paper' && desk.paper.kind === 'strike' && r < 0.25 && R.canWatchAd(cfg, g, 'courier')) {
+        // The careless mayor sends a Courier for the grievance on the desk (the goal line names it then).
+        kind = 'ad';
+        next = R.grantAd(cfg, g, 'courier', events);
+        if (next === g) fail('the Courier was refused while offered', k, kind);
+        trouble.courierOnDesk++;
+        if ([next.decree.desk?.type === 'paper' ? next.decree.desk.paper : null, next.decree.pending?.item.paper ?? null, ...next.decree.tray].some((p) => p?.kind === 'strike' && p.petitioner === desk.paper.petitioner)) fail('the Courier left the grievance behind', k, kind);
+        if (next.cash !== g.cash) fail('the Courier cost or paid money', k, kind);
       } else if (desk && desk.type === 'paper' && r < 0.6) {
         // Mostly the side that raises approval (a reader of sorts), sometimes the other.
         const sa = R.stripOf(cfg, g, 'sign')!;
         const ra = R.stripOf(cfg, g, 'refuse')!;
         const better: R.Choice = sa.approval.to + (sa.poll ? 3 * (sa.poll.to - sa.poll.from) : 0) >= ra.approval.to + (ra.poll ? 3 * (ra.poll.to - ra.poll.from) : 0) ? 'sign' : 'refuse';
-        const choice: R.Choice = rnd() < 0.8 ? better : better === 'sign' ? 'refuse' : 'sign';
+        const worse: R.Choice = better === 'sign' ? 'refuse' : 'sign';
+        // The careless mayor: the side that lowers approval, but the exits of a boycott and a scandal by a coin.
+        const event = desk.paper.kind === 'strike' || desk.paper.kind === 'scandal';
+        const choice: R.Choice = opts.careless && !event ? (rnd() < 0.85 ? worse : better) : opts.careless ? (rnd() < 0.5 ? 'sign' : 'refuse') : rnd() < 0.8 ? better : worse;
+        if (desk.paper.kind === 'strike') trouble[choice === 'sign' ? 'settled' : 'kept']++;
+        if (desk.paper.kind === 'scandal' && choice === 'sign') trouble.apologies++;
         kind = choice;
         if (choice === 'sign' && !sa.affordable) {
           // A short sign is refused: the same object.
@@ -342,6 +382,13 @@ describe('a long random but legal player through all three offices', () => {
         const ad = ads[Math.floor(rnd() * ads.length)];
         const can = R.canWatchAd(cfg, g, ad);
         next = R.grantAd(cfg, g, ad, events);
+        if (ad === 'courier' && next !== g && desk?.type === 'paper' && desk.paper.kind === 'strike') {
+          trouble.courierOnDesk++;
+          // The grievance leaves with the boycott: none is left anywhere, and nothing was paid.
+          if ([next.decree.desk?.type === 'paper' ? next.decree.desk.paper : null, next.decree.pending?.item.paper ?? null, ...next.decree.tray].some((p) => p?.kind === 'strike' && p.petitioner === desk.paper.petitioner)) fail('the Courier left the grievance behind', k, kind);
+          if (next.cash !== g.cash) fail('the Courier cost or paid money', k, kind);
+        }
+        if (ad === 'spinDoctor' && next !== g) trouble.spin++;
         if (!can && next !== g) fail(`the ad ${ad} was granted while not offered`, k, kind);
         if (d.phase === 'campaign' && next !== g) fail('an ad was granted from the call to the end of election night', k, kind);
       } else if (r < 0.705) {
@@ -349,6 +396,7 @@ describe('a long random but legal player through all three offices', () => {
         next = R.pickFace(cfg, g, cfg.decree.cast.players[Math.floor(rnd() * cfg.decree.cast.players.length)].id);
       } else if (r < 0.715) {
         kind = 'away';
+        if (d.strikes.some(Boolean) || d.scandal) trouble.awayInTrouble++;
         const seconds = [30, 299, 301, 1800, 4 * 3600, 9 * 3600][Math.floor(rnd() * 6)];
         // The store saved at the wall time of the last frame; the absence ends `seconds` later.
         const left = { ...g, lastSavedAt: wall, stats: { ...g.stats, clockHigh: wall } };
@@ -368,6 +416,7 @@ describe('a long random but legal player through all three offices', () => {
         next = s;
       } else if (r < 0.72) {
         kind = 'reload';
+        if (d.strikes.some(Boolean) || d.scandal) trouble.reloadInTrouble++;
         next = decreeEngineMode.reconcile(cfg, { ...g } as GameState, JSON.parse(JSON.stringify(g))) as R.DecreeGame;
         if (canon(next.decree) !== canon(JSON.parse(JSON.stringify(g.decree)))) fail('a reload changed the decree state', k, kind);
       } else {
@@ -410,7 +459,10 @@ describe('a long random but legal player through all three offices', () => {
       // The save round trip through the engine mode's reconcile changes nothing.
       const raw = JSON.parse(JSON.stringify(g));
       const back = decreeEngineMode.reconcile(cfg, { ...g } as GameState, raw) as R.DecreeGame;
-      if (canon(back.decree) !== canon(raw.decree)) fail('a serialise-and-parse round trip changed the decree state', k, kind);
+      if (canon(back.decree) !== canon(raw.decree)) {
+        const diff = Object.keys(raw.decree).filter((key) => canon((back.decree as unknown as Record<string, unknown>)[key]) !== canon(raw.decree[key]));
+        fail(`a serialise-and-parse round trip changed the decree state (${diff.map((key) => `${key}: ${canon(raw.decree[key]).slice(0, 300)} -> ${canon((back.decree as unknown as Record<string, unknown>)[key]).slice(0, 300)}`).join('; ')})`, k, kind);
+      }
       // tick(a + b) = tick(a) then tick(b), from here.
       const a = (1 + Math.floor(rnd() * 20 * 64)) / 64;
       const b = (1 + Math.floor(rnd() * 20 * 64)) / 64;
@@ -420,7 +472,18 @@ describe('a long random but legal player through all three offices', () => {
 
       if (g.decree.office > before.decree.office) moves++;
       reached.add(g.decree.office);
+      for (const e of events) {
+        if (e.type === 'boycottStart') trouble.boycotts++;
+        if (e.type === 'scandalStart') trouble.scandals++;
+      }
     }
+    return { kinds, wins, losses, moves, reached, g, trouble };
+  }
+}
+
+describe('a long random but legal player through all three offices', () => {
+  it('10^4 actions: invariants, H1, H2, H5, refusals, the save round trip and tick splits after every action', { timeout: 600_000 }, () => {
+    const { kinds, wins, losses, moves, reached, g } = longPlayer(cfg, { seed: 4242, actions: 10_000 });
 
     // The run went everywhere it should.
     for (const kind of ALL_KINDS) expect(kinds.get(kind) ?? 0, kind).toBeGreaterThan(0);
@@ -429,5 +492,26 @@ describe('a long random but legal player through all three offices', () => {
     expect(wins).toBeGreaterThan(0);
     expect(losses).toBeGreaterThan(0);
     expect(g.decree.stats.clamps).toBe(0);
+  });
+});
+
+describe('a careless mayor meets boycotts and scandals (D38; rules-lead-check 5)', () => {
+  // D38's levers moved within their ranges, so that the trouble paths run: the grievance, both exits, the
+  // Courier with the grievance on the desk, the Spin Doctor, time away and a reload during the trouble.
+  const careless = decreeTestConfig({
+    boycott: { ...DECREE_TEST_NUMBERS.boycott, below: 25 },
+    mood: { ...DECREE_TEST_NUMBERS.mood, termReset: 1 / 3 },
+    paperRules: { sizing: { scale: 50, pull: 0.5 } },
+  });
+  it('3,000 actions with every check after every action; the trouble paths all run', { timeout: 600_000 }, () => {
+    const run = longPlayer(careless, { seed: 9191, actions: 3_000, careless: true });
+    expect(run.trouble.boycotts).toBeGreaterThan(0);
+    expect(run.trouble.scandals).toBeGreaterThan(0);
+    expect(run.trouble.settled).toBeGreaterThan(0);
+    expect(run.trouble.kept).toBeGreaterThan(0);
+    expect(run.trouble.courierOnDesk).toBeGreaterThan(0);
+    expect(run.trouble.awayInTrouble).toBeGreaterThan(0);
+    expect(run.trouble.reloadInTrouble).toBeGreaterThan(0);
+    expect(run.g.decree.stats.clamps).toBe(0);
   });
 });
