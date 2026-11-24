@@ -45,7 +45,7 @@ export const decreeEngineMode: EngineMode = {
   reconcile: (cfg, base, raw) => {
     if (!R.isDecree(cfg)) return base;
     try {
-      return asState(R.reconcileDecree(cfg, base, raw));
+      return asState(R.reconcileTerm(cfg, R.reconcileDecree(cfg, base, raw), raw));
     } catch {
       // Never throws (EngineMode contract): a save the rules cannot read starts afresh.
       try {

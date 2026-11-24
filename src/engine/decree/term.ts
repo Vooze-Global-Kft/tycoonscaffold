@@ -205,6 +205,9 @@ export function newTerm(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent[])
       x = standIn(endStrike, () => endStrike(cfg, before, club, 'term', events), () => withDecree(before, { strikes: before.decree.strikes.map((s, k) => (k === club ? null : s)) }));
     }
   }
+  // A club the reset lifted to rearmAt is armed again (2.8 "it re-arms at 30", by any means).
+  const armed = x.decree.armed.map((a, gi) => a || (!x.decree.strikes[gi] && x.decree.moods[gi] >= cfg.decree.boycott.rearmAt));
+  if (armed.some((a, gi) => a !== x.decree.armed[gi])) x = withDecree(x, { armed });
   events.push({ type: 'termStarted', term, office: d.office, next: newThingLabel(thing) });
   const clock = x.stats.playSeconds;
   const room = x.decree.tray.length < cfg.decree.desk.trayCap;
@@ -253,4 +256,29 @@ export function resultSheet(cfg: DecreeConfig, g: DecreeGame): ResultSheet | nul
     meritHeld: r.meritHeld,
     carried: r.carried,
   };
+}
+
+/**
+ * The term's own fields of a loaded save (types.ts, the rules-term block: `result`, `appSlotsUsed`),
+ * repaired from `raw` onto the reconciled state `g` (create.ts `reconcileDecree` rebuilds only the
+ * fields of `freshDecree`); never throws. A result is kept only while the phase is count or result, an
+ * application slot count is a whole number from 0 to the slots of a term; `cashAnchor` is never read
+ * back (the tick anchors anew at its next call). Built.
+ */
+export function reconcileTerm(cfg: DecreeConfig, g: DecreeGame, raw: unknown): DecreeGame {
+  try {
+    const d = (raw as { decree?: Record<string, unknown> } | null)?.decree;
+    if (!d || typeof d !== 'object') return g;
+    const patch: Partial<DecreeGame['decree']> = {};
+    const slots = d.appSlotsUsed;
+    if (typeof slots === 'number' && Number.isFinite(slots)) patch.appSlotsUsed = Math.max(0, Math.min(cfg.decree.forms.application.days.length, Math.round(slots)));
+    const r = d.result as Partial<TermResult> | null | undefined;
+    const live = g.decree.phase === 'count' || g.decree.phase === 'result';
+    if (live && r && typeof r === 'object' && typeof r.won === 'boolean' && typeof r.nrGained === 'number' && typeof r.meritHeld === 'number') {
+      patch.result = { won: r.won, nrGained: r.nrGained, meritHeld: r.meritHeld, meritSweep: !!r.meritSweep, carried: Array.isArray(r.carried) ? r.carried.filter((x): x is number => typeof x === 'number') : [], resigned: typeof r.resigned === 'string' ? r.resigned : null };
+    }
+    return Object.keys(patch).length ? withDecree(g, patch) : g;
+  } catch {
+    return g;
+  }
 }

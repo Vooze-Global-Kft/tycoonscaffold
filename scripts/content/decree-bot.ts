@@ -12,7 +12,8 @@
  *
  * --bot     one bot of bot.ts BOTS (reader, misreader, casual, alwaysSign, alwaysRefuse, random,
  *           moneyOnly, moodOnly, happier, noBuy, goalFollower, passive, checkIn, idle, adEverything,
- *           or an adversary), a comma list, "all" (every run one seed needs: `gatePlan`) or
+ *           the auditor's cheap habits signFree, noLobby, noTrap, lowestClub, sadder, happier30,
+ *           happier70, or an adversary), a comma list, "all" (every run one seed needs: `gatePlan`) or
  *           "validate" (what npm run validate runs on each named seed: `validatePlan`).
  * --hand    seconds per decision (default 6; also 4 and 9, 8.2)
  * --set     a field of the decree block at a RANGES path (`offices[0].rivalPull=5`,
@@ -163,7 +164,7 @@ export function gatePlan(hours = 3): PlanRun[] {
     { bot: 'reader', hand: B.HAND.slow, hours },
     { bot: 'misreader', hours },
     { bot: 'casual', hours },
-    ...(['alwaysSign', 'alwaysRefuse', 'random', 'moneyOnly', 'moodOnly', 'happier', 'noBuy', 'goalFollower'] as B.BotId[]).map((bot) => ({ bot, hours })),
+    ...(['alwaysSign', 'alwaysRefuse', 'random', 'moneyOnly', 'moodOnly', 'happier', 'noBuy', 'goalFollower', ...B.BOTS.cheap] as B.BotId[]).map((bot) => ({ bot, hours })),
     { bot: 'passive', hours: 0, days: 3 },
     { bot: 'adEverything', hours: 0, days: 3 },
     { bot: 'checkIn', hours: 0, days: 1 },
@@ -187,7 +188,8 @@ export function gatePlan(hours = 3): PlanRun[] {
  */
 export function validatePlan(hours = 3): PlanRun[] {
   const all = gatePlan(hours);
-  const keep = all.map((p) => !p.handover && !['misreader', 'casual', 'moneyOnly', 'moodOnly', 'happier', 'noBuy', 'goalFollower', 'alwaysSign'].includes(p.bot) && !(p.bot === 'reader' && p.hand !== undefined));
+  const skip: string[] = ['misreader', 'casual', 'moneyOnly', 'moodOnly', 'happier', 'noBuy', 'goalFollower', 'alwaysSign', ...B.BOTS.cheap];
+  const keep = all.map((p) => !p.handover && !skip.includes(p.bot) && !(p.bot === 'reader' && p.hand !== undefined));
   const index = new Map<number, number>();
   all.forEach((_, i) => keep[i] && index.set(i, index.size));
   return all.flatMap((p, i) => {

@@ -85,10 +85,14 @@ export function currentRival(cfg: DecreeConfig, g: DecreeGame): { id: string; na
   return { id: r.id, name: r.name };
 }
 
-/** The call day C of the current office (2.2: C = callFraction × D, whole days). */
+/** The call day C of the current office (2.2: "from 60 % of it", C = the first whole day ≥ callFraction × D; the same day as slips.ts `callFrom`, which keeps the run-up's reserve from it). */
 export function callDay(cfg: DecreeConfig, g: DecreeGame): number {
-  const row = cfg.decree.offices[g.decree.office];
-  return Math.round(row.callFraction * row.termDays);
+  return callDayOf(cfg.decree.offices[g.decree.office]);
+}
+
+/** C of one office row (the lint reads it too). */
+export function callDayOf(row: { callFraction: number; termDays: number }): number {
+  return Math.ceil(row.callFraction * row.termDays - 1e-9);
 }
 
 /** The poll board's rows (4.4), exactly as the count would hold them today, with D25's huffs. Built. */
@@ -157,9 +161,9 @@ export function meritOf(cfg: DecreeConfig, g: DecreeGame): { held: number; sweep
  * Σ_g w = 1, C ≥ 0 and u rises with m), or Infinity when no n up to 60 does it. The validator fails
  * above `ladder.maxLossesBound`. Built.
  */
-export function certainWinBound(d: Pick<DecreeContent, 'offices' | 'count'>, office: number): number {
+export function certainWinBound(d: Pick<DecreeContent, 'offices' | 'count'> & { paperRules?: DecreeContent['paperRules'] }, office: number): number {
   const R = d.offices[office]?.rivalPull ?? 0;
   const worst = moodUtility(d.count, 0);
-  for (let n = 0; n <= 60; n++) if (worst + disarray(n) - R >= 50) return n;
+  for (let n = 0; n <= 60; n++) if (worst + disarray(n, d.paperRules?.disarray) - R >= 50) return n;
   return Infinity;
 }

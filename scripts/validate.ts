@@ -310,8 +310,11 @@ function decreePacing(id: string, g: GameConfig, runSim: boolean, problems: stri
     const { withDecreeContent } = require('../src/engine/decreeMode') as typeof import('../src/engine/decreeMode');
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { certainWinBound } = require('../src/engine/decree/bot') as typeof import('../src/engine/decree/bot');
-    const n = certainWinBound(withDecreeContent(g) as never);
-    if (n > 8) problems.push(`2.11 (with D15, D25): a count is a certain win only after ${n} consecutive losses (at most 8)`);
+    const cfg = withDecreeContent(g) as never as { decree: { ladder: { maxLossesBound: number } } };
+    const n = certainWinBound(cfg as never);
+    // 2.11 asks at most 8; D25 tightens it to the content's maxLossesBound (6).
+    const most = Math.min(8, cfg.decree.ladder.maxLossesBound);
+    if (n > most) problems.push(`2.11 (with D15, D25): a count is a certain win only after ${n} consecutive losses (at most ${most})`);
   } catch (e) {
     problems.push(`2.11 bound could not be computed: ${(e as Error).message.split('\n')[0]}`);
   }

@@ -7,13 +7,13 @@
       "id": "note-clock-1",
       "form": "requisition",
       "ministry": "national-clock-office",
-      "text": "The new hands know which way round to go."
+      "text": "The new hands were shown round. They picked it up."
     },
     {
       "id": "note-clock-2",
       "form": "requisition",
       "ministry": "national-clock-office",
-      "text": "The clock is right. We checked the other clock."
+      "text": "The cuckoo was asked to retire. It declines hourly."
     },
     {
       "id": "note-clock-3",
@@ -25,13 +25,13 @@
       "id": "note-clock-4",
       "form": "requisition",
       "ministry": "national-clock-office",
-      "text": "The key is back in the drawer it prefers."
+      "text": "The tick has been made to sound more official."
     },
     {
       "id": "note-clock-5",
       "form": "requisition",
       "ministry": "national-clock-office",
-      "text": "A spare minute hand, in case one wanders off."
+      "text": "Midday has been moved back to noon, as requested."
     },
     {
       "id": "note-clock-6",
@@ -55,19 +55,19 @@
       "id": "note-clock-9",
       "form": "ribbon",
       "ministry": "national-clock-office",
-      "text": "Every clock will chime for the ribbon. Roughly together."
+      "text": "The clock will wait for your cut. Then catch up."
     },
     {
       "id": "note-clock-10",
       "form": "ribbon",
       "ministry": "national-clock-office",
-      "text": "The ribbon is on the pendulum. Cut on the swing."
+      "text": "Your cut sets the official time. Please be prompt."
     },
     {
       "id": "note-motorway-1",
       "form": "requisition",
       "ministry": "motorway-board",
-      "text": "The cones have been counted. They were all there."
+      "text": "The services now sell postcards of the services."
     },
     {
       "id": "note-motorway-2",
@@ -79,7 +79,7 @@
       "id": "note-motorway-3",
       "form": "requisition",
       "ministry": "motorway-board",
-      "text": "The white lines have been repainted white."
+      "text": "A footbridge for waving at coaches. Some wave back."
     },
     {
       "id": "note-motorway-4",
@@ -91,19 +91,19 @@
       "id": "note-motorway-5",
       "form": "requisition",
       "ministry": "motorway-board",
-      "text": "A lay-by for coaches to stop in and be admired."
+      "text": "A lay-by where coaches can stop and be admired."
     },
     {
       "id": "note-motorway-6",
       "form": "requisition",
       "ministry": "motorway-board",
-      "text": "One new sign, pointing at the old sign."
+      "text": "Milestones polished. The miles are unchanged."
     },
     {
       "id": "note-motorway-7",
       "form": "requisition",
       "ministry": "motorway-board",
-      "text": "The verges have been mown. The cones supervised."
+      "text": "The verges were mown. The spotters logged the mower."
     },
     {
       "id": "note-motorway-8",
@@ -115,7 +115,7 @@
       "id": "note-motorway-9",
       "form": "ribbon",
       "ministry": "motorway-board",
-      "text": "The first coach will drive through the ribbon. Slowly."
+      "text": "The ribbon is across a slip road. Coaches will wait."
     },
     {
       "id": "note-motorway-10",
@@ -133,7 +133,7 @@
       "id": "note-lamplight-2",
       "form": "requisition",
       "ministry": "lamplight-authority",
-      "text": "The switch now says ON. The other way, OFF."
+      "text": "Tested by day. The lamps say they are on."
     },
     {
       "id": "note-lamplight-3",
@@ -151,7 +151,7 @@
       "id": "note-lamplight-5",
       "form": "requisition",
       "ministry": "lamplight-authority",
-      "text": "Lamp glass polished. The lamps look more lit."
+      "text": "The lamps are cleaned in order of seniority."
     },
     {
       "id": "note-lamplight-6",
@@ -163,7 +163,7 @@
       "id": "note-lamplight-7",
       "form": "requisition",
       "ministry": "lamplight-authority",
-      "text": "Warm white lamps. The Guild asked for warmer."
+      "text": "The lamps come on at dusk. Dusk has been notified."
     },
     {
       "id": "note-lamplight-8",
@@ -175,13 +175,13 @@
       "id": "note-lamplight-9",
       "form": "ribbon",
       "ministry": "lamplight-authority",
-      "text": "The lamps will come on as you cut. Please cut slowly."
+      "text": "One lamp is left unlit, for you to switch on."
     },
     {
       "id": "note-lamplight-10",
       "form": "ribbon",
       "ministry": "lamplight-authority",
-      "text": "One lamp will shine on you while you cut. Rodney asked."
+      "text": "The other lamps are dimmed, so yours stands out."
     },
     {
       "id": "note-parks-1",
@@ -211,7 +211,7 @@
       "id": "note-parks-5",
       "form": "requisition",
       "ministry": "parks-benches",
-      "text": "A new bench facing the old one, for conversation."
+      "text": "A bench by the prize beds, for quiet worrying."
     },
     {
       "id": "note-parks-6",
@@ -229,7 +229,7 @@
       "id": "note-parks-8",
       "form": "ribbon",
       "ministry": "parks-benches",
-      "text": "The ribbon is tied between two benches. Sit afterwards."
+      "text": "Cut from the path. The lawn has only just settled."
     },
     {
       "id": "note-parks-9",
@@ -247,31 +247,31 @@
       "id": "note-bunting-1",
       "form": "requisition",
       "ministry": "office-brass-bunting",
-      "text": "The euphonium is polished. It can see itself."
+      "text": "Each cornet has its own cloth now. They do not share."
     },
     {
       "id": "note-bunting-2",
       "form": "requisition",
       "ministry": "office-brass-bunting",
-      "text": "New music stands. They stand."
+      "text": "The encore has been written in advance, as always."
     },
     {
       "id": "note-bunting-3",
       "form": "requisition",
       "ministry": "office-brass-bunting",
-      "text": "The triangle is retuned. It sounds like a triangle."
+      "text": "Music stands, tightened. They no longer bow first."
     },
     {
       "id": "note-bunting-4",
       "form": "requisition",
       "ministry": "office-brass-bunting",
-      "text": "Fresh valve oil. The cornets are pleased."
+      "text": "Fresh valve oil. The valves have stopped sighing."
     },
     {
       "id": "note-bunting-5",
       "form": "requisition",
       "ministry": "office-brass-bunting",
-      "text": "The bandstand chairs now face the band, as agreed."
+      "text": "The matching jackets are pressed. The creases agree."
     },
     {
       "id": "note-bunting-6",
@@ -283,7 +283,7 @@
       "id": "note-bunting-7",
       "form": "requisition",
       "ministry": "office-brass-bunting",
-      "text": "The metronome has been reset. It seems relieved."
+      "text": "A new metronome. The old one is still going."
     },
     {
       "id": "note-bunting-8",
@@ -301,7 +301,7 @@
       "id": "note-bunting-10",
       "form": "ribbon",
       "ministry": "office-brass-bunting",
-      "text": "A drumroll has been booked for the ribbon."
+      "text": "A drumroll is booked for the ribbon. It ends when you cut."
     },
     {
       "id": "note-harbour-1",
@@ -319,37 +319,37 @@
       "id": "note-harbour-3",
       "form": "requisition",
       "ministry": "harbour-board",
-      "text": "New rope for the bollards. The old rope retires to a coil."
+      "text": "The bollards are repainted. Nobody saw it done."
     },
     {
       "id": "note-harbour-4",
       "form": "requisition",
       "ministry": "harbour-board",
-      "text": "The harbour wall has been repointed. It looks rested."
+      "text": "The anchor is weighed every morning. No change."
     },
     {
       "id": "note-harbour-5",
       "form": "requisition",
       "ministry": "harbour-board",
-      "text": "The lighthouse lamp has been polished from inside."
+      "text": "The harbour crane has been oiled. It no longer comments."
     },
     {
       "id": "note-harbour-6",
       "form": "requisition",
       "ministry": "harbour-board",
-      "text": "A new buoy. It bobs as instructed."
+      "text": "Each mooring is labelled. The boats still guess."
     },
     {
       "id": "note-harbour-7",
       "form": "requisition",
       "ministry": "harbour-board",
-      "text": "The fish were counted by looking. All present."
+      "text": "The harbour map is redrawn. The harbour stayed put."
     },
     {
       "id": "note-harbour-8",
       "form": "ribbon",
       "ministry": "harbour-board",
-      "text": "The ribbon will be cut quietly. The scissors are oiled."
+      "text": "Cut at high water. The sea has been informed."
     },
     {
       "id": "note-harbour-9",
@@ -373,13 +373,13 @@
       "id": "note-kite-2",
       "form": "requisition",
       "ministry": "kite-breeze-office",
-      "text": "The breeze has been measured. It was breezy."
+      "text": "The breeze was measured. It would not hold still."
     },
     {
       "id": "note-kite-3",
       "form": "requisition",
       "ministry": "kite-breeze-office",
-      "text": "Spare kite tails, sorted by tail."
+      "text": "Spare kite tails, filed alphabetically by kite."
     },
     {
       "id": "note-kite-4",
@@ -397,13 +397,13 @@
       "id": "note-kite-6",
       "form": "requisition",
       "ministry": "kite-breeze-office",
-      "text": "Knots in the string have been untied and logged."
+      "text": "The kite shed has been tidied. Most of it wants out."
     },
     {
       "id": "note-kite-7",
       "form": "requisition",
       "ministry": "kite-breeze-office",
-      "text": "The hill has been mown so the kites can find it."
+      "text": "The launch field now has a sign: UP."
     },
     {
       "id": "note-kite-8",
@@ -415,13 +415,13 @@
       "id": "note-kite-9",
       "form": "ribbon",
       "ministry": "kite-breeze-office",
-      "text": "Please cut the ribbon downwind of the League."
+      "text": "Hold on to your end of the ribbon. It has ideas."
     },
     {
       "id": "note-kite-10",
       "form": "ribbon",
       "ministry": "kite-breeze-office",
-      "text": "The ribbon has a tail, in case it would rather fly."
+      "text": "The scissors are tied to the table, as a precaution."
     },
     {
       "id": "note-hedge-1",
@@ -433,7 +433,7 @@
       "id": "note-hedge-2",
       "form": "requisition",
       "ministry": "hedgerow-bureau",
-      "text": "A spirit level for every hedge. The hedges are level."
+      "text": "The spirit levels were checked with a spirit level."
     },
     {
       "id": "note-hedge-3",
@@ -445,7 +445,7 @@
       "id": "note-hedge-4",
       "form": "requisition",
       "ministry": "hedgerow-bureau",
-      "text": "Fresh string lines, pulled straight. Then straighter."
+      "text": "A new hedge is planted. It knows what is expected."
     },
     {
       "id": "note-hedge-5",
@@ -457,7 +457,7 @@
       "id": "note-hedge-6",
       "form": "requisition",
       "ministry": "hedgerow-bureau",
-      "text": "Every rung of the new ladders matches the last."
+      "text": "Fallen leaves, collected and sorted by hedge."
     },
     {
       "id": "note-hedge-7",
@@ -475,13 +475,13 @@
       "id": "note-hedge-9",
       "form": "ribbon",
       "ministry": "hedgerow-bureau",
-      "text": "Cut straight, please. The ribbon was measured."
+      "text": "Cut straight. The Committee has brought a ruler."
     },
     {
       "id": "note-hedge-10",
       "form": "ribbon",
       "ministry": "hedgerow-bureau",
-      "text": "The ribbon runs along the hedge at one even height."
+      "text": "The ribbon ends will be trimmed level afterwards."
     },
     {
       "id": "note-bridge-1",
@@ -499,7 +499,7 @@
       "id": "note-mill-1",
       "form": "requisition",
       "ministry": "national-ribbon-mill",
-      "text": "New looms. The mill would like a ribbon of its own."
+      "text": "New looms. The ribbon now comes out already cut."
     },
     {
       "id": "note-mill-2",
@@ -517,13 +517,13 @@
       "id": "note-umbrella-2",
       "form": "ribbon",
       "ministry": "national-umbrella",
-      "text": "The ribbon is on the handle. Do not open indoors."
+      "text": "Cut under the umbrella. Rain is on standby."
     },
     {
       "id": "note-bandstand-1",
       "form": "requisition",
       "ministry": "tallest-bandstand",
-      "text": "Another flight of steps. The band will arrive later."
+      "text": "Another flight of steps. The echo now takes a while."
     },
     {
       "id": "note-bandstand-2",
@@ -535,7 +535,7 @@
       "id": "note-ministries-1",
       "form": "requisition",
       "ministry": "ministry-of-ministries",
-      "text": "A new office for the office that oversees offices."
+      "text": "More filing cabinets. They have been filed."
     },
     {
       "id": "note-ministries-2",

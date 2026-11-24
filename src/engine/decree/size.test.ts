@@ -13,11 +13,15 @@ import { describe, expect, it, vi } from 'vitest';
 import * as R from '../decree';
 import { built, decreeTestConfig } from '../fixtures/decree';
 
-vi.mock('./twists', async (orig) => {
-  const m = await orig<typeof import('./twists')>();
+// Stand-ins written without importing the real modules (a factory that imports the original would
+// load the rules' import cycle before the mock is registered, and the rules would see the original).
+vi.mock('./twists', () => {
+  const neutralFactors = () => ({ mixAdd: [0, 0, 0, 0, 0, 0, 0], list: [] });
   return {
-    ...m,
-    deskFactors: () => m.neutralFactors(),
+    QUIET_TERM: 'quiet_term',
+    COMPOSITION_TERMS: 181,
+    neutralFactors,
+    combineFactors: (a: R.Factors, b: R.Factors) => ({ mixAdd: a.mixAdd.map((x, i) => x + (b.mixAdd[i] ?? 0)), list: [...a.list, ...b.list] }),
     factorFor: (f: R.Factors, target: R.FactorTarget, club: number | null): R.FactorValue => {
       let mul = 1;
       let add = 0;
@@ -25,14 +29,20 @@ vi.mock('./twists', async (orig) => {
       for (const e of f.list) if (e.target === target && (e.club === null || e.club === club)) [mul, add] = [mul * e.mul, add + e.add], sources.push({ initials: e.initials, source: e.source });
       return { mul, add, sources };
     },
+    deskFactors: neutralFactors,
+    twistFactors: neutralFactors,
+    twistIdsFactors: neutralFactors,
+    ruleFactors: neutralFactors,
+    newThingAt: () => ({ twists: [], grandProject: null, quiet: false }),
+    newThingLabel: () => null,
+    compositionProblems: () => [],
   };
 });
-vi.mock('./count', async (orig) => {
-  const m = await orig<typeof import('./count')>();
+vi.mock('./count', () => {
   const sharesOf = (cfg: R.DecreeConfig, g: R.DecreeGame, moods: readonly number[], C: readonly number[]) =>
     cfg.decree.offices[g.decree.office].districts.map((d, k) => Math.round(Math.min(100, Math.max(0, d.mix.reduce((s, w, gi) => s + (w / 100) * moods[gi], 0) + (C[k] ?? 0))) * 100));
   return {
-    ...m,
+    HELD_AT: 5000,
     shares: (cfg: R.DecreeConfig, g: R.DecreeGame, over?: { moods?: readonly number[]; C?: readonly number[] }) => sharesOf(cfg, g, over?.moods ?? g.decree.moods, over?.C ?? g.decree.campaign?.C ?? []),
     heldAfter: (cfg: R.DecreeConfig, g: R.DecreeGame, dm: readonly number[], pts: readonly number[]) =>
       sharesOf(cfg, g, g.decree.moods.map((x, gi) => x + dm[gi]), cfg.decree.offices[g.decree.office].districts.map((_, k) => (g.decree.campaign?.C[k] ?? 0) + (pts[k] ?? 0))).filter((x) => x >= 5000).length,
@@ -310,5 +320,32 @@ describe('the strip as data (2.7 "A strip prints")', () => {
     const atCap = { ...lc, decree: { ...lc.decree, ministries: lc.decree.ministries.map((m, i) => (i === 1 ? { open: true, level: cfg.decree.ministry.levelCap } : m)) } };
     expect(R.formVoid(cfg, atCap, atCap.decree.desk?.type === 'paper' ? atCap.decree.desk.shown.sign : [])).toBe('cap');
     expect(R.stripOf(cfg, atCap, 'refuse')!.void).toBe('cap');
+  });
+});
+
+describe('the formulas D27 may still move are each ONE function with config parameters', () => {
+  it('sizing: a gentler pull toward 50 keeps the no-clamp lemma; pull 1 and scale 50 are 2.7 exactly', () => {
+    for (const pull of [0, 0.25, 0.5, 0.75, 1])
+      for (const scale of [40, 50, 60]) {
+        const c = decreeTestConfig({ paperRules: { disarray: { first: 2, ratio: 2 }, sizing: { scale, pull } } });
+        for (let m = 0; m <= 100; m++)
+          for (let delta = -10; delta <= 10; delta++) {
+            const s = R.sizeMood(c, m, delta);
+            expect(m + s).toBeGreaterThanOrEqual(0);
+            expect(m + s).toBeLessThanOrEqual(100);
+            if (pull === 1 && scale === 50) expect(s).toBe(spec(m, delta));
+            if (pull === 0 && delta !== 0 && (delta > 0 ? 100 - m : m) >= Math.abs(delta)) expect(s).toBe(delta);
+          }
+      }
+  });
+
+  it('disarray: D15 by default (+2, +6, +14, +30, +62, +126), the config rule through decreeParams, ratio 1 the old linear rule', () => {
+    expect([0, 1, 2, 3, 4, 5, 6].map((n) => R.disarray(n))).toEqual([0, 2, 6, 14, 30, 62, 126]);
+    expect(R.disarray(3, { first: 8, ratio: 1 })).toBe(24);
+    expect(R.disarray(3, { first: 3, ratio: 3 })).toBe(3 + 9 + 27);
+    const c = decreeTestConfig({ paperRules: { disarray: { first: 3, ratio: 2 }, sizing: { scale: 50, pull: 1 } } });
+    const g = built({ office: 0, losses: 2 }, c);
+    expect(R.decreeParams(c, g).disarray).toBe(9);
+    expect(R.decreeParams(cfg, built({ office: 0, losses: 2 })).disarray).toBe(6);
   });
 });

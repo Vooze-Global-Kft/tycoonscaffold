@@ -100,7 +100,7 @@ export function slipOf(cfg: DecreeConfig, g: DecreeGame, purchase: Purchase): Sl
 function emptyDeskExtra(cfg: DecreeConfig, g: DecreeGame): number {
   const d = g.decree;
   if (d.desk || d.pending || d.tray.length) return 0;
-  return cfg.decree.desk.slipReserveSeconds * decreeParams(cfg, g).B;
+  return roundDibs(cfg, cfg.decree.desk.slipReserveSeconds * decreeParams(cfg, g).B);
 }
 
 /** The stand-in of advice's slip while advice.ts is not built: the best payback (price / income added) among the levels and openings affordable above the reserve. */

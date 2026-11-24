@@ -38,7 +38,7 @@
 import { z } from 'zod';
 // The cross-field checks recompute two rules from the numbers with the rules' own ONE functions (2.11, 2.14):
 // pure TypeScript of the decree mode's own folders, which never import this file at run time.
-import { certainWinBound } from '../engine/decree/count';
+import { callDayOf, certainWinBound } from '../engine/decree/count';
 import { compositionProblems } from '../engine/decree/twists';
 import type { DecreeConfig } from '../engine/decree/types';
 
@@ -892,7 +892,7 @@ export function lintDecree(d: DecreeContent): string[] {
     // The ladder of 2.2: only the mayor stands for nothing.
     if ((oi === 0) !== (o.stand === null)) out.push(`${o.id}: ${oi === 0 ? 'the first office has no requirement to stand' : 'needs its requirements to stand (Name Recognition and the record below)'}`);
     if (oi < 2 && !o.recordName) out.push(`${o.id}: the record the next office needs has no name`);
-    if (o.callFraction <= 0 || Math.round(o.callFraction * o.termDays) < 1 || Math.round(o.callFraction * o.termDays) > o.termDays) out.push(`${o.id}: the call day C = ${o.callFraction} × ${o.termDays} is not a day of the term`);
+    if (o.callFraction <= 0 || callDayOf(o) < 1 || callDayOf(o) > o.termDays) out.push(`${o.id}: the call day C = ${o.callFraction} × ${o.termDays} is not a day of the term`);
     const mins = d.ministers.filter((m) => m.office === o.id);
     if (mins.length !== 3) out.push(`${o.id}: ${mins.length} ministers apply here, not 3 (2.9)`);
     for (const m of d.ministers) if (OFFICE_IDS.indexOf(m.office) <= oi && m.office === o.id && !o.clubs.includes(m.club)) out.push(`minister ${m.id}: club ${m.club} is not a club of ${o.id} (D21: the application would never come)`);

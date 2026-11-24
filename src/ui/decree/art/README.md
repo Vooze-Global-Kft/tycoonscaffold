@@ -70,6 +70,8 @@ anchor bottom centre, height `storeysHeight(n)`, ≤ 38 pt).
 | Export | Size (pt) | Anchor |
 |---|---|---|
 | `drawDesk(c, box, office, set)` | the desk canvas box (out-tray band + paper + drawer band) | box |
+| `drawDeskTop(c, box, office, set, railY)` | the band behind the bars (screen top to the ribbon's bottom; per office: plain walnut / mahogany crossbanding / walnut with gilt line and brass rail) | box, railY = the felt's edge |
+| `drawDeskFront(c, box, office, set)` | the desk front under the drawer (goal line to screen bottom; plain / inlaid mahogany panels / long walnut with brass rails) | box |
 | `drawBaize(c, box)`, `drawWood(c, box, wood)`, `woodOf(office, set)` | box | box |
 | `drawLamp(c, h=30, set)` (governor), `drawLampPool(c, r)` | ~26 x 30 | bottom centre |
 | `drawTelephones(c, k)` (president), `drawTelephone(c, body, k)` | ~80 x 16 | base centre |
@@ -89,6 +91,9 @@ anchor bottom centre, height `storeysHeight(n)`, ≤ 38 pt).
 | Export | Size | Anchor |
 |---|---|---|
 | `drawPaper(c, w, h, {m, armed, armedBy, shake, lift, slot})` (m: rows from paperMetrics) | 343 x 405/461 | top left |
+| `signatureBox(stripW, chipTop)` | the box in the SIGN strip's title row where the signature writes (never over a chip) | strip's top left |
+| `drawSignatureIn(c, playerId, progress, box)` / `signatureBounds(playerId, box)` | the signature revealed into that box / its bounds with the nib | strip's top left |
+| `MASTHEAD_TILT` | -4.5 deg: draw the front page's masthead words in this tilt about the masthead box's centre | - |
 | `drawSheet(c, w, h, lift, tint)` | w x h | top left |
 | `drawStrip(c, w, h, side, {armed 0..1 → 110 %, shake, rows})` | inner 315 x 106 | top left |
 | `shakeOffset(t, amp)` (worklet: the "Short by" shake, 0.45 s) | – | – |
@@ -119,7 +124,7 @@ name)`, `drawMonument(c, idOrName)` (±12, base at y 10), `drawVanityShelf(c, w,
 
 ## emblem.draw.ts
 `drawEmblem(c, r=40)` (80 pt, centre: ribbon scissors over a folded napkin on a beige field),
-`drawGiantScissors(c, r, {open, ribbon})`, `drawNapkin(c, r)`, `drawLoadingCard(c, w, h, title,
+`drawGiantScissors(c, r, {open, ribbon, chunky, darkSteel})` (chunky widens the blades, darkSteel gives slate blades for pale grounds: the app icon), `drawNapkin(c, r)`, `drawCutRibbon(c, r)` (a ribbon cut in two, halves falling apart, centred), `drawLoadingCard(c, w, h, title,
 motto)`, `drawCaptionBand(c, w, h)`, `drawCaption(c, lines, x, y, size, color)` (the "signature"
 template's violet hand with a nib flourish), `drawNibMark`.
 

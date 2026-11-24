@@ -1,0 +1,471 @@
+{
+  "batch": "president-3",
+  "writer": "writer-3",
+  "office": "president",
+  "note": "Set-ups pres-harbour-steps and pres-dim-lighthouse written to the plan's premises (follow-ups in chains-president). Rations used: goose 1 (pres-quiet-harbour-goose); no biscuits, statue or exclamation mark. No new names.",
+  "papers": [
+    {
+      "id": "pres-dim-lighthouse",
+      "visitor": "hake",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "project",
+      "text": "Dim the lighthouse at night. A sign on it: HUSH, FISH SLEEPING.",
+      "subject": "harbours",
+      "butt": "thing",
+      "shape": "slogan",
+      "setsUp": "pres-dim-lighthouse"
+    },
+    {
+      "id": "pres-hat-parade-day",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "kites",
+      "archetype": "swap",
+      "text": "The hat parade would like kite day. Hats fly too, briefly.",
+      "subject": "hats",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-spotters-roof",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "fee",
+      "text": "Let us hire the Guild's roof. A bus is 12 % more bus from above.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-harbour-practice-hut",
+      "visitor": "slide",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "project",
+      "text": "A practice hut by the anglers, labelled SOUNDPROOF (MOSTLY).",
+      "subject": "harbours",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-quiet-cup",
+      "visitor": "hake",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "treat",
+      "text": "Present the Quiet Competition cup. Rodney will hold up your speech.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-stamp-face",
+      "visitor": "fenn",
+      "club": "veg",
+      "archetype": "vanity",
+      "text": "Your face on the new stamp. Mildred has seen three, and kept one.",
+      "subject": "portraits",
+      "butt": "self",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-kite-or-fish",
+      "visitor": "hake",
+      "cosigner": "minute",
+      "club": "anglers",
+      "other": "kites",
+      "archetype": "committee",
+      "text": "An inquiry: is a kite in the harbour a fish? The League objects.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "biggerStudy": "The kite-or-fish inquiry wants a second summer. The kite is undecided."
+    },
+    {
+      "id": "pres-napkin-kite",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "treat",
+      "text": "Fly the founding napkin as a kite. It has been folded for this.",
+      "subject": "kites",
+      "butt": "office",
+      "shape": "callback"
+    },
+    {
+      "id": "pres-spotters-holiday",
+      "visitor": "till",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "swap",
+      "text": "Give us the spotters' holiday. They spend 80 % of it at our windows.",
+      "subject": "ceremonies",
+      "butt": "visitor",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-hedge-register",
+      "visitor": "topiary",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "project",
+      "text": "Register every hedge: name, age, and any kite it is holding.",
+      "subject": "hedges",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-coin-bus-back",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "swap",
+      "text": "Sit for the new coin. A bus sits for the back, not the shop bell.",
+      "subject": "portraits",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-marquee-bus-stop",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A marquee for our show. Then over the bus stop. Then the bus.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-ripple-study",
+      "visitor": "dabble",
+      "cosigner": "minute",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "committee",
+      "text": "A study of ripples in Saltpenny Bay. So far, 40 % are the band's.",
+      "subject": "harbours",
+      "butt": "committee",
+      "shape": "statistic",
+      "biggerStudy": "The ripple study would now like the waves. Ewan has a second pencil."
+    },
+    {
+      "id": "pres-harbour-hat-stands",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "kites",
+      "archetype": "project",
+      "text": "Hat stands along the harbour, each labelled: HATS. NOT KITES.",
+      "subject": "hats",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-onion-hat",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "swap",
+      "text": "Lend our prize onion the hat in the Guild's window. Then the gloves.",
+      "subject": "hats",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-harbour-window",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "anglers",
+      "archetype": "fee",
+      "text": "We will hire the harbour as a display. The sea must keep still.",
+      "subject": "harbours",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-kites-bus-seat",
+      "visitor": "updraught",
+      "club": "kites",
+      "other": "bus",
+      "archetype": "swap",
+      "text": "Give the League the bus's front seat. Kites fly 30 % higher from it.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-band-first-minute",
+      "visitor": "slide",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "fee",
+      "text": "We will hire the Quiet Competition's interval. Then the rest of it.",
+      "subject": "ceremonies",
+      "butt": "visitor",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-hedge-ribbon",
+      "visitor": "edging",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "treat",
+      "text": "Open the hedge show. The ribbon is a hedge; shears provided.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "pres-onion-parade",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "brass",
+      "archetype": "fee",
+      "text": "We will hire the bandstand for the onion parade. Wave as they pass.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-kite-on-hat",
+      "visitor": "updraught",
+      "cosigner": "minute",
+      "club": "kites",
+      "other": "shops",
+      "archetype": "committee",
+      "text": "A working group: is a kite on a hat a hat? The hats think not.",
+      "subject": "hats",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "The group now studies the reverse. A hat has been seen flying."
+    },
+    {
+      "id": "pres-harbour-steps",
+      "visitor": "bellows",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "swap",
+      "text": "The band asks for the harbour steps. The anglers may keep the wet ones.",
+      "subject": "harbours",
+      "butt": "visitor",
+      "shape": "undercut",
+      "setsUp": "pres-harbour-steps"
+    },
+    {
+      "id": "pres-rosette-onion",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "kites",
+      "archetype": "treat",
+      "text": "Pin the first-prize rosette on the onion. Rodney has one for you.",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "callback"
+    },
+    {
+      "id": "pres-holiday-committee",
+      "visitor": "till",
+      "cosigner": "minute",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "committee",
+      "text": "A committee to date the new holiday. It may only meet on holidays.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "biggerStudy": "The holiday committee needs more holidays to meet on. Three, to start."
+    },
+    {
+      "id": "pres-bass-drum",
+      "visitor": "bellows",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "treat",
+      "text": "Carry the bass drum in the parade. It photographs better unplayed.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-hat-request",
+      "visitor": "slake",
+      "club": "kites",
+      "archetype": "basket",
+      "text": "A hat with a smaller hat on it. The smaller hat has a request.",
+      "subject": "hats",
+      "butt": "lobbyist",
+      "shape": "escalation",
+      "favour": {
+        "text": "The smaller hat asks for a place in the kite festival. It will need a string.",
+        "clippings": {
+          "sign": "PRESIDENT FLIES HAT AT KITE FESTIVAL; KITES UNIMPRESSED",
+          "refuse": "HAT REQUEST FILED FOR FURTHER STUDY"
+        }
+      }
+    },
+    {
+      "id": "pres-quiet-harbour-goose",
+      "visitor": "dabble",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "fee",
+      "text": "We will hire the harbour on the holiday. It is 88 % quiet, 12 % goose.",
+      "subject": "harbours",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "pres-kite-museum",
+      "visitor": "loft",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "project",
+      "text": "A kite museum. The hedge outside holds most of the exhibits.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-hedge-day",
+      "visitor": "topiary",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "swap",
+      "text": "Hedge day and kite day clash. Ours was filed first, in triplicate.",
+      "subject": "hedges",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "pres-quay-willow",
+      "visitor": "dabble",
+      "club": "anglers",
+      "other": "hedges",
+      "archetype": "project",
+      "text": "A willow on the quay to sit under. The Committee may admire it.",
+      "subject": "harbours",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-ceremony-ceremonies",
+      "visitor": "spinwell",
+      "club": "brass",
+      "archetype": "vanity",
+      "text": "A ceremony to honour your ceremonies. Rodney has booked you.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-rain-gauge",
+      "visitor": "vane",
+      "club": "veg",
+      "archetype": "basket",
+      "text": "A rain gauge for the next holiday. No reason. It hopes to be useful.",
+      "subject": "picnic-weather",
+      "butt": "lobbyist",
+      "shape": "undercut",
+      "favour": {
+        "text": "About the rain gauge: it would like the front row at the show.",
+        "clippings": {
+          "sign": "PRESIDENT GIVES RAIN GAUGE FRONT ROW; GROWERS STAND",
+          "refuse": "RAIN GAUGE STAYS ON DESK, HOPEFUL"
+        }
+      }
+    },
+    {
+      "id": "pres-ribbon-fanfare",
+      "visitor": "bellows",
+      "club": "brass",
+      "other": "shops",
+      "archetype": "project",
+      "text": "A fanfare for every ribbon you cut. Scissors up on the last note.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "pres-leek-study",
+      "visitor": "loam",
+      "cosigner": "minute",
+      "club": "veg",
+      "other": "brass",
+      "archetype": "committee",
+      "text": "A study: do vegetables like brass? So far, the leeks lean towards it.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "The leek study now wants the runner beans. They have begun to lean."
+    },
+    {
+      "id": "pres-harbour-bus-plaque",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "project",
+      "text": "A plaque where the harbour bus turns. Footnotes on the shop.",
+      "subject": "buses",
+      "butt": "visitor",
+      "shape": "undercut"
+    },
+    {
+      "id": "pres-window-president",
+      "visitor": "till",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "treat",
+      "text": "Be our window display for an hour. Your card: PRESIDENT, ONE ONLY.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "pres-bus-stop-hedge",
+      "visitor": "edging",
+      "club": "hedges",
+      "other": "bus",
+      "archetype": "project",
+      "text": "Clip the bus stop hedge into a bus. Then a queue. Then a late one.",
+      "subject": "hedges",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "pres-birthday-holiday",
+      "visitor": "fenn",
+      "club": "shops",
+      "archetype": "vanity",
+      "text": "Make your birthday a national holiday. Mildred has a drawer for these.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "callback"
+    },
+    {
+      "id": "pres-hedge-manners",
+      "visitor": "edging",
+      "cosigner": "minute",
+      "club": "hedges",
+      "other": "bus",
+      "archetype": "committee",
+      "text": "A committee on hedge manners. May a spotter lean on one? Draft due.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "biggerStudy": "The manners committee wants a second volume: bowing to topiary."
+    },
+    {
+      "id": "pres-quiet-holiday",
+      "visitor": "hake",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "swap",
+      "text": "Give us the band's holiday. We will observe it, in silence.",
+      "subject": "ceremonies",
+      "butt": "thing",
+      "shape": "literalism"
+    }
+  ]
+}

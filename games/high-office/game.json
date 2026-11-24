@@ -229,12 +229,12 @@
     "templateShare": 0.25,
     "rivals": [
      {
-      "id": "mayor_rival_1",
-      "name": "Councillor (PLACEHOLDER, D14)",
-      "slogan": "PLACEHOLDER: She Owns A Hat",
+      "id": "stitchley",
+      "name": "Councillor Prudence Stitchley",
+      "slogan": "Stitchley: She Owns A Hat",
       "hobby": "her hat",
-      "backAgain": "PLACEHOLDER: back for another go, in the same hat.",
-      "resignation": "PLACEHOLDER: won, then resigned to spend more time with her hat."
+      "backAgain": "Councillor Stitchley is back for another go, in the same hat.",
+      "resignation": "Councillor Stitchley won, then resigned to spend more time with her hat."
      },
      {
       "id": "mayor_rival_2",
@@ -404,11 +404,11 @@
     "rivals": [
      {
       "id": "waft",
-      "name": "Barnaby Waft",
+      "name": "Leander Waft",
       "slogan": "Waft: Gently Onwards",
       "hobby": "the Ceremonial Spoon",
-      "backAgain": "Barnaby Waft is back for another go, spoon polished.",
-      "resignation": "Barnaby Waft won, then resigned to spend more time with his spoon."
+      "backAgain": "Leander Waft is back for another go, spoon polished.",
+      "resignation": "Leander Waft won, then resigned to spend more time with his spoon."
      },
      {
       "id": "governor_rival_2",
@@ -543,9 +543,9 @@
       ]
      },
      {
-      "id": "kitewell",
-      "name": "Kitewell",
-      "short": "KW",
+      "id": "kitecombe",
+      "name": "Kitecombe",
+      "short": "KC",
       "mix": [
        25,
        10,
@@ -631,12 +631,12 @@
     "templateShare": 0.2,
     "rivals": [
      {
-      "id": "president_rival_1",
-      "name": "Professor (PLACEHOLDER, D14)",
-      "slogan": "PLACEHOLDER: Abolish Wednesdays",
+      "id": "kalends",
+      "name": "Professor Ozias Kalends",
+      "slogan": "Kalends: Abolish Wednesdays",
       "hobby": "Wednesdays",
-      "backAgain": "PLACEHOLDER: back for another go, still against Wednesdays.",
-      "resignation": "PLACEHOLDER: won, then resigned to spend more time with his Tuesdays."
+      "backAgain": "Professor Kalends is back for another go, still against Wednesdays.",
+      "resignation": "Professor Kalends won, then resigned to spend more time with his Tuesdays."
      },
      {
       "id": "strop",
@@ -1061,8 +1061,8 @@
   "ministers": [
    {
     "id": "pockle",
-    "name": "Dorothy Pockle",
-    "initials": "DP",
+    "name": "Dorothy Sett",
+    "initials": "DS",
     "club": "bus",
     "office": "mayor",
     "rule": {
@@ -1075,7 +1075,7 @@
    {
     "id": "pellow",
     "name": "Dorrit Pellow",
-    "initials": "DPe",
+    "initials": "DP",
     "club": "veg",
     "office": "mayor",
     "rule": {
@@ -1113,8 +1113,8 @@
    },
    {
     "id": "bole",
-    "name": "Ermintrude Bole",
-    "initials": "EB",
+    "name": "Henrietta Bole",
+    "initials": "HB",
     "club": "brass",
     "office": "governor",
     "rule": {
@@ -1126,8 +1126,8 @@
    },
    {
     "id": "gusset",
-    "name": "Percy Gusset",
-    "initials": "PG",
+    "name": "Percy Plummet",
+    "initials": "PP",
     "club": "anglers",
     "office": "governor",
     "rule": {
@@ -1165,8 +1165,8 @@
    },
    {
     "id": "nibley",
-    "name": "Florence Nibley",
-    "initials": "FN",
+    "name": "Florence Mayfly",
+    "initials": "FM",
     "club": "anglers",
     "office": "president",
     "rule": {
@@ -2183,7 +2183,11 @@
    "moveMoodCap": 5,
    "moveMoodPerNr": 20,
    "announceSeconds": 2.5,
-   "maxLossesBound": 5
+   "maxLossesBound": 6
+  },
+  "count": {
+   "huffBelow": 30,
+   "huffSlope": 3
   },
   "vanity": {
    "price": 600,
@@ -2226,11 +2230,11 @@
     },
     {
      "id": "marchpane",
-     "name": "Rupert Marchpane"
+     "name": "Rupert Borage"
     },
     {
      "id": "tuttle",
-     "name": "Winifred Tuttle"
+     "name": "Winifred Chervil"
     },
     {
      "id": "larkspur",
@@ -2259,6 +2263,16 @@
     10,
     14
    ]
+  },
+  "paperRules": {
+   "disarray": {
+    "first": 2,
+    "ratio": 2
+   },
+   "sizing": {
+    "scale": 50,
+    "pull": 1
+   }
   },
   "skeletonPlaceholder": true,
   "deck": {
@@ -2313,7 +2327,7 @@
      "cosigner": {
       "face": "face:minute",
       "name": "Ambrose Minute",
-      "role": "Committee on Committees",
+      "role": "Committee on Next Meetings",
       "club": null
      },
      "club": "shops",
@@ -8731,12 +8745,12 @@
      "minister": "pockle",
      "visitor": {
       "face": "face:pockle",
-      "name": "Dorothy Pockle",
+      "name": "Dorothy Sett",
       "role": "Applicant",
       "club": null
      },
      "text": "I apply to be Minister for Potholes. References: 'She found one.'",
-     "returnText": "Test return of Dorothy Pockle."
+     "returnText": "Test return of Dorothy Sett."
     },
     {
      "id": "app-pellow",

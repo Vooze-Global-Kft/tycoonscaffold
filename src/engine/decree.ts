@@ -55,31 +55,35 @@ export { sayNothingFactor, quietLimit, countDownScandal, checkScandal, endScanda
 // ============================================================================ BLOCK P1b (time, term and wiring)
 
 // --- 2.5 the tick (P1b: tick.ts) ---
-export { advanceDecree, nextStop, nextVisitorIn } from './decree/tick';
+export { advanceDecree, nextStop, nextVisitorIn, cashAt, anchorOf, timeCashReaches, TICK_EVENTS, MAX_EVENTS_PER_TICK } from './decree/tick';
+export type { TickEvent } from './decree/tick';
 
 // --- 2.15 time away (P1b: offline.ts) ---
-export { decreeOffline, decreeIncome, decreeActiveIncome, mergeAwayReports, awayReportAlone } from './decree/offline';
+export { decreeOffline, decreeIncome, decreeActiveIncome, mergeAwayReports, awayReportAlone, awayPlan, awayCap, awayArrivals, awayByEvents } from './decree/offline';
+export type { AwayPlan } from './decree/offline';
 
 // --- 2.10 the term, the call, the run-up, the result (P1b: term.ts) ---
-export { countDay, checkTermEnd, canCall, callElection, countVotes, chooseAfterResult, newTerm, termRibbon, resultSheet } from './decree/term';
+export { countDay, checkTermEnd, canCall, callElection, canCount, countVotes, endElectionNight, chooseAfterResult, newTerm, termRibbon, resultSheet, nrFor, halfwayBack, monumentFor, reconcileTerm } from './decree/term';
 
 // --- 2.4, 2.10, 2.11 shares, the poll, the count (P1b: count.ts) ---
-export { shares, heldAfter, closeDistricts, poll, count } from './decree/count';
+export { shares, meritShares, heldAfter, closeDistricts, poll, count, meritOf, moodUtility, certainWinBound, callDay, callDayOf, currentRival, announcementOrder, HELD_AT, STRONG_WEIGHT, CLOSE_WITHIN } from './decree/count';
 
 // --- 2.12 the bigger office (P1b: move.ts) ---
-export { MOVE_RESETS, MOVE_STAYS, canMoveUp, moveUp, moveSheet } from './decree/move';
+export { MOVE_RESETS, MOVE_STAYS, canMoveUp, moveUp, moveSheet, movedState, moveRequirements, transitionFund, moveMood, passesIn } from './decree/move';
+export type { MoveListItem } from './decree/move';
 
 // --- 2.16 advice and the goal line (P1b: advice.ts) ---
-export { advice, goalLine, about } from './decree/advice';
+export { advice, goalLine, about, candidates, scoreOf, recordShort, slipNeed, slipReserve, reserveNow, standingOrderPick, callNow } from './decree/advice';
+export type { Candidate } from './decree/advice';
 
 // --- 2.14 new things a term, the ONE Factors object (P1b: twists.ts) ---
-export { neutralFactors, combineFactors, factorFor, twistFactors, deskFactors, newThingAt, compositionProblems } from './decree/twists';
+export { neutralFactors, combineFactors, factorFor, twistFactors, twistIdsFactors, deskFactors, newThingAt, newThingLabel, compositionProblems, QUIET_TERM, COMPOSITION_TERMS } from './decree/twists';
 
 // --- 2.9 ministers (P1b: ministers.ts) ---
-export { nextApplication, ministerFactors, appoint, sendAway, cabinet } from './decree/ministers';
+export { nextApplication, ministerFactors, appoint, sendAway, cabinet, ministerOf } from './decree/ministers';
 
 // --- 3.1 the pen's hints (P1b: hints.ts) ---
-export { hintsFor } from './decree/hints';
+export { hintsFor, TEACHING_SLOTS } from './decree/hints';
 
 // --- 5.10, 5.11 ads, products, the Standing Order, the face (P1b: grants.ts) ---
-export { canWatchAd, canShop, grantAd, entitleDecree, setStandingOrder, standingOrderStep, pickFace } from './decree/grants';
+export { canWatchAd, canShop, grantAd, entitleDecree, setStandingOrder, standingOrderStep, standingOrderAvailable, standingOrderActive, pickFace, offering, owns, cosmetics, freePlaces } from './decree/grants';

@@ -70,6 +70,8 @@ export const BOTS = {
   buying: ['noBuy', 'goalFollower'],
   /** 4. Sessions. */
   sessions: ['passive', 'checkIn', 'idle', 'adEverything'],
+  /** D27: the auditor's other cheap habits, as adversaries of the tuning (the prototype's `abots.py`): reported beside the happier-club habit. */
+  cheap: ['signFree', 'noLobby', 'noTrap', 'lowestClub', 'sadder', 'happier30', 'happier70'],
   /** 5. Adversaries: the reader plus one habit. */
   adversaries: ['clockForward', 'clockBack', 'clockForwardAgain', 'reloadAfterDraw', 'reloadAfterDecision', 'reloadInTakeBack', 'hoardTray', 'quitElectionNight', 'closeDuringEvents', 'away299', 'away301', 'flickBlind'],
 } as const;
@@ -258,10 +260,14 @@ export function readerValue(v: SideView, ctx: PaperView['ctx']): number {
 
 export type BotChoice = Choice | 'wait';
 
-/** The campaign rule every bot shares (8.2): sign when affordable; when short wait up to 20 s of income, else refuse. */
+/**
+ * The campaign rule every bot shares: sign when affordable, else wait until the treasury pays it. A
+ * campaign paper only adds points and D16 keeps its price back from the call on, so refusing one
+ * because slips spent the treasury would make a bot lose for a reason that is not reading (the
+ * prototype's decision 11; 8.2 does not say). Income is never 0 (ministry 0), so the wait ends.
+ */
 export function campaignChoice(v: PaperView): BotChoice {
-  if (v.sign.affordable) return 'sign';
-  return v.sign.cost - v.ctx.cash <= READER_CONSTANTS.waitShortSeconds * v.ctx.I ? 'wait' : 'refuse';
+  return v.sign.affordable ? 'sign' : 'wait';
 }
 const isCampaign = (v: PaperView) => v.kind === 'campaign' || v.kind === 'rally';
 const signIfAffordable = (v: PaperView, want: boolean): BotChoice => (want && v.sign.affordable ? 'sign' : 'refuse');
@@ -331,9 +337,47 @@ export function happierChoice(v: PaperView): BotChoice {
   if (isCampaign(v)) return campaignChoice(v);
   if (v.archetype === 'vanity' || v.archetype === 'basket' || v.archetype === 'favour') return 'refuse';
   if (v.kind === 'scandal') return signIfAffordable(v, true);
-  const pair = v.archetype === 'project' || v.archetype === 'swap' || v.archetype === 'fee' || v.archetype === 'committee' || v.archetype === 'biggerStudy';
+  const pair = v.archetype !== null && PAIR.has(v.archetype);
   if (pair && v.petitioner !== null && v.other !== null) return signIfAffordable(v, v.moods[v.petitioner] >= v.moods[v.other]);
   return signIfAffordable(v, true);
+}
+
+const PAIR = new Set(['project', 'swap', 'fee', 'committee', 'biggerStudy']);
+const signOrWait = (v: PaperView): BotChoice => (v.sign.affordable ? 'sign' : v.sign.cost - v.ctx.cash <= READER_CONSTANTS.waitShortSeconds * v.ctx.I ? 'wait' : 'refuse');
+/** Sign everything that costs no money; refuse the rest. */
+export function signFreeChoice(v: PaperView): BotChoice {
+  return isCampaign(v) ? campaignChoice(v) : v.sign.money >= 0 ? signIfAffordable(v, true) : 'refuse';
+}
+/** Refuse the lobbyists (baskets and their favours); sign the rest, waiting like always-sign. */
+export function noLobbyChoice(v: PaperView): BotChoice {
+  if (isCampaign(v)) return campaignChoice(v);
+  return v.archetype === 'basket' || v.archetype === 'favour' ? 'refuse' : signOrWait(v);
+}
+/** Refuse baskets, favours and vanity; sign the rest. */
+export function noTrapChoice(v: PaperView): BotChoice {
+  return !isCampaign(v) && v.archetype === 'vanity' ? 'refuse' : noLobbyChoice(v);
+}
+/** Sign only what the lowest club asks (its petitioner's papers and forms); refuse the rest. */
+export function lowestClubChoice(v: PaperView): BotChoice {
+  if (isCampaign(v)) return campaignChoice(v);
+  const low = v.moods.reduce((b, m, g) => (m < v.moods[b] ? g : b), 0);
+  return v.petitioner === low ? signOrWait(v) : 'refuse';
+}
+/** The happier-club habit turned round: sign a two-club paper only when the petitioner is the sadder club. */
+export function sadderChoice(v: PaperView): BotChoice {
+  if (!isCampaign(v) && v.archetype && PAIR.has(v.archetype) && v.petitioner !== null && v.other !== null) return signIfAffordable(v, v.moods[v.petitioner] < v.moods[v.other]);
+  return happierChoice(v);
+}
+/** The happier-club habit that reads one chip: no sign when the other club's printed result falls below 30 (D25's huff line). */
+export function happier30Choice(v: PaperView): BotChoice {
+  const c = happierChoice(v);
+  if (c === 'sign' && v.archetype && PAIR.has(v.archetype) && v.other !== null && v.moods[v.other] + v.sign.clubDeltas[v.other] < 30) return 'refuse';
+  return c;
+}
+/** The happier-club habit that also refuses whenever the petitioner is already above 70. */
+export function happier70Choice(v: PaperView): BotChoice {
+  if (!isCampaign(v) && v.petitioner !== null && v.moods[v.petitioner] > 70 && v.archetype && (PAIR.has(v.archetype) || v.archetype === 'treat')) return 'refuse';
+  return happierChoice(v);
 }
 
 /** A seeded coin of the bot (its own stream, never a rules site). */
@@ -356,6 +400,20 @@ function choiceRule(bot: BotId): (v: PaperView, n: number, seed: number) => BotC
       return happierChoice;
     case 'casual':
       return casualChoice;
+    case 'signFree':
+      return signFreeChoice;
+    case 'noLobby':
+      return noLobbyChoice;
+    case 'noTrap':
+      return noTrapChoice;
+    case 'lowestClub':
+      return lowestClubChoice;
+    case 'sadder':
+      return sadderChoice;
+    case 'happier30':
+      return happier30Choice;
+    case 'happier70':
+      return happier70Choice;
     case 'random':
       return (v, n, seed) => (isCampaign(v) ? campaignChoice(v) : signIfAffordable(v, botCoin(seed, 1, n) < 0.5));
     case 'misreader':
@@ -1465,14 +1523,14 @@ export function h6(tr: Pick<Trace, 'faults' | 'events' | 'decisions' | 'samples'
   return { refuseRefused, overran, zeroIncome, worstTermsToWin: worst };
 }
 
-/** The 2.11 bound with D15 and D25 (the worst count utility u(0) = huffBelow − huffSlope × huffBelow, −60 at 30 and 3): the losses after which Y(n) − R + u(0) ≥ 50 holds every district. */
+/** The 2.11 bound with D15 (the content's disarray rule) and D25 (the worst count utility u(0) = huffBelow − huffSlope × huffBelow, −60 at 30 and 3): the losses after which Y(n) − R + u(0) ≥ 50 holds every district. */
 export function certainWinBound(cfg: DecreeConfig): number {
   const c = cfg.decree.count;
   const u0 = c.huffBelow - c.huffSlope * c.huffBelow;
   let worst = 0;
   for (const o of cfg.decree.offices) {
     let n = 0;
-    while (R.disarray(n) - o.rivalPull + u0 < 50 && n < 64) n++;
+    while (R.disarray(n, (cfg.decree as { paperRules?: { disarray?: { first: number; ratio: number } } }).paperRules?.disarray) - o.rivalPull + u0 < 50 && n < 64) n++;
     worst = Math.max(worst, n);
   }
   return worst;
@@ -1908,6 +1966,11 @@ export function acrossSeeds(sums: readonly SeedSummary[]): BotRow[] {
     const s = share(xs, merit);
     rows.push(row(`D27 (${i + 1}) wins ${b}`, 'aim', aim, `${pc(s)} over ${xs.length} seeds`, ok(s, test), s));
   });
+  for (const b of BOTS.cheap) {
+    const xs = by(b);
+    if (!xs.length) continue;
+    rows.push(row(`D27 cheap habit ${b}: wins on merit (all wins)`, 'report', 'beside happier ≤ 60 %', `${pc(share(xs, true))} (${pc(share(xs, false))}) over ${xs.length} seeds`, true, share(xs, true)));
+  }
   const meanT = (xs: SeedSummary[], k: 'president' | 'governor', cap: number) => (xs.length ? xs.reduce((s, x) => s + (x[k] ?? cap), 0) / xs.length : NaN);
   const rT = meanT(reader, 'president', 180);
   const timeGates: [BotId, number][] = [['alwaysSign', 1.5], ['alwaysRefuse', 1.5], ['random', 1.5], ['noBuy', 1.5], ['moneyOnly', 1.2], ['happier', 1.2]];

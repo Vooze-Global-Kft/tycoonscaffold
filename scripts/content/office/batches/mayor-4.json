@@ -1,0 +1,488 @@
+{
+  "batch": "mayor-4",
+  "writer": "writer-1",
+  "office": "mayor",
+  "papers": [
+    {
+      "id": "may4-patch-canopy",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A canopy over the patch. Pumpkins dislike drizzle and spotters.",
+      "subject": "picnic-weather",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "may4-umbrella",
+      "visitor": "vane",
+      "club": "shops",
+      "archetype": "basket",
+      "text": "An umbrella for you. And one for the umbrella. Drizzle forecast, by us.",
+      "subject": "picnic-weather",
+      "butt": "lobbyist",
+      "shape": "escalation",
+      "favour": {
+        "text": "The umbrella asks for the Guild's best shop window to dry in. It is in no hurry.",
+        "clippings": {
+          "sign": "MAYOR'S UMBRELLA TAKES BEST SHOP WINDOW; HATS MOVED",
+          "refuse": "UMBRELLA STAYS FURLED; MAKER 'STILL HOPEFUL'"
+        }
+      }
+    },
+    {
+      "id": "may4-display-of-you",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "treat",
+      "text": "We would like to make a display of you, Mayor. Tuesdays.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "literalism"
+    },
+    {
+      "id": "may4-steps-carpet",
+      "visitor": "spinwell",
+      "club": "shops",
+      "archetype": "vanity",
+      "text": "A carpet up the town hall steps, Mayor. And one for coming down.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "escalation"
+    },
+    {
+      "id": "may4-tea-queue",
+      "visitor": "till",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "fee",
+      "text": "Till's Teas will hire the town hall steps for its queue. Spotters may join it.",
+      "subject": "ceremonies",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "may4-shelter-mirror",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A bus shelter mirror, facing the shops. Displays seen: up 100 %.",
+      "subject": "inventions",
+      "butt": "thing",
+      "shape": "statistic",
+      "portable": true
+    },
+    {
+      "id": "may4-bus-counter",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "project",
+      "text": "Switch on the bus counter, Mayor. It will count you first.",
+      "subject": "inventions",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "may4-footnote-study",
+      "visitor": "sprott",
+      "cosigner": "minute",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "committee",
+      "text": "A study of the timetable in the baker's window. Mostly footnotes.",
+      "subject": "paperwork",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "portable": true,
+      "biggerStudy": "The timetable study asks for a second volume, for the footnotes to its footnotes."
+    },
+    {
+      "id": "may4-judges-platform",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "veg",
+      "archetype": "swap",
+      "text": "Lend us the judges' platform at the weigh-in. We know platforms.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
+      "id": "may4-attended-rosette",
+      "visitor": "wimble",
+      "club": "veg",
+      "archetype": "vanity",
+      "text": "A framed rosette for you at each weigh-in, Mayor. It reads: ATTENDED.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "slogan"
+    },
+    {
+      "id": "may4-bandstand-hats",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "swap",
+      "text": "Hats on stands at the Hilltop bandstand, one day. Pumpkins have had 41.",
+      "subject": "hats",
+      "butt": "thing",
+      "shape": "statistic",
+      "setsUp": "may-bandstand-guild"
+    },
+    {
+      "id": "may4-goose-second",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "treat",
+      "text": "A goose came second at the weigh-in. Present its rosette, Mayor.",
+      "subject": "geese",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "may4-fountain-water",
+      "visitor": "goss",
+      "club": "bus",
+      "archetype": "basket",
+      "text": "A glass from our finest fountain. Next, a jug. Then a fountain.",
+      "subject": "fountains",
+      "butt": "lobbyist",
+      "shape": "escalation",
+      "favour": {
+        "text": "The glass of water asks for a seat at the bus stop. It is used to being looked at.",
+        "clippings": {
+          "sign": "MAYOR GIVES GLASS OF WATER A SEAT AT THE BUS STOP",
+          "refuse": "GLASS OF WATER SENT BACK, UNSIPPED"
+        }
+      }
+    },
+    {
+      "id": "may4-bandstand-deck",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "veg",
+      "archetype": "project",
+      "text": "A bus-viewing deck on the Hilltop bandstand. Pumpkins underneath.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "may4-notebook-witness",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "treat",
+      "text": "Witness page one of our new notebook. Nothing has happened yet.",
+      "subject": "paperwork",
+      "butt": "self",
+      "shape": "form-misapplied",
+      "portable": true
+    },
+    {
+      "id": "may4-patch-inquiry",
+      "visitor": "kerb",
+      "cosigner": "minute",
+      "club": "bus",
+      "other": "veg",
+      "archetype": "committee",
+      "text": "Can buses be seen from the patch? An inquiry will stand on it.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "literalism",
+      "portable": true,
+      "biggerStudy": "The patch inquiry saw one bus. It asks for a ladder, and a season, to see the rest."
+    },
+    {
+      "id": "may4-pen-ribbon",
+      "visitor": "sash",
+      "club": "veg",
+      "archetype": "basket",
+      "text": "A ribbon for your pen, never cut. A small ceremony? No reason.",
+      "subject": "ribbons",
+      "butt": "lobbyist",
+      "shape": "callback",
+      "favour": {
+        "text": "The ribbon on your pen asks to be entered in the weigh-in. It is light, but keen.",
+        "clippings": {
+          "sign": "PEN RIBBON ENTERS WEIGH-IN; MAYOR CHEERS, PUMPKINS DO NOT",
+          "refuse": "RIBBON NOT ENTERED. LIONEL SASH: 'NO REASON'"
+        }
+      }
+    },
+    {
+      "id": "may4-scales-sign",
+      "visitor": "till",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "fee",
+      "text": "A sign on the weigh-in scales, paid for by us: AS SEEN IN OUR WINDOWS.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "slogan",
+      "portable": true
+    },
+    {
+      "id": "may4-awning-drizzle",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "swap",
+      "text": "Lend us the baker's awning on weigh-in day. 3 pumpkins in 4 mind drizzle.",
+      "subject": "picnic-weather",
+      "butt": "thing",
+      "shape": "statistic",
+      "portable": true
+    },
+    {
+      "id": "may4-timetable-frame",
+      "visitor": "till",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "swap",
+      "text": "Lend us the bus stop timetable frame on Saturdays. Such glass.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "may4-loudspeaker",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "fee",
+      "text": "We will hire the bus loudspeaker for the weigh-in results. Then the soil report.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "may4-hatter-queue",
+      "visitor": "till",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A ticket machine for the queue at the hatter's. There is no queue yet.",
+      "subject": "paperwork",
+      "butt": "thing",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "may4-scales-inquiry",
+      "visitor": "loam",
+      "cosigner": "minute",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "committee",
+      "text": "An inquiry into the scales, at the bus station. Evidence will be weighed.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "literalism",
+      "biggerStudy": "The scales inquiry asks for a second set of scales, to weigh the evidence again."
+    },
+    {
+      "id": "may4-hold-flask",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "veg",
+      "archetype": "treat",
+      "text": "Hold my flask while I log a bus, Mayor. Look as if you know which.",
+      "subject": "buses",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "may4-napkin-pumpkins",
+      "visitor": "gourdley",
+      "cosigner": "minute",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "committee",
+      "text": "A committee to add pumpkins to the founding napkin. Room by the gravy.",
+      "subject": "paperwork",
+      "butt": "committee",
+      "shape": "callback",
+      "biggerStudy": "The napkin committee has filled the napkin. It asks for a second napkin, and lunch."
+    },
+    {
+      "id": "may4-patch-gate-sign",
+      "visitor": "loam",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A sign on the patch gate: PUMPKINS AT REST. PLEASE SPOT QUIETLY.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan",
+      "portable": true
+    },
+    {
+      "id": "may4-named-steps",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "fee",
+      "text": "We will pay to name each town hall step after a bus. 14 steps; 16 buses.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
+      "id": "may4-forecourt",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "swap",
+      "text": "Move the weigh-in to the bus forecourt for a day. Buses can watch.",
+      "subject": "vegetable-shows",
+      "butt": "thing",
+      "shape": "undercut",
+      "setsUp": "may-weigh-in-move"
+    },
+    {
+      "id": "may4-pumpkin-display",
+      "visitor": "awning",
+      "cosigner": "minute",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "committee",
+      "text": "Is a pumpkin in a window a display? A committee will stare until sure.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "form-misapplied",
+      "portable": true,
+      "biggerStudy": "The display committee asks for a second pumpkin, in a second window, to be fair."
+    },
+    {
+      "id": "may4-draper-bench",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "project",
+      "text": "A spotters' bench outside the draper's. Then a cushion. Then a roof.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "escalation",
+      "portable": true
+    },
+    {
+      "id": "may4-borrowed-bell",
+      "visitor": "sprott",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "swap",
+      "text": "Lend us the shop bell. We will ring it at every bus, for the record.",
+      "subject": "buses",
+      "butt": "thing",
+      "shape": "literalism",
+      "portable": true
+    },
+    {
+      "id": "may4-bell-study",
+      "visitor": "till",
+      "cosigner": "minute",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "committee",
+      "text": "A study: can a shop bell be heard over a bus? You will listen.",
+      "subject": "committees",
+      "butt": "self",
+      "shape": "photo-op",
+      "biggerStudy": "The bell study asks to try it with every bus. You are to keep listening, nodding."
+    },
+    {
+      "id": "may4-rodney-adore",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "bus",
+      "archetype": "treat",
+      "text": "Rodney told the Drizzle you adore the weigh-in. Come and adore it?",
+      "subject": "vegetable-shows",
+      "butt": "self",
+      "shape": "callback"
+    },
+    {
+      "id": "may4-windows-sign",
+      "visitor": "till",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "project",
+      "text": "A sign at the bus stop: WINDOWS THIS WAY. ALSO, BUSES.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan",
+      "portable": true
+    },
+    {
+      "id": "may4-bus-plaques",
+      "visitor": "spinwell",
+      "club": "bus",
+      "archetype": "vanity",
+      "text": "A plaque at each bus stop where you once waited, Mayor. I count 31.",
+      "subject": "vanity",
+      "butt": "self",
+      "shape": "statistic"
+    },
+    {
+      "id": "may4-steps-rota",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "swap",
+      "text": "A town hall steps rota: the Guild till noon, then us. You get 1:00 to 1:05.",
+      "subject": "ceremonies",
+      "butt": "self",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "may4-runner-beans",
+      "visitor": "gourdley",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "project",
+      "text": "Runner beans down the high street. Then peas. Then the shops.",
+      "subject": "gardens",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "may4-bus-recordings",
+      "visitor": "kerb",
+      "club": "bus",
+      "other": "veg",
+      "archetype": "fee",
+      "text": "We will hire the Hilltop bandstand for recordings of buses. Mostly idling.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "may4-air-hats",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "swap",
+      "text": "Lend us the patch on Sundays, to air the hats. Hats need a field.",
+      "subject": "hats",
+      "butt": "thing",
+      "shape": "literalism",
+      "portable": true
+    },
+    {
+      "id": "may4-hat-stands",
+      "visitor": "awning",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "project",
+      "text": "Unveil our hat stands, Mayor. The weigh-in queue will part for you.",
+      "subject": "hats",
+      "butt": "self",
+      "shape": "photo-op"
+    }
+  ]
+}

@@ -77,7 +77,8 @@ describe('the habits choose by their own rule only', () => {
     for (const f of [B.readerChoice, B.alwaysRefuseChoice, B.moneyOnlyChoice, B.moodOnlyChoice, B.happierChoice, B.casualChoice]) expect(f(v)).toBe('sign');
     const short = { ...view({ affordable: false, cost: 1100, money: -1100 }, {}, { kind: 'rally' }), ctx: ctx({ cash: 1000, I: 10 }) };
     expect(B.campaignChoice(short)).toBe('wait');
-    expect(B.campaignChoice({ ...short, ctx: ctx({ cash: 0, I: 10 }) })).toBe('refuse');
+    // Every bot saves for a campaign paper (D16 reserves its price; the prototype's decision 11).
+    expect(B.campaignChoice({ ...short, ctx: ctx({ cash: 0, I: 10 }) })).toBe('wait');
   });
   it('money-only takes the side with more money, a level when affordable', () => {
     expect(B.moneyOnlyChoice(view({ money: 50 }, {}))).toBe('sign');
@@ -102,6 +103,24 @@ describe('the habits choose by their own rule only', () => {
     expect(B.bigNumber(side({ clubDeltas: [4, -5, 0] }), ctx())).toBe(-5);
     expect(B.casualChoice(view({ clubDeltas: [4, -3, 0] }, { clubDeltas: [-4, 3, 0] }))).toBe('sign');
     expect(B.casualChoice(view({ clubDeltas: [4, -5, 0] }, { clubDeltas: [-4, 3, 0] }))).toBe('refuse');
+  });
+  it("the auditor's cheap habits (D27): sign-free, no-lobby, no-trap, lowest-club, sadder, happier30, happier70", () => {
+    const pair = (moods: number[], over: Partial<B.PaperView> = {}, sign: Partial<B.SideView> = {}) => view({ clubDeltas: [4, -4, 0], ...sign }, {}, { moods, ...over });
+    expect(B.signFreeChoice(pair([50, 50, 50], {}, { money: -10, cost: 10 }))).toBe('refuse');
+    expect(B.signFreeChoice(pair([50, 50, 50], {}, { money: 20 }))).toBe('sign');
+    expect(B.noLobbyChoice(pair([50, 50, 50], { archetype: 'basket' }))).toBe('refuse');
+    expect(B.noLobbyChoice(pair([50, 50, 50], { archetype: 'vanity' }))).toBe('sign');
+    expect(B.noTrapChoice(pair([50, 50, 50], { archetype: 'vanity' }))).toBe('refuse');
+    expect(B.noTrapChoice(pair([50, 50, 50], { archetype: 'swap' }))).toBe('sign');
+    expect(B.lowestClubChoice(pair([40, 50, 60], { petitioner: 0 }))).toBe('sign');
+    expect(B.lowestClubChoice(pair([40, 50, 60], { petitioner: 2 }))).toBe('refuse');
+    expect(B.sadderChoice(pair([40, 60, 50]))).toBe('sign');
+    expect(B.sadderChoice(pair([60, 40, 50]))).toBe('refuse');
+    expect(B.happier30Choice(pair([60, 32, 50]))).toBe('refuse');
+    expect(B.happier30Choice(pair([60, 40, 50]))).toBe('sign');
+    expect(B.happier70Choice(pair([75, 40, 50]))).toBe('refuse');
+    expect(B.happier70Choice(pair([65, 40, 50]))).toBe('sign');
+    for (const b of B.BOTS.cheap) expect(B.ALL_BOTS).toContain(b);
   });
   it('the bot coin is seeded and its own stream', () => {
     expect(B.botCoin(7, 1, 3)).toBe(B.botCoin(7, 1, 3));
@@ -181,6 +200,14 @@ describe('H1 to H6 on synthetic traces', () => {
     expect(Math.pow(2, n + 1) - 2 - R - 60).toBeGreaterThanOrEqual(50);
     expect(Math.pow(2, n) - 2 - R - 60).toBeLessThan(50);
     expect(n).toBeLessThanOrEqual(8);
+  });
+  it("the bound reads D25's huff parameters from the content (a steeper huff needs more losses)", () => {
+    const cfg = decreeTestConfig();
+    const steep = { ...cfg, decree: { ...cfg.decree, count: { ...cfg.decree.count, huffSlope: cfg.decree.count.huffSlope + 1 } } };
+    expect(B.certainWinBound(steep)).toBeGreaterThanOrEqual(B.certainWinBound(cfg));
+    const u0 = (c: { huffBelow: number; huffSlope: number }) => c.huffBelow - c.huffSlope * c.huffBelow;
+    const R = Math.max(...steep.decree.offices.map((o) => o.rivalPull));
+    expect(Math.pow(2, B.certainWinBound(steep) + 1) - 2 - R + u0(steep.decree.count)).toBeGreaterThanOrEqual(50);
   });
 });
 
@@ -293,6 +320,15 @@ describe('evaluate and acrossSeeds', () => {
     expect(get('H10 money cannot reach the vote')).toMatchObject({ ok: true, num: 2 });
     expect(get('H6 reader from alwaysRefuse\'s state wins within 2 elections').ok).toBe(true);
     expect(get('H12 no gossip spiral: approval from below 35 to 50 within 80 papers').ok).toBe(true);
+  });
+  it('D19: the hour-one text gate is hard for the reader, always-refuse and random, a report for ad-everything', () => {
+    const cfg = decreeTestConfig();
+    const twice = [draw({ t: 10 }), draw({ t: 20 })];
+    for (const bot of ['reader', 'alwaysRefuse', 'random', 'adEverything'] as B.BotId[]) {
+      const r = B.evaluate(cfg, { ...trace({ draws: twice }), bot }).find((x) => x.name === 'H7 no text twice in hour 1')!;
+      expect(r.ok).toBe(false);
+      expect(r.kind).toBe(bot === 'adEverything' ? 'report' : 'hard');
+    }
   });
   it('the trace hash changes with a decision and not otherwise', () => {
     const a = trace({ decisions: [dec()] });

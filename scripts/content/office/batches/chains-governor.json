@@ -13,17 +13,17 @@
         "club": "anglers",
         "other": "brass",
         "archetype": "committee",
-        "text": "The fish have kept time since practice moved here. Study them?",
-        "subject": "bandstands",
+        "text": "A study, please: since the band came, 3 fish in 4 nod along.",
+        "subject": "harbours",
         "butt": "committee",
-        "shape": "undercut",
+        "shape": "statistic",
         "delay": [
           10,
           14
         ],
         "clippings": {
           "sign": "GOVERNOR FUNDS STUDY OF FISH IN FOUR-FOUR TIME",
-          "refuse": "STUDY SHELVED; FISH STILL KEEPING TIME"
+          "refuse": "STUDY SHELVED; FISH STILL NODDING ALONG"
         }
       },
       "afterRefuse": {
@@ -31,7 +31,7 @@
         "club": "brass",
         "other": "anglers",
         "archetype": "treat",
-        "text": "Hear the band's piece for you, 'Further Study'. Mostly rests.",
+        "text": "The band wrote you a piece: 'Further Study'. Mostly rests.",
         "subject": "bandstands",
         "butt": "self",
         "shape": "callback",
@@ -54,7 +54,7 @@
         "club": "brass",
         "other": "anglers",
         "archetype": "swap",
-        "text": "A loud Monday for the band, to level out your silent Sunday.",
+        "text": "The band asks for a loud Monday, to balance your silent Sunday.",
         "subject": "ceremonies",
         "butt": "office",
         "shape": "literalism",
@@ -95,7 +95,7 @@
         "club": "anglers",
         "other": "veg",
         "archetype": "project",
-        "text": "The bench has floated 2 locks, to where growers water. Anchor it?",
+        "text": "The bench drifted two locks, to where growers water. Anchor it?",
         "subject": "inventions",
         "butt": "thing",
         "shape": "statistic",
@@ -114,7 +114,7 @@
         "club": "anglers",
         "other": "brass",
         "archetype": "committee",
-        "text": "Then survey where the fish prefer to sit. Band practice to pause.",
+        "text": "Then we survey the fish on where to sit. The band hushes for replies.",
         "subject": "inventions",
         "butt": "committee",
         "shape": "form-misapplied",
@@ -123,8 +123,8 @@
           16
         ],
         "clippings": {
-          "sign": "GOVERNOR FUNDS FISH SEATING SURVEY; FISH UNAVAILABLE",
-          "refuse": "FISH LEFT TO SIT WHERE THEY LIKE"
+          "sign": "FISH SURVEYED ON SEATING; NO REPLIES YET",
+          "refuse": "FISH NOT CONSULTED; ANGLERS SIT WHERE THEY SAT"
         }
       }
     },
@@ -177,7 +177,7 @@
         "club": "brass",
         "other": "anglers",
         "archetype": "project",
-        "text": "The shelter works. Now each cornet wants one, by the canal.",
+        "text": "Our tuba thrives alone. Each cornet now wants a shelter, by the canal.",
         "subject": "bandstands",
         "butt": "thing",
         "shape": "escalation",
@@ -195,7 +195,7 @@
         "club": "brass",
         "other": "shops",
         "archetype": "swap",
-        "text": "The tuba asks to use shop doorways. It rattles only 1 pane in 3.",
+        "text": "Our tuba asks for shop doorways instead. It rattles only 1 pane in 3.",
         "subject": "bandstands",
         "butt": "thing",
         "shape": "statistic",
@@ -236,10 +236,10 @@
         "club": "bus",
         "other": "shops",
         "archetype": "fee",
-        "text": "We will pay, in triplicate, to name the shops' bench after our founder's pencil.",
+        "text": "Then we will pay to name the shops' bench after the founder's pencil.",
         "subject": "buses",
         "butt": "thing",
-        "shape": "form-misapplied",
+        "shape": "undercut",
         "delay": [
           12,
           16
@@ -277,7 +277,7 @@
         "club": "shops",
         "other": "bus",
         "archetype": "treat",
-        "text": "No sip? Then gaze at our tea from the pavement. Spotters, step back.",
+        "text": "Then pose at our window, admiring the tea. Strictly no sipping.",
         "subject": "portraits",
         "butt": "self",
         "shape": "photo-op",
@@ -286,7 +286,7 @@
           16
         ],
         "clippings": {
-          "sign": "GOVERNOR GAZES AT TEA; TEA UNMOVED",
+          "sign": "GOVERNOR ADMIRES TEA THROUGH GLASS; TEA GOES COLD",
           "refuse": "TEA ROOM OPENS WITHOUT GOVERNOR; TEA SERVED ANYWAY"
         }
       }
@@ -318,7 +318,7 @@
         "club": "veg",
         "other": "shops",
         "archetype": "treat",
-        "text": "No glasshouse, so the pumpkin lives under a shop's cake cover. Unveil it?",
+        "text": "The pumpkin now lives under a cake cover from the shops. Unveil it?",
         "subject": "vegetable-shows",
         "butt": "self",
         "shape": "photo-op",
@@ -328,7 +328,7 @@
         ],
         "clippings": {
           "sign": "GOVERNOR LIFTS COVER; PUMPKIN SAYS NOTHING",
-          "refuse": "PUMPKIN STAYS UNDER COVER, AS DOES THE MATTER"
+          "refuse": "PUMPKIN STAYS UNDER COVER; CAKE STILL HOMELESS"
         }
       }
     },
@@ -350,7 +350,7 @@
           14
         ],
         "clippings": {
-          "sign": "TOWPATH SCALES NOW PERMANENT; ANGLERS WEIGH THE QUIET",
+          "sign": "SCALES STAY ON TOWPATH; FLOATS NOW WEIGHED BEFORE USE",
           "refuse": "SCALES LEAVE TOWPATH; TOWPATH LIGHTER"
         }
       },
@@ -392,7 +392,7 @@
           14
         ],
         "clippings": {
-          "sign": "BAND SLOWS DOWN; 7:02 NOW LEAVES AT 7:40",
+          "sign": "BAND SLOWS DOWN; THE 7:15 NOW LEAVES AT 7:40",
           "refuse": "BAND KEEPS TEMPO; BUS LEAVES MID-CHORUS"
         }
       },
@@ -423,7 +423,7 @@
         "visitor": "spinwell",
         "club": "anglers",
         "archetype": "vanity",
-        "text": "Rodney proposes a float with your face on it, marked STILL AFLOAT.",
+        "text": "Rodney proposes a float with your face, marked STILL AFLOAT.",
         "subject": "vanity",
         "butt": "self",
         "shape": "slogan",
@@ -441,7 +441,7 @@
         "club": "anglers",
         "other": "brass",
         "archetype": "treat",
-        "text": "Not hold the float? Then point at it, gently, for the camera.",
+        "text": "Not holding the float? Then point at it, gently, for the camera.",
         "subject": "ceremonies",
         "butt": "self",
         "shape": "photo-op",
@@ -458,13 +458,13 @@
     {
       "id": "gov-listed-practice",
       "office": "governor",
-      "title": "Practice as an event",
+      "title": "Practice as an Event",
       "afterSign": {
         "visitor": "bellows",
         "club": "brass",
         "other": "anglers",
         "archetype": "fee",
-        "text": "The band will pay to list its tuning up, too. It runs all evening.",
+        "text": "The band will pay to list its tuning up too. It runs all evening.",
         "subject": "bandstands",
         "butt": "office",
         "shape": "form-misapplied",
@@ -482,7 +482,7 @@
         "club": "brass",
         "other": "anglers",
         "archetype": "treat",
-        "text": "Practice is not an event, then. Cut a ribbon at it, so that it is?",
+        "text": "Practice is not an event, then. Cut a ribbon, so that it is?",
         "subject": "ribbons",
         "butt": "self",
         "shape": "literalism",
