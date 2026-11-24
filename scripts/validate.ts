@@ -28,6 +28,7 @@
  * write, banned words (scripts/lib/checks.ts) and "Idle ... Tycoon" titles are errors.
  */
 import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -413,6 +414,19 @@ function lastChange(abs: string): number {
  * or data may show a screen the build no longer has (Apple 2.3.3 and 2.3.7, Google's misleading-
  * metadata policy). Returns one line per stale image set, naming the newest change it predates.
  */
+/** The store tool's record of a full run (screenshots/TAKEN.json), or null when there is none or it cannot be read. */
+function takenRecord(shots: string): { sources: Record<string, string>; images: Set<string> } | null {
+  const file = path.join(shots, 'TAKEN.json');
+  if (!fs.existsSync(file)) return null;
+  try {
+    const m = JSON.parse(fs.readFileSync(file, 'utf8')) as { sources?: unknown; images?: unknown };
+    if (!m.sources || typeof m.sources !== 'object' || !Array.isArray(m.images)) return null;
+    return { sources: m.sources as Record<string, string>, images: new Set(m.images.filter((x): x is string => typeof x === 'string')) };
+  } catch {
+    return null;
+  }
+}
+
 function staleScreenshots(id: string, mode: string): string[] {
   const shots = path.join(games.gameDir(id), 'store', 'screenshots');
   if (!fs.existsSync(shots)) return [];
@@ -430,7 +444,14 @@ function staleScreenshots(id: string, mode: string): string[] {
   const sources = [path.join(games.gameDir(id), 'game.json'), path.join(games.ROOT, 'src', 'ui', mode, 'strings.ts')].filter((f) => fs.existsSync(f));
   const changed = sources.map((f) => ({ f, t: lastChange(f) })).sort((a, b) => b.t - a.t)[0];
   if (!changed) return [];
-  const old = pngs.filter((p) => lastChange(p) < changed.t - 1);
+  // A full run of the store tool records what its images were taken from (TAKEN.json, written by
+  // scripts/store/shots.ts: the sha256 of the game's data and of its mode's words, and the images the
+  // run wrote). While those files still have that content, an image of that run is current even when it
+  // came out byte-identical to the one before and git therefore still shows its older date.
+  const taken = takenRecord(shots);
+  const sameSources = !!taken && sources.every((f) => taken.sources[path.relative(games.ROOT, f).split(path.sep).join('/')] === crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex'));
+  const fromThatRun = (p: string) => sameSources && !!taken && taken.images.has(path.relative(shots, p).split(path.sep).join('/'));
+  const old = pngs.filter((p) => !fromThatRun(p) && lastChange(p) < changed.t - 1);
   if (!old.length) return [];
   const sets = [...new Set(old.map((p) => path.relative(shots, path.dirname(p)) || '.'))];
   const when = new Date(changed.t * 1000).toISOString().slice(0, 16).replace('T', ' ');

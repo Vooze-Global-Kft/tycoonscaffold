@@ -26,7 +26,7 @@ export function ResultSheet({ visible, onClose, onStand, onStay }: { visible: bo
   }, [result, phase]);
   const open = visible && !!m;
   return (
-    <DecreeSheet visible={open} onClose={onClose} title={m?.won ? S.views.resultTitleWon : S.views.resultTitleLost} icon="art:btn_poll" footer={m ? <Footer m={m} onStand={onStand} onStay={onStay} /> : null}>
+    <DecreeSheet visible={open} onClose={onClose} pinned title={m?.won ? S.views.resultTitleWon : S.views.resultTitleLost} icon="art:btn_poll" footer={m ? <Footer m={m} onStand={onStand} onStay={onStay} /> : null}>
       {m ? <Body m={m} /> : null}
     </DecreeSheet>
   );

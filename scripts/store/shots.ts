@@ -25,6 +25,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any -- Playwright is loaded at run time from outside the project (not a dependency), so its types are not available. */
 import { execSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -39,6 +40,8 @@ import * as tag from './templates/tag';
 import * as signature from './templates/signature';
 
 const ROOT = path.resolve(__dirname, '../..');
+/** Every image this run wrote (absolute paths), for the record of what a full run's images were taken from. */
+const WRITTEN: string[] = [];
 const CACHE = path.join(__dirname, '.cache');
 const GAMES = ['pizza-empire', 'space-miner', 'night-market', 'high-office'] as const;
 type GameId = (typeof GAMES)[number];
@@ -366,6 +369,7 @@ async function compose(browser: any, def: GameScenes, sizes: Size[], scenes: num
       const html = tpl.shot({ W: size.w, H: size.h, raw, band: meta.band, caption: scene.caption, sub: scene.sub, index: i, total: def.scenes.length });
       const out = outPath(def.game, size, i, scene.slug);
       await render(browser, html, size.w, size.h, out);
+      WRITTEN.push(out);
       console.log(`  wrote ${path.relative(ROOT, out)}`);
     }
     // A full run leaves no image of a scene that is no longer in the set (renamed, reordered, dropped).
@@ -389,6 +393,7 @@ async function compose(browser: any, def: GameScenes, sizes: Size[], scenes: num
   const out = path.join(outDir(def.game), 'play-feature-graphic.png');
   const title = String(game.store?.title ?? game.app?.displayName ?? def.game).split(':')[0].trim();
   await render(browser, tpl.feature({ W: FEATURE.w, H: FEATURE.h, raw, band: meta.featureBand, title }), FEATURE.w, FEATURE.h, out);
+  WRITTEN.push(out);
   console.log(`  wrote ${path.relative(ROOT, out)}`);
 }
 
@@ -435,6 +440,7 @@ figcaption{font-size:18px;color:#777;text-align:center;margin-top:6px}
 </style></head><body><h1>Store screenshots, side by side<small>The icons, the Play feature graphics and the first three App Store iPhone 6.9" shots (1320 x 2868). One row per game.</small></h1>${rows.join('')}</body></html>`;
   const out = path.join(outDir(SHEET_GAME), 'SIDE-BY-SIDE.png');
   await render(browser, html, W, H, out);
+  WRITTEN.push(out);
   console.log(`  wrote ${path.relative(ROOT, out)}`);
 }
 
@@ -443,6 +449,26 @@ figcaption{font-size:18px;color:#777;text-align:center;margin-top:6px}
 async function loadScenes(id: string): Promise<GameScenes> {
   const mod = await import(`./scenes/${id}`);
   return (mod.default?.default ?? mod.default) as GameScenes;
+}
+
+/**
+ * What a full run's images were taken from. games/<id>/store/screenshots/TAKEN.json holds the sha256 of
+ * the game's data and of its mode's words as they were when the images were made, and the images the
+ * run wrote. scripts/validate.ts reads it: while those files still have that content, an image is
+ * current even when it came out byte-identical to the one before (git then still shows its older date,
+ * and the validator used to call such an image stale). Written only by a full run into the repository:
+ * --write, every scene, every size, fresh captures, no error in the preview.
+ */
+function writeTaken(game: GameId, takenAt: string): void {
+  const dir = path.join(ROOT, 'games', game, 'store', 'screenshots');
+  const data = JSON.parse(fs.readFileSync(path.join(ROOT, 'games', game, 'game.json'), 'utf8')) as { mode?: string };
+  const sources = [path.join('games', game, 'game.json'), path.join('src', 'ui', String(data.mode), 'strings.ts')].filter((f) => fs.existsSync(path.join(ROOT, f)));
+  const sha = (f: string) => crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, f))).digest('hex');
+  const images = WRITTEN.filter((p) => p.startsWith(dir + path.sep)).map((p) => path.relative(dir, p).split(path.sep).join('/')).sort();
+  const out = path.join(dir, 'TAKEN.json');
+  const record = { game, takenAt, by: `npx tsx scripts/store/shots.ts --game ${game} --write`, sources: Object.fromEntries(sources.map((f) => [f.split(path.sep).join('/'), sha(f)])), images };
+  fs.writeFileSync(out, JSON.stringify(record, null, 2) + '\n');
+  console.log(`  wrote ${path.relative(ROOT, out)}`);
 }
 
 async function main(): Promise<void> {
@@ -485,6 +511,8 @@ async function main(): Promise<void> {
     console.error('\nErrors in the preview while capturing (look at those images):\n  ' + problems.join('\n  '));
     process.exit(1);
   }
+  // A full, clean run into the repository records what its images were taken from (see writeTaken).
+  if (flag('write') && !only && !sizeIds && !flag('reuse')) for (const g of games) writeTaken(g, new Date().toISOString());
 }
 
 main().catch((e) => {

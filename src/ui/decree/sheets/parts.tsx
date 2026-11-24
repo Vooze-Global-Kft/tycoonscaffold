@@ -238,10 +238,12 @@ interface SheetProps {
   footer?: ReactNode;
   /** The Ledger's clothbound board instead of the wooden lip. */
   cloth?: boolean;
+  /** A sheet that leaves only by its own buttons (the election result): no close mark, and a tap outside does nothing. */
+  pinned?: boolean;
 }
 
 /** The decree bottom sheet (4.4): up to 84 % of the screen, its content scrolls, the footer stays. */
-export function DecreeSheet({ visible, onClose, title, icon, children, footer, cloth }: SheetProps) {
+export function DecreeSheet({ visible, onClose, title, icon, children, footer, cloth, pinned }: SheetProps) {
   const ty = useType();
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -275,7 +277,7 @@ export function DecreeSheet({ visible, onClose, title, icon, children, footer, c
   return (
     <View style={[StyleSheet.absoluteFill, NO_SELECT]} pointerEvents={visible ? 'box-none' : 'none'}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.dim, dimStyle]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={S.sheets.close} />
+        {pinned ? null : <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={S.sheets.close} />}
       </Animated.View>
       <Animated.View style={[styles.panel, cloth ? styles.clothPanel : null, { maxHeight: Math.round(height * 0.84), paddingBottom: Math.max(insets.bottom, 10) }, panelStyle]}>
         <View style={[styles.header, cloth ? styles.clothHeader : null]}>
@@ -283,11 +285,13 @@ export function DecreeSheet({ visible, onClose, title, icon, children, footer, c
           <Text allowFontScaling={false} numberOfLines={1} style={[styles.title, { fontSize: ty.title }, cloth ? styles.clothTitle : null]}>
             {title}
           </Text>
-          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={S.sheets.close} style={styles.close}>
-            <Text allowFontScaling={false} style={[styles.closeText, { fontSize: ty.body }, cloth ? styles.clothTitle : null]}>
-              ✕
-            </Text>
-          </Pressable>
+          {pinned ? null : (
+            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={S.sheets.close} style={styles.close}>
+              <Text allowFontScaling={false} style={[styles.closeText, { fontSize: ty.body }, cloth ? styles.clothTitle : null]}>
+                ✕
+              </Text>
+            </Pressable>
+          )}
         </View>
         <ScrollView style={[styles.body, cloth ? styles.clothPage : null]} contentContainerStyle={styles.bodyContent} bounces={false}>
           {children}

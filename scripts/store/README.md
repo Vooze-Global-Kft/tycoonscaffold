@@ -101,11 +101,21 @@ games/<id>/store/screenshots/play-feature-graphic.png   1024 x 500   Google Play
 games/high-office/store/screenshots/SIDE-BY-SIDE.png    every game's icon, feature graphic and first three 6.9" shots, one row each
 games/night-market/store/screenshots/SIDE-BY-SIDE.png   the three-game sheet of 2026-11-23 (kept as signed off; no longer rewritten)
 games/space-miner/store/screenshots/SIDE-BY-SIDE.png    the two-game sheet of 2026-11-22 (kept as signed off; no longer rewritten)
+games/<id>/store/screenshots/TAKEN.json                  what a full run's images were taken from (see below)
 scripts/store/.cache/<game>/<size>/NN-<slug>.png/.json  raw captures and the band each shows (git-ignored)
 scripts/store/.cache/out/                               trial runs (git-ignored)
 ```
 
 Each game has six shots (in a different story order and template).
+
+A full run into the repository (`--game <id> --write` with every scene and every size, fresh
+captures and no error in the preview) also writes `TAKEN.json`: the sha256 of the game's
+`game.json` and of its mode's `strings.ts` as they were when the images were made, and the list
+of images the run wrote. `npx tsx scripts/validate.ts <id>` warns about screenshots older than the
+game's data; while those two files still have the recorded content it knows the run's images are
+current, even when a re-made image came out byte-identical to the one before (git then still
+shows its older date). Change the game's data or words and the warning returns until the images
+are made again. A partial run (`--only`, `--sizes`, `--reuse`, `--sheet`) writes no record.
 
 Every image is an 8-bit RGB PNG without an alpha channel (App Store Connect
 refuses alpha; Play asks for 24-bit PNG). The tool checks size and colour type

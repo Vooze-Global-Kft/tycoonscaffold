@@ -1,0 +1,31 @@
+{
+  "game": "high-office",
+  "takenAt": "2026-11-24T16:51:09.849Z",
+  "by": "npx tsx scripts/store/shots.ts --game high-office --write",
+  "sources": {
+    "games/high-office/game.json": "008fd87f01a062da004b0fd81961cdd23c00b0f6ee9e6ca1378c630cdddfe9e9",
+    "src/ui/decree/strings.ts": "9bd523c2c650d72d7fc458de8bf5034260237a144802cc02c70cb4a03147bbd9"
+  },
+  "images": [
+    "SIDE-BY-SIDE.png",
+    "ios-6.5/01-further-study.png",
+    "ios-6.5/02-sign-the-pumpkin.png",
+    "ios-6.5/03-clerk-slip.png",
+    "ios-6.5/04-poll-map.png",
+    "ios-6.5/05-election-night.png",
+    "ios-6.5/06-office-wall.png",
+    "ios-6.9/01-further-study.png",
+    "ios-6.9/02-sign-the-pumpkin.png",
+    "ios-6.9/03-clerk-slip.png",
+    "ios-6.9/04-poll-map.png",
+    "ios-6.9/05-election-night.png",
+    "ios-6.9/06-office-wall.png",
+    "play-feature-graphic.png",
+    "play-phone/01-further-study.png",
+    "play-phone/02-sign-the-pumpkin.png",
+    "play-phone/03-clerk-slip.png",
+    "play-phone/04-poll-map.png",
+    "play-phone/05-election-night.png",
+    "play-phone/06-office-wall.png"
+  ]
+}
