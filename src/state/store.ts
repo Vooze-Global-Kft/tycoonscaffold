@@ -287,10 +287,9 @@ function saveText(game: GameState, waiting: Away | null): string {
 }
 
 /**
- * The away report a save holds, or null. The save is untrusted, as the game in it is: the coins and
- * the time must be numbers above zero (else 0), and a mode's report comes back as it was written
- * (the mode reads it as it reads the rest of its save: with care). boot() drops a record that pays
- * nothing and says nothing.
+ * The away report a save holds, as written, or null. The save is untrusted, as the game in it is:
+ * the coins and the time must be numbers above zero (else 0). The mode's report is still raw here:
+ * `restoredAway` hands it to the mode.
  */
 function pendingAway(saved: unknown): Away | null {
   const p = typeof saved === 'object' && saved !== null ? (saved as Record<string, unknown>)[PENDING_AWAY] : null;
@@ -298,6 +297,31 @@ function pendingAway(saved: unknown): Away | null {
   const { seconds, earnings, report } = p as Record<string, unknown>;
   const positive = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) && x > 0 ? x : 0);
   return { seconds: positive(seconds), earnings: positive(earnings), report };
+}
+
+/**
+ * The away report to show again at boot, or null. A mode reads its own report back from the save
+ * as it reads the rest of the save (src/engine/mode.ts `reconcileReport`: repaired, or none when it
+ * is not one; the coins and the time are the store's and stay). A record that pays nothing and
+ * says nothing is dropped.
+ */
+function restoredAway(cfg: GameConfig, saved: Away | null): Away | null {
+  if (!saved) return null;
+  const read = engineFor(cfg)?.reconcileReport;
+  const away = read ? { ...saved, report: safe('engine.reconcileReport', () => read(cfg, saved.report), undefined) } : saved;
+  return worthShowing(cfg, away) ? away : null;
+}
+
+/**
+ * The game stamped as saved at `now`: the next time away is measured from here. If the device clock
+ * went back since the last stamp, the later time stays the mark that time away counts from
+ * (`stats.clockHigh`, as clampClock keeps it on boot and resume). So a save under the earlier clock
+ * never lets hours count again that were already counted: into cash, or into the away report
+ * waiting to be collected, which is saved with this stamp.
+ */
+function stamped(game: GameState, now: number): GameState {
+  const back = game.lastSavedAt > now && game.lastSavedAt > (game.stats.clockHigh ?? 0);
+  return { ...game, stats: back ? { ...game.stats, clockHigh: game.lastSavedAt } : game.stats, lastSavedAt: now };
 }
 
 simEvents.onError((e, where) => crash.record(e, where));
@@ -497,9 +521,8 @@ export const useGame = create<Store>((set, get) => {
         // The report the app was closed on is shown again. The time away since that save (counted
         // from it, so nothing in the report is counted twice) joins it as resume() joins a second
         // absence into a popup still open: whenever it earned something or is worth a report itself.
-        if (waiting && worthShowing(cfg, waiting)) {
-          offline = away && (offline || away.earnings > 0) ? joinAway(cfg, waiting, away) : waiting;
-        }
+        const open = restoredAway(cfg, waiting);
+        if (open) offline = away && (offline || away.earnings > 0) ? joinAway(cfg, open, away) : open;
         syncAds(game);
         rushWasActive = E.isRushActive(game, at);
         lastTickAt = at;
@@ -602,7 +625,7 @@ export const useGame = create<Store>((set, get) => {
       // Before boot has loaded the save, the in-memory game is a blank one: writing it would wipe the player.
       if (!get().hydrated) return;
       const { game: current, offline } = get();
-      const game = { ...current, lastSavedAt: Date.now() };
+      const game = stamped(current, Date.now());
       set({ game });
       try {
         // One write holds both the game (stamped with now, from where the next time away is measured)

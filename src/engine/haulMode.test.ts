@@ -11,7 +11,7 @@ import { GameConfigSchema } from '../config/schema';
 import * as E from './economy';
 import { FIXTURE_NOW, haulFixtures, haulTestConfig } from './fixtures/haul';
 import * as H from './haul';
-import { defaultJumpChoice, grantHangar, HAUL_SHARED_SOUNDS, haulEngineMode, mergeShiftLogs, withHaulContent } from './haulMode';
+import { defaultJumpChoice, grantHangar, HAUL_SHARED_SOUNDS, haulEngineMode, mergeShiftLogs, reconcileShiftLog, withHaulContent } from './haulMode';
 import * as M from './meta';
 import { engineFor, installEngineMode } from './mode';
 import type { GameState } from './types';
@@ -235,6 +235,59 @@ describe('the integration seam: purchases, the scene frame, the Shift Log', () =
     expect(mergeShiftLogs(a, b)).toEqual({ seconds: 660, effective: 297, unitsByOre: { iron: 12, ice: 3 }, rocksDry: 1, pods: 1, inFlight: 5, credits: 120, noAutopilot: false, shipped: 15, launches: 1 });
     expect(mergeShiftLogs(undefined, b)).toBe(b);
     expect(mergeShiftLogs(a, undefined)).toBe(a);
+  });
+
+  it('a Shift Log read back from a save (reconcileReport): the rules\' own comes back equal, anything else is repaired or none', () => {
+    /** What the store does with a log that waits: written with the save as JSON, read back at the next start. */
+    const saved = (x: unknown): unknown => JSON.parse(JSON.stringify(x));
+    const figures = (r: H.OfflineReport) => [r.seconds, r.effective, r.rocksDry, r.pods, r.inFlight, r.credits, r.shipped, r.launches, ...Object.values(r.unitsByOre)];
+    const { fresh, minute3, midGame } = haulFixtures(cfg);
+    const logs: H.OfflineReport[] = [];
+    for (const g of [fresh, minute3, midGame]) {
+      for (const seconds of [20, 1800, 3 * 3600, 40 * 3600]) {
+        const then = FIXTURE_NOW - seconds * 1000;
+        const a = H.haulOffline(cfg, { ...g, lastSavedAt: then, stats: { ...g.stats, clockHigh: then } }, FIXTURE_NOW);
+        const b = H.haulOffline(cfg, a.game, FIXTURE_NOW + 2 * 3600_000);
+        logs.push(a.report, b.report, mergeShiftLogs(a.report, b.report) as H.OfflineReport);
+      }
+    }
+    expect(logs.some((r) => r.noAutopilot)).toBe(true);
+    expect(logs.some((r) => r.credits > 0 && Object.keys(r.unitsByOre).length > 1)).toBe(true);
+    for (const report of logs) {
+      expect(reconcileShiftLog(cfg, saved(report))).toEqual(report);
+      expect(haulEngineMode.reconcileReport!(cfg, saved(report))).toEqual(report);
+      expect(haulEngineMode.reportAlone!(reconcileShiftLog(cfg, saved(report)))).toBe(report.noAutopilot);
+    }
+    const none: unknown[] = [undefined, null, 'torn', 7, true, [], [1], {}, { seconds: 'long' }, { seconds: -5 }, { credits: 100 }];
+    for (const x of none) expect(reconcileShiftLog(cfg, x), JSON.stringify(x)).toBeUndefined();
+
+    const good = logs.find((r) => r.credits > 0 && Object.keys(r.unitsByOre).length > 1)!;
+    const ore = Object.keys(good.unitsByOre)[0];
+    const junk: unknown[] = [null, undefined, 'x', 5, -1, NaN, Infinity, true, {}, [], [null], [5], [{}], { [ore]: 'x' }, { [ore]: null }, { [ore]: -3 }, { unobtainium: 5 }, { __proto__: 5, constructor: 7, length: 2 }];
+    const damaged: unknown[] = [];
+    for (const key of Object.keys(good)) {
+      for (const j of junk) damaged.push({ ...good, [key]: j });
+      damaged.push(Object.fromEntries(Object.entries(good).filter(([k]) => k !== key)));
+    }
+    const ores = new Set(cfg.haul.ores.map((o) => o.id));
+    for (const bad of damaged) {
+      for (const x of [bad, saved(bad)]) {
+        const r = reconcileShiftLog(cfg, x);
+        if (!r) continue;
+        const what = JSON.stringify(bad);
+        for (const n of figures(r)) expect(Number.isFinite(n) && n >= 0, what).toBe(true);
+        for (const id of Object.keys(r.unitsByOre)) expect(ores.has(id), what).toBe(true);
+        expect(typeof r.noAutopilot, what).toBe('boolean');
+        expect(r.effective, what).toBeLessThanOrEqual(r.seconds);
+        // What the store then does with it: asks whether it speaks alone, joins the next absence.
+        expect(typeof haulEngineMode.reportAlone!(r), what).toBe('boolean');
+        const both = mergeShiftLogs(r, good) as H.OfflineReport;
+        for (const n of figures(both)) expect(Number.isFinite(n) && n >= 0, what).toBe(true);
+        expect(both.seconds, what).toBe(r.seconds + good.seconds);
+      }
+    }
+    // Figures that are not figures read as none; units of another game's ores are left out.
+    expect(reconcileShiftLog(cfg, { ...good, rocksDry: 'many', unitsByOre: { ...good.unitsByOre, unobtainium: 5 } })).toEqual({ ...good, rocksDry: 0 });
   });
 
   it('every shared sound key maps to a key of the haul table', async () => {

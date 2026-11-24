@@ -226,6 +226,78 @@ describe('reportAlone and two reports of one absence', () => {
   });
 });
 
+describe('an away report read back from a save (EngineMode.reconcileReport)', () => {
+  /** What the store does with a report that waits: written with the save as JSON, read back at the next start. */
+  const saved = (x: unknown): unknown => JSON.parse(JSON.stringify(x));
+  const figures = (r: R.AwayReport) => [r.seconds, r.effective, r.earnings, ...r.sales.flatMap((s) => [s.goods, s.coins]), ...r.shelved.map((s) => s.goods)];
+  const chains = (r: R.AwayReport) => [...r.sales.map((s) => s.c), ...r.shelved.map((s) => s.c), ...r.waiting];
+
+  it('a report the rules made comes back equal: short and long absences, capped ones, two joined', () => {
+    const rnd = prng(77);
+    let reports = 0;
+    for (let i = 0; i < 80; i++) {
+      const g = randomState(rnd, i);
+      const from = Math.max(g.lastSavedAt, g.stats.clockHigh);
+      const at = from + [20, 1800, 3 * H, 30 * H][i % 4] * 1000;
+      const a = R.mergeOffline(cfg, g, at);
+      const b = R.mergeOffline(cfg, { ...a.game, lastSavedAt: at }, at + 2 * H * 1000);
+      const both = R.mergeAwayReports(a.report, b.report);
+      for (const report of [a.report, b.report, both]) {
+        if (!report) continue;
+        reports++;
+        expect(R.reconcileAwayReport(saved(report))).toEqual(report);
+        expect(mergeEngineMode.reconcileReport!(cfg, saved(report))).toEqual(report);
+      }
+    }
+    expect(reports).toBeGreaterThan(200);
+  });
+
+  it('what is no report is none', () => {
+    const none: unknown[] = [undefined, null, 'torn', 7, true, [], [1], {}, { seconds: 60 }, { seconds: 60, sales: [] }, { seconds: 60, shelved: [] }, { seconds: 'long', sales: [], shelved: [] }, { seconds: -1, sales: [], shelved: [] }, { seconds: 60, sales: {}, shelved: [] }, { seconds: 60, sales: [], shelved: 'full' }];
+    for (const x of none) expect(R.reconcileAwayReport(x), JSON.stringify(x)).toBeUndefined();
+  });
+
+  it('a damaged or crafted report is repaired: a row names one of the chains or goes, every figure is a number of zero or more', () => {
+    const g = mergeFixtures(cfg).minute10;
+    const good = R.mergeOffline(cfg, g, FIXTURE_NOW + 3 * H * 1000).report!;
+    const next = R.mergeOffline(cfg, { ...g, lastSavedAt: FIXTURE_NOW + 3 * H * 1000 }, FIXTURE_NOW + 5 * H * 1000).report!;
+    expect(good.sales.length).toBeGreaterThan(0);
+    // Names of things an array has, as a chain: `chains["length"]` is a number, `chains["map"]` a function.
+    const names = ['length', 'map', 'constructor', '__proto__', 'toString', 'x', ''];
+    const junk: unknown[] = [null, undefined, 5, -1, 1.5, 6, 1e9, NaN, Infinity, true, {}, [], [null], [5], ['x'], [{}], [[]], ...names];
+    const damaged: unknown[] = [];
+    for (const key of Object.keys(good)) {
+      for (const j of junk) damaged.push({ ...good, [key]: j });
+      damaged.push(Object.fromEntries(Object.entries(good).filter(([k]) => k !== key)));
+    }
+    for (const list of ['sales', 'shelved'] as const) {
+      for (const field of ['c', 'goods', 'coins']) for (const j of junk) damaged.push({ ...good, [list]: [{ ...good.sales[0], [field]: j }, ...good[list]] });
+      for (const name of names) damaged.push({ ...good, [list]: [{ c: name, goods: 3, coins: 9 }] });
+    }
+    damaged.push({ ...good, sales: [...good.sales, ...good.sales], shelved: [...good.shelved, ...good.shelved], waiting: [0, 0, 'x', -1, 2.5, 99, null] });
+    for (const bad of damaged) {
+      for (const x of [bad, saved(bad)]) {
+        const r = R.reconcileAwayReport(x);
+        if (!r) continue;
+        const what = JSON.stringify(bad);
+        for (const n of figures(r)) expect(Number.isFinite(n) && n >= 0, what).toBe(true);
+        for (const c of chains(r)) expect(Number.isInteger(c) && c >= 0 && c < R.CHAINS, what).toBe(true);
+        expect(new Set(r.sales.map((s) => s.c)).size, what).toBe(r.sales.length);
+        expect(new Set(r.shelved.map((s) => s.c)).size, what).toBe(r.shelved.length);
+        expect(r.effective, what).toBeLessThanOrEqual(r.seconds);
+        // What the store then does with it: asks whether it speaks alone, joins the next absence.
+        expect(typeof R.awayReportAlone(r), what).toBe('boolean');
+        const both = R.mergeAwayReports(r, next) as R.AwayReport;
+        for (const n of figures(both)) expect(Number.isFinite(n) && n >= 0, what).toBe(true);
+        expect(both.seconds, what).toBe(r.seconds + next.seconds);
+      }
+    }
+    // The good rows stay when a bad one is among them.
+    expect(R.reconcileAwayReport({ ...good, sales: [{ c: 'length', goods: 3, coins: 9 }, ...good.sales] })).toEqual(good);
+    expect(R.reconcileAwayReport({ ...good, effective: good.seconds + 99 })).toEqual({ ...good, effective: good.seconds });
+  });
+});
+
 describe('the device clock moved: forward 4 h, back, forward again pays once (the shared guard)', () => {
   beforeAll(() => installEngineMode(mergeEngineMode));
   afterAll(() => installEngineMode(null));

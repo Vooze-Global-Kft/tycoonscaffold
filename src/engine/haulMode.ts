@@ -126,6 +126,42 @@ export const HAUL_SHARED_SOUNDS = {
   unlock: 'system_online',
 } as const;
 
+/**
+ * EngineMode.reconcileReport: a Shift Log read back from a save (the store saves it with the game
+ * while it waits to be collected, and the app may be closed on it), or undefined when it is not
+ * one. The save is untrusted and may be an earlier build's, so nothing is taken on trust: every
+ * figure is a finite number of zero or more (else 0), the units are of the game's own ores. A log
+ * the rules made comes back equal. Never throws.
+ */
+export function reconcileShiftLog(cfg: GameConfig, saved: unknown): H.OfflineReport | undefined {
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return undefined;
+  const r = saved as Record<string, unknown>;
+  const figure = (x: unknown): number | null => (typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x : null);
+  const seconds = figure(r.seconds);
+  if (seconds === null) return undefined;
+  const unitsByOre: Record<string, number> = {};
+  if (H.isHaul(cfg) && r.unitsByOre && typeof r.unitsByOre === 'object' && !Array.isArray(r.unitsByOre)) {
+    const units = r.unitsByOre as Record<string, unknown>;
+    for (const ore of cfg.haul.ores) {
+      const n = Object.prototype.hasOwnProperty.call(units, ore.id) ? figure(units[ore.id]) : null;
+      if (n !== null && n > 0) unitsByOre[ore.id] = n;
+    }
+  }
+  const or0 = (x: unknown) => figure(x) ?? 0;
+  return {
+    seconds,
+    effective: Math.min(or0(r.effective), seconds),
+    unitsByOre,
+    rocksDry: or0(r.rocksDry),
+    pods: or0(r.pods),
+    inFlight: or0(r.inFlight),
+    credits: or0(r.credits),
+    noAutopilot: r.noAutopilot === true,
+    shipped: or0(r.shipped),
+    launches: or0(r.launches),
+  };
+}
+
 /** Two Shift Logs of one absence (a resume while the first one is still on screen) as one. */
 export function mergeShiftLogs(older: unknown, newer: unknown): unknown {
   const a = older as H.OfflineReport | undefined;
@@ -221,6 +257,8 @@ export const haulEngineMode: EngineMode = {
   storyTrigger,
   missionUsable,
   mergeReport: mergeShiftLogs,
+  // A Shift Log the app was closed on comes back from the save through the rules' own reader.
+  reconcileReport: reconcileShiftLog,
   entitle: grantHangar,
   reportAlone: (report) => !!(report as H.OfflineReport | undefined)?.noAutopilot,
   // Decision 42: the Shift Log's ad (or Clearance) adds haul.offline.adBonus (+50 %), not a double.

@@ -58,6 +58,8 @@ interface Game {
   played(cfg: GameConfig, at: number): Promise<GameState>;
   /** A game that earns nothing while away but whose mode reports the absence all the same (`reportAlone`); none for the sim. */
   idle?(cfg: GameConfig, at: number): Promise<GameState>;
+  /** The mode's report as a damaged save might hold it: still a report, with things in it that are not the rules'. */
+  damaged?(report: Record<string, unknown>): unknown;
 }
 
 const GAMES: Game[] = [
@@ -83,6 +85,7 @@ const GAMES: Game[] = [
       const F = await import('../engine/fixtures/haul');
       return F.playFor(cfg as never, F.freshHaulGame(cfg as never, 12345, at), 60, at) as unknown as GameState;
     },
+    damaged: (r) => ({ ...r, rocksDry: 'many', pods: null, launches: -4, unitsByOre: { ...(r.unitsByOre as object), unobtainium: 5, constructor: 'x' } }),
   },
   {
     id: 'night-market',
@@ -101,6 +104,8 @@ const GAMES: Game[] = [
       const g = F.mergeState(cfg as never, { clock: 300, cash: 0, chains: [{ c: 0, gear: 3 }] });
       return { ...g, lastSavedAt: at, stats: { ...g.stats, firstOpenAt: at, clockHigh: at } } as unknown as GameState;
     },
+    // A row that names no chain but something every list has (`chains["length"]`), a row that is none, a list that is none.
+    damaged: (r) => ({ ...r, waiting: 'none', sales: [{ c: 'length', goods: 5, coins: 5 }, null, ...(r.sales as unknown[])] }),
   },
 ];
 
@@ -175,6 +180,8 @@ async function openAt(game: Game, at: number): Promise<App> {
 }
 
 const near = (a: number, b: number, what?: string) => expect(Math.abs(a - b), what ?? `${a} against ${b}`).toBeLessThanOrEqual(1e-9 * Math.max(1, Math.abs(a), Math.abs(b)));
+/** Every number anywhere in a report is a finite one (nothing a screen would print as NaN or ∞). */
+const allFinite = (x: unknown): boolean => (typeof x === 'number' ? Number.isFinite(x) : !x || typeof x !== 'object' ? true : Object.values(x).every(allFinite));
 
 beforeEach(() => {
   vi.useFakeTimers({ now: T0, toFake: ['Date'] });
@@ -315,6 +322,28 @@ describe.each(GAMES)('away earnings and a closed app: $title', (game) => {
     expect(app.cash()).toBe(cash + app.pays(first.earnings));
   });
 
+  it('closed on the report and opened again half a minute later: those seconds join it (alone they would show nothing)', async () => {
+    // Without a report waiting, a start half a minute after the last save shows nothing, as ever.
+    await install(game);
+    let app = await openAt(game, T0 + 3 * HOUR);
+    await app.useGame.getState().collectOffline(false);
+    await swipeAway(app);
+    app = await openAt(game, T0 + 3 * HOUR + 30_000);
+    expect(app.offline()).toBeNull();
+
+    await install(game);
+    app = await openAt(game, T0 + 3 * HOUR);
+    const first = app.offline()!;
+    const cash = app.cash();
+    await swipeAway(app);
+    app = await openAt(game, T0 + 3 * HOUR + 30_000);
+    const both = app.offline()!;
+    expect(both.seconds).toBeCloseTo(first.seconds + 30, 0);
+    expect(both.earnings).toBeGreaterThan(first.earnings);
+    expect(both.earnings).toBeLessThan(first.earnings * 1.01);
+    expect(app.cash()).toBe(cash);
+  });
+
   it('kill before collect, then a second absence: one report for both, paid once', async () => {
     // The player who collected in time: three hours away, collect, two more hours away.
     await install(game);
@@ -411,6 +440,41 @@ describe.each(GAMES)('away earnings and a closed app: $title', (game) => {
     expect(app.offline()).toBeNull();
   });
 
+  it('the device clock set back while the app waits in the background, and a save under it: no hour is counted again', async () => {
+    // The player who collected in time, with the same clock: the hour after the first return is all there is to report.
+    await install(game);
+    let app = await openAt(game, T0 + 3 * HOUR);
+    await app.useGame.getState().collectOffline(false);
+    const collected = app.cash();
+    await swipeAway(app);
+    vi.setSystemTime(T0 + 3 * HOUR - 24 * HOUR);
+    await app.useGame.getState().save();
+    app = await openAt(game, T0 + 4 * HOUR);
+    const hour = app.offline()!;
+    expect(hour.seconds).toBeCloseTo(3600, 0);
+    expect(app.cash()).toBe(collected);
+
+    // Closed on the report: the app is in the background (it saved), the date is set back a day, and
+    // the five-second autosave runs once more under that date (Android keeps the app's code running
+    // for a while) before the app is killed. The date is right again an hour after the first return.
+    await install(game);
+    app = await openAt(game, T0 + 3 * HOUR);
+    const first = app.offline()!;
+    const cash = app.cash();
+    await swipeAway(app);
+    vi.setSystemTime(T0 + 3 * HOUR - 24 * HOUR);
+    await app.useGame.getState().save();
+    app = await openAt(game, T0 + 4 * HOUR);
+    const both = app.offline()!;
+    near(both.earnings, first.earnings + hour.earnings);
+    expect(both.seconds).toBeCloseTo(first.seconds + 3600, 0);
+    await app.useGame.getState().collectOffline(false);
+    expect(app.cash()).toBe(cash + app.pays(both.earnings));
+    await swipeAway(app);
+    app = await launch(game);
+    expect(app.offline()).toBeNull();
+  });
+
   it('back in the foreground with a report that came back: resume() joins the new time as it always did', async () => {
     await install(game);
     let app = await openAt(game, T0 + 3 * HOUR);
@@ -474,23 +538,26 @@ describe.each(GAMES)('away earnings and a closed app: $title', (game) => {
     await swipeAway(app);
     const key = [...disk.keys()][0];
     const saved = JSON.parse(disk.get(key)!);
-    for (const bad of ['coins', 7, null, [], {}, { seconds: 3600 }, { seconds: 3600, earnings: 'many' }, { seconds: 3600, earnings: null }, { seconds: 3600, earnings: -500 }, { seconds: 3600, earnings: 0 }]) {
+    const none = ['coins', 7, null, [], {}, { seconds: 3600 }, { seconds: 3600, earnings: 'many' }, { seconds: 3600, earnings: null }, { seconds: 3600, earnings: -500 }, { seconds: 3600, earnings: 0 }];
+    // No coins, and a report that is none: nothing to say either (the mode is asked, and must not trip over it).
+    for (const report of ['torn', 7, [], {}, { torn: [null] }, { seconds: 'long', sales: [null], shelved: 7, noAutopilot: 'yes' }]) none.push({ seconds: 3600, earnings: 0, report } as never);
+    for (const bad of none) {
       disk.set(key, JSON.stringify({ ...saved, pendingAway: bad }));
       app = await launch(game);
       expect(app.offline(), JSON.stringify(bad)).toBeNull();
       expect(app.cash(), JSON.stringify(bad)).toBe(cash);
     }
-    // The time is repaired, the coins are kept; a report the mode cannot read is the mode's to ignore.
+    // The time is repaired and the coins are kept. The report is the mode's to read back (it is none here); without a mode nothing reads it.
     disk.set(key, JSON.stringify({ ...saved, pendingAway: { seconds: 'long', earnings: first.earnings, report: 'torn' } }));
     app = await launch(game);
-    expect(app.offline()).toEqual({ seconds: 0, earnings: first.earnings, report: 'torn' });
+    expect(app.offline()).toEqual({ seconds: 0, earnings: first.earnings, report: game.engine ? undefined : 'torn' });
     await app.useGame.getState().collectOffline(false);
     expect(app.cash()).toBe(cash + app.pays(first.earnings));
   });
 });
 
-describe.each(GAMES.filter((g) => g.idle))('a report with no coins that speaks alone: $title', (game) => {
-  it('comes back too when the app was closed on it, and is gone once put away', async () => {
+describe.each(GAMES.filter((g) => g.engine))('the mode\'s own report: $title', (game) => {
+  it('a report with no coins that speaks alone comes back too when the app was closed on it, and is gone once put away', async () => {
     // The player who put the first report away in time: what a second hour away shows by itself, if anything.
     await install(game, 'idle');
     let app = await openAt(game, T0 + 1 * HOUR);
@@ -527,5 +594,43 @@ describe.each(GAMES.filter((g) => g.idle))('a report with no coins that speaks a
     app = await launch(game);
     expect(app.offline()).toBeNull();
     expect(app.cash()).toBe(cash);
+  });
+
+  it('a damaged report in the save, then more time away: the mode reads its report back, and the coins join as ever', async () => {
+    // The player who collected in time: the second absence's own report.
+    await install(game);
+    let app = await openAt(game, T0 + 3 * HOUR);
+    await app.useGame.getState().collectOffline(false);
+    await swipeAway(app);
+    app = await openAt(game, T0 + 5 * HOUR);
+    const second = app.offline()!;
+
+    await install(game);
+    app = await openAt(game, T0 + 3 * HOUR);
+    const first = app.offline()!;
+    await swipeAway(app);
+    const key = [...disk.keys()][0];
+    const saved = JSON.parse(disk.get(key)!);
+    expect(saved.pendingAway.report).toEqual(first.report);
+
+    // Still a report, with things in it that are not the rules': read back without them, then joined.
+    disk.set(key, JSON.stringify({ ...saved, pendingAway: { ...saved.pendingAway, report: game.damaged!(saved.pendingAway.report) } }));
+    app = await openAt(game, T0 + 5 * HOUR);
+    let both = app.offline()!;
+    near(both.earnings, first.earnings + second.earnings);
+    expect(allFinite(both.report)).toBe(true);
+    expect(JSON.stringify(both.report)).not.toMatch(/unobtainium|length|null|many|none/);
+    expect((both.report as { seconds: number }).seconds).toBeCloseTo((first.report as { seconds: number }).seconds + (second.report as { seconds: number }).seconds, 0);
+
+    // No report at all in its place: the new absence's report stands alone, the coins of both are there.
+    disk.set(key, JSON.stringify({ ...saved, pendingAway: { ...saved.pendingAway, report: { torn: [null, 'x'] } } }));
+    app = await openAt(game, T0 + 5 * HOUR);
+    both = app.offline()!;
+    near(both.earnings, first.earnings + second.earnings);
+    expect(both.report).toEqual(second.report);
+    await app.useGame.getState().collectOffline(false);
+    await swipeAway(app);
+    app = await launch(game);
+    expect(app.offline()).toBeNull();
   });
 });

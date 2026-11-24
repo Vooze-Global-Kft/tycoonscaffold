@@ -57,17 +57,6 @@ export function joinNames(names: string[]): string {
   return S.hints.away.and(names.slice(0, -1).join(S.hints.away.comma), names[names.length - 1]);
 }
 
-/**
- * The rules' report, or something else: a report still waiting when the app was closed comes back
- * from the save (src/state/store.ts), and a save is untrusted. Lists whose entries are not objects
- * are no report: the sheet then keeps to the record's own time and coins and never breaks.
- */
-function isReport(x: unknown): x is R.AwayReport {
-  const r = x as R.AwayReport | null;
-  const rows = (list: unknown) => Array.isArray(list) && list.every((row) => !!row && typeof row === 'object');
-  return !!r && typeof r === 'object' && rows(r.sales) && rows(r.shelved) && typeof r.seconds === 'number';
-}
-
 /** The away cap in whole hours or minutes, as printed. */
 function capText(seconds: number): string {
   return awayDuration(seconds);
@@ -78,7 +67,10 @@ function capText(seconds: number): string {
  * empty (no sale, no shelf good). `adMultiplier` is the rules' (EngineMode.offlineAdMultiplier, 1.5).
  */
 export function awayView(cfg: R.MergeConfig, offline: OfflineRecord, adMultiplier: number, awayCap: number | null): AwayView | null {
-  const report = isReport(offline.report) ? offline.report : null;
+  // Read by the rules' own reader (a report the app was closed on comes back from the save, and a
+  // save is untrusted): every row names a chain and holds its counts, or there is no report and the
+  // sheet keeps to the record's own time and coins.
+  const report = R.reconcileAwayReport(offline.report) ?? null;
   const goods = report ? report.sales.reduce((a, s) => a + s.goods, 0) : 0;
   const shelved = report ? report.shelved.reduce((a, s) => a + s.goods, 0) : 0;
   const earned = R.roundCoins(cfg, offline.earnings);

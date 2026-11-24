@@ -217,6 +217,47 @@ export function mergeActiveIncome(cfg: MergeConfig, g: MergeGame): number {
 
 const isReport = (r: unknown): r is AwayReport => !!r && typeof r === 'object' && Array.isArray((r as AwayReport).sales) && Array.isArray((r as AwayReport).shelved);
 
+/**
+ * EngineMode.reconcileReport: an away report read back from a save (the store saves it with the
+ * game while it waits to be collected, and the app may be closed on it), or undefined when it is
+ * not one. The save is untrusted and may be an earlier build's, so nothing is taken on trust: the
+ * times and every count are finite numbers of zero or more, a row names one of the chains (a whole
+ * number below CHAINS, once) or is dropped, the time that counted is never more than the time
+ * away. A report the rules made comes back equal. Never throws.
+ */
+export function reconcileAwayReport(saved: unknown): AwayReport | undefined {
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return undefined;
+  const r = saved as Record<string, unknown>;
+  const count = (x: unknown): number | null => (typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x : null);
+  const chain = (x: unknown): number | null => (typeof x === 'number' && Number.isInteger(x) && x >= 0 && x < CHAINS ? x : null);
+  const seconds = count(r.seconds);
+  if (seconds === null || !Array.isArray(r.sales) || !Array.isArray(r.shelved)) return undefined;
+  /** The rows that name a chain and hold their counts, one per chain, in chain order. */
+  const rows = <T extends { c: number }>(list: unknown[], read: (row: Record<string, unknown>, c: number) => T | null): T[] => {
+    const byChain = new Map<number, T>();
+    for (const x of list) {
+      if (!x || typeof x !== 'object') continue;
+      const row = x as Record<string, unknown>;
+      const c = chain(row.c);
+      if (c === null || byChain.has(c)) continue;
+      const made = read(row, c);
+      if (made) byChain.set(c, made);
+    }
+    return [...byChain.values()].sort((a, b) => a.c - b.c);
+  };
+  const sales = rows(r.sales, (row, c) => {
+    const goods = count(row.goods);
+    const coins = count(row.coins);
+    return goods === null || coins === null ? null : { c, goods, coins };
+  });
+  const shelved = rows(r.shelved, (row, c) => {
+    const goods = count(row.goods);
+    return goods === null ? null : { c, goods };
+  });
+  const waiting = Array.isArray(r.waiting) ? [...new Set(r.waiting.map(chain).filter((c): c is number => c !== null))].sort((a, b) => a - b) : [];
+  return { seconds, effective: Math.min(count(r.effective) ?? seconds, seconds), sales, earnings: count(r.earnings) ?? 0, shelved, waiting };
+}
+
 /** EngineMode.reportAlone: true when the shelves were filled with no minder selling (2.9: "Your gear filled its shelves."). */
 export function awayReportAlone(report: unknown): boolean {
   if (!isReport(report)) return false;

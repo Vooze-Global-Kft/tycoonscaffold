@@ -75,7 +75,7 @@ export { dropAt, decodeTarget, targetsFor } from './merge/drop';
 export { commitCash, bookAway, openStall, levelGear, levelStall, hireMinder, levelMinder, openShutter, shutterGood, notTonight, notTonightRoom, undoBasket, canWatchAd, grantAd, applyLantern, entitleMerge } from './merge/actions';
 
 // --- 2.9 time away (MECHANICS) ---
-export { mergeOffline, mergeIncome, mergeActiveIncome, awayReportAlone, mergeAwayReports, awaySeconds, awayClosedForm, awayByEvents } from './merge/offline';
+export { mergeOffline, mergeIncome, mergeActiveIncome, awayReportAlone, mergeAwayReports, reconcileAwayReport, awaySeconds, awayClosedForm, awayByEvents } from './merge/offline';
 
 // --- tickets, the Festival, seasons, lanterns, gift boxes, advice and hints (built by ORDERS and META) ---
 

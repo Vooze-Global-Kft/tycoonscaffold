@@ -62,6 +62,8 @@ export const mergeEngineMode: EngineMode = {
   entitle: (cfg, state, productId) => (R.isMerge(cfg) ? asState(R.entitleMerge(cfg, run(cfg, state), productId)) : state),
   mergeReport: R.mergeAwayReports,
   reportAlone: R.awayReportAlone,
+  // An away report the app was closed on comes back from the save through the rules' own reader.
+  reconcileReport: (_cfg, saved) => R.reconcileAwayReport(saved),
   // Decision M8: the away report's ad adds merge.ads.awayBonus (+50 %), not a double.
   offlineAdMultiplier: (cfg) => 1 + (R.isMerge(cfg) ? cfg.merge.ads.awayBonus : 0.5),
   // Decision M19: the away payout with the ad is rounded by the one rule, so the report's figure is the figure paid.

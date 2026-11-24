@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as H from '../../../engine/haul';
 import { haulFixtures, haulTestConfig } from '../../../engine/fixtures/haul';
+import { mergeShiftLogs, reconcileShiftLog } from '../../../engine/haulMode';
 import { money, rockName, units } from './format';
 import { hintLine, sheetHintTarget, sheetOf, shiftLogRows, speaker } from './shellLogic';
 import { HAUL_SPOKE_STRINGS, HAUL_STRINGS } from '../strings';
@@ -114,6 +115,13 @@ describe('Shift Log rows (2.11, 4.6)', () => {
       // Whatever the report says, the credits row is the record's own amount: what Collect pays.
       expect(rows.at(-1), JSON.stringify(bad)).toMatchObject({ label: 'CREDITS', value: money(cfg, 50), strong: true });
       for (const row of rows) expect(typeof row.value, JSON.stringify(bad)).toBe('string');
+      // As it reaches the screen: read back by the rules (reconcileReport), alone and joined with the next absence.
+      const read = reconcileShiftLog(cfg, bad);
+      for (const shown of [read, mergeShiftLogs(read, report)]) {
+        const printed = shiftLogRows(cfg, { seconds: 600, earnings: 50, report: shown });
+        expect(printed.rows[0], JSON.stringify(bad)).toMatchObject({ label: 'AWAY' });
+        for (const row of printed.rows) expect(row.value, `${row.label} of ${JSON.stringify(bad)}`).not.toMatch(/NaN|∞|undefined|Infinity/);
+      }
     }
   });
 });

@@ -46,9 +46,7 @@ export interface EngineMode {
    * Time away: the earnings to grant (not yet added to cash) and the advanced game to keep. The
    * report is the mode's own (the haul Shift Log), passed through to its screen. It is plain data:
    * while it waits to be collected the store saves it with the game and, when the app was closed
-   * on it, hands it back at the next start as it was written (src/state/store.ts `offline`). So
-   * `mergeReport`, `reportAlone` and the mode's screen read it as a save is read: a report of an
-   * earlier build, or a damaged one, must not break them.
+   * on it, reads it back at the next start through `reconcileReport` (src/state/store.ts `offline`).
    */
   offline(cfg: GameConfig, state: GameState, now: number): { seconds: number; earnings: number; game: GameState; report?: unknown };
   /**
@@ -72,9 +70,17 @@ export interface EngineMode {
   /**
    * Two offline reports as one: of one absence (a resume while the first report is still on
    * screen), or of the report the app was closed on and the time away since (`older` then comes
-   * from the save). Without it the newer report replaces the older one.
+   * from the save, through `reconcileReport`). Without it the newer report replaces the older one.
    */
   mergeReport?(older: unknown, newer: unknown): unknown;
+  /**
+   * An away report read back from a save (the app was closed on it before it was collected), read
+   * as `reconcile` reads the mode's state: the report as `mergeReport`, `reportAlone` and the
+   * mode's screen may take it, or undefined when it is not one (the store keeps the coins and the
+   * time all the same). The save is untrusted and may be an earlier build's: never throws. Without
+   * it the report comes back as it was written.
+   */
+  reconcileReport?(cfg: GameConfig, saved: unknown): unknown;
   /**
    * A non-consumable product was just recorded in `entitlements.products` (bought, restored or
    * re-granted at boot): the mode applies what it means for the run in progress (haul: Hangar

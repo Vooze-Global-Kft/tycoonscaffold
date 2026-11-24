@@ -179,11 +179,19 @@ describe('the away report through the store (2.9, M8, 10.1 item 7)', () => {
       for (const j of junk) damaged.push({ ...report, [key]: j });
       damaged.push(Object.fromEntries(Object.entries(report).filter(([k]) => k !== key)));
     }
+    // A row that names no chain but something every list has: `chains["length"]` is a number, `chains["map"]` a function.
+    for (const name of ['length', 'map', 'constructor', '__proto__', 'toString']) {
+      damaged.push({ ...report, sales: [{ c: name, goods: 3, coins: 9 }] }, { ...report, shelved: [{ c: name, goods: 3 }] }, { ...report, sales: [{ c: name, goods: 3, coins: 1e9 }, ...report.sales] });
+    }
     for (const bad of damaged) {
-      const v = lines.awayView(cfg, { seconds: 600, earnings: 40, report: bad }, 1.5, 4 * 3600);
-      // Whatever the report says, the amounts are the record's own: what Collect pays, and with the ad.
-      expect(v, JSON.stringify(bad)).toMatchObject({ amount: '40', withAd: '60', adPercent: 50 });
-      for (const line of v!.lines) expect(typeof line, JSON.stringify(bad)).toBe('string');
+      // As the sheet gets it (the record's report as saved), and joined with the next absence by the rules.
+      for (const shown of [bad, mergeEngineMode.mergeReport!(mergeEngineMode.reconcileReport!(cfg as never, bad), report)]) {
+        const v = lines.awayView(cfg, { seconds: 600, earnings: 40, report: shown }, 1.5, 4 * 3600);
+        // Whatever the report says, the amounts are the record's own: what Collect pays, and with the ad.
+        expect(v, JSON.stringify(bad)).toMatchObject({ amount: '40', withAd: '60', adPercent: 50 });
+        for (const line of v!.lines) expect(line, JSON.stringify(bad)).not.toMatch(/NaN|∞|undefined|Infinity/);
+        expect(v!.lead === null || (Number.isInteger(v!.lead) && v!.lead >= 0 && v!.lead < cfg.merge.chains.length), JSON.stringify(bad)).toBe(true);
+      }
     }
   });
 
