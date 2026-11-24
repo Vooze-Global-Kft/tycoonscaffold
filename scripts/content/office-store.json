@@ -16,7 +16,7 @@
     "description: the clubs named": "Bus Spotters' Society, Shop Window Guild, Giant Vegetable Society (mayor); brass band, anglers (governor); kites, hedges (president), spec 2.2 (rule; never 4 clubs)",
     "products: fallback prices": "decision D11: $3.99 (Junior Clerk on Duty), $1.99 (Long Lunch), $2.99 (Walnut & Brass Desk Set), $1.99 (Gilt Portrait Frames), $4.99 (Skip the Ad Videos)",
     "promotionalText and shortDescription": "no numbers on purpose; the short description and the description's first sentence name the pull into the drawer first (refusal is this game's own gesture; the upward flick alone would read like the second game's)",
-    "description: 'with enough of it, and a record of ministry levels to match'": "no number written on purpose: Name Recognition 10 / 50 and record 80 / 170 levels to stand for Governor / President, spec 2.2 and 2.10 (tune ±30 %); moving up is the player's choice ('Stand for Governor' or 'Another term here'), so the text says 'you may stand'",
+    "description: 'with enough of it, and a record of ministry levels to match'": "no number written on purpose: Name Recognition 10 / 50 and record 80 / 170 levels to stand for Governor / President, spec 2.2 and 2.10 (tune ±30 %); moving up is the player's choice ('Stand for Governor' or 'Not yet', decision D43), so the text says 'you may stand'",
     "description: 'for a maximum of 4 hours'": "away cap 4 h, spec 2.1 line 12 and 2.2 (rule)",
     "description: 'until 10 wait in the in-tray'": "tray cap 10, spec 2.1 line 2 and 2.2 (rule)",
     "description and products: Long Lunch '6 hours, not 4'": "away cap 4 h, +2 h with Long Lunch, decision D11 (rule)",

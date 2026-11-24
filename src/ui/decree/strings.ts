@@ -297,6 +297,7 @@ export const S = {
     adDoors: 'Open the Doors',
     adDoorsWhat: 'Fills the in-tray with visitors now.',
     adNothingToDo: 'Nothing for it to do now',
+    adReadyIn: (minutes: number) => `Ready again in about ${minutes} min of play`,
     /** Settings (4.4). */
     settingsTitle: 'Settings',
     sound: 'Sound',

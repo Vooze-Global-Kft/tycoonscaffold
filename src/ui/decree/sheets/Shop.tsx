@@ -43,6 +43,8 @@ export function ShopSheet() {
 
 function ShopBody() {
   const sofa = useDecreeJson((c, g) => dibs(R.roundDibs(c, R.sofaAmount(c, g))), '');
+  // D42 (h): Open the Doors says whether it waits for its cooldown (play time left) or has nothing to do (tray over half full).
+  const doorsLeft = useDecreeJson((c, g) => Math.ceil(R.adCooldownLeft(c, g, 'openDoors')), 0);
   const ty = useType();
   const cfg = useDecreeCfg();
   usePrices();
@@ -105,7 +107,7 @@ function ShopBody() {
         {adFree ? S.sheets.shopAdsFree : S.sheets.shopAds}
       </Txt>
       <AdButton kind="checkSofa" icon="art:ad_sofa" title={S.sheets.sofa} what={S.sheets.sofaWhat(sofa)} cooldown={S.sheets.adOnceTerm} idle={S.sheets.sofaUsed} />
-      <AdButton kind="openDoors" icon="art:ad_doors" title={S.sheets.adDoors} what={S.sheets.adDoorsWhat} cooldown={S.sheets.adCooldown(doorsEvery)} />
+      <AdButton kind="openDoors" icon="art:ad_doors" title={S.sheets.adDoors} what={S.sheets.adDoorsWhat} cooldown={S.sheets.adCooldown(doorsEvery)} idle={doorsLeft > 0 ? S.sheets.adReadyIn(Math.max(1, Math.ceil(doorsLeft / 60))) : S.sheets.adNothingToDo} />
       <AdButton kind="courier" icon="art:ad_courier" title={S.sheets.adCourier} what={S.sheets.adCourierWhat} />
       <AdButton kind="spinDoctor" icon="art:ad_spin" title={S.sheets.adSpin} what={S.sheets.adSpinWhat} />
     </>
