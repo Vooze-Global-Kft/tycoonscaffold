@@ -1079,7 +1079,7 @@
    "club": "hedges",
    "office": "president",
    "rule": {
-    "target": "sayNothing.cut",
+    "target": "sayNothing.papers",
     "club": null,
     "mul": 0.7,
     "add": 0
@@ -1216,7 +1216,7 @@
     "name": "A Gentle Week",
     "factors": [
      {
-      "target": "sayNothing.cut",
+      "target": "sayNothing.papers",
       "club": null,
       "mul": 0.6,
       "add": 0
@@ -2074,8 +2074,9 @@
  },
  "boycott": {
   "below": 20,
-  "endsAt": 25,
-  "rearmAt": 30,
+  "endsAbove": 5,
+  "rearmAbove": 10,
+  "huffAbove": 10,
   "papers": 8
  },
  "scandal": {
@@ -2117,7 +2118,6 @@
   "times": 3
  },
  "advice": {
-  "deltaShare": 0.02,
   "recordDivisor": 1.5
  },
  "ads": {

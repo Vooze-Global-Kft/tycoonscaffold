@@ -2,11 +2,11 @@
  * Advice and the goal line (2.16). Package P1b (docs/design/office-build-plan.md).
  *
  * `advice(cfg, g)` (pure) picks one goal for the bot, the slip and the goal line:
- * score = max(0, cost − cash + reserve)/I + cost/Δincome over levels, openings and the monument
- * (Δincome of the monument advice.deltaShare × I = 0.02 × I; of a level or an opening what it adds to
- * I, params.ts `levelGain` / `openGain`); while the record is short (the next office's record not met),
- * a level's score is divided by advice.recordDivisor (1.5). Lowest score wins; ties in the order levels,
- * openings, the monument, by ministry. It also offers the call when the reader would call (8.2, D17:
+ * score = max(0, cost − cash + reserve)/I + cost/Δincome over levels and openings (Δincome what it
+ * adds to I, params.ts `levelGain` / `openGain`); while the record is short (the next office's record
+ * not met), a level's score is divided by advice.recordDivisor (1.5). Lowest score wins; ties in the
+ * order levels, openings, by ministry. D36: a monument is the player's long-term choice, never advice:
+ * no slip, goal line or Standing Order names one (the result flow offers it, 5.8; `buyVanity`). It also offers the call when the reader would call (8.2, D17:
  * the first allowed day on which the poll shows a majority), and during a boycott or scandal the ad
  * (when it may be offered) or the free exit. Nothing already bought, capped or closed for good is a
  * candidate. The goal line shows words (strings), price and "about 20 s / 2 min / 1 h" (`about`), none
@@ -19,20 +19,20 @@
  * "Short by 240 · about 9 s"; it reads params.ts (P1a) prices and gains and slips.ts `reserve`;
  * tick.ts reads `slipNeed` (when a slip becomes possible) and grants.ts `standingOrderPick`.
  */
-import { decreeParams, levelCost, levelGain, openCost, openGain, roundDibs, vanityPrice } from './params';
+import { decreeParams, levelCost, levelGain, openCost, openGain, roundDibs } from './params';
 import { reserve } from './slips';
 import { canWatchAd } from './grants';
 import { canCall } from './term';
 import { poll } from './count';
 import type { About, AdviceResult, DecreeConfig, DecreeGame, DecreeParams, Goal, Purchase, Slip } from './types';
 
-/** One thing money can buy now (a level, an opening, this term's monument), with its price and what it adds to I. */
+/** One thing advice may name now (a level or an opening; never a monument, D36), with its price and what it adds to I. */
 export interface Candidate {
   purchase: Purchase;
   price: number;
   /** What it adds to I (dibs per second). */
   gain: number;
-  /** The level it starts from (0 for an opening and a monument). */
+  /** The level it starts from (0 for an opening). */
   level: number;
 }
 
@@ -57,7 +57,7 @@ export function slipReserve(cfg: DecreeConfig, g: DecreeGame, p: DecreeParams = 
   return reserveNow(cfg, g) + (empty ? roundDibs(cfg, cfg.decree.desk.slipReserveSeconds * p.B) : 0);
 }
 
-/** Every purchase possible now, in the order levels, openings, the monument (by ministry). Built. */
+/** Every purchase advice may name now, in the order levels, openings (by ministry); never the monument (D36). Built. */
 export function candidates(cfg: DecreeConfig, g: DecreeGame, p: DecreeParams = decreeParams(cfg, g)): Candidate[] {
   const d = g.decree;
   const out: Candidate[] = [];
@@ -73,11 +73,6 @@ export function candidates(cfg: DecreeConfig, g: DecreeGame, p: DecreeParams = d
     const gain = openGain(cfg, g, i, p);
     if (Number.isFinite(price) && gain > 0) out.push({ purchase: { type: 'open', ministry: i }, price, gain, level: 0 });
   });
-  if (d.monumentOffer && !d.vanity.includes(d.monumentOffer)) {
-    const price = vanityPrice(cfg, g);
-    const gain = cfg.decree.advice.deltaShare * p.I;
-    if (Number.isFinite(price) && gain > 0) out.push({ purchase: { type: 'monument', monument: d.monumentOffer }, price, gain, level: 0 });
-  }
   return out;
 }
 

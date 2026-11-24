@@ -200,7 +200,7 @@ export const SlipWords = memo(function SlipWords({ vm, s }: { vm: SlipVM; s: num
   return (
     <View style={[StyleSheet.absoluteFill, styles.slip]} pointerEvents="none">
       <Text allowFontScaling={false} numberOfLines={1} style={[styles.dir, { fontSize: small, color: vm.held ? DESK.slateDeep : DESK.violet }]}>
-        {vm.held ? `${S.desk.up} ${vm.held}` : S.desk.slipBuy}
+        {`${S.desk.up} ${vm.held ?? S.desk.slipBuy}`}
       </Text>
       <View style={styles.slipMid}>
         <Text allowFontScaling={false} numberOfLines={1} style={[styles.role, { fontSize: small }]}>
@@ -225,7 +225,7 @@ export const SlipWords = memo(function SlipWords({ vm, s }: { vm: SlipVM; s: num
         </View>
       </View>
       <Text allowFontScaling={false} numberOfLines={1} style={[styles.dir, { fontSize: small, color: DESK.slateDeep }]}>
-        {S.desk.slipBack}
+        {`${S.desk.down} ${S.desk.slipBack}`}
       </Text>
     </View>
   );

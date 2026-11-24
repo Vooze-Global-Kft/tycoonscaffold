@@ -120,9 +120,20 @@ export function slipYields(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent
   return withDecree(g, { desk: null });
 }
 
-/** The slip that would land now (advice's purchase, affordable above the reserve, D16's extra on an empty desk), or null; never during the count or on the result sheet. Built. */
+/**
+ * Whether a slip (or the Standing Order) may come now: while governing, and in the run-up until its
+ * last paper (the rally) has come; never once the run-up's papers are all in, on election night or on
+ * the result sheet (nothing is offered between the rally and the count). Built.
+ */
+export function slipsComeNow(g: DecreeGame): boolean {
+  const d = g.decree;
+  if (d.phase === 'governing') return true;
+  return d.phase === 'campaign' && !(d.campaign && d.campaign.papersLeft <= 0 && d.campaign.rallyDone);
+}
+
+/** The slip that would land now (advice's purchase, affordable above the reserve, D16's extra on an empty desk), or null; never after the rally, during the count or on the result sheet (`slipsComeNow`). Built. */
 export function slipFor(cfg: DecreeConfig, g: DecreeGame): Slip | null {
-  if (g.decree.phase === 'count' || g.decree.phase === 'result') return null;
+  if (!slipsComeNow(g)) return null;
   const slip = advice(cfg, g).slip;
   if (!slip) return null;
   return g.cash - slip.price + EPS >= reserve(cfg, g) + emptyDeskExtra(cfg, g) ? slip : null;

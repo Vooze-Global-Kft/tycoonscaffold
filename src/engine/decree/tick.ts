@@ -32,7 +32,7 @@ import { commitPending } from './decide';
 import { drawCampaignPaper, drawNext, drawRally, landNext } from './draw';
 import { standingOrderActive, standingOrderStep } from './grants';
 import { decreeParams } from './params';
-import { slipFor, slipYields } from './slips';
+import { slipFor, slipsComeNow, slipYields } from './slips';
 import { MAX_TICK, type CashAnchor, type DecreeConfig, type DecreeEvent, type DecreeGame, type Paper } from './types';
 
 /** Events one tick may run before it stops (a guard against a rule that re-arms itself at one time; never reached by the rules). */
@@ -121,7 +121,8 @@ function eventTimes(cfg: DecreeConfig, g: DecreeGame): Record<TickEvent, number>
   if (d.pending) out.pending = d.pending.until;
   if (d.phase === 'campaign' && d.nextArrivalAt !== null) out.campaign = d.nextArrivalAt;
   if (d.phase === 'governing' && d.nextArrivalAt !== null && d.tray.length < cfg.decree.desk.trayCap) out.arrival = d.nextArrivalAt;
-  const live = d.phase === 'governing' || d.phase === 'campaign';
+  // Neither a slip nor the Standing Order once the run-up's last paper has come (slips.ts `slipsComeNow`).
+  const live = slipsComeNow(g);
   if (live && !d.desk && !d.tray.length && !d.pending && d.emptySince !== null) {
     const need = slipNeed(cfg, g);
     if (need !== null) out.slip = Math.max(d.emptySince + cfg.decree.desk.slipDelay, timeCashReaches(a, above(need)));

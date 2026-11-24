@@ -78,8 +78,9 @@ describe('the factors of twists and ministers multiply the base effects before s
     entry('settlement.money', 2, 0.5, 0, 'pellow', 'DPe'),
     entry('settlement.money', null, 0.5, 0, 'grievance_amnesty', null),
     entry('campaign.money', null, 0.67, 0, 'gusset', 'PP'),
-    entry('sayNothing.cut', null, 0.6, 0, 'gentle_week', null),
-    entry('sayNothing.cut', null, 0.7, 0, 'tamp', 'OT'),
+    // D37: A Gentle Week and Osric Tamp shorten "Say nothing" (its papers), never its income factor.
+    entry('sayNothing.papers', null, 0.6, 0, 'gentle_week', null),
+    entry('sayNothing.papers', null, 0.7, 0, 'tamp', 'OT'),
   ];
   const g0 = built({ office: 1, moods: [52, 47, 18, 30, 61], ministries: [20, 14, 9, 12, 12, 0], gossip: 5, cash: 1e9, boycott: { club: 2 } });
   const B = R.decreeParams(cfg, g0, R.neutralFactors()).B;
@@ -128,7 +129,8 @@ describe('the factors of twists and ministers multiply the base effects before s
           return { type: 'gossip', delta: e.to - g0.decree.gossip };
         case 'sayNothing': {
           const cut = val('sayNothing.cut', null);
-          return { type: 'sayNothing', papers: 10, factor: 1 - 0.2 * cut.mul };
+          const len = val('sayNothing.papers', null);
+          return { type: 'sayNothing', papers: Math.max(1, Math.round(10 * len.mul + len.add)), factor: 1 - 0.2 * cut.mul };
         }
         case 'boycottRuns':
           return { type: 'boycottRuns', club: e.club, papers: 8 };
@@ -139,6 +141,20 @@ describe('the factors of twists and ministers multiply the base effects before s
       }
     });
   }
+
+  it('D37 on the config: A Gentle Week makes "Say nothing" 6 papers, Osric Tamp 7, both 4; its factor stays I × 0.8', () => {
+    const tw = cfg.decree.twists.list.find((x) => x.id === 'gentle_week')!.factors[0];
+    const ot = cfg.decree.ministers.find((m) => m.id === 'tamp')!;
+    const asEntry = (f: typeof tw, source: string, initials: string | null) => entry(f.target, null, f.mul, f.add, source, initials);
+    const front = papers.out.find((p) => p.kind === 'scandal')!;
+    const say = (list: ReturnType<typeof entry>[]) => R.freezeShown(cfg, g0, front, { mixAdd: [0, 0, 0, 0, 0, 0, 0], list }).refuse.find((e) => e.type === 'sayNothing')!;
+    expect(tw.target).toBe('sayNothing.papers');
+    expect(ot.rule.target).toBe('sayNothing.papers');
+    expect(say([])).toEqual({ type: 'sayNothing', papers: 10, factor: cfg.decree.scandal.sayNothingFactor });
+    expect(say([asEntry(tw, 'gentle_week', null)])).toEqual({ type: 'sayNothing', papers: 6, factor: cfg.decree.scandal.sayNothingFactor });
+    expect(say([asEntry(ot.rule, 'tamp', ot.initials)])).toEqual({ type: 'sayNothing', papers: 7, factor: cfg.decree.scandal.sayNothingFactor });
+    expect(say([asEntry(tw, 'gentle_week', null), asEntry(ot.rule, 'tamp', ot.initials)])).toEqual({ type: 'sayNothing', papers: 4, factor: cfg.decree.scandal.sayNothingFactor });
+  });
 
   it('every combination of the factor entries (2^11) gives each paper the numbers the rule says, and the initials of the ministers that touched it', () => {
     let combos = 0;

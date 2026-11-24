@@ -22,7 +22,7 @@
  *
  * SEAM: `countDay` and `checkTermEnd` are steps 2 and 4 of 2.17 (decide.ts `commitItem`, P1a).
  */
-import { callDay, count, currentRival, meritOf, poll } from './count';
+import { callDay, count, currentRival, HELD_AT, meritOf, meritShares, poll } from './count';
 import { commitPending } from './decide';
 import { drawCampaignPaper, landNext, restoreAside, setAside } from './draw';
 import { canMoveUp, moveUp } from './move';
@@ -124,8 +124,11 @@ export function countVotes(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent
   // After a loss the winner resigns over a hobby and the office's next rival stands; the old one joins the former opponents.
   const rivalIndex = won ? d.rivalIndex : d.rivalIndex.map((r, o) => (o === d.office ? (r + 1) % Math.max(1, rivals.length) : r));
   const formerOpponents = won || d.formerOpponents.includes(rival.id) ? d.formerOpponents : [...d.formerOpponents, rival.id];
+  // Nothing is bought on election night: a slip still lying on the desk goes back (a save from before slipsComeNow).
+  if (d.desk?.type === 'slip') events.push({ type: 'slipReturned' });
   return withDecree(g, {
     phase: 'count',
+    desk: d.desk?.type === 'slip' ? null : d.desk,
     count: result,
     result: tr,
     nr: d.nr + nrGained,
@@ -155,10 +158,10 @@ export function chooseAfterResult(cfg: DecreeConfig, g: DecreeGame, choice: Move
   return newTerm(cfg, g, events);
 }
 
-/** Moods halfway back to the start (2.10: rounded toward 50). */
+/** A mood at a new term, moved mood.termReset of the way back to the start (2.10: halfway; D38's third lever; rounded toward 50). */
 export function halfwayBack(cfg: DecreeConfig, m: number): number {
   const c = cfg.decree.mood.start;
-  return c + Math.trunc((m - c) / 2);
+  return c + Math.trunc((m - c) * (1 - cfg.decree.mood.termReset));
 }
 
 /** This term's monument offer (5.8): from mayor term 2 on, the first monument not yet bought, or null. */
@@ -191,6 +194,7 @@ export function newTerm(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent[])
     picketsThisTerm: [],
     adsUsed: {},
     appSlotsUsed: 0,
+    signedThisTerm: 0,
     slipOffered: false,
     nextArrivalAt: null,
     emptySince: null,
@@ -286,7 +290,14 @@ export function reconcileTerm(cfg: DecreeConfig, g: DecreeGame, raw: unknown): D
     // without a count the night cannot be shown, and the next term in the seat starts.
     const cnt = g.decree.count;
     if (live && !cnt) return newTerm(cfg, withDecree(g, { ...patch, result: null }), []);
-    if (live && !patch.result && cnt) patch.result = { won: cnt.won, nrGained: 0, meritHeld: cnt.held, meritSweep: cnt.sweep, carried: [], resigned: null };
+    if (live && !patch.result && cnt) {
+      // The NR is already in `nr`; the sheet's "+n NR" is what the count gave (nrFor on the saved run-up, as countVotes computed it).
+      // Merit leaves the disarray out, so the moods and campaign points the count left behind give it again; "carried" is the count's held minus merit's.
+      const merit = meritOf(cfg, g);
+      const ms = meritShares(cfg, g);
+      const carried = cnt.won ? cnt.districts.filter((x) => x.held && (ms[x.district] ?? 0) < HELD_AT).map((x) => x.district) : [];
+      patch.result = { won: cnt.won, nrGained: nrFor(cfg, g.decree.office, cnt.won, merit), meritHeld: merit.held, meritSweep: merit.sweep, carried, resigned: cnt.won ? null : cnt.rival };
+    }
     const a = d.cashAnchor as Record<string, unknown> | null | undefined;
     const fin = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
     patch.cashAnchor = a && typeof a === 'object' && fin(a.at) && fin(a.cash) && fin(a.run) && fin(a.life) && fin(a.book) && fin(a.I) ? { at: a.at, cash: a.cash, run: a.run, life: a.life, book: a.book, I: a.I } : null;

@@ -42,7 +42,7 @@ export { sizeMood, sizeMoney, freezeShown, stripOf, costOf, formVoid } from './d
 export { decide, takeBack, commitPending, applyShown, commitItem, isDay } from './decree/decide';
 
 // --- 2.6, 2.7 slips, purchases, the reserve, the Ledger (P1a: slips.ts) ---
-export { reserve, reserveParts, slipFor, slipOf, slipYields, canBuy, buy, raise, openMinistry, buyVanity, ledger, callFrom, runUpPrices } from './decree/slips';
+export { reserve, reserveParts, slipFor, slipOf, slipYields, slipsComeNow, canBuy, buy, raise, openMinistry, buyVanity, ledger, callFrom, runUpPrices } from './decree/slips';
 
 // --- 2.7, 7.6 follow-ups (P1a: followup.ts) ---
 export { scheduleFollowUp, dueFollowUp, followUpPaper, stickyNote } from './decree/followup';

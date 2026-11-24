@@ -753,6 +753,8 @@ export interface DecreeState {
   result?: TermResult | null;
   /** rules-term: application slots of this term already used (2.9: days 9, 30, 60), reset each term. */
   appSlotsUsed?: number;
+  /** The day papers signed this term (the wire out-tray's stack, 4.3 and 5.1): 0 at a new term and a move. */
+  signedThisTerm: number;
 }
 
 export interface ResultSheet {

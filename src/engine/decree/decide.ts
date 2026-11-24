@@ -212,6 +212,7 @@ export function commitItem(cfg: DecreeConfig, g: DecreeGame, item: DeskItem, cho
     desk: d0.desk === item ? null : d0.desk,
     pending: d0.pending?.item === item ? null : d0.pending,
     drawerCount: d0.drawerCount + (isPaper && choice === 'refuse' ? 1 : 0),
+    signedThisTerm: d0.signedThisTerm + (isDay(item) && choice === 'sign' ? 1 : 0),
     slipOffered: isPaper ? false : d0.slipOffered,
     stats: isPaper ? { ...st0, signed: st0.signed + (choice === 'sign' ? 1 : 0), refused: st0.refused + (choice === 'refuse' ? 1 : 0) } : st0,
   });

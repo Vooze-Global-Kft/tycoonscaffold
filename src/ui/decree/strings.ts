@@ -63,8 +63,9 @@ export const S = {
     slipLevel: (ministry: string) => `${ministry} +1 level`,
     slipOpen: (ministry: string) => `${ministry} opens`,
     slipRate: (perSecond: string) => `+${perSecond}/s`,
-    slipBuy: '↑ Buy it',
-    slipBack: '↓ Put it back',
+    /** The slip's two directions; the arrows (`up`, `down`) are put in front where they are drawn. */
+    slipBuy: 'Buy it',
+    slipBack: 'Put it back',
     /** Up refused for now (the rules' reserve, 2.6 and D16): said where "Buy it" stands. */
     slipKeptDesk: (amount: string) => `Kept for the desk: ${amount}`,
     slipKeptRunUp: (amount: string) => `Kept for the run-up: ${amount}`,
@@ -297,7 +298,8 @@ export const S = {
     nrGained: (n: number) => `Name Recognition +${n}`,
     carried: (names: string) => `Carried by your opponents' disarray: ${names}`,
     standFor: (title: string) => `Stand for ${title}`,
-    anotherTerm: 'Another term here',
+    /** 2.10's "Another term here": the satire lint denies "another term" (a strongman phrase), so the seat is named instead. */
+    anotherTerm: 'Stay in this seat',
     missing: (title: string, nrNeeded: number, recordName: string, recordNeeded: number, nr: number, record: number) => `${title} needs Name Recognition ${nrNeeded} and a ${recordName} of ${recordNeeded}: you have ${nr} and ${record}`,
     nextThing: (name: string) => `Next term: ${name}`,
     quietTerm: 'A Quiet Term',

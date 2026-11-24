@@ -25,11 +25,9 @@ describe('the score of 2.16', () => {
       if (cand.purchase.type === 'level') expect(cand.gain).toBeCloseTo(R.levelGain(cfg, g, cand.purchase.ministry, p), 12);
       if (cand.purchase.type === 'open') expect(cand.gain).toBeCloseTo(R.openGain(cfg, g, cand.purchase.ministry, p), 12);
     }
-    // The monument's Δincome is deltaShare × I.
+    // D36: a monument on offer is never a candidate (advice, its slips and the goal line never name one).
     const m = { ...g, decree: { ...g.decree, monumentOffer: 'bust' } };
-    const mc = R.candidates(cfg, m).find((x) => x.purchase.type === 'monument')!;
-    expect(mc.gain).toBeCloseTo(c.advice.deltaShare * R.decreeParams(cfg, m).I, 12);
-    expect(mc.price).toBe(R.vanityPrice(cfg, m));
+    expect(R.candidates(cfg, m).some((x) => x.purchase.type === 'monument')).toBe(false);
     // The goal is the lowest score.
     const goal = R.advice(cfg, g).goal;
     const best = R.candidates(cfg, g, p).reduce((a, b) => (R.scoreOf(cfg, b, g.cash, res, p.I, short) < R.scoreOf(cfg, a, g.cash, res, p.I, short) ? b : a));
@@ -60,6 +58,24 @@ describe('the score of 2.16', () => {
     const need = R.slipNeed(cfg, empty)!;
     expect(R.advice(cfg, { ...empty, cash: need }).slip).not.toBeNull();
     expect(R.advice(cfg, { ...empty, cash: need - 1e-6 }).slip).toBeNull();
+  });
+
+  it('D36: never names a monument, however rich the treasury and however cheap the monument', () => {
+    const cap = c.ministry.levelCap;
+    const g = built({ cash: 1e15, ministries: [cap, cap, cap, cap], desk: null }, cfg);
+    const offered = { ...g, decree: { ...g.decree, monumentOffer: 'bust', vanity: [] } };
+    const a = R.advice(cfg, offered);
+    expect(a.slip).toBeNull();
+    expect(a.next).toBeNull();
+    expect(a.goal.kind).toBe('none');
+    expect(R.goalLine(cfg, offered).kind).toBe('none');
+    expect(R.slipNeed(cfg, offered)).toBeNull();
+    expect(R.slipFor(cfg, offered)).toBeNull();
+    // The monument is still bought from the result flow (buyVanity), at its own price.
+    const ev: R.DecreeEvent[] = [];
+    const bought = R.buyVanity(cfg, offered, ev);
+    expect(bought.decree.vanity).toEqual(['bust']);
+    expect(offered.cash - bought.cash).toBe(R.vanityPrice(cfg, offered));
   });
 
   it('never advises what is bought, capped or closed for good; at I = 0 no "about"', () => {

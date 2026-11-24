@@ -72,11 +72,25 @@ export function checkStrikes(cfg: DecreeConfig, g: DecreeGame, events: DecreeEve
   return s;
 }
 
-/** Ends club g's boycott now (settled by its grievance, its count, the club at endsAt, the Courier ad, a new term): no mood change; a grievance still in the tray goes. The same object when none runs. Built. */
+/**
+ * Ends club g's boycott now (settled by its grievance, its count, the club at endsAt, the Courier ad, a
+ * new term): no mood change; its grievance goes wherever it still waits (the tray, the desk, the
+ * take-back window), so no strip is left that promises to end a boycott that no longer runs. A desk
+ * left empty is the caller's to fill (draw.ts `landNext`: grants.ts does it for the Courier). The same
+ * object when none runs. Built.
+ */
 export function endStrike(cfg: DecreeConfig, g: DecreeGame, club: ClubIx, how: 'settled' | 'count' | 'ad' | 'mood' | 'term', events: DecreeEvent[]): DecreeGame {
   void cfg;
   const d = g.decree;
   if (!d.strikes[club]) return g;
   events.push({ type: 'boycottEnd', club, how });
-  return withDecree(g, { strikes: d.strikes.map((x, k) => (k === club ? null : x)), tray: d.tray.filter((p) => !(p.kind === 'strike' && p.petitioner === club)) });
+  const is = (p: { kind: string; petitioner: ClubIx | null }) => p.kind === 'strike' && p.petitioner === club;
+  const deskGoes = d.desk?.type === 'paper' && is(d.desk.paper);
+  const pendingGoes = !!d.pending && is(d.pending.item.paper);
+  return withDecree(g, {
+    strikes: d.strikes.map((x, k) => (k === club ? null : x)),
+    tray: d.tray.filter((p) => !is(p)),
+    desk: deskGoes ? null : d.desk,
+    pending: pendingGoes ? null : d.pending,
+  });
 }

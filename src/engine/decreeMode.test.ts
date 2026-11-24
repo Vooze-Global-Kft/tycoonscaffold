@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GameConfigSchema, type GameConfig } from '../config/schema';
-import { DecreeSchema, RANGES, archetypeRanges, combinations, lintDecree, type DecreeContentInput } from '../config/schema.decree';
+import { DecreeObject, DecreeSchema, RANGES, archetypeRanges, combinations, lintDecree, type DecreeContentInput } from '../config/schema.decree';
 import * as R from './decree';
 import { decreeEngineMode, withDecreeContent } from './decreeMode';
 import { DECREE_TEST_NUMBERS, FIXTURE_NOW, baseGameState, decreeFixtures, decreeStateProblems, decreeTestConfig, decreeTestContent, freshState } from './fixtures/decree';
@@ -198,7 +198,7 @@ describe('the fixtures (frozen test content)', () => {
     const { deck: _e, ...frozen } = fromNumbers;
     expect(numbers).toEqual(frozen);
     // Every key of the frozen file is a field of the block (a renamed field fails here, not silently).
-    const fields = Object.keys(DecreeSchema.shape);
+    const fields = Object.keys(DecreeObject.shape);
     for (const k of Object.keys(DECREE_TEST_NUMBERS)) expect(fields, k).toContain(k);
   });
 
@@ -260,10 +260,11 @@ describe('the seam fixes before the rules packages start', () => {
     expect(lintDecree(deckOf([{ ...base, id: 'd', archetype: 'basket', favour: { text: 'Test', clippings: { sign: 'A', refuse: 'B' } } }]))).toEqual([]);
   });
 
-  it('Ribbon Shortage carries both of its factors (2.14: cost AND please ×2); "Say nothing" factors act on the cut', () => {
+  it('Ribbon Shortage carries both of its factors (2.14: cost AND please ×2); "Say nothing" factors act on its length (D37)', () => {
     const t = cfg.decree.twists.list.find((x) => x.id === 'ribbon_shortage')!;
     expect(t.factors.map((f) => [f.target, f.mul])).toEqual([['ribbon.money', 2], ['ribbon.mood', 2]]);
-    expect(cfg.decree.twists.list.find((x) => x.id === 'gentle_week')!.factors[0].target).toBe('sayNothing.cut');
+    expect(cfg.decree.twists.list.find((x) => x.id === 'gentle_week')!.factors[0].target).toBe('sayNothing.papers');
+    expect(cfg.decree.ministers.find((m) => m.id === 'tamp')!.rule.target).toBe('sayNothing.papers');
   });
 
   it('M(A) is ×1.0 at 50 whatever the slope (2.4)', () => {

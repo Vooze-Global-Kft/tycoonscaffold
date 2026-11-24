@@ -10,8 +10,9 @@
  * lands between two papers (D18) is put back by the test's helper where a test counts papers.
  */
 import { describe, expect, it } from 'vitest';
+import { lintDecree } from '../../config/schema.decree';
 import * as R from '../decree';
-import { built, decreeTestConfig } from '../fixtures/decree';
+import { built, DECREE_TEST_NUMBERS, decreeTestConfig } from '../fixtures/decree';
 
 const cfg = decreeTestConfig();
 const VEG = 2; // mayor clubs: bus 0, shops 1, veg 2; the Benches & Bandstands (ministry 2) serve veg.
@@ -165,5 +166,56 @@ describe('the two exits, counted in decided papers', () => {
     expect(s.decree.tray.some((p) => p.kind === 'strike')).toBe(false);
     expect(events).toEqual([{ type: 'boycottEnd', club: VEG, how: 'ad' }]);
     expect(R.endStrike(cfg, s, VEG, 'ad', [])).toBe(s);
+  });
+
+  it('regression (rules-lead-check 1): the Courier with the grievance ON THE DESK takes it off the desk, costs nothing and lands the next paper', () => {
+    // Shops swap: veg 21 → 19, the boycott starts and the grievance lands on the desk.
+    const g0 = withTray(built({ office: 0, moods: [50, 50, 21], ministries: [10, 7, 6, 0], cash: 1e6, desk: 'test-mayor-shops-swap-1' }), 1);
+    const g = decideNow(g0, 'sign');
+    expect(deskPaper(g)?.kind).toBe('strike');
+    expect(R.canWatchAd(cfg, g, 'courier')).toBe(true);
+    const events: R.DecreeEvent[] = [];
+    const s = R.grantAd(cfg, g, 'courier', events);
+    expect(s.decree.strikes[VEG]).toBeNull();
+    expect(s.cash).toBe(g.cash);
+    expect(s.decree.moods).toEqual(g.decree.moods);
+    // No grievance is left anywhere: no strip promises "end the boycott" or "it runs 8 more papers".
+    const all = [deskPaper(s), s.decree.pending?.item.paper ?? null, ...s.decree.tray].filter(Boolean) as R.Paper[];
+    expect(all.some((p) => p.kind === 'strike')).toBe(false);
+    for (const side of ['sign', 'refuse'] as const) {
+      const strip = R.stripOf(cfg, s, side);
+      if (strip) expect(JSON.stringify(strip)).not.toMatch(/endBoycott|boycottRuns/);
+    }
+    // The paper that waited behind the grievance lands at once.
+    expect(deskPaper(s)?.source).toMatch(/^test-mayor-bus-swap-/);
+    expect(events).toContainEqual({ type: 'boycottEnd', club: VEG, how: 'ad' });
+    expect(events).toContainEqual({ type: 'ad', ad: 'courier' });
+    expect(R.canWatchAd(cfg, s, 'courier')).toBe(false);
+  });
+
+  it('a boycott that ends while its grievance rests in the take-back window takes it out of the window too', () => {
+    const g = decideNow(built({ office: 0, moods: [50, 50, 21], ministries: [10, 7, 6, 0], cash: 1e6, desk: 'test-mayor-shops-swap-1' }), 'sign');
+    const signed = R.decide(cfg, g, 'sign', 0, []);
+    expect(signed.decree.pending?.item.paper.kind).toBe('strike');
+    const s = R.endStrike(cfg, signed, VEG, 'ad', []);
+    expect(s.decree.pending).toBeNull();
+    expect(R.commitPending(cfg, s, 0, [])).toBe(s);
+  });
+});
+
+describe('D38: the boycott threshold is one lever', () => {
+  it('ends, re-arm and the huff band move with boycott.below (tune 20 to 30); a value written for them is ignored', () => {
+    expect([b.below, b.endsAt, b.rearmAt, cfg.decree.count.huffBelow]).toEqual([20, 25, 30, 30]);
+    const c25 = decreeTestConfig({ boycott: { ...DECREE_TEST_NUMBERS.boycott, below: 25, endsAt: 99 } as never });
+    expect([c25.decree.boycott.below, c25.decree.boycott.endsAt, c25.decree.boycott.rearmAt, c25.decree.count.huffBelow]).toEqual([25, 30, 35, 35]);
+    expect(lintDecree(c25.decree)).toEqual([]);
+    // At 25 a club at 24 boycotts where at 20 it would only be in a huff; the poll's huff band follows.
+    const g = built({ office: 0, moods: [50, 50, 26], ministries: [10, 7, 6, 0], cash: 1e6, desk: 'test-mayor-shops-swap-1' }, c25);
+    const s = R.decide(c25, g, 'sign', 0, []);
+    const x = R.commitPending(c25, s, 0, []);
+    expect(x.decree.moods[VEG]).toBeLessThan(25);
+    expect(x.decree.strikes[VEG]).not.toBeNull();
+    expect(R.poll(c25, built({ office: 0, moods: [50, 50, 30] }, c25)).huffing).toEqual([VEG]);
+    expect(R.poll(cfg, built({ office: 0, moods: [50, 50, 30] }, cfg)).huffing).toEqual([]);
   });
 });

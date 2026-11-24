@@ -215,7 +215,8 @@ const ARCHETYPES_DEFAULT: z.input<typeof ArchetypeSchema>[] = [
  * club's weight in every district (+add, the others scaled down); the rest multiply (`mul`) or add
  * (`add`). Read by twists.ts and ministers.ts, which produce the one Factors object size.ts consumes.
  * "Say nothing" has two targets: `sayNothing.cut` multiplies the CUT (1 − sayNothingFactor: ×0.6 turns
- * I × 0.8 into I × 0.88, milder) and `sayNothing.papers` the papers it runs (10).
+ * I × 0.8 into I × 0.88, milder) and `sayNothing.papers` the papers it runs (10; rounded, at least 1).
+ * D37: A Gentle Week (×0.6) and Osric Tamp (×0.7) shorten its LENGTH (`sayNothing.papers`: 6, 7, 4 with both).
  */
 export const FACTOR_TARGETS = ['mix', 'committee.share', 'gossipMax', 'ribbon.money', 'ribbon.mood', 'fee.money', 'tau', 'sayNothing.cut', 'sayNothing.papers', 'settlement.money', 'requisition.money', 'campaign.money', 'quietDecay'] as const;
 export const FactorTargetSchema = z.enum(FACTOR_TARGETS);
@@ -262,7 +263,7 @@ const TWISTS_DEFAULT = [
   T('early_doors', 'Early Doors', { target: 'tau', mul: 0.8 }),
   T('hedge_inspection', 'Hedge Inspection', { target: 'mix', club: 'hedges', add: 0.1 }),
   // PLACEHOLDER (sent to the lead, requests.md): 2.14 "Say nothing ×0.6" read as the milder cut (I × 0.88), not I × 0.48.
-  T('gentle_week', 'A Gentle Week', { target: 'sayNothing.cut', mul: 0.6 }),
+  T('gentle_week', 'A Gentle Week', { target: 'sayNothing.papers', mul: 0.6 }),
   T('grievance_amnesty', 'Grievance Amnesty', { target: 'settlement.money', mul: 0.5 }),
 ];
 
@@ -571,13 +572,14 @@ const MINISTERS_DEFAULT = [
   M('gusset', 'Percy Plummet', 'PP', 'anglers', 'governor', { target: 'campaign.money', mul: 0.67 }),
   M('wren', 'Marjorie Wren', 'MW', 'kites', 'president', { target: 'fee.money', club: 'kites', mul: 1.2 }),
   // PLACEHOLDER (sent to the lead, as A Gentle Week): ×0.7 on the cut of "Say nothing" (I × 0.86).
-  M('tamp', 'Osric Tamp', 'OT', 'hedges', 'president', { target: 'sayNothing.cut', mul: 0.7 }),
+  M('tamp', 'Osric Tamp', 'OT', 'hedges', 'president', { target: 'sayNothing.papers', mul: 0.7 }),
   M('nibley', 'Florence Mayfly', 'FM', 'anglers', 'president', { target: 'requisition.money', club: 'anglers', mul: 0.9 }),
 ];
 
 // ----------------------------------------------------------------------------- the block
 
-export const DecreeSchema = z.object({
+/** The block as written in game.json (the input); `DecreeSchema` below derives the thresholds that hang on the boycott's (D38). */
+export const DecreeObject = z.object({
   clubs: z.array(ClubSchema).length(7).prefault(CLUBS_DEFAULT as never),
   offices: z.array(OfficeSchema).length(3).prefault(OFFICES_DEFAULT as never),
   ministry: MinistryNumbers.prefault({}),
@@ -645,14 +647,22 @@ export const DecreeSchema = z.object({
   mood: z
     .object({
       start: int.min(0).max(100).default(50),
+      /** D38: how far a new term moves each mood back toward `start` (2.10: half, 0.5; tune 1/3 to 1/2; rounded toward start). */
+      termReset: z.number().min(0).max(1).default(0.5),
       capF: pos.default(1.4),
       maxDelta: int.positive().default(10),
       petitionerLow: pos.default(0.5),
       petitionerHigh: pos.default(1.5),
     })
     .prefault({}),
-  /** Boycotts (2.8, rules). */
-  boycott: z.object({ below: int.default(20), endsAt: int.default(25), rearmAt: int.default(30), papers: int.positive().default(8) }).prefault({}),
+  /**
+   * Boycotts (2.8, rules; D38): a club below `below` (tune 20 to 30) boycotts; it ends at below +
+   * endsAbove, re-arms at below + rearmAbove, and is "in a huff" up to below + huffAbove (the count's
+   * bend, D25). `DecreeSchema` derives `endsAt`, `rearmAt` and `count.huffBelow` from these.
+   */
+  boycott: z
+    .object({ below: int.min(0).max(100).default(20), endsAbove: int.positive().default(5), rearmAbove: int.positive().default(10), huffAbove: int.positive().default(10), papers: int.positive().default(8) })
+    .prefault({}),
   /** Gossip and scandal (2.8, rules). */
   scandal: z.object({ quietDecay: int.positive().default(8), sayNothingFactor: prob.default(0.8), sayNothingPapers: int.positive().default(10) }).prefault({}),
   /** The desk (2.5, 2.7; rules unless noted). */
@@ -700,7 +710,7 @@ export const DecreeSchema = z.object({
     .prefault({}),
   /**
    * The count's utility of a mood (D25, rules; the ONE function is count.ts `moodUtility`): a mood from
-   * `huffBelow` up counts as it is, below it `huffSlope` times as far below (u(m) = m from 30 up,
+   * `huffBelow` (derived, D38: boycott.below + boycott.huffAbove, 30) up counts as it is, below it `huffSlope` times as far below (u(m) = m from 30 up,
    * 3m − 60 below: u(20) = 0, u(0) = −60). Only the count and the poll read it; approval and income use
    * the plain moods. A club from boycott.below to huffBelow − 1 is "in a huff" on screen.
    * D31: a mood above `topAbove` counts only `topSlope` per point above it (u(m) = topAbove + topSlope ×
@@ -708,18 +718,17 @@ export const DecreeSchema = z.object({
    */
   count: z
     .object({
-      huffBelow: int.min(0).max(100).default(30),
       huffSlope: z.number().min(1).default(3),
       topAbove: int.min(0).max(100).default(70),
       topSlope: z.number().min(0).max(1).default(0.25),
     })
     .prefault({}),
-  /** The vanity shelf (5.8): a monument a term from mayor term 2 for `price` s of B (tune 300 to 1,200), ×factor for good (tune 1.01 to 1.04). */
-  vanity: z.object({ price: pos.default(600), factor: pos.default(1.02), fromMayorTerm: int.positive().default(2) }).prefault({}),
+  /** The vanity shelf (5.8, D36): a monument a term from mayor term 2 for `price` s of B (starts at 300, tune 300 to 1,200), ×factor for good (tune 1.01 to 1.04). */
+  vanity: z.object({ price: pos.default(300), factor: pos.default(1.02), fromMayorTerm: int.positive().default(2) }).prefault({}),
   /** The Standing Order (5.10): from governor term 2 (from the first day with the product "Junior Clerk on Duty", D11), buys the advised level when cash ≥ times × price + the reserve. */
   standingOrder: z.object({ fromGovernorTerm: int.positive().default(2), times: pos.default(3) }).prefault({}),
-  /** Advice (2.16): Δincome of a candidate as a share of I, and the record's divisor. */
-  advice: z.object({ deltaShare: pos.default(0.02), recordDivisor: pos.default(1.5) }).prefault({}),
+  /** Advice (2.16): the record's divisor (D36: advice never names a monument, so it has no Δincome share). */
+  advice: z.object({ recordDivisor: pos.default(1.5) }).prefault({}),
   /** Rewarded ads (5.11; play-clock cooldowns, rules). */
   ads: z
     .object({
@@ -792,6 +801,20 @@ export const DecreeSchema = z.object({
   deck: DeckSchema.prefault({}),
 });
 
+/**
+ * D38: the boycott threshold `boycott.below` is ONE lever (tune 20 to 30) and the thresholds that hang
+ * on it move with it, derived here and nowhere else: a boycott ends at below + endsAbove (25) and re-arms
+ * at below + rearmAbove (30); "in a huff" is the huffAbove (10) points above the threshold, so D25's
+ * utility bends at count.huffBelow = below + huffAbove (30). The parsed block carries the derived
+ * `boycott.endsAt`, `boycott.rearmAt` and `count.huffBelow` for every reader; they are never written in
+ * game.json (a value there is ignored).
+ */
+export const DecreeSchema = DecreeObject.transform((d) => ({
+  ...d,
+  boycott: { ...d.boycott, endsAt: d.boycott.below + d.boycott.endsAbove, rearmAt: d.boycott.below + d.boycott.rearmAbove },
+  count: { ...d.count, huffBelow: d.boycott.below + d.boycott.huffAbove },
+}));
+
 export type DecreeContent = z.output<typeof DecreeSchema>;
 export type DecreeContentInput = z.input<typeof DecreeSchema>;
 export type ClubId = (typeof CLUB_IDS)[number];
@@ -862,6 +885,9 @@ export const RANGES: readonly { path: string; low: number; high: number; spec: s
   { path: 'ladder.transitionFund', low: 15, high: 90, spec: '2.2' },
   { path: 'desk.slipReserveSeconds', low: 10, high: 30, spec: 'D16' },
   { path: 'count.topAbove', low: 60, high: 80, spec: 'D31' },
+  { path: 'boycott.below', low: 20, high: 30, spec: 'D38' },
+  { path: 'paperRules.sizing.pull', low: 0.5, high: 1, spec: 'D27, D38' },
+  { path: 'mood.termReset', low: 1 / 3, high: 0.5, spec: 'D38' },
   { path: 'count.topSlope', low: 0.1, high: 0.5, spec: 'D31' },
   { path: 'followUps.favourDelay[0]', low: 5, high: 30, spec: '7.6, D20' },
   { path: 'followUps.favourDelay[1]', low: 5, high: 30, spec: '7.6, D20' },
@@ -921,8 +947,7 @@ export function lintDecree(d: DecreeContent): string[] {
   const days = d.forms.application.days;
   if (days.some((x, i) => i > 0 && x <= days[i - 1])) out.push(`forms.application.days ${JSON.stringify(days)} must rise`);
   if (!(d.count.topAbove > d.count.huffBelow)) out.push(`count.topAbove ${d.count.topAbove} must be above count.huffBelow ${d.count.huffBelow}`);
-  if (!(d.count.huffBelow > d.boycott.below)) out.push(`count.huffBelow ${d.count.huffBelow} must be above boycott.below ${d.boycott.below} (D25: "in a huff" from 20 to 29)`);
-  if (!(d.boycott.below < d.boycott.endsAt && d.boycott.endsAt <= d.boycott.rearmAt)) out.push('boycott: below < endsAt ≤ rearmAt (2.8: 20, 25, 30)');
+  if (!(d.boycott.endsAbove <= d.boycott.rearmAbove)) out.push(`boycott: endsAbove ${d.boycott.endsAbove} must be at most rearmAbove ${d.boycott.rearmAbove} (2.8: ends at 25, re-arms at 30)`);
   // 2.14: the ladder of new things to term 181, and every factor composed with every minister.
   for (const p of compositionProblems({ decree: d } as unknown as DecreeConfig)) out.push(p);
   const followOnly = new Set<string>(FOLLOW_ONLY_ARCHETYPES);

@@ -22,7 +22,7 @@ import { standingOrderPick, standingOrderReserve } from './advice';
 import { fillTray, landNext } from './draw';
 import { commitCash, decreeParams, roundDibs } from './params';
 import { endScandal } from './scandal';
-import { buy } from './slips';
+import { buy, slipsComeNow } from './slips';
 import { endStrike } from './strike';
 import type { DecreeAdKind, DecreeConfig, DecreeEvent, DecreeGame } from './types';
 
@@ -102,7 +102,9 @@ export function grantAd(cfg: DecreeConfig, g: DecreeGame, kind: DecreeAdKind, ev
       break;
     case 'courier': {
       const club = courierClub(g);
+      // The grievance leaves with the boycott (strike.ts); the next paper lands on a desk it left empty.
       next = club === null ? g : endStrike(cfg, g, club, 'ad', events);
+      if (next !== g && !next.decree.desk && !next.decree.pending) next = landNext(cfg, next, g.stats.playSeconds, events);
       break;
     }
     case 'openDoors': {
@@ -146,7 +148,7 @@ export function setStandingOrder(cfg: DecreeConfig, g: DecreeGame, on: boolean):
 /** The Standing Order's purchase now, if cash is at 3 × the advised level's price plus the reserve and no paper rests in its take-back window (tick.ts runs it at that moment, after the window); the same object otherwise. Built. */
 export function standingOrderStep(cfg: DecreeConfig, g: DecreeGame, events: DecreeEvent[]): DecreeGame {
   // Never inside the player's take-back window (2.7: Wimble is not "the next action"; slips.ts `buy` with `auto` refuses then too).
-  if (!standingOrderActive(cfg, g) || g.decree.pending) return g;
+  if (!standingOrderActive(cfg, g) || g.decree.pending || !slipsComeNow(g)) return g;
   const pick = standingOrderPick(cfg, g);
   // D33: it keeps back every waiting paper's sign cost (and the run-up's), not just the next two.
   if (!pick || g.cash < cfg.decree.standingOrder.times * pick.price + standingOrderReserve(cfg, g)) return g;

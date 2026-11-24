@@ -87,8 +87,9 @@ export function goalForms(v: GoalValues): string[] {
       return [S.hud.goalApologise];
     case 'ad':
       // The free exit in words, the ad as the line's button (2.16).
-      if (g.ad === 'courier') return [...(v.papersLeft !== null ? [S.hud.goalSettle(v.club ?? '', v.papersLeft)] : []), S.hud.goalCourier];
-      if (g.ad === 'spinDoctor') return [...(v.scandalLeft !== null ? [S.hud.goalSayNothing(v.scandalLeft)] : []), S.hud.goalSpin];
+      // D39: the free way out first, the ad second (the line's button), never the ad alone.
+      if (g.ad === 'courier') return [...(v.papersLeft !== null ? [S.hud.goalSettle(v.club ?? '', v.papersLeft)] : []), S.hud.goalSettleShort];
+      if (g.ad === 'spinDoctor') return [...(v.scandalLeft !== null ? [S.hud.goalSayNothing(v.scandalLeft)] : []), S.hud.goalApologise];
       return [];
     case 'none':
       return [S.hud.goalNone];

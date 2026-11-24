@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as R from '../decree';
-import { built, decreeFixtures, decreeTestConfig } from '../fixtures/decree';
+import { built, DECREE_TEST_NUMBERS, decreeFixtures, decreeTestConfig } from '../fixtures/decree';
 
 const cfg = decreeTestConfig();
 const c = cfg.decree;
@@ -15,8 +15,12 @@ const C0 = R.callDayOf(row0);
 
 /** Decides everything the run-up brings (refusing: "No change"), until the votes may be counted. */
 function finishRunUp(g: R.DecreeGame, choice: R.Choice = 'refuse'): R.DecreeGame {
+  return finishRunUpWith(cfg, g, choice);
+}
+
+function finishRunUpWith(cfg: R.DecreeConfig, g: R.DecreeGame, choice: R.Choice = 'refuse'): R.DecreeGame {
   let s = g;
-  for (let k = 0; k < 40 && !R.canCount(cfg, s); k++) {
+  for (let k = 0; k < 400 && !R.canCount(cfg, s); k++) {
     const clock = s.stats.playSeconds;
     if (s.decree.desk) {
       let next = R.decide(cfg, s, choice, clock, []);
@@ -193,6 +197,57 @@ describe('the count and the result (2.10, D26)', () => {
   });
 });
 
+describe('a reload of election night without its result (regression, rules-lead-check 8)', () => {
+  it('rebuilds the result the count gave, "+n NR" included, for a win and a loss', () => {
+    for (const moods of [[80, 80, 80], [5, 5, 5]]) {
+      const g = built({ day: C0, moods, desk: 'test-mayor-bus-swap-1' }, cfg);
+      const night = R.countVotes(cfg, finishRunUp(R.callElection(cfg, g, 0, [])), []);
+      expect(night.decree.phase).toBe('count');
+      const raw = JSON.parse(JSON.stringify(night));
+      delete raw.decree.result;
+      const back = R.reconcileTerm(cfg, { ...night, decree: { ...night.decree, result: null } }, raw);
+      expect(back.decree.result).toEqual(night.decree.result);
+      expect(R.resultSheet(cfg, back)).toEqual(R.resultSheet(cfg, night));
+    }
+  });
+});
+
+describe('nothing is offered between the rally and the count (regression, rules-lead-check 2)', () => {
+  it('no slip lands once the rally is decided; a slip still on the desk goes back at the count; nothing can be bought on election night or the result sheet', () => {
+    const g = built({ cash: 1e7, ministries: [10, 8, 5, 2], day: C0 }, cfg);
+    let s = R.callElection(cfg, g, g.stats.playSeconds, []);
+    for (let k = 0; k < 200 && !R.canCount(cfg, s); k++) {
+      const clock = s.stats.playSeconds;
+      if (s.decree.desk?.type === 'paper') s = R.decide(cfg, s, 'sign', clock, []);
+      else if (s.decree.desk?.type === 'slip') s = R.decide(cfg, s, 'refuse', clock, []);
+      else s = R.advanceDecree(cfg, s, 1, 0);
+    }
+    expect(R.canCount(cfg, s)).toBe(true);
+    expect(R.slipsComeNow(s)).toBe(false);
+    expect(R.slipFor(cfg, s)).toBeNull();
+    // The player waits on the count button: nothing lands, nothing is bought by itself.
+    const waited = R.advanceDecree(cfg, s, 3, 0);
+    expect(waited.decree.desk).toBeNull();
+    expect(R.nextStop(cfg, waited)).toBeNull();
+    // A slip on the desk from an older save goes back when the votes are counted.
+    const slip = R.advice(cfg, { ...s, decree: { ...s.decree, phase: 'governing' } }).slip!;
+    expect(slip).not.toBeNull();
+    const withSlip = { ...waited, decree: { ...waited.decree, desk: { type: 'slip' as const, slip, landedAt: waited.stats.playSeconds } } };
+    const ev: R.DecreeEvent[] = [];
+    const night = R.countVotes(cfg, withSlip, ev);
+    expect(night.decree.phase).toBe('count');
+    expect(night.decree.desk).toBeNull();
+    expect(ev).toContainEqual({ type: 'slipReturned' });
+    for (const x of [night, R.endElectionNight(cfg, night)]) {
+      expect(R.decide(cfg, x, 'sign', x.stats.playSeconds, [])).toBe(x);
+      expect(R.advanceDecree(cfg, x, 5, 0).decree.desk).toBeNull();
+    }
+    // The next term starts with no slip carried over.
+    const next = R.chooseAfterResult(cfg, R.endElectionNight(cfg, night), 'stay', 0, []);
+    expect(next.decree.desk?.type).not.toBe('slip');
+  });
+});
+
 describe('a new term in the seat (2.10, 2.17 "At a new term")', () => {
   it('day 0, moods halfway back to 50 (toward 50), gossip and campaign 0, the aside papers back, boycotts at 25 end, a monument and the new thing', () => {
     let s = R.callElection(cfg, built({ day: C0, moods: [90, 11, 33], gossip: 3, desk: 'test-mayor-bus-swap-1', tray: ['test-mayor-shops-fee-1'], boycott: { club: 1, papersLeft: 6 } }, cfg), 0, []);
@@ -218,10 +273,22 @@ describe('a new term in the seat (2.10, 2.17 "At a new term")', () => {
     expect(ev.find((e) => e.type === 'termStarted')).toMatchObject({ term: 2, office: 0 });
   });
 
+  it('D38: mood.termReset moves moods that share of the way back (a third instead of half), rounded toward 50; a boycott whose club stays below its end runs on', () => {
+    const third = decreeTestConfig({ mood: { ...DECREE_TEST_NUMBERS.mood, termReset: 1 / 3 } });
+    expect([R.halfwayBack(third, 0), R.halfwayBack(third, 11), R.halfwayBack(third, 90), R.halfwayBack(third, 50)]).toEqual([17, 24, 76, 50]);
+    const g = built({ day: C0, moods: [50, 50, 0], desk: 'test-mayor-bus-swap-1', boycott: { club: 2, papersLeft: 6 } }, third);
+    const s = R.endElectionNight(third, R.countVotes(third, finishRunUpWith(third, R.callElection(third, g, 0, [])), []));
+    const x = R.chooseAfterResult(third, s, 'stay', 0, []);
+    expect(x.decree.moods[2]).toBe(17);
+    expect(x.decree.strikes[2]).not.toBeNull();
+    expect(x.decree.armed[2]).toBe(false);
+  });
+
   it('the reset lifts every club to at least 25 (2.11), so every boycott ends at a new term', () => {
     const g = built({ day: C0, moods: [50, 50, 0], desk: 'test-mayor-bus-swap-1', boycott: { club: 2, papersLeft: 6 } }, cfg);
     const s = R.endElectionNight(cfg, R.countVotes(cfg, finishRunUp(R.callElection(cfg, g, 0, [])), []));
     const x = R.chooseAfterResult(cfg, s, 'stay', 0, []);
+    // True at the starting numbers (threshold 20, reset half way); D38's levers may break it, and a boycott then runs on into the term.
     expect(R.halfwayBack(cfg, 0)).toBeGreaterThanOrEqual(c.boycott.endsAt);
     expect(x.decree.moods[2]).toBe(R.halfwayBack(cfg, 0));
     expect(x.decree.strikes.every((st) => st === null)).toBe(true);

@@ -41,7 +41,7 @@ export interface MoveListItem {
  */
 export const MOVE_RESETS: readonly MoveListItem[] = [
   { id: 'treasury', fields: ['cash', 'runEarnings', 'cashAnchor'] },
-  { id: 'office', fields: ['office', 'term', 'presTerms', 'twistIndex', 'twists', 'monumentOffer', 'adsUsed', 'appSlotsUsed', 'picketsThisTerm'] },
+  { id: 'office', fields: ['office', 'term', 'presTerms', 'twistIndex', 'twists', 'monumentOffer', 'adsUsed', 'appSlotsUsed', 'picketsThisTerm', 'signedThisTerm'] },
   { id: 'ministries', fields: ['ministries', 'ribbonsDue'] },
   { id: 'moods', fields: ['moods'] },
   { id: 'gossip', fields: ['gossip', 'quiet'] },
