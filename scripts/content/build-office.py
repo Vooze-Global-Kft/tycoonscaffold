@@ -27,6 +27,12 @@
                        numbers and the merged deck only when every hard target passes on every named seed
                        and no deck is missing, refusing otherwise with the list. --quick skips the 30-seed
                        runs (their rows are then "not run", and nothing is written but the listing).
+    python3 scripts/content/build-office.py --provisional
+                       a PROVISIONAL game.json (the lead, 24 November: the real deck in the preview before the
+                       tuning ends): the merged deck and the tuned numbers are written although hard targets may
+                       miss; `--bot validate` runs on the named seeds and every miss (and every string the runtime
+                       schema refuses, cut to fit and listed) goes into decree.provisional.misses; validate keeps
+                       them as warnings and --release refuses the file. The FINAL game.json is written without it.
     options: --procs 3 (parallel bot processes; the machine has 4 shared cores)   --hours 3
              --set path=value (repeatable; a RANGES path, checked by the bot's own range check)
              --seeds 12345,4 (instead of the named five; then nothing is written but the listing)
@@ -192,7 +198,9 @@ def content_tuned():
 
 def starting_block():
     """The schema's defaults: the specification's starting values with section 11's decisions."""
-    return tsx("import { DecreeSchema } from './src/config/schema.decree'; console.log(JSON.stringify(DecreeSchema.parse({})))")
+    # DecreeObject, not DecreeSchema: the derived thresholds of D38 (boycott.endsAt / rearmAt,
+    # count.huffBelow) are computed at parse and never written into game.json (rules-lead request 4).
+    return tsx("import { DecreeObject } from './src/config/schema.decree'; console.log(JSON.stringify(DecreeObject.parse({})))")
 
 
 def parse_block(block):
@@ -785,7 +793,7 @@ def initials_ok(g):
     return 'PLACEHOLDER' not in json.dumps(g)
 
 
-def write_listing_and_block(block):
+def write_listing_and_block(block, allow_placeholder_words=False):
     """The listing TEXT on every run; the decree block only when `block` is given (the gates passed)."""
     g = json.load(open(GAME)) if os.path.exists(GAME) else {}
     listing = json.load(open(STORE))
@@ -804,6 +812,8 @@ def write_listing_and_block(block):
     if block is not None:
         block = dict(block)
         block.pop('skeletonPlaceholder', None)
+        if not block.get('provisional'):
+            block.pop('provisional', None)
         g['decree'] = block
         g['mode'] = 'decree'
         g['soundPack'] = None
@@ -836,7 +846,7 @@ def gates(procs, hours, quick, write, seeds):
         blockers.append('the gates ran on the frozen TEST deck for: ' + ', '.join(fallback))
     if problems:
         blockers.append('%d schema / lint problem(s)' % len(problems))
-        parsed = block
+    parsed = block   # the bot plays, and the writer writes, the block as game.json will hold it
     print('\ngates: `--bot all` on seeds %s, %d processes' % (', '.join(map(str, seeds)), procs))
     results, d = run_seeds(parsed, seeds, 'all', hours, procs)
     nb, crashed = stopped(results)
@@ -887,6 +897,46 @@ def gates(procs, hours, quick, write, seeds):
     return 0
 
 
+def provisional(procs, hours):
+    """The lead's switch: write the real deck and the tuned numbers now, with every miss recorded."""
+    tuned = content_tuned()
+    deck, tables, report = merge(with_batches=False)
+    block, fallback = build_block(deck, tables, tuned, sets(), fallback_deck=False)
+    misses = []
+    if report['missing sections']:
+        misses.append('decks / sections missing: ' + ', '.join(report['missing sections']))
+    for i in schema_issues(block):
+        where = '.'.join(map(str, i['path']))
+        v = block
+        for k in i['path']:
+            v = v[k]
+        misses.append('runtime schema: %s: %s (%s)' % (where, i['message'], json.dumps(v, ensure_ascii=False)[:120]))
+    block = preview_fit(block)
+    parsed, problems = parse_block(block)
+    if problems:
+        misses += ['lintDecree: ' + p for p in problems]
+    results, d = run_seeds(block, SEEDS, 'validate', hours, procs)
+    shutil.rmtree(d, ignore_errors=True)
+    nb, crashed = stopped(results)
+    if nb or crashed:
+        raise SystemExit('the bot did not finish: ' + str(nb or crashed[0].get('error'))[:600])
+    for r in results:
+        for row in r.get('rows', []):
+            if row['kind'] == 'hard' and not row['ok']:
+                misses.append('seed %s: %s: %s (aim %s)' % (r['seed'], row['name'], row['value'], row['aim']))
+    misses += coin_assertion(results)
+    print('provisional: %d miss(es) recorded' % len(misses))
+    for m in misses:
+        print('  ✖ ' + m[:200])
+    out = dict(block)
+    out['provisional'] = {
+        'note': 'PROVISIONAL (build-office.py --provisional): the real deck and the numbers before the tuning ended; hard targets listed in misses were missed on the named seeds with `--bot validate`. The final game.json is written without this field.',
+        'misses': misses,
+    }
+    write_listing_and_block(out)
+    return 0
+
+
 def table():
     tuned = content_tuned()
     deck, tables, _ = merge(with_batches=True, verbose=False, strict=False)
@@ -929,6 +979,8 @@ def main():
         return 0
     if arg('--table'):
         return table()
+    if arg('--provisional'):
+        return provisional(procs, hours)
     return gates(procs, hours, bool(arg('--quick')), bool(arg('--write')), seeds)
 
 

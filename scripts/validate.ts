@@ -216,7 +216,7 @@ function mergePacing(id: string, problems: string[], warnings: string[]): void {
         if (row.ok) continue;
         const msg = `merge pacing (section 8, ${row.kind === 'hard' ? 'hard, M2' : 'aim, M2'}), seed ${seed}: ${row.name}: ${row.value} (aim ${row.aim})`;
         if (row.kind === 'hard' && !placeholder) problems.push(msg);
-        else warnings.push(row.kind === 'hard' ? `${msg} [hard; a warning only while game.json is the placeholder]` : msg);
+        else warnings.push(row.kind === 'hard' ? `${msg} [hard; a warning only while game.json is the placeholder or provisional]` : msg);
       }
     }
   }
@@ -247,7 +247,7 @@ function mergePacing(id: string, problems: string[], warnings: string[]): void {
  */
 type LintFinding = { severity: string; id: string; field?: string; rule: string; reason: string; match?: string };
 /** Keys of the decree block whose values are ids or tags, never words a player reads. */
-const DECREE_ID_KEYS = new Set(['id', 'face', 'icon', 'pattern', 'club', 'clubs', 'other', 'archetype', 'subject', 'butt', 'shape', 'office', 'setsUp', 'minister', 'target', 'form', 'slot', 'moment', 'list', 'paper', 'ministry', 'districtWord', 'short', 'type', 'tier', 'cost', 'mayor', 'governor', 'presidentSingles', 'initials', 'longLunch', 'standingOrder', 'walnutDesk', 'portraitFrames', 'privateSecretary']);
+const DECREE_ID_KEYS = new Set(['provisional', 'rival', 'id', 'face', 'icon', 'pattern', 'club', 'clubs', 'other', 'archetype', 'subject', 'butt', 'shape', 'office', 'setsUp', 'minister', 'target', 'form', 'slot', 'moment', 'list', 'paper', 'ministry', 'districtWord', 'short', 'type', 'tier', 'cost', 'mayor', 'governor', 'presidentSingles', 'initials', 'longLunch', 'standingOrder', 'walnutDesk', 'portraitFrames', 'privateSecretary']);
 function decreeTexts(node: unknown, key: string, out: { id: string; text: string; field: 'ui' | 'store' | 'name' | 'text' }[], where: string): void {
   if (typeof node === 'string') {
     if (!DECREE_ID_KEYS.has(key) && /[A-Za-z]/.test(node)) out.push({ id: where, text: node, field: key === 'name' || key === 'role' ? 'name' : 'text' });
@@ -285,6 +285,13 @@ function decreeChecks(id: string, g: GameConfig, runSim: boolean, problems: stri
     const notes = findings.length - errors.length;
     if (notes) warnings.push(`satire lint (7.8): ${notes} warning(s) for the writers (npx tsx scripts/content/office/check.ts --all)`);
   }
+  // build-office.py --provisional (the lead's switch): the real deck before the tuning ended. Its recorded
+  // misses are warnings; a release refuses the file.
+  const prov = (g.decree as { provisional?: { misses?: unknown[] } } | undefined)?.provisional;
+  if (prov) {
+    const misses = Array.isArray(prov.misses) ? prov.misses.map(String) : [];
+    (release ? problems : warnings).push(`decree: game.json is PROVISIONAL (build-office.py --provisional): ${misses.length} recorded miss(es)${misses.length ? `, the first: ${misses.slice(0, 4).join(' | ')}` : ''}; the final game.json is written without the switch`);
+  }
   if (release) {
     const raw = fs.readFileSync(path.join(games.gameDir(id), 'game.json'), 'utf8');
     const hits = raw.split('\n').filter((l) => l.includes('PLACEHOLDER'));
@@ -304,7 +311,9 @@ function decreeChecks(id: string, g: GameConfig, runSim: boolean, problems: stri
  */
 type DecreeSeed = { seed?: number; rows?: { name: string; kind: string; aim: string; value: unknown; ok: boolean }[]; notBuilt?: string | null; error?: string | null; crashed?: boolean };
 function decreePacing(id: string, g: GameConfig, runSim: boolean, problems: string[], warnings: string[]): void {
-  const placeholder = (g.decree as { skeletonPlaceholder?: unknown } | undefined)?.skeletonPlaceholder === true;
+  // A missed hard target is a warning while game.json is the skeleton's placeholder or a provisional file
+  // (build-office.py --provisional, whose misses are recorded in it); an error on the final file.
+  const placeholder = (g.decree as { skeletonPlaceholder?: unknown } | undefined)?.skeletonPlaceholder === true || !!(g.decree as { provisional?: unknown } | undefined)?.provisional;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { withDecreeContent } = require('../src/engine/decreeMode') as typeof import('../src/engine/decreeMode');
@@ -341,7 +350,7 @@ function decreePacing(id: string, g: GameConfig, runSim: boolean, problems: stri
         if (row.kind === 'report' || row.ok) continue;
         const msg = `decree pacing (section 8, ${row.kind}), seed ${seed}: ${row.name}: ${String(row.value)} (aim ${row.aim})`;
         if (row.kind === 'hard' && !placeholder) problems.push(msg);
-        else warnings.push(row.kind === 'hard' ? `${msg} [hard; a warning only while game.json is the placeholder]` : msg);
+        else warnings.push(row.kind === 'hard' ? `${msg} [hard; a warning only while game.json is the placeholder or provisional]` : msg);
       }
   }
   if (stoppedAt.size) warnings.push(`decree pacing: the bot stopped at a rule that is not built yet (${[...stoppedAt].map((x) => `${x}()`).join(', ')}): the targets of section 8 are not checked`);

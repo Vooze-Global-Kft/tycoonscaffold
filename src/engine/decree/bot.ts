@@ -796,7 +796,11 @@ class Driver {
     }
     if (this.bot === 'reloadAfterDraw' && events.some((e) => e.type === 'paperArrived')) this.reload();
   }
+  /** Paper ids already recorded: the rules say `paperArrived` when a paper comes into the tray AND again when it lands on the desk from the tray (`toDesk`), and a paper set aside at a call lands again later; a draw is one paper id, recorded once. */
+  private drawnIds = new Set<string>();
   drawn(id: string) {
+    if (this.drawnIds.has(id)) return;
+    this.drawnIds.add(id);
     const d = this.d;
     const p = [...d.tray, ...(d.desk?.type === 'paper' ? [d.desk.paper] : []), ...(d.pending ? [d.pending.item.paper] : [])].find((x) => x.id === id);
     if (!p) return;
@@ -1884,7 +1888,9 @@ export function evaluate(cfg: DecreeConfig, tr: Trace): BotRow[] {
     rows.push(row('H7 no text twice in hour 1', tr.bot === 'adEverything' ? 'report' : 'hard', '0 hand-written texts, frames, notes or pickets twice; no cell empty while its club is drawn', `${g.hour1Repeats} texts, ${g.notesRepeated} notes, ${g.picketsRepeated} pickets; ${g.emptyCells.length} cells ran out${g.emptyCells.length ? ` (${g.emptyCells.slice(0, 3).join(', ')})` : ''}`, g.hour1Repeats + g.notesRepeated + g.picketsRepeated + g.emptyCells.length === 0, g.hour1Repeats));
     if (tr.bot === 'reader' && tr.ended - t0 >= 3 * 3600) rows.push(row('H7 repeats in hours 2 and 3 (reader)', 'hard', '≤ 2 % of comic draws', `${pc(g.repeatShare23)} (${g.repeats23} of ${g.comic23})`, g.repeatShare23 <= 0.02, g.repeatShare23));
   }
-  if (tr.bot === 'reader') {
+  // H8 is a gate of a 3-hour reader game (its re-evaluations are hours 2 and 3): the short runs that
+  // exist for H3 (10 min, 1 h) do not carry it.
+  if (tr.bot === 'reader' && tr.ended - t0 >= 3 * 3600) {
     const h = h8(tr);
     if (tr.ended - t0 >= 3 * 3600) rows.push(row('H8 both choices in other states', 'hard', '≥ 30 % of texts', `${pc(h.bothShare)} of ${h.reevaluated} texts`, h.bothShare >= 0.3, h.bothShare));
     rows.push(row('H8 reader signs', 'hard', '40 to 65 % of day papers', pc(h.signShare), h.signShare >= 0.4 && h.signShare <= 0.65, h.signShare));
