@@ -7,18 +7,13 @@ someone the owner names) still reads the game, and this file, before the first s
 from the content desk's record; the working files it names (`scratchpad/office/...`) were the build's
 scratch folder and are not in the repository: the assembled texts in `scripts/content/office/` are.
 
-The store images (screenshots/, made from the game) show three papers whose words the owner's read should
-also hear: may-bus-named ("Name the 7:02 bus after you, Mayor"), may-pumpkin-freedom ("Grant the prize
-pumpkin the freedom of the town", note 6 below: the Freedom of the Town is a real civic honour) and its
-follow-up ("now a Freeman of the town ... It has slides").
+The store images (screenshots/, made from the game) show two papers whose words the owner's read should
+also hear: may-bus-named ("Name the 7:02 bus after you, Mayor") and may-pumpkin-freedom ("Grant the prize
+pumpkin the freedom of the town", note 6 below: the Freedom of the Town is a real civic honour); and, in the
+other four, the Treasury Clerk's slip, the Poll's ward names, election night's concession line and the
+Office wall (a former opponent's slogan, the vanity shelf).
 
 ---
-
-
-**These are engineers' reads under D9, not a person's signature.** In this build the comedy editors and the
-sensitivity readers are engineers. Nothing here says a person read or signed the game. The owner's read (or
-the read of someone the owner names) has not happened yet. It is still required before any store submission,
-and it is on the list of what the owner must do. The notes the owner's read should look at are at the end.
 
 ## 1. The comedy read (writers, batch editors, the editor in chief)
 - 27 batch files under `scripts/content/office/batches/`. Each was written by one writer and then read and
@@ -59,11 +54,13 @@ by `assemble.py`. The batches stay as the writers' record.
   - the lint failed it ("Sorry Season" became "Mending Season"; "a tuba's length" beside pumpkins is a size
     word by an object, so it became "four deckchairs");
   - D30's 72-character frame median (tpa-title-capitals, tpa-title-horns).
-- **The other 2 are waiting on the names register** (names.json, which content-names owns; requests.md):
-  - Cyril Dunnock is to become Silas Dunnock once the register has the name after its four-list check.
-    `edits.py` applies it automatically when names.json has it.
-  - Ambrose Minute's role in the register still reads "Committee on Committees". The runtime name is already
-    "Committee on Next Meetings".
+- **The other 2 waited on the names register** (names.json) and are now done in the repository (checked
+  24 November, after the store review):
+  - Silas Dunnock: the register holds the name, and the assembled texts carry it (game.json and
+    `scripts/content/office/lines.json`, 3 places each); "Cyril Dunnock" is left only in names.json's own
+    notes on the rename, in no text a player reads.
+  - Ambrose Minute's body: the register's role reads "Committee on Next Meetings" (names.json records the
+    rename from "Committee on Committees" and why); game.json carries the new name.
 - **6 notes for the owner were fixed** because the fix cost nothing:
   - any-allotment-ribbon: clarity.
   - The cufflinks are now tin, so they are not jewellery of value.

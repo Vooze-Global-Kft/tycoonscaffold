@@ -190,7 +190,7 @@ function captionLines(caption: string): string[] {
  * first baseline-left at (x, y), cap height `size`, as SVG; a soft shadow in the deep baize under the
  * ink so it reads over any part of the band.
  */
-function inkCaption(lines: string[], x: number, y: number, size: number, color: string, seed0 = 11): string {
+function inkCaption(lines: string[], x: number, y: number, size: number, color: string, seed0 = 11, shade: string = DESK.baizeDeep): string {
   let w = 0;
   const d: string[] = [];
   const dots: [number, number][] = [];
@@ -221,8 +221,8 @@ function inkCaption(lines: string[], x: number, y: number, size: number, color: 
 <path d="M0 6 Q3.6 0 3.4 -6 L-3.4 -6 Q-3.6 0 0 6 Z" fill="${fillc}"/><path d="M0 4.6 L0 -2" stroke="${slit}" stroke-width="0.8"/><circle cx="0" cy="-2.4" r="0.9" fill="${slit}"/><rect x="-3.6" y="-9" width="7.2" height="3" fill="${fillc}"/></g>`;
   };
   const sh = Math.max(1.5, size * 0.05);
-  const shadow = `<g transform="translate(${sh.toFixed(1)} ${(sh * 1.3).toFixed(1)})" opacity=".75"><path d="${all}" fill="${DESK.baizeDeep}" fill-rule="nonzero"/>${dotSvg(DESK.baizeDeep)}${nib(DESK.baizeDeep, DESK.baizeDeep)}</g>`;
-  return `${shadow}<path d="${all}" fill="${color}" fill-rule="nonzero"/>${dotSvg(color)}${nib(color, DESK.baizeDeep)}`;
+  const shadow = `<g transform="translate(${sh.toFixed(1)} ${(sh * 1.3).toFixed(1)})" opacity=".75"><path d="${all}" fill="${shade}" fill-rule="nonzero"/>${dotSvg(shade)}${nib(shade, shade)}</g>`;
+  return `${shadow}<path d="${all}" fill="${color}" fill-rule="nonzero"/>${dotSvg(color)}${nib(color, shade)}`;
 }
 
 /** Felt: fine diagonal hatching in the lifted baize (drawCaptionBand's hatch). */
@@ -273,36 +273,58 @@ ${inkCaption(lines, left, base, size, DESK.violetPale, 11 + o.index * 3)}
 
 /**
  * Play feature graphic, 1024 x 500: no icon, no tagline (Play: no branding similar to the app
- * icon). The baize desk with its felt; the name in the same violet nib at the left, with the
- * flourish and the nib; on the right a signed paper of the game (the capture's band), drawn level
- * and fading into the baize on its left edge, with the desk's walnut rim along the foot. Compare
- * warm.ts (centred name over a sun, the scene in a box under it), panel.ts (the field full-bleed,
- * a thin letter-spaced wordmark low down) and tag.ts (paper-cut capitals under a wire of lanterns,
- * the street on the right of a dusk sky).
+ * icon). A centred composition with no left-title / right-picture split (store review, 24 November:
+ * that split is Lantern Row's): the baize desk seen from above under a lamp; in the middle, a signed
+ * paper of the game (the capture's band) tilted as it is flicked up toward the out-tray, running off
+ * the top edge, with the felt's speed marks under it; along the foot the desk's walnut rim, and on
+ * it, centred, a brass name plate with the name engraved in the same nib hand, ending in its
+ * flourish. Compare warm.ts (a centred name over a sun, the scene in a box under it), panel.ts (the
+ * field full-bleed, a thin letter-spaced wordmark low down) and tag.ts (paper-cut capitals at the
+ * left under a wire of lanterns, the street fading in on the right).
  */
 export function featureHtml(o: FeatureOpts): string {
   const { W, H } = o;
-  const words = o.title.split(/\s+/);
-  const lines = words.length > 1 ? [words[0], words.slice(1).join(' ')] : words;
-  const left = W * 0.06;
-  const size = Math.min(H * 0.13, (W * 0.4) / (Math.max(...lines.map(lineUnits)) + 1.7));
-  const top = H * 0.5 - (size * (1 + (lines.length - 1) * 1.45)) / 2 + size * 0.75;
-  const picX = Math.round(W * 0.47);
-  const rim = Math.round(H * 0.05);
-  const FADE = 'linear-gradient(90deg, transparent 0, #000 18%, #000 100%)';
+  const rim = Math.round(H * 0.2);
+  const rimY = H - rim;
+  // The paper: a box about as wide as the paper (the band's maxZoom lets it fill it), centred, run off the top.
+  const boxH = Math.round(H * 0.86);
+  const boxW = Math.round(boxH * 0.9);
+  const boxX = Math.round(W / 2 - boxW / 2);
+  const boxY = Math.round(-H * 0.1);
+  // The plate: one line of the nib hand, centred on the rim.
+  const title = o.title.replace(/\s+/g, ' ').trim();
+  const size = Math.min(rim * 0.42, (W * 0.5) / (lineUnits(title) + 1.7));
+  const textW = lineUnits(title) * size;
+  const plateW = Math.round(textW + size * 2.6);
+  const plateH = Math.round(rim * 0.7);
+  const plateX = Math.round(W / 2 - plateW / 2);
+  const plateY = Math.round(rimY + (rim - plateH) / 2);
+  const tx = W / 2 - (textW + size * 0.9) / 2;
+  const ty = plateY + plateH / 2 + size * 0.42;
+  const screw = (cx: number) => `<circle cx="${cx}" cy="${plateY + plateH / 2}" r="${(plateH * 0.07).toFixed(1)}" fill="${DESK.brassDeep}"/><line x1="${cx - plateH * 0.05}" y1="${plateY + plateH / 2 - plateH * 0.05}" x2="${cx + plateH * 0.05}" y2="${plateY + plateH / 2 + plateH * 0.05}" stroke="${DESK.brassLight}" stroke-width="1.2"/>`;
+  const streak = (x: number, y: number, l: number) => `<path d="M${x} ${y} l${(-l * 0.1).toFixed(1)} ${l}" stroke="${DESK.baizeLift}" stroke-width="${(H * 0.012).toFixed(1)}" stroke-linecap="round" opacity=".9"/>`;
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:${W}px;height:${H}px;overflow:hidden;background:${DESK.baize}}
-.pic{position:absolute;left:${picX}px;top:0;width:${W - picX}px;height:${H - rim}px;overflow:hidden;-webkit-mask-image:${FADE};mask-image:${FADE}}
+.paper{position:absolute;left:${boxX}px;top:${boxY}px;width:${boxW}px;height:${boxH}px;overflow:hidden;transform:rotate(-6deg);transform-origin:50% 100%;border-radius:4px;box-shadow:0 ${Math.round(H * 0.04)}px ${Math.round(H * 0.06)}px rgba(20,34,28,.55)}
 svg{position:absolute;left:0;top:0}
 </style></head><body>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs>${feltDefs(0.8)}
-<radialGradient id="lamp" cx="22%" cy="45%" r="60%"><stop offset="0" stop-color="${DESK.brassLight}" stop-opacity=".16"/><stop offset="1" stop-color="${DESK.brassLight}" stop-opacity="0"/></radialGradient></defs>
-<rect width="${W}" height="${H}" fill="url(#felt)"/><rect width="${W}" height="${H}" fill="url(#lamp)"/></svg>
-<div class="pic">${framed(o.raw, o.band, W - picX, H - rim)}</div>
-<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-<rect x="0" y="${H - rim}" width="${W}" height="${rim}" fill="${DESK.walnut}"/><rect x="0" y="${H - rim}" width="${W}" height="2" fill="${DESK.walnutLight}"/>
-${inkCaption(lines, left, top, size, DESK.violetPale, 5)}
+<radialGradient id="lamp" cx="50%" cy="38%" r="62%"><stop offset="0" stop-color="${DESK.brassLight}" stop-opacity=".2"/><stop offset=".6" stop-color="${DESK.brassLight}" stop-opacity=".04"/><stop offset="1" stop-color="${DESK.baizeDeep}" stop-opacity=".5"/></radialGradient></defs>
+<rect width="${W}" height="${H}" fill="url(#felt)"/><rect width="${W}" height="${H}" fill="url(#lamp)"/>
+${streak(boxX + boxW * 0.2, boxY + boxH + H * 0.03, H * 0.08)}${streak(boxX + boxW * 0.5, boxY + boxH + H * 0.045, H * 0.06)}${streak(boxX + boxW * 0.8, boxY + boxH + H * 0.025, H * 0.07)}
+</svg>
+<div class="paper">${framed(o.raw, o.band, boxW, boxH)}</div>
+<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs>
+<linearGradient id="brass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${DESK.brassLight}"/><stop offset=".55" stop-color="${DESK.brass}"/><stop offset="1" stop-color="${DESK.brassDeep}"/></linearGradient></defs>
+<rect x="0" y="${rimY}" width="${W}" height="${rim}" fill="${DESK.walnut}"/>
+<rect x="0" y="${rimY}" width="${W}" height="3" fill="${DESK.walnutLight}"/>
+${[0.28, 0.55, 0.8].map((f) => `<path d="M0 ${(rimY + rim * f).toFixed(1)} C ${W * 0.3} ${(rimY + rim * f - 4).toFixed(1)}, ${W * 0.6} ${(rimY + rim * f + 5).toFixed(1)}, ${W} ${(rimY + rim * f).toFixed(1)}" stroke="${DESK.walnutDeep}" stroke-opacity=".45" stroke-width="1.5" fill="none"/>`).join('')}
+<rect x="${plateX + 3}" y="${plateY + 4}" width="${plateW}" height="${plateH}" rx="5" fill="${DESK.walnutDeep}" opacity=".7"/>
+<rect x="${plateX}" y="${plateY}" width="${plateW}" height="${plateH}" rx="5" fill="url(#brass)" stroke="${DESK.brassDeep}" stroke-width="2"/>
+<rect x="${plateX + 6}" y="${plateY + 6}" width="${plateW - 12}" height="${plateH - 12}" rx="3" fill="none" stroke="${DESK.brassDeep}" stroke-opacity=".6" stroke-width="1.2"/>
+${screw(plateX + plateH * 0.28)}${screw(plateX + plateW - plateH * 0.28)}
+${inkCaption([title], tx, ty, size, DESK.violetDeep, 5, DESK.brassLight)}
 </svg>
 <!-- ${esc(o.title)} -->
 </body></html>`;
