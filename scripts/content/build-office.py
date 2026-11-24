@@ -341,9 +341,17 @@ def map_record(section, rec, office, cast, refs, where):
             raise MergeError(f'{where}: a {section} record needs its office (the record or the batch header)')
         return {'id': rec['id'], 'office': o, 'visitor': visitor(cast, rec['visitor'], where), 'text': rec['text'], **{t: rec[t] for t in TAGS}}
     if section == 'frames':
-        strip_keys(rec, {'id', 'office', 'visitor', 'club', 'other', 'archetype', 'frame', *TAGS}, where)
+        strip_keys(rec, {'id', 'office', 'visitor', 'club', 'other', 'archetype', 'frame', 'biggerStudy', *TAGS}, where)
         out = {'id': rec['id'], 'office': rec.get('office') or office or 'any', 'club': rec['club'], 'other': rec.get('other'), 'archetype': rec['archetype'],
                'frame': rec['frame'], **{t: rec[t] for t in TAGS}}
+        # D30 / request 90: FrameSchema has biggerStudy; the assembled templates keep it in `note` as
+        # "biggerStudy: ..." until the authoring format gains the field. Either place maps onto it.
+        bs = rec.get('biggerStudy')
+        if bs is None:
+            m = re.match(r'^\s*biggerStudy:\s*(.+?)\s*$', str(rec.get('note') or ''), flags=re.S)
+            bs = m.group(1) if m else None
+        if bs is not None:
+            out['biggerStudy'] = bs
         if rec.get('visitor'):
             out['visitor'] = visitor(cast, rec['visitor'], where)
         return out
@@ -354,8 +362,14 @@ def map_record(section, rec, office, cast, refs, where):
         strip_keys(rec, {'id', 'text'}, where)
         return {'id': rec['id'], 'text': rec['text']}
     if section == 'night':
-        strip_keys(rec, {'id', 'moment', 'text'}, where)
-        return {'id': rec['id'], 'moment': rec['moment'], 'text': rec['text']}
+        strip_keys(rec, {'id', 'moment', 'text', 'rival'}, where)
+        # NightLineSchema.rival (request 107): a rival's own result line is `night-rival-<rival id>`
+        # (lines-rivals); the clerk's lines name no rival.
+        rv = rec.get('rival')
+        if rv is None:
+            m = re.match(r'^night-rival-(.+)$', rec['id'])
+            rv = re.sub(r'[^a-z0-9_]', '_', m.group(1)) if m else None
+        return {'id': rec['id'], 'moment': rec['moment'], 'text': rec['text'], 'rival': rv}
     if section == 'monuments':
         strip_keys(rec, {'id', 'name', 'text'}, where)
         return {'id': rec['id'], 'name': rec['name'], 'text': rec['text']}

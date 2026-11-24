@@ -25,7 +25,7 @@
  */
 
 /** Where the values below came from (build-office.py rewrites it with --save). */
-export const DECREE_TUNED_FROM = 'the numbers prototype final candidate.json of 24 November 2026 09:38 (mapped by hand onto RANGES paths), before the tuner ran on the engine';
+export const DECREE_TUNED_FROM = 'D34 (the prototype final candidate: growth 1.15, call 0.7, slip reserve 30 s, tiers 12 / 60 / 30 s, r 13, five other-club deltas, R 3 / 4 / 5) with D38 starting point (boycott below 25, sizing pull 0.5); before the tuner ran on the engine';
 
 // TUNED-BEGIN
 export const DECREE_TUNED: Record<string, number> = {
@@ -34,17 +34,20 @@ export const DECREE_TUNED: Record<string, number> = {
   "archetypes[2].sign[2].delta": -5,
   "archetypes[3].sign[1].delta": -2,
   "archetypes[4].sign[2].delta": -3,
+  "boycott.below": 25,
   "desk.slipReserveSeconds": 30,
-  "ministry.levelGrowth": 1.2,
+  "ministry.levelGrowth": 1.15,
   "ministry.openRatio": 13,
-  "money.L": 40,
+  "money.L": 30,
   "money.M": 60,
+  "money.S": 12,
   "offices[0].callFraction": 0.7,
   "offices[0].rivalPull": 3,
   "offices[1].callFraction": 0.7,
-  "offices[1].rivalPull": 3,
+  "offices[1].rivalPull": 4,
   "offices[2].callFraction": 0.7,
-  "offices[2].rivalPull": 3
+  "offices[2].rivalPull": 5,
+  "paperRules.sizing.pull": 0.5
 };
 // TUNED-END
 
@@ -56,10 +59,13 @@ export const DECREE_TUNED_WHY: Record<string, string> = {
   'archetypes[3].sign[1].delta': 'H9 / D27, as above',
   'archetypes[4].sign[2].delta': 'H9 / D27, as above',
   'desk.slipReserveSeconds': 'H10: the reader finds sign unaffordable on at most 5 % of papers (D16)',
-  'ministry.levelGrowth': 'D24: more to buy on an idle desk',
-  'ministry.openRatio': '8.4 pace: every ministry opens by half of its first term',
+  'ministry.levelGrowth': 'D24: more to buy on an idle desk (D34: 1.15)',
+  'ministry.openRatio': '8.4 / D34 pace: every ministry opens by the end of its office\'s first term',
   'money.L': 'H10: vanity at L is the paper most often unaffordable',
   'money.M': '8.4 money: paper gains 10 to 25 % of dibs',
+  'money.S': 'H10: the reader finds sign unaffordable on at most 5 % of papers (D34)',
+  'boycott.below': 'D38: a careless mayor meets boycotts (the rules lead: 25 with pull 0.5 gives always-refuse about 2 an hour; 2.11 bound stays 6)',
+  'paperRules.sizing.pull': 'D38 lever 2 with boycott.below: moods drift further from 50, so neglect shows',
   'offices[0].callFraction': 'D17: the reader calls on the first allowed day with a majority; 8.4 first election 11 to 15 min',
   'offices[0].rivalPull': 'D27: the one-in-ten and casual readers win shares (the starting value already)',
   'offices[1].callFraction': 'D17, as above',
