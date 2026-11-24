@@ -25,7 +25,7 @@
  */
 
 /** Where the values below came from (build-office.py rewrites it with --save). */
-export const DECREE_TUNED_FROM = "the numbers step on the final rules (D41 to D45), 24 November: the D34 candidate with the first engineer's E3/G0 balance findings, tuned on seeds 101 to 130 at 4, 6 and 9 s and checked on 201 to 215 (scratchpad/office/numbers2/TABLE.txt)";
+export const DECREE_TUNED_FROM = "the final numbers step (D46), 24 November: the apology costs every club 1 and the president needs Name Recognition 75, on the second engineer's table; before that: the numbers step on the final rules (D41 to D45), 24 November: the D34 candidate with the first engineer's E3/G0 balance findings, tuned on seeds 101 to 130 at 4, 6 and 9 s and checked on 201 to 215 (scratchpad/office/numbers2/TABLE.txt)";
 
 // TUNED-BEGIN
 export const DECREE_TUNED: Record<string, number> = {
@@ -37,6 +37,7 @@ export const DECREE_TUNED: Record<string, number> = {
   "archetypes[4].sign[2].delta": -2,
   "boycott.below": 25,
   "desk.slipReserveSeconds": 30,
+  "forms.apology.every": -1,
   "ministry.levelGrowth": 1.15,
   "ministry.openRatio": 13,
   "money.L": 30,
@@ -51,7 +52,7 @@ export const DECREE_TUNED: Record<string, number> = {
   "offices[2].callFraction": 0.5,
   "offices[2].requisitionEvery": 6,
   "offices[2].rivalPull": 5,
-  "offices[2].stand.nr": 65,
+  "offices[2].stand.nr": 75,
   "paperRules.sizing.pull": 0.5
 };
 // TUNED-END
@@ -78,7 +79,8 @@ export const DECREE_TUNED_WHY: Record<string, string> = {
   'offices[0].requisitionEvery': 'H10: 10 → 12 (top): fewer requisitions, the form most often unaffordable after a bundle',
   'offices[1].requisitionEvery': 'H10: 8 → 10 (top), as above',
   'offices[2].requisitionEvery': 'H10: 4 → 6 (top), as above (the first engineer\'s F1 finding)',
-  'offices[2].stand.nr': '8.4 pace: 50 → 65 (top): bundles made the climb faster (D42 a); president later, toward 55 to 95 min, and past hour 1 at 6 s (H7: a frame dealt twice across a move)',
+  'offices[2].stand.nr': '8.4 pace with D46 (range up to 80): 50 → 65 → 75. At 65 the reader reached president at 50.6 min (median, 1 of 30 tuning seeds inside 55 to 95); at 75 at 65.2 (25 of 30 inside, the rest 54.3); at 80 at 65.2 but one seed needed 130 min and H7 hours 2 and 3 rose to 23 % there (a governor deck used up)',
+  'forms.apology.every': 'D46 (a decision, not a tunable): the apology costs every club 1 (was 3). With the reader\'s formula counting the tax of "Say nothing" (D46), it apologises on 32 % of the front pages the careless bots meet (aim 25 to 75 %), so the tax (0.8) and the length (10 papers) of "Say nothing" stay',
   'offices[0].rivalPull': 'D27: the one-in-ten and casual readers win shares (3 / 4 / 5 is the start; 4 / 6 / 7 cost the misreader its 75 %)',
   'offices[1].rivalPull': 'D27, as above',
   'offices[2].rivalPull': 'D27, as above',

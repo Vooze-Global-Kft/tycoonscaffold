@@ -324,6 +324,9 @@ function decreeChecks(id: string, g: GameConfig, runSim: boolean, problems: stri
  */
 type DecreeSeed = { seed?: number; rows?: { name: string; kind: string; aim: string; value: unknown; ok: boolean }[]; notBuilt?: string | null; error?: string | null; crashed?: boolean };
 function decreePacing(id: string, g: GameConfig, runSim: boolean, problems: string[], warnings: string[]): void {
+  // The hard lines are the bot's rows (src/engine/decree/bot.ts `evaluate`), D46's restated gates among
+  // them (H7 hours 2 and 3 ≤ 3 %, H7 hour 1 as D46 words it, H8 both ≥ 25 % and mood-only ≥ 20 %); H10's
+  // vote clause needs 30 paired seeds and is build-office.py's (`acrossSeeds`), not this five-seed run's.
   // A missed hard target is a warning while game.json is the skeleton's placeholder or a provisional file
   // (build-office.py --provisional, whose misses are recorded in it); an error on the final file.
   const placeholder = (g.decree as { skeletonPlaceholder?: unknown } | undefined)?.skeletonPlaceholder === true || !!(g.decree as { provisional?: unknown } | undefined)?.provisional;

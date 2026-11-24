@@ -71,6 +71,12 @@ CONTENT_TS = os.path.join(ROOT, 'src/config/decree.content.ts')
 
 # 8.1 step 5: the gate seeds (validate runs them); the tuner works on 101 to 115 and never sees them;
 # H9 and H10 are paired over 30 seeds, H6's handover and H12 over 15.
+# D46 restated four hard gates; their lines live in src/engine/decree/bot.ts (`evaluate`, `h10Vote`), and
+# this script refuses on every hard row the bot reports: H7 hours 2 and 3 at most 3 %; H7 hour 1 with no
+# text, frame or note twice for any bot, no picket slogan twice for the three readers, a careless bot's
+# slogan back only after the club's other one; H8 "both choices" at least 25 % and "differs from mood-only"
+# at least 20 %; H10's vote clause one-sided over the distribution of the paired seeds, against the noise
+# band of the passive bot against itself.
 SEEDS = [12345, 4, 99, 7, 2026]
 # The numbers step (24 November): tune on 30 seeds, check on 15 the tuner never saw (an aim is met when
 # at least 13 of the 15 held-out seeds meet it, at the 6 s hand).
