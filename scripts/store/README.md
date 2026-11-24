@@ -1,6 +1,6 @@
 # Store screenshots
 
-One tool makes every store image of the three games from their running web previews:
+One tool makes every store image of the four games from their running web previews:
 the App Store and Google Play phone screenshots, the Play feature graphic, and a
 side-by-side sheet of the games for signing off the "same template" check
 (spam research, `docs/design/research/spam.md`, dimension 7).
@@ -17,8 +17,8 @@ npx serve /tmp/web-pizza-empire -l 8300 -s   # any static server; -s: single-pag
 npx serve /tmp/web-space-miner  -l 8302 -s
 ```
 
-The scenes' default ports: Pizza Empire 8300, Orbit Haulers 8302, Lantern Row 8302
-(`--port N` for another one; the tool checks the page title, so the wrong game on a
+The scenes' default ports: Pizza Empire 8300, Orbit Haulers 8302, Lantern Row 8302,
+Proudly Adequate 8303 (`--port N` for another one; the tool checks the page title, so the wrong game on a
 port stops the run). Lantern Row's images of 2026-11-23 were made from the shared
 development server of the build, `GAME=night-market npx expo start --web --port 8302`.
 
@@ -34,16 +34,17 @@ Then one command per game makes all of its images, into the repository:
 npx tsx scripts/store/shots.ts --game pizza-empire --write   # 18 shots + feature graphic + the sheet
 npx tsx scripts/store/shots.ts --game space-miner --write    # 18 shots + feature graphic + the sheet
 npx tsx scripts/store/shots.ts --game night-market --write   # 18 shots + feature graphic + the sheet
+npx tsx scripts/store/shots.ts --game high-office --write    # 18 shots + feature graphic + the sheet
 npx tsx scripts/store/shots.ts --sheet --write               # only SIDE-BY-SIDE.png, from the images written
 ```
 
-(`--game all --write` does all three. Careful: `--sheet` with `--game` still captures
+(`--game all --write` does all four. Careful: `--sheet` with `--game` still captures
 that game first; only `--sheet` alone makes just the sheet.)
 
 Without `--write` nothing in the repository changes: the images go to
 `scripts/store/.cache/out/<game>/` (git-ignored), so a trial run cannot replace the
 approved set. Options: `--out <dir>` (write to `<dir>/<game>/` instead),
-`--game pizza-empire|space-miner|night-market|all`, `--port N` (another preview port), `--only 1,3`
+`--game pizza-empire|space-miner|night-market|high-office|all`, `--port N` (another preview port), `--only 1,3`
 (scenes, 1-based), `--sizes ios-6.9,play-phone`, `--reuse` (compose again from the
 last captures, no preview needed: for template work), `--sheet` (only the
 side-by-side sheet; without `--game`). The log first says how many scenes and images the run makes.
@@ -97,7 +98,8 @@ games/<id>/store/screenshots/ios-6.9/NN-<slug>.png      1320 x 2868  App Store, 
 games/<id>/store/screenshots/ios-6.5/NN-<slug>.png      1284 x 2778  App Store, iPhone 6.5"
 games/<id>/store/screenshots/play-phone/NN-<slug>.png   1080 x 1920  Google Play phone, 9:16
 games/<id>/store/screenshots/play-feature-graphic.png   1024 x 500   Google Play feature graphic
-games/night-market/store/screenshots/SIDE-BY-SIDE.png   every game's icon, 6.9" set and feature graphic, one row each
+games/high-office/store/screenshots/SIDE-BY-SIDE.png    every game's icon, feature graphic and first three 6.9" shots, one row each
+games/night-market/store/screenshots/SIDE-BY-SIDE.png   the three-game sheet of 2026-11-23 (kept as signed off; no longer rewritten)
 games/space-miner/store/screenshots/SIDE-BY-SIDE.png    the two-game sheet of 2026-11-22 (kept as signed off; no longer rewritten)
 scripts/store/.cache/<game>/<size>/NN-<slug>.png/.json  raw captures and the band each shows (git-ignored)
 scripts/store/.cache/out/                               trial runs (git-ignored)
@@ -146,8 +148,8 @@ of each file it writes.
   shots are zoomed in a little and its feature graphic more), Pizza Empire at 3x.
   Then it composes the store image: an HTML page from the game's template,
   rendered by the same browser at the exact pixel size.
-- `templates/warm.ts` (Pizza Empire), `templates/panel.ts` (Orbit Haulers) and
-  `templates/tag.ts` (Lantern Row): the three templates. `templates/fonts.ts`: the font files. `png.ts`: PNG decode and
+- `templates/warm.ts` (Pizza Empire), `templates/panel.ts` (Orbit Haulers),
+  `templates/tag.ts` (Lantern Row) and `templates/signature.ts` (Proudly Adequate): the four templates. `templates/fonts.ts`: the font files. `png.ts`: PNG decode and
   alpha removal (Node's zlib only).
 
 ## The templates (dimension 7)
@@ -178,6 +180,19 @@ They differ in composition, not only in colour, and so do the sets (Lantern Row'
 | Ornament and counter | the lantern wire (four or five lanterns with soft glows); no counter, no rule, no band |
 | Rhythm across the set | the tag swings left, right, left... |
 | Feature graphic | asymmetric: "LANTERN ROW" in large paper-cut letters in lantern-flame colour with brass rims, on the left on a dusk warmed to amber by the glow of a wire of lanterns; on the right the street at a Parade from below the stall fronts (the counters, the dragon's gold ticket, the board's top rows) fading into the sky on its left edge; no icon, no tagline |
+
+### Proudly Adequate, "signature" (`templates/signature.ts`)
+
+| | Proudly Adequate, "signature" |
+|---|---|
+| Set | six shots, the desk first and the refusal before the signing: a paper pulled toward the drawer FOR FURTHER STUDY, the pumpkin's paper pushed up to sign, the pumpkin's follow-up, the poll map on the call day, election night's chalk board, the Office wall |
+| Game picture | full-bleed: the whole phone screen, edge to edge and top to bottom, at the store's own aspect (no card, no frame, no tilt, no fade, nothing above it) |
+| Caption position | at the bottom left, on a translucent baize band across the foot of the image (95 % baize with a felt hatch and a brass hairline on top); on the desk shots it lies over the goal line and the bottom row, never over the paper or the drawer's label. About 10.5 % of the iPhone images, 12.7 % of the Play one |
+| Type | the art kit's broad-nib hand (`src/ui/decree/art/letters.ts`, style 'nib', as `emblem.draw.ts` drawCaption draws it): slanted capitals in the kit's pale violet with a soft baize shadow, left-aligned, one or two lines, a nib flourish under the last line ending in a small pen nib; no font file, no sub-line |
+| Colour | the game's palette baize-and-ink (`src/ui/decree/art/palette.ts`): baize #2E4A3E, violet pale #DCD3EA, brass light #E3C78C |
+| Ornament and counter | the flourish and the nib; no counter, no rule, no tag |
+| Rhythm across the set | none on purpose: every caption sits at the same place, like a signature at the foot of each paper |
+| Feature graphic | the baize desk with its felt and a walnut rim along the foot; "PROUDLY ADEQUATE" in the same nib hand with its flourish on the left; on the right the signed pumpkin paper of shot 2 (its SIGN strip with the signature, the visitor, the proposal), level, fading into the baize on its left edge; no icon, no tagline |
 
 Nothing in any of them: no device frame, no store badge, no award, rank, price,
 "free", "No.1", "best", no call to action, no app icon in the feature graphic
@@ -246,6 +261,32 @@ Tea stall (whose minder is an owl) opens.
 The `goto` step (types.ts) opens another address of the same preview in the same tab,
 so a state reached across page loads (a season closed, saved, a second one closed on
 the next load) can be pictured. Nothing is drawn by hand.
+
+### Proudly Adequate (signature, baize-and-ink)
+
+Captions in the deadpan voice (spec 7.4), at most 40 characters; the scene list and its reasons:
+`scenes/high-office.ts`. Every scene is posed by naming what must be on screen, not by what a
+preset happens to hold: a `run` step (types.ts) plays the game's RULES in the page through the
+preview's test hook `__decreeDev` (`src/ui/decree/desk/dev.web.ts`, the hook the &desk= switch
+lands its papers with): a comic paper landed by its id (`R.comicPaper`, `R.landPaper`), the moods
+set as the &moods= switch sets them, the call day found by `R.canCall`, a run-up refused to the count.
+So after the numbers are retuned, `npx tsx scripts/store/shots.ts --game high-office --write` makes
+the same six pictures with the final prices. Touches come from the game's own geometry
+(`src/ui/decree/layout.ts` deskLayout). Never in an image (policy research 6, D12, D43): the
+newspaper front page, a run-up (campaign) paper, the Ledger, a ballot, a flag, a seal, a
+real-looking building, "vote now", a date, the goose.
+
+| # | Caption | Address and steps | Shows |
+|---|---|---|---|
+| 1 | Refused papers await further study | `preset=early`; run: moods 56/52/47, paper `may-bus-named` landed; a finger on the paper moved 50 pt down and held (past 40 pt the drawer opens; nothing commits before 90 pt and the release); check: the paper's text, both strips, the drawer's count | Desmond Kerb's "Name the 7:02 bus after you, Mayor. It is late too, and also waves." pulled toward the open drawer FOR FURTHER STUDY (n), the IF STUDIED strip armed, both strips readable, the bars previewing the refusal. |
+| 2 | Both outcomes printed before you sign | the same, paper `may-pumpkin-freedom`, moved 85 pt up and held; check: no "Short by". Also the feature graphic's picture | Hilda Gourdley's "Grant the prize pumpkin the freedom of the town. It has asked very politely." pushed up, the signature writing itself on the SIGN strip, the price and both clubs on each strip. |
+| 3 | A signed pumpkin comes back with slides | run: the pumpkin paper landed and signed by the rules, then every paper and slip refused until its follow-up lands (about 10 decided papers); check: "It has slides" | The follow-up of the chain "The Pumpkin" on the desk: "The pumpkin, now a Freeman of the town, wishes to address the council. It has slides." with both strips. |
+| 4 | The poll is honest, ward by ward | run: moods 58/55/48, the day moved to the first day `R.canCall` allows, the Poll sheet opened; check: "Held today" and "Call the election" | The pinned ward map of Dithering-on-the-Dawdle with the held wards hatched in violet, each ward's share, held or not held, the clubs strong in each, the rival's pull, the call button. |
+| 5 | Counted in chalk, safest ward first | run: papers refused to the call day, the call, moods 58/55/48, the run-up refused to the count (no run-up paper is pictured), the count, Election Night opened; until four ward rows are chalked; check: a majority on the tally line | The chalk board after four envelopes: three ticks with rosettes and one dash in order of safety, bunting at the majority, the Counting Clerk with her envelope, the band in silhouette. The envelopes come every 2.5 s: if a run catches three or five rows, retake with `--only 5 --sizes <size>`. |
+| 6 | Towns left behind go up on the wall | `preset=late&wall=1`; check: "Towns left behind", "President" | The Office of a President: title and place only (D43), photographs of the towns left with their ministries on record, the Grand Projects, former opponents, the vanity shelf's busts. |
+
+Shots 4 and 5 show the poll and the count: never use them in paid or derived ads (policy research
+3); paid creatives use shots 1 to 3, the desk.
 
 ## Sizes and where they come from
 

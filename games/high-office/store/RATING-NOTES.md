@@ -48,7 +48,13 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 **Unsigned.** Spec 7.8 and D9 ask the sensitivity editor (an engineer in this build) to read every string,
 and the owner (or someone the owner names) to read the game before submission. The owner's read has not
 happened; nothing here says a person read or signed the game. Brought in step with the build on
-24 November 2026 from the listing step's draft (scratchpad store/RATING-NOTES.md).
+24 November 2026 from the listing step's draft (scratchpad store/RATING-NOTES.md). The engineers' reads
+(four sensitivity readers over about 2,190 strings and the 171 registered names; the comedy editors) are
+recorded as theirs in SENSITIVITY-READ.md beside this file, with the notes kept for the owner's read.
+
+The store images (screenshots/) show the desk, the poll, election night and the Office wall of the game as
+it is; never the newspaper front page, a run-up paper, the Ledger, a ballot, a flag, a seal, a building or
+the goose (policy research 6, D12, D43).
 
 | | |
 |---|---|

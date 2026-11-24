@@ -2,7 +2,7 @@
  * Store screenshots, made from the running web preview of a game.
  *
  *   npx tsx scripts/store/shots.ts --game all --write           every image of every game, into the repository
- *   npx tsx scripts/store/shots.ts --game night-market --write  one game's images (and the side-by-side sheet)
+ *   npx tsx scripts/store/shots.ts --game high-office --write   one game's images (and the side-by-side sheet)
  *   npx tsx scripts/store/shots.ts --game space-miner            a trial run: writes to scripts/store/.cache/out/
  *   ... --port N                                                 another preview port
  *   ... --only 1,3                                               only those scenes (1-based)
@@ -17,7 +17,7 @@
  * the picture, then composes the store image in the game's template (an HTML page rendered by the
  * same browser at the exact pixel size) and writes it as an RGB PNG (no alpha). Output:
  * <out>/<game>/<size>/NN-<slug>.png, <out>/<game>/play-feature-graphic.png and
- * <out>/night-market/SIDE-BY-SIDE.png (every game, one row each), where <out> is games/<id>/store/screenshots with --write.
+ * <out>/high-office/SIDE-BY-SIDE.png (every game, one row each), where <out> is games/<id>/store/screenshots with --write.
  * Raw captures (and the band each image shows): scripts/store/.cache/. Details: scripts/store/README.md.
  *
  * Start the previews first (README, "Run it"). Playwright is not a dependency of this project: the
@@ -36,16 +36,18 @@ import { checkFonts, FONT_CSS, esc } from './templates/fonts';
 import * as warm from './templates/warm';
 import * as panel from './templates/panel';
 import * as tag from './templates/tag';
+import * as signature from './templates/signature';
 
 const ROOT = path.resolve(__dirname, '../..');
 const CACHE = path.join(__dirname, '.cache');
-const GAMES = ['pizza-empire', 'space-miner', 'night-market'] as const;
+const GAMES = ['pizza-empire', 'space-miner', 'night-market', 'high-office'] as const;
 type GameId = (typeof GAMES)[number];
 
 const TEMPLATE: Record<GameId, { shot: typeof warm.shotHtml; feature: typeof warm.featureHtml }> = {
   'pizza-empire': { shot: warm.shotHtml, feature: warm.featureHtml },
   'space-miner': { shot: panel.shotHtml, feature: panel.featureHtml },
   'night-market': { shot: tag.shotHtml, feature: tag.featureHtml },
+  'high-office': { shot: signature.shotHtml, feature: signature.featureHtml },
 };
 
 /** How the side-by-side sheet names each game's template. */
@@ -53,14 +55,18 @@ const TEMPLATE_NOTE: Record<GameId, string> = {
   'pizza-empire': 'warm (framed card, caption below)',
   'space-miner': 'panel (readout on top, game below it)',
   'night-market': 'paper tag (game from the top, a tag on a lantern wire below)',
+  'high-office': 'signature (game full-bleed, violet nib caption on a baize band, bottom left)',
 };
 
 /**
- * The side-by-side sheet: every game's 6.9" set, icon and feature graphic, one row per game, in the
- * newest game's folder. The two-game sheet of 2026-11-22 (games/space-miner/store/screenshots/
- * SIDE-BY-SIDE.png) is the signed-off record of the first two games and is no longer rewritten.
+ * The side-by-side sheet: every game's icon, feature graphic and first SHEET_SHOTS 6.9" shots (what a
+ * store search shows first), one row per game, in the newest game's folder. Earlier sheets are kept as
+ * signed off and no longer rewritten: the two-game sheet of 2026-11-22 (games/space-miner/store/
+ * screenshots/SIDE-BY-SIDE.png) and the three-game sheet of 2026-11-23 (games/night-market/store/
+ * screenshots/SIDE-BY-SIDE.png, every game's six shots).
  */
-const SHEET_GAME: GameId = 'night-market';
+const SHEET_GAME: GameId = 'high-office';
+const SHEET_SHOTS = 3;
 
 // ---------------------------------------------------------------- arguments
 
@@ -141,7 +147,18 @@ async function runSteps(page: any, steps: Step[]): Promise<void> {
       await page.mouse.up();
     } else if ('wait' in s) await page.waitForTimeout(s.wait);
     else if ('key' in s) await page.keyboard.press(s.key);
-    else if ('goto' in s) {
+    else if ('run' in s) {
+      const report: string = await page.evaluate((body: string) => {
+        try {
+          return String(new Function(body)());
+        } catch (e) {
+          return 'ERR threw: ' + String(e);
+        }
+      }, s.run);
+      if (report.startsWith('ERR')) throw new Error(`run: ${report.slice(0, 300)}`);
+      console.log(`    run: ${report.slice(0, 160)}`);
+      await page.waitForTimeout(s.settle ?? 1500);
+    } else if ('goto' in s) {
       // Another address in the same tab (the saved game carries over, as on a phone that is reopened).
       const url = new URL(page.url());
       await page.goto(`${url.origin}/${s.goto ? '?' + s.goto : ''}`, { waitUntil: 'load', timeout: 240000 });
@@ -377,14 +394,14 @@ async function compose(browser: any, def: GameScenes, sizes: Size[], scenes: num
 
 // ---------------------------------------------------------------- side-by-side sheet
 
-/** One PNG with every game's icon and iPhone 6.9" set, one game per row, for signing off the template difference. */
+/** One PNG with every game's icon, feature graphic and first iPhone 6.9" shots, one game per row, for signing off the template difference. */
 async function sheet(browser: any): Promise<void> {
   const size = SIZES[0];
   const rows: string[] = [];
   for (const id of GAMES) {
     const def = await loadScenes(id);
     const game = JSON.parse(fs.readFileSync(path.join(ROOT, 'games', id, 'game.json'), 'utf8'));
-    const files = def.scenes.map((s, i) => outPath(id, size, i, s.slug));
+    const files = def.scenes.slice(0, SHEET_SHOTS).map((s, i) => outPath(id, size, i, s.slug));
     const missing = files.filter((f) => !fs.existsSync(f));
     if (missing.length) {
       console.log(`  sheet skipped: ${id} has no ${size.id} set yet`);
@@ -392,12 +409,12 @@ async function sheet(browser: any): Promise<void> {
     }
     const feature = path.join(outDir(id), 'play-feature-graphic.png');
     rows.push(`<section><div class="who"><img class="icon" src="${pathToFileURL(path.join(ROOT, 'games', id, 'icon.png')).href}">
-      <div class="name">${esc(String(game.store?.title ?? id))}</div><div class="id">${esc(id)} · ${def.scenes.length} shots · template: ${TEMPLATE_NOTE[id]}</div>
+      <div class="name">${esc(String(game.store?.title ?? id))}</div><div class="id">${esc(id)} · first ${files.length} of ${def.scenes.length} shots · template: ${TEMPLATE_NOTE[id]}</div>
       ${fs.existsSync(feature) ? `<img class="feat" src="${pathToFileURL(feature).href}">` : ''}</div>
       <div class="set">${files.map((f, i) => `<figure><img src="${pathToFileURL(f).href}"><figcaption>${i + 1}</figcaption></figure>`).join('')}</div></section>`);
   }
   const W = 2600;
-  const thumbW = 300;
+  const thumbW = 420;
   const thumbH = Math.round((thumbW * size.h) / size.w);
   const H = 140 + GAMES.length * (thumbH + 120);
   const html = `<!doctype html><html><head><meta charset="utf-8"><style>${FONT_CSS}
@@ -415,7 +432,7 @@ section{display:flex;gap:40px;padding:40px 60px 0;align-items:flex-start}
 figure{width:${thumbW}px}
 figure img{width:${thumbW}px;height:${thumbH}px;display:block;box-shadow:0 2px 10px rgba(0,0,0,.25)}
 figcaption{font-size:18px;color:#777;text-align:center;margin-top:6px}
-</style></head><body><h1>Store screenshots, side by side<small>App Store iPhone 6.9" sets (1320 x 2868), the icons and the Play feature graphics. One row per game.</small></h1>${rows.join('')}</body></html>`;
+</style></head><body><h1>Store screenshots, side by side<small>The icons, the Play feature graphics and the first three App Store iPhone 6.9" shots (1320 x 2868). One row per game.</small></h1>${rows.join('')}</body></html>`;
   const out = path.join(outDir(SHEET_GAME), 'SIDE-BY-SIDE.png');
   await render(browser, html, W, H, out);
   console.log(`  wrote ${path.relative(ROOT, out)}`);
@@ -431,7 +448,7 @@ async function loadScenes(id: string): Promise<GameScenes> {
 async function main(): Promise<void> {
   const gameArg = opt('game');
   if (!gameArg && !flag('sheet')) {
-    console.log('Usage: npx tsx scripts/store/shots.ts --game <pizza-empire|space-miner|night-market|all> [--write | --out <dir>] [--port N] [--only 1,3] [--sizes ios-6.9,play-phone] [--reuse] | --sheet');
+    console.log('Usage: npx tsx scripts/store/shots.ts --game <pizza-empire|space-miner|night-market|high-office|all> [--write | --out <dir>] [--port N] [--only 1,3] [--sizes ios-6.9,play-phone] [--reuse] | --sheet');
     process.exit(2);
   }
   checkFonts();

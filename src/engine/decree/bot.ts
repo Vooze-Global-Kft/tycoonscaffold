@@ -1060,6 +1060,9 @@ class Driver {
     const at = item.landedAt + HAND.slip;
     if (this.clock < at) this.advanceTo(at);
     if (this.d.desk?.type !== 'slip') return;
+    // D42 (c): the Standing Order made the slip stale during the hand's 1.5 s; the Clerk took it back and
+    // the next slip landed at once. That is a new slip: the hand reads it for its own 1.5 s (the main loop).
+    if (this.d.desk.landedAt !== item.landedAt || !sameJson(this.d.desk.slip, item.slip)) return;
     let choice: Choice = this.hab.takesSlips ? 'sign' : 'refuse';
     const before = this.g;
     const events: DecreeEvent[] = [];
