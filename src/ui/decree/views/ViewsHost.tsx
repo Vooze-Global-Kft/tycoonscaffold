@@ -1,7 +1,7 @@
 /**
  * The VIEWS package's one mount (overlays/Overlays.tsx, its VIEWS block): the face picker, Election
  * Night and the Office wall (full-screen views of uiState), the result and move sheets (uiState
- * sheets) and the monument offer (a local stand-in until uiState has its sheet type: ./viewsUi.ts),
+ * sheets) and the monument offer (uiState sheet `monument`, opened only while the rules offer one),
  * and the moments the game stops for, opened as the rules' phase asks:
  * - no face yet on the first day (3.1): the face picker;
  * - the run-up done (the rules' canCount): the votes are counted (decreeActions.countVotes) and
@@ -25,7 +25,7 @@ import { ElectionNight } from './ElectionNight';
 import { FacePicker } from './FacePicker';
 import { OfficeWall } from './Office';
 import { applyViewsDevParams } from './dev';
-import { useViewsUi } from './viewsUi';
+import { openMonument } from './viewsUi';
 
 // The preview's &night=, &result=, &wall=, &monument=, &face= switches (nothing on a phone).
 applyViewsDevParams();
@@ -37,7 +37,7 @@ export function ViewsHost() {
   const view = useDecreeUi((s) => s.view);
   const sheet = useDecreeUi((s) => s.sheet?.type ?? null);
   const armed = useDecreeUi((s) => s.armed !== null);
-  const monument = useViewsUi((s) => s.monument);
+  const monument = sheet === 'monument';
   const isDecree = useDecree(() => true, false);
   // The first day only (3.1): a save past it without a face (a web preset) is never stopped for one.
   const noFace = useDecree((_c, g) => g.decree.face === null && g.decree.office === 0 && g.decree.term === 1 && g.decree.day === 0, false);
@@ -67,7 +67,7 @@ export function ViewsHost() {
     if (!countable || !free) return;
     const t = setTimeout(() => {
       const ui = useDecreeUi.getState();
-      if (ui.view || ui.sheet || ui.armed || useViewsUi.getState().monument) return;
+      if (ui.view || ui.sheet || ui.armed) return;
       if (decreeActions.countVotes()) {
         nightOpen.current = true;
         ui.openView('electionNight');
@@ -102,7 +102,7 @@ export function ViewsHost() {
     if (phase !== 'result' || view || sheet || monument) return;
     const t = setTimeout(() => {
       const ui = useDecreeUi.getState();
-      if (!ui.view && !ui.sheet && !useViewsUi.getState().monument) ui.openSheet({ type: 'result' });
+      if (!ui.view && !ui.sheet) ui.openSheet({ type: 'result' });
     }, 450);
     return () => clearTimeout(t);
   }, [phase, view, sheet, monument]);
@@ -122,7 +122,7 @@ export function ViewsHost() {
     ui().closeSheet();
     if (!moved) return;
     // This term's monument, offered once the choice is made (5.8), after the sheet has slid away.
-    setTimeout(() => useViewsUi.getState().openMonument(), 500);
+    setTimeout(openMonument, 500);
   };
   const stay = () => afterChoice(decreeActions.chooseAfterResult('stay'));
   const moveUp = () => afterChoice(decreeActions.chooseAfterResult('moveUp'));
@@ -132,7 +132,7 @@ export function ViewsHost() {
     <>
       <ResultSheet visible={sheet === 'result' && phase === 'result'} onClose={() => ui().closeSheet()} onStand={() => ui().openSheet({ type: 'move' })} onStay={stay} />
       <MoveSheet visible={sheet === 'move' && phase === 'result'} onClose={() => ui().openSheet({ type: 'result' })} onConfirm={moveUp} />
-      <MonumentSheet visible={monument} onClose={() => useViewsUi.getState().closeMonument()} />
+      <MonumentSheet visible={monument} onClose={() => ui().closeSheet()} />
       <FacePicker visible={view === 'facePicker'} onDone={() => ui().closeView()} />
       <ElectionNight visible={view === 'electionNight'} onEnd={endNight} />
       <OfficeWall
@@ -140,7 +140,7 @@ export function ViewsHost() {
         onClose={() => ui().closeView()}
         onOffer={() => {
           ui().closeView();
-          setTimeout(() => useViewsUi.getState().openMonument(), 50);
+          setTimeout(openMonument, 50);
         }}
       />
     </>

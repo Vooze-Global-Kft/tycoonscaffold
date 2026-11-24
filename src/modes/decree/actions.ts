@@ -62,9 +62,9 @@ let adOpen = false;
 export const decreeActions = {
   /**
    * 2.6 decide(choice): the desk item signed (up) or studied (down). A slip flicked up is a purchase
-   * (buy_level, the sound package's map); flicked down it is put back (study).
+   * (buy_level, the sound package's map; open_ministry when it opens one); flicked down it is put back (study).
    */
-  decide: (choice: R.Choice) => act('decide', (cfg, g, clock, ev) => R.decide(cfg, g, choice, clock, ev), (before) => (choice === 'refuse' ? 'study' : before.decree.desk?.type === 'slip' ? 'buy_level' : 'sign')),
+  decide: (choice: R.Choice) => act('decide', (cfg, g, clock, ev) => R.decide(cfg, g, choice, clock, ev), (before, _after, events) => (choice === 'refuse' ? 'study' : before.decree.desk?.type === 'slip' ? (events.some((e) => e.type === 'ministryOpened') ? 'open_ministry' : 'buy_level') : 'sign')),
   /** 2.6 takeBack(): a tap on the out-tray inside the 2 s. */
   takeBack: () => act('takeBack', (cfg, g, clock, ev) => R.takeBack(cfg, g, clock, ev), 'take_back'),
   /**
@@ -78,7 +78,7 @@ export const decreeActions = {
   /** 2.6 openMinistry(i). */
   openMinistry: (ministry: number) => act('openMinistry', (cfg, g, _c, ev) => R.openMinistry(cfg, g, ministry, ev), 'open_ministry'),
   /** 2.6 buyVanity(): this term's monument. */
-  buyVanity: () => act('buyVanity', (cfg, g, _c, ev) => R.buyVanity(cfg, g, ev), 'buy_level'),
+  buyVanity: () => act('buyVanity', (cfg, g, _c, ev) => R.buyVanity(cfg, g, ev), 'storey'),
   /** 2.6 callElection(). */
   callElection: () => act('callElection', (cfg, g, clock, ev) => R.callElection(cfg, g, clock, ev), 'call_election'),
   /** 2.6 countVotes(): election night begins (its envelopes sound from the night view). */

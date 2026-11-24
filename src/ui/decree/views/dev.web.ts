@@ -18,7 +18,7 @@ import * as R from '../../../engine/decree';
 import type { GameState } from '../../../engine/types';
 import { useGame } from '../../../state/store';
 import { useDecreeUi } from '../uiState';
-import { useViewsUi } from './viewsUi';
+import { openMonument } from './viewsUi';
 
 function params(): URLSearchParams | null {
   if (Platform.OS !== 'web' || typeof location === 'undefined') return null;
@@ -81,5 +81,5 @@ function applyNow(): void {
   if (q.get('night') && g.decree.phase === 'count') ui.openView('electionNight');
   if (q.get('result') && q.get('move') === '1' && R.canMoveUp(cfg, g)) setTimeout(() => ui.openSheet({ type: 'move' }), 900);
   if (q.get('wall') === '1') ui.openView('office');
-  if (q.get('monument') === '1') useViewsUi.getState().openMonument();
+  if (q.get('monument') === '1') openMonument();
 }

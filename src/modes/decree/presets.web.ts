@@ -10,7 +10,8 @@
  * While a rule a run needs is not built yet (NotBuiltError), or the run never reaches the moment, the
  * preset falls back to the rules' hand-made fixtures (src/engine/fixtures/decree.ts: early =
  * `mayorMidTerm`, mid = `governorAtCall`, late = `presidentTerm3`), and says so on the console.
- * Web only: Metro takes ./presets.ts (none) for iOS and Android. Owned by the bot engineer.
+ * Web only: Metro takes ./presets.ts (none) for iOS and Android. Written by the bot engineer; the
+ * screens lead added the face.
  */
 import type { GameConfig } from '../../config/schema';
 import type { PresetName } from '../../dev/presets';
@@ -54,6 +55,9 @@ export function decreePreset(cfg: GameConfig, name: PresetName, now: number): Ga
     pick = name === 'early' ? f.mayorMidTerm : name === 'mid' ? f.governorAtCall : f.presidentTerm3;
     console.warn(`decree preset "${name}": the fixture (${bot.why})`);
   }
+  // The bots never pick a face (the loading card's choice): a preset carries the first player's, so the
+  // portrait, the wall and the signature show as in a played game.
+  if (pick.decree.face === null && cfg.decree.cast.players.length) pick = R.pickFace(cfg, pick, cfg.decree.cast.players[0].id);
   // The app's own shared fields (seeds, timers) with the state's cash, play time and decree state, dated now (no time away is paid on load).
   return {
     ...base,

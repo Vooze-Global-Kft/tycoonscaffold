@@ -68,12 +68,22 @@ describe('the catalogue', () => {
 });
 
 describe('planSounds', () => {
+  it('lists a second loop apart from music_main, so a mode may choose it', () => {
+    const custom = { music_main: { brief: 'a', volume: 0.3, loop: true }, music_march: { brief: 'b', volume: 0.5, loop: true }, tap: { brief: 'c', volume: 1 } };
+    const plan = planSounds(custom, { music_main: 1, music_march: 2, tap: 3 }, [], {});
+    expect(plan.music).toEqual({ key: 'music_main', source: 1, volume: 0.3 });
+    expect(plan.loops).toEqual({ music_march: { key: 'music_march', source: 2, volume: 0.5 } });
+    expect(plan.sounds.map((x) => x.key)).toEqual(['tap']);
+  });
+
   it('with every file present: one spec per one-shot file, music apart, nothing missing', () => {
     const files = fullBundle();
     const plan = planSounds(catalog, files);
     const oneShotKeys = names.filter((n) => !catalog[n].loop).flatMap((n) => fileKeys(n, catalog[n]));
     expect(plan.sounds.map((s) => s.key).sort()).toEqual([...oneShotKeys].sort());
     expect(plan.music).toEqual({ key: 'music_main', source: files.music_main, volume: catalog.music_main.volume });
+    // A catalogue with one loop has no other loops to choose from (fx.music.choose: a mode's own second loop).
+    expect(plan.loops).toBeUndefined();
     expect(plan.missing).toEqual([]);
     expect(plan.unused).toEqual([]);
     const tap3 = plan.sounds.find((s) => s.key === 'tap_3');

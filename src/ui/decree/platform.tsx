@@ -9,14 +9,29 @@
  *   (store.resume); nothing here listens for it.
  * - The pen (./PenPointer.tsx `PenLayer`, 3.1).
  * - The away report (./sheets/AwayReport.tsx, 2.15), driven by the shared store's `offline`.
+ * - The music (spec 6): "The Middling March" (music_campaign) from the call to the end of election
+ *   night, the desk loop otherwise (the shared player's additive `fx.music.choose`).
  * Owned by the hints and platform package (PLATFORM).
  */
 import { useEffect } from 'react';
 import { AppState, BackHandler } from 'react-native';
+import { fx } from '../../services/fx';
 import { onAppState, onBack } from './back';
 import type { DeskLayout } from './layout';
 import { PenLayer } from './PenPointer';
 import { AwayReport } from './sheets/AwayReport';
+import { useDecree } from './useDecree';
+
+/** The loops of spec 6: the march from the call to the end of election night, the desk loop otherwise. */
+const CAMPAIGN_LOOP = 'music_campaign';
+const DESK_LOOP = 'music_main';
+
+function useCampaignMusic(): void {
+  const campaign = useDecree((_c, g) => g.decree.phase === 'campaign' || g.decree.phase === 'count', false);
+  useEffect(() => {
+    fx.music.choose?.(campaign ? CAMPAIGN_LOOP : DESK_LOOP);
+  }, [campaign]);
+}
 
 function useAndroidBack(): void {
   useEffect(() => {
@@ -36,6 +51,7 @@ function useAppLife(): void {
 export function PlatformLayer({ layout }: { layout: DeskLayout }) {
   useAndroidBack();
   useAppLife();
+  useCampaignMusic();
   return (
     <>
       <PenLayer layout={layout} />

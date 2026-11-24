@@ -16,6 +16,7 @@ import { devOncePerPageLoad, devParamsApplied } from '../../../dev/devtools';
 import * as R from '../../../engine/decree';
 import type { GameState } from '../../../engine/types';
 import { useGame } from '../../../state/store';
+import { useDecreeUi } from '../uiState';
 
 function param(): string | null {
   if (Platform.OS !== 'web' || typeof location === 'undefined') return null;
@@ -23,6 +24,8 @@ function param(): string | null {
 }
 
 export function applyDeskDevParams(): void {
+  // The preview's play log reads the state through this (web only; a phone bundle never holds it).
+  (globalThis as { __decreeDev?: unknown }).__decreeDev = { game: () => useGame.getState().game, cfg: () => useGame.getState().cfg, R, ui: () => useDecreeUi.getState() };
   const kind = param();
   if (!kind || !devOncePerPageLoad('decree-desk')) return;
   void devParamsApplied().then(() => setTimeout(() => land(kind), 400));

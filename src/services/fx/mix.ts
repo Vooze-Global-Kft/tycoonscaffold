@@ -60,6 +60,11 @@ export interface SoundPlan {
   preload: string[];
   /** The music loop, when its file exists. */
   music?: { key: string; source: number; volume: number };
+  /**
+   * The catalogue's OTHER loops with a file, by event name (a mode that chooses its loop, `fx.music.choose`).
+   * Absent when the catalogue has no loop but `music_main`; nothing plays them unless a mode chooses one.
+   */
+  loops?: Record<string, { key: string; source: number; volume: number }>;
   /** Catalogue files that are not in the bundle (those events are silent). */
   missing: string[];
   /** Bundled files that no catalogue entry uses. */
@@ -87,6 +92,7 @@ export function planSounds(
         plan.missing.push(key);
       } else if (def.loop) {
         if (name === MUSIC) plan.music = { key, source, volume: def.volume };
+        else (plan.loops ??= {})[name] = { key, source, volume: def.volume };
       } else {
         const maxVoices = Math.max(1, Math.floor(voices[name] ?? 1));
         plan.sounds.push({ key, source, volume: def.volume, maxVoices, hot: isHot(name) });

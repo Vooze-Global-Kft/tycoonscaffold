@@ -4,8 +4,8 @@
  * with the majority line under it; the Counting Clerk's paper cut-out opening an envelope every
  * 2.5 s in the rules' announcement order (safest first, closest last); each row's chalk marks and a
  * rosette if held; at the majority the bunting and the band in silhouette, then the rival's line. A
- * tap speeds the rest by four; Android back (PLATFORM's back.ts closes the view) jumps to the result,
- * never out mid-count (ViewsHost ends the night when the view closes in phase count).
+ * tap speeds the rest by four; Android back first writes the whole result on the board (its viewBack),
+ * then closes the view, never out mid-count (ViewsHost ends the night when the view closes in phase count).
  *
  * The numbers are the poll's, number for number: every share, every held flag and the order are the
  * rules' count (views/model.ts `nightModel`); this file computes none. Played straight: the board
@@ -29,6 +29,7 @@ import { drawTallyBoard, drawChalkMarks, drawEnvelope, drawTallyResult, tallyRow
 import { CUTOUT_IDS, drawBand, drawCutout } from '../art/faces';
 import { useFontScale } from '../hud/fontScale';
 import { S } from '../strings';
+import { useDecreeUi } from '../uiState';
 import { useDecree } from '../useDecree';
 import { type } from './metrics';
 import { ENVELOPE_MS, FAST_FACTOR, nightModel, type NightModel } from './model';
@@ -153,6 +154,24 @@ function Night({ model, onEnd }: { model: NightModel; onEnd: () => void }) {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.shown, p.stage]);
+
+  // Android back (4.4): the first press jumps to the result of the count (every row written, no more
+  // envelopes or sounds); a press once it is all written lets the view close (ViewsHost ends the night).
+  const stageRef = useRef(p.stage);
+  stageRef.current = p.stage;
+  useEffect(() => {
+    const ui = useDecreeUi.getState();
+    ui.setViewBack(() => {
+      if (stageRef.current === 'done') return false;
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+      reveal.value = 1;
+      setP((q) => ({ ...q, shown: n, stage: 'done', majority: model.won, speaker: 'clerk', line: model.endLine ?? q.line }));
+      return true;
+    });
+    return () => useDecreeUi.getState().setViewBack(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const speedUp = () => {
     if (p.stage === 'done' || fastRef.current) return;

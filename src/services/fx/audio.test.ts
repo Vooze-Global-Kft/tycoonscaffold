@@ -576,6 +576,34 @@ describe('music', () => {
     expect(player.take().every((call) => call.startsWith('volume:'))).toBe(true);
   });
 
+  it('use() switches the loop: the old player is released and the new source eases in (a mode that chooses its loop)', async () => {
+    const { driver, engine } = await ready({ music });
+    engine.music.set(true);
+    const first = driver.playing(9)[0];
+    engine.music.use(12, 0.5);
+    expect(first.removed).toBe(true);
+    const second = driver.playing(12)[0];
+    expect(second.loop).toBe(true);
+    expect(second.take()).toEqual(['volume:0', 'play']);
+    vi.advanceTimersByTime(700);
+    expect(second.volume).toBeCloseTo(0.5, 5);
+    // The same source again changes nothing; back to the first one works the same way.
+    engine.music.use(12, 0.5);
+    expect(driver.playing(12)).toHaveLength(1);
+    engine.music.use(9, 0.35);
+    expect(second.removed).toBe(true);
+    expect(driver.playing(9)).toHaveLength(1);
+  });
+
+  it('use() while music is off only changes what plays next', async () => {
+    const { driver, engine } = await ready({ music });
+    engine.music.use(12, 0.5);
+    expect(driver.players).toHaveLength(0);
+    engine.music.set(true);
+    expect(driver.playing(12)).toHaveLength(1);
+    expect(driver.playing(9)).toHaveLength(0);
+  });
+
   it('without a fade it starts and stops at once', async () => {
     const { driver, engine } = await ready({ music });
     engine.music.set(true);

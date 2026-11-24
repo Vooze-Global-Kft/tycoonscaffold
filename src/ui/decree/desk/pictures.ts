@@ -13,7 +13,7 @@ import { DESK } from '../art/palette';
 import { drawChip } from '../art/effects.draw';
 import { decreeAtlas, faceAtlasOf } from '../art/atlas';
 import { faceSpriteName } from '../art/faces';
-import { drawDesk, drawDeskFront, drawDeskTop, drawDeskSet, drawDoor, drawDrawer, drawInTray, drawLamp, drawLampPool, drawOutTray, drawStickyNote, drawTakeBackRest, drawTelephones, drawerStage, type DeskSet } from '../art/desk.draw';
+import { drawDesk, drawDeskFront, drawDeskTop, drawDeskSet, drawDoor, drawDrawer, drawLamp, drawLampPool, drawOutTray, drawStickyNote, drawTakeBackRest, drawTelephones, drawerStage, type DeskSet } from '../art/desk.draw';
 import { MASTHEAD_TILT, drawFormFace, drawFrontPage, drawPaper, drawPhotoClip, drawPicketSign, drawRunUpPaper, drawSignatureIn, drawSlip, signatureBox } from '../art/paper.draw';
 import { at, clip, oval, picture } from '../art/pen';
 import type { DeskLayout, DeskParts, Rect } from '../layout';
@@ -46,9 +46,7 @@ export function backPicture(L: DeskLayout, P: DeskParts, a: AroundVM): SkPicture
     }
     // On an empty desk the next goal is a big sticky note on the baize (the desk is never a dead screen).
     if (a.sticky?.where === 'desk' && a.emptyDesk) at(c, P.deskSticky.x, P.deskSticky.y, 1, -2, (q) => drawStickyNote(q, P.deskSticky.w, P.deskSticky.h));
-    // The in-tray in the bottom row's slot: its stack of waiting papers and the count.
-    const t = P.inTray;
-    at(c, t.x, t.y + 2, 1, 0, (q) => drawInTray(q, t.w, t.h - 4, a.waiting, { digits: true, full: a.trayFull }));
+    // The in-tray is the bottom row's button (its icon and count badge, hud/BottomRow.tsx): drawn once, there.
   });
 }
 

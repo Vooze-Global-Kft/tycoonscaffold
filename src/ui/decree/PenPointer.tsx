@@ -241,7 +241,7 @@ function Stroke({ path }: { path: PenPath }) {
   if (!pic) return null;
   return (
     <View style={[styles.layer, { left: box.x, top: box.y, width: box.w, height: box.h }]} pointerEvents="none">
-      <Canvas style={{ width: box.w, height: box.h }} pointerEvents="none">
+      <Canvas style={{ width: box.w, height: box.h, pointerEvents: 'none' }} pointerEvents="none">
         {guide ? (
           <Path path={guide} style="stroke" strokeWidth={1.6} strokeCap="round" color={DESK.violet} opacity={guideOpacity}>
             {back ? null : <DashPathEffect intervals={[2, 5]} />}

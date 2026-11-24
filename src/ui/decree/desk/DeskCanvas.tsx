@@ -157,24 +157,28 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
     ringLast.value = t;
     ring.value = ringFrom.value * Math.max(0, 1 - t / ringMs.value);
   }, false);
+  // A full-screen view covers the desk (4.4: the desk's clocks stopped): the ring waits under it.
+  const covered = useDecreeUi((s) => s.view !== null);
   useEffect(() => {
     const p = around?.pending;
-    if (!p) {
+    if (!p || covered) {
       ringClock.setActive(false);
       ring.value = 0;
       return;
     }
     const left = Math.max(0, p.until - (useGame.getState().game.stats.playSeconds ?? 0));
-    ringFrom.value = Math.min(1, left / Math.max(1e-9, p.window));
+    // Written from a local value: the JS thread never reads a shared value back.
+    const from = Math.min(1, left / Math.max(1e-9, p.window));
+    ringFrom.value = from;
     ringMs.value = Math.max(1, left * 1000);
     ringLast.value = -1e9;
     ringT0.value = -1;
-    ring.value = ringFrom.value;
+    ring.value = from;
     ringClock.setActive(false);
     ringClock.setActive(true);
     return () => ringClock.setActive(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingKey]);
+  }, [pendingKey, covered]);
 
   // --- committing: the rules decide; the paper flies into the tray (up) or the drawer (down)
   const startLeave = useCallback(
@@ -289,7 +293,7 @@ export function DeskCanvas({ layout }: { layout: DeskLayout }) {
 
   // --- the still layers
   // The room and the desk re-record only when what they draw changes (not each second of the door's clock).
-  const backKey = around ? JSON.stringify({ ...around, door: '', pending: null }) : '';
+  const backKey = around ? JSON.stringify({ ...around, door: '', pending: null, waiting: 0, trayFull: false }) : '';
   const aroundRef = useRef(around);
   aroundRef.current = around;
   const room = useMemo(() => (aroundRef.current ? backPicture(L, P, aroundRef.current) : null), [L, P, backKey]); // eslint-disable-line react-hooks/exhaustive-deps

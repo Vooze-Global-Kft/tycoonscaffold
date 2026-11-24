@@ -18,14 +18,18 @@ import { TermRibbon } from './hud/TermRibbon';
 import { TopBar } from './hud/TopBar';
 import { deskLayout } from './layout';
 import { Overlays } from './overlays/Overlays';
-import { PH } from './placeholder';
+import { DESK } from './art/palette';
+import { useDecreeUi } from './uiState';
+
+/** Every touch anywhere counts as one (3.1: the pen shows only after 20 s without a touch). */
+const touch = () => useDecreeUi.getState().touch();
 
 export function DecreeShell() {
   const { width, height, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const layout = useMemo(() => deskLayout(width, height, { top: insets.top, bottom: insets.bottom, left: insets.left, right: insets.right }, fontScale), [width, height, insets.top, insets.bottom, insets.left, insets.right, fontScale]);
   return (
-    <View style={styles.root}>
+    <View style={styles.root} onTouchStart={touch}>
       <StatusBar style="light" />
       {/* ===== slot: the desk (P6) ===== */}
       <DeskCanvas layout={layout} />
@@ -42,5 +46,5 @@ export function DecreeShell() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: PH.baize },
+  root: { flex: 1, backgroundColor: DESK.baize },
 });

@@ -198,6 +198,13 @@ const WEB_ONLY = [
   'src/ui/merge/sheets/dev.web.ts',
   'src/ui/merge/hud/fontScale.web.ts',
   'src/ui/merge/devInsets.web.ts',
+  // The decree screens' preview switches (the screens lead lists them; phones take each file's plain twin).
+  'src/ui/decree/desk/dev.web.ts',
+  'src/ui/decree/desk/devButtons.web.ts',
+  'src/ui/decree/desk/fontScale.web.ts',
+  'src/ui/decree/hud/fontScale.web.ts',
+  'src/ui/decree/sheets/dev.web.ts',
+  'src/ui/decree/views/dev.web.ts',
 ];
 
 /**
