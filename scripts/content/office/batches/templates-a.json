@@ -1,7 +1,7 @@
 {
   "batch": "templates-a",
   "writer": "comedy-editor",
-  "note": "Frames carry no biggerStudy field in format.ts (FrameSchema is strict); each committee frame's bigger study is in its note as 'biggerStudy: ...' (as templates-b; requested). Every list is office-free, so any frame may use any list. A frame names no visitor unless it is an advisor's vanity paper: the rules give it the club's spokesperson.",
+  "note": "Frames carry no biggerStudy field in format.ts (FrameSchema is strict); each committee frame's bigger study is in its note as 'biggerStudy: ...' (as templates-b; requested). Every list is office-free, so any frame may use any list. A frame names no visitor unless it is an advisor's vanity paper: the rules give it the club's spokesperson, whose club the strip shows, so a frame need not name the petitioner. Edited by the comedy editor (edit-templates-a): 44 of 60 frames rewritten or tightened; file order is by joke shape, no two neighbours alike.",
   "lists": [
     {
       "id": "town-things",
@@ -172,17 +172,6 @@
       "shape": "undercut"
     },
     {
-      "id": "tpa-cer-triangle",
-      "office": "governor",
-      "club": "brass",
-      "other": "anglers",
-      "archetype": "treat",
-      "frame": "Play the triangle at {small-ceremonies}. The band will point when.",
-      "subject": "bandstands",
-      "butt": "self",
-      "shape": "photo-op"
-    },
-    {
       "id": "tpa-thing-gold-name",
       "office": "any",
       "visitor": "spinwell",
@@ -194,94 +183,6 @@
       "shape": "escalation"
     },
     {
-      "id": "tpa-cer-lid",
-      "office": "governor",
-      "club": "anglers",
-      "other": "brass",
-      "archetype": "project",
-      "frame": "Keep a lid on the band, say the Anglers. Off for {small-ceremonies} only.",
-      "subject": "bandstands",
-      "butt": "thing",
-      "shape": "literalism"
-    },
-    {
-      "id": "tpa-thing-sign-buses",
-      "office": "president",
-      "club": "shops",
-      "other": "bus",
-      "archetype": "fee",
-      "frame": "The Guild will pay for a sign on {town-things}: IGNORE THE BUS.",
-      "subject": "signage",
-      "butt": "thing",
-      "shape": "slogan"
-    },
-    {
-      "id": "tpa-cer-guild-ribbon",
-      "office": "any",
-      "club": "shops",
-      "other": "bus",
-      "archetype": "treat",
-      "frame": "Cut the Guild's ribbon at {small-ceremonies}. Mind your reflection.",
-      "subject": "ribbons",
-      "butt": "self",
-      "shape": "photo-op"
-    },
-    {
-      "id": "tpa-thing-music-stand",
-      "office": "governor",
-      "club": "brass",
-      "other": "anglers",
-      "archetype": "project",
-      "frame": "Band seats by {town-things}. Then a roof. The pond hears last.",
-      "subject": "bandstands",
-      "butt": "thing",
-      "shape": "escalation"
-    },
-    {
-      "id": "tpa-cer-poster",
-      "office": "any",
-      "club": "bus",
-      "other": "shops",
-      "archetype": "swap",
-      "frame": "Our poster for {small-ceremonies}, in the Guild's window: DO COME.",
-      "subject": "signage",
-      "butt": "thing",
-      "shape": "slogan"
-    },
-    {
-      "id": "tpa-thing-quiet-zone",
-      "office": "governor",
-      "club": "anglers",
-      "other": "brass",
-      "archetype": "swap",
-      "frame": "Make {town-things} a quiet zone. The band's drum must apply.",
-      "subject": "paperwork",
-      "butt": "office",
-      "shape": "form-misapplied"
-    },
-    {
-      "id": "tpa-cer-marquee",
-      "office": "any",
-      "club": "shops",
-      "other": "veg",
-      "archetype": "project",
-      "frame": "A Till's Teas marquee for {small-ceremonies}, on the pumpkin bed.",
-      "subject": "ceremonies",
-      "butt": "thing",
-      "shape": "callback"
-    },
-    {
-      "id": "tpa-thing-shop-bells",
-      "office": "governor",
-      "club": "brass",
-      "other": "shops",
-      "archetype": "fee",
-      "frame": "The band hires {town-things} for practice. Window-gazing: down 30 %.",
-      "subject": "bandstands",
-      "butt": "thing",
-      "shape": "statistic"
-    },
-    {
       "id": "tpa-cer-bus-station",
       "office": "any",
       "club": "veg",
@@ -291,6 +192,17 @@
       "subject": "buses",
       "butt": "thing",
       "shape": "undercut"
+    },
+    {
+      "id": "tpa-cer-triangle",
+      "office": "governor",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "treat",
+      "frame": "Play the triangle at {small-ceremonies}. The band will point when.",
+      "subject": "bandstands",
+      "butt": "self",
+      "shape": "photo-op"
     },
     {
       "id": "tpa-thing-quieter",
@@ -305,6 +217,72 @@
       "note": "biggerStudy: The quiet test asks for a second year. The band kept helping."
     },
     {
+      "id": "tpa-thing-sign-buses",
+      "office": "president",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "fee",
+      "frame": "The Guild will pay for a sign on {town-things}: IGNORE THE BUS.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "tpa-thing-music-stand",
+      "office": "governor",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "project",
+      "frame": "Band seats by {town-things}. Then a roof. The pond hears last.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "escalation"
+    },
+    {
+      "id": "tpa-inv-hedges-warned",
+      "office": "president",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "fee",
+      "frame": "The League pays to fly {minor-inventions} at the hedge show. Hedges told.",
+      "subject": "kites",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "tpa-cer-guild-ribbon",
+      "office": "any",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "treat",
+      "frame": "Cut the Guild's ribbon at {small-ceremonies}. Mind your reflection.",
+      "subject": "ribbons",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "tpa-cer-poster",
+      "office": "any",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "swap",
+      "frame": "Our poster for {small-ceremonies}, in the Guild's window: DO COME.",
+      "subject": "signage",
+      "butt": "thing",
+      "shape": "slogan"
+    },
+    {
+      "id": "tpa-thing-shop-bells",
+      "office": "governor",
+      "club": "brass",
+      "other": "shops",
+      "archetype": "fee",
+      "frame": "Band practice by {town-things}, for a fee. Window-gazing: down 30 %.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "statistic"
+    },
+    {
       "id": "tpa-cer-next-window",
       "office": "any",
       "club": "veg",
@@ -316,15 +294,37 @@
       "shape": "escalation"
     },
     {
-      "id": "tpa-thing-protected-edge",
-      "office": "president",
-      "club": "hedges",
-      "other": "kites",
-      "archetype": "swap",
-      "frame": "Give the Committee the kites' lawn by {town-things}. Its last word: 'edged'.",
-      "subject": "hedges",
+      "id": "tpa-inv-join-in",
+      "office": "governor",
+      "club": "brass",
+      "other": "anglers",
+      "archetype": "project",
+      "frame": "Fit {minor-inventions} to the bandstand. Anglers fear it joins in.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "tpa-cer-lid",
+      "office": "governor",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "project",
+      "frame": "Keep a lid on the band, say the Anglers. Off for {small-ceremonies} only.",
+      "subject": "bandstands",
       "butt": "thing",
       "shape": "literalism"
+    },
+    {
+      "id": "tpa-thing-quiet-zone",
+      "office": "governor",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "swap",
+      "frame": "Make {town-things} a quiet zone. The band's drum must apply.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied"
     },
     {
       "id": "tpa-cer-encores",
@@ -360,18 +360,6 @@
       "shape": "statistic"
     },
     {
-      "id": "tpa-thing-who-owns",
-      "office": "any",
-      "club": "bus",
-      "other": "shops",
-      "archetype": "committee",
-      "frame": "Who owns {town-things}? An inquiry sits by it in case it leaves.",
-      "subject": "committees",
-      "butt": "committee",
-      "shape": "literalism",
-      "note": "biggerStudy: The ownership inquiry asks to sit another year. It has grown fond of the view."
-    },
-    {
       "id": "tpa-cer-band-late",
       "office": "governor",
       "club": "bus",
@@ -383,6 +371,39 @@
       "shape": "slogan"
     },
     {
+      "id": "tpa-wx-hedge-show",
+      "office": "president",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "swap",
+      "frame": "Hedge show on the kite field during {mild-weather}. Kites come folded.",
+      "subject": "picnic-weather",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "tpa-cer-marquee",
+      "office": "any",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "project",
+      "frame": "A Till's Teas marquee for {small-ceremonies}, on the growers' beds.",
+      "subject": "ceremonies",
+      "butt": "thing",
+      "shape": "callback"
+    },
+    {
+      "id": "tpa-thing-protected-edge",
+      "office": "president",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "swap",
+      "frame": "Give the Committee the kites' lawn by {town-things}. Last word: 'edged'.",
+      "subject": "hedges",
+      "butt": "thing",
+      "shape": "literalism"
+    },
+    {
       "id": "tpa-thing-kite-ramp",
       "office": "president",
       "club": "kites",
@@ -392,17 +413,6 @@
       "subject": "kites",
       "butt": "thing",
       "shape": "escalation"
-    },
-    {
-      "id": "tpa-wx-book",
-      "office": "any",
-      "club": "shops",
-      "other": "veg",
-      "archetype": "fee",
-      "frame": "The Guild pays to book {mild-weather}. Growers pencilled it in.",
-      "subject": "picnic-weather",
-      "butt": "office",
-      "shape": "literalism"
     },
     {
       "id": "tpa-cer-by-kite",
@@ -427,17 +437,6 @@
       "shape": "slogan"
     },
     {
-      "id": "tpa-cer-painting",
-      "office": "president",
-      "visitor": "fenn",
-      "club": "hedges",
-      "archetype": "vanity",
-      "frame": "A painting of you at {small-ceremonies}. Then a copy per corridor.",
-      "subject": "portraits",
-      "butt": "self",
-      "shape": "escalation"
-    },
-    {
       "id": "tpa-wx-notebooks",
       "office": "any",
       "club": "bus",
@@ -449,15 +448,49 @@
       "shape": "statistic"
     },
     {
-      "id": "tpa-inv-hedges-warned",
-      "office": "president",
-      "club": "kites",
-      "other": "hedges",
+      "id": "tpa-wx-horn-licence",
+      "office": "governor",
+      "club": "bus",
+      "other": "anglers",
       "archetype": "fee",
-      "frame": "The League pays to fly {minor-inventions} at the hedge show. Hedges warned.",
-      "subject": "kites",
+      "frame": "Spotters buy a horn licence for {mild-weather}. Hoots by the pond.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "tpa-wx-arcade",
+      "office": "governor",
+      "club": "brass",
+      "other": "shops",
+      "archetype": "swap",
+      "frame": "Move the band to the arcade during {mild-weather}. Glass hums along.",
+      "subject": "bandstands",
       "butt": "thing",
       "shape": "undercut"
+    },
+    {
+      "id": "tpa-thing-who-owns",
+      "office": "any",
+      "club": "bus",
+      "other": "shops",
+      "archetype": "committee",
+      "frame": "Who owns {town-things}? An inquiry sits by it in case it leaves.",
+      "subject": "committees",
+      "butt": "committee",
+      "shape": "literalism",
+      "note": "biggerStudy: The ownership inquiry asks to sit another year. It has grown fond of the view."
+    },
+    {
+      "id": "tpa-cer-painting",
+      "office": "president",
+      "visitor": "fenn",
+      "club": "hedges",
+      "archetype": "vanity",
+      "frame": "A painting of you at {small-ceremonies}. Then a copy per corridor.",
+      "subject": "portraits",
+      "butt": "self",
+      "shape": "escalation"
     },
     {
       "id": "tpa-wx-weathered",
@@ -471,34 +504,12 @@
       "shape": "photo-op"
     },
     {
-      "id": "tpa-inv-join-in",
-      "office": "governor",
-      "club": "brass",
-      "other": "anglers",
-      "archetype": "project",
-      "frame": "Fit {minor-inventions} to the bandstand. Anglers fear it joins in.",
-      "subject": "bandstands",
-      "butt": "thing",
-      "shape": "undercut"
-    },
-    {
-      "id": "tpa-wx-hedge-show",
-      "office": "president",
-      "club": "hedges",
-      "other": "kites",
-      "archetype": "swap",
-      "frame": "The hedge show takes the kite field during {mild-weather}. Kites come folded.",
-      "subject": "picnic-weather",
-      "butt": "thing",
-      "shape": "undercut"
-    },
-    {
       "id": "tpa-inv-no-noses",
       "office": "any",
       "club": "shops",
       "other": "bus",
       "archetype": "project",
-      "frame": "Fund {minor-inventions} for the windows. Card: NOT FOR SPOTTING.",
+      "frame": "Fund {minor-inventions} for a shop window. Card: NOT FOR SPOTTING.",
       "subject": "inventions",
       "butt": "thing",
       "shape": "slogan"
@@ -515,16 +526,48 @@
       "shape": "statistic"
     },
     {
-      "id": "tpa-inv-grown",
+      "id": "tpa-inv-progress",
       "office": "any",
-      "club": "veg",
-      "other": "shops",
-      "archetype": "committee",
-      "frame": "Study whether {minor-inventions} can be grown in a shop window.",
+      "club": "shops",
+      "other": "bus",
+      "archetype": "swap",
+      "frame": "Swap the timetable for {minor-inventions}. Till's Teas calls it progress.",
       "subject": "inventions",
-      "butt": "committee",
-      "shape": "literalism",
-      "note": "biggerStudy: The growing study asks for a second window. The first has produced a teaspoon."
+      "butt": "thing",
+      "shape": "callback"
+    },
+    {
+      "id": "tpa-inv-license",
+      "office": "president",
+      "club": "kites",
+      "other": "hedges",
+      "archetype": "project",
+      "frame": "License {minor-inventions} to fly. Hedges want a flight plan.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "tpa-inv-sit-still",
+      "office": "governor",
+      "club": "shops",
+      "other": "anglers",
+      "archetype": "swap",
+      "frame": "Show {minor-inventions} by the pond. It is asked to sit still.",
+      "subject": "inventions",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "tpa-wx-book",
+      "office": "any",
+      "club": "shops",
+      "other": "veg",
+      "archetype": "fee",
+      "frame": "The Guild pays to book {mild-weather}. Growers pencilled it in.",
+      "subject": "picnic-weather",
+      "butt": "office",
+      "shape": "literalism"
     },
     {
       "id": "tpa-wx-fish-brace",
@@ -549,50 +592,6 @@
       "shape": "escalation"
     },
     {
-      "id": "tpa-wx-horn-licence",
-      "office": "governor",
-      "club": "bus",
-      "other": "anglers",
-      "archetype": "fee",
-      "frame": "Spotters buy a toot licence for {mild-weather}. Toots by the pond.",
-      "subject": "paperwork",
-      "butt": "office",
-      "shape": "form-misapplied"
-    },
-    {
-      "id": "tpa-inv-progress",
-      "office": "any",
-      "club": "shops",
-      "other": "bus",
-      "archetype": "swap",
-      "frame": "Swap the timetable for {minor-inventions}. Till's Teas calls it progress.",
-      "subject": "inventions",
-      "butt": "thing",
-      "shape": "callback"
-    },
-    {
-      "id": "tpa-wx-arcade",
-      "office": "governor",
-      "club": "brass",
-      "other": "shops",
-      "archetype": "swap",
-      "frame": "Move the band to the arcade during {mild-weather}. Glass hums along.",
-      "subject": "bandstands",
-      "butt": "thing",
-      "shape": "undercut"
-    },
-    {
-      "id": "tpa-inv-license",
-      "office": "president",
-      "club": "kites",
-      "other": "hedges",
-      "archetype": "project",
-      "frame": "License {minor-inventions} to fly. The hedges want a flight plan.",
-      "subject": "paperwork",
-      "butt": "office",
-      "shape": "form-misapplied"
-    },
-    {
       "id": "tpa-wx-flatter",
       "office": "any",
       "visitor": "spinwell",
@@ -602,17 +601,6 @@
       "subject": "portraits",
       "butt": "self",
       "shape": "callback"
-    },
-    {
-      "id": "tpa-inv-sit-still",
-      "office": "governor",
-      "club": "shops",
-      "other": "anglers",
-      "archetype": "swap",
-      "frame": "Show {minor-inventions} by the pond. It is asked to sit still.",
-      "subject": "inventions",
-      "butt": "thing",
-      "shape": "undercut"
     },
     {
       "id": "tpa-wx-clear-hedge",
@@ -626,12 +614,57 @@
       "shape": "statistic"
     },
     {
+      "id": "tpa-wx-rain-barrel",
+      "office": "governor",
+      "club": "veg",
+      "other": "anglers",
+      "archetype": "project",
+      "frame": "A rain barrel for {mild-weather}, filled from the Anglers' pond.",
+      "subject": "gardens",
+      "butt": "thing",
+      "shape": "undercut"
+    },
+    {
+      "id": "tpa-inv-say-nothing",
+      "office": "governor",
+      "club": "anglers",
+      "other": "brass",
+      "archetype": "treat",
+      "frame": "Sit by the water with {minor-inventions}. Say nothing, on camera.",
+      "subject": "inventions",
+      "butt": "self",
+      "shape": "photo-op"
+    },
+    {
+      "id": "tpa-title-capitals",
+      "office": "president",
+      "club": "hedges",
+      "other": "kites",
+      "archetype": "project",
+      "frame": "Clip {dignified-titles} into a hedge. Kites apply to read it.",
+      "subject": "hedges",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "tpa-inv-grown",
+      "office": "any",
+      "club": "veg",
+      "other": "shops",
+      "archetype": "committee",
+      "frame": "Study whether {minor-inventions} can be grown in a shop window.",
+      "subject": "inventions",
+      "butt": "committee",
+      "shape": "literalism",
+      "note": "biggerStudy: The growing study asks for a second window. The first has produced a teaspoon."
+    },
+    {
       "id": "tpa-inv-two-tubas",
       "office": "governor",
       "club": "brass",
       "other": "shops",
       "archetype": "fee",
-      "frame": "The band hires a shop window to show {minor-inventions}. And the band.",
+      "frame": "The band hires a window to show {minor-inventions}. And the band.",
       "subject": "inventions",
       "butt": "thing",
       "shape": "escalation"
@@ -648,23 +681,12 @@
       "shape": "callback"
     },
     {
-      "id": "tpa-wx-rain-barrel",
-      "office": "governor",
-      "club": "veg",
-      "other": "anglers",
-      "archetype": "project",
-      "frame": "A rain barrel for {mild-weather}, filled from the Anglers' pond.",
-      "subject": "gardens",
-      "butt": "thing",
-      "shape": "undercut"
-    },
-    {
       "id": "tpa-inv-trial",
       "office": "president",
       "club": "hedges",
       "other": "kites",
       "archetype": "swap",
-      "frame": "Show {minor-inventions} on the kite field. Sign: KITES, LATER.",
+      "frame": "Shape a hedge like {minor-inventions} on the kite field. Sign: KITES, LATER.",
       "subject": "hedges",
       "butt": "thing",
       "shape": "slogan"
@@ -693,13 +715,24 @@
       "note": "biggerStudy: The kite study asks for a second hedge. The first is now mostly kite."
     },
     {
-      "id": "tpa-inv-say-nothing",
+      "id": "tpa-title-permit",
       "office": "governor",
       "club": "anglers",
       "other": "brass",
+      "archetype": "project",
+      "frame": "Make the Anglers' shusher {dignified-titles}. Shushes in triplicate.",
+      "subject": "paperwork",
+      "butt": "office",
+      "shape": "form-misapplied"
+    },
+    {
+      "id": "tpa-title-bow",
+      "office": "president",
+      "club": "hedges",
+      "other": "kites",
       "archetype": "treat",
-      "frame": "Sit by the water with {minor-inventions}. Say nothing, on camera.",
-      "subject": "inventions",
+      "frame": "Bow to the hedge named {dignified-titles}. It bows back.",
+      "subject": "hedges",
       "butt": "self",
       "shape": "photo-op"
     },
@@ -727,17 +760,6 @@
       "note": "biggerStudy: The band-practice study asks for a second band. The first one is too careful now."
     },
     {
-      "id": "tpa-title-capitals",
-      "office": "president",
-      "club": "hedges",
-      "other": "kites",
-      "archetype": "project",
-      "frame": "Clip {dignified-titles} into a hedge. Kites must apply to read it.",
-      "subject": "hedges",
-      "butt": "office",
-      "shape": "form-misapplied"
-    },
-    {
       "id": "tpa-title-teas",
       "office": "governor",
       "club": "shops",
@@ -758,28 +780,6 @@
       "subject": "vegetable-shows",
       "butt": "thing",
       "shape": "escalation"
-    },
-    {
-      "id": "tpa-title-permit",
-      "office": "governor",
-      "club": "anglers",
-      "other": "brass",
-      "archetype": "project",
-      "frame": "Make the Anglers' shusher {dignified-titles}. Shushes in triplicate.",
-      "subject": "paperwork",
-      "butt": "office",
-      "shape": "form-misapplied"
-    },
-    {
-      "id": "tpa-title-bow",
-      "office": "president",
-      "club": "hedges",
-      "other": "kites",
-      "archetype": "treat",
-      "frame": "Bow to the hedge named {dignified-titles}. It is clipped to bow back.",
-      "subject": "hedges",
-      "butt": "self",
-      "shape": "photo-op"
     },
     {
       "id": "tpa-title-silence",
@@ -820,11 +820,11 @@
       "club": "bus",
       "other": "anglers",
       "archetype": "committee",
-      "frame": "Is the last bus {dignified-titles}? An inquiry will listen by the pond.",
+      "frame": "Is the last bus {dignified-titles}? An inquiry listens by the pond.",
       "subject": "committees",
       "butt": "committee",
       "shape": "form-misapplied",
-      "note": "biggerStudy: The last-bus inquiry asks for a second year by the pond. The horn was inconclusive."
+      "note": "biggerStudy: The last-bus inquiry asks for a second year by the pond. The bus keeps leaving."
     }
   ]
 }

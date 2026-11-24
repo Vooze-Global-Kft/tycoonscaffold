@@ -77,11 +77,11 @@
     },
     {
       "id": "gov2-step-outside",
-      "visitor": "sprott",
+      "visitor": "kerb",
       "club": "bus",
       "other": "shops",
       "archetype": "project",
-      "text": "Print bus times on every shop awning. Shade, with footnotes.",
+      "text": "Bus times on every shop awning. Shade you can set your watch by.",
       "subject": "buses",
       "butt": "thing",
       "shape": "undercut"
@@ -272,15 +272,15 @@
       "visitor": "sash",
       "club": "veg",
       "archetype": "basket",
-      "text": "Another basket. The grapes are provincial now. Ribbons? No reason.",
+      "text": "A pair of gold ribbon scissors for you. Engraved: NO REASON.",
       "subject": "ribbons",
       "butt": "lobbyist",
       "shape": "callback",
       "favour": {
-        "text": "The provincial grapes wish to enter the show. In the pumpkin class.",
+        "text": "The gold scissors would like to judge the leeks. They have the eye for it.",
         "clippings": {
-          "sign": "GOVERNOR'S GRAPES ENTER PUMPKIN CLASS; JUDGES SILENT",
-          "refuse": "GRAPES WITHDRAWN FROM SHOW, EATEN AT TEA"
+          "sign": "GOVERNOR'S GOLD SCISSORS JUDGE LEEKS; GROWERS SILENT",
+          "refuse": "SCISSORS SENT BACK, STILL ENGRAVED NO REASON"
         }
       }
     },

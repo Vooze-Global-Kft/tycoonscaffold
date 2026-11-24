@@ -9,10 +9,11 @@
       "club": "brass",
       "other": "anglers",
       "archetype": "project",
-      "text": "A riverside practice room, windows open, so nobody misses a note.",
+      "text": "A practice room by the river. Thin walls, as requested.",
       "subject": "bandstands",
       "butt": "visitor",
-      "shape": "undercut"
+      "shape": "undercut",
+      "note": "Other: the Anglers' water, within earshot through thin walls."
     },
     {
       "id": "gov3-pumpkin-billing",
@@ -71,14 +72,14 @@
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
-      "biggerStudy": "The study asks for a second glasshouse, as a control. And a second bus."
+      "biggerStudy": "The study now asks whether a bus seen twice through glass is a crop."
     },
     {
       "id": "gov3-portrait-hat",
       "visitor": "slake",
       "club": "anglers",
       "archetype": "basket",
-      "text": "A hat for your portrait. It looks cold. And the other portraits?",
+      "text": "A hat for your portrait. Then one for the frame. Frames feel the cold.",
       "subject": "hats",
       "butt": "lobbyist",
       "shape": "escalation",
@@ -108,7 +109,7 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "treat",
-      "text": "Give the Circle a minute of your time. They will hand it back, unused.",
+      "text": "Give the Circle a minute. They will hand it back unused.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "literalism",
@@ -119,13 +120,14 @@
       "visitor": "slide",
       "cosigner": "minute",
       "club": "brass",
-      "other": "anglers",
+      "other": "veg",
       "archetype": "committee",
-      "text": "A study of echoes off the river. Then of the echoes' echoes.",
+      "text": "An inquiry into glasshouse acoustics. Tomatoes to sit still.",
       "subject": "committees",
       "butt": "committee",
-      "shape": "escalation",
-      "biggerStudy": "The echo study asks for a second river. The first one keeps answering back."
+      "shape": "form-misapplied",
+      "biggerStudy": "The acoustics inquiry asks for a second glasshouse, to listen from.",
+      "note": "Other: the band rehearses in the growers' glasshouse for the inquiry."
     },
     {
       "id": "gov-one-pumpkin-glasshouse-setup",
@@ -133,29 +135,30 @@
       "club": "veg",
       "other": "shops",
       "archetype": "project",
-      "text": "A glasshouse for the prize pumpkin alone, in the Guild's best glass. NO TOMATOES.",
+      "text": "The prize pumpkin's own glasshouse, on the high street. Tomatoes talk.",
       "subject": "gardens",
       "butt": "thing",
-      "shape": "slogan",
+      "shape": "undercut",
       "setsUp": "gov-one-pumpkin-glasshouse",
-      "note": "Set-up of 'A Glasshouse for One'. Other: the Guild gives up its best window glass."
+      "note": "Set-up of 'A Glasshouse for One' (premise: a Glasshouse Office glasshouse for a single prize pumpkin). Other: the glasshouse stands in front of the Guild's windows."
     },
     {
       "id": "gov3-desk-fountain",
       "visitor": "goss",
       "club": "veg",
       "archetype": "basket",
-      "text": "After Lionel's basket, a desk fountain for you. The squares look so dry.",
+      "text": "A fern, for your desk. Then a pond for the fern. Then a fountain.",
       "subject": "fountains",
       "butt": "lobbyist",
-      "shape": "callback",
+      "shape": "escalation",
       "favour": {
-        "text": "About the desk fountain: it would like a show rosette. It has watered several winners.",
+        "text": "About the fern: it would like to be entered in the county show. It is nearly a vegetable.",
         "clippings": {
-          "sign": "GOVERNOR PINS ROSETTE ON OWN DESK FOUNTAIN",
-          "refuse": "FOUNTAIN SENT HOME WITHOUT ROSETTE, DRIPPING"
+          "sign": "GOVERNOR ENTERS FERN IN VEGETABLE SHOW; JUDGES POLITE",
+          "refuse": "FERN STAYS ON DESK, STILL NEAR NO FOUNTAIN"
         }
-      }
+      },
+      "note": "The gift climbs, badly, toward the trade. The favour puts the growers out (a fern on their show bench)."
     },
     {
       "id": "gov3-jam-evidence",
@@ -164,7 +167,7 @@
       "club": "veg",
       "other": "shops",
       "archetype": "committee",
-      "text": "Is jam in a shop window a show entry? A working group is tasting the evidence.",
+      "text": "Is jam in a window a show entry? A working group is tasting it.",
       "subject": "committees",
       "butt": "committee",
       "shape": "literalism",
@@ -199,10 +202,11 @@
       "club": "anglers",
       "other": "veg",
       "archetype": "swap",
-      "text": "The county show's quiet tent, for us. Judges may whisper outside.",
+      "text": "The weighing tent, for the Quiet Competition. Nodding by arrangement.",
       "subject": "vegetable-shows",
       "butt": "office",
-      "shape": "form-misapplied"
+      "shape": "form-misapplied",
+      "note": "Other: the growers lose their weighing tent for the competition."
     },
     {
       "id": "gov-umbrella",
@@ -227,7 +231,7 @@
       "club": "shops",
       "other": "bus",
       "archetype": "treat",
-      "text": "Open Till's new tea room at the bus station. One sip, for the camera.",
+      "text": "Open Till's tea room at the bus station. One sip, for the camera.",
       "subject": "ceremonies",
       "butt": "self",
       "shape": "photo-op",
@@ -240,7 +244,7 @@
       "club": "bus",
       "other": "shops",
       "archetype": "fee",
-      "text": "We will hire the high street to show our notebooks. All 212 volumes.",
+      "text": "We will hire the high street for our notebooks. They reach two lampposts.",
       "subject": "buses",
       "butt": "visitor",
       "shape": "statistic",
@@ -266,10 +270,11 @@
       "club": "brass",
       "other": "veg",
       "archetype": "fee",
-      "text": "We will pay to play each show winner up. Seven bars per onion.",
+      "text": "A fanfare per show winner, at our cost. Eight bars an onion, four a radish.",
       "subject": "vegetable-shows",
       "butt": "thing",
-      "shape": "statistic"
+      "shape": "statistic",
+      "note": "Other: the growers' judging, interrupted by fanfares."
     },
     {
       "id": "gov3-lunch-eleven",
@@ -314,10 +319,11 @@
       "club": "brass",
       "other": "bus",
       "archetype": "swap",
-      "text": "The bus depot for Sunday practice. The buses are good at waiting.",
+      "text": "The spotters' bench for the tuba. Sign: RESERVED, TUBA. SPOTTERS, STAND.",
       "subject": "buses",
       "butt": "thing",
-      "shape": "undercut"
+      "shape": "slogan",
+      "note": "Other: the spotters lose their bench."
     },
     {
       "id": "gov3-nose-prints",
@@ -350,11 +356,12 @@
       "club": "anglers",
       "other": "brass",
       "archetype": "committee",
-      "text": "A working group on silence. Its minutes will be blank, on purpose.",
+      "text": "How far does a cornet carry over water? Ewan sits further off each week.",
       "subject": "committees",
       "butt": "committee",
-      "shape": "form-misapplied",
-      "biggerStudy": "The silence group asks for a bigger room, to be quiet in more thoroughly."
+      "shape": "escalation",
+      "biggerStudy": "The cornet survey has reached the far bank. It asks for a wider river.",
+      "note": "Other: the band minds being measured as a nuisance."
     },
     {
       "id": "gov3-glasshouse-ladder",
@@ -362,11 +369,11 @@
       "club": "bus",
       "other": "veg",
       "archetype": "project",
-      "text": "A ladder onto the glasshouse, to log buses. Then a chair. Then a roof.",
+      "text": "A spotting step by the glasshouse. Buses look 20 % greener through it.",
       "subject": "gardens",
       "butt": "thing",
-      "shape": "escalation",
-      "note": "Other: the growers' glasshouse roof, walked on."
+      "shape": "statistic",
+      "note": "Other: spotters peering over the growers' glasshouse."
     },
     {
       "id": "gov3-judges-tea",
@@ -398,11 +405,11 @@
       "club": "brass",
       "other": "veg",
       "archetype": "project",
-      "text": "A shed by the allotments for the cornets. Then one for the trombones, well away.",
-      "subject": "gardens",
-      "butt": "visitor",
-      "shape": "escalation",
-      "note": "Other: two band sheds on the growers' allotments."
+      "text": "Glaze the bandstand with the growers' spare panes. Rain applauds.",
+      "subject": "bandstands",
+      "butt": "thing",
+      "shape": "undercut",
+      "note": "Other: the growers give up their spare glasshouse panes."
     },
     {
       "id": "gov3-cymbals",
@@ -434,12 +441,12 @@
       "club": "veg",
       "other": "anglers",
       "archetype": "swap",
-      "text": "The towpath for our show, for a day. It is level for 400 metres.",
+      "text": "Lend our show the towpath for a day. The pumpkins have never seen a boat.",
       "subject": "vegetable-shows",
       "butt": "thing",
-      "shape": "statistic",
+      "shape": "undercut",
       "setsUp": "gov-towpath-show",
-      "note": "Set-up of 'The Towpath Show'. The Anglers lose their towpath for the day."
+      "note": "Set-up of 'The Towpath Show'. Other: the Anglers lose their towpath for the day."
     },
     {
       "id": "gov3-stop-mirror",
@@ -447,12 +454,12 @@
       "club": "shops",
       "other": "bus",
       "archetype": "project",
-      "text": "A mirror at the stop, facing our windows. Buses show, backwards.",
+      "text": "Turn the bus stop to face our windows. Then the buses. Then the spotters.",
       "subject": "buses",
       "butt": "thing",
-      "shape": "undercut",
+      "shape": "escalation",
       "portable": true,
-      "note": "Other: the spotters now see their buses backwards."
+      "note": "Other: the spotters can no longer see their buses coming."
     },
     {
       "id": "gov3-rattle-permit",
@@ -460,7 +467,7 @@
       "club": "brass",
       "other": "shops",
       "archetype": "fee",
-      "text": "We will hire the market square on Saturdays. Rattling by permit.",
+      "text": "The band will hire the arcade on Saturdays. Rattled windows get receipts.",
       "subject": "paperwork",
       "butt": "office",
       "shape": "form-misapplied",

@@ -45,14 +45,6 @@ import { rngMix4 } from '../rng';
 import type { GameState } from '../types';
 import * as R from '../decree';
 import type { Choice, ClubIx, DecreeConfig, DecreeEvent, DecreeGame, DeskItem, OfficeIx, Paper, Purchase, Strip } from './types';
-import { endElectionNight as endNightStandIn } from './term';
-
-/**
- * STAND-IN (requests.md "[bot] to TERM"): the end of election night (term.ts `endElectionNight`, phase
- * count -> result) is not exported by the index yet, nor an action of decreeActions. The bot takes the
- * index's export when it exists, else term.ts's own function (the same body a screen will call).
- */
-const endElectionNight: (cfg: DecreeConfig, g: DecreeGame) => DecreeGame = ((R as unknown as Record<string, unknown>).endElectionNight as typeof endNightStandIn | undefined) ?? endNightStandIn;
 
 // ============================================================================================
 // the bots, the hand
@@ -565,6 +557,8 @@ export interface AwayRec {
   expectedArrivedAtMost: number;
   /** Moods, gossip, counters, the day and the poll unchanged by the absence. */
   unchanged: boolean;
+  /** 10.2: the closed form equals the absence stepped event to event (offline.ts `awayByEvents`): earnings and the papers brought. */
+  stepsEqual?: boolean;
   what: string;
 }
 
@@ -744,6 +738,13 @@ export function botNewGame(cfg: DecreeConfig, seed: number, wall = BOT_EPOCH): D
 }
 
 const json = (x: unknown) => JSON.stringify(x);
+/** The decree state as a save restores it: without the tick's transient cash anchor (types.ts: "null or missing: anchored at the next tick"). H3's trace hashes check that play after a reload is unchanged. */
+const savedState = (d: DecreeGame['decree']) => {
+  const { cashAnchor, ...rest } = d as DecreeGame['decree'] & { cashAnchor?: unknown };
+  void cashAnchor;
+  // An optional field saved as null comes back missing (the same meaning; requests.md "[bot] to TERM").
+  return Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== null && v !== undefined));
+};
 const sameJson = (a: unknown, b: unknown) => json(a) === json(b);
 
 /** The driver: one bot, one game, event to event. */
@@ -900,7 +901,7 @@ class Driver {
   reload() {
     const saved = JSON.parse(json(this.g)) as unknown;
     const back = decreeEngineMode.reconcile(this.cfg, JSON.parse(json(this.g)) as GameState, saved) as DecreeGame;
-    this.tr.reloads.push({ t: this.clock, same: sameJson(back.decree, this.g.decree) && back.cash === this.g.cash });
+    this.tr.reloads.push({ t: this.clock, same: sameJson(savedState(back.decree), savedState(this.g.decree)) && back.cash === this.g.cash });
     this.g = back;
   }
   commitPending() {
@@ -1087,7 +1088,7 @@ class Driver {
     if (this.bot === 'quitElectionNight') this.away(600, 'quit during election night');
     this.advanceTo(this.clock + HAND.electionNight);
     // The last envelope (or a tap that skips): the night ends.
-    if (this.d.phase === 'count') this.g = endElectionNight(cfg, this.g);
+    if (this.d.phase === 'count') this.g = R.endElectionNight(cfg, this.g);
     if (this.d.phase !== 'result') throw new Error(`decree bot: after election night the phase is "${this.d.phase}", not "result" (term.ts: how does the count end?)`);
     const c = this.d.count!;
     const order = c.order;
@@ -1175,8 +1176,14 @@ class Driver {
     return r;
   }
   /** One step of play: whatever the desk, the phase and the hand say next. Returns false when the run ends. */
+  probed = false;
   step1(tEnd: number): boolean {
     if (this.clock >= tEnd - 1e-9) return false;
+    // H4's probes of 10.2 once, on copies at minute 30 (the run goes on unchanged).
+    if (!this.probed && this.clock >= 1800 && this.d.phase === 'governing' && !this.d.pending) {
+      this.probed = true;
+      for (const r of awayProbes(this.cfg, this.g, this.wall)) this.tr.away.push({ ...r, t: this.clock });
+    }
     if (this.opts.stop?.(this.g)) return false;
     this.sample();
     const d = this.d;
@@ -1193,7 +1200,7 @@ class Driver {
     if (d.phase === 'count') {
       this.advanceTo(this.clock + HAND.electionNight);
       if (this.d.phase === 'count') {
-        this.g = endElectionNight(this.cfg, this.g);
+        this.g = R.endElectionNight(this.cfg, this.g);
         if (this.d.phase === 'count') throw new Error('decree bot: phase "count" does not end (endElectionNight does not move it to "result")');
       }
       return true;
@@ -1225,7 +1232,7 @@ class Driver {
       return true;
     }
     // An empty desk.
-    if (this.d.phase === 'campaign' && this.d.tray.length === 0 && this.d.campaign && this.d.campaign.papersLeft === 0 && this.d.campaign.rallyDone) {
+    if (R.canCount(this.cfg, this.g)) {
       if (!this.hab.decides) return false;
       this.countAndResult();
       return true;
@@ -1347,11 +1354,15 @@ export function awayAt(cfg: DecreeConfig, save: DecreeGame, now: number, ad: boo
   const tCap = Math.min(t, cap);
   const expected = R.roundDibs(cfg, R.decreeIncome(cfg, g) * tCap);
   const d0 = g.decree;
-  // 2.15's free places: the tray's, and the desk's when no paper is on it (a slip goes back).
-  const free = Math.max(0, cfg.decree.desk.trayCap - d0.tray.length) + (d0.desk?.type === 'paper' || d0.pending ? 0 : 1);
+  // 2.15's free places: the tray's, and the desk's when no paper is on it (grants.ts `freePlaces`).
+  const free = R.freePlaces(cfg, g);
   const expectedArrivedAtMost = d0.phase === 'governing' ? Math.min(free, Math.floor((tCap + d0.awayCarry) / cfg.decree.away.arrivalSeconds)) : 0;
   const shares0 = safeShares(cfg, g);
+  // 10.2's cross-check: the same absence stepped event to event pays the same and brings the same papers.
+  const byEvents = R.awayByEvents(cfg, g, now);
   const r = R.decreeOffline(cfg, g, now);
+  const ids = (x: DecreeGame) => json([...x.decree.tray.map((p) => p.id), x.decree.desk?.type === 'paper' ? x.decree.desk.paper.id : null]);
+  const stepsEqual = byEvents.earnings === r.earnings && ids(byEvents.game) === ids(r.game);
   g = r.game;
   const earnings = r.earnings;
   g = { ...g, cash: g.cash + earnings, runEarnings: g.runEarnings + earnings, lifetimeEarnings: g.lifetimeEarnings + earnings };
@@ -1364,7 +1375,7 @@ export function awayAt(cfg: DecreeConfig, save: DecreeGame, now: number, ad: boo
   const d1 = g.decree;
   const unchanged = sameJson(d0.moods, d1.moods) && d0.gossip === d1.gossip && d0.day === d1.day && d0.phase === d1.phase && sameJson(d0.strikes.map((s) => s?.papersLeft ?? null), d1.strikes.map((s) => s?.papersLeft ?? null)) && (d0.scandal?.papersLeft ?? null) === (d1.scandal?.papersLeft ?? null) && sameJson(d0.cooldowns, d1.cooldowns) && sameJson(shares0, safeShares(cfg, g));
   const arrived = Math.max(0, d1.tray.length - d0.tray.length + (d1.desk && !d0.desk ? 1 : 0));
-  return { game: g, rec: { t: save.stats.playSeconds, seconds: t, earnings, expected, adTopUp, arrived, expectedArrivedAtMost, unchanged, what }, events: [] };
+  return { game: g, rec: { t: save.stats.playSeconds, seconds: t, earnings, expected, adTopUp, arrived, expectedArrivedAtMost, unchanged, stepsEqual, what }, events: [] };
 }
 function safeShares(cfg: DecreeConfig, g: DecreeGame): number[] {
   return R.shares(cfg, g);
@@ -1513,8 +1524,9 @@ export function h3(tr: Pick<Trace, 'takeBacks' | 'reloads'> & { faults?: string[
 }
 
 /** H4: every absence paid the closed form, moved nothing else, never paid more papers than the rule; faults of the clock jumps. */
-export function h4(tr: Pick<Trace, 'away' | 'faults'>): { absences: number; wrongPay: number; moved: number; tooManyPapers: number; jumps: number } {
+export function h4(tr: Pick<Trace, 'away' | 'faults'>): { absences: number; wrongPay: number; moved: number; tooManyPapers: number; jumps: number; stepsDiffer: number } {
   return {
+    stepsDiffer: tr.away.filter((a) => a.stepsEqual === false).length,
     absences: tr.away.length,
     wrongPay: tr.away.filter((a) => Math.abs(a.earnings - a.expected) > 1e-6 * Math.max(1, a.expected)).length,
     moved: tr.away.filter((a) => !a.unchanged).length,
@@ -1854,7 +1866,7 @@ export function evaluate(cfg: DecreeConfig, tr: Trace): BotRow[] {
   const cut = tr.faults.find((f) => f.startsWith('H3: the take-back window'));
   rows.push(row('H3 take-back and reload restore byte for byte', 'hard', '0 wrong; every take-back window lasts its 2 s', `${c.takeBacksWrong} take-backs, ${c.reloadsWrong} reloads wrong (of ${tr.takeBacks.length}, ${tr.reloads.length}); ${c.windowsCut} windows cut short${cut ? ` (${cut.slice(4)})` : ''}`, c.takeBacksWrong + c.reloadsWrong + c.windowsCut === 0));
   const d = h4(tr);
-  rows.push(row('H4 offline: the closed form, nothing else moves, pays once', 'hard', '0 wrong', `${d.absences} absences: ${d.wrongPay} paid wrong, ${d.moved} moved a mood/gossip/counter/day/poll, ${d.tooManyPapers} too many papers, ${d.jumps} clock-jump faults`, d.wrongPay + d.moved + d.tooManyPapers + d.jumps === 0));
+  rows.push(row('H4 offline: the closed form, nothing else moves, pays once', 'hard', '0 wrong', `${d.absences} absences: ${d.wrongPay} paid wrong, ${d.moved} moved a mood/gossip/counter/day/poll, ${d.tooManyPapers} too many papers, ${d.jumps} clock-jump faults, ${d.stepsDiffer} differ from stepping`, d.wrongPay + d.moved + d.tooManyPapers + d.jumps + d.stepsDiffer === 0));
   rows.push(row('H4 earnings paid when computed', 'hard', 'paysOnCompute and catchUpSeconds 0', `paysOnCompute ${String(decreeEngineMode.paysOnCompute)}, catchUpSeconds ${String(decreeEngineMode.catchUpSeconds)}`, decreeEngineMode.paysOnCompute === true && decreeEngineMode.catchUpSeconds === 0));
   const e = h5(tr);
   rows.push(row('H5 dibs only through the named sources', 'hard', '0 unexplained, cash ≥ 0, refusing never costs, the rules book only their five sources', `${e.unexplained} unexplained, ${e.negative} below 0, ${e.refuseCost} refusals that cost${e.foreignBook.length ? `, rules booked ${e.foreignBook.join(', ')}` : ''}; by source ${Object.entries(e.bySource).map(([k, v]) => `${k} ${v.toPrecision(3)}`).join(', ')}`, e.unexplained + e.negative + e.refuseCost + e.foreignBook.length === 0));
