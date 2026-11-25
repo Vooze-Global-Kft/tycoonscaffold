@@ -29,7 +29,7 @@ import * as R from '../../engine/salvage';
 import { salvageActions } from '../../modes/salvage/actions';
 import { useGame } from '../../state/store';
 import { DevPanel } from './dev/DevPanel';
-import { LoadingCurtain } from './loading';
+import { LoadingCurtain, useCurtainShut } from './loading';
 import { yardSwitches } from './dev/switches';
 import { hudDemo } from './hud/dev';
 import { useFontScale } from './hud/fontScale';
@@ -112,6 +112,8 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
   const appActive = useAppActive();
   const active = !portrait && overlays === 0 && appActive;
   const fontScale = useFontScale();
+  // L11 (loading's request): the bars, plates and the one button mount only once the gate starts to part.
+  const shut = useCurtainShut();
   const L = useMemo(() => hudLayout(width, height, insets, fontScale), [width, height, insets.top, insets.left, insets.right, insets.bottom, fontScale]); // eslint-disable-line react-hooks/exhaustive-deps
   // THE event pump: one listener on the rules' events; sounds play while the yard is live (not upright, not in the background).
   useEventPump(cfg, !portrait && appActive);
@@ -192,14 +194,15 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
     <View style={styles.root}>
       <StatusBar hidden />
       <YardView yard={yard} art={art} anim={anim} />
-      <WorldLayer cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} active={active} />
+      {shut ? null : <WorldLayer cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} active={active} />}
       <View style={StyleSheet.absoluteFill} {...input} />
       {/* The store's hero picture (?view=hero-store) shows no stick, no hint and no ghost thumb. */}
       {HERO.store ? null : <StickKnob />}
       {HERO.store ? null : <HintLayer cfg={cfg} width={width} height={height} insets={insets} zone={zoneRef.current} used={used} active={active} />}
       {HERO.store ? null : <Autoplay cfg={cfg} zone={zoneRef.current} />}
-      <HudLayer cfg={cfg} L={L} camera={anim.camera} yard={yard} />
-      <OneButton cfg={cfg} L={L} hidden={overlays > 0} onStepOut={() => (anim.exit.value = 1)} />
+      {shut ? null : <HudLayer cfg={cfg} L={L} camera={anim.camera} yard={yard} />}
+      {/* The store's hero picture shows no one button either (world-b, L2). */}
+      {shut || HERO.store ? null : <OneButton cfg={cfg} L={L} hidden={overlays > 0} onStepOut={() => (anim.exit.value = 1)} />}
       {/* Coins fly over the bars to the cash counter (world-b's layer; touch-through, runs only while one flies). */}
       <CoinLayer />
       {yardSwitches.panel ? <DevPanel stats={anim.stats} top={height - insets.bottom - 26} left={insets.left + Math.round(width * 0.36)} atlas={atlasNote} /> : null}

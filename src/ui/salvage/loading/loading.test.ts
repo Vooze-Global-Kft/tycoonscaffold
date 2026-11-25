@@ -216,15 +216,42 @@ describe('drawing', () => {
     S = await import('@shopify/react-native-skia');
   }, 60_000);
   it('every key frame, the loop, the gate and reduced motion draw at both sizes for every title', async () => {
-    const D = await import('./draw');
+    // as the app does: the parts recorded once per size and title, composed per frame
+    const Ly = await import('./layers');
+    const Co = await import('./compose');
     for (const [w, h, ins] of SIZES)
       for (const title of TITLES) {
         const words = titleWords(title);
         const tl = loadingTimeline(words);
-        const surface = S.Skia.Surface.MakeOffscreen(w, h)!;
-        for (const t of [0, 0.3, 0.9, 1.5, 2.1, 2.8, 3.3, tl.end + 2.5]) expect(() => D.drawLoading(surface.getCanvas(), w, h, loadingPose(t, tl, 1e9), words, ins)).not.toThrow();
-        expect(() => D.drawLoading(surface.getCanvas(), w, h, loadingPose(tl.end + 1, tl, tl.end + 0.8), words, ins)).not.toThrow();
-        expect(() => D.drawLoading(surface.getCanvas(), w, h, loadingPose(2, tl, 1.9, true), words, ins, true)).not.toThrow();
+        const L = loadingLayout(w, h, ins, words);
+        const Y = Ly.recordLayers(L, words, tl);
+        const c = S.Skia.Surface.MakeOffscreen(w, h)!.getCanvas();
+        for (const t of [0, 0.3, 0.9, 1.5, 2.1, 2.8, 3.3, tl.end + 2.5]) {
+          const p = loadingPose(t, tl, 1e9);
+          expect(() => Co.composeFrame(c, Y, L, p, p.gate)).not.toThrow();
+        }
+        const g = loadingPose(tl.end + 1, tl, tl.end + 0.8);
+        expect(() => Co.composeFrame(c, Y, L, g, g.gate)).not.toThrow();
+        const r = loadingPose(2, tl, 1.9, true);
+        expect(() => Co.composeFrame(c, Y, L, r, r.gate, true)).not.toThrow();
       }
+  }, 240_000);
+  it('the first frame needs no image; the parts bake one by one into the same set (H5), the background in strips', async () => {
+    const Ly = await import('./layers');
+    const words = titleWords('Scrap to Ingot');
+    const tl = loadingTimeline(words);
+    const L = loadingLayout(844, 390, { top: 0, left: 47, right: 47, bottom: 21 }, words);
+    const Y = Ly.recordLayers(L, words, tl, 0);
+    const parts = Ly.partsOf(Y);
+    expect(parts.every((p) => p.img === null)).toBe(true);
+    expect(Y.bgTiles.length).toBeGreaterThan(1);
+    expect(Y.bgTiles.reduce((a, p) => a + p.w, 0)).toBeCloseTo(L.w, 6);
+    const baked = new Map(parts.map((p) => [p.key, Ly.bakePart(p, 1)]));
+    const Z = Ly.withImages(Y, (p) => baked.get(p.key) ?? undefined);
+    expect(Ly.partsOf(Z).every((p) => p.img !== null)).toBe(true);
+    // a rotation that keeps the scale keeps the parts drawn about their own origin
+    const R = Ly.recordLayers(loadingLayout(844, 390, { top: 0, left: 47, right: 47, bottom: 21 }, words), words, tl, 0);
+    expect(R.plates.map((p) => p.key)).toEqual(Y.plates.map((p) => p.key));
+    expect(R.magnet.key).toBe(Y.magnet.key);
   }, 120_000);
 });

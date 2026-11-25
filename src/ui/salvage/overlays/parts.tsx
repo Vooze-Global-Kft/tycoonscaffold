@@ -206,7 +206,7 @@ export function Row({ row, padlock, tag, onPress }: { row: CardRow; padlock?: bo
       <View style={styles.rowText}>
         <Line t={row.name} size="name" bold lines={2} />
         {row.line ? padlock ? <PadlockLine t={row.line} /> : <Line t={row.line} size="line" colour={INK.soft} lines={2} /> : null}
-        {row.extra ? <Line t={row.extra} size="line" colour={INK.soft} /> : null}
+        {row.extra ? <Line t={row.extra} size="line" colour={INK.soft} lines={2} /> : null}
       </View>
       {row.button ? <BuyButton button={row.button} row={row.id} /> : tag ? <OwnedTag t={tag} /> : null}
     </View>

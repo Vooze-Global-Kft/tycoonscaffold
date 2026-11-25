@@ -283,10 +283,12 @@ describe('the bench', () => {
     const leave = { ...a, lastSavedAt: a.salvage.clock.highMs };
     let away = R.salvageOffline(cfg, leave, a.salvage.clock.highMs + 6 * 3600_000);
     let awayMs = Infinity;
+    // Node CPU time (process.cpuUsage), not wall time: the machine is shared (R3; the real-content gate is awaybench.test.ts).
     for (let k = 0; k < 4; k++) {
-      const t1 = performance.now();
+      const c1 = process.cpuUsage();
       away = R.salvageOffline(cfg, leave, a.salvage.clock.highMs + 6 * 3600_000);
-      awayMs = Math.min(awayMs, performance.now() - t1);
+      const d = process.cpuUsage(c1);
+      awayMs = Math.min(awayMs, (d.user + d.system) / 1000);
     }
     process.stderr.write(`bench: one tick ${perTick.toFixed(3)} ms; six hours away ${awayMs.toFixed(1)} ms (A = ${away.seconds} s)\n`);
     expect(perTick).toBeLessThan(1);
