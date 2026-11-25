@@ -21,7 +21,7 @@ export function Machine({ cfg, g, data, onClose }: { cfg: SalvageConfig; g: Salv
         ? data.rows.map((r) => <Row key={r.id} row={r} />)
         : list.map((m) => (
             <View key={m.machine}>
-              {list.length > 1 ? (
+              {list.length > 1 && m.owned ? (
                 <View style={{ paddingTop: 8 }}>
                   <Line t={{ key: ITEM_NAME[m.machine] }} size="name" bold />
                   {m.machine === 'hand_stripper' ? <Line t={{ key: 'card.cameWithYard' } as Txt} size="line" colour={INK.soft} /> : null}

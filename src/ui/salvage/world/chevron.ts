@@ -7,8 +7,15 @@
 import * as R from '../../../engine/salvage';
 import { hintTarget } from '../hints/rules';
 
-/** Metres above the target's ground point where the chevron's tip hovers. */
-export const CHEVRON_Z = 2.6;
+/** Metres above the target's top where the chevron's tip hovers. */
+export const CHEVRON_GAP = 0.7;
+
+/** The tip's height over a target, metres: above the thing's or the place's height (else 1 m). */
+export function chevronZ(cfg: R.SalvageConfig, f: R.FrameTable, id: string): number {
+  const thing = f.things.find((t) => t.uid === id);
+  const h = thing ? (cfg.salvage.objects[thing.obj]?.size?.h ?? 1) : ((cfg.salvage.map.places as Record<string, { h?: number }>)[id]?.h ?? 1);
+  return Math.max(0.6, h) + CHEVRON_GAP;
+}
 /** The edge arrow's distance from the free world's border, points. */
 export const EDGE_INSET = 22;
 
@@ -36,7 +43,7 @@ export function chevronTarget(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.Frame
 
 /**
  * Where to draw it this frame (a worklet), from the target's screen points this frame: `tx, ty` the tip's
- * place (CHEVRON_Z above the target), `gy` the target's ground point's y. Writes into `out`: [mode, x, y,
+ * place (chevronZ above the target), `gy` the target's ground point's y. Writes into `out`: [mode, x, y,
  * angle] with mode 0 none, 1 the chevron with its tip at (x, y), 2 the edge arrow centred at (x, y)
  * turned by `angle` (radians, 0 east). `box` is the free world [x0, y0, x1, y1] in window points.
  */

@@ -69,12 +69,14 @@ export function Tickets({ cfg, L, camera, yard }: { cfg: R.SalvageConfig; L: Hud
       timers.current[which] = setTimeout(() => {
         set(null);
         if (which === 'cab') hudAnchors.setCollection(null);
+        else hudAnchors.setWeighIn(null);
       }, ms);
     };
     const offIn = yardEvents.on('weighIn', (e) => {
       const t = e.ticket;
       if (e.by === 'boss') {
         bossIn.current = true;
+        hudAnchors.setWeighIn(project(scalePt.x, scalePt.y, SLOT_Z, camera.value, L.width, L.height, yard.ppm, yard.tilt, yard.lift));
         const onTicket = lessonOnTicket(L.s);
         const view = ticketView(t, c, onTicket ? undefined : null);
         if (!onTicket && t.kind === 'weighIn' && t.lessonText) useSalvageUi.getState().showGoalLesson(say(t.lessonText, c));
@@ -104,7 +106,7 @@ export function Tickets({ cfg, L, camera, yard }: { cfg: R.SalvageConfig; L: Hud
       clearTimeout(t.scale);
       clearTimeout(t.cab);
     };
-  }, [c, cabPt.x, cabPt.y, camera, yard, L.width, L.height, L.s]);
+  }, [c, cabPt.x, cabPt.y, scalePt.x, scalePt.y, camera, yard, L.width, L.height, L.s]);
 
   return (
     <>
@@ -114,7 +116,6 @@ export function Tickets({ cfg, L, camera, yard }: { cfg: R.SalvageConfig; L: Hud
   );
 }
 
-/** A ticket or chip pinned over its world point, rising in, clamped inside the free world. */
 /** A slot's size on screen and its ticket plan. */
 function sizeOf(slot: Slot, L: HudLayout, c: R.SalvageContent): { w: number; h: number; plan: TicketPlan | null } {
   const s = L.s;
@@ -125,6 +126,7 @@ function sizeOf(slot: Slot, L: HudLayout, c: R.SalvageContent): { w: number; h: 
 
 type Other = { at: { x: number; y: number }; z: number; w: number; h: number } | null;
 
+/** A ticket or chip pinned over its world point, rising in, clamped inside the free world (and off the other ticket). */
 function Anchored({ slot, at, z, L, camera, yard, c, other }: { slot: Slot; at: { x: number; y: number }; z: number; L: HudLayout; camera: Camera; yard: YardLayout; c: R.SalvageContent; other: Other }) {
   const s = L.s;
   const { w, h, plan } = sizeOf(slot, L, c);

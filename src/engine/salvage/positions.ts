@@ -58,7 +58,10 @@ function pileBase(c: SalvageContent, pile: PileKey, thingAt?: (uid: string) => T
     const z = c.zones[rest];
     return z ? { x: z.centre[0], y: z.centre[1] + z.r + 0.8 } : { x: 0, y: 0 };
   }
-  if (kind === 'circle') return circlePos(c, Number(rest) || 0);
+  if (kind === 'circle') {
+    const k = circlePos(c, Number(rest) || 0);
+    return { x: k.x, y: k.y };
+  }
   if (kind === 'tray') {
     const place = rest === 'hand_stripper' ? 'stripper' : rest;
     const p = pointOf(c, place);

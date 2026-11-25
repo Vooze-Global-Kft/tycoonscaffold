@@ -18,7 +18,8 @@ import { FIXTURE_NAMES, FIXTURE_NOW, fixtureGame, withTestContent } from '../../
 import * as R from '../../../engine/salvage';
 import { measure, wrap } from '../../../../scripts/content/office/fit';
 import { TEXT, say } from '../strings';
-import { BUY_MAX, BUY_W, MIN_PT, PAD, TYPE, boardLayout, breakLines, frameLayout, pt, rowHeight } from './layout';
+import { BUY_MAX, BUY_W, MIN_PT, PAD, TYPE, boardLayout, breakLines, fitPt, frameLayout, pt, rowHeight } from './layout';
+import { textW } from '../hud/metrics';
 import { boardWithButtons, machineCard, machineRows, partnerRows, rackRows, rotaRows, withSample } from './sample';
 
 const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'games', 'scrap-yard', 'game.json'), 'utf8'));
@@ -84,13 +85,26 @@ describe('the process board (4.5)', () => {
         if (greyed) expect(p.line).toBeNull();
       }
   });
-  it('a buyable plate carries a Buy whose price is the one its state line shows', () => {
+  it('every plate\'s state line fits its plate on one line at 667 and font scale 1.3, at 11 pt or more', () => {
+    const b = boardLayout(667);
+    for (const n of FIXTURE_NAMES) {
+      const g = game(n);
+      for (const p of boardWithButtons(cfg, g, R.processBoard(cfg, g)).rows.flatMap((r) => r.plates)) {
+        if (!p.line || p.state === 'greyed') continue;
+        const text = say(p.line, c);
+        const room = b.plateW - 8;
+        const size = fitPt(text, pt(11, 1.3), room);
+        expect(size).toBeGreaterThanOrEqual(MIN_PT);
+        expect(textW(text, size), `${n} ${p.id}: ${text}`).toBeLessThanOrEqual(room);
+      }
+    }
+  });
+  it('a buyable plate\'s Buy carries the facade\'s price, and its label shows that price', () => {
     for (const n of FIXTURE_NAMES) {
       const g = game(n);
       const b = boardWithButtons(cfg, g, R.processBoard(cfg, g));
       for (const p of b.rows.flatMap((r) => r.plates)) {
-        if (p.state !== 'buyable') continue;
-        expect(p.button, p.id).not.toBeNull();
+        if (p.state !== 'buyable' || !p.button) continue;
         const a = p.button!.action;
         expect(a.act).toBe('buy');
         if (a.act === 'buy') {

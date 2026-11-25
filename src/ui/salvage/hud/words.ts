@@ -12,7 +12,24 @@ import { say as sayRaw, TEXT } from '../strings';
  */
 export function say(t: R.Txt, c: Parameters<typeof sayRaw>[1]): string {
   if (!(t.key in TEXT)) return `[${t.key}]`;
-  return sayRaw(t, c);
+  return sayRaw(t.args ? { key: t.key, args: known(t.args) } : t, c);
+}
+
+/**
+ * STAND-IN until ../strings.ts formats the contract's newer argument kinds (tonnes_g, kg_g, rate_g_h,
+ * hours): those are formatted here with the facade's formatters and handed on as an argument that prints
+ * itself (a `name` not in the register prints as given). Every number still goes through a facade formatter.
+ */
+function known(args: R.TxtArgs): R.TxtArgs {
+  const out: R.TxtArgs = {};
+  for (const [k, a] of Object.entries(args)) {
+    if ('tonnes_g' in a) out[k] = { name: R.fmtTonnes(a.tonnes_g) };
+    else if ('kg_g' in a) out[k] = { name: R.fmtKg(a.kg_g) };
+    else if ('rate_g_h' in a) out[k] = { name: R.fmtRate(a.rate_g_h) };
+    else if ('hours' in a) out[k] = { name: R.fmtHours(a.hours) };
+    else out[k] = a;
+  }
+  return out;
 }
 
 /** The few numbers of the bar (primitives, compared shallowly). */

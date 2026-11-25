@@ -19,9 +19,10 @@ const c = SALVAGE_TEST;
 const base = { cash: 0, stats: { playSeconds: 0 } } as unknown as GameState;
 const game = (n: 'fresh' | 'm5' | 'm30' | 'back') => fixtureGame(n, base, FIXTURE_NOW);
 
+// 4.1's widths with the lead's ruling of 15:55 (carry chip 104 pt, 14 pt taken from the ladder chip).
 const PHONES = [
-  { w: 844, h: 390, i: { top: 0, left: 47, right: 47, bottom: 21 }, rows: { bar: 36, goal: 28, free: 237, bottom: 89 }, slots: { cash: 136, ladder: 408, carry: 90, clip: 44, gap: 24 }, safeW: 750 },
-  { w: 667, h: 375, i: { top: 0, left: 0, right: 0, bottom: 0 }, rows: { bar: 34, goal: 26, free: 239, bottom: 76 }, slots: { cash: 116, ladder: 340, carry: 90, clip: 44, gap: 15 }, safeW: 635 },
+  { w: 844, h: 390, i: { top: 0, left: 47, right: 47, bottom: 21 }, rows: { bar: 36, goal: 28, free: 237, bottom: 89 }, slots: { cash: 136, ladder: 394, carry: 104, clip: 44, gap: 24 }, safeW: 750 },
+  { w: 667, h: 375, i: { top: 0, left: 0, right: 0, bottom: 0 }, rows: { bar: 34, goal: 26, free: 239, bottom: 76 }, slots: { cash: 116, ladder: 326, carry: 104, clip: 44, gap: 15 }, safeW: 635 },
 ];
 
 describe('4.1: the rows and the top bar add up', () => {
@@ -71,10 +72,10 @@ describe('bar text fits at font scale 1.3, never under 11 pt', () => {
       });
     }
   }
-  it('"Trial load 400 kg" fits the 90 pt carry chip on two lines at 1.3', () => {
+  it('the skip\'s load fits the 104 pt carry chip (beside its pictogram) at 1.3', () => {
     const t = carryText({ ...barValues(cfg, game('m30')), driving: true, trial: true, net_g: 400_000 }, c);
     expect(t).toContain('400');
-    const f = fitText(t, 90 - 12, 34 - 4 - 3, 12, 1.3, true);
+    const f = fitText(t, 104 - 12 - 24, 34 - 4 - 3, 12, 1.3, true);
     expect(f.cut).toBe(false);
   });
   it('the long form is chosen at scale 1 on the wide phone when it fits', () => {

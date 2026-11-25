@@ -17,6 +17,7 @@ import { SUN_MULTIPLY, SUN_WASH, drawConcrete, drawFarYard, drawOilStain, drawPa
 import { drawBlock, drawFloodlight } from './site.draw';
 import { flatbedLayers } from './manifest/people';
 import { MANIFEST } from './manifest';
+import { sevenSeg } from './letters';
 import { STILLAGE_LAYER_DY } from './manifest/plant';
 import { cashChip, carryChip, clipboardButton, drawTicket, goalCard, ladderChip, padlockChip, priceTag, stick, ticketFromSlot, ticketHeight, ticketWidth, type TextFn, type Ticket } from './ui.draw';
 
@@ -421,10 +422,15 @@ export function drawHeroWorld(c: SkCanvas, L: HeroLayout, T: TextFn): [number, n
   for (const it of items) it.draw();
   c.restore();
   void T;
-  // the platform indicator's printer slot in screen points
+  // the platform indicator's printer slot in screen points; its LED window shows the same kilograms as the ticket
   const e = MANIFEST.find((m) => m.id === 'plant.scale.platform');
   const s = e?.slots?.printer ?? { x: 0, y: 0, w: 0, h: 0 };
   const [ax, ay] = proj(v, P.scale[0], P.scale[1], 0);
+  const d = e?.slots?.digits;
+  if (d && L.moment === 'weigh') {
+    c.drawRect({ x: ax - camX + d.x + 1, y: ay - camY + d.y + 1, width: d.w - 2, height: d.h - 2 }, fill(YARD.ledCase));
+    sevenSeg(c, HERO_WORDS.display, ax - camX + d.x + d.w - 3, ay - camY + d.y + 2, d.h - 4, YARD.led, YARD.ledOff);
+  }
   return [ax - camX + s.x + s.w / 2, ay - camY + s.y + s.h / 2];
 }
 
@@ -442,9 +448,9 @@ function ticketOutOfSlot(c: SkCanvas, L: HeroLayout, sx: number, sy: number): vo
   // the paper from the slot: a tongue that widens and bends down-west into the ticket's top edge
   const strip = builder()
     .moveTo(sx - 8, sy)
-    .quadTo(sx - 30, sy - 14, tx + tw - 44, ty + 3)
+    .quadTo(sx - 26, sy + 10, tx + tw - 44, ty + 3)
     .lineTo(tx + tw - 6, ty + 3)
-    .quadTo(sx - 12, sy - 4, sx + 8, sy)
+    .quadTo(sx - 8, sy + 14, sx + 8, sy)
     .close()
     .build();
   c.drawPath(strip, fill(YARD.paperShade));

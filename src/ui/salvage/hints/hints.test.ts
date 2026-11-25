@@ -49,7 +49,7 @@ const DONE = [
 ];
 const goalKeys = new Set<string>(TEXT_KEYS.goal as readonly string[]);
 const points = new Set(Object.keys(SALVAGE_TEST.map.points));
-const shopKeys = new Set(SALVAGE_TEST.shop.map((s) => s.key));
+const shopKeys = new Set([...SALVAGE_TEST.shop, ...(((SALVAGE_TEST as unknown as { dayOneList?: { key: string }[] }).dayOneList) ?? [])].map((s) => s.key));
 
 describe('goals.json (5.3, 1.3, 1.4): data the rules read, no words', () => {
   const all = [...json.goals, ...json.dayOne];
@@ -222,7 +222,7 @@ describe('a purchase goal the rules hold back waits visibly (2.10)', () => {
 
 describe('lessons in the first minutes only on value jumps (4.4 item 5)', () => {
   const lessons = SALVAGE_TEST.lessons as Record<string, string>;
-  const grades = Object.keys(lessons).sort((a, b) => SALVAGE_TEST.grades[a].pbar - SALVAGE_TEST.grades[b].pbar);
+  const grades = Object.keys(lessons).filter((k) => (SALVAGE_TEST.grades[k]?.pbar ?? 0) > 0).sort((a, b) => SALVAGE_TEST.grades[a].pbar - SALVAGE_TEST.grades[b].pbar);
   const cheap = grades[0];
   const dear = grades[grades.length - 1];
   const w = (no: number, at: number, grade: string, lesson: string | null = null): R.Ticket =>

@@ -148,7 +148,7 @@ export const PLACE_ART: Readonly<Record<string, { id?: string; flat?: boolean; c
 };
 
 /** The yard's static sprites (see the header): built once per config and baked art. */
-export function staticItems(c: SalvageContent, res: Resolver): number[] {
+export function staticItems(c: SalvageContent, res: Resolver, extraProps: readonly SalvageContent['props'][number][] = []): number[] {
   const out: number[] = [];
   const W = c.yard.width;
   const D = c.yard.depth;
@@ -169,7 +169,7 @@ export function staticItems(c: SalvageContent, res: Resolver): number[] {
     sprite(out, res, 'plant.gate.leaf.open', W - 0.3, gateHi + 1.6);
   }
   // The ground work's props: the container wall (tinted per container), rubble, crates.
-  c.props.forEach((p, i) => {
+  [...c.props, ...extraProps].forEach((p, i) => {
     if (p.kind === 'wall') sprite(out, res, p.d >= p.w ? 'plant.container.ns' : 'plant.container.ew', p.x, p.y, { tint: hexInt(CONTAINER_TINTS[i % CONTAINER_TINTS.length]) });
     else if (p.kind === 'pile') sprite(out, res, ['plant.heap.li', 'plant.heap.hms', 'plant.heap.ci'][i % 3], p.x, p.y);
     else if (p.kind === 'crate') sprite(out, res, 'plant.block', p.x, p.y);

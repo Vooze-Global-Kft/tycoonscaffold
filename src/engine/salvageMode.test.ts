@@ -12,7 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GameConfigSchema, type GameConfig } from '../config/schema';
 import { SalvageSchema, lintSalvage } from '../config/schema.salvage';
 import * as E from './economy';
-import { FIXTURE_NAMES, FIXTURE_NOW, FIXTURE_STATES, SALVAGE_TEST, fixtureGame, withTestContent } from './fixtures/salvage';
+import { FIXTURE_EVENTS, FIXTURE_NAMES, FIXTURE_NOW, FIXTURE_STATES, SALVAGE_TEST, fixtureGame, withTestContent } from './fixtures/salvage';
 import { installEngineMode } from './mode';
 import * as R from './salvage';
 import { salvageEngineMode, withSalvageContent } from './salvageMode';
@@ -61,24 +61,25 @@ describe('the salvage engine mode', () => {
     expect(g.salvage.things).toHaveLength(n);
     expect(g.salvage.machines.hand_stripper.owned).toBe(true);
     expect(g.salvage.machines.crucible.owned).toBe(false);
-    expect(Object.values(g.salvage.partners).every((p) => p.skip.trial && p.skip.phase === 'full')).toBe(true);
+    expect(Object.values(g.salvage.partners).every((p) => p.skips.length === 1 && p.skips[0].trial && p.skips[0].phase === 'full')).toBe(true);
     expect(g.salvage.carrier).toBe('frame');
   });
 
   it('reconcile never throws and starts afresh on what it cannot read', () => {
     const base = fresh();
-    for (const bad of [null, 7, 'x', {}, { salvage: null }, { salvage: { v: 9 } }, { salvage: { v: 1, things: 'no' } }]) {
+    for (const bad of [null, 7, 'x', {}, { salvage: null }, { salvage: { v: 9 } }, { salvage: { v: 1, things: [] } }, { salvage: { v: 2, things: 'no' } }]) {
       const g = M.reconcile(cfg, base, bad) as R.SalvageGame;
-      expect(g.salvage.v).toBe(1);
+      expect(g.salvage.v).toBe(2);
       expect(g.salvage.things.length).toBeGreaterThan(0);
     }
   });
 
-  it('STUB: a tick advances the play clock and the market clock, and nothing else', () => {
+  it('STUB: a tick advances the yard clock, the play clock and the market clock, and nothing else', () => {
     const g = fresh();
     const events: R.SalvageEvent[] = [];
     const next = M.tick(cfg, g, 0.5, FIXTURE_NOW, events) as R.SalvageGame;
     expect(next.stats.playSeconds).toBeCloseTo(0.5, 9);
+    expect(next.salvage.t).toBeCloseTo(0.5, 9);
     expect(next.salvage.clock.highMs).toBe(g.salvage.clock.highMs + 500);
     expect(next.salvage.things).toBe(g.salvage.things);
     expect(next.cash).toBe(g.cash);
@@ -90,33 +91,69 @@ describe('the salvage engine mode', () => {
     expect(R.buy(cfg, g, 'sack', 50, 0, ev)).toBe(g);
     expect(R.hire(cfg, g, 'hand', 100, 0, ev)).toBe(g);
     expect(R.level(cfg, g, { kind: 'machine', machine: 'stripper' }, 10, 0, ev)).toBe(g);
-    expect(R.setHold(cfg, g, 'li', true, ev)).toBe(g);
-    expect(R.sell(cfg, g, 'li', { day: 0, price: 0.5, grams: 1000 }, FIXTURE_NOW, ev)).toBe(g);
+    expect(R.setHold(cfg, g, 'li', true, 0, ev)).toBe(g);
+    expect(R.sell(cfg, g, 'li', { day: 0, price: 0.5, grams: 1000 }, FIXTURE_NOW, 0, ev)).toBe(g);
     expect(R.setRecipe(cfg, g, 'alu', false, 0, ev)).toBe(g);
-    expect(R.setFromBays(cfg, g, false, ev)).toBe(g);
-    expect(R.signDeal(cfg, g, { step: 0, q_g: 1, days: 1, price: 1 }, FIXTURE_NOW, ev)).toBe(g);
-    expect(R.declineDeal(cfg, g, ev)).toBe(g);
-    expect(R.stepOut(cfg, g, 0, ev)).toBe(g);
+    expect(R.setFromBays(cfg, g, false, 0, ev)).toBe(g);
+    expect(R.signDeal(cfg, g, { step: 0, q_g: 1, days: 1, price: 1 }, FIXTURE_NOW, 0, ev)).toBe(g);
+    expect(R.declineDeal(cfg, g, 0, ev)).toBe(g);
+    expect(R.stepOut(cfg, g, null, 0, ev)).toBe(g);
     expect(ev).toHaveLength(10);
-    expect(ev.every((e) => e.type === 'refused' && e.key === 'notBuilt')).toBe(true);
+    expect(ev.every((e) => e.type === 'refused' && e.key === 'notBuilt' && e.retry === null)).toBe(true);
   });
 
-  it('presence stores the sample (the rules decide what it means)', () => {
-    const g = R.setPresence(cfg, fresh(), { x: 50, y: 24, driving: false, moving: false, standingFor: 1 }, 1);
-    expect(g.salvage.presence).toEqual({ x: 50, y: 24, driving: false, moving: false, standingFor: 1 });
-    expect(R.setPresence(cfg, g, { x: 50, y: 24, driving: false, moving: false, standingFor: 1 }, 1.1)).toBe(g);
+  it('presence stores the sample with its heading (the rules decide what it means)', () => {
+    const g = R.setPresence(cfg, fresh(), { x: 50, y: 24, driving: false, moving: false, standingFor: 1, heading: 2 }, 1);
+    expect(g.salvage.presence).toEqual({ x: 50, y: 24, driving: false, moving: false, standingFor: 1, heading: 2 });
+    expect(R.setPresence(cfg, g, { x: 50, y: 24, driving: false, moving: false, standingFor: 1, heading: 2 }, 1.1)).toBe(g);
   });
 
-  it('time away measures the absence (capped) and earns nothing yet', () => {
+  it('time away measures the absence (capped); MONEY ONCE: earnings 0 and no report, the cash is in the game', () => {
     const f = fresh();
     const g = { ...f, lastSavedAt: FIXTURE_NOW - 60_000, stats: { ...f.stats, clockHigh: 0 }, salvage: { ...f.salvage, clock: { ...f.salvage.clock, highMs: 0 } } };
-    expect(M.offline(cfg, g, FIXTURE_NOW)).toMatchObject({ seconds: 60, earnings: 0 });
+    const r = M.offline(cfg, g, FIXTURE_NOW);
+    expect(r).toMatchObject({ seconds: 60, earnings: 0 });
+    expect(r.report).toBeUndefined();
     expect(M.offline(cfg, { ...g, lastSavedAt: FIXTURE_NOW - 30 * 3600_000 }, FIXTURE_NOW).seconds).toBe(4 * 3600);
     expect(M.income(cfg, g, FIXTURE_NOW)).toBe(0);
+    // The back state's away money is already in cash (fixture), and offline() would add none of its own.
+    const b = fixtureGame('back', fresh(), FIXTURE_NOW);
+    expect(M.offline(cfg, b, FIXTURE_NOW + 3600_000).earnings).toBe(0);
+  });
+
+  it('the queue is derived: nextEvent is the earliest dated field of the state', () => {
+    const g = fixtureGame('m30', fresh(), FIXTURE_NOW);
+    const e = R.nextEvent(cfg, g)!;
+    expect(e).not.toBeNull();
+    expect(e.at).toBeGreaterThanOrEqual(g.salvage.t);
+    const dates = [g.salvage.act.endsAt, ...g.salvage.crew.filter((m) => m.t1 > m.t0).map((m) => m.t1), g.salvage.truck.trip?.endsAt, g.salvage.merchant.endsAt, g.salvage.dropoff.nextAt].filter((x): x is number => typeof x === 'number');
+    expect(e.at).toBeCloseTo(Math.min(...dates), 6);
+    expect('queue' in g.salvage).toBe(false);
+  });
+
+  it('incomeRate is the last five minutes of collections / 5 (§ a minute); activeIncome is that / 60', () => {
+    const g = fixtureGame('m30', fresh(), FIXTURE_NOW);
+    const sum = g.salvage.income.buckets.reduce((a, x) => a + x, 0);
+    expect(R.incomeRate(cfg, g)).toBeCloseTo(sum / 5, 6);
+    expect(M.activeIncome(cfg, g, FIXTURE_NOW)).toBeCloseTo(sum / 300, 6);
+  });
+
+  it('noteSeen and skipGoal are real', () => {
+    const g = fresh();
+    const a = R.noteSeen(cfg, g, { place: 'rack', card: 'rack' }, 0);
+    expect(a.salvage.seen).toEqual({ places: ['rack'], cards: ['rack'] });
+    expect(R.noteSeen(cfg, a, { place: 'rack' }, 0)).toBe(a);
+    const ev: R.SalvageEvent[] = [];
+    expect(R.skipGoal(cfg, g, 'takeWasher', 0, ev)).toBe(g);
+    expect(ev[0]).toMatchObject({ type: 'refused', key: 'nothing' });
+    const m15 = fixtureGame('m15', fresh(), FIXTURE_NOW);
+    expect(R.nextGoal(cfg, m15)?.id).toBe('signDeal');
+    const skipped = R.skipGoal(cfg, m15, 'signDeal', 0);
+    expect(R.nextGoal(cfg, skipped)?.id).toBe('pourFirst');
   });
 });
 
-describe('the four frozen states', () => {
+describe('the five frozen states', () => {
   it.each(FIXTURE_NAMES)('%s loads and every selector answers without throwing', (name) => {
     const g = fixtureGame(name, fresh(), FIXTURE_NOW);
     expect(g.stats.playSeconds).toBe(FIXTURE_STATES[name].playSeconds);
@@ -124,11 +161,12 @@ describe('the four frozen states', () => {
     expect(f.things.length).toBe(g.salvage.things.length);
     expect(f.machines.map((m) => m.machine)).toContain('crucible');
     for (const ref of [{ kind: 'place', place: 'rack' }, { kind: 'place', place: 'noticeboard' }, { kind: 'processBoard' }, { kind: 'table' }, { kind: 'away' }, { kind: 'deal' }] as R.CardRef[]) expect(R.cardOf(cfg, g, ref, FIXTURE_NOW).title.key).toBeTruthy();
-    expect(R.industryTable(cfg, g).rows).toHaveLength(SALVAGE_TEST.rivals.length + 1);
+    expect(R.industryTable(cfg, g).rows).toHaveLength(SALVAGE_TEST.rivals.list.length + 1);
+    expect(R.industryTable(cfg, g).rungs.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(R.processBoard(cfg, g).rows.map((r) => r.id)).toEqual(['cable', 'motors', 'melt', 'greyed']);
     expect(R.topBar(cfg, g).cash).toBe(FIXTURE_STATES[name].cash);
     R.priceBoard(cfg, g, FIXTURE_NOW);
-    for (const p of Object.keys(SALVAGE_TEST.partners)) R.skipLabel(cfg, g, p, g.stats.playSeconds);
+    for (const p of Object.keys(SALVAGE_TEST.partners)) R.skipLabel(cfg, g, p, g.salvage.t);
     R.nextGoal(cfg, g);
     R.advice(cfg, g, FIXTURE_NOW);
     expect(M.tick(cfg, g, 0.1, FIXTURE_NOW)).toBeTruthy();
@@ -137,8 +175,9 @@ describe('the four frozen states', () => {
   it('m5 has a yard hand, a lot in the bays and the flatbed away; m30 a heat ready, a held bay, a deal, the truck out; back an away card', () => {
     const m5 = FIXTURE_STATES.m5.salvage;
     expect(m5.crew.map((c) => c.role)).toEqual(['hand']);
-    expect(m5.bays.li.g).toBeGreaterThan(0);
+    expect(Object.values(m5.bays).some((b) => b.g > 0)).toBe(true);
     expect(m5.merchant.phase).toBe('away');
+    expect(R.topBar(cfg, fixtureGame('m5', fresh())).carry).toMatchObject({ load_g: 40000, cap_g: 40000 });
     const m30 = FIXTURE_STATES.m30.salvage;
     expect(m30.machines.crucible.phase).toBe('ready');
     expect(Object.values(m30.bays).some((b) => b.held)).toBe(true);
@@ -146,6 +185,31 @@ describe('the four frozen states', () => {
     expect(m30.truck.trip?.phase).toBe('out');
     expect(FIXTURE_STATES.back.salvage.away).not.toBeNull();
     expect(R.ackAway(cfg, fixtureGame('back', fresh())).salvage.away).toBeNull();
+  });
+
+  it('the states are reachable: unique uids, provenance, goals by id, no Night watch before time away, passed matches the table', () => {
+    for (const name of FIXTURE_NAMES) {
+      const s = FIXTURE_STATES[name].salvage;
+      const uids = [...s.things.map((t) => t.uid), ...s.pieces.map((p) => p.uid), ...s.load.map((p) => p.uid), ...s.crew.flatMap((m) => m.load.map((p) => p.uid)), ...Object.values(s.machines).flatMap((m) => [...m.hopper.map((p) => p.uid), ...(m.work ? [m.work.piece.uid] : [])])];
+      expect(new Set(uids).size, name).toBe(uids.length);
+      for (const p of [...s.pieces, ...s.load]) {
+        expect(p.uid.startsWith(`${p.from}.p`), `${name} ${p.uid}`).toBe(true);
+        const obj = SALVAGE_TEST.objects[s.things.find((t) => t.uid === p.from)?.obj ?? (p.from ?? '').split('.')[1] ?? ''];
+        if (obj) expect(obj.pieces[p.spec]?.[0], `${name} ${p.uid}`).toBe(p.grade);
+      }
+      for (const id of [...s.goals.done, ...s.goals.skipped]) expect(SALVAGE_TEST.goals.some((d) => d.id === id), `${name} goal ${id}`).toBe(true);
+      if (s.owned.includes('night')) expect(s.beenAway, name).toBe(true);
+      if (s.deal.phase === 'running') expect(s.ladder.rung, name).toBeGreaterThanOrEqual(2);
+      const g = fixtureGame(name, fresh());
+      const table = R.industryTable(cfg, g);
+      expect(table.rows.filter((r) => r.id !== 'you' && r.rank > table.rank).length, `${name} passed`).toBe(s.ladder.passed);
+      for (const m of s.crew) for (const c of m.claims) expect(s.things.find((t) => t.uid === c)?.by, `${name} claim ${c}`).toBe(m.id);
+    }
+  });
+
+  it('every fixture event is a well-formed event of its state', () => {
+    for (const name of FIXTURE_NAMES) for (const e of FIXTURE_EVENTS[name]) expect(typeof e.type).toBe('string');
+    expect(FIXTURE_EVENTS.m15.some((e) => e.type === 'rung')).toBe(true);
   });
 
   it('pieces lie where piecePos puts them, things where thingPos puts them (one function for all)', () => {

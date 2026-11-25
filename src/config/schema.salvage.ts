@@ -551,7 +551,7 @@ export const SalvageSchema = z.object({
   rivals: RivalsSchema,
 
   // part one's keys (yard-stage1.md 2.1 to 2.11)
-  reach: ReachSchema.default({ work: 1.4, pickup: 1.0, place: 1.2 }),
+  reach: ReachSchema.default({ work: 1.4, pickup: 1.0, place: 1.2, sight: 8 }),
   feel: FeelSchema.default({ workDelay: 0.3, staleS: 0.6 }),
   scale: ScaleSchema.default({ platformMaxKg: 300, bridgeStepKg: 20, platformStepKg: 0.1 }),
   /** Bay capacity by grade, kilograms (the master's two hours of flow); a grade without an entry: 2000. */
@@ -560,9 +560,9 @@ export const SalvageSchema = z.object({
   board: BoardSchema.default({ a: 0.03, wordBand: 0.015, epochMs: Date.UTC(2026, 0, 5) }),
   deal: DealSchema.default({ partner: 'foundry', grade: 'ci', gate: 'rung2', series: [], trust: { up: 10, down: 15, start: 50 } }),
   foreman: ForemanSchema.default({ boost: 0.25, windowS: 60, minutesPerDay: 45 }),
-  away: AwaySchema.default({ gapS: 2 }),
+  away: AwaySchema.default({ gapS: 10 }),
   goals: z.array(GoalSchema).default([]),
-  advice: AdviceSchema.default({ minutes: 3, promptGapS: 60 }),
+  advice: AdviceSchema.default({ minutes: 3, promptGapS: 60, reserveS: 120 }),
   /** Grades whose first weigh-in prints a lesson (a lesson.* text key). */
   lessons: z.record(id, z.string()).default({}),
   /** BUILD (strings' text.json): words that live in data (Help's lessons, partners' lines, the glossary). */

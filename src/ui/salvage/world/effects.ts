@@ -71,9 +71,9 @@ function pointOf(ctx: FxContext, id: string): { x: number; y: number } | null {
 }
 
 /** The work look of a tool on a thing: the sledge breaks cast iron (dust), the grinder cuts thin steel (sparks), the torch burns, spanners tick. */
-export function workLook(ctx: FxContext, tool: string, obj: string): number {
+export function workLook(ctx: FxContext, tool: string, obj: string, grade?: string | null): number {
   const o = ctx.content.objects[obj];
-  const first = o?.pieces[0]?.[0];
+  const first = grade ?? o?.pieces[0]?.[0];
   const tier = (ctx.content.tools as Record<string, { tier: number }>)[tool]?.tier ?? 1;
   if (tier >= 3) return WORK.torch;
   if (tier === 2) return first && /^ci/.test(first) ? WORK.dust : WORK.sparks;
@@ -88,7 +88,7 @@ export function effectsFor(e: R.SalvageEvent, ctx: FxContext): { start: FxSpawn[
       const t = thingAt(e.thing);
       if (!t) return { start: [], stop: [] };
       const h = ctx.content.objects[e.obj]?.size?.h ?? 1;
-      return { start: [{ ...blank(FX.work, `work.${e.thing}`), ax: t.x, ay: t.y, az: Math.min(1.2, h * 0.6), look: workLook(ctx, e.tool, e.obj) }], stop: [] };
+      return { start: [{ ...blank(FX.work, `work.${e.thing}`), ax: t.x, ay: t.y, az: Math.min(1.2, h * 0.6), look: workLook(ctx, e.tool, e.obj, e.grade) }], stop: [] };
     }
     case 'workStop':
       return { start: [], stop: [`work.${e.thing}`] };
@@ -126,7 +126,7 @@ export function effectsFor(e: R.SalvageEvent, ctx: FxContext): { start: FxSpawn[
       const fb = ctx.frame?.flatbed;
       const p = fb ?? pointOf(ctx, 'merchant');
       if (!p) return { start: [], stop: [] };
-      const n = e.big ? 5 : 3;
+      const n = e.first ? 5 : 3;
       return { start: Array.from({ length: n }, (_, i) => ({ ...blank(FX.coin, `coin.${e.ticket.no}.${i}`), ax: p.x + 1.2, ay: p.y, az: 1.6, screenEnd: 1 as const, delay: i * 0.12 })), stop: [] };
     }
     case 'pour': {

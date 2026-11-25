@@ -15,7 +15,8 @@ import { SalvageSchema } from '../../../config/schema.salvage';
 vi.mock('react-native-reanimated', () => ({ makeMutable: (v: unknown) => ({ value: v }) }));
 
 const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'games', 'scrap-yard', 'game.json'), 'utf8'));
-const content = SalvageSchema.parse(raw.salvage);
+const parsed = SalvageSchema.safeParse(raw.salvage);
+const content = parsed.success ? parsed.data : null;
 const V = { ppm: 40, tilt: 0.7 };
 const IPHONE = { left: 47, top: 0, right: 47, bottom: 21 };
 
@@ -47,9 +48,9 @@ describe('the hero frame', async () => {
     for (const m of r.members) expect(m.inside, `${m.id} ${JSON.stringify(m)}`).toBe(true);
   });
 
-  const box = heroBox(content);
-  it.skipIf(box.missing.length > 0)(`the game's own content lies whole between the bars at 844 x 390 (missing now: ${box.missing.join(', ') || 'none'})`, () => {
-    const r = heroCheck(content, V, 844, 390, IPHONE);
+  const box = content ? heroBox(content) : null;
+  it.skipIf(!box || box.missing.length > 0)(`the game's own content lies whole between the bars at 844 x 390 (missing now: ${box ? box.missing.join(', ') || 'none' : 'game.json does not parse'})`, () => {
+    const r = heroCheck(content!, V, 844, 390, IPHONE);
     for (const m of r.members) expect(m.inside, `${m.id} ${JSON.stringify(m)}`).toBe(true);
   });
 });

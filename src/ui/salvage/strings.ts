@@ -289,9 +289,6 @@ export const TEXT = {
   'goal.cutCar': 'Cut up the car',
   'goal.fetchDemolition': 'Fetch the demolition load',
   'goal.buyNight': 'Buy the Night watch',
-  'goal.levelHand': 'Level the yard hand',
-  'goal.levelStripper': 'Level the stripper',
-  'goal.levelCutter': 'Level the cutter',
   'goal.supplyRung3': 'Supply {t} ({r} metals)',
   'goal.hireHand2': 'Hire a second yard hand',
   'goal.hireCutter2': 'Hire a second cutter',
@@ -339,6 +336,60 @@ export const TEXT = {
   'refusal.priceUpdated': 'Price updated: {a} → {b}',
   'refusal.confirmHeel': 'Pour the heel as a short ingot?',
   'refusal.notBuilt': 'Not available',
+
+  // --- added by the contract's fix pass (25 November): keys moved from TEXT_PENDING and the attacks' new keys; strings owns them from here ---
+  rankChipPassed: '{rank} of {n} · passed {rival}',
+  'place.board': 'Price board',
+  'place.stillages': 'Stillages',
+  'chip.aside': 'Set aside {kg} · {x}',
+  'card.levelN': 'Level {n}',
+  'card.levelFromTo': 'Level {n} → {m}',
+  'card.onItsWay': 'On its way',
+  'card.on': 'On',
+  'card.off': 'Off',
+  'card.firstPour': 'Ready to pour · it waits for you',
+  'card.heating': 'Heating',
+  'card.cooling': 'Cooling',
+  'card.handOnly': 'Turns only while you stand at it',
+  'card.hopper': 'Hopper · {grade|short} × {n} · {kg}', // overlays-a: the next input and what waits
+  'card.tray': 'Tray · {grade|short} {kg}',
+  'card.crewRow': '{name} · level {n}', // name: { name: crew.<n> }
+  'card.dealNoCharge': 'A short day costs nothing. Trust falls a little.',
+  'card.dealDone': 'All deliveries made',
+  'card.skipsInRotation': 'Skips in rotation: {n}',
+  'card.skipTrial': '{partner} · trial load',
+  'card.skipReady': 'Full · ready to hook',
+  'card.skipOnTruck': 'On the truck',
+  'card.anotherSkip': 'Another skip · {x}', // overlays-a: the partner wall's row (5.2)
+  'card.partnerLine': '{line}', // line: { text } from text.json partners.<id>.line once it is in the content
+  'item.skip': 'Another skip',
+  'effect.frame': 'A hand load on your back',
+  'effect.spanners': 'Takes apart washers, bikes and cable',
+  'effect.handStripper': 'Strips cable while you stand at it',
+  'effect.brass': 'Melts brass solids into brass ingots',
+  'board.stock': 'In the bay {kg}',
+  'board.today': 'Today {p}',
+  'board.usualPrice': 'usual {p}',
+  'plate.needsCrucible': 'Needs the crucible',
+  'plate.atRung': 'At {t} supplied',
+  'table.next': 'Next: {rival} · {t} to go', // rival: { name: rival.<n>.chip }
+  'table.locked': 'Opens at {t} supplied · {r} metals',
+  'opens.rung2': 'The cutting torch, a radiation portal and a supply deal',
+  'opens.rung3': 'Yard capacity {c} t/h',
+  'clip.privacyLine': 'Your yard is saved on this phone. There is no account.',
+  'clip.restartYes': 'Start again',
+  'clip.restartNo': 'Keep my yard',
+  'help.lessons': 'What the tickets taught',
+  'help.glossary': 'Words of the trade',
+  'help.about': 'About this game',
+  'goal.buyAlu': 'Buy the aluminium recipe',
+  'goal.widen': 'Buy next: {item}', // item: { text: item.* | role.* | item.skip }
+  'goal.widenLevel': 'Level up: {item}', // item: { text: role.* | item.* }
+  'advice.buy': 'Next: {item} · {x}', // x: money
+  'advice.level': '{item} level {n} · {x}', // n: the next level
+  'refusal.earmark': '{x} is kept for the load on its way',
+  'refusal.notOwned': 'Buy it first',
+  'refusal.stopFirst': 'Stop the truck first',
 } as const satisfies Record<R.TextKey, string>;
 
 // The other direction: every key of TEXT is a TextKey (an extra key fails here).
@@ -353,62 +404,16 @@ void _noExtra;
  */
 export const TEXT_PENDING = {
   // goals (5.3; `goal.widen` and `goal.widenLevel` replace goal.levelHand, goal.levelStripper, goal.levelCutter)
-  'goal.widen': 'Buy next: {item}', // item: { text: item.* | role.* | item.skip }
-  'goal.widenLevel': 'Level up: {item}', // item: { text: role.* | item.* }
-  'goal.buyAlu': 'Buy the aluminium recipe',
   // the advice line (2.10; Advice.line): the purchase that widens the yard now
-  'advice.buy': 'Next: {item} · {x}', // x: money
-  'advice.level': '{item} level {n} · {x}', // n: the next level
   // tool rack, rota and process board rows (4.3; effect lines ≤ 38)
-  'item.skip': 'Another skip',
-  'effect.frame': 'A hand load on your back',
-  'effect.spanners': 'Takes apart washers, bikes and cable',
-  'effect.handStripper': 'Strips cable while you stand at it',
-  'effect.brass': 'Melts brass solids into brass ingots',
-  'card.levelN': 'Level {n}',
-  'card.crewRow': '{name} · level {n}', // name: { name: crew.<n> }
-  'card.on': 'On',
-  'card.off': 'Off',
   // machines (4.3)
-  'card.hopper': 'Hopper · {grade|short} × {n} · {kg}', // overlays-a: the next input and what waits
-  'card.tray': 'Tray · {grade|short} {kg}',
-  'card.heating': 'Heating',
-  'card.cooling': 'Cooling',
-  'card.handOnly': 'Turns only while you stand at it',
-  'card.firstPour': 'Ready to pour · it waits for you',
   // partners and skips (2.7, 4.3)
-  'card.levelFromTo': 'Level {n} → {m}',
-  'card.anotherSkip': 'Another skip · {x}', // overlays-a: the partner wall's row (5.2)
-  'plate.needsCrucible': 'Needs the crucible',
-  'plate.atRung': 'At {t} supplied',
-  'card.skipsInRotation': 'Skips in rotation: {n}',
-  'card.skipTrial': '{partner} · trial load',
-  'card.skipReady': 'Full · ready to hook',
-  'card.skipOnTruck': 'On the truck',
-  'card.partnerLine': '{line}', // line: { text } from text.json partners.<id>.line once it is in the content
   // the supply deal (2.9, 4.3)
-  'card.dealNoCharge': 'A short day costs nothing. Trust falls a little.',
-  'card.dealDone': 'All deliveries made',
   // price board and bays (4.4)
-  'board.stock': 'In the bay {kg}',
-  'board.today': 'Today {p}',
-  'board.usualPrice': 'usual {p}',
-  'chip.aside': 'Set aside {kg} · {x}',
   // the industry table and the rung sign (2.11)
-  'table.next': 'Next: {rival} · {t} to go', // rival: { name: rival.<n>.chip }
-  'table.locked': 'Opens at {t} supplied · {r} metals',
-  'opens.rung2': 'The cutting torch, a radiation portal and a supply deal',
-  'opens.rung3': 'Yard capacity {c} t/h',
   // refusals (5.4): the driver's earmark
-  'refusal.earmark': '{x} is kept for the load on its way',
   'refusal.needsItem': 'Opens with: {item}', // E25: a shop item gated by another item owned
   // Settings and Help (4.3)
-  'clip.privacyLine': 'Your yard is saved on this phone. There is no account.',
-  'clip.restartYes': 'Start again',
-  'clip.restartNo': 'Keep my yard',
-  'help.lessons': 'What the tickets taught',
-  'help.glossary': 'Words of the trade',
-  'help.about': 'About this game',
 } as const;
 
 // ================================================================================================ names
@@ -498,6 +503,11 @@ function argText(a: R.TxtArg, c: Content): string {
   if ('money' in a) return R.fmtMoney(a.money);
   if ('price' in a) return R.fmtPrice(a.price);
   if ('mass_g' in a) return R.fmtMass(a.mass_g, a.step, a.ferrous);
+  if ('tonnes_g' in a) return R.fmtTonnes(a.tonnes_g);
+  if ('kg_g' in a) return R.fmtKg(a.kg_g);
+  if ('rate_g_h' in a) return R.fmtRate(a.rate_g_h);
+  if ('day' in a) return R.fmtDay(a.day, (c as { board?: { epochMs: number } }).board?.epochMs ?? 0);
+  if ('hours' in a) return R.fmtHours(a.hours);
   if ('n' in a) return String(a.n);
   if ('rank' in a) return R.fmtRank(a.rank);
   if ('secs' in a) return R.fmtDuration(a.secs);

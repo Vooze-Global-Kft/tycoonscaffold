@@ -245,13 +245,13 @@ export function useYardLoop(opts: {
   const baked = useMemo(() => {
     if (!art || !content) return null;
     const res = makeResolver(art.sheets);
-    const statics = staticItems(content, res);
+    const statics = staticItems(content, res, yard.props.filter((p) => p.id.startsWith('stress-')));
     const T = actorTable(res, { hand: YARD.vestYardHand, cutter: YARD.vestCutter, driver: YARD.vestDriver });
     const images = art.sheets.map((s) => (s ? s.image : null));
     const rects = art.sheets.map((s) => (s ? s.rects : []));
     const dens = art.sheets.map((s) => (s ? s.density : 1));
     return { statics, T, images, rects, dens };
-  }, [art, content]);
+  }, [art, content, yard]);
 
   const pools = useMemo(
     () => ({
@@ -321,14 +321,13 @@ export function useYardLoop(opts: {
       st[18] += dt;
       const clock = st[18];
       const Rv = rules.value;
+      const out = S.out;
       if (Rv !== S.lastR) {
         S.lastR = Rv;
         st[20] = info.timestamp;
       }
       // The rules' play time now: the frame's time plus what has passed since it came (at most a tick).
       const tNow = Rv.t + Math.min(0.25, (info.timestamp - st[20]) / 1000);
-      const truckOwned = Rv.truck[0] === 1;
-      const truckBusy = Rv.truck[5] === 2 || Rv.truck[6] >= 0;
 
       // --- the stick: a direction and a share of full speed (none while an overlay is open) ---------------
       const s = stick.value;
@@ -343,25 +342,36 @@ export function useYardLoop(opts: {
         }
       }
       const steering = ux !== 0 || uy !== 0;
+      // An epoch change (a preset, the away pass, a reload) snaps the boss to where the rules have him.
+      const B = Rv.boss;
+      const truckOwned = Rv.truck[0] === 1;
+      const truckBusy = Rv.truck[5] === 2 || Rv.truck[6] >= 0;
+      let snap = false;
+      if (Rv.n > 0 && Rv.epoch !== st[33]) {
+        st[33] = Rv.epoch;
+        snap = true;
+        if (truckOwned && Rv.truck[5] === 1) {
+          // The rules have the boss in the truck (a preset, a reload): in the cab, where the truck stands.
+          st[5] = 1;
+          st[6] = 0;
+          st[2] = Rv.truck[1];
+          st[3] = Rv.truck[2];
+          st[4] = Math.PI / 2 - (Rv.truck[3] * Math.PI) / 4;
+          runOnJS(onDriving)(true);
+        } else if (st[5] !== 1 && B[9] === B[9] && B[10] === B[10]) {
+          // Where the rules have him, pushed out of anything solid he would stand inside (a body never does).
+          moveBody(out, B[9], B[10], 0, 0, motion.workerR, solids, YW, YD, 0, 0, 0, Rv.solids, lane);
+          st[0] = out[0];
+          st[1] = out[1];
+          st[8] = B[11] >= 0 && B[11] < 4 ? B[11] : 0;
+        }
+      }
       const driving = st[5] === 1;
       const speed = driving ? motion.drive : motion.walk;
       const vx = ux * speed;
       const vy = uy * speed;
       st[16] = vx;
       st[17] = vy;
-      const out = S.out;
-      // An epoch change (a preset, the away pass, a reload) snaps the boss to where the rules have him.
-      const B = Rv.boss;
-      let snap = false;
-      if (Rv.n > 0 && Rv.epoch !== st[33]) {
-        st[33] = Rv.epoch;
-        snap = true;
-        if (!driving && B[9] === B[9] && B[10] === B[10]) {
-          st[0] = B[9];
-          st[1] = B[10];
-          st[8] = B[11] >= 0 && B[11] < 4 ? B[11] : 0;
-        }
-      }
       // The truck stands where the rules last put it, unless the boss drives it (synced when the rules move it).
       if (!driving && !truckBusy && (snap || Rv.truck[1] !== st[31] || Rv.truck[2] !== st[32])) {
         st[31] = Rv.truck[1];

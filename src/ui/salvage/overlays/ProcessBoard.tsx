@@ -13,7 +13,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CardData, Plate } from '../../../engine/salvage';
-import { boardLayout, breakLines, pt, TYPE } from './layout';
+import { boardLayout, breakLines, fitPt, pt, TYPE } from './layout';
 import { openCard } from './cardStack';
 import { BuyButton, INK, Padlock, RefusalLine, useFrame, useRowNote, useSay, type Tab } from './parts';
 import { WideCard } from './WideCard';
@@ -26,6 +26,8 @@ function PlateView({ p, w, h, selected, onPress }: { p: Plate; w: number; h: num
   const lines = greyed ? breakLines(name, 11, 3) : breakLines(name, 12, 2);
   const nameSize = pt(greyed ? TYPE.greyName : TYPE.plateName, layout.fs);
   const lineSize = pt(TYPE.plateLine, layout.fs);
+  const state = say1(p.line);
+  const stateSize = fitPt(state, lineSize, w - 8);
   const lh = (s: number) => Math.ceil(s * 1.15);
   const face = greyed ? styles.greyed : p.state === 'lit' || p.state === 'owned' ? styles.lit : p.state === 'buyable' ? styles.buyable : styles.locked;
   const ink = greyed || p.state === 'locked' ? INK.soft : p.state === 'buyable' ? INK.ink : INK.paper;
@@ -38,19 +40,20 @@ function PlateView({ p, w, h, selected, onPress }: { p: Plate; w: number; h: num
             {l}
           </Text>
         ))}
-        {greyed ? (
-          <View style={{ marginTop: 2 }}>
-            <Padlock size={Math.round(lineSize)} colour={INK.soft} />
-          </View>
-        ) : p.line ? (
+        {!greyed && p.line ? (
           <View style={styles.stateLine}>
-            {p.state === 'locked' ? <Padlock size={Math.round(lineSize * 0.9)} colour={INK.soft} /> : null}
-            <Text allowFontScaling={false} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={Math.min(1, 11 / lineSize)} style={{ fontSize: lineSize, lineHeight: lh(lineSize), fontWeight: '700', color: ink, flexShrink: 1 }}>
-              {say1(p.line)}
+            <Text allowFontScaling={false} numberOfLines={1} style={{ fontSize: stateSize, lineHeight: lh(stateSize), fontWeight: '700', color: ink, flexShrink: 1 }}>
+              {state}
             </Text>
           </View>
         ) : null}
       </View>
+      {/* A greyed or locked plate's padlock sits in its corner, so its lines still fit at font scale 1.3. */}
+      {greyed || p.state === 'locked' ? (
+        <View style={greyed ? styles.cornerLock : styles.topLock}>
+          <Padlock size={greyed ? 11 : 9} colour={INK.soft} />
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -133,13 +136,15 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   cell: { flexDirection: 'row', alignItems: 'center' },
   plate: { borderRadius: 7, borderWidth: 1.3, borderColor: INK.ink, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  plateBody: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  plateBody: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   stateLine: { flexDirection: 'row', alignItems: 'center', marginTop: 1 },
   lit: { backgroundColor: INK.machine },
   buyable: { backgroundColor: INK.enamel, borderStyle: 'solid' },
   locked: { backgroundColor: INK.shade, borderColor: INK.rule },
   greyed: { backgroundColor: INK.greyed, borderColor: INK.rule },
   selected: { borderColor: INK.hivis, borderWidth: 3 },
+  cornerLock: { position: 'absolute', right: 9, bottom: 6 },
+  topLock: { position: 'absolute', right: 3, top: 3 },
   rivet: { position: 'absolute', width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(43,46,51,0.35)' },
   rTL: { left: 4, top: 4 },
   rTR: { right: 4, top: 4 },

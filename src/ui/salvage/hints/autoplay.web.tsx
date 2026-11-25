@@ -87,13 +87,23 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
   useEffect(() => {
     const q = query();
     const demoGoal = beat && BEATS[beat] ? BEATS[beat].goal : null;
+    let demoTimer: ReturnType<typeof setInterval> | null = null;
     if (demoGoal) {
-      const i = cfg.salvage.goals.findIndex((d) => d.id === demoGoal);
-      const g = useGame.getState().game as R.SalvageGame;
+      // The beat's goal, or (content without it yet) the nearest earlier beat's goal the content has.
+      const order = Object.keys(BEATS).sort();
+      const want = order.slice(0, order.indexOf(beat as string) + 1).reverse().map((k) => BEATS[k].goal);
+      const id = want.find((w) => cfg.salvage.goals.some((d) => d.id === w)) ?? null;
+      const i = cfg.salvage.goals.findIndex((d) => d.id === id);
       const done = cfg.salvage.goals.slice(0, Math.max(0, i)).map((d) => d.id);
-      if (i >= 0 && g?.salvage) useGame.setState({ game: { ...g, salvage: { ...g.salvage, goals: { ...g.salvage.goals, done, at: i } } } as never });
+      // Set it once the preset has loaded (and again if a preset load replaces it), for a few seconds.
+      const t0 = Date.now();
+      demoTimer = setInterval(() => {
+        const g = useGame.getState().game as R.SalvageGame;
+        if (i >= 0 && g?.salvage && R.nextGoal(cfg, g)?.id !== id) useGame.setState({ game: { ...g, salvage: { ...g.salvage, goals: { ...g.salvage.goals, done, at: i } } } as never });
+        if (Date.now() - t0 > 20_000 && demoTimer) clearInterval(demoTimer);
+      }, 500);
     }
-    if (q?.get('autoplay') !== 'opening') return;
+    if (q?.get('autoplay') !== 'opening') return () => (demoTimer ? clearInterval(demoTimer) : undefined);
     const route = ROUTES[q.get('route') ?? '1'] ?? ROUTES['1'];
     const teach = teachOf(cfg);
     let stop = false;

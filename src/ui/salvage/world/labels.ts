@@ -17,7 +17,16 @@
  */
 import type { SalvageContent } from '../../../config/schema.salvage';
 import * as R from '../../../engine/salvage';
-import { say } from '../strings';
+import { say as sayStrict } from '../strings';
+
+/** say(), but a key the words file does not have yet (the contract and the words move apart for a while) gives '' and the plate is left out. */
+function say(t: R.Txt, c: SalvageContent): string {
+  try {
+    return sayStrict(t, c);
+  } catch {
+    return '';
+  }
+}
 
 /** The plate's text size, points (S20: nothing under 11 pt). */
 export const LABEL_PT = 11;
@@ -89,7 +98,8 @@ export function labelItems(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTab
   for (const l of f.labels) {
     if (l.kind === 'place') {
       const id = l.id.replace(/^place\./, '');
-      out.push({ id: l.id, kind: 'place', x: l.x, y: l.y, z: placeZ(c, id), lines: [line(say(l.text, c), LIMITS.place, 'strong')], padlock: false, near: false, place: id });
+      // A place the rules mark as seen (`first` false) shows its name only when the boss is near.
+      out.push({ id: l.id, kind: 'place', x: l.x, y: l.y, z: placeZ(c, id), lines: [line(say(l.text, c), LIMITS.place, 'strong')], padlock: false, near: l.first === false, place: id });
     } else if (l.kind === 'padlock') {
       out.push({ id: l.id, kind: 'padlock', x: l.x, y: l.y, z: 1.6, lines: [line(say(l.text, c), LIMITS.padlock)], padlock: true, near: false, place: null });
     } else if (l.kind === 'sign') {
@@ -128,27 +138,32 @@ export function labelItems(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTab
     if (o?.certifiedEmpty) out.push({ id: `empty.${t.uid}`, kind: 'sign', x: t.x, y: t.y, z: h, lines: [line(say({ key: 'chip.certifiedEmpty' }, c), LIMITS.sign, 'ink')], padlock: false, near: true, place: null });
   }
 
-  // Bay chips: "{grade} {kg} · today §{x}", the day word, held.
-  for (const b of f.bays) {
-    if (b.g <= 0 && !b.held) continue;
-    const price = R.priceOf(cfg, b.grade, day);
-    const fe = c.grades[b.grade]?.family === 'fe';
-    const main = say({ key: 'chip.bay', args: { grade: { grade: b.grade }, kg: { mass_g: b.g, step: 'lot', ferrous: fe }, x: { price } } }, c);
-    // Two lines (narrower plates side by side): "{grade} {kg}" and the muted "today §{x}".
-    const lines = main.split(' · ').map((t, i) => line(t, LIMITS.bay, i === 0 ? 'ink' : 'muted'));
-    const word = R.dayWord(cfg, b.grade, day);
-    const tags = [word === 'low' ? say({ key: 'chip.lowDay' }, c) : word === 'high' ? say({ key: 'chip.highDay' }, c) : null, b.held ? say({ key: 'chip.held' }, c) : null].filter((s): s is string => s !== null);
-    for (const tag of tags) lines.push(line(tag, LIMITS.bay, b.held ? 'strong' : 'ink'));
-    out.push({ id: `bay.${b.grade}`, kind: 'bay', x: b.x, y: b.y, z: 1.4, lines, padlock: false, near: false, place: null });
+  // Bay chips: the rules' chip "{grade} {kg} · today §{x}" (the bay's value at today's price) in two lines,
+  // then its extra chips (held, the day word, the deal's and the crucible's reserves, set aside) as lines.
+  const bayAt = new Map(f.bays.map((b) => [b.grade, b]));
+  const bayItems = new Map<string, LabelItem>();
+  for (const l of f.labels) {
+    if (l.kind !== 'bay') continue;
+    const grade = l.id.split('.')[1];
+    const words = say(l.text, c);
+    let it = bayItems.get(grade);
+    if (!it) {
+      it = { id: `bay.${grade}`, kind: 'bay', x: bayAt.get(grade)?.x ?? l.x, y: bayAt.get(grade)?.y ?? l.y, z: 1.4, lines: [], padlock: false, near: false, place: null };
+      bayItems.set(grade, it);
+      out.push(it);
+    }
+    if (l.id === `bay.${grade}`) it.lines.unshift(...words.split(' · ').map((t, i) => line(t, LIMITS.bay, i === 0 ? 'ink' : 'muted')));
+    else it.lines.push(line(words, LIMITS.bay, l.id.endsWith('.held') ? 'strong' : 'ink'));
   }
 
   // Partner loads: the label plate.
   for (const s of f.skips) {
-    const lab = R.skipLabel(cfg, g, s.partner, g.stats.playSeconds);
+    const lab = s.plate ?? R.skipLabel(cfg, g, s.partner, g.stats.playSeconds);
     if (!lab) continue;
-    out.push({ ...skipPlate(c, lab), x: s.x, y: s.y });
+    out.push({ ...skipPlate(c, lab), id: `skip.${s.partner}.${s.slot ?? 0}`, x: s.x, y: s.y });
   }
-  return out;
+  // A line whose key has no words yet is dropped; a plate with no line is left out.
+  return out.map((it) => ({ ...it, lines: it.lines.filter((l) => l.text !== '') })).filter((it) => it.lines.length > 0);
 }
 
 /** A skip's plate (2.7): header, up to three thing lines and "+ n more", net and price, the refusal. */
@@ -189,8 +204,8 @@ export function plateMetrics(size: number): { padX: number; padY: number; lineH:
  * a character on average for mixed text, digits and capitals wider), used for stacking and the fit check.
  */
 export function textWidth(text: string, size: number): number {
-  let em = 0;
-  for (const ch of text) em += ch === ' ' ? 0.28 : /[A-Z0-9§]/.test(ch) ? 0.64 : /[il.,·'’|]/.test(ch) ? 0.3 : /[mwMW]/.test(ch) ? 0.84 : 0.54;
+  let em = 0.4;
+  for (const ch of text) em += ch === ' ' ? 0.28 : /[A-Z0-9§]/.test(ch) ? 0.68 : /[il.,·'’|]/.test(ch) ? 0.3 : /[mwMW]/.test(ch) ? 0.88 : 0.58;
   return Math.ceil(em * size);
 }
 

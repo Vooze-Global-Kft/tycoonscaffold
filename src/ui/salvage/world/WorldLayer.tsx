@@ -23,13 +23,15 @@ import Animated, { makeMutable, runOnJS, useAnimatedStyle, useFrameCallback, use
 import * as R from '../../../engine/salvage';
 import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
+import { salvageActions } from '../../../modes/salvage/actions';
+import { loadingClock } from '../loading/clock';
 import { drawChevron, drawCoin, drawDust, drawEdgeArrow, drawFlame, drawPickupShadow, drawPourLight, drawSparks, drawWorkRing, POUR_LIGHT_SCALE, RING_R } from '../art/marks.draw';
 import { YARD, coolingColour } from '../art/palette';
 import { VIEW, circle, fill, oval, poly, segment, stroke } from '../art/pen';
 import { gradeGlyph } from '../art/pieces.draw';
 import { drawIngot } from '../art/scrap.draw';
 import { say } from '../strings';
-import { CHEVRON_Z, chevronPlace, chevronTarget } from './chevron';
+import { chevronPlace, chevronTarget, chevronZ } from './chevron';
 import { cashAnchor } from '../hud/anchors';
 import { chevronGate } from '../hints/gate';
 import { FX, FX_EVENTS, FX_S, WORK, arcAt, ease, effectsFor, type FxContext, type FxSpawn } from './effects';
@@ -45,6 +47,8 @@ const FIRST_SIGHT_S = 6;
 const LABEL_MS = 500;
 /** Work ring steps recorded (the ring's fill is drawn from the nearest one). */
 const RING_STEPS = 24;
+/** The ring's largest radius, metres (a car's ring stays a ring on the ground at its middle, its stroke readable). */
+const RING_MAX_M = 1.1;
 /** Ingot cooling pictures per metal. */
 const COOL_STEPS = 8;
 const COOL_METALS = ['brass', 'aluminium'] as const;
@@ -74,8 +78,8 @@ export function WorldLayer({ cfg, yard, anim, width, height, insets, active = tr
   }, [cfg, yard, width, height, insets.left, insets.top, insets.right, insets.bottom]);
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <Labels cfg={cfg} yard={yard} anim={anim} width={width} height={height} />
       <FxCanvas cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} active={active} />
+      <Labels cfg={cfg} yard={yard} anim={anim} width={width} height={height} />
     </View>
   );
 }
@@ -93,6 +97,7 @@ function Labels({ cfg, yard, anim, width, height }: { cfg: R.SalvageConfig; yard
   const [inv, setInv] = useState(1);
   const cam = anim.camera;
   const seen = useRef(new Map<string, number>());
+  const noted = useRef(new Set<string>());
   useEffect(() => {
     let last = '';
     const v = { ppm: yard.ppm, tilt: yard.tilt, lift: yard.lift };
@@ -106,17 +111,24 @@ function Labels({ cfg, yard, anim, width, height }: { cfg: R.SalvageConfig; yard
       const cv = cam.value;
       const z = cv.zoom > 0 ? cv.zoom : 1;
       const now = Date.now() / 1000;
-      const boss = g.salvage.presence;
+      const open = loadingClock.done.value;
+      const boss = anim.body.value;
       const shown = items.filter((it) => {
         const near = boss ? Math.hypot(boss.x - it.x, boss.y - it.y) <= NEAR_M : false;
         if (it.near) return near;
         if (!it.place) return true;
+        // First sight: counted once the loading curtain has parted and the place is on screen; after
+        // FIRST_SIGHT_S the rules note it seen (saved), and from then on the name shows only nearby.
         const sx = (it.x * v.ppm - cv.x - width / 2) * z + width / 2;
         const sy = (it.y * v.ppm * v.tilt - cv.y - height / 2) * z + height / 2;
         const inView = sx > 0 && sx < width && sy > 0 && sy < height;
-        if (inView && !seen.current.has(it.id)) seen.current.set(it.id, now);
+        if (inView && open && !seen.current.has(it.id)) seen.current.set(it.id, now);
         const at = seen.current.get(it.id);
-        return near || (at !== undefined && now - at < FIRST_SIGHT_S);
+        if (at !== undefined && now - at >= FIRST_SIGHT_S && !noted.current.has(it.place)) {
+          noted.current.add(it.place);
+          salvageActions.noteSeen({ place: it.place });
+        }
+        return near || at === undefined || now - at < FIRST_SIGHT_S;
       });
       // Plates keep their text size while the view zooms out (driving): stacked and drawn at 1 / zoom.
       const inv = Math.round((1 / z) * 20) / 20;
@@ -131,7 +143,7 @@ function Labels({ cfg, yard, anim, width, height }: { cfg: R.SalvageConfig; yard
     run();
     const t = setInterval(run, LABEL_MS);
     return () => clearInterval(t);
-  }, [cfg, yard, cam, size, width, height]);
+  }, [cfg, yard, cam, anim.body, size, width, height]);
   const W = width;
   const H = height;
   const style = useAnimatedStyle(() => {
@@ -156,24 +168,30 @@ const TONE: Record<LabelLine['tone'], { color: string; weight: '600' | '700' | '
   warn: { color: '#A3362B', weight: '700' },
 };
 
+/** The plate's box is as wide as its words (never cut); this is the most it may take, points. */
+const PLATE_SPAN = 320;
+
 function Plate({ p, size, lineH, padX, padY, pad }: { p: PlacedLabel; size: number; lineH: number; padX: number; padY: number; pad: number }) {
-  const top = p.py - p.lift - p.h - 7;
+  // Anchored at the pointer's top (p.py - lift - 7): the plate grows upwards from it, centred on the thing.
+  const base = p.py - p.lift - 7;
   const kind = p.item.kind;
-  const bg = kind === 'padlock' ? YARD.paper : kind === 'bay' ? YARD.paperShade : kind === 'skip' ? YARD.paper : YARD.paper;
+  const bg = kind === 'bay' ? YARD.paperShade : YARD.paper;
   return (
-    <View style={{ position: 'absolute', left: p.px - p.w / 2, top, width: p.w }}>
-      <View style={[styles.plate, { backgroundColor: bg, paddingHorizontal: padX, paddingVertical: padY, minHeight: p.h }, kind === 'place' && styles.placePlate]}>
-        {p.item.padlock ? <Padlock s={pad - 4} /> : null}
-        <View style={{ flexShrink: 1 }}>
-          {p.item.lines.map((l, i) => (
-            <Text key={i} allowFontScaling={false} numberOfLines={1} style={{ fontSize: size, lineHeight: lineH, color: TONE[l.tone].color, fontWeight: TONE[l.tone].weight }}>
-              {l.text}
-            </Text>
-          ))}
+    <View style={{ position: 'absolute', left: p.px - PLATE_SPAN / 2, top: base, width: PLATE_SPAN, height: 0 }}>
+      <View style={styles.plateHold}>
+        <View style={[styles.plate, { backgroundColor: bg, paddingHorizontal: padX, paddingVertical: padY, maxWidth: PLATE_SPAN }]}>
+          {p.item.padlock ? <Padlock s={pad - 4} /> : null}
+          <View>
+            {p.item.lines.map((l, i) => (
+              <Text key={i} allowFontScaling={false} style={{ fontSize: size, lineHeight: lineH, color: TONE[l.tone].color, fontWeight: TONE[l.tone].weight }}>
+                {l.text}
+              </Text>
+            ))}
+          </View>
         </View>
       </View>
       {/* The pointer down to the thing (lifted plates get a longer stem). */}
-      <View style={[styles.stem, { height: 7 + p.lift, left: p.w / 2 - 1 }]} />
+      <View style={[styles.stem, { height: 7 + p.lift, left: PLATE_SPAN / 2 - 1 }]} />
     </View>
   );
 }
@@ -263,8 +281,8 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
   const cam = anim.camera;
   const body = anim.body;
   const live = useSharedValue<Live[]>([]);
-  const rings = useSharedValue<{ x: number; y: number; r: number; k: number }[]>([]);
-  const chev = useSharedValue({ on: 0, x: 0, y: 0 });
+  const rings = useSharedValue<{ x: number; y: number; r: number; t: number; t0: number; t1: number; p0: number; born: number }[]>([]);
+  const chev = useSharedValue({ on: 0, x: 0, y: 0, z: 0 });
   const box = useSharedValue([0, 0, width, height]);
   const pic = useSharedValue<SkPicture>(useMemo(() => record(() => {}), []));
   const busy = useRef(false);
@@ -304,7 +322,10 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
     const rs = rings.value;
     for (let i = 0; i < rs.length; i++) {
       const r = rs[i];
-      const k = Math.max(1, Math.min(RING_STEPS, Math.round(r.k * RING_STEPS)));
+      if (r.born < 0) r.born = now;
+      const yt = r.t + (now - r.born);
+      const share = r.t1 > r.t0 ? r.p0 + ((1 - r.p0) * (yt - r.t0)) / (r.t1 - r.t0) : r.p0;
+      const k = Math.max(1, Math.min(RING_STEPS, Math.round(Math.max(0, Math.min(1, share)) * RING_STEPS)));
       cv.save();
       cv.translate(r.x * ppm, r.y * ppm * tilt);
       cv.scale(r.r / RING_R, r.r / RING_R);
@@ -426,7 +447,7 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
     const out = [0, 0, 0, 0];
     const tip = [0, 0];
     const foot = [0, 0];
-    toScreen(tip, ch.x, ch.y, CHEVRON_Z, cm, ppm, tilt, lift, W, H);
+    toScreen(tip, ch.x, ch.y, ch.z, cm, ppm, tilt, lift, W, H);
     toScreen(foot, ch.x, ch.y, 0, cm, ppm, tilt, lift, W, H);
     chevronPlace(out, ch.on * (chevronGate.value > 0 ? 1 : 0), tip[0], tip[1], foot[1], box.value);
     if (out[0] === 1) {
@@ -474,25 +495,35 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
   // The rules' side: rings and the chevron at each store change; effects from events.
   useEffect(() => {
     let lastS: R.SalvageState | null = null;
+    let lastEpoch = -1;
     const push = () => {
       const g = useGame.getState().game as R.SalvageGame;
       if (!g.salvage || g.salvage === lastS) return;
       lastS = g.salvage;
       const f = R.frame(cfg, g);
       lastFrame.current = f;
+      // The rings: each from p0 at t0 to full at t1 (yard seconds), run on from the frame's own second.
       rings.value = f.things
-        .filter((t) => t.work !== null && t.work > 0)
+        .filter((t) => t.ring !== null && t.ring !== undefined)
         .map((t) => {
           const s = cfg.salvage.objects[t.obj]?.size;
-          return { x: t.x, y: t.y, r: (s ? Math.max(s.w, s.d) / 2 : 0.5) + 0.35, k: t.work ?? 0 };
+          const r = t.ring!;
+          return { x: t.x, y: t.y, r: Math.min(RING_MAX_M, (s ? Math.max(s.w, s.d) / 2 : 0.5) + 0.35), t: f.t, t0: r.t0, t1: r.t1, p0: r.p0, born: -1 };
         });
+      // A new epoch (away pass, reconcile, preset): snap, no effect carries across it.
+      if (f.epoch !== lastEpoch) {
+        lastEpoch = f.epoch;
+        live.value = [];
+      }
       const tg = chevronTarget(cfg, g, f);
-      chev.value = tg ? { on: 1, x: tg.x, y: tg.y } : { on: 0, x: 0, y: 0 };
+      // Over a place that wears its name plate, the chevron hovers above the plate.
+      const plated = tg ? f.labels.some((l) => l.kind === 'place' && l.id === `place.${tg.id}`) : false;
+      chev.value = tg ? { on: 1, x: tg.x, y: tg.y, z: chevronZ(cfg, f, tg.id) + (plated ? 0.9 : 0) } : { on: 0, x: 0, y: 0, z: 0 };
       if (tg || rings.value.length) wakeRef.current();
     };
     push();
     return useGame.subscribe(push);
-  }, [cfg, rings, chev]);
+  }, [cfg, rings, chev, live]);
 
   const play = useRef<(events: readonly R.SalvageEvent[]) => void>(() => {});
   play.current = (events) => {
@@ -608,22 +639,22 @@ function demoEvents(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTable, n: 
   const near = [...f.things].sort((a, b) => Math.hypot(a.x - boss.x, a.y - boss.y) - Math.hypot(b.x - boss.x, b.y - boss.y))[0];
   const tools = Object.keys(cfg.salvage.tools);
   const grade = Object.keys(cfg.salvage.grades)[0];
-  const ticket = { no: 900 + n, at: g.stats.playSeconds, day: 0, kind: 'weighIn' as const, by: 'boss', lines: [{ grade: f.bays[0]?.grade ?? grade, g: 12300, price: 1.25, amount: 15.38 }], todaysValue: 15.38, lesson: null };
+  const ticket = { no: 900 + n, at: g.stats.playSeconds, day: 0, kind: 'weighIn' as const, by: 'boss', lines: [{ grade: f.bays[0]?.grade ?? grade, g: 12300, price: 1.25, amount: 15.38 }], todaysValue: 15.38, lesson: null, lessonText: null };
   const step = n % 4;
   if (step === 0 && near) {
     return [
-      { type: 'workStart', thing: near.uid, obj: near.obj, tool: tools[Math.min(tools.length - 1, 1)] ?? 'sledge', by: 'boss' },
+      { type: 'workStart', thing: near.uid, obj: near.obj, grade: null as unknown as string, tool: tools[Math.min(tools.length - 1, 1)] ?? 'sledge', by: 'boss', ring: null },
       { type: 'pieceOff', thing: near.uid, piece: `demo${n}a`, grade, g: 4000, to: 'load', by: 'boss' },
       { type: 'pieceOff', thing: near.uid, piece: `demo${n}b`, grade, g: 4000, to: 'ground', by: 'boss' },
       { type: 'pieceOff', thing: near.uid, piece: `demo${n}c`, grade, g: 4000, to: 'waste', by: 'boss' },
     ];
   }
-  if (step === 1) return [...(near ? [{ type: 'workStop' as const, thing: near.uid, by: 'boss' }] : []), { type: 'weighIn', ticket, by: 'boss' }];
-  if (step === 2) return [{ type: 'roundLoad', grams: 12300 }, { type: 'collected', ticket: { no: 950 + n, at: 0, day: 0, kind: 'collection', buyer: 'merchant', lines: ticket.lines, paid: 15.38 }, big: n % 8 === 2 }];
+  if (step === 1) return [...(near ? [{ type: 'workStop' as const, thing: near.uid, by: 'boss' }] : []), { type: 'weighIn', ticket, pieces: [], by: 'boss' }];
+  if (step === 2) return [{ type: 'roundLoad', grams: 12300 }, { type: 'collected', ticket: { no: 950 + n, at: 0, day: 0, kind: 'collection', buyer: 'merchant', lines: ticket.lines, paid: 15.38, withBoss: true, firstGrades: [] }, first: n % 8 === 2 }];
   const torch = tools.find((t) => (cfg.salvage.tools as Record<string, { tier: number }>)[t]?.tier >= 3) ?? 'torch';
   return [
-    { type: 'pour', ingots: 4, grade: 'bri', short_g: 0, dross_g: 400, first: true },
-    ...(near ? [{ type: 'workStart' as const, thing: near.uid, obj: near.obj, tool: torch, by: 'boss' }] : []),
+    { type: 'pour', ingots: 4, grade: 'bri', short_g: 0, dross_g: 400, first: true, by: 'boss' },
+    ...(near ? [{ type: 'workStart' as const, thing: near.uid, obj: near.obj, grade: null as unknown as string, tool: torch, by: 'boss', ring: null }] : []),
   ];
 }
 
@@ -631,7 +662,8 @@ const styles = StyleSheet.create({
   world: { position: 'absolute', left: 0, top: 0, width: 1, height: 1, overflow: 'visible' },
   plate: { flexDirection: 'row', alignItems: 'center', borderRadius: 7, borderWidth: 1.3, borderColor: YARD.ink, shadowColor: YARD.ink, shadowOpacity: 0.28, shadowRadius: 0, shadowOffset: { width: 0, height: 2 } },
   placePlate: { backgroundColor: YARD.paper },
-  stem: { position: 'absolute', top: '100%', width: 2, backgroundColor: YARD.ink, opacity: 0.7 },
+  plateHold: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center' },
+  stem: { position: 'absolute', top: 0, width: 2, backgroundColor: YARD.ink, opacity: 0.7 },
   lockBox: { backgroundColor: YARD.ink, alignItems: 'center', justifyContent: 'center', marginRight: 5 },
   slide: { position: 'absolute', left: 0, top: 0, width: 180, alignItems: 'center' },
   slideText: { color: YARD.inkSoft, fontWeight: '700', backgroundColor: 'rgba(251,251,246,0.85)', paddingHorizontal: 5, borderRadius: 5, overflow: 'hidden' },

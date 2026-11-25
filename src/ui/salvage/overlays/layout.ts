@@ -9,7 +9,7 @@
  * 4.1 stands in for it (the 667 phone has no insets). Text is sized by hand from
  * min(fontScale, 1.3) (`allowFontScaling={false}`), never under 11 pt.
  */
-import { hudLayout } from '../hud/metrics';
+import { hudLayout, textW } from '../hud/metrics';
 
 export interface Insets {
   top: number;
@@ -146,4 +146,15 @@ export function breakLines(text: string, perLine: number, lines: number): string
   }
   if (out.length <= lines) return out;
   return [...out.slice(0, lines - 1), out.slice(lines - 1).join(' ')];
+}
+
+/**
+ * The largest size from `base` down to 11 pt at which `text` fits `width` on one line (an estimate on
+ * the safe side: the bars engineer's average character width). A plate's state line shrinks this way
+ * at font scale 1.3 ("Came with the yard" on a 120 pt plate) and never below 11 pt.
+ */
+export function fitPt(text: string, base: number, width: number): number {
+  const w = textW(text, base);
+  if (w <= width || w === 0) return base;
+  return Math.max(MIN_PT, Math.floor(((base * width) / w) * 2) / 2);
 }
