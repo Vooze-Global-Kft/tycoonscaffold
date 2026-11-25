@@ -79,10 +79,26 @@ export function spotOf(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTable, 
   const thing = f.things.find((t) => t.uid === id);
   if (thing) return { x: thing.x, y: thing.y, id };
   if (cfg.salvage.map.points[id]) {
+    // A place with a door (content `door`, the office) is pointed at its door, where it opens (join2, seam e).
+    const door = doorSpot(cfg, id);
+    if (door) return door;
     const p = R.point(cfg, id);
     return { x: p.x, y: p.y, id };
   }
   return null;
+}
+
+/** Where a person stands at a place's door (content `map.places.<id>.door`): just outside that face's middle; null without a door. */
+export function doorSpot(cfg: R.SalvageConfig, id: string): Spot | null {
+  const pl = (cfg.salvage.map.places as Record<string, { w: number; d: number; door?: string }>)[id];
+  const pt = cfg.salvage.map.points[id];
+  if (!pl?.door || !pt) return null;
+  const off = cfg.salvage.worker.radius + 0.25;
+  const [x, y] = pt;
+  if (pl.door === 's') return { x, y: y + pl.d / 2 + off, id };
+  if (pl.door === 'n') return { x, y: y - pl.d / 2 - off, id };
+  if (pl.door === 'e') return { x: x + pl.w / 2 + off, y, id };
+  return { x: x - pl.w / 2 - off, y, id };
 }
 
 /**

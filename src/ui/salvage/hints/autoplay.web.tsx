@@ -91,6 +91,17 @@ function standSpot(cfg: R.SalvageConfig, id: string, from: { x: number; y: numbe
   if (!pl || !pt || !pl.solid || !pl.card || !from) return null;
   const off = cfg.salvage.worker.radius + 0.25;
   const [x, y] = pt;
+  // A door on the far side: first round the place's nearer free corner (the one with no solid place beside it).
+  if (pl.door === 's' && from.y < y + pl.d / 2) {
+    const free = (cx: number) => !Object.entries(cfg.salvage.map.places as Record<string, { w: number; d: number; solid?: boolean }>).some(([k, q]) => {
+      const qp = cfg.salvage.map.points[k];
+      return k !== id && q.solid && qp && Math.abs(qp[0] - cx) < q.w / 2 + off && qp[1] + q.d / 2 > from.y && qp[1] - q.d / 2 < y + pl.d / 2;
+    });
+    const east = x + pl.w / 2 + off + 0.3;
+    const west = x - pl.w / 2 - off - 0.3;
+    const cx = free(east) && (!free(west) || Math.abs(from.x - east) <= Math.abs(from.x - west)) ? east : west;
+    return { x: cx, y: y + pl.d / 2 + off + 0.3, id };
+  }
   const side = pl.door ?? (Math.abs(from.x - x) / pl.w > Math.abs(from.y - y) / pl.d ? (from.x < x ? 'w' : 'e') : from.y < y ? 'n' : 's');
   if (side === 's') return { x, y: y + pl.d / 2 + off, id };
   if (side === 'n') return { x, y: y - pl.d / 2 - off, id };
