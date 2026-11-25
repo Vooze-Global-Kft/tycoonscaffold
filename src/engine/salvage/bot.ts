@@ -18,7 +18,7 @@
  */
 import { hash01 } from './board';
 import { dealTerms } from './cards';
-import { carrierCap_g, cutTime, pieceSpec, pieceValue, toolP, vpk } from './content';
+import { carrierCap_g, cutTime, pieceSpec, pieceValue, tierOf, toolP, vpk } from './content';
 import { advice, reserve } from './advice';
 import { buyCheck, hireCheck, levelCheck } from './ladder';
 import { nextGoal } from './goals';
@@ -81,6 +81,9 @@ export interface Purchase {
   goal: boolean;
   /** Cash after it was paid. */
   cashAfter: number;
+  /** Cash when the boss set out for the card (P20: held at the card), and the seconds from that decision to the press (react, walk, read). */
+  cashAtCard?: number;
+  walkToBuy_s?: number;
 }
 export interface BotRecord {
   /** Yard seconds of each first (beats); absent when it never happened. */
@@ -109,10 +112,14 @@ export interface BotRecord {
   ceiling: { t: number; key: string }[];
   /** Today's value of the boss's own weigh-ins (the cycle measure). */
   bossWeighed: number;
+  /** The boss's own weigh-ins, each (yard second, today's value): P20's "what a minute of work pays". */
+  bossIns: { t: number; v: number }[];
+  /** Every walk on foot (yard second at its start, metres walked, seconds): P20's longest walk. */
+  walks: { t: number; m: number; s: number }[];
 }
 
 function emptyRecord(): BotRecord {
-  return { first: {}, purchases: [], minutes: [], rungs: {}, passed: [], prompts: [], broken: [], refused: [], loads: 0, loadSpend: 0, hooks: [], legs: 0, reactS: 0, walkM: 0, hold: { gain: 0, held: 0 }, away: [], log: [], bossWeighed: 0, ceiling: [] };
+  return { first: {}, purchases: [], minutes: [], rungs: {}, passed: [], prompts: [], broken: [], refused: [], loads: 0, loadSpend: 0, hooks: [], legs: 0, reactS: 0, walkM: 0, hold: { gain: 0, held: 0 }, away: [], log: [], bossWeighed: 0, ceiling: [], bossIns: [], walks: [] };
 }
 
 export interface Bot {
@@ -132,11 +139,13 @@ export interface Bot {
   lastGoal: string | null;
   lastMinute: number;
   heldDay: number | null;
+  /** Zones the boss has seen on screen or been sent to by the goal card (a person works what he knows of). */
+  known: Set<string>;
 }
 
 export function newBot(cfg: SalvageConfig, g: SalvageGame, now: number, opts: BotOptions): Bot {
   const o = { dt: 0.1, standDt: Math.min(0.3, cfg.salvage.feel.staleS / 2), ...opts };
-  return { cfg, g, now, opts: o, P: HANDS[o.hand], k: 0, standing: 0, rec: emptyRecord(), graph: graphOf(cfg), managing: false, ev: [], lastGoal: null, lastMinute: -1, heldDay: null };
+  return { cfg, g, now, opts: o, P: HANDS[o.hand], k: 0, standing: 0, rec: emptyRecord(), graph: graphOf(cfg), managing: false, ev: [], lastGoal: null, lastMinute: -1, heldDay: null, known: new Set() };
 }
 
 // ============================================================================================ the path graph
@@ -157,6 +166,8 @@ export interface Graph {
 }
 
 const BODY = 0.45;
+/** The back wall's half depth (src/ui/salvage/world/yard.ts WALL_HALF_D; the world's limit for walkers). */
+const NORTH_HALF_D = 0.4;
 const graphs = new WeakMap<object, Graph>();
 
 function inflate(x: number, y: number, w: number, d: number, m: number): Rect {
@@ -206,9 +217,20 @@ export function graphOf(cfg: SalvageConfig): Graph {
     rects.push(inflate(p[0], p[1], pl.w, pl.d, BODY));
   }
   for (const w of c.map.walls) rects.push(inflate(w.x, w.y, w.w, w.d, BODY));
-  const nodes: { x: number; y: number }[] = [];
   const W = c.yard.width;
   const D = c.yard.depth;
+  // MAP.md M1: the back wall at map.north is one solid across the whole width (its south face 0.4 m south
+  // of the line, as the world's yard.ts has it); nobody walks north of it.
+  const north = (c.map as { north?: number }).north;
+  if (typeof north === 'number' && north > 0) rects.push({ x0: -40, y0: -40, x1: W + 40, y1: north + NORTH_HALF_D + BODY });
+  // The parked truck: walking within truck.enter of it gets the boss in (hand.ts bossStep), so a person
+  // on foot keeps clear of the truck's parking place unless he means to drive (truckLeg walks INTO it).
+  const park = c.map.points.park;
+  if (park) {
+    const m = c.truck.enter + 0.3;
+    rects.push({ x0: park[0] - m, y0: park[1] - m, x1: park[0] + m, y1: park[1] + m });
+  }
+  const nodes: { x: number; y: number }[] = [];
   for (const r of rects) {
     for (const [x, y] of [
       [r.x0 - 0.05, r.y0 - 0.05],
@@ -328,8 +350,11 @@ function travel(b: Bot, pts: { x: number; y: number }[], speed: number): void {
 function walk(b: Bot, to: { x: number; y: number }): void {
   if (driving(b)) return;
   const pts = pathOf(b.graph, pos(b), to);
-  b.rec.walkM += pathLen(pos(b), pts) * b.P.detour;
+  const m = pathLen(pos(b), pts) * b.P.detour;
+  b.rec.walkM += m;
+  const t0 = b.g.salvage.t;
   travel(b, pts, b.cfg.salvage.walk / b.P.detour);
+  if (m > 0.5) b.rec.walks.push({ t: t0, m, s: b.g.salvage.t - t0 });
 }
 
 /** Stand still for `seconds` (samples at most every standDt). */
@@ -392,7 +417,11 @@ function observe(b: Bot): void {
         }
         break;
       case 'weighIn':
-        if (e.by === 'boss' && e.ticket.kind === 'weighIn') b.rec.bossWeighed += e.ticket.todaysValue;
+        if (e.by === 'boss' && e.ticket.kind === 'weighIn') {
+          b.rec.bossWeighed += e.ticket.todaysValue;
+          b.rec.bossIns.push({ t, v: e.ticket.todaysValue });
+        }
+        if (e.ticket.kind === 'weighIn') mark(b, 'weighIn', t);
         break;
       case 'owned':
         mark(b, 'purchase', t);
@@ -426,6 +455,10 @@ function observe(b: Bot): void {
     }
   }
   b.ev.length = 0;
+  // The storyboard's beats read from the state (1.2): 2 the washer taken apart, 4 the hand stripper turning.
+  if (b.rec.first.washerDone === undefined && (s.counts?.['cut:washer'] ?? 0) >= 1) mark(b, 'washerDone', t);
+  if (b.rec.first.stripping === undefined && s.act.kind === 'strip') mark(b, 'stripping', t);
+  if (b.rec.first.pass1 === undefined && (s.ladder.passed ?? 0) >= 1) mark(b, 'pass1', t);
   // Hard promises read from the state (8.3): no negative cash or stock, supplied never falls.
   if (b.g.cash < -1e-9) b.rec.broken.push({ t, what: `cash ${b.g.cash}` });
   const m = Math.floor(t / 60);
@@ -573,6 +606,8 @@ function cardPlace(b: Bot, a: CardAction): string {
 
 /** Walk to the card's place (unless managing from cards), read the card, press. */
 function purchase(b: Bot, a: CardAction, goal: boolean): boolean {
+  const t0 = b.g.salvage.t;
+  const cash0 = b.g.cash;
   if (!b.managing) {
     react(b, `buy ${JSON.stringify(a)}`);
     walk(b, placeSpot(b, cardPlace(b, a)));
@@ -586,7 +621,14 @@ function purchase(b: Bot, a: CardAction, goal: boolean): boolean {
   })() : a;
   if (!fresh) return false;
   if ('price' in fresh && b.g.cash - reserveFor(b) < (fresh as { price: number }).price - 1e-9) return false;
-  return press(b, fresh, goal);
+  const n = b.rec.purchases.length;
+  const ok = press(b, fresh, goal);
+  if (ok && b.rec.purchases.length > n) {
+    const p = b.rec.purchases[n];
+    p.cashAtCard = cash0;
+    p.walkToBuy_s = p.t - t0;
+  }
+  return ok;
 }
 
 /** The reserve a person keeps (E19, E29): the price of a load full within reserveS, once a driver fetches. */
@@ -612,6 +654,17 @@ function placeSpot(b: Bot, place: string): { x: number; y: number } {
   ].filter((q) => q.x > 0.5 && q.y > 0.5 && q.x < c.yard.width - 0.5 && q.y < c.yard.depth - 0.5 && !b.graph.rects.some((r) => inside(r, q) && !(Math.abs(r.x0 + BODY - (p.x - pl.w / 2)) < 1e-6 && Math.abs(r.y0 + BODY - (p.y - pl.d / 2)) < 1e-6)));
   cands.sort((a, q) => pathLen(here, pathOf(b.graph, here, a)) - pathLen(here, pathOf(b.graph, here, q)));
   return cands[0] ?? p;
+}
+
+/** Is a point on the platform scale's ground (machines.ts atPlace with reach.place, padded 0.15 m)? */
+function onScale(b: Bot, q: { x: number; y: number }): boolean {
+  const c = b.cfg.salvage;
+  const pt = c.map.points.scale;
+  if (!pt) return false;
+  const pl = c.map.places.scale;
+  const dx = Math.max(0, Math.abs(q.x - pt[0]) - (pl?.w ?? 0) / 2);
+  const dy = Math.max(0, Math.abs(q.y - pt[1]) - (pl?.d ?? 0) / 2);
+  return Math.hypot(dx, dy) <= c.reach.place + 0.15;
 }
 
 /** A thing's distance from a point, from its footprint's edge (positions.thingNear's measure). */
@@ -640,7 +693,11 @@ function thingSpot(b: Bot, th: ThingState): { x: number; y: number } {
       const q = { x: p.x + Math.cos(a) * ((o?.size.w ?? 1) / 2 + r), y: p.y + Math.sin(a) * ((o?.size.d ?? 1) / 2 + r) };
       if (q.x < 0.4 || q.y < 0.4 || q.x > c.yard.width - 0.4 || q.y > c.yard.depth - 0.4) continue;
       const mine = edgeDist(b, th, q.x, q.y);
-      if (mine > c.reach.work - 0.1) continue;
+      // A loose (tier 0) thing is lifted within reach.pickup; a workable one is worked within reach.work.
+      if (mine > ((o?.tier ?? 0) === 0 ? c.reach.pickup : c.reach.work) - 0.1) continue;
+      // Not on the platform scale's ground: there the rules only weigh (hand.ts bossStep), so a person
+      // steps past it (the cable bundle stands 1.9 m from the scale since the map moved, MAP.md M5).
+      if (onScale(b, q)) continue;
       if (others.some((t) => edgeDist(b, t, q.x, q.y) <= mine + 1e-6)) continue;
       const L = Math.hypot(q.x - here.x, q.y - here.y);
       if (L < bestL) {
@@ -672,6 +729,28 @@ interface Source {
 
 const zoneOf = (th: ThingState) => (th.at.at === 'zone' ? th.at.zone : th.at.at);
 
+/**
+ * What a person knows of (MAP.md M7's first view; 40 points a metre, tilt 0.7 at 844 x 390: 21.1 m by
+ * 13.9 m of ground, the boss at 61 % of the height): a zone is known once part of its bed has been on
+ * screen (within VIEW_X east or west, VIEW_N north or VIEW_S south of where he stood), or once the goal
+ * card names a thing that lies in it. The bots no longer walk to stock a person has never seen.
+ */
+const VIEW_X = 10.5;
+const VIEW_N = 8.5;
+const VIEW_S = 5.4;
+function look(b: Bot, goalObj: string | null): void {
+  const c = b.cfg.salvage;
+  const here = pos(b);
+  for (const [id, z] of Object.entries(c.zones)) {
+    if (b.known.has(id)) continue;
+    const bed = (z as { bed?: { x0: number; y0: number; w: number; d: number } }).bed;
+    const r = bed ? { x0: bed.x0, y0: bed.y0, x1: bed.x0 + bed.w, y1: bed.y0 + bed.d } : { x0: z.centre[0] - z.r, y0: z.centre[1] - z.r, x1: z.centre[0] + z.r, y1: z.centre[1] + z.r };
+    const seen = r.x1 >= here.x - VIEW_X && r.x0 <= here.x + VIEW_X && r.y1 >= here.y - VIEW_N && r.y0 <= here.y + VIEW_S;
+    const sent = goalObj !== null && b.g.salvage.things.some((th) => th.obj === goalObj && th.at.at === 'zone' && th.at.zone === id);
+    if (seen || sent) b.known.add(id);
+  }
+}
+
 /** Every source the boss could work now (yard4.py source_options on the real state), best §/s first. */
 function sources(b: Bot, prefer: string | null): Source[] {
   const c = b.cfg.salvage;
@@ -688,16 +767,20 @@ function sources(b: Bot, prefer: string | null): Source[] {
     if (th.by && th.by !== 'boss') continue;
     if (cutterHas.has(th.uid)) continue;
     if (b.opts.onlyZone && zoneOf(th) !== b.opts.onlyZone) continue;
+    if (th.at.at === 'zone' && !b.known.has(th.at.zone) && !b.opts.onlyZone) continue;
     const o = c.objects[th.obj];
-    if (!o || o.tier > s.tier) continue;
-    const n = o.pieces.length;
+    // Finding W9: the tier of the NEXT piece (the car's wheels and loom by hand, its converter with the
+    // torch); a stripped shell is nobody's work.
+    if (!o || th.shell || tierOf(c, th) > s.tier) continue;
+    const n = th.cut + 64;
     let g = 0;
     let val = 0;
     let work = 0;
     for (let k = th.cut; k < n; k++) {
       const sp = pieceSpec(c, th.obj, k);
-      if (!sp) continue;
+      if (!sp) break;
       if (c.grades[sp.grade] === undefined) continue;
+      if ((o.pieceTiers?.[sp.spec] ?? o.tier) > s.tier) break;
       if (g + sp.g > room) break;
       g += sp.g;
       val += pieceValue(c, sp);
@@ -740,6 +823,7 @@ function sources(b: Bot, prefer: string | null): Source[] {
       n++;
     }
     if (g <= 0) continue;
+    if (pile.startsWith('zone.') && !b.known.has(pile.slice(5)) && !b.opts.onlyZone) continue;
     if (b.opts.onlyZone && !(pile === `zone.${b.opts.onlyZone}` || pile === b.opts.onlyZone || pile.startsWith(`beside.${b.opts.onlyZone}.`))) continue;
     const first = sorted[0] as Piece & { k: number };
     const pp = piecePos(c, pile, first.k, at);
@@ -855,23 +939,30 @@ function truckLeg(b: Bot, partner: string, slot: number): void {
   walk(b, { x: tr.x, y: tr.y });
   if (!driving(b)) stand(b, b.opts.standDt);
   if (!driving(b)) return;
-  const v = c.truck.v;
+  // P10: the boss drives at truck.bossV (the driver's truck.v is the hired driver's); R7 clamps faster samples.
+  const v = c.truck.bossV ?? c.truck.v;
   const path = lanePath(c, pos(b), partner, slot).slice(1);
   travel(b, path, v);
   standUntil(b, () => !!b.g.salvage.truck.skip || (b.g.salvage.act.target ?? '').startsWith('refused'), c.truck.handle_s + 8);
   const gate = pointOf(c, 'gate');
   const z = skipZone(c, partner, slot);
-  const wb = pointOf(c, 'weighbridge');
-  const floor = pointOf(c, 'floor');
-  const park = pointOf(c, 'park');
+  // MAP.md M4: inside the yard the truck keeps to the drive line: its stops (content map.driveLine.stops),
+  // else the old points.
+  const stops = (c.map as { driveLine?: { stops?: Record<string, [number, number]> } }).driveLine?.stops ?? {};
+  const st = (id: string, dflt: string) => (stops[id] ? { x: stops[id][0], y: stops[id][1] } : pointOf(c, dflt));
+  const wb = st('weighbridge', 'weighbridge');
+  const floor = st('floor', 'floor');
+  const park = st('park', 'park');
+  const turn = stops.turn ? { x: stops.turn[0], y: stops.turn[1] } : null;
   travel(b, [{ x: z.x, y: gate.y }, { x: gate.x + 2, y: gate.y }, { x: gate.x - 2, y: gate.y }], v);
   if (b.g.salvage.truck.skip) {
     travel(b, [wb], v);
     standUntil(b, () => !!b.g.salvage.truck.skip?.weighed, 10);
-    travel(b, [floor], v);
+    travel(b, turn ? [{ x: floor.x, y: wb.y }, floor] : [floor], v);
     standUntil(b, () => !b.g.salvage.truck.skip, c.truck.handle_s + 8);
   }
-  travel(b, [park], v);
+  const here = pos(b);
+  travel(b, turn ? [{ x: here.x, y: turn.y }, turn, park] : [park], v);
   stand(b, b.opts.standDt);
   const p = pos(b);
   b.g = stepOut(b.cfg, b.g, { x: p.x, y: p.y, heading: (b.g.salvage.truck.heading ?? 0) as never }, b.g.salvage.t, b.ev);
@@ -937,6 +1028,7 @@ export function decide(b: Bot): void {
   if (loadG(b) > 0 && (done.startsWith('weighIns:') || (done.startsWith('weighed:') && s.load.some((p) => p.grade === done.split(':')[1])))) return weighLeg(b);
   if (done.startsWith('worked:bench') && s.machines.bench.owned && s.load.some((p) => p.grade === 'mot')) return feedLeg(b, 'bench', 'mot');
   const half = loadG(b) >= 0.5 * capG(b) - 1;
+  look(b, done.startsWith('cut:') ? done.split(':')[1] : null);
   const opts = sources(b, done.startsWith('cut:') ? done.split(':')[1] : null);
   if (half || (loadG(b) > 0 && !opts.length)) return weighLeg(b);
   if (o.onlyZone) {
