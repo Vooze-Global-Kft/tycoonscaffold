@@ -212,14 +212,14 @@ export const MachinesSchema = z.object({
   stripper: z.object({ rate: z.number().positive(), inbuf: z.number().positive(), lev: z.number().nonnegative() }),
   /** The motor bench: kg a second, buffer kg, +lev a level, output shares [grade, share], waste share. */
   bench: z.object({ rate: z.number().positive(), inbuf: z.number().positive(), lev: z.number().nonnegative(), out: z.array(z.tuple([id, z.number().min(0).max(1)])), waste: z.number().min(0).max(1) }),
-  /** The crucible (S11): pot kg, seconds of heat a kg of new metal, +lev a level (pot), start at start_share after start_idle s, recipes [in, out, yield, dross], the first heat waits for the boss within first_wait_m metres. */
+  /** The crucible (S11): pot kg, seconds of heat a kg of new metal, +lev a level (pot), start at start_share after start_idle s, recipes [in, out, yield, dross] (in: one grade or a list, E22: alloy wheels and cast aluminium), the first heat waits for the boss within first_wait_m metres. */
   crucible: z.object({
     pot: z.number().positive(),
     s_per_kg: z.number().positive(),
     lev: z.number().nonnegative(),
     start_share: z.number().min(0).max(1),
     start_idle: z.number().nonnegative(),
-    recipes: z.record(id, z.tuple([id, id, z.number().min(0).max(1), id])),
+    recipes: z.record(id, z.tuple([z.union([id, z.array(id).min(1)]), id, z.number().min(0).max(1), id])),
     first_wait_m: z.number().positive(),
   }),
 });
@@ -460,7 +460,7 @@ export function lintSalvage(s: SalvageContent): string[] {
   for (const [o] of s.dropoff.mix) object(o, 'dropoff.mix');
   for (const o of s.dropoff.initial) object(o, 'dropoff.initial');
   for (const [g] of s.machines.bench.out) grade(g, 'machines.bench.out');
-  for (const [rid, r] of Object.entries(s.machines.crucible.recipes)) for (const g of [r[0], r[1], r[3]]) grade(g, `machines.crucible.recipes.${rid}`);
+  for (const [rid, r] of Object.entries(s.machines.crucible.recipes)) for (const g of [...(Array.isArray(r[0]) ? r[0] : [r[0]]), r[1], r[3]]) grade(g, `machines.crucible.recipes.${rid}`);
   for (const i of s.shop) point(i.place, `shop.${i.key}.place`);
   const keys = new Set<string>();
   for (const i of s.shop) {

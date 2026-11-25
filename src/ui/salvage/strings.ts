@@ -131,6 +131,9 @@ export const TEXT = {
   'card.skipPrice': '{x}',
   'card.businessCard': '{contact} · {partner}',
   'card.converterPaid': 'Paid on assay: platinum 75 %, palladium 75 %, rhodium 65 %, less ceramic and assay fee',
+  'card.levelAdds': '+{x} an hour {what}',
+  'card.notBottleneck': 'Not the bottleneck now',
+  'card.keptForLoad': 'Kept for the next load: {x}',
   'card.empty': '',
 
   // --- package 4: items, roles and effect lines (≤ 38) ---
@@ -344,9 +347,9 @@ void _noExtra;
 
 /**
  * The register ids of yard-stage1.md 5.1 and how each is found in scripts/content/yard/names.json
- * (the names desk's; read only, never copied): a live entry (verdict neither "changed" nor "rejected")
- * by its `kind`, and where several share a kind, by a trade word in the name or by tonnes. The
- * register has no id field yet (the lead is having ids added); until then this table is the key.
+ * (the names desk's; read only, never copied) when the register has no `byId` table: a live entry
+ * (verdict neither "changed" nor "rejected") by its `kind`, and where several share a kind, by a trade
+ * word in the name or by tonnes. Since version 3 the register carries ids and `byId`, which win.
  */
 export const NAME_SELECTORS: Record<string, { kind: string; prefix?: boolean; word?: string; contactOf?: string }> = {
   title: { kind: 'title (working)' },
@@ -369,6 +372,9 @@ interface RegisterEntry {
   name: string;
   kind: string;
   verdict?: string;
+  id?: string;
+  current?: boolean;
+  chip?: string;
 }
 
 const live = (e: RegisterEntry) => !/^(changed|rejected)/.test(e.verdict ?? '');
@@ -380,8 +386,17 @@ function tonnesOf(kind: string): number {
   return Number(m[1]) * (m[2] === 'Mt' ? 1e6 : m[2] === 'kt' ? 1e3 : 1);
 }
 
-/** Names by register id from the register's entries (the build script and tests call it; the app reads `salvage.names`). */
-export function namesFromRegister(register: { names: RegisterEntry[] }): Record<string, string> {
+/**
+ * Names by register id (the build script and tests call it; the app reads `salvage.names`). The
+ * register's own `byId` table (version 3 on) is the source; each current entry's `chip` (≤ 14
+ * characters) lands as `<id>.chip`. A register without ids is read by kind and name (NAME_SELECTORS).
+ */
+export function namesFromRegister(register: { names: RegisterEntry[]; byId?: Record<string, string> }): Record<string, string> {
+  if (register.byId && Object.keys(register.byId).length) {
+    const out: Record<string, string> = { ...register.byId };
+    for (const e of register.names) if (e.id && e.current && e.chip) out[`${e.id}.chip`] = e.chip;
+    return out;
+  }
   const entries = register.names.filter(live);
   const out: Record<string, string> = {};
   for (const [id, sel] of Object.entries(NAME_SELECTORS)) {
@@ -459,6 +474,5 @@ export const S = {
   cardBody: 'The centred card of the mode’s own overlays, on top of the panel.',
   ok: TEXT.ok,
   loading: 'Loading the yard…',
-  loadingNote: 'PLACEHOLDER loading screen',
   hintStick: 'Thumb down on the left to walk',
 } as const;

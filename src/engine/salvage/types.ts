@@ -14,6 +14,15 @@
  * - The facade (every public function with its final signature): src/engine/salvage.ts.
  * - Frozen test content and the four frozen states: src/engine/fixtures/salvage.ts.
  *
+ * WHOLE AND LOOSE (decision E17, yard-decisions.md, which replaces E5's "stocks and rates"): THINGS AND
+ * PIECES ARE WHOLE: a thing in a heap, at the drop-off or on the tipping floor, a piece on the ground, on
+ * a load or in a hopper is one item with its mass from content (a piece exists once its cut is
+ * complete; the converter is one piece). LOOSE AND MOLTEN MATERIAL IS MASS in grams: bays, trays, bins,
+ * the pot, what a machine makes. Crew, the driver and the merchant are AGENTS ON LEGS (a leg's end is
+ * computed when it starts); machines work mass at a rate between events. The engine keeps a QUEUE of
+ * dated events and jumps from one to the next; the 0.1 s tick is the same function with a nearer
+ * horizon, time away the same with the boss absent (ticking equals jumping by construction).
+ *
  * UNITS. Masses in the rules are integer GRAMS (`_g`); money is § with two decimals, rounded by the one
  * `roundMoney` (hundredths, half up); prices § a kilogram; times in the rules are PLAY SECONDS
  * (`stats.playSeconds`, which the tick advances) unless a name says `Ms` (epoch milliseconds, the
@@ -117,12 +126,23 @@ export interface CarriedPiece {
 }
 
 /**
- * Loose material on the ground, by pile: grams by grade. Pile keys:
- * `beside.<thing uid>` (pieces that did not fit, next to their thing), `zone.<id>` (a zone's loose
- * pile), `dropoff` (the drop-off's front), `floor` (the tipping floor), `circle.<n>` (a chalk circle),
- * `tray.<machine>` (a machine's out tray, also in MachineState).
+ * Where whole pieces lie on the ground (a pile). Keys: `beside.<thing uid>` (pieces that did not fit
+ * the load, next to their thing), `zone.<id>` (a zone's loose pile), `dropoff` (the drop-off's front),
+ * `floor` (the tipping floor), `circle.<n>` (a chalk circle). `tray.<machine>` is a pile key for
+ * positions only: a tray holds mass (MachineState.tray_g).
  */
 export type PileKey = string;
+
+/** A whole piece on the ground (E17): its grade, its grams from content, its pile and its index there (piecePos). */
+export interface GroundPiece {
+  /** Stable id: `${thing uid}.p${n}` (the n-th piece cut off that thing). */
+  uid: string;
+  grade: GradeId;
+  g: number;
+  pile: PileKey;
+  /** Index in its pile (piecePos(pile, k)); a pile's pieces keep their k when others leave. */
+  k: number;
+}
 
 export interface BayState {
   /** Grams in the bay (reserved and set-aside grams included). */
@@ -143,9 +163,13 @@ export type MachineStatus = 'notOwned' | 'idle' | 'working' | 'trayFull' | 'wait
 export interface MachineState {
   owned: boolean;
   level: number;
-  /** The input buffer (hopper), grams by grade. */
-  in_g: Stock;
-  /** The out tray, grams by grade. */
+  /** The hopper: WHOLE pieces waiting (E17), in feed order. */
+  hopper: CarriedPiece[];
+  /** Grams left of the piece being worked now (the machine works mass at a rate between events). */
+  working_g: number;
+  /** The grade of the piece being worked, or null. */
+  workingGrade: GradeId | null;
+  /** The out tray: loose mass, grams by grade. */
   tray_g: Stock;
   status: MachineStatus;
   /** Play second the machine was set down (it works from then: the flatbed's set-down, 3). */
@@ -176,7 +200,10 @@ export interface CrucibleState extends MachineState {
 export type CrewJob = 'idle' | 'feed' | 'circle' | 'tray' | 'dropoff' | 'wholeThing' | 'floor' | 'cutDropoff' | 'cutFloor' | 'drive' | 'pour';
 export type CrewPhase = 'wait' | 'walkTo' | 'work' | 'walkBack';
 
-/** A crew member. Their work is a RATE of the rate engine (E5); job and phase are a picture of it. */
+/**
+ * A crew member: an AGENT ON LEGS (E17). A leg's end is computed when it starts and queued as a dated
+ * event; the picture the player sees walking IS that leg (from, to, t0, t1, its whole pieces).
+ */
 export interface CrewMember {
   /** `${role}.${slot}`, e.g. hand.0. */
   id: string;
@@ -192,8 +219,12 @@ export interface CrewMember {
   to: PlaceId | null;
   t0: number;
   t1: number;
-  /** The grade the picture carries (null: empty-handed). */
+  /** The grade shown on the carrier (the first of `load`), null when empty-handed. */
   carries: GradeId | null;
+  /** The whole pieces (or one whole thing) this leg moves (a yard hand), empty otherwise. */
+  load: CarriedPiece[];
+  /** The thing a cutter is cutting on this leg (its piece, or the whole thing away from the boss's sight, completes at t1). */
+  thing: string | null;
 }
 
 /** A partner's skip (2.7): contents are fixed when it fills, printed on its label, equal to the weigh-in. */
@@ -281,6 +312,30 @@ export interface DealState {
   last: { day: number; g: number } | null;
 }
 
+/** The kinds of dated event the engine queues (E17): each a moment a leg ends or a stock crosses a limit. */
+export type QueuedKind =
+  | 'crewLeg' // a crew member's leg ends (ref: crew id)
+  | 'cutDone' // a cutter's piece or whole thing completes (ref: crew id)
+  | 'driverLeg' // the driver's run changes phase (ref: partner)
+  | 'roundLoaded' // the merchant has loaded (ref: '')
+  | 'roundBack' // the merchant is back (ref: '')
+  | 'dropoffArrival' // the next household thing arrives (ref: '')
+  | 'skipFull' // a partner's skip is full (ref: partner)
+  | 'machineEmpty' // a machine finishes the piece it works or runs out (ref: machine)
+  | 'trayFull' // a machine's tray fills (ref: machine)
+  | 'heatEnd' // a heat ends (ref: '')
+  | 'heatStart' // the crucible's idle start (start_share after start_idle) (ref: '')
+  | 'cooled' // the ingots have cooled (ref: '')
+  | 'day' // 00:00 UTC: the board's step, the deal's delivery (ref: '')
+  | 'cash'; // cash reaches a gated price (the driver's next load) (ref: partner)
+
+export interface QueuedEvent {
+  /** Play second it happens. */
+  at: number;
+  kind: QueuedKind;
+  ref: string;
+}
+
 /** Played seconds of the foreman's boost (master 3.4) on the current market day. */
 export interface ForemanState {
   day: number;
@@ -338,8 +393,10 @@ export interface SalvageState {
   act: { kind: 'none' | 'work' | 'pickup' | 'weigh' | 'feed' | 'strip' | 'circle' | 'hook' | 'drive'; target: string | null; since: number };
   /** Every whole thing in the yard. */
   things: ThingState[];
-  /** Loose material by pile. */
-  piles: Record<PileKey, Stock>;
+  /** Every whole piece on the ground (E17). */
+  pieces: GroundPiece[];
+  /** Grams in the rubble skip and the PVC bin since the start (waste to a licensed waste carrier; mass kept). */
+  waste_g: number;
   /** One bay per grade seen. */
   bays: Record<GradeId, BayState>;
   machines: { hand_stripper: MachineState; stripper: MachineState; bench: MachineState; crucible: CrucibleState };
@@ -361,14 +418,15 @@ export interface SalvageState {
   away: AwayCard | null;
   /** Counter of the drop-off's and the skips' hashes beyond their own counters (2: no Math.random). */
   draws: number;
-  /** § owed for the first yard hand hired on account, repaid from collections (REPORT2 R3). */
-  debt: number;
+  /** Partner ids whose cash the driver keeps for the next load ready within two minutes (E19, R11): "kept for the next load". */
+  keptFor: PartnerId | null;
+  /** True once the player has been away once (the Night watch is offered after it, E22). */
+  beenAway: boolean;
   /**
-   * The rate engine's bookkeeping (E5, REPORT2 "One engine"): the play second the current segment began
-   * (flows are constant between events) and the next event's play second, or null. Flows themselves are
-   * derived from the stocks above (rate.ts), never saved.
+   * The engine's dated events (E17), sorted by `at`; the 0.1 s tick and time away pop them in order.
+   * Machines' rates between events are derived from the state (never saved). No credit exists (E11).
    */
-  engine: { segmentAt: number; nextEventAt: number | null };
+  queue: QueuedEvent[];
 }
 
 // ================================================================================================ events
@@ -384,12 +442,12 @@ export type SalvageEvent =
   // the hand (2.1)
   | { type: 'workStart'; thing: string; obj: ObjectId; tool: string; by: string }
   | { type: 'workStop'; thing: string; by: string }
-  | { type: 'pieceOff'; thing: string; grade: GradeId; g: number; to: 'load' | 'ground' | 'waste'; by: string }
+  | { type: 'pieceOff'; thing: string; piece: string; grade: GradeId; g: number; to: 'load' | 'ground' | 'waste'; by: string }
   | { type: 'thingGone'; thing: string }
-  | { type: 'pickup'; grade: GradeId; g: number }
-  | { type: 'swap'; down: GradeId; up: GradeId }
+  | { type: 'pickup'; piece: string; grade: GradeId; g: number }
+  | { type: 'swap'; down: string; up: string }
   | { type: 'loadFull' }
-  | { type: 'feed'; machine: MachineId; grade: GradeId; g: number }
+  | { type: 'feed'; machine: MachineId; grade: GradeId; g: number; by: 'boss' | string }
   | { type: 'circleDrop'; circle: number; g: number }
   // weighing and selling (2.2, 2.3)
   | { type: 'weighIn'; ticket: Ticket; by: 'boss' | string }
@@ -416,6 +474,7 @@ export type SalvageEvent =
   | { type: 'leaveTruck' }
   // arrivals, purchases, crew
   | { type: 'arrival'; kind: ArrivalKind; what: string | null }
+  | { type: 'crewLeg'; id: string; job: CrewJob; from: PlaceId | null; to: PlaceId | null; t1: number }
   | { type: 'owned'; item: ShopKey }
   | { type: 'hired'; role: CrewRole; id: string }
   | { type: 'levelled'; target: LevelTarget; level: number }
@@ -563,6 +622,9 @@ export const TEXT_KEYS = {
     'card.skipPrice',
     'card.businessCard',
     'card.converterPaid',
+    'card.levelAdds',
+    'card.notBottleneck',
+    'card.keptForLoad',
     'card.empty',
   ],
   /** Package 4: what each machine, tool, carrier, role and item is, and its effect line (≤ 38). */
@@ -770,7 +832,8 @@ export interface MachineCard {
   status: Txt;
   /** kg a second. */
   rate: number;
-  in_g: Stock;
+  /** The hopper's whole pieces by grade (count and grams). */
+  hopper: { grade: GradeId; n: number; g: number }[];
   tray_g: Stock;
   /** Crucible only. */
   crucible?: { recipe: RecipeId; fromBays: boolean; charge_g: number; pot_g: number; poursInS: number | null; ready: boolean; heel_g: number };
@@ -845,6 +908,8 @@ export interface TableRow {
   /** A rival's id, or 'you'. */
   id: RivalId | 'you';
   name: NameId;
+  /** The chip name's register id (`<id>.chip`, ≤ 14 characters; the player's row: homeYard). */
+  chip: NameId;
   tonnes_g: number;
   simulated: boolean;
   logo: SpriteId | null;
@@ -854,7 +919,7 @@ export interface IndustryTable {
   rows: TableRow[];
   /** The player's rank (1 to 26) and the next rival up with the grams still needed. */
   rank: number;
-  next: { rival: RivalId; name: NameId; need_g: number } | null;
+  next: { rival: RivalId; name: NameId; chip: NameId; need_g: number } | null;
   /** The nine rungs: tonnes and range gates, the current one lit. */
   rungs: { n: number; t: number; range: number; current: boolean; open: boolean }[];
   /** Range chips: each material of the stage, counted or not. */
@@ -904,7 +969,7 @@ export interface TopBar {
   cash: number;
   rank: number;
   of: number;
-  next: { name: NameId; need_g: number } | null;
+  next: { name: NameId; chip: NameId; need_g: number } | null;
   /** On foot: carried kg and the carrier's kg; driving: the skip's net kg and whether it is a trial load. */
   carry: { kg: number; cap: number } | null;
   driving: { kg: number; trial: boolean } | null;
@@ -951,9 +1016,13 @@ export interface FrameThing {
   locked: 'tool2' | 'tool3' | null;
   /** The ring: the current piece's progress 0 to 1, or null when nobody works it. */
   work: number | null;
+  /** Who works it (the boss, a cutter's id), or null. */
+  by: string | null;
 }
 
 export interface FramePiece {
+  /** The piece's uid (GroundPiece.uid): the same piece from frame to frame. */
+  uid: string;
   /** content.grades[grade].sprite. */
   sprite: SpriteId;
   grade: GradeId;
@@ -1015,6 +1084,8 @@ export interface FrameCrew {
   t0: number;
   t1: number;
   carries: SpriteId | null;
+  /** The whole pieces on the leg's carrier (drawn strapped on, never a tower). */
+  load: { sprite: SpriteId; grade: GradeId; g: number }[];
 }
 
 export interface FrameTruck {

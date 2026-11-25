@@ -26,8 +26,8 @@ export function rivalGrams(c: SalvageContent, i: number, d: number): number {
 export function tableOf(c: SalvageContent, g: SalvageGame): IndustryTable {
   const s = g.salvage;
   const d = s.clock.day - s.clock.startDay;
-  const rivals: TableRow[] = c.rivals.map((r, i) => ({ rank: 0, id: r.id, name: rivalNameId(i), tonnes_g: rivalGrams(c, i, d), simulated: true, logo: r.sprite ?? null }));
-  const you: TableRow = { rank: 0, id: 'you', name: 'homeYard', tonnes_g: s.ladder.supplied_g, simulated: false, logo: null };
+  const rivals: TableRow[] = c.rivals.map((r, i) => ({ rank: 0, id: r.id, name: rivalNameId(i), chip: `${rivalNameId(i)}.chip`, tonnes_g: rivalGrams(c, i, d), simulated: true, logo: r.sprite ?? null }));
+  const you: TableRow = { rank: 0, id: 'you', name: 'homeYard', chip: 'homeYard', tonnes_g: s.ladder.supplied_g, simulated: false, logo: null };
   const rows = [...rivals, you].sort((a, b) => b.tonnes_g - a.tonnes_g || (a.id === 'you' ? 1 : -1)).map((r, i) => ({ ...r, rank: i + 1 }));
   const rank = rows.find((r) => r.id === 'you')!.rank;
   const above = rows[rank - 2];
@@ -37,7 +37,7 @@ export function tableOf(c: SalvageContent, g: SalvageGame): IndustryTable {
     { n: 2, t: c.ladder.rung2.t, range: c.ladder.rung2.range },
     { n: 3, t: c.ladder.rung3.t, range: c.ladder.rung3.range },
   ].map((r) => ({ ...r, current: r.n === s.ladder.rung, open: r.n <= s.ladder.rung }));
-  return { rows, rank, next: above && above.id !== 'you' ? { rival: above.id, name: above.name, need_g: Math.max(0, above.tonnes_g - s.ladder.supplied_g + 1) } : null, rungs, range };
+  return { rows, rank, next: above && above.id !== 'you' ? { rival: above.id, name: above.name, chip: above.chip, need_g: Math.max(0, above.tonnes_g - s.ladder.supplied_g + 1) } : null, rungs, range };
 }
 
 /** The top bar (4.1). */
@@ -49,7 +49,7 @@ export function topBarOf(c: SalvageContent, g: SalvageGame): TopBar {
     cash: g.cash,
     rank: t.rank,
     of: t.rows.length,
-    next: t.next ? { name: t.next.name, need_g: t.next.need_g } : null,
+    next: t.next ? { name: t.next.name, chip: t.next.chip, need_g: t.next.need_g } : null,
     carry: driving ? null : { kg: s.load.reduce((a, p) => a + p.g, 0) / 1000, cap: c.carriers[s.carrier] ?? 0 },
     driving: driving ? { kg: (s.truck.skip?.mass_g ?? 0) / 1000, trial: !!s.truck.skip?.trial } : null,
   };

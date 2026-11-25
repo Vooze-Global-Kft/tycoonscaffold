@@ -28,6 +28,7 @@ import * as R from '../../engine/salvage';
 import { salvageActions } from '../../modes/salvage/actions';
 import { useGame } from '../../state/store';
 import { DevPanel } from './dev/DevPanel';
+import { LoadingCurtain } from './loading';
 import { yardSwitches } from './dev/switches';
 import { OverlayHost, type Insets } from './overlays/OverlayHost';
 import { PAL } from './palette';
@@ -179,6 +180,7 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
       <OverlayHost width={width} height={height} insets={insets} />
       {card !== null ? <PlaceCard cfg={cfg} place={card} width={width} insets={insets} onClose={() => setCard(null)} /> : null}
       {portrait ? <RotateCard /> : null}
+      <LoadingCurtain />
     </View>
   );
 }
@@ -210,7 +212,7 @@ function Hud({ cfg, insets }: { cfg: R.SalvageConfig; insets: Insets }) {
   const bar = R.topBar(cfg, { ...g, cash, salvage });
   const c = cfg.salvage;
   const rank = bar.next
-    ? say({ key: 'rankChip', args: { rank: { rank: bar.rank }, n: { n: bar.of }, rival: { name: bar.next.name }, t: { mass_g: bar.next.need_g, step: 'lot' } } }, c)
+    ? say({ key: 'rankChip', args: { rank: { rank: bar.rank }, n: { n: bar.of }, rival: { name: bar.next.chip }, t: { mass_g: bar.next.need_g, step: 'lot' } } }, c)
     : say({ key: 'rankChipTop', args: { rank: { rank: bar.rank }, n: { n: bar.of } } }, c);
   const carry = bar.carry
     ? say({ key: 'carry', args: { a: { n: Math.round(bar.carry.kg * 10) / 10 }, b: { n: bar.carry.cap } } }, c)

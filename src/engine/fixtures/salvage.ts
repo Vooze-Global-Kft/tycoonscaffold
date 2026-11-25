@@ -48,6 +48,9 @@ export const SALVAGE_TEST_RAW = {
     'rival.1': 'Rival One',
     'rival.2': 'Rival Two',
     'rival.3': 'Rival Three',
+    'rival.1.chip': 'Rival One',
+    'rival.2.chip': 'Rival Two',
+    'rival.3.chip': 'Rival Three',
   } as Record<string, string>,
   yard: { width: 64, depth: 40, ppm: 40, tilt: 0.7, tile: 2 },
   worker: { radius: 0.35, reach: 0.8 },
@@ -88,6 +91,7 @@ export const SALVAGE_TEST_RAW = {
     no2: { name: 'No.2 copper', pbar: 30, family: 'nf', material: 'copper', kind: 'grade', asFound: 0.9, sprite: S('piece.copper.no2') },
     bb: { name: 'Bare bright copper', pbar: 35, family: 'nf', material: 'copper', kind: 'grade', asFound: 0.9, sprite: S('piece.copper.bright') },
     cab: { name: 'Insulated cable', pbar: 20, family: 'nf', material: null, kind: 'intermediate', asFound: 1, sprite: S('piece.cable.heavy') },
+    cabt: { name: 'Thin cable', pbar: 10, family: 'nf', material: null, kind: 'intermediate', asFound: 1, sprite: S('piece.cable.thin') },
     mot: { name: 'Electric motor', pbar: 2, family: 'nf', material: null, kind: 'intermediate', asFound: 1, sprite: S('piece.motor.whole') },
     conv: { name: 'Converter, whole', pbar: 0, family: 'pm', material: null, kind: 'intermediate', asFound: 1, sprite: S('piece.converter.whole') },
   },
@@ -103,7 +107,7 @@ export const SALVAGE_TEST_RAW = {
       name: 'End-of-life car',
       tier: 3,
       h: 2,
-      pieces: [['alw', 10000, 4], ['cab', 5000, 1], ['conv', 1000, 1], ['cbody', 100000, 5]],
+      pieces: [['alw', 10000, 4], ['cabt', 5000, 1], ['conv', 1000, 1], ['cbody', 100000, 5]],
       waste_g: 54000,
       whole: null,
       text: 'depolluted end-of-life car, treatment record ref. 0012',
@@ -181,7 +185,7 @@ export const SALVAGE_TEST_RAW = {
     hand_stripper: { rate: 1, needs_boss: true, inbuf: 50 },
     stripper: { rate: 5, inbuf: 200, lev: 0.1 },
     bench: { rate: 2, inbuf: 100, lev: 0.1, out: [['no2', 0.1], ['li', 0.8], ['alcast', 0.1]], waste: 0 },
-    crucible: { pot: 20, s_per_kg: 2, lev: 0.1, start_share: 0.5, start_idle: 60, recipes: { brass: ['brs', 'bri', 0.95, 'brd'], alu: ['alw', 'ali', 0.95, 'ald'] }, first_wait_m: 6 },
+    crucible: { pot: 20, s_per_kg: 2, lev: 0.1, start_share: 0.5, start_idle: 60, recipes: { brass: ['brs', 'bri', 0.95, 'brd'], alu: [['alw', 'alcast'], 'ali', 0.95, 'ald'] }, first_wait_m: 6 },
   },
   crew: {
     hand: { load: 60, v: 3, lev: 0.1, handle_s: 2, maxlev: 10 },
@@ -268,7 +272,7 @@ const ticketBase = (no: number, at: number) => ({ no, at, day: DAY });
 function m5(): FixtureState {
   const s = freshSalvage({ salvage: SALVAGE_TEST } as SalvageConfig, FIXTURE_NOW);
   const t = 300;
-  const hand: CrewMember = { id: 'hand.0', role: 'hand', slot: 0, name: 0, level: 1, job: 'dropoff', phase: 'walkTo', from: 'dropoff', to: 'scale', t0: t - 2, t1: t + 3, carries: 'li' };
+  const hand: CrewMember = { id: 'hand.0', role: 'hand', slot: 0, name: 0, level: 1, job: 'dropoff', phase: 'walkTo', from: 'dropoff', to: 'scale', t0: t - 2, t1: t + 3, carries: 'li', load: [{ grade: 'li', g: 10000, from: 'd0' }], thing: null };
   const tickets: Ticket[] = [
     { ...ticketBase(1, 22), kind: 'weighIn', by: 'boss', lines: [{ grade: 'li', g: 20000, price: 0.5, amount: 10 }, { grade: 'mot', g: 5000, price: 2, amount: 10 }], todaysValue: 20, lesson: 'lesson.li' },
     { ...ticketBase(2, 25), kind: 'collection', buyer: 'merchant', lines: [{ grade: 'li', g: 20000, price: 0.5, amount: 10 }, { grade: 'mot', g: 5000, price: 2, amount: 10 }], paid: 20 },
@@ -289,11 +293,19 @@ function m5(): FixtureState {
       act: { kind: 'pickup', target: 'Z1.washer.0', since: t - 1 },
       // The drop-off's first washer is gone, a Z1 washer half cut, the bundle stripped.
       things: s.things.filter((th) => th.uid !== 'd0' && th.uid !== 'bundle1.cable.0').map((th) => (th.uid === 'Z1.washer.0' ? { ...th, cut: 1, progress: 0.5, by: 'boss' } : th)),
-      piles: { 'beside.Z1.washer.0': { mot: 5000 }, dropoff: { li: 10000 } },
+      pieces: [
+        { uid: 'Z1.washer.0.p2', grade: 'mot', g: 5000, pile: 'beside.Z1.washer.0', k: 0 },
+        { uid: 'd0.p1', grade: 'li', g: 10000, pile: 'dropoff', k: 0 },
+      ],
       bays: { li: { g: 40000, held: false, aside_g: 0, asidePrice: 0, forCrucible_g: 0, forDeal_g: 0 }, mot: { g: 0, held: false, aside_g: 0, asidePrice: 0, forCrucible_g: 0, forDeal_g: 0 }, bb: { g: 0, held: false, aside_g: 0, asidePrice: 0, forCrucible_g: 0, forDeal_g: 0 } },
       crew: [hand],
       merchant: { phase: 'away', endsAt: t + 15, lot: [] },
       dropoff: { nextAt: t + 20, n: 5 },
+      queue: [
+        { at: t + 3, kind: 'crewLeg', ref: 'hand.0' },
+        { at: t + 15, kind: 'roundBack', ref: '' },
+        { at: t + 20, kind: 'dropoffArrival', ref: '' },
+      ],
       ladder: { supplied_g: 32000, worth: { lightiron: 10, copper: 241.5 }, rung: 1, passed: 0 },
       goals: { at: 4, skipped: [], lastPromptAt: 200 },
       lessonsSeen: ['li', 'bb'],
@@ -306,7 +318,7 @@ function m5(): FixtureState {
 function m30(): FixtureState {
   const s = freshSalvage({ salvage: SALVAGE_TEST } as SalvageConfig, FIXTURE_NOW);
   const t = 1800;
-  const member = (id: string, role: CrewMember['role'], job: CrewMember['job'], from: string, to: string, carries: string | null): CrewMember => ({ id, role, slot: 0, name: role === 'hand' ? 0 : role === 'cutter' ? 1 : 2, level: 2, job, phase: 'walkTo', from, to, t0: t - 1, t1: t + 4, carries });
+  const member = (id: string, role: CrewMember['role'], job: CrewMember['job'], from: string, to: string, carries: string | null, thing: string | null = null): CrewMember => ({ id, role, slot: 0, name: role === 'hand' ? 0 : role === 'cutter' ? 1 : 2, level: 2, job, phase: role === 'cutter' ? 'work' : 'walkTo', from, to, t0: t - 1, t1: t + 4, carries, load: carries ? [{ grade: carries, g: 10000, from: 'f1' }] : [], thing });
   const bay = (g: number, held = false, forDeal_g = 0, forCrucible_g = 0) => ({ g, held, aside_g: 0, asidePrice: 0, forCrucible_g, forDeal_g });
   const away = (n: number): Ticket => ({ ...ticketBase(n, t - 40), kind: 'collection', buyer: 'merchant', lines: [{ grade: 'bb', g: 21000, price: 35, amount: 735 }, { grade: 'li', g: 160000, price: 0.5, amount: 80 }, { grade: 'brs', g: 4000, price: 20, amount: 80 }, { grade: 'no2', g: 2000, price: 30, amount: 60 }], paid: 955 });
   return {
@@ -330,15 +342,33 @@ function m30(): FixtureState {
           { uid: 'f0', obj: 'washer', at: { at: 'floor', slot: 0 }, cut: 0, progress: 0, by: null },
           { uid: 'f1', obj: 'radiator', at: { at: 'floor', slot: 1 }, cut: 0, progress: 0, by: null },
         ]),
-      piles: { 'beside.Z3.car.2': { alw: 40000 }, 'beside.d5': { li: 10000 }, floor: { li: 20000 }, 'tray.bench': { no2: 1000, li: 8000 }, 'circle.0': { li: 10000 } },
+      pieces: [
+        { uid: 'Z3.car.2.p0', grade: 'alw', g: 10000, pile: 'beside.Z3.car.2', k: 0 },
+        { uid: 'Z3.car.2.p1', grade: 'alw', g: 10000, pile: 'beside.Z3.car.2', k: 1 },
+        { uid: 'Z3.car.2.p2', grade: 'alw', g: 10000, pile: 'beside.Z3.car.2', k: 2 },
+        { uid: 'd5.p0', grade: 'li', g: 10000, pile: 'beside.d5', k: 0 },
+        { uid: 'f2.p0', grade: 'li', g: 10000, pile: 'floor', k: 0 },
+        { uid: 'f2.p1', grade: 'li', g: 10000, pile: 'floor', k: 1 },
+        { uid: 'Z1.washer.1.p0', grade: 'li', g: 10000, pile: 'circle.0', k: 0 },
+      ],
+      waste_g: 45000,
+      keptFor: 'partnerFarm',
+      beenAway: false,
+      queue: [
+        { at: t + 3, kind: 'crewLeg', ref: 'hand.0' },
+        { at: t + 4, kind: 'cutDone', ref: 'cutter.0' },
+        { at: t + 12, kind: 'driverLeg', ref: 'partnerFarm' },
+        { at: t + 12, kind: 'dropoffArrival', ref: '' },
+        { at: t + 30, kind: 'machineEmpty', ref: 'stripper' },
+      ],
       bays: { li: bay(320000), ci: bay(260000, true, 60000), hms: bay(80000), brs: bay(8000, false, 0, 8000), bb: bay(14000), no2: bay(3000), alw: bay(0), bri: bay(0) },
       machines: {
         hand_stripper: { ...s.machines.hand_stripper, status: 'idle' },
-        stripper: { owned: true, level: 2, in_g: { cab: 30000 }, tray_g: { bb: 6000 }, status: 'working', since: 700 },
-        bench: { owned: true, level: 1, in_g: { mot: 15000 }, tray_g: { no2: 1000, li: 8000, alcast: 1000 }, status: 'working', since: 900 },
+        stripper: { owned: true, level: 2, hopper: [{ grade: 'cab', g: 10000, from: 'f1' }, { grade: 'cab', g: 10000, from: 'f1' }], working_g: 4000, workingGrade: 'cab', tray_g: { bb: 6000 }, status: 'working', since: 700 },
+        bench: { owned: true, level: 1, hopper: [{ grade: 'mot', g: 5000, from: 'd4' }], working_g: 2500, workingGrade: 'mot', tray_g: { no2: 1000, li: 8000, alcast: 1000 }, status: 'working', since: 900 },
         crucible: { ...s.machines.crucible, owned: true, level: 1, status: 'idle', since: 1400, recipe: 'brass', fromBays: true, charge_g: 20000, heel_g: 0, phase: 'ready', endsAt: null, lastFeedAt: 1700, firstPoured: false, cooling: null },
       },
-      crew: [member('hand.0', 'hand', 'feed', 'floor', 'stripper', 'cab'), member('cutter.0', 'cutter', 'cutDropoff', 'dropoff', 'dropoff', null), member('driver.0', 'driver', 'drive', 'park', 'gate', null)],
+      crew: [member('hand.0', 'hand', 'feed', 'floor', 'stripper', 'cab'), member('cutter.0', 'cutter', 'cutDropoff', 'dropoff', 'dropoff', null, 'd5'), member('driver.0', 'driver', 'drive', 'park', 'gate', null)],
       partners: {
         partnerFarm: { open: true, trialUsed: true, level: 1, skip: { phase: 'full', fullAt: 1500, contents: { washer: 4, radiator: 3 }, mass_g: 250000, price: 150, priceDay: DAY, trial: false, n: 3 } },
         partnerDemolition: { open: true, trialUsed: false, level: 1, skip: { ...s.partners.partnerDemolition.skip } },
@@ -377,7 +407,7 @@ function back(): FixtureState {
     passed: ['rival03'],
     hint: null,
   };
-  return { ...b, cash: b.cash + card.money, lifetimeEarnings: b.lifetimeEarnings + card.money, salvage: { ...b.salvage, away: card, ladder: { ...b.salvage.ladder, supplied_g: b.salvage.ladder.supplied_g + card.supplied_g, passed: 3 } } };
+  return { ...b, cash: b.cash + card.money, lifetimeEarnings: b.lifetimeEarnings + card.money, salvage: { ...b.salvage, away: card, beenAway: true, ladder: { ...b.salvage.ladder, supplied_g: b.salvage.ladder.supplied_g + card.supplied_g, passed: 3 } } };
 }
 
 /** The four frozen states (frozen objects: copy before changing; the store's updates copy anyway). */

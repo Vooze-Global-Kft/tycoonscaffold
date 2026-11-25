@@ -1042,7 +1042,7 @@ def bench_knock(c):
 def furnace_roar(c):
     """The crucible's burner (2.0 s segment), three files a ladder of heat (step 0 lit, 1 half way, 2
     at pouring heat): the roar opening up and the flutter quickening as the heat builds; chained
-    every 1900 ms."""
+    every 1850 ms."""
     heat = (0.15, 0.5, 0.95)[c.var % 3]
     y = burner(c.sub('b'), 2.0, heat)
     c.accent(0.0)
@@ -1115,7 +1115,7 @@ def cool_ticks(c):
 @yard_recipe('truck_diesel', loud_db=QUIET)
 def truck_diesel(c):
     """The hook-lift truck's diesel (1.0 s segment), three files a ladder of speed (0 idle, 1 driving,
-    2 pulling hard): the firing rate and the load rise with each; chained every 950 ms while driving."""
+    2 pulling hard): the firing rate and the load rise with each; chained every 930 ms while driving."""
     v = c.var % 3
     fire = (30.0, 52.0, 78.0)[v]
     load = (0.15, 0.5, 0.85)[v]
@@ -1291,7 +1291,7 @@ def load_cool(c):
 
 @yard_recipe('load_loop', length=2.0, loud_db=AMBIENT)
 def load_loop(c):
-    """The calm loop (2.0 s segment, chained every 2 s while the bakes finish): the parked magnet's
+    """The calm loop (2.0 s segment, chained every 1.82 s while the bakes finish): the parked magnet's
     rope creaking as it sways, the furnace breathing low, one soft glint ping (E7)."""
     dur = 2.0
     n = ns(dur)
@@ -1326,7 +1326,7 @@ def gate_open(c):
 
 @yard_recipe('amb_yard', length=8.0, loud_db=AMBIENT)
 def amb_yard(c):
-    """The yard's surroundings (8.0 s segment, three files taking turns, chained every 7.5 s): distant
+    """The yard's surroundings (8.0 s segment, three files taking turns, chained every 7.4 s): distant
     traffic swelling and fading, a few small birds on the fence, and in one file a far reverse
     beeper across the estate."""
     dur = 8.0
@@ -1403,12 +1403,12 @@ EVENTS = {
     'stripper_power': (0.35, 900, None, 'the powered stripper (1.0 s segment): motor hum, rollers, the blade; chained every 950 ms', 2, None),
     'bench_knock': (0.4, 550, None, 'the motor bench (0.6 s segment): hammer and chisel on a motor casing, two knocks; chained every 600 ms; two files', 2, None),
     # the crucible
-    'furnace_roar': (0.4, 1800, None, 'the crucible\'s burner (2.0 s segment), a ladder of heat (0 lit, 1 half, 2 pouring heat); chained every 1900 ms', 2, None),
+    'furnace_roar': (0.4, 1750, None, 'the crucible\'s burner (2.0 s segment), a ladder of heat (0 lit, 1 half, 2 pouring heat); chained every 1850 ms', 2, None),
     'ready_chime': (0.5, 3000, None, 'ready to pour: the burner turned down and the crucible\'s steel signal bar rapped three times (B5)', 1, None),
     'pour_glug': (0.6, 2000, None, 'the pour: a thick hiss and sizzle, low glugs, sparkle where it splashes (2 s)', 1, 29),
     'cool_ticks': (0.4, 2000, None, 'the bar cooling: the sizzle fading, then metal ticking as it contracts (2.6 s)', 1, None),
     # the truck and the skips
-    'truck_diesel': (0.35, 900, None, 'the hook-lift truck\'s diesel (1.0 s segment), a ladder of speed (0 idle, 1 driving, 2 pulling); chained every 950 ms', 2, 30),
+    'truck_diesel': (0.35, 880, None, 'the hook-lift truck\'s diesel (1.0 s segment), a ladder of speed (0 idle, 1 driving, 2 pulling); chained every 930 ms', 2, 30),
     'truck_reverse': (0.4, 1500, None, 'reversing over the weighbridge: three reverse-alarm bursts (1.18 kHz) over the idle', 1, None),
     'hook_swap': (0.5, 2500, None, 'the hook-lift swap: hydraulics, the hook\'s clank on the skip bar, the skip dragged up and seated', 1, None),
     'skip_tip': (0.55, 2500, None, 'the skip tipped: the arm lifting, a long crash of mixed scrap sliding out', 1, None),
@@ -1421,10 +1421,10 @@ EVENTS = {
     'load_beeps': (0.4, 300, None, 'loading: the display counting a plate\'s kilograms, a settle beep (E7)', 1, 33),
     'load_pour': (0.55, 800, None, 'loading: the crucible tips and pours: a burner swell, the stream\'s hiss, two glugs', 1, 34),
     'load_cool': (0.45, 800, None, 'loading: the bar cooled to brass: the last sizzle and one glint ping (B6) (requested by the loading engineer)', 1, 35),
-    'load_loop': (0.35, 1900, None, 'loading\'s calm loop (2.0 s segment): the magnet\'s rope creaking, the furnace breathing, a soft glint; chained every 2 s', 2, None),
+    'load_loop': (0.35, 1700, None, 'loading\'s calm loop (2.0 s segment): the magnet\'s rope creaking, the furnace breathing, a soft glint; chained every 1.82 s', 2, None),
     'gate_open': (0.55, 800, None, 'the picture parts: the yard gate\'s two leaves rolling apart and clacking against their posts', 1, 36),
     # the yard around you
-    'amb_yard': (0.25, 7000, None, 'the yard\'s surroundings (8 s segment): distant traffic, small birds, a far reverse beeper in one file; chained every 7.5 s', 2, None),
+    'amb_yard': (0.25, 7000, None, 'the yard\'s surroundings (8 s segment): distant traffic, small birds, a far reverse beeper in one file; chained every 7.4 s (the file less one fade)', 2, None),
     # music
     'music_main': (0.22, None, None, '"yard radio": 92 bpm in E, mellow clean electric guitar and fingered bass over the yard\'s own metal hits, two variants crossfaded inside one 89 s loop; sparse', 1, None),
 }
@@ -1453,7 +1453,7 @@ M4A_KBPS = 64
 SEGMENT_MS = {
     'cut_spanner': 500, 'cut_sledge': 700, 'cut_grinder': 750, 'cut_torch': 1100,
     'stripper_hand': 750, 'stripper_power': 950, 'bench_knock': 600,
-    'furnace_roar': 1900, 'truck_diesel': 950, 'load_loop': 2000, 'amb_yard': 7500,
+    'furnace_roar': 1850, 'truck_diesel': 930, 'load_loop': 1820, 'amb_yard': 7400,
 }
 
 # Segments of separate blows: silence between two plays is the sound (a sledge is swung, not held).

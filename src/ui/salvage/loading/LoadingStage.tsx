@@ -7,13 +7,14 @@
  * - `ready`: the yard beneath is baked; the gate parts as soon as the timeline allows (from 3.2 s with
  *   three words), else the calm loop holds (the magnet sways, the display ticks, the furnace breathes).
  * - A tap skips to the end from the second launch on (the first launch plays it whole).
+ * - The picture comes up out of the splash's colour in 0.3 s (yard-stage1.md 6.4).
  * - Reduced motion: the final frame, with only the furnace breathing; the gate fades instead of parting.
  * - Sounds by id through the fx service (a missing id is silent): crane, plate, pour, cooled, gate.
  */
 import { useEffect, useMemo } from 'react';
 import { PixelRatio, Pressable, StyleSheet } from 'react-native';
 import { Canvas, Picture, Skia } from '@shopify/react-native-skia';
-import { runOnJS, useDerivedValue, useFrameCallback, useReducedMotion, useSharedValue } from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useDerivedValue, useFrameCallback, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { fx } from '../../../services/fx';
 import { S } from '../strings';
 import { canSkip, loadingClock, markSeen, NOT_YET } from './clock';
@@ -137,6 +138,9 @@ export function LoadingStage({ title, width, height, insets, ready, onDone }: Lo
     return r.finishRecordingAsPicture();
   });
 
+  // the picture comes up out of the splash's colour over its first 0.3 s (not with reduced motion)
+  const fadeIn = useAnimatedStyle(() => ({ opacity: still ? 1 : Math.min(1, C.t.value / 0.3) }));
+
   const skip = () => {
     if (!canSkip() || C.done.value) return;
     // to the end of the timeline: cooled bars, the ticket out; the gate parts as soon as the yard is ready
@@ -148,12 +152,14 @@ export function LoadingStage({ title, width, height, insets, ready, onDone }: Lo
   const canvasStyle = useMemo(() => ({ position: 'absolute' as const, left: 0, top: 0, width, height }), [width, height]);
   return (
     <Pressable style={[styles.fill, { width, height }]} onPress={skip} accessibilityRole="progressbar" accessibilityLabel={S.loading}>
-      <Canvas style={canvasStyle} pointerEvents="none">
-        <Picture picture={back} />
-      </Canvas>
-      <Canvas style={canvasStyle} pointerEvents="none">
-        <Picture picture={front} />
-      </Canvas>
+      <Animated.View style={[styles.fill, { width, height }, fadeIn]} pointerEvents="none">
+        <Canvas style={canvasStyle} pointerEvents="none">
+          <Picture picture={back} />
+        </Canvas>
+        <Canvas style={canvasStyle} pointerEvents="none">
+          <Picture picture={front} />
+        </Canvas>
+      </Animated.View>
     </Pressable>
   );
 }

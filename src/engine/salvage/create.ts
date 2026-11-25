@@ -10,7 +10,7 @@ import { marketDay } from './board';
 import { pointOf } from './positions';
 import type { CrucibleState, MachineState, PartnerState, SalvageConfig, SalvageGame, SalvageState, ThingState } from './types';
 
-const machine = (owned: boolean): MachineState => ({ owned, level: owned ? 1 : 0, in_g: {}, tray_g: {}, status: owned ? 'idle' : 'notOwned', since: 0 });
+const machine = (owned: boolean): MachineState => ({ owned, level: owned ? 1 : 0, hopper: [], working_g: 0, workingGrade: null, tray_g: {}, status: owned ? 'idle' : 'notOwned', since: 0 });
 
 /** The old stock as things, zone by zone in content order (uids `${zone}.${obj}.${k}`, k counted per zone). */
 export function stockThings(c: SalvageContent): ThingState[] {
@@ -46,7 +46,8 @@ export function freshSalvage(c: SalvageContent, now: number): SalvageState {
     presenceAt: -1,
     act: { kind: 'none', target: null, since: 0 },
     things: stockThings(c),
-    piles: {},
+    pieces: [],
+    waste_g: 0,
     bays: {},
     machines: { hand_stripper: machine(true), stripper: machine(false), bench: machine(false), crucible },
     crew: [],
@@ -63,8 +64,9 @@ export function freshSalvage(c: SalvageContent, now: number): SalvageState {
     ticketNo: 1,
     away: null,
     draws: 0,
-    debt: 0,
-    engine: { segmentAt: 0, nextEventAt: null },
+    keptFor: null,
+    beenAway: false,
+    queue: [],
   };
 }
 

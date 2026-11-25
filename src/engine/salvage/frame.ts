@@ -9,17 +9,8 @@ import { piecePos, pointOf, thingPos } from './positions';
 import type { FrameBay, FrameCrew, FrameLabel, FrameMachine, FramePiece, FrameSkip, FrameTable, FrameThing, MachineId, MachineLook, SalvageGame, TextKey, ThingAt } from './types';
 import { TEXT_KEYS } from './types';
 
-/** Pieces drawn a pile and grade at most (a heap of 40 kg of light iron is a few panels, not 40). */
-const MAX_DRAWN = 6;
 const PLACE_KEYS = new Set<string>(TEXT_KEYS.place);
 const MACHINE_PLACE: Record<MachineId, string> = { hand_stripper: 'stripper', stripper: 'stripper', bench: 'bench', crucible: 'crucible' };
-
-/** The usual piece mass of a grade (its smallest piece in content), grams, for how many pieces a pile draws. */
-function pieceMass(c: SalvageContent, grade: string): number {
-  let m = Infinity;
-  for (const o of Object.values(c.objects)) for (const [gr, g] of o.pieces) if (gr === grade && g < m) m = g;
-  return Number.isFinite(m) ? m : 10_000;
-}
 
 function machineLook(g: SalvageGame, id: MachineId): MachineLook {
   const m = g.salvage.machines[id];
@@ -53,21 +44,14 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
       y: p.y,
       locked: tier > s.tier ? (tier >= 3 ? 'tool3' : 'tool2') : null,
       work: th.by ? Math.min(1, th.progress / Math.max(0.1, c.cut.minS * 4)) : null,
+      by: th.by,
     };
   });
 
-  const pieces: FramePiece[] = [];
-  for (const [pile, stock] of Object.entries(s.piles)) {
-    let k = 0;
-    for (const [grade, grams] of Object.entries(stock)) {
-      if (grams <= 0) continue;
-      const n = Math.min(MAX_DRAWN, Math.max(1, Math.round(grams / pieceMass(c, grade))));
-      for (let i = 0; i < n; i++, k++) {
-        const p = piecePos(c, pile, k, thingAt);
-        pieces.push({ sprite: c.grades[grade]?.sprite ?? 'piece.unknown', grade, pile, k, x: p.x, y: p.y });
-      }
-    }
-  }
+  const pieces: FramePiece[] = s.pieces.map((pc) => {
+    const p = piecePos(c, pc.pile, pc.k, thingAt);
+    return { uid: pc.uid, sprite: c.grades[pc.grade]?.sprite ?? 'piece.unknown', grade: pc.grade, pile: pc.pile, k: pc.k, x: p.x, y: p.y };
+  });
 
   const kg = s.load.reduce((a, p) => a + p.g, 0) / 1000;
   const load = {
@@ -115,7 +99,8 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
   const crew: FrameCrew[] = s.crew.map((m) => {
     const from = m.from ? pointOf(c, m.from) : pointOf(c, 'office');
     const to = m.to ? pointOf(c, m.to) : from;
-    return { id: m.id, role: m.role, sprite: `person.${m.role}`, job: m.job, phase: m.phase, from, to, t0: m.t0, t1: m.t1, carries: m.carries ? (c.grades[m.carries]?.sprite ?? null) : null };
+    const load = m.load.map((p) => ({ sprite: c.grades[p.grade]?.sprite ?? 'piece.unknown', grade: p.grade, g: p.g }));
+    return { id: m.id, role: m.role, sprite: `person.${m.role}`, job: m.job, phase: m.phase, from, to, t0: m.t0, t1: m.t1, carries: m.carries ? (c.grades[m.carries]?.sprite ?? null) : null, load };
   });
 
   const tk = s.truck;

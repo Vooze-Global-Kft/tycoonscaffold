@@ -110,6 +110,13 @@ headless(async (H) => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       run: async (x) => (require('./yard-people-sheets') as typeof import('./yard-people-sheets')).peopleSheets(x.H, x.T, (id) => id === name, x.write),
     });
+  // the artist "things" (scripts/art/yard-things-sheets.ts): things, pieces, heaps, things-ui, things-scene, things-grey, things-bounds
+  for (const name of ['things', 'pieces', 'heaps', 'things-ui', 'things-scene', 'things-grey', 'things-bounds'])
+    REGISTRY.push({
+      name: name === 'things' || name === 'pieces' ? `${name}-all` : name,
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      run: async (x) => (require('./yard-things-sheets') as typeof import('./yard-things-sheets')).thingsSheets(x.H, x.T, (id) => id === name, x.write),
+    });
   REGISTRY.push({
     name: 'budget',
     run: async () => {

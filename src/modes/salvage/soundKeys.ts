@@ -63,10 +63,10 @@ export const SALVAGE_SEGMENT_MS = {
   stripper_hand: 750,
   stripper_power: 950,
   bench_knock: 600,
-  furnace_roar: 1900,
-  truck_diesel: 950,
-  load_loop: 2000,
-  amb_yard: 7500,
+  furnace_roar: 1850,
+  truck_diesel: 930,
+  load_loop: 1820,
+  amb_yard: 7400,
 } as const satisfies Partial<Record<SalvageFxName, number>>;
 
 /**
