@@ -29,14 +29,15 @@ import type { FxName as CatalogName, FxRuntimeDef } from './catalog';
 import type { HaulFxName } from './catalog.haul';
 import type { MergeFxName } from './catalog.merge';
 import type { DecreeFxName } from './catalog.decree';
+import type { SalvageFxName } from './catalog.salvage';
 import { systemClock } from './clock';
 import { createFx, type Fx } from './core';
 import { createHaptics } from './haptics';
 import { SettingsStore } from './settings';
 
 export type { FxDef, FxRuntimeDef, HapticStep } from './catalog';
-/** Every event a game can play: the shared catalogue's keys and the haul, merge and decree modes' own (./catalog.haul.ts, ./catalog.merge.ts, ./catalog.decree.ts). Each game's table holds its mode's only. */
-export type FxName = CatalogName | HaulFxName | MergeFxName | DecreeFxName;
+/** Every event a game can play: the shared catalogue's keys and the haul, merge, decree and salvage modes' own (./catalog.haul.ts, ./catalog.merge.ts, ./catalog.decree.ts, ./catalog.salvage.ts). Each game's table holds its mode's only. */
+export type FxName = CatalogName | HaulFxName | MergeFxName | DecreeFxName | SalvageFxName;
 export type { Fx, PlayOptions } from './core';
 export type { FxSettings } from './settings';
 

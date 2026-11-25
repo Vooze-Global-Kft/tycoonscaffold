@@ -22,6 +22,8 @@ const CATALOG_BY_MODE = {
   merge: path.resolve(__dirname, '..', '..', 'src', 'services', 'fx', 'catalog.merge.ts'),
   // The decree mode likewise plays only its own keys (High Office, office-design.md 6).
   decree: path.resolve(__dirname, '..', '..', 'src', 'services', 'fx', 'catalog.decree.ts'),
+  // The salvage mode likewise (the scrapyard; its keys come with the sound package, docs/design/yard-design.md).
+  salvage: path.resolve(__dirname, '..', '..', 'src', 'services', 'fx', 'catalog.salvage.ts'),
 };
 
 /** Same length as src, with comments and the insides of strings blanked. */
@@ -136,7 +138,8 @@ function parseCatalog(file = CATALOG) {
     i = c + 1;
   }
   const rest = masked.slice(i, end).replace(/[\s,]/g, '');
-  if (rest || entries.length === 0) throw new Error(`fx catalogue: could not read near ${JSON.stringify(src.slice(i, i + 80).trim())}`);
+  // A mode's own catalogue may be empty while its sounds are not designed yet (salvage); the shared one never is.
+  if (rest || (entries.length === 0 && file === CATALOG)) throw new Error(`fx catalogue: could not read near ${JSON.stringify(src.slice(i, i + 80).trim())}`);
   if (new Set(entries.map((e) => e.key)).size !== entries.length) throw new Error('fx catalogue: duplicate keys');
   return entries;
 }

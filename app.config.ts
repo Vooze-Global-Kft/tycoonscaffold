@@ -81,7 +81,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     slug: game.app.slug,
     owner: game.app.owner,
     version: game.app.version ?? '1.0.0',
-    orientation: 'portrait',
+    // game.json app.orientation (optional; the four portrait games leave it out and resolve as before).
+    orientation: game.app.orientation ?? 'portrait',
     icon,
     userInterfaceStyle: 'automatic',
     ios: {

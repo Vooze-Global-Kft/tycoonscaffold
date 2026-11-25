@@ -152,9 +152,11 @@ export const GameConfigSchema = z.object({
    *   are src/engine/merge, installed by its mode entry (src/engine/mode.ts).
    * "decree": the desk game of offices and papers (needs the `decree` block; `businesses` stays empty).
    *   Its rules are src/engine/decree, installed by its mode entry (src/engine/mode.ts).
+   * "salvage": the walkable scrapyard (needs the `salvage` block; `businesses` stays empty). Its rules
+   *   are src/engine/salvage, installed by its mode entry (src/engine/mode.ts). Landscape (`app.orientation`).
    * The mode picks the code bundled with the game (src/generated/mode.ts) and is never changed at run time.
    */
-  mode: z.enum(['classic', 'sim', 'haul', 'merge', 'decree']).default('classic'),
+  mode: z.enum(['classic', 'sim', 'haul', 'merge', 'decree', 'salvage']).default('classic'),
   /**
    * The sound pack: a folder in shared/sfx/ ("warm": marimba, plate clinks, the service bell;
    * "synth"). Only this pack is bundled with the game; files in the game's own assets/sfx/
@@ -180,6 +182,13 @@ export const GameConfigSchema = z.object({
      * sentence with the game's name (the first game's text stays what it is).
      */
     trackingText: z.string().min(20).max(200).optional(),
+    /**
+     * The orientation the app is locked to (app.config.ts `orientation`; Expo's manifest field, honoured by
+     * Expo Go and the store builds). Optional: a game without it is portrait, exactly as before. No
+     * run-time lock: a landscape game draws its own "turn your phone sideways" card when the window is
+     * taller than wide (docs/design/research/yard-tech.md A1, A5; the salvage mode).
+     */
+    orientation: z.enum(['portrait', 'landscape']).optional(),
   }),
 
   theme: z.object({
@@ -354,6 +363,13 @@ export const GameConfigSchema = z.object({
    * `config`), and the game-data lint checks it (src/config/lint.ts).
    */
   decree: z.record(z.string(), z.unknown()).optional(),
+  /**
+   * Salvage mode: the yard, the worker and what the rules need. Opaque here, like `haul`, `merge` and
+   * `decree`: its schema (src/config/schema.salvage.ts) belongs to the salvage mode; the salvage engine
+   * mode parses this block with its defaults when the salvage entry installs it (src/engine/salvageMode.ts
+   * `config`), and the game-data lint checks it (src/config/lint.ts).
+   */
+  salvage: z.record(z.string(), z.unknown()).optional(),
   /** Cards, chests, missions and deals. Works in both modes; everything is optional. */
   meta: MetaSchema.default({
     cards: [],
