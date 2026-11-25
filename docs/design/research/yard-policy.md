@@ -1,6 +1,6 @@
 # Scrapyard: store rules for pretend markets, names, groups and accounts
 
-Read 25 November 2026; Apple's guidelines show "Last Updated: October 16, 2026". [n] marks a source (list at the end). Quotes are exact. **Inference** marks my reasoning. Forum posts and law-firm notes are individual reports. Not legal advice. `policy.md` and `spam.md` (chests, deals, gems, ad placement, COPPA basics, reskins) still apply and are not repeated.
+Read 25 November 2026; Apple's guidelines show "Last Updated: October 16, 2026". Checked the same day by a second reader, who re-opened A1–A5, G1, G3, G6–G12, G14, X1, X2, X4, F1, R3, L2–L4 and corrected §2, §3, §5 and the checklist. [n] marks a source (list at the end). Quotes are exact. **Inference** marks my reasoning. Forum posts and law-firm notes are individual reports. Not legal advice. `policy.md` and `spam.md` (chests, deals, gems, ad placement, COPPA basics, reskins) still apply and are not repeated.
 
 ## 1. Pretend prices, pretend shares, rankings
 
@@ -11,11 +11,7 @@ Read 25 November 2026; Apple's guidelines show "Last Updated: October 16, 2026".
 
 **What the rating forms ask.**
 - Apple [A2]: "Gambling: Betting or wagering using real money or in-game currency that may be exchanged for real money." "Simulated Gambling: Betting or wagering without using real money or in-game currency that can be exchanged for real money." "Contests: Events that allow users to compete with one another for rankings, rewards, or the achievement of personal goals."
-- Apple's resulting ratings [A2]:
-  - infrequent simulated gambling: 13+ (Australia "R 18+", Brazil A12);
-  - frequent simulated gambling: 18+;
-  - infrequent contests: 4+;
-  - frequent contests: 13+.
+- Apple's resulting ratings [A2]: infrequent simulated gambling 13+ (Australia "R 18+", Brazil A12); frequent simulated gambling 18+; infrequent contests 4+; frequent contests 13+.
 - IARC (Google Play): ratings are "determined by your questionnaire responses"; "Misrepresentation of your app's content may result in its removal or suspension" [G3]. The questions are visible only inside Play Console; not read.
 - ESRB: "Simulated Gambling ... Typically assigned to simulations of casino-based gambling." [R1]
 
@@ -47,9 +43,9 @@ Read 25 November 2026; Apple's guidelines show "Last Updated: October 16, 2026".
 - Google: "Don't use another party's trademarks, such as logos or brand names without permission and/or in a way that could confuse users"; infringement is use of "an identical or similar trademark in a way that is likely to cause confusion as to the source" [G4]; no apps that "impersonate any person or organization" [G5].
 
 **The London exchange.**
-- "A LME Usage Licence is required by any firm that uses LME data or trademark(s)" for pricing or "As a reference price in transactions".
-- Separate licences are needed for "Distribution of data to third parties" and "Creation of derived data products" [X1].
-- Displayed data must carry a notice that it "may not be copied or further distributed or modified ... without the prior written permission of the LME" [X2].
+- The Usage Licence is narrow: "A LME Usage Licence is required by any firm that uses LME data or trademark(s) for either of the following uses, other than for limited internal business use": valuation or pricing, or "As a reference price in transactions".
+- Showing prices to app users is a different case: "Additional market data licensing agreements are required for" "Distribution of data to third parties" and "Creation of derived data products (e.g. indices, certificates or CFDs)" [X1].
+- Licensees displaying data should show that it "may not be copied or further distributed or modified in whole or in part without the prior written permission of the LME" [X2].
 
 **The Shanghai exchange** (its copyright statement; my translation in brackets).
 - "本网站提供的所有资料（包括但不限于行情信息、市场统计信息等）...的知识产权均归属上海期货交易所" [all material, including quote information and market statistics, is the exchange's intellectual property].
@@ -100,11 +96,11 @@ A later round added in-app contact details and a reviewer login or "a demonstrat
 - UK: games where users create content or chat that others may see are user-to-user services. They need an illegal-content risk assessment and a children's access assessment [R4] (Ofcom's own page returned HTTP 403).
 - **Inference:** free chat makes every message UGC to moderate, among strangers on anonymous accounts, close to Apple's "random or anonymous chat". Phrases picked from a fixed list are not user-created text, so they carry none of this. **No free chat.** Companies get fixed phrases and emotes, and founders pick notices from a fixed list.
 
-**What small publishers usually do** (Inference and memory, not read today).
-- A word filter on the device and on the server: several languages, look-alike letters folded, no links, no runs of digits.
-- New names are visible only to their author until the server passes them; unclear names are held for a person.
-- A reported name falls back at once to "Company #48213".
-- Generated default names are offered.
+**What small publishers usually do** (Inference and memory, not read today): a word filter on device and server (several languages, look-alike letters folded, no links or digit runs); new names visible only to their author until passed; a reported name falls back at once to "Company #48213"; generated default names offered.
+
+**Other laws on the same features** (secondary [R3]; not read at the source).
+- UK: Ofcom's children's codes, "in force since July 2025", require in-scope services to "allow children under the age of 18 to block or mute accounts, manage group chat invitations". **Inference:** company invitations can be declined and switched off by the player.
+- EU: under the Digital Services Act, UGC "that make[s] information available to a potentially unlimited number of recipients may bring the service within the scope of the DSA's 'online platform' obligations" (reporting and complaints). A public leaderboard of player-typed names may qualify; which duties a small publisher is exempt from is from memory and unchecked: ask a lawyer.
 
 **This game's kit (L5d).**
 1. Terms accepted before the first name.
@@ -126,13 +122,7 @@ A later round added in-app contact details and a reviewer login or "a demonstrat
 - Required only when a third-party login such as "Google Sign-In" sets up the primary account. It is not needed if "Your app exclusively uses your company's own account setup and sign-in systems" (4.8 [A1]).
 - **Inference:** not needed now. If Google or Facebook login is added later, Sign in with Apple (or an equal service) must be added too.
 
-**Deletion, Apple** [A3].
-- "Make the account deletion option easy to find".
-- "only offering to temporarily deactivate or disable an account is insufficient".
-- Outside regulated fields, deletion must not require "a phone call, send an email".
-- If deletion takes time, "Inform the person how long it will take".
-- It covers "user-generated content that's shared with others".
-- It is offered to everyone, not only where "CCPA, GDPR, or other local laws" demand it.
+**Deletion, Apple** [A3]: "Make the account deletion option easy to find"; "only offering to temporarily deactivate or disable an account is insufficient"; outside regulated fields no "phone call, send an email"; if it takes time, "Inform the person how long it will take"; it covers "user-generated content that's shared with others"; it is offered everywhere, not only where "CCPA, GDPR, or other local laws" demand it.
 
 **Deletion, Google** [G7].
 - Provide "an in-app path to delete their app accounts and associated data" and "a web link resource where users can request app account deletion".
@@ -177,7 +167,7 @@ A later round added in-app contact details and a reviewer login or "a demonstrat
 ## 5. Children and the age rating
 
 **Apple** [A2].
-- UGC and Messaging and Chat are declared but sit at 4+ (Brazil: UGC A6, chat A12).
+- UGC and Messaging and Chat are declared but sit at 4+ (Brazil: UGC A6, chat A12, and "Advertising" also A12, so this game shows A12 in Brazil whatever else it does).
 - "Social Media: Redistribution, amplification, or interaction with user-generated content through a social feed ... views, likes, comments, and shares" is 13+.
 - "Unrestricted Web Access" is 16+.
 - **Inference:** a company page with no feed, likes or comments keeps the Social Media item off.
@@ -185,35 +175,27 @@ A later round added in-app contact details and a reviewer login or "a demonstrat
 **IARC.**
 - Interactive elements "do not influence the rating assignment" (ESRB [R1]).
 - USK notes that "user-generated content might generally contribute to the youth protection relevance" [G3].
-- In the EEA, UK, Australia and Brazil, Google blocks 18+ apps for minors [G3].
+- In "the European Economic Area (EEA), Australia, Brazil, Indonesia, Singapore, Switzerland and the United Kingdom only", Google blocks 18+ apps for users determined to be minors [G3].
 
 **Inference: the rating that follows.**
-- With filtered names, fixed phrases, frequent contests and no gambling:
-  - Apple 13+;
-  - IARC most likely E / PEGI 3–7 / USK 6, with "Users Interact" and "In-Game Purchases".
-- Adding moderated free chat may lift PEGI and USK to 12.
+- With filtered names, fixed phrases, frequent contests and no gambling: Apple 13+.
+- PEGI's 2026 criteria (secondary [R3], also in `policy.md` §2): "time-limited or quantity-limited purchase offers" give at least PEGI 12; rewards for returning (daily quests, login streaks) at least PEGI 7, and 12 if absence is punished. So with the house's timed deals, expect PEGI 12, not 3–7; without them and with daily rewards, PEGI 7. Whether IARC on Google Play already applies these criteria is unverified. Expect "Users Interact" and "In-Game Purchases" notices.
 - Chat without reporting or blocking gives PEGI 18 [R3], and fails the store rules anyway.
 
 **Stay out of the kids and families programmes.**
 - Google's audience guide says apps for ages 9–12 may be unsuitable if they "Allow opportunity for direct interaction between users" [G9].
 - A child audience brings social-feature duties: "an in-app reminder to be safe online", "a method for adults to manage social features", and "adult action before enabling features that allow children to exchange personal information" [G10]. It also limits ads to Families-certified SDKs [G3].
 - Apple's Kids Category bars ungated purchases and most third-party ads [A1 1.3].
+- Google adds that ages 13–15 "may be considered to include children in some locales" [G9].
 - **Inference:** Google target 13+, never the Kids Category, an adult cast on the store page, ad settings as in `policy.md`.
-- **Inference:** players in the under-13 age band (`policy.md` §3 item 8) get the offline local mode only: no shown name, no companies.
+- **Inference:** players in the under-13 age band (`policy.md` §3 and Checklist item 8) get the offline local mode only: no shown name, no companies.
+- US state app-store laws (Texas, Utah, Louisiana) require developers to receive and use the store's age and parental-consent signals; Texas's took effect after an appeals court stayed an injunction on 28 May 2026, and Utah's dates have moved (law-firm reports found by search, not opened; individual reports). The age band of `policy.md` §3 is the hook; the dates need a lawyer.
 
 ## 6. Other players and purchases
 
 **Selling advantages in a ranked game.**
-- Odds disclosure does not apply, because nothing random is sold. No store rule bans selling advantages.
-- These do apply:
-  - Apple 2.3.1: "marketing your app in a misleading way" is grounds for removal [A1].
-  - Google's "safeguards to prevent in-app monetization from encouraging objectionable user behavior" [G6].
-  - Google's ban on real prizes (§1).
-  - The EU consumer principles (`policy.md` §2).
-- **Inference:**
-  - Purchases buy time and comfort, never a rank or market power that only money reaches.
-  - Leaderboards are seasonal and grouped by start week.
-  - One board ranks only what money cannot move.
+- Odds disclosure does not apply (nothing random is sold), and no store rule bans selling advantages. What applies: Apple 2.3.1 ("marketing your app in a misleading way" [A1]), Google's monetisation safeguard [G6], the ban on real prizes (§1), the EU consumer principles (`policy.md` §2).
+- **Inference:** purchases buy time and comfort, never a rank or market power that only money reaches; boards are seasonal, grouped by start week, and one ranks only what money cannot move.
 
 **Gifting between players.**
 - Apple 3.1.1: "Apps may enable gifting of items that are eligible for in-app purchase to others. Such gifts may only be refunded to the original purchaser and may not be exchanged." Bought currency "may not expire" [A1].
@@ -227,16 +209,9 @@ A later round added in-app contact details and a reviewer login or "a demonstrat
 
 ## 7. The stores' own game services
 
-**Game Center** [A5].
-- Offers "leaderboards, achievements, multiplayer matchmaking, and real-time play".
-- Enabled games "appear in more places ... and on the App Store in featured placements", and friends are notified when someone passes their score.
-- No groups or guilds.
-- 4.5.3 bars mining "Player IDs, aliases, or other information obtained through Game Center" [A1].
+**Game Center** [A5]: "leaderboards, achievements, multiplayer matchmaking, and real-time play"; enabled games "appear in more places ... and on the App Store in featured placements"; "notifications automatically sent to players when their friends pass their score". No groups or guilds. 4.5.3 bars mining "Player IDs, aliases, or other information obtained through Game Center" [A1].
 
-**Play Games Services** [G13].
-- Offers "Achievements and leaderboards", "Consistent Gamer Profiles" and "Social Graph".
-- Leaderboards come as public and social views, with "tamper protection ... enabled by default".
-- No groups.
+**Play Games Services** [G13]: "Achievements and leaderboards", "Consistent Gamer Profiles", "Social Graph"; public and social leaderboards with "tamper protection ... enabled by default". No groups.
 
 **Neither is required by review.**
 - Google's Level Up programme is "voluntary". It rewards games that "Integrate the Google Play Games Services v2 SDK and ensure it initializes at startup" and have "a minimum of 10 achievements" [G14].
@@ -270,12 +245,9 @@ A later round added in-app contact details and a reviewer login or "a demonstrat
 ## DO and DO NOT
 
 **(a) Content, names and logos**
-- DO invent every company, exchange, city, country, ticker and logo, and search each name.
-- DO keep metals, alloys and processes real and generic.
-- DO make prices in the game's own currency from its own model, and show the "fictional, not financial advice" line.
-- DO show hazards handled safely.
-- DO NOT use a real brand, a near-miss of one, or a real city in an exchange name.
-- DO NOT use a real price feed, history or index.
+- DO invent every company, exchange, city, country, ticker and logo, and search each name; keep metals, alloys and processes real and generic.
+- DO make prices in the game's own currency from its own model, show the "fictional, not financial advice" line, and show hazards handled safely.
+- DO NOT use a real brand, a near-miss of one, a real city in an exchange name, or a real price feed, history or index.
 - DO NOT add bets, up/down stakes, leverage, shorts, futures, options, pots, wheels, crypto, or speculation in other players' shares.
 - DO NOT show real procedures, injuries or green-benefit claims.
 
@@ -283,6 +255,7 @@ A later round added in-app contact details and a reviewer login or "a demonstrat
 - DO create a silent anonymous account, with offline local mode for under-13s and for when there is no network.
 - DO require terms before the first name; filter on the device and the server; hold new names until passed; use neutral fallback names.
 - DO give report on every name, blocking, and founder removal; act on reports within 24 hours; provide an in-app contact.
+- DO let a player decline and switch off company invitations.
 - DO limit company talk to fixed phrases and emotes.
 - DO offer in-app account deletion that states its time and removes names, scores and company data, plus a public web deletion page.
 - DO check ranks on the server; run seasonal boards, one of them money-proof.
@@ -294,7 +267,7 @@ A later round added in-app contact details and a reviewer login or "a demonstrat
 
 **(c) Store page, purchases and ads**
 - DO describe a fictional business sim, with purchases that speed up growth and online companies that are moderated.
-- DO keep all of `policy.md`: no chests, honest offers, exact ad rewards, 13+, no kids programmes.
+- DO keep all of `policy.md`: no chests, honest offers, exact ad rewards, 13+, no kids programmes; timed deals mean PEGI 12.
 - DO NOT write "eco", "green", "save the planet", "learn to trade", "invest", "win", "jackpot" or "prizes".
 - DO NOT put real company or exchange names in keywords.
 - DO NOT let ad rewards count toward a rank, and DO NOT sell rank, market power or company slots that play cannot earn.
@@ -305,6 +278,7 @@ A later round added in-app contact details and a reviewer login or "a demonstrat
    - Gambling none; Simulated Gambling none; Contests frequent; Loot Boxes no.
    - User-Generated Content yes; Advertising yes; Social Media no.
    - Messaging and Chat no, provided only fixed phrases ship (**Inference**).
+   - In-App Controls: "Age assurance" yes only if the age band ships [A2].
    - Then raise the rating to 13+ by hand.
 2. Google Play forms:
    - IARC questionnaire with the same facts.
@@ -318,7 +292,7 @@ A later round added in-app contact details and a reviewer login or "a demonstrat
    - both linked in the app and in the listings;
    - a support URL and email.
 5. A data processing agreement with the server host.
-6. UK Online Safety Act assessments: illegal content and children's access [R4]. Ask a lawyer about other countries' rules for online services with user content.
+6. UK Online Safety Act assessments: illegal content and children's access [R4]. Ask a lawyer about the EU Digital Services Act and the US state app-store age laws (§3, §5).
 7. Trademark searches for the title and every invented name and logo.
 8. A moderator who reads reports within 24 hours, with operator tools.
 9. Review notes covering filtering, reporting and deletion; a test account or demo mode; the server live and seeded during review.
