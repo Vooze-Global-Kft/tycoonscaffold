@@ -1,13 +1,10 @@
 # Scrapyard stage 1: the first yard, buildable
 
-Status: version 2, part one, 25 November 2026 (step `spec-stage1`). It replaces version 1 entirely. Order of authority: `ECONOMY.md` (E1 to E10) and `STAGE1-RULING.md` (S1 to S24), then section 14 of `docs/design/yard-design.md` (the master, D1 to D17), then the master's text, then `RULING.md`. Where this document and one of those differ, this document is wrong.
+Status: version 2, part one, 25 November 2026 (step `spec-stage1`); it replaces version 1. Authority: `ECONOMY.md` (E1 to E10) and `STAGE1-RULING.md` (S1 to S24), then section 14 of `docs/design/yard-design.md` (the master, D1 to D17), then the master's text, then `RULING.md`; where this document differs from them, it is wrong.
 
-**Part one and part two.** This part writes behaviour, structure and words. A numbers prototype, built under the same two decision files, owns four things that part two lifts in without changing the other sections: the rate engine and with it the state, the tick, the actions' arithmetic and time away (2.12 to 2.16); the map's coordinates; every number; the measured tables (2.18 and the measured column of section 1). So:
-- A number is named by its content key in `code` font (`tools.grinder.price`). A value written "(example 300)" is version 1's or the master's and only gives a reader the scale. No example is a decision.
-- A minute is never stated as fact. Where E9 or S18 gives a band it is written as the band; everything else waits for part two.
-- Invented names are written by register id in braces (`{merchant}`); section 5.1 lists every id used.
+**Part one and part two.** A numbers prototype under the same decision files owns the rate engine (with the state, the tick, the actions' arithmetic and time away, 2.12 to 2.16), the map's coordinates, every number and the measured tables (2.18, section 1's minutes); part two lifts them in without changing the other sections. So a number is named by its content key (`tools.grinder.price`); "(example 300)" is version 1's or the master's value, for scale only; a minute is written only as E9's or S18's band; invented names are register ids in braces (5.1).
 
-Conventions: § the currency symbol; m a metre on the ground plane (x east, y south, the ground work's); kg in prose, integer grams in the rules; money in integer hundredths through one rounding function `roundMoney`; "p̄" a grade's usual price from content; "the boss" the player's worker.
+Conventions: § the currency symbol; m a metre on the ground plane (x east, y south); integer grams and hundredths in the rules, one rounding function `roundMoney`; p̄ a grade's usual price from content; "the boss" the player's worker.
 
 ---
 
@@ -15,49 +12,48 @@ Conventions: § the currency symbol; m a metre on the ground plane (x east, y so
 
 ### 1.1 In five sentences
 
-1. You take over {homeYard}, a small licensed yard on {homeLane} that is full of old stock in heaps, and steer your worker with one thumb: stop beside a washing machine and it comes apart, piece by piece, onto the carry frame on your back.
-2. On the platform scale each grade is weighed into its own bay, the ticket shows what it is worth at today's posted price, and {merchant}'s flatbed collects every bay you have not held and pays by transfer.
-3. A cable bundle stripped on the yard's old hand stripper turns into bare bright copper worth tens of times the iron, and a small crucible under its hood pours your first brass ingot inside the first half hour.
-4. You buy better tools and carriers, a truck that fetches loads from {partnerFarm} and {partnerDemolition} down the lane, and hire a yard hand, a cutter and a driver who keep the yard earning while you are away.
-5. From the first second the industry table ranks 25 rival firms by tonnes supplied under its top line, "the largest full metal recycling and resource supplier", and you pass the first of them inside five minutes.
+1. You take over {homeYard}, a small licensed yard full of old stock, and steer your worker with one thumb: stop beside a washing machine and it comes apart, piece by piece, onto the frame on your back.
+2. The platform scale weighs each grade into its bay at today's posted price, and {merchant}'s flatbed collects every bay you have not held and pays by transfer.
+3. A cable bundle on the yard's old hand stripper becomes bare bright copper worth tens of times the iron, and inside the first half hour a small crucible pours your first brass ingot.
+4. You buy better tools and carriers and a truck that fetches loads from {partnerFarm} and {partnerDemolition}, and hire a yard hand, a cutter and a driver who keep the yard earning while you are away.
+5. From the first second the industry table ranks 25 rival firms by tonnes supplied under "the largest full metal recycling and resource supplier", and you pass the first inside five minutes.
 
 ### 1.2 The first five minutes (storyboard; ruling 5 and E9 give the order)
 
-0:00 is the moment the loading animation's gate leaves part (6.4). The bands are E9's for the normal hand on every seed; the slow hand may take half as long again. The measured column is part two's.
+0:00 is the moment the loading animation's gate parts (6.4). Bands are E9's for the normal hand on every seed (the slow hand within half as long again); the measured column is part two's.
 
 | # | Band | On screen | Thumb | Sound |
 |---|---|---|---|---|
-| 0 | before 0:00 | The loading animation (6.4): a crane lowers one steel plate per word of {title}, the scale display counts the load, a crucible under its hood pours a bar that cools to brass, the picture parts like two gate leaves. | a tap skips it from the second launch | `load_crane`, `load_clank` ×3, `load_beeps`, `load_pour`, `gate_open` |
-| 1 | 0:00 | Morning yard. The boss stands inside the gate at the public drop-off: a washing machine with a pulsing ring. Two steps west the platform scale and weighbridge side by side, the scale house and its board; beyond them the stripper pad (hand stripper, cable bundle) and the crucible pad with padlock chip, price and sample ingot. {merchant}'s flatbed waits at the stillages. Top bar: "§0", "26th of 26 · next {rival.1} {t}", "0 / 30 kg", clipboard. Goal "Take the washer apart"; a ghost thumb drags lower left. | — | `amb_yard`, music |
-| 2 | to about 0:15 | He walks two steps and stops; after the work delay the ring fills. The motor comes free first and arcs onto the frame, then the top panel and a side; the stainless drum and the other side do not fit and drop beside him; the counterweight thuds into the rubble skip. "Load full". | drag, release | `cut_spanner`, `piece_steel`, `thud_waste`, `load_full` |
-| 3 | within about 25 s (the first collection ticket) | Goal "Weigh it on the scale". He steps on; the display counts; the weigh-in ticket rises out of the display post (grade lines, kilograms, today's price per kilogram, the muted "today's value"). The muted value slides onto the bay chip; the flatbed's crane loads the bay for 3 s; the collection ticket prints at the cab ("Lot sold to {merchant}"); a coin arcs to the cash counter, which rolls; the flatbed leaves on its round. | step on | `scale_beeps`, `scale_print`, `flatbed_load`, `coin`, haptic |
-| 4 | to about 0:45 | Goal "Strip the cable". On the way he picks up the drum and side (best value per kilogram first) and weighs them in; their lot waits for the flatbed's return (S1). | steer | `pickup` |
-| 5 | by about 1:30 (the copper jump) | In the stripper's hopper zone the bundle feeds the hand stripper: PVC curls into its bin, bright copper spools into the tray, a few tinned strands apart. He walks over the tray and onto the scale: "Bare bright copper", a short No.2 line, and a muted "today's value" far larger than anything before, with the lesson "Bare bright: {n} times iron's price today". The value slides to the copper stillage; the flatbed returns, loads, pays; the cash counter jumps. | stand, step on | `stripper_hand`, `piece_copper`, `coin_big`, `lesson` |
-| 6 | 60 s or more after the previous prompt | Goal "Buy the sack truck" (the first prompt, S8). At the tool rack "Open": the card shows it with its price and "Moves a washer in one trip". Buy: a van backs in and sets it down; the boss pushes it, the load strapped on. | Open, Buy | `buy`, `van`, `set_down` |
-| 7 | — | The next washer: all its metal in one trip. | — | — |
-| 8 | by 5:00 (slow by 7:30) | Goal "Hire a yard hand": the office's rota card, Hire. A green vest walks out of the portacabin; two chalk circles appear. Goal "Work the drop-off": what the boss cuts and cannot carry, the yard hand carries beside him to the scale. | Open, Hire | `door`, `crew_hello` |
-| 9 | first rival by 5:00 | On a collection the chip slides: "25th of 26 · passed {rival.1}". | — | `chip_slide` |
+| 0 | before 0:00 | The loading animation (6.4): plates spelling {title}, the display counting, a pour cooling to brass, the picture parting like gate leaves. | a tap skips it from the second launch | `load_*`, `gate_open` |
+| 1 | 0:00 | Morning yard. The boss stands inside the gate at the public drop-off by a washing machine with a pulsing ring. Two steps west: the platform scale and weighbridge, the scale house and its board; beyond, the stripper pad (hand stripper, cable bundle) and the crucible pad with padlock chip, price and sample ingot; {merchant}'s flatbed at the stillages. Top bar "§0", "26th of 26 · next {rival.1} {t}", "0 / {kg} kg". Goal "Take the washer apart"; a ghost thumb drags lower left. | — | `amb_yard`, music |
+| 2 | to about 0:15 | He stops beside it; the ring fills. The motor arcs onto his frame, then the top panel and a side; the drum and the other side drop beside him; the counterweight thuds into the rubble skip. "Load full". | drag, release | `cut_spanner`, `piece_steel`, `thud_waste` |
+| 3 | within about 25 s (the first collection ticket) | Goal "Weigh it on the scale". The display counts; the weigh-in ticket rises out of its post with the muted "today's value", which slides onto the bay chip; the flatbed loads the bay for 3 s; the collection ticket prints at its cab ("Lot sold to {merchant}"); a coin arcs to the cash counter; the flatbed leaves on its round. | step on | `scale_beeps`, `scale_print`, `flatbed_load`, `coin` |
+| 4 | to about 0:45 | Goal "Strip the cable". On the way he picks up the drum and side and weighs them in; their lot waits for the flatbed's return. | steer | `pickup` |
+| 5 | by about 1:30 (the copper jump) | In the hopper zone the bundle feeds the hand stripper: PVC curls into its bin, copper spools into the tray. On the scale: "Bare bright copper", a short No.2 line, a muted "today's value" far larger than anything before, the lesson "Bare bright: {n} times iron's price today"; the flatbed returns, loads, pays; the cash counter jumps. | stand, step on | `stripper_hand`, `coin_big`, `lesson` |
+| 6 | 60 s or more after the last prompt | Goal "Buy the sack truck" (the first prompt, S8): at the tool rack, "Open", its card ("Moves a washer in one trip"), Buy; a van sets it down; the boss pushes it. The next washer goes in one trip. | Open, Buy | `buy`, `van` |
+| 7 | by 5:00 (slow 7:30) | Goal "Hire a yard hand": the rota card, Hire; a green vest walks out of the portacabin; two chalk circles appear. "Work the drop-off": what the boss cuts and cannot carry, the yard hand carries to the scale. | Open, Hire | `door` |
+| 8 | first rival by 5:00 | On a collection the chip slides: "25th of 26 · passed {rival.1}". | — | `chip_slide` |
 
-What this shows of ruling 5, in its order: the poured bar (row 0); a wreck apart onto the back (2); a ticket by weight and grade, paid by a named buyer (3); a value jump the player causes, with no purchase (5, D10); a purchase arriving in the world (6); a hired helper carrying beside the player (8); the furnace pad with its price and sample ingot in view from 0:00 (1); a named rival passed (9). At most one purchase prompt a minute (2.10). The opening does not depend on the route (S10): whichever pile the player walks to first, the drop-off is where he stands, the bundle is beside the stripper and the scales are between; the prototype plays two opening routes (straight to the stripper; straight to the old-stock heaps) and reports both.
+That is ruling 5's list in its order, at most one purchase prompt a minute. The opening does not depend on the route (S10): the first thing to work is where the boss stands, the bundle is by the stripper, the scales between; the prototype plays two opening routes (stripper first; heaps first) and reports both.
 
 ### 1.3 Minutes 5 to 60 (ordered; minutes are part two's)
 
 The order of goals, purchases and arrivals; a band is given only where E7, E9 or S18 sets one. Every purchase is priced by the payback rule (E2), so the next useful purchase is never more than three minutes of play away for the normal hand, and at most one prompt comes a minute.
 
-1. Buy the sledgehammer and angle grinder (tier 2): zone 2's radiators, cylinders, bath and gates open; break up the radiators; the yard hand carries the sections from a chalk circle.
-2. Buy the hook-lift truck: it drives in and parks; {partnerFarm}'s trial load stands ready down the lane, its label readable from the gate.
-3. **First drive out, 8 to 10 minutes** (S18, not widened): walk into the truck, drive out, hook the trial load, back over the weighbridge (gross, tare, net, "Seller ID checked · paid by transfer"), tip on the tipping floor; cut and sort it while the yard hand carries the floor.
-4. Buy the motor bench; break a motor (copper, steel and cast-aluminium end caps apart). Pass {rival.2}.
-5. **Rung 2 at 12 to 18 minutes** (E7): "Supply 2 t (3 metals)"; the crane hangs "{homeYard} · 2 t supplied"; a radiation portal at the gate and an ID desk window in the scale house ("Every load checked. Every seller identified. Payment by transfer only.").
-6. Hire a cutter: "The yard now earns while you are away." {foundry}'s supply deal appears on the partner wall (optional).
+1. Buy the sledgehammer and angle grinder: zone 2 opens; the yard hand carries radiator sections from a chalk circle.
+2. Buy the hook-lift truck; {partnerFarm}'s trial load is ready down the lane, its label readable from the gate.
+3. **First drive out, 8 to 10 minutes** (S18): hook the trial load, back over the weighbridge (gross, tare, net), tip; cut and sort it while the yard hand carries the floor.
+4. Buy the motor bench; break a motor. Pass {rival.2}.
+5. **Rung 2 at 12 to 18 minutes** (E7): "Supply 2 t (3 metals)"; the crane hangs the sign; a radiation portal at the gate and the ID desk window ("Every load checked. Every seller identified. Payment by transfer only.").
+6. Hire a cutter ("The yard now earns while you are away."); {foundry}'s supply deal appears (optional).
 7. Buy the flat trolley, then the powered stripper.
-8. Buy the crucible (a flatbed's crane sets it under its hood; the sample pallet goes); "Charge the crucible" (Take from bays reserves one charge of brass).
-9. **First small pour, 18 to 25 minutes** (E9): the first heat waits at "Ready to pour" until the boss is within 6 m, then pours with a camera nudge (S11). Pass {rival.3}.
-10. Hire a driver: a teal vest fetches the farm's loads whenever one is full, cash covers it and the tipping floor has room.
-11. Buy the cutting torch: zone 3 and {partnerDemolition}'s gate open. Cut up the car (depolluted, treatment record ref. 0012): its converter sells whole on assay. Fetch {partnerDemolition}'s trial load.
-12. Buy the Night watch at the office: the away cap rises (`away.capH` to `away.capNightH`).
-13. Named level goals, one at a time, each the one that widens the current bottleneck (E2): the yard hand, the stripper, the cutter. Pass {rival.4}: four rivals in the hour (E7).
-14. **Rung 3 at 55 to 65 minutes** (E7; slow hand by 90): "Supply {t} t (5 metals)", its tonnes set by the prototype; the second yard-hand and cutter places open on the rota.
+8. Buy the crucible; "Charge the crucible" (Take from bays).
+9. **First small pour, 18 to 25 minutes** (E9), waiting at "Ready to pour" for the boss (S11). Pass {rival.3}.
+10. Hire a driver, who fetches the farm's loads when one is full, cash covers it and the floor has room.
+11. Buy the cutting torch: zone 3 and {partnerDemolition} open; cut up the car (its converter sells on assay); fetch the demolition trial load.
+12. Buy the Night watch: the away cap rises (`away.capH` → `away.capNightH`).
+13. Named level goals, one at a time, each widening the current bottleneck (E2). Pass {rival.4}: four in the hour.
+14. **Rung 3 at 55 to 65 minutes** (E7; slow by 90): "Supply {t} t (5 metals)"; second yard-hand and cutter places.
 
 ### 1.4 Days 1 to 3 (E8)
 
@@ -124,6 +120,8 @@ The site licence hangs on the portacabin wall from the first second. Closed vess
 
 **The yard is full** (E1): old stock in heaps by zone, several tonnes in all (`stock.{zone}`), enough that a normal player is still working through it at minute 30, the better material in the later zones. **Zone 1** (spanners): washing machines, bicycles, heavy cable offcut bundles, crates of brass taps and fittings. **Zone 2** (sledge and grinder): cast-iron radiators, copper cylinders "certified empty", a cast-iron bath, field gates and railings. **Zone 3** (torch): the car, steel beams, a steel tank "certified empty".
 
+**The public drop-off** (E1's trickle that never stops; the no-dead-end source): a car with a trailer leaves one thing every `dropoff.everyS` while fewer than `dropoff.slots` wait, each signed in with its slip (2.2). The first arrivals are fixed in content (`dropoff.first[]`, the same for every player, so the opening does not depend on the seed); later ones are drawn by counter hash from `dropoff.mix` (washers, bicycles, radiators, heavy cable offcuts, brass taps, copper cylinders certified empty: copper and brass come back every few minutes). Never a converter or a sealed vessel.
+
 **How things come apart** (S6, held against `yard-metals.md`; masses and shares are content):
 - **Washing machine**: a whole motor, a top panel of about 4 kg and two cabinet sides (light iron), a stainless drum (sold as light iron in this stage, with the lesson that it pays more once stainless is sorted), the concrete counterweight (waste).
 - **Bicycle**: frame and wheels, light iron (an old bicycle's rims are steel).
@@ -140,7 +138,7 @@ The site licence hangs on the portacabin wall from the first second. Closed vess
 | li | Light iron | light iron | ferrous | product | 0.50 |
 | ci | Cast iron | cast iron | ferrous | product | 0.95 |
 | hms | HMS 1&2 (80:20) | steel | ferrous | product | 1.20 |
-| hmsu | Heavy steel, unprep. | steel | ferrous | product | 0.85 |
+| hmsu | Steel, unprepared | steel | ferrous | product | 0.85 |
 | body | Car body | steel | ferrous | product | 0.70 |
 | alw | Aluminium wheels | aluminium | non-ferrous | product | 5.60 |
 | alc | Cast aluminium | aluminium | non-ferrous | product | (prototype) |
@@ -159,26 +157,21 @@ Intermediates count tonnes but no range. The converter is paid by the master's p
 
 ### 2.5 Machines as the player meets them, and the process board
 
-Machines stand on fixed pads with an input buffer, a rate (the crucible a heat), an out tray and levels bought on their process-board plate. Nothing costs by the clock; a full tray stops a machine and nothing is lost; outputs keep mass exactly (the last output takes the gram remainder). Rates, buffers and level effects are content; their arithmetic is the rate engine's (2.12).
+Machines stand on fixed pads with an input buffer, a rate (the crucible a heat), an out tray and levels bought on their process-board plate. Nothing costs by the clock; a full tray stops a machine and nothing is lost; outputs keep mass exactly. Rates, buffers and level effects are content, their arithmetic the rate engine's.
 
-- **Hand stripper** (inherited, S4): on the stripper pad from the first second, lit on the process board, its card saying "Came with the yard"; a bundle of heavy cable offcuts beside it (`stock.bundle.kg`, example 12 kg). Cable → `machines.strip.copperShare` (example 0.70) copper, of which `machines.strip.tinnedShare` (example 0.10) is tinned (No.2), the rest bare bright; PVC to its bin. Rate `machines.handStripper.kgS` (example 1 kg/s).
-- **Powered stripper**: a purchase on the same pad, the same inputs at `machines.powerStripper.kgS` (example 6 kg/s); the hopper feeds it first.
+- **Hand stripper** (inherited, S4): on the stripper pad from the first second, lit on the board, its card "Came with the yard"; the bundle of heavy cable offcuts beside it (`stock.bundle.kg`, example 12 kg). Cable → `machines.strip.copperShare` (example 0.70) copper, `machines.strip.tinnedShare` of it tinned (No.2), the rest bare bright; PVC to its bin. Rate `machines.handStripper.kgS` (example 1 kg/s).
+- **Powered stripper**: a purchase on the same pad, same inputs, `machines.powerStripper.kgS` (example 6 kg/s); fed first.
 - **Motor bench**: whole motors → No.2 copper, light iron, cast aluminium.
-- **Crucible** (S11), under its extraction hood, padlocked on its pad with price and sample ingot from 0:00. Two recipes: **brass** (yellow brass → brass ingot + dross) and **aluminium** (aluminium wheels only → aluminium alloy ingot + dross).
-  - The charge is taken **by mass**: "Take from bays" (on by default) reserves the recipe's grade from incoming weigh-ins up to one charge; carriers may also feed the hopper. It is not Hold.
-  - The charge is **new metal plus the heel**, capped at `machines.crucible.potKg`; heat time and dross count the new metal only. Metal is cast in ingots of `machines.crucible.ingotKg` (example 5 kg); less than one ingot stays in the pot as the heel.
-  - A heat starts when the pot is full, or at `machines.crucible.minFill` after `machines.crucible.waitS` without feed.
-  - **Changing the recipe** with a heel first asks "Pour the heel as a short ingot?", then pours it as one short ingot of its grade and switches; refused while a heat runs.
-  - **The first heat ever** waits at "Ready to pour" until the boss is within 6 m, then pours with a camera nudge; later heats pour when they end. A person in face shield and aluminised apron is drawn at every pour under the hood (the boss within 6 m, else the nearest crew member walks over: a picture). Ingots cool to their metal's colour in 3 s in the tray.
+- **Crucible** (S11), under its extraction hood, padlocked with price and sample ingot from 0:00. Recipes **brass** (yellow brass → brass ingot + dross) and **aluminium** (aluminium wheels only → aluminium alloy ingot + dross). The charge is taken by mass: "Take from bays" (on by default) reserves the recipe's grade from incoming weigh-ins up to one charge; carriers may also feed the hopper. The charge is new metal plus the heel, capped at `machines.crucible.potKg`; heat time and dross count the new metal only; metal is cast in ingots of `machines.crucible.ingotKg` (example 5 kg) and less than one ingot stays as the heel. A heat starts when the pot is full, or at `machines.crucible.minFill` after `machines.crucible.waitS` without feed. A recipe change with a heel first asks "Pour the heel as a short ingot?", pours it as one short ingot of its grade, and switches; refused during a heat. **The first heat ever** waits at "Ready to pour" until the boss is within 6 m, then pours with a camera nudge; later heats pour when they end. A person in face shield and aluminised apron is drawn at every pour (the boss within 6 m, else the nearest crew member: a picture). Ingots cool to their metal's colour in 3 s.
 
-**The process board** (D16, S15): the progression screen, an office tab and a clipboard row. Enamel plates joined as a tree; a plate opens its machine's card; machine levels are bought on the plates.
+**The process board** (D16, S15), the progression screen (an office tab and a clipboard row): enamel plates joined as a tree; a plate opens its machine's card; machine levels are bought on the plates.
 
 | Row | Plates |
 |---|---|
 | Cable | Hand stripper (lit from the start) → Powered stripper |
 | Motors | Motor bench |
 | Melt | Crucible → Brass recipe, Aluminium recipe |
-| Greyed, a plain padlock | Bronze · Lead · Lithium · Platinum group, iridium · Tungsten |
+| Greyed, a plain padlock | Bronze · Lead · Lithium · Platinum group and iridium · Tungsten |
 
 A greyed plate names its material and nothing else: no price, no machine, no promise (S15, the lead's note 2). It is where the owner's list of metals first shows.
 
@@ -205,13 +198,11 @@ Three roles, hired and levelled on the office's **rota** (S15); each hire walks 
 
 ### 2.8 The posted price board, the market clock, Hold's signal
 
-**The market clock** (S14, master 5.2): t_m = max(device now, clockHigh + live monotonic time since the last resume), saved, never backwards, advancing in live play after a clock-back. Day D = floor((t_m − EPOCH) / 86,400 s), EPOCH a Monday 00:00 UTC (`board.epoch`). Live time comes from `performance.now`, passed in. A gap of more than `away.gapS` (example 2 s) goes to the away pass, which is the same engine (E5). The rules keep running while an overlay is open (the boss stands still); the ground work's "the yard stops under them" changes to match.
+**The market clock** (S14, master 5.2): t_m = max(device now, clockHigh + live monotonic time since the last resume), saved, never backwards, advancing in live play after a clock-back; live time from `performance.now`, passed in. Day D = floor((t_m − `board.epoch`) / 86,400 s), the epoch a Monday 00:00 UTC. A gap over `away.gapS` (example 2 s) goes to the away pass, the same engine (E5). The rules keep running under an open overlay (the boss stands); the ground work's "the yard stops under them" changes to match.
 
-**One posted price a day per family** ({merchant}'s board; families ferrous, non-ferrous and, for the converter only, precious): x_f(D) = Σ_{k=0..29} 0.5^k × a × w_f(D − 1 − k), w_f(n) = 2 × hash01(worldSeed, f, n) − 1, `board.a` (master example 0.03, tune 0.02 to 0.05); a grade's price p_g(D) = round(p̄_g × (1 + x_f(D))) in hundredths. It is a pure function of D: every phone shows the same board, nothing is saved.
+**One posted price a day per family** (ferrous, non-ferrous; precious for the converter only): x_f(D) = Σ_{k=0..29} 0.5^k × `board.a` × w_f(D − 1 − k), w_f(n) = 2 × hash01(worldSeed, f, n) − 1 (`board.a` example 0.03, tune 0.02 to 0.05); p_g(D) = round(p̄_g × (1 + x_f(D))) in hundredths. A pure function of D: every phone shows the same board, nothing is saved.
 
-**The day word** per family: **low day** (x < −`board.wordBand`, example 1.5 %), **usual**, **high day** (x > `board.wordBand`). It is **Hold's signal**: on the board header, on each row, and on each bay chip when not usual ("Cast iron 340 kg · low day").
-
-**The board** (at the scale house) shows the market date (UTC) and "next prices in {h} h {m} m"; per grade seen: pictogram, name, today's price, day word, five days of bars with a tick at the usual price, stock in its bay, Hold, and Sell with its total. Its first opening shows the fictional line (5.2) and points at a day word ("Cast iron: a low day. Holding is free.").
+**The day word**, Hold's signal: **low day** (x < −`board.wordBand`, example 1.5 %), **usual**, **high day**; on the board, each row and each bay chip when not usual. The board's first opening shows the fictional line and points at a day word ("Cast iron: a low day. Holding is free.").
 
 **Shown equals applied**: every Sell carries the step it showed (`sell(grade, shown)`, shown = {D, price, grams}); if D has changed when the tap lands, "Price updated: §{a} → §{b}" asks again.
 
@@ -221,9 +212,9 @@ Three roles, hired and levelled on the office's **rota** (S15); each hire walks 
 
 ### 2.10 Goals and the advice line
 
-**Goals** (content `goals[]`: a text of at most 30 characters, a target for the chevron, a done condition, an optional purchase; the goal card shows the first unfinished one). A purchase goal is shown no sooner than `goals.promptGapS` (example 60 s) after the previous purchase prompt, so at most one prompt comes a minute. Done conditions read the rules' state, never the clock alone, so no goal is met by doing nothing. The list is 1.3's order; its texts are 5.3's.
+**Goals** (`goals[]`: text ≤ 30 characters, the chevron's target, a done condition read from the rules' state, an optional purchase; the card shows the first unfinished). A purchase goal shows no sooner than `goals.promptGapS` (example 60 s) after the previous prompt: at most one prompt a minute. No goal is met by doing nothing.
 
-**The advice line** (the expanded goal card's third line; the only line after the last goal; it carries no label): the cheapest useful purchase whose price is at most cash plus `advice.minutes` (example 3) minutes of income. "Useful" means it widens the current bottleneck (E2): it raises the rate engine's income rate in the current state, or it is a hire that makes a later hire raise it. A purchase that changes nothing is never offered and is refused with its reason. Income is the rate engine's steady rate plus the boss's collected sales over the last five minutes.
+**The advice line** (the expanded card's third line, the only line after the last goal; no label): the cheapest useful purchase priced at most cash plus `advice.minutes` (example 3) minutes of income. Useful means it widens the current bottleneck (E2): it raises the rate engine's income rate now, or it is a hire that makes a later hire raise it. A purchase that changes nothing is never offered, and is refused with its reason. Income is the steady rate plus the boss's collected sales of the last five minutes.
 
 ### 2.11 Rungs, range, ceilings, the industry table and rivals
 
@@ -264,7 +255,7 @@ The rest relies on: E4 (without the hand the yard still earns enough, slowly, fo
 
 ### 2.17 The content data (part two)
 
-Must list every key of `/tmp/…/yard/proto/content2.json` as it lands in `src/config/salvage.content.ts`, with its meaning and unit: every key this document names (`reach.*`, `feel.*`, `pickup.*`, `carry.*`, `scale.*`, `round.*`, `bays.*`, `cut.*`, `tools.*`, `stock.*`, `objects.*`, `grades.*`, `machines.*`, `crew.*`, `foreman.*`, `partners.*`, `truck.*`, `floor.*`, `board.*`, `deal.*`, `goals.*`, `advice.*`, `shop.*`, `ladder.*`, `rivals.*`, `away.*`, `dropoff.*`, the map) and the frozen test content's differences.
+Must list every key of the prototype's content file (`proto/content2.json` in the shared notes folder) as it lands in `src/config/salvage.content.ts`, with meaning and unit: every key this document names (`reach.*`, `feel.*`, `pickup.*`, `carry.*`, `scale.*`, `round.*`, `bays.*`, `cut.*`, `tools.*`, `stock.*`, `objects.*`, `grades.*`, `machines.*`, `crew.*`, `foreman.*`, `partners.*`, `truck.*`, `floor.*`, `board.*`, `deal.*`, `goals.*`, `advice.*`, `shop.*`, `ladder.*`, `rivals.*`, `away.*`, `dropoff.*`, the map) and the frozen test content's differences.
 
 ### 2.18 The first hour as measured (part two)
 
@@ -283,11 +274,11 @@ The ground work's yard as it is: fenced, 64 × 40 m, three screens wide at 844 �
 - **The back field**: the west fence's gate, a plain padlock and its sign (1.4).
 - **The lane** (length part two): {partnerFarm}'s site first, its load and label in view from the gate; {partnerDemolition}'s site farther, its gate shut with "Needs a cutting torch"; the **weight-limited bridge** ("Weight limit 7.5 t", a padlock) to stage 2's partners, who are not named; a plain barrier at the lane's end.
 
-**Solid**: fences, the container wall, the portacabin, the scale house, the tool rack, machine bodies, the crucible and hood, stillages, lock-block walls, the rubble skip, uncut things in heaps and on the drop-off, the car, the notice board, the bridge's rails, partner sheds, the parked excavator. Not solid: decals (scale plates, pads, the tipping floor, chalk circles, lines) and pieces on the ground. The truck (`truck.radius`) cannot pass between stillages or into the heaps.
+**Solid**: fences, the container wall, buildings, the tool rack, machine bodies, the crucible and hood, stillages, lock-block walls, the rubble skip, uncut things, the car, the notice board, the bridge's rails, partner sheds; not solid: decals (scale plates, pads, the tipping floor, chalk circles, lines) and pieces on the ground. The truck (`truck.radius`) cannot pass between stillages or into the heaps.
 
-**Where purchases arrive** (from the gate): a machine on a flatbed whose crane sets it on its pad (it works from the set-down, whose time the rules compute from content); tools and carriers by van at the tool rack; the truck drives to the park; crews walk out of the office; the Night watch is a sheet pinned on the rota board.
+**Where purchases arrive**: a machine on a flatbed whose crane sets it on its pad (it works from the set-down, timed by the rules from content); tools and carriers by van at the rack; the truck drives to its park; crews walk out of the office; the Night watch is a sheet on the rota board.
 
-**Visible but locked from the first second**: the crucible pad with price and sample ingot (in the first view at both sizes); zone 2's "Needs a sledgehammer"; the car's "Needs a cutting torch"; {partnerFarm}'s load; {partnerDemolition}'s shut gate; the bridge's padlock; the back field's sign; the greyed plates; the table's top line.
+**Visible but locked from the first second**: the crucible pad (in the first view at both sizes), zone 2's padlock chips, the car, {partnerFarm}'s load, {partnerDemolition}'s shut gate, the bridge, the back field's sign, the greyed plates, the table's top line.
 
 ## 4. The screens
 
@@ -340,20 +331,20 @@ The mode's own views registered with `useOverlay`, one at a time, closed by the 
 
 ### 4.4 Tickets, the bay chip, the board, the away card
 
-**The eye path of a sale** (the lead's note 1): scale display → bay chip → flatbed → cash counter, inside the hero frame and the top bar.
-1. **Weigh-in ticket**: rises out of the display post (world-anchored, clamped inside the free world); ticket paper (yard-style 8), 280 pt wide at 844 and 260 at 667, at most 150 pt tall at font scale 1.3: a hi-vis header row; up to three grade rows in three columns (short name, kilograms, "§{p}/kg today") and "+ {n} more"; the muted row "today's value §{x}"; the 11 pt legal line; at most one 11 pt lesson line. After `ui.weighInS` it folds and its muted value slides down to the bay chip.
-2. **Bay chip** (at the bay, by the flatbed stand): "{grade} {kg} · today §{x}", the value in the same muted grey; when the flatbed loads, the value slides into its bed.
-3. **Collection ticket**: prints at the flatbed's cab (same paper and size), amounts in ink, "Paid §{x}" bold, the two-line legal line; a coin arcs from the cab to the cash counter, which rolls. Tap: the ticket history.
-4. Once crews work, a crew weigh-in is a one-line chip at the scale ("Yard hand · 58.2 kg in"), and a collection without the boss's weigh-in or a grade's first lot is a one-line chip at the cab ("Lot sold · §29.00"). One ticket of each kind at a time; a newer replaces an older.
-5. In the first five minutes a lesson line shows only on the value jumps (copper, brass, the converter); others wait for the grade's next weigh-in.
+**The eye path of a sale** (the lead's note 1): scale display → bay chip → flatbed → cash counter, all in the hero frame and the top bar.
+1. **Weigh-in ticket**: rises out of the display post (world-anchored, clamped inside the free world), ticket paper (yard-style 8), 280 pt wide at 844 and 260 at 667, at most 150 pt tall at font scale 1.3: a hi-vis header; up to three grade rows in three columns (short name, kilograms, "§{p}/kg today") and "+ {n} more"; the muted row "today's value §{x}"; the 11 pt legal line; at most one 11 pt lesson. After `ui.weighInS` it folds and the muted value slides down to the bay chip.
+2. **Bay chip** (at the bay by the flatbed's stand): "{grade} {kg} · today §{x}" in the same muted grey; when the flatbed loads, the value slides into its bed.
+3. **Collection ticket**: prints at the flatbed's cab, same paper and size, amounts in ink, "Paid §{x}" bold, the two-line legal line; a coin arcs from the cab to the cash counter, which rolls. A tap opens the history.
+4. Once crews work, a crew weigh-in is a one-line chip at the scale ("Yard hand · 58.2 kg in") and a collection without the boss's weigh-in or a grade's first lot a one-line chip at the cab ("Lot sold · §29.00"); one ticket of each kind at a time.
+5. In the first five minutes lessons show only on the value jumps (copper, brass, the converter); others wait for the grade's next weigh-in.
 
-**The price board** (panel): "Market day {date} (UTC) · next prices in {h} h {m} m"; per grade seen a two-line row of 56 pt: pictogram, name, today's price, day word, Hold; then five bars with the usual-price tick, the bay's stock, Sell with its total ("Sell 340 kg · §323.00").
+**The price board** (panel): "Market day {date} (UTC) · next prices in {h} h {m} m"; per grade seen a two-line row of 56 pt: pictogram, name, today's price, day word, Hold; five bars with the usual-price tick, the bay's stock, Sell with its total.
 
-**The away card** (centred): "Away {h} h {m} m (cap {c} h)"; up to five grade lines and "+ {n} more"; "{t} supplied · §{x} (already in your account)"; loads fetched; deal deliveries; "You passed {rival}." when it happened; OK. With little to show it adds what would have earned more ("A cutter keeps the yard working while you are away (Office)"). No ad button in stage 1.
+**The away card** (centred): "Away {h} h {m} m (cap {c} h)"; up to five grade lines and "+ {n} more"; "{t} supplied · §{x} (already in your account)"; loads fetched; deal deliveries; "You passed {rival}."; OK. With little to show it says what would have earned more ("A cutter keeps the yard working while you are away (Office)"). No ad button in stage 1.
 
 ### 4.5 The process board (wide card)
 
-Title "Process board" 15 pt; four rows of plates of 2.5. Plates are enamel: 132 × 60 at 844, 120 × 60 at 667, a name of up to two lines of 12 characters (12 pt) and a state line (11 pt: "Owned · level 2", "§{price}", "Level {n} · §{price}", a padlock); joined by riveted bars of 24 pt (20 at 667). Rows 60 pt with 12 pt between: 4 × 60 + 3 × 12 + a 32 pt title = 308 pt, inside 333 (844) and 325 (667). Row 4's five greyed plates are 108 pt wide at 844 and 112 at 667 with 12 and 10 pt between. A lit plate's tap opens its machine card; a greyed plate's tap shows only its padlock.
+Title "Process board" 15 pt; four rows of plates of 2.5. Plates are enamel: 132 × 60 at 844, 120 × 60 at 667, a name of up to two lines of 12 characters (12 pt) and a state line (11 pt: "Owned · level 2", "§{price}", "Level {n} · §{price}", a padlock); joined by riveted bars of 24 pt (20 at 667). Rows 60 pt with 12 pt between: 4 × 60 + 3 × 12 + a 32 pt title = 308 pt, inside 333 (844) and 325 (667). Row 4's five greyed plates are 108 pt wide at 844 and 112 at 667 with 12 and 10 pt between; a greyed plate has no state line, so its name may take three lines of 11 characters ("Platinum / group and / iridium") beside the padlock. A lit plate's tap opens its machine card; a greyed plate's tap shows only its padlock.
 
 ### 4.6 Text limits (S20, checked by `scripts/content/yard/check.ts` at 667 pt wide and font scale 1.3)
 
@@ -382,13 +373,12 @@ Every invented name comes from `scripts/content/yard/names.json` by id and is ne
 
 ### 5.2 Labels and lines (`src/ui/salvage/strings.ts`; names of things from game.json)
 
-HUD: "§{n}"; "{rank} of {n} · next {rival} {t}" (short forms "{rank} · next {rival}", "{rank} · {t} to next"); "{a} / {b} kg"; "Load full"; "Open"; "Step out"; "Trial load {kg}"; "{partner} load {t}".
-Places: Tool rack, Office, Scale house, Platform scale, Weighbridge, Notice board, Public drop-off, Rubble skip, Tipping floor, Truck park, Stripper pad, Motor bench, Crucible, Old stock, Back field.
-Tickets: 2.2's table. Bay chip: "{grade} {kg} · today §{x}", "held", "low day", "high day", "Reserved for {foundry} {a} / {b} kg", "For the crucible {a} / {b} kg".
-Cards: "Buy §{x}"; "Hire §{x}"; "Level {n} → {m} · §{x}"; "Owned"; "Came with the yard"; "Sell {kg} · §{x}"; "Price updated: §{a} → §{b}"; "Hold"; "Sign"; "Not now"; "Take from bays"; "Pours in {m} m {s} s"; "Ready to pour"; "Pour the heel as a short ingot?"; "Tray full"; "Waiting for {grade}"; "Working".
-Machines' lines: "Strips heavy cable to copper"; "Six times the hand stripper" (computed from content, or dropped); "Breaks motors into copper, steel, aluminium"; "Melts brass or wheels into ingots".
-Lines: "Every load checked. Every seller identified. Payment by transfer only." · "The yard now earns while you are away." · "Back field · the works are being built here" · "All prices, exchanges and shares are fictional and have no real-world value. Nothing in this game is financial advice." (the board's first opening, the industry table and Help) · "Rival firms (simulated)" · "Building costs and times are shortened so the business grows in days, not decades; metal prices keep their true proportions." (Help).
-Away: "Away {h} h {m} m (cap {c} h)"; "{t} supplied · §{x} (already in your account)"; "You passed {rival}."; "A cutter keeps the yard working while you are away (Office)".
+HUD: "§{n}"; "{rank} of {n} · next {rival} {t}" (short "{rank} · next {rival}", "{rank} · {t} to next"); "{a} / {b} kg"; "Load full"; "Open"; "Step out"; "Trial load {kg}".
+Places (≤ 18): Tool rack, Office, Scale house, Platform scale, Weighbridge, Notice board, Public drop-off, Rubble skip, Tipping floor, Truck park, Stripper pad, Motor bench, Crucible, Old stock, Back field.
+Chips: "{grade} {kg} · today §{x}", "held", "low day", "high day", "Reserved for {foundry} {a} / {b} kg", "For the crucible {a} / {b} kg".
+Cards: "Buy §{x}", "Hire §{x}", "Level {n} → {m} · §{x}", "Owned", "Came with the yard", "Sell {kg} · §{x}", "Hold", "Sign", "Not now", "Take from bays", "Pours in {m} m {s} s", "Ready to pour", "Pour the heel as a short ingot?", "Working", "Tray full", "Waiting for {grade}"; machine lines "Strips heavy cable to copper", "Breaks motors into copper, steel, aluminium", "Melts brass or wheels into ingots".
+Lines: "Every load checked. Every seller identified. Payment by transfer only." · "The yard now earns while you are away." · "Back field · the works are being built here" · "All prices, exchanges and shares are fictional and have no real-world value. Nothing in this game is financial advice." (the board's first opening, the table, Help) · "Rival firms (simulated)" · "Building costs and times are shortened so the business grows in days, not decades; metal prices keep their true proportions." (Help).
+Away: 4.4's lines.
 
 ### 5.3 Goals (≤ 30 characters; 1.3's order)
 
@@ -400,25 +390,27 @@ Take the washer apart · Weigh it on the scale · Strip the cable · Weigh the c
 
 ### 5.5 Lessons (one line ≤ 48 characters on the weigh-in ticket; the full sentence in Help and the history; no fixed multiples, S5)
 
-| Grade | Ticket line | Help |
-|---|---|---|
-| Light iron | Light iron: thin steel from appliances. | The cheapest metal in the yard; steel mills remelt it. |
-| Stainless drum (on li) | The drum is stainless: worth more once sorted. | Stainless carries chromium and nickel; sorted, it pays more. |
-| Electric motor | A whole motor: copper inside steel. | A motor bench takes the windings out. |
-| Insulated cable | Cable is paid on the copper it yields. | Strip it and the copper sells bare. |
-| Bare bright copper | Bare bright: {n} times iron's price today | Clean, stripped, unalloyed copper: the best copper grade. ({n} = round(p_bb(D) / p_li(D))) |
-| No.2 copper | No.2: unalloyed copper, not clean. | Pipe, windings and tinned wire. |
-| Yellow brass | Brass is copper and zinc. | Foundries remelt taps and valves into brass ingot. |
-| Aluminium wheels | Cast alloy wheels, tyres and weights off. | They melt into alloy ingot. |
-| Cast aluminium | Motor end caps are cast aluminium. | Cast, not rolled: kept apart from sheet. |
-| Cast iron | Cast iron breaks. Foundries remelt it. | Radiators, baths and stoves are broken, not cut. |
-| HMS 1&2 | HMS: thick steel cut to furnace size. | Heavy melting steel, the trade's benchmark ferrous grade. |
-| Heavy steel, unprep. | Cut to size, it pays as HMS. | Too big for a furnace as it is. |
-| Car body | Car bodies go to a shredder. | A shredder splits steel from the rest. |
-| Brass ingot | Melted, skimmed, cast: worth more than scrap. | The crucible pours under its hood; the dross is skimmed off. |
-| Brass / aluminium dross | Dross: the skimmed crust, still holding metal. | It goes back to a refiner. |
-| Alu alloy ingot | Wheels remelted and cast as alloy ingot. | Secondary aluminium ingot. |
-| Converter | From depolluted car ref. 0012. Paid on assay. | Converters come only from depolluted cars with their papers; the metals are paid on assay. |
+One line of at most 48 characters on a grade's first weigh-in ticket; Help and the ticket history hold each lesson with a second sentence (`text.json`, by the strings package); no fixed multiples (S5).
+
+| Grade | Ticket line |
+|---|---|
+| Light iron | Light iron: thin steel from appliances. |
+| (the stainless drum) | The drum is stainless: worth more once sorted. |
+| Electric motor | A whole motor: copper inside steel. |
+| Insulated, thin cable | Cable is paid on the copper it yields. |
+| Bare bright copper | Bare bright: {n} times iron's price today ({n} = round(p_bb(D) / p_li(D))) |
+| No.2 copper | No.2: unalloyed copper, not clean. |
+| Yellow brass | Brass is copper and zinc. |
+| Aluminium wheels | Cast alloy wheels, tyres and weights off. |
+| Cast aluminium | Motor end caps are cast aluminium. |
+| Cast iron | Cast iron breaks. Foundries remelt it. |
+| HMS 1&2 | HMS: thick steel cut to furnace size. |
+| Steel, unprepared | Cut to size, it pays as HMS. |
+| Car body | Car bodies go to a shredder. |
+| Brass ingot | Melted, skimmed, cast: worth more than scrap. |
+| Dross (both) | Dross: the skimmed crust, still holding metal. |
+| Alu alloy ingot | Wheels remelted and cast as alloy ingot. |
+| Converter | From depolluted car ref. 0012. Paid on assay. |
 
 ### 5.6 Voice and banned words
 
@@ -436,19 +428,17 @@ On the art director's style sheet (`docs/design/yard-style.md`, whose rules stan
 
 ### 6.1 Sprites and animations
 
+People in 4 directions (west mirrored), vehicles by heading; frames per direction.
+
 | Group | Sprites and frames |
 |---|---|
-| Boss | stand ×4 directions; walk 6 × 4; work 4 × 4 per tool (spanners, sledge, grinder, torch with face shield); feed 2 × 4; push sack truck and flat trolley 6 × 4 each; pour pose (face shield, aluminised apron) 4 × 4; the load as pieces on the frame or strapped on the carrier |
-| Crews | yard hand walk and carry 6 × 4; cutter walk 6 × 4, work 4 × 4 per tool; driver walk 6 × 4 and in the cab; vests green, blue, teal; the pour pose |
-| Things (whole and stages) | washer 4; bicycle 2; cable bundle on a drum; tap crate; fittings box; radiator 3; copper cylinder with its tag 2; bath 3; gate 2; railings 2; the car 5 (with its record tag; wheels off, loom out, converter out, body cut); beam 4; tank with its tag 3; partner things the prototype adds |
-| Pieces (ground sprite + carried icon) | panel, stainless drum, motor, cast-iron section, copper shell, taps, cable, bare-bright bundle, No.2 copper, windings, end cap, wheel, body section, HMS piece, converter, brass ingot, alloy ingot, dross |
-| Machines | hand and powered strippers (idle, working 3, tray full); motor bench (idle, working 3); crucible under its hood (idle, heating 3, ready-to-pour glow, pour 4, ingots cooling by `coolingColour`); pads with padlock chips; the sample pallet |
-| Weighing and stock | platform plate, weighbridge deck, display posts (seven segments), printer flash, scale house with the board, portal arch, ID desk window; lock-block walls with stencilled codes, ferrous piles 5 sizes × 5 grades, stillages in 4 fill levels, the converter cage, a held bay's hi-vis flag |
-| Vehicles | hook-lift truck × {no skip, empty, trial load, full load} + hook 3 + tip 3; {merchant}'s flatbed with crane + load 3 (logo and name on the door); the machine flatbed + set-down 4; delivery van; the public's car with trailer |
-| Yard and lane | fence, gate leaves, portacabin with the licence plaque and rota board, tool rack, notice board, rubble skip, PVC bin, chalk circles, park markings, extinguisher by the crucible, back-field gate and sign, three rung signs on the crane; lane tiles, hedges, the bridge with weight sign and padlock, the farm's shed, the demolition hoarding, gate and excavator, the barrier |
-| Effects | sparks, sledge dust, torch flame, piece arc (0.35 s), the coin arc, the value slide (ticket → bay chip → flatbed), work ring, chevron |
-| Interface (GameIcon cache) | ticket paper, chips, padlock chip, goal card, pictograms of the six materials and the intermediates at 10 pt, tools, carriers, roles, machines, §, ladder, clipboard, settings, lock, clock; process-board plates (lit, buyable, greyed) |
-| Logos | 25 rival plates from a generated kit; business cards for the two partners and {foundry}; {merchant}'s mark |
+| Boss and crews | stand; walk 6; work 4 per tool (spanners, sledge, grinder, torch with face shield); feed 2; push sack truck and trolley 6; carry 6; the pour pose in face shield and aluminised apron 4; the driver in the cab; vests: boss hi-vis with white hat, yard hand green, cutter blue, driver teal; loads drawn as pieces on the frame or strapped on the carrier |
+| Things, whole and in stages | washer 4; bicycle 2; cable bundle on a drum; tap crate; fittings box; radiator 3; cylinder with tag 2; bath 3; gate 2; railings 2; the car 5 with its record tag; beam 4; tank with tag 3; the prototype's partner things |
+| Pieces (ground and carried) | panel, stainless drum, motor, cast section, copper shell, taps, cable, bare-bright bundle, No.2 copper, windings, end cap, wheel, body section, HMS piece, converter, brass ingot, alloy ingot, dross |
+| Machines, weighing, stock | strippers and bench (idle, working 3, tray full); crucible under its hood (idle, heating 3, ready glow, pour 4, cooling by `coolingColour`); pads with padlock chips; sample pallet; platform plate, weighbridge deck, display posts, printer flash, scale house and board, portal arch, ID desk window; lock-block bays with stencilled codes, ferrous piles 5 sizes × 5 grades, stillages in 4 fill levels, converter cage, a held bay's flag |
+| Vehicles | hook-lift truck × {no skip, empty, trial, full} + hook 3 + tip 3; {merchant}'s flatbed with crane + load 3 (mark on the door); the machine flatbed + set-down 4; delivery van; the public's car and trailer |
+| Yard and lane | fence, gate, portacabin with licence plaque and rota board, tool rack, notice board, rubble skip, PVC bin, chalk circles, park markings, extinguisher, back-field gate and sign, rung signs on the crane; lane, hedges, the bridge with weight sign and padlock, the farm's shed, the demolition hoarding, gate and excavator, the barrier |
+| Effects and interface | sparks, sledge dust, torch flame, piece arc, coin arc, the value slide, work ring, chevron; ticket paper, chips, padlock chip, goal card, 10 pt pictograms of materials and intermediates, tools, roles, §, ladder, clipboard, settings, lock, clock; process-board plates (lit, buyable, greyed); 25 rival plates from a generated kit; business cards; {merchant}'s mark |
 
 Never drawn (yard-style 11): a real brand or one shaped like it; a tow truck or crusher; a magnet lifting copper; anyone hurt, without gear or near sparks without a face shield; fire or smoke made fun; a lone gold bar; anyone bearing more than the hand load.
 
@@ -462,80 +452,69 @@ The style sheet's candidates (a ladle pouring with a copper coil; a gloved hand 
 
 ### 6.4 The loading animation (S22; `src/ui/salvage/Loading.tsx`, drawn by `art/loading.draw.ts`)
 
-About 3.5 s on first launch, one plate per word of {title} at 0.6 s each; a tap skips it from the second launch. The art kit's timeline (2.75 s) is stretched to this one.
+About 3.5 s on first launch, one plate per word of {title}, 0.6 s each; a tap skips it from the second launch. The art kit's 2.75 s timeline is stretched to this one.
 
 | t (s) | Frame |
 |---|---|
-| 0.0 to 0.4 | Daylight sky with the hazy far yard fades in from the splash; the overhead crane's trolley runs in from the left with its electromagnet; the display reads 0. |
-| 0.4 to 1.0 | The first word's plate (the word cut through the steel) is lowered onto the weighbridge deck (0.35 s), lands with a 2 pt shake (0.1 s), the magnet lets go and rises (0.15 s); the display counts up with it. |
-| 1.0 to 1.6 | The second word's plate, the same. |
-| 1.6 to 2.2 | The third word's plate, the same; the display shows the final weight; the trolley runs off. |
+| 0.0 to 0.4 | Daylight sky and the hazy far yard fade in from the splash; the overhead crane's trolley runs in with its electromagnet; the display reads 0. |
+| 0.4 to 2.2 | Three plates, the words cut through the steel, each 0.6 s: lowered onto the weighbridge deck (0.35 s), landing with a 2 pt shake (0.1 s), the magnet rising (0.15 s); the display counts up; then the trolley runs off. |
 | 2.2 to 2.8 | The crucible under its hood tips (0.2 s) and pours a glowing stream (0.4 s) into the mould beneath the title. |
-| 2.8 to 3.6 | The bar cools from orange to brass in 0.8 s (drawn faster than the game's 3 s) and glints; from 3.2 the picture parts down the middle like two gate leaves onto the yard. |
+| 2.8 to 3.6 | The bar cools from orange to brass in 0.8 s and glints; from 3.2 the picture parts like two gate leaves onto the yard. |
 
-While atlases still bake when the bar has cooled, a calm loop holds (the magnet swaying on its cable, the display's last digit ticking, the ingot glinting every 2 s), never a frozen frame; the gate parts when the bakes finish. One Reanimated shared value drives `loadingPose(t)`.
+If atlases still bake when the bar has cooled, a calm loop holds (the magnet swaying, the display's last digit ticking, the ingot glinting every 2 s), never a frozen frame; the gate parts when the bakes finish. One Reanimated shared value drives `loadingPose(t)`.
 
 ---
 
 ## 7. Sound
 
-A new pack in `games/scrap-yard/assets/sfx` (`soundPack: null`), keys in `src/services/fx/catalog.salvage.ts`, mapped in `src/modes/salvage/soundKeys.ts`, played only through `fx.play`. Haptics: light on a finished piece, medium on a collection ticket, success on a rung.
+A new pack in `games/scrap-yard/assets/sfx` (`soundPack: null`), keys in `src/services/fx/catalog.salvage.ts`, mapped in `src/modes/salvage/soundKeys.ts`, played only through `fx.play`. Haptics: light on a finished piece, medium on a collection, success on a rung.
 
-| Key | Trigger (event, 2.14) |
+| Keys | Trigger (2.14's events) |
 |---|---|
-| `step_concrete`, `step_gravel`, `step_asphalt` | the walk cycle, by ground tile (screen) |
-| `cut_spanner`, `cut_sledge`, `cut_grinder`, `cut_torch` (loops) | `workStart` until the piece ends, by tool |
-| `piece_steel`, `piece_cast`, `piece_alu`, `piece_copper`, `piece_brass` | `pieceOff`, by family |
-| `thud_waste` | `pieceOff` to waste |
-| `pickup`, `swap`, `load_full` | `pickup`, `swap`, `loadFull` |
-| `feed` | `feed` |
-| `scale_beeps`, `scale_print` | `weighIn`, `bridgeWeighIn` |
-| `slip` | `dropOffSlip` |
-| `flatbed_arrive`, `flatbed_load`, `coin`, `coin_big` | the round's return and load, `collected` (big when it includes copper or a first grade) |
-| `lesson` (a soft bell) | `lesson` |
+| `step_concrete`, `step_gravel`, `step_asphalt` | the walk cycle by ground tile |
+| `cut_spanner`, `cut_sledge`, `cut_grinder`, `cut_torch` (loops) | `workStart` to the piece's end, by tool |
+| `piece_steel`, `piece_cast`, `piece_alu`, `piece_copper`, `piece_brass`, `thud_waste` | `pieceOff` by family; to waste |
+| `pickup`, `swap`, `load_full`, `feed` | the events of those names |
+| `scale_beeps`, `scale_print`, `slip` | `weighIn`, `bridgeWeighIn`, `dropOffSlip` |
+| `flatbed_arrive`, `flatbed_load`, `coin`, `coin_big` | the round; `collected` (big with copper or a first grade) |
+| `lesson` (a soft bell), `deal_stamp` | `lesson`, `dealDelivered` |
 | `ui_open`, `ui_close`, `buy`, `denied` | overlays, `owned`, `refused` |
-| `van`, `set_down`, `crane_set` | `arrival` by kind |
+| `van`, `set_down`, `crane_set`, `door`, `crew_hello` (a hum) | `arrival` by kind, `hired` |
 | `stripper_hand`, `stripper_power`, `bench_knock` (loops) | machines working |
 | `furnace_roar` (loop), `ready_chime`, `pour_glug`, `cool_ticks` | `heatStart`, `readyToPour`, `pour` |
 | `truck_diesel` (loop, pitch by speed), `truck_reverse`, `hook_swap`, `skip_tip` | driving, `hook`, `tip` |
-| `door`, `crew_hello` (a hum, no words) | `hired` |
 | `chip_slide`, `rung_sign` | `passed`, `rung` |
-| `deal_stamp` | `dealDelivered` |
 | `load_crane`, `load_clank`, `load_beeps`, `load_pour`, `load_loop`, `gate_open` | the loading animation |
 | `amb_yard` | always: birds, distant traffic, a far reverse beeper |
 
-Music: "yard radio", an original 92 bpm loop of mellow electric guitar and bass over a bed of the game's own metal hits, two variants crossfaded, ducked under tickets; no melody shared with the four games.
-
----
+Music: "yard radio", an original 92 bpm loop of mellow electric guitar and bass over the game's own metal hits, two variants crossfaded, ducked under tickets; no melody shared with the four games.
 
 ## 8. Tests, bots and people
 
 ### 8.1 Rules tests (vitest, frozen test content `src/engine/fixtures/salvage.ts`; no tuned number pinned)
 
-Mass kept per thing, machine and heel; cut times; tool tiers and whole things; pickup by p̄, capacity, the swap never lowering value nor happening while moving; `piecePos` equal for rules, frame and bot; chalk circles inert before a yard hand; tickets (resolution, `roundMoney`, totals equal lines, every collection names its buyer, every partner weigh-in prints gross, tare, net); the round (first payment one load after the first weigh-in, waiting stock, several grades on one ticket, Hold, Sell at its shown price, a full held bay's excess); reservations never collected; supplied only on collection and delivery; the crucible (S11 in full); a converter without a source id refused; closed vessels certified empty; loads (fixed at fill, label equals weigh-in, k × as-found, trial loads, never paid when it cannot be tipped, the driver's gates); the board pure in D; the clock (a clock-back still advances live play; a jump never pays twice; a gap over 2 s goes away); the deal (a short day charges nothing); goals never met by doing nothing; the advice line never offering what changes nothing; rungs, range, rivals (never passing back, no two equal rows), payback prices, ceilings; every refusal key; save and reload; ticking equals jumping.
+Mass kept per thing, machine and heel; cut times; tool tiers; pickup order, capacity and the swap (never lowering value, never while moving); one `piecePos` for rules, frame and bot; chalk circles inert before a yard hand; tickets (resolution, `roundMoney`, totals equal lines, every collection names its buyer, every partner weigh-in prints gross, tare, net); the round (one load after the first weigh-in, waiting stock, one ticket for several grades, Hold, Sell at its shown price, a full held bay); reservations never collected; supplied only on collection and delivery; the crucible as S11; a converter without a source id refused; loads (fixed at fill, label equals weigh-in, k × as-found, trial loads, never paid when it cannot be tipped); the board pure in D; the clock (a clock-back still advances live play; a jump never pays twice); a short deal day charges nothing; goals never met by doing nothing; the advice line never offering what changes nothing; rungs, range, rivals (never passing back, no two equal rows), payback prices, ceilings; every refusal key; save and reload; ticking equals jumping.
 
 ### 8.2 Bots (`src/engine/salvage/bot.ts`; the same actions as the screen, a path graph from the content map at the boss's speed; follows the goal card and the advice line)
 
-People-like (S24, master 12.4): a reaction spent before every leg, path waste, seconds at each card, at least fifteen seeds, two opening routes, every beat reported as a range and as the share of runs inside its band.
+People-like (S24, master 12.4): a reaction before every leg, path waste, time at each card; at least fifteen seeds and two opening routes; every beat as a range and as the share of runs inside its band.
 
 | Bot | Behaviour | Measures |
 |---|---|---|
-| Normal hand | reaction 0.8 s before every leg, 25 % path waste, 6 to 15 s at a card, spends 85 % | every beat of 1.2 and 1.3; purchase gaps; prompts a minute; income; tonnes; rank |
-| Fast hand | 0.4 s, 10 %, 4 s | the same |
-| Slow hand | 1.2 s, 40 %, 15 s; leaves optional goals | helper by 7:30, rung 3 by 90, the beats within half as long again |
-| Card manager | plays as normal to the second hire, then only through cards | the hand's worth: the normal hand earns at least a fifth more (E4) |
-| Stop-and-return | plays 5, 10 or 30 minutes, then returns after 1, 4 and 12 h | the first away card above zero (S13); E4's next purchase reached without the hand |
-| Twice a day | a first hour, then two 8-minute sittings a day for 3 days | a useful purchase within two sittings (E8); rivals; the away share at minute 60 (S13) |
-| Day-word holder | holds on low days, sells on usual or high | Hold's gain ≤ +3 % on the same tonnage |
-| No hand from random states | twenty random states, the stick never touched | the next purchase reached (E4) |
+| Normal, fast, slow hands | reaction 0.8 / 0.4 / 1.2 s, path waste 25 / 10 / 40 %, 6 to 15 / 4 / 15 s at a card; the slow hand leaves optional goals | every beat of 1.2 and 1.3; purchase gaps; prompts a minute; income, tonnes, rank |
+| Card manager | normal to the second hire, then cards only | the hand's worth (E4) |
+| Stop-and-return | stops at 5, 10 or 30 minutes, returns after 1, 4, 12 h | the first away card above zero (S13); the next purchase without the hand (E4) |
+| Twice a day | a first hour, then two 8-minute sittings a day for 3 days | a useful purchase within two sittings (E8); the away share at minute 60 |
+| Day-word holder | holds on low days | Hold's gain |
+| No hand | twenty random states, the stick never touched | the next purchase reached (E4) |
 
 ### 8.3 Hard promises (gates on every bot run and in the rules tests)
 
-Shown equals applied (every card's number is what is applied; a changed step re-asks). Money comes only from collected lots, Sell, deal deliveries and the away pass of these; it goes only to purchases, levels, hires and partner loads. Nothing costs by the clock; nothing built is lost; no rank falls while away; nothing bought has unknown contents. No dead end: with §0 and empty bays the drop-off and the round pay within 60 s; every amount asked for is reachable and never met by doing nothing; without the hand the yard still earns enough for the next purchase (E4). One monotonic clock; a jump never pays twice; ticking equals jumping (E5). Mass kept.
+Shown equals applied; a changed step re-asks. Money comes only from collected lots, Sell, deal deliveries and their away pass, and goes only to purchases, levels, hires and partner loads. Nothing costs by the clock, nothing built is lost, no rank falls while away, nothing bought has unknown contents. No dead end: with §0 and empty bays the drop-off and the round pay within 60 s; every amount asked for is reachable and never met by doing nothing; without the hand the yard still reaches the next purchase (E4). One monotonic clock; a jump never pays twice; ticking equals jumping (E5). Mass kept.
 
 ### 8.4 Aims (bands from E7, E9, S13, S16, S18; met on 13 of 15 seeds and checked on 5 unseen; the lead sets any band not given here from part two's table)
 
-First collection ticket within about 25 s · copper jump by about 1:30 · a purchase arriving in the world · helper carrying by 5:00 (slow 7:30) · first rival by 5:00, four in the hour · truck and first drive out 8 to 10 minutes · first pour 18 to 25 · rung 2 at 12 to 18, rung 3 at 55 to 65 (slow by 90) · at most one purchase prompt a minute · the next useful purchase never more than 3 minutes away in hour 1 · the normal player meets a ceiling refusal at most once in the hour · a minute of hand work on the first partner's loads earns at least 1.5 × a minute at the drop-off (S18) · every machine bought in hour 1 busy at least 30 % of the minutes after its purchase · the hand at least a fifth more than the card manager (E4) · an hour away pays at least 0.3 of an hour played, measured at minute 60 itself (S13; part two says what it takes) · Hold ≤ +3 % · tick < 1 ms and 6 h away < 50 ms in node; `?yardStress=1` read on the iPhone.
+Met on 13 of 15 seeds, checked on 5 unseen; a band not given here the lead sets from part two's table. The beats of 1.2 and 1.3 with their bands (E7, E9, S18), the slow hand within half as long again · four rivals in the hour · at most one purchase prompt a minute and the next useful purchase never more than 3 minutes away in hour 1 (E2) · a ceiling refusal at most once in the hour (S16) · on the first partner's loads a minute of hand work earns at least 1.5 × a minute at the drop-off (S18) · every machine bought in hour 1 busy at least 30 % of the minutes after its purchase · the hand at least a fifth more than the card manager (E4) · an hour away pays at least 0.3 of an hour played, measured at minute 60 (S13; part two says what it takes) · Hold ≤ +3 % · a tick < 1 ms and 6 h away < 50 ms in node; `?yardStress=1` read on the iPhone.
 
 ### 8.5 People before tuning
 
@@ -550,7 +529,7 @@ Three people-like players (not the engineers) play the built stage on an iPhone 
 **Hour 0, before anyone starts** (the rules owner writes it, the content, screens and wiring owners agree it, the lead commits it):
 1. `src/engine/salvage/types.ts`: the content types (every key family of 2.17 as a type, with frozen test values), the state (2.13), `Presence`, `SalvageEvent` with payloads (2.14), the action signatures and refusal keys (2.15, 5.4), `Ticket`, `CardData`, `ProcessBoardRows`, `FrameTable` (what the world draws: things with their stage, pieces by place with `piecePos`, the load, machines' looks, crew with job and phase, the truck and its skip, the flatbed, labels).
 2. `src/engine/salvage.ts` with every public function's signature and a body that throws `notBuilt`.
-3. `src/ui/salvage/strings.ts` with every key of section 5 in one section per package.
+3. `src/ui/salvage/strings.ts` with every key of section 5, grouped by the package that shows it; package 9 owns the file, and a new key is a request to it.
 4. The file list for the bundle check: every new file below is inside `MODE_FOLDERS.salvage` (`scripts/lib/modes.js` already lists `src/modes/salvage`, `src/ui/salvage`, `src/engine/salvage`, `src/engine/salvage.ts`, `src/engine/salvageMode.ts`, `src/engine/fixtures/salvage.ts`, `src/config/schema.salvage.ts`, `src/config/salvage.content.ts`); the wiring owner adds `src/engine/salvage/bot.ts` and `src/engine/fixtures/salvage.ts` to `WEB_ONLY` and the event-to-sound table's keys to the catalogue stub, so `npm run check:bundle` passes for everyone from the first file.
 After hour 2 these change only through `requests.md` with the rules owner and every package that reads the changed part.
 
@@ -562,7 +541,7 @@ After hour 2 these change only through `requests.md` with the rules owner and ev
 | 2 | **Content, build script and bots** (the prototype engineer) | `src/config/salvage.content.ts`; `scripts/content/build-yard.py`; `games/scrap-yard/game.json` (generated); `src/engine/salvage/bot.ts`, `bot.test.ts`; `scripts/content/yard-bot.ts` | content2.json; package 1's engine for the bots | `python3 scripts/content/build-yard.py --check`; `npx tsx scripts/content/yard-bot.ts --seeds 15 --routes 2 --report` |
 | 3 | **The yard view and actors** (on the ground work) | `src/ui/salvage/world/{frameLoop,camera,collide,stick,yard,useRulesTable,useYard,YardView,AtlasView,actors,labels,chevron,heroFrame}.ts(x)`, `world.test.ts`, `input.test.ts` | the types; the art kit's functions | `npx vitest run src/ui/salvage/world`; `npm run lint:worklets`; screenshots at 844 × 390 and 667 × 375; `?view=hero` |
 | 4 | **Bars, cards and overlays** | `src/ui/salvage/{SalvageShell.tsx,uiState.ts,palette.ts}`, `src/ui/salvage/hud/*`, `src/ui/salvage/overlays/*`, `src/ui/salvage/dev/*` | the types; `CardData`; strings keys | `npx vitest run src/ui/salvage/hud src/ui/salvage/overlays`; every overlay at both sizes and `fontScale=1.3` |
-| 5 | **Art** (the art director's kit) | `src/ui/salvage/art/*` except `loading.draw.ts`; `src/ui/salvage/world/{atlas,draw,ground}.ts`; `scripts/art/yard-sheets.ts`, `scripts/art/yard-icons.ts`; `games/scrap-yard/{icon,adaptive-icon,splash}.png` | section 6; the frame table's sprite ids | `npx vitest run src/ui/salvage/art`; `npx tsx scripts/art/yard-sheets.ts <dir>`; the 60 px icon board |
+| 5 | **Art** (the art director's kit) | `src/ui/salvage/art/*` except `loading.draw.ts`; `src/ui/salvage/world/{atlas,draw,ground}.ts`; `scripts/art/{yard-sheets,yard-icons,yard-text}.ts`, `scripts/art/scrap-yard-placeholder.py`; `games/scrap-yard/{icon,adaptive-icon,splash}.png` | section 6; the frame table's sprite ids | `npx vitest run src/ui/salvage/art`; `npx tsx scripts/art/yard-sheets.ts <dir>`; the 60 px icon board |
 | 6 | **Sound** | `src/services/fx/catalog.salvage.ts`; `src/modes/salvage/soundKeys.ts`; `scripts/audio/yard/*`; `games/scrap-yard/assets/sfx/*` | the event list | `npm run check:bundle`; `?dev=sounds` in the preview |
 | 7 | **Loading animation** | `src/ui/salvage/Loading.tsx`; `src/ui/salvage/art/loading.draw.ts`; `src/ui/salvage/loading/*` (the calm loop, the bake-progress hook reading package 5's `atlasProgress()`) | 6.4 | `?view=loading` at 0.3, 1.2, 2.4, 3.2 s and in the calm loop |
 | 8 | **Goals, hints and first-minutes teaching** | `scripts/content/yard/goals.json`; `src/ui/salvage/hints/*` (ghost thumb, the chevron's target rule, first-Open hint through `useTarget`, the lesson pacing of 4.4 item 5) | the types; package 1's `nextGoal` | `npx vitest run src/ui/salvage/hints`; `?preset=fresh&autoplay=opening` for both routes |
@@ -571,12 +550,12 @@ After hour 2 these change only through `requests.md` with the rules owner and ev
 
 `scripts/content/yard/names.json`, `crew-names.json`, `name-filter.json` and `check-words.py` stay the names desk's; no package edits them.
 
-**Order**: hour 0 contract → packages 1, 3 to 10 against the frozen test content while package 2 delivers content2.json and the map → part two of this document → package 2 writes the content file and the bots play the joined rules → the three people (8.5) → tuning.
+**Order**: the hour-0 agreement → packages 1, 3 to 10 against the frozen test content while package 2 delivers content2.json and the map → part two of this document → package 2 writes the content file and the bots play the joined rules → the three people (8.5) → tuning.
 
 ---
 
 ## 10. What this stage leaves out, and the hooks stage 2 needs
 
-**Left out** (ruling 5, master 9): the baler, magnet crane, forklift and larger carriers; the stage-2 partners across the bridge; further crew roles; delivered lots, the boss's crate, commissioning; the Trade Book; stainless, lead, bronze and every later material (they show only as greyed plates); live purchases and ads (`monetization` stubs; no ad button); exchanges, dealers, transport, sell notes; a second skip slot; dusk and night; real players.
+**Left out** (ruling 5, master 9): the baler, magnet crane, forklift and larger carriers; the partners across the bridge; further crew roles; delivered lots, the boss's crate, commissioning; the Trade Book; stainless, lead, bronze and every later material (greyed plates only); live purchases and ads (stubs, no ad button); exchanges, dealers, transport, sell notes; a second skip slot; dusk and night; real players.
 
-**Must not be precluded**: grades, things, machines, partners, crew roles and process-board plates are content (stainless, lead ingot and bronze are data); the map's extent is content (the back field opens west of the fence); the rate engine takes a list of sites and lines and R(assets) feeds the server bound of stage 5; the board's families and step length are content, and `sell(grade, shown)` survives 10-minute steps; the truck's skip is a list; the foreman rule takes a site id; the round's buyer is content (later dealers replace it); the industry table's rows are `{id, name, tonnes(d), simulated}`, so followed players can be pinned later; the save's version reconciles forward and positions are never rules.
+**Must not be precluded**: grades, things, machines, partners, crew roles and plates are content (stainless, lead ingot and bronze are data); the map's extent is content (the back field opens west); the rate engine takes a list of sites and lines, and R(assets) feeds stage 5's server bound; the board's families and step length are content and `sell(grade, shown)` survives 10-minute steps; the truck's skip is a list; the foreman takes a site id; the round's buyer is content (dealers replace it); table rows are `{id, name, tonnes(d), simulated}` so followed players can be pinned; the save reconciles forward and positions are never rules.
