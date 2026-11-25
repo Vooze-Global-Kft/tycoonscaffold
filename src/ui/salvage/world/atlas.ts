@@ -9,7 +9,6 @@
  * footprint centre on the ground), found by name through `index`. Pure Skia (no React).
  */
 import { ClipOp, Skia, type SkCanvas, type SkImage } from '@shopify/react-native-skia';
-import { Platform } from 'react-native';
 import { WORLD_LABELS } from '../strings';
 import { DIRS, WALK_FRAMES, crate, machine, pawn, piece, pile, ring, truck, wall, wreck, wreckPieces, type View3q } from './draw';
 import type { YardLayout } from './yard';
@@ -118,35 +117,57 @@ export function atlasSize(defs: Def[], want: number): { density: number; width: 
   return { density, width: p.width, height: p.height };
 }
 
-/** Bakes the atlas of a yard at a density. Null when no surface could be made. */
+/**
+ * Draws into a w x h image, the way Orbit Haulers' atlas does on the owner's phone (src/ui/haul/art/atlas.ts):
+ * a CPU raster surface first (Skia.Surface.Make), its snapshot drawn by any canvas on any thread. Only
+ * when no raster surface can be made, a GPU offscreen surface, copied to the CPU by makeNonTextureImage
+ * (a texture of the JavaScript thread's GPU context must never reach the UI thread's canvas: when the copy
+ * fails, the bake fails). The surface and an intermediate snapshot are disposed after the copy; the image
+ * returned is kept for the life of the app. Null when nothing could be made.
+ */
+export function bakeImage(w: number, h: number, draw: (c: SkCanvas) => void): SkImage | null {
+  const raster = Skia.Surface.Make(w, h);
+  const surface = raster ?? Skia.Surface.MakeOffscreen(w, h);
+  if (!surface) return null;
+  try {
+    draw(surface.getCanvas());
+    surface.flush();
+    const snap = surface.makeImageSnapshot();
+    if (raster) return snap;
+    const copy = snap.makeNonTextureImage();
+    snap.dispose();
+    return copy ?? null;
+  } finally {
+    surface.dispose();
+  }
+}
+
+/** Bakes the atlas of a yard at a density. Null when no image could be made. */
 export function bakeSheet(y: YardLayout, want: number): SpriteSheet | null {
   const defs = atlasDefs(y);
   const { density } = atlasSize(defs, want);
   const { placed, width, height } = pack(defs, density);
   const w = Math.max(1, width);
   const h = Math.max(1, height);
-  const surface = Platform.OS === 'web' ? Skia.Surface.Make(w, h) : (Skia.Surface.MakeOffscreen(w, h) ?? Skia.Surface.Make(w, h));
-  if (!surface) return null;
-  const c = surface.getCanvas();
-  c.clear(Skia.Color('#00000000'));
   const names: string[] = [];
   const index: Record<string, number> = {};
   const rects: number[] = [];
-  for (const p of placed) {
-    const ax = PAD - p.d.l * density;
-    const ay = PAD - p.d.t * density;
-    c.save();
-    c.clipRect({ x: p.x, y: p.y, width: p.w, height: p.h }, ClipOp.Intersect, true);
-    c.translate(p.x + ax, p.y + ay);
-    c.scale(density, density);
-    p.d.draw(c);
-    c.restore();
-    index[p.d.name] = names.length;
-    names.push(p.d.name);
-    rects.push(p.x, p.y, p.w, p.h, ax, ay);
-  }
-  surface.flush();
-  const snap = surface.makeImageSnapshot();
-  const image = Platform.OS === 'web' ? snap : (snap.makeNonTextureImage() ?? snap);
+  const image = bakeImage(w, h, (c) => {
+    c.clear(Skia.Color('#00000000'));
+    for (const p of placed) {
+      const ax = PAD - p.d.l * density;
+      const ay = PAD - p.d.t * density;
+      c.save();
+      c.clipRect({ x: p.x, y: p.y, width: p.w, height: p.h }, ClipOp.Intersect, true);
+      c.translate(p.x + ax, p.y + ay);
+      c.scale(density, density);
+      p.d.draw(c);
+      c.restore();
+      index[p.d.name] = names.length;
+      names.push(p.d.name);
+      rects.push(p.x, p.y, p.w, p.h, ax, ay);
+    }
+  });
+  if (!image) return null;
   return { image, density, width: w, height: h, names, index, rects };
 }

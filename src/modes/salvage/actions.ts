@@ -1,7 +1,8 @@
 /**
  * PLACEHOLDER store actions of the salvage mode (AGENTS.md: every state change goes through an
  * action). The ground work has one: `presence`, the screen's sample of where the worker stands
- * (src/ui/salvage/world/useSampler.ts, at most ten a second). The rules decide what standing there does
+ * (src/ui/salvage/world/frameLoop.ts `onSample`, passed on by src/ui/salvage/SalvageShell.tsx, at most
+ * ten a second). The rules decide what standing there does
  * (src/engine/salvage.ts). The rules engineers add the real actions here once docs/design/yard-design.md
  * exists. No sound yet (the salvage table is empty, src/services/fx/catalog.salvage.ts).
  */

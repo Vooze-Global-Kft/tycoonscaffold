@@ -2,7 +2,8 @@
  * The yard's frame loop: ONE frame callback on the UI thread (docs/design/research/yard-tech.md B2).
  * Each frame it reads the stick (./stick.ts), moves the worker or the truck (speed from the config,
  * collision against the yard's bounds and solid props, sliding along them: ./collide.ts), advances the
- * walk cycle and the helpers, eases the camera after the body with a little lead (clamped to the yard),
+ * walk cycle and the helpers, eases the camera after the body with a little lead (clamped to the yard
+ * plus a margin past it, so a body at the yard's edge stays inside the safe area: ./camera.ts),
  * finds the thing the body stands next to, depth-sorts every sprite (lower on the screen in front) and
  * writes the RSXform, rectangle and colour buffers of the ONE atlas draw (./YardView.tsx), made once and
  * changed in place.
@@ -10,7 +11,7 @@
  * THE WORLD AND THE SCREEN ARE KEPT APART (yard-tech.md B3, B8): this loop owns smooth motion (the
  * worker's and the truck's places live here, on the UI thread, and are never saved); the rules own the
  * world (cut progress, the carried stack, cash: src/engine/salvage.ts). The loop sends the rules a
- * presence sample (which thing it stands next to, where, on foot or driving) at most ten times a second
+ * presence sample (which thing it stands next to, where, on foot or driving, steered or still) at most ten times a second
  * (`onSample`, through runOnJS); the rules push back what they decided as `rules` (./useRulesTable.ts).
  *
  * Runs every vsync while mounted and `active` (helpers always walk); `active` false (an overlay over the
@@ -21,6 +22,7 @@ import { Skia, notifyChange, type SkColor, type SkHostRect, type SkRSXform } fro
 import { useCallback, useEffect, useMemo } from 'react';
 import { makeMutable, runOnJS, useFrameCallback, useSharedValue, type FrameInfo, type SharedValue } from 'react-native-reanimated';
 import { RING_R, RING_STEPS, TRUCK_HEADINGS, type SpriteSheet } from './atlas';
+import { EDGE_ROOM_M, cameraBounds } from './camera';
 import { blocked, moveBody, nearestAct } from './collide';
 import { DIRS, WALK_FRAMES } from './draw';
 import { DEAD, STICK_R, stick } from './stick';
@@ -83,8 +85,10 @@ interface Scratch {
   sc: Float64Array;
   al: Float64Array;
   order: Int32Array;
-  /** Five one-second buckets of [frames, worst ms]. */
+  /** Five one-second buckets of [frames, worst ms, the second they count]. */
   buckets: Float64Array;
+  /** The camera's limits (./camera.ts): minX, maxX, minY, maxY. */
+  cam: number[];
   out: number[];
   /** The camera and the view for addItem: camX, camY, ppm, tilt, lift, screen width, height, buffer size. */
   view: Float64Array;
@@ -169,10 +173,14 @@ export function useYardLoop(opts: {
   height: number;
   active: boolean;
   measure: boolean;
-  onSample: (act: number, x: number, y: number, driving: number) => void;
+  /** The safe area's insets, points: the camera keeps a body at the yard's edge inside them. */
+  insets: { left: number; top: number; right: number; bottom: number };
+  /** `moving` is 1 while the stick is held past its dead zone. */
+  onSample: (act: number, x: number, y: number, driving: number, moving: number) => void;
   onDriving: (driving: boolean) => void;
 }): YardAnim {
   const { yard, sheet, ids, motion, rules, capacity, width: SW, height: SH, active, measure, onSample, onDriving } = opts;
+  const { left: inL, top: inT, right: inR, bottom: inB } = opts.insets;
   const N = bufferSize(yard, capacity);
   const bufs = useMemo(
     () => ({
@@ -198,6 +206,9 @@ export function useYardLoop(opts: {
   const hPts = useMemo(() => helpers.map((h) => h.pts), [helpers]);
   const hLen = useMemo(() => helpers.map((h) => h.length), [helpers]);
   const hPhase = useMemo(() => helpers.map((h) => h.phase), [helpers]);
+  // How far the worker's sprite rises above its feet (./atlas.ts: a pawn 1.95 m tall), and the room kept round it.
+  const topPx = (1.95 * lift + 0.4 * tilt + 0.1) * ppm + 8;
+  const room = EDGE_ROOM_M * ppm;
 
   const onFrame = useCallback(
     (info: FrameInfo) => {
@@ -212,7 +223,7 @@ export function useYardLoop(opts: {
         st[6] = 1;
         st[12] = info.timestamp;
         if (S !== null) for (let i = 0; i < 20; i++) st[i] = S.st[i];
-        S = { st, key: new Float64Array(N), spr: new Int32Array(N), sx: new Float64Array(N), sy: new Float64Array(N), sc: new Float64Array(N), al: new Float64Array(N), order: new Int32Array(N), buckets: new Float64Array(10), out: [0, 0], view: new Float64Array(8), count: -1 };
+        S = { st, key: new Float64Array(N), spr: new Int32Array(N), sx: new Float64Array(N), sy: new Float64Array(N), sc: new Float64Array(N), al: new Float64Array(N), order: new Int32Array(N), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], view: new Float64Array(8), count: -1 };
         scratch.value = S;
       }
       const st = S.st;
@@ -299,15 +310,17 @@ export function useYardLoop(opts: {
       const bx = st[5] === 1 ? st[2] : st[0];
       const by = st[5] === 1 ? st[3] : st[1];
 
-      // --- the camera: after the body with a little lead, eased, clamped to the yard ----------------------
+      // --- the camera: after the body with a little lead, eased, clamped to the yard and its margins -------
       const tcx = (bx + vx * motion.lead) * ppm - SW / 2;
       const tcy = (by + vy * motion.lead) * ppm * tilt - SH / 2;
       const e = st[19] === 1 ? 1 - Math.exp(-dt / motion.ease) : 1;
       st[19] = 1;
       st[9] += (tcx - st[9]) * e;
       st[10] += (tcy - st[10]) * e;
-      st[9] = pxW <= SW ? (pxW - SW) / 2 : Math.max(0, Math.min(pxW - SW, st[9]));
-      st[10] = pxH <= SH ? (pxH - SH) / 2 : Math.max(0, Math.min(pxH - SH, st[10]));
+      const cam = S.cam;
+      cameraBounds(cam, pxW, pxH, SW, SH, inL, inT, inR, inB, room, topPx);
+      st[9] = Math.max(cam[0], Math.min(cam[1], st[9]));
+      st[10] = Math.max(cam[2], Math.min(cam[3], st[10]));
       const camX = st[9];
       const camY = st[10];
       ground.value = [{ translateX: -camX }, { translateY: -camY }];
@@ -318,7 +331,7 @@ export function useYardLoop(opts: {
       if (near.value !== ni) near.value = ni;
       if (info.timestamp - st[11] >= 100) {
         st[11] = info.timestamp;
-        runOnJS(onSample)(ni, bx, by, st[5]);
+        runOnJS(onSample)(ni, bx, by, st[5], ux !== 0 || uy !== 0 ? 1 : 0);
       }
 
       // --- the sprites of this frame ---------------------------------------------------------------------
@@ -464,32 +477,41 @@ export function useYardLoop(opts: {
       notifyChange(col);
 
       // --- the development panel's numbers: five one-second buckets -----------------------------------------
+      // Frames a second count only COMPLETE seconds (the current one is still filling); the worst frame
+      // takes every bucket of the last five seconds, the current one too.
       if (measure) {
         const b = S.buckets;
         const sec = Math.floor(info.timestamp / 1000);
-        const slot = (sec % 5) * 2;
+        const slot = (sec % 5) * 3;
         if (st[13] !== sec) {
           st[13] = sec;
           b[slot] = 0;
           b[slot + 1] = 0;
+          b[slot + 2] = sec;
         }
         b[slot] += 1;
         if (ms > b[slot + 1] && info.timeSincePreviousFrame !== null) b[slot + 1] = ms;
         if (info.timestamp - st[15] >= 500) {
           st[15] = info.timestamp;
+          const first = Math.floor(st[12] / 1000);
           let frames = 0;
+          let whole = 0;
           let worst = 0;
           for (let q = 0; q < 5; q++) {
-            frames += b[q * 2];
-            worst = Math.max(worst, b[q * 2 + 1]);
+            const bs = b[q * 3 + 2];
+            if (bs <= sec - 5 || b[q * 3] === 0) continue;
+            worst = Math.max(worst, b[q * 3 + 1]);
+            // The first second of the loop began part-way: skipped like the current one.
+            if (bs === sec || bs <= first) continue;
+            frames += b[q * 3];
+            whole++;
           }
-          const span = Math.min(5, Math.max(1, (info.timestamp - st[12]) / 1000));
-          stats.value = { fps: frames / span, worstMs: worst, actors, sprites: n };
+          stats.value = { fps: whole > 0 ? frames / whole : 0, worstMs: worst, actors, sprites: n };
         }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [N, rects, density, ids, motion, solids, acts, props, px, py, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxW, pxH, SW, SH, capacity, measure, onSample, onDriving, hasTruck],
+    [N, rects, density, ids, motion, solids, acts, props, px, py, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxW, pxH, SW, SH, capacity, measure, onSample, onDriving, hasTruck, inL, inT, inR, inB, topPx, room],
   );
   const cb = useFrameCallback(onFrame, false);
   useEffect(() => {

@@ -6,7 +6,7 @@
  * - a panel that slides in from the right side (at most 46 % of the width, inside the safe area);
  * - a centred card (at most 420 pt wide), on top of the panel.
  * Android back closes the top one (and leaves the app only when none is open). A tap on the scrim
- * closes the top one too. PLACEHOLDER contents: the screens package fills them.
+ * closes the top one too; a scrim lies directly under each open overlay, so only the top one takes touches. PLACEHOLDER contents: the screens package fills them.
  */
 import { useEffect } from 'react';
 import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -39,6 +39,8 @@ export function OverlayHost({ width, height, insets }: { width: number; height: 
     <>
       {stack.length ? <Pressable accessibilityRole="button" accessibilityLabel={S.close} style={[StyleSheet.absoluteFill, { backgroundColor: PAL.scrim }]} onPress={() => useSalvageUi.getState().closeTop()} /> : null}
       <SidePanel open={panel} width={width} height={height} insets={insets} />
+      {/* A scrim directly under the card too: over an open panel it dims it and takes its touches, so only the top overlay is live. */}
+      {card && panel ? <Pressable accessibilityRole="button" accessibilityLabel={S.close} style={[StyleSheet.absoluteFill, { backgroundColor: PAL.scrim }]} onPress={() => useSalvageUi.getState().closeTop()} /> : null}
       {card ? <CentreCard width={width} height={height} insets={insets} /> : null}
     </>
   );

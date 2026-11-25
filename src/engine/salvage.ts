@@ -23,7 +23,7 @@ export function isSalvage(cfg: GameConfig): cfg is SalvageConfig {
   return cfg.mode === 'salvage' && !!cfg.salvage && typeof (cfg.salvage as { loop?: unknown }).loop === 'object';
 }
 
-const NOBODY: Presence = { near: null, driving: false, x: 0, y: 0 };
+const NOBODY: Presence = { near: null, driving: false, moving: false, x: 0, y: 0 };
 
 /** A fresh salvage state: every test wreck whole, nothing carried. */
 export function freshSalvage(cfg: SalvageConfig): SalvageState {
@@ -94,9 +94,10 @@ export function isNext(cfg: SalvageConfig, p: Presence): boolean {
 export function setPresence(cfg: SalvageConfig, g: SalvageGame, p: Presence): SalvageGame {
   const s = g.salvage;
   const at = g.stats.playSeconds;
-  const same = s.presence.near === p.near && s.presence.driving === p.driving && s.presence.x === p.x && s.presence.y === p.y;
+  const moving = p.moving === true;
+  const same = s.presence.near === p.near && s.presence.driving === p.driving && s.presence.moving === moving && s.presence.x === p.x && s.presence.y === p.y;
   if (same && at - s.presenceAt < cfg.salvage.loop.staleSeconds / 2) return g;
-  return { ...g, salvage: { ...s, presence: { near: p.near, driving: p.driving, x: p.x, y: p.y }, presenceAt: at } };
+  return { ...g, salvage: { ...s, presence: { near: p.near, driving: p.driving, moving, x: p.x, y: p.y }, presenceAt: at } };
 }
 
 /** Advances the test loop by `dt` seconds (it adds `stats.playSeconds` itself, as the EngineMode contract says). */
@@ -122,7 +123,9 @@ export function advanceSalvage(cfg: SalvageConfig, g: SalvageGame, dt: number, e
     });
     changed = true;
   }
-  if (target?.kind === 'wreck' && !p.driving && carried < L.capacity) {
+  // A wreck is cut only while the worker stands still beside it (walking past does not cut; moving again
+  // pauses the cut, and it fades once the worker has left). Unloading at the machine needs no stop.
+  if (target?.kind === 'wreck' && !p.driving && !p.moving && carried < L.capacity) {
     const i = wrecks.findIndex((w) => w.id === target.id);
     const w = wrecks[i];
     if (w && w.cutAt === null) {

@@ -85,15 +85,31 @@ function fingerOf(ne: TouchPoint & { touches?: readonly TouchPoint[]; changedTou
 }
 
 /**
+ * A touch that began while the view already holds the responder (another finger rests on the glass)
+ * and no finger steers: the first of its new touches inside the zone, or null. Pure (tested).
+ */
+export function newSteeringTouch(z: StickZone, ne: { changedTouches?: readonly TouchPoint[] }): { id: string | number | undefined; x: number; y: number } | null {
+  for (const t of ne.changedTouches ?? []) if (inZone(z, t.pageX, t.pageY)) return { id: t.identifier, x: t.pageX, y: t.pageY };
+  return null;
+}
+
+/**
  * The responder props of the full-screen input view. `zone()` is read at each touch (the layout may
  * change); `enabled()` false (an overlay, the portrait card) takes no touch at all.
  */
-export function useStickResponder(zone: () => StickZone, enabled: () => boolean): Pick<ViewProps, 'onStartShouldSetResponder' | 'onResponderGrant' | 'onResponderMove' | 'onResponderEnd' | 'onResponderRelease' | 'onResponderTerminate' | 'onResponderTerminationRequest'> {
+export function useStickResponder(zone: () => StickZone, enabled: () => boolean): Pick<ViewProps, 'onStartShouldSetResponder' | 'onResponderGrant' | 'onResponderStart' | 'onResponderMove' | 'onResponderEnd' | 'onResponderRelease' | 'onResponderTerminate' | 'onResponderTerminationRequest'> {
   const finger = useRef<string | number | undefined | null>(null);
   return useMemo(() => {
     const stop = () => {
       finger.current = null;
       stick.value = STICK_OFF;
+    };
+    const place = (id: string | number | undefined, x: number, y: number) => {
+      const z = zone();
+      finger.current = id;
+      const bx = Math.max(z.minX, Math.min(z.maxX, x));
+      const by = Math.max(z.minY, Math.min(z.maxY, y));
+      stick.value = follow(z, bx, by, x, y);
     };
     return {
       onStartShouldSetResponder: (e: GestureResponderEvent) => {
@@ -103,11 +119,15 @@ export function useStickResponder(zone: () => StickZone, enabled: () => boolean)
         return inZone(zone(), e.nativeEvent.pageX, e.nativeEvent.pageY);
       },
       onResponderGrant: (e: GestureResponderEvent) => {
-        const z = zone();
-        finger.current = e.nativeEvent.identifier;
-        const bx = Math.max(z.minX, Math.min(z.maxX, e.nativeEvent.pageX));
-        const by = Math.max(z.minY, Math.min(z.maxY, e.nativeEvent.pageY));
-        stick.value = follow(z, bx, by, e.nativeEvent.pageX, e.nativeEvent.pageY);
+        place(e.nativeEvent.identifier, e.nativeEvent.pageX, e.nativeEvent.pageY);
+      },
+      // The steering finger lifted while another rested on the glass, then a thumb came down again: React
+      // Native does not grant the view a second time, so the new touch is adopted here (when it lands in
+      // the zone and nothing steers). A second finger while one steers is still ignored.
+      onResponderStart: (e: GestureResponderEvent) => {
+        if (finger.current !== null || !enabled()) return;
+        const t = newSteeringTouch(zone(), e.nativeEvent);
+        if (t) place(t.id, t.x, t.y);
       },
       onResponderMove: (e: GestureResponderEvent) => {
         if (finger.current === null) return;

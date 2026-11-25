@@ -14,8 +14,8 @@ is a placeholder except the technology: landscape, the wiring, a wide yard steer
   the game is a placeholder. The fingerprint check reads a `PLACEHOLDER` value as *pending*: everyday
   passes, release fails until the design fills it in.
 - **Placeholder rules** (`src/engine/salvage.ts`, `salvageMode.ts`, save tag `salvage0`,
-  `paysOnCompute: true`, `catchUpSeconds: 0`, away earns nothing). Stand next to a wreck for 2 s: 3
-  pieces, carried up to 6. Next to the machine they unload one every 0.35 s at $5 each. A cut wreck is
+  `paysOnCompute: true`, `catchUpSeconds: 0`, away earns nothing). Stand still next to a wreck for 2 s
+  (walking past does not cut): 3 pieces, carried up to 6. Next to the machine they unload one every 0.35 s at $5 each. A cut wreck is
   whole again after 20 s.
 - **The walkable yard** (`src/ui/salvage/world/`): stick, worker, six helpers, truck, camera, one
   atlas, the mode's own overlays, a web development panel, a loading placeholder.
@@ -37,9 +37,11 @@ Sprites (anchored at footprint centres) sort by footprint y, lower in front; gro
 
 - **The UI thread owns motion** (`frameLoop.ts`, one `useFrameCallback`): stick, collision
   (`collide.ts`, push-out so bodies slide), walk cycles, helpers, the camera (0.35 s lead, 0.28 s ease,
-  clamped), the nearest interactable, the depth sort into one `Atlas`. Positions are never saved.
+  allowed past the yard by the safe-area insets plus 1.2 m, and at the top by the worker's height, so a
+  body at an edge is never under the island or the thumb's corner: `camera.ts`), the nearest interactable, the depth sort into one `Atlas`. Positions are never saved.
 - **The rules own the world.** At most ten times a second the loop sends a presence sample through
-  `runOnJS` to `salvageActions.presence` (which prop, where, on foot or driving). The rules check the
+  `runOnJS` to `salvageActions.presence` (which prop, where, on foot or driving, `moving`: the stick past
+  its dead zone). The rules check the
   distance again and decide what happens. After each store change, `useRulesTable.ts` pushes one shared
   value back: each wreck's cut progress and the carried stack. A screen never computes a rule.
 - **Helpers are drawn only** (machine → gap → wreck and back); the rules engineers make them rules
@@ -47,14 +49,14 @@ Sprites (anchored at footprint centres) sort by footprint y, lower in front; gro
 
 **Input:** one full-screen responder (`stick.ts`). A touch that begins in the stick zone (the left 45 %
 of the safe area, below 28 % of its height) places the stick there. The knob travels 52 pt and drags the
-base along past that. Moves write only a shared value. Releasing stops the worker. A second finger is
-ignored. **The truck:** walk into it to get in. While driving it moves at 9 m/s with radius 1.3 m, so it
+base along. Moves write only a shared value. Releasing stops the worker. A second finger is ignored; a
+thumb put back down while another finger rests steers again. **The truck:** walk into it to get in. While driving it moves at 9 m/s with radius 1.3 m, so it
 cannot pass the 1.4 m gap in the container wall. A **"Step out"** button in the lower right (pressed with
 the stick released) puts the worker beside it. Chosen over "stand still next to the machine": it never
 fires by accident.
 
 **Overlays** (`overlays/OverlayHost.tsx`): a right-hand panel and a centred card, absolute views with
-`useOverlay`; the scrim or Android back closes the top one; no Sheet, no `Modal` (yard-tech.md A5). The
+`useOverlay`; a scrim under each, so only the top one takes touches; it or Android back closes the top one; no Sheet, no `Modal` (yard-tech.md A5). The
 yard stops under them.
 
 ## How to add…
@@ -71,42 +73,40 @@ yard stops under them.
 
 ## What was measured (web preview, headless Chromium with software GL, 4 shared cores)
 
-| Load (844 × 390) | dpr 1: fps / worst frame (5 s) | sprites drawn |
+| Load (844 × 390, dpr 1, stick held) | fps (complete seconds) / worst frame (5 s) | sprites drawn |
 |---|---|---|
-| test yard (8 actors) | 52 to 59 / 16.8 ms | 20 to 23 |
-| 40 actors, +100 crates | 50 / 16.8 ms | 127 |
-| 80 actors, +300 crates | 60 / 16.8 ms | 280 |
-| 150 actors, +600 crates | 51 / 16.8 ms | 376 |
-| 200 actors, +600 crates, dpr 3 | 6.8 / 150 ms | 426 |
-| test yard, dpr 3 | 14.6 / 67 to 83 ms | 22 |
+| test yard (8 actors) | 60 / 16.8 ms | 23 |
+| 40 actors, +100 crates | 60 / 16.8 ms | 127 |
+| 80 actors, +300 crates | 59.8 / 33.3 ms | 280 |
+| 150 actors, +600 crates | 56.3 / 33.5 ms | 371 |
 
-Four draw calls a frame whatever the load (fill, ground, fence, atlas). The dpr 3 rows measure this
-machine's software rasteriser (2532 × 1170 pixels on a shared CPU), not the code. At dpr 1 the loop
-holds the frame at yard-tech.md's budget (40 actors, 300 sprites) and well past it. The atlas is 2032 × 561 at density 1
-(61 sprites, baked in 50 to 100 ms). At a 3× density it **drops to density 2** (2012 × 1904) to fit
-2048: sprites are a little soft on an iPhone. The art package should split it into two sheets or bake
-smaller pawns.
+dpr 3 runs (7 to 15 fps) measure this machine's software rasteriser, not the code; a second browser
+running adds worst frames of 33 to 83 ms. Four draw calls a frame whatever the load
+(fill, ground, fence, atlas). The atlas is 2032 × 561 at density 1 (61 sprites, 50 to 100 ms). At 3× it
+**drops to density 2** (2012 × 1904): split it later. Bakes use a CPU raster surface (as Orbit
+Haulers' atlas does); a GPU offscreen one only as a fallback, copied to the CPU or the bake fails.
 
 ## What only a phone can tell (for the owner, `GAME=scrap-yard npm run go`)
 
-1. Expo Go opens in **landscape** and stays there when the phone turns (with the rotation lock on and
-   the phone upright: card or yard?).
-2. Rest your left thumb low on the left and slide it. The worker walks the way the thumb points, with no
-   lag, and stops the moment you lift. Put a second finger anywhere: nothing changes.
-3. Walk into the container wall at an angle. The worker slides along it. Go through the narrow gap
-   (lower middle of the wall). Then drive the truck at the same gap: it does not fit, and the wide gap
-   higher up lets it through.
-4. Turn the phone the other way round (island on the right). The money box, the ≡ button and "Step
-   out" stay clear of the island and the home bar. The yard is drawn under them.
-5. Open ≡, then "Open the card". On Android, press back twice. On both, the screen must not rotate.
-6. Walk for a minute among the six helpers: any stutter or warmth is worth reporting.
+1. Rotation lock on, phone upright, launch: the app opens in **landscape**, not on the "Turn your phone
+   sideways" card (does the card flash?). Turn the phone 180°: the money box, ≡ and "Step out" move away
+   from the island.
+2. After loading, the worker, truck and wrecks appear as drawings, not blank boxes.
+3. Thumb low on the left, walk into the container wall at an angle: it slides, no crash. Walk to the far
+   left and the top edge: the worker stays clear of the island and whole on screen.
+4. Steer left-handed, tap ≡ with the right: nothing fires, steering continues. Lift the left, put it
+   back: it steers.
+5. Stop beside a wreck: the ring fills in 2 s. Walking past it does not cut.
+6. **Frame time:** `EXPO_PUBLIC_YARD_DEV=1 GAME=scrap-yard npm run go` shows the panel (fps, worst
+   frame). Then `EXPO_PUBLIC_YARD_STRESS=40,300` (yard-tech.md B6's budget). Report both lines.
+7. Android: ≡, "Open the card", back twice: no rotation.
 
 ## Files and their owners-to-be
 
 | Files | Owner-to-be |
 |---|---|
 | `src/engine/salvage.ts`, `salvage/types.ts`, `salvageMode.ts`, `config/schema.salvage.ts`, `modes/salvage/actions.ts`, `presets*.ts` | rules engineers (replace) |
-| `src/ui/salvage/world/{frameLoop,collide,stick,yard,useRulesTable,useYard,YardView}.ts*` | world engineer (keep, extend) |
+| `src/ui/salvage/world/{frameLoop,camera,collide,stick,yard,useRulesTable,useYard,YardView}.ts*` | world engineer (keep, extend) |
 | `src/ui/salvage/world/{draw,atlas,ground}.ts`, `scripts/art/scrap-yard-placeholder.py`, icons | art package (replace the drawings, keep names and anchors) |
 | `src/ui/salvage/{SalvageShell,Loading,strings,palette,uiState}.ts*`, `overlays/`, `dev/` | screens package |
 | `games/scrap-yard/**`, `store/fingerprint.json` | design / store (all placeholders) |

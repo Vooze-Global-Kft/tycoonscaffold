@@ -126,7 +126,7 @@ describe('the rules table', async () => {
     const wrecks = y.actList.filter((a) => a.kind === 0).map((a) => ({ id: a.id, cut: 0, cutAt: null as number | null }));
     wrecks[0] = { ...wrecks[0], cut: 0.5 };
     wrecks[1] = { ...wrecks[1], cut: 1, cutAt: 3 };
-    const t = rulesTable(y, { v: 1, carried: 2, wrecks, presence: { near: null, driving: false, x: 0, y: 0 }, presenceAt: 0, unloadT: 0, unloaded: 0 });
+    const t = rulesTable(y, { v: 1, carried: 2, wrecks, presence: { near: null, driving: false, moving: false, x: 0, y: 0 }, presenceAt: 0, unloadT: 0, unloaded: 0 });
     expect(t.carried).toBe(2);
     const at = (id: string) => t.cut[y.actList.findIndex((a) => a.id === id)];
     expect(at(wrecks[0].id)).toBe(0.5);

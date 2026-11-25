@@ -23,6 +23,12 @@ export interface Presence {
   near: string | null;
   /** The worker sits in the truck (the truck cannot cut; it unloads like the worker). */
   driving: boolean;
+  /**
+   * The stick is held past its dead zone when the sample is taken (the body is being steered). The
+   * screen only reports it; the rules decide what moving means (the placeholder: a wreck is cut only
+   * while the worker stands still next to it, "walk to a wreck, hold to cut; moving again cancels").
+   */
+  moving: boolean;
   /** Where the worker stood, metres (the rules check the distance again). */
   x: number;
   y: number;

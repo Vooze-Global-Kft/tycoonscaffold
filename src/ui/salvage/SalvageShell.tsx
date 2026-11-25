@@ -102,8 +102,8 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
   const rules = useRulesTable(yard);
   // The presence sample (at most ten a second, from the UI thread): the interactable's id goes to the rules.
   const onSample = useCallback(
-    (act: number, x: number, y: number, driving: number) => {
-      salvageActions.presence({ near: act >= 0 ? (yard.actList[act]?.id ?? null) : null, x, y, driving: driving === 1 });
+    (act: number, x: number, y: number, driving: number, moving: number) => {
+      salvageActions.presence({ near: act >= 0 ? (yard.actList[act]?.id ?? null) : null, x, y, driving: driving === 1, moving: moving === 1 });
     },
     [yard],
   );
@@ -115,7 +115,7 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
   useEffect(() => {
     if (!active) stick.value = { on: 0, bx: 0, by: 0, kx: 0, ky: 0 };
   }, [active]);
-  const anim = useYardLoop({ yard, sheet: art?.sheet ?? null, ids, motion, rules, capacity: cfg.salvage.loop.capacity, width, height, active, measure: yardSwitches.panel, onSample, onDriving });
+  const anim = useYardLoop({ yard, sheet: art?.sheet ?? null, ids, motion, rules, capacity: cfg.salvage.loop.capacity, width, height, active, measure: yardSwitches.panel, insets, onSample, onDriving });
 
   const zoneRef = useRef<StickZone>(stickZone(width, height, insets));
   zoneRef.current = stickZone(width, height, insets);

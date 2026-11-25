@@ -34,12 +34,12 @@ afterAll(() => installEngineMode(null));
 
 const fresh = (): R.SalvageGame => E.createInitialState(cfg, NOW) as R.SalvageGame;
 /** Stands next to `near` (on its lower edge) and ticks `seconds` in steps of 0.1 s, re-sampling every step as the screen does. */
-function stand(g: R.SalvageGame, near: string | null, seconds: number, driving = false): { g: R.SalvageGame; events: R.SalvageEvent[] } {
+function stand(g: R.SalvageGame, near: string | null, seconds: number, driving = false, moving = false): { g: R.SalvageGame; events: R.SalvageEvent[] } {
   const p = cfg.salvage.props.find((x) => x.id === near);
   const at = p ? { x: p.x, y: p.y + (p.shape === 'box' ? p.d / 2 : p.r) + 0.4 } : { x: 12, y: 12 };
   const events: R.SalvageEvent[] = [];
   for (let i = 0; i < Math.round(seconds * 10); i++) {
-    g = R.setPresence(cfg, g, { near, driving, ...at });
+    g = R.setPresence(cfg, g, { near, driving, moving, ...at });
     g = M.tick(cfg, g, 0.1, NOW, events) as R.SalvageGame;
   }
   return { g, events };
@@ -119,12 +119,15 @@ describe('the salvage engine mode (placeholder)', () => {
 
   it('the truck does not cut, a stale or far sample does nothing, and walking away lets a half cut fade', () => {
     expect(stand(fresh(), 'w1', 3, true).g.salvage.wrecks[0].cut).toBe(0);
+    // Walking past (the stick held): no cut; stopping beside it cuts.
+    expect(stand(fresh(), 'w1', 3, false, true).g.salvage.wrecks[0].cut).toBe(0);
+    expect(stand(stand(fresh(), 'w1', 1, false, true).g, 'w1', 1).g.salvage.wrecks[0].cut).toBeCloseTo(0.5, 5);
     // Far away: the rules check the distance again.
-    let g = R.setPresence(cfg, fresh(), { near: 'w1', driving: false, x: 2, y: 18 });
+    let g = R.setPresence(cfg, fresh(), { near: 'w1', driving: false, moving: false, x: 2, y: 18 });
     g = M.tick(cfg, g, 0.1, NOW) as R.SalvageGame;
     expect(g.salvage.wrecks[0].cut).toBe(0);
     // Stale: one sample, then no more for a second.
-    g = R.setPresence(cfg, fresh(), { near: 'w1', driving: false, x: 20, y: 6.4 });
+    g = R.setPresence(cfg, fresh(), { near: 'w1', driving: false, moving: false, x: 20, y: 6.4 });
     for (let i = 0; i < 20; i++) g = M.tick(cfg, g, 0.1, NOW) as R.SalvageGame;
     // At most 0.6 s of cutting (0.3), then it fades back to nothing.
     expect(g.salvage.wrecks[0].cut).toBe(0);
