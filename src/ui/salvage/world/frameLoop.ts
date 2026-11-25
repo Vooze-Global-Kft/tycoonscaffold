@@ -86,7 +86,26 @@ interface Scratch {
   /** Five one-second buckets of [frames, worst ms]. */
   buckets: Float64Array;
   out: number[];
+  /** The camera and the view for addItem: camX, camY, ppm, tilt, lift, screen width, height, buffer size. */
+  view: Float64Array;
   count: number;
+}
+
+/** Adds one sprite to the frame's list (culled when off screen); returns the new count. */
+function addItem(S: Scratch, n: number, key: number, spr: number, wx: number, wy: number, z: number, scale: number, alpha: number): number {
+  'worklet';
+  const V = S.view;
+  if (spr < 0 || n >= V[7]) return n;
+  const sx = wx * V[2] - V[0];
+  const sy = wy * V[2] * V[3] - V[1] - z * V[2] * V[4];
+  if (sx < -260 || sx > V[5] + 260 || sy < -260 || sy > V[6] + 320) return n;
+  S.key[n] = key;
+  S.spr[n] = spr;
+  S.sx[n] = sx;
+  S.sy[n] = sy;
+  S.sc[n] = scale;
+  S.al[n] = alpha;
+  return n + 1;
 }
 
 const TAU = Math.PI * 2;
@@ -184,7 +203,7 @@ export function useYardLoop(opts: {
     (info: FrameInfo) => {
       'worklet';
       let S = scratch.value;
-      if (S === null || S.key.length !== N) {
+      if (S === null || S.key.length !== N || !S.view) {
         const st = new Float64Array(20);
         st[0] = workerStart.x;
         st[1] = workerStart.y;
@@ -193,7 +212,7 @@ export function useYardLoop(opts: {
         st[6] = 1;
         st[12] = info.timestamp;
         if (S !== null) for (let i = 0; i < 20; i++) st[i] = S.st[i];
-        S = { st, key: new Float64Array(N), spr: new Int32Array(N), sx: new Float64Array(N), sy: new Float64Array(N), sc: new Float64Array(N), al: new Float64Array(N), order: new Int32Array(N), buckets: new Float64Array(10), out: [0, 0], count: -1 };
+        S = { st, key: new Float64Array(N), spr: new Int32Array(N), sx: new Float64Array(N), sy: new Float64Array(N), sc: new Float64Array(N), al: new Float64Array(N), order: new Int32Array(N), buckets: new Float64Array(10), out: [0, 0], view: new Float64Array(8), count: -1 };
         scratch.value = S;
       }
       const st = S.st;
@@ -305,37 +324,34 @@ export function useYardLoop(opts: {
       // --- the sprites of this frame ---------------------------------------------------------------------
       const R = rules.value;
       let n = 0;
-      const add = (key: number, spr: number, wx: number, wy: number, z: number, scale: number, alpha: number) => {
-        'worklet';
-        if (spr < 0 || n >= N) return;
-        const sx = wx * ppm - camX;
-        const sy = wy * ppm * tilt - camY - z * ppm * lift;
-        if (sx < -260 || sx > SW + 260 || sy < -260 || sy > SH + 320) return;
-        S!.key[n] = key;
-        S!.spr[n] = spr;
-        S!.sx[n] = sx;
-        S!.sy[n] = sy;
-        S!.sc[n] = scale;
-        S!.al[n] = alpha;
-        n++;
-      };
+      // One view of the camera for every sprite of this frame (worklets copy what they close over: `addItem`
+      // gets everything as arguments and returns the new count, never a closure that changes `n`).
+      const V = S.view;
+      V[0] = camX;
+      V[1] = camY;
+      V[2] = ppm;
+      V[3] = tilt;
+      V[4] = lift;
+      V[5] = SW;
+      V[6] = SH;
+      V[7] = N;
       // Decals on the ground first: the mark round the thing next to the body, the cut ring.
       if (ni >= 0) {
         const pi = acts[ni * ACT_STRIDE];
-        add(DECAL + py[pi], ids.mark, px[pi], py[pi], 0, ids.ringScale[pi], 0.55 + 0.25 * Math.sin(clock * 6));
+        n = addItem(S, n, DECAL + py[pi], ids.mark, px[pi], py[pi], 0, ids.ringScale[pi], 0.55 + 0.25 * Math.sin(clock * 6));
       }
       let actors = 0;
       for (let i = 0; i < props.length; i++) {
         const ai = ids.act[i];
         if (ai >= 0 && acts[ai * ACT_STRIDE + 1] === ACT_WRECK) {
           const c = ai < R.cut.length ? R.cut[ai] : 0;
-          if (c >= 2) add(py[i], ids.pieces[i], px[i], py[i], 0, 1, 1);
+          if (c >= 2) n = addItem(S, n, py[i], ids.pieces[i], px[i], py[i], 0, 1, 1);
           else {
             const shake = c > 0 ? Math.sin(clock * 60) * 0.04 : 0;
-            add(py[i], ids.prop[i], px[i] + shake, py[i], 0, 1 - 0.14 * c, 1);
-            if (c > 0) add(DECAL + py[i] + 0.01, ids.ring[Math.min(RING_STEPS, Math.max(1, Math.round(c * RING_STEPS)))], px[i], py[i], 0, ids.ringScale[i], 1);
+            n = addItem(S, n, py[i], ids.prop[i], px[i] + shake, py[i], 0, 1 - 0.14 * c, 1);
+            if (c > 0) n = addItem(S, n, DECAL + py[i] + 0.01, ids.ring[Math.min(RING_STEPS, Math.max(1, Math.round(c * RING_STEPS)))], px[i], py[i], 0, ids.ringScale[i], 1);
           }
-        } else if (ids.prop[i] >= 0) add(py[i], ids.prop[i], px[i], py[i], 0, 1, 1);
+        } else if (ids.prop[i] >= 0) n = addItem(S, n, py[i], ids.prop[i], px[i], py[i], 0, 1, 1);
       }
       // Helpers: to the wreck, a pause, back to the machine with two pieces, a pause; on their own paths.
       for (let h = 0; h < hPts.length; h++) {
@@ -388,10 +404,10 @@ export function useYardLoop(opts: {
         }
         const face = !moving ? 0 : Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : dy > 0 ? 0 : 2;
         const frame = moving ? Math.floor(dist / 0.35) % WALK_FRAMES : 0;
-        add(hy, ids.helper[face * WALK_FRAMES + frame], hx, hy, 0, 1, 1);
+        n = addItem(S, n, hy, ids.helper[face * WALK_FRAMES + frame], hx, hy, 0, 1, 1);
         if (back) {
-          add(hy + 0.001, ids.piece, hx, hy, 1.95, 1, 1);
-          add(hy + 0.002, ids.piece, hx, hy, 2.25, 1, 1);
+          n = addItem(S, n, hy + 0.001, ids.piece, hx, hy, 1.95, 1, 1);
+          n = addItem(S, n, hy + 0.002, ids.piece, hx, hy, 2.25, 1, 1);
         }
         actors++;
       }
@@ -399,14 +415,14 @@ export function useYardLoop(opts: {
       const carried = Math.min(capacity, R.carried);
       if (hasTruck) {
         const k = ((Math.round(st[4] / (TAU / TRUCK_HEADINGS)) % TRUCK_HEADINGS) + TRUCK_HEADINGS) % TRUCK_HEADINGS;
-        add(st[3], ids.truck[k], st[2], st[3], 0, 1, 1);
-        if (st[5] === 1) for (let i = 0; i < carried; i++) add(st[3] + 0.001 * (i + 1), ids.piece, st[2] - Math.cos(st[4]) * 0.6, st[3] - Math.sin(st[4]) * 0.6, 0.95 + i * 0.3, 1, 1);
+        n = addItem(S, n, st[3], ids.truck[k], st[2], st[3], 0, 1, 1);
+        if (st[5] === 1) for (let i = 0; i < carried; i++) n = addItem(S, n, st[3] + 0.001 * (i + 1), ids.piece, st[2] - Math.cos(st[4]) * 0.6, st[3] - Math.sin(st[4]) * 0.6, 0.95 + i * 0.3, 1, 1);
         actors++;
       }
       if (st[5] === 0) {
         const frame = st[7] > 0 ? Math.floor(st[7] / 0.35) % WALK_FRAMES : 0;
-        add(st[1], ids.worker[st[8] * WALK_FRAMES + frame], st[0], st[1], 0, 1, 1);
-        for (let i = 0; i < carried; i++) add(st[1] + 0.001 * (i + 1), ids.piece, st[0], st[1], 1.95 + i * 0.3, 1, 1);
+        n = addItem(S, n, st[1], ids.worker[st[8] * WALK_FRAMES + frame], st[0], st[1], 0, 1, 1);
+        for (let i = 0; i < carried; i++) n = addItem(S, n, st[1] + 0.001 * (i + 1), ids.piece, st[0], st[1], 1.95 + i * 0.3, 1, 1);
         actors++;
       }
 

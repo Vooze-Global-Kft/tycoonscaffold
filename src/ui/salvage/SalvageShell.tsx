@@ -155,7 +155,7 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
         <Text style={styles.roundText}>{'≡'}</Text>
       </Pressable>
       <StepOut insets={insets} onPress={() => (anim.exit.value = 1)} />
-      <DevPanel stats={anim.stats} top={insets.top + 8} left={insets.left + 200} atlas={atlasNote} />
+      {yardSwitches.panel ? <DevPanel stats={anim.stats} top={height - insets.bottom - 26} left={insets.left + Math.round(width * 0.36)} atlas={atlasNote} /> : null}
       <OverlayHost width={width} height={height} insets={insets} />
       {portrait ? <RotateCard /> : null}
     </View>

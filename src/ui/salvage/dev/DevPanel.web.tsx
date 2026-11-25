@@ -11,7 +11,7 @@ import type { SharedValue } from 'react-native-reanimated';
 import type { FrameStats } from '../world/frameLoop';
 
 export function DevPanel({ stats, top, left, atlas }: { stats: SharedValue<FrameStats>; top: number; left: number; atlas: string }) {
-  const [s, setS] = useState<FrameStats>(stats.value);
+  const [s, setS] = useState<FrameStats>({ fps: 0, worstMs: 0, actors: 0, sprites: 0 });
   useEffect(() => {
     const t = setInterval(() => setS(stats.value), 500);
     return () => clearInterval(t);
