@@ -1,6 +1,6 @@
 # The metals trade, for designers (scrap-yard)
 
-Research step `research-metals`, 25 November 2026. [n] = source (list at the end). **Memory** = standard trade knowledge not checked against a source this session. **Inference** = my reasoning. Prices are snapshots that set the game's proportions; the game must not show them as real quotes (L2, L4).
+Research step `research-metals`, 25 November 2026; checked and corrected by `research-check-metals` the same day (sources marked "checked" were reopened). [n] = source (list at the end). **Memory** = standard trade knowledge not checked against a source this session. **Inference** = my reasoning. Prices are snapshots that set the game's proportions; the game must not show them as real quotes (L2, L4).
 
 ---
 
@@ -84,7 +84,7 @@ Prices are snapshots, converted to US$ and rounded. Exchange metals: LME officia
 | **Tin** | Solder dross, bronze | Smelt / refine | Ingot (99.85%) | $40,825/t LME | [1] |
 | **Nickel** | Superalloys, plating, stainless, batteries | Sell to alloy melters, or hydro route | Cathode, briquette, pellet | $15,060/t LME | [1] |
 | **Titanium** | Turnings and solids from aerospace | Clean, sort → vacuum arc / electron-beam remelt | Ingot; the primary route makes **sponge** | Sponge ≈ $7/kg FOB China | [15] May–Jul 2026 |
-| **Tungsten** | Carbide inserts, drills; heavy alloys | Zinc process → powder; or chemical → APT | **APT** (a salt), oxide, W powder, carbide powder | APT ≈ $2,900–3,250 per mtu (≈ $380/kg contained W); carbide scrap ≈ €98–115/kg | [8] Aug 2026; [9] Apr 2026 |
+| **Tungsten** | Carbide inserts, drills; heavy alloys | Zinc process → powder; or chemical → APT | **APT** (a salt), oxide, W powder, carbide powder | APT Rotterdam ≈ $2,780–3,250 per mtu (≈ $350–410/kg contained W); in China only about a third of that; carbide scrap ≈ €98–115/kg | [8] Aug 2026; [9] Apr 2026 |
 | **Cobalt** | Carbide binder, superalloys, Li-ion (LCO, NMC) | Hydro: leach → SX → precipitate or electrowin | Cathode, sulphate, hydroxide | Order of $50,000/t (weak source; the DRC export quota is 96,600 t/yr for 2026–27) | [31] mid-2026 |
 | **Lithium** | Li-ion black mass | Hydro: leach → SX for Ni/Co → precipitate Li | **Carbonate** or **hydroxide** (salts) | Carbonate ≈ CNY 90,000/t ≈ $12,700/t | [10] 12 Nov 2026 |
 | **Black mass** | Shredded Li-ion | Sold to hydro refiners | Powder, priced as % "payable" of contained Ni/Co/Li | China NCM payables 73.3% (Q3 2026) | [11] |
@@ -146,10 +146,10 @@ The process names below are standard metallurgy (Memory). The simplifications ar
 ## 5. Prices and exchanges
 
 ### How an exchange of the London kind works (from the LME's own guide [4])
-- **Metals.** Aluminium, aluminium alloy, copper, lead, nickel, tin, zinc and cobalt are physically deliverable. There are cash-settled futures for steel scrap, rebar and HRC, lithium hydroxide, molybdenum and the aluminium premiums [4].
-- **Lots.** Aluminium, copper, lead and zinc trade in 25 t lots, nickel 6 t, tin 5 t, cobalt 1 t [4]. Each lot must be an approved **brand** of a set quality, for example "Grade A copper" cathodes or "tin of 99.85% purity" [4].
+- **Metals.** Aluminium, aluminium alloy, NASAAC (an aluminium alloy), copper, lead, nickel, tin, zinc and cobalt are physically deliverable. There are cash-settled futures (settled against a price agency's index, no metal changes hands) for steel scrap (CFR Turkey, Taiwan, India; 10 t lots), rebar and HRC, cobalt, lithium hydroxide (1 t), molybdenum and the aluminium premiums [4] (checked).
+- **Lots.** Aluminium, copper, lead and zinc trade in 25 t lots, aluminium alloy 20 t, nickel 6 t, tin 5 t, cobalt 1 t [4] (checked). Each lot must be an approved **brand** of a set quality, for example "Grade A copper" cathodes or "tin of 99.85% purity" [4].
 - **Prompt dates.** "Daily: out to 3 months; weekly: 3 out to 6 months; monthly: 7 out to 123 months" for copper and aluminium [4]. **Cash** means delivery in two days and **3-month** is the benchmark forward (Memory for "two days").
-- **Warrants and warehouses.** Delivery happens by a warrant, a title document for metal in an approved warehouse ("almost 500 storage facilities", "brands from 57 countries" [4]). Published **stocks** show how much metal sits in those warehouses: on 24 Nov 2026 copper stocks were 337,825 t and tin 3,725 t [1]. Falling stocks usually mean rising prices.
+- **Warrants and warehouses.** Delivery happens by a warrant, a title document for metal in an approved warehouse. The guide's words: "over 500 international storage facilities and almost 500 LME listed brands"; its side panel says "over 570 storage facilities around the world" and "almost 500 LME-approved brands from 57 countries" [4] (checked; the first draft had mixed the two figures). Published **stocks** show how much metal sits in those warehouses: on 24 Nov 2026 copper stocks were 337,825 t and tin 3,725 t [1]. Falling stocks usually mean rising prices.
 - **Hours.** "The Ring | Trading hours: 11.40 – 17.00", open outcry in five-minute sessions; "LMEselect | Trading hours: 01.00 – 19.00", electronic; "Inter-office telephone | 24 hours" [4]. The **Official Price** is set in the second Ring session, 12.30–13.25 [4].
 - **Contango / backwardation.** Forward above cash (contango) means plenty of metal. Cash above forward (backwardation) means a shortage now. On 24 Nov 2026 copper cash was $12,035 and 3-month $12,055 (mild contango), while zinc cash was $3,665 and 3-month $3,508 (backwardation) [1].
 - **Premiums.** The exchange price is for metal in a warehouse. A buyer pays a regional premium on top for metal delivered to them; the LME even lists premium contracts for US, West Europe and East Asia aluminium [4].
