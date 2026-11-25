@@ -110,6 +110,9 @@ function scene(c: SkCanvas, Y: LoadingLayers, L: LoadingLayout, pose: LoadingPos
     const lead = (i === 0 && kg < 1000) || (i === 1 && kg < 100) || (i === 2 && kg < 10);
     c.drawPicture(Y.digits[i][lead ? 10 : ds[i]]);
   }
+  // the stable lamp in the case's corner: lit while the plates land, ticking in the calm loop
+  const lampOn = pose.loop > 0 ? pose.tick : pose.kg > 0;
+  c.drawCircle(L.dX - L.dW / 2 + 12 * k, L.dY + 36 * k, 2.4 * k, paint(lampOn ? C.led : C.ledOff));
   // the ticket feeding out of the printer's slot
   if (pose.ticket > 0) {
     c.save();

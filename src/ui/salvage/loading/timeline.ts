@@ -16,8 +16,8 @@
  *                          display's printer feeds the ticket out (the first 0.4 s)
  *   P + 1.0                the earliest moment the picture parts like two gate leaves (0.4 s), if the
  *                          yard's atlases are baked; else the calm loop holds until they are
- *   after P + 1.4          the calm loop: the parked magnet sways on its rope, the display's last digit
- *                          ticks, the furnace breathes, the ingots glint every 2 s
+ *   after P + 1.4          the calm loop: the parked magnet sways on its rope, the display's stable lamp
+ *                          ticks (its reading stays the ticket's), the furnace breathes, the ingots glint every 2 s
  *
  * Three words give 3.6 s, the "about 3.5 s" of S22.
  */
@@ -141,6 +141,8 @@ export interface LoadingPose {
   breathe: number;
   /** A glint running along the cooled ingots, 0..1 while it runs, -1 when none. */
   glint: number;
+  /** The display's stable lamp, ticking in the calm loop. */
+  tick: boolean;
 }
 
 const clamp01 = (x: number) => {
@@ -230,23 +232,23 @@ export function loadingPose(t: number, tl: LoadingTimeline = LOADING_T, gateAt: 
   const ticket = ease((tt - tl.ticket[0]) / (tl.ticket[1] - tl.ticket[0]));
   const gate = ease((t - gateAt) / GATE_S);
   // the round to the weighbridge's 20 kg
-  let reading = Math.round(kg / 20) * 20;
+  const reading = Math.round(kg / 20) * 20;
   // the calm loop
   let sway = 0;
   let breathe = 0.5;
   let glint = -1;
+  let tick = false;
   if (tt >= tl.end || still) {
     breathe = 0.5 + 0.5 * Math.sin((loopT / 1.8) * Math.PI * 2);
     if (!still) {
       sway = 2.6 * Math.sin((loopT / 2.6) * Math.PI * 2);
-      // the last digit settles up a step for a moment every 1.7 s
-      const ph = loopT % 1.7;
-      if (loopT > 0.6 && ph > 1.15 && ph < 1.4) reading += 20;
+      // the display's stable lamp ticks (the reading itself never changes: it is the ticket's)
+      tick = loopT % 0.9 < 0.45;
       const g = (loopT + 1.2) % 2;
       if (g < 0.6) glint = g / 0.6;
     }
   }
-  return { t, aim, park, cable, magnetOn, swing, plates, kg: reading, tilt, pour, cool, ticket, gate, loop: tt >= tl.end ? loopT : 0, sway, breathe, glint };
+  return { t, aim, park, cable, magnetOn, swing, plates, kg: reading, tilt, pour, cool, ticket, gate, loop: tt >= tl.end ? loopT : 0, sway, breathe, glint, tick };
 }
 
 /** Thousands with a comma, no locale tables (worklet-safe). */

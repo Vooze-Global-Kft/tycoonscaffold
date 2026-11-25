@@ -8,7 +8,7 @@ then part 1, then the first-yard document. File names inside the parts (`RULING.
 are complete here.
 
 - Part 1: the ruling on three competing designs (points 1 to 16), before the specification.
-- Part 2: the first yard's economy after the first numbers prototype (E1 to E10).
+- Part 2: the first yard's economy after the first numbers prototype (E1 to E24).
 - Part 3: the first yard after its review (S1 to S24).
 
 ---
@@ -226,6 +226,136 @@ seed and for the slow player with at most half as much time again.
 
 **E10. The converter stays in stage 1** (decision D11 of the specification), papered as the
 specification has it; if it floods the last quarter of the hour its payable falls.
+
+
+## After the second prototype (25 November, afternoon)
+
+The second prototype (`proto/REPORT2.txt`, `content2.json`, `yard2.py`) holds E5's gate exactly and
+E9's beats for the normal player on all fifteen seeds (first ticket about 0:17, the copper jump about
+0:40, the sack truck 1:12, a yard hand carrying 2:23, the first drive 9:14, rung 2 about 14 minutes,
+the first pour about 22), the slow player within half as long again. Its own tables show four
+weaknesses, and these decisions bind the third pass, the content file and the tuning on the real
+rules. The prototype engineer's rule changes R1, R2, R4 to R12 are accepted (R6 only as a
+simplification of the prototype: the game keeps the heel of S11). R3 is rejected (E11).
+
+**E11. No credit.** Nothing is ever bought on account. E4 (no dead end without the hand) holds from
+the first hire on; before it the hand is needed, and the first two purchases are within three
+minutes of hand play for the slow player.
+
+**E12. The shop is saved for, not showered.** In the second prototype the normal player holds three
+to five times the next price for the first eight minutes, so only the one-prompt-a-minute rule
+paces the opening, and a player who opens the rack and the office can buy six purchases at once.
+Aim: when a purchase's goal arrives in the first thirty minutes the normal player holds between
+half and one and a quarter times its price, never waits more than three minutes for it, and a
+player who buys everything affordable the moment it is affordable gets at most two purchases ahead
+of the goal list by minute 10. Mechanism: the price floor is a share of the income at that moment
+of about three fifths to one (the prototype's fifth is too low), and the very rich things of the
+first five minutes (E15) no longer pay for the whole early shop.
+
+**E13. Levels cost what their capacity is worth, and the bottleneck alternates.** In the second
+prototype crew and machine levels add about §5 a minute and cost §100, cash is §20,000 at the hour
+and §5 M on day 3, because from minute 30 only partner supply binds. Decisions: (a) a level's price
+is tau(L) × the capacity it adds × the mean margin per tonne at usual prices (rated, not measured at
+a moment when it does not bind), tau rising from about 20 minutes to nine hours; (b) "another skip
+in rotation" at each partner (R10) is a level like the others, bought on the office's partner wall;
+(c) crew and machine rates and the partners' fill times are tuned so that from about minute 25 the
+binding constraint alternates between supply (skips in rotation), cutting, carrying and the machines:
+after a supply level the advice line names a crew level, and the other way round; (d) the advice
+line names only the level that binds, and every card shows what a level adds in the yard's own
+units ("+1.2 t an hour cut"); (e) cash at minute 60 is at most about ten minutes of income for the
+normal player, and after three days of the twice-a-day habit at most about a day's income, with a
+useful purchase at every sitting to the end of day 3.
+
+**E14. Bands.** Rung 3 at 28 t. On the opening route that goes to the cable first, the first paid
+ticket is the copper ticket and its band is 35 s.
+
+**E15. Income climbs.** Measured over five-minute windows the normal player's income never falls
+below three fifths of its best earlier window before minute 60 (the second prototype falls from
+§750 a minute at minute 5 to §220 at minute 10, and from §2,640 at minute 30 to §314 at minute 45).
+Mechanisms, in the trade's true proportions: the copper and brass of zones 1 and 2 is less and
+smaller (a hot-water cylinder is about 9 kg, and the content file already says so: check that the
+program does too; one bundle and one crate make the first minutes' jumps, the rest of the rich
+material sits in things that need a tool, a machine or a partner's load); each later zone and each
+partner raises the value of a minute's work by a step that lasts; lots from a large load are
+collected over the minutes it takes to prepare it, not in one round.
+
+**E16. The car carries no battery** (it arrives depolluted); lead is a greyed plate in this stage.
+
+### After the audit of the second prototype (same afternoon)
+
+The audit (`notes/proto-audit2.md`, in full under "audit" in `proto2-result.json`) reproduced every
+table and then showed what stands behind them. These decisions answer it. E17 changes the engine
+and binds the contract, the specification's 2.12 to 2.16 and the rules engineers at once.
+
+**E17. Whole things and whole pieces; mass only where material is loose.** This replaces E5's
+"stocks and rates" wording; E5's purpose stands (one function for live play and time away, no second
+model to drift). Stock is of two kinds. (a) THINGS AND PIECES ARE WHOLE: a thing in a heap, on the
+drop-off or the tipping floor, a piece on the ground, on a load or in a hopper is one item with its
+mass from content; a piece exists from the moment its cut is complete; a carrier moves whole pieces
+and whole things; a whole thing is weighed in whole; the converter is one piece. (b) LOOSE AND
+MOLTEN MATERIAL IS MASS in grams: what lies in bays, trays, bins and the pot, and what a machine
+makes. The scale turns pieces into a bay's grams, rounded once to the scale's step, and what is
+paid is the sum of the rounded lines. Crew are agents on legs, not flows: a cutter's piece
+completes at a time computed when he starts it, a yard hand's trip leaves with whole pieces and
+lands at a time computed when it leaves (he chooses the place by S12's priority at each departure),
+the driver's run and the merchant's round likewise; machines work mass at a rate between events.
+The engine keeps a queue of dated events and jumps from one to the next; the 0.1 s tick is the same
+function called with a nearer horizon, and time away is the same function with the boss absent, so
+ticking and jumping are equal by construction; the gate compares them minute by minute (cash,
+supplied, every stock), not only at the end. The crew member the player sees walking IS that trip.
+No ticket prints a fraction of a whole thing. A cut by the boss interrupted by walking keeps its
+progress on that piece. Time away up to the cap must stay cheap: a cutter's event is a whole thing
+(its pieces appear together when the thing is done) whenever the boss is not within sight of it,
+and the bench says how long six hours away take.
+
+**E18. The shop is cash-gated without any waiting rule** (the audit's findings 2 and 3; sharpens
+E12). The bots buy as a person does: a goal's purchase the moment it is affordable and its card
+has been read; a second habit buys everything affordable at once. Every beat holds for both habits
+(the second may run at most a minute early). The one-prompt-a-minute rule is how goals are SHOWN,
+never what paces the economy. Prices are derived from what a purchase is worth over the following
+twenty to thirty minutes with every later purchase still made (leave-one-out), with the floor of
+E12; the harness is fixed so that the branch without an item cannot buy it.
+
+**E19. What is sold after the torch.** From the torch to the end of the hour and through three days
+there is always a purchase that widens the yard's bottleneck: skips in rotation (E13b), a third
+tier of load at each partner if needed, and crew and machine levels that bind in turn (E13c). A
+level that would change nothing now is shown with what it would add and "not the bottleneck now",
+and the advice line never names it. Cash is never spent by the bots, nor advised to be spent, below
+the price of a load that will be ready within two minutes (R11 becomes the advice line's rule and
+the driver's reserve: the card shows "kept for the next load: §x"). Playing never earns less than
+being away: from every state of the hour, an hour played by the normal hand earns at least a
+quarter more than the same hour away.
+
+**E20. The yard's margin is its work** (finding 9). At least three fifths of a load's margin over
+its price comes from preparing it (cutting, breaking, stripping, the bench, the melt), the rest from
+the purchase price; k and the loads' contents are set to make it so at true prices (k nearer 0.85
+than 0.70; loads of whole cast iron, cable, motors, uncut steel and appliances, little that is
+already clean). Nothing in a partner's load needs a tool the player cannot own when that partner
+opens. S18's aim holds after the load's price.
+
+**E21. True prices** (finding 10; corrects the whole-game table): brass solids at least three fifths
+of copper (about §22.40), the brass ingot about §27 so that the melt's margin is about 15 % after
+dross; whole motors at two thirds to three quarters of what the bench gets out of them. The car's
+loom is "Thin cable" at its own low yield, never heavy cable. One gram of rhodium in the converter.
+
+**E22. The aluminium recipe** melts cast aluminium only (alloy wheels, and the cast aluminium of
+motors and loads) into "Aluminium alloy ingot". It is a plate on the process board and is in the
+first hour's goal order only if the third pass shows it pays back inside its tau with the material
+the hour really brings; otherwise it waits on the day-1 list. A purchase that changes nothing is
+never in the goal order (the second yard hand, the second cutter and the Night watch are held to
+the same test: the Night watch is "a longer away cap" and is offered when the player has been away
+once).
+
+**E23. The map has footprints** (finding 13). Every place in the content's map has a footprint in
+metres; nothing overlaps (the two scales, the stripper and the stillages, the flatbed's stand and
+the bays); zone 1 stands clear of the container wall and its gaps; the hero frame of S19 is tested
+on footprints, at the game's scale (vehicles at two thirds of true length, so the weighbridge deck
+fits the game's truck).
+
+**E24. Measures.** The slow player is held against the normal player on the same seed (within half
+as long again on nine pairs of ten, each beat) and is run to 100 minutes; the hands-off test aims
+at the next goal purchase from states with little cash; rivals are growing pure functions of the
+market day with S17's guard, their starting tonnes placed from the tuned hour.
 
 ---
 

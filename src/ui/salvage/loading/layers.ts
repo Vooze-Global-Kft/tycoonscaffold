@@ -31,6 +31,8 @@ export interface LoadingColours {
   launder: Float32Array;
   field: Float32Array;
   galv: Float32Array;
+  led: Float32Array;
+  ledOff: Float32Array;
   galvDark: Float32Array;
   /** The ingot's colour every 0.1 game-second of cooling, 0 to 4 s (yard palette `coolingColour`). */
   cooling: Float32Array[];
@@ -482,6 +484,8 @@ export function recordLayers(L: LoadingLayout, words: readonly string[], tl: Loa
       launder: col(YARD.glowHot),
       field: col(YARD.stampBlue),
       galv: col(YARD.galvanised),
+      led: col(YARD.led),
+      ledOff: col(YARD.ledOff),
       galvDark: col(YARD.steelDark),
       cooling,
     },

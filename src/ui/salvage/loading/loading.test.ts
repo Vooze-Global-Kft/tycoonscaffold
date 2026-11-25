@@ -91,16 +91,18 @@ describe('timeline', () => {
     expect(loadingPose(10.4, LOADING_T, 10).gate).toBe(1);
     expect(loadingPose(10.2, LOADING_T, 10).gate).toBeGreaterThan(0);
   });
-  it('the calm loop is never a frozen frame: the magnet sways, the furnace breathes, the ingots glint, the display ticks', () => {
+  it('the calm loop is never a frozen frame: the magnet sways, the furnace breathes, the ingots glint, the display lamp ticks (its reading stays as printed)', () => {
     const sw = new Set<number>();
     const br = new Set<number>();
     const kg = new Set<number>();
+    const ticks = new Set<boolean>();
     let glints = 0;
     for (let t = LOADING_T.end; t < LOADING_T.end + 6; t += 1 / 60) {
       const p = loadingPose(t, LOADING_T, 1e9);
       sw.add(Math.round(p.sway * 10));
       br.add(Math.round(p.breathe * 20));
       kg.add(p.kg);
+      ticks.add(p.tick);
       if (p.glint >= 0) glints++;
       // between frames nothing jumps: the parked magnet moves a fraction of a degree
       const q = loadingPose(t + 1 / 60, LOADING_T, 1e9);
@@ -109,7 +111,8 @@ describe('timeline', () => {
     }
     expect(sw.size).toBeGreaterThan(10);
     expect(br.size).toBeGreaterThan(10);
-    expect(kg.size).toBe(2);
+    expect(kg.size).toBe(1);
+    expect(ticks.size).toBe(2);
     expect(glints).toBeGreaterThan(30);
   });
   it('the timeline runs into the loop without a jump (trolley parked, ingots cooled, ticket out)', () => {
