@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GameConfigSchema } from '../../src/config/schema';
-import { comparePair, declaredProblems, formatPair, gameFacts, humanCheckFor, pairFailures, readBundleReport, sameMultiset, sourceHashOf, tableStrings, textsOf, type AudioScore, type DeclaredFingerprint, type GameFacts, type PairReport } from './fingerprint';
+import { PLACEHOLDER, comparePair, declaredProblems, formatPair, gameFacts, humanCheckFor, pairFailures, readBundleReport, sameMultiset, sourceHashOf, tableStrings, textsOf, type AudioScore, type DeclaredFingerprint, type GameFacts, type PairReport } from './fingerprint';
 
 /** compare.py's verdict when no shared key is close (what the two packs score today). */
 const quiet: AudioScore = { keys: 10, failed: 0, maxJoint: 0.5, threshold: 0.6 };
@@ -315,5 +315,33 @@ describe('fingerprint check with the fourth game (High Office, office-design.md 
       expect(r.verified + r.pending, other).toBeGreaterThanOrEqual(15);
       expect(pairFailures(r, 'everyday'), other).toEqual([]);
     }
+  });
+});
+
+describe('the fifth game\'s placeholder fingerprint (scrap-yard, docs/design/yard-ground.md)', () => {
+  const games = require('./games.js');
+  const modes = require('./modes.js');
+  const kits = (mode: string) => [`mode ${mode}`, ...Object.entries(modes.FAMILIES as Record<string, { modes: string[] }>).filter(([, f]) => f.modes.includes(mode)).map(([k]) => `family ${k}`)];
+  const real = (id: string) => {
+    const cfg = GameConfigSchema.parse(games.readGameJson(id));
+    return gameFacts(ROOT, id, cfg, games, kits(cfg.mode));
+  };
+
+  it('a PLACEHOLDER value is no vocabulary problem, but its dimension is pending: the everyday check passes, the release check fails', () => {
+    const d = declared('scrap-yard');
+    expect(d.core_verb).toBe(PLACEHOLDER);
+    expect(declaredProblems(d)).toEqual([]);
+    const yard = real('scrap-yard');
+    for (const other of ['pizza-empire', 'space-miner', 'night-market', 'high-office']) {
+      const r = comparePair(yard, real(other), null);
+      for (const n of [1, 2, 3, 4, 9, 10, 11, 12, 14, 15]) expect(r.rows[n - 1].status, `${other} ${n}`).toBe('pending');
+      expect(r.mustSame, `${other}: ${formatPair(r)}`).toBe(0);
+      expect(pairFailures(r, 'everyday'), other).toEqual([]);
+      expect(pairFailures(r, 'release').join(' '), other).toMatch(/pending/);
+    }
+  });
+
+  it('a real value next to a placeholder still fails the vocabulary', () => {
+    expect(declaredProblems({ ...declared('scrap-yard'), core_verb: 'steer' })).toEqual([expect.stringMatching(/core_verb "steer"/)]);
   });
 });

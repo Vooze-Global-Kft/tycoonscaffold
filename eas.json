@@ -74,6 +74,28 @@
         "GAME": "pizza-empire"
       }
     },
+    "scrap-yard-dev": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "GAME": "scrap-yard"
+      }
+    },
+    "scrap-yard-preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "env": {
+        "GAME": "scrap-yard"
+      }
+    },
+    "scrap-yard-production": {
+      "extends": "base",
+      "autoIncrement": true,
+      "env": {
+        "GAME": "scrap-yard"
+      }
+    },
     "space-miner-dev": {
       "extends": "base",
       "developmentClient": true,
@@ -119,6 +141,15 @@
     "pizza-empire-production": {
       "ios": {
         "metadataPath": "./games/pizza-empire/store/store.config.json"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
+    "scrap-yard-production": {
+      "ios": {
+        "metadataPath": "./games/scrap-yard/store/store.config.json"
       },
       "android": {
         "track": "internal",

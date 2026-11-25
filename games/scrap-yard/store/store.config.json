@@ -1,0 +1,24 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "categories": [
+      [
+        "GAMES",
+        "GAMES_SIMULATION",
+        "GAMES_CASUAL"
+      ]
+    ],
+    "info": {
+      "en-US": {
+        "title": "PLACEHOLDER Scrapyard",
+        "subtitle": "PLACEHOLDER subtitle",
+        "description": "PLACEHOLDER. The ground work's stand-in for the store description of the scrapyard game. The design and the store writer decide the real listing.",
+        "keywords": [
+          "placeholder"
+        ],
+        "promoText": "PLACEHOLDER: promotional text of the real listing.",
+        "privacyPolicyUrl": "https://example.com/scrap-yard/privacy"
+      }
+    }
+  }
+}

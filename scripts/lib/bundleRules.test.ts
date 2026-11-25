@@ -419,3 +419,51 @@ describe('the decree mode (High Office, office-design.md 9.2, 10.2)', async () =
     expect(of({ game: 'high-office', mode: 'decree', pack: null, modules: ['games/night-market/game.json'] })).toEqual(['other-game games/night-market/game.json']);
   });
 });
+
+describe('the salvage mode (the scrapyard, docs/design/yard-ground.md)', async () => {
+  const modes = (await import('./modes.js')) as unknown as { MODE_FOLDERS: Record<string, string[]>; FAMILIES: BundleManifest['families']; NODE_ONLY: string[]; WEB_ONLY: string[]; THEME_WORDS: Record<string, string[]> };
+  const MM: BundleManifest = {
+    ...M,
+    modeFolders: { ...M.modeFolders, haul: modes.MODE_FOLDERS.haul, merge: modes.MODE_FOLDERS.merge, decree: modes.MODE_FOLDERS.decree, salvage: modes.MODE_FOLDERS.salvage },
+    families: modes.FAMILIES,
+    nodeOnly: modes.NODE_ONLY,
+    games: ['pizza-empire', 'space-miner', 'night-market', 'high-office', 'scrap-yard'],
+  };
+  const of = (over: Partial<BundleContents>) => bundleViolations(clean({ packages: [], assets: [], ...over }), MM).map((v) => `${v.rule} ${v.file}`);
+
+  it('lists its rules, schema, the yard and its screens as salvage folders, its catalogue as Node only, its preview tools as web only, and its theme words', () => {
+    expect(modes.MODE_FOLDERS.salvage).toEqual(['src/modes/salvage', 'src/ui/salvage', 'src/engine/salvage', 'src/engine/salvage.ts', 'src/engine/salvageMode.ts', 'src/engine/fixtures/salvage.ts', 'src/config/schema.salvage.ts', 'src/config/salvage.content.ts']);
+    expect(modes.NODE_ONLY).toContain('src/services/fx/catalog.salvage.ts');
+    for (const f of ['src/modes/salvage/presets.web.ts', 'src/modes/salvage/devViews.web.ts', 'src/ui/salvage/dev/DevPanel.web.tsx', 'src/ui/salvage/dev/switches.web.ts']) expect(modes.WEB_ONLY).toContain(f);
+    // The mode id itself is a shared literal (src/config/schema.ts): never a theme word.
+    expect(modes.THEME_WORDS.salvage).not.toContain('salvage');
+    expect(modes.THEME_WORDS.salvage).toContain('scrap');
+  });
+
+  it('a salvage file imported by a shared file fails; the generated entry and the salvage mode itself may import it', () => {
+    const edges = [
+      ['src/engine/economy.ts', 'src/engine/salvage.ts'],
+      ['src/state/store.ts', 'src/engine/salvageMode.ts'],
+      ['src/ui/kit/Sheet.tsx', 'src/ui/salvage/world/yard.ts'],
+      ['src/generated/mode.ts', 'src/modes/salvage/index.tsx'],
+      ['src/modes/salvage/index.tsx', 'src/engine/salvageMode.ts'],
+      ['src/engine/salvageMode.ts', 'src/config/schema.salvage.ts'],
+      ['src/ui/salvage/SalvageShell.tsx', 'src/ui/kit/overlay.ts'],
+    ] as const;
+    expect(importViolations(edges, MM).map((v) => `${v.rule} ${v.file}`)).toEqual(['shared-imports-mode src/engine/economy.ts', 'shared-imports-mode src/state/store.ts', 'shared-imports-mode src/ui/kit/Sheet.tsx']);
+  });
+
+  it('no salvage folder in another mode\'s bundle, no other mode\'s file in the salvage bundle', () => {
+    const salvage = ['src/modes/salvage/index.tsx', 'src/ui/salvage/SalvageShell.tsx', 'src/ui/salvage/world/frameLoop.ts', 'src/engine/salvage.ts', 'src/engine/salvageMode.ts', 'src/config/schema.salvage.ts'];
+    for (const [game, mode, pack] of [['pizza-empire', 'sim', 'warm'], ['space-miner', 'haul', null], ['night-market', 'merge', null], ['high-office', 'decree', null]] as const)
+      expect(of({ game, mode, pack, modules: salvage }), game).toEqual(salvage.map((f) => `other-mode ${f}`));
+    expect(of({ game: 'scrap-yard', mode: 'salvage', pack: null, modules: [...salvage, 'games/scrap-yard/game.json', 'src/ui/kit/overlay.ts'] })).toEqual([]);
+    expect(of({ game: 'scrap-yard', mode: 'salvage', pack: null, modules: ['src/ui/haul/scene/Field.tsx', 'src/engine/decree.ts', 'src/ui/shell/TabShell.tsx', 'src/services/fx/catalog.salvage.ts', 'games/space-miner/game.json'] })).toEqual([
+      'other-mode src/ui/haul/scene/Field.tsx',
+      'other-mode src/engine/decree.ts',
+      'other-family src/ui/shell/TabShell.tsx',
+      'node-only src/services/fx/catalog.salvage.ts',
+      'other-game games/space-miner/game.json',
+    ]);
+  });
+});

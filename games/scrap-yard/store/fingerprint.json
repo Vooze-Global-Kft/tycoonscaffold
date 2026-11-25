@@ -1,0 +1,22 @@
+{
+  "_comment": "PLACEHOLDER: every value of this fingerprint is decided by the design (docs/design/yard-design.md) and argued in docs/design/research/spam.md; until then the fingerprint check counts each as pending.",
+  "core_verb": "PLACEHOLDER",
+  "production_topology": "PLACEHOLDER",
+  "money_moment": "PLACEHOLDER",
+  "main_screen_layout": "PLACEHOLDER",
+  "progression_structure": "PLACEHOLDER",
+  "prestige_model": "PLACEHOLDER",
+  "active_skills_events": [
+    "PLACEHOLDER"
+  ],
+  "meta_systems": [
+    "PLACEHOLDER"
+  ],
+  "art_style": {
+    "style": "PLACEHOLDER",
+    "palette": "PLACEHOLDER"
+  },
+  "character_kind": "PLACEHOLDER",
+  "voice": "PLACEHOLDER",
+  "human": {}
+}
