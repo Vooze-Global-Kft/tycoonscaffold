@@ -151,13 +151,14 @@ The process names below are standard metallurgy (Memory). The simplifications ar
 - **Prompt dates.** "Daily: out to 3 months; weekly: 3 out to 6 months; monthly: 7 out to 123 months" for copper and aluminium [4]. **Cash** means delivery in two days and **3-month** is the benchmark forward (Memory for "two days").
 - **Warrants and warehouses.** Delivery happens by a warrant, a title document for metal in an approved warehouse. The guide's words: "over 500 international storage facilities and almost 500 LME listed brands"; its side panel says "over 570 storage facilities around the world" and "almost 500 LME-approved brands from 57 countries" [4] (checked; the first draft had mixed the two figures). Published **stocks** show how much metal sits in those warehouses: on 24 Nov 2026 copper stocks were 337,825 t and tin 3,725 t [1]. Falling stocks usually mean rising prices.
 - **Hours.** "The Ring | Trading hours: 11.40 – 17.00", open outcry in five-minute sessions; "LMEselect | Trading hours: 01.00 – 19.00", electronic; "Inter-office telephone | 24 hours" [4]. The **Official Price** is set in the second Ring session, 12.30–13.25 [4].
-- **Contango / backwardation.** Forward above cash (contango) means plenty of metal. Cash above forward (backwardation) means a shortage now. On 24 Nov 2026 copper cash was $12,035 and 3-month $12,055 (mild contango), while zinc cash was $3,665 and 3-month $3,508 (backwardation) [1].
+- **Contango / backwardation.** Forward above cash (contango) means plenty of metal. Cash above forward (backwardation) means a shortage now. On 24 Nov 2026 copper cash was $12,035 and 3-month $12,055 (mild contango), while zinc cash was $3,665 and 3-month $3,508 and aluminium cash $3,120.50 and 3-month $2,789 (backwardation; aluminium steeply) [1] (checked). **Inference:** the cash–forward gap is itself a game signal (shortage now vs. later).
 - **Premiums.** The exchange price is for metal in a warehouse. A buyer pays a regional premium on top for metal delivered to them; the LME even lists premium contracts for US, West Europe and East Asia aluminium [4].
 - **Limits.** In March 2022 nickel went from $48,078 to $101,365/t in early trading; the LME suspended trading and cancelled that day's trades [19].
 
 ### The Shanghai kind
-- Futures in yuan, in **5 t lots** for copper, with a daily price limit of ±3% of the previous settlement. Day sessions run 9:00–11:30 and 13:30–15:00 Beijing time [16]; these come from a third-party summary, not the exchange rulebook. A night session (21:00–01:00) began for base metals in December 2013 [17].
+- Futures in yuan, in **5 t lots** for copper. Day sessions run 9:00–11:30 and 13:30–15:00 Beijing time [16]; these come from a third-party summary, not the exchange rulebook. **Daily price limits** exist but the exchange changes them: third-party summaries give ±3% as a base [16], while an exchange notice of 30 June 2026 (as reprinted by Mondo Visione) set copper, aluminium, zinc and lead at "±9% from the settlement price of the previous trading day", nickel ±10%, stainless ±5%, gold ±14% from 2 July 2026 [16]. **Inference:** a game limit is a design choice, not a fixed fact. A night session (21:00–01:00) began for base metals in December 2013 [17].
 - Metals: copper, aluminium, zinc, lead, nickel, tin, gold, silver, steel products (individual report; Wikipedia [17]).
+- **Precious metals are not priced on the London metal exchange.** Gold, silver, platinum and palladium trade over the counter in London, with daily benchmark auction prices (the "London Fixing" Westmetall shows, $3,622.55 gold on 24 Nov 2026 [1]) (Memory for the market structure). Rhodium, iridium and ruthenium have no exchange at all (below).
 - **Why the two prices differ, and how they link.** Shanghai prices include Chinese VAT and import duty and are in yuan. Traders watch the **SHFE/LME ratio**. When Shanghai is high enough to cover freight, duty and currency, the **import window** opens: traders buy in London, ship to China, and the bonded-warehouse premium at Shanghai (the "Yangshan premium") rises [18]. In July 2026 a ratio near 1.14 (after currency) gave an import profit of about CNY 200/t [18]. **Inference:** this is a natural game mechanic. Two prices drift apart, and shipping metal between the two regions pays when the gap is larger than freight plus a fee.
 
 ### Metals that do NOT trade on such exchanges
@@ -171,13 +172,13 @@ Tungsten, titanium, iridium, rhodium, ruthenium, lithium carbonate and black mas
 
 ### What moves prices
 - **Day to day:** Chinese data, the dollar, exchange stocks, strikes, tariff and export-rule news.
-- **Over years:** building and car cycles, the energy transition, supply shocks. APT Rotterdam went from $900–940/mtu (Jan 2026) to about $3,000 (Aug) [8]; lithium carbonate hit its 2026 low near CNY 90,000/t [10]; ruthenium rose 109% to $1,780/oz by 13 Oct 2026 [30].
+- **Over years:** building and car cycles, the energy transition, supply shocks. APT Rotterdam went from $900–940/mtu (Jan 2026) to about $3,000 (Aug), "nearly 500pc year on year" after China's export controls, while Chinese APT stayed near $1,008–1,025/mtu (Argus, 20 Aug) [8]: export rules can split one metal into two regional prices; lithium carbonate hit its 2026 low near CNY 90,000/t [10]; ruthenium rose 109% to $1,780/oz by 13 Oct 2026 [30].
 
 ### Swing sizes, for a simulated price path
 | Group | Typical annual volatility | Extremes seen | Source |
 |---|---|---|---|
-| Copper, aluminium | ≈ 16–19% a year (st. dev. of monthly averages) | — | [20] |
-| Iron ore / ferrous | ≈ 33% | — | [20] |
+| Copper, aluminium | 17% and 16% (st. dev. of monthly averages, annualised, 2010–2024); year-to-year 19% and 15% (1961–2024) | — | [20] (checked) |
+| Iron ore (not scrap) | 33% (same measure); ferrous scrap similar (Inference) | — | [20] (checked) |
 | Nickel | higher than copper (Inference) | +110% in one morning (2022) | [19] |
 | Tungsten APT | — | ≈ ×3.3 in 7 months (2026) | [8] |
 | Ruthenium, iridium, rhodium | — | +109% (Ru, 2026) | [30] |
@@ -195,22 +196,22 @@ Tungsten, titanium, iridium, rhodium, ruthenium, lithium carbonate and black mas
 
 ## 6. Transport
 
-Cost figures come from [21]. The capacities are Memory and rounded.
+Cost figures: mean unit costs in US$(2021) per tonne-km from one study, Krammer et al. 2025, Table 1 [21] (checked: PDF read). ICCT gives barge $0.01, rail $0.04, truck $0.12 for hauls over 1,000 km (Oct 2025 page, search excerpt; its Feb 2025 brief is reported with the same figures per ton-*mile*; both pages returned 403, so the unit is unconfirmed) [21]. The capacities and speeds are Memory and rounded.
 
-| Mode | What moves in this trade | Typical load | Speed | Cost per tonne-km (rel.) |
+| Mode | What moves in this trade | Typical load | Speed | Cost per tonne-km |
 |---|---|---|---|---|
-| **Truck** (roll-off, walking floor, flatbed, tipper) | Everything, first and last mile | 20–25 t | 60–80 km/h; one day ≈ 500–700 km | $0.12 (>1,000 km) [21]; short hauls cost far more |
-| **Rail** (gondola / open wagons) | Shred, HMS, bales, ingots to mills | 60–100 t per wagon, trains of 3,000+ t | ≈ 1–2 days per 1,000 km | $0.04 [21] |
-| **Barge** (inland) | Bulk ferrous to port | 1,500–3,000 t | slow | $0.01 [21] |
-| **Bulk vessel** (Handysize/Supramax) | Deep-sea ferrous scrap (US/UK/Baltic → Turkey) | 30,000–50,000 t | ≈ 12–14 knots; ≈ 2–3 weeks across an ocean | well below rail; large tankers ≈ $0.001 [21] |
-| **Container ship** | Non-ferrous (copper, aluminium, Zorba), bales, ingots, black mass | ≈ 20–25 t per 20-ft box | ≈ 3–6 weeks Europe/US → Asia | ≈ barge range (Inference) |
-| **Air freight** | Gold/silver bars, PGM sponge, samples, urgent parts. **Not** waste batteries [25] | 1–100 t | days | $0.84 average [21] |
+| **Truck** (roll-off, walking floor, flatbed, tipper) | Everything, first and last mile | 20–25 t | 60–80 km/h; one day ≈ 500–700 km | $0.114 (10th–90th: 0.058–0.170) [21]; short hauls cost far more |
+| **Rail** (gondola / open wagons) | Shred, HMS, bales, ingots to mills | 60–100 t per wagon, trains of 3,000+ t | ≈ 1–2 days per 1,000 km | $0.026 [21] |
+| **Barge** (inland) | Bulk ferrous to port | 1,500–3,000 t | slow | ≈ $0.01 (ICCT, unit unconfirmed) [21] |
+| **Bulk vessel** (Handysize/Supramax) | Deep-sea ferrous scrap (US/UK/Baltic → Turkey) | 30,000–50,000 t | ≈ 12–14 knots; ≈ 2–3 weeks across an ocean | $0.004, all ocean vessels (0.002–0.007) [21] |
+| **Container ship** | Non-ferrous (copper, aluminium, Zorba), bales, ingots, black mass | ≈ 20–25 t per 20-ft box | ≈ 3–6 weeks Europe/US → Asia | ≈ $0.005: containers "would increase unit costs only marginally" [21] |
+| **Air freight** | Gold/silver bars, PGM sponge, samples, urgent parts. **Not** waste or damaged batteries [25] | 1–100 t | days | $0.844 (0.228–1.74) [21] |
 
-**Inference.** Relative cost per tonne-km is about air 80, truck 12, rail 4, container or barge 1, bulk 0.1–0.5. That ordering, together with "what is worth flying" (only metals worth more than about $1,000/kg), gives a clear game rule: steel goes by ship, iridium goes by plane.
+**Inference.** On one consistent source, relative cost per tonne-km is about ocean 1, barge 2–3, rail 6, truck 28, air 210 (Krammer: air vs. ocean "a ratio of about 200"). That ordering, together with "what is worth flying" (Inference: only metals worth more than about $1,000/kg), gives a clear game rule: steel goes by ship, iridium goes by plane.
 
 **Special cases.**
 - **Scrap ships:** loaded by grab or magnet; checked for radiation and contamination at loading (Memory).
-- **Batteries.** Lithium-ion batteries are dangerous goods (UN 3480/3481, Class 9; Memory for the class). Damaged or defective cells travel under Special Provision 376, marked "DAMAGED/DEFECTIVE" [25]. Waste and recycling batteries "are forbidden from air transport unless approved by the appropriate national authority of the State of Origin and the State of the Operator" [25] (ICAO working paper; the current IATA text was not read).
+- **Batteries.** Lithium-ion batteries are "classified in Class 9 – Miscellaneous dangerous goods", as UN 3480 (alone) or UN 3481 (with or in equipment) (IATA 2026 guidance [25], checked). **By road, rail and sea**, damaged or defective cells travel under Special Provision 376 of the UN rules, marked "DAMAGED/DEFECTIVE" (ICAO working papers [25]; the road and sea codes themselves were not read). **By air**, damaged cells that may overheat "are forbidden for transport by air" (IATA 2026 guidance, SP A154 [25]); waste and recycling batteries fall under SP A183 ("Waste cells and batteries and those being shipped for recycling and disposal"), which forbids them "unless approved by the appropriate national authority of the State of Origin and the State of the Operator" (that wording is from the ICAO working paper; the IATA guidance names A183 but its full text was not read) [25]. Lithium-ion batteries flown on their own "must be shipped at a state of charge (SoC) not exceeding 30%" [25]. **Inference:** in the game, battery loads go by road, rail or sea, never by plane.
 - **Precious metals:** armoured transport, vaults, specialist insurance, "valuable cargo" by air (Memory). E-waste across borders needs prior consent (§9).
 
 ---
@@ -244,7 +245,7 @@ All Memory/Inference: standard practice, simplified for a game.
 
 **Stolen metal.** Cable, lead roofing, manhole covers and catalytic converters are classic theft targets. A responsible yard is licensed, verifies and records every seller's identity and keeps records (UK: at least three years [23]), and in the UK pays only by "a non-transferable cheque" or "electronic transfer", never cash (Scrap Metal Dealers Act 2013 s.12 [23]). Suspicious loads are refused and reported. **Inference:** show the ID check and electronic payment as routine; never offer "no questions asked".
 
-**Hazardous waste and export.** Batteries, oily swarf, fridge gases, ELV fluids and airbags are hazardous waste, handled only on permitted sites. Since 1 January 2025 the Basel Convention requires the importing country's prior informed consent even for non-hazardous e-waste [24]. A good yard keeps consignment notes and ships only to licensed plants. **Inference:** exports can need a permit the player earns through certification.
+**Hazardous waste and export.** Batteries, oily swarf, fridge gases, ELV fluids and airbags are hazardous waste, handled only on permitted sites. Since 1 January 2025 the Basel Convention requires the importing country's prior informed consent even for non-hazardous e-waste: the new entry Y49 (non-hazardous e-waste) joins A1181 (hazardous e-waste), and the old "presumed not hazardous" entry B1110 was deleted; the amendments bind all Parties except Canada, Israel and New Zealand [24] (search excerpts of the Secretariat's pages; the overview page returned 503 on recheck). A good yard keeps consignment notes and ships only to licensed plants. **Inference:** exports can need a permit the player earns through certification.
 
 **Battery fires.** Damaged lithium-ion cells can ignite days later; they are a leading cause of recycling-site fires (Memory). A responsible yard keeps a separate covered store with thermal cameras, discharges before shredding, shreds under inert gas and isolates damaged cells in drums (Memory; transport side [25]). **Inference:** show the battery bay and the drum, teach no technique.
 
