@@ -14,7 +14,7 @@ export function ToolRack({ data, onClose }: { data: CardData; onClose: () => voi
   return (
     <Panel title={data.title} onClose={onClose} lead={data.lead} foot={data.foot}>
       {data.rows.map((r) => (
-        <Row key={r.id} row={r} padlock={isPadlockRow(r)} tag={isPadlockRow(r) || r.button ? null : { key: 'card.owned' }} />
+        <Row key={r.id} row={r} padlock={isPadlockRow(r)} tag={isPadlockRow(r) || r.button || r.state === 'arriving' ? null : { key: 'card.owned' }} />
       ))}
     </Panel>
   );
