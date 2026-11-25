@@ -124,3 +124,32 @@ export function fmtHours(h: number): string {
   const r = Math.round(h * 10) / 10;
   return `${Number.isInteger(r) ? r.toFixed(0) : r.toFixed(1)} h`;
 }
+
+/**
+ * THE ONE COMMIT of cash (2.13: cash is the shared `GameState.cash`, changed by the rules only here).
+ * `delta` § (negative: a purchase) is rounded once; earnings (delta > 0) also add to lifetimeEarnings.
+ * Nothing is bought on account (E11): a commit that would take cash below zero throws (a rules bug,
+ * never a player's case: every purchase is checked first by ladder.ts).
+ */
+export function commitCash<T extends { cash: number; lifetimeEarnings: number }>(g: T, delta: number): T {
+  const d = roundMoney(delta);
+  if (d === 0) return g;
+  const cash = roundMoney(g.cash + d);
+  if (cash < 0) throw new Error(`commitCash: cash would fall to ${cash} (E11: nothing on account)`);
+  return { ...g, cash, lifetimeEarnings: d > 0 ? roundMoney(g.lifetimeEarnings + d) : g.lifetimeEarnings };
+}
+
+/** Grams resolved DOWN to the 0.1 kg step (a lot's line, 2.12: the round never takes part of a step). */
+export function floorGrams(g: number): number {
+  return Math.floor(Math.max(0, g) / 100 + 1e-9) * 100;
+}
+
+/** A line's amount (2.2): roundMoney(kg × price) of the line's grams, which are already resolved to their step (resolveGrams or floorGrams). */
+export function lineAmount(g: number, price: number): number {
+  return roundMoney((g / 1000) * price);
+}
+
+/** A total (2.2): the sum of its lines' amounts, rounded once. */
+export function sumAmounts(lines: readonly { amount: number }[]): number {
+  return roundMoney(lines.reduce((a, l) => a + l.amount, 0));
+}

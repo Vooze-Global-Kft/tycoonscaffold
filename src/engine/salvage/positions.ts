@@ -225,3 +225,20 @@ export function pileNear(c: SalvageContent, pieces: readonly GroundPiece[], thin
     .sort((a, b) => a.d - b.d)
     .map((e) => e.pc);
 }
+
+// ============================================================================ the facade's entries (cfg-level; the seam, 16:20)
+
+import type { SalvageConfig, SalvageGame } from './types';
+
+export const thingPosCfg = (cfg: SalvageConfig, at: ThingAt) => thingPos(cfg.salvage, at);
+export const piecePosCfg = (cfg: SalvageConfig, pile: PileKey, k: number, thingAt?: (uid: string) => ThingAt | null) => piecePos(cfg.salvage, pile, k, thingAt);
+export const pointCfg = (cfg: SalvageConfig, id: string) => pointOf(cfg.salvage, id);
+export const placeNearCfg = (cfg: SalvageConfig, x: number, y: number) => placeNear(cfg.salvage, x, y);
+export const thingNearCfg = (cfg: SalvageConfig, g: SalvageGame, x: number, y: number, reach = cfg.salvage.reach.work) => thingNear(cfg.salvage, g.salvage.things, x, y, reach);
+export const pileNearCfg = (cfg: SalvageConfig, g: SalvageGame, x: number, y: number, reach = cfg.salvage.reach.pickup) => pileNear(cfg.salvage, g.salvage.pieces, g.salvage.things, x, y, reach);
+export const spotPosCfg = (cfg: SalvageConfig, g: SalvageGame, spot: Spot) => spotPos(cfg.salvage, spot, g.salvage.things, g.salvage.truck);
+export const bayPosCfg = (cfg: SalvageConfig, grade: string) => bayPos(cfg.salvage, grade);
+export const machinePosCfg = (cfg: SalvageConfig, id: MachineId) => machinePos(cfg.salvage, id);
+export const circlePosCfg = (cfg: SalvageConfig, n: number) => circlePos(cfg.salvage, n);
+export const skipZoneCfg = (cfg: SalvageConfig, partner: PartnerId, slot: number) => skipZone(cfg.salvage, partner, slot);
+export const lanePathCfg = (cfg: SalvageConfig, from: { x: number; y: number }, partner: PartnerId, slot = 0) => lanePath(cfg.salvage, from, partner, slot);

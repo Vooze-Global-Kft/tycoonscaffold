@@ -317,7 +317,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       picto: "ui.picto.mot",
       bay: { kind: "stillage", sprite: "plant.stillage", place: "stillage_cu", slot: 5 },
     },
-    cabt: {
+    tcab: {
       name: "Thin cable",
       pbar: 10.5,
       family: "nf",
@@ -649,7 +649,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       h: 2,
       pieces: [
         ["alw", 9000, 4, "piece.alu.wheel"],
-        ["cabt", 4000, 1, "piece.cable"],
+        ["tcab", 4000, 1, "piece.cable"],
         ["conv", 1500, 1, "piece.converter"],
         ["cbody", 100000, 8, "piece.steel.body"],
       ],
@@ -1123,7 +1123,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     cyl: 3000,
     cab: 3000,
     mot: 3000,
-    cabt: 3000,
+    tcab: 3000,
     conv: 100,
   },
   cut: { minS: 0.6 },
@@ -1155,7 +1155,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     bb: "lesson.bb",
     cab: "lesson.cab",
     mot: "lesson.mot",
-    cabt: "lesson.cab",
+    tcab: "lesson.cab",
     conv: "lesson.conv",
   },
 };

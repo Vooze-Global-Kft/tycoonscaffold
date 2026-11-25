@@ -650,7 +650,7 @@
         "short": "Motors",
         "long": "Electric motors, whole"
       },
-      "cabt": {
+      "tcab": {
         "name": "Thin cable",
         "pbar": 10.5,
         "family": "nf",
@@ -665,9 +665,7 @@
           "sprite": "plant.stillage",
           "place": "stillage_cu",
           "slot": 4
-        },
-        "short": "Thin cable",
-        "long": "Thin insulated cable, such as a car's wiring loom"
+        }
       },
       "conv": {
         "name": "Converter, whole",
@@ -1276,7 +1274,7 @@
             "piece.alu.wheel"
           ],
           [
-            "cabt",
+            "tcab",
             4000,
             1,
             "piece.cable"
@@ -2589,7 +2587,7 @@
       "cyl": 3000,
       "cab": 3000,
       "mot": 3000,
-      "cabt": 3000,
+      "tcab": 3000,
       "conv": 100
     },
     "cut": {
@@ -2657,7 +2655,7 @@
       "bb": "lesson.bb",
       "cab": "lesson.cab",
       "mot": "lesson.mot",
-      "cabt": "lesson.cab",
+      "tcab": "lesson.cab",
       "conv": "lesson.conv"
     },
     "skeletonPlaceholder": false,

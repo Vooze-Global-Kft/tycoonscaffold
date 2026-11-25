@@ -35,11 +35,16 @@ describe('fit', () => {
     expect(fitFindings('t', 'Take the old washing machine apart now', BOXES.goal).length).toBeGreaterThan(0);
     expect(fitFindings('t', 'Platinum group and iridium', BOXES.greyPlate)).toEqual([]);
   });
+  it('lets a part that shrinks its text fit at 11 pt, and no further', () => {
+    expect(fitFindings('t', 'Level up §99,999', BOXES.button)).toEqual([]);
+    expect(fitFindings('t', 'Level up the powered stripper §99,999', BOXES.button).length).toBeGreaterThan(0);
+  });
 });
 
 describe('the game', () => {
   it('has zero findings over every word', () => {
     const r = runAll();
     expect(r.findings.map((f) => `${f.where}: ${f.reason}`)).toEqual([]);
+    for (const t of r.tickets) expect(t.height).toBeLessThanOrEqual(150);
   }, 60_000);
 });

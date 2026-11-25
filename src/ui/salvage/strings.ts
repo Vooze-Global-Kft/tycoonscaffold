@@ -32,6 +32,7 @@ export const TEXT = {
   stepOut: 'Step out',
   trialLoad: 'Trial load {kg}',
   skipLoad: 'Load {kg}',
+  carryDriving: '{kg}', // hud: the carry chip while driving, after the skip pictogram (the lead's ruling 2, 15:55); kg = { mass_g, step: 'bridge' }
   goalProgress: '{a} / {b}',
   turnSideways: 'Turn your phone sideways',
   turnSidewaysBody: 'This game is played in landscape.',
@@ -112,16 +113,17 @@ export const TEXT = {
   'card.idle': 'Idle',
   'card.levelOnBoard': 'Level on the process board',
   'card.inOut': '{in} → {out}',
-  'card.rateKgS': '{kg} a second',
+  'card.rateKgS': '{kg} a second', // deprecated with MachineCard.rate: use card.rate
+  'card.rate': '{rate} an hour', // rate: { rate_g_h } (MachineCard.rate_g_h, E13d)
   'card.charge': '{a} / {b}',
   'card.heel': 'Heel {kg}',
   'card.recipe': '{recipe}',
   'card.siteLicence': 'Site licence · metal dealer',
-  'card.carriesRate': 'Carries {t} an hour',
-  'card.cutsRate': 'Cuts {t} an hour',
+  'card.carriesRate': 'Carries {rate} an hour', // rate: { rate_g_h }
+  'card.cutsRate': 'Cuts {rate} an hour', // rate: { rate_g_h }
   'card.drivesRate': 'Fetches a load in {t}',
   'card.opensAt': 'Opens at {t} supplied',
-  'card.nightWatch': 'Away cap {a} h → {b} h',
+  'card.nightWatch': 'Away cap {a} → {b}', // a, b: { hours } (fmtHours prints the h)
   'card.dealTerms': '{kg} of {grade} a day for {n} days at {p} a kilo, locked at signing',
   'card.dealDaysLeft': '{n} days left',
   'card.dealReserve': 'Reserved {a} / {b}',
@@ -133,8 +135,8 @@ export const TEXT = {
   'card.skipPrice': '{x}',
   'card.businessCard': '{contact} · {partner}',
   'card.converterPaid': 'Paid on assay: platinum {pt}, palladium {pd}, rhodium {rh}, less fees',
-  'card.levelAdds': '+{x} an hour {what}',
-  'card.notBottleneck': 'Not the bottleneck now',
+  'card.levelAdds': '+{rate} an hour', // rate: { rate_g_h }: what the next level adds (E13d), the row's effect line
+  'card.notBottleneck': 'Not the bottleneck · +{rate} an hour', // rate: { rate_g_h } (E19)
   'card.keptForLoad': 'Kept for the next load: {x}',
   'card.empty': '',
 
@@ -207,7 +209,7 @@ export const TEXT = {
   'table.rungOpens': '{what}',
 
   // --- package 4: the away card (4.4) ---
-  'away.head': 'Away {t} (cap {c} h)',
+  'away.head': 'Away {t} (cap {c})', // t: { secs }, c: { hours } (AwayCard.capS / 3600)
   'away.line': '{grade|short} {kg} · {x}',
   'away.supplied': '{t} supplied · {x} (already in your account)',
   'away.loads': '{n} loads fetched',
@@ -228,7 +230,6 @@ export const TEXT = {
   'ticket.grossTareNet': 'Gross {a} · Tare {b} · Net {c}',
   'ticket.partnerLegal': 'Seller ID checked · paid by transfer',
   'ticket.collectionHead': '{homeYard} · ticket {n}',
-  'ticket.gradeAmount': '{grade|short} {kg} {x}',
   'ticket.paid': 'Paid {x}',
   'ticket.lotSoldTo': 'Lot sold to {merchant}',
   'ticket.weighedOut': 'weighed out · paid by transfer',
@@ -304,13 +305,13 @@ export const TEXT = {
   'lesson.bb': 'Bare bright pays {n} times light iron today.',
   'lesson.no2': 'No.2: unalloyed copper, not clean.',
   'lesson.brs': 'Brass is copper and zinc.',
-  'lesson.alw': 'Alloy wheels pay clean: tyres and weights off.',
+  'lesson.alw': 'Clean alloy wheels: tyres and weights off.',
   'lesson.alcast': 'Motor end caps are cast aluminium.',
   'lesson.ci': 'Cast iron breaks. Foundries remelt it.',
   'lesson.hms': 'HMS: thick steel cut to furnace size.',
-  'lesson.hmsu': 'Uncut steel pays less. Cut, it pays as HMS.',
+  'lesson.hmsu': 'Uncut steel pays less. Cut to size, it is HMS.',
   'lesson.cbody': 'Car bodies go to a shredder.',
-  'lesson.bri': 'Melted, skimmed and cast: an ingot pays more.',
+  'lesson.bri': 'An ingot pays more than the scrap it came from.',
   'lesson.dross': 'Dross: the skimmed crust, still holding metal.',
   'lesson.ali': 'Cast aluminium remelted as alloy ingot.',
   'lesson.conv': 'From depolluted car ref. {ref}. Paid on assay.',

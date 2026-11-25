@@ -387,3 +387,10 @@ export function specIndex(specs: readonly (readonly unknown[])[], k: number): nu
   }
   return -1;
 }
+
+// ============================================================================ the facade's entry (the seam, 16:20)
+
+/** Facade `frame(cfg, g)`: everything the world draws (types.ts FrameTable). */
+export function frameCfg(cfg: import('./types').SalvageConfig, g: SalvageGame): FrameTable {
+  return frameOf(cfg.salvage, g);
+}

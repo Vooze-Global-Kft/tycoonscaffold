@@ -277,6 +277,9 @@ export const TruckSchema = z.object({
   radius: z.number().positive().default(1.3),
   /** How close the worker comes to its centre to get in, metres. */
   enter: z.number().positive().default(2.0),
+  /** The truck's stored tare and the empty skip's, kg (the skip ticket's "Tare"; content may add them, 0 until then). */
+  tare_kg: z.number().nonnegative().default(0),
+  skipTare_kg: z.number().nonnegative().default(0),
 });
 export type TruckDef = z.infer<typeof TruckSchema>;
 
@@ -411,6 +414,9 @@ export const LevelsSchema = z.object({
   advice: z.string().optional(),
   skipsInRotation: z.record(z.string(), z.string()).optional(),
   bases: z.record(z.string(), z.number().nonnegative()).default({}),
+  /** REPORT4 R21: no level costs less than floor × floorGrowth^(L−1) (§). */
+  floor: z.number().nonnegative().default(0),
+  floorGrowth: z.number().positive().default(1),
 });
 export type LevelsDef = z.infer<typeof LevelsSchema>;
 
@@ -480,6 +486,10 @@ export const GoalSchema = z.object({
   optional: z.boolean().default(false),
   /** The repeating goal of the lead's ruling ("Widen the yard: {item}", text goal.widen with {item: {text}}): met each time the advice line's purchase is made; it stays the current goal. */
   repeat: z.boolean().default(false),
+  /** goals.json (hints): a target the chevron points at FIRST while the condition is unmet (`truck`), the stall escalation the hints play, a dayOne entry's gate (`away:1`). Read by the screens. */
+  via: z.string().nullable().default(null),
+  stall: z.string().nullable().default(null),
+  after: z.string().nullable().default(null),
 });
 export type GoalDef = z.infer<typeof GoalSchema>;
 /** The advice line (2.10): priced within cash + minutes × incomeRate; never below E19's reserve, the price of a load full within reserveS. */
@@ -524,7 +534,7 @@ export const SalvageSchema = z.object({
   pick_s: z.number().nonnegative(),
   /** Seconds standing on the platform scale to weigh a load in. */
   weigh_s: z.number().nonnegative(),
-  truck: TruckSchema.default({ v: 9, handle_s: 14, driverFactor: 0.8, radius: 1.3, enter: 2.0 }),
+  truck: TruckSchema.default({ v: 9, handle_s: 14, driverFactor: 0.8, radius: 1.3, enter: 2.0, tare_kg: 0, skipTare_kg: 0 }),
   machines: MachinesSchema,
   crew: CrewSchema,
   dropoff: DropoffSchema,
@@ -562,6 +572,10 @@ export const SalvageSchema = z.object({
   foreman: ForemanSchema.default({ boost: 0.25, windowS: 60, minutesPerDay: 45 }),
   away: AwaySchema.default({ gapS: 10 }),
   goals: z.array(GoalSchema).default([]),
+  /** goals.json's day-one goals (after `goals` are all done or skipped, in order). */
+  dayOne: z.array(GoalSchema).default([]),
+  /** The first minutes' teaching timings (goals.json `teach`, seconds and ratios: lessonQuietS, jumpRatio, ...). */
+  teach: z.record(z.string(), z.number()).default({}),
   advice: AdviceSchema.default({ minutes: 3, promptGapS: 60, reserveS: 120 }),
   /** Grades whose first weigh-in prints a lesson (a lesson.* text key). */
   lessons: z.record(id, z.string()).default({}),

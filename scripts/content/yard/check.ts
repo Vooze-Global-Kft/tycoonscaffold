@@ -103,6 +103,8 @@ export interface Box {
   maxChars?: number;
   /** Each wrapped line at most this many characters (process-board plates). */
   lineChars?: number;
+  /** The screen shrinks the text to fit, down to this many points (hud/metrics.ts fitText, the BuyButton's adjustsFontSizeToFit; MIN_PT 11): the text must fit at that size at least. */
+  shrinkTo?: number;
   /** The box is this file's assumption (yard-stage1.md gives no number): the reason. */
   assumed?: string;
   /**
@@ -119,22 +121,31 @@ const s = FONT_SCALE;
 export const PANEL_W = Math.round(0.62 * SCREEN_W); // 413
 /** 4.3: a panel row's text column: the panel less 12 pt padding a side, the 96 pt Buy button and an 8 pt gap. */
 export const ROW_TEXT_W = PANEL_W - 24 - 96 - 8; // 285
-/** 4.4: the ticket is 260 pt wide at 667; 10 pt paper margin a side (assumed). */
-export const TICKET_INNER = 260 - 20;
+/** 4.4: the ticket is 260 pt wide at 667; its inner row width as the hud draws it (hud/ticketView.ts rowWidth: less the sprocket strip, paddings and edges, 25 pt). */
+export const TICKET_INNER = 260 - 25;
+/** The lead's ruling of 15:55 (1): above font scale 1.15 a ticket prints at most two grade rows and no lesson line. */
+export const TICKET_ROWS_AT_13 = 2;
+/** The lead's ruling of 15:55 (3): a card button is at least 96 × 36 and grows with its text to at most 136 pt. */
+export const BUTTON_MAX = 136;
+/** The lead's ruling of 15:55 (2): the carry chip is 104 pt (14 pt taken from the ladder chip: 326 pt at 667, hud/metrics.ts). */
+export const CARRY_W = 104;
+export const LADDER_W = 340 - 14;
 /** 4.1: the goal card is 340 pt at 667: 26 pt for its icon at the left, 9 at the right, 14 before the tally. */
 export const GOAL_W = 340 - 26 - 9;
 
-/** 4.4's ticket: 260 pt wide, at most 150 pt tall at 1.3, legal line 11 pt, nothing under 11 pt. */
-const TICKET_LAYOUT = 'hud: at 11 pt × 1.3 a ticket line is 14.3 pt in 240 pt, and eight rows of it are 157 pt with 10 pt margins (4.4 allows 150)';
+/** A grade row too wide for one line prints its name on one line and the mass and price under it (hud/ticketView.ts planTicket): the ticket's height counts it. */
+const TICKET_LAYOUT = 'hud: a grade row too wide for one line goes on two (planTicket), counted in the ticket height';
 
 export const BOXES: Record<string, Box> = {
-  ladderChip: { pt: 12, bold: true, w: 340 - 20, lines: 1, layout: 'hud: the chip falls back to rankChipShort / rankChipToNext (4.1)', what: 'the ladder chip: 340 pt at 667 less 10 pt padding a side, 12 pt semibold (4.1)' },
-  carryChip: { pt: 12, bold: true, w: 90 - 12, lines: 1, layout: 'hud: 90 pt holds "28.6 / 30 kg" at 12 pt bold up to font scale about 1.05 only', what: 'the carry chip: 90 pt at 667 less 6 pt padding a side, 12 pt bold (4.1)' },
+  ladderChip: { pt: 12, bold: true, w: LADDER_W - 20, lines: 1, shrinkTo: 11, layout: 'hud: the chip falls back to rankChipShort / rankChipToNext (4.1), the shortest form must fit', what: 'the ladder chip: 326 pt at 667 less 10 pt padding a side, 12 pt semibold (4.1, the lead\'s ruling 2)' },
+  ladderShort: { pt: 12, bold: true, w: LADDER_W - 20, lines: 1, shrinkTo: 11, what: 'the ladder chip\'s short forms: 306 pt, 12 pt semibold, one line (the fallback must fit)' },
+  carryChip: { pt: 12, bold: true, w: CARRY_W - 12, lines: 2, shrinkTo: 11, what: 'the carry chip: 104 pt at 667 less 6 pt padding a side, 12 pt bold, two lines when it must (hud/TopBar.tsx fitText two; the lead\'s ruling 2)' },
+  carryDriving: { pt: 12, bold: true, w: CARRY_W - 12 - 24, lines: 1, shrinkTo: 11, what: 'the carry chip while driving: 104 pt less padding and the 24 pt skip pictogram (hud/TopBar.tsx), 12 pt bold (the lead\'s ruling 2)' },
   goal: { pt: 12, bold: true, w: GOAL_W - 14 - measure('9 / 9', 12 * s, true), lines: 1, maxChars: 30, what: 'the goal line: the 340 pt card less its icon, its margins and a tally "9 / 9", 12 pt (4.1); at most 30 characters (4.6)' },
   goalMore: { pt: 12, w: GOAL_W, lines: 1, what: 'a line of the opened goal card (next, advice): 340 pt less margins, 12 pt (4.1)' },
   tally: { pt: 12, bold: true, w: 80, lines: 1, assumed: 'the tally right of the goal line; 80 pt', what: 'the goal tally' },
   disc: { pt: 13, bold: true, w: 60 - 8, lines: 2, assumed: '4.1 sizes the disc (60 pt), not its words: two lines of 13 pt inside 52 pt', what: 'the one button: a 60 pt disc, 13 pt bold, at most two lines' },
-  button: { pt: 13, bold: true, w: 96 - 12, lines: 1, layout: 'overlays: 96 pt holds "Buy §3,148" at 13 pt bold up to font scale about 1.15; at 1.3 it needs about 110 pt', what: 'a card button: 96 × 36 less 6 pt a side, 13 pt bold (4.3)' },
+  button: { pt: 13, bold: true, w: BUTTON_MAX - 12, lines: 1, shrinkTo: 11, what: 'a card button: growing from 96 to at most 136 pt, less 6 pt a side, 13 pt bold, verb and price (4.3, the lead\'s ruling 3)' },
   footButton: { pt: 13, bold: true, w: 160, lines: 1, assumed: 'buttons at a card foot (Sign, Not now, OK, Start again): 160 pt', what: 'a foot button' },
   placeLabel: { pt: 11, w: 200, lines: 1, maxChars: 18, assumed: 'a place plate in the world: 200 pt (4.2 gives the 18 characters and 11 pt only)', what: 'a world plate: 11 pt, at most 18 characters (4.2, 4.6)' },
   worldChip: { pt: 11, w: 300, lines: 1, assumed: 'a chip over a bay, a thing or a pad: 300 pt (4.2 gives 11 pt only)', what: 'a world chip: 11 pt' },
@@ -153,8 +164,11 @@ export const BOXES: Record<string, Box> = {
   plateState: { pt: 11, w: 120 - 8, lines: 1, what: 'a plate state line: 11 pt in 112 pt (4.5)' },
   plateLocked: { pt: 11, w: 120 - 8, lines: 2, assumed: 'a locked plate shows its padlock and condition in place of the state line: two lines', what: 'a locked plate condition: 11 pt in 112 pt, two lines' },
   ticketHead: { pt: 11, bold: true, w: TICKET_INNER, lines: 1, layout: TICKET_LAYOUT, what: 'the ticket header: 260 pt at 667 less 10 pt margins, 11 pt bold (4.4)' },
-  ticketRow: { pt: 11, w: TICKET_INNER, lines: 1, layout: TICKET_LAYOUT, what: 'a ticket line: 240 pt, 11 pt (4.4)' },
-  ticketLesson: { pt: 11, w: TICKET_INNER, lines: 2, maxChars: 48, layout: TICKET_LAYOUT, what: 'the lesson on a ticket: at most 48 characters (4.6) in 240 pt at 11 pt, two lines' },
+  ticketRow: { pt: 11, w: TICKET_INNER, lines: 1, layout: TICKET_LAYOUT, what: 'a ticket grade cell or foot line: 235 pt, 11 pt (4.4)' },
+  ticketFoot: { pt: 11, w: TICKET_INNER, lines: 1, what: 'a weigh-in or collection ticket\'s foot or legal line: one line of 235 pt at 11 pt (the hud counts one line each, hud/metrics.ts ticketHeight)' },
+  ticketLegal: { pt: 11, w: TICKET_INNER, lines: 2, what: 'a ticket\'s legal or head line of the other kinds (slip, skip, deal): 235 pt, 11 pt, at most two lines (4.4)' },
+  ticketLesson: { pt: 11, w: TICKET_INNER, lines: 2, maxChars: 48, what: 'the lesson on a ticket (up to font scale 1.15) or the goal card\'s second line above it: at most 48 characters (4.6), two lines of 235 pt at 11 pt' },
+  lessonGoal: { pt: 12, w: GOAL_W, lines: 1, shrinkTo: 11, maxChars: 48, what: 'a lesson as the goal card\'s second line above font scale 1.15 (the lead\'s ruling 1): 305 pt, 12 pt, one line' },
   portrait: { pt: 17, bold: true, w: 375 - 32, lines: 2, assumed: 'the turn-sideways card in a portrait window 375 wide', what: 'the turn-sideways card' },
   gradeName: { pt: 11, w: 300, lines: 1, maxChars: 18, what: 'a grade name (≤ 18, 4.6)' },
   gradeShort: { pt: 11, w: 120, lines: 1, maxChars: 15, assumed: 'the grade column of a ticket row: 120 pt of the 240 (kg and price take the rest)', what: 'a grade short name on a ticket row: at most 15 characters' },
@@ -163,7 +177,9 @@ export const BOXES: Record<string, Box> = {
 /** Which box each key is checked in (the first pattern that matches). */
 const BOX_OF: [RegExp, keyof typeof BOXES][] = [
   [/^(cash)$/, 'ladderChip'],
+  [/^rankChip(Short|ToNext|Top)$/, 'ladderShort'],
   [/^rankChip/, 'ladderChip'],
+  [/^carryDriving$/, 'carryDriving'],
   [/^(carry|trialLoad|skipLoad)$/, 'carryChip'],
   [/^loadFull$/, 'worldChip'],
   [/^(open|stepOut)$/, 'disc'],
@@ -197,7 +213,9 @@ const BOX_OF: [RegExp, keyof typeof BOXES][] = [
   [/^away\.head$/, 'centredTitle'],
   [/^away\.hint/, 'centredPara'],
   [/^away\./, 'centredLine'],
-  [/^ticket\.(weighInHead|collectionHead|skipHead)$/, 'ticketHead'],
+  [/^ticket\.(weighInHead|collectionHead)$/, 'ticketHead'],
+  [/^ticket\.(weighInLegal|lotSoldTo|weighedOut|todaysValue|paid|more)$/, 'ticketFoot'],
+  [/^ticket\.(skipHead|dropOffSlip|grossTareNet|partnerLegal|dealDelivery)$/, 'ticketLegal'],
   [/^ticket\./, 'ticketRow'],
   [/^line\.(fictional|shortened)$/, 'helpPara'],
   [/^line\.(portal|crewAway|backfield)$/, 'centredPara'],
@@ -321,6 +339,7 @@ export function sampleArgs(inp: Inputs): Record<string, string> {
     name: longest(inp.crewNames.length ? inp.crewNames : ['Christopher']),
     line: longest(Object.values(inp.text.partners).map((p) => p.line)),
     x2: '§99,999',
+    rate: '99.9 t',
   };
 }
 
@@ -346,15 +365,15 @@ const ARG_OVERRIDE: Record<string, Record<string, string>> = {
   'refusal.filling': { t: '59 m 59 s' },
   'card.drivesRate': { t: '59 m 59 s' },
   'board.head': { t: '23 h 59 m' },
-  'away.head': { t: '23 h 59 m', c: '12' },
+  'away.head': { t: '23 h 59 m', c: '12.5 h' },
   'card.carriesRate': { t: '99.9 t' },
   'card.cutsRate': { t: '99.9 t' },
   'card.levelAdds': { x: '99.9 t' },
   'goal.supplyRung2': { t: '28.00 t' },
   'goal.supplyRung3': { t: '28.00 t' },
-  'card.nightWatch': { a: '12', b: '24' },
+  'card.nightWatch': { a: '12.5 h', b: '24.5 h' },
   'chip.crewWeighIn': { kg: '299.9 kg' },
-  carry: { a: '299.9', b: '300' },
+  carry: { a: '149.9', b: '150.0' },
   trialLoad: { kg: '1,020 kg' },
   skipLoad: { kg: '1,980 kg' },
   goalProgress: { a: '99', b: '99' },
@@ -367,7 +386,6 @@ const ARG_OVERRIDE: Record<string, Record<string, string>> = {
   'card.hopper': { kg: '99.9 kg', n: '9' },
   'card.tray': { kg: '99.9 kg' },
   'card.heel': { kg: '99.9 kg' },
-  'ticket.gradeAmount': { kg: '299.9 kg', grade: 'Cast iron whole' },
   'ticket.grossTareNet': { a: '19,980 kg', b: '18,960 kg', c: '1,980 kg' },
   'away.line': { kg: '9,999 kg' },
   'clip.version': { v: '10.10.10' },
@@ -447,7 +465,8 @@ export function fitFindings(where: string, text: string, box: Box, notes?: Findi
   const font = box.pt * FONT_SCALE;
   const chars = [...text].length;
   if (box.maxChars !== undefined && chars > box.maxChars) out.push({ rule: 'fit', where, text, reason: `${chars} characters, the box takes ${box.maxChars} (${box.what})` });
-  const { lines, overflow } = wrap(text, font, box.w, box.bold);
+  let { lines, overflow } = wrap(text, font, box.w, box.bold);
+  if ((overflow || lines.length > box.lines) && box.shrinkTo) ({ lines, overflow } = wrap(text, box.shrinkTo, box.w, box.bold));
   if (overflow) widthOut.push({ rule: box.layout ? 'layout' : 'fit', where, text, reason: `"${overflow}" alone is wider than ${Math.round(box.w)} pt at ${font.toFixed(1)} pt (${box.what})` });
   else if (lines.length > box.lines) widthOut.push({ rule: box.layout ? 'layout' : 'fit', where, text, reason: `needs ${lines.length} lines at font scale 1.3, the box has ${box.lines} (${box.what}${box.assumed ? `; assumed: ${box.assumed}` : ''})` });
   if (box.lineChars !== undefined) {
@@ -476,44 +495,44 @@ function wrapChars(text: string, n: number): string[] {
 
 // ================================================================================================ the ticket
 
-/** Line height of the ticket's print, a multiple of the font size (the system font's default). */
+/** Line height of the ticket's print, a multiple of the font size (the system font's default; hud/metrics.ts lineH). */
 export const TICKET_LINE = 1.2;
-/** The ticket's paper margin top and bottom, and the stub's tear (assumed). */
-export const TICKET_PAD = 10;
+/** The ticket's paper padding top and bottom and the header band's extra (hud/metrics.ts TICKET_PAD 6, HEAD_PAD 4). */
+export const TICKET_PAD = 6;
+const HEAD_PAD = 4;
 
-/** The two fullest tickets, row by row, as the screen prints them (4.4): what height they reach at 1.3. */
-export function ticketHeights(inp: Inputs, args: Record<string, string>): { kind: string; rows: string[]; height: number }[] {
+/**
+ * The two fullest tickets at font scale 1.3, row by row, as the hud prints them (4.4; hud/ticketView.ts
+ * planTicket and hud/metrics.ts ticketHeight, with this file's widths): the header band; at most two
+ * grade rows above 1.15 (the lead's ruling 1), each on two lines when name, mass and price do not fit
+ * one; the foot ("+ n more" and today's value, or "Paid"); no lesson above 1.15; the legal lines.
+ */
+export function ticketHeights(inp: Inputs, args: Record<string, string>): { kind: string; rows: string[]; height: number; gradeRows: number }[] {
   const T = TEXT as Record<string, string>;
   const fillKey = (k: string, extra: Record<string, string> = {}) => widest(k, T[k], inp, { ...args, ...extra }).out;
-  const shortest = Object.values(inp.text.grades).map((g) => g.short);
-  const row = (k: string) => fillKey(k, { grade: longest(shortest), kg: '299.9 kg' });
-  const lessons = Object.keys(T).filter((k) => k.startsWith('lesson.'));
-  const lesson = lessons.map((k) => fillKey(k)).reduce((a, b) => (wrap(b, 11 * FONT_SCALE, TICKET_INNER).lines.length > wrap(a, 11 * FONT_SCALE, TICKET_INNER).lines.length ? b : a), '');
-  const gradeRow = `${longest(shortest)}  299.9 kg  ${fillKey('ticket.gradeToday')}`;
-  const weighIn = [
-    `${fillKey('ticket.weighInHead')}  ${fillKey('ticket.date')}`,
-    gradeRow,
-    gradeRow,
-    gradeRow,
-    fillKey('ticket.more'),
-    fillKey('ticket.todaysValue'),
-    fillKey('ticket.weighInLegal'),
-    lesson,
-  ];
-  const collection = [
-    `${fillKey('ticket.collectionHead')}  ${fillKey('ticket.date')}`,
-    row('ticket.gradeAmount'),
-    row('ticket.gradeAmount'),
-    row('ticket.gradeAmount'),
-    fillKey('ticket.more'),
-    fillKey('ticket.paid'),
-    fillKey('ticket.lotSoldTo'),
-    fillKey('ticket.weighedOut'),
-  ];
-  const height = (rows: string[]) => rows.reduce((h, r, i) => h + wrap(r, 11 * FONT_SCALE, TICKET_INNER, i === 0).lines.length * 11 * FONT_SCALE * TICKET_LINE, 2 * TICKET_PAD);
+  const shorts = Object.values(inp.text.grades).map((g) => g.short);
+  const font = 11 * FONT_SCALE;
+  const lh = font * TICKET_LINE;
+  const kg = '1,020 kg';
+  const gradeLines = (right: string) => {
+    const one = `${longest(shorts)}  ${kg}  ${right}`;
+    return measure(one, font) + 16 <= TICKET_INNER ? [one] : [longest(shorts), `${kg}  ${right}`];
+  };
+  const build = (head: string, right: string, foot: string, legal: string[], paidPt = 11) => {
+    const g = gradeLines(right);
+    const legalH = legal.reduce((h, l) => h + wrap(l, font, TICKET_INNER).lines.length * lh, 0);
+    const hOf = (n: number) => TICKET_PAD + lh + HEAD_PAD + n * g.length * lh + paidPt * FONT_SCALE * TICKET_LINE + legalH + TICKET_PAD;
+    // As planTicket: fewer grade rows (the rest in "+ n more") while the ticket is over 150 pt.
+    let n = TICKET_ROWS_AT_13;
+    while (n > 1 && hOf(n) > 150) n--;
+    const rows = [head, ...Array.from({ length: n }, () => g).flat(), foot, ...legal];
+    return { rows, height: hOf(n), gradeRows: n };
+  };
+  const w = build(fillKey('ticket.weighInHead'), fillKey('ticket.gradeToday'), `${fillKey('ticket.more')}  ${fillKey('ticket.todaysValue')}`, [fillKey('ticket.weighInLegal')]);
+  const c = build(fillKey('ticket.collectionHead'), '§99,999', `${fillKey('ticket.more')}  ${fillKey('ticket.paid')}`, [fillKey('ticket.lotSoldTo'), fillKey('ticket.weighedOut')], 12);
   return [
-    { kind: 'weigh-in', rows: weighIn, height: height(weighIn) },
-    { kind: 'collection', rows: collection, height: height(collection) },
+    { kind: 'weigh-in', ...w },
+    { kind: 'collection', ...c },
   ];
 }
 
@@ -574,6 +593,26 @@ export function usedKeys(): { literal: Set<string>; families: Set<string>; unkno
   return { literal, families, unknown };
 }
 
+/**
+ * Which package should print a key that no built screen uses yet (the todo list grouped for requests.md;
+ * BUILD.md's table). The first pattern that matches names the owner and the screen.
+ */
+export const TODO_OWNER: [RegExp, string][] = [
+  [/^(menu|carryDriving|trialLoad|skipLoad)$/, 'hud: the top bar (clipboard button label; the carry chip while driving)'],
+  [/^ticket\.(dropOffSlip|skipHead|trial|grossTareNet|partnerLegal|dealDelivery|date)$/, 'hud: the other tickets of 2.2 (drop-off slip, skip weigh-in, deal delivery) and the date on the weigh-in'],
+  [/^line\.crewAway$/, 'hud: the toast when the first cutter is hired (1.3 item 2)'],
+  [/^(chip\.(padlock|bridgeLimit|needsTorchGate)|line\.(backfield|portal))$/, 'world-b: plates and padlock chips in the world (4.2; the bridge, the demolition gate, the back field, the portal)'],
+  [/^lesson\.drum$/, 'rules-sim + content: the washer drum\'s lesson (content `lessons` keys grades; the drum is a light-iron piece)'],
+  [/^(goal\.widenLevel|advice\.(buy|level))$/, 'rules-book: advice() and the repeating goal (Advice.line, goal.widen / goal.widenLevel)'],
+  [/^card\.(opensAt|converterPaid|levelAdds|notBottleneck|keptForLoad|skipPrice|levelN|levelFromTo|onItsWay|rate)$/, 'rules-book cards.ts (cardOf rows) and overlays-a (row lines)'],
+  [/^(card\.(on|off|firstPour|heating|cooling|handOnly|hopper|tray|crewRow|skipsInRotation|skipTrial|skipReady|skipOnTruck|anotherSkip|partnerLine)|item\.skip|effect\.(frame|spanners|handStripper|brass|truck|alu)|title\.rack)$/, 'overlays-a: Rota, Partners, Machine, Crucible, Tool rack'],
+  [/^(card\.(sell|sign|deal\w*)|board\.\w+|table\.\w+|opens\.\w+|away\.\w+|clip\.\w+|help\.\w+|line\.(shortened|fictional))$/, 'overlays-b: PriceBoard, Bay, SupplyDeal, IndustryTable, RungSign, AwayCard, Clipboard, Settings, Help'],
+];
+export function todoOwner(key: string): string {
+  for (const [re, o] of TODO_OWNER) if (re.test(key)) return o;
+  return 'unassigned';
+}
+
 // ================================================================================================ run
 
 export interface Report {
@@ -583,7 +622,7 @@ export interface Report {
   todo: string[];
   /** Each text with its holes at their widest: its width on one line, and the lines it wraps to in its box. */
   measured: { where: string; text: string; width: number; lines: number; box: string }[];
-  tickets: { kind: string; rows: string[]; height: number }[];
+  tickets: { kind: string; rows: string[]; height: number; gradeRows: number }[];
 }
 
 export function runAll(): Report {
@@ -609,6 +648,7 @@ export function runAll(): Report {
 
   // strings.ts
   for (const [k, v] of Object.entries(TEXT)) check(`strings.ts TEXT['${k}']`, k, v, boxOf(k));
+  for (const [k, v] of Object.entries(TEXT)) if (k.startsWith('lesson.')) findings.push(...fitFindings(`strings.ts TEXT['${k}'] (goal card, above 1.15)`, widest(k, v, inp, args).out, BOXES.lessonGoal));
   for (const [k, v] of Object.entries(TEXT_PENDING)) {
     if (k in TEXT) findings.push({ rule: 'keys', where: `strings.ts TEXT_PENDING['${k}']`, text: v, reason: 'already in TEXT: move it and delete it here' });
     check(`strings.ts TEXT_PENDING['${k}']`, k, v, boxOf(k));
@@ -647,7 +687,10 @@ export function runAll(): Report {
 
   // tickets at their fullest (4.4: at most 150 pt tall at 1.3)
   const tickets = ticketHeights(inp, args);
-  for (const t of tickets) if (t.height > 150) layout.push({ rule: 'ticket', where: `the ${t.kind} ticket`, text: t.rows.join(' / '), reason: `${t.height.toFixed(1)} pt tall at font scale 1.3; 4.4 allows 150` });
+  for (const t of tickets) {
+    if (t.height > 150) findings.push({ rule: 'ticket', where: `the ${t.kind} ticket`, text: t.rows.join(' / '), reason: `${t.height.toFixed(1)} pt tall at font scale 1.3 with one grade row; 4.4 allows 150` });
+    else if (t.gradeRows < TICKET_ROWS_AT_13) layout.push({ rule: 'ticket', where: `the ${t.kind} ticket`, text: t.rows.join(' / '), reason: `at its widest (longest short name, 1,020 kg, §99,999) a grade row takes two lines at 1.3, so only ${t.gradeRows} row fits 150 pt and the rest go to "+ n more" (planTicket does this)` });
+  }
 
   // keys: used and existing
   const used = usedKeys();
@@ -682,13 +725,17 @@ function main() {
     console.log(`\nThe ${n} longest texts, holes at their widest, measured at font scale 1.3:`);
     for (const m of [...r.measured].sort((a, b) => b.width - a.width).slice(0, n)) console.log(`  ${m.width.toFixed(1).padStart(6)} pt on one line, ${m.lines} line(s) in ${m.box.padEnd(22)}  ${m.where}: "${m.text}"`);
     console.log('\nTickets at their fullest (4.4, at most 150 pt at 1.3):');
-    for (const t of r.tickets) console.log(`  ${t.kind}: ${t.height.toFixed(1)} pt (${t.rows.length} rows)`);
+    for (const t of r.tickets) console.log(`  ${t.kind}: ${t.height.toFixed(1)} pt, ${t.gradeRows} grade row(s), no lesson (above 1.15): ${t.rows.join(' / ')}`);
   }
   if (r.layout.length) {
     console.log(`\nLayout notes for the screens' owners (fixed parts whose numbers do not fit at font scale 1.3; not word findings):`);
     for (const f of r.layout) console.log(`  LAYOUT ${f.where}: ${f.reason} ("${f.text}")`);
   }
-  if (argv.includes('--todo')) for (const k of r.todo) console.log(`todo ${k}: no screen or rule uses it yet`);
+  if (argv.includes('--todo')) {
+    const by = new Map<string, string[]>();
+    for (const k of r.todo) by.set(todoOwner(k), [...(by.get(todoOwner(k)) ?? []), k]);
+    for (const [o, ks] of by) console.log(`todo ${o}: ${ks.join(', ')}`);
+  }
   console.log(`\n${r.measured.length} texts checked; ${r.findings.length} findings; ${r.layout.length} layout notes; ${r.todo.length} keys not used yet by any built screen (todo, --todo lists them).`);
   process.exit(r.findings.length ? 1 : 0);
 }

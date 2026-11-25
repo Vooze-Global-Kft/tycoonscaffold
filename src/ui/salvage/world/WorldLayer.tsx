@@ -32,7 +32,7 @@ import { gradeGlyph } from '../art/pieces.draw';
 import { drawIngot } from '../art/scrap.draw';
 import { say } from '../strings';
 import { chevronPlace, chevronTarget, chevronZ } from './chevron';
-import { cashAnchor } from '../hud/anchors';
+import { cashAnchor, collectionAnchor, weighInAnchor } from '../hud/anchors';
 import { chevronGate } from '../hints/gate';
 import { FX, FX_EVENTS, FX_S, WORK, arcAt, ease, effectsFor, type FxContext, type FxSpawn } from './effects';
 import type { YardAnim } from './frameLoop';
@@ -525,10 +525,10 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
     return useGame.subscribe(push);
   }, [cfg, rings, chev, live]);
 
-  const play = useRef<(events: readonly R.SalvageEvent[]) => void>(() => {});
-  play.current = (events) => {
+  const play = useRef<(events: readonly R.SalvageEvent[], frame?: R.FrameTable) => void>(() => {});
+  play.current = (events, frame) => {
     const g = useGame.getState().game as R.SalvageGame;
-    const ctx: FxContext = { content: cfg.salvage, frame: lastFrame.current ?? (g.salvage ? R.frame(cfg, g) : null), boss: { x: anim.body.value.x, y: anim.body.value.y }, grades };
+    const ctx: FxContext = { content: cfg.salvage, frame: frame ?? lastFrame.current ?? (g.salvage ? R.frame(cfg, g) : null), boss: { x: anim.body.value.x, y: anim.body.value.y }, grades };
     const start: FxSpawn[] = [];
     const stop: string[] = [];
     for (const e of events) {
@@ -537,7 +537,25 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
       start.push(...r.start);
       stop.push(...r.stop);
     }
-    const canvasFx = start.filter((s) => s.kind !== FX.slide);
+    // Coins fly over the bars when the bars mount the CoinLayer (above them); else this canvas draws them.
+    const toCoinLayer = coinLayerOn.value === 1;
+    if (toCoinLayer) {
+      const ca = collectionAnchor.value;
+      const sp = [0, 0];
+      const add = start
+        .filter((x) => x.kind === FX.coin)
+        .map((x) => {
+          toScreen(sp, x.ax, x.ay, x.az, cam.value, yard.ppm, yard.tilt, yard.lift, width, height);
+          return { x: ca.x >= 0 ? ca.x : sp[0], y: ca.x >= 0 ? ca.y : sp[1], delay: x.delay, t0: -1 };
+        });
+      if (add.length) coinFx.modify((list) => {
+        'worklet';
+        for (let i = 0; i < add.length; i++) list.push(add[i]);
+        return list;
+      });
+      if (add.length) coinWake.current();
+    }
+    const canvasFx = start.filter((s) => s.kind !== FX.slide && !(toCoinLayer && s.kind === FX.coin));
     if (canvasFx.length || stop.length) {
       live.modify((list) => {
         'worklet';
@@ -553,28 +571,46 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
       // Into the bay: the muted "today's value"; into the flatbed's bed: the grade's name (the money comes on the collection ticket).
       const words = s.money > 0 ? say({ key: 'ticket.todaysValue', args: { x: { money: s.money } } }, cfg.salvage) : (cfg.salvage.grades[grades[s.look]]?.name ?? '');
       setSlideText((t) => (k === 0 ? [words, t[1]] : [t[0], words]));
-      slots[k].start(s);
+      // The weigh-in's value starts where the bars show the ticket (weighInAnchor), turned back into the yard's metres.
+      const wa = weighInAnchor.value;
+      if (s.money > 0 && wa.x >= 0) {
+        const cv = cam.value;
+        const z = cv.zoom > 0 ? cv.zoom : 1;
+        const az = s.az;
+        const ax = ((wa.x - width / 2) / z + width / 2 + cv.x) / yard.ppm;
+        const ay = ((wa.y - height / 2) / z + height / 2 + cv.y + az * yard.ppm * yard.lift) / (yard.ppm * yard.tilt);
+        slots[k].start({ ...s, ax, ay });
+      } else slots[k].start(s);
     }
   };
   useEffect(() => modeEvents.subscribe((ev) => play.current(ev as readonly R.SalvageEvent[])), []);
 
-  // ?fxdemo=1: every effect in turn near the boss (made-up events, this canvas only).
+  // ?fxdemo=<effect>: made-up events for this canvas only, after the curtain, every 4 s (./labelsDev.web.ts).
   useEffect(() => {
-    if (!labelsDev.fxDemo) return;
+    const which = labelsDev.fxDemo;
+    if (!which) return;
     let n = 0;
-    const fire = () => {
+    let started = false;
+    const t = setInterval(() => {
       const g = useGame.getState().game as R.SalvageGame;
       const f = lastFrame.current;
-      if (!g.salvage || !f) return;
-      play.current(demoEvents(cfg, g, f, n++));
-    };
-    const t0 = setTimeout(fire, 1500);
-    const t = setInterval(fire, 9000);
-    return () => {
-      clearTimeout(t0);
-      clearInterval(t);
-    };
-  }, [cfg]);
+      if (!g.salvage || !f || !loadingClock.done.value) return;
+      if (!started) {
+        started = true;
+        n = 0;
+      }
+      const tick = n++;
+      if (tick % 8 !== 1) return;
+      const k = Math.floor(tick / 8);
+      const centre = { x: (cam.value.x + width / 2) / yard.ppm, y: (cam.value.y + height / 2) / (yard.ppm * yard.tilt) };
+      // A made-up thing at the screen's centre, so every effect shows in the frame under review.
+      const objs = Object.entries(cfg.salvage.objects);
+      const obj = (objs.find(([, o]) => o.tier === 1) ?? objs[0])[0];
+      const demo = { ...f, things: [...f.things, { ...(f.things[0] ?? {}), uid: 'demo.thing', obj, x: centre.x, y: centre.y + 1, locked: null, ring: null, work: null, by: null } as R.FrameThing] };
+      play.current(demoEvents(cfg, g, demo, which === 'all' ? DEMO_ORDER[k % DEMO_ORDER.length] : which, k, centre), demo);
+    }, 500);
+    return () => clearInterval(t);
+  }, [cfg, cam, width, height, yard]);
 
   return (
     <>
@@ -633,29 +669,105 @@ function Slide({ slot, text, yard, cam, width, height, size }: { slot: ReturnTyp
   );
 }
 
-/** The made-up events of `?fxdemo=1`, near the boss and at the yard's places, in turn. */
-function demoEvents(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTable, n: number): R.SalvageEvent[] {
-  const boss = g.salvage.presence ?? { x: 0, y: 0 };
-  const near = [...f.things].sort((a, b) => Math.hypot(a.x - boss.x, a.y - boss.y) - Math.hypot(b.x - boss.x, b.y - boss.y))[0];
-  const tools = Object.keys(cfg.salvage.tools);
-  const grade = Object.keys(cfg.salvage.grades)[0];
-  const ticket = { no: 900 + n, at: g.stats.playSeconds, day: 0, kind: 'weighIn' as const, by: 'boss', lines: [{ grade: f.bays[0]?.grade ?? grade, g: 12300, price: 1.25, amount: 15.38 }], todaysValue: 15.38, lesson: null, lessonText: null };
-  const step = n % 4;
-  if (step === 0 && near) {
-    return [
-      { type: 'workStart', thing: near.uid, obj: near.obj, grade: null as unknown as string, tool: tools[Math.min(tools.length - 1, 1)] ?? 'sledge', by: 'boss', ring: null },
-      { type: 'pieceOff', thing: near.uid, piece: `demo${n}a`, grade, g: 4000, to: 'load', by: 'boss' },
-      { type: 'pieceOff', thing: near.uid, piece: `demo${n}b`, grade, g: 4000, to: 'ground', by: 'boss' },
-      { type: 'pieceOff', thing: near.uid, piece: `demo${n}c`, grade, g: 4000, to: 'waste', by: 'boss' },
-    ];
+// ================================================================================================ the coin layer
+
+/** Coins in flight for the CoinLayer: start in window points, delay and start time (seconds, UI clock). */
+const coinFx = makeMutable<{ x: number; y: number; delay: number; t0: number }[]>([]);
+/** 1 while a CoinLayer is mounted (the effects canvas then leaves the coins to it). */
+const coinLayerOn = makeMutable(0);
+/** Starts the CoinLayer's frame callback (set while one is mounted). */
+const coinWake = { current: () => {} };
+
+/**
+ * The coin's arc from the flatbed's cab (the collection ticket's point when the bars give one) to the
+ * cash counter, drawn ABOVE the bars: the shell mounts it after the hud. One small Skia canvas; its
+ * frame callback runs only while a coin flies.
+ */
+export function CoinLayer() {
+  const coin = useMemo(() => record((c) => drawCoin(c)), []);
+  const pic = useSharedValue<SkPicture>(useMemo(() => record(() => {}), []));
+  const { width, height } = useWindowDimensions();
+  const cb = useFrameCallback((info) => {
+    'worklet';
+    const now = info.timestamp / 1000;
+    const rec = Skia.PictureRecorder();
+    const cv = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));
+    const cp = cashAnchor.value;
+    const L = coinFx.value;
+    const keep: { x: number; y: number; delay: number; t0: number }[] = [];
+    for (let i = 0; i < L.length; i++) {
+      const e = L[i];
+      if (e.t0 < 0) e.t0 = now + e.delay;
+      const u = (now - e.t0) / FX_S[FX.coin];
+      if (u >= 1) continue;
+      keep.push(e);
+      if (u < 0) continue;
+      const k = ease(u);
+      cv.save();
+      cv.translate(e.x + (cp.x - e.x) * k, e.y + (cp.y - e.y) * k - 70 * 4 * k * (1 - k));
+      const sc = 1.3 + 0.45 * Math.sin(Math.PI * k);
+      cv.scale(sc, sc);
+      cv.drawPicture(coin);
+      cv.restore();
+    }
+    if (keep.length !== L.length) coinFx.value = keep;
+    pic.value = rec.finishRecordingAsPicture();
+    if (keep.length === 0) runOnJS(stop)();
+  }, false);
+  function stop() {
+    cb.setActive(false);
   }
-  if (step === 1) return [...(near ? [{ type: 'workStop' as const, thing: near.uid, by: 'boss' }] : []), { type: 'weighIn', ticket, pieces: [], by: 'boss' }];
-  if (step === 2) return [{ type: 'roundLoad', grams: 12300 }, { type: 'collected', ticket: { no: 950 + n, at: 0, day: 0, kind: 'collection', buyer: 'merchant', lines: ticket.lines, paid: 15.38, withBoss: true, firstGrades: [] }, first: n % 8 === 2 }];
-  const torch = tools.find((t) => (cfg.salvage.tools as Record<string, { tier: number }>)[t]?.tier >= 3) ?? 'torch';
-  return [
-    { type: 'pour', ingots: 4, grade: 'bri', short_g: 0, dross_g: 400, first: true, by: 'boss' },
-    ...(near ? [{ type: 'workStart' as const, thing: near.uid, obj: near.obj, grade: null as unknown as string, tool: torch, by: 'boss', ring: null }] : []),
-  ];
+  useEffect(() => {
+    coinLayerOn.value = 1;
+    coinWake.current = () => cb.setActive(true);
+    return () => {
+      coinLayerOn.value = 0;
+      coinWake.current = () => {};
+      cb.setActive(false);
+    };
+  }, [cb]);
+  return (
+    <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Picture picture={pic} />
+    </Canvas>
+  );
+}
+
+const DEMO_ORDER = ['work', 'sledge', 'torch', 'arcs', 'weigh', 'round', 'coin', 'pour'];
+
+/** The made-up events of `?fxdemo=`: at a made-up thing at the screen's centre and at the yard's places. */
+function demoEvents(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTable, which: string, n: number, centre: { x: number; y: number }): R.SalvageEvent[] {
+  const near = f.things.find((t) => t.uid === 'demo.thing') ?? null;
+  const toolOf = (tier: number) => Object.keys(cfg.salvage.tools).find((t) => (cfg.salvage.tools as Record<string, { tier: number }>)[t]?.tier === tier) ?? 'spanners';
+  const grades = Object.keys(cfg.salvage.grades);
+  const grade = f.bays[0]?.grade ?? grades[0];
+  const work = (tool: string, gr: string | null): R.SalvageEvent[] =>
+    near ? [{ type: 'workStart', thing: near.uid, obj: near.obj, grade: gr as string, tool, by: 'boss', ring: null }] : [];
+  const stop: R.SalvageEvent[] = near ? [{ type: 'workStop', thing: near.uid, by: 'boss' }] : [];
+  const ticket = { no: 900 + n, at: g.stats.playSeconds, day: 0, kind: 'weighIn' as const, by: 'boss', lines: [{ grade, g: 12300, price: 1.25, amount: 15.38 }], todaysValue: 15.38, lesson: null, lessonText: null };
+  const ci = grades.find((x) => /^ci/.test(x)) ?? null;
+  switch (which) {
+    case 'work':
+      return [...stop, ...work(toolOf(2), grades.find((x) => !/^ci/.test(x)) ?? null)];
+    case 'sledge':
+      return [...stop, ...work(toolOf(2), ci)];
+    case 'torch':
+      return [...stop, ...work(toolOf(3), null)];
+    case 'arcs':
+      return near
+        ? (['load', 'ground', 'waste'] as const).map((to, i) => ({ type: 'pieceOff' as const, thing: near.uid, piece: `demo${n}.${i}`, grade: grades[(n + i) % grades.length], g: 4000, to, by: 'boss' }))
+        : [];
+    case 'weigh':
+      return [...stop, { type: 'weighIn', ticket, pieces: [], by: 'boss' }];
+    case 'round':
+      return [{ type: 'roundLoad', grams: 12300 }];
+    case 'coin':
+      return [{ type: 'collected', ticket: { no: 950 + n, at: 0, day: 0, kind: 'collection', buyer: 'merchant', lines: ticket.lines, paid: 15.38, withBoss: true, firstGrades: [] }, first: n % 2 === 0 }];
+    case 'pour':
+      return [...stop, { type: 'pour', ingots: 4, grade: 'bri', short_g: 0, dross_g: 400, first: true, by: 'boss' }];
+    default:
+      return [];
+  }
 }
 
 const styles = StyleSheet.create({

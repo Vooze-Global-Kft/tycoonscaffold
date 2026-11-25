@@ -1,6 +1,6 @@
 {
   "$comment": "Player words of the first yard that live in the game's data, not in src/ui/salvage/strings.ts (yard-stage1.md 5.7; owner: strings). The content engineer's scripts/content/build-yard.py copies them into games/scrap-yard/game.json: grades.<id>.{name,short,long} onto salvage.grades, objects.<id>.{name,long} onto salvage.objects, and the rest (lessons, partners, glossary, help) as the salvage.text block. Voice: yard-stage1.md 5.6 (weighbridge-plain). Invented names are {id} holes from scripts/content/yard/names.json byId; never a literal. Lesson ticket lines are the lesson.* keys of strings.ts (one source); here is the full sentence for Help and the ticket history. Every text passes: npx tsx scripts/content/yard/check.ts --all",
-  "version": 1,
+  "version": 2,
   "grades": {
     "li": { "name": "Light iron", "short": "Light iron", "long": "Light iron: thin steel from appliances, bicycles, gates and sheet" },
     "appl": { "name": "Appliances, whole", "short": "Appliances", "long": "Whole appliances, not taken apart" },
@@ -20,7 +20,7 @@
     "bb": { "name": "Bare bright copper", "short": "Bare bright", "long": "Bare bright copper: clean, bare, unalloyed wire" },
     "cyl": { "name": "Copper cylinders", "short": "Cylinders", "long": "Copper hot-water cylinders, certified empty, sold whole" },
     "cab": { "name": "Heavy cable", "short": "Heavy cable", "long": "Heavy insulated copper cable, not stripped" },
-    "cabt": { "name": "Thin cable", "short": "Thin cable", "long": "Thin insulated cable, such as a car's wiring loom" },
+    "tcab": { "name": "Thin cable", "short": "Thin cable", "long": "Thin insulated cable, such as a car's wiring loom" },
     "mot": { "name": "Electric motors", "short": "Motors", "long": "Electric motors, whole" },
     "conv": { "name": "Converter, whole", "short": "Converter", "long": "Catalytic converter, whole, paid on assay" }
   },
@@ -55,7 +55,7 @@
     "bb": { "ticket": "lesson.bb", "help": "Bare bright is clean, bare, unalloyed copper wire with no coating, solder or insulation. It is the best copper grade a yard sells. The ticket line compares it with today's price of light iron." },
     "no2": { "ticket": "lesson.no2", "help": "No.2 copper is unalloyed copper that is not clean: tinned, painted or with some solder. It pays less than bare bright." },
     "brs": { "ticket": "lesson.brs", "help": "Brass is an alloy of copper and zinc. Taps, valves and fittings are brass solids. Its price follows copper, at a lower level." },
-    "alw": { "ticket": "lesson.alw", "help": "Alloy wheels are cast aluminium. They pay as clean wheels only with the tyres and the balance weights taken off." },
+    "alw": { "ticket": "lesson.alw", "help": "Alloy wheels are cast aluminium. They are paid as clean wheels only when the tyres and the balance weights are off." },
     "alcast": { "ticket": "lesson.alcast", "help": "The end caps of an electric motor are cast aluminium. Cast aluminium can be melted into alloy ingot." },
     "ci": { "ticket": "lesson.ci", "help": "Cast iron is hard and brittle: a sledgehammer breaks it, it does not bend. Foundries buy it to melt again." },
     "hms": { "ticket": "lesson.hms", "help": "HMS is heavy melting steel: thick old steel cut to a size a steel mill's furnace takes. 80:20 is the usual mix of grade 1 and grade 2." },

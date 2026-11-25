@@ -90,3 +90,22 @@ export function reconcileSalvage(cfg: SalvageConfig, base: GameState, raw: unkno
   if (!r || r.v !== 2 || !Array.isArray(r.things) || typeof r.clock !== 'object' || r.clock === null) return { ...base, salvage: fresh };
   return { ...base, salvage: { ...fresh, ...r, epoch: (Number(r.epoch) || 0) + 1, clock: { ...fresh.clock, ...r.clock, highMs: Math.max(fresh.clock.highMs, Number(r.clock.highMs) || 0) } } as SalvageState };
 }
+
+// ============================================================================ the facade's entries (the seam, 16:20)
+
+/** True for a config of mode "salvage" whose block was parsed (src/engine/salvageMode.ts `config`). */
+export function isSalvage(cfg: import('../../config/schema').GameConfig): cfg is SalvageConfig {
+  const s = cfg.salvage as { grades?: unknown; map?: unknown } | undefined;
+  return cfg.mode === 'salvage' && !!s && typeof s.grades === 'object' && typeof s.map === 'object';
+}
+
+/** Facade `freshSalvage(cfg, now)`: a fresh salvage state at device time `now` (epoch ms): the full yard of E1. */
+export function freshSalvageCfg(cfg: SalvageConfig, now: number): SalvageState {
+  return freshSalvage(cfg.salvage, now);
+}
+
+/** The state, with `salvage` made when a bare shared state (a test) has none. */
+export function withSalvageFields(cfg: SalvageConfig, g: GameState, now = 0): SalvageGame {
+  const s = g as SalvageGame;
+  return s.salvage ? s : createSalvage(cfg, g, now);
+}

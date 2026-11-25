@@ -217,6 +217,8 @@ export interface MachineWork {
   startAt: number;
   rate_kg_s: number;
   credited: Stock;
+  /** Grams of the piece worked before `startAt` (a rate change credits to that instant and restarts the segment from it). Absent = 0. */
+  base_g?: number;
 }
 
 export interface MachineState {
@@ -534,6 +536,14 @@ export interface SalvageState {
   beenAway: boolean;
   /** § collected (collections and deliveries) in five one-minute buckets of yard time, newest last; `minute` = floor(t / 60) of the newest. incomeRate = sum / 5 (2.13). */
   income: { minute: number; buckets: number[] };
+  /**
+   * Lifetime counters the goals' done grammar reads (notes/hints.md; never met by doing nothing): keys
+   * `cut:<obj>`, `weighIns` (the boss's platform weigh-ins), `weighed:<grade>`, `made:<grade>`,
+   * `worked:<machine>`, `hired:<role>`, `crewWeighIns:<role>`, `fetched:<partner>` (skips tipped),
+   * `poured`, `visited:<point>`, `away` (away cards acked), `collected` (collection tickets),
+   * `dealDone` (series steps finished). Optional only for states written before it (read as {}).
+   */
+  counts?: Record<string, number>;
 }
 
 // ================================================================================================ events
