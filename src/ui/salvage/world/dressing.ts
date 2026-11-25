@@ -147,7 +147,8 @@ export function dressing(c: SalvageContent): Dress[] {
   for (let k = 0; k < 4; k++) {
     let x = (W * (k + 0.5)) / 4 + (h01(seed, k, 3) - 0.5) * 4;
     for (let t = 0; t < 6 && inside(off, x, north + 0.55); t++) x += 1.7;
-    out.push({ id: 'plant.floodlight', x, y: north + 0.55 });
+    // sorted with the blocks (same sheet, same key): one atlas run for the whole wall (H11)
+    out.push({ id: 'plant.floodlight', x, y: north + 0.55, key: north + BLOCK_M / 2 });
   }
   // ---- weeds at the wall's foot and the fences
   for (let x = 1.2; x < W - 1; x += 2.3) if (h01(seed, x, 7) < 0.55 && !inside(off, x, north + 0.6)) out.push({ id: 'ground.weeds', x: x + h01(seed, x, 8) * 0.8, y: north + 0.55, frame: Math.floor(h01(seed, x, 9) * 4) });
