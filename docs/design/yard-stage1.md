@@ -577,3 +577,75 @@ In date order (25 November); "behaviour" marks a change to what the rules do, ma
 12. This pass: S14's 2 s away gap in 2.8 and 2.14 (behaviour; the game holds 10 s); 8.2's hands are the prototype's; 8.1 and 8.4 carry the rulings above.
 
 **For the lead**: `goals.json` hires the cutter before rung 2, content4 after the torch; the truck misses E28's fifth yet S18 needs it; `away.gapS` 10 s against S14's 2 s; `reach.sight` 8 m against the answered 10; E14's rung 3 at 28 t against 23 t (E7, E29); the contract lacks `needsItem` and `level`'s `rung` refusal, the schema `levels.floor`; plates drawn from views; the flatbed's bake density; the skip, slip and deal tickets not drawn yet.
+
+---
+
+## 12. After the review of the built game (25 November, late evening)
+
+The joined game was reviewed once by six reviewers (a casual player, the look, a store reviewer, a
+phone engineer, a rules attacker, the trade and words desk): 101 findings, each ruled on by the lead
+and fixed in one pass by the owners of the files. The rulings are in `yard-decisions.md`, part 4
+(the map, M1 to M7) and part 5 (by finding). Where they change what sections 1 to 10 say, this
+section is right. Changes of BEHAVIOUR are marked so.
+
+1. **The map (section 3; behaviour).** The first yard ends north at a lock-block back wall along
+   `map.north` with the neighbour's far yard over it; the bays, the scale house and the stillage
+   block stand against it and the pads within about five metres of it. Old stock lies in beds
+   (`zones.<id>.bed`): zone 1 in the corner of the back wall and the east fence beside the platform
+   scale, zone 2 against the back wall, zone 3 behind the dividing wall. The public drop-off is a
+   bay of two rows of four by the gate. Vehicles drive only on `map.driveLine` (gate, weighbridge,
+   the merchant's stand, the tipping floor, the truck's park). The office is the gatehouse; the tool
+   rack stands at its door. The checker `scripts/content/yard_map.py` (run by `build-yard.py --check`)
+   enforces overlaps, the drive line, the walks, the gaps and the two frames.
+2. **The first view (1.2 beat 1, section 3).** The sentence that the crucible pad is in the first
+   view at both sizes is withdrawn. The first view is the follow view at the start: the drop-off's
+   first washer, zone 1's heap, the platform scale and the scale house's display. The hero frame
+   (`map.hero`, the store's first picture) holds the wall with the far yard, the bays, the scale
+   house, both scales' near edges, the hand stripper, the copper and brass stillages, the price
+   board, the crucible pad and some old stock, at 844 x 390 and at 667 x 375.
+3. **The look (section 6).** The running world draws what the art director's picture draws: the
+   back wall, sky and far yard above it in screen space, a warm wash and one multiply rectangle over
+   the world, shadows swept east, warm concrete with decals, dirt beds under heaps, verge and fields
+   outside the fence and along the lane. Never a flat clear colour where the camera can look.
+4. **The drop-off's opening (2.6; behaviour).** Until `dropoff.openingUntil_s` the public brings
+   only what `dropoff.opening` lists (washers and bicycles); the mix starts after it.
+5. **Lessons (4.4 item 5; behaviour).** The grades of `valueLessons` (bare bright copper, brass, the
+   converter) ALWAYS show their lesson on the boss's first weigh-in of that grade, whatever was
+   weighed before.
+6. **The yard hand (2.8; behaviour).** He sets out the tick he is hired, from the office door. While
+   the boss is in the yard he carries pieces only (cable only into a stripper that runs by itself);
+   whole things he carries only when every waiting place of the drop-off is taken, or while the boss
+   is away (E4 unchanged for time away). A piece he has claimed is not taken by the boss's pickup.
+7. **The car (2.4, 5; behaviour).** Wheels and loom come off by hand, the torch frees the converter,
+   and the stripped shell is weighed whole where it stands as one line 'Car body' and leaves with
+   the merchant's next round. Nobody cuts a car body with a torch.
+8. **The crucible (2.9; behaviour).** A recipe change pours the heel without refilling, sets the new
+   recipe, and only then takes from the bays; unmelted charge returns to its own grades' bays.
+9. **Time away (2.14, 2.16; behaviour).** E33: the time the yard runs while away grows with the rung
+   (`awayCapByRung_h`), and the Night watch adds `nightWatch_h`. E34: the supply deal delivers at
+   every market midnight that passed while away. The away card says what was applied: sales, loads
+   bought and their cost, the net (already in the account), how long the yard ran and what makes it
+   run longer, deliveries, rivals passed, the next step. Held stock is never listed as sold. The
+   card shows only after a real absence.
+10. **The truck (2.7; behaviour).** The boss drives at `truck.bossV`; `truck.v` is the hired
+    driver's. A hired driver finishes a loaded truck the boss stepped out of. The camera zooms out
+    while the boss drives. The truck is drawn with a skip only when it carries one.
+11. **Tickets and money on screen (4.3, 4.4).** Weigh-ins and sales are numbered in two series, each
+    from 1. A weigh-in over the weighbridge reads 'Bought for {x}' in a cost colour and a debit line
+    shows under the cash counter. The weigh-in ticket feeds out of the scale's printer slot, away
+    from the boss. Cash is never cut at any size or font scale; bars and cards print money without
+    hundredths from §100, tickets keep them. Tonnes print with at most three figures.
+12. **Plates (4.2).** One plate per thing, above its sprite, hidden while someone stands or works
+    there or a ticket is up; a padlock and its place's name are one plate; identical plates of a
+    zone are one plate with a count; plates are laid out against each other and against the bars.
+13. **Words (5).** No absolute tonnes-an-hour on any row; 'materials' for the range's count;
+    'Light iron, uncut' for whole light things; buttons are verbs and rows are states; no 'cap' in
+    any player text.
+14. **Shared save (all five games; behaviour).** `save()` never moves the start of the time away
+    while the store is paused (`src/state/store.pause.test.ts`).
+15. **Left for later, by ruling.** The away pass on the real content takes about a third of a second
+    of node CPU for six hours (the limit of 150 ms is raised for this stage; aggregating crew legs
+    is the next stage's first engineering item). Ads and purchases are designed in at the
+    monetisation step: this stage shows none, and a store build waits for that step. The store's
+    screenshots, the release date and a person's verdict (fingerprint dimensions 7, 8, 13, 19)
+    belong to the store step. The light-iron price ladder is reviewed with the baler and shredder.

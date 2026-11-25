@@ -30,12 +30,13 @@ export const SALVAGE_CONTENT_FROM = 'proto4 (scratchpad yard/proto/content4.json
  * levels.floor (no level costs less than floor x floorGrowth^(L-1), REPORT4 R21). build-yard.py writes
  * them into game.json beside the parsed block; the schema strips them until it takes them.
  */
-export const SALVAGE_PENDING = { levels: { floor: 1500, floorGrowth: 1.25 } } as const;
+export const SALVAGE_PENDING = { levels: { floor: 1100, floorGrowth: 1.25 } } as const;
 
 export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
+    "measure (the bots on the new map, REPORT6.txt): ladder.rungs n 2 2.2 -> 2.4 t (E31d's 2.4 was written to rung2 only and the engine reads ladder.rungs: build-yard.py now refuses the two disagreeing); rung 3 21.5 -> 23.5 t (the nearer stock brought rung 3 to minute 53; 24 t put the normal hand at 59:23); the Night watch §2,800 -> §24,000 (E33 with E13: it adds two hours to every long absence, worth a median §43.7k on one twelve-hour absence from minute 60 (min §24.7k) and §27.7k from minute 30, so it pays back in its first night and stays a thing saved for); levels.floor 1500 -> 1100 (E31c: more levels bought in the last half hour); partners fill_s 120 -> 100 and 180 -> 150 again (bots5's values, measured in REPORT5, had not reached this file)",
     "fix pass (content, 25 Nov evening): THE MAP moves to the art director's picture (MAP.md M1-M7): back wall map.north 15.2, working row against it, zone 1 in the wall/east-fence corner by the scale, the drop-off bay by the gate, one drive line (map.driveLine), office and rack south of it; zones.<id>.bed; routes recomputed (scripts/content/yard_map.py)",
     "fix pass: P1 dropoff.opening washers and bicycles until openingUntil_s 300; R4/W26 (E31b) crew.hand.lev 0.12 -> 0.25, crew.cutter.lev 0.15 -> 0.25 (levels priced by E13a's rule); E31d ladder.rung2.t 2.2 -> 2.4; R6 (E33) awayCap_h -> awayCapByRung_h [0.5, 2, 4] and nightWatch_h 2; P10 truck.bossV 9 (truck.v stays the driver's 12); W9 the car: pieces wheels, loom, converter (pieceTiers 1, 1, 3) and a whole shell of Car body 800 kg (same value)",
     "bots5 (the people-like bots on the real rules, scripts/content/yard-bot.ts, REPORT5.txt): goal prices hand1 400 -> 300, sledge 480 -> 340, trolley 540 -> 380, truck 600 -> 430, torch 670 -> 480, cutter 750 -> 540, stripper 890 -> 700, crucible 1200 -> 800, bench 1300 -> 900, driver 1500 -> 1000 (the real yard hand walks real legs: net income in minutes 5 to 25 is about §180-300 a minute, so proto4's prices meant waits of four to eight minutes)",
@@ -695,7 +696,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       crucible: [42.5, 21.2],
       board: [45.1, 20.4],
       bench: [37.8, 21],
-      office: [56.5, 29.35],
+      office: [55.7, 29.35],
       rack: [52.5, 28.5],
       Z1: [59.05, 17.6],
       Z2: [28.9, 18.4],
@@ -723,7 +724,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       crucible: { x: 42.5, y: 21.2, w: 3, d: 3 },
       board: { x: 45.1, y: 20.4, w: 2, d: 0.4 },
       bench: { x: 37.8, y: 21, w: 2.5, d: 1.5 },
-      office: { x: 56.5, y: 29.35, w: 6, d: 2.5 },
+      office: { x: 55.7, y: 29.35, w: 4.4, d: 3 },
       rack: { x: 52.5, y: 28.5, w: 2, d: 0.8 },
       Z1: { x: 59.05, y: 17.6, w: 9.9, d: 4 },
       Z2: { x: 28.9, y: 18.4, w: 7.4, d: 5.6 },
@@ -769,7 +770,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       "dropoff-bench": 26.7,
       "crucible-scale": 11.9,
       "scale-rack": 9.8,
-      "scale-office": 11.6,
+      "scale-office": 11.3,
       "scale-bays": 7.6,
       "scale-crucible": 11.9,
       "Z1-dropoff": 5.2,
@@ -793,7 +794,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       crucible: { w: 3, d: 3, h: 0.1, solid: false, sprite: "plant.crucible.pad", card: true },
       board: { w: 2, d: 0.4, h: 2, solid: true, sprite: "plant.board.notice", card: true },
       bench: { w: 2.5, d: 1.5, h: 0.1, solid: false, sprite: "plant.bench.pad", card: true },
-      office: { w: 6, d: 2.5, h: 2.6, solid: true, sprite: "plant.portacabin", card: true },
+      office: { w: 4.4, d: 3, h: 2.6, solid: true, sprite: "plant.portacabin", card: true, door: "s" },
       rack: { w: 2, d: 0.8, h: 1.8, solid: true, sprite: "plant.toolrack", card: true },
       noticeboard: { w: 1.6, d: 0.6, h: 2, solid: true, sprite: "plant.sign.posts", card: true },
       rubble: { w: 2.4, d: 1.4, h: 1.2, solid: true, sprite: "plant.skip.rubble", card: false },
@@ -849,7 +850,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       lane: "farm_m",
       trial: { radiator: 3, stove: 2, trough: 1, washer: 2, motor: 1 },
       skip: { radiator: 4, stove: 3, trough: 1, washer: 2, motor: 2, cable: 1, fittings: 1 },
-      fill_s: 120,
+      fill_s: 100,
       k: 0.85,
       trialMass_kg: 530,
       trialPrice: 150,
@@ -867,7 +868,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       lane: "demolition_m",
       trial: { beam: 1, cladding: 4, coil: 2, radiator: 4, motor: 1 },
       skip: { beam: 2, cladding: 4, coil: 2, radiator: 4, motor: 2, tank: 1, fittings: 1 },
-      fill_s: 180,
+      fill_s: 150,
       k: 0.85,
       trialMass_kg: 656,
       trialPrice: 400,
@@ -1051,11 +1052,11 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       key: "night",
       kind: "office",
       place: "office",
-      price: 2800,
+      price: 24000,
       gate: null,
       deliver_s: 0,
       arrive: "crew",
-      why: "E22: a longer away cap (6 h), offered after the first time away",
+      why: "E33: two more hours away on any rung (nightWatch_h), offered after the first time away",
     },
   ],
   goalOrder: ["sack", "hand1", "sledge", "trolley", "truck", "torch", "cutter", "stripper", "crucible", "bench", "driver"],
@@ -1079,12 +1080,12 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   },
   ladder: {
     rung2: { t: 2.4, range: 3 },
-    rung3: { t: 21.5, range: 5 },
+    rung3: { t: 23.5, range: 5 },
     theta: 300,
     rungs: [
       { n: 1, t: 0, range: 0 },
-      { n: 2, t: 2.2, range: 3 },
-      { n: 3, t: 21.5, range: 5 },
+      { n: 2, t: 2.4, range: 3 },
+      { n: 3, t: 23.5, range: 5 },
       { n: 4, t: 150, range: 6 },
       { n: 5, t: 800, range: 7 },
       { n: 6, t: 4000, range: 8 },

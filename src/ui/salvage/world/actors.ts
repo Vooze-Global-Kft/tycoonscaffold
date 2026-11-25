@@ -186,7 +186,9 @@ export function staticItems(c: SalvageContent, res: Resolver, extraProps: readon
     const pt = c.map.points[id];
     if (!pt) continue;
     const [x, y] = pt;
-    const art = entryOf(pl.sprite) ? { id: pl.sprite, flat: !pl.solid } : PLACE_ART[pl.sprite];
+    // join2 (the lead's stillage ruling, 17:10): a stillage stands only once its grade has been weighed in
+    // (the rules' frame draws it, bayItems); the block's reserved spots show only their painted corners.
+    const art = pl.sprite === 'plant.stillage' ? { corners: true } as (typeof PLACE_ART)[string] : entryOf(pl.sprite) ? { id: pl.sprite, flat: !pl.solid } : PLACE_ART[pl.sprite];
     if (!art) continue;
     // A standing place (a building with a door, a block) sorts by its CONTENT footprint's front edge (L12): a person at its door is drawn in front.
     if (art.id) sprite(out, res, art.id, x, y, { flat: art.flat, key: pl.solid && !art.flat ? y + pl.d / 2 : undefined });
@@ -538,6 +540,30 @@ function bayItems(out: number[], res: Resolver, b: R.FrameBay): void {
 }
 
 /** The rules' picture of a frame (see the header). Pure; reads the hour-0 fields where the newer ones are missing. */
+/** A thing standing inside one of the zones' beds (content `zones.<id>.bed`). */
+function inBed(c: SalvageContent, x: number, y: number): boolean {
+  for (const z of Object.values(c.zones ?? {}) as { bed?: { x0: number; y0: number; w: number; d: number } }[]) {
+    const b = z.bed;
+    if (b && x >= b.x0 && x <= b.x0 + b.w && y >= b.y0 && y <= b.y0 + b.d) return true;
+  }
+  return false;
+}
+
+/**
+ * join2 (seam c): a heap reads as a heap, in the DRAW only (the rules' positions and footprints stay):
+ * every thing of a bed is drawn at a small offset from its uid (about +-0.2 m east-west, lifted up to
+ * 0.2 m so the nearer row overlaps the farther), and every other row is staggered by a quarter metre.
+ * Points at 40 a metre, the ground's tilt 0.7 on the vertical.
+ */
+export function heapJitter(uid: string, y: number): { dx: number; dy: number } {
+  let h = 2166136261;
+  for (let i = 0; i < uid.length; i++) h = Math.imul(h ^ uid.charCodeAt(i), 16777619);
+  const u = ((h >>> 0) % 1000) / 1000;
+  const v = ((h >>> 10) % 1000) / 1000;
+  const row = Math.floor(y / 0.86) % 2;
+  return { dx: ((u - 0.5) * 0.4 + (row ? 0.25 : 0)) * 40, dy: -v * 0.2 * 40 * 0.7 };
+}
+
 export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n = 0): RulesScene {
   const items: number[] = [];
   const solids: number[] = [];
@@ -552,7 +578,8 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
     const total = th.total ?? o?.pieces.reduce((a, p) => a + p[2], 0) ?? 1;
     const off = th.off ?? (th.stage > 0 ? Math.round((th.stage / Math.max(1, (o?.stages ?? 2) - 1)) * total) : 0);
     const frame = stageOf(e.frames.length, off, total);
-    sprite(items, res, id, th.x, th.y, { frame, tint: off === 0 ? thingLookTint(th.uid) : -1 });
+    const j = inBed(c, th.x, th.y) ? heapJitter(th.uid, th.y) : null;
+    sprite(items, res, id, th.x, th.y, { frame, tint: off === 0 ? thingLookTint(th.uid) : -1, dx: j?.dx, dy: j?.dy });
     if (off === 0) solids.push(1, th.x, th.y, Math.max(0.3, Math.min(o?.size.w ?? e.footprint.w, e.footprint.w) / 2), Math.max(0.2, Math.min(o?.size.d ?? e.footprint.d, e.footprint.d) / 2));
   }
   // Pieces on the ground.

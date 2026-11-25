@@ -200,6 +200,9 @@ export function placeNear(c: SalvageContent, x: number, y: number): string | nul
     if (!pl.card) continue;
     const p = c.map.points[id];
     if (!p) continue;
+    // A place with a door (content `door`) opens only from that side of its footprint (join2, seam e).
+    const door = (pl as { door?: 'n' | 's' | 'e' | 'w' }).door;
+    if (door === 's' ? y < p[1] + pl.d / 2 : door === 'n' ? y > p[1] - pl.d / 2 : door === 'e' ? x < p[0] + pl.w / 2 : door === 'w' ? x > p[0] - pl.w / 2 : false) continue;
     const dx = Math.max(0, Math.abs(x - p[0]) - pl.w / 2);
     const dy = Math.max(0, Math.abs(y - p[1]) - pl.d / 2);
     const d = Math.hypot(dx, dy);

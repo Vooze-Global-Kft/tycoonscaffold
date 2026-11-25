@@ -78,6 +78,26 @@ export const hintDemo: HintDemo | null = beat && BEATS[beat] ? { force: () => BE
 
 // ---------------------------------------------------------------------------------------- touches
 
+const isCardPlace = (cfg: R.SalvageConfig, id: string): boolean => !!(cfg.salvage.map.places as Record<string, { card?: unknown }>)[id]?.card;
+
+/**
+ * Where a person stands to use a SOLID card place (the office, the rack, a stillage): just outside its
+ * footprint on its door side (content `door`), else on the side facing the boss. Null for anything else
+ * (the walk then goes to the place's point, as before).
+ */
+function standSpot(cfg: R.SalvageConfig, id: string, from: { x: number; y: number } | null): { x: number; y: number; id: string } | null {
+  const pl = (cfg.salvage.map.places as Record<string, { w: number; d: number; solid?: boolean; card?: unknown; door?: string }>)[id];
+  const pt = cfg.salvage.map.points[id];
+  if (!pl || !pt || !pl.solid || !pl.card || !from) return null;
+  const off = cfg.salvage.worker.radius + 0.25;
+  const [x, y] = pt;
+  const side = pl.door ?? (Math.abs(from.x - x) / pl.w > Math.abs(from.y - y) / pl.d ? (from.x < x ? 'w' : 'e') : from.y < y ? 'n' : 's');
+  if (side === 's') return { x, y: y + pl.d / 2 + off, id };
+  if (side === 'n') return { x, y: y - pl.d / 2 - off, id };
+  if (side === 'e') return { x: x + pl.w / 2 + off, y, id };
+  return { x: x - pl.w / 2 - off, y, id };
+}
+
 function send(type: 'mousedown' | 'mousemove' | 'mouseup', x: number, y: number): void {
   const el = (document.elementFromPoint(x, y) as HTMLElement | null) ?? document.body;
   el.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: type === 'mouseup' ? 0 : 1, view: window }));
@@ -146,10 +166,11 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
         while (!stop) {
           const g = game();
           const p = boss();
-          const spot = leg.to.startsWith('skip:') ? (() => { const z = R.skipZone(cfg, leg.to.slice(5) as R.PartnerId, 0); return { x: z.x, y: z.y, id: leg.to }; })() : spotOf(cfg, g, R.frame(cfg, g), leg.to, Date.now());
+          const spot = leg.to.startsWith('skip:') ? (() => { const z = R.skipZone(cfg, leg.to.slice(5) as R.PartnerId, 0); return { x: z.x, y: z.y, id: leg.to }; })() : standSpot(cfg, leg.to, p) ?? spotOf(cfg, g, R.frame(cfg, g), leg.to, Date.now());
           if (!p || !spot) break;
           const dist = Math.hypot(spot.x - p.x, spot.y - p.y);
-          if (dist <= cfg.salvage.reach.place * 0.8) break;
+          // join2 (seam g): a card place's walk ENDS where the rules name it (R.placeNear), as a person stops at its door.
+          if (isCardPlace(cfg, leg.to) ? R.placeNear(cfg, p.x, p.y) === leg.to && dist <= 1.2 : dist <= cfg.salvage.reach.place * 0.8) break;
           if (dist < best - 0.3) {
             best = dist;
             bestAt = Date.now();

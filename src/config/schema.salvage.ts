@@ -223,6 +223,11 @@ export const PlaceSchema = z.object({
   card: z.union([z.boolean(), z.enum(CARD_KINDS)]).default(true),
   /** Its world label's text key (place.*), shown on first sight (4.2); default `place.<id>` when that key exists. */
   label: z.string().optional(),
+  /**
+   * join2 (seam e): the side of the footprint the place is opened from ('s' the south face, where its door is
+   * drawn and the boss is seen in front of it); absent: any side.
+   */
+  door: z.enum(['n', 's', 'e', 'w']).optional(),
 });
 export type PlaceDef = z.infer<typeof PlaceSchema>;
 
@@ -503,7 +508,11 @@ const DealSchema = z.object({
 });
 const ForemanSchema = z.object({ boost: z.number().nonnegative().default(0.25), windowS: z.number().positive().default(60), minutesPerDay: z.number().nonnegative().default(45) });
 /** Time away (2.16): a gap over gapS seconds goes to the away pass (above the longest UI stall: 10 s; types.ts MAX_TICK); caps from `awayCap_h`. */
-const AwaySchema = z.object({ gapS: z.number().positive().default(10) });
+/**
+ * `cardS`: the away CARD needs a real absence (join2, seam a): a gap of at most cardS seconds (a JS stall: the
+ * yard bake under the loading curtain, a slow frame) still runs the pass silently, the yard simply ran on.
+ */
+const AwaySchema = z.object({ gapS: z.number().positive().default(10), cardS: z.number().nonnegative().default(60) });
 /** A goal (2.10; goals.json by the goals package): id, text key, the chevron's target, a done condition, an optional purchase. */
 export const GoalSchema = z.object({
   id: id,
@@ -607,7 +616,7 @@ export const SalvageSchema = z.object({
   board: BoardSchema.default({ a: 0.03, wordBand: 0.015, epochMs: Date.UTC(2026, 0, 5) }),
   deal: DealSchema.default({ partner: 'foundry', grade: 'ci', gate: 'rung2', series: [], trust: { up: 10, down: 15, start: 50 } }),
   foreman: ForemanSchema.default({ boost: 0.25, windowS: 60, minutesPerDay: 45 }),
-  away: AwaySchema.default({ gapS: 10 }),
+  away: AwaySchema.default({ gapS: 10, cardS: 60 }),
   goals: z.array(GoalSchema).default([]),
   /** goals.json's day-one goals (after `goals` are all done or skipped, in order). */
   dayOne: z.array(GoalSchema).default([]),

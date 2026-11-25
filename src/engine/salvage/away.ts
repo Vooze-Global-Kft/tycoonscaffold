@@ -136,7 +136,11 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
   x.t0 = s.t;
   cancelAct(x, s.t);
   if (s.act.kind === 'drive' || s.truck.by === 'boss') driverTakesOver(x, s.t);
-  const showCard = raw > cfg.salvage.away.gapS;
+  // join2 (seam a): the card needs a real absence (over away.cardS, a minute) and a game in which something
+  // was done (a count of the rules above zero); a stall under the loading curtain is no absence.
+  const cardS = Math.max(cfg.salvage.away.gapS, (cfg.salvage.away as { cardS?: number }).cardS ?? 60);
+  const played = Object.values(g.salvage.counts ?? {}).some((v) => (v ?? 0) > 0);
+  const showCard = raw > cardS && played;
   x.away = { lines: {}, money: 0, supplied0: s.ladder.supplied_g, loads: 0, deliveries: 0, passed: [], spent: 0, bought: {}, deliveryList: [] };
   // The boss's last sample is stale from the first second of the pass (no boss).
   s.presence = { ...s.presence, moving: false, standingFor: 0 };

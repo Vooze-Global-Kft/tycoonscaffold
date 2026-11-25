@@ -6,14 +6,13 @@
  */
 import * as R from '../../../engine/salvage';
 import type { SalvageContent, Ticket, TicketLine } from '../../../engine/salvage';
-import { fmtMoneyExact } from '../../../engine/salvage/money';
 import { say } from './words';
-
-/** A ticket's money keeps its hundredths below §1,000 (W11: "tickets keep them"); a `ref` argument, so no new arg kind is needed. */
-function exact(x: number): { ref: string } {
-  return { ref: fmtMoneyExact(x) };
-}
 import { textW, ticketHeight, TICKET_PT } from './metrics';
+
+/** A ticket's money keeps its hundredths below §1,000 (W11: "tickets keep them"): the facade's R.fmtMoneyExact, as a `ref` argument. */
+function exact(x: number): { ref: string } {
+  return { ref: R.fmtMoneyExact(x) };
+}
 
 type Content = Pick<SalvageContent, 'names' | 'grades' | 'objects'>;
 
@@ -76,8 +75,8 @@ export function ticketView(t: Ticket, c: Content, lesson?: R.Txt | null): Ticket
     const r = rows(t.lines, c, (l) => say({ key: 'ticket.gradeToday', args: { p: { price: l.price } } }, c));
     return {
       kind: 'weighIn',
-      no: t.no,
-      head: say({ key: 'ticket.weighInHead', args: { n: { n: t.no } } }, c),
+      no: R.printedNo(t),
+      head: say({ key: 'ticket.weighInHead', args: { n: { n: R.printedNo(t) } } }, c),
       rows: r,
       total: say({ key: 'ticket.todaysValue', args: { x: exact(t.todaysValue) } }, c),
       lesson: (() => {
@@ -88,11 +87,11 @@ export function ticketView(t: Ticket, c: Content, lesson?: R.Txt | null): Ticket
     };
   }
   if (t.kind === 'collection') {
-    const r = rows(t.lines, c, (l) => fmtMoneyExact(l.amount));
+    const r = rows(t.lines, c, (l) => R.fmtMoneyExact(l.amount));
     return {
       kind: 'collection',
-      no: t.no,
-      head: say({ key: 'ticket.collectionHead', args: { n: { n: t.no } } }, c),
+      no: R.printedNo(t),
+      head: say({ key: 'ticket.collectionHead', args: { n: { n: R.printedNo(t) } } }, c),
       rows: r,
       total: say({ key: 'ticket.paid', args: { x: exact(t.paid) } }, c),
       lesson: null,
@@ -112,7 +111,7 @@ export function ticketView(t: Ticket, c: Content, lesson?: R.Txt | null): Ticket
     const bridge = (g: number) => ({ mass_g: g, step: 'bridge' as const });
     return {
       kind: 'collection',
-      no: t.no,
+      no: R.printedNo(t),
       head: t.trial ? say({ key: 'ticket.skipHead', args: { partner: { name: t.partner }, load: { text: 'ticket.trial' } } }, c) : say({ key: 'title.skip', args: { partner: { name: t.partner } } }, c),
       rows: things,
       // Money OUT (S3, P12): "Bought for {x}" in the cost colour; "Paid {x}" only where the yard is paid.

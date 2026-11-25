@@ -64,6 +64,12 @@ export interface BotOptions {
   optional?: 'take' | 'skip';
   /** Measurements only: the boss works only this place (a zone id, `dropoff` or `floor`), buys nothing, never drives. */
   onlyZone?: string;
+  /**
+   * Measurements only (a what-if for the rules desk, REPORT6): after the fixed goals, when the cut pieces on
+   * the tipping floor and loose about the yard outweigh two hand loads, buy a yard hand's level (or the
+   * second yard hand) instead of what the advice line names.
+   */
+  handFirst?: boolean;
   /** Keep a log of every leg (debugging, the report's minute table). */
   trace?: boolean;
   /** Tick while walking (the screen's 0.1 s) and the sample spacing while standing (at most staleS / 2). */
@@ -127,7 +133,7 @@ export interface Bot {
   g: SalvageGame;
   /** Device time, epoch ms. */
   now: number;
-  opts: Required<Omit<BotOptions, 'manager' | 'holder' | 'optional' | 'trace' | 'onlyZone'>> & Pick<BotOptions, 'manager' | 'holder' | 'optional' | 'trace' | 'onlyZone'>;
+  opts: Required<Omit<BotOptions, 'manager' | 'holder' | 'optional' | 'trace' | 'onlyZone' | 'handFirst'>> & Pick<BotOptions, 'manager' | 'holder' | 'optional' | 'trace' | 'onlyZone' | 'handFirst'>;
   P: HandProfile;
   k: number;
   standing: number;
@@ -1059,6 +1065,20 @@ export function decide(b: Bot): void {
         if (purchase(b, a, true)) return;
       }
     } else if (!goal || def?.repeat || goalListDone(b)) {
+      if (o.handFirst && s.crew.some((m) => m.role === 'hand')) {
+        const waiting = s.pieces.filter((p) => !p.claim && !p.pile.startsWith('zone.') && !p.pile.startsWith('tray.')).reduce((a, p) => a + p.g, 0);
+        if (waiting > 2 * c.crew.hand.load * 1000) {
+          const hire = actionFor(b, 'hand2');
+          const lv = levels(b).filter((l) => l.action.target.kind === 'crew' && s.crew.find((m) => m.id === (l.action.target as { id: string }).id)?.role === 'hand')[0];
+          const pick = hire && 'price' in hire && (!lv || (hire as { price: number }).price <= lv.price * 1.5) ? hire : lv?.action ?? null;
+          if (pick && 'price' in pick && b.g.cash - res >= (pick as { price: number }).price - 1e-9) {
+            if (purchase(b, pick, false)) return;
+          }
+          if (pick) {
+            // saving for it: fall through to work
+          }
+        }
+      }
       const adv = advice(b.cfg, b.g, b.now);
       if (adv && b.g.cash - res >= adv.price - 1e-9) {
         if (purchase(b, adv.action, false)) return;

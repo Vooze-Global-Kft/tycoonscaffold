@@ -19,6 +19,8 @@ import { flatbedLayers } from './manifest/people';
 import { MANIFEST } from './manifest';
 import { sevenSeg } from './letters';
 import { STILLAGE_LAYER_DY } from './manifest/plant';
+// The names register (read by id, never spelled here: join2, seam f). The proof sheet is drawn by the art scripts only.
+import register from '../../../../scripts/content/yard/names.json';
 import { cashChip, carryChip, clipboardButton, drawTicket, goalCard, ladderChip, padlockChip, priceTag, stick, ticketFromSlot, ticketHeight, ticketWidth, type TextFn, type Ticket } from './ui.draw';
 
 const INK = YARD.ink;
@@ -242,7 +244,7 @@ export const HERO_WORDS = {
   cash: '412',
   rank: '26th',
   of: 'of 26',
-  next: 'Marchford & Daughters Scrap',
+  next: (register as { byId?: Record<string, string> }).byId?.['rival.1'] ?? 'rival.1',
   gap: '0.15 t',
   carry: '28.6 / 30 kg',
   goal: 'Weigh it on the scale',

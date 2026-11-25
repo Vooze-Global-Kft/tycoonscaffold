@@ -348,6 +348,11 @@ def lint(s, sprites):
         bad('levels.tau: cap must be positive and growth at least 1')
     if s['ladder']['rung3']['t'] <= s['ladder']['rung2']['t']:
         bad('ladder: rung 3 must need more tonnes than rung 2')
+    # The engine reads ladder.rungs when it is given (ladder.ts rungsOf); rung2/rung3 must say the same.
+    for r in s['ladder'].get('rungs', []):
+        for n, k in ((2, 'rung2'), (3, 'rung3')):
+            if r['n'] == n and (r['t'] != s['ladder'][k]['t'] or r['range'] != s['ladder'][k]['range']):
+                bad('ladder.rungs n %d (%s t, range %s) disagrees with ladder.%s (%s t, range %s)' % (n, r['t'], r['range'], k, s['ladder'][k]['t'], s['ladder'][k]['range']))
     return out
 
 

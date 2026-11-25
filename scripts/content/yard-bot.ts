@@ -7,12 +7,13 @@
  *   npx tsx scripts/content/yard-bot.ts --unseen                           seeds 101 to 105 (8.4's 5 unseen)
  *   npx tsx scripts/content/yard-bot.ts --one '{"hand":"normal","habit":"goal","route":"A","seed":1}'
  *
- * --seeds N       seeds 1..N (default 15); --unseen: seeds 101..105 instead
+ * --seeds N       seeds 1..N (default 15); --first F: seeds F..F+N-1; --unseen: seeds 101..105 instead
  * --routes 1|2    route A only, or A and B (S10)
  * --jobs N        child processes (default 2: the machine is shared)
  * --game path     a game.json (default games/scrap-yard/game.json)
  * --only list     beats,hand,away,days,nohand,gate (default all with --report)
  * --json file     write every run's summary there too
+ * --handFirst     a what-if: after the fixed goals the bots level the yard hands when pieces wait (bot.ts)
  * Every run checks the hard promises of 8.3 (shown equals applied, cash never below zero, supplied never
  * falling, no stock negative; tick equals jump minute by minute on the normal hand's runs); a broken
  * promise prints in the report's first section and makes the exit code 2.
@@ -63,6 +64,8 @@ interface Summary {
   hooks: Bot['rec']['hooks'];
   gate: string[];
   ceiling: { t: number; key: string }[];
+  bossIns: Bot['rec']['bossIns'];
+  walks: Bot['rec']['walks'];
   extra: Record<string, unknown>;
   ms: number;
 }
@@ -82,6 +85,8 @@ function summary(b: Bot, spec: Spec, R_: number[], gate: string[], extra: Record
     hooks: b.rec.hooks,
     gate,
     ceiling: b.rec.ceiling,
+    bossIns: b.rec.bossIns.filter((q) => q.t <= 900),
+    walks: b.rec.walks.filter((q) => q.t <= 900),
     extra,
     ms: Math.round(performance.now() - t0),
   };
@@ -106,19 +111,67 @@ function runOne(base: R.SalvageConfig, spec: Spec): Summary {
     const awayAt: Record<number, R.SalvageGame> = {};
     playTo(b, spec.minutes * 60, (bb, m) => {
       onMinute(bb, m);
-      if ([5, 10, 30, 60].includes(m)) awayAt[m] = bb.g;
+      if ([5, 10, 15, 30, 60].includes(m)) awayAt[m] = bb.g;
     });
     if (spec.kind === 'hour' && spec.hand === 'normal' && spec.habit === 'goal') {
       const back: Record<string, number> = {};
+      const burst: Record<string, { earned: number; ran_s: number; cash: number; left: number; leftSum: number; buys: number; buysSum: number; delivered: number }> = {};
       for (const [m, g] of Object.entries(awayAt)) {
         for (const h of Number(m) === 60 ? [1] : [1, 4, 12]) {
           const ab = newBot(cfg, g, NOW + g.salvage.t * 1000, spec);
           ab.now = NOW + Math.round(g.salvage.clock.highMs - NOW);
           away(ab, h * 3600);
-          back[`${m}m+${h}h`] = Math.round(ab.rec.away[0]?.earned ?? 0);
+          const k = `${m}m+${h}h`;
+          back[k] = Math.round(ab.rec.away[0]?.earned ?? 0);
+          // E33's burst: how much of the goal list the cash after the away card buys at once (goal order,
+          // each item for sale now; a gated item is counted as left but not bought).
+          const card = ab.g.salvage.away as unknown as { seconds?: number; deliveryList?: { g: number }[] } | null;
+          let cash = ab.g.cash;
+          let left = 0;
+          let leftSum = 0;
+          let buys = 0;
+          let buysSum = 0;
+          let blocked = false;
+          for (const key of cfg.salvage.goalOrder) {
+            const it = [...cfg.salvage.shop, ...cfg.salvage.dayOneList].find((i) => i.key === key);
+            if (!it) continue;
+            const price = R.shopPrice(cfg, ab.g, key);
+            if (price === null) {
+              const rungGate = typeof it.gate === 'string' && /^rung\d+$/.test(it.gate) ? Number(it.gate.slice(4)) : 0;
+              if (rungGate > ab.g.salvage.ladder.rung) {
+                left++;
+                leftSum += it.price;
+                blocked = true;
+              }
+              continue;
+            }
+            left++;
+            leftSum += price;
+            if (!blocked && cash >= price) {
+              cash -= price;
+              buys++;
+              buysSum += price;
+            } else blocked = true;
+          }
+          burst[k] = { earned: back[k], ran_s: Math.round(card?.seconds ?? 0), cash: Math.round(ab.g.cash), left, leftSum: Math.round(leftSum), buys, buysSum: Math.round(buysSum), delivered: card?.deliveryList?.length ?? 0 };
         }
       }
+      // The Night watch's worth (E33, E13): what it adds to one twelve-hour absence from a state of the hour.
+      const night: Record<string, number> = {};
+      for (const m of [15, 30, 60]) {
+        const g = awayAt[m];
+        if (!g || g.salvage.owned.includes('night')) continue;
+        const pair = [g, { ...g, salvage: { ...g.salvage, owned: [...g.salvage.owned, 'night'] } }].map((gg) => {
+          const ab = newBot(cfg, gg, NOW + gg.salvage.t * 1000, spec);
+          ab.now = NOW + Math.round(gg.salvage.clock.highMs - NOW);
+          away(ab, 12 * 3600);
+          return ab.rec.away[0]?.earned ?? 0;
+        });
+        night[`${m}m+12h`] = Math.round(pair[1] - pair[0]);
+      }
       extra.away = back;
+      extra.burst = burst;
+      extra.night = night;
     }
     return summary(b, spec, Rs, gate, extra, t0);
   }
@@ -207,10 +260,13 @@ const med = (xs: number[]) => {
 const pad = (s: string | number, n: number) => String(s).padStart(n);
 
 const BEATS: { key: string; name: string; lo: number; hi: number; slowAfter?: boolean }[] = [
-  { key: 'ticket', name: 'first collection ticket', lo: 0, hi: 25 },
-  { key: 'copper', name: 'copper jump', lo: 0, hi: 90 },
-  { key: 'purchase', name: 'first purchase arriving', lo: 0, hi: 120 },
-  { key: 'helperCarrying', name: 'yard hand carrying', lo: 0, hi: 300, slowAfter: true },
+  { key: 'washerDone', name: 'beat 2 the washer apart (aim about 0:12; band shown 0:15)', lo: 0, hi: 15 },
+  { key: 'ticket', name: 'beat 3 first collection ticket', lo: 0, hi: 25 },
+  { key: 'stripping', name: 'beat 4 at the stripper (aim about 0:30; band shown 0:35)', lo: 0, hi: 35 },
+  { key: 'copper', name: 'beat 5 copper jump', lo: 0, hi: 90 },
+  { key: 'purchase', name: 'beat 6 first purchase arriving', lo: 0, hi: 120 },
+  { key: 'helperCarrying', name: 'beat 7 yard hand carrying', lo: 0, hi: 300, slowAfter: true },
+  { key: 'pass1', name: 'beat 8 first rival passed', lo: 0, hi: 300, slowAfter: true },
   { key: 'drive', name: 'first drive out (hook)', lo: 480, hi: 600, slowAfter: true },
   { key: 'owned:torch', name: 'torch', lo: 660, hi: 900, slowAfter: true },
   { key: 'rung2', name: 'rung 2', lo: 720, hi: 1080, slowAfter: true },
@@ -242,7 +298,7 @@ function report(all: Summary[], seeds: number[]): string {
   const pick = (f: (s: Spec) => boolean) => all.filter((r) => f(r.spec));
   const hour = (hand: string, habit: string, route = 'A') => pick((s) => s.kind === 'hour' && s.hand === hand && s.habit === habit && s.route === route);
   const N = hour('normal', 'goal');
-  L.push(`REPORT5 tables (the real rules, ${seeds.length} seeds: ${seeds[0]}..${seeds.at(-1)}), generated by scripts/content/yard-bot.ts`);
+  L.push(`REPORT6 tables (the real rules, ${seeds.length} seeds: ${seeds[0]}..${seeds.at(-1)}), generated by scripts/content/yard-bot.ts`);
   L.push('');
   // 0. hard promises
   const broken = all.flatMap((r) => r.broken.map((b) => `${r.spec.kind}/${r.spec.hand}/${r.spec.habit}/${r.spec.route}/s${r.spec.seed} t=${Math.round(b.t)}: ${b.what}`));
@@ -305,6 +361,12 @@ function report(all: Summary[], seeds: number[]): string {
   }
   const falls = N.map((r) => windows(r, 'sales').slice(1).filter((x, i, a) => i > 0 && x < a[i - 1]).length);
   L.push(`   normal goal A: windows under the one before (after minute 5): med ${med(falls)}, max ${Math.max(...falls)}`);
+  for (const [name, rs] of cols) {
+    if (!rs.length) continue;
+    const last = rs.map((r) => windows(r, 'sales')[11]);
+    const late = rs.map((r) => windows(r, 'sales').slice(6).filter((x, i, a) => i > 0 && x < a[i - 1]).length);
+    L.push(`   E31c ${name.padEnd(14)}: sales 55-60 >= §2,000 a minute on ${last.filter((x) => x >= 2000).length}/${rs.length} (med §${Math.round(med(last))}); a window after minute 30 under the one before: ${late.filter((x) => x === 0).length}/${rs.length} runs have none (med ${med(late)}, max ${Math.max(...late)})`);
+  }
   L.push('');
   // 3. tonnes, rank, cash, R through the hour
   L.push('3. THROUGH THE HOUR (normal goal A, median): supplied t, rank, cash §, rated capacity t/h, reserve §');
@@ -328,10 +390,15 @@ function report(all: Summary[], seeds: number[]): string {
       const i = ps.findIndex((p) => p.key === k);
       if (i < 0) return null;
       const prev = i > 0 ? ps[i - 1] : { t: 0, cashAfter: 0 };
-      return { t: ps[i].t, price: ps[i].price, held: prev.cashAfter / ps[i].price, wait: ps[i].t - prev.t };
-    }).filter((x): x is { t: number; price: number; held: number; wait: number } => !!x);
+      return { t: ps[i].t, price: ps[i].price, held: prev.cashAfter / ps[i].price, wait: ps[i].t - prev.t, atCard: (ps[i].cashAtCard ?? NaN) / ps[i].price, walk: ps[i].walkToBuy_s ?? NaN };
+    }).filter((x): x is { t: number; price: number; held: number; wait: number; atCard: number; walk: number } => !!x);
     if (!rows.length) continue;
-    L.push(`   ${k.padEnd(9)} §${pad(Math.round(med(rows.map((r) => r.price))), 6)}  ${mmss(med(rows.map((r) => r.t)))}  held ${med(rows.map((r) => r.held)).toFixed(2)}  waits>3min ${rows.filter((r) => r.wait > 180).length}/${rows.length} (max ${Math.round(Math.max(...rows.map((r) => r.wait)))} s)  bought ${rows.length}/${N.length}`);
+    L.push(`   ${k.padEnd(9)} §${pad(Math.round(med(rows.map((r) => r.price))), 6)}  ${mmss(med(rows.map((r) => r.t)))}  held ${med(rows.map((r) => r.held)).toFixed(2)}  cash at card ${med(rows.map((r) => r.atCard)).toFixed(2)} x  walk-to-buy med ${Math.round(med(rows.map((r) => r.walk)))} s max ${Math.round(Math.max(...rows.map((r) => r.walk).filter(Number.isFinite)))} s  waits>3min ${rows.filter((r) => r.wait > 180).length}/${rows.length} (max ${Math.round(Math.max(...rows.map((r) => r.wait)))} s)  bought ${rows.length}/${N.length}`);
+  }
+  for (const [name, rs] of cols) {
+    if (!rs.length) continue;
+    const w = rs.flatMap((r) => r.purchases.filter((p) => p.t <= 3600 && p.walkToBuy_s !== undefined).map((p) => p.walkToBuy_s!));
+    L.push(`   walk-to-buy at ${name.padEnd(14)} (every purchase of the hour): med ${Math.round(med(w))} s, max ${Math.round(Math.max(...w))} s over ${w.length} purchases`);
   }
   const gaps = N.map((r) => {
     const ts = [0, ...r.purchases.filter((p) => p.t <= 3600).map((p) => p.t)];
@@ -381,6 +448,31 @@ function report(all: Summary[], seeds: number[]): string {
     L.push(`   stop and return (earned on the away card, median; S13: above zero): ${ks.map((k) => `${k} §${Math.round(med(aw.map((a) => a[k])))} (zero on ${aw.filter((a) => !(a[k] > 0)).length})`).join(', ')}`);
   }
   L.push('');
+  const bs = N.map((r) => r.extra.burst as Record<string, { earned: number; ran_s: number; cash: number; left: number; leftSum: number; buys: number; buysSum: number; delivered: number }> | undefined).filter(Boolean) as Record<string, { earned: number; ran_s: number; cash: number; left: number; leftSum: number; buys: number; buysSum: number; delivered: number }>[];
+  if (bs.length) {
+    L.push('   E33 THE BURST (normal goal A, median): the away card, how long the yard ran, cash after it, and how much of the goal list that buys at once');
+    for (const k of ['5m+1h', '5m+4h', '5m+12h', '10m+4h', '15m+1h', '15m+4h', '15m+12h', '30m+4h', '30m+12h']) {
+      const xs = bs.map((b) => b[k]).filter(Boolean);
+      if (!xs.length) continue;
+      L.push(`   ${k.padEnd(8)} away §${pad(Math.round(med(xs.map((x) => x.earned))), 6)}  ran ${pad(Math.round(med(xs.map((x) => x.ran_s)) / 60), 4)} min  cash §${pad(Math.round(med(xs.map((x) => x.cash))), 6)}  buys ${med(xs.map((x) => x.buys))} of ${med(xs.map((x) => x.left))} goal purchases left (§${Math.round(med(xs.map((x) => x.buysSum)))} of §${Math.round(med(xs.map((x) => x.leftSum)))}; max ${Math.max(...xs.map((x) => x.buys))})  deal deliveries ${med(xs.map((x) => x.delivered))}`);
+    }
+  }
+  const nw = N.map((r) => r.extra.night as Record<string, number> | undefined).filter(Boolean) as Record<string, number>[];
+  if (nw.length) {
+    L.push(`   the Night watch's worth: what it adds to one 12 h absence (median, min-max): ${['15m+12h', '30m+12h', '60m+12h'].map((k) => `${k} §${Math.round(med(nw.map((x) => x[k])))} (${Math.round(Math.min(...nw.map((x) => x[k] ?? NaN)))}-${Math.round(Math.max(...nw.map((x) => x[k] ?? NaN)))})`).join(', ')}`);
+  }
+  L.push('');
+  // P20: minutes 5 to 10 at a person's hand
+  L.push("P20. MINUTES 5 TO 10 AT A PERSON'S HAND: what a minute of the boss's own work pays (today's value weighed by him / 5), the walks on foot");
+  for (const [name, rs] of cols) {
+    if (!rs.length) continue;
+    const pay = rs.map((r) => r.bossIns.filter((q) => q.t >= 300 && q.t < 600).reduce((a, q) => a + q.v, 0) / 5);
+    const longest = rs.map((r) => Math.max(0, ...r.walks.filter((q) => q.t >= 300 && q.t < 600).map((q) => q.m)));
+    const longestS = rs.map((r) => Math.max(0, ...r.walks.filter((q) => q.t >= 300 && q.t < 600).map((q) => q.s)));
+    const walkShare = rs.map((r) => r.walks.filter((q) => q.t >= 300 && q.t < 600).reduce((a, q) => a + q.s, 0) / 300);
+    L.push(`   ${name.padEnd(14)} § a minute of his work: med ${Math.round(med(pay))} (range ${Math.round(Math.min(...pay))}-${Math.round(Math.max(...pay))}); longest walk med ${med(longest).toFixed(1)} m / ${Math.round(med(longestS))} s (max ${Math.max(...longest).toFixed(1)} m); share of the five minutes on foot med ${(med(walkShare) * 100).toFixed(0)} %`);
+  }
+  L.push('');
   // 6. days
   const days = pick((s) => s.kind === 'days');
   if (days.length) {
@@ -427,7 +519,8 @@ async function main(): Promise<void> {
   }
   const unseen = arg('unseen') === 'true';
   const nSeeds = Number(arg('seeds', '15'));
-  const seeds = unseen ? [101, 102, 103, 104, 105] : Array.from({ length: nSeeds }, (_, i) => i + 1);
+  const first = Number(arg('first', '1'));
+  const seeds = unseen ? [101, 102, 103, 104, 105] : Array.from({ length: nSeeds }, (_, i) => i + first);
   const routes = Number(arg('routes', '2')) >= 2 ? ['A', 'B'] : ['A'];
   const only = (arg('only', 'beats,hand,away,days,nohand,gate') ?? '').split(',');
   const jobs = Number(arg('jobs', '2'));
@@ -451,6 +544,8 @@ async function main(): Promise<void> {
     }
     if (only.includes('nohand')) specs.push({ kind: 'nohand', minutes: 42, hand: 'normal', habit: 'goal', route: 'A', seed });
   }
+  // --handFirst: the what-if of REPORT6 (bot.ts BotOptions.handFirst), every run.
+  if (arg('handFirst') === 'true') for (const sp of specs) sp.handFirst = true;
   const all = await runAll(gameFile, specs, jobs);
   const json = arg('json');
   if (json) fs.writeFileSync(path.resolve(json), JSON.stringify(all));

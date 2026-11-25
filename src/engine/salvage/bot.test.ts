@@ -56,6 +56,22 @@ describe('salvage bots on the frozen content', () => {
     }
   });
 
+  it('the back wall (map.north) is solid: no path runs north of it, and a run never stands there', () => {
+    const c0 = cfg.salvage;
+    const ys = Object.values(c0.map.points).map((p) => p[1]);
+    const north = Math.min(...ys) - 0.5;
+    const walled = { ...cfg, salvage: { ...c0, map: { ...c0.map, north } } } as unknown as SalvageConfig;
+    const gr = graphOf(walled);
+    expect(gr.rects.some((r) => r.y1 >= north + 0.4 && r.x0 < 0 && r.x1 > c0.yard.width)).toBe(true);
+    const from = { x: c0.map.points.scale[0], y: c0.map.points.scale[1] };
+    for (const p of Object.values(c0.map.points)) for (const q of pathOf(gr, from, { x: p[0], y: p[1] })) expect(q.y).toBeGreaterThan(north);
+    const b = newBot(walled, startGame(walled, NOW), NOW, { hand: 'normal', habit: 'goal', route: 'A', seed: 3 });
+    let minY = Infinity;
+    playTo(b, 120, (bb) => (minY = Math.min(minY, bb.g.salvage.presence.y)));
+    expect(minY).toBeGreaterThan(north);
+    expect(b.rec.broken).toEqual([]);
+  });
+
   it('ticking equals jumping on a state the bot reached (2.14 gate)', () => {
     const b = run(3);
     expect(tickJumpGate(cfg, b.g, b.now, 30)).toBeNull();
