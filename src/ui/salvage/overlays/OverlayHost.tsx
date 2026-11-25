@@ -25,7 +25,7 @@ import { steeringNow } from './backGuard';
 import { useCards, type OfficeTab } from './cardStack';
 import { CentredCard } from './CentredCard';
 import { useFontScale } from '../hud/fontScale';
-import { devCard } from './devOpen';
+import { devCard, devCardDelay } from './devOpen';
 import { frameLayout, type Insets } from './layout';
 import { Machine } from './Machine';
 import { Office } from './Office';
@@ -161,7 +161,7 @@ export function OverlayHost({ width, height, insets }: { width: number; height: 
   useEffect(() => {
     const d = devCard();
     if (!d) return;
-    const t = setTimeout(() => useCards.getState().open(d.ref, d.tab), 600);
+    const t = setTimeout(() => useCards.getState().open(d.ref, d.tab), devCardDelay());
     return () => clearTimeout(t);
   }, []);
 

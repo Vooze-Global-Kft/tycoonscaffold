@@ -93,9 +93,8 @@ export function rotaRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
     if (gate) out.push(row(`${r.role}.next`, { key: r.name }, gate, null, { key: r.effect }));
     else out.push(row(`${r.role}.next`, { key: r.name }, { key: r.effect }, buyButton(cfg, g, next, 'hire', r.role)));
   }
-  if (itemOf(cfg, 'night')) {
-    const cap = cfg.salvage.awayCap_h;
-    const line: Txt = { key: 'card.nightWatch', args: { a: { n: cap[0] }, b: { n: cap[1] } } };
+  if (itemOf(cfg, 'night') && (g.salvage.beenAway || g.salvage.owned.includes('night'))) {
+    const line: Txt = R.nightWatchLine(cfg, g);
     out.push(row('night', { key: 'item.night' }, line, g.salvage.owned.includes('night') ? null : buyButton(cfg, g, 'night'), g.salvage.owned.includes('night') ? null : { key: 'effect.night' }));
   }
   return out;

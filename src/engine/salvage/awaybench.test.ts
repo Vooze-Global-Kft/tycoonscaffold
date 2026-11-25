@@ -20,7 +20,7 @@ function realCfg(): SalvageConfig {
   const raw = JSON.parse(fs.readFileSync(new URL('../../../games/scrap-yard/game.json', import.meta.url), 'utf8'));
   const salvage = SalvageSchema.parse(raw.salvage) as Record<string, unknown>;
   // Six hours on every rung (whatever E33's caps are tuned to): the bench measures six hours.
-  const lifted = { ...salvage, awayCap_h: [6, 6], ...('awayCapByRung_h' in salvage ? { awayCapByRung_h: [6, 6, 6], nightWatch_h: 0 } : {}) };
+  const lifted = { ...salvage, awayCapByRung_h: [6, 6, 6], nightWatch_h: 0 };
   return { mode: 'salvage', salvage: lifted } as unknown as SalvageConfig;
 }
 

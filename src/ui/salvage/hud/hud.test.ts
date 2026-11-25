@@ -9,7 +9,7 @@ import { FIXTURE_NOW, SALVAGE_TEST, fixtureGame } from '../../../engine/fixtures
 import * as R from '../../../engine/salvage';
 import type { GameState } from '../../../engine/types';
 import { createPump, type PumpEffects } from './pump';
-import { avoidRect, cashCoinPoint, cashFit, cashSlotNeed, CASH_WIDEST, fitText, hudScale, overlaps, placeFromSlot, underCash, hudLayout, MIN_PT, pickForm, placeTicket, textW, ticketHeight } from './metrics';
+import { avoidRect, cashCoinPoint, cashFit, cashSlotNeed, CASH_WIDEST, fitText, hudScale, overlaps, placeFromSlot, underCash, hudLayout, MIN_PT, pickForm, placeTicket, textW, ticketFade, ticketHeight, TICKET_UNDER_BOSS } from './metrics';
 import { crewWeighInChip, dealChip, lotSoldChip, MAX_ROWS, planTicket, slipText, ticketView } from './ticketView';
 import { barMoney, toastText } from './words';
 import { barValues, carryText, goalValues, ladderForms } from './words';
@@ -404,5 +404,19 @@ describe('the fix pass (H4): sound segments after the background', () => {
     p.reseed({ t: 10, things: [{ uid: 'd1', obj: 'washer', by: 'cutter.1' }], boss: { tool: null }, crew: [{ id: 'cutter.1', tool: 'torch' }], machines: [{ machine: 'crucible', look: 'heating', span: { t0: 5, t1: 65 } }] });
     expect(p.segments()).toEqual(expect.arrayContaining(['amb_yard', 'cut_torch', 'furnace_roar']));
     now += 1;
+  });
+});
+
+describe('desk2: a ticket fades while the boss walks under it (P8/L4)', () => {
+  it('about 40 % while his live box overlaps the ticket, 1 when he has passed or is off screen; the ticket is not moved', () => {
+    const t = { x: 300, y: 120, w: 180, h: 90 };
+    expect(ticketFade(t, { x: 350, y: 150, w: 30, h: 60 })).toBe(TICKET_UNDER_BOSS);
+    expect(TICKET_UNDER_BOSS).toBeCloseTo(0.4);
+    expect(ticketFade(t, { x: 470, y: 200, w: 30, h: 60 })).toBe(TICKET_UNDER_BOSS); // a corner under it
+    expect(ticketFade(t, { x: 490, y: 150, w: 30, h: 60 })).toBe(1); // passed east
+    expect(ticketFade(t, { x: 350, y: 220, w: 30, h: 60 })).toBe(1); // below it
+    expect(ticketFade(t, null)).toBe(1);
+    expect(ticketFade(t, { x: 350, y: 150, w: 0, h: 60 })).toBe(1);
+    expect(t).toEqual({ x: 300, y: 120, w: 180, h: 90 });
   });
 });

@@ -507,7 +507,7 @@ const DealSchema = z.object({
   trust: z.object({ up: z.number().default(10), down: z.number().default(15), start: z.number().default(50) }).default({ up: 10, down: 15, start: 50 }),
 });
 const ForemanSchema = z.object({ boost: z.number().nonnegative().default(0.25), windowS: z.number().positive().default(60), minutesPerDay: z.number().nonnegative().default(45) });
-/** Time away (2.16): a gap over gapS seconds goes to the away pass (above the longest UI stall: 10 s; types.ts MAX_TICK); caps from `awayCap_h`. */
+/** Time away (2.16): a gap over gapS seconds goes to the away pass (above the longest UI stall: 10 s; types.ts MAX_TICK); caps from `awayCapByRung_h` and `nightWatch_h` (E33). */
 /**
  * `cardS`: the away CARD needs a real absence (join2, seam a): a gap of at most cardS seconds (a JS stall: the
  * yard bake under the loading curtain, a slow frame) still runs the pass silently, the yard simply ran on.
@@ -598,12 +598,10 @@ export const SalvageSchema = z.object({
   ladder: LadderSchema,
   /** Capacity guards at rungs 1 to 3, t/h. */
   ceilings_t_h: z.array(z.number().positive()).length(3),
-  /** Away cap, hours: [without, with the Night watch]. */
-  awayCap_h: z.tuple([z.number().positive(), z.number().positive()]).default([4, 6]),
-  /** E33 (rules-sim-a, 19:50): the away cap by rung, hours ([rung 1, rung 2, rung 3, ...]; the last holds beyond). Absent: awayCap_h[0]. */
-  awayCapByRung_h: z.array(z.number().positive()).min(1).optional(),
-  /** E33: hours the Night watch adds to the away cap on any rung. Absent: awayCap_h[1] − awayCap_h[0]. */
-  nightWatch_h: z.number().nonnegative().optional(),
+  /** E33 (rules-sim-a, 19:50): the away cap by rung, hours ([rung 1, rung 2, rung 3, ...]; the last holds beyond). */
+  awayCapByRung_h: z.array(z.number().positive()).min(1),
+  /** E33: hours the Night watch adds to the away cap on any rung. */
+  nightWatch_h: z.number().nonnegative(),
   rivals: RivalsSchema,
 
   // part one's keys (yard-stage1.md 2.1 to 2.11)

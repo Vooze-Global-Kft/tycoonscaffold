@@ -5,3 +5,7 @@ import type { OfficeTab } from './cardStack';
 export function devCard(): { ref: CardRef; tab?: OfficeTab } | null {
   return null;
 }
+
+export function devCardDelay(): number {
+  return 600;
+}

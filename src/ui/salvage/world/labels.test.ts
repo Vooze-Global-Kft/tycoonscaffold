@@ -16,7 +16,7 @@ import * as E from '../../../engine/economy';
 import { FIXTURE_NAMES, FIXTURE_NOW, fixtureGame, withTestContent } from '../../../engine/fixtures/salvage';
 import * as R from '../../../engine/salvage';
 import { hudLayout } from '../hud/metrics';
-import { LABEL_PT, LIMITS, labelItems, labelSize, layoutPlates, mergePlates, plateFits, plateHidden, skipPlate, type LabelItem, type PlacedLabel, type PlateScene, type Rect } from './labels';
+import { LABEL_PT, LIMITS, labelItems, labelSize, layoutPlates, lockGroup, mergePlates, plateFits, plateHidden, skipPlate, type LabelItem, type PlacedLabel, type PlateScene, type Rect } from './labels';
 
 const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'games', 'scrap-yard', 'game.json'), 'utf8'));
 const cfg = withTestContent(GameConfigSchema.parse(raw));
@@ -223,8 +223,18 @@ describe('the plates\' layout (L3, P7)', () => {
     expect(merged[0].count).toBe(5);
     expect(merged[0].lines[0].text).toBe('Needs a sledgehammer · 5');
     expect(merged[0].x).toBeCloseTo(53);
+    // desk2 (L3's rest): the tipping floor's things (uids f<n>) and the drop-off's (d<n>) are piles too:
+    // identical chips of one pile are one plate; the floor's and the drop-off's never merge with each other.
+    const fl = (id: string, n: number): LabelItem => ({ ...mk(n), id: `lock.${id}`, of: id, lines: [{ text: 'Needs the hammer and grinder', tone: 'ink', max: 38 }] });
+    const tip = mergePlates([fl('f0', 0), fl('f1', 1), fl('f2', 2), fl('f3', 3), fl('f4', 4), fl('f5', 5), fl('d1', 6), fl('d2', 7)], cfg.salvage);
+    expect(tip.length).toBe(2);
+    expect(tip[0].lines[0].text).toBe('Needs the hammer and grinder · 6');
+    expect(tip[0].id).toBe('lock.floor.x6');
+    expect(tip[1].lines[0].text).toBe('Needs the hammer and grinder · 2');
+    expect(mergePlates([fl('f0', 0)], cfg.salvage)[0].lines[0].text).toBe('Needs the hammer and grinder');
     // Inside a zone that wears its own padlock the things' chips go.
     expect(mergePlates([{ ...mk(1), id: 'lock.Z2.a' }], cfg.salvage, new Set(['Z2']))).toEqual([]);
+    expect([lockGroup('Z2.washer.3'), lockGroup('f12'), lockGroup('d3'), lockGroup('x')]).toEqual(['Z2', 'floor', 'dropoff', 'x']);
   });
 
   it('a plate whose thing is off screen, or that cannot stand whole anywhere, is not shown', () => {

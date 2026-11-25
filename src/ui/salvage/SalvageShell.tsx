@@ -200,7 +200,7 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
       {HERO.store ? null : <StickKnob />}
       {HERO.store ? null : <HintLayer cfg={cfg} width={width} height={height} insets={insets} zone={zoneRef.current} used={used} active={active} />}
       {HERO.store ? null : <Autoplay cfg={cfg} zone={zoneRef.current} />}
-      {shut ? null : <HudLayer cfg={cfg} L={L} camera={anim.camera} yard={yard} />}
+      {shut ? null : <HudLayer cfg={cfg} L={L} camera={anim.camera} yard={yard} body={anim.body} />}
       {/* The store's hero picture shows no one button either (world-b, L2). */}
       {shut || HERO.store ? null : <OneButton cfg={cfg} L={L} hidden={overlays > 0} onStepOut={() => (anim.exit.value = 1)} />}
       {/* Coins fly over the bars to the cash counter (world-b's layer; touch-through, runs only while one flies). */}

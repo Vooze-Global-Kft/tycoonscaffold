@@ -12,15 +12,15 @@ import { GoalCard } from './GoalCard';
 import type { HudLayout } from './metrics';
 import { OneButton } from './OneButton';
 import { BarText } from './Paper';
-import { Tickets, type Camera } from './Tickets';
+import { Tickets, type Body, type Camera } from './Tickets';
 import { Toasts } from './Toasts';
 import { CashDebit, TopBar } from './TopBar';
 
 /** The bars, tickets and toasts (under the overlays). */
-export function HudLayer({ cfg, L, camera, yard }: { cfg: SalvageConfig; L: HudLayout; camera: Camera; yard: YardLayout }) {
+export function HudLayer({ cfg, L, camera, yard, body }: { cfg: SalvageConfig; L: HudLayout; camera: Camera; yard: YardLayout; body?: Body }) {
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <Tickets cfg={cfg} L={L} camera={camera} yard={yard} />
+      <Tickets cfg={cfg} L={L} camera={camera} yard={yard} body={body} />
       <TopBar cfg={cfg} L={L} />
       <GoalCard cfg={cfg} L={L} />
       <CashDebit cfg={cfg} L={L} />

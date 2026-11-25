@@ -11,6 +11,7 @@ import { marketDay, marketTime, priceBoard, priceOf } from './board';
 import { goalListOf, goalOf as goalOfCfg } from './goals';
 import { buyCheck, crewKeys, gateRefusal, hireCheck, itemName, levelAddsKgMin, levelCheck, refusalTxt, route, rungSign, shopItem, shopItems, type PurchaseCheck } from './ladder';
 import { driverRoundF, machineShares } from './content';
+import { awayCapH } from './away';
 import { roundMoney } from './money';
 import { lastPassed, tableOf } from './rivals';
 import type {
@@ -151,6 +152,12 @@ function bestToolKey(c: SalvageContent, g: SalvageGame): string | null {
 
 const ROLES: CrewRole[] = ['hand', 'cutter', 'driver'];
 
+/** The Night watch's line (E33): 'Runs while away: {a} h -> {b} h', a and b from awayCapH, the helper the away pass applies. */
+export function nightWatchLine(cfg: SalvageConfig, g: SalvageGame): Txt {
+  const rung = g.salvage.ladder.rung;
+  return { key: 'card.nightWatch', args: { a: { n: awayCapH(cfg.salvage, rung, false) }, b: { n: awayCapH(cfg.salvage, rung, true) } } };
+}
+
 /** The rota (4.3): the licence; per role each hired member (name, level, rate, Level), the next place (Hire, or its condition); the driver's "kept for the next load"; the Night watch. */
 function rotaRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
   const c = cfg.salvage;
@@ -178,7 +185,8 @@ function rotaRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
   }
   const res = reserve(cfg, g);
   if (s.crew.some((m) => m.role === 'driver')) out.push(row('reserve', { key: 'card.keptForLoad', args: { x: { money: res } } }, null, null, 'info'));
-  if (shopItem(c, 'night')) out.push(shopRow(cfg, g, 'night', 'effect.night', { key: 'card.nightWatch', args: { a: { n: c.awayCap_h[0] }, b: { n: c.awayCap_h[1] } } }));
+  // E33: this rung's own hours from the away pass's helper (a = the cap now, b = with the Night watch); offered after the first absence (the content's why).
+  if (shopItem(c, 'night') && (s.beenAway || s.owned.includes('night'))) out.push(shopRow(cfg, g, 'night', 'effect.night', nightWatchLine(cfg, g)));
   return out;
 }
 

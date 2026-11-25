@@ -31,6 +31,8 @@ import type { HintDemo } from './autoplay';
 import { dragDir, ghostHome, spotOf, type HintView } from './rules';
 import { teachOf } from './teach';
 
+let probeTimer: ReturnType<typeof setInterval> | null = null;
+
 export type { HintDemo } from './autoplay';
 
 function query(): URLSearchParams | null {
@@ -163,6 +165,15 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
       const prev = demoTimer;
       demoTimer = goalTimer;
       if (prev) clearInterval(prev);
+    }
+    // desk2: `?probe=body` logs the rules' clock (yard seconds) and the boss's presence four times a second
+    // (`[probe] t=.. x=.. y=.. drv=..`), to time the truck over a stretch of lane in yard seconds.
+    if (q?.get('probe') === 'body' && !probeTimer) {
+      probeTimer = setInterval(() => {
+        const g = useGame.getState().game as R.SalvageGame;
+        const p = g?.salvage?.presence;
+        if (p) console.log(`[probe] t=${g.salvage.t.toFixed(2)} x=${p.x.toFixed(2)} y=${p.y.toFixed(2)} drv=${p.driving ? 1 : 0} wall=${Date.now()}`);
+      }, 250);
     }
     if (q?.get('autoplay') !== 'opening') return () => (demoTimer ? clearInterval(demoTimer) : undefined);
     const route = ROUTES[q.get('route') ?? '1'] ?? ROUTES['1'];

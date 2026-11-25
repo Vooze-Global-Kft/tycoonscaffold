@@ -20,9 +20,8 @@ const DAY_MS = 86_400_000;
 /** E33: the away cap in hours on rung `rung` (1-based) with or without the Night watch. */
 export function awayCapH(c: SalvageConfig['salvage'], rung: number, night: boolean): number {
   const by = c.awayCapByRung_h;
-  const base = by && by.length ? by[Math.min(by.length, Math.max(1, Math.floor(rung))) - 1] : c.awayCap_h[0];
-  const add = c.nightWatch_h ?? Math.max(0, c.awayCap_h[1] - c.awayCap_h[0]);
-  return base + (night ? add : 0);
+  const base = by[Math.min(by.length, Math.max(1, Math.floor(rung))) - 1];
+  return base + (night ? c.nightWatch_h : 0);
 }
 
 /** The away cap, seconds (E33): the rung's cap (awayCapByRung_h), plus nightWatch_h with the Night watch. */
@@ -34,7 +33,7 @@ export function awayCapS(cfg: SalvageConfig, g: SalvageGame): number {
 export function runLongerOf(cfg: SalvageConfig, g: SalvageGame, capS: number): AwayCard['runLonger'] {
   const c = cfg.salvage;
   const night = g.salvage.owned.includes('night');
-  const by = c.awayCapByRung_h ?? [];
+  const by = c.awayCapByRung_h;
   for (let r = g.salvage.ladder.rung + 1; r <= by.length; r++) {
     const h = awayCapH(c, r, night) * 3600;
     if (h > capS + 1e-6) return { rung: r, capS: h };

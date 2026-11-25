@@ -106,9 +106,9 @@ describe('E33: the away cap grows with the rung', () => {
     expect(a.runLonger).toEqual({ rung: 2, capS: 2 * 3600 });
     expect(out.salvage.t - g.salvage.t).toBeCloseTo(1800, 6);
   });
-  it('without awayCapByRung_h the old caps hold (awayCap_h)', () => {
+  it('a one-rung list holds on every rung (the test content: 4 h, Night watch + 2 h)', () => {
     const g = m30();
-    expect(awayCapS(cfg, g)).toBe(SALVAGE_TEST.awayCap_h[g.salvage.owned.includes('night') ? 1 : 0] * 3600);
+    expect(awayCapS(cfg, g)).toBe((SALVAGE_TEST.awayCapByRung_h[0] + (g.salvage.owned.includes('night') ? SALVAGE_TEST.nightWatch_h : 0)) * 3600);
   });
 });
 

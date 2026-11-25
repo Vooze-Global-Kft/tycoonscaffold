@@ -28,7 +28,7 @@ export { frameCfg as frame, loadFamily, pieceAt, specIndex, toolFor } from './sa
 export { tickets } from './salvage/tickets';
 // rules-book, fix pass (W11, P3, P17, S10, W15): new selectors, add only.
 export { fmtMoneyExact } from './salvage/money';
-export { awayView, inOutTxt, levelFact, type AwayView } from './salvage/cards';
+export { awayView, inOutTxt, levelFact, nightWatchLine, type AwayView } from './salvage/cards';
 export { rungProgress, rungTiles, type RungProgress, type RungTile } from './salvage/ladder';
 export { converterLineCfg as converterLine, printedNo } from './salvage/tickets';
 export { reconcileSalvage } from './salvage/save';

@@ -228,13 +228,14 @@ export function labelItems(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTab
  * ("Needs a sledgehammer · 5") at the middle of their things.
  */
 export function mergePlates(items: LabelItem[], c: Content, lockedZones: ReadonlySet<string> = new Set()): LabelItem[] {
+  const zoneOf = (it: LabelItem) => lockGroup(it.id.slice(5));
   const padAt = new Set(items.filter((i) => i.id.startsWith('pad.') && i.at).map((i) => i.at as string));
   const out: LabelItem[] = [];
   const groups = new Map<string, LabelItem[]>();
   for (const it of items) {
     if (it.kind === 'place' && it.at && padAt.has(it.at)) continue;
     if (it.id.startsWith('lock.')) {
-      const zone = it.id.slice(5).split('.')[0];
+      const zone = zoneOf(it);
       if (lockedZones.has(zone)) continue;
       const k = `${zone}|${it.lines.map((l) => l.text).join('|')}`;
       const list = groups.get(k);
@@ -249,7 +250,7 @@ export function mergePlates(items: LabelItem[], c: Content, lockedZones: Readonl
   }
   return out.map((it) => {
     if (!it.id.startsWith('lock.')) return it;
-    const zone = it.id.slice(5).split('.')[0];
+    const zone = zoneOf(it);
     const list = groups.get(`${zone}|${it.lines.map((l) => l.text).join('|')}`) ?? [it];
     if (list.length < 2) return it;
     const x = list.reduce((a, q) => a + q.x, 0) / list.length;
@@ -258,6 +259,18 @@ export function mergePlates(items: LabelItem[], c: Content, lockedZones: Readonl
     const words = say({ key: 'chip.count', args: { n: { n: list.length } } }, c).replace('{what}', it.lines[0].text);
     return { ...it, id: `lock.${zone}.x${list.length}`, x, y, z, lines: [line(words || it.lines[0].text, LIMITS.padlock)], of: null, count: list.length, near: list.every((q) => q.near) };
   });
+}
+
+/**
+ * The pile a locked thing's chip belongs to (desk2, L3's rest): a zone's things (`Z2.washer.3`) their zone;
+ * the tipping floor's things (`f12`, truck.ts) 'floor'; the public drop-off's (`d3`, things.ts) 'dropoff';
+ * anything else its own uid (never merged).
+ */
+export function lockGroup(uid: string): string {
+  if (uid.includes('.')) return uid.split('.')[0];
+  if (/^f\d+$/.test(uid)) return 'floor';
+  if (/^d\d+$/.test(uid)) return 'dropoff';
+  return uid;
 }
 
 /** A skip's plate (2.7): header, up to three thing lines and "+ n more", net and price, the refusal. */

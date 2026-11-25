@@ -4,6 +4,7 @@
  * - `card=rack | office | partners | processBoard | stripper | bench | crucible | table | board | clipboard | away | deal`
  *   (a place's card, or the office at a tab); `card=skip | rung | settings | help | bay:<grade>` (the market's
  *   cards: the farm's skip, the rung-2 sign, settings, help, a bay's card = the board at that grade's row);
+ * - `cardAt=<ms>`: open it that long after load instead of 600 ms (e.g. after the away card has been closed).
  */
 import type { CardRef } from '../../../engine/salvage';
 import type { OfficeTab } from './cardStack';
@@ -14,6 +15,12 @@ function query(): URLSearchParams | null {
   } catch {
     return null;
   }
+}
+
+/** How long after load the ?card= switch opens its card (ms). */
+export function devCardDelay(): number {
+  const n = Number(query()?.get('cardAt') ?? 600);
+  return Number.isFinite(n) && n >= 0 ? n : 600;
 }
 
 export function devCard(): { ref: CardRef; tab?: OfficeTab } | null {

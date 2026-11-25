@@ -21,7 +21,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import * as R from '../../../engine/salvage';
 import { PAL } from '../palette';
 import { openCard } from '../overlays/cardStack';
@@ -31,7 +31,7 @@ import type { YardLayout } from '../world/yard';
 import { useGame } from '../../../state/store';
 import { loadingClock } from '../loading/clock';
 import { goalRect, hudAnchors, ticketBoxes } from './anchors';
-import { lessonOnTicket, lineH, onScreen, overlaps, placeFromSlot, placeTicket, textW, TICKET_PT, underCash, type HudLayout } from './metrics';
+import { lessonOnTicket, lineH, onScreen, overlaps, placeFromSlot, placeTicket, textW, ticketFade, TICKET_PT, underCash, type HudLayout } from './metrics';
 import { BarText } from './Paper';
 import { yardEvents } from './pump';
 import { printerSlot, type WorldPoint } from './slots';
@@ -45,6 +45,12 @@ const CHIP_Z = 1.6;
 /** The boss's sprite box round his feet (metres): half its width, its height. */
 const BOSS_HALF_W = 0.5;
 const BOSS_H = 1.9;
+/** The boss's box at the wheel (metres): the truck's half length on screen and its height (the fade only). */
+const TRUCK_HALF_W = 2.4;
+const TRUCK_H = 2.8;
+
+/** The boss's body as the frame loop writes it (world metres; driving 1 at the wheel). */
+export type Body = SharedValue<{ x: number; y: number; driving: number }>;
 /** A queued ticket older than this when its turn comes is dropped (it is in the clipboard's history). */
 const STALE_MS = 9000;
 
@@ -76,7 +82,7 @@ export function project(x: number, y: number, z: number, cam: { x: number; y: nu
  * Every world ticket folds away while a card is open (L4); what was waiting then is dropped (the
  * clipboard keeps the history).
  */
-export function Tickets({ cfg, L, camera, yard }: { cfg: R.SalvageConfig; L: HudLayout; camera: Camera; yard: YardLayout }) {
+export function Tickets({ cfg, L, camera, yard, body }: { cfg: R.SalvageConfig; L: HudLayout; camera: Camera; yard: YardLayout; body?: Body }) {
   const c = cfg.salvage;
   const [cur, setCur] = useState<Slot | null>(null);
   const queue = useRef<Slot[]>([]);
@@ -210,7 +216,7 @@ export function Tickets({ cfg, L, camera, yard }: { cfg: R.SalvageConfig; L: Hud
     };
   }, [c, cfg, camera, yard, L.width, L.height, L.s]);
 
-  return cur ? <Anchored key={cur.id} slot={cur} L={L} camera={camera} yard={yard} c={c} /> : null;
+  return cur ? <Anchored key={cur.id} slot={cur} L={L} camera={camera} yard={yard} c={c} body={body} /> : null;
 }
 
 /**
@@ -260,7 +266,7 @@ function placeOf(a: Anchor, w: number, h: number, cam: { x: number; y: number; z
 }
 
 /** A ticket or chip at its anchor, following the camera each frame, feeding out of its slot (or rising in). */
-function Anchored({ slot, L, camera, yard, c }: { slot: Slot; L: HudLayout; camera: Camera; yard: YardLayout; c: R.SalvageContent }) {
+function Anchored({ slot, L, camera, yard, c, body }: { slot: Slot; L: HudLayout; camera: Camera; yard: YardLayout; c: R.SalvageContent; body?: Body }) {
   const s = L.s;
   const { w, h, plan } = sizeOf(slot, L, c);
   const rise = useSharedValue(0);
@@ -272,10 +278,27 @@ function Anchored({ slot, L, camera, yard, c }: { slot: Slot; L: HudLayout; came
   const W = L.width;
   const H = L.height;
   const a = slot.anchor;
+  // desk2 (P8/L4's rest): while the boss's LIVE box overlaps the ticket it fades to 40 % (and back), never moves.
+  const fade = useSharedValue(1);
+  useAnimatedReaction(
+    () => {
+      if (!body) return 1;
+      const r = placeOf(a, w, h, camera.value, goalRect.value, box, W, H, ppm, tilt, lift);
+      const b = body.value;
+      const hw = b.driving === 1 ? TRUCK_HALF_W : BOSS_HALF_W;
+      const bh = b.driving === 1 ? TRUCK_H : BOSS_H;
+      const p0 = project(b.x - hw, b.y, 0, camera.value, W, H, ppm, tilt, lift);
+      const p1 = project(b.x + hw, b.y, bh, camera.value, W, H, ppm, tilt, lift);
+      return ticketFade({ x: r.x, y: r.y, w, h }, { x: p0.x, y: p1.y, w: p1.x - p0.x, h: p0.y - p1.y });
+    },
+    (target, prev) => {
+      if (target !== prev) fade.value = withTiming(target, { duration: 220 });
+    },
+  );
   const style = useAnimatedStyle(() => {
     const r = placeOf(a, w, h, camera.value, goalRect.value, box, W, H, ppm, tilt, lift);
     const k = 1 - rise.value;
-    return { opacity: Math.min(1, rise.value * 1.6), transform: [{ translateX: r.x + r.fx * k }, { translateY: r.y + r.fy * k + (a.kind === 'slot' ? 0 : k * 14) }] };
+    return { opacity: Math.min(1, rise.value * 1.6) * fade.value, transform: [{ translateX: r.x + r.fx * k }, { translateY: r.y + r.fy * k + (a.kind === 'slot' ? 0 : k * 14) }] };
   });
   // world-b hides a plate under a ticket (L3/P7): the ticket's box when it shows (not per frame), cleared when it folds.
   useEffect(() => {

@@ -291,6 +291,19 @@ export function overlaps(a: Rect, b: Rect, gap = 0): boolean {
   return a.x < b.x + b.w + gap && a.x + a.w + gap > b.x && a.y < b.y + b.h + gap && a.y + a.h + gap > b.y;
 }
 
+/** A ticket's opacity while the boss walks under it (desk2, P8/L4's rest): he is always seen. */
+export const TICKET_UNDER_BOSS = 0.4;
+
+/**
+ * The opacity a ticket standing at `ticket` takes this frame (a worklet; the ticket is NOT moved): about
+ * 40 % while the boss's LIVE screen box overlaps it, 1 otherwise. `boss` null (not on screen): 1.
+ */
+export function ticketFade(ticket: Rect, boss: Rect | null): number {
+  'worklet';
+  if (!boss || boss.w <= 0 || boss.h <= 0) return 1;
+  return overlaps(ticket, boss) ? TICKET_UNDER_BOSS : 1;
+}
+
 /**
  * Where a ticket of w × h goes when it feeds out of a printer slot at (sx, sy) (findings L4, P8, W17; the
  * proof's ticketOutOfSlot): on the side of the slot AWAY from `keep` (the boss's sprite box, the truck's
