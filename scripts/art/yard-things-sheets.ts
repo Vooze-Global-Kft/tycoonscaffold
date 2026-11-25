@@ -76,25 +76,28 @@ export async function thingsSheets(
   if (want('pieces')) {
     const ground = MT.THINGS.filter((e) => e.group === 'piece' && !e.id.endsWith('.carried') && !e.id.endsWith('.bay')).map((e) => e.id);
     await flow('things-pieces.png', 'Pieces on the ground (true size), ingots hot to cold and the heel', ground, 900);
-    const small = MT.THINGS.filter((e) => e.id.endsWith('.carried') || e.id.endsWith('.bay')).map((e) => e.id);
-    await flow('things-pieces-small.png', 'Pieces carried (0.8) and in a bay heap (0.6)', small, 900, false);
+    const small = MT.THINGS.filter((e) => e.id.endsWith('.carried')).map((e) => e.id);
+    await flow('things-pieces-small.png', 'Pieces carried (0.8 of true size)', small, 900, false);
   }
   if (want('heaps')) {
     const ids = MT.THINGS.filter((e) => e.group === 'heap').map((e) => e.id);
     await flow('things-heaps.png', 'Bay heaps by grade at five fill levels; the old stock\'s beds (zone 1, 2, 3; full, low)', ids, 900);
   }
   if (want('things-ui')) {
-    await write('things-ui.png', 520, 260, (c) => {
+    await write('things-ui.png', 520, 290, (c) => {
       title(c, 'The skip card (from above: empty, trial load, full) and the 10 pt grade pictograms');
-      ['ui.skip.farm', 'ui.skip.demolition'].forEach((id, r) =>
-        [0, 1, 2].forEach((f) => {
-          drawTrue(c, id, f, 70 + f * 100, 70 + r * 60);
-          caption(c, `${id.split('.')[2]} ${byId(id).frames[f]}`, 70 + f * 100, 70 + r * 60 + 30);
+      // the skip card's plan, drawn directly (no atlas sprite)
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const HP = require('../../src/ui/salvage/art/heaps.draw') as typeof import('../../src/ui/salvage/art/heaps.draw');
+      (['partnerFarm', 'partnerDemolition'] as const).forEach((p, r) =>
+        (['empty', 'trial', 'full'] as const).forEach((l, f) => {
+          HP.drawSkipPlan(c, p, l, 80 + f * 150, 70 + r * 70, 110, r ? 4 : 2);
+          caption(c, `${p} ${l}`, 80 + f * 150, 70 + r * 70 + 38);
         }),
       );
       Object.keys(MT.GRADE_SPRITE).forEach((g, i) => {
         const x = 30 + (i % 11) * 44;
-        const y = 200 + Math.floor(i / 11) * 34;
+        const y = 220 + Math.floor(i / 11) * 34;
         drawTrue(c, `ui.picto.${g}`, 0, x, y);
         caption(c, g, x, y + 16);
       });
@@ -125,8 +128,7 @@ export async function thingsSheets(
         kinds.forEach(([name, id], i) => {
           const x = 50 + i * 90;
           drawTrue(c, id, 0, x, y);
-          drawTrue(c, `${id}.bay`, 0, x - 18, y + 46);
-          drawTrue(c, `${id}.carried`, 0, x + 18, y + 46);
+          drawTrue(c, `${id}.carried`, 0, x, y + 46);
           caption(c, name, x, y + 72);
         });
       row(70);

@@ -32,7 +32,7 @@ const INK = YARD.ink;
 /** Body tones of the pieces, derived from YARD and METAL (no second palette). */
 export const TONE = {
   /** heavy steel: dark mill scale (~20 L*), its top a little lighter, cut faces bright */
-  steel: mix(shade(METAL.hms.dark, -0.5), YARD.steelDark, 0.25),
+  steel: shade(mix(shade(METAL.hms.dark, -0.5), YARD.steelDark, 0.25), -0.12),
   steelTop: mix(shade(METAL.hms.dark, -0.3), YARD.steelDark, 0.3),
   steelCut: METAL.light_iron.light,
   /** bare bright copper (~46 L*) */
@@ -91,16 +91,25 @@ function loop(c: SkCanvas, cx: number, cy: number, rx: number, ry: number, w: nu
 
 /** A bundle of bare bright wire: three thick loose loops, a galvanised tie, the sheen ticks. */
 export function wireBundle(c: SkCanvas, s: number, seed = 0): void {
-  const rx = s * 0.36;
-  const ry = rx * 0.58;
-  const w = Math.max(2.2, s * 0.16);
-  for (let i = 0; i < 3; i++)
-    loop(c, (i - 1) * s * 0.09 + (hash01(seed, i) - 0.5) * s * 0.05, (1 - i) * s * 0.06, rx * (0.92 + 0.08 * i), ry, w, i === 2 ? shade(TONE.copper, 0.1) : TONE.copper);
-  // the bright top edge of the near loop
-  c.drawPath(builder().addArc({ x: s * 0.09 - rx, y: -s * 0.06 - ry - w * 0.25, width: rx * 2, height: ry * 2 }, 200, 120).build(), stroke(TONE.copperHi, Math.max(0.9, w * 0.3)));
-  c.drawPath(segment(-rx * 0.75, -ry * 0.9, -rx * 0.55, ry * 0.95), stroke(INK, 2.8));
-  c.drawPath(segment(-rx * 0.75, -ry * 0.9, -rx * 0.55, ry * 0.95), stroke(YARD.galvanisedLight, 1.4));
-  copperTicks(c, rx * 0.35, -ry * 0.85, s * 0.28);
+  const rx = s * 0.4;
+  const ry = rx * 0.72;
+  const w = Math.max(1.5, s * 0.085);
+  // four open loops of thick wire, fanned, so the gaps between them show (never a solid disc)
+  for (let i = 0; i < 4; i++) {
+    const cx = (i - 1.5) * s * 0.07 + (hash01(seed, i) - 0.5) * s * 0.04;
+    const cy = (1.5 - i) * s * 0.035;
+    const k = 0.88 + 0.05 * i;
+    c.drawPath(oval(cx, cy, rx * k, ry * k), stroke(INK, w + 1.2));
+    c.drawPath(oval(cx, cy, rx * k, ry * k), stroke(i % 2 ? TONE.copper : shade(TONE.copper, 0.12), w));
+    c.drawPath(builder().addArc({ x: cx - rx * k, y: cy - ry * k - w * 0.2, width: rx * k * 2, height: ry * k * 2 }, 205, 90).build(), stroke(TONE.copperHi, Math.max(0.7, w * 0.4)));
+  }
+  // the galvanised tie and the two cut ends sticking out bright
+  c.drawPath(segment(-rx * 0.85, -ry * 0.6, -rx * 0.62, ry * 0.75), stroke(INK, 2.8));
+  c.drawPath(segment(-rx * 0.85, -ry * 0.6, -rx * 0.62, ry * 0.75), stroke(YARD.galvanisedLight, 1.4));
+  c.drawPath(segment(rx * 0.7, ry * 0.5, rx * 1.05, ry * 0.85), stroke(INK, w + 1.2));
+  c.drawPath(segment(rx * 0.7, ry * 0.5, rx * 1.05, ry * 0.85), stroke(TONE.copper, w));
+  c.drawPath(circle(rx * 1.05, ry * 0.85, w * 0.5), fill(YARD.copperSheen));
+  copperTicks(c, rx * 0.3, -ry * 0.95, s * 0.24);
 }
 
 /** A short tube offcut lying east-west: a round body and a bright cut end with its bore. */
@@ -285,8 +294,8 @@ export function hmsPlate(c: SkCanvas, s: number, seed = 0): void {
   const top = poly([-w, -h * 0.5, w * 0.7, -h, w, h * 0.3 - t, -w * 0.85, h * 0.6 - t]);
   // the thickness (the near edge), then the top face
   const edge = poly([-w * 0.85, h * 0.6 - t, w, h * 0.3 - t, w, h * 0.3, -w * 0.85, h * 0.6]);
-  outlined(c, edge, TONE.steel);
-  outlined(c, top, TONE.steelTop);
+  outlined(c, edge, shade(TONE.steel, -0.3));
+  outlined(c, top, TONE.steel);
   // a torch-cut edge: wavy bright line on the near edge
   const b = builder().moveTo(-w * 0.82, h * 0.6 - t * 0.5);
   for (let i = 1; i <= 6; i++) b.lineTo(-w * 0.82 + ((w * 1.8) / 6) * i, h * 0.6 - t * 0.5 - (h * 0.3 * i) / 6 + (i % 2 ? -0.6 : 0.6));
@@ -470,22 +479,24 @@ export function cableLengths(c: SkCanvas, s: number, seed = 0): void {
   c.drawPath(segment(-s * 0.12, -d * 1.6, -s * 0.1, d * 1.6), stroke(YARD.crateBlue, 1.8));
 }
 
-/** A section of a car body (shredder feed): a crumpled painted panel with a window frame's edge. */
+/** A section of a car body (shredder feed): a cut-off door, bent, its window opening and seal, painted. */
 export function bodySection(c: SkCanvas, s: number, seed = 0): void {
   const paint = CAR_PAINTS[Math.floor(hash01(seed, 41) * CAR_PAINTS.length)];
   const w = s / 2;
-  const h = s * 0.34;
-  const p = poly([-w, -h * 0.4, -w * 0.4, -h, w * 0.3, -h * 0.85, w, -h * 0.3, w * 0.85, h * 0.6, -w * 0.2, h * 0.75, -w * 0.9, h * 0.5]);
+  const h = s * 0.36;
+  // the door skin, a little bent at a crease
+  const p = poly([-w, -h * 0.2, -w * 0.55, -h, w * 0.75, -h * 0.95, w, -h * 0.1, w * 0.95, h, -w * 0.95, h * 0.9]);
   outlined(c, p, paint);
-  // crumples: folds as darker and lighter strokes
-  c.drawPath(segment(-w * 0.5, -h * 0.7, -w * 0.15, h * 0.6), stroke(shade(paint, -0.3), 1.2));
-  c.drawPath(segment(-w * 0.45, -h * 0.72, -w * 0.1, h * 0.58), stroke(shade(paint, 0.35), 0.8));
-  c.drawPath(segment(w * 0.3, -h * 0.75, w * 0.55, h * 0.55), stroke(shade(paint, -0.3), 1.2));
-  // a window frame's edge with a black seal
-  c.drawPath(builder().moveTo(-w * 0.35, -h * 0.9).quadTo(w * 0.05, -h * 0.4, w * 0.3, -h * 0.82).build(), stroke(INK, 2));
-  // bare steel where it was cut, a rust edge
-  c.drawPath(segment(w * 0.85, h * 0.6, w, -h * 0.3), stroke(TONE.ironHi, 1.4));
-  c.drawPath(circle(-w * 0.6, h * 0.25, 1.1), fill(YARD.rust));
+  // the window opening (dark) with its rubber seal
+  const win = poly([-w * 0.45, -h * 0.78, w * 0.65, -h * 0.75, w * 0.8, -h * 0.15, -w * 0.75, -h * 0.18]);
+  c.drawPath(win, fill(shade(INK, 0.15)));
+  c.drawPath(win, stroke(INK, 1.4));
+  // the crease (light above, dark below), the handle, bare steel at the cut edge
+  c.drawPath(segment(-w * 0.9, h * 0.28, w * 0.95, h * 0.2), stroke(shade(paint, 0.4), 1));
+  c.drawPath(segment(-w * 0.9, h * 0.38, w * 0.95, h * 0.3), stroke(shade(paint, -0.35), 1));
+  c.drawPath(rrect(w * 0.35, h * 0.02, w * 0.3, h * 0.14, 1), fill(shade(paint, -0.4)));
+  c.drawPath(segment(-w, -h * 0.2, -w * 0.95, h * 0.9), stroke(TONE.ironHi, 1.4));
+  c.drawPath(circle(-w * 0.5, h * 0.65, 1.1), fill(YARD.rust));
 }
 
 /** The catalytic converter: an oval can in a dimpled heat shield, two pipe stubs and flanges. */

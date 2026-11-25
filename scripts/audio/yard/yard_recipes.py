@@ -1355,9 +1355,9 @@ MUSIC_KEYS = ('music_main',)          # "yard radio" (yard_music.py), the loop t
 
 EVENTS = {
     # the walk
-    'step_concrete': (0.25, 150, None, 'a work boot on concrete: heel tap with a thin scuff, the toe after; four files, random', 2, 3),
-    'step_gravel': (0.25, 150, None, 'a boot on gravel: a soft heel under a crunch of stones; four files, random', 2, 4),
-    'step_asphalt': (0.25, 150, None, 'a boot on asphalt: a duller heel, no grit; four files, random', 2, 5),
+    'step_concrete': (0.25, 150, None, 'a work boot on concrete: the heel\'s knock with the slab\'s short ring, the sole\'s scuffed roll, the toe; four files, random', 2, 3),
+    'step_gravel': (0.25, 150, None, 'a boot on gravel: the stones crunching under the heel and again under the toe; four files, random', 2, 4),
+    'step_asphalt': (0.25, 150, None, 'a boot on asphalt: a duller heel, a soft roll, no grit; four files, random', 2, 5),
     # working a thing (segments: the screen plays them every SEGMENT_MS while the work lasts)
     'cut_spanner': (0.5, 450, None, 'spanners and bolt cutters, a 0.55 s segment: ratchet clicks, a bolt squeal, a tap on the panel; chained every 500 ms; two files', 2, 6),
     'cut_sledge': (0.6, 650, None, 'the sledgehammer on cast iron, one blow (0.7 s): the swing, the dull heavy clank, dust; chained every 700 ms; two files', 2, 7),
@@ -1367,7 +1367,7 @@ EVENTS = {
     'piece_steel': (0.55, 90, ['light'], 'a sheet-steel panel landing: a wobbly flat clang and a bounce on concrete (steel clunk); three files, random', 2, 10),
     'piece_cast': (0.6, 90, ['light'], 'a cast-iron section: iron\'s dull clank, no ring, a heavy thud; three files, random', 2, 11),
     'piece_alu': (0.5, 90, ['light'], 'an aluminium wheel or end cap: a light hollow tonk; three files, random', 2, 12),
-    'piece_copper': (0.5, 90, ['light'], 'copper: a bright ring (a tube\'s bar modes in E major, B5/G#5/C#6), 0.5 s; three files, random', 2, 13),
+    'piece_copper': (0.5, 90, ['light'], 'copper: a bright ring (a tube\'s bar modes, B5/G#5/C#6 in E major, the inharmonic upper modes strong), the bundle bouncing once; three files, random', 2, 13),
     'piece_brass': (0.5, 90, ['light'], 'brass taps and fittings: a warmer ring than copper, two or three fittings clattering; three files, random', 2, 14),
     'thud_waste': (0.5, 150, ['light'], 'the concrete counterweight into the rubble skip: a dead heavy thud, stones skittering; two files, random', 1, 15),
     # the hand

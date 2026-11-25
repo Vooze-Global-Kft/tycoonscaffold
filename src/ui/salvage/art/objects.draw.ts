@@ -1128,7 +1128,7 @@ export function drawCarStage(c: SkCanvas, v: View3q, stage: number, seed = 18): 
       [0.55, Wd - 0.04, zTop + 0.06],
     ];
     if (stage < 2) {
-      faceFill(c, v, bonnet, shade(paint, 0.16), LINE_W);
+      faceFill(c, v, bonnet, shade(paint, 0.4), LINE_W);
       const [bx0, by0] = proj(v, 0.75, -0.2, zTop + 0.05);
       const [bx1, by1] = proj(v, 1.25, 0.2, zTop + 0.01);
       c.drawPath(segment(bx0, by0, bx1, by1), stroke(shade(paint, 0.4), 1, 0.7));
@@ -1192,7 +1192,10 @@ export function drawCarStage(c: SkCanvas, v: View3q, stage: number, seed = 18): 
         [roofX1, Wd - 0.24, zRoof],
         [roofX0, Wd - 0.24, zRoof],
       ];
-      faceFill(c, v, roof, shade(paint, 0.2), LINE_W);
+      faceFill(c, v, roof, shade(paint, 0.45), LINE_W);
+      const [r0x, r0y] = proj(v, roofX0 + 0.1, -0.1, zRoof);
+      const [r1x, r1y] = proj(v, roofX1 - 0.1, -0.1, zRoof);
+      c.drawPath(segment(r0x, r0y, r1x, r1y), stroke('#FFFFFF', 1.4, 0.5));
       // windscreen (sloped glass) with the record tag tucked behind it
       faceFill(c, v, ws, YARD.glass, LINE_W);
       const [gx, gy] = proj(v, ...subQuad(ws, 0.2, 0.2, 0.35, 0.35)[0]);

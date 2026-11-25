@@ -29,9 +29,9 @@
 import type { FxDef } from './catalog';
 
 export const FX = {
-  step_concrete: { brief: 'a work boot on concrete: heel tap with a thin scuff, the toe after; four files, random', files: 4, pick: 'random', volume: 0.25, preload: 3, voices: 2, minIntervalMs: 150 },
-  step_gravel: { brief: 'a boot on gravel: a soft heel under a crunch of stones; four files, random', files: 4, pick: 'random', volume: 0.25, preload: 4, voices: 2, minIntervalMs: 150 },
-  step_asphalt: { brief: 'a boot on asphalt: a duller heel, no grit; four files, random', files: 4, pick: 'random', volume: 0.25, preload: 5, voices: 2, minIntervalMs: 150 },
+  step_concrete: { brief: 'a work boot on concrete: the heel\'s knock with the slab\'s short ring, the sole\'s scuffed roll, the toe; four files, random', files: 4, pick: 'random', volume: 0.25, preload: 3, voices: 2, minIntervalMs: 150 },
+  step_gravel: { brief: 'a boot on gravel: the stones crunching under the heel and again under the toe; four files, random', files: 4, pick: 'random', volume: 0.25, preload: 4, voices: 2, minIntervalMs: 150 },
+  step_asphalt: { brief: 'a boot on asphalt: a duller heel, a soft roll, no grit; four files, random', files: 4, pick: 'random', volume: 0.25, preload: 5, voices: 2, minIntervalMs: 150 },
   cut_spanner: { brief: 'spanners and bolt cutters, a 0.55 s segment: ratchet clicks, a bolt squeal, a tap on the panel; chained every 500 ms; two files', files: 2, pick: 'random', volume: 0.5, preload: 6, voices: 2, minIntervalMs: 450 },
   cut_sledge: { brief: 'the sledgehammer on cast iron, one blow (0.7 s): the swing, the dull heavy clank, dust; chained every 700 ms; two files', files: 2, pick: 'random', volume: 0.6, preload: 7, voices: 2, minIntervalMs: 650 },
   cut_grinder: { brief: 'the angle grinder\'s short bite (0.8 s): disc at speed, pressed in (its note drops, sparks), lifted; chained every 750 ms; two files', files: 2, pick: 'random', volume: 0.5, preload: 8, voices: 2, minIntervalMs: 700 },
@@ -39,7 +39,7 @@ export const FX = {
   piece_steel: { brief: 'a sheet-steel panel landing: a wobbly flat clang and a bounce on concrete (steel clunk); three files, random', files: 3, pick: 'random', volume: 0.55, preload: 10, voices: 2, minIntervalMs: 90, haptic: ['light'] },
   piece_cast: { brief: 'a cast-iron section: iron\'s dull clank, no ring, a heavy thud; three files, random', files: 3, pick: 'random', volume: 0.6, preload: 11, voices: 2, minIntervalMs: 90, haptic: ['light'] },
   piece_alu: { brief: 'an aluminium wheel or end cap: a light hollow tonk; three files, random', files: 3, pick: 'random', volume: 0.5, preload: 12, voices: 2, minIntervalMs: 90, haptic: ['light'] },
-  piece_copper: { brief: 'copper: a bright ring (a tube\'s bar modes in E major, B5/G#5/C#6), 0.5 s; three files, random', files: 3, pick: 'random', volume: 0.5, preload: 13, voices: 2, minIntervalMs: 90, haptic: ['light'] },
+  piece_copper: { brief: 'copper: a bright ring (a tube\'s bar modes, B5/G#5/C#6 in E major, the inharmonic upper modes strong), the bundle bouncing once; three files, random', files: 3, pick: 'random', volume: 0.5, preload: 13, voices: 2, minIntervalMs: 90, haptic: ['light'] },
   piece_brass: { brief: 'brass taps and fittings: a warmer ring than copper, two or three fittings clattering; three files, random', files: 3, pick: 'random', volume: 0.5, preload: 14, voices: 2, minIntervalMs: 90, haptic: ['light'] },
   thud_waste: { brief: 'the concrete counterweight into the rubble skip: a dead heavy thud, stones skittering; two files, random', files: 2, pick: 'random', volume: 0.5, preload: 15, minIntervalMs: 150, haptic: ['light'] },
   pickup: { brief: 'a piece lifted onto the carry frame: a glove scrape and a small clink; three files, random', files: 3, pick: 'random', volume: 0.4, preload: 16, voices: 2, minIntervalMs: 120 },

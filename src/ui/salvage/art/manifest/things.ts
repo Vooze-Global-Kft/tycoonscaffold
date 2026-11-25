@@ -1,15 +1,15 @@
 /**
  * Manifest part "things" (the artist "things"): every object of the first yard whole and in its stages,
- * every piece of every grade at the three sizes it is seen (on the ground, carried, in a bay heap), the
+ * every piece of every grade on the ground and carried (the bay size is drawn inside the heap sprites), the
  * ingots (hot, cooling, cold, the short heel ingot), dross, the ferrous bays' heaps at five fill levels,
- * the old stock's beds by zone, a partner's skip from above (the skip card), and the 10 pt grade
+ * the old stock's beds by zone, and the 10 pt grade
  * pictograms of tickets and chips. All on sheet A. Entry type and conventions: ./index.ts. Drawings:
  * ../objects.draw, ../pieces.draw, ../heaps.draw, ../scrap.draw. No words in any sprite.
  *
  * Ids (content2.json names): thing.<object> (washer, bike, cable.bundle, cable.drum, coil, taps, fittings,
  * radiator, bath, stove, trough, cylinder, gate, railings, wheels, sheet, cladding, pipe, plough, beam,
- * tank, car), piece.<kind>[.carried|.bay], piece.ingot.<brass|alu>, piece.ingot.<metal>.heel,
- * heap.<grade>.<level 1..5>, heap.zone<1..3>, ui.skip.<farm|demolition>, ui.picto.<grade>.
+ * tank, car), piece.<kind>[.carried], piece.ingot.<brass|alu>, piece.ingot.<metal>.heel,
+ * heap.<grade>.<level 1..5>, heap.zone<1..3>, ui.picto.<grade> (the skip card's plan: heaps.draw drawSkipPlan).
  * OBJECT_SPRITE / GRADE_SPRITE map content ids to sprite ids; stageOf maps pieces off to a frame.
  *
  * Bounds are measured (`npx tsx scripts/art/yard-sheets.ts <dir> things-bounds` rewrites MEASURED from
@@ -53,7 +53,7 @@ import {
   drawWheelThing,
 } from '../objects.draw';
 import { gradePictogram, pieceGlyph } from '../pieces.draw';
-import { BAY_GRADES, ZONE_BEDS, drawBayHeapLevel, drawSkipPlan, drawZoneBed, heapSize } from '../heaps.draw';
+import { BAY_GRADES, ZONE_BEDS, drawBayHeapLevel, drawZoneBed, heapSize } from '../heaps.draw';
 import { drawCableDrum, drawIngot } from '../scrap.draw';
 import type { Bounds, ManifestEntry } from './index';
 
@@ -64,161 +64,129 @@ const B = (x: number, y: number, w: number, h: number): Bounds => ({ x, y, w, h 
 // prettier-ignore
 const MEASURED: Record<string, [number, number, number, number]> = {
   'thing.washer': [-12, -27, 39, 39],
-  'thing.bike': [-24, -39, 48, 78],
-  'thing.cable.bundle': [-23, -10, 54, 22],
-  'thing.cable.drum': [-15, -25, 33, 37],
+  'thing.bike': [-22, -10, 44, 19],
+  'thing.cable.bundle': [-23, -12, 54, 24],
+  'thing.cable.drum': [-14, -23, 31, 34],
   'thing.coil': [-20, -19, 42, 31],
   'thing.taps': [-14, -23, 34, 32],
   'thing.fittings': [-15, -23, 35, 32],
-  'thing.radiator': [-14, -14, 38, 20],
-  'thing.bath': [-24, -39, 56, 66],
-  'thing.stove': [-11, -39, 35, 60],
-  'thing.trough': [-20, -39, 69, 60],
-  'thing.cylinder': [-10, -32, 30, 41],
-  'thing.gate': [-43, -39, 84, 66],
-  'thing.railings': [-27, -39, 64, 66],
+  'thing.radiator': [-13, -13, 35, 19],
+  'thing.bath': [-22, -18, 52, 28],
+  'thing.stove': [-11, -21, 33, 30],
+  'thing.trough': [-18, -14, 52, 22],
+  'thing.cylinder': [-10, -28, 30, 37],
+  'thing.gate': [-39, -14, 77, 26],
+  'thing.railings': [-25, -11, 59, 21],
   'thing.wheels': [-10, -11, 23, 20],
-  'thing.sheet': [-31, -12, 66, 23],
-  'thing.cladding': [-32, -11, 67, 22],
-  'thing.pipe': [-28, -5, 59, 11],
-  'thing.plough': [-27, -51, 54, 78],
-  'thing.beam': [-57, -9, 120, 16],
-  'thing.tank': [-25, -20, 52, 30],
-  'thing.car': [-29, -43, 70, 68],
+  'thing.sheet': [-29, -11, 62, 22],
+  'thing.cladding': [-30, -10, 62, 20],
+  'thing.pipe': [-26, -5, 54, 11],
+  'thing.plough': [-25, -17, 50, 28],
+  'thing.beam': [-51, -9, 107, 15],
+  'thing.tank': [-23, -18, 47, 28],
+  'thing.car': [-26, -23, 62, 37],
   'piece.panel': [-15, -12, 30, 19],
   'piece.panel.carried': [-13, -9, 26, 16],
-  'piece.panel.bay': [-11, -7, 21, 13],
   'piece.drum': [-11, -11, 25, 18],
   'piece.drum.carried': [-9, -8, 20, 16],
-  'piece.drum.bay': [-8, -7, 17, 14],
-  'piece.motor': [-10, -10, 23, 16],
-  'piece.motor.carried': [-9, -8, 20, 14],
-  'piece.motor.bay': [-7, -6, 16, 11],
+  'piece.motor': [-12, -11, 27, 18],
+  'piece.motor.carried': [-10, -8, 23, 15],
   'piece.cast.section': [-11, -10, 23, 16],
   'piece.cast.section.carried': [-10, -7, 19, 14],
-  'piece.cast.section.bay': [-8, -6, 16, 12],
   'piece.cast.shard': [-12, -11, 25, 17],
   'piece.cast.shard.carried': [-11, -8, 21, 14],
-  'piece.cast.shard.bay': [-9, -7, 17, 13],
   'piece.cast.enamel': [-13, -11, 27, 18],
   'piece.cast.enamel.carried': [-11, -8, 22, 15],
-  'piece.cast.enamel.bay': [-9, -7, 18, 13],
-  'piece.copper.bright': [-10, -10, 21, 16],
-  'piece.copper.bright.carried': [-9, -7, 18, 14],
-  'piece.copper.bright.bay': [-8, -6, 16, 12],
-  'piece.copper.tube': [-8, -7, 18, 12],
-  'piece.copper.tube.carried': [-7, -5, 15, 10],
-  'piece.copper.tube.bay': [-6, -5, 13, 10],
-  'piece.copper.no2': [-8, -7, 19, 13],
-  'piece.copper.no2.carried': [-7, -5, 16, 10],
-  'piece.copper.no2.bay': [-6, -5, 14, 10],
-  'piece.copper.windings': [-8, -9, 18, 14],
-  'piece.copper.windings.carried': [-7, -6, 15, 11],
-  'piece.copper.windings.bay': [-6, -5, 13, 10],
+  'piece.copper.bright': [-13, -12, 27, 20],
+  'piece.copper.bright.carried': [-11, -9, 22, 17],
+  'piece.copper.tube': [-10, -8, 22, 14],
+  'piece.copper.tube.carried': [-8, -5, 18, 10],
+  'piece.copper.no2': [-10, -8, 23, 14],
+  'piece.copper.no2.carried': [-9, -5, 19, 10],
+  'piece.copper.windings': [-10, -10, 22, 16],
+  'piece.copper.windings.carried': [-8, -7, 18, 13],
   'piece.copper.shell': [-16, -11, 31, 18],
   'piece.copper.shell.carried': [-13, -8, 25, 16],
-  'piece.copper.shell.bay': [-11, -7, 21, 13],
-  'piece.brass.taps': [-8, -11, 18, 17],
-  'piece.brass.taps.carried': [-7, -8, 14, 15],
-  'piece.brass.taps.bay': [-6, -6, 12, 12],
-  'piece.brass.fittings': [-9, -6, 18, 12],
-  'piece.brass.fittings.carried': [-7, -8, 14, 12],
-  'piece.brass.fittings.bay': [-6, -7, 12, 11],
+  'piece.brass.taps': [-10, -13, 21, 21],
+  'piece.brass.taps.carried': [-8, -9, 17, 17],
+  'piece.brass.fittings': [-11, -7, 22, 15],
+  'piece.brass.fittings.carried': [-9, -10, 18, 15],
   'piece.cable': [-14, -13, 30, 23],
   'piece.cable.carried': [-13, -10, 26, 20],
-  'piece.cable.bay': [-10, -9, 20, 18],
-  'piece.alu.endcap': [-8, -9, 17, 14],
-  'piece.alu.endcap.carried': [-7, -7, 14, 13],
-  'piece.alu.endcap.bay': [-7, -6, 14, 12],
+  'piece.alu.endcap': [-9, -10, 19, 16],
+  'piece.alu.endcap.carried': [-8, -7, 16, 14],
   'piece.alu.wheel': [-12, -11, 26, 20],
   'piece.alu.wheel.carried': [-10, -8, 20, 17],
-  'piece.alu.wheel.bay': [-8, -7, 17, 15],
   'piece.alu.profile': [-11, -6, 23, 12],
   'piece.alu.profile.carried': [-9, -5, 19, 10],
-  'piece.alu.profile.bay': [-8, -5, 16, 10],
   'piece.steel.beam': [-29, -11, 58, 23],
   'piece.steel.beam.carried': [-24, -8, 48, 16],
-  'piece.steel.beam.bay': [-19, -7, 38, 14],
   'piece.steel.plate': [-14, -12, 29, 19],
   'piece.steel.plate.carried': [-12, -9, 24, 15],
-  'piece.steel.plate.bay': [-10, -7, 20, 12],
-  'piece.steel.body': [-19, -16, 38, 25],
-  'piece.steel.body.carried': [-16, -12, 32, 21],
-  'piece.steel.body.bay': [-13, -10, 26, 18],
+  'piece.steel.body': [-19, -16, 38, 29],
+  'piece.steel.body.carried': [-16, -12, 32, 24],
   'piece.iron.plate': [-14, -11, 29, 18],
   'piece.iron.plate.carried': [-12, -8, 24, 15],
-  'piece.iron.plate.bay': [-10, -7, 20, 13],
   'piece.iron.sheet': [-21, -15, 42, 26],
   'piece.iron.sheet.carried': [-18, -11, 35, 22],
-  'piece.iron.sheet.bay': [-14, -9, 28, 18],
   'piece.iron.bike': [-21, -22, 42, 33],
   'piece.iron.bike.carried': [-17, -17, 34, 28],
-  'piece.iron.bike.bay': [-14, -14, 28, 23],
   'piece.iron.wheel': [-15, -14, 30, 24],
   'piece.iron.wheel.carried': [-13, -10, 26, 20],
-  'piece.iron.wheel.bay': [-11, -9, 22, 18],
   'piece.iron.gate': [-31, -23, 62, 43],
   'piece.iron.gate.carried': [-25, -18, 50, 36],
-  'piece.iron.gate.bay': [-20, -14, 40, 28],
   'piece.iron.railing': [-24, -19, 48, 31],
   'piece.iron.railing.carried': [-20, -14, 40, 25],
-  'piece.iron.railing.bay': [-16, -11, 32, 20],
   'piece.converter': [-14, -10, 28, 17],
   'piece.converter.carried': [-12, -7, 23, 14],
-  'piece.converter.bay': [-9, -6, 18, 12],
-  'piece.battery': [-9, -9, 20, 15],
-  'piece.battery.carried': [-8, -7, 16, 13],
-  'piece.battery.bay': [-6, -6, 12, 11],
-  'piece.dross.brass': [-8, -8, 18, 13],
-  'piece.dross.brass.carried': [-6, -6, 12, 12],
-  'piece.dross.brass.bay': [-6, -5, 12, 10],
-  'piece.dross.alu': [-8, -8, 18, 13],
-  'piece.dross.alu.carried': [-6, -6, 12, 12],
-  'piece.dross.alu.bay': [-6, -5, 12, 10],
+  'piece.battery': [-10, -11, 22, 17],
+  'piece.battery.carried': [-9, -8, 18, 15],
+  'piece.dross.brass': [-9, -8, 20, 14],
+  'piece.dross.brass.carried': [-8, -6, 15, 12],
+  'piece.dross.alu': [-9, -8, 20, 14],
+  'piece.dross.alu.carried': [-8, -6, 15, 12],
   'piece.ingot.brass': [-12, -8, 27, 16],
   'piece.ingot.brass.heel': [-7, -8, 18, 16],
   'piece.ingot.alu': [-12, -8, 27, 16],
   'piece.ingot.alu.heel': [-7, -8, 18, 16],
-  'heap.li.1': [-14, -9, 32, 18],
-  'heap.li.2': [-18, -13, 39, 23],
-  'heap.li.3': [-21, -16, 45, 28],
-  'heap.li.4': [-27, -18, 54, 31],
-  'heap.li.5': [-30, -21, 60, 36],
-  'heap.appl.1': [-16, -8, 32, 17],
-  'heap.appl.2': [-19, -10, 38, 20],
-  'heap.appl.3': [-22, -15, 45, 27],
-  'heap.appl.4': [-25, -18, 52, 31],
-  'heap.appl.5': [-28, -21, 58, 36],
-  'heap.ci.1': [-17, -8, 33, 17],
-  'heap.ci.2': [-20, -12, 39, 22],
-  'heap.ci.3': [-23, -15, 46, 27],
-  'heap.ci.4': [-26, -19, 53, 32],
-  'heap.ci.5': [-29, -22, 59, 37],
-  'heap.ciu.1': [-15, -8, 31, 17],
-  'heap.ciu.2': [-18, -11, 37, 21],
-  'heap.ciu.3': [-21, -15, 44, 27],
-  'heap.ciu.4': [-25, -18, 52, 31],
-  'heap.ciu.5': [-28, -21, 58, 36],
-  'heap.hms.1': [-16, -10, 32, 19],
-  'heap.hms.2': [-19, -13, 38, 23],
-  'heap.hms.3': [-22, -16, 45, 28],
-  'heap.hms.4': [-25, -19, 52, 32],
-  'heap.hms.5': [-30, -22, 60, 37],
-  'heap.hmsu.1': [-18, -10, 38, 19],
-  'heap.hmsu.2': [-21, -13, 43, 23],
-  'heap.hmsu.3': [-25, -16, 53, 28],
-  'heap.hmsu.4': [-27, -19, 57, 32],
-  'heap.hmsu.5': [-30, -22, 63, 37],
-  'heap.cbody.1': [-20, -11, 36, 21],
-  'heap.cbody.2': [-23, -14, 42, 24],
-  'heap.cbody.3': [-26, -17, 49, 29],
-  'heap.cbody.4': [-29, -20, 56, 33],
-  'heap.cbody.5': [-32, -23, 62, 38],
-  'heap.zone1': [-34, -20, 70, 38],
-  'heap.zone2': [-34, -21, 70, 39],
-  'heap.zone3': [-35, -21, 71, 39],
-  'ui.skip.farm': [-43, -22, 82, 44],
-  'ui.skip.demolition': [-43, -22, 82, 44],
+  'heap.li.1': [-13, -8, 27, 16],
+  'heap.li.2': [-14, -10, 31, 18],
+  'heap.li.3': [-17, -12, 36, 22],
+  'heap.li.4': [-21, -14, 42, 25],
+  'heap.li.5': [-24, -18, 47, 30],
+  'heap.appl.1': [-14, -6, 26, 14],
+  'heap.appl.2': [-15, -9, 30, 17],
+  'heap.appl.3': [-17, -12, 35, 22],
+  'heap.appl.4': [-19, -14, 40, 25],
+  'heap.appl.5': [-22, -16, 45, 28],
+  'heap.ci.1': [-13, -6, 25, 13],
+  'heap.ci.2': [-16, -10, 31, 18],
+  'heap.ci.3': [-18, -12, 36, 22],
+  'heap.ci.4': [-20, -14, 41, 25],
+  'heap.ci.5': [-22, -17, 45, 29],
+  'heap.ciu.1': [-12, -7, 24, 15],
+  'heap.ciu.2': [-14, -9, 30, 17],
+  'heap.ciu.3': [-17, -12, 35, 22],
+  'heap.ciu.4': [-19, -14, 40, 25],
+  'heap.ciu.5': [-23, -17, 46, 29],
+  'heap.hms.1': [-13, -8, 25, 15],
+  'heap.hms.2': [-15, -10, 30, 18],
+  'heap.hms.3': [-17, -12, 35, 22],
+  'heap.hms.4': [-21, -14, 42, 25],
+  'heap.hms.5': [-23, -17, 46, 29],
+  'heap.hmsu.1': [-15, -8, 31, 15],
+  'heap.hmsu.2': [-18, -10, 35, 18],
+  'heap.hmsu.3': [-19, -12, 40, 22],
+  'heap.hmsu.4': [-22, -15, 45, 26],
+  'heap.hmsu.5': [-24, -17, 49, 29],
+  'heap.cbody.1': [-16, -8, 29, 18],
+  'heap.cbody.2': [-18, -11, 33, 21],
+  'heap.cbody.3': [-20, -14, 38, 24],
+  'heap.cbody.4': [-23, -16, 44, 27],
+  'heap.cbody.5': [-26, -18, 49, 30],
+  'heap.zone1': [-30, -18, 62, 34],
+  'heap.zone2': [-30, -19, 62, 35],
+  'heap.zone3': [-31, -19, 63, 35],
   'ui.picto.li': [-8, -8, 16, 16],
   'ui.picto.appl': [-8, -8, 16, 16],
   'ui.picto.ci': [-8, -8, 16, 16],
@@ -275,9 +243,10 @@ function entry(id: string, group: string, footprint: [number, number], fallback:
 /** Bake scales. */
 const HERO = 1;
 const NEAR = 0.75;
-const STOCK = 0.6;
-const BIG = 0.45;
-const BED = 0.4;
+const STOCK = 0.55;
+const BIG = 0.4;
+const BED = 0.35;
+const HEAP = 0.45;
 const one = ['idle'] as const;
 
 // ---------------------------------------------------------------------------
@@ -351,19 +320,19 @@ export function stageOf(frames: number, off: number, total: number): number {
 const PIECES: readonly (readonly [string, string, number])[] = [
   ['panel', 'panel', 0.6],
   ['drum', 'drum', 0.5],
-  ['motor', 'motor', 0.42],
+  ['motor', 'motor', 0.5],
   ['cast.section', 'section', 0.4],
   ['cast.shard', 'shard', 0.45],
   ['cast.enamel', 'shard_enamel', 0.5],
-  ['copper.bright', 'bright', 0.34],
-  ['copper.tube', 'tube', 0.32],
-  ['copper.no2', 'no2', 0.34],
-  ['copper.windings', 'windings', 0.3],
+  ['copper.bright', 'bright', 0.46],
+  ['copper.tube', 'tube', 0.42],
+  ['copper.no2', 'no2', 0.44],
+  ['copper.windings', 'windings', 0.42],
   ['copper.shell', 'shell', 0.6],
-  ['brass.taps', 'taps', 0.28],
-  ['brass.fittings', 'fittings', 0.26],
+  ['brass.taps', 'taps', 0.38],
+  ['brass.fittings', 'fittings', 0.36],
   ['cable', 'cable', 0.6],
-  ['alu.endcap', 'endcap', 0.24],
+  ['alu.endcap', 'endcap', 0.32],
   ['alu.wheel', 'wheel', 0.5],
   ['alu.profile', 'alu', 0.4],
   ['steel.beam', 'beam', 1.3],
@@ -376,9 +345,9 @@ const PIECES: readonly (readonly [string, string, number])[] = [
   ['iron.gate', 'gate', 1.3],
   ['iron.railing', 'railing', 1.0],
   ['converter', 'converter', 0.45],
-  ['battery', 'battery', 0.34],
-  ['dross.brass', 'dross_brass', 0.28],
-  ['dross.alu', 'dross_alu', 0.28],
+  ['battery', 'battery', 0.42],
+  ['dross.brass', 'dross_brass', 0.36],
+  ['dross.alu', 'dross_alu', 0.36],
 ];
 
 /** The sizes a piece is seen at: on the ground (true size, its shadow), carried (0.8, no shadow), in a bay heap (0.6). */
@@ -399,7 +368,6 @@ const PIECE_ENTRIES: ManifestEntry[] = PIECES.flatMap(([id, kind, m]) => {
   return [
     entry(`piece.${id}`, 'piece', [m, m * 0.5], fb(1), one, pieceDraw(kind, m, 'ground')),
     entry(`piece.${id}.carried`, 'piece', [m, m * 0.5], fb(0.8), one, pieceDraw(kind, m, 'carried')),
-    entry(`piece.${id}.bay`, 'piece', [m, m * 0.5], fb(0.6), one, pieceDraw(kind, m, 'bay')),
   ];
 });
 
@@ -428,8 +396,12 @@ export const GRADE_SPRITE: Readonly<Record<string, readonly string[]>> = {
   conv: ['piece.converter'],
 };
 
-/** A piece's sprite id at a size (the ground id, `.carried` or `.bay`); ingots have only the ground size. */
-export const pieceSprite = (id: string, size: keyof typeof PIECE_SIZES = 'ground'): string => (size === 'ground' || id.startsWith('piece.ingot') ? id : `${id}.${size}`);
+/**
+ * A piece's sprite id at a size: the ground id or `.carried`. The bay size is not baked (the budget): a
+ * bay shows its grade's heap sprites (heap.<grade>.<level>), whose pieces are drawn at the bay size, and
+ * a stillage its plant layer; `pieceGlyph` draws any piece at any size for overlays. Ingots: ground only.
+ */
+export const pieceSprite = (id: string, size: 'ground' | 'carried' = 'ground'): string => (size === 'ground' || id.startsWith('piece.ingot') ? id : `${id}.${size}`);
 
 // ---------------------------------------------------------------------------
 // Ingots: hot, cooling, cold; the short heel ingot
@@ -459,25 +431,21 @@ const HEAP_ENTRIES: ManifestEntry[] = [
   ...BAY_GRADES.flatMap((g, gi) =>
     [1, 2, 3, 4, 5].map((lv) => {
       const s = heapSize(lv);
-      return entry(`heap.${g}.${lv}`, 'heap', [s.w, s.d], B(-s.w * 22 - 6, -s.h * 30 - s.d * 14 - 10, s.w * 44 + 20, s.h * 30 + s.d * 28 + 20), one, (c, v) => drawBayHeapLevel(c, v, g, lv, 3 + gi), 0.6);
+      return entry(`heap.${g}.${lv}`, 'heap', [s.w, s.d], B(-s.w * 22 - 6, -s.h * 30 - s.d * 14 - 10, s.w * 44 + 20, s.h * 30 + s.d * 28 + 20), one, (c, v) => drawBayHeapLevel(c, v, g, lv, 3 + gi), HEAP);
     }),
   ),
-  ...ZONE_BEDS.map((z, i) => entry(`heap.${z}`, 'heap', [4.0, 2.6], B(-88, -45, 185, 85), ['full', 'low'], (c, v, f) => drawZoneBed(c, v, z, f, 5 + i), BED)),
+  ...ZONE_BEDS.map((z, i) => entry(`heap.${z}`, 'heap', [4.0, 2.6], B(-88, -45, 185, 85), one, (c, v) => drawZoneBed(c, v, z, 0, 5 + i), BED)),
 ];
 
 // ---------------------------------------------------------------------------
 // Interface plates: the skip card's skip from above, the grade pictograms
 // ---------------------------------------------------------------------------
 
-/** The skip card's picture (points): a skip from above, this long. */
-export const SKIP_PLAN_W = 72;
-
+/**
+ * The skip card's picture is not an atlas sprite: the card (an overlay) draws heaps.draw drawSkipPlan
+ * directly with Skia (crisp at any size, and sheet A has no room for six 80 pt plates).
+ */
 const UI_ENTRIES: ManifestEntry[] = [
-  ...(['farm', 'demolition'] as const).map((p) =>
-    entry(`ui.skip.${p}`, 'ui', [0, 0], B(-SKIP_PLAN_W / 2 - 6, -SKIP_PLAN_W * 0.225 - 4, SKIP_PLAN_W + 12, SKIP_PLAN_W * 0.45 + 8), ['empty', 'trial', 'full'], (c, _v, f) =>
-      drawSkipPlan(c, p === 'farm' ? 'partnerFarm' : 'partnerDemolition', (['empty', 'trial', 'full'] as const)[f], 0, 0, SKIP_PLAN_W, p === 'farm' ? 2 : 4),
-    ),
-  ),
   ...Object.keys(GRADE_SPRITE).map((g) => entry(`ui.picto.${g}`, 'ui', [0, 0], B(-6, -6, 12, 12), one, (c) => gradePictogram(c, g, -5, -5, 10))),
 ];
 

@@ -106,16 +106,16 @@ function moundTone(grade: string): string {
   switch (grade) {
     case 'ci':
     case 'ciu':
-      return shade(TONE.cast, -0.3);
+      return shade(TONE.cast, -0.12);
     case 'hms':
     case 'hmsu':
-      return shade(TONE.steel, -0.1);
+      return mix(TONE.steel, YARD.rust, 0.25);
     case 'cbody':
       return shade(CAR_PAINTS[0], -0.5);
     case 'appl':
       return mix(TONE.ironLo, YARD.enamel, 0.3);
     default:
-      return shade(TONE.ironLo, -0.2);
+      return shade(TONE.ironLo, -0.05);
   }
 }
 
@@ -143,17 +143,23 @@ export function drawBayHeapLevel(c: SkCanvas, v: View3q, grade: string, level: n
   pts.push(W * 0.8, yc + D * 0.7, 0, yc + D, -W * 0.8, yc + D * 0.7);
   const mound = poly(pts);
   c.drawPath(mound, fill(moundTone(g)));
+  // the low sun on the heap's west shoulder, its east side in shade
+  c.save();
+  c.clipPath(mound, ClipOp.Intersect, true);
+  c.drawPath(oval(-W * 0.35, yc - D * 0.2 - H * 0.75, W * 0.7, H * 0.6 + D * 0.3), fill(shade(moundTone(g), 0.22)));
+  c.drawPath(oval(W * 0.7, yc, W * 0.5, H + D), fill(shade(moundTone(g), -0.25), 0.6));
+  c.restore();
   c.drawPath(mound, stroke(INK, 1));
   // pieces: count by the heap's area, placed in the dome, sorted back to front
   const list = BAY_PIECES[g];
-  const count = Math.round(5 + level * 4.2);
+  const count = Math.round(6 + level * 5);
   const items: [number, number, number][] = [];
   for (let i = 0; i < count; i++) {
     const u = hash01(seed, i, 21) * 2 - 1;
     const dome = 1 - u * u;
     const yTop = yc - D * 0.2 - H * dome ** 0.8 * 0.9;
     const yBot = yc + D * 0.6 * Math.sqrt(dome);
-    const y = yTop + (yBot - yTop) * hash01(seed, i, 22) ** 1.3;
+    const y = yTop + 2 + (yBot - yTop) * hash01(seed, i, 22) ** 1.8;
     items.push([u * W * 0.88, y, i]);
   }
   items.sort((p, q) => p[1] - q[1]);
@@ -196,11 +202,12 @@ export function drawZoneBed(c: SkCanvas, v: View3q, zone: string, frame = 0, see
     pts.push(Math.cos(a) * rx * r, Math.sin(a) * ry * r + lift);
   }
   const bed = poly(pts);
-  c.drawPath(bed, fill(zone === 'zone3' ? shade(TONE.steel, 0.15) : zone === 'zone2' ? shade(TONE.cast, -0.1) : shade(TONE.ironLo, -0.1)));
+  const earth = mix(YARD.concreteDark, '#8A7457', 0.45);
+  c.drawPath(bed, fill(zone === 'zone3' ? mix(earth, YARD.rust, 0.25) : zone === 'zone2' ? shade(earth, -0.08) : earth));
   c.drawPath(bed, stroke(INK, 1));
   // rust and dust patches on the bed
   for (let i = 0; i < 4; i++) c.drawPath(oval((hash01(seed, i, 33) - 0.5) * rx * 1.2, (hash01(seed, i, 34) - 0.5) * ry * 0.8 - H * 0.4, rx * 0.18, ry * 0.12), fill(YARD.rust, 0.35));
-  const count = frame === 0 ? 26 : 14;
+  const count = frame === 0 ? 34 : 16;
   const items: [number, number, number][] = [];
   for (let i = 0; i < count; i++) {
     const a = hash01(seed, i, 35) * Math.PI * 2;
