@@ -104,7 +104,7 @@ export const LINE_W = 1.2;
 export const LINE_PERSON = 1.4;
 /** Ground shadows: ink at this opacity, offset a little east (light from the north-west). */
 export const SHADOW_ALPHA = 0.24;
-export const SHADOW_DX = 0.12;
+export const SHADOW_DX = 0.06;
 
 /** How a material is told apart without its colour. */
 export type Sheen = 'none' | 'freckles' | 'dots' | 'ticks' | 'glint' | 'stripe' | 'band' | 'facet';

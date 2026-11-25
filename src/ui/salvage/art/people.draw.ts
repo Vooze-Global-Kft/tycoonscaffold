@@ -68,7 +68,7 @@ export function carriedPiece(c: SkCanvas, metal: string, x: number, y: number, w
 function backStack(c: SkCanvas, stack: Stack, cx: number, y0: number, w: number): number {
   let y = y0;
   stack.forEach((metal, i) => {
-    const h = metal === 'copper' ? 4.6 : 5.4;
+    const h = metal === 'copper' ? 5.2 : 6;
     const dx = (hash01(i, 7) - 0.5) * 3;
     y -= h - 0.6;
     carriedPiece(c, metal, cx - w / 2 + dx, y, w, h, i);
@@ -211,11 +211,13 @@ export function drawPerson(c: SkCanvas, v: View3q, o: PersonOptions): void {
 
   // Behind the body: the back frame's stack when facing the eye or side-on; the far arm side-on.
   if (stack.length && dir !== 'n') {
-    const sx = side ? -7 : 0;
-    const top = backStack(c, stack, sx, torsoTop + 10, side ? 12 : 16);
-    // the frame's two rails
-    c.drawPath(segment(sx - (side ? 6 : 8.5), torsoTop + 10, sx - (side ? 6 : 8.5), top + 2), stroke(INK, 1.3));
-    c.drawPath(segment(sx + (side ? 6 : 8.5), torsoTop + 10, sx + (side ? 6 : 8.5), top + 2), stroke(INK, 1.3));
+    const sx = side ? -10 : 0;
+    const w = side ? 11 : 21;
+    const base = side ? torsoTop + 16 : torsoTop + 2;
+    // the frame's two rails, then the slabs on it
+    c.drawPath(segment(sx - w / 2 + 1, base + 6, sx - w / 2 + 1, base - 4), stroke(INK, 2.2));
+    c.drawPath(segment(sx + w / 2 - 1, base + 6, sx + w / 2 - 1, base - 4), stroke(INK, 2.2));
+    backStack(c, stack, sx, base, w);
   }
   if (side) {
     if (o.pose === 'cut') arm(c, -1, torsoTop + 3, 9, torsoTop + 10, false);

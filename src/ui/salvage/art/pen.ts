@@ -176,7 +176,11 @@ export interface SolidStyle {
  * A box of footprint len (along heading) x wid, height h, its footprint centre at (ox, oy), bottom at z.
  * heading in radians, 0 = east, pi/2 = south. Draws the visible faces; returns the top's corners.
  */
-export function box(c: SkCanvas, v: View3q, o: { len: number; wid: number; h: number; ox?: number; oy?: number; z?: number; heading?: number } & SolidStyle): V3[] {
+export function box(
+  c: SkCanvas,
+  v: View3q,
+  o: { len: number; wid: number; h: number; ox?: number; oy?: number; z?: number; heading?: number; onFace?: (pts: V3[], n: V3) => void; onTop?: (pts: V3[]) => void } & SolidStyle,
+): V3[] {
   const th = o.heading ?? 0;
   const fx = Math.cos(th);
   const fy = Math.sin(th);
@@ -210,11 +214,21 @@ export function box(c: SkCanvas, v: View3q, o: { len: number; wid: number; h: nu
     ]);
     const frontish = nv[1] > 0.92;
     c.drawPath(p, fill(frontish && o.front ? o.front : toneOf(o.color, nv)));
+    o.onFace?.(
+      [
+        [a[0], a[1], z0],
+        [b[0], b[1], z0],
+        [b[0], b[1], z0 + o.h],
+        [a[0], a[1], z0 + o.h],
+      ],
+      nv,
+    );
     if (line > 0) c.drawPath(p, stroke(YARD.ink, line));
   }
   const top: V3[] = foot.map(([x, y]) => [x, y, z0 + o.h]);
   const tp = facePath(v, top);
   c.drawPath(tp, fill(o.top ?? toneOf(o.color, [0, 0, 1])));
+  o.onTop?.(top);
   if (line > 0) c.drawPath(tp, stroke(YARD.ink, line));
   if (o.bevel) {
     // The top's edge nearest the eye (largest y), drawn light just inside.
@@ -311,7 +325,7 @@ export function freckles(c: SkCanvas, x: number, y: number, w: number, h: number
   for (let i = 0; i < n; i++) {
     const px = x + hash01(seed, i, 1) * w;
     const py = y + hash01(seed, i, 2) * h;
-    const r = 0.6 + hash01(seed, i, 3) * 1.4;
+    const r = 0.5 + hash01(seed, i, 3) * 1.0;
     c.drawPath(oval(px, py, r * 1.3, r), fill(color, 0.75));
   }
 }
@@ -343,4 +357,22 @@ export function mirrored(c: SkCanvas, draw: () => void): void {
   c.scale(-1, 1);
   draw();
   c.restore();
+}
+
+/** A point inside a quad of world points by its (s, t) in 0..1 (s along a->b, t along a->d). */
+export function quadAt(q: V3[], s: number, t: number): V3 {
+  const [a, b, , d] = q;
+  return [a[0] + (b[0] - a[0]) * s + (d[0] - a[0]) * t, a[1] + (b[1] - a[1]) * s + (d[1] - a[1]) * t, a[2] + (b[2] - a[2]) * s + (d[2] - a[2]) * t];
+}
+
+/** The sub-quad of a quad between s0..s1 and t0..t1. */
+export function subQuad(q: V3[], s0: number, s1: number, t0: number, t1: number): V3[] {
+  return [quadAt(q, s0, t0), quadAt(q, s1, t0), quadAt(q, s1, t1), quadAt(q, s0, t1)];
+}
+
+/** A face given by its south-west, south-east... corners in the order box() hands them (bottom a, bottom b, top b, top a). */
+export function faceFill(c: SkCanvas, v: View3q, pts: V3[], color: string, line = 0, alpha = 1): void {
+  const p = facePath(v, pts);
+  c.drawPath(p, fill(color, alpha));
+  if (line > 0) c.drawPath(p, stroke(YARD.ink, line));
 }
