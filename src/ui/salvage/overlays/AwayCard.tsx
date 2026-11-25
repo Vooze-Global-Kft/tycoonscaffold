@@ -3,7 +3,7 @@
  * E33, E34): "Away {t} · the yard ran {c}" and what makes it run longer; the money as it was applied
  * ("Sales §x", "{n} loads bought · −§y", "Net +§z (already in your account)": paid when the away pass
  * computed it, BRIEF lesson 5; OK only closes the card, `ackAway` pays nothing); each deal delivery;
- * "You passed {rival}."; the next step; then the grade lines the merchant collected (never held stock;
+ * "In the bays, not yet sold: §u" right under Net (join3); "You passed {rival}."; the next step; then the grade lines the merchant collected (never held stock;
  * five at most, three at large type) and "+ n more". No ad button in stage 1.
  * Data: `CardData.away` (the state's waiting card); numbers through the facade's formatters.
  */
@@ -29,7 +29,7 @@ export function AwayCard({ cfg, g, data, onClose }: CardViewProps) {
       </CentredCard>
     );
   }
-  const { head, longer, money, net, news, next, lines } = awayLines(a, layout.fs >= 1.2);
+  const { head, longer, money, net, unsold, news, next, lines } = awayLines(a, layout.fs >= 1.2);
   const footNode = (
       <View style={styles.foot}>
         {ok.map((b, i) => (
@@ -57,6 +57,7 @@ export function AwayCard({ cfg, g, data, onClose }: CardViewProps) {
             <Line key={i} t={t} size="line" lines={2} />
           ))}
           <Line t={net} size="name" bold lines={2} />
+          {unsold ? <Line t={unsold} size="line" lines={2} /> : null}
         </View>
       ) : null}
       {news.map((t, i) => (

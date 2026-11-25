@@ -1018,6 +1018,14 @@ export interface AwayCard {
   deliveryList?: { day: number; g: number; paid: number }[];
   /** E33: what makes the yard run longer next time: the next rung's cap, else the Night watch (not owned), else null. */
   runLonger?: { rung: number; capS: number } | { item: 'night'; capS: number } | null;
+  /**
+   * ADDED (join3): what stands in the bays, not yet sold, because of the time away: the stock the pass
+   * weighed in that the merchant has not collected (held bays included), at the day's lot price, §.
+   * Cash can fall while the yard holds the value (loads bought while a bay is held): this line says so.
+   */
+  unsold?: number;
+  /** ADDED (join3): the signed change of the bays' value over the passes on this card (unsold = max(0, it)). */
+  bayDelta?: number;
 }
 
 /** The goal card (2.10): its first line, what follows, and a meter where the goal counts something. */

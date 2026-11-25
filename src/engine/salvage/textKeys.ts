@@ -12,7 +12,7 @@ import { REFUSAL_KEYS } from './refusals';
 
 export const TEXT_KEYS = {
   /** Package 4: the top bar, the goal card, the one button (4.1). */
-  hud: ['cash', 'rankChip', 'rankChipShort', 'rankChipToNext', 'rankChipTop', 'rankChipPassed', 'carry', 'loadFull', 'open', 'stepOut', 'trialLoad', 'skipLoad', 'carryDriving', 'goalProgress', 'turnSideways', 'turnSidewaysBody', 'menu', 'close', 'ok', 'cashDebit', 'passedToast'],
+  hud: ['cash', 'rankChip', 'rankChipShort', 'rankChipToNext', 'rankChipTop', 'rankChipPassed', 'carry', 'loadFull', 'open', 'stepOut', 'carryDriving', 'goalProgress', 'turnSideways', 'turnSidewaysBody', 'menu', 'close', 'ok', 'cashDebit', 'passedToast'],
   /** Package 3: world labels (4.2), place names (5.2, ≤ 18). `map.places.<id>.label` names one of these. */
   place: ['place.rack', 'place.office', 'place.scalehouse', 'place.scale', 'place.weighbridge', 'place.noticeboard', 'place.dropoff', 'place.rubble', 'place.floor', 'place.park', 'place.stripper', 'place.bench', 'place.crucible', 'place.stock', 'place.backfield', 'place.bays', 'place.merchant', 'place.lane', 'place.bridge', 'place.board', 'place.stillages'],
   /** Package 3 and 4: chips over bays, things and pads (4.2, 4.4). */
@@ -53,15 +53,11 @@ export const TEXT_KEYS = {
     'card.inOut',
     'card.inOut2',
     'card.inOut3',
-    'card.rateKgS',
-    'card.rate',
     'card.charge',
     'card.heel',
     'card.recipe',
     'card.siteLicence',
     'card.crewRow',
-    'card.carriesRate',
-    'card.cutsRate',
     'card.drivesRate',
     'card.opensAt',
     'card.nightWatch',
@@ -85,7 +81,6 @@ export const TEXT_KEYS = {
     'card.partnerLine',
     'card.businessCard',
     'card.converterPaid',
-    'card.levelAdds',
     'card.notBottleneck',
     'card.keptForLoad',
     'card.empty',
@@ -144,7 +139,7 @@ export const TEXT_KEYS = {
   /** Package 4: the industry table and the rung sign (2.11). */
   table: ['table.headline', 'table.simulated', 'table.rivalsSimulated', 'table.rung', 'table.rungGate', 'table.range', 'table.you', 'table.rungSign', 'table.rungOpens', 'table.next', 'table.nextRung', 'table.locked', 'opens.rung2', 'opens.rung3', 'table.mine', 'table.lockedBare'],
   /** Package 4: the away card (4.4). */
-  away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.hintCutter', 'away.hintHand', 'away.nothing', 'away.sales', 'away.bought', 'away.boughtFrom', 'away.net', 'away.netLoss', 'away.next', 'away.longerRung', 'away.longerNight'],
+  away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.hintCutter', 'away.hintHand', 'away.nothing', 'away.sales', 'away.bought', 'away.boughtFrom', 'away.net', 'away.netLoss', 'away.unsold', 'away.next', 'away.longerRung', 'away.longerNight'],
   /** Packages 3 and 4: tickets and slips (2.2). */
   ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.gradeAmount', 'ticket.paid', 'ticket.boughtFor', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date'],
   /** Package 4: lines of 5.2. */

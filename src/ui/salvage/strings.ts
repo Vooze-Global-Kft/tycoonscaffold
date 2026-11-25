@@ -30,8 +30,6 @@ export const TEXT = {
   loadFull: 'Load full',
   open: 'Open',
   stepOut: 'Step out',
-  trialLoad: 'Trial load {kg}',
-  skipLoad: 'Load {kg}',
   carryDriving: '{kg}', // hud: the carry chip while driving, after the skip pictogram (the lead's ruling 2, 15:55); kg = { mass_g, step: 'bridge' }
   goalProgress: '{a} / {b}',
   turnSideways: 'Turn your phone sideways',
@@ -121,14 +119,10 @@ export const TEXT = {
   'card.inOut': '{in} → {out}',
   'card.inOut2': '{in} → {a}, {b}', // rules-book W7: every output, largest first
   'card.inOut3': '{in} → {a}, {b}, {c}',
-  'card.rateKgS': '{kg} a second', // deprecated with MachineCard.rate: use card.rate
-  'card.rate': '{rate} an hour', // rate: { rate_g_h } (MachineCard.rate_g_h, E13d)
   'card.charge': '{a} / {b}',
   'card.heel': 'Heel {kg}',
   'card.recipe': '{recipe}',
   'card.siteLicence': 'Site licence · metal dealer',
-  'card.carriesRate': 'Carries {t} an hour', // t: { rate_g_h } (cards.ts passes it so)
-  'card.cutsRate': 'Cuts {t} an hour', // t: { rate_g_h }
   'card.drivesRate': 'Fetches a load in {t}',
   'card.opensAt': 'Opens at {t} supplied',
   'card.nightWatch': 'Runs while away: {a} h → {b} h', // a, b: { n } hours (cards.ts passes n); W20: no 'cap'
@@ -143,8 +137,7 @@ export const TEXT = {
   'card.skipPrice': '{x}',
   'card.businessCard': '{contact} · {partner}',
   'card.converterPaid': 'Paid on assay: platinum {pt}, palladium {pd}, rhodium {rh}, less fees',
-  'card.levelAdds': '+{rate} an hour', // rate: { rate_g_h }: what the next level adds (E13d), the row's effect line
-  'card.notBottleneck': 'Not the bottleneck now', // E19: the state line; what the level adds is card.levelAdds
+  'card.notBottleneck': 'Not the bottleneck now', // E19: the state line; no absolute rate on a row (W5)
   'card.keptForLoad': 'Kept for the next load: {x}',
   'card.empty': '',
   // W5: no absolute rates on a row in this stage
@@ -244,6 +237,7 @@ export const TEXT = {
   'away.boughtFrom': '{partner}: {n} loads bought · −{x}',
   'away.net': 'Net +{x} (already in your account)',
   'away.netLoss': 'Net −{x} (taken from your account)', // x positive, when spent > sales
+  'away.unsold': 'In the bays, not yet sold: {x}', // join3: x money, the stock the time away left unsold (today's price)
   'away.next': 'Next: {goal}', // goal: { text: goal.* }
   'away.longerRung': 'From the next rung it runs up to {c}', // c: { secs }
   'away.longerNight': 'With the night watch it runs up to {c}', // c: { secs }

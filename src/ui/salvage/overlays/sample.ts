@@ -71,10 +71,10 @@ export function rackRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
     });
 }
 
-const ROLE_ROWS: { role: R.CrewRole; keys: string[]; name: TextKey; effect: TextKey; rate: TextKey }[] = [
-  { role: 'hand', keys: ['hand1', 'hand2'], name: 'role.hand', effect: 'effect.hand', rate: 'card.carriesRate' },
-  { role: 'cutter', keys: ['cutter', 'cutter2'], name: 'role.cutter', effect: 'effect.cutter', rate: 'card.cutsRate' },
-  { role: 'driver', keys: ['driver'], name: 'role.driver', effect: 'effect.driver', rate: 'card.drivesRate' },
+const ROLE_ROWS: { role: R.CrewRole; keys: string[]; name: TextKey; effect: TextKey }[] = [
+  { role: 'hand', keys: ['hand1', 'hand2'], name: 'role.hand', effect: 'effect.hand' },
+  { role: 'cutter', keys: ['cutter', 'cutter2'], name: 'role.cutter', effect: 'effect.cutter' },
+  { role: 'driver', keys: ['driver'], name: 'role.driver', effect: 'effect.driver' },
 ];
 
 /** The rota: per role its hired crew (first name, level, Level with price) and the next place (Hire, or "Opens at"). */
@@ -237,7 +237,8 @@ export function inOutLine(cfg: SalvageConfig, id: R.MachineId, m?: MachineCard):
 /** The rows of a machine card (pure, for the tests). */
 export function machineRows(cfg: SalvageConfig, g: SalvageGame, m: MachineCard): CardRow[] {
   const rows: CardRow[] = [];
-  const rate: Txt | null = m.rate > 0 ? { key: 'card.rateKgS', args: { kg: { mass_g: Math.round(m.rate * 1000), step: 'lot' } } } : null;
+  // W5: no absolute rate on a machine row.
+  const rate: Txt | null = null;
   const io = inOutLine(cfg, m.machine, m);
   if (!m.owned) {
     const key = MACHINE_KEY[m.machine];

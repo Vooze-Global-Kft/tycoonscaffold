@@ -7,10 +7,10 @@
  */
 import { releaseHolds } from './bays';
 import { marketDay } from './board';
-import { begin, finish, type Ctx } from './clock';
+import { begin, finish, priceAt, type Ctx } from './clock';
 import { dealDeliver, dealReprice } from './deal';
 import { cancelAct } from './hand';
-import { roundMoney } from './money';
+import { floorGrams, lineAmount, roundMoney } from './money';
 import { advance } from './tick';
 import { driverTakesOver } from './truck';
 import type { AwayCard, SalvageConfig, SalvageEvent, SalvageGame } from './types';
@@ -145,6 +145,8 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
   // The boss's last sample is stale from the first second of the pass (no boss).
   s.presence = { ...s.presence, moving: false, standingFor: 0 };
   const runLonger = runLongerOf(cfg, g, capS);
+  // join3: the bays before the pass, so the card can say what the time away left in them unsold.
+  const bays0 = new Map(Object.entries(s.bays).map(([gr, b]) => [gr, b.g] as const));
   advance(x, s.t + A);
   // E34: deal deliveries at every midnight beyond the cap, up to the device time.
   const endMs = Number.isFinite(now) ? now : x.ms0 + A * 1000;
@@ -155,6 +157,14 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
   releaseHolds(x);
   if (showCard) {
     const c = card(x, A, capS, raw, runLonger);
+    // join3: the bays' change at today's lot price (gains are stock not yet sold; a collection lowers it).
+    let dv = 0;
+    for (const [gr, b] of Object.entries(s.bays)) {
+      const d = b.g - (bays0.get(gr) ?? 0);
+      if (d !== 0) dv += Math.sign(d) * lineAmount(floorGrams(Math.abs(d)), priceAt(x, gr, s.clock.day));
+    }
+    c.bayDelta = roundMoney(dv);
+    c.unsold = roundMoney(Math.max(0, dv));
     if (s.away) {
       // A card still waiting: the two passes add up on one card (paid already, each when computed).
       const prev = s.away;
@@ -189,6 +199,8 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
         spent,
         bought: [...bought.values()].sort((a, b) => b.spent - a.spent),
         net: roundMoney(money - spent),
+        bayDelta: roundMoney((prev.bayDelta ?? prev.unsold ?? 0) + (c.bayDelta ?? 0)),
+        unsold: roundMoney(Math.max(0, (prev.bayDelta ?? prev.unsold ?? 0) + (c.bayDelta ?? 0))),
         deliveryList: [...(prev.deliveryList ?? []), ...(c.deliveryList ?? [])],
       };
     } else s.away = c;

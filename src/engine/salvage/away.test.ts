@@ -65,6 +65,26 @@ describe('the away card says what was applied (P3, W2)', () => {
   });
 });
 
+describe('join3: the stock the time away left unsold', () => {
+  it('the card carries the bays\' gain at the day\'s lot price (held bays included), never negative', () => {
+    const g0 = m30();
+    // Hold every bay: the merchant collects nothing, so all the pass weighs in stays in the bays.
+    const bays = Object.fromEntries(Object.entries(g0.salvage.bays).map(([k, b]) => [k, { ...b, held: true }]));
+    const g = { ...g0, salvage: { ...g0.salvage, bays } };
+    const out = awayPass(cfg, g, g.salvage.clock.highMs + 2 * 3600_000);
+    const a = out.salvage.away!;
+    expect(a).toBeTruthy();
+    let gain = 0;
+    for (const [gr, b] of Object.entries(out.salvage.bays)) {
+      const d = b.g - (g.salvage.bays[gr]?.g ?? 0);
+      if (d > 0) gain += d;
+    }
+    expect(gain).toBeGreaterThan(0);
+    expect(a.unsold).toBeGreaterThan(0);
+    expect(a.unsold).toBe(Math.max(0, a.bayDelta!));
+  });
+});
+
 describe('E33: the away cap grows with the rung', () => {
   it('half an hour on rung 1, two on rung 2, four on rung 3, plus two with the Night watch', () => {
     const c = e33.salvage;

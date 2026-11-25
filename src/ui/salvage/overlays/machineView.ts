@@ -42,7 +42,7 @@ export function machineSections(list: MachineCard[], rows: CardRow[]): MachineSe
     let head: CardRow | null = null;
     if (status) {
       const named = status.name.key === name.key;
-      head = named ? { ...status, extra: status.extra?.key === 'card.rateKgS' || status.extra?.key === 'card.rate' ? null : status.extra } : { ...status, name, line: status.name, extra: status.line };
+      head = named ? { ...status, extra: status.extra } : { ...status, name, line: status.name, extra: status.line };
     }
     const tag: Txt | null = about?.extra ?? about?.line ?? (id === 'hand_stripper' && head ? { key: 'card.cameWithYard' } : null);
     const extraRows = id === 'crucible' || (!ids.includes('crucible') && i === list.length - 1) ? left : [];

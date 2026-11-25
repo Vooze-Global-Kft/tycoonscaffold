@@ -26,11 +26,34 @@ export interface Binding {
   driver: boolean;
 }
 
-/** Floor mass of whole things and loose pieces, grams. */
-function floorGrams(c: SalvageContent, g: SalvageGame): number {
+/**
+ * Grams still UNCUT on the tipping floor: whole things standing there (what a cutter takes). Pieces
+ * already cut are not the cutter's work: they are the carry's backlog (carryGrams).
+ */
+function uncutFloorGrams(c: SalvageContent, g: SalvageGame): number {
+  return g.salvage.things.filter((t) => t.at.at === 'floor').reduce((a, t) => a + thingLeft(c, t.obj, t.cut), 0);
+}
+
+/**
+ * Grams of pieces already cut that wait for a yard hand (the carry's backlog): on the tipping floor, at
+ * the drop-off, in a chalk circle, and beside a thing standing at the drop-off or on the floor -- the
+ * piles a yard hand takes from (crew.ts waitsAt). Pieces in a zone's pile or beside a thing in a zone
+ * stay the boss's (2.6: a hand never takes from the heaps), so no hand's level carries them.
+ */
+export function carryGrams(g: SalvageGame): number {
   const s = g.salvage;
-  const things = s.things.filter((t) => t.at.at === 'floor').reduce((a, t) => a + thingLeft(c, t.obj, t.cut), 0);
-  return things + s.pieces.filter((p) => p.pile === 'floor').reduce((a, p) => a + p.g, 0);
+  const atOf = new Map(s.things.map((t) => [t.uid, t.at.at] as const));
+  let sum = 0;
+  for (const p of s.pieces) {
+    const pl = p.pile;
+    let waits = pl === 'floor' || pl === 'dropoff' || pl.startsWith('circle.');
+    if (!waits && pl.startsWith('beside.')) {
+      const at = atOf.get(pl.slice(7));
+      waits = at === 'dropoff' || at === 'floor';
+    }
+    if (waits) sum += p.g;
+  }
+  return sum;
 }
 
 /** Grams still on a thing after `cut` pieces are off (its remaining pieces and its waste). */
@@ -58,9 +81,13 @@ export function binding(cfg: SalvageConfig, g: SalvageGame): Binding {
   const s = g.salvage;
   const hasCutter = s.crew.some((m) => m.role === 'cutter');
   const hasHand = s.crew.some((m) => m.role === 'hand');
-  const loose = s.pieces.filter((p) => p.pile !== 'floor' && !p.pile.startsWith('zone.')).reduce((a, p) => a + p.g, 0);
-  const cutter = hasCutter && floorGrams(c, g) > FLOOR_SHARE * c.floorRoom_kg * 1000;
-  const hand = hasHand && loose > LOOSE_LOADS * c.crew.hand.load * 1000;
+  // The carry binds when pieces already cut wait for the hands (2.5 loads or more); the cutter binds
+  // only when UNCUT things wait on the floor and no such carry backlog stands (the hands are idle):
+  // levelling the cutter while cut pieces lie waiting only adds to the pile (the measure engineer's
+  // 21:05 line, the lead's 21:12 ruling).
+  const carryBacklog = carryGrams(g) > LOOSE_LOADS * c.crew.hand.load * 1000;
+  const hand = hasHand && carryBacklog;
+  const cutter = hasCutter && !carryBacklog && uncutFloorGrams(c, g) > FLOOR_SHARE * c.floorRoom_kg * 1000;
   const machines: MachineId[] = [];
   for (const id of ['stripper', 'bench'] as const) {
     const m = s.machines[id];

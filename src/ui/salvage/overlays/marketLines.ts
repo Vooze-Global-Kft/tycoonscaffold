@@ -148,7 +148,7 @@ export function withAwayView(a: AwayData, v: AwayViewLike | null | undefined): A
  * grade lines (five at most, three at large type) and "+ n more". At large type the loads bought are
  * one line (their total), so the rivals passed stay above the fold at 667 x 375 (P19).
  */
-export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt | null; money: Txt[]; net: Txt | null; news: Txt[]; next: Txt | null; lines: Txt[] } {
+export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt | null; money: Txt[]; net: Txt | null; unsold: Txt | null; news: Txt[]; next: Txt | null; lines: Txt[] } {
   const head: Txt = { key: 'away.head', args: { t: { secs: a.absentS ?? a.seconds }, c: { secs: a.seconds } } };
   const rl = a.runLonger ?? null;
   const longer: Txt | null = !rl ? null : 'item' in rl ? { key: 'away.longerNight', args: { c: { secs: rl.capS } } } : { key: 'away.longerRung', args: { c: { secs: rl.capS } } };
@@ -164,6 +164,8 @@ export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt 
     // The sign picks the line; the amount is the rules' own (printed positive, as the key asks).
     net = v >= 0 ? { key: 'away.net', args: { x: { money: v } } } : { key: 'away.netLoss', args: { x: { money: -v } } };
   }
+  // join3: right under Net, what the time away left in the bays not yet sold (the rules' own figure).
+  const unsold: Txt | null = net && (a.unsold ?? 0) > 0 ? { key: 'away.unsold', args: { x: { money: a.unsold! } } } : null;
   const news: Txt[] = [];
   if (a.deliveryList?.length) for (const d of a.deliveryList) news.push({ key: 'ticket.dealDelivery', args: { kg: { mass_g: d.g, step: 'lot' }, x: { money: d.paid } } });
   else if (a.deliveries > 0) news.push({ key: 'away.deliveries', args: { n: { n: a.deliveries } } });
@@ -178,7 +180,7 @@ export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt 
   const lines = a.lines.slice(0, max).map((l): Txt => ({ key: 'away.line', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'lot' }, x: { money: l.money } } }));
   const rest = Math.max(0, a.lines.length - max) + (a.moreLines ?? 0);
   if (rest > 0) lines.push({ key: 'ticket.more', args: { n: { n: rest } } });
-  return { head, longer, money, net, news, next, lines };
+  return { head, longer, money, net, unsold, news, next, lines };
 }
 
 // ------------------------------------------------------------------------------- the clipboard's tickets

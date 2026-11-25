@@ -193,6 +193,12 @@ describe('the away card, the clipboard, the skip, the rung sign, the deal, Help'
     const loss = awayLines({ ...bought, net: -50 });
     expect(loss.net!.key).toBe('away.netLoss');
     expect(words(loss.net!)).toContain(R.fmtMoney(50));
+    // join3: a negative Net with value left in the bays says so right under Net.
+    expect(awayLines({ ...bought, net: -50, unsold: 0 }).unsold).toBeNull();
+    const held = awayLines({ ...bought, net: -1523, unsold: 4210 });
+    expect(held.unsold!.key).toBe('away.unsold');
+    expect(words(held.unsold!)).toContain(R.fmtMoney(4210));
+    expect(unfilled(words(held.unsold!))).toBe(false);
     expect(awayLines({ ...bought, bought: [...bought.bought, { partner: 'partnerDemolition', n: 1, spent: 80 }] }).money.map((t) => t.key)).toEqual(['away.sales', 'away.boughtFrom', 'away.boughtFrom']);
     for (const x of [a, many, bought, { ...bought, runLonger: { item: 'night' as const, capS: 7200 } }]) {
       const o = awayLines(x);

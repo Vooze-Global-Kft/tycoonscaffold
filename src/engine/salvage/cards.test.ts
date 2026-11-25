@@ -200,7 +200,7 @@ describe('fix pass: the away card (P3), the rung box and tiles (P17, S10), rows 
         const d = cardOf(cfg, s, ref, FIXTURE_NOW);
         for (const r of d.rows) for (const t of [r.name, r.line, r.extra]) {
           if (!t) continue;
-          expect(['card.carriesRate', 'card.cutsRate', 'card.levelAdds', 'card.rateKgS', 'card.rate'], `${ref.kind} ${r.id}`).not.toContain(t.key);
+          // The rate keys are deleted (join3): no text key prints a rate; no argument carries one.
           for (const a of Object.values(t.args ?? {})) expect('rate_g_h' in a, `${r.id}`).toBe(false);
         }
       }
