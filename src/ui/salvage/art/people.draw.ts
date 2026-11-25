@@ -226,14 +226,19 @@ function grinder(c: SkCanvas, x: number, y: number, spark: number, sparks: boole
  */
 export function drawPerson(c: SkCanvas, v: View3q, o: PersonOptions): void {
   const look = o.look ?? BOSS;
+  // the shadow first and never mirrored: the low sun always throws it east
+  groundShadow(c, v, 0.3, 0.26, 0, 0, 1.1);
   if (o.dir === 'w') {
     c.save();
     c.scale(-1, 1);
-    drawPerson(c, v, { ...o, dir: 'e' });
+    personBody(c, v, { ...o, dir: 'e' }, look);
     c.restore();
     return;
   }
-  groundShadow(c, v, 0.3, 0.26, 0, 0, 1.1);
+  personBody(c, v, o, look);
+}
+
+function personBody(c: SkCanvas, v: View3q, o: PersonOptions, look: PersonLook): void {
   c.save();
   const k = v.ppm / 40;
   c.scale(k, k);

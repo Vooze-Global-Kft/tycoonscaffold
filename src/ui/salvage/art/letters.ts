@@ -6,7 +6,7 @@
  * - SEVEN SEGMENT: the weighbridge display's LED digits.
  * Running text in the interface (cards, the top bar) is the phone's system font, not these.
  */
-import { StrokeCap, StrokeJoin, type SkCanvas } from '@shopify/react-native-skia';
+import { BlendMode, StrokeCap, StrokeJoin, type SkCanvas } from '@shopify/react-native-skia';
 import { builder, fill, rrect, stroke } from './pen';
 
 // ---------------------------------------------------------------------------
@@ -82,7 +82,7 @@ export function stencilWidth(text: string, size: number, track = 0): number {
  * Stencil capitals, cap height `size` points (stroke included), top-left at (x, y) for align 'left',
  * centre for 'center'. Returns the width drawn.
  */
-export function stencil(c: SkCanvas, text: string, x: number, y: number, size: number, color: string, o: { align?: 'left' | 'center' | 'right'; track?: number; alpha?: number } = {}): number {
+export function stencil(c: SkCanvas, text: string, x: number, y: number, size: number, color: string, o: { align?: 'left' | 'center' | 'right'; track?: number; alpha?: number; cut?: boolean } = {}): number {
   const k = size / (6 + STROKE);
   const track = o.track ?? 0;
   const w = stencilWidth(text, size, track);
@@ -104,6 +104,8 @@ export function stencil(c: SkCanvas, text: string, x: number, y: number, size: n
     px += (NARROW[ch] ?? ADV) * k + track;
   }
   const p = stroke(color, STROKE * k, o.alpha ?? 1);
+  // cut: the letters remove what is under them (inside a saveLayer), as a profile cutter cuts a plate
+  if (o.cut) p.setBlendMode(BlendMode.DstOut);
   p.setStrokeCap(StrokeCap.Butt);
   p.setStrokeJoin(StrokeJoin.Miter);
   p.setStrokeMiter(1.6);

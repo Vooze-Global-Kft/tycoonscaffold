@@ -114,12 +114,17 @@ headless(async (H) => {
       const crews: [string, string][] = [['yard hand', YARD.vestYardHand], ['cutter', YARD.vestCutter], ['driver', YARD.vestDriver]];
       crews.forEach(([name, vest], i) => {
         const x = 34 + i * 100;
-        put(c, x, 210, () => P.drawPerson(c, V, { dir: 's', pose: 'stand', look: P.crewLook(vest) }));
-        put(c, x + 46, 210, () => P.drawPerson(c, V, { dir: 'e', pose: 'carry', look: P.crewLook(vest), stack: ['light_iron', 'cast_iron', 'light_iron'] }));
-        caption(c, name, x + 23, 230);
+        put(c, x, 210, () => P.drawPerson(c, V, { dir: 's', pose: 'stand', look: P.crewLook(vest, i * 2) }));
+        put(c, x + 46, 210, () => P.drawPerson(c, V, { dir: 'e', pose: 'carry', look: P.crewLook(vest, i * 2 + 1), stack: ['light_iron', 'cast_iron', 'light_iron'] }));
+        caption(c, name + ' (two crew)', x + 23, 230);
       });
-      put(c, 360, 210, () => P.drawPerson(c, V, { dir: 'e', pose: 'stand', look: P.crewLook(YARD.vestCutter), shield: true }));
-      caption(c, 'furnace hand, shield down', 360, 230);
+      put(c, 340, 210, () => P.drawPerson(c, V, { dir: 'e', pose: 'lever', look: P.crewLook(YARD.vestCutter, 3), shield: true, apron: true }));
+      put(c, 380, 210, () => P.drawPerson(c, V, { dir: 's', pose: 'stand', look: P.crewLook(YARD.vestCutter, 4), shield: true, apron: true }));
+      caption(c, 'furnace hand: shield, aluminised apron', 360, 230);
+      for (let i = 0; i < 5; i++) {
+        put(c, 40 + i * 44, 320, () => P.drawPerson(c, V, { dir: i % 2 ? 'e' : 's', pose: 'stand', look: P.crewLook(YARD.vestYardHand, i) }));
+      }
+      caption(c, 'crew looks by index: five skin tones, hair and beards', 128, 340);
       // scale bar: 1 m
       c.drawPath(pen.segment(470, 210, 470, 210 - V.ppm * V.lift), pen.stroke(YARD.ink, 1.5));
       caption(c, '1 m up', 470, 222);
@@ -156,15 +161,33 @@ headless(async (H) => {
     }, 3);
   }
 
+  if (want('pieces')) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const PC = require('../../src/ui/salvage/art/pieces.draw') as typeof import('../../src/ui/salvage/art/pieces.draw');
+    await write('pieces.png', 640, 250, (c) => {
+      title(c, 'Pieces by grade: each its own shape (bays, heaps, skips, the carried stack)');
+      const grades = ['copper', 'brass', 'light_iron', 'hms', 'cast_iron', 'aluminium', 'enamel'];
+      grades.forEach((g, i) => {
+        const x = 50 + i * 88;
+        for (let k = 0; k < 3; k++) PC.pieceGlyph(c, g, x, 50 + k * 26, 20, 0, k * 7 + 1);
+        c.save();
+        c.translate(x, 205);
+        PC.pieceHeap(c, [g], 80, 30, 14, i + 1, 15);
+        c.restore();
+        caption(c, g.replace('_', ' '), x, 232);
+      });
+    }, 3);
+  }
+
   if (want('plant')) {
     await write('plant.png', 900, 560, (c) => {
       title(c, 'Machines, the weighbridge, the furnace, the truck, a bay, the containers');
       const items: [string, number, number, () => void][] = [
         ['cable stripper (running)', 80, 130, () => M.drawStripper(c, V, { running: true })],
-        ['weighbridge + display', 280, 140, () => M.drawWeighbridgeDeck(c, V)],
-        ['', 365, 118, () => M.drawWeighDisplay(c, V, '1,240')],
-        ['crucible: cold, sample ingot', 500, 130, () => M.drawFurnaceSet(c, V, 'cold')],
-        ['crucible: pouring', 700, 130, () => M.drawFurnaceSet(c, V, 'pouring')],
+        ['weighbridge + display', 280, 150, () => M.drawWeighbridgeDeck(c, V)],
+        ['', 365, 128, () => { M.drawWeighDisplay(c, V, '1,240'); }],
+        ['crucible: cold, lid on', 500, 140, () => M.drawFurnaceSet(c, V, 'cold')],
+        ['crucible: pouring', 700, 140, () => M.drawFurnaceSet(c, V, 'pouring')],
         ['truck + skip, east', 120, 310, () => M.drawTruck(c, V, 0, { load: ['light_iron', 'copper', 'cast_iron', 'light_iron'] })],
         ['south-west', 340, 310, () => M.drawTruck(c, V, Math.PI * 0.75)],
         ['north', 520, 310, () => M.drawTruck(c, V, -Math.PI / 2, { load: ['light_iron', 'light_iron'] })],

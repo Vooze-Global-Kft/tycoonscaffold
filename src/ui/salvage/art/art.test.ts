@@ -25,7 +25,7 @@ vi.mock('@shopify/react-native-skia', async () => {
   }
 });
 
-import { LADDER_ORDER, METAL, YARD, contrast, coolingColour, rgbOf } from './palette';
+import { LADDER_ORDER, METAL, SUN, YARD, contrast, coolingColour, lightness, rgbOf } from './palette';
 import { DOTS, STENCIL } from './letters';
 import { LOADING_T, PLATE_KG, groupKg, loadingPose } from './loading.draw';
 
@@ -46,6 +46,16 @@ describe('palette', () => {
       expect(a.sheen === b.sheen && a.pictogram === b.pictogram, `${LADDER_ORDER[i - 1]} / ${LADDER_ORDER[i]}`).toBe(false);
       expect(a.pictogram).not.toBe(b.pictogram);
     }
+  });
+  it('neighbouring metals on the ladder are at least 20 L* apart, so they part in greyscale too', () => {
+    for (let i = 1; i < LADDER_ORDER.length; i++) {
+      const a = METAL[LADDER_ORDER[i - 1]].base;
+      const b = METAL[LADDER_ORDER[i]].base;
+      expect(Math.abs(lightness(a) - lightness(b)), `${LADDER_ORDER[i - 1]} / ${LADDER_ORDER[i]}`).toBeGreaterThanOrEqual(20);
+    }
+  });
+  it('no metal carries a four-point sparkle (it pushes toward bullion; spec 11)', () => {
+    for (const m of Object.values(METAL)) expect(m.sheen as string).not.toBe('glint');
   });
   it('ink reads on ticket paper and on hi-vis yellow', () => {
     expect(contrast(YARD.ink, YARD.paper)).toBeGreaterThanOrEqual(7);
@@ -114,6 +124,10 @@ describe('loading timeline', () => {
       expect(loadingPose(LOADING_T.plates[i][1] + 0.2).plates[i].shake).toBe(0);
     }
   });
+  it('the ticket feeds out only after the pour, and is out by the gate', () => {
+    expect(loadingPose(LOADING_T.pour[1] - 0.01).ticket).toBe(0);
+    expect(loadingPose(LOADING_T.gate[0]).ticket).toBe(1);
+  });
   it('nothing pours before the title stands; the bar is poured by 2.1 s and brass by 2.4 s', () => {
     expect(loadingPose(1.5).tilt).toBe(0);
     expect(loadingPose(1.5).pour).toBe(0);
@@ -157,7 +171,8 @@ describe('drawings', () => {
         expect(k.any).toBe(true);
         expect(k.b, `${dir} ${pose}`).toBeLessThanOrEqual(10);
         expect(k.t, `${dir} ${pose}`).toBeGreaterThanOrEqual(pose === 'carry' ? -80 : -56);
-        expect(Math.max(-k.l, k.r), `${dir} ${pose}`).toBeLessThanOrEqual(pose === 'cut' ? 40 : 26);
+        expect(-k.l, `${dir} ${pose}`).toBeLessThanOrEqual(pose === 'cut' ? 40 : 26);
+        expect(k.r, `${dir} ${pose}`).toBeLessThanOrEqual((pose === 'cut' ? 40 : 26) + 1.1 * SUN.dx * VIEW.ppm);
       }
   });
 
@@ -174,14 +189,14 @@ describe('drawings', () => {
       ['cable drum', (c) => Sd.drawCableDrum(c, VIEW), 0.8, 0.7, 1.2],
       ['cable coil', (c) => Sd.drawCoil(c, VIEW, 'cable'), 0.7, 0.7, 0.3],
       ['bare bright', (c) => Sd.drawBrightCopper(c, VIEW), 0.5, 0.5, 0.4],
-      ['tap crate', (c) => Sd.drawTapCrate(c, VIEW), 0.5, 0.4, 0.5],
+      ['tap crate', (c) => Sd.drawTapCrate(c, VIEW), 0.5, 0.4, 0.56],
       ['radiator', (c) => Sd.drawRadiator(c, VIEW), 0.65, 0.3, 0.75],
       ['ingot', (c) => Sd.drawIngot(c, VIEW, 'brass'), 0.4, 0.3, 0.2],
       ['stripper', (c) => M.drawStripper(c, VIEW), 1.6, 0.8, 1.9],
       ['weighbridge', (c) => M.drawWeighbridgeDeck(c, VIEW), 2.0, 1.4, 0.2],
       ['display', (c) => M.drawWeighDisplay(c, VIEW, '1,240'), 1.1, 0.4, 3.2],
-      ['crucible cold', (c) => M.drawFurnaceSet(c, VIEW, 'cold'), 3.4, 1.2, 2.2],
-      ['crucible pouring', (c) => M.drawFurnaceSet(c, VIEW, 'pouring'), 3.7, 1.6, 2.9],
+      ['crucible cold', (c) => M.drawFurnaceSet(c, VIEW, 'cold'), 2.4, 1.2, 3.3],
+      ['crucible pouring', (c) => M.drawFurnaceSet(c, VIEW, 'pouring'), 3.4, 1.8, 3.3], // the melt's light pool reaches past the pad
       ['truck', (c) => M.drawTruck(c, VIEW, 0.6), 2.7, 2.7, 2.6],
       ['container', (c) => M.drawContainer(c, VIEW, YARD.containerTeal, { len: 4 }), 2.2, 1.4, 2.8],
       ['pad', (c) => M.drawPad(c, VIEW, 3, 2, true), 1.7, 1.2, 0.2],
@@ -190,7 +205,9 @@ describe('drawings', () => {
     for (const [name, draw, hw, hd, h] of cases) {
       const k = inkBounds(draw, 260);
       expect(k.any, name).toBe(true);
-      expect(Math.max(-k.l, k.r), name).toBeLessThanOrEqual(hw * P + 2);
+      expect(-k.l, name).toBeLessThanOrEqual(hw * P + 2);
+      // the low sun throws shadows east: up to SUN.dx of the height beyond the footprint
+      expect(k.r, name).toBeLessThanOrEqual((hw + h * SUN.dx) * P + 2);
       expect(k.b, name).toBeLessThanOrEqual(hd * P * VIEW.tilt + 2);
       expect(-k.t, name).toBeLessThanOrEqual((h * VIEW.lift + hd * VIEW.tilt) * P + 2);
     }

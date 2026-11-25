@@ -35,7 +35,7 @@ export const YARD = {
   castIron: '#4E5257',
   rust: '#9A4B2B',
   rustLight: '#BE6A43',
-  hms: '#BA7B55',
+  hms: '#A5826A',
   apron: '#D7DBDF',
   apronDark: '#9EA6AE',
   enamel: '#F1F2EE',
@@ -142,12 +142,12 @@ export interface MetalLook {
 export const METAL: Record<string, MetalLook> = {
   light_iron: { base: '#8E979E', light: '#B9C0C5', dark: '#5F676E', sheen: 'freckles', pictogram: 'plate', code: 'FE' },
   cast_iron: { base: YARD.castIron, light: '#6E737A', dark: '#33363A', sheen: 'dots', pictogram: 'radiator', code: 'CI' },
-  hms: { base: YARD.hms, light: '#D9A07A', dark: '#7E4A2E', sheen: 'band', pictogram: 'beam', code: 'HMS' },
+  hms: { base: YARD.hms, light: '#C9A894', dark: '#6E5242', sheen: 'band', pictogram: 'beam', code: 'HMS' },
   aluminium: { base: YARD.aluminium, light: YARD.aluminiumLight, dark: YARD.aluminiumDark, sheen: 'stripe', pictogram: 'can', code: 'AL' },
   brass: { base: YARD.brass, light: YARD.brassLight, dark: YARD.brassDark, sheen: 'streak', pictogram: 'tap', code: 'BR' },
   copper: { base: YARD.copper, light: YARD.copperLight, dark: YARD.copperDark, sheen: 'ticks', pictogram: 'coil', code: 'CU' },
   lead: { base: '#50555D', light: '#727881', dark: '#383C42', sheen: 'none', pictogram: 'battery', code: 'PB' },
-  lithium: { base: '#74A3DB', light: '#A6C6EC', dark: '#41709F', sheen: 'band', pictogram: 'cell', code: 'LI' },
+  lithium: { base: '#7AA9E0', light: '#A6C6EC', dark: '#41709F', sheen: 'band', pictogram: 'cell', code: 'LI' },
   iridium: { base: '#DDE5EF', light: '#F4F7FB', dark: '#9AA6B6', sheen: 'facet', pictogram: 'crucible', code: 'IR' },
 };
 

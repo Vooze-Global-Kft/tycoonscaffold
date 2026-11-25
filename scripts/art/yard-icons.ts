@@ -50,6 +50,24 @@ headless(async (H) => {
     return im;
   };
   const cands = Y.CANDIDATES.map((k) => ({ id: k.id, im: img(k.icon) }));
+  // the finished icon and its 60 px sheet beside the four shipped games (white and dark home screens)
+  {
+    const f = path.join(out, 'icon-final-1024.png');
+    await H.sheet(f, { width: 1024, height: 1024, scale: 1, background: 'transparent' }, Y.ICON);
+    console.log('wrote', f);
+    const fin = img(Y.ICON);
+    const row = [...['pizza-empire', 'space-miner', 'night-market', 'high-office'].map((g) => fromFile(`games/${g}/icon.png`)), fin];
+    const g = path.join(out, 'icon-final-60.png');
+    await H.sheet(g, { width: 20 + row.length * 80, height: 2 * 100, scale: 1, background: '#FFFFFF' }, (c) => {
+      ['#F2F2F7', '#15171C'].forEach((bg, r) => {
+        const p = Skia.Paint();
+        p.setColor(Skia.Color(bg));
+        c.drawRect(Skia.XYWHRect(0, r * 100, 20 + row.length * 80, 100), p);
+        row.forEach((im, i) => home(c, im, 20 + i * 80, r * 100 + 20, 60));
+      });
+    });
+    console.log('wrote', g);
+  }
   for (const k of Y.CANDIDATES) {
     const f = path.join(out, `${k.id}.png`);
     await H.sheet(f, { width: 1024, height: 1024, scale: 1, background: 'transparent' }, k.icon);
