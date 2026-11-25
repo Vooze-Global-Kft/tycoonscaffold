@@ -69,11 +69,11 @@ export const SalvageSchema = z.object({
     .object({
       speed: z.number().positive().default(9),
       /** Its footprint as a circle, metres: wider than the worker, so it cannot pass a narrow gap. */
-      radius: z.number().positive().default(1.05),
+      radius: z.number().positive().default(1.3),
       /** How close the worker must come to its centre to get in, metres. */
-      enter: z.number().positive().default(1.7),
+      enter: z.number().positive().default(2.0),
     })
-    .default({ speed: 9, radius: 1.05, enter: 1.7 }),
+    .default({ speed: 9, radius: 1.3, enter: 2.0 }),
   /** PLACEHOLDER numbers of the test loop: cut a wreck, carry its pieces, unload them one by one. */
   loop: z
     .object({
@@ -94,7 +94,14 @@ export const SalvageSchema = z.object({
     })
     .default({ cutSeconds: 2, pieces: 3, capacity: 6, unloadSeconds: 0.35, pieceValue: 5, respawnSeconds: 20, staleSeconds: 0.6 }),
   /** Helpers walking by themselves between a wreck and the machine (on screen only in the ground work). */
-  helpers: z.object({ count: z.number().int().min(0).max(200).default(6), speed: z.number().positive().default(2.4) }).default({ count: 6, speed: 2.4 }),
+  helpers: z
+    .object({
+      count: z.number().int().min(0).max(200).default(6),
+      speed: z.number().positive().default(2.4),
+      /** A point every helper walks through between the machine and its wreck (a gap in a wall), metres; none: straight. */
+      via: z.tuple([z.number(), z.number()]).optional(),
+    })
+    .default({ count: 6, speed: 2.4 }),
   props: z.array(PropSchema).default([]),
 });
 
