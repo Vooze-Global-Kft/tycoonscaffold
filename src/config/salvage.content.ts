@@ -36,7 +36,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
-    "measure (the bots on the new map, REPORT6.txt): ladder.rungs n 2 2.2 -> 2.4 t (E31d's 2.4 was written to rung2 only and the engine reads ladder.rungs: build-yard.py now refuses the two disagreeing); rung 3 21.5 -> 27.5 t (the nearer stock and join3's advice line brought rung 3 to minute 52; 29.4 t are supplied by minute 60); the Night watch §2,800 -> §36,000 (E33 with E13: it adds two hours to every long absence, worth a median §61k on one twelve-hour absence from minute 60 (min §56k) and §30k from minute 30, so it pays back in its first night and stays a thing saved for); levels.floor 1500 -> 1100 (E31c: more levels bought in the last half hour); partners fill_s 120 -> 100 and 180 -> 150 again (bots5's values, measured in REPORT5, had not reached this file)",
+    "measure (the bots on the new map, REPORT6.txt): ladder.rungs n 2 2.2 -> 2.4 t (E31d's 2.4 was written to rung2 only and the engine reads ladder.rungs: build-yard.py now refuses the two disagreeing); rung 3 21.5 -> 27.5 t (the nearer stock and join3's advice line brought rung 3 to minute 52; 29.4 t are supplied by minute 60); ceilings_t_h rung 2 90 -> 110 t/h (E30: 1.3 x the 82 t/h the normal hand now reaches on rung 2 with join3's advice line; 90 refused a partner level on 10 of 75 runs near minute 55); the Night watch §2,800 -> §36,000 (E33 with E13: it adds two hours to every long absence, worth a median §61k on one twelve-hour absence from minute 60 (min §56k) and §30k from minute 30, so it pays back in its first night and stays a thing saved for); levels.floor 1500 -> 1100 (E31c: more levels bought in the last half hour); partners fill_s 120 -> 100 and 180 -> 150 again (bots5's values, measured in REPORT5, had not reached this file)",
     "fix pass (content, 25 Nov evening): THE MAP moves to the art director's picture (MAP.md M1-M7): back wall map.north 15.2, working row against it, zone 1 in the wall/east-fence corner by the scale, the drop-off bay by the gate, one drive line (map.driveLine), office and rack south of it; zones.<id>.bed; routes recomputed (scripts/content/yard_map.py)",
     "fix pass: P1 dropoff.opening washers and bicycles until openingUntil_s 300; R4/W26 (E31b) crew.hand.lev 0.12 -> 0.25, crew.cutter.lev 0.15 -> 0.25 (levels priced by E13a's rule); E31d ladder.rung2.t 2.2 -> 2.4; R6 (E33) awayCap_h -> awayCapByRung_h [0.5, 2, 4] and nightWatch_h 2; P10 truck.bossV 9 (truck.v stays the driver's 12); W9 the car: pieces wheels, loom, converter (pieceTiers 1, 1, 3) and a whole shell of Car body 800 kg (same value)",
     "bots5 (the people-like bots on the real rules, scripts/content/yard-bot.ts, REPORT5.txt): goal prices hand1 400 -> 300, sledge 480 -> 340, trolley 540 -> 380, truck 600 -> 430, torch 670 -> 480, cutter 750 -> 540, stripper 890 -> 700, crucible 1200 -> 800, bench 1300 -> 900, driver 1500 -> 1000 (the real yard hand walks real legs: net income in minutes 5 to 25 is about §180-300 a minute, so proto4's prices meant waits of four to eight minutes)",
@@ -1094,7 +1094,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       { n: 9, t: 500000, range: 11 },
     ],
   },
-  ceilings_t_h: [6, 90, 400],
+  ceilings_t_h: [6, 110, 400],
   awayCapByRung_h: [0.5, 2, 4],
   nightWatch_h: 2,
   rivals: {
