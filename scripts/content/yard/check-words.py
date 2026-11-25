@@ -12,8 +12,9 @@ and flags (rules in name-filter.json): a rude word alone, inside a word or forme
 an innuendo or size word; a hand-listed hate symbol, movement, brand, team or slogan; any entry of the
 fourth game's satire lint lists (scripts/content/office/deny-*.txt); a word the specification keeps out of
 player text; a proper name of the four earlier games, exact or one letter away; with --wikidata, an
-English Wikipedia page whose title is the pair in three spellings ("Steady Anvil", "Steady anvil",
-"Steadyanvil"). Exit status 1 if anything is flagged. An engineer's check, not legal or moderation
+English Wikipedia page whose title is the pair in two spellings ("Steady Anvil",
+"Steadyanvil"; the first catches brands, teams, titles and two-word places, the second one-word places such as
+"Redbridge"). Exit status 1 if anything is flagged. An engineer's check, not legal or moderation
 clearance. Reads only; the network is used only with --wikidata (Wikidata's public API, 50 titles a call).
 """
 import glob, json, os, re, subprocess, sys, time, unicodedata, urllib.parse
@@ -233,9 +234,10 @@ def wikidata_titles(titles, sleep=1.5):
     return found
 
 
-def spellings(a, b, joiner=' '):
-    s = [f'{a}{joiner}{b}', f'{a}{joiner}{b[0].lower()}{b[1:]}']
-    if joiner == ' ':
+def spellings(a, b, joiner=' ', endings=()):
+    """the pair as a title ('Steady Anvil') and, unless b is an ending, as one word ('Steadyanvil')"""
+    s = [f'{a}{joiner}{b}']
+    if joiner == ' ' and b not in endings:
         s.append(f'{a}{b.lower()}'.replace(' ', '').capitalize())
     return s
 
@@ -278,16 +280,17 @@ def run(lists, wikidata=False, verbose=True):
         for x in ck.pair_flags(a, b, j):
             flags.append((kind, a, b, x))
     wd = {}
+    ends = tuple(lists.get('companies', {}).get('endings', []))
     if wikidata:
         titles = []
         for kind, a, b, j in pairs:
             if j == ' ':
-                titles += spellings(a, b, j)
+                titles += spellings(a, b, j, ends)
         titles += [w for w in lists.get('crew', [])]
         wd = wikidata_titles(titles)
         for kind, a, b, j in pairs:
             if j == ' ':
-                for t in spellings(a, b, j):
+                for t in spellings(a, b, j, ends):
                     if wd.get(t):
                         flags.append((kind, a, b, f'Wikipedia page "{t}": {wd[t]}'))
     if verbose:

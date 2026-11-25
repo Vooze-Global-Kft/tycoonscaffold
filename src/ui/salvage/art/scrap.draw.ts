@@ -6,6 +6,7 @@
  */
 import { ClipOp, FillType, type SkCanvas } from '@shopify/react-native-skia';
 import { LINE_W, METAL, YARD, coolingColour, mix, shade } from './palette';
+import { brassTap, brassValve, copperTicks, pieceGlyph } from './pieces.draw';
 import {
   blob as blobPath,
   box,
@@ -20,8 +21,10 @@ import {
   groundShadow,
   hash01,
   oval,
+  cylinder,
   poly,
   proj,
+  rrect,
   segment,
   stroke,
   subQuad,
@@ -117,39 +120,40 @@ function motor(c: SkCanvas, v: View3q, ox: number, oy: number, z: number): void 
   const body = builder().addRRect({ rect: { x: ax, y: ay - rp, width: bx - ax, height: rp * 2 }, rx: rp * 0.5, ry: rp * 0.5 }).build();
   c.drawPath(body, fill(YARD.steelDark));
   c.drawPath(body, stroke(INK, LINE_W));
-  c.drawRect({ x: ax + (bx - ax) * 0.38, y: ay - rp + 1, width: (bx - ax) * 0.26, height: rp * 2 - 2 }, fill(YARD.copper));
-  ticks(c, ax + (bx - ax) * 0.5, ay - rp * 0.3, 3.6);
-  c.drawRect({ x: ax + (bx - ax) * 0.38, y: ay - rp + 1, width: (bx - ax) * 0.26, height: rp * 2 - 2 }, stroke(INK, 0.9));
+  // the end bell is off: the copper windings show as a bright band of turns
+  const wx0 = ax + (bx - ax) * 0.3;
+  const ww = (bx - ax) * 0.42;
+  c.drawRect({ x: wx0, y: ay - rp + 1, width: ww, height: rp * 2 - 2 }, fill(YARD.copper));
+  for (let i = 1; i < 5; i++) c.drawPath(segment(wx0 + (ww * i) / 5, ay - rp + 1.5, wx0 + (ww * i) / 5, ay + rp - 1.5), stroke(YARD.copperLight, 1));
+  copperTicks(c, wx0 + ww * 0.5, ay - rp * 0.2, 4);
+  c.drawRect({ x: wx0, y: ay - rp + 1, width: ww, height: rp * 2 - 2 }, stroke(INK, 0.9));
   c.drawPath(segment(bx, by, bx + 4, by), stroke(INK, 2.2));
 }
 
 function washerPieces(c: SkCanvas, v: View3q, seed: number): void {
-  groundShadow(c, v, 0.55, 0.45);
-  // three side panels lying flat, slightly turned
-  const panels: [number, number, number][] = [
-    [-0.22, -0.12, 0.25],
-    [0.2, -0.16, -0.3],
-    [-0.05, 0.12, 0.08],
-  ];
-  panels.forEach(([x, y, h], i) => {
-    box(c, v, {
-      len: 0.56,
-      wid: 0.4,
-      h: 0.03,
-      ox: x,
-      oy: y,
-      z: i * 0.03,
-      heading: h,
-      color: YARD.enamel,
-      line: LINE_W,
-      onTop: (q) => {
-        const [x0, y0] = proj(v, ...q[0]);
-        freckles(c, x0 - 14, y0 - 2, 12, 6, seed + i, YARD.rust, 3);
-      },
-    });
-  });
-  motor(c, v, 0.28, 0.24, 0);
-  box(c, v, { len: 0.36, wid: 0.16, h: 0.14, ox: -0.3, oy: 0.26, color: '#B4B0A6', line: 1 });
+  groundShadow(c, v, 0.6, 0.45, 0, 0, 0.3);
+  // two bent side panels lying behind, white enamel with a rust spot
+  const [p1x, p1y] = proj(v, -0.28, -0.2, 0.05);
+  const [p2x, p2y] = proj(v, 0.3, -0.24, 0.05);
+  pieceGlyph(c, 'enamel', p1x, p1y, 24, -8, seed);
+  pieceGlyph(c, 'enamel', p2x, p2y, 22, 12, seed + 1);
+  // the drum standing open: perforated stainless, dark inside
+  const dx = -0.2;
+  const dy = 0.08;
+  const [tx, ty] = cylinder(c, v, { r: 0.22, h: 0.32, ox: dx, oy: dy, color: YARD.galvanisedLight, line: LINE_W });
+  const [, by] = proj(v, dx, dy, 0);
+  for (let row = 0; row < 3; row++)
+    for (let i = 0; i < 5; i++) {
+      const xx = tx - 6 + i * 3.2 - (row % 2) * 1.6;
+      c.drawCircle(xx, ty + 3 + row * ((by - ty - 3) / 3), 0.75, fill(YARD.steelDark));
+    }
+  const rx = 0.22 * v.ppm;
+  c.drawPath(oval(tx, ty, rx * 0.78, rx * v.tilt * 0.72), fill(shade(YARD.steelDark, -0.2)));
+  c.drawPath(oval(tx, ty, rx * 0.78, rx * v.tilt * 0.72), stroke(INK, 0.8));
+  // the motor with its copper windings, front right
+  motor(c, v, 0.24, 0.22, 0);
+  // the concrete counterweight
+  box(c, v, { len: 0.3, wid: 0.14, h: 0.12, ox: 0.32, oy: -0.02, color: '#B4B0A6', line: 1 });
 }
 
 // ---------------------------------------------------------------------------
@@ -315,7 +319,7 @@ export function tapGlyph(c: SkCanvas, x: number, y: number, s: number, turn = 0)
 }
 
 export function drawTapCrate(c: SkCanvas, v: View3q): void {
-  boxShadow(c, v, 0.62, 0.44);
+  boxShadow(c, v, 0.62, 0.44, 0, 0, 0.4);
   box(c, v, {
     len: 0.6,
     wid: 0.4,
@@ -328,20 +332,22 @@ export function drawTapCrate(c: SkCanvas, v: View3q): void {
       for (const s of [0.18, 0.82]) faceFill(c, v, subQuad(q, s - 0.02, s + 0.02, 0.1, 0.55), shade(YARD.crateBlue, -0.3));
     },
     onTop: (q) => {
-      // the taps heaped above the rim
-      const pts: [number, number, number][] = [
-        [0.2, 0.25, 0.4],
-        [0.45, 0.3, -0.5],
-        [0.72, 0.28, 0.9],
-        [0.3, 0.62, -0.2],
-        [0.58, 0.65, 0.3],
-        [0.82, 0.6, -0.9],
-        [0.12, 0.7, 1.4],
-      ];
+      // the crate's dark inside, then four big taps standing out of it (spout and handle clear of the rim)
       faceFill(c, v, subQuad(q, 0.06, 0.94, 0.08, 0.92), shade(YARD.crateBlue, -0.45));
-      pts.forEach(([s, t, turn]) => {
-        const [x, y] = proj(v, ...subQuad(q, s, s, t, t)[0]);
-        tapGlyph(c, x, y - 2, 9, turn * 30);
+      const taps: [number, number, number, number][] = [
+        [0.22, 0.4, -24, 0],
+        [0.5, 0.3, 14, 1],
+        [0.78, 0.45, -8, 2],
+        [0.4, 0.7, 30, 0],
+      ];
+      taps.forEach(([s0, t0, turn, kind]) => {
+        const [x, y] = proj(v, ...subQuad(q, s0, s0, t0, t0)[0]);
+        c.save();
+        c.translate(x, y - 6);
+        c.rotate(turn, 0, 0);
+        if (kind === 1) brassValve(c, 16);
+        else brassTap(c, 18);
+        c.restore();
       });
     },
   });
@@ -401,74 +407,102 @@ export function drawIngot(c: SkCanvas, v: View3q, metal: string, t = 99, o: { ox
   const west: V3[] = [P(-L, W, 0), P(-L, -W, 0), P(-L + inset, -W + inset, H), P(-L + inset, W - inset, H)];
   const east: V3[] = [P(L, -W, 0), P(L, W, 0), P(L - inset, W - inset, H), P(L - inset, -W + inset, H)];
   const top: V3[] = [P(-L + inset, -W + inset, H), P(L - inset, -W + inset, H), P(L - inset, W - inset, H), P(-L + inset, W - inset, H)];
-  faceFill(c, v, west, shade(col, -0.12), LINE_W);
-  faceFill(c, v, east, shade(col, -0.3), LINE_W);
-  faceFill(c, v, front, shade(col, -0.14), LINE_W);
-  faceFill(c, v, top, shade(col, hot ? 0.25 : 0.16), LINE_W);
+  // brass is drawn dull and olive with darker sides (never polished gold); copper red-brown
+  const side = metal === 'brass' && !hot ? YARD.brassDark : shade(col, -0.14);
+  faceFill(c, v, west, shade(side, 0.04), LINE_W);
+  faceFill(c, v, east, shade(side, -0.18), LINE_W);
+  faceFill(c, v, front, side, LINE_W);
+  faceFill(c, v, top, shade(col, hot ? 0.25 : 0.06), LINE_W);
   if (hot) {
     const [gx, gy] = proj(v, ox, oy, z + H);
     c.drawPath(oval(gx, gy, L * v.ppm * 0.8, 3), fill(YARD.glowWhite, Math.max(0, 0.8 - t / 4)));
-  } else if (METAL[metal]?.sheen === 'glint') {
-    const [gx, gy] = proj(v, ox + L * 0.4, oy, z + H);
-    glint(c, gx, gy, 3.4);
-  } else if (METAL[metal]?.sheen === 'ticks') {
-    const [gx, gy] = proj(v, ox - L * 0.3, oy, z + H);
-    ticks(c, gx, gy, 4.5);
+    return;
   }
-  // the cast mark on the top: a small stamped bar of three dots
-  if (!hot) {
-    const [mx, my] = proj(v, ox - L * 0.35, oy, z + H);
-    for (let i = 0; i < 3; i++) c.drawCircle(mx + i * 2.2 - 2.2, my, 0.6, fill(shade(col, -0.35)));
+  // the break notches across the top (a notched ingot, as the trade casts them) and the yard's stamp
+  for (const k of [-0.34, 0.0, 0.34]) {
+    const a = proj(v, ox + L * k, oy - W + inset + 0.005, z + H);
+    const b = proj(v, ox + L * k, oy + W - inset - 0.005, z + H);
+    c.drawPath(segment(a[0], a[1], b[0], b[1]), stroke(shade(col, -0.4), 1.3));
+    const fa = proj(v, ox + L * k, oy + W - inset, z + H);
+    const fb = proj(v, ox + L * k * 1.05, oy + W, z + H * 0.35);
+    c.drawPath(segment(fa[0], fa[1], fb[0], fb[1]), stroke(shade(side, -0.3), 1));
   }
+  if (METAL[metal]?.sheen === 'ticks') {
+    const [gx, gy] = proj(v, ox - L * 0.17, oy, z + H);
+    copperTicks(c, gx, gy, 4.5);
+  } else if (METAL[metal]?.sheen === 'streak') {
+    const [gx, gy] = proj(v, ox - L * 0.5 + inset + 0.03, oy + W - inset - 0.02, z + H);
+    c.drawPath(segment(gx, gy, gx + L * v.ppm * 0.3, gy), stroke(YARD.brassLight, 1.2, 0.9));
+  }
+  const [mx, my] = proj(v, ox + L * 0.17, oy, z + H);
+  c.drawPath(rrect(mx - 3, my - 1.6, 6, 3.2, 0.8), stroke(shade(col, -0.4), 0.8));
 }
 
-/** A loose heap of mixed scrap (the gate tip): a lumpy mound with pieces sticking out of it, seeded. */
+/**
+ * A loose heap of mixed scrap (the gate tip): a lumpy mound whose outline breaks round the big parts in
+ * it (a wheel rim, a pipe, a white-goods panel, a radiator, bent plate and beams), seeded.
+ */
 export function drawHeap(c: SkCanvas, v: View3q, r: number, h: number, seed = 3): void {
-  groundShadow(c, v, r * 1.05, r * 0.95);
+  groundShadow(c, v, r * 1.05, r * 0.95, 0, 0, h * 0.8);
   const P = v.ppm;
   const rx = r * P;
   const ry = r * P * v.tilt;
   const top = h * P * v.lift;
-  // the silhouette: lumps along an arch
   const pts: number[] = [];
-  const n = 11;
+  const n = 15;
   for (let i = 0; i <= n; i++) {
     const a = i / n;
     const x = -rx + 2 * rx * a;
-    const bump = 0.75 + hash01(seed, i, 9) * 0.35;
-    const y = -top * Math.sin(Math.PI * a) ** 0.8 * bump;
-    pts.push(x, y);
+    const bump = 0.62 + hash01(seed, i, 9) * 0.55;
+    pts.push(x, -top * Math.sin(Math.PI * a) ** 0.7 * bump);
   }
-  pts.push(rx * 0.7, ry * 0.6, 0, ry * 0.9, -rx * 0.7, ry * 0.6);
+  pts.push(rx * 0.75, ry * 0.55, 0, ry * 0.85, -rx * 0.75, ry * 0.55);
   const mound = blobOpen(pts);
-  c.drawPath(mound, fill('#7C858C'));
+  c.drawPath(mound, fill('#6E767D'));
   c.save();
   c.clipPath(mound, ClipOp.Intersect, true);
-  c.drawRect({ x: -rx, y: -top * 0.25, width: rx * 2, height: top + ry }, fill('#69727A'));
+  c.drawRect({ x: -rx, y: -top * 0.2, width: rx * 2, height: top + ry }, fill('#5E666D'));
   c.restore();
   c.drawPath(mound, stroke(INK, LINE_W));
-  const metals = ['light_iron', 'hms', 'light_iron', 'aluminium', 'cast_iron', 'light_iron', 'hms', 'enamel'];
-  for (let i = 0; i < 22; i++) {
+  // small pieces first, all over
+  const small = ['light_iron', 'hms', 'light_iron', 'aluminium', 'enamel', 'light_iron', 'cast_iron'];
+  for (let i = 0; i < 16; i++) {
     const a = hash01(seed, i, 1) * 2 - 1;
-    const b = hash01(seed, i, 2);
-    const x = a * rx * 0.85;
-    const yTop = -top * Math.sin(Math.PI * (a + 1) / 2) ** 0.8 * 0.9;
-    const y = yTop + (ry * 0.5 - yTop) * b * 0.8;
-    const key = metals[i % metals.length];
-    const base = key === 'enamel' ? YARD.enamel : METAL[key].base;
-    const light = key === 'enamel' ? '#FFFFFF' : METAL[key].light;
-    const w = 7 + hash01(seed, i, 3) * 10;
-    const turn = (hash01(seed, i, 5) - 0.5) * 70;
-    c.save();
-    c.translate(x, y);
-    c.rotate(turn, 0, 0);
-    const kind = i % 4;
-    const p = kind === 0 ? poly([-w / 2, -1.6, w / 2, -1.6, w / 2, 1.6, -w / 2, 1.6]) : kind === 1 ? poly([-w / 2, -3, w / 3, -4, w / 2, 2, -w / 2 + 2, 3.4]) : poly([-w / 2, -2.4, w / 2, -2.8, w / 2 - 1, 2.6, -w / 2, 2.2]);
-    c.drawPath(p, fill(i % 3 === 0 ? light : base));
-    c.drawPath(p, stroke(INK, 0.9));
-    if (key === 'light_iron' && i % 2) c.drawCircle(w * 0.15, 0, 0.9, fill(YARD.rust));
-    c.restore();
+    const yTop = -top * (1 - a * a) * 0.85;
+    const y = yTop + (ry * 0.45 - yTop) * hash01(seed, i, 2) * 0.8;
+    pieceGlyph(c, small[i % small.length], a * rx * 0.8, y, 12 + hash01(seed, i, 3) * 6, (hash01(seed, i, 5) - 0.5) * 70, seed * 13 + i);
   }
+  // the big readable parts
+  // a pipe across the top-left
+  c.save();
+  c.translate(-rx * 0.35, -top * 0.62);
+  c.rotate(-22, 0, 0);
+  const pl = rx * 0.9;
+  c.drawPath(rrect(-pl / 2, -3, pl, 6, 3), fill(YARD.galvanised));
+  c.drawRect({ x: -pl / 2 + 2, y: -2.4, width: pl - 4, height: 1.6 }, fill(YARD.galvanisedLight));
+  c.drawPath(rrect(-pl / 2, -3, pl, 6, 3), stroke(INK, 1));
+  c.drawPath(oval(pl / 2, 0, 2, 3), fill(YARD.steelDark));
+  c.drawPath(oval(pl / 2, 0, 2, 3), stroke(INK, 0.9));
+  c.restore();
+  // a white-goods panel leaning at the right
+  pieceGlyph(c, 'enamel', rx * 0.45, -top * 0.42, 22, 18, seed + 5);
+  // a radiator section low left
+  pieceGlyph(c, 'cast_iron', -rx * 0.55, -top * 0.12, 18, -8, seed + 2);
+  // a car wheel rim on edge, centre front
+  const wx = rx * 0.05;
+  const wy = -top * 0.3;
+  const wr = Math.min(11, rx * 0.22);
+  c.drawPath(oval(wx, wy, wr, wr), fill(YARD.tyre));
+  c.drawPath(oval(wx, wy, wr, wr), stroke(INK, 1));
+  c.drawPath(oval(wx, wy, wr * 0.66, wr * 0.66), fill(YARD.aluminium));
+  c.drawPath(oval(wx, wy, wr * 0.66, wr * 0.66), stroke(INK, 0.9));
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + 0.3;
+    c.drawPath(segment(wx, wy, wx + Math.cos(a) * wr * 0.6, wy + Math.sin(a) * wr * 0.6), stroke(YARD.aluminiumDark, 1.6));
+  }
+  c.drawPath(oval(wx, wy, wr * 0.18, wr * 0.18), fill(YARD.steelDark));
+  // a beam end sticking out at the right foot
+  pieceGlyph(c, 'hms', rx * 0.62, ry * 0.1, 20, -10, seed + 9);
 }
 
 function blobOpen(pts: number[]): ReturnType<typeof poly> {

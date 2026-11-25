@@ -192,22 +192,55 @@ export interface Ticket {
   stamp: [string, string];
 }
 
-export const TICKET_W = 192;
-export const ticketHeight = (t: Ticket): number => 58 + t.lines.length * 22 + 58;
+/** The ticket's width for a print size p (points): 15 glyph-widths of print plus the sprocket strip. */
+export const ticketWidth = (p: number = TYPE.ticket): number => Math.round(p * 19.4);
+export const TICKET_W = ticketWidth();
+
+interface TicketRow {
+  kind: 'head' | 'meta' | 'rule' | 'grade' | 'sub' | 'amount' | 'double' | 'total' | 'stamp';
+  h: number;
+  line?: TicketLine;
+}
+
+/** The rows of a ticket at print size p (a line's amount shares the sub-line's row when it fits). */
+function ticketRows(t: Ticket, p: number): TicketRow[] {
+  const iw = p * 15;
+  const rows: TicketRow[] = [
+    { kind: 'head', h: p * 2.6 },
+    { kind: 'meta', h: p * 1.6 },
+    { kind: 'rule', h: p * 0.7 },
+  ];
+  for (const l of t.lines) {
+    rows.push({ kind: 'grade', h: p * 1.45, line: l });
+    const sub = dotWidth(`${l.net} × ${l.price}`, p);
+    const amt = dotWidth(l.amount, p);
+    if (sub + amt + p <= iw) rows.push({ kind: 'sub', h: p * 1.6, line: l });
+    else {
+      rows.push({ kind: 'sub', h: p * 1.3, line: { ...l, amount: '' } });
+      rows.push({ kind: 'amount', h: p * 1.5, line: l });
+    }
+  }
+  rows.push({ kind: 'double', h: p * 0.8 }, { kind: 'total', h: p * 1.9 }, { kind: 'stamp', h: p * 3.6 });
+  return rows;
+}
+
+export const ticketHeight = (t: Ticket, p: number = TYPE.ticket): number => ticketRows(t, p).reduce((a, r) => a + r.h, 0) + p * 1.2;
 
 /**
- * The weighbridge ticket, top-left at (x, y): continuous dot-matrix paper with a sprocket strip down the
- * left edge, torn edges top and bottom, a hi-vis header with the yard's name in stencil, one block per
- * grade (grade, net mass x posted price = amount), the total, and the blue rubber stamp
- * "ID CHECKED · PAID BY TRANSFER" (ruling 10).
+ * The weighbridge ticket, top-left at (x, y), at print size p (7 pt in the interface; 9 pt in a store
+ * picture, so its smallest print stays legible): continuous dot-matrix paper with a sprocket strip down
+ * the left edge, torn edges top and bottom, a hi-vis header with the yard's name in stencil, one block
+ * per grade (grade; net mass x posted price; amount), the total, and the blue rubber stamp
+ * "ID CHECKED · PAID BY TRANSFER" (ruling 10). It always comes out of the weighbridge display's slot.
  */
-export function drawTicket(c: SkCanvas, x: number, y: number, t: Ticket): void {
-  const w = TICKET_W;
-  const h = ticketHeight(t);
-  const tooth = 4;
+export function drawTicket(c: SkCanvas, x: number, y: number, t: Ticket, p: number = TYPE.ticket): void {
+  const w = ticketWidth(p);
+  const h = ticketHeight(t, p);
+  const tooth = Math.max(3.5, p * 0.55);
   const edge = (yy: number, down: boolean): [number, number][] => {
     const pts: [number, number][] = [];
     for (let i = 0; i <= w / tooth; i++) pts.push([x + i * tooth, yy + (i % 2 ? (down ? tooth * 0.6 : -tooth * 0.6) : 0)]);
+    pts.push([x + w, yy]);
     return pts;
   };
   const outline = poly([...edge(y, false), ...edge(y + h, true).reverse()].flat());
@@ -217,48 +250,98 @@ export function drawTicket(c: SkCanvas, x: number, y: number, t: Ticket): void {
   c.restore();
   c.drawPath(outline, fill(YARD.paper));
   // the sprocket strip
-  const sw = 13;
+  const sw = p * 1.85;
   c.drawPath(segment(x + sw, y + 3, x + sw, y + h - 3), stroke(YARD.paperLine, 1));
-  for (let yy = y + 8; yy < y + h - 4; yy += 10) {
-    c.drawPath(circle(x + sw / 2, yy, 2.6), fill(YARD.paperShade));
-    c.drawPath(circle(x + sw / 2, yy, 2.6), stroke(YARD.paperLine, 0.9));
+  for (let yy = y + p * 1.1; yy < y + h - 4; yy += p * 1.4) {
+    c.drawPath(circle(x + sw / 2, yy, p * 0.36), fill(YARD.paperShade));
+    c.drawPath(circle(x + sw / 2, yy, p * 0.36), stroke(YARD.paperLine, 0.9));
   }
-  const ix = x + sw + 7;
-  const iw = w - sw - 13;
-  // header: hi-vis band, yard name in stencil, then number and date in print
-  c.drawPath(rrect(ix - 2, y + 7, iw + 4, 17, 2), fill(YARD.hivis));
-  stencil(c, t.yard, ix + iw / 2, y + 10.5, 10, INK, { align: 'center', track: 0.6 });
-  dotMatrix(c, `NO ${t.number}`, ix, y + 30, TYPE.ticket, YARD.print);
-  dotMatrix(c, t.date, ix + iw, y + 30, TYPE.ticket, YARD.print, { align: 'right' });
-  c.drawPath(segment(ix, y + 43, ix + iw, y + 43), stroke(YARD.print, 0.8));
-  let ly = y + 49;
-  for (const l of t.lines) {
-    if (l.metal) {
-      const m = METAL[l.metal];
-      c.drawPath(rrect(ix, ly, 7, 7, 1.5), fill(m.base));
-      c.drawPath(rrect(ix, ly, 7, 7, 1.5), stroke(INK, 0.8));
-      if (m.sheen === 'ticks') ticks(c, ix + 3.5, ly + 3.5, 3);
+  const ix = x + sw + p * 0.9;
+  const iw = w - sw - p * 1.6;
+  let ry = y + p * 0.8;
+  for (const r of ticketRows(t, p)) {
+    switch (r.kind) {
+      case 'head':
+        c.drawPath(rrect(ix - 2, ry, iw + 4, p * 2.2, 2), fill(YARD.hivis));
+        stencil(c, t.yard, ix + iw / 2, ry + p * 0.55, p * 1.1, INK, { align: 'center', track: 0.4 });
+        break;
+      case 'meta':
+        dotMatrix(c, `NO ${t.number}`, ix, ry + p * 0.2, p, YARD.print);
+        dotMatrix(c, t.date, ix + iw, ry + p * 0.2, p, YARD.print, { align: 'right' });
+        break;
+      case 'rule':
+        c.drawPath(segment(ix, ry + p * 0.3, ix + iw, ry + p * 0.3), stroke(YARD.print, 0.8));
+        break;
+      case 'grade': {
+        const l = r.line!;
+        if (l.metal) {
+          const m = METAL[l.metal];
+          c.drawPath(rrect(ix, ry, p, p, 1.5), fill(m.base));
+          c.drawPath(rrect(ix, ry, p, p, 1.5), stroke(INK, 0.8));
+        }
+        dotMatrix(c, l.grade, ix + (l.metal ? p * 1.4 : 0), ry, p, YARD.print, { bold: true });
+        break;
+      }
+      case 'sub': {
+        const l = r.line!;
+        dotMatrix(c, `${l.net} × ${l.price}`, ix, ry + p * 0.15, p, shade(YARD.print, 0.2));
+        if (l.amount) dotMatrix(c, l.amount, ix + iw, ry + p * 0.15, p, YARD.print, { align: 'right' });
+        break;
+      }
+      case 'amount':
+        dotMatrix(c, r.line!.amount, ix + iw, ry, p, YARD.print, { align: 'right' });
+        break;
+      case 'double':
+        c.drawPath(segment(ix, ry + p * 0.1, ix + iw, ry + p * 0.1), stroke(YARD.print, 0.8));
+        c.drawPath(segment(ix, ry + p * 0.4, ix + iw, ry + p * 0.4), stroke(YARD.print, 0.8));
+        break;
+      case 'total':
+        dotMatrix(c, 'TOTAL', ix, ry + p * 0.3, p * 1.12, YARD.print, { bold: true });
+        dotMatrix(c, t.total, ix + iw, ry + p * 0.3, p * 1.12, YARD.print, { bold: true, align: 'right' });
+        break;
+      case 'stamp': {
+        const sp = p * 0.86;
+        c.save();
+        const stw = Math.max(dotWidth(t.stamp[0], sp), dotWidth(t.stamp[1], sp)) + sp * 1.8;
+        c.translate(ix + stw / 2 + 2, ry + p * 1.7);
+        c.rotate(-5, 0, 0);
+        c.drawPath(rrect(-stw / 2, -sp * 1.55, stw, sp * 3.1, 3), stroke(YARD.stampBlue, 1.6, 0.8));
+        c.drawPath(rrect(-stw / 2 + 2.2, -sp * 1.55 + 2.2, stw - 4.4, sp * 3.1 - 4.4, 2), stroke(YARD.stampBlue, 0.8, 0.8));
+        dotMatrix(c, t.stamp[0], 0, -sp * 1.05, sp, 'rgba(44,93,168,0.88)', { align: 'center', bold: true });
+        dotMatrix(c, t.stamp[1], 0, sp * 0.15, sp, 'rgba(44,93,168,0.88)', { align: 'center', bold: true });
+        c.restore();
+        break;
+      }
     }
-    dotMatrix(c, l.grade, ix + (l.metal ? 10 : 0), ly, TYPE.ticket, YARD.print, { bold: true });
-    dotMatrix(c, `${l.net} × ${l.price}`, ix + 10, ly + 10, TYPE.ticket - 1, shade(YARD.print, 0.25));
-    dotMatrix(c, l.amount, ix + iw, ly + 10, TYPE.ticket, YARD.print, { align: 'right' });
-    ly += 22;
+    ry += r.h;
   }
-  c.drawPath(segment(ix, ly - 2, ix + iw, ly - 2), stroke(YARD.print, 0.8));
-  c.drawPath(segment(ix, ly, ix + iw, ly), stroke(YARD.print, 0.8));
-  dotMatrix(c, 'TOTAL', ix, ly + 6, TYPE.ticketTotal, YARD.print, { bold: true });
-  dotMatrix(c, t.total, ix + iw, ly + 6, TYPE.ticketTotal, YARD.print, { bold: true, align: 'right' });
-  // the rubber stamp under the total, tilted, a little faded
-  c.save();
-  const stw = Math.max(dotWidth(t.stamp[0], 6), dotWidth(t.stamp[1], 6)) + 12;
-  c.translate(ix + stw / 2 + 2, ly + 36);
-  c.rotate(-6, 0, 0);
-  c.drawPath(rrect(-stw / 2, -11, stw, 22, 3), stroke(YARD.stampBlue, 1.6, 0.8));
-  c.drawPath(rrect(-stw / 2 + 2.2, -8.8, stw - 4.4, 17.6, 2), stroke(YARD.stampBlue, 0.8, 0.8));
-  dotMatrix(c, t.stamp[0], 0, -6.5, 6, 'rgba(44,93,168,0.85)', { align: 'center', bold: true });
-  dotMatrix(c, t.stamp[1], 0, 1.5, 6, 'rgba(44,93,168,0.85)', { align: 'center', bold: true });
-  c.restore();
   c.drawPath(outline, stroke(YARD.paperLine, 0.8));
+}
+
+/**
+ * The ticket feeding out of the display's printer slot: a short tongue of paper from the slot (sx, sy,
+ * slot width sw) that opens into the ticket hanging below it, turned a little. Returns its bounds.
+ */
+export function ticketFromSlot(c: SkCanvas, sx: number, sy: number, sw: number, t: Ticket, p: number, turn = -2.5): { x: number; y: number; w: number; h: number } {
+  const w = ticketWidth(p);
+  const h = ticketHeight(t, p);
+  const drop = p * 1.2;
+  const x = sx - w / 2;
+  const y = sy + drop;
+  // the tongue: paper from the slot widening into the ticket's top (it is pulled toward the eye)
+  const tongue = poly([sx - sw / 2, sy, sx + sw / 2, sy, sx + w / 2 - 6, y + 2, sx - w / 2 + 6, y + 2]);
+  c.drawPath(tongue, fill(YARD.paperShade));
+  c.drawPath(segment(sx - sw / 2, sy, sx - w / 2 + 6, y + 2), stroke(YARD.paperLine, 0.9));
+  c.drawPath(segment(sx + sw / 2, sy, sx + w / 2 - 6, y + 2), stroke(YARD.paperLine, 0.9));
+  for (let i = 1; i < 4; i++) {
+    const k = i / 4;
+    c.drawPath(segment(sx - sw / 2 + (sw * k), sy + 1, sx - w / 2 + 6 + (w - 12) * k, y), stroke(YARD.paperLine, 0.6, 0.5));
+  }
+  c.save();
+  c.rotate(turn, sx, y);
+  drawTicket(c, x, y, t, p);
+  c.restore();
+  return { x, y, w, h };
 }
 
 /** Speed lines under a rising ticket (the ticket rises from the display; the lines show it moves). */

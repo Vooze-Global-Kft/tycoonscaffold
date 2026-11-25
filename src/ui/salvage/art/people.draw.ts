@@ -8,20 +8,38 @@
  * gear is always on, and the shield is down whenever sparks show.
  */
 import { ClipOp, type SkCanvas } from '@shopify/react-native-skia';
-import { LINE_PERSON, METAL, YARD, shade } from './palette';
-import { builder, fill, glint, groundShadow, hash01, oval, poly, rrect, segment, stroke, ticks, type View3q } from './pen';
+import { LINE_PERSON, YARD, shade } from './palette';
+import { builder, fill, groundShadow, hash01, oval, poly, rrect, segment, stroke, type View3q } from './pen';
+import { pieceGlyph } from './pieces.draw';
 
 export type Dir = 's' | 'e' | 'n' | 'w';
-export type Pose = 'stand' | 'walk' | 'cut' | 'carry';
+export type Pose = 'stand' | 'walk' | 'cut' | 'carry' | 'lever';
+
+export type Hair = 'none' | 'beard' | 'stubble' | 'tail' | 'fringe';
 
 export interface PersonLook {
   vest: string;
   hat: string;
-  /** The boss wears the trim of the vest in silver; crews too (one rule), but the boss's hat is white. */
+  /** Skin tone (SKINS) and hair; the crew vary by index (crewLook), the boss is one look. */
+  skin?: string;
+  hair?: Hair;
+  hairColour?: string;
 }
 
-export const BOSS: PersonLook = { vest: YARD.hivis, hat: YARD.hatWhite };
-export const crewLook = (vest: string): PersonLook => ({ vest, hat: YARD.hivis });
+/** Skin tones of the yard's people, light to deep. */
+export const SKINS = ['#F1C8A6', '#E3AE87', '#C68B62', '#9A6544', '#6E4630'] as const;
+const HAIRS: Hair[] = ['stubble', 'tail', 'beard', 'fringe', 'none'];
+const HAIR_COLOURS = ['#3B2A20', '#6B4A2E', '#2A2522', '#B98B4E', '#8A8A86'];
+
+export const BOSS: PersonLook = { vest: YARD.hivis, hat: YARD.hatWhite, skin: SKINS[1], hair: 'stubble', hairColour: '#4A3426' };
+/** A crew member's look: the role's vest and a yellow hat; skin and hair vary by the crew's index. */
+export const crewLook = (vest: string, index = 0): PersonLook => ({
+  vest,
+  hat: YARD.hivis,
+  skin: SKINS[(index * 3 + 2) % SKINS.length],
+  hair: HAIRS[index % HAIRS.length],
+  hairColour: HAIR_COLOURS[(index * 2 + 1) % HAIR_COLOURS.length],
+});
 
 /** Pieces on a back frame, bottom first: metal ids of METAL (colours and sheen marks come from it). */
 export type Stack = string[];
@@ -38,6 +56,8 @@ export interface PersonOptions {
   spark?: number;
   /** The face shield down without cutting (at the furnace). */
   shield?: boolean;
+  /** The aluminised apron worn at every pour (yard-design.md 6). */
+  apron?: boolean;
 }
 
 /** The design height of a person in points at 40 points a metre (feet to hat top). */
@@ -51,29 +71,22 @@ function part(c: SkCanvas, p: ReturnType<typeof rrect>, color: string, line = L)
   c.drawPath(p, stroke(INK, line));
 }
 
-/** One carried piece, a slab w x h points with its metal's look and mark. */
+/** One carried piece, its grade's own silhouette (pieces.draw.ts) about w points long, centred in the box. */
 export function carriedPiece(c: SkCanvas, metal: string, x: number, y: number, w: number, h: number, seed: number): void {
-  const m = METAL[metal] ?? METAL.light_iron;
-  const topH = h * 0.38;
-  part(c, rrect(x, y + topH, w, h - topH, 1.2), m.base, 1.1);
-  part(c, poly([x + 1.5, y, x + w + 1.5, y, x + w, y + topH, x, y + topH]), m.light, 1.1);
-  if (m.sheen === 'ticks') ticks(c, x + w * 0.3, y + topH + (h - topH) * 0.5, Math.min(5, h * 0.7));
-  else if (m.sheen === 'glint') glint(c, x + w * 0.75, y + topH * 0.6, 2.6);
-  else if (m.sheen === 'freckles') {
-    c.drawCircle(x + w * (0.25 + hash01(seed, 1) * 0.5), y + topH + 2, 0.9, fill(YARD.rust));
-    c.drawCircle(x + w * (0.2 + hash01(seed, 2) * 0.6), y + h - 2, 0.8, fill(YARD.rust));
-  } else if (m.sheen === 'dots') for (let i = 0; i < 3; i++) c.drawCircle(x + 3 + i * (w - 6) / 2, y + topH + (h - topH) / 2, 0.7, fill(m.light));
-  else if (m.sheen === 'stripe') c.drawPath(segment(x + 2, y + topH + 1.6, x + w - 2, y + topH + 1.6), stroke(m.light, 1));
+  pieceGlyph(c, metal, x + w / 2, y + h / 2, w, 0, seed + (metal === 'copper' ? 0 : 1));
 }
 
-/** The stack on the back frame: slabs bottom first, rising from y0 (points, negative up). */
+/** How tall a carried piece of a grade sits on the stack, points (bundles stand taller than plate). */
+const pieceH = (metal: string): number => (metal === 'copper' ? 7 : metal === 'brass' ? 7.5 : metal === 'cast_iron' ? 8 : 5.5);
+
+/** The stack on the back frame: pieces bottom first, rising from y0 (points, negative up). */
 function backStack(c: SkCanvas, stack: Stack, cx: number, y0: number, w: number): number {
   let y = y0;
   stack.forEach((metal, i) => {
-    const h = metal === 'copper' ? 5.2 : 6;
+    const h = pieceH(metal);
     const dx = (hash01(i, 7) - 0.5) * 3;
-    y -= h - 0.6;
-    carriedPiece(c, metal, cx - w / 2 + dx, y, w, h, i);
+    y -= h - 0.4;
+    pieceGlyph(c, metal, cx + dx, y + h / 2, w * 1.05, (hash01(i, 9) - 0.5) * 10, i * 5 + (metal === 'copper' ? 0 : 1));
   });
   return y;
 }
@@ -81,8 +94,32 @@ function backStack(c: SkCanvas, stack: Stack, cx: number, y0: number, w: number)
 function head(c: SkCanvas, dir: Dir, look: PersonLook, hy: number, shield: boolean): void {
   const r = 7.2;
   const side = dir === 'e';
+  const skin = look.skin ?? YARD.skin;
+  const skinDark = shade(skin, -0.16);
+  const hairC = look.hairColour ?? '#3B2A20';
   // Face / back of the head.
-  c.drawPath(oval(0, hy, r, r * 1.02), fill(dir === 'n' ? YARD.skinDark : YARD.skin));
+  c.drawPath(oval(0, hy, r, r * 1.02), fill(dir === 'n' ? skinDark : skin));
+  if (dir === 'n' || look.hair === 'tail') {
+    // hair at the nape under the hat
+    c.save();
+    c.clipPath(oval(0, hy, r, r * 1.02), ClipOp.Intersect, true);
+    if (dir === 'n') c.drawRect({ x: -r, y: hy - r, width: r * 2, height: r * 1.2 }, fill(hairC));
+    c.restore();
+  }
+  if (look.hair === 'beard' && dir !== 'n') {
+    c.save();
+    c.clipPath(oval(0, hy, r, r * 1.02), ClipOp.Intersect, true);
+    const bx = side ? 1.5 : 0;
+    c.drawPath(builder().moveTo(-r + bx, hy + 0.5).quadTo(bx, hy + 11, r + bx, hy + 0.5).lineTo(r + bx, hy + 9).lineTo(-r + bx, hy + 9).close().build(), fill(hairC));
+    c.restore();
+  } else if (look.hair === 'stubble' && dir !== 'n') {
+    c.save();
+    c.clipPath(oval(0, hy, r, r * 1.02), ClipOp.Intersect, true);
+    c.drawPath(oval(side ? 2 : 0, hy + 6, r * 0.8, 3.6), fill(hairC, 0.28));
+    c.restore();
+  }
+  if (look.hair === 'tail' && dir !== 's') c.drawPath(rrect(side ? -r - 2.6 : -1.6, hy - 1, 3.2, 7.5, 1.6), fill(hairC));
+  if (look.hair === 'fringe' && dir !== 'n') c.drawPath(rrect(-r + 1 + (side ? 2 : 0), hy - 4.6, r * 1.5, 2.6, 1.3), fill(hairC));
   c.drawPath(oval(0, hy, r, r * 1.02), stroke(INK, L));
   if (dir === 's') {
     c.drawPath(oval(-2.7, hy + 0.8, 1.05, 1.3), fill(INK));
@@ -92,9 +129,9 @@ function head(c: SkCanvas, dir: Dir, look: PersonLook, hy: number, shield: boole
     c.drawPath(oval(4.6, hy + 3, 1.4, 0.9), fill('#E58E7A', 0.55));
   } else if (side) {
     c.drawPath(oval(3.6, hy + 0.6, 1.0, 1.3), fill(INK));
-    c.drawPath(builder().moveTo(6.6, hy + 0.5).quadTo(8.6, hy + 2.4, 6.6, hy + 3.4).build(), fill(YARD.skin));
+    c.drawPath(builder().moveTo(6.6, hy + 0.5).quadTo(8.6, hy + 2.4, 6.6, hy + 3.4).build(), fill(skin));
     c.drawPath(builder().moveTo(6.6, hy + 0.5).quadTo(8.6, hy + 2.4, 6.6, hy + 3.4).build(), stroke(INK, 1));
-    c.drawPath(oval(-1.6, hy + 1, 1.6, 2), fill(YARD.skinDark));
+    c.drawPath(oval(-1.6, hy + 1, 1.6, 2), fill(skinDark));
     c.drawPath(oval(-1.6, hy + 1, 1.6, 2), stroke(INK, 0.9));
   }
   // The hard hat: a dome, a ridge, a brim (longer in front when side-on).
@@ -196,7 +233,7 @@ export function drawPerson(c: SkCanvas, v: View3q, o: PersonOptions): void {
     c.restore();
     return;
   }
-  groundShadow(c, v, 0.3, 0.26);
+  groundShadow(c, v, 0.3, 0.26, 0, 0, 1.1);
   c.save();
   const k = v.ppm / 40;
   c.scale(k, k);
@@ -223,6 +260,7 @@ export function drawPerson(c: SkCanvas, v: View3q, o: PersonOptions): void {
   }
   if (side) {
     if (o.pose === 'cut') arm(c, -1, torsoTop + 3, 9, torsoTop + 10, false);
+    else if (o.pose === 'lever') arm(c, -1, torsoTop + 3, 10, torsoTop + 5, false);
     else if (o.pose === 'carry') arm(c, -1, torsoTop + 3, -6, torsoTop - 2, false);
     else arm(c, -1, torsoTop + 3, -1 - swing * 6, torsoTop + 15, false);
   }
@@ -241,6 +279,16 @@ export function drawPerson(c: SkCanvas, v: View3q, o: PersonOptions): void {
   const tw = side ? 12.5 : 17;
   c.drawPath(rrect(-tw / 2 + 1, hipY - 3, tw - 2, 6, 2), fill(YARD.navy));
   vest(c, dir, look, -tw / 2, torsoTop, tw, hipY - torsoTop + 2);
+  if (o.apron && dir !== 'n') {
+    // the aluminised apron: a silver bib from the chest to the knees, quilted, with a bright fold
+    const ax0 = side ? -1 : -tw / 2 + 1.5;
+    const ax1 = side ? tw / 2 + 1.6 : tw / 2 - 1.5;
+    const ap = poly([ax0 + 1.5, torsoTop + 3, ax1 - 1, torsoTop + 3, ax1 + 1, hipY + 10, ax0 - 0.5, hipY + 10]);
+    c.drawPath(ap, fill(YARD.apron));
+    for (const k of [0.33, 0.66]) c.drawPath(segment(ax0 + (ax1 - ax0) * k, torsoTop + 4, ax0 + (ax1 - ax0) * k + 0.4, hipY + 9), stroke(YARD.apronDark, 0.8));
+    c.drawPath(segment(ax0 + 2.2, torsoTop + 5, ax0 + 2.6, hipY + 8), stroke('#FFFFFF', 1.4, 0.9));
+    c.drawPath(ap, stroke(INK, L));
+  }
 
   // Arms in front.
   if (side) {
@@ -248,6 +296,7 @@ export function drawPerson(c: SkCanvas, v: View3q, o: PersonOptions): void {
       arm(c, 1, torsoTop + 3, 9, torsoTop + 12);
       grinder(c, 9, torsoTop + 11, o.spark ?? 0, true);
     } else if (o.pose === 'carry') arm(c, 1, torsoTop + 3, -3, torsoTop - 3);
+    else if (o.pose === 'lever') arm(c, 1, torsoTop + 3, 11, torsoTop + 7);
     else arm(c, 1, torsoTop + 3, 1 + swing * 6, torsoTop + 15);
   } else if (dir === 's') {
     if (o.pose === 'carry') {
@@ -267,6 +316,10 @@ export function drawPerson(c: SkCanvas, v: View3q, o: PersonOptions): void {
   }
 
   head(c, dir, look, hy, o.pose === 'cut' || !!o.shield);
+  if (o.apron && dir === 's') {
+    // aluminised gauntlets
+    for (const hx of [-10.2, 10.2]) c.drawPath(oval(hx, torsoTop + 15, 3.1, 3), fill(YARD.apron));
+  }
 
   // From behind, the stack covers the back.
   if (stack.length && dir === 'n') backStack(c, stack, 0, torsoTop + 14, 16);

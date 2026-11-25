@@ -5,7 +5,7 @@
  * with yellow guards and hazard stripes; heat is the only orange.
  */
 import { Skia, type SkCanvas } from '@shopify/react-native-skia';
-import { LINE_W, YARD, coolingColour, shade } from './palette';
+import { LINE_W, YARD, coolingColour, mix, shade } from './palette';
 import { sevenSeg, stencil } from './letters';
 import {
   box,
@@ -23,6 +23,8 @@ import {
   poly,
   proj,
   radial,
+  rect,
+  rgba,
   rrect,
   segment,
   stroke,
@@ -31,6 +33,7 @@ import {
   type View3q,
 } from './pen';
 import { drawBrightCopper, drawIngot } from './scrap.draw';
+import { pieceGlyph, pieceHeap } from './pieces.draw';
 import { SHADOW_ALPHA } from './palette';
 
 const INK = YARD.ink;
@@ -148,172 +151,282 @@ export function drawWeighbridgeDeck(c: SkCanvas, v: View3q): void {
 }
 
 /**
- * The display post at the weighbridge's east end: a pole and a box of LED digits. `text` is the
- * digits shown (the caller's, e.g. "1,240"); unit "kg" is painted on the box.
+ * The display post at the weighbridge's end: a pole and a hi-vis box of LED digits with the ticket
+ * printer's slot under them. `text` is the digits shown (the caller's, e.g. "52.4"). Returns the slot's
+ * centre and width in points relative to the anchor, so a ticket can feed out of it.
  */
-export function drawWeighDisplay(c: SkCanvas, v: View3q, text: string): void {
-  groundShadow(c, v, 0.25, 0.2);
+export function drawWeighDisplay(c: SkCanvas, v: View3q, text: string): { slot: [number, number]; slotW: number } {
+  groundShadow(c, v, 0.25, 0.2, 0, 0, 2.2);
   box(c, v, { len: 0.12, wid: 0.12, h: 2.0, color: YARD.galvanised, line: 1 });
   const [x, y] = proj(v, 0, 0, 2.0);
-  const w = 76;
-  const h = 26;
-  c.drawPath(rrect(x - w / 2 - 3, y - h - 6, w + 6, h + 10, 4), fill(YARD.hivis));
-  c.drawPath(rrect(x - w / 2 - 3, y - h - 6, w + 6, h + 10, 4), stroke(INK, LINE_W));
-  c.drawPath(rrect(x - w / 2, y - h - 3, w, h + 4, 2.5), fill(YARD.ledCase));
-  sevenSeg(c, text, x + w / 2 - 17, y - h + 1, 17, YARD.led, YARD.ledOff);
-  // "kg" in tiny LED-green stencil-free strokes: a k and a g
-  const kx = x + w / 2 - 12;
-  const ky = y - 6;
-  const s = stroke(YARD.led, 1.1);
-  c.drawPath(segment(kx, ky - 6, kx, ky), s);
-  c.drawPath(builder().moveTo(kx + 3, ky - 4).lineTo(kx, ky - 2).lineTo(kx + 3, ky).build(), s);
-  c.drawPath(oval(kx + 6, ky - 2, 1.5, 1.6), s);
-  c.drawPath(builder().moveTo(kx + 7.5, ky - 3.5).lineTo(kx + 7.5, ky + 1.5).quadTo(kx + 7.5, ky + 3, kx + 5, ky + 2.4).build(), s);
+  const w = 80;
+  const h = 28;
+  const top = y - h - 18;
+  c.drawPath(rrect(x - w / 2 - 4 + 2, top + 2, w + 8, h + 24, 5), fill(INK, 0.25));
+  c.drawPath(rrect(x - w / 2 - 4, top, w + 8, h + 24, 5), fill(YARD.hivis));
+  c.drawPath(rrect(x - w / 2 - 4, top, w + 8, h + 24, 5), stroke(INK, LINE_W));
+  c.drawPath(rrect(x - w / 2, top + 4, w, h, 2.5), fill(YARD.ledCase));
+  sevenSeg(c, text, x + w / 2 - 19, top + 8, 19, YARD.led, YARD.ledOff);
+  // "kg" in LED strokes: a k and a g
+  const kx = x + w / 2 - 13;
+  const ky = top + h - 3;
+  const s = stroke(YARD.led, 1.2);
+  c.drawPath(segment(kx, ky - 7, kx, ky), s);
+  c.drawPath(builder().moveTo(kx + 3.4, ky - 4.6).lineTo(kx, ky - 2.2).lineTo(kx + 3.4, ky).build(), s);
+  c.drawPath(oval(kx + 7, ky - 2.4, 1.7, 1.8), s);
+  c.drawPath(builder().moveTo(kx + 8.7, ky - 4).lineTo(kx + 8.7, ky + 1.6).quadTo(kx + 8.7, ky + 3.4, kx + 5.8, ky + 2.8).build(), s);
+  // the printer slot under the digits
+  const sy = top + h + 13;
+  c.drawPath(rrect(x - 22, sy - 2.5, 44, 5, 2.5), fill(INK));
+  c.drawPath(segment(x - 19, sy + 0.5, x + 19, sy + 0.5), stroke(shade(INK, 0.3), 1));
+  return { slot: [x, sy], slotW: 40 };
 }
 
 // ---------------------------------------------------------------------------
-// The small crucible furnace, cold and pouring; its mould
+// The small crucible furnace under its hood, cold and pouring; its mould on dry sand
 // ---------------------------------------------------------------------------
 
-/** An open ingot mould of `n` cavities on the ground, east-west; `fill` 0..1 the first cavity's glow. */
-export function drawMould(c: SkCanvas, v: View3q, o: { n?: number; pourT?: number; ox?: number; oy?: number } = {}): void {
-  const n = o.n ?? 3;
+/** A cavity's colour: empty (dark), glowing, cooling or cooled metal, from seconds since it was poured. */
+function cavityColour(metal: string, t: number | undefined): string | undefined {
+  if (t === undefined) return undefined;
+  return coolingColour(metal, t);
+}
+
+/**
+ * An open ingot mould of `n` cavities lying east-west on a bed of dry sand. `poured[i]` is how many
+ * seconds ago cavity i was filled (undefined: empty); a filled, cooled cavity shows a notched ingot.
+ */
+export function drawMould(c: SkCanvas, v: View3q, o: { n?: number; poured?: (number | undefined)[]; metal?: string; ox?: number; oy?: number } = {}): void {
+  const n = o.n ?? 4;
   const ox = o.ox ?? 0;
   const oy = o.oy ?? 0;
-  const L = 0.56 * n;
-  boxShadow(c, v, L + 0.1, 0.42, ox, oy);
+  const metal = o.metal ?? 'brass';
+  const L = MOULD_CAV * n + 0.08;
+  // the sand bed (moulds stand on dry sand: yard-design.md 6)
+  const [sx, sy] = proj(v, ox, oy, 0);
+  c.drawPath(oval(sx, sy, (L / 2 + 0.3) * v.ppm, 0.42 * v.ppm * v.tilt), fill(YARD.sand));
+  for (let i = 0; i < 14; i++) c.drawCircle(sx + (hash01(i, 3) - 0.5) * L * v.ppm, sy + (hash01(i, 4) - 0.5) * 0.5 * v.ppm * v.tilt, 0.7, fill(shade(YARD.sand, -0.2)));
+  boxShadow(c, v, L + 0.06, 0.4, ox, oy, 0.12);
   box(c, v, {
     len: L,
-    wid: 0.36,
+    wid: 0.34,
     h: 0.12,
     ox,
     oy,
     color: YARD.castIron,
+    bevel: true,
     onTop: (q) => {
       for (let i = 0; i < n; i++) {
-        const cav = subQuad(q, (i + 0.12) / n, (i + 0.88) / n, 0.22, 0.78);
-        faceFill(c, v, cav, shade(YARD.castIron, -0.4), 1);
-        if (i === n - 1 && o.pourT !== undefined) {
-          const col = coolingColour('brass', o.pourT);
-          faceFill(c, v, subQuad(q, (i + 0.16) / n, (i + 0.84) / n, 0.28, 0.72), col);
-          const [gx, gy] = proj(v, ...subQuad(q, (i + 0.5) / n, 0, 0.5, 0)[0]);
-          if (o.pourT < 2) c.drawPath(oval(gx, gy, 12, 5), radial(gx, gy, 14, [YARD.glowWhite, 'rgba(255,211,107,0)']));
+        const s0 = (0.04 + i * MOULD_CAV) / L;
+        const s1 = (0.04 + (i + 1) * MOULD_CAV - 0.06) / L;
+        const cav = subQuad(q, s0, s1, 0.2, 0.8);
+        faceFill(c, v, cav, shade(YARD.castIron, -0.45), 0.9);
+        const col = cavityColour(metal, o.poured?.[i]);
+        if (!col) continue;
+        const t = o.poured?.[i] ?? 99;
+        const inner = subQuad(q, s0 + 0.01, s1 - 0.01, 0.26, 0.74);
+        faceFill(c, v, inner, col);
+        if (t >= 3) {
+          // the cooled ingot's break notches
+          for (const k of [0.36, 0.66]) {
+            const a = proj(v, ...subQuad(q, s0 + (s1 - s0) * k, 0, 0.27, 0)[0]);
+            const b2 = proj(v, ...subQuad(q, s0 + (s1 - s0) * k, 0, 0.73, 0)[0]);
+            c.drawPath(segment(a[0], a[1], b2[0], b2[1]), stroke(shade(col, -0.35), 1.1));
+          }
+        } else if (t < 1.5) {
+          const [gx, gy] = proj(v, ...subQuad(q, (s0 + s1) / 2, 0, 0.5, 0)[0]);
+          c.drawPath(oval(gx, gy, 9, 4), radial(gx, gy, 10, [YARD.glowWhite, rgba(YARD.glowHot, 0)]));
         }
       }
     },
   });
 }
 
+/** One cavity's length along the mould, metres (a 5 kg ingot). */
+const MOULD_CAV = 0.3;
+
 /**
- * The crucible furnace on its tilting frame. tilt 0: upright, lid on, cold (dark, a sample ingot on
- * the pad); tilt 0..1: tipping east towards the mould (1 = pouring at about 70 degrees). Anchor: the
- * centre of its footprint (the frame), the mould sits 1.0 m east.
+ * The tilting crucible furnace: a round steel shell lined with refractory, on trunnions between two
+ * posts, its lid swung open on an arm. tilt 0 upright (lid on when cold), 1 tipped east 46 degrees to
+ * pour. Returns the pour lip in points (relative to the anchor), so the mould can stand under it.
  */
-export function drawCrucible(c: SkCanvas, v: View3q, o: { tilt?: number; hot?: boolean } = {}): void {
+export function drawCrucible(c: SkCanvas, v: View3q, o: { tilt?: number; hot?: boolean; lidOpen?: boolean } = {}): [number, number] {
   const tilt = o.tilt ?? 0;
   const hot = o.hot ?? tilt > 0;
-  boxShadow(c, v, 1.3, 0.9);
-  // the frame: two posts with a pivot, a burner box behind
-  box(c, v, { len: 0.36, wid: 0.36, h: 0.4, ox: -0.2, oy: -0.42, color: YARD.machine, line: LINE_W });
-  const [bx, by] = proj(v, -0.2, -0.24, 0.24);
-  c.drawPath(oval(bx, by, 4, 4), fill(INK));
-  if (hot) c.drawPath(oval(bx, by, 3, 3), fill(YARD.glow));
-  for (const y of [-0.38, 0.38]) box(c, v, { len: 0.12, wid: 0.1, h: 0.95, ox: 0, oy: y, color: YARD.machineDark, line: 1 });
-  // the crucible: drawn in the screen plane, rotated about the pivot (x-z is nearly the screen plane)
-  const [px, py] = proj(v, 0, 0, 0.82);
+  const lidOpen = o.lidOpen ?? hot;
   const P = v.ppm;
-  const R = 0.36 * P;
-  const H = 0.78 * P * v.lift;
-  const ang = tilt * 72;
+  const R = 0.34 * P;
+  const H = 0.8 * P * v.lift;
+  const ry = R * v.tilt;
+  const [px, py] = proj(v, 0, 0, PIVOT_Z);
+  // the frame's north post (behind) and the burner box
+  box(c, v, { len: 0.12, wid: 0.1, h: PIVOT_Z + 0.08, oy: -0.44, color: YARD.machineDark, line: 1 });
+  box(c, v, { len: 0.34, wid: 0.3, h: 0.36, ox: -0.5, oy: -0.32, color: YARD.machine, line: LINE_W, bevel: true });
+  const [bx, by] = proj(v, -0.5, -0.17, 0.2);
+  c.drawPath(oval(bx, by, 3.6, 3.6), fill(INK));
+  if (hot) c.drawPath(oval(bx, by, 2.6, 2.6), fill(YARD.glow));
+  // the lid on its arm: swung open it stands up behind the shell, its refractory face warm
+  if (lidOpen) {
+    const [lx, ly] = proj(v, -0.42, -0.12, PIVOT_Z + 0.62);
+    c.drawPath(segment(lx + 4, ly + 10, px - 4, py - H * 0.5), stroke(INK, 3.4));
+    c.drawPath(segment(lx + 4, ly + 10, px - 4, py - H * 0.5), stroke(YARD.machineDark, 2));
+    c.drawPath(oval(lx, ly, R * 0.98, R * 0.9), fill(YARD.machineDark));
+    c.drawPath(oval(lx, ly, R * 0.98, R * 0.9), stroke(INK, LINE_W));
+    c.drawPath(oval(lx + 1.5, ly + 1, R * 0.8, R * 0.72), fill(hot ? mix(YARD.refractory, YARD.glow, 0.35) : YARD.refractory));
+    c.drawPath(oval(lx + 1.5, ly + 1, R * 0.8, R * 0.72), stroke(INK, 0.9));
+  }
+  const ang = tilt * 46;
+  const a = (ang * Math.PI) / 180;
   c.save();
   c.translate(px, py);
   c.rotate(ang, 0, 0);
-  const top = -H * 0.42;
-  const bot = H * 0.58;
-  const ry = R * v.tilt;
+  const top = -H * 0.5;
+  const bot = H * 0.5;
   const body = builder()
     .moveTo(-R, top)
-    .lineTo(-R * 0.92, bot)
-    .addArc({ x: -R * 0.92, y: bot - ry * 0.92, width: R * 1.84, height: ry * 1.84 }, 180, -180)
+    .lineTo(-R, bot)
+    .addArc({ x: -R, y: bot - ry, width: R * 2, height: ry * 2 }, 180, -180)
     .lineTo(R, top)
     .close()
     .build();
-  c.drawPath(body, fill(YARD.steelDark));
-  c.drawPath(body, linear(-R, 0, R, 0, [shade(YARD.steel, 0.1), YARD.steelDark, shade(YARD.steelDark, -0.3)], [0, 0.55, 1]));
-  // banding
-  for (const yy of [top + (bot - top) * 0.3, top + (bot - top) * 0.72]) c.drawRect({ x: -R + 1, y: yy, width: R * 2 - 2, height: 3 }, fill(YARD.hivisDark));
+  c.drawPath(body, linear(-R, 0, R, 0, [shade(YARD.machine, 0.25), YARD.machine, YARD.machineDark, shade(YARD.machineDark, -0.25)], [0, 0.35, 0.75, 1]));
+  // two hi-vis bands and the trunnion
+  for (const yy of [top + (bot - top) * 0.22, top + (bot - top) * 0.78]) c.drawRect({ x: -R, y: yy, width: R * 2, height: 3 }, fill(YARD.hivisDark));
   c.drawPath(body, stroke(INK, LINE_W));
-  // the trunnion pin
-  c.drawPath(oval(0, 0, 4.5, 4.5), fill(YARD.galvanisedLight));
-  c.drawPath(oval(0, 0, 4.5, 4.5), stroke(INK, 1));
-  // the mouth: refractory rim and either a lid (cold) or the melt (hot), with the pouring lip east
-  c.drawPath(oval(0, top, R, ry), fill(YARD.refractory));
+  c.drawPath(oval(0, 0, 5, 5), fill(YARD.galvanisedLight));
+  c.drawPath(oval(0, 0, 5, 5), stroke(INK, 1));
+  // the mouth: steel rim, refractory lining, the melt (hot) or the lid (cold, closed)
+  c.drawPath(oval(0, top, R, ry), fill(YARD.steelDark));
+  c.drawPath(oval(0, top, R * 0.86, ry * 0.84), fill(YARD.refractory));
+  if (hot) c.drawPath(oval(R * 0.08, top + 0.5, R * 0.66, ry * 0.62), radial(R * 0.08, top, R * 0.7, [YARD.glowWhite, YARD.glowHot, YARD.glow], [0, 0.45, 1]));
+  else c.drawPath(oval(0, top + 0.5, R * 0.66, ry * 0.62), fill(shade(YARD.refractory, -0.35)));
   c.drawPath(oval(0, top, R, ry), stroke(INK, LINE_W));
-  if (hot) {
-    c.drawPath(oval(0, top, R * 0.76, ry * 0.72), radial(0, top, R * 0.8, [YARD.glowWhite, YARD.glowHot, YARD.glow], [0, 0.5, 1]));
-  } else {
-    c.drawPath(oval(0, top - 3, R * 0.9, ry * 0.85), fill(YARD.castIron));
-    c.drawPath(oval(0, top - 3, R * 0.9, ry * 0.85), stroke(INK, 1));
-    c.drawPath(rrect(-6, top - 9, 12, 4, 2), fill(YARD.hivis));
-    c.drawPath(rrect(-6, top - 9, 12, 4, 2), stroke(INK, 1));
+  if (!lidOpen) {
+    c.drawPath(oval(0, top - 3, R * 0.98, ry * 0.95), fill(YARD.machineDark));
+    c.drawPath(oval(0, top - 3, R * 0.98, ry * 0.95), stroke(INK, LINE_W));
+    c.drawPath(rrect(-7, top - 9, 14, 5, 2.5), fill(YARD.hivis));
+    c.drawPath(rrect(-7, top - 9, 14, 5, 2.5), stroke(INK, 1));
   }
-  const lip = poly([R - 2, top - 3, R + 9, top - 1, R + 9, top + 3, R - 2, top + 5]);
-  c.drawPath(lip, fill(YARD.refractory));
-  c.drawPath(lip, stroke(INK, 1));
+  // the pouring spout on the east rim
+  const spout = poly([R - 4, top - 3.5, R + 8, top - 2, R + 8, top + 2.5, R - 4, top + 4]);
+  c.drawPath(spout, fill(YARD.steelDark));
+  c.drawPath(spout, stroke(INK, 1));
+  if (hot && tilt > 0.5) c.drawPath(rrect(R - 2, top - 1.6, 9, 3, 1.5), fill(YARD.glowHot));
   c.restore();
-  if (hot && tilt > 0.55) {
-    // the stream from the lip down to the mould 1.0 m east
-    const a = (ang * Math.PI) / 180;
-    const lx = px + Math.cos(a) * (R + 8) - Math.sin(a) * (-H * 0.42);
-    const ly = py + Math.sin(a) * (R + 8) + Math.cos(a) * (-H * 0.42);
-    const [mx, my] = proj(v, MOULD_X - 0.56, 0.0, 0.12);
-    const s = builder().moveTo(lx, ly).cubicTo(lx + 9, ly, mx, ly + (my - ly) * 0.35, mx, my).build();
-    c.drawPath(s, stroke(YARD.glow, 8));
-    c.drawPath(s, stroke(YARD.glowHot, 5));
-    c.drawPath(s, stroke(YARD.glowWhite, 2));
-    c.drawPath(oval(mx, my, 10, 4), radial(mx, my, 12, [YARD.glowWhite, 'rgba(255,211,107,0)']));
-    // a few light droplets (never flame)
-    for (let i = 0; i < 5; i++) c.drawCircle(mx + (hash01(i, 4) - 0.5) * 16, my - 2 - hash01(i, 5) * 8, 1.2, fill(YARD.spark));
-  }
-  if (hot) {
-    // heat shimmer: three thin wavy lines rising from the mouth
-    for (let i = 0; i < 3; i++) {
-      const x0 = px - 8 + i * 8 + tilt * 14;
-      const y0 = py - H * 0.55 - 6;
-      c.drawPath(builder().moveTo(x0, y0).quadTo(x0 - 4, y0 - 5, x0, y0 - 10).quadTo(x0 + 4, y0 - 15, x0, y0 - 20).build(), stroke(YARD.glowHot, 1.3, 0.55));
-    }
-  }
+  // the lip in anchor points (rotation by ang about the pivot)
+  const lx0 = R + 8;
+  const ly0 = top;
+  const lip: [number, number] = [px + lx0 * Math.cos(a) - ly0 * Math.sin(a), py + lx0 * Math.sin(a) + ly0 * Math.cos(a)];
+  // the south post (in front) with the tilt wheel
+  box(c, v, { len: 0.12, wid: 0.1, h: PIVOT_Z + 0.08, oy: 0.44, color: YARD.machineDark, line: 1 });
+  const [wx, wy] = proj(v, 0, 0.5, PIVOT_Z);
+  c.drawPath(oval(wx, wy, 6.5, 6.5), stroke(INK, 3.4));
+  c.drawPath(oval(wx, wy, 6.5, 6.5), stroke(YARD.hivis, 2));
+  c.drawPath(segment(wx - 6, wy, wx + 6, wy), stroke(INK, 1.2));
+  c.drawPath(segment(wx, wy - 6, wx, wy + 6), stroke(INK, 1.2));
+  return lip;
 }
 
-/** Where the mould stands east of the crucible's anchor, metres. */
-export const MOULD_X = 1.4;
+/** The trunnions' height, metres. */
+const PIVOT_Z = 0.82;
 
-/** The furnace corner as the yard shows it: crucible, mould 1.0 m east and (cooled) a sample ingot. */
+/** The furnace corner's scale against its true size: the pour is the yard's moment and must read. */
+export const FURNACE_SCALE = 1.2;
+
+/**
+ * The furnace corner as the yard shows it: hood and its posts, the tilting crucible furnace, the mould on
+ * dry sand under its lip, a warm light pool and (cold) the closed lid. `t` seconds since the pour began
+ * (cooling). Anchor: the furnace's footprint centre; the hood reaches 1.7 m east and 3.2 m up.
+ */
 export function drawFurnaceSet(c: SkCanvas, v: View3q, state: 'cold' | 'pouring' | 'cooling', t = 0): void {
-  // Drawn 1.35 times its true size, as the stripper: the pour is the yard's moment and must read.
   c.save();
   c.scale(FURNACE_SCALE, FURNACE_SCALE);
   furnaceSet(c, v, state, t);
   c.restore();
 }
 
-export const FURNACE_SCALE = 1.35;
+/** Where the stream lands, metres east of the furnace anchor (the lip at full tilt). */
+export const MOULD_X = 0.95;
 
-function furnaceSet(c: SkCanvas, v: View3q, state: 'cold' | 'pouring' | 'cooling', t: number): void {
-  if (state !== 'cold') {
-    // the warm light the melt throws on the pad (light, not a fill: the pad stays concrete)
-    const [gx, gy] = proj(v, MOULD_X * 0.6, 0.1, 0);
-    c.drawPath(oval(gx, gy, 2.0 * v.ppm, 1.1 * v.ppm * v.tilt), radial(gx, gy, 2.0 * v.ppm, ['rgba(255,190,90,0.45)', 'rgba(255,190,90,0)']));
-  }
-  if (state === 'cold') {
-    drawMould(c, v, { ox: MOULD_X });
-    drawCrucible(c, v, { tilt: 0, hot: false });
-    drawIngot(c, v, 'brass', 99, { ox: 0.9, oy: 0.62 });
+function hood(c: SkCanvas, v: View3q, hot: boolean, part: 'back' | 'front'): void {
+  const x0 = -0.75;
+  const x1 = 1.75;
+  if (part === 'back') {
+    for (const x of [x0 + 0.05, x1 - 0.05]) box(c, v, { len: 0.1, wid: 0.1, h: 2.3, ox: x, oy: -0.55, color: YARD.galvanised, line: 1 });
     return;
   }
-  drawMould(c, v, { ox: MOULD_X, pourT: state === 'pouring' ? 0 : t });
-  drawCrucible(c, v, { tilt: state === 'pouring' ? 1 : 0.15, hot: true });
-  drawIngot(c, v, 'brass', 99, { ox: 0.9, oy: 0.62 });
+  // the canopy: a sloped galvanised hood with its front face toward the eye and a duct out of the top
+  const zb = 2.2;
+  const zt = 2.62;
+  const P = (x: number, y: number, z: number) => proj(v, x, y, z);
+  const fb0 = P(x0, 0.55, zb);
+  const fb1 = P(x1, 0.55, zb);
+  const ft1 = P(x1 - 0.5, 0.1, zt);
+  const ft0 = P(x0 + 0.5, 0.1, zt);
+  const under0 = P(x0, -0.55, zb);
+  const under1 = P(x1, -0.55, zb);
+  // the warm underside seen below the front lip
+  if (hot) {
+    const u = poly([fb0[0], fb0[1], fb1[0], fb1[1], under1[0], under1[1] + 6, under0[0], under0[1] + 6]);
+    void u;
+  }
+  const face = poly([fb0[0], fb0[1], fb1[0], fb1[1], ft1[0], ft1[1], ft0[0], ft0[1]]);
+  c.drawPath(face, linear(0, ft0[1], 0, fb0[1], [YARD.galvanisedLight, YARD.galvanised]));
+  c.drawPath(face, stroke(INK, LINE_W));
+  // the lip band, lit warm from below when the melt is out
+  const lip = poly([fb0[0], fb0[1], fb1[0], fb1[1], fb1[0], fb1[1] + 4, fb0[0], fb0[1] + 4]);
+  c.drawPath(lip, fill(hot ? mix(YARD.galvanised, YARD.glowHot, 0.55) : shade(YARD.galvanised, -0.2)));
+  c.drawPath(lip, stroke(INK, 1));
+  // the duct
+  const [dx, dy] = P((x0 + x1) / 2, 0.1, zt);
+  const dw = 0.26 * v.ppm;
+  c.drawPath(rect(dx - dw, dy - 26, dw * 2, 27), fill(YARD.galvanised));
+  c.drawRect({ x: dx - dw + 2, y: dy - 26, width: 3, height: 27 }, fill(YARD.galvanisedLight));
+  c.drawPath(rect(dx - dw, dy - 26, dw * 2, 27), stroke(INK, LINE_W));
+  c.drawPath(rrect(dx - dw - 2, dy - 18, dw * 2 + 4, 4, 1), fill(YARD.galvanisedLight));
+  c.drawPath(rrect(dx - dw - 2, dy - 18, dw * 2 + 4, 4, 1), stroke(INK, 1));
+  // its ribs
+  for (const k of [0.25, 0.5, 0.75]) {
+    const a = [fb0[0] + (fb1[0] - fb0[0]) * k, fb0[1]];
+    const b = [ft0[0] + (ft1[0] - ft0[0]) * k, ft0[1]];
+    c.drawPath(segment(a[0], a[1], b[0], b[1]), stroke(shade(YARD.galvanised, -0.15), 1));
+  }
+}
+
+function furnaceSet(c: SkCanvas, v: View3q, state: 'cold' | 'pouring' | 'cooling', t: number): void {
+  const hot = state !== 'cold';
+  boxShadow(c, v, 2.6, 1.3, 0.5, 0, 0.6);
+  if (hot) {
+    // the warm light the melt throws on the pad and the sand
+    const [gx, gy] = proj(v, MOULD_X, 0.25, 0);
+    c.drawPath(oval(gx, gy, 2.4 * v.ppm, 1.3 * v.ppm * v.tilt), radial(gx, gy, 2.4 * v.ppm, ['rgba(255,176,80,0.55)', 'rgba(255,190,90,0)']));
+  }
+  hood(c, v, hot, 'back');
+  const mouldX = MOULD_X - 0.1 + (MOULD_CAV * 4 + 0.08) / 2 - 0.04;
+  const poured: (number | undefined)[] =
+    state === 'cold' ? [] : state === 'pouring' ? [0, 1.2, 4, 9] : [t, t + 1.2, t + 4, t + 9];
+  const tilt = state === 'pouring' ? 1 : state === 'cooling' ? 0.25 : 0;
+  // the furnace (its lip returned in points), then the mould in front of it
+  const lip = drawCrucible(c, v, { tilt, hot, lidOpen: hot });
+  drawMould(c, v, { ox: mouldX, oy: 0.3, poured });
+  if (state === 'pouring') {
+    // the stream falls straight from the lip into the first cavity: thick at the lip, thinner below
+    const [, my] = proj(v, MOULD_X, 0.3, 0.12);
+    const x = lip[0];
+    const y0 = lip[1] + 1;
+    const s = (w0: number, w1: number, col: string) => c.drawPath(poly([x - w0 / 2, y0, x + w0 / 2, y0, x + w1 / 2, my, x - w1 / 2, my]), fill(col));
+    s(9, 6, YARD.glow);
+    s(6.4, 3.8, YARD.glowHot);
+    s(2.6, 1.4, YARD.glowWhite);
+    c.drawPath(oval(x, my, 9, 3.6), radial(x, my, 11, [YARD.glowWhite, rgba(YARD.glowHot, 0)]));
+    // light droplets and a few sparks thrown off the splash (light, never flame)
+    for (let i = 0; i < 7; i++) {
+      const dx = (hash01(i, 4) - 0.5) * 22;
+      const dy = -2 - hash01(i, 5) * 10;
+      c.drawPath(segment(x + dx * 0.4, my - 1, x + dx, my + dy), stroke(i % 2 ? YARD.spark : YARD.glowWhite, 1.1));
+    }
+  }
+  hood(c, v, hot, 'front');
 }
 
 // ---------------------------------------------------------------------------
@@ -542,35 +655,13 @@ export function drawBay(c: SkCanvas, v: View3q, w: number, d: number, o: { heap:
   }
   const [cx, cy] = proj(v, 0, -d / 2 + b, b * 1.3);
   stencil(c, o.code, cx, cy - 7, 13, YARD.ink, { align: 'center', alpha: 0.85 });
-  // the heap: a mound in the metal's dark tone, pieces piled on it against the back wall
+  // the heap: the grade's own pieces piled against the back wall (pieces.draw.ts), so a bay says its
+  // metal by shape as well as colour
   {
-    const look = METAL_COLS[o.heap[0]] ?? METAL_COLS.light_iron;
-    const [m0x, m0y] = proj(v, 0, -d / 2 + b + 0.1, 0);
-    const mw = (w - 0.3) * v.ppm * 0.5;
-    const mh = (d - b) * v.ppm * v.tilt;
-    const mound = builder().moveTo(m0x - mw, m0y + mh * 0.8).quadTo(m0x - mw, m0y - 18, m0x, m0y - 24).quadTo(m0x + mw, m0y - 18, m0x + mw, m0y + mh * 0.8).quadTo(m0x, m0y + mh * 1.15, m0x - mw, m0y + mh * 0.8).close().build();
-    c.drawPath(mound, fill(shade(look[0], -0.35)));
-    c.drawPath(mound, stroke(INK, 1));
-  }
-  for (let i = 0; i < 34; i++) {
-    const metal = o.heap[i % o.heap.length];
-    const look = METAL_COLS[metal] ?? METAL_COLS.light_iron;
-    const a = hash01(seed, i, 1);
-    const r = hash01(seed, i, 2) ** 0.8;
-    const x = (a - 0.5) * (w - 0.3) * 0.92;
-    const y = -d / 2 + b + r * (d - b) * 0.8;
-    const z = Math.max(0.04, (0.7 - r * 0.6) * (1 - Math.abs(a - 0.5) * 1.2));
-    const [sx, sy] = proj(v, x, y, z);
-    const turn = (hash01(seed, i, 3) - 0.5) * 60;
+    const [hx, hy] = proj(v, 0, -d / 2 + b + (d - b) * 0.55, 0);
     c.save();
-    c.translate(sx, sy);
-    c.rotate(turn, 0, 0);
-    const pw = 9 + hash01(seed, i, 4) * 8;
-    const pc = metal === 'copper' ? poly([-pw / 2, -3, pw / 2, -3.5, pw / 2 + 1, 2.5, -pw / 2, 3]) : poly([-pw / 2, -2.6, pw / 2, -3.2, pw / 2, 2.4, -pw / 2 - 1, 3]);
-    c.drawPath(pc, fill(i % 3 ? look[0] : look[1]));
-    c.drawPath(pc, stroke(INK, 0.9));
-    if (metal === 'copper' && i % 3 === 0) c.drawPath(segment(-2, -1, 1, -2), stroke(YARD.copperSheen, 1.1));
-    if (metal === 'brass' && i % 4 === 0) c.drawPath(segment(-1.5, -1.2, 1.5, -1.2), stroke('#FFFFFF', 1));
+    c.translate(hx, hy);
+    pieceHeap(c, o.heap, (w - 0.2) * v.ppm, 30, 18, seed, 15);
     c.restore();
   }
   // short side walls at the back corners
@@ -583,13 +674,3 @@ export function drawBay(c: SkCanvas, v: View3q, w: number, d: number, o: { heap:
     c.drawPath(flag, stroke(INK, 1.1));
   }
 }
-
-const METAL_COLS: Record<string, [string, string]> = {
-  light_iron: ['#8E979E', '#B9C0C5'],
-  cast_iron: [YARD.castIron, '#6E737A'],
-  hms: [YARD.rust, YARD.rustLight],
-  copper: [YARD.copper, YARD.copperLight],
-  brass: [YARD.brass, YARD.brassLight],
-  aluminium: [YARD.aluminium, YARD.aluminiumLight],
-};
-
