@@ -216,7 +216,7 @@ function ticketRows(t: Ticket, p: number): TicketRow[] {
     const amt = dotWidth(l.amount, p);
     if (sub + amt + p <= iw) rows.push({ kind: 'sub', h: p * 1.6, line: l });
     else {
-      rows.push({ kind: 'sub', h: p * 1.3, line: { ...l, amount: '' } });
+      rows.push({ kind: 'sub', h: p * 1.55, line: { ...l, amount: '' } });
       rows.push({ kind: 'amount', h: p * 1.5, line: l });
     }
   }

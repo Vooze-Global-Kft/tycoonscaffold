@@ -8,8 +8,8 @@
 
 export const YARD = {
   // The world
-  sky: '#C9DCE4',
-  skyLow: '#F3E4C8',
+  sky: '#A9C8D8',
+  skyLow: '#F2DDB6',
   far: '#9DAFB8',
   farDark: '#8697A2',
   sun: '#FFE3B0',

@@ -5,17 +5,19 @@
  * random. In the app the slab tile is baked once (world/ground.ts draws it repeated) and the decals go
  * into the atlas as ground decals drawn before every sprite.
  */
-import { Skia, type SkCanvas } from '@shopify/react-native-skia';
-import { YARD, shade } from './palette';
-import { blob, fill, hash01, oval, poly, proj, segment, stroke, type View3q } from './pen';
+import { ClipOp, Skia, type SkCanvas } from '@shopify/react-native-skia';
+import { YARD, mix, shade } from './palette';
+import { blob, builder, fill, hash01, linear, oval, poly, proj, segment, stroke, type View3q } from './pen';
 
 /** One slab's size, metres (the tile the app repeats is 2 x 2 slabs). */
 export const SLAB = 3;
 
 /** Concrete slabs filling the world rectangle (x0, y0, w, d), metres. */
-export function drawConcrete(c: SkCanvas, v: View3q, x0: number, y0: number, w: number, d: number, seed = 1): void {
+export function drawConcrete(c: SkCanvas, v: View3q, x0: number, y0: number, w: number, d: number, seed = 1, weeds = false): void {
   const [ax, ay] = proj(v, x0, y0, 0);
   const [bx, by] = proj(v, x0 + w, y0 + d, 0);
+  c.save();
+  c.clipRect({ x: ax, y: ay, width: bx - ax, height: by - ay }, ClipOp.Intersect, true);
   c.drawRect({ x: ax, y: ay, width: bx - ax, height: by - ay }, fill(YARD.concrete));
   const i0 = Math.floor(x0 / SLAB);
   const j0 = Math.floor(y0 / SLAB);
@@ -43,11 +45,14 @@ export function drawConcrete(c: SkCanvas, v: View3q, x0: number, y0: number, w: 
         const cy = sy + sh * 0.2;
         c.drawPath(poly([cx, cy, cx + 6, cy + sh * 0.2, cx + 2, cy + sh * 0.4, cx + 9, cy + sh * 0.6], false), stroke(YARD.joint, 0.9, 0.7));
       }
+      // weeds where the joints cross, in some slabs
+      if (weeds && hash01(seed, i * 3, j * 7) > 0.55) drawWeeds(c, sx + (hash01(seed, i, 41) > 0.5 ? 0 : sw * (0.3 + hash01(seed, i, j) * 0.4)), sy + 1, Math.floor(hash01(seed, i, j) * 10), 0.8 + hash01(seed, j, i) * 0.6);
       // joints: a dark line and a light lip below it
       c.drawPath(segment(sx, sy, sx + sw, sy), stroke(YARD.joint, 1.3));
       c.drawPath(segment(sx, sy + 1.2, sx + sw, sy + 1.2), stroke(YARD.concreteLight, 0.8, 0.7));
       c.drawPath(segment(sx, sy, sx, sy + sh), stroke(YARD.joint, 1.3));
     }
+  c.restore();
 }
 
 /** The asphalt lane (x0, y0, w, d) with a worn white edge line. */
@@ -117,3 +122,58 @@ export function drawGroundPatch(c: SkCanvas, v: View3q, w: number, d: number, se
   drawPuddle(c, v, w * 0.6, d * 0.55, 0.9, 0.5, seed);
   drawPuddle(c, v, w * 0.15, d * 0.85, 0.5, 0.3, seed + 2);
 }
+
+/** A tuft of weeds growing out of a joint at (x, y) points: a few blades in two greens, k its size. */
+export function drawWeeds(c: SkCanvas, x: number, y: number, seed = 1, k = 1): void {
+  const n = 4 + Math.floor(hash01(seed, 1) * 4);
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + (hash01(seed, i, 2) - 0.5) * 1.8;
+    const len = (4 + hash01(seed, i, 3) * 5) * k;
+    const bx = x + (hash01(seed, i, 4) - 0.5) * 6 * k;
+    const tip = [bx + Math.cos(a) * len, y + Math.sin(a) * len];
+    const blade = builder().moveTo(bx - 1.1 * k, y).quadTo(bx + Math.cos(a) * len * 0.5 - 1, y + Math.sin(a) * len * 0.5, tip[0], tip[1]).quadTo(bx + Math.cos(a) * len * 0.5 + 1, y + Math.sin(a) * len * 0.5, bx + 1.1 * k, y).close().build();
+    c.drawPath(blade, fill(i % 2 ? YARD.grass : YARD.grassLight));
+  }
+  c.drawPath(oval(x, y + 0.5, 3.5 * k, 1.1 * k), fill(YARD.grass, 0.6));
+}
+
+/**
+ * The far plane past the yard's wall (screen points): a late-day sky from blue-grey to warm cream, then
+ * in haze a dockside crane, stacked containers, a chimney, cable drums and a tree line, all flat
+ * silhouettes in two far tones, standing on `horizon`. No real place, no logo.
+ */
+export function drawSkyline(c: SkCanvas, x0: number, w: number, top: number, horizon: number, seed = 1): void {
+  c.drawRect({ x: x0, y: top, width: w, height: horizon - top + 2 }, linear(0, top, 0, horizon, [YARD.sky, YARD.skyLow], [0, 1]));
+  // the low sun's warm glow at the west end of the sky
+  c.drawRect({ x: x0, y: top, width: w, height: horizon - top + 2 }, linear(x0, 0, x0 + w, 0, ['rgba(255,227,176,0.55)', 'rgba(255,227,176,0)'], [0, 0.6]));
+  const far = YARD.far;
+  const farD = YARD.farDark;
+  // a tree line, low and lumpy
+  const tb = builder().moveTo(x0, horizon);
+  for (let x = x0; x <= x0 + w + 12; x += 12) tb.quadTo(x + 6, horizon - 16 - hash01(seed, x | 0) * 12, x + 12, horizon - 11 - hash01(seed, (x | 0) + 1) * 8);
+  tb.lineTo(x0 + w, horizon + 2).lineTo(x0, horizon + 2).close();
+  c.drawPath(tb.build(), fill(mixHaze('#8FA088')));
+  // stacked containers
+  for (let i = 0; i < 8; i++) {
+    const bx = x0 + w * (0.04 + i * 0.12) + hash01(seed, i) * 20;
+    const tiers = 2 + Math.floor(hash01(seed, i, 2) * 3);
+    for (let t = 0; t < tiers; t++) c.drawRect({ x: bx + t * 3, y: horizon - 9 * (t + 1), width: 34, height: 8.4 }, fill(t % 2 ? far : farD));
+  }
+  // a dockside crane: legs, a boom and its counter-jib
+  const cx = x0 + w * 0.56;
+  const ch = Math.min(60, (horizon - top) * 0.9);
+  c.drawPath(poly([cx, horizon, cx + 4, horizon - ch, cx + 8, horizon - ch, cx + 12, horizon, cx + 9, horizon, cx + 6, horizon - ch * 0.5, cx + 3, horizon]), fill(farD));
+  c.drawRect({ x: cx - 40, y: horizon - ch - 4, width: 110, height: 4 }, fill(farD));
+  c.drawPath(segment(cx + 6, horizon - ch - 14, cx - 40, horizon - ch - 3), stroke(farD, 1.4));
+  c.drawPath(segment(cx + 6, horizon - ch - 14, cx + 70, horizon - ch - 3), stroke(farD, 1.4));
+  c.drawRect({ x: cx + 3, y: horizon - ch - 16, width: 6, height: 14 }, fill(farD));
+  c.drawPath(segment(cx - 30, horizon - ch, cx - 30, horizon - ch + 14), stroke(farD, 1));
+  // a chimney and a shed roof
+  const kx = x0 + w * 0.47;
+  c.drawRect({ x: kx, y: horizon - 50, width: 7, height: 50 }, fill(far));
+  c.drawRect({ x: kx - 1, y: horizon - 52, width: 9, height: 4 }, fill(farD));
+  c.drawPath(poly([kx + 14, horizon, kx + 14, horizon - 18, kx + 60, horizon - 26, kx + 106, horizon - 18, kx + 106, horizon]), fill(far));
+}
+
+/** A colour seen through the late-day haze. */
+const mixHaze = (hex: string): string => mix(hex, YARD.far, 0.45);

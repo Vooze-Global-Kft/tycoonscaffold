@@ -209,7 +209,7 @@ const SEG: Record<string, string> = {
 /** One digit cell is 0.56 * size wide plus a gap; ',' and '.' take a narrow cell. */
 export function segWidth(text: string, size: number): number {
   let w = 0;
-  for (const ch of text) w += ch === '.' ? size * 0.28 : ch === ',' ? size * 0.12 : size * 0.68;
+  for (const ch of text) w += ch === '.' ? size * 0.36 : ch === ',' ? size * 0.12 : size * 0.68;
   return w - size * 0.12;
 }
 
@@ -254,8 +254,8 @@ export function sevenSeg(c: SkCanvas, text: string, right: number, y: number, si
       continue;
     }
     if (ch === '.') {
-      c.drawCircle(x + size * 0.04, y + size - t * 0.6, t * 0.85, fill(on));
-      x += size * 0.28;
+      c.drawCircle(x + size * 0.1, y + size - t * 0.6, t * 0.85, fill(on));
+      x += size * 0.36;
       continue;
     }
     const lit = SEG[ch] ?? '';
