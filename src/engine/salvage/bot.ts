@@ -930,6 +930,10 @@ export function decide(b: Bot): void {
       }
     }
   }
+  // The goal card first (a person follows it): "Cut up the car" and the like, while the thing can be worked.
+  const goalObj = done.startsWith('cut:') ? done.split(':')[1] : null;
+  const focus = goalObj ? opts.find((q) => q.obj === goalObj) : undefined;
+  if (focus && !half) return cutLeg(b, focus);
   // A drive out with the truck and no driver, whenever a load is affordable and he carries nothing.
   if (s.truck.owned && !s.crew.some((m) => m.role === 'driver') && loadG(b) <= 0 && !s.arriving.some((r) => r.item === 'truck')) {
     const order = Object.keys(c.partners).sort((a, q) => (done === `fetched:${q}:1` ? 1 : 0) - (done === `fetched:${a}:1` ? 1 : 0));

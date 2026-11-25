@@ -19,6 +19,8 @@ import { useEffect, useRef } from 'react';
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
+import { closeCard, openCard, useCards } from '../overlays/cardStack';
+import { say } from '../strings';
 import { hudLayout } from '../hud/metrics';
 import { loadingClock } from '../loading/clock';
 import { STICK_R, type StickZone } from '../world/stick';
@@ -156,18 +158,46 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
         log(`at ${leg.to} after ${((Date.now() - t0) / 1000).toFixed(1)} s`);
         if (leg.open) {
           await sleep(teach.autoplayReactS * 1000);
+          const goalHere = cfg.salvage.goals.find((d) => d.id === goalMark()) ?? null;
           const L = hudLayout(window.innerWidth, window.innerHeight, { top: 0, left: zone.x, right: zone.x, bottom: 0 });
           const r = targets.get('salvage:oneButton') ?? { x: L.button.x, y: L.button.y, width: L.button.size, height: L.button.size };
           tap(r.x + r.width / 2, r.y + r.height / 2);
-          await sleep(teach.autoplayStandS * 500);
+          await sleep(700);
+          if (!useCards.getState().ref) {
+            log(`the Open tap at ${leg.to} opened nothing: opening the card directly`);
+            openCard({ kind: 'place', place: leg.to as R.PlaceId });
+            await sleep(700);
+          }
+          // The goal's purchase: press its row's button as a thumb would (a click on the button itself).
+          if (goalHere?.buy) {
+            const g = game();
+            const want = goalHere.buy;
+            const top = useCards.getState().ref;
+            const rows = top ? R.cardOf(cfg, g, top, Date.now()).rows : [];
+            const row = rows.find((w) => w.button && ((w.button.action.act === 'buy' && w.button.action.item === want) || (w.button.action.act === 'hire' && want.startsWith(w.button.action.role))));
+            await sleep(teach.autoplayReactS * 1000);
+            if (row?.button) {
+              const label = say(row.button.label, cfg.salvage as never);
+              const el = [...document.querySelectorAll<HTMLElement>('[aria-label]')].find((e) => e.getAttribute('aria-label') === label);
+              const cash0 = g.cash;
+              if (el) el.click();
+              await sleep(500);
+              log(`${el ? 'pressed' : 'found no button for'} "${label}" at ${leg.to}: cash ${cash0} -> ${game().cash}`);
+            } else log(`no row for ${want} in the card at ${leg.to}`);
+          }
+          await sleep(teach.autoplayStandS * 300);
           // Close the card: a tap on the dimmed yard at the left.
           tap(Math.max(30, zone.minX), window.innerHeight * 0.4);
           await sleep(600);
+          if (useCards.getState().ref) closeCard();
         }
         // Stand until the goal moves on, or long enough.
+        // While the boss works, picks up, weighs or strips there, a person keeps standing (at most 40 s).
         const standStart = Date.now();
-        while (!stop && Date.now() - standStart < teach.autoplayStandS * 1000) {
-          if (goalMark() !== goalAtStart) break;
+        const BUSY = new Set(['work', 'pickup', 'weigh', 'feed', 'strip', 'circle']);
+        while (!stop && Date.now() - standStart < 40_000) {
+          if (goalMark() !== goalAtStart && !BUSY.has(game().salvage?.act?.kind ?? 'none')) break;
+          if (Date.now() - standStart > teach.autoplayStandS * 1000 && !BUSY.has(game().salvage?.act?.kind ?? 'none')) break;
           await sleep(200);
         }
       }

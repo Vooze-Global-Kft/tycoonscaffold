@@ -262,7 +262,8 @@ function report(all: Summary[], seeds: number[]): string {
   ];
   for (const bt of BEATS) {
     L.push(` ${bt.name} [${mmss(bt.lo)}-${mmss(bt.hi)}]`);
-    for (const [name, rs] of cols) if (rs.length) L.push(`   ${name.padEnd(14)} ${beatRow(rs, bt.key, bt.lo, bt.hi)}`);
+    // E14: on route B the first paid ticket is the copper ticket and its band is 35 s.
+    for (const [name, rs] of cols) if (rs.length) L.push(`   ${name.padEnd(14)} ${beatRow(rs, bt.key, bt.lo, bt.key === 'ticket' && name.endsWith(' B') ? 35 : bt.hi)}`);
   }
   const slow = hour('slow', 'goal');
   if (slow.length) {
@@ -338,15 +339,18 @@ function report(all: Summary[], seeds: number[]): string {
     const ahead = allRun.map((r) => {
       const nn = N.find((x) => x.spec.seed === r.spec.seed);
       if (!nn) return 0;
-      let worst = 0;
-      for (let m = 1; m <= 30; m++) {
-        const a = r.purchases.filter((p) => p.goal && p.t <= m * 60).length;
-        const g = nn.purchases.filter((p) => p.goal && p.t <= m * 60).length;
-        worst = Math.max(worst, a - g);
-      }
+      const worst = [10, 30].map((upto) => {
+        let w = 0;
+        for (let m = 1; m <= upto; m++) {
+          const a = r.purchases.filter((p) => p.goal && p.t <= m * 60).length;
+          const g = nn.purchases.filter((p) => p.goal && p.t <= m * 60).length;
+          w = Math.max(w, a - g);
+        }
+        return w;
+      });
       return worst;
     });
-    L.push(`   burst: habit all ahead of habit goal (goal purchases owned, minutes 1-30): max ${Math.max(...ahead)}, seeds at 2+: ${ahead.filter((x) => x >= 2).length}/${ahead.length}`);
+    L.push(`   burst (8.4: at most two ahead by minute 10): habit all ahead of habit goal in goal purchases owned, minutes 1-10: max ${Math.max(...ahead.map((a) => a[0]))} (seeds over 2: ${ahead.filter((a) => a[0] > 2).length}/${ahead.length}); minutes 1-30: max ${Math.max(...ahead.map((a) => a[1]))}`);
   }
   L.push('');
   // 5. the hand against the card manager; away

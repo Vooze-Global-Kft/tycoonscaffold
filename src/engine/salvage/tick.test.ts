@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { lintSalvage, SalvageSchema } from '../../config/schema.salvage';
 import { FIXTURE_NOW, SALVAGE_TEST, SALVAGE_TEST_RAW } from '../fixtures/salvage';
 import * as R from '../salvage';
+import * as awayMod from './away';
 import { pieceCount, pieceSpec } from './content';
 import { hand, stand, standUntil, walkTo } from './play';
 import { pointOf, thingPos } from './positions';
@@ -248,6 +249,19 @@ describe('content', () => {
     delete raw.objects.car.source;
     const c = SalvageSchema.parse(raw);
     expect(lintSalvage(c).some((m) => m.includes('converter') && m.includes('source'))).toBe(true);
+  });
+});
+
+describe('time away stays cheap (E17)', () => {
+  it("a cutter's event away is the whole thing: one start per thing, its pieces together", () => {
+    const { g } = busyYard();
+    const ev: SalvageEvent[] = [];
+    const leave = { ...g, lastSavedAt: g.salvage.clock.highMs };
+    awayMod.awayPass(cfg, leave, g.salvage.clock.highMs + 2 * 3600_000, ev);
+    const starts = ev.filter((e) => e.type === 'workStart' && String(e.by).startsWith('cutter'));
+    expect(starts.length).toBeGreaterThan(0);
+    const things = starts.map((e) => (e.type === 'workStart' ? e.thing : ''));
+    expect(new Set(things).size).toBe(things.length);
   });
 });
 
