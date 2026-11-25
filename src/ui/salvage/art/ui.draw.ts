@@ -7,7 +7,7 @@
  */
 import type { SkCanvas } from '@shopify/react-native-skia';
 import { METAL, YARD, shade } from './palette';
-import { dotMatrix, dotWidth, stencil } from './letters';
+import { dotMatrix, dotWidth, stencil, stencilWidth } from './letters';
 import { builder, circle, fill, oval, poly, rrect, segment, stroke, ticks } from './pen';
 
 export type Weight = 'regular' | 'semibold' | 'bold' | 'heavy';
@@ -263,7 +263,7 @@ export function drawTicket(c: SkCanvas, x: number, y: number, t: Ticket, p: numb
     switch (r.kind) {
       case 'head':
         c.drawPath(rrect(ix - 2, ry, iw + 4, p * 2.2, 2), fill(YARD.hivis));
-        stencil(c, t.yard, ix + iw / 2, ry + p * 0.55, p * 1.1, INK, { align: 'center', track: 0.4 });
+        stencil(c, t.yard, ix + iw / 2, ry + p * 0.6, Math.min(p * 1.05, (p * 1.05 * iw) / Math.max(1, stencilWidth(t.yard, p * 1.05, 0.2))), INK, { align: 'center', track: 0.2 });
         break;
       case 'meta':
         dotMatrix(c, `NO ${t.number}`, ix, ry + p * 0.2, p, YARD.print);
@@ -354,7 +354,7 @@ export function risingLines(c: SkCanvas, x: number, y: number, w: number): void 
 
 /** A small price tag hanging in the world (a grade's posted price), centred at (cx, cy). */
 export function priceTag(c: SkCanvas, T: TextFn, cx: number, cy: number, text: string, metal: string): void {
-  const w = 74;
+  const w = Math.max(74, T(c, text, 0, 0, { size: TYPE.chipSmall, weight: 'bold', measure: true }) + 27);
   const h = 20;
   chip(c, cx - w / 2, cy - h / 2, w, h, { r: 5 });
   c.drawPath(oval(cx - w / 2 + 10, cy, 5, 5), fill(METAL[metal]?.base ?? YARD.steel));

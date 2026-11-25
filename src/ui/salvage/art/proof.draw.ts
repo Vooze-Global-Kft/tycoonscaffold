@@ -103,7 +103,7 @@ export function drawProofWorld(c: SkCanvas, v: View3q, camX: number, camY: numbe
   add(3.3, 4.2, () => drawWasher(c, v, 'pieces', 3));
   add(4.4, 2.9, () => drawTapCrate(c, v));
   add(1.0, 5.5, () => drawRadiator(c, v, 3));
-  add(3.0, 6.5, () => drawPerson(c, v, { dir: 'e', pose: 'walk', frame: 1, look: crewLook(YARD.vestYardHand, 2), stack: [] }));
+  add(0.9, 6.7, () => drawPerson(c, v, { dir: 'e', pose: 'walk', frame: 1, look: crewLook(YARD.vestYardHand, 2), stack: [] }));
   // copper: drums of cable, the stripper running, bare bright bundles on a pallet at their price
   add(5.5, 1.2, () => drawCableDrum(c, v, 0.55, 0.6, 1));
   add(6.6, 1.6, () => drawCableDrum(c, v, 0.45, 0.5, 2));

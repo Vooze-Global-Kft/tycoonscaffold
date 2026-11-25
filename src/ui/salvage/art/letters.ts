@@ -256,7 +256,7 @@ export function sevenSeg(c: SkCanvas, text: string, right: number, y: number, si
       continue;
     }
     if (ch === '.') {
-      c.drawCircle(x + size * 0.1, y + size - t * 0.6, t * 0.85, fill(on));
+      c.drawCircle(x + size * 0.12, y + size - t * 0.7, t * 1.05, fill(on));
       x += size * 0.36;
       continue;
     }
