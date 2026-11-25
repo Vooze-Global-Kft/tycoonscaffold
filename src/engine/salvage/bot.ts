@@ -614,18 +614,47 @@ function placeSpot(b: Bot, place: string): { x: number; y: number } {
   return cands[0] ?? p;
 }
 
-/** Where the boss stands to work a thing: beside its footprint, on the side he comes from. */
+/** A thing's distance from a point, from its footprint's edge (positions.thingNear's measure). */
+function edgeDist(b: Bot, th: ThingState, x: number, y: number): number {
+  const c = b.cfg.salvage;
+  const p = thingPos(c, th.at);
+  const o = c.objects[th.obj];
+  return Math.hypot(Math.max(0, Math.abs(x - p.x) - (o?.size.w ?? 1) / 2), Math.max(0, Math.abs(y - p.y) - (o?.size.d ?? 1) / 2));
+}
+
+/**
+ * Where the boss stands to work a thing: beside its footprint, within reach, on a side where it is the
+ * nearest thing (a person steps up to the washer, not to the radiator beside it), the shortest walk first.
+ */
 function thingSpot(b: Bot, th: ThingState): { x: number; y: number } {
   const c = b.cfg.salvage;
   const p = thingPos(c, th.at);
   const o = c.objects[th.obj];
-  const r = Math.max(o?.size.w ?? 1, o?.size.d ?? 1) / 2 + 0.4;
   const here = pos(b);
+  const others = b.g.salvage.things.filter((q) => q.uid !== th.uid && Math.hypot(thingPos(c, q.at).x - p.x, thingPos(c, q.at).y - p.y) < 4);
+  let best: { x: number; y: number } | null = null;
+  let bestL = Infinity;
+  for (let k = 0; k < 16; k++) {
+    const a = (k * Math.PI) / 8;
+    for (const r of [0.35, 0.8]) {
+      const q = { x: p.x + Math.cos(a) * ((o?.size.w ?? 1) / 2 + r), y: p.y + Math.sin(a) * ((o?.size.d ?? 1) / 2 + r) };
+      if (q.x < 0.4 || q.y < 0.4 || q.x > c.yard.width - 0.4 || q.y > c.yard.depth - 0.4) continue;
+      const mine = edgeDist(b, th, q.x, q.y);
+      if (mine > c.reach.work - 0.1) continue;
+      if (others.some((t) => edgeDist(b, t, q.x, q.y) <= mine + 1e-6)) continue;
+      const L = Math.hypot(q.x - here.x, q.y - here.y);
+      if (L < bestL) {
+        bestL = L;
+        best = q;
+      }
+    }
+  }
+  if (best) return best;
   const dx = here.x - p.x;
   const dy = here.y - p.y;
   const d = Math.hypot(dx, dy) || 1;
-  const q = { x: p.x + (dx / d) * Math.min(r, c.reach.work + 0.2), y: p.y + (dy / d) * Math.min(r, c.reach.work + 0.2) };
-  return q;
+  const r = Math.min(Math.max(o?.size.w ?? 1, o?.size.d ?? 1) / 2 + 0.4, c.reach.work + 0.2);
+  return { x: p.x + (dx / d) * r, y: p.y + (dy / d) * r };
 }
 
 // ============================================================================================ sources
@@ -902,6 +931,10 @@ export function decide(b: Bot): void {
       return;
     }
   }
+  // "Weigh it on the scale", "Weigh the copper": a person weighs in what the goal names as soon as he holds it.
+  // Route B went to the cable for its copper: he weighs the copper in first (E14's copper ticket).
+  if (o.route === 'B' && !(s.counts?.weighIns ?? 0) && s.load.some((p) => p.grade === 'bb')) return weighLeg(b);
+  if (loadG(b) > 0 && (done.startsWith('weighIns:') || (done.startsWith('weighed:') && s.load.some((p) => p.grade === done.split(':')[1])))) return weighLeg(b);
   if (done.startsWith('worked:bench') && s.machines.bench.owned && s.load.some((p) => p.grade === 'mot')) return feedLeg(b, 'bench', 'mot');
   const half = loadG(b) >= 0.5 * capG(b) - 1;
   const opts = sources(b, done.startsWith('cut:') ? done.split(':')[1] : null);

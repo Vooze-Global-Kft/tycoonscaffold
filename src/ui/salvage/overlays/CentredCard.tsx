@@ -13,17 +13,19 @@ export interface CentredCardProps {
   onClose: () => void;
   lead?: Txt[];
   foot?: CardButton[];
+  /** A foot of the screen's own (the away card's OK), kept under the scroll like `foot`. */
+  footNode?: ReactNode;
   children?: ReactNode;
 }
 
-export function CentredCard({ title, onClose, lead, foot, children }: CentredCardProps) {
+export function CentredCard({ title, onClose, lead, foot, footNode, children }: CentredCardProps) {
   const { layout } = useFrame();
   const b = layout.centred;
   return (
     <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', top: layout.band.top, bottom: undefined, height: layout.band.height }]}>
       <View accessibilityViewIsModal style={[styles.card, { width: b.w, maxHeight: b.h }]}>
         <TitleRow title={title} onClose={onClose} />
-        <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 6 }}>
+        <ScrollView style={{ flexGrow: 0, flexShrink: 1 }} contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 6 }}>
           {lead?.map((t, i) => <Lead key={i} t={t} bold={i === 0} />)}
           {children}
         </ScrollView>
@@ -32,6 +34,7 @@ export function CentredCard({ title, onClose, lead, foot, children }: CentredCar
             <Foot buttons={foot} />
           </View>
         ) : null}
+        {footNode ? <View style={{ paddingHorizontal: PAD, paddingBottom: 10 }}>{footNode}</View> : null}
       </View>
     </View>
   );

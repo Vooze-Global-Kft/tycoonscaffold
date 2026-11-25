@@ -26,19 +26,7 @@ export function AwayCard({ data, onClose }: CardViewProps) {
     );
   }
   const { head, lines, summary } = awayLines(a);
-  return (
-    <CentredCard title={data.title} onClose={onClose}>
-      <View style={styles.head}>
-        <Line t={head} size="name" bold />
-      </View>
-      {lines.map((t, i) => (
-        <Line key={i} t={t} size="name" />
-      ))}
-      <View style={styles.sum}>
-        {summary.map((t, i) => (
-          <Line key={i} t={t} size={i === 0 ? 'name' : 'line'} bold={i === 0} colour={t === a.hint ? INK.soft : INK.ink} lines={2} />
-        ))}
-      </View>
+  const footNode = (
       <View style={styles.foot}>
         {ok.map((b, i) => (
           <LocalButton
@@ -52,12 +40,26 @@ export function AwayCard({ data, onClose }: CardViewProps) {
           />
         ))}
       </View>
+  );
+  return (
+    <CentredCard title={data.title} onClose={onClose} footNode={footNode}>
+      <View style={styles.head}>
+        <Line t={head} size="name" bold />
+      </View>
+      {lines.map((t, i) => (
+        <Line key={i} t={t} size="name" />
+      ))}
+      <View style={styles.sum}>
+        {summary.map((t, i) => (
+          <Line key={i} t={t} size={i === 0 ? 'name' : 'line'} bold={i === 0} colour={t === a.hint ? INK.soft : INK.ink} lines={2} />
+        ))}
+      </View>
     </CentredCard>
   );
 }
 
 const styles = StyleSheet.create({
   head: { paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: INK.rule, marginBottom: 4 },
-  foot: { flexDirection: 'row', justifyContent: 'flex-end', paddingTop: 10 },
+  foot: { flexDirection: 'row', justifyContent: 'flex-end', paddingTop: 8 },
   sum: { paddingTop: 6, marginTop: 4, gap: 2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: INK.rule },
 });

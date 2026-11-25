@@ -158,3 +158,34 @@ describe('the truck: entering by walking into it', () => {
     expect(ev.filter((e) => e.type === 'enterTruck').length).toBe(2);
   });
 });
+
+describe('work: the nearest WORKABLE thing (2.1; content 17:58)', () => {
+  it('a thing above his tier nearer than a workable one does not hold him: he works the workable one', () => {
+    let g = fresh();
+    const rad = g.salvage.things.find((t) => C.objects[t.obj].tier > g.salvage.tier)!;
+    const d0 = g.salvage.things.find((t) => t.uid === 'd0')!;
+    // The radiator set down in the drop-off's next slot, as in the bots' seed 2.
+    const at1 = { at: 'dropoff', slot: 1 } as typeof d0.at;
+    g = { ...g, salvage: { ...g.salvage, things: g.salvage.things.map((t) => (t.uid === rad.uid ? { ...t, at: at1 } : t)) } };
+    const pw = thingPos(C, d0.at);
+    const pr = thingPos(C, at1);
+    // Stand between them, nearer the radiator, both within reach.work.
+    const sx = pw.x + (pr.x - pw.x) * 0.6;
+    const sy = pw.y + (pr.y - pw.y) * 0.6 + 0.3;
+    const h = hand(cfg, g, FIXTURE_NOW);
+    walkTo(h, sx, sy);
+    stand(h, 3);
+    expect(h.g.salvage.act.kind === 'work' && h.g.salvage.act.target === 'd0' || h.events.some((e) => e.type === 'workStart' && e.thing === 'd0')).toBe(true);
+    expect(h.events.some((e) => e.type === 'refused' && (e.key === 'tool2' || e.key === 'tool3'))).toBe(false);
+  });
+  it('with only a thing above his tier in reach he is refused once', () => {
+    const g = fresh();
+    const rad = g.salvage.things.find((t) => C.objects[t.obj].tier === 2)!;
+    const p = thingPos(C, rad.at);
+    const o = C.objects[rad.obj];
+    const h = hand(cfg, g, FIXTURE_NOW);
+    walkTo(h, p.x, p.y + o.size.d / 2 + 0.3);
+    stand(h, 3);
+    expect(h.events.filter((e) => e.type === 'refused' && e.key === 'tool2').length).toBe(1);
+  });
+});

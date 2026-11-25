@@ -77,7 +77,14 @@ export function ladderForms(v: BarValues, c: R.SalvageContent): string[] {
 export function carryText(v: BarValues, c: R.SalvageContent): string {
   const kg = { mass_g: v.net_g, step: 'bridge' as const };
   if (v.driving) return say({ key: 'carryDriving', args: { kg } }, c);
-  return say({ key: 'carry', args: { a: { kg_g: v.load_g }, b: { kg_g: v.cap_g } } }, c);
+  // 2.2's mass rule on both sides: one decimal below 100 kg, whole kilograms from 100 kg ("28.6 / 60.0 kg",
+  // "120 / 150 kg"); the chip's 104 pt hold "150 / 150 kg" on one line where "150.0 / 150.0 kg" wrapped.
+  return say({ key: 'carry', args: { a: { ref: carryKg(v.load_g) }, b: { ref: carryKg(v.cap_g) } } }, c);
+}
+
+function carryKg(g: number): string {
+  const kg = R.fmtKg(g);
+  return Number(kg) >= 100 ? R.fmtMass(g).replace(/\s*kg$/, '') : kg;
 }
 
 export interface GoalValues {

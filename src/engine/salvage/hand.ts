@@ -217,7 +217,13 @@ export function bossStep(x: Ctx, t: number): void {
     if (!still && s.act.kind === 'none' && s.act.target) s.act.target = null;
     return;
   }
-  const uid = thingNear(c, s.things, p.x, p.y, c.reach.work, (th) => (th.by !== null && th.by !== 'boss') || (c.objects[th.obj]?.tier ?? 0) === 0);
+  // 2.1: among the things in reach he works the nearest WORKABLE one (its tier at most his best tool); a
+  // thing above his tier refuses (tool2 / tool3) only when none in reach is workable (content 17:58: a
+  // radiator nearer than the washer beside it held him for the hour).
+  const other = (th: ThingState) => (th.by !== null && th.by !== 'boss') || (c.objects[th.obj]?.tier ?? 0) === 0;
+  const uid =
+    thingNear(c, s.things, p.x, p.y, c.reach.work, (th) => other(th) || (c.objects[th.obj]?.tier ?? 0) > s.tier) ??
+    thingNear(c, s.things, p.x, p.y, c.reach.work, other);
   if (!uid) return;
   const th = thingOf(x, uid)!;
   const o = c.objects[th.obj];
