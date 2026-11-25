@@ -76,6 +76,7 @@ export const TEXT_KEYS = {
     'card.skipPrice',
     'card.skipsInRotation',
     'card.skipTrial',
+    'card.skipFilling',
     'card.skipReady',
     'card.skipOnTruck',
     'card.anotherSkip',
@@ -134,7 +135,7 @@ export const TEXT_KEYS = {
   /** Package 4: the away card (4.4). */
   away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.hintCutter', 'away.hintHand', 'away.nothing'],
   /** Packages 3 and 4: tickets and slips (2.2). */
-  ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.paid', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date'],
+  ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.gradeAmount', 'ticket.paid', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date'],
   /** Package 4: lines of 5.2. */
   line: ['line.portal', 'line.crewAway', 'line.backfield', 'line.fictional', 'line.shortened', 'line.carName'],
   /** Package 4: the clipboard, Settings and Help (4.3). */

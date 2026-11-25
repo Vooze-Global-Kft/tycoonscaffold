@@ -16,9 +16,10 @@ export const PRESETS = ['fresh', 'early', 'mid', 'late'] as const;
 export type PresetName = (typeof PRESETS)[number];
 /**
  * Other names of the four presets in the address (`?preset=m5`): the salvage mode's frozen states are
- * named by the minute (fresh, m5, m30, back) and its entry maps early, mid, late onto m5, m30, back.
+ * named by the minute (fresh, m5, m15, m30, back) and its entry maps early, mid, late onto m5, m30, back
+ * (m15 has no shared name: it arrives as `mid` and the salvage entry reads the address; web only).
  */
-export const PRESET_ALIASES: Readonly<Record<string, PresetName>> = { m5: 'early', m30: 'mid', back: 'late' };
+export const PRESET_ALIASES: Readonly<Record<string, PresetName>> = { m5: 'early', m15: 'mid', m30: 'mid', back: 'late' };
 
 /** A mode with its own engine builds its own presets (its entry hands them over, src/modes/contract.ts). */
 let modePresets: ((cfg: GameConfig, name: PresetName, now: number) => GameState) | null = null;

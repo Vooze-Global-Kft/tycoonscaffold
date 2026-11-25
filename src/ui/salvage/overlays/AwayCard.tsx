@@ -7,29 +7,12 @@
  * Data: `CardData.away` (the state's waiting card); numbers through the facade's formatters.
  */
 import { StyleSheet, View } from 'react-native';
-import type { AwayCard as Away, Txt } from '../../../engine/salvage';
 import { CentredCard } from './CentredCard';
+import { awayLines } from './marketLines';
 import { useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { salvageActions } from '../../../modes/salvage/actions';
 import { INK, Line, LocalButton } from './parts';
-
-/** At most this many grade lines; the rest is "+ n more" (4.4). */
-export const AWAY_LINES = 5;
-
-/** Every line the card prints, in order (pure: the tests read it). */
-export function awayLines(a: Away): { lines: Txt[]; summary: Txt[] } {
-  const shown = a.lines.slice(0, AWAY_LINES).map((l): Txt => ({ key: 'away.line', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'lot' }, x: { money: l.money } } }));
-  if (a.lines.length > AWAY_LINES) shown.push({ key: 'ticket.more', args: { n: { n: a.lines.length - AWAY_LINES } } });
-  const summary: Txt[] = [];
-  if (a.supplied_g > 0 || a.money > 0) summary.push({ key: 'away.supplied', args: { t: { tonnes_g: a.supplied_g }, x: { money: a.money } } });
-  else summary.push({ key: 'away.nothing' });
-  if (a.loads > 0) summary.push({ key: 'away.loads', args: { n: { n: a.loads } } });
-  if (a.deliveries > 0) summary.push({ key: 'away.deliveries', args: { n: { n: a.deliveries } } });
-  for (const r of a.passed) summary.push({ key: 'away.passed', args: { rival: { name: `${r}.chip` } } });
-  if (a.hint) summary.push(a.hint);
-  return { lines: shown, summary };
-}
 
 export function AwayCard({ data, onClose }: CardViewProps) {
   useSeenOnClose('away');
@@ -42,8 +25,7 @@ export function AwayCard({ data, onClose }: CardViewProps) {
       </CentredCard>
     );
   }
-  const { lines, summary } = awayLines(a);
-  const head: Txt = { key: 'away.head', args: { t: { secs: a.seconds }, c: { n: a.capS / 3600 } } };
+  const { head, lines, summary } = awayLines(a);
   return (
     <CentredCard title={data.title} onClose={onClose}>
       <View style={styles.head}>

@@ -119,8 +119,10 @@ export interface Box {
 const s = FONT_SCALE;
 /** 4.3: the right panel at 667 is 0.62 W. */
 export const PANEL_W = Math.round(0.62 * SCREEN_W); // 413
-/** 4.3: a panel row's text column: the panel less 12 pt padding a side, the 96 pt Buy button and an 8 pt gap. */
+/** 4.3: a panel row's text column: the panel less 12 pt padding a side, the 96 pt Buy button ("Buy §3,148" at 1.3 is about 110 pt: rows of a tool or a hire) and an 8 pt gap. */
 export const ROW_TEXT_W = PANEL_W - 24 - 96 - 8; // 285
+/** A row beside a Level up button at its widest (136 pt, the lead's ruling 3): the crew and machine level rows' lines. */
+export const ROW_BESIDE_LEVEL_W = PANEL_W - 24 - 136 - 8; // 245
 /** 4.4: the ticket is 260 pt wide at 667; its inner row width as the hud draws it (hud/ticketView.ts rowWidth: less the sprocket strip, paddings and edges, 25 pt). */
 export const TICKET_INNER = 260 - 25;
 /** The lead's ruling of 15:55 (1): above font scale 1.15 a ticket prints at most two grade rows and no lesson line. */
@@ -154,6 +156,8 @@ export const BOXES: Record<string, Box> = {
   rowName: { pt: 13, bold: true, w: ROW_TEXT_W, lines: 1, what: 'a panel row name: 285 pt, 13 pt (4.3)' },
   effect: { pt: 11, w: ROW_TEXT_W, lines: 1, maxChars: 38, what: 'a panel row effect line: 285 pt, 11 pt, at most 38 characters (4.3, 4.6)' },
   rowLine: { pt: 11, w: ROW_TEXT_W, lines: 1, what: 'a panel row second line: 285 pt, 11 pt (4.3)' },
+  rowLevel: { pt: 11, w: ROW_BESIDE_LEVEL_W, lines: 1, what: 'a level row\'s line beside a Level up button at its widest: 245 pt, 11 pt (4.3, the lead\'s ruling 3)' },
+  rowNote: { pt: 11, w: PANEL_W - 24, lines: 1, what: 'a refusal note under a row, across the panel: 389 pt, 11 pt (overlays-a parts.tsx)' },
   centredTitle: { pt: 15, bold: true, w: 520 - 32, lines: 1, what: 'a centred card title: 520 pt less 16 a side, 15 pt bold (4.3)' },
   centredLine: { pt: 13, w: 520 - 32, lines: 1, what: 'a centred card line: 488 pt, 13 pt (4.3)' },
   centredPara: { pt: 13, w: 520 - 32, lines: 3, what: 'a centred card paragraph: 488 pt, 13 pt, three lines (4.3)' },
@@ -196,6 +200,7 @@ const BOX_OF: [RegExp, keyof typeof BOXES][] = [
   [/^card\.(heelAsk|dealTerms|dealNoCharge)$/, 'centredPara'],
   [/^card\.(dealDaysLeft|dealReserve|dealTrust|dealLast|dealDone)$/, 'centredLine'],
   [/^card\.(siteLicence|converterPaid|skipState|skipTrial|businessCard|keptForLoad|inOut)$/, 'panelLead'],
+  [/^card\.(crewRow|levelFromTo|levelAdds|notBottleneck|carriesRate|cutsRate|drivesRate|levelN|rate)$/, 'rowLevel'],
   [/^card\./, 'rowLine'],
   [/^(item|role)\./, 'rowName'],
   [/^effect\./, 'effect'],
@@ -213,6 +218,7 @@ const BOX_OF: [RegExp, keyof typeof BOXES][] = [
   [/^away\.head$/, 'centredTitle'],
   [/^away\.hint/, 'centredPara'],
   [/^away\./, 'centredLine'],
+  [/^ticket\.gradeAmount$/, 'rowLine'],
   [/^ticket\.(weighInHead|collectionHead)$/, 'ticketHead'],
   [/^ticket\.(weighInLegal|lotSoldTo|weighedOut|todaysValue|paid|more)$/, 'ticketFoot'],
   [/^ticket\.(skipHead|dropOffSlip|grossTareNet|partnerLegal|dealDelivery)$/, 'ticketLegal'],
@@ -229,7 +235,7 @@ const BOX_OF: [RegExp, keyof typeof BOXES][] = [
   [/^advice\./, 'goalMore'],
   [/^lesson\./, 'ticketLesson'],
   [/^refusal\.(confirmHeel)$/, 'centredPara'],
-  [/^refusal\./, 'rowLine'],
+  [/^refusal\./, 'rowNote'],
 ];
 
 export function boxOf(key: string): Box {
@@ -365,13 +371,13 @@ const ARG_OVERRIDE: Record<string, Record<string, string>> = {
   'refusal.filling': { t: '59 m 59 s' },
   'card.drivesRate': { t: '59 m 59 s' },
   'board.head': { t: '23 h 59 m' },
-  'away.head': { t: '23 h 59 m', c: '12.5 h' },
+  'away.head': { t: '23 h 59 m', c: '12.5' },
   'card.carriesRate': { t: '99.9 t' },
   'card.cutsRate': { t: '99.9 t' },
   'card.levelAdds': { x: '99.9 t' },
   'goal.supplyRung2': { t: '28.00 t' },
   'goal.supplyRung3': { t: '28.00 t' },
-  'card.nightWatch': { a: '12.5 h', b: '24.5 h' },
+  'card.nightWatch': { a: '12.5', b: '24.5' },
   'chip.crewWeighIn': { kg: '299.9 kg' },
   carry: { a: '149.9', b: '150.0' },
   trialLoad: { kg: '1,020 kg' },
@@ -604,7 +610,7 @@ export const TODO_OWNER: [RegExp, string][] = [
   [/^(chip\.(padlock|bridgeLimit|needsTorchGate)|line\.(backfield|portal))$/, 'world-b: plates and padlock chips in the world (4.2; the bridge, the demolition gate, the back field, the portal)'],
   [/^lesson\.drum$/, 'rules-sim + content: the washer drum\'s lesson (content `lessons` keys grades; the drum is a light-iron piece)'],
   [/^(goal\.widenLevel|advice\.(buy|level))$/, 'rules-book: advice() and the repeating goal (Advice.line, goal.widen / goal.widenLevel)'],
-  [/^card\.(opensAt|converterPaid|levelAdds|notBottleneck|keptForLoad|skipPrice|levelN|levelFromTo|onItsWay|rate)$/, 'rules-book cards.ts (cardOf rows) and overlays-a (row lines)'],
+  [/^card\.(opensAt|converterPaid|levelAdds|notBottleneck|keptForLoad|skipPrice|skipFilling|levelN|levelFromTo|onItsWay|rate)$/, 'rules-book cards.ts (cardOf rows) and overlays-a (row lines)'],
   [/^(card\.(on|off|firstPour|heating|cooling|handOnly|hopper|tray|crewRow|skipsInRotation|skipTrial|skipReady|skipOnTruck|anotherSkip|partnerLine)|item\.skip|effect\.(frame|spanners|handStripper|brass|truck|alu)|title\.rack)$/, 'overlays-a: Rota, Partners, Machine, Crucible, Tool rack'],
   [/^(card\.(sell|sign|deal\w*)|board\.\w+|table\.\w+|opens\.\w+|away\.\w+|clip\.\w+|help\.\w+|line\.(shortened|fictional))$/, 'overlays-b: PriceBoard, Bay, SupplyDeal, IndustryTable, RungSign, AwayCard, Clipboard, Settings, Help'],
 ];

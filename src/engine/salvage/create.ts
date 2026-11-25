@@ -71,6 +71,7 @@ export function freshSalvage(c: SalvageContent, now: number): SalvageState {
     draws: 0,
     beenAway: false,
     income: { minute: 0, buckets: [0, 0, 0, 0, 0] },
+    counts: {},
   };
 }
 

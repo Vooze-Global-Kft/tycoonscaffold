@@ -8,7 +8,7 @@
 import type { SalvageContent } from '../../config/schema.salvage';
 import { binding, levelBinds, reserve } from './advice';
 import { marketDay, marketTime, priceBoard, priceOf } from './board';
-import { goalListOf, goalOf } from './goals';
+import { goalListOf, goalOf as goalOfCfg } from './goals';
 import { buyCheck, crewKeys, gateRefusal, hireCheck, itemName, levelAddsKgMin, levelCheck, refusalTxt, route, rungSign, shopItem, shopItems, type PurchaseCheck } from './ladder';
 import { roundMoney } from './money';
 import { lastPassed, tableOf } from './rivals';
@@ -58,7 +58,7 @@ function shopRow(cfg: SalvageConfig, g: SalvageGame, key: string, effect: TextKe
   const ch = buyCheck(cfg, g, key);
   const name: Txt = { key: itemName(key) };
   const line: Txt | null = effect ? { key: effect } : null;
-  if (ch.state === 'owned') return row(key, name, line, null, 'owned', { key: 'card.owned' });
+  if (ch.state === 'owned') return row(key, name, line, null, 'owned');
   if (ch.state === 'arriving') return row(key, name, line, null, 'arriving', { key: 'card.onItsWay' });
   if (ch.state === 'locked') return row(key, name, refusalTxt(ch), null, 'locked', line);
   const button = purchaseButton(ch, 'card.buy', { act: 'buy', item: key, price: ch.price! });
@@ -174,10 +174,10 @@ function partnerRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
       const lab = skipLabelOf(c, g, id, sk.slot);
       if (!lab) continue;
       const line: Txt = lab.state === 'filling' ? { key: 'refusal.filling', args: { t: { secs: lab.fullInS ?? 0 } } } : lab.refusal ?? { key: 'card.skipReady' };
-      out.push(row(`${id}.${sk.slot}`, lab.state === 'trial' ? { key: 'card.skipTrial', args: { partner: { name: id } } } : { key: 'card.skipState', args: { partner: { name: id } } }, line, { label: { key: 'open' }, action: { act: 'open', card: { kind: 'skip', partner: id, slot: sk.slot } }, refusal: null }, 'info', { key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }));
+      out.push(row(`${id}.${sk.slot}`, lab.state === 'trial' ? { key: 'card.skipTrial', args: { partner: { name: id } } } : lab.state === 'full' ? { key: 'card.skipState', args: { partner: { name: id } } } : { key: 'title.place', args: { place: { name: id } } }, line, { label: { key: 'open' }, action: { act: 'open', card: { kind: 'skip', partner: id, slot: sk.slot } }, refusal: null }, 'info', { key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }));
     }
     const lv = levelButton(cfg, g, { kind: 'partner', partner: id }, p.level);
-    out.push(row(`${id}.another`, { key: 'item.skip' }, lv.line, lv.button ? { ...lv.button, label: { key: 'card.anotherSkip', args: { x: { money: lv.ch.price ?? 0 } } } } : null, lv.ch.state));
+    out.push(row(`${id}.another`, { key: 'item.skip' }, lv.line, lv.button ? { ...lv.button, label: { key: 'card.buy', args: { x: { money: lv.ch.price ?? 0 } } } } : null, lv.ch.state));
   }
   if (s.ladder.rung >= 2 || s.deal.step !== null) out.push(row('deal', { key: 'title.deal' }, dealLine(cfg, g), { label: { key: 'open' }, action: { act: 'open', card: { kind: 'deal' } }, refusal: null }, 'info'));
   return out;
@@ -253,9 +253,8 @@ export function skipLabelOf(c: SalvageContent, g: SalvageGame, partner: string, 
     const o = c.objects[obj];
     return { obj, n, grade: o?.whole ?? o?.pieces[0]?.[0] ?? '', g: (o?.gross_g ?? 0) * n };
   });
-  const onTruck = s.truck.skip && s.truck.skip.partner === partner && s.truck.skip.slot === slot && s.truck.trip === null && false;
   const filling = sk.phase === 'filling' && sk.fullAt > t + 1e-6;
-  const state: SkipLabel['state'] = onTruck ? 'onTruck' : filling ? 'filling' : sk.trial ? 'trial' : 'full';
+  const state: SkipLabel['state'] = filling ? 'filling' : sk.trial ? 'trial' : 'full';
   const fullInS = filling ? Math.max(0, sk.fullAt - t) : null;
   let refusal: Txt | null = null;
   if (fullInS !== null) refusal = { key: 'refusal.filling', args: { t: { secs: fullInS } } };
@@ -505,7 +504,7 @@ export function cardOf(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: nu
         return machineData(cfg, g, ids, { key });
       }
       if (kind === 'rota' || kind === 'partners' || kind === 'processBoard') return cardOf(cfg, g, { kind: 'office', tab: kind }, now);
-      if (kind === 'board') return cardOf(cfg, g, { kind: 'board', focus: place.startsWith('stillage') ? undefined : undefined }, now);
+      if (kind === 'board') return cardOf(cfg, g, { kind: 'board' }, now);
       if (kind === 'table' || kind === 'clipboard' || kind === 'settings' || kind === 'help' || kind === 'deal' || kind === 'away') return cardOf(cfg, g, { kind } as CardRef, now);
       if (kind === 'rack') return { ...base, kind: 'rack', shape: 'panel', title: { key: 'title.rack' }, rows: rackRows(cfg, g) };
       if (kind === 'park') return { ...base, kind: 'park', shape: 'panel', title: { key }, rows: parkRows(cfg, g) };
@@ -614,9 +613,10 @@ export function awayCard(g: SalvageGame): AwayCard | null {
 
 /** COMPAT for actions.ts (rules-sim imports goalOf from here): the goal card. Use goals.ts nextGoal. */
 export function goalOfContent(c: SalvageContent, g: SalvageGame): Goal | null {
-  return goalOf({ salvage: c } as SalvageConfig, g);
+  return goalOfCfg({ salvage: c } as SalvageConfig, g);
 }
 export { goalOfContent as goalOf };
 
 /** COMPAT: crew keys of a role (ladder.ts). */
 export { crewKeys };
+export { rivalGrams } from './rivals';

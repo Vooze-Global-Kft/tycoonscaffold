@@ -17,16 +17,11 @@ import { gradePictogram } from '../art/pieces.draw';
 import { BUY_H, BUY_MAX } from './layout';
 import { BARS, PICTO, boardOffsets, barHeight } from './marketLayout';
 import { DataLine, Drawing, Note, gradeName, useAsk, useContent, useSeenOnClose } from './marketParts';
+import { DAY_WORD, rowExtra } from './marketLines';
 import { boardWithSell } from './marketSample';
 import type { CardViewProps } from './OverlayHost';
 import { Panel } from './Panel';
 import { INK, Line, LocalButton, RefusalLine, useFrame } from './parts';
-
-/** The board's words for a day word (null: a usual day prints nothing). */
-const WORD: Record<BoardRow['word'], Txt | null> = { low: { key: 'board.lowDay' }, usual: null, high: { key: 'board.highDay' } };
-
-/** True when the row prints a fourth line (a reservation or a set-aside lot). */
-export const rowExtra = (r: BoardRow): boolean => r.reserved_g > 0 || r.aside_g > 0;
 
 export function PriceBoard({ cfg, g, data, onClose }: CardViewProps) {
   const { layout } = useFrame();
@@ -39,6 +34,8 @@ export function PriceBoard({ cfg, g, data, onClose }: CardViewProps) {
   const rows = focus ? [...board.rows.filter((r) => r.grade === focus), ...board.rows.filter((r) => r.grade !== focus)] : board.rows;
   const off = boardOffsets(layout, rows.map(rowExtra));
   const first = board.hint !== null;
+  // The first opening's hint names a grade on a low day; with no grade seen yet there is none to name.
+  const hint = board.hint && board.hint.args && Object.keys(board.hint.args).length ? board.hint : null;
   const head: Txt = { key: 'board.head', args: { date: { day: board.day }, t: { secs: board.nextInS } } };
   return (
     <Panel
@@ -55,11 +52,10 @@ export function PriceBoard({ cfg, g, data, onClose }: CardViewProps) {
     >
       {first ? (
         <Note tone="hivis">
-          {board.hint ? <Line t={board.hint} size="name" bold lines={2} /> : null}
+          {hint ? <Line t={hint} size="name" bold lines={2} /> : null}
           {data.legal ? <Line t={data.legal} size="line" lines={4} /> : null}
         </Note>
       ) : null}
-      {rows.length === 0 ? <Line t={{ key: 'away.nothing' }} size="line" colour={INK.soft} /> : null}
       <View style={{ height: off.total }}>
         <View style={styles.pictos} pointerEvents="none">
           <Drawing w={PICTO} h={off.total} deps={[rows.map((r) => r.grade).join(), off.total]} draw={(cv) => rows.forEach((r, i) => gradePictogram(cv, r.grade, 0, off.tops[i] + (off.heights[i] - PICTO) / 2, PICTO))} />
@@ -85,7 +81,7 @@ function retryLabel(a: NonNullable<ReturnType<typeof useAsk>['asked']>['retry'])
 }
 
 function BoardLine({ r, h, focused, name, onPress }: { r: BoardRow; h: number; focused: boolean; name: string; onPress: (b: CardButton) => void }) {
-  const word = WORD[r.word];
+  const word = DAY_WORD[r.word];
   const button = r.sell ?? r.hold;
   const holdOnly = !r.sell;
   return (

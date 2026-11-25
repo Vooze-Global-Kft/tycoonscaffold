@@ -42,11 +42,12 @@ import { useHudTriggers } from './hud/useTriggers';
 import { OverlayHost, type Insets } from './overlays/OverlayHost';
 import { PAL } from './palette';
 import { overlaysOpen, useSalvageUi } from './uiState';
-import { spriteIds, useYardLoop, type Motion } from './world/frameLoop';
+import { useYardLoop, type Motion } from './world/frameLoop';
 import { STICK_R, stick, useStickResponder, type StickZone } from './world/stick';
 import { useRulesTable } from './world/useRulesTable';
-import { sigOf, useYardArt, yardFor } from './world/useYard';
-import { WorldLayer } from './world/WorldLayer';
+import { useYardArt, yardFor } from './world/useYard';
+import { HERO } from './world/heroFrame';
+import { CoinLayer, WorldLayer } from './world/WorldLayer';
 import { YardView } from './world/YardView';
 
 /** The stick zone: this share of the safe area's width from its left, below this share of its height. */
@@ -109,7 +110,6 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
 
   const yard = yardFor(cfg);
   const art = useYardArt(yard);
-  const ids = useMemo(() => spriteIds(yard, art?.sheet ?? null, sigOf(yard)), [yard, art]);
   const motion = useMemo<Motion>(
     () => ({
       walk: cfg.salvage.walk,
@@ -148,7 +148,7 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
   }, [active]);
   // `active` is "may steer": the loop itself runs while landscape and in the foreground (2.8: the rules
   // keep running under an open card; the boss stands). It reports footsteps and the diesel to the pump.
-  const anim = useYardLoop({ yard, sheet: art?.sheet ?? null, ids, motion, rules, capacity: CARRY_DRAWN, width, height, active, measure: yardSwitches.panel, insets, onSample, onDriving, sound: yardSound });
+  const anim = useYardLoop({ yard, motion, rules, capacity: CARRY_DRAWN, width, height, active, measure: yardSwitches.panel, insets, onSample, onDriving, sound: yardSound });
 
   const zoneRef = useRef<StickZone>(stickZone(width, height, insets));
   zoneRef.current = stickZone(width, height, insets);
@@ -171,6 +171,7 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
     [responder, grant],
   );
 
+  // The dev panel's atlas line: the bake's time; the draws of a frame are the loop's `stats.runs`.
   const atlasNote = art ? `bake ${art.bakeMs} ms` : 'atlas baking';
   return (
     <View style={styles.root}>
@@ -178,11 +179,14 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
       <YardView yard={yard} art={art} anim={anim} />
       <WorldLayer cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} active={active} />
       <View style={StyleSheet.absoluteFill} {...input} />
-      <StickKnob />
-      <HintLayer cfg={cfg} width={width} height={height} insets={insets} zone={zoneRef.current} used={used} active={active} />
-      <Autoplay cfg={cfg} zone={zoneRef.current} />
+      {/* The store's hero picture (?view=hero-store) shows no stick, no hint and no ghost thumb. */}
+      {HERO.store ? null : <StickKnob />}
+      {HERO.store ? null : <HintLayer cfg={cfg} width={width} height={height} insets={insets} zone={zoneRef.current} used={used} active={active} />}
+      {HERO.store ? null : <Autoplay cfg={cfg} zone={zoneRef.current} />}
       <HudLayer cfg={cfg} L={L} camera={anim.camera} yard={yard} />
       <OneButton cfg={cfg} L={L} hidden={overlays > 0} onStepOut={() => (anim.exit.value = 1)} />
+      {/* Coins fly over the bars to the cash counter (world-b's layer; touch-through, runs only while one flies). */}
+      <CoinLayer />
       {yardSwitches.panel ? <DevPanel stats={anim.stats} top={height - insets.bottom - 26} left={insets.left + Math.round(width * 0.36)} atlas={atlasNote} /> : null}
       <OverlayHost width={width} height={height} insets={insets} />
       {portrait ? <RotateCard cfg={cfg} s={L.s} /> : null}

@@ -28,7 +28,9 @@ export function panelTextW(L: FrameLayout): number {
 /** The pictogram (yard-stage1.md 6.1: the grade's pictogram, drawn at this size on the board). */
 export const PICTO = 20;
 /** The five days' bars (4.4): their box, and the gap between them. */
-export const BARS = { w: 34, h: 12, gap: 2 } as const;
+export const BARS = { w: 40, h: 14, gap: 2 } as const;
+/** How much a bar moves for a price away from the usual one: ±1/BAR_GAIN of it fills or empties the half box (posted prices move a few hundredths). */
+export const BAR_GAIN = 12;
 /** The day word chip's padding (low day, high day). */
 export const CHIP_PAD = 6;
 /** The board row's least height (4.4: two-line rows of 56 pt; ours three short lines and a 36 pt button). */
@@ -74,14 +76,17 @@ export function boardOffsets(L: FrameLayout, extras: boolean[]): { tops: number[
   return { tops, heights, total: y };
 }
 
-/** A bar's height in the five-day chart: price over twice the usual price, the usual price at mid-height (a picture, not a number shown). */
+/** A bar's height in the five-day chart: the usual price at mid-height, a day's step from it drawn BAR_GAIN times larger (a picture, not a number shown). */
 export function barHeight(price: number, pbar: number, h = BARS.h): number {
   if (!(pbar > 0) || !(price > 0)) return 1;
-  return Math.max(1, Math.min(h, Math.round((price / (2 * pbar)) * h * 2) / 2));
+  const k = h / 2 + (price / pbar - 1) * BAR_GAIN * (h / 2);
+  return Math.max(1, Math.min(h, Math.round(k * 2) / 2));
 }
 
 // ------------------------------------------------------------------------------- the industry table
 
+/** The "simulated" tag's size on a table row (never scaled: the smallest text, 4.6). */
+export const SIM_PT = 11;
 /** The plate logo of a table row (2.11: 24 pt). */
 export const LOGO = 24;
 
@@ -102,11 +107,12 @@ export interface TableCols {
 export function tableCols(L: FrameLayout): TableCols {
   const fs = L.fs;
   const p = pt(TYPE.name, fs);
-  const small = pt(TYPE.line, fs);
-  const gap = 6;
+  const gap = 5;
   const rank = Math.ceil(textW('26th', p)) + 2;
-  const tonnes = Math.ceil(textW('1,234.56 t', p));
-  const sim = Math.ceil(textW('simulated', small));
+  // The largest rival passes ten million tonnes by day 40 ("10,603,412 t").
+  const tonnes = Math.ceil(textW('12,345,678 t', p));
+  // "simulated" is a quiet tag at the smallest size (11 pt at every font scale), so a 14-character chip name fits at 667 and 1.3.
+  const sim = Math.ceil(textW('simulated', SIM_PT));
   const rowH = Math.max(30, lineH(TYPE.name, fs) + 10, LOGO + 6);
   const name = panelTextW(L) - rank - LOGO - tonnes - sim - 4 * gap;
   return { rowH, rank, logo: LOGO, name, tonnes, sim, gap };

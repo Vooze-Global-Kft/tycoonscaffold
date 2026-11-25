@@ -12,6 +12,7 @@ import { Pressable, StyleSheet, Text, View, type TextStyle } from 'react-native'
 import { Canvas, Picture, Skia, type SkCanvas } from '@shopify/react-native-skia';
 import type { CardAction, CardKind, SalvageContent, Txt } from '../../../engine/salvage';
 import { salvageActions, type Refusal } from '../../../modes/salvage/actions';
+import { useCards } from './cardStack';
 import { INK, Line, useFrame } from './parts';
 import { TYPE, pt } from './layout';
 
@@ -54,10 +55,18 @@ export function nameOf(c: Pick<SalvageContent, 'names'>, id: string): string {
 
 /**
  * Notes the card as seen when it CLOSES (rules `noteSeen`): the first-time lines (the board's hint, the
- * fictional line) stay for the whole first visit instead of vanishing at the next re-read.
+ * fictional line) stay for the whole first visit instead of vanishing at the next re-read. An unmount
+ * while the same card is still open (React's development double mount, a re-render of the host) is no
+ * close and notes nothing.
  */
 export function useSeenOnClose(card: CardKind): void {
-  useEffect(() => () => void salvageActions.noteSeen({ card }), [card]);
+  useEffect(() => {
+    const at = JSON.stringify(useCards.getState().ref);
+    return () => {
+      if (JSON.stringify(useCards.getState().ref) === at) return;
+      salvageActions.noteSeen({ card });
+    };
+  }, [card]);
 }
 
 /** A switch row (Settings: Sound, Music, Haptics): the name at the left, On or Off at the right. */

@@ -8,26 +8,15 @@
  * Data: `CardData.skip` (cardOf's skipLabel); the screen formats numbers and nothing else.
  */
 import { StyleSheet, View } from 'react-native';
-import type { SkipLabel, Txt } from '../../../engine/salvage';
+import type { Txt } from '../../../engine/salvage';
 import { drawSkipPlan, type SkipPartner } from '../art/heaps.draw';
 import { lineH, panelTextW } from './marketLayout';
+import { planLoad, skipHead } from './marketLines';
 import { Drawing, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { Panel } from './Panel';
 import { INK, Line, PadlockLine, useFrame } from './parts';
 import { TYPE } from './layout';
-
-/** The label's head line for its state (2.7). */
-export function skipHead(s: SkipLabel): Txt {
-  const partner = { name: s.partner };
-  if (s.state === 'trial') return { key: 'card.skipTrial', args: { partner } };
-  if (s.state === 'onTruck') return { key: 'card.skipOnTruck' };
-  if (s.state === 'filling') return { key: 'refusal.filling', args: { t: { secs: Math.max(0, s.fullInS ?? 0) } } };
-  return { key: 'card.skipState', args: { partner } };
-}
-
-/** The plan's load for the skip's state (empty while it fills: its contents are not fixed yet). */
-const planLoad = (s: SkipLabel): 'empty' | 'trial' | 'full' => (s.state === 'trial' ? 'trial' : s.state === 'filling' ? 'empty' : 'full');
 
 export function Skip({ data, onClose }: CardViewProps) {
   const { layout } = useFrame();

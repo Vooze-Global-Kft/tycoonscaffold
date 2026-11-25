@@ -665,7 +665,9 @@
           "sprite": "plant.stillage",
           "place": "stillage_cu",
           "slot": 4
-        }
+        },
+        "short": "Thin cable",
+        "long": "Thin insulated cable, such as a car's wiring loom"
       },
       "conv": {
         "name": "Converter, whole",
@@ -2837,7 +2839,7 @@
         },
         "alw": {
           "ticket": "lesson.alw",
-          "help": "Alloy wheels are cast aluminium. They pay as clean wheels only with the tyres and the balance weights taken off."
+          "help": "Alloy wheels are cast aluminium. They are paid as clean wheels only when the tyres and the balance weights are off."
         },
         "alcast": {
           "ticket": "lesson.alcast",

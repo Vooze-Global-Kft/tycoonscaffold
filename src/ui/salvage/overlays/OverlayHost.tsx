@@ -33,6 +33,15 @@ import { ProcessBoard } from './ProcessBoard';
 import { withSample } from './sample';
 import { ToolRack, isPadlockRow } from './ToolRack';
 import { WideCard } from './WideCard';
+import { AwayCard } from './AwayCard';
+import { Clipboard } from './Clipboard';
+import { Help } from './Help';
+import { IndustryTable } from './IndustryTable';
+import { PriceBoard } from './PriceBoard';
+import { RungSign } from './RungSign';
+import { Settings } from './Settings';
+import { Skip } from './Skip';
+import { SupplyDeal } from './SupplyDeal';
 
 export type { Insets } from './layout';
 export { closeCard, openCard } from './cardStack';
@@ -52,6 +61,16 @@ export const CARD_VIEWS: Partial<Record<CardData['kind'], ComponentType<CardView
   rack: ({ data, onClose }) => <ToolRack data={data} onClose={onClose} />,
   machine: ({ cfg, g, data, onClose }) => <Machine cfg={cfg} g={g} data={data} onClose={onClose} />,
   processBoard: ({ data, onClose }) => <ProcessBoard data={data} onClose={onClose} />,
+  // The market's cards (overlays-b, requests.md 16:40); a bay's card is kind 'board' with focus.
+  board: PriceBoard,
+  skip: Skip,
+  deal: SupplyDeal,
+  table: IndustryTable,
+  away: AwayCard,
+  rung: RungSign,
+  clipboard: Clipboard,
+  settings: Settings,
+  help: Help,
 };
 
 /** Any card from its data alone, in the frame its shape names. */

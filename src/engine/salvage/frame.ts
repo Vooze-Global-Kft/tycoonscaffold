@@ -7,6 +7,8 @@
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { dayWord, priceOf } from './board';
+import { skipLabelOf } from './cards';
+import { chevronOf } from './goals';
 import { bayOrder, bayPos, circleCount, circlePos, lanePath, machinePos, piecePos, placeNear, pointOf, skipZone, spotPos, thingPos } from './positions';
 import type {
   FrameArrival,
@@ -25,7 +27,7 @@ import type {
   Piece,
   Pose,
   SalvageGame,
-  SkipLabel,
+  SalvageConfig,
   TextKey,
   ThingAt,
   ToolKind,
@@ -97,23 +99,6 @@ const poseOf = (act: string, tool: ToolKind | null, loaded: boolean, moving: boo
   if (moving) return loaded ? 'push' : 'walk';
   return loaded ? 'carry' : 'stand';
 };
-
-/** The skip label of one skip (2.7). Refusals are the rules' (rules-book fills them); hour 0 gives the filling countdown only. */
-export function skipLabelOf(c: SalvageContent, g: SalvageGame, partner: string, slot: number): SkipLabel | null {
-  const p = g.salvage.partners[partner];
-  const sk = p?.skips.find((x) => x.slot === slot);
-  if (!p || !sk) return null;
-  const t = g.salvage.t;
-  const things = Object.entries(sk.contents).map(([obj, n]) => {
-    const o = c.objects[obj];
-    return { obj, n, grade: o?.whole ?? o?.pieces[0]?.[0] ?? '', g: (o?.gross_g ?? 0) * n };
-  });
-  const filling = sk.phase === 'filling' && sk.fullAt > t;
-  const state = filling ? 'filling' : sk.trial ? 'trial' : 'full';
-  const fullInS = filling ? Math.max(0, sk.fullAt - t) : null;
-  const refusal = fullInS !== null ? { key: 'refusal.filling' as const, args: { t: { secs: fullInS } } } : null;
-  return { partner, slot, state, net_g: sk.mass_g, things, price: sk.price, refusal, fullInS, fullAt: sk.fullAt };
-}
 
 export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
   const s = g.salvage;
@@ -363,7 +348,17 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
   const left = Math.max(0, c.foreman.minutesPerDay * 60 - fm.used_s);
   const active = fm.day === day && left > 0 && fm.lastWorkAt >= 0 && t - fm.lastWorkAt < c.foreman.windowS && s.crew.length > 0;
 
-  return { t, epoch: s.epoch, boss, things, pieces, load, machines, bays, crew, truck, flatbed, dropoffCar: null, arrivals, fixtures: [], skips, labels, chevron: null, circles, foreman: { active, left_s: left } };
+  // Equipment rung 2 adds (2.11: the radiation portal at the gate, the ID desk's window at the scale house, the crane's rung sign).
+  const fixtures: FrameTable['fixtures'] = [];
+  if (s.ladder.rung >= 2) {
+    const gp = pointOf(c, 'gate');
+    const sh = pointOf(c, c.map.points.scalehouse ? 'scalehouse' : 'scale');
+    fixtures.push({ id: 'portal', sprite: 'plant.portal', x: gp.x - 2, y: gp.y }, { id: 'desk', sprite: 'plant.desk.id', x: sh.x, y: sh.y + 1 });
+    const board = pointOf(c, c.map.points.noticeboard ? 'noticeboard' : 'office');
+    fixtures.push({ id: `sign.rung${s.ladder.rung}`, sprite: 'plant.sign.rung', x: board.x, y: board.y - 1 });
+  }
+
+  return { t, epoch: s.epoch, boss, things, pieces, load, machines, bays, crew, truck, flatbed, dropoffCar: null, arrivals, fixtures, skips, labels, chevron: chevronOf({ salvage: c } as SalvageConfig, g), circles, foreman: { active, left_s: left } };
 }
 
 /** The piece spec of the n-th piece cut off a thing (cut order over [grade, g, n] specs), or null when all are off. */

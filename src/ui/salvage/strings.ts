@@ -1,8 +1,8 @@
 /**
  * Every word the salvage screens show (AGENTS.md: one file per mode; the fingerprint and the voice
- * check read it). Owner from hour 0: package 9, strings and the text check (yard-stage1.md section 9);
- * a new key is a request to it and to the rules lead (the key list is src/engine/salvage/types.ts
- * `TEXT_KEYS`, and `TEXT` below must define exactly those keys: the typecheck holds both sides).
+ * check read it). Owner: package 9, strings and the text check (yard-stage1.md section 9); a new key is
+ * ONE request to it (the key list is src/engine/salvage/textKeys.ts `TEXT_KEYS`, also the strings
+ * package's, and `TEXT` below must define exactly those keys: the typecheck holds both sides).
  *
  * Words follow yard-stage1.md section 5 (the voice of 5.6: short plain sentences in the trade's words; no
  * puns, no exclamation marks, no promises). Holes:
@@ -119,11 +119,11 @@ export const TEXT = {
   'card.heel': 'Heel {kg}',
   'card.recipe': '{recipe}',
   'card.siteLicence': 'Site licence · metal dealer',
-  'card.carriesRate': 'Carries {rate} an hour', // rate: { rate_g_h }
-  'card.cutsRate': 'Cuts {rate} an hour', // rate: { rate_g_h }
+  'card.carriesRate': 'Carries {t} an hour', // t: { rate_g_h } (cards.ts passes it so)
+  'card.cutsRate': 'Cuts {t} an hour', // t: { rate_g_h }
   'card.drivesRate': 'Fetches a load in {t}',
   'card.opensAt': 'Opens at {t} supplied',
-  'card.nightWatch': 'Away cap {a} → {b}', // a, b: { hours } (fmtHours prints the h)
+  'card.nightWatch': 'Away cap {a} h → {b} h', // a, b: { n } hours (cards.ts, sample.ts pass n)
   'card.dealTerms': '{kg} of {grade} a day for {n} days at {p} a kilo, locked at signing',
   'card.dealDaysLeft': '{n} days left',
   'card.dealReserve': 'Reserved {a} / {b}',
@@ -136,7 +136,7 @@ export const TEXT = {
   'card.businessCard': '{contact} · {partner}',
   'card.converterPaid': 'Paid on assay: platinum {pt}, palladium {pd}, rhodium {rh}, less fees',
   'card.levelAdds': '+{rate} an hour', // rate: { rate_g_h }: what the next level adds (E13d), the row's effect line
-  'card.notBottleneck': 'Not the bottleneck · +{rate} an hour', // rate: { rate_g_h } (E19)
+  'card.notBottleneck': 'Not the bottleneck now', // E19: the state line; what the level adds is card.levelAdds
   'card.keptForLoad': 'Kept for the next load: {x}',
   'card.empty': '',
 
@@ -198,7 +198,7 @@ export const TEXT = {
   'plate.locked': '{why}',
 
   // --- package 4: the industry table and the rung sign (2.11) ---
-  'table.headline': 'the largest full metal recycling and resource supplier',
+  'table.headline': 'The largest full metal recycling and resource supplier',
   'table.simulated': 'simulated',
   'table.rivalsSimulated': 'Rival firms (simulated)',
   'table.rung': '{t} supplied · {r} metals',
@@ -209,7 +209,7 @@ export const TEXT = {
   'table.rungOpens': '{what}',
 
   // --- package 4: the away card (4.4) ---
-  'away.head': 'Away {t} (cap {c})', // t: { secs }, c: { hours } (AwayCard.capS / 3600)
+  'away.head': 'Away {t} (cap {c} h)', // t: { secs }, c: { n } hours (AwayCard.tsx passes n)
   'away.line': '{grade|short} {kg} · {x}',
   'away.supplied': '{t} supplied · {x} (already in your account)',
   'away.loads': '{n} loads fetched',
@@ -230,6 +230,7 @@ export const TEXT = {
   'ticket.grossTareNet': 'Gross {a} · Tare {b} · Net {c}',
   'ticket.partnerLegal': 'Seller ID checked · paid by transfer',
   'ticket.collectionHead': '{homeYard} · ticket {n}',
+  'ticket.gradeAmount': '{grade|short} {kg} {x}', // the clipboard's ticket history (overlays-b)
   'ticket.paid': 'Paid {x}',
   'ticket.lotSoldTo': 'Lot sold to {merchant}',
   'ticket.weighedOut': 'weighed out · paid by transfer',
@@ -359,6 +360,7 @@ export const TEXT = {
   'card.dealDone': 'All deliveries made',
   'card.skipsInRotation': 'Skips in rotation: {n}',
   'card.skipTrial': '{partner} · trial load',
+  'card.skipFilling': '{partner} · filling', // a skip in rotation that is not full yet (its state line is refusal.filling)
   'card.skipReady': 'Full · ready to hook',
   'card.skipOnTruck': 'On the truck',
   'card.anotherSkip': 'Another skip · {x}', // overlays-a: the partner wall's row (5.2)
@@ -404,17 +406,8 @@ void _noExtra;
  * Holes are the arguments the caller passes; the comment says which formatter fills each.
  */
 export const TEXT_PENDING = {
-  // goals (5.3; `goal.widen` and `goal.widenLevel` replace goal.levelHand, goal.levelStripper, goal.levelCutter)
-  // the advice line (2.10; Advice.line): the purchase that widens the yard now
-  // tool rack, rota and process board rows (4.3; effect lines ≤ 38)
-  // machines (4.3)
-  // partners and skips (2.7, 4.3)
-  // the supply deal (2.9, 4.3)
-  // price board and bays (4.4)
-  // the industry table and the rung sign (2.11)
-  // refusals (5.4): the driver's earmark
-  'refusal.needsItem': 'Opens with: {item}', // E25: a shop item gated by another item owned
-  // Settings and Help (4.3)
+  // refusals (5.4): E25's gate by another item owned; waits for the rules' REFUSAL_KEYS (refusals.ts) to add `needsItem`
+  'refusal.needsItem': 'Opens with: {item}', // item: { text: item.* }
 } as const;
 
 // ================================================================================================ names
@@ -547,20 +540,7 @@ export const WORLD_LABELS = {
   truck: 'TRUCK',
 } as const;
 
-/** The ground work's screen words (OverlayHost, Loading, SalvageShell): kept as they were until their owners move to TEXT. */
+/** The loading curtain's accessibility label (src/ui/salvage/loading/LoadingStage.tsx); the ground work's placeholder words are gone (no screen reads them). */
 export const S = {
-  rotateTitle: TEXT.turnSideways,
-  rotateBody: TEXT.turnSidewaysBody,
-  stepOut: TEXT.stepOut,
-  open: TEXT.open,
-  menu: TEXT.menu,
-  panelTitle: 'PLACEHOLDER panel',
-  panelBody: 'The side panel of the mode’s own overlays. Android back or the scrim closes it.',
-  openCard: 'Open the card',
-  close: TEXT.close,
-  cardTitle: 'PLACEHOLDER card',
-  cardBody: 'The centred card of the mode’s own overlays, on top of the panel.',
-  ok: TEXT.ok,
   loading: 'Loading the yard…',
-  hintStick: 'Thumb down on the left to walk',
 } as const;

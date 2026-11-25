@@ -57,7 +57,9 @@ export function dayWord(c: SalvageContent, grade: GradeId, day: number): 'low' |
 // ============================================================================ the facade's entries (the seam, 16:20)
 // Moved unchanged from src/engine/salvage.ts; the facade re-exports them under their public names.
 
-import type { PriceBoard, SalvageConfig } from './types';
+import type { BoardRow, CardButton, PriceBoard, SalvageConfig, SellShown } from './types';
+import { floorGrams, lineAmount } from './money';
+import { bayOrder } from './positions';
 
 /** Facade `marketDay(cfg, ms)`. */
 export function marketDayCfg(cfg: SalvageConfig, ms: number): number {
@@ -74,25 +76,56 @@ export function dayWordCfg(cfg: SalvageConfig, grade: GradeId, day: number): 'lo
   return dayWord(cfg.salvage, grade, day);
 }
 
-/** The price board (4.4): today's rows, five days, day words, Hold and Sell; the first opening's hint while `seen.cards` lacks 'board'. STUB(hour 0): the rows of the bays with today's prices, no Sell. */
+/**
+ * The step a Sell carries (2.8 "shown equals applied"): today's market day and price, and the grams the
+ * card shows: the bay's grams not reserved (crucible, deal) and not already set aside, resolved DOWN to
+ * 0.1 kg. The rules' `sell` compares what it receives with this, else `priceUpdated`.
+ */
+export function sellShown(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, now: number): SellShown {
+  const day = marketDay(cfg.salvage, marketTime(g, now));
+  const b = g.salvage.bays[grade];
+  const aside = b ? b.aside.reduce((a, x) => a + x.g, 0) : 0;
+  const free = b ? b.g - b.forCrucible_g - b.forDeal_g - aside : 0;
+  return { day, price: priceOf(cfg.salvage, grade, day), grams: floorGrams(free) };
+}
+
+/** The bays' grades in the board's order: content's fixed bay order, then any other grade weighed in. */
+function boardGrades(c: SalvageContent, g: SalvageGame): GradeId[] {
+  const order = bayOrder(c).filter((gr) => g.salvage.bays[gr]);
+  return [...order, ...Object.keys(g.salvage.bays).filter((gr) => !order.includes(gr))];
+}
+
+/**
+ * The price board (4.4): "Market day {date} (UTC) · next prices in {t}"; per grade weighed in a row
+ * with today's price, its day word, five days of prices (oldest first, today last) with the usual price
+ * for the tick, the bay's stock, Hold, and on a held bay Sell with its total (the SellShown the rules
+ * apply). The first opening's hint points at a low day while `seen.cards` lacks 'board'.
+ */
 export function priceBoard(cfg: SalvageConfig, g: SalvageGame, now: number): PriceBoard {
-  // STUB(hour 0)
+  const c = cfg.salvage;
   const ms = marketTime(g, now);
-  const day = marketDay(cfg.salvage, ms);
-  const rows = Object.entries(g.salvage.bays).map(([grade, b]) => ({
-    grade,
-    icon: cfg.salvage.grades[grade]?.sprite ?? 'piece.unknown',
-    price: priceOf(cfg.salvage, grade, day),
-    days: [4, 3, 2, 1, 0].map((k) => priceOf(cfg.salvage, grade, day - k)),
-    pbar: cfg.salvage.grades[grade]?.pbar ?? 0,
-    word: dayWord(cfg.salvage, grade, day),
-    bay_g: b.g,
-    held: b.held,
-    reserved_g: b.forCrucible_g + b.forDeal_g,
-    aside_g: b.aside.reduce((a, x) => a + x.g, 0),
-    hold: { label: { key: 'card.hold' as const }, action: { act: 'setHold' as const, grade, on: !b.held }, refusal: null },
-    sell: null,
-  }));
-  const hint = g.salvage.seen.cards.includes('board') ? null : { key: 'board.firstHint' as const, args: {} };
-  return { day, nextInS: secondsToNextDay(cfg.salvage, ms), rows, hint };
+  const day = marketDay(c, ms);
+  const rows: BoardRow[] = boardGrades(c, g).map((grade) => {
+    const b = g.salvage.bays[grade];
+    const aside_g = b.aside.reduce((a, x) => a + x.g, 0);
+    const shown = sellShown(cfg, g, grade, now);
+    const sell: CardButton | null = b.held && shown.grams > 0 ? { label: { key: 'board.sellTotal', args: { x: { money: lineAmount(shown.grams, shown.price) } } }, action: { act: 'sell', grade, shown }, refusal: null } : null;
+    return {
+      grade,
+      icon: c.grades[grade]?.picto ?? c.grades[grade]?.sprite ?? `piece.${grade}`,
+      price: priceOf(c, grade, day),
+      days: [4, 3, 2, 1, 0].map((k) => priceOf(c, grade, day - k)),
+      pbar: c.grades[grade]?.pbar ?? 0,
+      word: dayWord(c, grade, day),
+      bay_g: b.g,
+      held: b.held,
+      reserved_g: b.forCrucible_g + b.forDeal_g,
+      aside_g,
+      hold: { label: { key: 'card.hold' }, action: { act: 'setHold', grade, on: !b.held }, refusal: null },
+      sell,
+    };
+  });
+  const low = rows.find((r) => r.word === 'low');
+  const hint = g.salvage.seen.cards.includes('board') || !low ? null : { key: 'board.firstHint' as const, args: { grade: { grade: low.grade } } };
+  return { day, nextInS: secondsToNextDay(c, ms), rows, hint };
 }

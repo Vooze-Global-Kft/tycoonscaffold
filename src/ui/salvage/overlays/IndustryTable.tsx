@@ -3,7 +3,7 @@
  * "the largest full metal recycling and resource supplier"; the nine rungs, the current lit and the next
  * with its gates (tonnes supplied and metals of range); the range chips (each material counted or not);
  * then 26 rows: rank, the 24 pt plate logo (the art kit's ui.draw `rivalPlate`, all 26 in ONE canvas
- * beside the rows), the chip name, tonnes and "simulated"; the player's row pinned above the list and
+ * beside the rows), the chip name, "simulated" and tonnes (right-aligned, so the column reads down); the player's row pinned above the list and
  * marked in it; "Rival firms (simulated)" and the fictional line at the foot.
  *
  * Data: `CardData.table` (the facade's industryTable). Names by register id from the content; numbers
@@ -14,18 +14,13 @@ import * as R from '../../../engine/salvage';
 import type { IndustryTable as Table, TableRow, Txt } from '../../../engine/salvage';
 import { YARD } from '../art/palette';
 import { rivalPlate } from '../art/ui.draw';
-import { LOGO, rungCells, tableCols, type TableCols } from './marketLayout';
+import { LOGO, SIM_PT, rungCells, tableCols, type TableCols } from './marketLayout';
+import { plateSeed } from './marketLines';
 import { DataLine, Drawing, gradeName, nameOf, useContent, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { Panel } from './Panel';
 import { INK, Line, Padlock, useFrame } from './parts';
 import { TYPE, pt } from './layout';
-
-/** The rival plate's seed: its register number less one (rival.1 → 0 .. rival.25 → 24), null for the player. */
-export function plateSeed(row: Pick<TableRow, 'id'>): number | null {
-  const m = /^rival\.(\d+)$/.exec(row.id);
-  return m ? Number(m[1]) - 1 : null;
-}
 
 export function IndustryTable({ cfg, g, data, onClose }: CardViewProps) {
   const { layout } = useFrame();
@@ -117,21 +112,26 @@ function Rungs({ t }: { t: Table }) {
   );
 }
 
-function TableLine({ row, cols, c, pinned }: { row: TableRow; cols: TableCols; c: R.SalvageContent; pinned?: boolean }) {
+function TableLine({ row, cols, c }: { row: TableRow; cols: TableCols; c: R.SalvageContent; pinned?: boolean }) {
   const you = row.id === 'you';
   return (
     <View style={[styles.row, { height: cols.rowH, gap: cols.gap }, you ? styles.you : null]}>
       <View style={{ width: cols.rank }}>
         <DataLine text={R.fmtRank(row.rank)} size="name" bold={you} />
       </View>
-      <View style={{ width: cols.logo, alignItems: 'center' }}>{you && pinned ? <View style={styles.youMark} /> : you ? <View style={styles.youMark} /> : null}</View>
-      <View style={{ width: cols.name }}>
+      <View style={{ width: cols.logo, alignItems: 'center' }}>{you ? <View style={styles.youMark} /> : null}</View>
+      {/* The player's row prints no "simulated": its name takes that column too (the yard's name is longer than a chip); tonnes stay right-aligned at the edge. */}
+      <View style={{ width: row.simulated ? cols.name : cols.name + cols.gap + cols.sim }}>
         <DataLine text={nameOf(c, row.chip)} size="name" bold={you} lines={1} />
       </View>
+      {row.simulated ? (
+        <View style={{ width: cols.sim }}>
+          <Line t={{ key: 'table.simulated' }} size="line" colour={INK.soft} style={{ fontSize: SIM_PT, lineHeight: Math.ceil(SIM_PT * 1.25) }} />
+        </View>
+      ) : null}
       <View style={{ width: cols.tonnes, alignItems: 'flex-end' }}>
         <DataLine text={R.fmtTonnes(row.tonnes_g)} size="name" bold={you} lines={1} />
       </View>
-      <View style={{ width: cols.sim }}>{row.simulated ? <Line t={{ key: 'table.simulated' }} size="line" colour={INK.soft} /> : null}</View>
     </View>
   );
 }

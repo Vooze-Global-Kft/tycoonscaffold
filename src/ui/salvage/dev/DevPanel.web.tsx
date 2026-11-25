@@ -4,11 +4,24 @@
  * numbers (../world/frameLoop.ts `stats`): frames a second and the worst frame time over the last five
  * seconds, actors moving, sprites drawn in the one atlas call, and the atlas's size. Load the yard with
  * `actors=` and `sprites=` until it stutters to measure the budget of docs/design/research/yard-tech.md B6.
+ * `runs` is the frame's atlas draws (decals, shadows, sorted runs: notes/lead-world.md, at most twelve).
+ * It also mounts the dev board (./DevBoard.web.tsx: every card, every typed event) and the market cards'
+ * stand-in (./CardStandIn.web.tsx). `?dev=cards` keeps the board and drops the numbers line (screenshots).
  */
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import type { FrameStats } from '../world/frameLoop';
+import { CardStandIn } from './CardStandIn.web';
+import { DevBoard } from './DevBoard.web';
+
+function numbersOff(): boolean {
+  try {
+    return typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'cards';
+  } catch {
+    return false;
+  }
+}
 
 export function DevPanel({ stats, top, left, atlas }: { stats: SharedValue<FrameStats>; top: number; left: number; atlas: string }) {
   const [s, setS] = useState<FrameStats>({ fps: 0, worstMs: 0, actors: 0, sprites: 0 });
@@ -16,13 +29,20 @@ export function DevPanel({ stats, top, left, atlas }: { stats: SharedValue<Frame
     const t = setInterval(() => setS(stats.value), 500);
     return () => clearInterval(t);
   }, [stats]);
-  const line = `${s.fps.toFixed(1)} fps  worst ${s.worstMs.toFixed(1)} ms (5 s)  actors ${s.actors}  sprites ${s.sprites}  draws 4 (fill, ground, fence, atlas)  ${atlas}`;
+  const runs = s.runs === undefined ? '' : `  runs ${s.runs}`;
+  const line = `${s.fps.toFixed(1)} fps  worst ${s.worstMs.toFixed(1)} ms (5 s)  actors ${s.actors}  sprites ${s.sprites}${runs}  ${atlas}`;
   // Exposed for the preview's screenshot tool (scripts read it from the page).
   (globalThis as { __yardStats?: FrameStats }).__yardStats = s;
   return (
-    <View pointerEvents="none" style={[styles.box, { top, left }]}>
-      <Text style={styles.text}>{line}</Text>
-    </View>
+    <>
+      {numbersOff() ? null : (
+        <View pointerEvents="none" style={[styles.box, { top, left }]}>
+          <Text style={styles.text}>{line}</Text>
+        </View>
+      )}
+      <DevBoard bottom={6} left={6} />
+      <CardStandIn />
+    </>
   );
 }
 

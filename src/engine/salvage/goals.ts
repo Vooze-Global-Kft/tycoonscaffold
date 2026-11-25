@@ -29,9 +29,9 @@ export type GoalSpec = GoalDef & { via?: string | null; stall?: string | null; a
  * grade (anyone) · `made:<grade>` a tray credited that grade · `worked:<machine>` a piece finished by
  * it · `fetched:<partner>` a skip tipped on the floor · `poured` a heat poured · `away` an away card
  * acknowledged · `visited:<point>` the boss within reach.place of a map point · `deal:done` a deal
- * series step finished.
+ * series step finished (the sim's keys: `dealSigned`, `dealDone`, `collected` a collection paid).
  */
-export const COUNT_KEYS = ['cut:<obj>', 'weighIns', 'crewWeighIns:<role>', 'weighed:<grade>', 'made:<grade>', 'worked:<machine>', 'fetched:<partner>', 'poured', 'away', 'visited:<point>', 'deal:done'] as const;
+export const COUNT_KEYS = ['cut:<obj>', 'weighIns', 'crewWeighIns:<role>', 'weighed:<grade>', 'made:<grade>', 'worked:<machine>', 'fetched:<partner>', 'poured', 'away', 'visited:<point>', 'dealSigned', 'dealDone', 'collected'] as const;
 export type Counts = Record<string, number>;
 
 /** One more of a counter (pure; the rules-sim's one way to count). */
@@ -39,11 +39,11 @@ export function bump(counts: Counts, key: string, n = 1): Counts {
   return { ...counts, [key]: (counts[key] ?? 0) + n };
 }
 
-const countsOf = (g: SalvageGame): Counts => ((g.salvage as unknown as { counts?: Counts }).counts ?? {});
+const countsOf = (g: SalvageGame): Counts => g.salvage.counts ?? {};
 
 /** Every goal in order: the hour's, then the day-1 list (content `dayOne`, the hints' file). */
 export function goalSpecs(c: SalvageContent): { goals: GoalSpec[]; dayOne: GoalSpec[] } {
-  const dayOne = ((c as unknown as { dayOne?: GoalSpec[] }).dayOne ?? []).map((d) => ({ optional: false, repeat: false, buy: null, ...d }));
+  const dayOne = ((c as unknown as { dayOne?: Partial<GoalSpec>[] }).dayOne ?? []).map((d) => ({ optional: false, repeat: false, buy: null, ...d }) as GoalSpec);
   return { goals: c.goals as GoalSpec[], dayOne };
 }
 
@@ -89,8 +89,12 @@ export function countOf(c: SalvageContent, g: SalvageGame, key: string): number 
       return s.beenAway && !s.away ? 1 : 0;
     case 'visited':
       return s.seen.places.includes(a) ? 1 : 0;
-    case 'deal':
+    case 'dealDone':
       return s.deal.phase === 'done' ? (c.deal.series.length || 1) : Math.max(0, s.deal.step ?? 0);
+    case 'dealSigned':
+      return s.deal.phase === 'running' || s.deal.phase === 'done' ? 1 : 0;
+    case 'collected':
+      return s.tickets.filter((t) => t.kind === 'collection').length;
     default:
       return 0;
   }
@@ -111,9 +115,9 @@ export function conditionMet(cfg: SalvageConfig, g: SalvageGame, cond: string | 
     case 'crewWeighIns':
       return countOf(c, g, `crewWeighIns:${parts[1]}`) >= num(2);
     case 'weighed':
-    case 'graded':
       return countOf(c, g, `weighed:${parts[1]}`) >= 1;
     case 'made':
+    case 'graded':
       return countOf(c, g, `made:${parts[1]}`) >= 1;
     case 'worked':
       return countOf(c, g, `worked:${parts[1]}`) >= num(2);
@@ -126,8 +130,8 @@ export function conditionMet(cfg: SalvageConfig, g: SalvageGame, cond: string | 
     case 'rung':
       return s.ladder.rung >= num(1);
     case 'deal':
-      if (parts[1] === 'signed') return s.deal.phase === 'running' || s.deal.phase === 'done' || s.deal.delivered > 0 || (s.deal.step ?? 0) > 0;
-      if (parts[1] === 'done') return countOf(c, g, 'deal:done') >= num(2);
+      if (parts[1] === 'signed') return countOf(c, g, 'dealSigned') >= 1 || s.deal.phase === 'running' || s.deal.phase === 'done' || s.deal.delivered > 0 || (s.deal.step ?? 0) > 0;
+      if (parts[1] === 'done') return countOf(c, g, 'dealDone') >= num(2);
       return false;
     case 'charged': {
       const cr = s.machines.crucible;
@@ -142,7 +146,7 @@ export function conditionMet(cfg: SalvageConfig, g: SalvageGame, cond: string | 
     case 'away':
       return countOf(c, g, 'away') >= num(1);
     case 'collected':
-      return s.tickets.filter((t) => t.kind === 'collection').length >= num(1) || s.ladder.supplied_g > 0;
+      return countOf(c, g, 'collected') >= num(1);
     default:
       return false;
   }

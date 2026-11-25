@@ -30,7 +30,7 @@ export { reconcileSalvage } from './salvage/save';
 
 // ---- rules-sim (changes)
 export { createSalvage, freshSalvageCfg as freshSalvage, isSalvage, stockThings, withSalvageFields } from './salvage/create';
-export { activeIncomeRate, advanceSalvage, incomeRate, nextEvent, steadyIncomeRate, tick } from './salvage/tick';
+export { activeIncomeRate, advanceSalvage, incomeRate, jump, nextEvent, steadyIncomeRate, tick } from './salvage/tick';
 export { awayCapS, salvageOffline } from './salvage/away';
 export { ratedCapacity } from './salvage/rate';
 export { ackAway, buy, declineDeal, hire, level, noteSeen, sell, setFromBays, setHold, setPresence, setRecipe, signDeal, skipGoal, stepOut } from './salvage/actions';

@@ -2,9 +2,9 @@
  * Development switches for the web build, read from the page address:
  *
  *   ?preset=fresh|early|mid|late   start from a prepared game state (see presets.web.ts)
- *   ?preset=m5|m30|back            the salvage mode's names (the scrapyard's frozen states,
- *                                  src/engine/fixtures/salvage.ts): aliases of early, mid and late
- *                                  (PRESET_ALIASES), so another game takes them as those
+ *   ?preset=m5|m15|m30|back        the salvage mode's names (the scrapyard's frozen states,
+ *                                  src/engine/fixtures/salvage.ts): aliases of early, mid (m15 and m30)
+ *                                  and late (PRESET_ALIASES), so another game takes them as those
  *   &speed=10                      run the simulation this many times faster
  *   &tab=<tab>                     the tab shell's tab (sim and classic; the names are the store's Tab type)
  *   &modal=missions|settings       open a dialog

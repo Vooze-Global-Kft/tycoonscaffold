@@ -1,129 +1,258 @@
 /**
  * Every player action (yard-stage1.md 2.15): pure `(cfg, g, ..., clock, events)`; a refusal returns the
- * same state and pushes `refused {key, args, retry}`. Owner: rules-sim.
+ * SAME state object and pushes `refused {key, args, retry}`; an action that changes nothing returns the
+ * same object and pushes nothing. Every purchase compares the shown price with the price now and re-asks
+ * (`priceUpdated`, retry = the same act at the price now) when they differ: shown equals applied.
+ * Owner: rules-sim. The prices are the book's (ladder.ts): the card and the check read one function.
  */
 import { goalOf } from './cards';
-import type { CardKind, CrewRole, DealTerms, GradeId, Heading, LevelTarget, PlaceId, Presence, RecipeId, RefusalKey, SalvageConfig, SalvageEvent, SalvageGame, SellShown, ShopKey, TxtArgs } from './types';
+import { priceOf } from './board';
+import { asideOf, bayOf, freeOf } from './bays';
+import { begin, count, finish, spend } from './clock';
+import { newCrew } from './crew';
+import { crucibleFromBays, pour } from './crucible';
+import { dealSign, dealTerms } from './deal';
+import { bossStep } from './hand';
+import { buyCheck, hireCheck, levelCheck } from './ladder';
+import { rerate } from './machines';
+import { resolveGrams } from './money';
+import { own, checks } from './rate';
+import { setSkipDown } from './partners';
+import { leaveTruck } from './truck';
+import { marketDay } from './board';
+import type { CardAction, CardKind, CrewRole, DealTerms, GradeId, Heading, LevelTarget, MachineId, PlaceId, Presence, RecipeId, RefusalKey, SalvageConfig, SalvageEvent, SalvageGame, SellShown, ShopKey, TxtArgs } from './types';
 
-const refuse = (g: SalvageGame, events: SalvageEvent[] | undefined, key: RefusalKey, args: TxtArgs = {}): SalvageGame => {
-  events?.push({ type: 'refused', key, args, retry: null });
+const refuse = (g: SalvageGame, events: SalvageEvent[] | undefined, key: RefusalKey, args: TxtArgs = {}, retry: CardAction | null = null): SalvageGame => {
+  events?.push({ type: 'refused', key, args, retry });
   return g;
 };
 
+const same = (a: number, b: number) => Math.abs(a - b) < 0.005;
+
 /**
  * The screen's presence sample (at most ten a second; at least every staleS/2 in the foreground, under
- * overlays too). Starts, continues and cancels the boss's act and reports its events (Presence's doc).
- * Returns the same object when nothing changed. STUB(hour 0): stores the sample only.
+ * overlays too). Starts, continues and cancels the boss's act and reports its events. Returns the same
+ * object when nothing changed.
  */
 export function setPresence(cfg: SalvageConfig, g: SalvageGame, p: Presence, clock: number, events?: SalvageEvent[]): SalvageGame {
-  // STUB(hour 0)
-  void events;
   const s = g.salvage;
   const q = s.presence;
+  if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return g;
   const heading = Number.isFinite(p.heading) ? Math.floor(p.heading as number) : (q.heading ?? 0);
-  const same = q.x === p.x && q.y === p.y && q.driving === p.driving && q.moving === p.moving && heading === q.heading && Math.abs(q.standingFor - p.standingFor) < 0.05;
-  if (same && clock - s.presenceAt < cfg.salvage.feel.staleS / 2) return g;
-  return { ...g, salvage: { ...s, presence: { x: p.x, y: p.y, driving: !!p.driving, moving: !!p.moving, standingFor: Math.max(0, p.standingFor || 0), heading }, presenceAt: clock } };
+  const sameSample = q.x === p.x && q.y === p.y && q.driving === !!p.driving && q.moving === !!p.moving && heading === q.heading && Math.abs(q.standingFor - (p.standingFor || 0)) < 0.05;
+  if (sameSample && clock - s.presenceAt < cfg.salvage.feel.staleS / 2) return g;
+  const x = begin(cfg, g, events, true);
+  x.s.presence = { x: p.x, y: p.y, driving: !!p.driving, moving: !!p.moving, standingFor: Math.max(0, p.standingFor || 0), heading };
+  x.s.presenceAt = clock;
+  const t = Math.max(clock, x.s.t);
+  bossStep(x, t);
+  checks(x, t);
+  return finish(g, x);
 }
 
-/** Buy a tool, carrier, machine, the truck, a recipe or the Night watch at the price the card showed. STUB(hour 0). */
+// ---------------------------------------------------------------------------------------- purchases
+// The checks are the book's (ladder.ts buyCheck, hireCheck, levelCheck): the card prints the SAME object,
+// so the price shown is the price applied; the action adds only priceUpdated and the state change.
+
+type Check = { price: number | null; refusal: { key: RefusalKey; args: TxtArgs } | null };
+
+function checked(g: SalvageGame, events: SalvageEvent[] | undefined, ch: Check, shown: number, retry: (price: number) => CardAction): SalvageGame | null {
+  if (ch.refusal) return refuse(g, events, ch.refusal.key, ch.refusal.args);
+  if (ch.price === null) return refuse(g, events, 'nothing');
+  if (!same(ch.price, shown)) return refuse(g, events, 'priceUpdated', { a: { money: shown }, b: { money: ch.price } }, retry(ch.price));
+  return null;
+}
+
+function shopItem(cfg: SalvageConfig, key: ShopKey) {
+  return [...cfg.salvage.shop, ...cfg.salvage.dayOneList].find((i) => i.key === key) ?? null;
+}
+
+/** Buy a tool, carrier, machine, the truck, a recipe or the Night watch at the price the card showed. */
 export function buy(cfg: SalvageConfig, g: SalvageGame, item: ShopKey, shownPrice: number, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void item;
-  void shownPrice;
-  void clock;
-  // STUB(hour 0)
-  return refuse(g, events, 'notBuilt');
+  const it = shopItem(cfg, item);
+  if (!it || it.kind === 'crew') return refuse(g, events, 'nothing');
+  const ch = buyCheck(cfg, g, item);
+  const r = checked(g, events, ch, shownPrice, (price) => ({ act: 'buy', item, price }));
+  if (r) return r;
+  const x = begin(cfg, g, events, true);
+  spend(x, ch.price!);
+  const t = Math.max(clock, x.s.t);
+  if (it.deliver_s > 0) {
+    const by = it.arrive ?? (it.kind === 'machine' ? 'machineFlatbed' : it.kind === 'vehicle' ? 'truck' : 'van');
+    x.s.arriving.push({ item, by, place: it.place, since: t, at: t + it.deliver_s });
+    const m = x.s.machines[item as MachineId];
+    if (m && it.kind === 'machine') {
+      m.status = 'arriving';
+      m.since = t;
+    }
+  } else own(x, item, t);
+  checks(x, t);
+  return finish(g, x);
 }
 
-/** Hire a crew member of a role at the price the rota showed. STUB(hour 0). */
+/** Hire a crew member of a role at the price the rota showed (the next unbought crew key of that role in shop order). */
 export function hire(cfg: SalvageConfig, g: SalvageGame, role: CrewRole, shownPrice: number, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void role;
-  void shownPrice;
-  void clock;
-  // STUB(hour 0)
-  return refuse(g, events, 'notBuilt');
+  const ch = hireCheck(cfg, g, role);
+  const r = checked(g, events, ch, shownPrice, (price) => ({ act: 'hire', role, price }));
+  if (r) return r;
+  const x = begin(cfg, g, events, true);
+  spend(x, ch.price!);
+  const t = Math.max(clock, x.s.t);
+  const m = newCrew(x, role, t);
+  count(x, `hired:${role}`);
+  x.ev.push({ type: 'hired', role, id: m.id });
+  x.ev.push({ type: 'arrival', kind: 'crew', what: m.id });
+  checks(x, t);
+  return finish(g, x);
 }
 
-/** Buy the next level of a crew member or a machine at the price shown. STUB(hour 0). */
+/** Buy the next level of a crew member, a machine or a partner (another skip in rotation) at the price shown. */
 export function level(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, shownPrice: number, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void target;
-  void shownPrice;
-  void clock;
-  // STUB(hour 0)
-  return refuse(g, events, 'notBuilt');
+  const ch = levelCheck(cfg, g, target);
+  const r = checked(g, events, ch, shownPrice, (price) => ({ act: 'level', target, price }));
+  if (r) return r;
+  const x = begin(cfg, g, events, true);
+  spend(x, ch.price!);
+  const t = Math.max(clock, x.s.t);
+  let L = 1;
+  if (target.kind === 'crew') {
+    const m = x.s.crew.find((q) => q.id === target.id)!;
+    L = m.level += 1;
+  } else if (target.kind === 'machine') {
+    L = x.s.machines[target.machine].level += 1;
+    if (target.machine !== 'crucible') rerate(x, target.machine, t);
+  } else {
+    const p = x.s.partners[target.partner];
+    L = p.level += 1;
+    setSkipDown(x, target.partner, L - 1, t);
+  }
+  x.ev.push({ type: 'levelled', target, level: L });
+  checks(x, t);
+  return finish(g, x);
 }
 
-/** Keep a bay off the merchant's round, or release it (free). STUB(hour 0). */
+// ---------------------------------------------------------------------------------------- bays
+
+/** Keep a bay off the merchant's round, or release it (free). */
 export function setHold(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, on: boolean, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void grade;
-  void on;
   void clock;
-  // STUB(hour 0)
-  return refuse(g, events, 'notBuilt');
+  if (!cfg.salvage.grades[grade]) return refuse(g, events, 'nothing');
+  const b = g.salvage.bays[grade];
+  if ((b?.held ?? false) === on) return g;
+  const x = begin(cfg, g, events, true);
+  bayOf(x, grade).held = on;
+  x.ev.push({ type: 'heldBay', grade, on });
+  return finish(g, x);
 }
 
-/** Sell a held bay's stock at the price shown (set aside for the next round); a changed day re-asks ("priceUpdated"). STUB(hour 0). */
+/** Sell a held bay's free stock at the price shown (set aside for the next round); a changed day re-asks. */
 export function sell(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, shown: SellShown, now: number, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void grade;
-  void shown;
-  void now;
   void clock;
-  // STUB(hour 0)
-  return refuse(g, events, 'notBuilt');
+  const s = g.salvage;
+  const b = s.bays[grade];
+  if (!b || !b.held) return refuse(g, events, 'nothing');
+  const grams = Math.floor(freeOf(b) / 100) * 100;
+  if (grams <= 0) return refuse(g, events, 'nothing');
+  const day = marketDay(cfg.salvage, Math.max(now, s.clock.highMs));
+  const price = priceOf(cfg.salvage, grade, day);
+  if (shown.day !== day || !same(shown.price, price) || shown.grams !== grams) {
+    return refuse(g, events, 'priceUpdated', { a: { price: shown.price }, b: { price } }, { act: 'sell', grade, shown: { day, price, grams } });
+  }
+  const x = begin(cfg, g, events, true);
+  bayOf(x, grade).aside.push({ g: grams, price, day });
+  void asideOf;
+  void resolveGrams;
+  return finish(g, x);
 }
 
-/** Change the crucible's recipe; with a heel, first `confirmHeel` (refusal "confirmHeel" asks); refused during a heat. STUB(hour 0). */
+// ---------------------------------------------------------------------------------------- the crucible
+
+/** Change the crucible's recipe; with a heel, first `confirmHeel`; refused during a heat. */
 export function setRecipe(cfg: SalvageConfig, g: SalvageGame, recipe: RecipeId, confirmHeel: boolean, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void recipe;
-  void confirmHeel;
-  void clock;
-  // STUB(hour 0)
-  return refuse(g, events, 'notBuilt');
+  const s = g.salvage;
+  const cr = s.machines.crucible;
+  if (!cr.owned || !cfg.salvage.machines.crucible.recipes[recipe]) return refuse(g, events, 'notOwned');
+  const first = Object.keys(cfg.salvage.machines.crucible.recipes)[0];
+  if (recipe !== first && !s.owned.includes(recipe)) return refuse(g, events, 'notOwned');
+  if (cr.recipe === recipe) return g;
+  if (cr.phase === 'heating' || cr.phase === 'ready' || cr.phase === 'pouring') return refuse(g, events, 'heatRunning');
+  if ((cr.heel_g > 0 || cr.charge_g > 0) && !confirmHeel) return refuse(g, events, 'confirmHeel', {}, { act: 'setRecipe', recipe, confirmHeel: true });
+  const x = begin(cfg, g, events, true);
+  const t = Math.max(clock, x.s.t);
+  const c2 = x.s.machines.crucible;
+  // The unmelted charge goes back to its bay; the heel pours as one short ingot to the tray.
+  if (c2.charge_g > 0) {
+    const rec = cfg.salvage.machines.crucible.recipes[c2.recipe];
+    const inG = Array.isArray(rec[0]) ? rec[0][0] : (rec[0] as string);
+    bayOf(x, inG).g += c2.charge_g;
+    c2.charge_g = 0;
+  }
+  const heel = c2.heel_g > 0;
+  if (heel) pour(x, t, 'boss', true);
+  for (const b of Object.values(x.s.bays)) b.forCrucible_g = 0;
+  c2.recipe = recipe;
+  c2.phase = 'empty';
+  c2.endsAt = null;
+  x.ev.push({ type: 'recipe', recipe, heelPoured: heel });
+  crucibleFromBays(x, t);
+  return finish(g, x);
 }
 
-/** "Take from bays" on the crucible's card. STUB(hour 0). */
+/** "Take from bays" on the crucible's card. */
 export function setFromBays(cfg: SalvageConfig, g: SalvageGame, on: boolean, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void on;
-  void clock;
-  // STUB(hour 0)
-  return refuse(g, events, 'notBuilt');
+  const cr = g.salvage.machines.crucible;
+  if (!cr.owned) return refuse(g, events, 'notOwned');
+  if (cr.fromBays === on) return g;
+  const x = begin(cfg, g, events, true);
+  x.s.machines.crucible.fromBays = on;
+  if (!on) for (const b of Object.values(x.s.bays)) b.forCrucible_g = 0;
+  crucibleFromBays(x, Math.max(clock, x.s.t));
+  return finish(g, x);
 }
 
-/** Sign the supply deal on the terms the card showed. STUB(hour 0). */
+// ---------------------------------------------------------------------------------------- the deal, the truck, goals, seen, away
+
+/** Sign the supply deal on the terms the card showed. */
 export function signDeal(cfg: SalvageConfig, g: SalvageGame, shownTerms: DealTerms, now: number, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void shownTerms;
-  void now;
   void clock;
-  // STUB(hour 0)
-  return refuse(g, events, 'notBuilt');
+  const d = g.salvage.deal;
+  if (d.phase !== 'offered' || d.step === null) return refuse(g, events, 'nothing');
+  const day = marketDay(cfg.salvage, Math.max(now, g.salvage.clock.highMs));
+  const terms = dealTerms({ c: cfg.salvage }, d.step, day);
+  if (!terms) return refuse(g, events, 'nothing');
+  if (shownTerms.step !== terms.step || shownTerms.q_g !== terms.q_g || shownTerms.days !== terms.days || !same(shownTerms.price, terms.price)) {
+    return refuse(g, events, 'priceUpdated', { a: { price: shownTerms.price }, b: { price: terms.price } }, { act: 'signDeal', terms });
+  }
+  const x = begin(cfg, g, events, true);
+  dealSign(x, terms);
+  checks(x, x.s.t);
+  return finish(g, x);
 }
 
-/** The deal card's Not now (the goal may be skipped). STUB(hour 0). */
+/** The deal card's Not now. */
 export function declineDeal(cfg: SalvageConfig, g: SalvageGame, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
   void clock;
-  // STUB(hour 0)
-  return refuse(g, events, 'notBuilt');
+  if (g.salvage.deal.phase !== 'offered' || g.salvage.deal.step === null) return refuse(g, events, 'nothing');
+  const x = begin(cfg, g, events, true);
+  x.s.deal.phase = 'declined';
+  // The optional goal may be skipped by the card's Not now (skipGoal); declining keeps the offer on the wall for later.
+  x.s.deal.phase = 'offered';
+  const id = (cfg.salvage.goals.find((q) => q.done === 'deal:signed') ?? null)?.id;
+  if (id && !x.s.goals.skipped.includes(id) && !x.s.goals.done.includes(id)) x.s.goals.skipped.push(id);
+  return finish(g, x);
 }
 
-/** "Step out" of the truck: its stopped place and heading (from the world; null: the last presence) become rules state; refused `stopFirst` while it moves. STUB(hour 0). */
+/** "Step out" of the truck: its stopped place and heading become rules state; refused while it moves. */
 export function stepOut(cfg: SalvageConfig, g: SalvageGame, at: { x: number; y: number; heading: Heading } | null, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void at;
-  void clock;
-  // STUB(hour 0)
-  return refuse(g, events, 'notBuilt');
+  const s = g.salvage;
+  if (s.truck.by !== 'boss') return refuse(g, events, 'nothing');
+  if (s.presence.moving) return refuse(g, events, 'stopFirst');
+  const x = begin(cfg, g, events, true);
+  leaveTruck(x, at ?? { x: s.presence.x, y: s.presence.y, heading: s.presence.heading ?? s.truck.heading }, Math.max(clock, x.s.t));
+  return finish(g, x);
 }
 
-/** The goal card's Not now on an optional goal (refused `nothing` when it is not the current optional goal). Real. */
+/** The goal card's Not now on an optional goal (refused `nothing` when it is not the current optional goal). */
 export function skipGoal(cfg: SalvageConfig, g: SalvageGame, id: string, clock: number, events?: SalvageEvent[]): SalvageGame {
   void clock;
   const cur = goalOf(cfg.salvage, g);
@@ -131,7 +260,7 @@ export function skipGoal(cfg: SalvageConfig, g: SalvageGame, id: string, clock: 
   return { ...g, salvage: { ...g.salvage, goals: { ...g.salvage.goals, skipped: [...g.salvage.goals.skipped, id] } } };
 }
 
-/** The screen saw a place's label or opened a card (every "first time" text reads `seen`). Same object when already seen. Real. */
+/** The screen saw a place's label or opened a card (every "first time" text reads `seen`). Same object when already seen. */
 export function noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: CardKind }, clock: number): SalvageGame {
   void cfg;
   void clock;
@@ -146,6 +275,7 @@ export function noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: Pla
 export function ackAway(cfg: SalvageConfig, g: SalvageGame): SalvageGame {
   void cfg;
   if (!g.salvage.away) return g;
-  return { ...g, salvage: { ...g.salvage, away: null } };
+  const counts = { ...(g.salvage.counts ?? {}) };
+  counts.away = (counts.away ?? 0) + 1;
+  return { ...g, salvage: { ...g.salvage, away: null, counts } };
 }
-

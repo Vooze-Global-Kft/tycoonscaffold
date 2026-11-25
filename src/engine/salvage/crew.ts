@@ -1,0 +1,375 @@
+/**
+ * Crew as agents on legs (yard-stage1.md 2.6, 2.12, E17, S12, E4): each leg is chosen when it starts and
+ * ends at a time computed then; the crew member the player sees walking IS that leg. Yard hands carry by
+ * S12's priority and claim at departure; cutters cut at the drop-off, then on the tipping floor, never
+ * what the boss works; the driver is truck.ts's. Owner: rules-sim.
+ */
+import { bossFresh, type Ctx } from './clock';
+import { byValue, cutTime, legM, machinePlace, pieceCount, pieceSpec, sumStock, toolP } from './content';
+import { meltPiece } from './crucible';
+import { accepts, atPlace, feedPiece, takeTray, trayFree } from './machines';
+import { piecePos, pointOf, spotPos, thingPos } from './positions';
+import { weighIn } from './scales';
+import { cutOff, dropOnPile, takeFromPile, thingGone, thingOf, dropoffCount } from './things';
+import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, Spot, ThingState } from './types';
+
+const RATE_FED: MachineId[] = ['stripper', 'bench'];
+
+function posOf(x: Ctx, spot: Spot): { x: number; y: number } {
+  return spotPos(x.c, spot, x.s.things, x.s.truck);
+}
+
+function handV(x: Ctx, m: CrewMember): number {
+  const h = x.c.crew.hand;
+  return h.v * (1 + h.lev * Math.max(0, m.level - 1));
+}
+
+function leg(x: Ctx, m: CrewMember, job: CrewJob, phase: CrewPhase, to: Spot, t: number, extra: number, fromXY?: { x: number; y: number }): void {
+  const from = fromXY ?? posOf(x, m.to);
+  const dest = posOf(x, to);
+  const dur = legM(x.c, from, dest) / handV(x, m) + extra;
+  m.job = job;
+  m.phase = phase;
+  m.from = { xy: [from.x, from.y] };
+  m.to = to;
+  m.t0 = t;
+  m.t1 = t + Math.max(1e-3, dur);
+  x.ev.push({ type: 'crewLeg', id: m.id, job, from: m.from, to, t0: m.t0, t1: m.t1 });
+}
+
+function idle(m: CrewMember, t: number, at: { x: number; y: number }): void {
+  m.job = 'idle';
+  m.phase = 'wait';
+  m.from = { xy: [at.x, at.y] };
+  m.to = { xy: [at.x, at.y] };
+  m.t0 = t;
+  m.t1 = t;
+  m.carries = null;
+}
+
+/** A new crew member walks out of the office (2.6). */
+export function newCrew(x: Ctx, role: CrewMember['role'], t: number): CrewMember {
+  const slot = x.s.crew.filter((m) => m.role === role).length;
+  const office = pointOf(x.c, 'office');
+  const m: CrewMember = { id: `${role}.${slot}`, role, slot, name: x.s.crew.length, level: 1, job: 'idle', phase: 'wait', from: { place: 'office' }, to: { xy: [office.x, office.y] }, t0: t, t1: t, carries: null, load: [], claims: [], cut: null };
+  x.s.crew.push(m);
+  x.s.crew.sort((a, b) => (a.id < b.id ? -1 : 1));
+  return m;
+}
+
+// ---------------------------------------------------------------------------------------- yard hands
+
+const pileOrder = (p: GroundPiece) => (p.pile.startsWith('circle.') ? 0 : p.pile === 'dropoff' ? 1 : p.pile === 'floor' ? 2 : 3);
+
+/** Pick from a set of pieces best first while they fit `room` grams. */
+function choose(x: Ctx, pieces: GroundPiece[], room: number): GroundPiece[] {
+  const out: GroundPiece[] = [];
+  for (const p of [...pieces].sort(byValue(x.c))) {
+    if (p.g <= room) {
+      out.push(p);
+      room -= p.g;
+    }
+  }
+  return out;
+}
+
+/** A yard hand's departure (2.12, S12's order). Returns true when he set off. */
+function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
+  const s = x.s;
+  const cap = x.c.crew.hand.load * 1000;
+  const free = s.pieces.filter((p) => !p.claim);
+  const claim = (ps: GroundPiece[]) => {
+    for (const p of ps) p.claim = m.id;
+    m.claims = ps.map((p) => p.uid);
+  };
+  // (1) feed: a machine with room for its input lying in a circle, at the drop-off or on the floor.
+  for (const id of [...RATE_FED, 'crucible' as MachineId]) {
+    const mach = s.machines[id];
+    if (!mach.owned) continue;
+    const src = free.filter((p) => (p.pile.startsWith('circle.') || p.pile === 'dropoff' || p.pile === 'floor') && (id === 'crucible' ? false : accepts(x, id, p)));
+    if (!src.length) continue;
+    const pile = [...src].sort((a, b) => pileOrder(a) - pileOrder(b))[0].pile;
+    const pick = choose(x, src.filter((p) => p.pile === pile), Math.min(cap, (x.c.machines as unknown as Record<string, { inbuf: number }>)[id].inbuf * 1000));
+    if (!pick.length) continue;
+    claim(pick);
+    m.cut = null;
+    leg(x, m, 'feed', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
+    m.dest = id;
+    return true;
+  }
+  // (2) chalk circles.
+  const circles = free.filter((p) => p.pile.startsWith('circle.'));
+  if (circles.length) {
+    const pile = circles[0].pile;
+    const pick = choose(x, circles.filter((p) => p.pile === pile), cap);
+    if (pick.length) {
+      claim(pick);
+      leg(x, m, 'circle', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
+      m.dest = 'scale';
+      return true;
+    }
+  }
+  // (3) out trays (mass, up to his load).
+  for (const id of ['stripper', 'hand_stripper', 'bench', 'crucible'] as MachineId[]) {
+    const g = trayFree(x, id);
+    if (g <= 0) continue;
+    const mach = s.machines[id];
+    let left = cap;
+    const claimed: Record<string, number> = {};
+    for (const grade of Object.keys(mach.tray_g).sort((a, b) => (x.c.grades[b]?.pbar ?? 0) - (x.c.grades[a]?.pbar ?? 0))) {
+      const avail = (mach.tray_g[grade] ?? 0) - (mach.trayClaim_g[grade] ?? 0);
+      const take = Math.min(avail, left);
+      if (take <= 0) continue;
+      claimed[grade] = take;
+      mach.trayClaim_g[grade] = (mach.trayClaim_g[grade] ?? 0) + take;
+      left -= take;
+    }
+    if (!sumStock(claimed)) continue;
+    m.claims = Object.entries(claimed).map(([grade, gg]) => `tray.${id}.${grade}.${gg}`);
+    leg(x, m, 'tray', 'walkTo', { pile: `tray.${id}` }, t, x.c.crew.hand.handle_s);
+    m.dest = 'scale';
+    return true;
+  }
+  // (4) the drop-off's pieces.
+  const drop = free.filter((p) => p.pile === 'dropoff');
+  if (drop.length) {
+    const pick = choose(x, drop, cap);
+    if (pick.length) {
+      claim(pick);
+      leg(x, m, 'dropoff', 'walkTo', { pile: 'dropoff', k: pick[0].k }, t, x.c.crew.hand.handle_s);
+      m.dest = 'scale';
+      return true;
+    }
+  }
+  // (5) a whole thing at the drop-off at its whole grade, when no cutter is hired or every place is taken (E4).
+  const noCutter = !s.crew.some((c) => c.role === 'cutter');
+  const wholeThing = (where: 'dropoff' | 'floor'): ThingState | null => {
+    const cands = s.things.filter((th) => th.at.at === where && !th.by && th.cut === 0 && x.c.objects[th.obj]?.whole && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && (x.c.objects[th.obj]?.tier ?? 0) > 0);
+    return cands.sort((a, b) => (x.c.grades[x.c.objects[b.obj].whole!]?.pbar ?? 0) - (x.c.grades[x.c.objects[a.obj].whole!]?.pbar ?? 0) || (a.uid < b.uid ? -1 : 1))[0] ?? null;
+  };
+  if (noCutter || dropoffCount(x) >= x.c.dropoff.places) {
+    const th = wholeThing('dropoff');
+    if (th) {
+      th.by = m.id;
+      m.claims = [th.uid];
+      leg(x, m, 'wholeThing', 'walkTo', { thing: th.uid }, t, x.c.crew.hand.handle_s);
+      m.dest = 'scale';
+      return true;
+    }
+  }
+  // (6) the tipping floor's pieces, then such a whole thing.
+  const floor = free.filter((p) => p.pile === 'floor');
+  if (floor.length) {
+    const pick = choose(x, floor, cap);
+    if (pick.length) {
+      claim(pick);
+      leg(x, m, 'floor', 'walkTo', { pile: 'floor', k: pick[0].k }, t, x.c.crew.hand.handle_s);
+      m.dest = 'scale';
+      return true;
+    }
+  }
+  if (noCutter) {
+    const th = wholeThing('floor');
+    if (th) {
+      th.by = m.id;
+      m.claims = [th.uid];
+      leg(x, m, 'wholeThing', 'walkTo', { thing: th.uid }, t, x.c.crew.hand.handle_s);
+      m.dest = 'scale';
+      return true;
+    }
+  }
+  return false;
+}
+
+/** A yard hand's leg ends: pick (claimed items onto his carrier, then to the scale or the machine), or drop. */
+function handLegEnd(x: Ctx, m: CrewMember, t: number): void {
+  const s = x.s;
+  const dest = m.dest ?? 'scale';
+  if (m.phase === 'walkTo') {
+    const at = posOf(x, m.to);
+    const load: Piece[] = [];
+    for (const c of m.claims) {
+      if (c.startsWith('tray.')) {
+        const [, id, grade, gs] = c.split('.');
+        const mach = s.machines[id as MachineId];
+        const want = Number(gs) || 0;
+        mach.trayClaim_g[grade] = Math.max(0, (mach.trayClaim_g[grade] ?? 0) - want);
+        if (!mach.trayClaim_g[grade]) delete mach.trayClaim_g[grade];
+        // Take exactly the claimed grade's grams.
+        const avail = mach.tray_g[grade] ?? 0;
+        const take = Math.min(avail, want);
+        if (take > 0) {
+          mach.tray_g[grade] = avail - take;
+          if (!mach.tray_g[grade]) delete mach.tray_g[grade];
+          const n = (s.counts![`tray:${id}`] ?? 0) + 1;
+          s.counts![`tray:${id}`] = n;
+          load.push({ uid: `${id}.t${n}`, grade, g: take, from: id, spec: -1 });
+        }
+        if (mach.status === 'trayFull') takeTray(x, id as MachineId, 0, t);
+        continue;
+      }
+      const gp = s.pieces.find((p) => p.uid === c && p.claim === m.id);
+      if (gp) {
+        const p = takeFromPile(x, c);
+        if (p) load.push(p);
+        continue;
+      }
+      const th = thingOf(x, c);
+      if (th && th.by === m.id) {
+        const o = x.c.objects[th.obj];
+        thingGone(x, th, m.id, t, true);
+        load.push({ uid: th.uid, grade: o.whole!, g: o.gross_g, from: null, spec: -1, whole: th.obj });
+      }
+    }
+    m.claims = [];
+    m.load = load;
+    m.carries = load[0]?.grade ?? null;
+    for (const p of load) x.ev.push({ type: 'pickup', piece: p.uid, grade: p.grade, g: p.g, by: m.id });
+    if (!load.length) {
+      idle(m, t, at);
+      return;
+    }
+    const to: Spot = dest === 'scale' ? { place: 'scale' } : { place: machinePlace(dest as MachineId) };
+    leg(x, m, m.job, 'walkBack', to, t, x.c.crew.hand.handle_s, at);
+    return;
+  }
+  if (m.phase === 'walkBack') {
+    const at = posOf(x, m.to);
+    let rest = m.load;
+    m.load = [];
+    if (dest !== 'scale') {
+      const left: Piece[] = [];
+      for (const p of rest) {
+        if (dest === 'crucible') {
+          if (!meltPiece(x, p, m.id, t)) left.push(p);
+        } else if (accepts(x, dest as MachineId, p)) feedPiece(x, dest as MachineId, p, m.id, t);
+        else left.push(p);
+      }
+      rest = left;
+      if (rest.length) {
+        // A hopper full on arrival takes what fits; the rest goes on to the platform (a new leg).
+        m.load = rest;
+        m.carries = rest[0].grade;
+        m.dest = 'scale';
+        leg(x, m, m.job, 'walkBack', { place: 'scale' }, t, x.c.crew.hand.handle_s, at);
+        return;
+      }
+    } else weighIn(x, rest, m.id, t);
+    delete m.dest;
+    idle(m, t, at);
+  }
+}
+
+// ---------------------------------------------------------------------------------------- cutters
+
+/** A cutter's power, kg/s at hardness 1: P × share × (1 + lev × (L − 1)), at most cap × P (2.12). */
+export function cutterP(x: Ctx, m: CrewMember): number {
+  const P = toolP(x.c, x.s.tier);
+  const k = x.c.crew.cutter;
+  return Math.min(k.cap * P, P * k.share * (1 + k.lev * Math.max(0, m.level - 1)));
+}
+
+/** The time to cut what is left of a thing at power P. */
+function cutLeft(x: Ctx, th: ThingState, P: number): number {
+  let t = 0;
+  const n = pieceCount(x.c, th.obj);
+  for (let k = th.cut; k < n; k++) {
+    const sp = pieceSpec(x.c, th.obj, k);
+    if (sp) t += cutTime(x.c, th.obj, sp.g, P);
+  }
+  return Math.max(0, t - th.progress);
+}
+
+function cutterDepart(x: Ctx, m: CrewMember, t: number): boolean {
+  const s = x.s;
+  const P = cutterP(x, m);
+  for (const where of ['dropoff', 'floor'] as const) {
+    const cands = s.things.filter((th) => th.at.at === where && !th.by && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && (x.c.objects[th.obj]?.tier ?? 9) <= s.tier);
+    if (!cands.length) continue;
+    const score = (th: ThingState) => (x.c.objects[th.obj]?.preparedValue ?? 0) / Math.max(1e-6, cutLeft(x, th, P));
+    const th = cands.sort((a, b) => score(b) - score(a) || (a.uid < b.uid ? -1 : 1))[0];
+    th.by = m.id;
+    m.claims = [th.uid];
+    m.cut = null;
+    leg(x, m, where === 'dropoff' ? 'cutDropoff' : 'cutFloor', 'walkTo', { thing: th.uid }, t, 0);
+    return true;
+  }
+  return false;
+}
+
+function bossWithin(x: Ctx, th: ThingState, t: number): boolean {
+  if (!bossFresh(x, t)) return false;
+  const p = thingPos(x.c, th.at);
+  return Math.hypot(x.s.presence.x - p.x, x.s.presence.y - p.y) <= x.c.reach.sight;
+}
+
+function cutterLegEnd(x: Ctx, m: CrewMember, t: number): void {
+  const th = thingOf(x, m.claims[0] ?? null);
+  const at = posOf(x, m.to);
+  if (!th || th.by !== m.id) {
+    m.claims = [];
+    m.cut = null;
+    idle(m, t, at);
+    return;
+  }
+  const P = cutterP(x, m);
+  const pile = th.at.at === 'dropoff' ? 'dropoff' : 'floor';
+  if (m.phase === 'walkTo') {
+    // Decided when he starts it, never recomputed (notes/contract.md item 4).
+    const whole = !bossWithin(x, th, t);
+    m.cut = { thing: th.uid, whole };
+    const sp = pieceSpec(x.c, th.obj, th.cut);
+    const dur = whole ? cutLeft(x, th, P) : Math.max(0, (sp ? cutTime(x.c, th.obj, sp.g, P) : 0) - th.progress);
+    m.phase = 'work';
+    m.from = { thing: th.uid };
+    m.to = { thing: th.uid };
+    m.t0 = t;
+    m.t1 = t + Math.max(1e-3, dur);
+    x.ev.push({ type: 'workStart', thing: th.uid, obj: th.obj, grade: sp?.grade ?? '', tool: 'cutter', by: m.id, ring: { t0: t, t1: m.t1, p0: 0 } });
+    return;
+  }
+  if (m.phase === 'work') {
+    const whole = m.cut?.whole ?? true;
+    let gone = false;
+    do {
+      const r = cutOff(x, th, m.id, t);
+      if (!r) break;
+      dropOnPile(x, r.piece, pile);
+      x.ev.push({ type: 'pieceOff', thing: th.uid, piece: r.piece.uid, grade: r.piece.grade, g: r.piece.g, to: 'ground', by: m.id });
+      gone = r.gone;
+    } while (whole && !gone);
+    if (!gone) {
+      const sp = pieceSpec(x.c, th.obj, th.cut);
+      m.t0 = t;
+      m.t1 = t + Math.max(1e-3, sp ? cutTime(x.c, th.obj, sp.g, P) : 0);
+      return;
+    }
+    m.claims = [];
+    m.cut = null;
+    idle(m, t, at);
+  }
+}
+
+// ---------------------------------------------------------------------------------------- the crew together
+
+/** A crew member's leg ends at t (his t1). */
+export function crewLegEnd(x: Ctx, m: CrewMember, t: number): void {
+  if (m.role === 'hand') handLegEnd(x, m, t);
+  else if (m.role === 'cutter') cutterLegEnd(x, m, t);
+  else {
+    m.t0 = t;
+    m.t1 = t;
+  }
+}
+
+/** Departures of idle agents in id order: cutters, then yard hands (2.12 order step 5). The driver is truck.ts's. */
+export function crewDepart(x: Ctx, t: number): void {
+  for (const m of x.s.crew) if (m.role === 'cutter' && m.phase === 'wait' && m.job === 'idle') cutterDepart(x, m, t);
+  for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle') handDepart(x, m, t);
+}
+
+/** Is this crew member's leg pending (a dated end in the future or now)? */
+export const crewPending = (m: CrewMember): boolean => m.phase !== 'wait' && m.t1 > m.t0 - 1e-9;
+
+void atPlace;
+void piecePos;

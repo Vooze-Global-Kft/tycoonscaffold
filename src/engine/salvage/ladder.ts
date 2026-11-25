@@ -141,7 +141,7 @@ export function buyCheck(cfg: SalvageConfig, g: SalvageGame, item: ShopKey): Pur
   if (money) return { price, refusal: money, state: 'cantAfford' };
   const after = { ...g, salvage: { ...g.salvage, owned: [...g.salvage.owned, item] } };
   const ceil = ceilingRefusal(cfg, g, after);
-  if (ceil) return { price, refusal: ceil, state: 'cantAfford' };
+  if (ceil) return { price, refusal: ceil, state: 'locked' };
   return { price, refusal: null, state: 'buy' };
 }
 
@@ -166,7 +166,7 @@ export function hireCheck(cfg: SalvageConfig, g: SalvageGame, role: CrewRole): P
   const member = { id: `${role}.${slot}`, role, slot, name: 0, level: 1, job: 'idle' as const, phase: 'wait' as const, from: { place: 'office' }, to: { place: 'office' }, t0: g.salvage.t, t1: g.salvage.t, carries: null, load: [], claims: [], cut: null };
   const after = { ...g, salvage: { ...g.salvage, crew: [...g.salvage.crew, member] } };
   const ceil = ceilingRefusal(cfg, g, after);
-  if (ceil) return { price, refusal: ceil, state: 'cantAfford', key };
+  if (ceil) return { price, refusal: ceil, state: 'locked', key };
   return { price, refusal: null, state: 'buy', key };
 }
 
@@ -307,7 +307,7 @@ export function levelCheck(cfg: SalvageConfig, g: SalvageGame, target: LevelTarg
   const money = cashRefusal(g, price);
   if (money) return { price, refusal: money, state: 'cantAfford' };
   const ceil = ceilingRefusal(cfg, g, levelled(g, target));
-  if (ceil) return { price, refusal: ceil, state: 'cantAfford' };
+  if (ceil) return { price, refusal: ceil, state: 'locked' };
   return { price, refusal: null, state: 'buy' };
 }
 

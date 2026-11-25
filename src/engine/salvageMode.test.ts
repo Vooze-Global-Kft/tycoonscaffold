@@ -74,32 +74,31 @@ describe('the salvage engine mode', () => {
     }
   });
 
-  it('STUB: a tick advances the yard clock, the play clock and the market clock, and nothing else', () => {
+  it('a tick advances the yard clock, the play clock and the market clock; nothing arrives before its time', () => {
     const g = fresh();
     const events: R.SalvageEvent[] = [];
     const next = M.tick(cfg, g, 0.5, FIXTURE_NOW, events) as R.SalvageGame;
     expect(next.stats.playSeconds).toBeCloseTo(0.5, 9);
     expect(next.salvage.t).toBeCloseTo(0.5, 9);
     expect(next.salvage.clock.highMs).toBe(g.salvage.clock.highMs + 500);
-    expect(next.salvage.things).toBe(g.salvage.things);
+    expect(next.salvage.things).toEqual(g.salvage.things);
     expect(next.cash).toBe(g.cash);
   });
 
-  it('STUB: every action refuses with "notBuilt" and returns the same state', () => {
+  it('every action refuses what a fresh yard cannot do and returns the same state', () => {
     const g = fresh();
     const ev: R.SalvageEvent[] = [];
     expect(R.buy(cfg, g, 'sack', 50, 0, ev)).toBe(g);
     expect(R.hire(cfg, g, 'hand', 100, 0, ev)).toBe(g);
     expect(R.level(cfg, g, { kind: 'machine', machine: 'stripper' }, 10, 0, ev)).toBe(g);
-    expect(R.setHold(cfg, g, 'li', true, 0, ev)).toBe(g);
     expect(R.sell(cfg, g, 'li', { day: 0, price: 0.5, grams: 1000 }, FIXTURE_NOW, 0, ev)).toBe(g);
     expect(R.setRecipe(cfg, g, 'alu', false, 0, ev)).toBe(g);
     expect(R.setFromBays(cfg, g, false, 0, ev)).toBe(g);
     expect(R.signDeal(cfg, g, { step: 0, q_g: 1, days: 1, price: 1 }, FIXTURE_NOW, 0, ev)).toBe(g);
     expect(R.declineDeal(cfg, g, 0, ev)).toBe(g);
     expect(R.stepOut(cfg, g, null, 0, ev)).toBe(g);
-    expect(ev).toHaveLength(10);
-    expect(ev.every((e) => e.type === 'refused' && e.key === 'notBuilt' && e.retry === null)).toBe(true);
+    expect(ev).toHaveLength(9);
+    expect(ev.map((e) => (e.type === 'refused' ? e.key : e.type))).toEqual(['cash', 'cash', 'notOwned', 'nothing', 'notOwned', 'notOwned', 'nothing', 'nothing', 'nothing']);
   });
 
   it('presence stores the sample with its heading (the rules decide what it means)', () => {

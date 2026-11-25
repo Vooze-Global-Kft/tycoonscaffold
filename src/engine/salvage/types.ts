@@ -295,6 +295,8 @@ export interface CrewMember {
    * each piece is its own event (E17, the lead's ruling).
    */
   cut: { thing: string; whole: boolean } | null;
+  /** A yard hand's destination for this trip's load: 'scale' or a machine id (feed); absent when idle. */
+  dest?: string;
 }
 
 /** A partner's skip (2.7, E13b): contents fixed when it fills, printed on its label, equal to the weigh-in. */

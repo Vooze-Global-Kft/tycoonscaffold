@@ -8,6 +8,7 @@
  * (docs/design/research/yard-tech.md B6):
  *   EXPO_PUBLIC_YARD_DEV=1 GAME=scrap-yard npm run go             the panel at the test load
  *   EXPO_PUBLIC_YARD_STRESS=40,300 GAME=scrap-yard npm run go     40 helpers, 300 extra crates (the panel on too)
+ *   EXPO_PUBLIC_YARD_STRESS=1 GAME=scrap-yard npm run go          the same: yard-stage1.md 8.4's `yardStress=1` (STRESS below)
  * Metro writes EXPO_PUBLIC_ variables into the bundle when it starts: restart it to change them.
  */
 export interface YardSwitches {
@@ -21,10 +22,14 @@ export interface YardSwitches {
   insets: { left: number; right: number; bottom: number } | null;
 }
 
+/** yard-stage1.md 8.4's stress load: `?yardStress=1` (web) or EXPO_PUBLIC_YARD_STRESS=1 (phones). */
+export const STRESS = { actors: 40, sprites: 300 } as const;
+
 const OFF: YardSwitches = { panel: false, actors: null, sprites: 0, insets: null };
 
 /** The switches of a development run from the two variables' text (pure; tested). */
 export function phoneSwitches(dev: string | undefined, stress: string | undefined): YardSwitches {
+  if (stress?.trim() === '1') return { panel: true, actors: STRESS.actors, sprites: STRESS.sprites, insets: null };
   const parts = (stress ?? '').split(',').map((t) => t.trim());
   const int = (t: string | undefined, max: number) => {
     if (t === undefined || t === '') return null;
