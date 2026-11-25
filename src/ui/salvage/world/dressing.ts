@@ -8,7 +8,7 @@
  *    whole width, with floodlights at its foot (the far yard shows over it: ./YardView.tsx);
  *  - the ground's wear at the proof's density (about 9 weeds, 3 oil stains and 2 puddles on 400 m2):
  *    weeds at slab joints, along the wall's foot and the fences; oil stains (more on the drive line);
- *    puddles; paint lines along the drive line and in front of the working row; hatches at the
+ *    puddles; solid paint lines along the drive line's edges and in front of the working row; hatches at the
  *    weighbridge's ends;
  *  - the old stock's beds (`bedDress`): ground.bed tiles over each zone's bed rectangle, as many as the
  *    zone has stock left, shrinking towards the bed's wall side; two looks per zone tier.
@@ -180,7 +180,7 @@ export function dressing(c: SalvageContent): Dress[] {
     }
   // ---- paint: dashed lines along the drive line's edges; the working row's walkway line; hatches at the weighbridge
   if (drive) {
-    for (let x = Math.max(1, drive[0]) + 0.75; x < Math.min(W - 1.5, drive[1]); x += 3)
+    for (let x = Math.max(1, drive[0]) + 0.75; x < Math.min(W - 1.5, drive[1]); x += 1.5)
       for (const y of [drive[2] + 0.1, drive[3] - 0.1]) if (!inside(off, x, y)) out.push({ id: 'ground.line.ew', x, y });
   }
   const row = Object.entries(c.map.places).filter(([id, pl]) => c.map.points[id] && pl.solid && c.map.points[id][1] - pl.d / 2 < north + 3);

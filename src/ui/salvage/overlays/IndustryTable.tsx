@@ -67,10 +67,11 @@ export function IndustryTable({ cfg, g, data, onClose }: CardViewProps) {
       {t.next ? <Line t={{ key: 'table.next', args: { rival: { name: t.next.chip }, t: { tonnes_g: t.next.need_g } } }} size="line" bold lines={2} /> : null}
       {you ? (
         <View style={styles.pinned}>
+          <TableLine row={you} cols={cols} c={c} pinned />
+          {/* After the row, so the row's hi-vis fill does not hide the mark. */}
           <View style={[styles.logos, { left: cols.rank + cols.gap }]} pointerEvents="none">
             <Drawing w={LOGO} h={cols.rowH} deps={[cols.rowH]} draw={(cv) => yardMark(cv, LOGO / 2, cols.rowH / 2, LOGO - 2)} />
           </View>
-          <TableLine row={you} cols={cols} c={c} pinned />
         </View>
       ) : null}
       <View style={{ height: cols.rowH * t.rows.length }}>
