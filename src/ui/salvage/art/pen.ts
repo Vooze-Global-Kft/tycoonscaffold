@@ -13,8 +13,14 @@
  * bevel line along the top-front edge of metal, and one flat ground shadow per thing. No gradients
  * except heat (the glow and the pour) and the sky; never a blur or mask filter.
  */
-import { ClipOp, PaintStyle, Skia, StrokeCap, StrokeJoin, TileMode, type SkCanvas, type SkPaint, type SkPath, type SkPathBuilder } from '@shopify/react-native-skia';
-import { LINE_W, SHADOW_ALPHA, SHADOW_DX, YARD, shade } from './palette';
+import { BlendMode, ClipOp, PaintStyle, Skia, StrokeCap, StrokeJoin, TileMode, type SkCanvas, type SkPaint, type SkPath, type SkPathBuilder } from '@shopify/react-native-skia';
+import { LINE_W, SHADOW_ALPHA, SHADOW_DX, SUN, YARD, rgbOf, shade } from './palette';
+
+/** A hex colour as a CSS rgba() string at alpha a (for gradients that fade out). */
+export const rgba = (hex: string, a: number): string => {
+  const [r, g, b] = rgbOf(hex);
+  return `rgba(${r},${g},${b},${a})`;
+};
 
 /** The view a drawing is made for (the same three numbers as world/draw.ts View3q). */
 export interface View3q {
@@ -291,16 +297,54 @@ export function cylinder(c: SkCanvas, v: View3q, o: { r: number; h: number; ox?:
   return [cx, cyt];
 }
 
-/** The flat ground shadow of a footprint: an ellipse of rx by ry metres, a little east of the anchor. */
-export function groundShadow(c: SkCanvas, v: View3q, rx: number, ry: number, dx = 0, dy = 0): void {
+/**
+ * The flat ground shadow of a footprint: an ellipse of rx by ry metres a little east of the anchor, swept
+ * east by the low sun (SUN) for a thing h metres tall (one path, so the sweep never darkens twice).
+ */
+export function groundShadow(c: SkCanvas, v: View3q, rx: number, ry: number, dx = 0, dy = 0, h = 0): void {
   const [x, y] = proj(v, dx + SHADOW_DX, dy + 0.04, 0);
-  c.drawPath(oval(x, y, rx * v.ppm, ry * v.ppm * v.tilt), fill(YARD.shadow, SHADOW_ALPHA));
+  const RX = rx * v.ppm;
+  const RY = ry * v.ppm * v.tilt;
+  const b = builder().addOval({ x: x - RX, y: y - RY, width: RX * 2, height: RY * 2 });
+  if (h > 0) {
+    const ex = h * SUN.dx * v.ppm;
+    const ey = h * SUN.dy * v.ppm * v.tilt;
+    const tip = Math.min(RX, RY) * 0.8;
+    b.moveTo(x, y - RY).lineTo(x + ex, y + ey - tip).lineTo(x + ex, y + ey + tip).lineTo(x, y + RY).close();
+    b.addOval({ x: x + ex - tip, y: y + ey - tip, width: tip * 2, height: tip * 2 });
+  }
+  c.drawPath(b.build(), fill(YARD.shadow, SHADOW_ALPHA));
 }
 
-/** A rectangular ground shadow (boxes, walls), its corners rounded. */
-export function boxShadow(c: SkCanvas, v: View3q, w: number, d: number, dx = 0, dy = 0): void {
+/** A rectangular ground shadow (boxes, walls), its corners rounded, swept east by the sun for height h. */
+export function boxShadow(c: SkCanvas, v: View3q, w: number, d: number, dx = 0, dy = 0, h = 0): void {
   const [x, y] = proj(v, dx - w / 2 + SHADOW_DX + 0.06, dy - d / 2 + 0.06, 0);
-  c.drawPath(rrect(x, y, w * v.ppm, d * v.ppm * v.tilt, Math.min(6, d * v.ppm * v.tilt * 0.4)), fill(YARD.shadow, SHADOW_ALPHA));
+  const W = w * v.ppm;
+  const D = d * v.ppm * v.tilt;
+  const r = Math.min(6, D * 0.4);
+  const b = builder().addRRect({ rect: { x, y, width: W, height: D }, rx: r, ry: r });
+  if (h > 0) {
+    const ex = h * SUN.dx * v.ppm;
+    const ey = h * SUN.dy * v.ppm * v.tilt;
+    b.moveTo(x + W - 1, y + 1).lineTo(x + W + ex - 1, y + ey + 1).lineTo(x + W + ex - 1, y + D + ey - 1).lineTo(x + 1, y + D + ey - 1).lineTo(x + 1, y + D - 1).close();
+    b.addRRect({ rect: { x: x + ex, y: y + ey, width: W, height: D }, rx: r, ry: r });
+  }
+  c.drawPath(b.build(), fill(YARD.shadow, SHADOW_ALPHA));
+}
+
+/**
+ * Draws `draw` lit from one side: whatever it paints is tinted by a radial light at (lx, ly) of radius r
+ * (SrcATop on a layer, so only its own pixels warm). Used for the pour's glow on the furnace hand and on
+ * nearby metal.
+ */
+export function lit(c: SkCanvas, lx: number, ly: number, r: number, color: string, alpha: number, draw: () => void): void {
+  c.saveLayer();
+  draw();
+  const p = radial(lx, ly, r, [color, rgba(color, 0)]);
+  p.setAlphaf(alpha);
+  p.setBlendMode(BlendMode.SrcATop);
+  c.drawRect({ x: lx - r, y: ly - r, width: r * 2, height: r * 2 }, p);
+  c.restore();
 }
 
 // ---------------------------------------------------------------------------
