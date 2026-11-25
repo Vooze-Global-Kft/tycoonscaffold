@@ -81,6 +81,106 @@
   "story": [],
   "salvage": {
     "skeletonPlaceholder": true,
+    "version": "hour-0 frozen test content",
+    "worldSeed": 7,
+    "names": {
+      "title": "Scrap to Ingot",
+      "currency": "scrip",
+      "homeYard": "Cinder Lane Yard",
+      "homeLane": "Cinder Lane",
+      "homeTown": "Oakbridge",
+      "homeDistrict": "Oakbridge Vale",
+      "partnerFarm": "Hob's Farm Clearance",
+      "partnerDemolition": "Cottle Demolition",
+      "foundry": "Oakbridge Foundry Co-op",
+      "farmContact": "Hob Garnett",
+      "demolitionContact": "Edie Cottle",
+      "rival.1": "Haddersby & Daughters Scrap",
+      "rival.2": "Pennick Scrap",
+      "rival.3": "Brookmill Metals",
+      "rival.4": "Tenterby Lane Metals",
+      "rival.5": "Kolbeck Recycling",
+      "rival.6": "Tunney & Sons",
+      "rival.7": "Oakbridge Metal Recovery",
+      "rival.8": "Millbeck Ferrous",
+      "rival.9": "Larkmoor Non-Ferrous",
+      "rival.10": "Stonebeck Reclaim",
+      "rival.11": "Ashendry Metals",
+      "rival.12": "Aldermoss Ferrous",
+      "rival.13": "Nordal Metals",
+      "rival.14": "Gannetby Recycling",
+      "rival.15": "Morrance Resource Recovery",
+      "rival.16": "Saltreach Metals",
+      "rival.17": "Tervalen Steel & Alloys",
+      "rival.18": "Kestrane Metallurgy",
+      "rival.19": "Crayle International",
+      "rival.20": "Tarnmoor Resources",
+      "rival.21": "Teodor Metals",
+      "rival.22": "Ondrell Global",
+      "rival.23": "Coralind Steel & Alloys",
+      "rival.24": "Tarlevan Metals Holding",
+      "rival.25": "Vessendal Global Metals",
+      "crew.0": "Ben",
+      "crew.1": "Carlos",
+      "crew.2": "Dara",
+      "crew.3": "Emil",
+      "crew.4": "Femi",
+      "crew.5": "Hana",
+      "crew.6": "Ivan",
+      "crew.7": "Jamal",
+      "crew.8": "Maya",
+      "crew.9": "Nadia",
+      "crew.10": "Omar",
+      "crew.11": "Priya",
+      "crew.12": "Sven",
+      "crew.13": "Tariq",
+      "crew.14": "Uma",
+      "crew.15": "Vera",
+      "crew.16": "Wei",
+      "crew.17": "Yuki",
+      "crew.18": "Amir",
+      "crew.19": "Bilal",
+      "crew.20": "Chidi",
+      "crew.21": "Diego",
+      "crew.22": "Elena",
+      "crew.23": "Farah",
+      "crew.24": "Ines",
+      "crew.25": "Jonas",
+      "crew.26": "Kofi",
+      "crew.27": "Leila",
+      "crew.28": "Nikos",
+      "crew.29": "Olga",
+      "crew.30": "Pablo",
+      "crew.31": "Rafael",
+      "crew.32": "Sara",
+      "crew.33": "Tomas",
+      "crew.34": "Vikram",
+      "crew.35": "Yusuf",
+      "crew.36": "Aiko",
+      "crew.37": "Bruno",
+      "crew.38": "Emeka",
+      "crew.39": "Fatima",
+      "crew.40": "Goran",
+      "crew.41": "Hiro",
+      "crew.42": "Imani",
+      "crew.43": "Kenji",
+      "crew.44": "Mateo",
+      "crew.45": "Nils",
+      "crew.46": "Oskar",
+      "crew.47": "Rania",
+      "crew.48": "Sanjay",
+      "crew.49": "Tunde",
+      "crew.50": "Ali",
+      "crew.51": "Anya",
+      "crew.52": "Arjun",
+      "crew.53": "Juan",
+      "crew.54": "Karim",
+      "crew.55": "Lea",
+      "crew.56": "Mei",
+      "crew.57": "Noor",
+      "crew.58": "Selin",
+      "crew.59": "Kwame"
+    },
     "yard": {
       "width": 64,
       "depth": 40,
@@ -89,28 +189,11 @@
       "tile": 2
     },
     "worker": {
-      "speed": 4.2,
       "radius": 0.35,
-      "reach": 0.8,
-      "x": 15,
-      "y": 15
-    },
-    "truck": {
-      "speed": 9,
-      "radius": 1.3,
-      "enter": 2.0
-    },
-    "loop": {
-      "cutSeconds": 2,
-      "pieces": 3,
-      "capacity": 6,
-      "unloadSeconds": 0.35,
-      "pieceValue": 5,
-      "respawnSeconds": 20,
-      "staleSeconds": 0.6
+      "reach": 0.8
     },
     "helpers": {
-      "count": 6,
+      "count": 0,
       "speed": 2.4,
       "via": [
         24,
@@ -118,28 +201,6 @@
       ]
     },
     "props": [
-      {
-        "id": "machine-1",
-        "kind": "machine",
-        "x": 10,
-        "y": 12,
-        "shape": "box",
-        "w": 4,
-        "d": 3,
-        "h": 2.4,
-        "solid": true
-      },
-      {
-        "id": "truck-1",
-        "kind": "truck",
-        "x": 16,
-        "y": 19,
-        "shape": "box",
-        "w": 3,
-        "d": 1.8,
-        "h": 1.6,
-        "solid": false
-      },
       {
         "id": "wall-1",
         "kind": "wall",
@@ -229,122 +290,12 @@
         "solid": true
       },
       {
-        "id": "wreck-1",
-        "kind": "wreck",
-        "x": 32,
-        "y": 8,
-        "shape": "box",
-        "w": 3.6,
-        "d": 1.8,
-        "h": 1.4,
-        "solid": true
-      },
-      {
-        "id": "wreck-2",
-        "kind": "wreck",
-        "x": 40,
-        "y": 8,
-        "shape": "box",
-        "w": 3.6,
-        "d": 1.8,
-        "h": 1.4,
-        "solid": true
-      },
-      {
-        "id": "wreck-3",
-        "kind": "wreck",
-        "x": 48,
-        "y": 9,
-        "shape": "box",
-        "w": 3.6,
-        "d": 1.8,
-        "h": 1.4,
-        "solid": true
-      },
-      {
-        "id": "wreck-4",
-        "kind": "wreck",
-        "x": 34,
-        "y": 18,
-        "shape": "box",
-        "w": 3.6,
-        "d": 1.8,
-        "h": 1.4,
-        "solid": true
-      },
-      {
-        "id": "wreck-5",
-        "kind": "wreck",
-        "x": 44,
-        "y": 20,
-        "shape": "box",
-        "w": 3.6,
-        "d": 1.8,
-        "h": 1.4,
-        "solid": true
-      },
-      {
-        "id": "wreck-6",
-        "kind": "wreck",
-        "x": 54,
-        "y": 16,
-        "shape": "box",
-        "w": 3.6,
-        "d": 1.8,
-        "h": 1.4,
-        "solid": true
-      },
-      {
-        "id": "wreck-7",
-        "kind": "wreck",
-        "x": 36,
-        "y": 30,
-        "shape": "box",
-        "w": 3.6,
-        "d": 1.8,
-        "h": 1.4,
-        "solid": true
-      },
-      {
-        "id": "wreck-8",
-        "kind": "wreck",
-        "x": 50,
-        "y": 30,
-        "shape": "box",
-        "w": 3.6,
-        "d": 1.8,
-        "h": 1.4,
-        "solid": true
-      },
-      {
-        "id": "wreck-9",
-        "kind": "wreck",
-        "x": 58,
-        "y": 34,
-        "shape": "box",
-        "w": 3.6,
-        "d": 1.8,
-        "h": 1.4,
-        "solid": true
-      },
-      {
-        "id": "wreck-10",
-        "kind": "wreck",
-        "x": 6,
-        "y": 22,
-        "shape": "box",
-        "w": 3.6,
-        "d": 1.8,
-        "h": 1.4,
-        "solid": true
-      },
-      {
         "id": "pile-1",
         "kind": "pile",
         "x": 30,
-        "y": 36,
+        "y": 37,
         "shape": "circle",
-        "r": 1.6,
+        "r": 1.4,
         "h": 1.2,
         "solid": true
       },
@@ -355,24 +306,24 @@
         "y": 4,
         "shape": "circle",
         "r": 1.4,
-        "h": 1.0,
+        "h": 1,
         "solid": true
       },
       {
         "id": "pile-3",
         "kind": "pile",
-        "x": 8,
-        "y": 32,
+        "x": 6,
+        "y": 33,
         "shape": "circle",
-        "r": 2.0,
+        "r": 2,
         "h": 1.4,
         "solid": true
       },
       {
         "id": "crate-1",
         "kind": "crate",
-        "x": 5,
-        "y": 6,
+        "x": 3,
+        "y": 4,
         "shape": "box",
         "w": 1,
         "d": 1,
@@ -382,8 +333,8 @@
       {
         "id": "crate-2",
         "kind": "crate",
-        "x": 6.3,
-        "y": 6.4,
+        "x": 4.3,
+        "y": 4.4,
         "shape": "box",
         "w": 1,
         "d": 1,
@@ -394,14 +345,1098 @@
         "id": "crate-3",
         "kind": "crate",
         "x": 14,
-        "y": 35,
+        "y": 36,
         "shape": "box",
         "w": 1,
         "d": 1,
         "h": 0.9,
         "solid": true
       }
-    ]
+    ],
+    "grades": {
+      "li": {
+        "name": "Light iron",
+        "pbar": 0.5,
+        "family": "fe",
+        "material": "lightiron",
+        "kind": "grade",
+        "asFound": 0.8,
+        "sprite": "piece.iron.light"
+      },
+      "appl": {
+        "name": "Appliances",
+        "pbar": 0.4,
+        "family": "fe",
+        "material": "lightiron",
+        "kind": "grade",
+        "asFound": 1,
+        "sprite": "piece.iron.appliance"
+      },
+      "ci": {
+        "name": "Cast iron",
+        "pbar": 1,
+        "family": "fe",
+        "material": "castiron",
+        "kind": "grade",
+        "asFound": 0.8,
+        "sprite": "piece.iron.cast"
+      },
+      "ciu": {
+        "name": "Cast iron, whole",
+        "pbar": 0.8,
+        "family": "fe",
+        "material": "castiron",
+        "kind": "grade",
+        "asFound": 1,
+        "sprite": "piece.iron.castwhole"
+      },
+      "hms": {
+        "name": "HMS 1&2 (80:20)",
+        "pbar": 1,
+        "family": "fe",
+        "material": "steel",
+        "kind": "grade",
+        "asFound": 0.8,
+        "sprite": "piece.steel.hms"
+      },
+      "hmsu": {
+        "name": "Steel, unprepared",
+        "pbar": 0.8,
+        "family": "fe",
+        "material": "steel",
+        "kind": "grade",
+        "asFound": 1,
+        "sprite": "piece.steel.unprepared"
+      },
+      "cbody": {
+        "name": "Car body",
+        "pbar": 0.5,
+        "family": "fe",
+        "material": "steel",
+        "kind": "grade",
+        "asFound": 1,
+        "sprite": "piece.steel.body"
+      },
+      "alw": {
+        "name": "Aluminium wheels",
+        "pbar": 5,
+        "family": "nf",
+        "material": "alu",
+        "kind": "grade",
+        "asFound": 0.9,
+        "sprite": "piece.alu.wheel"
+      },
+      "alcast": {
+        "name": "Cast aluminium",
+        "pbar": 4,
+        "family": "nf",
+        "material": "alu",
+        "kind": "grade",
+        "asFound": 0.9,
+        "sprite": "piece.alu.cast"
+      },
+      "ali": {
+        "name": "Alu alloy ingot",
+        "pbar": 8,
+        "family": "nf",
+        "material": "alu",
+        "kind": "product",
+        "asFound": 1,
+        "sprite": "piece.alu.ingot"
+      },
+      "ald": {
+        "name": "Aluminium dross",
+        "pbar": 1,
+        "family": "nf",
+        "material": "alu",
+        "kind": "grade",
+        "asFound": 1,
+        "sprite": "piece.alu.dross"
+      },
+      "brs": {
+        "name": "Yellow brass",
+        "pbar": 20,
+        "family": "nf",
+        "material": "brass",
+        "kind": "grade",
+        "asFound": 0.9,
+        "sprite": "piece.brass.solid"
+      },
+      "bri": {
+        "name": "Brass ingot",
+        "pbar": 25,
+        "family": "nf",
+        "material": "brass",
+        "kind": "product",
+        "asFound": 1,
+        "sprite": "piece.brass.ingot"
+      },
+      "brd": {
+        "name": "Brass dross",
+        "pbar": 2,
+        "family": "nf",
+        "material": "brass",
+        "kind": "grade",
+        "asFound": 1,
+        "sprite": "piece.brass.dross"
+      },
+      "no2": {
+        "name": "No.2 copper",
+        "pbar": 30,
+        "family": "nf",
+        "material": "copper",
+        "kind": "grade",
+        "asFound": 0.9,
+        "sprite": "piece.copper.no2"
+      },
+      "bb": {
+        "name": "Bare bright copper",
+        "pbar": 35,
+        "family": "nf",
+        "material": "copper",
+        "kind": "grade",
+        "asFound": 0.9,
+        "sprite": "piece.copper.bright"
+      },
+      "cab": {
+        "name": "Insulated cable",
+        "pbar": 20,
+        "family": "nf",
+        "material": null,
+        "kind": "intermediate",
+        "asFound": 1,
+        "sprite": "piece.cable.heavy"
+      },
+      "mot": {
+        "name": "Electric motor",
+        "pbar": 2,
+        "family": "nf",
+        "material": null,
+        "kind": "intermediate",
+        "asFound": 1,
+        "sprite": "piece.motor.whole"
+      },
+      "conv": {
+        "name": "Converter, whole",
+        "pbar": 0,
+        "family": "pm",
+        "material": null,
+        "kind": "intermediate",
+        "asFound": 1,
+        "sprite": "piece.converter.whole"
+      }
+    },
+    "cable": {
+      "yield_": 0.7,
+      "tinned": 0.1,
+      "k": 0.85
+    },
+    "converter": {
+      "pt_g": 3,
+      "pd_g": 3,
+      "rh_g": 1,
+      "pt": 100,
+      "pd": 100,
+      "rh": 500,
+      "pay_pt": 0.75,
+      "pay_pd": 0.75,
+      "pay_rh": 0.65,
+      "ceramic_kg": 1,
+      "ceramic_fee": 5,
+      "assay_fee": 30,
+      "source": "car",
+      "paid": 670
+    },
+    "objects": {
+      "washer": {
+        "name": "Washing machine",
+        "tier": 1,
+        "h": 1,
+        "pieces": [
+          [
+            "li",
+            10000,
+            2
+          ],
+          [
+            "mot",
+            5000,
+            1
+          ]
+        ],
+        "waste_g": 15000,
+        "whole": "appl",
+        "text": "two steel panels and a motor; the counterweight to the rubble skip",
+        "gross_g": 40000,
+        "preparedValue": 20,
+        "asFoundValue": 16,
+        "sprite": "thing.washer",
+        "stages": 4
+      },
+      "cable": {
+        "name": "Heavy cable offcuts",
+        "tier": 0,
+        "h": 0,
+        "pieces": [
+          [
+            "cab",
+            10000,
+            1
+          ]
+        ],
+        "waste_g": 0,
+        "whole": "cab",
+        "text": "a bundle of heavy cable offcuts",
+        "gross_g": 10000,
+        "preparedValue": 200,
+        "asFoundValue": 200,
+        "sprite": "thing.cable"
+      },
+      "taps": {
+        "name": "Crate of brass taps",
+        "tier": 0,
+        "h": 0,
+        "pieces": [
+          [
+            "brs",
+            5000,
+            1
+          ]
+        ],
+        "waste_g": 0,
+        "whole": "brs",
+        "text": "a crate of brass taps",
+        "gross_g": 5000,
+        "preparedValue": 100,
+        "asFoundValue": 90,
+        "sprite": "thing.taps"
+      },
+      "radiator": {
+        "name": "Cast-iron radiator",
+        "tier": 2,
+        "h": 1,
+        "pieces": [
+          [
+            "ci",
+            10000,
+            3
+          ]
+        ],
+        "waste_g": 0,
+        "whole": "ciu",
+        "text": "broken in three with the sledgehammer",
+        "gross_g": 30000,
+        "preparedValue": 30,
+        "asFoundValue": 24,
+        "sprite": "thing.radiator",
+        "stages": 3
+      },
+      "beam": {
+        "name": "Steel beam",
+        "tier": 3,
+        "h": 2,
+        "pieces": [
+          [
+            "hms",
+            20000,
+            5
+          ]
+        ],
+        "waste_g": 0,
+        "whole": "hmsu",
+        "text": "cut to HMS lengths with the torch",
+        "gross_g": 100000,
+        "preparedValue": 100,
+        "asFoundValue": 80,
+        "sprite": "thing.beam",
+        "stages": 4
+      },
+      "car": {
+        "name": "End-of-life car",
+        "tier": 3,
+        "h": 2,
+        "pieces": [
+          [
+            "alw",
+            10000,
+            4
+          ],
+          [
+            "cab",
+            5000,
+            1
+          ],
+          [
+            "conv",
+            1000,
+            1
+          ],
+          [
+            "cbody",
+            100000,
+            5
+          ]
+        ],
+        "waste_g": 54000,
+        "whole": null,
+        "text": "depolluted end-of-life car, treatment record ref. 0012",
+        "gross_g": 600000,
+        "preparedValue": 1000,
+        "asFoundValue": 1000,
+        "sprite": "thing.car",
+        "stages": 5,
+        "source": {
+          "type": "partner",
+          "partner": "partnerDemolition",
+          "ref": "0012"
+        }
+      }
+    },
+    "zones": {
+      "Z1": {
+        "tier": 1,
+        "things": {
+          "washer": 3,
+          "cable": 1,
+          "taps": 1
+        },
+        "centre": [
+          32,
+          30
+        ],
+        "r": 3
+      },
+      "Z2": {
+        "tier": 2,
+        "things": {
+          "radiator": 3
+        },
+        "centre": [
+          11,
+          24
+        ],
+        "r": 3
+      },
+      "Z3": {
+        "tier": 3,
+        "things": {
+          "beam": 2,
+          "car": 1
+        },
+        "centre": [
+          13,
+          5
+        ],
+        "r": 3
+      },
+      "bundle1": {
+        "tier": 0,
+        "things": {
+          "cable": 1
+        },
+        "centre": [
+          44,
+          27
+        ],
+        "r": 0.8
+      }
+    },
+    "map": {
+      "points": {
+        "start": [
+          58,
+          24
+        ],
+        "gate": [
+          63,
+          24
+        ],
+        "dropoff": [
+          58,
+          27
+        ],
+        "scale": [
+          53,
+          24
+        ],
+        "weighbridge": [
+          52,
+          29
+        ],
+        "scalehouse": [
+          54,
+          20.5
+        ],
+        "bays": [
+          48,
+          18
+        ],
+        "merchant": [
+          47,
+          21
+        ],
+        "stillage": [
+          42,
+          18.5
+        ],
+        "stripper": [
+          44,
+          24
+        ],
+        "bundle1": [
+          44,
+          27
+        ],
+        "bench": [
+          40,
+          24
+        ],
+        "crucible": [
+          36,
+          24
+        ],
+        "noticeboard": [
+          57,
+          31
+        ],
+        "office": [
+          36,
+          16
+        ],
+        "rack": [
+          41,
+          15
+        ],
+        "rubble": [
+          49,
+          25
+        ],
+        "floor": [
+          46,
+          33
+        ],
+        "park": [
+          56,
+          36
+        ],
+        "backfield": [
+          3,
+          36
+        ],
+        "Z1": [
+          32,
+          30
+        ],
+        "Z2": [
+          11,
+          24
+        ],
+        "Z3": [
+          13,
+          5
+        ]
+      },
+      "detour": 1.15,
+      "lane": {
+        "farm_m": 100,
+        "demolition_m": 200,
+        "bridge_m": 300
+      },
+      "routes": {
+        "start-scale": 6,
+        "scale-stripper": 10,
+        "Z1-scale": 25
+      },
+      "places": {
+        "dropoff": {
+          "w": 3,
+          "d": 2,
+          "h": 0.1,
+          "solid": false,
+          "sprite": "prop.dropoff.pad"
+        },
+        "scale": {
+          "w": 2,
+          "d": 2,
+          "h": 0.1,
+          "solid": false,
+          "sprite": "plant.scale.platform"
+        },
+        "weighbridge": {
+          "w": 3,
+          "d": 6,
+          "h": 0.1,
+          "solid": false,
+          "sprite": "plant.weighbridge.deck"
+        },
+        "scalehouse": {
+          "w": 3,
+          "d": 2,
+          "h": 2.6,
+          "solid": true,
+          "sprite": "prop.scalehouse"
+        },
+        "bays": {
+          "w": 7,
+          "d": 1.6,
+          "h": 1.2,
+          "solid": true,
+          "sprite": "prop.bays.lockblock"
+        },
+        "merchant": {
+          "w": 4,
+          "d": 2,
+          "h": 0.1,
+          "solid": false,
+          "sprite": "prop.flatbed.stand",
+          "card": false
+        },
+        "stillage": {
+          "w": 4,
+          "d": 1.2,
+          "h": 1.2,
+          "solid": true,
+          "sprite": "prop.stillages",
+          "card": false
+        },
+        "stripper": {
+          "w": 2.5,
+          "d": 1.6,
+          "h": 1.4,
+          "solid": true,
+          "sprite": "plant.stripper.pad"
+        },
+        "bench": {
+          "w": 2.4,
+          "d": 1.4,
+          "h": 1.2,
+          "solid": true,
+          "sprite": "plant.bench.pad"
+        },
+        "crucible": {
+          "w": 3,
+          "d": 2.4,
+          "h": 3,
+          "solid": true,
+          "sprite": "plant.crucible.pad"
+        },
+        "noticeboard": {
+          "w": 1.6,
+          "d": 0.5,
+          "h": 2,
+          "solid": true,
+          "sprite": "prop.noticeboard"
+        },
+        "office": {
+          "w": 4,
+          "d": 2.4,
+          "h": 2.8,
+          "solid": true,
+          "sprite": "prop.office"
+        },
+        "rack": {
+          "w": 3,
+          "d": 0.9,
+          "h": 2,
+          "solid": true,
+          "sprite": "prop.toolrack"
+        },
+        "rubble": {
+          "w": 2.4,
+          "d": 1.4,
+          "h": 1.2,
+          "solid": true,
+          "sprite": "prop.rubbleskip"
+        },
+        "floor": {
+          "w": 6,
+          "d": 4,
+          "h": 0.05,
+          "solid": false,
+          "sprite": "prop.tippingfloor"
+        },
+        "park": {
+          "w": 3,
+          "d": 6,
+          "h": 0.05,
+          "solid": false,
+          "sprite": "prop.truckpark"
+        },
+        "backfield": {
+          "w": 2,
+          "d": 0.6,
+          "h": 2,
+          "solid": true,
+          "sprite": "prop.backfield.gate"
+        }
+      }
+    },
+    "tools": {
+      "spanners": {
+        "tier": 1,
+        "P": 5
+      },
+      "sledge": {
+        "tier": 2,
+        "P": 10
+      },
+      "torch": {
+        "tier": 3,
+        "P": 30
+      }
+    },
+    "carriers": {
+      "frame": 30,
+      "sack": 60,
+      "trolley": 120
+    },
+    "walk": 4,
+    "pick_s": 0.2,
+    "weigh_s": 0.5,
+    "truck": {
+      "v": 9,
+      "handle_s": 10,
+      "driverFactor": 0.8,
+      "radius": 1.3,
+      "enter": 2
+    },
+    "machines": {
+      "hand_stripper": {
+        "rate": 1,
+        "needs_boss": true,
+        "inbuf": 50
+      },
+      "stripper": {
+        "rate": 5,
+        "inbuf": 200,
+        "lev": 0.1
+      },
+      "bench": {
+        "rate": 2,
+        "inbuf": 100,
+        "lev": 0.1,
+        "out": [
+          [
+            "no2",
+            0.1
+          ],
+          [
+            "li",
+            0.8
+          ],
+          [
+            "alcast",
+            0.1
+          ]
+        ],
+        "waste": 0
+      },
+      "crucible": {
+        "pot": 20,
+        "s_per_kg": 2,
+        "lev": 0.1,
+        "start_share": 0.5,
+        "start_idle": 60,
+        "recipes": {
+          "brass": [
+            "brs",
+            "bri",
+            0.95,
+            "brd"
+          ],
+          "alu": [
+            "alw",
+            "ali",
+            0.95,
+            "ald"
+          ]
+        },
+        "first_wait_m": 6
+      }
+    },
+    "crew": {
+      "hand": {
+        "load": 60,
+        "v": 3,
+        "lev": 0.1,
+        "handle_s": 2,
+        "maxlev": 10
+      },
+      "cutter": {
+        "share": 0.5,
+        "lev": 0.1,
+        "cap": 0.9,
+        "maxlev": 10
+      },
+      "driver": {
+        "lev": 0.1,
+        "maxlev": 10
+      }
+    },
+    "dropoff": {
+      "period": 40,
+      "first": 20,
+      "places": 4,
+      "mix": [
+        [
+          "washer",
+          3
+        ],
+        [
+          "cable",
+          1
+        ],
+        [
+          "radiator",
+          1
+        ]
+      ],
+      "initial": [
+        "washer"
+      ]
+    },
+    "partners": {
+      "partnerFarm": {
+        "opens": "truck",
+        "lane": "farm_m",
+        "trial": {
+          "washer": 2,
+          "radiator": 1
+        },
+        "skip": {
+          "washer": 4,
+          "radiator": 3
+        },
+        "fill_s": 300,
+        "k": 0.7,
+        "trialMass_kg": 110,
+        "trialPrice": 50,
+        "trialPrepared": 100,
+        "skipMass_kg": 250,
+        "skipPrice": 150,
+        "skipPrepared": 250
+      },
+      "partnerDemolition": {
+        "opens": "torch",
+        "lane": "demolition_m",
+        "trial": {
+          "beam": 1
+        },
+        "skip": {
+          "beam": 2,
+          "cable": 2
+        },
+        "fill_s": 600,
+        "k": 0.7,
+        "trialMass_kg": 100,
+        "trialPrice": 60,
+        "trialPrepared": 100,
+        "skipMass_kg": 220,
+        "skipPrice": 400,
+        "skipPrepared": 600
+      }
+    },
+    "floorRoom_kg": 2000,
+    "merchant": {
+      "id": "merchant",
+      "load_s": 3,
+      "round_s": 20
+    },
+    "shop": [
+      {
+        "key": "sack",
+        "kind": "carry",
+        "place": "rack",
+        "price": 50,
+        "gate": null,
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "hand1",
+        "kind": "crew",
+        "place": "office",
+        "price": 100,
+        "gate": null,
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "sledge",
+        "kind": "tool",
+        "place": "rack",
+        "price": 200,
+        "gate": null,
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "cutter",
+        "kind": "crew",
+        "place": "office",
+        "price": 300,
+        "gate": null,
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "trolley",
+        "kind": "carry",
+        "place": "rack",
+        "price": 300,
+        "gate": null,
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "stripper",
+        "kind": "machine",
+        "place": "stripper",
+        "price": 200,
+        "gate": null,
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "truck",
+        "kind": "vehicle",
+        "place": "park",
+        "price": 500,
+        "gate": null,
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "bench",
+        "kind": "machine",
+        "place": "bench",
+        "price": 300,
+        "gate": null,
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "driver",
+        "kind": "crew",
+        "place": "office",
+        "price": 500,
+        "gate": null,
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "torch",
+        "kind": "tool",
+        "place": "rack",
+        "price": 1000,
+        "gate": "rung2",
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "crucible",
+        "kind": "machine",
+        "place": "crucible",
+        "price": 400,
+        "gate": null,
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "alu",
+        "kind": "recipe",
+        "place": "crucible",
+        "price": 400,
+        "gate": null,
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "hand2",
+        "kind": "crew",
+        "place": "office",
+        "price": 400,
+        "gate": "rung3",
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "cutter2",
+        "kind": "crew",
+        "place": "office",
+        "price": 1000,
+        "gate": "rung3",
+        "addsPerMin": 10,
+        "incomeNow": 100,
+        "tauMin": 2
+      },
+      {
+        "key": "night",
+        "kind": "office",
+        "place": "office",
+        "price": 1000,
+        "gate": null,
+        "addsPerMin": 0,
+        "incomeNow": 100,
+        "tauMin": 2
+      }
+    ],
+    "levels": {
+      "tau": {
+        "first": 20,
+        "growth": 1.5,
+        "cap": 500
+      },
+      "rule": "price = base x tau(L) x 1.1^(L-1)",
+      "bases": {
+        "hand": 10,
+        "cutter": 10,
+        "driver": 10,
+        "stripper": 10,
+        "bench": 10,
+        "crucible": 10
+      }
+    },
+    "ladder": {
+      "rung2": {
+        "t": 2,
+        "range": 3
+      },
+      "rung3": {
+        "t": 20,
+        "range": 5
+      },
+      "theta": 100
+    },
+    "ceilings_t_h": [
+      6,
+      20,
+      160
+    ],
+    "awayCap_h": [
+      4,
+      6
+    ],
+    "rivals": [
+      {
+        "id": "rival01",
+        "T0_t": 0.1,
+        "passMin": 5
+      },
+      {
+        "id": "rival02",
+        "T0_t": 1,
+        "passMin": 15
+      },
+      {
+        "id": "rival03",
+        "T0_t": 5,
+        "passMin": 30
+      }
+    ],
+    "bays": {
+      "li": 2000,
+      "ci": 2000,
+      "brs": 500,
+      "bb": 500,
+      "no2": 500
+    },
+    "deal": {
+      "partner": "foundry",
+      "grade": "ci",
+      "gate": "rung2",
+      "series": [
+        {
+          "q_kg": 100,
+          "days": 3,
+          "premium": 0.1
+        },
+        {
+          "q_kg": 200,
+          "days": 5,
+          "premium": 0.1
+        }
+      ],
+      "trust": {
+        "up": 10,
+        "down": 15,
+        "start": 50
+      }
+    },
+    "goals": [
+      {
+        "id": "takeWasher",
+        "text": "goal.takeWasher",
+        "target": "dropoff",
+        "done": "cut:washer:1",
+        "buy": null
+      },
+      {
+        "id": "weighIt",
+        "text": "goal.weighIt",
+        "target": "scale",
+        "done": "collected:1",
+        "buy": null
+      },
+      {
+        "id": "stripCable",
+        "text": "goal.stripCable",
+        "target": "stripper",
+        "done": "graded:bb",
+        "buy": null
+      },
+      {
+        "id": "buySack",
+        "text": "goal.buySack",
+        "target": "rack",
+        "done": "owned:sack",
+        "buy": "sack"
+      },
+      {
+        "id": "hireHand",
+        "text": "goal.hireHand",
+        "target": "office",
+        "done": "hired:hand",
+        "buy": "hand1"
+      },
+      {
+        "id": "signDeal",
+        "text": "goal.signDeal",
+        "target": "office",
+        "done": "deal:signed",
+        "buy": null,
+        "optional": true
+      },
+      {
+        "id": "supplyRung2",
+        "text": "goal.supplyRung2",
+        "target": null,
+        "done": "rung:2",
+        "buy": null
+      }
+    ],
+    "lessons": {
+      "li": "lesson.li",
+      "mot": "lesson.mot",
+      "cab": "lesson.cab",
+      "bb": "lesson.bb",
+      "brs": "lesson.brs",
+      "ci": "lesson.ci",
+      "conv": "lesson.conv"
+    }
   },
   "monetization": {
     "ads": {

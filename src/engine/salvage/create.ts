@@ -26,7 +26,7 @@ export function stockThings(c: SalvageContent): ThingState[] {
 function partnerOf(c: SalvageContent, id: string): PartnerState {
   const p = c.partners[id];
   const mass = Object.entries(p.trial).reduce((a, [o, n]) => a + (c.objects[o]?.gross_g ?? 0) * n, 0);
-  return { open: false, trialUsed: false, skip: { phase: 'full', fullAt: 0, contents: { ...p.trial }, mass_g: mass, price: p.trialPrice, priceDay: 0, trial: true, n: 0 } };
+  return { open: false, trialUsed: false, level: 0, skip: { phase: 'full', fullAt: 0, contents: { ...p.trial }, mass_g: mass, price: p.trialPrice, priceDay: 0, trial: true, n: 0 } };
 }
 
 /** A fresh salvage state at device time `now` (epoch ms). */
@@ -63,6 +63,8 @@ export function freshSalvage(c: SalvageContent, now: number): SalvageState {
     ticketNo: 1,
     away: null,
     draws: 0,
+    debt: 0,
+    engine: { segmentAt: 0, nextEventAt: null },
   };
 }
 

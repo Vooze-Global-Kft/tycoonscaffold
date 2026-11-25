@@ -183,23 +183,50 @@ export interface TicketLine {
   metal?: string;
 }
 
+/**
+ * What a ticket records (yard-stage1.md 2.2): a weigh-in carries no payment (its lines show the day's
+ * price, a muted "today's value" and the legal line, no stamp); a drop-off slip is signed in; a partner's
+ * skip weigh-in and a collected lot or a deal delivery are paid by transfer and stamped. The words of
+ * every line and stamp are the caller's.
+ */
+export type TicketKind = 'weighin' | 'dropoff' | 'skip' | 'collection' | 'deal';
+
 export interface Ticket {
   yard: string;
   number: string;
   date: string;
   lines: TicketLine[];
+  /** the total's words (empty on a weigh-in and a drop-off slip: no TOTAL row) */
   total: string;
-  stamp: [string, string];
+  /** the stamp's two lines; null for no stamp (a weigh-in) */
+  stamp: [string, string] | null;
+  /** default 'collection' (the earlier proof's ticket) */
+  kind?: TicketKind;
+  /** a weigh-in's muted row, e.g. ["today's value", "§1,834.00"] */
+  muted?: [string, string];
+  /** legal lines in plain print under the lines (a weigh-in's "Weighed into bays · not yet sold") */
+  legal?: string[];
 }
+
+/** The stamp's ink by kind: paid tickets blue, a drop-off slip green (signed in), nothing on a weigh-in. */
+export const STAMP_INK: Record<TicketKind, string | null> = { weighin: null, dropoff: '#2F8F4E', skip: '#2C5DA8', collection: '#2C5DA8', deal: '#2C5DA8' };
+/** The header band by kind: hi-vis for the yard's own scale tickets, paper grey for a drop-off slip. */
+export const TICKET_HEAD: Record<TicketKind, string> = { weighin: '#F4C20D', dropoff: '#E9EAE3', skip: '#F4C20D', collection: '#F4C20D', deal: '#F4C20D' };
+
+const rgbaInk = (hex: string, a: number): string => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+};
 
 /** The ticket's width for a print size p (points): 15 glyph-widths of print plus the sprocket strip. */
 export const ticketWidth = (p: number = TYPE.ticket): number => Math.round(p * 19.4);
 export const TICKET_W = ticketWidth();
 
 interface TicketRow {
-  kind: 'head' | 'meta' | 'rule' | 'grade' | 'sub' | 'amount' | 'double' | 'total' | 'stamp';
+  kind: 'head' | 'meta' | 'rule' | 'grade' | 'sub' | 'amount' | 'double' | 'total' | 'stamp' | 'muted' | 'legal';
   h: number;
   line?: TicketLine;
+  i?: number;
 }
 
 /** The rows of a ticket at print size p (a line's amount shares the sub-line's row when it fits). */
@@ -220,7 +247,10 @@ function ticketRows(t: Ticket, p: number): TicketRow[] {
       rows.push({ kind: 'amount', h: p * 1.5, line: l });
     }
   }
-  rows.push({ kind: 'double', h: p * 0.8 }, { kind: 'total', h: p * 1.9 }, { kind: 'stamp', h: p * 3.6 });
+  if (t.muted) rows.push({ kind: 'muted', h: p * 1.7 });
+  for (let i = 0; i < (t.legal?.length ?? 0); i++) rows.push({ kind: 'legal', h: p * 1.5, i });
+  if (t.total) rows.push({ kind: 'double', h: p * 0.8 }, { kind: 'total', h: p * 1.9 });
+  if (t.stamp) rows.push({ kind: 'stamp', h: p * 3.6 });
   return rows;
 }
 
@@ -262,7 +292,7 @@ export function drawTicket(c: SkCanvas, x: number, y: number, t: Ticket, p: numb
   for (const r of ticketRows(t, p)) {
     switch (r.kind) {
       case 'head':
-        c.drawPath(rrect(ix - 2, ry, iw + 4, p * 2.2, 2), fill(YARD.hivis));
+        c.drawPath(rrect(ix - 2, ry, iw + 4, p * 2.2, 2), fill(TICKET_HEAD[t.kind ?? 'collection']));
         stencil(c, t.yard, ix + iw / 2, ry + p * 0.6, Math.min(p * 1.05, (p * 1.05 * iw) / Math.max(1, stencilWidth(t.yard, p * 1.05, 0.2))), INK, { align: 'center', track: 0.2 });
         break;
       case 'meta':
@@ -299,16 +329,27 @@ export function drawTicket(c: SkCanvas, x: number, y: number, t: Ticket, p: numb
         dotMatrix(c, 'TOTAL', ix, ry + p * 0.3, p * 1.12, YARD.print, { bold: true });
         dotMatrix(c, t.total, ix + iw, ry + p * 0.3, p * 1.12, YARD.print, { bold: true, align: 'right' });
         break;
+      case 'muted':
+        c.drawPath(rrect(ix - 1, ry, iw + 2, p * 1.45, 1.5), fill(YARD.paperShade));
+        dotMatrix(c, t.muted![0], ix + 1, ry + p * 0.22, p, YARD.inkSoft);
+        dotMatrix(c, t.muted![1], ix + iw - 1, ry + p * 0.22, p, YARD.inkSoft, { align: 'right' });
+        break;
+      case 'legal':
+        dotMatrix(c, t.legal![r.i ?? 0], ix, ry + p * 0.2, p * 0.86, YARD.print);
+        break;
       case 'stamp': {
+        if (!t.stamp) break;
         const sp = p * 0.86;
+        const ink = STAMP_INK[t.kind ?? 'collection'] ?? YARD.stampBlue;
+        const inkA = rgbaInk(ink, 0.88);
         c.save();
         const stw = Math.max(dotWidth(t.stamp[0], sp), dotWidth(t.stamp[1], sp)) + sp * 1.8;
         c.translate(ix + stw / 2 + 2, ry + p * 1.7);
         c.rotate(-5, 0, 0);
-        c.drawPath(rrect(-stw / 2, -sp * 1.55, stw, sp * 3.1, 3), stroke(YARD.stampBlue, 1.6, 0.8));
-        c.drawPath(rrect(-stw / 2 + 2.2, -sp * 1.55 + 2.2, stw - 4.4, sp * 3.1 - 4.4, 2), stroke(YARD.stampBlue, 0.8, 0.8));
-        dotMatrix(c, t.stamp[0], 0, -sp * 1.05, sp, 'rgba(44,93,168,0.88)', { align: 'center', bold: true });
-        dotMatrix(c, t.stamp[1], 0, sp * 0.15, sp, 'rgba(44,93,168,0.88)', { align: 'center', bold: true });
+        c.drawPath(rrect(-stw / 2, -sp * 1.55, stw, sp * 3.1, 3), stroke(ink, 1.6, 0.8));
+        c.drawPath(rrect(-stw / 2 + 2.2, -sp * 1.55 + 2.2, stw - 4.4, sp * 3.1 - 4.4, 2), stroke(ink, 0.8, 0.8));
+        dotMatrix(c, t.stamp[0], 0, -sp * 1.05, sp, inkA, { align: 'center', bold: true });
+        dotMatrix(c, t.stamp[1], 0, sp * 0.15, sp, inkA, { align: 'center', bold: true });
         c.restore();
         break;
       }

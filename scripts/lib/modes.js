@@ -215,8 +215,13 @@ const WEB_ONLY = [
   // and its address switches (phones take each file's plain twin).
   'src/modes/salvage/presets.web.ts',
   'src/modes/salvage/devViews.web.ts',
+  // The salvage rules' frozen test content and states and the balance bot (yard-stage1.md section 9, hour 0).
+  'src/engine/fixtures/salvage.ts',
+  'src/engine/salvage/bot.ts',
   'src/ui/salvage/dev/DevPanel.web.tsx',
   'src/ui/salvage/dev/switches.web.ts',
+  // The loading animation's preview switches (lt=, ltitle=, lrm=, lready=, lseen=; the frame log).
+  'src/ui/salvage/loading/dev.web.ts',
 ];
 
 /**

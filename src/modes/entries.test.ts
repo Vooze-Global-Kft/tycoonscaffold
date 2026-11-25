@@ -320,7 +320,7 @@ describe('App.tsx', () => {
 });
 
 describe('the salvage entry (the scrapyard, docs/design/yard-ground.md)', () => {
-  it('hands over its own shell, loading placeholder and placeholder rules with the two time-away seams, and nothing else yet', async () => {
+  it('hands over its own shell, loading placeholder and the hour-0 rules with the two time-away seams, and nothing else yet', async () => {
     const { default: salvage } = await import('./salvage');
     const { salvageEngineMode } = await import('../engine/salvageMode');
     expect(salvage.id).toBe('salvage');
@@ -328,7 +328,7 @@ describe('the salvage entry (the scrapyard, docs/design/yard-ground.md)', () => 
     expect(nameOf(salvage.Loading)).toBe('SalvageLoading');
     expect(salvage.engine).toBe(salvageEngineMode);
     expect(salvage.engine?.id).toBe('salvage');
-    expect(salvage.engine?.saveTag).toBe('salvage0');
+    expect(salvage.engine?.saveTag, 'the first yard\'s layout (yard-stage1.md 2.13)').toBe('salvage1');
     expect(salvage.engine?.paysOnCompute, 'paid when computed (BRIEF lesson 5)').toBe(true);
     expect(salvage.engine?.catchUpSeconds, 'every absence through the away rules').toBe(0);
     expect(salvage.parts).toBeUndefined();

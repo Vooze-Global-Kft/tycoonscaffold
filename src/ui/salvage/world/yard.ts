@@ -12,8 +12,19 @@
  *
  * Solids for collision are packed in one flat array, five numbers each: [kind, x, y, a, b] with kind 0
  * a circle of radius a, kind 1 a box of half width a (x) and half depth b (y).
+ *
+ * THE RULES' YARD (hour-0 joint, contract step): besides the static `props` (fences, the container
+ * wall, rubble), the layout holds a prop for every place with a footprint (`map.places`: kind
+ * "machine", id = the place id, an interactable with a card), every whole thing of the fresh yard
+ * (`thingPos` of the rules: kind "wreck", id = the thing's uid), and the truck at the truck park
+ * (id "truck"). The boss starts at `map.points.start`. What the rules decide about them comes as the
+ * rules table (./useRulesTable.ts, from the rules' FrameTable).
  */
 import type { SalvageContent, SalvageProp } from '../../../config/schema.salvage';
+import * as R from '../../../engine/salvage';
+
+const asCfg = (s: SalvageContent) => ({ salvage: s }) as R.SalvageConfig;
+const pointOf = (s: SalvageContent, id: string) => R.point(asCfg(s), id);
 
 export const SOLID_CIRCLE = 0;
 export const SOLID_BOX = 1;
@@ -80,7 +91,7 @@ function packSolid(p: SalvageProp, out: number[]): void {
  */
 export function yardLayout(s: SalvageContent, opts: { extraCrates?: number; helpers?: number } = {}): YardLayout {
   const { width, depth, ppm, tilt, tile } = s.yard;
-  const props = s.props.slice();
+  const props = [...s.props, ...rulesProps(s)];
   // Extra crates for the stress switch: on a grid, skipping places already taken.
   const extra = Math.max(0, Math.floor(opts.extraCrates ?? 0));
   if (extra > 0) {
@@ -149,9 +160,30 @@ export function yardLayout(s: SalvageContent, opts: { extraCrates?: number; help
     actList,
     truck,
     helpers,
-    workerStart: { x: s.worker.x, y: s.worker.y },
-    truckStart: t ? { x: t.x, y: t.y } : { x: s.worker.x + 3, y: s.worker.y },
+    workerStart: pointOf(s, 'start'),
+    truckStart: t ? { x: t.x, y: t.y } : { x: pointOf(s, 'start').x + 3, y: pointOf(s, 'start').y },
   };
+}
+
+/** The rules' places, the fresh yard's things and the truck as props (see the header). */
+export function rulesProps(s: SalvageContent): SalvageProp[] {
+  const out: SalvageProp[] = [];
+  for (const [id, pl] of Object.entries(s.map.places)) {
+    const p = s.map.points[id];
+    if (!p) continue;
+    out.push({ id, kind: 'machine', x: p[0], y: p[1], shape: 'box', w: pl.w, d: pl.d, h: pl.h, r: 1, solid: pl.solid });
+  }
+  for (const th of R.stockThings(s)) {
+    const o = s.objects[th.obj];
+    if (!o) continue;
+    const p = R.thingPos(asCfg(s), th.at);
+    out.push({ id: th.uid, kind: 'wreck', x: p.x, y: p.y, shape: 'box', w: o.size.w, d: o.size.d, h: o.size.h, r: 1, solid: true });
+  }
+  if (s.map.points.park) {
+    const p = pointOf(s, 'park');
+    out.push({ id: 'truck', kind: 'truck', x: p.x, y: p.y, shape: 'box', w: 3, d: 1.8, h: 1.6, r: 1, solid: false });
+  }
+  return out;
 }
 
 /** How many screens the yard spans at a window size (the ground work's aim: at least 3 wide and 2 high at 844 x 390). */

@@ -53,6 +53,8 @@ export interface ManifestEntry {
   /** metres on the ground (east-west w, north-south d); the world sorts by the footprint's south edge */
   footprint: { w: number; d: number };
   bounds: Bounds;
+  /** optional tighter boxes, one per BAKED heading (bakedHeadings order); the atlas packs these when given */
+  boundsByHeading?: readonly Bounds[];
   /** one name per frame, e.g. ['idle'] or ['walk1', 'walk2', 'walk3', 'walk4'] */
   frames: readonly string[];
   headings: 1 | 4 | 8;
@@ -88,11 +90,20 @@ export function mirrorOf(e: Pick<ManifestEntry, 'headings' | 'mirrorWest'>, head
   return null;
 }
 
+/** The box of an entry's cell at a baked heading (boundsByHeading when given, else bounds). */
+export function cellBounds(e: Pick<ManifestEntry, 'headings' | 'mirrorWest' | 'bounds' | 'boundsByHeading'>, heading: number): Bounds {
+  const i = bakedHeadings(e).indexOf(heading);
+  return (i >= 0 && e.boundsByHeading?.[i]) || e.bounds;
+}
+
 /** Pixels an entry takes in its atlas at a density (cells of every baked frame and heading). */
 export function entryPixels(e: ManifestEntry, density: number): number {
-  const w = Math.ceil(e.bounds.w * density);
-  const h = Math.ceil(e.bounds.h * density);
-  return w * h * e.frames.length * bakedHeadings(e).length;
+  let n = 0;
+  for (const h of bakedHeadings(e)) {
+    const b = cellBounds(e, h);
+    n += Math.ceil(b.w * density) * Math.ceil(b.h * density);
+  }
+  return n * e.frames.length;
 }
 
 export const byId = (id: string): ManifestEntry | undefined => MANIFEST.find((e) => e.id === id);

@@ -34,6 +34,7 @@ import {
   type View3q,
 } from './pen';
 import { drawBrightCopper, drawIngot } from './scrap.draw';
+import { drawHookTruck } from './vehicles.draw';
 import { pieceGlyph, pieceHeap } from './pieces.draw';
 import { SHADOW_ALPHA } from './palette';
 
@@ -442,114 +443,13 @@ function furnaceSet(c: SkCanvas, v: View3q, state: 'cold' | 'pouring' | 'cooling
 // The hook-lift truck with a skip
 // ---------------------------------------------------------------------------
 
-function wheel(c: SkCanvas, v: View3q, p: V3, f: V3, r: number, side: V3): void {
-  const z: V3 = [0, 0, 1];
-  const face = facing(v, side);
-  if (face < 0.3) {
-    // seen end-on (heading north or south): the tyre's tread as a dark block
-    box(c, v, { len: 2 * r * 0.92, wid: 0.32, h: 2 * r * 0.95, ox: p[0], oy: p[1], heading: Math.atan2(f[1], f[0]), color: YARD.tyre, line: 1 });
-    if (face <= 0.05) return;
-  }
-  const q: V3 = [p[0] + side[0] * 0.16, p[1] + side[1] * 0.16, p[2]];
-  c.drawPath(discPath(v, q, f, z, r), fill(YARD.tyre));
-  c.drawPath(discPath(v, q, f, z, r), stroke(INK, 1));
-  c.drawPath(discPath(v, q, f, z, r * 0.5), fill(YARD.galvanised));
-  c.drawPath(discPath(v, q, f, z, r * 0.2), fill(YARD.steelDark));
-}
-
 /**
- * The hook-lift truck at a heading (radians, 0 east, pi/2 south), carrying a skip when `skip` is set.
- * Footprint about 4.6 x 2.0 m; anchor the footprint centre.
+ * The hook-lift truck at a heading (radians, 0 east, pi/2 south): now drawn by the people artist's
+ * vehicles.draw.ts (drawHookTruck); kept as a one-line call for the older sheets and tests. `load` (any
+ * list) shows a full farm load; `skip: false` drives with no skip.
  */
 export function drawTruck(c: SkCanvas, v: View3q, heading: number, o: { skip?: boolean; load?: string[] } = {}): void {
-  const fx = Math.cos(heading);
-  const fy = Math.sin(heading);
-  const lx = -fy;
-  const ly = fx;
-  const len = 4.6;
-  const wid = 2.0;
-  const at = (u: number, s: number, z: number): V3 => [fx * u + lx * s, fy * u + ly * s, z];
-  const sh = [at(len / 2 + 0.1, wid / 2 + 0.1, 0), at(-len / 2 - 0.1, wid / 2 + 0.1, 0), at(-len / 2 - 0.1, -wid / 2 - 0.1, 0), at(len / 2 + 0.1, -wid / 2 - 0.1, 0)].map(
-    (p) => proj(v, p[0] + 0.08, p[1] + 0.06, 0),
-  );
-  c.drawPath(poly(sh.flat()), fill(YARD.shadow, SHADOW_ALPHA));
-  const wheels: [number, number][] = [
-    [1.45, 0.86],
-    [-0.9, 0.86],
-    [-1.6, 0.86],
-    [1.45, -0.86],
-    [-0.9, -0.86],
-    [-1.6, -0.86],
-  ];
-  const nearSign = ly >= 0 ? 1 : -1; // the side whose wheels face the eye
-  const f: V3 = [fx, fy, 0];
-  const sideOf = (s: number): V3 => [lx * Math.sign(s), ly * Math.sign(s), 0];
-  for (const [u, s] of wheels) if (Math.sign(s) !== nearSign) wheel(c, v, at(u, s, 0.42), f, 0.42, sideOf(s));
-  // chassis
-  box(c, v, { len: len * 0.95, wid: wid * 0.7, h: 0.3, z: 0.5, heading, color: YARD.machineDark });
-  // cab at the front, with windows on each visible face and a beacon
-  const cabU = len / 2 - 0.55;
-  const isFront = (n: V3) => n[0] * fx + n[1] * fy > 0.7;
-  box(c, v, {
-    len: 1.1,
-    wid,
-    h: 1.5,
-    z: 0.7,
-    ox: fx * cabU,
-    oy: fy * cabU,
-    heading,
-    color: YARD.cab,
-    bevel: true,
-    onFace: (q, n) => {
-      const win = isFront(n) ? subQuad(q, 0.1, 0.9, 0.5, 0.9) : subQuad(q, 0.12, 0.62, 0.5, 0.9);
-      if (!isFront(n) && n[0] * fx + n[1] * fy < -0.7) return;
-      faceFill(c, v, win, YARD.glassDark, 1);
-      const shine = subQuad(win, 0.15, 0.3, 0.1, 0.9);
-      faceFill(c, v, shine, YARD.glass, 0, 0.9);
-      // the yard's stripe: hi-vis band along the bottom
-      faceFill(c, v, subQuad(q, 0, 1, 0.08, 0.22), YARD.hivis, 0.9);
-    },
-  });
-  const [bx, by] = proj(v, fx * cabU, fy * cabU, 2.2);
-  c.drawPath(rrect(bx - 3, by - 7, 6, 7, 2), fill(YARD.hivis));
-  c.drawPath(rrect(bx - 3, by - 7, 6, 7, 2), stroke(INK, 1));
-  // the hook arm behind the cab (the hook-lift's A-frame), hi-vis yellow
-  const armU = cabU - 0.75;
-  box(c, v, { len: 0.18, wid: 1.2, h: 1.1, z: 0.8, ox: fx * armU, oy: fy * armU, heading, color: YARD.hivis });
-  // the skip: a steel box with sloped ends, red-oxide, hazard corners
-  if (o.skip !== false) {
-    const sU = -0.75;
-    box(c, v, {
-      len: 2.7,
-      wid: 1.75,
-      h: 0.95,
-      z: 0.8,
-      ox: fx * sU,
-      oy: fy * sU,
-      heading,
-      color: YARD.skip,
-      onFace: (q, n) => {
-        // vertical ribs on long faces, a hazard corner panel at the ends
-        if (Math.abs(n[0] * fx + n[1] * fy) < 0.3) for (const s of [0.2, 0.4, 0.6, 0.8]) faceFill(c, v, subQuad(q, s - 0.015, s + 0.015, 0.05, 0.95), shade(YARD.skip, -0.3));
-        else {
-          const p = subQuad(q, 0.05, 0.95, 0.65, 0.92).map((pt) => proj(v, ...pt));
-          hazard(c, poly(p.flat()), 3.4, 0.8);
-        }
-        const [rx0, ry0] = proj(v, ...subQuad(q, 0.3, 0.3, 0.3, 0.3)[0]);
-        freckles(c, rx0, ry0, 14, 8, 11, YARD.rustLight, 3);
-      },
-      onTop: (q) => {
-        faceFill(c, v, subQuad(q, 0.04, 0.96, 0.06, 0.94), shade(YARD.skip, -0.5));
-        // a load showing over the rim
-        const load = o.load ?? [];
-        load.forEach((metal, i) => {
-          const [x, y] = proj(v, ...subQuad(q, 0.15 + 0.7 * hash01(i, 1), 0, 0.2 + 0.6 * hash01(i, 2), 0)[0]);
-          pieceGlyph(c, metal, x, y, 16, (hash01(i, 3) - 0.5) * 40, i);
-        });
-      },
-    });
-  }
-  for (const [u, s] of wheels) if (Math.sign(s) === nearSign) wheel(c, v, at(u, s, 0.42), f, 0.42, sideOf(s));
+  drawHookTruck(c, v, heading, { skip: o.skip === false ? 'none' : 'on', load: o.load?.length ? 'farm-full' : undefined, shadow: true });
 }
 
 // ---------------------------------------------------------------------------

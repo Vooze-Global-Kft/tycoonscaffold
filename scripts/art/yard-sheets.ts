@@ -103,6 +103,13 @@ headless(async (H) => {
   REGISTRY.push({ name: 'manifest-people', run: manifestSheet('people') });
   REGISTRY.push({ name: 'manifest-things', run: manifestSheet('things') });
   REGISTRY.push({ name: 'manifest-plant', run: manifestSheet('plant') });
+  // the artist "people" (scripts/art/yard-people-sheets.ts): crew, carriers, vehicles, atlas-people
+  for (const name of ['crew', 'carriers', 'vehicles', 'atlas-people'])
+    REGISTRY.push({
+      name,
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      run: async (x) => (require('./yard-people-sheets') as typeof import('./yard-people-sheets')).peopleSheets(x.H, x.T, (id) => id === name, x.write),
+    });
   REGISTRY.push({
     name: 'budget',
     run: async () => {

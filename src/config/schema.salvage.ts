@@ -10,8 +10,8 @@
  * (`_kg`, `load`, `inbuf`, `pot`, the carriers), seconds (`_s`), minutes (`_m`, `passMin`, `tauMin`),
  * hours (`_h`), § a kilogram for prices (`pbar`), metres on the ground plane for the map (x east, y
  * south). Keys this contract ADDS to the file (the content package fills them; listed in
- * notes/contract.md): `sprite` and `name` on grades and objects, `source` and `certifiedEmpty` on
- * objects, `map.places` (footprints), `worldSeed`, `names`, and the part-one families the prototype does
+ * notes/contract.md): `sprite` and `name` on grades and objects, `stages`, `size`, `source` and
+ * `certifiedEmpty` on objects, `sprite` and `g` on rivals, `map.places` (footprints), `worldSeed`, `names`, and the part-one families the prototype does
  * not write (`reach`, `feel`, `scale`, `bays`, `cut`, `board`, `deal`, `foreman`, `away`, `goals`,
  * `advice`, `lessons`). Lead's decisions: the price families are ferrous `fe`, non-ferrous `nf` and
  * `pm` (precious, the converter's daily step only); batteries are no grade in stage 1 (no `pb`).
@@ -145,6 +145,8 @@ export const ObjectSchema = z.object({
   source: z.object({ type: z.literal('partner'), partner: id, ref: z.string() }).optional(),
   /** ADDED: a closed vessel, "certified empty" on the thing, its card and its ticket line. */
   certifiedEmpty: z.boolean().default(false),
+  /** ADDED: the whole thing's footprint and height, metres (the world's collision and the sprite's box). */
+  size: z.object({ w: z.number().positive(), d: z.number().positive(), h: z.number().positive() }).default({ w: 1, d: 0.8, h: 1 }),
 });
 export type ObjectDef = z.infer<typeof ObjectSchema>;
 

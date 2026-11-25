@@ -216,6 +216,8 @@ export interface SkipState {
 export interface PartnerState {
   open: boolean;
   trialUsed: boolean;
+  /** Partner-supply level (REPORT2 R10: each level fills skips more often; content `levels.bases.<partner>`). 1 when open. */
+  level: number;
   skip: SkipState;
 }
 
@@ -359,6 +361,14 @@ export interface SalvageState {
   away: AwayCard | null;
   /** Counter of the drop-off's and the skips' hashes beyond their own counters (2: no Math.random). */
   draws: number;
+  /** § owed for the first yard hand hired on account, repaid from collections (REPORT2 R3). */
+  debt: number;
+  /**
+   * The rate engine's bookkeeping (E5, REPORT2 "One engine"): the play second the current segment began
+   * (flows are constant between events) and the next event's play second, or null. Flows themselves are
+   * derived from the stocks above (rate.ts), never saved.
+   */
+  engine: { segmentAt: number; nextEventAt: number | null };
 }
 
 // ================================================================================================ events
@@ -434,8 +444,8 @@ export type SalvageEventType = SalvageEvent['type'];
 export const REFUSAL_KEYS = ['cash', 'owned', 'rung', 'ceiling', 'tool2', 'tool3', 'tooHeavy', 'topLevel', 'noPlace', 'filling', 'loadCash', 'floor', 'weighFirst', 'heatRunning', 'noTruck', 'noTorch', 'nothing', 'priceUpdated', 'confirmHeel', 'notBuilt'] as const;
 export type RefusalKey = (typeof REFUSAL_KEYS)[number];
 
-/** What a level is bought for: a crew member (by id) or a machine. */
-export type LevelTarget = { kind: 'crew'; id: string } | { kind: 'machine'; machine: MachineId };
+/** What a level is bought for: a crew member (by id), a machine, or a partner's supply (REPORT2 R10). */
+export type LevelTarget = { kind: 'crew'; id: string } | { kind: 'machine'; machine: MachineId } | { kind: 'partner'; partner: PartnerId };
 
 /** What Sell showed (2.8 "shown equals applied"): the market day, the price per kg, the grams. */
 export interface SellShown {

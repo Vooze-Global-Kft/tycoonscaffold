@@ -21,7 +21,7 @@ import { WORLD_LABELS } from '../strings';
 import { DIRS, WALK_FRAMES, crate, machine, pawn, piece, pile, ring, truck, wall, wreck, wreckPieces, type View3q } from './draw';
 import type { YardLayout } from './yard';
 import type { SalvageProp } from '../../../config/schema.salvage';
-import { MANIFEST, bakedHeadings, mirrorOf, type ManifestEntry, type Sheet } from '../art/manifest';
+import { MANIFEST, bakedHeadings, cellBounds, mirrorOf, type ManifestEntry, type Sheet } from '../art/manifest';
 import { CONTAINER_TINTS } from '../art/manifest/plant';
 import { RING_R as MARK_RING_R } from '../art/marks.draw';
 import { drawContainerNS, drawBlock, drawBayHeap, drawHandStripper } from '../art/site.draw';
@@ -82,30 +82,78 @@ export const sideOf = (sheet: Sheet): number => (sheet === 'G' ? G_SIDE : MAX_SI
 
 const entriesOf = (sheet: Sheet, list: readonly ManifestEntry[] = MANIFEST) => list.filter((e) => e.sheet === sheet);
 
-/** Shelf packing, tallest first, `side` wide. */
+/**
+ * Skyline packing (bottom-left: each cell goes where its top lands lowest), trying three orders (by
+ * height, by width, by area) and keeping the shortest sheet.
+ */
 function packCells(entries: ManifestEntry[], density: number, side: number) {
-  const items: { e: ManifestEntry; frame: number; heading: number; w: number; h: number }[] = [];
+  const items: { e: ManifestEntry; frame: number; heading: number; b: { x: number; y: number }; w: number; h: number }[] = [];
   for (const e of entries)
     for (let f = 0; f < e.frames.length; f++)
-      for (const hd of bakedHeadings(e)) items.push({ e, frame: f, heading: hd, w: Math.ceil(e.bounds.w * density) + PAD * 2, h: Math.ceil(e.bounds.h * density) + PAD * 2 });
-  items.sort((a, b) => b.h - a.h || b.w - a.w);
-  let x = 0;
-  let y = 0;
-  let shelf = 0;
-  let width = 0;
-  const cells: Cell[] = [];
-  for (const it of items) {
-    if (x + it.w > side) {
-      x = 0;
-      y += shelf;
-      shelf = 0;
+      for (const hd of bakedHeadings(e)) {
+        const b = cellBounds(e, hd);
+        items.push({ e, frame: f, heading: hd, b, w: Math.ceil(b.w * density) + PAD * 2, h: Math.ceil(b.h * density) + PAD * 2 });
+      }
+  const orders: ((a: (typeof items)[number], b: (typeof items)[number]) => number)[] = [
+    (a, b) => b.h - a.h || b.w - a.w,
+    (a, b) => b.w - a.w || b.h - a.h,
+    (a, b) => b.w * b.h - a.w * a.h,
+  ];
+  let best: { cells: Cell[]; width: number; height: number } | null = null;
+  for (const order of orders) {
+    const list = items.slice().sort(order);
+    // the skyline: segments [x, w, y] covering 0..side
+    let sky: [number, number, number][] = [[0, side, 0]];
+    const cells: Cell[] = [];
+    let width = 0;
+    let height = 0;
+    for (const it of list) {
+      let bx = -1;
+      let by = Infinity;
+      for (let i = 0; i < sky.length; i++) {
+        const x = sky[i][0];
+        if (x + it.w > side) break;
+        let y = 0;
+        let cover = 0;
+        for (let j = i; j < sky.length && cover < it.w; j++) {
+          y = Math.max(y, sky[j][2]);
+          cover = sky[j][0] + sky[j][1] - x;
+        }
+        if (y + it.h < by) {
+          by = y + it.h;
+          bx = x;
+        }
+      }
+      if (bx < 0) {
+        bx = 0;
+        by = height + it.h;
+      }
+      const y = by - it.h;
+      cells.push({ id: it.e.id, frame: it.frame, heading: it.heading, x: bx, y, w: it.w, h: it.h, ax: PAD - it.b.x * density, ay: PAD - it.b.y * density, entry: it.e });
+      width = Math.max(width, bx + it.w);
+      height = Math.max(height, by);
+      // raise the skyline under the cell
+      const next: [number, number, number][] = [];
+      for (const [x, w, sy] of sky) {
+        const x1 = x + w;
+        if (x1 <= bx || x >= bx + it.w) next.push([x, w, sy]);
+        else {
+          if (x < bx) next.push([x, bx - x, sy]);
+          if (x1 > bx + it.w) next.push([bx + it.w, x1 - bx - it.w, sy]);
+        }
+      }
+      next.push([bx, it.w, by]);
+      next.sort((a, b) => a[0] - b[0]);
+      sky = [];
+      for (const seg of next) {
+        const last = sky[sky.length - 1];
+        if (last && last[2] === seg[2] && last[0] + last[1] === seg[0]) last[1] += seg[1];
+        else sky.push([...seg]);
+      }
     }
-    cells.push({ id: it.e.id, frame: it.frame, heading: it.heading, x, y, w: it.w, h: it.h, ax: PAD - it.e.bounds.x * density, ay: PAD - it.e.bounds.y * density, entry: it.e });
-    x += it.w;
-    width = Math.max(width, x);
-    shelf = Math.max(shelf, it.h);
+    if (!best || height < best.height) best = { cells, width, height };
   }
-  return { cells, width, height: y + shelf };
+  return best ?? { cells: [], width: 0, height: 0 };
 }
 
 /** The plan of a sheet at a wanted density: lowered by 0.25 until it fits (never below 1). */

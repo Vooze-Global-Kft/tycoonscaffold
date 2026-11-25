@@ -42,7 +42,7 @@ export async function peopleSheets(
       title(c, 'The boss in every pose, three directions (west is east mirrored); 40 pt a metre');
       let y = 70;
       for (const [name, poses] of rows) {
-        T(c, name, 12, y - 30, { size: 10, weight: 'bold', color: YARD.ink });
+        T(c, name, 12, y - 42, { size: 10, weight: 'bold', color: YARD.ink });
         (['s', 'e', 'n'] as const).forEach((d, di) => {
           poses(d).forEach((o, i) => {
             const x = 40 + di * 290 + i * 44;
@@ -114,7 +114,7 @@ export async function peopleSheets(
   }
 
   if (want('vehicles')) {
-    await write('people-vehicles.png', 1100, 1000, (c) => {
+    await write('people-vehicles.png', 1100, 1070, (c) => {
       title(c, 'Vehicles: the hook-lift truck in 8 headings (with its skip), hook and tip, the merchant’s flatbed, the vans');
       const H8 = [0, 1, 2, 3, 4, 5, 6, 7];
       H8.forEach((h, i) => {
@@ -138,8 +138,8 @@ export async function peopleSheets(
       });
       // the flatbed
       ([0, 2, 4] as const).forEach((h, i) => {
-        const x = 100 + i * 200;
-        put(c, x, 790, () => {
+        const x = 80 + i * 200;
+        put(c, x, 800, () => {
           VH.drawActorShadow(c, V, 'flatbed', h);
           VH.drawFlatbed(c, V, VH.headingRad(h), { cargo: i === 1 ? 'full' : undefined });
         });
@@ -154,20 +154,20 @@ export async function peopleSheets(
       });
       // the vans
       ([0, 2, 4] as const).forEach((h, i) => {
-        const x = 90 + i * 170;
-        put(c, x, 940, () => {
+        const x = 190 + i * 210;
+        put(c, x, i === 0 ? 1010 : 960, () => {
           VH.drawActorShadow(c, V, 'van', h);
           VH.drawVan(c, V, VH.headingRad(h), { trailer: true });
         });
-        caption(c, `public's van + trailer ${['s', 'e', 'n'][i]}`, x, 985);
+        caption(c, `public's van + trailer ${['s', 'e', 'n'][i]}`, x, 1050);
       });
-      put(c, 640, 940, () => {
+      put(c, 800, 960, () => {
         VH.drawActorShadow(c, V, 'van', 2);
-        VH.drawVan(c, V, 0, { body: YARD.hivis });
+        VH.drawVan(c, V, 0, { body: YARD.machineLight });
       });
-      caption(c, 'delivery van (tinted)', 640, 985);
-      put(c, 860, 930, () => VH.drawSkip(c, V, 0, { load: 'farm-trial' }));
-      caption(c, 'skip on the ground', 860, 985);
+      caption(c, 'delivery van (tinted)', 800, 1050);
+      put(c, 1000, 960, () => VH.drawSkip(c, V, 0, { load: 'farm-trial' }));
+      caption(c, 'skip on the ground', 1000, 1050);
     }, 2);
   }
 

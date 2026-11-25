@@ -169,6 +169,19 @@ export function motorGlyph(c: SkCanvas, s: number): void {
   c.drawPath(rrect(-s * 0.1, -h / 2 - s * 0.1, s * 0.2, s * 0.12, 1), stroke(INK, 0.8));
 }
 
+/** A washer's stainless drum lying on its side: a steel cylinder with rows of holes and its open mouth. */
+export function drumGlyph(c: SkCanvas, s: number): void {
+  const w = s * 0.8;
+  const h = s * 0.56;
+  const body = rrect(-w / 2, -h / 2, w, h, 2);
+  c.drawPath(body, fill(YARD.galvanisedLight));
+  c.drawRect({ x: -w / 2 + 1, y: -h / 2 + 1, width: w - 2, height: h * 0.25 }, fill('#E4E8EB'));
+  for (let r = 0; r < 2; r++) for (let i = 0; i < 4; i++) c.drawPath(circle(-w / 2 + w * (0.18 + i * 0.2), -h * 0.12 + r * h * 0.34, Math.max(0.7, s * 0.04)), fill(YARD.steelDark));
+  c.drawPath(body, stroke(INK, 1));
+  c.drawPath(oval(w / 2, 0, s * 0.1, h * 0.5), fill(YARD.steelDark));
+  c.drawPath(oval(w / 2, 0, s * 0.1, h * 0.5), stroke(INK, 1));
+}
+
 /** An aluminium alloy wheel seen at an angle: a near-white rim, five spokes, a dark hub. */
 export function alloyWheelGlyph(c: SkCanvas, s: number): void {
   const rx = s * 0.46;
@@ -186,7 +199,7 @@ export function alloyWheelGlyph(c: SkCanvas, s: number): void {
 
 /** The pieces a load of a family shows, as metal ids for pieceGlyph or the glyphs above. */
 const FAMILY_PIECES: Readonly<Record<LoadFamily, string[]>> = {
-  fe: ['light_iron', 'enamel', 'light_iron'],
+  fe: ['drum', 'light_iron', 'light_iron'],
   ci: ['cast_iron', 'cast_iron', 'cast_iron'],
   cu: ['copper', 'copper', 'copper'],
   br: ['brass', 'brass', 'brass'],
@@ -198,12 +211,13 @@ const FAMILY_PIECES: Readonly<Record<LoadFamily, string[]>> = {
 
 /** One loaded piece by name at (x, y), s points long (METAL ids, or 'cable', 'motor', 'wheel'). */
 export function loadPiece(c: SkCanvas, name: string, x: number, y: number, s: number, turn = 0, seed = 0): void {
-  if (name === 'cable' || name === 'motor' || name === 'wheel') {
+  if (name === 'cable' || name === 'motor' || name === 'wheel' || name === 'drum') {
     c.save();
     c.translate(x, y);
     c.rotate(turn, 0, 0);
     if (name === 'cable') cableCoilGlyph(c, s, seed);
     else if (name === 'motor') motorGlyph(c, s);
+    else if (name === 'drum') drumGlyph(c, s);
     else alloyWheelGlyph(c, s);
     c.restore();
     return;
@@ -316,8 +330,7 @@ export function drawHandLoad(c: SkCanvas, v: View3q, dir: Dir, load?: LoadFamily
     rail(hw, T - 5, hw, -15);
     rail(-hw - 1, -15, hw + 1, -15);
     pieces.forEach((m, i) => loadPiece(c, m, (hash01(i, 7) - 0.5) * 2.5, -19.5 - i * 6.6, 16 * bw, (hash01(i, 5) - 0.5) * 14, i * 3 + 1));
-    strap(c, -hw - 1.5, T + 3, hw + 1.5, T + 1);
-    strap(c, -hw - 1.5, T + 13, hw + 1.5, T + 12);
+    strap(c, -hw - 1.5, T + 7, hw + 1.5, T + 6, 1.6);
   }
   c.restore();
 }

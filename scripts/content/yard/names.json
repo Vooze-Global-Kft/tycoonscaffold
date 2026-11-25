@@ -1,6 +1,6 @@
 {
- "$comment": "names.json: the names register of the scrapyard game (game id scrap-yard; ruling 14 in the lead's RULING.md; yard-design.md section 2 lists the names). Every invented proper noun is searched here BEFORE art or text is built on it. THIS IS AN ENGINEER'S CHECK, RECORDED AS SUCH: IT IS NOT LEGAL CLEARANCE. No trademark register (USPTO, EUIPO, UKIPO, WIPO Global Brand Database, CNIPA) was searched; the owner's own trade-mark search of at least the title is still required before release (yard-design.md 7.7, yard-policy.md 2). Filled on 2026-11-25 by the step labelled 'names'. Four checks per name: (a) a real company, brand or product of that name or one letter or one sound away, above all in metals, recycling, mining, electronics, cars, shipping and finance (UK Companies House search, web search, Bing exact-word results, the stores' publisher names); (b) a real exchange, index, port, town or region (web search, gazetteers met in results); (c) an app or game of that name on the stores (App Store search API, country US, 50 results; Google Play web search, US); (d) a name already used in this developer's four games, exact or one letter or one Soundex step away (grep of games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json and the three store files; plus scripts/content/build-space.py by hand for Orbit Haulers' sector and buyer names). Threshold used: an exact name of any real firm, product, app or game, or a word one letter or one sound from a real firm in the listed trades, a real town or region, or a name in the four games, fails; a common surname or given name shared only with unrelated small firms (builders, cafes) passes and is recorded. Verdicts: 'clear', 'changed' (with 'replacedBy'), 'new (replacement)' (with 'replaces'; it passed the same four checks). The specification is NOT edited here: the lead designer applies this register. Web queries contained only the candidate names and generic trade words. Method and scripts: notes/names.md in the shared notes folder. SECOND PASS (same day, step 'names'): the lead rejected first-pass replacements that a player cannot read or say ('Thwaiteby Lane', 'Skelderwick', 'Cradsworth', 'Hebblewick'). Every name a player sees most was chosen again from three short, plain candidates, each through the same four checks; the readability rule and the method are in 'secondPass'. Verdicts added: 'rejected (second pass ...)' on a first-pass replacement (with 'replacedBy' and 'rejectedBecause'), 'changed (second pass)' on a name the first pass had cleared, 'new (replacement, second pass)' with 'candidates'. On the specification's own names 'replacedBy' now gives the final name and 'firstPassReplacement' the one it replaces. The generated-name word lists are separate files beside this one (handle-words.json, company-words.json, crew-names.json, with name-filter.json and check-words.py). Still an engineer's check, not legal clearance.",
- "version": 2,
+ "$comment": "names.json: the names register of the scrapyard game (game id scrap-yard; ruling 14 in the lead's RULING.md; yard-design.md section 2 lists the names). Every invented proper noun is searched here BEFORE art or text is built on it. THIS IS AN ENGINEER'S CHECK, RECORDED AS SUCH: IT IS NOT LEGAL CLEARANCE. No trademark register (USPTO, EUIPO, UKIPO, WIPO Global Brand Database, CNIPA) was searched; the owner's own trade-mark search of at least the title is still required before release (yard-design.md 7.7, yard-policy.md 2). Filled on 2026-11-25 by the step labelled 'names'. Four checks per name: (a) a real company, brand or product of that name or one letter or one sound away, above all in metals, recycling, mining, electronics, cars, shipping and finance (UK Companies House search, web search, Bing exact-word results, the stores' publisher names); (b) a real exchange, index, port, town or region (web search, gazetteers met in results); (c) an app or game of that name on the stores (App Store search API, country US, 50 results; Google Play web search, US); (d) a name already used in this developer's four games, exact or one letter or one Soundex step away (grep of games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json and the three store files; plus scripts/content/build-space.py by hand for Orbit Haulers' sector and buyer names). Threshold used: an exact name of any real firm, product, app or game, or a word one letter or one sound from a real firm in the listed trades, a real town or region, or a name in the four games, fails; a common surname or given name shared only with unrelated small firms (builders, cafes) passes and is recorded. Verdicts: 'clear', 'changed' (with 'replacedBy'), 'new (replacement)' (with 'replaces'; it passed the same four checks). The specification is NOT edited here: the lead designer applies this register. Web queries contained only the candidate names and generic trade words. Method and scripts: notes/names.md in the shared notes folder. SECOND PASS (same day, step 'names'): the lead rejected first-pass replacements that a player cannot read or say ('Thwaiteby Lane', 'Skelderwick', 'Cradsworth', 'Hebblewick'). Every name a player sees most was chosen again from three short, plain candidates, each through the same four checks; the readability rule and the method are in 'secondPass'. Verdicts added: 'rejected (second pass ...)' on a first-pass replacement (with 'replacedBy' and 'rejectedBecause'), 'changed (second pass)' on a name the first pass had cleared, 'new (replacement, second pass)' with 'candidates'. On the specification's own names 'replacedBy' now gives the final name and 'firstPassReplacement' the one it replaces. The generated-name word lists are separate files beside this one (handle-words.json, company-words.json, crew-names.json, with name-filter.json and check-words.py). Still an engineer's check, not legal clearance. THIRD PASS (same day, step 'names'): ids. Every entry has an 'id' (lower-case dotted words; the first yard's camel-case ids are fixed by yard-stage1.md 5.1) that is stable for good: a renamed firm keeps its id. FORM CHOSEN: history stays in place as entries of the same id with \"current\": false; exactly one entry per id has \"current\": true, and that entry's 'name' is the name to show. 'byId' (id -> current name) is GENERATED from the entries by scripts/content/yard/build-ids.py; never edit it by hand. Test line: python3 -I scripts/content/yard/build-ids.py --check (exit 0 = byId agrees with the entries, one current entry per id, rival chips of at most 14 characters with none alike or one letter apart, merchant short form of at most 18); regenerate with python3 -I scripts/content/yard/build-ids.py. Rivals carry 'passTonnes' (a number, tonnes) on every entry of their id, and the current one a 'chip'; the merchant a 'short'; exchanges 'neverAbbreviate'. Data and code refer to names ONLY by id (D13, S21). 'summary.final' and 'summary.rivalLadder' are the second pass's record and are not updated: where they differ from byId, byId is right. Still an engineer's check, not legal clearance.",
+ "version": 3,
  "checkedOn": "2026-11-25",
  "summary": {
   "readabilityRule": "Second-pass rule (the lead, 2026-11-25): the player must be able to read and say the name. A twelve-year-old non-native speaker reads it aloud right the first time: one or two everyday morphemes of the trade or the landscape, at most three syllables a word, spelled as it sounds, no 'th' cluster, no '-thwaite', no '-wick' pile-ups, no silent 'gh'. A lane, a town or a port may share its name with small unrelated places or firms of no fame; what fails is one famous place, a brand, another game's title or setting, a word of this developer's four games, or a real exchange or port city.",
@@ -175,7 +175,51 @@
    "spec 7.6 handle example: 'Steady Anvil of Oakbridge'",
    "away card example (5.6): 'You passed Kolbeck Recycling.' (unchanged)",
    "logo list (11): Telano's teal four-point star, Tolvan's two coral chevrons; Vessendal keeps the globe of rings"
-  ]
+  ],
+  "thirdPass": {
+   "idsAre": "byId (generated); the entry with current true of each id",
+   "merchant": "Tollbridge Metals (short Tollbridge), replacing the unregistered Tamberlow Metal Merchants",
+   "currency": "scrip; 'calvan' is withdrawn",
+   "title": "Scrap to Ingot (unchanged)",
+   "rivalsReplaced": {
+    "Haddersby & Daughters Scrap": "Bramley & Daughters Scrap",
+    "Ashendry Metals": "Highfold Metals",
+    "Coralind Steel & Alloys": "Pearlbay Steel & Alloys",
+    "Morrance Resource Recovery": "Rookhill Resource Recovery",
+    "Tervalen Steel & Alloys": "Kilnfield Steel & Alloys",
+    "Kestrane Metallurgy": "Hazelford Metallurgy",
+    "Ondrell Global": "Wrenhill Global",
+    "Tarlevan Metals Holding": "Oakfold Metals Holding",
+    "Vessendal Global Metals": "Elmfield Global Metals"
+   },
+   "rivalLadder": [
+    "rival.1 Bramley & Daughters Scrap (chip Bramley) 0.15 t",
+    "rival.2 Pennick Scrap (chip Pennick) 1.5 t",
+    "rival.3 Brookmill Metals (chip Brookmill) 5 t",
+    "rival.4 Tenterby Lane Metals (chip Tenterby Lane) 18 t",
+    "rival.5 Kolbeck Recycling (chip Kolbeck) 45 t",
+    "rival.6 Tunney & Sons (chip Tunney & Sons) 120 t",
+    "rival.7 Oakbridge Metal Recovery (chip Oakbridge) 300 t",
+    "rival.8 Millbeck Ferrous (chip Millbeck) 800 t",
+    "rival.9 Larkmoor Non-Ferrous (chip Larkmoor) 2 kt",
+    "rival.10 Stonebeck Reclaim (chip Stonebeck) 4.5 kt",
+    "rival.11 Highfold Metals (chip Highfold) 10 kt",
+    "rival.12 Aldermoss Ferrous (chip Aldermoss) 22 kt",
+    "rival.13 Nordal Metals (chip Nordal) 45 kt",
+    "rival.14 Gannetby Recycling (chip Gannetby) 90 kt",
+    "rival.15 Rookhill Resource Recovery (chip Rookhill) 170 kt",
+    "rival.16 Saltreach Metals (chip Saltreach) 320 kt",
+    "rival.17 Kilnfield Steel & Alloys (chip Kilnfield) 550 kt",
+    "rival.18 Hazelford Metallurgy (chip Hazelford) 850 kt",
+    "rival.19 Crayle International (chip Crayle) 1.25 Mt",
+    "rival.20 Tarnmoor Resources (chip Tarnmoor) 1.8 Mt",
+    "rival.21 Teodor Metals (chip Teodor) 2.5 Mt",
+    "rival.22 Wrenhill Global (chip Wrenhill) 3.4 Mt",
+    "rival.23 Pearlbay Steel & Alloys (chip Pearlbay) 4.5 Mt",
+    "rival.24 Oakfold Metals Holding (chip Oakfold) 5.6 Mt",
+    "rival.25 Elmfield Global Metals (chip Elmfield) 7 Mt"
+   ]
+  }
  },
  "names": [
   {
@@ -190,7 +234,9 @@
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
    "note": "Descriptive of the game; a store may find it weakly distinctive, which helps against clashes and hurts as a mark. 'Salvage' is avoided as asked.",
-   "readability": "kept: three everyday words."
+   "readability": "kept: three everyday words.",
+   "id": "title",
+   "current": true
   },
   {
    "name": "Heavy Melt",
@@ -203,7 +249,9 @@
     "c_apps_and_games_on_the_stores": "App Store and Google Play: no title 'Heavy Melt'; nearest 'Melt and Fill' (Voodoo), 'Stack Heavy', 'Melt Prices'.",
     "d_four_games": "clear as a name; NOTE Orbit Haulers has an upgrade 'Heavy Ore' (scripts/content/build-space.py): one shared common word, not a near-miss of the name, but the lead should weigh it against Orbit's fingerprint (dimension 6, store text)."
    },
-   "readability": "kept: two everyday words."
+   "readability": "kept: two everyday words.",
+   "id": "title.fallback",
+   "current": true
   },
   {
    "name": "Calvany",
@@ -218,7 +266,9 @@
    },
    "firstPassVerdict": "clear",
    "replacedBy": "Westholm",
-   "why": "one letter from Calvary, the site outside Jerusalem (Wikidata's description of the enwiki page 'Calvary', 2026-11-25), a famous place a reader may well read in its place; the first pass did not weigh it"
+   "why": "one letter from Calvary, the site outside Jerusalem (Wikidata's description of the enwiki page 'Calvary', 2026-11-25), a famous place a reader may well read in its place; the first pass did not weigh it",
+   "id": "country.west",
+   "current": false
   },
   {
    "name": "Bellmarch",
@@ -231,7 +281,9 @@
     "c_apps_and_games_on_the_stores": "App Store / Play: none.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "readability": "kept: BELL-march, two everyday words. Weighed against Bellmoor and Marchford (both clear on Wikidata and in the four games, no store app); Bellmarch stays because it is already clear in every check and in the documents."
+   "readability": "kept: BELL-march, two everyday words. Weighed against Bellmoor and Marchford (both clear on Wikidata and in the four games, no store app); Bellmarch stays because it is already clear in every check and in the documents.",
+   "id": "city.capital",
+   "current": true
   },
   {
    "name": "Fennick",
@@ -246,7 +298,9 @@
     "c_apps_and_games_on_the_stores": "Google Play: a game 'Fennick Blocks' (Kajtna DEV) and 'Fenrick: Think & Play Offline'.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Kelderby"
+   "firstPassReplacement": "Kelderby",
+   "id": "homeTown",
+   "current": false
   },
   {
    "name": "Fennick Vale",
@@ -261,7 +315,9 @@
     "c_apps_and_games_on_the_stores": "see Fennick",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Kelderby Vale"
+   "firstPassReplacement": "Kelderby Vale",
+   "id": "homeDistrict",
+   "current": false
   },
   {
    "name": "Kettle Lane",
@@ -276,7 +332,9 @@
     "c_apps_and_games_on_the_stores": "Google Play: 'Kettle Street: Cosy Life Sim' (a game), 'Crumb & Kettle: Cosy Café' (a game on iOS).",
     "d_four_games": "the word 'kettle' occurs as a common noun in Proudly Adequate (games/high-office/game.json, scripts/content/office/phrases.json: 'the kettle filling', 'CARPET ROLLED OUT TO KETTLE'); not a name, and not in the bundle string denylist, but flagged by the spec (yard-design.md 2 and 13.8)."
    },
-   "firstPassReplacement": "Thwaiteby Lane"
+   "firstPassReplacement": "Thwaiteby Lane",
+   "id": "homeLane",
+   "current": false
   },
   {
    "name": "Kettle Lane Yard",
@@ -291,7 +349,9 @@
     "c_apps_and_games_on_the_stores": "see Kettle Lane",
     "d_four_games": "see Kettle Lane"
    },
-   "firstPassReplacement": "Thwaiteby Lane Yard"
+   "firstPassReplacement": "Thwaiteby Lane Yard",
+   "id": "homeYard",
+   "current": false
   },
   {
    "name": "Saltreach",
@@ -305,7 +365,9 @@
     "d_four_games": "clear as a name; NOTE Orbit Haulers has 'Halden Reach' and 'Verdigris Reach' (two-word sector names). 'Saltreach' is one word and differs in every other letter; accepted, but the lead may want to avoid the shared '-reach' ending."
    },
    "note": "Also used for rival 16, 'Saltreach Metals' (see below).",
-   "readability": "kept: SALT-reach, two everyday words. Weighed against Saltport (no company, store app or Wikidata item; only a city in a homebrew fantasy wiki) and Coldharbour (fails: Coldharbour is a realm of The Elder Scrolls Online, from memory, not verified today, and a well-known London street). Saltport is not chosen: Saltport and Sandport, the two ports a player ships between, would differ by two letters. The shared '-reach' of Orbit Haulers' sector names stays recorded."
+   "readability": "kept: SALT-reach, two everyday words. Weighed against Saltport (no company, store app or Wikidata item; only a city in a homebrew fantasy wiki) and Coldharbour (fails: Coldharbour is a realm of The Elder Scrolls Online, from memory, not verified today, and a well-known London street). Saltport is not chosen: Saltport and Sandport, the two ports a player ships between, would differ by two letters. The shared '-reach' of Orbit Haulers' sector names stays recorded.",
+   "id": "site.port",
+   "current": true
   },
   {
    "name": "Varn Ridge",
@@ -320,7 +382,9 @@
     "c_apps_and_games_on_the_stores": "Play: 'Varn' (a language app).",
     "d_four_games": "clear (nearest 'Earn', 'Vary': common words)"
    },
-   "firstPassReplacement": "Ashendry Ridge"
+   "firstPassReplacement": "Ashendry Ridge",
+   "id": "site.uplands",
+   "current": false
   },
   {
    "name": "Sennath Union",
@@ -336,7 +400,9 @@
    "note": "Near-match in fiction only: 'Sennatt', a minor Star Wars Legends planet (one letter). Not a game title, company or real place, so it passes the four checks; recorded so the lead can weigh it.",
    "firstPassVerdict": "clear",
    "replacedBy": "Eastmere Union",
-   "why": "'th' cluster (sen-NATH, SEN-nath)"
+   "why": "'th' cluster (sen-NATH, SEN-nath)",
+   "id": "country.east",
+   "current": false
   },
   {
    "name": "Kaymor",
@@ -351,7 +417,9 @@
     "c_apps_and_games_on_the_stores": "App Store / Play: none.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Meskarn"
+   "firstPassReplacement": "Meskarn",
+   "id": "city.east",
+   "current": false
   },
   {
    "name": "Kaymor Point",
@@ -366,7 +434,9 @@
     "c_apps_and_games_on_the_stores": "see Kaymor",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Meskarn Point"
+   "firstPassReplacement": "Meskarn Point",
+   "id": "site.point",
+   "current": false
   },
   {
    "name": "Ambrel Coast",
@@ -381,7 +451,9 @@
     "c_apps_and_games_on_the_stores": "App Store: 'Ambrel: Visual library'; Play: 'Ambrel Koi'.",
     "d_four_games": "near-miss of Orbit Haulers' sector 'Ambry Field' (scripts/content/build-space.py line 152; Ambry vs Ambrel)."
    },
-   "firstPassReplacement": "Coralind Coast"
+   "firstPassReplacement": "Coralind Coast",
+   "id": "site.coast",
+   "current": false
   },
   {
    "name": "Bellmarch Metal Exchange",
@@ -395,7 +467,13 @@
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
    "note": "Keep 'no abbreviations shown anywhere' (spec 2): 'BME' is the abbreviation of a real exchange operator (Bolsas y Mercados Espanoles).",
-   "readability": "kept with Bellmarch."
+   "readability": "kept with Bellmarch.",
+   "id": "exchange.west",
+   "current": true,
+   "neverAbbreviate": [
+    "BME"
+   ],
+   "neverAbbreviateWhy": "BME is a real exchange operator's abbreviation (first pass)"
   },
   {
    "name": "Kaymor Metal Exchange",
@@ -410,7 +488,13 @@
     "c_apps_and_games_on_the_stores": "none",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Meskarn Metal Exchange"
+   "firstPassReplacement": "Meskarn Metal Exchange",
+   "id": "exchange.east",
+   "current": false,
+   "neverAbbreviate": [
+    "SME"
+   ],
+   "neverAbbreviateWhy": "'SME' is the usual abbreviation of 'small and medium-sized enterprises' (second pass): always write the full name"
   },
   {
    "name": "scrip",
@@ -424,7 +508,9 @@
     "d_four_games": "the string 'scrip' occurs only inside other words ('description', 'scripted'); 'Scrap' is a near spelling and the game's own theme word."
    },
    "note": "§ is the section sign, not a real currency symbol.",
-   "readability": "kept: one everyday word."
+   "readability": "kept: one everyday word.",
+   "id": "currency",
+   "current": true
   },
   {
    "name": "Hob's Farm Clearance",
@@ -437,7 +523,9 @@
     "c_apps_and_games_on_the_stores": "App Store / Play: none.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "readability": "kept: everyday words."
+   "readability": "kept: everyday words.",
+   "id": "partnerFarm",
+   "current": true
   },
   {
    "name": "Hob Garnett",
@@ -450,7 +538,9 @@
     "c_apps_and_games_on_the_stores": "Play: 'City of Garnett' (a town app); no game.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "readability": "kept: HOB GAR-net."
+   "readability": "kept: HOB GAR-net.",
+   "id": "farmContact",
+   "current": true
   },
   {
    "name": "Ruddock Demolition",
@@ -465,7 +555,9 @@
     "c_apps_and_games_on_the_stores": "App Store / Play: no app 'Ruddock'.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Fernhough Demolition"
+   "firstPassReplacement": "Fernhough Demolition",
+   "id": "partnerDemolition",
+   "current": false
   },
   {
    "name": "Rosa Ruddock",
@@ -480,7 +572,9 @@
     "c_apps_and_games_on_the_stores": "none",
     "d_four_games": "'Rosa' is Pizza Empire's character 'Nonna Rosa' (games/pizza-empire/game.json: 'Nonna Rosa herself')."
    },
-   "firstPassReplacement": "Edie Fernhough"
+   "firstPassReplacement": "Edie Fernhough",
+   "id": "demolitionContact",
+   "current": false
   },
   {
    "name": "Larkin's Garage",
@@ -495,7 +589,9 @@
     "c_apps_and_games_on_the_stores": "Play: Larkin apps (staffing, fitness); no game.",
     "d_four_games": "clear (nearest 'Larson' in another game's text, two edits)"
    },
-   "firstPassReplacement": "Hollace's Garage"
+   "firstPassReplacement": "Hollace's Garage",
+   "id": "partner.garage",
+   "current": false
   },
   {
    "name": "Pell Street Plumbing",
@@ -510,7 +606,9 @@
     "c_apps_and_games_on_the_stores": "Play: 'Pell+Control', 'PELL-CM'; no game.",
     "d_four_games": "clear (nearest common words 'Sell', 'Poll')"
    },
-   "firstPassReplacement": "Tolleth Street Plumbing"
+   "firstPassReplacement": "Tolleth Street Plumbing",
+   "id": "partner.plumbing",
+   "current": false
   },
   {
    "name": "Fennick Foundry Co-op",
@@ -525,7 +623,9 @@
     "c_apps_and_games_on_the_stores": "see Fennick",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Kelderby Foundry Co-op"
+   "firstPassReplacement": "Kelderby Foundry Co-op",
+   "id": "foundry",
+   "current": false
   },
   {
    "name": "Durnav Steel",
@@ -539,7 +639,9 @@
     "b_exchange_index_port_town_region": "Dunav is a real river; Drnava (Slovakia) is two edits.",
     "c_apps_and_games_on_the_stores": "Play: 'Dunav Ultra', 'Dunav Televizija' (one letter).",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "regional.steel",
+   "current": false
   },
   {
    "name": "Ostro Cable Works",
@@ -553,7 +655,9 @@
     "b_exchange_index_port_town_region": "near Ostrava (Czech city), sound.",
     "c_apps_and_games_on_the_stores": "Play: 'Ostron', 'Ostra'; iOS 'Bistro OSTRO'.",
     "d_four_games": "near-miss of 'Astro' in another game's text (corpus check)."
-   }
+   },
+   "id": "regional.cable",
+   "current": false
   },
   {
    "name": "Vantorra Electronics",
@@ -568,7 +672,9 @@
     "c_apps_and_games_on_the_stores": "Play: 'Vantora' twice (one letter).",
     "d_four_games": "near-miss of Orbit Haulers' sector 'Vantor Deep' (scripts/content/build-space.py line 152): Vantor + ra."
    },
-   "firstPassReplacement": "Corlaith Electronics"
+   "firstPassReplacement": "Corlaith Electronics",
+   "id": "corp.electronics",
+   "current": false
   },
   {
    "name": "Veyra Motors",
@@ -583,7 +689,9 @@
     "c_apps_and_games_on_the_stores": "App Store / Play: at least eight apps named Veyra (subtitles, music player, travel journal, outfit planner).",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Aurenne Motors"
+   "firstPassReplacement": "Aurenne Motors",
+   "id": "corp.motors",
+   "current": false
   },
   {
    "name": "Aldane Aerospace",
@@ -597,7 +705,9 @@
     "b_exchange_index_port_town_region": "not a place (Aldan, a Russian town and river, is one letter away).",
     "c_apps_and_games_on_the_stores": "Play: a game 'Aldane Rex: Rise of a Kingdom' (Serban Adrian); 'Aldan'.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "corp.aerospace",
+   "current": false
   },
   {
    "name": "Corrin Tooling",
@@ -611,7 +721,9 @@
     "b_exchange_index_port_town_region": "not a place.",
     "c_apps_and_games_on_the_stores": "App Store / Play: apps published by Corrin Data and Systems Ltd; Corrin is also the protagonist of Nintendo's 'Fire Emblem Fates' and a 'Super Smash Bros.' fighter (memory), a character of another company's game (L9).",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "corp.tooling",
+   "current": false
   },
   {
    "name": "Quenwick Electrolysers",
@@ -624,7 +736,9 @@
     "c_apps_and_games_on_the_stores": "App Store / Play: none.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "readability": "kept: KWEN-wick; one '-wick', no pile-up."
+   "readability": "kept: KWEN-wick; one '-wick', no pile-up.",
+   "id": "corp.electrolysers",
+   "current": true
   },
   {
    "name": "Meridane Glass",
@@ -639,7 +753,9 @@
     "c_apps_and_games_on_the_stores": "App Store: 'Flatiron by Meridan'.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Ambleth Glass"
+   "firstPassReplacement": "Ambleth Glass",
+   "id": "corp.glass",
+   "current": false
   },
   {
    "name": "Dobbin & Daughters Scrap",
@@ -653,7 +769,10 @@
     "b_exchange_index_port_town_region": "not a place",
     "c_apps_and_games_on_the_stores": "Play: 'Dobbin Dog Ranch', 'Dobbin: Baby Tracker'.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.1",
+   "passTonnes": 0.15,
+   "current": false
   },
   {
    "name": "Pennick Scrap",
@@ -666,7 +785,12 @@
     "c_apps_and_games_on_the_stores": "App Store / Play: none.",
     "d_four_games": "clear (Fennick, its near-miss, is renamed)"
    },
-   "readability": "kept: PEN-ick."
+   "readability": "kept: PEN-ick.",
+   "id": "rival.2",
+   "passTonnes": 1.5,
+   "current": true,
+   "chip": "Pennick",
+   "chipReadability": "PEN-ick: a surname spelled as said"
   },
   {
    "name": "Wrenfield Metals",
@@ -681,7 +805,10 @@
     "c_apps_and_games_on_the_stores": "Play: 'Wrenfield: Friends & Fall-outs', 'Wrenfield: The Clubhouse' (games).",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Hebblewick Metals"
+   "firstPassReplacement": "Hebblewick Metals",
+   "id": "rival.3",
+   "passTonnes": 5,
+   "current": false
   },
   {
    "name": "Cobbet Lane Metals",
@@ -695,7 +822,10 @@
     "b_exchange_index_port_town_region": "Cobbett is also a street name in several towns",
     "c_apps_and_games_on_the_stores": "App Store / Play: none.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.4",
+   "passTonnes": 18,
+   "current": false
   },
   {
    "name": "Corvay Recycling",
@@ -709,7 +839,10 @@
     "b_exchange_index_port_town_region": "not a place",
     "c_apps_and_games_on_the_stores": "Play: Corway, Corpay apps.",
     "d_four_games": "near-miss of Orbit Haulers' buyer 'Corvo Metals' and sector 'Corvo Expanse' (scripts/content/build-space.py): a metals firm in another of this developer's games."
-   }
+   },
+   "id": "rival.5",
+   "passTonnes": 45,
+   "current": false
   },
   {
    "name": "Mardle & Sons",
@@ -724,7 +857,10 @@
     "c_apps_and_games_on_the_stores": "Play: a game 'Mardle: Swipe Labyrinth Maze' and an app 'Mardles'.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Odderwick & Sons"
+   "firstPassReplacement": "Odderwick & Sons",
+   "id": "rival.6",
+   "passTonnes": 120,
+   "current": false
   },
   {
    "name": "Fennick Metal Recovery",
@@ -739,7 +875,10 @@
     "c_apps_and_games_on_the_stores": "see Fennick",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Kelderby Metal Recovery"
+   "firstPassReplacement": "Kelderby Metal Recovery",
+   "id": "rival.7",
+   "passTonnes": 300,
+   "current": false
   },
   {
    "name": "Stannard Ferrous",
@@ -754,7 +893,10 @@
     "c_apps_and_games_on_the_stores": "App Store: 'The Standard - My Retirement' (finance), Doug Stannard radio apps.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Cawdrey Ferrous"
+   "firstPassReplacement": "Cawdrey Ferrous",
+   "id": "rival.8",
+   "passTonnes": 800,
+   "current": false
   },
   {
    "name": "Lowmoor Non-Ferrous",
@@ -769,7 +911,10 @@
     "c_apps_and_games_on_the_stores": "App Store / Play: none.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Cradsworth Non-Ferrous"
+   "firstPassReplacement": "Cradsworth Non-Ferrous",
+   "id": "rival.9",
+   "passTonnes": 2000,
+   "current": false
   },
   {
    "name": "Harkwood Reclaim",
@@ -784,7 +929,10 @@
     "c_apps_and_games_on_the_stores": "Play: 'Harwood District', 'Hardwood Empire' (a game), 'Heroes of Larkwood'.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Skelderwick Reclaim"
+   "firstPassReplacement": "Skelderwick Reclaim",
+   "id": "rival.10",
+   "passTonnes": 4500,
+   "current": false
   },
   {
    "name": "Tallis-Merrow Metals",
@@ -798,7 +946,10 @@
     "b_exchange_index_port_town_region": "Merrow is a real village (Surrey).",
     "c_apps_and_games_on_the_stores": "App Store / Play: no game.",
     "d_four_games": "'Merrow' is one letter from Orbit Haulers' sector 'Morrow Belt' (scripts/content/build-space.py)."
-   }
+   },
+   "id": "rival.11",
+   "passTonnes": 10000,
+   "current": false
   },
   {
    "name": "Ashgrove Ferrous",
@@ -812,7 +963,10 @@
     "b_exchange_index_port_town_region": "Ashgrove is a real suburb (Brisbane) and several villages.",
     "c_apps_and_games_on_the_stores": "Play: 'Ashgrove: The Silent Hour', 'Still Waters: Ashgrove Mystery' (games).",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.12",
+   "passTonnes": 22000,
+   "current": false
   },
   {
    "name": "Lindqvist-Barr Metals",
@@ -827,7 +981,10 @@
    },
    "firstPassVerdict": "clear",
    "replacedBy": "Nordal Metals",
-   "why": "'qv' is a cluster no English reader says right the first time"
+   "why": "'qv' is a cluster no English reader says right the first time",
+   "id": "rival.13",
+   "passTonnes": 45000,
+   "current": false
   },
   {
    "name": "Pollard Recycling",
@@ -841,7 +998,10 @@
     "b_exchange_index_port_town_region": "not a place",
     "c_apps_and_games_on_the_stores": "App Store / Play: 'Pollard Chicken', apps by Pollard Banknote Limited.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.14",
+   "passTonnes": 90000,
+   "current": false
   },
   {
    "name": "Saxby Resource Recovery",
@@ -855,7 +1015,10 @@
     "b_exchange_index_port_town_region": "Saxby is a real village (Leicestershire, Lincolnshire).",
     "c_apps_and_games_on_the_stores": "App Store: 'Saxbys' (two publishers).",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.15",
+   "passTonnes": 170000,
+   "current": false
   },
   {
    "name": "Kestrel Bay Metals",
@@ -869,7 +1032,10 @@
     "b_exchange_index_port_town_region": "not found as a real bay.",
     "c_apps_and_games_on_the_stores": "App Store / Play: 'Kestrel LiNK', 'Kestrel Portfolio' (finance).",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.16",
+   "passTonnes": 320000,
+   "current": false
   },
   {
    "name": "Haverin Steel & Alloys",
@@ -883,7 +1049,10 @@
     "b_exchange_index_port_town_region": "one letter from Havering, a London borough.",
     "c_apps_and_games_on_the_stores": "App Store / Play: none.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.17",
+   "passTonnes": 550000,
+   "current": false
   },
   {
    "name": "Ondine Metallurgy",
@@ -897,7 +1066,10 @@
     "b_exchange_index_port_town_region": "not a place",
     "c_apps_and_games_on_the_stores": "Play: 'Ondine' (Quantoria Labs), 'Ondine - Hospitality Assistant'.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.18",
+   "passTonnes": 850000,
+   "current": false
   },
   {
    "name": "Crayle International",
@@ -910,7 +1082,12 @@
     "c_apps_and_games_on_the_stores": "App Store / Play: none.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "readability": "kept: CRAIL."
+   "readability": "kept: CRAIL.",
+   "id": "rival.19",
+   "passTonnes": 1250000,
+   "current": true,
+   "chip": "Crayle",
+   "chipReadability": "CRAYL: one syllable, spelled as said"
   },
   {
    "name": "Hemsted-Pryce Resources",
@@ -925,7 +1102,10 @@
     "c_apps_and_games_on_the_stores": "Play: 'Pryce' (Hard Core Logo).",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "firstPassReplacement": "Ulmeth Resources"
+   "firstPassReplacement": "Ulmeth Resources",
+   "id": "rival.20",
+   "passTonnes": 1800000,
+   "current": false
   },
   {
    "name": "Teodor Metals",
@@ -938,7 +1118,12 @@
     "c_apps_and_games_on_the_stores": "App Store / Play: only apps by developers whose first name is Teodor.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
    },
-   "readability": "kept: TAY-oh-dor."
+   "readability": "kept: TAY-oh-dor.",
+   "id": "rival.21",
+   "passTonnes": 2500000,
+   "current": true,
+   "chip": "Teodor",
+   "chipReadability": "TEH-o-dor: a given name, spelled as said"
   },
   {
    "name": "Marenko Global",
@@ -952,7 +1137,10 @@
     "b_exchange_index_port_town_region": "Marengo is a real town (Italy; several in the USA).",
     "c_apps_and_games_on_the_stores": "App Store / Play: none.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.22",
+   "passTonnes": 3400000,
+   "current": false
   },
   {
    "name": "Halvard Steel & Alloys",
@@ -966,7 +1154,10 @@
     "b_exchange_index_port_town_region": "not a place",
     "c_apps_and_games_on_the_stores": "App Store / Play: none.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.23",
+   "passTonnes": 4500000,
+   "current": false
   },
   {
    "name": "Sunmere Metals Holding",
@@ -980,7 +1171,10 @@
     "b_exchange_index_port_town_region": "not a place",
     "c_apps_and_games_on_the_stores": "Play: a game 'Hero of Sunmere' (Mind Game Labs) and 'TripArchive' by Sunmere.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.24",
+   "passTonnes": 5600000,
+   "current": false
   },
   {
    "name": "Orrin Global Metals",
@@ -994,7 +1188,10 @@
     "b_exchange_index_port_town_region": "the River Orrin (Scotland) is real.",
     "c_apps_and_games_on_the_stores": "App Store / Play: 'Orrin Budget Planner' and other finance apps named Orrin.",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
-   }
+   },
+   "id": "rival.25",
+   "passTonnes": 7000000,
+   "current": false
   },
   {
    "name": "Kelderby",
@@ -1010,7 +1207,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Oakbridge",
-   "rejectedBecause": "readable, but the home town is on the first screen: replaced by two everyday morphemes (oak + bridge); 'Kelderby' stays free"
+   "rejectedBecause": "readable, but the home town is on the first screen: replaced by two everyday morphemes (oak + bridge); 'Kelderby' stays free",
+   "id": "homeTown",
+   "current": false
   },
   {
    "name": "Kelderby Vale",
@@ -1026,7 +1225,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Oakbridge Vale",
-   "rejectedBecause": "see Kelderby"
+   "rejectedBecause": "see Kelderby",
+   "id": "homeDistrict",
+   "current": false
   },
   {
    "name": "Thwaiteby Lane",
@@ -1043,7 +1244,9 @@
    "note": "If the lead finds it hard to say aloud, an alternative that also passed the store and company checks is 'Gannetby Lane' (Gannetby is then free only if rival 14 takes another word).",
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Cinder Lane",
-   "rejectedBecause": "'th' cluster and '-thwaite': most non-native readers cannot say it (the lead's example)"
+   "rejectedBecause": "'th' cluster and '-thwaite': most non-native readers cannot say it (the lead's example)",
+   "id": "homeLane",
+   "current": false
   },
   {
    "name": "Thwaiteby Lane Yard",
@@ -1059,7 +1262,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Cinder Lane Yard",
-   "rejectedBecause": "see Thwaiteby Lane"
+   "rejectedBecause": "see Thwaiteby Lane",
+   "id": "homeYard",
+   "current": false
   },
   {
    "name": "Ashendry Ridge",
@@ -1075,7 +1280,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Flint Ridge",
-   "rejectedBecause": "'Ashendry' is no everyday morpheme and is read ash-EN-dry or ASH-en-dry; flint is a word of the trade and the landscape"
+   "rejectedBecause": "'Ashendry' is no everyday morpheme and is read ash-EN-dry or ASH-en-dry; flint is a word of the trade and the landscape",
+   "id": "site.uplands",
+   "current": false
   },
   {
    "name": "Meskarn",
@@ -1091,7 +1298,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Sandport",
-   "rejectedBecause": "'-skarn' is a consonant pile no reader of English expects; the exchange city's name is on every price"
+   "rejectedBecause": "'-skarn' is a consonant pile no reader of English expects; the exchange city's name is on every price",
+   "id": "city.east",
+   "current": false
   },
   {
    "name": "Meskarn Point",
@@ -1107,7 +1316,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Crane Point",
-   "rejectedBecause": "see Meskarn; a headland of cranes beside the exchange and the air-cargo terminal"
+   "rejectedBecause": "see Meskarn; a headland of cranes beside the exchange and the air-cargo terminal",
+   "id": "site.point",
+   "current": false
   },
   {
    "name": "Meskarn Metal Exchange",
@@ -1124,7 +1335,13 @@
    "note": "No abbreviations shown (MME would also be ambiguous).",
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Sandport Metal Exchange",
-   "rejectedBecause": "see Meskarn"
+   "rejectedBecause": "see Meskarn",
+   "id": "exchange.east",
+   "current": false,
+   "neverAbbreviate": [
+    "SME"
+   ],
+   "neverAbbreviateWhy": "'SME' is the usual abbreviation of 'small and medium-sized enterprises' (second pass): always write the full name"
   },
   {
    "name": "Coralind Coast",
@@ -1140,7 +1357,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Clay Coast",
-   "rejectedBecause": "three syllables with an unclear stress (COR-a-lind, cor-A-lind); 'Coralind' stays in use as a rival firm's name"
+   "rejectedBecause": "three syllables with an unclear stress (COR-a-lind, cor-A-lind); 'Coralind' stays in use as a rival firm's name",
+   "id": "site.coast",
+   "current": false
   },
   {
    "name": "Fernhough Demolition",
@@ -1156,7 +1375,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Cottle Demolition",
-   "rejectedBecause": "silent 'gh': read fern-HUFF, fern-HOW, fern-HO"
+   "rejectedBecause": "silent 'gh': read fern-HUFF, fern-HOW, fern-HO",
+   "id": "partnerDemolition",
+   "current": false
   },
   {
    "name": "Edie Fernhough",
@@ -1172,7 +1393,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Edie Cottle",
-   "rejectedBecause": "see Fernhough Demolition; the first name Edie is kept"
+   "rejectedBecause": "see Fernhough Demolition; the first name Edie is kept",
+   "id": "demolitionContact",
+   "current": false
   },
   {
    "name": "Hollace's Garage",
@@ -1188,7 +1411,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Parfitt's Garage",
-   "rejectedBecause": "'Hollace' is read HOL-ace or hol-LACE; a common surname spelled as it sounds replaces it"
+   "rejectedBecause": "'Hollace' is read HOL-ace or hol-LACE; a common surname spelled as it sounds replaces it",
+   "id": "partner.garage",
+   "current": false
   },
   {
    "name": "Tolleth Street Plumbing",
@@ -1204,7 +1429,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Tap Street Plumbing",
-   "rejectedBecause": "'th' cluster"
+   "rejectedBecause": "'th' cluster",
+   "id": "partner.plumbing",
+   "current": false
   },
   {
    "name": "Kelderby Foundry Co-op",
@@ -1220,7 +1447,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Oakbridge Foundry Co-op",
-   "rejectedBecause": "carries the home town, renamed"
+   "rejectedBecause": "carries the home town, renamed",
+   "id": "foundry",
+   "current": false
   },
   {
    "name": "Garrowfield Steel",
@@ -1234,7 +1463,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: GAR-oh-field, three syllables spelled as said."
+   "readability": "kept: GAR-oh-field, three syllables spelled as said.",
+   "id": "regional.steel",
+   "current": true
   },
   {
    "name": "Rowkirk Cable Works",
@@ -1248,7 +1479,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: ROW-kirk (either reading of row is fine)."
+   "readability": "kept: ROW-kirk (either reading of row is fine).",
+   "id": "regional.cable",
+   "current": true
   },
   {
    "name": "Corlaith Electronics",
@@ -1265,7 +1498,9 @@
    "note": "Logo check (two colours, shape-and-colour pair against known brands) is the art step's, not this register's.",
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Telano Electronics",
-   "rejectedBecause": "'-laith' is a 'th' cluster with an unclear vowel (LAYTH, LYTH); the logo corporation must read at a glance"
+   "rejectedBecause": "'-laith' is a 'th' cluster with an unclear vowel (LAYTH, LYTH); the logo corporation must read at a glance",
+   "id": "corp.electronics",
+   "current": false
   },
   {
    "name": "Aurenne Motors",
@@ -1281,7 +1516,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Tolvan Motors",
-   "rejectedBecause": "'Au-' is read ow, or, oh: three readings in three languages"
+   "rejectedBecause": "'Au-' is read ow, or, oh: three readings in three languages",
+   "id": "corp.motors",
+   "current": false
   },
   {
    "name": "Overvane Aerospace",
@@ -1295,7 +1532,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: OH-ver-vane, two everyday words."
+   "readability": "kept: OH-ver-vane, two everyday words.",
+   "id": "corp.aerospace",
+   "current": true
   },
   {
    "name": "Halcarn Tooling",
@@ -1309,7 +1548,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: HAL-karn."
+   "readability": "kept: HAL-karn.",
+   "id": "corp.tooling",
+   "current": true
   },
   {
    "name": "Ambleth Glass",
@@ -1325,7 +1566,9 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Clearmoor Glass",
-   "rejectedBecause": "'th' cluster"
+   "rejectedBecause": "'th' cluster",
+   "id": "corp.glass",
+   "current": false
   },
   {
    "name": "Haddersby & Daughters Scrap",
@@ -1339,7 +1582,15 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: HAD-ers-bee; the first rival a player meets, read right the first time in a read-aloud test of the rule's kind (one doubled consonant, no cluster)."
+   "readability": "kept: HAD-ers-bee; the first rival a player meets, read right the first time in a read-aloud test of the rule's kind (one doubled consonant, no cluster).",
+   "id": "rival.1",
+   "passTonnes": 0.15,
+   "current": false,
+   "thirdPass": {
+    "verdict": "rejected (third pass)",
+    "replacedBy": "Bramley & Daughters Scrap",
+    "rejectedBecause": "the first rival everyone reads in the first five minutes: 'Hadders-' is no everyday morpheme, and HAD-ers-by is one vowel from Huddersfield (a well-known town; from memory)"
+   }
   },
   {
    "name": "Hebblewick Metals",
@@ -1355,7 +1606,10 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Brookmill Metals",
-   "rejectedBecause": "named by the lead as failing: '-wick' pile-up"
+   "rejectedBecause": "named by the lead as failing: '-wick' pile-up",
+   "id": "rival.3",
+   "passTonnes": 5,
+   "current": false
   },
   {
    "name": "Tenterby Lane Metals",
@@ -1369,7 +1623,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: TEN-ter-bee."
+   "readability": "kept: TEN-ter-bee.",
+   "id": "rival.4",
+   "passTonnes": 18,
+   "current": true,
+   "chip": "Tenterby Lane",
+   "chipReadability": "TEN-ter-by: tenter (as in tenterhooks) + by; three syllables, spelled as said"
   },
   {
    "name": "Kolbeck Recycling",
@@ -1383,7 +1642,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: KOL-beck."
+   "readability": "kept: KOL-beck.",
+   "id": "rival.5",
+   "passTonnes": 45,
+   "current": true,
+   "chip": "Kolbeck",
+   "chipReadability": "KOL-beck: beck is a stream; spelled as said"
   },
   {
    "name": "Odderwick & Sons",
@@ -1399,7 +1663,10 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Tunney & Sons",
-   "rejectedBecause": "'-wick' and 'odder' (odd) together; a plain surname replaces it"
+   "rejectedBecause": "'-wick' and 'odder' (odd) together; a plain surname replaces it",
+   "id": "rival.6",
+   "passTonnes": 120,
+   "current": false
   },
   {
    "name": "Kelderby Metal Recovery",
@@ -1415,7 +1682,10 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Oakbridge Metal Recovery",
-   "rejectedBecause": "the home town's firm follows the town's new name"
+   "rejectedBecause": "the home town's firm follows the town's new name",
+   "id": "rival.7",
+   "passTonnes": 300,
+   "current": false
   },
   {
    "name": "Cawdrey Ferrous",
@@ -1431,7 +1701,10 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Millbeck Ferrous",
-   "rejectedBecause": "'aw' and '-rey' are read three ways (CAW-dree, COW-dray, CAW-dray)"
+   "rejectedBecause": "'aw' and '-rey' are read three ways (CAW-dree, COW-dray, CAW-dray)",
+   "id": "rival.8",
+   "passTonnes": 800,
+   "current": false
   },
   {
    "name": "Cradsworth Non-Ferrous",
@@ -1447,7 +1720,10 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Larkmoor Non-Ferrous",
-   "rejectedBecause": "named by the lead as failing: 'dsw' and 'th'"
+   "rejectedBecause": "named by the lead as failing: 'dsw' and 'th'",
+   "id": "rival.9",
+   "passTonnes": 2000,
+   "current": false
   },
   {
    "name": "Skelderwick Reclaim",
@@ -1463,7 +1739,10 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Stonebeck Reclaim",
-   "rejectedBecause": "named by the lead as failing: '-wick' pile-up"
+   "rejectedBecause": "named by the lead as failing: '-wick' pile-up",
+   "id": "rival.10",
+   "passTonnes": 4500,
+   "current": false
   },
   {
    "name": "Ashendry Metals",
@@ -1477,7 +1756,15 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept as a rival's name: AS-hen-dry, three syllables; no longer a place."
+   "readability": "kept as a rival's name: AS-hen-dry, three syllables; no longer a place.",
+   "id": "rival.11",
+   "passTonnes": 10000,
+   "current": false,
+   "thirdPass": {
+    "verdict": "rejected (third pass)",
+    "replacedBy": "Highfold Metals",
+    "rejectedBecause": "the second pass's own words when it dropped Ashendry Ridge: no everyday morpheme, read ash-EN-dry or ASH-en-dry; a chip must read at a glance"
+   }
   },
   {
    "name": "Aldermoss Ferrous",
@@ -1491,7 +1778,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: AL-der-moss, two everyday words."
+   "readability": "kept: AL-der-moss, two everyday words.",
+   "id": "rival.12",
+   "passTonnes": 22000,
+   "current": true,
+   "chip": "Aldermoss",
+   "chipReadability": "AL-der-moss: alder + moss"
   },
   {
    "name": "Gannetby Recycling",
@@ -1505,7 +1797,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: GAN-net-bee."
+   "readability": "kept: GAN-net-bee.",
+   "id": "rival.14",
+   "passTonnes": 90000,
+   "current": true,
+   "chip": "Gannetby",
+   "chipReadability": "GAN-net-by: gannet (a sea bird) + by"
   },
   {
    "name": "Morrance Resource Recovery",
@@ -1519,7 +1816,15 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: MOR-ance."
+   "readability": "kept: MOR-ance.",
+   "id": "rival.15",
+   "passTonnes": 170000,
+   "current": false,
+   "thirdPass": {
+    "verdict": "rejected (third pass)",
+    "replacedBy": "Rookhill Resource Recovery",
+    "rejectedBecause": "an invented word with no everyday morpheme whose stress a reader must guess (MOR-rance or mor-RANCE); the second pass rejected Coralind for exactly this"
+   }
   },
   {
    "name": "Saltreach Metals",
@@ -1533,7 +1838,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept with Saltreach."
+   "readability": "kept with Saltreach.",
+   "id": "rival.16",
+   "passTonnes": 320000,
+   "current": true,
+   "chip": "Saltreach",
+   "chipReadability": "SALT-reach; the port site's word"
   },
   {
    "name": "Tervalen Steel & Alloys",
@@ -1547,7 +1857,15 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: ter-VAH-len."
+   "readability": "kept: ter-VAH-len.",
+   "id": "rival.17",
+   "passTonnes": 550000,
+   "current": false,
+   "thirdPass": {
+    "verdict": "rejected (third pass)",
+    "replacedBy": "Kilnfield Steel & Alloys",
+    "rejectedBecause": "an invented word with no everyday morpheme whose stress a reader must guess (TER-va-len or ter-VAL-en); the second pass rejected Coralind for exactly this"
+   }
   },
   {
    "name": "Kestrane Metallurgy",
@@ -1561,7 +1879,15 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: KES-trane."
+   "readability": "kept: KES-trane.",
+   "id": "rival.18",
+   "passTonnes": 850000,
+   "current": false,
+   "thirdPass": {
+    "verdict": "rejected (third pass)",
+    "replacedBy": "Hazelford Metallurgy",
+    "rejectedBecause": "an invented word with no everyday morpheme whose stress a reader must guess (kes-TRANE or KES-trun); the second pass rejected Coralind for exactly this"
+   }
   },
   {
    "name": "Ulmeth Resources",
@@ -1577,7 +1903,10 @@
    },
    "firstPassVerdict": "new (replacement)",
    "replacedBy": "Tarnmoor Resources",
-   "rejectedBecause": "'th' cluster and an initial 'Ulm-' few readers place"
+   "rejectedBecause": "'th' cluster and an initial 'Ulm-' few readers place",
+   "id": "rival.20",
+   "passTonnes": 1800000,
+   "current": false
   },
   {
    "name": "Ondrell Global",
@@ -1591,7 +1920,15 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: ON-drell."
+   "readability": "kept: ON-drell.",
+   "id": "rival.22",
+   "passTonnes": 3400000,
+   "current": false,
+   "thirdPass": {
+    "verdict": "rejected (third pass)",
+    "replacedBy": "Wrenhill Global",
+    "rejectedBecause": "an invented word with no everyday morpheme whose stress a reader must guess (ON-drell or on-DRELL); the second pass rejected Coralind for exactly this"
+   }
   },
   {
    "name": "Coralind Steel & Alloys",
@@ -1605,7 +1942,15 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept as a rival's name; no longer a place."
+   "readability": "kept as a rival's name; no longer a place.",
+   "id": "rival.23",
+   "passTonnes": 4500000,
+   "current": false,
+   "thirdPass": {
+    "verdict": "rejected (third pass)",
+    "replacedBy": "Pearlbay Steel & Alloys",
+    "rejectedBecause": "the second pass's own words when it dropped Coralind Coast: three syllables with an unclear stress (COR-a-lind, cor-A-lind)"
+   }
   },
   {
    "name": "Tarlevan Metals Holding",
@@ -1619,7 +1964,15 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: TAR-le-van."
+   "readability": "kept: TAR-le-van.",
+   "id": "rival.24",
+   "passTonnes": 5600000,
+   "current": false,
+   "thirdPass": {
+    "verdict": "rejected (third pass)",
+    "replacedBy": "Oakfold Metals Holding",
+    "rejectedBecause": "an invented word with no everyday morpheme whose stress a reader must guess (TAR-le-van or tar-LEV-an); the second pass rejected Coralind for exactly this"
+   }
   },
   {
    "name": "Vessendal Global Metals",
@@ -1633,7 +1986,15 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
    },
-   "readability": "kept: VES-sen-dal."
+   "readability": "kept: VES-sen-dal.",
+   "id": "rival.25",
+   "passTonnes": 7000000,
+   "current": false,
+   "thirdPass": {
+    "verdict": "rejected (third pass)",
+    "replacedBy": "Elmfield Global Metals",
+    "rejectedBecause": "an invented word with no everyday morpheme whose stress a reader must guess (VES-sen-dal or ves-SEN-dal); the second pass rejected Coralind for exactly this"
+   }
   },
   {
    "name": "Cinder Lane",
@@ -1662,7 +2023,9 @@
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
    "readability": "CIN-der LANE: two everyday words, spelled as they sound; cinder is the slag and ash of a furnace, a word of the trade.",
-   "note": "The shop sign and every ticket read 'Cinder Lane Yard'."
+   "note": "The shop sign and every ticket read 'Cinder Lane Yard'.",
+   "id": "homeLane",
+   "current": true
   },
   {
    "name": "Cinder Lane Yard",
@@ -1682,7 +2045,9 @@
     "c_apps_and_games_on_the_stores": "see Cinder Lane",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "see Cinder Lane"
+   "readability": "see Cinder Lane",
+   "id": "homeYard",
+   "current": true
   },
   {
    "name": "Oakbridge",
@@ -1710,7 +2075,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Oakbridge'; nearest 'Oakridge Auctions', 'Oakridge Park' (one letter, unrelated apps).",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "OAK-bridge: two everyday words, two syllables."
+   "readability": "OAK-bridge: two everyday words, two syllables.",
+   "id": "homeTown",
+   "current": true
   },
   {
    "name": "Oakbridge Vale",
@@ -1730,7 +2097,9 @@
     "c_apps_and_games_on_the_stores": "see Oakbridge",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "see Oakbridge"
+   "readability": "see Oakbridge",
+   "id": "homeDistrict",
+   "current": true
   },
   {
    "name": "Westholm",
@@ -1758,7 +2127,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Westholm' (nearest 'Beverley Westholme Cars', a local taxi app, one letter).",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "WEST-holm: 'west' says which side of the ocean it is; holm (a river island) is said as written. Pairs with Eastmere."
+   "readability": "WEST-holm: 'west' says which side of the ocean it is; holm (a river island) is said as written. Pairs with Eastmere.",
+   "id": "country.west",
+   "current": true
   },
   {
    "name": "Eastmere Union",
@@ -1786,7 +2157,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Eastmere'.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "EAST-meer YOO-nyun: says which side it is; mere (a lake) is said as written."
+   "readability": "EAST-meer YOO-nyun: says which side it is; mere (a lake) is said as written.",
+   "id": "country.east",
+   "current": true
   },
   {
    "name": "Sandport",
@@ -1814,7 +2187,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Sandport'.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "SAND-port: two everyday words. The exchange is the Sandport Metal Exchange."
+   "readability": "SAND-port: two everyday words. The exchange is the Sandport Metal Exchange.",
+   "id": "city.east",
+   "current": true
   },
   {
    "name": "Sandport Metal Exchange",
@@ -1835,7 +2210,13 @@
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
    "readability": "see Sandport",
-   "note": "Pairs with the Bellmarch Metal Exchange (kept). 'SME' is not to be shown either: it is the usual abbreviation of 'small and medium-sized enterprises'."
+   "note": "Pairs with the Bellmarch Metal Exchange (kept). 'SME' is not to be shown either: it is the usual abbreviation of 'small and medium-sized enterprises'.",
+   "id": "exchange.east",
+   "current": true,
+   "neverAbbreviate": [
+    "SME"
+   ],
+   "neverAbbreviateWhy": "'SME' is the usual abbreviation of 'small and medium-sized enterprises' (second pass): always write the full name"
   },
   {
    "name": "Crane Point",
@@ -1863,7 +2244,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word 'Crane': crane-operator and crane-truck games and apps; none 'Crane Point'.",
     "d_four_games": "clear as a name; NOTE 'crane' occurs as a common noun in Proudly Adequate's text ('The harbour crane has been oiled'); not a name there, so accepted"
    },
-   "readability": "CRANE POINT: two everyday words; the cranes of the air-cargo terminal and the port stand there."
+   "readability": "CRANE POINT: two everyday words; the cranes of the air-cargo terminal and the port stand there.",
+   "id": "site.point",
+   "current": true
   },
   {
    "name": "Flint Ridge",
@@ -1891,7 +2274,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word 'Flint': habit trackers, browsers, an AI app, an electric co-operative; none 'Flint Ridge'.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "FLINT RIDGE: two everyday words of the landscape."
+   "readability": "FLINT RIDGE: two everyday words of the landscape.",
+   "id": "site.uplands",
+   "current": true
   },
   {
    "name": "Clay Coast",
@@ -1919,7 +2304,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word 'Clay': clay games and apps; none 'Clay Coast'.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "CLAY COAST: two everyday words, one syllable each."
+   "readability": "CLAY COAST: two everyday words, one syllable each.",
+   "id": "site.coast",
+   "current": true
   },
   {
    "name": "Telano Electronics",
@@ -1951,7 +2338,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Telano'; nearest 'Talano', a personal app (one letter).",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "te-LAH-no: three open syllables, read the same in English, Spanish, Italian and most of Asia."
+   "readability": "te-LAH-no: three open syllables, read the same in English, Spanish, Italian and most of Asia.",
+   "id": "corp.electronics",
+   "current": true
   },
   {
    "name": "Tolvan Motors",
@@ -1991,7 +2380,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Tolvan' except a wallpaper app 'Tolvan - Wallhaven Wallpapers' by a person (Google Play).",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "TOL-van: two syllables, spelled as said; no 'au', no doubled vowel."
+   "readability": "TOL-van: two syllables, spelled as said; no 'au', no doubled vowel.",
+   "id": "corp.motors",
+   "current": true
   },
   {
    "name": "Clearmoor Glass",
@@ -2019,7 +2410,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Clearmoor'.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "CLEAR-moor: two everyday words; clear says glass."
+   "readability": "CLEAR-moor: two everyday words; clear says glass.",
+   "id": "corp.glass",
+   "current": true
   },
   {
    "name": "Cottle Demolition",
@@ -2051,7 +2444,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word 'Cottle': apps by people of that surname; none of this name.",
     "d_four_games": "clear (nearest word in the four games: BOTTLE, an all-caps common word, one letter)"
    },
-   "readability": "COT-tle: two syllables, spelled as said."
+   "readability": "COT-tle: two syllables, spelled as said.",
+   "id": "partnerDemolition",
+   "current": true
   },
   {
    "name": "Edie Cottle",
@@ -2071,7 +2466,9 @@
     "c_apps_and_games_on_the_stores": "see Cottle Demolition",
     "d_four_games": "clear; 'Edie' is kept out of the crew list"
    },
-   "readability": "EE-dee COT-tle."
+   "readability": "EE-dee COT-tle.",
+   "id": "demolitionContact",
+   "current": true
   },
   {
    "name": "Parfitt's Garage",
@@ -2103,7 +2500,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word 'Parfitt': none.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "PAR-fit's GA-rage: spelled as said."
+   "readability": "PAR-fit's GA-rage: spelled as said.",
+   "id": "partner.garage",
+   "current": true
   },
   {
    "name": "Tap Street Plumbing",
@@ -2135,7 +2534,9 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word 'Tap Street': nothing.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "TAP STREET: two one-syllable everyday words."
+   "readability": "TAP STREET: two one-syllable everyday words.",
+   "id": "partner.plumbing",
+   "current": true
   },
   {
    "name": "Oakbridge Foundry Co-op",
@@ -2155,7 +2556,9 @@
     "c_apps_and_games_on_the_stores": "see Oakbridge",
     "d_four_games": "clear as a name; NOTE 'Foundry' is a word of Orbit Haulers' 'Brightwater Foundry' (spec 2 already uses it here)"
    },
-   "readability": "see Oakbridge"
+   "readability": "see Oakbridge",
+   "id": "foundry",
+   "current": true
   },
   {
    "name": "Brookmill Metals",
@@ -2183,7 +2586,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Brookmill'.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "BROOK-mill."
+   "readability": "BROOK-mill.",
+   "id": "rival.3",
+   "passTonnes": 5,
+   "current": true,
+   "chip": "Brookmill",
+   "chipReadability": "BROOK-mill: two everyday words"
   },
   {
    "name": "Tunney & Sons",
@@ -2215,7 +2623,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word 'Tunney': apps by people of that surname.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "TUN-ee and SONS."
+   "readability": "TUN-ee and SONS.",
+   "id": "rival.6",
+   "passTonnes": 120,
+   "current": true,
+   "chip": "Tunney & Sons",
+   "chipReadability": "TUN-ee: a surname spelled as said (Gene Tunney the boxer, recorded by the second pass)"
   },
   {
    "name": "Oakbridge Metal Recovery",
@@ -2235,7 +2648,12 @@
     "c_apps_and_games_on_the_stores": "see Oakbridge",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "see Oakbridge"
+   "readability": "see Oakbridge",
+   "id": "rival.7",
+   "passTonnes": 300,
+   "current": true,
+   "chip": "Oakbridge",
+   "chipReadability": "the home town's word; the chip reads as the town's firm"
   },
   {
    "name": "Millbeck Ferrous",
@@ -2263,7 +2681,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Millbeck'.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "MILL-beck (beck: a stream)."
+   "readability": "MILL-beck (beck: a stream).",
+   "id": "rival.8",
+   "passTonnes": 800,
+   "current": true,
+   "chip": "Millbeck",
+   "chipReadability": "MILL-beck"
   },
   {
    "name": "Larkmoor Non-Ferrous",
@@ -2287,7 +2710,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Larkmoor'.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "LARK-moor."
+   "readability": "LARK-moor.",
+   "id": "rival.9",
+   "passTonnes": 2000,
+   "current": true,
+   "chip": "Larkmoor",
+   "chipReadability": "LARK-moor"
   },
   {
    "name": "Stonebeck Reclaim",
@@ -2311,7 +2739,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Stonebeck'.",
     "d_four_games": "clear as a name; NOTE 'Stone' is a word of Proudly Adequate's text; one word here"
    },
-   "readability": "STONE-beck."
+   "readability": "STONE-beck.",
+   "id": "rival.10",
+   "passTonnes": 4500,
+   "current": true,
+   "chip": "Stonebeck",
+   "chipReadability": "STONE-beck"
   },
   {
    "name": "Nordal Metals",
@@ -2339,7 +2772,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Nordal'.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "NOR-dal: keeps a Nordic firm on the ladder without the qv."
+   "readability": "NOR-dal: keeps a Nordic firm on the ladder without the qv.",
+   "id": "rival.13",
+   "passTonnes": 45000,
+   "current": true,
+   "chip": "Nordal",
+   "chipReadability": "NOR-dal: two syllables, spelled as said"
   },
   {
    "name": "Tarnmoor Resources",
@@ -2363,7 +2801,542 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for the distinctive word: no app 'Tarnmoor'.",
     "d_four_games": "clear: no exact match and no distinctive word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (corpus.py)"
    },
-   "readability": "TARN-moor (tarn: a mountain lake)."
+   "readability": "TARN-moor (tarn: a mountain lake).",
+   "id": "rival.20",
+   "passTonnes": 1800000,
+   "current": true,
+   "chip": "Tarnmoor",
+   "chipReadability": "TARN-moor: tarn (a mountain lake) + moor"
+  },
+  {
+   "name": "Bramley & Daughters Scrap",
+   "kind": "rival firm (simulated), 0.15 t",
+   "usedIn": "yard-stage1.md 2.11 and 4.4 (by id); yard-design.md 6.2",
+   "verdict": "new (replacement, third pass)",
+   "replaces": "Haddersby & Daughters Scrap",
+   "id": "rival.1",
+   "current": true,
+   "passTonnes": 0.15,
+   "chip": "Bramley",
+   "candidates": [
+    {
+     "name": "Bramley & Daughters Scrap",
+     "result": "chosen: BRAM-lee, two syllables, an everyday word (the cooking apple); villages and small firms of the name, no metals firm in the first Companies House results, no app or game"
+    },
+    {
+     "name": "Pike & Daughters Scrap",
+     "result": "fails (a): PIKE AND DAUGHTERS LIMITED exists at Companies House (the exact name); Pike Industries, a construction-materials firm, publishes apps on both stores"
+    },
+    {
+     "name": "Dobbs & Daughters Scrap",
+     "result": "fails (d): one Soundex step from 'Dibs' in the four games; DOBBS ENGINEERING, DOBBS HAULAGE at Companies House; the spec's Dobbin was already dropped"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "UK Companies House search 'Bramley': BRAMLEY LIMITED; BRAMLEY & CO LTD; BRAMLEY ACCOUNTANCY LTD; BRAMLEY ACORN LIMITED; BRAMLEY & ARTHUR LTD; BRAMLEY & BEAM LTD. WEB SEARCH NOT RUN: the run's shared budget of web searches was already spent when this pass began (the tool refused every query); see couldNotVerify in notes/names.md.",
+    "b_exchange_index_port_town_region": "Wikidata: enwiki page 'Bramley': Wikimedia disambiguation page; items labelled exactly so: Bramley: village and civil parish in Basingstoke and Deane, Hampshire, England; Bramley: family name; Bramley: village and civil parish in Rotherham, South Yorkshire, United Kingdom; Bramley: village and civil parish in Surrey, UK; Bramley: area of Leeds, West Yorkshire, England",
+    "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for 'Bramley': Bramley Health App / Fuller and Forbes Healthcare; Bramley Bites / Workflow Digital Ltd; Kingfish Bramley / My Food Basket",
+    "d_four_games": "corpus.py (games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files): clear: no exact match, no word within one letter or one Soundex step"
+   },
+   "readability": "BRAM-lee, two syllables, an everyday word (the cooking apple); villages and small firms of the name, no metals firm in the first Companies House results, no app or game"
+  },
+  {
+   "name": "Highfold Metals",
+   "kind": "rival firm (simulated), 10 kt",
+   "usedIn": "yard-stage1.md 2.11 and 4.4 (by id); yard-design.md 6.2",
+   "verdict": "new (replacement, third pass)",
+   "replaces": "Ashendry Metals",
+   "id": "rival.11",
+   "current": true,
+   "passTonnes": 10000,
+   "chip": "Highfold",
+   "candidates": [
+    {
+     "name": "Highfold Metals",
+     "result": "chosen: HIGH-fold, two everyday morphemes (high + fold, a sheep pen); five small firms at Companies House (one yachting), no app, no Wikipedia page"
+    },
+    {
+     "name": "Fellside Metals",
+     "result": "fails (c): the game 'Fellside: Stone Wall Puzzle' on both stores"
+    },
+    {
+     "name": "Redbank Metals",
+     "result": "fails (a): REDBANK MOTORS LTD (cars) and the publisher Redbank Apps on Google Play"
+    },
+    {
+     "name": "Coldwell Metals",
+     "result": "fails (a): Coldwell Banker, a famous estate-agency brand, one letter from Caldwell Bank"
+    },
+    {
+     "name": "Hillgate Metals",
+     "result": "fails (a): HILLGATE CAPITAL LTD (finance, the exact word)"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "UK Companies House search 'Highfold': HIGHFOLD LIMITED; HIGHFOLD LIMITED; HIGHFOLD ENTERPRISE LIMITED; HIGHFOLD GROUP LTD; HIGHFOLD YACHTING LTD. WEB SEARCH NOT RUN: the run's shared budget of web searches was already spent when this pass began (the tool refused every query); see couldNotVerify in notes/names.md.",
+    "b_exchange_index_port_town_region": "Wikidata: enwiki page 'Highfold': none; items labelled exactly so: none",
+    "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for 'Highfold': none",
+    "d_four_games": "corpus.py (games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files): clear: no exact match, no word within one letter or one Soundex step"
+   },
+   "readability": "HIGH-fold, two everyday morphemes (high + fold, a sheep pen); five small firms at Companies House (one yachting), no app, no Wikipedia page"
+  },
+  {
+   "name": "Pearlbay Steel & Alloys",
+   "kind": "rival firm (simulated), 4.5 Mt",
+   "usedIn": "yard-stage1.md 2.11 and 4.4 (by id); yard-design.md 6.2",
+   "verdict": "new (replacement, third pass)",
+   "replaces": "Coralind Steel & Alloys",
+   "id": "rival.23",
+   "current": true,
+   "passTonnes": 4500000,
+   "chip": "Pearlbay",
+   "candidates": [
+    {
+     "name": "Pearlbay Steel & Alloys",
+     "result": "chosen: PEARL-bay, two everyday words of the coast, for an Eastern firm; five small firms at Companies House (one trading), no app, no Wikipedia page or item"
+    },
+    {
+     "name": "Seastone Steel & Alloys",
+     "result": "fails (c): SeaStone, an app and game publisher on Google Play"
+    },
+    {
+     "name": "Tidewell Steel & Alloys",
+     "result": "fails (c): several games 'Tidewell: ...' on Google Play"
+    },
+    {
+     "name": "Bayfield Steel & Alloys",
+     "result": "passes the stores; fails (b): real towns in Wisconsin, Colorado and Ontario"
+    },
+    {
+     "name": "Quayfield Steel & Alloys",
+     "result": "fails the readability rule: 'quay' is said KEE, not as spelled"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "UK Companies House search 'Pearlbay': PEARLBAY LTD; PEARLBAY IT LTD; PEARLBAY TRADING UK LIMITED; PEARLBAY CARE LTD; PEARLBAY PROPERTIES LIMITED. WEB SEARCH NOT RUN: the run's shared budget of web searches was already spent when this pass began (the tool refused every query); see couldNotVerify in notes/names.md.",
+    "b_exchange_index_port_town_region": "Wikidata: enwiki page 'Pearlbay': none; items labelled exactly so: none",
+    "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for 'Pearlbay': none",
+    "d_four_games": "corpus.py (games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files): clear: no exact match, no word within one letter or one Soundex step"
+   },
+   "readability": "PEARL-bay, two everyday words of the coast, for an Eastern firm; five small firms at Companies House (one trading), no app, no Wikipedia page or item"
+  },
+  {
+   "name": "Rookhill Resource Recovery",
+   "kind": "rival firm (simulated), 170 kt",
+   "usedIn": "yard-stage1.md 2.11 and 4.4 (by id); yard-design.md 6.2",
+   "verdict": "new (replacement, third pass)",
+   "replaces": "Morrance Resource Recovery",
+   "id": "rival.15",
+   "current": true,
+   "passTonnes": 170000,
+   "chip": "Rookhill",
+   "candidates": [
+    {
+     "name": "Rookhill Resource Recovery",
+     "result": "chosen: ROOK-hill, two everyday words; small property firms at Companies House, no app, no Wikipedia page or item"
+    },
+    {
+     "name": "Ashgate (pool)",
+     "result": "fails (c): games 'Ashgate Inquest: Mystery Game' (App Store) and 'Oath of Ashgate: Idle Defense' (Google Play)"
+    },
+    {
+     "name": "Brightstone (pool)",
+     "result": "fails (c): the game series 'Brightstone Mysteries' on both stores"
+    },
+    {
+     "name": "Stonefield (pool)",
+     "result": "fails (a): STONEFIELD ASSET MANAGEMENT LTD, STONEFIELD CAPITAL LTD (finance); an Australian rock band"
+    },
+    {
+     "name": "Hollyfield (pool)",
+     "result": "fails (a): HOLLYFIELD CAPITAL LTD (finance, the exact word)"
+    },
+    {
+     "name": "Pinegate (pool)",
+     "result": "fails (a): PineGate Asset Management LLC (finance) publishes an App Store app; Pinegate Mobile"
+    },
+    {
+     "name": "Seawell (pool)",
+     "result": "fails (a): SEAWELL LOGISTICS LIMITED, SEAWELL MARINE SERVICES LTD (shipping)"
+    },
+    {
+     "name": "Copperdale (pool)",
+     "result": "fails (a): COPPERDALE FINANCE LTD (finance, the exact word)"
+    },
+    {
+     "name": "Ironcliff (pool)",
+     "result": "fails the readability rule: 'iron' is said EYE-ern, not as spelled"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "UK Companies House search 'Rookhill': ROOKHILL LIMITED; ROOKHILL COURT RESIDENTS ASSOCIATION LIMITED; ROOKHILL PROPERTIES LIMITED; ROOKHILL PROPERTY LTD; ROOKHILL RENOVATIONS LIMITED. WEB SEARCH NOT RUN: the run's shared budget of web searches was already spent when this pass began (the tool refused every query); see couldNotVerify in notes/names.md.",
+    "b_exchange_index_port_town_region": "Wikidata: enwiki page 'Rookhill': none; items labelled exactly so: none",
+    "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for 'Rookhill': none",
+    "d_four_games": "corpus.py (games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files): clear: no exact match, no word within one letter or one Soundex step"
+   },
+   "readability": "ROOK-hill, two everyday words; small property firms at Companies House, no app, no Wikipedia page or item"
+  },
+  {
+   "name": "Kilnfield Steel & Alloys",
+   "kind": "rival firm (simulated), 550 kt",
+   "usedIn": "yard-stage1.md 2.11 and 4.4 (by id); yard-design.md 6.2",
+   "verdict": "new (replacement, third pass)",
+   "replaces": "Tervalen Steel & Alloys",
+   "id": "rival.17",
+   "current": true,
+   "passTonnes": 550000,
+   "chip": "Kilnfield",
+   "candidates": [
+    {
+     "name": "Kilnfield Steel & Alloys",
+     "result": "chosen: KILN-field, a word of the trade and a field; two small firms at Companies House, no app, no Wikipedia page or item"
+    },
+    {
+     "name": "Ashgate (pool)",
+     "result": "fails (c): games 'Ashgate Inquest: Mystery Game' (App Store) and 'Oath of Ashgate: Idle Defense' (Google Play)"
+    },
+    {
+     "name": "Brightstone (pool)",
+     "result": "fails (c): the game series 'Brightstone Mysteries' on both stores"
+    },
+    {
+     "name": "Stonefield (pool)",
+     "result": "fails (a): STONEFIELD ASSET MANAGEMENT LTD, STONEFIELD CAPITAL LTD (finance); an Australian rock band"
+    },
+    {
+     "name": "Hollyfield (pool)",
+     "result": "fails (a): HOLLYFIELD CAPITAL LTD (finance, the exact word)"
+    },
+    {
+     "name": "Pinegate (pool)",
+     "result": "fails (a): PineGate Asset Management LLC (finance) publishes an App Store app; Pinegate Mobile"
+    },
+    {
+     "name": "Seawell (pool)",
+     "result": "fails (a): SEAWELL LOGISTICS LIMITED, SEAWELL MARINE SERVICES LTD (shipping)"
+    },
+    {
+     "name": "Copperdale (pool)",
+     "result": "fails (a): COPPERDALE FINANCE LTD (finance, the exact word)"
+    },
+    {
+     "name": "Ironcliff (pool)",
+     "result": "fails the readability rule: 'iron' is said EYE-ern, not as spelled"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "UK Companies House search 'Kilnfield': KILNFIELD LIMITED; KILNFIELD BARNS MANAGEMENT COMPANY LIMITED. WEB SEARCH NOT RUN: the run's shared budget of web searches was already spent when this pass began (the tool refused every query); see couldNotVerify in notes/names.md.",
+    "b_exchange_index_port_town_region": "Wikidata: enwiki page 'Kilnfield': none; items labelled exactly so: none",
+    "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for 'Kilnfield': none",
+    "d_four_games": "corpus.py (games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files): clear: no exact match, no word within one letter or one Soundex step"
+   },
+   "readability": "KILN-field, a word of the trade and a field; two small firms at Companies House, no app, no Wikipedia page or item"
+  },
+  {
+   "name": "Hazelford Metallurgy",
+   "kind": "rival firm (simulated), 850 kt",
+   "usedIn": "yard-stage1.md 2.11 and 4.4 (by id); yard-design.md 6.2",
+   "verdict": "new (replacement, third pass)",
+   "replaces": "Kestrane Metallurgy",
+   "id": "rival.18",
+   "current": true,
+   "passTonnes": 850000,
+   "chip": "Hazelford",
+   "candidates": [
+    {
+     "name": "Hazelford Metallurgy",
+     "result": "chosen: HAY-zel-ford, a tree and a ford; small firms at Companies House (HAZELFORD AIRCRAFT ENGINEERING LTD, a ferry-estates company: no metals, finance or shipping firm), no app, no Wikipedia page or item"
+    },
+    {
+     "name": "Larchdale (pool)",
+     "result": "fails (a): LARCHDALE INVESTMENTS LIMITED (finance, the exact word)"
+    },
+    {
+     "name": "Mossgate (pool)",
+     "result": "fails (c) and (a): the game 'Mossgate: Village Mysteries' on Google Play; MOSSGATE MOTORS LTD, MOSSGATE LOGISTICS LTD"
+    },
+    {
+     "name": "Birchfield (pool)",
+     "result": "fails (a): Birchfield, an automobile manufacturer (Wikidata); BIRCHFIELD CAPITAL LTD"
+    },
+    {
+     "name": "Fernhill (pool)",
+     "result": "fails (a): FERNHILL CAPITAL LIMITED (finance); Fernhill Software publishes on both stores"
+    },
+    {
+     "name": "Ashgate (pool)",
+     "result": "fails (c): games 'Ashgate Inquest: Mystery Game' (App Store) and 'Oath of Ashgate: Idle Defense' (Google Play)"
+    },
+    {
+     "name": "Brightstone (pool)",
+     "result": "fails (c): the game series 'Brightstone Mysteries' on both stores"
+    },
+    {
+     "name": "Stonefield (pool)",
+     "result": "fails (a): STONEFIELD ASSET MANAGEMENT LTD, STONEFIELD CAPITAL LTD (finance); an Australian rock band"
+    },
+    {
+     "name": "Hollyfield (pool)",
+     "result": "fails (a): HOLLYFIELD CAPITAL LTD (finance, the exact word)"
+    },
+    {
+     "name": "Pinegate (pool)",
+     "result": "fails (a): PineGate Asset Management LLC (finance) publishes an App Store app; Pinegate Mobile"
+    },
+    {
+     "name": "Seawell (pool)",
+     "result": "fails (a): SEAWELL LOGISTICS LIMITED, SEAWELL MARINE SERVICES LTD (shipping)"
+    },
+    {
+     "name": "Copperdale (pool)",
+     "result": "fails (a): COPPERDALE FINANCE LTD (finance, the exact word)"
+    },
+    {
+     "name": "Ironcliff (pool)",
+     "result": "fails the readability rule: 'iron' is said EYE-ern, not as spelled"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "UK Companies House search 'Hazelford': HAZELFORD LIMITED; HAZELFORD AIRCRAFT ENGINEERING LTD; HAZELFORD CARE HOME LTD; HAZELFORD DEVELOPMENTS LTD; HAZELFORD FERRY ESTATES CO. LIMITED; HAZELFORD WAY MANAGEMENT COMPANY LIMITED. WEB SEARCH NOT RUN: the run's shared budget of web searches was already spent when this pass began (the tool refused every query); see couldNotVerify in notes/names.md.",
+    "b_exchange_index_port_town_region": "Wikidata: enwiki page 'Hazelford': none; items labelled exactly so: none",
+    "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for 'Hazelford': none",
+    "d_four_games": "corpus.py (games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files): clear: no exact match, no word within one letter or one Soundex step"
+   },
+   "readability": "HAY-zel-ford, a tree and a ford; small firms at Companies House (HAZELFORD AIRCRAFT ENGINEERING LTD, a ferry-estates company: no metals, finance or shipping firm), no app, no Wikipedia page or item"
+  },
+  {
+   "name": "Wrenhill Global",
+   "kind": "rival firm (simulated), 3.4 Mt",
+   "usedIn": "yard-stage1.md 2.11 and 4.4 (by id); yard-design.md 6.2",
+   "verdict": "new (replacement, third pass)",
+   "replaces": "Ondrell Global",
+   "id": "rival.22",
+   "current": true,
+   "passTonnes": 3400000,
+   "chip": "Wrenhill",
+   "candidates": [
+    {
+     "name": "Wrenhill Global",
+     "result": "chosen: WREN-hill, a bird and a hill; one small firm at Companies House, no app, no Wikipedia page or item"
+    },
+    {
+     "name": "Ashgate (pool)",
+     "result": "fails (c): games 'Ashgate Inquest: Mystery Game' (App Store) and 'Oath of Ashgate: Idle Defense' (Google Play)"
+    },
+    {
+     "name": "Brightstone (pool)",
+     "result": "fails (c): the game series 'Brightstone Mysteries' on both stores"
+    },
+    {
+     "name": "Stonefield (pool)",
+     "result": "fails (a): STONEFIELD ASSET MANAGEMENT LTD, STONEFIELD CAPITAL LTD (finance); an Australian rock band"
+    },
+    {
+     "name": "Hollyfield (pool)",
+     "result": "fails (a): HOLLYFIELD CAPITAL LTD (finance, the exact word)"
+    },
+    {
+     "name": "Pinegate (pool)",
+     "result": "fails (a): PineGate Asset Management LLC (finance) publishes an App Store app; Pinegate Mobile"
+    },
+    {
+     "name": "Seawell (pool)",
+     "result": "fails (a): SEAWELL LOGISTICS LIMITED, SEAWELL MARINE SERVICES LTD (shipping)"
+    },
+    {
+     "name": "Copperdale (pool)",
+     "result": "fails (a): COPPERDALE FINANCE LTD (finance, the exact word)"
+    },
+    {
+     "name": "Ironcliff (pool)",
+     "result": "fails the readability rule: 'iron' is said EYE-ern, not as spelled"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "UK Companies House search 'Wrenhill': WRENHILL LIMITED. WEB SEARCH NOT RUN: the run's shared budget of web searches was already spent when this pass began (the tool refused every query); see couldNotVerify in notes/names.md.",
+    "b_exchange_index_port_town_region": "Wikidata: enwiki page 'Wrenhill': none; items labelled exactly so: none",
+    "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for 'Wrenhill': none",
+    "d_four_games": "corpus.py (games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files): clear: no exact match, no word within one letter or one Soundex step"
+   },
+   "readability": "WREN-hill, a bird and a hill; one small firm at Companies House, no app, no Wikipedia page or item"
+  },
+  {
+   "name": "Oakfold Metals Holding",
+   "kind": "rival firm (simulated), 5.6 Mt",
+   "usedIn": "yard-stage1.md 2.11 and 4.4 (by id); yard-design.md 6.2",
+   "verdict": "new (replacement, third pass)",
+   "replaces": "Tarlevan Metals Holding",
+   "id": "rival.24",
+   "current": true,
+   "passTonnes": 5600000,
+   "chip": "Oakfold",
+   "candidates": [
+    {
+     "name": "Oakfold Metals Holding",
+     "result": "chosen: OAK-fold; small firms at Companies House (OAKFOLD TECHNOLOGIES LIMITED of no fame), no app, no Wikipedia page or item"
+    },
+    {
+     "name": "Ashgate (pool)",
+     "result": "fails (c): games 'Ashgate Inquest: Mystery Game' (App Store) and 'Oath of Ashgate: Idle Defense' (Google Play)"
+    },
+    {
+     "name": "Brightstone (pool)",
+     "result": "fails (c): the game series 'Brightstone Mysteries' on both stores"
+    },
+    {
+     "name": "Stonefield (pool)",
+     "result": "fails (a): STONEFIELD ASSET MANAGEMENT LTD, STONEFIELD CAPITAL LTD (finance); an Australian rock band"
+    },
+    {
+     "name": "Hollyfield (pool)",
+     "result": "fails (a): HOLLYFIELD CAPITAL LTD (finance, the exact word)"
+    },
+    {
+     "name": "Pinegate (pool)",
+     "result": "fails (a): PineGate Asset Management LLC (finance) publishes an App Store app; Pinegate Mobile"
+    },
+    {
+     "name": "Seawell (pool)",
+     "result": "fails (a): SEAWELL LOGISTICS LIMITED, SEAWELL MARINE SERVICES LTD (shipping)"
+    },
+    {
+     "name": "Copperdale (pool)",
+     "result": "fails (a): COPPERDALE FINANCE LTD (finance, the exact word)"
+    },
+    {
+     "name": "Ironcliff (pool)",
+     "result": "fails the readability rule: 'iron' is said EYE-ern, not as spelled"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "UK Companies House search 'Oakfold': OAKFOLD LIMITED; OAKFOLD LTD; OAKFOLD DEVELOPMENTS LIMITED; OAKFOLD MEADOW MANAGEMENT COMPANY LIMITED; OAKFOLD TECHNOLOGIES LIMITED. WEB SEARCH NOT RUN: the run's shared budget of web searches was already spent when this pass began (the tool refused every query); see couldNotVerify in notes/names.md.",
+    "b_exchange_index_port_town_region": "Wikidata: enwiki page 'Oakfold': none; items labelled exactly so: none",
+    "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for 'Oakfold': none",
+    "d_four_games": "corpus.py (games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files): clear: no exact match, no word within one letter or one Soundex step"
+   },
+   "readability": "OAK-fold; small firms at Companies House (OAKFOLD TECHNOLOGIES LIMITED of no fame), no app, no Wikipedia page or item"
+  },
+  {
+   "name": "Elmfield Global Metals",
+   "kind": "rival firm (simulated), 7 Mt, the largest rival (logo a globe of rings); keeps the logo, a globe of rings",
+   "usedIn": "yard-stage1.md 2.11 and 4.4 (by id); yard-design.md 6.2",
+   "verdict": "new (replacement, third pass)",
+   "replaces": "Vessendal Global Metals",
+   "id": "rival.25",
+   "current": true,
+   "passTonnes": 7000000,
+   "chip": "Elmfield",
+   "candidates": [
+    {
+     "name": "Elmfield Global Metals",
+     "result": "chosen for the largest rival (it keeps the globe of rings): ELM-field; suburbs and houses of the name (Ryde, Leeds) and a care-home group of no fame; no app or game"
+    },
+    {
+     "name": "Ashgate (pool)",
+     "result": "fails (c): games 'Ashgate Inquest: Mystery Game' (App Store) and 'Oath of Ashgate: Idle Defense' (Google Play)"
+    },
+    {
+     "name": "Brightstone (pool)",
+     "result": "fails (c): the game series 'Brightstone Mysteries' on both stores"
+    },
+    {
+     "name": "Stonefield (pool)",
+     "result": "fails (a): STONEFIELD ASSET MANAGEMENT LTD, STONEFIELD CAPITAL LTD (finance); an Australian rock band"
+    },
+    {
+     "name": "Hollyfield (pool)",
+     "result": "fails (a): HOLLYFIELD CAPITAL LTD (finance, the exact word)"
+    },
+    {
+     "name": "Pinegate (pool)",
+     "result": "fails (a): PineGate Asset Management LLC (finance) publishes an App Store app; Pinegate Mobile"
+    },
+    {
+     "name": "Seawell (pool)",
+     "result": "fails (a): SEAWELL LOGISTICS LIMITED, SEAWELL MARINE SERVICES LTD (shipping)"
+    },
+    {
+     "name": "Copperdale (pool)",
+     "result": "fails (a): COPPERDALE FINANCE LTD (finance, the exact word)"
+    },
+    {
+     "name": "Ironcliff (pool)",
+     "result": "fails the readability rule: 'iron' is said EYE-ern, not as spelled"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "UK Companies House search 'Elmfield': ELMFIELD LIMITED; ELMFIELD ASSOCIATES LTD; ELMFIELD BUILDING SERVICES LIMITED; ELMFIELD CARE LIMITED; ELMFIELD CARE MIDCO 1 LIMITED; ELMFIELD CARE 1 LIMITED. WEB SEARCH NOT RUN: the run's shared budget of web searches was already spent when this pass began (the tool refused every query); see couldNotVerify in notes/names.md.",
+    "b_exchange_index_port_town_region": "Wikidata: enwiki page 'Elmfield': suburb of Ryde, on the Isle of Wight, in England, UK; items labelled exactly so: Elmfield: human settlement in Nova Scotia, Canada; Elmfield: house in Leeds, West Yorkshire, England, UK; Elmfield: suburb of Ryde, on the Isle of Wight, in England, UK; Elmfield: hamlet in Assumption Parish, Louisiana, United States; Elmfield: building in Honiton, East Devon, England, UK",
+    "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for 'Elmfield': none",
+    "d_four_games": "corpus.py (games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files): clear: no exact match, no word within one letter or one Soundex step"
+   },
+   "readability": "ELM-field; suburbs and houses of the name (Ryde, Leeds) and a care-home group of no fame; no app or game"
+  },
+  {
+   "name": "Tollbridge Metals",
+   "short": "Tollbridge",
+   "kind": "the stage-1 buyer whose flatbed collects the bays (not a rival); sale tickets read 'Lot sold to {short}'",
+   "usedIn": "yard-stage1.md 1.1, 1.2, 2.2, 2.3, 3, 4.4, 11 ({merchant}); yard-design.md 1.2, 5.2",
+   "verdict": "new (third pass)",
+   "replaces": "Tamberlow Metal Merchants (yard-design.md, never registered)",
+   "id": "merchant",
+   "current": true,
+   "candidates": [
+    {
+     "name": "Tollbridge Metals / Tollbridge",
+     "result": "chosen: TOLL-bridge, two everyday words, spelled as said; 'Lot sold to Tollbridge' (22 characters; short form 10). Companies House has TOLLBRIDGE MACHINERY LIMITED and TOLLBRIDGE TECHNOLOGIES INTERNATIONAL (machinery and technology, not the listed trades, of no fame found); no app; no Wikipedia page or item"
+    },
+    {
+     "name": "Hookway Metals / Hookway",
+     "result": "fails (a): HOOKWAY CAPITAL LTD (finance, the exact word) at Companies House; the same threshold dropped Hillgate, Hollyfield and Copperdale in this pass. Otherwise clean (no app, Wikidata only a family name, four games clear)"
+    },
+    {
+     "name": "Marlow Metals / Marlow",
+     "result": "fails (a) and (b): Marlow Navigation Co Ltd, a shipping crew-management firm, publishes 'CrewCompanion' on Google Play; Marlow is a well-known Thames town (Wikidata: disambiguation page); (d) one letter from 'Marlo' in the four games"
+    },
+    {
+     "name": "Tamberlow Metal Merchants (the specification)",
+     "result": "fails the readability rule: TAM-ber-low, 'Tamber' is no everyday morpheme; 25 characters, no plain short form; never checked"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "UK Companies House search 'Tollbridge': TOLLBRIDGE LTD.; TOLLBRIDGE TECHNOLOGIES INTERNATIONAL, INC.; TOLLBRIDGE TECHNOLOGIES INTERNATIONAL, INC.; TOLLBRIDGE MACHINERY LIMITED; TOLLBRIDGE PROPERTY LTD; THE OLD SHOREHAM TOLLBRIDGE COMMUNITY TRUST. WEB SEARCH NOT RUN: the run's shared budget of web searches was already spent when this pass began (the tool refused every query); see couldNotVerify in notes/names.md.",
+    "b_exchange_index_port_town_region": "Wikidata: enwiki page 'Tollbridge': none; items labelled exactly so: none",
+    "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for 'Tollbridge': none",
+    "d_four_games": "corpus.py (games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files): clear: no exact match, no word within one letter or one Soundex step"
+   },
+   "readability": "TOLL-bridge: two everyday words, spelled as said.",
+   "note": "A toll bridge is a crossing, not a fee taken from the seller: the tickets never use 'toll' as a verb. Its mark goes on the flatbed door (yard-stage1.md 11); the mark is the art step's to check against real brands."
+  },
+  {
+   "name": "Tamberlow Metal Merchants",
+   "kind": "the stage-1 buyer (the specification's name)",
+   "usedIn": "yard-design.md 1.2, 2, 5.2",
+   "verdict": "withdrawn (third pass)",
+   "replacedBy": "Tollbridge Metals",
+   "id": "merchant",
+   "current": false,
+   "rejectedBecause": "never registered; fails the readability rule (see the merchant entry's candidates)"
+  },
+  {
+   "name": "calvan",
+   "kind": "currency (the whole-game specification's name, symbol §)",
+   "usedIn": "yard-design.md 0, 1.2, 5.3, 7.7, 8",
+   "verdict": "withdrawn (third pass)",
+   "replacedBy": "scrip",
+   "id": "currency",
+   "current": false,
+   "rejectedBecause": "the register kept 'scrip' in both passes; 'calvan' was never registered (and carried the country Calvany, itself replaced by Westholm). Calvan is also a family name and a mountain in Eritrea (Wikidata)"
+  },
+  {
+   "name": "Quillon Foundry Co-op",
+   "kind": "local partner (the supply-deal foundry, as yard-design.md 1.2 and 5.3 now spell it)",
+   "usedIn": "yard-design.md 1.2, 5.3",
+   "verdict": "withdrawn (third pass)",
+   "replacedBy": "Oakbridge Foundry Co-op",
+   "id": "foundry",
+   "current": false,
+   "rejectedBecause": "never registered (the register's spec name was Fennick Foundry Co-op); a quillon is a sword's cross-guard, not plain; the id 'foundry' names it"
   }
  ],
  "generated": {
@@ -2389,5 +3362,78 @@
   "label": "names (second pass)",
   "rule": "Second-pass rule (the lead, 2026-11-25): the player must be able to read and say the name. A twelve-year-old non-native speaker reads it aloud right the first time: one or two everyday morphemes of the trade or the landscape, at most three syllables a word, spelled as it sounds, no 'th' cluster, no '-thwaite', no '-wick' pile-ups, no silent 'gh'. A lane, a town or a port may share its name with small unrelated places or firms of no fame; what fails is one famous place, a brand, another game's title or setting, a word of this developer's four games, or a real exchange or port city.",
   "method": "For each place a player sees most (in the lead's order: home lane and yard, home town and vale, western exchange city, eastern country, exchange city and point, port, uplands site, eastern coast site, the two countries) three candidates were weighed; each candidate went through the first pass's four checks: (a) web search (WebSearch tool, the exact name in quotes with 'company OR game OR brand' and the like), UK Companies House search, App Store and Google Play publisher names; (b) Wikidata: the English Wikipedia page of that exact title and items labelled exactly so (the Wikipedia API itself refused this machine with a rate-limit page); (c) App Store search API (US) and Google Play search (US); (d) corpus.py over the four games. The firms: every first-pass replacement was read against the rule; those that fail it were replaced the same way. Bing (used by the first pass) was not used. The web search budget of the whole run (200 searches, shared with other engineers) ran out during this pass: Tolvan Motors, Clearmoor Glass, Cottle Demolition, Parfitt's Garage, Tap Street Plumbing and the rivals Brookmill, Tunney, Millbeck, Larkmoor, Stonebeck, Nordal and Tarnmoor have the company, store, Wikidata and four-games checks but NO web search; each entry says so. Queries held only the candidate names and generic words. Scripts: notes/names.md."
+ },
+ "thirdPass": {
+  "date": "2026-11-25",
+  "label": "names (third pass)",
+  "method": "Ids by the stage-1 specification (5.1) and in the same manner for the rest. The merchant: three candidates (and the specification's name) under the second-pass readability rule and the four checks. Rival chips: the distinctive word or two of each name, at most 14 characters; each chip read against the rule. Nine rival names failed it (Haddersby, Ashendry, Coralind by the second pass's own reasons; Morrance, Tervalen, Kestrane, Ondrell, Tarlevan, Vessendal as invented words with a stress the reader must guess) and were replaced from plain two-morpheme candidates. Checks run: UK Companies House search, App Store search API (US) and Google Play search (US), Wikidata (enwiki sitelink title and exact labels), corpus.py over the four games. WEB SEARCH WAS NOT RUN in this pass: the run's shared budget was already spent and the tool refused every query (Hookway, Tollbridge, Marlow, Bramley were tried). So the twelve second-pass names without a web search (Tolvan, Clearmoor, Cottle, Parfitt, Tap Street, Brookmill, Tunney, Millbeck, Larkmoor, Stonebeck, Nordal, Tarnmoor) and every third-pass name (Tollbridge, Bramley, Highfold, Pearlbay, Rookhill, Kilnfield, Hazelford, Wrenhill, Oakfold, Elmfield) still lack one; each entry says so. Bing was not used. Queries held only candidate names and generic words. Scripts: notes/names.md.",
+  "wikidataNotes": {
+   "Tolvan": "Wikidata has an item labelled 'Tolvan' (an alias of Nockebybanan, a local railway in western Stockholm): a minor local nickname, recorded, kept",
+   "Tunney": "Gene Tunney (boxer) confirmed on Wikidata",
+   "Parfitt": "Rick Parfitt (rock musician) confirmed on Wikidata",
+   "Brookmill, Clearmoor, Tap Street, Millbeck, Larkmoor, Stonebeck, Tarnmoor": "no enwiki page and no exact item",
+   "Cottle": "family name and two unincorporated communities (US)",
+   "Nordal": "family name; NORDAL an abandoned German gas pipeline project"
+  }
+ },
+ "byId": {
+  "city.capital": "Bellmarch",
+  "city.east": "Sandport",
+  "corp.aerospace": "Overvane Aerospace",
+  "corp.electrolysers": "Quenwick Electrolysers",
+  "corp.electronics": "Telano Electronics",
+  "corp.glass": "Clearmoor Glass",
+  "corp.motors": "Tolvan Motors",
+  "corp.tooling": "Halcarn Tooling",
+  "country.east": "Eastmere Union",
+  "country.west": "Westholm",
+  "currency": "scrip",
+  "demolitionContact": "Edie Cottle",
+  "exchange.east": "Sandport Metal Exchange",
+  "exchange.west": "Bellmarch Metal Exchange",
+  "farmContact": "Hob Garnett",
+  "foundry": "Oakbridge Foundry Co-op",
+  "homeDistrict": "Oakbridge Vale",
+  "homeLane": "Cinder Lane",
+  "homeTown": "Oakbridge",
+  "homeYard": "Cinder Lane Yard",
+  "merchant": "Tollbridge Metals",
+  "partner.garage": "Parfitt's Garage",
+  "partner.plumbing": "Tap Street Plumbing",
+  "partnerDemolition": "Cottle Demolition",
+  "partnerFarm": "Hob's Farm Clearance",
+  "regional.cable": "Rowkirk Cable Works",
+  "regional.steel": "Garrowfield Steel",
+  "rival.1": "Bramley & Daughters Scrap",
+  "rival.2": "Pennick Scrap",
+  "rival.3": "Brookmill Metals",
+  "rival.4": "Tenterby Lane Metals",
+  "rival.5": "Kolbeck Recycling",
+  "rival.6": "Tunney & Sons",
+  "rival.7": "Oakbridge Metal Recovery",
+  "rival.8": "Millbeck Ferrous",
+  "rival.9": "Larkmoor Non-Ferrous",
+  "rival.10": "Stonebeck Reclaim",
+  "rival.11": "Highfold Metals",
+  "rival.12": "Aldermoss Ferrous",
+  "rival.13": "Nordal Metals",
+  "rival.14": "Gannetby Recycling",
+  "rival.15": "Rookhill Resource Recovery",
+  "rival.16": "Saltreach Metals",
+  "rival.17": "Kilnfield Steel & Alloys",
+  "rival.18": "Hazelford Metallurgy",
+  "rival.19": "Crayle International",
+  "rival.20": "Tarnmoor Resources",
+  "rival.21": "Teodor Metals",
+  "rival.22": "Wrenhill Global",
+  "rival.23": "Pearlbay Steel & Alloys",
+  "rival.24": "Oakfold Metals Holding",
+  "rival.25": "Elmfield Global Metals",
+  "site.coast": "Clay Coast",
+  "site.point": "Crane Point",
+  "site.port": "Saltreach",
+  "site.uplands": "Flint Ridge",
+  "title": "Scrap to Ingot",
+  "title.fallback": "Heavy Melt"
  }
 }

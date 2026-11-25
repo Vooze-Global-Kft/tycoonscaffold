@@ -613,8 +613,8 @@ export function drawStillageFront(c: SkCanvas, v: View3q): void {
   for (const x of [-L, L]) box(c, v, { len: 0.05, wid: 0.05, h, ox: x, oy: W, color: YARD.galvanisedLight, line: 0.9 });
 }
 
-/** The pieces a stillage holds by stage-1 grade (bb, no2, brs, alw, alc, bri, ali, dross, mot, cab). */
-export const STILLAGE_GRADES = ['bb', 'no2', 'brs', 'alw', 'alc', 'bri', 'ali', 'dross', 'mot', 'cab'] as const;
+/** The grades kept in stillages, by the content's grade ids (content2 `grades`; ferrous grades go in lock-block bays). */
+export const STILLAGE_GRADES = ['bb', 'no2', 'brs', 'alw', 'alcast', 'bri', 'ali', 'ald', 'brd', 'mot', 'cab', 'cyl', 'batt'] as const;
 export type StillageGrade = (typeof STILLAGE_GRADES)[number];
 
 /** One piece of a stillage grade at (x, y) points, about s long. */
@@ -657,7 +657,7 @@ function stillagePiece(c: SkCanvas, g: StillageGrade, x: number, y: number, s: n
       c.drawPath(oval(x, y, r * 0.2, r * 0.16), stroke(INK, 0.8));
       return;
     }
-    case 'alc': {
+    case 'alcast': {
       // cast aluminium end caps: a dished disc with bolt lugs
       const r = s * 0.38;
       c.drawPath(oval(x, y, r, r * 0.72), fill(shade(YARD.aluminium, -0.08)));
@@ -682,11 +682,12 @@ function stillagePiece(c: SkCanvas, g: StillageGrade, x: number, y: number, s: n
       for (const k of [-0.18, 0.18]) c.drawPath(segment(x + w * k, y - h + 0.5, x + w * k, y - 0.5), stroke(dark, 1));
       return;
     }
-    case 'dross': {
+    case 'ald':
+    case 'brd': {
       const b = builder().moveTo(x - s * 0.4, y + 1);
       for (let i = 0; i < 6; i++) b.lineTo(x - s * 0.4 + (s * 0.8 * (i + 0.5)) / 6, y - s * (0.15 + hash01(seed, i) * 0.25));
       b.lineTo(x + s * 0.4, y + 1).close();
-      c.drawPath(b.build(), fill(seed % 2 ? '#8A8478' : '#7A7066'));
+      c.drawPath(b.build(), fill(g === 'brd' ? (seed % 2 ? '#8C7D52' : '#76693F') : seed % 2 ? '#9A9790' : '#85827B'));
       c.drawPath(b.build(), stroke(INK, 0.9));
       return;
     }
@@ -696,6 +697,23 @@ function stillagePiece(c: SkCanvas, g: StillageGrade, x: number, y: number, s: n
       c.drawPath(rrect(x - s * 0.45, y - s * 0.24, s * 0.9, s * 0.42, s * 0.18), stroke(INK, 0.9));
       c.drawPath(oval(x + s * 0.45, y - s * 0.03, s * 0.08, s * 0.2), fill(YARD.aluminium));
       return;
+    case 'cyl': {
+      // a copper hot-water cylinder lying down, its domed end and a brass boss
+      c.drawPath(rrect(x - s * 0.55, y - s * 0.26, s * 1.1, s * 0.5, s * 0.24), fill(YARD.copper));
+      c.drawPath(rect(x - s * 0.4, y - s * 0.2, s * 0.8, s * 0.08), fill(YARD.copperLight));
+      c.drawPath(rrect(x - s * 0.55, y - s * 0.26, s * 1.1, s * 0.5, s * 0.24), stroke(INK, 0.9));
+      c.drawCircle(x + s * 0.2, y - s * 0.26, s * 0.07, fill(YARD.brass));
+      return;
+    }
+    case 'batt': {
+      // a lead-acid battery: black case, two terminals, a vented lid (kept in a sealed acid-proof box)
+      c.drawPath(rrect(x - s * 0.4, y - s * 0.32, s * 0.8, s * 0.46, 1.5), fill('#2E3135'));
+      c.drawPath(rect(x - s * 0.4, y - s * 0.32, s * 0.8, s * 0.1), fill('#4A4F55'));
+      c.drawPath(rrect(x - s * 0.4, y - s * 0.32, s * 0.8, s * 0.46, 1.5), stroke(INK, 0.9));
+      c.drawCircle(x - s * 0.24, y - s * 0.36, 1.4, fill('#C8352B'));
+      c.drawCircle(x + s * 0.24, y - s * 0.36, 1.4, fill(YARD.galvanisedLight));
+      return;
+    }
     case 'cab':
       c.drawPath(oval(x, y, s * 0.45, s * 0.28), stroke(INK, 3.6));
       c.drawPath(oval(x, y, s * 0.45, s * 0.28), stroke(seed % 2 ? YARD.pvc : YARD.pvcGrey, 2.2));

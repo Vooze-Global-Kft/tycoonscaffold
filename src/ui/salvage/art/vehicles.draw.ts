@@ -198,6 +198,8 @@ export function drawActorShadow(c: SkCanvas, v: View3q, kind: ActorKind, heading
 // ---------------------------------------------------------------------------
 
 export type CarrierKind = 'sack' | 'trolley';
+/** Metres from the pushing person's anchor to the carrier's own footprint centre, along the heading. */
+export const CARRIER_AHEAD: Readonly<Record<CarrierKind, number>> = { sack: 0.66, trolley: 0.9 };
 
 function tyre(c: SkCanvas, v: View3q, p: V3, f: V3, r: number, side: V3, hub: string = YARD.galvanised): void {
   const z: V3 = [0, 0, 1];
@@ -220,15 +222,24 @@ function tyre(c: SkCanvas, v: View3q, p: V3, f: V3, r: number, side: V3, hub: st
  * or loaded with a family's pieces strapped on. Draw it AFTER the person facing s, e or w and BEFORE the
  * person facing n (manifest actorLayers says so).
  */
-export function drawCarrier(c: SkCanvas, v: View3q, kind: CarrierKind, dir: Dir, load?: LoadFamily): void {
+export function drawCarrier(c: SkCanvas, v: View3q, kind: CarrierKind, dir: Dir, load?: LoadFamily, anchor: 'person' | 'self' = 'person'): void {
   if (dir === 'w') {
     c.save();
     c.scale(-1, 1);
-    drawCarrier(c, v, kind, 'e', load);
+    drawCarrier(c, v, kind, 'e', load, anchor);
     c.restore();
     return;
   }
   const F = frameOf(dirRad(dir));
+  if (anchor === 'self') {
+    // drawn round the carrier's own footprint centre, CARRIER_AHEAD metres ahead of the person
+    const [px, py] = P2(v, F.at(CARRIER_AHEAD[kind], 0, 0));
+    c.save();
+    c.translate(-px, -py);
+    drawCarrier(c, v, kind, dir, load, 'person');
+    c.restore();
+    return;
+  }
   if (kind === 'sack') sackTruck(c, v, F, load);
   else flatTrolley(c, v, F, load);
 }
@@ -927,8 +938,16 @@ export function drawFlatbed(c: SkCanvas, v: View3q, heading: number, o: { crane?
 export const VAN = { len: 3.4, wid: 1.8 } as const;
 
 /** A box trailer behind a van: drawn round the van's anchor, its centre 2.75 m behind. */
-export function drawTrailer(c: SkCanvas, v: View3q, heading: number): void {
+export function drawTrailer(c: SkCanvas, v: View3q, heading: number, anchor: 'van' | 'self' = 'van'): void {
   const F = frameOf(heading);
+  if (anchor === 'self') {
+    const [px, py] = P2(v, F.at(ACTOR_SIZE.trailer.ahead ?? -2.75, 0, 0));
+    c.save();
+    c.translate(-px, -py);
+    drawTrailer(c, v, heading, 'van');
+    c.restore();
+    return;
+  }
   const u = ACTOR_SIZE.trailer.ahead ?? -2.75;
   const nearSign = F.ly >= 0 ? 1 : -1;
   const wheelAt = (s: number) => truckWheel(c, v, F.at(u, s * 0.62, 0.26), F.f, 0.26, [F.lx * Math.sign(s), F.ly * Math.sign(s), 0]);
