@@ -142,7 +142,7 @@ export function drawProof(c: SkCanvas, L: ProofLayout, T: TextFn): void {
   const th = ticketHeight(PROOF_TICKET) * k;
   const tw = TICKET_W * k;
   const tx = display[0] - tw * 0.26;
-  const ty = Math.max(L.bar + 8, display[1] - 40 - th);
+  const ty = Math.max(L.bar + L.goal + 6, display[1] - 40 - th);
   c.save();
   c.translate(tx + tw / 2, ty + th / 2);
   c.rotate(-3, 0, 0);
