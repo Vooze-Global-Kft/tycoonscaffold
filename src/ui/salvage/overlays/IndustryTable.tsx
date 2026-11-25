@@ -13,8 +13,8 @@ import { StyleSheet, View } from 'react-native';
 import * as R from '../../../engine/salvage';
 import type { IndustryTable as Table, TableRow, Txt } from '../../../engine/salvage';
 import { YARD } from '../art/palette';
-import * as UI from '../art/ui.draw';
-import { rivalPlate } from '../art/ui.draw';
+// L8: the player's row carries the yard's own mark (the art kit's yardMark), never an empty box.
+import { rivalPlate, yardMark } from '../art/ui.draw';
 import { LOGO, SIM_PT, TONNES_PAD, rungCells, tableCols, type TableCols } from './marketLayout';
 import { plateSeed, rungBox } from './marketLines';
 import { DataLine, Drawing, gradeName, nameOf, useContent, useSeenOnClose } from './marketParts';
@@ -101,19 +101,6 @@ function materialName(cfg: R.SalvageConfig, material: string): string {
   const id = Object.entries(cfg.salvage.grades).find(([, gr]) => gr.material === material)?.[0];
   return id ? gradeName(cfg.salvage, id, true) : material;
 }
-
-/**
- * The yard's own mark on its table row (L8): the art kit's `yardMark` when it has one (asked of the art
- * director), else the yard's plate from the same kit as the rivals', on seed 25, one past the 25 rivals'
- * (shield, machine blue, chevrons: no rival has that triple).
- */
-function yardMark(cv: Parameters<typeof rivalPlate>[0], cx: number, cy: number, s: number): void {
-  const own = (UI as unknown as { yardMark?: (c: typeof cv, x: number, y: number, s: number) => void }).yardMark;
-  if (own) own(cv, cx, cy, s);
-  else rivalPlate(cv, cx, cy, s, YARD_SEED);
-}
-const YARD_SEED = 25;
-
 
 function Rungs({ t, inStage }: { t: Table; inStage: Map<number, boolean> }) {
   const { layout } = useFrame();

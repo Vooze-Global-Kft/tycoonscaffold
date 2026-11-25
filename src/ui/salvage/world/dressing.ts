@@ -232,12 +232,20 @@ export function wallSide(c: SalvageContent, b: Bed): 'n' | 'e' | 's' | 'w' {
  * zone tier, chosen by the tile's place.
  */
 export function bedDress(c: SalvageContent, zone: string, share = 1): Dress[] {
-  const b = bedOf(c, zone);
-  if (!b) return [];
+  const raw = bedOf(c, zone);
+  if (!raw) return [];
+  // the earth spills a little past the heap's rectangle on its open sides, so the bed reads under the things
+  const sideW = wallSide(c, raw);
+  const b = {
+    x0: raw.x0 - (sideW === 'w' ? 0 : BED_LIP),
+    y0: raw.y0 - (sideW === 'n' ? 0 : BED_LIP),
+    w: raw.w + (sideW === 'w' || sideW === 'e' ? BED_LIP : BED_LIP * 2),
+    d: raw.d + (sideW === 'n' || sideW === 's' ? BED_LIP : BED_LIP * 2),
+  };
   const tier = Math.max(1, Math.min(3, c.zones[zone]?.tier ?? 1));
   const nx = Math.max(1, Math.round(b.w / BED_CELL[0]));
   const ny = Math.max(1, Math.round(b.d / BED_CELL[1]));
-  const side = wallSide(c, b);
+  const side = sideW;
   const cells: { x: number; y: number; rank: number; look: number }[] = [];
   for (let j = 0; j < ny; j++)
     for (let i = 0; i < nx; i++) {
@@ -258,6 +266,9 @@ export function bedDress(c: SalvageContent, zone: string, share = 1): Dress[] {
   for (const cell of shown) out.push({ id: 'ground.bed', x: cell.x, y: cell.y, frame: tier === 1 ? cell.look : tier, flat: true, ...(cell.low ? { alpha: 0.4 } : {}) });
   return out;
 }
+
+/** How far a bed's earth reaches past its rectangle on its open sides, metres. */
+export const BED_LIP = 0.45;
 
 /** Every bed at its share (all full when `shares` is not given). */
 export function bedsDress(c: SalvageContent, shares?: Record<string, number>): Dress[] {

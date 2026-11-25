@@ -13,7 +13,7 @@ vi.mock('@shopify/react-native-skia', () => ({ Skia: {}, ClipOp: {}, BlendMode: 
 const { SALVAGE_TEST } = await import('../../../engine/fixtures/salvage');
 const game = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../../games/scrap-yard/game.json'), 'utf8'));
 const shipped: SalvageContent | null = game.salvage ?? null;
-const { dressing, bedDress, bedShares, bedZones, bedOf, northOf, BLOCK_M } = await import('./dressing');
+const { dressing, bedDress, bedShares, bedZones, bedOf, northOf, BLOCK_M, BED_LIP } = await import('./dressing');
 
 const contents: [string, SalvageContent][] = [['test content', SALVAGE_TEST as SalvageContent]];
 if (shipped) contents.push(['the game', shipped]);
@@ -50,10 +50,10 @@ describe.each(contents)('dressing on %s', (_name, c) => {
       const full = bedDress(c, z, 1);
       expect(full.length).toBeGreaterThan(0);
       for (const t of full) {
-        expect(t.x).toBeGreaterThanOrEqual(b.x0);
-        expect(t.x).toBeLessThanOrEqual(b.x0 + b.w);
-        expect(t.y).toBeGreaterThanOrEqual(b.y0);
-        expect(t.y).toBeLessThanOrEqual(b.y0 + b.d);
+        expect(t.x).toBeGreaterThanOrEqual(b.x0 - BED_LIP);
+        expect(t.x).toBeLessThanOrEqual(b.x0 + b.w + BED_LIP);
+        expect(t.y).toBeGreaterThanOrEqual(b.y0 - BED_LIP);
+        expect(t.y).toBeLessThanOrEqual(b.y0 + b.d + BED_LIP);
         expect(t.alpha).toBeUndefined();
       }
       const solid = (s: number) => bedDress(c, z, s).filter((t) => t.alpha === undefined).length;

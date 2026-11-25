@@ -7,7 +7,10 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// The layout cases walk every place at two sizes and two font scales; a busy machine needs more than 5 s.
+vi.setConfig({ testTimeout: 60_000 });
 import { GameConfigSchema } from '../../../config/schema';
 import * as E from '../../../engine/economy';
 import { FIXTURE_NAMES, FIXTURE_NOW, fixtureGame, withTestContent } from '../../../engine/fixtures/salvage';

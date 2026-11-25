@@ -71,7 +71,7 @@ describe('bar text fits at font scale 1.3, never under 11 pt', () => {
         const carry = fitText(carryText(v, c), L.slots.carry - 12, L.rows.bar - 4 - 3, 12, L.s, true);
         expect(carry.cut).toBe(false);
         expect(carry.pt).toBeGreaterThanOrEqual(MIN_PT);
-      });
+      }, 60_000); // the fixture states are PLAYED through the rules (director.ts): the first build is slow on a loaded machine
     }
   }
   it('the skip\'s load fits the 104 pt carry chip (beside its pictogram) at 1.3', () => {

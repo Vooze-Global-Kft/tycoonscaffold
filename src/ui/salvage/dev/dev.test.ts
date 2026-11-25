@@ -6,7 +6,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { GameConfigSchema } from '../../../config/schema';
 import * as E from '../../../engine/economy';
 import { FIXTURE_NAMES, FIXTURE_NOW, fixtureGame, withTestContent } from '../../../engine/fixtures/salvage';
@@ -17,6 +17,11 @@ import { STRESS, phoneSwitches } from './switches';
 const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'games', 'scrap-yard', 'game.json'), 'utf8'));
 const cfg = withTestContent(GameConfigSchema.parse(raw));
 const game = (n: (typeof FIXTURE_NAMES)[number]) => fixtureGame(n, E.createInitialState(cfg, FIXTURE_NOW), FIXTURE_NOW);
+
+// The frozen states are played once, lazily, on first read (director.ts): before the tests' 5 s clocks.
+beforeAll(() => {
+  for (const f of FIXTURE_NAMES) game(f);
+}, 120_000);
 
 /** Every kind of the CardRef union (types.ts): a new kind fails here until the board has a switch for it. */
 const REF_KINDS: Record<R.CardRef['kind'], true> = { place: true, machine: true, office: true, bay: true, board: true, skip: true, deal: true, table: true, processBoard: true, away: true, rung: true, clipboard: true, settings: true, help: true };

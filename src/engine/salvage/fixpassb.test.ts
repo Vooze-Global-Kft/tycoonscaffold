@@ -5,7 +5,6 @@
  * ticket books. On the frozen test content (changed per test where a field is new), never tuned numbers.
  */
 import { describe, expect, it } from 'vitest';
-import { GameConfigSchema } from '../../config/schema';
 import { SalvageSchema, lintSalvage, type SalvageContent } from '../../config/schema.salvage';
 import gameJson from '../../../games/scrap-yard/game.json';
 import { FIXTURE_NOW, SALVAGE_TEST, SALVAGE_TEST_RAW } from '../fixtures/salvage';
@@ -75,6 +74,18 @@ describe('P1: the drop-off opening', () => {
       x.s.things.pop(); // free the place
     }
     expect(got).toEqual(['washer', 'radiator', 'washer', 'radiator', 'cable', 'cable']);
+  });
+  it('the real content: no taps, cable or cylinder arrives before the opening ends', () => {
+    const c = SalvageSchema.parse((gameJson as { salvage: unknown }).salvage);
+    const x = ctx(c);
+    const early: string[] = [];
+    for (let t = c.dropoff.first; t < c.dropoff.openingUntil_s; t += c.dropoff.period) {
+      dropoffArrive(x, t);
+      early.push(x.s.things.at(-1)!.obj);
+      x.s.things.pop();
+    }
+    expect(early.length).toBeGreaterThan(0);
+    expect(early.filter((o) => !c.dropoff.opening.includes(o) && !c.dropoff.initial.includes(o))).toEqual([]);
   });
   it('without an opening the drop-off is as before (defaults)', () => {
     expect(SALVAGE_TEST.dropoff.opening).toEqual([]);
@@ -157,7 +168,7 @@ describe('L5 and M: beds, the back wall, the drive line', () => {
     expect(reached).toBeGreaterThan(0);
   });
   it('the real content: every bed it has holds its stock with no overlap', () => {
-    const c = GameConfigSchema.parse(gameJson).salvage as SalvageContent;
+    const c = SalvageSchema.parse((gameJson as { salvage: unknown }).salvage);
     for (const [id, z] of Object.entries(c.zones)) if (z.bed) expect({ id, ...overlaps(c, id) }).toMatchObject({ id, n: 0, outside: 0 });
   });
   it('nobody of the rules walks north of the back wall; the truck drives along the drive line', () => {

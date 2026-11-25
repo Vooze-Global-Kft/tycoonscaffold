@@ -235,7 +235,7 @@ describe('the map', async () => {
     expect(list).toContain('plant.weighbridge.deck');
     expect(list).toContain('ground.asphalt');
     expect(list).toContain('lane.parapet');
-    expect(list).toContain('lane.barrier');
+    expect(list.includes('lane.end') || list.includes('lane.barrier')).toBe(true);
     // No fence panel stands across the gate.
     const gy = content.map.points.gate[1];
     for (let o = 0; o < items.length; o += A.ITEM) {

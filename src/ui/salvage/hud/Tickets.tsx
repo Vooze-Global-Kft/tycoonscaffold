@@ -350,7 +350,7 @@ export function TicketPaper({ v, plan, s }: { v: TicketView; plan: TicketPlan; s
         ) : null}
         <View style={paid ? styles.stamp : null}>
           {v.legal.map((l, i) => (
-            <BarText key={i} pt={small} weight={paid ? '800' : '500'} color={paid ? PAL.stamp : PAL.inkSoft}>
+            <BarText key={i} pt={small} lines={plan.legalLines[i] ?? 1} weight={paid ? '800' : '500'} color={paid ? PAL.stamp : PAL.inkSoft}>
               {l}
             </BarText>
           ))}

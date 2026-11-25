@@ -151,6 +151,8 @@ export interface TicketPlan {
   more: string | null;
   /** A row too wide for one line prints the name on one line and the mass and price under it. */
   twoLine: boolean;
+  /** Lines each legal line takes (a long one, "Gross · Tare · Net" at font scale 1.3, wraps to two). */
+  legalLines: (1 | 2)[];
   height: number;
 }
 
@@ -169,13 +171,17 @@ export function planTicket(v: TicketView, w: number, s: number, c: Content, maxH
   const inner = rowWidth(w);
   const twoLine = v.rows.some((r) => textW(r.note ? `${r.name} · ${r.note}` : r.name, pt) + textW(r.kg, pt) + textW(r.right, pt) + 16 > inner);
   let n = Math.min(most, v.rows.length);
-  const hOf = (k: number) => ticketHeight(v.kind, k * (twoLine ? 2 : 1), !!v.lesson, s);
+  const small = TICKET_PT.small * s;
+  const legalLines = v.legal.map((l) => (textW(l, small) > inner ? 2 : 1) as 1 | 2);
+  const extra = legalLines.reduce<number>((a, k) => a + k - 1, 0) * Math.ceil(small * 1.2);
+  const hOf = (k: number) => ticketHeight(v.kind, k * (twoLine ? 2 : 1), !!v.lesson, s) + extra;
   while (n > 1 && hOf(n) > maxH) n--;
-  const extra = v.rows.length - n;
+  const left = v.rows.length - n;
   return {
     rows: v.rows.slice(0, n),
-    more: extra > 0 ? say({ key: 'ticket.more', args: { n: { n: extra } } }, c) : null,
+    more: left > 0 ? say({ key: 'ticket.more', args: { n: { n: left } } }, c) : null,
     twoLine,
+    legalLines,
     height: hOf(n),
   };
 }

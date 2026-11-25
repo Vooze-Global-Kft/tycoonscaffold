@@ -3223,7 +3223,7 @@
         "text": "goal.fetchTrial",
         "target": "gate",
         "via": "truck",
-        "done": "bridged:partnerFarm:1",
+        "done": "fetched:partnerFarm:1",
         "buy": null,
         "optional": false,
         "stall": null
@@ -3233,7 +3233,7 @@
         "text": "goal.tipTrial",
         "target": "floor",
         "via": null,
-        "done": "fetched:partnerFarm:1",
+        "done": "tipped:partnerFarm:1",
         "buy": null,
         "optional": false,
         "stall": "chevron"

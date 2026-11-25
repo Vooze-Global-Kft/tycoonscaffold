@@ -14,7 +14,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { GameConfigSchema } from '../../../config/schema';
 import { SalvageSchema } from '../../../config/schema.salvage';
 import * as E from '../../../engine/economy';
@@ -43,6 +43,11 @@ const SIZES = [
   { name: '667 / 1.0', L: frameLayout(S667.w, S667.h, S667.insets, 1) },
   { name: '667 / 1.3', L: frameLayout(S667.w, S667.h, S667.insets, 1.3) },
 ];
+
+// The frozen states are played once, lazily, on first read (director.ts): play them before the tests' 5 s clocks start.
+beforeAll(() => {
+  for (const f of FIXTURE_NAMES) game(f);
+}, 120_000);
 
 const unfilled = (s: string) => /\{[A-Za-z0-9_.|]+\}/.test(s);
 
