@@ -334,9 +334,16 @@ function step(b: Bot, dt: number): void {
 /** Walk (or drive) along waypoints at `speed`, a sample before every tick. */
 function travel(b: Bot, pts: { x: number; y: number }[], speed: number): void {
   for (const q of pts) {
+    let lastD = Infinity;
+    let stuck = 0;
     for (let guard = 0; guard < 200_000; guard++) {
       const p = pos(b);
       const d = Math.hypot(q.x - p.x, q.y - p.y);
+      // A thumb that pushes and gets nowhere (the rules clamp the sample: a point outside the yard) lets go.
+      if (d > lastD - 1e-3) {
+        if (++stuck > 20) break;
+      } else stuck = 0;
+      lastD = Math.min(lastD, d);
       const stepM = speed * b.opts.dt;
       b.standing = 0;
       if (d <= stepM) {
@@ -652,12 +659,10 @@ function placeSpot(b: Bot, place: string): { x: number; y: number } {
   if (!pl || !pl.solid) return p;
   const m = Math.min(c.reach.place - 0.2, BODY + 0.4);
   const here = pos(b);
-  const cands = [
-    { x: p.x, y: p.y + pl.d / 2 + m },
-    { x: p.x, y: p.y - pl.d / 2 - m },
-    { x: p.x - pl.w / 2 - m, y: p.y },
-    { x: p.x + pl.w / 2 + m, y: p.y },
-  ].filter((q) => q.x > 0.5 && q.y > 0.5 && q.x < c.yard.width - 0.5 && q.y < c.yard.depth - 0.5 && !b.graph.rects.some((r) => inside(r, q) && !(Math.abs(r.x0 + BODY - (p.x - pl.w / 2)) < 1e-6 && Math.abs(r.y0 + BODY - (p.y - pl.d / 2)) < 1e-6)));
+  // join2's door (content map.places.<id>.door): a place with a door is opened from that side only.
+  const door = (pl as { door?: 'n' | 's' | 'e' | 'w' }).door;
+  const sides = { s: { x: p.x, y: p.y + pl.d / 2 + m }, n: { x: p.x, y: p.y - pl.d / 2 - m }, w: { x: p.x - pl.w / 2 - m, y: p.y }, e: { x: p.x + pl.w / 2 + m, y: p.y } };
+  const cands = (door ? [sides[door]] : [sides.s, sides.n, sides.w, sides.e]).filter((q) => q.x > 0.5 && q.y > 0.5 && q.x < c.yard.width - 0.5 && q.y < c.yard.depth - 0.5 && !b.graph.rects.some((r) => inside(r, q) && !(Math.abs(r.x0 + BODY - (p.x - pl.w / 2)) < 1e-6 && Math.abs(r.y0 + BODY - (p.y - pl.d / 2)) < 1e-6)));
   cands.sort((a, q) => pathLen(here, pathOf(b.graph, here, a)) - pathLen(here, pathOf(b.graph, here, q)));
   return cands[0] ?? p;
 }
@@ -778,6 +783,12 @@ function sources(b: Bot, prefer: string | null): Source[] {
     // Finding W9: the tier of the NEXT piece (the car's wheels and loom by hand, its converter with the
     // torch); a stripped shell is nobody's work.
     if (!o || th.shell || tierOf(c, th) > s.tier) continue;
+    // Nothing a person can reach: a thing laid outside the yard (the tipping floor's slots run on past its
+    // footprint when it holds many small things; REPORT6) is not a source.
+    {
+      const tp0 = thingPos(c, th.at);
+      if (tp0.x < 0.3 || tp0.y < 0.3 || tp0.x > c.yard.width - 0.3 || tp0.y > c.yard.depth - 0.3) continue;
+    }
     const n = th.cut + 64;
     let g = 0;
     let val = 0;
@@ -833,6 +844,7 @@ function sources(b: Bot, prefer: string | null): Source[] {
     if (b.opts.onlyZone && !(pile === `zone.${b.opts.onlyZone}` || pile === b.opts.onlyZone || pile.startsWith(`beside.${b.opts.onlyZone}.`))) continue;
     const first = sorted[0] as Piece & { k: number };
     const pp = piecePos(c, pile, first.k, at);
+    if (pp.x < 0.3 || pp.y < 0.3 || pp.x > c.yard.width - 0.3 || pp.y > c.yard.depth - 0.3) continue;
     const T = Math.hypot(pp.x - here.x, pp.y - here.y) * 1.15 / v + n * c.pick_s + Math.hypot(pp.x - scale.x, pp.y - scale.y) * 1.15 / v + 2 * b.P.react;
     best.set(`pile:${pile}`, { score: val / T, kind: 'lift', spot: pp, pile, value: val, g });
   }

@@ -20,6 +20,7 @@
 import type { SalvageContent } from '../../../config/schema.salvage';
 import * as R from '../../../engine/salvage';
 import { say as sayStrict } from '../strings';
+import { laneGeo, laneSigns } from './lane';
 
 /** say(), but a key the words file does not have yet (the contract and the words move apart for a while) gives '' and the plate is left out. */
 function say(t: R.Txt, c: SalvageContent): string {
@@ -76,6 +77,8 @@ export interface LabelTops {
 
 /** Air between a sprite's top edge and its plate's pointer, metres (the ruling: the manifest's height + 0.3 m). */
 export const PLATE_AIR_M = 0.3;
+/** The height of a partner's sign board on the lane, metres (its name plate sits on the board). */
+export const SIGN_Z = 1.2;
 
 /** The limits of 4.6 for the lines a plate prints. */
 export const LIMITS = { place: 18, padlock: 38, bay: 38, skip: 38, sign: 40 } as const;
@@ -191,6 +194,13 @@ export function labelItems(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTab
     const lab = s.plate ?? R.skipLabel(cfg, g, s.partner, g.stats.playSeconds);
     if (!lab) continue;
     out.push({ ...skipPlate(c, lab), id: `skip.${s.partner}.${s.slot ?? 0}`, x: s.x, y: s.y });
+  }
+  // join3 (L7/P10): each partner site's name on its gate sign, at the sign the lane's art places
+  // (yard.ts laneSigns), the name from the register through the rules' partner data.
+  const lane = laneGeo(c);
+  if (lane) for (const sg of laneSigns(lane)) {
+    if (!g.salvage.partners[sg.id]) continue;
+    out.push({ id: `sign.${sg.id}`, kind: 'sign', x: sg.x, y: sg.y, z: SIGN_Z, lines: [line(say({ key: 'title.place', args: { place: { name: sg.id } } }, c), LIMITS.sign, 'strong')], padlock: false, near: false, place: null });
   }
   // A line whose key has no words yet is dropped; a plate with no line is left out.
   const kept = out.map((it) => ({ ...it, lines: it.lines.filter((l) => l.text !== '') })).filter((it) => it.lines.length > 0);

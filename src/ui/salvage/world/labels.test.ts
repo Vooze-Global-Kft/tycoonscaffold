@@ -252,3 +252,20 @@ describe('the plates\' layout (L3, P7)', () => {
 function L0(sz: (typeof SIZES)[number]) {
   return hudLayout(sz.W, sz.H, sz.insets, 1);
 }
+
+describe('join3: the partners\' names on their lane signs (L7, P10)', () => {
+  it('each partner of the rules has one sign plate, at the sign the lane art places, with its register name', async () => {
+    const { laneGeo, laneSigns } = await import('./lane');
+    const g = game('m30');
+    const items = labelItems(cfg, g, R.frame(cfg, g), day).filter((i) => i.id.startsWith('sign.'));
+    const signs = laneSigns(laneGeo(cfg.salvage)!);
+    expect(items.length).toBe(Object.keys(g.salvage.partners).length);
+    for (const it of items) {
+      const id = it.id.slice(5);
+      const sg = signs.find((s) => s.id === id)!;
+      expect([it.x, it.y]).toEqual([sg.x, sg.y]);
+      expect(it.lines[0].text.length).toBeGreaterThan(0);
+      expect(it.lines[0].text).not.toBe(id);
+    }
+  });
+});

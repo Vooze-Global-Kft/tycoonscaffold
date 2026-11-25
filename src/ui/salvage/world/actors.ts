@@ -32,7 +32,7 @@ import { CARRIER_FRAMES, HAND_FAMILIES, carrierFrameOf, handFamilyOf } from '../
 import { CONTAINER_TINTS, STILLAGE_LAYER_DY } from '../art/manifest/plant';
 import { GRADE_SPRITE, INGOT_FRAMES, OBJECT_SPRITE, stageOf, thingLookTint } from '../art/manifest/things';
 import { loadFamily, type LoadFamily } from '../art/people.draw';
-import { laneDrawEnd, laneGeo, mapDriveLine, mapNorth, type LaneGeo } from './yard';
+import { laneDrawEnd, laneGeo, laneSigns, mapDriveLine, mapNorth, type LaneGeo } from './yard';
 import { bedShares, bedsDress, type Dress } from './dressing';
 import { CARRIER_AHEAD, flatbedBedCentre, headingRad, skipTopOnTruck } from '../art/vehicles.draw';
 
@@ -296,15 +296,14 @@ function laneItems(out: number[], res: Resolver, l: LaneGeo, W: number): void {
     if (s.look === 0) {
       sprite(out, res, 'lane.shed.farm', s.x, l.gy - l.half - 2.2);
       sprite(out, res, 'lane.farmhouse', s.x + 3.5, l.gy - l.half - 4.6);
-      sprite(out, res, 'lane.sign.partner', s.x - 4, l.gy - l.half - 0.2, { frame: 0 });
     } else {
       sprite(out, res, 'lane.hoarding', s.x - 3.5, l.gy - l.half - 0.4);
       sprite(out, res, 'lane.hoarding.gate', s.x, l.gy - l.half - 0.4);
       sprite(out, res, 'lane.hoarding', s.x + 3.5, l.gy - l.half - 0.4);
-      sprite(out, res, 'lane.sign.partner', s.x - 2.2, l.gy - l.half + 0.1, { frame: 1 });
     }
     sprite(out, res, 'ground.hatch', s.x, l.gy + l.half - 0.5);
   }
+  for (const sg of laneSigns(l)) sprite(out, res, 'lane.sign.partner', sg.x, sg.y, { frame: sg.frame });
   if (l.bridge !== null) {
     sprite(out, res, 'lane.parapet', l.bridge, l.gy - l.half - 0.2);
     sprite(out, res, 'lane.parapet', l.bridge, l.gy + l.half + 0.2);
