@@ -8,7 +8,7 @@ then part 1, then the first-yard document. File names inside the parts (`RULING.
 are complete here.
 
 - Part 1: the ruling on three competing designs (points 1 to 16), before the specification.
-- Part 2: the first yard's economy after the first numbers prototype (E1 to E24).
+- Part 2: the first yard's economy after the first numbers prototype (E1 to E27).
 - Part 3: the first yard after its review (S1 to S24).
 
 ---
@@ -356,6 +356,29 @@ fits the game's truck).
 as long again on nine pairs of ten, each beat) and is run to 100 minutes; the hands-off test aims
 at the next goal purchase from states with little cash; rivals are growing pure functions of the
 market day with S17's guard, their starting tonnes placed from the tuned hour.
+
+### While the third pass runs (15:35): three rules decided for the contract
+
+**E25. No shop rule beyond cash and named gates.** The third pass's "one purchase on sale at a
+time" and "the next card 60 s after the last purchase" are refused (E18). A shop item may carry one
+gate that content names and the card shows with a padlock: a rung ("Opens at 2.5 t supplied") or
+another item owned ("Needs the hook-lift truck"). Everything else is paced by price alone: prices
+rise along the goal list as the income does (each is about what the normal player has earned and
+not yet spent when its goal should arrive), so buying a later thing first is a choice that delays
+the rest, never a way round the pace. Crew, machine and partner levels open at rung 2.
+
+**E26. Skips in rotation are skips.** A partner at level L has L skips at its site; each fills
+`fill_s` after it was hooked and set back; the driver and the boss hook any full one (the one full
+longest); the label and the lane show every skip. Supply is L loads per fill time. The prototype
+models the same.
+
+**E27. Rivals run from the player's start**, as the specification has it: tonnes = T0 × (1 + g ×
+min(d, 40)) with d the market days since this player's first second, so every player meets the
+same race whenever they begin; starting tonnes come from the tuned hour. A formula on the calendar
+day is refused: it would move the first hour's passes for everyone who starts later.
+
+The boss may feed any hopper (specification 2.1); "the boss no longer feeds the bench" is a habit
+of the prototype's player, not a rule.
 
 ---
 

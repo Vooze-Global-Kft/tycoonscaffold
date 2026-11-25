@@ -47,7 +47,7 @@ describe('world labels on the frozen states', () => {
     const g = game('m30');
     const items = labelItems(cfg, g, R.frame(cfg, g), day);
     const ci = items.find((i) => i.id === 'bay.ci')!;
-    expect(ci.lines[0].text).toContain(R.fmtPrice(R.priceOf(cfg, 'ci', day)));
+    expect(ci.lines[1].text).toContain(R.fmtPrice(R.priceOf(cfg, 'ci', day)));
     expect(ci.lines[0].text).toContain(cfg.salvage.grades.ci.name);
     expect(ci.lines.some((l) => l.text === 'held')).toBe(true);
     // An empty bay that is not held shows no chip.

@@ -60,6 +60,24 @@ export function pushOut(out: number[], r: number, solids: readonly number[], o: 
 }
 
 /**
+ * Keeps a body inside the yard [0, w] x [0, d] or, when `lane` ([x0, x1, y0, y1]) is given, inside the
+ * lane east of the gate: a body may cross the east fence only inside the lane's band (the gate), and a
+ * body already out on the lane stays in its band up to its end (the barrier before the bridge).
+ */
+export function keepInside(out: number[], r: number, w: number, d: number, lane: readonly number[] | undefined, fromX: number): void {
+  if (lane && lane.length === 4 && out[0] > w - r) {
+    const inBand = out[1] >= lane[2] + r && out[1] <= lane[3] - r;
+    if (fromX > w - r || inBand) {
+      out[1] = Math.max(lane[2] + r, Math.min(lane[3] - r, out[1]));
+      out[0] = Math.min(lane[1] - r, out[0]);
+      return;
+    }
+  }
+  out[0] = Math.max(r, Math.min(w - r, out[0]));
+  out[1] = Math.max(r, Math.min(d - r, out[1]));
+}
+
+/**
  * Moves a circle of radius `r` from (x, y) by (dx, dy) through `solids` (and one extra circle `ex, ey,
  * er` when er > 0: the parked truck), inside the yard [0, w] x [0, d]. Writes the new place into out[0], out[1].
  */
@@ -91,24 +109,6 @@ export function moveBody(out: number[], x: number, y: number, dx: number, dy: nu
     }
     keepInside(out, r, w, d, lane, x);
   }
-}
-
-/**
- * Keeps a body inside the yard [0, w] x [0, d] or, when `lane` ([x0, x1, y0, y1]) is given, inside the
- * lane east of the gate: a body may cross the east fence only inside the lane's band (the gate), and a
- * body already out on the lane stays in its band up to its end (the barrier before the bridge).
- */
-export function keepInside(out: number[], r: number, w: number, d: number, lane: readonly number[] | undefined, fromX: number): void {
-  if (lane && lane.length === 4 && out[0] > w - r) {
-    const inBand = out[1] >= lane[2] + r && out[1] <= lane[3] - r;
-    if (fromX > w - r || inBand) {
-      out[1] = Math.max(lane[2] + r, Math.min(lane[3] - r, out[1]));
-      out[0] = Math.min(lane[1] - r, out[0]);
-      return;
-    }
-  }
-  out[0] = Math.max(r, Math.min(w - r, out[0]));
-  out[1] = Math.max(r, Math.min(d - r, out[1]));
 }
 
 /** Whether a circle at (x, y) of radius r overlaps any solid (or leaves the yard). */

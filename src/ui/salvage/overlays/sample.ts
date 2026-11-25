@@ -210,19 +210,21 @@ export function inOutLine(cfg: SalvageConfig, id: R.MachineId): Txt | null {
     const first = out[0]?.[0];
     return { key: 'card.inOut', args: { in: { grade: 'mot' }, out: first ? { grade: first } : { text: 'card.empty' } } };
   }
+  if (id === 'crucible') return { key: 'card.inOut', args: { in: { grade: 'brs' }, out: { grade: 'bri' } } };
   return null;
 }
 
 /** The rows of a machine card (pure, for the tests). */
 export function machineRows(cfg: SalvageConfig, g: SalvageGame, m: MachineCard): CardRow[] {
   const rows: CardRow[] = [];
-  const rate: Txt = { key: 'card.rateKgS', args: { kg: { mass_g: Math.round(m.rate * 1000), step: 'lot' } } };
+  const rate: Txt | null = m.rate > 0 ? { key: 'card.rateKgS', args: { kg: { mass_g: Math.round(m.rate * 1000), step: 'lot' } } } : null;
   const io = inOutLine(cfg, m.machine);
   if (!m.owned) {
     const key = MACHINE_KEY[m.machine];
     const b: CardButton | null = key ? buyButton(cfg, g, key) : null;
     rows.push({ id: 'buy', name: { key: ITEM_NAME[m.machine] }, line: ITEM_EFFECT[m.machine] ? { key: ITEM_EFFECT[m.machine]! } : null, button: b, icon: null, extra: null });
     if (io) rows.push({ id: 'io', name: io, line: rate, button: null, icon: null });
+    else if (rate) rows.push({ id: 'rate', name: rate, line: null, button: null, icon: null });
     return rows;
   }
   rows.push({ id: 'status', name: m.status, line: rate, button: null, icon: null, extra: io });

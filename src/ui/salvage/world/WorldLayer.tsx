@@ -12,8 +12,8 @@
  * - THE VALUE SLIDES: the muted "today's value" from the weigh-in ticket's place to the bay chip, and the
  *   bays' values into the flatbed's bed (two plain views moved by Reanimated; their words are set once
  *   per slide).
- * The camera is read from the frame loop's `camera` shared value when it has one, else from the
- * ground's transform (the same numbers). Effects start from the rules' events (modeEvents) through ONE
+ * The camera is the frame loop's `camera` shared value (camX, camY before the zoom, the zoom about the
+ * screen centre; ./frameLoop.ts). Effects start from the rules' events (modeEvents) through ONE
  * table (./effects.ts `effectsFor`); `?fxdemo=1` fires every effect in turn near the boss (./labelsDev.web.ts).
  */
 import { Canvas, Picture, Skia, type SkCanvas, type SkPicture } from '@shopify/react-native-skia';
@@ -30,7 +30,8 @@ import { gradeGlyph } from '../art/pieces.draw';
 import { drawIngot } from '../art/scrap.draw';
 import { scripCoin } from '../art/ui.draw';
 import { say } from '../strings';
-import { chevronPlace, chevronTarget } from './chevron';
+import { CHEVRON_Z, chevronPlace, chevronTarget } from './chevron';
+import { cashAnchor } from '../hud/anchors';
 import { FX, FX_EVENTS, FX_S, WORK, arcAt, ease, effectsFor, type FxContext, type FxSpawn } from './effects';
 import type { YardAnim } from './frameLoop';
 import { HERO, freeWorld, heroCam, heroCamera, type ScreenInsets } from './heroFrame';
@@ -48,26 +49,17 @@ const RING_STEPS = 24;
 const COOL_STEPS = 8;
 const COOL_METALS = ['brass', 'aluminium'] as const;
 
-/** The cash counter's centre while the bars give none (hud/anchors.ts `cashAnchor`, once it exists): the top bar's cash at its left. */
-export const cashPoint = makeMutable({ x: 0, y: 0, set: 0 });
+type Cam = { x: number; y: number; zoom: number };
 
-/** A camera with x, y in points (the frame loop's `camera` or the ground's transform). */
-function camOf(anim: YardAnim): SharedValue<{ x: number; y: number }> | null {
-  const a = anim as YardAnim & { camera?: SharedValue<{ x: number; y: number }> };
-  return a.camera ?? null;
-}
-
-/** The camera's top-left this frame (a worklet): from `camera`, else the ground's -translate. */
-function readCam(out: number[], cam: { x: number; y: number } | null, ground: unknown): void {
+/**
+ * A world point on screen this frame (a worklet): the frame loop's camera (camX, camY before the zoom)
+ * with its zoom about the screen centre: screen = (wx·ppm − x − W/2)·zoom + W/2, likewise for y.
+ */
+function toScreen(out: number[], wx: number, wy: number, wz: number, cam: Cam, ppm: number, tilt: number, lift: number, W: number, H: number): void {
   'worklet';
-  if (cam) {
-    out[0] = cam.x;
-    out[1] = cam.y;
-    return;
-  }
-  const g = ground as { translateX?: number; translateY?: number }[];
-  out[0] = g && g[0] && typeof g[0].translateX === 'number' ? -g[0].translateX : 0;
-  out[1] = g && g[1] && typeof g[1].translateY === 'number' ? -g[1].translateY : 0;
+  const z = cam.zoom > 0 ? cam.zoom : 1;
+  out[0] = (wx * ppm - cam.x - W / 2) * z + W / 2;
+  out[1] = (wy * ppm * tilt - wz * ppm * lift - cam.y - H / 2) * z + H / 2;
 }
 
 export function WorldLayer({ cfg, yard, anim, width, height, insets, active = true }: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; width: number; height: number; insets: ScreenInsets; active?: boolean }) {
@@ -98,8 +90,8 @@ function useLabelSize(): number {
 function Labels({ cfg, yard, anim, width, height }: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; width: number; height: number }) {
   const size = useLabelSize();
   const [placed, setPlaced] = useState<PlacedLabel[]>([]);
-  const cam = camOf(anim);
-  const ground = anim.ground;
+  const [inv, setInv] = useState(1);
+  const cam = anim.camera;
   const seen = useRef(new Map<string, number>());
   useEffect(() => {
     let last = '';
@@ -111,42 +103,47 @@ function Labels({ cfg, yard, anim, width, height }: { cfg: R.SalvageConfig; yard
       const f = R.frame(cfg, g);
       const day = R.marketDay(cfg, R.marketTime(g, Date.now()));
       const items = labelItems(cfg, g, f, day);
-      const c = [0, 0];
-      readCam(c, cam ? cam.value : null, ground.value);
+      const cv = cam.value;
+      const z = cv.zoom > 0 ? cv.zoom : 1;
       const now = Date.now() / 1000;
       const boss = g.salvage.presence;
       const shown = items.filter((it) => {
         const near = boss ? Math.hypot(boss.x - it.x, boss.y - it.y) <= NEAR_M : false;
         if (it.near) return near;
         if (!it.place) return true;
-        const sx = it.x * v.ppm - c[0];
-        const sy = it.y * v.ppm * v.tilt - c[1];
+        const sx = (it.x * v.ppm - cv.x - width / 2) * z + width / 2;
+        const sy = (it.y * v.ppm * v.tilt - cv.y - height / 2) * z + height / 2;
         const inView = sx > 0 && sx < width && sy > 0 && sy < height;
         if (inView && !seen.current.has(it.id)) seen.current.set(it.id, now);
         const at = seen.current.get(it.id);
         return near || (at !== undefined && now - at < FIRST_SIGHT_S);
       });
-      const next = stackLabels(shown, v, size);
-      const key = next.map((p) => `${p.item.id}:${p.item.lines.map((l) => l.text).join('|')}:${Math.round(p.lift)}`).join(';');
+      // Plates keep their text size while the view zooms out (driving): stacked and drawn at 1 / zoom.
+      const inv = Math.round((1 / z) * 20) / 20;
+      const next = stackLabels(shown, v, size * inv);
+      const key = `${inv};` + next.map((p) => `${p.item.id}:${p.item.lines.map((l) => l.text).join('|')}:${Math.round(p.lift)}`).join(';');
       if (key !== last) {
         last = key;
         setPlaced(next);
+        setInv(inv);
       }
     };
     run();
     const t = setInterval(run, LABEL_MS);
     return () => clearInterval(t);
-  }, [cfg, yard, cam, ground, size, width, height]);
+  }, [cfg, yard, cam, size, width, height]);
+  const W = width;
+  const H = height;
   const style = useAnimatedStyle(() => {
-    const c = [0, 0];
-    readCam(c, cam ? cam.value : null, ground.value);
-    return { transform: [{ translateX: -c[0] }, { translateY: -c[1] }] };
+    const c = cam.value;
+    const z = c.zoom > 0 ? c.zoom : 1;
+    return { transform: [{ translateX: W / 2 }, { translateY: H / 2 }, { scale: z }, { translateX: -W / 2 - c.x }, { translateY: -H / 2 - c.y }] };
   });
-  const m = plateMetrics(size);
+  const m = plateMetrics(size * inv);
   return (
     <Animated.View pointerEvents="none" style={[styles.world, style]}>
       {placed.map((p) => (
-        <Plate key={p.item.id} p={p} size={size} lineH={m.lineH} padX={m.padX} padY={m.padY} pad={m.pad} />
+        <Plate key={p.item.id} p={p} size={size * inv} lineH={m.lineH} padX={m.padX} padY={m.padY} pad={m.pad} />
       ))}
     </Animated.View>
   );
@@ -276,21 +273,21 @@ interface SlideSlot {
 function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; width: number; height: number; insets: ScreenInsets; active: boolean }) {
   const grades = useMemo(() => Object.keys(cfg.salvage.grades), [cfg]);
   const pics = useMemo(() => makePics(grades), [grades]);
-  const cam = camOf(anim);
-  const ground = anim.ground;
+  const cam = anim.camera;
   const live = useSharedValue<Live[]>([]);
   const rings = useSharedValue<{ x: number; y: number; r: number; k: number }[]>([]);
   const chev = useSharedValue({ on: 0, x: 0, y: 0 });
   const box = useSharedValue([0, 0, width, height]);
-  const pic = useSharedValue<SkPicture>(record(() => {}));
+  const pic = useSharedValue<SkPicture>(useMemo(() => record(() => {}), []));
   const busy = useRef(false);
   const lastFrame = useRef<R.FrameTable | null>(null);
   const size = useLabelSize();
 
-  // The cash counter's stand-in point (the top bar's cash, at its left) until the bars hand theirs over.
+  // Where the coin lands while the bars have not laid out their cash counter yet (cashAnchor 0, 0).
+  const cashFallback = useSharedValue({ x: insets.left + 40, y: insets.top + 22 });
   useEffect(() => {
-    if (cashPoint.value.set === 0) cashPoint.value = { x: insets.left + 40, y: insets.top + 22, set: 0 };
-  }, [insets.left, insets.top]);
+    cashFallback.value = { x: insets.left + 40, y: insets.top + 22 };
+  }, [insets.left, insets.top, cashFallback]);
   useEffect(() => {
     const f = freeWorld(width, height, insets);
     box.value = [f.x0, f.y0, f.x1, f.y1];
@@ -299,22 +296,29 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
   const frameCb = useFrameCallback((info) => {
     'worklet';
     const now = info.timestamp / 1000;
-    const c = [0, 0];
-    readCam(c, cam ? cam.value : null, ground.value);
+    const cm = cam.value;
+    const zoom = cm.zoom > 0 ? cm.zoom : 1;
     const ppm = yard.ppm;
     const tilt = yard.tilt;
     const lift = yard.lift;
+    const W = width;
+    const H = height;
     const rec = Skia.PictureRecorder();
-    const cv = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));
+    const cv = rec.beginRecording(Skia.XYWHRect(0, 0, W, H));
     const paint = Skia.Paint();
     let alive = 0;
+    // World-space drawing: in the world's pixels under the camera and its zoom (c is then 0, 0).
+    cv.save();
+    cv.translate(W / 2, H / 2);
+    cv.scale(zoom, zoom);
+    cv.translate(-W / 2 - cm.x, -H / 2 - cm.y);
     // The work rings (from the frame's things).
     const rs = rings.value;
     for (let i = 0; i < rs.length; i++) {
       const r = rs[i];
       const k = Math.max(1, Math.min(RING_STEPS, Math.round(r.k * RING_STEPS)));
       cv.save();
-      cv.translate(r.x * ppm - c[0], r.y * ppm * tilt - c[1]);
+      cv.translate(r.x * ppm, r.y * ppm * tilt);
       cv.scale(r.r / RING_R, r.r / RING_R);
       cv.drawPicture(pics.ring[k]);
       cv.restore();
@@ -323,6 +327,7 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
     // Effects.
     const L = live.value;
     const keep: Live[] = [];
+    const coins: Live[] = [];
     const p3 = [0, 0, 0];
     for (let i = 0; i < L.length; i++) {
       const e = L[i];
@@ -336,8 +341,8 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
         if (e.stop === 1 && e.end < 0) e.end = now;
         if (e.end >= 0 && now - e.end > dur) continue;
         const fade = e.end >= 0 ? 1 - (now - e.end) / dur : 1;
-        const sx = e.ax * ppm - c[0];
-        const sy = e.ay * ppm * tilt - c[1] - e.az * ppm * lift;
+        const sx = e.ax * ppm;
+        const sy = e.ay * ppm * tilt - e.az * ppm * lift;
         const t = now - e.t0;
         paint.setAlphaf(Math.max(0, fade));
         cv.saveLayer(paint);
@@ -387,8 +392,8 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
       alive++;
       if (e.kind === FX.arc) {
         arcAt(p3, e.ax, e.ay, e.az, e.bx, e.by, e.bz, ease(u), 1.1);
-        const gx = p3[0] * ppm - c[0];
-        const gy = p3[1] * ppm * tilt - c[1];
+        const gx = p3[0] * ppm;
+        const gy = p3[1] * ppm * tilt;
         cv.save();
         cv.translate(gx, gy);
         cv.drawPicture(pics.shadow);
@@ -399,23 +404,12 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
         cv.drawPicture(pics.piece[Math.min(pics.piece.length - 1, Math.max(0, e.look))]);
         cv.restore();
       } else if (e.kind === FX.coin) {
-        const sx = e.ax * ppm - c[0];
-        const sy = e.ay * ppm * tilt - c[1] - e.az * ppm * lift;
-        const cp = cashPoint.value;
-        const k = ease(u);
-        const x = sx + (cp.x - sx) * k;
-        const y = sy + (cp.y - sy) * k - 70 * 4 * k * (1 - k);
-        cv.save();
-        cv.translate(x, y);
-        const s = 1 + 0.35 * Math.sin(Math.PI * k);
-        cv.scale(s, s);
-        cv.drawPicture(pics.coin);
-        cv.restore();
+        coins.push(e);
       } else if (e.kind === FX.glow) {
         const a = u < 0.15 ? u / 0.15 : 1 - (u - 0.15) / 0.85;
         paint.setAlphaf(Math.max(0, a));
         cv.saveLayer(paint);
-        cv.translate(e.ax * ppm - c[0], e.ay * ppm * tilt - c[1]);
+        cv.translate(e.ax * ppm, e.ay * ppm * tilt);
         cv.scale(POUR_LIGHT_SCALE, POUR_LIGHT_SCALE);
         cv.drawPicture(pics.glow);
         cv.restore();
@@ -424,16 +418,37 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
         const k = Math.min(steps.length - 1, Math.floor(u * steps.length));
         paint.setAlphaf(u > 0.85 ? Math.max(0, (1 - u) / 0.15) : 1);
         cv.saveLayer(paint);
-        cv.translate(e.ax * ppm - c[0], e.ay * ppm * tilt - c[1] - e.az * ppm * lift);
+        cv.translate(e.ax * ppm, e.ay * ppm * tilt - e.az * ppm * lift);
         cv.drawPicture(steps[k]);
         cv.restore();
       }
     }
     if (keep.length !== L.length) live.value = keep;
+    cv.restore();
+    // Screen-space drawing: the coins (from the cab to the cash counter), the chevron.
+    const s2 = [0, 0];
+    const ca = cashAnchor.value;
+    const cp = ca.x > 0 || ca.y > 0 ? ca : cashFallback.value;
+    for (let i = 0; i < coins.length; i++) {
+      const e = coins[i];
+      const u = (now - e.t0) / FX_S[FX.coin];
+      toScreen(s2, e.ax, e.ay, e.az, cm, ppm, tilt, lift, W, H);
+      const k = ease(u);
+      cv.save();
+      cv.translate(s2[0] + (cp.x - s2[0]) * k, s2[1] + (cp.y - s2[1]) * k - 70 * 4 * k * (1 - k));
+      const sc = 1 + 0.35 * Math.sin(Math.PI * k);
+      cv.scale(sc, sc);
+      cv.drawPicture(pics.coin);
+      cv.restore();
+    }
     // The chevron over the goal's target, or its edge arrow.
     const ch = chev.value;
     const out = [0, 0, 0, 0];
-    chevronPlace(out, ch.on, ch.x, ch.y, c[0], c[1], ppm, tilt, lift, box.value);
+    const tip = [0, 0];
+    const foot = [0, 0];
+    toScreen(tip, ch.x, ch.y, CHEVRON_Z, cm, ppm, tilt, lift, W, H);
+    toScreen(foot, ch.x, ch.y, 0, cm, ppm, tilt, lift, W, H);
+    chevronPlace(out, ch.on, tip[0], tip[1], foot[1], box.value);
     if (out[0] === 1) {
       cv.save();
       cv.translate(out[1], out[2] + Math.sin(now * 4) * 2.5);
@@ -556,7 +571,7 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
         <Picture picture={pic} />
       </Canvas>
       {slots.map((s, i) => (
-        <Slide key={i} slot={s} text={slideText[i]} yard={yard} cam={cam} ground={ground} size={size} />
+        <Slide key={i} slot={s} text={slideText[i]} yard={yard} cam={cam} width={width} height={height} size={size} />
       ))}
     </>
   );
@@ -579,21 +594,23 @@ function useSlide() {
   );
 }
 
-function Slide({ slot, text, yard, cam, ground, size }: { slot: ReturnType<typeof useSlide>; text: string; yard: YardLayout; cam: SharedValue<{ x: number; y: number }> | null; ground: SharedValue<unknown[]>; size: number }) {
+function Slide({ slot, text, yard, cam, width, height, size }: { slot: ReturnType<typeof useSlide>; text: string; yard: YardLayout; cam: SharedValue<Cam>; width: number; height: number; size: number }) {
+  const W = width;
+  const H = height;
   const ppm = yard.ppm;
   const tilt = yard.tilt;
   const lift = yard.lift;
   const style = useAnimatedStyle(() => {
     const u = slot.u.value;
     if (u < 0 || u >= 1) return { opacity: 0, transform: [{ translateX: -999 }, { translateY: -999 }] };
-    const c = [0, 0];
-    readCam(c, cam ? cam.value : null, ground.value);
     const s = slot.p.value;
     const p = [0, 0, 0];
     const k = ease(u);
     arcAt(p, s.ax, s.ay, s.az, s.bx, s.by, s.bz, k, 0.4);
-    const x = p[0] * ppm - c[0];
-    const y = p[1] * ppm * tilt - c[1] - p[2] * ppm * lift;
+    const q = [0, 0];
+    toScreen(q, p[0], p[1], p[2], cam.value, ppm, tilt, lift, W, H);
+    const x = q[0];
+    const y = q[1];
     return { opacity: u < 0.12 ? u / 0.12 : u > 0.8 ? (1 - u) / 0.2 : 1, transform: [{ translateX: x - 90 }, { translateY: y - size * 1.6 }] };
   });
   return (

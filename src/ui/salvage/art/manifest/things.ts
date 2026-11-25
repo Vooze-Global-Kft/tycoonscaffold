@@ -84,7 +84,7 @@ const MEASURED: Record<string, [number, number, number, number]> = {
   'thing.plough': [-25, -17, 50, 28],
   'thing.beam': [-51, -9, 107, 15],
   'thing.tank': [-23, -18, 47, 28],
-  'thing.car': [-26, -23, 62, 37],
+  'thing.car': [-25, -21, 59, 32],
   'piece.panel': [-15, -12, 30, 19],
   'piece.panel.carried': [-13, -9, 26, 16],
   'piece.drum': [-11, -11, 25, 18],

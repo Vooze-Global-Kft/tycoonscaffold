@@ -29,6 +29,8 @@ export interface Insets {
 export const MIN_PT = 11;
 /** A line of the system font is about this many times its size. */
 export const LINE_EM = 1.2;
+/** Two lines in one chip sit closer (BarText with lines 2). */
+export const LINE_TIGHT = 1.18;
 /** Average advance of a character of the system font, semibold, in em (a little generous: digits, capitals). */
 export const CHAR_EM = 0.56;
 /** The one button's disc (4.1). */
@@ -145,7 +147,7 @@ export function fitText(text: string, w: number, h: number, base: number, s: num
       best = Math.min(best, Math.max(a.length, b.length));
     }
     if (Number.isFinite(best)) {
-      const twoPt = Math.floor(Math.min(want, w / (best * CHAR_EM), h / (2 * LINE_EM)) * 2) / 2;
+      const twoPt = Math.floor(Math.min(want, w / (best * CHAR_EM), h / (2 * LINE_TIGHT)) * 2) / 2;
       if (twoPt >= MIN_PT) return { pt: twoPt, lines: 2, cut: false };
     }
   }

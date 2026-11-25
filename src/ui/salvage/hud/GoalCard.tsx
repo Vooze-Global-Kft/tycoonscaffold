@@ -13,34 +13,13 @@ import { useShallow } from 'zustand/react/shallow';
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
 import { PAL } from '../palette';
-import { say } from '../strings';
 import { useSalvageUi } from '../uiState';
 import { fitText, lineH, type HudLayout } from './metrics';
 import { BarText, Paper } from './Paper';
+import { goalValues } from './words';
 
 /** The open card closes after this long (4.1). */
 export const GOAL_OPEN_MS = 6000;
-
-export interface GoalValues {
-  goal: string | null;
-  progress: string | null;
-  next: string | null;
-  advice: string | null;
-}
-
-export function goalValues(cfg: R.SalvageConfig, g: R.SalvageGame | undefined, now: number): GoalValues {
-  if (!g?.salvage) return { goal: null, progress: null, next: null, advice: null };
-  const c = cfg.salvage;
-  const goal = R.nextGoal(cfg, g);
-  const adv = R.advice(cfg, g, now);
-  const nextDef = goal ? c.goals[goal.n + 1] : undefined;
-  return {
-    goal: goal ? say(goal.text, c) : null,
-    progress: goal?.progress ? say({ key: 'goalProgress', args: { a: { n: goal.progress.a }, b: { n: goal.progress.b } } }, c) : null,
-    next: nextDef ? say({ key: nextDef.text as R.TextKey }, c) : null,
-    advice: adv ? say(adv.line, c) : null,
-  };
-}
 
 export function GoalCard({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   const v = useGame(useShallow((s) => goalValues(cfg, s.game as R.SalvageGame, Date.now())));

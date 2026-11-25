@@ -31,30 +31,28 @@ export function chevronTarget(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.Frame
 }
 
 /**
- * Where to draw it this frame (a worklet). Writes into `out`: [mode, x, y, angle] with mode 0 none, 1 the
- * chevron with its tip at (x, y), 2 the edge arrow centred at (x, y) turned by `angle` (radians, 0 east).
- * `box` is the free world [x0, y0, x1, y1] in window points.
+ * Where to draw it this frame (a worklet), from the target's screen points this frame: `tx, ty` the tip's
+ * place (CHEVRON_Z above the target), `gy` the target's ground point's y. Writes into `out`: [mode, x, y,
+ * angle] with mode 0 none, 1 the chevron with its tip at (x, y), 2 the edge arrow centred at (x, y)
+ * turned by `angle` (radians, 0 east). `box` is the free world [x0, y0, x1, y1] in window points.
  */
-export function chevronPlace(out: number[], on: number, tx: number, ty: number, camX: number, camY: number, ppm: number, tilt: number, lift: number, box: number[]): void {
+export function chevronPlace(out: number[], on: number, tx: number, ty: number, gy: number, box: number[]): void {
   'worklet';
   if (on !== 1) {
     out[0] = 0;
     return;
   }
-  const sx = tx * ppm - camX;
-  const sy = ty * ppm * tilt - camY - CHEVRON_Z * ppm * lift;
-  const gy = ty * ppm * tilt - camY;
-  if (sx >= box[0] && sx <= box[2] && gy >= box[1] && sy <= box[3]) {
+  if (tx >= box[0] && tx <= box[2] && gy >= box[1] && ty <= box[3]) {
     out[0] = 1;
-    out[1] = sx;
-    out[2] = Math.max(box[1] + 18, sy);
+    out[1] = tx;
+    out[2] = Math.max(box[1] + 18, ty);
     out[3] = 0;
     return;
   }
   // Off screen: from the free world's centre towards the target, clamped inside its border.
   const cx = (box[0] + box[2]) / 2;
   const cy = (box[1] + box[3]) / 2;
-  const dx = sx - cx;
+  const dx = tx - cx;
   const dy = gy - cy;
   const hw = (box[2] - box[0]) / 2 - EDGE_INSET;
   const hh = (box[3] - box[1]) / 2 - EDGE_INSET;

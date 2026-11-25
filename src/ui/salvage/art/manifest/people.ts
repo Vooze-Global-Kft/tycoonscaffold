@@ -280,6 +280,9 @@ const scaleBox = (b: Bounds, k: number): Bounds => {
   return B(x, y, Math.ceil((b.x + b.w) * k) + 1 - x, Math.ceil((b.y + b.h) * k) + 1 - y);
 };
 
+/** The hook-lift truck bakes a little smaller than the other vehicles (eight headings and four hook frames; the budget). */
+export const TRUCK_K = 0.38;
+
 /** The merchant's flatbed is a main sight of the first minute (S1): baked at this scale, not VEHICLE_K. */
 export const FLATBED_K = 0.75;
 
@@ -289,12 +292,14 @@ const h4to8 = (h: number): number => h * 2;
 const VEHICLES: PeopleEntry[] = [
   vehicle('vehicle.truck', {
     frames: ['skip'],
+    k: TRUCK_K,
     headings: 8,
     footprint: { w: 4.6, d: 2.0 },
     draw: (c, v, _f, h) => drawHookTruck(c, v, headingRad(h), { skip: 'on' }),
   }),
   vehicle('vehicle.truck.hook', {
     frames: HOOK_FRAMES,
+    k: TRUCK_K,
     headings: 1,
     footprint: { w: 4.6, d: 2.0 },
     draw: (c, v, f) => drawHookFrame(c, v, HOOK_FRAMES[f], 'farm-full'),
@@ -313,7 +318,6 @@ const VEHICLES: PeopleEntry[] = [
   }),
   vehicle('vehicle.flatbed', {
     frames: ['stowed'],
-    k: FLATBED_K,
     headings: 4,
     footprint: { w: 4.6, d: 2.0 },
     draw: (c, v, _f, h) => drawFlatbed(c, v, headingRad(h4to8(h))),

@@ -222,6 +222,12 @@ const WEB_ONLY = [
   'src/ui/salvage/dev/switches.web.ts',
   // The loading animation's preview switches (lt=, ltitle=, lrm=, lready=, lseen=; the frame log).
   'src/ui/salvage/loading/dev.web.ts',
+  // The first yard's screens' preview switches (requests.md, 25 November): the overlays' ?card= and
+  // ?fontScale=, the world labels' fontScale= and fxdemo=, the hud's ?fontScale=1.3 and ?hudDemo=.
+  'src/ui/salvage/overlays/devOpen.web.ts',
+  'src/ui/salvage/world/labelsDev.web.ts',
+  'src/ui/salvage/hud/fontScale.web.ts',
+  'src/ui/salvage/hud/dev.web.ts',
 ];
 
 /**

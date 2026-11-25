@@ -450,22 +450,22 @@ export function drawCrucibleState(c: SkCanvas, v: View3q, state: CrucibleState, 
   c.restore();
 }
 
-/** The extraction hood over the crucible pad, alone: two posts, the sloped canopy, the duct. lit: the lip warm. */
+/** The extraction hood over the crucible pad, alone: two posts, the sloped canopy high enough (2.6 m) that the furnace and its open lid show under it, the duct. lit: the lip warm. */
 export function drawHood(c: SkCanvas, v: View3q, lit: boolean, scale = 1.2): void {
   c.save();
   c.scale(scale, scale);
   const x0 = -0.85;
   const x1 = 1.75;
-  boxShadow(c, v, 0.15, 0.15, x0 + 0.05, -0.55, 2.0);
-  boxShadow(c, v, 0.15, 0.15, x1 - 0.05, -0.55, 2.0);
-  for (const x of [x0 + 0.05, x1 - 0.05]) box(c, v, { len: 0.1, wid: 0.1, h: 2.05, ox: x, oy: -0.55, color: YARD.galvanised, line: 1 });
-  const zb = 2.0;
-  const zt = 2.36;
+  boxShadow(c, v, 0.15, 0.15, x0 + 0.05, -0.55, 2.6);
+  boxShadow(c, v, 0.15, 0.15, x1 - 0.05, -0.55, 2.6);
+  for (const x of [x0 + 0.05, x1 - 0.05]) box(c, v, { len: 0.1, wid: 0.1, h: 2.65, ox: x, oy: -0.55, color: YARD.galvanised, line: 1 });
+  const zb = 2.6;
+  const zt = 2.92;
   const P = (x: number, y: number, z: number) => proj(v, x, y, z);
-  const fb0 = P(x0, 0.55, zb);
-  const fb1 = P(x1, 0.55, zb);
-  const ft1 = P(x1 - 0.5, 0.1, zt);
-  const ft0 = P(x0 + 0.5, 0.1, zt);
+  const fb0 = P(x0, 0.3, zb);
+  const fb1 = P(x1, 0.3, zb);
+  const ft1 = P(x1 - 0.5, -0.1, zt);
+  const ft0 = P(x0 + 0.5, -0.1, zt);
   const face = poly([fb0[0], fb0[1], fb1[0], fb1[1], ft1[0], ft1[1], ft0[0], ft0[1]]);
   c.drawPath(face, fill(YARD.galvanised));
   c.drawPath(poly([ft0[0], ft0[1], ft1[0], ft1[1], ft1[0], ft1[1] + 8, ft0[0], ft0[1] + 8]), fill(YARD.galvanisedLight));
@@ -478,7 +478,7 @@ export function drawHood(c: SkCanvas, v: View3q, lit: boolean, scale = 1.2): voi
   const lip = poly([fb0[0], fb0[1], fb1[0], fb1[1], fb1[0], fb1[1] + 4, fb0[0], fb0[1] + 4]);
   c.drawPath(lip, fill(lit ? mix(YARD.galvanised, YARD.glowHot, 0.55) : shade(YARD.galvanised, -0.2)));
   c.drawPath(lip, stroke(INK, 1));
-  const [dx, dy] = P((x0 + x1) / 2, 0.1, zt);
+  const [dx, dy] = P((x0 + x1) / 2, -0.1, zt);
   const dw = 0.26 * v.ppm;
   c.drawPath(rect(dx - dw, dy - 26, dw * 2, 27), fill(YARD.galvanised));
   c.drawRect({ x: dx - dw + 2, y: dy - 26, width: 3, height: 27 }, fill(YARD.galvanisedLight));

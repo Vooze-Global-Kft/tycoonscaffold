@@ -224,7 +224,7 @@ export const HERO_POINTS = {
   weighbridge: [52.0, 26.5],
   scalehouse: [55.2, 20.4],
   bays: [48.5, 20.0],
-  merchant: [47.4, 17.8],
+  merchant: [47.4, 17.6],
   stillage_cu: [43.5, 22.5],
   stillage_br: [43.5, 25.0],
   stripper: [46.3, 23.6],
@@ -234,7 +234,7 @@ export const HERO_POINTS = {
 } as const;
 
 /** The back wall's line (metres, y of the blocks' centre) and the old stock row in front of it. */
-export const HERO_WALL_Y = 15.6;
+export const HERO_WALL_Y = 15.2;
 
 /** The caller's words in the hero frame (names from the names register by id: homeYard, merchant, rival.1). */
 export const HERO_WORDS = {
@@ -269,11 +269,11 @@ export interface HeroLayout extends ProofLayout {
   moment: 'weigh' | 'walk';
 }
 
-export const HERO_844: HeroLayout = { ...PROOF_844, wx: 35.0, wy: 12.4, moment: 'weigh' };
-export const HERO_667: HeroLayout = { ...PROOF_667, camX: 0, wx: 36.7, wy: 12.4, moment: 'walk' };
+export const HERO_844: HeroLayout = { ...PROOF_844, wx: 35.0, wy: 12.0, moment: 'weigh' };
+export const HERO_667: HeroLayout = { ...PROOF_667, camX: 0, wx: 36.7, wy: 12.0, moment: 'walk' };
 
-/** The hero ticket's print size: 9.5 pt, so its smallest (legal) line is over 8 pt on the phone. */
-export const HERO_PRINT = 9.5;
+/** The hero ticket's print size (yard-style 8: 7 pt in play, 9 in store pictures; 8.5 keeps it clear of the boss). */
+export const HERO_PRINT = 8.5;
 
 /** Draws a manifest sprite as the world will (its frame, its drawScale, its tint), or nothing when it is missing. */
 function sprite(c: SkCanvas, id: string, frame = 0, heading = 0, tint?: string): boolean {
@@ -302,7 +302,7 @@ export function drawHeroWorld(c: SkCanvas, L: HeroLayout, T: TextFn): [number, n
   const sy = (y: number, z = 0) => proj(v, 0, y, z)[1] - camY;
   // ---- the far yard over the back wall (screen space): sky, skyline, the neighbour's stacks and cranes
   const wallFoot = sy(HERO_WALL_Y + 0.4);
-  const wallTop = sy(HERO_WALL_Y - 0.4, 1.2);
+  const wallTop = sy(HERO_WALL_Y - 0.4, 0.6);
   drawFarYard(c, -10, L.w + 20, 0, wallTop + 10, 4);
   c.save();
   c.translate(-camX, -camY);
@@ -341,36 +341,36 @@ export function drawHeroWorld(c: SkCanvas, L: HeroLayout, T: TextFn): [number, n
   const items: Item[] = [];
   const add = (x: number, y: number, draw: () => void) => items.push({ y, draw: () => put(x, y, draw) });
   const addS = (id: string, x: number, y: number, frame = 0, heading = 0, tint?: string) => add(x, y, () => sprite(c, id, frame, heading, tint));
-  // ---- the back wall: two courses of lock blocks, the yard's own containers stacked behind its ends, a floodlight
-  addS('plant.container.ew', 36.6, HERO_WALL_Y - 2.1, 0, 0, YARD.containerOxide);
-  add(36.6, HERO_WALL_Y - 2.09, () => at(c, 0, -2.6 * v.ppm * v.lift, () => sprite(c, 'plant.container.ew', 0, 0, YARD.containerSage)));
-  addS('plant.container.ew', 54.9, HERO_WALL_Y - 2.1, 0, 0, YARD.containerTeal);
-  add(54.9, HERO_WALL_Y - 2.09, () => at(c, 0, -2.6 * v.ppm * v.lift, () => sprite(c, 'plant.container.ew', 0, 0, YARD.containerOxide)));
+  // ---- the back wall and a floodlight
+  // (the yard's own containers stand elsewhere on the map; here the far yard's stacks show over the wall)
+  // one course of lock blocks: the far yard shows over it
   items.push({
     y: HERO_WALL_Y,
     draw: () => {
-      for (let t = 0; t < 2; t++)
-        for (let x = 33.2; x < 58; x += 0.8) put(x, HERO_WALL_Y, () => drawBlock(c, v, { z: t * 0.6, seed: Math.round(x * 10) + t * 7, shadow: t === 0 }));
+      for (let x = 33.2; x < 58; x += 0.8) put(x, HERO_WALL_Y, () => drawBlock(c, v, { seed: Math.round(x * 10) }));
     },
   });
   add(45.0, HERO_WALL_Y + 0.55, () => drawFloodlight(c, v));
   // ---- the old stock against the wall (E1): zone beds and whole things by tool tier
-  addS('heap.zone3', 38.4, 17.6);
-  addS('thing.car', 38.3, 17.5, 0);
-  addS('thing.tank', 35.4, 17.4, 0);
-  addS('heap.zone2', 42.6, 17.7);
-  addS('thing.bath', 41.9, 17.3, 0);
-  addS('thing.radiator', 43.6, 17.1, 0);
-  addS('thing.radiator', 43.3, 18.0, 0);
-  addS('thing.stove', 41.4, 18.3, 0);
-  addS('thing.gate', 42.9, 16.5, 0);
-  addS('heap.zone1', 52.0, 17.6);
-  addS('thing.washer', 50.9, 17.2, 0);
-  addS('thing.washer', 51.7, 17.0, 0);
-  addS('thing.washer', 52.9, 17.4, 1);
-  addS('thing.bike', 52.2, 18.3, 0);
-  addS('thing.cable.drum', 53.5, 17.9);
-  addS('thing.taps', 50.6, 18.2);
+  add(38.4, 17.2, () => sprite(c, 'heap.zone3')); // a ground bed: drawn before the row
+  items[items.length - 1].y -= 1.5;
+  addS('thing.car', 38.3, 17.1, 0);
+  addS('thing.tank', 35.4, 17.0, 0);
+  add(42.6, 17.3, () => sprite(c, 'heap.zone2')); // a ground bed: drawn before the row
+  items[items.length - 1].y -= 1.5;
+  addS('thing.bath', 41.9, 16.9, 0);
+  addS('thing.radiator', 43.6, 16.7, 0);
+  addS('thing.radiator', 43.3, 17.6, 0);
+  addS('thing.stove', 41.4, 17.9, 0);
+  addS('thing.gate', 42.9, 16.1, 0);
+  add(52.0, 17.2, () => sprite(c, 'heap.zone1')); // a ground bed: drawn before the row
+  items[items.length - 1].y -= 1.5;
+  addS('thing.washer', 50.9, 16.8, 0);
+  addS('thing.washer', 51.7, 16.6, 0);
+  addS('thing.washer', 52.9, 17.0, 1);
+  addS('thing.bike', 52.2, 17.9, 0);
+  addS('thing.cable.drum', 53.5, 17.5);
+  addS('thing.taps', 50.6, 17.8);
   // ---- the bays (open south) with their heaps; the merchant's flatbed behind them, its grab over the west bay
   addS('plant.bay', P.bays[0] - 2.6, P.bays[1]);
   addS('heap.li.4', P.bays[0] - 3.4, P.bays[1] + 0.25);
@@ -386,8 +386,6 @@ export function drawHeroWorld(c: SkCanvas, L: HeroLayout, T: TextFn): [number, n
   // the scale house, its board facing the yard, and the scales
   addS('plant.scalehouse', P.scalehouse[0], P.scalehouse[1]);
   addS('plant.scale.platform', P.scale[0], P.scale[1], L.moment === 'weigh' ? 1 : 0);
-  addS('plant.weighbridge.pole', P.weighbridge[0] - 4.4, P.weighbridge[1] + 0.6);
-  addS('plant.weighbridge.display', P.weighbridge[0] - 4.4, P.weighbridge[1] + 0.6);
   // the boss: on the platform with a hand load of bare bright on the carry frame (S8), or walking to it
   if (L.moment === 'weigh') add(P.scale[0] - 0.15, P.scale[1] + 0.15, () => drawPerson(c, v, { dir: 'w', pose: 'carry', look: BOSS, load: 'cu' }));
   else add(50.4, 23.9, () => drawPerson(c, v, { dir: 'e', pose: 'walk', frame: 1, look: BOSS, load: 'cu' }));
@@ -439,17 +437,16 @@ function ticketOutOfSlot(c: SkCanvas, L: HeroLayout, sx: number, sy: number): vo
   const p = HERO_PRINT;
   const tw = ticketWidth(p);
   const th = ticketHeight(HERO_TICKET, p);
-  const tx = Math.max(L.side, sx - 84 - tw);
-  const ty = Math.max(L.bar + L.goal + 6, Math.min(L.h - L.bottom - th, sy - 34));
-  // the paper strip from the slot: out, a curl, into the ticket's top edge at its right
+  const tx = Math.max(L.side, sx - 70 - tw);
+  const ty = Math.max(L.bar + L.goal + 6, Math.min(L.h - L.bottom - th, sy - 40));
+  // the paper from the slot: a tongue that widens and bends down-west into the ticket's top edge
   const strip = builder()
-    .moveTo(sx - 9, sy)
-    .cubicTo(sx - 30, sy - 26, tx + tw + 30, ty - 22, tx + tw - 10, ty + 2)
-    .lineTo(tx + tw - 34, ty + 2)
-    .cubicTo(tx + tw + 6, ty - 12, sx - 34, sy - 16, sx + 9, sy)
+    .moveTo(sx - 8, sy)
+    .quadTo(sx - 30, sy - 14, tx + tw - 44, ty + 3)
+    .lineTo(tx + tw - 6, ty + 3)
+    .quadTo(sx - 12, sy - 4, sx + 8, sy)
     .close()
     .build();
-  c.drawPath(strip, fill(INK, 0.18));
   c.drawPath(strip, fill(YARD.paperShade));
   c.drawPath(strip, stroke(YARD.paperLine, 0.9));
   c.save();

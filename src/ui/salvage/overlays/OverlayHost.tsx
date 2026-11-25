@@ -138,7 +138,7 @@ export function OverlayHost({ width, height, insets }: { width: number; height: 
   const close = () => useCards.getState().close();
   return (
     <FrameProvider value={ctx}>
-      <Pressable accessibilityRole="button" accessibilityLabel={say({ key: 'close' }, ctx.content)} style={[styles.scrim, { top: 0 }]} onPress={close} />
+      <Pressable accessibilityRole="button" accessibilityLabel={say({ key: 'close' }, ctx.content)} style={[styles.scrim, { top: ctx.layout.band.top }]} onPress={close} />
       <CardView cfg={salvage} g={g} cardRef={ref} tab={tab} onClose={close} />
     </FrameProvider>
   );

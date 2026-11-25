@@ -15,66 +15,14 @@ import { useSalvageUi } from '../uiState';
 import { hudAnchors } from './anchors';
 import { coinSize, cashCoinPoint, fitText, pickForm, type HudLayout } from './metrics';
 import { BarText, Paper } from './Paper';
-
-/** The few numbers of the bar (primitives, compared shallowly). */
-export interface BarValues {
-  ok: boolean;
-  cash: number;
-  rank: number;
-  of: number;
-  next: string | null;
-  need: number;
-  carryKg: number;
-  cap: number;
-  driving: boolean;
-  drivingKg: number;
-  trial: boolean;
-}
-
-const NONE: BarValues = { ok: false, cash: 0, rank: 0, of: 0, next: null, need: 0, carryKg: 0, cap: 0, driving: false, drivingKg: 0, trial: false };
-
-export function barValues(cfg: R.SalvageConfig, g: R.SalvageGame | undefined): BarValues {
-  if (!g?.salvage) return NONE;
-  const b = R.topBar(cfg, g);
-  return {
-    ok: true,
-    cash: b.cash,
-    rank: b.rank,
-    of: b.of,
-    next: b.next?.chip ?? null,
-    need: b.next?.need_g ?? 0,
-    carryKg: b.carry?.kg ?? 0,
-    cap: b.carry?.cap ?? 0,
-    driving: b.driving !== null,
-    drivingKg: b.driving?.kg ?? 0,
-    trial: b.driving?.trial ?? false,
-  };
-}
-
-/** The ladder chip's three forms in words, longest first (5.2). */
-export function ladderForms(v: BarValues, c: R.SalvageContent): string[] {
-  const rank = { rank: v.rank };
-  if (!v.next) return [say({ key: 'rankChipTop', args: { rank, n: { n: v.of } } }, c)];
-  const t = { mass_g: v.need, step: 'lot' as const };
-  return [
-    say({ key: 'rankChip', args: { rank, n: { n: v.of }, rival: { name: v.next }, t } }, c),
-    say({ key: 'rankChipShort', args: { rank, rival: { name: v.next } } }, c),
-    say({ key: 'rankChipToNext', args: { rank, t } }, c),
-  ];
-}
-
-/** The carry chip in words. */
-export function carryText(v: BarValues, c: R.SalvageContent): string {
-  if (v.driving) return say({ key: v.trial ? 'trialLoad' : 'skipLoad', args: { kg: { mass_g: v.drivingKg * 1000, step: 'bridge' } } }, c);
-  return say({ key: 'carry', args: { a: { n: Math.round(v.carryKg * 10) / 10 }, b: { n: v.cap } } }, c);
-}
+import { barValues, carryText, ladderForms } from './words';
 
 export function TopBar({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   const v = useGame(useShallow((s) => barValues(cfg, s.game as R.SalvageGame)));
   const c = cfg.salvage;
   const { slots, s } = L;
-  const h = L.rows.bar - 6;
-  const y = L.barY + 3;
+  const h = L.rows.bar - 4;
+  const y = L.barY + 2;
   // The coin's arc ends at the § coin (world-b reads it).
   useEffect(() => {
     hudAnchors.setCash(cashCoinPoint(L));
@@ -83,7 +31,7 @@ export function TopBar({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   const ladder = pickForm(ladderForms(v, c), slots.ladder - 40, h - 2, s);
   const ladderText = ladderForms(v, c)[ladder.index];
   const carry = carryText(v, c);
-  const carryFit = fitText(carry, slots.carry - 12, h - 2, 12, s, true);
+  const carryFit = fitText(carry, slots.carry - 12, h - 3, 12, s, true);
   const x1 = L.left;
   const x2 = x1 + slots.cash + slots.gap;
   const x3 = x2 + slots.ladder + slots.gap;

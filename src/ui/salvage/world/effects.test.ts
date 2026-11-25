@@ -90,13 +90,13 @@ describe('the chevron', () => {
   const lift = Math.sqrt(1 - 0.49);
   it('over the target when it is in view', () => {
     const out = [0, 0, 0, 0];
-    chevronPlace(out, 1, 10, 10, 0, 0, 40, 0.7, lift, box);
+    chevronPlace(out, 1, 400, 280 - 2.6 * 40 * lift, 280, box);
     expect(out[0]).toBe(1);
     expect(out[1]).toBe(400);
   });
   it('an edge arrow inside the free world when it is not', () => {
     const out = [0, 0, 0, 0];
-    chevronPlace(out, 1, 100, 10, 0, 0, 40, 0.7, lift, box);
+    chevronPlace(out, 1, 4000, 180, 280, box);
     expect(out[0]).toBe(2);
     expect(out[1]).toBeLessThanOrEqual(797);
     expect(out[1]).toBeGreaterThan(700);
@@ -106,7 +106,7 @@ describe('the chevron', () => {
   });
   it('nothing without a target', () => {
     const out = [9, 9, 9, 9];
-    chevronPlace(out, 0, 10, 10, 0, 0, 40, 0.7, lift, box);
+    chevronPlace(out, 0, 400, 200, 280, box);
     expect(out[0]).toBe(0);
   });
 });

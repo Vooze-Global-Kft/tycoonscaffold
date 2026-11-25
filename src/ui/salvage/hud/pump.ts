@@ -50,6 +50,12 @@ export interface PumpContent {
   heatSeconds(g: number): number;
 }
 
+/**
+ * The machine ids of types.ts to their segment: the powered stripper's id is `stripper`, which
+ * soundKeys.ts machineLoopKey hears as the hand stripper (requests.md); this table wins.
+ */
+const MACHINE_SEGMENT: Record<string, SegmentKey> = { hand_stripper: 'stripper_hand', stripper: 'stripper_power', bench: 'bench_knock' };
+
 const NO_CONTENT: PumpContent = { familyOf: () => undefined, heatSeconds: () => 60 };
 
 export function createPump(fx: PumpEffects) {
@@ -97,7 +103,7 @@ export function createPump(fx: PumpEffects) {
   function refreshMachines(): void {
     const keys = new Set<SegmentKey>();
     for (const m of machines) {
-      const k = machineLoopKey(m);
+      const k = MACHINE_SEGMENT[m] ?? machineLoopKey(m);
       if (k && k !== 'furnace_roar' && k in SALVAGE_SEGMENT_MS) keys.add(k as SegmentKey);
     }
     for (const k of ['stripper_hand', 'stripper_power', 'bench_knock'] as const) if (!keys.has(k)) stopSegment(k);

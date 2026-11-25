@@ -9,20 +9,13 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as R from '../../../engine/salvage';
 import { PAL } from '../palette';
-import { say } from '../strings';
 import { useSalvageUi } from '../uiState';
 import { lineH, type HudLayout } from './metrics';
 import { BarText } from './Paper';
 import { yardEvents } from './pump';
+import { toastText } from './words';
 
 export const TOAST_MS = 1800;
-
-/** The toast's words for an event, or null (pure; ./hud.test.ts). */
-export function toastText(e: R.SalvageEvent, c: R.SalvageContent, cardOpen: boolean): { text: string; refusal: boolean } | null {
-  if (e.type === 'loadFull') return { text: say({ key: 'loadFull' }, c), refusal: false };
-  if (e.type === 'refused' && !cardOpen) return { text: say({ key: `refusal.${e.key}` as R.TextKey, args: e.args }, c), refusal: true };
-  return null;
-}
 
 export function Toasts({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   const [toast, setToast] = useState<{ id: number; text: string; refusal: boolean } | null>(null);

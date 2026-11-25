@@ -79,8 +79,6 @@ const MOULD_FRAMES: [string, (number | undefined)[], string][] = [
   ['pour1', [0.2], 'brass'],
   ['pour2', [0.8, 0.2], 'brass'],
   ['hot', [1.6, 1.2, 0.8, 0.3], 'brass'],
-  ['brass', [9, 9, 9, 9], 'brass'],
-  ['alu', [9, 9, 9, 9], 'aluminium'],
 ];
 
 /** Containers are baked in this light neutral and modulated to CONTAINER_TINTS per instance. */
@@ -118,16 +116,16 @@ const MEASURED: Record<string, [number, number, number, number]> = {
   'plant.scale.print': [-14, -5, 29, 16],
   'plant.weighbridge.deck': [-81, -43, 162, 84],
   'plant.weighbridge.pole': [-10, -51, 56, 64],
-  'plant.weighbridge.display': [-47, -106, 95, 63],
+  'plant.weighbridge.display': [-26, -92, 53, 49],
   'plant.scalehouse': [-49, -82, 129, 113],
   'plant.stripper.hand': [-40, -48, 110, 68],
   'plant.stripper.power': [-42, -49, 90, 65],
   'plant.bench.motor': [-33, -47, 86, 67],
-  'plant.crucible.idle': [-35, -68, 82, 89],
-  'plant.crucible.heat': [-45, -78, 92, 99],
-  'plant.crucible.ready': [-56, -66, 103, 87],
-  'plant.crucible.pour': [-56, -66, 103, 87],
-  'plant.hood': [-34, -84, 135, 80],
+  'plant.crucible.idle': [-39, -64, 86, 86],
+  'plant.crucible.heat': [-45, -78, 92, 100],
+  'plant.crucible.ready': [-45, -80, 92, 102],
+  'plant.crucible.pour': [-45, -82, 92, 104],
+  'plant.hood': [-34, -104, 144, 101],
   'plant.mould': [-40, -14, 80, 28],
   'plant.block': [-15, -24, 41, 37],
   'plant.bay': [-75, -54, 168, 51],
@@ -136,18 +134,18 @@ const MEASURED: Record<string, [number, number, number, number]> = {
   'plant.heap.appl': [-25, -28, 52, 42],
   'plant.heap.ci': [-28, -29, 55, 43],
   'plant.heap.ciu': [-25, -28, 52, 42],
-  'plant.heap.hms': [-25, -29, 52, 43],
+  'plant.heap.hms': [-26, -29, 53, 43],
   'plant.heap.hmsu': [-27, -28, 54, 42],
   'plant.heap.cbody': [-26, -28, 53, 42],
   'plant.stillage': [-28, -42, 74, 62],
   'plant.stillage.front': [-28, -14, 56, 32],
-  'plant.stillage.layer.bb': [-21, -29, 47, 37],
+  'plant.stillage.layer.bb': [-21, -30, 47, 38],
   'plant.stillage.layer.no2': [-25, -24, 52, 32],
   'plant.stillage.layer.brs': [-24, -31, 49, 43],
   'plant.stillage.layer.alw': [-25, -26, 53, 35],
   'plant.stillage.layer.alcast': [-23, -26, 43, 36],
-  'plant.stillage.layer.bri': [-25, -25, 53, 31],
-  'plant.stillage.layer.ali': [-25, -25, 53, 31],
+  'plant.stillage.layer.bri': [-22, -23, 44, 33],
+  'plant.stillage.layer.ali': [-22, -23, 44, 33],
   'plant.stillage.layer.ald': [-23, -26, 49, 31],
   'plant.stillage.layer.brd': [-23, -26, 49, 31],
   'plant.stillage.layer.mot': [-24, -24, 52, 30],
@@ -262,6 +260,10 @@ const V = { ppm: 40, tilt: 0.7, lift: Math.sqrt(1 - 0.49) };
 const STATIC = 0.75;
 const EDGE = 0.6;
 const LANE = 0.5;
+/** Containers and the farm's shed: big plain faces, baked at 0.4. */
+const FAR = 0.4;
+/** Kept ids the world no longer needs (plant.heap.*: the world draws the things part's heap.<grade>.<level>): baked tiny. */
+const OLD = 0.3;
 
 const crucible = (state: CrucibleState, frames: readonly string[]) =>
   entry(`plant.crucible.${state}`, 'plant', 'B', [1.4, 1.2], B(-70, -140, 170, 175), frames, (c, v, f) => drawCrucibleState(c, v, state, f));
@@ -287,16 +289,17 @@ export const PLANT: ManifestEntry[] = [
       return { digits: slot(s.digits), printer: B(s.printer[0] - 14, s.printer[1] - 2, 28, 4) };
     })(),
   }),
-  entry('plant.scalehouse', 'plant', 'B', [2.8, 2.2], B(-70, -130, 190, 175), one, (c, v) => drawScaleHouse(c, v), { slots: { board: slot(scaleHouseBoard(V)) }, k: STATIC }),
+  entry('plant.scalehouse', 'plant', 'B', [2.8, 2.2], B(-70, -130, 190, 175), one, (c, v) => drawScaleHouse(c, v), { slots: { board: slot(scaleHouseBoard(V)) }, k: EDGE }),
   // --- machines --------------------------------------------------------------------------------------
   entry('plant.stripper.hand', 'plant', 'B', [1.4, 0.7], B(-50, -75, 115, 95), ['idle', 'work1', 'work2', 'full'], (c, v, f) => drawHandStripper(c, v, f)),
-  entry('plant.stripper.power', 'plant', 'B', [1.9, 0.9], B(-70, -100, 150, 125), ['idle', 'work'], (c, v, f) => drawStripper(c, v, { running: f === 1, tubFull: f === 1 }), { k: STATIC }),
-  entry('plant.bench.motor', 'plant', 'B', [1.8, 1.2], B(-60, -80, 140, 110), ['idle', 'work'], (c, v, f) => drawMotorBench(c, v, f ? 2 : 0), { k: STATIC }),
+  entry('plant.stripper.power', 'plant', 'B', [1.9, 0.9], B(-70, -100, 150, 125), ['idle', 'work', 'full'], (c, v, f) => drawStripper(c, v, { running: f === 1, tubFull: f === 2 }), { k: EDGE }),
+  entry('plant.bench.motor', 'plant', 'B', [1.8, 1.2], B(-60, -80, 140, 110), ['idle', 'work', 'full'], (c, v, f) => drawMotorBench(c, v, f === 2 ? 3 : f ? 2 : 0), { k: EDGE }),
   crucible('idle', one),
   crucible('heat', one),
   crucible('ready', one),
   crucible('pour', ['pour1', 'pour2']),
-  entry('plant.hood', 'plant', 'B', [3.1, 1.3], B(-60, -160, 190, 175), one, (c, v) => drawHood(c, v, false), { k: STATIC }),
+  crucible('cool', one),
+  entry('plant.hood', 'plant', 'B', [3.1, 1.3], B(-60, -160, 190, 175), one, (c, v) => drawHood(c, v, false), { k: EDGE }),
   entry('plant.mould', 'plant', 'B', [1.4, 0.6], B(-45, -25, 95, 45), MOULD_FRAMES.map((m) => m[0]), (c, v, f) => {
     const [, poured, metal] = MOULD_FRAMES[f];
     drawMould(c, v, { n: 4, poured, metal });
@@ -311,7 +314,7 @@ export const PLANT: ManifestEntry[] = [
     })(),
   }),
   entry('plant.plate.code', 'ui', 'B', [0.6, 0.1], B(-23, -10, 45, 21), one, (c) => drawCodePlate(c), { slots: { code: B(-17, -6, 34, 12) } }),
-  ...Object.entries(BAY_HEAPS).map(([g, metals], i) => entry(`plant.heap.${g}`, 'plant', 'B', [1.5, 1.2], B(-40, -35, 85, 55), one, (c, v) => drawBayHeap(c, v, metals, 1, i + 2, 1.45), { k: STATIC })),
+  ...Object.entries(BAY_HEAPS).map(([g, metals], i) => entry(`plant.heap.${g}`, 'plant', 'B', [1.5, 1.2], B(-40, -35, 85, 55), one, (c, v) => drawBayHeap(c, v, metals, 1, i + 2, 1.45), { k: OLD })),
   entry('plant.stillage', 'plant', 'B', [1.2, 1.0], B(-30, -55, 80, 80), one, (c, v) => drawStillage(c, v, false)),
   entry('plant.stillage.front', 'plant', 'B', [1.2, 1.0], B(-30, -40, 64, 50), one, (c, v) => drawStillageFront(c, v)),
   ...STILLAGE_GRADES.map((g) => entry(`plant.stillage.layer.${g}`, 'plant', 'B', [1.2, 1.0], B(-35, -40, 70, 55), one, (c, v) => drawStillageLayer(c, v, g))),
@@ -320,7 +323,7 @@ export const PLANT: ManifestEntry[] = [
   entry('plant.skip.rubble', 'plant', 'B', [2.4, 1.4], B(-55, -60, 135, 85), one, (c, v) => drawRubbleSkip(c, v, 1), { k: EDGE }),
   // --- buildings, rack, crane, signs ------------------------------------------------------------------
   entry('plant.portacabin', 'plant', 'B', [4.4, 3.0], B(-95, -135, 245, 185), one, (c, v) => drawPortacabin(c, v, 0), {
-    k: EDGE,
+    k: LANE,
     slots: (() => {
       const s = cabinSlots(V);
       return { plaque: slot(s.plaque), rota: slot(s.rota) };
@@ -330,13 +333,13 @@ export const PLANT: ManifestEntry[] = [
   entry('plant.toolrack', 'plant', 'B', [2.6, 0.7], B(-45, -90, 145, 110), one, (c, v) => drawToolRack(c, v, 1), { k: EDGE }),
   entry('plant.toolrack.tier2', 'plant', 'B', [0.1, 0.1], B(-30, -60, 60, 60), one, (c, v) => drawRackTools(c, v, 2), { k: EDGE }),
   entry('plant.toolrack.tier3', 'plant', 'B', [0.1, 0.1], B(-30, -60, 90, 70), one, (c, v) => drawRackTools(c, v, 3), { k: EDGE }),
-  entry('plant.crane.sign', 'plant', 'B', [1.3, 1.3], B(-50, -170, 200, 200), one, (c, v) => drawSignCrane(c, v), { k: EDGE, slots: { hook: (() => { const [x, y] = proj(V, CRANE_HOOK[0], 0, CRANE_HOOK[2]); return B(x - 30, y - 2, 60, 4); })() } }),
+  entry('plant.crane.sign', 'plant', 'B', [1.3, 1.3], B(-50, -170, 200, 200), one, (c, v) => drawSignCrane(c, v), { k: LANE, slots: { hook: (() => { const [x, y] = proj(V, CRANE_HOOK[0], 0, CRANE_HOOK[2]); return B(x - 30, y - 2, 60, 4); })() } }),
   entry('plant.sign.hung', 'ui', 'B', [2.4, 0.1], B(-35, -6, 72, 30), one, (c, v) => drawHungSign(c, v), { slots: { words: B(-27, 3, 54, 13) } }),
   entry('plant.sign.posts', 'plant', 'B', [1.6, 0.3], B(-35, -70, 110, 80), one, (c, v) => drawPostSign(c, v), { k: EDGE, slots: { words: faceSlot(-0.75, 0.75, 0.085, 1.27, 1.78) } }),
   entry('plant.sign.plate', 'plant', 'B', [0.8, 0.2], B(-20, -60, 60, 70), one, (c, v) => drawPostPlate(c, v), { k: EDGE, slots: { words: faceSlot(-0.28, 0.4, 0.07, 1.33, 1.63) } }),
   entry('plant.extinguisher', 'plant', 'B', [0.4, 0.3], B(-15, -50, 50, 60), one, (c, v) => drawExtinguisher(c, v), { k: EDGE }),
-  entry('plant.container.ew', 'plant', 'B', [6.1, 2.44], B(-125, -125, 300, 165), one, (c, v) => drawContainer(c, v, CONTAINER_BASE, { seed: 3 }), { tint: CONTAINER_BASE, k: LANE }),
-  entry('plant.container.ns', 'plant', 'B', [2.44, 6.1], B(-55, -150, 150, 250), one, (c, v) => drawContainerNS(c, v, CONTAINER_BASE, 6.1, 3), { tint: CONTAINER_BASE, k: LANE }),
+  entry('plant.container.ew', 'plant', 'B', [6.1, 2.44], B(-125, -125, 300, 165), one, (c, v) => drawContainer(c, v, CONTAINER_BASE, { seed: 3 }), { tint: CONTAINER_BASE, k: FAR }),
+  entry('plant.container.ns', 'plant', 'B', [2.44, 6.1], B(-55, -150, 150, 250), one, (c, v) => drawContainerNS(c, v, CONTAINER_BASE, 6.1, 3), { tint: CONTAINER_BASE, k: FAR }),
   // --- fences and gates ------------------------------------------------------------------------------
   entry('plant.fence.ew', 'plant', 'B', [2.5, 0.1], B(-55, -65, 150, 75), one, (c, v) => drawFence(c, v, 'ew'), { k: EDGE }),
   entry('plant.fence.ns', 'plant', 'B', [0.1, 2.5], B(-10, -95, 60, 135), one, (c, v) => drawFence(c, v, 'ns'), { k: EDGE }),
@@ -345,7 +348,7 @@ export const PLANT: ManifestEntry[] = [
   entry('plant.gate.field', 'plant', 'B', [3.0, 0.2], B(-65, -50, 160, 60), one, (c, v) => drawFieldGate(c, v, false), { k: EDGE }),
   // --- the lane --------------------------------------------------------------------------------------
   entry('lane.hedge', 'lane', 'B', [3.0, 0.9], B(-65, -70, 160, 90), one, (c, v) => drawHedge(c, v), { k: LANE }),
-  entry('lane.shed.farm', 'lane', 'B', [4.5, 3.0], B(-100, -140, 260, 190), one, (c, v) => drawFarmShed(c, v), { k: LANE }),
+  entry('lane.shed.farm', 'lane', 'B', [4.5, 3.0], B(-100, -140, 260, 190), one, (c, v) => drawFarmShed(c, v), { k: FAR }),
   entry('lane.hoarding', 'lane', 'B', [3.0, 0.4], B(-65, -70, 170, 80), one, (c, v) => drawHoarding(c, v), { k: LANE }),
   entry('lane.hoarding.gate', 'lane', 'B', [4.0, 0.3], B(-85, -75, 210, 90), one, (c, v) => drawHoardingGate(c, v, false), { k: LANE }),
   entry('lane.hoarding.leaf.open', 'lane', 'B', [0.2, 2.0], B(-10, -70, 60, 120), one, (c, v) => drawHoardingLeafOpen(c, v), { k: LANE }),
@@ -353,7 +356,7 @@ export const PLANT: ManifestEntry[] = [
   entry('lane.sign.limit', 'lane', 'B', [0.3, 0.3], B(-18, -80, 70, 90), one, (c, v) => drawLimitSign(c, v), { slots: { limit: slot(limitSlot(V)) }, k: EDGE }),
   entry('lane.barrier', 'lane', 'B', [4.0, 0.3], B(-95, -40, 200, 55), one, (c, v) => drawBarrier(c, v, false), { k: LANE }),
   // --- marks and plates ------------------------------------------------------------------------------
-  entry('mark.ring', 'mark', 'B', [RING_R * 2, RING_R * 2], B(-32, -23, 64, 46), Array.from({ length: RING_STEPS + 1 }, (_, k) => `k${k}`), (c, v, f) => drawWorkRing(c, v, f, RING_STEPS)),
+  entry('mark.ring', 'mark', 'B', [RING_R * 2, RING_R * 2], B(-32, -23, 64, 46), Array.from({ length: RING_STEPS + 1 }, (_, k) => `k${k}`), (c, v, f) => drawWorkRing(c, v, f, RING_STEPS), { k: STATIC }),
   entry('mark.pickup', 'mark', 'B', [0.5, 0.4], B(-10, -7, 20, 14), one, (c, v) => drawPickupShadow(c, v)),
   entry('mark.chevron', 'mark', 'B', [0.6, 0.2], B(-14, -18, 28, 32), ['up', 'down'], (c, _v, f) => drawChevron(c, f)),
   entry('mark.arrow', 'mark', 'B', [0.7, 0.7], B(-16, -16, 32, 32), one, (c) => drawEdgeArrow(c)),

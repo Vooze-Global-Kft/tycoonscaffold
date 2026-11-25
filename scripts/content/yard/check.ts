@@ -175,7 +175,7 @@ const BOX_OF: [RegExp, keyof typeof BOXES][] = [
   [/^title\.(away|rung|deal)$/, 'centredTitle'],
   [/^title\./, 'panelTitle'],
   [/^card\.(buy|hire|level|sell|hold|on|off)$/, 'button'],
-  [/^card\.fromBays$/, 'rowName'],
+  [/^card\.(fromBays|anotherSkip)$/, 'rowName'],
   [/^card\.(sign|notNow)$/, 'footButton'],
   [/^card\.(heelAsk|dealTerms|dealNoCharge)$/, 'centredPara'],
   [/^card\.(dealDaysLeft|dealReserve|dealTrust|dealLast|dealDone)$/, 'centredLine'],
@@ -303,6 +303,7 @@ export function sampleArgs(inp: Inputs): Record<string, string> {
     pd: '98 %',
     rh: '98 %',
     grade: longest(grades),
+    gradeShort: longest(Object.values(inp.text.grades).map((g) => g.short)),
     thing: longest(things),
     partner: longest([inp.names.partnerFarm ?? '', inp.names.partnerDemolition ?? '']),
     contact: longest([inp.names.farmContact ?? '', inp.names.demolitionContact ?? '']),
@@ -323,14 +324,25 @@ export function sampleArgs(inp: Inputs): Record<string, string> {
   };
 }
 
+/** What the advice line and goal.widen can name (2.10, E19): skips, crew, machines; never a tool the yard starts with. */
+const WIDEN_ITEM = ['item.skip', 'item.stripper', 'item.bench', 'item.crucible', 'item.alu', 'role.hand', 'role.cutter', 'role.driver']
+  .map((k) => ({ ...TEXT, ...TEXT_PENDING } as Record<string, string>)[k])
+  .reduce((a, b) => (measure(b, 12) > measure(a, 12) ? b : a), '');
+
 /** Per-key holes whose kind differs from the default (a duration where {t} is usually tonnes). */
 const ARG_OVERRIDE: Record<string, Record<string, string>> = {
   'card.poursIn': { t: '59 m 59 s' },
   rankChip: { n: '26' },
   rankChipTop: { n: '26' },
-  'chip.bay': { x: '§9,999' },
   'chip.lotSold': { x: '§9,999' },
-  'plate.locked': { why: 'Opens at 199.99 t supplied' },
+  'plate.locked': { why: 'At 28.00 t supplied' },
+  'chip.bay': { x: '§9,999', kg: '1,020 kg' },
+  'refusal.floor': { kg: '1,980 kg' },
+  'refusal.ceiling': { t: '28.00 t' },
+  'goal.widen': { item: WIDEN_ITEM },
+  'goal.widenLevel': { item: WIDEN_ITEM },
+  'advice.buy': { item: WIDEN_ITEM },
+  'advice.level': { item: WIDEN_ITEM, n: '9' },
   'refusal.filling': { t: '59 m 59 s' },
   'card.drivesRate': { t: '59 m 59 s' },
   'board.head': { t: '23 h 59 m' },
@@ -352,8 +364,8 @@ const ARG_OVERRIDE: Record<string, Record<string, string>> = {
   'chip.reservedDeal': { a: '200.0 kg', b: '200 kg' },
   'chip.forCrucible': { a: '99.9 kg', b: '100 kg' },
   'card.charge': { a: '99.9 kg', b: '100 kg' },
-  'card.hopper': { a: '99.9 kg', b: '100 kg' },
-  'card.tray': { a: '99.9 kg', b: '100 kg' },
+  'card.hopper': { kg: '99.9 kg', n: '9' },
+  'card.tray': { kg: '99.9 kg' },
   'card.heel': { kg: '99.9 kg' },
   'ticket.gradeAmount': { kg: '299.9 kg', grade: 'Cast iron whole' },
   'ticket.grossTareNet': { a: '19,980 kg', b: '18,960 kg', c: '1,980 kg' },
@@ -362,13 +374,12 @@ const ARG_OVERRIDE: Record<string, Record<string, string>> = {
   'card.level': { n: '9', m: '10' },
   'plate.levelPrice': { n: '10', x: '§99,999' },
   'plate.owned': { n: '10' },
-  'advice.level': { n: '10' },
   'card.crewRow': { n: '10' },
   'card.levelN': { n: '10' },
   'opens.rung3': { c: '160' },
 };
 
-const HOLE = /\{([A-Za-z0-9_.]+)\}/g;
+const HOLE = /\{([A-Za-z0-9_.]+)(?:\|short)?\}/g;
 
 function fillNames(text: string, names: Record<string, string>): string {
   return text.replace(HOLE, (w, h: string) => names[h] ?? w);
@@ -379,6 +390,7 @@ export function widest(key: string, text: string, inp: Inputs, args: Record<stri
   const unknown: string[] = [];
   const over = ARG_OVERRIDE[key] ?? {};
   const out = text.replace(HOLE, (w, h: string) => {
+    if (w.endsWith('|short}') && h === 'grade') return over.gradeShort ?? args.gradeShort;
     if (over[h] !== undefined) return over[h];
     if (inp.names[h] !== undefined) return inp.names[h];
     if (args[h] !== undefined) return args[h];
@@ -569,7 +581,8 @@ export interface Report {
   /** Width and height misses of fixed screen parts (Box.layout): notes for the screens' owners, not word findings. */
   layout: Finding[];
   todo: string[];
-  measured: { where: string; text: string; width: number; box: string }[];
+  /** Each text with its holes at their widest: its width on one line, and the lines it wraps to in its box. */
+  measured: { where: string; text: string; width: number; lines: number; box: string }[];
   tickets: { kind: string; rows: string[]; height: number }[];
 }
 
@@ -591,7 +604,7 @@ export function runAll(): Report {
     findings.push(...fitFindings(where, out, box, layout));
     const font = box.pt * FONT_SCALE;
     const lines = wrap(out, font, box.w, box.bold).lines;
-    measured.push({ where, text: out, width: Math.max(0, ...lines.map((l) => measure(l, font, box.bold))), box: `${Math.round(box.w)} pt × ${box.lines} at ${font.toFixed(1)} pt` });
+    measured.push({ where, text: out, width: measure(out, font, box.bold), lines: lines.length, box: `${Math.round(box.w)} pt × ${box.lines} at ${font.toFixed(1)} pt` });
   };
 
   // strings.ts
@@ -666,8 +679,8 @@ function main() {
   const li = argv.indexOf('--longest');
   if (li >= 0) {
     const n = Number(argv[li + 1] ?? 10);
-    console.log(`\nThe ${n} widest texts, holes at their widest, at font scale 1.3:`);
-    for (const m of [...r.measured].sort((a, b) => b.width - a.width).slice(0, n)) console.log(`  ${m.width.toFixed(1).padStart(6)} pt  in ${m.box.padEnd(22)}  ${m.where}: "${m.text}"`);
+    console.log(`\nThe ${n} longest texts, holes at their widest, measured at font scale 1.3:`);
+    for (const m of [...r.measured].sort((a, b) => b.width - a.width).slice(0, n)) console.log(`  ${m.width.toFixed(1).padStart(6)} pt on one line, ${m.lines} line(s) in ${m.box.padEnd(22)}  ${m.where}: "${m.text}"`);
     console.log('\nTickets at their fullest (4.4, at most 150 pt at 1.3):');
     for (const t of r.tickets) console.log(`  ${t.kind}: ${t.height.toFixed(1)} pt (${t.rows.length} rows)`);
   }

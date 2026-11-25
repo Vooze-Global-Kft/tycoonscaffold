@@ -10,7 +10,9 @@
  *   (src/engine/salvage.ts fmtMoney, fmtPrice, fmtMass, fmtDuration, fmtRank, fmtPct);
  * - `{id}` with a register id (homeYard, merchant, foundry, partnerFarm, rival.1, ...) filled from the
  *   game's `salvage.names` (written by the build script from scripts/content/yard/names.json, read by
- *   kind and name through `NAME_SELECTORS`; never a name written here, D13, S21).
+ *   kind and name through `NAME_SELECTORS`; never a name written here, D13, S21);
+ * - `{grade|short}`: a `{ grade }` argument printed as the grade's short name (tickets and bay chips;
+ *   text.json grades.<id>.short, ≤ 15 characters), its name where the content has no short one.
  * `say(txt, content)` is the one function that turns a Txt into words.
  */
 import * as R from '../../engine/salvage';
@@ -59,7 +61,7 @@ export const TEXT = {
   'place.bridge': 'Bridge',
 
   // --- packages 3 and 4: chips (4.2, 4.4) ---
-  'chip.bay': '{grade} {kg} · today {x}',
+  'chip.bay': '{grade|short} {kg} · today {x}',
   'chip.held': 'held',
   'chip.lowDay': 'low day',
   'chip.highDay': 'high day',
@@ -130,7 +132,7 @@ export const TEXT = {
   'card.skipNet': 'Net {kg}',
   'card.skipPrice': '{x}',
   'card.businessCard': '{contact} · {partner}',
-  'card.converterPaid': 'Paid on assay: platinum {pt}, palladium {pd}, rhodium {rh}, less ceramic and assay fees',
+  'card.converterPaid': 'Paid on assay: platinum {pt}, palladium {pd}, rhodium {rh}, less fees',
   'card.levelAdds': '+{x} an hour {what}',
   'card.notBottleneck': 'Not the bottleneck now',
   'card.keptForLoad': 'Kept for the next load: {x}',
@@ -190,7 +192,7 @@ export const TEXT = {
   'plate.tungsten': 'Tungsten',
   'plate.owned': 'Level {n}',
   'plate.price': '{x}',
-  'plate.levelPrice': 'Level up {x}',
+  'plate.levelPrice': 'Next {x}',
   'plate.locked': '{why}',
 
   // --- package 4: the industry table and the rung sign (2.11) ---
@@ -206,7 +208,7 @@ export const TEXT = {
 
   // --- package 4: the away card (4.4) ---
   'away.head': 'Away {t} (cap {c} h)',
-  'away.line': '{grade} {kg} · {x}',
+  'away.line': '{grade|short} {kg} · {x}',
   'away.supplied': '{t} supplied · {x} (already in your account)',
   'away.loads': '{n} loads fetched',
   'away.deliveries': '{n} deal deliveries',
@@ -226,7 +228,7 @@ export const TEXT = {
   'ticket.grossTareNet': 'Gross {a} · Tare {b} · Net {c}',
   'ticket.partnerLegal': 'Seller ID checked · paid by transfer',
   'ticket.collectionHead': '{homeYard} · ticket {n}',
-  'ticket.gradeAmount': '{grade} {kg} {x}',
+  'ticket.gradeAmount': '{grade|short} {kg} {x}',
   'ticket.paid': 'Paid {x}',
   'ticket.lotSoldTo': 'Lot sold to {merchant}',
   'ticket.weighedOut': 'weighed out · paid by transfer',
@@ -299,19 +301,19 @@ export const TEXT = {
 
   // --- package 8 and the tickets: lessons (5.5, one line of at most 48; no fixed multiples) ---
   'lesson.li': 'Light iron: thin steel from appliances.',
-  'lesson.drum': 'The drum is stainless: it pays more sorted.',
+  'lesson.drum': 'Stainless drum: sold here with light iron.',
   'lesson.mot': 'A whole motor: copper inside steel.',
   'lesson.cab': 'Cable is paid on the copper it yields.',
   'lesson.bb': 'Bare bright pays {n} times light iron today.',
   'lesson.no2': 'No.2: unalloyed copper, not clean.',
   'lesson.brs': 'Brass is copper and zinc.',
-  'lesson.alw': 'Cast alloy wheels, tyres and weights off.',
+  'lesson.alw': 'Alloy wheels pay clean: tyres and weights off.',
   'lesson.alcast': 'Motor end caps are cast aluminium.',
   'lesson.ci': 'Cast iron breaks. Foundries remelt it.',
   'lesson.hms': 'HMS: thick steel cut to furnace size.',
-  'lesson.hmsu': 'Cut to furnace size, it pays as HMS.',
+  'lesson.hmsu': 'Uncut steel pays less. Cut, it pays as HMS.',
   'lesson.cbody': 'Car bodies go to a shredder.',
-  'lesson.bri': 'Melted, skimmed, cast: worth more than scrap.',
+  'lesson.bri': 'Melted, skimmed and cast: an ingot pays more.',
   'lesson.dross': 'Dross: the skimmed crust, still holding metal.',
   'lesson.ali': 'Cast aluminium remelted as alloy ingot.',
   'lesson.conv': 'From depolluted car ref. {ref}. Paid on assay.',
@@ -320,7 +322,7 @@ export const TEXT = {
   'refusal.cash': 'Not enough cash: {x} more',
   'refusal.owned': 'Owned',
   'refusal.rung': 'Opens at {t} supplied',
-  'refusal.ceiling': 'Yard capacity {c} t/h · grows at {t} supplied',
+  'refusal.ceiling': 'Capacity {c} t/h · grows at {t}',
   'refusal.tool2': 'Needs a sledgehammer',
   'refusal.tool3': 'Needs a cutting torch',
   'refusal.tooHeavy': 'Too heavy to lift: {kg}',
@@ -328,7 +330,7 @@ export const TEXT = {
   'refusal.noPlace': 'No free place on the rota',
   'refusal.filling': 'Filling · full in {t}',
   'refusal.loadCash': 'Needs {x} more for this load',
-  'refusal.floor': 'The tipping floor needs room for {kg}',
+  'refusal.floor': 'Tipping floor needs {kg} free',
   'refusal.weighFirst': 'Weigh it in first',
   'refusal.heatRunning': 'Wait for the heat to pour',
   'refusal.noTruck': 'Opens with the hook-lift truck',
@@ -355,8 +357,8 @@ export const TEXT_PENDING = {
   'goal.widenLevel': 'Level up: {item}', // item: { text: role.* | item.* }
   'goal.buyAlu': 'Buy the aluminium recipe',
   // the advice line (2.10; Advice.line): the purchase that widens the yard now
-  'advice.buy': 'Widens the yard now: {item} · {x}', // x: money
-  'advice.level': 'Widens the yard now: {item} {n} · {x}', // n: the next level
+  'advice.buy': 'Next: {item} · {x}', // x: money
+  'advice.level': '{item} level {n} · {x}', // n: the next level
   // tool rack, rota and process board rows (4.3; effect lines ≤ 38)
   'item.skip': 'Another skip',
   'effect.frame': 'A hand load on your back',
@@ -368,14 +370,17 @@ export const TEXT_PENDING = {
   'card.on': 'On',
   'card.off': 'Off',
   // machines (4.3)
-  'card.hopper': 'Hopper {a} / {b}', // a, b: mass
-  'card.tray': 'Tray {a} / {b}',
+  'card.hopper': 'Hopper · {grade|short} × {n} · {kg}', // overlays-a: the next input and what waits
+  'card.tray': 'Tray · {grade|short} {kg}',
   'card.heating': 'Heating',
   'card.cooling': 'Cooling',
   'card.handOnly': 'Turns only while you stand at it',
   'card.firstPour': 'Ready to pour · it waits for you',
   // partners and skips (2.7, 4.3)
   'card.levelFromTo': 'Level {n} → {m}',
+  'card.anotherSkip': 'Another skip · {x}', // overlays-a: the partner wall's row (5.2)
+  'plate.needsCrucible': 'Needs the crucible',
+  'plate.atRung': 'At {t} supplied',
   'card.skipsInRotation': 'Skips in rotation: {n}',
   'card.skipTrial': '{partner} · trial load',
   'card.skipReady': 'Full · ready to hook',
@@ -396,6 +401,7 @@ export const TEXT_PENDING = {
   'opens.rung3': 'Yard capacity {c} t/h',
   // refusals (5.4): the driver's earmark
   'refusal.earmark': '{x} is kept for the load on its way',
+  'refusal.needsItem': 'Opens with: {item}', // E25: a shop item gated by another item owned
   // Settings and Help (4.3)
   'clip.privacyLine': 'Your yard is saved on this phone. There is no account.',
   'clip.restartYes': 'Start again',
@@ -504,8 +510,12 @@ function argText(a: R.TxtArg, c: Content): string {
 
 /** Fills `{hole}`s: a Txt argument first, else an invented name by register id, else the hole stays. */
 export function fill(text: string, args: R.TxtArgs | undefined, c: Content): string {
-  return text.replace(/\{([A-Za-z0-9_.]+)\}/g, (whole, h: string) => {
+  return text.replace(/\{([A-Za-z0-9_.]+)(\|short)?\}/g, (whole, h: string, short?: string) => {
     const a = args?.[h];
+    if (short && a && 'grade' in a) {
+      const g = c.grades[a.grade] as { name?: string; short?: string } | undefined;
+      return g?.short ?? g?.name ?? a.grade;
+    }
     if (a) return argText(a, c);
     const n = c.names[h];
     return n ?? whole;

@@ -5,7 +5,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { EDGE_W, PAL } from '../palette';
-import { LINE_EM } from './metrics';
+import { LINE_EM, LINE_TIGHT } from './metrics';
 
 export function Paper({ style, face, radius = 7, drop = 2, children }: { style?: StyleProp<ViewStyle>; face?: StyleProp<ViewStyle>; radius?: number; drop?: number; children?: ReactNode }) {
   return (
@@ -19,7 +19,7 @@ export function Paper({ style, face, radius = 7, drop = 2, children }: { style?:
 /** One line of bar text at `pt` (never scaled again by the system; a View's Text may take a lineHeight, a TextInput never). */
 export function BarText({ pt, weight = '700', color = PAL.ink, lines = 1, style, children }: { pt: number; weight?: TextStyle['fontWeight']; color?: string; lines?: number; style?: StyleProp<TextStyle>; children: ReactNode }) {
   return (
-    <Text allowFontScaling={false} numberOfLines={lines} ellipsizeMode="tail" style={[{ fontSize: pt, lineHeight: Math.ceil(pt * LINE_EM), fontWeight: weight, color }, style]}>
+    <Text allowFontScaling={false} numberOfLines={lines} ellipsizeMode="tail" style={[{ fontSize: pt, lineHeight: lines > 1 ? Math.floor(pt * LINE_TIGHT) : Math.ceil(pt * LINE_EM), fontWeight: weight, color }, style]}>
       {children}
     </Text>
   );
