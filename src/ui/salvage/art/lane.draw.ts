@@ -192,3 +192,11 @@ export function drawBarrier(c: SkCanvas, v: View3q, locked = true): void {
   c.drawPath(rrect(ax - 12, ay - 4, 10, 8, 1.5), stroke(INK, 0.9));
   if (locked) padlock(c, bx - 2, by + 9, 11, YARD.hivis);
 }
+
+/** One leaf of the demolition gate standing open (2 m, seen edge-on running south from its post). */
+export function drawHoardingLeafOpen(c: SkCanvas, v: View3q): void {
+  const L = 2.0;
+  const H = 2.2;
+  boxShadow(c, v, 0.1, L, 0, L / 2, H);
+  box(c, v, { len: 0.05, wid: L, h: H, oy: L / 2, color: '#3F5A4B', line: 1 });
+}

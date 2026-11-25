@@ -75,6 +75,10 @@ export interface LoadingLayout {
   sY: number;
   R: number;
   lip: [number, number];
+  /** The hood: its centre x, its canopy's top and bottom. */
+  hoodX: number;
+  hoodTop: number;
+  hoodBot: number;
   /** The handwheel's centre. */
   hwX: number;
   hwY: number;
@@ -156,21 +160,27 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
   }
   const plateH = size * 1.75;
 
-  // the mould in front: the launder runs along its back from the crucible's lip
-  const mY = Math.min(h * 0.8, sb - 46 * k);
+  // In front, from the deck down: the hood (below the deck's lip, never over a plate), the crucible
+  // under it on its stand, its lip at full tilt, the stream falling 16 k into the launder at the mould's
+  // back. The crucible tips 95 degrees about its trunnion, so its mouth faces down onto the launder.
+  const hoodTop = deckTop + 17 * k;
+  const hoodBot = hoodTop + 16 * k;
+  const R = 18 * k;
+  const sY = hoodBot + 34 * k;
+  const tiltDeg = 95;
+  const lip: [number, number] = [R + 7 * k, -26 * k];
+  const a = (tiltDeg * Math.PI) / 180;
+  const lipX0 = Math.cos(a) * lip[0] - Math.sin(a) * lip[1];
+  const lipY0 = Math.sin(a) * lip[0] + Math.cos(a) * lip[1];
+  const mY = Math.min(sb - 28 * k, sY + lipY0 + 16 * k);
   const mL = at(0.3);
   const mR = at(0.74);
   const CAV = 5;
   const cavW = (mR - mL) / CAV;
   const cavX = Array.from({ length: CAV }, (_, i) => mL + i * cavW + 5 * k);
-  // the crucible on its tilting stand west of the mould, under its hood; the furnace hand west of it
-  const R = 18 * k;
+  // the crucible's stand west of the mould; the furnace hand at the handwheel west of it
   const sX = mL - 64 * k;
-  const sY = mY - 30 * k;
-  const tiltDeg = 55;
-  const lip: [number, number] = [R + 7 * k, -26 * k];
-  const a = (tiltDeg * Math.PI) / 180;
-  const lipX = sX + Math.cos(a) * lip[0] - Math.sin(a) * lip[1];
+  const lipX = sX + lipX0;
   return {
     w,
     h,
@@ -215,6 +225,9 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
     sY,
     R,
     lip,
+    hoodX: sX + 6 * k,
+    hoodTop,
+    hoodBot,
     hwX: sX - 40 * k,
     hwY: sY + 16 * k,
     manX: sX - 62 * k,

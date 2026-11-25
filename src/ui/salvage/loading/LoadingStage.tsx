@@ -1,0 +1,143 @@
+/**
+ * The loading animation on screen (S22, yard-stage1.md 6.4): one Skia canvas drawn on the UI thread
+ * from one shared clock (./clock.ts). The parts are recorded once per screen size and title
+ * (./layers.ts); every frame a worklet poses them (./timeline.ts) and composes them (./compose.ts),
+ * so the animation keeps its 60 frames while the JavaScript thread bakes the yard's atlases.
+ *
+ * - `ready`: the yard beneath is baked; the gate parts as soon as the timeline allows (from 3.2 s with
+ *   three words), else the calm loop holds (the magnet sways, the display ticks, the furnace breathes).
+ * - A tap skips to the end from the second launch on (the first launch plays it whole).
+ * - Reduced motion: the final frame, with only the furnace breathing; the gate fades instead of parting.
+ * - Sounds by id through the fx service (a missing id is silent): crane, plate, pour, cooled, gate.
+ */
+import { useEffect, useMemo } from 'react';
+import { Pressable, StyleSheet } from 'react-native';
+import { Canvas, Picture, Skia } from '@shopify/react-native-skia';
+import { runOnJS, useDerivedValue, useFrameCallback, useReducedMotion, useSharedValue } from 'react-native-reanimated';
+import { fx } from '../../../services/fx';
+import { S } from '../strings';
+import { canSkip, loadingClock, markSeen, NOT_YET } from './clock';
+import { composeFrame } from './compose';
+import { loadingDev, noteFrame } from './dev';
+import { recordLayers, type LoadingLayers } from './layers';
+import { loadingLayout, titleWords, type Insets, type LoadingLayout } from './layout';
+import { GATE_S, LOADING_SOUNDS, loadingCues, loadingPose, loadingTimeline, type LoadingTimeline } from './timeline';
+
+interface Prepared {
+  key: string;
+  words: string[];
+  tl: LoadingTimeline;
+  L: LoadingLayout;
+  Y: LoadingLayers;
+  cues: number[];
+  cueIds: string[];
+}
+
+/** The last prepared picture set: the shell's loading screen and the curtain over the yard share it. */
+let cache: Prepared | null = null;
+
+function prepare(title: string, w: number, h: number, insets: Insets): Prepared {
+  const words = titleWords(title);
+  const key = `${words.join(' ')}|${w}x${h}|${insets.left},${insets.right},${insets.top},${insets.bottom}`;
+  if (cache && cache.key === key) return cache;
+  const tl = loadingTimeline(words);
+  const L = loadingLayout(w, h, insets, words);
+  const cueList = loadingCues(tl);
+  cache = { key, words, tl, L, Y: recordLayers(L, words, tl), cues: cueList.map((c) => c.t), cueIds: cueList.map((c) => c.id) };
+  return cache;
+}
+
+/** Plays a loading sound by id; ids the sound engineer has not delivered yet are silent. */
+function play(id: string): void {
+  (fx.play as (name: string) => void)(id);
+}
+
+export interface LoadingStageProps {
+  title: string;
+  width: number;
+  height: number;
+  insets: Insets;
+  /** The yard beneath is ready: the gate may part. */
+  ready: boolean;
+  /** The gate has parted (the stage can go). */
+  onDone?: () => void;
+}
+
+export function LoadingStage({ title, width, height, insets, ready, onDone }: LoadingStageProps) {
+  const deviceStill = useReducedMotion();
+  const still = loadingDev.still ?? deviceStill;
+  const frozen = loadingDev.t;
+  const P = useMemo(() => prepare(loadingDev.title ?? title, width, height, insets), [title, width, height, insets]);
+  const readySV = useSharedValue(ready || loadingDev.ready);
+  useEffect(() => {
+    readySV.value = ready || loadingDev.ready;
+  }, [ready, readySV]);
+
+  const { tl, L, Y, cues, cueIds } = P;
+  const C = loadingClock;
+  const gateFrom = still ? 0.6 : tl.gate[0];
+  const ids = cueIds;
+  const sound = (i: number) => play(ids[i]);
+  const gateSound = () => play(LOADING_SOUNDS.gate);
+  const finish = () => onDone?.();
+
+  useFrameCallback((info) => {
+    'worklet';
+    if (frozen !== null) {
+      C.t.value = frozen;
+    } else {
+      if (info.timestamp === C.last.value) return;
+      C.last.value = info.timestamp;
+      const ms = info.timeSincePreviousFrame ?? 16.7;
+      noteFrame(ms);
+      // a long frame (the bake holding the thread on the web) never jumps the picture
+      C.t.value += Math.min(0.05, ms / 1000);
+    }
+    const t = C.t.value;
+    if (!still && frozen === null) {
+      while (C.cue.value < cues.length && t >= cues[C.cue.value]) {
+        runOnJS(sound)(C.cue.value);
+        C.cue.value += 1;
+      }
+    }
+    if (!C.ended.value && t >= tl.end) {
+      C.ended.value = true;
+      runOnJS(markSeen)();
+    }
+    if (readySV.value && C.gateAt.value >= NOT_YET && t >= gateFrom) {
+      C.gateAt.value = frozen !== null ? Math.max(0, t - GATE_S / 2) : t;
+      if (frozen === null) runOnJS(gateSound)();
+    }
+    if (!C.done.value && C.gateAt.value < NOT_YET && t >= C.gateAt.value + GATE_S && frozen === null) {
+      C.done.value = true;
+      runOnJS(finish)();
+    }
+  });
+
+  const picture = useDerivedValue(() => {
+    const pose = loadingPose(C.t.value, tl, C.gateAt.value, still);
+    const r = Skia.PictureRecorder();
+    const c = r.beginRecording(Skia.XYWHRect(0, 0, L.w, L.h));
+    composeFrame(c, Y, L, pose, still);
+    return r.finishRecordingAsPicture();
+  });
+
+  const skip = () => {
+    if (!canSkip() || C.done.value) return;
+    // to the end of the timeline: cooled bars, the ticket out; the gate parts as soon as the yard is ready
+    if (C.t.value < tl.end) C.t.value = tl.end;
+    C.cue.value = cues.length;
+  };
+
+  return (
+    <Pressable style={[styles.fill, { width, height }]} onPress={skip} accessibilityRole="progressbar" accessibilityLabel={S.loading}>
+      <Canvas style={{ width, height }} pointerEvents="none">
+        <Picture picture={picture} />
+      </Canvas>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  fill: { position: 'absolute', left: 0, top: 0 },
+});

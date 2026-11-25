@@ -4,6 +4,16 @@
  * Writes only into <outDir> (default: scripts/art/out-yard; keep PNGs out of the repository).
  *
  *   npx tsx scripts/art/yard-sheets.ts [outDir] [only...]     only: palette type people things plant ground ui proof loading
+ *                                                            and the registry's names (REGISTRY below)
+ *
+ * THE MANIFEST (src/ui/salvage/art/manifest): `manifest-people`, `manifest-things`, `manifest-plant` draw
+ * every entry of a part at phone size (1 pt = 3 px, every frame, its bounds box faint); `atlas-A`,
+ * `atlas-B`, `atlas-G` bake the three atlases exactly as the app does (world/atlas.ts) at density 3 and
+ * print what each holds; `budget` prints each part's pixels per sheet at density 3; `bounds` measures the
+ * plant part's ink and rewrites its MEASURED table (manifest/plant.ts).
+ *
+ * REGISTRY: an artist adds a sheet as one entry { name, run } (run gets the same helpers the built-in
+ * sheets use); add entries, change nobody else's.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,7 +32,6 @@ headless(async (H) => {
   const G = require('../../src/ui/salvage/art/ground.draw') as typeof import('../../src/ui/salvage/art/ground.draw');
   const U = require('../../src/ui/salvage/art/ui.draw') as typeof import('../../src/ui/salvage/art/ui.draw');
   const PR = require('../../src/ui/salvage/art/proof.draw') as typeof import('../../src/ui/salvage/art/proof.draw');
-  const LD = require('../../src/ui/salvage/art/loading.draw') as typeof import('../../src/ui/salvage/art/loading.draw');
   /* eslint-enable @typescript-eslint/no-require-imports */
   const { YARD, METAL } = pal;
   const V = pen.VIEW;
@@ -46,6 +55,129 @@ headless(async (H) => {
     console.log('wrote', f);
   };
   const put = (c: SkCanvas, x: number, y: number, draw: () => void) => pen.at(c, x, y, draw);
+
+  // ---------------------------------------------------------------------------------------------------
+  // The registry (one entry per sheet; artists add theirs here)
+  // ---------------------------------------------------------------------------------------------------
+  interface Ctx { H: typeof H; out: string; T: typeof T; write: typeof write; put: typeof put; caption: typeof caption; title: typeof title }
+  const REGISTRY: { name: string; run: (x: Ctx) => Promise<void> }[] = [];
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const MF = () => require('../../src/ui/salvage/art/manifest') as typeof import('../../src/ui/salvage/art/manifest');
+  const ATL = () => require('../../src/ui/salvage/world/atlas') as typeof import('../../src/ui/salvage/world/atlas');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  const manifestSheet = (part: 'people' | 'things' | 'plant') => async () => {
+    const entries = MF().PARTS[part];
+    if (!entries.length) {
+      console.log(`manifest-${part}: no entries yet`);
+      return;
+    }
+    // lay every frame out in rows at its bounds' size, 1 pt = 3 px
+    const W = 900;
+    const cells: { e: (typeof entries)[number]; f: number; x: number; y: number }[] = [];
+    let x = 10;
+    let y = 30;
+    let row = 0;
+    for (const e of entries)
+      for (let f = 0; f < e.frames.length; f++) {
+        const w = Math.max(e.bounds.w, 46) + 8;
+        if (x + w > W) {
+          x = 10;
+          y += row + 22;
+          row = 0;
+        }
+        cells.push({ e, f, x: x - e.bounds.x + (w - 8 - e.bounds.w) / 2, y: y - e.bounds.y });
+        x += w;
+        row = Math.max(row, e.bounds.h);
+      }
+    const H2 = y + row + 30;
+    await write(`manifest-${part}.png`, W, H2, (c) => {
+      title(c, `manifest: ${part} (${entries.length} entries, every frame; faint box = bounds)`);
+      for (const cell of cells) {
+        const { e, f } = cell;
+        c.drawPath(pen.rect(cell.x + e.bounds.x, cell.y + e.bounds.y, e.bounds.w, e.bounds.h), pen.stroke(YARD.inkSoft, 0.4, 0.5));
+        put(c, cell.x, cell.y, () => e.draw(c, V, f, 0));
+        T(c, `${e.id.replace(/^(plant|lane|ground|mark)\./, '')}${e.frames.length > 1 ? ' ' + e.frames[f] : ''}`, cell.x + e.bounds.x + e.bounds.w / 2, cell.y + e.bounds.y + e.bounds.h + 9, { size: 6.5, weight: 'semibold', color: YARD.inkSoft, align: 'center' });
+      }
+    }, 3);
+  };
+  REGISTRY.push({ name: 'manifest-people', run: manifestSheet('people') });
+  REGISTRY.push({ name: 'manifest-things', run: manifestSheet('things') });
+  REGISTRY.push({ name: 'manifest-plant', run: manifestSheet('plant') });
+  REGISTRY.push({
+    name: 'budget',
+    run: async () => {
+      const M = MF();
+      const sum: Record<string, Record<string, number>> = {};
+      for (const [part, entries] of Object.entries(M.PARTS))
+        for (const e of entries) {
+          sum[e.sheet] ??= {};
+          sum[e.sheet][part] = (sum[e.sheet][part] ?? 0) + M.entryPixels(e, 3);
+        }
+      for (const [sheet, parts] of Object.entries(sum)) {
+        const cap = sheet === 'G' ? 1024 * 1024 : 2048 * 2048;
+        const total = Object.values(parts).reduce((a, b) => a + b, 0);
+        console.log(`sheet ${sheet}: ${Object.entries(parts).map(([p, n]) => `${p} ${(n / 1e6).toFixed(2)} Mpx`).join(', ')}; total ${(total / 1e6).toFixed(2)} of ${(cap / 1e6).toFixed(2)} Mpx (${Math.round((100 * total) / cap)} %)`);
+      }
+      const A = ATL();
+      for (const sheet of ['A', 'B', 'G'] as const) {
+        const s = A.sheetSize(sheet, 3);
+        console.log(`packed ${sheet} at density 3: ${s.width} x ${s.height} px, density used ${s.density}`);
+      }
+    },
+  });
+  REGISTRY.push({
+    name: 'bounds',
+    run: async () => {
+      const M = MF();
+      const rows: string[] = [];
+      for (const e of M.PARTS.plant) {
+        let l = 1e9;
+        let t = 1e9;
+        let r = -1e9;
+        let b = -1e9;
+        const half = 420;
+        for (let f = 0; f < e.frames.length; f++) {
+          const img = H.image({ width: half * 2, height: half * 2, scale: 1 }, (c) => {
+            c.translate(half, half);
+            e.draw(c, V, f, 0);
+          });
+          const px = img.readPixels(0, 0, { width: half * 2, height: half * 2, colorType: 4, alphaType: 3 }) as Uint8Array;
+          for (let y = 0; y < half * 2; y++)
+            for (let x = 0; x < half * 2; x++)
+              if (px[(y * half * 2 + x) * 4 + 3] > 4) {
+                l = Math.min(l, x - half);
+                r = Math.max(r, x - half + 1);
+                t = Math.min(t, y - half);
+                b = Math.max(b, y - half + 1);
+              }
+        }
+        if (r < l) continue;
+        rows.push(`  '${e.id}': [${l - 2}, ${t - 2}, ${r - l + 4}, ${b - t + 4}],`);
+      }
+      const file = path.join(__dirname, '../../src/ui/salvage/art/manifest/plant.ts');
+      const src = fs.readFileSync(file, 'utf8');
+      const a = src.indexOf('const MEASURED');
+      const start = src.indexOf('{', a) + 1;
+      const end = src.indexOf('};', start);
+      fs.writeFileSync(file, src.slice(0, start) + '\n' + rows.join('\n') + '\n' + src.slice(end));
+      console.log(`bounds: ${rows.length} entries written to manifest/plant.ts`);
+    },
+  });
+  for (const sheet of ['A', 'B', 'G'] as const)
+    REGISTRY.push({
+      name: `atlas-${sheet}`,
+      run: async () => {
+        const A = ATL();
+        const plan = A.planSheet(sheet, 3);
+        const img = H.image({ width: plan.width / 3, height: plan.height / 3, scale: 3, background: sheet === 'G' ? '#808080' : '#5A6A7A' }, (c) => {
+          c.scale(1 / 3, 1 / 3);
+          A.drawPlan(c, plan);
+        });
+        const f = path.join(out, `atlas-${sheet}.png`);
+        fs.writeFileSync(f, Buffer.from(img.encodeToBytes()));
+        console.log(`wrote ${f}: ${plan.width} x ${plan.height} px, ${plan.cells.length} cells, density ${plan.density}`);
+      },
+    });
 
   if (want('palette')) {
     const draw = (c: SkCanvas) => {
@@ -244,6 +376,8 @@ headless(async (H) => {
   }
 
   if (want('loading')) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const LD = require('../../src/ui/salvage/art/loading.draw') as typeof import('../../src/ui/salvage/art/loading.draw');
     const keys: [string, number][] = [
       ['1-crane', 0.2],
       ['2-magnet', 0.62],
@@ -267,4 +401,5 @@ headless(async (H) => {
       });
     }, 2, '#FFFFFF');
   }
+  for (const r of REGISTRY) if (only.includes(r.name) || (!only.length && r.name.startsWith('manifest-'))) await r.run({ H, out, T, write, put, caption, title });
 });

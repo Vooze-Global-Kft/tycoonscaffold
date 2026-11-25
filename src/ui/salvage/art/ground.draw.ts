@@ -7,7 +7,7 @@
  */
 import { ClipOp, Skia, type SkCanvas } from '@shopify/react-native-skia';
 import { YARD, mix, shade } from './palette';
-import { blob, builder, fill, hash01, linear, oval, poly, proj, segment, stroke, type View3q } from './pen';
+import { blob, builder, fill, hash01, linear, oval, poly, proj, rect, segment, stroke, type View3q } from './pen';
 
 /** One slab's size, metres (the tile the app repeats is 2 x 2 slabs). */
 export const SLAB = 3;
@@ -177,3 +177,157 @@ export function drawSkyline(c: SkCanvas, x0: number, w: number, top: number, hor
 
 /** A colour seen through the late-day haze. */
 const mixHaze = (hex: string): string => mix(hex, YARD.far, 0.45);
+
+// ---------------------------------------------------------------------------
+// Tiles and decals for the ground atlas (sheet G; manifest/plant.ts), anchored at their centre
+// ---------------------------------------------------------------------------
+
+/** A ground tile's side, metres: one slab. Tiles repeat seamlessly (joints on their north and west edges). */
+export const TILE_M = SLAB;
+
+export const GROUND_TILES = [
+  { id: 'concrete', frames: ['plain', 'weeds'] },
+  { id: 'asphalt', frames: ['plain'] },
+  { id: 'verge', frames: ['plain'] },
+  { id: 'gravel', frames: ['plain'] },
+  { id: 'water', frames: ['plain'] },
+] as const;
+
+/** One tile round its centre. */
+export function drawGroundTile(c: SkCanvas, v: View3q, id: string, frame = 0): void {
+  const w = TILE_M * v.ppm;
+  const h = TILE_M * v.ppm * v.tilt;
+  c.save();
+  c.translate(-w / 2, -h / 2);
+  c.clipRect({ x: 0, y: 0, width: w, height: h }, ClipOp.Intersect, true);
+  switch (id) {
+    case 'concrete':
+      drawConcrete(c, v, 0, 0, TILE_M, TILE_M, 3 + frame, frame === 1);
+      break;
+    case 'asphalt':
+      c.drawRect({ x: 0, y: 0, width: w, height: h }, fill(YARD.asphalt));
+      for (let k = 0; k < 40; k++) c.drawCircle(hash01(7, k, 1) * w, hash01(7, k, 2) * h, 0.6 + (k % 3) * 0.3, fill(k % 4 ? YARD.asphaltLight : '#3E4247', 0.8));
+      c.drawPath(segment(w * 0.1, h * 0.6, w * 0.45, h * 0.62), stroke('#43474C', 1.4, 0.8));
+      break;
+    case 'verge':
+      c.drawRect({ x: 0, y: 0, width: w, height: h }, fill(YARD.grass));
+      for (let k = 0; k < 60; k++) {
+        const x = hash01(9, k, 1) * w;
+        const y = hash01(9, k, 2) * h;
+        c.drawPath(segment(x, y, x + (hash01(9, k, 3) - 0.5) * 3, y - 3 - hash01(9, k, 4) * 3), stroke(k % 3 ? YARD.grassLight : shade(YARD.grass, -0.2), 1.1));
+      }
+      break;
+    case 'gravel':
+      c.drawRect({ x: 0, y: 0, width: w, height: h }, fill('#B3AB98'));
+      for (let k = 0; k < 90; k++) {
+        const x = hash01(11, k, 1) * w;
+        const y = hash01(11, k, 2) * h;
+        c.drawPath(oval(x, y, 1.2 + hash01(11, k, 3) * 1.4, 0.9 + hash01(11, k, 4)), fill(k % 3 ? '#9D9583' : '#CEC6B2'));
+      }
+      break;
+    case 'water':
+      c.drawRect({ x: 0, y: 0, width: w, height: h }, fill('#6F92A3'));
+      for (let k = 0; k < 9; k++) {
+        const x = hash01(13, k, 1) * w;
+        const y = hash01(13, k, 2) * h;
+        c.drawPath(segment(x, y, x + 10 + hash01(13, k, 3) * 12, y), stroke('#A9C8D8', 1.2, 0.8));
+      }
+      break;
+  }
+  c.restore();
+}
+
+/** Decals: footprint (m), bounds round the centre (points: x, y, w, h), frames. */
+export const GROUND_DECALS: { id: string; footprint: [number, number]; bounds: [number, number, number, number]; frames: readonly string[] }[] = [
+  { id: 'oil', footprint: [1.4, 1.0], bounds: [-28, -16, 62, 34], frames: ['a', 'b', 'c'] },
+  { id: 'puddle', footprint: [2.0, 1.2], bounds: [-42, -20, 84, 40], frames: ['a', 'b'] },
+  { id: 'weeds', footprint: [0.4, 0.2], bounds: [-12, -16, 24, 20], frames: ['a', 'b', 'c', 'd'] },
+  { id: 'line.ew', footprint: [1.5, 0.12], bounds: [-31, -4, 62, 8], frames: ['line'] },
+  { id: 'line.ns', footprint: [0.12, 1.5], bounds: [-4, -22, 8, 44], frames: ['line'] },
+  { id: 'hatch', footprint: [1.5, 0.4], bounds: [-31, -7, 62, 14], frames: ['ew'] },
+  { id: 'corner', footprint: [0.6, 0.6], bounds: [-14, -10, 28, 20], frames: ['nw', 'ne', 'se', 'sw'] },
+  { id: 'pad.strip', footprint: [3.0, 2.4], bounds: [-63, -38, 126, 79], frames: ['open'] },
+  { id: 'pad.bench', footprint: [2.6, 2.0], bounds: [-55, -32, 110, 67], frames: ['open'] },
+  { id: 'pad.crucible', footprint: [3.6, 2.8], bounds: [-75, -42, 150, 88], frames: ['open'] },
+  { id: 'pad.ghost', footprint: [1.6, 1.0], bounds: [-34, -16, 68, 32], frames: ['dash'] },
+];
+
+const PADS: Record<string, [number, number]> = { 'pad.strip': [3.0, 2.4], 'pad.bench': [2.6, 2.0], 'pad.crucible': [3.6, 2.8] };
+
+/** One decal round its centre. */
+export function drawGroundDecal(c: SkCanvas, v: View3q, id: string, frame = 0): void {
+  switch (id) {
+    case 'oil':
+      drawOilStain(c, v, 0, 0, [0.6, 0.45, 0.35][frame] ?? 0.5, 3 + frame);
+      return;
+    case 'puddle':
+      drawPuddle(c, v, 0, 0, frame ? 0.7 : 0.95, frame ? 0.45 : 0.55, 4 + frame);
+      return;
+    case 'weeds':
+      drawWeeds(c, 0, 2, frame + 1, 0.8 + frame * 0.15);
+      return;
+    case 'line.ew':
+      drawPaintLine(c, v, -0.7, 0, 0.7, 0, 0.12);
+      return;
+    case 'line.ns':
+      drawPaintLine(c, v, 0, -0.7, 0, 0.7, 0.12);
+      return;
+    case 'hatch': {
+      const [ax, ay] = proj(v, -0.75, -0.2, 0);
+      const [bx, by] = proj(v, 0.75, 0.2, 0);
+      const p = rect(ax, ay, bx - ax, by - ay);
+      c.save();
+      c.clipPath(p, ClipOp.Intersect, true);
+      c.drawPath(p, fill(YARD.linePaint));
+      for (let x = ax - 12; x < bx + 12; x += 8) c.drawPath(segment(x, by + 1, x + (by - ay) + 2, ay - 1), stroke(YARD.ink, 3.6, 0.85));
+      c.restore();
+      return;
+    }
+    case 'corner': {
+      const sx = frame === 1 || frame === 2 ? -1 : 1;
+      const sy = frame >= 2 ? -1 : 1;
+      const [x0, y0] = proj(v, -sx * 0.3, -sy * 0.3, 0);
+      const [x1] = proj(v, sx * 0.3, 0, 0);
+      const [, y1] = proj(v, 0, sy * 0.3, 0);
+      c.drawPath(builder().moveTo(x1, y0).lineTo(x0, y0).lineTo(x0, y1).build(), stroke(YARD.linePaint, 3.2));
+      return;
+    }
+    case 'pad.ghost': {
+      const [ax, ay] = proj(v, -0.8, -0.5, 0);
+      const [bx, by] = proj(v, 0.8, 0.5, 0);
+      const s = stroke(YARD.inkSoft, 1.4, 0.6);
+      s.setPathEffect(Skia.PathEffect.MakeDash([5, 4], 0));
+      c.drawPath(rect(ax, ay, bx - ax, by - ay), s);
+      return;
+    }
+    default: {
+      const pad = PADS[id];
+      if (!pad) return;
+      const [w, d] = pad;
+      const [ax, ay] = proj(v, -w / 2, -d / 2, 0);
+      const [bx, by] = proj(v, w / 2, d / 2, 0);
+      // a clean poured slab a shade lighter, its 3 pt front lip, a painted border and hazard corners
+      c.drawPath(rect(ax, ay, bx - ax, by - ay + 3), fill(YARD.concreteDark));
+      c.drawPath(rect(ax, ay, bx - ax, by - ay), fill(YARD.concreteLight));
+      c.drawPath(rect(ax, ay, bx - ax, by - ay + 3), stroke(YARD.ink, 1, 0.6));
+      const e = 0.14 * v.ppm;
+      c.drawPath(rect(ax + e, ay + e * v.tilt, bx - ax - 2 * e, by - ay - 2 * e * v.tilt), stroke(YARD.linePaint, 2.4));
+      const k = 0.45 * v.ppm;
+      for (const [cx, cy, dx, dy] of [[ax, ay, 1, 1], [bx, ay, -1, 1], [ax, by, 1, -1], [bx, by, -1, -1]]) {
+        const tri = builder().moveTo(cx, cy).lineTo(cx + dx * k, cy).lineTo(cx, cy + dy * k * v.tilt).close().build();
+        c.save();
+        c.clipPath(tri, ClipOp.Intersect, true);
+        c.drawPath(tri, fill(YARD.hivis));
+        for (let x = cx - k; x < cx + k; x += 5) c.drawPath(segment(x, cy + k, x + k, cy - k), stroke(YARD.ink, 2.2));
+        c.restore();
+      }
+    }
+  }
+}
+
+/**
+ * The low sun's tint over the whole yard, drawn by the world under the sprites as one rectangle across
+ * the screen: warm from the west, clear in the middle, a faint cool to the east (stops for a linear
+ * gradient from the screen's left to its right).
+ */
+export const SUN_WASH = { colors: ['rgba(255,214,150,0.22)', 'rgba(255,214,150,0)', 'rgba(46,58,82,0.06)'], stops: [0, 0.55, 1] } as const;

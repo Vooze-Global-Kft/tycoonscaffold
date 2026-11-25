@@ -1,44 +1,41 @@
 /**
- * PLACEHOLDER ground: gravel tiles baked ONCE into a small image (2 x 2 tiles of `yard.tile` metres,
- * each a slightly different tone, with a faint joint line and a few specks), drawn as ONE textured
- * rectangle repeated over the whole yard (./YardView.tsx). The art package replaces the drawing; the
- * image-shader way of drawing it stays. Pure Skia; never freed (a mounted canvas may still draw it).
+ * The yard's ground: two by two concrete slabs (art/ground.draw.ts drawConcrete, the style sheet's pale
+ * slabs with joints, float marks, aggregate, the odd crack and weeds at some joints) baked ONCE into a
+ * small image and drawn as ONE textured rectangle repeated over the whole yard (./YardView.tsx). The
+ * slabs' joints fall on the image's edges, so it repeats without a seam. Decals (oil, puddles, lines,
+ * pads, chalk circles) and the lane's tiles are in the manifest's ground sheet G (./atlas.ts). Pure
+ * Skia; never freed (a mounted canvas may still draw it).
  */
 import type { SkImage } from '@shopify/react-native-skia';
+import { YARD } from '../art/palette';
+import { SLAB, drawConcrete } from '../art/ground.draw';
 import { bakeImage } from './atlas';
-import { fill, shade, stroke } from './draw';
 import type { YardLayout } from './yard';
 
-export const GROUND = '#8C8577';
+/** The yard floor's colour under the tile (and before it is baked). */
+export const GROUND = YARD.concrete;
 
 export interface GroundTile {
   image: SkImage;
   density: number;
-  /** The image's size in points (two tiles each way). */
+  /** The image's size in points (two slabs each way). */
   w: number;
   h: number;
 }
 
+/** Slabs per side of the baked tile. */
+export const TILE_SLABS = 2;
+
 export function bakeGround(y: YardLayout, density: number): GroundTile | null {
-  const tw = y.tile * y.ppm;
-  const th = y.tile * y.ppm * y.tilt;
-  const w = tw * 2;
-  const h = th * 2;
+  const v = { ppm: y.ppm, tilt: y.tilt, lift: y.lift };
+  const m = SLAB * TILE_SLABS;
+  const w = m * y.ppm;
+  const h = m * y.ppm * y.tilt;
   const pw = Math.max(1, Math.round(w * density));
   const ph = Math.max(1, Math.round(h * density));
-  const tones = [0, 0.05, -0.05, 0.02];
   const image = bakeImage(pw, ph, (c) => {
     c.scale(pw / w, ph / h);
-    for (let j = 0; j < 2; j++)
-      for (let i = 0; i < 2; i++) {
-        c.drawRect({ x: i * tw, y: j * th, width: tw, height: th }, fill(shade(GROUND, tones[j * 2 + i])));
-        for (let k = 0; k < 9; k++) {
-          const sx = i * tw + (((k * 53 + i * 17 + j * 29) % 97) / 97) * tw;
-          const sy = j * th + (((k * 31 + i * 41 + j * 7) % 89) / 89) * th;
-          c.drawCircle(sx, sy, 0.6 + (k % 3) * 0.5, fill(k % 2 ? shade(GROUND, -0.25) : shade(GROUND, 0.2)));
-        }
-        c.drawRect({ x: i * tw + 0.5, y: j * th + 0.5, width: tw - 1, height: th - 1 }, stroke(shade(GROUND, -0.12), 1, 0.6));
-      }
+    drawConcrete(c, v, 0, 0, m, m, 5, true);
   });
   if (!image) return null;
   return { image, density, w, h };

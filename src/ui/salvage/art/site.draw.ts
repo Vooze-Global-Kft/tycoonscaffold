@@ -548,17 +548,17 @@ export function drawCodePlate(c: SkCanvas): void {
 }
 
 /** A low heap of a grade's pieces lying in a bay (k 0.5 part, 1 full), anchored on the bay's floor centre. */
-export function drawBayHeap(c: SkCanvas, v: View3q, metals: string[], k: number, seed = 1): void {
-  const w = 2.9 * v.ppm;
+export function drawBayHeap(c: SkCanvas, v: View3q, metals: string[], k: number, seed = 1, widthM = 2.9): void {
+  const w = widthM * v.ppm;
   const h = (k > 0.7 ? 34 : 20) * (v.ppm / 40);
   const rx = w / 2;
-  const ry = 0.85 * v.ppm * v.tilt;
+  const ry = Math.min(0.85, widthM * 0.3) * v.ppm * v.tilt;
   c.drawPath(oval(4, 3, rx * 0.98, ry), fill(YARD.shadow, 0.22));
   const base = METAL[metals[0]]?.base ?? YARD.steel;
   const mound = builder().moveTo(-rx, 2).quadTo(-rx * 0.6, -h * 1.05, 0, -h).quadTo(rx * 0.55, -h * 1.05, rx, 2).quadTo(0, ry * 1.1, -rx, 2).close().build();
   c.drawPath(mound, fill(shade(base, -0.35)));
   c.drawPath(mound, stroke(INK, 1));
-  const n = k > 0.7 ? 30 : 16;
+  const n = Math.round((k > 0.7 ? 30 : 16) * Math.max(0.5, widthM / 2.9));
   for (let i = 0; i < n; i++) {
     const u = hash01(seed, i, 1) * 2 - 1;
     const top = -h * (1 - u * u) * 0.95;
@@ -570,7 +570,7 @@ export function drawBayHeap(c: SkCanvas, v: View3q, metals: string[], k: number,
 export const STILLAGE = { len: 1.2, wid: 1.0, h: 0.85 };
 
 /** A galvanised mesh stillage (box pallet): feet, corner posts, mesh sides, its front gate half height. Empty. */
-export function drawStillage(c: SkCanvas, v: View3q): void {
+export function drawStillage(c: SkCanvas, v: View3q, front = true): void {
   const { len, wid, h } = STILLAGE;
   boxShadow(c, v, len, wid, 0, 0, h);
   // the floor (pallet base) and the back and side mesh
@@ -593,11 +593,11 @@ export function drawStillage(c: SkCanvas, v: View3q): void {
   back([[-L, -W, 0.12], [-L, W, 0.12], [-L, W, h], [-L, -W, h]]);
   back([[L, -W, 0.12], [L, W, 0.12], [L, W, h], [L, -W, h]]);
   for (const [x, y] of [[-L, -W], [L, -W]]) box(c, v, { len: 0.05, wid: 0.05, h, ox: x, oy: y, color: YARD.galvanisedLight, line: 0.9 });
-  stillageFront(c, v);
+  if (front) drawStillageFront(c, v);
 }
 
 /** The stillage's front: two corner posts, the drop gate's mesh at half height, its top rail. */
-function stillageFront(c: SkCanvas, v: View3q): void {
+export function drawStillageFront(c: SkCanvas, v: View3q): void {
   const { len, wid, h } = STILLAGE;
   const L = len / 2;
   const W = wid / 2;
@@ -719,7 +719,20 @@ export function drawStillageFill(c: SkCanvas, v: View3q, g: StillageGrade, full:
     const [x, y] = proj(v, (s - 0.5) * (len - 0.3), (t - 0.5) * (wid - 0.35), z);
     stillagePiece(c, g, x, y, 15, i + 3);
   }
-  stillageFront(c, v);
+  drawStillageFront(c, v);
+}
+
+/** One layer of a grade's pieces lying in a stillage (no front): the world draws one for part, two (the second STILLAGE_LAYER_DY up) for full. */
+export function drawStillageLayer(c: SkCanvas, v: View3q, g: StillageGrade): void {
+  const { len, wid } = STILLAGE;
+  const n = 11;
+  for (let i = 0; i < n; i++) {
+    const s = hash01(g.length, i, 1);
+    const t = hash01(g.length, i, 2);
+    const z = 0.14 + 0.28 * (i / n);
+    const [x, y] = proj(v, (s - 0.5) * (len - 0.3), (t - 0.5) * (wid - 0.35), z);
+    stillagePiece(c, g, x, y, 15, i + 3);
+  }
 }
 
 /** The converter cage: a lockable galvanised mesh cage on legs with its padlocked door; whole converters inside when part. */
@@ -886,7 +899,16 @@ export function drawToolRack(c: SkCanvas, v: View3q, tier = 1): void {
     },
   });
   box(c, v, { len: len + 0.2, wid: 0.6, h: 0.08, z: 2.0, color: YARD.machine, bevel: true });
+  drawRackTools(c, v, 1);
+  if (tier >= 2) drawRackTools(c, v, 2);
+  if (tier >= 3) drawRackTools(c, v, 3);
+}
+
+/** The tools one tier adds to the rack (an overlay at the rack's anchor): 1 spanners and bolt cutters, 2 sledgehammer and grinder, 3 the torch and its bottles. */
+export function drawRackTools(c: SkCanvas, v: View3q, tier: number): void {
+  const len = 1.9;
   const at = (s: number, t: number) => proj(v, len / 2 - 0.05 - s * (len - 0.1), -0.06, 0.4 + t * 1.5);
+  if (tier === 1) {
   // tier 1: a spanner set, bolt cutters, a pry bar
   const [sx, sy] = at(0.06, 0.75);
   for (let i = 0; i < 5; i++) {
@@ -899,8 +921,9 @@ export function drawToolRack(c: SkCanvas, v: View3q, tier = 1): void {
   c.drawPath(builder().moveTo(bx - 3, by).lineTo(bx - 1, by + 20).moveTo(bx + 3, by).lineTo(bx + 1, by + 20).build(), stroke(INK, 2.4));
   c.drawPath(builder().moveTo(bx - 3, by).lineTo(bx - 1, by + 12).moveTo(bx + 3, by).lineTo(bx + 1, by + 12).build(), stroke(YARD.skip, 1.5));
   c.drawPath(builder().moveTo(bx - 1, by + 20).lineTo(bx, by + 25).lineTo(bx + 1, by + 20).build(), stroke(INK, 1.4));
+  }
   // tier 2: the sledgehammer and the angle grinder
-  if (tier >= 2) {
+  if (tier === 2) {
     const [hx, hy] = at(0.5, 0.9);
     c.drawPath(segment(hx, hy, hx, hy + 26), stroke(INK, 3));
     c.drawPath(segment(hx, hy, hx, hy + 26), stroke(YARD.wood, 1.8));
@@ -914,7 +937,7 @@ export function drawToolRack(c: SkCanvas, v: View3q, tier = 1): void {
     c.drawPath(segment(gx - 9, gy, gx - 12, gy + 8), stroke(INK, 1.2));
   }
   // tier 3: the torch on its hose and two bottles in a stand at the east end
-  if (tier >= 3) {
+  if (tier === 3) {
     const [tx, ty] = at(0.86, 0.85);
     c.drawPath(builder().moveTo(tx, ty).cubicTo(tx - 6, ty + 10, tx + 6, ty + 16, tx + 2, ty + 24).build(), stroke(INK, 2.6));
     c.drawPath(builder().moveTo(tx, ty).cubicTo(tx - 6, ty + 10, tx + 6, ty + 16, tx + 2, ty + 24).build(), stroke(YARD.vestDriver, 1.2));
@@ -1240,4 +1263,67 @@ export function drawFloodlight(c: SkCanvas, v: View3q): void {
     c.drawPath(rrect(x + d - 4, y + 1, 8, 3, 1), fill(YARD.galvanisedLight));
     c.drawPath(rrect(x + d - 5, y - 1, 10, 6, 1.5), stroke(INK, 0.9));
   }
+}
+
+/**
+ * A shipping container lying north-south (the yard's dividing wall runs this way): its doors' end faces
+ * the eye (locking bars, hinges), its long top recedes; ribbed; corner castings. len along y, metres.
+ */
+export function drawContainerNS(c: SkCanvas, v: View3q, color: string, len = 6.1, seed = 1): void {
+  const wid = 2.44;
+  const h = 2.6;
+  boxShadow(c, v, wid, len, 0, 0, h);
+  box(c, v, {
+    len: wid,
+    wid: len,
+    h,
+    color,
+    onFace: (q, n) => {
+      if (n[1] < 0.9) return;
+      // the door end: two leaves, four locking bars, hinges, corner castings
+      faceFill(c, v, subQuad(q, 0.497, 0.503, 0.04, 0.94), shade(color, -0.35));
+      for (const s of [0.12, 0.38, 0.62, 0.88]) {
+        const a = proj(v, ...subQuad(q, s, 0, 0.05, 0)[0]);
+        const b = proj(v, ...subQuad(q, s, 0, 0.92, 0)[0]);
+        c.drawPath(segment(a[0], a[1], b[0], b[1]), stroke(INK, 2.2));
+        c.drawPath(segment(a[0], a[1], b[0], b[1]), stroke(shade(color, 0.35), 1));
+        const m = proj(v, ...subQuad(q, s + 0.04, 0, 0.42, 0)[0]);
+        c.drawPath(rrect(m[0] - 2, m[1] - 3, 4, 6, 1), fill(shade(color, -0.4)));
+      }
+      faceFill(c, v, subQuad(q, 0, 1, 0.94, 1), shade(color, -0.3));
+      faceFill(c, v, subQuad(q, 0, 1, 0, 0.05), shade(color, -0.35));
+      for (const [s0, t0] of [[0, 0], [0.92, 0], [0, 0.92], [0.92, 0.92]]) faceFill(c, v, subQuad(q, s0, s0 + 0.08, t0, t0 + 0.08), shade(color, -0.45), 0.8);
+      const [x, y] = proj(v, ...subQuad(q, 0.3, 0, 0.3, 0)[0]);
+      freckles(c, x, y - 20, 40, 24, seed, YARD.rust, 5);
+    },
+    onTop: (q) => {
+      for (let i = 1; i < 14; i++) {
+        const a = proj(v, ...subQuad(q, 0.04, 0, i / 14, 0)[0]);
+        const b = proj(v, ...subQuad(q, 0.96, 0, i / 14, 0)[0]);
+        c.drawPath(segment(a[0], a[1], b[0], b[1]), stroke(shade(color, -0.1), 1.2));
+      }
+    },
+  });
+}
+
+/** The platform indicator printing: a tongue of paper out of the slot and the green lamp (an overlay at the printer slot). */
+export function drawPrintFlash(c: SkCanvas): void {
+  c.drawPath(rrect(-11, 0, 22, 8, 1), fill(YARD.paper));
+  c.drawPath(rrect(-11, 0, 22, 8, 1), stroke(YARD.paperLine, 0.8));
+  for (let i = 0; i < 3; i++) c.drawPath(segment(-8, 2.5 + i * 2, 4 - i * 3, 2.5 + i * 2), stroke(YARD.inkSoft, 0.6));
+  c.drawCircle(11, -1, 2, fill(YARD.led));
+}
+
+/** The portacabin's door standing open (an overlay at the cabin's anchor): the dark doorway and the leaf swung out. */
+export function drawCabinDoorOpen(c: SkCanvas, v: View3q): void {
+  const { len, wid, h } = CABIN;
+  const s0 = 0.5;
+  const s1 = 0.64;
+  const x0 = len / 2 - s1 * len;
+  const x1 = len / 2 - s0 * len;
+  const y = wid / 2 + 0.01;
+  const z0 = 0.22 + h * 0.04;
+  const z1 = 0.22 + h * 0.82;
+  faceFill(c, v, [[x1, y, z0], [x0, y, z0], [x0, y, z1], [x1, y, z1]], '#3A3F45', LINE_W);
+  faceFill(c, v, [[x1, y, z0], [x1 + 0.12, y + 0.55, z0], [x1 + 0.12, y + 0.55, z1], [x1, y, z1]], YARD.machine, LINE_W);
 }

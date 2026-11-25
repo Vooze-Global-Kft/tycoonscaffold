@@ -222,53 +222,43 @@ function background(c: SkCanvas, L: LoadingLayout): void {
   c.drawPath(rrect(sX - 20 * k, mY + 22 * k, 40 * k, 8 * k, 2), fill(YARD.machineDark));
   c.drawPath(rrect(sX - 20 * k, mY + 22 * k, 40 * k, 8 * k, 2), stroke(INK, 1.2));
   // the extinguisher by the stand (yard-stage1 6.1)
-  const ex = sX + 22 * k;
-  const ey = mY + 28 * k;
+  const ex = mR + 24 * k;
+  const ey = mY + 24 * k;
   c.drawPath(rrect(ex - 4 * k, ey - 18 * k, 8 * k, 18 * k, 3 * k), fill('#C8352B'));
   c.drawPath(rrect(ex - 4 * k, ey - 18 * k, 8 * k, 18 * k, 3 * k), stroke(INK, 1.2));
   c.drawPath(rect(ex - 2 * k, ey - 21 * k, 4 * k, 3 * k), fill(INK));
 }
 
-/** The hood over the crucible: a galvanised canopy, its duct rising and running west out of the frame. */
+/**
+ * The hood over the crucible: a galvanised canopy below the deck's lip (in front of the weighbridge,
+ * never over a plate), its duct leaving west out of the frame above the furnace hand's head.
+ */
 function hood(c: SkCanvas, L: LoadingLayout): void {
-  const { k, sX, sY } = L;
-  const cx = sX + 8 * k;
-  const bot = sY - 50 * k;
-  const top = bot - 22 * k;
-  const can = poly([cx - 46 * k, bot, cx + 46 * k, bot, cx + 18 * k, top, cx - 18 * k, top]);
-  // the duct: up from the canopy, an elbow, west out of the frame
-  const dw = 16 * k;
-  const elbowY = top - 34 * k;
-  const duct = builder()
-    .moveTo(cx - dw / 2, top)
-    .lineTo(cx - dw / 2, elbowY + dw)
-    .lineTo(-20, elbowY + dw)
-    .lineTo(-20, elbowY)
-    .lineTo(cx + dw / 2 - 2 * k, elbowY)
-    .quadTo(cx + dw / 2, elbowY, cx + dw / 2, elbowY + 2 * k)
-    .lineTo(cx + dw / 2, top)
-    .close()
-    .build();
-  c.drawPath(duct, linear(0, elbowY, 0, elbowY + dw, [YARD.galvanisedLight, YARD.galvanised]));
-  c.drawPath(duct, stroke(INK, 1.6));
-  for (let x = cx - 40 * k; x > -20; x -= 48 * k) c.drawPath(segment(x, elbowY, x, elbowY + dw), stroke(YARD.steel, 1.4));
-  // the duct's hanger from the gantry's girder (it is held up, not floating)
-  c.drawPath(segment(cx - 60 * k, elbowY, cx - 60 * k, L.beamY), stroke(INK, 1.2));
-  c.drawPath(can, linear(cx - 46 * k, 0, cx + 46 * k, 0, [YARD.galvanisedLight, YARD.galvanised, shade(YARD.galvanised, -0.2)]));
+  const { k, hoodX: cx, hoodTop: top, hoodBot: bot } = L;
+  const hw = 44 * k;
+  const tw = 18 * k;
+  const can = poly([cx - hw, bot, cx + hw, bot, cx + tw, top, cx - tw, top]);
+  // the duct: from the canopy's west slope, straight west out of the frame
+  const d0 = top + 1.5 * k;
+  const d1 = top + 12 * k;
+  const duct = poly([cx - tw, d0, -20, d0, -20, d1, cx - tw - (hw - tw) * ((d1 - top) / (bot - top)), d1]);
+  c.drawPath(duct, linear(0, d0, 0, d1, [YARD.galvanisedLight, YARD.galvanised]));
+  c.drawPath(segment(-20, d0, cx - tw, d0), stroke(INK, 1.6));
+  c.drawPath(segment(-20, d1, cx - hw * 0.8, d1), stroke(INK, 1.6));
+  for (let x = cx - 44 * k; x > -20; x -= 46 * k) c.drawPath(segment(x, d0, x, d1), stroke(YARD.steel, 1.4));
+  c.drawPath(can, linear(cx - hw, 0, cx + hw, 0, [YARD.galvanisedLight, YARD.galvanised, shade(YARD.galvanised, -0.2)]));
   c.drawPath(can, stroke(INK, 1.8));
-  c.drawPath(rect(cx - 46 * k, bot - 3 * k, 92 * k, 3 * k), fill(shade(YARD.galvanised, -0.3)));
-  c.drawPath(segment(cx - 46 * k, bot, cx + 46 * k, bot), stroke(INK, 1.8));
+  c.drawPath(rect(cx - hw, bot - 2.5 * k, hw * 2, 2.5 * k), fill(shade(YARD.galvanised, -0.3)));
+  c.drawPath(segment(cx - hw, bot, cx + hw, bot), stroke(INK, 1.8));
   // a warning plate on the canopy
-  c.drawPath(rrect(cx - 9 * k, top + 6 * k, 18 * k, 10 * k, 2), fill(YARD.hivis));
-  c.drawPath(rrect(cx - 9 * k, top + 6 * k, 18 * k, 10 * k, 2), stroke(INK, 1));
-  c.drawPath(poly([cx, top + 7.5 * k, cx + 4 * k, top + 14.5 * k, cx - 4 * k, top + 14.5 * k]), stroke(INK, 1));
+  c.drawPath(rrect(cx + 2 * k, top + 2 * k, 14 * k, 7.5 * k, 1.5), fill(YARD.hivis));
+  c.drawPath(rrect(cx + 2 * k, top + 2 * k, 14 * k, 7.5 * k, 1.5), stroke(INK, 0.9));
+  c.drawPath(poly([cx + 9 * k, top + 3 * k, cx + 12 * k, top + 8.3 * k, cx + 6 * k, top + 8.3 * k]), stroke(INK, 0.9));
 }
 
 function hoodGlow(c: SkCanvas, L: LoadingLayout): void {
-  const { k, sX, sY } = L;
-  const cx = sX + 8 * k;
-  const bot = sY - 50 * k;
-  c.drawPath(oval(cx, bot + 2 * k, 44 * k, 6 * k), radial(cx, bot + 2 * k, 44 * k, [rgba(YARD.glowHot, 0.75), rgba(YARD.glow, 0)]));
+  const { k, hoodX: cx, hoodBot: bot } = L;
+  c.drawPath(oval(cx, bot + 2 * k, 44 * k, 7 * k), radial(cx, bot + 2 * k, 44 * k, [rgba(YARD.glowHot, 0.75), rgba(YARD.glow, 0)]));
 }
 
 /** The crucible in its tongs about its trunnion; a pouring lip at the east. */

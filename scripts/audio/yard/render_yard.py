@@ -359,7 +359,7 @@ def qa_folder(out_dir, stems=None, quiet=False):
         sh, strong = bands(y)
         if 1.0 - sh[0] < PHONE_SHARE_MIN:
             err.append('only %.0f %% of its energy above 500 Hz (a phone keeps little else)' % (100 * (1 - sh[0])))
-        if YR.key_of(s) in YR.SEGMENT_MS and a['duration'] * 1000 < YR.SEGMENT_MS[YR.key_of(s)] * 0.98:
+        if YR.key_of(s) in YR.SEGMENT_MS and YR.key_of(s) not in YR.GAPPED and a['duration'] * 1000 < YR.SEGMENT_MS[YR.key_of(s)] * 0.98:
             err.append('segment %.0f ms is shorter than its period %d ms (a gap between plays)' % (a['duration'] * 1000, YR.SEGMENT_MS[YR.key_of(s)]))
         size = os.path.getsize(path)
         total += size

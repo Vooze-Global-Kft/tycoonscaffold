@@ -1,0 +1,113 @@
+/**
+ * Positions as pure functions of content (S9, S23: positions flow one way, content → game.json → the
+ * rules and the screen; the rules, the frame, the screen and the bots use these and nothing else).
+ * Metres on the ground plane, x east, y south.
+ */
+import type { SalvageContent } from '../../config/schema.salvage';
+import type { PileKey, ThingAt } from './types';
+
+const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+
+/** A map point (zero when the content has none: never thrown, the lint reports it). */
+export function pointOf(c: SalvageContent, id: string): { x: number; y: number } {
+  const p = c.map.points[id];
+  return p ? { x: p[0], y: p[1] } : { x: 0, y: 0 };
+}
+
+/** How many things a zone starts with (the sunflower pattern's N). */
+function zoneCount(c: SalvageContent, zone: string): number {
+  const z = c.zones[zone];
+  return z ? Object.values(z.things).reduce((a, n) => a + n, 0) : 0;
+}
+
+/**
+ * Where a whole thing stands: in a zone on a sunflower pattern of the heap's circle (k-th of the zone's
+ * starting things), at the drop-off in a row of places, on the tipping floor on a grid.
+ */
+export function thingPos(c: SalvageContent, at: ThingAt): { x: number; y: number } {
+  if (at.at === 'zone') {
+    const z = c.zones[at.zone];
+    if (!z) return { x: 0, y: 0 };
+    const n = Math.max(1, zoneCount(c, at.zone));
+    const rad = n === 1 ? 0 : z.r * Math.sqrt((at.k + 0.5) / n);
+    const a = at.k * GOLDEN;
+    return { x: z.centre[0] + rad * Math.cos(a), y: z.centre[1] + rad * Math.sin(a) * 0.8 };
+  }
+  if (at.at === 'dropoff') {
+    const p = pointOf(c, 'dropoff');
+    return { x: p.x - 1.4 * at.slot, y: p.y };
+  }
+  const p = pointOf(c, 'floor');
+  const col = at.slot % 4;
+  const row = Math.floor(at.slot / 4);
+  return { x: p.x - 2.25 + 1.5 * col, y: p.y - 1 + 1.4 * row };
+}
+
+/** The base point of a pile (pile keys: types.ts `PileKey`). */
+function pileBase(c: SalvageContent, pile: PileKey, thingAt?: (uid: string) => ThingAt | null): { x: number; y: number } {
+  const [kind, rest] = [pile.slice(0, pile.indexOf('.') < 0 ? pile.length : pile.indexOf('.')), pile.indexOf('.') < 0 ? '' : pile.slice(pile.indexOf('.') + 1)];
+  if (kind === 'beside') {
+    const at = thingAt?.(rest) ?? null;
+    if (at) {
+      const p = thingPos(c, at);
+      return { x: p.x + 0.9, y: p.y + 0.7 };
+    }
+    return pointOf(c, 'start');
+  }
+  if (kind === 'zone') {
+    const z = c.zones[rest];
+    return z ? { x: z.centre[0], y: z.centre[1] + z.r + 0.8 } : { x: 0, y: 0 };
+  }
+  if (kind === 'circle') {
+    const n = Number(rest) || 0;
+    const p = pointOf(c, 'scale');
+    return { x: p.x - 3 - 2 * n, y: p.y + 2 };
+  }
+  if (kind === 'tray') {
+    const place = rest === 'hand_stripper' ? 'stripper' : rest;
+    const p = pointOf(c, place);
+    const d = c.map.places[place]?.d ?? 2;
+    return { x: p.x + 0.6, y: p.y + d / 2 + 0.5 };
+  }
+  if (kind === 'dropoff') {
+    const p = pointOf(c, 'dropoff');
+    return { x: p.x, y: p.y + 1.3 };
+  }
+  if (kind === 'floor') {
+    const p = pointOf(c, 'floor');
+    return { x: p.x, y: p.y + 2.2 };
+  }
+  return pointOf(c, kind);
+}
+
+/**
+ * Where the k-th piece of a pile lies: a small spiral round the pile's base point (S9: one pure
+ * function for the rules, the frame, the screen and the bots). `thingAt` resolves a `beside.<uid>`
+ * pile's thing (the frame passes the state's things).
+ */
+export function piecePos(c: SalvageContent, pile: PileKey, k: number, thingAt?: (uid: string) => ThingAt | null): { x: number; y: number } {
+  const b = pileBase(c, pile, thingAt);
+  if (k <= 0) return b;
+  const rad = 0.32 * Math.sqrt(k);
+  const a = k * GOLDEN;
+  return { x: b.x + rad * Math.cos(a), y: b.y + rad * Math.sin(a) * 0.7 };
+}
+
+/** The place the boss stands at (within `reach.place` of its footprint's edge), or null. Places are map points with a footprint. */
+export function placeNear(c: SalvageContent, x: number, y: number): string | null {
+  let best: string | null = null;
+  let bestD = Infinity;
+  for (const [id, pl] of Object.entries(c.map.places)) {
+    if (!pl.card) continue;
+    const p = c.map.points[id];
+    if (!p) continue;
+    const dx = Math.max(0, Math.abs(x - p[0]) - pl.w / 2);
+    const dy = Math.max(0, Math.abs(y - p[1]) - pl.d / 2);
+    const d = Math.hypot(dx, dy);
+    if (d <= c.reach.place && d < bestD) {
+      best = id;
+      bestD = d;
+    }
+  }
+  return best;
+}

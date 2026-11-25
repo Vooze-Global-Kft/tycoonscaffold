@@ -1,38 +1,32 @@
 /**
- * PLACEHOLDER loading screen of the salvage mode, shown while the save and fonts load (the real
- * loading animation, a crane lowering the logo, is designed later: docs/design/yard-design.md). A bar
- * that slides, the words of ./strings.ts, the game's background colour. It also covers the atlas bake
- * (../salvage/world/useYard.ts queues it at load). Landscape or portrait alike.
+ * The salvage mode's loading screen (the mode entry's `Loading`, shown by src/ui/App.tsx while the
+ * save, the fonts and the remote config load): the loading animation (./loading/, STAGE1-RULING S22),
+ * a gantry crane setting one steel plate per word of the game's title on the weighbridge, the crucible
+ * pouring under its hood, the bars cooling to brass, the ticket printing; then its calm loop.
+ *
+ * The gate does not part here: the game is not ready while this shows. The shell's curtain
+ * (./loading/LoadingCurtain.tsx) takes over on the same clock and parts it once the yard's atlases are
+ * baked. The title comes from game.json (`app.displayName`), never from a literal.
  */
-import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { useMemo } from 'react';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useGame } from '../../state/store';
-import { PAL } from './palette';
-import { S } from './strings';
+import { useLoadingInsets } from './loading/insets';
+import { LoadingStage } from './loading/LoadingStage';
 
 export function SalvageLoading() {
+  const title = useGame((s) => s.cfg.app.displayName);
   const bg = useGame((s) => s.cfg.theme.colors.background);
-  const t = useSharedValue(0);
-  useEffect(() => {
-    t.value = withRepeat(withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.quad) }), -1, true);
-  }, [t]);
-  const bar = useAnimatedStyle(() => ({ transform: [{ translateX: -60 + t.value * 120 }] }));
+  const { width, height } = useWindowDimensions();
+  const i = useLoadingInsets();
+  const insets = useMemo(() => ({ top: i.top, left: i.left, right: i.right, bottom: i.bottom }), [i.top, i.left, i.right, i.bottom]);
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
-      <Text style={styles.title}>{S.loading}</Text>
-      <View style={styles.track}>
-        <Animated.View style={[styles.bar, bar]} />
-      </View>
-      <Text style={styles.note}>{S.loadingNote}</Text>
+      <LoadingStage title={title} width={width} height={height} insets={insets} ready={false} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: '800', color: PAL.paper, marginBottom: 16 },
-  track: { width: 180, height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.15)', overflow: 'hidden', alignItems: 'center' },
-  bar: { width: 60, height: 10, borderRadius: 5, backgroundColor: PAL.accent },
-  note: { marginTop: 14, fontSize: 12, color: 'rgba(244,238,220,0.6)' },
+  root: { flex: 1 },
 });

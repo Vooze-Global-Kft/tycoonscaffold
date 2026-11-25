@@ -165,6 +165,11 @@ def burst(rng, dur, lo, hi, tau, attack_ms=0.5):
     return band(white(n, rng), lo, hi) * expenv(n, tau, attack_ms)
 
 
+def phone(y, fc=380.0):
+    """Keep a heavy sound audible on a phone: a 2nd-order high-pass (a phone speaker keeps little under 500 Hz)."""
+    return filt(y, butter('hp', fc, 2))
+
+
 def place(m, x, at, gain=1.0):
     m.add(x, max(at, 0.0), gain)
     return m
@@ -212,9 +217,9 @@ def concrete(rng, dur=0.18, weight=1.0, grit_gain=0.5, low=110.0):
     t = np.arange(n) / SR
     f = low * (1.0 + 0.35 * np.exp(-t / 0.02))
     thump = np.sin(TAU * np.cumsum(f) / SR) * expenv(n, 0.035 * weight, 1.2)
-    body = band(white(n, rng), 120.0, 900.0) * expenv(n, 0.03 * weight, 0.8)
+    body = band(white(n, rng), 250.0, 1400.0) * expenv(n, 0.03 * weight, 0.8)
     g = burst(rng, dur, 1200.0, 4500.0, 0.012)
-    return 0.9 * norm(thump) + 0.6 * norm(body) + grit_gain * norm(g)
+    return 0.45 * norm(thump) + 0.6 * norm(body) + grit_gain * norm(g)
 
 
 def grit(rng, dur, rate, lo, hi, tau=0.004, amp_spread=0.7, env=None):
@@ -248,7 +253,7 @@ def ratchet(rng, n_clicks, rate, f_ring=(2300.0, 3700.0), tau=0.012, jitter=0.12
     return m.out()
 
 
-def diesel(rng, dur, fire_hz, load=0.5, rough=0.12, exhaust=(160.0, 380.0, 820.0, 1650.0)):
+def diesel(rng, dur, fire_hz, load=0.5, rough=0.12, exhaust=(560.0, 980.0, 1650.0, 2600.0)):
     """A six-cylinder diesel: firing pulses at fire_hz (each a little different in strength and
     timing), through exhaust and body resonances, with the injectors' tick (2.5 to 5 kHz) at half the
     firing rate. load raises the pulses' sharpness and the upper resonances."""
@@ -269,11 +274,11 @@ def diesel(rng, dur, fire_hz, load=0.5, rough=0.12, exhaust=(160.0, 380.0, 820.0
         k += 1
     g = (0.6 + 0.6 * load)
     body = reso(y, [(exhaust[0], 3.0, 1.0), (exhaust[1], 4.0, 0.8 * g), (exhaust[2], 5.0, 0.6 * g), (exhaust[3], 6.0, 0.45 * g)])
-    body += 0.25 * band(y, 60.0, 3000.0)
+    body += 0.15 * band(y, 300.0, 3000.0)
     tk = band(tick, 2500.0, 5200.0)
     tk = np.convolve(tk, np.exp(-np.arange(ns(0.004)) / (0.0008 * SR)), 'same')
     rattle = band(white(n, rng), 900.0, 2600.0) * (0.3 + 0.7 * lowpass(np.abs(y), 40.0, 2) / (np.max(np.abs(y)) + 1e-9))
-    return norm(body) + 0.22 * norm(tk) + 0.18 * load * norm(rattle)
+    return filt(norm(body) + 0.3 * norm(tk) + (0.25 + 0.3 * load) * norm(rattle), butter('hp', 480.0, 4))
 
 
 def hydraulic(rng, dur, f0, f1, hiss_gain=0.35, teeth=9):
@@ -433,8 +438,8 @@ def hum(rng, notes, durs, level=1.0):
         tt = np.arange(nn) / SR
         fr = f * (1.0 - 0.03 * np.exp(-tt / 0.05)) * (1.0 + 0.004 * np.sin(TAU * 5.5 * tt))
         ph = TAU * np.cumsum(fr) / SR
-        src = sum(np.sin(h * ph) / (h ** 1.6) for h in range(1, 18))
-        v = reso(src, [(260.0, 3.0, 1.0), (1100.0, 5.0, 0.35), (2250.0, 6.0, 0.4), (3000.0, 7.0, 0.25)])
+        src = sum(np.sin(h * ph) / (h ** 1.0) for h in range(1, 18))
+        v = reso(src, [(260.0, 3.0, 0.5), (1100.0, 5.0, 1.0), (2250.0, 6.0, 1.3), (3000.0, 7.0, 0.8)])
         v *= rcos_in(nn, 40.0) * rcos_out(nn, 70.0)
         m.add(v, t)
         t += d * 0.92
@@ -452,7 +457,7 @@ def _boot(c, heel_hz, grit_band, grit_rate, grit_gain, thump_gain, dur=0.13):
     heel = band(white(ns(0.03), rng), 250.0, 2400.0) * expenv(ns(0.03), 0.006, 0.4)
     m.add(thump_gain * norm(heel))
     th = concrete(c.sub('th'), 0.08, 0.5, 0.2, heel_hz * (1.0 + 0.06 * (v - 1.5)))
-    m.add(0.5 * thump_gain * th)
+    m.add(0.5 * thump_gain * phone(th, 300.0))
     toe = band(white(ns(0.04), rng), 600.0, 3500.0) * expenv(ns(0.04), 0.008, 0.6)
     m.add(0.6 * norm(toe), 0.045 + 0.008 * v)
     g = grit(c.sub('g'), dur, grit_rate, grit_band[0], grit_band[1], tau=0.002,
@@ -510,13 +515,13 @@ def cut_sledge(c):
     m = Mix()
     sw = band(white(ns(0.12), c.sub('sw')), 400.0, 1800.0) * points([(0, 0.0), (0.09, 1.0), (0.12, 0.0)], ns(0.12), 2.0)
     m.add(0.12 * norm(sw))
-    hit = metal(c.sub('hit'), 330.0 * (1.0 + 0.04 * v), CASTING, 0.07, 0.45, tau_fall=0.7, click=0.9, click_band=(1200.0, 5500.0))
+    hit = metal(c.sub('hit'), 560.0 * (1.0 + 0.04 * v), CASTING, 0.07, 0.45, tau_fall=0.7, click=0.9, click_band=(1200.0, 5500.0))
     m.add(hit, 0.12)
     m.add(0.6 * concrete(c.sub('c'), 0.2, 1.4, 0.3, 85.0), 0.12)
     m.add(0.35 * grit(c.sub('dust'), 0.3, 500.0, 1500.0, 5000.0, tau=0.002,
                       env=points([(0, 1.0), (0.3, 0.0)], ns(0.3))), 0.14)
     c.accent(0.12)
-    y = m.out()[:ns(0.7)]
+    y = phone(m.out()[:ns(0.7)], 350.0)
     return y * seg_env(len(y), 2.0, 60.0)
 
 
@@ -550,12 +555,12 @@ def piece_steel(c):
     a wobbly flat clang) with a second bounce, the concrete under it."""
     v = c.var
     m = Mix()
-    f0 = 290.0 * (1.0 + 0.07 * (v - 1))
+    f0 = 470.0 * (1.0 + 0.07 * (v - 1))
     m.add(metal(c.sub('a'), f0, PLATE, 0.09, 0.45, tau_fall=0.82, click=0.5))
     m.add(0.45 * metal(c.sub('b'), f0 * 1.03, PLATE, 0.05, 0.3, tau_fall=0.8, click=0.4), 0.07 + 0.01 * v)
     m.add(0.35 * concrete(c.sub('c'), 0.15, 1.0, 0.4), 0.0)
     c.accent(0.0)
-    return m.out()
+    return phone(m.out(), 360.0)
 
 
 @yard_recipe('piece_cast', loud_db=0.0)
@@ -564,12 +569,12 @@ def piece_cast(c):
     grit off its rough skin, a heavy concrete thud (no ring at all)."""
     v = c.var
     m = Mix()
-    m.add(metal(c.sub('a'), 420.0 * (1.0 + 0.05 * (v - 1)), CASTING, 0.035, 0.25, tau_fall=0.7, click=0.8,
+    m.add(metal(c.sub('a'), 640.0 * (1.0 + 0.05 * (v - 1)), CASTING, 0.035, 0.25, tau_fall=0.7, click=0.8,
                 click_band=(1000.0, 4500.0)))
     m.add(0.8 * concrete(c.sub('c'), 0.2, 1.5, 0.7, 90.0))
-    m.add(0.3 * grit(c.sub('g'), 0.12, 600.0, 1500.0, 5000.0, tau=0.002, env=points([(0, 1.0), (0.12, 0.0)], ns(0.12))), 0.01)
+    m.add(0.45 * grit(c.sub('g'), 0.12, 600.0, 1500.0, 5000.0, tau=0.002, env=points([(0, 1.0), (0.12, 0.0)], ns(0.12))), 0.01)
     c.accent(0.0)
-    return m.out()
+    return phone(m.out(), 420.0)
 
 
 @yard_recipe('piece_alu', loud_db=0.0)
@@ -585,7 +590,7 @@ def piece_alu(c):
     return m.out()
 
 
-@yard_recipe('piece_copper', loud_db=0.0)
+@yard_recipe('piece_copper', length=0.6, loud_db=0.0)
 def piece_copper(c):
     """Copper (a bundle of bare wire, a pipe): copper's bright ring: a tube's bar modes tuned high in
     E major (B5 or G#5 by file), ringing 0.5 s, the bundle's strands shimmering on top."""
@@ -601,7 +606,7 @@ def piece_copper(c):
     return m.out()
 
 
-@yard_recipe('piece_brass', loud_db=0.0)
+@yard_recipe('piece_brass', length=0.48, loud_db=0.0)
 def piece_brass(c):
     """Brass taps and fittings: a heavier, warmer ring than copper (cast bell-ish partials around
     E5 and A5) as two or three fittings land against each other, a short clatter."""
@@ -624,10 +629,10 @@ def thud_waste(c):
     v = c.var
     m = Mix()
     m.add(0.9 * concrete(c.sub('c'), 0.25, 2.0, 0.6, 75.0))
-    m.add(0.5 * metal(c.sub('skip'), 180.0 * (1.0 + 0.05 * v), PLATE, 0.08, 0.35, tau_fall=0.7, click=0.2))
-    m.add(0.45 * grit(c.sub('g'), 0.3, 220.0, 1200.0, 4500.0, tau=0.003, env=points([(0, 1.0), (0.3, 0.0)], ns(0.3))), 0.02)
+    m.add(0.6 * metal(c.sub('skip'), 340.0 * (1.0 + 0.05 * v), PLATE, 0.08, 0.35, tau_fall=0.7, click=0.2))
+    m.add(0.6 * grit(c.sub('g'), 0.3, 220.0, 1200.0, 4500.0, tau=0.003, env=points([(0, 1.0), (0.3, 0.0)], ns(0.3))), 0.02)
     c.accent(0.0)
-    return m.out()
+    return phone(m.out(), 400.0)
 
 
 # ===========================================================================
@@ -677,7 +682,7 @@ def feed(c):
     m = Mix()
     n = ns(0.22)
     m.add(0.5 * band(white(n, c.sub('s')), 800.0, 3600.0) * points([(0, 0.0), (0.05, 1.0), (0.22, 0.2)], n))
-    m.add(0.8 * metal(c.sub('k'), 360.0 * (1.0 + 0.06 * v), PLATE, 0.06, 0.25, tau_fall=0.75, click=0.4), 0.2)
+    m.add(0.8 * metal(c.sub('k'), 540.0 * (1.0 + 0.06 * v), PLATE, 0.06, 0.25, tau_fall=0.75, click=0.4), 0.2)
     c.accent(0.2)
     return m.out()
 
@@ -724,7 +729,7 @@ def slip(c):
     m.add(0.8 * concrete(c.sub('st'), 0.06, 0.4, 0.1, 210.0), 0.16)
     m.add(0.4 * band(white(ns(0.03), c.sub('c')), 600.0, 2500.0) * expenv(ns(0.03), 0.006), 0.16)
     c.accent(0.16)
-    return m.out()
+    return phone(m.out(), 500.0)
 
 
 # ===========================================================================
@@ -760,7 +765,7 @@ def flatbed_load(c):
     m.add(0.9 * metal(c.sub('bed'), 210.0, PLATE, 0.12, 0.6, tau_fall=0.8, click=0.6), 2.2)
     m.add(0.5 * concrete(c.sub('c'), 0.2, 1.5, 0.3, 80.0), 2.2)
     c.accent(0.8, 2.2)
-    return m.out()
+    return phone(m.out(), 380.0)
 
 
 def _tumblers(rng, n_clicks, start_rate, end_rate, f=(1650.0, 2900.0)):
@@ -821,7 +826,7 @@ def deal_stamp(c):
     sq = band(white(ns(0.05), c.sub('sq')), 500.0, 1800.0) * expenv(ns(0.05), 0.01)
     m.add(0.4 * sq, 0.09)
     c.accent(0.0)
-    return m.out()
+    return phone(m.out(), 450.0)
 
 
 # ===========================================================================
@@ -868,9 +873,9 @@ def denied(c):
     """Refused: a gloved fist on a steel cabinet door, twice, dull (low panel modes, no ring)."""
     m = Mix()
     for k, at in enumerate((0.0, 0.13)):
-        m.add((1.0 - 0.3 * k) * metal(c.sub('k%d' % k), 240.0, PLATE, 0.02, 0.12, tau_fall=0.7, click=0.5, click_band=(700.0, 2500.0)), at)
+        m.add((1.0 - 0.3 * k) * metal(c.sub('k%d' % k), 560.0, PLATE, 0.02, 0.12, tau_fall=0.7, click=0.5, click_band=(700.0, 2500.0)), at)
     c.accent(0.0, 0.13)
-    return m.out()
+    return phone(m.out(), 480.0)
 
 
 @yard_recipe('goal_tick', loud_db=QUIET)
@@ -911,9 +916,9 @@ def set_down(c):
     on its feet, its sheet body clanking once."""
     m = Mix()
     m.add(0.9 * concrete(c.sub('c'), 0.2, 1.4, 0.5, 95.0))
-    m.add(0.5 * metal(c.sub('b'), 340.0, PLATE, 0.06, 0.3, tau_fall=0.8, click=0.3), 0.01)
+    m.add(0.6 * metal(c.sub('b'), 520.0, PLATE, 0.06, 0.3, tau_fall=0.8, click=0.3), 0.01)
     c.accent(0.0)
-    return m.out()
+    return phone(m.out(), 400.0)
 
 
 @yard_recipe('crane_set', length=2.4, loud_db=0.0)
@@ -927,7 +932,7 @@ def crane_set(c):
     ch = grit(c.sub('ch'), 0.5, 45.0, 1800.0, 6000.0, tau=0.012, amp_spread=0.8, env=points([(0, 1.0), (0.5, 0.0)], ns(0.5)))
     m.add(0.5 * ch, 1.62)
     c.accent(1.5)
-    return m.out()
+    return phone(m.out(), 380.0)
 
 
 @yard_recipe('door', loud_db=QUIET)
@@ -939,15 +944,15 @@ def door(c):
     t = np.arange(n) / SR
     cr = reso(np.sign(np.sin(TAU * (60.0 + 40.0 * t / 0.3) * t)) * 1.0, [(700.0, 6.0, 1.0), (1500.0, 7.0, 0.5)])
     m.add(0.2 * cr * np.sin(np.pi * t / 0.3), 0.08)
-    m.add(0.8 * metal(c.sub('k'), 210.0, PLATE, 0.04, 0.25, tau_fall=0.7, click=0.4, click_band=(600.0, 2400.0)), 0.42)
+    m.add(0.8 * metal(c.sub('k'), 390.0, PLATE, 0.04, 0.25, tau_fall=0.7, click=0.4, click_band=(600.0, 2400.0)), 0.42)
     c.accent(0.0, 0.42)
-    return m.out()
+    return phone(m.out(), 380.0)
 
 
 @yard_recipe('crew_hello', loud_db=QUIET)
 def crew_hello(c):
-    """A new hand says hello: a hummed "mm-hm" (B3 down to G#3), warm and short."""
-    y = hum(c.sub('h'), [c.hz('B3'), c.hz('G#3')], [0.22, 0.34])
+    """A new hand says hello: a hummed "mm-hm" (G#4 down to E4), warm and short."""
+    y = filt(hum(c.sub('h'), [c.hz('G#4'), c.hz('E4')], [0.22, 0.34]), butter('hp', 520.0, 4))
     c.accent(0.0)
     return y
 
@@ -981,7 +986,7 @@ def stripper_power(c):
     hum_ = sum(np.sin(TAU * 100.0 * h * t + h) / h for h in (1, 2, 3, 4, 6, 8, 12))
     rol = band(white(n, c.sub('r')), 700.0, 2400.0) * wobble(c.sub('w'), n, 18.0, 0.3)
     zp = band(white(n, c.sub('z')), 1500.0, 5000.0) * wobble(c.sub('z2'), n, 90.0, 0.6)
-    y = 0.45 * norm(hum_) + 0.5 * norm(rol) + 0.4 * norm(zp)
+    y = phone(0.45 * norm(hum_) + 0.5 * norm(rol) + 0.4 * norm(zp), 420.0)
     c.accent(0.0)
     return y * seg_env(n, 40.0, 70.0)
 
@@ -1111,7 +1116,7 @@ def hook_swap(c):
     m.add(0.9 * metal(c.sub('seat'), 150.0, PLATE, 0.1, 0.5, tau_fall=0.8, click=0.5), 2.05)
     m.add(0.6 * concrete(c.sub('c'), 0.2, 1.5, 0.3, 80.0), 2.05)
     c.accent(0.5, 2.05)
-    return m.out()
+    return phone(m.out(), 380.0)
 
 
 @yard_recipe('skip_tip', length=2.6, loud_db=LOUD)
@@ -1136,7 +1141,7 @@ def skip_tip(c):
     m.add(0.4 * grit(c.sub('g'), 1.6, 300.0, 1200.0, 5000.0, tau=0.003,
                      env=points([(0, 0.0), (0.1, 1.0), (1.0, 0.5), (1.6, 0.0)], ns(1.6))), 0.7)
     c.accent(0.75)
-    return m.out()
+    return phone(m.out(), 380.0)
 
 
 # ===========================================================================
@@ -1158,19 +1163,19 @@ def chip_slide(c):
 
 @yard_recipe('rung_sign', length=2.6, loud_db=BIG)
 def rung_sign(c):
-    """A rung: the crane hangs the yard's new sign: its chains run out, the big steel sign stops on
-    them and rings low and long (a plate tuned to E3, partials up to B5), the chains settle."""
+    """A rung: the crane hangs the yard's new sign: the big steel sign stops on its chains (they
+    rattle under it) and rings low and long (a plate tuned to E3, partials up to B5), the chains settle."""
     m = Mix()
-    ch = grit(c.sub('ch'), 0.7, 60.0, 1500.0, 5500.0, tau=0.015, amp_spread=0.7, env=points([(0, 0.3), (0.5, 1.0), (0.7, 0.4)], ns(0.7)))
+    ch = grit(c.sub('ch'), 0.35, 70.0, 1500.0, 5500.0, tau=0.015, amp_spread=0.7, env=points([(0, 0.6), (0.25, 1.0), (0.35, 0.4)], ns(0.35)))
     m.add(0.6 * ch)
     f0 = c.hz('E3')
     sign = metal(c.sub('sign'), f0, (1.0, 2.0, 3.0, 4.0, 5.04, 6.0), 0.9, 2.0, amps=(0.5, 0.8, 0.7, 0.6, 0.45, 0.4),
                  tau_fall=0.85, spread=0.003, click=0.4)
-    m.add(1.0 * sign, 0.62)
-    m.add(0.4 * metal(c.sub('hi'), c.hz('B5'), BAR, 0.6, 1.5, amps=(1.0, 0.2), spread=0.001, click=0.0), 0.64)
-    m.add(0.3 * grit(c.sub('ch2'), 0.5, 30.0, 1500.0, 5500.0, tau=0.015, env=points([(0, 1.0), (0.5, 0.0)], ns(0.5))), 1.0)
-    c.accent(0.62)
-    return m.out()
+    m.add(1.0 * sign, 0.02)
+    m.add(0.4 * metal(c.sub('hi'), c.hz('B5'), BAR, 0.6, 1.5, amps=(1.0, 0.2), spread=0.001, click=0.0), 0.04)
+    m.add(0.3 * grit(c.sub('ch2'), 0.5, 30.0, 1500.0, 5500.0, tau=0.015, env=points([(0, 1.0), (0.5, 0.0)], ns(0.5))), 0.4)
+    c.accent(0.02)
+    return phone(m.out(), 300.0)
 
 
 # ===========================================================================
@@ -1198,10 +1203,10 @@ def load_clank(c):
     files, three plates of different size), the deck answering."""
     v = c.var
     m = Mix()
-    m.add(metal(c.sub('p'), (240.0, 270.0, 215.0)[v % 3], PLATE, 0.11, 0.6, tau_fall=0.8, click=0.9))
+    m.add(metal(c.sub('p'), (430.0, 480.0, 390.0)[v % 3], PLATE, 0.11, 0.6, tau_fall=0.8, click=0.9))
     m.add(0.7 * concrete(c.sub('c'), 0.2, 1.6, 0.4, 85.0))
     c.accent(0.0)
-    return m.out()
+    return phone(m.out(), 380.0)
 
 
 @yard_recipe('load_beeps', loud_db=QUIET)
@@ -1356,7 +1361,7 @@ EVENTS = {
     'set_down': (0.5, 500, None, 'a thing set down on the concrete at the drop-off: a weight on its feet, a clank', 1, None),
     'crane_set': (0.55, 2000, None, 'a machine set on its pad by the flatbed\'s crane: pump lowering, a deep clunk, chains going slack', 1, None),
     'door': (0.4, 800, None, 'the portacabin door: lever handle, the light door swinging, a hollow knock on its frame', 1, None),
-    'crew_hello': (0.4, 2000, None, 'a new hand\'s hummed "mm-hm" (B3 down to G#3)', 1, None),
+    'crew_hello': (0.4, 2000, None, 'a new hand\'s hummed "mm-hm" (G#4 down to E4)', 1, None),
     # machines working (segments)
     'stripper_hand': (0.4, 700, None, 'the hand stripper cranked (0.8 s segment): gear clicks, the blade slitting PVC; chained every 750 ms; two files', 2, 28),
     'stripper_power': (0.35, 900, None, 'the powered stripper (1.0 s segment): motor hum, rollers, the blade; chained every 950 ms', 2, None),
@@ -1373,7 +1378,7 @@ EVENTS = {
     'skip_tip': (0.55, 2500, None, 'the skip tipped: the arm lifting, a long crash of mixed scrap sliding out', 1, None),
     # the industry table (success haptic on a rung, yard-stage1.md 7)
     'chip_slide': (0.5, 1000, None, 'a rival passed: the enamel name plate sliding along its rail and clicking into the slot above', 1, None),
-    'rung_sign': (0.65, 3000, ['success'], 'a rung: the crane hangs the new sign; chains run out, the big steel sign rings low and long (E3)', 1, None),
+    'rung_sign': (0.65, 3000, ['success'], 'a rung: the crane hangs the new sign; it stops on its chains and rings low and long (E3)', 1, None),
     # the loading animation
     'load_crane': (0.45, 400, None, 'loading: the gantry trolley running in, wheels over rail joints, the motor\'s whine', 1, 31),
     'load_clank': (0.6, 300, None, 'loading: a title plate set down on the weighbridge deck (a thick plate\'s clank); three files, random', 1, 32),
@@ -1403,7 +1408,8 @@ LADDERS = ('furnace_roar', 'truck_diesel')
 # (8 s of ambience is 700 KB as .wav, about 50 KB as AAC). Short sounds stay .wav (no codec delay).
 M4A = ('amb_yard', 'furnace_roar', 'flatbed_arrive', 'flatbed_load', 'van', 'crane_set', 'hook_swap', 'skip_tip',
        'rung_sign', 'pour_glug', 'cool_ticks', 'truck_reverse', 'cut_torch', 'load_loop', 'scale_print', 'ready_chime',
-       'lesson', 'stripper_power', 'truck_diesel')
+       'lesson', 'stripper_power', 'truck_diesel', 'coin_big', 'load_pour', 'load_cool', 'load_crane', 'chip_slide',
+       'gate_open', 'door', 'crew_hello', 'stripper_hand', 'cut_grinder', 'scale_beeps')
 M4A_KBPS = 64
 
 # The interval at which the screen chains a segment while its work lasts (soundKeys.ts SEGMENT_MS mirrors it;
@@ -1413,6 +1419,9 @@ SEGMENT_MS = {
     'stripper_hand': 750, 'stripper_power': 950, 'bench_knock': 600,
     'furnace_roar': 1900, 'truck_diesel': 950, 'load_loop': 2000, 'amb_yard': 7500,
 }
+
+# Segments of separate blows: silence between two plays is the sound (a sledge is swung, not held).
+GAPPED = ('cut_spanner', 'cut_sledge', 'bench_knock')
 
 # The shared keys the store and the shared kit play, mapped onto this table (src/modes/salvage/soundKeys.ts).
 SHARED_SOUNDS = {

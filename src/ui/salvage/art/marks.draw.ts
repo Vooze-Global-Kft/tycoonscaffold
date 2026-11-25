@@ -13,7 +13,7 @@ import { padlock } from './ui.draw';
 const INK = YARD.ink;
 
 /** The work ring's radius as baked, metres (the world scales it to the thing). */
-export const RING_R = 0.7;
+export const RING_R = 0.5;
 
 /**
  * The work ring on the ground: a dark translucent track and a hi-vis arc filled k of n clockwise from
