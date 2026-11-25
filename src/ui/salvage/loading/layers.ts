@@ -9,7 +9,7 @@
  * (look-judge.md 6) and S22: the hood over the crucible, the letters cut through so the sky shows, the
  * pour lighting the plates from below, the furnace hand at the handwheel, the ticket printing at the end.
  */
-import { BlendMode, Skia, type SkCanvas, type SkPath, type SkPicture } from '@shopify/react-native-skia';
+import { BlendMode, Skia, type SkCanvas, type SkImage, type SkPath, type SkPicture } from '@shopify/react-native-skia';
 import { YARD, coolingColour, mix, shade } from '../art/palette';
 import { dotMatrix, sevenSeg, stencil } from '../art/letters';
 import { builder, circle, fill, hash01, hazard, linear, oval, poly, radial, rect, rgba, rrect, segment, stroke, VIEW } from '../art/pen';
@@ -36,37 +36,54 @@ export interface LoadingColours {
   cooling: Float32Array[];
 }
 
+/**
+ * A part drawn every frame: its picture, and (in the app) the same baked once into an image at the
+ * screen's density, which costs the frame far less than replaying the vectors (./compose.ts `part`).
+ */
+export interface Part {
+  pic: SkPicture;
+  img: SkImage | null;
+  /** The image's size in pixels. */
+  iw: number;
+  ih: number;
+  /** Where it stands, points (the picture's own coordinates). */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface LoadingLayers {
   /** The still scene: sky, far yard, ground, deck, display box, gantry, mould, stand. */
-  bg: SkPicture;
+  bg: Part;
   /** The pour's warm light on the ground (faded by the pour and the furnace's breath). */
-  pool: SkPicture;
+  pool: Part;
   /** Plate i at (centre x 0, foot 0), with its word cut through; its underlight from the pour. */
-  plates: SkPicture[];
-  plateGlow: SkPicture[];
-  trolley: SkPicture;
+  plates: Part[];
+  plateGlow: Part[];
+  trolley: Part;
   /** The electromagnet, its rope's end at (0, 0) and its face 17 k below. */
-  magnet: SkPicture;
+  magnet: Part;
   /** The magnet's field arcs while it holds (local as the magnet). */
   field: SkPicture;
   /** digits[cell][d]: digit d (10: blank) in that cell of the display. */
   digits: SkPicture[][];
   /** The ticket fully out of the slot (it is clipped and slid while it feeds). */
-  ticket: SkPicture;
+  ticket: Part;
   /** The crucible in its tongs about its trunnion (0, 0); its mouth's melt separately (it breathes). */
-  crucible: SkPicture;
-  mouth: SkPicture;
+  crucible: Part;
+  mouth: Part;
   /** The handwheel about its centre (0, 0) and its shaft (absolute). */
   wheel: SkPicture;
   shaft: SkPicture;
   /** The furnace hand at the handwheel, absolute. */
-  hand: SkPicture;
+  hand: Part;
   /** The hood over the crucible with its duct, and the warm light under it. */
-  hood: SkPicture;
-  hoodGlow: SkPicture;
+  hood: Part;
+  hoodGlow: Part;
   /** A cavity's ingot outline (absolute) and its cooled marks (notches and stamp). */
   ingot: SkPath[];
-  notches: SkPicture[];
+  notches: Part[];
   colours: LoadingColours;
 }
 
@@ -75,6 +92,39 @@ function record(draw: (c: SkCanvas) => void, w = 4096, h = 4096): SkPicture {
   const c = r.beginRecording(Skia.XYWHRect(-w / 2, -h / 2, w * 1.5, h * 1.5));
   draw(c);
   return r.finishRecordingAsPicture();
+}
+
+/**
+ * Records a part; with a density, also bakes it into an image on a CPU raster surface (the world's
+ * atlas does the same: src/ui/salvage/world/atlas.ts bakeImage), so any thread's canvas may draw it.
+ */
+function part(draw: (c: SkCanvas) => void, x: number, y: number, w: number, h: number, density: number): Part {
+  const pic = record(draw);
+  const iw = Math.max(1, Math.ceil(w * density));
+  const ih = Math.max(1, Math.ceil(h * density));
+  let img: SkImage | null = null;
+  if (density > 0) {
+    const raster = Skia.Surface.Make(iw, ih);
+    const surface = raster ?? Skia.Surface.MakeOffscreen(iw, ih);
+    if (surface) {
+      try {
+        const c = surface.getCanvas();
+        c.scale(density, density);
+        c.translate(-x, -y);
+        c.drawPicture(pic);
+        surface.flush();
+        const snap = surface.makeImageSnapshot();
+        if (raster) img = snap;
+        else {
+          img = snap.makeNonTextureImage() ?? null;
+          snap.dispose();
+        }
+      } finally {
+        surface.dispose();
+      }
+    }
+  }
+  return { pic, img, iw, ih, x, y, w, h };
 }
 
 const col = (hex: string): Float32Array => Skia.Color(hex) as unknown as Float32Array;
@@ -364,9 +414,14 @@ export function ingotPath(x0: number, cy: number, cw: number, ch: number): SkPat
   return poly([x0 + 2, cy + ch - 1, x0 + 4, cy + 1, x0 + cw - 4, cy + 1, x0 + cw - 2, cy + ch - 1]);
 }
 
-/** Records every part for this layout, these words and this timeline (once per screen size and title). */
-export function recordLayers(L: LoadingLayout, words: readonly string[], tl: LoadingTimeline): LoadingLayers {
+/**
+ * Records every part for this layout, these words and this timeline (once per screen size and title).
+ * `density` > 0 bakes the parts drawn every frame into images of that many pixels a point (the app);
+ * 0 keeps them as pictures (Node: the sheets and the tests draw vectors).
+ */
+export function recordLayers(L: LoadingLayout, words: readonly string[], tl: LoadingTimeline, density = 0): LoadingLayers {
   const { w, h, k } = L;
+  const d = density;
   const total = tl.kg.reduce((a, b) => a + b, 0);
   const digits: SkPicture[][] = L.cellX.map((x) =>
     Array.from({ length: 11 }, (_, d) => record((c) => sevenSeg(c, d === 10 ? ' ' : String(d), x + L.cellSize * 0.56, L.cellY, L.cellSize, YARD.led, YARD.ledOff))),
@@ -374,34 +429,49 @@ export function recordLayers(L: LoadingLayout, words: readonly string[], tl: Loa
   const cooling: Float32Array[] = [];
   for (let i = 0; i <= 40; i++) cooling.push(col(coolingColour('brass', i / 10)));
   return {
-    bg: record((c) => background(c, L), w, h),
-    pool: record((c) => {
+    bg: part((c) => background(c, L), 0, 0, w, h, d),
+    pool: (() => {
       const gx = (L.mL + L.mR) / 2;
-      c.drawPath(oval(gx, L.mY + 18 * k, (L.mR - L.mL) * 0.75, 44 * k), radial(gx, L.mY + 18 * k, (L.mR - L.mL) * 0.75, [rgba('#FFB050', 0.5), rgba('#FFB050', 0)]));
-      c.drawPath(oval(L.sX, L.mY + 22 * k, 70 * k, 22 * k), radial(L.sX, L.mY + 22 * k, 70 * k, [rgba('#FFB050', 0.45), rgba('#FFB050', 0)]));
-    }),
-    plates: words.map((wd, i) => record((c) => plate(c, wd, L.plateW[i], L.size, i * 7))),
-    plateGlow: words.map((wd, i) => record((c) => plateGlow(c, wd, L.plateW[i], L.size))),
-    trolley: record((c) => trolley(c, L)),
-    magnet: record((c) => magnet(c, L)),
+      const rx = (L.mR - L.mL) * 0.75;
+      const x0 = Math.min(gx - rx, L.sX - 70 * k);
+      const x1 = Math.max(gx + rx, L.sX + 70 * k);
+      const y0 = L.mY - 26 * k;
+      const y1 = L.mY + 66 * k;
+      // a soft light: half the density is plenty
+      return part(
+        (c) => {
+          c.drawPath(oval(gx, L.mY + 18 * k, rx, 44 * k), radial(gx, L.mY + 18 * k, rx, [rgba('#FFB050', 0.5), rgba('#FFB050', 0)]));
+          c.drawPath(oval(L.sX, L.mY + 22 * k, 70 * k, 22 * k), radial(L.sX, L.mY + 22 * k, 70 * k, [rgba('#FFB050', 0.45), rgba('#FFB050', 0)]));
+        },
+        x0,
+        y0,
+        x1 - x0,
+        y1 - y0,
+        d / 2,
+      );
+    })(),
+    plates: words.map((wd, i) => part((c) => plate(c, wd, L.plateW[i], L.size, i * 7), -L.plateW[i] / 2 - 4, -L.plateH - L.size * 0.4 - 4, L.plateW[i] + 14, L.plateH + L.size * 0.4 + 14, d)),
+    plateGlow: words.map((wd, i) => part((c) => plateGlow(c, wd, L.plateW[i], L.size), -L.plateW[i] / 2 - 2, -L.plateH - 2, L.plateW[i] + 4, L.plateH + 4, d)),
+    trolley: part((c) => trolley(c, L), -34 * k, L.beamY - 44 * k, 68 * k, 54 * k, d),
+    magnet: part((c) => magnet(c, L), -40 * k, -26 * k, 80 * k, 46 * k, d),
     field: record((c) => field(c, L)),
     digits,
-    ticket: record((c) => ticket(c, L, total)),
-    crucible: record((c) => crucible(c, L)),
-    mouth: record((c) => mouth(c, L)),
+    ticket: part((c) => ticket(c, L, total), L.tkX - 2, L.slotY - 2, L.tkW + 4, L.tkH + 4, d),
+    crucible: part((c) => crucible(c, L), -L.R - 12 * k, -38 * k, L.R * 2 + 30 * k, 66 * k, d),
+    mouth: part((c) => mouth(c, L), -L.R - 4, -36 * k, L.R * 2 + 8, 20 * k, d),
     wheel: record((c) => wheel(c, L)),
     shaft: record((c) => shaft(c, L)),
-    hand: record((c) => {
+    hand: part((c) => {
       c.save();
       c.translate(L.manX, L.manY);
       c.scale(L.manScale, L.manScale);
       drawPerson(c, VIEW, { dir: 'e', pose: 'lever', look: crewLook(YARD.vestCutter, 3), shield: true, apron: true });
       c.restore();
-    }),
-    hood: record((c) => hood(c, L)),
-    hoodGlow: record((c) => hoodGlow(c, L)),
+    }, L.manX - 44 * k, L.manY - 80 * k, 110 * k, 96 * k, d),
+    hood: part((c) => hood(c, L), -20, L.hoodTop - 4, L.hoodX + 44 * k + 26, L.hoodBot - L.hoodTop + 8, d),
+    hoodGlow: part((c) => hoodGlow(c, L), L.hoodX - 46 * k, L.hoodBot - 8 * k, 92 * k, 20 * k, d),
     ingot: L.cavX.map((x0) => ingotPath(x0, L.cavY, L.cavW, L.cavH)),
-    notches: L.cavX.map((x0) => record((c) => notches(c, x0, L.cavY, L.cavW, L.cavH))),
+    notches: L.cavX.map((x0) => part((c) => notches(c, x0, L.cavY, L.cavW, L.cavH), x0 - 2, L.cavY - 2, L.cavW + 4, L.cavH + 4, d)),
     colours: {
       ink: col(INK),
       rope: col(YARD.ink),

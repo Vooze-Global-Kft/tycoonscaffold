@@ -96,30 +96,39 @@
       "farmContact": "Hob Garnett",
       "demolitionContact": "Edie Cottle",
       "rival.1": "Haddersby & Daughters Scrap",
-      "rival.2": "Pennick Scrap",
-      "rival.3": "Brookmill Metals",
-      "rival.4": "Tenterby Lane Metals",
-      "rival.5": "Kolbeck Recycling",
-      "rival.6": "Tunney & Sons",
-      "rival.7": "Oakbridge Metal Recovery",
-      "rival.8": "Millbeck Ferrous",
-      "rival.9": "Larkmoor Non-Ferrous",
-      "rival.10": "Stonebeck Reclaim",
-      "rival.11": "Ashendry Metals",
-      "rival.12": "Aldermoss Ferrous",
-      "rival.13": "Nordal Metals",
-      "rival.14": "Gannetby Recycling",
-      "rival.15": "Morrance Resource Recovery",
-      "rival.16": "Saltreach Metals",
-      "rival.17": "Tervalen Steel & Alloys",
-      "rival.18": "Kestrane Metallurgy",
-      "rival.19": "Crayle International",
-      "rival.20": "Tarnmoor Resources",
-      "rival.21": "Teodor Metals",
-      "rival.22": "Ondrell Global",
-      "rival.23": "Coralind Steel & Alloys",
-      "rival.24": "Tarlevan Metals Holding",
-      "rival.25": "Vessendal Global Metals",
+      "rival.2": "Bramley & Daughters Scrap",
+      "rival.3": "Pennick Scrap",
+      "rival.4": "Brookmill Metals",
+      "rival.5": "Tenterby Lane Metals",
+      "rival.6": "Kolbeck Recycling",
+      "rival.7": "Tunney & Sons",
+      "rival.8": "Oakbridge Metal Recovery",
+      "rival.9": "Millbeck Ferrous",
+      "rival.10": "Larkmoor Non-Ferrous",
+      "rival.11": "Stonebeck Reclaim",
+      "rival.12": "Ashendry Metals",
+      "rival.13": "Highfold Metals",
+      "rival.14": "Aldermoss Ferrous",
+      "rival.15": "Nordal Metals",
+      "rival.16": "Gannetby Recycling",
+      "rival.17": "Morrance Resource Recovery",
+      "rival.18": "Rookhill Resource Recovery",
+      "rival.19": "Saltreach Metals",
+      "rival.20": "Tervalen Steel & Alloys",
+      "rival.21": "Kilnfield Steel & Alloys",
+      "rival.22": "Kestrane Metallurgy",
+      "rival.23": "Hazelford Metallurgy",
+      "rival.24": "Crayle International",
+      "rival.25": "Tarnmoor Resources",
+      "rival.26": "Teodor Metals",
+      "rival.27": "Ondrell Global",
+      "rival.28": "Wrenhill Global",
+      "rival.29": "Coralind Steel & Alloys",
+      "rival.30": "Pearlbay Steel & Alloys",
+      "rival.31": "Tarlevan Metals Holding",
+      "rival.32": "Oakfold Metals Holding",
+      "rival.33": "Vessendal Global Metals",
+      "rival.34": "Elmfield Global Metals",
       "crew.0": "Ben",
       "crew.1": "Carlos",
       "crew.2": "Dara",
@@ -296,7 +305,7 @@
         "y": 37,
         "shape": "circle",
         "r": 1.4,
-        "h": 1.2,
+        "h": 1,
         "solid": true
       },
       {
@@ -571,7 +580,12 @@
         "preparedValue": 20,
         "asFoundValue": 16,
         "sprite": "thing.washer",
-        "stages": 4
+        "stages": 4,
+        "size": {
+          "w": 0.8,
+          "d": 0.8,
+          "h": 1
+        }
       },
       "cable": {
         "name": "Heavy cable offcuts",
@@ -590,7 +604,12 @@
         "gross_g": 10000,
         "preparedValue": 200,
         "asFoundValue": 200,
-        "sprite": "thing.cable"
+        "sprite": "thing.cable",
+        "size": {
+          "w": 0.9,
+          "d": 0.9,
+          "h": 0.5
+        }
       },
       "taps": {
         "name": "Crate of brass taps",
@@ -609,7 +628,12 @@
         "gross_g": 5000,
         "preparedValue": 100,
         "asFoundValue": 90,
-        "sprite": "thing.taps"
+        "sprite": "thing.taps",
+        "size": {
+          "w": 0.7,
+          "d": 0.5,
+          "h": 0.5
+        }
       },
       "radiator": {
         "name": "Cast-iron radiator",
@@ -629,7 +653,12 @@
         "preparedValue": 30,
         "asFoundValue": 24,
         "sprite": "thing.radiator",
-        "stages": 3
+        "stages": 3,
+        "size": {
+          "w": 1.2,
+          "d": 0.4,
+          "h": 0.7
+        }
       },
       "beam": {
         "name": "Steel beam",
@@ -649,7 +678,12 @@
         "preparedValue": 100,
         "asFoundValue": 80,
         "sprite": "thing.beam",
-        "stages": 4
+        "stages": 4,
+        "size": {
+          "w": 3,
+          "d": 0.4,
+          "h": 0.4
+        }
       },
       "car": {
         "name": "End-of-life car",
@@ -685,6 +719,11 @@
         "asFoundValue": 1000,
         "sprite": "thing.car",
         "stages": 5,
+        "size": {
+          "w": 3.8,
+          "d": 1.7,
+          "h": 1.4
+        },
         "source": {
           "type": "partner",
           "partner": "partnerDemolition",
@@ -870,15 +909,15 @@
           "sprite": "plant.weighbridge.deck"
         },
         "scalehouse": {
-          "w": 3,
+          "w": 2.6,
           "d": 2,
-          "h": 2.6,
+          "h": 2.4,
           "solid": true,
           "sprite": "prop.scalehouse"
         },
         "bays": {
-          "w": 7,
-          "d": 1.6,
+          "w": 2.4,
+          "d": 1.4,
           "h": 1.2,
           "solid": true,
           "sprite": "prop.bays.lockblock"
@@ -892,17 +931,17 @@
           "card": false
         },
         "stillage": {
-          "w": 4,
-          "d": 1.2,
+          "w": 2.4,
+          "d": 1.4,
           "h": 1.2,
           "solid": true,
           "sprite": "prop.stillages",
           "card": false
         },
         "stripper": {
-          "w": 2.5,
-          "d": 1.6,
-          "h": 1.4,
+          "w": 2.4,
+          "d": 1.4,
+          "h": 1.2,
           "solid": true,
           "sprite": "plant.stripper.pad"
         },
@@ -914,30 +953,30 @@
           "sprite": "plant.bench.pad"
         },
         "crucible": {
-          "w": 3,
-          "d": 2.4,
-          "h": 3,
+          "w": 2.6,
+          "d": 2,
+          "h": 2.4,
           "solid": true,
           "sprite": "plant.crucible.pad"
         },
         "noticeboard": {
           "w": 1.6,
-          "d": 0.5,
+          "d": 0.6,
           "h": 2,
           "solid": true,
           "sprite": "prop.noticeboard"
         },
         "office": {
-          "w": 4,
-          "d": 2.4,
-          "h": 2.8,
+          "w": 2.6,
+          "d": 2,
+          "h": 2.4,
           "solid": true,
           "sprite": "prop.office"
         },
         "rack": {
-          "w": 3,
-          "d": 0.9,
-          "h": 2,
+          "w": 2.4,
+          "d": 1.4,
+          "h": 1.2,
           "solid": true,
           "sprite": "prop.toolrack"
         },
@@ -963,7 +1002,7 @@
           "sprite": "prop.truckpark"
         },
         "backfield": {
-          "w": 2,
+          "w": 1.6,
           "d": 0.6,
           "h": 2,
           "solid": true,
@@ -1307,7 +1346,9 @@
         "driver": 10,
         "stripper": 10,
         "bench": 10,
-        "crucible": 10
+        "crucible": 10,
+        "partnerFarm": 50,
+        "partnerDemolition": 50
       }
     },
     "ladder": {

@@ -103,8 +103,8 @@ headless(async (H) => {
   REGISTRY.push({ name: 'manifest-people', run: manifestSheet('people') });
   REGISTRY.push({ name: 'manifest-things', run: manifestSheet('things') });
   REGISTRY.push({ name: 'manifest-plant', run: manifestSheet('plant') });
-  // the artist "people" (scripts/art/yard-people-sheets.ts): crew, carriers, vehicles, atlas-people
-  for (const name of ['crew', 'carriers', 'vehicles', 'atlas-people'])
+  // the artist "people" (scripts/art/yard-people-sheets.ts): crew, carriers, vehicles, atlas-people, people-scene
+  for (const name of ['crew', 'carriers', 'vehicles', 'atlas-people', 'people-scene'])
     REGISTRY.push({
       name,
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -168,6 +168,12 @@ headless(async (H) => {
       const end = src.indexOf('};', start);
       fs.writeFileSync(file, src.slice(0, start) + '\n' + rows.join('\n') + '\n' + src.slice(end));
       console.log(`bounds: ${rows.length} entries written to manifest/plant.ts`);
+    },
+  });
+  REGISTRY.push({
+    name: 'hero',
+    run: async () => {
+      for (const [name, Lay] of [['yard-844.png', PR.HERO_844], ['yard-667.png', PR.HERO_667]] as const) await write(name, Lay.w, Lay.h, (c) => PR.drawHero(c, Lay, T), 2, YARD.concrete);
     },
   });
   for (const sheet of ['A', 'B', 'G'] as const)

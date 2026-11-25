@@ -19,6 +19,8 @@ export const loadingClock = {
   last: makeMutable(-1),
   /** When the gate began to part (NOT_YET until the bakes are done and the timeline allows). */
   gateAt: makeMutable(NOT_YET),
+  /** The gate's progress 0..1 (set only while it moves, so the still background redraws only then). */
+  gateP: makeMutable(0),
   /** The next sound cue to play. */
   cue: makeMutable(0),
   /** The end of the timeline has been seen (once). */

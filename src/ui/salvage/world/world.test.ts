@@ -2,7 +2,10 @@
 /**
  * The walkable yard's plain maths (docs/design/yard-ground.md): collision with sliding, the narrow gap
  * only the worker passes, the yard's size in screens, the stick, the atlas's size, and what the rules
- * table carries to the UI thread. On the scrap-yard placeholder block (it IS the ground work's test yard).
+ * table carries to the UI thread. On the scrap-yard block (until the content package writes the real one it is
+ * the rules' frozen test content, which keeps the ground work's wall, gaps and solids).
+ * Hour-0 contract step: the counts follow the rules' yard (places are "machine" props, things "wreck"
+ * props, yard.ts rulesProps); the six helpers are asked for; the rules table reads the rules' FrameTable.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -39,12 +42,13 @@ describe('the test yard', async () => {
     expect(screensSpanned(y, 667, 375).wide).toBeGreaterThanOrEqual(3);
   });
 
-  it('packs the solid props (not the truck), the wrecks and the machine as interactables, and six helpers through the wall\'s wide gap', () => {
+  it('packs the solid props (not the truck), the things and the places as interactables, and six helpers through the wall\'s wide gap', () => {
     expect(y.solids.length / SOLID_STRIDE).toBe(y.props.filter((p) => p.solid && p.kind !== 'truck').length);
-    expect(y.actList.filter((a) => a.kind === 1)).toHaveLength(1);
-    expect(y.actList.length).toBe(1 + y.props.filter((p) => p.kind === 'wreck').length);
-    expect(y.helpers).toHaveLength(6);
-    for (const h of y.helpers) {
+    expect(y.actList.filter((a) => a.kind === 1)).toHaveLength(y.props.filter((p) => p.kind === 'machine').length);
+    expect(y.actList.length).toBe(y.props.filter((p) => p.kind === 'machine' || p.kind === 'wreck').length);
+    const h6 = yardLayout(content, { helpers: 6 });
+    expect(h6.helpers).toHaveLength(6);
+    for (const h of h6.helpers) {
       expect(h.pts[2]).toBe(24);
       expect(Math.abs(h.pts[3] - 12)).toBeLessThanOrEqual(0.5);
     }
@@ -121,16 +125,22 @@ describe('the atlas', async () => {
 describe('the rules table', async () => {
   const { rulesTable } = await import('./useRulesTable');
   const { yardLayout } = await import('./yard');
-  it('carries each wreck\'s cut (2 when it lies in pieces), -1 for the machine, and the stack', () => {
+  const R = await import('../../../engine/salvage');
+  it('carries each thing\'s ring from the rules\' frame (2 when it is gone), -1 for a place, and the load', () => {
     const y = yardLayout(content);
-    const wrecks = y.actList.filter((a) => a.kind === 0).map((a) => ({ id: a.id, cut: 0, cutAt: null as number | null }));
-    wrecks[0] = { ...wrecks[0], cut: 0.5 };
-    wrecks[1] = { ...wrecks[1], cut: 1, cutAt: 3 };
-    const t = rulesTable(y, { v: 1, carried: 2, wrecks, presence: { near: null, driving: false, moving: false, x: 0, y: 0 }, presenceAt: 0, unloadT: 0, unloaded: 0 });
+    const cfg = { mode: 'salvage', salvage: content } as unknown as import('../../../engine/salvage').SalvageConfig;
+    const g = { cash: 0, stats: { playSeconds: 0 }, salvage: R.freshSalvage(cfg, 0) } as unknown as import('../../../engine/salvage').SalvageGame;
+    const things = g.salvage.things.slice();
+    const worked = things[0].uid;
+    const gone = things[1].uid;
+    things[0] = { ...things[0], progress: 1, by: 'boss' };
+    const s = { ...g.salvage, things: things.filter((t) => t.uid !== gone), load: [{ grade: 'li', g: 10000, from: null }, { grade: 'li', g: 10000, from: null }] };
+    const t = rulesTable(y, R.frame(cfg, { ...g, salvage: s }));
     expect(t.carried).toBe(2);
     const at = (id: string) => t.cut[y.actList.findIndex((a) => a.id === id)];
-    expect(at(wrecks[0].id)).toBe(0.5);
-    expect(at(wrecks[1].id)).toBe(2);
-    expect(at('machine-1')).toBe(-1);
+    expect(at(worked)).toBeGreaterThan(0);
+    expect(at(worked)).toBeLessThan(1);
+    expect(at(gone)).toBe(2);
+    expect(at('scale')).toBe(-1);
   });
 });

@@ -21,7 +21,7 @@
  * Shadows: drawPerson draws the person's ground shadow unless `shadow: false` (the atlas's sprites carry
  * none, so a mirrored sprite never throws its shadow west; the world draws drawActorShadow under them).
  */
-import { ClipOp, type SkCanvas } from '@shopify/react-native-skia';
+import { BlendMode, ClipOp, Skia, type SkCanvas } from '@shopify/react-native-skia';
 import { LINE_PERSON, YARD, shade } from './palette';
 import { builder, circle, fill, groundShadow, hash01, oval, poly, rrect, segment, stroke, type View3q } from './pen';
 import { pieceGlyph } from './pieces.draw';
@@ -90,7 +90,15 @@ export interface PersonOptions {
   apron?: boolean;
   /** Draw the ground shadow (default true; atlas sprites pass false). */
   shadow?: boolean;
+  /**
+   * Draw only the vest's visible fill in near-white (VEST_KEY), its reflective bands and whatever covers
+   * it (arms, tools, apron, head) cut out: the overlay the atlas modulates to a role's vest colour.
+   */
+  vestOnly?: boolean;
 }
+
+/** The near-white of the vest overlay (manifest tint): modulated by the atlas to the role's vest. */
+export const VEST_KEY = '#F4F4F0';
 
 /** The design height of a person in points at 40 points a metre (feet to shoulders' line is about 35). */
 export const PERSON_PT = 47;
@@ -486,14 +494,14 @@ function arm(c: SkCanvas, sx: number, sy: number, hx: number, hy: number, front 
 // ---------------------------------------------------------------------------
 
 /** The angle grinder held level (its disc at about (x + 14, y + 1.6)) and, while cutting, the spark fan. */
-function grinder(c: SkCanvas, x: number, y: number, spark: number, sparks: boolean, fan = 1): void {
+function grinder(c: SkCanvas, x: number, y: number, spark: number, sparks: boolean, fan = 0.75): void {
   part(c, rrect(x - 2, y - 2.6, 12, 5.2, 2.4), YARD.machineLight, 1.1);
   part(c, rrect(x - 4.5, y - 1.6, 4, 3.2, 1), YARD.ink, 0.8);
   part(c, poly([x + 9, y - 4.5, x + 13, y - 4.5, x + 13, y + 1, x + 9, y + 1]), YARD.hivis, 1);
   c.drawPath(oval(x + 13.8, y + 1.6, 1.4, 5.2), fill('#6D7277'));
   c.drawPath(oval(x + 13.8, y + 1.6, 1.4, 5.2), stroke(INK, 1));
   if (!sparks) return;
-  sparkFan(c, x + 14, y + 6, spark, fan);
+  sparkFan(c, x + 14, y + 6, spark, 1, 9, fan);
 }
 
 /** Short light streaks thrown down and back (never flames), varied by phase. */
@@ -630,6 +638,19 @@ function personBody(c: SkCanvas, v: View3q, o: PersonOptions, look: PersonLook):
   const shX = side ? 1 : 8.4 * bw;
   const uX = lean; // the shoulders' shift forward
 
+  // In vestOnly mode everything but the vest goes into a destination-out layer: it draws nothing of its
+  // own and cuts the vest where it covers it.
+  const vestOnly = o.vestOnly === true;
+  const cutPaint = Skia.Paint();
+  cutPaint.setBlendMode(BlendMode.DstOut);
+  const hide = () => {
+    if (vestOnly) c.saveLayer(cutPaint);
+  };
+  const unhide = () => {
+    if (vestOnly) c.restore();
+  };
+  if (vestOnly) c.saveLayer();
+  hide();
   // ---- behind the body -------------------------------------------------------
   if (side) {
     // the far arm (and tools held behind)
@@ -677,11 +698,16 @@ function personBody(c: SkCanvas, v: View3q, o: PersonOptions, look: PersonLook):
     }
   }
 
+  unhide();
   // ---- torso -------------------------------------------------------------------
   c.save();
   if (lean) c.translate(lean * 0.6, 0);
-  c.drawPath(rrect(-tw / 2 + 1, hipY - 3, tw - 2, 6, 2), fill(YARD.navy));
-  vest(c, dir, look, -tw / 2, T, tw, hipY - T + 2);
+  if (vestOnly) vestMask(c, dir, -tw / 2, T, tw, hipY - T + 2);
+  else {
+    c.drawPath(rrect(-tw / 2 + 1, hipY - 3, tw - 2, 6, 2), fill(YARD.navy));
+    vest(c, dir, look, -tw / 2, T, tw, hipY - T + 2);
+  }
+  hide();
   if (apron && dir !== 'n') {
     // the aluminised apron: a silver bib from the chest to the knees, quilted, with a bright fold
     const ax0 = side ? -1 : -tw / 2 + 1.5;
@@ -696,6 +722,8 @@ function personBody(c: SkCanvas, v: View3q, o: PersonOptions, look: PersonLook):
   }
   c.restore();
 
+  unhide();
+  hide();
   // ---- arms in front and the tools ------------------------------------------------
   if (side) {
     const sx = uX + 1;
@@ -846,7 +874,25 @@ function personBody(c: SkCanvas, v: View3q, o: PersonOptions, look: PersonLook):
     // a few sparks fall in front of the boots
     sparkFan(c, pose === 'torch' ? 5 : -8, pose === 'torch' ? T + 30 : T + 19, spark, 1, 4, 0.5);
   }
+  unhide();
+  if (vestOnly) c.restore();
   c.restore();
+}
+
+/** The vest overlay's shape: the vest's fill just inside its ink edge, the reflective bands cut out. */
+function vestMask(c: SkCanvas, dir: Dir, x: number, y: number, w: number, h: number): void {
+  const inset = 0.7;
+  c.drawPath(rrect(x + inset, y + inset, w - 2 * inset, h - 2 * inset, 3.6), fill(VEST_KEY));
+  const clear = Skia.Paint();
+  clear.setBlendMode(BlendMode.Clear);
+  for (const yy of [y + h * 0.5, y + h * 0.74]) c.drawRect({ x: x - 1, y: yy - 0.4, width: w + 2, height: 3.1 }, clear);
+  if (dir === 's') for (const bx of [x + w * 0.24, x + w * 0.76 - 2.3]) c.drawRect({ x: bx - 0.4, y: y - 1, width: 3.1, height: h * 0.5 + 1 }, clear);
+  else if (dir === 'n') {
+    const p = stroke('#000000', 3.1);
+    p.setBlendMode(BlendMode.Clear);
+    c.drawPath(segment(x + 2, y, x + w - 2, y + h * 0.5), p);
+    c.drawPath(segment(x + w - 2, y, x + 2, y + h * 0.5), p);
+  } else c.drawRect({ x: x + w * 0.4 - 0.4, y: y - 1, width: 3.1, height: h * 0.5 + 1 }, clear);
 }
 
 /** The metal of METAL that stands for a load family on a chip or a pictogram. */

@@ -171,13 +171,18 @@ export function rulesProps(s: SalvageContent): SalvageProp[] {
   for (const [id, pl] of Object.entries(s.map.places)) {
     const p = s.map.points[id];
     if (!p) continue;
-    out.push({ id, kind: 'machine', x: p[0], y: p[1], shape: 'box', w: pl.w, d: pl.d, h: pl.h, r: 1, solid: pl.solid });
+    // A flat place (a pad, a scale plate, the tipping floor) is drawn as one marker size: the placeholder
+    // atlas bakes one box per size, and nobody collides with a decal (its real footprint is the rules').
+    const flat = !pl.solid;
+    out.push({ id, kind: 'machine', x: p[0], y: p[1], shape: 'box', w: flat ? 1.6 : pl.w, d: flat ? 1.6 : pl.d, h: flat ? 0.1 : pl.h, r: 1, solid: pl.solid });
   }
   for (const th of R.stockThings(s)) {
     const o = s.objects[th.obj];
     if (!o) continue;
     const p = R.thingPos(asCfg(s), th.at);
-    out.push({ id: th.uid, kind: 'wreck', x: p.x, y: p.y, shape: 'box', w: o.size.w, d: o.size.d, h: o.size.h, r: 1, solid: true });
+    // Small things share one placeholder box (one baked sprite); a beam or the car keeps its own size.
+    const small = o.size.w <= 1.4 && o.size.d <= 1.2;
+    out.push({ id: th.uid, kind: 'wreck', x: p.x, y: p.y, shape: 'box', w: small ? 1 : o.size.w, d: small ? 0.8 : o.size.d, h: small ? 0.9 : o.size.h, r: 1, solid: true });
   }
   if (s.map.points.park) {
     const p = pointOf(s, 'park');

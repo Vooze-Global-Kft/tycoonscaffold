@@ -239,7 +239,7 @@ function ticketRows(t: Ticket, p: number): TicketRow[] {
   ];
   for (const l of t.lines) {
     rows.push({ kind: 'grade', h: p * 1.45, line: l });
-    const sub = dotWidth(`${l.net} × ${l.price}`, p);
+    const sub = dotWidth(l.price ? `${l.net} × ${l.price}` : l.net, p);
     const amt = dotWidth(l.amount, p);
     if (sub + amt + p <= iw) rows.push({ kind: 'sub', h: p * 1.6, line: l });
     else {
@@ -314,7 +314,7 @@ export function drawTicket(c: SkCanvas, x: number, y: number, t: Ticket, p: numb
       }
       case 'sub': {
         const l = r.line!;
-        dotMatrix(c, `${l.net} × ${l.price}`, ix, ry + p * 0.15, p, shade(YARD.print, 0.2));
+        dotMatrix(c, l.price ? `${l.net} × ${l.price}` : l.net, ix, ry + p * 0.15, p, shade(YARD.print, 0.2));
         if (l.amount) dotMatrix(c, l.amount, ix + iw, ry + p * 0.15, p, YARD.print, { align: 'right' });
         break;
       }

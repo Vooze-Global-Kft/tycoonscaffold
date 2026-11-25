@@ -8,7 +8,7 @@ import type { SkCanvas } from '@shopify/react-native-skia';
 import type { Headless } from './headless';
 import type { TextFn } from '../../src/ui/salvage/art/ui.draw';
 
-export const PEOPLE_SHEETS = ['crew', 'carriers', 'vehicles', 'atlas-people'] as const;
+export const PEOPLE_SHEETS = ['crew', 'carriers', 'vehicles', 'atlas-people', 'people-scene'] as const;
 
 export async function peopleSheets(
   H: Headless,
@@ -201,5 +201,61 @@ export async function peopleSheets(
         put(c, x - b.x, y - b.y, () => cell.e.draw(c, V, cell.f, cell.h));
       }
     }, 1.5, YARD.concrete);
+  }
+
+  if (want('people-scene')) {
+    // the people part as the world will draw it: manifest entries in layers, the crew's vest overlay
+    // modulated to its role, vehicles at their drawScale, shadows from drawActorShadow; 844 x 390 points
+    const G = require('../../src/ui/salvage/art/ground.draw') as typeof import('../../src/ui/salvage/art/ground.draw');
+    const byId = new Map(MP.PEOPLE.map((e) => [e.id, e]));
+    type L = import('../../src/ui/salvage/art/manifest/people').Layer;
+    const drawLayers = (c: SkCanvas, x: number, y: number, layers: L[], vest?: string) => {
+      for (const l of layers) {
+        const e = byId.get(l.id)!;
+        const hs = MP.baked(e);
+        const mirror = !hs.includes(l.heading);
+        const h = mirror ? (e.headings === 4 ? 1 : 8 - l.heading) : l.heading;
+        c.save();
+        c.translate(x + l.dx, y + l.dy);
+        if (mirror) c.scale(-1, 1);
+        const k = e.drawScale ?? 1;
+        if (k !== 1) c.scale(k, k);
+        if (e.tint && vest) {
+          const p = H.Skia.Paint();
+          p.setColorFilter(H.Skia.ColorFilter.MakeBlend(H.Skia.Color(vest), H.BlendMode.Modulate));
+          c.saveLayer(p);
+          e.draw(c, V, l.frame, h);
+          c.restore();
+        } else e.draw(c, V, l.frame, h);
+        c.restore();
+      }
+    };
+    const shadow = (c: SkCanvas, x: number, y: number, kind: import('../../src/ui/salvage/art/vehicles.draw').ActorKind, h8 = 0) => put(c, x, y, () => VH.drawActorShadow(c, V, kind, h8));
+    await write('people-scene.png', 844, 390, (c) => {
+      put(c, 0, 0, () => G.drawGroundPatch(c, V, 21.1, 14, 7));
+      // the merchant's flatbed loading at the bays (parked facing west), the truck coming in with the farm's load
+      shadow(c, 610, 120, 'flatbed', 6);
+      drawLayers(c, 610, 120, MP.flatbedLayers(3, { crane: 0, cargo: 'part' }));
+      shadow(c, 250, 120, 'truck', 7);
+      drawLayers(c, 250, 120, MP.truckLayers(7, 'farm-full'));
+      // the public's van and trailer at the drop-off
+      shadow(c, 720, 300, 'van', 6);
+      drawLayers(c, 720, 300, MP.vanLayers(3, true));
+      // people: the boss with a copper hand load, pushing a trolley, the crew at work
+      const ppl: [number, number, import('../../src/ui/salvage/art/manifest/people').PersonActor, string?][] = [
+        [90, 250, { who: 'boss', pose: 'walk', frame: 0, heading: 1, hand: 'cu' }],
+        [150, 330, { who: 'boss', pose: 'push', frame: 1, heading: 1, carrier: { kind: 'trolley', load: 'fe' } }],
+        [330, 260, { who: 'crew', pose: 'grinder', frame: 0, heading: 1 }, YARD.vestCutter],
+        [400, 330, { who: 'crew', pose: 'push', frame: 2, heading: 3, carrier: { kind: 'sack', load: 'ci' } }, YARD.vestYardHand],
+        [470, 250, { who: 'crew', pose: 'walk', frame: 1, heading: 0 }, YARD.vestDriver],
+        [520, 330, { who: 'crew', pose: 'sledge', frame: 0, heading: 0 }, YARD.vestCutter],
+        [580, 280, { who: 'boss', pose: 'torch', frame: 1, heading: 3 }],
+        [40, 350, { who: 'crew', pose: 'walk', frame: 2, heading: 2 }, YARD.vestYardHand],
+      ];
+      for (const [x, y, a, vest] of ppl) {
+        shadow(c, x, y, 'person');
+        drawLayers(c, x, y, MP.personLayers(a), vest);
+      }
+    }, 3, YARD.concrete);
   }
 }

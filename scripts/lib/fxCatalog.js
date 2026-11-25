@@ -22,7 +22,7 @@ const CATALOG_BY_MODE = {
   merge: path.resolve(__dirname, '..', '..', 'src', 'services', 'fx', 'catalog.merge.ts'),
   // The decree mode likewise plays only its own keys (High Office, office-design.md 6).
   decree: path.resolve(__dirname, '..', '..', 'src', 'services', 'fx', 'catalog.decree.ts'),
-  // The salvage mode likewise (the scrapyard; its keys come with the sound package, docs/design/yard-design.md).
+  // The salvage mode likewise (the scrapyard, docs/design/yard-stage1.md 7; written by scripts/audio/yard/render_yard.py --catalog).
   salvage: path.resolve(__dirname, '..', '..', 'src', 'services', 'fx', 'catalog.salvage.ts'),
 };
 
@@ -138,9 +138,9 @@ function parseCatalog(file = CATALOG) {
     i = c + 1;
   }
   const rest = masked.slice(i, end).replace(/[\s,]/g, '');
-  // Only the salvage catalogue may be empty (its sounds are not designed yet); the shared one and every
-  // other mode's never are (an emptied or unreadable catalogue still fails).
-  if (rest || (entries.length === 0 && path.resolve(file) !== CATALOG_BY_MODE.salvage)) throw new Error(`fx catalogue: could not read near ${JSON.stringify(src.slice(i, i + 80).trim())}`);
+  // No catalogue may be empty (the salvage one was, until its sound pack existed): an emptied or unreadable
+  // catalogue fails.
+  if (rest || entries.length === 0) throw new Error(`fx catalogue: could not read near ${JSON.stringify(src.slice(i, i + 80).trim())}`);
   if (new Set(entries.map((e) => e.key)).size !== entries.length) throw new Error('fx catalogue: duplicate keys');
   return entries;
 }

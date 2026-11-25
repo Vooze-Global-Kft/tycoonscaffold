@@ -21,8 +21,13 @@ sprites by footprint y). Interface pieces draw from their top-left. Words are th
 | `plant.draw.ts` | `drawStripper`, `drawWeighbridgeDeck` + `drawWeighDisplay(text)` (returns its printer slot), `drawCrucible` (tilting, returns its lip), `drawMould` (cavities on dry sand), `drawFurnaceSet(cold/pouring/cooling)` (the furnace under its hood; anchor the furnace; at FURNACE_SCALE 1.2 it reaches 2.1 m east and 3.3 m up), `drawTruck(heading, {skip, load})`, `drawContainer`, `drawContainerWall`, `drawPad(w, d, locked)`, `drawBay` |
 | `ground.draw.ts` | `drawConcrete` (weeds optional), `drawAsphalt`, `drawPaintLine`, `drawOilStain`, `drawPuddle`, `drawWeeds`, `drawSkyline` (the far plane past the north wall), `drawGroundPatch` |
 | `ui.draw.ts` | `chip`, `cashChip`, `ladderChip`, `carryChip`, `clipboardButton`, `goalCard`, `stick`, `oneButton`, `padlockChip`, `priceTag`, `drawTicket(t, print)` (+ `ticketHeight`, `ticketWidth`), `ticketFromSlot` (the ticket feeding out of the display's slot), `scripCoin`, `TYPE`; words through a `TextFn` |
+| `site.draw.ts` | what stands in the first yard: `drawPlatformScale`, `drawScaleHouse` (posted board), `drawHandStripper`, `drawMotorBench`, `drawCrucibleState` + `drawHood`, `drawBlock`/`drawBayWalls`/`drawBayHeap`/`drawCodePlate`, `drawStillage` + `drawStillageLayer`/`drawStillageFront` (STILLAGE_GRADES = content ids), `drawConverterCage`, `drawHoldFlag`, `drawPortacabin` (+ door, plaque and rota slots), `drawToolRack` + `drawRackTools`, `drawSignCrane` + `drawHungSign`, `drawPostSign`, `drawPostPlate`, `drawExtinguisher`, `drawFence`, `drawGateLeaf`, `drawFieldGate`, `drawRubbleSkip`, `drawContainerNS` |
+| `lane.draw.ts` | the lane: hedge, the farm's shed, the demolition hoarding and gate, the bridge's parapet, the weight-limit sign (blank roundel), barriers |
+| `marks.draw.ts` | work ring, pickup shadow, chevron, edge arrow, the pour's light (baked small), chalk circle, the blank padlock chip |
+| `manifest/` | THE SPRITE MANIFEST: `index.ts` (entry type, `MANIFEST`, `bakedHeadings`, `cellBounds`, `entryPixels`), parts `people.ts`, `things.ts`, `plant.ts` (bounds measured by `yard-sheets.ts bounds`); `manifest.test.ts` checks every entry stays in its box. Baked by `world/atlas.ts` (`bakeManifest`, `atlasProgress`) |
 | `proof.draw.ts` | the first screenshot composed from the kit: `drawProof(c, PROOF_844 or PROOF_667, T)` |
 | `loading.draw.ts` | `loadingPose(t)` (worklet), `drawLoading(c, w, h, pose, title)`, `LOADING_T`, `PLATE_KG` |
 
-Not wired into the world yet: `src/ui/salvage/world/draw.ts` (placeholders) is the world engineer's;
-the atlas keeps its sprite names and anchors and calls these functions instead (requests.md).
+The world bakes the manifest's sheets A, B and G (world/atlas.ts); the yard view still draws the old
+single sheet under its old names (LEGACY in world/atlas.ts maps them to manifest ids) until it moves.
+Sheets: `npx tsx scripts/art/yard-sheets.ts <dir> manifest-plant budget atlas-B atlas-G hero bounds`.

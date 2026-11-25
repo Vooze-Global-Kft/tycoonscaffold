@@ -9,11 +9,12 @@
  */
 import type { SkCanvas } from '@shopify/react-native-skia';
 import { YARD } from '../palette';
-import { at, boxShadow as _bs, groundShadow, box, type View3q } from '../pen';
+import { at, proj, boxShadow as _bs, groundShadow, box, type View3q } from '../pen';
 import { padlock } from '../ui.draw';
 import { drawContainer, drawMould, drawStripper, drawWeighDisplay, drawWeighbridgeDeck } from '../plant.draw';
 import {
   STILLAGE_GRADES,
+  CRANE_HOOK,
   bayPlate,
   cabinSlots,
   drawBayHeap,
@@ -100,6 +101,13 @@ function drawWeighDisplayHead(c: SkCanvas, v: View3q): void {
   c.restore();
 }
 void _bs;
+
+/** A face's box in points for x0..x1 at y, z0..z1 (metres). */
+const faceSlot = (x0: number, x1: number, y: number, z0: number, z1: number): Bounds => {
+  const [ax, ay] = proj(V, x0, y, z1);
+  const [bx, by] = proj(V, x1, y, z0);
+  return B(ax, ay, bx - ax, by - ay);
+};
 
 const B = (x: number, y: number, w: number, h: number): Bounds => ({ x, y, w, h });
 
@@ -319,10 +327,10 @@ export const PLANT: ManifestEntry[] = [
   entry('plant.toolrack', 'plant', 'B', [2.6, 0.7], B(-45, -90, 145, 110), one, (c, v) => drawToolRack(c, v, 1), { k: EDGE }),
   entry('plant.toolrack.tier2', 'plant', 'B', [0.1, 0.1], B(-30, -60, 60, 60), one, (c, v) => drawRackTools(c, v, 2), { k: EDGE }),
   entry('plant.toolrack.tier3', 'plant', 'B', [0.1, 0.1], B(-30, -60, 90, 70), one, (c, v) => drawRackTools(c, v, 3), { k: EDGE }),
-  entry('plant.crane.sign', 'plant', 'B', [1.3, 1.3], B(-50, -170, 200, 200), one, (c, v) => drawSignCrane(c, v), { k: EDGE, slots: { hook: B(84 - 30, -76, 60, 4) } }),
+  entry('plant.crane.sign', 'plant', 'B', [1.3, 1.3], B(-50, -170, 200, 200), one, (c, v) => drawSignCrane(c, v), { k: EDGE, slots: { hook: (() => { const [x, y] = proj(V, CRANE_HOOK[0], 0, CRANE_HOOK[2]); return B(x - 30, y - 2, 60, 4); })() } }),
   entry('plant.sign.hung', 'ui', 'B', [2.4, 0.1], B(-35, -6, 72, 30), one, (c, v) => drawHungSign(c, v), { slots: { words: B(-27, 3, 54, 13) } }),
-  entry('plant.sign.posts', 'plant', 'B', [1.6, 0.3], B(-35, -70, 110, 80), one, (c, v) => drawPostSign(c, v), { k: EDGE, slots: { words: B(-30, -60, 60, 18) } }),
-  entry('plant.sign.plate', 'plant', 'B', [0.8, 0.2], B(-20, -60, 60, 70), one, (c, v) => drawPostPlate(c, v), { k: EDGE, slots: { words: B(-12, -55, 28, 9) } }),
+  entry('plant.sign.posts', 'plant', 'B', [1.6, 0.3], B(-35, -70, 110, 80), one, (c, v) => drawPostSign(c, v), { k: EDGE, slots: { words: faceSlot(-0.75, 0.75, 0.085, 1.27, 1.78) } }),
+  entry('plant.sign.plate', 'plant', 'B', [0.8, 0.2], B(-20, -60, 60, 70), one, (c, v) => drawPostPlate(c, v), { k: EDGE, slots: { words: faceSlot(-0.28, 0.4, 0.07, 1.33, 1.63) } }),
   entry('plant.extinguisher', 'plant', 'B', [0.4, 0.3], B(-15, -50, 50, 60), one, (c, v) => drawExtinguisher(c, v), { k: EDGE }),
   entry('plant.container.ew', 'plant', 'B', [6.1, 2.44], B(-125, -125, 300, 165), one, (c, v) => drawContainer(c, v, CONTAINER_BASE, { seed: 3 }), { tint: CONTAINER_BASE, k: LANE }),
   entry('plant.container.ns', 'plant', 'B', [2.44, 6.1], B(-55, -150, 150, 250), one, (c, v) => drawContainerNS(c, v, CONTAINER_BASE, 6.1, 3), { tint: CONTAINER_BASE, k: LANE }),

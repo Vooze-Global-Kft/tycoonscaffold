@@ -238,6 +238,7 @@ const WEB_ONLY_STRINGS = [
   { text: 'haulFixtures' },
   { text: 'mergeFixtures' },
   { text: 'decreeFixtures' },
+  { text: 'SALVAGE_TEST_RAW' },
   // The page address's switches are read only by the .web.ts tools (src/dev/devtools.web.ts,
   // src/ui/haul/dev.web.ts); a library's own use (node_modules) is not counted. Haul only: the
   // first game's files keep their own web-guarded readers (they do not change). Shipped code only

@@ -127,3 +127,23 @@ A real brand, logo or livery, or one shaped like it; a real exchange, flag or cu
 stacked S strokes); a name the names register changed; a tow truck, crusher, gavel or desert; anyone hurt,
 without gear, or near sparks without a shield; fire, smoke or a hazard made fun; a magnet lifting copper;
 four-point sparkles; a lone gold bar; polished-gold brass.
+
+## 12. The first yard's sprites (stage 1, art-plant)
+
+- Everything the world draws comes through the manifest (`src/ui/salvage/art/manifest`): sheet A people,
+  things, pieces; sheet B machines, props, vehicles, marks, plates; sheet G ground tiles and decals. The
+  yard floor is world/ground.ts's 6 m tile of slabs. No words in any sprite: signs, boards, the plaque,
+  the rota board, displays and chips are blank faces with `slots` where the caller writes.
+- The budget binds at density 3 (2048 px sheets A and B, 1024 px G). Statics away from the hero frame
+  are baked small and drawn up by `drawScale`: 0.75 (scale house, hood, power stripper, bench, bays,
+  heaps, cage), 0.6 (portacabin, rack, crane, signs, fences, gates, skip), 0.5 (containers, the lane,
+  lane tiles). Hero-frame things (platform scale, weighbridge display, hand stripper, crucible, mould,
+  stillages, marks) are full density.
+- Selling is in two steps (S1): the platform scale weighs IN to bays (its ticket has no payment: kind
+  `weighin`, the day's price per grade, a muted "today" value and the legal line, no stamp); the
+  merchant's flatbed collects and pays (kind `collection`, blue stamp naming the buyer). A drop-off slip
+  is grey-headed with a green "signed in" stamp; a partner's skip and a deal delivery are stamped blue.
+- Nobody bears more than a hand load (S8): carriers have wheels (the people artist's sack truck and
+  trolley). Containers are baked near white and modulated to teal, oxide or sage per instance.
+- Stillages are three sprites at one anchor: cage, one or two layers of the grade's pieces (part, full:
+  the second STILLAGE_LAYER_DY up), the front rails.

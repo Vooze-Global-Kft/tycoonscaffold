@@ -25,7 +25,7 @@
 import type { SkCanvas } from '@shopify/react-native-skia';
 import { YARD } from '../palette';
 import type { View3q } from '../pen';
-import { BOSS, CREW_BODY, CREW_BODY_2, drawHandLoad, drawPerson, type Dir, type LoadFamily, type PersonLook, type Pose } from '../people.draw';
+import { BOSS, CREW_BODY, CREW_BODY_2, VEST_KEY, drawHandLoad, drawPerson, type Dir, type LoadFamily, type PersonLook, type Pose } from '../people.draw';
 import {
   CARRIER_AHEAD,
   CRANE_FRAMES,
@@ -92,7 +92,7 @@ const BOX: Record<string, Bounds[]> = {
   'person.boss.pour': [B(-14, -56, 28, 60), B(-12, -56, 29, 60), B(-14, -56, 28, 60)],
   'person.boss.spanner': [B(-14, -49, 29, 55), B(-8, -49, 41, 53), B(-14, -49, 28, 53)],
   'person.boss.sledge': [B(-14, -64, 28, 75), B(-20, -64, 53, 69), B(-14, -63, 28, 67)],
-  'person.boss.grinder': [B(-14, -56, 39, 60), B(-12, -56, 54, 60), B(-14, -56, 28, 65)],
+  'person.boss.grinder': [B(-14, -56, 35, 60), B(-12, -56, 50, 60), B(-14, -56, 28, 65)],
   'person.boss.torch': [B(-14, -54, 29, 67), B(-13, -54, 46, 58), B(-14, -54, 28, 63)],
   'person.crew.stand': [B(-17, -56, 34, 60), B(-12, -56, 27, 60), B(-17, -56, 34, 60)],
   'person.crew.walk': [B(-17, -58, 34, 62), B(-14, -58, 31, 62), B(-17, -58, 34, 62)],
@@ -100,28 +100,33 @@ const BOX: Record<string, Bounds[]> = {
   'person.crew.feed': [B(-15, -56, 30, 60), B(-12, -56, 37, 60), B(-15, -56, 30, 60)],
   'person.crew.pour': [B(-15, -56, 30, 60), B(-12, -56, 29, 60), B(-15, -56, 30, 60)],
   'person.crew.sledge': [B(-15, -64, 30, 75), B(-20, -64, 53, 69), B(-15, -63, 30, 67)],
-  'person.crew.grinder': [B(-15, -56, 40, 60), B(-12, -56, 54, 60), B(-15, -56, 30, 65)],
+  'person.crew.grinder': [B(-15, -56, 36, 60), B(-12, -56, 50, 60), B(-15, -56, 30, 65)],
   'person.crew.torch': [B(-15, -54, 30, 67), B(-13, -54, 46, 58), B(-15, -54, 30, 63)],
+  'person.crew.vest.stand': [B(-10, -37, 20, 21), B(-9, -37, 18, 21), B(-10, -37, 20, 21)],
+  'person.crew.vest.walk': [B(-10, -38, 20, 22), B(-9, -38, 18, 22), B(-10, -38, 20, 22)],
+  'person.crew.vest.push': [B(-9, -38, 18, 22), B(-8, -38, 18, 22), B(-11, -38, 22, 22)],
+  'person.crew.vest.feed': [B(-11, -37, 22, 23), B(-9, -37, 18, 23), B(-11, -37, 22, 23)],
+  'person.crew.vest.pour': [B(-11, -37, 22, 17), B(-9, -37, 17, 21), B(-11, -37, 22, 21)],
+  'person.crew.vest.sledge': [B(-11, -37, 22, 24), B(-9, -37, 20, 24), B(-11, -37, 22, 24)],
+  'person.crew.vest.grinder': [B(-11, -37, 20, 21), B(-8, -37, 18, 21), B(-11, -37, 22, 21)],
+  'person.crew.vest.torch': [B(-11, -34, 22, 20), B(-8, -34, 18, 20), B(-11, -34, 22, 20)],
   'load.hand.fe': [B(-16, -45, 33, 32), B(-22, -44, 27, 33), B(-14, -44, 28, 33)],
   'load.hand.ci': [B(-17, -45, 34, 32), B(-22, -44, 27, 33), B(-14, -44, 28, 33)],
   'load.hand.cu': [B(-17, -45, 34, 32), B(-22, -44, 27, 34), B(-14, -44, 28, 33)],
   'load.hand.br': [B(-17, -49, 34, 36), B(-22, -44, 27, 33), B(-14, -44, 28, 33)],
-  'load.hand.al': [B(-16, -45, 33, 32), B(-22, -44, 27, 32), B(-14, -44, 28, 34)],
   'load.hand.cab': [B(-17, -45, 37, 32), B(-22, -44, 27, 35), B(-14, -44, 29, 34)],
-  'load.hand.mot': [B(-17, -45, 36, 32), B(-22, -44, 27, 35), B(-14, -44, 28, 33)],
-  'load.hand.hms': [B(-17, -45, 34, 32), B(-22, -44, 27, 33), B(-14, -44, 28, 33)],
-  'carrier.sack': [B(-15, -41, 30, 54), B(-18, -37, 40, 47), B(-15, -32, 30, 30)],
-  'carrier.trolley': [B(-18, -47, 37, 62), B(-27, -38, 51, 48), B(-18, -26, 36, 41)],
-  'vehicle.truck': [B(-44, -112, 88, 166), B(-89, -112, 186, 166), B(-93, -94, 188, 125), B(-88, -131, 185, 188), B(-44, -130, 88, 189)],
-  'vehicle.truck.hook': [B(-196, -121, 291, 152)],
-  'vehicle.skip': [B(-57, -55, 114, 82)],
-  'vehicle.skip.load': [B(-33, -23, 66, 37)],
-  'vehicle.flatbed': [B(-44, -97, 88, 151), B(-90, -94, 185, 125), B(-44, -130, 88, 191)],
-  'vehicle.flatbed.working': [B(-90, -94, 185, 125)],
-  'vehicle.flatbed.crane': [B(-35, -88, 79, 146)],
-  'vehicle.flatbed.cargo': [B(-31, -20, 62, 33)],
-  'vehicle.van': [B(-41, -102, 82, 143), B(-69, -81, 138, 110), B(-41, -77, 82, 118)],
-  'vehicle.trailer': [B(-34, -45, 69, 63), B(-33, -42, 75, 67), B(-34, -45, 69, 60)],
+  'carrier.sack': [B(-12, -31, 24, 40), B(-14, -28, 31, 36), B(-12, -24, 24, 22)],
+  'carrier.trolley': [B(-14, -35, 28, 47), B(-21, -29, 39, 37), B(-14, -18, 27, 30)],
+  'vehicle.truck': [B(-21, -52, 43, 78), B(-42, -52, 87, 78), B(-43, -44, 88, 60), B(-41, -61, 86, 88), B(-21, -61, 43, 89)],
+  'vehicle.truck.hook': [B(-90, -56, 135, 72)],
+  'vehicle.skip': [B(-27, -26, 55, 40)],
+  'vehicle.skip.load': [B(-17, -12, 33, 20)],
+  'vehicle.flatbed': [B(-21, -45, 43, 71), B(-42, -44, 87, 60), B(-21, -61, 43, 90)],
+  'vehicle.flatbed.working': [B(-42, -44, 87, 60)],
+  'vehicle.flatbed.crane': [B(-17, -41, 38, 69)],
+  'vehicle.flatbed.cargo': [B(-16, -11, 32, 18)],
+  'vehicle.van': [B(-20, -48, 40, 68), B(-33, -38, 66, 53), B(-20, -37, 40, 57)],
+  'vehicle.trailer': [B(-17, -22, 34, 32), B(-16, -20, 36, 33), B(-17, -22, 34, 30)],
 };
 /* MEASURED-END */
 
@@ -147,7 +152,8 @@ const POSES_CREW_2 = POSES_BOSS.filter(([p]) => ['stand', 'walk', 'push', 'feed'
 
 const PERSON_FALLBACK = B(-30, -70, 62, 80);
 
-function personEntries(who: 'boss' | 'crew' | 'crew2', look: PersonLook, poses: [Pose, string[]][]): PeopleEntry[] {
+function personEntries(who: 'boss' | 'crew' | 'crew2' | 'crew.vest', look: PersonLook, poses: [Pose, string[]][]): PeopleEntry[] {
+  const vestOnly = who === 'crew.vest';
   return poses.map(([pose, frames]) => {
     const id = `person.${who}.${pose}`;
     const bh = boxOf(id, 3, PERSON_FALLBACK);
@@ -162,9 +168,13 @@ function personEntries(who: 'boss' | 'crew' | 'crew2', look: PersonLook, poses: 
       headings: 4,
       mirrorWest: true,
       draw: (c: SkCanvas, v: View3q, frame: number, heading: number) =>
-        drawPerson(c, v, { dir: dirOf(heading), pose, frame, frames: frames.length, look, shadow: false }),
+        drawPerson(c, v, { dir: dirOf(heading), pose, frame, frames: frames.length, look, shadow: false, vestOnly }),
     };
-    if (who !== 'boss') e.tint = YARD.vestYardHand;
+    // the crew's vest: a near-white overlay the atlas modulates to the role's colour (yard hand, cutter, driver)
+    if (vestOnly) {
+      e.tint = VEST_KEY;
+      e.group = 'person.vest';
+    }
     return e;
   });
 }
@@ -174,13 +184,30 @@ function personEntries(who: 'boss' | 'crew' | 'crew2', look: PersonLook, poses: 
 // ---------------------------------------------------------------------------
 
 /** The hand-load families baked (the boss alone carries by hand; the crew pushes a carrier). */
-export const HAND_FAMILIES: readonly LoadFamily[] = ['fe', 'ci', 'cu', 'br', 'al', 'cab', 'mot', 'hms'];
-/** The carrier loads baked: empty and five families (al, mot and hms show as fe on a carrier). */
-export const CARRIER_FRAMES = ['empty', 'fe', 'ci', 'cu', 'br', 'cab'] as const;
+export const HAND_FAMILIES: readonly LoadFamily[] = ['fe', 'ci', 'cu', 'br', 'cab'];
+/** A family the atlas has no hand load for shows as the nearest baked one. */
+export const handFamilyOf = (f: LoadFamily): LoadFamily => (HAND_FAMILIES.includes(f) ? f : f === 'al' ? 'fe' : f === 'mot' ? 'fe' : 'fe');
+/** The carrier loads baked: empty and three families (brass shows with copper, the rest as fe). */
+export const CARRIER_FRAMES = ['empty', 'fe', 'ci', 'cu'] as const;
+/** Carriers are baked at this scale and drawn at 1 / CARRIER_K (simple shapes; sheet A's room). */
+export const CARRIER_K = 0.75;
+/** Vehicles are baked at this scale and drawn at 1 / VEHICLE_K (sheet B holds about 1 Mpx for them). */
+export const VEHICLE_K = 0.45;
+
+/** Wrap a draw so it bakes at k (the entry's drawScale is then 1 / k). */
+const scaled =
+  (k: number, draw: ManifestEntry['draw']): ManifestEntry['draw'] =>
+  (c, v, f, h) => {
+    c.save();
+    c.scale(k, k);
+    draw(c, v, f, h);
+    c.restore();
+  };
 export const carrierFrameOf = (f: LoadFamily | null): number => {
   if (!f) return 0;
   const i = (CARRIER_FRAMES as readonly string[]).indexOf(f);
-  return i > 0 ? i : 1;
+  if (i > 0) return i;
+  return f === 'br' || f === 'cab' ? 3 : 1;
 };
 
 function handLoadEntry(fam: LoadFamily): PeopleEntry {
@@ -213,10 +240,11 @@ function carrierEntry(kind: CarrierKind): PeopleEntry {
     frames: CARRIER_FRAMES,
     headings: 4,
     mirrorWest: true,
-    draw: (c, v, frame, heading) => {
+    drawScale: 1 / CARRIER_K,
+    draw: scaled(CARRIER_K, (c, v, frame, heading) => {
       const fam = CARRIER_FRAMES[frame];
       drawCarrier(c, v, kind, dirOf(heading), fam === 'empty' ? undefined : (fam as LoadFamily), 'self');
-    },
+    }),
   };
 }
 
@@ -237,7 +265,8 @@ function vehicle(id: string, o: { frames: readonly string[]; headings: 1 | 4 | 8
     frames: o.frames,
     headings: o.headings,
     mirrorWest: o.headings > 1,
-    draw: o.draw,
+    drawScale: 1 / VEHICLE_K,
+    draw: scaled(VEHICLE_K, o.draw),
   };
   if (o.tint) e.tint = o.tint;
   return e;
@@ -313,6 +342,7 @@ const VEHICLES: PeopleEntry[] = [
 export const PEOPLE: PeopleEntry[] = [
   ...personEntries('boss', BOSS, POSES_BOSS),
   ...personEntries('crew', CREW_BODY, POSES_CREW),
+  ...personEntries('crew.vest', CREW_BODY, POSES_CREW),
   ...(CREW_SECOND ? personEntries('crew2', CREW_BODY_2, POSES_CREW_2) : []),
   ...HAND_FAMILIES.map(handLoadEntry),
   carrierEntry('sack'),
@@ -324,7 +354,7 @@ export const PEOPLE: PeopleEntry[] = [
 // Layered actors: what the world draws, in order, at an actor's anchor
 // ---------------------------------------------------------------------------
 
-/** One sprite of an actor: drawn at the actor's anchor plus (dx, dy) points (at pen.VIEW; scale with ppm), mirrored when flip. */
+/** One sprite of an actor: drawn at the actor's anchor plus (dx, dy) points (at pen.VIEW; scale with ppm). A west heading of a mirrorWest entry is drawn mirrored (atlas cellOf says so). */
 export interface Layer {
   id: string;
   frame: number;
@@ -361,7 +391,7 @@ export function personLayers(a: PersonActor): Layer[] {
   const facingNorth = dirOf(a.heading) === 'n';
   const person: Layer = { id: `person.${a.who}.${a.pose}`, frame: a.frame, heading: a.heading, dx: 0, dy: 0 };
   const out: Layer[] = [];
-  const hand: Layer | null = a.hand && a.who === 'boss' ? { id: `load.hand.${a.hand}`, frame: 0, heading: a.heading, dx: 0, dy: 0 } : null;
+  const hand: Layer | null = a.hand && a.who === 'boss' ? { id: `load.hand.${handFamilyOf(a.hand)}`, frame: 0, heading: a.heading, dx: 0, dy: 0 } : null;
   let cart: Layer | null = null;
   if (a.carrier && a.pose === 'push') {
     const [dx, dy] = ahead4(a.heading, CARRIER_AHEAD[a.carrier.kind]);
@@ -370,6 +400,8 @@ export function personLayers(a: PersonActor): Layer[] {
   if (hand && !facingNorth) out.push(hand);
   if (cart && facingNorth) out.push(cart);
   out.push(person);
+  // the crew's vest overlay, modulated to the role (the world passes the role's vest colour)
+  if (a.who === 'crew') out.push({ id: `person.crew.vest.${a.pose}`, frame: a.frame, heading: a.heading, dx: 0, dy: 0 });
   if (hand && facingNorth) out.push(hand);
   if (cart && !facingNorth) out.push(cart);
   return out;
@@ -393,13 +425,14 @@ export function skipLayers(load?: SkipLoad): Layer[] {
 }
 
 /**
- * The merchant's flatbed: driving at a 4-heading, or parked east-west at the bays loading (crane frame
- * 0..2); its cargo (none, part, full) over the bed.
+ * The merchant's flatbed: driving at a 4-heading, or parked at its stand facing east, loading (crane
+ * frame 0..2: reach, lift, swing; the boom works to the south, over the bays); its cargo over the bed.
  */
 export function flatbedLayers(heading4: number, o: { crane?: number; cargo?: 'part' | 'full' } = {}): Layer[] {
   const V = { ppm: 40, tilt: 0.7, lift: Math.sqrt(1 - 0.49) };
   const loading = o.crane !== undefined;
-  const h = loading ? (dirOf(heading4) === 'w' ? 3 : 1) : heading4;
+  // loading frames are drawn facing east only (the world parks the flatbed at its stand facing east)
+  const h = loading ? 1 : heading4;
   const out: Layer[] = [loading ? { id: 'vehicle.flatbed.working', frame: 0, heading: 0, dx: 0, dy: 0 } : { id: 'vehicle.flatbed', frame: 0, heading: h, dx: 0, dy: 0 }];
   if (o.cargo) {
     const [dx, dy] = flatbedBedCentre(V, headingRad(h4to8(h)));
@@ -423,7 +456,7 @@ export function vanLayers(heading4: number, trailer: boolean): Layer[] {
 // ---------------------------------------------------------------------------
 
 /** What this part asks of each sheet at density 3 (agreed with the art director through requests.md). */
-export const SHARE_PX = { A: 2_100_000, B: 3_300_000 } as const;
+export const SHARE_PX = { A: 2_700_000, B: 1_000_000 } as const;
 
 export function pixelsOf(e: PeopleEntry, density: number, tight: boolean): number {
   const hs = baked(e);

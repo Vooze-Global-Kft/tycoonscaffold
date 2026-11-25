@@ -21,5 +21,5 @@ export function drawLoading(c: SkCanvas, w: number, h: number, pose: LoadingPose
   const L = loadingLayout(w, h, insets, words);
   const Y = recordLayers(L, words, tl);
   const p = pose.plates.length === tl.n ? pose : loadingPose(pose.t, tl);
-  composeFrame(c, Y, L, p, still);
+  composeFrame(c, Y, L, p, p.gate, still);
 }

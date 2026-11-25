@@ -450,39 +450,56 @@ def hum(rng, notes, durs, level=1.0):
 # the walk: one footstep by ground tile (four files each)
 # ===========================================================================
 
-def _boot(c, heel_hz, grit_band, grit_rate, grit_gain, thump_gain, dur=0.13):
+def _boot(c, heel_hz, grit_band, grit_rate, grit_gain, thump_gain, dur=0.13, scuff=0.5, crunch2=0.0, slab_hz=640.0, slab_q=9.0,
+          grain_tau=0.0025):
+    """One footstep in three parts: the heel strikes (a short knock of the slab), the sole rolls with a
+    scuff (friction noise with the rubber's roughness, 1.2 to 3.4 kHz), the toe pushes off; on gravel the
+    stones crunch under the heel and again under the toe."""
     rng = c.rng
     v = c.var
     m = Mix()
-    heel = band(white(ns(0.03), rng), 250.0, 2400.0) * expenv(ns(0.03), 0.006, 0.4)
+    hn = ns(0.06)
+    imp = np.zeros(hn)
+    imp[0] = 1.0
+    imp[:ns(0.004)] += 0.3 * white(ns(0.004), rng)
+    heel = reso(imp, [(slab_hz * (1.0 + 0.04 * (v - 1.5)), slab_q, 1.0), (slab_hz * 2.2, slab_q, 0.5)]) * expenv(hn, 0.02, 0.3)
     m.add(thump_gain * norm(heel))
-    th = concrete(c.sub('th'), 0.08, 0.5, 0.2, heel_hz * (1.0 + 0.06 * (v - 1.5)))
-    m.add(0.5 * thump_gain * phone(th, 300.0))
-    toe = band(white(ns(0.04), rng), 600.0, 3500.0) * expenv(ns(0.04), 0.008, 0.6)
-    m.add(0.6 * norm(toe), 0.045 + 0.008 * v)
-    g = grit(c.sub('g'), dur, grit_rate, grit_band[0], grit_band[1], tau=0.002,
-             env=points([(0, 0.0), (0.01, 1.0), (dur * 0.6, 0.4), (dur, 0.0)], ns(dur)))
-    m.add(grit_gain * norm(g))
+    th = concrete(c.sub('th'), 0.07, 0.5, 0.2, heel_hz * (1.0 + 0.06 * (v - 1.5)))
+    m.add(0.45 * thump_gain * phone(th, 320.0))
+    roll_at = 0.03 + 0.006 * v
+    nr = ns(0.075 + 0.01 * (v % 2))
+    tr = np.arange(nr) / SR
+    rough = 1.0 + 0.7 * np.sign(np.sin(TAU * (130.0 + 25.0 * v) * tr))
+    sc = band(white(nr, c.sub('sc')), 1200.0, 3400.0) * rough * np.sin(np.pi * tr / tr[-1]) ** 1.5
+    m.add(scuff * norm(sc), roll_at)
+    toe = band(white(ns(0.03), rng), 700.0, 3200.0) * expenv(ns(0.03), 0.006, 0.6)
+    m.add(0.5 * norm(toe), roll_at + nr / SR - 0.01)
+    for k, (at, g) in enumerate(((0.0, 1.0), (roll_at + 0.05, crunch2))):
+        if g <= 0.0:
+            continue
+        gr = grit(c.sub('g%d' % k), dur, grit_rate, grit_band[0], grit_band[1], tau=grain_tau, amp_spread=0.95,
+                  env=points([(0, 0.0), (0.008, 1.0), (dur * 0.5, 0.45), (dur, 0.0)], ns(dur)))
+        m.add(g * grit_gain * norm(gr), at)
     c.accent(0.0)
     return m.out()
 
 
 @yard_recipe('step_concrete', stream_ms=420, loud_db=FREQUENT)
 def step_concrete(c):
-    """A work boot on the yard's concrete: a heel tap with a thin scuff, the toe 50 ms later."""
-    return _boot(c, 140.0, (1500.0, 4500.0), 120.0, 0.25, 1.0)
+    """A work boot on the yard's concrete: the heel's knock, the sole's scuffed roll, the toe."""
+    return _boot(c, 140.0, (1500.0, 4500.0), 120.0, 0.15, 1.0, scuff=0.4, slab_hz=640.0, slab_q=9.0)
 
 
 @yard_recipe('step_gravel', stream_ms=420, loud_db=FREQUENT)
 def step_gravel(c):
-    """A boot on the lane's gravel: a soft heel under a crunch of stones grinding (1 to 4 kHz)."""
-    return _boot(c, 120.0, (900.0, 4000.0), 1400.0, 1.0, 0.45, dur=0.16)
+    """A boot on the lane's gravel: the stones crunch under the heel and again under the toe."""
+    return _boot(c, 120.0, (900.0, 3600.0), 420.0, 1.0, 0.3, dur=0.12, scuff=0.1, crunch2=0.8, slab_hz=520.0, slab_q=3.0, grain_tau=0.005)
 
 
 @yard_recipe('step_asphalt', stream_ms=420, loud_db=FREQUENT)
 def step_asphalt(c):
-    """A boot on the weighbridge apron's asphalt: a duller heel, no grit, a faint grain."""
-    return _boot(c, 105.0, (700.0, 2400.0), 300.0, 0.12, 0.9)
+    """A boot on the weighbridge apron's asphalt: a duller heel, a soft roll, no grit."""
+    return _boot(c, 105.0, (700.0, 2400.0), 300.0, 0.08, 0.9, scuff=0.25, slab_hz=520.0, slab_q=4.0)
 
 
 # ===========================================================================
@@ -507,7 +524,7 @@ def cut_spanner(c):
     return y * seg_env(len(y), 2.0, 40.0)
 
 
-@yard_recipe('cut_sledge', loud_db=LOUD)
+@yard_recipe('cut_sledge', loud_db=0.0)
 def cut_sledge(c):
     """The sledgehammer on cast iron, one blow (0.7 s): the swing's short air, the heavy dull clank of
     the casting (low inharmonic modes, damped), its crack and a little dust; chained every 700 ms."""
@@ -515,9 +532,10 @@ def cut_sledge(c):
     m = Mix()
     sw = band(white(ns(0.12), c.sub('sw')), 400.0, 1800.0) * points([(0, 0.0), (0.09, 1.0), (0.12, 0.0)], ns(0.12), 2.0)
     m.add(0.12 * norm(sw))
-    hit = metal(c.sub('hit'), 560.0 * (1.0 + 0.04 * v), CASTING, 0.07, 0.45, tau_fall=0.7, click=0.9, click_band=(1200.0, 5500.0))
+    hit = metal(c.sub('hit'), 560.0 * (1.0 + 0.04 * v), CASTING, 0.04, 0.45, tau_fall=0.7, spread=0.06, click=1.0, click_band=(1200.0, 5500.0))
     m.add(hit, 0.12)
-    m.add(0.6 * concrete(c.sub('c'), 0.2, 1.4, 0.3, 85.0), 0.12)
+    m.add(0.6 * concrete(c.sub('c'), 0.2, 1.4, 0.8, 85.0), 0.12)
+    m.add(0.6 * burst(c.sub('crack'), 0.05, 1500.0, 6000.0, 0.008), 0.121)
     m.add(0.35 * grit(c.sub('dust'), 0.3, 500.0, 1500.0, 5000.0, tau=0.002,
                       env=points([(0, 1.0), (0.3, 0.0)], ns(0.3))), 0.14)
     c.accent(0.12)
@@ -569,7 +587,7 @@ def piece_cast(c):
     grit off its rough skin, a heavy concrete thud (no ring at all)."""
     v = c.var
     m = Mix()
-    m.add(metal(c.sub('a'), 640.0 * (1.0 + 0.05 * (v - 1)), CASTING, 0.035, 0.25, tau_fall=0.7, click=0.8,
+    m.add(metal(c.sub('a'), 640.0 * (1.0 + 0.05 * (v - 1)), CASTING, 0.02, 0.25, tau_fall=0.7, spread=0.06, click=1.0,
                 click_band=(1000.0, 4500.0)))
     m.add(0.8 * concrete(c.sub('c'), 0.2, 1.5, 0.7, 90.0))
     m.add(0.45 * grit(c.sub('g'), 0.12, 600.0, 1500.0, 5000.0, tau=0.002, env=points([(0, 1.0), (0.12, 0.0)], ns(0.12))), 0.01)
@@ -598,10 +616,11 @@ def piece_copper(c):
     note = ('B5', 'G#5', 'C#6')[v % 3]
     f0 = c.hz(note)
     m = Mix()
-    m.add(metal(c.sub('a'), f0, BAR, 0.35, 0.9, amps=(1.0, 0.45, 0.2, 0.08), tau_fall=0.55, spread=0.002, click=0.25,
+    m.add(metal(c.sub('a'), f0, BAR, 0.35, 0.9, amps=(1.0, 0.9, 0.6, 0.25), tau_fall=0.7, spread=0.002, click=0.25,
                 click_band=(2500.0, 7000.0)))
     m.add(0.35 * metal(c.sub('s'), f0 * 1.5, BAR, 0.12, 0.4, amps=(1.0, 0.3, 0.1), spread=0.01, click=0.0), 0.004)
     m.add(0.2 * concrete(c.sub('c'), 0.08, 0.4, 0.2, 160.0))
+    m.add(0.35 * metal(c.sub('bounce'), f0 * 1.003, BAR, 0.1, 0.3, amps=(1.0, 0.45, 0.2), spread=0.002, click=0.5), 0.07 + 0.01 * v)
     c.accent(0.0)
     return m.out()
 
@@ -615,8 +634,9 @@ def piece_brass(c):
     roots = (('E5', 'A5'), ('F#5', 'B5'), ('G#5', 'C#6'))[v % 3]
     for k, nm in enumerate(roots):
         f = c.hz(nm)
-        m.add(metal(c.sub('t%d' % k), f, (1.0, 2.0, 2.42, 3.0, 4.07), 0.2, 0.6, amps=(1.0, 0.55, 0.35, 0.3, 0.15),
-                    tau_fall=0.65, spread=0.004, click=0.35), 0.035 * k + 0.01 * v)
+        m.add(metal(c.sub('t%d' % k), f, (1.0, 1.59, 2.42, 3.11, 4.07), 0.14, 0.45, amps=(1.0, 0.7, 0.5, 0.35, 0.2),
+                    tau_fall=0.65, spread=0.01, click=0.5), 0.035 * k + 0.01 * v)
+    m.add(0.4 * grit(c.sub('cl'), 0.12, 90.0, 1500.0, 5000.0, tau=0.003, env=points([(0, 1.0), (0.12, 0.0)], ns(0.12))), 0.02)
     m.add(0.2 * concrete(c.sub('c'), 0.08, 0.5, 0.25, 150.0))
     c.accent(0.0)
     return m.out()
@@ -682,7 +702,7 @@ def feed(c):
     m = Mix()
     n = ns(0.22)
     m.add(0.5 * band(white(n, c.sub('s')), 800.0, 3600.0) * points([(0, 0.0), (0.05, 1.0), (0.22, 0.2)], n))
-    m.add(0.8 * metal(c.sub('k'), 540.0 * (1.0 + 0.06 * v), PLATE, 0.06, 0.25, tau_fall=0.75, click=0.4), 0.2)
+    m.add(0.8 * metal(c.sub('k'), 540.0 * (1.0 + 0.06 * v), PLATE, 0.035, 0.25, tau_fall=0.75, spread=0.05, click=0.6), 0.2)
     c.accent(0.2)
     return m.out()
 
@@ -811,7 +831,7 @@ def lesson(c):
     """A lesson on the ticket: a soft bell: a small steel bowl struck with a padded beater (G#5,
     its partials 2.7 and 5.0 times up), long and quiet."""
     f = c.hz('G#5')
-    y = metal(c.sub('b'), f, (1.0, 2.71, 5.03), 0.55, 1.4, amps=(1.0, 0.25, 0.06), spread=0.0, click=0.05, attack_ms=6.0)
+    y = metal(c.sub('b'), f, (1.0, 1.007, 2.71, 2.735, 5.03), 0.55, 1.4, amps=(1.0, 0.8, 0.5, 0.4, 0.15), tau_fall=0.85, spread=0.0, click=0.05, attack_ms=6.0)
     c.accent(0.0)
     return y
 
@@ -848,22 +868,29 @@ def ui_open(c):
 
 @yard_recipe('ui_close', loud_db=QUIET)
 def ui_close(c):
-    """The card closes: the clip snapping back onto the board (a click and a dry plywood tap)."""
+    """The card closes: the clipboard laid down on the cabin's desk: a hollow plywood tok (two board
+    resonances) and the sheets settling."""
     m = Mix()
-    m.add(0.8 * metal(c.sub('clip'), 1650.0, (1.0, 1.55, 2.4), 0.01, 0.04, click=0.9))
-    m.add(0.5 * band(white(ns(0.03), c.sub('w')), 500.0, 2200.0) * expenv(ns(0.03), 0.006), 0.005)
+    n = ns(0.09)
+    imp = np.zeros(n)
+    imp[0] = 1.0
+    tok = reso(imp + 0.2 * np.r_[white(ns(0.003), c.sub('i')), np.zeros(n - ns(0.003))], [(720.0, 7.0, 1.0), (1180.0, 9.0, 0.6), (2050.0, 6.0, 0.3)])
+    m.add(norm(tok * expenv(n, 0.025, 0.4)))
+    nn = ns(0.06)
+    m.add(0.25 * band(white(nn, c.sub('p')), 1800.0, 5000.0) * points([(0, 0.0), (0.01, 1.0), (0.06, 0.0)], nn), 0.02)
     c.accent(0.0)
-    return m.out()
+    return phone(m.out(), 450.0)
 
 
 @yard_recipe('buy', loud_db=0.0)
 def buy(c):
-    """Bought: the order book's carbon stamped "PAID": a steel ticket punch's crunch, then a steel tag
-    hung on its hook (a small ring, A5)."""
+    """Bought: a steel ticket punch's crunch, then the steel tag stamped with the item hung on the rack's
+    hook (a small stamped plate ringing around A5, the hook's tick)."""
     m = Mix()
     m.add(0.7 * band(white(ns(0.03), c.sub('p')), 900.0, 4500.0) * expenv(ns(0.03), 0.005))
     m.add(0.6 * metal(c.sub('k'), 780.0, CASTING, 0.012, 0.06, click=0.7), 0.002)
-    m.add(0.6 * metal(c.sub('tag'), c.hz('A5'), BAR, 0.2, 0.5, amps=(1.0, 0.35, 0.12), spread=0.002, click=0.3), 0.08)
+    m.add(0.55 * metal(c.sub('tag'), c.hz('A5'), PLATE, 0.12, 0.4, tau_fall=0.85, spread=0.02, click=0.3), 0.08)
+    m.add(0.35 * metal(c.sub('hook'), 2300.0, (1.0, 1.8), 0.02, 0.05, click=0.6), 0.2)
     c.accent(0.0, 0.08)
     return m.out()
 
@@ -916,7 +943,8 @@ def set_down(c):
     on its feet, its sheet body clanking once."""
     m = Mix()
     m.add(0.9 * concrete(c.sub('c'), 0.2, 1.4, 0.5, 95.0))
-    m.add(0.6 * metal(c.sub('b'), 520.0, PLATE, 0.06, 0.3, tau_fall=0.8, click=0.3), 0.01)
+    m.add(0.6 * metal(c.sub('b'), 520.0, PLATE, 0.035, 0.3, tau_fall=0.8, spread=0.05, click=0.5), 0.01)
+    m.add(0.35 * concrete(c.sub('c2'), 0.1, 0.6, 0.5, 120.0), 0.07)
     c.accent(0.0)
     return phone(m.out(), 400.0)
 
@@ -1023,11 +1051,16 @@ def furnace_roar(c):
 
 @yard_recipe('ready_chime', length=1.6, loud_db=0.0)
 def ready_chime(c):
-    """Ready to pour: the crucible's hanging steel signal bar struck twice (E5, then B5 above it)."""
+    """Ready to pour: the burner turned down (its roar falling away) and the crucible's steel signal bar
+    rapped three times quickly (B5), the hand damping it after the third."""
     m = Mix()
-    m.add(metal(c.sub('a'), c.hz('E5'), BAR, 0.5, 1.2, amps=(1.0, 0.3, 0.1, 0.03), spread=0.001, click=0.3))
-    m.add(0.8 * metal(c.sub('b'), c.hz('B5'), BAR, 0.45, 1.1, amps=(1.0, 0.3, 0.1, 0.03), spread=0.001, click=0.3), 0.28)
-    c.accent(0.0, 0.28)
+    n = ns(0.6)
+    m.add(0.5 * burner(c.sub('bn'), 0.6, 0.6) * points([(0, 1.0), (0.6, 0.0)], n, 1.8))
+    f = c.hz('B5')
+    for k, at in enumerate((0.05, 0.16, 0.27)):
+        m.add((1.0 - 0.15 * k) * metal(c.sub('r%d' % k), f, BAR, 0.35 if k == 2 else 0.12, 0.9 if k == 2 else 0.2,
+                                       amps=(1.0, 0.6, 0.35, 0.1), spread=0.002, click=0.5), at)
+    c.accent(0.05, 0.16, 0.27)
     return m.out()
 
 
@@ -1203,7 +1236,10 @@ def load_clank(c):
     files, three plates of different size), the deck answering."""
     v = c.var
     m = Mix()
-    m.add(metal(c.sub('p'), (430.0, 480.0, 390.0)[v % 3], PLATE, 0.11, 0.6, tau_fall=0.8, click=0.9))
+    f0 = (430.0, 480.0, 390.0)[v % 3]
+    m.add(metal(c.sub('p'), f0, PLATE, 0.06, 0.6, tau_fall=0.85, spread=0.08, click=1.0))
+    m.add(0.5 * grit(c.sub('gr'), 0.15, 300.0, 1200.0, 5000.0, tau=0.003, env=points([(0, 1.0), (0.15, 0.0)], ns(0.15))))
+    m.add(0.4 * metal(c.sub('p2'), f0 * 1.02, PLATE, 0.04, 0.3, tau_fall=0.8, spread=0.03, click=0.8), 0.055 + 0.01 * v)
     m.add(0.7 * concrete(c.sub('c'), 0.2, 1.6, 0.4, 85.0))
     c.accent(0.0)
     return phone(m.out(), 380.0)
@@ -1352,8 +1388,8 @@ EVENTS = {
     'deal_stamp': (0.5, 400, None, 'a deal delivery stamped: a rubber stamp\'s thump and its handle\'s knock', 1, None),
     # interface
     'ui_open': (0.4, 60, None, 'a card opens: a clipboard\'s spring clip lifted (a click, the spring\'s short buzz)', 1, 24),
-    'ui_close': (0.35, 60, None, 'the card closes: the clip snapping back onto the board', 1, 25),
-    'buy': (0.55, 150, ['medium'], 'bought: a ticket punch\'s crunch and a steel tag hung on its hook (A5)', 2, 26),
+    'ui_close': (0.35, 60, None, 'the card closes: the clipboard laid on the cabin desk (a hollow plywood tok, the sheets settling)', 1, 25),
+    'buy': (0.55, 150, ['medium'], 'bought: a ticket punch\'s crunch and the steel tag hung on the rack\'s hook (a stamped plate around A5)', 2, 26),
     'denied': (0.5, 300, ['light'], 'refused: a gloved fist on a steel cabinet door, twice, dull', 1, 27),
     'goal_tick': (0.4, 500, None, 'a goal done (my key): a carpenter\'s pencil ticking the clipboard', 1, None),
     # arrivals and hires
@@ -1368,7 +1404,7 @@ EVENTS = {
     'bench_knock': (0.4, 550, None, 'the motor bench (0.6 s segment): hammer and chisel on a motor casing, two knocks; chained every 600 ms; two files', 2, None),
     # the crucible
     'furnace_roar': (0.4, 1800, None, 'the crucible\'s burner (2.0 s segment), a ladder of heat (0 lit, 1 half, 2 pouring heat); chained every 1900 ms', 2, None),
-    'ready_chime': (0.5, 3000, None, 'ready to pour: the crucible\'s steel signal bar struck twice (E5, B5)', 1, None),
+    'ready_chime': (0.5, 3000, None, 'ready to pour: the burner turned down and the crucible\'s steel signal bar rapped three times (B5)', 1, None),
     'pour_glug': (0.6, 2000, None, 'the pour: a thick hiss and sizzle, low glugs, sparkle where it splashes (2 s)', 1, 29),
     'cool_ticks': (0.4, 2000, None, 'the bar cooling: the sizzle fading, then metal ticking as it contracts (2.6 s)', 1, None),
     # the truck and the skips

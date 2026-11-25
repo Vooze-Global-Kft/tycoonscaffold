@@ -11,7 +11,7 @@
  * - Sounds by id through the fx service (a missing id is silent): crane, plate, pour, cooled, gate.
  */
 import { useEffect, useMemo } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { PixelRatio, Pressable, StyleSheet } from 'react-native';
 import { Canvas, Picture, Skia } from '@shopify/react-native-skia';
 import { runOnJS, useDerivedValue, useFrameCallback, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { fx } from '../../../services/fx';
@@ -36,14 +36,17 @@ interface Prepared {
 /** The last prepared picture set: the shell's loading screen and the curtain over the yard share it. */
 let cache: Prepared | null = null;
 
+/** Pixels a point the still parts are baked at (as the yard's atlas: at most 3). */
+const DENSITY = Math.max(1, Math.min(3, PixelRatio.get()));
+
 function prepare(title: string, w: number, h: number, insets: Insets): Prepared {
   const words = titleWords(title);
-  const key = `${words.join(' ')}|${w}x${h}|${insets.left},${insets.right},${insets.top},${insets.bottom}`;
+  const key = `${words.join(' ')}|${w}x${h}|${insets.left},${insets.right},${insets.top},${insets.bottom}|${DENSITY}`;
   if (cache && cache.key === key) return cache;
   const tl = loadingTimeline(words);
   const L = loadingLayout(w, h, insets, words);
   const cueList = loadingCues(tl);
-  cache = { key, words, tl, L, Y: recordLayers(L, words, tl), cues: cueList.map((c) => c.t), cueIds: cueList.map((c) => c.id) };
+  cache = { key, words, tl, L, Y: recordLayers(L, words, tl, DENSITY), cues: cueList.map((c) => c.t), cueIds: cueList.map((c) => c.id) };
   return cache;
 }
 
@@ -108,17 +111,29 @@ export function LoadingStage({ title, width, height, insets, ready, onDone }: Lo
       C.gateAt.value = frozen !== null ? Math.max(0, t - GATE_S / 2) : t;
       if (frozen === null) runOnJS(gateSound)();
     }
+    if (C.gateAt.value < NOT_YET) {
+      const g = Math.max(0, Math.min(1, (t - C.gateAt.value) / GATE_S));
+      if (g !== C.gateP.value) C.gateP.value = g;
+    }
     if (!C.done.value && C.gateAt.value < NOT_YET && t >= C.gateAt.value + GATE_S && frozen === null) {
       C.done.value = true;
       runOnJS(finish)();
     }
   });
 
-  const picture = useDerivedValue(() => {
+  // the still background: redrawn only while the gate moves
+  const back = useDerivedValue(() => {
+    const r = Skia.PictureRecorder();
+    const c = r.beginRecording(Skia.XYWHRect(0, 0, L.w, L.h));
+    composeFrame(c, Y, L, null, C.gateP.value, still, 'bg');
+    return r.finishRecordingAsPicture();
+  });
+  // the moving scene, every frame
+  const front = useDerivedValue(() => {
     const pose = loadingPose(C.t.value, tl, C.gateAt.value, still);
     const r = Skia.PictureRecorder();
     const c = r.beginRecording(Skia.XYWHRect(0, 0, L.w, L.h));
-    composeFrame(c, Y, L, pose, still);
+    composeFrame(c, Y, L, pose, pose.gate, still, 'fg');
     return r.finishRecordingAsPicture();
   });
 
@@ -129,10 +144,15 @@ export function LoadingStage({ title, width, height, insets, ready, onDone }: Lo
     C.cue.value = cues.length;
   };
 
+  // one plain style object (the web canvas takes no style array)
+  const canvasStyle = useMemo(() => ({ position: 'absolute' as const, left: 0, top: 0, width, height }), [width, height]);
   return (
     <Pressable style={[styles.fill, { width, height }]} onPress={skip} accessibilityRole="progressbar" accessibilityLabel={S.loading}>
-      <Canvas style={{ width, height }} pointerEvents="none">
-        <Picture picture={picture} />
+      <Canvas style={canvasStyle} pointerEvents="none">
+        <Picture picture={back} />
+      </Canvas>
+      <Canvas style={canvasStyle} pointerEvents="none">
+        <Picture picture={front} />
       </Canvas>
     </Pressable>
   );
