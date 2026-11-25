@@ -228,6 +228,8 @@ const WEB_ONLY = [
   'src/ui/salvage/world/labelsDev.web.ts',
   'src/ui/salvage/hud/fontScale.web.ts',
   'src/ui/salvage/hud/dev.web.ts',
+  // The hints' scripted thumb of the preview (?autoplay=opening&route=1|2); phones take autoplay.tsx (null).
+  'src/ui/salvage/hints/autoplay.web.tsx',
 ];
 
 /**

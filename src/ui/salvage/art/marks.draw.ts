@@ -130,11 +130,11 @@ export function drawSparks(c: SkCanvas, frame = 0): void {
 /** A puff of dust where a sledge lands or a piece drops: three soft grey lobes, growing and fading over frames 0..2. */
 export function drawDust(c: SkCanvas, frame = 0): void {
   const k = 1 + frame * 0.45;
-  const a = 0.5 - frame * 0.14;
+  const a = 0.8 - frame * 0.2;
   for (let i = 0; i < 4; i++) {
     const x = (i - 1.5) * 6 * k;
     const y = -3 * k - hash01(i, 41) * 4 * k;
-    c.drawPath(oval(x, y, 6 * k, 4 * k), fill('#BDB7AA', a));
+    c.drawPath(oval(x, y, 6 * k, 4 * k), fill('#A9A293', a));
   }
 }
 

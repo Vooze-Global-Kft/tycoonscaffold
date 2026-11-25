@@ -51,6 +51,12 @@
  *   call                      "Call the election" (the ribbon's button)      goal     the goal line
  *   button:inTray | button:ledger | button:cabinet | button:poll | button:office   the bottom row
  *   ledger:raise:<i>          ministry i's untaught "Raise" in the Ledger     sticky   the sticky note (a follow-up ahead)
+ *
+ * KEYS of the salvage mode (the scrapyard, docs/design/yard-stage1.md 4.1 and 9; a contract between the
+ * hints in src/ui/salvage/hints and the hud in src/ui/salvage/hud; controls use useTarget, the stick zone is
+ * set with `targets.set` by the hints from stickZone())
+ *   salvage:oneButton         the one button (Open, Step out), lower right   salvage:goal     the goal line
+ *   salvage:stick             the stick zone, lower left (where the ghost thumb drags)
  */
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { HostInstance } from 'react-native';

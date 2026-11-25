@@ -4,7 +4,16 @@
  * toasts. Every word through ../strings.ts `say`; every number through the facade's formatters.
  */
 import * as R from '../../../engine/salvage';
-import { say } from '../strings';
+import { say as sayRaw, TEXT } from '../strings';
+
+/**
+ * `say`, but a key the strings file does not define yet prints as a visible "[key]" (BUILD.md: a missing
+ * key is a request to the strings engineer and shows until it is written), never a crash.
+ */
+export function say(t: R.Txt, c: Parameters<typeof sayRaw>[1]): string {
+  if (!(t.key in TEXT)) return `[${t.key}]`;
+  return sayRaw(t, c);
+}
 
 /** The few numbers of the bar (primitives, compared shallowly). */
 export interface BarValues {
@@ -14,14 +23,16 @@ export interface BarValues {
   of: number;
   next: string | null;
   need: number;
-  carryKg: number;
-  cap: number;
+  /** The rival just passed (its chip name id), else null. */
+  passed: string | null;
+  load_g: number;
+  cap_g: number;
   driving: boolean;
-  drivingKg: number;
+  net_g: number;
   trial: boolean;
 }
 
-const NONE: BarValues = { ok: false, cash: 0, rank: 0, of: 0, next: null, need: 0, carryKg: 0, cap: 0, driving: false, drivingKg: 0, trial: false };
+const NONE: BarValues = { ok: false, cash: 0, rank: 0, of: 0, next: null, need: 0, passed: null, load_g: 0, cap_g: 0, driving: false, net_g: 0, trial: false };
 
 export function barValues(cfg: R.SalvageConfig, g: R.SalvageGame | undefined): BarValues {
   if (!g?.salvage) return NONE;
@@ -33,49 +44,66 @@ export function barValues(cfg: R.SalvageConfig, g: R.SalvageGame | undefined): B
     of: b.of,
     next: b.next?.chip ?? null,
     need: b.next?.need_g ?? 0,
-    carryKg: b.carry?.kg ?? 0,
-    cap: b.carry?.cap ?? 0,
+    passed: b.passed?.chip ?? null,
+    load_g: b.carry?.load_g ?? 0,
+    cap_g: b.carry?.cap_g ?? 0,
     driving: b.driving !== null,
-    drivingKg: b.driving?.kg ?? 0,
+    net_g: b.driving?.net_g ?? 0,
     trial: b.driving?.trial ?? false,
   };
 }
 
-/** The ladder chip's three forms in words, longest first (5.2). */
+/**
+ * The ladder chip's forms in words, longest first (5.2): "26th of 26 · next {rival} 0.15 t", "{rank} · next
+ * {rival}", "{rank} · 0.15 t to next"; just after a pass, "25th of 26 · passed {rival}" first.
+ */
 export function ladderForms(v: BarValues, c: R.SalvageContent): string[] {
   const rank = { rank: v.rank };
-  if (!v.next) return [say({ key: 'rankChipTop', args: { rank, n: { n: v.of } } }, c)];
-  const t = { mass_g: v.need, step: 'lot' as const };
+  const passed = v.passed ? [say({ key: 'rankChipPassed', args: { rank, n: { n: v.of }, rival: { name: v.passed } } }, c)] : [];
+  if (!v.next) return [...passed, say({ key: 'rankChipTop', args: { rank, n: { n: v.of } } }, c)];
+  const t = { tonnes_g: v.need };
   return [
+    ...passed,
     say({ key: 'rankChip', args: { rank, n: { n: v.of }, rival: { name: v.next }, t } }, c),
     say({ key: 'rankChipShort', args: { rank, rival: { name: v.next } } }, c),
     say({ key: 'rankChipToNext', args: { rank, t } }, c),
   ];
 }
 
-/** The carry chip in words. */
+/**
+ * The carry chip in words: "28.6 / 30 kg" on foot; while driving the skip's mass alone ("1,020 kg", the
+ * lead's ruling of 15:55; the chip draws a skip pictogram before it). The mass alone has no key of its
+ * own yet (requests.md: `carryDriving` "{kg}"); until it exists the skip's mass prints through
+ * trialLoad / skipLoad.
+ */
 export function carryText(v: BarValues, c: R.SalvageContent): string {
-  if (v.driving) return say({ key: v.trial ? 'trialLoad' : 'skipLoad', args: { kg: { mass_g: v.drivingKg * 1000, step: 'bridge' } } }, c);
-  return say({ key: 'carry', args: { a: { n: Math.round(v.carryKg * 10) / 10 }, b: { n: v.cap } } }, c);
+  const kg = { mass_g: v.net_g, step: 'bridge' as const };
+  if (v.driving) return 'carryDriving' in TEXT ? say({ key: 'carryDriving' as R.TextKey, args: { kg } }, c) : say({ key: v.trial ? 'trialLoad' : 'skipLoad', args: { kg } }, c);
+  return say({ key: 'carry', args: { a: { kg_g: v.load_g }, b: { kg_g: v.cap_g } } }, c);
 }
 
 export interface GoalValues {
   goal: string | null;
+  /** The goal's meter ("1.20 / 2.50 t") and its share 0..1, or null. */
   progress: string | null;
+  share: number | null;
   next: string | null;
   advice: string | null;
 }
 
+/** The goal card's lines from the facade's `nextGoal` (with its meter and next line) and `advice`. */
 export function goalValues(cfg: R.SalvageConfig, g: R.SalvageGame | undefined, now: number): GoalValues {
-  if (!g?.salvage) return { goal: null, progress: null, next: null, advice: null };
+  if (!g?.salvage) return { goal: null, progress: null, share: null, next: null, advice: null };
   const c = cfg.salvage;
   const goal = R.nextGoal(cfg, g);
   const adv = R.advice(cfg, g, now);
-  const nextDef = goal ? c.goals[goal.n + 1] : undefined;
+  const meter = goal?.meter ?? null;
+  const progress = meter ? say(meter.text, c) : goal?.progress ? say({ key: 'goalProgress', args: { a: { n: goal.progress.a }, b: { n: goal.progress.b } } }, c) : null;
   return {
     goal: goal ? say(goal.text, c) : null,
-    progress: goal?.progress ? say({ key: 'goalProgress', args: { a: { n: goal.progress.a }, b: { n: goal.progress.b } } }, c) : null,
-    next: nextDef ? say({ key: nextDef.text as R.TextKey }, c) : null,
+    progress,
+    share: meter ? Math.max(0, Math.min(1, meter.share)) : null,
+    next: goal?.next ? say(goal.next, c) : null,
     advice: adv ? say(adv.line, c) : null,
   };
 }

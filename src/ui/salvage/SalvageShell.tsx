@@ -22,7 +22,7 @@
  */
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AppState, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as R from '../../engine/salvage';
@@ -35,16 +35,18 @@ import { hudDemo } from './hud/dev';
 import { useFontScale } from './hud/fontScale';
 import { HudLayer, OneButton, RotateCard } from './hud/Hud';
 import { hudLayout } from './hud/metrics';
+import { yardSound } from './hud/pump';
 import { useEventPump } from './hud/usePump';
+import { Autoplay, HintLayer } from './hints';
 import { useHudTriggers } from './hud/useTriggers';
 import { OverlayHost, type Insets } from './overlays/OverlayHost';
 import { PAL } from './palette';
-import { S } from './strings';
 import { overlaysOpen, useSalvageUi } from './uiState';
 import { spriteIds, useYardLoop, type Motion } from './world/frameLoop';
 import { STICK_R, stick, useStickResponder, type StickZone } from './world/stick';
 import { useRulesTable } from './world/useRulesTable';
 import { sigOf, useYardArt, yardFor } from './world/useYard';
+import { WorldLayer } from './world/WorldLayer';
 import { YardView } from './world/YardView';
 
 /** The stick zone: this share of the safe area's width from its left, below this share of its height. */
@@ -126,11 +128,11 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
   // The presence sample (at most ten a second, from the UI thread): where the boss stands; the rules decide nearness.
   const stillSince = useRef<number | null>(null);
   const onSample = useCallback(
-    (_act: number, x: number, y: number, driving: number, moving: number) => {
+    (_act: number, x: number, y: number, driving: number, moving: number, still?: number) => {
       const t = Date.now();
       if (moving === 1) stillSince.current = null;
       else if (stillSince.current === null) stillSince.current = t;
-      const standingFor = stillSince.current === null ? 0 : (t - stillSince.current) / 1000;
+      const standingFor = still ?? (stillSince.current === null ? 0 : (t - stillSince.current) / 1000);
       salvageActions.presence({ x, y, driving: driving === 1, moving: moving === 1, standingFor });
       useSalvageUi.getState().setPlace(driving === 1 ? null : R.placeNear(cfg, x, y));
     },
@@ -144,7 +146,9 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
   useEffect(() => {
     if (!active) stick.value = { on: 0, bx: 0, by: 0, kx: 0, ky: 0 };
   }, [active]);
-  const anim = useYardLoop({ yard, sheet: art?.sheet ?? null, ids, motion, rules, capacity: CARRY_DRAWN, width, height, active, measure: yardSwitches.panel, insets, onSample, onDriving });
+  // `active` is "may steer": the loop itself runs while landscape and in the foreground (2.8: the rules
+  // keep running under an open card; the boss stands). It reports footsteps and the diesel to the pump.
+  const anim = useYardLoop({ yard, sheet: art?.sheet ?? null, ids, motion, rules, capacity: CARRY_DRAWN, width, height, active, measure: yardSwitches.panel, insets, onSample, onDriving, sound: yardSound });
 
   const zoneRef = useRef<StickZone>(stickZone(width, height, insets));
   zoneRef.current = stickZone(width, height, insets);
@@ -167,19 +171,17 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
     [responder, grant],
   );
 
-  const atlasNote = art?.sheet ? `atlas ${art.sheet.width}x${art.sheet.height}@${art.sheet.density} (${art.sheet.names.length}) bake ${art.bakeMs} ms` : 'atlas baking';
+  const atlasNote = art ? `bake ${art.bakeMs} ms` : 'atlas baking';
   return (
     <View style={styles.root}>
       <StatusBar hidden />
       <YardView yard={yard} art={art} anim={anim} />
+      <WorldLayer cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} active={active} />
       <View style={StyleSheet.absoluteFill} {...input} />
       <StickKnob />
-      {!used ? (
-        <View pointerEvents="none" style={[styles.hint, { left: insets.left + EDGE, bottom: insets.bottom + EDGE }]}>
-          <Text style={styles.hintText}>{S.hintStick}</Text>
-        </View>
-      ) : null}
-      <HudLayer cfg={cfg} L={L} ground={anim.ground} yard={yard} />
+      <HintLayer cfg={cfg} width={width} height={height} insets={insets} zone={zoneRef.current} used={used} active={active} />
+      <Autoplay cfg={cfg} zone={zoneRef.current} />
+      <HudLayer cfg={cfg} L={L} camera={anim.camera} yard={yard} />
       <OneButton cfg={cfg} L={L} hidden={overlays > 0} onStepOut={() => (anim.exit.value = 1)} />
       {yardSwitches.panel ? <DevPanel stats={anim.stats} top={height - insets.bottom - 26} left={insets.left + Math.round(width * 0.36)} atlas={atlasNote} /> : null}
       <OverlayHost width={width} height={height} insets={insets} />
@@ -211,6 +213,4 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#3A3631', overflow: 'hidden' },
   base: { position: 'absolute', left: 0, top: 0, width: STICK_R * 2, height: STICK_R * 2, borderRadius: STICK_R, borderWidth: 3, borderColor: 'rgba(255,255,255,0.55)', backgroundColor: 'rgba(0,0,0,0.18)' },
   knob: { position: 'absolute', left: 0, top: 0, width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,246,224,0.85)', borderWidth: 2, borderColor: PAL.ink },
-  hint: { position: 'absolute', backgroundColor: PAL.hud, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  hintText: { color: PAL.hudText, fontSize: 14, fontWeight: '600' },
 });

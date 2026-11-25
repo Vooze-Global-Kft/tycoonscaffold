@@ -16,7 +16,7 @@ import { salvageActions } from '../../../modes/salvage/actions';
 import { YARD } from '../art/palette';
 import { say } from '../strings';
 import { openCard, useCards } from './cardStack';
-import { BUY_H, BUY_W, PAD, TAB_H, TITLE_H, TYPE, pt, rowHeight, type FrameLayout } from './layout';
+import { BUY_H, BUY_MAX, BUY_W, MIN_PT, PAD, TAB_H, TITLE_H, TYPE, pt, rowHeight, type FrameLayout } from './layout';
 
 /** The colours of the frames (yard-style 8: paper with a 1.3 pt ink edge and a hard drop). */
 export const INK = {
@@ -123,9 +123,9 @@ export function BuyButton({ button, row }: { button: CardButton; row: string }) 
       accessibilityState={{ disabled: off }}
       onPress={() => pressButton(button, row)}
       hitSlop={4}
-      style={({ pressed }) => [styles.buy, { minWidth: BUY_W, height: BUY_H }, off ? styles.buyOff : null, pressed && !off ? { opacity: 0.75 } : null]}
+      style={({ pressed }) => [styles.buy, { minWidth: BUY_W, maxWidth: BUY_MAX, height: BUY_H }, off ? styles.buyOff : null, pressed && !off ? { opacity: 0.75 } : null]}
     >
-      <Text allowFontScaling={false} numberOfLines={1} style={{ fontSize, fontWeight: '800', color: off ? INK.soft : INK.ink }}>
+      <Text allowFontScaling={false} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={MIN_PT / fontSize} style={{ fontSize, fontWeight: '800', color: off ? INK.soft : INK.ink }}>
         {label}
       </Text>
     </Pressable>
@@ -137,7 +137,7 @@ export function LocalButton({ label, onPress }: { label: Txt; onPress: () => voi
   const { layout } = useFrame();
   const words = useSay()(label);
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={words} onPress={onPress} hitSlop={4} style={({ pressed }) => [styles.buy, { minWidth: BUY_W, height: BUY_H }, pressed ? { opacity: 0.75 } : null]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={words} onPress={onPress} hitSlop={4} style={({ pressed }) => [styles.buy, { minWidth: BUY_W, maxWidth: BUY_MAX, height: BUY_H }, pressed ? { opacity: 0.75 } : null]}>
       <Text allowFontScaling={false} numberOfLines={1} style={{ fontSize: pt(TYPE.price, layout.fs), fontWeight: '800', color: INK.ink }}>
         {words}
       </Text>

@@ -185,6 +185,28 @@ headless(async (H) => {
       }
     },
   });
+  // the art director: the process board's plates, the 25 rival plates, business cards, the merchant's mark (live interface drawings)
+  REGISTRY.push({
+    name: 'plates',
+    run: async () => {
+      await write('plates.png', 640, 300, (c) => {
+        title(c, 'Process plates (lit, buyable, greyed), 25 rival plates, business cards, the merchant\'s mark (no words: the caller\'s)');
+        const glyphs = ['scale', 'stripper', 'power', 'bench', 'crucible'] as const;
+        const states = ['lit', 'buyable', 'greyed'] as const;
+        states.forEach((st, j) =>
+          glyphs.forEach((g, i) => {
+            const r = U.processPlate(c, 12 + i * 124, 34 + j * 44, 116, 36, st, g);
+            c.drawPath(pen.rect(r.words[0], r.words[1] + 6, r.words[2] * 0.7, 5), pen.fill(YARD.paperLine));
+          }),
+        );
+        for (let i = 0; i < 25; i++) U.rivalPlate(c, 26 + (i % 13) * 34, 186 + Math.floor(i / 13) * 36, 26, i);
+        U.businessCard(c, 470, 172, 150, 56, { merchant: true });
+        U.businessCard(c, 470, 236, 150, 56, { seed: 7 });
+        U.merchantMark(c, 60, 268, 40);
+        caption(c, "merchant's mark", 60, 296);
+      }, 3, YARD.concrete);
+    },
+  });
   REGISTRY.push({
     name: 'bounds',
     run: async () => {

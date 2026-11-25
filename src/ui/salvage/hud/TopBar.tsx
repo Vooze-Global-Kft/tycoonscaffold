@@ -10,7 +10,7 @@ import { useShallow } from 'zustand/react/shallow';
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
 import { PAL } from '../palette';
-import { say } from '../strings';
+import { say } from './words';
 import { openCard } from '../overlays/cardStack';
 import { hudAnchors } from './anchors';
 import { coinSize, cashCoinPoint, fitText, pickForm, type HudLayout } from './metrics';
@@ -31,7 +31,7 @@ export function TopBar({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   const ladder = pickForm(ladderForms(v, c), slots.ladder - 40, h - 2, s);
   const ladderText = ladderForms(v, c)[ladder.index];
   const carry = carryText(v, c);
-  const carryFit = fitText(carry, slots.carry - 12, h - 3, 12, s, true);
+  const carryFit = fitText(carry, slots.carry - 12 - (v.driving ? 24 : 0), h - 3, 12, s, true);
   const x1 = L.left;
   const x2 = x1 + slots.cash + slots.gap;
   const x3 = x2 + slots.ladder + slots.gap;
@@ -53,7 +53,8 @@ export function TopBar({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
         )}
       </Pressable>
       <Paper style={[styles.abs, { left: x3, top: y, width: slots.carry, height: h }]} face={[styles.row, styles.center, v.driving && { backgroundColor: PAL.hivisLight }]}>
-        <BarText pt={carryFit.pt} lines={carryFit.lines} style={styles.centerText}>
+        {v.driving ? <SkipPicto /> : null}
+        <BarText pt={carryFit.pt} lines={carryFit.lines} style={[styles.centerText, v.driving && styles.flex]}>
           {carry}
         </BarText>
       </Paper>
@@ -73,6 +74,15 @@ function Coin({ size }: { size: number }) {
   return (
     <View style={[styles.coin, { width: size, height: size, borderRadius: size / 2 }]}>
       <View style={[styles.coinIn, { width: size * 0.56, height: size * 0.56, borderRadius: size * 0.28 }]} />
+    </View>
+  );
+}
+
+/** The skip pictogram of the carry chip while driving (the lead's ruling, 15:55): a skip's side in its red. */
+function SkipPicto() {
+  return (
+    <View style={styles.skip}>
+      <View style={styles.skipLip} />
     </View>
   );
 }
@@ -139,6 +149,8 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: PAL.paperShade },
   coin: { backgroundColor: PAL.brass, borderWidth: 1.3, borderColor: PAL.ink, alignItems: 'center', justifyContent: 'center' },
   coinIn: { borderWidth: 1, borderColor: 'rgba(43,46,51,0.55)' },
+  skip: { width: 18, height: 11, backgroundColor: '#B8452C', borderWidth: 1.3, borderColor: PAL.ink, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, transform: [{ perspective: 40 }, { rotateX: '0deg' }] },
+  skipLip: { position: 'absolute', top: -3, left: -3, right: -3, height: 3, backgroundColor: PAL.ink, borderRadius: 1 },
   rung: { flexDirection: 'row', alignItems: 'flex-end', height: 14, gap: 2 },
   rungBar: { width: 4, borderRadius: 1 },
   clip: { width: 18, height: 22, borderWidth: 1.6, borderColor: PAL.ink, borderRadius: 3, backgroundColor: '#E8D9B5', alignItems: 'center', paddingTop: 5, gap: 2.5 },

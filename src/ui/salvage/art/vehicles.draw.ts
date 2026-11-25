@@ -631,6 +631,13 @@ function cab(c: SkCanvas, v: View3q, F: ReturnType<typeof frameOf>, heading: num
     heading,
     color: colour,
     bevel: true,
+    // the raked windscreen's top seen from above along the front edge, and a sun visor: so a cab seen
+    // from the side reads as a cab, not a box (art-judge 11)
+    onTop: (q) => {
+      faceFill(c, v, subQuad(q, 0, 0.3, 0.05, 0.95), YARD.glassDark, 1);
+      faceFill(c, v, subQuad(q, 0.04, 0.12, 0.1, 0.5), YARD.glass, 0, 0.8);
+      faceFill(c, v, subQuad(q, 0.3, 0.36, 0.02, 0.98), shade(colour, -0.25), 0.8);
+    },
     onFace: (q, n) => {
       if (isBack(n)) return;
       const win = isFront(n) ? subQuad(q, 0.1, 0.9, 0.5, 0.9) : subQuad(q, 0.12, 0.62, 0.5, 0.9);
@@ -1012,9 +1019,9 @@ export function drawVan(c: SkCanvas, v: View3q, heading: number, o: { body?: str
       }
     },
   });
-  const bn = F.at(1.2, 0, 0);
+  const bn = F.at(1.35, 0, 0);
   box(c, v, {
-    len: 0.9,
+    len: 0.6,
     wid: VAN.wid * 0.96,
     h: 0.55,
     z: 0.4,
@@ -1030,17 +1037,26 @@ export function drawVan(c: SkCanvas, v: View3q, heading: number, o: { body?: str
       }
     },
   });
-  // the windscreen: a sloped glass face between the bonnet and the roof
-  const w0 = F.at(0.75, -VAN.wid / 2 + 0.08, 0.95);
-  const w1 = F.at(0.75, VAN.wid / 2 - 0.08, 0.95);
-  const ws: V3[] = [w0, w1, F.at(0.4, VAN.wid / 2 - 0.1, 1.75), F.at(0.4, -VAN.wid / 2 + 0.1, 1.75)];
-  const nws: V3 = [F.fx * 0.9, F.fy * 0.9, 0.44];
+  // the cab's nose between the bonnet and the box: the windscreen raked from the bonnet's back edge up to
+  // the box's front top edge, its two side pillars filling the wedge (joined to the body, art-judge 11)
+  const hw = VAN.wid / 2 - 0.02;
+  const ws: V3[] = [F.at(1.05, -hw, 0.95), F.at(1.05, hw, 0.95), F.at(0.75, hw, 1.85), F.at(0.75, -hw, 1.85)];
+  for (const sgn of [-1, 1]) {
+    const n: V3 = [F.lx * sgn, F.ly * sgn, 0];
+    if (facing(v, n) <= 0.01) continue;
+    const wedge: V3[] = [F.at(0.75, sgn * hw, 0.95), F.at(1.05, sgn * hw, 0.95), F.at(0.75, sgn * hw, 1.85)];
+    const p = facePath(v, wedge);
+    c.drawPath(p, fill(shade(body, -0.12)));
+    c.drawPath(p, stroke(INK, 1));
+    faceFill(c, v, [F.at(0.8, sgn * hw, 1.0), F.at(0.98, sgn * hw, 1.0), F.at(0.8, sgn * hw, 1.6), F.at(0.8, sgn * hw, 1.6)], YARD.glassDark, 0.8);
+  }
+  const nws: V3 = [F.fx * 0.95, F.fy * 0.95, 0.3];
   if (facing(v, nws) > 0.02) {
     const p = facePath(v, ws);
     c.drawPath(p, fill(YARD.glassDark));
     c.drawPath(p, stroke(INK, 1));
     if (o.driver !== false) {
-      const hc = P2(v, F.at(0.45, nearSign * 0.4, 1.35));
+      const hc = P2(v, F.at(0.8, nearSign * 0.4, 1.45));
       c.drawPath(oval(hc[0], hc[1], 3.2, 3.2), fill(shade(YARD.glassDark, -0.45)));
     }
     faceFill(c, v, subQuad(ws, 0.15, 0.3, 0.1, 0.9), YARD.glass, 0, 0.85);

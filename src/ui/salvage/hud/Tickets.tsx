@@ -12,8 +12,8 @@
  * clamped inside the free world and the safe area, at most 150 pt tall at font scale 1.3; one of each
  * kind at a time (a new one replaces the old). A tap opens the ticket history (the clipboard).
  *
- * STAND-INS: the camera is read from the yard's ground transform until world-a exports `camera`
- * (requests.md); the lesson is the rules' `ticket.lesson` until the hints package exports its pacing rule.
+ * Above font scale 1.15 a ticket prints at most two grade rows and no lesson (the lead's ruling, 15:55):
+ * the lesson then shows as the goal card's second line for six seconds (./lesson.ts).
  */
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -21,9 +21,11 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming, type SharedValu
 import * as R from '../../../engine/salvage';
 import { PAL } from '../palette';
 import { openCard } from '../overlays/cardStack';
+import { say } from './words';
+import { useSalvageUi } from '../uiState';
 import type { YardLayout } from '../world/yard';
 import { hudAnchors } from './anchors';
-import { lineH, placeTicket, textW, TICKET_PT, type HudLayout } from './metrics';
+import { avoidRect, lessonOnTicket, lineH, placeTicket, textW, TICKET_PT, type HudLayout } from './metrics';
 import { BarText } from './Paper';
 import { yardEvents } from './pump';
 import { crewWeighInChip, lotSoldChip, planTicket, ticketView, type TicketPlan, type TicketView } from './ticketView';
@@ -36,24 +38,20 @@ const CAB_Z = 2.6;
 
 type Slot = { id: number; view: TicketView; chip: null } | { id: number; view: null; chip: string };
 
-/** The yard's ground transform (the camera), as the frame loop writes it. */
-export type GroundXf = SharedValue<any[]>;
+/** The yard's camera as the frame loop writes it (world-a: camX, camY in points before the zoom, the zoom about the screen centre). */
+export type Camera = SharedValue<{ x: number; y: number; zoom: number }>;
 
-/** Screen point of a world point under the camera (a worklet: anchors follow the camera every frame). */
-export function project(x: number, y: number, z: number, camX: number, camY: number, ppm: number, tilt: number, lift: number): { x: number; y: number } {
+/**
+ * Screen point of a world point under the camera (a worklet: anchors follow the camera every frame):
+ * (wx*ppm - camX - W/2) * zoom + W/2, and the same for y with wy*ppm*tilt - z*ppm*lift.
+ */
+export function project(x: number, y: number, z: number, cam: { x: number; y: number; zoom: number }, W: number, H: number, ppm: number, tilt: number, lift: number): { x: number; y: number } {
   'worklet';
-  return { x: x * ppm - camX, y: y * ppm * tilt - camY - z * ppm * lift };
+  const k = cam.zoom > 0 ? cam.zoom : 1;
+  return { x: (x * ppm - cam.x - W / 2) * k + W / 2, y: (y * ppm * tilt - z * ppm * lift - cam.y - H / 2) * k + H / 2 };
 }
 
-function camOf(ground: GroundXf): { camX: number; camY: number } {
-  'worklet';
-  const g = ground.value;
-  const tx = g && g[0] && typeof g[0].translateX === 'number' ? g[0].translateX : 0;
-  const ty = g && g[1] && typeof g[1].translateY === 'number' ? g[1].translateY : 0;
-  return { camX: -tx, camY: -ty };
-}
-
-export function Tickets({ cfg, L, ground, yard }: { cfg: R.SalvageConfig; L: HudLayout; ground: GroundXf; yard: YardLayout }) {
+export function Tickets({ cfg, L, camera, yard }: { cfg: R.SalvageConfig; L: HudLayout; camera: Camera; yard: YardLayout }) {
   const c = cfg.salvage;
   const [scale, setScale] = useState<Slot | null>(null);
   const [cab, setCab] = useState<Slot | null>(null);
@@ -77,7 +75,9 @@ export function Tickets({ cfg, L, ground, yard }: { cfg: R.SalvageConfig; L: Hud
       const t = e.ticket;
       if (e.by === 'boss') {
         bossIn.current = true;
-        const view = ticketView(t, c);
+        const onTicket = lessonOnTicket(L.s);
+        const view = ticketView(t, c, onTicket ? undefined : null);
+        if (!onTicket && t.kind === 'weighIn' && t.lessonText) useSalvageUi.getState().showGoalLesson(say(t.lessonText, c));
         if (view) show('scale', { id: ++ids.current, view, chip: null }, TICKET_MS.weighIn);
       } else {
         const chip = crewWeighInChip(t, c);
@@ -86,16 +86,16 @@ export function Tickets({ cfg, L, ground, yard }: { cfg: R.SalvageConfig; L: Hud
     });
     const offOut = yardEvents.on('collected', (e) => {
       const t = e.ticket;
-      const boss = bossIn.current;
+      // The rules say whether a weigh-in of the boss's went into the lot (types.ts withBoss).
+      const boss = t.kind === 'collection' ? t.withBoss : bossIn.current;
       bossIn.current = false;
-      const view = boss ? ticketView(t, c) : null;
+      const view = boss ? ticketView(t, c, null) : null;
       if (view) show('cab', { id: ++ids.current, view, chip: null }, TICKET_MS.collection);
       else {
         const chip = lotSoldChip(t, c);
         if (chip) show('cab', { id: ++ids.current, view: null, chip }, TICKET_MS.chip);
       }
-      const { camX, camY } = camOf(ground);
-      hudAnchors.setCollection(project(cabPt.x, cabPt.y, CAB_Z, camX, camY, yard.ppm, yard.tilt, yard.lift));
+      hudAnchors.setCollection(project(cabPt.x, cabPt.y, CAB_Z, camera.value, L.width, L.height, yard.ppm, yard.tilt, yard.lift));
     });
     const t = timers.current;
     return () => {
@@ -104,32 +104,48 @@ export function Tickets({ cfg, L, ground, yard }: { cfg: R.SalvageConfig; L: Hud
       clearTimeout(t.scale);
       clearTimeout(t.cab);
     };
-  }, [c, cabPt.x, cabPt.y, ground, yard]);
+  }, [c, cabPt.x, cabPt.y, camera, yard, L.width, L.height, L.s]);
 
   return (
     <>
-      {scale ? <Anchored key={scale.id} slot={scale} at={scalePt} z={SLOT_Z} L={L} ground={ground} yard={yard} c={c} /> : null}
-      {cab ? <Anchored key={cab.id} slot={cab} at={cabPt} z={CAB_Z} L={L} ground={ground} yard={yard} c={c} /> : null}
+      {scale ? <Anchored key={scale.id} slot={scale} at={scalePt} z={SLOT_Z} L={L} camera={camera} yard={yard} c={c} other={null} /> : null}
+      {cab ? <Anchored key={cab.id} slot={cab} at={cabPt} z={CAB_Z} L={L} camera={camera} yard={yard} c={c} other={scale ? { at: scalePt, z: SLOT_Z, ...sizeOf(scale, L, c) } : null} /> : null}
     </>
   );
 }
 
 /** A ticket or chip pinned over its world point, rising in, clamped inside the free world. */
-function Anchored({ slot, at, z, L, ground, yard, c }: { slot: Slot; at: { x: number; y: number }; z: number; L: HudLayout; ground: GroundXf; yard: YardLayout; c: R.SalvageContent }) {
+/** A slot's size on screen and its ticket plan. */
+function sizeOf(slot: Slot, L: HudLayout, c: R.SalvageContent): { w: number; h: number; plan: TicketPlan | null } {
   const s = L.s;
   const w = slot.view ? L.ticketW : Math.ceil(textW(slot.chip ?? '', 11 * s) + 24);
   const plan = slot.view ? planTicket(slot.view, w, s, c, L.ticketMaxH) : null;
-  const h = plan ? plan.height : lineH(11 * s) + 10;
+  return { w, h: plan ? plan.height : lineH(11 * s) + 10, plan };
+}
+
+type Other = { at: { x: number; y: number }; z: number; w: number; h: number } | null;
+
+function Anchored({ slot, at, z, L, camera, yard, c, other }: { slot: Slot; at: { x: number; y: number }; z: number; L: HudLayout; camera: Camera; yard: YardLayout; c: R.SalvageContent; other: Other }) {
+  const s = L.s;
+  const { w, h, plan } = sizeOf(slot, L, c);
+  const o = other ? { x: other.at.x, y: other.at.y, z: other.z, w: other.w, h: other.h } : null;
   const rise = useSharedValue(0);
   useEffect(() => {
     rise.value = withTiming(1, { duration: 260 });
   }, [rise]);
   const box = { left: L.left, right: L.right, freeY: L.freeY, bottomY: L.bottomY };
   const { ppm, tilt, lift } = yard;
+  const W = L.width;
+  const H = L.height;
   const style = useAnimatedStyle(() => {
-    const { camX, camY } = camOf(ground);
-    const p = project(at.x, at.y, z, camX, camY, ppm, tilt, lift);
-    const q = placeTicket(p.x, p.y, w, h, box);
+    const cam = camera.value;
+    const p = project(at.x, at.y, z, cam, W, H, ppm, tilt, lift);
+    let q = placeTicket(p.x, p.y, w, h, box);
+    if (o) {
+      const op = project(o.x, o.y, o.z, cam, W, H, ppm, tilt, lift);
+      const oq = placeTicket(op.x, op.y, o.w, o.h, box);
+      q = avoidRect(q.x, q.y, w, h, { x: oq.x, y: oq.y, w: o.w, h: o.h }, box);
+    }
     return { opacity: rise.value, transform: [{ translateX: q.x }, { translateY: q.y + (1 - rise.value) * 14 }] };
   });
   return (

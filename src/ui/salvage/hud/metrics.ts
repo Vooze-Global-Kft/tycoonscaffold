@@ -12,7 +12,8 @@
  * | Bottom (stick zone; the one button) | 89 (8 + 60 + 21) | 76 (60 + 16) |
  *
  * | Top bar | 844 (safe 750) | 667 (635) |
- * | Cash | 136 | 116 |  Ladder chip | 408 | 340 |  Carry | 90 | 90 |  Clipboard | 44 | 44 |  Gaps | 3 × 24 | 3 × 15 |
+ * | Cash | 136 | 116 |  Ladder chip | 394 | 326 |  Carry | 104 | 104 |  Clipboard | 44 | 44 |  Gaps | 3 × 24 | 3 × 15 |
+ * (4.1 had ladder 408 / 340 and carry 90; the lead's ruling of 15:55 moved 14 pt to the carry chip.)
  *
  * Any other window: the side margins are max(inset, 16); "compact" below a safe width of 700 pt; the
  * ladder chip takes what the fixed slots and gaps leave.
@@ -82,7 +83,8 @@ export function hudLayout(width: number, height: number, insets: Insets, fontSca
   const free = Math.max(0, height - top - bar - goal - bottom);
   const gap = compact ? 15 : 24;
   const cash = compact ? 116 : 136;
-  const carry = 90;
+  // The carry chip is 104 pt (the lead's ruling, 15:55: 14 pt taken from the ladder chip).
+  const carry = 104;
   const clip = 44;
   const ladder = Math.max(0, safeW - cash - carry - clip - 3 * gap);
   const goalW = Math.min(compact ? 340 : 400, safeW);
@@ -214,4 +216,32 @@ export function cashCoinPoint(L: HudLayout): { x: number; y: number } {
 /** The § coin's diameter. */
 export function coinSize(s: number): number {
   return Math.round(16 * Math.min(s, 1.15));
+}
+
+/**
+ * Moves a ticket (x, y, w, h) off another one (o) when they overlap (the cab's ticket beside the scale's when
+ * both anchors clamp to one edge): to its left, else its right, else above or below it, kept inside the box.
+ */
+export function avoidRect(x: number, y: number, w: number, h: number, o: { x: number; y: number; w: number; h: number }, L: Pick<HudLayout, 'left' | 'right' | 'freeY' | 'bottomY'>): { x: number; y: number } {
+  'worklet';
+  const gap = 8;
+  const overlap = x < o.x + o.w + gap && x + w + gap > o.x && y < o.y + o.h + gap && y + h + gap > o.y;
+  if (!overlap) return { x, y };
+  if (o.x - w - gap >= L.left) return { x: o.x - w - gap, y };
+  if (o.x + o.w + gap + w <= L.right) return { x: o.x + o.w + gap, y };
+  if (o.y - h - gap >= L.freeY) return { x, y: o.y - h - gap };
+  return { x, y: Math.min(L.bottomY - h, o.y + o.h + gap) };
+}
+
+/** Above this font scale a ticket prints at most two grade rows and no lesson (the lead's ruling, 15:55). */
+export const LESSON_MAX_SCALE = 1.15;
+
+/** Whether the weigh-in ticket carries its lesson line at bar scale s (else the goal card shows it). */
+export function lessonOnTicket(s: number): boolean {
+  return s <= LESSON_MAX_SCALE;
+}
+
+/** The top bar's height for a window (36 at 844 x 390, 34 at 667 x 375): overlays-a's frames start under it. */
+export function topBarHeight(width: number, height: number, insets: Insets): number {
+  return hudLayout(width, height, insets).rows.bar;
 }

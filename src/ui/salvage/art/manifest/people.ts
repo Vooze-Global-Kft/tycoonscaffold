@@ -127,6 +127,7 @@ const BOX: Record<string, Bounds[]> = {
   'vehicle.flatbed.crane': [B(-17, -41, 38, 69)],
   'vehicle.flatbed.cargo': [B(-16, -11, 32, 18)],
   'vehicle.van': [B(-20, -48, 40, 68), B(-33, -38, 66, 53), B(-20, -37, 40, 57)],
+  'vehicle.car': [B(-17, -30, 34, 48), B(-28, -25, 57, 37), B(-17, -30, 34, 48)],
   'vehicle.trailer': [B(-17, -22, 34, 32), B(-16, -20, 36, 33), B(-17, -22, 34, 30)],
 };
 /* MEASURED-END */
@@ -483,7 +484,7 @@ export function vanLayers(heading4: number, trailer: boolean): Layer[] {
 // ---------------------------------------------------------------------------
 
 /** What this part asks of each sheet at density 3 (agreed with the art director through requests.md). */
-export const SHARE_PX = { A: 2_700_000, B: 1_000_000 } as const;
+export const SHARE_PX = { A: 2_700_000, B: 1_200_000 } as const; // B raised for the flatbed's loading frames at FLATBED_K and the public's car (art-plant pass 2)
 
 export function pixelsOf(e: PeopleEntry, density: number, tight: boolean): number {
   const hs = baked(e);

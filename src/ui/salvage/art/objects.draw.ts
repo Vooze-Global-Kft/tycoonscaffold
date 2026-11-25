@@ -335,21 +335,28 @@ export function drawCableCoil(c: SkCanvas, v: View3q, seed = 6): void {
   groundShadow(c, v, 0.5, 0.42, 0, 0, 0.25);
   const [cx, cy] = proj(v, 0, 0, 0.1);
   const R = 0.4 * v.ppm;
-  const jackets = [YARD.pvc, '#59606A', YARD.pvcGrey, '#3E4650'];
+  // lighter jackets (never a black ring: art-judge 10), loops thrown loose and open, not a tyre
+  const jackets = [YARD.pvcGrey, '#C8743A', '#8A939C', YARD.pvcGrey];
   const w = 3.2;
-  // the strands: separate loops with gaps, drawn back (north) half then front half over the hole
-  const loopsN = 7;
+  const loopsN = 6;
   for (let pass = 0; pass < 2; pass++)
     for (let i = 0; i < loopsN; i++) {
-      const rr = R * (0.62 + 0.06 * i + (hash01(seed, i) - 0.5) * 0.05);
-      const ox = (hash01(seed, i, 2) - 0.5) * 4;
-      const oy = -i * 1.1 + (hash01(seed, i, 3) - 0.5) * 2;
-      const start = pass === 0 ? 180 : 0;
-      const p = builder().addArc({ x: cx + ox - rr, y: cy + oy - rr * 0.62, width: rr * 2, height: rr * 1.24 }, start, 180).build();
+      const rr = R * (0.55 + 0.09 * i + (hash01(seed, i) - 0.5) * 0.12);
+      const ox = (hash01(seed, i, 2) - 0.5) * 12;
+      const oy = -i * 1.2 + (hash01(seed, i, 3) - 0.5) * 5;
+      const gap = 25 + hash01(seed, i, 4) * 50;
+      const start = pass === 0 ? 180 + hash01(seed, i, 5) * 20 : 0;
+      const sweep = pass === 0 ? 180 - gap * 0.3 : 180 - gap;
+      const p = builder().addArc({ x: cx + ox - rr, y: cy + oy - rr * 0.62, width: rr * 2, height: rr * 1.24 }, start, sweep).build();
       c.drawPath(p, stroke(INK, w + 1.4));
       c.drawPath(p, stroke(jackets[i % jackets.length], w));
-      if (pass === 1) c.drawPath(builder().addArc({ x: cx + ox - rr, y: cy + oy - rr * 0.62 - 0.8, width: rr * 2, height: rr * 1.24 }, 30, 120).build(), stroke(shade(jackets[i % jackets.length], 0.4), 0.8));
+      if (pass === 1) c.drawPath(builder().addArc({ x: cx + ox - rr, y: cy + oy - rr * 0.62 - 0.8, width: rr * 2, height: rr * 1.24 }, 30, 90).build(), stroke(shade(jackets[i % jackets.length], 0.4), 0.8));
     }
+  // the bare copper showing where loops end inside the coil
+  for (let i = 0; i < 3; i++) {
+    const [px, py] = [cx + (hash01(seed, i, 6) - 0.5) * R, cy - 4 + (hash01(seed, i, 7) - 0.5) * R * 0.5];
+    c.drawPath(segment(px, py, px + 4, py - 1.5), stroke(YARD.copperLight, 1.6));
+  }
   // three hi-vis tape ties across the strands
   for (const a of [-140, -30, 70]) {
     const r = (a * Math.PI) / 180;
@@ -674,9 +681,30 @@ export function drawCylinderStage(c: SkCanvas, v: View3q, stage: number): void {
   c.drawPath(dome, stroke(INK, LINE_W));
   // seams, verdigris, a sheen tick
   const [, yb] = proj(v, 0, 0, 0);
+  // the foam lagging: yellow spray foam over the body, torn open at a patch where the copper shows
+  {
+    const foam = '#D8C06A';
+    const top = ty + 2;
+    const bot = yb + r * v.ppm * v.tilt * 0.7;
+    const lag = builder().moveTo(tx - rx - 1, top).lineTo(tx - rx - 1, yb).quadTo(tx, bot + 2, tx + rx + 1, yb).lineTo(tx + rx + 1, top).close().build();
+    c.save();
+    c.drawPath(lag, fill(foam));
+    c.drawPath(builder().moveTo(tx + rx * 0.4, top).lineTo(tx + rx * 0.4, yb).build(), stroke(shade(foam, -0.2), rx * 0.9, 0.5));
+    for (let i = 0; i < 9; i++) c.drawCircle(tx + (hash01(i, 81) - 0.5) * rx * 1.6, top + hash01(i, 82) * (yb - top), 1.6, fill(shade(foam, 0.18)));
+    const tear = builder().moveTo(tx - rx * 0.7, top + (yb - top) * 0.35).lineTo(tx - rx * 0.1, top + (yb - top) * 0.3).lineTo(tx - rx * 0.05, top + (yb - top) * 0.6).lineTo(tx - rx * 0.6, top + (yb - top) * 0.66).close().build();
+    c.drawPath(tear, fill(TONE.no2));
+    c.drawPath(tear, stroke(shade(foam, -0.35), 0.8));
+    copperTicks(c, tx - rx * 0.45, top + (yb - top) * 0.45, 4);
+    c.drawPath(lag, stroke(INK, LINE_W));
+    c.restore();
+  }
+  // two copper pipe stubs out of the dome
+  for (const dx of [-0.45, 0.45]) {
+    const [px, py] = [tx + dx * rx, ty - 5];
+    c.drawPath(rrect(px - 1.8, py - 7, 3.6, 8, 1), fill(TONE.no2Hi));
+    c.drawPath(rrect(px - 1.8, py - 7, 3.6, 8, 1), stroke(INK, 0.8));
+  }
   c.drawPath(segment(tx - rx, ty + (yb - ty) * 0.45, tx + rx, ty + (yb - ty) * 0.45), stroke(shade(TONE.no2, -0.25), 0.9));
-  c.drawPath(oval(tx + rx * 0.35, ty + (yb - ty) * 0.7, 3, 2), fill(TONE.verdigris, 0.85));
-  copperTicks(c, tx - rx * 0.45, ty + (yb - ty) * 0.3, 4);
   // the bosses: brass fittings (whole) or their cut holes (shell)
   const bosses: [number, number][] = [
     [ty + (yb - ty) * 0.22, 1],

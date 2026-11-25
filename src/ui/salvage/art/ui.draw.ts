@@ -409,3 +409,186 @@ export function priceTag(c: SkCanvas, T: TextFn, cx: number, cy: number, text: s
   c.drawPath(oval(cx - w / 2 + 10, cy, 5, 5), stroke(INK, 1));
   T(c, text, cx - w / 2 + 19, cy + 4, { size: TYPE.chipSmall, weight: 'bold', color: INK });
 }
+
+// ---------------------------------------------------------------------------
+// The process board's plates, the rivals' generated plates, business cards and the merchant's mark
+// (yard-stage1.md 6.1 "effects and interface"). Drawn live by the interface (not baked); no words: the
+// caller writes names and prices beside them.
+// ---------------------------------------------------------------------------
+
+export type PlateState = 'lit' | 'buyable' | 'greyed';
+export type PlateGlyph = 'scale' | 'stripper' | 'power' | 'bench' | 'crucible';
+
+/** A machine's pictogram, ink on the plate, s points square, centred at (cx, cy). */
+function machineGlyph(c: SkCanvas, g: PlateGlyph, cx: number, cy: number, s: number, ink: string): void {
+  const k = s / 24;
+  const st = stroke(ink, 1.8 * k);
+  c.save();
+  c.translate(cx, cy);
+  c.scale(k, k);
+  switch (g) {
+    case 'scale':
+      c.drawPath(rrect(-10, 4, 20, 4, 1), stroke(ink, 1.8));
+      c.drawPath(segment(6, 4, 6, -8), stroke(ink, 1.8));
+      c.drawPath(rrect(1, -12, 11, 6, 1), stroke(ink, 1.8));
+      break;
+    case 'stripper':
+    case 'power':
+      // two rollers with the cable passing between them, the bright copper coming out
+      c.drawPath(oval(-2, -6.5, 4.4, 4.4), stroke(ink, 1.8));
+      c.drawPath(oval(-2, 7, 4.4, 4.4), stroke(ink, 1.8));
+      c.drawPath(segment(-13, 0.3, -6, 0.3), stroke(ink, 2.6));
+      c.drawPath(segment(2, 0.3, 12, 0.3), stroke(YARD.copper, 2.4));
+      // the power stripper's motor: a box with cooling fins behind the rollers
+      if (g === 'power') {
+        c.drawPath(rrect(5, -13, 8, 7, 1.5), fill(ink));
+        c.drawPath(segment(7, -11, 7, -8), stroke(YARD.paper, 0.8));
+        c.drawPath(segment(10, -11, 10, -8), stroke(YARD.paper, 0.8));
+      }
+      break;
+    case 'bench':
+      c.drawPath(segment(-11, 2, 11, 2), stroke(ink, 2.2));
+      c.drawPath(segment(-8, 2, -8, 10), stroke(ink, 1.6));
+      c.drawPath(segment(8, 2, 8, 10), stroke(ink, 1.6));
+      c.drawPath(rrect(-6, -6, 10, 8, 3), stroke(ink, 1.8));
+      c.drawPath(oval(-1, -2, 2.4, 2.4), fill(YARD.copper));
+      break;
+    case 'crucible':
+      c.save();
+      c.rotate(-30, 0, 0);
+      c.drawPath(rrect(-8, -9, 14, 15, 4), stroke(ink, 1.8));
+      c.restore();
+      c.drawPath(segment(8, -2, 8, 10), stroke(YARD.glow, 2.4));
+      c.drawPath(rrect(3, 9, 12, 3, 1), fill(YARD.glow));
+      break;
+  }
+  void st;
+  c.restore();
+}
+
+/**
+ * A plate of the process board: a machine's tile, its pictogram at the left and room for the caller's
+ * name and price at the right. lit: owned and working (hi-vis edge, a green lamp); buyable: paper with a
+ * padlock that can be opened; greyed: not yet reachable (washed grey, dashed edge).
+ */
+export function processPlate(c: SkCanvas, x: number, y: number, w: number, h: number, state: PlateState, glyph: PlateGlyph): { words: [number, number, number, number] } {
+  const r = 6;
+  if (state !== 'greyed') c.drawPath(rrect(x, y + 2, w, h, r), fill(INK, 0.28));
+  const face = state === 'lit' ? YARD.paper : state === 'buyable' ? YARD.paperShade : '#D9D9D4';
+  c.drawPath(rrect(x, y, w, h, r), fill(face));
+  if (state === 'lit') {
+    c.drawPath(rrect(x, y, w, h, r), stroke(YARD.hivisDark, 3));
+    c.drawPath(rrect(x, y, w, h, r), stroke(INK, 1.3));
+  } else if (state === 'buyable') c.drawPath(rrect(x, y, w, h, r), stroke(INK, 1.3));
+  else
+    for (let i = 0; i < 28; i++) {
+      const t = i / 28;
+      const per = 2 * (w + h);
+      const d0 = t * per;
+      const pt = (d: number): [number, number] => (d < w ? [x + d, y] : d < w + h ? [x + w, y + d - w] : d < 2 * w + h ? [x + w - (d - w - h), y + h] : [x, y + h - (d - 2 * w - h)]);
+      const [ax, ay] = pt(d0);
+      const [bx, by] = pt(d0 + per / 56);
+      c.drawPath(segment(ax, ay, bx, by), stroke(YARD.inkSoft, 1.1));
+    }
+  const ink = state === 'greyed' ? YARD.inkSoft : INK;
+  const gs = h - 12;
+  c.drawPath(rrect(x + 6, y + 6, gs, gs, 4), fill(state === 'lit' ? YARD.hivis : state === 'buyable' ? YARD.paper : '#CBCBC5'));
+  c.drawPath(rrect(x + 6, y + 6, gs, gs, 4), stroke(ink, 1));
+  machineGlyph(c, glyph, x + 6 + gs / 2, y + 6 + gs / 2, gs * 0.8, ink);
+  if (state === 'lit') {
+    c.drawPath(oval(x + w - 10, y + 10, 3.4, 3.4), fill(YARD.led));
+    c.drawPath(oval(x + w - 10, y + 10, 3.4, 3.4), stroke(INK, 0.9));
+  } else if (state === 'buyable') padlock(c, x + w - 12, y + h / 2, 12, YARD.hivis);
+  else padlock(c, x + w - 12, y + h / 2, 11, '#BDBDB6');
+  return { words: [x + gs + 14, y + 4, w - gs - 14 - 24, h - 8] };
+}
+
+/** The rival plates' kit: shapes, colour pairs and emblems a seed picks from (25 rivals, no letters, no real mark). */
+const PLATE_SHAPES = ['shield', 'roundel', 'hex', 'tile', 'pennant'] as const;
+const PLATE_COLOURS: [string, string][] = [
+  [YARD.containerTeal, YARD.paper],
+  [YARD.containerOxide, YARD.hivis],
+  [YARD.containerSage, YARD.paper],
+  [YARD.machine, YARD.hivis],
+  [YARD.skip, YARD.paper],
+  ['#5B4A7A', YARD.hivisLight],
+  [YARD.ink, YARD.copperLight],
+];
+const PLATE_EMBLEMS = ['bars', 'stack', 'peak', 'ring', 'chevrons', 'ingot', 'wave'] as const;
+
+/** One rival's generated plate, s points across, centred at (cx, cy): shape x colours x emblem from `seed` (0..24 distinct). */
+export function rivalPlate(c: SkCanvas, cx: number, cy: number, s: number, seed: number): void {
+  const shape = PLATE_SHAPES[seed % PLATE_SHAPES.length];
+  const [bg, fg] = PLATE_COLOURS[(seed * 3 + Math.floor(seed / 5)) % PLATE_COLOURS.length];
+  const emblem = PLATE_EMBLEMS[(seed * 2 + Math.floor(seed / 7)) % PLATE_EMBLEMS.length];
+  const h = s / 2;
+  let p;
+  switch (shape) {
+    case 'shield':
+      p = builder().moveTo(cx - h, cy - h).lineTo(cx + h, cy - h).lineTo(cx + h, cy + h * 0.2).quadTo(cx + h * 0.6, cy + h * 0.8, cx, cy + h).quadTo(cx - h * 0.6, cy + h * 0.8, cx - h, cy + h * 0.2).close().build();
+      break;
+    case 'roundel':
+      p = circle(cx, cy, h);
+      break;
+    case 'hex':
+      p = poly(Array.from({ length: 6 }, (_, i) => [cx + Math.cos((i / 6) * Math.PI * 2) * h, cy + Math.sin((i / 6) * Math.PI * 2) * h]).flat());
+      break;
+    case 'tile':
+      p = rrect(cx - h, cy - h, s, s, s * 0.18);
+      break;
+    default:
+      p = poly([cx - h, cy - h, cx + h, cy - h * 0.5, cx + h, cy + h * 0.5, cx - h, cy + h]);
+  }
+  c.drawPath(p, fill(bg));
+  c.drawPath(p, stroke(INK, Math.max(1, s / 22)));
+  const e = s * 0.28;
+  const st = stroke(fg, Math.max(1.2, s / 12));
+  switch (emblem) {
+    case 'bars':
+      for (let i = -1; i <= 1; i++) c.drawPath(segment(cx - e, cy + i * e * 0.6, cx + e, cy + i * e * 0.6), st);
+      break;
+    case 'stack':
+      // three bars stacked and offset (a stack of plate)
+      for (let i = 0; i < 3; i++) c.drawPath(rrect(cx - e + (i % 2) * e * 0.3, cy + e * 0.55 - i * e * 0.55, e * 1.7, e * 0.4, 1), fill(fg));
+      break;
+    case 'peak':
+      c.drawPath(builder().moveTo(cx - e, cy + e * 0.6).lineTo(cx, cy - e * 0.7).lineTo(cx + e, cy + e * 0.6).build(), st);
+      break;
+    case 'ring':
+      c.drawPath(oval(cx, cy, e * 0.8, e * 0.8), st);
+      break;
+    case 'chevrons':
+      for (const d of [-0.4, 0.4]) c.drawPath(builder().moveTo(cx - e, cy + d * e - e * 0.4).lineTo(cx, cy + d * e + e * 0.3).lineTo(cx + e, cy + d * e - e * 0.4).build(), st);
+      break;
+    case 'ingot':
+      c.drawPath(poly([cx - e, cy + e * 0.5, cx + e, cy + e * 0.5, cx + e * 0.7, cy - e * 0.4, cx - e * 0.7, cy - e * 0.4]), fill(fg));
+      break;
+    default:
+      c.drawPath(builder().moveTo(cx - e, cy).quadTo(cx - e / 2, cy - e * 0.7, cx, cy).quadTo(cx + e / 2, cy + e * 0.7, cx + e, cy).build(), st);
+  }
+}
+
+/** The merchant's mark (an invented firm): a bridge arch over three bars of metal, in stamp blue, s points across. */
+export function merchantMark(c: SkCanvas, cx: number, cy: number, s: number, color: string = YARD.stampBlue): void {
+  const h = s / 2;
+  c.drawPath(rrect(cx - h, cy - h, s, s, s * 0.16), fill(color));
+  c.drawPath(rrect(cx - h, cy - h, s, s, s * 0.16), stroke(INK, Math.max(1, s / 24)));
+  const w = s * 0.34;
+  c.drawPath(builder().moveTo(cx - w, cy + s * 0.05).quadTo(cx, cy - s * 0.42, cx + w, cy + s * 0.05).build(), stroke(YARD.paper, s / 11));
+  for (let i = 0; i < 3; i++) c.drawPath(rrect(cx - w + i * (w * 0.7), cy + s * 0.1, w * 0.58, s * 0.14, 1), fill(YARD.paper));
+  c.drawPath(segment(cx - w - s * 0.04, cy + s * 0.32, cx + w + s * 0.04, cy + s * 0.32), stroke(YARD.paper, s / 14));
+}
+
+/**
+ * A business card (a partner's or a deal's): paper with a hard drop, the firm's mark at the left (the
+ * merchant's or a rival plate), a hi-vis stripe along the foot and blank lines where the caller writes.
+ */
+export function businessCard(c: SkCanvas, x: number, y: number, w: number, h: number, mark: { merchant: true } | { seed: number }): { words: [number, number, number, number] } {
+  chip(c, x, y, w, h, { r: 4 });
+  c.drawPath(rrect(x + 1.5, y + h - 6, w - 3, 4.5, 2), fill(YARD.hivis));
+  const s = h * 0.5;
+  if ('merchant' in mark) merchantMark(c, x + 8 + s / 2, y + h * 0.42, s);
+  else rivalPlate(c, x + 8 + s / 2, y + h * 0.42, s, mark.seed);
+  for (const k of [0.32, 0.52]) c.drawPath(segment(x + s + 16, y + h * k + 4, x + w - 10, y + h * k + 4), stroke(YARD.paperLine, 0.8));
+  return { words: [x + s + 16, y + 6, w - s - 26, h - 16] };
+}

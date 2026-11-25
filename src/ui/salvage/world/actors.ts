@@ -261,39 +261,67 @@ export const P_TORCH = 8;
 export const POSE_FRAMES = [1, 4, 4, 2, 1, 2, 2, 2, 2];
 
 export const ROLE_CODE: Record<string, number> = { hand: 0, cutter: 1, driver: 2 };
-export const SKIP_CODE = { none: 0, empty: 1, trial: 2, full: 3 } as const;
-export const LEG_CODE = { out: 0, hook: 1, back: 2, weigh: 3, tip: 4 } as const;
-export const FLATBED_CODE = { waiting: 0, loading: 1, away: 2 } as const;
+/** The rules' trip phases as numbers (TripPhase): the truck moves along its path in out, back and park. */
+export const LEG_CODE: Record<string, number> = { out: 0, hook: 1, back: 2, weigh: 3, tip: 4, walk: 5, park: 6 };
+export const FLATBED_CODE: Record<string, number> = { waiting: 0, loading: 1, away: 2 };
+export const ARRIVAL_CODE: Record<string, number> = { van: 0, machineFlatbed: 1, truck: 2, crew: 3, dropoff: 4 };
+export const ARRIVAL_PHASE: Record<string, number> = { in: 0, setDown: 1, out: 2 };
 
 /** Numbers per crew member in RulesScene.crew. */
 export const CREW = 14;
+/** Numbers per arrival in RulesScene.arrivals. */
+export const ARRIVAL = 8;
+/** At most this many points of a vehicle's path. */
+export const PATH_MAX = 8;
 
 /**
- * What the rules decided, for the UI thread (one shared value, ./useRulesTable.ts). `cut` and `carried`
- * are the ground work's fields (kept for the interactables' marks and the tests).
+ * What the rules decided, for the UI thread (one shared value, ./useRulesTable.ts). Nothing in it is
+ * computed by the screen: every number is a frame fact, re-packed.
  */
 export interface RulesScene {
-  /** The frame's play second, and a counter that changes with every push. */
+  /** The frame's yard second, a counter that changes with every push, and the epoch (a change snaps every actor). */
   t: number;
   n: number;
+  epoch: number;
   items: number[];
   /** Packed solids of the whole things standing in the yard (collision). */
   solids: number[];
-  /** Crew: CREW numbers each: role, pose(work), fx, fy, tx, ty, t0, t1, carrier(0 none, 1 sack, 2 trolley), carrier frame (its load), phase(0 wait,1 walkTo,2 work,3 walkBack), hidden, vx, vy (the wall's gap to pass, or NaN). */
+  /** CREW numbers each: role, pose, fx, fy, tx, ty, t0, t1, carrier (0 none, 1 sack, 2 trolley), carrier frame, phase (0 wait, 1 walkTo, 2 work, 3 walkBack), hidden, via x, via y (NaN none). */
   crew: number[];
-  /** owned, x, y, heading(rad), skip code, by (0 none, 1 boss, 2 driver), leg code or -1, t0, t1, hook share or -1, site x, skip load frame or -1. */
+  /** owned, x, y, heading8, skip (0 none, 1 empty, 2 loaded), by (0 none, 1 boss, 2 driver), leg code or -1, t0, t1, hook share or -1, skip load frame or -1, path points. */
   truck: number[];
-  /** phase code, t0, t1, x, y, cargo (0 none, 1 part, 2 full). */
+  /** The leg's path: x, y per point (at most PATH_MAX). */
+  truckPath: number[];
+  /** phase code, t0, t1, x, y, cargo (0 none, 1 part, 2 full), path points. */
   flatbed: number[];
-  /** on, x, y, t0, t1 (the public's car and trailer). */
+  flatbedPath: number[];
+  /** on, from x, from y, to x, to y, t0, t1 (the public's car and trailer). */
   car: number[];
-  /** carrier (0 frame, 1 sack, 2 trolley), hand family index or -1, carrier frame, work pose or -1, its thing x, y, pour x, y (NaN none), pieces carried. */
+  /** ARRIVAL numbers each: kind code, phase code, from x, from y, to x, to y, t0, t1. */
+  arrivals: number[];
+  /** carrier (0 frame, 1 sack, 2 trolley), hand family or -1, carrier frame, the rules' pose (P_*, -1 drive), target x, y (NaN none), pour x, y (NaN none), pieces carried, x, y, heading4. */
   boss: number[];
   cut: number[];
   carried: number;
 }
 
-export const NO_SCENE: RulesScene = { t: 0, n: 0, items: [], solids: [], crew: [], truck: [0, 0, 0, 0, 0, 0, -1, 0, 0, -1, 0, -1], flatbed: [0, 0, 0, 0, 0, 0], car: [0, 0, 0, 0, 0], boss: [0, -1, 0, -1, NaN, NaN, NaN, NaN, 0], cut: [], carried: 0 };
+export const NO_SCENE: RulesScene = {
+  t: 0,
+  n: 0,
+  epoch: 0,
+  items: [],
+  solids: [],
+  crew: [],
+  truck: [0, 0, 0, 0, 0, 0, -1, 0, 0, -1, -1, 0],
+  truckPath: [],
+  flatbed: [0, 0, 0, 0, 0, 0, 0],
+  flatbedPath: [],
+  car: [0, 0, 0, 0, 0, 0, 0],
+  arrivals: [],
+  boss: [0, -1, 0, P_STAND, NaN, NaN, NaN, NaN, 0, NaN, NaN, 0],
+  cut: [],
+  carried: 0,
+};
 
 const famIndex = (f: LoadFamily | null) => (f ? HAND_FAMILIES.indexOf(handFamilyOf(f)) : -1);
 const famOfGrade = (grade: string | undefined) => (grade ? loadFamily(grade) : null);
@@ -305,18 +333,159 @@ function hashStr(s: string): number {
   return h >>> 0;
 }
 
-/** The work pose of a tool (the boss's spanners, sledge, grinder, torch). */
-function toolPose(tool: string | null | undefined, family: string | null): number {
-  if (tool === 'torch') return P_TORCH;
-  if (tool === 'sledge') return family === 'ci' ? P_SLEDGE : P_GRINDER;
-  if (tool === 'grinder') return P_GRINDER;
-  if (tool === 'spanners' || tool === 'spanner') return P_SPANNER;
-  return -1;
+/** The rules' pose (types.ts Pose) as the art's pose index; -1 for 'drive' (in the cab: not drawn on foot). */
+export function poseCode(pose: string | undefined, tool?: string | null, family?: string | null): number {
+  switch (pose) {
+    case 'walk':
+    case 'carry':
+      return P_WALK;
+    case 'push':
+      return P_PUSH;
+    case 'feed':
+      return P_FEED;
+    case 'pour':
+      return P_POUR;
+    case 'spanner':
+      return P_SPANNER;
+    case 'sledge':
+      return family === 'ci' || family === undefined || family === null ? P_SLEDGE : P_GRINDER;
+    case 'grinder':
+      return P_GRINDER;
+    case 'torch':
+      return P_TORCH;
+    case 'drive':
+      return -1;
+    default:
+      return tool ? poseCode(tool, null, family) : P_STAND;
+  }
+}
+
+/** Which of the partners' looks (0 the farm's, 1 the demolition site's) a partner id has: its order in content. */
+const partnerLook = (c: SalvageContent, id: string) => Math.max(0, Object.keys(c.partners).indexOf(id)) % 2;
+const SKIP_LOAD_FRAMES = ['farm-trial', 'farm-full', 'demolition-trial', 'demolition-full'];
+const skipLoadFrame = (look: number, trial: boolean) => SKIP_LOAD_FRAMES.indexOf(`${look === 0 ? 'farm' : 'demolition'}-${trial ? 'trial' : 'full'}`);
+
+type Pt = { x: number; y: number };
+const flat = (pts: readonly Pt[] | undefined): number[] => (pts ?? []).slice(0, PATH_MAX).flatMap((p) => [p.x, p.y]);
+
+/** A bay's sprites by its kind and fill share (content `grades.<id>.bay`; the art owns the levels). */
+function bayItems(out: number[], res: Resolver, b: R.FrameBay): void {
+  const kind = b.kind ?? (b.sprite?.startsWith('bay.') ? 'heap' : b.grade === 'conv' ? 'cage' : 'stillage');
+  const share = b.share ?? (b.fill ?? 0) / 4;
+  if (kind === 'heap') {
+    if (share > 0) {
+      const base = b.look && entryOf(`${b.look}.1`) ? b.look : `heap.${b.grade}`;
+      sprite(out, res, `${base}.${Math.max(1, Math.min(5, Math.ceil(share * 5)))}`, b.x, b.y);
+    }
+  } else if (kind === 'cage') {
+    sprite(out, res, 'plant.cage.converter', b.x, b.y, { frame: share > 0 ? 1 : 0 });
+  } else {
+    sprite(out, res, 'plant.stillage', b.x, b.y);
+    const layers = share <= 0 ? 0 : share <= 0.5 ? 1 : 2;
+    for (let k = 0; k < layers; k++) sprite(out, res, `plant.stillage.layer.${b.grade}`, b.x, b.y, { key: b.y + 0.5 + 0.001 * (k + 1), dy: STILLAGE_LAYER_DY * k });
+    sprite(out, res, 'plant.stillage.front', b.x, b.y, { key: b.y + 0.51 });
+  }
+  if (b.held) sprite(out, res, 'plant.flag.hold', b.x + 0.5, b.y - 0.3);
+}
+
+/** The rules' picture of a frame (see the header). Pure; reads the hour-0 fields where the newer ones are missing. */
+export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n = 0): RulesScene {
+  const items: number[] = [];
+  const solids: number[] = [];
+  // Things, whole and in their stages (the art's stageOf over pieces off and in all).
+  for (const th of f.things) {
+    const o = c.objects[th.obj];
+    const id = entryOf(th.sprite) ? th.sprite : (OBJECT_SPRITE[th.obj] ?? th.sprite.replace(/\.(whole|cut\d+)$/, ''));
+    const e = entryOf(id);
+    if (!e) continue;
+    const total = th.total ?? o?.pieces.reduce((a, p) => a + p[2], 0) ?? 1;
+    const off = th.off ?? (th.stage > 0 ? Math.round((th.stage / Math.max(1, (o?.stages ?? 2) - 1)) * total) : 0);
+    const frame = stageOf(e.frames.length, off, total);
+    sprite(items, res, id, th.x, th.y, { frame });
+    if (off === 0) solids.push(1, th.x, th.y, Math.max(0.3, Math.min(o?.size.w ?? e.footprint.w, e.footprint.w) / 2), Math.max(0.2, Math.min(o?.size.d ?? e.footprint.d, e.footprint.d) / 2));
+  }
+  // Pieces on the ground.
+  for (const p of f.pieces) {
+    const list = GRADE_SPRITE[p.grade];
+    const id = entryOf(p.sprite) ? p.sprite : list ? list[hashStr(p.uid) % list.length] : null;
+    if (id) sprite(items, res, id, p.x, p.y, { frame: id.startsWith('piece.ingot') ? 3 : 0 });
+  }
+  // Machines in their looks; bays; partners' skips; circles; equipment the rules add.
+  let pourAt: Pt | null = null;
+  for (const m of f.machines) machineItems(items, res, m, f.t, (p) => (pourAt = p));
+  for (const b of f.bays) bayItems(items, res, b);
+  for (const s of f.skips) {
+    sprite(items, res, 'vehicle.skip', s.x, s.y);
+    if (s.state !== 'filling') sprite(items, res, 'vehicle.skip.load', s.x, s.y, { frame: skipLoadFrame(partnerLook(c, s.partner), s.state === 'trial'), key: s.y + 0.876, dy: -0.95 * 40 * Math.sqrt(1 - 0.49) });
+  }
+  for (const ci of f.circles) sprite(items, res, 'ground.chalk', ci.x, ci.y);
+  for (const fx of f.fixtures ?? []) sprite(items, res, fx.sprite, fx.x, fx.y);
+
+  // The boss: carrier, load, the rules' pose and target, his place (for the snap on an epoch change).
+  const carrier = f.load.carrier === 'sack' ? 1 : f.load.carrier === 'trolley' ? 2 : 0;
+  const heaviest = f.load.pieces.reduce<{ grade: string; g: number; load?: LoadFamily } | null>((a, p) => (!a || p.g > a.g ? p : a), null);
+  const fam = (heaviest?.load as LoadFamily | undefined) ?? famOfGrade(heaviest?.grade);
+  const fb = f.boss as Partial<R.FrameBoss> | undefined;
+  let pose = fb ? poseCode(fb.pose, fb.tool, famOfGrade(fb.grade ?? undefined)) : P_STAND;
+  let target: Pt | null = null;
+  const worked = f.things.find((t) => (fb?.target ? t.uid === fb.target : t.by === 'boss' && t.work !== null));
+  if (worked && (fb?.act === 'work' || !fb)) {
+    target = worked;
+    if (!fb) pose = guessPose(c, worked.obj);
+  }
+  const pa = pourAt as Pt | null;
+  const boss = [carrier, f.load.pieces.length && carrier === 0 ? famIndex(fam) : -1, carrierFrameOf(fam && f.load.pieces.length ? fam : null), pose, target ? target.x : NaN, target ? target.y : NaN, pa ? pa.x : NaN, pa ? pa.y : NaN, f.load.pieces.length, fb?.x ?? NaN, fb?.y ?? NaN, fb?.heading ?? 0];
+
+  // Crew legs (E17: the walk IS the leg; nothing here decides where anyone goes).
+  const crew: number[] = [];
+  const wallX = wallLine(c);
+  const via0 = c.helpers.via;
+  for (const m of f.crew) {
+    const phase = m.phase === 'walkTo' ? 1 : m.phase === 'walkBack' ? 3 : m.phase === 'work' ? 2 : 0;
+    let pc = m.pose ? poseCode(m.pose, m.tool, m.load[0]?.load ?? null) : P_STAND;
+    if (!m.pose && phase === 2) pc = m.job === 'cutDropoff' || m.job === 'cutFloor' ? P_GRINDER : m.job === 'feed' ? P_FEED : m.job === 'pour' ? P_POUR : P_STAND;
+    const lf = m.load.length ? ((m.load[0].load as LoadFamily | undefined) ?? famOfGrade(m.load[0].grade)) : null;
+    const carrierKind = m.role === 'hand' ? 1 : 0;
+    const hidden = pc === -1 || (m.job === 'drive' && (phase === 2 || f.truck.by === 'driver')) ? 1 : 0;
+    const v = m.via?.[0] ?? (wallX !== null && via0 && (m.from.x - wallX) * (m.to.x - wallX) < 0 ? { x: via0[0], y: via0[1] } : null);
+    crew.push(ROLE_CODE[m.role] ?? 0, Math.max(0, pc), m.from.x, m.from.y, m.to.x, m.to.y, m.t0, m.t1, carrierKind, carrierFrameOf(lf), phase, hidden, v ? v.x : NaN, v ? v.y : NaN);
+  }
+
+  // The truck: where it stands, its skip, the driver's leg and its path.
+  const tk = f.truck;
+  const leg = tk.leg;
+  const lane = laneGeo(c);
+  const loadState = tk.load?.state ?? (tk.skip === 'none' ? null : tk.skip);
+  const loadPartner = tk.load?.partner ?? leg?.partner ?? f.skips.find((s) => s.state !== 'filling')?.partner ?? null;
+  const skipFrame = loadState === 'trial' || loadState === 'full' ? skipLoadFrame(loadPartner ? partnerLook(c, loadPartner) : 0, loadState === 'trial') : -1;
+  let truckPath = flat(leg?.path);
+  if (leg && truckPath.length < 4) {
+    const site = lane?.sites.find((s) => s.id === leg.partner);
+    const gate = c.map.points.gate ?? [c.yard.width - 1, c.yard.depth / 2];
+    truckPath = leg.from && leg.to ? [leg.from.x, leg.from.y, leg.to.x, leg.to.y] : [tk.x, tk.y, gate[0], gate[1], site ? site.x - 3.2 : gate[0] + 20, gate[1]];
+  }
+  const truck = [tk.owned ? 1 : 0, tk.x, tk.y, tk.heading ?? 0, loadState === null ? 0 : skipFrame >= 0 ? 2 : 1, tk.by === 'boss' ? 1 : tk.by === 'driver' ? 2 : 0, leg ? (LEG_CODE[leg.phase] ?? -1) : -1, leg?.t0 ?? 0, leg?.t1 ?? 0, tk.hook ?? -1, skipFrame, truckPath.length / 2];
+
+  // The merchant's flatbed and its path; the public's car; purchases arriving.
+  const fbd = f.flatbed;
+  let flatbedPath = flat(fbd.path);
+  if (flatbedPath.length < 4) {
+    const gate = c.map.points.gate ?? [c.yard.width - 1, c.yard.depth / 2];
+    flatbedPath = [fbd.x, fbd.y, fbd.x, gate[1], gate[0], gate[1], lane ? Math.min(lane.gx + 60, laneDrawEnd(lane)) : gate[0] + 20, gate[1]];
+  }
+  const flatbed = [FLATBED_CODE[fbd.phase] ?? 0, fbd.t0, fbd.t1, fbd.x, fbd.y, fbd.load <= 0 ? 0 : fbd.load < 3 ? 1 : 2, flatbedPath.length / 2];
+  const dc = f.dropoffCar;
+  const gate = c.map.points.gate ?? [c.yard.width - 1, c.yard.depth / 2];
+  const car = dc ? [1, dc.from?.x ?? gate[0] + 25, dc.from?.y ?? gate[1], dc.to?.x ?? dc.x, dc.to?.y ?? dc.y, dc.t0, dc.t1] : [0, 0, 0, 0, 0, 0, 0];
+  const arrivals: number[] = [];
+  for (const a of f.arrivals ?? []) arrivals.push(ARRIVAL_CODE[a.kind] ?? 0, ARRIVAL_PHASE[a.phase] ?? 0, a.from.x, a.from.y, a.to.x, a.to.y, a.span.t0, a.span.t1);
+
+  return { t: f.t, n, epoch: f.epoch ?? 0, items, solids, crew, truck, truckPath, flatbed, flatbedPath, car, arrivals, boss, cut: [], carried: f.load.pieces.length };
 }
 
 /**
- * The tool a thing is worked with, when the frame does not say (stand-in for FrameTable.boss.tool,
- * requests.md): its object's tier picks the tool; at tier 2 cast iron takes the sledge, the rest the grinder.
+ * The tool a thing is worked with, when the frame has no `boss` (the hour-0 frame): its object's tier
+ * picks the tool; at tier 2 cast iron takes the sledge, the rest the grinder.
  */
 function guessPose(c: SalvageContent, obj: string): number {
   const o = c.objects[obj];
@@ -327,114 +496,10 @@ function guessPose(c: SalvageContent, obj: string): number {
   return P_SPANNER;
 }
 
-/** Which of the partners' looks (0 the farm's, 1 the demolition site's) a partner id has: its order in content. */
-const partnerLook = (c: SalvageContent, id: string) => Math.max(0, Object.keys(c.partners).indexOf(id)) % 2;
-const SKIP_LOAD_FRAMES = ['farm-trial', 'farm-full', 'demolition-trial', 'demolition-full'];
-const skipLoadFrame = (look: number, trial: boolean) => SKIP_LOAD_FRAMES.indexOf(`${look === 0 ? 'farm' : 'demolition'}-${trial ? 'trial' : 'full'}`);
-
-/** The rules' picture of a frame (see the header). Pure. */
-export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n = 0): RulesScene {
-  const items: number[] = [];
-  const solids: number[] = [];
-  // Things, whole and in their stages.
-  for (const th of f.things) {
-    const o = c.objects[th.obj];
-    const id = OBJECT_SPRITE[th.obj] ?? th.sprite.replace(/\.(whole|cut\d+)$/, '');
-    const e = entryOf(id);
-    if (!e) continue;
-    const stages = Math.max(1, o?.stages ?? 1);
-    const frame = th.stage <= 0 ? 0 : stageOf(e.frames.length, th.stage, Math.max(1, stages - 1));
-    sprite(items, res, id, th.x, th.y, { frame });
-    if (o && th.stage === 0) solids.push(1, th.x, th.y, Math.max(0.3, Math.min(o.size.w, e.footprint.w) / 2), Math.max(0.2, Math.min(o.size.d, e.footprint.d) / 2));
-  }
-  // Pieces on the ground.
-  for (const p of f.pieces) {
-    const list = GRADE_SPRITE[p.grade];
-    const id = entryOf(p.sprite) ? p.sprite : list ? list[hashStr(p.uid) % list.length] : null;
-    if (id) sprite(items, res, id, p.x, p.y, { frame: id.startsWith('piece.ingot') ? 3 : 0 });
-  }
-  // Machines in their looks.
-  let pourAt: { x: number; y: number } | null = null;
-  for (const m of f.machines) machineItems(items, res, m, (p) => (pourAt = p));
-  // Bays: ferrous heaps in five sizes, stillages in layers, the held flag.
-  for (const b of f.bays) {
-    const fe = b.sprite.startsWith('bay.');
-    if (fe) {
-      if (b.fill > 0) sprite(items, res, `heap.${b.grade}.${Math.max(1, Math.min(5, Math.round((b.fill * 5) / 4)))}`, b.x, b.y);
-    } else {
-      sprite(items, res, 'plant.stillage', b.x, b.y);
-      const layers = b.fill <= 0 ? 0 : b.fill <= 2 ? 1 : 2;
-      for (let k = 0; k < layers; k++) sprite(items, res, `plant.stillage.layer.${b.grade}`, b.x, b.y, { key: b.y + 0.5 + 0.001 * (k + 1), dy: STILLAGE_LAYER_DY * k });
-      sprite(items, res, 'plant.stillage.front', b.x, b.y, { key: b.y + 0.51 });
-    }
-    if (b.held) sprite(items, res, 'plant.flag.hold', b.x + 0.5, b.y - 0.3);
-  }
-  // Partners' skips on the lane, with the load over the rim once full.
-  for (const s of f.skips) {
-    sprite(items, res, 'vehicle.skip', s.x, s.y);
-    if (s.state !== 'filling') sprite(items, res, 'vehicle.skip.load', s.x, s.y, { frame: skipLoadFrame(partnerLook(c, s.partner), s.state === 'trial'), key: s.y + 0.876, dy: -0.95 * 40 * Math.sqrt(1 - 0.49) });
-  }
-  for (const ci of f.circles) sprite(items, res, 'ground.chalk', ci.x, ci.y);
-
-  // The boss's carrier, load and act.
-  const carrier = f.load.carrier === 'sack' ? 1 : f.load.carrier === 'trolley' ? 2 : 0;
-  const top = f.load.pieces.length ? f.load.pieces[f.load.pieces.length - 1] : null;
-  const heaviest = f.load.pieces.reduce<{ grade: string; g: number } | null>((a, p) => (!a || p.g > a.g ? p : a), null);
-  const fam = famOfGrade(heaviest?.grade ?? top?.grade);
-  const fb = (f as { boss?: { act?: string; thing?: string | null; tool?: string | null; family?: string | null } }).boss;
-  let work = -1;
-  let wx = NaN;
-  let wy = NaN;
-  const worked = f.things.find((t) => (fb?.thing ? t.uid === fb.thing : t.by === 'boss' && t.work !== null));
-  if (worked && (!fb || fb.act === 'work' || fb.act === undefined)) {
-    work = fb?.tool ? toolPose(fb.tool, fb.family ?? famOfGrade(c.objects[worked.obj]?.pieces[0]?.[0])) : guessPose(c, worked.obj);
-    wx = worked.x;
-    wy = worked.y;
-  } else if (fb?.act === 'strip' || fb?.act === 'feed') {
-    work = P_FEED;
-  }
-  const pa = pourAt as { x: number; y: number } | null;
-  const boss = [carrier, f.load.pieces.length && carrier === 0 ? famIndex(fam) : -1, carrierFrameOf(fam && f.load.pieces.length ? fam : null), work, wx, wy, pa ? pa.x : NaN, pa ? pa.y : NaN, f.load.pieces.length];
-
-  // Crew legs (E17: the walk IS the leg; nothing here decides where anyone goes).
-  const crew: number[] = [];
-  const wallX = wallLine(c);
-  const via = c.helpers.via;
-  for (const m of f.crew) {
-    const job = m.job;
-    const phase = m.phase === 'walkTo' ? 1 : m.phase === 'walkBack' ? 3 : m.phase === 'work' ? 2 : 0;
-    let pose = P_STAND;
-    if (phase === 2) {
-      if (job === 'cutDropoff' || job === 'cutFloor') pose = P_GRINDER;
-      else if (job === 'feed') pose = P_FEED;
-      else if (job === 'pour') pose = P_POUR;
-    }
-    const lf = m.load.length ? famOfGrade(m.load[0].grade) : null;
-    const carrierKind = m.role === 'hand' ? 1 : 0;
-    const hidden = job === 'drive' && (phase === 2 || f.truck.by === 'driver') ? 1 : 0;
-    const crosses = wallX !== null && via && (m.from.x - wallX) * (m.to.x - wallX) < 0;
-    crew.push(ROLE_CODE[m.role] ?? 0, pose, m.from.x, m.from.y, m.to.x, m.to.y, m.t0, m.t1, carrierKind, carrierFrameOf(lf), phase, hidden, crosses ? via![0] : NaN, crosses ? via![1] : NaN);
-  }
-
-  // The truck, the flatbed, the public's car.
-  const tk = f.truck;
-  const leg = tk.leg as (R.FrameTruck['leg'] & { partner?: string }) | null;
-  const lane = laneGeo(c);
-  const legPartner = leg?.partner ?? f.skips.find((s) => s.state !== 'filling')?.partner ?? f.skips[0]?.partner ?? null;
-  const site = lane?.sites.find((s) => s.id === legPartner);
-  const skipFrame = tk.skip === 'trial' || tk.skip === 'full' ? skipLoadFrame(legPartner ? partnerLook(c, legPartner) : 0, tk.skip === 'trial') : -1;
-  const truck = [tk.owned ? 1 : 0, tk.x, tk.y, tk.heading, SKIP_CODE[tk.skip], tk.by === 'boss' ? 1 : tk.by === 'driver' ? 2 : 0, leg ? LEG_CODE[leg.phase] : -1, leg?.t0 ?? 0, leg?.t1 ?? 0, tk.hook ?? -1, site?.x ?? (lane ? lane.gx + 20 : tk.x), skipFrame];
-  const fbd = f.flatbed;
-  const flatbed = [FLATBED_CODE[fbd.phase], fbd.t0, fbd.t1, fbd.x, fbd.y, fbd.load <= 0 ? 0 : fbd.load < 3 ? 1 : 2];
-  const car = f.dropoffCar ? [1, f.dropoffCar.x, f.dropoffCar.y, f.dropoffCar.t0, f.dropoffCar.t1] : [0, 0, 0, 0, 0];
-
-  return { t: f.t, n, items, solids, crew, truck, flatbed, car, boss, cut: [], carried: f.load.pieces.length };
-}
-
 /** A machine's sprites by its look (the art director's plant entries). */
-function machineItems(out: number[], res: Resolver, m: R.FrameMachine, onPour: (p: { x: number; y: number }) => void): void {
+function machineItems(out: number[], res: Resolver, m: R.FrameMachine, t: number, onPour: (p: { x: number; y: number }) => void): void {
   const { x, y, look } = m;
-  if (look === 'padlock') return;
+  if (look === 'padlock' || look === 'arriving') return;
   const work = look === 'working';
   if (m.machine === 'hand_stripper') {
     const f = look === 'trayFull' ? 3 : work ? 1 : 0;
@@ -452,7 +517,7 @@ function machineItems(out: number[], res: Resolver, m: R.FrameMachine, onPour: (
     if (look === 'pour') onPour({ x, y });
     if (m.ingots && m.ingots.n > 0) {
       const id2 = m.ingots.grade === 'ali' ? 'piece.ingot.alu' : 'piece.ingot.brass';
-      const secs = m.ingots.cool * 3;
+      const secs = m.ingots.span ? Math.max(0, t - m.ingots.span.t0) : m.ingots.cool * 3;
       let fi = INGOT_FRAMES.length - 1;
       for (let k = 0; k < INGOT_FRAMES.length; k++)
         if (secs <= INGOT_FRAMES[k][1]) {

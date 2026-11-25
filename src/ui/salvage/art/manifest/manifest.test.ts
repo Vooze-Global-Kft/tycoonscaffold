@@ -126,3 +126,25 @@ describe('the budget (yard-stage1.md 6.2, at density 3)', () => {
     }
   });
 });
+
+describe('the first yard list (yard-stage1.md 6.1) and kept ids (art-plant pass 2)', () => {
+  it('keeps the ids the world builds on and holds the sprites this pass added', () => {
+    const ids = new Set(MF.MANIFEST.map((e) => e.id));
+    const want = [
+      // kept from the first pass (an engineer builds the yard view on them)
+      'plant.scale.platform', 'plant.weighbridge.deck', 'plant.weighbridge.pole', 'plant.weighbridge.display', 'plant.scalehouse',
+      'plant.stripper.hand', 'plant.stripper.power', 'plant.bench.motor', 'plant.crucible.idle', 'plant.crucible.heat',
+      'plant.crucible.ready', 'plant.crucible.pour', 'plant.hood', 'plant.mould', 'plant.bay', 'plant.heap.li', 'plant.stillage',
+      'plant.stillage.layer.bri', 'mark.ring', 'vehicle.truck', 'vehicle.flatbed', 'vehicle.flatbed.working', 'vehicle.flatbed.crane',
+      'vehicle.van', 'thing.car', 'heap.zone1',
+      // added in this pass
+      'plant.crucible.cool', 'plant.pallet.sample', 'plant.portal', 'plant.desk.id', 'plant.board.notice', 'plant.bin.pvc',
+      'plant.sign.rung', 'plant.floodlight', 'plant.crate.machine', 'lane.excavator', 'fx.sparks', 'fx.dust', 'fx.flame', 'fx.coin',
+      'vehicle.car',
+    ];
+    for (const id of want) expect(ids.has(id), id).toBe(true);
+    const frames = (id: string) => MF.MANIFEST.find((e) => e.id === id)!.frames;
+    expect(frames('plant.stripper.power')).toContain('full');
+    expect(frames('plant.bench.motor')).toContain('full');
+  });
+});

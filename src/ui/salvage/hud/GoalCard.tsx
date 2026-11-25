@@ -4,14 +4,16 @@
  * or on a second tap. After the last goal the advice line is the only line. Data from the facade's
  * selectors (`nextGoal`, `advice`); words through ../strings.ts.
  *
- * STAND-IN: "next" is read from the content's goal list (the goal after the current one) until the
- * rules give a selector for it (requests.md); the stub's `advice` is null, so the third line is absent.
+ * The meter ("1.20 / 2.50 t") stands at the right with a thin hi-vis bar of its share; a weigh-in's lesson
+ * that has no room on the ticket (above font scale 1.15) stands as the second line for six seconds. The
+ * card is the hint target `salvage:goal`.
  */
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
+import { useTarget } from '../../hints/targets';
 import { PAL } from '../palette';
 import { useSalvageUi } from '../uiState';
 import { fitText, lineH, type HudLayout } from './metrics';
@@ -24,47 +26,58 @@ export const GOAL_OPEN_MS = 6000;
 export function GoalCard({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   const v = useGame(useShallow((s) => goalValues(cfg, s.game as R.SalvageGame, Date.now())));
   const open = useSalvageUi((s) => s.goalOpen);
+  const lesson = useSalvageUi((s) => s.goalLesson);
+  const target = useTarget('salvage:goal');
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(() => useSalvageUi.getState().setGoalOpen(false), GOAL_OPEN_MS);
     return () => clearTimeout(t);
   }, [open]);
+  // A ticket's lesson (above font scale 1.15) stands as the second line for six seconds.
+  useEffect(() => {
+    if (!lesson) return;
+    const t = setTimeout(() => useSalvageUi.getState().showGoalLesson(null), GOAL_OPEN_MS);
+    return () => clearTimeout(t);
+  }, [lesson]);
   const first = v.goal ?? v.advice;
   if (!first) return null;
   const s = L.s;
   const h1 = L.rows.goal - 4;
   const w = L.goalW;
   const fit = fitText(first + (v.progress ? `  ${v.progress}` : ''), w - 28, h1, 12, s);
-  const more = [v.goal ? v.next : null, v.goal ? v.advice : null].filter((x): x is string => !!x);
+  const more = lesson ? [lesson.text] : open ? [v.goal ? v.next : null, v.goal ? v.advice : null].filter((x): x is string => !!x) : [];
+  const canOpen = !!v.goal && !!(v.next || v.advice);
   const lh = lineH(fit.pt);
+  const tall = more.length > 0;
   const openH = Math.max(h1, Math.min(84, 8 + lh * (1 + more.length)));
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={[first, ...more].join('. ')}
-      onPress={() => useSalvageUi.getState().setGoalOpen(!open && more.length > 0)}
-      style={[styles.abs, { left: L.left, top: L.goalY + 2, width: w, height: open ? openH : h1 }]}
+      accessibilityLabel={[first, v.progress, ...more].filter(Boolean).join('. ')}
+      onPress={() => useSalvageUi.getState().setGoalOpen(!open && canOpen)}
+      style={[styles.abs, { left: L.left, top: L.goalY + 2, width: w, height: tall ? openH : h1 }]}
     >
-      <Paper style={StyleSheet.absoluteFill} radius={6} face={styles.face}>
-        <View style={[styles.line, { height: h1 - 2 }]}>
-          <View style={styles.dot} />
-          <BarText pt={fit.pt} weight="700" style={styles.flex}>
-            {first}
-          </BarText>
-          {v.progress ? (
-            <BarText pt={fit.pt} weight="800" color={PAL.inkSoft}>
-              {v.progress}
+      <View {...target} style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Paper style={StyleSheet.absoluteFill} radius={6} face={styles.face}>
+          <View style={[styles.line, { height: h1 - 2 }]}>
+            <View style={styles.dot} />
+            <BarText pt={fit.pt} weight="700" style={styles.flex}>
+              {first}
             </BarText>
-          ) : null}
-        </View>
-        {open
-          ? more.map((t, i) => (
-              <BarText key={i} pt={fit.pt} weight={i === more.length - 1 && v.advice ? '600' : '500'} color={PAL.inkSoft} style={styles.sub}>
-                {t}
+            {v.progress ? (
+              <BarText pt={fit.pt} weight="800" color={PAL.inkSoft}>
+                {v.progress}
               </BarText>
-            ))
-          : null}
-      </Paper>
+            ) : null}
+          </View>
+          {v.share !== null ? <View style={[styles.meter, { top: h1 - 5, width: Math.round((w - 4) * v.share) }]} /> : null}
+          {more.map((t, i) => (
+            <BarText key={i} pt={fit.pt} weight={lesson ? '700' : i === more.length - 1 && v.advice ? '600' : '500'} color={lesson ? PAL.stamp : PAL.inkSoft} style={styles.sub}>
+              {t}
+            </BarText>
+          ))}
+        </Paper>
+      </View>
     </Pressable>
   );
 }
@@ -76,4 +89,5 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: PAL.hivis, borderWidth: 1.3, borderColor: PAL.ink, marginRight: 6 },
   flex: { flex: 1 },
   sub: { marginLeft: 14 },
+  meter: { position: 'absolute', left: 0, height: 3, backgroundColor: PAL.hivis },
 });

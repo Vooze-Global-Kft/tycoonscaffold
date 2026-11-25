@@ -5,6 +5,7 @@
  * calls each frame with the camera (./WorldLayer.tsx draws the art kit's drawChevron / drawEdgeArrow).
  */
 import * as R from '../../../engine/salvage';
+import { hintTarget } from '../hints/rules';
 
 /** Metres above the target's ground point where the chevron's tip hovers. */
 export const CHEVRON_Z = 2.6;
@@ -13,11 +14,14 @@ export const EDGE_INSET = 22;
 
 /**
  * The chevron's target in metres: the rules' FrameTable.chevron; while the rules leave it null (hour 0's
- * stub) the current goal's target resolved by the rules' own positions (a map point, or a thing by uid).
- * The rule of WHICH target is the goals' (hints package); this only finds where it stands.
+ * stub) the hints' `hintTarget`, else the current goal's target resolved by the rules' own positions.
+ * The rule of WHICH target, and WHEN it shows (`chevronGate`), is the hints package's.
  */
 export function chevronTarget(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTable): { x: number; y: number; id: string } | null {
   if (f.chevron) return f.chevron;
+  // The hints' rule of the target (the goal's `via` first, e.g. the truck before a fetch goal).
+  const h = hintTarget(cfg, g, f, Date.now());
+  if (h) return h;
   const goal = R.nextGoal(cfg, g);
   const id = goal?.target ?? null;
   if (!id) return null;

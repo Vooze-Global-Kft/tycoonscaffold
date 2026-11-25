@@ -42,11 +42,13 @@ export function hudDemo(cfg: R.SalvageConfig, g: R.SalvageGame): (() => void) | 
       return;
     }
     const crew = m === 'crew';
-    const weigh: R.Ticket = { kind: 'weighIn', no: ++n, at, day, by: crew ? 'hand.0' : 'boss', lines: ls, todaysValue: value, lesson: lessonKey ?? null };
-    pumpControl.dispatch([{ type: 'weighIn', ticket: weigh, by: weigh.by }]);
+    const by = crew ? 'hand.0' : 'boss';
+    const lessonText = lessonKey ? { key: lessonKey } : null;
+    const weigh: R.Ticket = { kind: 'weighIn', no: ++n, at, day, by, lines: ls, todaysValue: value, lessonText, lesson: lessonKey ?? null };
+    pumpControl.dispatch([{ type: 'weighIn', ticket: weigh, pieces: [], by }]);
     setTimeout(() => {
-      const coll: R.Ticket = { kind: 'collection', no: ++n, at, day, buyer: 'merchant', lines: ls, paid: value };
-      pumpControl.dispatch([{ type: 'collected', ticket: coll, big: false }]);
+      const coll: R.Ticket = { kind: 'collection', no: ++n, at, day, buyer: 'merchant', lines: ls, paid: value, withBoss: !crew, firstGrades: [] };
+      pumpControl.dispatch([{ type: 'collected', ticket: coll, first: false }]);
     }, 1500);
   };
   const first = setTimeout(fire, 600);

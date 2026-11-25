@@ -4,17 +4,20 @@
  * `withSalvageContent`); the shared schema keeps the block opaque (./schema.ts), so no other game's
  * bundle carries this file (scripts/lib/modes.js MODE_FOLDERS.salvage).
  *
- * HOUR 0 CONTRACT (docs/design/yard-stage1.md section 9, step "contract"). The rules families take the
- * KEYS AND UNITS of the second numbers prototype's content file exactly (scratchpad yard/proto/
- * content2.json, "proto2, 25 November"): grams for masses (`_g`), kilograms where the key says so
- * (`_kg`, `load`, `inbuf`, `pot`, the carriers), seconds (`_s`), minutes (`_m`, `passMin`, `tauMin`),
- * hours (`_h`), § a kilogram for prices (`pbar`), metres on the ground plane for the map (x east, y
- * south). Keys this contract ADDS to the file (the content package fills them; listed in
- * notes/contract.md): `sprite` and `name` on grades and objects, `stages`, `size`, `source` and
- * `certifiedEmpty` on objects, `sprite` and `g` on rivals, `map.places` (footprints), `worldSeed`, `names`, and the part-one families the prototype does
- * not write (`reach`, `feel`, `scale`, `bays`, `cut`, `board`, `deal`, `foreman`, `away`, `goals`,
- * `advice`, `lessons`). Lead's decisions: the price families are ferrous `fe`, non-ferrous `nf` and
- * `pm` (precious, the converter's daily step only); batteries are no grade in stage 1 (no `pb`).
+ * THE CONTRACT, VERSION 2 (fix pass, 25 November). The rules families take the KEYS AND UNITS of the
+ * third numbers pass's content file (scratchpad yard/proto/content3.json, "proto3, 25 November")
+ * exactly: grams for masses (`_g`), kilograms where the key says so (`_kg`, `load`, `inbuf`, `pot`,
+ * `tray`, the carriers), seconds (`_s`), minutes (`_m`, `passMin`, `tauMin`), hours (`_h`), § a
+ * kilogram for prices (`pbar`), metres on the ground plane for the map (x east, y south). content3.json
+ * parses as it is except `grades.batt` (family `pb`: no batteries in stage 1, E16 and the lead; the build
+ * drops it). Keys the BUILD SCRIPT adds to the file (scripts/content/build-yard.py; the art and words
+ * tables are content, ONE table each): `sprite`, `load`, `bay`, `picto`, `name`, `short`, `long` on
+ * grades; `name`, `sprite`, `size`, `source`, `certifiedEmpty`, `long` and a 4th element (the piece's
+ * sprite) on object pieces; `map.places` (the world layer over `map.footprints`: sprite, h, solid,
+ * card, label); `map.sites`; `partners.*.skipLook`; `shop[].deliver_s`/`arrive`; `worldSeed`, `names`,
+ * `text`; and the part-one families the prototype does not write (`reach`, `feel`, `scale`, `bays`,
+ * `cut`, `board`, `deal`, `foreman`, `away`, `goals`, `advice`, `lessons`). Lead's decisions: the price
+ * families are ferrous `fe`, non-ferrous `nf` and `pm` (precious, the converter's daily step only).
  *
  * The ground work's world block stays for the yard view (src/ui/salvage/world): `yard` (size, view),
  * `worker` (body), `helpers` (the placeholder walkers) and `props` (the static solids: fences, the
@@ -29,8 +32,23 @@ import { z } from 'zod';
 
 const id = z.string().regex(/^[A-Za-z0-9_.-]+$/);
 const xy = z.tuple([z.number(), z.number()]);
-/** A sprite id of the art manifest (src/ui/salvage/art/manifest: lower-case dotted words, e.g. thing.washer.whole). */
+/** An ENTRY id of the art manifest (src/ui/salvage/art/manifest `ManifestEntry.id`: lower-case dotted words, e.g. thing.washer, piece.drum). Frames are the art's, never part of the id. */
 const spriteId = z.string().regex(/^[a-z0-9]+(\.[a-z0-9]+)+$/);
+
+/**
+ * The kinds of card (types.ts CardData.kind); a place's card in content (`map.places.<id>.card`) is one
+ * of them or `false` (no "Open" there). rack: shop rows of the place's tools and carriers; rota and
+ * partners: the office's tabs; machine: the machines on the pad (both strippers on the stripper pad);
+ * board: the price board; park: the truck's row; dropoff: what waits at the drop-off; floor: the
+ * tipping floor's things and its room in kg.
+ */
+export const CARD_KINDS = ['rack', 'rota', 'partners', 'processBoard', 'machine', 'board', 'skip', 'deal', 'table', 'away', 'rung', 'clipboard', 'settings', 'help', 'park', 'dropoff', 'floor'] as const;
+export type CardKind = (typeof CARD_KINDS)[number];
+/** The look family of a carried load (the art's people.draw.ts LoadFamily). */
+export const LOAD_FAMILIES = ['fe', 'ci', 'cu', 'br', 'al', 'cab', 'mot', 'hms'] as const;
+/** A footprint on the ground, metres (content3 `map.footprints`, `zones.*.footprint`: centre x, y, width w along x, depth d along y; x0..y1 its edges, informative). */
+export const FootprintSchema = z.object({ x: z.number(), y: z.number(), w: z.number().positive(), d: z.number().positive(), x0: z.number().optional(), y0: z.number().optional(), x1: z.number().optional(), y1: z.number().optional() });
+export type Footprint = z.infer<typeof FootprintSchema>;
 
 // ------------------------------------------------------------------------------------- the world block
 
@@ -82,8 +100,17 @@ export const GradeSchema = z.object({
   kind: z.enum(['grade', 'product', 'intermediate']),
   /** Share of p̄ the grade fetches in an unprepared mixed load (values a skip as found, E3). 1: priced as it is. */
   asFound: z.number().min(0).max(1),
-  /** ADDED: the sprite of one piece of this grade on the ground and on a load (e.g. piece.copper.bright). */
-  sprite: spriteId,
+  /** BUILD: the manifest entry of a piece of this grade where its piece spec names none (e.g. piece.copper.bright). */
+  sprite: spriteId.optional(),
+  /** BUILD: the look family of a load of it (people.draw.ts LoadFamily); default by family in the frame. */
+  load: z.enum(LOAD_FAMILIES).optional(),
+  /** BUILD: its bay's look (a lock-block heap, a stillage, the converter cage), the manifest entry, and where it stands (a map point and the slot along it). */
+  bay: z.object({ kind: z.enum(['heap', 'stillage', 'cage']), sprite: spriteId, place: id.optional(), slot: z.number().int().nonnegative().optional() }).optional(),
+  /** BUILD: its pictogram (ui.picto.<grade>). */
+  picto: spriteId.optional(),
+  /** BUILD (strings' text.json): the ticket row's short name (≤ 12) and Help's long line. */
+  short: z.string().optional(),
+  long: z.string().optional(),
 });
 export type GradeDef = z.infer<typeof GradeSchema>;
 
@@ -111,17 +138,26 @@ export const ConverterSchema = z.object({
   source: z.string(),
   /** § paid for one converter at the usual prices (the prototype's figure; the rules compute it). */
   paid: z.number().nonnegative(),
+  /** content3: one whole piece (always true in stage 1) and the prose rule (not shown). */
+  whole: z.boolean().default(true),
+  rule: z.string().optional(),
 });
 export type ConverterDef = z.infer<typeof ConverterSchema>;
 
-/** One kind of piece a thing comes apart into, in cut order: [grade, grams a piece, how many]. */
-export const PieceSpecSchema = z.tuple([id, z.number().int().positive(), z.number().int().positive()]);
+/**
+ * One kind of piece a thing comes apart into, in cut order: [grade, grams a piece, how many] and,
+ * added by the build, the manifest entry of that piece kind ([.., 'piece.drum']): the washer's li
+ * pieces are a panel, two sides and a drum, which one grade cannot tell apart. Its index in `pieces` is
+ * `Piece.spec`.
+ */
+export const PieceSpecSchema = z.union([z.tuple([id, z.number().int().positive(), z.number().int().positive()]), z.tuple([id, z.number().int().positive(), z.number().int().positive(), spriteId])]);
 export type PieceSpec = z.infer<typeof PieceSpecSchema>;
 
 /** A thing (yard-stage1.md 2.4; content2 `objects`). */
 export const ObjectSchema = z.object({
-  /** ADDED: the thing's name on cards and slips (text.json via the build script). */
-  name: z.string().min(1),
+  /** BUILD: the thing's name on cards and slips (text.json via the build script); Help's long line. */
+  name: z.string().default(''),
+  long: z.string().optional(),
   /** Tool tier it needs: 0 loose (picked up as it is), 1 spanners, 2 sledgehammer and grinder, 3 torch. */
   tier: z.number().int().min(0).max(3),
   /** Hardness h in the cut time max(cut.minS, m h / P). */
@@ -137,9 +173,9 @@ export const ObjectSchema = z.object({
   /** § at the usual prices, prepared and as found (the prototype's figures; the rules compute their own). */
   preparedValue: z.number().nonnegative(),
   asFoundValue: z.number().nonnegative(),
-  /** ADDED: the sprite base of the whole thing; its stages are `${sprite}.${stage}` (thing.washer.whole, thing.washer.cut1, ...). */
-  sprite: spriteId,
-  /** ADDED: how many drawn stages it has between whole and gone (yard-stage1.md 6.1; at least 1). */
+  /** BUILD: the manifest ENTRY of the whole thing (thing.washer); its frames are the art's (stageOf). Default `thing.<id>`. */
+  sprite: spriteId.optional(),
+  /** @deprecated the art's entry has the frames; ignored by the rules. */
   stages: z.number().int().min(1).default(1),
   /** ADDED (S7): where it came from; a thing with a converter must name its partner and record. */
   source: z.object({ type: z.literal('partner'), partner: id, ref: z.string() }).optional(),
@@ -157,35 +193,75 @@ export const ZoneSchema = z.object({
   centre: xy,
   /** Radius of the heap, metres (things stand on a ring pattern inside it: positions.ts `thingPos`). */
   r: z.number().positive(),
+  /** content3: the heap's footprint (E23). */
+  footprint: FootprintSchema.optional(),
 });
 export type ZoneDef = z.infer<typeof ZoneSchema>;
 
-/** A place's footprint on the ground (ADDED: the prototype gives points only). */
+/**
+ * A PLACE: the world layer over a footprint (BUILD: content3 gives `map.footprints`; the build adds
+ * sprite, height, solidity, card and label). `w` and `d` come from the footprint when not given here.
+ */
 export const PlaceSchema = z.object({
   w: z.number().positive().default(2),
   d: z.number().positive().default(2),
   h: z.number().positive().default(1.5),
   solid: z.boolean().default(false),
-  /** The sprite of the place (plant.scale.platform, prop.office, ...). */
-  sprite: spriteId,
-  /** True: "Open" opens its card (yard-stage1.md 2.1 "the one button"). */
-  card: z.boolean().default(true),
+  /** The manifest entry of the place (plant.scale.platform, plant.portacabin, ...); default plant.block. */
+  sprite: spriteId.default('plant.block'),
+  /** What "Open" shows there: a card kind (CARD_KINDS), true (the default kind for this place id: see cards.ts), or false (no Open). */
+  card: z.union([z.boolean(), z.enum(CARD_KINDS)]).default(true),
+  /** Its world label's text key (place.*), shown on first sight (4.2); default `place.<id>` when that key exists. */
+  label: z.string().optional(),
 });
 export type PlaceDef = z.infer<typeof PlaceSchema>;
 
-/** The map (content2 `map`): named points, the routes' detour factor, the lane's lengths, the routes' distances. */
-export const MapSchema = z.object({
-  points: z.record(id, xy),
-  /** Route length = detour × straight distance (the prototype's walk model). */
-  detour: z.number().min(1),
-  /** Metres along the lane from the gate: farm_m, demolition_m, bridge_m. */
-  lane: z.record(id, z.number().nonnegative()),
-  /** Metres between two points, "a-b". */
-  routes: z.record(z.string(), z.number().nonnegative()),
-  /** ADDED: footprints of the points that are places (the rest are only points: start, gate, zone centres). */
-  places: z.record(id, PlaceSchema).default({}),
-});
-export type MapDef = z.infer<typeof MapSchema>;
+const MapObject = z
+  .object({
+    points: z.record(id, xy),
+    /** content3 (E23): a footprint for every place of the map. */
+    footprints: z.record(id, FootprintSchema).default({}),
+    /** content3: THE container wall (boxes, metres) and its gaps (points); the world block's `props` walls must equal it (lint). */
+    walls: z.array(z.object({ x: z.number(), y: z.number(), w: z.number().positive(), d: z.number().positive() })).default([]),
+    gaps: z.array(xy).default([]),
+    /** content3: the hero frame (S19): its box and the places it must hold. */
+    hero: z.object({ x0: z.number(), y0: z.number(), w: z.number().positive(), d: z.number().positive(), places: z.array(id) }).optional(),
+    /** Route length = detour × straight distance (the prototype's walk model). */
+    detour: z.number().min(1),
+    /**
+     * Metres along the lane from the gate: farm_m, demolition_m, bridge_m. THE LANE IS DRAWN AT THESE
+     * DISTANCES (the contract's decision): a partner's site and skip zone stand east of the gate at
+     * gate.x + lane[partner.lane] (positions.ts skipZone), and the world draws the lane that far.
+     */
+    lane: z.record(id, z.number().nonnegative()),
+    /** Metres between two points, "a-b" (either order). */
+    routes: z.record(z.string(), z.number().nonnegative()),
+    /** BUILD: the world layer of each place (keyed by point id; w, d default from `footprints`). */
+    places: z.record(id, PlaceSchema).default({}),
+    /** BUILD (optional): a partner's skip zone size, metres (default 6 × 4), by partner id. */
+    sites: z.record(id, z.object({ w: z.number().positive(), d: z.number().positive() })).default({}),
+    /** BUILD (optional): the chalk circles, [x, y, r] metres (default: two west of the scale). */
+    circles: z.array(z.tuple([z.number(), z.number(), z.number().positive()])).default([]),
+    /** The lane's asphalt width, metres (the world's). */
+    laneWidth: z.number().positive().optional(),
+  })
+  .strict();
+
+/** The map: named points, footprints, the wall, the hero frame, the detour factor, the lane's lengths, routes, the world layer. A renamed key fails (strict). */
+export const MapSchema = z.preprocess((raw) => {
+  // content3 writes footprints; the world reads places (the build's layer: which points are places is
+  // the build's choice). A place's w, d default from its footprint.
+  if (!raw || typeof raw !== 'object') return raw;
+  const m = raw as { footprints?: Record<string, { w?: number; d?: number }>; places?: Record<string, Record<string, unknown>> };
+  if (!m.footprints || !m.places) return raw;
+  const places: Record<string, Record<string, unknown>> = {};
+  for (const [pid, pl] of Object.entries(m.places)) {
+    const f = m.footprints[pid];
+    places[pid] = f ? { w: f.w, d: f.d, ...pl } : pl;
+  }
+  return { ...m, places };
+}, MapObject);
+export type MapDef = z.infer<typeof MapObject>;
 
 /** A tool tier (content2 `tools`): tier and cutting power P, kg a second. */
 export const ToolSchema = z.object({ tier: z.number().int().min(1).max(3), P: z.number().positive() });
@@ -204,14 +280,16 @@ export const TruckSchema = z.object({
 });
 export type TruckDef = z.infer<typeof TruckSchema>;
 
-/** The machines (content2 `machines`), each as the prototype writes it. */
+/** Out-tray room, kilograms (content3 `tray`; a full tray stops its machine, nothing lost). */
+const tray = z.number().positive().default(200);
+/** The machines (content `machines`), each as the prototype writes it. */
 export const MachinesSchema = z.object({
-  /** The inherited hand stripper (S4): kg a second, works only while the boss stands at it, buffer kg. */
-  hand_stripper: z.object({ rate: z.number().positive(), needs_boss: z.boolean(), inbuf: z.number().positive() }),
-  /** The powered stripper: kg a second, buffer kg, +lev a level. */
-  stripper: z.object({ rate: z.number().positive(), inbuf: z.number().positive(), lev: z.number().nonnegative() }),
-  /** The motor bench: kg a second, buffer kg, +lev a level, output shares [grade, share], waste share. */
-  bench: z.object({ rate: z.number().positive(), inbuf: z.number().positive(), lev: z.number().nonnegative(), out: z.array(z.tuple([id, z.number().min(0).max(1)])), waste: z.number().min(0).max(1) }),
+  /** The inherited hand stripper (S4): kg a second, works only while the boss stands at it, buffer kg, tray kg. */
+  hand_stripper: z.object({ rate: z.number().positive(), needs_boss: z.boolean(), inbuf: z.number().positive(), tray }),
+  /** The powered stripper: kg a second, buffer kg, +lev a level, tray kg. */
+  stripper: z.object({ rate: z.number().positive(), inbuf: z.number().positive(), lev: z.number().nonnegative(), tray }),
+  /** The motor bench: kg a second, buffer kg, +lev a level, output shares [grade, share], waste share, tray kg. */
+  bench: z.object({ rate: z.number().positive(), inbuf: z.number().positive(), lev: z.number().nonnegative(), out: z.array(z.tuple([id, z.number().min(0).max(1)])), waste: z.number().min(0).max(1), tray }),
   /** The crucible (S11): pot kg, seconds of heat a kg of new metal, +lev a level (pot), start at start_share after start_idle s, recipes [in, out, yield, dross] (in: one grade or a list, E22: alloy wheels and cast aluminium), the first heat waits for the boss within first_wait_m metres. */
   crucible: z.object({
     pot: z.number().positive(),
@@ -221,6 +299,9 @@ export const MachinesSchema = z.object({
     start_idle: z.number().nonnegative(),
     recipes: z.record(id, z.tuple([z.union([id, z.array(id).min(1)]), id, z.number().min(0).max(1), id])),
     first_wait_m: z.number().positive(),
+    /** content3: kilograms an ingot (n = floor(metal / ingot_kg), the heel keeps the rest) and the ingot tray's kg. */
+    ingot_kg: z.number().positive().default(5),
+    tray,
   }),
 });
 export type MachinesDef = z.infer<typeof MachinesSchema>;
@@ -267,8 +348,13 @@ export const PartnerSchema = z.object({
   skipMass_kg: z.number().nonnegative(),
   skipPrice: z.number().nonnegative(),
   skipPrepared: z.number().nonnegative(),
-  /** ADDED: the sprite of its site sign (prop.sign.farm, ...). */
+  /** BUILD: the sprite of its site sign (lane.shed.farm, ...). */
   sprite: spriteId.optional(),
+  /** BUILD: the art's skip-load look (people.ts SKIP_LOADS: farm, demolition). */
+  skipLook: z.enum(['farm', 'demolition']).optional(),
+  /** content3 extras (checks, not rules). */
+  trial_price: z.number().nonnegative().optional(),
+  skipAsFound: z.number().nonnegative().optional(),
 });
 export type PartnerDef = z.infer<typeof PartnerSchema>;
 
@@ -280,50 +366,89 @@ export type MerchantDef = z.infer<typeof MerchantSchema>;
 export const SHOP_KINDS = ['carry', 'crew', 'tool', 'machine', 'vehicle', 'recipe', 'office'] as const;
 export type ShopKind = (typeof SHOP_KINDS)[number];
 
-/** One purchase in goal order (E2; content2 `shop`): price §, gate (a rung, or null), the income it adds § a minute, the income then, its payback minutes. */
+/**
+ * One purchase (E2, E18; content3 `shop` in goal order, and `dayOneList`): price §, gate (a rung, or
+ * null), where its card sells it, how it arrives. The measured figures are the prototype's (checks).
+ */
 export const ShopItemSchema = z.object({
   key: id,
   kind: z.enum(SHOP_KINDS),
-  /** The map point whose card sells it. */
+  /** The map point whose card sells it (and where it is set down). */
   place: id,
   price: z.number().nonnegative(),
   /** "rung2", "rung3" or null. */
-  gate: z.string().nullable(),
-  addsPerMin: z.number(),
-  incomeNow: z.number(),
-  tauMin: z.number().nonnegative(),
+  gate: z.string().nullable().default(null),
+  /** BUILD: seconds from paying to its arrival (2.15; 0: at once), and what brings it (default by kind: tools and carriers the van, machines the machine flatbed, the truck itself, crew out of the office). */
+  deliver_s: z.number().nonnegative().default(0),
+  arrive: z.enum(['van', 'machineFlatbed', 'truck', 'crew']).optional(),
+  /** The prototype's measures (checks, never rules). */
+  addsPerMin: z.number().optional(),
+  incomeNow: z.number().optional(),
+  tauMin: z.number().nonnegative().optional(),
+  worth25min_goal: z.number().optional(),
+  worth25min_all: z.number().optional(),
+  heldAtCard: z.string().optional(),
+  wait: z.string().optional(),
+  why: z.string().optional(),
 });
 export type ShopItem = z.infer<typeof ShopItemSchema>;
 
-/** Levels (content2 `levels`): price = base × tau(L) × 1.12^(L−1), tau(L) = min(cap, first × growth^(L−1)) minutes; `bases` § a minute a level adds, by target. */
+/**
+ * Levels (content3 `levels`, E13a): price = tau(L) × the rated kg a minute the level adds at full feed ×
+ * the margin a kg of its target (`margin_per_kg`: stripper, bench, crucible; `yard` for crew and
+ * partners), tau(L) = min(cap, first × growth^(L−1)) minutes; at most `maxLevel`; sold from the
+ * purchase `opens`. Machine levels are LINEAR in the level (the lead): rate × (1 + lev × (L − 1)).
+ * Partner levels are "another skip in rotation" (E13b; the specification's model binds, so
+ * `skipLevel` is a check of content3's, not a rule). `bases` is content2's (unused).
+ */
 export const LevelsSchema = z.object({
   tau: z.object({ first: z.number().positive(), growth: z.number().positive(), cap: z.number().positive() }),
+  maxLevel: z.number().int().positive().default(20),
+  opens: id.nullable().default(null),
+  margin_per_kg: z.record(z.string(), z.number().nonnegative()).default({}),
+  skipLevel: z.number().nonnegative().optional(),
   rule: z.string().default(''),
-  bases: z.record(z.string(), z.number().nonnegative()),
+  advice: z.string().optional(),
+  skipsInRotation: z.record(z.string(), z.string()).optional(),
+  bases: z.record(z.string(), z.number().nonnegative()).default({}),
 });
 export type LevelsDef = z.infer<typeof LevelsSchema>;
 
 export const RungSchema = z.object({ t: z.number().nonnegative(), range: z.number().int().nonnegative() });
-/** The ladder (content2 `ladder`): rungs by tonnes supplied and range; theta § at p̄ that makes a material count. */
-export const LadderSchema = z.object({ rung2: RungSchema, rung3: RungSchema, theta: z.number().positive() });
+/**
+ * The ladder: rungs 2 and 3 by tonnes supplied and range (the stage's gates); `rungs` all nine for the
+ * table (rungs 4 to 9 show with their gates and a padlock, 2.11; default: 1 to 3 from rung2/rung3);
+ * theta § at p̄ that makes a material count.
+ */
+export const LadderSchema = z.object({ rung2: RungSchema, rung3: RungSchema, theta: z.number().positive(), rungs: z.array(z.object({ n: z.number().int().min(1).max(9), t: z.number().nonnegative(), range: z.number().int().nonnegative() })).default([]) });
 export type LadderDef = z.infer<typeof LadderSchema>;
 
-/** A rival firm (content2 `rivals`): its id (rival01 = register id rival.1), tonnes at the start, the minute it is planned to be passed. */
-export const RivalSchema = z.object({
-  id: id,
-  T0_t: z.number().nonnegative(),
-  passMin: z.number().nonnegative(),
-  /** ADDED: growth a market day, share (whole-game 6.2: 0.005 below 1 kt). */
-  g: z.number().nonnegative().default(0.005),
-  /** ADDED: its plate logo's sprite (ui.rival.1, ...). */
-  sprite: spriteId.optional(),
-});
+/**
+ * A rival firm (content3 `rivals.list`): its REGISTER id (rival.1 ... rival.25: also its content id),
+ * tonnes at the start, its growth a market day, the minute it is planned to be passed. THE RULE
+ * (specification 2.11, which binds behaviour): T_i(d) = T0_t × (1 + g_day × min(d, 40)), d = D −
+ * clock.startDay; content3's prose `rule` is a check, not the rule.
+ */
+export const RivalSchema = z.preprocess(
+  (r) => (r && typeof r === 'object' && 'g' in r && !('g_day' in r) ? { ...(r as object), g_day: (r as { g: number }).g } : r),
+  z.object({
+    id: z.string().regex(/^rival\.\d+$/),
+    T0_t: z.number().nonnegative(),
+    g_day: z.number().nonnegative().default(0.005),
+    passMin: z.number().nonnegative().optional(),
+    /** BUILD: its plate logo's sprite (ui.rival.1, ...). */
+    sprite: spriteId.optional(),
+  }),
+);
 export type RivalDef = z.infer<typeof RivalSchema>;
+/** content3 `rivals`: {rule, list}; a bare list is taken as the list. */
+export const RivalsSchema = z.preprocess((r) => (Array.isArray(r) ? { list: r } : r), z.object({ rule: z.string().default(''), list: z.array(RivalSchema) }));
 
 // --------------------------------------------------------------- part one's keys the prototype does not write
 
 /** Feel values of the world engineer (D12), read by the rules and the screen alike. */
-const ReachSchema = z.object({ work: z.number().positive().default(1.4), pickup: z.number().positive().default(1.0), place: z.number().positive().default(1.2) });
+/** reach.sight (content3): within it of a cutter's thing the boss sees each piece come off; beyond it the whole thing is one event (E17). */
+const ReachSchema = z.object({ work: z.number().positive().default(1.4), pickup: z.number().positive().default(1.0), place: z.number().positive().default(1.2), sight: z.number().positive().default(8) });
 const FeelSchema = z.object({ workDelay: z.number().nonnegative().default(0.3), staleS: z.number().positive().default(0.6) });
 const ScaleSchema = z.object({ platformMaxKg: z.number().positive().default(300), bridgeStepKg: z.number().positive().default(20), platformStepKg: z.number().positive().default(0.1) });
 const CutSchema = z.object({ minS: z.number().nonnegative().default(0.6) });
@@ -338,8 +463,8 @@ const DealSchema = z.object({
   trust: z.object({ up: z.number().default(10), down: z.number().default(15), start: z.number().default(50) }).default({ up: 10, down: 15, start: 50 }),
 });
 const ForemanSchema = z.object({ boost: z.number().nonnegative().default(0.25), windowS: z.number().positive().default(60), minutesPerDay: z.number().nonnegative().default(45) });
-/** Time away (2.16): a gap over gapS seconds goes to the away pass; caps from content2 `awayCap_h`. */
-const AwaySchema = z.object({ gapS: z.number().positive().default(2) });
+/** Time away (2.16): a gap over gapS seconds goes to the away pass (above the longest UI stall: 10 s; types.ts MAX_TICK); caps from `awayCap_h`. */
+const AwaySchema = z.object({ gapS: z.number().positive().default(10) });
 /** A goal (2.10; goals.json by the goals package): id, text key, the chevron's target, a done condition, an optional purchase. */
 export const GoalSchema = z.object({
   id: id,
@@ -351,19 +476,25 @@ export const GoalSchema = z.object({
   done: z.string(),
   /** The shop key the goal asks to buy, if any (the one-prompt-a-minute rule). */
   buy: id.nullable().default(null),
-  /** Optional goals the card's Not now may skip. */
+  /** Optional goals the card's Not now may skip (skipGoal). */
   optional: z.boolean().default(false),
+  /** The repeating goal of the lead's ruling ("Widen the yard: {item}", text goal.widen with {item: {text}}): met each time the advice line's purchase is made; it stays the current goal. */
+  repeat: z.boolean().default(false),
 });
 export type GoalDef = z.infer<typeof GoalSchema>;
-const AdviceSchema = z.object({ minutes: z.number().positive().default(3), promptGapS: z.number().nonnegative().default(60) });
+/** The advice line (2.10): priced within cash + minutes × incomeRate; never below E19's reserve, the price of a load full within reserveS. */
+const AdviceSchema = z.object({ minutes: z.number().positive().default(3), promptGapS: z.number().nonnegative().default(60), reserveS: z.number().nonnegative().default(120) });
 
 // ---------------------------------------------------------------------------------------- the block
 
 export const SalvageSchema = z.object({
   /** True while the block is the frozen TEST content of hour 0 (validate says so as a warning). */
   skeletonPlaceholder: z.boolean().default(false),
-  /** Free text: which content this is (content2 `version`). */
+  /** Free text: which content this is (content3 `version`), its units line, its changes and its key list (provenance, never read). */
   version: z.string().default(''),
+  units: z.string().optional(),
+  $changes: z.array(z.string()).optional(),
+  $keys: z.array(z.string()).optional(),
   /** Counter-hash seed of the whole game (2: every phone the same board, drop-off, skips). */
   worldSeed: z.number().int().default(1),
   /** Invented names by register id (yard-stage1.md 5.1: homeYard, merchant, partnerFarm, rival.1, ...), filled by the build script from the names register. */
@@ -401,14 +532,23 @@ export const SalvageSchema = z.object({
   /** Kilograms the tipping floor holds. */
   floorRoom_kg: z.number().positive(),
   merchant: MerchantSchema,
+  /** Every purchase of the hour in goal order (E2, E18). */
   shop: z.array(ShopItemSchema),
+  /** content3 (E22): purchases on sale from day 1, out of the hour's goal order (hand2, cutter2, alu, night). The shop is `shop` ∪ `dayOneList`. */
+  dayOneList: z.array(ShopItemSchema).default([]),
+  /** content3 (E22): the goal order of purchases (shop keys). */
+  goalOrder: z.array(id).default([]),
+  /** content3: display pacing the prototype measured under. NOT A RULE (E18: the shop is cash-gated without any waiting rule); never read by the rules. */
+  shopRules: z.object({ onSale: z.number().optional(), cardDelay_s: z.number().optional(), reserve: z.string().optional() }).passthrough().optional(),
+  /** content3: kilograms of one whole unit of the grades collected whole (conv, mot, cyl, alw): a lot never takes part of one. */
+  wholeUnits_kg: z.record(id, z.number().positive()).default({}),
   levels: LevelsSchema,
   ladder: LadderSchema,
   /** Capacity guards at rungs 1 to 3, t/h. */
   ceilings_t_h: z.array(z.number().positive()).length(3),
   /** Away cap, hours: [without, with the Night watch]. */
   awayCap_h: z.tuple([z.number().positive(), z.number().positive()]),
-  rivals: z.array(RivalSchema),
+  rivals: RivalsSchema,
 
   // part one's keys (yard-stage1.md 2.1 to 2.11)
   reach: ReachSchema.default({ work: 1.4, pickup: 1.0, place: 1.2 }),
@@ -423,8 +563,16 @@ export const SalvageSchema = z.object({
   away: AwaySchema.default({ gapS: 2 }),
   goals: z.array(GoalSchema).default([]),
   advice: AdviceSchema.default({ minutes: 3, promptGapS: 60 }),
-  /** Grades whose first weigh-in prints a lesson (a key of strings.ts `LESSONS`). */
+  /** Grades whose first weigh-in prints a lesson (a lesson.* text key). */
   lessons: z.record(id, z.string()).default({}),
+  /** BUILD (strings' text.json): words that live in data (Help's lessons, partners' lines, the glossary). */
+  text: z
+    .object({
+      lessons: z.record(z.string(), z.object({ ticket: z.string(), help: z.string() })).default({}),
+      partners: z.record(z.string(), z.object({ card: z.string(), line: z.string() })).default({}),
+      glossary: z.array(z.object({ term: z.string(), line: z.string() })).default([]),
+    })
+    .optional(),
 });
 
 export type SalvageContent = z.infer<typeof SalvageSchema>;
@@ -461,15 +609,25 @@ export function lintSalvage(s: SalvageContent): string[] {
   for (const o of s.dropoff.initial) object(o, 'dropoff.initial');
   for (const [g] of s.machines.bench.out) grade(g, 'machines.bench.out');
   for (const [rid, r] of Object.entries(s.machines.crucible.recipes)) for (const g of [...(Array.isArray(r[0]) ? r[0] : [r[0]]), r[1], r[3]]) grade(g, `machines.crucible.recipes.${rid}`);
-  for (const i of s.shop) point(i.place, `shop.${i.key}.place`);
+  for (const i of [...s.shop, ...s.dayOneList]) point(i.place, `shop.${i.key}.place`);
   const keys = new Set<string>();
-  for (const i of s.shop) {
+  for (const i of [...s.shop, ...s.dayOneList]) {
     if (keys.has(i.key)) out.push(`duplicate shop key "${i.key}"`);
     keys.add(i.key);
   }
   if ((s.carriers.frame ?? 0) > 30) out.push('carriers.frame: the hand load is at most 30 kg (S8)');
   for (const g of Object.keys(s.bays)) grade(g, 'bays');
   for (const g of Object.keys(s.lessons)) grade(g, 'lessons');
+  for (const k of s.goalOrder) if (!keys.has(k)) out.push(`goalOrder names "${k}", which is not a shop key`);
+  for (const [g, gr] of Object.entries(s.grades)) if (gr.bay?.place) point(gr.bay.place, `grades.${g}.bay.place`);
+  const rivalIds = new Set<string>();
+  for (const r of s.rivals.list) {
+    if (rivalIds.has(r.id)) out.push(`duplicate rival id "${r.id}"`);
+    rivalIds.add(r.id);
+  }
+  // The container wall has one source: map.walls (content3). The world block's wall props must match it.
+  const wallProps = s.props.filter((p) => p.kind === 'wall');
+  if (s.map.walls.length && wallProps.length && (wallProps.length !== s.map.walls.length || s.map.walls.some((w, i) => Math.abs(w.x - wallProps[i].x) > 1e-6 || Math.abs(w.y - wallProps[i].y) > 1e-6 || Math.abs(w.w - wallProps[i].w) > 1e-6 || Math.abs(w.d - wallProps[i].d) > 1e-6))) out.push('props: the wall props differ from map.walls (the one container wall)');
   const ids = new Set<string>();
   for (const p of s.props) {
     if (ids.has(p.id)) out.push(`duplicate prop id "${p.id}"`);

@@ -5,7 +5,3 @@ import type { OfficeTab } from './cardStack';
 export function devCard(): { ref: CardRef; tab?: OfficeTab } | null {
   return null;
 }
-
-export function devFontScale(): number | null {
-  return null;
-}

@@ -23,15 +23,15 @@ import Animated, { makeMutable, runOnJS, useAnimatedStyle, useFrameCallback, use
 import * as R from '../../../engine/salvage';
 import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
-import { drawChevron, drawEdgeArrow, drawPickupShadow, drawPourLight, drawWorkRing, POUR_LIGHT_SCALE, RING_R } from '../art/marks.draw';
+import { drawChevron, drawCoin, drawDust, drawEdgeArrow, drawFlame, drawPickupShadow, drawPourLight, drawSparks, drawWorkRing, POUR_LIGHT_SCALE, RING_R } from '../art/marks.draw';
 import { YARD, coolingColour } from '../art/palette';
 import { VIEW, circle, fill, oval, poly, segment, stroke } from '../art/pen';
 import { gradeGlyph } from '../art/pieces.draw';
 import { drawIngot } from '../art/scrap.draw';
-import { scripCoin } from '../art/ui.draw';
 import { say } from '../strings';
 import { CHEVRON_Z, chevronPlace, chevronTarget } from './chevron';
 import { cashAnchor } from '../hud/anchors';
+import { chevronGate } from '../hints/gate';
 import { FX, FX_EVENTS, FX_S, WORK, arcAt, ease, effectsFor, type FxContext, type FxSpawn } from './effects';
 import type { YardAnim } from './frameLoop';
 import { HERO, freeWorld, heroCam, heroCamera, type ScreenInsets } from './heroFrame';
@@ -198,8 +198,8 @@ interface Pics {
   coin: SkPicture;
   glow: SkPicture;
   shadow: SkPicture;
-  spark: SkPicture;
-  dust: SkPicture;
+  spark: SkPicture[];
+  dust: SkPicture[];
   flame: SkPicture[];
   tick: SkPicture;
   /** Pieces by grade index (effects.ts look). */
@@ -216,8 +216,8 @@ function record(draw: (c: SkCanvas) => void): SkPicture {
 }
 
 /**
- * The effects' pictures, recorded once on the JavaScript thread. Sparks, dust and the flame are LOCAL
- * STAND-INS until the art director's marks.draw.ts has drawSpark, drawDust and drawTorchFlame (requests.md).
+ * The effects' pictures, recorded once on the JavaScript thread from the art kit (marks.draw.ts: the
+ * chevron, the edge arrow, the work ring, sparks, dust, the torch's flame, the coin, the pour's light).
  */
 function makePics(grades: string[]): Pics {
   const v = VIEW;
@@ -225,25 +225,12 @@ function makePics(grades: string[]): Pics {
     chev: [record((c) => drawChevron(c, 0)), record((c) => drawChevron(c, 1))],
     arrow: record((c) => drawEdgeArrow(c)),
     ring: Array.from({ length: RING_STEPS + 1 }, (_, k) => record((c) => drawWorkRing(c, v, k, RING_STEPS))),
-    coin: record((c) => scripCoin(c, 0, 0, 8)),
+    coin: record((c) => drawCoin(c)),
     glow: record((c) => drawPourLight(c, v)),
     shadow: record((c) => drawPickupShadow(c, v)),
-    spark: record((c) => {
-      c.drawPath(segment(0, 0, -7, 2.5), stroke('#FFE9A8', 1.8));
-      c.drawPath(circle(0, 0, 1.4), fill('#FFFFFF'));
-    }),
-    dust: record((c) => {
-      c.drawPath(oval(0, 0, 9, 6), fill('#B8AC98', 0.55));
-      c.drawPath(oval(-5, 2, 6, 4), fill('#CFC5B3', 0.5));
-      c.drawPath(oval(6, 1, 5, 3.5), fill('#A99D8A', 0.45));
-    }),
-    flame: [0, 1].map((k) =>
-      record((c) => {
-        const L = 13 + k * 2;
-        c.drawPath(poly([0, -2.4, L, 0, 0, 2.4]), fill('#7FB4FF', 0.85));
-        c.drawPath(poly([0, -1.2, L * 0.55, 0, 0, 1.2]), fill('#FFFFFF', 0.95));
-      }),
-    ),
+    spark: [0, 1, 2].map((f) => record((c) => drawSparks(c, f))),
+    dust: [0, 1, 2].map((f) => record((c) => drawDust(c, f))),
+    flame: [0, 1].map((f) => record((c) => drawFlame(c, f))),
     tick: record((c) => {
       c.drawPath(segment(-3, -3, 3, 3), stroke(YARD.ink, 1.4, 0.6));
       c.drawPath(segment(-3, 3, 3, -3), stroke(YARD.ink, 1.4, 0.6));
@@ -274,6 +261,7 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
   const grades = useMemo(() => Object.keys(cfg.salvage.grades), [cfg]);
   const pics = useMemo(() => makePics(grades), [grades]);
   const cam = anim.camera;
+  const body = anim.body;
   const live = useSharedValue<Live[]>([]);
   const rings = useSharedValue<{ x: number; y: number; r: number; k: number }[]>([]);
   const chev = useSharedValue({ on: 0, x: 0, y: 0 });
@@ -347,18 +335,11 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
         paint.setAlphaf(Math.max(0, fade));
         cv.saveLayer(paint);
         if (e.look === WORK.sparks || e.look === WORK.torch) {
-          // A fan of sparks thrown out and down, each living 0.35 s.
-          for (let s = 0; s < 7; s++) {
-            const life = (t * 2.9 + s * 0.143) % 1;
-            const seed = Math.floor(t * 2.9 + s * 0.143) * 7 + s;
-            const ang = -0.9 + ((seed * 0.6180339) % 1) * 1.6;
-            const dist = 10 + life * 26;
-            cv.save();
-            cv.translate(sx + Math.cos(ang) * dist, sy + Math.sin(ang) * dist * 0.6 + life * life * 14);
-            cv.rotate((ang * 180) / Math.PI + 180, 0, 0);
-            cv.drawPicture(pics.spark);
-            cv.restore();
-          }
+          // The art kit's fan of sparks, three frames flickering.
+          cv.save();
+          cv.translate(sx, sy);
+          cv.drawPicture(pics.spark[Math.floor(t * 14) % 3]);
+          cv.restore();
           if (e.look === WORK.torch) {
             cv.save();
             cv.translate(sx - 10, sy - 4);
@@ -366,13 +347,11 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
             cv.restore();
           }
         } else if (e.look === WORK.dust) {
-          // A puff at each blow (every 0.6 s), growing and fading.
+          // A puff at each blow (every 0.6 s): the art kit's three frames, growing and fading.
           const u = (t % 0.6) / 0.6;
-          paint.setAlphaf(Math.max(0, fade * (1 - u)));
-          cv.saveLayer(paint);
+          cv.save();
           cv.translate(sx, sy + 8);
-          cv.scale(0.6 + u * 0.9, 0.6 + u * 0.9);
-          cv.drawPicture(pics.dust);
+          cv.drawPicture(pics.dust[Math.min(2, Math.floor(u * 3))]);
           cv.restore();
         } else {
           const u = (t % 0.5) / 0.5;
@@ -391,7 +370,8 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
       keep.push(e);
       alive++;
       if (e.kind === FX.arc) {
-        arcAt(p3, e.ax, e.ay, e.az, e.bx, e.by, e.bz, ease(u), 1.1);
+        const bd = body.value;
+        arcAt(p3, e.ax, e.ay, e.az, e.toBoss === 1 ? bd.x : e.bx, e.toBoss === 1 ? bd.y : e.by, e.bz, ease(u), 1.1);
         const gx = p3[0] * ppm;
         const gy = p3[1] * ppm * tilt;
         cv.save();
@@ -448,7 +428,7 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
     const foot = [0, 0];
     toScreen(tip, ch.x, ch.y, CHEVRON_Z, cm, ppm, tilt, lift, W, H);
     toScreen(foot, ch.x, ch.y, 0, cm, ppm, tilt, lift, W, H);
-    chevronPlace(out, ch.on, tip[0], tip[1], foot[1], box.value);
+    chevronPlace(out, ch.on * (chevronGate.value > 0 ? 1 : 0), tip[0], tip[1], foot[1], box.value);
     if (out[0] === 1) {
       cv.save();
       cv.translate(out[1], out[2] + Math.sin(now * 4) * 2.5);
@@ -517,7 +497,7 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
   const play = useRef<(events: readonly R.SalvageEvent[]) => void>(() => {});
   play.current = (events) => {
     const g = useGame.getState().game as R.SalvageGame;
-    const ctx: FxContext = { content: cfg.salvage, frame: lastFrame.current ?? (g.salvage ? R.frame(cfg, g) : null), boss: g.salvage?.presence ? { x: g.salvage.presence.x, y: g.salvage.presence.y } : null, grades };
+    const ctx: FxContext = { content: cfg.salvage, frame: lastFrame.current ?? (g.salvage ? R.frame(cfg, g) : null), boss: { x: anim.body.value.x, y: anim.body.value.y }, grades };
     const start: FxSpawn[] = [];
     const stop: string[] = [];
     for (const e of events) {

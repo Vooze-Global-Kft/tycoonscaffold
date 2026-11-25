@@ -6,21 +6,21 @@
 import { StyleSheet, View } from 'react-native';
 import type { SalvageConfig } from '../../../engine/salvage';
 import { PAL } from '../palette';
-import { say } from '../strings';
+import { say } from './words';
 import type { YardLayout } from '../world/yard';
 import { GoalCard } from './GoalCard';
 import type { HudLayout } from './metrics';
 import { OneButton } from './OneButton';
 import { BarText } from './Paper';
-import { Tickets, type GroundXf } from './Tickets';
+import { Tickets, type Camera } from './Tickets';
 import { Toasts } from './Toasts';
 import { TopBar } from './TopBar';
 
 /** The bars, tickets and toasts (under the overlays). */
-export function HudLayer({ cfg, L, ground, yard }: { cfg: SalvageConfig; L: HudLayout; ground: GroundXf; yard: YardLayout }) {
+export function HudLayer({ cfg, L, camera, yard }: { cfg: SalvageConfig; L: HudLayout; camera: Camera; yard: YardLayout }) {
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <Tickets cfg={cfg} L={L} ground={ground} yard={yard} />
+      <Tickets cfg={cfg} L={L} camera={camera} yard={yard} />
       <TopBar cfg={cfg} L={L} />
       <GoalCard cfg={cfg} L={L} />
       <Toasts cfg={cfg} L={L} />

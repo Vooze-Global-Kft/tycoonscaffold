@@ -84,3 +84,43 @@ export function fmtRank(n: number): string {
 export function fmtPct(x: number): string {
   return `${Math.round(x * 100)} %`;
 }
+
+/** Tonnes, always, two decimals: 150 000 g → "0.15 t", 24 500 000 g → "24.50 t" (the ladder chip, goals, the table, "Opens at {t} supplied"). */
+export function fmtTonnes(g: number): string {
+  const t = Math.max(0, g) / 1e6;
+  return `${t >= 1000 ? group(Math.round(t)) : t.toFixed(2)} t`;
+}
+
+/** Kilograms, one decimal, no unit (the carry chip's "28.6 / 30 kg": the unit is the text's). */
+export function fmtKg(g: number): string {
+  return (resolveGrams(g, 'platform') / 1000).toFixed(1);
+}
+
+/** A rate in the yard's units from grams an hour (E13d): "1.2 t an hour" from 1 t, "640 kg an hour" below. The words "an hour" are the text's: this prints "1.2 t" / "640 kg". */
+export function fmtRate(gPerHour: number): string {
+  const kg = Math.max(0, gPerHour) / 1000;
+  if (kg >= 1000) return `${(kg / 1000).toFixed(1)} t`;
+  return `${group(Math.round(kg))} kg`;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** A market day's UTC date, "25 Nov" (the board's head, a ticket's date): day D starts at epochMs + D days. */
+export function fmtDay(day: number, epochMs: number): string {
+  // Civil date from days since 1970-01-01 (H. Hinnant's algorithm; no Date object in the rules).
+  const z = Math.floor((epochMs + Math.floor(day) * 86_400_000) / 86_400_000) + 719_468;
+  const era = Math.floor(z / 146_097);
+  const doe = z - era * 146_097;
+  const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36_524) - Math.floor(doe / 146_096)) / 365);
+  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+  const mp = Math.floor((5 * doy + 2) / 153);
+  const dd = doy - Math.floor((153 * mp + 2) / 5) + 1;
+  const mm = mp < 10 ? mp + 3 : mp - 9;
+  return `${dd} ${MONTHS[mm - 1]}`;
+}
+
+/** Hours: "4 h", "1.5 h" ("cap {c} h" is the text's; this prints the number and h). */
+export function fmtHours(h: number): string {
+  const r = Math.round(h * 10) / 10;
+  return `${Number.isInteger(r) ? r.toFixed(0) : r.toFixed(1)} h`;
+}

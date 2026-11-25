@@ -9,6 +9,8 @@
  * - `place`: the place the boss stands at (the one button's "Open"), set by the presence sampler only
  *   when it changes.
  * - `goalOpen`: the goal card shows its three lines.
+ * - `goalLesson`: a ticket's lesson shown as the goal card's second line for six seconds (above font
+ *   scale 1.15 the ticket has no room for it: the lead's ruling, 15:55).
  */
 import { create } from 'zustand';
 
@@ -26,6 +28,8 @@ interface SalvageUi {
   setPlace(place: string | null): void;
   goalOpen: boolean;
   setGoalOpen(on: boolean): void;
+  goalLesson: { text: string; id: number } | null;
+  showGoalLesson(text: string | null): void;
 }
 
 export const useSalvageUi = create<SalvageUi>((set, get) => ({
@@ -49,6 +53,8 @@ export const useSalvageUi = create<SalvageUi>((set, get) => ({
   setPlace: (place) => {
     if (get().place !== place) set({ place });
   },
+  goalLesson: null,
+  showGoalLesson: (text) => set({ goalLesson: text ? { text, id: (get().goalLesson?.id ?? 0) + 1 } : null }),
   goalOpen: false,
   setGoalOpen: (goalOpen) => {
     if (get().goalOpen !== goalOpen) set({ goalOpen });

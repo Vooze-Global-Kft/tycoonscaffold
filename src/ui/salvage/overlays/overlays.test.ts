@@ -18,7 +18,7 @@ import { FIXTURE_NAMES, FIXTURE_NOW, fixtureGame, withTestContent } from '../../
 import * as R from '../../../engine/salvage';
 import { measure, wrap } from '../../../../scripts/content/office/fit';
 import { TEXT, say } from '../strings';
-import { BUY_W, MIN_PT, PAD, TYPE, boardLayout, breakLines, frameLayout, pt, rowHeight } from './layout';
+import { BUY_MAX, BUY_W, MIN_PT, PAD, TYPE, boardLayout, breakLines, frameLayout, pt, rowHeight } from './layout';
 import { boardWithButtons, machineCard, machineRows, partnerRows, rackRows, rotaRows, withSample } from './sample';
 
 const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'games', 'scrap-yard', 'game.json'), 'utf8'));
@@ -143,13 +143,13 @@ describe('the yard cards (4.3, 4.6)', () => {
       const l = frameLayout(667, 375, S667.insets, 1.3);
       const text = l.panel.w - PAD - l.panel.padRight;
       for (const r of rows) {
-        expect(TEXT[r.name.key], r.id).toBeDefined();
+        expect((TEXT as Record<string, string>)[r.name.key], r.id).toBeDefined();
         const name = say(r.name, c);
         const line = say(r.line ?? { key: 'card.empty' }, c);
         expect(name).not.toMatch(/\{[A-Za-z.0-9]+\}/);
         expect(line).not.toMatch(/\{[A-Za-z.0-9]+\}/);
         if (r.line?.key.startsWith('effect.')) expect(line.length, line).toBeLessThanOrEqual(38);
-        const buttonW = r.button ? Math.max(BUY_W, measure(say(r.button.label, c), pt(13, 1.3)) * 1.06 + 20) : BUY_W;
+        const buttonW = r.button ? Math.min(BUY_MAX, Math.max(BUY_W, measure(say(r.button.label, c), pt(13, 1.3)) * 1.06 + 20)) : BUY_W;
         const room = text - buttonW - 10;
         // Names are bold 13 pt in at most two lines (a long tool name wraps; the row grows); effect lines 11 pt, one line (a padlock adds 16 pt).
         expect(wrap(name, pt(13, 1.3) * 1.06, room).lines.length, `${n} ${r.id}: ${name}`).toBeLessThanOrEqual(2);
@@ -161,7 +161,7 @@ describe('the yard cards (4.3, 4.6)', () => {
         if (r.button) {
           const a = r.button.action;
           if (a.act === 'buy' || a.act === 'hire' || a.act === 'level') expect(say(r.button.label, c)).toContain(R.fmtMoney(a.price));
-          if (r.button.refusal) expect(TEXT[r.button.refusal.key]).toBeDefined();
+          if (r.button.refusal) expect((TEXT as Record<string, string>)[r.button.refusal.key]).toBeDefined();
         }
       }
       void g;

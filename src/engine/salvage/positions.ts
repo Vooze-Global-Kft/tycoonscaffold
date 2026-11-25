@@ -4,7 +4,7 @@
  * Metres on the ground plane, x east, y south.
  */
 import type { SalvageContent } from '../../config/schema.salvage';
-import type { PileKey, ThingAt } from './types';
+import type { GroundPiece, MachineId, PartnerId, PileKey, Spot, ThingAt, ThingState } from './types';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 
@@ -58,11 +58,7 @@ function pileBase(c: SalvageContent, pile: PileKey, thingAt?: (uid: string) => T
     const z = c.zones[rest];
     return z ? { x: z.centre[0], y: z.centre[1] + z.r + 0.8 } : { x: 0, y: 0 };
   }
-  if (kind === 'circle') {
-    const n = Number(rest) || 0;
-    const p = pointOf(c, 'scale');
-    return { x: p.x - 3 - 2 * n, y: p.y + 2 };
-  }
+  if (kind === 'circle') return circlePos(c, Number(rest) || 0);
   if (kind === 'tray') {
     const place = rest === 'hand_stripper' ? 'stripper' : rest;
     const p = pointOf(c, place);
@@ -110,4 +106,119 @@ export function placeNear(c: SalvageContent, x: number, y: number): string | nul
     }
   }
   return best;
+}
+
+/** The n-th chalk circle: content `map.circles[n]` ([x, y, r]), else two west of the scale. */
+export function circlePos(c: SalvageContent, n: number): { x: number; y: number; r: number } {
+  const k = c.map.circles[n];
+  if (k) return { x: k[0], y: k[1], r: k[2] };
+  const p = pointOf(c, 'scale');
+  return { x: p.x - 3 - 2 * n, y: p.y + 2, r: 0.8 };
+}
+
+/** How many chalk circles the yard has (content, else two). */
+export function circleCount(c: SalvageContent): number {
+  return c.map.circles.length || 2;
+}
+
+/** Where a machine stands: its pad's point; both strippers share the stripper pad, the hand stripper west of the powered one (by the pad's width). */
+export function machinePos(c: SalvageContent, id: MachineId): { x: number; y: number } {
+  const place = id === 'hand_stripper' || id === 'stripper' ? 'stripper' : id;
+  const p = pointOf(c, place);
+  if (id === 'hand_stripper') return { x: p.x - (c.map.places.stripper?.w ?? 2.4) / 3, y: p.y };
+  if (id === 'stripper') return { x: p.x + (c.map.places.stripper?.w ?? 2.4) / 3, y: p.y };
+  return p;
+}
+
+/** The bays in their fixed order (content order of `bays`, then the remaining grades with a bay look): never by the order grades were first weighed. */
+export function bayOrder(c: SalvageContent): string[] {
+  const out = Object.keys(c.bays);
+  for (const [g, gr] of Object.entries(c.grades)) if (gr.bay && !out.includes(g)) out.push(g);
+  return out;
+}
+
+/**
+ * Where a grade's bay stands: content `grades.<id>.bay.place` and `slot` when given; else ferrous bays
+ * in a row along the bays' point and the rest along the stillages' point (`stillage`, or the first
+ * `stillage_*` point), in bayOrder.
+ */
+export function bayPos(c: SalvageContent, grade: string): { x: number; y: number } {
+  const gr = c.grades[grade];
+  if (gr?.bay?.place && c.map.points[gr.bay.place]) {
+    const p = pointOf(c, gr.bay.place);
+    const w = c.map.places[gr.bay.place]?.w ?? 2;
+    const slot = gr.bay.slot ?? 0;
+    return { x: p.x - w / 2 + 0.85 + 1.7 * slot, y: p.y };
+  }
+  const order = bayOrder(c);
+  const fe = order.filter((g) => c.grades[g]?.family === 'fe');
+  const other = order.filter((g) => c.grades[g]?.family !== 'fe');
+  const bp = pointOf(c, 'bays');
+  const stillKey = c.map.points.stillage ? 'stillage' : Object.keys(c.map.points).find((k) => k.startsWith('stillage'));
+  const sp = stillKey ? pointOf(c, stillKey) : { x: bp.x, y: bp.y - 2.5 };
+  if (gr?.family === 'fe') return { x: bp.x - 2.5 + 1.7 * Math.max(0, fe.indexOf(grade)), y: bp.y };
+  return { x: sp.x - 1.5 + 1.1 * Math.max(0, other.indexOf(grade)), y: sp.y };
+}
+
+/** A partner's skip zone for a slot of its rotation: on the lane east of the gate at its lane distance (the lane is drawn at rule distances), slots side by side; size from `map.sites`. */
+export function skipZone(c: SalvageContent, partner: PartnerId, slot: number): { x: number; y: number; w: number; d: number } {
+  const gate = pointOf(c, 'gate');
+  const lane = c.map.lane[c.partners[partner]?.lane ?? ''] ?? 0;
+  const site = c.map.sites[partner] ?? { w: 6, d: 4 };
+  return { x: gate.x + lane + slot * (site.w + 1), y: gate.y - site.d / 2 - 1, w: site.w, d: site.d };
+}
+
+/** The drive from the truck's park (or a point) through the gate to a partner's skip zone: the path's waypoints, metres. */
+export function lanePath(c: SalvageContent, from: { x: number; y: number }, partner: PartnerId, slot = 0): { x: number; y: number }[] {
+  const gate = pointOf(c, 'gate');
+  const z = skipZone(c, partner, slot);
+  return [from, { x: gate.x - 2, y: gate.y }, { x: gate.x + 2, y: gate.y }, { x: z.x, y: gate.y }, { x: z.x, y: z.y }];
+}
+
+/** Resolve a crew leg's end to metres (one function for the rules, the frame and the bots). */
+export function spotPos(c: SalvageContent, spot: Spot, things: readonly ThingState[], truck: { x: number; y: number }): { x: number; y: number } {
+  if ('place' in spot) return pointOf(c, spot.place);
+  if ('pile' in spot) {
+    const at = (uid: string) => things.find((t) => t.uid === uid)?.at ?? null;
+    return piecePos(c, spot.pile, spot.k ?? 0, at);
+  }
+  if ('thing' in spot) {
+    const th = things.find((t) => t.uid === spot.thing);
+    return th ? thingPos(c, th.at) : pointOf(c, 'start');
+  }
+  if ('truck' in spot) return { x: truck.x, y: truck.y };
+  return { x: spot.xy[0], y: spot.xy[1] };
+}
+
+/**
+ * The thing the boss stands at (within `reach` of its footprint's EDGE, `objects[obj].size`), nearest
+ * first, or null: a beam is long, and stopping beside it anywhere must start work (D12). `skip`: uids
+ * not to take (claimed by a cutter).
+ */
+export function thingNear(c: SalvageContent, things: readonly ThingState[], x: number, y: number, reach: number, skip?: (t: ThingState) => boolean): string | null {
+  let best: string | null = null;
+  let bestD = Infinity;
+  for (const th of things) {
+    if (skip?.(th)) continue;
+    const o = c.objects[th.obj];
+    const p = thingPos(c, th.at);
+    const w = o?.size.w ?? 1;
+    const d = o?.size.d ?? 0.8;
+    const dist = Math.hypot(Math.max(0, Math.abs(x - p.x) - w / 2), Math.max(0, Math.abs(y - p.y) - d / 2));
+    if (dist <= reach && dist < bestD) {
+      best = th.uid;
+      bestD = dist;
+    }
+  }
+  return best;
+}
+
+/** The ground pieces within `reach` of (x, y), nearest first (pickup picks among them by value). */
+export function pileNear(c: SalvageContent, pieces: readonly GroundPiece[], things: readonly ThingState[], x: number, y: number, reach: number): GroundPiece[] {
+  const at = (uid: string) => things.find((t) => t.uid === uid)?.at ?? null;
+  return pieces
+    .map((pc) => ({ pc, d: Math.hypot(piecePos(c, pc.pile, pc.k, at).x - x, piecePos(c, pc.pile, pc.k, at).y - y) }))
+    .filter((e) => e.d <= reach)
+    .sort((a, b) => a.d - b.d)
+    .map((e) => e.pc);
 }

@@ -13,7 +13,7 @@
  * is drawn by GenericCard from its CardData (title, lead, rows, foot) in the frame its shape names.
  */
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
-import { BackHandler, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, View } from 'react-native';
 import * as R from '../../../engine/salvage';
 import type { CardData, CardRef, SalvageConfig, SalvageGame } from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
@@ -22,7 +22,8 @@ import { say } from '../strings';
 import { useSalvageUi } from '../uiState';
 import { useCards, type OfficeTab } from './cardStack';
 import { CentredCard } from './CentredCard';
-import { devCard, devFontScale } from './devOpen';
+import { useFontScale } from '../hud/fontScale';
+import { devCard } from './devOpen';
 import { frameLayout, type Insets } from './layout';
 import { Machine } from './Machine';
 import { Office } from './Office';
@@ -91,23 +92,32 @@ function useLiveGame(on: boolean): SalvageGame | null {
   return on && g?.salvage ? g : null;
 }
 
-/** The office's three cards: the rules' for the office place, and its Partners and process board. */
+/** The office's three tabs, each the rules' card for `{kind: 'office', tab}`. */
 function officeCards(cfg: SalvageConfig, g: SalvageGame, now: number): { rota: CardData; partners: CardData; board: CardData } {
-  const rota = withSample(cfg, g, { kind: 'place', place: 'office' }, R.cardOf(cfg, g, { kind: 'place', place: 'office' }, now));
-  const partnersRef = rota.tabs?.find((t) => t.title.key === 'title.partners')?.ref;
-  const partnersData: CardData = partnersRef ? R.cardOf(cfg, g, partnersRef, now) : { kind: 'partners', shape: 'panel', title: { key: 'title.partners' }, lead: [], rows: [], foot: [], legal: null };
-  const partners = withSample(cfg, g, partnersRef ?? { kind: 'place', place: 'office' }, partnersData);
+  const of = (tab: OfficeTab, kind: CardData['kind'], title: CardData['title']): CardData => {
+    const ref: CardRef = { kind: 'office', tab };
+    const d = R.cardOf(cfg, g, ref, now);
+    // The hour-0 cardOf may not know the office ref yet: give the tab its kind and title.
+    return withSample(cfg, g, ref, d.kind === kind ? d : { ...d, kind, shape: tab === 'processBoard' ? 'wide' : 'panel', title });
+  };
   const board = withSample(cfg, g, { kind: 'processBoard' }, R.cardOf(cfg, g, { kind: 'processBoard' }, now));
-  return { rota, partners, board };
+  return { rota: of('rota', 'rota', { key: 'title.rota' }), partners: of('partners', 'partners', { key: 'title.partners' }), board };
+}
+
+/** Which office tab a ref opens, or null when the ref is not the office's. */
+function officeTab(ref: CardRef, data: CardData): OfficeTab | null {
+  if (ref.kind === 'office') return ref.tab;
+  if (data.kind === 'rota') return 'rota';
+  if (data.kind === 'partners') return 'partners';
+  return null;
 }
 
 export function OverlayHost({ width, height, insets }: { width: number; height: number; insets: Insets }) {
   const cfg = useGame((s) => s.cfg);
   const ref = useCards((s) => s.ref);
-  const tab = useCards((s) => s.tab);
   const uiStack = useSalvageUi((s) => s.stack.length);
-  const { fontScale } = useWindowDimensions();
-  const layout = useMemo(() => frameLayout(width, height, insets, devFontScale() ?? fontScale), [width, height, insets, fontScale]);
+  const fontScale = useFontScale();
+  const layout = useMemo(() => frameLayout(width, height, insets, fontScale), [width, height, insets, fontScale]);
   const salvage = R.isSalvage(cfg) ? cfg : null;
   const content = salvage?.salvage;
   const ctx = useMemo(() => (content ? { layout, content } : null), [layout, content]);
@@ -139,17 +149,18 @@ export function OverlayHost({ width, height, insets }: { width: number; height: 
   return (
     <FrameProvider value={ctx}>
       <Pressable accessibilityRole="button" accessibilityLabel={say({ key: 'close' }, ctx.content)} style={[styles.scrim, { top: ctx.layout.band.top }]} onPress={close} />
-      <CardView cfg={salvage} g={g} cardRef={ref} tab={tab} onClose={close} />
+      <CardView cfg={salvage} g={g} cardRef={ref} onClose={close} />
     </FrameProvider>
   );
 }
 
-function CardView({ cfg, g, cardRef, tab, onClose }: { cfg: SalvageConfig; g: SalvageGame; cardRef: CardRef; tab: OfficeTab; onClose: () => void }) {
+function CardView({ cfg, g, cardRef, onClose }: { cfg: SalvageConfig; g: SalvageGame; cardRef: CardRef; onClose: () => void }) {
   const now = Date.now();
   const data = withSample(cfg, g, cardRef, R.cardOf(cfg, g, cardRef, now));
-  if (data.kind === 'rota') {
+  const tab = officeTab(cardRef, data);
+  if (tab) {
     const o = officeCards(cfg, g, now);
-    return <Office tab={tab} rota={o.rota} partners={o.partners} board={o.board} onTab={(t) => useCards.getState().setTab(t)} onClose={onClose} />;
+    return <Office tab={tab} rota={o.rota} partners={o.partners} board={o.board} onTab={(t) => useCards.getState().open({ kind: 'office', tab: t })} onClose={onClose} />;
   }
   const View1 = CARD_VIEWS[data.kind] ?? GenericCard;
   return <View1 cfg={cfg} g={g} data={data} onClose={onClose} />;

@@ -6,7 +6,7 @@
  */
 import * as R from '../../../engine/salvage';
 import type { SalvageContent, Ticket, TicketLine } from '../../../engine/salvage';
-import { say } from '../strings';
+import { say } from './words';
 import { textW, ticketHeight, TICKET_PT } from './metrics';
 
 type Content = Pick<SalvageContent, 'names' | 'grades' | 'objects'>;
@@ -36,27 +36,34 @@ export interface TicketView {
 export const MAX_ROWS = 3;
 
 function note(l: TicketLine, c: Content): string | null {
-  if (l.note === 'fromCar') {
-    // The car's treatment-record ref is content (objects.<car>.source.ref); a `name` argument not in the register prints as itself.
-    const ref = Object.values(c.objects).find((o) => o.source?.ref)?.source?.ref ?? '';
-    return say({ key: 'ticket.fromCar', args: { ref: { name: ref } } }, c);
-  }
-  if (l.note === 'certifiedEmpty') return say({ key: 'ticket.certifiedEmpty' }, c);
+  // The car's treatment-record ref comes on the line; a `name` argument not in the register prints as itself.
+  if (l.note?.kind === 'fromCar') return say({ key: 'ticket.fromCar', args: { ref: { name: l.note.ref } } }, c);
+  if (l.note?.kind === 'certifiedEmpty') return say({ key: 'ticket.certifiedEmpty' }, c);
   return null;
+}
+
+/** A grade's name on a ticket or chip: the short one (the lead's ruling 5, 15:55), else its name. */
+export function gradeShort(grade: string, c: Content): string {
+  const g = c.grades[grade] as { name?: string; short?: string } | undefined;
+  return g?.short ?? g?.name ?? grade;
 }
 
 function rows(lines: TicketLine[], c: Content, right: (l: TicketLine) => string): TicketRow[] {
   return lines.map((l) => ({
     grade: l.grade,
-    name: c.grades[l.grade]?.name ?? l.grade,
+    name: gradeShort(l.grade, c),
     kg: R.fmtMass(l.g, 'lot'),
     right: right(l),
     note: note(l, c),
   }));
 }
 
-/** The weigh-in ticket or the collection ticket in words; null for the other kinds (their chips or the world show them). */
-export function ticketView(t: Ticket, c: Content, lesson: R.TextKey | null = t.kind === 'weighIn' ? t.lesson : null): TicketView | null {
+/**
+ * The weigh-in ticket or the collection ticket in words; null for the other kinds (their chips or the world
+ * show them). `lesson`: the weigh-in's lesson line (default: the rules' `lessonText`, already paced; null
+ * prints none, as above font scale 1.15).
+ */
+export function ticketView(t: Ticket, c: Content, lesson?: R.Txt | null): TicketView | null {
   if (t.kind === 'weighIn') {
     const r = rows(t.lines, c, (l) => say({ key: 'ticket.gradeToday', args: { p: { price: l.price } } }, c));
     return {
@@ -65,7 +72,10 @@ export function ticketView(t: Ticket, c: Content, lesson: R.TextKey | null = t.k
       head: say({ key: 'ticket.weighInHead', args: { n: { n: t.no } } }, c),
       rows: r,
       total: say({ key: 'ticket.todaysValue', args: { x: { money: t.todaysValue } } }, c),
-      lesson: lesson ? say({ key: lesson }, c) : null,
+      lesson: (() => {
+        const l = lesson === undefined ? t.lessonText : lesson;
+        return l ? say(l, c) : null;
+      })(),
       legal: [say({ key: 'ticket.weighInLegal' }, c)],
     };
   }
@@ -123,10 +133,11 @@ export function rowWidth(w: number): number {
  * rows as keep the ticket at most `maxH` (150 pt) tall, the rest counted in "+ n more".
  */
 export function planTicket(v: TicketView, w: number, s: number, c: Content, maxH = 150): TicketPlan {
+  const most = s > 1.15 ? 2 : MAX_ROWS;
   const pt = TICKET_PT.row * s;
   const inner = rowWidth(w);
   const twoLine = v.rows.some((r) => textW(r.note ? `${r.name} · ${r.note}` : r.name, pt) + textW(r.kg, pt) + textW(r.right, pt) + 16 > inner);
-  let n = Math.min(MAX_ROWS, v.rows.length);
+  let n = Math.min(most, v.rows.length);
   const hOf = (k: number) => ticketHeight(v.kind, k * (twoLine ? 2 : 1), !!v.lesson, s);
   while (n > 1 && hOf(n) > maxH) n--;
   const extra = v.rows.length - n;

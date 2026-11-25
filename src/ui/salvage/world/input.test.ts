@@ -13,8 +13,11 @@ vi.mock('react', () => ({ useMemo: (f: () => unknown) => f(), useRef: (v: unknow
 vi.mock('react-native', () => ({ Platform: { OS: 'web' }, PixelRatio: { get: () => 3 } }));
 vi.mock('react-native-reanimated', () => ({ makeMutable: (v: unknown) => ({ value: v }) }));
 
-const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'games', 'scrap-yard', 'game.json'), 'utf8'));
-const content = SalvageSchema.parse(raw.salvage);
+// The rules' frozen test content (never the tuned game.json: tests pin no tuned number, BRIEF lesson 4).
+const { SALVAGE_TEST: content } = await import('../../../engine/fixtures/salvage');
+void fs;
+void path;
+void SalvageSchema;
 
 type T = { identifier: number; pageX: number; pageY: number };
 const ev = (changed: T[], touches: T[]) => ({ nativeEvent: { ...changed[0], changedTouches: changed, touches } }) as never;

@@ -162,14 +162,29 @@ export function machineAt(place: string): R.MachineId | null {
 /** A machine card's numbers (types.ts MachineCard) from the state. */
 export function machineCard(cfg: SalvageConfig, g: SalvageGame, id: R.MachineId): MachineCard {
   const m = g.salvage.machines[id];
-  const def = cfg.salvage.machines[id] as { rate?: number; pot?: number };
+  const def = cfg.salvage.machines[id] as { rate?: number; pot?: number; inbuf?: number; tray?: number; out?: [string, number][] };
   const status: Txt = m.status === 'working' ? { key: 'card.working' } : m.status === 'trayFull' ? { key: 'card.trayFull' } : m.status === 'waiting' ? { key: 'card.waitingFor', args: { grade: { grade: id === 'bench' ? 'mot' : 'cab' } } } : { key: 'card.idle' };
   const byGrade = new Map<string, { n: number; g: number }>();
   for (const p of m.hopper) {
     const e = byGrade.get(p.grade) ?? { n: 0, g: 0 };
     byGrade.set(p.grade, { n: e.n + 1, g: e.g + p.g });
   }
-  const card: MachineCard = { machine: id, owned: m.owned, status, rate: def.rate ?? 0, hopper: [...byGrade].map(([grade, v]) => ({ grade, ...v })), tray_g: m.tray_g };
+  const io: Record<R.MachineId, [string[], string[]]> = { hand_stripper: [['cab'], ['bb', 'no2']], stripper: [['cab'], ['bb', 'no2']], bench: [['mot'], (def.out ?? []).map(([gr]) => gr)], crucible: [['brs'], ['bri']] };
+  const rate = def.rate ?? 0;
+  const card: MachineCard = {
+    machine: id,
+    owned: id === 'hand_stripper' ? true : m.owned,
+    level: m.level,
+    status,
+    in: io[id][0],
+    out: io[id][1],
+    rate_g_h: Math.round(rate * 3600 * 1000),
+    rate,
+    hopper: [...byGrade].map(([grade, v]) => ({ grade, ...v })),
+    hopperCap_g: (def.inbuf ?? 0) * 1000,
+    tray_g: m.tray_g,
+    trayCap_g: (def.tray ?? 0) * 1000,
+  };
   if (id === 'crucible') {
     const c = g.salvage.machines.crucible;
     const poursInS = c.phase === 'heating' && c.endsAt !== null ? Math.max(0, c.endsAt - g.stats.playSeconds) : null;
@@ -184,9 +199,13 @@ export function withSample(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, dat
   if (data.kind === 'rota' && !data.rows.length) return { ...data, lead: data.lead.length ? data.lead : [{ key: 'card.siteLicence' }], rows: rotaRows(cfg, g) };
   if (data.kind === 'partners' && !data.rows.length) return { ...data, rows: partnerRows(cfg, g) };
   if (data.kind === 'processBoard' && data.processBoard) return { ...data, processBoard: boardWithButtons(cfg, g, data.processBoard) };
-  if (data.kind === 'machine' && !data.machine && ref.kind === 'place') {
-    const id = machineAt(ref.place);
-    if (id) return { ...data, title: data.title.key === 'title.place' || data.title.key.startsWith('place.') ? { key: ITEM_NAME[id] } : data.title, machine: machineCard(cfg, g, id) };
+  if (data.kind === 'machine' && !data.machines?.length && !data.machine) {
+    const ids: R.MachineId[] = ref.kind === 'machine' ? [ref.machine] : ref.kind === 'place' && ref.place === 'stripper' ? ['hand_stripper', 'stripper'] : ref.kind === 'place' && machineAt(ref.place) ? [machineAt(ref.place)!] : [];
+    if (ids.length) {
+      const machines = ids.map((id) => machineCard(cfg, g, id));
+      const last = ids[ids.length - 1];
+      return { ...data, title: data.title.key === 'title.place' || data.title.key === 'title.machine' || data.title.key.startsWith('place.') ? (ids.length > 1 ? data.title : { key: ITEM_NAME[last] }) : data.title, machines, machine: machines[0] };
+    }
   }
   return data;
 }
@@ -202,7 +221,8 @@ export const MACHINE_KEY: Record<R.MachineId, string | null> = { hand_stripper: 
 const bare = (arg: R.TxtArg): Txt => ({ key: 'title.place', args: { place: arg } });
 
 /** What goes in and what comes out (content's machine definition: the stripper's cable, the bench's out shares). */
-export function inOutLine(cfg: SalvageConfig, id: R.MachineId): Txt | null {
+export function inOutLine(cfg: SalvageConfig, id: R.MachineId, m?: MachineCard): Txt | null {
+  if (m && m.in.length && m.out.length) return { key: 'card.inOut', args: { in: { grade: m.in[0] }, out: { grade: m.out[0] } } };
   const c = cfg.salvage;
   if (id === 'stripper' || id === 'hand_stripper') return { key: 'card.inOut', args: { in: { grade: 'cab' }, out: { grade: 'bb' } } };
   if (id === 'bench') {
@@ -218,7 +238,7 @@ export function inOutLine(cfg: SalvageConfig, id: R.MachineId): Txt | null {
 export function machineRows(cfg: SalvageConfig, g: SalvageGame, m: MachineCard): CardRow[] {
   const rows: CardRow[] = [];
   const rate: Txt | null = m.rate > 0 ? { key: 'card.rateKgS', args: { kg: { mass_g: Math.round(m.rate * 1000), step: 'lot' } } } : null;
-  const io = inOutLine(cfg, m.machine);
+  const io = inOutLine(cfg, m.machine, m);
   if (!m.owned) {
     const key = MACHINE_KEY[m.machine];
     const b: CardButton | null = key ? buyButton(cfg, g, key) : null;

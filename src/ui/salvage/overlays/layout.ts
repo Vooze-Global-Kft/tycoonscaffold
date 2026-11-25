@@ -9,6 +9,7 @@
  * 4.1 stands in for it (the 667 phone has no insets). Text is sized by hand from
  * min(fontScale, 1.3) (`allowFontScaling={false}`), never under 11 pt.
  */
+import { hudLayout } from '../hud/metrics';
 
 export interface Insets {
   top: number;
@@ -45,15 +46,18 @@ export const ROW_H = 44;
 /** The Buy button (4.3). */
 export const BUY_W = 96;
 export const BUY_H = 36;
+/** A button grows with its text to at most this (the lead's ruling, 15:55: verb and price, "Level up §420"). */
+export const BUY_MAX = 136;
 /** The title row and the tab strip of a panel or card. */
 export const TITLE_H = 32;
 export const TAB_H = 32;
 /** The padding inside a frame. */
 export const PAD = 14;
 
-/** The top bar's height (4.1: 36 at 844 × 390, 34 at 667 × 375). STAND-IN until the bars engineer exports it. */
-export function barHeight(height: number): number {
-  return height >= 390 ? 36 : 34;
+/** The top bar's bottom edge (4.1: 36 at 844 × 390, 34 at 667 × 375): the bars engineer's layout. */
+export function barBottom(width: number, height: number, insets: Insets): number {
+  const h = hudLayout(width, height, insets);
+  return h.barY + h.rows.bar;
 }
 
 /** The font scale the frames use: the system's, at most 1.3 (4.1), never below 1. */
@@ -96,7 +100,7 @@ export function frameLayout(width: number, height: number, insets: Insets, fontS
   const right = Math.max(insets.right, MARGIN);
   const bottomEdge = Math.max(insets.bottom, MARGIN);
   const safe = { x: left, y: insets.top, w: width - left - right, h: height - insets.top - insets.bottom };
-  const top = insets.top + barHeight(height);
+  const top = barBottom(width, height, insets);
   const bottom = height - bottomEdge;
   const band = { top, bottom, height: bottom - top };
   const pw = width >= 736 ? Math.min(520, Math.floor(0.58 * width)) : Math.floor(0.62 * width);

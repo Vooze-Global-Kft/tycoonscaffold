@@ -9,7 +9,7 @@ import { FIXTURE_NOW, SALVAGE_TEST, fixtureGame } from '../../../engine/fixtures
 import * as R from '../../../engine/salvage';
 import type { GameState } from '../../../engine/types';
 import { createPump, type PumpEffects } from './pump';
-import { cashCoinPoint, fitText, hudLayout, MIN_PT, pickForm, placeTicket, textW, ticketHeight } from './metrics';
+import { avoidRect, cashCoinPoint, fitText, hudLayout, MIN_PT, pickForm, placeTicket, textW, ticketHeight } from './metrics';
 import { crewWeighInChip, lotSoldChip, MAX_ROWS, planTicket, ticketView } from './ticketView';
 import { toastText } from './words';
 import { barValues, carryText, goalValues, ladderForms } from './words';
@@ -72,7 +72,7 @@ describe('bar text fits at font scale 1.3, never under 11 pt', () => {
     }
   }
   it('"Trial load 400 kg" fits the 90 pt carry chip on two lines at 1.3', () => {
-    const t = carryText({ ...barValues(cfg, game('m30')), driving: true, trial: true, drivingKg: 400 }, c);
+    const t = carryText({ ...barValues(cfg, game('m30')), driving: true, trial: true, net_g: 400_000 }, c);
     expect(t).toContain('400');
     const f = fitText(t, 90 - 12, 34 - 4 - 3, 12, 1.3, true);
     expect(f.cut).toBe(false);
@@ -100,8 +100,9 @@ function bigTickets(n: number, lesson: boolean) {
     .sort((a, b) => c.grades[b].name.length - c.grades[a].name.length)
     .slice(0, n);
   const lines = grades.map((grade) => ({ grade, g: 288_600, price: 1234.5, amount: 356_000 }));
-  const w: R.Ticket = { kind: 'weighIn', no: 12, at: 0, day: 0, by: 'boss', lines, todaysValue: 1_234_567, lesson: lesson ? (Object.values(c.lessons)[0] as R.TextKey) : null };
-  const col: R.Ticket = { kind: 'collection', no: 13, at: 0, day: 0, buyer: 'merchant', lines, paid: 1_234_567 };
+  const key = lesson ? (Object.values(c.lessons)[0] as R.TextKey) : null;
+  const w: R.Ticket = { kind: 'weighIn', no: 12, at: 0, day: 0, by: 'boss', lines, todaysValue: 1_234_567, lessonText: key ? { key } : null, lesson: key };
+  const col: R.Ticket = { kind: 'collection', no: 13, at: 0, day: 0, buyer: 'merchant', lines, paid: 1_234_567, withBoss: true, firstGrades: [] };
   return { w, col };
 }
 
@@ -145,7 +146,7 @@ describe('4.4: tickets', () => {
   });
   it('a crew weigh-in is one chip naming the role', () => {
     const { w } = bigTickets(2, false);
-    const chip = crewWeighInChip({ ...w, by: 'hand.0' }, c)!;
+    const chip = crewWeighInChip({ ...(w as Extract<R.Ticket, { kind: 'weighIn' }>), by: 'hand.0' }, c)!;
     expect(chip).toMatch(/kg/);
     expect(chip).not.toMatch(/\{/);
   });
@@ -163,6 +164,18 @@ describe('4.4: tickets', () => {
       expect(q.y + 140).toBeLessThanOrEqual(L.bottomY);
     }
   });
+  it('the cab\'s ticket moves off the scale\'s when both clamp to one edge', () => {
+    for (const p of PHONES) {
+      const L = hudLayout(p.w, p.h, p.i, 1.3);
+      const a = placeTicket(5000, 200, L.ticketW, 120, L);
+      const b0 = placeTicket(5000, 210, L.ticketW, 130, L);
+      const b = avoidRect(b0.x, b0.y, L.ticketW, 130, { x: a.x, y: a.y, w: L.ticketW, h: 120 }, L);
+      const apart = b.x + L.ticketW <= a.x || b.x >= a.x + L.ticketW || b.y + 130 <= a.y || b.y >= a.y + 120;
+      expect(apart).toBe(true);
+      expect(b.x).toBeGreaterThanOrEqual(L.left);
+      expect(b.x + L.ticketW).toBeLessThanOrEqual(L.right);
+    }
+  });
   it('ticket heights grow with rows', () => {
     expect(ticketHeight('weighIn', 3, true, 1.3)).toBeGreaterThan(ticketHeight('weighIn', 1, false, 1.3));
   });
@@ -171,10 +184,10 @@ describe('4.4: tickets', () => {
 describe('toasts by key', () => {
   it('"Load full" and a refusal (none while a card is open)', () => {
     expect(toastText({ type: 'loadFull' }, c, false)?.text).toBe('Load full');
-    const r = toastText({ type: 'refused', key: 'cash', args: { x: { money: 12 } } }, c, false);
+    const r = toastText({ type: 'refused', key: 'cash', args: { x: { money: 12 } }, retry: null }, c, false);
     expect(r?.text).toContain(R.fmtMoney(12));
     expect(r?.refusal).toBe(true);
-    expect(toastText({ type: 'refused', key: 'cash', args: { x: { money: 12 } } }, c, true)).toBeNull();
+    expect(toastText({ type: 'refused', key: 'cash', args: { x: { money: 12 } }, retry: null }, c, true)).toBeNull();
   });
 });
 
@@ -222,11 +235,11 @@ describe('the event pump', () => {
     const off = p.on(['weighIn', 'collected'], (e) => got.push(e.type));
     const batches: number[] = [];
     p.onBatch((b) => batches.push(b.length));
-    p.dispatch([{ type: 'loadFull' }, { type: 'weighIn', ticket: bigTickets(1, false).w, by: 'boss' }, { type: 'collected', ticket: bigTickets(1, false).col, big: false }]);
+    p.dispatch([{ type: 'loadFull' }, { type: 'weighIn', ticket: bigTickets(1, false).w, pieces: [], by: 'boss' }, { type: 'collected', ticket: bigTickets(1, false).col, first: false }]);
     expect(got).toEqual(['weighIn', 'collected']);
     expect(batches).toEqual([3]);
     off();
-    p.dispatch([{ type: 'weighIn', ticket: bigTickets(1, false).w, by: 'boss' }]);
+    p.dispatch([{ type: 'weighIn', ticket: bigTickets(1, false).w, pieces: [], by: 'boss' }]);
     expect(got).toHaveLength(2);
   });
   it('a listener that throws is reported and the others still run', () => {
@@ -246,7 +259,7 @@ describe('the event pump', () => {
     const p = createPump(fx);
     p.setLive(true);
     played.length = 0;
-    p.dispatch([{ type: 'weighIn', ticket: bigTickets(1, false).w, by: 'boss' }]);
+    p.dispatch([{ type: 'weighIn', ticket: bigTickets(1, false).w, pieces: [], by: 'boss' }]);
     expect(played.map((x) => x.key)).toContain('scale_beeps');
     expect(played.map((x) => x.key)).not.toContain('scale_print');
     advance(500);
