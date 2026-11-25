@@ -788,7 +788,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   walk: 4,
   pick_s: 0.15,
   weigh_s: 0.5,
-  truck: { v: 9, handle_s: 14, driverFactor: 0.8, radius: 1.3, enter: 2 },
+  truck: { v: 9, handle_s: 14, driverFactor: 0.8, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640 },
   machines: {
     hand_stripper: { rate: 1, needs_boss: true, inbuf: 60, tray: 200 },
     stripper: { rate: 6, inbuf: 200, lev: 0.15, tray: 200 },
@@ -1100,7 +1100,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       { id: "rival.25", T0_t: 1472696.1, g_day: 0.155 },
     ],
   },
-  reach: { work: 1.4, pickup: 1, place: 1.2, sight: 8 },
+  reach: { work: 1.4, pickup: 1, place: 1.2, sight: 10 },
   feel: { workDelay: 0.3, staleS: 0.6 },
   scale: { platformMaxKg: 300, bridgeStepKg: 20, platformStepKg: 0.1 },
   bays: {

@@ -9,7 +9,7 @@
 import type { SalvageContent } from '../../config/schema.salvage';
 import { marketDay } from './board';
 import { lotPrice } from './content';
-import { roundMoney } from './money';
+import { commitCash, roundMoney } from './money';
 import type { SalvageConfig, SalvageEvent, SalvageGame, SalvageState, Ticket } from './types';
 
 const DAY_MS = 86_400_000;
@@ -69,13 +69,31 @@ export function begin(cfg: SalvageConfig, g: SalvageGame, events: SalvageEvent[]
 
 /** The new game from a draft: cash, lifetime earnings and the salvage state. */
 export function finish(g: SalvageGame, x: Ctx, playDt = 0): SalvageGame {
+  numberBays(x);
+  // Cash is committed once per transition through the book's one place (money.ts commitCash: rounding, E11's
+  // nothing on account); lifetime earnings count what was earned (x.earned), never net of purchases.
+  const cash = commitCash({ cash: g.cash, lifetimeEarnings: 0 }, roundMoney(x.cash) - g.cash).cash;
   return {
     ...g,
-    cash: roundMoney(x.cash),
+    cash,
     lifetimeEarnings: roundMoney((g.lifetimeEarnings ?? 0) + x.earned),
     stats: playDt > 0 ? { ...g.stats, playSeconds: g.stats.playSeconds + playDt } : g.stats,
     salvage: x.s,
   };
+}
+
+/**
+ * Number each grade's FIRST stock in its bay (`counts['bay#:<grade>']` = 1, 2, ...; `counts['bay#']` the
+ * last): the stillage block fills in this order (positions.ts stillageSlot, the lead's ruling of 17:10).
+ */
+export function numberBays(x: Ctx): void {
+  const c = x.s.counts!;
+  for (const gr in x.s.bays) {
+    if (x.s.bays[gr].g > 0 && !c[`bay#:${gr}`]) {
+      c['bay#'] = (c['bay#'] ?? 0) + 1;
+      c[`bay#:${gr}`] = c['bay#'];
+    }
+  }
 }
 
 /** Market ms at yard second t inside a transition (the yard clock and the market clock move together). */

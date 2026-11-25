@@ -4,24 +4,34 @@
  * market day; never away; the boost's end is a dated event (2.12) so ticking and jumping agree.
  */
 import { describe, expect, it } from 'vitest';
-import { FIXTURE_NOW, fixtureGame, SALVAGE_TEST } from '../fixtures/salvage';
+import { FIXTURE_NOW, SALVAGE_TEST } from '../fixtures/salvage';
+import * as R from '../salvage';
 import { begin, boostEndsAt, boostOn, type Ctx } from './clock';
 import { bossWorked, RATE_MACHINES, rateOf } from './machines';
 import { advance } from './tick';
-import type { MachineId, SalvageConfig } from './types';
+import type { MachineId, SalvageConfig, SalvageGame } from './types';
 
 const cfg = { mode: 'salvage', salvage: SALVAGE_TEST } as unknown as SalvageConfig;
 const C = SALVAGE_TEST;
-const base = () => ({ cash: 0, lifetimeEarnings: 0, lastSavedAt: FIXTURE_NOW, stats: { playSeconds: 0, clockHigh: FIXTURE_NOW } }) as never;
+const base = () => ({ cash: 1e6, lifetimeEarnings: 0, lastSavedAt: FIXTURE_NOW, stats: { playSeconds: 0, clockHigh: FIXTURE_NOW } }) as never;
 
-/** The m30 state with the boss gone stale (no presence: only the boost we start acts) and the meter fresh. */
+/** A busy yard (everything bought and hired, then run with no boss until a powered machine works), the boss gone stale and the meter fresh. */
+let busy: SalvageGame | null = null;
 function ctx(): { x: Ctx; id: MachineId } {
-  const x = begin(cfg, fixtureGame('m30', base()), [], true);
+  if (!busy) {
+    let g = R.createSalvage(cfg, base(), FIXTURE_NOW);
+    for (const item of ['sack', 'sledge', 'trolley', 'truck', 'stripper', 'bench', 'crucible']) g = R.buy(cfg, g, item, R.shopPrice(cfg, g, item) ?? 0, g.salvage.t);
+    for (const role of ['hand', 'cutter', 'driver'] as const) g = R.hire(cfg, g, role, R.shopPrice(cfg, g, role === 'hand' ? 'hand1' : role) ?? 0, g.salvage.t);
+    const working = (q: SalvageGame) => RATE_MACHINES.some((m) => m !== 'hand_stripper' && (q.salvage.machines[m].work?.rate_kg_s ?? 0) > 0);
+    for (let k = 0; k < 600 && !working(g); k++) g = R.jump(cfg, g, g.salvage.t + 10);
+    busy = g;
+  }
+  const x = begin(cfg, busy, [], true);
   x.s.presenceAt = -1;
   x.s.act = { kind: 'none', target: null, since: x.s.t, endsAt: null };
   x.s.foreman = { day: x.s.clock.day, used_s: 0, lastWorkAt: -1 };
   const id = RATE_MACHINES.find((m) => m !== 'hand_stripper' && x.s.machines[m].work && x.s.machines[m].work!.rate_kg_s > 0);
-  if (!id) throw new Error('m30 has no machine at work');
+  if (!id) throw new Error('the busy yard has no machine at work');
   return { x, id };
 }
 

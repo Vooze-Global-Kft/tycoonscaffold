@@ -132,7 +132,9 @@ describe('the salvage engine mode', () => {
 
   it('incomeRate is the last five minutes of collections / 5 (§ a minute); activeIncome is that / 60', () => {
     const g = fixtureGame('m30', fresh(), FIXTURE_NOW);
-    const sum = g.salvage.income.buckets.reduce((a, x) => a + x, 0);
+    // Buckets older than five minutes of yard time drop out (the state's minute may lag its clock).
+    const age = Math.max(0, Math.floor(g.salvage.t / 60) - g.salvage.income.minute);
+    const sum = g.salvage.income.buckets.slice(Math.min(5, age)).reduce((a, x) => a + x, 0);
     expect(R.incomeRate(cfg, g)).toBeCloseTo(sum / 5, 6);
     expect(M.activeIncome(cfg, g, FIXTURE_NOW)).toBeCloseTo(sum / 300, 6);
   });
@@ -171,18 +173,20 @@ describe('the five frozen states', () => {
     expect(M.tick(cfg, g, 0.1, FIXTURE_NOW)).toBeTruthy();
   });
 
-  it('m5 has a yard hand, a lot in the bays and the flatbed away; m30 a heat ready, a held bay, a deal, the truck out; back an away card', () => {
+  it('the played states hold what the screens look at: m5 tickets and a lot; m15 the deal on offer at rung 2; m30 a held bay, the deal running; back an away card', () => {
+    // The states are PLAYED through the real engine (director.ts): what they hold is what the play reached.
     const m5 = FIXTURE_STATES.m5.salvage;
-    expect(m5.crew.map((c) => c.role)).toEqual(['hand']);
-    expect(Object.values(m5.bays).some((b) => b.g > 0)).toBe(true);
-    expect(m5.merchant.phase).toBe('away');
-    expect(R.topBar(cfg, fixtureGame('m5', fresh())).carry).toMatchObject({ load_g: 40000, cap_g: 40000 });
+    expect(m5.tickets.some((t) => t.kind === 'weighIn')).toBe(true);
+    expect(m5.ladder.supplied_g).toBeGreaterThan(0);
+    const m15 = FIXTURE_STATES.m15.salvage;
+    expect(m15.ladder.rung).toBeGreaterThanOrEqual(2);
+    expect(m15.deal.phase).toBe('offered');
     const m30 = FIXTURE_STATES.m30.salvage;
-    expect(m30.machines.crucible.phase).toBe('ready');
     expect(Object.values(m30.bays).some((b) => b.held)).toBe(true);
     expect(m30.deal.phase).toBe('running');
-    expect(m30.truck.trip?.phase).toBe('out');
+    expect(FIXTURE_STATES.m30.playSeconds).toBeGreaterThanOrEqual(1800);
     expect(FIXTURE_STATES.back.salvage.away).not.toBeNull();
+    expect(FIXTURE_STATES.back.salvage.t).toBeGreaterThan(m30.t);
     expect(R.ackAway(cfg, fixtureGame('back', fresh())).salvage.away).toBeNull();
   });
 
@@ -202,7 +206,19 @@ describe('the five frozen states', () => {
       const g = fixtureGame(name, fresh());
       const table = R.industryTable(cfg, g);
       expect(table.rows.filter((r) => r.id !== 'you' && r.rank > table.rank).length, `${name} passed`).toBe(s.ladder.passed);
-      for (const m of s.crew) for (const c of m.claims) expect(s.things.find((t) => t.uid === c)?.by, `${name} claim ${c}`).toBe(m.id);
+      for (const m of s.crew)
+        for (const c of m.claims) {
+          // A claim is a thing (by him), a loose thing ('loose:'), a piece (its claim his) or tray grams ('tray.<machine>.<grade>.<g>').
+          if (c.startsWith('tray.')) {
+            const [, mach, grade, g] = c.split('.');
+            expect((s.machines[mach as keyof typeof s.machines].trayClaim_g[grade] ?? 0) + 1e-6, `${name} claim ${c}`).toBeGreaterThanOrEqual(Number(g));
+          } else if (c.startsWith('loose:')) expect(s.things.find((t) => t.uid === c.slice(6))?.by, `${name} claim ${c}`).toBe(m.id);
+          else {
+            const th = s.things.find((t) => t.uid === c);
+            const piece = [...s.pieces].find((p) => p.uid === c);
+            expect(th?.by ?? piece?.claim, `${name} claim ${c}`).toBe(m.id);
+          }
+        }
     }
   });
 

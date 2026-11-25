@@ -66,3 +66,8 @@ export function salvagePreset(cfg: GameConfig, name: PresetName, now: number): G
   emitWhenShown(fixture);
   return { ...fixtureGame(fixture, base, now), lastSavedAt: now } as GameState;
 }
+
+/** The preview's probe for the integrator's play scripts: `__yard()` returns the store's state (read only). */
+(globalThis as { __yard?: () => unknown }).__yard = () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  (require('../../state/store') as typeof import('../../state/store')).useGame.getState();

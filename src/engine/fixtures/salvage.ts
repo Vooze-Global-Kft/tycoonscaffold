@@ -11,23 +11,19 @@
  * games/scrap-yard/game.json's `salvage` block IS this content (with the names filled from the
  * register instead of the test names below), so the web preview runs on it.
  *
- * The five states (web preview `?preset=fresh|m5|m15|m30|back`; m15 needs the wiring owner's alias, see
- * notes/contract.md). Each is a state the engine could reach: masses kept (things + pieces + loads +
- * hoppers + bays + trays + waste), every piece's uid names the thing that produced it, the goals done
- * by id, the clocks in yard seconds (`salvage.t`):
- * - fresh: second 0, the full yard, nothing owned but the inherited hand stripper.
- * - m5: minute 5: the sack truck, a yard hand walking to the drop-off for a whole washer, the boss's
- *   load FULL, a lot (cable) in the bays, the flatbed away on its round; a lesson ticket in the history.
- * - m15: rung 2 just reached (its event waits in FIXTURE_EVENTS), the supply deal offered, the boss
- *   driving the truck with the weighed trial skip, the farm's skip filling, the powered stripper's tray
- *   full; one ticket of every kind but the deal delivery in the history.
- * - m30: everything of the hour owned (tools to the torch, carriers, the truck, the strippers, the
- *   bench, the crucible), a yard hand, a cutter and a driver; the FIRST heat at "Ready to pour", a held
- *   cast-iron bay with the deal's reservation, the supply deal running, the driver out on the lane, a
- *   second farm skip filling, a collection of four lines.
- * - back: m30 after 3 h 12 m away (the boss poured the first heat before leaving): the away card
- *   waiting (with a hint line), the crucible heating with a heel, the bench waiting for motors, the
- *   epoch bumped.
+ * The five states (web preview `?preset=fresh|m5|m15|m30|back`) are PLAYED through the real engine
+ * (src/engine/salvage/director.ts, 17:15): a person-like hand with the screen's own actions (presence
+ * while walking and standing, buy, hire, sign, hold, Take from bays) and time away, so each is a state the
+ * game can reach; nothing is hand-built. What each holds is what the play reached on this content:
+ * - fresh: second 0 (createSalvage).
+ * - m5: five minutes played: the first purchases, weigh-in and collection tickets, supplied > 0.
+ * - m15: the phone down for the away cap after minute 5 (the crew earned), then fifteen minutes played:
+ *   rung 2, the supply deal ON OFFER (not signed), the hour's purchases the cash allowed.
+ * - m30: the deal signed, the deal's grade (cast iron) held from minute 15, thirty minutes played and on
+ *   until the driver is out on the lane (at most five minutes more).
+ * - back: m30 after 3 h 12 m away: the away card waiting, the epoch bumped.
+ * `playedGame(cfg, name, base, now)` / `playedEvents(cfg, name)` play the same on ANY content (the
+ * preview on the game's own game.json).
  * FIXTURE_EVENTS: events the preview emits once after loading a preset, so tickets rise and cards open.
  * Web and tests only (scripts/lib/modes.js WEB_ONLY): no phone bundle carries it.
  */

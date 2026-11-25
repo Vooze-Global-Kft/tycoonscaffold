@@ -1941,7 +1941,9 @@
       "handle_s": 14,
       "driverFactor": 0.8,
       "radius": 1.3,
-      "enter": 2
+      "enter": 2,
+      "tare_kg": 5200,
+      "skipTare_kg": 640
     },
     "machines": {
       "hand_stripper": {
@@ -2558,7 +2560,7 @@
       "work": 1.4,
       "pickup": 1,
       "place": 1.2,
-      "sight": 8
+      "sight": 10
     },
     "feel": {
       "workDelay": 0.3,

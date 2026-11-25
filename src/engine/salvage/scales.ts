@@ -4,7 +4,7 @@
  */
 import { priceOf } from './board';
 import { bayOf, reserveOnWeighIn } from './bays';
-import { count, printTicket, ticketBase, dayAt, priceAt, type Ctx } from './clock';
+import { count, printTicket, ticketBase, dayAt, priceAt, type Ctx, numberBays } from './clock';
 import { crucibleFromBays } from './crucible';
 import { resolveGrams, roundMoney } from './money';
 import type { Piece, TicketLine, Txt, TxtArgs } from './types';
@@ -90,6 +90,7 @@ export function weighIn(x: Ctx, pieces: readonly Piece[], by: string, t: number)
     count(x, `weighed:${l.grade}`);
     reserveOnWeighIn(x, l.grade);
   }
+  numberBays(x);
   const lesson = by === 'boss' ? lessonFor(x, lines, t) : null;
   if (lesson) x.s.lessonsSeen.push(lesson.grade);
   const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'weighIn' as const, by, lines, todaysValue: roundMoney(lines.reduce((a, l) => a + l.amount, 0)), lessonText: lesson?.text ?? null, lesson: lesson?.text.key ?? null });

@@ -4,7 +4,7 @@
  * Metres on the ground plane, x east, y south.
  */
 import type { SalvageContent } from '../../config/schema.salvage';
-import type { GroundPiece, MachineId, PartnerId, PileKey, Spot, ThingAt, ThingState } from './types';
+import type { GroundPiece, MachineId, PartnerId, PileKey, SalvageState, Spot, ThingAt, ThingState } from './types';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 
@@ -145,8 +145,12 @@ export function bayOrder(c: SalvageContent): string[] {
  * in a row along the bays' point and the rest along the stillages' point (`stillage`, or the first
  * `stillage_*` point), in bayOrder.
  */
-export function bayPos(c: SalvageContent, grade: string): { x: number; y: number } {
+export function bayPos(c: SalvageContent, grade: string, s?: Pick<SalvageState, 'counts'>): { x: number; y: number } {
   const gr = c.grades[grade];
+  if (s && isStillage(c, grade)) {
+    const at = stillageSlot(c, s, grade);
+    if (at) return at;
+  }
   if (gr?.bay?.place && c.map.points[gr.bay.place]) {
     // Slots stay inside the place's footprint (prejoin 17:05: 1.7 m slots from a 1.2 m place stood on the
     // stripper pad): the place's width shared by its slots, at most 1.7 m apart, centred on the place.
@@ -168,6 +172,45 @@ export function bayPos(c: SalvageContent, grade: string): { x: number; y: number
   const sp = stillKey ? pointOf(c, stillKey) : { x: bp.x, y: bp.y - 2.5 };
   if (gr?.family === 'fe') return { x: bp.x - 2.5 + 1.7 * Math.max(0, fe.indexOf(grade)), y: bp.y };
   return { x: sp.x - 1.5 + 1.1 * Math.max(0, other.indexOf(grade)), y: sp.y };
+}
+
+/** STILLAGE_PITCH_M: the lead's ruling (17:10): stillages 1.3 m apart, two rows of seven. */
+const STILLAGE_PITCH_M = 1.3;
+const STILLAGE_ROW = 7;
+
+/** Is a grade's bay a stillage (content `bay.kind`, else a non-ferrous grade that is not a cage)? */
+export function isStillage(c: SalvageContent, grade: string): boolean {
+  const gr = c.grades[grade];
+  if (!gr) return false;
+  if (gr.bay?.kind) return gr.bay.kind === 'stillage';
+  return gr.family !== 'fe' && gr.family !== 'pm';
+}
+
+/** Has a grade's bay had stock (lifetime)? The sim numbers each grade's first stock (`counts['bay#:<grade>']`, clock.ts). */
+export function bayStocked(s: Pick<SalvageState, 'counts'>, grade: string): boolean {
+  return (s.counts?.[`bay#:${grade}`] ?? 0) > 0;
+}
+
+/**
+ * The lead's ruling (17:10): a stillage stands only for a grade that has had stock; they stand in ONE
+ * block of two rows of seven at the stillage area, 1.3 m apart, filled in the order the grades first had
+ * stock from the end nearest the merchant's stand. Rows lie at the content's stillage places (the first
+ * two `stillage*` places; one place: the second row 1.3 m south). Null for a grade with no stock yet.
+ */
+export function stillageSlot(c: SalvageContent, s: Pick<SalvageState, 'counts'>, grade: string): { x: number; y: number } | null {
+  if (!bayStocked(s, grade)) return null;
+  const mine = s.counts![`bay#:${grade}`];
+  let k = 0;
+  for (const g of Object.keys(c.grades)) if (g !== grade && isStillage(c, g) && bayStocked(s, g) && s.counts![`bay#:${g}`] < mine) k++;
+  const rows = Object.keys(c.map.points).filter((id) => id.startsWith('stillage')).sort();
+  if (!rows.length) return null;
+  const r0 = pointOf(c, rows[0]);
+  const merchant = c.map.points.merchant ? pointOf(c, 'merchant') : r0;
+  const dir = merchant.x > r0.x ? -1 : 1;
+  const row = Math.floor(k / STILLAGE_ROW) % 2;
+  const col = k % STILLAGE_ROW;
+  const ry = row === 0 ? r0.y : rows[1] ? pointOf(c, rows[1]).y : r0.y + STILLAGE_PITCH_M;
+  return { x: r0.x + dir * col * STILLAGE_PITCH_M, y: ry };
 }
 
 /** A partner's skip zone for a slot of its rotation: on the lane east of the gate at its lane distance (the lane is drawn at rule distances), slots side by side; size from `map.sites`. */
@@ -244,7 +287,8 @@ export const placeNearCfg = (cfg: SalvageConfig, x: number, y: number) => placeN
 export const thingNearCfg = (cfg: SalvageConfig, g: SalvageGame, x: number, y: number, reach = cfg.salvage.reach.work) => thingNear(cfg.salvage, g.salvage.things, x, y, reach);
 export const pileNearCfg = (cfg: SalvageConfig, g: SalvageGame, x: number, y: number, reach = cfg.salvage.reach.pickup) => pileNear(cfg.salvage, g.salvage.pieces, g.salvage.things, x, y, reach);
 export const spotPosCfg = (cfg: SalvageConfig, g: SalvageGame, spot: Spot) => spotPos(cfg.salvage, spot, g.salvage.things, g.salvage.truck);
-export const bayPosCfg = (cfg: SalvageConfig, grade: string) => bayPos(cfg.salvage, grade);
+/** A bay's place; with the game, a stillage stands in the block in the order its grade first had stock (the lead, 17:10). */
+export const bayPosCfg = (cfg: SalvageConfig, grade: string, g?: SalvageGame) => bayPos(cfg.salvage, grade, g?.salvage);
 export const machinePosCfg = (cfg: SalvageConfig, id: MachineId) => machinePos(cfg.salvage, id);
 export const circlePosCfg = (cfg: SalvageConfig, n: number) => circlePos(cfg.salvage, n);
 export const skipZoneCfg = (cfg: SalvageConfig, partner: PartnerId, slot: number) => skipZone(cfg.salvage, partner, slot);

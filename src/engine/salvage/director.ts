@@ -10,8 +10,8 @@
  * purchase in the shop's goal order it can pay for (one at a time), signs the deal when offered, sets the
  * crucible to Take from bays. Web and tests only (never imported by a phone bundle). Owner: rules-sim.
  */
-import { ackAway, buy, hire, setFromBays, signDeal } from './actions';
-import { awayPass } from './away';
+import { ackAway, buy, hire, setFromBays, setHold, signDeal } from './actions';
+import { awayCapS, awayPass } from './away';
 import { marketDay } from './board';
 import { carrierCap_g } from './content';
 import { dealTerms } from './deal';
@@ -48,9 +48,9 @@ function shop(h: Hand): void {
 }
 
 /** The deal when offered; the crucible's Take from bays once owned. */
-function office(h: Hand): void {
+function office(h: Hand, sign: boolean): void {
   const s = h.g.salvage;
-  if (s.deal.phase === 'offered' && s.deal.step !== null) {
+  if (sign && s.deal.phase === 'offered' && s.deal.step !== null) {
     const day = marketDay(h.cfg.salvage, s.clock.highMs);
     const terms = dealTerms({ c: h.cfg.salvage }, s.deal.step, day);
     if (terms) h.g = signDeal(h.cfg, h.g, terms, h.now, s.t, h.events);
@@ -68,12 +68,12 @@ function beside(cfg: SalvageConfig, g: SalvageGame, uid: string): { x: number; y
 }
 
 /** The person plays until yard second `until` (or `stop` holds). */
-export function person(h: Hand, until: number, stop: (g: SalvageGame) => boolean = () => false): void {
+export function person(h: Hand, until: number, stop: (g: SalvageGame) => boolean = () => false, sign = true): void {
   const c = h.cfg.salvage;
   const tried = new Set<string>();
   for (let guard = 0; guard < 2000 && h.g.salvage.t < until && !stop(h.g); guard++) {
     shop(h);
-    office(h);
+    office(h, sign);
     const s = h.g.salvage;
     const cap = carrierCap_g(c, s);
     const p = s.presence;
@@ -81,6 +81,15 @@ export function person(h: Hand, until: number, stop: (g: SalvageGame) => boolean
       .filter((th) => !th.by && !tried.has(th.uid) && (c.objects[th.obj]?.tier ?? 9) <= s.tier)
       .map((th) => ({ th, d: Math.hypot(thingPos(c, th.at).x - p.x, thingPos(c, th.at).y - p.y) }))
       .sort((a, b) => a.d - b.d || (a.th.uid < b.th.uid ? -1 : 1));
+    // Cable on the load and the hand stripper there: strip it by hand (2.5, R1), then take the tray.
+    const hs = s.machines.hand_stripper;
+    if (hs.owned && !s.machines.stripper.owned && s.load.some((q) => q.grade === 'cab')) {
+      const st = pointOf(c, 'stripper');
+      walkTo(h, st.x, st.y + 1);
+      standUntil(h, (g) => !g.salvage.load.some((q) => q.grade === 'cab'), 10);
+      standUntil(h, (g) => !g.salvage.machines.hand_stripper.work && !g.salvage.machines.hand_stripper.hopper.length && Object.values(g.salvage.machines.hand_stripper.tray_g).every((v) => v <= 0), 240);
+      continue;
+    }
     if (load_g(h.g) > 0 && (load_g(h.g) >= cap / 2 || !cands.length)) {
       const sc = pointOf(c, 'scale');
       walkTo(h, sc.x, sc.y);
@@ -107,7 +116,17 @@ export function person(h: Hand, until: number, stop: (g: SalvageGame) => boolean
   }
 }
 
-/** The five states, played: m5 and m15 by the person; m30 after a first time away (the crew earned the hour's purchases while the phone was down) and more play; back after 3 h 12 m away. */
+/** Play until `played` seconds of play (stats.playSeconds). */
+function playTo(h: Hand, played: number, sign: boolean, stop?: (g: SalvageGame) => boolean): void {
+  person(h, h.g.salvage.t + Math.max(0, played - h.g.stats.playSeconds), stop, sign);
+}
+
+/**
+ * The five states, played: m5 after five minutes; the phone down for the away cap (the crew earn while
+ * it is down), the card read; m15 at fifteen minutes played with the supply deal on offer when rung 2 is
+ * reached (not yet signed); m30 after signing it, holding the deal's grade (cast iron) and playing to thirty minutes, then on until the driver is out on the lane (at most five
+ * minutes more); back after 3 h 12 m away.
+ */
 export function playStates(cfg: SalvageConfig, base: SalvageGame, now: number, dt = 0.25): Played {
   const h = hand(cfg, base, now, dt);
   const games = {} as Record<PlayedName, SalvageGame>;
@@ -118,20 +137,23 @@ export function playStates(cfg: SalvageConfig, base: SalvageGame, now: number, d
     events[n] = [...h.events];
     at[n] = h.now;
   };
-  snap('fresh');
-  person(h, 300);
-  snap('m5');
-  person(h, 900);
-  snap('m15');
-  // Away for the cap (the phone down at minute 15), the card read, then play to minute 30.
   const away = (seconds: number) => {
     h.now = h.g.salvage.clock.highMs + seconds * 1000;
     h.g = awayPass(cfg, { ...h.g, lastSavedAt: h.g.salvage.clock.highMs }, h.now, h.events);
   };
-  away(4 * 3600);
+  snap('fresh');
+  playTo(h, 300, false);
+  snap('m5');
+  away(awayCapS(cfg, h.g));
   h.g = ackAway(cfg, h.g);
-  const t30 = h.g.salvage.t + 900;
-  person(h, t30);
+  playTo(h, 900, false);
+  snap('m15');
+  office(h, true);
+  // Hold cast iron (the deal's grade when it has one) from here: what is weighed in from now waits in its bay.
+  const hold = cfg.salvage.deal.grade in h.g.salvage.bays ? cfg.salvage.deal.grade : 'ci' in h.g.salvage.bays ? 'ci' : null;
+  if (hold) h.g = setHold(cfg, h.g, hold, true, h.g.salvage.t, h.events);
+  playTo(h, 1800, true);
+  if (h.g.salvage.crew.some((m) => m.role === 'driver')) playTo(h, 2100, true, (g) => g.salvage.truck.trip?.phase === 'out');
   snap('m30');
   away(3 * 3600 + 12 * 60);
   snap('back');

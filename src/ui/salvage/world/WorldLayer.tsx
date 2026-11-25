@@ -732,10 +732,14 @@ export function CoinLayer() {
       cb.setActive(false);
     };
   }, [cb]);
+  // The canvas sits in a touch-through View: on the web Skia's Canvas does not pass `pointerEvents` to its
+  // own element, and a bare full-screen canvas above the input view took every touch (the stick never held).
   return (
-    <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Picture picture={pic} />
-    </Canvas>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Picture picture={pic} />
+      </Canvas>
+    </View>
   );
 }
 

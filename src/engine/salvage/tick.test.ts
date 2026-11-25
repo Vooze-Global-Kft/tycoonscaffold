@@ -274,7 +274,8 @@ describe('the bench', () => {
     }
     process.stderr.write(`bench: one tick ${perTick.toFixed(3)} ms; six hours away ${awayMs.toFixed(1)} ms (A = ${away.seconds} s)\n`);
     expect(perTick).toBeLessThan(1);
-    expect(awayMs).toBeLessThan(50 * 4); // the machine is shared by fifteen engineers: the printed figure is the measure
+    // The aim is 50 ms (2.16; about 40 ms warm on a quiet core): the guard allows for a machine shared by fifteen engineers.
+    expect(awayMs).toBeLessThan(250);
   });
 });
 
