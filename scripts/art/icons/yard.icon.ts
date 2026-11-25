@@ -75,6 +75,11 @@ function wireBundleEnd(c: SkCanvas, cx: number, cy: number, R: number): void {
 
 function pour(c: SkCanvas): void {
   yellowGround(c, 560, 560);
+  pourSubject(c);
+}
+
+/** Everything of "pour" but its ground: the mould and ingot, the crucible in its tongs, the stream, the wire. */
+function pourSubject(c: SkCanvas): void {
   // the mould along the bottom, a glowing copper ingot in its cavity
   const my = 770;
   outlined(c, poly([250, my, 960, my, 1000, my + 150, 210, my + 150]), YARD.castIron);
@@ -147,6 +152,26 @@ function pour(c: SkCanvas): void {
 
 /** The finished icon (the judge's choice, finished as asked). */
 export const ICON = pour;
+
+/** Where pour's subject sits in its own 1024 frame (the tongs left out): its centre, and its reach from it. */
+const SUBJECT = { x: 515, y: 590, reach: 628 };
+
+/**
+ * Android's adaptive foreground (108 dp, opaque, drawn into 1024 x 1024): the hi-vis ground full bleed,
+ * the same pour scaled so the crucible, stream, mould and copper bundle stay inside the 33 dp safe circle,
+ * and the tongs' arms running out past the 72 dp that any launcher shows (a mask never cuts the bundle and
+ * the tongs never end in mid-air on screen). The wiring's icon build uses it (scripts/art/icons/yard.build.ts).
+ */
+export function adaptive(c: SkCanvas): void {
+  const k = (S * (32 / 108)) / SUBJECT.reach;
+  yellowGround(c, S / 2, S / 2 + 30);
+  c.save();
+  c.translate(S / 2, S / 2);
+  c.scale(k, k);
+  c.translate(-SUBJECT.x, -SUBJECT.y);
+  pourSubject(c);
+  c.restore();
+}
 
 export const CANDIDATES: Candidate[] = [
   { id: 'pour', note: 'a crucible in tongs pouring a copper-orange stream straight down into a glowing copper ingot, bare bright wire at the lower left, on hi-vis yellow', icon: pour },

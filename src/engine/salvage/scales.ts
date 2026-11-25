@@ -4,7 +4,7 @@
  */
 import { priceOf } from './board';
 import { bayOf, reserveOnWeighIn } from './bays';
-import { count, printTicket, ticketBase, dayAt, type Ctx } from './clock';
+import { count, printTicket, ticketBase, dayAt, priceAt, type Ctx } from './clock';
 import { crucibleFromBays } from './crucible';
 import { resolveGrams, roundMoney } from './money';
 import type { Piece, TicketLine, Txt, TxtArgs } from './types';
@@ -33,7 +33,7 @@ export function linesOf(x: Ctx, pieces: readonly Piece[], day: number): { lines:
   }
   const lines: TicketLine[] = order.map((grade) => {
     const r = resolveGrams(g[grade], 'platform');
-    const price = priceOf(x.c, grade, day);
+    const price = priceAt(x, grade, day);
     const line: TicketLine = { grade, g: r, price, amount: roundMoney((r / 1000) * price) };
     if (x.c.wholeUnits_kg[grade] !== undefined) line.n = n[grade];
     if (x.c.grades[grade]?.family === 'pm') {
@@ -95,7 +95,10 @@ export function weighIn(x: Ctx, pieces: readonly Piece[], by: string, t: number)
   const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'weighIn' as const, by, lines, todaysValue: roundMoney(lines.reduce((a, l) => a + l.amount, 0)), lessonText: lesson?.text ?? null, lesson: lesson?.text.key ?? null });
   x.ev.push({ type: 'weighIn', ticket, pieces: pieces.map((p) => p.uid), by });
   if (lesson) x.ev.push({ type: 'lesson', grade: lesson.grade, text: lesson.text });
-  if (by === 'boss') count(x, 'weighIns');
+  if (by === 'boss') {
+    count(x, 'weighIns');
+    x.s.counts!.bossWeighedSinceCollect = 1;
+  }
   else {
     const m = x.s.crew.find((c) => c.id === by);
     if (m) count(x, `crewWeighIns:${m.role}`);

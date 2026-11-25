@@ -85,6 +85,19 @@ export function SwitchRow({ name, on, onChange }: { name: Txt; on: boolean; onCh
   );
 }
 
+/**
+ * A button whose words are longer than a price button holds ("Start the yard again", "Keep my yard" at
+ * font scale 1.3): 36 pt tall, as wide as its words (no 136 pt cap), the frames' button look; `quiet`
+ * draws it on paper with an ink edge (the choice that keeps things as they are), `warn` with a rust edge.
+ */
+export function WordButton({ label, onPress, tone = 'hivis' }: { label: Txt; onPress: () => void; tone?: 'hivis' | 'quiet' | 'warn' }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={4} style={({ pressed }) => [styles.word, tone === 'quiet' ? styles.wordQuiet : tone === 'warn' ? styles.wordWarn : null, pressed ? { opacity: 0.75 } : null]}>
+      <Line t={label} size="price" bold center />
+    </Pressable>
+  );
+}
+
 /** A drawing recorded once into a picture and shown in ONE canvas (the pictograms column, the logos column, the crane). */
 export function Drawing({ w, h, draw, deps }: { w: number; h: number; draw: (c: SkCanvas) => void; deps: unknown[] }) {
   const pic = useMemo(() => {
@@ -136,6 +149,9 @@ export const styles = StyleSheet.create({
   switchRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: INK.rule, gap: 10 },
   pill: { minWidth: 64, height: 28, borderRadius: 14, borderWidth: 1.3, borderColor: INK.ink, backgroundColor: INK.shade, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   pillOn: { backgroundColor: INK.hivis },
+  word: { minHeight: 36, minWidth: 96, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1.3, borderColor: INK.ink, backgroundColor: INK.hivis, alignItems: 'center', justifyContent: 'center' },
+  wordQuiet: { backgroundColor: INK.paper },
+  wordWarn: { backgroundColor: INK.paper, borderColor: INK.refuse, borderWidth: 2 },
   note: { marginTop: 8, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: INK.rule, backgroundColor: INK.shade },
   noteHivis: { backgroundColor: INK.hivis, borderColor: INK.ink },
 });

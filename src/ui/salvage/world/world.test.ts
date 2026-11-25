@@ -155,23 +155,20 @@ describe('the stick', async () => {
 });
 
 describe('the atlas', async () => {
-  const { atlasDefs, atlasSize, MAX_SIDE } = await import('./atlas');
-  const { yardLayout } = await import('./yard');
-  it('fits one image under 2048 pixels a side at a 3x screen, also with 200 extra crates', () => {
-    for (const extra of [0, 200]) {
-      const s = atlasSize(atlasDefs(yardLayout(content, { extraCrates: extra })), 3);
-      expect(s.width).toBeLessThanOrEqual(MAX_SIDE);
-      expect(s.height).toBeLessThanOrEqual(MAX_SIDE);
-      expect(s.density).toBeGreaterThanOrEqual(2);
+  const { planSheet, MAX_SIDE, G_SIDE } = await import('./atlas');
+  const { MANIFEST } = await import('../art/manifest');
+  it("plans the manifest's three sheets inside the phone texture limit at a 3x screen", () => {
+    for (const sheet of ['A', 'B', 'G'] as const) {
+      const p = planSheet(sheet, 3);
+      expect(p.width).toBeLessThanOrEqual(sheet === 'G' ? G_SIDE : MAX_SIDE);
+      expect(p.height).toBeLessThanOrEqual(sheet === 'G' ? G_SIDE : MAX_SIDE);
+      expect(p.density).toBeGreaterThanOrEqual(2);
     }
   });
-  it('bakes every pawn frame, eight truck headings, the ring steps and one sprite per kind of prop', () => {
-    const names = atlasDefs(yardLayout(content)).map((d) => d.name);
-    expect(names.filter((n) => n.startsWith('worker-'))).toHaveLength(16);
-    expect(names.filter((n) => n.startsWith('helper-'))).toHaveLength(16);
-    expect(names.filter((n) => n.startsWith('truck-'))).toHaveLength(8);
-    expect(names.filter((n) => n.startsWith('ring-'))).toHaveLength(9);
-    expect(new Set(names).size).toBe(names.length);
+  it('bakes every manifest entry (no old ground-work names remain)', () => {
+    const ids = new Set((['A', 'B', 'G'] as const).flatMap((s) => planSheet(s, 2).cells.map((c) => c.id)));
+    for (const e of MANIFEST) expect(ids.has(e.id), e.id).toBe(true);
+    expect([...ids].some((id) => /^(worker|helper|truck|ring|prop|pieces)-/.test(id))).toBe(false);
   });
 });
 

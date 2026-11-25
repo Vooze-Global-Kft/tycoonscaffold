@@ -92,10 +92,18 @@ headless(async (H) => {
       put(c, icon, o, o, s);
       c.restore();
     });
-  let scale = 0.62;
-  while (reachOf(tile(scale)) > 32.5) scale -= 0.005;
-  const adaptive = tile(scale);
-  console.log(`adaptive: ICON as a rounded tile at ${(scale * 100).toFixed(1)} % of the layer (${(108 * scale).toFixed(1)} dp), its corners reach ${reachOf(adaptive).toFixed(1)} dp (safe 33.0)`);
+  // The art's own adaptive composition when it exists (yard.icon.ts `adaptive`: full-bleed ground, the
+  // subject inside the safe circle, the tongs running off past the visible 72 dp); else the tile stand-in.
+  let adaptive: SkImage;
+  if (typeof (Y as { adaptive?: unknown }).adaptive === 'function') {
+    adaptive = img((Y as unknown as { adaptive: (c: SkCanvas) => void }).adaptive);
+    console.log('adaptive: the art\'s adaptive composition (yard.icon.ts adaptive)');
+  } else {
+    let scale = 0.62;
+    while (reachOf(tile(scale)) > 32.5) scale -= 0.005;
+    adaptive = tile(scale);
+    console.log(`adaptive: ICON as a rounded tile at ${(scale * 100).toFixed(1)} % of the layer (${(108 * scale).toFixed(1)} dp), its corners reach ${reachOf(adaptive).toFixed(1)} dp (safe 33.0)`);
+  }
   const splash = img((c) => {
     const s = N * 0.78;
     const o = (N - s) / 2;

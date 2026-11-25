@@ -13,10 +13,10 @@ import { useFxSettings } from '../../../services/fx/useFxSettings';
 import { useGame } from '../../../state/store';
 import { openCard } from './cardStack';
 import { CentredCard } from './CentredCard';
-import { SectionHead, SwitchRow, useSeenOnClose } from './marketParts';
+import { SectionHead, SwitchRow, WordButton, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { Panel } from './Panel';
-import { INK, Line, LocalButton } from './parts';
+import { INK, Line } from './parts';
 
 const SWITCHES = [
   { key: 'sound', name: 'clip.sound' },
@@ -36,8 +36,9 @@ export function Settings({ cfg, data, onClose }: CardViewProps) {
           <Line t={{ key: 'clip.restartConfirm' }} size="name" lines={3} />
         </View>
         <View style={styles.foot}>
-          <LocalButton label={{ key: 'clip.restartNo' }} onPress={() => setConfirm(false)} />
-          <LocalButton
+          <WordButton label={{ key: 'clip.restartNo' }} tone="quiet" onPress={() => setConfirm(false)} />
+          <WordButton
+            tone="warn"
             label={{ key: 'clip.restartYes' }}
             onPress={() => {
               onClose();
@@ -63,7 +64,7 @@ export function Settings({ cfg, data, onClose }: CardViewProps) {
         />
       ))}
       <View style={styles.buttons}>
-        <LocalButton label={{ key: 'clip.help' }} onPress={() => openCard({ kind: 'help' })} />
+        <WordButton label={{ key: 'clip.help' }} onPress={() => openCard({ kind: 'help' })} />
       </View>
       <View style={styles.block}>
         <Line t={{ key: 'line.fictional' }} size="line" colour={INK.soft} lines={4} />
@@ -73,7 +74,7 @@ export function Settings({ cfg, data, onClose }: CardViewProps) {
         <Line t={{ key: 'clip.privacyLine' }} size="line" lines={3} />
         {privacyUrl ? (
           <View style={styles.buttons}>
-            <LocalButton label={{ key: 'clip.privacy' }} onPress={() => void Linking.openURL(privacyUrl).catch(() => null)} />
+            <WordButton label={{ key: 'clip.privacy' }} tone="quiet" onPress={() => void Linking.openURL(privacyUrl).catch(() => null)} />
           </View>
         ) : null}
       </View>
@@ -81,7 +82,7 @@ export function Settings({ cfg, data, onClose }: CardViewProps) {
         <Line t={{ key: 'clip.version', args: { v: { name: cfg.app.version } } }} size="line" colour={INK.soft} />
       </View>
       <View style={styles.buttons}>
-        <LocalButton label={{ key: 'clip.restart' }} onPress={() => setConfirm(true)} />
+        <WordButton label={{ key: 'clip.restart' }} tone="warn" onPress={() => setConfirm(true)} />
       </View>
     </Panel>
   );

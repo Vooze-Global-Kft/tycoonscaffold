@@ -51,7 +51,27 @@ function eventsOf(s: SalvageState, dayAt: number): QueuedEvent[] {
 }
 
 function firstEvent(x: Ctx): QueuedEvent | null {
-  return eventsOf(x.s, nextDayAt(x))[0] ?? null;
+  const s = x.s;
+  let best: QueuedEvent | null = null;
+  const add = (at: number | null | undefined, kind: QueuedKind, ref = '') => {
+    if (at === null || at === undefined || !(at >= s.t - EPS) || !Number.isFinite(at)) return;
+    if (!best || at < best.at - 1e-9 || (Math.abs(at - best.at) <= 1e-9 && (ORDER[kind] < ORDER[best.kind] || (ORDER[kind] === ORDER[best.kind] && ref < best.ref)))) best = { at, kind, ref };
+  };
+  add(s.act.endsAt, 'act');
+  for (const m of s.crew) if (m.phase !== 'wait' && m.t1 > m.t0) add(m.t1, 'crewLeg', m.id);
+  if (s.truck.trip) add(s.truck.trip.endsAt, 'driverLeg', s.truck.trip.partner);
+  for (const id of RATE_MACHINES) add(workEndsAt(s.machines[id]), 'machine', id);
+  const cr = s.machines.crucible;
+  if (cr.phase === 'filling' || cr.phase === 'heating') add(cr.endsAt, 'crucible');
+  if (s.merchant.phase !== 'waiting') add(s.merchant.endsAt, 'round');
+  if (s.dropoff.nextAt >= 0) add(s.dropoff.nextAt, 'dropoffArrival');
+  for (const pid in s.partners) {
+    const p = s.partners[pid];
+    if (p.open) for (const sk of p.skips) if (sk.phase === 'filling') add(sk.fullAt, 'skipFull', `${pid}.${sk.slot}`);
+  }
+  for (const a of s.arriving) add(a.at, 'arrival', a.item);
+  add(nextDayAt(x), 'day');
+  return best;
 }
 
 /** Apply one dated event at its instant. */
@@ -113,7 +133,7 @@ function tail(x: Ctx, t: number): void {
   roundTry(x, t);
   crewDepart(x, t);
   driverDepart(x, t);
-  checks(x, t);
+  checks(x, t, false);
 }
 
 /**
@@ -140,6 +160,7 @@ export function advance(x: Ctx, T: number): void {
   }
   if (T > s.t) s.t = T;
   for (const id of RATE_MACHINES) credit(x, id, s.t);
+  checks(x, s.t, !x.live);
 }
 
 /** Close a transition's clocks: the market high mark rises to max(market time at the yard clock, now). */

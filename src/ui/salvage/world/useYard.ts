@@ -130,6 +130,7 @@ export function startYardBake(): void {
   if (!R.isSalvage(cfg)) return;
   started = true;
   const t0 = Date.now();
+  if (__DEV__) console.info(`[yard] bake started ${typeof performance !== 'undefined' ? Math.round(performance.now()) : 0} ms after the page began`);
   const y = yardFor(cfg);
   bakeManifest(DENSITY)
     .then((m) => {
@@ -142,6 +143,11 @@ export function startYardBake(): void {
         console.warn('salvage: the yard floor or shadows could not be baked', e);
       }
       art = { sheets: [m.A, m.B, m.G, shadows], ground, sheet: null, bakeMs: Date.now() - t0 };
+      // The debug line the loading engineer and the lead asked for: how long the gate is held by the bake, and why.
+      if (__DEV__) {
+        const sheet = (a: ManifestAtlas | null, n: string) => (a ? `${n} ${a.width}x${a.height}@${a.density}` : `${n} -`);
+        console.info(`[yard] art baked in ${art.bakeMs} ms (manifest ${Math.round(m.ms)} ms in slices beside the loading animation; ${sheet(m.A, 'A')}, ${sheet(m.B, 'B')}, ${sheet(m.G, 'G')}; floor and shadows ${Date.now() - t0 - Math.round(m.ms)} ms; density ${DENSITY})`);
+      }
       waiters.forEach((f) => f());
       waiters.clear();
     })

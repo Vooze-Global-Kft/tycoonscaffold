@@ -32,9 +32,11 @@ export function Skip({ data, onClose }: CardViewProps) {
       <View style={styles.top}>
         <Drawing w={w} h={h} deps={[s.partner, planLoad(s), s.slot]} draw={(c) => drawSkipPlan(c, (s.partner === 'partnerDemolition' ? 'partnerDemolition' : 'partnerFarm') as SkipPartner, planLoad(s), w / 2, h / 2, w - 12, 2 + s.slot)} />
         <View style={styles.topText}>
-          <Line t={skipHead(s)} size="name" bold lines={2} />
+          {/* While it fills its contents and price are not fixed yet: the refusal line says when it is full. */}
+          {filling ? null : <Line t={skipHead(s)} size="name" bold lines={2} />}
           {filling ? null : <Line t={{ key: 'card.skipNet', args: { kg: { mass_g: s.net_g, step: 'bridge' } } }} size="name" />}
-          <Line t={{ key: 'card.skipPrice', args: { x: { money: s.price } } }} size="title" bold />
+          {filling ? null : <Line t={{ key: 'card.skipPrice', args: { x: { money: s.price } } }} size="title" bold />}
+          {filling && !s.refusal ? <Line t={skipHead(s)} size="name" bold lines={2} /> : null}
         </View>
       </View>
       {s.refusal ? (

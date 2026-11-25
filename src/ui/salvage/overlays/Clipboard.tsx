@@ -14,10 +14,10 @@ import { TEXT_KEYS } from '../../../engine/salvage';
 import { openCard } from './cardStack';
 import { lineH } from './marketLayout';
 import { ticketSummary } from './marketLines';
-import { useSeenOnClose } from './marketParts';
+import { WordButton, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { Panel } from './Panel';
-import { INK, Line, LocalButton, useFrame, type Tab } from './parts';
+import { INK, Line, useFrame, type Tab } from './parts';
 import { TYPE } from './layout';
 
 type ClipTab = 'goals' | 'places' | 'tickets';
@@ -31,7 +31,9 @@ export function Clipboard({ cfg, g, data, onClose }: CardViewProps) {
     { id: 'places', title: { key: 'clip.places' }, open: tab === 'places' },
     { id: 'tickets', title: { key: 'clip.tickets' }, open: tab === 'tickets' },
   ];
-  const goals = data.goals ?? R.goalList(cfg, g);
+  // The current goal and those after it first, then the ones done (ticked) and skipped: the list opens at what is next.
+  const all = data.goals ?? R.goalList(cfg, g);
+  const goals = [...all.filter((l) => l.state === 'current' || l.state === 'later'), ...all.filter((l) => l.state === 'done' || l.state === 'skipped')];
   const places = data.places ?? g.salvage.seen.places;
   const tickets = [...R.tickets(g)].reverse().slice(0, 50);
   return (
@@ -42,8 +44,8 @@ export function Clipboard({ cfg, g, data, onClose }: CardViewProps) {
       onTab={(id) => setTab(id as ClipTab)}
       after={
         <View style={styles.foot}>
-          <LocalButton label={{ key: 'clip.settings' }} onPress={() => openCard({ kind: 'settings' })} />
-          <LocalButton label={{ key: 'clip.help' }} onPress={() => openCard({ kind: 'help' })} />
+          <WordButton label={{ key: 'clip.settings' }} tone="quiet" onPress={() => openCard({ kind: 'settings' })} />
+          <WordButton label={{ key: 'clip.help' }} tone="quiet" onPress={() => openCard({ kind: 'help' })} />
         </View>
       }
     >

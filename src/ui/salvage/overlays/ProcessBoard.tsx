@@ -9,13 +9,19 @@
  * once; a plate with something to buy (a machine, a recipe, a machine level) is selected and the title
  * row offers its button, with the price the plate shows, beside "Open" (its machine's card, before or
  * after buying). A greyed plate shows only its padlock.
+ *
+ * Drawing (the lead's ruling of 15:25): the plates, their rivets, glyphs, lamps and padlocks and the bars
+ * are drawn live from the art kit (../art/ui.draw.ts `boardPlate`, `plateBar`) in ONE Skia canvas behind
+ * the board (never a canvas per plate); the words and the touch targets are views on top of it.
  */
-import { useState } from 'react';
+import { Canvas, Picture, Skia } from '@shopify/react-native-skia';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { CardData, Plate } from '../../../engine/salvage';
+import type { CardData, Plate, ProcessBoardRows } from '../../../engine/salvage';
+import { boardPlate, plateBar, plateGlyph } from '../art/ui.draw';
 import { boardLayout, breakLines, fitPt, pt, TYPE } from './layout';
 import { openCard } from './cardStack';
-import { BuyButton, INK, Padlock, RefusalLine, useFrame, useRowNote, useSay, type Tab } from './parts';
+import { BuyButton, INK, RefusalLine, useFrame, useRowNote, useSay, type Tab } from './parts';
 import { WideCard } from './WideCard';
 
 function PlateView({ p, w, h, selected, onPress }: { p: Plate; w: number; h: number; selected: boolean; onPress: () => void }) {
@@ -27,13 +33,11 @@ function PlateView({ p, w, h, selected, onPress }: { p: Plate; w: number; h: num
   const nameSize = pt(greyed ? TYPE.greyName : TYPE.plateName, layout.fs);
   const lineSize = pt(TYPE.plateLine, layout.fs);
   const state = say1(p.line);
-  const stateSize = fitPt(state, lineSize, w - 8);
+  const stateSize = fitPt(state, lineSize, w - 16);
   const lh = (s: number) => Math.ceil(s * 1.15);
-  const face = greyed ? styles.greyed : p.state === 'lit' || p.state === 'owned' ? styles.lit : p.state === 'buyable' ? styles.buyable : styles.locked;
   const ink = greyed || p.state === 'locked' ? INK.soft : p.state === 'buyable' ? INK.ink : INK.paper;
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ selected, disabled: greyed }} accessibilityLabel={[name, say1(p.line)].filter(Boolean).join(', ')} onPress={onPress} disabled={greyed} style={[styles.plate, face, { width: w, height: h }, selected ? styles.selected : null]}>
-      <Rivets />
+    <Pressable accessibilityRole="button" accessibilityState={{ selected, disabled: greyed }} accessibilityLabel={[name, say1(p.line)].filter(Boolean).join(', ')} onPress={onPress} disabled={greyed} style={[styles.plate, { width: w, height: h }]}>
       <View style={styles.plateBody}>
         {lines.map((l, i) => (
           <Text key={i} allowFontScaling={false} numberOfLines={1} style={{ fontSize: nameSize, lineHeight: lh(nameSize), fontWeight: '800', color: ink, textAlign: 'center' }}>
@@ -48,36 +52,33 @@ function PlateView({ p, w, h, selected, onPress }: { p: Plate; w: number; h: num
           </View>
         ) : null}
       </View>
-      {/* A greyed or locked plate's padlock sits in its corner, so its lines still fit at font scale 1.3. */}
-      {greyed || p.state === 'locked' ? (
-        <View style={greyed ? styles.cornerLock : styles.topLock}>
-          <Padlock size={greyed ? 11 : 9} colour={INK.soft} />
-        </View>
-      ) : null}
     </Pressable>
   );
 }
 
-/** Four rivets in the plate's corners (enamel on steel). */
-function Rivets() {
-  return (
-    <>
-      {[styles.rTL, styles.rTR, styles.rBL, styles.rBR].map((s, i) => (
-        <View key={i} style={[styles.rivet, s]} />
-      ))}
-    </>
-  );
+/** Where each plate and bar of the board stands inside the rows' box (the same sums as the flex rows below). */
+function boardBoxes(board: ProcessBoardRows | undefined, b: ReturnType<typeof boardLayout>, padX: number, padTop: number) {
+  const plates: { p: Plate; x: number; y: number; w: number }[] = [];
+  const bars: { x: number; y: number; w: number }[] = [];
+  const joined = new Set((board?.bars ?? []).flatMap(([a, c]) => [`${a}|${c}`, `${c}|${a}`]));
+  (board?.rows ?? []).forEach((r, ri) => {
+    const y = padTop + ri * (b.plateH + b.rowGap);
+    const greyed = r.id === 'greyed';
+    const w = greyed ? b.greyW : b.plateW;
+    const step = greyed ? w + greyGap(b) : w + b.barW;
+    r.plates.forEach((p, i) => {
+      const x = padX + i * step;
+      plates.push({ p, x, y, w });
+      const prev = r.plates[i - 1];
+      if (!greyed && prev && (joined.has(`${prev.id}|${p.id}`) || joined.has(`${r.plates[0].id}|${p.id}`))) bars.push({ x: x - b.barW, y: y + b.plateH / 2 - 6, w: b.barW });
+    });
+  });
+  return { plates, bars };
 }
 
-/** A riveted bar joining two plates. */
-function Bar({ w }: { w: number }) {
-  return (
-    <View style={[styles.bar, { width: w }]}>
-      <View style={styles.barRivet} />
-      <View style={styles.barRivet} />
-    </View>
-  );
-}
+const greyGap = (b: ReturnType<typeof boardLayout>) => (b.plateW === 132 ? 10 : 4);
+const PAD_X = 14;
+const PAD_TOP = 8;
 
 export function ProcessBoard({ data, tabs, onTab, onClose }: { data: CardData; tabs?: Tab[]; onTab?: (id: string) => void; onClose: () => void }) {
   const { layout } = useFrame();
@@ -87,7 +88,17 @@ export function ProcessBoard({ data, tabs, onTab, onClose }: { data: CardData; t
   const plates = board?.rows.flatMap((r) => r.plates) ?? [];
   const picked = plates.find((p) => p.id === sel) ?? null;
   const note = useRowNote(picked?.id ?? '-');
-  const joined = new Set((board?.bars ?? []).flatMap(([a, c]) => [`${a}|${c}`, `${c}|${a}`]));
+  // The plates and bars, drawn once per change of the board (or the selection) into one picture.
+  const boxes = useMemo(() => boardBoxes(board, b, PAD_X, PAD_TOP), [board, b.plateW, b.plateH, b.barW, b.greyW, b.rowGap]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pic = useMemo(() => {
+    const rec = Skia.PictureRecorder();
+    const c = rec.beginRecording(Skia.XYWHRect(0, 0, 1200, 400));
+    for (const bar of boxes.bars) plateBar(c, bar.x, bar.y, bar.w);
+    for (const q of boxes.plates) boardPlate(c, q.x, q.y, q.w, b.plateH, q.p.state, plateGlyph(q.p.id), q.p.id === sel);
+    return rec.finishRecordingAsPicture();
+  }, [boxes, b.plateH, sel]);
+  const canvasW = Math.max(0, ...boxes.plates.map((q) => q.x + q.w + 4));
+  const canvasH = PAD_TOP + 4 * (b.plateH + b.rowGap);
   // A plate without a button opens its card; one with a button is selected first (its button shows at the
   // row's end, with the plate's price), and a second tap on it opens its card.
   const onPlate = (p: Plate) => {
@@ -101,14 +112,15 @@ export function ProcessBoard({ data, tabs, onTab, onClose }: { data: CardData; t
   return (
     <WideCard title={data.title} onClose={onClose} tabs={tabs} onTab={onTab}>
       <View style={styles.rows}>
+        <Canvas pointerEvents="none" style={[styles.canvas, { width: canvasW, height: canvasH }]}>
+          <Picture picture={pic} />
+        </Canvas>
         {board?.rows.map((r) => (
-          <View key={r.id} style={[styles.row, { height: b.plateH, marginBottom: b.rowGap, gap: r.id === 'greyed' ? (b.plateW === 132 ? 10 : 4) : 0 }]}>
+          <View key={r.id} style={[styles.row, { height: b.plateH, marginBottom: b.rowGap, gap: r.id === 'greyed' ? greyGap(b) : 0 }]}>
             {r.plates.map((p, i) => {
-              const prev = r.plates[i - 1];
-              const bar = r.id !== 'greyed' && prev && (joined.has(`${prev.id}|${p.id}`) || joined.has(`${r.plates[0].id}|${p.id}`));
               return (
                 <View key={p.id} style={styles.cell}>
-                  {bar ? <Bar w={b.barW} /> : i > 0 && r.id !== 'greyed' ? <View style={{ width: b.barW }} /> : null}
+                  {i > 0 && r.id !== 'greyed' ? <View style={{ width: b.barW }} /> : null}
                   <PlateView p={p} w={r.id === 'greyed' ? b.greyW : b.plateW} h={b.plateH} selected={p.id === sel} onPress={() => onPlate(p)} />
                 </View>
               );
@@ -132,25 +144,12 @@ export function ProcessBoard({ data, tabs, onTab, onClose }: { data: CardData; t
 
 const styles = StyleSheet.create({
   actions: { flexDirection: 'row', alignItems: 'center', marginLeft: 12 },
-  rows: { paddingHorizontal: 14, paddingTop: 8 },
+  rows: { paddingHorizontal: PAD_X, paddingTop: PAD_TOP },
+  canvas: { position: 'absolute', left: 0, top: 0 },
   row: { flexDirection: 'row', alignItems: 'center' },
   cell: { flexDirection: 'row', alignItems: 'center' },
-  plate: { borderRadius: 7, borderWidth: 1.3, borderColor: INK.ink, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  plateBody: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  plate: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  plateBody: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingTop: 4 },
   stateLine: { flexDirection: 'row', alignItems: 'center', marginTop: 1 },
-  lit: { backgroundColor: INK.machine },
-  buyable: { backgroundColor: INK.enamel, borderStyle: 'solid' },
-  locked: { backgroundColor: INK.shade, borderColor: INK.rule },
-  greyed: { backgroundColor: INK.greyed, borderColor: INK.rule },
-  selected: { borderColor: INK.hivis, borderWidth: 3 },
-  cornerLock: { position: 'absolute', right: 9, bottom: 6 },
-  topLock: { position: 'absolute', right: 3, top: 3 },
-  rivet: { position: 'absolute', width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(43,46,51,0.35)' },
-  rTL: { left: 4, top: 4 },
-  rTR: { right: 4, top: 4 },
-  rBL: { left: 4, bottom: 4 },
-  rBR: { right: 4, bottom: 4 },
-  bar: { height: 12, backgroundColor: INK.machine, borderTopWidth: 1, borderBottomWidth: 1, borderColor: INK.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly' },
-  barRivet: { width: 4, height: 4, borderRadius: 2, backgroundColor: INK.paper },
   note: { position: 'absolute', left: 14, right: 14, bottom: 0 },
 });

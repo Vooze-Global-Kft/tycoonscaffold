@@ -592,3 +592,78 @@ export function businessCard(c: SkCanvas, x: number, y: number, w: number, h: nu
   for (const k of [0.32, 0.52]) c.drawPath(segment(x + s + 16, y + h * k + 4, x + w - 10, y + h * k + 4), stroke(YARD.paperLine, 0.8));
   return { words: [x + s + 16, y + 6, w - s - 26, h - 16] };
 }
+
+// ---------------------------------------------------------------------------
+// The process board as the overlays draw it (4.5; the lead's ruling of 15:25: plates are drawn live from
+// this kit). `processPlate` above keeps a big glyph and leaves 46 pt for words on a 132 pt plate, too
+// little for 4.5's two lines of 12 characters; `boardPlate` is the fitting plate: the words run across
+// the plate (8 pt a side), the machine's glyph is small in the top-left corner (none on a greyed plate:
+// a greyed plate names its material and nothing else), the lamp or padlock sits in a corner, and four
+// rivets hold it. `plateBar` is the riveted bar that joins two plates of a row.
+// ---------------------------------------------------------------------------
+
+/** The four looks of a board plate (types.ts PlateState): lit and owned are one look. */
+export type BoardPlateState = 'lit' | 'owned' | 'buyable' | 'locked' | 'greyed';
+
+/** A plate's glyph by the plate's id (the rules' plate ids; recipes melt in the crucible). */
+export function plateGlyph(id: string): PlateGlyph | null {
+  if (id === 'hand_stripper' || id === 'hand') return 'stripper';
+  if (id === 'stripper') return 'power';
+  if (id === 'bench') return 'bench';
+  if (id === 'crucible' || id === 'brass' || id === 'alu') return 'crucible';
+  if (id === 'scale') return 'scale';
+  return null;
+}
+
+/**
+ * One plate of the process board, w x h points at (x, y): enamel on steel with a hard drop. lit/owned:
+ * machine blue with a hi-vis edge and a green lamp (top right); buyable: white enamel; locked: shaded
+ * paper with a small padlock in the top-right corner; greyed: washed grey, a dashed edge and the padlock in
+ * the bottom-right corner. `selected` adds a hi-vis ring. Returns the words box (8 pt in from each side; a
+ * glyph, when drawn, takes the top-left 18 pt only).
+ */
+export function boardPlate(c: SkCanvas, x: number, y: number, w: number, h: number, state: BoardPlateState, glyph: PlateGlyph | null, selected = false): { words: [number, number, number, number] } {
+  const r = 7;
+  const lit = state === 'lit' || state === 'owned';
+  if (state !== 'greyed') c.drawPath(rrect(x, y + 2, w, h, r), fill(INK, 0.28));
+  const face = lit ? YARD.machine : state === 'buyable' ? YARD.enamel : YARD.paperShade;
+  c.drawPath(rrect(x, y, w, h, r), fill(face));
+  if (state === 'greyed') {
+    const per = 2 * (w + h);
+    const pt = (d: number): [number, number] => (d < w ? [x + d, y] : d < w + h ? [x + w, y + d - w] : d < 2 * w + h ? [x + w - (d - w - h), y + h] : [x, y + h - (d - 2 * w - h)]);
+    for (let i = 0; i < 36; i++) {
+      const [ax, ay] = pt((i / 36) * per);
+      const [bx, by] = pt((i / 36) * per + per / 72);
+      c.drawPath(segment(ax, ay, bx, by), stroke(YARD.inkSoft, 1.1));
+    }
+  } else {
+    if (lit) c.drawPath(rrect(x + 1, y + 1, w - 2, h - 2, r - 1), stroke(YARD.hivisDark, 2));
+    c.drawPath(rrect(x, y, w, h, r), stroke(state === 'locked' ? YARD.paperLine : INK, 1.3));
+  }
+  // Rivets in the corners.
+  const rivet = lit ? YARD.paper : YARD.inkSoft;
+  for (const [rx, ry] of [
+    [x + 5, y + 5],
+    [x + w - 5, y + 5],
+    [x + 5, y + h - 5],
+    [x + w - 5, y + h - 5],
+  ])
+    c.drawPath(oval(rx, ry, 1.6, 1.6), fill(rivet, 0.55));
+  const ink = lit ? YARD.paper : state === 'buyable' ? INK : YARD.inkSoft;
+  if (glyph && state !== 'greyed') machineGlyph(c, glyph, x + 15, y + 14, 14, ink);
+  if (lit) {
+    c.drawPath(oval(x + w - 12, y + 12, 3.2, 3.2), fill(YARD.led));
+    c.drawPath(oval(x + w - 12, y + 12, 3.2, 3.2), stroke(INK, 0.9));
+  } else if (state === 'locked') padlock(c, x + w - 11, y + 11, 9, YARD.inkSoft);
+  else if (state === 'greyed') padlock(c, x + w - 13, y + h - 12, 11, '#9C9C95');
+  if (selected) c.drawPath(rrect(x - 1.5, y - 1.5, w + 3, h + 3, r + 1.5), stroke(YARD.hivis, 3));
+  return { words: [x + 8, y + 4, w - 16, h - 8] };
+}
+
+/** The riveted bar that joins two plates of a row: w points long, h thick, its top-left at (x, y). */
+export function plateBar(c: SkCanvas, x: number, y: number, w: number, h = 12): void {
+  c.drawPath(rrect(x - 2, y, w + 4, h, 2), fill(YARD.machine));
+  c.drawPath(segment(x - 2, y + 0.5, x + w + 2, y + 0.5), stroke(INK, 1));
+  c.drawPath(segment(x - 2, y + h - 0.5, x + w + 2, y + h - 0.5), stroke(INK, 1));
+  for (const k of [0.3, 0.7]) c.drawPath(oval(x + w * k, y + h / 2, 1.8, 1.8), fill(YARD.paper));
+}

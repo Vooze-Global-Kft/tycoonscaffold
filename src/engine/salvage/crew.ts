@@ -130,8 +130,20 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     m.dest = 'scale';
     return true;
   }
+  // Loose things (tier 0: a cable bundle, a crate of taps) are pieces to carry: they go with the pieces of their place.
+  const loose = (where: 'dropoff' | 'floor'): ThingState | null =>
+    s.things.filter((th) => th.at.at === where && !th.by && (x.c.objects[th.obj]?.tier ?? 1) === 0 && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap).sort((a, b) => (a.uid < b.uid ? -1 : 1))[0] ?? null;
+  const takeLoose = (th: ThingState, job: CrewJob): boolean => {
+    th.by = m.id;
+    m.claims = [`loose:${th.uid}`];
+    leg(x, m, job, 'walkTo', { thing: th.uid }, t, x.c.crew.hand.handle_s);
+    m.dest = 'scale';
+    return true;
+  };
   // (4) the drop-off's pieces.
   const drop = free.filter((p) => p.pile === 'dropoff');
+  const looseDrop = loose('dropoff');
+  if (!drop.length && looseDrop) return takeLoose(looseDrop, 'dropoff');
   if (drop.length) {
     const pick = choose(x, drop, cap);
     if (pick.length) {
@@ -159,6 +171,8 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   }
   // (6) the tipping floor's pieces, then such a whole thing.
   const floor = free.filter((p) => p.pile === 'floor');
+  const looseFloor = loose('floor');
+  if (!floor.length && looseFloor) return takeLoose(looseFloor, 'floor');
   if (floor.length) {
     const pick = choose(x, floor, cap);
     if (pick.length) {
@@ -206,6 +220,19 @@ function handLegEnd(x: Ctx, m: CrewMember, t: number): void {
           load.push({ uid: `${id}.t${n}`, grade, g: take, from: id, spec: -1 });
         }
         if (mach.status === 'trayFull') takeTray(x, id as MachineId, 0, t);
+        continue;
+      }
+      if (c.startsWith('loose:')) {
+        const th = thingOf(x, c.slice(6));
+        if (th && th.by === m.id) {
+          th.by = null;
+          for (let guard = 0; guard < 100; guard++) {
+            const r = cutOff(x, th, m.id, t);
+            if (!r) break;
+            load.push(r.piece);
+            if (r.gone) break;
+          }
+        }
         continue;
       }
       const gp = s.pieces.find((p) => p.uid === c && p.claim === m.id);

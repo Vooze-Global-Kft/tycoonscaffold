@@ -8,6 +8,7 @@
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { marketDay } from './board';
+import { lotPrice } from './content';
 import { roundMoney } from './money';
 import type { SalvageConfig, SalvageEvent, SalvageGame, SalvageState, Ticket } from './types';
 
@@ -49,12 +50,21 @@ export interface Ctx {
   ms0: number;
   t0: number;
   away: AwayAcc | null;
+  /** Something the checks read changed (counts, supplied, owned, crew): run them at this instant's end. */
+  dirty: boolean;
+  /** Prices met in this transition (a pure function of the day: memoised here only). */
+  prices: Map<string, number>;
+  /** Yard second the checks last ran (the away pass runs them at most every CHECK_EVERY_S). */
+  checkedAt: number;
 }
+
+/** In the away pass the instant's checks run at most this often (yard seconds), and at its end. */
+export const CHECK_EVERY_S = 5;
 
 export function begin(cfg: SalvageConfig, g: SalvageGame, events: SalvageEvent[] | undefined, live = true): Ctx {
   const s = clone(g.salvage);
   if (!s.counts) s.counts = {};
-  return { cfg, c: cfg.salvage, s, cash: g.cash, earned: 0, ev: events ?? [], live, ms0: s.clock.highMs, t0: s.t, away: null };
+  return { cfg, c: cfg.salvage, s, cash: g.cash, earned: 0, ev: events ?? [], live, ms0: s.clock.highMs, t0: s.t, away: null, dirty: true, prices: new Map(), checkedAt: -Infinity };
 }
 
 /** The new game from a draft: cash, lifetime earnings and the salvage state. */
@@ -90,6 +100,7 @@ export function earn(x: Ctx, amount: number, t: number): void {
   if (a <= 0) return;
   x.cash = roundMoney(x.cash + a);
   x.earned += a;
+  x.dirty = true;
   const inc = x.s.income;
   const minute = Math.floor(t / 60);
   if (minute > inc.minute) {
@@ -104,12 +115,14 @@ export function earn(x: Ctx, amount: number, t: number): void {
 /** Money out (a purchase, a load's price): never below zero (the checks refuse first). */
 export function spend(x: Ctx, amount: number): void {
   x.cash = roundMoney(x.cash - roundMoney(amount));
+  x.dirty = true;
 }
 
 /** One more of a counter the goals read. */
 export function count(x: Ctx, key: string, n = 1): void {
   const c = x.s.counts!;
   c[key] = (c[key] ?? 0) + n;
+  x.dirty = true;
 }
 
 /** Print a ticket into the history (the last 50) and return it numbered. */
@@ -136,4 +149,15 @@ export function standingFor(x: Ctx, t: number): number {
   const p = x.s.presence;
   if (p.moving) return 0;
   return p.standingFor + Math.max(0, t - x.s.presenceAt);
+}
+
+/** A lot's price of a grade on day D (content.ts lotPrice), memoised for the transition. */
+export function priceAt(x: Ctx, grade: string, day: number): number {
+  const k = `${grade}|${day}`;
+  let p = x.prices.get(k);
+  if (p === undefined) {
+    p = lotPrice(x.c, grade, day);
+    x.prices.set(k, p);
+  }
+  return p;
 }

@@ -6,8 +6,7 @@
  * Owner: rules-sim.
  */
 import { asideOf, collectable } from './bays';
-import { count, dayAt, earn, printTicket, ticketBase, type Ctx } from './clock';
-import { lotPrice } from './content';
+import { count, dayAt, earn, priceAt, printTicket, ticketBase, type Ctx } from './clock';
 import { roundMoney } from './money';
 import type { MerchantState, TicketLine } from './types';
 
@@ -42,7 +41,7 @@ export function roundTry(x: Ctx, t: number): void {
     }
     if (free > 0) {
       const units = x.c.wholeUnits_kg[grade];
-      const price = lotPrice(x.c, grade, day);
+      const price = priceAt(x, grade, day);
       const line: MerchantState['lot'][number] = { grade, g: free, price, amount: roundMoney((free / 1000) * price) };
       if (units !== undefined) {
         const n = b.n > 0 ? Math.min(b.n, Math.max(1, Math.round(free / (units * 1000)))) : 0;
@@ -68,9 +67,7 @@ export function roundEvent(x: Ctx, t: number): void {
   if (m.phase === 'loading') {
     const lines: TicketLine[] = m.lot.map((l) => ({ grade: l.grade, g: l.g, price: l.price, amount: l.amount, ...(l.n !== undefined ? { n: l.n } : {}) }));
     const paid = roundMoney(lines.reduce((a, l) => a + l.amount, 0));
-    const before = new Set<string>();
-    for (const tk of x.s.tickets) if (tk.kind === 'collection') for (const l of tk.lines) before.add(l.grade);
-    const firstGrades = [...new Set(lines.map((l) => l.grade))].filter((g) => !before.has(g) && (x.s.counts![`sold:${g}`] ?? 0) === 0);
+    const firstGrades = [...new Set(lines.map((l) => l.grade))].filter((g) => (x.s.counts![`sold:${g}`] ?? 0) === 0);
     for (const l of lines) {
       supply(x, l.grade, l.g);
       count(x, `sold:${l.grade}`);
@@ -80,9 +77,10 @@ export function roundEvent(x: Ctx, t: number): void {
         a.money = roundMoney(a.money + l.amount);
       }
     }
-    const withBoss = x.live && x.s.tickets.some((tk) => tk.kind === 'weighIn' && tk.by === 'boss' && tk.at >= (x.s.counts!.lastCollectAt ?? -1) && tk.at <= t);
+    // withBoss: some of the lot was weighed in by the boss since the last collection (else the cab's one-line chip, 4.4 item 4).
+    const withBoss = x.live && (x.s.counts!.bossWeighedSinceCollect ?? 0) > 0;
+    x.s.counts!.bossWeighedSinceCollect = 0;
     const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'collection' as const, buyer: x.c.merchant.id, lines, paid, withBoss, firstGrades });
-    x.s.counts!.lastCollectAt = t;
     earn(x, paid, t);
     count(x, 'collected');
     const first = firstGrades.length > 0;

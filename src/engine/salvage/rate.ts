@@ -6,8 +6,8 @@
 import { checkGoals } from './goals';
 import { rungReached } from './ladder';
 import { passedNow } from './rivals';
-import { count, dayAt, type Ctx } from './clock';
-import { legM, toolP } from './content';
+import { CHECK_EVERY_S, count, dayAt, type Ctx } from './clock';
+import { routeM } from './content';
 import { crucibleCharged } from './crucible';
 import { dealOffer, gateReached } from './deal';
 import { defOf } from './machines';
@@ -15,35 +15,37 @@ import { openPartners } from './partners';
 import { pointOf } from './positions';
 import type { MachineId, SalvageConfig, SalvageGame } from './types';
 
-/** R, t/h (2.12): machines at full feed plus the crew's carrying and cutting, from the same rates. */
+/**
+ * R, t/h (2.11, 2.12; the prototype's rated_R, proto/yard4.py): the yard's throughput at full feed with no
+ * boss = 3.6 × min(the yard hands' carrying, kg/s, the material arriving: the drop-off's mix over its
+ * period plus each open partner's skip over max(fill_s, the driver's round trip)); 0 without a yard hand.
+ * Machines transform what is carried and add no throughput; their levels show their own rate on their card.
+ */
 export function ratedOf(c: Ctx['c'], s: Ctx['s']): number {
-  let kgS = 0;
-  for (const id of ['stripper', 'bench'] as MachineId[]) {
-    const m = s.machines[id];
-    if (!m.owned) continue;
-    const d = (c.machines as unknown as Record<string, { rate: number; lev?: number }>)[id];
-    kgS += d.rate * (1 + (d.lev ?? 0) * Math.max(0, m.level - 1));
+  const hands = s.crew.filter((m) => m.role === 'hand');
+  if (!hands.length) return 0;
+  const h = c.crew.hand;
+  const leg = routeM(c, 'dropoff', 'scale');
+  let carry = 0;
+  for (const m of hands) {
+    const v = h.v * (1 + h.lev * Math.max(0, m.level - 1));
+    carry += h.load / ((2 * leg) / v + h.handle_s);
   }
-  const cr = s.machines.crucible;
-  if (cr.owned) {
-    const d = c.machines.crucible;
-    kgS += 1 / d.s_per_kg;
-  }
-  const scale = pointOf(c, 'scale');
-  const drop = pointOf(c, 'dropoff');
-  for (const m of s.crew) {
-    if (m.role === 'hand') {
-      const h = c.crew.hand;
-      const v = h.v * (1 + h.lev * Math.max(0, m.level - 1));
-      const trip = (2 * legM(c, scale, drop)) / v + 2 * h.handle_s;
-      kgS += h.load / Math.max(1e-6, trip);
-    } else if (m.role === 'cutter') {
-      const k = c.crew.cutter;
-      const P = toolP(c, s.tier);
-      kgS += Math.min(k.cap * P, P * k.share * (1 + k.lev * Math.max(0, m.level - 1)));
+  const mix = c.dropoff.mix;
+  const wsum = mix.reduce((a, [, w]) => a + w, 0) || 1;
+  let arrive = mix.reduce((a, [o, w]) => a + (w / wsum) * ((c.objects[o]?.gross_g ?? 0) / 1000), 0) / c.dropoff.period;
+  const driver = s.crew.find((m) => m.role === 'driver');
+  if (driver && s.truck.owned) {
+    const dv = c.truck.v * c.truck.driverFactor * (1 + c.crew.driver.lev * Math.max(0, driver.level - 1));
+    for (const [id, p] of Object.entries(c.partners)) {
+      const ps = s.partners[id];
+      if (!ps?.open) continue;
+      const mass = Object.entries(p.skip).reduce((a, [o, n]) => a + (c.objects[o]?.gross_g ?? 0) * n, 0) / 1000;
+      const trip = (2 * (c.map.lane[p.lane] ?? 0)) / dv + c.truck.handle_s;
+      arrive += (Math.max(1, ps.level) * mass) / Math.max(p.fill_s, trip);
     }
   }
-  return (kgS * 3600) / 1000;
+  return 3.6 * Math.min(carry, arrive);
 }
 
 export function ratedCapacity(cfg: SalvageConfig, g: SalvageGame): number {
@@ -69,6 +71,7 @@ export function own(x: Ctx, item: string, t: number): void {
   }
   if (item === 'truck') s.truck.owned = true;
   x.ev.push({ type: 'owned', item });
+  x.dirty = true;
   openPartners(x, t);
 }
 
@@ -88,7 +91,11 @@ export function arrive(x: Ctx, item: string, t: number): void {
 const view = (x: Ctx): SalvageGame => ({ cash: x.cash, lifetimeEarnings: 0, salvage: x.s }) as unknown as SalvageGame;
 
 /** 2.14 step 6: partners opening, the rung (ladder.ts rungReached), rivals passed (rivals.ts passedNow), the deal offer, goals (goals.ts checkGoals). */
-export function checks(x: Ctx, t: number): void {
+export function checks(x: Ctx, t: number, force = true): void {
+  if (!force && !x.dirty) return;
+  if (!force && !x.live && t - x.checkedAt < CHECK_EVERY_S) return;
+  x.dirty = false;
+  x.checkedAt = t;
   const s = x.s;
   openPartners(x, t);
   const rung = rungReached(x.cfg, view(x));
