@@ -8,7 +8,7 @@ then part 1, then the first-yard document. File names inside the parts (`RULING.
 are complete here.
 
 - Part 1: the ruling on three competing designs (points 1 to 16), before the specification.
-- Part 2: the first yard's economy after the first numbers prototype (E1 to E29).
+- Part 2: the first yard's economy after the first numbers prototype (E1 to E32).
 - Part 3: the first yard after its review (S1 to S24).
 
 ---
@@ -412,6 +412,38 @@ from work reaches three fifths by k 0.88 or by the as-found shares, whichever ke
 Trial loads at fixed prices (R17), whole things sold whole (R19), the advice line's binding rule
 (R16) and levels to 20 (R15, opening at rung 2 by E25) are accepted. R13 is refused (E25); R18 is a
 habit, not a rule.
+
+**E30. Rulings at 17:00.** goals.json follows the fourth pass's order (the cutter after the torch).
+The truck stays in the hour's goal order as the first drive's purchase although its first five
+minutes measure below E28's fifth. S14's gap to the away pass is 10 s. reach.sight is 10 m. Rung 3
+is at 23 t (E14's 28 t is superseded). The three ceilings are set from the tuned content (about 1.3
+times what an always-on full spender can reach on that rung) so that no card is locked by a ceiling
+in a normal hour. After the fixed goals the advice line names another skip in rotation whenever the
+tipping floor is empty and the driver idle.
+
+### After the bots on the real rules (18:30)
+
+The bots (`proto/REPORT5.txt`; `src/engine/salvage/bot.ts`, `scripts/content/yard-bot.ts`) played
+the real game on fifteen seeds and five unseen. The opening beats, the torch, the first pour, four
+rivals, the hand against the card manager, the no-hand floor and the three days hold; rung 2 runs a
+little early, the first drive is in its band on about half the seeds; three engine faults were
+found and fixed with tests. What misses is the last third of the hour: sales stay near §1,200 a
+minute from minute 35, because one driver's round and the tipping floor bind, and levels change
+little.
+
+**E31. The late hour grows by hauling and by levels that are felt.** (a) A driver's level shortens
+his whole round, the hooking and the tipping as well as the driving, by the level's factor (today
+it only speeds the drive). (b) A cutter's and a yard hand's level adds a quarter (not an eighth),
+priced by E13a, so that each is seen in the yard. (c) E28's later aim becomes: sales of at least
+§2,000 a minute by minute 60 for the normal hand, and no five-minute window after minute 30 under
+the one before. A second truck is stage 2's (with the forklift and the crane), not this stage's.
+(d) Rung 2 at 2.4 t. The torch's wait behind its rung gate is accepted as the hour's one long save.
+
+**E32. Hold waits for a better day and then lets go.** A held bay rejoins the round by itself at
+the first high day, or after two market days, whichever comes first; its card says so ("Held until
+a high day, two days at most"). The bots showed that a bay held and forgotten through days away
+cost a fifth to a third of three days' earnings; Hold is a small lever (E, the +3 % aim), never a
+trap.
 
 ---
 
