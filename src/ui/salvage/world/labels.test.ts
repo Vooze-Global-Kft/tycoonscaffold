@@ -16,7 +16,7 @@ import * as E from '../../../engine/economy';
 import { FIXTURE_NAMES, FIXTURE_NOW, fixtureGame, withTestContent } from '../../../engine/fixtures/salvage';
 import * as R from '../../../engine/salvage';
 import { hudLayout } from '../hud/metrics';
-import { LABEL_PT, LIMITS, labelItems, labelSize, layoutPlates, lockGroup, mergePlates, plateFits, plateHidden, skipPlate, type LabelItem, type PlacedLabel, type PlateScene, type Rect } from './labels';
+import { doorSpots, LABEL_PT, LIMITS, labelItems, labelSize, layoutPlates, lockGroup, mergePlates, plateFits, plateHidden, skipPlate, type LabelItem, type PlacedLabel, type PlateScene, type Rect } from './labels';
 
 const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'games', 'scrap-yard', 'game.json'), 'utf8'));
 const cfg = withTestContent(GameConfigSchema.parse(raw));
@@ -314,5 +314,20 @@ describe('desk1: a partner skip\'s plate stands on the road side', () => {
     const foot = (low.y + 1.1) * 40 * 0.9;
     expect(r.y + r.h).toBeCloseTo(foot, 5);
     expect(Math.abs(r.x + r.w / 2 - low.x * 40)).toBeGreaterThanOrEqual(r.w / 2 + 1.4 * 40);
+  });
+});
+
+describe('desk2 (4a): a place\'s plate hides while the boss stands at its standing spot', () => {
+  it('the office plate hides with the boss at its door (south), not when he is a few metres off; others unchanged', () => {
+    const spots = doorSpots({ office: { w: 4.4, d: 3, door: 's' }, rack: { w: 2, d: 0.8 } }, { office: [55.7, 29.35], rack: [52.5, 28.5] });
+    expect(Object.keys(spots)).toEqual(['office']);
+    expect(spots.office.x).toBeCloseTo(55.7);
+    expect(spots.office.y).toBeCloseTo(29.35 + 1.5 + 0.6);
+    const it0: LabelItem = { id: 'place.office', kind: 'place', x: 55.7, y: 29.35, z: 2.6, lines: [{ text: 'Office', tone: 'ink', max: 38 }], padlock: false, near: false, place: 'office', at: 'office' };
+    const base = { people: [], workAt: new Set<string>(), busy: new Set<string>(), footprints: { office: { x0: 53.5, x1: 57.9, y0: 27.85, y1: 30.85 } }, spots };
+    expect(plateHidden(it0, { ...base, boss: { x: 55.6, y: 31.5 } })).toBe(true);
+    expect(plateHidden(it0, { ...base, boss: { x: 55.6, y: 35 } })).toBe(false);
+    expect(plateHidden(it0, { ...base, boss: null })).toBe(false);
+    expect(plateHidden(it0, { ...base, spots: undefined, boss: { x: 55.6, y: 31.5 } })).toBe(false);
   });
 });

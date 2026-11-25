@@ -375,6 +375,24 @@ export interface PlateScene {
   footprints: Readonly<Record<string, Rect>>;
   /** The boss, metres (plates nearest him are placed first); null: the screen's middle. */
   boss: { x: number; y: number } | null;
+  /** desk2 (4a): a place's standing spot outside its footprint (a solid place's door, e.g. the office's), metres. */
+  spots?: Readonly<Record<string, { x: number; y: number }>>;
+}
+
+/** How near the boss must be to a place's standing spot for its plate to hide, metres. */
+export const SPOT_M = 1.2;
+
+/** desk2 (4a): standing spots of places with a door (content `door`: n, s, e or w): just outside that side's middle. */
+export function doorSpots(places: Readonly<Record<string, { w: number; d: number; door?: string }>>, points: Readonly<Record<string, readonly [number, number] | number[]>>): Record<string, { x: number; y: number }> {
+  const out: Record<string, { x: number; y: number }> = {};
+  for (const [id, p] of Object.entries(places)) {
+    const pt = points[id];
+    if (!p.door || !pt) continue;
+    const ox = p.door === 'e' ? p.w / 2 + 0.6 : p.door === 'w' ? -p.w / 2 - 0.6 : 0;
+    const oy = p.door === 's' ? p.d / 2 + 0.6 : p.door === 'n' ? -p.d / 2 - 0.6 : 0;
+    out[id] = { x: pt[0] + ox, y: pt[1] + oy };
+  }
+  return out;
 }
 
 /** Air round a plate, points; the stem's length; how far past its footprint a person still "stands in" it, metres. */
@@ -386,10 +404,12 @@ const overlaps = (a: Rect, b: Rect, g = 0): boolean => a.x0 < b.x1 + g && b.x0 <
 const inside = (a: Rect, b: Rect): boolean => a.x0 >= b.x0 && a.x1 <= b.x1 && a.y0 >= b.y0 && a.y1 <= b.y1;
 
 /** Whether a plate is hidden now (L3): somebody stands in the footprint it names or works there, or works its thing. */
-export function plateHidden(it: LabelItem, sc: Pick<PlateScene, 'people' | 'workAt' | 'busy' | 'footprints'>): boolean {
+export function plateHidden(it: LabelItem, sc: Pick<PlateScene, 'people' | 'workAt' | 'busy' | 'footprints'> & Partial<Pick<PlateScene, 'boss' | 'spots'>>): boolean {
   if (it.of && sc.busy.has(it.of)) return true;
   if (!it.at) return false;
   if (it.kind !== 'bay' && sc.workAt.has(it.at)) return true;
+  const spot = it.kind === 'place' ? sc.spots?.[it.at] : undefined;
+  if (spot && sc.boss && Math.hypot(sc.boss.x - spot.x, sc.boss.y - spot.y) <= SPOT_M) return true;
   const f = sc.footprints[it.at];
   if (!f) return false;
   return sc.people.some((p) => p.x >= f.x0 - IN_M && p.x <= f.x1 + IN_M && p.y >= f.y0 - IN_M && p.y <= f.y1 + IN_M);

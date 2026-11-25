@@ -9,7 +9,7 @@ import { FIXTURE_NOW, SALVAGE_TEST, fixtureGame } from '../../../engine/fixtures
 import * as R from '../../../engine/salvage';
 import type { GameState } from '../../../engine/types';
 import { createPump, type PumpEffects } from './pump';
-import { avoidRect, cashCoinPoint, cashFit, cashSlotNeed, CASH_WIDEST, fitText, hudScale, overlaps, placeFromSlot, underCash, hudLayout, MIN_PT, pickForm, placeTicket, textW, ticketFade, ticketHeight, TICKET_UNDER_BOSS } from './metrics';
+import { avoidRect, cashCoinPoint, cashFit, cashSlotNeed, CASH_WIDEST, fitText, hudScale, overlaps, placeFromSlot, underCash, hudLayout, MIN_PT, pickForm, placeTicket, slotChipShown, textW, ticketFade, ticketHeight, TICKET_UNDER_BOSS } from './metrics';
 import { crewWeighInChip, dealChip, lotSoldChip, MAX_ROWS, planTicket, slipText, ticketView } from './ticketView';
 import { barMoney, toastText } from './words';
 import { barValues, carryText, goalValues, ladderForms } from './words';
@@ -418,5 +418,15 @@ describe('desk2: a ticket fades while the boss walks under it (P8/L4)', () => {
     expect(ticketFade(t, null)).toBe(1);
     expect(ticketFade(t, { x: 350, y: 150, w: 0, h: 60 })).toBe(1);
     expect(t).toEqual({ x: 300, y: 120, w: 180, h: 90 });
+  });
+});
+
+describe('desk2 (4b): the crew weigh-in chip is not shown while the platform scale is off screen', () => {
+  it('shown with the scale on screen; not pinned elsewhere when it is off; other tickets unaffected', () => {
+    const L = hudLayout(844, 390, { top: 0, left: 47, right: 47, bottom: 21 }, 1);
+    expect(slotChipShown(true, 400, 200, L)).toBe(true);
+    expect(slotChipShown(true, -50, 200, L)).toBe(false);
+    expect(slotChipShown(true, 400, 900, L)).toBe(false);
+    expect(slotChipShown(false, -50, 200, L)).toBe(true);
   });
 });

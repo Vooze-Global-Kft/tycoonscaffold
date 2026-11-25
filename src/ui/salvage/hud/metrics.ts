@@ -353,6 +353,15 @@ export function onScreen(x: number, y: number, L: Pick<HudLayout, 'left' | 'righ
   return x >= L.left && x <= L.right && y >= L.freeY && y <= L.bottomY;
 }
 
+/**
+ * desk2 (4b): whether a chip that belongs to its printer slot (`offHide`: the crew weigh-in chip at the
+ * platform scale) shows with the slot at (x, y) on screen; other tickets always show (they are pinned).
+ */
+export function slotChipShown(offHide: boolean, x: number, y: number, L: Pick<HudLayout, 'left' | 'right' | 'freeY' | 'bottomY'>): boolean {
+  'worklet';
+  return !offHide || onScreen(x, y, L);
+}
+
 /** The fallback place of a ticket: under the cash counter, below the goal card at its real height. */
 export function underCash(w: number, h: number, goal: Rect | null, L: Pick<HudLayout, 'left' | 'right' | 'freeY' | 'bottomY'>): { x: number; y: number } {
   'worklet';

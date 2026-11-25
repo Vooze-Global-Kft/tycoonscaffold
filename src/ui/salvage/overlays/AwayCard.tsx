@@ -61,7 +61,7 @@ export function AwayCard({ cfg, g, data, onClose }: CardViewProps) {
         </View>
       ) : null}
       {news.map((t, i) => (
-        <Line key={i} t={t} size="name" bold={t.key === 'away.passed'} lines={2} />
+        <Line key={i} t={t} size="name" bold={t.key === 'away.passed' || t.key === 'away.passedN'} lines={2} />
       ))}
       {next ? (
         <View style={styles.next}>

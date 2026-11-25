@@ -31,7 +31,7 @@ import type { YardLayout } from '../world/yard';
 import { useGame } from '../../../state/store';
 import { loadingClock } from '../loading/clock';
 import { goalRect, hudAnchors, ticketBoxes } from './anchors';
-import { lessonOnTicket, lineH, onScreen, overlaps, placeFromSlot, placeTicket, textW, ticketFade, TICKET_PT, underCash, type HudLayout } from './metrics';
+import { lessonOnTicket, lineH, onScreen, overlaps, placeFromSlot, placeTicket, slotChipShown, textW, ticketFade, TICKET_PT, underCash, type HudLayout } from './metrics';
 import { BarText } from './Paper';
 import { yardEvents } from './pump';
 import { printerSlot, type WorldPoint } from './slots';
@@ -58,7 +58,7 @@ type Content = { view: TicketView; chip: null } | { view: null; chip: string };
 
 /** Where a ticket stands: out of a printer slot clear of a box (`keep`), or pinned over a world point; `cash` under the cash counter. */
 type Anchor =
-  | { kind: 'slot'; slot: WorldPoint; keep: { x: number; y: number; halfW: number; z: number } | null }
+  | { kind: 'slot'; slot: WorldPoint; keep: { x: number; y: number; halfW: number; z: number } | null; offHide?: boolean }
   | { kind: 'point'; at: WorldPoint }
   | { kind: 'cash' };
 
@@ -146,8 +146,10 @@ export function Tickets({ cfg, L, camera, yard, body }: { cfg: R.SalvageConfig; 
         if (!onTicket && t.kind === 'weighIn' && t.lessonText) useSalvageUi.getState().showGoalLesson(say(t.lessonText, c));
         if (view) push({ view, chip: null }, { kind: 'slot', slot: scaleSlot, keep: bossBox() }, TICKET_MS.weighIn, { weighIn: scaleSlot });
       } else {
+        // desk2 (4b): a crew member's chip belongs to the platform scale: not shown while the scale is off screen.
         const chip = crewWeighInChip(t, c);
-        if (chip) push({ view: null, chip }, { kind: 'slot', slot: scaleSlot, keep: null }, TICKET_MS.chip);
+        const sp = proj(scaleSlot);
+        if (chip && slotChipShown(true, sp.x, sp.y, L)) push({ view: null, chip }, { kind: 'slot', slot: scaleSlot, keep: null, offHide: true }, TICKET_MS.chip);
       }
     });
     const offOut = yardEvents.on('collected', (e) => {
@@ -298,7 +300,13 @@ function Anchored({ slot, L, camera, yard, c, body }: { slot: Slot; L: HudLayout
   const style = useAnimatedStyle(() => {
     const r = placeOf(a, w, h, camera.value, goalRect.value, box, W, H, ppm, tilt, lift);
     const k = 1 - rise.value;
-    return { opacity: Math.min(1, rise.value * 1.6) * fade.value, transform: [{ translateX: r.x + r.fx * k }, { translateY: r.y + r.fy * k + (a.kind === 'slot' ? 0 : k * 14) }] };
+    // desk2 (4b): a chip that belongs to its slot (offHide) is not pinned elsewhere while the slot is off screen.
+    let shown = 1;
+    if (a.kind === 'slot') {
+      const sp = project(a.slot.x, a.slot.y, a.slot.z, camera.value, W, H, ppm, tilt, lift);
+      if (!slotChipShown(a.offHide === true, sp.x, sp.y, box)) shown = 0;
+    }
+    return { opacity: Math.min(1, rise.value * 1.6) * fade.value * shown, transform: [{ translateX: r.x + r.fx * k }, { translateY: r.y + r.fy * k + (a.kind === 'slot' ? 0 : k * 14) }] };
   });
   // world-b hides a plate under a ticket (L3/P7): the ticket's box when it shows (not per frame), cleared when it folds.
   useEffect(() => {

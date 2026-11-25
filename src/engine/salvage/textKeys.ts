@@ -139,7 +139,7 @@ export const TEXT_KEYS = {
   /** Package 4: the industry table and the rung sign (2.11). */
   table: ['table.headline', 'table.simulated', 'table.rivalsSimulated', 'table.rung', 'table.rungGate', 'table.range', 'table.you', 'table.rungSign', 'table.rungOpens', 'table.next', 'table.nextRung', 'table.locked', 'opens.rung2', 'opens.rung3', 'table.mine', 'table.lockedBare'],
   /** Package 4: the away card (4.4). */
-  away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.hintCutter', 'away.hintHand', 'away.nothing', 'away.sales', 'away.bought', 'away.boughtFrom', 'away.net', 'away.netLoss', 'away.unsold', 'away.next', 'away.longerRung', 'away.longerNight'],
+  away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.passedN', 'away.hintCutter', 'away.hintHand', 'away.nothing', 'away.sales', 'away.bought', 'away.boughtFrom', 'away.net', 'away.netLoss', 'away.unsold', 'away.next', 'away.longerRung', 'away.longerNight'],
   /** Packages 3 and 4: tickets and slips (2.2). */
   ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.gradeAmount', 'ticket.paid', 'ticket.boughtFor', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date'],
   /** Package 4: lines of 5.2. */

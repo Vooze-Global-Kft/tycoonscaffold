@@ -37,7 +37,7 @@ import { chevronGate } from '../hints/gate';
 import { FX, FX_EVENTS, FX_S, WORK, arcAt, ease, effectsFor, type FxContext, type FxSpawn } from './effects';
 import type { YardAnim } from './frameLoop';
 import { HERO, freeWorld, heroCam, heroCamera, type ScreenInsets } from './heroFrame';
-import { labelItems, labelSize, layoutPlates, plateMetrics, NEAR_M, type LabelLine, type LabelTops, type PlacedLabel, type Rect } from './labels';
+import { doorSpots, labelItems, labelSize, layoutPlates, plateMetrics, NEAR_M, type LabelLine, type LabelTops, type PlacedLabel, type Rect } from './labels';
 import { MANIFEST, cellBounds } from '../art/manifest';
 import { hudLayout } from '../hud/metrics';
 import { useSalvageUi } from '../uiState';
@@ -139,13 +139,14 @@ function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.Sal
     if (!active) return;
     let last = '';
     const v = { ppm: yard.ppm, tilt: yard.tilt, lift: yard.lift };
-    const places = cfg.salvage.map.places as Record<string, { w: number; d: number }>;
+    const places = cfg.salvage.map.places as Record<string, { w: number; d: number; door?: string }>;
     const points = cfg.salvage.map.points as Record<string, [number, number]>;
     const footprints: Record<string, Rect> = {};
     for (const id of Object.keys(places)) {
       const pt = points[id];
       if (pt) footprints[id] = { x0: pt[0] - places[id].w / 2, x1: pt[0] + places[id].w / 2, y0: pt[1] - places[id].d / 2, y1: pt[1] + places[id].d / 2 };
     }
+    const spots = doorSpots(places, points);
     const L = hudLayout(width, height, { top: inT, left: inL, right: inR, bottom: inB }, labelsDev.fontScale ?? fontScale);
     const run = () => {
       const { game } = useGame.getState();
@@ -218,6 +219,7 @@ function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.Sal
         workAt,
         busy,
         footprints,
+        spots,
         boss: boss ? { x: boss.x, y: boss.y } : null,
       });
       // Plates keep their text size while the view zooms out (driving): drawn at 1 / zoom in the moved layer.

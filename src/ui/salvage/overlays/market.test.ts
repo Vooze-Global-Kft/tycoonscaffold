@@ -180,6 +180,12 @@ describe('the away card, the clipboard, the skip, the rung sign, the deal, Help'
     expect(awayLines(many).lines.length).toBe(AWAY_LINES + 1);
     expect(awayLines(many).lines[AWAY_LINES].key).toBe('ticket.more');
     expect(awayLines(many, true).lines.length).toBe(AWAY_LINES_LARGE + 1);
+    // desk2 (4c): three rivals passed fold into ONE line at a large font scale; at the normal scale one line each.
+    const three = { ...a, passed: ['rival.1', 'rival.2', 'rival.3'] };
+    expect(awayLines(three, true).news.filter((t) => t.key.startsWith('away.passed'))).toEqual([{ key: 'away.passedN', args: { n: { n: 3 } } }]);
+    expect(awayLines(three).news.filter((t) => t.key === 'away.passed').length).toBe(3);
+    expect(awayLines({ ...a, passed: ['rival.1'] }, true).news.filter((t) => t.key === 'away.passed').length).toBe(1);
+    expect(unfilled(words({ key: 'away.passedN', args: { n: { n: 3 } } })), words({ key: 'away.passedN', args: { n: { n: 3 } } })).toBe(false);
     // A pass that bought loads: the gross is "Sales", the cost is its own line, Net is what cash moved by.
     const bought = { ...a, money: 1000, spent: 300, net: 700, bought: [{ partner: 'partnerFarm', n: 3, spent: 300 }], absentS: 4 * 3600, seconds: 2 * 3600, deliveryList: [{ day: 1, g: 150000, paid: 90 }], runLonger: { rung: 3, capS: 4 * 3600 }, passed: ['rival.25' as never], next: { key: 'away.nothing' } as R.Txt };
     const L = awayLines(bought);

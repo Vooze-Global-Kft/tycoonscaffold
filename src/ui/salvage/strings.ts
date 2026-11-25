@@ -228,6 +228,7 @@ export const TEXT = {
   'away.loads': '{n} loads fetched',
   'away.deliveries': '{n} deliveries to {foundry}', // one line per delivery: ticket.dealDelivery
   'away.passed': 'You passed {rival}.',
+  'away.passedN': 'You passed {n} firms.', // desk2 (4c): at a large font scale, two or more rivals on one line
   'away.hintCutter': 'A cutter keeps the yard working while you are away (Office)',
   'away.hintHand': 'A yard hand carries to the scale while you are away (Office)',
   'away.nothing': 'Nothing was weighed out.',

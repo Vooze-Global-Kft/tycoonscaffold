@@ -387,6 +387,7 @@ const ARG_OVERRIDE: Record<string, Record<string, string>> = {
   'away.longerNight': { c: '23 h 59 m' },
   'away.bought': { n: '999' },
   'away.boughtFrom': { n: '999' },
+  'away.passedN': { n: '26' },
   'table.nextRung': { t: '28.5 t' },
   'card.levelOpensAt': { t: '28.5 t' },
   'card.carriesTrip': { kg: '999.9 kg' },

@@ -169,7 +169,9 @@ export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt 
   const news: Txt[] = [];
   if (a.deliveryList?.length) for (const d of a.deliveryList) news.push({ key: 'ticket.dealDelivery', args: { kg: { mass_g: d.g, step: 'lot' }, x: { money: d.paid } } });
   else if (a.deliveries > 0) news.push({ key: 'away.deliveries', args: { n: { n: a.deliveries } } });
-  for (const r of a.passed) news.push({ key: 'away.passed', args: { rival: { name: `${r}.chip` } } });
+  // desk2 (4c): at a large font scale two or more rivals passed fold into one line, so 'Next: ...' stays in sight.
+  if (large && a.passed.length >= 2) news.push({ key: 'away.passedN', args: { n: { n: a.passed.length } } });
+  else for (const r of a.passed) news.push({ key: 'away.passed', args: { rival: { name: `${r}.chip` } } });
   if (!net && !news.length) news.unshift({ key: 'away.nothing' });
   // The next step: rules-book's, else the rules' hint (printed once: it can be the "nothing" line itself).
   let next: Txt | null = a.next ?? a.hint ?? null;
