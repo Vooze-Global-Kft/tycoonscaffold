@@ -318,7 +318,7 @@ describe('fingerprint check with the fourth game (High Office, office-design.md 
   });
 });
 
-describe('the fifth game\'s placeholder fingerprint (scrap-yard, docs/design/yard-ground.md)', () => {
+describe('the fifth game (scrap-yard, docs/design/yard-design.md 1.2): its four new words and its declared fingerprint', () => {
   const games = require('./games.js');
   const modes = require('./modes.js');
   const kits = (mode: string) => [`mode ${mode}`, ...Object.entries(modes.FAMILIES as Record<string, { modes: string[] }>).filter(([, f]) => f.modes.includes(mode)).map(([k]) => `family ${k}`)];
@@ -326,22 +326,45 @@ describe('the fifth game\'s placeholder fingerprint (scrap-yard, docs/design/yar
     const cfg = GameConfigSchema.parse(games.readGameJson(id));
     return gameFacts(ROOT, id, cfg, games, kits(cfg.mode));
   };
+  const OTHERS = ['pizza-empire', 'space-miner', 'night-market', 'high-office'];
 
-  it('a PLACEHOLDER value is no vocabulary problem, but its dimension is pending: the everyday check passes, the release check fails', () => {
+  it('accepts steer, separation-tree, graded-lot-sale and three-quarter-world; the declared scrap-yard fingerprint has no vocabulary problem', () => {
     const d = declared('scrap-yard');
-    expect(d.core_verb).toBe(PLACEHOLDER);
     expect(declaredProblems(d)).toEqual([]);
+    expect([d.core_verb, d.production_topology, d.money_moment, d.main_screen_layout]).toEqual(['steer', 'separation-tree', 'graded-lot-sale', 'three-quarter-world']);
+    expect([d.progression_structure, d.prestige_model, d.character_kind, d.voice]).toEqual(['tech-tree', 'none', 'humans', 'weighbridge-plain']);
+    expect(d.art_style).toEqual({ style: 'flat-vector', palette: 'hi-vis-and-rust' });
+    expect(declaredProblems({ ...d, core_verb: 'steering' })).toEqual([expect.stringMatching(/core_verb "steering"/)]);
+    // The human checks are a map keyed by each of the four other games, all still empty: no person has signed.
+    for (const key of ['icon_and_screenshot_template', 'meta_screen_layouts'] as const) {
+      expect(Object.keys(d.human[key] as object).sort()).toEqual([...OTHERS].sort());
+      for (const other of OTHERS) expect(humanCheckFor(d, key, other)?.by).toBe('');
+    }
+  });
+
+  it('scrap-yard against each game: no must the same, at least 15 known or pending, no problem; only character_kind is the same, and only against the two games of people', () => {
     const yard = real('scrap-yard');
-    for (const other of ['pizza-empire', 'space-miner', 'night-market', 'high-office']) {
+    expect(yard.mode).toBe('salvage');
+    for (const other of OTHERS) {
       const r = comparePair(yard, real(other), null);
-      for (const n of [1, 2, 3, 4, 9, 10, 11, 12, 14, 15]) expect(r.rows[n - 1].status, `${other} ${n}`).toBe('pending');
       expect(r.mustSame, `${other}: ${formatPair(r)}`).toBe(0);
+      expect(r.verified + r.pending, other).toBeGreaterThanOrEqual(15);
       expect(pairFailures(r, 'everyday'), other).toEqual([]);
+      for (const n of [1, 2, 3, 4, 9, 10, 11, 12, 14]) expect(r.rows[n - 1].status, `${other} ${n}`).toBe('differs');
+      const sameRows = r.rows.filter((x) => x.status === 'same').map((x) => x.dim.id);
+      expect(sameRows, other).toEqual(other === 'pizza-empire' || other === 'high-office' ? ['character_kind'] : []);
+      // A release still needs the person's checks (7, 13), the export (8) and the release log (19).
       expect(pairFailures(r, 'release').join(' '), other).toMatch(/pending/);
     }
   });
 
-  it('a real value next to a placeholder still fails the vocabulary', () => {
-    expect(declaredProblems({ ...declared('scrap-yard'), core_verb: 'steer' })).toEqual([expect.stringMatching(/core_verb "steer"/)]);
+  it('a PLACEHOLDER value is no vocabulary problem, but its dimension is pending: the everyday check passes, the release check fails', () => {
+    const d = { ...declared('scrap-yard'), core_verb: PLACEHOLDER };
+    expect(declaredProblems(d)).toEqual([]);
+    const yard = { ...real('scrap-yard'), declared: d };
+    const r = comparePair(yard, real('space-miner'), null);
+    expect(r.rows[0].status).toBe('pending');
+    expect(pairFailures(r, 'everyday')).toEqual([]);
+    expect(pairFailures(r, 'release').join(' ')).toMatch(/pending: 1 core_verb/);
   });
 });

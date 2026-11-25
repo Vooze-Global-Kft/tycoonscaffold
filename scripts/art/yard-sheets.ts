@@ -139,6 +139,17 @@ headless(async (H) => {
       }
     },
   });
+  // the art director: every entry's pixels at density 3, biggest first (`pixels` alone, or `pixels-A` etc.)
+  for (const sh of ['', '-A', '-B', '-G'])
+    REGISTRY.push({
+      name: `pixels${sh}`,
+      run: async () => {
+        const M = MF();
+        const rows = M.MANIFEST.filter((e) => !sh || e.sheet === sh.slice(1)).map((e) => ({ e, n: M.entryPixels(e, 3) }));
+        rows.sort((a, b) => b.n - a.n);
+        for (const { e, n } of rows) console.log(`${e.sheet} ${e.id.padEnd(36)} ${(n / 1e3).toFixed(0).padStart(6)} k  frames ${e.frames.length} headings ${e.headings} drawScale ${(e.drawScale ?? 1).toFixed(2)}`);
+      },
+    });
   REGISTRY.push({
     name: 'bounds',
     run: async () => {

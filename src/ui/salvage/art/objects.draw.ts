@@ -1053,182 +1053,187 @@ export const CAR_STAGES = ['whole', 'wheels', 'open', 'roof', 'shell'] as const;
 
 /**
  * The papered, depolluted end-of-life car (a small hatchback; drawn at two thirds of its length like the
- * yard's vehicles: 2.8 x 1.6 m), facing east, standing on its alloy rims (tyres already off). Stages:
- * whole (record tag on the windscreen); wheels off (on timber blocks); bonnet off, loom and converter out
- * (engine bay open); roof cut off (seats show); the last body section (the front half gone).
+ * yard's vehicles: 2.8 x 1.4 m), facing east, standing on its alloy rims (tyres already off), in the true
+ * tilt-0.7 oblique: a low body (its long south side, the bonnet and the boot ledge as short body-coloured
+ * tops), on it a narrow glasshouse whose roof is a body-coloured trapezoid and whose glass is on its
+ * sloped faces only (windscreen, south windows, rear hatch). Stages: whole (record tag behind the
+ * windscreen); wheels off (on timber blocks); bonnet off, loom and converter out (the engine bay open);
+ * roof cut off (the open shell from above, the seats inside the body's outline); the last body section
+ * (the front half gone, a straight torch cut).
  */
 export function drawCarStage(c: SkCanvas, v: View3q, stage: number, seed = 18): void {
-  const paint = CAR_PAINTS[0];
+  const paint = CAR_PAINTS[1];
   const L = 1.4;
-  const Wd = 0.78;
-  const zb = stage === 0 ? 0.2 : 0.26; // sill height: on rims, then on blocks
-  const sh = () => boxShadow(c, v, 2.9, 1.66, 0, 0, stage >= 3 ? 0.8 : 1.3);
+  const Wd = 0.7;
+  const zb = stage === 0 ? 0.18 : 0.24; // sill height: on rims, then on blocks
+  const zW = zb + 0.5; // the waist (bonnet, boot ledge, sills of the glass)
+  const zR = zW + 0.42; // the roof
+  // the glasshouse: base x gb0..gb1 at the waist, roof x gr0..gr1, inset in y
+  const gb0 = -L + 0.1;
+  const gb1 = 0.42;
+  const gr0 = -L + 0.42;
+  const gr1 = 0.02;
+  const yb = Wd - 0.08;
+  const yr = Wd - 0.26;
+  const sh = () => boxShadow(c, v, 2.8, 1.4, 0, 0, stage >= 3 ? 0.75 : 1.15);
   if (stage < 4) sh();
   else shadowWestOf(c, proj(v, 0.05, 0, 0)[0], sh);
+  const body = shade(paint, -0.06);
   const all = () => {
-    const zTop = zb + 0.52; // waist
-    const zRoof = zb + 0.9;
-    // blocks under the sills (from stage 1)
     if (stage >= 1)
-      for (const bx of [-0.9, 0.9]) box(c, v, { len: 0.22, wid: 0.3, h: zb, ox: bx, oy: Wd - 0.2, color: YARD.wood, line: 0.9 });
-    // far-side shadowed underbody
+      for (const bx of [-0.85, 0.85]) box(c, v, { len: 0.22, wid: 0.3, h: zb, ox: bx, oy: Wd - 0.2, color: YARD.wood, line: 0.9 });
+    // underbody in shade
     faceFill(c, v, [[-L, -Wd, zb], [L, -Wd, zb], [L, Wd, zb], [-L, Wd, zb]], shade(INK, 0.15));
-    // ---- the lower body: south side and the bonnet/boot tops
+    // ---- the lower body: the south side (rounded nose and tail), then its top (bonnet, boot ledge)
     const side: V3[] = [
-      [-L, Wd, zb],
-      [L, Wd, zb],
-      [L, Wd, zTop - 0.06],
-      [L - 0.08, Wd, zTop],
-      [-L + 0.05, Wd, zTop],
-      [-L, Wd, zTop - 0.1],
+      [-L + 0.04, Wd, zb],
+      [L - 0.06, Wd, zb],
+      [L, Wd, zb + 0.14],
+      [L, Wd, zW - 0.1],
+      [L - 0.1, Wd, zW],
+      [-L + 0.04, Wd, zW],
+      [-L, Wd, zW - 0.06],
+      [-L, Wd, zb + 0.1],
     ];
     const sideP = facePath(v, side);
-    c.drawPath(sideP, fill(shade(paint, -0.08)));
-    // the sill (darker) and a crease line
-    faceFill(c, v, [[-L, Wd, zb], [L, Wd, zb], [L, Wd, zb + 0.1], [-L, Wd, zb + 0.1]], shade(paint, -0.32));
-    const [c0x, c0y] = proj(v, -L, Wd, zb + 0.36);
-    const [c1x, c1y] = proj(v, L, Wd, zb + 0.4);
-    c.drawPath(segment(c0x + 2, c0y, c1x - 2, c1y), stroke(shade(paint, 0.3), 1));
-    // door lines and handles
-    for (const dx of [-0.3, 0.45]) {
+    c.drawPath(sideP, fill(body));
+    faceFill(c, v, [[-L + 0.04, Wd, zb], [L - 0.06, Wd, zb], [L - 0.02, Wd, zb + 0.09], [-L + 0.02, Wd, zb + 0.09]], shade(paint, -0.32));
+    const [c0x, c0y] = proj(v, -L + 0.05, Wd, zb + 0.33);
+    const [c1x, c1y] = proj(v, L - 0.05, Wd, zb + 0.35);
+    c.drawPath(segment(c0x, c0y, c1x, c1y), stroke(shade(paint, 0.32), 1));
+    for (const dx of [-0.34, 0.4]) {
       const [x0, y0] = proj(v, dx, Wd, zb + 0.08);
-      const [, y1] = proj(v, dx, Wd, zTop);
+      const [, y1] = proj(v, dx, Wd, zW);
       c.drawPath(segment(x0, y0, x0, y1), stroke(shade(paint, -0.35), 0.9));
     }
-    const [hx, hy] = proj(v, 0.25, Wd, zb + 0.42);
+    const [hx, hy] = proj(v, 0.2, Wd, zb + 0.4);
     c.drawPath(rrect(hx - 4, hy - 1, 7, 2.2, 1), fill(shade(paint, -0.4)));
-    // wheel arches
-    for (const ax of [-0.85, 0.88]) {
-      const ctr: V3 = [ax, Wd + 0.01, zb + 0.06];
-      c.drawPath(discPath(v, ctr, [1, 0, 0], [0, 0, 1], 0.3), fill(shade(INK, 0.1)));
-    }
+    for (const ax of [-0.82, 0.86]) c.drawPath(discPath(v, [ax, Wd + 0.01, zb + 0.04], [1, 0, 0], [0, 0, 1], 0.28), fill(shade(INK, 0.1)));
     c.drawPath(sideP, stroke(INK, LINE_W));
-    // rust at the sills and the rear arch
-    const [rx, ry] = proj(v, -1.2, Wd, zb + 0.15);
-    freckles(c, rx, ry - 5, 30, 6, seed, YARD.rust, 6);
-    // wheels: alloy rims (no tyres) at stage 0; empty arches after
+    const [rx, ry] = proj(v, -1.2, Wd, zb + 0.14);
+    freckles(c, rx, ry - 4, 28, 5, seed, YARD.rust, 6);
     if (stage === 0)
-      for (const ax of [-0.85, 0.88]) {
-        const ctr: V3 = [ax, Wd + 0.03, zb + 0.06];
-        c.drawPath(discPath(v, ctr, [1, 0, 0], [0, 0, 1], 0.24), fill(TONE.alu));
-        c.drawPath(discPath(v, ctr, [1, 0, 0], [0, 0, 1], 0.24), stroke(INK, 1));
-        c.drawPath(discPath(v, ctr, [1, 0, 0], [0, 0, 1], 0.19), fill(shade(TONE.aluLo, -0.2)));
+      for (const ax of [-0.82, 0.86]) {
+        const ctr: V3 = [ax, Wd + 0.03, zb + 0.04];
+        c.drawPath(discPath(v, ctr, [1, 0, 0], [0, 0, 1], 0.22), fill(TONE.alu));
+        c.drawPath(discPath(v, ctr, [1, 0, 0], [0, 0, 1], 0.22), stroke(INK, 1));
+        c.drawPath(discPath(v, ctr, [1, 0, 0], [0, 0, 1], 0.17), fill(shade(TONE.aluLo, -0.2)));
         const [wx, wy] = proj(v, ...ctr);
         for (let i = 0; i < 5; i++) {
           const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-          c.drawPath(segment(wx, wy, wx + Math.cos(a) * 7, wy + Math.sin(a) * 6.6), stroke(TONE.alu, 2.2));
+          c.drawPath(segment(wx, wy, wx + Math.cos(a) * 6.5, wy + Math.sin(a) * 6.2), stroke(TONE.alu, 2));
         }
-        c.drawCircle(wx, wy, 2, fill(TONE.aluMid));
+        c.drawCircle(wx, wy, 1.8, fill(TONE.aluMid));
       }
-    // bonnet (front top) and boot ledge (rear top)
-    const bonnet: V3[] = [
-      [0.55, -Wd + 0.04, zTop + 0.06],
-      [L - 0.06, -Wd + 0.04, zTop],
-      [L - 0.06, Wd - 0.04, zTop],
-      [0.55, Wd - 0.04, zTop + 0.06],
+    // the whole top of the lower body (one face): the bonnet east, the boot ledge west, body coloured
+    const top: V3[] = [
+      [-L + 0.04, -Wd, zW],
+      [L - 0.1, -Wd, zW],
+      [L - 0.1, Wd, zW],
+      [-L + 0.04, Wd, zW],
     ];
+    const topCol = shade(paint, 0.16);
+    faceFill(c, v, top, topCol, LINE_W);
+    // the bonnet's shut line and its sheen
+    const [s0x, s0y] = proj(v, gb1 + 0.04, -Wd + 0.06, zW);
+    const [s1x, s1y] = proj(v, gb1 + 0.04, Wd - 0.06, zW);
+    c.drawPath(segment(s0x, s0y, s1x, s1y), stroke(shade(paint, -0.25), 0.9));
     if (stage < 2) {
-      faceFill(c, v, bonnet, shade(paint, 0.4), LINE_W);
-      const [bx0, by0] = proj(v, 0.75, -0.2, zTop + 0.05);
-      const [bx1, by1] = proj(v, 1.25, 0.2, zTop + 0.01);
-      c.drawPath(segment(bx0, by0, bx1, by1), stroke(shade(paint, 0.4), 1, 0.7));
+      const [bx0, by0] = proj(v, 0.7, -0.3, zW);
+      const [bx1, by1] = proj(v, 1.15, 0.2, zW);
+      c.drawPath(segment(bx0, by0, bx1, by1), stroke('#FFFFFF', 1.1, 0.45));
     } else {
-      // the bonnet is off: the engine bay, dark, the block, the loom and the converter out
-      faceFill(c, v, bonnet, shade(INK, 0.2), LINE_W);
-      const blk: V3[] = [
-        [0.7, -0.4, zTop - 0.05],
-        [1.15, -0.4, zTop - 0.05],
-        [1.15, 0.3, zTop - 0.05],
-        [0.7, 0.3, zTop - 0.05],
+      // the bonnet is off: the engine bay, dark, the block; the loom and the converter out
+      const bay: V3[] = [
+        [gb1 + 0.08, -Wd + 0.1, zW],
+        [L - 0.16, -Wd + 0.1, zW],
+        [L - 0.16, Wd - 0.1, zW],
+        [gb1 + 0.08, Wd - 0.1, zW],
       ];
-      faceFill(c, v, blk, YARD.steelDark, 0.9);
-      const [lx, ly] = proj(v, 0.62, 0.45, zTop);
-      c.drawCircle(lx + 3, ly - 1, 2.2, fill(YARD.galvanised));
+      faceFill(c, v, bay, shade(INK, 0.22), 1);
+      box(c, v, { len: 0.4, wid: 0.62, h: 0.12, ox: 0.92, oy: -0.05, z: zW - 0.1, color: YARD.steelDark, line: 0.9 });
+      const [lx, ly] = proj(v, 1.2, 0.4, zW);
+      c.drawCircle(lx, ly, 2.2, fill(YARD.galvanised));
+      c.drawCircle(lx, ly, 2.2, stroke(INK, 0.7));
     }
-    // ---- the greenhouse: pillars, glass, roof (stage < 3), or the cut-off pillars and seats (stage >= 3)
-    const gx0 = -L + 0.12;
-    const gx1 = 0.55;
     if (stage < 3) {
-      const roofX0 = -L + 0.45;
-      const roofX1 = -0.08;
-      const ws: V3[] = [
-        [gx1, -Wd + 0.1, zTop + 0.06],
-        [gx1, Wd - 0.1, zTop + 0.06],
-        [roofX1, Wd - 0.24, zRoof],
-        [roofX1, -Wd + 0.24, zRoof],
-      ];
-      // side glass (south), inset
-      const sg: V3[] = [
-        [gx0 + 0.1, Wd - 0.06, zTop + 0.02],
-        [gx1 - 0.04, Wd - 0.06, zTop + 0.02],
-        [roofX1 + 0.02, Wd - 0.22, zRoof - 0.04],
-        [roofX0 + 0.04, Wd - 0.22, zRoof - 0.04],
-      ];
-      const pillars: V3[] = [
-        [gx0, Wd - 0.04, zTop],
-        [gx1, Wd - 0.04, zTop],
-        [roofX1, Wd - 0.24, zRoof],
-        [roofX0, Wd - 0.24, zRoof],
-      ];
-      faceFill(c, v, pillars, shade(paint, -0.05), LINE_W);
-      faceFill(c, v, sg, YARD.glassDark, 0.9);
-      // the B pillar
-      const [p0x, p0y] = proj(v, -0.32, Wd - 0.06, zTop + 0.02);
-      const [p1x, p1y] = proj(v, -0.42, Wd - 0.22, zRoof - 0.04);
-      c.drawPath(segment(p0x, p0y, p1x, p1y), stroke(shade(paint, -0.05), 3));
-      c.drawPath(segment(p0x - 6, p0y - 4, p0x - 1, p0y - 14), stroke('#FFFFFF', 1.2, 0.5));
-      // rear hatch glass (sloped, top seen)
+      // ---- the glasshouse: rear hatch (sloped, west), the south windows, the windscreen (sloped, east), the roof
       const hatch: V3[] = [
-        [-L + 0.02, -Wd + 0.1, zTop + 0.04],
-        [roofX0, -Wd + 0.24, zRoof],
-        [roofX0, Wd - 0.24, zRoof],
-        [-L + 0.02, Wd - 0.1, zTop + 0.04],
+        [gb0, -yb, zW],
+        [gr0, -yr, zR],
+        [gr0, yr, zR],
+        [gb0, yb, zW],
       ];
-      faceFill(c, v, hatch, shade(YARD.glassDark, -0.15), LINE_W);
-      // roof
-      const roof: V3[] = [
-        [roofX0, -Wd + 0.24, zRoof],
-        [roofX1, -Wd + 0.24, zRoof],
-        [roofX1, Wd - 0.24, zRoof],
-        [roofX0, Wd - 0.24, zRoof],
+      faceFill(c, v, hatch, shade(YARD.glassDark, -0.12), LINE_W);
+      const south: V3[] = [
+        [gb0, yb, zW],
+        [gb1, yb, zW],
+        [gr1, yr, zR],
+        [gr0, yr, zR],
       ];
-      faceFill(c, v, roof, shade(paint, 0.45), LINE_W);
-      const [r0x, r0y] = proj(v, roofX0 + 0.1, -0.1, zRoof);
-      const [r1x, r1y] = proj(v, roofX1 - 0.1, -0.1, zRoof);
-      c.drawPath(segment(r0x, r0y, r1x, r1y), stroke('#FFFFFF', 1.4, 0.5));
-      // windscreen (sloped glass) with the record tag tucked behind it
-      faceFill(c, v, ws, YARD.glass, LINE_W);
-      const [gx, gy] = proj(v, ...subQuad(ws, 0.2, 0.2, 0.35, 0.35)[0]);
-      c.drawPath(segment(gx - 4, gy + 4, gx + 10, gy - 6), stroke('#FFFFFF', 1.3, 0.7));
+      faceFill(c, v, south, shade(paint, -0.1), LINE_W);
+      // the side glass inset in the south face, split by the B pillar
+      const inset = (q: V3[], s0: number, s1: number) => subQuad(q, s0, s1, 0.16, 0.86);
+      faceFill(c, v, inset(south, 0.08, 0.47), YARD.glassDark, 0.8);
+      faceFill(c, v, inset(south, 0.55, 0.9), YARD.glassDark, 0.8);
+      const [gx0, gy0] = proj(v, ...subQuad(south, 0.62, 0.62, 0.3, 0.3)[0]);
+      c.drawPath(segment(gx0, gy0 + 2, gx0 + 6, gy0 - 5), stroke('#FFFFFF', 1.1, 0.55));
+      const ws: V3[] = [
+        [gb1, -yb, zW],
+        [gb1, yb, zW],
+        [gr1, yr, zR],
+        [gr1, -yr, zR],
+      ];
+      faceFill(c, v, ws, shade(YARD.glass, -0.08), LINE_W);
+      faceFill(c, v, subQuad(ws, 0, 1, 0.82, 1), shade(YARD.glassDark, -0.2));
+      const [wx0, wy0] = proj(v, ...subQuad(ws, 0.3, 0.3, 0.3, 0.3)[0]);
+      c.drawPath(segment(wx0 - 3, wy0 + 3, wx0 + 6, wy0 - 4), stroke('#FFFFFF', 1.2, 0.7));
       if (stage < 2) {
-        const [tx, ty] = proj(v, ...subQuad(ws, 0.72, 0.72, 0.4, 0.4)[0]);
-        paperTag(c, tx, ty, 'record', -18);
+        const [tx, ty] = proj(v, ...subQuad(ws, 0.78, 0.78, 0.45, 0.45)[0]);
+        paperTag(c, tx, ty, 'record', -14);
       }
-    } else {
-      // the roof is cut off at the waist: the pillar stubs bright, the seats and the dash inside
-      const cab: V3[] = [
-        [gx0, -Wd + 0.08, zTop],
-        [gx1, -Wd + 0.08, zTop],
-        [gx1, Wd - 0.08, zTop],
-        [gx0, Wd - 0.08, zTop],
+      const roof: V3[] = [
+        [gr0, -yr, zR],
+        [gr1, -yr, zR],
+        [gr1, yr, zR],
+        [gr0, yr, zR],
       ];
-      faceFill(c, v, cab, shade(INK, 0.28), LINE_W);
-      for (const [sx, sy] of [[-0.2, -0.32], [-0.2, 0.32], [-0.85, 0]] as const) {
-        box(c, v, { len: 0.36, wid: sx < -0.5 ? 1.1 : 0.42, h: 0.22, ox: sx, oy: sy, z: zTop - 0.18, color: '#4A4E55', line: 0.9 });
-        if (sx > -0.5) box(c, v, { len: 0.1, wid: 0.4, h: 0.4, ox: sx - 0.2, oy: sy, z: zTop - 0.05, color: '#4A4E55', line: 0.9 });
+      faceFill(c, v, roof, shade(paint, 0.24), LINE_W);
+      const [r0x, r0y] = proj(v, gr0 + 0.08, yr - 0.08, zR);
+      const [r1x, r1y] = proj(v, gr1 - 0.08, yr - 0.08, zR);
+      c.drawPath(segment(r0x, r0y, r1x, r1y), stroke('#FFFFFF', 1.2, 0.45));
+    } else {
+      // the roof cut off at the waist: the open shell from above, the seats and the dash inside the outline
+      const tub: V3[] = [
+        [gb0 + 0.02, -yb, zW],
+        [gb1, -yb, zW],
+        [gb1, yb, zW],
+        [gb0 + 0.02, yb, zW],
+      ];
+      faceFill(c, v, tub, shade(INK, 0.3), LINE_W);
+      const seat = '#5A5F68';
+      // the rear bench and the two front seats: cushions with their backs, all below the waist line
+      box(c, v, { len: 0.34, wid: 1.0, h: 0.1, ox: -0.86, oy: 0, z: zW - 0.12, color: seat, line: 0.9 });
+      box(c, v, { len: 0.08, wid: 1.0, h: 0.12, ox: -1.06, oy: 0, z: zW - 0.06, color: seat, line: 0.9 });
+      for (const sy of [-0.28, 0.28]) {
+        box(c, v, { len: 0.3, wid: 0.4, h: 0.1, ox: -0.12, oy: sy, z: zW - 0.12, color: seat, line: 0.9 });
+        box(c, v, { len: 0.08, wid: 0.38, h: 0.14, ox: -0.3, oy: sy, z: zW - 0.06, color: seat, line: 0.9 });
       }
-      box(c, v, { len: 0.16, wid: 1.3, h: 0.14, ox: 0.42, z: zTop - 0.06, color: '#3A3E44', line: 0.9 });
-      for (const px of [gx0 + 0.05, -0.33, gx1 - 0.03]) {
-        const [x, y] = proj(v, px, Wd - 0.06, zTop + 0.02);
-        c.drawPath(rrect(x - 2, y - 5, 4, 6, 1), fill(TONE.steelCut));
-        c.drawPath(rrect(x - 2, y - 5, 4, 6, 1), stroke(INK, 0.8));
+      box(c, v, { len: 0.12, wid: 1.12, h: 0.06, ox: gb1 - 0.1, z: zW - 0.04, color: '#3A3E44', line: 0.9 });
+      // the cut pillar stubs, bright steel
+      for (const [px, py] of [[gb0 + 0.04, yb], [-0.42, yb], [gb1 - 0.03, yb], [gb1 - 0.03, -yb]] as const) {
+        const [x, y] = proj(v, px, py, zW);
+        c.drawPath(rrect(x - 2, y - 4, 4, 5, 1), fill(TONE.steelCut));
+        c.drawPath(rrect(x - 2, y - 4, 4, 5, 1), stroke(INK, 0.8));
       }
     }
-    // lamps: front at the east end, rear at the west
-    const [fx, fy] = proj(v, L, Wd - 0.12, zTop - 0.12);
-    c.drawPath(rrect(fx - 5, fy - 2.5, 5, 4, 1), fill(stage < 2 ? '#E9ECEF' : INK));
-    const [qx, qy] = proj(v, -L, Wd - 0.12, zTop - 0.12);
-    c.drawPath(rrect(qx, qy - 2.5, 4, 5, 1), fill('#9C3A33'));
+    // lamps on the south corners: front white (gone once the bonnet is off), rear red
+    const [fx, fy] = proj(v, L - 0.02, Wd, zW - 0.13);
+    c.drawPath(rrect(fx - 6, fy - 2, 6, 4, 1), fill(stage < 2 ? '#E9ECEF' : INK));
+    c.drawPath(rrect(fx - 6, fy - 2, 6, 4, 1), stroke(INK, 0.7));
+    const [qx, qy] = proj(v, -L + 0.02, Wd, zW - 0.13);
+    c.drawPath(rrect(qx, qy - 2, 5, 4, 1), fill('#9C3A33'));
+    c.drawPath(rrect(qx, qy - 2, 5, 4, 1), stroke(INK, 0.7));
   };
   if (stage < 4) all();
   else {
