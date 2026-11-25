@@ -105,12 +105,14 @@ export interface BotRecord {
   hold: { gain: number; held: number };
   away: { t: number; seconds: number; earned: number; supplied_g: number }[];
   log: string[];
+  /** Items a card showed locked by the capacity ceiling, first time each. */
+  ceiling: { t: number; key: string }[];
   /** Today's value of the boss's own weigh-ins (the cycle measure). */
   bossWeighed: number;
 }
 
 function emptyRecord(): BotRecord {
-  return { first: {}, purchases: [], minutes: [], rungs: {}, passed: [], prompts: [], broken: [], refused: [], loads: 0, loadSpend: 0, hooks: [], legs: 0, reactS: 0, walkM: 0, hold: { gain: 0, held: 0 }, away: [], log: [], bossWeighed: 0 };
+  return { first: {}, purchases: [], minutes: [], rungs: {}, passed: [], prompts: [], broken: [], refused: [], loads: 0, loadSpend: 0, hooks: [], legs: 0, reactS: 0, walkM: 0, hold: { gain: 0, held: 0 }, away: [], log: [], bossWeighed: 0, ceiling: [] };
 }
 
 export interface Bot {
@@ -505,6 +507,11 @@ export function press(b: Bot, a: CardAction, goal: boolean): boolean {
   return before !== b.g;
 }
 
+/** A card the bot wanted was locked by the capacity ceiling (8.4: at most once in the hour): counted once per item. */
+function ceilingSeen(b: Bot, key: string): void {
+  if (!b.rec.ceiling.some((q) => q.key === key)) b.rec.ceiling.push({ t: b.g.salvage.t, key });
+}
+
 function targetKey(t: LevelTarget): string {
   return t.kind === 'crew' ? t.id : t.kind === 'machine' ? t.machine : t.partner;
 }
@@ -531,9 +538,11 @@ function actionFor(b: Bot, key: ShopKey): CardAction | null {
   const role = crewRole(b, key);
   if (role) {
     const ch = hireCheck(b.cfg, b.g, role);
+    if (ch.refusal?.key === 'ceiling') ceilingSeen(b, key);
     return ch.refusal || ch.price === null ? null : { act: 'hire', role, price: ch.price };
   }
   const ch = buyCheck(b.cfg, b.g, key);
+  if (ch.refusal?.key === 'ceiling') ceilingSeen(b, key);
   return ch.refusal || ch.price === null ? null : { act: 'buy', item: key, price: ch.price };
 }
 
@@ -550,6 +559,7 @@ function levels(b: Bot): { action: CardAction & { act: 'level' }; price: number 
   ];
   for (const t of targets) {
     const ch = levelCheck(b.cfg, b.g, t);
+    if (ch.refusal?.key === 'ceiling') ceilingSeen(b, `lev:${targetKey(t)}`);
     if (!ch.refusal && ch.price !== null) out.push({ action: { act: 'level', target: t, price: ch.price }, price: ch.price });
   }
   return out.sort((a, b2) => a.price - b2.price);

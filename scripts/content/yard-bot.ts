@@ -62,6 +62,7 @@ interface Summary {
   loads: number;
   hooks: Bot['rec']['hooks'];
   gate: string[];
+  ceiling: { t: number; key: string }[];
   extra: Record<string, unknown>;
   ms: number;
 }
@@ -80,6 +81,7 @@ function summary(b: Bot, spec: Spec, R_: number[], gate: string[], extra: Record
     loads: b.rec.loads,
     hooks: b.rec.hooks,
     gate,
+    ceiling: b.rec.ceiling,
     extra,
     ms: Math.round(performance.now() - t0),
   };
@@ -250,6 +252,9 @@ function report(all: Summary[], seeds: number[]): string {
   const refusedKeys: Record<string, number> = {};
   for (const r of all) for (const f of r.refused) refusedKeys[f.key] = (refusedKeys[f.key] ?? 0) + 1;
   L.push(`   presses refused (all runs): ${JSON.stringify(refusedKeys)}`);
+  const ceil = (rs: Summary[]) => rs.map((r) => r.ceiling.filter((q) => q.t <= 3600).length);
+  const hourRuns = pick((s) => s.kind === 'hour');
+  L.push(`   cards locked by the capacity ceiling in the hour (8.4: at most once): max ${Math.max(0, ...ceil(hourRuns))} items on a run; runs with more than one: ${ceil(hourRuns).filter((x) => x > 1).length}/${hourRuns.length}; in three days: ${pick((s) => s.kind === 'days').map((r) => r.ceiling.map((q) => `${q.key}@${(q.t / 3600).toFixed(1)}h`).join(',') || '-').join('  ')}`);
   L.push('');
   // 1. beats
   L.push('1. BEATS (1.2, 1.3): range, median, share in band');
@@ -338,7 +343,7 @@ function report(all: Summary[], seeds: number[]): string {
   if (allRun.length) {
     const ahead = allRun.map((r) => {
       const nn = N.find((x) => x.spec.seed === r.spec.seed);
-      if (!nn) return 0;
+      if (!nn) return [0, 0];
       const worst = [10, 30].map((upto) => {
         let w = 0;
         for (let m = 1; m <= upto; m++) {

@@ -218,6 +218,7 @@ const WEB_ONLY = [
   // The salvage rules' frozen test content and states and the balance bot (yard-stage1.md section 9, hour 0).
   'src/engine/fixtures/salvage.ts',
   'src/engine/salvage/bot.ts',
+  'src/engine/salvage/director.ts',
   'src/ui/salvage/dev/DevPanel.web.tsx',
   'src/ui/salvage/dev/switches.web.ts',
   // The loading animation's preview switches (lt=, ltitle=, lrm=, lready=, lseen=; the frame log).

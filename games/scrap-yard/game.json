@@ -83,6 +83,9 @@
     "version": "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
     "units": "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
     "$changes": [
+      "bots5 (the people-like bots on the real rules, scripts/content/yard-bot.ts, REPORT5.txt): goal prices hand1 400 -> 300, sledge 480 -> 340, trolley 540 -> 380, truck 600 -> 430, torch 670 -> 480, cutter 750 -> 540, stripper 890 -> 700, crucible 1200 -> 800, bench 1300 -> 900, driver 1500 -> 1000 (the real yard hand walks real legs: net income in minutes 5 to 25 is about §180-300 a minute, so proto4's prices meant waits of four to eight minutes)",
+      "bots5: crew.cutter.share 0.25 -> 0.4, crew.driver.lev 0.08 -> 0.15, truck.v 9 -> 12, truck.handle_s 14 -> 10, truck.driverFactor 0.8 -> 0.9, partners fill_s 120 -> 100 (farm) and 180 -> 150 (demolition), levels.tau.first 20 -> 8, levels.floor 1800 -> 1500 (after the fixed goals the tipping floor and the driver bind; levels were priced out of the hour)",
+      "bots5: ceilings_t_h [6, 20, 160] -> [6, 75, 400] (E30: about 1.3 x the highest rated capacity an always-on full spender reaches on the rung; rung 2's 20 t/h refused the driver's hire)",
       "objects.radiator: two brass valves of 0.5 kg added to each radiator (true: radiator valves are brass); zone 2 now fetches §1.22 a kg of metal against zone 1's §0.96 (E28: zone 2 clearly richer by the kilogram)",
       "zones.Z1: washer 24 -> 30, bike 14 -> 10 (the boss's own stock that the sack and the trolley speed up)",
       "zones.Z2: radiator 18 -> 24, gate 12 -> 4, stove 4 -> 6 (poor light-iron gates out, cast iron with brass in)",
@@ -1423,16 +1426,16 @@
           19.5
         ],
         "merchant": [
-          48.5,
-          17.5
+          43.5,
+          25.9
         ],
         "stillage_cu": [
-          43,
-          22
+          43.6,
+          19.2
         ],
         "stillage_br": [
-          43,
-          23.8
+          43.6,
+          20.6
         ],
         "stripper": [
           47.5,
@@ -1447,8 +1450,8 @@
           23
         ],
         "board": [
-          45,
-          26.5
+          41.8,
+          22.3
         ],
         "bench": [
           33,
@@ -1543,20 +1546,20 @@
           "d": 2
         },
         "merchant": {
-          "x": 48.5,
-          "y": 17.5,
+          "x": 43.5,
+          "y": 25.9,
           "w": 6,
           "d": 2
         },
         "stillage_cu": {
-          "x": 43,
-          "y": 22,
+          "x": 43.6,
+          "y": 19.2,
           "w": 1.2,
           "d": 1.2
         },
         "stillage_br": {
-          "x": 43,
-          "y": 23.8,
+          "x": 43.6,
+          "y": 20.6,
           "w": 1.2,
           "d": 1.2
         },
@@ -1579,8 +1582,8 @@
           "d": 3
         },
         "board": {
-          "x": 45,
-          "y": 26.5,
+          "x": 41.8,
+          "y": 22.3,
           "w": 2,
           "d": 0.4
         },
@@ -1730,7 +1733,8 @@
           "stillage_cu",
           "stillage_br",
           "board",
-          "bays"
+          "bays",
+          "merchant"
         ]
       },
       "detour": 1.15,
@@ -1912,7 +1916,19 @@
           "card": true
         }
       },
-      "laneWidth": 6
+      "laneWidth": 6,
+      "circles": [
+        [
+          56.8,
+          22,
+          0.8
+        ],
+        [
+          58.2,
+          23.4,
+          0.8
+        ]
+      ]
     },
     "tools": {
       "spanners": {
@@ -1937,9 +1953,9 @@
     "pick_s": 0.15,
     "weigh_s": 0.5,
     "truck": {
-      "v": 9,
-      "handle_s": 14,
-      "driverFactor": 0.8,
+      "v": 12,
+      "handle_s": 10,
+      "driverFactor": 0.9,
       "radius": 1.3,
       "enter": 2,
       "tare_kg": 5200,
@@ -2016,13 +2032,13 @@
         "maxlev": 20
       },
       "cutter": {
-        "share": 0.25,
+        "share": 0.4,
         "lev": 0.15,
         "cap": 0.95,
         "maxlev": 20
       },
       "driver": {
-        "lev": 0.08,
+        "lev": 0.15,
         "maxlev": 20
       }
     },
@@ -2149,7 +2165,7 @@
         "key": "hand1",
         "kind": "crew",
         "place": "office",
-        "price": 400,
+        "price": 300,
         "gate": null,
         "deliver_s": 4,
         "arrive": "crew",
@@ -2161,7 +2177,7 @@
         "key": "sledge",
         "kind": "tool",
         "place": "rack",
-        "price": 480,
+        "price": 340,
         "gate": null,
         "deliver_s": 6,
         "arrive": "van",
@@ -2173,7 +2189,7 @@
         "key": "trolley",
         "kind": "carry",
         "place": "rack",
-        "price": 540,
+        "price": 380,
         "gate": null,
         "deliver_s": 6,
         "arrive": "van",
@@ -2185,7 +2201,7 @@
         "key": "truck",
         "kind": "vehicle",
         "place": "park",
-        "price": 600,
+        "price": 430,
         "gate": null,
         "deliver_s": 6,
         "arrive": "truck",
@@ -2197,7 +2213,7 @@
         "key": "torch",
         "kind": "tool",
         "place": "rack",
-        "price": 670,
+        "price": 480,
         "gate": "rung2",
         "deliver_s": 6,
         "arrive": "van",
@@ -2209,7 +2225,7 @@
         "key": "cutter",
         "kind": "crew",
         "place": "office",
-        "price": 750,
+        "price": 540,
         "gate": null,
         "deliver_s": 4,
         "arrive": "crew",
@@ -2221,7 +2237,7 @@
         "key": "stripper",
         "kind": "machine",
         "place": "stripper",
-        "price": 890,
+        "price": 700,
         "gate": null,
         "deliver_s": 10,
         "arrive": "machineFlatbed",
@@ -2233,7 +2249,7 @@
         "key": "crucible",
         "kind": "machine",
         "place": "crucible",
-        "price": 1200,
+        "price": 800,
         "gate": null,
         "deliver_s": 10,
         "arrive": "machineFlatbed",
@@ -2245,7 +2261,7 @@
         "key": "bench",
         "kind": "machine",
         "place": "bench",
-        "price": 1300,
+        "price": 900,
         "gate": null,
         "deliver_s": 10,
         "arrive": "machineFlatbed",
@@ -2257,7 +2273,7 @@
         "key": "driver",
         "kind": "crew",
         "place": "office",
-        "price": 1500,
+        "price": 1000,
         "gate": null,
         "deliver_s": 4,
         "arrive": "crew",
@@ -2334,7 +2350,7 @@
     },
     "levels": {
       "tau": {
-        "first": 20,
+        "first": 8,
         "growth": 1.6,
         "cap": 540
       },
@@ -2352,7 +2368,7 @@
         "partnerFarm": "partner level L: L skips at the site, each full fill_s after it was hooked (E26)",
         "partnerDemolition": "partner level L: L skips at the site, each full fill_s after it was hooked (E26)"
       },
-      "floor": 1800,
+      "floor": 1500,
       "floorGrowth": 1.25
     },
     "ladder": {
@@ -2415,8 +2431,8 @@
     },
     "ceilings_t_h": [
       6,
-      20,
-      160
+      75,
+      400
     ],
     "awayCap_h": [
       4,
