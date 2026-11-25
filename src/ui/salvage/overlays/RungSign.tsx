@@ -15,7 +15,7 @@ import { proj, viewOf } from '../art/pen';
 import { CRANE_HOOK, drawHungSign, drawSignCrane } from '../art/site.draw';
 import { CentredCard } from './CentredCard';
 import * as R from '../../../engine/salvage';
-import { rungBox, rungLines, type RungProgressLike } from './marketLines';
+import { rungBox, rungLines } from './marketLines';
 import { Drawing, useAsk, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { INK, Line, LocalButton, PadlockLine, useFrame } from './parts';
@@ -29,9 +29,6 @@ const H = 150;
 const AX = 46;
 const AY = 142;
 
-/** rules-book's rung selector once the facade has it (19:55). */
-const rungProgress = (R as unknown as { rungProgress?: (cfg: R.SalvageConfig, g: R.SalvageGame) => RungProgressLike | null }).rungProgress;
-
 export function RungSign({ cfg, g, data, onClose }: CardViewProps) {
   const { layout } = useFrame();
   useSeenOnClose('rung');
@@ -43,7 +40,7 @@ export function RungSign({ cfg, g, data, onClose }: CardViewProps) {
   const n = cur?.n ?? Math.max(1, g.salvage.ladder.rung);
   const cap = (cfg.salvage.ceilings_t_h as number[] | undefined)?.[n - 1] ?? null;
   const mine = rungLines(n, cur?.t ?? 0, cap);
-  const box = rungBox(t, t.rows.find((r) => r.id === 'you') ?? null, rungProgress ? rungProgress(cfg, g) : null);
+  const box = rungBox(t, t.rows.find((r) => r.id === 'you') ?? null, R.rungProgress(cfg, g));
   // What the rung opens: the rules' lead after its sign line, else ours.
   const sign = mine.sign;
   const opens = data.lead.length > 1 ? data.lead.slice(1) : mine.opens ? [mine.opens] : [];

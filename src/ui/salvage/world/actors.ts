@@ -217,28 +217,89 @@ export function staticItems(c: SalvageContent, res: Resolver, extraProps: readon
   return out;
 }
 
-/** The lane east of the gate: asphalt, hedges, the partners' sites, the bridge and its barrier. */
+/** A stable 0..1 hash of an integer (the lane's runs and roadside things). */
+const h1 = (n: number) => {
+  let h = Math.imul(n ^ 0x9e3779b9, 2654435761);
+  h ^= h >>> 15;
+  h = Math.imul(h, 2246822519);
+  h ^= h >>> 13;
+  return ((h >>> 0) % 10007) / 10007;
+};
+
+/**
+ * The lane east of the gate (L7, the lane's art is look-lane's): asphalt and verges; the country beyond the
+ * hedges (fields in runs of one kind, the treeline as the skyline band north); roadside variety every 30 to
+ * 40 m so that motion reads; the partners' sites (the farm with its house and sign, the demolition site's
+ * hoarding and sign); the lane's end across the road before the bridge. Ids the manifest lacks are skipped.
+ */
 function laneItems(out: number[], res: Resolver, l: LaneGeo, W: number): void {
   const end = laneDrawEnd(l);
+  const has = (id: string) => entryOf(id) !== undefined;
+  const nHedge = l.gy - l.half - 0.6;
+  const sHedge = l.gy + l.half + 0.6;
   for (let x = W + 1.5; x < end; x += 3) {
-    for (let y = l.gy - l.half + 1.5; y < l.gy + l.half; y += 3) sprite(out, res, l.bridge !== null && Math.abs(x - l.bridge) < 2.5 ? 'ground.asphalt' : 'ground.asphalt', x, y);
+    for (let y = l.gy - l.half + 1.5; y < l.gy + l.half; y += 3) sprite(out, res, 'ground.asphalt', x, y);
     for (const side of [-1, 1]) {
       const vy = l.gy + side * (l.half + 1.5);
       sprite(out, res, l.bridge !== null && Math.abs(x - l.bridge) < 3 ? 'ground.water' : 'ground.verge', x, vy);
     }
   }
-  const nearSite = (x: number) => l.sites.some((s) => Math.abs(s.x - x) < 6) || (l.bridge !== null && Math.abs(l.bridge - x) < 5);
+  // The country: fields (flat 6 x 4 m tiles, one kind per run of 18 to 30 m) north of the north hedge up
+  // to the treeline and three rows south of the south hedge; the treeline every 8 m, behind everything.
+  const treeY = l.gy - l.half - 5.5;
+  if (has('lane.field')) {
+    const fw = entryOf('lane.field')!.footprint.w;
+    const fd = entryOf('lane.field')!.footprint.d;
+    let run = 0;
+    let runEnd = W + 18 + h1(0) * 12;
+    for (let x = W + fw / 2; x < end + fw; x += fw) {
+      if (x > runEnd) {
+        run++;
+        runEnd += 18 + h1(run * 7 + 1) * 12;
+      }
+      const kind = Math.floor(h1(run * 13 + 5) * 3);
+      for (let y = l.gy - l.half - 1.6 - fd / 2; y > treeY - fd; y -= fd) sprite(out, res, 'lane.field', x, y, { frame: kind, flat: true, key: treeY + 0.01 });
+      const kindS = Math.floor(h1(run * 17 + 3) * 3);
+      for (let k = 0; k < 3; k++) sprite(out, res, 'lane.field', x, l.gy + l.half + 1.6 + fd / 2 + k * fd, { frame: kindS, flat: true, key: l.gy + l.half + 1.6 + k * fd });
+    }
+  }
+  if (has('lane.treeline')) {
+    const tw = entryOf('lane.treeline')!.footprint.w;
+    for (let x = W + tw / 2 - 2, k = 0; x < end + tw; x += tw, k++) sprite(out, res, 'lane.treeline', x, treeY, { frame: k % 2, key: treeY - 50 });
+  }
+  // Roadside variety, alternating verges; a field gate stands in a gap of the hedge.
+  const kinds = ['lane.milepost', 'lane.pole', 'lane.gate.field', 'lane.gritbin'].filter(has);
+  const gaps: { x: number; north: boolean }[] = [];
+  const nearSite = (x: number) => l.sites.some((s) => Math.abs(s.x - x) < 7) || (l.bridge !== null && Math.abs(l.bridge - x) < 6);
+  if (kinds.length) {
+    let k = 0;
+    for (let x = W + 22; x < l.end - 4; x += 30 + h1(k * 3 + 11) * 10, k++) {
+      if (nearSite(x)) continue;
+      const id = kinds[Math.floor(h1(k * 5 + 2) * kinds.length)];
+      const north = k % 2 === 0;
+      if (id === 'lane.gate.field') {
+        gaps.push({ x, north });
+        sprite(out, res, id, x, north ? nHedge : sHedge);
+      } else sprite(out, res, id, x, l.gy + (north ? -1 : 1) * (l.half + 1.2));
+    }
+  }
   for (let x = W + 2; x < end; x += 3) {
     if (nearSite(x)) continue;
-    sprite(out, res, 'lane.hedge', x, l.gy - l.half - 0.6);
-    sprite(out, res, 'lane.hedge', x, l.gy + l.half + 0.6);
+    // A field gate stands in a gap of one hedge: that side's hedge sprite is left out there.
+    const g = gaps.find((q) => Math.abs(q.x - x) < 2.4);
+    if (!g || !g.north) sprite(out, res, 'lane.hedge', x, nHedge);
+    if (!g || g.north) sprite(out, res, 'lane.hedge', x, sHedge);
   }
   for (const s of l.sites) {
-    if (s.look === 0) sprite(out, res, 'lane.shed.farm', s.x, l.gy - l.half - 2.2);
-    else {
+    if (s.look === 0) {
+      sprite(out, res, 'lane.shed.farm', s.x, l.gy - l.half - 2.2);
+      sprite(out, res, 'lane.farmhouse', s.x + 3.5, l.gy - l.half - 4.6);
+      sprite(out, res, 'lane.sign.partner', s.x - 4, l.gy - l.half - 0.2, { frame: 0 });
+    } else {
       sprite(out, res, 'lane.hoarding', s.x - 3.5, l.gy - l.half - 0.4);
       sprite(out, res, 'lane.hoarding.gate', s.x, l.gy - l.half - 0.4);
       sprite(out, res, 'lane.hoarding', s.x + 3.5, l.gy - l.half - 0.4);
+      sprite(out, res, 'lane.sign.partner', s.x - 2.2, l.gy - l.half + 0.1, { frame: 1 });
     }
     sprite(out, res, 'ground.hatch', s.x, l.gy + l.half - 0.5);
   }
@@ -246,8 +307,10 @@ function laneItems(out: number[], res: Resolver, l: LaneGeo, W: number): void {
     sprite(out, res, 'lane.parapet', l.bridge, l.gy - l.half - 0.2);
     sprite(out, res, 'lane.parapet', l.bridge, l.gy + l.half + 0.2);
     sprite(out, res, 'lane.sign.limit', l.bridge - 3, l.gy - l.half - 0.8);
-    sprite(out, res, 'lane.barrier', l.bridge - 1.6, l.gy);
   }
+  // The lane's end (P10, L7): across the road where the truck must stop (./collide.ts keepInside: laneGeo end).
+  if (has('lane.end')) sprite(out, res, 'lane.end', l.end + 0.4, l.gy);
+  else if (l.bridge !== null) sprite(out, res, 'lane.barrier', l.bridge - 1.6, l.gy);
 }
 
 // =====================================================================================================

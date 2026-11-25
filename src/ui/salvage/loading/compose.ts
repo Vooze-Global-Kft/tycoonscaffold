@@ -255,7 +255,13 @@ export type Layer = 'bg' | 'fg' | 'all';
 
 function draw(c: SkCanvas, Y: LoadingLayers, L: LoadingLayout, pose: LoadingPose | null, layer: Layer): void {
   'worklet';
-  if (layer !== 'fg') part(c, Y.bg);
+  if (layer !== 'fg') {
+    // the baked strips once all are baked (./bake.ts), else the recorded picture
+    let tiled = Y.bgTiles.length > 0;
+    for (let i = 0; i < Y.bgTiles.length; i++) if (!Y.bgTiles[i].img) tiled = false;
+    if (tiled) for (let i = 0; i < Y.bgTiles.length; i++) part(c, Y.bgTiles[i]);
+    else part(c, Y.bg);
+  }
   if (layer !== 'bg' && pose) scene(c, Y, L, pose);
 }
 

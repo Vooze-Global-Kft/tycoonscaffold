@@ -17,6 +17,7 @@ const queue: Part[] = [];
 const waiting = new Set<() => void>();
 let running = false;
 let density = 0;
+let began = 0;
 
 const keyOf = (p: Part) => `${p.key}@${Math.min(density, p.dmax)}`;
 
@@ -37,6 +38,7 @@ function step(): void {
     return;
   }
   running = false;
+  if (__DEV__) console.info(`[loading] ${images.size} images baked at density ${density} in ${Date.now() - began} ms (in slices)`);
   const done = [...waiting];
   waiting.clear();
   done.forEach((f) => f());
@@ -55,6 +57,7 @@ export function bakeLoading(Y: LoadingLayers, d: number, done: () => void): () =
   waiting.add(done);
   if (!running) {
     running = true;
+    began = Date.now();
     setTimeout(step, 0);
   }
   return () => waiting.delete(done);

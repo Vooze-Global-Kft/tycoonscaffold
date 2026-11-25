@@ -12,6 +12,7 @@ import { fx } from '../../../services/fx';
 import { useFxSettings } from '../../../services/fx/useFxSettings';
 import { useGame } from '../../../state/store';
 import { openCard } from './cardStack';
+import { realPolicyUrl } from './marketLines';
 import { CentredCard } from './CentredCard';
 import { SectionHead, SwitchRow, WordButton, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
@@ -23,12 +24,6 @@ const SWITCHES = [
   { key: 'music', name: 'clip.music' },
   { key: 'haptics', name: 'clip.haptics' },
 ] as const;
-
-/** The policy page when it is a real one: none, or the reserved example domains (validate's own test), give null. */
-export function realPolicyUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  return /^https?:\/\/([^/]*\.)?example\.(com|org|net)(\/|$)/i.test(url) ? null : url;
-}
 
 export function Settings({ cfg, data, onClose }: CardViewProps) {
   const settings = useFxSettings();

@@ -10,20 +10,17 @@
 import { StyleSheet, View } from 'react-native';
 import { CentredCard } from './CentredCard';
 import * as R from '../../../engine/salvage';
-import { awayLines, withAwayView, type AwayData, type AwayViewLike } from './marketLines';
+import { awayLines, withAwayView, type AwayData } from './marketLines';
 import { useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { salvageActions } from '../../../modes/salvage/actions';
 import { INK, Line, LocalButton, useFrame } from './parts';
 
-/** rules-book's away selector once the facade has it (announced 19:55); the state's card until then. */
-const awayView = (R as unknown as { awayView?: (cfg: R.SalvageConfig, g: R.SalvageGame) => AwayViewLike | null }).awayView;
-
 export function AwayCard({ cfg, g, data, onClose }: CardViewProps) {
   useSeenOnClose('away');
   const { layout } = useFrame();
   const a0 = data.away as AwayData | undefined;
-  const a = a0 ? withAwayView(a0, awayView ? awayView(cfg, g) : null) : undefined;
+  const a = a0 ? withAwayView(a0, R.awayView(cfg, g)) : undefined;
   const ok = data.foot.length ? data.foot : [{ label: { key: 'ok' as const }, action: { act: 'ackAway' as const }, refusal: null }];
   if (!a) {
     return (

@@ -60,8 +60,10 @@ export interface Part {
 }
 
 export interface LoadingLayers {
-  /** The still scene: sky, far yard, ground, deck, display box, gantry, mould, stand. */
+  /** The still scene: sky, far yard, ground, deck, display box, gantry, moulds, stand. */
   bg: Part;
+  /** The same in four vertical strips, each baked in a slice of its own (the whole would be one long task). */
+  bgTiles: Part[];
   /** The pour's warm light on the ground (faded by the pour and the furnace's breath). */
   pool: Part;
   /** Plate i at (centre x 0, foot 0), with its word cut through; its underlight from the pour. */
@@ -151,7 +153,7 @@ function part(key: string, draw: (c: SkCanvas) => void, x: number, y: number, w:
 
 /** Every part of a set that can be baked into an image, those drawn every frame first. */
 export function partsOf(Y: LoadingLayers): Part[] {
-  return [...Y.plates, Y.magnet, Y.trolley, Y.crucible, Y.mouth, Y.hand, Y.hood, Y.hoodGlow, Y.ticket, ...Y.plateGlow, ...Y.notches, Y.pool, Y.bg];
+  return [...Y.plates, Y.magnet, Y.trolley, Y.crucible, Y.mouth, Y.hand, Y.hood, Y.hoodGlow, Y.ticket, ...Y.plateGlow, ...Y.notches, Y.pool, ...Y.bgTiles];
 }
 
 /** The same set with each part's image where `get` has one (parts without stay pictures). */
@@ -162,7 +164,7 @@ export function withImages(Y: LoadingLayers, get: (p: Part) => Baked | undefined
   };
   return {
     ...Y,
-    bg: f(Y.bg),
+    bgTiles: Y.bgTiles.map(f),
     pool: f(Y.pool),
     plates: Y.plates.map(f),
     plateGlow: Y.plateGlow.map(f),
@@ -595,8 +597,12 @@ export function recordLayers(L: LoadingLayout, words: readonly string[], tl: Loa
   );
   const cooling: Float32Array[] = [];
   for (let i = 0; i <= 40; i++) cooling.push(col(ingotColour(i / 10)));
+  const bg = part(`bg|${at}`, (c) => background(c, L), 0, 0, w, h, 0, 2);
+  const TILES = 4;
+  const tw = Math.ceil(w / TILES);
   return {
-    bg: part(`bg|${at}`, (c) => background(c, L), 0, 0, w, h, d, 2),
+    bg: d > 0 ? part(`bg|${at}`, (c) => background(c, L), 0, 0, w, h, d, 2) : bg,
+    bgTiles: Array.from({ length: TILES }, (_, i) => ({ ...bg, key: `${bg.key}|${i}`, x: i * tw, w: Math.min(tw, w - i * tw) })),
     pool: (() => {
       const gx = (L.mL + L.mR) / 2;
       const rx = (L.mR - L.mL) * 0.75;

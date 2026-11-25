@@ -79,7 +79,7 @@ function pour(c: SkCanvas): void {
 }
 
 /** Everything of "pour" but its ground: the mould and ingot, the crucible in its tongs, the stream, the wire. */
-function pourSubject(c: SkCanvas): void {
+export function pourSubject(c: SkCanvas): void {
   // the mould along the bottom, a glowing copper ingot in its cavity
   const my = 770;
   outlined(c, poly([250, my, 960, my, 1000, my + 150, 210, my + 150]), YARD.castIron);

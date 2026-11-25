@@ -111,11 +111,12 @@ export function tableCols(L: FrameLayout): TableCols {
   const p = pt(TYPE.name, fs);
   const gap = 5;
   // L8 / W12: the widest ordinal ("22nd", "26th") in BOLD on one line at font scale 1.3: the estimate
-  // is a regular face's, so a fifth more for the bold digits and the ordinal's letters.
-  const rank = Math.ceil(textW('26th', p) * 1.2) + 4;
-  // The largest rival passes ten million tonnes by day 40 ("10,603,412 t"); bold, with the card's inner
-  // margin at the right so the last digit is never clipped at the row's edge (W12).
-  const tonnes = Math.ceil(textW('12,345,678 t', p) * 1.08) + TONNES_PAD;
+  // is a regular face's, so about a seventh more for the bold digits and the ordinal's letters.
+  const rank = Math.ceil(textW('26th', p) * 1.15) + 2;
+  // Tonnes at the row's second size (11 pt scaled; "10,603,412 t": the largest rival passes ten million
+  // tonnes by day 40), right-aligned with the card's inner margin after it so the last digit is never
+  // clipped at the row's edge (W12). The estimate already overshoots digits and commas.
+  const tonnes = Math.ceil(textW('12,345,678 t', pt(TYPE.line, fs))) + TONNES_PAD;
   // "simulated" is a quiet tag at the smallest size (11 pt at every font scale), so a 14-character chip name fits at 667 and 1.3.
   const sim = Math.ceil(textW('simulated', SIM_PT));
   const rowH = Math.max(30, lineH(TYPE.name, fs) + 10, LOGO + 6);

@@ -25,7 +25,7 @@ import { TEXT, say } from '../strings';
 import { BUY_MAX, BUY_W, MIN_PT, TYPE, frameLayout, pt } from './layout';
 import { BOARD_ROW_MIN, SIM_PT, LOGO, PICTO, BARS, boardOffsets, boardRow, barHeight, rungCells, tableCols } from './marketLayout';
 import { boardWithSell, offeredTerms } from './marketSample';
-import { AWAY_LINES, AWAY_LINES_LARGE, awayLines, helpLessons, plateSeed, rowExtra, rungLines, skipHead, ticketSummary } from './marketLines';
+import { AWAY_LINES, AWAY_LINES_LARGE, awayLines, converterNote, helpLessons, plateSeed, rowExtra, realPolicyUrl, rowExtraLine, rungBox, rungLines, skipHead, ticketSummary } from './marketLines';
 
 const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'games', 'scrap-yard', 'game.json'), 'utf8'));
 const cfg = withTestContent(GameConfigSchema.parse(raw));
@@ -137,8 +137,12 @@ describe('the industry table (2.11)', () => {
       for (const chip of chips) expect(textW(chip, p), `${name} "${chip}"`).toBeLessThanOrEqual(cols.name);
       // The player's row prints no "simulated": its name takes that column too.
       expect(textW(real.names.homeYard ?? '', p), name).toBeLessThanOrEqual(cols.name + cols.gap + cols.sim);
-      expect(textW(R.fmtTonnes(1_234_560_000), p), name).toBeLessThanOrEqual(cols.tonnes);
-      expect(textW(R.fmtTonnes(12_345_678e6), p), name).toBeLessThanOrEqual(cols.tonnes);
+      // W12: tonnes at the row's second size, with the inner margin left after the last digit.
+      const tp = pt(TYPE.line, L.fs);
+      expect(textW(R.fmtTonnes(1_472_697e6), tp) + 8, name).toBeLessThanOrEqual(cols.tonnes);
+      expect(textW(R.fmtTonnes(12_345_678e6), tp) + 8, name).toBeLessThanOrEqual(cols.tonnes);
+      // L8: the widest ordinal in bold fits its cell on one line (a seventh over the estimate).
+      for (const o of ['22nd', '23rd', '26th']) expect(textW(o, p) * 1.12, `${name} ${o}`).toBeLessThanOrEqual(cols.rank);
       expect(textW(words({ key: 'table.simulated' }), SIM_PT), name).toBeLessThanOrEqual(cols.sim);
       expect(SIM_PT).toBeGreaterThanOrEqual(MIN_PT);
     }
@@ -189,6 +193,43 @@ describe('the away card, the clipboard, the skip, the rung sign, the deal, Help'
       const o = awayLines(x);
       for (const t of [o.head, ...(o.longer ? [o.longer] : []), ...o.money, ...(o.net ? [o.net] : []), ...o.news, ...(o.next ? [o.next] : []), ...o.lines]) expect(unfilled(words(t)), words(t)).toBe(false);
     }
+  });
+  it("the rung box (P17, W13a, S10): the player's OWN tonnes, 'Next:' before the next rung, a bare tonnage past this stage", () => {
+    for (const f of FIXTURE_NAMES) {
+      const g = game(f);
+      const t = R.industryTable(cfg, g);
+      const rp = R.rungProgress(cfg, g);
+      const b = rungBox(t, t.rows.find((r) => r.id === 'you') ?? null, rp);
+      expect(b.own!.key).toBe('table.mine');
+      expect(words(b.own!)).toContain(R.fmtTonnes(g.salvage.ladder.supplied_g));
+      if (b.next) {
+        expect(unfilled(words(b.next)), words(b.next)).toBe(false);
+        expect(['table.nextRung', 'table.lockedBare']).toContain(b.next.key);
+        expect(words(b.next)).not.toMatch(/^Opens/);
+      }
+    }
+    // Past this stage's last rung: no "Opens", a tonnage only.
+    const g = game('back');
+    const t = R.industryTable(cfg, g);
+    const past = { ...t, rungs: t.rungs.map((r) => ({ ...r, open: r.n <= 3, current: r.n === 3 })) };
+    const b = rungBox(past, null, { ...R.rungProgress(cfg, g), next: null });
+    expect(b.next!.key).toBe('table.lockedBare');
+    expect(words(b.next!)).not.toMatch(/open/i);
+  });
+  it('the board: a held row prints "Held until ..." (W13b); an empty board says where rows come from (S9); the converter is paid on assay (W15); the placeholder policy hides', () => {
+    const r = R.priceBoard(cfg, game('m30'), FIXTURE_NOW).rows[0];
+    const held = { ...r, held: true, reserved_g: 0, aside_g: 0, heldLine: { key: 'board.heldUntil' } as R.Txt };
+    expect(rowExtraLine(held)!.key).toBe('board.heldUntil');
+    expect(rowExtra(held)).toBe(true);
+    expect(rowExtra({ ...held, held: false })).toBe(false);
+    expect(TEXT['board.empty']).toBeTruthy();
+    const conv = converterNote(cfg)!;
+    expect(conv.key).toBe('card.converterPaid');
+    expect(unfilled(words(conv)), words(conv)).toBe(false);
+    const tk = { kind: 'weighIn', no: 1, day: 1, at: 0, lines: [{ grade: 'conv', g: 1500, price: 1, amount: 1 }], todaysValue: 1 } as unknown as R.Ticket;
+    expect(ticketSummary(tk, conv).lines[1]).toBe(conv);
+    expect(realPolicyUrl('https://example.com/scrap-to-ingot/privacy')).toBeNull();
+    expect(realPolicyUrl('https://owner.site/privacy')).toBe('https://owner.site/privacy');
   });
   it('every ticket of every frozen state prints its head, total and lines with no hole left', () => {
     let n = 0;

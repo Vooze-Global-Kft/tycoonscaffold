@@ -21,6 +21,7 @@ import { useOverlay } from '../../kit/overlay';
 import { say } from '../strings';
 import { useSalvageUi } from '../uiState';
 import * as Stick from '../world/stick';
+import { steeringNow } from './backGuard';
 import { useCards, type OfficeTab } from './cardStack';
 import { CentredCard } from './CentredCard';
 import { useFontScale } from '../hud/fontScale';
@@ -46,21 +47,6 @@ import { SupplyDeal } from './SupplyDeal';
 
 export type { Insets } from './layout';
 export { closeCard, openCard } from './cardStack';
-
-/** How long after a steering touch ended Android back is still taken for the stick's (H9). */
-export const STICK_BACK_MS = 500;
-
-/**
- * True while a finger steers or within STICK_BACK_MS of the last steering touch's end (H9). Reads
- * world/stick.ts `stickHeld()` and `lastStickEndAt()` (world-a's exports; until they exist, the stick's
- * shared value and no end time).
- */
-export function steeringNow(nowMs: number, s: { stickHeld?: unknown; lastStickEndAt?: unknown; stick?: { value?: { on?: number } } } = Stick as never): boolean {
-  const held = typeof s.stickHeld === 'function' ? !!(s.stickHeld as () => boolean)() : (s.stick?.value?.on ?? 0) > 0;
-  if (held) return true;
-  const end = typeof s.lastStickEndAt === 'function' ? Number((s.lastStickEndAt as () => number)()) : 0;
-  return end > 0 && nowMs - end < STICK_BACK_MS;
-}
 
 /** How often an open card re-reads the rules (the game changes ten times a second; a card needs less). */
 const REFRESH_MS = 500;
@@ -161,7 +147,7 @@ export function OverlayHost({ width, height, insets }: { width: number; height: 
   // starts at the left edge and drags right IS Android's back gesture (H9): while a steering touch is held,
   // or for STICK_BACK_MS after one ended or was taken by the system, back is swallowed.
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => steeringNow(Date.now()) || useCards.getState().close() || useSalvageUi.getState().closeTop());
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => steeringNow(Date.now(), Stick) || useCards.getState().close() || useSalvageUi.getState().closeTop());
     return () => sub.remove();
   }, []);
   // The shell's menu button marks uiState: with no card open, that is the clipboard; when the shell

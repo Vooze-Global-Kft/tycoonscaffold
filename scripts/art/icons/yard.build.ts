@@ -12,8 +12,9 @@
  *   rounded tile inside the 33 dp safe circle (a stand-in until the art director draws an adaptive
  *   composition: the icon's tongs run off its edge, see below); the launcher's colour around the tile is
  *   theme.colors.background, the sky;
- * - splash.png: transparent, the icon as a rounded tile in the middle, shown at 200 pt on the theme's
- *   background (the daylight sky the loading animation fades in from).
+ * - splash.png: transparent, the pour mark alone (the icon's subject without its ground and tile) fitted
+ *   at 84 % and centred, shown at 200 pt on the theme's background (the sky the loading animation fades
+ *   in from).
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -104,14 +105,36 @@ headless(async (H) => {
     adaptive = tile(scale);
     console.log(`adaptive: ICON as a rounded tile at ${(scale * 100).toFixed(1)} % of the layer (${(108 * scale).toFixed(1)} dp), its corners reach ${reachOf(adaptive).toFixed(1)} dp (safe 33.0)`);
   }
-  const splash = img((c) => {
-    const s = N * 0.78;
-    const o = (N - s) / 2;
-    c.save();
-    c.clipRRect(Skia.RRectXY(Skia.XYWHRect(o, o, s, s), s * 0.2237, s * 0.2237), ClipOp.Intersect, true);
-    put(c, icon, o, o, s);
-    c.restore();
+  // The splash (wiring's L17): the pour mark ALONE (ICON's subject without its yellow ground and tile),
+  // its drawn extent fitted whole at 84 % and centred, on transparency (the theme's sky shows round it).
+  const M = 3 * N;
+  const big = H.image({ width: M, height: M, scale: 1, background: 'transparent' }, (c) => {
+    c.translate(N, N);
+    Y.pourSubject(c);
   });
+  const px = big.readPixels(0, 0, { width: M, height: M, alphaType: 2, colorType: 4 }) as Uint8Array;
+  let x0 = M;
+  let y0 = M;
+  let x1 = 0;
+  let y1 = 0;
+  for (let y = 0; y < M; y++)
+    for (let x = 0; x < M; x++)
+      if (px[(y * M + x) * 4 + 3] > 8) {
+        x0 = Math.min(x0, x);
+        x1 = Math.max(x1, x);
+        y0 = Math.min(y0, y);
+        y1 = Math.max(y1, y);
+      }
+  const bw = x1 - x0 + 1;
+  const bh = y1 - y0 + 1;
+  const k = (N * 0.84) / Math.max(bw, bh);
+  const splash = img((c) => {
+    c.translate(N / 2, N / 2);
+    c.scale(k, k);
+    c.translate(-(x0 + bw / 2 - N), -(y0 + bh / 2 - N));
+    Y.pourSubject(c);
+  });
+  void ClipOp;
   const set = { icon, adaptive, splash };
 
   if (mode === 'final') {

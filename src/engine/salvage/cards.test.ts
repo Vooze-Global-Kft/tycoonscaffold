@@ -158,7 +158,7 @@ describe('a skip still filling (strings 16:45; 2.7: its contents are fixed when 
 });
 
 describe('fix pass: the away card (P3), the rung box and tiles (P17, S10), rows without rates (W5), machine cards (W7)', () => {
-  const g = (name: string) => fixtureGame(name, base(), FIXTURE_NOW) as SalvageGame;
+  const g = (name: (typeof FIXTURE_NAMES)[number]) => fixtureGame(name, base(), FIXTURE_NOW) as SalvageGame;
   it('the away card: net = sales − loads bought; held (unpaid) lines never listed; at most three; a next step while a goal is open', () => {
     const b = g('back');
     expect(b.salvage.away).toBeTruthy();

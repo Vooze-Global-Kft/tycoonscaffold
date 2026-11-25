@@ -37,7 +37,7 @@ const DONE = [
   /^hired:(hand|cutter|driver):\d+$/,
   /^crewWeighIns:(hand|cutter|driver):\d+$/,
   /^fetched:(partnerFarm|partnerDemolition):\d+$/,
-  /^bridged:(partnerFarm|partnerDemolition):\d+$/,
+  /^(bridged|tipped):(partnerFarm|partnerDemolition):\d+$/,
   /^rung:\d+$/,
   /^deal:signed$/,
   /^deal:done:\d+$/,

@@ -8,6 +8,7 @@
 import type { SalvageContent } from '../../config/schema.salvage';
 import { dayWord, priceOf, sellAmount, sellOn } from './board';
 import { lineAmount } from './money';
+import { tierOf } from './content';
 import { skipLabelOf } from './cards';
 import { chevronOf } from './goals';
 import { bayOrder, bayPos, bayStocked, circleCount, circlePos, isStillage, lanePath, machinePos, piecePos, placeNear, pointOf, skipZone, spotPos, thingPos } from './positions';
@@ -138,7 +139,8 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     const o = c.objects[th.obj];
     const p = thingPos(c, th.at);
     const total = o ? o.pieces.reduce((a, sp) => a + sp[2], 0) : 1;
-    const tier = o?.tier ?? 0;
+    // W9 (rules-sim-b 20:10): the tier of the thing's NEXT piece; a stripped shell is not workable and shows no padlock.
+    const tier = th.shell ? 0 : tierOf(c, th);
     const ring = workRing(th.uid);
     const spec = o ? pieceAt(o.pieces, th.cut) : null;
     return {

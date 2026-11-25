@@ -11,7 +11,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { GameConfigSchema } from '../../../config/schema';
 import * as E from '../../../engine/economy';
 import { FIXTURE_NAMES, FIXTURE_NOW, fixtureGame, withTestContent } from '../../../engine/fixtures/salvage';
@@ -20,6 +20,7 @@ import { measure, wrap } from '../../../../scripts/content/office/fit';
 import { TEXT, say } from '../strings';
 import { BUY_MAX, BUY_W, GLYPH_ROOM, MIN_PT, PAD, TYPE, boardLayout, breakLines, fitPt, frameLayout, moreBelow, plateNameLines, pt, rowHeight } from './layout';
 import { textW } from '../hud/metrics';
+import { STICK_BACK_MS, steeringNow } from './backGuard';
 import { crucibleOrder, crucibleVerbs, machineSections, memberRow } from './machineView';
 import { boardWithButtons, machineCard, machineRows, partnerRows, rackRows, rotaRows, withSample } from './sample';
 
@@ -28,6 +29,11 @@ const cfg = withTestContent(GameConfigSchema.parse(raw));
 const base = () => E.createInitialState(cfg, FIXTURE_NOW);
 const game = (n: (typeof FIXTURE_NAMES)[number]) => fixtureGame(n, base(), FIXTURE_NOW);
 const c = cfg.salvage;
+
+// The frozen states are PLAYED through the engine on first read (director.ts, seconds on a busy machine): play them once, outside any test's 5 s.
+beforeAll(() => {
+  for (const n of FIXTURE_NAMES) game(n);
+}, 120_000);
 
 const S844 = { w: 844, h: 390, insets: { top: 0, left: 47, right: 47, bottom: 21 } };
 const S667 = { w: 667, h: 375, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
@@ -240,5 +246,16 @@ describe('the machine cards as printed (L14, W7, W5, W18) and the rota (P18)', (
     expect(moreBelow(500, 300, 0)).toBe(true);
     expect(moreBelow(500, 300, 200)).toBe(false);
     expect(moreBelow(300, 300, 0)).toBe(false);
+  });
+});
+
+describe('Android back while steering (H9)', () => {
+  it('back is swallowed while a finger steers and for STICK_BACK_MS after it ended, not after', () => {
+    expect(steeringNow(1000, { stickHeld: () => true, lastStickEndAt: () => 0 })).toBe(true);
+    expect(steeringNow(1000, { stickHeld: () => false, lastStickEndAt: () => 1000 - STICK_BACK_MS + 1 })).toBe(true);
+    expect(steeringNow(1000, { stickHeld: () => false, lastStickEndAt: () => 1000 - STICK_BACK_MS })).toBe(false);
+    expect(steeringNow(1000, { stickHeld: () => false, lastStickEndAt: () => 0 })).toBe(false);
+    expect(steeringNow(1000, { stick: { value: { on: 1 } } })).toBe(true);
+    expect(steeringNow(1000, {})).toBe(false);
   });
 });

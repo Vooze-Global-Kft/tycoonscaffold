@@ -83,16 +83,19 @@ function card(x: Ctx, seconds: number, capS: number, absentS: number, runLonger:
   };
 }
 
-/** Events the away pass passes on (types.ts MAX_TICK: never item events; the pump would fire a hundred arcs). */
-const AWAY_KEEPS = new Set<SalvageEvent['type']>(['awayReport', 'passed', 'rung']);
-
-/** A sink for the pass's events: only AWAY_KEEPS reach the caller; the rest are dropped as they come (no 35,000-event array, R3). */
+/** A sink for the pass's events: only awayReport, passed and rung reach the caller (types.ts MAX_TICK: never item events); the rest are dropped as they come (no 35,000-event array, R3). */
 function awaySink(out: SalvageEvent[] | undefined): SalvageEvent[] {
   const sink: SalvageEvent[] = [];
-  sink.push = (...items: SalvageEvent[]) => {
-    if (out) for (const e of items) if (AWAY_KEEPS.has(e.type)) out.push(e);
+  sink.push = function push(e: SalvageEvent): number {
+    if (out) {
+      for (let i = 0; i < arguments.length; i++) {
+        const q = arguments[i] as SalvageEvent;
+        if (q.type === 'awayReport' || q.type === 'passed' || q.type === 'rung') out.push(q);
+      }
+    }
+    void e;
     return 0;
-  };
+  } as SalvageEvent[]['push'];
   return sink;
 }
 

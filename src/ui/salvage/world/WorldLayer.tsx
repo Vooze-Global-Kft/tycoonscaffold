@@ -32,7 +32,7 @@ import { gradeGlyph } from '../art/pieces.draw';
 import { drawIngot } from '../art/scrap.draw';
 import { say } from '../strings';
 import { chevronPlace, chevronTarget, chevronZ } from './chevron';
-import { cashAnchor, collectionAnchor, weighInAnchor } from '../hud/anchors';
+import { cashAnchor, collectionAnchor, goalRect, ticketBoxes, weighInAnchor } from '../hud/anchors';
 import { chevronGate } from '../hints/gate';
 import { FX, FX_EVENTS, FX_S, WORK, arcAt, ease, effectsFor, type FxContext, type FxSpawn } from './effects';
 import type { YardAnim } from './frameLoop';
@@ -40,14 +40,10 @@ import { HERO, freeWorld, heroCam, heroCamera, type ScreenInsets } from './heroF
 import { labelItems, labelSize, layoutPlates, plateMetrics, NEAR_M, type LabelLine, type LabelTops, type PlacedLabel, type Rect } from './labels';
 import { MANIFEST, cellBounds } from '../art/manifest';
 import { hudLayout } from '../hud/metrics';
-import * as hudAnchorsMod from '../hud/anchors';
 import { useSalvageUi } from '../uiState';
 import { STICK_R, stick } from './stick';
 import { labelsDev } from './labelsDev';
 import type { YardLayout } from './yard';
-
-/** The hud's ticket boxes when it exports them (requests.md: `ticketBoxes`), else undefined (a box above each anchor). */
-const hudTickets = (hudAnchorsMod as Record<string, unknown>).ticketBoxes as { value: { x: number; y: number; w: number; h: number }[] } | undefined;
 
 /** The store's picture (?view=hero-store) shows no edge arrow (L2). */
 const HERO_STORE = HERO.store ? 1 : 0;
@@ -128,11 +124,6 @@ const MACHINE_SPRITES: Record<string, string[]> = {
   bench: ['plant.bench.motor'],
 };
 
-/** A ticket's box while the hud gives none (a ticket rises above its anchor; 4.4: 280 x 150 at most). */
-function ticketBox(p: { x: number; y: number }, w: number): Rect {
-  return { x0: p.x - w / 2 - 6, x1: p.x + w / 2 + 6, y0: p.y - 160, y1: p.y + 12 };
-}
-
 function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; width: number; height: number; insets: ScreenInsets; active: boolean }) {
   const size = useLabelSize();
   const { fontScale } = useWindowDimensions();
@@ -190,10 +181,12 @@ function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.Sal
       });
       // The scene in screen points at this pass's camera: the bars, the goal card at its real height, the
       // one button, the held stick, the boss himself; tickets hide what they touch.
+      // The goal card at its REAL height (the hud's goalRect); before the hud has laid it out, its open height.
+      const gr = goalRect.value;
       const ui = useSalvageUi.getState();
-      const goalH = ui.goalOpen || ui.goalLesson ? 84 : L.rows.goal - 4;
+      const goalBox: Rect = gr.w > 0 ? { x0: gr.x - 2, x1: gr.x + gr.w + 2, y0: gr.y - 2, y1: gr.y + gr.h + 2 } : { x0: L.left, x1: L.left + L.goalW, y0: L.goalY, y1: L.goalY + 4 + (ui.goalOpen || ui.goalLesson ? 84 : L.rows.goal - 4) };
       const blocks: Rect[] = [
-        { x0: L.left, x1: L.left + L.goalW, y0: L.goalY, y1: L.goalY + 2 + goalH + 2 },
+        goalBox,
         { x0: L.button.x - 6, x1: L.button.x + L.button.size + 6, y0: L.button.y - 6, y1: L.button.y + L.button.size + 6 },
       ];
       const st = stick.value;
@@ -206,14 +199,8 @@ function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.Sal
         blocks.push({ x0: bx - bw, x1: bx + bw, y0: by - bh, y1: by + 6 });
       }
       const hides: Rect[] = [];
-      const boxes = (hudTickets as { value?: { x: number; y: number; w: number; h: number }[] } | undefined)?.value;
-      if (boxes && boxes.length) for (const b of boxes) hides.push({ x0: b.x - 4, x1: b.x + b.w + 4, y0: b.y - 4, y1: b.y + b.h + 4 });
-      else {
-        const wa = weighInAnchor.value;
-        const ca = collectionAnchor.value;
-        if (wa.x >= 0) hides.push(ticketBox(wa, L.ticketW));
-        if (ca.x >= 0) hides.push(ticketBox(ca, L.ticketW));
-      }
+      // The ticket up now (the hud's ticketBoxes): a plate it would touch is not shown.
+      for (const b of ticketBoxes.value) hides.push({ x0: b.x - 4, x1: b.x + b.w + 4, y0: b.y - 4, y1: b.y + b.h + 4 });
       const people = [...(boss ? [{ x: boss.x, y: boss.y }] : []), ...f.crew.map((m) => crewAt(m, f.t))];
       const workAt = new Set<string>();
       if (f.boss.place && f.boss.act !== 'none' && f.boss.act !== 'drive') workAt.add(f.boss.place);

@@ -667,3 +667,22 @@ export function plateBar(c: SkCanvas, x: number, y: number, w: number, h = 12): 
   c.drawPath(segment(x - 2, y + h - 0.5, x + w + 2, y + h - 0.5), stroke(INK, 1));
   for (const k of [0.3, 0.7]) c.drawPath(oval(x + w * k, y + h / 2, 1.8, 1.8), fill(YARD.paper));
 }
+
+/**
+ * The player's own yard's mark (the industry table's own row, L8): a hi-vis tile with a rounded top and
+ * a square foot, a copper ingot in its mould under a pour: the icon's subject in little. No rival plate
+ * (rivalPlate) has this shape and colour, nor the merchant's mark. No letters. s points square.
+ */
+export function yardMark(c: SkCanvas, cx: number, cy: number, s: number): void {
+  const h = s / 2;
+  const tile = builder().moveTo(cx - h, cy + h).lineTo(cx - h, cy - h * 0.45).quadTo(cx - h, cy - h, cx - h * 0.45, cy - h).lineTo(cx + h * 0.45, cy - h).quadTo(cx + h, cy - h, cx + h, cy - h * 0.45).lineTo(cx + h, cy + h).close().build();
+  c.drawPath(tile, fill(YARD.hivis));
+  c.drawPath(tile, stroke(INK, Math.max(1, s / 22)));
+  // the mould and its glowing ingot
+  const my = cy + h * 0.28;
+  c.drawPath(poly([cx - h * 0.66, my, cx + h * 0.66, my, cx + h * 0.56, my + h * 0.4, cx - h * 0.56, my + h * 0.4]), fill(YARD.castIron));
+  c.drawPath(poly([cx - h * 0.46, my + h * 0.06, cx + h * 0.46, my + h * 0.06, cx + h * 0.4, my + h * 0.24, cx - h * 0.4, my + h * 0.24]), fill(YARD.copper));
+  // the pour: a diagonal stream from the upper left into the mould
+  c.drawPath(segment(cx - h * 0.42, cy - h * 0.6, cx + h * 0.05, my + h * 0.04), stroke(YARD.glow, Math.max(1.4, s / 9)));
+  c.drawPath(circle(cx - h * 0.46, cy - h * 0.62, h * 0.16), fill(INK));
+}

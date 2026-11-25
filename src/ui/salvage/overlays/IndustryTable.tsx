@@ -16,7 +16,7 @@ import { YARD } from '../art/palette';
 import * as UI from '../art/ui.draw';
 import { rivalPlate } from '../art/ui.draw';
 import { LOGO, SIM_PT, TONNES_PAD, rungCells, tableCols, type TableCols } from './marketLayout';
-import { plateSeed, rungBox, rungInStage, type RungProgressLike } from './marketLines';
+import { plateSeed, rungBox } from './marketLines';
 import { DataLine, Drawing, gradeName, nameOf, useContent, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { Panel } from './Panel';
@@ -30,7 +30,8 @@ export function IndustryTable({ cfg, g, data, onClose }: CardViewProps) {
   const t: Table = data.table ?? R.industryTable(cfg, g);
   const cols = tableCols(layout);
   const you = t.rows.find((r) => r.id === 'you') ?? null;
-  const { own, next } = rungBox(t, you, rungProgress ? rungProgress(cfg, g) : null);
+  const { own, next } = rungBox(t, you, R.rungProgress(cfg, g));
+  const inStage = new Map(R.rungTiles(cfg, g).map((r) => [r.n, r.inStage]));
   return (
     <Panel
       title={data.title}
@@ -45,7 +46,7 @@ export function IndustryTable({ cfg, g, data, onClose }: CardViewProps) {
       <View style={styles.headline}>
         <Line t={{ key: 'table.headline' }} size="name" bold lines={2} />
       </View>
-      <Rungs t={t} />
+      <Rungs t={t} inStage={inStage} />
       {/* P17: the rung box is the player's OWN tonnes and materials; the next rung's condition on its own line ("Next: opens at ..."; past this stage's last rung a bare padlock and its tonnage, S10). */}
       {own ? <Line t={own} size="line" bold lines={2} /> : null}
       {next ? (
@@ -113,16 +114,14 @@ function yardMark(cv: Parameters<typeof rivalPlate>[0], cx: number, cy: number, 
 }
 const YARD_SEED = 25;
 
-/** rules-book's rung selector once the facade has it (19:55); the table's own rows until then. */
-const rungProgress = (R as unknown as { rungProgress?: (cfg: R.SalvageConfig, g: R.SalvageGame) => RungProgressLike | null }).rungProgress;
 
-function Rungs({ t }: { t: Table }) {
+function Rungs({ t, inStage }: { t: Table; inStage: Map<number, boolean> }) {
   const { layout } = useFrame();
   const { cell, gap } = rungCells(layout, t.rungs.length);
   return (
     <View style={[styles.rungs, { gap }]} accessibilityRole="summary">
       {t.rungs.map((r) => (
-        <View key={r.n} style={[styles.rung, { width: cell, height: cell }, r.current ? styles.rungNow : r.open ? styles.rungPast : styles.rungLocked, !r.open && !rungInStage(r) ? styles.rungBeyond : null]}>
+        <View key={r.n} style={[styles.rung, { width: cell, height: cell }, r.current ? styles.rungNow : r.open ? styles.rungPast : styles.rungLocked, !r.open && inStage.get(r.n) === false ? styles.rungBeyond : null]}>
           {r.open ? <DataLine text={String(r.n)} size="name" bold /> : <Padlock size={Math.round(cell * 0.42)} />}
         </View>
       ))}
@@ -149,7 +148,7 @@ function TableLine({ row, cols, c }: { row: TableRow; cols: TableCols; c: R.Salv
         </View>
       ) : null}
       <View style={{ width: cols.tonnes, alignItems: 'flex-end', paddingRight: TONNES_PAD }}>
-        <DataLine text={R.fmtTonnes(row.tonnes_g)} size="name" bold={you} lines={1} />
+        <DataLine text={R.fmtTonnes(row.tonnes_g)} size="line" bold lines={1} />
       </View>
     </View>
   );

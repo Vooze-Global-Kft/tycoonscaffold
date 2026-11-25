@@ -67,7 +67,8 @@ export const rungInStage = (r: IndustryTable['rungs'][number]): boolean => (r as
  */
 export function rungBox(t: IndustryTable, you: Pick<TableRow, 'tonnes_g'> | null, rp?: RungProgressLike | null): { own: Txt | null; next: Txt | null } {
   const counted = t.range.filter((m) => m.counted).length;
-  const own: Txt | null = rp?.own ?? (you || rp ? { key: 'table.mine', args: { t: { tonnes_g: rp?.supplied_g ?? you?.tonnes_g ?? 0 }, r: { n: rp?.materials ?? counted } } } : null);
+  // The player's own figures, said as theirs ("You: ..."), whatever key the selector used.
+  const own: Txt | null = rp?.own ? { key: 'table.mine', args: rp.own.args } : (you || rp ? { key: 'table.mine', args: { t: { tonnes_g: rp?.supplied_g ?? you?.tonnes_g ?? 0 }, r: { n: rp?.materials ?? counted } } } : null);
   const nr = t.rungs.find((r) => !r.open) ?? null;
   let next: Txt | null = null;
   if (rp && rp.next) next = rp.next.key === 'table.locked' ? { key: 'table.nextRung', args: rp.next.args } : rp.next;
@@ -102,11 +103,13 @@ export type AwayData = AwayCard & {
 
 /** rules-book's away selector (R.awayView, announced 19:55) as it may come: every field optional here. */
 export interface AwayViewLike {
+  absentS?: number;
   seconds?: number;
   ran_s?: number;
   sales?: number;
   bought?: { partner?: string; n: number; money: number }[] | { partner?: string; n: number; money: number } | null;
   net?: number;
+  spent?: number;
   lines?: { grade: string; g: number; money: number }[];
   more?: number;
   deliveries?: number | { day: number; g: number; paid: number }[];
@@ -119,12 +122,13 @@ export interface AwayViewLike {
 export function withAwayView(a: AwayData, v: AwayViewLike | null | undefined): AwayData {
   if (!v) return a;
   const bought = v.bought == null ? undefined : (Array.isArray(v.bought) ? v.bought : [v.bought]).map((b) => ({ partner: b.partner ?? '', n: b.n, spent: b.money }));
+  const spent = v.spent ?? (bought ? bought.reduce((x, b) => x + b.spent, 0) : a.spent);
   return {
     ...a,
-    absentS: v.seconds ?? a.absentS,
+    absentS: v.absentS ?? a.absentS ?? v.seconds,
     seconds: v.ran_s ?? a.seconds,
     money: v.sales ?? a.money,
-    spent: bought ? bought.reduce((x, b) => x + b.spent, 0) : a.spent,
+    spent,
     bought: bought ?? a.bought,
     net: v.net ?? a.net,
     lines: (v.lines ?? a.lines) as AwayCard['lines'],
@@ -141,7 +145,8 @@ export function withAwayView(a: AwayData, v: AwayViewLike | null | undefined): A
  * Every line the away card prints, in the ruled order (P3, P19, R6, R10): the head ("Away {t} · the
  * yard ran {c}") and what makes it run longer; the money (Sales, loads bought per partner, then Net,
  * which is what the cash moved by); each deal delivery; the rivals passed; the next step; then the
- * grade lines (five at most, three at large type) and "+ n more".
+ * grade lines (five at most, three at large type) and "+ n more". At large type the loads bought are
+ * one line (their total), so the rivals passed stay above the fold at 667 x 375 (P19).
  */
 export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt | null; money: Txt[]; net: Txt | null; news: Txt[]; next: Txt | null; lines: Txt[] } {
   const head: Txt = { key: 'away.head', args: { t: { secs: a.absentS ?? a.seconds }, c: { secs: a.seconds } } };
@@ -153,7 +158,7 @@ export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt 
   if (a.money > 0 || spent > 0) {
     money.push({ key: 'away.sales', args: { x: { money: a.money } } });
     const bought = (a.bought ?? []).filter((b) => b.n > 0 || b.spent > 0);
-    if (bought.length > 1 && bought.every((b) => b.partner)) for (const b of bought) money.push({ key: 'away.boughtFrom', args: { partner: { name: b.partner }, n: { n: b.n }, x: { money: b.spent } } });
+    if (bought.length > 1 && bought.every((b) => b.partner) && !large) for (const b of bought) money.push({ key: 'away.boughtFrom', args: { partner: { name: b.partner }, n: { n: b.n }, x: { money: b.spent } } });
     else if (bought.length || spent > 0) money.push({ key: 'away.bought', args: { n: { n: bought.length ? bought.reduce((x, b) => x + b.n, 0) : a.loads }, x: { money: bought.length ? bought.reduce((x, b) => x + b.spent, 0) : spent } } });
     const v = a.net ?? a.money - spent;
     // The sign picks the line; the amount is the rules' own (printed positive, as the key asks).
@@ -167,6 +172,8 @@ export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt 
   // The next step: rules-book's, else the rules' hint (printed once: it can be the "nothing" line itself).
   let next: Txt | null = a.next ?? a.hint ?? null;
   if (next && news.some((t) => t.key === next!.key && JSON.stringify(t.args ?? {}) === JSON.stringify(next!.args ?? {}))) next = null;
+  // A goal's own line is said as the next step ("Next: Strip the car for the shredder").
+  if (next && next.key.startsWith('goal.')) next = { key: 'away.next', args: { ...(next.args ?? {}), goal: { text: next.key } } };
   const max = large ? AWAY_LINES_LARGE : AWAY_LINES;
   const lines = a.lines.slice(0, max).map((l): Txt => ({ key: 'away.line', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'lot' }, x: { money: l.money } } }));
   const rest = Math.max(0, a.lines.length - max) + (a.moreLines ?? 0);
@@ -230,6 +237,14 @@ export function rungLines(n: number, tonnes: number, capacity: number | null): {
   if (n === 2) return { sign, opens: { key } };
   if (n === 3) return { sign, opens: { key, args: { c: { n: capacity ?? 0 } } } };
   return { sign, opens: null };
+}
+
+// ------------------------------------------------------------------------------- Settings
+
+/** The policy page when it is a real one: none, or the reserved example domains (validate's own test), give null. */
+export function realPolicyUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return /^https?:\/\/([^/]*\.)?example\.(com|org|net)(\/|$)/i.test(url) ? null : url;
 }
 
 // ------------------------------------------------------------------------------- Help

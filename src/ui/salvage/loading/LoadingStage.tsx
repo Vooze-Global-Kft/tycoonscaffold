@@ -104,6 +104,7 @@ export function LoadingStage({ title, splash, width, height, insets, ready, onDo
     };
   }, [P]);
   const kick = useCallback(() => {
+    if (__DEV__) console.info(`[loading] third frame at ${typeof performance !== 'undefined' ? Math.round(performance.now()) : 0} ms after the page began: the yard's bake and the stage's images are asked for`);
     startYardBake();
     cancel.current?.();
     cancel.current = bakeLoading(P.Y, DENSITY, () => {

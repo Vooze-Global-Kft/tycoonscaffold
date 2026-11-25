@@ -23,6 +23,13 @@ import { yardLayout, type YardLayout } from './yard';
 
 /** The screen's pixel density as the art is baked for it (1 to 3). */
 export const DENSITY = Math.max(1, Math.min(3, Math.round(PixelRatio.get())));
+/**
+ * The manifest's sheets bake at most at density 2 (H6): on a 3x phone sheet A goes from 2048 x 1953 at 2.75
+ * to 2046 x 1040 at 2, B from 2048 x 1961 at 2.5 to 2048 x 1286; measured with the phone reviewer's bake
+ * harness under node (CPU ms, A + B): recording 768 -> 409, raster 1058 -> 674 (about 0.6 of the time,
+ * the JavaScript half 0.53). The floor's tile keeps the screen's density.
+ */
+export const SHEET_DENSITY = Math.min(DENSITY, 2);
 /** Shadows are flat soft shapes: baked at most at this density and drawn up. */
 const SHADOW_DENSITY = 1;
 
@@ -145,7 +152,7 @@ export function startYardBake(): void {
   const t0 = Date.now();
   if (__DEV__) console.info(`[yard] bake started ${typeof performance !== 'undefined' ? Math.round(performance.now()) : 0} ms after the page began`);
   const y = yardFor(cfg);
-  bakeManifest(DENSITY)
+  bakeManifest(SHEET_DENSITY)
     .then((m) => {
       let ground: GroundTile | null = null;
       let shadows: ShadowSheet | null = null;

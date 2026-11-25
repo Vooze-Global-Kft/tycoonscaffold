@@ -30,7 +30,7 @@ export { tickets } from './salvage/tickets';
 export { fmtMoneyExact } from './salvage/money';
 export { awayView, inOutTxt, levelFact, type AwayView } from './salvage/cards';
 export { rungProgress, rungTiles, type RungProgress, type RungTile } from './salvage/ladder';
-export { converterLineCfg as converterLine } from './salvage/tickets';
+export { converterLineCfg as converterLine, printedNo } from './salvage/tickets';
 export { reconcileSalvage } from './salvage/save';
 
 // ---- rules-sim (changes)

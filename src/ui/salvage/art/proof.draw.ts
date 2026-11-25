@@ -242,7 +242,7 @@ export const HERO_WORDS = {
   cash: '412',
   rank: '26th',
   of: 'of 26',
-  next: 'Bramley & Daughters Scrap',
+  next: 'Marchford & Daughters Scrap',
   gap: '0.15 t',
   carry: '28.6 / 30 kg',
   goal: 'Weigh it on the scale',
