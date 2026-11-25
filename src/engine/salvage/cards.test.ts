@@ -156,3 +156,67 @@ describe('a skip still filling (strings 16:45; 2.7: its contents are fixed when 
     for (const s of [5, 250, 3 * 3600 + 12 * 60]) expect(R.fmtDuration(s)).not.toMatch(/ /);
   });
 });
+
+describe('fix pass: the away card (P3), the rung box and tiles (P17, S10), rows without rates (W5), machine cards (W7)', () => {
+  const g = (name: string) => fixtureGame(name, base(), FIXTURE_NOW) as SalvageGame;
+  it('the away card: net = sales − loads bought; held (unpaid) lines never listed; at most three; a next step while a goal is open', () => {
+    const b = g('back');
+    expect(b.salvage.away).toBeTruthy();
+    const away = { ...b.salvage.away!, money: 1000, spent: 300, bought: [{ partner: 'partnerFarm', n: 3, spent: 200 }, { partner: 'partnerDemolition', n: 1, spent: 100 }], lines: [
+      { grade: 'li', g: 1e6, money: 400 }, { grade: 'ci', g: 2e7, money: 0 }, { grade: 'bb', g: 1e5, money: 500 }, { grade: 'no2', g: 1e5, money: 50 }, { grade: 'brs', g: 1e5, money: 40 }, { grade: 'alw', g: 1e5, money: 30 }, { grade: 'mot', g: 1e5, money: 20 },
+    ] };
+    const v = R.awayView(cfg, { ...b, salvage: { ...b.salvage, away } } as SalvageGame)!;
+    expect(v.sales).toBe(1000);
+    expect(v.boughtTotal).toEqual({ n: 4, money: 300 });
+    expect(v.bought.length).toBe(2);
+    expect(v.net).toBe(700);
+    expect(v.lines.map((l) => l.grade)).toEqual(['bb', 'li', 'no2', 'brs', 'alw']);
+    expect(v.lines.some((l) => l.money <= 0)).toBe(false);
+    expect(v.more).toBe(1);
+    if (R.nextGoal(cfg, b)) expect(v.next).toEqual(R.nextGoal(cfg, b)!.text);
+    expect(R.awayView(cfg, g('m5'))).toBe(null);
+    // Nothing spent: no "loads bought" line, net = sales.
+    const v0 = R.awayView(cfg, { ...b, salvage: { ...b.salvage, away: { ...b.salvage.away!, money: 80, spent: 0, net: 80, bought: [] } } } as SalvageGame)!;
+    expect(v0.net).toBe(v0.sales);
+    expect(v0.boughtTotal).toBe(null);
+  });
+  for (const name of FIXTURE_NAMES) {
+    it(`${name}: the rung box prints the player's own figures; tiles past the stage carry no "Opens"`, () => {
+      const s = g(name);
+      const p = R.rungProgress(cfg, s);
+      expect(p.own.args?.t).toEqual({ tonnes_g: s.salvage.ladder.supplied_g });
+      if (p.rung >= 3) expect(p.next).toBe(null);
+      const tiles = R.rungTiles(cfg, s);
+      for (const t of tiles) {
+        if (t.n > 3) expect(t.inStage).toBe(false);
+        if (!t.inStage || t.open) expect(t.line).toBe(null);
+        else expect(t.line?.key).toBe('table.locked');
+      }
+    });
+    it(`${name}: no row of the rota, the partners or a machine card prints a rate an hour or a second (W5)`, () => {
+      const s = g(name);
+      const refs: CardRef[] = [{ kind: 'office', tab: 'rota' }, { kind: 'office', tab: 'partners' }, { kind: 'machine', machine: 'hand_stripper' }, { kind: 'machine', machine: 'stripper' }, { kind: 'machine', machine: 'bench' }, { kind: 'machine', machine: 'crucible' }];
+      for (const ref of refs) {
+        const d = cardOf(cfg, s, ref, FIXTURE_NOW);
+        for (const r of d.rows) for (const t of [r.name, r.line, r.extra]) {
+          if (!t) continue;
+          expect(['card.carriesRate', 'card.cutsRate', 'card.levelAdds', 'card.rateKgS', 'card.rate'], `${ref.kind} ${r.id}`).not.toContain(t.key);
+          for (const a of Object.values(t.args ?? {})) expect('rate_g_h' in a, `${r.id}`).toBe(false);
+        }
+      }
+    });
+    it(`${name}: a machine card lists every output largest first, and its status row is named by the machine (W7)`, () => {
+      const s = g(name);
+      const d = cardOf(cfg, s, { kind: 'place', place: 'stripper' }, FIXTURE_NOW);
+      for (const m of d.machines ?? []) {
+        if (m.machine === 'bench') expect(m.out.length).toBe(cfg.salvage.machines.bench.out.filter(([, sh]) => sh > 0).length);
+        const st = d.rows.find((r) => r.id === `${m.machine}.status`);
+        if (st) expect(st.name.key).toBe(m.machine === 'hand_stripper' ? 'item.handStripper' : `item.${m.machine}`);
+      }
+      const bench = cardOf(cfg, s, { kind: 'machine', machine: 'bench' }, FIXTURE_NOW).machines![0];
+      const share = new Map(cfg.salvage.machines.bench.out);
+      for (let i = 1; i < bench.out.length; i++) expect(share.get(bench.out[i - 1])!).toBeGreaterThanOrEqual(share.get(bench.out[i])!);
+      expect(R.inOutTxt(bench).key).toBe(bench.out.length >= 3 ? 'card.inOut3' : bench.out.length === 2 ? 'card.inOut2' : 'card.inOut');
+    });
+  }
+});

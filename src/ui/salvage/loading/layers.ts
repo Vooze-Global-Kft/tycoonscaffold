@@ -403,9 +403,11 @@ function casting(c: SkCanvas, L: LoadingLayout): void {
     c.drawPath(rect(cavX[i] + 3 * k, lY + 2 * k, 4 * k, cavY - lY - 1.5 * k), fill(YARD.refractory));
     c.drawPath(rect(cavX[i] + 3 * k, lY + 2 * k, 4 * k, cavY - lY - 1.5 * k), stroke(INK, 0.8));
   }
-  // the launder: a refractory-lined channel from the spout block along the moulds' backs
-  c.drawPath(rrect(lX0, lY - 3 * k, mR - lX0, 6 * k, 3 * k), fill(shade(YARD.castIron, -0.5)));
-  c.drawPath(rrect(lX0, lY - 3 * k, mR - lX0, 6 * k, 3 * k), stroke(INK, 1.2));
+  // the launder: a thin refractory channel from the spout block along the moulds' backs (light, so it
+  // reads as part of the casting, not as a bar)
+  c.drawPath(rrect(lX0, lY - 2.5 * k, mR - lX0, 5 * k, 2.5 * k), fill(mix(YARD.refractory, '#FFFFFF', 0.15)));
+  c.drawPath(segment(lX0 + 3 * k, lY - 0.5 * k, mR - 3 * k, lY - 0.5 * k), stroke(shade(YARD.refractory, -0.35), 1.2));
+  c.drawPath(rrect(lX0, lY - 2.5 * k, mR - lX0, 5 * k, 2.5 * k), stroke(INK, 1.1));
   c.drawPath(rrect(lX0 - 8 * k, lY - 6 * k, 22 * k, 12 * k, 3 * k), fill(YARD.refractory));
   c.drawPath(rrect(lX0 - 8 * k, lY - 6 * k, 22 * k, 12 * k, 3 * k), stroke(INK, 1.4));
 }
@@ -568,8 +570,8 @@ function notches(c: SkCanvas, x0: number, cy: number, cw: number, ch: number, se
 
 /** An ingot in its cavity: a long bar with two V break notches in its top edge (a cast ingot, not a bar of bullion). */
 export function ingotPath(x0: number, cy: number, cw: number, ch: number): SkPath {
-  const d = ch * 0.38;
-  const v = ch * 0.3;
+  const d = ch * 0.2;
+  const v = ch * 0.16;
   const n1 = x0 + cw / 3;
   const n2 = x0 + (2 * cw) / 3;
   return poly([x0 + 2, cy + ch - 1, x0 + 4, cy + 1, n1 - v, cy + 1, n1, cy + 1 + d, n1 + v, cy + 1, n2 - v, cy + 1, n2, cy + 1 + d, n2 + v, cy + 1, x0 + cw - 4, cy + 1, x0 + cw - 2, cy + ch - 1]);

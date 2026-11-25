@@ -260,8 +260,11 @@ export function drawField(c: SkCanvas, v: View3q, kind: FieldKind, seed = 1): vo
   for (let i = 0; i < rows; i++) {
     const y = y0 + ((i + 0.5) * (y1 - y0)) / rows;
     if (kind === 'plough') {
-      c.drawPath(rect(x0, y - 2.2, x1 - x0, 2.6), fill(shade(base, -0.22)));
-      c.drawPath(rect(x0, y + 0.6, x1 - x0, 1.2), fill(shade(base, 0.12)));
+      // furrows: soft, a little wavy (one period per tile, so tiles still join)
+      const fb = builder().moveTo(x0, y - 1.6);
+      for (let k = 0; k <= 6; k++) fb.lineTo(x0 + ((x1 - x0) * k) / 6, y - 1.6 + Math.sin(k * Math.PI / 3 + i) * 0.9);
+      for (let k = 6; k >= 0; k--) fb.lineTo(x0 + ((x1 - x0) * k) / 6, y + 0.6 + Math.sin(k * Math.PI / 3 + i) * 0.9);
+      c.drawPath(fb.close().build(), fill(shade(base, -0.12)));
     } else if (kind === 'stubble') {
       c.drawPath(rect(x0, y - 0.7, x1 - x0, 1.4), fill(shade(base, -0.16)));
     }
@@ -395,7 +398,7 @@ export function partnerMark(c: SkCanvas, cx: number, cy: number, s: number, mark
 export const partnerSignSlot = (v: View3q): [number, number, number, number] => {
   const [ax, ay] = proj(v, -1.0, 0.06, 1.55);
   const [bx, by] = proj(v, 1.0, 0.06, 1.05);
-  return [ax + 34, ay, bx - ax - 38, by - ay];
+  return [ax + 40, ay, bx - ax - 44, by - ay];
 };
 
 /** A partner's gate sign: a board on two posts (2.2 m), the partner's mark at its west end, room for the name. */
@@ -406,7 +409,7 @@ export function drawPartnerSign(c: SkCanvas, v: View3q, mark: PartnerMark): void
   const board = mark === 'farm' ? '#F4EFE0' : '#2E3A33';
   box(c, v, { len: L, wid: 0.06, h: 0.72, z: 0.98, color: board, line: 1.1, onFace: (q, n) => n[1] > 0.9 && faceFill(c, v, subQuad(q, 0, 1, 0, 0.1), mark === 'farm' ? '#2F6B3A' : YARD.hivis) });
   const [mx, my] = proj(v, -L / 2 + 0.38, 0.06, 1.34);
-  partnerMark(c, mx, my, 22, mark);
+  partnerMark(c, mx, my, 28, mark);
 }
 
 /** The farm partner's barn (6 x 4 m): stone walls, a slate roof with a ridge, a big door, a window, a chimney. */

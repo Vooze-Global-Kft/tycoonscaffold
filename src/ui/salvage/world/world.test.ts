@@ -199,7 +199,10 @@ describe('the rules table', async () => {
       return -1;
     };
     for (const th of f.things) expect(at(th.x, th.y), th.obj).toBeGreaterThanOrEqual(0);
-    expect(t.solids.length / 5).toBe(f.things.filter((th) => (th.off ?? th.stage) === 0).length);
+    // The whole things' solids first (then the drawn stillages and cages, merged: P13).
+    const whole = f.things.filter((th) => (th.off ?? th.stage) === 0);
+    expect(t.solids.length / 5).toBeGreaterThanOrEqual(whole.length);
+    whole.forEach((th, i) => expect([t.solids[i * 5 + 1], t.solids[i * 5 + 2]]).toEqual([th.x, th.y]));
     // The boss's carrier is the frame's.
     expect(t.boss[0]).toBe(f.load.carrier === 'sack' ? 1 : f.load.carrier === 'trolley' ? 2 : 0);
   });
@@ -318,5 +321,182 @@ describe('the hand: presence samples (D12, the two binding tests)', async () => 
     const first = samples.find(works)!;
     expect(first).toBeDefined();
     expect(first.t - (stopped.t - SAMPLE_MS / 1000)).toBeLessThanOrEqual(0.5);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------
+// The fix pass (world-a): the yard of the GAME's content (the map moves; nothing here pins a coordinate:
+// every place, point and size is read from the content), and the fixture beside it.
+// ---------------------------------------------------------------------------------------------------
+const gameJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../../games/scrap-yard/game.json'), 'utf8'));
+const GAME = SalvageSchema.parse(gameJson.salvage);
+
+describe.each([
+  ['the game', GAME],
+  ['the fixture', content],
+])('walking %s yard', async (_name, c) => {
+  const { yardLayout, SOLID_BOX } = await import('./yard');
+  const { moveBody, blocked } = await import('./collide');
+  const R = await import('../../../engine/salvage');
+  const y = yardLayout(c);
+  const r = c.worker.radius;
+  const v = c.walk;
+  const walk = (x0: number, y0: number, ux: number, uy: number, seconds: number) => {
+    const out = [0, 0];
+    let x = x0;
+    let yy = y0;
+    for (let i = 0; i < seconds * 60; i++) {
+      moveBody(out, x, yy, (ux * v) / 60, (uy * v) / 60, r, y.solids, y.width, y.depth, 0, 0, 0);
+      x = out[0];
+      yy = out[1];
+    }
+    return { x, y: yy };
+  };
+
+  it('slides along every solid on a 45 degree push and never sticks (P13)', () => {
+    const stuck: string[] = [];
+    const s = y.solids;
+    const k = Math.SQRT1_2;
+    for (let o = 0; o + 4 < s.length; o += 5) {
+      if (s[o] !== SOLID_BOX) continue;
+      const [cx, cy, a, b] = [s[o + 1], s[o + 2], s[o + 3], s[o + 4]];
+      // The middle of each side, the body just outside it, pushed into it and along it both ways.
+      const sides: [number, number, number, number][] = [
+        [cx, cy - b - r - 0.02, 0, 1],
+        [cx, cy + b + r + 0.02, 0, -1],
+        [cx - a - r - 0.02, cy, 1, 0],
+        [cx + a + r + 0.02, cy, -1, 0],
+      ];
+      for (const [x0, y0, nx, ny] of sides) {
+        if (blocked(x0, y0, r, s, y.width, y.depth)) continue;
+        for (const t of [-1, 1]) {
+          const ux = (nx + -ny * t) * k;
+          const uy = (ny + nx * t) * k;
+          const end = walk(x0, y0, ux, uy, 0.5);
+          const along = Math.abs((end.x - x0) * -ny * t + (end.y - y0) * nx * t);
+          // A real inside corner (blocked both ways ahead) may stop him; a side never does.
+          const ahead = blocked(end.x + ux * 0.08, end.y, r, s, y.width, y.depth) && blocked(end.x, end.y + uy * 0.08, r, s, y.width, y.depth);
+          if (along < 0.25 * v * 0.5 * k && !ahead) stuck.push(`box at ${cx.toFixed(1)},${cy.toFixed(1)} side ${nx},${ny} dir ${t}: moved ${along.toFixed(2)} m`);
+        }
+      }
+    }
+    expect(stuck).toEqual([]);
+  });
+
+  it('keeps everybody south of the back wall (MAP.md M1)', () => {
+    if (y.northFace === null) return;
+    const end = walk(y.width / 2, y.northFace + 2, 0, -1, 4);
+    expect(end.y).toBeGreaterThanOrEqual(y.northFace + r - 1e-6);
+    expect(blocked(y.width / 2, y.northFace - 0.5, r, y.solids, y.width, y.depth)).toBe(true);
+  });
+
+  it('reaches every card place: a free standing spot in reach, walkable from the start (L12)', () => {
+    const step = 0.25;
+    const nx = Math.ceil(y.width / step);
+    const ny = Math.ceil(y.depth / step);
+    const free = (i: number, j: number) => !blocked(i * step, j * step, r, y.solids, y.width, y.depth);
+    const seen = new Uint8Array(nx * ny);
+    const start = [Math.round(y.workerStart.x / step), Math.round(y.workerStart.y / step)];
+    const q: number[] = [start[0], start[1]];
+    seen[start[1] * nx + start[0]] = 1;
+    for (let h = 0; h < q.length; h += 2) {
+      const [i, j] = [q[h], q[h + 1]];
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const a = i + di;
+        const b = j + dj;
+        if (a < 0 || b < 0 || a >= nx || b >= ny || seen[b * nx + a]) continue;
+        seen[b * nx + a] = 1;
+        if (free(a, b)) q.push(a, b);
+        else seen[b * nx + a] = 2;
+      }
+    }
+    const unreached: string[] = [];
+    for (const [id, pl] of Object.entries(c.map.places)) {
+      if (!pl.card || !c.map.points[id]) continue;
+      let ok = false;
+      for (let j = 0; j < ny && !ok; j++)
+        for (let i = 0; i < nx && !ok; i++) if (seen[j * nx + i] === 1 && R.placeNear({ salvage: c } as never, i * step, j * step) === id) ok = true;
+      if (!ok) unreached.push(id);
+    }
+    expect(unreached).toEqual([]);
+  });
+});
+
+describe('the camera (L6, MAP.md M7)', async () => {
+  const { followCam, zoomedBounds, FOLLOW_Y, EDGE_ROOM_M } = await import('./camera');
+  const { yardLayout } = await import('./yard');
+  const y = yardLayout(GAME);
+  const P = y.ppm;
+  const topPx = (1.95 * y.lift + 0.4 * y.tilt + 0.1) * P + 8;
+  const view = (bx: number, by: number, SW: number, SH: number, zoom = 1) => {
+    const cam = [0, 0, 0, 0];
+    followCam(cam, bx * P, by * P * y.tilt, SW, SH, zoom, FOLLOW_Y);
+    const want = [cam[0], cam[1]];
+    zoomedBounds(cam, y.width * P, y.pxH, SW, SH, 0, 0, 0, 0, EDGE_ROOM_M * P, topPx, zoom, y.northFace !== null ? y.northFace * P * y.tilt : NaN, FOLLOW_Y);
+    const cx = Math.max(cam[0], Math.min(cam[1], want[0]));
+    const cy = Math.max(cam[2], Math.min(cam[3], want[1]));
+    const at = (wx: number, wy: number) => [(wx * P - cx - SW / 2) * zoom + SW / 2, (wy * P * y.tilt - cy - SH / 2) * zoom + SH / 2];
+    return { cx, cy, at };
+  };
+
+  it('puts the followed body at FOLLOW_Y of the height at any zoom', () => {
+    for (const z of [1, 0.75]) {
+      const cam = [0, 0];
+      followCam(cam, 1000, 500, 844, 390, z, FOLLOW_Y);
+      const sy = (500 - cam[1] - 195) * z + 195;
+      expect(sy).toBeCloseTo(FOLLOW_Y * 390, 6);
+    }
+  });
+
+  for (const [SW, SH] of [[844, 390], [667, 375]] as const)
+    it(`shows at most about a metre past the east and south fences on foot and nothing north of the wall's band (${SW}x${SH})`, () => {
+      const r = GAME.worker.radius;
+      const se = view(y.width - r, y.depth - r, SW, SH);
+      const [ex] = se.at(y.width, y.depth);
+      const [, sy] = se.at(y.width, y.depth);
+      expect(SW - ex).toBeLessThanOrEqual(EDGE_ROOM_M * P + 1);
+      expect(SH - sy).toBeLessThanOrEqual(EDGE_ROOM_M * P + 1);
+      if (y.northFace !== null) {
+        // Even a camera that wanted to look five metres north of the wall stops at the follow view of the wall.
+        const n = view(y.width / 2, y.north! - 5, SW, SH);
+        const [, wy] = n.at(0, y.north!);
+        expect(wy).toBeGreaterThanOrEqual(FOLLOW_Y * SH - (y.northFace - y.north!) * P * y.tilt - 1);
+      }
+    });
+
+  for (const [SW, SH] of [[844, 390], [667, 375]] as const)
+    it(`the first view holds the drop-off's first place, zone 1's bed, the platform scale and the scale house (${SW}x${SH})`, () => {
+      const v = view(y.workerStart.x, y.workerStart.y, SW, SH);
+      const TOP = 84;
+      const inFree = (wx: number, wy: number) => {
+        const [sx, sy] = v.at(wx, wy);
+        return sx >= 0 && sx <= SW && sy >= TOP && sy <= SH;
+      };
+      const pts = GAME.map.points;
+      const missing: string[] = [];
+      for (const id of ['scale', 'scalehouse']) if (pts[id] && !inFree(pts[id][0], pts[id][1])) missing.push(id);
+      const first = Object.keys(pts).filter((k) => /^dropoff/.test(k)).sort()[0];
+      if (first && !inFree(pts[first][0], pts[first][1])) missing.push(first);
+      const z1 = Object.entries(GAME.zones).find(([, z]) => (z.tier ?? 0) === 1);
+      const bed = z1 ? (z1[1] as { bed?: { x0: number; y0: number; w: number; d: number } }).bed : undefined;
+      if (bed) {
+        const any = [0.25, 0.5, 0.75].some((u) => [0.25, 0.5, 0.75].some((w) => inFree(bed.x0 + bed.w * u, bed.y0 + bed.d * w)));
+        if (!any) missing.push(`bed of ${z1![0]}`);
+      }
+      expect(missing).toEqual([]);
+    });
+});
+
+describe('vehicles on the drive line (P15) and solids merged (P13)', async () => {
+  const { viaDriveLine, nearestOnLine, mergeBoxes } = await import('./actors');
+  it('lays a leg inside the yard onto the line and leaves a lane leg alone', () => {
+    const line = [60, 25, 40, 25];
+    const p = viaDriveLine([45, 21, 58, 21], line, 64);
+    expect(p).toEqual([45, 21, 45, 25, 58, 25, 58, 21]);
+    expect(viaDriveLine([70, 25, 90, 25], line, 64)).toEqual([70, 25, 90, 25]);
+    expect(nearestOnLine(line, 50, 30)).toEqual({ x: 50, y: 25, at: 0.5 });
+  });
+  it('merges boxes closer than the gap into one', () => {
+    expect(mergeBoxes([[0, 1, 0, 1], [1.1, 2, 0, 1], [5, 6, 0, 1]], 1.2)).toEqual([[0, 2, 0, 1], [5, 6, 0, 1]]);
   });
 });

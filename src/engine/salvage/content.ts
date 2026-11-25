@@ -29,10 +29,24 @@ export function pieceSpec(c: SalvageContent, obj: string, k: number): { grade: s
   return { grade: sp[0], g: sp[1], spec: specIndex(specs, k) };
 }
 
-/** Grams still in a thing that has `cut` pieces off (its remaining pieces and its waste). */
+/**
+ * The tool tier the thing's NEXT piece needs (finding W9: content `pieceTiers`, else the object's tier);
+ * a stripped shell (weighed in, waiting for the merchant) is never workable (Infinity).
+ */
+export function tierOf(c: SalvageContent, th: { obj: string; cut: number; shell?: true }): number {
+  if (th.shell) return Infinity;
+  const o = c.objects[th.obj];
+  if (!o) return Infinity;
+  const sp = pieceSpec(c, th.obj, th.cut);
+  return (sp && o.pieceTiers?.[sp.spec]) ?? o.tier;
+}
+
+/** Grams still in a thing that has `cut` pieces off (its remaining pieces, its shell while a piece is left, and its waste). */
 export function thingRemaining_g(c: SalvageContent, obj: string, cut: number): number {
   const n = pieceCount(c, obj);
-  let g = c.objects[obj]?.waste_g ?? 0;
+  const sh = c.objects[obj]?.shell;
+  if (sh && cut >= n) return 0; // the shell and the waste went at the shell's weigh-in
+  let g = (c.objects[obj]?.waste_g ?? 0) + (sh?.g ?? 0);
   for (let k = cut; k < n; k++) g += pieceSpec(c, obj, k)?.g ?? 0;
   return g;
 }

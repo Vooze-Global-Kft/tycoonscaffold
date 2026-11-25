@@ -13,7 +13,7 @@ import type { GoalLine, TextKey, Ticket, Txt } from '../../../engine/salvage';
 import { TEXT_KEYS } from '../../../engine/salvage';
 import { openCard } from './cardStack';
 import { lineH } from './marketLayout';
-import { ticketSummary } from './marketLines';
+import { converterNote, ticketSummary } from './marketLines';
 import { WordButton, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { Panel } from './Panel';
@@ -33,6 +33,7 @@ export function Clipboard({ cfg, g, data, onClose }: CardViewProps) {
   ];
   // The current goal and those after it first, then the ones done (ticked) and skipped: the list opens at what is next.
   const all = data.goals ?? R.goalList(cfg, g);
+  const conv = converterNote(cfg);
   const goals = [...all.filter((l) => l.state === 'current' || l.state === 'later'), ...all.filter((l) => l.state === 'done' || l.state === 'skipped')];
   const places = data.places ?? g.salvage.seen.places;
   const tickets = [...R.tickets(g)].reverse().slice(0, 50);
@@ -57,7 +58,7 @@ export function Clipboard({ cfg, g, data, onClose }: CardViewProps) {
           <Line t={{ key: 'away.nothing' }} size="line" colour={INK.soft} />
         )
       ) : null}
-      {tab === 'tickets' ? tickets.length ? tickets.map((t) => <TicketRow key={`${t.kind}.${t.no}.${t.at}`} t={t} />) : <Line t={{ key: 'away.nothing' }} size="line" colour={INK.soft} /> : null}
+      {tab === 'tickets' ? tickets.length ? tickets.map((t) => <TicketRow key={`${t.kind}.${t.no}.${t.at}`} t={t} conv={conv} />) : <Line t={{ key: 'away.nothing' }} size="line" colour={INK.soft} /> : null}
     </Panel>
   );
 }
@@ -100,9 +101,9 @@ function PlaceRow({ place, opens }: { place: string; opens: boolean }) {
   );
 }
 
-function TicketRow({ t }: { t: Ticket }) {
+function TicketRow({ t, conv }: { t: Ticket; conv: Txt | null }) {
   const [open, setOpen] = useState(false);
-  const s = ticketSummary(t);
+  const s = ticketSummary(t, conv);
   return (
     <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)} style={({ pressed }) => [styles.ticket, pressed ? { opacity: 0.75 } : null]}>
       <View style={styles.ticketHead}>

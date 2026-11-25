@@ -95,9 +95,14 @@ export function newSteeringTouch(z: StickZone, ne: { changedTouches?: readonly T
 
 /** The JS side's copy of whether a finger steers (H7: never read the shared value on the JS thread). */
 let held = false;
+let endedAt = 0;
 /** True while a finger steers the stick (JS side; no shared-value read: the one button asks this). */
 export function stickHeld(): boolean {
   return held;
+}
+/** Date.now() of the last end, termination or release of a steering touch; 0 before any (OverlayHost's back handler). */
+export function lastStickEndAt(): number {
+  return endedAt;
 }
 
 export type StickResponder = Pick<ViewProps, 'onStartShouldSetResponder' | 'onResponderGrant' | 'onResponderStart' | 'onResponderMove' | 'onResponderEnd' | 'onResponderRelease' | 'onResponderTerminate' | 'onResponderTerminationRequest'> & {
@@ -125,7 +130,10 @@ export function useStickResponder(zone: () => StickZone, enabled: () => boolean)
       const was = finger.current !== null || held;
       finger.current = null;
       held = false;
-      if (was) stick.value = STICK_OFF;
+      if (was) {
+        endedAt = Date.now();
+        stick.value = STICK_OFF;
+      }
     };
     const place = (id: string | number | undefined, x: number, y: number) => {
       const z = zone();
@@ -176,6 +184,7 @@ export function useStickResponder(zone: () => StickZone, enabled: () => boolean)
       // Steering is never handed to another view mid-way; once let go (a card opened), the card may take the touch.
       onResponderTerminationRequest: () => finger.current === null,
       release: () => {
+        if (finger.current !== null || held) endedAt = Date.now();
         finger.current = null;
         held = false;
         stick.value = STICK_OFF;

@@ -8,6 +8,7 @@
 import { asideOf, collectable } from './bays';
 import { count, dayAt, earn, priceAt, printTicket, ticketBase, type Ctx } from './clock';
 import { roundMoney } from './money';
+import { shellsLeave } from './things';
 import type { MerchantState, TicketLine } from './types';
 
 /** Credit a collected (or delivered) lot to the ladder: lifetime supplied grams and the range's worth at p̄ (2.11). */
@@ -50,6 +51,8 @@ export function roundTry(x: Ctx, t: number): void {
       }
       lot.push(line);
       b.g -= free;
+      // W9 (rules-sim-b): a car's stripped shell weighed whole leaves with the round that collects its grade.
+      if (free > 0) shellsLeave(x, grade);
     }
     if (b.g <= 0 && asideOf(b) <= 0) b.n = 0;
   }

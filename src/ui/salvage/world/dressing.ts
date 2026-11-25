@@ -193,10 +193,8 @@ export function dressing(c: SalvageContent): Dress[] {
   for (const [id, pl] of Object.entries(c.map.places)) {
     const p = c.map.points[id];
     if (!p || !/weighbridge/.test(`${id} ${pl.sprite}`)) continue;
-    for (let x = p[0] - pl.w / 2 + 0.75; x < p[0] + pl.w / 2; x += 1.5) {
-      out.push({ id: 'ground.hatch', x, y: p[1] - pl.d / 2 - 0.3 });
-      out.push({ id: 'ground.hatch', x, y: p[1] + pl.d / 2 + 0.3 });
-    }
+    // two hatches at the deck's south lip, where the boss crosses it (the proof's one, doubled)
+    for (const dx of [-0.75, 0.75]) out.push({ id: 'ground.hatch', x: p[0] + dx, y: p[1] + pl.d / 2 + 0.3 });
   }
   // ---- weeds at the beds' edges: old stock has stood a while
   for (const id of bedZones(c)) {
@@ -257,7 +255,7 @@ export function bedDress(c: SalvageContent, zone: string, share = 1): Dress[] {
   // north first, so a tile's loose pieces overlap the one behind it
   const shown = cells.slice(0, full + worn).map((cell, k) => ({ ...cell, low: k >= full }));
   shown.sort((a, z) => a.y - z.y || a.x - z.x);
-  for (const cell of shown) out.push({ id: 'ground.bed', x: cell.x, y: cell.y, frame: (tier - 1) * 2 + cell.look, flat: true, ...(cell.low ? { alpha: 0.4 } : {}) });
+  for (const cell of shown) out.push({ id: 'ground.bed', x: cell.x, y: cell.y, frame: tier === 1 ? cell.look : tier, flat: true, ...(cell.low ? { alpha: 0.4 } : {}) });
   return out;
 }
 

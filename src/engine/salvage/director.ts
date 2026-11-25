@@ -13,7 +13,7 @@
 import { ackAway, buy, hire, setFromBays, setHold, signDeal } from './actions';
 import { awayCapS, awayPass } from './away';
 import { marketDay } from './board';
-import { carrierCap_g } from './content';
+import { carrierCap_g, tierOf } from './content';
 import { dealTerms } from './deal';
 import { shopPrice } from './ladder';
 import { hand, stand, standUntil, walkTo, type Hand } from './play';
@@ -78,7 +78,7 @@ export function person(h: Hand, until: number, stop: (g: SalvageGame) => boolean
     const cap = carrierCap_g(c, s);
     const p = s.presence;
     const cands = s.things
-      .filter((th) => !th.by && !tried.has(th.uid) && (c.objects[th.obj]?.tier ?? 9) <= s.tier)
+      .filter((th) => !th.by && !th.shell && !tried.has(th.uid) && tierOf(c, th) <= s.tier)
       .map((th) => ({ th, d: Math.hypot(thingPos(c, th.at).x - p.x, thingPos(c, th.at).y - p.y) }))
       .sort((a, b) => a.d - b.d || (a.th.uid < b.th.uid ? -1 : 1));
     // Cable on the load and the hand stripper there: strip it by hand (2.5, R1), then take the tray.

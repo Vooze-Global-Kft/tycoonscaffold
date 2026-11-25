@@ -388,3 +388,54 @@ export function rungSign(c: SalvageContent, n: number): { n: number; t_g: number
     next: nx ? { key: 'table.locked', args: { t: { tonnes_g: Math.round(nx.t * 1e6) }, r: { n: nx.range } } } : null,
   };
 }
+
+// ============================================================================ the table's rung box and tiles (fix pass: P17, S10)
+
+/** The rung box (P17): the player's OWN tonnes and materials, and the next rung's condition on its own line. */
+export interface RungProgress {
+  supplied_g: number;
+  materials: number;
+  rung: number;
+  /** "{t} supplied · {r} materials" with the player's own figures. */
+  own: Txt;
+  /** The next rung's condition ("Opens at {t} supplied · {r} materials"), or null past this stage's last rung. */
+  next: Txt | null;
+}
+
+export function rungProgress(cfg: SalvageConfig, g: SalvageGame): RungProgress {
+  const c = cfg.salvage;
+  const s = g.salvage.ladder;
+  const materials = rangeCount(c, s.worth);
+  const nx = rungsOf(c).find((r) => r.n === s.rung + 1 && r.n <= STAGE_TOP_RUNG);
+  return {
+    supplied_g: s.supplied_g,
+    materials,
+    rung: s.rung,
+    own: { key: 'table.rung', args: { t: { tonnes_g: s.supplied_g }, r: { n: materials } } },
+    next: nx ? { key: 'table.locked', args: { t: { tonnes_g: Math.round(nx.t * 1e6) }, r: { n: nx.range } } } : null,
+  };
+}
+
+/** One rung tile of the table (S10): a tile past this stage's last rung has NO line (a bare padlock and its tonnage). */
+export interface RungTile {
+  n: number;
+  t_g: number;
+  range: number;
+  current: boolean;
+  open: boolean;
+  /** False past STAGE_TOP_RUNG: nothing opens there in this stage. */
+  inStage: boolean;
+  /** "Opens at {t} supplied · {r} materials" on a locked tile of this stage; null on an open tile or past the stage. */
+  line: Txt | null;
+}
+
+export function rungTiles(cfg: SalvageConfig, g: SalvageGame): RungTile[] {
+  const c = cfg.salvage;
+  const rung = g.salvage.ladder.rung;
+  return rungsOf(c).map((r) => {
+    const t_g = Math.round(r.t * 1e6);
+    const open = r.n <= rung;
+    const inStage = r.n <= STAGE_TOP_RUNG;
+    return { n: r.n, t_g, range: r.range, current: r.n === rung, open, inStage, line: !open && inStage ? { key: 'table.locked', args: { t: { tonnes_g: t_g }, r: { n: r.range } } } : null };
+  });
+}

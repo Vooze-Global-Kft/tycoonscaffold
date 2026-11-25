@@ -55,23 +55,33 @@ const ZONE_W = 0.45;
 const ZONE_TOP = 0.28;
 /** How far inside the safe area the stick's edge stays, points. */
 const EDGE = 24;
+/** H9: the zone starts at least this far from the left edge (Android's back gesture lives there in landscape). */
+const LEFT_KEEP = 20;
+/** H9: and ends this far above the bottom inset (the iOS home indicator's go-home swipe). */
+const BOTTOM_KEEP = 6;
 
 export function stickZone(width: number, height: number, i: Insets): StickZone {
   const sw = width - i.left - i.right;
   const sh = height - i.top - i.bottom;
-  const x = i.left;
+  const x = Math.max(i.left, LEFT_KEEP);
   const y = i.top + sh * ZONE_TOP;
-  const zw = sw * ZONE_W;
+  const zw = Math.max(0, i.left + sw * ZONE_W - x);
   return {
     x,
     y,
     width: zw,
-    height: height - y,
+    height: Math.max(0, height - i.bottom - BOTTOM_KEEP - y),
     minX: i.left + EDGE + STICK_R,
     maxX: Math.max(i.left + EDGE + STICK_R, x + zw - STICK_R),
     minY: Math.min(i.top + EDGE + STICK_R, height - i.bottom - EDGE - STICK_R),
     maxY: height - i.bottom - EDGE - STICK_R,
   };
+}
+
+/** The responder's props for the input view (its `release` is the shell's to call, not a View prop). */
+function withoutRelease<T extends object>(r: T): Omit<T, 'release'> {
+  const { release: _release, ...rest } = r as T & { release?: unknown };
+  return rest;
 }
 
 function useAppActive(): boolean {
@@ -142,9 +152,13 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
   useEffect(() => {
     useSalvageUi.getState().setDriving(false);
   }, []);
-  // The stick is let go when the yard stops (an overlay opened, the phone turned upright).
+  // The stick is let go when the yard stops (an overlay opened, the phone turned upright): the responder
+  // forgets the finger too (H12), so the next move does not steer again under the card.
+  const releaseRef = useRef<() => void>(() => {
+    stick.value = { on: 0, bx: 0, by: 0, kx: 0, ky: 0 };
+  });
   useEffect(() => {
-    if (!active) stick.value = { on: 0, bx: 0, by: 0, kx: 0, ky: 0 };
+    if (!active) releaseRef.current();
   }, [active]);
   // `active` is "may steer": the loop itself runs while landscape and in the foreground (2.8: the rules
   // keep running under an open card; the boss stands). It reports footsteps and the diesel to the pump.
@@ -160,9 +174,10 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
     () => activeRef.current,
   );
   const grant = responder.onResponderGrant;
+  if (typeof (responder as { release?: () => void }).release === 'function') releaseRef.current = (responder as { release: () => void }).release;
   const input = useMemo(
     () => ({
-      ...responder,
+      ...withoutRelease(responder),
       onResponderGrant: (e: Parameters<NonNullable<typeof grant>>[0]) => {
         grant?.(e);
         setUsed(true);

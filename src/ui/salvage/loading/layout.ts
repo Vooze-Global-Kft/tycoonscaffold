@@ -195,9 +195,9 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
   const a = (tiltDeg * Math.PI) / 180;
   const lipX0 = Math.cos(a) * lip[0] - Math.sin(a) * lip[1];
   const lipY0 = Math.sin(a) * lip[0] + Math.cos(a) * lip[1];
-  // the moulds on a casting table: a mould is mH high, the table 5 k thick on legs 12 k to the floor
-  const mH = 15 * k;
-  const legs = 5 * k + 12 * k;
+  // the moulds on a casting table: a mould is mH high, the table 5 k thick on legs 8 k to the floor
+  const mH = 18 * k;
+  const legs = 5 * k + 8 * k;
   const mY = Math.min(sb - mH - legs, sY + lipY0 + 14 * k);
   const tableY = mY + mH;
   const footY = tableY + legs;
@@ -210,7 +210,7 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
   const mL = lipX + 10 * k;
   const mR = mL + CAV * mouldW + (CAV - 1) * mouldGap;
   const mouldX = Array.from({ length: CAV }, (_, i) => mL + i * (mouldW + mouldGap));
-  const cavX = mouldX.map((x0) => x0 + 5 * k);
+  const cavX = mouldX.map((x0) => x0 + 4 * k);
   // the ticket: three lines of dot-matrix print at 11 points or more ("LOADED", "9,999 KG", "ID OK")
   const tkPrint = Math.max(11, 11 * k);
   const tkW = dotWidth('9,999 KG', tkPrint) + 14 * k;
@@ -260,11 +260,11 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
     tableY,
     footY,
     cavX,
-    cavW: mouldW - 10 * k,
+    cavW: mouldW - 8 * k,
     cavY: mY + 3 * k,
-    cavH: 9 * k,
+    cavH: 12 * k,
     lX0: lipX - 6 * k,
-    lY: mY - 3 * k,
+    lY: mY - 5 * k,
     sX,
     sY,
     R,

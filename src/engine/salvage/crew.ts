@@ -5,7 +5,7 @@
  * what the boss works; the driver is truck.ts's. Owner: rules-sim.
  */
 import { boostFactor, bossFresh, type Ctx } from './clock';
-import { byValue, cutTime, legM, machineInputs, machinePlace, pieceCount, pieceSpec, sumStock, toolP } from './content';
+import { byValue, cutTime, legM, machineInputs, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP } from './content';
 import { meltPiece } from './crucible';
 import { accepts, atPlace, feedPiece, takeTray, trayFree } from './machines';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
@@ -117,12 +117,10 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   const inYard = bossFresh(x, t);
   const carryable = (p: GroundPiece) => !(inYard && isCable(x, p.grade));
   // Nothing anywhere to carry: stay at the stand (offered work again at every later event).
-  let any = false;
   // Only the piles a yard hand takes from count (2.6: never from the heaps; pieces beside a thing in a zone are the boss's).
-  for (const p of s.pieces) if (!p.claim && waitsAt(x, p)) {
-    any = true;
-    break;
-  }
+  const free: GroundPiece[] = [];
+  for (const p of s.pieces) if (!p.claim && waitsAt(x, p)) free.push(p);
+  let any = free.length > 0;
   if (!any) for (const id of ['stripper', 'hand_stripper', 'bench', 'crucible'] as MachineId[]) if (trayFree(x, id) > 0) {
     any = true;
     break;
@@ -132,7 +130,6 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     break;
   }
   if (!any) return false;
-  const free = s.pieces.filter((p) => !p.claim && waitsAt(x, p));
   const claim = (ps: GroundPiece[]) => {
     for (const p of ps) p.claim = m.id;
     m.claims = ps.map((p) => p.uid);
@@ -377,7 +374,7 @@ function cutterDepart(x: Ctx, m: CrewMember, t: number): boolean {
   const s = x.s;
   const P = cutterP(x, m);
   for (const where of ['dropoff', 'floor'] as const) {
-    const cands = s.things.filter((th) => th.at.at === where && !th.by && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && (x.c.objects[th.obj]?.tier ?? 9) <= s.tier);
+    const cands = s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier);
     if (!cands.length) continue;
     const score = (th: ThingState) => (x.c.objects[th.obj]?.preparedValue ?? 0) / Math.max(1e-6, cutLeft(x, th, P));
     const th = cands.sort((a, b) => score(b) - score(a) || (a.uid < b.uid ? -1 : 1))[0];

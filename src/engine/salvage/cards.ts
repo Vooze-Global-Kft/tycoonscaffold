@@ -10,7 +10,7 @@ import { binding, levelBinds, reserve } from './advice';
 import { marketDay, marketTime, priceBoard, priceOf } from './board';
 import { goalListOf, goalOf as goalOfCfg } from './goals';
 import { buyCheck, crewKeys, gateRefusal, hireCheck, itemName, levelAddsKgMin, levelCheck, refusalTxt, route, rungSign, shopItem, shopItems, type PurchaseCheck } from './ladder';
-import { driverRoundF } from './content';
+import { driverRoundF, machineShares } from './content';
 import { roundMoney } from './money';
 import { lastPassed, tableOf } from './rivals';
 import type {
@@ -121,10 +121,32 @@ function levelButton(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, le
   let ch = levelCheck(cfg, g, target);
   if (ch.state === 'buy' && !levelBinds(cfg, g, target, binding(cfg, g))) ch = { ...ch, state: 'notBottleneck' };
   const adds = levelAddsKgMin(cfg, g, target);
-  const addsLine: Txt = { key: 'card.levelAdds', args: { rate: { rate_g_h: Math.round(adds * 60 * 1000) } } };
+  // W5: no absolute rate on a row in this stage: a level reads "+25 % faster" (the share content gives a
+  // level), another skip "One more skip filling at {partner}".
+  const addsLine: Txt | null = levelFact(cfg, g, target);
   const button = purchaseButton(ch, 'card.level', { act: 'level', target, price: ch.price ?? 0 }, { n: { n: level }, m: { n: level + 1 } });
-  const line: Txt | null = ch.state === 'locked' || ch.state === 'top' ? refusalTxt(ch) : ch.state === 'notBottleneck' ? { key: 'card.notBottleneck' } : adds > 0 ? addsLine : null;
+  const rungGate = ch.state === 'locked' && ch.refusal?.key === 'rung' ? ch.refusal.args.t : null;
+  const line: Txt | null = rungGate ? { key: 'card.levelOpensAt', args: { t: rungGate } } : ch.state === 'locked' || ch.state === 'top' ? refusalTxt(ch) : ch.state === 'notBottleneck' ? { key: 'card.notBottleneck' } : adds > 0 ? addsLine : null;
   return { ch, button, line };
+}
+
+/** What one more level does, as a fact (W5): a crew or machine level's share ("+25 % faster"), another skip's partner. */
+export function levelFact(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): Txt | null {
+  const c = cfg.salvage;
+  if (target.kind === 'partner') return { key: 'card.skipMore', args: { partner: { name: target.partner } } };
+  if (target.kind === 'crew') {
+    const m = g.salvage.crew.find((x) => x.id === target.id);
+    const lev = m ? (c.crew[m.role] as { lev?: number } | undefined)?.lev : undefined;
+    return lev ? { key: 'card.levelFaster', args: { pct: { pct: lev } } } : null;
+  }
+  const lev = (c.machines[target.machine] as { lev?: number } | undefined)?.lev;
+  return lev ? { key: 'card.levelFaster', args: { pct: { pct: lev } } } : null;
+}
+
+/** The best tool the yard owns (its name: the cutter's row, W5). */
+function bestToolKey(c: SalvageContent, g: SalvageGame): string | null {
+  const best = Object.entries(c.tools).filter(([, t]) => t.tier <= g.salvage.tier).sort((a, b) => b[1].P - a[1].P)[0];
+  return best ? best[0] : null;
 }
 
 const ROLES: CrewRole[] = ['hand', 'cutter', 'driver'];
@@ -137,8 +159,14 @@ function rotaRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
   for (const role of ROLES) {
     for (const m of s.crew.filter((x) => x.role === role)) {
       const lv = levelButton(cfg, g, { kind: 'crew', id: m.id }, m.level);
+      // W5: a yard hand "Carries {kg} a trip", a cutter "Cuts with the yard's best tool" (its name passed as {tool}), a driver his round.
+      const tool = bestToolKey(c, g);
       const rate: Txt =
-        role === 'hand' ? { key: 'card.carriesRate', args: { t: { rate_g_h: crewRate_g_h(cfg, g, m) } } } : role === 'cutter' ? { key: 'card.cutsRate', args: { t: { rate_g_h: crewRate_g_h(cfg, g, m) } } } : { key: 'card.drivesRate', args: { t: { secs: driverTripS(cfg, g, m) } } };
+        role === 'hand'
+          ? { key: 'card.carriesTrip', args: { kg: { mass_g: Math.round(c.crew.hand.load * 1000), step: 'lot' } } }
+          : role === 'cutter'
+            ? { key: 'card.cutsBest', args: tool ? { tool: { text: itemName(tool) } } : {} }
+            : { key: 'card.drivesRate', args: { t: { secs: driverTripS(cfg, g, m) } } };
       out.push(row(m.id, { key: 'card.crewRow', args: { name: { name: `crew.${m.name}` }, n: { n: m.level } } }, rate, lv.button, lv.ch.state, lv.line, `ui.vest.${role}`));
     }
     const ch = hireCheck(cfg, g, role);
@@ -304,8 +332,10 @@ function skipCard(c: SalvageContent, g: SalvageGame, partner: PartnerId, slotIn?
 // ============================================================================ machines and the process board
 
 const IO = (c: SalvageContent, id: MachineId, recipe: string): [string[], string[]] => {
-  if (id === 'hand_stripper' || id === 'stripper') return [['cab'], ['bb', 'no2']];
-  if (id === 'bench') return [['mot'], (c.machines.bench.out ?? []).map(([gr]) => gr)];
+  // W7: every output, largest share first (content.ts machineShares, the rules' own shares).
+  const outs = (input: string) => machineShares(c, id, input).filter(([, sh]) => sh > 0).sort((a, b) => b[1] - a[1]).map(([gr]) => gr);
+  if (id === 'hand_stripper' || id === 'stripper') return [['cab'], outs('cab')];
+  if (id === 'bench') return [['mot'], outs('mot')];
   const r = c.machines.crucible.recipes[recipe];
   return r ? [Array.isArray(r[0]) ? r[0] : [r[0]], [r[1], r[3]]] : [[], []];
 };
@@ -358,6 +388,15 @@ export function machineCard(c: SalvageContent, g: SalvageGame, id: MachineId): M
   return card;
 }
 
+/** "{in} → {a}, {b}, {c}": every output of the machine card, largest first (W7). */
+export function inOutTxt(mc: Pick<MachineCard, 'in' | 'out'>): Txt {
+  const inp = { grade: mc.in[0] ?? '' };
+  const o = mc.out.filter(Boolean).slice(0, 3);
+  if (o.length >= 3) return { key: 'card.inOut3', args: { in: inp, a: { grade: o[0] }, b: { grade: o[1] }, c: { grade: o[2] } } };
+  if (o.length === 2) return { key: 'card.inOut2', args: { in: inp, a: { grade: o[0] }, b: { grade: o[1] } } };
+  return { key: 'card.inOut', args: { in: inp, out: { grade: o[0] ?? '' } } };
+}
+
 const MACHINE_ITEM: Record<MachineId, string | null> = { hand_stripper: null, stripper: 'stripper', bench: 'bench', crucible: 'crucible' };
 
 /** The rows of a machine card (4.3): before it is owned, what it does and Buy; after, status, hopper, tray, rate, "Level on the process board"; the crucible's recipe, Take from bays, charge and heel. */
@@ -365,18 +404,17 @@ function machineRows(cfg: SalvageConfig, g: SalvageGame, mc: MachineCard): CardR
   const c = cfg.salvage;
   const id = mc.machine;
   const rows: CardRow[] = [];
-  const io: Txt = { key: 'card.inOut', args: { in: { grade: mc.in[0] ?? '' }, out: { grade: mc.out[0] ?? '' } } };
-  // The rate at its level. STAND-IN key: card.rateKgS "{kg} a second" until strings has a "{rate} an hour" line for a machine (requested).
-  const rate: Txt = { key: 'card.rateKgS', args: { kg: { mass_g: Math.round(mc.rate * 1000), step: 'lot' } } };
+  const io = inOutTxt(mc);
+  // W5: no absolute rate on a machine row (the hand stripper's idle state is card.handOnly).
   const item = MACHINE_ITEM[id];
-  if (id === 'hand_stripper') {
-    rows.push(row(`${id}.about`, { key: 'item.handStripper' }, { key: 'effect.handStripper' }, null, 'owned', { key: 'card.cameWithYard' }));
-  } else if (item && !mc.owned) {
+  // The hand stripper came with the yard: its one status row (named by it, W7) says how it turns.
+  if (id !== 'hand_stripper' && item && !mc.owned) {
     rows.push(shopRow(cfg, g, item, effectOf(item)));
     rows.push(row(`${id}.io`, io, null, null, 'info'));
     return rows;
   }
-  rows.push(row(`${id}.status`, mc.status, io, null, 'info', rate));
+  // W7: each owned machine's status row is NAMED by the machine; its state is the line.
+  rows.push(row(`${id}.status`, { key: MACHINE_TITLE[id] }, mc.status, null, 'info', io));
   for (const h of mc.hopper) rows.push(row(`${id}.hopper.${h.grade}`, { key: 'card.hopper', args: { grade: { grade: h.grade }, n: { n: h.n }, kg: { mass_g: h.g, step: 'lot' } } }, null, null, 'info'));
   for (const [grade, gr] of Object.entries(mc.tray_g)) if (gr > 0) rows.push(row(`${id}.tray.${grade}`, { key: 'card.tray', args: { grade: { grade }, kg: { mass_g: gr, step: 'lot' } } }, null, null, 'info'));
   if (id === 'crucible' && mc.crucible) {
@@ -613,6 +651,69 @@ export function skipLabel(cfg: SalvageConfig, g: SalvageGame, partner: PartnerId
 /** The waiting away card, or null. */
 export function awayCard(g: SalvageGame): AwayCard | null {
   return g.salvage.away;
+}
+
+/**
+ * The away card's data as it prints (P3: what was applied, never gross as net; rules-sim-a's 19:46
+ * contract, overlays-b's 20:03 asks): the whole absence and what the yard ran, the sales, the loads
+ * bought (by partner) and their cost, the net already in the account, the sold grade lines (held stock
+ * never: a line that brought nothing is left out), the deal's deliveries, the rivals passed, what makes
+ * the yard run longer, and one next step (the open goal's line; never null while a goal is open).
+ */
+export interface AwayView {
+  /** The whole absence, seconds (AwayCard.absentS, else seconds). */
+  absentS: number;
+  /** What the yard ran without the boss (AwayCard.seconds: at most the cap). */
+  ran_s: number;
+  /** @deprecated read absentS / ran_s. */
+  seconds: number;
+  capS: number;
+  sales: number;
+  /** Loads bought while away, by partner (empty when none). */
+  bought: { partner: string; n: number; money: number }[];
+  /** Σ bought: n and § (null when nothing was bought). */
+  boughtTotal: { n: number; money: number } | null;
+  /** § spent while away (every spend). */
+  spent: number;
+  /** sales − spent: what the cash moved by (already in the account; negative: taken from it). */
+  net: number;
+  /** Up to five sold lines, dearest first (cut to three at large type by the screen); `more` the rest. */
+  lines: { grade: string; g: number; money: number }[];
+  more: number;
+  supplied_g: number;
+  deliveries: { day: number; g: number; paid: number }[];
+  passed: string[];
+  runLonger: AwayCard['runLonger'] | null;
+  next: Txt | null;
+}
+
+export function awayView(cfg: SalvageConfig, g: SalvageGame): AwayView | null {
+  const a = g.salvage.away;
+  if (!a) return null;
+  const sold = a.lines.filter((l) => l.money > 0).sort((x, y) => y.money - x.money);
+  const bought = (a.bought ?? []).filter((b) => b.n > 0 || b.spent > 0).map((b) => ({ partner: b.partner, n: b.n, money: roundMoney(b.spent) }));
+  const spent = roundMoney(Math.max(0, a.spent ?? bought.reduce((x, b) => x + b.money, 0)));
+  const boughtN = bought.reduce((x, b) => x + b.n, 0);
+  const boughtMoney = roundMoney(bought.reduce((x, b) => x + b.money, 0));
+  const goal = goalOfCfg(cfg, g);
+  return {
+    absentS: a.absentS ?? a.seconds,
+    ran_s: a.seconds,
+    seconds: a.seconds,
+    capS: a.capS,
+    sales: roundMoney(a.money),
+    bought,
+    boughtTotal: boughtN > 0 || boughtMoney > 0 ? { n: boughtN, money: boughtMoney } : null,
+    spent,
+    net: roundMoney(a.money - spent),
+    lines: sold.slice(0, 5),
+    more: Math.max(0, sold.length - 5),
+    supplied_g: a.supplied_g,
+    deliveries: [...(a.deliveryList ?? [])],
+    passed: [...a.passed],
+    runLonger: a.runLonger ?? null,
+    next: goal ? goal.text : a.hint,
+  };
 }
 
 /** COMPAT for actions.ts (rules-sim imports goalOf from here): the goal card. Use goals.ts nextGoal. */

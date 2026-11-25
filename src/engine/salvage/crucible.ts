@@ -10,7 +10,7 @@ import { asideOf, bayOf } from './bays';
 import { bossFresh, count, type Ctx } from './clock';
 import { machineInputs } from './content';
 import { pointOf } from './positions';
-import type { Piece } from './types';
+import type { CrucibleState, Piece } from './types';
 
 type Recipe = readonly [string | readonly string[], string, number, string];
 
@@ -23,6 +23,12 @@ export function potCap_g(x: Ctx): number {
   const cr = x.s.machines.crucible;
   const d = x.c.machines.crucible;
   return d.pot * 1000 * (1 + d.lev * Math.max(0, cr.level - 1));
+}
+
+/** R1: the charge by input grade (what a recipe change hands back to each bay). */
+function addCharge(cr: CrucibleState, grade: string, g: number): void {
+  const by = (cr.chargeBy ??= {});
+  by[grade] = (by[grade] ?? 0) + g;
 }
 
 const busy = (phase: string) => phase === 'heating' || phase === 'ready' || phase === 'pouring';
@@ -59,6 +65,7 @@ export function crucibleFromBays(x: Ctx, t: number): void {
       b.g -= take;
       b.forCrucible_g = 0;
       cr.charge_g += take;
+      addCharge(cr, g, take);
       room -= take;
       cr.lastFeedAt = t;
     }
@@ -74,6 +81,7 @@ export function meltPiece(x: Ctx, p: Piece, by: string, t: number): boolean {
   if (!machineInputs(x.c, x.s, 'crucible').includes(p.grade)) return false;
   if (cr.charge_g + cr.heel_g + p.g > potCap_g(x)) return false;
   cr.charge_g += p.g;
+  addCharge(cr, p.grade, p.g);
   cr.lastFeedAt = t;
   x.ev.push({ type: 'feed', machine: 'crucible', piece: p.uid, grade: p.grade, g: p.g, by });
   settle(x, t);
@@ -148,8 +156,12 @@ export function crucibleCheckReady(x: Ctx, t: number): void {
   if (cr.phase === 'ready' && bossNear(x, t)) pour(x, t, 'boss');
 }
 
-/** Pour (2.12): dross = round((1 − yield) × charge), metal = charge − dross + heel, n = floor(metal / ingot), the heel keeps the rest. */
-export function pour(x: Ctx, t: number, by: string, wholeHeel = false): void {
+/**
+ * Pour (2.12): dross = round((1 − yield) × charge), metal = charge − dross + heel, n = floor(metal / ingot),
+ * the heel keeps the rest. `refill` false (a recipe change, R1): the pot is NOT refilled from the bays
+ * here, so the old recipe's input never goes in under the new recipe's output.
+ */
+export function pour(x: Ctx, t: number, by: string, wholeHeel = false, refill = true): void {
   const cr = x.s.machines.crucible;
   const rec = recipeOf(x);
   if (!rec) return;
@@ -165,6 +177,7 @@ export function pour(x: Ctx, t: number, by: string, wholeHeel = false): void {
   const first = !cr.firstPoured;
   cr.firstPoured = true;
   cr.charge_g = 0;
+  cr.chargeBy = {};
   cr.phase = 'cooling';
   cr.phaseSince = t;
   cr.endsAt = null;
@@ -174,7 +187,7 @@ export function pour(x: Ctx, t: number, by: string, wholeHeel = false): void {
   count(x, 'poured');
   count(x, 'worked:crucible');
   x.ev.push({ type: 'pour', ingots: n, grade: out, short_g: wholeHeel ? toTray : 0, dross_g: dross, first, by });
-  crucibleFromBays(x, t);
+  if (refill) crucibleFromBays(x, t);
 }
 
 /** Bay grams the crucible's Take from bays holds (charged or reserved): the goal `charged:crucible`. */

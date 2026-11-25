@@ -4,8 +4,12 @@
  * more" shows), today's prices and the first grade's lesson, so the tickets can be looked at before the
  * rules weigh anything in. `?hudDemo=crew` fires a yard hand's weigh-in and a lot sold without the boss
  * (the two chips); `?hudDemo=toast` a "Load full" and a refusal. The tickets are SAMPLES, never saved.
+ * `?hudDemo=cash` (the fix pass, P4/P12/P16/S3): the preview's cash at §999,999 (the widest the first yard
+ * prints), then every 7 s a skip's hook (the debit line), its weigh-in over the weighbridge ("Bought for")
+ * and a rival passed (the chip's slide and the line).
  */
 import * as R from '../../../engine/salvage';
+import { useGame } from '../../../state/store';
 import { pumpControl } from './pump';
 
 function mode(): string | null {
@@ -36,6 +40,20 @@ export function hudDemo(cfg: R.SalvageConfig, g: R.SalvageGame): (() => void) | 
     const lessonKey = Object.values(cfg.salvage.lessons)[0] as R.TextKey | undefined;
     const value = ls.reduce((a, l) => a + l.amount, 0);
     const at = g.stats.playSeconds;
+    if (m === 'cash') {
+      useGame.setState((st) => ({ game: { ...(st.game as object), cash: 999_999 } as typeof st.game }));
+      const partner = Object.keys(cfg.salvage.partners ?? {})[0] ?? 'partner';
+      pumpControl.dispatch([{ type: 'hook', partner, slot: 0, price: 1877.6, by: 'driver' }]);
+      setTimeout(() => {
+        const t: R.Ticket = { kind: 'skipWeighIn', no: ++n, at, day, partner, trial: false, gross_g: 6_540_000, tare_g: 5_840_000, net_g: 700_000, paid: 976.06, things: [] } as unknown as R.Ticket;
+        pumpControl.dispatch([{ type: 'bridgeWeighIn', ticket: t }]);
+      }, 1200);
+      setTimeout(() => {
+        const rival = (cfg.salvage as unknown as { rivals?: { list?: { id: string }[] } }).rivals?.list?.[0]?.id ?? 'rival.1';
+        pumpControl.dispatch([{ type: 'passed', rival, rank: 25 } as unknown as R.SalvageEvent]);
+      }, 2400);
+      return;
+    }
     if (m === 'toast') {
       pumpControl.dispatch([{ type: 'loadFull' }]);
       setTimeout(() => pumpControl.dispatch([{ type: 'refused', key: 'cash', args: { x: { money: 12.4 } } }]), 2200);

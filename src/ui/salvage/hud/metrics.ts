@@ -313,7 +313,10 @@ export function placeFromSlot(sx: number, sy: number, w: number, h: number, keep
   };
   const away = keep ? (keep.x + keep.w / 2 <= sx ? 1 : -1) : -1;
   const y0 = sy - 14;
-  const tries: number[] = away > 0 ? [sx + gap, sx - gap - w] : [sx - gap - w, sx + gap];
+  // Beside the slot, and beyond the keep box when the box reaches past the slot on that side.
+  const east = keep ? Math.max(sx, keep.x + keep.w) + gap : sx + gap;
+  const west = keep ? Math.min(sx, keep.x) - gap - w : sx - gap - w;
+  const tries: number[] = away > 0 ? [east, west] : [west, east];
   for (const tx of tries) {
     const x = clampX(tx);
     const y = clampY(x, y0);

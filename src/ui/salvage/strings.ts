@@ -65,7 +65,7 @@ export const TEXT = {
 
   // --- packages 3 and 4: chips (4.2, 4.4) ---
   'chip.bay': '{grade|short} {kg} · today {x}',
-  'chip.bayHeld': '{grade|short} {kg} · today {x} · held', // rules-book L10/W4: a held bay's first line, x = what Sell pays now
+  'chip.bayHeld': '{grade|short} {kg} · held · {x}', // rules-book L10/W4: a held bay's first line, x = what Sell pays now
   'chip.bayKg': '{grade|short} {kg}', // rules-book: a bay with nothing free to sell (all reserved)
   'chip.bayKgHeld': '{grade|short} {kg} · held',
   'chip.held': 'held',
@@ -151,7 +151,7 @@ export const TEXT = {
   'card.carriesTrip': 'Carries {kg} a trip', // kg: { mass_g }
   'card.cutsBest': 'Cuts with the yard’s best tool',
   'card.levelFaster': '+{pct} faster', // pct: { pct } (0.25 → "25 %")
-  'card.skipMore': 'One more skip filling at {partner}', // partner: { name }
+  'card.skipMore': 'Adds a skip at {partner}', // W5; partner: { name } (the ruling's 'One more skip filling at' does not fit 285 pt at 1.3)
   'card.runsItself': 'Runs by itself',
   'card.levelOpensAt': 'Level up opens at {t} supplied', // P18; t: { tonnes_g }
   // W18: buttons name the action, rows name the state
@@ -180,7 +180,7 @@ export const TEXT = {
   'effect.sack': 'Moves a washer in one trip',
   'effect.trolley': 'Moves a radiator in one trip',
   'effect.sledge': 'Breaks cast iron; cuts sheet faster',
-  'effect.torch': 'Cuts beams and tanks; frees the converter',
+  'effect.torch': 'Cuts thick steel; frees converters', // W9 (the ruling's 41 characters do not fit the 38 of 4.6)
   'effect.truck': 'Fetches partners’ loads',
   'effect.stripper': 'Strips heavy cable to copper',
   'effect.bench': 'Takes motors apart: copper, steel, alu',
@@ -245,8 +245,8 @@ export const TEXT = {
   'away.net': 'Net +{x} (already in your account)',
   'away.netLoss': 'Net −{x} (taken from your account)', // x positive, when spent > sales
   'away.next': 'Next: {goal}', // goal: { text: goal.* }
-  'away.longerRung': 'At the next rung the yard runs up to {c} while you are away', // c: { secs }
-  'away.longerNight': 'The night watch keeps the yard running up to {c}', // c: { secs }
+  'away.longerRung': 'From the next rung it runs up to {c}', // c: { secs }
+  'away.longerNight': 'With the night watch it runs up to {c}', // c: { secs }
 
   // --- packages 3 and 4: tickets and slips (2.2) ---
   'ticket.weighInHead': '{homeYard} · No. {n}',
@@ -529,6 +529,8 @@ type Content = Pick<SalvageContent, 'names' | 'grades' | 'objects'>;
 
 /** One argument as text (numbers only through the rules' formatters). */
 function argText(a: R.TxtArg, c: Content): string {
+  // W11: a ticket keeps its hundredths ({ exact }, rules-book's fmtMoneyExact); bars, cards and labels use { money }.
+  if ('exact' in a) return R.fmtMoneyExact((a as { exact: number }).exact);
   if ('money' in a) return R.fmtMoney(a.money);
   if ('price' in a) return R.fmtPrice(a.price);
   if ('mass_g' in a) return R.fmtMass(a.mass_g, a.step, a.ferrous);

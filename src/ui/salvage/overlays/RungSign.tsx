@@ -4,7 +4,9 @@
  * reads "{homeYard} · {t} supplied" (a position, never a title, S15), and under it what the rung opens
  * ("The cutting torch, a radiation portal and a supply deal"; rung 3: "Yard capacity {c} t/h"). OK closes.
  * The sign drops on the UI thread (one shared value; nothing animates once it has landed).
- * Data: the ladder's current rung (state) and the rung's tonnes (content `ladder.rungs`); names by id.
+ * Under it the player's own tonnes and materials, and the next rung's condition after "Next:" (L15, P17,
+ * W13a). Data: the industry table's rungs (one selector for every number), the rules' lead for what the
+ * rung opens; names by id.
  */
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -12,7 +14,8 @@ import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, w
 import { proj, viewOf } from '../art/pen';
 import { CRANE_HOOK, drawHungSign, drawSignCrane } from '../art/site.draw';
 import { CentredCard } from './CentredCard';
-import { rungLines } from './marketLines';
+import * as R from '../../../engine/salvage';
+import { rungBox, rungLines, type RungProgressLike } from './marketLines';
 import { Drawing, useAsk, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { INK, Line, LocalButton, PadlockLine, useFrame } from './parts';
@@ -26,17 +29,24 @@ const H = 150;
 const AX = 46;
 const AY = 142;
 
+/** rules-book's rung selector once the facade has it (19:55). */
+const rungProgress = (R as unknown as { rungProgress?: (cfg: R.SalvageConfig, g: R.SalvageGame) => RungProgressLike | null }).rungProgress;
+
 export function RungSign({ cfg, g, data, onClose }: CardViewProps) {
   const { layout } = useFrame();
   useSeenOnClose('rung');
-  const n = Math.max(1, g.salvage.ladder.rung);
-  const rung = cfg.salvage.ladder.rungs.find((r) => r.n === n);
-  const tonnes = rung?.t ?? (n === 2 ? cfg.salvage.ladder.rung2.t : n === 3 ? cfg.salvage.ladder.rung3.t : 0);
+  // L15 / P17 / W13a: ONE source for every number on the card, the industry table's rungs: the sign is
+  // the rung's own threshold; the player's own tonnes and materials on their own line; the next rung's
+  // condition after "Next:" (a bare padlock and tonnage past this stage's last rung).
+  const t = data.table ?? R.industryTable(cfg, g);
+  const cur = t.rungs.find((r) => r.current) ?? null;
+  const n = cur?.n ?? Math.max(1, g.salvage.ladder.rung);
   const cap = (cfg.salvage.ceilings_t_h as number[] | undefined)?.[n - 1] ?? null;
-  const mine = rungLines(n, tonnes, cap);
-  // The rules' card: lead [sign, ...opens], a locked row for the next rung, OK opening the table.
-  const sign = data.lead[0] ?? mine.sign;
-  const opens = data.lead.length ? data.lead.slice(1) : mine.opens ? [mine.opens] : [];
+  const mine = rungLines(n, cur?.t ?? 0, cap);
+  const box = rungBox(t, t.rows.find((r) => r.id === 'you') ?? null, rungProgress ? rungProgress(cfg, g) : null);
+  // What the rung opens: the rules' lead after its sign line, else ours.
+  const sign = mine.sign;
+  const opens = data.lead.length > 1 ? data.lead.slice(1) : mine.opens ? [mine.opens] : [];
   const ask = useAsk();
   const reduce = useReducedMotion();
   const drop = useSharedValue(reduce ? 1 : 0);
@@ -66,11 +76,16 @@ export function RungSign({ cfg, g, data, onClose }: CardViewProps) {
       {opens.map((t, i) => (
         <Line key={i} t={t} size="name" bold lines={2} center />
       ))}
-      {data.rows.map((r) => (
-        <View key={r.id} style={styles.next}>
-          {r.state === 'locked' ? <PadlockLine t={r.name} /> : <Line t={r.name} size="line" colour={INK.soft} lines={2} center />}
+      {box.own ? (
+        <View style={styles.next}>
+          <Line t={box.own} size="line" bold lines={2} center />
         </View>
-      ))}
+      ) : null}
+      {box.next ? (
+        <View style={styles.next}>
+          <PadlockLine t={box.next} />
+        </View>
+      ) : null}
       <View style={styles.foot}>
         {data.foot.length ? data.foot.map((b, i) => <LocalButton key={i} label={b.label} onPress={() => ask.press(b.action, 'foot')} />) : <LocalButton label={{ key: 'ok' }} onPress={onClose} />}
       </View>

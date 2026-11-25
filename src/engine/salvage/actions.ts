@@ -34,6 +34,31 @@ const same = (a: number, b: number) => Math.abs(a - b) < 0.005;
  * overlays too). Starts, continues and cancels the boss's act and reports its events. Returns the same
  * object when nothing changed.
  */
+/** R7: the longest standingFor a sample may carry, seconds. */
+const STANDING_MAX_S = 3600;
+/** R7: metres a sample may move beyond the truck's speed × the time since the last one (Step out sets the boss down beside the truck). */
+const PRESENCE_SLACK_M = 3;
+
+/** R7/P10: a sample's position inside the yard and the lane, and no farther from the last sample than truck.bossV allows. */
+export function clampPresence(cfg: SalvageConfig, s: SalvageGame['salvage'], px: number, py: number, clock: number): { x: number; y: number } {
+  const c = cfg.salvage;
+  const lane = Math.max(0, ...Object.values(c.map.lane).filter((v): v is number => typeof v === 'number' && Number.isFinite(v)));
+  let x = Math.min(c.yard.width + lane + 40, Math.max(0, px));
+  let y = Math.min(c.yard.depth, Math.max(0, py));
+  const q = s.presence;
+  const dt = clock - s.presenceAt;
+  if (s.presenceAt >= 0 && Number.isFinite(dt) && dt >= 0 && Number.isFinite(q.x) && Number.isFinite(q.y)) {
+    const v = c.truck.bossV ?? c.truck.v;
+    const max = v * dt + PRESENCE_SLACK_M;
+    const d = Math.hypot(x - q.x, y - q.y);
+    if (d > max && d > 0) {
+      x = q.x + ((x - q.x) * max) / d;
+      y = q.y + ((y - q.y) * max) / d;
+    }
+  }
+  return { x, y };
+}
+
 export function setPresence(cfg: SalvageConfig, g: SalvageGame, p: Presence, clock: number, events?: SalvageEvent[]): SalvageGame {
   const s = g.salvage;
   const q = s.presence;
@@ -42,7 +67,12 @@ export function setPresence(cfg: SalvageConfig, g: SalvageGame, p: Presence, clo
   const sameSample = q.x === p.x && q.y === p.y && q.driving === !!p.driving && q.moving === !!p.moving && heading === q.heading && Math.abs(q.standingFor - (p.standingFor || 0)) < 0.05;
   if (sameSample && clock - s.presenceAt < cfg.salvage.feel.staleS / 2) return g;
   const x = begin(cfg, g, events, true);
-  x.s.presence = { x: p.x, y: p.y, driving: !!p.driving, moving: !!p.moving, standingFor: Math.max(0, p.standingFor || 0), heading };
+  // R7: the sample is clamped: inside the yard and the lane (save.ts's bounds), no faster than the boss's
+  // truck (truck.bossV, P10) since the last sample (a step's slack for Step out's placement), driving only
+  // while the boss holds the truck, standingFor in [0, 3600].
+  const at = clampPresence(cfg, s, p.x, p.y, clock);
+  const standing = Number.isFinite(p.standingFor) ? Math.min(STANDING_MAX_S, Math.max(0, p.standingFor || 0)) : 0;
+  x.s.presence = { x: at.x, y: at.y, driving: !!p.driving && s.truck.owned && s.truck.by === 'boss', moving: !!p.moving, standingFor: standing, heading };
   x.s.presenceAt = clock;
   const t = Math.max(clock, x.s.t);
   bossStep(x, t);
@@ -184,14 +214,24 @@ export function setRecipe(cfg: SalvageConfig, g: SalvageGame, recipe: RecipeId, 
   const t = Math.max(clock, x.s.t);
   const c2 = x.s.machines.crucible;
   // The unmelted charge goes back to its bay; the heel pours as one short ingot to the tray.
+  // Each grade of the charge goes back to its own bay (R1: never all of it as the first input).
   if (c2.charge_g > 0) {
     const rec = cfg.salvage.machines.crucible.recipes[c2.recipe];
     const inG = Array.isArray(rec[0]) ? rec[0][0] : (rec[0] as string);
-    bayOf(x, inG).g += c2.charge_g;
+    let left = c2.charge_g;
+    for (const [gr, gg] of Object.entries(c2.chargeBy ?? {})) {
+      const back = Math.min(left, Math.max(0, gg));
+      if (back <= 0) continue;
+      bayOf(x, gr).g += back;
+      left -= back;
+    }
+    if (left > 0) bayOf(x, inG).g += left;
     c2.charge_g = 0;
   }
+  c2.chargeBy = {};
+  // R1 (blocking): the heel pours WITHOUT refilling; the new recipe is set; only then the pot takes from the bays.
   const heel = c2.heel_g > 0;
-  if (heel) pour(x, t, 'boss', true);
+  if (heel) pour(x, t, 'boss', true, false);
   for (const b of Object.values(x.s.bays)) b.forCrucible_g = 0;
   c2.recipe = recipe;
   c2.phase = 'empty';

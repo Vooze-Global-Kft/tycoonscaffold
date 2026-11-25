@@ -48,6 +48,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import yard_top  # noqa: E402  (the wiring engineer's top-level block)
+import yard_map  # noqa: E402  (the content step's map checker, MAP.md M1 to M7)
 
 GAME = os.path.join(ROOT, 'games', 'scrap-yard', 'game.json')
 YARD = os.path.join(ROOT, 'scripts', 'content', 'yard')
@@ -174,9 +175,9 @@ def lint(s, sprites):
 
     # things: mass kept, grades and sprites exist
     for oid, o in O.items():
-        tot = sum(p[1] * p[2] for p in o['pieces']) + o['waste_g']
+        tot = sum(p[1] * p[2] for p in o['pieces']) + o['waste_g'] + (o.get('shell') or {}).get('g', 0)  # W9: a stripped shell weighed whole
         if tot != o['gross_g']:
-            bad(f'objects.{oid}: pieces and waste weigh {tot} g, gross_g {o["gross_g"]} g')
+            bad(f'objects.{oid}: pieces, shell and waste weigh {tot} g, gross_g {o["gross_g"]} g')
         for i, p in enumerate(o['pieces']):
             if p[0] not in G:
                 bad(f'objects.{oid}.pieces[{i}]: grade {p[0]} does not exist')
@@ -289,6 +290,8 @@ def lint(s, sprites):
     for i in range(len(boxes)):
         for j in range(i + 1, len(boxes)):
             a, b = boxes[i], boxes[j]
+            if {a[0], b[0]} == {'car', 'Z3'}:
+                continue  # the car's spot is zone 3's car, inside its bed
             if a[1] < b[2] - 1e-9 and b[1] < a[2] - 1e-9 and a[3] < b[4] - 1e-9 and b[3] < a[4] - 1e-9:
                 bad(f'map: {a[0]} overlaps {b[0]}')
     for k, (x, y) in P.items():
@@ -307,6 +310,9 @@ def lint(s, sprites):
         dmin = min(math.dist(P['floor'], P[q]) for q in ('scale', 'weighbridge') if q in P)
         if dmin > 12 + 1e-9:
             bad(f'map: the tipping floor is {dmin:.1f} m from the scales (at most 12)')
+    # MAP.md M1 to M7 (the fix pass): scripts/content/yard_map.py
+    for e in yard_map.check(s)[0]:
+        bad(e)
     for k, v in M['lane'].items():
         num(f'map.lane.{k}', v, True)
     num('map.detour', M['detour'], True)

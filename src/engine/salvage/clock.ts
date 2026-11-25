@@ -10,6 +10,7 @@ import type { SalvageContent } from '../../config/schema.salvage';
 import { marketDay } from './board';
 import { lotPrice } from './content';
 import { commitCash, roundMoney } from './money';
+import { stampSeries } from './series';
 import type { SalvageConfig, SalvageEvent, SalvageGame, SalvageState, Ticket } from './types';
 
 const DAY_MS = 86_400_000;
@@ -153,6 +154,8 @@ export function count(x: Ctx, key: string, n = 1): void {
 
 /** Print a ticket into the history (the last 50) and return it numbered. */
 export function printTicket<T extends Ticket>(x: Ctx, t: T): T {
+  // W16 (rules-sim-b's series.ts): each book's printed number (weigh-ins, sales), each from 1.
+  stampSeries(x.s, t);
   x.s.tickets.push(t);
   if (x.s.tickets.length > 50) x.s.tickets.splice(0, x.s.tickets.length - 50);
   return t;

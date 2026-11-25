@@ -49,6 +49,9 @@ import type { YardLayout } from './yard';
 /** The hud's ticket boxes when it exports them (requests.md: `ticketBoxes`), else undefined (a box above each anchor). */
 const hudTickets = (hudAnchorsMod as Record<string, unknown>).ticketBoxes as { value: { x: number; y: number; w: number; h: number }[] } | undefined;
 
+/** The store's picture (?view=hero-store) shows no edge arrow (L2). */
+const HERO_STORE = HERO.store ? 1 : 0;
+
 /** Seconds a place's name stays after it first comes into view. */
 const FIRST_SIGHT_S = 6;
 /** The labels' refresh, milliseconds (twice a second at most, as the step asks). */
@@ -561,7 +564,7 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
       cv.drawPicture(pics.chev[Math.floor(now * 2) % 2]);
       cv.restore();
       alive++;
-    } else if (out[0] === 2) {
+    } else if (out[0] === 2 && HERO_STORE === 0) {
       cv.save();
       cv.translate(out[1], out[2]);
       cv.rotate((out[3] * 180) / Math.PI, 0, 0);

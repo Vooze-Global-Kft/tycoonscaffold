@@ -147,3 +147,23 @@ four-point sparkles; a lone gold bar; polished-gold brass.
   trolley). Containers are baked near white and modulated to teal, oxide or sage per instance.
 - Stillages are three sprites at one anchor: cage, one or two layers of the grade's pieces (part, full:
   the second STILLAGE_LAYER_DY up), the front rails.
+
+## 13. The running world's light and place (fix pass, look-yard)
+
+The running yard is drawn as the hero picture (`art/proof.draw.ts drawHero`) is, back to front, in
+`world/YardView.tsx`: the off-site ground (a baked seamless tile of worn grass, earth and gravel:
+`world/ground.ts drawOffsite`) wherever the camera can see past the fence; the yard's warm concrete
+(`drawConcrete` with weeds, baked as a 4 x 4 slab tile) from the back wall south; in screen space above
+the wall's top the late-day sky and the far yard (`ground.draw.ts drawFarBand`: one sky, drawFarYard's
+skyline, stacks and cranes every 864 pt), baked once, moving at 0.3 of the camera; the frame loop's
+picture; then `SUN_WASH` and one Multiply rectangle of `SUN_MULTIPLY`, exactly as drawHero. The bars,
+tickets and cards are other views: the light never tints them.
+
+`world/dressing.ts` places, from the content only (map.north, the places' footprints, the beds, the
+drive line): one course of lock blocks along map.north with floodlights; weeds at slab joints, at the
+wall's foot and the fences; oil stains (thicker on the drive line); puddles; dashed paint along the
+drive line's edges and a walkway line in front of the working row; hatches at the weighbridge's south
+lip. Density as the proof: about 9 weeds, 3 stains and 2 puddles on 400 m2. The old stock's beds are
+`ground.bed` tiles (sheet G, crisp at the sheet's density) over `zones.<id>.bed`, as many as the stock
+left, shrinking towards the bed's wall side; the last ones faint. Things of a kind differ by a tint
+from their uid (`manifest/things.ts thingLookTint`), never by mirroring (shadows stay east).

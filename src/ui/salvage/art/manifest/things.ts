@@ -457,3 +457,18 @@ export function thingsPixels(density: number): number {
   for (const e of THINGS) n += Math.ceil(e.bounds.w * density) * Math.ceil(e.bounds.h * density) * e.frames.length;
   return n;
 }
+
+/**
+ * A second (and third) look for things of one kind (finding L5's art part): a whole thing is modulated by
+ * one of these tints chosen from its uid, so thirty washers are not thirty copies (an older, greyer one;
+ * a warmer, yellowed one). Never mirrored: a thing's ground shadow is baked in its sprite and must stay
+ * east of it (the low sun). -1 is the sprite as drawn. 0xRRGGBB, as the world's item tint.
+ */
+export const THING_LOOK_TINTS: readonly number[] = [-1, 0xe9e4da, 0xf4ead2, -1, 0xdfe3e6];
+
+/** The look of a thing by its uid (stable: the same uid always gets the same tint). */
+export function thingLookTint(uid: string): number {
+  let h = 0;
+  for (let i = 0; i < uid.length; i++) h = (h * 31 + uid.charCodeAt(i)) | 0;
+  return THING_LOOK_TINTS[Math.abs(h) % THING_LOOK_TINTS.length];
+}

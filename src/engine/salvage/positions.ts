@@ -63,32 +63,29 @@ export function bedLayout(c: SalvageContent, zone: string): { x: number; y: numb
     for (let i = 0; i < n; i++, k++) items.push({ k, w: sz.w, d: sz.d });
   }
   const order = [...items].sort((a, b) => b.w * b.d - a.w * a.d || b.d - a.d || a.k - b.k);
-  // Shelf packing from the open edge (y0 + d) north to the wall (y0).
-  type Row = { items: { k: number; w: number; d: number }[]; used: number; depth: number };
+  // First-fit shelf packing from the open edge (y0 + d) north to the wall (y0): each thing (big first)
+  // goes into the first row with width left and depth for it; the newest row may still grow deeper.
+  type Item = { k: number; w: number; d: number };
+  type Row = { items: Item[]; used: number; depth: number };
   const rows: Row[] = [];
-  let row: Row = { items: [], used: 0, depth: 0 };
-  let yUsed = 0;
-  const close = () => {
-    if (row.items.length) {
-      rows.push(row);
-      yUsed += row.depth + BED_GAP_M;
-    }
-    row = { items: [], used: 0, depth: 0 };
-  };
-  const overflow: { k: number; w: number; d: number }[] = [];
+  const depthOf = () => rows.reduce((a, r) => a + r.depth, 0) + BED_GAP_M * Math.max(0, rows.length - 1);
+  const overflow: Item[] = [];
   for (const it of order) {
-    const need = (row.items.length ? BED_GAP_M : 0) + it.w;
-    if (row.used + need > bed.w + 1e-9) close();
-    const depth = Math.max(row.depth, it.d);
-    if (it.w > bed.w + 1e-9 || yUsed + depth > bed.d + 1e-9) {
-      overflow.push(it);
-      continue;
+    let placed = false;
+    for (let i = 0; i < rows.length && !placed; i++) {
+      const r = rows[i];
+      if (r.used + BED_GAP_M + it.w > bed.w + 1e-9) continue;
+      const last = i === rows.length - 1;
+      if (it.d > r.depth + 1e-9 && !(last && depthOf() - r.depth + it.d <= bed.d + 1e-9)) continue;
+      r.used += BED_GAP_M + it.w;
+      r.depth = Math.max(r.depth, it.d);
+      r.items.push(it);
+      placed = true;
     }
-    row.used += (row.items.length ? BED_GAP_M : 0) + it.w;
-    row.depth = depth;
-    row.items.push(it);
+    if (placed) continue;
+    if (it.w <= bed.w + 1e-9 && depthOf() + (rows.length ? BED_GAP_M : 0) + it.d <= bed.d + 1e-9) rows.push({ items: [it], used: it.w, depth: it.d });
+    else overflow.push(it);
   }
-  close();
   let yEdge = bed.y0 + bed.d; // the row's south edge
   let draw = 0;
   for (const r of rows) {
@@ -129,7 +126,15 @@ export function thingPos(c: SalvageContent, at: ThingAt): { x: number; y: number
   }
   if (at.at === 'dropoff') {
     const p = pointOf(c, 'dropoff');
-    return { x: p.x - 1.4 * at.slot, y: p.y };
+    const pl = c.map.places.dropoff;
+    if (!pl) return { x: p.x - 1.4 * at.slot, y: p.y };
+    // The drop-off's bay (MAP.md M3, content 19:56): its waiting places in rows across the place's
+    // footprint, 1.4 m deep a row (two rows of four on a 5.6 x 2.8 place), slot 0 at the north-west.
+    const rows = Math.max(1, Math.floor(pl.d / 1.4 + 1e-9));
+    const cols = Math.max(1, Math.ceil(c.dropoff.places / rows));
+    const col = at.slot % cols;
+    const row = Math.floor(at.slot / cols) % rows;
+    return { x: p.x - pl.w / 2 + (pl.w / cols) * (col + 0.5), y: p.y - pl.d / 2 + (pl.d / rows) * (row + 0.5) };
   }
   const p = pointOf(c, 'floor');
   const col = at.slot % 4;

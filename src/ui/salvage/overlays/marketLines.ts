@@ -5,15 +5,40 @@
  * but which line to print.
  */
 import type { AwayCard, BoardRow, IndustryTable, SkipLabel, TableRow, TextKey, Ticket, Txt } from '../../../engine/salvage';
+import * as R from '../../../engine/salvage';
 import { TEXT } from '../strings';
 
 // ------------------------------------------------------------------------------- the price board
 
-/** True when a board row prints a fourth line (a reservation or a set-aside lot). */
-export const rowExtra = (r: BoardRow): boolean => r.reserved_g > 0 || r.aside_g > 0;
+/**
+ * A board row's fourth line, one at most: the deal's reservation, else a set-aside lot, else the held
+ * row's "Held until a high day, two days at most" (E32, W13b: the rules' `heldLine`).
+ */
+export function rowExtraLine(r: BoardRow): Txt | null {
+  if (r.reserved_g > 0) return { key: 'card.dealReserve', args: { a: { mass_g: r.reserved_g, step: 'lot' }, b: { mass_g: r.bay_g, step: 'lot' } } };
+  if (r.aside_g > 0) return { key: 'chip.aside', args: { kg: { mass_g: r.aside_g, step: 'lot' }, x: { price: r.price } } };
+  if (r.held && r.heldLine) return r.heldLine;
+  return null;
+}
+
+/** True when a board row prints a fourth line. */
+export const rowExtra = (r: BoardRow): boolean => rowExtraLine(r) !== null;
 
 /** The board's words for a day word (null: a usual day prints nothing). */
 export const DAY_WORD: Record<BoardRow['word'], Txt | null> = { low: { key: 'board.lowDay' }, usual: null, high: { key: 'board.highDay' } };
+
+/**
+ * The converter's payables line (W15: "Paid on assay: platinum 75 %, palladium 75 %, rhodium 65 %, less
+ * fees"), printed under its board row and its ticket lines: rules-book's `converterLine(cfg)` once the
+ * facade exports it, else the same line from the content's payables (shares of the content, not computed).
+ */
+export function converterNote(cfg: R.SalvageConfig): Txt | null {
+  const sel = (R as unknown as { converterLine?: (cfg: R.SalvageConfig) => Txt }).converterLine;
+  if (sel) return sel(cfg);
+  const v = (cfg.salvage as { converter?: { pay_pt?: number; pay_pd?: number; pay_rh?: number } }).converter;
+  if (!v || v.pay_pt == null || v.pay_pd == null || v.pay_rh == null) return null;
+  return { key: 'card.converterPaid', args: { pt: { pct: v.pay_pt }, pd: { pct: v.pay_pd }, rh: { pct: v.pay_rh } } };
+}
 
 // ------------------------------------------------------------------------------- the industry table
 
@@ -152,20 +177,22 @@ export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt 
 // ------------------------------------------------------------------------------- the clipboard's tickets
 
 /** A ticket's head and total and its lines, as the history prints them. */
-export function ticketSummary(t: Ticket): { head: Txt; total: Txt | null; lines: Txt[] } {
+export function ticketSummary(t: Ticket, conv: Txt | null = null): { head: Txt; total: Txt | null; lines: Txt[] } {
+  // W15: under a converter's line, how it was paid (on assay, the payables, less fees).
+  const withConv = (grade: string, l: Txt): Txt[] => (grade === 'conv' && conv ? [l, conv] : [l]);
   const date: Txt = { key: 'ticket.date', args: { date: { day: t.day } } };
   switch (t.kind) {
     case 'weighIn':
       return {
         head: { key: 'ticket.weighInHead', args: { n: { n: t.no } } },
         total: { key: 'ticket.todaysValue', args: { x: { money: t.todaysValue } } },
-        lines: [...t.lines.map((l): Txt => ({ key: 'ticket.gradeAmount', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'platform' }, x: { price: l.price } } })), { key: 'ticket.weighInLegal' }, date],
+        lines: [...t.lines.flatMap((l): Txt[] => withConv(l.grade, { key: 'ticket.gradeAmount', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'platform' }, x: { price: l.price } } })), { key: 'ticket.weighInLegal' }, date],
       };
     case 'collection':
       return {
         head: { key: 'ticket.collectionHead', args: { n: { n: t.no } } },
         total: { key: 'ticket.paid', args: { x: { money: t.paid } } },
-        lines: [...t.lines.map((l): Txt => ({ key: 'ticket.gradeAmount', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'lot' }, x: { money: l.amount } } })), { key: 'ticket.lotSoldTo' }, { key: 'ticket.weighedOut' }, date],
+        lines: [...t.lines.flatMap((l): Txt[] => withConv(l.grade, { key: 'ticket.gradeAmount', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'lot' }, x: { money: l.amount } } })), { key: 'ticket.lotSoldTo' }, { key: 'ticket.weighedOut' }, date],
       };
     case 'skipWeighIn':
       return {

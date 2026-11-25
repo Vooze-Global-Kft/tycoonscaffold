@@ -7,7 +7,7 @@
  * On the scale, in a hopper zone or in a chalk circle he does only that. Owner: rules-sim.
  */
 import { bossFresh, count, standingFor, type Ctx } from './clock';
-import { byValue, carrierCap_g, cutTime, pieceSpec, toolKey, toolP, vpk } from './content';
+import { byValue, carrierCap_g, cutTime, pieceSpec, tierOf, toolKey, toolP, vpk } from './content';
 import { crucibleCheckReady, meltPiece } from './crucible';
 import { accepts, atPlace, bossWorked, feedPiece, rerate, takeTray, trayFree } from './machines';
 import { circleCount, circlePos, piecePos, thingNear, thingPos } from './positions';
@@ -220,16 +220,18 @@ export function bossStep(x: Ctx, t: number): void {
   // 2.1: among the things in reach he works the nearest WORKABLE one (its tier at most his best tool); a
   // thing above his tier refuses (tool2 / tool3) only when none in reach is workable (content 17:58: a
   // radiator nearer than the washer beside it held him for the hour).
-  const other = (th: ThingState) => (th.by !== null && th.by !== 'boss') || (c.objects[th.obj]?.tier ?? 0) === 0;
+  // Finding W9: the tier is the NEXT piece's (tierOf: the car's wheels and loom by hand, its converter
+  // with the torch); a stripped shell is nobody's work.
+  const other = (th: ThingState) => !!th.shell || (th.by !== null && th.by !== 'boss') || (c.objects[th.obj]?.tier ?? 0) === 0;
   const uid =
-    thingNear(c, s.things, p.x, p.y, c.reach.work, (th) => other(th) || (c.objects[th.obj]?.tier ?? 0) > s.tier) ??
+    thingNear(c, s.things, p.x, p.y, c.reach.work, (th) => other(th) || tierOf(c, th) > s.tier) ??
     thingNear(c, s.things, p.x, p.y, c.reach.work, other);
   if (!uid) return;
   const th = thingOf(x, uid)!;
-  const o = c.objects[th.obj];
-  if (o.tier > s.tier) {
+  const need = tierOf(c, th);
+  if (need > s.tier) {
     if (s.act.target !== uid) {
-      x.ev.push({ type: 'refused', key: o.tier >= 3 ? 'tool3' : 'tool2', args: {}, retry: null });
+      x.ev.push({ type: 'refused', key: need >= 3 ? 'tool3' : 'tool2', args: {}, retry: null });
       setAct(x, 'none', uid, t, null);
     }
     return;
@@ -246,7 +248,7 @@ function startWork(x: Ctx, th: ThingState, t: number): void {
   const left = Math.max(0, full - th.progress);
   th.by = 'boss';
   setAct(x, 'work', th.uid, t, t + left);
-  x.ev.push({ type: 'workStart', thing: th.uid, obj: th.obj, grade: sp.grade, tool: toolKey(c, Math.min(x.s.tier, c.objects[th.obj]?.tier ?? 1)), by: 'boss', ring: { t0: t, t1: t + left, p0: full > 0 ? th.progress / full : 0 } });
+  x.ev.push({ type: 'workStart', thing: th.uid, obj: th.obj, grade: sp.grade, tool: toolKey(c, Math.min(x.s.tier, tierOf(c, th))), by: 'boss', ring: { t0: t, t1: t + left, p0: full > 0 ? th.progress / full : 0 } });
 }
 
 /** The boss's act ends at t (act.endsAt): apply it, then decide the next. */

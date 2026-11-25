@@ -19,6 +19,8 @@ export interface Point {
 export const cashAnchor = makeMutable<Point>({ x: 0, y: 0 });
 export const collectionAnchor = makeMutable<Point>({ x: -1, y: -1 });
 export const weighInAnchor = makeMutable<Point>({ x: -1, y: -1 });
+/** The ticket or chip on screen now (window points; at most one: one ticket at a time), set when it shows and folds, never per frame (world-b hides a plate under it). */
+export const ticketBoxes = makeMutable<{ x: number; y: number; w: number; h: number }[]>([]);
 /** The goal card's rectangle at its REAL height (two lines while a lesson shows): tickets keep clear of it (P8, W17). w 0: no card. */
 export const goalRect = makeMutable<{ x: number; y: number; w: number; h: number }>({ x: 0, y: 0, w: 0, h: 0 });
 

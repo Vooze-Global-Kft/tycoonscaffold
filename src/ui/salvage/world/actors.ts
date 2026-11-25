@@ -30,9 +30,9 @@ import type * as R from '../../../engine/salvage';
 import { MANIFEST, mirrorOf, type ManifestEntry } from '../art/manifest';
 import { CARRIER_FRAMES, HAND_FAMILIES, carrierFrameOf, handFamilyOf } from '../art/manifest/people';
 import { CONTAINER_TINTS, STILLAGE_LAYER_DY } from '../art/manifest/plant';
-import { GRADE_SPRITE, INGOT_FRAMES, OBJECT_SPRITE, stageOf } from '../art/manifest/things';
+import { GRADE_SPRITE, INGOT_FRAMES, OBJECT_SPRITE, stageOf, thingLookTint } from '../art/manifest/things';
 import { loadFamily, type LoadFamily } from '../art/people.draw';
-import { laneDrawEnd, laneGeo, type LaneGeo } from './yard';
+import { laneDrawEnd, laneGeo, mapDriveLine, mapNorth, type LaneGeo } from './yard';
 import { bedShares, bedsDress, type Dress } from './dressing';
 import { CARRIER_AHEAD, flatbedBedCentre, headingRad, skipTopOnTruck } from '../art/vehicles.draw';
 
@@ -129,7 +129,8 @@ const hexInt = (hex: string) => parseInt(hex.replace('#', '').slice(0, 6), 16);
  * `corners`: the footprint's four corner marks; `extra`: more sprites at offsets in metres.
  */
 export const PLACE_ART: Readonly<Record<string, { id?: string; flat?: boolean; corners?: boolean; lines?: boolean; extra?: { id: string; dx: number; dy: number; flat?: boolean }[] }>> = {
-  'prop.dropoff.pad': { corners: true },
+  // No corner marks on the drop-off (L13: they read as hint brackets round the washer; the bay's own art marks it).
+  'prop.dropoff.pad': {},
   'plant.scale.platform': { id: 'plant.scale.platform', flat: true },
   'plant.weighbridge.deck': { id: 'plant.weighbridge.deck', extra: [{ id: 'plant.weighbridge.pole', dx: 2.2, dy: -1.6 }, { id: 'plant.weighbridge.display', dx: 2.2, dy: -1.55 }] },
   'prop.scalehouse': { id: 'plant.scalehouse' },
@@ -152,18 +153,21 @@ export const PLACE_ART: Readonly<Record<string, { id?: string; flat?: boolean; c
 export function staticItems(c: SalvageContent, res: Resolver, extraProps: readonly SalvageContent['props'][number][] = [], dress: readonly Dress[] = []): number[] {
   const out: number[] = [];
   // The look fixer's dressing (./dressing.ts): decals first (under everything, list order), then standing things.
-  for (const d of dress) sprite(out, res, d.id, d.x, d.y, { frame: d.frame, flat: d.flat, key: d.key });
+  for (const d of dress) sprite(out, res, d.id, d.x, d.y, { frame: d.frame, flat: d.flat, key: d.key, alpha: d.alpha });
   const W = c.yard.width;
   const D = c.yard.depth;
   const lane = laneGeo(c);
   const gateLo = lane ? lane.gy - lane.half : -1;
   const gateHi = lane ? lane.gy + lane.half : -1;
-  // The fence: 2.5 m panels along the four sides, a gap at the gate.
+  // The fence: 2.5 m panels along the four sides, a gap at the gate; with a back wall (map.north) the wall
+  // is the north side and no panel stands north of it (it would stand in the sky band).
+  const nw = mapNorth(c);
+  const y0 = nw !== null && nw > 1 ? nw + 0.4 : 0;
   for (let x = 1.25; x < W; x += 2.5) {
-    sprite(out, res, 'plant.fence.ew', x, 0.05);
+    if (y0 === 0) sprite(out, res, 'plant.fence.ew', x, 0.05);
     sprite(out, res, 'plant.fence.ew', x, D - 0.05);
   }
-  for (let y = 1.25; y < D; y += 2.5) {
+  for (let y = y0 + 1.25; y < D; y += 2.5) {
     sprite(out, res, 'plant.fence.ns', 0.05, y);
     if (!lane || y + 1.25 <= gateLo || y - 1.25 >= gateHi) sprite(out, res, 'plant.fence.ns', W - 0.05, y);
   }
@@ -372,6 +376,84 @@ const skipLoadFrame = (look: number, trial: boolean) => SKIP_LOAD_FRAMES.indexOf
 type Pt = { x: number; y: number };
 const flat = (pts: readonly Pt[] | undefined): number[] => (pts ?? []).slice(0, PATH_MAX).flatMap((p) => [p.x, p.y]);
 
+/** The nearest point of a polyline [x0, y0, ...] to (x, y): its x, y and its place along the line (segment index + share). */
+export function nearestOnLine(line: readonly number[], x: number, y: number): { x: number; y: number; at: number } {
+  let best = { x: line[0], y: line[1], at: 0 };
+  let bestD = Infinity;
+  for (let i = 0; i + 3 < line.length; i += 2) {
+    const ax = line[i];
+    const ay = line[i + 1];
+    const dx = line[i + 2] - ax;
+    const dy = line[i + 3] - ay;
+    const l2 = dx * dx + dy * dy;
+    const u = l2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / l2)) : 0;
+    const px = ax + dx * u;
+    const py = ay + dy * u;
+    const d = (px - x) * (px - x) + (py - y) * (py - y);
+    if (d < bestD) {
+      bestD = d;
+      best = { x: px, y: py, at: i / 2 + u };
+    }
+  }
+  return best;
+}
+
+/**
+ * A vehicle's path inside the yard laid on the drive line (MAP.md M4, P15): each leg whose two ends lie
+ * inside the yard (x at most the fence's) goes from its start straight onto the line, along the line, and
+ * off it straight to its end; legs out on the lane stay as they are. A path that would grow past PATH_MAX
+ * points, or a map without a line, is kept as given. Pure.
+ */
+export function viaDriveLine(path: readonly number[], line: readonly number[], W: number): number[] {
+  if (line.length < 4 || path.length < 4) return [...path];
+  const out: number[] = [path[0], path[1]];
+  for (let i = 2; i + 1 < path.length; i += 2) {
+    const ax = path[i - 2];
+    const ay = path[i - 1];
+    const bx = path[i];
+    const by = path[i + 1];
+    if (ax <= W && bx <= W + 1) {
+      const a = nearestOnLine(line, ax, ay);
+      const b = nearestOnLine(line, bx, by);
+      const push = (x: number, y: number) => {
+        const n = out.length;
+        if (Math.abs(out[n - 2] - x) > 0.05 || Math.abs(out[n - 1] - y) > 0.05) out.push(x, y);
+      };
+      push(a.x, a.y);
+      if (b.at > a.at) for (let k = Math.ceil(a.at); k < b.at; k++) push(line[k * 2], line[k * 2 + 1]);
+      else for (let k = Math.floor(a.at); k > b.at; k--) push(line[k * 2], line[k * 2 + 1]);
+      push(b.x, b.y);
+      push(bx, by);
+    } else out.push(bx, by);
+  }
+  return out.length / 2 > PATH_MAX ? [...path] : out;
+}
+
+/** Below this gap two solids are one (MAP.md M6: a gap is at least 1.5 m or closed; a body never wedges in a slit). */
+export const MIN_GAP_M = 1.2;
+
+/** Boxes [x0, x1, y0, y1] whose gap is under `gap` merged into their bounding boxes (repeatedly). Pure. */
+export function mergeBoxes(boxes: readonly number[][], gap: number): number[][] {
+  const out = boxes.map((b) => [...b]);
+  let merged = true;
+  while (merged) {
+    merged = false;
+    for (let i = 0; i < out.length && !merged; i++)
+      for (let j = i + 1; j < out.length && !merged; j++) {
+        const a = out[i];
+        const b = out[j];
+        const gx = Math.max(a[0], b[0]) - Math.min(a[1], b[1]);
+        const gy = Math.max(a[2], b[2]) - Math.min(a[3], b[3]);
+        if (gx < gap && gy < gap) {
+          out[i] = [Math.min(a[0], b[0]), Math.max(a[1], b[1]), Math.min(a[2], b[2]), Math.max(a[3], b[3])];
+          out.splice(j, 1);
+          merged = true;
+        }
+      }
+  }
+  return out;
+}
+
 /** A bay's sprites by its kind and fill share (content `grades.<id>.bay`; the art owns the levels). */
 function bayItems(out: number[], res: Resolver, b: R.FrameBay): void {
   const kind = b.kind ?? (b.sprite?.startsWith('bay.') ? 'heap' : b.grade === 'conv' ? 'cage' : 'stillage');
@@ -397,7 +479,7 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
   const items: number[] = [];
   const solids: number[] = [];
   // The old stock's beds (the look's ./dressing.ts bedsDress), shrinking as each zone's stock is worked.
-  if (entryOf('ground.bed')) for (const d of bedsDress(c, bedShares(c, f.things))) sprite(items, res, d.id, d.x, d.y, { frame: d.frame, flat: d.flat, key: d.key });
+  if (entryOf('ground.bed')) for (const d of bedsDress(c, bedShares(c, f.things))) sprite(items, res, d.id, d.x, d.y, { frame: d.frame, flat: d.flat, key: d.key, alpha: d.alpha });
   // Things, whole and in their stages (the art's stageOf over pieces off and in all).
   for (const th of f.things) {
     const o = c.objects[th.obj];
@@ -407,7 +489,7 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
     const total = th.total ?? o?.pieces.reduce((a, p) => a + p[2], 0) ?? 1;
     const off = th.off ?? (th.stage > 0 ? Math.round((th.stage / Math.max(1, (o?.stages ?? 2) - 1)) * total) : 0);
     const frame = stageOf(e.frames.length, off, total);
-    sprite(items, res, id, th.x, th.y, { frame });
+    sprite(items, res, id, th.x, th.y, { frame, tint: off === 0 ? thingLookTint(th.uid) : -1 });
     if (off === 0) solids.push(1, th.x, th.y, Math.max(0.3, Math.min(o?.size.w ?? e.footprint.w, e.footprint.w) / 2), Math.max(0.2, Math.min(o?.size.d ?? e.footprint.d, e.footprint.d) / 2));
   }
   // Pieces on the ground.
@@ -419,7 +501,17 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
   // Machines in their looks; bays; partners' skips; circles; equipment the rules add.
   let pourAt: Pt | null = null;
   for (const m of f.machines) machineItems(items, res, m, f.t, (p) => (pourAt = p));
-  for (const b of f.bays) bayItems(items, res, b);
+  const cages: number[][] = [];
+  for (const b of f.bays) {
+    bayItems(items, res, b);
+    // Every drawn stillage and cage is solid at its drawn size (P13): nobody walks through a cage.
+    const kind = b.kind ?? (b.sprite?.startsWith('bay.') ? 'heap' : b.grade === 'conv' ? 'cage' : 'stillage');
+    if (kind !== 'heap') {
+      const e = entryOf(kind === 'cage' ? 'plant.cage.converter' : 'plant.stillage');
+      if (e) cages.push([b.x - e.footprint.w / 2, b.x + e.footprint.w / 2, b.y - e.footprint.d / 2, b.y + e.footprint.d / 2]);
+    }
+  }
+  for (const box of mergeBoxes(cages, MIN_GAP_M)) solids.push(1, (box[0] + box[1]) / 2, (box[2] + box[3]) / 2, (box[1] - box[0]) / 2, (box[3] - box[2]) / 2);
   for (const s of f.skips) {
     sprite(items, res, 'vehicle.skip', s.x, s.y);
     if (s.state !== 'filling') sprite(items, res, 'vehicle.skip.load', s.x, s.y, { frame: skipLoadFrame(partnerLook(c, s.partner), s.state === 'trial'), key: s.y + 0.876, dy: -0.95 * 40 * Math.sqrt(1 - 0.49) });
@@ -470,6 +562,8 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
     const gate = c.map.points.gate ?? [c.yard.width - 1, c.yard.depth / 2];
     truckPath = leg.from && leg.to ? [leg.from.x, leg.from.y, leg.to.x, leg.to.y] : [tk.x, tk.y, gate[0], gate[1], site ? site.x - 3.2 : gate[0] + 20, gate[1]];
   }
+  const line = mapDriveLine(c);
+  truckPath = viaDriveLine(truckPath, line, c.yard.width);
   const truck = [tk.owned ? 1 : 0, tk.x, tk.y, tk.heading ?? 0, loadState === null ? 0 : skipFrame >= 0 ? 2 : 1, tk.by === 'boss' ? 1 : tk.by === 'driver' ? 2 : 0, leg ? (LEG_CODE[leg.phase] ?? -1) : -1, leg?.t0 ?? 0, leg?.t1 ?? 0, tk.hook ?? -1, skipFrame, truckPath.length / 2];
 
   // The merchant's flatbed and its path; the public's car; purchases arriving.
@@ -479,6 +573,7 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
     const gate = c.map.points.gate ?? [c.yard.width - 1, c.yard.depth / 2];
     flatbedPath = [fbd.x, fbd.y, fbd.x, gate[1], gate[0], gate[1], lane ? Math.min(lane.gx + 60, laneDrawEnd(lane)) : gate[0] + 20, gate[1]];
   }
+  flatbedPath = viaDriveLine(flatbedPath, line, c.yard.width);
   const flatbed = [FLATBED_CODE[fbd.phase] ?? 0, fbd.t0, fbd.t1, fbd.x, fbd.y, fbd.load <= 0 ? 0 : fbd.load < 3 ? 1 : 2, flatbedPath.length / 2];
   const dc = f.dropoffCar;
   const gate = c.map.points.gate ?? [c.yard.width - 1, c.yard.depth / 2];
@@ -698,6 +793,8 @@ export interface DrawList {
   tint: Float64Array;
   al: Float64Array;
   order: Int32Array;
+  /** The sort's scratch: band and sheet of each item (sortList). */
+  sk: Float64Array;
   n: number;
   cap: number;
   /** Offset of this list in the shared host-object pools. */
@@ -794,16 +891,30 @@ export function pathLen(pts: number[], np: number): number {
   return total;
 }
 
-/** Insertion sort of a list's order by key (nearly sorted from frame to frame). */
+/** Depth band of the sort, metres (H11): inside one band sprites of one sheet are drawn together. */
+export const DEPTH_BAND = 0.25;
+
+/**
+ * Insertion sort of a list's order (nearly sorted from frame to frame) by depth BAND first (DEPTH_BAND of
+ * the key), then by sheet (B, the plant and vehicles, before A, the people and pieces: a person level with a
+ * machine stands in front of it), then by key: neighbours of one sheet merge into one atlas draw (H11).
+ */
 export function sortList(L: DrawList): void {
   'worklet';
   const o = L.order;
-  for (let i = 0; i < L.n; i++) o[i] = i;
-  for (let i = 1; i < L.n; i++) {
+  const n = L.n;
+  const sk = L.sk;
+  for (let i = 0; i < n; i++) {
+    o[i] = i;
+    const sheet = Math.floor(L.cell[i] / CELL_BASE);
+    sk[i] = Math.floor(L.key[i] / DEPTH_BAND) * 4 + (sheet === 1 ? 0 : sheet === 0 ? 1 : 2);
+  }
+  for (let i = 1; i < n; i++) {
     const v = o[i];
+    const sv = sk[v];
     const kv = L.key[v];
     let j = i - 1;
-    while (j >= 0 && L.key[o[j]] > kv) {
+    while (j >= 0 && (sk[o[j]] > sv || (sk[o[j]] === sv && L.key[o[j]] > kv))) {
       o[j + 1] = o[j];
       j--;
     }
@@ -814,5 +925,5 @@ export function sortList(L: DrawList): void {
 /** makeList for the UI thread. */
 export function makeListW(cap: number, base: number): DrawList {
   'worklet';
-  return { key: new Float64Array(cap), cell: new Float64Array(cap), sx: new Float64Array(cap), sy: new Float64Array(cap), k: new Float64Array(cap), tint: new Float64Array(cap), al: new Float64Array(cap), order: new Int32Array(cap), n: 0, cap, base };
+  return { key: new Float64Array(cap), cell: new Float64Array(cap), sx: new Float64Array(cap), sy: new Float64Array(cap), k: new Float64Array(cap), tint: new Float64Array(cap), al: new Float64Array(cap), order: new Int32Array(cap), sk: new Float64Array(cap), n: 0, cap, base };
 }

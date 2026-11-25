@@ -252,6 +252,8 @@ export interface CrucibleState extends MachineState {
   fromBays: boolean;
   /** New metal in the pot, grams (the heel apart). */
   charge_g: number;
+  /** R1 (rules-sim-a): the charge by input grade (what a recipe change returns to each bay); absent on older saves (all to the first input). */
+  chargeBy?: Record<GradeId, number>;
   /** Metal kept from the last pour (less than one ingot), grams, of the recipe's out grade. */
   heel_g: number;
   phase: HeatPhase;
@@ -678,6 +680,7 @@ export interface SalvageActions {
 /** One typed argument of a printed line. The screen formats each kind with its ONE formatter (facade). */
 export type TxtArg =
   | { money: number } // fmtMoney: "§12.30", "§3,148", "§412k"
+  | { exact: number } // ADDED (W11, rules-book): fmtMoneyExact, a ticket keeps its hundredths
   | { price: number } // fmtPrice: § a kilogram, "§0.95"
   | { mass_g: number; step?: MassStep; ferrous?: boolean } // fmtMass: "28.6 kg", "1,020 kg", "12.34 t"
   | { tonnes_g: number } // fmtTonnes: always tonnes, two decimals: "0.15 t", "24.50 t"

@@ -10,7 +10,8 @@ import * as E from '../economy';
 import { FIXTURE_NAMES, FIXTURE_NOW, SALVAGE_TEST, fixtureGame, withTestContent } from '../fixtures/salvage';
 import { marketDay } from './board';
 import { roundMoney, sumAmounts } from './money';
-import { collectionTicket, lotLine, skipTicket, ticketView, weighInTicket } from './tickets';
+import { convPaid } from './content';
+import { collectionTicket, converterLine, converterPaid, lessonFor, lotLine, noteTxt, refArg, skipTicket, ticketView, weighInTicket } from './tickets';
 import type { Piece, SalvageGame } from './types';
 import { TEXT_KEYS } from './types';
 
@@ -75,5 +76,51 @@ describe('tickets', () => {
         for (const x of [v.head, v.date, ...v.lines, ...v.legal, ...(v.more ? [v.more] : []), ...(v.value ? [v.value] : [])]) expect(KEYS.has(x.key), x.key).toBe(true);
       }
     }
+  });
+});
+
+describe('the record reference and the converter (W3, W15)', () => {
+  it('the record reference prints as written ("0012") in the lesson and in the history line', () => {
+    const src = Object.entries(C.objects).find(([, o]) => o.source)?.[0];
+    const conv = Object.keys(C.grades).find((gr) => C.grades[gr].family === 'pm');
+    expect(src && conv).toBeTruthy();
+    const ref = C.objects[src!].source!.ref;
+    const g = fixtureGame('fresh', base(), FIXTURE_NOW) as SalvageGame;
+    const line = { grade: conv!, g: 1500, price: 1, amount: 1, note: { kind: 'fromCar' as const, ref } };
+    expect(noteTxt(line)?.args?.ref).toEqual({ ref });
+    expect(refArg('0012')).toEqual({ ref: '0012' });
+    // The lesson (when content has one for the converter) carries the same reference, unchanged.
+    const lessoned = { ...cfg, salvage: { ...cfg.salvage, lessons: { ...cfg.salvage.lessons, [conv!]: 'lesson.conv' } } };
+    const l = lessonFor(lessoned, g, [line], 10_000, DAY);
+    expect(l?.text.args?.ref).toEqual({ ref });
+  });
+  it('the converter is paid from content.ts convPaid (one source), and its payables line carries the content shares', () => {
+    for (let d = DAY - 5; d <= DAY + 5; d++) expect(converterPaid(C, d)).toBe(convPaid(C, d));
+    const t = converterLine(C);
+    expect(t.key).toBe('card.converterPaid');
+    expect(t.args?.pt).toEqual({ pct: C.converter.pay_pt });
+    expect(t.args?.pd).toEqual({ pct: C.converter.pay_pd });
+    expect(t.args?.rh).toEqual({ pct: C.converter.pay_rh });
+  });
+});
+
+describe('two ticket books (W16)', () => {
+  it('a ticket prints its series (each book from 1), an old ticket its order number', () => {
+    const w = { no: 7, series: 1, at: 0, day: DAY, kind: 'weighIn' as const, by: 'boss', lines: [], todaysValue: 0, lessonText: null, lesson: null };
+    expect(ticketView(w).head.args?.n).toEqual({ n: 1 });
+    const { series: _s, ...old } = w;
+    void _s;
+    expect(ticketView(old).head.args?.n).toEqual({ n: 7 });
+    const col = { no: 8, series: 1, at: 0, day: DAY, kind: 'collection' as const, buyer: 'merchant', lines: [], paid: 0, withBoss: true, firstGrades: [] };
+    expect(ticketView(col).head.args?.n).toEqual({ n: 1 });
+  });
+  it('the builders number from their book: a fresh yard prints weigh-in No. 1 and sale ticket 1', () => {
+    const g = fixtureGame('fresh', base(), FIXTURE_NOW) as SalvageGame;
+    const fresh = { ...g, salvage: { ...g.salvage, counts: { ...(g.salvage.counts ?? {}), 'ticket#weigh': 0, 'ticket#sale': 0 } } } as SalvageGame;
+    expect(weighInTicket(cfg, fresh, 'boss', [pc('a', 'li', 10_000)], 10, DAY).ticket.series).toBe(1);
+    expect(collectionTicket(fresh, [], 10, DAY, true, []).series).toBe(1);
+    const later = { ...fresh, salvage: { ...fresh.salvage, counts: { ...fresh.salvage.counts, 'ticket#weigh': 4, 'ticket#sale': 2 } } } as SalvageGame;
+    expect(weighInTicket(cfg, later, 'boss', [pc('a', 'li', 10_000)], 10, DAY).ticket.series).toBe(5);
+    expect(collectionTicket(later, [], 10, DAY, true, []).series).toBe(3);
   });
 });

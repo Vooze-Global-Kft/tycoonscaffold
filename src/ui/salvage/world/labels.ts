@@ -178,7 +178,9 @@ export function labelItems(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTab
     const b0 = bayAt.get(grade);
     const lab = f.labels.find((l) => l.id === `bay.${grade}`)!;
     const more = (bayMore.get(grade) ?? []).sort((a, b) => a.rank - b.rank);
-    const lines: LabelLine[] = [line(main, LIMITS.bay, 'ink')];
+    // Line 1 is ONE line; one that cannot fit a plate (over 38 characters) breaks at its first " · "
+    // rather than being dropped (the words are the rules': requests.md asks for lines within 38).
+    const lines: LabelLine[] = main.length <= LIMITS.bay || !main.includes(' · ') ? [line(main, LIMITS.bay, 'ink')] : [line(main.slice(0, main.indexOf(' · ')), LIMITS.bay, 'ink'), line(main.slice(main.indexOf(' · ') + 3), LIMITS.bay, 'muted')];
     if (more[0]) lines.push(line(more[0].text, LIMITS.bay, more[0].tone));
     const place = b0 ? (c.grades as Record<string, { bay?: { place?: string } }>)[grade]?.bay?.place ?? null : null;
     out.push({ id: `bay.${grade}`, kind: 'bay', x: b0?.x ?? lab.x, y: b0?.y ?? lab.y, z: Math.max(1.4, place ? placeZ(c, place, tops) : 0), lines, padlock: false, near: false, place: null, at: null });

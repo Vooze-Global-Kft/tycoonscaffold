@@ -30,7 +30,7 @@ import { useSalvageUi } from '../uiState';
 import type { YardLayout } from '../world/yard';
 import { useGame } from '../../../state/store';
 import { loadingClock } from '../loading/clock';
-import { goalRect, hudAnchors } from './anchors';
+import { goalRect, hudAnchors, ticketBoxes } from './anchors';
 import { lessonOnTicket, lineH, onScreen, overlaps, placeFromSlot, placeTicket, textW, TICKET_PT, underCash, type HudLayout } from './metrics';
 import { BarText } from './Paper';
 import { yardEvents } from './pump';
@@ -234,6 +234,31 @@ function sizeOf(slot: Content, L: HudLayout, c: R.SalvageContent): { w: number; 
   return { w, h: plan ? plan.height : lineH(11 * s) + 10, plan };
 }
 
+/** Where a ticket of w × h stands this frame for its anchor (a worklet), and the offset it feeds out from. */
+function placeOf(a: Anchor, w: number, h: number, cam: { x: number; y: number; zoom: number }, gr: { x: number; y: number; w: number; h: number }, box: { left: number; right: number; freeY: number; bottomY: number }, W: number, H: number, ppm: number, tilt: number, lift: number): { x: number; y: number; fx: number; fy: number } {
+  'worklet';
+  const goal = gr.w > 0 ? gr : null;
+  if (a.kind === 'cash') return { ...underCash(w, h, goal, box), fx: 0, fy: 0 };
+  if (a.kind === 'point') {
+    const p = project(a.at.x, a.at.y, a.at.z, cam, W, H, ppm, tilt, lift);
+    let q = onScreen(p.x, p.y, box) ? placeTicket(p.x, p.y, w, h, box) : underCash(w, h, goal, box);
+    if (goal && overlaps({ x: q.x, y: q.y, w, h }, goal, 2)) q = { x: q.x, y: Math.min(box.bottomY - h - 4, goal.y + goal.h + 4) };
+    return { ...q, fx: 0, fy: 0 };
+  }
+  const p = project(a.slot.x, a.slot.y, a.slot.z, cam, W, H, ppm, tilt, lift);
+  if (!onScreen(p.x, p.y, box)) return { ...underCash(w, h, goal, box), fx: 0, fy: 0 };
+  let keep: { x: number; y: number; w: number; h: number } | null = null;
+  if (a.keep) {
+    const k = a.keep;
+    const p0 = project(k.x - k.halfW, k.y, 0, cam, W, H, ppm, tilt, lift);
+    const p1 = project(k.x + k.halfW, k.y, k.z, cam, W, H, ppm, tilt, lift);
+    keep = { x: p0.x, y: p1.y, w: p1.x - p0.x, h: p0.y - p1.y };
+  }
+  const q = placeFromSlot(p.x, p.y, w, h, keep, goal, box);
+  // It feeds out of the slot: from the slot's edge towards its place.
+  return { ...q, fx: (q.x > p.x ? p.x - q.x : p.x - (q.x + w)) * 0.5, fy: (p.y - q.y) * 0.3 };
+}
+
 /** A ticket or chip at its anchor, following the camera each frame, feeding out of its slot (or rising in). */
 function Anchored({ slot, L, camera, yard, c }: { slot: Slot; L: HudLayout; camera: Camera; yard: YardLayout; c: R.SalvageContent }) {
   const s = L.s;
@@ -248,35 +273,19 @@ function Anchored({ slot, L, camera, yard, c }: { slot: Slot; L: HudLayout; came
   const H = L.height;
   const a = slot.anchor;
   const style = useAnimatedStyle(() => {
-    const cam = camera.value;
-    const gr = goalRect.value;
-    const goal = gr.w > 0 ? gr : null;
-    let q: { x: number; y: number };
-    let from = { x: 0, y: 0 };
-    if (a.kind === 'cash') q = underCash(w, h, goal, box);
-    else if (a.kind === 'point') {
-      const p = project(a.at.x, a.at.y, a.at.z, cam, W, H, ppm, tilt, lift);
-      q = onScreen(p.x, p.y, box) ? placeTicket(p.x, p.y, w, h, box) : underCash(w, h, goal, box);
-      if (goal && overlaps({ x: q.x, y: q.y, w, h }, goal, 2)) q = { x: q.x, y: Math.min(box.bottomY - h - 4, goal.y + goal.h + 4) };
-    } else {
-      const p = project(a.slot.x, a.slot.y, a.slot.z, cam, W, H, ppm, tilt, lift);
-      if (!onScreen(p.x, p.y, box)) q = underCash(w, h, goal, box);
-      else {
-        let keep: { x: number; y: number; w: number; h: number } | null = null;
-        if (a.keep) {
-          const k = a.keep;
-          const p0 = project(k.x - k.halfW, k.y, 0, cam, W, H, ppm, tilt, lift);
-          const p1 = project(k.x + k.halfW, k.y, k.z, cam, W, H, ppm, tilt, lift);
-          keep = { x: p0.x, y: p1.y, w: p1.x - p0.x, h: p0.y - p1.y };
-        }
-        q = placeFromSlot(p.x, p.y, w, h, keep, goal, box);
-        // It feeds out of the slot: from the slot's edge towards its place.
-        from = { x: (q.x > p.x ? p.x - q.x : p.x - (q.x + w)) * 0.5, y: (p.y - q.y) * 0.3 };
-      }
-    }
+    const r = placeOf(a, w, h, camera.value, goalRect.value, box, W, H, ppm, tilt, lift);
     const k = 1 - rise.value;
-    return { opacity: Math.min(1, rise.value * 1.6), transform: [{ translateX: q.x + from.x * k }, { translateY: q.y + from.y * k + (a.kind === 'slot' ? 0 : k * 14) }] };
+    return { opacity: Math.min(1, rise.value * 1.6), transform: [{ translateX: r.x + r.fx * k }, { translateY: r.y + r.fy * k + (a.kind === 'slot' ? 0 : k * 14) }] };
   });
+  // world-b hides a plate under a ticket (L3/P7): the ticket's box when it shows (not per frame), cleared when it folds.
+  useEffect(() => {
+    const r = placeOf(a, w, h, camera.value, goalRect.value, box, W, H, ppm, tilt, lift);
+    ticketBoxes.value = [{ x: r.x, y: r.y, w, h }];
+    return () => {
+      ticketBoxes.value = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <Animated.View style={[styles.abs, { width: w }, style]}>
       <Pressable accessibilityRole="button" onPress={() => openCard({ kind: 'clipboard' })}>

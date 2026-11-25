@@ -83,6 +83,8 @@
     "version": "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
     "units": "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
     "$changes": [
+      "fix pass (content, 25 Nov evening): THE MAP moves to the art director's picture (MAP.md M1-M7): back wall map.north 15.2, working row against it, zone 1 in the wall/east-fence corner by the scale, the drop-off bay by the gate, one drive line (map.driveLine), office and rack south of it; zones.<id>.bed; routes recomputed (scripts/content/yard_map.py)",
+      "fix pass: P1 dropoff.opening washers and bicycles until openingUntil_s 300; R4/W26 (E31b) crew.hand.lev 0.12 -> 0.25, crew.cutter.lev 0.15 -> 0.25 (levels priced by E13a's rule); E31d ladder.rung2.t 2.2 -> 2.4; R6 (E33) awayCap_h -> awayCapByRung_h [0.5, 2, 4] and nightWatch_h 2; P10 truck.bossV 9 (truck.v stays the driver's 12); W9 the car: pieces wheels, loom, converter (pieceTiers 1, 1, 3) and a whole shell of Car body 800 kg (same value)",
       "bots5 (the people-like bots on the real rules, scripts/content/yard-bot.ts, REPORT5.txt): goal prices hand1 400 -> 300, sledge 480 -> 340, trolley 540 -> 380, truck 600 -> 430, torch 670 -> 480, cutter 750 -> 540, stripper 890 -> 700, crucible 1200 -> 800, bench 1300 -> 900, driver 1500 -> 1000 (the real yard hand walks real legs: net income in minutes 5 to 25 is about §180-300 a minute, so proto4's prices meant waits of four to eight minutes)",
       "bots5: crew.cutter.share 0.25 -> 0.4, crew.driver.lev 0.08 -> 0.15, truck.v 9 -> 12, truck.handle_s 14 -> 10, truck.driverFactor 0.8 -> 0.9, partners fill_s 120 -> 100 (farm) and 180 -> 150 (demolition), levels.tau.first 20 -> 8, levels.floor 1800 -> 1500 (after the fixed goals the tipping floor and the driver bind; levels were priced out of the hour)",
       "bots5: ceilings_t_h [6, 20, 160] -> [6, 90, 400] (E30: about 1.3 x the highest rated capacity an always-on full spender reaches on the rung, 69 t/h on rung 2 with no ceiling; rung 2's 20 t/h refused the driver's hire); ladder rung 2 2 -> 2.2 t and rung 3 23 -> 21.5 t (rung 2 at 12-13 min and rung 3 at about 57 min for the goal habit on the real rules, E7, E29)",
@@ -135,7 +137,7 @@
       "speed": 2.4,
       "via": [
         24,
-        12
+        23.4
       ]
     },
     "props": [
@@ -143,10 +145,10 @@
         "id": "wall-1",
         "kind": "wall",
         "x": 24,
-        "y": 2.5,
+        "y": 19,
         "shape": "box",
         "w": 2.4,
-        "d": 5,
+        "d": 6.8,
         "h": 2.6,
         "solid": true
       },
@@ -154,10 +156,10 @@
         "id": "wall-2",
         "kind": "wall",
         "x": 24,
-        "y": 7.5,
+        "y": 26.4,
         "shape": "box",
         "w": 2.4,
-        "d": 5,
+        "d": 4,
         "h": 2.6,
         "solid": true
       },
@@ -165,10 +167,10 @@
         "id": "wall-3",
         "kind": "wall",
         "x": 24,
-        "y": 16.15,
+        "y": 30.4,
         "shape": "box",
         "w": 2.4,
-        "d": 4.3,
+        "d": 4,
         "h": 2.6,
         "solid": true
       },
@@ -176,10 +178,10 @@
         "id": "wall-4",
         "kind": "wall",
         "x": 24,
-        "y": 20.45,
+        "y": 34.4,
         "shape": "box",
         "w": 2.4,
-        "d": 4.3,
+        "d": 4,
         "h": 2.6,
         "solid": true
       },
@@ -187,43 +189,10 @@
         "id": "wall-5",
         "kind": "wall",
         "x": 24,
-        "y": 26,
+        "y": 38.2,
         "shape": "box",
         "w": 2.4,
-        "d": 4,
-        "h": 2.6,
-        "solid": true
-      },
-      {
-        "id": "wall-6",
-        "kind": "wall",
-        "x": 24,
-        "y": 30,
-        "shape": "box",
-        "w": 2.4,
-        "d": 4,
-        "h": 2.6,
-        "solid": true
-      },
-      {
-        "id": "wall-7",
-        "kind": "wall",
-        "x": 24,
-        "y": 34,
-        "shape": "box",
-        "w": 2.4,
-        "d": 4,
-        "h": 2.6,
-        "solid": true
-      },
-      {
-        "id": "wall-8",
-        "kind": "wall",
-        "x": 24,
-        "y": 38,
-        "shape": "box",
-        "w": 2.4,
-        "d": 4,
+        "d": 3.6,
         "h": 2.6,
         "solid": true
       },
@@ -240,8 +209,8 @@
       {
         "id": "pile-2",
         "kind": "pile",
-        "x": 57,
-        "y": 4,
+        "x": 9.5,
+        "y": 28,
         "shape": "circle",
         "r": 1.4,
         "h": 1,
@@ -260,8 +229,8 @@
       {
         "id": "crate-1",
         "kind": "crate",
-        "x": 3,
-        "y": 4,
+        "x": 2.5,
+        "y": 16.1,
         "shape": "box",
         "w": 1,
         "d": 1,
@@ -271,8 +240,8 @@
       {
         "id": "crate-2",
         "kind": "crate",
-        "x": 4.3,
-        "y": 5.4,
+        "x": 3.5,
+        "y": 16.1,
         "shape": "box",
         "w": 1,
         "d": 1,
@@ -312,7 +281,7 @@
         "long": "Light iron: thin steel from appliances, bicycles, gates and sheet"
       },
       "appl": {
-        "name": "Appliances, whole",
+        "name": "Light iron, uncut",
         "pbar": 0.36,
         "family": "fe",
         "material": "lightiron",
@@ -327,8 +296,8 @@
           "place": "bays",
           "slot": 1
         },
-        "short": "Appliances",
-        "long": "Whole appliances, not taken apart"
+        "short": "Uncut iron",
+        "long": "Light iron not yet taken apart: whole appliances, bikes, gates and sheet"
       },
       "ci": {
         "name": "Cast iron solids",
@@ -575,7 +544,7 @@
           "slot": 0
         },
         "short": "No.2 copper",
-        "long": "No.2 copper: unalloyed copper that is not clean"
+        "long": "No.2 copper: unalloyed copper that is coated, tinned or soldered"
       },
       "bb": {
         "name": "Bare bright copper",
@@ -1289,14 +1258,17 @@
             1500,
             1,
             "piece.converter"
-          ],
-          [
-            "cbody",
-            100000,
-            8,
-            "piece.steel.body"
           ]
         ],
+        "pieceTiers": [
+          1,
+          1,
+          3
+        ],
+        "shell": {
+          "grade": "cbody",
+          "g": 800000
+        },
         "waste_g": 200000,
         "whole": null,
         "text": "end-of-life car from partnerDemolition, depolluted, treatment record ref. 0012",
@@ -1326,15 +1298,21 @@
           "taps": 1
         },
         "centre": [
-          29.5,
-          27
+          59.05,
+          17.6
         ],
-        "r": 3,
+        "r": 2,
         "footprint": {
-          "x": 29.5,
-          "y": 27,
-          "w": 6,
-          "d": 6
+          "x": 59.05,
+          "y": 17.6,
+          "w": 9.9,
+          "d": 4
+        },
+        "bed": {
+          "x0": 54.1,
+          "y0": 15.6,
+          "w": 9.9,
+          "d": 4
         }
       },
       "Z2": {
@@ -1347,15 +1325,21 @@
           "stove": 6
         },
         "centre": [
-          16,
-          31
+          28.9,
+          18.4
         ],
-        "r": 4,
+        "r": 2.8,
         "footprint": {
-          "x": 16,
-          "y": 31,
-          "w": 8,
-          "d": 8
+          "x": 28.9,
+          "y": 18.4,
+          "w": 7.4,
+          "d": 5.6
+        },
+        "bed": {
+          "x0": 25.2,
+          "y0": 15.6,
+          "w": 7.4,
+          "d": 5.6
         }
       },
       "Z3": {
@@ -1366,15 +1350,21 @@
           "car": 1
         },
         "centre": [
-          12,
-          12
+          18.15,
+          18.6
         ],
-        "r": 5,
+        "r": 3,
         "footprint": {
-          "x": 12,
-          "y": 12,
-          "w": 10,
-          "d": 10
+          "x": 18.15,
+          "y": 18.6,
+          "w": 9.3,
+          "d": 6
+        },
+        "bed": {
+          "x0": 13.5,
+          "y0": 15.6,
+          "w": 9.3,
+          "d": 6
         }
       },
       "bundle1": {
@@ -1383,279 +1373,286 @@
           "cable": 1
         },
         "centre": [
-          49.6,
-          22.5
+          49.9,
+          20
         ],
         "r": 0.8,
         "footprint": {
-          "x": 49.6,
-          "y": 22.5,
+          "x": 49.9,
+          "y": 20,
+          "w": 1.6,
+          "d": 1.6
+        },
+        "bed": {
+          "x0": 49.1,
+          "y0": 19.2,
           "w": 1.6,
           "d": 1.6
         }
       }
     },
     "map": {
+      "north": 15.2,
       "points": {
         "start": [
-          59.5,
-          23.5
+          56.4,
+          21.6
         ],
         "gate": [
           63.5,
-          24
+          25.6
         ],
         "dropoff": [
-          58.5,
-          26.5
+          61,
+          21.7
         ],
         "scale": [
-          54,
-          22.5
+          52.8,
+          20
         ],
         "weighbridge": [
           50.5,
-          25.5
+          25.6
         ],
         "scalehouse": [
-          54.5,
-          19.5
+          52.6,
+          16.85
         ],
         "bays": [
-          48.5,
-          19.5
+          47.1,
+          16.6
         ],
         "merchant": [
-          42.6,
-          25.9
+          42.5,
+          25.6
         ],
         "stillage_cu": [
-          43.6,
-          19.2
+          42.5,
+          17.5
         ],
         "stillage_br": [
-          43.6,
-          20.6
+          42.5,
+          16.2
         ],
         "stripper": [
           47.5,
-          22.5
+          20
         ],
         "bundle1": [
-          49.6,
-          22.5
+          49.9,
+          20
         ],
         "crucible": [
-          38.5,
-          23
+          42.5,
+          21.2
         ],
         "board": [
-          45.2,
-          23.9
+          45.1,
+          20.4
         ],
         "bench": [
-          33,
-          22
+          37.8,
+          21
         ],
         "office": [
-          30,
-          16
+          56.5,
+          29.35
         ],
         "rack": [
-          34.5,
-          16.5
+          52.5,
+          28.5
         ],
         "Z1": [
-          29.5,
-          27
+          59.05,
+          17.6
         ],
         "Z2": [
-          16,
-          31
+          28.9,
+          18.4
         ],
         "Z3": [
-          12,
-          12
+          18.15,
+          18.6
         ],
         "car": [
-          19.5,
-          8
+          18.2,
+          20.6
         ],
         "floor": [
-          50,
-          33
+          47,
+          30.1
         ],
         "park": [
-          58.5,
-          34
+          62,
+          31.1
         ],
         "backfield": [
           6,
-          36
+          37
         ],
         "noticeboard": [
-          30,
-          18.6
+          41.9,
+          28.4
         ],
         "rubble": [
-          58,
-          19
+          35.3,
+          20.3
         ]
       },
       "footprints": {
         "start": {
-          "x": 59.5,
-          "y": 23.5,
+          "x": 56.4,
+          "y": 21.6,
           "w": 1,
           "d": 1
         },
         "gate": {
           "x": 63.5,
-          "y": 24,
+          "y": 25.6,
           "w": 1,
-          "d": 8
+          "d": 4
         },
         "dropoff": {
-          "x": 58.5,
-          "y": 26.5,
-          "w": 8,
-          "d": 2
+          "x": 61,
+          "y": 21.7,
+          "w": 5.6,
+          "d": 2.8
         },
         "scale": {
-          "x": 54,
-          "y": 22.5,
+          "x": 52.8,
+          "y": 20,
           "w": 1.5,
           "d": 1.5
         },
         "weighbridge": {
           "x": 50.5,
-          "y": 25.5,
+          "y": 25.6,
           "w": 6,
           "d": 3
         },
         "scalehouse": {
-          "x": 54.5,
-          "y": 19.5,
+          "x": 52.6,
+          "y": 16.85,
           "w": 3,
           "d": 2.5
         },
         "bays": {
-          "x": 48.5,
-          "y": 19.5,
+          "x": 47.1,
+          "y": 16.6,
           "w": 8,
           "d": 2
         },
         "merchant": {
-          "x": 42.6,
-          "y": 25.9,
+          "x": 42.5,
+          "y": 25.6,
           "w": 6,
           "d": 2
         },
         "stillage_cu": {
-          "x": 43.6,
-          "y": 19.2,
+          "x": 42.5,
+          "y": 17.5,
           "w": 1.2,
           "d": 1.2
         },
         "stillage_br": {
-          "x": 43.6,
-          "y": 20.6,
+          "x": 42.5,
+          "y": 16.2,
           "w": 1.2,
           "d": 1.2
         },
         "stripper": {
           "x": 47.5,
-          "y": 22.5,
+          "y": 20,
           "w": 2.5,
           "d": 1.5
         },
         "bundle1": {
-          "x": 49.6,
-          "y": 22.5,
+          "x": 49.9,
+          "y": 20,
           "w": 1.6,
           "d": 1.6
         },
         "crucible": {
-          "x": 38.5,
-          "y": 23,
+          "x": 42.5,
+          "y": 21.2,
           "w": 3,
           "d": 3
         },
         "board": {
-          "x": 45.2,
-          "y": 23.9,
+          "x": 45.1,
+          "y": 20.4,
           "w": 2,
           "d": 0.4
         },
         "bench": {
-          "x": 33,
-          "y": 22,
+          "x": 37.8,
+          "y": 21,
           "w": 2.5,
           "d": 1.5
         },
         "office": {
-          "x": 30,
-          "y": 16,
+          "x": 56.5,
+          "y": 29.35,
           "w": 6,
           "d": 2.5
         },
         "rack": {
-          "x": 34.5,
-          "y": 16.5,
+          "x": 52.5,
+          "y": 28.5,
           "w": 2,
           "d": 0.8
         },
         "Z1": {
-          "x": 29.5,
-          "y": 27,
-          "w": 6,
-          "d": 6
+          "x": 59.05,
+          "y": 17.6,
+          "w": 9.9,
+          "d": 4
         },
         "Z2": {
-          "x": 16,
-          "y": 31,
-          "w": 8,
-          "d": 8
+          "x": 28.9,
+          "y": 18.4,
+          "w": 7.4,
+          "d": 5.6
         },
         "Z3": {
-          "x": 12,
-          "y": 12,
-          "w": 10,
-          "d": 10
+          "x": 18.15,
+          "y": 18.6,
+          "w": 9.3,
+          "d": 6
         },
         "car": {
-          "x": 19.5,
-          "y": 8,
+          "x": 18.2,
+          "y": 20.6,
           "w": 2.8,
           "d": 1.2
         },
         "floor": {
-          "x": 50,
-          "y": 33,
+          "x": 47,
+          "y": 30.1,
           "w": 8,
           "d": 5
         },
         "park": {
-          "x": 58.5,
-          "y": 34,
+          "x": 62,
+          "y": 31.1,
           "w": 4,
           "d": 7
         },
         "backfield": {
           "x": 6,
-          "y": 36,
+          "y": 37,
           "w": 8,
           "d": 6
         },
         "noticeboard": {
-          "x": 30,
-          "y": 18.6,
+          "x": 41.9,
+          "y": 28.4,
           "w": 1.6,
           "d": 0.6
         },
         "rubble": {
-          "x": 58,
-          "y": 19,
+          "x": 35.3,
+          "y": 20.3,
           "w": 2.4,
           "d": 1.4
         }
@@ -1663,79 +1660,122 @@
       "walls": [
         {
           "x": 24,
-          "y": 2.5,
+          "y": 19,
           "w": 2.4,
-          "d": 5
+          "d": 6.8
         },
         {
           "x": 24,
-          "y": 7.5,
-          "w": 2.4,
-          "d": 5
-        },
-        {
-          "x": 24,
-          "y": 16.15,
-          "w": 2.4,
-          "d": 4.3
-        },
-        {
-          "x": 24,
-          "y": 20.45,
-          "w": 2.4,
-          "d": 4.3
-        },
-        {
-          "x": 24,
-          "y": 26,
+          "y": 26.4,
           "w": 2.4,
           "d": 4
         },
         {
           "x": 24,
-          "y": 30,
+          "y": 30.4,
           "w": 2.4,
           "d": 4
         },
         {
           "x": 24,
-          "y": 34,
+          "y": 34.4,
           "w": 2.4,
           "d": 4
         },
         {
           "x": 24,
-          "y": 38,
+          "y": 38.2,
           "w": 2.4,
-          "d": 4
+          "d": 3.6
         }
       ],
       "gaps": [
         [
           24,
-          23.3
-        ],
-        [
-          24,
-          12
+          23.4
         ]
       ],
       "hero": {
-        "x0": 35.5,
-        "y0": 18,
-        "w": 21,
-        "d": 9,
+        "x0": 39.9,
+        "y0": 15.2,
+        "w": 16.7,
+        "d": 9.7,
         "places": [
           "scale",
-          "weighbridge",
           "stripper",
+          "bundle1",
           "crucible",
           "stillage_cu",
           "stillage_br",
           "board",
           "bays",
-          "merchant"
+          "scalehouse"
         ]
+      },
+      "driveLine": {
+        "points": [
+          [
+            64,
+            25.6
+          ],
+          [
+            63.5,
+            25.6
+          ],
+          [
+            50.5,
+            25.6
+          ],
+          [
+            42.5,
+            25.6
+          ],
+          [
+            39.5,
+            25.6
+          ]
+        ],
+        "w": 4,
+        "rects": [
+          {
+            "x0": 39.5,
+            "y0": 23.6,
+            "w": 24.5,
+            "d": 4
+          },
+          {
+            "x0": 60,
+            "y0": 27.6,
+            "w": 4,
+            "d": 7
+          }
+        ],
+        "stops": {
+          "gate": [
+            63.5,
+            25.6
+          ],
+          "weighbridge": [
+            50.5,
+            25.6
+          ],
+          "merchant": [
+            42.5,
+            25.6
+          ],
+          "floor": [
+            48,
+            27.2
+          ],
+          "turn": [
+            62,
+            25.6
+          ],
+          "park": [
+            62,
+            31.1
+          ]
+        }
       },
       "detour": 1.15,
       "lane": {
@@ -1744,28 +1784,36 @@
         "bridge_m": 360
       },
       "routes": {
-        "start-dropoff": 3.6,
-        "dropoff-scale": 6.9,
-        "start-bundle1": 11.4,
-        "bundle1-stripper": 2.4,
-        "stripper-scale": 7.5,
-        "floor-scale": 12.9,
-        "dropoff-stripper": 13.5,
-        "floor-stripper": 12.4,
-        "Z1-scale": 28.6,
-        "Z2-scale": 47.3,
-        "Z3-scale": 50.4,
-        "car-scale": 43.5,
-        "dropoff-bench": 29.8,
-        "crucible-scale": 17.8,
-        "scale-rack": 23.5,
-        "scale-office": 28.6,
-        "scale-park": 14.2
+        "start-dropoff": 5.3,
+        "dropoff-scale": 9.6,
+        "start-bundle1": 7.7,
+        "bundle1-stripper": 2.8,
+        "stripper-scale": 6.1,
+        "floor-scale": 13.4,
+        "dropoff-stripper": 15.6,
+        "floor-stripper": 11.6,
+        "Z1-scale": 7.7,
+        "Z2-scale": 27.5,
+        "Z3-scale": 39.9,
+        "car-scale": 39.8,
+        "dropoff-bench": 26.7,
+        "crucible-scale": 11.9,
+        "scale-rack": 9.8,
+        "scale-office": 11.6,
+        "scale-bays": 7.6,
+        "scale-crucible": 11.9,
+        "Z1-dropoff": 5.2,
+        "gate-weighbridge": 13,
+        "weighbridge-floor": 3,
+        "floor-park": 19.6,
+        "park-gate": 7,
+        "scale-park": 16.6,
+        "weighbridge-merchant": 8
       },
       "places": {
         "dropoff": {
-          "w": 8,
-          "d": 2,
+          "w": 5.6,
+          "d": 2.8,
           "h": 0.1,
           "solid": false,
           "sprite": "prop.dropoff.pad",
@@ -1919,13 +1967,13 @@
       "laneWidth": 6,
       "circles": [
         [
-          56.8,
-          22,
+          54.3,
+          22.75,
           0.8
         ],
         [
-          58.2,
-          23.4,
+          52.3,
+          22.75,
           0.8
         ]
       ]
@@ -1954,6 +2002,7 @@
     "weigh_s": 0.5,
     "truck": {
       "v": 12,
+      "bossV": 9,
       "handle_s": 10,
       "driverFactor": 0.9,
       "radius": 1.3,
@@ -2027,13 +2076,13 @@
       "hand": {
         "load": 80,
         "v": 3,
-        "lev": 0.12,
+        "lev": 0.25,
         "handle_s": 2,
         "maxlev": 20
       },
       "cutter": {
         "share": 0.4,
-        "lev": 0.15,
+        "lev": 0.25,
         "cap": 0.95,
         "maxlev": 20
       },
@@ -2074,7 +2123,16 @@
       ],
       "initial": [
         "washer"
-      ]
+      ],
+      "opening": [
+        "washer",
+        "bike",
+        "washer",
+        "washer",
+        "bike",
+        "washer"
+      ],
+      "openingUntil_s": 300
     },
     "partners": {
       "partnerFarm": {
@@ -2373,7 +2431,7 @@
     },
     "ladder": {
       "rung2": {
-        "t": 2.2,
+        "t": 2.4,
         "range": 3
       },
       "rung3": {
@@ -2434,10 +2492,12 @@
       90,
       400
     ],
-    "awayCap_h": [
-      4,
-      6
+    "awayCapByRung_h": [
+      0.5,
+      2,
+      4
     ],
+    "nightWatch_h": 2,
     "rivals": {
       "rule": "tonnes = T0_t x (1 + g x min(d, 40)), d = market days since the player's first second (E27); the k-th rival below the player shows at most (1 - 0.03 k) x the player (S17)",
       "list": [
@@ -2707,13 +2767,13 @@
       "partnerFarm": "Hob's Farm Clearance",
       "regional.cable": "Rowkirk Cable Works",
       "regional.steel": "Garrowfield Steel",
-      "rival.1": "Bramley & Daughters Scrap",
+      "rival.1": "Marchford & Daughters Scrap",
       "rival.2": "Pennick Scrap",
       "rival.3": "Brookmill Metals",
       "rival.4": "Tenterby Lane Metals",
       "rival.5": "Kolbeck Recycling",
       "rival.6": "Tunney & Sons",
-      "rival.7": "Oakbridge Metal Recovery",
+      "rival.7": "Redport Metal Recovery",
       "rival.8": "Millbeck Ferrous",
       "rival.9": "Larkmoor Non-Ferrous",
       "rival.10": "Stonebeck Reclaim",
@@ -2748,13 +2808,11 @@
       "rival.16.chip": "Saltreach",
       "rival.3.chip": "Brookmill",
       "rival.6.chip": "Tunney & Sons",
-      "rival.7.chip": "Oakbridge",
       "rival.8.chip": "Millbeck",
       "rival.9.chip": "Larkmoor",
       "rival.10.chip": "Stonebeck",
       "rival.13.chip": "Nordal",
       "rival.20.chip": "Tarnmoor",
-      "rival.1.chip": "Bramley",
       "rival.11.chip": "Highfold",
       "rival.23.chip": "Pearlbay",
       "rival.15.chip": "Rookhill",
@@ -2764,6 +2822,8 @@
       "rival.24.chip": "Oakfold",
       "rival.25.chip": "Elmfield",
       "merchant.short": "Tollbridge",
+      "rival.1.chip": "Marchford",
+      "rival.7.chip": "Redport",
       "crew.0": "Ben",
       "crew.1": "Carlos",
       "crew.2": "Dara",
@@ -2849,7 +2909,7 @@
         },
         "no2": {
           "ticket": "lesson.no2",
-          "help": "No.2 copper is unalloyed copper that is not clean: tinned, painted or with some solder. It pays less than bare bright."
+          "help": "No.2 copper is unalloyed copper that is not clean: coated, tinned, painted or with some solder. It pays less than bare bright."
         },
         "brs": {
           "ticket": "lesson.brs",
@@ -2877,7 +2937,7 @@
         },
         "cbody": {
           "ticket": "lesson.cbody",
-          "help": "After depollution and the parts that pay more are off, a car body goes to a shredder, which tears it into fist-sized pieces of steel."
+          "help": "Once a car is depolluted and the parts that pay more are off, its body goes to a shredder. The shredder tears it into fist-sized pieces of steel."
         },
         "bri": {
           "ticket": "lesson.bri",
@@ -2945,11 +3005,11 @@
         },
         {
           "term": "Crucible",
-          "line": "A pot that melts metal under an extraction hood."
+          "line": "A pot in which metal is melted, under an extraction hood."
         },
         {
           "term": "Depolluted",
-          "line": "A car with its fluids, battery and tyres taken out."
+          "line": "A car with its fluids, battery, tyres and airbags taken out."
         },
         {
           "term": "Dross",
@@ -3001,7 +3061,7 @@
         },
         {
           "term": "No.2 copper",
-          "line": "Unalloyed copper that is not clean."
+          "line": "Unalloyed copper that is coated, tinned or soldered."
         },
         {
           "term": "Payable",
@@ -3021,7 +3081,7 @@
         },
         {
           "term": "Stainless",
-          "line": "Steel with chromium and nickel that does not rust."
+          "line": "Steel with chromium and nickel that resists rust."
         },
         {
           "term": "Stripper",
@@ -3163,10 +3223,20 @@
         "text": "goal.fetchTrial",
         "target": "gate",
         "via": "truck",
-        "done": "fetched:partnerFarm:1",
+        "done": "bridged:partnerFarm:1",
         "buy": null,
         "optional": false,
         "stall": null
+      },
+      {
+        "id": "tipTrial",
+        "text": "goal.tipTrial",
+        "target": "floor",
+        "via": null,
+        "done": "fetched:partnerFarm:1",
+        "buy": null,
+        "optional": false,
+        "stall": "chevron"
       },
       {
         "id": "hireCutter",
@@ -3437,19 +3507,19 @@
     "title": "Scrap to Ingot",
     "subtitle": "Scrapyard & Metal Tycoon",
     "keywords": [
-      "scrapyard",
+      "idle",
       "scrap metal",
-      "smelter",
-      "foundry",
+      "crucible",
       "ingot",
       "copper",
       "furnace",
       "weighbridge",
-      "metal recycling"
+      "metal recycling",
+      "cable stripping"
     ],
     "shortDescription": "Strip copper, weigh scrap by grade and pour brass ingots in your own yard.",
     "promotionalText": "Take over Cinder Lane Yard, a small licensed yard full of old stock. Steer your worker with one thumb and take a washing machine apart, piece by piece.",
-    "description": "Take over Cinder Lane Yard, a small licensed scrapyard full of old stock, and steer your worker with one thumb. Stop beside a washing machine and it comes apart, piece by piece: light iron panels, a whole motor, a counterweight for the rubble skip.\n\nEvery load goes on the platform scale and into its bay by grade, at the day's posted price. The price board shows each grade's price today, the days before it and one plain word: low day, usual or high day. Hold any bay for a better day. Tollbridge Metals's flatbed collects every bay you have not held and pays by transfer.\n\nThe yard came with an old hand stripper and a bundle of cable. Strip it and bare bright copper comes off the spool, worth many times the iron. Further on, a small crucible under its extraction hood melts brass taps into brass ingots.\n\nBuy better tools and wheeled carriers: a sledgehammer and angle grinder for cast iron, a cutting torch for steel beams and a depolluted end-of-life car, delivered with its paperwork. Buy a hook-lift truck and fetch loads from Hob's Farm Clearance and Cottle Demolition. Every load is labelled with what is in it and its price before you hook it, and the weighbridge prints gross, tare and net.\n\nHire a yard hand, a cutter and a driver. Each takes over one step of the work, so the yard keeps earning while you are away, for a few hours.\n\nFrom the first minute the industry table ranks your yard against rival firms by tonnes supplied, under one aim: the largest full metal recycling and resource supplier. The rival firms are simulated.\n\nEvery firm, place and price in the game is invented. Prices keep the trade's true proportions. No real money goes into or comes out of anything in the game.",
+    "description": "Take over Cinder Lane Yard, a small licensed scrapyard full of old stock, and steer your worker with one thumb. Stop beside a washing machine and it comes apart, piece by piece: light iron panels, a whole motor, a counterweight for the rubble skip.\n\nEvery load goes on the platform scale and into its bay by grade, at the day's posted price. The price board shows each grade's price today, the days before it and one plain word: low day, usual or high day. Hold any bay for a better day. The flatbed from Tollbridge Metals collects every bay you have not held and pays by transfer.\n\nThe yard came with an old hand stripper and a bundle of cable. Strip it and bare bright copper comes off the spool, worth many times the iron. Further on, a small crucible under its extraction hood melts brass taps into brass ingots.\n\nBuy better tools and wheeled carriers: a sledgehammer and angle grinder for cast iron, and a cutting torch for steel beams, tanks certified empty and the depolluted end-of-life car that came in from Cottle Demolition with its paperwork. Buy a hook-lift truck and fetch loads from Hob's Farm Clearance and Cottle Demolition. Every load is labelled with what is in it and its price before you hook it, and the weighbridge prints gross, tare and net.\n\nHire a yard hand, a cutter and a driver. Each takes over one step of the work, so the yard keeps earning while you are away, for a few hours.\n\nFrom the first minute the industry table ranks your yard against rival firms by tonnes supplied, under one aim: the largest full metal recycling and resource supplier. The rival firms are simulated.\n\nEvery firm, place and price in the game is invented. Prices keep the trade's true proportions. No real money goes into or comes out of anything in the game.",
     "privacyPolicyUrl": "https://example.com/scrap-to-ingot/privacy",
     "primaryCategory": "GAMES",
     "subcategories": [

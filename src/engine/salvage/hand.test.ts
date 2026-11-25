@@ -63,8 +63,8 @@ describe('the first minute', () => {
     walkTo(h, sc.x, sc.y);
     standUntil(h, (g) => g.salvage.tickets.some((t) => t.kind === 'collection' && t.lines.some((l) => l.grade === 'bb')), 60);
     expect(h.g.salvage.tickets.some((t) => t.kind === 'collection' && t.lines.some((l) => l.grade === 'bb'))).toBe(true);
-    // Route B: nothing was weighed before the copper, so its weigh-in is no value jump: no lesson in the quiet minutes (4.4 item 5).
-    expect(h.g.salvage.lessonsSeen).not.toContain('bb');
+    // Route B: copper is a value grade (content valueLessons, finding P2): its lesson shows on its first weigh-in even with nothing weighed before.
+    expect(h.g.salvage.lessonsSeen).toContain('bb');
   });
 });
 

@@ -9,9 +9,9 @@ import { FIXTURE_NOW, SALVAGE_TEST, fixtureGame } from '../../../engine/fixtures
 import * as R from '../../../engine/salvage';
 import type { GameState } from '../../../engine/types';
 import { createPump, type PumpEffects } from './pump';
-import { avoidRect, cashCoinPoint, fitText, hudLayout, MIN_PT, pickForm, placeTicket, textW, ticketHeight } from './metrics';
-import { crewWeighInChip, lotSoldChip, MAX_ROWS, planTicket, ticketView } from './ticketView';
-import { toastText } from './words';
+import { avoidRect, cashCoinPoint, cashFit, cashSlotNeed, CASH_WIDEST, fitText, hudScale, overlaps, placeFromSlot, underCash, hudLayout, MIN_PT, pickForm, placeTicket, textW, ticketHeight } from './metrics';
+import { crewWeighInChip, dealChip, lotSoldChip, MAX_ROWS, planTicket, slipText, ticketView } from './ticketView';
+import { barMoney, toastText } from './words';
 import { barValues, carryText, goalValues, ladderForms } from './words';
 
 const cfg = { salvage: SALVAGE_TEST } as unknown as R.SalvageConfig;
@@ -33,7 +33,9 @@ describe('4.1: the rows and the top bar add up', () => {
         expect(L.rows).toEqual(p.rows);
         expect(L.rows.bar + L.rows.goal + L.rows.free + L.rows.bottom + L.top).toBe(p.h);
         expect(L.safeW).toBe(p.safeW);
-        expect(L.slots).toEqual(p.slots);
+        // P4: the cash slot widens for six figures at the bar scale, taken from the ladder chip.
+        const need = Math.max(p.slots.cash, cashSlotNeed(hudScale(fs)));
+        expect(L.slots).toEqual({ ...p.slots, cash: need, ladder: p.slots.ladder - (need - p.slots.cash) });
         const s = L.slots;
         expect(s.cash + s.ladder + s.carry + s.clip + 3 * s.gap).toBe(L.safeW);
         // the one button sits in the bottom row, inside the safe area
@@ -309,5 +311,98 @@ describe('the event pump', () => {
     played.length = 0;
     p.step('gravel');
     expect(played[0].key).toBe('step_gravel');
+  });
+});
+
+describe('the fix pass (P4, L9, H10, W1): the cash is never cut', () => {
+  for (const p of PHONES) {
+    for (const fs of [1, 1.15, 1.3, 2]) {
+      it(`${p.w} x ${p.h} at font scale ${fs}: ${CASH_WIDEST} fits whole`, () => {
+        const L = hudLayout(p.w, p.h, p.i, fs);
+        const h = L.rows.bar - 4;
+        for (const v of [0, 99.99, 142.72, 999.6, 13_309, 99_999, 999_999]) {
+          const text = v === 999_999 ? CASH_WIDEST : barMoney(v);
+          const f = cashFit(text, L.slots.cash, h, L.s);
+          expect(f.cut).toBe(false);
+          expect(f.pt).toBeGreaterThanOrEqual(MIN_PT);
+          // the text's estimated width fits the room left after the coin and the paddings
+          expect(textW(text, f.pt)).toBeLessThanOrEqual(L.slots.cash - 16 - 20 + 0.5 + (L.s > 1.15 ? 2.5 : 0));
+        }
+        // at 667 and 1.3 the six figures fit at the full 15 pt x 1.3 (the slot was widened for it)
+        if (p.w === 667 && fs === 1.3) expect(cashFit(CASH_WIDEST, L.slots.cash, h, L.s).pt).toBe(19.5);
+        // the ladder chip keeps room for its shortest form
+        expect(L.slots.ladder).toBeGreaterThan(250);
+      });
+    }
+  }
+  it('bars print money without hundredths from §100 (tickets keep them)', () => {
+    expect(barMoney(142.72)).toBe('§143');
+    expect(barMoney(99.5)).toBe('§99.50');
+    expect(barMoney(13_309.4)).toBe('§13,309');
+  });
+});
+
+describe('the fix pass (L4, P8, W17): a ticket out of the printer slot', () => {
+  const L = hudLayout(667, 375, { top: 0, left: 0, right: 0, bottom: 0 }, 1.3);
+  const box = { left: L.left, right: L.right, freeY: L.freeY, bottomY: L.bottomY };
+  const goal = { x: L.left, y: L.goalY + 2, w: L.goalW, h: 52 };
+  it('goes to the side away from the boss and covers neither him nor the goal card', () => {
+    for (const sx of [80, 200, 333, 480, 600]) {
+      for (const bossLeft of [true, false]) {
+        const boss = { x: bossLeft ? sx - 50 : sx + 10, y: 150, w: 40, h: 76 };
+        const q = placeFromSlot(sx, 160, L.ticketW, 120, boss, goal, box);
+        const r = { x: q.x, y: q.y, w: L.ticketW, h: 120 };
+        expect(overlaps(r, boss)).toBe(false);
+        expect(overlaps(r, goal)).toBe(false);
+        expect(r.x).toBeGreaterThanOrEqual(L.left);
+        expect(r.x + r.w).toBeLessThanOrEqual(L.right + 0.001);
+        expect(r.y + r.h).toBeLessThanOrEqual(L.bottomY);
+      }
+    }
+  });
+  it('the away side: east of the slot when the boss stands west of it', () => {
+    const q = placeFromSlot(300, 180, 200, 100, { x: 240, y: 150, w: 40, h: 76 }, null, box);
+    expect(q.x).toBeGreaterThan(300);
+  });
+  it('an anchor off screen falls back under the cash counter, below the goal card', () => {
+    const q = underCash(200, 60, goal, box);
+    expect(q.x).toBe(L.left);
+    expect(q.y).toBe(goal.y + goal.h + 4);
+  });
+});
+
+describe('the fix pass (S3, P12, W14): money out and the slips', () => {
+  it('the skip ticket reads "Bought for", in the cost colour, never "Paid"', () => {
+    const t = { kind: 'skipWeighIn', no: 3, at: 0, day: 0, partner: Object.keys(c.partners ?? {})[0] ?? 'p', trial: false, gross_g: 6_540_000, tare_g: 5_840_000, net_g: 700_000, paid: 976.06, things: [] } as unknown as R.Ticket;
+    const v = ticketView(t, c, null);
+    expect(v?.cost).toBe(true);
+    expect(v?.total).toContain('976.06');
+    expect(v?.total).not.toMatch(/^Paid/);
+  });
+  it('the drop-off slip and the deal delivery have words', () => {
+    const obj = Object.keys(c.objects)[0];
+    expect(slipText(obj, c)).toContain('signed in');
+    const d = { kind: 'dealDelivery', no: 1, at: 0, day: 0, buyer: 'x', grade: Object.keys(c.grades)[0], g: 250_000, paid: 120.5 } as unknown as R.Ticket;
+    expect(dealChip(d, c)).toContain('§120.50');
+  });
+});
+
+describe('the fix pass (H4): sound segments after the background', () => {
+  it('setLive(false) forgets every segment; reseed starts only what the frame shows working', () => {
+    let now = 0;
+    const plays: string[] = [];
+    const fx: PumpEffects = { play: (k) => plays.push(k), musicVolume: () => {}, now: () => now, setTimeout: () => 1, clearTimeout: () => {}, report: () => {} };
+    const p = createPump(fx);
+    p.setLive(true);
+    p.dispatch([{ type: 'workStart', thing: 'd0', obj: 'washer', grade: 'x', tool: 'spanner', by: 'boss', ring: null }, { type: 'machineState', machine: 'hand_stripper', status: 'working' }, { type: 'heatStart', recipe: 'r', g: 1000 }]);
+    expect(p.segments()).toEqual(expect.arrayContaining(['cut_spanner', 'stripper_hand', 'furnace_roar']));
+    p.setLive(false);
+    expect(p.segments()).toEqual([]);
+    p.setLive(true);
+    p.reseed({ t: 10, things: [], boss: { tool: null }, crew: [], machines: [] });
+    expect(p.segments()).toEqual(['amb_yard']);
+    p.reseed({ t: 10, things: [{ uid: 'd1', obj: 'washer', by: 'cutter.1' }], boss: { tool: null }, crew: [{ id: 'cutter.1', tool: 'torch' }], machines: [{ machine: 'crucible', look: 'heating', span: { t0: 5, t1: 65 } }] });
+    expect(p.segments()).toEqual(expect.arrayContaining(['amb_yard', 'cut_torch', 'furnace_roar']));
+    now += 1;
   });
 });

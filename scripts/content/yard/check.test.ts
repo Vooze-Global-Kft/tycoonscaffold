@@ -48,3 +48,19 @@ describe('the game', () => {
     for (const t of r.tickets) expect(t.height).toBeLessThanOrEqual(150);
   }, 60_000);
 });
+
+describe('words of this pass (W3, W10, W20, P3)', () => {
+  it('the converter lesson prints the record reference as written (W3: "0012", never "12")', async () => {
+    const { say } = await import('../../../src/ui/salvage/strings');
+    const c = { names: {}, grades: {}, objects: {} } as unknown as Parameters<typeof say>[1];
+    expect(say({ key: 'lesson.conv', args: { ref: { ref: '0012' } } }, c)).toContain('ref. 0012');
+    expect(say({ key: 'line.carName', args: { ref: { ref: '0012' } } }, c)).toContain('ref. 0012');
+  });
+  it('no player text says "cap" (W20) and a range is counted in materials, not metals (W10)', async () => {
+    const { TEXT } = await import('../../../src/ui/salvage/strings');
+    for (const [k, v] of Object.entries(TEXT)) {
+      expect(v, k).not.toMatch(/\bcap\b/i);
+      expect(v, k).not.toMatch(/\{r\} metals|\{n\} metals/);
+    }
+  });
+});

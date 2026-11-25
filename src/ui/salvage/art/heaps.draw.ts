@@ -231,8 +231,8 @@ export function drawZoneBed(c: SkCanvas, v: View3q, zone: string, frame = 0, see
   }
 }
 
-/** Frames of the bed tile (sheet G `ground.bed`): two looks per zone tier (a worked-out patch is a tile drawn faint). */
-export const BED_FRAMES = ['z1a', 'z1b', 'z2a', 'z2b', 'z3a', 'z3b'] as const;
+/** Frames of the bed tile (sheet G `ground.bed`): two looks for zone 1 (the first view's heap), one each for zones 2 and 3 (sheet G's budget); a worked-out patch is a tile drawn faint. */
+export const BED_FRAMES = ['z1a', 'z1b', 'z2', 'z3'] as const;
 /** The grid a bed is laid on, metres (each tile's dirt reaches past its cell so neighbours overlap). */
 export const BED_CELL: readonly [number, number] = [1.2, 0.9];
 
@@ -243,8 +243,8 @@ export const BED_CELL: readonly [number, number] = [1.2, 0.9];
  * crisp at density 2; the world lays as many as the zone has stock left (world/dressing.ts bedDress).
  */
 export function drawBedTile(c: SkCanvas, v: View3q, frame = 0): void {
-  const low = frame >= 6;
-  const tier = low ? 0 : Math.floor(frame / 2);
+  const low = frame >= BED_FRAMES.length;
+  const tier = low ? 0 : Math.max(0, frame - 1);
   const seed = 17 + frame * 5;
   const rx = 0.86 * v.ppm;
   const ry = 0.64 * v.ppm * v.tilt;

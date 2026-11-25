@@ -11,6 +11,7 @@
 import type { SalvageContent } from '../../config/schema.salvage';
 import { priceOf } from './board';
 import { convPaid } from './content';
+import { seriesKey, seriesOf } from './series';
 import { floorGrams, lineAmount, resolveGrams, roundMoney, sumAmounts } from './money';
 import type { GradeId, ObjectId, Piece, SalvageConfig, SalvageGame, Ticket, TicketLine, Txt } from './types';
 
@@ -84,7 +85,8 @@ export function lessonFor(cfg: SalvageConfig, g: SalvageGame, lines: readonly Ti
   for (const grade of grades) {
     const key = c.lessons[grade];
     if (!key || s.lessonsSeen.includes(grade)) continue;
-    const jump = top > 0 && (c.grades[grade]?.pbar ?? 0) >= t.jumpRatio * top;
+    // rules-sim-b 20:00: a VALUE grade (content valueLessons) always gets its lesson on its first weigh-in, as scales.ts.
+    const jump = (c.valueLessons ?? []).includes(grade) || (top > 0 && (c.grades[grade]?.pbar ?? 0) >= t.jumpRatio * top);
     if (at < t.lessonQuietS && !jump) continue;
     const args: Txt['args'] = {};
     if (grade === 'bb') {
@@ -93,6 +95,10 @@ export function lessonFor(cfg: SalvageConfig, g: SalvageGame, lines: readonly Ti
     }
     const ref = lines.find((l) => l.grade === grade && l.note?.kind === 'fromCar')?.note;
     if (ref && ref.kind === 'fromCar') args.ref = refArg(ref.ref);
+    else if (c.grades[grade]?.family === 'pm') {
+      const src = Object.values(c.objects).find((o) => o.source)?.source?.ref;
+      if (src) args.ref = refArg(src);
+    }
     return { grade, text: { key: key as Txt['key'], args } };
   }
   return null;
@@ -105,11 +111,21 @@ export function refArg(ref: string): NonNullable<Txt['args']>[string] {
 
 const base = (no: number, at: number, day: number) => ({ no, at, day });
 
+/** W16: the number the next ticket of a book will PRINT (series.ts: counts['ticket#weigh' | 'ticket#sale'] + 1; an old save goes on from ticketNo). */
+export function nextSeries(g: SalvageGame, kind: Ticket['kind']): number | undefined {
+  const book = seriesOf(kind);
+  if (!book) return undefined;
+  return (g.salvage.counts?.[seriesKey(book)] ?? Math.max(0, g.salvage.ticketNo - 1)) + 1;
+}
+
+/** The number a ticket prints: its series, else (a ticket from before the fix pass) its order number. */
+export const printedNo = (t: Pick<Ticket, 'no' | 'series'>): number => t.series ?? t.no;
+
 /** A weigh-in ticket (2.2): lines, the muted "today's value" (the sum of its lines), the paced lesson. */
 export function weighInTicket(cfg: SalvageConfig, g: SalvageGame, by: string, pieces: readonly Piece[], at: number, day: number): { ticket: WeighIn; round_g: number; lessonGrade: GradeId | null } {
   const { lines, round_g } = weighInLines(cfg.salvage, pieces, day);
   const lesson = lessonFor(cfg, g, lines, at, day);
-  const ticket: WeighIn = { ...base(g.salvage.ticketNo, at, day), kind: 'weighIn', by, lines, todaysValue: sumAmounts(lines), lessonText: lesson?.text ?? null, lesson: lesson?.text.key ?? null };
+  const ticket: WeighIn = { ...base(g.salvage.ticketNo, at, day), series: nextSeries(g, 'weighIn'), kind: 'weighIn', by, lines, todaysValue: sumAmounts(lines), lessonText: lesson?.text ?? null, lesson: lesson?.text.key ?? null };
   return { ticket, round_g, lessonGrade: lesson?.grade ?? null };
 }
 
@@ -147,7 +163,7 @@ export function converterLineCfg(cfg: SalvageConfig): Txt {
 
 /** The merchant's collection ticket (2.2): lines with amounts, "Paid §x" = their sum, the buyer named. */
 export function collectionTicket(g: SalvageGame, lines: TicketLine[], at: number, day: number, withBoss: boolean, firstGrades: GradeId[], buyer = 'merchant'): Extract<Ticket, { kind: 'collection' }> {
-  return { ...base(g.salvage.ticketNo, at, day), kind: 'collection', buyer, lines, paid: sumAmounts(lines), withBoss, firstGrades };
+  return { ...base(g.salvage.ticketNo, at, day), series: nextSeries(g, 'collection'), kind: 'collection', buyer, lines, paid: sumAmounts(lines), withBoss, firstGrades };
 }
 
 /** A partner's skip over the weighbridge (2.2, S2): gross and tare each rounded to the bridge step, net = gross − tare; the price paid. */
@@ -156,13 +172,13 @@ export function skipTicket(c: SalvageContent, g: SalvageGame, s: { partner: stri
   const round = (x: number) => Math.floor(Math.max(0, x) / step + 0.5 + 1e-9) * step;
   const gross_g = round(s.tare_g + s.load_g);
   const tare_g = round(s.tare_g);
-  return { ...base(g.salvage.ticketNo, at, day), kind: 'skipWeighIn', partner: s.partner, trial: s.trial, gross_g, tare_g, net_g: gross_g - tare_g, paid: roundMoney(s.paid), things: Object.entries(s.contents).map(([obj, n]) => ({ obj, n })) };
+  return { ...base(g.salvage.ticketNo, at, day), series: nextSeries(g, 'skipWeighIn'), kind: 'skipWeighIn', partner: s.partner, trial: s.trial, gross_g, tare_g, net_g: gross_g - tare_g, paid: roundMoney(s.paid), things: Object.entries(s.contents).map(([obj, n]) => ({ obj, n })) };
 }
 
 /** A supply-deal delivery (2.9): grams resolved down to 0.1 kg at the locked price. */
 export function dealTicket(c: SalvageContent, g: SalvageGame, grams: number, price: number, at: number, day: number): Extract<Ticket, { kind: 'dealDelivery' }> {
   const gr = floorGrams(grams);
-  return { ...base(g.salvage.ticketNo, at, day), kind: 'dealDelivery', buyer: c.deal.partner, grade: c.deal.grade, g: gr, paid: lineAmount(gr, price) };
+  return { ...base(g.salvage.ticketNo, at, day), series: nextSeries(g, 'dealDelivery'), kind: 'dealDelivery', buyer: c.deal.partner, grade: c.deal.grade, g: gr, paid: lineAmount(gr, price) };
 }
 
 /** A household drop-off's slip: "{thing} · signed in · gate drop-off". */
@@ -203,7 +219,7 @@ export function ticketView(t: Ticket): TicketView {
     case 'weighIn': {
       const { shown, more } = cut(t.lines);
       return {
-        head: { key: 'ticket.weighInHead', args: { homeYard: { name: 'homeYard' }, n: { n: t.no } } },
+        head: { key: 'ticket.weighInHead', args: { homeYard: { name: 'homeYard' }, n: { n: printedNo(t) } } },
         date,
         lines: shown.map((l) => ({ key: 'ticket.gradeAmount', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'platform' }, x: { price: l.price } } })),
         more,
@@ -215,7 +231,7 @@ export function ticketView(t: Ticket): TicketView {
     case 'collection': {
       const { shown, more } = cut(t.lines);
       return {
-        head: { key: 'ticket.collectionHead', args: { homeYard: { name: 'homeYard' }, n: { n: t.no } } },
+        head: { key: 'ticket.collectionHead', args: { homeYard: { name: 'homeYard' }, n: { n: printedNo(t) } } },
         date,
         lines: shown.map((l) => ({ key: 'ticket.gradeAmount', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'lot' }, x: { money: l.amount } } })),
         more,

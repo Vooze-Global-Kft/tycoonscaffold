@@ -118,6 +118,7 @@ export function bakeShadows(density = SHADOW_DENSITY): ShadowSheet | null {
 
 let art: YardArt | null = null;
 let started = false;
+let waitingCfg = false;
 const waiters = new Set<() => void>();
 
 /**
@@ -127,7 +128,19 @@ const waiters = new Set<() => void>();
 export function startYardBake(): void {
   if (started || art) return;
   const cfg = useGame.getState().cfg;
-  if (!R.isSalvage(cfg)) return;
+  if (!cfg || !R.isSalvage(cfg)) {
+    // Asked before the config is installed (the loading stage's third frame can come first): start as soon as it is.
+    if (!waitingCfg) {
+      waitingCfg = true;
+      const off = useGame.subscribe((st) => {
+        if (!st.cfg || !R.isSalvage(st.cfg)) return;
+        off();
+        waitingCfg = false;
+        startYardBake();
+      });
+    }
+    return;
+  }
   started = true;
   const t0 = Date.now();
   if (__DEV__) console.info(`[yard] bake started ${typeof performance !== 'undefined' ? Math.round(performance.now()) : 0} ms after the page began`);

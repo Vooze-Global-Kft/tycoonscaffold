@@ -24,11 +24,18 @@ const SWITCHES = [
   { key: 'haptics', name: 'clip.haptics' },
 ] as const;
 
+/** The policy page when it is a real one: none, or the reserved example domains (validate's own test), give null. */
+export function realPolicyUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return /^https?:\/\/([^/]*\.)?example\.(com|org|net)(\/|$)/i.test(url) ? null : url;
+}
+
 export function Settings({ cfg, data, onClose }: CardViewProps) {
   const settings = useFxSettings();
   const [confirm, setConfirm] = useState(false);
   useSeenOnClose('settings');
-  const privacyUrl = cfg.store?.privacyPolicyUrl;
+  // S9: no Privacy button while the policy page is the store file's placeholder (it opens a broken page); the line about the save stays.
+  const privacyUrl = realPolicyUrl(cfg.store?.privacyPolicyUrl);
   if (confirm) {
     return (
       <CentredCard title={{ key: 'clip.restart' }} onClose={() => setConfirm(false)}>

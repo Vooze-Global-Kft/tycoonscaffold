@@ -28,6 +28,19 @@
 import { furnaceStep, machineLoopKey, salvageSoundsFor, SALVAGE_DUCK, SALVAGE_SEGMENT_MS, stepKey, workLoopKey, dieselStep, type SoundCue } from '../../../modes/salvage/soundKeys';
 import type { SalvageEvent, SalvageEventType } from '../../../engine/salvage';
 
+/**
+ * What the pump re-seeds its segments from when the yard comes back (H4): the rules' frame, narrowed to
+ * the few facts the sounds need (structural, so the tests build one by hand).
+ */
+export interface SoundFrame {
+  /** The rules' yard second of the frame. */
+  t: number;
+  things: readonly { uid: string; obj: string; by: string | null }[];
+  boss: { tool: string | null };
+  crew: readonly { id: string; tool: string | null }[];
+  machines: readonly { machine: string; look: string; span: { t0: number; t1: number } | null }[];
+}
+
 type Of<T extends SalvageEventType> = Extract<SalvageEvent, { type: T }>;
 type AnyListener = (e: SalvageEvent) => void;
 type SegmentKey = keyof typeof SALVAGE_SEGMENT_MS;
@@ -228,11 +241,14 @@ export function createPump(fx: PumpEffects) {
       if (live === on) return;
       live = on;
       if (!on) {
-        for (const k of [...running.keys()]) {
-          const seg = running.get(k)!;
-          fx.clearTimeout(seg.timer);
-          seg.timer = null;
-        }
+        // H4: everything is forgotten while away (the away pass, a reconcile or a preset end work without
+        // events); the foreground re-seeds from the frame (reseed).
+        for (const seg of running.values()) fx.clearTimeout(seg.timer);
+        running.clear();
+        work.clear();
+        machines.clear();
+        heat = null;
+        truckShare = null;
         if (duckUntil) {
           fx.clearTimeout(duckTimer);
           duckUntil = 0;
@@ -244,6 +260,31 @@ export function createPump(fx: PumpEffects) {
       running.clear();
       for (const [k, seg] of keep) startSegment(k, seg.step);
       startSegment('amb_yard');
+    },
+    /**
+     * Re-seeds the work, machine and burner segments from the rules' frame (H4): when the yard comes back to
+     * the foreground and when the frame's epoch changes. What the frame does not show working stops.
+     */
+    reseed(f: SoundFrame | null): void {
+      work.clear();
+      machines.clear();
+      heat = null;
+      if (f) {
+        for (const t of f.things) {
+          if (!t.by) continue;
+          const tool = t.by === 'boss' ? f.boss.tool : (f.crew.find((m) => m.id === t.by)?.tool ?? null);
+          work.set(t.uid, workLoopKey(tool ?? undefined, content.familyOf(t.obj)) as SegmentKey);
+        }
+        for (const m of f.machines) {
+          if (m.look === 'working') machines.add(m.machine);
+          if (m.machine === 'crucible' && m.look === 'heating' && m.span) {
+            const s = Math.max(1, m.span.t1 - m.span.t0);
+            heat = { at: fx.now() - Math.max(0, f.t - m.span.t0) * 1000, s };
+          }
+        }
+      }
+      refreshWork();
+      refreshMachines();
     },
     isLive: () => live,
     setContent(c: PumpContent | null): void {
@@ -314,4 +355,5 @@ export const pumpControl = {
   setLive: pump.setLive,
   setContent: pump.setContent,
   segments: pump.segments,
+  reseed: pump.reseed,
 };

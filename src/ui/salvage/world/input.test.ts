@@ -107,3 +107,36 @@ describe('the phone\'s development switches', async () => {
     expect(phoneSwitches(undefined, 'x')).toEqual({ panel: false, actors: null, sprites: 0, insets: null });
   });
 });
+
+describe('the stick lets go (H7, H12)', async () => {
+  const { useStickResponder, stick, stickHeld, lastStickEndAt } = await import('./stick');
+  const z = { x: 0, y: 100, width: 380, height: 290, minX: 76, maxX: 328, minY: 76, maxY: 314 };
+  it('says on the JS side whether a finger steers, and never reads the shared value while steering', () => {
+    let on = true;
+    const r = useStickResponder(() => z, () => on);
+    const a = { identifier: 1, pageX: 120, pageY: 300 };
+    r.onResponderGrant!(ev([a], [a]));
+    expect(stickHeld()).toBe(true);
+    // A UI-side write the JS side must not read back: the base stays the JS copy.
+    stick.value = { ...stick.value, bx: 999 };
+    r.onResponderMove!(ev([{ ...a, pageX: 150 }], [{ ...a, pageX: 150 }]));
+    expect(stick.value.bx).toBe(120);
+    // A card opens while the thumb steers: the next move lets go, and the card may take the touch.
+    on = false;
+    r.onResponderMove!(ev([{ ...a, pageX: 160 }], [{ ...a, pageX: 160 }]));
+    expect(stick.value.on).toBe(0);
+    expect(stickHeld()).toBe(false);
+    expect(lastStickEndAt()).toBeGreaterThan(0);
+    expect(r.onResponderTerminationRequest!(ev([a], [a]))).toBe(true);
+  });
+  it('release() forgets the finger at once', () => {
+    const r = useStickResponder(() => z, () => true);
+    const a = { identifier: 5, pageX: 120, pageY: 300 };
+    r.onResponderGrant!(ev([a], [a]));
+    r.release();
+    expect(stickHeld()).toBe(false);
+    expect(stick.value.on).toBe(0);
+    r.onResponderMove!(ev([{ ...a, pageX: 170 }], [{ ...a, pageX: 170 }]));
+    expect(stick.value.on).toBe(0);
+  });
+});

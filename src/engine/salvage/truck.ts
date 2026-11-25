@@ -14,7 +14,7 @@ import { resolveGrams, roundMoney } from './money';
 import { contentsMass_g, fullestSkip, setSkipDown } from './partners';
 import { pointOf, skipZone } from './positions';
 import { floorMass_g, floorSlot } from './things';
-import type { RefusalKey, TxtArgs } from './types';
+import type { CrewMember, RefusalKey, TxtArgs } from './types';
 import type { SalvageContent } from '../../config/schema.salvage';
 
 /**
@@ -249,7 +249,10 @@ export function driverDepart(x: Ctx, t: number): boolean {
   const s = x.s;
   const tr = s.truck;
   const d = s.crew.find((m) => m.role === 'driver' && m.job === 'idle' && m.phase === 'wait' && m.t1 <= t + 1e-6);
-  if (!d || !tr.owned || tr.by !== null || tr.trip || tr.skip || s.arriving.some((a) => a.item === 'truck')) return false;
+  if (!d || !tr.owned || tr.by !== null || tr.trip || s.arriving.some((a) => a.item === 'truck')) return false;
+  // R2: a loaded truck the boss left (Step out with a skip on it): the driver walks to it and finishes the
+  // weigh-in and the tip (live and away), as driverTakesOver does for a truck the boss was driving.
+  if (tr.skip) return driverFinishes(x, d, t);
   let best: { partner: string; fullAt: number; price: number; mass: number } | null = null;
   const floor = { g: null as number | null };
   for (const id in s.partners) {
@@ -264,6 +267,27 @@ export function driverDepart(x: Ctx, t: number): boolean {
   const from = { x: d.to && 'xy' in d.to ? d.to.xy[0] : pt(x, 'scalehouse').x, y: d.to && 'xy' in d.to ? d.to.xy[1] : pt(x, 'scalehouse').y };
   const walk = legM(x.c, from, { x: tr.x, y: tr.y }) / x.c.crew.hand.v / driverF(x);
   tr.trip = { partner: best.partner, slot: sk.slot, phase: 'walk', t0: t, endsAt: t + walk };
+  d.job = 'drive';
+  d.phase = 'wait';
+  d.from = { xy: [from.x, from.y] };
+  d.to = { truck: true };
+  d.t0 = t;
+  d.t1 = t;
+  tr.by = 'driver';
+  x.ev.push({ type: 'crewLeg', id: d.id, job: 'drive', from: d.from, to: d.to, t0: t, t1: t + walk });
+  return true;
+}
+
+/** R2: the idle driver takes a loaded, parked truck: walk to it, drive to the weighbridge (or, weighed, on to the floor). */
+function driverFinishes(x: Ctx, d: CrewMember, t: number): boolean {
+  const tr = x.s.truck;
+  const sk = tr.skip;
+  if (!sk) return false;
+  const from = { x: d.to && 'xy' in d.to ? d.to.xy[0] : pt(x, 'scalehouse').x, y: d.to && 'xy' in d.to ? d.to.xy[1] : pt(x, 'scalehouse').y };
+  const walk = legM(x.c, from, { x: tr.x, y: tr.y }) / x.c.crew.hand.v / driverF(x);
+  const drive = legM(x.c, { x: tr.x, y: tr.y }, pt(x, 'weighbridge')) / driverV(x);
+  tr.trip = { partner: sk.partner, slot: sk.slot, phase: sk.weighed ? 'weigh' : 'back', t0: t, endsAt: t + walk + drive };
+  tr.earmark = null;
   d.job = 'drive';
   d.phase = 'wait';
   d.from = { xy: [from.x, from.y] };

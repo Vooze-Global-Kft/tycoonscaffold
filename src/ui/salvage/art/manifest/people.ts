@@ -151,7 +151,21 @@ const BOX: Record<string, Bounds[]> = {
 
 // boxes measured on the BAKED drawing (at its own k): the bare truck and the lane (look-lane, fix pass)
 /* LANE-MEASURED-START */
-const LANE_BOX: Record<string, Bounds[]> = {};
+const LANE_BOX: Record<string, Bounds[]> = {
+  'vehicle.truck': [B(-21, -44, 42, 66), B(-36, -44, 75, 66), B(-37, -37, 75, 51), B(-35, -48, 74, 72), B(-21, -46, 42, 70)],
+  'vehicle.truck.bare': [B(-21, -37, 42, 59), B(-36, -34, 75, 56), B(-37, -37, 75, 51), B(-35, -48, 74, 72), B(-21, -46, 42, 70)],
+  'vehicle.truck.hook': [B(-76, -48, 114, 62)],
+  'lane.field': [B(-38, -19, 76, 38)],
+  'lane.treeline': [B(-50, -67, 100, 69)],
+  'lane.milepost': [B(-6, -21, 20, 27)],
+  'lane.pole': [B(-26, -104, 60, 112)],
+  'lane.gate.field': [B(-39, -24, 78, 28)],
+  'lane.gritbin': [B(-14, -21, 38, 30)],
+  'lane.sign.partner': [B(-29, -34, 78, 41)],
+  'lane.farmhouse': [B(-55, -70, 138, 100)],
+  'lane.leanto': [B(-35, -51, 86, 71)],
+  'lane.end': [B(-76, -29, 152, 37)],
+};
 /* LANE-MEASURED-END */
 
 const boxOf = (key: string, n: number, fallback: Bounds): Bounds[] => BOX[key] ?? Array.from({ length: n }, () => fallback);
@@ -320,6 +334,7 @@ const VEHICLES: PeopleEntry[] = [
     k: TRUCK_K,
     headings: 8,
     footprint: { w: 4.6, d: 2.0 },
+    baked: LANE_BOX['vehicle.truck'],
     draw: (c, v, _f, h) => drawHookTruck(c, v, headingRad(h), { skip: 'on' }),
   }),
   // the truck with no skip on its bed (after tipping, before hooking): the world picks it when truck.skip is null
@@ -328,13 +343,14 @@ const VEHICLES: PeopleEntry[] = [
     k: TRUCK_K,
     headings: 8,
     footprint: { w: 4.6, d: 2.0 },
-    baked: LANE_BOX['vehicle.truck.bare'] ?? Array.from({ length: 5 }, () => B(-60, -60, 120, 90)),
+    baked: LANE_BOX['vehicle.truck.bare'],
     draw: (c, v, _f, h) => drawHookTruck(c, v, headingRad(h), { skip: 'none' }),
   }),
   vehicle('vehicle.truck.hook', {
     frames: HOOK_FRAMES,
     k: TRUCK_K,
     headings: 1,
+    baked: LANE_BOX['vehicle.truck.hook'],
     footprint: { w: 4.6, d: 2.0 },
     draw: (c, v, f) => drawHookFrame(c, v, HOOK_FRAMES[f], 'farm-full'),
   }),
@@ -406,8 +422,10 @@ const VEHICLES: PeopleEntry[] = [
 // ---------------------------------------------------------------------------
 
 
-function laneEntry(id: string, o: { frames: readonly string[]; footprint: [number, number]; k: number; fallback: Bounds; slots?: Record<string, Bounds>; draw: ManifestEntry['draw'] }): PeopleEntry {
-  const b = LANE_BOX[id]?.[0] ?? o.fallback;
+function laneEntry(id: string, o: { frames: readonly string[]; footprint: [number, number]; k: number; at?: number; fallback: Bounds; slots?: Record<string, Bounds>; draw: ManifestEntry['draw'] }): PeopleEntry {
+  // `at`: the k the LANE_BOX entry was measured at (a box measured at one k serves a smaller k, scaled outward)
+  const m = LANE_BOX[id]?.[0];
+  const b = m ? (o.at && o.at !== o.k ? scaleBox(m, o.k / o.at) : m) : o.fallback;
   const e: PeopleEntry = {
     id,
     group: 'lane',
@@ -428,10 +446,10 @@ const LANE_V = { ppm: 40, tilt: 0.7, lift: Math.sqrt(1 - 0.49) };
 const [psx, psy, psw, psh] = partnerSignSlot(LANE_V);
 
 const LANE_ART: PeopleEntry[] = [
-  laneEntry('lane.field', { frames: FIELD_KINDS, footprint: [FIELD_M.w, FIELD_M.d], k: 0.3, fallback: B(-40, -20, 80, 40), draw: (c, v, f) => drawField(c, v, FIELD_KINDS[f], 3 + f) }),
-  laneEntry('lane.treeline', { frames: ['a', 'b'], footprint: [TREELINE_M, 0.5], k: 0.3, fallback: B(-52, -70, 104, 74), draw: (c, v, f) => drawTreeline(c, v, f) }),
+  laneEntry('lane.field', { frames: FIELD_KINDS, footprint: [FIELD_M.w, FIELD_M.d], k: 0.22, at: 0.3, fallback: B(-40, -20, 80, 40), draw: (c, v, f) => drawField(c, v, FIELD_KINDS[f], 3 + f) }),
+  laneEntry('lane.treeline', { frames: ['a', 'b'], footprint: [TREELINE_M, 0.5], k: 0.22, at: 0.3, fallback: B(-52, -70, 104, 74), draw: (c, v, f) => drawTreeline(c, v, f) }),
   laneEntry('lane.milepost', { frames: ['idle'], footprint: [0.3, 0.3], k: 0.6, fallback: B(-12, -26, 30, 32), draw: (c, v) => drawMilepost(c, v) }),
-  laneEntry('lane.pole', { frames: ['idle'], footprint: [0.3, 0.3], k: 0.5, fallback: B(-30, -110, 70, 120), draw: (c, v) => drawPole(c, v) }),
+  laneEntry('lane.pole', { frames: ['idle'], footprint: [0.3, 0.3], k: 0.35, at: 0.5, fallback: B(-30, -110, 70, 120), draw: (c, v) => drawPole(c, v) }),
   laneEntry('lane.gate.field', { frames: ['idle'], footprint: [3.4, 0.3], k: 0.5, fallback: B(-40, -30, 80, 36), draw: (c, v) => drawFieldGate(c, v) }),
   laneEntry('lane.gritbin', { frames: ['idle'], footprint: [0.9, 0.6], k: 0.6, fallback: B(-20, -24, 46, 34), draw: (c, v) => drawGritBin(c, v) }),
   laneEntry('lane.sign.partner', {
@@ -442,9 +460,9 @@ const LANE_ART: PeopleEntry[] = [
     slots: { name: B(psx, psy, psw, psh) },
     draw: (c, v, f) => drawPartnerSign(c, v, PARTNER_MARKS[f]),
   }),
-  laneEntry('lane.farmhouse', { frames: ['idle'], footprint: [6, 4], k: 0.4, fallback: B(-60, -80, 140, 110), draw: (c, v) => drawFarmhouse(c, v) }),
-  laneEntry('lane.leanto', { frames: ['idle'], footprint: [3.6, 2.6], k: 0.4, fallback: B(-40, -50, 90, 70), draw: (c, v) => drawLeanTo(c, v) }),
-  laneEntry('lane.end', { frames: ['idle'], footprint: [6, 0.5], k: 0.5, fallback: B(-70, -30, 150, 40), draw: (c, v) => drawLaneEnd(c, v) }),
+  laneEntry('lane.farmhouse', { frames: ['idle'], footprint: [6, 4], k: 0.3, at: 0.4, fallback: B(-60, -80, 140, 110), draw: (c, v) => drawFarmhouse(c, v) }),
+  laneEntry('lane.leanto', { frames: ['idle'], footprint: [3.6, 2.6], k: 0.32, at: 0.4, fallback: B(-40, -50, 90, 70), draw: (c, v) => drawLeanTo(c, v) }),
+  laneEntry('lane.end', { frames: ['idle'], footprint: [6, 0.5], k: 0.4, at: 0.5, fallback: B(-70, -30, 150, 40), draw: (c, v) => drawLaneEnd(c, v) }),
 ];
 
 export const PEOPLE: PeopleEntry[] = [
@@ -565,7 +583,8 @@ export function vanLayers(heading4: number, trailer: boolean): Layer[] {
 // ---------------------------------------------------------------------------
 
 /** What this part asks of each sheet at density 3 (agreed with the art director through requests.md). */
-export const SHARE_PX = { A: 2_700_000, B: 1_200_000 } as const; // B raised for the flatbed's loading frames at FLATBED_K and the public's car (art-plant pass 2)
+export const SHARE_PX = { A: 2_700_000, B: 1_750_000 } as const; // B raised again in the fix pass (look-lane): the bare truck and the lane's country (L7, P10)
+// earlier: B raised for the flatbed's loading frames at FLATBED_K and the public's car (art-plant pass 2)
 
 export function pixelsOf(e: PeopleEntry, density: number, tight: boolean): number {
   const hs = baked(e);

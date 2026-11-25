@@ -181,6 +181,14 @@ export const ObjectSchema = z.object({
   source: z.object({ type: z.literal('partner'), partner: id, ref: z.string() }).optional(),
   /** ADDED: a closed vessel, "certified empty" on the thing, its card and its ticket line. */
   certifiedEmpty: z.boolean().default(false),
+  /** ADDED (finding W9): the tool tier each entry of `pieces` needs (the car's wheels and loom by hand, its converter with the torch); missing: the object's `tier`. */
+  pieceTiers: z.array(z.number().int().min(0).max(3)).optional(),
+  /**
+   * ADDED (finding W9): what stays when the last piece is off (the car's stripped body): weighed in WHOLE
+   * at once where it stands, one line of `grade`, into its bay; the thing stays on its spot as a shell
+   * (nobody works or carries it) until the merchant's next collection of that grade.
+   */
+  shell: z.object({ grade: id, g: z.number().int().positive() }).optional(),
   /** ADDED: the whole thing's footprint and height, metres (the world's collision and the sprite's box). */
   size: z.object({ w: z.number().positive(), d: z.number().positive(), h: z.number().positive() }).default({ w: 1, d: 0.8, h: 1 }),
 });
@@ -637,7 +645,7 @@ export function lintSalvage(s: SalvageContent): string[] {
   for (const [oid, o] of Object.entries(s.objects)) {
     o.pieces.forEach(([g], i) => grade(g, `objects.${oid}.pieces[${i}]`));
     if (o.whole) grade(o.whole, `objects.${oid}.whole`);
-    const sum = o.pieces.reduce((a, [, g, n]) => a + g * n, 0) + o.waste_g;
+    const sum = o.pieces.reduce((a, [, g, n]) => a + g * n, 0) + o.waste_g + (o.shell?.g ?? 0);
     if (sum !== o.gross_g) out.push(`objects.${oid}: pieces and waste weigh ${sum} g, gross_g says ${o.gross_g} g (mass is kept)`);
     if (o.pieces.some(([g]) => s.grades[g]?.family === 'pm') && !o.source) out.push(`objects.${oid} gives a converter but has no source (S7)`);
   }
@@ -657,6 +665,10 @@ export function lintSalvage(s: SalvageContent): string[] {
   for (const [o] of s.dropoff.mix) object(o, 'dropoff.mix');
   for (const o of s.dropoff.initial) object(o, 'dropoff.initial');
   for (const o of s.dropoff.opening) object(o, 'dropoff.opening');
+  for (const [oid, o] of Object.entries(s.objects)) {
+    if (o.pieceTiers && o.pieceTiers.length !== o.pieces.length) out.push(`objects.${oid}.pieceTiers: one tier for each entry of pieces (${o.pieces.length})`);
+    if (o.shell) grade(o.shell.grade, `objects.${oid}.shell`);
+  }
   for (const g of s.valueLessons) grade(g, 'valueLessons');
   for (const [g] of s.machines.bench.out) grade(g, 'machines.bench.out');
   for (const [rid, r] of Object.entries(s.machines.crucible.recipes)) for (const g of [...(Array.isArray(r[0]) ? r[0] : [r[0]]), r[1], r[3]]) grade(g, `machines.crucible.recipes.${rid}`);

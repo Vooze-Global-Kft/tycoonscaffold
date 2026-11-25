@@ -17,11 +17,14 @@ import { gradePictogram } from '../art/pieces.draw';
 import { BUY_H, BUY_MAX } from './layout';
 import { BARS, PICTO, boardOffsets, barHeight } from './marketLayout';
 import { DataLine, Drawing, Note, gradeName, useAsk, useContent, useSeenOnClose } from './marketParts';
-import { DAY_WORD, rowExtra } from './marketLines';
+import { DAY_WORD, converterNote, rowExtra, rowExtraLine } from './marketLines';
 import { boardWithSell } from './marketSample';
 import type { CardViewProps } from './OverlayHost';
 import { Panel } from './Panel';
 import { INK, Line, LocalButton, RefusalLine, useFrame } from './parts';
+
+/** The converter's grade id (content `converter`'s piece: its line is printed wherever its row is). */
+const CONVERTER = 'conv';
 
 export function PriceBoard({ cfg, g, data, onClose }: CardViewProps) {
   const { layout } = useFrame();
@@ -37,6 +40,7 @@ export function PriceBoard({ cfg, g, data, onClose }: CardViewProps) {
   const first = board.hint !== null;
   // The first opening's hint names a grade on a low day; with no grade seen yet there is none to name.
   const hint = board.hint && board.hint.args && Object.keys(board.hint.args).length ? board.hint : null;
+  const conv = rows.some((r) => r.grade === CONVERTER) ? converterNote(cfg) : null;
   const head: Txt = { key: 'board.head', args: { date: { day: board.day }, t: { secs: board.nextInS } } };
   return (
     <Panel
@@ -57,6 +61,12 @@ export function PriceBoard({ cfg, g, data, onClose }: CardViewProps) {
           {data.legal ? <Line t={data.legal} size="line" lines={4} /> : null}
         </Note>
       ) : null}
+      {/* S9: a yard that has weighed nothing yet says where the rows come from (the first opening is never blank). */}
+      {rows.length === 0 ? (
+        <View style={styles.empty}>
+          <Line t={{ key: 'board.empty' }} size="name" colour={INK.soft} lines={2} />
+        </View>
+      ) : null}
       <View style={{ height: off.total }}>
         {rows.map((r, i) => (
           <BoardLine key={r.grade} r={r} h={off.heights[i]} focused={r.grade === focus} name={gradeName(c, r.grade)} onPress={(b) => ask.press(b.action, r.grade)} />
@@ -66,6 +76,12 @@ export function PriceBoard({ cfg, g, data, onClose }: CardViewProps) {
           <Drawing w={PICTO} h={off.total} deps={[rows.map((r) => r.grade).join(), off.total]} draw={(cv) => rows.forEach((r, i) => gradePictogram(cv, r.grade, 0, off.tops[i] + (off.heights[i] - PICTO) / 2, PICTO))} />
         </View>
       </View>
+      {/* W15: the converter is paid on assay; its payables and fees under the board (its bay's card is this board). */}
+      {conv ? (
+        <View style={[styles.conv, focus === CONVERTER ? styles.focused : null]}>
+          <Line t={conv} size="line" colour={INK.soft} lines={3} />
+        </View>
+      ) : null}
       {ask.asked ? (
         <View style={styles.asked}>
           <RefusalLine t={ask.asked.txt} />
@@ -86,6 +102,7 @@ function BoardLine({ r, h, focused, name, onPress }: { r: BoardRow; h: number; f
   const word = DAY_WORD[r.word];
   const button = r.sell ?? r.hold;
   const holdOnly = !r.sell;
+  const extra = rowExtraLine(r);
   return (
     <View style={[styles.row, { height: h }, focused ? styles.focused : null]}>
       <View style={{ width: PICTO + 8 }} />
@@ -110,8 +127,7 @@ function BoardLine({ r, h, focused, name, onPress }: { r: BoardRow; h: number; f
           <Bars days={r.days} pbar={r.pbar} />
           <Line t={{ key: 'board.stock', args: { kg: { mass_g: r.bay_g, step: 'lot' } } }} size="line" colour={INK.soft} style={{ flexShrink: 1 }} />
         </View>
-        {r.reserved_g > 0 ? <Line t={{ key: 'card.dealReserve', args: { a: { mass_g: r.reserved_g, step: 'lot' }, b: { mass_g: r.bay_g, step: 'lot' } } }} size="line" colour={INK.soft} /> : null}
-        {r.reserved_g <= 0 && r.aside_g > 0 ? <Line t={{ key: 'chip.aside', args: { kg: { mass_g: r.aside_g, step: 'lot' }, x: { price: r.price } } }} size="line" colour={INK.soft} /> : null}
+        {extra ? <Line t={extra} size="line" colour={INK.soft} /> : null}
       </View>
       <HoldOrSell button={button} held={r.held} holdOnly={holdOnly} onPress={onPress} />
     </View>
@@ -164,4 +180,6 @@ const styles = StyleSheet.create({
   slotHold: { backgroundColor: INK.paper },
   slotHeld: { backgroundColor: INK.good },
   asked: { paddingTop: 8, gap: 6 },
+  empty: { paddingVertical: 10 },
+  conv: { paddingTop: 8, paddingHorizontal: 2 },
 });

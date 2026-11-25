@@ -5,6 +5,7 @@
 import { hash01 } from './board';
 import { printTicket, ticketBase, type Ctx } from './clock';
 import { pieceCount, pieceSpec } from './content';
+import { weighIn } from './scales';
 import type { GroundPiece, Piece, PileKey, ThingState } from './types';
 
 /** Put a whole piece on a pile at the first free index (a pile's pieces keep their k when others leave). */
@@ -56,8 +57,47 @@ export function cutOff(x: Ctx, th: ThingState, by: string, t: number): { piece: 
   th.cut += 1;
   th.progress = 0;
   const gone = th.cut >= pieceCount(x.c, th.obj);
-  if (gone) thingGone(x, th, by, t);
+  if (gone && x.c.objects[th.obj]?.shell) shellWeighIn(x, th, by, t);
+  else if (gone) thingGone(x, th, by, t);
   return { piece, gone };
+}
+
+/**
+ * Finding W9: the last piece is off a thing with a shell (the car): the shell is weighed in WHOLE where it
+ * stands, at once, by whoever took that piece (one line of the shell's grade into its bay; no piece to
+ * carry); its waste goes to the rubble skip now; the thing stays on its spot as a shell (`shell: true`),
+ * nobody's, until the merchant's next collection of its grade (shellsLeave). For the caller it is gone:
+ * a piece's pile no longer stands beside it.
+ */
+export function shellWeighIn(x: Ctx, th: ThingState, by: string, t: number): void {
+  const o = x.c.objects[th.obj]!;
+  const sh = o.shell!;
+  th.shell = true;
+  th.by = null;
+  const w = o.waste_g ?? 0;
+  x.s.waste_g += w;
+  if (w > 0) x.ev.push({ type: 'pieceOff', thing: th.uid, piece: `${th.uid}.waste`, grade: 'waste', g: w, to: 'waste', by });
+  x.s.counts![`cut:${th.obj}`] = (x.s.counts![`cut:${th.obj}`] ?? 0) + 1;
+  // Pieces left beside it go to its place's pile as when a thing is gone.
+  const home = th.at.at === 'zone' ? `zone.${th.at.zone}` : th.at.at === 'dropoff' ? 'dropoff' : 'floor';
+  for (const q of x.s.pieces.filter((p) => p.pile === `beside.${th.uid}`)) {
+    const p = takeFromPile(x, q.uid)!;
+    const gp = dropOnPile(x, p, home);
+    gp.claim = q.claim;
+  }
+  x.s.counts![`shell:${th.uid}`] = 1;
+  weighIn(x, [{ uid: `${th.uid}.shell`, grade: sh.grade, g: sh.g, from: th.uid, spec: -1, whole: th.obj }], by, t);
+}
+
+/** Finding W9: the merchant's round has taken grade `grade` from its bay: every shell of that grade weighed in before leaves the yard with it. */
+export function shellsLeave(x: Ctx, grade: string): void {
+  for (const th of [...x.s.things]) {
+    if (!th.shell || x.c.objects[th.obj]?.shell?.grade !== grade) continue;
+    const i = x.s.things.indexOf(th);
+    if (i >= 0) x.s.things.splice(i, 1);
+    delete x.s.counts![`shell:${th.uid}`];
+    x.ev.push({ type: 'thingGone', thing: th.uid });
+  }
 }
 
 /** The thing leaves the yard's things (cut apart or carried whole); its waste (when cut apart) goes to the rubble skip. */

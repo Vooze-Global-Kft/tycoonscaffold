@@ -11,7 +11,7 @@ import { PAL } from '../palette';
 import { say } from './words';
 import { openCard } from '../overlays/cardStack';
 import { useSalvageUi } from '../uiState';
-import { stick } from '../world/stick';
+import { stickHeld } from '../world/stick';
 import { fitText, type HudLayout } from './metrics';
 import { BarText } from './Paper';
 
@@ -26,7 +26,8 @@ export function OneButton({ cfg, L, hidden, onStepOut }: { cfg: SalvageConfig; L
   const size = L.button.size;
   const fit = fitText(label || 'Open', size - 8, size / 2, 13, L.s, true);
   const press = () => {
-    if (stick.value.on) return;
+    // H7: a JS-side question, never a read of the stick's shared value on the JS thread.
+    if (stickHeld()) return;
     if (mode === 'stepOut') onStepOut();
     else if (mode === 'open' && place) openCard({ kind: 'place', place });
   };

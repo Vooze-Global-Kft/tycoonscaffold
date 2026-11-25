@@ -37,7 +37,7 @@ import { YARD } from '../art/palette';
 import { yardSound } from '../hud/pump';
 import { useGame } from '../../../state/store';
 import * as R from '../../../engine/salvage';
-import { ARRIVAL, ITEM, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, actorTable, addTo, along, heading4, heading8, makeListW, makeResolver, pathLen, personInto, sortList, staticItems, type DrawList, type RulesScene } from './actors';
+import { ARRIVAL, ITEM, PATH_MAX, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, actorTable, addTo, along, heading4, heading8, makeListW, makeResolver, pathLen, personInto, sortList, staticItems, type DrawList, type RulesScene } from './actors';
 import { EDGE_ROOM_M, FOLLOW_Y, cameraBounds, followCam, zoomedBounds } from './camera';
 import { heroCam } from './heroFrame';
 import { blocked, moveBody, nearestAct } from './collide';
@@ -362,7 +362,7 @@ export function useYardLoop(opts: {
         st[31] = NaN;
         st[32] = NaN;
         st[33] = NaN;
-        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array(2) };
+        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array(2) };
         scratch.value = S;
       }
       const st = S.st;
@@ -653,7 +653,7 @@ export function useYardLoop(opts: {
           let show = true;
           if (ph === 2) {
             const FP = Rv.flatbedPath;
-            const np = Math.min(FB[6], 5);
+            const np = Math.min(FB[6], PATH_MAX);
             for (let q = 0; q < np * 2; q++) P[q] = FP[q];
             const len = pathLen(P, np);
             const drive = Math.min((FB[2] - FB[1]) / 2, len / FEEL.vehicleV);
@@ -767,7 +767,7 @@ export function useYardLoop(opts: {
             const span = TR[8] - TR[7];
             const u = span > 0 ? Math.max(0, Math.min(1, (tNow - TR[7]) / span)) : 1;
             const TP = Rv.truckPath;
-            const np = Math.min(TR[11], 5);
+            const np = Math.min(TR[11], PATH_MAX);
             for (let q = 0; q < np * 2; q++) P[q] = TP[q];
             if ((leg === 0 || leg === 2 || leg === 6) && np >= 2) {
               along(o4, P, np, u);

@@ -79,12 +79,13 @@ describe('the first fetch and the tip (P14), and the list ticks what already hol
     const g = fresh();
     const weighed = onTruck(g, true, {});
     expect(conditionMet(cfg, weighed, 'bridged:partnerFarm:1')).toBe(true);
-    // The weighbridge ticket alone no longer counts as fetched once the sim keeps counts.
-    expect(conditionMet(cfg, weighed, 'fetched:partnerFarm:1')).toBe(false);
-    expect(conditionMet(cfg, onTruck(g, false, {}), 'bridged:partnerFarm:1')).toBe(false);
+    expect(conditionMet(cfg, weighed, 'fetched:partnerFarm:1')).toBe(true);
+    // Over the weighbridge is not tipped (the ticket alone no longer counts once the sim keeps counts).
+    expect(conditionMet(cfg, weighed, 'tipped:partnerFarm:1')).toBe(false);
+    expect(conditionMet(cfg, onTruck(g, false, {}), 'fetched:partnerFarm:1')).toBe(false);
     const tipped = { ...withCounts(g, { 'fetched:partnerFarm': 1 }), salvage: { ...withCounts(g, { 'fetched:partnerFarm': 1 }).salvage, truck: { ...g.salvage.truck, skip: null } } } as SalvageGame;
+    expect(conditionMet(cfg, tipped, 'tipped:partnerFarm:1')).toBe(true);
     expect(conditionMet(cfg, tipped, 'fetched:partnerFarm:1')).toBe(true);
-    expect(conditionMet(cfg, tipped, 'bridged:partnerFarm:1')).toBe(true);
   });
   for (const name of FIXTURE_NAMES) {
     it(`${name}: every goal of the list whose condition holds is ticked; one current at most`, () => {

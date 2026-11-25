@@ -129,10 +129,12 @@ export function conditionMet(cfg: SalvageConfig, g: SalvageGame, cond: string | 
     case 'hired':
       return s.crew.filter((m) => m.role === parts[1]).length >= num(2);
     case 'fetched':
-      return countOf(c, g, `fetched:${parts[1]}`) >= num(2);
     case 'bridged':
-      // P14: a skip of that partner over the weighbridge (weighed on the truck, or tipped since).
+      // P14 (words 19:55): FETCHED = over the weighbridge (weighed on the truck, or tipped since).
       return countOf(c, g, `fetched:${parts[1]}`) + (s.truck.skip?.weighed && s.truck.skip.partner === parts[1] ? 1 : 0) >= num(2);
+    case 'tipped':
+      // P14: TIPPED on the floor (truck.ts tipNow bumps counts['fetched:<partner>'] at the tip).
+      return countOf(c, g, `fetched:${parts[1]}`) >= num(2);
     case 'rung':
       return s.ladder.rung >= num(1);
     case 'deal':
@@ -260,12 +262,12 @@ function meterOf(cfg: SalvageConfig, g: SalvageGame, d: GoalSpec): { meter: Goal
     const a = Math.min(s.ladder.supplied_g, b);
     return mk(a, b, { a: { tonnes_g: a }, b: { tonnes_g: b } });
   }
-  const nAt: Record<string, number> = { cut: 2, worked: 2, hired: 2, crewWeighIns: 2, fetched: 2, weighIns: 1, poured: 1, away: 1 };
+  const nAt: Record<string, number> = { cut: 2, worked: 2, hired: 2, crewWeighIns: 2, fetched: 2, tipped: 2, weighIns: 1, poured: 1, away: 1 };
   const i = nAt[parts[0]];
   if (i !== undefined) {
     const b = Number(parts[i]) || 1;
     if (b > 1) {
-      const key = parts[0] === 'hired' ? null : i === 2 ? `${parts[0]}:${parts[1]}` : parts[0];
+      const key = parts[0] === 'hired' ? null : parts[0] === 'tipped' ? `fetched:${parts[1]}` : i === 2 ? `${parts[0]}:${parts[1]}` : parts[0];
       const a = Math.min(b, key ? countOf(c, g, key) : s.crew.filter((m) => m.role === parts[1]).length);
       return mk(a, b, { a: { n: a }, b: { n: b } });
     }

@@ -17,7 +17,7 @@ vi.mock('react-native-reanimated', () => ({ makeMutable: (v: unknown) => ({ valu
 const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'games', 'scrap-yard', 'game.json'), 'utf8'));
 const parsed = SalvageSchema.safeParse(raw.salvage);
 const content = parsed.success ? parsed.data : null;
-const V = { ppm: 40, tilt: 0.7 };
+const V = { ppm: 40, tilt: 0.7, lift: Math.sqrt(1 - 0.49) };
 const IPHONE = { left: 47, top: 0, right: 47, bottom: 21 };
 
 /** A map of the third pass's shape (metres; footprints w x d): a compact core of about 21 x 9 m. */
@@ -27,7 +27,7 @@ const CORE = {
 } as never;
 
 describe('the hero frame', async () => {
-  const { HERO, freeWorld, heroBox, heroCheck } = await import('./heroFrame');
+  const { HERO, FAR_YARD_PT, freeWorld, heroBox, heroCheck } = await import('./heroFrame');
 
   it('is off unless the preview asks (?view=hero)', () => {
     expect(HERO.on).toBe(false);
@@ -39,18 +39,29 @@ describe('the hero frame', async () => {
     expect(freeWorld(667, 375, { left: 0, top: 0, right: 0, bottom: 0 })).toEqual({ x0: 16, y0: 60, x1: 651, y1: 299 });
   });
 
-  it('a core of the third pass\'s shape lies whole between the bars at 844 x 390', () => {
-    const map = { map: CORE };
-    const b = heroBox(map);
-    expect(b.missing).toEqual([]);
-    expect(b.members.map((m) => m.id).sort()).toEqual(['board', 'crucible', 'scale', 'stillage_br', 'stillage_cu', 'stripper', 'weighbridge']);
-    const r = heroCheck(map, V, 844, 390, IPHONE);
-    for (const m of r.members) expect(m.inside, `${m.id} ${JSON.stringify(m)}`).toBe(true);
+  it('a frame of MAP.md M7\'s size (16.7 x 9.7 m south of the wall) holds whole at 667 x 375 and 844 x 390, the wall with 40 pt of far yard under the bar', () => {
+    // A made-up map: the wall at y 10, the frame south of it, members at its corners.
+    const map = {
+      map: {
+        north: 10,
+        hero: { x0: 20, y0: 10, w: 16.7, d: 9.7, places: ['a', 'b'] },
+        points: { a: [21, 11.2], b: [35.6, 19.0] },
+        places: { a: { w: 1.5, d: 1.5 }, b: { w: 1.6, d: 1.2 } },
+      },
+    } as never;
+    for (const [W, H, ins] of [[844, 390, IPHONE], [667, 375, { left: 0, top: 0, right: 0, bottom: 0 }]] as const) {
+      const r = heroCheck(map, V, W, H, ins);
+      for (const m of r.members) expect(m.inside, `${W}: ${m.id} ${JSON.stringify(m)}`).toBe(true);
+      expect(r.farYard!, `${W}: far yard ${r.farYard}`).toBeGreaterThanOrEqual(FAR_YARD_PT);
+    }
   });
 
   const box = content ? heroBox(content) : null;
-  it.skipIf(!box || box.missing.length > 0)(`the game's own content lies whole between the bars at 844 x 390 (missing now: ${box ? box.missing.join(', ') || 'none' : 'game.json does not parse'})`, () => {
-    const r = heroCheck(content!, V, 844, 390, IPHONE);
-    for (const m of r.members) expect(m.inside, `${m.id} ${JSON.stringify(m)}`).toBe(true);
-  });
+  for (const [W, H, ins] of [[844, 390, IPHONE], [667, 375, { left: 0, top: 0, right: 0, bottom: 0 }]] as const)
+    it.skipIf(!box || box.missing.length > 0)(`the game's own map.hero lies whole between the bars at ${W} x ${H} (missing now: ${box ? box.missing.join(', ') || 'none' : 'game.json does not parse'})`, () => {
+      const r = heroCheck(content!, V, W, H, ins);
+      for (const m of r.members) expect(m.inside, `${m.id} ${JSON.stringify(m)}`).toBe(true);
+      // The back wall with the far yard over it (once the content has map.north).
+      if (r.farYard !== null) expect(r.farYard, 'far yard under the top bar').toBeGreaterThanOrEqual(FAR_YARD_PT);
+    });
 });

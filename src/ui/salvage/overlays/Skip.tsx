@@ -1,6 +1,6 @@
 /**
- * A partner load's card (yard-stage1.md 2.7, 4.3: the skip's label as a card): the skip seen from above
- * (the art kit's heaps.draw `drawSkipPlan` in one Skia canvas), "{partner} · full" or "trial load", the
+ * A partner load's card (yard-stage1.md 2.7, 4.3: the skip's label as a card): the skip
+ * (oblique, the art kit's vehicles.draw `drawSkip` with its fill and the partner's mark, one Skia canvas), "{partner} · full" or "trial load", the
  * net mass, EVERY thing on its label (the world plate prints three and "+ n more"), the price, and why it
  * cannot be hooked now ("Filling · full in {m} m {s} s", "Needs §{x} more for this load", "The tipping
  * floor needs room for {kg}", "Opens with the hook-lift truck"). Loads are honest (E3, E20): what the
@@ -9,7 +9,9 @@
  */
 import { StyleSheet, View } from 'react-native';
 import type { Txt } from '../../../engine/salvage';
-import { drawSkipPlan, type SkipPartner } from '../art/heaps.draw';
+import { partnerMark, type PartnerMark } from '../art/lane.draw';
+import { viewOf } from '../art/pen';
+import { drawSkip, type SkipLoad } from '../art/vehicles.draw';
 import { lineH, panelTextW } from './marketLayout';
 import { planLoad, skipHead } from './marketLines';
 import { Drawing, useSeenOnClose } from './marketParts';
@@ -18,19 +20,36 @@ import { Panel } from './Panel';
 import { INK, Line, PadlockLine, useFrame } from './parts';
 import { TYPE } from './layout';
 
+/**
+ * L15: the skip as the world shows it, oblique (the art kit's vehicles.draw `drawSkip`, three-quarter
+ * heading), with its fill (`drawSkipLoad` through the load: nothing while it fills, the trial's or the
+ * full mound) and the partner's mark on a corner tag (lane.draw `partnerMark`), in ONE recorded picture.
+ */
+function drawCardSkip(c: Parameters<typeof drawSkip>[0], partner: string, load: 'empty' | 'trial' | 'full', w: number, h: number): void {
+  const mark: PartnerMark = partner === 'partnerDemolition' ? 'demolition' : 'farm';
+  const view = viewOf(Math.round(w / 3.9), 0.7);
+  const fill: SkipLoad | undefined = load === 'empty' ? undefined : (`${mark}-${load}` as SkipLoad);
+  c.save();
+  c.translate(w * 0.5, h * 0.62);
+  drawSkip(c, view, -0.42, { load: fill });
+  c.restore();
+  const m = Math.round(Math.min(30, h * 0.36));
+  partnerMark(c, m / 2 + 3, m / 2 + 3, m, mark);
+}
+
 export function Skip({ data, onClose }: CardViewProps) {
   const { layout } = useFrame();
   useSeenOnClose('skip');
   const s = data.skip;
   const title: Txt = s ? { key: 'title.skip', args: { partner: { name: s.partner } } } : data.title;
   if (!s) return <Panel title={title} onClose={onClose} lead={[{ key: 'away.nothing' }]} />;
-  const w = Math.min(160, panelTextW(layout));
-  const h = Math.round(w * 0.45) + 10;
+  const w = Math.min(170, panelTextW(layout));
+  const h = Math.round(w * 0.62);
   const filling = s.state === 'filling';
   return (
     <Panel title={title} onClose={onClose}>
       <View style={styles.top}>
-        <Drawing w={w} h={h} deps={[s.partner, planLoad(s), s.slot]} draw={(c) => drawSkipPlan(c, (s.partner === 'partnerDemolition' ? 'partnerDemolition' : 'partnerFarm') as SkipPartner, planLoad(s), w / 2, h / 2, w - 12, 2 + s.slot)} />
+        <Drawing w={w} h={h} deps={[s.partner, planLoad(s), w]} draw={(c) => drawCardSkip(c, s.partner, planLoad(s), w, h)} />
         <View style={styles.topText}>
           {/* While it fills its contents and price are not fixed yet: the refusal line says when it is full. */}
           {filling ? null : <Line t={skipHead(s)} size="name" bold lines={2} />}

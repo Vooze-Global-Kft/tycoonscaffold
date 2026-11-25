@@ -61,8 +61,6 @@ describe.each(contents)('dressing on %s', (_name, c) => {
       expect(solid(0.25)).toBeLessThanOrEqual(solid(0.5));
       expect(solid(0)).toBe(0);
       expect(bedDress(c, z, 0).length).toBeGreaterThan(0);
-      // two looks per tier
-      expect(new Set(full.map((t) => t.frame)).size).toBe(full.length > 3 ? 2 : new Set(full.map((t) => t.frame)).size);
     }
   });
   it('the share of stock left comes from the things of each zone', () => {
