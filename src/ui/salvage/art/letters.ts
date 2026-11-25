@@ -206,12 +206,12 @@ const SEG: Record<string, string> = {
 /** One digit cell is 0.56 * size wide plus a gap; ',' and '.' take a narrow cell. */
 export function segWidth(text: string, size: number): number {
   let w = 0;
-  for (const ch of text) w += ch === '.' || ch === ',' ? size * 0.28 : size * 0.68;
+  for (const ch of text) w += ch === '.' ? size * 0.28 : ch === ',' ? size * 0.12 : size * 0.68;
   return w - size * 0.12;
 }
 
 /**
- * LED digits of height `size`, right-aligned at (right, y top). Unlit segments of every cell show in
+ * LED digits of height `size`, right-aligned at (right, y top); ',' is a thin gap, '.' a decimal point. Unlit segments of every cell show in
  * `off` (a real display's ghost "8"), lit ones in `on`.
  */
 export function sevenSeg(c: SkCanvas, text: string, right: number, y: number, size: number, on: string, off: string): void {
@@ -245,7 +245,12 @@ export function sevenSeg(c: SkCanvas, text: string, right: number, y: number, si
     }
   };
   for (const ch of text) {
-    if (ch === '.' || ch === ',') {
+    if (ch === ',') {
+      // a display has no thousands mark (a dot would read as a decimal point): a thin gap only
+      x += size * 0.12;
+      continue;
+    }
+    if (ch === '.') {
       c.drawCircle(x + size * 0.04, y + size - t * 0.6, t * 0.85, fill(on));
       x += size * 0.28;
       continue;

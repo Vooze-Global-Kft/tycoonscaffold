@@ -138,7 +138,7 @@ export function drawProof(c: SkCanvas, L: ProofLayout, T: TextFn): void {
   c.drawRect({ x: 0, y: 0, width: L.w, height: L.h }, fill(YARD.concrete));
   const { display } = drawProofWorld(c, v, L.camX, 8, T);
   // the ticket rising out of the display, a little turned
-  const k = L.w > 700 ? 0.92 : 0.84;
+  const k = L.w > 700 ? 0.84 : 0.8;
   const th = ticketHeight(PROOF_TICKET) * k;
   const tw = TICKET_W * k;
   const tx = display[0] - tw * 0.26;

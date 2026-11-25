@@ -32,14 +32,16 @@ export function scripCoin(c: SkCanvas, cx: number, cy: number, r: number): void 
   c.drawPath(circle(cx, cy, r), fill(YARD.hivis));
   c.drawPath(circle(cx, cy, r), stroke(INK, 1.2));
   const k = r / 8;
-  const s = builder()
-    .moveTo(cx + 3 * k, cy - 4.6 * k)
-    .cubicTo(cx + 1 * k, cy - 6.2 * k, cx - 3.8 * k, cy - 5.6 * k, cx - 3.2 * k, cy - 2.8 * k)
-    .cubicTo(cx - 2.6 * k, cy - 0.4 * k, cx + 3.4 * k, cy - 0.6 * k, cx + 3.2 * k, cy + 2.4 * k)
-    .cubicTo(cx + 3 * k, cy + 5.6 * k, cx - 2 * k, cy + 6 * k, cx - 3.4 * k, cy + 4.4 * k)
-    .build();
-  c.drawPath(s, stroke(INK, 1.6 * k + 0.4));
-  c.drawPath(segment(cx, cy - 7 * k, cx, cy + 7 * k), stroke(INK, 1.1 * k + 0.3));
+  // § drawn as two S strokes stacked (never a $: there is no bar through it)
+  const S = (dy: number) =>
+    builder()
+      .moveTo(cx + 2.6 * k, cy - 4.4 * k + dy)
+      .cubicTo(cx + 1.2 * k, cy - 6 * k + dy, cx - 3.4 * k, cy - 5.4 * k + dy, cx - 2.8 * k, cy - 3 * k + dy)
+      .cubicTo(cx - 2.3 * k, cy - 1.1 * k + dy, cx + 3 * k, cy - 1.3 * k + dy, cx + 2.8 * k, cy + 1.2 * k + dy)
+      .cubicTo(cx + 2.6 * k, cy + 3.4 * k + dy, cx - 1.4 * k, cy + 3.6 * k + dy, cx - 2.8 * k, cy + 2.4 * k + dy)
+      .build();
+  c.drawPath(S(-1.2 * k), stroke(INK, 1.5 * k + 0.4));
+  c.drawPath(S(2.2 * k), stroke(INK, 1.5 * k + 0.4));
 }
 
 /** The cash chip: coin and amount (15 pt bold). */
@@ -88,7 +90,7 @@ export function carryChip(c: SkCanvas, T: TextFn, x: number, y: number, w: numbe
     c.drawPath(p, fill(METAL[m].base));
     c.drawPath(p, stroke(INK, 0.9));
   });
-  T(c, text, x + 25, y + h / 2 + 4.2, { size: TYPE.chip, weight: 'bold', color: INK });
+  T(c, text, x + 25, y + h / 2 + 4, { size: TYPE.chipSmall, weight: 'bold', color: INK });
 }
 
 /** The clipboard button (44 wide): a drawn clipboard. */
