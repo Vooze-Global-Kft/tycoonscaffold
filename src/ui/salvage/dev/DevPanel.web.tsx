@@ -16,7 +16,7 @@ export function DevPanel({ stats, top, left, atlas }: { stats: SharedValue<Frame
     const t = setInterval(() => setS(stats.value), 500);
     return () => clearInterval(t);
   }, [stats]);
-  const line = `${s.fps.toFixed(1)} fps  worst ${s.worstMs.toFixed(1)} ms (5 s)  actors ${s.actors}  sprites ${s.sprites}  draws 2  ${atlas}`;
+  const line = `${s.fps.toFixed(1)} fps  worst ${s.worstMs.toFixed(1)} ms (5 s)  actors ${s.actors}  sprites ${s.sprites}  draws 4 (fill, ground, fence, atlas)  ${atlas}`;
   // Exposed for the preview's screenshot tool (scripts read it from the page).
   (globalThis as { __yardStats?: FrameStats }).__yardStats = s;
   return (

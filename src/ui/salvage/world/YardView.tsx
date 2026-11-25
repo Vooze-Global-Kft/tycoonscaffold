@@ -1,7 +1,7 @@
 /**
- * The yard on screen: ONE full-bleed Skia canvas drawn in two draw calls a frame, the ground (one
+ * The yard on screen: ONE full-bleed Skia canvas drawn in four draw calls a frame: the outside colour, the ground (one
  * rectangle with the baked tile image repeated, moved by the camera) and every sprite (one `Atlas`
- * call, depth-sorted by the frame loop, ./frameLoop.ts), plus the fence round the yard. It is drawn
+ * call, depth-sorted by the frame loop, ./frameLoop.ts) and the fence round the yard. It is drawn
  * under the notch and the home indicator; the controls never are (../SalvageShell.tsx). Touches belong
  * to the input view over it.
  */
