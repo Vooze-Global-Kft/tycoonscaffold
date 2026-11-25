@@ -8,7 +8,7 @@
  */
 import { capOf } from './bays';
 import { boostFactor, count, printTicket, spend, standingFor, ticketBase, type Ctx } from './clock';
-import { laneM, legM, routeM } from './content';
+import { laneM, legM, routeM, driverRoundF } from './content';
 import { atPlace } from './machines';
 import { resolveGrams } from './money';
 import { contentsMass_g, fullestSkip, setSkipDown } from './partners';
@@ -179,11 +179,14 @@ export function leaveTruck(x: Ctx, at: { x: number; y: number; heading: number }
 
 // ---------------------------------------------------------------------------------------- the driver
 
-/** The driver's truck speed, m/s: truck.v × driverFactor × (1 + lev × (L − 1)). */
+/** The driver's level factor F (E31a: his whole round, driving and handling, is shortened by it). */
+function driverF(x: Ctx): number {
+  return driverRoundF(x.c, x.s.crew.find((m) => m.role === 'driver')?.level ?? 1);
+}
+
+/** The driver's truck speed, m/s: truck.v × driverFactor × F × the foreman's boost. */
 function driverV(x: Ctx): number {
-  const d = x.s.crew.find((m) => m.role === 'driver');
-  const L = d?.level ?? 1;
-  return x.c.truck.v * x.c.truck.driverFactor * (1 + x.c.crew.driver.lev * Math.max(0, L - 1)) * boostFactor(x, x.s.t);
+  return x.c.truck.v * x.c.truck.driverFactor * driverF(x) * boostFactor(x, x.s.t);
 }
 
 const pt = (x: Ctx, id: string) => pointOf(x.c, id);
@@ -205,7 +208,7 @@ export function driverDepart(x: Ctx, t: number): boolean {
   const sk = fullestSkip(x, best.partner)!;
   tr.earmark = { money: best.price, floor_g: best.mass };
   const from = { x: d.to && 'xy' in d.to ? d.to.xy[0] : pt(x, 'scalehouse').x, y: d.to && 'xy' in d.to ? d.to.xy[1] : pt(x, 'scalehouse').y };
-  const walk = legM(x.c, from, { x: tr.x, y: tr.y }) / x.c.crew.hand.v;
+  const walk = legM(x.c, from, { x: tr.x, y: tr.y }) / x.c.crew.hand.v / driverF(x);
   tr.trip = { partner: best.partner, slot: sk.slot, phase: 'walk', t0: t, endsAt: t + walk };
   d.job = 'drive';
   d.phase = 'wait';
@@ -225,6 +228,7 @@ export function driverLegEnd(x: Ctx, t: number): void {
   const trip = tr.trip;
   if (!trip) return;
   const v = driverV(x);
+  const F = driverF(x);
   const gate = pt(x, 'gate');
   const z = skipZone(x.c, trip.partner, trip.slot);
   const next = (phase: typeof trip.phase, dur: number, at?: { x: number; y: number }) => {
@@ -241,7 +245,7 @@ export function driverLegEnd(x: Ctx, t: number): void {
       next('out', (routeM(x.c, 'park', 'gate', { x: tr.x, y: tr.y }, gate) + laneM(x.c, trip.partner)) / v);
       return;
     case 'out':
-      next('hook', x.c.truck.handle_s, { x: z.x, y: z.y });
+      next('hook', x.c.truck.handle_s / F, { x: z.x, y: z.y });
       return;
     case 'hook': {
       // The earmark guaranteed the price and the room; a skip taken meanwhile (it cannot be) ends the trip empty.
@@ -250,11 +254,11 @@ export function driverLegEnd(x: Ctx, t: number): void {
       return;
     }
     case 'back':
-      next('weigh', x.c.weigh_s, pt(x, 'weighbridge'));
+      next('weigh', x.c.weigh_s / F, pt(x, 'weighbridge'));
       return;
     case 'weigh':
       bridgeWeigh(x, t);
-      next('tip', routeM(x.c, 'weighbridge', 'floor') / v + x.c.truck.handle_s, pt(x, 'floor'));
+      next('tip', routeM(x.c, 'weighbridge', 'floor') / v + x.c.truck.handle_s / F, pt(x, 'floor'));
       return;
     case 'tip':
       tipNow(x, t);

@@ -10,6 +10,7 @@
  */
 import { awayPass } from './away';
 import { marketDay } from './board';
+import { releaseHolds } from './bays';
 import { accrueBoost, begin, boostEndsAt, finish, nextDayAt, bossFresh, type Ctx } from './clock';
 import { crewDepart, crewLegEnd } from './crew';
 import { crucibleCheckReady, crucibleEvent, crucibleFromBays } from './crucible';
@@ -100,6 +101,7 @@ function apply(x: Ctx, e: QueuedEvent): void {
       dealDeliver(x, t);
       dealReprice(x, t);
       if (s.foreman.day !== s.clock.day) s.foreman = { ...s.foreman, day: s.clock.day, used_s: 0 };
+      releaseHolds(x);
       return;
     }
     case 'machine':
@@ -193,6 +195,7 @@ function closeClock(x: Ctx, now: number): void {
   const ms = x.ms0 + (s.t - x.t0) * 1000;
   s.clock.highMs = Math.max(s.clock.highMs, ms, Number.isFinite(now) ? now : 0);
   s.clock.day = Math.max(s.clock.day, marketDay(x.c, s.clock.highMs));
+  releaseHolds(x);
 }
 
 /**

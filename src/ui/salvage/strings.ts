@@ -178,6 +178,7 @@ export const TEXT = {
   'board.lowDay': 'low day',
   'board.highDay': 'high day',
   'board.firstHint': '{grade}: a low day. Holding is free.',
+  'board.heldUntil': 'Held until a high day, two days at most',
   'board.sellTotal': 'Sell {x}',
 
   // --- package 4: the process board (4.5) ---

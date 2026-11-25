@@ -899,6 +899,8 @@ export interface BoardRow {
   aside_g: number;
   hold: CardButton;
   sell: CardButton | null;
+  /** On a held bay, how long Hold lasts (E32): "Held until a high day, two days at most"; null when not held. */
+  heldLine?: Txt | null;
 }
 
 export interface PriceBoard {

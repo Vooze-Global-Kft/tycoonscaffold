@@ -7,7 +7,7 @@ import { checkGoals } from './goals';
 import { rungReached } from './ladder';
 import { passedNow } from './rivals';
 import { CHECK_EVERY_S, count, dayAt, type Ctx } from './clock';
-import { routeM } from './content';
+import { driverRoundF, routeM } from './content';
 import { crucibleCharged } from './crucible';
 import { dealOffer, gateReached } from './deal';
 import { defOf } from './machines';
@@ -36,12 +36,13 @@ export function ratedOf(c: Ctx['c'], s: Ctx['s']): number {
   let arrive = mix.reduce((a, [o, w]) => a + (w / wsum) * ((c.objects[o]?.gross_g ?? 0) / 1000), 0) / c.dropoff.period;
   const driver = s.crew.find((m) => m.role === 'driver');
   if (driver && s.truck.owned) {
-    const dv = c.truck.v * c.truck.driverFactor * (1 + c.crew.driver.lev * Math.max(0, driver.level - 1));
+    const F = driverRoundF(c, driver.level);
+    const dv = c.truck.v * c.truck.driverFactor * F;
     for (const [id, p] of Object.entries(c.partners)) {
       const ps = s.partners[id];
       if (!ps?.open) continue;
       const mass = Object.entries(p.skip).reduce((a, [o, n]) => a + (c.objects[o]?.gross_g ?? 0) * n, 0) / 1000;
-      const trip = (2 * (c.map.lane[p.lane] ?? 0)) / dv + c.truck.handle_s;
+      const trip = (2 * (c.map.lane[p.lane] ?? 0)) / dv + c.truck.handle_s / F;
       arrive += (Math.max(1, ps.level) * mass) / Math.max(p.fill_s, trip);
     }
   }

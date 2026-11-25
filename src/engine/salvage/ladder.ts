@@ -7,6 +7,7 @@
  * `priceUpdated` (shown ≠ the check's price) and the change itself.
  */
 import type { SalvageContent } from '../../config/schema.salvage';
+import { driverRoundF } from './content';
 import { roundMoney } from './money';
 import { pointOf } from './positions';
 import { ratedCapacity } from './rate';
@@ -243,11 +244,13 @@ export function levelAddsKgMin(cfg: SalvageConfig, g: SalvageGame, target: Level
     return (60 * Math.max(0, a)) / MEAN_H;
   }
   const d = c.crew.driver;
-  const v = c.truck.v * c.truck.driverFactor * (1 + d.lev * (L - 1));
+  const F = driverRoundF(c, L);
+  const v = c.truck.v * c.truck.driverFactor * F;
   let tot = 0;
   for (const [pid, p] of Object.entries(c.partners)) {
     if (!g.salvage.partners[pid]?.open) continue;
-    const run = (2 * (c.map.lane[p.lane] ?? 0)) / v + c.truck.handle_s;
+    // E31a: the whole round shortens by the level's factor (the handling too).
+    const run = (2 * (c.map.lane[p.lane] ?? 0)) / v + c.truck.handle_s / F;
     tot += skipMassKg(c, pid) / Math.max(p.fill_s, run);
   }
   return 60 * tot * (d.lev / (1 + d.lev * (L - 1))) * DUTY;

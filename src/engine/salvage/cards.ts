@@ -10,6 +10,7 @@ import { binding, levelBinds, reserve } from './advice';
 import { marketDay, marketTime, priceBoard, priceOf } from './board';
 import { goalListOf, goalOf as goalOfCfg } from './goals';
 import { buyCheck, crewKeys, gateRefusal, hireCheck, itemName, levelAddsKgMin, levelCheck, refusalTxt, route, rungSign, shopItem, shopItems, type PurchaseCheck } from './ladder';
+import { driverRoundF } from './content';
 import { roundMoney } from './money';
 import { lastPassed, tableOf } from './rivals';
 import type {
@@ -108,10 +109,11 @@ export function crewRate_g_h(cfg: SalvageConfig, g: SalvageGame, m: CrewMember):
 /** The driver's round trip to the first open partner, seconds (his card's "Fetches a load in {t}"). */
 function driverTripS(cfg: SalvageConfig, g: SalvageGame, m: CrewMember): number {
   const c = cfg.salvage;
-  const v = c.truck.v * c.truck.driverFactor * (1 + c.crew.driver.lev * (m.level - 1));
+  const F = driverRoundF(c, m.level);
+  const v = c.truck.v * c.truck.driverFactor * F;
   const open = Object.entries(c.partners).filter(([id]) => g.salvage.partners[id]?.open);
   const lane = open.length ? Math.min(...open.map(([, p]) => c.map.lane[p.lane] ?? 0)) : 0;
-  return lane > 0 ? (2 * lane) / v + 2 * c.truck.handle_s : 0;
+  return lane > 0 ? (2 * lane) / v + (2 * c.truck.handle_s) / F : 0;
 }
 
 /** A level row (crew, machine, partner): the level's state from levelCheck, "not the bottleneck now" when it binds nothing (E19). */

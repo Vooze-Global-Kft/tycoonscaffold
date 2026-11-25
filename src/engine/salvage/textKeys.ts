@@ -127,7 +127,7 @@ export const TEXT_KEYS = {
     'effect.driver',
   ],
   /** Package 4: the price board and bays (4.4). */
-  board: ['board.head', 'board.usual', 'board.lowDay', 'board.highDay', 'board.firstHint', 'board.sellTotal', 'board.stock', 'board.today', 'board.usualPrice'],
+  board: ['board.head', 'board.usual', 'board.lowDay', 'board.highDay', 'board.firstHint', 'board.heldUntil', 'board.sellTotal', 'board.stock', 'board.today', 'board.usualPrice'],
   /** Package 4: the process board's plates (4.5). */
   plate: ['plate.handStripper', 'plate.stripper', 'plate.bench', 'plate.crucible', 'plate.brass', 'plate.alu', 'plate.bronze', 'plate.lead', 'plate.lithium', 'plate.pgm', 'plate.tungsten', 'plate.owned', 'plate.price', 'plate.levelPrice', 'plate.locked', 'plate.needsCrucible', 'plate.atRung'],
   /** Package 4: the industry table and the rung sign (2.11). */

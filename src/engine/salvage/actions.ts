@@ -141,6 +141,9 @@ export function setHold(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, on: 
   if ((b?.held ?? false) === on) return g;
   const x = begin(cfg, g, events, true);
   bayOf(x, grade).held = on;
+  // E32: the market day it was held on (the release after two market days counts from it).
+  if (on) x.s.counts![`heldDay:${grade}`] = x.s.clock.day;
+  else delete x.s.counts![`heldDay:${grade}`];
   x.ev.push({ type: 'heldBay', grade, on });
   return finish(g, x);
 }

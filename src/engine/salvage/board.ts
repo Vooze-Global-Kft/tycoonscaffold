@@ -123,6 +123,7 @@ export function priceBoard(cfg: SalvageConfig, g: SalvageGame, now: number): Pri
       aside_g,
       hold: { label: { key: 'card.hold' }, action: { act: 'setHold', grade, on: !b.held }, refusal: null },
       sell,
+      heldLine: b.held ? { key: 'board.heldUntil' } : null,
     };
   });
   const low = rows.find((r) => r.word === 'low');

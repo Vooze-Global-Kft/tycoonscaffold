@@ -131,6 +131,14 @@ export function legM(c: SalvageContent, a: { x: number; y: number }, b: { x: num
   return c.map.detour * Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+/**
+ * The driver's level factor (ECONOMY.md E31a): 1 + lev × (L − 1). It shortens his WHOLE round: the drive
+ * (speed × F) and the walk to the truck, the hooking, the weigh-in and the tipping (time ÷ F).
+ */
+export function driverRoundF(c: SalvageContent, level: number): number {
+  return 1 + c.crew.driver.lev * Math.max(0, level - 1);
+}
+
 /** The lane's length for a partner, metres one way from the gate. */
 export function laneM(c: SalvageContent, partner: string): number {
   return c.map.lane[c.partners[partner]?.lane ?? ''] ?? 0;

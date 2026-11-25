@@ -5,6 +5,7 @@
  * the state when the pass returns (paid when computed); highMs rises to t_m, so a clock that jumps
  * forward and back never pays a stretch twice. Owner: rules-sim.
  */
+import { releaseHolds } from './bays';
 import { marketDay } from './board';
 import { begin, finish, type Ctx } from './clock';
 import { cancelAct } from './hand';
@@ -60,6 +61,8 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
   advance(x, s.t + A);
   s.clock.highMs = Math.max(s.clock.highMs, Number.isFinite(now) ? now : 0, x.ms0 + A * 1000);
   s.clock.day = Math.max(s.clock.day, marketDay(x.c, s.clock.highMs));
+  // Days the cap did not play still count for Hold (E32, away alike).
+  releaseHolds(x);
   if (showCard) {
     const c = card(x, A, capS);
     if (s.away) {
