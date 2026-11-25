@@ -32,6 +32,9 @@ describe('salvageSoundsFor', () => {
     expect(keys({ type: 'arrival', kind: 'van' })).toEqual(['van']);
     expect(keys({ type: 'arrival', kind: 'flatbed' })).toEqual(['crane_set']);
     expect(keys({ type: 'arrival', kind: 'drop-off' })).toEqual(['set_down']);
+    // types.ts ArrivalKind's own names
+    expect(keys({ type: 'arrival', kind: 'dropoff' })).toEqual(['set_down']);
+    expect(keys({ type: 'arrival', kind: 'machineFlatbed' })).toEqual(['crane_set']);
     expect(keys({ type: 'arrival', kind: 'crew' })).toEqual(['door']);
     expect(keys({ type: 'arrival', kind: 'truck' })).toEqual(['truck_reverse']);
   });
@@ -96,6 +99,8 @@ describe('segments and ladders', () => {
   });
   it('machines, heat and speed pick their segment and step', () => {
     expect(machineLoopKey('handStripper')).toBe('stripper_hand');
+    expect(machineLoopKey('hand_stripper')).toBe('stripper_hand');
+    expect(machineLoopKey('stripper')).toBe('stripper_power');
     expect(machineLoopKey('powerStripper')).toBe('stripper_power');
     expect(machineLoopKey('bench')).toBe('bench_knock');
     expect(machineLoopKey('crucible')).toBe('furnace_roar');

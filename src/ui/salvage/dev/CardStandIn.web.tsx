@@ -3,7 +3,8 @@
  * overlay host has open, while the host's CARD_VIEWS does not list them yet (requests.md, [overlays-b]
  * overlays-a). It sits over the host's generic card in the same frame (the same layout and content), so
  * screenshots show the real view. Once the host lists a kind, this draws nothing for it. Also opens a
- * card at load with `?cardB=board|bay:<grade>|skip[:<partner>]|deal|table|away|rung|clipboard|settings|help`.
+ * card at load with `?cardB=board|bay:<grade>|skip[:<partner>]|deal|table|away|rung|clipboard|settings|help`
+ * (`&cardBAt=ms` opens it later, after a preset's own cards).
  */
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
@@ -66,9 +67,12 @@ export function CardStandIn() {
   const insets = useMemo(() => ({ top: 0, left: ins?.left ?? 0, right: ins?.right ?? 0, bottom: ins?.bottom ?? 0 }), [ins]);
   const layout = useMemo(() => frameLayout(width, height, insets, fontScale), [width, height, insets, fontScale]);
   useEffect(() => {
-    const at = cardFromQuery(query()?.get('cardB') ?? null);
+    const q = query();
+    const at = cardFromQuery(q?.get('cardB') ?? null);
     if (!at) return;
-    const t = setTimeout(() => openCard(at), 900);
+    // `cardBAt=ms`: later than the preset's own cards (m15's rung sign opens at load).
+    const ms = Number(q?.get('cardBAt') ?? 900);
+    const t = setTimeout(() => openCard(at), Number.isFinite(ms) ? ms : 900);
     return () => clearTimeout(t);
   }, []);
   useEffect(() => {

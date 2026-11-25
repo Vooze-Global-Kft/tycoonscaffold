@@ -20,7 +20,6 @@ import { TYPE, pt } from './layout';
 
 /** The crane's view (points a metre) and the sign's (larger, so its words fit at font scale 1.3). */
 const CRANE = viewOf(32, 0.7);
-const SIGN = viewOf(84, 0.7);
 const W = 210;
 const H = 150;
 /** The crane's anchor in the canvas. */
@@ -40,6 +39,8 @@ export function RungSign({ cfg, g, data, onClose }: CardViewProps) {
   useEffect(() => {
     if (!reduce) drop.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) });
   }, [drop, reduce]);
+  // The sign grows with the font scale so its two lines fit (84 points a metre at 1.0).
+  const SIGN = viewOf(Math.round(84 * layout.fs), 0.7);
   const [hx, hy] = proj(CRANE, CRANE_HOOK[0], CRANE_HOOK[1], CRANE_HOOK[2]);
   const signW = 2.4 * SIGN.ppm * 0.62;
   const signH = 0.8 * SIGN.ppm * SIGN.lift * 0.9;
@@ -51,7 +52,7 @@ export function RungSign({ cfg, g, data, onClose }: CardViewProps) {
         <View style={{ width: W, height: H }}>
           <Drawing w={W} h={H} deps={[]} draw={(c) => (c.save(), c.translate(AX, AY), drawSignCrane(c, CRANE), c.restore())} />
           <Animated.View style={[styles.sign, { left: AX + hx - signW / 2, top: AY + hy, width: signW, height: signH + 4 }, fall]}>
-            <Drawing w={signW + 6} h={signH + 6} deps={[]} draw={(c) => (c.save(), c.translate(signW / 2, 3), drawHungSign(c, SIGN), c.restore())} />
+            <Drawing w={signW + 6} h={signH + 6} deps={[SIGN.ppm]} draw={(c) => (c.save(), c.translate((signW + 6) / 2, 3), drawHungSign(c, SIGN), c.restore())} />
             <View style={[styles.words, { width: signW - 10, height: signH - 12 }]}>
               <Line t={sign} size="line" bold lines={2} center style={{ fontSize: fs, lineHeight: Math.ceil(fs * 1.1) }} />
             </View>

@@ -363,7 +363,8 @@ function machineRows(cfg: SalvageConfig, g: SalvageGame, mc: MachineCard): CardR
   const id = mc.machine;
   const rows: CardRow[] = [];
   const io: Txt = { key: 'card.inOut', args: { in: { grade: mc.in[0] ?? '' }, out: { grade: mc.out[0] ?? '' } } };
-  const rate: Txt = { key: 'card.levelAdds', args: { rate: { rate_g_h: mc.rate_g_h } } };
+  // The rate at its level. STAND-IN key: card.rateKgS "{kg} a second" until strings has a "{rate} an hour" line for a machine (requested).
+  const rate: Txt = { key: 'card.rateKgS', args: { kg: { mass_g: Math.round(mc.rate * 1000), step: 'lot' } } };
   const item = MACHINE_ITEM[id];
   if (id === 'hand_stripper') {
     rows.push(row(`${id}.about`, { key: 'item.handStripper' }, { key: 'effect.handStripper' }, null, 'owned', { key: 'card.cameWithYard' }));

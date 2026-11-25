@@ -47,7 +47,10 @@ export function GoalCard({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   const fit = fitText(first + (v.progress ? `  ${v.progress}` : ''), w - 28, h1, 12, s);
   const more = lesson ? [lesson.text] : open ? [v.goal ? v.next : null, v.goal ? v.advice : null].filter((x): x is string => !!x) : [];
   const canOpen = !!v.goal && !!(v.next || v.advice);
-  const lh = lineH(fit.pt);
+  // The lesson line has its own fit (base 12, down to 11 pt): at the goal line's size a 48-character
+  // lesson overflows the card at font scale 1.3 (strings' layout note, 16:30).
+  const subPt = lesson ? fitText(lesson.text, w - 20, lineH(fit.pt), 12, s).pt : fit.pt;
+  const lh = lineH(Math.max(fit.pt, subPt));
   const tall = more.length > 0;
   const openH = Math.max(h1, Math.min(84, 8 + lh * (1 + more.length)));
   return (
@@ -72,7 +75,7 @@ export function GoalCard({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
           </View>
           {v.share !== null ? <View style={[styles.meter, { top: h1 - 5, width: Math.round((w - 4) * v.share) }]} /> : null}
           {more.map((t, i) => (
-            <BarText key={i} pt={fit.pt} weight={lesson ? '700' : i === more.length - 1 && v.advice ? '600' : '500'} color={lesson ? PAL.stamp : PAL.inkSoft} style={styles.sub}>
+            <BarText key={i} pt={subPt} weight={lesson ? '700' : i === more.length - 1 && v.advice ? '600' : '500'} color={lesson ? PAL.stamp : PAL.inkSoft} style={styles.sub}>
               {t}
             </BarText>
           ))}

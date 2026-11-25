@@ -91,7 +91,8 @@ export function workLoopKey(tool: string | undefined, family?: string): SalvageF
 /** The machine segment by machine id (a machine without one is quiet). */
 export function machineLoopKey(machine: string | undefined): SalvageFxName | null {
   const m = (machine ?? '').toLowerCase();
-  if (m.includes('power')) return 'stripper_power';
+  // types.ts MachineId: 'hand_stripper' | 'stripper' (the POWERED one) | 'bench' | 'crucible'.
+  if (m === 'stripper' || m.includes('power')) return 'stripper_power';
   if (m.includes('strip')) return 'stripper_hand';
   if (m.includes('bench')) return 'bench_knock';
   if (m.includes('crucible')) return 'furnace_roar';
@@ -184,8 +185,10 @@ export function salvageSoundsFor(event: Loose): SoundCue[] {
       return [{ key: 'denied' }];
     case 'arrival':
       switch (event.kind) {
+        case 'dropoff': // types.ts ArrivalKind ('drop-off' kept for older callers)
         case 'drop-off':
           return [{ key: 'set_down' }];
+        case 'machineFlatbed': // a bought machine set down by the flatbed's crane ('flatbed' kept for older callers)
         case 'flatbed':
           return [{ key: 'crane_set' }];
         case 'van':

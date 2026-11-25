@@ -12,24 +12,7 @@ import { say as sayRaw, TEXT } from '../strings';
  */
 export function say(t: R.Txt, c: Parameters<typeof sayRaw>[1]): string {
   if (!(t.key in TEXT)) return `[${t.key}]`;
-  return sayRaw(t.args ? { key: t.key, args: known(t.args) } : t, c);
-}
-
-/**
- * STAND-IN until ../strings.ts formats the contract's newer argument kinds (tonnes_g, kg_g, rate_g_h,
- * hours): those are formatted here with the facade's formatters and handed on as an argument that prints
- * itself (a `name` not in the register prints as given). Every number still goes through a facade formatter.
- */
-function known(args: R.TxtArgs): R.TxtArgs {
-  const out: R.TxtArgs = {};
-  for (const [k, a] of Object.entries(args)) {
-    if ('tonnes_g' in a) out[k] = { name: R.fmtTonnes(a.tonnes_g) };
-    else if ('kg_g' in a) out[k] = { name: R.fmtKg(a.kg_g) };
-    else if ('rate_g_h' in a) out[k] = { name: R.fmtRate(a.rate_g_h) };
-    else if ('hours' in a) out[k] = { name: R.fmtHours(a.hours) };
-    else out[k] = a;
-  }
-  return out;
+  return sayRaw(t, c);
 }
 
 /** The few numbers of the bar (primitives, compared shallowly). */
@@ -89,13 +72,11 @@ export function ladderForms(v: BarValues, c: R.SalvageContent): string[] {
 
 /**
  * The carry chip in words: "28.6 / 30 kg" on foot; while driving the skip's mass alone ("1,020 kg", the
- * lead's ruling of 15:55; the chip draws a skip pictogram before it). The mass alone has no key of its
- * own yet (requests.md: `carryDriving` "{kg}"); until it exists the skip's mass prints through
- * trialLoad / skipLoad.
+ * lead's ruling of 15:55; the chip draws a skip pictogram before it): `carryDriving` "{kg}".
  */
 export function carryText(v: BarValues, c: R.SalvageContent): string {
   const kg = { mass_g: v.net_g, step: 'bridge' as const };
-  if (v.driving) return 'carryDriving' in TEXT ? say({ key: 'carryDriving' as R.TextKey, args: { kg } }, c) : say({ key: v.trial ? 'trialLoad' : 'skipLoad', args: { kg } }, c);
+  if (v.driving) return say({ key: 'carryDriving', args: { kg } }, c);
   return say({ key: 'carry', args: { a: { kg_g: v.load_g }, b: { kg_g: v.cap_g } } }, c);
 }
 
