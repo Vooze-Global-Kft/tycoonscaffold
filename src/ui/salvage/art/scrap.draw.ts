@@ -387,6 +387,9 @@ export function drawRadiator(c: SkCanvas, v: View3q, seed = 2): void {
 // Ingots
 // ---------------------------------------------------------------------------
 
+/** A cooled brass ingot: dull ochre body under a grey dross skin (never polished gold; yard-style 11). */
+export const BRASS_INGOT = { body: '#A8873A', skin: '#99907A', side: '#7C6427', notch: '#4F4120' } as const;
+
 /**
  * A cast ingot (the classic trapezoid bar, wider at the bottom), length along x, at (ox, oy, z).
  * `t` seconds since the pour: 0 glowing, 3 and after its metal's colour (palette coolingColour).
@@ -408,11 +411,19 @@ export function drawIngot(c: SkCanvas, v: View3q, metal: string, t = 99, o: { ox
   const east: V3[] = [P(L, -W, 0), P(L, W, 0), P(L - inset, W - inset, H), P(L - inset, -W + inset, H)];
   const top: V3[] = [P(-L + inset, -W + inset, H), P(L - inset, -W + inset, H), P(L - inset, W - inset, H), P(-L + inset, W - inset, H)];
   // brass is drawn dull and olive with darker sides (never polished gold); copper red-brown
-  const side = metal === 'brass' && !hot ? YARD.brassDark : shade(col, -0.14);
+  const brass = metal === 'brass' && !hot;
+  const side = brass ? BRASS_INGOT.side : shade(col, -0.14);
   faceFill(c, v, west, shade(side, 0.04), LINE_W);
   faceFill(c, v, east, shade(side, -0.18), LINE_W);
   faceFill(c, v, front, side, LINE_W);
-  faceFill(c, v, top, shade(col, hot ? 0.25 : 0.06), LINE_W);
+  faceFill(c, v, top, brass ? BRASS_INGOT.body : shade(col, hot ? 0.25 : 0.06), LINE_W);
+  if (brass) {
+    // the grey dross skin in patches over the dull ochre top
+    for (let i = 0; i < 3; i++) {
+      const [px, py] = proj(v, ox + L * (-0.6 + i * 0.55), oy + (i % 2 ? 0.02 : -0.02), z + H);
+      c.drawPath(oval(px, py, L * v.ppm * 0.22, 2.2), fill(BRASS_INGOT.skin, 0.85));
+    }
+  }
   if (hot) {
     const [gx, gy] = proj(v, ox, oy, z + H);
     c.drawPath(oval(gx, gy, L * v.ppm * 0.8, 3), fill(YARD.glowWhite, Math.max(0, 0.8 - t / 4)));
@@ -422,7 +433,12 @@ export function drawIngot(c: SkCanvas, v: View3q, metal: string, t = 99, o: { ox
   for (const k of [-0.34, 0.0, 0.34]) {
     const a = proj(v, ox + L * k, oy - W + inset + 0.005, z + H);
     const b = proj(v, ox + L * k, oy + W - inset - 0.005, z + H);
-    c.drawPath(segment(a[0], a[1], b[0], b[1]), stroke(shade(col, -0.4), 1.3));
+    c.drawPath(segment(a[0], a[1], b[0], b[1]), stroke(brass ? BRASS_INGOT.notch : shade(col, -0.4), brass ? 1.8 : 1.3));
+    if (brass) {
+      // a V notch cut into the front top edge, so the bar reads notched at a glance
+      const [nx, ny] = proj(v, ox + L * k, oy + W - inset, z + H);
+      c.drawPath(poly([nx - 2.4, ny, nx + 2.4, ny, nx, ny + 3.2]), fill(BRASS_INGOT.notch));
+    }
     const fa = proj(v, ox + L * k, oy + W - inset, z + H);
     const fb = proj(v, ox + L * k * 1.05, oy + W, z + H * 0.35);
     c.drawPath(segment(fa[0], fa[1], fb[0], fb[1]), stroke(shade(side, -0.3), 1));
@@ -430,12 +446,12 @@ export function drawIngot(c: SkCanvas, v: View3q, metal: string, t = 99, o: { ox
   if (METAL[metal]?.sheen === 'ticks') {
     const [gx, gy] = proj(v, ox - L * 0.17, oy, z + H);
     copperTicks(c, gx, gy, 4.5);
-  } else if (METAL[metal]?.sheen === 'streak') {
+  } else if (METAL[metal]?.sheen === 'streak' && !brass) {
     const [gx, gy] = proj(v, ox - L * 0.5 + inset + 0.03, oy + W - inset - 0.02, z + H);
     c.drawPath(segment(gx, gy, gx + L * v.ppm * 0.3, gy), stroke(YARD.brassLight, 1.2, 0.9));
   }
   const [mx, my] = proj(v, ox + L * 0.17, oy, z + H);
-  c.drawPath(rrect(mx - 3, my - 1.6, 6, 3.2, 0.8), stroke(shade(col, -0.4), 0.8));
+  c.drawPath(rrect(mx - 3, my - 1.6, 6, 3.2, 0.8), stroke(brass ? BRASS_INGOT.notch : shade(col, -0.4), 0.8));
 }
 
 /**

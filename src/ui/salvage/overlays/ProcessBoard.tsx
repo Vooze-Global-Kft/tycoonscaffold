@@ -15,7 +15,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CardData, Plate } from '../../../engine/salvage';
 import { boardLayout, breakLines, pt, TYPE } from './layout';
 import { openCard } from './cardStack';
-import { BuyButton, INK, Line, Padlock, RefusalLine, TabStrip, TitleRow, useFrame, useRowNote, useSay, type Tab } from './parts';
+import { BuyButton, INK, Padlock, RefusalLine, useFrame, useRowNote, useSay, type Tab } from './parts';
 import { WideCard } from './WideCard';
 
 function PlateView({ p, w, h, selected, onPress }: { p: Plate; w: number; h: number; selected: boolean; onPress: () => void }) {
@@ -78,32 +78,25 @@ function Bar({ w }: { w: number }) {
 
 export function ProcessBoard({ data, tabs, onTab, onClose }: { data: CardData; tabs?: Tab[]; onTab?: (id: string) => void; onClose: () => void }) {
   const { layout } = useFrame();
-  const b = boardLayout(layout.wide.w + layout.safe.x * 0 + (layout.wide.w >= 700 ? 118 : 56));
+  const b = boardLayout(layout.width);
   const board = data.processBoard;
   const [sel, setSel] = useState<string | null>(null);
   const plates = board?.rows.flatMap((r) => r.plates) ?? [];
   const picked = plates.find((p) => p.id === sel) ?? null;
   const note = useRowNote(picked?.id ?? '-');
   const joined = new Set((board?.bars ?? []).flatMap(([a, c]) => [`${a}|${c}`, `${c}|${a}`]));
+  // A plate without a button opens its card; one with a button is selected first (its button shows at the
+  // row's end, with the plate's price), and a second tap on it opens its card.
   const onPlate = (p: Plate) => {
     if (p.state === 'greyed') return;
-    if (!p.button && p.opens) {
-      openCard(p.opens);
+    if (!p.button || sel === p.id) {
+      if (p.opens) openCard(p.opens);
       return;
     }
-    setSel((s) => (s === p.id ? null : p.id));
+    setSel(p.id);
   };
-  const actions = picked ? (
-    <View style={styles.actions}>
-      {picked.button ? <BuyButton button={picked.button} row={picked.id} /> : null}
-      {picked.opens ? <BuyButton button={{ label: { key: 'open' }, action: { act: 'open', card: picked.opens }, refusal: null }} row={picked.id} /> : null}
-    </View>
-  ) : null;
   return (
-    <WideCard title={data.title} onClose={onClose}>
-      {tabs && onTab ? null : null}
-      <View style={styles.head}>{actions}</View>
-      {tabs && onTab ? <TabStrip tabs={tabs} onTab={onTab} /> : null}
+    <WideCard title={data.title} onClose={onClose} tabs={tabs} onTab={onTab}>
       <View style={styles.rows}>
         {board?.rows.map((r) => (
           <View key={r.id} style={[styles.row, { height: b.plateH, marginBottom: b.rowGap, gap: r.id === 'greyed' ? (b.plateW === 132 ? 10 : 4) : 0 }]}>
@@ -117,6 +110,11 @@ export function ProcessBoard({ data, tabs, onTab, onClose }: { data: CardData; t
                 </View>
               );
             })}
+            {picked?.button && r.plates.some((p) => p.id === picked.id) ? (
+              <View style={styles.actions}>
+                <BuyButton button={picked.button} row={picked.id} />
+              </View>
+            ) : null}
           </View>
         ))}
       </View>
@@ -129,12 +127,8 @@ export function ProcessBoard({ data, tabs, onTab, onClose }: { data: CardData; t
   );
 }
 
-/** Not used by the board itself: the title row with its actions, for a card that wants it. */
-export { TitleRow };
-
 const styles = StyleSheet.create({
-  head: { position: 'absolute', right: 52, top: 0, height: 34, justifyContent: 'center' },
-  actions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  actions: { flexDirection: 'row', alignItems: 'center', marginLeft: 12 },
   rows: { paddingHorizontal: 14, paddingTop: 8 },
   row: { flexDirection: 'row', alignItems: 'center' },
   cell: { flexDirection: 'row', alignItems: 'center' },

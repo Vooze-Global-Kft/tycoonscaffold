@@ -71,7 +71,14 @@ export function ladderChip(c: SkCanvas, T: TextFn, x: number, y: number, w: numb
   const gapW = T(c, o.gap, 0, 0, { size: TYPE.chip, weight: 'heavy', measure: true });
   const room = x + w - 9 - gapW - 8 - (lx + 13);
   const long = `${o.of} · next ${o.next}`;
-  const words = T(c, long, 0, 0, { size: TYPE.chip, weight: 'semibold', measure: true }) <= room ? long : `next ${o.next}`;
+  const fits = (t: string) => T(c, t, 0, 0, { size: TYPE.chip, weight: 'semibold', measure: true }) <= room;
+  let words = fits(long) ? long : `next ${o.next}`;
+  // a name too long for the room is cut with an ellipsis before the tonnage (never printed over it)
+  if (!fits(words)) {
+    let n = o.next.length;
+    while (n > 1 && !fits(`next ${o.next.slice(0, n).trimEnd()}…`)) n--;
+    words = `next ${o.next.slice(0, n).trimEnd()}…`;
+  }
   T(c, words, lx + 13, y + h / 2 + 2, { size: TYPE.chip, weight: 'semibold', color: INK });
   T(c, o.gap, x + w - 9, y + h / 2 + 2, { size: TYPE.chip, weight: 'heavy', color: YARD.copperDark, align: 'right' });
   const px = lx + 13;

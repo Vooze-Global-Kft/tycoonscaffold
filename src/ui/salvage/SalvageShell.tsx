@@ -11,17 +11,18 @@
  * - the portrait card: when the window is taller than wide (the web preview, a phone that did not turn),
  *   "Turn your phone sideways" covers everything and the yard stops (its frame loop and the presence
  *   samples), so the game is paused behind it.
- * PLACEHOLDER HUD and words; the structure is what the screens package builds on.
+ * - the event pump (./hud/pump.ts): ONE listener on the rules' events hands them to every subscriber
+ *   (tickets, toasts, the world's effects, hints, the card triggers) and plays their sounds (section 7).
+ * Package 4 (`hud`) owns this file: the bars, tickets and toasts are ./hud/*; the cards are the overlay
+ * engineers' (./overlays/*), opened through ./uiState.ts `openCard`.
  *
  * Hour-0 joint (contract step): the motion numbers come from the rules' content (`walk`, `truck.v`,
- * `worker`), the presence sample is the contract's `Presence` (with `standingFor`), the top bar shows the
- * rules' `topBar` through strings.ts `say`, and at a place with a card the one button shows "Open",
- * which opens `PlaceCard` (an empty card with the place's name from the rules' `cardOf`) until the
- * overlays package replaces it with the real cards.
+ * `worker`), the presence sample is the contract's `Presence` (with `standingFor`), and the place the
+ * boss stands at (the rules' `placeNear`) gives the one button its "Open".
  */
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, BackHandler, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AppState, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as R from '../../engine/salvage';
@@ -30,11 +31,17 @@ import { useGame } from '../../state/store';
 import { DevPanel } from './dev/DevPanel';
 import { LoadingCurtain } from './loading';
 import { yardSwitches } from './dev/switches';
+import { CardStandIn } from './hud/CardStandIn';
+import { hudDemo } from './hud/dev';
+import { useFontScale } from './hud/fontScale';
+import { HudLayer, OneButton, RotateCard } from './hud/Hud';
+import { hudLayout } from './hud/metrics';
+import { useEventPump } from './hud/usePump';
+import { useHudTriggers } from './hud/useTriggers';
 import { OverlayHost, type Insets } from './overlays/OverlayHost';
 import { PAL } from './palette';
-import { S, say } from './strings';
-import { useOverlay } from '../kit/overlay';
-import { useSalvageUi } from './uiState';
+import { S } from './strings';
+import { overlaysOpen, useSalvageUi } from './uiState';
 import { spriteIds, useYardLoop, type Motion } from './world/frameLoop';
 import { STICK_R, stick, useStickResponder, type StickZone } from './world/stick';
 import { useRulesTable } from './world/useRulesTable';
@@ -89,11 +96,15 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
   const dev = yardSwitches.insets;
   const insets: Insets = dev ? { top: safe.top, left: dev.left, right: dev.right, bottom: dev.bottom } : { top: safe.top, bottom: safe.bottom, left: safe.left, right: safe.right };
   const portrait = height > width;
-  const overlays = useSalvageUi((s) => s.stack.length);
+  const overlays = useSalvageUi(overlaysOpen);
   const appActive = useAppActive();
-  const [place, setPlace] = useState<string | null>(null);
-  const [card, setCard] = useState<string | null>(null);
-  const active = !portrait && overlays === 0 && appActive && card === null;
+  const active = !portrait && overlays === 0 && appActive;
+  const fontScale = useFontScale();
+  const L = useMemo(() => hudLayout(width, height, insets, fontScale), [width, height, insets.top, insets.left, insets.right, insets.bottom, fontScale]); // eslint-disable-line react-hooks/exhaustive-deps
+  // THE event pump: one listener on the rules' events; sounds play while the yard is live (not upright, not in the background).
+  useEventPump(cfg, !portrait && appActive);
+  useHudTriggers();
+  useEffect(() => hudDemo(cfg, useGame.getState().game as R.SalvageGame) ?? undefined, [cfg]);
 
   const yard = yardFor(cfg);
   const art = useYardArt(yard);
@@ -122,8 +133,7 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
       else if (stillSince.current === null) stillSince.current = t;
       const standingFor = stillSince.current === null ? 0 : (t - stillSince.current) / 1000;
       salvageActions.presence({ x, y, driving: driving === 1, moving: moving === 1, standingFor });
-      const at = driving === 1 ? null : R.placeNear(cfg, x, y);
-      setPlace((p) => (p === at ? p : at));
+      useSalvageUi.getState().setPlace(driving === 1 ? null : R.placeNear(cfg, x, y));
     },
     [cfg],
   );
@@ -170,16 +180,12 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
           <Text style={styles.hintText}>{S.hintStick}</Text>
         </View>
       ) : null}
-      <Hud cfg={cfg} insets={insets} />
-      <Pressable accessibilityRole="button" accessibilityLabel={S.menu} onPress={() => useSalvageUi.getState().open('panel')} style={[styles.round, { top: insets.top + 10, right: insets.right + 12 }]}>
-        <Text style={styles.roundText}>{'≡'}</Text>
-      </Pressable>
-      <StepOut insets={insets} onPress={() => (anim.exit.value = 1)} />
-      {place && overlays === 0 && card === null ? <OpenButton insets={insets} onPress={() => setCard(place)} /> : null}
+      <HudLayer cfg={cfg} L={L} ground={anim.ground} yard={yard} />
+      <OneButton cfg={cfg} L={L} hidden={overlays > 0} onStepOut={() => (anim.exit.value = 1)} />
       {yardSwitches.panel ? <DevPanel stats={anim.stats} top={height - insets.bottom - 26} left={insets.left + Math.round(width * 0.36)} atlas={atlasNote} /> : null}
       <OverlayHost width={width} height={height} insets={insets} />
-      {card !== null ? <PlaceCard cfg={cfg} place={card} width={width} insets={insets} onClose={() => setCard(null)} /> : null}
-      {portrait ? <RotateCard /> : null}
+      <CardStandIn cfg={cfg} L={L} insets={insets} />
+      {portrait ? <RotateCard cfg={cfg} s={L.s} /> : null}
       <LoadingCurtain />
     </View>
   );
@@ -203,110 +209,10 @@ function StickKnob() {
   );
 }
 
-function Hud({ cfg, insets }: { cfg: R.SalvageConfig; insets: Insets }) {
-  // The rules' top bar, as words (strings.ts say; numbers through the rules' formatters).
-  const cash = useGame((s) => s.game.cash);
-  const salvage = useGame((s) => (s.game as R.SalvageGame).salvage);
-  if (!salvage) return null;
-  const g = useGame.getState().game as R.SalvageGame;
-  const bar = R.topBar(cfg, { ...g, cash, salvage });
-  const c = cfg.salvage;
-  const rank = bar.next
-    ? say({ key: 'rankChip', args: { rank: { rank: bar.rank }, n: { n: bar.of }, rival: { name: bar.next.chip }, t: { mass_g: bar.next.need_g, step: 'lot' } } }, c)
-    : say({ key: 'rankChipTop', args: { rank: { rank: bar.rank }, n: { n: bar.of } } }, c);
-  const carry = bar.carry
-    ? say({ key: 'carry', args: { a: { n: Math.round(bar.carry.kg * 10) / 10 }, b: { n: bar.carry.cap } } }, c)
-    : bar.driving
-      ? say({ key: bar.driving.trial ? 'trialLoad' : 'skipLoad', args: { kg: { mass_g: bar.driving.kg * 1000, step: 'bridge' } } }, c)
-      : '';
-  return (
-    <View pointerEvents="none" style={[styles.hud, { top: insets.top + 10, left: insets.left + 12 }]}>
-      <Text style={styles.hudCash}>{say({ key: 'cash', args: { x: { money: bar.cash } } }, c)}</Text>
-      <Text style={styles.hudLine}>{rank}</Text>
-      <Text style={styles.hudLine}>{carry}</Text>
-    </View>
-  );
-}
-
-/** "Open" at a place with a card: lower right, the 60 pt disc of 4.1 (pressed with the stick released). */
-function OpenButton({ insets, onPress }: { insets: Insets; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={S.open} onPress={onPress} style={({ pressed }) => [styles.open, { right: insets.right + 16, bottom: insets.bottom + 8 }, pressed && { opacity: 0.7 }]}>
-      <Text style={styles.openText}>{S.open}</Text>
-    </Pressable>
-  );
-}
-
-/**
- * HOUR-0 STAND-IN for the overlays package: the right panel of 4.3 with the card's title (the rules'
- * `cardOf` for the place) and nothing else. Registered with useOverlay; the scrim and Android back close it.
- */
-function PlaceCard({ cfg, place, width, insets, onClose }: { cfg: R.SalvageConfig; place: string; width: number; insets: Insets; onClose: () => void }) {
-  useOverlay(true);
-  useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      onClose();
-      return true;
-    });
-    return () => sub.remove();
-  }, [onClose]);
-  const g = useGame.getState().game as R.SalvageGame;
-  const data = R.cardOf(cfg, g, { kind: 'place', place }, Date.now());
-  const title = say(data.title, cfg.salvage);
-  const w = Math.min(520, Math.round(width * 0.58));
-  return (
-    <>
-      <Pressable accessibilityRole="button" accessibilityLabel={S.close} style={[StyleSheet.absoluteFill, { backgroundColor: PAL.scrim }]} onPress={onClose} />
-      <View style={[styles.panel, { width: w + insets.right, paddingTop: insets.top + 16, paddingRight: insets.right + 16, paddingBottom: insets.bottom + 16 }]}>
-        <Text style={styles.panelTitle}>{title}</Text>
-      </View>
-    </>
-  );
-}
-
-/** "Step out" while driving: lower right, pressed with the stick released (one responder at a time). */
-function StepOut({ insets, onPress }: { insets: Insets; onPress: () => void }) {
-  const driving = useSalvageUi((s) => s.driving);
-  if (!driving) return null;
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={S.stepOut} onPress={onPress} style={({ pressed }) => [styles.step, { right: insets.right + 16, bottom: insets.bottom + 16 }, pressed && { opacity: 0.7 }]}>
-      <Text style={styles.stepText}>{S.stepOut}</Text>
-    </Pressable>
-  );
-}
-
-function RotateCard() {
-  return (
-    <View style={[StyleSheet.absoluteFill, styles.rotate]}>
-      <View style={styles.rotateCard}>
-        <Text style={styles.rotateGlyph}>{'↻'}</Text>
-        <Text style={styles.rotateTitle}>{S.rotateTitle}</Text>
-        <Text style={styles.rotateBody}>{S.rotateBody}</Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#3A3631', overflow: 'hidden' },
   base: { position: 'absolute', left: 0, top: 0, width: STICK_R * 2, height: STICK_R * 2, borderRadius: STICK_R, borderWidth: 3, borderColor: 'rgba(255,255,255,0.55)', backgroundColor: 'rgba(0,0,0,0.18)' },
   knob: { position: 'absolute', left: 0, top: 0, width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,246,224,0.85)', borderWidth: 2, borderColor: PAL.ink },
   hint: { position: 'absolute', backgroundColor: PAL.hud, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
   hintText: { color: PAL.hudText, fontSize: 14, fontWeight: '600' },
-  hud: { position: 'absolute', backgroundColor: PAL.hud, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
-  hudCash: { color: PAL.accent, fontSize: 18, fontWeight: '800' },
-  hudLine: { color: PAL.hudText, fontSize: 13, fontWeight: '600' },
-  round: { position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: PAL.hud, alignItems: 'center', justifyContent: 'center' },
-  roundText: { color: PAL.hudText, fontSize: 24, fontWeight: '800', marginTop: -2 },
-  step: { position: 'absolute', minHeight: 52, paddingHorizontal: 20, borderRadius: 26, backgroundColor: PAL.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: PAL.ink },
-  stepText: { color: PAL.ink, fontSize: 16, fontWeight: '800' },
-  open: { position: 'absolute', width: 60, height: 60, borderRadius: 30, backgroundColor: PAL.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: PAL.ink },
-  openText: { color: PAL.ink, fontSize: 13, fontWeight: '800' },
-  panel: { position: 'absolute', top: 0, right: 0, bottom: 0, backgroundColor: PAL.card, paddingLeft: 20 },
-  panelTitle: { color: PAL.ink, fontSize: 15, fontWeight: '800' },
-  rotate: { backgroundColor: '#2A2622', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  rotateCard: { backgroundColor: PAL.card, borderRadius: 16, paddingHorizontal: 24, paddingVertical: 22, alignItems: 'center', maxWidth: 320 },
-  rotateGlyph: { fontSize: 40, color: PAL.ink, marginBottom: 6 },
-  rotateTitle: { fontSize: 20, fontWeight: '800', color: PAL.ink, textAlign: 'center' },
-  rotateBody: { fontSize: 15, color: PAL.ink, marginTop: 6, textAlign: 'center' },
 });

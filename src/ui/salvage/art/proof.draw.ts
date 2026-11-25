@@ -7,17 +7,20 @@
  * the kit's drawings, sorted by footprint y as the world sorts its sprites. Names come from the names
  * register (scripts/content/yard/names.json).
  */
-import type { SkCanvas } from '@shopify/react-native-skia';
+import { BlendMode, ClipOp, Skia, type SkCanvas } from '@shopify/react-native-skia';
 import { YARD } from './palette';
 import { BOSS, crewLook, drawPerson } from './people.draw';
-import { at, box, boxShadow, fill, linear, lit, proj, rrect, segment, stroke, VIEW, type View3q } from './pen';
+import { at, box, boxShadow, builder, fill, linear, lit, proj, radial, rrect, segment, stroke, VIEW, type View3q } from './pen';
 import { drawBrightCopper, drawCableDrum, drawHeap, drawIngot, drawRadiator, drawTapCrate, drawWasher } from './scrap.draw';
 import { drawBay, drawContainer, drawFurnaceSet, drawPad, drawStripper, drawWeighDisplay, drawWeighbridgeDeck, FURNACE_SCALE } from './plant.draw';
-import { SUN_WASH, drawConcrete, drawOilStain, drawPaintLine, drawPuddle, drawSkyline, drawWeeds } from './ground.draw';
+import { SUN_MULTIPLY, SUN_WASH, drawConcrete, drawFarYard, drawOilStain, drawPaintLine, drawPuddle, drawSkyline, drawWeeds } from './ground.draw';
+import { drawBlock, drawFloodlight } from './site.draw';
+import { flatbedLayers } from './manifest/people';
 import { MANIFEST } from './manifest';
 import { STILLAGE_LAYER_DY } from './manifest/plant';
-import { drawFlatbed } from './vehicles.draw';
-import { TYPE, cashChip, carryChip, clipboardButton, drawTicket, goalCard, ladderChip, padlockChip, priceTag, risingLines, stick, ticketFromSlot, ticketHeight, ticketWidth, type TextFn, type Ticket } from './ui.draw';
+import { cashChip, carryChip, clipboardButton, drawTicket, goalCard, ladderChip, padlockChip, priceTag, stick, ticketFromSlot, ticketHeight, ticketWidth, type TextFn, type Ticket } from './ui.draw';
+
+const INK = YARD.ink;
 
 export const PROOF_WORDS = {
   cash: '1,834',
@@ -202,28 +205,36 @@ export function drawProof(c: SkCanvas, L: ProofLayout, T: TextFn, o: { stick?: b
 }
 
 // =====================================================================================================
-// The hero frame of the first yard (yard-stage1.md 3 and S19): the working core as the world draws it,
-// from the manifest's sprites at the content map's positions (proto content2 `map.points`): the platform
-// scale with the boss weighing in a hand load of bare bright copper, the weigh-in ticket out of its post
-// (no payment on it: today's value, muted), the weighbridge and its display, the scale house with the
-// posted price board, the hand stripper on its pad with the cable bundle, the copper and brass stillages,
-// the merchant's flatbed loading over the bays' back wall, and the pour under its hood.
+// The hero frame of the first yard (yard-stage1.md 3 and S19; the judge's notes/art-judge.md): the working
+// core as the world draws it, from the manifest's sprites, in a proud but crowded yard in late-day light.
+// Back to front: the sky and the far yard over the back wall (containers, a scrap mountain, a handler's
+// grab, a gantry), the yard's own containers and a floodlight; the old stock against the wall (E1: zone
+// beds with the end-of-life car, a bath, radiators, washers, a bike); the merchant's flatbed loading its
+// grab over a bay (S1); the bays, the stripper with its full tray, the copper and brass stillages (brass
+// ingots strapped flat); the boss on the platform scale with a hand load of bare bright (S8) and the
+// weigh-in ticket feeding out of the indicator's printer slot (no payment on it); the pour under its
+// hood, its light 2 m across the slabs, the furnace hand in shield and apron (S11). Then the warm sun.
+// Where the content map (content2 `map.points`) puts a place, it stands there; the back wall, the old
+// stock row and the flatbed's stand are placed for this frame (notes/art-plant.md asks the map for them).
 // =====================================================================================================
 
 /** The content map's points the hero frame uses (metres; proto content2.json `map.points`). */
 export const HERO_POINTS = {
   scale: [53.5, 23.0],
   weighbridge: [52.0, 26.5],
-  scalehouse: [54.0, 20.5],
+  scalehouse: [55.2, 20.4],
   bays: [48.5, 20.0],
-  merchant: [48.5, 18.8],
+  merchant: [47.4, 17.8],
   stillage_cu: [43.5, 22.5],
   stillage_br: [43.5, 25.0],
-  stripper: [46.0, 23.5],
-  bundle1: [46.5, 22.0],
+  stripper: [46.3, 23.6],
+  bundle1: [47.6, 22.3],
   crucible: [37.0, 25.0],
   board: [48.0, 26.8],
 } as const;
+
+/** The back wall's line (metres, y of the blocks' centre) and the old stock row in front of it. */
+export const HERO_WALL_Y = 15.6;
 
 /** The caller's words in the hero frame (names from the names register by id: homeYard, merchant, rival.1). */
 export const HERO_WORDS = {
@@ -243,13 +254,10 @@ export const HERO_TICKET: Ticket = {
   yard: 'CINDER LANE YARD',
   number: '000014',
   date: '25 NOV',
-  lines: [
-    { grade: 'BARE BRIGHT CU', net: '25.8 KG', price: '', amount: '§35.50/KG', metal: 'copper' },
-    { grade: 'NO.2 COPPER', net: '2.8 KG', price: '', amount: '§34.30/KG', metal: 'copper' },
-  ],
+  lines: [{ grade: 'BARE BRIGHT CU', net: '28.6 KG', price: '', amount: '§35.50/KG', metal: 'copper' }],
   total: '',
   stamp: null,
-  muted: ['TODAY', '§1,011.94'],
+  muted: ['TODAY', '§1,015.30'],
   legal: ['WEIGHED INTO BAYS', 'NOT YET SOLD'],
 };
 
@@ -257,106 +265,138 @@ export interface HeroLayout extends ProofLayout {
   /** the world's x (metres) at the screen's left edge, and its y at the screen's top */
   wx: number;
   wy: number;
+  /** the boss on the platform with the ticket out of its slot (844), or walking to it with the load (667) */
+  moment: 'weigh' | 'walk';
 }
 
-export const HERO_844: HeroLayout = { ...PROOF_844, wx: 35.0, wy: 13.9 };
-export const HERO_667: HeroLayout = { ...PROOF_667, camX: 0, wx: 38.2, wy: 13.9 };
+export const HERO_844: HeroLayout = { ...PROOF_844, wx: 35.0, wy: 12.4, moment: 'weigh' };
+export const HERO_667: HeroLayout = { ...PROOF_667, camX: 0, wx: 36.7, wy: 12.4, moment: 'walk' };
 
-/**
- * A stand-in for the things artist's cable bundle (until manifest id thing.cable.bundle exists): heavy
- * cable offcuts lying straight and tied in two places, grey and black sheaths, copper showing at the cut ends.
- */
-function cableBundle(c: SkCanvas, v: View3q): void {
-  boxShadow(c, v, 1.3, 0.5, 0, 0, 0.3);
-  const n = 7;
-  for (let i = 0; i < n; i++) {
-    const row = i < 4 ? 0 : 1;
-    const k = row ? i - 4 : i;
-    const y = (k - (row ? 1 : 1.5)) * 0.11;
-    const z = 0.06 + row * 0.1;
-    const [x0, y0] = proj(v, -0.6 + (i % 3) * 0.04, y, z);
-    const [x1, y1] = proj(v, 0.6 - (i % 2) * 0.05, y, z);
-    c.drawPath(segment(x0, y0, x1, y1), stroke(YARD.ink, 6));
-    c.drawPath(segment(x0, y0, x1, y1), stroke(i % 2 ? YARD.pvc : YARD.pvcGrey, 4.2));
-    c.drawPath(segment(x0 + 2, y0 - 1.2, x1 - 2, y1 - 1.2), stroke('#FFFFFF', 0.7, 0.25));
-    c.drawCircle(x1, y1, 2.3, fill(YARD.ink));
-    c.drawCircle(x1, y1, 1.5, fill(YARD.copperLight));
-  }
-  for (const t of [-0.3, 0.3]) {
-    const [a, b] = proj(v, t, -0.25, 0.3);
-    c.drawPath(rrect(a - 1.5, b - 2, 3, 12, 1), fill(YARD.hivis));
-    c.drawPath(rrect(a - 1.5, b - 2, 3, 12, 1), stroke(YARD.ink, 0.7));
-  }
-}
+/** The hero ticket's print size: 9.5 pt, so its smallest (legal) line is over 8 pt on the phone. */
+export const HERO_PRINT = 9.5;
 
-/** Draws a manifest sprite as the world will (its frame, its drawScale), or nothing when it is missing. */
-function sprite(c: SkCanvas, id: string, frame = 0, heading = 0): boolean {
+/** Draws a manifest sprite as the world will (its frame, its drawScale, its tint), or nothing when it is missing. */
+function sprite(c: SkCanvas, id: string, frame = 0, heading = 0, tint?: string): boolean {
   const e = MANIFEST.find((m) => m.id === id);
   if (!e) return false;
   c.save();
   const k = e.drawScale ?? 1;
   if (k !== 1) c.scale(k, k);
+  if (tint) {
+    const p = Skia.Paint();
+    p.setColorFilter(Skia.ColorFilter.MakeBlend(Skia.Color(tint), BlendMode.Modulate));
+    c.saveLayer(p);
+  }
   e.draw(c, VIEW, Math.min(frame, e.frames.length - 1), heading);
+  if (tint) c.restore();
   c.restore();
   return true;
 }
 
-/** The hero frame's world, camera at the layout's (wx, wy). Returns the platform display's printer slot in screen points. */
+/** The hero frame's world, camera at the layout's (wx, wy). Returns the platform indicator's printer slot in screen points. */
 export function drawHeroWorld(c: SkCanvas, L: HeroLayout, T: TextFn): [number, number] {
   const v = VIEW;
   const camX = L.wx * v.ppm;
   const camY = L.wy * v.ppm * v.tilt;
+  const P = HERO_POINTS;
+  const sy = (y: number, z = 0) => proj(v, 0, y, z)[1] - camY;
+  // ---- the far yard over the back wall (screen space): sky, skyline, the neighbour's stacks and cranes
+  const wallFoot = sy(HERO_WALL_Y + 0.4);
+  const wallTop = sy(HERO_WALL_Y - 0.4, 1.2);
+  drawFarYard(c, -10, L.w + 20, 0, wallTop + 10, 4);
   c.save();
   c.translate(-camX, -camY);
-  const P = HERO_POINTS;
   const put = (x: number, y: number, draw: () => void) => {
-    const [sx, sy] = proj(v, x, y, 0);
-    at(c, sx, sy, draw);
+    const [px, py] = proj(v, x, y, 0);
+    at(c, px, py, draw);
   };
-  // the ground: slabs (world/ground.ts's tile), then the ground sheet's decals
-  drawConcrete(c, v, 33, 14, 27, 18, 5, true);
+  // ---- the ground from the wall's foot: slabs (world/ground.ts's tile), then the ground sheet's decals
+  c.save();
+  c.clipRect({ x: camX - 10, y: wallFoot + camY - 24, width: L.w + 20, height: L.h + 40 }, ClipOp.Intersect, true);
+  drawConcrete(c, v, 33, HERO_WALL_Y - 1, 27, 15, 5, true);
+  c.restore();
   const decal = (id: string, x: number, y: number, f = 0) => put(x, y, () => sprite(c, `ground.${id}`, f));
   decal('pad.strip', P.stripper[0], P.stripper[1] + 0.2);
   decal('pad.crucible', P.crucible[0] + 0.6, P.crucible[1] + 0.2);
-  for (let x = 41.0; x < 51; x += 1.5) decal('line.ew', x, 21.6);
-  for (let y = 22.6; y < 28; y += 1.5) decal('line.ns', 41.2, y);
+  for (let x = 41.0; x < 51; x += 1.5) decal('line.ew', x, 21.7);
+  for (let y = 22.6; y < 28; y += 1.5) decal('line.ns', 41.1, y);
   decal('hatch', 49.6, 27.9);
-  decal('hatch', 51.1, 27.9);
   decal('oil', 50.6, 24.6, 0);
   decal('oil', 40.3, 23.4, 2);
-  decal('puddle', 45.2, 27.6, 0);
-  decal('puddle', 56.2, 26.2, 1);
-  for (const [x, y, f] of [[41.6, 21.0, 0], [47.9, 28.1, 1], [39.5, 27.6, 2], [55.6, 21.9, 3], [44.6, 19.1, 1]] as const) decal('weeds', x, y, f);
+  decal('oil', 49.2, 18.9, 1);
+  decal('puddle', 45.6, 27.0, 0);
+  decal('puddle', 56.0, 25.8, 1);
+  for (const [x, y, f] of [[41.6, 21.0, 0], [47.9, 28.1, 1], [39.5, 27.6, 2], [55.6, 22.1, 3], [44.9, 16.6, 1], [36.0, 16.5, 2], [50.6, 16.5, 0], [53.8, 16.4, 3], [39.9, 21.2, 1]] as const) decal('weeds', x, y, f);
   put(P.weighbridge[0], P.weighbridge[1], () => sprite(c, 'plant.weighbridge.deck'));
-  // the pour's light on the pad, under everything that stands
-  put(P.crucible[0] + 0.9, P.crucible[1] + 0.35, () => sprite(c, 'mark.light.pour'));
+  // the pour's light on the pad and the slabs, 2 m round the mould (under everything that stands)
+  {
+    const [gx, gy] = proj(v, P.crucible[0] + 1.1, P.crucible[1] + 0.5, 0);
+    const R = 2.2 * v.ppm;
+    c.save();
+    c.scale(1, v.tilt);
+    c.drawCircle(gx, gy / v.tilt, R, radial(gx, gy / v.tilt, R, ['rgba(255,170,80,0.5)', 'rgba(255,182,96,0.22)', 'rgba(255,190,110,0)'], [0, 0.45, 1]));
+    c.restore();
+  }
 
   const items: Item[] = [];
   const add = (x: number, y: number, draw: () => void) => items.push({ y, draw: () => put(x, y, draw) });
-  const addS = (id: string, x: number, y: number, frame = 0, heading = 0) => add(x, y, () => sprite(c, id, frame, heading));
-  // the bays (open south) with their heaps; the merchant's flatbed behind them, its crane over the wall
+  const addS = (id: string, x: number, y: number, frame = 0, heading = 0, tint?: string) => add(x, y, () => sprite(c, id, frame, heading, tint));
+  // ---- the back wall: two courses of lock blocks, the yard's own containers stacked behind its ends, a floodlight
+  addS('plant.container.ew', 36.6, HERO_WALL_Y - 2.1, 0, 0, YARD.containerOxide);
+  add(36.6, HERO_WALL_Y - 2.09, () => at(c, 0, -2.6 * v.ppm * v.lift, () => sprite(c, 'plant.container.ew', 0, 0, YARD.containerSage)));
+  addS('plant.container.ew', 54.9, HERO_WALL_Y - 2.1, 0, 0, YARD.containerTeal);
+  add(54.9, HERO_WALL_Y - 2.09, () => at(c, 0, -2.6 * v.ppm * v.lift, () => sprite(c, 'plant.container.ew', 0, 0, YARD.containerOxide)));
+  items.push({
+    y: HERO_WALL_Y,
+    draw: () => {
+      for (let t = 0; t < 2; t++)
+        for (let x = 33.2; x < 58; x += 0.8) put(x, HERO_WALL_Y, () => drawBlock(c, v, { z: t * 0.6, seed: Math.round(x * 10) + t * 7, shadow: t === 0 }));
+    },
+  });
+  add(45.0, HERO_WALL_Y + 0.55, () => drawFloodlight(c, v));
+  // ---- the old stock against the wall (E1): zone beds and whole things by tool tier
+  addS('heap.zone3', 38.4, 17.6);
+  addS('thing.car', 38.3, 17.5, 0);
+  addS('thing.tank', 35.4, 17.4, 0);
+  addS('heap.zone2', 42.6, 17.7);
+  addS('thing.bath', 41.9, 17.3, 0);
+  addS('thing.radiator', 43.6, 17.1, 0);
+  addS('thing.radiator', 43.3, 18.0, 0);
+  addS('thing.stove', 41.4, 18.3, 0);
+  addS('thing.gate', 42.9, 16.5, 0);
+  addS('heap.zone1', 52.0, 17.6);
+  addS('thing.washer', 50.9, 17.2, 0);
+  addS('thing.washer', 51.7, 17.0, 0);
+  addS('thing.washer', 52.9, 17.4, 1);
+  addS('thing.bike', 52.2, 18.3, 0);
+  addS('thing.cable.drum', 53.5, 17.9);
+  addS('thing.taps', 50.6, 18.2);
+  // ---- the bays (open south) with their heaps; the merchant's flatbed behind them, its grab over the west bay
   addS('plant.bay', P.bays[0] - 2.6, P.bays[1]);
-  addS('plant.heap.li', P.bays[0] - 3.3, P.bays[1] + 0.2);
-  addS('plant.heap.appl', P.bays[0] - 1.9, P.bays[1] + 0.25);
+  addS('heap.li.4', P.bays[0] - 3.4, P.bays[1] + 0.25);
+  addS('heap.appl.3', P.bays[0] - 1.8, P.bays[1] + 0.35);
   addS('plant.bay', P.bays[0] + 2.6, P.bays[1]);
-  addS('plant.heap.ci', P.bays[0] + 2.0, P.bays[1] + 0.2);
-  addS('plant.heap.ciu', P.bays[0] + 3.3, P.bays[1] + 0.25);
-  add(P.merchant[0], P.merchant[1] - 1.6, () => drawFlatbed(c, v, Math.PI, { crane: 'lift', cargo: 'part' }));
+  addS('heap.ci.4', P.bays[0] + 1.9, P.bays[1] + 0.25);
+  addS('heap.ciu.2', P.bays[0] + 3.4, P.bays[1] + 0.35);
   add(P.bays[0] - 2.6, P.bays[1] - 0.39, () => at(c, 0, -1, () => sprite(c, 'plant.plate.code')));
+  add(P.bays[0] + 2.6, P.bays[1] - 0.39, () => at(c, 0, -1, () => sprite(c, 'plant.plate.code')));
+  add(P.merchant[0], P.merchant[1], () => {
+    for (const l of flatbedLayers(1, { crane: 0, cargo: 'part' })) at(c, l.dx, l.dy, () => sprite(c, l.id, l.frame, l.heading));
+  });
   // the scale house, its board facing the yard, and the scales
   addS('plant.scalehouse', P.scalehouse[0], P.scalehouse[1]);
-  addS('plant.scale.platform', P.scale[0], P.scale[1]);
-  addS('plant.weighbridge.pole', P.weighbridge[0] - 3.2, P.weighbridge[1] + 0.6);
-  addS('plant.weighbridge.display', P.weighbridge[0] - 3.2, P.weighbridge[1] + 0.6);
-  // the boss on the platform with a hand load of bare bright copper on the carry frame
-  add(P.scale[0] - 0.1, P.scale[1] + 0.1, () => drawPerson(c, v, { dir: 's', pose: 'carry', look: BOSS, load: 'cu' }));
-  // the stripper on its pad (tray full of bare bright), the cable bundle beside it
+  addS('plant.scale.platform', P.scale[0], P.scale[1], L.moment === 'weigh' ? 1 : 0);
+  addS('plant.weighbridge.pole', P.weighbridge[0] - 4.4, P.weighbridge[1] + 0.6);
+  addS('plant.weighbridge.display', P.weighbridge[0] - 4.4, P.weighbridge[1] + 0.6);
+  // the boss: on the platform with a hand load of bare bright on the carry frame (S8), or walking to it
+  if (L.moment === 'weigh') add(P.scale[0] - 0.15, P.scale[1] + 0.15, () => drawPerson(c, v, { dir: 'w', pose: 'carry', look: BOSS, load: 'cu' }));
+  else add(50.4, 23.9, () => drawPerson(c, v, { dir: 'e', pose: 'walk', frame: 1, look: BOSS, load: 'cu' }));
+  // the stripper on its pad (tray full of bare bright), the yard hand feeding it, cable to strip beside it
   addS('plant.stripper.hand', P.stripper[0], P.stripper[1], 3);
-  add(P.bundle1[0] + 0.6, P.bundle1[1], () => {
-    if (!sprite(c, 'thing.cable.bundle')) cableBundle(c, v);
-  });
-  add(P.stripper[0] - 1.4, P.stripper[1] - 1.0, () => drawCableDrum(c, v, 0.5, 0.55, 2));
-  // the copper and brass stillages (the brass one held)
+  add(P.stripper[0] - 0.45, P.stripper[1] + 0.55, () => drawPerson(c, v, { dir: 'e', pose: 'feed', look: crewLook(YARD.vestYardHand, 2) }));
+  addS('thing.cable.bundle', P.bundle1[0], P.bundle1[1], 0);
+  addS('thing.cable.drum', 45.3, 22.1);
+  // the copper and brass stillages (the brass one held); brass ingots strapped flat beside the mould
   const stillage = (x: number, y: number, g: string, full: boolean, hold = false) => {
     addS('plant.stillage', x, y);
     add(x, y + 0.01, () => {
@@ -370,46 +410,65 @@ export function drawHeroWorld(c: SkCanvas, L: HeroLayout, T: TextFn): [number, n
   stillage(P.stillage_cu[0] - 1.4, P.stillage_cu[1], 'no2', false);
   stillage(P.stillage_br[0], P.stillage_br[1], 'brs', true, true);
   stillage(P.stillage_br[0] - 1.4, P.stillage_br[1], 'bri', false);
-  // the pour: furnace, mould under its lip, hood over it, the furnace hand in shield and apron, lit
+  // ---- the pour: furnace, mould under its lip, hood over it, the furnace hand in shield and apron, lit
   const FX = P.crucible[0];
   const FY = P.crucible[1];
   addS('plant.crucible.pour', FX, FY, 1);
   addS('plant.mould', FX + 0.77 * 1.2 + 0.25, FY + 0.36, 2);
   const [gx, gy] = proj(v, FX + 1.0, FY + 0.4, 0.5);
-  items.push({ y: FY + 0.9, draw: () => lit(c, gx - camX + camX, gy, 80, YARD.glow, 0.5, () => put(FX - 0.9, FY + 0.9, () => drawPerson(c, v, { dir: 'e', pose: 'pour', look: crewLook(YARD.vestCutter, 3), shield: true, apron: true }))) });
-  add(FX, FY + 0.66, () => sprite(c, 'plant.hood'));
-  // a notice board on posts by the weighbridge, and the extinguisher by the furnace pad
-  addS('plant.extinguisher', FX - 1.9, FY - 0.9);
+  items.push({ y: FY + 0.9, draw: () => lit(c, gx, gy, 90, YARD.glow, 0.55, () => put(FX - 0.9, FY + 0.9, () => drawPerson(c, v, { dir: 'e', pose: 'pour', look: crewLook(YARD.vestCutter, 3), shield: true, apron: true }))) });
+  add(FX, FY + 0.66, () => sprite(c, 'plant.hood', 0));
+  addS('plant.extinguisher', FX - 1.7, FY - 0.9);
   items.sort((a, b) => a.y - b.y);
   for (const it of items) it.draw();
   c.restore();
-  // the platform display's printer slot in screen points
+  void T;
+  // the platform indicator's printer slot in screen points
   const e = MANIFEST.find((m) => m.id === 'plant.scale.platform');
   const s = e?.slots?.printer ?? { x: 0, y: 0, w: 0, h: 0 };
   const [ax, ay] = proj(v, P.scale[0], P.scale[1], 0);
-  void T;
   return [ax - camX + s.x + s.w / 2, ay - camY + s.y + s.h / 2];
 }
 
-/** The hero frame with its interface: the weigh-in ticket out of the platform's post, the top bar and the goal. */
+/**
+ * The weigh-in ticket feeding out of the indicator's slot at (sx, sy): a curl of paper from the slot runs
+ * west and opens into the ticket hanging clear of the boss on the plate (yard-style 8: always tied to its
+ * printer). Returns the ticket's box.
+ */
+function ticketOutOfSlot(c: SkCanvas, L: HeroLayout, sx: number, sy: number): void {
+  const p = HERO_PRINT;
+  const tw = ticketWidth(p);
+  const th = ticketHeight(HERO_TICKET, p);
+  const tx = Math.max(L.side, sx - 84 - tw);
+  const ty = Math.max(L.bar + L.goal + 6, Math.min(L.h - L.bottom - th, sy - 34));
+  // the paper strip from the slot: out, a curl, into the ticket's top edge at its right
+  const strip = builder()
+    .moveTo(sx - 9, sy)
+    .cubicTo(sx - 30, sy - 26, tx + tw + 30, ty - 22, tx + tw - 10, ty + 2)
+    .lineTo(tx + tw - 34, ty + 2)
+    .cubicTo(tx + tw + 6, ty - 12, sx - 34, sy - 16, sx + 9, sy)
+    .close()
+    .build();
+  c.drawPath(strip, fill(INK, 0.18));
+  c.drawPath(strip, fill(YARD.paperShade));
+  c.drawPath(strip, stroke(YARD.paperLine, 0.9));
+  c.save();
+  c.rotate(-2, tx + tw / 2, ty);
+  c.drawPath(rrect(tx + 3, ty + 4, tw, th, 2), fill(INK, 0.22));
+  drawTicket(c, tx, ty, HERO_TICKET, p);
+  c.restore();
+}
+
+/** The hero frame with its interface: the weigh-in ticket out of the platform's indicator, the top bar and the goal. */
 export function drawHero(c: SkCanvas, L: HeroLayout, T: TextFn): void {
   c.drawRect({ x: 0, y: 0, width: L.w, height: L.h }, fill(YARD.concrete));
   const [sx, sy] = drawHeroWorld(c, L, T);
-  // the low sun from the west (ground.draw SUN_WASH, as the world draws it)
+  // the low sun from the west: the world's wash, then the screenshot's warm multiply (yard-style 4)
   c.drawRect({ x: 0, y: 0, width: L.w, height: L.h }, linear(0, 0, L.w, 0, [...SUN_WASH.colors], [...SUN_WASH.stops]));
-  // the weigh-in ticket rises out of the indicator's slot (yard-stage1.md 4.4), in play print
-  const p = TYPE.ticket + 1;
-  const tw = ticketWidth(p);
-  const th = ticketHeight(HERO_TICKET, p);
-  // clamped inside the free world, beside its post (west of it, so the boss on the plate stays in view)
-  const tx = Math.max(L.side, Math.min(L.w - L.side - tw, sx - tw - 46));
-  const ty = Math.max(L.bar + L.goal + 6, Math.min(L.h - L.bottom - th, sy - th * 0.55));
-  c.drawPath(segment(tx + tw - 4, ty + th * 0.6, sx - 10, sy - 2), stroke(YARD.ink, 1.2, 0.5));
-  c.save();
-  c.rotate(-2, tx + tw / 2, ty + th);
-  drawTicket(c, tx, ty, HERO_TICKET, p);
-  c.restore();
-  risingLines(c, tx, ty + th - 2, tw);
+  const m = linear(0, 0, L.w, L.h * 0.3, [...SUN_MULTIPLY.colors], [...SUN_MULTIPLY.stops]);
+  m.setBlendMode(BlendMode.Multiply);
+  c.drawRect({ x: 0, y: 0, width: L.w, height: L.h }, m);
+  if (L.moment === 'weigh') ticketOutOfSlot(c, L, sx, sy);
   const y0 = 3;
   const ch = L.bar - 6;
   let x = L.side;

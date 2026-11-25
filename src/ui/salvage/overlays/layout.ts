@@ -75,6 +75,9 @@ export function rowHeight(fs: number): number {
 
 export interface FrameLayout {
   fs: number;
+  /** The window's width and height. */
+  width: number;
+  height: number;
   /** The safe area with 4.1's margins (where the frames may put text). */
   safe: Box;
   /** The band the overlays live in: from under the top bar to the bottom inset. */
@@ -102,7 +105,7 @@ export function frameLayout(width: number, height: number, insets: Insets, fontS
   const cw = Math.min(520, safe.w - 24);
   const ch = Math.min(300, band.height);
   const centred = { x: Math.round(left + (safe.w - cw) / 2), y: Math.round(top + (band.height - ch) / 2), w: cw, h: ch };
-  return { fs, safe, band, panel, wide, centred };
+  return { fs, width, height, safe, band, panel, wide, centred };
 }
 
 /** The process board's plates (4.5): sizes at 844 and at 667. */

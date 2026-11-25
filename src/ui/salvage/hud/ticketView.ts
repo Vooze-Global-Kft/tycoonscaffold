@@ -7,6 +7,7 @@
 import * as R from '../../../engine/salvage';
 import type { SalvageContent, Ticket, TicketLine } from '../../../engine/salvage';
 import { say } from '../strings';
+import { textW, ticketHeight, TICKET_PT } from './metrics';
 
 type Content = Pick<SalvageContent, 'names' | 'grades' | 'objects'>;
 
@@ -23,9 +24,8 @@ export interface TicketView {
   kind: 'weighIn' | 'collection';
   no: number;
   head: string;
+  /** Every grade row (the plan shows at most three, ./ticketView.ts planTicket). */
   rows: TicketRow[];
-  /** "+ n more", or null. */
-  more: string | null;
   /** Weigh-in: the muted "today's value §x"; collection: the bold "Paid §x". */
   total: string;
   lesson: string | null;
@@ -36,21 +36,23 @@ export interface TicketView {
 export const MAX_ROWS = 3;
 
 function note(l: TicketLine, c: Content): string | null {
-  if (l.note === 'fromCar') return say({ key: 'ticket.fromCar', args: {} }, c);
+  if (l.note === 'fromCar') {
+    // The car's treatment-record ref is content (objects.<car>.source.ref); a `name` argument not in the register prints as itself.
+    const ref = Object.values(c.objects).find((o) => o.source?.ref)?.source?.ref ?? '';
+    return say({ key: 'ticket.fromCar', args: { ref: { name: ref } } }, c);
+  }
   if (l.note === 'certifiedEmpty') return say({ key: 'ticket.certifiedEmpty' }, c);
   return null;
 }
 
-function rows(lines: TicketLine[], c: Content, right: (l: TicketLine) => string): { rows: TicketRow[]; more: string | null } {
-  const shown = lines.slice(0, MAX_ROWS).map((l) => ({
+function rows(lines: TicketLine[], c: Content, right: (l: TicketLine) => string): TicketRow[] {
+  return lines.map((l) => ({
     grade: l.grade,
     name: c.grades[l.grade]?.name ?? l.grade,
     kg: R.fmtMass(l.g, 'lot'),
     right: right(l),
     note: note(l, c),
   }));
-  const extra = lines.length - shown.length;
-  return { rows: shown, more: extra > 0 ? say({ key: 'ticket.more', args: { n: { n: extra } } }, c) : null };
 }
 
 /** The weigh-in ticket or the collection ticket in words; null for the other kinds (their chips or the world show them). */
@@ -61,8 +63,7 @@ export function ticketView(t: Ticket, c: Content, lesson: R.TextKey | null = t.k
       kind: 'weighIn',
       no: t.no,
       head: say({ key: 'ticket.weighInHead', args: { n: { n: t.no } } }, c),
-      rows: r.rows,
-      more: r.more,
+      rows: r,
       total: say({ key: 'ticket.todaysValue', args: { x: { money: t.todaysValue } } }, c),
       lesson: lesson ? say({ key: lesson }, c) : null,
       legal: [say({ key: 'ticket.weighInLegal' }, c)],
@@ -74,8 +75,7 @@ export function ticketView(t: Ticket, c: Content, lesson: R.TextKey | null = t.k
       kind: 'collection',
       no: t.no,
       head: say({ key: 'ticket.collectionHead', args: { n: { n: t.no } } }, c),
-      rows: r.rows,
-      more: r.more,
+      rows: r,
       total: say({ key: 'ticket.paid', args: { x: { money: t.paid } } }, c),
       lesson: null,
       legal: [say({ key: 'ticket.lotSoldTo', args: { merchant: { name: t.buyer } } }, c), say({ key: 'ticket.weighedOut' }, c)],
@@ -103,3 +103,37 @@ export function lotSoldChip(t: Ticket, c: Content): string | null {
 
 /** A ticket's lesson line is at most this long (S20). */
 export const LESSON_MAX = 48;
+
+/** What a ticket of this width shows at bar scale s: its rows (at most three), "+ n more", one or two lines a row, its height. */
+export interface TicketPlan {
+  rows: TicketRow[];
+  more: string | null;
+  /** A row too wide for one line prints the name on one line and the mass and price under it. */
+  twoLine: boolean;
+  height: number;
+}
+
+/** Inner width of a ticket row: the ticket less its sprocket strip, paddings and edges. */
+export function rowWidth(w: number): number {
+  return w - 10 - 12 - 3;
+}
+
+/**
+ * The plan (4.4, S20): up to three rows on one line each when they fit; else two lines a row, and as many
+ * rows as keep the ticket at most `maxH` (150 pt) tall, the rest counted in "+ n more".
+ */
+export function planTicket(v: TicketView, w: number, s: number, c: Content, maxH = 150): TicketPlan {
+  const pt = TICKET_PT.row * s;
+  const inner = rowWidth(w);
+  const twoLine = v.rows.some((r) => textW(r.note ? `${r.name} · ${r.note}` : r.name, pt) + textW(r.kg, pt) + textW(r.right, pt) + 16 > inner);
+  let n = Math.min(MAX_ROWS, v.rows.length);
+  const hOf = (k: number) => ticketHeight(v.kind, k * (twoLine ? 2 : 1), !!v.lesson, s);
+  while (n > 1 && hOf(n) > maxH) n--;
+  const extra = v.rows.length - n;
+  return {
+    rows: v.rows.slice(0, n),
+    more: extra > 0 ? say({ key: 'ticket.more', args: { n: { n: extra } } }, c) : null,
+    twoLine,
+    height: hOf(n),
+  };
+}

@@ -11,7 +11,7 @@ import type { SkCanvas } from '@shopify/react-native-skia';
 import { YARD } from '../palette';
 import { at, proj, boxShadow as _bs, groundShadow, box, type View3q } from '../pen';
 import { padlock } from '../ui.draw';
-import { drawContainer, drawMould, drawStripper, drawWeighDisplay, drawWeighbridgeDeck } from '../plant.draw';
+import { drawContainer, drawMould, drawStripper, drawWeighDisplay, drawWeighbridgeDeck, weighDisplaySlots } from '../plant.draw';
 import {
   STILLAGE_GRADES,
   CRANE_HOOK,
@@ -282,7 +282,10 @@ export const PLANT: ManifestEntry[] = [
   // the display's head alone (its bounds sit high over the anchor) and its pole as a thin sprite
   entry('plant.weighbridge.pole', 'plant', 'B', [0.3, 0.3], B(-8, -62, 70, 72), one, (c, v) => drawDisplayPole(c, v)),
   entry('plant.weighbridge.display', 'plant', 'B', [0.4, 0.4], B(-50, -150, 140, 100), one, (c, v) => void drawWeighDisplayHead(c, v), {
-    slots: { digits: B(-40, -101, 80, 28), printer: B(-22, -76, 44, 5) },
+    slots: (() => {
+      const s = weighDisplaySlots(V);
+      return { digits: slot(s.digits), printer: B(s.printer[0] - 14, s.printer[1] - 2, 28, 4) };
+    })(),
   }),
   entry('plant.scalehouse', 'plant', 'B', [2.8, 2.2], B(-70, -130, 190, 175), one, (c, v) => drawScaleHouse(c, v), { slots: { board: slot(scaleHouseBoard(V)) }, k: STATIC }),
   // --- machines --------------------------------------------------------------------------------------

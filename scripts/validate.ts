@@ -464,12 +464,13 @@ function staleScreenshots(id: string, mode: string): string[] {
 /**
  * The salvage hook (the scrapyard; docs/design/yard-ground.md). Additive: it runs only for a game of mode
  * "salvage". While the game.json is the ground work's placeholder (`salvage.skeletonPlaceholder: true`) it
- * says so as a warning: no rules, no numbers, no bot, no sounds and no fingerprint are designed yet. The
- * rules engineers replace it with the specification's checks (docs/design/yard-design.md).
+ * says so as a warning (since the first yard's contract: the frozen test content stands in for the tuned
+ * numbers until the content script writes them). The rules engineers replace it with the specification's
+ * checks (docs/design/yard-design.md, yard-stage1.md).
  */
 function salvageChecks(g: GameConfig, warnings: string[]): void {
   if ((g.salvage as { skeletonPlaceholder?: unknown } | undefined)?.skeletonPlaceholder === true)
-    warnings.push('placeholder: the salvage game is the ground work\'s placeholder (salvage.skeletonPlaceholder): a test yard, no designed rules, numbers, bot, sounds or fingerprint yet (docs/design/yard-ground.md)');
+    warnings.push('placeholder: the salvage block of game.json is still the frozen test content (salvage.skeletonPlaceholder): no tuned numbers or bot yet; scripts/content/build-yard.py writes the real block (docs/design/yard-stage1.md 2.17)');
 }
 
 for (const id of ids) {

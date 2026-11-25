@@ -33,7 +33,7 @@ import {
   type V3,
   type View3q,
 } from './pen';
-import { drawBrightCopper, drawIngot } from './scrap.draw';
+import { BRASS_INGOT, drawBrightCopper, drawIngot } from './scrap.draw';
 import { drawHookTruck } from './vehicles.draw';
 import { pieceGlyph, pieceHeap } from './pieces.draw';
 import { SHADOW_ALPHA } from './palette';
@@ -153,36 +153,46 @@ export function drawWeighbridgeDeck(c: SkCanvas, v: View3q): void {
   });
 }
 
+/** The weighbridge display's head: about 1.2 x 0.6 m on a 2 m pole (points, round the pole's top). */
+export const WEIGH_HEAD = { w: 46, h: 28, window: 15 } as const;
+
+/** The display head's LED window and printer slot, points round the anchor (the pole's foot). */
+export function weighDisplaySlots(v: View3q): { digits: [number, number, number, number]; printer: [number, number] } {
+  const [x, y] = proj(v, 0, 0, 2.0);
+  const top = y - WEIGH_HEAD.h - 4;
+  return { digits: [x - WEIGH_HEAD.w / 2 + 3, top + 3, WEIGH_HEAD.w - 6, WEIGH_HEAD.window], printer: [x, top + WEIGH_HEAD.window + 8] };
+}
+
 /**
- * The display post at the weighbridge's end: a pole and a hi-vis box of LED digits with the ticket
- * printer's slot under them. `text` is the digits shown (the caller's, e.g. "52.4"). Returns the slot's
- * centre and width in points relative to the anchor, so a ticket can feed out of it.
+ * The display post at the weighbridge's end: a 2 m pole and a small hi-vis head (about 1.2 x 0.6 m) with
+ * a dark LED window and the ticket printer's slot under it. `text` is the digits shown (the caller's,
+ * e.g. "52.4"); with no text the window shows a dim "0.0" (the world writes the live digits over it).
+ * Returns the slot's centre and width in points relative to the anchor, so a ticket can feed out of it.
  */
 export function drawWeighDisplay(c: SkCanvas, v: View3q, text: string): { slot: [number, number]; slotW: number } {
   groundShadow(c, v, 0.25, 0.2, 0, 0, 2.2);
   box(c, v, { len: 0.12, wid: 0.12, h: 2.0, color: YARD.galvanised, line: 1 });
   const [x, y] = proj(v, 0, 0, 2.0);
-  const w = 80;
-  const h = 28;
-  const top = y - h - 18;
-  c.drawPath(rrect(x - w / 2 - 4 + 2, top + 2, w + 8, h + 24, 5), fill(INK, 0.25));
-  c.drawPath(rrect(x - w / 2 - 4, top, w + 8, h + 24, 5), fill(YARD.hivis));
-  c.drawPath(rrect(x - w / 2 - 4, top, w + 8, h + 24, 5), stroke(INK, LINE_W));
-  c.drawPath(rrect(x - w / 2, top + 4, w, h, 2.5), fill(YARD.ledCase));
-  sevenSeg(c, text, x + w / 2 - 22, top + 8, 19, YARD.led, YARD.ledOff);
-  // "kg" in LED strokes: a k and a g
-  const kx = x + w / 2 - 15;
-  const ky = top + h - 4;
-  const s = stroke(YARD.led, 1.2);
-  c.drawPath(segment(kx, ky - 7, kx, ky), s);
-  c.drawPath(builder().moveTo(kx + 3.4, ky - 4.6).lineTo(kx, ky - 2.2).lineTo(kx + 3.4, ky).build(), s);
-  c.drawPath(oval(kx + 7, ky - 2.4, 1.7, 1.8), s);
-  c.drawPath(builder().moveTo(kx + 8.7, ky - 4).lineTo(kx + 8.7, ky + 1.6).quadTo(kx + 8.7, ky + 3.4, kx + 5.8, ky + 2.8).build(), s);
-  // the printer slot under the digits
-  const sy = top + h + 13;
-  c.drawPath(rrect(x - 22, sy - 2.5, 44, 5, 2.5), fill(INK));
-  c.drawPath(segment(x - 19, sy + 0.5, x + 19, sy + 0.5), stroke(shade(INK, 0.3), 1));
-  return { slot: [x, sy], slotW: 40 };
+  const { w, h, window: wh } = WEIGH_HEAD;
+  const top = y - h - 4;
+  // a short bracket from the pole into the head
+  c.drawRect({ x: x - 3, y: top + h - 2, width: 6, height: 6 }, fill(YARD.steelDark));
+  c.drawPath(rrect(x - w / 2 + 2, top + 2, w, h, 4), fill(INK, 0.25));
+  c.drawPath(rrect(x - w / 2, top, w, h, 4), fill(YARD.hivis));
+  c.drawPath(rrect(x - w / 2, top, w, h, 4), stroke(INK, LINE_W));
+  c.drawPath(rrect(x - w / 2 + 3, top + 3, w - 6, wh, 2), fill(YARD.ledCase));
+  if (text) sevenSeg(c, text, x + w / 2 - 6, top + 5, wh - 4, YARD.led, YARD.ledOff);
+  else {
+    sevenSeg(c, '88.8', x + w / 2 - 6, top + 5, wh - 4, YARD.ledOff, YARD.ledOff);
+    c.saveLayer();
+    sevenSeg(c, '0.0', x + w / 2 - 6, top + 5, wh - 4, mix(YARD.led, YARD.ledCase, 0.5), YARD.ledOff);
+    c.restore();
+  }
+  // the printer slot under the window
+  const sy = top + wh + 8;
+  c.drawPath(rrect(x - 15, sy - 2, 30, 4, 2), fill(INK));
+  c.drawPath(segment(x - 12, sy + 0.5, x + 12, sy + 0.5), stroke(shade(INK, 0.3), 1));
+  return { slot: [x, sy], slotW: 28 };
 }
 
 // ---------------------------------------------------------------------------
@@ -229,13 +239,18 @@ export function drawMould(c: SkCanvas, v: View3q, o: { n?: number; poured?: (num
         if (!col) continue;
         const t = o.poured?.[i] ?? 99;
         const inner = subQuad(q, s0 + 0.01, s1 - 0.01, 0.26, 0.74);
-        faceFill(c, v, inner, col);
+        const cold = t >= 3 && metal === 'brass';
+        faceFill(c, v, inner, cold ? BRASS_INGOT.body : col);
+        if (cold) {
+          const [dx, dy] = proj(v, ...subQuad(q, (s0 + s1) / 2, 0, 0.5, 0)[0]);
+          c.drawPath(oval(dx - 2, dy, 4, 1.6), fill(BRASS_INGOT.skin, 0.85));
+        }
         if (t >= 3) {
           // the cooled ingot's break notches
           for (const k of [0.36, 0.66]) {
             const a = proj(v, ...subQuad(q, s0 + (s1 - s0) * k, 0, 0.27, 0)[0]);
             const b2 = proj(v, ...subQuad(q, s0 + (s1 - s0) * k, 0, 0.73, 0)[0]);
-            c.drawPath(segment(a[0], a[1], b2[0], b2[1]), stroke(shade(col, -0.35), 1.1));
+            c.drawPath(segment(a[0], a[1], b2[0], b2[1]), stroke(cold ? BRASS_INGOT.notch : shade(col, -0.35), cold ? 1.5 : 1.1));
           }
         } else if (t < 1.5) {
           const [gx, gy] = proj(v, ...subQuad(q, (s0 + s1) / 2, 0, 0.5, 0)[0]);
@@ -250,9 +265,11 @@ export function drawMould(c: SkCanvas, v: View3q, o: { n?: number; poured?: (num
 const MOULD_CAV = 0.3;
 
 /**
- * The tilting crucible furnace: a round steel shell lined with refractory, on trunnions between two
- * posts, its lid swung open on an arm. tilt 0 upright (lid on when cold), 1 tipped east 46 degrees to
- * pour. Returns the pour lip in points (relative to the anchor), so the mould can stand under it.
+ * The tilting crucible furnace: a squat steel pot lined with refractory brick (its thick pale rim shows
+ * the brick joints), hung on two trunnions in a low tilting frame (a bearing block on each side post),
+ * a geared tip wheel on the south post, its burner box behind. The lid is hinged at the west rim on a
+ * short arm: shut on the mouth when cold, swung up and back when open (it tips with the pot). tilt 0
+ * upright, 1 tipped east 46 degrees to pour. Returns the pour lip in points (relative to the anchor).
  */
 export function drawCrucible(c: SkCanvas, v: View3q, o: { tilt?: number; hot?: boolean; lidOpen?: boolean } = {}): [number, number] {
   const tilt = o.tilt ?? 0;
@@ -260,56 +277,78 @@ export function drawCrucible(c: SkCanvas, v: View3q, o: { tilt?: number; hot?: b
   const lidOpen = o.lidOpen ?? hot;
   const P = v.ppm;
   const R = 0.4 * P;
-  const H = 0.86 * P * v.lift;
+  const H = 0.74 * P * v.lift;
   const ry = R * v.tilt;
   const [px, py] = proj(v, 0, 0, PIVOT_Z);
-  // the frame's north post (behind) and the burner box
-  box(c, v, { len: 0.12, wid: 0.1, h: PIVOT_Z + 0.08, oy: -0.44, color: YARD.machineDark, line: 1 });
-  box(c, v, { len: 0.34, wid: 0.3, h: 0.36, ox: -0.5, oy: -0.32, color: YARD.machine, line: LINE_W, bevel: true });
-  const [bx, by] = proj(v, -0.5, -0.17, 0.2);
+  // the frame: a low base rail, the north post (behind) with its bearing block, the burner box
+  box(c, v, { len: 0.3, wid: 1.12, h: 0.12, color: YARD.machineDark, line: 1 });
+  box(c, v, { len: 0.1, wid: 0.1, h: PIVOT_Z - 0.06, oy: -0.5, z: 0.12, color: YARD.machineDark, line: 1 });
+  box(c, v, { len: 0.22, wid: 0.16, h: 0.14, oy: -0.52, z: PIVOT_Z - 0.08, color: YARD.machine, line: 1, bevel: true });
+  box(c, v, { len: 0.34, wid: 0.3, h: 0.36, ox: -0.58, oy: -0.3, color: YARD.machine, line: LINE_W, bevel: true });
+  const [bx, by] = proj(v, -0.58, -0.15, 0.2);
   c.drawPath(oval(bx, by, 3.6, 3.6), fill(INK));
   if (hot) c.drawPath(oval(bx, by, 2.6, 2.6), fill(YARD.glow));
-  // the lid: closed on the mouth when cold; swung aside on its post to the west when open
-  if (lidOpen) {
-    box(c, v, { len: 0.08, wid: 0.08, h: PIVOT_Z + 0.42, ox: -0.62, oy: 0.05, color: YARD.machineDark, line: 1 });
-    const [lx, ly] = proj(v, -0.72, 0.05, PIVOT_Z + 0.5);
-    c.drawPath(oval(lx, ly + 3, R * 0.95, ry * 0.95), fill(shade(YARD.machineDark, -0.2)));
-    c.drawPath(oval(lx, ly, R * 0.95, ry * 0.95), fill(YARD.machineDark));
-    c.drawPath(oval(lx, ly, R * 0.95, ry * 0.95), stroke(INK, LINE_W));
-    c.drawPath(rrect(lx - 7, ly - 3, 14, 5, 2.5), fill(YARD.hivis));
-    c.drawPath(rrect(lx - 7, ly - 3, 14, 5, 2.5), stroke(INK, 1));
-  }
   const ang = tilt * 46;
   const a = (ang * Math.PI) / 180;
   c.save();
   c.translate(px, py);
   c.rotate(ang, 0, 0);
-  const top = -H * 0.5;
-  const bot = H * 0.5;
+  const top = -H * 0.42;
+  const bot = H * 0.58;
+  // the lid swung open stands up behind the west rim (drawn before the pot: it is behind the mouth)
+  const lidUp = () => {
+    const hx = -R * 0.92;
+    const hy = top;
+    const cx = hx - R * 0.22;
+    const cy = top - R * 0.78;
+    c.drawPath(segment(hx, hy, cx + 2, cy + R * 0.3), stroke(INK, 3.2));
+    c.drawPath(segment(hx, hy, cx + 2, cy + R * 0.3), stroke(YARD.steel, 1.6));
+    c.drawPath(oval(cx, cy, R * 0.3, R * 0.86), fill(shade(YARD.refractory, -0.15)));
+    c.drawPath(oval(cx + 3, cy, R * 0.3, R * 0.86), fill(YARD.machineDark));
+    c.drawPath(oval(cx + 3, cy, R * 0.3, R * 0.86), stroke(INK, LINE_W));
+    c.drawPath(rrect(cx + 1, cy - 8, 4, 16, 2), fill(YARD.hivis));
+    c.drawPath(rrect(cx + 1, cy - 8, 4, 16, 2), stroke(INK, 0.9));
+  };
+  if (lidOpen) lidUp();
+  // the shell: straight short sides, a rounded belly
   const body = builder()
     .moveTo(-R, top)
-    .lineTo(-R, bot)
-    .addArc({ x: -R, y: bot - ry, width: R * 2, height: ry * 2 }, 180, -180)
+    .lineTo(-R, bot - ry * 0.6)
+    .cubicTo(-R, bot + ry * 0.9, R, bot + ry * 0.9, R, bot - ry * 0.6)
     .lineTo(R, top)
     .close()
     .build();
-  c.drawPath(body, linear(-R, 0, R, 0, [shade(YARD.machine, 0.25), YARD.machine, YARD.machineDark, shade(YARD.machineDark, -0.25)], [0, 0.35, 0.75, 1]));
-  // two hi-vis bands and the trunnion
-  for (const yy of [top + (bot - top) * 0.22, top + (bot - top) * 0.78]) c.drawRect({ x: -R, y: yy, width: R * 2, height: 3 }, fill(YARD.hivisDark));
+  c.drawPath(body, linear(-R, 0, R, 0, [shade(YARD.machine, 0.2), YARD.machine, YARD.machineDark, shade(YARD.machineDark, -0.25)], [0, 0.35, 0.75, 1]));
+  // vertical stiffening ribs and a band
+  for (const k of [-0.55, 0.05, 0.6]) c.drawPath(segment(R * k, top + 3, R * k, bot + ry * 0.2 - Math.abs(k) * 6), stroke(shade(YARD.machineDark, -0.2), 1.6));
+  c.drawRect({ x: -R, y: top + (bot - top) * 0.55, width: R * 2, height: 3 }, fill(YARD.hivisDark));
   c.drawPath(body, stroke(INK, LINE_W));
-  c.drawPath(oval(0, 0, 5, 5), fill(YARD.galvanisedLight));
-  c.drawPath(oval(0, 0, 5, 5), stroke(INK, 1));
-  // the mouth: steel rim, refractory lining, the melt (hot) or the lid (cold, closed)
+  // the trunnion (south side, toward the eye): a boss and its stub into the bearing
+  c.drawPath(oval(0, 0, 6.5, 6.5), fill(YARD.steel));
+  c.drawPath(oval(0, 0, 6.5, 6.5), stroke(INK, 1.1));
+  c.drawPath(oval(0, 0, 3, 3), fill(YARD.galvanisedLight));
+  // the mouth: a thick refractory brick rim on the steel lip, the melt (hot) or the dark lining (cold)
   c.drawPath(oval(0, top, R, ry), fill(YARD.steelDark));
-  c.drawPath(oval(0, top, R * 0.86, ry * 0.84), fill(YARD.refractory));
-  if (hot) c.drawPath(oval(R * 0.08, top + 0.5, R * 0.66, ry * 0.62), radial(R * 0.08, top, R * 0.7, [YARD.glowWhite, YARD.glowHot, YARD.glow], [0, 0.45, 1]));
-  else c.drawPath(oval(0, top + 0.5, R * 0.66, ry * 0.62), fill(shade(YARD.refractory, -0.35)));
+  c.drawPath(oval(0, top, R * 0.92, ry * 0.9), fill(YARD.refractory));
+  for (let i = 0; i < 14; i++) {
+    const t = (i / 14) * Math.PI * 2;
+    const x0 = Math.cos(t) * R * 0.66;
+    const y0 = top + Math.sin(t) * ry * 0.64;
+    c.drawPath(segment(x0, y0, Math.cos(t) * R * 0.9, top + Math.sin(t) * ry * 0.88), stroke(shade(YARD.refractory, -0.3), 0.8));
+  }
+  if (hot) c.drawPath(oval(R * 0.04, top + 0.5, R * 0.62, ry * 0.58), radial(R * 0.04, top, R * 0.66, [YARD.glowWhite, YARD.glowHot, YARD.glow], [0, 0.45, 1]));
+  else c.drawPath(oval(0, top + 0.5, R * 0.62, ry * 0.58), fill(shade(YARD.refractory, -0.45)));
+  c.drawPath(oval(0, top, R * 0.64, ry * 0.6), stroke(INK, 0.9));
   c.drawPath(oval(0, top, R, ry), stroke(INK, LINE_W));
   if (!lidOpen) {
+    // the lid shut on the mouth, its hinge arm at the west rim
     c.drawPath(oval(0, top - 3, R * 0.98, ry * 0.95), fill(YARD.machineDark));
     c.drawPath(oval(0, top - 3, R * 0.98, ry * 0.95), stroke(INK, LINE_W));
-    c.drawPath(rrect(-7, top - 9, 14, 5, 2.5), fill(YARD.hivis));
-    c.drawPath(rrect(-7, top - 9, 14, 5, 2.5), stroke(INK, 1));
+    c.drawPath(oval(0, top - 4, R * 0.6, ry * 0.5), stroke(shade(YARD.machineDark, 0.25), 1));
+    c.drawPath(rrect(-R - 3, top - 5, 8, 5, 1.5), fill(YARD.steel));
+    c.drawPath(rrect(-R - 3, top - 5, 8, 5, 1.5), stroke(INK, 0.9));
+    c.drawPath(rrect(R * 0.5, top - 7, 9, 4, 2), fill(YARD.hivis));
+    c.drawPath(rrect(R * 0.5, top - 7, 9, 4, 2), stroke(INK, 0.9));
   }
   // the pouring spout on the east rim
   const spout = poly([R - 4, top - 3.5, R + 8, top - 2, R + 8, top + 2.5, R - 4, top + 4]);
@@ -317,21 +356,22 @@ export function drawCrucible(c: SkCanvas, v: View3q, o: { tilt?: number; hot?: b
   c.drawPath(spout, stroke(INK, 1));
   if (hot && tilt > 0.5) c.drawPath(rrect(R - 2, top - 1.6, 9, 3, 1.5), fill(YARD.glowHot));
   c.restore();
-  // the lip in anchor points (rotation by ang about the pivot)
   const lx0 = R + 8;
   const ly0 = top;
   const lip: [number, number] = [px + lx0 * Math.cos(a) - ly0 * Math.sin(a), py + lx0 * Math.sin(a) + ly0 * Math.cos(a)];
-  // the south post (in front) with the tilt wheel
-  box(c, v, { len: 0.12, wid: 0.1, h: PIVOT_Z + 0.08, oy: 0.44, color: YARD.machineDark, line: 1 });
-  const [wx, wy] = proj(v, 0, 0.5, PIVOT_Z);
-  // the tilt wheel: a yellow rim on three spokes, its handle knob
-  for (let i = 0; i < 3; i++) {
-    const sa = (i / 3) * Math.PI * 2 + 0.5;
-    c.drawPath(segment(wx, wy, wx + Math.cos(sa) * 5, wy + Math.sin(sa) * 5), stroke(INK, 1.4));
+  // the south post (in front) with its bearing block, the gearbox and the tip wheel
+  box(c, v, { len: 0.1, wid: 0.1, h: PIVOT_Z - 0.06, oy: 0.5, z: 0.12, color: YARD.machineDark, line: 1 });
+  box(c, v, { len: 0.2, wid: 0.14, h: 0.12, oy: 0.5, z: PIVOT_Z - 0.08, color: YARD.machine, line: 1, bevel: true });
+  box(c, v, { len: 0.2, wid: 0.12, h: 0.2, ox: 0.18, oy: 0.6, z: PIVOT_Z - 0.32, color: YARD.machine, line: 1, bevel: true });
+  const [wx, wy] = proj(v, 0.18, 0.7, PIVOT_Z - 0.22);
+  for (let i = 0; i < 4; i++) {
+    const sa = (i / 4) * Math.PI * 2 + 0.4;
+    c.drawPath(segment(wx, wy, wx + Math.cos(sa) * 7.5, wy + Math.sin(sa) * 7.5), stroke(INK, 1.5));
   }
-  c.drawPath(oval(wx, wy, 5.5, 5.5), stroke(INK, 3));
-  c.drawPath(oval(wx, wy, 5.5, 5.5), stroke(YARD.hivis, 1.7));
-  c.drawPath(oval(wx + 5.5, wy - 1, 1.8, 1.8), fill(INK));
+  c.drawPath(oval(wx, wy, 8, 8), stroke(INK, 3.4));
+  c.drawPath(oval(wx, wy, 8, 8), stroke(YARD.hivis, 2));
+  c.drawCircle(wx, wy, 2, fill(INK));
+  c.drawPath(oval(wx + 8, wy - 1.5, 2, 2), fill(INK));
   return lip;
 }
 

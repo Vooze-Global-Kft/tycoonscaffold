@@ -215,7 +215,7 @@ function ratingNotes(g: GameConfig): string {
   if (salvage) {
     h('Pending: the rating answers wait for the stages that decide them (yard-design.md 7.7)');
     L.push(
-      '- **Every answer below is PENDING.** They are this config\'s defaults, not decided answers: the listing, the',
+      '- **Every answer in this file is PENDING.** They are this config\'s defaults, not decided answers: the listing, the',
       '  ads, the purchases and the online part (boards, other players\' yards, companies of up to 30) come in',
       '  later stages, and the design expects Apple 13+ and PEGI 3 to 7 / ESRB E once they exist (7.7). Nothing',
       '  here may be entered in a console before the hand-written block says it is decided.',

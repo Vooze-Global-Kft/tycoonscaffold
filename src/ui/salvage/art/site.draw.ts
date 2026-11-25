@@ -39,6 +39,7 @@ import {
 } from './pen';
 import { pieceGlyph } from './pieces.draw';
 import { drawCrucible } from './plant.draw';
+import { drawIngot } from './scrap.draw';
 
 const INK = YARD.ink;
 const BLOCK = '#BDB8AC';
@@ -743,6 +744,23 @@ export function drawStillageFill(c: SkCanvas, v: View3q, g: StillageGrade, full:
 /** One layer of a grade's pieces lying in a stillage (no front): the world draws one for part, two (the second STILLAGE_LAYER_DY up) for full. */
 export function drawStillageLayer(c: SkCanvas, v: View3q, g: StillageGrade): void {
   const { len, wid } = STILLAGE;
+  if (g === 'bri' || g === 'ali') {
+    // ingots are stacked flat in rows, two courses, and strapped (never a pyramid of bars)
+    const metal = g === 'bri' ? 'brass' : 'aluminium';
+    for (let k = 0; k < 2; k++) {
+      const z = 0.14 + k * 0.1;
+      for (let r = 0; r < 3; r++) for (let i = 0; i < 2; i++) drawIngot(c, v, metal, 99, { ox: (i - 0.5) * 0.5, oy: (r - 1) * 0.24 + (k ? 0.04 : 0), z, shadow: false });
+    }
+    // the steel strap round both courses
+    for (const sx of [-0.25, 0.25]) {
+      const a = proj(v, sx, -0.36, 0.34);
+      const b = proj(v, sx, 0.36, 0.34);
+      const d = proj(v, sx, 0.36, 0.14);
+      c.drawPath(builder().moveTo(a[0], a[1]).lineTo(b[0], b[1]).lineTo(d[0], d[1]).build(), stroke(INK, 2.4));
+      c.drawPath(builder().moveTo(a[0], a[1]).lineTo(b[0], b[1]).lineTo(d[0], d[1]).build(), stroke(YARD.galvanisedLight, 1.1));
+    }
+    return;
+  }
   const n = 11;
   for (let i = 0; i < n; i++) {
     const s = hash01(g.length, i, 1);

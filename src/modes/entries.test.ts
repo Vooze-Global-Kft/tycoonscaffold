@@ -319,8 +319,8 @@ describe('App.tsx', () => {
   });
 });
 
-describe('the salvage entry (the scrapyard, docs/design/yard-ground.md)', () => {
-  it('hands over its own shell, loading placeholder and the hour-0 rules with the two time-away seams, and nothing else yet', async () => {
+describe('the salvage entry (the scrapyard, docs/design/yard-ground.md, yard-stage1.md)', () => {
+  it('hands over its own shell, its loading animation, the rules with the two time-away seams and its shared sound keys, and nothing else', async () => {
     const { default: salvage } = await import('./salvage');
     const { salvageEngineMode } = await import('../engine/salvageMode');
     expect(salvage.id).toBe('salvage');
@@ -334,7 +334,13 @@ describe('the salvage entry (the scrapyard, docs/design/yard-ground.md)', () => 
     expect(salvage.parts).toBeUndefined();
     expect(salvage.hints).toBeUndefined();
     expect(salvage.artIcons).toBeUndefined();
-    expect(salvage.soundKeys).toBeUndefined();
+    // The salvage key for each shared key the store and the kit play (the sound package's table), each a key of the salvage catalogue.
+    const { SALVAGE_SHARED_SOUNDS } = await import('./salvage/soundKeys');
+    const { FX } = await import('../services/fx/catalog.salvage');
+    expect(salvage.soundKeys).toBe(SALVAGE_SHARED_SOUNDS);
+    for (const key of Object.values(SALVAGE_SHARED_SOUNDS)) expect(Object.keys(FX), 'every shared key maps to a key of the salvage table').toContain(key);
+    // One listener plays the rules' events: the shell's event pump (src/ui/salvage/hud/pump.ts); the entry subscribes nothing.
+    expect(read('salvage/index.tsx')).not.toMatch(/^import \{[^}]*\b(fx|modeEvents)\b|\.subscribe\(/m);
     // Phones (this file's resolution of ./presets): no presets.
     expect(salvage.presets).toBeUndefined();
   });

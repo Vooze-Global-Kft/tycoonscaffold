@@ -63,7 +63,7 @@ export function pushOut(out: number[], r: number, solids: readonly number[], o: 
  * Moves a circle of radius `r` from (x, y) by (dx, dy) through `solids` (and one extra circle `ex, ey,
  * er` when er > 0: the parked truck), inside the yard [0, w] x [0, d]. Writes the new place into out[0], out[1].
  */
-export function moveBody(out: number[], x: number, y: number, dx: number, dy: number, r: number, solids: readonly number[], w: number, d: number, ex: number, ey: number, er: number): void {
+export function moveBody(out: number[], x: number, y: number, dx: number, dy: number, r: number, solids: readonly number[], w: number, d: number, ex: number, ey: number, er: number, solids2?: readonly number[], lane?: readonly number[]): void {
   // Long steps (a stalled frame) are cut into pieces no longer than the radius, so nothing is tunnelled through.
   const len = Math.sqrt(dx * dx + dy * dy);
   const steps = Math.max(1, Math.min(8, Math.ceil(len / Math.max(0.05, r * 0.9))));
@@ -75,6 +75,7 @@ export function moveBody(out: number[], x: number, y: number, dx: number, dy: nu
     for (let pass = 0; pass < 3; pass++) {
       let moved = false;
       for (let o = 0; o + 4 < solids.length; o += 5) if (pushOut(out, r, solids, o)) moved = true;
+      if (solids2) for (let o = 0; o + 4 < solids2.length; o += 5) if (pushOut(out, r, solids2, o)) moved = true;
       if (er > 0) {
         const qx = out[0] - ex;
         const qy = out[1] - ey;
@@ -88,14 +89,33 @@ export function moveBody(out: number[], x: number, y: number, dx: number, dy: nu
       }
       if (!moved) break;
     }
-    out[0] = Math.max(r, Math.min(w - r, out[0]));
-    out[1] = Math.max(r, Math.min(d - r, out[1]));
+    keepInside(out, r, w, d, lane, x);
   }
 }
 
+/**
+ * Keeps a body inside the yard [0, w] x [0, d] or, when `lane` ([x0, x1, y0, y1]) is given, inside the
+ * lane east of the gate: a body may cross the east fence only inside the lane's band (the gate), and a
+ * body already out on the lane stays in its band up to its end (the barrier before the bridge).
+ */
+export function keepInside(out: number[], r: number, w: number, d: number, lane: readonly number[] | undefined, fromX: number): void {
+  if (lane && lane.length === 4 && out[0] > w - r) {
+    const inBand = out[1] >= lane[2] + r && out[1] <= lane[3] - r;
+    if (fromX > w - r || inBand) {
+      out[1] = Math.max(lane[2] + r, Math.min(lane[3] - r, out[1]));
+      out[0] = Math.min(lane[1] - r, out[0]);
+      return;
+    }
+  }
+  out[0] = Math.max(r, Math.min(w - r, out[0]));
+  out[1] = Math.max(r, Math.min(d - r, out[1]));
+}
+
 /** Whether a circle at (x, y) of radius r overlaps any solid (or leaves the yard). */
-export function blocked(x: number, y: number, r: number, solids: readonly number[], w: number, d: number): boolean {
-  if (x < r || y < r || x > w - r || y > d - r) return true;
+export function blocked(x: number, y: number, r: number, solids: readonly number[], w: number, d: number, solids2?: readonly number[], lane?: readonly number[]): boolean {
+  const onLane = !!lane && lane.length === 4 && x > w - r && x <= lane[1] - r && y >= lane[2] + r && y <= lane[3] - r;
+  if (!onLane && (x < r || y < r || x > w - r || y > d - r)) return true;
+  if (solids2 && blocked(x, y, r, solids2, Infinity, Infinity)) return true;
   for (let o = 0; o + 4 < solids.length; o += 5) {
     const sx = solids[o + 1];
     const sy = solids[o + 2];

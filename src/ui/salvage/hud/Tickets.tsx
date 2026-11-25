@@ -1,0 +1,221 @@
+/**
+ * Tickets and their chips (yard-stage1.md 4.4, the eye path of a sale: scale display, bay chip, flatbed,
+ * cash counter). From the event pump only (no polling):
+ * - `weighIn` by the boss: the WEIGH-IN TICKET rises from the scale's display post (hi-vis header; up to
+ *   three grade rows with "§{p}/kg today"; "+ n more"; the muted "today's value"; at most one lesson; the
+ *   legal line), then folds away. By a crew member: the one-line chip "Yard hand · 58.2 kg in".
+ * - `collected`: the COLLECTION TICKET at the flatbed's cab (amounts in ink, "Paid §{x}" bold, the buyer
+ *   named in the stamp's blue) when a weigh-in of the boss's went into it, else the one-line chip
+ *   "Lot sold · §29.00". While it shows, `collectionAnchor` (./anchors.ts) is the cab's screen point,
+ *   where world-b's coin arc starts.
+ * Both are anchored to their world point (metres, a height above the ground) through the camera, and
+ * clamped inside the free world and the safe area, at most 150 pt tall at font scale 1.3; one of each
+ * kind at a time (a new one replaces the old). A tap opens the ticket history (the clipboard).
+ *
+ * STAND-INS: the camera is read from the yard's ground transform until world-a exports `camera`
+ * (requests.md); the lesson is the rules' `ticket.lesson` until the hints package exports its pacing rule.
+ */
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import * as R from '../../../engine/salvage';
+import { PAL } from '../palette';
+import { useSalvageUi } from '../uiState';
+import type { YardLayout } from '../world/yard';
+import { hudAnchors } from './anchors';
+import { lineH, placeTicket, textW, TICKET_PT, type HudLayout } from './metrics';
+import { BarText } from './Paper';
+import { yardEvents } from './pump';
+import { crewWeighInChip, lotSoldChip, planTicket, ticketView, type TicketPlan, type TicketView } from './ticketView';
+
+/** How long each shows (ms) before it folds. */
+export const TICKET_MS = { weighIn: 4200, collection: 4200, chip: 2600 } as const;
+/** Heights above the ground of the two anchors (metres): the display's printer slot, the flatbed's cab roof. */
+const SLOT_Z = 2.2;
+const CAB_Z = 2.6;
+
+type Slot = { id: number; view: TicketView; chip: null } | { id: number; view: null; chip: string };
+
+/** The yard's ground transform (the camera), as the frame loop writes it. */
+export type GroundXf = SharedValue<any[]>;
+
+/** Screen point of a world point under the camera (a worklet: anchors follow the camera every frame). */
+export function project(x: number, y: number, z: number, camX: number, camY: number, ppm: number, tilt: number, lift: number): { x: number; y: number } {
+  'worklet';
+  return { x: x * ppm - camX, y: y * ppm * tilt - camY - z * ppm * lift };
+}
+
+function camOf(ground: GroundXf): { camX: number; camY: number } {
+  'worklet';
+  const g = ground.value;
+  const tx = g && g[0] && typeof g[0].translateX === 'number' ? g[0].translateX : 0;
+  const ty = g && g[1] && typeof g[1].translateY === 'number' ? g[1].translateY : 0;
+  return { camX: -tx, camY: -ty };
+}
+
+export function Tickets({ cfg, L, ground, yard }: { cfg: R.SalvageConfig; L: HudLayout; ground: GroundXf; yard: YardLayout }) {
+  const c = cfg.salvage;
+  const [scale, setScale] = useState<Slot | null>(null);
+  const [cab, setCab] = useState<Slot | null>(null);
+  const bossIn = useRef(false);
+  const ids = useRef(0);
+  const timers = useRef<{ scale?: ReturnType<typeof setTimeout>; cab?: ReturnType<typeof setTimeout> }>({});
+  const scalePt = R.point(cfg, 'scale');
+  const cabPt = R.point(cfg, 'merchant');
+
+  useEffect(() => {
+    const show = (which: 'scale' | 'cab', slot: Slot, ms: number) => {
+      const set = which === 'scale' ? setScale : setCab;
+      clearTimeout(timers.current[which]);
+      set(slot);
+      timers.current[which] = setTimeout(() => {
+        set(null);
+        if (which === 'cab') hudAnchors.setCollection(null);
+      }, ms);
+    };
+    const offIn = yardEvents.on('weighIn', (e) => {
+      const t = e.ticket;
+      if (e.by === 'boss') {
+        bossIn.current = true;
+        const view = ticketView(t, c);
+        if (view) show('scale', { id: ++ids.current, view, chip: null }, TICKET_MS.weighIn);
+      } else {
+        const chip = crewWeighInChip(t, c);
+        if (chip) show('scale', { id: ++ids.current, view: null, chip }, TICKET_MS.chip);
+      }
+    });
+    const offOut = yardEvents.on('collected', (e) => {
+      const t = e.ticket;
+      const boss = bossIn.current;
+      bossIn.current = false;
+      const view = boss ? ticketView(t, c) : null;
+      if (view) show('cab', { id: ++ids.current, view, chip: null }, TICKET_MS.collection);
+      else {
+        const chip = lotSoldChip(t, c);
+        if (chip) show('cab', { id: ++ids.current, view: null, chip }, TICKET_MS.chip);
+      }
+      const { camX, camY } = camOf(ground);
+      hudAnchors.setCollection(project(cabPt.x, cabPt.y, CAB_Z, camX, camY, yard.ppm, yard.tilt, yard.lift));
+    });
+    const t = timers.current;
+    return () => {
+      offIn();
+      offOut();
+      clearTimeout(t.scale);
+      clearTimeout(t.cab);
+    };
+  }, [c, cabPt.x, cabPt.y, ground, yard]);
+
+  return (
+    <>
+      {scale ? <Anchored key={scale.id} slot={scale} at={scalePt} z={SLOT_Z} L={L} ground={ground} yard={yard} c={c} /> : null}
+      {cab ? <Anchored key={cab.id} slot={cab} at={cabPt} z={CAB_Z} L={L} ground={ground} yard={yard} c={c} /> : null}
+    </>
+  );
+}
+
+/** A ticket or chip pinned over its world point, rising in, clamped inside the free world. */
+function Anchored({ slot, at, z, L, ground, yard, c }: { slot: Slot; at: { x: number; y: number }; z: number; L: HudLayout; ground: GroundXf; yard: YardLayout; c: R.SalvageContent }) {
+  const s = L.s;
+  const w = slot.view ? L.ticketW : Math.ceil(textW(slot.chip ?? '', 11 * s) + 24);
+  const plan = slot.view ? planTicket(slot.view, w, s, c, L.ticketMaxH) : null;
+  const h = plan ? plan.height : lineH(11 * s) + 10;
+  const rise = useSharedValue(0);
+  useEffect(() => {
+    rise.value = withTiming(1, { duration: 260 });
+  }, [rise]);
+  const box = { left: L.left, right: L.right, freeY: L.freeY, bottomY: L.bottomY };
+  const { ppm, tilt, lift } = yard;
+  const style = useAnimatedStyle(() => {
+    const { camX, camY } = camOf(ground);
+    const p = project(at.x, at.y, z, camX, camY, ppm, tilt, lift);
+    const q = placeTicket(p.x, p.y, w, h, box);
+    return { opacity: rise.value, transform: [{ translateX: q.x }, { translateY: q.y + (1 - rise.value) * 14 }] };
+  });
+  return (
+    <Animated.View style={[styles.abs, { width: w }, style]}>
+      <Pressable accessibilityRole="button" onPress={() => useSalvageUi.getState().openCard({ kind: 'clipboard' })}>
+        {slot.view && plan ? <TicketPaper v={slot.view} plan={plan} s={s} /> : <ChipPaper text={slot.chip ?? ''} s={s} />}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function ChipPaper({ text, s }: { text: string; s: number }) {
+  return (
+    <View style={styles.chip}>
+      <BarText pt={11 * s} weight="700">
+        {text}
+      </BarText>
+    </View>
+  );
+}
+
+/** The ticket paper (yard-style.md 8): hi-vis header, grade rows, the foot, the lesson, the legal line(s). */
+export function TicketPaper({ v, plan, s }: { v: TicketView; plan: TicketPlan; s: number }) {
+  const pt = TICKET_PT.row * s;
+  const small = TICKET_PT.small * s;
+  const paid = v.kind === 'collection';
+  return (
+    <View style={styles.paper}>
+      <View style={styles.sprocket} />
+      <View style={styles.head}>
+        <BarText pt={TICKET_PT.head * s} weight="800">
+          {v.head}
+        </BarText>
+      </View>
+      <View style={styles.body}>
+        {plan.rows.map((r) => (
+          <View key={r.grade} style={plan.twoLine ? null : styles.row}>
+            <BarText pt={pt} weight="700" style={plan.twoLine ? null : styles.name}>
+              {r.note ? `${r.name} · ${r.note}` : r.name}
+            </BarText>
+            <View style={[styles.row, plan.twoLine && styles.under]}>
+              <BarText pt={pt} weight="600" style={plan.twoLine ? styles.name : styles.kg}>
+                {r.kg}
+              </BarText>
+              <BarText pt={pt} weight={paid ? '700' : '500'} color={paid ? PAL.ink : PAL.muted} style={styles.right}>
+                {r.right}
+              </BarText>
+            </View>
+          </View>
+        ))}
+        <View style={styles.row}>
+          <BarText pt={small} weight="600" color={PAL.inkSoft} style={styles.name}>
+            {plan.more ?? ''}
+          </BarText>
+          <BarText pt={paid ? TICKET_PT.paid * s : small} weight={paid ? '900' : '600'} color={paid ? PAL.ink : PAL.muted}>
+            {v.total}
+          </BarText>
+        </View>
+        {v.lesson ? (
+          <BarText pt={small} weight="600" color={PAL.stamp}>
+            {v.lesson}
+          </BarText>
+        ) : null}
+        <View style={paid ? styles.stamp : null}>
+          {v.legal.map((l, i) => (
+            <BarText key={i} pt={small} weight={paid ? '800' : '500'} color={paid ? PAL.stamp : PAL.inkSoft}>
+              {l}
+            </BarText>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  abs: { position: 'absolute', left: 0, top: 0 },
+  paper: { backgroundColor: PAL.paper, borderWidth: 1.3, borderColor: PAL.ink, borderRadius: 3, overflow: 'hidden', paddingLeft: 10 },
+  sprocket: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, backgroundColor: PAL.paperShade, borderRightWidth: 1, borderRightColor: PAL.paperLine, borderStyle: 'dashed' },
+  head: { backgroundColor: PAL.hivis, marginLeft: -4, paddingHorizontal: 6, paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: PAL.ink },
+  body: { paddingHorizontal: 6, paddingTop: 2, paddingBottom: 4 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  name: { flex: 1 },
+  kg: { marginLeft: 6, textAlign: 'right' },
+  right: { marginLeft: 8, textAlign: 'right' },
+  under: { paddingLeft: 10 },
+  stamp: { alignSelf: 'flex-start', borderWidth: 1.3, borderColor: PAL.stamp, borderRadius: 3, paddingHorizontal: 4, marginTop: 1, transform: [{ rotate: '-1.5deg' }] },
+  chip: { backgroundColor: PAL.paper, borderWidth: 1.3, borderColor: PAL.ink, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+});

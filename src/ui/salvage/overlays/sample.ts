@@ -196,3 +196,57 @@ export const ITEM_NAME: Record<R.MachineId, TextKey> = { hand_stripper: 'item.ha
 export const ITEM_EFFECT: Record<R.MachineId, TextKey | null> = { hand_stripper: null, stripper: 'effect.stripper', bench: 'effect.bench', crucible: 'effect.crucible' };
 /** The shop key that buys a machine. */
 export const MACHINE_KEY: Record<R.MachineId, string | null> = { hand_stripper: null, stripper: 'stripper', bench: 'bench', crucible: 'crucible' };
+
+// ------------------------------------------------------------------ machine and crucible rows
+
+const bare = (arg: R.TxtArg): Txt => ({ key: 'title.place', args: { place: arg } });
+
+/** What goes in and what comes out (content's machine definition: the stripper's cable, the bench's out shares). */
+export function inOutLine(cfg: SalvageConfig, id: R.MachineId): Txt | null {
+  const c = cfg.salvage;
+  if (id === 'stripper' || id === 'hand_stripper') return { key: 'card.inOut', args: { in: { grade: 'cab' }, out: { grade: 'bb' } } };
+  if (id === 'bench') {
+    const out = (c.machines.bench as { out?: [string, number][] }).out ?? [];
+    const first = out[0]?.[0];
+    return { key: 'card.inOut', args: { in: { grade: 'mot' }, out: first ? { grade: first } : { text: 'card.empty' } } };
+  }
+  return null;
+}
+
+/** The rows of a machine card (pure, for the tests). */
+export function machineRows(cfg: SalvageConfig, g: SalvageGame, m: MachineCard): CardRow[] {
+  const rows: CardRow[] = [];
+  const rate: Txt = { key: 'card.rateKgS', args: { kg: { mass_g: Math.round(m.rate * 1000), step: 'lot' } } };
+  const io = inOutLine(cfg, m.machine);
+  if (!m.owned) {
+    const key = MACHINE_KEY[m.machine];
+    const b: CardButton | null = key ? buyButton(cfg, g, key) : null;
+    rows.push({ id: 'buy', name: { key: ITEM_NAME[m.machine] }, line: ITEM_EFFECT[m.machine] ? { key: ITEM_EFFECT[m.machine]! } : null, button: b, icon: null, extra: null });
+    if (io) rows.push({ id: 'io', name: io, line: rate, button: null, icon: null });
+    return rows;
+  }
+  rows.push({ id: 'status', name: m.status, line: rate, button: null, icon: null, extra: io });
+  for (const h of m.hopper) rows.push({ id: `hopper.${h.grade}`, name: bare({ grade: h.grade }), line: bare({ mass_g: h.g, step: 'lot' }), button: null, icon: null });
+  for (const [grade, gr] of Object.entries(m.tray_g)) if (gr > 0) rows.push({ id: `tray.${grade}`, name: bare({ grade }), line: bare({ mass_g: gr, step: 'lot' }), button: null, icon: null });
+  rows.push({ id: 'level', name: { key: 'card.levelOnBoard' }, line: null, button: { label: { key: 'title.processBoard' }, action: { act: 'open', card: { kind: 'processBoard' } }, refusal: null }, icon: null });
+  return rows;
+}
+
+export const RECIPE_NAME: Record<string, 'item.brass' | 'item.alu'> = { brass: 'item.brass', alu: 'item.alu' };
+
+/** Recipes the yard can run now: brass comes with the crucible, others are owned shop keys. */
+export function ownedRecipes(cfg: SalvageConfig, g: SalvageGame): string[] {
+  return Object.keys(cfg.salvage.machines.crucible.recipes).filter((r) => r === 'brass' || g.salvage.owned.includes(r));
+}
+
+/** The crucible's rows after buying (pure, for the tests). */
+export function crucibleRows(cfg: SalvageConfig, g: SalvageGame, data: CardData): CardRow[] {
+  const c = data.machine?.crucible;
+  if (!c) return [];
+  const rows: CardRow[] = [];
+  rows.push({ id: 'recipe', name: { key: RECIPE_NAME[c.recipe] ?? 'card.recipe', args: { recipe: { text: 'card.empty' } } }, line: data.machine!.status, button: null, icon: null });
+  rows.push({ id: 'charge', name: { key: 'card.charge', args: { a: { mass_g: c.charge_g, step: 'lot' }, b: { mass_g: c.pot_g, step: 'lot' } } }, line: c.ready ? { key: 'card.readyToPour' } : c.poursInS !== null ? { key: 'card.poursIn', args: { t: { secs: c.poursInS } } } : null, button: null, icon: null });
+  if (c.heel_g > 0) rows.push({ id: 'heel', name: { key: 'card.heel', args: { kg: { mass_g: c.heel_g, step: 'lot' } } }, line: null, button: null, icon: null });
+  return rows;
+}
+

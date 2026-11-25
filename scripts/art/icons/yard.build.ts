@@ -8,10 +8,10 @@
  *
  * The house's sizes and kinds (as office.build.ts and night.build.ts make them), all 1024 x 1024:
  * - icon.png: full-bleed and opaque, re-encoded without alpha by ffmpeg (Apple refuses an icon with alpha);
- * - adaptive-icon.png: Android's foreground layer (108 dp). Here the layer is OPAQUE hi-vis yellow over
- *   the whole 108 dp, with the icon scaled down so that its subject (everything that is not the yellow
- *   ground) stays inside the 33 dp safe circle; so the launcher's mask never cuts the crucible or the
- *   wire, and the background colour behind it (theme.colors.background, the sky) never shows;
+ * - adaptive-icon.png: Android's foreground layer (108 dp), transparent, with the icon as the home screen's
+ *   rounded tile inside the 33 dp safe circle (a stand-in until the art director draws an adaptive
+ *   composition: the icon's tongs run off its edge, see below); the launcher's colour around the tile is
+ *   theme.colors.background, the sky;
  * - splash.png: transparent, the icon as a rounded tile in the middle, shown at 200 pt on the theme's
  *   background (the daylight sky the loading animation fades in from).
  */
@@ -25,9 +25,8 @@ headless(async (H) => {
   const { Skia, ClipOp } = H;
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const Y = require('./yard.icon') as typeof import('./yard.icon');
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { YARD } = require('../../../src/ui/salvage/art/palette') as typeof import('../../../src/ui/salvage/art/palette');
-  const bg = JSON.parse(fs.readFileSync('games/scrap-yard/game.json', 'utf8')).theme.colors.background as string;
+  // the launcher's and the splash's colour: theme.colors.background as scripts/content/yard-app.json gives it to game.json
+  const bg = JSON.parse(fs.readFileSync('scripts/content/yard-app.json', 'utf8')).theme.colors.background as string;
   const mode = process.argv[2] ?? 'preview';
   const outDir = process.argv[3];
   const N = 1024;
@@ -72,31 +71,31 @@ headless(async (H) => {
   const pixels = (im: SkImage) => im.readPixels(0, 0, { width: im.width(), height: im.height(), colorType: 4, alphaType: 3 }) as Uint8Array;
 
   const icon = img(Y.ICON);
-  // The subject: every pixel of the icon far from the yellow ground (hivis to hivisLight, blue channel low).
-  const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-  const ground = [hex(YARD.hivis), hex(YARD.hivisLight)];
-  const nearGround = (r: number, g: number, b: number) => {
-    // distance to the segment between the two ground colours
-    const [a, z] = ground;
-    const d = [z[0] - a[0], z[1] - a[1], z[2] - a[2]];
-    const t = Math.max(0, Math.min(1, ((r - a[0]) * d[0] + (g - a[1]) * d[1] + (b - a[2]) * d[2]) / (d[0] ** 2 + d[1] ** 2 + d[2] ** 2)));
-    return Math.hypot(r - a[0] - t * d[0], g - a[1] - t * d[1], b - a[2] - t * d[2]) < 40;
+  // The adaptive layer is 108 dp across (1 dp = N / 108 px); a launcher shows the middle 72 dp under its mask
+  // and only the circle of 33 dp around the centre is safe. ICON's tongs run off its top-left edge by design,
+  // so ICON cannot be laid full-bleed on a yellow layer without either cutting the copper bundle (lower left)
+  // with the mask or ending the tongs in mid-air. Until the art director draws an adaptive composition, the
+  // layer carries ICON as the same rounded tile as the home screen, as large as keeps its corners inside the
+  // safe circle, on transparency: the launcher's colour around it is theme.colors.background (the sky).
+  const reachOf = (im: SkImage) => {
+    const a = pixels(im);
+    let reach = 0;
+    for (let y = 0; y < N; y += 2) for (let x = 0; x < N; x += 2) if (a[(y * N + x) * 4 + 3] > 24) reach = Math.max(reach, Math.hypot(x + 0.5 - N / 2, y + 0.5 - N / 2));
+    return reach / (N / 108);
   };
-  const px = pixels(icon);
-  let reachPx = 0;
-  for (let y = 0; y < N; y += 2) for (let x = 0; x < N; x += 2) {
-    const k = (y * N + x) * 4;
-    if (!nearGround(px[k], px[k + 1], px[k + 2])) reachPx = Math.max(reachPx, Math.hypot(x + 0.5 - N / 2, y + 0.5 - N / 2));
-  }
-  // The layer is 108 dp across: 1 dp = N / 108 px. The subject must stay inside 33 dp (0.5 dp of margin).
-  const dp = N / 108;
-  const scale = Math.min(1, (32.5 * dp) / reachPx);
-  const adaptive = img((c) => {
-    c.drawRect(Skia.XYWHRect(0, 0, N, N), solid(YARD.hivis));
-    const s = N * scale;
-    put(c, icon, (N - s) / 2, (N - s) / 2, s);
-  });
-  console.log(`adaptive: the subject reaches ${(reachPx / dp).toFixed(1)} dp at full size; drawn at ${(scale * 100).toFixed(1)} %, so it reaches ${((reachPx * scale) / dp).toFixed(1)} dp (safe 33.0)`);
+  const tile = (scale: number) =>
+    img((c) => {
+      const s = N * scale;
+      const o = (N - s) / 2;
+      c.save();
+      c.clipRRect(Skia.RRectXY(Skia.XYWHRect(o, o, s, s), s * 0.2237, s * 0.2237), ClipOp.Intersect, true);
+      put(c, icon, o, o, s);
+      c.restore();
+    });
+  let scale = 0.62;
+  while (reachOf(tile(scale)) > 32.5) scale -= 0.005;
+  const adaptive = tile(scale);
+  console.log(`adaptive: ICON as a rounded tile at ${(scale * 100).toFixed(1)} % of the layer (${(108 * scale).toFixed(1)} dp), its corners reach ${reachOf(adaptive).toFixed(1)} dp (safe 33.0)`);
   const splash = img((c) => {
     const s = N * 0.78;
     const o = (N - s) / 2;

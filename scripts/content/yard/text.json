@@ -6,7 +6,7 @@
     "appl": { "name": "Appliances, whole", "short": "Appliances", "long": "Whole appliances, not taken apart" },
     "ci": { "name": "Cast iron solids", "short": "Cast iron", "long": "Cast iron solids, broken to size" },
     "ciu": { "name": "Cast iron, whole", "short": "Cast iron whole", "long": "Cast iron, whole: radiators, baths and stoves not broken" },
-    "hms": { "name": "HMS 80:20", "short": "HMS 80:20", "long": "Heavy melting steel 1 and 2, mixed 80:20" },
+    "hms": { "name": "HMS 80:20", "short": "HMS 80:20", "long": "Heavy melting steel, grades 1 and 2 mixed 80:20" },
     "hmsu": { "name": "Steel, unprepared", "short": "Steel uncut", "long": "Heavy steel, not yet cut to furnace size" },
     "cbody": { "name": "Car body", "short": "Car body", "long": "Car body, shredder feed" },
     "alw": { "name": "Alloy wheels", "short": "Alloy wheels", "long": "Clean aluminium alloy wheels, tyres and weights off" },
@@ -69,11 +69,11 @@
   "partners": {
     "partnerFarm": {
       "card": "{farmContact} · {partnerFarm}",
-      "line": "Farm clearance: old sheet, stoves, troughs, cable"
+      "line": "Farm clearance: sheet, stoves, cable"
     },
     "partnerDemolition": {
       "card": "{demolitionContact} · {partnerDemolition}",
-      "line": "Demolition: beams, cladding, cable, copper pipe"
+      "line": "Demolition: beams, cladding, cable"
     },
     "foundry": {
       "card": "{foundry}",
@@ -112,10 +112,5 @@
     { "term": "Stripper", "line": "A machine that cuts insulation off cable to free the copper." },
     { "term": "Supply deal", "line": "An agreement to deliver a grade each day at a price locked at signing." },
     { "term": "Weighbridge", "line": "The large scale a truck drives over, loaded and empty." }
-  ],
-  "help": {
-    "lessonsHead": "What the tickets taught",
-    "glossaryHead": "Words of the trade",
-    "aboutHead": "About this game"
-  }
+  ]
 }

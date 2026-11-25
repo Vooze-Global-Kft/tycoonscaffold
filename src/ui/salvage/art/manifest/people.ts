@@ -252,9 +252,10 @@ function carrierEntry(kind: CarrierKind): PeopleEntry {
 // Vehicles
 // ---------------------------------------------------------------------------
 
-function vehicle(id: string, o: { frames: readonly string[]; headings: 1 | 4 | 8; footprint: { w: number; d: number }; tint?: string; draw: ManifestEntry['draw'] }): PeopleEntry {
+function vehicle(id: string, o: { frames: readonly string[]; headings: 1 | 4 | 8; footprint: { w: number; d: number }; tint?: string; k?: number; draw: ManifestEntry['draw'] }): PeopleEntry {
+  const K = o.k ?? VEHICLE_K;
   const n = o.headings === 1 ? 1 : o.headings === 4 ? 3 : 5;
-  const bh = boxOf(id, n, B(-140, -140, 280, 220));
+  const bh = boxOf(id, n, B(-140, -140, 280, 220)).map((b) => (K === VEHICLE_K ? b : scaleBox(b, K / VEHICLE_K)));
   const e: PeopleEntry = {
     id,
     group: 'vehicle',
@@ -265,12 +266,22 @@ function vehicle(id: string, o: { frames: readonly string[]; headings: 1 | 4 | 8
     frames: o.frames,
     headings: o.headings,
     mirrorWest: o.headings > 1,
-    drawScale: 1 / VEHICLE_K,
-    draw: scaled(VEHICLE_K, o.draw),
+    drawScale: 1 / K,
+    draw: scaled(K, o.draw),
   };
   if (o.tint) e.tint = o.tint;
   return e;
 }
+
+/** A box measured at VEHICLE_K scaled to another bake scale (rounded outward). */
+const scaleBox = (b: Bounds, k: number): Bounds => {
+  const x = Math.floor(b.x * k) - 1;
+  const y = Math.floor(b.y * k) - 1;
+  return B(x, y, Math.ceil((b.x + b.w) * k) + 1 - x, Math.ceil((b.y + b.h) * k) + 1 - y);
+};
+
+/** The merchant's flatbed is a main sight of the first minute (S1): baked at this scale, not VEHICLE_K. */
+export const FLATBED_K = 0.75;
 
 /** heading of a 4-heading entry (0 s, 1 e, 2 n, 3 w) in the 8 scheme. */
 const h4to8 = (h: number): number => h * 2;
@@ -302,24 +313,28 @@ const VEHICLES: PeopleEntry[] = [
   }),
   vehicle('vehicle.flatbed', {
     frames: ['stowed'],
+    k: FLATBED_K,
     headings: 4,
     footprint: { w: 4.6, d: 2.0 },
     draw: (c, v, _f, h) => drawFlatbed(c, v, headingRad(h4to8(h))),
   }),
   vehicle('vehicle.flatbed.working', {
     frames: ['column'],
+    k: FLATBED_K,
     headings: 1,
     footprint: { w: 4.6, d: 2.0 },
     draw: (c, v) => drawFlatbed(c, v, 0, { crane: 'reach', parts: 'body' }),
   }),
   vehicle('vehicle.flatbed.crane', {
     frames: CRANE_FRAMES,
+    k: FLATBED_K,
     headings: 1,
     footprint: { w: 2.0, d: 2.5 },
     draw: (c, v, f) => drawFlatbed(c, v, 0, { crane: CRANE_FRAMES[f], parts: 'crane' }),
   }),
   vehicle('vehicle.flatbed.cargo', {
     frames: ['part', 'full'],
+    k: FLATBED_K,
     headings: 1,
     footprint: { w: 1.6, d: 1.0 },
     draw: (c, v, f) => drawFlatbedCargo(c, v, f === 0 ? 'part' : 'full'),

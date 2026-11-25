@@ -15,13 +15,13 @@
  *
  * THE RULES' YARD (hour-0 joint, contract step): besides the static `props` (fences, the container
  * wall, rubble), the layout holds a prop for every place with a footprint (`map.places`: kind
- * "machine", id = the place id, an interactable with a card), every whole thing of the fresh yard
- * (`thingPos` of the rules: kind "wreck", id = the thing's uid), and the truck at the truck park
- * (id "truck"). The boss starts at `map.points.start`. What the rules decide about them comes as the
- * rules table (./useRulesTable.ts, from the rules' FrameTable).
+ * "machine", id = the place id) and the truck at the truck park (id "truck"). The boss starts at
+ * `map.points.start`. Things (whole or coming apart) are the rules' and come every store change with
+ * their solids (./useRulesTable.ts, ./actors.ts rulesScene); the lane east of the gate is `lane`.
  */
 import type { SalvageContent, SalvageProp } from '../../../config/schema.salvage';
 import * as R from '../../../engine/salvage';
+import { laneDrawEnd, laneGeo } from './actors';
 
 const asCfg = (s: SalvageContent) => ({ salvage: s }) as R.SalvageConfig;
 const pointOf = (s: SalvageContent, id: string) => R.point(asCfg(s), id);
@@ -75,6 +75,12 @@ export interface YardLayout {
   helpers: HelperPath[];
   workerStart: { x: number; y: number };
   truckStart: { x: number; y: number };
+  /** The lane east of the gate a body may enter: [x0, x1, y0, y1] metres, or [] (./collide.ts keepInside). */
+  lane: number[];
+  /** How far east the world is drawn (the lane's end), metres: the camera's east limit. */
+  drawW: number;
+  /** Content points the actors' pictures use: [x, y] of the gate, the truck park, the weighbridge, the tipping floor, the scale. */
+  pts: { gate: number[]; park: number[]; weighbridge: number[]; floor: number[]; scale: number[] };
 }
 
 /** Numbers per packed interactable. */
@@ -121,27 +127,27 @@ export function yardLayout(s: SalvageContent, opts: { extraCrates?: number; help
       actList.push({ prop: i, kind, id: p.id });
     }
   });
-  const machine = props.findIndex((p) => p.kind === 'machine');
-  const wrecks = props.map((p, i) => (p.kind === 'wreck' ? i : -1)).filter((i) => i >= 0);
+  // Stress actors (the `actors=N` switch): walking between two places, through the wall's wide gap
+  // (`helpers.via`) when the walk crosses it. Only pictures: nothing they do reaches the rules.
+  const places = props.map((p, i) => (p.kind === 'machine' ? i : -1)).filter((i) => i >= 0);
   const count = Math.max(0, Math.floor(opts.helpers ?? s.helpers.count));
   const helpers: HelperPath[] = [];
-  if (machine >= 0 && wrecks.length > 0) {
-    const m = props[machine];
-    // Through the yard's wide gap when the config names one (`helpers.via`), else straight.
+  const wallX = props.filter((p) => p.kind === 'wall').reduce((a, p, _i, all) => a + p.x / all.length, 0);
+  if (places.length >= 2) {
     const via = s.helpers.via;
     for (let k = 0; k < count; k++) {
-      const wi = wrecks[k % wrecks.length];
-      const w = props[wi];
-      // Stand below the machine and below the wreck (the side facing the viewer), spread a little per helper.
+      const a = props[places[k % places.length]];
+      const b = props[places[(k * 7 + 3) % places.length]];
       const spread = ((k * 37) % 7) / 7 - 0.5;
-      const mx = m.x + spread * (m.shape === 'box' ? m.w * 0.6 : m.r);
-      const my = m.y + (m.shape === 'box' ? m.d / 2 : m.r) + 0.7;
-      const wx = w.x + spread * 0.8;
-      const wy = w.y + (w.shape === 'box' ? w.d / 2 : w.r) + 0.7;
-      const pts = via ? [mx, my, via[0], via[1] + spread, wx, wy] : [mx, my, wx, wy];
+      const mx = a.x + spread * 1.2;
+      const my = a.y + (a.shape === 'box' ? a.d / 2 : a.r) + 0.7;
+      const wx = b.x + spread * 0.8;
+      const wy = b.y + (b.shape === 'box' ? b.d / 2 : b.r) + 0.7;
+      const crosses = via && wallX > 0 && (mx - wallX) * (wx - wallX) < 0;
+      const pts = crosses ? [mx, my, via[0], via[1] + spread, wx, wy] : [mx, my, wx, wy];
       let length = 0;
       for (let j = 2; j < pts.length; j += 2) length += Math.hypot(pts[j] - pts[j - 2], pts[j + 1] - pts[j - 1]);
-      helpers.push({ pts, length, phase: (k * 4.7) % 17, wreck: wi });
+      helpers.push({ pts, length, phase: (k * 4.7) % 17, wreck: places[(k * 7 + 3) % places.length] });
     }
   }
   const t = truck >= 0 ? props[truck] : null;
@@ -162,7 +168,28 @@ export function yardLayout(s: SalvageContent, opts: { extraCrates?: number; help
     helpers,
     workerStart: pointOf(s, 'start'),
     truckStart: t ? { x: t.x, y: t.y } : { x: pointOf(s, 'start').x + 3, y: pointOf(s, 'start').y },
+    lane: laneBox(s),
+    drawW: Math.max(width, (() => {
+      const l = laneGeo(s);
+      return l ? laneDrawEnd(l) : width;
+    })()),
+    pts: {
+      gate: pt(s, 'gate', [width - 1, depth / 2]),
+      park: pt(s, 'park', [width - 4, depth - 4]),
+      weighbridge: pt(s, 'weighbridge', pt(s, 'scale', [width / 2, depth / 2])),
+      floor: pt(s, 'floor', [width / 2, depth - 6]),
+      scale: pt(s, 'scale', [width / 2, depth / 2]),
+    },
   };
+}
+
+const pt = (s: SalvageContent, id: string, dflt: number[]): number[] => (s.map.points[id] ? [...s.map.points[id]] : dflt);
+
+/** The lane a body may enter east of the gate (./collide.ts): [x0, x1, y0, y1], or [] without a gate. */
+export function laneBox(s: SalvageContent): number[] {
+  const l = laneGeo(s);
+  if (!l) return [];
+  return [s.yard.width - 1, l.end, l.gy - l.half, l.gy + l.half];
 }
 
 /** The rules' places, the fresh yard's things and the truck as props (see the header). */
@@ -175,14 +202,6 @@ export function rulesProps(s: SalvageContent): SalvageProp[] {
     // atlas bakes one box per size, and nobody collides with a decal (its real footprint is the rules').
     const flat = !pl.solid;
     out.push({ id, kind: 'machine', x: p[0], y: p[1], shape: 'box', w: flat ? 1.6 : pl.w, d: flat ? 1.6 : pl.d, h: flat ? 0.1 : pl.h, r: 1, solid: pl.solid });
-  }
-  for (const th of R.stockThings(s)) {
-    const o = s.objects[th.obj];
-    if (!o) continue;
-    const p = R.thingPos(asCfg(s), th.at);
-    // Small things share one placeholder box (one baked sprite); a beam or the car keeps its own size.
-    const small = o.size.w <= 1.4 && o.size.d <= 1.2;
-    out.push({ id: th.uid, kind: 'wreck', x: p.x, y: p.y, shape: 'box', w: small ? 1 : o.size.w, d: small ? 0.8 : o.size.d, h: small ? 0.9 : o.size.h, r: 1, solid: true });
   }
   if (s.map.points.park) {
     const p = pointOf(s, 'park');

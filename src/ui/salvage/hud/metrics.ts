@@ -179,7 +179,8 @@ const HEAD_PAD = 4;
  * lines. 4.4 and S20: at most 150 pt at font scale 1.3 (./hud.test.ts holds it).
  */
 export function ticketHeight(kind: 'weighIn' | 'collection', gradeRows: number, lesson: boolean, s: number): number {
-  const rows = Math.min(3, Math.max(0, gradeRows));
+  // gradeRows counts printed lines: a row that wraps (name, then mass and price) counts two.
+  const rows = Math.min(6, Math.max(0, gradeRows));
   const head = lineH(TICKET_PT.head * s) + HEAD_PAD;
   const row = lineH(TICKET_PT.row * s);
   const small = lineH(TICKET_PT.small * s);
@@ -191,7 +192,8 @@ export function ticketHeight(kind: 'weighIn' | 'collection', gradeRows: number, 
  * Where a ticket goes: its anchor (a screen point: the display post's printer slot, the cab) with the
  * ticket rising above it, centred, then clamped inside the free world and the safe area.
  */
-export function placeTicket(ax: number, ay: number, w: number, h: number, L: HudLayout): { x: number; y: number } {
+export function placeTicket(ax: number, ay: number, w: number, h: number, L: Pick<HudLayout, 'left' | 'right' | 'freeY' | 'bottomY'>): { x: number; y: number } {
+  'worklet';
   const minX = L.left;
   const maxX = Math.max(minX, L.right - w);
   const minY = L.freeY + 4;

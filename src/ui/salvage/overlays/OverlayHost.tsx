@@ -1,101 +1,160 @@
 /**
- * The mode's own overlay host (docs/design/research/yard-tech.md A5: no kit Sheet, no React Native
- * Modal anywhere in this mode, because a Modal is portrait-only by default on iOS and can turn the
- * screen or crash a landscape-only build). Two kinds, both drawn here as absolutely positioned views
- * and registered with `useOverlay` (so the shared popups and hints wait for them):
- * - a panel that slides in from the right side (at most 46 % of the width, inside the safe area);
- * - a centred card (at most 420 pt wide), on top of the panel.
- * Android back closes the top one (and leaves the app only when none is open). A tap on the scrim
- * closes the top one too; a scrim lies directly under each open overlay, so only the top one takes touches. PLACEHOLDER contents: the screens package fills them.
+ * The mode's own overlay host (yard-stage1.md 4.3; docs/design/research/yard-tech.md A5: no kit Sheet,
+ * no React Native Modal anywhere in this mode, because a Modal is portrait-only by default on iOS and can
+ * turn the screen or crash a landscape-only build). ONE card at a time (./cardStack.ts), registered with
+ * `useOverlay` (so the shared popups and hints wait for it), drawn in one of three frames: the right
+ * panel (./Panel.tsx), the wide card (./WideCard.tsx), the centred card (./CentredCard.tsx). The scrim
+ * (the place dimmed at the left, under the top bar) and Android back close it. The rules keep running
+ * beneath (2.8): the card re-reads its data from the rules twice a second and after every press.
+ *
+ * Opening a card: `openCard(ref)` from ./cardStack.ts (the shell's Open button, a label, a hint). The
+ * shell's menu button marks uiState's stack; with no card open that opens the clipboard.
+ * Which view draws a card: by its kind (CardData.kind) in CARD_VIEWS; a kind without a view of its own
+ * is drawn by GenericCard from its CardData (title, lead, rows, foot) in the frame its shape names.
  */
-import { useEffect } from 'react';
-import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { BackHandler, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import * as R from '../../../engine/salvage';
+import type { CardData, CardRef, SalvageConfig, SalvageGame } from '../../../engine/salvage';
+import { useGame } from '../../../state/store';
 import { useOverlay } from '../../kit/overlay';
-import { PAL } from '../palette';
-import { S } from '../strings';
+import { say } from '../strings';
 import { useSalvageUi } from '../uiState';
+import { useCards, type OfficeTab } from './cardStack';
+import { CentredCard } from './CentredCard';
+import { devCard, devFontScale } from './devOpen';
+import { frameLayout, type Insets } from './layout';
+import { Machine } from './Machine';
+import { Office } from './Office';
+import { Panel } from './Panel';
+import { FrameProvider, INK, Row } from './parts';
+import { ProcessBoard } from './ProcessBoard';
+import { withSample } from './sample';
+import { ToolRack, isPadlockRow } from './ToolRack';
+import { WideCard } from './WideCard';
 
-export interface Insets {
-  top: number;
-  bottom: number;
-  left: number;
-  right: number;
+export type { Insets } from './layout';
+export { closeCard, openCard } from './cardStack';
+
+/** How often an open card re-reads the rules (the game changes ten times a second; a card needs less). */
+const REFRESH_MS = 500;
+
+export interface CardViewProps {
+  cfg: SalvageConfig;
+  g: SalvageGame;
+  data: CardData;
+  onClose: () => void;
 }
 
-function useAndroidBack(): void {
+/** The views of the kinds that have their own (the market engineer adds hers here: one line each). */
+export const CARD_VIEWS: Partial<Record<CardData['kind'], ComponentType<CardViewProps>>> = {
+  rack: ({ data, onClose }) => <ToolRack data={data} onClose={onClose} />,
+  machine: ({ cfg, g, data, onClose }) => <Machine cfg={cfg} g={g} data={data} onClose={onClose} />,
+  processBoard: ({ data, onClose }) => <ProcessBoard data={data} onClose={onClose} />,
+};
+
+/** Any card from its data alone, in the frame its shape names. */
+export function GenericCard({ data, onClose }: CardViewProps) {
+  const rows = data.rows.map((r) => <Row key={r.id} row={r} padlock={isPadlockRow(r)} />);
+  if (data.shape === 'centred') {
+    return (
+      <CentredCard title={data.title} onClose={onClose} lead={data.lead} foot={data.foot}>
+        {rows}
+      </CentredCard>
+    );
+  }
+  if (data.shape === 'wide') {
+    return (
+      <WideCard title={data.title} onClose={onClose}>
+        <View style={{ padding: 14 }}>{rows}</View>
+      </WideCard>
+    );
+  }
+  return (
+    <Panel title={data.title} onClose={onClose} lead={data.lead} foot={data.foot}>
+      {rows}
+    </Panel>
+  );
+}
+
+/** The game as the rules have it, re-read every REFRESH_MS and whenever a card's button was pressed. */
+function useLiveGame(on: boolean): SalvageGame | null {
+  const noteAt = useCards((s) => s.note?.at ?? 0);
+  const [, bump] = useState(0);
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => useSalvageUi.getState().closeTop());
-    return () => sub.remove();
-  }, []);
+    if (!on) return;
+    const t = setInterval(() => bump((n) => n + 1), REFRESH_MS);
+    return () => clearInterval(t);
+  }, [on]);
+  void noteAt;
+  const g = useGame.getState().game as SalvageGame;
+  return on && g?.salvage ? g : null;
+}
+
+/** The office's three cards: the rules' for the office place, and its Partners and process board. */
+function officeCards(cfg: SalvageConfig, g: SalvageGame, now: number): { rota: CardData; partners: CardData; board: CardData } {
+  const rota = withSample(cfg, g, { kind: 'place', place: 'office' }, R.cardOf(cfg, g, { kind: 'place', place: 'office' }, now));
+  const partnersRef = rota.tabs?.find((t) => t.title.key === 'title.partners')?.ref;
+  const partnersData: CardData = partnersRef ? R.cardOf(cfg, g, partnersRef, now) : { kind: 'partners', shape: 'panel', title: { key: 'title.partners' }, lead: [], rows: [], foot: [], legal: null };
+  const partners = withSample(cfg, g, partnersRef ?? { kind: 'place', place: 'office' }, partnersData);
+  const board = withSample(cfg, g, { kind: 'processBoard' }, R.cardOf(cfg, g, { kind: 'processBoard' }, now));
+  return { rota, partners, board };
 }
 
 export function OverlayHost({ width, height, insets }: { width: number; height: number; insets: Insets }) {
-  useAndroidBack();
-  const stack = useSalvageUi((s) => s.stack);
-  const panel = stack.includes('panel');
-  const card = stack.includes('card');
-  return (
-    <>
-      {stack.length ? <Pressable accessibilityRole="button" accessibilityLabel={S.close} style={[StyleSheet.absoluteFill, { backgroundColor: PAL.scrim }]} onPress={() => useSalvageUi.getState().closeTop()} /> : null}
-      <SidePanel open={panel} width={width} height={height} insets={insets} />
-      {/* A scrim directly under the card too: over an open panel it dims it and takes its touches, so only the top overlay is live. */}
-      {card && panel ? <Pressable accessibilityRole="button" accessibilityLabel={S.close} style={[StyleSheet.absoluteFill, { backgroundColor: PAL.scrim }]} onPress={() => useSalvageUi.getState().closeTop()} /> : null}
-      {card ? <CentreCard width={width} height={height} insets={insets} /> : null}
-    </>
-  );
-}
+  const cfg = useGame((s) => s.cfg);
+  const ref = useCards((s) => s.ref);
+  const tab = useCards((s) => s.tab);
+  const uiStack = useSalvageUi((s) => s.stack.length);
+  const { fontScale } = useWindowDimensions();
+  const layout = useMemo(() => frameLayout(width, height, insets, devFontScale() ?? fontScale), [width, height, insets, fontScale]);
+  const salvage = R.isSalvage(cfg) ? cfg : null;
+  const content = salvage?.salvage;
+  const ctx = useMemo(() => (content ? { layout, content } : null), [layout, content]);
 
-function SidePanel({ open, width, height, insets }: { open: boolean; width: number; height: number; insets: Insets }) {
-  useOverlay(open);
-  const w = Math.min(380, Math.round(width * 0.46)) + insets.right;
-  const x = useSharedValue(w);
+  // Android back closes the card (and leaves the app only when none is open).
   useEffect(() => {
-    x.value = withTiming(open ? 0 : w, { duration: 220 });
-  }, [open, w, x]);
-  const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => useCards.getState().close() || useSalvageUi.getState().closeTop());
+    return () => sub.remove();
+  }, []);
+  // The shell's menu button marks uiState: with no card open, that is the clipboard; when the shell
+  // pops its mark (its own back or scrim), the card closes with it.
+  useEffect(() => {
+    const cards = useCards.getState();
+    if (uiStack > 0 && !cards.ref) cards.open({ kind: 'clipboard' });
+    else if (uiStack === 0 && cards.ref) useCards.setState({ ref: null, note: null });
+  }, [uiStack]);
+  // The web preview's ?card= switch (devOpen.web.ts), once the game is there.
+  useEffect(() => {
+    const d = devCard();
+    if (!d) return;
+    const t = setTimeout(() => useCards.getState().open(d.ref, d.tab), 600);
+    return () => clearTimeout(t);
+  }, []);
+
+  const g = useLiveGame(!!ref && !!salvage);
+  useOverlay(!!ref);
+  if (!ref || !salvage || !g || !ctx) return null;
+  const close = () => useCards.getState().close();
   return (
-    <Animated.View pointerEvents={open ? 'auto' : 'none'} style={[styles.panel, { width: w, height, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16, paddingRight: insets.right + 16 }, style]}>
-      <Text style={styles.title}>{S.panelTitle}</Text>
-      <Text style={styles.body}>{S.panelBody}</Text>
-      <View style={styles.row}>
-        <Btn label={S.openCard} onPress={() => useSalvageUi.getState().open('card')} />
-        <Btn label={S.close} onPress={() => useSalvageUi.getState().closeTop()} />
-      </View>
-    </Animated.View>
+    <FrameProvider value={ctx}>
+      <Pressable accessibilityRole="button" accessibilityLabel={say({ key: 'close' }, ctx.content)} style={[styles.scrim, { top: 0 }]} onPress={close} />
+      <CardView cfg={salvage} g={g} cardRef={ref} tab={tab} onClose={close} />
+    </FrameProvider>
   );
 }
 
-function CentreCard({ width, height, insets }: { width: number; height: number; insets: Insets }) {
-  useOverlay(true);
-  const w = Math.min(420, width - insets.left - insets.right - 48);
-  return (
-    <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', paddingLeft: insets.left, paddingRight: insets.right }]}>
-      <View style={[styles.card, { width: w, maxHeight: height - insets.top - insets.bottom - 32 }]}>
-        <Text style={styles.title}>{S.cardTitle}</Text>
-        <Text style={styles.body}>{S.cardBody}</Text>
-        <View style={styles.row}>
-          <Btn label={S.ok} onPress={() => useSalvageUi.getState().closeTop()} />
-        </View>
-      </View>
-    </View>
-  );
-}
-
-export function Btn({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={6} style={({ pressed }) => [styles.btn, pressed && { opacity: 0.7 }]}>
-      <Text style={styles.btnText}>{label}</Text>
-    </Pressable>
-  );
+function CardView({ cfg, g, cardRef, tab, onClose }: { cfg: SalvageConfig; g: SalvageGame; cardRef: CardRef; tab: OfficeTab; onClose: () => void }) {
+  const now = Date.now();
+  const data = withSample(cfg, g, cardRef, R.cardOf(cfg, g, cardRef, now));
+  if (data.kind === 'rota') {
+    const o = officeCards(cfg, g, now);
+    return <Office tab={tab} rota={o.rota} partners={o.partners} board={o.board} onTab={(t) => useCards.getState().setTab(t)} onClose={onClose} />;
+  }
+  const View1 = CARD_VIEWS[data.kind] ?? GenericCard;
+  return <View1 cfg={cfg} g={g} data={data} onClose={onClose} />;
 }
 
 const styles = StyleSheet.create({
-  panel: { position: 'absolute', top: 0, right: 0, backgroundColor: PAL.card, paddingLeft: 16, borderTopLeftRadius: 14, borderBottomLeftRadius: 14 },
-  card: { backgroundColor: PAL.card, borderRadius: 14, padding: 18 },
-  title: { fontSize: 18, fontWeight: '800', color: PAL.ink, marginBottom: 8 },
-  body: { fontSize: 15, color: PAL.ink, marginBottom: 14 },
-  row: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  btn: { minHeight: 44, minWidth: 64, paddingHorizontal: 16, borderRadius: 10, backgroundColor: PAL.button, alignItems: 'center', justifyContent: 'center' },
-  btnText: { fontSize: 15, fontWeight: '700', color: PAL.buttonText },
+  scrim: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: INK.scrim },
 });

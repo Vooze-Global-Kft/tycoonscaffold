@@ -21,8 +21,8 @@ export function WideCard({ title, onClose, tabs, onTab, children }: WideCardProp
   const b = layout.wide;
   return (
     <View accessibilityViewIsModal style={[styles.card, { left: b.x, top: b.y, width: b.w, height: b.h }]}>
-      <TitleRow title={title} onClose={onClose} />
-      {tabs && onTab ? <TabStrip tabs={tabs} onTab={onTab} /> : null}
+      {/* The office's tabs sit in the title row, so the board's 308 pt still fit the band (4.5). */}
+      <TitleRow title={title} onClose={onClose} right={tabs && onTab ? <TabStrip tabs={tabs} onTab={onTab} inline /> : undefined} />
       <View style={{ flex: 1 }}>{children}</View>
     </View>
   );

@@ -12,10 +12,10 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 | Ads | Yes: Google AdMob, rewarded (opt-in). Highest ad content rating: PG (parental guidance) (monetization.ads.maxAdContentRating) |
 | In-app purchases | No |
 | Premium currency | Not sold |
-| Random items (chests) | None |
-| Random items SOLD (money or Gems) | No: chests are only earned (timer, missions, rewarded ads) |
+| Random items (chests) | None: no chests, boxes or random rewards of any kind |
+| Random items SOLD (money or any currency) | No |
 | Time-limited offers | No |
-| Daily rewards | Yes |
+| Daily rewards | No |
 | Chat, user-generated content, web browsing, location | No |
 | Simulated gambling (casino games) | No |
 
@@ -24,9 +24,32 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 - Target age: **13 and over**. Google Play target audience: tick 13-15, 16-17 and 18+ only.
 - **Never** the Apple Kids Category or Google Play's Families / "Designed for Families" programme: the
   game uses third-party ads and analytics, which those programmes exclude (policy.md 3).
-- The game draws no people (no cast): machines and call-sign plates only. Keep "kids" and "for
-  children" wording out of the store text, and check the screenshots show no young characters.
+- The game draws people in code: a yard boss and crew, adults in hard hats, hi-vis vests, gloves and
+  boots (a face shield when cutting, an aluminised apron at every pour); nobody hurt or unsafe; no
+  children (yard-design.md 11). Keep "kids" and "for children" wording out of the store text.
 - "Could the app unintentionally appeal to children?" (Play): answer honestly; cartoon art can count.
+
+## Pending: the rating answers wait for the stages that decide them (yard-design.md 7.7)
+
+- **Every answer in this file is PENDING.** They are this config's defaults, not decided answers: the listing, the
+  ads, the purchases and the online part (boards, other players' yards, companies of up to 30) come in
+  later stages, and the design expects Apple 13+ and PEGI 3 to 7 / ESRB E once they exist (7.7). Nothing
+  here may be entered in a console before the hand-written block says it is decided.
+- Simulated money only (L4): the posted price board, the exchanges and the listing are simulations; no real
+  money goes into or out of a price, a share or another player; nothing reads as gambling or trading.
+- Typed text: none. Names a player sees are generated from curated lists (7.6); report and block come with
+  the online stage.
+
+<!-- BEGIN hand-written answers: kept by npm run sync, edit only between these two lines -->
+**Status: PENDING (25 November 2026, the wiring step of the first yard).** No answer of this file is decided.
+The first yard is built for the owner's phone test through Expo Go and is not submitted. It has no account,
+no online part, no typed text, no ads and no purchases (stubs); the rows above that say "Ads: Yes" describe
+the config's test ad ids, not anything a player of the first yard sees.
+Expected, from yard-design.md 7.7, once the later stages exist: Apple 13+ (Contests frequent; Simulated
+Gambling none; Loot Boxes none; User-generated content yes, conservatively; Messaging none); IARC PEGI 3
+(7 if pennants count as return rewards), ESRB E, with "In-Game Purchases" and "Users Interact"; Google 13+,
+never Families. The store step writes the decided answers here, for the build it submits.
+<!-- END hand-written answers -->
 
 ## App Store Connect: age rating questionnaire
 
@@ -74,7 +97,10 @@ disclosure page before you submit; they change.
 4. Create every product id in App Store Connect, Play Console and RevenueCat, and attach the
    in-app purchases to the first version you submit.
 5. Privacy policy page live at the URL above, listing AdMob, Firebase and RevenueCat.
-6. Release one game at a time from one account, each with its own art, sounds, numbers and
+   App Review: paste games/scrap-yard/store/REVIEW-NOTES.md into "Notes" in App Store Connect (and the Play
+   console's "App access" instructions), with a contact name, email and phone.
+6. Decide every pending answer above (the hand-written block) before the first submission.
+7. Release one game at a time from one account, each with its own art, sounds, numbers and
    listing text: both stores remove families of near-identical apps, and take related accounts with
    them (policy.md 4). `npm run validate` catches shared tables and near-identical descriptions,
    not shared art.

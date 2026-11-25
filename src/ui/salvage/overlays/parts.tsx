@@ -132,6 +132,19 @@ export function BuyButton({ button, row }: { button: CardButton; row: string }) 
   );
 }
 
+/** A button that only changes what the card shows (Not now on a confirming line): same look as Buy. */
+export function LocalButton({ label, onPress }: { label: Txt; onPress: () => void }) {
+  const { layout } = useFrame();
+  const words = useSay()(label);
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={words} onPress={onPress} hitSlop={4} style={({ pressed }) => [styles.buy, { minWidth: BUY_W, height: BUY_H }, pressed ? { opacity: 0.75 } : null]}>
+      <Text allowFontScaling={false} numberOfLines={1} style={{ fontSize: pt(TYPE.price, layout.fs), fontWeight: '800', color: INK.ink }}>
+        {words}
+      </Text>
+    </Pressable>
+  );
+}
+
 /** "Owned", "Came with the yard": a quiet tag where a button would be. */
 export function OwnedTag({ t }: { t: Txt }) {
   return (
@@ -149,7 +162,7 @@ export function PadlockLine({ t, size = 'line' }: { t: Txt; size?: Size }) {
     <View style={styles.padRow}>
       <Padlock size={Math.round(fontSize * 0.95)} />
       <View style={{ flexShrink: 1 }}>
-        <Line t={t} size={size} colour={INK.soft} />
+        <Line t={t} size={size} colour={INK.soft} lines={2} />
       </View>
     </View>
   );
@@ -191,8 +204,8 @@ export function Row({ row, padlock, tag, onPress }: { row: CardRow; padlock?: bo
   const body = (
     <View style={[styles.row, { minHeight: rowHeight(layout.fs) }]}>
       <View style={styles.rowText}>
-        <Line t={row.name} size="name" bold />
-        {row.line ? padlock ? <PadlockLine t={row.line} /> : <Line t={row.line} size="line" colour={INK.soft} /> : null}
+        <Line t={row.name} size="name" bold lines={2} />
+        {row.line ? padlock ? <PadlockLine t={row.line} /> : <Line t={row.line} size="line" colour={INK.soft} lines={2} /> : null}
         {row.extra ? <Line t={row.extra} size="line" colour={INK.soft} /> : null}
       </View>
       {row.button ? <BuyButton button={row.button} row={row.id} /> : tag ? <OwnedTag t={tag} /> : null}
@@ -228,12 +241,12 @@ export interface Tab {
 }
 
 /** The tab strip (the office: Rota, Partners, Process board): 32 pt, the open tab underlined in hi-vis. */
-export function TabStrip({ tabs, onTab }: { tabs: Tab[]; onTab: (id: string) => void }) {
+export function TabStrip({ tabs, onTab, inline }: { tabs: Tab[]; onTab: (id: string) => void; inline?: boolean }) {
   const { layout } = useFrame();
   const say1 = useSay();
   const h = Math.max(TAB_H, Math.ceil(pt(TYPE.tab, layout.fs) * 1.25) + 12);
   return (
-    <View accessibilityRole="tablist" style={[styles.tabs, { height: h }]}>
+    <View accessibilityRole="tablist" style={[styles.tabs, inline ? styles.tabsInline : null, { height: h }]}>
       {tabs.map((t) => (
         <Pressable key={t.id} accessibilityRole="tab" accessibilityState={{ selected: t.open }} accessibilityLabel={say1(t.title)} onPress={() => onTab(t.id)} hitSlop={4} style={[styles.tab, t.open ? styles.tabOpen : null]}>
           <Line t={t.title} size="tab" bold={t.open} colour={t.open ? INK.ink : INK.soft} />
@@ -273,6 +286,7 @@ export const styles = StyleSheet.create({
   refusal: { paddingBottom: 6 },
   lead: { paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: INK.rule },
   tabs: { flexDirection: 'row', paddingHorizontal: PAD - 4, borderBottomWidth: 1, borderBottomColor: INK.rule },
+  tabsInline: { borderBottomWidth: 0, paddingHorizontal: 0, marginRight: 4 },
   tab: { paddingHorizontal: 8, justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent', marginRight: 4 },
   tabOpen: { borderBottomColor: INK.hivis },
   foot: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, paddingTop: 8 },

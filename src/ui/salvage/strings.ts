@@ -63,7 +63,7 @@ export const TEXT = {
   'chip.held': 'held',
   'chip.lowDay': 'low day',
   'chip.highDay': 'high day',
-  'chip.reservedDeal': 'Reserved for {foundry} {a} / {b}',
+  'chip.reservedDeal': 'For the foundry {a} / {b}',
   'chip.forCrucible': 'For the crucible {a} / {b}',
   'chip.padlock': '{why}',
   'chip.padlockPrice': '{why} · {x}',
@@ -93,10 +93,10 @@ export const TEXT = {
   // --- package 4: card rows and buttons (4.3, 5.2) ---
   'card.buy': 'Buy {x}',
   'card.hire': 'Hire {x}',
-  'card.level': 'Level {n} → {m} · {x}',
+  'card.level': 'Level up {x}',
   'card.owned': 'Owned',
   'card.cameWithYard': 'Came with the yard',
-  'card.sell': 'Sell {kg} · {x}',
+  'card.sell': 'Sell {x}',
   'card.hold': 'Hold',
   'card.sign': 'Sign',
   'card.notNow': 'Not now',
@@ -130,7 +130,7 @@ export const TEXT = {
   'card.skipNet': 'Net {kg}',
   'card.skipPrice': '{x}',
   'card.businessCard': '{contact} · {partner}',
-  'card.converterPaid': 'Paid on assay: platinum {pt}, palladium {pd}, rhodium {rh}, less ceramic and assay fee',
+  'card.converterPaid': 'Paid on assay: platinum {pt}, palladium {pd}, rhodium {rh}, less ceramic and assay fees',
   'card.levelAdds': '+{x} an hour {what}',
   'card.notBottleneck': 'Not the bottleneck now',
   'card.keptForLoad': 'Kept for the next load: {x}',
@@ -141,7 +141,7 @@ export const TEXT = {
   'item.trolley': 'Flat trolley',
   'item.frame': 'Carry frame',
   'item.spanners': 'Spanners and bolt cutters',
-  'item.sledge': 'Sledgehammer and angle grinder',
+  'item.sledge': 'Sledge and grinder',
   'item.torch': 'Cutting torch',
   'item.truck': 'Hook-lift truck',
   'item.handStripper': 'Hand stripper',
@@ -163,7 +163,7 @@ export const TEXT = {
   'effect.bench': 'Takes motors apart: copper, steel, alu',
   'effect.crucible': 'Melts brass solids into ingots',
   'effect.alu': 'Melts cast aluminium into ingots',
-  'effect.night': 'The yard works longer while you are away',
+  'effect.night': 'A longer away cap',
   'effect.hand': 'Carries to the scale and the hoppers',
   'effect.cutter': 'Cuts what waits at the drop-off',
   'effect.driver': 'Fetches full loads with the truck',
@@ -174,7 +174,7 @@ export const TEXT = {
   'board.lowDay': 'low day',
   'board.highDay': 'high day',
   'board.firstHint': '{grade}: a low day. Holding is free.',
-  'board.sellTotal': 'Sell {kg} · {x}',
+  'board.sellTotal': 'Sell {x}',
 
   // --- package 4: the process board (4.5) ---
   'plate.handStripper': 'Hand stripper',
@@ -188,9 +188,9 @@ export const TEXT = {
   'plate.lithium': 'Lithium',
   'plate.pgm': 'Platinum group and iridium',
   'plate.tungsten': 'Tungsten',
-  'plate.owned': 'Owned · level {n}',
+  'plate.owned': 'Level {n}',
   'plate.price': '{x}',
-  'plate.levelPrice': 'Level {n} · {x}',
+  'plate.levelPrice': 'Level up {x}',
   'plate.locked': '{why}',
 
   // --- package 4: the industry table and the rung sign (2.11) ---
@@ -216,8 +216,8 @@ export const TEXT = {
   'away.nothing': 'Nothing was weighed out.',
 
   // --- packages 3 and 4: tickets and slips (2.2) ---
-  'ticket.weighInHead': '{homeYard} · scale · No. {n}',
-  'ticket.gradeToday': '{p}/kg today',
+  'ticket.weighInHead': '{homeYard} · No. {n}',
+  'ticket.gradeToday': '{p}/kg',
   'ticket.todaysValue': 'today’s value {x}',
   'ticket.weighInLegal': 'Weighed into bays · not yet sold',
   'ticket.dropOffSlip': '{thing} · signed in · gate drop-off',
@@ -343,6 +343,68 @@ export const TEXT = {
 const _noExtra: Record<keyof typeof TEXT, R.TextKey> = Object.fromEntries(Object.keys(TEXT).map((k) => [k, k])) as Record<keyof typeof TEXT, R.TextKey>;
 void _noExtra;
 
+/**
+ * Words written for keys that are not yet in the key list (requested in requests.md from the rules
+ * lead, `[strings] TEXT_KEYS`). Nothing reads this block: when a key lands in the list, its text moves
+ * into TEXT above and leaves here. `check.ts --all` checks it like TEXT (fit, voice, names).
+ * Holes are the arguments the caller passes; the comment says which formatter fills each.
+ */
+export const TEXT_PENDING = {
+  // goals (5.3; `goal.widen` and `goal.widenLevel` replace goal.levelHand, goal.levelStripper, goal.levelCutter)
+  'goal.widen': 'Buy next: {item}', // item: { text: item.* | role.* | item.skip }
+  'goal.widenLevel': 'Level up: {item}', // item: { text: role.* | item.* }
+  'goal.buyAlu': 'Buy the aluminium recipe',
+  // the advice line (2.10; Advice.line): the purchase that widens the yard now
+  'advice.buy': 'Widens the yard now: {item} · {x}', // x: money
+  'advice.level': 'Widens the yard now: {item} {n} · {x}', // n: the next level
+  // tool rack, rota and process board rows (4.3; effect lines ≤ 38)
+  'item.skip': 'Another skip',
+  'effect.frame': 'A hand load on your back',
+  'effect.spanners': 'Takes apart washers, bikes and cable',
+  'effect.handStripper': 'Strips cable while you stand at it',
+  'effect.brass': 'Melts brass solids into brass ingots',
+  'card.levelN': 'Level {n}',
+  'card.crewRow': '{name} · level {n}', // name: { name: crew.<n> }
+  'card.on': 'On',
+  'card.off': 'Off',
+  // machines (4.3)
+  'card.hopper': 'Hopper {a} / {b}', // a, b: mass
+  'card.tray': 'Tray {a} / {b}',
+  'card.heating': 'Heating',
+  'card.cooling': 'Cooling',
+  'card.handOnly': 'Turns only while you stand at it',
+  'card.firstPour': 'Ready to pour · it waits for you',
+  // partners and skips (2.7, 4.3)
+  'card.levelFromTo': 'Level {n} → {m}',
+  'card.skipsInRotation': 'Skips in rotation: {n}',
+  'card.skipTrial': '{partner} · trial load',
+  'card.skipReady': 'Full · ready to hook',
+  'card.skipOnTruck': 'On the truck',
+  'card.partnerLine': '{line}', // line: { text } from text.json partners.<id>.line once it is in the content
+  // the supply deal (2.9, 4.3)
+  'card.dealNoCharge': 'A short day costs nothing. Trust falls a little.',
+  'card.dealDone': 'All deliveries made',
+  // price board and bays (4.4)
+  'board.stock': 'In the bay {kg}',
+  'board.today': 'Today {p}',
+  'board.usualPrice': 'usual {p}',
+  'chip.aside': 'Set aside {kg} · {x}',
+  // the industry table and the rung sign (2.11)
+  'table.next': 'Next: {rival} · {t} to go', // rival: { name: rival.<n>.chip }
+  'table.locked': 'Opens at {t} supplied · {r} metals',
+  'opens.rung2': 'The cutting torch, a radiation portal and a supply deal',
+  'opens.rung3': 'Yard capacity {c} t/h',
+  // refusals (5.4): the driver's earmark
+  'refusal.earmark': '{x} is kept for the load on its way',
+  // Settings and Help (4.3)
+  'clip.privacyLine': 'Your yard is saved on this phone. There is no account.',
+  'clip.restartYes': 'Start again',
+  'clip.restartNo': 'Keep my yard',
+  'help.lessons': 'What the tickets taught',
+  'help.glossary': 'Words of the trade',
+  'help.about': 'About this game',
+} as const;
+
 // ================================================================================================ names
 
 /**
@@ -375,6 +437,8 @@ interface RegisterEntry {
   id?: string;
   current?: boolean;
   chip?: string;
+  /** A short form for chips (the merchant's `short`), landing as `<id>.short`. */
+  short?: string;
 }
 
 const live = (e: RegisterEntry) => !/^(changed|rejected)/.test(e.verdict ?? '');
@@ -389,12 +453,15 @@ function tonnesOf(kind: string): number {
 /**
  * Names by register id (the build script and tests call it; the app reads `salvage.names`). The
  * register's own `byId` table (version 3 on) is the source; each current entry's `chip` (≤ 14
- * characters) lands as `<id>.chip`. A register without ids is read by kind and name (NAME_SELECTORS).
+ * characters) lands as `<id>.chip`, a `short` as `<id>.short`. A register without ids is read by kind and name (NAME_SELECTORS).
  */
 export function namesFromRegister(register: { names: RegisterEntry[]; byId?: Record<string, string> }): Record<string, string> {
   if (register.byId && Object.keys(register.byId).length) {
     const out: Record<string, string> = { ...register.byId };
-    for (const e of register.names) if (e.id && e.current && e.chip) out[`${e.id}.chip`] = e.chip;
+    for (const e of register.names) {
+      if (e.id && e.current && e.chip) out[`${e.id}.chip`] = e.chip;
+      if (e.id && e.current && e.short) out[`${e.id}.short`] = e.short;
+    }
     return out;
   }
   const entries = register.names.filter(live);

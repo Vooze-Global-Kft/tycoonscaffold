@@ -331,3 +331,73 @@ export function drawGroundDecal(c: SkCanvas, v: View3q, id: string, frame = 0): 
  * gradient from the screen's left to its right).
  */
 export const SUN_WASH = { colors: ['rgba(255,214,150,0.22)', 'rgba(255,214,150,0)', 'rgba(46,58,82,0.06)'], stops: [0, 0.55, 1] } as const;
+
+/**
+ * The low sun's warm multiply over the finished frame (yard-style 4: "screenshots add a warm wash from
+ * the west"): a Multiply blend from a peach at the west edge to near white at the east, then a faint
+ * golden screen from the top-left. Draw it last over the world (under the interface). x0, w: the screen.
+ */
+export const SUN_MULTIPLY = { colors: ['#F7CF9C', '#FBE6C8', '#F6F1EA'], stops: [0, 0.45, 1] } as const;
+
+/**
+ * The far yard past the back wall, for a frame whose ground starts at screen y `ground` (the wall's foot):
+ * the late-day sky and drawSkyline's tree line, stacks and dock crane at `horizon`, then a nearer band
+ * of the neighbouring yard: container stacks in the yard's three colours (hazed), a scrap mountain and a
+ * material handler's grab crane, a gantry. Screen space; the world draws it as a strip behind the wall.
+ */
+export function drawFarYard(c: SkCanvas, x0: number, w: number, top: number, horizon: number, seed = 3): void {
+  drawSkyline(c, x0, w, top, horizon, seed);
+  const haze = (hex: string, k = 0.35) => mix(hex, YARD.far, k);
+  // a scrap mountain on the neighbour's ground, lumpy, with a few beams sticking out
+  const mx = x0 + w * 0.3;
+  const mb = builder().moveTo(mx - 90, horizon + 2);
+  for (let i = 0; i <= 12; i++) {
+    const t = i / 12;
+    const hgt = Math.sin(t * Math.PI) * 34 + (hash01(seed, i, 7) - 0.5) * 7;
+    mb.lineTo(mx - 90 + t * 180, horizon - hgt);
+  }
+  mb.lineTo(mx + 90, horizon + 2).close();
+  c.drawPath(mb.build(), fill(haze('#7A6A5C', 0.45)));
+  for (let i = 0; i < 5; i++) {
+    const bx = mx - 60 + i * 28;
+    const by = horizon - 12 - hash01(seed, i, 8) * 16;
+    c.drawPath(segment(bx, by, bx + 10 - hash01(seed, i, 9) * 20, by - 9), stroke(haze('#5E5248', 0.4), 2));
+  }
+  // a material handler: tracked base, cab up on a riser, a long boom and a grab over the mountain
+  const hx = mx + 70;
+  c.drawRect({ x: hx - 14, y: horizon - 8, width: 28, height: 8 }, fill(haze('#4E5A63', 0.4)));
+  c.drawRect({ x: hx - 5, y: horizon - 26, width: 10, height: 18 }, fill(haze('#4E5A63', 0.4)));
+  c.drawRect({ x: hx - 8, y: horizon - 36, width: 14, height: 11 }, fill(haze(YARD.hivisDark, 0.5)));
+  c.drawPath(segment(hx, horizon - 28, hx - 52, horizon - 70), stroke(haze(YARD.hivisDark, 0.5), 3.2));
+  c.drawPath(segment(hx - 52, horizon - 70, hx - 66, horizon - 44), stroke(haze(YARD.hivisDark, 0.5), 2.4));
+  c.drawPath(segment(hx - 66, horizon - 44, hx - 66, horizon - 36), stroke(haze('#3E464D', 0.4), 1));
+  c.drawPath(poly([hx - 72, horizon - 36, hx - 60, horizon - 36, hx - 63, horizon - 29, hx - 69, horizon - 29]), fill(haze('#3E464D', 0.4)));
+  // container stacks of the yard next door, two and three high, in the yard's colours under haze
+  const cols = [YARD.containerTeal, YARD.containerOxide, YARD.containerSage];
+  const stack = (sx: number, tiers: number, s: number) => {
+    for (let t = 0; t < tiers; t++) {
+      const col = haze(cols[(s + t) % 3], 0.38);
+      const y = horizon - 15 * (t + 1);
+      c.drawRect({ x: sx + (t % 2) * 4, y, width: 62, height: 14.4 }, fill(col));
+      for (let k = 1; k < 10; k++) c.drawRect({ x: sx + (t % 2) * 4 + k * 6.2, y: y + 1, width: 0.8, height: 12.4 }, fill(shade(col, -0.12)));
+      c.drawRect({ x: sx + (t % 2) * 4, y, width: 62, height: 1.4 }, fill(shade(col, 0.15)));
+    }
+  };
+  stack(x0 + w * 0.02, 3, seed);
+  stack(x0 + w * 0.12, 2, seed + 1);
+  stack(x0 + w * 0.6, 3, seed + 2);
+  stack(x0 + w * 0.69, 2, seed);
+  stack(x0 + w * 0.86, 3, seed + 1);
+  // a gantry over the stacks on the right: two legs and a girder, hi-vis under haze
+  const gx = x0 + w * 0.76;
+  const gc = haze(YARD.hivis, 0.55);
+  c.drawRect({ x: gx, y: horizon - 62, width: 4, height: 62 }, fill(gc));
+  c.drawRect({ x: gx + 96, y: horizon - 62, width: 4, height: 62 }, fill(gc));
+  c.drawRect({ x: gx - 6, y: horizon - 66, width: 112, height: 6 }, fill(gc));
+  c.drawRect({ x: gx + 40, y: horizon - 60, width: 12, height: 7 }, fill(haze('#4E5A63', 0.4)));
+}
+
+/** The long late-day shadow a wall of height h (metres) throws on the ground east and a little south: a band at screen y. */
+export function drawWallShadow(c: SkCanvas, x0: number, w: number, y: number, depth: number): void {
+  c.drawRect({ x: x0, y, width: w, height: depth }, linear(0, y, 0, y + depth, [`rgba(46,58,82,0.24)`, 'rgba(46,58,82,0)'], [0, 1]));
+}
