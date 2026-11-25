@@ -1064,18 +1064,18 @@ export const CAR_STAGES = ['whole', 'wheels', 'open', 'roof', 'shell'] as const;
 export function drawCarStage(c: SkCanvas, v: View3q, stage: number, seed = 18): void {
   const paint = CAR_PAINTS[1];
   const L = 1.4;
-  const Wd = 0.7;
+  const Wd = 0.58;
   const zb = stage === 0 ? 0.18 : 0.24; // sill height: on rims, then on blocks
   const zW = zb + 0.5; // the waist (bonnet, boot ledge, sills of the glass)
   const zR = zW + 0.42; // the roof
   // the glasshouse: base x gb0..gb1 at the waist, roof x gr0..gr1, inset in y
   const gb0 = -L + 0.1;
-  const gb1 = 0.42;
+  const gb1 = 0.5;
   const gr0 = -L + 0.42;
-  const gr1 = 0.02;
-  const yb = Wd - 0.08;
-  const yr = Wd - 0.26;
-  const sh = () => boxShadow(c, v, 2.8, 1.4, 0, 0, stage >= 3 ? 0.75 : 1.15);
+  const gr1 = -0.06;
+  const yb = Wd - 0.04;
+  const yr = Wd - 0.16;
+  const sh = () => boxShadow(c, v, 2.8, 1.16, 0, 0, stage >= 3 ? 0.75 : 1.15);
   if (stage < 4) sh();
   else shadowWestOf(c, proj(v, 0.05, 0, 0)[0], sh);
   const body = shade(paint, -0.06);
@@ -1089,8 +1089,9 @@ export function drawCarStage(c: SkCanvas, v: View3q, stage: number, seed = 18): 
       [-L + 0.04, Wd, zb],
       [L - 0.06, Wd, zb],
       [L, Wd, zb + 0.14],
-      [L, Wd, zW - 0.1],
-      [L - 0.1, Wd, zW],
+      [L, Wd, zW - 0.18],
+      [L - 0.1, Wd, zW - 0.1],
+      [gb1, Wd, zW],
       [-L + 0.04, Wd, zW],
       [-L, Wd, zW - 0.06],
       [-L, Wd, zb + 0.1],
@@ -1126,14 +1127,21 @@ export function drawCarStage(c: SkCanvas, v: View3q, stage: number, seed = 18): 
         c.drawCircle(wx, wy, 1.8, fill(TONE.aluMid));
       }
     // the whole top of the lower body (one face): the bonnet east, the boot ledge west, body coloured
-    const top: V3[] = [
-      [-L + 0.04, -Wd, zW],
-      [L - 0.1, -Wd, zW],
-      [L - 0.1, Wd, zW],
-      [-L + 0.04, Wd, zW],
-    ];
+    // the top of the lower body: the boot ledge west of the glasshouse, level; the bonnet east of it,
+    // falling 0.1 m to the nose (so it reads as a bonnet, not a lid)
+    const zN = zW - 0.1;
     const topCol = shade(paint, 0.16);
-    faceFill(c, v, top, topCol, LINE_W);
+    faceFill(c, v, [[-L + 0.04, -Wd, zW], [gb1, -Wd, zW], [gb1, Wd, zW], [-L + 0.04, Wd, zW]], topCol, LINE_W);
+    const bonnet: V3[] = [
+      [gb1, -Wd, zW],
+      [L - 0.1, -Wd + 0.06, zN],
+      [L - 0.1, Wd - 0.06, zN],
+      [gb1, Wd, zW],
+    ];
+    faceFill(c, v, bonnet, shade(paint, 0.08), LINE_W);
+    // the nose: a grille strip under the bonnet's front edge
+    const [n0x, n0y] = proj(v, L - 0.1, Wd - 0.06, zN);
+    c.drawPath(rrect(n0x - 3, n0y, 4, 6, 1), fill(shade(INK, 0.15)));
     // the bonnet's shut line and its sheen
     const [s0x, s0y] = proj(v, gb1 + 0.04, -Wd + 0.06, zW);
     const [s1x, s1y] = proj(v, gb1 + 0.04, Wd - 0.06, zW);
@@ -1164,18 +1172,18 @@ export function drawCarStage(c: SkCanvas, v: View3q, stage: number, seed = 18): 
         [gr0, yr, zR],
         [gb0, yb, zW],
       ];
-      faceFill(c, v, hatch, shade(YARD.glassDark, -0.12), LINE_W);
+      faceFill(c, v, hatch, shade(YARD.glassDark, -0.3), LINE_W);
       const south: V3[] = [
         [gb0, yb, zW],
         [gb1, yb, zW],
         [gr1, yr, zR],
         [gr0, yr, zR],
       ];
-      faceFill(c, v, south, shade(paint, -0.1), LINE_W);
+      faceFill(c, v, south, shade(paint, -0.2), LINE_W);
       // the side glass inset in the south face, split by the B pillar
-      const inset = (q: V3[], s0: number, s1: number) => subQuad(q, s0, s1, 0.16, 0.86);
-      faceFill(c, v, inset(south, 0.08, 0.47), YARD.glassDark, 0.8);
-      faceFill(c, v, inset(south, 0.55, 0.9), YARD.glassDark, 0.8);
+      const inset = (q: V3[], s0: number, s1: number) => subQuad(q, s0, s1, 0.1, 0.9);
+      faceFill(c, v, inset(south, 0.04, 0.5), shade(YARD.glassDark, -0.15), 0.8);
+      faceFill(c, v, inset(south, 0.56, 0.95), shade(YARD.glassDark, -0.15), 0.8);
       const [gx0, gy0] = proj(v, ...subQuad(south, 0.62, 0.62, 0.3, 0.3)[0]);
       c.drawPath(segment(gx0, gy0 + 2, gx0 + 6, gy0 - 5), stroke('#FFFFFF', 1.1, 0.55));
       const ws: V3[] = [
@@ -1184,7 +1192,7 @@ export function drawCarStage(c: SkCanvas, v: View3q, stage: number, seed = 18): 
         [gr1, yr, zR],
         [gr1, -yr, zR],
       ];
-      faceFill(c, v, ws, shade(YARD.glass, -0.08), LINE_W);
+      faceFill(c, v, ws, YARD.glassDark, LINE_W);
       faceFill(c, v, subQuad(ws, 0, 1, 0.82, 1), shade(YARD.glassDark, -0.2));
       const [wx0, wy0] = proj(v, ...subQuad(ws, 0.3, 0.3, 0.3, 0.3)[0]);
       c.drawPath(segment(wx0 - 3, wy0 + 3, wx0 + 6, wy0 - 4), stroke('#FFFFFF', 1.2, 0.7));
@@ -1213,13 +1221,13 @@ export function drawCarStage(c: SkCanvas, v: View3q, stage: number, seed = 18): 
       faceFill(c, v, tub, shade(INK, 0.3), LINE_W);
       const seat = '#5A5F68';
       // the rear bench and the two front seats: cushions with their backs, all below the waist line
-      box(c, v, { len: 0.34, wid: 1.0, h: 0.1, ox: -0.86, oy: 0, z: zW - 0.12, color: seat, line: 0.9 });
-      box(c, v, { len: 0.08, wid: 1.0, h: 0.12, ox: -1.06, oy: 0, z: zW - 0.06, color: seat, line: 0.9 });
-      for (const sy of [-0.28, 0.28]) {
-        box(c, v, { len: 0.3, wid: 0.4, h: 0.1, ox: -0.12, oy: sy, z: zW - 0.12, color: seat, line: 0.9 });
-        box(c, v, { len: 0.08, wid: 0.38, h: 0.14, ox: -0.3, oy: sy, z: zW - 0.06, color: seat, line: 0.9 });
+      box(c, v, { len: 0.34, wid: 0.86, h: 0.1, ox: -0.86, oy: 0, z: zW - 0.12, color: seat, line: 0.9 });
+      box(c, v, { len: 0.08, wid: 0.86, h: 0.12, ox: -1.06, oy: 0, z: zW - 0.06, color: seat, line: 0.9 });
+      for (const sy of [-0.22, 0.22]) {
+        box(c, v, { len: 0.3, wid: 0.34, h: 0.1, ox: -0.12, oy: sy, z: zW - 0.12, color: seat, line: 0.9 });
+        box(c, v, { len: 0.08, wid: 0.32, h: 0.14, ox: -0.3, oy: sy, z: zW - 0.06, color: seat, line: 0.9 });
       }
-      box(c, v, { len: 0.12, wid: 1.12, h: 0.06, ox: gb1 - 0.1, z: zW - 0.04, color: '#3A3E44', line: 0.9 });
+      box(c, v, { len: 0.12, wid: 0.96, h: 0.06, ox: gb1 - 0.1, z: zW - 0.04, color: '#3A3E44', line: 0.9 });
       // the cut pillar stubs, bright steel
       for (const [px, py] of [[gb0 + 0.04, yb], [-0.42, yb], [gb1 - 0.03, yb], [gb1 - 0.03, -yb]] as const) {
         const [x, y] = proj(v, px, py, zW);

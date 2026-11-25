@@ -1,0 +1,56 @@
+{
+  "_comment": "The scrapyard's top-level data of games/scrap-yard/game.json that is not rules (owner: the wiring step, label wiring). The game's build script copies every block here that does not start with an underscore over the same top-level key of game.json, through scripts/content/yard_top.py (apply), after resolving every {id} in a text to the names register's byId (scripts/content/yard/names.json): invented names are never written as literals (yard-design.md D13). Never edit game.json's copy: change this file and re-run the build (then npm run sync). The store listing is beside it in scripts/content/yard-store.json.",
+  "_why": {
+    "app.displayName": "the register's title, so the loading animation's plates spell it (one plate a word) and the home screen shows it; 14 characters (an iPhone home screen shows about 12 in full: the owner sees 'Scrap to Ingot' or its shortened form on the phone test; Proudly Adequate's 16 was accepted)",
+    "app.slug, iosBundleId, androidPackage": "from the title, as the four games' are; com.example.* stays the house's placeholder until the owner's own domain replaces all five (spam.md 4, validate --release refuses it)",
+    "app.orientation": "landscape (the owner's 'horizontal play mode'; yard-stage1.md 4.1)",
+    "app.trackingText": "the iOS tracking prompt in the game's voice (weighbridge-plain), promising nothing: the first yard shows no ad",
+    "soundPack": "null: no shared pack; the game's own sounds are games/scrap-yard/assets/sfx (yard-design.md 11, the fingerprint's dimension 16)",
+    "theme.colors.background": "the late-day sky of the style sheet (yard-style.md 2, sky #A9C8D8): the splash's colour, the colour the loading animation fades in from, and the Android adaptive icon's background (fully covered by its opaque yellow layer)",
+    "theme, other colours": "the style sheet's palette (paper, ink, hi-vis, rust); the salvage screens draw from src/ui/salvage/palette.ts and read only theme.colors.background; the rest serve the shared shell's fallbacks",
+    "strings.currencyName, currencySymbol": "the register's currency and its symbol (yard-stage1.md 5.1: the symbol is §)",
+    "strings.prestige*": "the game has no run reset (prestige none, yard-design.md 1.2); the shared schema requires the fields"
+  },
+  "app": {
+    "displayName": "{title}",
+    "slug": "scrap-to-ingot",
+    "iosBundleId": "com.example.scraptoingot",
+    "androidPackage": "com.example.scraptoingot",
+    "version": "1.0.0",
+    "buildNumber": 1,
+    "orientation": "landscape",
+    "trackingText": "This lets ads you choose to watch be more relevant to you. The yard works the same whatever you answer."
+  },
+  "soundPack": null,
+  "theme": {
+    "colors": {
+      "background": "#A9C8D8",
+      "backgroundAlt": "#F2DDB6",
+      "surface": "#FBFBF6",
+      "primary": "#F4C20D",
+      "primaryText": "#2B2E33",
+      "accent": "#9A4B2B",
+      "text": "#2B2E33",
+      "textMuted": "#5E646B",
+      "success": "#5E8A3A",
+      "danger": "#B8452C",
+      "progress": "#F4C20D",
+      "gradient": ["#A9C8D8", "#F2DDB6"]
+    },
+    "radius": 10,
+    "scene": "skia",
+    "heroIcon": "🔧",
+    "particleIcon": "🔧",
+    "darkStatusBar": true
+  },
+  "strings": {
+    "currencyName": "{currency}",
+    "currencySymbol": "§",
+    "currencyIcon": "🪙",
+    "gemName": "Gems",
+    "prestigeName": "No reset",
+    "prestigeIcon": "🔧",
+    "prestigeVerb": "No reset",
+    "prestigeDescription": "This game has no run reset: the yard you build stays."
+  }
+}
